@@ -467,16 +467,16 @@ func TestServiceCache_NamespaceCount(t *testing.T) {
 		sc.setServices(services)
 		time.Sleep(time.Duration(5 * time.Second))
 
-		acutalNsCount := make(map[string]int)
+		actualNsCount := make(map[string]int)
 		for i := range nsList {
 			ns := nsList[i]
-			acutalNsCount[ns] = int(sc.GetNamespaceCntInfo(ns).InstanceCnt.TotalInstanceCount)
+			actualNsCount[ns] = int(sc.GetNamespaceCntInfo(ns).InstanceCnt.TotalInstanceCount)
 		}
 
 		fmt.Printf("expect ns count : %#v\n", expectNsCount)
-		fmt.Printf("acutal ns count : %#v\n", acutalNsCount)
+		fmt.Printf("acutal ns count : %#v\n", actualNsCount)
 
-		if !reflect.DeepEqual(expectNsCount, acutalNsCount) {
+		if !reflect.DeepEqual(expectNsCount, actualNsCount) {
 			t.Fatal("namespace count is no currect")
 		}
 	})

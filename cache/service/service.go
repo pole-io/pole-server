@@ -684,6 +684,7 @@ func (sc *serviceCache) GetVisibleServicesInOtherNamespace(ctx context.Context, 
 		}
 	})
 
+	existSvcs := make(map[string]struct{})
 	visibleServices := make([]*model.Service, 0, len(ret))
 	for _, svc := range ret {
 		if svc.IsAlias() {
@@ -697,6 +698,10 @@ func (sc *serviceCache) GetVisibleServicesInOtherNamespace(ctx context.Context, 
 				continue
 			}
 		}
+		if _, ok := existSvcs[svc.ID]; ok {
+			continue
+		}
+		existSvcs[svc.ID] = struct{}{}
 		visibleServices = append(visibleServices, svc)
 	}
 
@@ -707,6 +712,14 @@ func (sc *serviceCache) postProcessServiceExports(services map[string]*model.Ser
 
 	for i := range services {
 		svc := services[i]
+		if !svc.Valid {
+			// 服务被删除了，把所有的可见性都取消
+			// delete export services cache
+			sc.exportServices.ReadRange(func(key string, val *utils.SyncMap[string, *model.Service]) {
+				val.Delete(svc.ID)
+			})
+			continue
+		}
 		for exportNs := range svc.OldExportTo {
 			if _, ok := svc.ExportTo[exportNs]; ok {
 				continue
@@ -746,6 +759,7 @@ func (sc *serviceCache) handleNamespaceChange(ctx context.Context, args interfac
 		}
 	case eventhub.EventDeleted:
 		sc.exportNamespace.Delete(event.Item.Name)
+		sc.exportServices.Delete(event.Item.Name)
 	}
 	return nil
 }
@@ -758,7 +772,7 @@ func (sc *serviceCache) notifyRevisionWorker(serviceID string, valid bool) {
 	revisionWorker.Notify(serviceID, valid)
 }
 
-// GetRevisionWorker
+// GetRevisionWorker .
 func (sc *serviceCache) GetRevisionWorker() types.ServiceRevisionWorker {
 	return sc.revisionWorker
 }
