@@ -179,11 +179,10 @@ func (s *Server) GetServiceWithCache(ctx context.Context, req *apiservice.Servic
 	var (
 		revision string
 		services []*model.Service
-		err      error
 	)
 
 	if req.GetNamespace().GetValue() != "" {
-		revision, svcs = s.Cache().Service().ListServices(ctx, req.GetNamespace().GetValue())
+		revision, services = s.Cache().Service().ListServices(ctx, req.GetNamespace().GetValue())
 		// 需要加上服务可见性处理
 		visibleSvcs := s.caches.Service().GetVisibleServicesInOtherNamespace(ctx, utils.MatchAll, req.GetNamespace().GetValue())
 		revisions := make([]string, 0, len(visibleSvcs)+1)
@@ -191,7 +190,7 @@ func (s *Server) GetServiceWithCache(ctx context.Context, req *apiservice.Servic
 		for i := range visibleSvcs {
 			revisions = append(revisions, visibleSvcs[i].Revision)
 		}
-		svcs = append(svcs, visibleSvcs...)
+		services = append(services, visibleSvcs...)
 		// 需要重新计算 revison
 		if rever, err := cachetypes.CompositeComputeRevision(revisions); err != nil {
 			log.Error("[Server][Discover] list services compute multi revision",
@@ -202,7 +201,7 @@ func (s *Server) GetServiceWithCache(ctx context.Context, req *apiservice.Servic
 		}
 	} else {
 		// 这里拉的是全部服务实例列表，如果客户端可以发起这个请求，应该是不需要
-		revision, svcs = s.Cache().Service().ListAllServices(ctx)
+		revision, services = s.Cache().Service().ListAllServices(ctx)
 	}
 	if revision == "" {
 		return resp
@@ -242,9 +241,9 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	nsName := req.GetNamespace().GetValue()
 
 	// 消费服务为了兼容，可以不带namespace，server端使用默认的namespace
-	if namespaceName == "" {
-		namespaceName = DefaultNamespace
-		req.Namespace = utils.NewStringValue(namespaceName)
+	if nsName == "" {
+		nsName = DefaultNamespace
+		req.Namespace = utils.NewStringValue(nsName)
 	}
 	if !s.commonCheckDiscoverRequest(req, resp) {
 		return resp
@@ -267,7 +266,7 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	aggregateRevision, err := cachetypes.CompositeComputeRevision(revisions)
 	if err != nil {
 		log.Errorf("[Server][Service][Instance] compute multi revision service(%s:%s) err: %s",
-			serviceName, namespaceName, err.Error())
+			svcName, nsName, err.Error())
 		return api.NewDiscoverInstanceResponse(apimodel.Code_ExecuteException, req)
 	}
 	if aggregateRevision == req.GetRevision().GetValue() {
@@ -298,7 +297,7 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	if aliasFor == nil {
 		// 这里只会出现，查询的目标服务和命名空间不存在，但是可见性的服务存在
 		// 所以这里需要用入口的服务名和命名空间填充服务数据结构，以便返回最终的应答服务名和命名空间
-		aliasFor = &model.Service{Name: serviceName, Namespace: namespaceName}
+		aliasFor = &model.Service{Name: svcName, Namespace: nsName}
 	}
 	// 填充service数据
 	resp.Service = service2Api(aliasFor)

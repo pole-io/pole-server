@@ -86,7 +86,7 @@ func (n *NacosServer) Initialize(ctx context.Context, option map[string]interfac
 	}
 
 	n.httpPort = uint32(cfg.ListenPort)
-	n.grpcPort = uint32(cfg.ListenPort + 1000)
+	n.grpcPort = uint32(cfg.GrpcListenPort)
 
 	// 连接数限制的配置
 	n.connLimitConfig = cfg.ConnLimit

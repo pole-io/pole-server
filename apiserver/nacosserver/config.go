@@ -27,6 +27,7 @@ import (
 
 type NacosConfig struct {
 	ListenPort       uint32            `mapstructure:"listenPort"`
+	GrpcListenPort   uint32            `mapstructure:"grpcListenPort"`
 	ConnLimit        *connlimit.Config `mapstructure:"connLimit"`
 	TLS              *secure.TLSConfig `mapstructure:tls`
 	DefaultNamespace string            `mapstructure:defaultNamespace`
@@ -49,6 +50,11 @@ func loadNacosConfig(raw map[string]interface{}) (*NacosConfig, error) {
 	}
 	if err := decoder.Decode(raw); err != nil {
 		return nil, err
+	}
+
+	if defaultCfg.GrpcListenPort == 0 {
+		// grpc port is not set, use http port + 1000
+		defaultCfg.GrpcListenPort = defaultCfg.ListenPort + 1000
 	}
 	return defaultCfg, nil
 }
