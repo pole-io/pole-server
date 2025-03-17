@@ -20,7 +20,7 @@ package eventhub
 import (
 	"context"
 
-	"github.com/polarismesh/polaris/common/log"
+	"github.com/GovernSea/sergo-server/common/log"
 )
 
 const (

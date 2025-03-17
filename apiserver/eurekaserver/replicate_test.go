@@ -23,8 +23,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	api "github.com/polarismesh/polaris/common/api/v1"
-	testsuit "github.com/polarismesh/polaris/test/suit"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	testsuit "github.com/GovernSea/sergo-server/test/suit"
 )
 
 func TestDispatchHeartbeat(t *testing.T) {

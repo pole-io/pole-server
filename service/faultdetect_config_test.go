@@ -31,7 +31,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/polarismesh/polaris/service"
+	"github.com/GovernSea/sergo-server/service"
 )
 
 func buildUnnamedFaultDetectRule() *apifault.FaultDetectRule {

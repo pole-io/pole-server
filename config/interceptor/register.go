@@ -18,12 +18,12 @@
 package config_chain
 
 import (
-	"github.com/polarismesh/polaris/auth"
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	"github.com/polarismesh/polaris/config"
-	config_auth "github.com/polarismesh/polaris/config/interceptor/auth"
-	"github.com/polarismesh/polaris/config/interceptor/paramcheck"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/auth"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	"github.com/GovernSea/sergo-server/config"
+	config_auth "github.com/GovernSea/sergo-server/config/interceptor/auth"
+	"github.com/GovernSea/sergo-server/config/interceptor/paramcheck"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 func init() {

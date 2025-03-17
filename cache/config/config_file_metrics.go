@@ -23,9 +23,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/common/metrics"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/plugin"
+	"github.com/GovernSea/sergo-server/common/metrics"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 func (fc *fileCache) reportMetricsInfo() {

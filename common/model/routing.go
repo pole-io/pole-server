@@ -30,8 +30,8 @@ import (
 	protoV2 "google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	commontime "github.com/polarismesh/polaris/common/time"
-	"github.com/polarismesh/polaris/common/utils"
+	commontime "github.com/GovernSea/sergo-server/common/time"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 type TrafficDirection string

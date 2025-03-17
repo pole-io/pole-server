@@ -24,8 +24,8 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"google.golang.org/grpc"
 
-	"github.com/polarismesh/polaris/common/metrics"
-	"github.com/polarismesh/polaris/plugin"
+	"github.com/GovernSea/sergo-server/common/metrics"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 const (

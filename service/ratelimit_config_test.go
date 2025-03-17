@@ -33,9 +33,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/polarismesh/polaris/cache"
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/utils"
+	"github.com/GovernSea/sergo-server/cache"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 type CacheListener struct {

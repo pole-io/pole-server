@@ -28,8 +28,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/polarismesh/polaris/common/log"
-	"github.com/polarismesh/polaris/common/utils"
+	"github.com/GovernSea/sergo-server/common/log"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 const (

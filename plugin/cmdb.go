@@ -20,8 +20,8 @@ package plugin
 import (
 	"os"
 
-	commonLog "github.com/polarismesh/polaris/common/log"
-	"github.com/polarismesh/polaris/common/model"
+	commonLog "github.com/GovernSea/sergo-server/common/log"
+	"github.com/GovernSea/sergo-server/common/model"
 )
 
 // CMDB CMDB插件接口

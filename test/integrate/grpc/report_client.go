@@ -25,7 +25,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/polarismesh/polaris/common/utils"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 // ReportClient 上报客户端信息

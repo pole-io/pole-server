@@ -27,8 +27,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	commonhash "github.com/polarismesh/polaris/common/hash"
-	"github.com/polarismesh/polaris/common/utils"
+	commonhash "github.com/GovernSea/sergo-server/common/hash"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 func Test_LeaderCheckerDebugerHandler(t *testing.T) {

@@ -26,9 +26,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/apiserver/nacosserver/core"
-	"github.com/polarismesh/polaris/common/log"
-	commontime "github.com/polarismesh/polaris/common/time"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/core"
+	"github.com/GovernSea/sergo-server/common/log"
+	commontime "github.com/GovernSea/sergo-server/common/time"
 )
 
 func NewUDPPushCenter(store *core.NacosDataStorage) (core.PushCenter, error) {

@@ -17,7 +17,7 @@
 
 package token
 
-import "github.com/polarismesh/polaris/plugin"
+import "github.com/GovernSea/sergo-server/plugin"
 
 const (
 	PluginName = "token-bucket"

@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 
-	"github.com/polarismesh/polaris/plugin"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 func Test_UnmarshalClusterConfig(t *testing.T) {

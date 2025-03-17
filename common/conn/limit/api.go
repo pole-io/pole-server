@@ -21,7 +21,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/polarismesh/polaris/common/log"
+	"github.com/GovernSea/sergo-server/common/log"
 )
 
 // limitListener limit obj for Listener

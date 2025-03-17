@@ -21,11 +21,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/polarismesh/polaris/cache"
-	"github.com/polarismesh/polaris/common/eventhub"
-	"github.com/polarismesh/polaris/plugin"
-	"github.com/polarismesh/polaris/service/batch"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/cache"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/GovernSea/sergo-server/service/batch"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 // Server health checks the main server

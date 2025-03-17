@@ -20,7 +20,7 @@ package paramcheck
 import (
 	"context"
 
-	"github.com/polarismesh/polaris/common/api/l5"
+	"github.com/GovernSea/sergo-server/common/api/l5"
 )
 
 // RegisterByNameCmd implements service.DiscoverServer.

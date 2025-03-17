@@ -30,10 +30,10 @@ import (
 	protoV2 "google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	types "github.com/polarismesh/polaris/cache/api"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/store"
+	types "github.com/GovernSea/sergo-server/cache/api"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 func NewLaneCache(storage store.Store, cacheMgr types.CacheManager) types.LaneCache {

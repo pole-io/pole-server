@@ -22,7 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 const adjustInterval = 60 * time.Second

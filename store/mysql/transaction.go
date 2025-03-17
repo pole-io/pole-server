@@ -23,7 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/polarismesh/polaris/common/model"
+	"github.com/GovernSea/sergo-server/common/model"
 )
 
 // transaction 事务; 不支持多协程并发操作，当前先支持单个协程串行操作

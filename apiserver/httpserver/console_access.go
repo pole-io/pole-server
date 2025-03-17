@@ -20,7 +20,7 @@ package httpserver
 import (
 	"github.com/emicklei/go-restful/v3"
 
-	"github.com/polarismesh/polaris/apiserver/httpserver/docs"
+	"github.com/GovernSea/sergo-server/apiserver/httpserver/docs"
 )
 
 const (

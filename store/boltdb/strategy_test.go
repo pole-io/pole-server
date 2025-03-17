@@ -26,8 +26,8 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	"github.com/stretchr/testify/assert"
 
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/common/utils"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 func createTestStrategy(num int) []*authcommon.StrategyDetail {

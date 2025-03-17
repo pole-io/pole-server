@@ -32,13 +32,13 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/eventhub"
-	"github.com/polarismesh/polaris/common/model"
-	commonstore "github.com/polarismesh/polaris/common/store"
-	commontime "github.com/polarismesh/polaris/common/time"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/plugin"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	"github.com/GovernSea/sergo-server/common/model"
+	commonstore "github.com/GovernSea/sergo-server/common/store"
+	commontime "github.com/GovernSea/sergo-server/common/time"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 var (

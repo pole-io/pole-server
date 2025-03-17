@@ -22,9 +22,9 @@ import (
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/common/utils"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 // PublishConfigFile 发布配置文件

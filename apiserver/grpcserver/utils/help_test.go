@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/polarismesh/polaris/apiserver"
+	"github.com/GovernSea/sergo-server/apiserver"
 )
 
 func TestGetClientOpenMethod(t *testing.T) {

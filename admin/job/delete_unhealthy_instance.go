@@ -23,10 +23,10 @@ import (
 	"github.com/mitchellh/mapstructure"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/service"
-	"github.com/polarismesh/polaris/store"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/service"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 type DeleteUnHealthyInstanceJobConfig struct {

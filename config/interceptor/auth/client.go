@@ -22,10 +22,10 @@ import (
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/config"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/config"
 )
 
 // UpsertAndReleaseConfigFileFromClient 创建/更新配置文件并发布

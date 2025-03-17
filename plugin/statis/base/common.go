@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/polarismesh/polaris/common/metrics"
+	"github.com/GovernSea/sergo-server/common/metrics"
 )
 
 const (

@@ -40,16 +40,16 @@ import (
 	"golang.org/x/sync/singleflight"
 	"google.golang.org/grpc"
 
-	"github.com/polarismesh/polaris/apiserver"
-	xdscache "github.com/polarismesh/polaris/apiserver/xdsserverv3/cache"
-	"github.com/polarismesh/polaris/apiserver/xdsserverv3/resource"
-	"github.com/polarismesh/polaris/cache"
-	api "github.com/polarismesh/polaris/common/api/v1"
-	connlimit "github.com/polarismesh/polaris/common/conn/limit"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/service"
-	"github.com/polarismesh/polaris/service/healthcheck"
+	"github.com/GovernSea/sergo-server/apiserver"
+	xdscache "github.com/GovernSea/sergo-server/apiserver/xdsserverv3/cache"
+	"github.com/GovernSea/sergo-server/apiserver/xdsserverv3/resource"
+	"github.com/GovernSea/sergo-server/cache"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	connlimit "github.com/GovernSea/sergo-server/common/conn/limit"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/service"
+	"github.com/GovernSea/sergo-server/service/healthcheck"
 )
 
 type ResourceServer interface {

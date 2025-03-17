@@ -22,7 +22,7 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 // 默认保存配置发布天数

@@ -24,7 +24,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	defaultuser "github.com/polarismesh/polaris/auth/user"
+	defaultuser "github.com/GovernSea/sergo-server/auth/user"
 )
 
 // Test_CustomDesignSalt 主要用于有自定义salt需求的用户

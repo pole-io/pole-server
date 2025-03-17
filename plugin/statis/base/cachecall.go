@@ -23,9 +23,9 @@ import (
 	"sync"
 	"time"
 
-	commonlog "github.com/polarismesh/polaris/common/log"
-	"github.com/polarismesh/polaris/common/metrics"
-	commontime "github.com/polarismesh/polaris/common/time"
+	commonlog "github.com/GovernSea/sergo-server/common/log"
+	"github.com/GovernSea/sergo-server/common/metrics"
+	commontime "github.com/GovernSea/sergo-server/common/time"
 )
 
 // CacheCall 接口调用

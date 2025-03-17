@@ -25,10 +25,10 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	"github.com/polarismesh/polaris/common/eventhub"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/plugin"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 const (

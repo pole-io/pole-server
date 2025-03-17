@@ -27,11 +27,11 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	v1 "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/test/integrate/http"
-	"github.com/polarismesh/polaris/test/integrate/resource"
+	v1 "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/test/integrate/http"
+	"github.com/GovernSea/sergo-server/test/integrate/resource"
 )
 
 /**

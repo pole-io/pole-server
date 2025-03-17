@@ -17,7 +17,7 @@
 
 package auth
 
-import commonlog "github.com/polarismesh/polaris/common/log"
+import commonlog "github.com/GovernSea/sergo-server/common/log"
 
 var (
 	log = commonlog.GetScopeOrDefaultByName(commonlog.AuthLoggerName)

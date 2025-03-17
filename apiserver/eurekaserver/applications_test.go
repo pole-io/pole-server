@@ -29,8 +29,8 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/service"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/service"
 )
 
 const (

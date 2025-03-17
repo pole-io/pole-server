@@ -20,8 +20,8 @@ package auth
 import (
 	"context"
 
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	"github.com/polarismesh/polaris/store"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 // TestInitialize 包裹了初始化函数，在 Initialize 的时候会在自动调用，全局初始化一次

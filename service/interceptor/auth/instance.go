@@ -23,10 +23,10 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	api "github.com/polarismesh/polaris/common/api/v1"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/service"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/service"
 )
 
 // CreateInstances create instances

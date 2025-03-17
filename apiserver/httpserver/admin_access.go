@@ -29,11 +29,11 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/polarismesh/polaris/apiserver/httpserver/docs"
-	httpcommon "github.com/polarismesh/polaris/apiserver/httpserver/utils"
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/model/admin"
-	"github.com/polarismesh/polaris/common/utils"
+	"github.com/GovernSea/sergo-server/apiserver/httpserver/docs"
+	httpcommon "github.com/GovernSea/sergo-server/apiserver/httpserver/utils"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/model/admin"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 // GetIndexServer get index server

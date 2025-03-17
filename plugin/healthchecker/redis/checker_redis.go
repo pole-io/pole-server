@@ -26,12 +26,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	commonlog "github.com/polarismesh/polaris/common/log"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/redispool"
-	commontime "github.com/polarismesh/polaris/common/time"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/plugin"
+	commonlog "github.com/GovernSea/sergo-server/common/log"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/redispool"
+	commontime "github.com/GovernSea/sergo-server/common/time"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 var log = commonlog.GetScopeOrDefaultByName(commonlog.HealthcheckLoggerName)

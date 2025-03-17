@@ -18,8 +18,8 @@
 package policy
 
 import (
-	"github.com/polarismesh/polaris/auth"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/auth"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 // MockAuthChecker mock auth.AuthChecker for unit test

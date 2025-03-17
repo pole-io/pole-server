@@ -18,7 +18,7 @@
 package token
 
 import (
-	"github.com/polarismesh/polaris/plugin"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 // tokenBucket 实现Plugin接口

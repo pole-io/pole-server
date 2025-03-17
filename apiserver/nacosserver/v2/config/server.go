@@ -18,13 +18,13 @@
 package config
 
 import (
-	"github.com/polarismesh/polaris/apiserver/nacosserver/core"
-	nacospb "github.com/polarismesh/polaris/apiserver/nacosserver/v2/pb"
-	"github.com/polarismesh/polaris/apiserver/nacosserver/v2/remote"
-	"github.com/polarismesh/polaris/auth"
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	"github.com/polarismesh/polaris/config"
-	"github.com/polarismesh/polaris/namespace"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/core"
+	nacospb "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/pb"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/remote"
+	"github.com/GovernSea/sergo-server/auth"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	"github.com/GovernSea/sergo-server/config"
+	"github.com/GovernSea/sergo-server/namespace"
 )
 
 type ServerOption struct {

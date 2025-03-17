@@ -17,7 +17,7 @@
 
 package config
 
-import commonLog "github.com/polarismesh/polaris/common/log"
+import commonLog "github.com/GovernSea/sergo-server/common/log"
 
 var (
 	log     = commonLog.GetScopeOrDefaultByName(commonLog.ConfigLoggerName)

@@ -18,7 +18,7 @@
 package admin
 
 import (
-	"github.com/polarismesh/polaris/admin/job"
+	"github.com/GovernSea/sergo-server/admin/job"
 )
 
 // Config maintain configuration

@@ -25,13 +25,13 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/auth"
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/model"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/namespace"
+	"github.com/GovernSea/sergo-server/auth"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/model"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/namespace"
 )
 
 var _ namespace.NamespaceOperateServer = (*Server)(nil)

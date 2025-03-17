@@ -27,7 +27,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 
-	commonlog "github.com/polarismesh/polaris/common/log"
+	commonlog "github.com/GovernSea/sergo-server/common/log"
 )
 
 // initVirtualStream 对 VirtualStream 的一些初始化动作

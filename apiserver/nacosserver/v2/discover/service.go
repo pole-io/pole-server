@@ -21,10 +21,10 @@ import (
 	"context"
 	"strings"
 
-	"github.com/polarismesh/polaris/apiserver/nacosserver/core"
-	"github.com/polarismesh/polaris/apiserver/nacosserver/model"
-	nacospb "github.com/polarismesh/polaris/apiserver/nacosserver/v2/pb"
-	"github.com/polarismesh/polaris/apiserver/nacosserver/v2/remote"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/core"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
+	nacospb "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/pb"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/remote"
 )
 
 func (h *DiscoverServer) handleServiceQueryRequest(ctx context.Context, req nacospb.BaseRequest,

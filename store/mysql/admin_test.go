@@ -25,9 +25,9 @@ import (
 
 	"github.com/golang/mock/gomock"
 
-	"github.com/polarismesh/polaris/common/eventhub"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/store/mock"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/store/mock"
 )
 
 const (

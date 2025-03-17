@@ -18,7 +18,7 @@
 package discover
 
 import (
-	"github.com/polarismesh/polaris/apiserver"
+	"github.com/GovernSea/sergo-server/apiserver"
 )
 
 // init 自注册到API服务器插槽

@@ -18,8 +18,8 @@
 package v1
 
 import (
-	"github.com/polarismesh/polaris/service"
-	"github.com/polarismesh/polaris/service/healthcheck"
+	"github.com/GovernSea/sergo-server/service"
+	"github.com/GovernSea/sergo-server/service/healthcheck"
 )
 
 type DiscoverServer struct {

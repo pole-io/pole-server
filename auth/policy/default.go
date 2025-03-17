@@ -21,9 +21,9 @@ import (
 	"fmt"
 	golog "log"
 
-	"github.com/polarismesh/polaris/auth"
-	policy_auth "github.com/polarismesh/polaris/auth/policy/inteceptor/auth"
-	"github.com/polarismesh/polaris/auth/policy/inteceptor/paramcheck"
+	"github.com/GovernSea/sergo-server/auth"
+	policy_auth "github.com/GovernSea/sergo-server/auth/policy/inteceptor/auth"
+	"github.com/GovernSea/sergo-server/auth/policy/inteceptor/paramcheck"
 )
 
 type ServerProxyFactory func(svr *Server, pre auth.StrategyServer) (auth.StrategyServer, error)

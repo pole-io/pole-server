@@ -27,11 +27,11 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/model"
-	commonstore "github.com/polarismesh/polaris/common/store"
-	"github.com/polarismesh/polaris/common/utils"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/model"
+	commonstore "github.com/GovernSea/sergo-server/common/store"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 // CreateConfigFileGroup 创建配置文件组

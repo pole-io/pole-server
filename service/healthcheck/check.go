@@ -27,14 +27,14 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/common/eventhub"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/srand"
-	commonstore "github.com/polarismesh/polaris/common/store"
-	"github.com/polarismesh/polaris/common/timewheel"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/plugin"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/srand"
+	commonstore "github.com/GovernSea/sergo-server/common/store"
+	"github.com/GovernSea/sergo-server/common/timewheel"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 const (

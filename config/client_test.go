@@ -29,12 +29,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	api "github.com/polarismesh/polaris/common/api/v1"
-	commonlog "github.com/polarismesh/polaris/common/log"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/config"
-	testsuit "github.com/polarismesh/polaris/test/suit"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	commonlog "github.com/GovernSea/sergo-server/common/log"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/config"
+	testsuit "github.com/GovernSea/sergo-server/test/suit"
 )
 
 // TestClientSetupAndFileNotExisted 测试客户端启动时（version=0），并且配置不存在的情况下拉取配置

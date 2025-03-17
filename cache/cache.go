@@ -23,9 +23,9 @@ import (
 	"sync"
 	"time"
 
-	types "github.com/polarismesh/polaris/cache/api"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/store"
+	types "github.com/GovernSea/sergo-server/cache/api"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 var (

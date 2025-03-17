@@ -31,7 +31,7 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/common/model"
+	"github.com/GovernSea/sergo-server/common/model"
 )
 
 type RunType string

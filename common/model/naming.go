@@ -32,8 +32,8 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	commontime "github.com/polarismesh/polaris/common/time"
-	"github.com/polarismesh/polaris/common/utils"
+	commontime "github.com/GovernSea/sergo-server/common/time"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 var (

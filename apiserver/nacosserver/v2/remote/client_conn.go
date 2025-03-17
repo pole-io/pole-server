@@ -30,10 +30,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/stats"
 
-	nacospb "github.com/polarismesh/polaris/apiserver/nacosserver/v2/pb"
-	"github.com/polarismesh/polaris/common/eventhub"
-	commontime "github.com/polarismesh/polaris/common/time"
-	"github.com/polarismesh/polaris/common/utils"
+	nacospb "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/pb"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	commontime "github.com/GovernSea/sergo-server/common/time"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 type (

@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 // RoutingConfigStore的实现

@@ -26,9 +26,9 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
-	v1 "github.com/polarismesh/polaris/apiserver/httpserver/discover/v1"
-	httpcommon "github.com/polarismesh/polaris/apiserver/httpserver/utils"
-	apiv1 "github.com/polarismesh/polaris/common/api/v1"
+	v1 "github.com/GovernSea/sergo-server/apiserver/httpserver/discover/v1"
+	httpcommon "github.com/GovernSea/sergo-server/apiserver/httpserver/utils"
+	apiv1 "github.com/GovernSea/sergo-server/common/api/v1"
 )
 
 const (

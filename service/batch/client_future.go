@@ -21,7 +21,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/polarismesh/polaris/common/model"
+	"github.com/GovernSea/sergo-server/common/model"
 )
 
 // InstanceFuture 创建实例的异步结构体

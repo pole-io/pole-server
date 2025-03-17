@@ -32,15 +32,15 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 
-	api "github.com/polarismesh/polaris/common/api/v1"
-	connhook "github.com/polarismesh/polaris/common/conn/hook"
-	connlimit "github.com/polarismesh/polaris/common/conn/limit"
-	commonlog "github.com/polarismesh/polaris/common/log"
-	"github.com/polarismesh/polaris/common/metrics"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/common/secure"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/plugin"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	connhook "github.com/GovernSea/sergo-server/common/conn/hook"
+	connlimit "github.com/GovernSea/sergo-server/common/conn/limit"
+	commonlog "github.com/GovernSea/sergo-server/common/log"
+	"github.com/GovernSea/sergo-server/common/metrics"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/secure"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 // InitServer BaseGrpcServer.Run 中回调函数的定义

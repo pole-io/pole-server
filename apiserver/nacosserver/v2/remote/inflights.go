@@ -22,9 +22,9 @@ import (
 	"sync"
 	"time"
 
-	nacosmodel "github.com/polarismesh/polaris/apiserver/nacosserver/model"
-	nacospb "github.com/polarismesh/polaris/apiserver/nacosserver/v2/pb"
-	"github.com/polarismesh/polaris/common/utils"
+	nacosmodel "github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
+	nacospb "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/pb"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 type (

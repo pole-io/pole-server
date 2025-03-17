@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/polarismesh/polaris/common/utils"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 func TestParseRouteRuleFromAPI(t *testing.T) {

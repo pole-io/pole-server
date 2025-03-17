@@ -25,7 +25,7 @@ import (
 	"encoding/base64"
 	"errors"
 
-	"github.com/polarismesh/polaris/plugin"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 const (

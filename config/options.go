@@ -21,8 +21,8 @@ import (
 	"os"
 	"path/filepath"
 
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	"github.com/polarismesh/polaris/common/utils"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 var (

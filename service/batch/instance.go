@@ -28,12 +28,12 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/cache"
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/model"
-	commonstore "github.com/polarismesh/polaris/common/store"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/cache"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/model"
+	commonstore "github.com/GovernSea/sergo-server/common/store"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 var (

@@ -21,9 +21,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/polarismesh/polaris/common/log"
-	"github.com/polarismesh/polaris/common/metrics"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/common/log"
+	"github.com/GovernSea/sergo-server/common/metrics"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 type BaseWorker struct {

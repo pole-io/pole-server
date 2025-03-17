@@ -18,8 +18,8 @@
 package nacosserver
 
 import (
-	"github.com/polarismesh/polaris/apiserver"
-	_ "github.com/polarismesh/polaris/apiserver/nacosserver/v2"
+	"github.com/GovernSea/sergo-server/apiserver"
+	_ "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2"
 )
 
 // init 自注册到API服务器插槽

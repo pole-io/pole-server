@@ -26,11 +26,11 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/eventhub"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/utils"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 const (

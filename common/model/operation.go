@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	commontime "github.com/polarismesh/polaris/common/time"
+	commontime "github.com/GovernSea/sergo-server/common/time"
 )
 
 // OperationType Operating type

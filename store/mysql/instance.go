@@ -27,8 +27,8 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 // instanceStore 实现了InstanceStore接口

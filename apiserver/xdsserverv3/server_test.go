@@ -38,9 +38,9 @@ import (
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/polarismesh/polaris/apiserver/xdsserverv3/resource"
-	"github.com/polarismesh/polaris/common/model"
-	testdata "github.com/polarismesh/polaris/test/data"
+	"github.com/GovernSea/sergo-server/apiserver/xdsserverv3/resource"
+	"github.com/GovernSea/sergo-server/common/model"
+	testdata "github.com/GovernSea/sergo-server/test/data"
 )
 
 func generateRateLimitString(ruleType apitraffic.Rule_Type) (string, string, map[string]*anypb.Any) {

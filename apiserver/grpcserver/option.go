@@ -18,8 +18,8 @@
 package grpcserver
 
 import (
-	commonlog "github.com/polarismesh/polaris/common/log"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
+	commonlog "github.com/GovernSea/sergo-server/common/log"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
 )
 
 type InitOption func(svr *BaseGrpcServer)

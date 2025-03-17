@@ -18,11 +18,11 @@
 package service_chain
 
 import (
-	"github.com/polarismesh/polaris/auth"
-	"github.com/polarismesh/polaris/service"
-	service_auth "github.com/polarismesh/polaris/service/interceptor/auth"
-	"github.com/polarismesh/polaris/service/interceptor/paramcheck"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/auth"
+	"github.com/GovernSea/sergo-server/service"
+	service_auth "github.com/GovernSea/sergo-server/service/interceptor/auth"
+	"github.com/GovernSea/sergo-server/service/interceptor/paramcheck"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 func init() {

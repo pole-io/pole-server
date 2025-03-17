@@ -24,12 +24,12 @@ import (
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	"google.golang.org/grpc"
 
-	"github.com/polarismesh/polaris/apiserver"
-	"github.com/polarismesh/polaris/apiserver/grpcserver"
-	"github.com/polarismesh/polaris/apiserver/grpcserver/utils"
-	commonlog "github.com/polarismesh/polaris/common/log"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/config"
+	"github.com/GovernSea/sergo-server/apiserver"
+	"github.com/GovernSea/sergo-server/apiserver/grpcserver"
+	"github.com/GovernSea/sergo-server/apiserver/grpcserver/utils"
+	commonlog "github.com/GovernSea/sergo-server/common/log"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/config"
 )
 
 var (

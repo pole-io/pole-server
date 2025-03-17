@@ -20,7 +20,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/polarismesh/polaris/common/log"
+	"github.com/GovernSea/sergo-server/common/log"
 )
 
 func defaultBootstrap() Bootstrap {

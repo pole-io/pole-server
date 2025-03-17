@@ -33,12 +33,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/polarismesh/polaris/common/eventhub"
-	commonhash "github.com/polarismesh/polaris/common/hash"
-	commontime "github.com/polarismesh/polaris/common/time"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/plugin"
-	"github.com/polarismesh/polaris/store/mock"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	commonhash "github.com/GovernSea/sergo-server/common/hash"
+	commontime "github.com/GovernSea/sergo-server/common/time"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/GovernSea/sergo-server/store/mock"
 )
 
 type MockPeerImpl struct {

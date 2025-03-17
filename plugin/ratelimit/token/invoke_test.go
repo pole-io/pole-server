@@ -22,7 +22,7 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 
-	"github.com/polarismesh/polaris/plugin"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 // baseConfigOption 返回一个基础的正常option配置

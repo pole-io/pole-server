@@ -24,9 +24,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/common/metrics"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/plugin"
+	"github.com/GovernSea/sergo-server/common/metrics"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 // InstanceFuture 创建实例的异步结构体

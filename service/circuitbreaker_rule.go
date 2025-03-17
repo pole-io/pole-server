@@ -31,12 +31,12 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/model"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
-	commonstore "github.com/polarismesh/polaris/common/store"
-	commontime "github.com/polarismesh/polaris/common/time"
-	"github.com/polarismesh/polaris/common/utils"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/model"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	commonstore "github.com/GovernSea/sergo-server/common/store"
+	commontime "github.com/GovernSea/sergo-server/common/time"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 // CreateCircuitBreakerRules Create a CircuitBreaker rule

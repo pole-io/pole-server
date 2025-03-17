@@ -20,7 +20,7 @@ package secure
 import (
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/polarismesh/polaris/common/log"
+	"github.com/GovernSea/sergo-server/common/log"
 )
 
 // TLSConfig tls 相关配置

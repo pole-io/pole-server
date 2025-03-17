@@ -23,12 +23,12 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/polarismesh/polaris/common/eventhub"
-	"github.com/polarismesh/polaris/common/hash"
-	commonhash "github.com/polarismesh/polaris/common/hash"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/plugin"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	"github.com/GovernSea/sergo-server/common/hash"
+	commonhash "github.com/GovernSea/sergo-server/common/hash"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 var DefaultShardSize uint32

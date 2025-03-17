@@ -25,15 +25,15 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
-	nacosmodel "github.com/polarismesh/polaris/apiserver/nacosserver/model"
-	nacospb "github.com/polarismesh/polaris/apiserver/nacosserver/v2/pb"
-	"github.com/polarismesh/polaris/apiserver/nacosserver/v2/remote"
-	"github.com/polarismesh/polaris/common/metrics"
-	"github.com/polarismesh/polaris/common/model"
-	commontime "github.com/polarismesh/polaris/common/time"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/config"
-	"github.com/polarismesh/polaris/plugin"
+	nacosmodel "github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
+	nacospb "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/pb"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/remote"
+	"github.com/GovernSea/sergo-server/common/metrics"
+	"github.com/GovernSea/sergo-server/common/model"
+	commontime "github.com/GovernSea/sergo-server/common/time"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/config"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 const (

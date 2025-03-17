@@ -24,8 +24,8 @@ import (
 
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 type faultDetectStore struct {

@@ -18,7 +18,7 @@
 package token
 
 import (
-	"github.com/polarismesh/polaris/plugin"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 // initialize 插件初始化函数

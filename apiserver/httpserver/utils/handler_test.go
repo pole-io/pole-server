@@ -29,9 +29,9 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/polarismesh/polaris/apiserver/httpserver/i18n"
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/utils"
+	"github.com/GovernSea/sergo-server/apiserver/httpserver/i18n"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 func init() {

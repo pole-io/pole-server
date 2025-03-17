@@ -27,12 +27,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/polarismesh/polaris/common/eventhub"
-	commontime "github.com/polarismesh/polaris/common/time"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/plugin"
-	"github.com/polarismesh/polaris/store"
-	"github.com/polarismesh/polaris/store/mock"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	commontime "github.com/GovernSea/sergo-server/common/time"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/GovernSea/sergo-server/store"
+	"github.com/GovernSea/sergo-server/store/mock"
 )
 
 func TestLeaderHealthChecker_Function(t *testing.T) {

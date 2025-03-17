@@ -20,8 +20,8 @@ package healthcheck
 import (
 	"context"
 
-	"github.com/polarismesh/polaris/service/batch"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/service/batch"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 func TestInitialize(ctx context.Context, hcOpt *Config, bc *batch.Controller,

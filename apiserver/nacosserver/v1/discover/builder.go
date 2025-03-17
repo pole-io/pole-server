@@ -26,8 +26,8 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 
-	"github.com/polarismesh/polaris/apiserver/nacosserver/model"
-	nacoshttp "github.com/polarismesh/polaris/apiserver/nacosserver/v1/http"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
+	nacoshttp "github.com/GovernSea/sergo-server/apiserver/nacosserver/v1/http"
 )
 
 func BuildInstance(namespace string, req *restful.Request, onlybase bool) (*model.Instance, error) {

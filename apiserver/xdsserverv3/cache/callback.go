@@ -24,7 +24,7 @@ import (
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/apiserver/xdsserverv3/resource"
+	"github.com/GovernSea/sergo-server/apiserver/xdsserverv3/resource"
 )
 
 func NewCallback(cacheMgr *ResourceCache, nodeMgr *resource.XDSNodeManager) *Callbacks {

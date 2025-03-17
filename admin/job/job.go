@@ -23,11 +23,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/polarismesh/polaris/cache"
-	commonlog "github.com/polarismesh/polaris/common/log"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/service"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/cache"
+	commonlog "github.com/GovernSea/sergo-server/common/log"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/service"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 var log = commonlog.GetScopeOrDefaultByName(commonlog.DefaultLoggerName)

@@ -28,7 +28,7 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 
-	"github.com/polarismesh/polaris/common/version"
+	"github.com/GovernSea/sergo-server/common/version"
 )
 
 type ReplicateWorker struct {

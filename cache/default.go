@@ -22,15 +22,15 @@ import (
 	"errors"
 	"sync"
 
-	types "github.com/polarismesh/polaris/cache/api"
-	cacheauth "github.com/polarismesh/polaris/cache/auth"
-	cacheclient "github.com/polarismesh/polaris/cache/client"
-	cacheconfig "github.com/polarismesh/polaris/cache/config"
-	cachegray "github.com/polarismesh/polaris/cache/gray"
-	cachens "github.com/polarismesh/polaris/cache/namespace"
-	cachesvc "github.com/polarismesh/polaris/cache/service"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/store"
+	types "github.com/GovernSea/sergo-server/cache/api"
+	cacheauth "github.com/GovernSea/sergo-server/cache/auth"
+	cacheclient "github.com/GovernSea/sergo-server/cache/client"
+	cacheconfig "github.com/GovernSea/sergo-server/cache/config"
+	cachegray "github.com/GovernSea/sergo-server/cache/gray"
+	cachens "github.com/GovernSea/sergo-server/cache/namespace"
+	cachesvc "github.com/GovernSea/sergo-server/cache/service"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 func init() {

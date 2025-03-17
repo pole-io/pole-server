@@ -21,7 +21,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/polarismesh/polaris/common/model"
+	"github.com/GovernSea/sergo-server/common/model"
 )
 
 const (

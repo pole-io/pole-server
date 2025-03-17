@@ -24,9 +24,9 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/store"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 // AuthChecker 权限管理通用接口定义

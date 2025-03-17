@@ -27,10 +27,10 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
 
-	types "github.com/polarismesh/polaris/cache/api"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/store/mock"
+	types "github.com/GovernSea/sergo-server/cache/api"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/store/mock"
 )
 
 func newTestClientCache(t *testing.T) (*gomock.Controller, *mock.MockStore, *clientCache) {

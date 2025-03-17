@@ -27,15 +27,15 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/eventhub"
-	"github.com/polarismesh/polaris/common/model"
-	commontime "github.com/polarismesh/polaris/common/time"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/plugin"
-	"github.com/polarismesh/polaris/service/batch"
-	"github.com/polarismesh/polaris/store"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	"github.com/GovernSea/sergo-server/common/model"
+	commontime "github.com/GovernSea/sergo-server/common/time"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/GovernSea/sergo-server/service/batch"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 var (

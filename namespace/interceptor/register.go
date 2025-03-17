@@ -20,10 +20,10 @@ package interceptor
 import (
 	"context"
 
-	"github.com/polarismesh/polaris/auth"
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	"github.com/polarismesh/polaris/namespace"
-	ns_auth "github.com/polarismesh/polaris/namespace/interceptor/auth"
+	"github.com/GovernSea/sergo-server/auth"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	"github.com/GovernSea/sergo-server/namespace"
+	ns_auth "github.com/GovernSea/sergo-server/namespace/interceptor/auth"
 )
 
 type (

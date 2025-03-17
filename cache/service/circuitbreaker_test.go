@@ -24,8 +24,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/store/mock"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/store/mock"
 )
 
 /**

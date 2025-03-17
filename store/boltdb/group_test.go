@@ -24,7 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
 )
 
 func buildUserIds(users []*authcommon.User) map[string]struct{} {

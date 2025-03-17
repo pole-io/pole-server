@@ -32,8 +32,8 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/polarismesh/polaris/apiserver/xdsserverv3/resource"
-	"github.com/polarismesh/polaris/service"
+	"github.com/GovernSea/sergo-server/apiserver/xdsserverv3/resource"
+	"github.com/GovernSea/sergo-server/service"
 )
 
 // CDSBuilder .

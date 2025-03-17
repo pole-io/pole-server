@@ -30,16 +30,16 @@ import (
 	"github.com/emicklei/go-restful/v3"
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/apiserver"
-	"github.com/polarismesh/polaris/common/conn/keepalive"
-	connlimit "github.com/polarismesh/polaris/common/conn/limit"
-	"github.com/polarismesh/polaris/common/eventhub"
-	"github.com/polarismesh/polaris/common/metrics"
-	"github.com/polarismesh/polaris/common/secure"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/plugin"
-	"github.com/polarismesh/polaris/service"
-	"github.com/polarismesh/polaris/service/healthcheck"
+	"github.com/GovernSea/sergo-server/apiserver"
+	"github.com/GovernSea/sergo-server/common/conn/keepalive"
+	connlimit "github.com/GovernSea/sergo-server/common/conn/limit"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	"github.com/GovernSea/sergo-server/common/metrics"
+	"github.com/GovernSea/sergo-server/common/secure"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/GovernSea/sergo-server/service"
+	"github.com/GovernSea/sergo-server/service/healthcheck"
 )
 
 const (

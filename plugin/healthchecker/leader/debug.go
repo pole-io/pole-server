@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/polarismesh/polaris/common/utils"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 func handleDescribeLeaderInfo(checker *LeaderHealthChecker) func(http.ResponseWriter, *http.Request) {

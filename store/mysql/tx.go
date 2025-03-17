@@ -17,7 +17,7 @@
 
 package sqldb
 
-import "github.com/polarismesh/polaris/store"
+import "github.com/GovernSea/sergo-server/store"
 
 type Tx struct {
 	delegateTx *BaseTx

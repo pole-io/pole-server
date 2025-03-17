@@ -10,10 +10,10 @@ import (
 	time "time"
 
 	gomock "github.com/golang/mock/gomock"
-	model "github.com/polarismesh/polaris/common/model"
-	admin "github.com/polarismesh/polaris/common/model/admin"
-	auth "github.com/polarismesh/polaris/common/model/auth"
-	store "github.com/polarismesh/polaris/store"
+	model "github.com/GovernSea/sergo-server/common/model"
+	admin "github.com/GovernSea/sergo-server/common/model/admin"
+	auth "github.com/GovernSea/sergo-server/common/model/auth"
+	store "github.com/GovernSea/sergo-server/store"
 )
 
 // MockStore is a mock of Store interface.

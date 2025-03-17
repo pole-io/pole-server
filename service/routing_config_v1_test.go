@@ -30,9 +30,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/utils"
-	testsuit "github.com/polarismesh/polaris/test/suit"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/utils"
+	testsuit "github.com/GovernSea/sergo-server/test/suit"
 )
 
 // 检查routingConfig前后是否一致

@@ -22,10 +22,10 @@ import (
 
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
-	"github.com/polarismesh/polaris/common/model"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/service"
+	"github.com/GovernSea/sergo-server/common/model"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/service"
 )
 
 // Before this function is called before the resource operation

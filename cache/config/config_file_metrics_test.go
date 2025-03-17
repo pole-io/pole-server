@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/polarismesh/polaris/common/metrics"
+	"github.com/GovernSea/sergo-server/common/metrics"
 )
 
 func Test_cleanExpireConfigFileMetricLabel(t *testing.T) {

@@ -21,7 +21,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/polarismesh/polaris/common/model"
+	"github.com/GovernSea/sergo-server/common/model"
 )
 
 type serviceNameResolver func(string) *model.Service

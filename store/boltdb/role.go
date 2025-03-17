@@ -24,10 +24,10 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/common/model"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/common/model"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 var _ store.RoleStore = (*roleStore)(nil)

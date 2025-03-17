@@ -18,7 +18,7 @@
 package config
 
 import (
-	types "github.com/polarismesh/polaris/cache/api"
+	types "github.com/GovernSea/sergo-server/cache/api"
 )
 
 var (

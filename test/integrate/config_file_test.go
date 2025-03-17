@@ -28,10 +28,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/test/integrate/http"
-	"github.com/polarismesh/polaris/test/integrate/resource"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/test/integrate/http"
+	"github.com/GovernSea/sergo-server/test/integrate/resource"
 )
 
 func TestConfigCenter_ConfigFile(t *testing.T) {

@@ -29,8 +29,8 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"gopkg.in/yaml.v3"
 
-	"github.com/polarismesh/polaris/common/model"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/model"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
 )
 
 func CreateTableDBHandlerAndRun(t *testing.T, tableName string, tf func(t *testing.T, handler BoltHandler)) {

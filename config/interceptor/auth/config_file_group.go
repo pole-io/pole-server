@@ -25,12 +25,12 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/security"
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/model/auth"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/common/utils"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/model/auth"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 // CreateConfigFileGroup 创建配置文件组

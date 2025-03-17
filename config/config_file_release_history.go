@@ -24,10 +24,10 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/model"
-	commonstore "github.com/polarismesh/polaris/common/store"
-	"github.com/polarismesh/polaris/common/utils"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/model"
+	commonstore "github.com/GovernSea/sergo-server/common/store"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 // recordReleaseHistory 新增配置文件发布历史记录

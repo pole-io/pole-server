@@ -23,9 +23,9 @@ import (
 
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
-	types "github.com/polarismesh/polaris/cache/api"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/utils"
+	types "github.com/GovernSea/sergo-server/cache/api"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 // ServiceWithRouterRules 与服务绑定的路由规则数据

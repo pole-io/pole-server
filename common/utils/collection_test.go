@@ -23,7 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	commonhash "github.com/polarismesh/polaris/common/hash"
+	commonhash "github.com/GovernSea/sergo-server/common/hash"
 )
 
 func Test_SegmentMap(t *testing.T) {

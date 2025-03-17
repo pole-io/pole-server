@@ -19,7 +19,7 @@ package nacos_grpc_service
 import (
 	"encoding/json"
 
-	"github.com/polarismesh/polaris/apiserver/nacosserver/model"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
 )
 
 const (

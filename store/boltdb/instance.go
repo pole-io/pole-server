@@ -30,10 +30,10 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/polarismesh/polaris/common/model"
-	commontime "github.com/polarismesh/polaris/common/time"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/common/model"
+	commontime "github.com/GovernSea/sergo-server/common/time"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 type instanceStore struct {

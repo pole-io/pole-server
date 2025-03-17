@@ -22,9 +22,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/apiserver/nacosserver/core"
-	"github.com/polarismesh/polaris/common/eventhub"
-	commontime "github.com/polarismesh/polaris/common/time"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/core"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	commontime "github.com/GovernSea/sergo-server/common/time"
 )
 
 type Sender func(sub core.Subscriber, data *core.PushData) error

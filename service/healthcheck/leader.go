@@ -23,9 +23,9 @@ import (
 
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/plugin"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 // LeaderChangeEventHandler process the event when server act as leader

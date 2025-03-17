@@ -23,7 +23,7 @@ import (
 
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/polarismesh/polaris/common/model"
+	"github.com/GovernSea/sergo-server/common/model"
 )
 
 type l5Store struct {

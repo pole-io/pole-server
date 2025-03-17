@@ -24,12 +24,12 @@ import (
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/namespace"
-	"github.com/polarismesh/polaris/plugin"
-	"github.com/polarismesh/polaris/store"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/namespace"
+	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 var _ ConfigCenterServer = (*Server)(nil)

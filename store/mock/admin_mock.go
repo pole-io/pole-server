@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	admin "github.com/polarismesh/polaris/common/model/admin"
+	admin "github.com/GovernSea/sergo-server/common/model/admin"
 )
 
 // MockLeaderElectionStore is a mock of LeaderElectionStore interface.

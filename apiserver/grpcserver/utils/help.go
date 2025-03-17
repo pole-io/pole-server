@@ -23,8 +23,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/apiserver"
-	"github.com/polarismesh/polaris/common/log"
+	"github.com/GovernSea/sergo-server/apiserver"
+	"github.com/GovernSea/sergo-server/common/log"
 )
 
 // GetConfigClientOpenMethod .

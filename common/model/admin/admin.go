@@ -20,7 +20,7 @@ package admin
 import (
 	"time"
 
-	connlimit "github.com/polarismesh/polaris/common/conn/limit"
+	connlimit "github.com/GovernSea/sergo-server/common/conn/limit"
 )
 
 // LeaderElection leader election info

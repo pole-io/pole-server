@@ -18,7 +18,7 @@
 package config
 
 import (
-	commonlog "github.com/polarismesh/polaris/common/log"
+	commonlog "github.com/GovernSea/sergo-server/common/log"
 )
 
 var (

@@ -22,7 +22,7 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 
-	httpcommon "github.com/polarismesh/polaris/apiserver/httpserver/utils"
+	httpcommon "github.com/GovernSea/sergo-server/apiserver/httpserver/utils"
 )
 
 func (h *HTTPServer) GetClientServer(ws *restful.WebService) error {

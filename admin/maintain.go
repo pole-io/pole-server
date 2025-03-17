@@ -29,15 +29,15 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	api "github.com/polarismesh/polaris/common/api/v1"
-	connlimit "github.com/polarismesh/polaris/common/conn/limit"
-	commonlog "github.com/polarismesh/polaris/common/log"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/model/admin"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
-	commonstore "github.com/polarismesh/polaris/common/store"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/plugin"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	connlimit "github.com/GovernSea/sergo-server/common/conn/limit"
+	commonlog "github.com/GovernSea/sergo-server/common/log"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/model/admin"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	commonstore "github.com/GovernSea/sergo-server/common/store"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 // HasMainUser 判断是否存在主用户

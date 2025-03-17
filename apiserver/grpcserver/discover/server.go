@@ -26,14 +26,14 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	"github.com/polarismesh/polaris/apiserver"
-	"github.com/polarismesh/polaris/apiserver/grpcserver"
-	v1 "github.com/polarismesh/polaris/apiserver/grpcserver/discover/v1"
-	"github.com/polarismesh/polaris/apiserver/grpcserver/utils"
-	commonlog "github.com/polarismesh/polaris/common/log"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/service"
-	"github.com/polarismesh/polaris/service/healthcheck"
+	"github.com/GovernSea/sergo-server/apiserver"
+	"github.com/GovernSea/sergo-server/apiserver/grpcserver"
+	v1 "github.com/GovernSea/sergo-server/apiserver/grpcserver/discover/v1"
+	"github.com/GovernSea/sergo-server/apiserver/grpcserver/utils"
+	commonlog "github.com/GovernSea/sergo-server/common/log"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/service"
+	"github.com/GovernSea/sergo-server/service/healthcheck"
 )
 
 var (

@@ -24,7 +24,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/anypb"
 
-	nacospb "github.com/polarismesh/polaris/apiserver/nacosserver/v2/pb"
+	nacospb "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/pb"
 )
 
 var (

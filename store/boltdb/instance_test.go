@@ -28,8 +28,8 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/polarismesh/polaris/common/model"
-	commontime "github.com/polarismesh/polaris/common/time"
+	"github.com/GovernSea/sergo-server/common/model"
+	commontime "github.com/GovernSea/sergo-server/common/time"
 )
 
 const (

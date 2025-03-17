@@ -28,9 +28,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/test/integrate/http"
-	"github.com/polarismesh/polaris/test/integrate/resource"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/test/integrate/http"
+	"github.com/GovernSea/sergo-server/test/integrate/resource"
 )
 
 func init() {

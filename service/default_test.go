@@ -26,13 +26,13 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/polarismesh/polaris/auth"
-	"github.com/polarismesh/polaris/cache"
-	cachemock "github.com/polarismesh/polaris/cache/mock"
-	"github.com/polarismesh/polaris/namespace"
-	"github.com/polarismesh/polaris/service/batch"
-	"github.com/polarismesh/polaris/service/healthcheck"
-	"github.com/polarismesh/polaris/store/mock"
+	"github.com/GovernSea/sergo-server/auth"
+	"github.com/GovernSea/sergo-server/cache"
+	cachemock "github.com/GovernSea/sergo-server/cache/mock"
+	"github.com/GovernSea/sergo-server/namespace"
+	"github.com/GovernSea/sergo-server/service/batch"
+	"github.com/GovernSea/sergo-server/service/healthcheck"
+	"github.com/GovernSea/sergo-server/store/mock"
 )
 
 func Test_Initialize(t *testing.T) {

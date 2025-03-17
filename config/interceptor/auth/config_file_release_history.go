@@ -22,9 +22,9 @@ import (
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/common/utils"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 // GetConfigFileReleaseHistory 获取配置文件发布历史记录

@@ -29,8 +29,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/polarismesh/polaris/auth"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
+	"github.com/GovernSea/sergo-server/auth"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
 )
 
 // decodeToken 解析 token 信息，如果 t == ""，直接返回一个空对象

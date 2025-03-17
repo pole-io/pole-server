@@ -20,7 +20,7 @@ package whitelist
 import (
 	"errors"
 
-	"github.com/polarismesh/polaris/plugin"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 const PluginName = "whitelist"

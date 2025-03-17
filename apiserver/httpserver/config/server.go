@@ -20,11 +20,11 @@ package config
 import (
 	"github.com/emicklei/go-restful/v3"
 
-	"github.com/polarismesh/polaris/admin"
-	"github.com/polarismesh/polaris/apiserver"
-	"github.com/polarismesh/polaris/apiserver/httpserver/docs"
-	"github.com/polarismesh/polaris/config"
-	"github.com/polarismesh/polaris/namespace"
+	"github.com/GovernSea/sergo-server/admin"
+	"github.com/GovernSea/sergo-server/apiserver"
+	"github.com/GovernSea/sergo-server/apiserver/httpserver/docs"
+	"github.com/GovernSea/sergo-server/config"
+	"github.com/GovernSea/sergo-server/namespace"
 )
 
 // HTTPServer

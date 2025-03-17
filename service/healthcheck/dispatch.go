@@ -25,8 +25,8 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	commonhash "github.com/polarismesh/polaris/common/hash"
-	"github.com/polarismesh/polaris/common/model"
+	commonhash "github.com/GovernSea/sergo-server/common/hash"
+	"github.com/GovernSea/sergo-server/common/model"
 )
 
 const (

@@ -24,9 +24,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/polarismesh/polaris/common/metrics"
-	"github.com/polarismesh/polaris/plugin"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/common/metrics"
+	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 // db抛出的异常，需要重试的字符串组

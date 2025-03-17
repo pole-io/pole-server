@@ -17,7 +17,7 @@
 
 package discover
 
-import "github.com/polarismesh/polaris/apiserver/nacosserver/logger"
+import "github.com/GovernSea/sergo-server/apiserver/nacosserver/logger"
 
 var (
 	nacoslog = logger.GetNacosLog()

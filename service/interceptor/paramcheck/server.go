@@ -18,12 +18,12 @@
 package paramcheck
 
 import (
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	"github.com/polarismesh/polaris/common/log"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/plugin"
-	"github.com/polarismesh/polaris/service"
-	"github.com/polarismesh/polaris/store"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	"github.com/GovernSea/sergo-server/common/log"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/GovernSea/sergo-server/service"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 // Server 带有鉴权能力的 discoverServer

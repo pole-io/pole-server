@@ -17,7 +17,7 @@
 
 package password
 
-import "github.com/polarismesh/polaris/plugin"
+import "github.com/GovernSea/sergo-server/plugin"
 
 const (
 	PluginName = "localParse"

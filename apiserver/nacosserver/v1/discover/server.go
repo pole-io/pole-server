@@ -18,12 +18,12 @@
 package discover
 
 import (
-	"github.com/polarismesh/polaris/apiserver/nacosserver/core"
-	"github.com/polarismesh/polaris/apiserver/nacosserver/v2/remote"
-	"github.com/polarismesh/polaris/auth"
-	"github.com/polarismesh/polaris/namespace"
-	"github.com/polarismesh/polaris/service"
-	"github.com/polarismesh/polaris/service/healthcheck"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/core"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/remote"
+	"github.com/GovernSea/sergo-server/auth"
+	"github.com/GovernSea/sergo-server/namespace"
+	"github.com/GovernSea/sergo-server/service"
+	"github.com/GovernSea/sergo-server/service/healthcheck"
 )
 
 type ServerOption struct {

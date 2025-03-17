@@ -17,7 +17,7 @@
 
 package eventhub
 
-import "github.com/polarismesh/polaris/common/model"
+import "github.com/GovernSea/sergo-server/common/model"
 
 // 事件主题
 const (

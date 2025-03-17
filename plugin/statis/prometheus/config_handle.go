@@ -18,7 +18,7 @@
 package prometheus
 
 import (
-	"github.com/polarismesh/polaris/common/metrics"
+	"github.com/GovernSea/sergo-server/common/metrics"
 )
 
 func newConfigMetricHandle() *configMetricHandle {

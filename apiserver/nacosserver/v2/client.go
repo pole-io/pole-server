@@ -20,8 +20,8 @@ package v2
 import (
 	"context"
 
-	nacospb "github.com/polarismesh/polaris/apiserver/nacosserver/v2/pb"
-	"github.com/polarismesh/polaris/apiserver/nacosserver/v2/remote"
+	nacospb "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/pb"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/remote"
 )
 
 // handleServerCheckRequest 客户端首次发起请求，用于向 server 获取当前长连接的 ID 信息

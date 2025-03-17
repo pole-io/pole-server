@@ -27,8 +27,8 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 const (

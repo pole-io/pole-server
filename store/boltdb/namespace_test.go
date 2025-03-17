@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polarismesh/polaris/common/model"
+	"github.com/GovernSea/sergo-server/common/model"
 )
 
 const (

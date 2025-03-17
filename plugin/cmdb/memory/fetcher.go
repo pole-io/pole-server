@@ -24,7 +24,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/polarismesh/polaris/common/utils"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 const (

@@ -24,8 +24,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/polarismesh/polaris/common/log"
-	"github.com/polarismesh/polaris/common/metrics"
+	"github.com/GovernSea/sergo-server/common/log"
+	"github.com/GovernSea/sergo-server/common/metrics"
 )
 
 // APICall 接口调用

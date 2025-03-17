@@ -18,13 +18,13 @@
 package v1
 
 import (
-	"github.com/polarismesh/polaris/auth"
-	connlimit "github.com/polarismesh/polaris/common/conn/limit"
-	"github.com/polarismesh/polaris/common/secure"
-	"github.com/polarismesh/polaris/config"
-	"github.com/polarismesh/polaris/namespace"
-	"github.com/polarismesh/polaris/service"
-	"github.com/polarismesh/polaris/service/healthcheck"
+	"github.com/GovernSea/sergo-server/auth"
+	connlimit "github.com/GovernSea/sergo-server/common/conn/limit"
+	"github.com/GovernSea/sergo-server/common/secure"
+	"github.com/GovernSea/sergo-server/config"
+	"github.com/GovernSea/sergo-server/namespace"
+	"github.com/GovernSea/sergo-server/service"
+	"github.com/GovernSea/sergo-server/service/healthcheck"
 )
 
 type option func(svr *NacosV1Server)

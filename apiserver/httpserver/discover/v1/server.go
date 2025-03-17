@@ -20,11 +20,11 @@ package v1
 import (
 	"github.com/emicklei/go-restful/v3"
 
-	"github.com/polarismesh/polaris/apiserver"
-	"github.com/polarismesh/polaris/apiserver/httpserver/docs"
-	"github.com/polarismesh/polaris/namespace"
-	"github.com/polarismesh/polaris/service"
-	"github.com/polarismesh/polaris/service/healthcheck"
+	"github.com/GovernSea/sergo-server/apiserver"
+	"github.com/GovernSea/sergo-server/apiserver/httpserver/docs"
+	"github.com/GovernSea/sergo-server/namespace"
+	"github.com/GovernSea/sergo-server/service"
+	"github.com/GovernSea/sergo-server/service/healthcheck"
 )
 
 type HTTPServerV1 struct {

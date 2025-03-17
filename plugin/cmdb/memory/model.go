@@ -24,7 +24,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/polarismesh/polaris/common/model"
+	"github.com/GovernSea/sergo-server/common/model"
 )
 
 // IPType ip type

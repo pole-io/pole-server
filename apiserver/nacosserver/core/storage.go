@@ -28,11 +28,11 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
-	nacosmodel "github.com/polarismesh/polaris/apiserver/nacosserver/model"
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	"github.com/polarismesh/polaris/common/eventhub"
-	"github.com/polarismesh/polaris/common/model"
-	commontime "github.com/polarismesh/polaris/common/time"
+	nacosmodel "github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	"github.com/GovernSea/sergo-server/common/model"
+	commontime "github.com/GovernSea/sergo-server/common/time"
 )
 
 type (

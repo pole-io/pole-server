@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/polarismesh/polaris/apiserver/nacosserver/model"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
 )
 
 // NamingRequest

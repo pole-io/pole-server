@@ -25,11 +25,11 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/apiserver"
-	"github.com/polarismesh/polaris/common/api/l5"
-	"github.com/polarismesh/polaris/common/metrics"
-	"github.com/polarismesh/polaris/plugin"
-	"github.com/polarismesh/polaris/service"
+	"github.com/GovernSea/sergo-server/apiserver"
+	"github.com/GovernSea/sergo-server/common/api/l5"
+	"github.com/GovernSea/sergo-server/common/metrics"
+	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/GovernSea/sergo-server/service"
 )
 
 const (

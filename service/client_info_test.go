@@ -29,15 +29,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/polarismesh/polaris/cache"
-	api "github.com/polarismesh/polaris/common/api/v1"
-	apiv1 "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/service"
-	"github.com/polarismesh/polaris/service/batch"
-	"github.com/polarismesh/polaris/store"
-	"github.com/polarismesh/polaris/store/mock"
+	"github.com/GovernSea/sergo-server/cache"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	apiv1 "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/service"
+	"github.com/GovernSea/sergo-server/service/batch"
+	"github.com/GovernSea/sergo-server/store"
+	"github.com/GovernSea/sergo-server/store/mock"
 )
 
 func mockReportClients(cnt int) []*apiservice.Client {

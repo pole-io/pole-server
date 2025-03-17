@@ -17,7 +17,7 @@
 
 package logger
 
-import commonlog "github.com/polarismesh/polaris/common/log"
+import commonlog "github.com/GovernSea/sergo-server/common/log"
 
 var (
 	log         = commonlog.RegisterScope(PluginName, "", 0)

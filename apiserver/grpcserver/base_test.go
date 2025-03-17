@@ -24,7 +24,7 @@ import (
 
 	"google.golang.org/grpc/metadata"
 
-	"github.com/polarismesh/polaris/common/utils"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 func mockGrpcContext(testVal map[string]string) context.Context {

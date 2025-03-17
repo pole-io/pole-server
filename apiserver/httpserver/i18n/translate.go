@@ -28,8 +28,8 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/text/language"
 
-	"github.com/polarismesh/polaris/common/log"
-	"github.com/polarismesh/polaris/common/utils"
+	"github.com/GovernSea/sergo-server/common/log"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 var (

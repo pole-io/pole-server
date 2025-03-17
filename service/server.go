@@ -24,17 +24,17 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"golang.org/x/sync/singleflight"
 
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	cacheservice "github.com/polarismesh/polaris/cache/service"
-	"github.com/polarismesh/polaris/common/eventhub"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/namespace"
-	"github.com/polarismesh/polaris/plugin"
-	"github.com/polarismesh/polaris/service/batch"
-	"github.com/polarismesh/polaris/service/healthcheck"
-	"github.com/polarismesh/polaris/store"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	cacheservice "github.com/GovernSea/sergo-server/cache/service"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/namespace"
+	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/GovernSea/sergo-server/service/batch"
+	"github.com/GovernSea/sergo-server/service/healthcheck"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 // Server 对接API层的server层，用以处理业务逻辑

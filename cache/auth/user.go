@@ -28,10 +28,10 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
-	types "github.com/polarismesh/polaris/cache/api"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/store"
+	types "github.com/GovernSea/sergo-server/cache/api"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 const (

@@ -25,9 +25,9 @@ import (
 
 	"go.uber.org/zap"
 
-	types "github.com/polarismesh/polaris/cache/api"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/utils"
+	types "github.com/GovernSea/sergo-server/cache/api"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 func newRateLimitRuleBucket() *RateLimitRuleContainer {

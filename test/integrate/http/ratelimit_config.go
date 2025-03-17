@@ -29,7 +29,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
-	api "github.com/polarismesh/polaris/common/api/v1"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
 )
 
 /**

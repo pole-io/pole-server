@@ -20,8 +20,8 @@ package healthcheck
 import (
 	"time"
 
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/plugin"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 // Config 健康检查配置

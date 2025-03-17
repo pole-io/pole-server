@@ -24,7 +24,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/polarismesh/polaris/common/utils"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 var (

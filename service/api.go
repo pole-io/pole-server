@@ -24,10 +24,10 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	"github.com/polarismesh/polaris/common/api/l5"
-	"github.com/polarismesh/polaris/common/model"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	"github.com/GovernSea/sergo-server/common/api/l5"
+	"github.com/GovernSea/sergo-server/common/model"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
 )
 
 // DiscoverServer Server discovered by the service

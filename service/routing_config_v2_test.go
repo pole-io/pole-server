@@ -28,8 +28,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/service"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/service"
 )
 
 // checkSameRoutingConfigV2 检查routingConfig前后是否一致

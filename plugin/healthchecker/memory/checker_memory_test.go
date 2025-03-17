@@ -25,9 +25,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	commontime "github.com/polarismesh/polaris/common/time"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/plugin"
+	commontime "github.com/GovernSea/sergo-server/common/time"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 func TestMemoryHealthChecker_Query(t *testing.T) {

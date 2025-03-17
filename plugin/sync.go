@@ -17,7 +17,7 @@
 
 package plugin
 
-import "github.com/polarismesh/polaris/common/model"
+import "github.com/GovernSea/sergo-server/common/model"
 
 // Syncer .
 type Syncer interface {

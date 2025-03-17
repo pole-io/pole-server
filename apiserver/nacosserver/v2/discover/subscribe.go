@@ -24,14 +24,14 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/polaris/apiserver/nacosserver/core"
-	nacosmodel "github.com/polarismesh/polaris/apiserver/nacosserver/model"
-	nacospb "github.com/polarismesh/polaris/apiserver/nacosserver/v2/pb"
-	"github.com/polarismesh/polaris/apiserver/nacosserver/v2/remote"
-	"github.com/polarismesh/polaris/common/metrics"
-	commontime "github.com/polarismesh/polaris/common/time"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/plugin"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/core"
+	nacosmodel "github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
+	nacospb "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/pb"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/remote"
+	"github.com/GovernSea/sergo-server/common/metrics"
+	commontime "github.com/GovernSea/sergo-server/common/time"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 func (h *DiscoverServer) handleSubscribeServiceReques(ctx context.Context, req nacospb.BaseRequest,

@@ -27,15 +27,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/polarismesh/polaris/cache"
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/eventhub"
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/utils"
-	"github.com/polarismesh/polaris/service"
-	"github.com/polarismesh/polaris/store"
-	"github.com/polarismesh/polaris/store/mock"
-	testsuit "github.com/polarismesh/polaris/test/suit"
+	"github.com/GovernSea/sergo-server/cache"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/eventhub"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/GovernSea/sergo-server/service"
+	"github.com/GovernSea/sergo-server/store"
+	"github.com/GovernSea/sergo-server/store/mock"
+	testsuit "github.com/GovernSea/sergo-server/test/suit"
 )
 
 func TestEurekaServer_renew(t *testing.T) {

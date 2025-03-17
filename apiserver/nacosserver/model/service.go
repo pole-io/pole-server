@@ -21,7 +21,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/polarismesh/polaris/service"
+	"github.com/GovernSea/sergo-server/service"
 )
 
 type ServiceKey struct {

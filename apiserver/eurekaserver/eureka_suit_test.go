@@ -18,16 +18,16 @@
 package eurekaserver
 
 import (
-	_ "github.com/polarismesh/polaris/plugin/cmdb/memory"
-	_ "github.com/polarismesh/polaris/plugin/discoverevent/local"
-	_ "github.com/polarismesh/polaris/plugin/healthchecker/memory"
-	_ "github.com/polarismesh/polaris/plugin/healthchecker/redis"
-	_ "github.com/polarismesh/polaris/plugin/history/logger"
-	_ "github.com/polarismesh/polaris/plugin/password"
-	_ "github.com/polarismesh/polaris/plugin/ratelimit/token"
-	_ "github.com/polarismesh/polaris/plugin/statis/logger"
-	_ "github.com/polarismesh/polaris/plugin/statis/prometheus"
-	testsuit "github.com/polarismesh/polaris/test/suit"
+	_ "github.com/GovernSea/sergo-server/plugin/cmdb/memory"
+	_ "github.com/GovernSea/sergo-server/plugin/discoverevent/local"
+	_ "github.com/GovernSea/sergo-server/plugin/healthchecker/memory"
+	_ "github.com/GovernSea/sergo-server/plugin/healthchecker/redis"
+	_ "github.com/GovernSea/sergo-server/plugin/history/logger"
+	_ "github.com/GovernSea/sergo-server/plugin/password"
+	_ "github.com/GovernSea/sergo-server/plugin/ratelimit/token"
+	_ "github.com/GovernSea/sergo-server/plugin/statis/logger"
+	_ "github.com/GovernSea/sergo-server/plugin/statis/prometheus"
+	testsuit "github.com/GovernSea/sergo-server/test/suit"
 )
 
 type EurekaTestSuit struct {

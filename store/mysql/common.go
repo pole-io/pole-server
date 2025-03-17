@@ -24,7 +24,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 // QueryHandler is the interface that wraps the basic Query method.

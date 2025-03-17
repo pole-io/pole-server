@@ -27,8 +27,8 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/polarismesh/polaris/test/integrate/http"
-	"github.com/polarismesh/polaris/test/integrate/resource"
+	"github.com/GovernSea/sergo-server/test/integrate/http"
+	"github.com/GovernSea/sergo-server/test/integrate/resource"
 )
 
 const (

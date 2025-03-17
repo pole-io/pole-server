@@ -24,7 +24,7 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 
-	"github.com/polarismesh/polaris/plugin"
+	"github.com/GovernSea/sergo-server/plugin"
 )
 
 // TestNewResourceRatelimit 测试新建

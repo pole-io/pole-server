@@ -18,7 +18,7 @@
 package eurekaserver
 
 import (
-	"github.com/polarismesh/polaris/apiserver"
+	"github.com/GovernSea/sergo-server/apiserver"
 )
 
 /**

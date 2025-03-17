@@ -27,8 +27,8 @@ import (
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 
-	"github.com/polarismesh/polaris/common/model"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/model"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
 )
 
 // DefaultData 默认数据信息

@@ -23,7 +23,7 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 
-	"github.com/polarismesh/polaris/apiserver/nacosserver/model"
+	"github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
 )
 
 var (
