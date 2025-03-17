@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package leader
+package heartbeatp2p
 
 import (
 	"context"
@@ -58,10 +58,6 @@ var (
 	CreateBeatClientFunc = createBeatClient
 )
 
-var (
-	DefaultRequestTimeout = time.Second * 5
-)
-
 func newLocalPeer() Peer {
 	return &LocalPeer{}
 }
@@ -75,7 +71,7 @@ type Peer interface {
 	// Initialize .
 	Initialize(conf Config)
 	// Serve .
-	Serve(ctx context.Context, checker *LeaderHealthChecker, listenIP string, listenPort uint32) error
+	Serve(ctx context.Context, checker *PeerToPeerHealthChecker, listenIP string, listenPort uint32) error
 	// Close .
 	Close() error
 	// Host .
@@ -99,7 +95,7 @@ func (p *LocalPeer) Initialize(conf Config) {
 	p.Cache = newLocalBeatRecordCache(conf.SoltNum, commonhash.Fnv32)
 }
 
-func (p *LocalPeer) Serve(ctx context.Context, checker *LeaderHealthChecker,
+func (p *LocalPeer) Serve(ctx context.Context, checker *PeerToPeerHealthChecker,
 	listenIP string, listenPort uint32) error {
 	log.Info("[HealthCheck][Leader] local peer serve")
 	return nil
@@ -129,6 +125,7 @@ func (p *LocalPeer) Storage() BeatRecordCache {
 
 // LocalPeer Heartbeat data storage node
 type RemotePeer struct {
+	id string
 	// Host peer host
 	host string
 	// Port peer listen port to provider grpc service
@@ -148,17 +145,16 @@ type RemotePeer struct {
 	conf Config
 	// closed .
 	closed int32
-	// leaderAlive .
-	leaderAlive int32
 }
 
 func (p *RemotePeer) Initialize(conf Config) {
 	p.conf = conf
 }
 
-func (p *RemotePeer) Serve(ctx context.Context, checker *LeaderHealthChecker,
+func (p *RemotePeer) Serve(ctx context.Context, checker *PeerToPeerHealthChecker,
 	listenIP string, listenPort uint32) error {
 	subCtx, cancel := context.WithCancel(ctx)
+	_ = subCtx
 	p.cancel = cancel
 	p.host = listenIP
 	p.port = listenPort
@@ -166,8 +162,7 @@ func (p *RemotePeer) Serve(ctx context.Context, checker *LeaderHealthChecker,
 	if err := execConnectPeer(ctx, p); err != nil {
 		return err
 	}
-	p.Cache = newRemoteBeatRecordCache(p.GetFunc, p.PutFunc, p.DelFunc, p.Ping)
-	go p.checkLeaderAlive(subCtx)
+	p.Cache = newRemoteBeatRecordCache(p.GetFunc, p.PutFunc, p.DelFunc)
 	return nil
 }
 
@@ -185,7 +180,7 @@ func (p *RemotePeer) Host() string {
 }
 
 func (p *RemotePeer) IsAlive() bool {
-	return atomic.LoadInt32(&p.leaderAlive) == 1
+	return true
 }
 
 func (p *RemotePeer) Ping() error {
@@ -193,12 +188,10 @@ func (p *RemotePeer) Ping() error {
 	if err != nil {
 		return err
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultRequestTimeout)
-	defer cancel()
-
-	ctx = metadata.AppendToOutgoingContext(ctx, sendResource, utils.LocalHost)
-	_, err = client.BatchGetHeartbeat(ctx, &apiservice.GetHeartbeatsRequest{})
+	_, err = client.BatchGetHeartbeat(context.Background(), &apiservice.GetHeartbeatsRequest{},
+		grpc.Header(&metadata.MD{
+			sendResource: []string{utils.LocalHost},
+		}))
 	return err
 }
 
@@ -219,12 +212,9 @@ func (p *RemotePeer) GetFunc(req *apiservice.GetHeartbeatsRequest) (*apiservice.
 	if err != nil {
 		return nil, err
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultRequestTimeout)
-	defer cancel()
-
-	ctx = metadata.AppendToOutgoingContext(ctx, sendResource, utils.LocalHost)
-	resp, err := client.BatchGetHeartbeat(ctx, req)
+	resp, err := client.BatchGetHeartbeat(context.Background(), req, grpc.Header(&metadata.MD{
+		sendResource: []string{utils.LocalHost},
+	}))
 	if err != nil {
 		code = "-1"
 		plog.Error("[HealthCheck][Leader] send get record request", zap.String("host", p.Host()),
@@ -277,11 +267,9 @@ func (p *RemotePeer) DelFunc(req *apiservice.DelHeartbeatsRequest) error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultRequestTimeout)
-	defer cancel()
-
-	ctx = metadata.AppendToOutgoingContext(ctx, sendResource, utils.LocalHost)
-	if _, err := client.BatchDelHeartbeat(ctx, req); err != nil {
+	if _, err := client.BatchDelHeartbeat(context.Background(), req, grpc.Header(&metadata.MD{
+		sendResource: []string{utils.LocalHost},
+	})); err != nil {
 		code = "-1"
 		plog.Error("send del record request", zap.String("host", p.Host()),
 			zap.Uint32("port", p.port), zap.Error(err))
@@ -331,34 +319,6 @@ const (
 	errCountThreshold = 2
 	maxCheckCount     = 3
 )
-
-func (p *RemotePeer) checkLeaderAlive(ctx context.Context) {
-	ticker := time.NewTicker(time.Second)
-	for {
-		select {
-		case <-ctx.Done():
-			ticker.Stop()
-			plog.Info("check leader alive job stop", zap.String("host", p.Host()), zap.Uint32("port", p.port))
-			return
-		case <-ticker.C:
-			var errCount int
-			for i := 0; i < maxCheckCount; i++ {
-				if err := execPing(ctx, p); err != nil {
-					plog.Error("check leader is alive fail", zap.String("host", p.Host()),
-						zap.Uint32("port", p.port), zap.Error(err))
-					errCount++
-				}
-			}
-			if errCount >= errCountThreshold {
-				plog.Warn("[Health Check][Leader] leader peer not alive, set leader is dead", zap.String("host", p.Host()),
-					zap.Uint32("port", p.port))
-				atomic.StoreInt32(&p.leaderAlive, 0)
-			} else {
-				atomic.StoreInt32(&p.leaderAlive, 1)
-			}
-		}
-	}
-}
 
 func (p *RemotePeer) doClose() {
 	p.cmutex.Lock()
@@ -471,8 +431,9 @@ func doConnect(p *RemotePeer) error {
 
 func newBeatSender(index int, conn *grpc.ClientConn, p *RemotePeer) (*beatSender, error) {
 	client := apiservice.NewPolarisHeartbeatGRPCClient(conn)
-	ctx := metadata.AppendToOutgoingContext(context.Background(), sendResource, utils.LocalHost)
-	puter, err := client.BatchHeartbeat(ctx)
+	puter, err := client.BatchHeartbeat(context.Background(), grpc.Header(&metadata.MD{
+		sendResource: []string{utils.LocalHost},
+	}))
 	if err != nil {
 		return nil, err
 	}

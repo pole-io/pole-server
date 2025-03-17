@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package leader
+package heartbeatp2p
 
 import (
 	"strconv"
@@ -73,8 +73,6 @@ type (
 		Clean()
 		// Snapshot
 		Snapshot() map[string]*ReadBeatRecord
-		// Ping
-		Ping() error
 	}
 )
 
@@ -167,12 +165,11 @@ func (lc *LocalBeatRecordCache) Snapshot() map[string]*ReadBeatRecord {
 
 // newRemoteBeatRecordCache
 func newRemoteBeatRecordCache(getter RecordGetter, saver RecordSaver,
-	delter RecordDelter, ping func() error) BeatRecordCache {
+	delter RecordDelter) BeatRecordCache {
 	return &RemoteBeatRecordCache{
 		getter: getter,
 		saver:  saver,
 		delter: delter,
-		ping:   ping,
 	}
 }
 
@@ -181,11 +178,6 @@ type RemoteBeatRecordCache struct {
 	saver  RecordSaver
 	delter RecordDelter
 	getter RecordGetter
-	ping   func() error
-}
-
-func (rc *RemoteBeatRecordCache) Ping() error {
-	return rc.ping()
 }
 
 func (rc *RemoteBeatRecordCache) Get(keys ...string) (map[string]*ReadBeatRecord, error) {

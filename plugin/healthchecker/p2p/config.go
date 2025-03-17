@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package leader
+package heartbeatp2p
 
 import (
 	"github.com/mitchellh/mapstructure"

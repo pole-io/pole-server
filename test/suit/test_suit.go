@@ -42,11 +42,11 @@ import (
 	"github.com/GovernSea/sergo-server/common/log"
 	commonlog "github.com/GovernSea/sergo-server/common/log"
 	"github.com/GovernSea/sergo-server/common/metrics"
+	commonmodel "github.com/GovernSea/sergo-server/common/model"
 	"github.com/GovernSea/sergo-server/common/utils"
 	"github.com/GovernSea/sergo-server/config"
 	"github.com/GovernSea/sergo-server/namespace"
 	ns "github.com/GovernSea/sergo-server/namespace"
-	"github.com/GovernSea/sergo-server/namespace/interceptor"
 	"github.com/GovernSea/sergo-server/plugin"
 	"github.com/GovernSea/sergo-server/service"
 	"github.com/GovernSea/sergo-server/service/batch"
@@ -399,8 +399,8 @@ func (d *DiscoverTestSuit) initialize(opts ...options) error {
 func TestNamespaceInitialize(ctx context.Context, nsOpt *namespace.Config, storage store.Store, cacheMgr *cache.CacheManager,
 	userMgn auth.UserServer, strategyMgn auth.StrategyServer) (namespace.NamespaceOperateServer, error) {
 
-	ctx = context.WithValue(ctx, interceptor.ContextKeyUserSvr{}, userMgn)
-	ctx = context.WithValue(ctx, interceptor.ContextKeyPolicySvr{}, strategyMgn)
+	ctx = context.WithValue(ctx, commonmodel.ContextKeyUserSvr, userMgn)
+	ctx = context.WithValue(ctx, commonmodel.ContextKeyPolicySvr, strategyMgn)
 
 	_, proxySvr, err := namespace.InitServer(ctx, nsOpt, storage, cacheMgr)
 	if err != nil {

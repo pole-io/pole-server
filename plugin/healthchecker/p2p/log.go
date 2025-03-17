@@ -15,33 +15,13 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package leader
+package heartbeatp2p
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/GovernSea/sergo-server/common/metrics"
-	"github.com/GovernSea/sergo-server/common/utils"
+	commonlog "github.com/GovernSea/sergo-server/common/log"
 )
 
 var (
-	beatRecordCost *prometheus.HistogramVec
+	log  = commonlog.GetScopeOrDefaultByName(commonlog.HealthcheckLoggerName)
+	plog = commonlog.GetScopeByName(PluginName, commonlog.HealthcheckLoggerName)
 )
-
-const (
-	labelAction = "action"
-	labelCode   = "code"
-)
-
-func registerMetrics() {
-	beatRecordCost = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name: "leader_checker_heartbeat_op",
-		Help: "desc leader_checker heartbeat operation time cost",
-		ConstLabels: map[string]string{
-			metrics.LabelServerNode: utils.LocalHost,
-		},
-		Buckets: []float64{5, 10, 15, 20, 30, 50, 100, 500, 1000, 5000},
-	}, []string{labelAction, labelCode})
-
-	_ = metrics.GetRegistry().Register(beatRecordCost)
-}

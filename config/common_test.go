@@ -33,7 +33,7 @@ import (
 	"github.com/GovernSea/sergo-server/namespace"
 	"github.com/GovernSea/sergo-server/plugin"
 	_ "github.com/GovernSea/sergo-server/plugin/crypto/aes"
-	_ "github.com/GovernSea/sergo-server/plugin/healthchecker/memory"
+	_ "github.com/GovernSea/sergo-server/plugin/healthchecker/p2p"
 	_ "github.com/GovernSea/sergo-server/plugin/healthchecker/redis"
 	_ "github.com/GovernSea/sergo-server/plugin/history/logger"
 	_ "github.com/GovernSea/sergo-server/plugin/password"

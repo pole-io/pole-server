@@ -25,40 +25,19 @@ import (
 	"github.com/GovernSea/sergo-server/auth"
 )
 
-type (
-	ContextKeyUserSvr   struct{}
-	ContextKeyPolicySvr struct{}
-)
-
 func init() {
 	err := admin.RegisterServerProxy("auth", func(ctx context.Context,
 		pre admin.AdminOperateServer) (admin.AdminOperateServer, error) {
 
-		var userSvr auth.UserServer
-		var policySvr auth.StrategyServer
-
-		userSvrVal := ctx.Value(ContextKeyUserSvr{})
-		if userSvrVal == nil {
-			svr, err := auth.GetUserServer()
-			if err != nil {
-				return nil, err
-			}
-			userSvr = svr
-		} else {
-			userSvr = userSvrVal.(auth.UserServer)
+		userSvr, err := auth.GetUserServerContext(ctx)
+		if err != nil {
+			return nil, err
 		}
 
-		policySvrVal := ctx.Value(ContextKeyPolicySvr{})
-		if policySvrVal == nil {
-			svr, err := auth.GetStrategyServer()
-			if err != nil {
-				return nil, err
-			}
-			policySvr = svr
-		} else {
-			policySvr = policySvrVal.(auth.StrategyServer)
+		policySvr, err := auth.GetStrategyServerContext(ctx)
+		if err != nil {
+			return nil, err
 		}
-
 		return admin_auth.NewServer(pre, userSvr, policySvr), nil
 	})
 	if err != nil {

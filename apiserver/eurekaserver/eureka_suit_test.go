@@ -20,7 +20,7 @@ package eurekaserver
 import (
 	_ "github.com/GovernSea/sergo-server/plugin/cmdb/memory"
 	_ "github.com/GovernSea/sergo-server/plugin/discoverevent/local"
-	_ "github.com/GovernSea/sergo-server/plugin/healthchecker/memory"
+	_ "github.com/GovernSea/sergo-server/plugin/healthchecker/p2p"
 	_ "github.com/GovernSea/sergo-server/plugin/healthchecker/redis"
 	_ "github.com/GovernSea/sergo-server/plugin/history/logger"
 	_ "github.com/GovernSea/sergo-server/plugin/password"

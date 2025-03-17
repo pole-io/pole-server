@@ -26,6 +26,7 @@ import (
 
 	"github.com/GovernSea/sergo-server/cache"
 	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	commonmodel "github.com/GovernSea/sergo-server/common/model"
 	"github.com/GovernSea/sergo-server/store"
 )
 
@@ -112,6 +113,25 @@ func GetUserServer() (UserServer, error) {
 	return userMgn, nil
 }
 
+// GetUserServerContext 获取一个 UserServer
+func GetUserServerContext(ctx context.Context) (UserServer, error) {
+	if !finishInit {
+		return nil, errors.New("UserServer has not done Initialize")
+	}
+	userSvr := userMgn
+	userSvrVal := ctx.Value(commonmodel.ContextKeyUserSvr)
+	if userSvrVal == nil {
+		svr, err := GetUserServer()
+		if err != nil {
+			return nil, err
+		}
+		userSvr = svr
+	} else {
+		userSvr = userSvrVal.(UserServer)
+	}
+	return userSvr, nil
+}
+
 // RegisterStrategyServer 注册一个新的 StrategyServer
 func RegisterStrategyServer(s StrategyServer) error {
 	name := s.Name()
@@ -129,6 +149,25 @@ func GetStrategyServer() (StrategyServer, error) {
 		return nil, errors.New("StrategyServer has not done Initialize")
 	}
 	return strategyMgn, nil
+}
+
+// GetStrategyServerContext 获取一个 UserServer
+func GetStrategyServerContext(ctx context.Context) (StrategyServer, error) {
+	if !finishInit {
+		return nil, errors.New("UserServer has not done Initialize")
+	}
+	policySvr := strategyMgn
+	policySvrVal := ctx.Value(commonmodel.ContextKeyPolicySvr)
+	if policySvrVal == nil {
+		svr, err := GetStrategyServer()
+		if err != nil {
+			return nil, err
+		}
+		policySvr = svr
+	} else {
+		policySvr = policySvrVal.(StrategyServer)
+	}
+	return policySvr, nil
 }
 
 // Initialize 初始化

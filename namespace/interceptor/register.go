@@ -26,40 +26,19 @@ import (
 	ns_auth "github.com/GovernSea/sergo-server/namespace/interceptor/auth"
 )
 
-type (
-	ContextKeyUserSvr   struct{}
-	ContextKeyPolicySvr struct{}
-)
-
 func init() {
 	err := namespace.RegisterServerProxy("auth", func(ctx context.Context,
 		pre namespace.NamespaceOperateServer, cacheSvr cachetypes.CacheManager) (namespace.NamespaceOperateServer, error) {
 
-		var userSvr auth.UserServer
-		var policySvr auth.StrategyServer
-
-		userSvrVal := ctx.Value(ContextKeyUserSvr{})
-		if userSvrVal == nil {
-			svr, err := auth.GetUserServer()
-			if err != nil {
-				return nil, err
-			}
-			userSvr = svr
-		} else {
-			userSvr = userSvrVal.(auth.UserServer)
+		userSvr, err := auth.GetUserServerContext(ctx)
+		if err != nil {
+			return nil, err
 		}
 
-		policySvrVal := ctx.Value(ContextKeyPolicySvr{})
-		if policySvrVal == nil {
-			svr, err := auth.GetStrategyServer()
-			if err != nil {
-				return nil, err
-			}
-			policySvr = svr
-		} else {
-			policySvr = policySvrVal.(auth.StrategyServer)
+		policySvr, err := auth.GetStrategyServerContext(ctx)
+		if err != nil {
+			return nil, err
 		}
-
 		return ns_auth.NewServer(pre, userSvr, policySvr, cacheSvr), nil
 	})
 	if err != nil {

@@ -25,3 +25,8 @@ type (
 	// ContextKeyCompatible .
 	ContextKeyCompatible struct{}
 )
+
+const (
+	ContextKeyUserSvr   = "userSvr"
+	ContextKeyPolicySvr = "policySvr"
+)
