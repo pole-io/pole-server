@@ -161,7 +161,7 @@ linters-settings:
       - name: import-shadowing
         severity: warning
         disabled: false
-        arguments: ["github.com/polarismesh/polaris", "namespace"]
+        arguments: ["github.com/GovernSea/sergo-server", "namespace"]
       - name: waitgroup-by-value
         severity: warning
         disabled: false
@@ -403,7 +403,7 @@ linters-settings:
     sections:
       - standard # Standard section: captures all standard packages.
       - default # Default section: contains all imports that could not be matched to another section type.
-      - prefix(github.com/polarismesh/polaris) # Custom section: groups all imports with the specified Prefix.
+      - prefix(github.com/GovernSea/sergo-server) # Custom section: groups all imports with the specified Prefix.
       #- blank # Blank section: contains all blank imports. This section is not present unless explicitly enabled.
       #- dot # Dot section: contains all dot imports. This section is not present unless explicitly enabled.
     # Skip generated files.

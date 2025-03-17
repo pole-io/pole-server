@@ -1,4 +1,4 @@
-module github.com/polarismesh/polaris/test/tools
+module github.com/GovernSea/sergo-server/test/tools
 
 go 1.14
 

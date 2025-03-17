@@ -20,67 +20,67 @@ cur_dir=$(pwd)
 
 # apiserver 模块的包信息
 apiserver_pkg=(
-    "github.com/polarismesh/polaris/apiserver"
-    "github.com/polarismesh/polaris/apiserver/eurekaserver"
-    "github.com/polarismesh/polaris/apiserver/xdsserverv3"
-    "github.com/polarismesh/polaris/apiserver/nacosserver"
-    "github.com/polarismesh/polaris/apiserver/nacosserver/core"
-    "github.com/polarismesh/polaris/apiserver/nacosserver/v1"
-    "github.com/polarismesh/polaris/apiserver/nacosserver/v1/discover"
-    "github.com/polarismesh/polaris/apiserver/nacosserver/v1/config"
-    "github.com/polarismesh/polaris/apiserver/nacosserver/v2"
-    "github.com/polarismesh/polaris/apiserver/nacosserver/v2/discover"
-    "github.com/polarismesh/polaris/apiserver/nacosserver/v2/config"
-    "github.com/polarismesh/polaris/apiserver/nacosserver/v2/remote"
+    "github.com/GovernSea/sergo-server/apiserver"
+    "github.com/GovernSea/sergo-server/apiserver/eurekaserver"
+    "github.com/GovernSea/sergo-server/apiserver/xdsserverv3"
+    "github.com/GovernSea/sergo-server/apiserver/nacosserver"
+    "github.com/GovernSea/sergo-server/apiserver/nacosserver/core"
+    "github.com/GovernSea/sergo-server/apiserver/nacosserver/v1"
+    "github.com/GovernSea/sergo-server/apiserver/nacosserver/v1/discover"
+    "github.com/GovernSea/sergo-server/apiserver/nacosserver/v1/config"
+    "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2"
+    "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/discover"
+    "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/config"
+    "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/remote"
 )
 
 # 鉴权模块的包信息
 auth_pkg=(
-    "github.com/polarismesh/polaris/auth/user"
-    "github.com/polarismesh/polaris/auth/policy"
+    "github.com/GovernSea/sergo-server/auth/user"
+    "github.com/GovernSea/sergo-server/auth/policy"
 )
 
 # cache 模块的包信息
 cache_pkg=(
-    "github.com/polarismesh/polaris/cache"
-    "github.com/polarismesh/polaris/cache/service"
-    "github.com/polarismesh/polaris/cache/config"
-    "github.com/polarismesh/polaris/cache/gray"
-    "github.com/polarismesh/polaris/cache/auth"
-    "github.com/polarismesh/polaris/cache/client"
+    "github.com/GovernSea/sergo-server/cache"
+    "github.com/GovernSea/sergo-server/cache/service"
+    "github.com/GovernSea/sergo-server/cache/config"
+    "github.com/GovernSea/sergo-server/cache/gray"
+    "github.com/GovernSea/sergo-server/cache/auth"
+    "github.com/GovernSea/sergo-server/cache/client"
 )
 
 # 注册发现模块的包信息
 discover_pkg=(
-    "github.com/polarismesh/polaris/service"
-    "github.com/polarismesh/polaris/service/batch"
-    "github.com/polarismesh/polaris/service/healthcheck"
+    "github.com/GovernSea/sergo-server/service"
+    "github.com/GovernSea/sergo-server/service/batch"
+    "github.com/GovernSea/sergo-server/service/healthcheck"
 )
 
 # 配置模块
 config_pkg=(
-    "github.com/polarismesh/polaris/config"
+    "github.com/GovernSea/sergo-server/config"
 )
 
 # 存储模块
 store_pkg=(
-    "github.com/polarismesh/polaris/store/boltdb"
-    "github.com/polarismesh/polaris/store/mysql"
+    "github.com/GovernSea/sergo-server/store/boltdb"
+    "github.com/GovernSea/sergo-server/store/mysql"
 )
 
 # 插件模块
 plugin_pkg=(
-    "github.com/polarismesh/polaris/plugin"
-    "github.com/polarismesh/polaris/plugin/healthchecker/leader"
-    "github.com/polarismesh/polaris/plugin/healthchecker/memory"
-    "github.com/polarismesh/polaris/plugin/healthchecker/redis"
+    "github.com/GovernSea/sergo-server/plugin"
+    "github.com/GovernSea/sergo-server/plugin/healthchecker/leader"
+    "github.com/GovernSea/sergo-server/plugin/healthchecker/memory"
+    "github.com/GovernSea/sergo-server/plugin/healthchecker/redis"
 )
 
 # 普通包模块
 common_pkg=(
-    "github.com/polarismesh/polaris/common/eventhub"
-    "github.com/polarismesh/polaris/common/redispool"
-    "github.com/polarismesh/polaris/common/timewheel"
+    "github.com/GovernSea/sergo-server/common/eventhub"
+    "github.com/GovernSea/sergo-server/common/redispool"
+    "github.com/GovernSea/sergo-server/common/timewheel"
 )
 
 coverpkg=""

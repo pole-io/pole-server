@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: polaris-server-config
+  name: sergo-server-config
   namespace: {{ .Values.installation.namespace }}
 data:
-  polaris-server.yaml: |-
+  sergo-server.yaml: |-
     # server启动引导配置
     bootstrap:
       # 全局日志

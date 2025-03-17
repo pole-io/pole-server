@@ -8,7 +8,7 @@ global:
 
 polaris:
   image:
-    repository: polarismesh/polaris-server
+    repository: chuntaojun/sergo-server
     tag: ##POLARIS_SERVER_VERSION##
     pullPolicy: Always
   limit:
@@ -16,7 +16,7 @@ polaris:
     memory: "1000Mi"
   console:
     image:
-      repository: polarismesh/polaris-console
+      repository: chuntaojun/polaris-console
       tag: ##POLARIS_CONSOLE_VERSION##
       pullPolicy: Always
     limit:
@@ -24,7 +24,7 @@ polaris:
       memory: "1000Mi"
   limiter:
     image:
-      repository: polarismesh/polaris-limiter
+      repository: chuntaojun/polaris-limiter
       tag: ##POLARIS_LIMITER_VERSION##
       pullPolicy: Always
     limit:
@@ -46,7 +46,7 @@ polaris:
 
 prometheus:
   image:
-    repository: polarismesh/polaris-prometheus
+    repository: chuntaojun/polaris-prometheus
     tag: ##POLARIS_PROMETHEUS_VERSION##
     pullPolicy: Always
   pushgateway:
@@ -71,4 +71,4 @@ monitor:
   port: 9091
 
 installation:
-  namespace: polaris-system
+  namespace: sergo-system

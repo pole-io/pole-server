@@ -124,7 +124,7 @@ INSERT INTO
 VALUES
     (
         'Polaris',
-        'Polaris-server',
+        'sergo-server',
         '2d1bfe5d12e04d54b8ee69e62494c7fd',
         'polaris',
         0,

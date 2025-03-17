@@ -74,11 +74,11 @@ The currently supported configurations are as follows:
 | Parameter                            | Description                              |
 |--------------------------------------|--------------------------------------|
 |global.mode                           | Cluster type, supports `cluter` and `standalone` , indicating cluster version and stand-alone version|
-|polaris.image.repository              | polaris-server image repository address|
-|polaris.image.tag                     | polaris-server image tag|
-|polaris.image.pullPolicy              | polaris-server image pull policy|
-|polaris.limit.cpu                     | polaris-server cpu limit|
-|polaris.limit.memory                  | polaris-server memory limit|
+|polaris.image.repository              | sergo-server image repository address|
+|polaris.image.tag                     | sergo-server image tag|
+|polaris.image.pullPolicy              | sergo-server image pull policy|
+|polaris.limit.cpu                     | sergo-server cpu limit|
+|polaris.limit.memory                  | sergo-server memory limit|
 |polaris.console.image.repository      | polaris-console mage repository address|
 |polaris.console.image.tag             | polaris-console image tag|
 |polaris.console.image.pullPolicy      | polaris-console image pull policy|
@@ -92,9 +92,9 @@ The currently supported configurations are as follows:
 |polaris.storage.redis.address         | polaris Cluster version, the address of redis|
 |polaris.storage.redis.password        | polaris Cluster version, the password of redis|
 |polaris.storage.service.type          | polaris service type|
-|polaris.storage.service.httpPort      | polaris service expose, polaris-server listening http port number|
-|polaris.storage.service.grpcPort      | polaris service expose, polaris-server listening grpc port number|
-|polaris.storage.service.webPort       | polaris service expose, polaris-server listening web  port number|
+|polaris.storage.service.httpPort      | polaris service expose, sergo-server listening http port number|
+|polaris.storage.service.grpcPort      | polaris service expose, sergo-server listening grpc port number|
+|polaris.storage.service.webPort       | polaris service expose, sergo-server listening web  port number|
 |polaris.auth.consoleOpen              | polaris open the console interface auth, open the default|
 |polaris.auth.clientOpen               | polaris open the client interface auth, close the default|
 |monitor.port                          | The port through which the client reports monitoring information|

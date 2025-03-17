@@ -1,4 +1,4 @@
-module github.com/polarismesh/polaris
+module github.com/GovernSea/sergo-server
 
 go 1.21
 

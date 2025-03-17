@@ -178,7 +178,7 @@ bootstrap:
       compress: true
   # Start the server in order
   startInOrder:
-    # Start the Polaris-Server in order, mainly to avoid data synchronization logic when the server starts the DB to pull the DB out of high load
+    # Start the sergo-server in order, mainly to avoid data synchronization logic when the server starts the DB to pull the DB out of high load
     open: true
     # The name of the start lock
     key: sz
@@ -458,7 +458,7 @@ store:
   #     maxIdleConns: 50
   #     connMaxLifetime: 300 # Unit second
   #     txIsolationLevel: 2 #LevelReadCommitted
-# polaris-server plugin settings
+# sergo-server plugin settings
 plugin:
   crypto:
     entries:

@@ -62,7 +62,7 @@ spec:
       containers:
         - image: {{.Values.polaris.image.repository}}:{{.Values.polaris.image.tag}}
           imagePullPolicy: {{ .Values.polaris.image.pullPolicy }}
-          name: polaris-server
+          name: sergo-server
           resources:
             limits:
               cpu: {{ .Values.polaris.limit.cpu }}
@@ -70,9 +70,9 @@ spec:
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
           volumeMounts:
-            - mountPath: /root/conf/polaris-server.yaml
-              name: polaris-server-config
-              subPath: polaris-server.yaml
+            - mountPath: /root/conf/sergo-server.yaml
+              name: sergo-server-config
+              subPath: sergo-server.yaml
         - image: {{.Values.polaris.console.image.repository}}:{{.Values.polaris.console.image.tag}}
           imagePullPolicy: {{ .Values.polaris.console.image.pullPolicy }}
           name: polaris-console
@@ -94,8 +94,8 @@ spec:
           name: polaris-console-config
         - configMap:
             defaultMode: 420
-            name: polaris-server-config
-          name: polaris-server-config
+            name: sergo-server-config
+          name: sergo-server-config
   updateStrategy:
     rollingUpdate:
       partition: 0

@@ -23,7 +23,7 @@ import (
 
 var (
 	rootCmd = &cobra.Command{
-		Use:          "polaris-server",
+		Use:          "sergo-server",
 		Short:        "polaris server",
 		Long:         "polaris server",
 		SilenceUsage: true,

@@ -33,7 +33,7 @@ webServer:
   monitorURL: "/api/v1"
   webPath: "web/dist/"
 polarisServer:
-  address: "polaris-server:8090"
+  address: "sergo-server:8090"
   polarisToken: "nu/0WRA4EqSR1FagrjRj0fZwPXuGlMpX+zCuWu4uMqy8xr1vRjisSbA25aAC3mtU8MeeRsKhQiDAynUR09I="
 monitorServer:
   address: "polaris-prometheus:9090"

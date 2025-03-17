@@ -13,8 +13,8 @@
 
 单机版和集群版均支持Linux、Mac和Windows各类操作系统，安装包获取路径如下：
 
-- [Github Releases](https://github.com/polarismesh/polaris/releases)
-- [Gitee Releases](https://gitee.com/polarismesh/polaris/releases)
+- [Github Releases](https://github.com/GovernSea/sergo-server/releases)
+- [Gitee Releases](https://gitee.com/GovernSea/sergo-server/releases)
 
 ### 单机版安装
 

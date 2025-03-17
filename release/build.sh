@@ -28,10 +28,10 @@ fi
 
 workdir=$(dirname $(dirname $(realpath $0)))
 version=$(cat version 2>/dev/null)
-bin_name="polaris-server"
+bin_name="sergo-server"
 
 if [ "${GOOS}" == "windows" ]; then
-  bin_name="polaris-server.exe"
+  bin_name="sergo-server.exe"
 fi
 
 if [ "${GOOS}" == "" ]; then
@@ -50,7 +50,7 @@ if [ $# == 2 ]; then
   export GOARCH=$2
 fi
 
-folder_name="polaris-server-release_${version}.${GOOS}.${GOARCH}"
+folder_name="sergo-server-release_${version}.${GOOS}.${GOARCH}"
 pkg_name="${folder_name}.zip"
 echo "GOOS is ${GOOS}, GOARCH is ${GOARCH}, binary name is ${bin_name}"
 
@@ -66,7 +66,7 @@ rm -f ${bin_name}
 export CGO_ENABLED=0
 
 build_date=$(date "+%Y%m%d.%H%M%S")
-package="github.com/polarismesh/polaris/common/version"
+package="github.com/GovernSea/sergo-server/common/version"
 sqldb_res="store/mysql"
 GOARCH=${GOARCH} GOOS=${GOOS} go build -o ${bin_name} -ldflags="-X ${package}.Version=${version} -X ${package}.BuildDate=${build_date}"
 

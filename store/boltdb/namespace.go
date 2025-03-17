@@ -52,7 +52,7 @@ var (
 	}
 	namespaceToComment = map[string]string{
 		defaultNamespace: "Default Environment",
-		polarisNamespace: "Polaris-server",
+		polarisNamespace: "sergo-server",
 	}
 )
 

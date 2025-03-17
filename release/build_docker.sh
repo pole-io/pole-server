@@ -27,7 +27,7 @@ if [[ "${docker_repository}" == "" ]]; then
     docker_repository="polarismesh"
 fi
 
-echo "docker repository : ${docker_repository}/polaris-server, tag : ${docker_tag}"
+echo "docker repository : ${docker_repository}/sergo-server, tag : ${docker_tag}"
 
 arch_list=( "amd64" "arm64" )
 # arch_list=( "amd64" )
@@ -39,11 +39,11 @@ for arch in ${arch_list[@]}; do
     make build VERSION=${docker_tag} ARCH=${arch}
 
     if [ $? != 0 ]; then
-        echo "build polaris-server failed"
+        echo "build sergo-server failed"
         exit 1
     fi
 
-    mv polaris-server polaris-server-${arch}
+    mv sergo-server sergo-server-${arch}
     platforms+="linux/${arch},"
 done
 
@@ -53,7 +53,7 @@ extra_tags=""
 
 pre_release=`echo ${docker_tag}|egrep "(alpha|beta|rc|[T|t]est)"|wc -l`
 if [ ${pre_release} == 0 ]; then
-  extra_tags="-t ${docker_repository}/polaris-server:latest"
+  extra_tags="-t ${docker_repository}/sergo-server:latest"
 fi
 
-docker buildx build -f ./release/Dockerfile -t ${docker_repository}/polaris-server:${docker_tag} ${extra_tags} --platform ${platforms} --push ./
+docker buildx build -f ./release/Dockerfile -t ${docker_repository}/sergo-server:${docker_tag} ${extra_tags} --platform ${platforms} --push ./

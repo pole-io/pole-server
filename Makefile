@@ -54,11 +54,11 @@ build: ## Build binary and tarball.
 	bash ./release/build.sh $(VERSION) $(ARCH)
 
 .PHONY: build-docker
-build-docker: ## Build polaris-server docker images.
+build-docker: ## Build sergo-server docker images.
 	bash ./release/build_docker.sh $(IMAGE_TAG)
 
 .PHONY: clean
-clean: ## Clean polaris-server make data.
-	@rm -rf polaris-server-release_*
-	@rm -rf polaris-server-arm64
-	@rm -rf polaris-server-amd64
+clean: ## Clean sergo-server make data.
+	@rm -rf sergo-server-release_*
+	@rm -rf sergo-server-arm64
+	@rm -rf sergo-server-amd64

@@ -18,7 +18,7 @@ spec:
         app: polaris-limiter
     spec:
       containers:
-        - image: polarismesh/polaris-limiter:##POLARIS_LIMITER_VERSION##
+        - image: GovernSea/sergo-server-limiter:##POLARIS_LIMITER_VERSION##
           imagePullPolicy: Always
           name: polaris-limiter
           resources:

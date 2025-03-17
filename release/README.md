@@ -13,8 +13,8 @@ README：
 
 The release packages of standalone and cluster have been provided for Linux, Mac and Windows.
 
-- [Github Releases](https://github.com/polarismesh/polaris/releases)
-- [Gitee Releases](https://gitee.com/polarismesh/polaris/releases)
+- [Github Releases](https://github.com/GovernSea/sergo-server/releases)
+- [Gitee Releases](https://gitee.com/GovernSea/sergo-server/releases)
 
 ### Standalone
 

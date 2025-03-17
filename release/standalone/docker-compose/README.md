@@ -2,7 +2,7 @@
 
 ### 服务组成
 
-- polaris-server 北极星核心服务
+- sergo-server 北极星核心服务
 - polaris-console 北极星控制台
 - mysql 替换默认的boltdb存储
 - polaris-prometheus
@@ -24,12 +24,12 @@ cd polaris/deploy/standalone/docker-compose
 docker-compose up -d
 ```
 
-第一次执行，mysql 启动会导入`polaris-server`的数据库SQL，需要一定启动时间，如果发现服务启动失败，简单起见，通过`restart`实现自动
-重启`polaris-server`。
+第一次执行，mysql 启动会导入`sergo-server`的数据库SQL，需要一定启动时间，如果发现服务启动失败，简单起见，通过`restart`实现自动
+重启`sergo-server`。
 
 ```shell
 cd polaris/deploy/standalone/docker-compose
-docker-compose up -d polaris-server
+docker-compose up -d sergo-server
 ```
 
 ### 停止服务

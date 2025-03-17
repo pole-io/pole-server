@@ -17,14 +17,14 @@ $ErrorActionPreference = "Stop"
 
 function runPolarisServer() {
     Write-Output "run polaris server ... "
-    $polaris_server_num = (Get-Process | findstr "polaris-server" | Measure-Object -Line).Lines
+    $polaris_server_num = (Get-Process | findstr "sergo-server" | Measure-Object -Line).Lines
     if ($polaris_server_num -gt 0) {
-        Write-Output "polaris-server is running, skip"
+        Write-Output "sergo-server is running, skip"
         return
     }
-    $polaris_server_dirname = (Get-ChildItem -Directory "polaris-server-release*")[0].Name
+    $polaris_server_dirname = (Get-ChildItem -Directory "sergo-server-release*")[0].Name
     Push-Location $polaris_server_dirname
-    Start-Process -FilePath ".\\polaris-server.exe" -ArgumentList ('start') -WindowStyle Hidden
+    Start-Process -FilePath ".\\sergo-server.exe" -ArgumentList ('start') -WindowStyle Hidden
     Write-Output "run polaris server success"
     Pop-Location
 }

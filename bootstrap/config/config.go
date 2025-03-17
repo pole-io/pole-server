@@ -60,7 +60,7 @@ type Bootstrap struct {
 	PolarisService PolarisService         `yaml:"polaris_service"`
 }
 
-// PolarisService polaris-server的自注册配置
+// PolarisService sergo-server的自注册配置
 type PolarisService struct {
 	EnableRegister    bool       `yaml:"enable_register"`
 	ProbeAddress      string     `yaml:"probe_address"`
@@ -88,11 +88,11 @@ type APIEntries struct {
 
 const (
 	// DefaultPolarisName default polaris name
-	DefaultPolarisName = "polaris-server"
+	DefaultPolarisName = "sergo-server"
 	// DefaultPolarisNamespace default namespace
 	DefaultPolarisNamespace = "Polaris"
 	// DefaultFilePath default file path
-	DefaultFilePath = "polaris-server.yaml"
+	DefaultFilePath = "sergo-server.yaml"
 	// DefaultHeartbeatInterval default interval second for heartbeat
 	DefaultHeartbeatInterval = 5
 )

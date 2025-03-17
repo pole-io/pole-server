@@ -56,9 +56,9 @@ spec:
         app: polaris
     spec:
       containers:
-      - image: polarismesh/polaris-server:##POLARIS_SERVER_VERSION##
+      - image: polarismesh/sergo-server:##POLARIS_SERVER_VERSION##
         imagePullPolicy: Always
-        name: polaris-server
+        name: sergo-server
         resources:
           limits:
             cpu: "500m"
@@ -66,10 +66,10 @@ spec:
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
-        - mountPath: /root/conf/polaris-server.yaml
-          name: polaris-server-config
-          subPath: polaris-server.yaml
-      - image: polarismesh/polaris-console:##POLARIS_CONSOLE_VERSION##
+        - mountPath: /root/conf/sergo-server.yaml
+          name: sergo-server-config
+          subPath: sergo-server.yaml
+      - image: GovernSea/sergo-server-console:##POLARIS_CONSOLE_VERSION##
         imagePullPolicy: Always
         name: polaris-console
         resources:
@@ -90,8 +90,8 @@ spec:
         name: polaris-console-config
       - configMap:
           defaultMode: 420
-          name: polaris-server-config
-        name: polaris-server-config
+          name: sergo-server-config
+        name: sergo-server-config
   updateStrategy:
     rollingUpdate:
       partition: 0

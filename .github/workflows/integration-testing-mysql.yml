@@ -121,10 +121,10 @@ jobs:
           # 临时放开 DB 的最大连接数
           mysql -h127.0.0.1 -P3306 -u${{ env.MYSQL_DB_USER }} -p"${{ env.MYSQL_DB_PWD }}" -e "set GLOBAL max_connections = 3000;"
 
-          work_dir=$(ls | grep polaris-server-release | sed -n '1p')
+          work_dir=$(ls | grep sergo-server-release | sed -n '1p')
           echo "work_dir is $work_dir"
 
-          cp -rf ./test/data/polaris-server.yaml $work_dir/
+          cp -rf ./test/data/sergo-server.yaml $work_dir/
 
           cd $work_dir
 
@@ -133,11 +133,11 @@ jobs:
           if [[ "$(uname)" == "Darwin" ]]; then
               # Mac OS X 操作系统
               echo "Run on MacOS"
-              # sed -i '' 's/consoleOpen: true/consoleOpen: false/g' conf/polaris-server.yaml
+              # sed -i '' 's/consoleOpen: true/consoleOpen: false/g' conf/sergo-server.yaml
           else
               # GNU/Linux操作系统
               echo "Run on Linux"
-              # sed -i 's/consoleOpen: \(true\|false\)/consoleOpen: false/g' conf/polaris-server.yaml
+              # sed -i 's/consoleOpen: \(true\|false\)/consoleOpen: false/g' conf/sergo-server.yaml
           fi
 
           chmod +x ./tool/*.sh

@@ -15,8 +15,8 @@ if [ ${INNER_GOOS} == "kubernetes" ]; then
     cd ${workdir}
     cd release/cluster
 
-    sed -i "s/##POLARIS_SERVER_VERSION##/${INNER_SERVER_VERSION}/g" kubernetes/03-polaris-server.yaml
-    sed -i "s/##POLARIS_CONSOLE_VERSION##/${INNER_CONSOLE_VERSION}/g" kubernetes/03-polaris-server.yaml
+    sed -i "s/##POLARIS_SERVER_VERSION##/${INNER_SERVER_VERSION}/g" kubernetes/03-sergo-server.yaml
+    sed -i "s/##POLARIS_CONSOLE_VERSION##/${INNER_CONSOLE_VERSION}/g" kubernetes/03-sergo-server.yaml
     sed -i "s/##POLARIS_PROMETHEUS_VERSION##/${INNER_SERVER_VERSION}/g" kubernetes/05-prometheus.yaml
     sed -i "s/##POLARIS_LIMITER_VERSION##/${INNER_LIMITER_VERSION}/g" kubernetes/07-polaris-limiter.yaml
 
@@ -82,7 +82,7 @@ else
     mkdir ${DIR_NAME}
     pushd ${DIR_NAME}
     
-    SERVER_PKG_NAME=polaris-server-release_${INNER_SERVER_VERSION}.${INNER_GOOS}.${INNER_GOARCH}.zip
+    SERVER_PKG_NAME=sergo-server-release_${INNER_SERVER_VERSION}.${INNER_GOOS}.${INNER_GOARCH}.zip
     wget -T10 -t3 ${POLARIS_GIT_PATH}/polaris/releases/download/${INNER_SERVER_VERSION}/${SERVER_PKG_NAME} --no-check-certificate
     
     CONSOLE_PKG_NAME=polaris-console-release_${INNER_CONSOLE_VERSION}.${INNER_GOOS}.${INNER_GOARCH}.zip

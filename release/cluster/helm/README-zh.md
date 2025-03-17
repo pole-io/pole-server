@@ -73,11 +73,11 @@ $ helm uninstall `${release_name}`
 | 参数名                                | 参数解释                              |
 |--------------------------------------|--------------------------------------|
 |global.mode                           | 集群类型，支持 `cluter` 和 `standalone` ，表示集群版和单机版|
-|polaris.image.repository              | polaris-server 镜像仓库地址|
-|polaris.image.tag                     | polaris-server 镜像 tag|
-|polaris.image.pullPolicy              | polaris-server 镜像拉取策略|
-|polaris.limit.cpu                     | polaris-server cpu资源占用限制|
-|polaris.limit.memory                  | polaris-server 内存资源占用限制|
+|polaris.image.repository              | sergo-server 镜像仓库地址|
+|polaris.image.tag                     | sergo-server 镜像 tag|
+|polaris.image.pullPolicy              | sergo-server 镜像拉取策略|
+|polaris.limit.cpu                     | sergo-server cpu资源占用限制|
+|polaris.limit.memory                  | sergo-server 内存资源占用限制|
 |polaris.console.image.repository      | polaris-console 的镜像仓库地址|
 |polaris.console.image.tag             | polaris-console 镜像 tag|
 |polaris.console.image.pullPolicy      | polaris-console 镜像拉取策略|
@@ -91,9 +91,9 @@ $ helm uninstall `${release_name}`
 |polaris.storage.redis.address         | polaris 集群版，使用的 redis 的地址|
 |polaris.storage.redis.password        | polaris 集群版，使用的 redis 的密码|
 |polaris.storage.service.type          | polaris service 的类型|
-|polaris.storage.service.httpPort      | polaris service 暴露，polaris-server 监听的 http 端口|
-|polaris.storage.service.grpcPort      | polaris service 暴露，polaris-server 监听的 grpc 端口|
-|polaris.storage.service.webPort       | polaris service 暴露，polaris-server 监听的 web 端口|
+|polaris.storage.service.httpPort      | polaris service 暴露，sergo-server 监听的 http 端口|
+|polaris.storage.service.grpcPort      | polaris service 暴露，sergo-server 监听的 grpc 端口|
+|polaris.storage.service.webPort       | polaris service 暴露，sergo-server 监听的 web 端口|
 |polaris.auth.consoleOpen              | polaris 打开控制台接口鉴权，默认开启|
 |polaris.auth.clientOpen               | polaris 打开客户端接口鉴权，默认关闭|
 |monitor.port                          | 客户端上报监控信息的端口|

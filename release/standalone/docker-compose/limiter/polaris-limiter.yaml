@@ -1,6 +1,6 @@
 registry:
   enable: true
-  polaris-server-address: polaris-server:8091
+  sergo-server-address: sergo-server:8091
   name: polaris.limiter
   namespace: Polaris
   health-check-enable: true

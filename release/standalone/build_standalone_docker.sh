@@ -16,7 +16,7 @@ arch_list=("amd64" "arm64")
 platforms=""
 
 for GOARCH in ${arch_list[@]}; do
-    SERVER_PKG_NAME=polaris-server-release_${SERVER_VERSION}.${GOOS}.${GOARCH}.zip
+    SERVER_PKG_NAME=sergo-server-release_${SERVER_VERSION}.${GOOS}.${GOARCH}.zip
     wget -T10 -t3 ${POLARIS_GIT_PATH}/polaris/releases/download/${SERVER_VERSION}/${SERVER_PKG_NAME} --no-check-certificate
     
     CONSOLE_PKG_NAME=polaris-console-release_${CONSOLE_VERSION}.${GOOS}.${GOARCH}.zip

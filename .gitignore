@@ -1,7 +1,7 @@
-polaris-server
-polaris-server-*
-polaris-server-release*
-polaris-server-release.tar.gz
+sergo-server
+sergo-server-*
+sergo-server-release*
+sergo-server-release.tar.gz
 
 log/
 /statis/
@@ -26,3 +26,5 @@ __debug_bin
 
 style_tool/
 goimports-reviser
+
+data

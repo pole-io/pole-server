@@ -73,7 +73,7 @@ echo "prepare install polaris standalone..."
 echo "polaris-console listen port info"
 echo "console_port=${console_port}"
 echo ""
-echo "polaris-server listen port info"
+echo "sergo-server listen port info"
 echo "eureka_port=${eureka_port}"
 echo "xdsv3_port=${xdsv3_port}"
 echo "service_grpc_port=${service_grpc_port}"
@@ -93,19 +93,19 @@ echo "pushgateway_server_port=${pushgateway_port}"
 
 function installPolarisServer() {
   echo -e "install polaris server ... "
-  local polaris_server_num=$(ps -ef | grep polaris-server | grep -v grep | wc -l)
+  local polaris_server_num=$(ps -ef | grep sergo-server | grep -v grep | wc -l)
   if [ ${polaris_server_num} -ge 1 ]; then
-    echo -e "polaris-server is running, exit"
+    echo -e "sergo-server is running, exit"
     return -1
   fi
 
-  local polaris_server_pkg_num=$(find . -name "polaris-server-release*.zip" | wc -l)
+  local polaris_server_pkg_num=$(find . -name "sergo-server-release*.zip" | wc -l)
   if [ ${polaris_server_pkg_num} != 1 ]; then
     echo -e "number of polaris server package not equals to 1, exit"
     exit -1
   fi
 
-  local target_polaris_server_pkg=$(find . -name "polaris-server-release*.zip")
+  local target_polaris_server_pkg=$(find . -name "sergo-server-release*.zip")
   local polaris_server_dirname=$(basename ${target_polaris_server_pkg} .zip)
   if [ ! -e ${polaris_server_dirname} ]; then
     unzip ${target_polaris_server_pkg} >/dev/null
@@ -115,21 +115,21 @@ function installPolarisServer() {
 
   pushd ${polaris_server_dirname}
 
-  # 备份 polaris-server.yaml
-  cp conf/polaris-server.yaml conf/polaris-server.yaml.bak
+  # 备份 sergo-server.yaml
+  cp conf/sergo-server.yaml conf/sergo-server.yaml.bak
 
-  # 修改 polaris-server eureka 端口信息
-  sed -i "s/listenPort: 8761/listenPort: ${eureka_port}/g" conf/polaris-server.yaml
-  # 修改 polaris-server xdsv3 端口信息
-  sed -i "s/listenPort: 15010/listenPort: ${xdsv3_port}/g" conf/polaris-server.yaml
-  # 修改 polaris-server service-grpc 端口信息
-  sed -i "s/listenPort: 8091/listenPort: ${service_grpc_port}/g" conf/polaris-server.yaml
-  # 修改 polaris-server config-grpc 端口信息
-  sed -i "s/listenPort: 8093/listenPort: ${config_grpc_port}/g" conf/polaris-server.yaml
-  # 修改 polaris-server http-api 端口信息
-  sed -i "s/listenPort: 8090/listenPort: ${api_http_port}/g" conf/polaris-server.yaml
-  # 修改 polaris-server nacos 端口信息
-  sed -i "s/listenPort: 8848/listenPort: ${nacos_port}/g" conf/polaris-server.yaml
+  # 修改 sergo-server eureka 端口信息
+  sed -i "s/listenPort: 8761/listenPort: ${eureka_port}/g" conf/sergo-server.yaml
+  # 修改 sergo-server xdsv3 端口信息
+  sed -i "s/listenPort: 15010/listenPort: ${xdsv3_port}/g" conf/sergo-server.yaml
+  # 修改 sergo-server service-grpc 端口信息
+  sed -i "s/listenPort: 8091/listenPort: ${service_grpc_port}/g" conf/sergo-server.yaml
+  # 修改 sergo-server config-grpc 端口信息
+  sed -i "s/listenPort: 8093/listenPort: ${config_grpc_port}/g" conf/sergo-server.yaml
+  # 修改 sergo-server http-api 端口信息
+  sed -i "s/listenPort: 8090/listenPort: ${api_http_port}/g" conf/sergo-server.yaml
+  # 修改 sergo-server nacos 端口信息
+  sed -i "s/listenPort: 8848/listenPort: ${nacos_port}/g" conf/sergo-server.yaml
 
   /bin/bash ./tool/start.sh
   echo -e "install polaris server success"
@@ -165,7 +165,7 @@ function installPolarisConsole() {
 
   # 修改 polaris-console 端口信息
   sed -i "s/listenPort: 8080/listenPort: ${console_port}/g" polaris-console.yaml
-  # 修改监听的 polaris-server http 端口信息
+  # 修改监听的 sergo-server http 端口信息
   sed -i "s/address: \"127.0.0.1:8090\"/address: \"127.0.0.1:${api_http_port}\"/g" polaris-console.yaml
   # 修改监听的 prometheus 端口信息
   sed -i "s/address: \"127.0.0.1:9090\"/address: \"127.0.0.1:${prometheus_port}\"/g" polaris-console.yaml
@@ -279,8 +279,8 @@ function installPolarisLimiter() {
   # 备份 polaris-limiter.yaml
   cp polaris-limiter.yaml polaris-limiter.yaml.bak
 
-  # 修改 polaris-server grpc 端口信息
-  sed -i "s/polaris-server-address: 127.0.0.1:8091/polaris-server-address: 127.0.0.1:${service_grpc_port}/g" polaris-limiter.yaml
+  # 修改 sergo-server grpc 端口信息
+  sed -i "s/sergo-server-address: 127.0.0.1:8091/sergo-server-address: 127.0.0.1:${service_grpc_port}/g" polaris-limiter.yaml
   # 修改监听的 polaris-limiter http 端口信息
   sed -i "s/port: 8100/port: ${limiter_http_port}/g" polaris-limiter.yaml
   # 修改监听的 polaris-limiter grpc 端口信息

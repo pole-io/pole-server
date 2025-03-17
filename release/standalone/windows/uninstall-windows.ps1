@@ -18,14 +18,14 @@ $ErrorActionPreference = "Stop"
 function uninstallPolarisServer {
     Write-Output "uninstall polaris server ... "
     Get-Process | ForEach-Object($_.name) {
-        if($_.name -eq "polaris-server") {
+        if($_.name -eq "sergo-server") {
             $process_pid = $_.Id
-            Write-Output "start to kill polaris-server process $process_pid"
+            Write-Output "start to kill sergo-server process $process_pid"
             Stop-Process -Id $process_pid
             Start-Sleep -Seconds 2
         }
     }
-    $target_polaris_server_pkg = (Get-ChildItem "polaris-server-release*.zip")[0].Name
+    $target_polaris_server_pkg = (Get-ChildItem "sergo-server-release*.zip")[0].Name
     $polaris_server_dirname = ([io.fileinfo]$target_polaris_server_pkg).basename
     $exists = (Test-Path ".\\$polaris_server_dirname")
     if ($exists) {

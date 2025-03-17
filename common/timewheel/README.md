@@ -17,7 +17,7 @@
    ```
    goos: windows
    goarch: amd64
-   pkg: github.com/polarismesh/polaris-server/common/timewheel
+   pkg: github.com/polarismesh/sergo-server/common/timewheel
    BenchmarkAddTask1-8   	  100000	       280 ns/op	     103 B/op	       2 allocs/op
    PASS
    ```
@@ -27,7 +27,7 @@
    ```
    goos: windows
    goarch: amd64
-   pkg: github.com/polarismesh/polaris-server/common/timewheel
+   pkg: github.com/polarismesh/sergo-server/common/timewheel
    BenchmarkAddTask1-8   	 5000000	       376 ns/op	      97 B/op	       2 allocs/op
    PASS
    ```

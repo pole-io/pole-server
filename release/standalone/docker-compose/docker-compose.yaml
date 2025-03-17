@@ -24,13 +24,13 @@ volumes:
     external: true
 
 services:
-  polaris-server:
-    container_name: polaris-server
-    hostname: polaris-server
-    image: polarismesh/polaris-server:##POLARIS_SERVER_VERSION##
+  sergo-server:
+    container_name: sergo-server
+    hostname: sergo-server
+    image: polarismesh/sergo-server:##POLARIS_SERVER_VERSION##
     restart: always
     volumes:
-      - ./server/polaris-server.yaml:/root/conf/polaris-server.yaml
+      - ./server/sergo-server.yaml:/root/conf/sergo-server.yaml
     expose: # 用于北极星集群内部访问
       - 8090    # api-http
       - 8091    # service-grpc
@@ -56,7 +56,7 @@ services:
   polaris-console:
     container_name: polaris-console
     hostname: polaris-console
-    image: polarismesh/polaris-console:##POLARIS_CONSOLE_VERSION##
+    image: GovernSea/sergo-server-console:##POLARIS_CONSOLE_VERSION##
     restart: always
     volumes:
       - ./console/polaris-console.yaml:/root/polaris-console.yaml
@@ -65,15 +65,15 @@ services:
     networks:
       - backend
     depends_on:
-      - polaris-server
+      - sergo-server
       - pushgateway
     links:
-      - polaris-server
+      - sergo-server
       - pushgateway
   polaris-limiter:
     container_name: polaris-limiter
     hostname: polaris-limiter
-    image: polarismesh/polaris-limiter:##POLARIS_LIMITER_VERSION##
+    image: GovernSea/sergo-server-limiter:##POLARIS_LIMITER_VERSION##
     restart: always
     environment:
       - MY_ID=1
@@ -88,9 +88,9 @@ services:
     networks:
       - backend
     depends_on:
-      - polaris-server
+      - sergo-server
     links:
-      - polaris-server
+      - sergo-server
   mysql:
     build: mysql
     container_name: mysql
@@ -125,7 +125,7 @@ services:
     expose:
       - 9090
     links:
-      - polaris-server # 采集北极星性能
+      - sergo-server # 采集北极星性能
   pushgateway:
     container_name: polaris-pushgateway
     image: prom/pushgateway:latest

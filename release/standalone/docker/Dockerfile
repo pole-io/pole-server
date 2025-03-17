@@ -11,7 +11,7 @@ LABEL cn.polarismesh.image.documentation="https://polarismesh.cn/#/"
 
 RUN yum install -y lsof curl unzip vixie-cron crontabs net-tools
 
-COPY polaris-server-release_${SERVER_VERSION}.${GOOS}.${TARGETARCH}.zip /root/polaris-server-release_${SERVER_VERSION}.${GOOS}.${TARGETARCH}.zip
+COPY sergo-server-release_${SERVER_VERSION}.${GOOS}.${TARGETARCH}.zip /root/sergo-server-release_${SERVER_VERSION}.${GOOS}.${TARGETARCH}.zip
 COPY polaris-console-release_${CONSOLE_VERSION}.${GOOS}.${TARGETARCH}.zip /root/polaris-console-release_${CONSOLE_VERSION}.${GOOS}.${TARGETARCH}.zip
 COPY polaris-limiter-release_${LIMITER_VERSION}.${GOOS}.${TARGETARCH}.zip /root/polaris-limiter-release_${LIMITER_VERSION}.${GOOS}.${TARGETARCH}.zip
 COPY prometheus-2.28.0.${GOOS}-${TARGETARCH}.tar.gz /root/prometheus-2.28.0.${GOOS}-${TARGETARCH}.tar.gz

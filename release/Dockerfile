@@ -28,9 +28,9 @@ RUN set -eux && \
     date
 
 ARG TARGETARCH
-COPY polaris-server-${TARGETARCH} /root/polaris-server
+COPY sergo-server-${TARGETARCH} /root/sergo-server
 COPY ./release/conf /root/conf
 
 WORKDIR /root
 
-CMD ["/root/polaris-server", "start"]
+CMD ["/root/sergo-server", "start"]
