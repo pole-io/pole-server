@@ -20,7 +20,7 @@ package main
 import (
 	_ "go.uber.org/automaxprocs"
 
-	"github.com/polarismesh/polaris/cmd"
+	"github.com/GovernSea/sergo-server/cmd"
 )
 
 func main() {

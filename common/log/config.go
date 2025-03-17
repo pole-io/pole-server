@@ -34,7 +34,7 @@ import (
 	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc/grpclog"
 
-	"github.com/polarismesh/polaris/common/timewheel"
+	"github.com/GovernSea/sergo-server/common/timewheel"
 )
 
 // none is used to disable logging output as well as to disable stack tracing.

@@ -23,13 +23,13 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/polarismesh/polaris/admin"
-	"github.com/polarismesh/polaris/auth"
-	api "github.com/polarismesh/polaris/common/api/v1"
-	"github.com/polarismesh/polaris/common/model"
-	admincommon "github.com/polarismesh/polaris/common/model/admin"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
-	"github.com/polarismesh/polaris/common/utils"
+	"github.com/GovernSea/sergo-server/admin"
+	"github.com/GovernSea/sergo-server/auth"
+	api "github.com/GovernSea/sergo-server/common/api/v1"
+	"github.com/GovernSea/sergo-server/common/model"
+	admincommon "github.com/GovernSea/sergo-server/common/model/admin"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/utils"
 )
 
 var _ admin.AdminOperateServer = (*Server)(nil)

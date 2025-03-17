@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polarismesh/polaris/common/model"
+	"github.com/GovernSea/sergo-server/common/model"
 )
 
 func Test_DeleteEmptyAutoCreatedServiceJobConfigInit(t *testing.T) {

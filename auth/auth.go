@@ -24,9 +24,9 @@ import (
 	"log"
 	"sync"
 
-	"github.com/polarismesh/polaris/cache"
-	cachetypes "github.com/polarismesh/polaris/cache/api"
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/cache"
+	cachetypes "github.com/GovernSea/sergo-server/cache/api"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 const (

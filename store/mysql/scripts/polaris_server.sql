@@ -796,6 +796,7 @@ VALUES
     );
 
 -- v1.12.0
+/* 自定义路由 v2 版本 */
 CREATE TABLE
     `routing_config_v2` (
         `id` VARCHAR(128) NOT NULL,
@@ -817,6 +818,7 @@ CREATE TABLE
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
 
+/* leader 选举 */
 CREATE TABLE
     `leader_election` (
         `elect_key` VARCHAR(128) NOT NULL,
@@ -939,6 +941,7 @@ CREATE TABLE
         PRIMARY KEY (`name`)
     ) ENGINE = InnoDB COMMENT = '灰度资源表';
 
+/* 泳道组规则 */
 CREATE TABLE
     `lane_group` (
         `id` varchar(128) not null comment '泳道分组 ID',
@@ -954,6 +957,7 @@ CREATE TABLE
         UNIQUE KEY `name` (`name`)
     ) ENGINE = InnoDB;
 
+/* 泳道规则 */
 CREATE TABLE
     `lane_rule` (
         `id` varchar(128) not null comment '规则 id',
@@ -970,4 +974,18 @@ CREATE TABLE
         `mtime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
         UNIQUE KEY `name` (`group_name`, `name`)
+    ) ENGINE = InnoDB;
+
+
+/* 服务端动态配置相关持久化记录信息 */
+CREATE TABLE
+    `server_setting` (
+        `id` varchar(128) not null comment '配置 id',
+        `name` varchar(64) not null comment '配置名称',
+        `rule` text not null comment '配置内容',
+        `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `etime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `name` (`name`)
     ) ENGINE = InnoDB;

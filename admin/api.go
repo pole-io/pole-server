@@ -23,9 +23,9 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/polarismesh/polaris/common/model"
-	"github.com/polarismesh/polaris/common/model/admin"
-	authcommon "github.com/polarismesh/polaris/common/model/auth"
+	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/GovernSea/sergo-server/common/model/admin"
+	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
 )
 
 // AdminOperateServer Maintain related operation

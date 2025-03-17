@@ -20,9 +20,9 @@ package inteceptor
 import (
 	"context"
 
-	"github.com/polarismesh/polaris/admin"
-	admin_auth "github.com/polarismesh/polaris/admin/interceptor/auth"
-	"github.com/polarismesh/polaris/auth"
+	"github.com/GovernSea/sergo-server/admin"
+	admin_auth "github.com/GovernSea/sergo-server/admin/interceptor/auth"
+	"github.com/GovernSea/sergo-server/auth"
 )
 
 type (

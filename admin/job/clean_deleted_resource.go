@@ -23,7 +23,7 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/polarismesh/polaris/store"
+	"github.com/GovernSea/sergo-server/store"
 )
 
 var cleanFuncMapping = map[string]func(timeout time.Duration, job *cleanDeletedResourceJob){
