@@ -23,11 +23,11 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/GovernSea/sergo-server/common/log"
-	"github.com/GovernSea/sergo-server/common/metrics"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/plugin"
-	"github.com/GovernSea/sergo-server/plugin/statis/base"
+	"github.com/pole-io/pole-server/common/log"
+	"github.com/pole-io/pole-server/common/metrics"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/plugin/statis/base"
 )
 
 const (

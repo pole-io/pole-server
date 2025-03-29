@@ -20,8 +20,8 @@ package healthcheck
 import (
 	"context"
 
-	"github.com/GovernSea/sergo-server/service/batch"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/service/batch"
+	"github.com/pole-io/pole-server/store"
 )
 
 func TestInitialize(ctx context.Context, hcOpt *Config, bc *batch.Controller,

@@ -23,7 +23,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"golang.org/x/time/rate"
 
-	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 // 资源限制器

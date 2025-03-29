@@ -24,10 +24,10 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/plugin"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 // checkHeartbeatInstance 检查心跳实例请求参数

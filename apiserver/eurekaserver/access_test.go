@@ -36,9 +36,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/common/utils"
-	testsuit "github.com/GovernSea/sergo-server/test/suit"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/common/utils"
+	testsuit "github.com/pole-io/pole-server/test/suit"
 )
 
 func createEurekaServerForTest(

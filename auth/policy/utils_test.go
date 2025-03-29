@@ -25,8 +25,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/GovernSea/sergo-server/auth/policy"
-	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/pole-io/pole-server/auth/policy"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 func TestCheckName(t *testing.T) {

@@ -20,11 +20,11 @@ package admin
 import (
 	"sync"
 
-	"github.com/GovernSea/sergo-server/auth"
-	"github.com/GovernSea/sergo-server/cache"
-	"github.com/GovernSea/sergo-server/service"
-	"github.com/GovernSea/sergo-server/service/healthcheck"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/auth"
+	"github.com/pole-io/pole-server/cache"
+	"github.com/pole-io/pole-server/service"
+	"github.com/pole-io/pole-server/service/healthcheck"
+	"github.com/pole-io/pole-server/store"
 )
 
 var _ AdminOperateServer = (*Server)(nil)

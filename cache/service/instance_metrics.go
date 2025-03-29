@@ -21,10 +21,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
-	types "github.com/GovernSea/sergo-server/cache/api"
-	"github.com/GovernSea/sergo-server/common/metrics"
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/plugin"
+	types "github.com/pole-io/pole-server/cache/api"
+	"github.com/pole-io/pole-server/common/metrics"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 var preServiceInfos = map[string]map[string]struct{}{}

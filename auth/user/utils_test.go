@@ -22,8 +22,8 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 
-	defaultuser "github.com/GovernSea/sergo-server/auth/user"
-	"github.com/GovernSea/sergo-server/common/utils"
+	defaultuser "github.com/pole-io/pole-server/auth/user"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 func Test_checkPassword(t *testing.T) {

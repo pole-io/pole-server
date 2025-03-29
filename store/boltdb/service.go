@@ -29,9 +29,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/store"
 )
 
 type serviceStore struct {

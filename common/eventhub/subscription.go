@@ -20,7 +20,7 @@ package eventhub
 import (
 	"context"
 
-	"github.com/GovernSea/sergo-server/common/log"
+	"github.com/pole-io/pole-server/common/log"
 )
 
 const (

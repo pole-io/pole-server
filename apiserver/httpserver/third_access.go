@@ -25,7 +25,7 @@ import (
 	"github.com/go-openapi/spec"
 	restfulspec "github.com/polarismesh/go-restful-openapi/v2"
 
-	"github.com/GovernSea/sergo-server/common/metrics"
+	"github.com/pole-io/pole-server/common/metrics"
 )
 
 // enablePprofAccess 开启pprof接口

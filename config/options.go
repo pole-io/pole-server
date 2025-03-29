@@ -21,8 +21,8 @@ import (
 	"os"
 	"path/filepath"
 
-	cachetypes "github.com/GovernSea/sergo-server/cache/api"
-	"github.com/GovernSea/sergo-server/common/utils"
+	cachetypes "github.com/pole-io/pole-server/cache/api"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 var (

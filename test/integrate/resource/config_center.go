@@ -24,7 +24,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 const (

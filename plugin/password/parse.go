@@ -17,7 +17,7 @@
 
 package password
 
-import "github.com/GovernSea/sergo-server/plugin"
+import "github.com/pole-io/pole-server/plugin"
 
 const (
 	PluginName = "localParse"

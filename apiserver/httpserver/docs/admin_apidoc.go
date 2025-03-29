@@ -23,8 +23,8 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/common/model/admin"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/common/model/admin"
 )
 
 var (

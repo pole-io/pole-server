@@ -18,16 +18,16 @@
 package eurekaserver
 
 import (
-	_ "github.com/GovernSea/sergo-server/plugin/cmdb/memory"
-	_ "github.com/GovernSea/sergo-server/plugin/discoverevent/local"
-	_ "github.com/GovernSea/sergo-server/plugin/healthchecker/p2p"
-	_ "github.com/GovernSea/sergo-server/plugin/healthchecker/redis"
-	_ "github.com/GovernSea/sergo-server/plugin/history/logger"
-	_ "github.com/GovernSea/sergo-server/plugin/password"
-	_ "github.com/GovernSea/sergo-server/plugin/ratelimit/token"
-	_ "github.com/GovernSea/sergo-server/plugin/statis/logger"
-	_ "github.com/GovernSea/sergo-server/plugin/statis/prometheus"
-	testsuit "github.com/GovernSea/sergo-server/test/suit"
+	_ "github.com/pole-io/pole-server/plugin/cmdb/memory"
+	_ "github.com/pole-io/pole-server/plugin/discoverevent/local"
+	_ "github.com/pole-io/pole-server/plugin/healthchecker/p2p"
+	_ "github.com/pole-io/pole-server/plugin/healthchecker/redis"
+	_ "github.com/pole-io/pole-server/plugin/history/logger"
+	_ "github.com/pole-io/pole-server/plugin/password"
+	_ "github.com/pole-io/pole-server/plugin/ratelimit/token"
+	_ "github.com/pole-io/pole-server/plugin/statis/logger"
+	_ "github.com/pole-io/pole-server/plugin/statis/prometheus"
+	testsuit "github.com/pole-io/pole-server/test/suit"
 )
 
 type EurekaTestSuit struct {

@@ -24,14 +24,14 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"golang.org/x/sync/singleflight"
 
-	"github.com/GovernSea/sergo-server/auth"
-	"github.com/GovernSea/sergo-server/cache"
-	cachetypes "github.com/GovernSea/sergo-server/cache/api"
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/namespace"
-	"github.com/GovernSea/sergo-server/service/batch"
-	"github.com/GovernSea/sergo-server/service/healthcheck"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/auth"
+	"github.com/pole-io/pole-server/cache"
+	cachetypes "github.com/pole-io/pole-server/cache/api"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/namespace"
+	"github.com/pole-io/pole-server/service/batch"
+	"github.com/pole-io/pole-server/service/healthcheck"
+	"github.com/pole-io/pole-server/store"
 )
 
 // GetBatchController .

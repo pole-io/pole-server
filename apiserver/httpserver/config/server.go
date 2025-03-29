@@ -20,11 +20,11 @@ package config
 import (
 	"github.com/emicklei/go-restful/v3"
 
-	"github.com/GovernSea/sergo-server/admin"
-	"github.com/GovernSea/sergo-server/apiserver"
-	"github.com/GovernSea/sergo-server/apiserver/httpserver/docs"
-	"github.com/GovernSea/sergo-server/config"
-	"github.com/GovernSea/sergo-server/namespace"
+	"github.com/pole-io/pole-server/admin"
+	"github.com/pole-io/pole-server/apiserver"
+	"github.com/pole-io/pole-server/apiserver/httpserver/docs"
+	"github.com/pole-io/pole-server/config"
+	"github.com/pole-io/pole-server/namespace"
 )
 
 // HTTPServer

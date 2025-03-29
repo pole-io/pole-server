@@ -30,9 +30,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
 
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/service"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/service"
 )
 
 func buildUnnamedCircuitBreakerRule() *apifault.CircuitBreakerRule {

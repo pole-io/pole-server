@@ -20,7 +20,7 @@ package auth
 import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
-	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 // PrincipalResourceContainer principal 资源容器

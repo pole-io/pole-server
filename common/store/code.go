@@ -20,7 +20,7 @@ package store
 import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/store"
 )
 
 var storeCodeAPICodeMap = map[store.StatusCode]apimodel.Code{

@@ -33,7 +33,7 @@ import (
 	"strings"
 	"text/template"
 
-	api "github.com/GovernSea/sergo-server/common/api/v1"
+	api "github.com/pole-io/pole-server/common/api/v1"
 )
 
 func main() {

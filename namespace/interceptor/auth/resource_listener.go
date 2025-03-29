@@ -22,11 +22,11 @@ import (
 
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
-	"github.com/GovernSea/sergo-server/common/log"
-	"github.com/GovernSea/sergo-server/common/model"
-	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/namespace"
+	"github.com/pole-io/pole-server/common/log"
+	"github.com/pole-io/pole-server/common/model"
+	authcommon "github.com/pole-io/pole-server/common/model/auth"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/namespace"
 )
 
 // Before this function is called before the resource operation

@@ -18,7 +18,7 @@
 package xdsserverv3
 
 import (
-	"github.com/GovernSea/sergo-server/apiserver"
+	"github.com/pole-io/pole-server/apiserver"
 )
 
 // init 自注册到API服务器插槽

@@ -24,10 +24,10 @@ import (
 	"log"
 	"sync"
 
-	"github.com/GovernSea/sergo-server/cache"
-	cachetypes "github.com/GovernSea/sergo-server/cache/api"
-	commonmodel "github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/cache"
+	cachetypes "github.com/pole-io/pole-server/cache/api"
+	commonmodel "github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/store"
 )
 
 const (

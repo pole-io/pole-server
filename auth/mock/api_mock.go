@@ -9,10 +9,10 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	auth "github.com/GovernSea/sergo-server/auth"
-	api "github.com/GovernSea/sergo-server/cache/api"
-	auth0 "github.com/GovernSea/sergo-server/common/model/auth"
-	store "github.com/GovernSea/sergo-server/store"
+	auth "github.com/pole-io/pole-server/auth"
+	api "github.com/pole-io/pole-server/cache/api"
+	auth0 "github.com/pole-io/pole-server/common/model/auth"
+	store "github.com/pole-io/pole-server/store"
 	security "github.com/polarismesh/specification/source/go/api/v1/security"
 	service_manage "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 )

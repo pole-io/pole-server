@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 const (

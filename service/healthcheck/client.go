@@ -24,8 +24,8 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/plugin"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 const clientPrefix = "c_"

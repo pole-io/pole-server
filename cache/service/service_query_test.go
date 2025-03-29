@@ -20,7 +20,7 @@ package service
 import (
 	"testing"
 
-	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/pole-io/pole-server/common/model"
 )
 
 func Test_matchServiceFilter_ignoreServiceCI(t *testing.T) {

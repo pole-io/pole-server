@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/pole-io/pole-server/common/model"
 )
 
 // l5Store 实现了L5Store

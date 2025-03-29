@@ -24,7 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/pole-io/pole-server/common/model"
 )
 
 func mockConfigFileGroup(total int) []*model.ConfigFileGroup {

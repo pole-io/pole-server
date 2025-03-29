@@ -23,8 +23,8 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/GovernSea/sergo-server/cache"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/cache"
+	"github.com/pole-io/pole-server/store"
 )
 
 // Controller 批量控制器

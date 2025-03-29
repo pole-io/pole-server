@@ -13,7 +13,7 @@ README：
 
 The release packages of standalone and cluster have been provided for Linux, Mac and Windows.
 
-- [Github Releases](https://github.com/GovernSea/sergo-server/releases)
+- [Github Releases](https://github.com/pole-io/pole-server/releases)
 - [Gitee Releases](https://gitee.com/GovernSea/sergo-server/releases)
 
 ### Standalone

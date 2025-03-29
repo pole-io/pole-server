@@ -22,9 +22,9 @@ import (
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/common/model/auth"
-	"github.com/GovernSea/sergo-server/common/utils"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/common/model/auth"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 // GetAllConfigFileTemplates get all config file templates

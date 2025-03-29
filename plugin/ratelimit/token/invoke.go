@@ -18,7 +18,7 @@
 package token
 
 import (
-	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 // tokenBucket 实现Plugin接口

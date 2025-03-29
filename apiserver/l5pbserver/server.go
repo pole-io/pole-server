@@ -25,11 +25,11 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/GovernSea/sergo-server/apiserver"
-	"github.com/GovernSea/sergo-server/common/api/l5"
-	"github.com/GovernSea/sergo-server/common/metrics"
-	"github.com/GovernSea/sergo-server/plugin"
-	"github.com/GovernSea/sergo-server/service"
+	"github.com/pole-io/pole-server/apiserver"
+	"github.com/pole-io/pole-server/common/api/l5"
+	"github.com/pole-io/pole-server/common/metrics"
+	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/service"
 )
 
 const (

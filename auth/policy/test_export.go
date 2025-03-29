@@ -18,8 +18,8 @@
 package policy
 
 import (
-	"github.com/GovernSea/sergo-server/auth"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/auth"
+	"github.com/pole-io/pole-server/store"
 )
 
 // MockAuthChecker mock auth.AuthChecker for unit test

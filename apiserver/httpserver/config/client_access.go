@@ -26,12 +26,12 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	httpcommon "github.com/GovernSea/sergo-server/apiserver/httpserver/utils"
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/common/metrics"
-	commontime "github.com/GovernSea/sergo-server/common/time"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/plugin"
+	httpcommon "github.com/pole-io/pole-server/apiserver/httpserver/utils"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/common/metrics"
+	commontime "github.com/pole-io/pole-server/common/time"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 func (h *HTTPServer) ClientGetConfigFile(req *restful.Request, rsp *restful.Response) {

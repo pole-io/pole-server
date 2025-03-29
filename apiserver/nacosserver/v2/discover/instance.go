@@ -26,13 +26,13 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/core"
-	nacosmodel "github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
-	nacospb "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/pb"
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/remote"
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/core"
+	nacosmodel "github.com/pole-io/pole-server/apiserver/nacosserver/model"
+	nacospb "github.com/pole-io/pole-server/apiserver/nacosserver/v2/pb"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/v2/remote"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 func (h *DiscoverServer) handleInstanceRequest(ctx context.Context, req nacospb.BaseRequest,

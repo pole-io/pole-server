@@ -18,12 +18,12 @@
 package discover
 
 import (
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/core"
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/remote"
-	"github.com/GovernSea/sergo-server/auth"
-	"github.com/GovernSea/sergo-server/namespace"
-	"github.com/GovernSea/sergo-server/service"
-	"github.com/GovernSea/sergo-server/service/healthcheck"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/core"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/v2/remote"
+	"github.com/pole-io/pole-server/auth"
+	"github.com/pole-io/pole-server/namespace"
+	"github.com/pole-io/pole-server/service"
+	"github.com/pole-io/pole-server/service/healthcheck"
 )
 
 type ServerOption struct {

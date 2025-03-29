@@ -32,8 +32,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
-	commonhash "github.com/GovernSea/sergo-server/common/hash"
-	"github.com/GovernSea/sergo-server/common/utils"
+	commonhash "github.com/pole-io/pole-server/common/hash"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 var (

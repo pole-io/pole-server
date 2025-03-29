@@ -23,7 +23,7 @@ import (
 
 	ii18n "github.com/nicksnyder/go-i18n/v2/i18n"
 
-	api "github.com/GovernSea/sergo-server/common/api/v1"
+	api "github.com/pole-io/pole-server/common/api/v1"
 )
 
 func init() {

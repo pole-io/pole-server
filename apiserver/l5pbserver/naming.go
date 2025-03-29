@@ -28,8 +28,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"go.uber.org/zap"
 
-	"github.com/GovernSea/sergo-server/common/api/l5"
-	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/pole-io/pole-server/common/api/l5"
+	"github.com/pole-io/pole-server/common/model"
 )
 
 type l5Code uint32

@@ -24,7 +24,7 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	"go.uber.org/zap"
 
-	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 var (

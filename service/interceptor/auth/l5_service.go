@@ -20,7 +20,7 @@ package service_auth
 import (
 	"context"
 
-	"github.com/GovernSea/sergo-server/common/api/l5"
+	"github.com/pole-io/pole-server/common/api/l5"
 )
 
 // SyncByAgentCmd 根据sid获取路由信息

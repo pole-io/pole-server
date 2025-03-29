@@ -32,15 +32,15 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	connhook "github.com/GovernSea/sergo-server/common/conn/hook"
-	connlimit "github.com/GovernSea/sergo-server/common/conn/limit"
-	commonlog "github.com/GovernSea/sergo-server/common/log"
-	"github.com/GovernSea/sergo-server/common/metrics"
-	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
-	"github.com/GovernSea/sergo-server/common/secure"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/plugin"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	connhook "github.com/pole-io/pole-server/common/conn/hook"
+	connlimit "github.com/pole-io/pole-server/common/conn/limit"
+	commonlog "github.com/pole-io/pole-server/common/log"
+	"github.com/pole-io/pole-server/common/metrics"
+	authcommon "github.com/pole-io/pole-server/common/model/auth"
+	"github.com/pole-io/pole-server/common/secure"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 // InitServer BaseGrpcServer.Run 中回调函数的定义

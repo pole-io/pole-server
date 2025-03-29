@@ -22,9 +22,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/core"
-	"github.com/GovernSea/sergo-server/common/eventhub"
-	commontime "github.com/GovernSea/sergo-server/common/time"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/core"
+	"github.com/pole-io/pole-server/common/eventhub"
+	commontime "github.com/pole-io/pole-server/common/time"
 )
 
 type Sender func(sub core.Subscriber, data *core.PushData) error

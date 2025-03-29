@@ -28,16 +28,16 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
-	nacosmodel "github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/remote"
-	cachetypes "github.com/GovernSea/sergo-server/cache/api"
-	"github.com/GovernSea/sergo-server/common/eventhub"
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/plugin"
-	"github.com/GovernSea/sergo-server/service"
-	"github.com/GovernSea/sergo-server/service/healthcheck"
-	"github.com/GovernSea/sergo-server/store"
+	nacosmodel "github.com/pole-io/pole-server/apiserver/nacosserver/model"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/v2/remote"
+	cachetypes "github.com/pole-io/pole-server/cache/api"
+	"github.com/pole-io/pole-server/common/eventhub"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/service"
+	"github.com/pole-io/pole-server/service/healthcheck"
+	"github.com/pole-io/pole-server/store"
 )
 
 type Checker struct {

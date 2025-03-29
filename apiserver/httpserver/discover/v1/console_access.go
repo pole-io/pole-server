@@ -28,9 +28,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
-	httpcommon "github.com/GovernSea/sergo-server/apiserver/httpserver/utils"
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/common/utils"
+	httpcommon "github.com/pole-io/pole-server/apiserver/httpserver/utils"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 // CreateNamespaces 创建命名空间

@@ -23,12 +23,12 @@ import (
 	"github.com/mitchellh/mapstructure"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/GovernSea/sergo-server/cache"
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/service"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/cache"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/service"
+	"github.com/pole-io/pole-server/store"
 )
 
 type DeleteEmptyServiceJobConfig struct {

@@ -20,7 +20,7 @@ package main
 import (
 	_ "go.uber.org/automaxprocs"
 
-	"github.com/GovernSea/sergo-server/cmd"
+	"github.com/pole-io/pole-server/cmd"
 )
 
 func main() {

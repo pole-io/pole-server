@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 func TestServer_CreateServiceContracts(t *testing.T) {

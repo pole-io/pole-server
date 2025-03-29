@@ -18,7 +18,7 @@
 package auth
 
 import (
-	types "github.com/GovernSea/sergo-server/cache/api"
+	types "github.com/pole-io/pole-server/cache/api"
 )
 
 var (

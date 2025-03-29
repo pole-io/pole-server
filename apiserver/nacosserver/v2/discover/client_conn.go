@@ -24,9 +24,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/remote"
-	"github.com/GovernSea/sergo-server/common/eventhub"
-	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/v2/remote"
+	"github.com/pole-io/pole-server/common/eventhub"
+	"github.com/pole-io/pole-server/common/model"
 )
 
 type (

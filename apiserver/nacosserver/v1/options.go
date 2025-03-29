@@ -18,13 +18,13 @@
 package v1
 
 import (
-	"github.com/GovernSea/sergo-server/auth"
-	connlimit "github.com/GovernSea/sergo-server/common/conn/limit"
-	"github.com/GovernSea/sergo-server/common/secure"
-	"github.com/GovernSea/sergo-server/config"
-	"github.com/GovernSea/sergo-server/namespace"
-	"github.com/GovernSea/sergo-server/service"
-	"github.com/GovernSea/sergo-server/service/healthcheck"
+	"github.com/pole-io/pole-server/auth"
+	connlimit "github.com/pole-io/pole-server/common/conn/limit"
+	"github.com/pole-io/pole-server/common/secure"
+	"github.com/pole-io/pole-server/config"
+	"github.com/pole-io/pole-server/namespace"
+	"github.com/pole-io/pole-server/service"
+	"github.com/pole-io/pole-server/service/healthcheck"
 )
 
 type option func(svr *NacosV1Server)

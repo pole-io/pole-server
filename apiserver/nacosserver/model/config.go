@@ -29,7 +29,7 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	commonmodel "github.com/GovernSea/sergo-server/common/model"
+	commonmodel "github.com/pole-io/pole-server/common/model"
 )
 
 type ConfigFileBase struct {

@@ -22,15 +22,15 @@ import (
 	"errors"
 	"sync"
 
-	types "github.com/GovernSea/sergo-server/cache/api"
-	cacheauth "github.com/GovernSea/sergo-server/cache/auth"
-	cacheclient "github.com/GovernSea/sergo-server/cache/client"
-	cacheconfig "github.com/GovernSea/sergo-server/cache/config"
-	cachegray "github.com/GovernSea/sergo-server/cache/gray"
-	cachens "github.com/GovernSea/sergo-server/cache/namespace"
-	cachesvc "github.com/GovernSea/sergo-server/cache/service"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/store"
+	types "github.com/pole-io/pole-server/cache/api"
+	cacheauth "github.com/pole-io/pole-server/cache/auth"
+	cacheclient "github.com/pole-io/pole-server/cache/client"
+	cacheconfig "github.com/pole-io/pole-server/cache/config"
+	cachegray "github.com/pole-io/pole-server/cache/gray"
+	cachens "github.com/pole-io/pole-server/cache/namespace"
+	cachesvc "github.com/pole-io/pole-server/cache/service"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/store"
 )
 
 func init() {

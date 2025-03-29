@@ -20,7 +20,7 @@ package model
 import (
 	"net/http"
 
-	api "github.com/GovernSea/sergo-server/common/api/v1"
+	api "github.com/pole-io/pole-server/common/api/v1"
 )
 
 type DebugHandlerGroup struct {

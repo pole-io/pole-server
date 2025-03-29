@@ -20,7 +20,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/GovernSea/sergo-server/common/log"
+	"github.com/pole-io/pole-server/common/log"
 )
 
 func defaultBootstrap() Bootstrap {

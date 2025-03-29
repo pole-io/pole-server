@@ -22,7 +22,7 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/GovernSea/sergo-server/common/log"
+	"github.com/pole-io/pole-server/common/log"
 )
 
 // Config 连接限制配置

@@ -23,7 +23,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/GovernSea/sergo-server/common/log"
+	"github.com/pole-io/pole-server/common/log"
 )
 
 //go:generate gotests -w -all topic.go

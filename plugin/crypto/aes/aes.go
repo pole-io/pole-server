@@ -25,7 +25,7 @@ import (
 	"encoding/base64"
 	"errors"
 
-	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 const (

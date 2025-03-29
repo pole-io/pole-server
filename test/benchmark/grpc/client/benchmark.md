@@ -3,7 +3,7 @@
 ```
 // goos: linux
 // goarch: amd64
-// pkg: github.com/GovernSea/sergo-server/test/benchmark/grpc
+// pkg: github.com/pole-io/pole-server/test/benchmark/grpc
 // cpu: AMD EPYC 7K62 48-Core Processor
 
 

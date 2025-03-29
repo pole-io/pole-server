@@ -20,7 +20,7 @@ package store
 import (
 	"time"
 
-	"github.com/GovernSea/sergo-server/common/model/admin"
+	"github.com/pole-io/pole-server/common/model/admin"
 )
 
 const (

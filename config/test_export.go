@@ -25,14 +25,14 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
-	"github.com/GovernSea/sergo-server/auth"
-	"github.com/GovernSea/sergo-server/cache"
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/namespace"
-	"github.com/GovernSea/sergo-server/plugin"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/auth"
+	"github.com/pole-io/pole-server/cache"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/namespace"
+	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/store"
 )
 
 // Initialize 初始化配置中心模块

@@ -20,7 +20,7 @@ package boltdb
 import (
 	"time"
 
-	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/pole-io/pole-server/common/model"
 )
 
 type transaction struct {

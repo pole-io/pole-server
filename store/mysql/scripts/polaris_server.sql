@@ -55,6 +55,7 @@ CREATE TABLE
         `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means that it has been logically deleted',
         `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
+        `metadata` TEXT COMMENT 'instance metadata',
         PRIMARY KEY (`id`),
         KEY `service_id` (`service_id`),
         KEY `mtime` (`mtime`),
@@ -831,6 +832,7 @@ CREATE TABLE
     ) ENGINE = innodb;
 
 -- v1.14.0
+/* 熔断规则 */
 CREATE TABLE
     `circuitbreaker_rule_v2` (
         `id` VARCHAR(128) NOT NULL,
@@ -856,6 +858,7 @@ CREATE TABLE
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
 
+/* 主动探测 */
 CREATE TABLE
     `fault_detect_rule` (
         `id` VARCHAR(128) NOT NULL,

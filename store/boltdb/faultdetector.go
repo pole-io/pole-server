@@ -24,8 +24,8 @@ import (
 
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/store"
 )
 
 type faultDetectStore struct {

@@ -22,9 +22,9 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
-	"github.com/GovernSea/sergo-server/common/utils"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	authcommon "github.com/pole-io/pole-server/common/model/auth"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 // CreateServiceContracts .

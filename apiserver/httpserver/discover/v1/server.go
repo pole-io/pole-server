@@ -20,11 +20,11 @@ package v1
 import (
 	"github.com/emicklei/go-restful/v3"
 
-	"github.com/GovernSea/sergo-server/apiserver"
-	"github.com/GovernSea/sergo-server/apiserver/httpserver/docs"
-	"github.com/GovernSea/sergo-server/namespace"
-	"github.com/GovernSea/sergo-server/service"
-	"github.com/GovernSea/sergo-server/service/healthcheck"
+	"github.com/pole-io/pole-server/apiserver"
+	"github.com/pole-io/pole-server/apiserver/httpserver/docs"
+	"github.com/pole-io/pole-server/namespace"
+	"github.com/pole-io/pole-server/service"
+	"github.com/pole-io/pole-server/service/healthcheck"
 )
 
 type HTTPServerV1 struct {

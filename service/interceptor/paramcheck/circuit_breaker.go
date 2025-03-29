@@ -27,9 +27,9 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/common/log"
-	"github.com/GovernSea/sergo-server/common/utils"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/common/log"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 var (

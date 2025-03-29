@@ -18,12 +18,12 @@
 package service
 
 import (
-	"github.com/GovernSea/sergo-server/cache"
-	cachetypes "github.com/GovernSea/sergo-server/cache/api"
-	"github.com/GovernSea/sergo-server/namespace"
-	"github.com/GovernSea/sergo-server/service/batch"
-	"github.com/GovernSea/sergo-server/service/healthcheck"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/cache"
+	cachetypes "github.com/pole-io/pole-server/cache/api"
+	"github.com/pole-io/pole-server/namespace"
+	"github.com/pole-io/pole-server/service/batch"
+	"github.com/pole-io/pole-server/service/healthcheck"
+	"github.com/pole-io/pole-server/store"
 )
 
 /*

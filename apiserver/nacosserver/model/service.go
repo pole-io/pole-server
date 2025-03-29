@@ -21,7 +21,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/GovernSea/sergo-server/service"
+	"github.com/pole-io/pole-server/service"
 )
 
 type ServiceKey struct {

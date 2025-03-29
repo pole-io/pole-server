@@ -29,10 +29,10 @@ import (
 
 	"go.uber.org/zap"
 
-	nacosmodel "github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
-	"github.com/GovernSea/sergo-server/common/eventhub"
-	commontime "github.com/GovernSea/sergo-server/common/time"
-	"github.com/GovernSea/sergo-server/common/utils"
+	nacosmodel "github.com/pole-io/pole-server/apiserver/nacosserver/model"
+	"github.com/pole-io/pole-server/common/eventhub"
+	commontime "github.com/pole-io/pole-server/common/time"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 type PushType string

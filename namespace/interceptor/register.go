@@ -20,10 +20,10 @@ package interceptor
 import (
 	"context"
 
-	"github.com/GovernSea/sergo-server/auth"
-	cachetypes "github.com/GovernSea/sergo-server/cache/api"
-	"github.com/GovernSea/sergo-server/namespace"
-	ns_auth "github.com/GovernSea/sergo-server/namespace/interceptor/auth"
+	"github.com/pole-io/pole-server/auth"
+	cachetypes "github.com/pole-io/pole-server/cache/api"
+	"github.com/pole-io/pole-server/namespace"
+	ns_auth "github.com/pole-io/pole-server/namespace/interceptor/auth"
 )
 
 func init() {

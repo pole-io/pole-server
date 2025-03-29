@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/GovernSea/sergo-server/common/log"
+	"github.com/pole-io/pole-server/common/log"
 )
 
 // Conn 包装net.Conn

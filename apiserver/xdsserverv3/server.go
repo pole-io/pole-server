@@ -40,16 +40,16 @@ import (
 	"golang.org/x/sync/singleflight"
 	"google.golang.org/grpc"
 
-	"github.com/GovernSea/sergo-server/apiserver"
-	xdscache "github.com/GovernSea/sergo-server/apiserver/xdsserverv3/cache"
-	"github.com/GovernSea/sergo-server/apiserver/xdsserverv3/resource"
-	"github.com/GovernSea/sergo-server/cache"
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	connlimit "github.com/GovernSea/sergo-server/common/conn/limit"
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/service"
-	"github.com/GovernSea/sergo-server/service/healthcheck"
+	"github.com/pole-io/pole-server/apiserver"
+	xdscache "github.com/pole-io/pole-server/apiserver/xdsserverv3/cache"
+	"github.com/pole-io/pole-server/apiserver/xdsserverv3/resource"
+	"github.com/pole-io/pole-server/cache"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	connlimit "github.com/pole-io/pole-server/common/conn/limit"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/service"
+	"github.com/pole-io/pole-server/service/healthcheck"
 )
 
 type ResourceServer interface {

@@ -27,16 +27,16 @@ import (
 
 	"go.uber.org/zap"
 
-	commonhash "github.com/GovernSea/sergo-server/common/hash"
-	commontime "github.com/GovernSea/sergo-server/common/time"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/plugin"
-	"github.com/GovernSea/sergo-server/store"
+	commonhash "github.com/pole-io/pole-server/common/hash"
+	commontime "github.com/pole-io/pole-server/common/time"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/store"
 )
 
 const (
 	// PluginName plugin name
-	PluginName = "heartbeatLeader"
+	PluginName = "heartbeatp2p"
 	// Servers key to manage hb servers
 	Servers = "servers"
 	// CountSep separator to divide server and count
@@ -54,7 +54,7 @@ const (
 	// initializedSignal .
 	initializedSignal = int32(1)
 	// sendResource .
-	sendResource = "leaderchecker"
+	sendResource = "p2pchecker"
 )
 
 var (
@@ -65,8 +65,8 @@ var (
 )
 
 var (
-	ErrorRedirectOnlyOnce    = errors.New("redirect request only once")
-	ErrorLeaderNotInitialize = errors.New("leader checker uninitialize")
+	ErrorRedirectOnlyOnce  = errors.New("redirect request only once")
+	ErrorPeerNotInitialize = errors.New("p2p checker uninitialize")
 )
 
 func init() {

@@ -20,8 +20,8 @@ package healthcheck
 import (
 	"time"
 
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 // Config 健康检查配置

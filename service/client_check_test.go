@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	testsuit "github.com/GovernSea/sergo-server/test/suit"
+	testsuit "github.com/pole-io/pole-server/test/suit"
 )
 
 func TestClientCheck(t *testing.T) {

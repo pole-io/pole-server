@@ -21,7 +21,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/GovernSea/sergo-server/common/metrics"
+	"github.com/pole-io/pole-server/common/metrics"
 )
 
 var (

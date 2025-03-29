@@ -27,9 +27,9 @@ import (
 
 	"github.com/go-redis/redis/v8"
 
-	"github.com/GovernSea/sergo-server/common/log"
-	"github.com/GovernSea/sergo-server/common/metrics"
-	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/pole-io/pole-server/common/log"
+	"github.com/pole-io/pole-server/common/metrics"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 const (

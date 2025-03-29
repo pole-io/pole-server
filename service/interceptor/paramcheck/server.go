@@ -18,12 +18,12 @@
 package paramcheck
 
 import (
-	cachetypes "github.com/GovernSea/sergo-server/cache/api"
-	"github.com/GovernSea/sergo-server/common/log"
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/plugin"
-	"github.com/GovernSea/sergo-server/service"
-	"github.com/GovernSea/sergo-server/store"
+	cachetypes "github.com/pole-io/pole-server/cache/api"
+	"github.com/pole-io/pole-server/common/log"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/service"
+	"github.com/pole-io/pole-server/store"
 )
 
 // Server 带有鉴权能力的 discoverServer

@@ -26,7 +26,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/GovernSea/sergo-server/apiserver/grpcserver"
+	"github.com/pole-io/pole-server/apiserver/grpcserver"
 )
 
 func Test_discoverCacheConvert(t *testing.T) {

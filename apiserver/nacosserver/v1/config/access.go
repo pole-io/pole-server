@@ -24,8 +24,8 @@ import (
 	"github.com/emicklei/go-restful/v3"
 	"go.uber.org/zap"
 
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
-	nacoshttp "github.com/GovernSea/sergo-server/apiserver/nacosserver/v1/http"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/model"
+	nacoshttp "github.com/pole-io/pole-server/apiserver/nacosserver/v1/http"
 )
 
 func (n *ConfigServer) GetClientServer() (*restful.WebService, error) {

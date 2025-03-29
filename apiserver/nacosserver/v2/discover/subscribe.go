@@ -24,14 +24,14 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/core"
-	nacosmodel "github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
-	nacospb "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/pb"
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/remote"
-	"github.com/GovernSea/sergo-server/common/metrics"
-	commontime "github.com/GovernSea/sergo-server/common/time"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/core"
+	nacosmodel "github.com/pole-io/pole-server/apiserver/nacosserver/model"
+	nacospb "github.com/pole-io/pole-server/apiserver/nacosserver/v2/pb"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/v2/remote"
+	"github.com/pole-io/pole-server/common/metrics"
+	commontime "github.com/pole-io/pole-server/common/time"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 func (h *DiscoverServer) handleSubscribeServiceReques(ctx context.Context, req nacospb.BaseRequest,

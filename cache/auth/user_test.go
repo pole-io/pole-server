@@ -27,10 +27,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
-	types "github.com/GovernSea/sergo-server/cache/api"
-	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/store/mock"
+	types "github.com/pole-io/pole-server/cache/api"
+	authcommon "github.com/pole-io/pole-server/common/model/auth"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/store/mock"
 )
 
 // 创建一个测试mock userCache

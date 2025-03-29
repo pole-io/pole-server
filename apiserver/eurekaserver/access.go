@@ -26,8 +26,8 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/common/utils"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 const (

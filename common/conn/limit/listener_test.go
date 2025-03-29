@@ -30,8 +30,8 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/smartystreets/goconvey/convey"
 
-	"github.com/GovernSea/sergo-server/common/conn/limit/mock_net"
-	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/pole-io/pole-server/common/conn/limit/mock_net"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 // TestConnLimit 模拟一下连接限制

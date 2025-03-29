@@ -25,9 +25,9 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	"github.com/GovernSea/sergo-server/cache"
-	cachetypes "github.com/GovernSea/sergo-server/cache/api"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/cache"
+	cachetypes "github.com/pole-io/pole-server/cache/api"
+	"github.com/pole-io/pole-server/store"
 )
 
 var (

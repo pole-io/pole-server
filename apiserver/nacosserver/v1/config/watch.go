@@ -24,8 +24,8 @@ import (
 
 	"github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/config"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/config"
 )
 
 type LongPollWatchContext struct {

@@ -24,7 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/GovernSea/sergo-server/plugin/cmdb/memory/mock"
+	"github.com/pole-io/pole-server/plugin/cmdb/memory/mock"
 )
 
 func Test_fetcher_GetIPs(t *testing.T) {

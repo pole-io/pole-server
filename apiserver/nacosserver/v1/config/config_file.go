@@ -30,15 +30,15 @@ import (
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
-	nacoshttp "github.com/GovernSea/sergo-server/apiserver/nacosserver/v1/http"
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/common/metrics"
-	commonmodel "github.com/GovernSea/sergo-server/common/model"
-	commontime "github.com/GovernSea/sergo-server/common/time"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/config"
-	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/model"
+	nacoshttp "github.com/pole-io/pole-server/apiserver/nacosserver/v1/http"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/common/metrics"
+	commonmodel "github.com/pole-io/pole-server/common/model"
+	commontime "github.com/pole-io/pole-server/common/time"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/config"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 func (n *ConfigServer) handlePublishConfig(ctx context.Context, req *model.ConfigFile) (bool, error) {

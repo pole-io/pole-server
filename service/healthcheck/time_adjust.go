@@ -22,7 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/store"
 )
 
 const adjustInterval = 60 * time.Second

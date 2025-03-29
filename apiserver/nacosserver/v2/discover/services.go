@@ -20,10 +20,10 @@ package discover
 import (
 	"context"
 
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
-	nacosmodel "github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
-	nacospb "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/pb"
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/remote"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/model"
+	nacosmodel "github.com/pole-io/pole-server/apiserver/nacosserver/model"
+	nacospb "github.com/pole-io/pole-server/apiserver/nacosserver/v2/pb"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/v2/remote"
 )
 
 func (h *DiscoverServer) handleServiceListRequest(ctx context.Context, req nacospb.BaseRequest,

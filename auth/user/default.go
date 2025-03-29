@@ -21,9 +21,9 @@ import (
 	"fmt"
 	golog "log"
 
-	"github.com/GovernSea/sergo-server/auth"
-	user_auth "github.com/GovernSea/sergo-server/auth/user/inteceptor/auth"
-	"github.com/GovernSea/sergo-server/auth/user/inteceptor/paramcheck"
+	"github.com/pole-io/pole-server/auth"
+	user_auth "github.com/pole-io/pole-server/auth/user/inteceptor/auth"
+	"github.com/pole-io/pole-server/auth/user/inteceptor/paramcheck"
 )
 
 type ServerProxyFactory func(svr *Server, pre auth.UserServer) (auth.UserServer, error)

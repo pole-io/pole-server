@@ -22,8 +22,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/GovernSea/sergo-server/apiserver"
-	"github.com/GovernSea/sergo-server/common/log"
+	"github.com/pole-io/pole-server/apiserver"
+	"github.com/pole-io/pole-server/common/log"
 )
 
 var (

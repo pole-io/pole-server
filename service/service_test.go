@@ -35,17 +35,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/GovernSea/sergo-server/auth"
-	"github.com/GovernSea/sergo-server/cache"
-	cachetypes "github.com/GovernSea/sergo-server/cache/api"
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/namespace"
-	"github.com/GovernSea/sergo-server/service"
-	"github.com/GovernSea/sergo-server/store"
-	"github.com/GovernSea/sergo-server/store/mock"
-	testsuit "github.com/GovernSea/sergo-server/test/suit"
+	"github.com/pole-io/pole-server/auth"
+	"github.com/pole-io/pole-server/cache"
+	cachetypes "github.com/pole-io/pole-server/cache/api"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/namespace"
+	"github.com/pole-io/pole-server/service"
+	"github.com/pole-io/pole-server/store"
+	"github.com/pole-io/pole-server/store/mock"
+	testsuit "github.com/pole-io/pole-server/test/suit"
 )
 
 // 测试新增服务

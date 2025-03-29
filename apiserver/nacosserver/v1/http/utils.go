@@ -30,8 +30,8 @@ import (
 
 	restful "github.com/emicklei/go-restful/v3"
 
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
-	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/model"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 // WrirteSimpleResponse .

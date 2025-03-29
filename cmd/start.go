@@ -20,7 +20,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/GovernSea/sergo-server/bootstrap"
+	"github.com/pole-io/pole-server/bootstrap"
 )
 
 var (

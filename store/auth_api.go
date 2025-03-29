@@ -20,7 +20,7 @@ package store
 import (
 	"time"
 
-	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	authcommon "github.com/pole-io/pole-server/common/model/auth"
 )
 
 type AuthStore interface {

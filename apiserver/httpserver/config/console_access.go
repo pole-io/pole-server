@@ -27,9 +27,9 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
-	httpcommon "github.com/GovernSea/sergo-server/apiserver/httpserver/utils"
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/common/utils"
+	httpcommon "github.com/pole-io/pole-server/apiserver/httpserver/utils"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 // CreateConfigFileGroup 创建配置文件组

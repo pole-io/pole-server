@@ -22,8 +22,8 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 
-	v1 "github.com/GovernSea/sergo-server/apiserver/nacosserver/v1"
-	nacoshttp "github.com/GovernSea/sergo-server/apiserver/nacosserver/v1/http"
+	v1 "github.com/pole-io/pole-server/apiserver/nacosserver/v1"
+	nacoshttp "github.com/pole-io/pole-server/apiserver/nacosserver/v1/http"
 )
 
 func (n *NacosV2Server) RegistryDebugRoute() {

@@ -24,9 +24,9 @@ import (
 
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
-	"github.com/GovernSea/sergo-server/common/model"
-	commonstore "github.com/GovernSea/sergo-server/common/store"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/common/model"
+	commonstore "github.com/pole-io/pole-server/common/store"
+	"github.com/pole-io/pole-server/store"
 )
 
 // InstanceCtrl 批量操作实例的类

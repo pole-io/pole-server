@@ -18,8 +18,8 @@
 package cache_client
 
 import (
-	"github.com/GovernSea/sergo-server/common/metrics"
-	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/pole-io/pole-server/common/metrics"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 func (c *clientCache) reportMetricsInfo() {

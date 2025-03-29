@@ -24,11 +24,11 @@ import (
 	"strconv"
 	"time"
 
-	commonlog "github.com/GovernSea/sergo-server/common/log"
-	"github.com/GovernSea/sergo-server/common/metrics"
-	commontime "github.com/GovernSea/sergo-server/common/time"
-	"github.com/GovernSea/sergo-server/plugin"
-	"github.com/GovernSea/sergo-server/plugin/statis/base"
+	commonlog "github.com/pole-io/pole-server/common/log"
+	"github.com/pole-io/pole-server/common/metrics"
+	commontime "github.com/pole-io/pole-server/common/time"
+	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/plugin/statis/base"
 )
 
 const (

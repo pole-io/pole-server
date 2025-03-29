@@ -1,4 +1,4 @@
-module github.com/GovernSea/sergo-server/release/upgrade/circuitbreaker_rule_transform
+module github.com/pole-io/pole-server/release/upgrade/circuitbreaker_rule_transform
 
 go 1.19
 

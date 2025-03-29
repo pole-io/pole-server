@@ -28,7 +28,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/GovernSea/sergo-server/cache"
+	"github.com/pole-io/pole-server/cache"
 )
 
 func TestInstanceCheck(t *testing.T) {

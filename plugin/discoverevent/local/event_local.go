@@ -24,11 +24,11 @@ import (
 	"sync"
 	"time"
 
-	commonlog "github.com/GovernSea/sergo-server/common/log"
-	"github.com/GovernSea/sergo-server/common/model"
-	commontime "github.com/GovernSea/sergo-server/common/time"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/plugin"
+	commonlog "github.com/pole-io/pole-server/common/log"
+	"github.com/pole-io/pole-server/common/model"
+	commontime "github.com/pole-io/pole-server/common/time"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 const (

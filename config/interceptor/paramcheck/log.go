@@ -17,7 +17,7 @@
 
 package paramcheck
 
-import commonLog "github.com/GovernSea/sergo-server/common/log"
+import commonLog "github.com/pole-io/pole-server/common/log"
 
 var (
 	log     = commonLog.GetScopeOrDefaultByName(commonLog.ConfigLoggerName)

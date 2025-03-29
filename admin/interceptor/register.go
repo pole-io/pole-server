@@ -20,9 +20,9 @@ package inteceptor
 import (
 	"context"
 
-	"github.com/GovernSea/sergo-server/admin"
-	admin_auth "github.com/GovernSea/sergo-server/admin/interceptor/auth"
-	"github.com/GovernSea/sergo-server/auth"
+	"github.com/pole-io/pole-server/admin"
+	admin_auth "github.com/pole-io/pole-server/admin/interceptor/auth"
+	"github.com/pole-io/pole-server/auth"
 )
 
 func init() {

@@ -29,13 +29,13 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
 
-	types "github.com/GovernSea/sergo-server/cache/api"
-	cachemock "github.com/GovernSea/sergo-server/cache/mock"
-	"github.com/GovernSea/sergo-server/common/eventhub"
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/store"
-	"github.com/GovernSea/sergo-server/store/mock"
+	types "github.com/pole-io/pole-server/cache/api"
+	cachemock "github.com/pole-io/pole-server/cache/mock"
+	"github.com/pole-io/pole-server/common/eventhub"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/store"
+	"github.com/pole-io/pole-server/store/mock"
 )
 
 // 生成一个测试的serviceCache和对应的mock对象

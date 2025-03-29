@@ -27,7 +27,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	api "github.com/GovernSea/sergo-server/common/api/v1"
+	api "github.com/pole-io/pole-server/common/api/v1"
 )
 
 // JSONFromNamespaces 将命名空间数组转换为JSON

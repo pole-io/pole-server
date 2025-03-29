@@ -27,8 +27,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/store"
 )
 
 // instanceStore 实现了InstanceStore接口
@@ -67,12 +68,6 @@ func (ins *instanceStore) addInstance(instance *model.Instance) error {
 	if err := addInstanceCheck(tx, instance); err != nil {
 		return err
 	}
-
-	if err := updateInstanceMeta(tx, instance); err != nil {
-		log.Errorf("[Store][database] add instance meta err: %s", err.Error())
-		return err
-	}
-
 	if err := tx.Commit(); err != nil {
 		log.Errorf("[Store][database] add instance commit tx err: %s", err.Error())
 		return err
@@ -197,11 +192,6 @@ func cleanInstance(tx *BaseTx, instanceID string) error {
 	cleanIns := "delete from instance where id = ? and flag = 1"
 	if _, err := tx.Exec(cleanIns, instanceID); err != nil {
 		log.Errorf("[Store][database] clean instance(%s), err: %s", instanceID, err.Error())
-		return store.Error(err)
-	}
-	cleanMeta := "delete from instance_metadata where id = ?"
-	if _, err := tx.Exec(cleanMeta, instanceID); err != nil {
-		log.Errorf("[Store][database] clean instance_metadata(%s), err: %s", instanceID, err.Error())
 		return store.Error(err)
 	}
 	cleanCheck := "delete from health_check where id = ?"
@@ -727,16 +717,6 @@ func (ins *instanceStore) getMoreInstancesMainWithMeta(tx *BaseTx, mtime time.Ti
 			log.Errorf("[Store][database] get more instance main err: %s", err.Error())
 			return nil, err
 		}
-		// 获取全量服务实例元数据
-		str := "select id, mkey, mvalue from instance_metadata"
-		rows, err := tx.Query(str)
-		if err != nil {
-			log.Errorf("[Store][database] acquire instances meta query err: %s", err.Error())
-			return nil, err
-		}
-		if err := fetchInstanceMetaRows(instances, rows); err != nil {
-			return nil, err
-		}
 		return instances, nil
 	}
 
@@ -942,13 +922,13 @@ func batchQueryMetadata(queryHandler QueryHandler, instances []interface{}) (*sq
 func addMainInstance(tx *BaseTx, instance *model.Instance) error {
 	// #lizard forgives
 	str := `replace into instance(id, service_id, vpc_id, host, port, protocol, version, health_status, isolate,
-		 weight, enable_health_check, logic_set, cmdb_region, cmdb_zone, cmdb_idc, priority, revision, ctime, mtime)
+		 weight, enable_health_check, logic_set, cmdb_region, cmdb_zone, cmdb_idc, priority, metadata, revision, ctime, mtime)
 			 values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())`
 	_, err := tx.Exec(str, instance.ID(), instance.ServiceID, instance.VpcID(), instance.Host(), instance.Port(),
 		instance.Protocol(), instance.Version(), instance.Healthy(), instance.Isolate(), instance.Weight(),
 		instance.EnableHealthCheck(), instance.LogicSet(), instance.Location().GetRegion().GetValue(),
 		instance.Location().GetZone().GetValue(), instance.Location().GetCampus().GetValue(),
-		instance.Priority(), instance.Revision())
+		instance.Priority(), utils.MustJson(instance.Proto.GetMetadata()), instance.Revision())
 	return err
 }
 
@@ -1276,7 +1256,7 @@ func genInstanceSelectSQL() string {
 	str := `select instance.id, service_id, IFNULL(vpc_id,""), host, port, IFNULL(protocol, ""), IFNULL(version, ""),
 			 health_status, isolate, weight, enable_health_check, IFNULL(logic_set, ""), IFNULL(cmdb_region, ""), 
 			 IFNULL(cmdb_zone, ""), IFNULL(cmdb_idc, ""), priority, revision, flag, IFNULL(health_check.type, -1), 
-			 IFNULL(health_check.ttl, 0), UNIX_TIMESTAMP(instance.ctime), UNIX_TIMESTAMP(instance.mtime)   
+			 IFNULL(health_check.ttl, 0), UNIX_TIMESTAMP(instance.ctime), UNIX_TIMESTAMP(instance.mtime), IFNULL(metadata, "{}")
 			 from instance left join health_check 
 			 on instance.id = health_check.id `
 	return str
@@ -1287,11 +1267,9 @@ func genCompleteInstanceSelectSQL() string {
 	str := `select instance.id, service_id, IFNULL(vpc_id,""), host, port, IFNULL(protocol, ""), IFNULL(version, ""),
 		 health_status, isolate, weight, enable_health_check, IFNULL(logic_set, ""), IFNULL(cmdb_region, ""),
 		 IFNULL(cmdb_zone, ""), IFNULL(cmdb_idc, ""), priority, revision, flag, IFNULL(health_check.type, -1),
-		 IFNULL(health_check.ttl, 0), IFNULL(instance_metadata.id, ""), IFNULL(mkey, ""), IFNULL(mvalue, ""), 
-		 UNIX_TIMESTAMP(instance.ctime), UNIX_TIMESTAMP(instance.mtime)
+		 IFNULL(health_check.ttl, 0), UNIX_TIMESTAMP(instance.ctime), UNIX_TIMESTAMP(instance.mtime), IFNULL(instance.metadata, "{}")
 		 from instance 
-		 left join health_check on instance.id = health_check.id 
-		 left join instance_metadata on instance.id = instance_metadata.id `
+		 left join health_check on instance.id = health_check.id `
 	return str
 }
 

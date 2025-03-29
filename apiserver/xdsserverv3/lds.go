@@ -33,8 +33,8 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/GovernSea/sergo-server/apiserver/xdsserverv3/resource"
-	"github.com/GovernSea/sergo-server/service"
+	"github.com/pole-io/pole-server/apiserver/xdsserverv3/resource"
+	"github.com/pole-io/pole-server/service"
 )
 
 var (

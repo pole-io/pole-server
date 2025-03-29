@@ -20,10 +20,10 @@ package service
 import (
 	"container/list"
 
-	types "github.com/GovernSea/sergo-server/cache/api"
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/store"
+	types "github.com/pole-io/pole-server/cache/api"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/store"
 )
 
 // l5Cache L5的cache对象

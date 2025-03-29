@@ -25,9 +25,9 @@ import (
 
 	"go.uber.org/zap"
 
-	commonlog "github.com/GovernSea/sergo-server/common/log"
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/plugin"
+	commonlog "github.com/pole-io/pole-server/common/log"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 const (

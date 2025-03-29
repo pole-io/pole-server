@@ -20,7 +20,7 @@ package config
 import (
 	"testing"
 
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/model"
 )
 
 func Test_md5ResultString(t *testing.T) {

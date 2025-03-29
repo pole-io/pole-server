@@ -20,8 +20,8 @@ package plugin
 import (
 	"os"
 
-	commonLog "github.com/GovernSea/sergo-server/common/log"
-	"github.com/GovernSea/sergo-server/common/model"
+	commonLog "github.com/pole-io/pole-server/common/log"
+	"github.com/pole-io/pole-server/common/model"
 )
 
 // CMDB CMDB插件接口

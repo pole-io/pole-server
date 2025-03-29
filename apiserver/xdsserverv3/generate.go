@@ -30,12 +30,12 @@ import (
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
-	"github.com/GovernSea/sergo-server/apiserver/xdsserverv3/cache"
-	"github.com/GovernSea/sergo-server/apiserver/xdsserverv3/resource"
-	"github.com/GovernSea/sergo-server/common/metrics"
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/plugin"
-	"github.com/GovernSea/sergo-server/service"
+	"github.com/pole-io/pole-server/apiserver/xdsserverv3/cache"
+	"github.com/pole-io/pole-server/apiserver/xdsserverv3/resource"
+	"github.com/pole-io/pole-server/common/metrics"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/service"
 )
 
 var (

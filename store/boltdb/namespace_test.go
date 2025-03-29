@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/pole-io/pole-server/common/model"
 )
 
 const (

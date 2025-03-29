@@ -1,4 +1,4 @@
-module github.com/GovernSea/sergo-server
+module github.com/pole-io/pole-server
 
 go 1.21
 

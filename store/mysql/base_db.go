@@ -24,9 +24,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GovernSea/sergo-server/common/metrics"
-	"github.com/GovernSea/sergo-server/plugin"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/common/metrics"
+	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/store"
 )
 
 // db抛出的异常，需要重试的字符串组

@@ -33,12 +33,12 @@ import (
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"go.uber.org/zap"
 
-	cachetypes "github.com/GovernSea/sergo-server/cache/api"
-	apiv1 "github.com/GovernSea/sergo-server/common/api/v1"
-	"github.com/GovernSea/sergo-server/common/model"
-	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
-	commonstore "github.com/GovernSea/sergo-server/common/store"
-	"github.com/GovernSea/sergo-server/common/utils"
+	cachetypes "github.com/pole-io/pole-server/cache/api"
+	apiv1 "github.com/pole-io/pole-server/common/api/v1"
+	"github.com/pole-io/pole-server/common/model"
+	authcommon "github.com/pole-io/pole-server/common/model/auth"
+	commonstore "github.com/pole-io/pole-server/common/store"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 // CreateRoutingConfigsV2 Create a routing configuration

@@ -18,8 +18,8 @@
 package v1
 
 import (
-	"github.com/GovernSea/sergo-server/service"
-	"github.com/GovernSea/sergo-server/service/healthcheck"
+	"github.com/pole-io/pole-server/service"
+	"github.com/pole-io/pole-server/service/healthcheck"
 )
 
 type DiscoverServer struct {

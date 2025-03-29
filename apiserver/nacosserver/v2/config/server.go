@@ -18,13 +18,13 @@
 package config
 
 import (
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/core"
-	nacospb "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/pb"
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/remote"
-	"github.com/GovernSea/sergo-server/auth"
-	cachetypes "github.com/GovernSea/sergo-server/cache/api"
-	"github.com/GovernSea/sergo-server/config"
-	"github.com/GovernSea/sergo-server/namespace"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/core"
+	nacospb "github.com/pole-io/pole-server/apiserver/nacosserver/v2/pb"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/v2/remote"
+	"github.com/pole-io/pole-server/auth"
+	cachetypes "github.com/pole-io/pole-server/cache/api"
+	"github.com/pole-io/pole-server/config"
+	"github.com/pole-io/pole-server/namespace"
 )
 
 type ServerOption struct {

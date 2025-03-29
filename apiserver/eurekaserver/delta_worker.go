@@ -25,9 +25,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	commontime "github.com/GovernSea/sergo-server/common/time"
-	"github.com/GovernSea/sergo-server/service"
-	"github.com/GovernSea/sergo-server/service/healthcheck"
+	commontime "github.com/pole-io/pole-server/common/time"
+	"github.com/pole-io/pole-server/service"
+	"github.com/pole-io/pole-server/service/healthcheck"
 )
 
 func sha1s(bytes []byte) string {

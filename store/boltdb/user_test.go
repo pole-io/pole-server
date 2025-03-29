@@ -26,7 +26,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	authcommon "github.com/pole-io/pole-server/common/model/auth"
 )
 
 func createTestUsers(num int) []*authcommon.User {

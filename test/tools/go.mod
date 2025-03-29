@@ -1,4 +1,4 @@
-module github.com/GovernSea/sergo-server/test/tools
+module github.com/pole-io/pole-server/test/tools
 
 go 1.14
 

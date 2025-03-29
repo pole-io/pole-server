@@ -25,17 +25,17 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/GovernSea/sergo-server/admin"
-	"github.com/GovernSea/sergo-server/apiserver"
-	"github.com/GovernSea/sergo-server/auth"
-	"github.com/GovernSea/sergo-server/cache"
-	"github.com/GovernSea/sergo-server/common/log"
-	"github.com/GovernSea/sergo-server/config"
-	"github.com/GovernSea/sergo-server/namespace"
-	"github.com/GovernSea/sergo-server/plugin"
-	"github.com/GovernSea/sergo-server/service"
-	"github.com/GovernSea/sergo-server/service/healthcheck"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/admin"
+	"github.com/pole-io/pole-server/apiserver"
+	"github.com/pole-io/pole-server/auth"
+	"github.com/pole-io/pole-server/cache"
+	"github.com/pole-io/pole-server/common/log"
+	"github.com/pole-io/pole-server/config"
+	"github.com/pole-io/pole-server/namespace"
+	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/service"
+	"github.com/pole-io/pole-server/service/healthcheck"
+	"github.com/pole-io/pole-server/store"
 )
 
 // Config 配置

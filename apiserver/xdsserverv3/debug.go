@@ -24,8 +24,8 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
-	"github.com/GovernSea/sergo-server/apiserver/xdsserverv3/resource"
-	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/pole-io/pole-server/apiserver/xdsserverv3/resource"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 func (x *XDSServer) listXDSNodes(resp http.ResponseWriter, req *http.Request) {

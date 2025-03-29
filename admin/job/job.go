@@ -23,11 +23,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/GovernSea/sergo-server/cache"
-	commonlog "github.com/GovernSea/sergo-server/common/log"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/service"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/cache"
+	commonlog "github.com/pole-io/pole-server/common/log"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/service"
+	"github.com/pole-io/pole-server/store"
 )
 
 var log = commonlog.GetScopeOrDefaultByName(commonlog.DefaultLoggerName)

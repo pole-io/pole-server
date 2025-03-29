@@ -21,7 +21,7 @@ import (
 	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	cachev3 "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 
-	"github.com/GovernSea/sergo-server/apiserver/xdsserverv3/resource"
+	"github.com/pole-io/pole-server/apiserver/xdsserverv3/resource"
 )
 
 // statusInfo tracks the server state for the remote Envoy node.

@@ -21,9 +21,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/GovernSea/sergo-server/common/log"
-	"github.com/GovernSea/sergo-server/common/metrics"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/common/log"
+	"github.com/pole-io/pole-server/common/metrics"
+	"github.com/pole-io/pole-server/store"
 )
 
 type BaseWorker struct {

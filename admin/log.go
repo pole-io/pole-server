@@ -18,7 +18,7 @@
 package admin
 
 import (
-	commonlog "github.com/GovernSea/sergo-server/common/log"
+	commonlog "github.com/pole-io/pole-server/common/log"
 )
 
 var log = commonlog.GetScopeOrDefaultByName(commonlog.DefaultLoggerName)

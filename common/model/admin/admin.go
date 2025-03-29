@@ -20,7 +20,7 @@ package admin
 import (
 	"time"
 
-	connlimit "github.com/GovernSea/sergo-server/common/conn/limit"
+	connlimit "github.com/pole-io/pole-server/common/conn/limit"
 )
 
 // LeaderElection leader election info

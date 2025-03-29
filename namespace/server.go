@@ -23,10 +23,10 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"golang.org/x/sync/singleflight"
 
-	"github.com/GovernSea/sergo-server/cache"
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/plugin"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/cache"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/store"
 )
 
 var _ NamespaceOperateServer = (*Server)(nil)

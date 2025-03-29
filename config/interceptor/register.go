@@ -18,12 +18,12 @@
 package config_chain
 
 import (
-	"github.com/GovernSea/sergo-server/auth"
-	cachetypes "github.com/GovernSea/sergo-server/cache/api"
-	"github.com/GovernSea/sergo-server/config"
-	config_auth "github.com/GovernSea/sergo-server/config/interceptor/auth"
-	"github.com/GovernSea/sergo-server/config/interceptor/paramcheck"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/auth"
+	cachetypes "github.com/pole-io/pole-server/cache/api"
+	"github.com/pole-io/pole-server/config"
+	config_auth "github.com/pole-io/pole-server/config/interceptor/auth"
+	"github.com/pole-io/pole-server/config/interceptor/paramcheck"
+	"github.com/pole-io/pole-server/store"
 )
 
 func init() {

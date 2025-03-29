@@ -26,10 +26,10 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	commonstore "github.com/GovernSea/sergo-server/common/store"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/store"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	commonstore "github.com/pole-io/pole-server/common/store"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/store"
 )
 
 // some options config

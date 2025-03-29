@@ -20,7 +20,7 @@ package store
 import (
 	"time"
 
-	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/pole-io/pole-server/common/model"
 )
 
 // Store 通用存储接口

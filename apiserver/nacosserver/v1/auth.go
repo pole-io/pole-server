@@ -22,8 +22,8 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 
-	nacoshttp "github.com/GovernSea/sergo-server/apiserver/nacosserver/v1/http"
-	authcommon "github.com/GovernSea/sergo-server/common/model/auth"
+	nacoshttp "github.com/pole-io/pole-server/apiserver/nacosserver/v1/http"
+	authcommon "github.com/pole-io/pole-server/common/model/auth"
 )
 
 func (n *NacosV1Server) GetAuthServer() (*restful.WebService, error) {

@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/GovernSea/sergo-server/common/version"
+	"github.com/pole-io/pole-server/common/version"
 )
 
 var (

@@ -20,8 +20,8 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
-	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/model"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 type ConfigListenContext struct {

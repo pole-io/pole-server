@@ -22,8 +22,14 @@ import (
 	"os"
 	"sync"
 
-	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/pole-io/pole-server/common/model"
 )
+
+type CheckerPeer struct {
+	Host string
+	ID   string
+	Port uint32
+}
 
 // ReportRequest report heartbeat request
 type ReportRequest struct {

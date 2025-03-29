@@ -17,7 +17,7 @@
 
 package plugin
 
-import "github.com/GovernSea/sergo-server/common/model"
+import "github.com/pole-io/pole-server/common/model"
 
 // Syncer .
 type Syncer interface {

@@ -27,8 +27,8 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/server/stream/v3"
 	"go.uber.org/zap"
 
-	"github.com/GovernSea/sergo-server/apiserver/xdsserverv3/resource"
-	"github.com/GovernSea/sergo-server/common/utils"
+	"github.com/pole-io/pole-server/apiserver/xdsserverv3/resource"
+	"github.com/pole-io/pole-server/common/utils"
 )
 
 // CacheHook .

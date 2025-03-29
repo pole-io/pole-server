@@ -23,8 +23,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	api "github.com/GovernSea/sergo-server/common/api/v1"
-	testsuit "github.com/GovernSea/sergo-server/test/suit"
+	api "github.com/pole-io/pole-server/common/api/v1"
+	testsuit "github.com/pole-io/pole-server/test/suit"
 )
 
 func TestDispatchHeartbeat(t *testing.T) {

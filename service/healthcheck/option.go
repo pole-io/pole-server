@@ -21,11 +21,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/GovernSea/sergo-server/cache"
-	"github.com/GovernSea/sergo-server/common/eventhub"
-	"github.com/GovernSea/sergo-server/plugin"
-	"github.com/GovernSea/sergo-server/service/batch"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/cache"
+	"github.com/pole-io/pole-server/common/eventhub"
+	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/service/batch"
+	"github.com/pole-io/pole-server/store"
 )
 
 // Server health checks the main server

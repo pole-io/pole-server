@@ -25,9 +25,9 @@ import (
 
 	"github.com/golang/mock/gomock"
 
-	"github.com/GovernSea/sergo-server/common/eventhub"
-	"github.com/GovernSea/sergo-server/common/utils"
-	"github.com/GovernSea/sergo-server/store/mock"
+	"github.com/pole-io/pole-server/common/eventhub"
+	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/store/mock"
 )
 
 const (

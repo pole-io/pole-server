@@ -24,7 +24,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	commontime "github.com/GovernSea/sergo-server/common/time"
+	commontime "github.com/pole-io/pole-server/common/time"
 )
 
 // Client 客户端上报信息表

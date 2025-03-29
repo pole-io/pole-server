@@ -18,7 +18,7 @@
 package admin
 
 import (
-	"github.com/GovernSea/sergo-server/admin/job"
+	"github.com/pole-io/pole-server/admin/job"
 )
 
 // Config maintain configuration

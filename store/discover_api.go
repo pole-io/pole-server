@@ -21,7 +21,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/GovernSea/sergo-server/common/model"
+	"github.com/pole-io/pole-server/common/model"
 )
 
 // NamingModuleStore Service discovery, governance center module storage interface

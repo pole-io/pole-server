@@ -20,8 +20,8 @@ package resource
 import (
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 
-	"github.com/GovernSea/sergo-server/common/model"
-	"github.com/GovernSea/sergo-server/service"
+	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/service"
 )
 
 // XDSBuilder .

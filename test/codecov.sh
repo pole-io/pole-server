@@ -20,67 +20,67 @@ cur_dir=$(pwd)
 
 # apiserver 模块的包信息
 apiserver_pkg=(
-    "github.com/GovernSea/sergo-server/apiserver"
-    "github.com/GovernSea/sergo-server/apiserver/eurekaserver"
-    "github.com/GovernSea/sergo-server/apiserver/xdsserverv3"
-    "github.com/GovernSea/sergo-server/apiserver/nacosserver"
-    "github.com/GovernSea/sergo-server/apiserver/nacosserver/core"
-    "github.com/GovernSea/sergo-server/apiserver/nacosserver/v1"
-    "github.com/GovernSea/sergo-server/apiserver/nacosserver/v1/discover"
-    "github.com/GovernSea/sergo-server/apiserver/nacosserver/v1/config"
-    "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2"
-    "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/discover"
-    "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/config"
-    "github.com/GovernSea/sergo-server/apiserver/nacosserver/v2/remote"
+    "github.com/pole-io/pole-server/apiserver"
+    "github.com/pole-io/pole-server/apiserver/eurekaserver"
+    "github.com/pole-io/pole-server/apiserver/xdsserverv3"
+    "github.com/pole-io/pole-server/apiserver/nacosserver"
+    "github.com/pole-io/pole-server/apiserver/nacosserver/core"
+    "github.com/pole-io/pole-server/apiserver/nacosserver/v1"
+    "github.com/pole-io/pole-server/apiserver/nacosserver/v1/discover"
+    "github.com/pole-io/pole-server/apiserver/nacosserver/v1/config"
+    "github.com/pole-io/pole-server/apiserver/nacosserver/v2"
+    "github.com/pole-io/pole-server/apiserver/nacosserver/v2/discover"
+    "github.com/pole-io/pole-server/apiserver/nacosserver/v2/config"
+    "github.com/pole-io/pole-server/apiserver/nacosserver/v2/remote"
 )
 
 # 鉴权模块的包信息
 auth_pkg=(
-    "github.com/GovernSea/sergo-server/auth/user"
-    "github.com/GovernSea/sergo-server/auth/policy"
+    "github.com/pole-io/pole-server/auth/user"
+    "github.com/pole-io/pole-server/auth/policy"
 )
 
 # cache 模块的包信息
 cache_pkg=(
-    "github.com/GovernSea/sergo-server/cache"
-    "github.com/GovernSea/sergo-server/cache/service"
-    "github.com/GovernSea/sergo-server/cache/config"
-    "github.com/GovernSea/sergo-server/cache/gray"
-    "github.com/GovernSea/sergo-server/cache/auth"
-    "github.com/GovernSea/sergo-server/cache/client"
+    "github.com/pole-io/pole-server/cache"
+    "github.com/pole-io/pole-server/cache/service"
+    "github.com/pole-io/pole-server/cache/config"
+    "github.com/pole-io/pole-server/cache/gray"
+    "github.com/pole-io/pole-server/cache/auth"
+    "github.com/pole-io/pole-server/cache/client"
 )
 
 # 注册发现模块的包信息
 discover_pkg=(
-    "github.com/GovernSea/sergo-server/service"
-    "github.com/GovernSea/sergo-server/service/batch"
-    "github.com/GovernSea/sergo-server/service/healthcheck"
+    "github.com/pole-io/pole-server/service"
+    "github.com/pole-io/pole-server/service/batch"
+    "github.com/pole-io/pole-server/service/healthcheck"
 )
 
 # 配置模块
 config_pkg=(
-    "github.com/GovernSea/sergo-server/config"
+    "github.com/pole-io/pole-server/config"
 )
 
 # 存储模块
 store_pkg=(
-    "github.com/GovernSea/sergo-server/store/boltdb"
-    "github.com/GovernSea/sergo-server/store/mysql"
+    "github.com/pole-io/pole-server/store/boltdb"
+    "github.com/pole-io/pole-server/store/mysql"
 )
 
 # 插件模块
 plugin_pkg=(
-    "github.com/GovernSea/sergo-server/plugin"
-    "github.com/GovernSea/sergo-server/plugin/healthchecker/leader"
-    "github.com/GovernSea/sergo-server/plugin/healthchecker/memory"
-    "github.com/GovernSea/sergo-server/plugin/healthchecker/redis"
+    "github.com/pole-io/pole-server/plugin"
+    "github.com/pole-io/pole-server/plugin/healthchecker/leader"
+    "github.com/pole-io/pole-server/plugin/healthchecker/memory"
+    "github.com/pole-io/pole-server/plugin/healthchecker/redis"
 )
 
 # 普通包模块
 common_pkg=(
-    "github.com/GovernSea/sergo-server/common/eventhub"
-    "github.com/GovernSea/sergo-server/common/redispool"
-    "github.com/GovernSea/sergo-server/common/timewheel"
+    "github.com/pole-io/pole-server/common/eventhub"
+    "github.com/pole-io/pole-server/common/redispool"
+    "github.com/pole-io/pole-server/common/timewheel"
 )
 
 coverpkg=""

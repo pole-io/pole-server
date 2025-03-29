@@ -25,9 +25,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/GovernSea/sergo-server/common/redispool"
-	commontime "github.com/GovernSea/sergo-server/common/time"
-	"github.com/GovernSea/sergo-server/plugin"
+	"github.com/pole-io/pole-server/common/redispool"
+	commontime "github.com/pole-io/pole-server/common/time"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 type mockPool struct {

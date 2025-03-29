@@ -25,8 +25,8 @@ import (
 
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/GovernSea/sergo-server/test/integrate/http"
-	"github.com/GovernSea/sergo-server/test/integrate/resource"
+	"github.com/pole-io/pole-server/test/integrate/http"
+	"github.com/pole-io/pole-server/test/integrate/resource"
 )
 
 /**

@@ -20,9 +20,9 @@ package nacosserver
 import (
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/GovernSea/sergo-server/apiserver/nacosserver/model"
-	connlimit "github.com/GovernSea/sergo-server/common/conn/limit"
-	"github.com/GovernSea/sergo-server/common/secure"
+	"github.com/pole-io/pole-server/apiserver/nacosserver/model"
+	connlimit "github.com/pole-io/pole-server/common/conn/limit"
+	"github.com/pole-io/pole-server/common/secure"
 )
 
 type NacosConfig struct {

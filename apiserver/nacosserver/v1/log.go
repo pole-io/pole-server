@@ -17,7 +17,7 @@
 
 package v1
 
-import "github.com/GovernSea/sergo-server/apiserver/nacosserver/logger"
+import "github.com/pole-io/pole-server/apiserver/nacosserver/logger"
 
 var (
 	nacoslog = logger.GetNacosLog()

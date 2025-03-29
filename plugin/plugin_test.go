@@ -20,7 +20,7 @@ package plugin
 import (
 	"testing"
 
-	"github.com/GovernSea/sergo-server/common/metrics"
+	"github.com/pole-io/pole-server/common/metrics"
 )
 
 func Test_Statis(t *testing.T) {

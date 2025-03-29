@@ -18,11 +18,11 @@
 package service_chain
 
 import (
-	"github.com/GovernSea/sergo-server/auth"
-	"github.com/GovernSea/sergo-server/service"
-	service_auth "github.com/GovernSea/sergo-server/service/interceptor/auth"
-	"github.com/GovernSea/sergo-server/service/interceptor/paramcheck"
-	"github.com/GovernSea/sergo-server/store"
+	"github.com/pole-io/pole-server/auth"
+	"github.com/pole-io/pole-server/service"
+	service_auth "github.com/pole-io/pole-server/service/interceptor/auth"
+	"github.com/pole-io/pole-server/service/interceptor/paramcheck"
+	"github.com/pole-io/pole-server/store"
 )
 
 func init() {
