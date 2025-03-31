@@ -25,9 +25,9 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/pole-io/pole-server/apis/access_control/auth"
+	"github.com/pole-io/pole-server/apis/apiserver"
 	"github.com/pole-io/pole-server/pkg/admin"
-	"github.com/pole-io/pole-server/pkg/apiserver"
-	"github.com/pole-io/pole-server/pkg/auth"
 	"github.com/pole-io/pole-server/pkg/cache"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/config"

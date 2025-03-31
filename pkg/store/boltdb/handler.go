@@ -26,7 +26,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/pole-io/pole-server/store"
+	"github.com/pole-io/pole-server/pkg/store"
 )
 
 const (

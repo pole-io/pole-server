@@ -34,7 +34,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"gopkg.in/yaml.v2"
 
-	"github.com/pole-io/pole-server/pkg/auth"
+	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/pkg/cache"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"

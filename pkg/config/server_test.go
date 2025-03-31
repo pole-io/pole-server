@@ -25,11 +25,12 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/pkg/auth"
+	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	mockcache "github.com/pole-io/pole-server/pkg/cache/mock"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	mockstore "github.com/pole-io/pole-server/pkg/store/mock"
 	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/plugin/access_control/auth"
 )
 
 func Test_Initialize(t *testing.T) {
@@ -51,7 +52,7 @@ func Test_Initialize(t *testing.T) {
 	cacheMgr.EXPECT().GetReportInterval().Return(time.Second).AnyTimes()
 	cacheMgr.EXPECT().GetUpdateCacheInterval().Return(time.Second).AnyTimes()
 
-	_, _, err := auth.TestInitialize(context.Background(), &auth.Config{}, mockStore, cacheMgr)
+	_, _, err := auth.TestInitialize(context.Background(), &authapi.Config{}, mockStore, cacheMgr)
 	assert.NoError(t, err)
 
 	proxySvr, originSvr, err := doInitialize(context.Background(), Config{

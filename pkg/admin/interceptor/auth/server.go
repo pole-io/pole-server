@@ -23,8 +23,8 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/pkg/admin"
-	"github.com/pole-io/pole-server/pkg/auth"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	admincommon "github.com/pole-io/pole-server/pkg/common/model/admin"

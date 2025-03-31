@@ -29,9 +29,9 @@ import (
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	"github.com/pole-io/pole-server/pkg/common/rsa"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/plugin"
 )
 
 type (
@@ -239,13 +239,18 @@ func toClientInfo(client *apiconfig.ClientConfigFileInfo,
 	if dataKey != "" && encryptAlgo != "" {
 		dataKeyBytes, err := base64.StdEncoding.DecodeString(dataKey)
 		if err != nil {
-			log.Error("[Config][Service] decode data key error.", zap.String("dataKey", dataKey), zap.Error(err))
+			log.Error("[config][client] decode data key error.", zap.String("dataKey", dataKey), zap.Error(err))
 			return nil, err
 		}
 		if publicKey != "" {
-			cipherDataKey, err := rsa.EncryptToBase64(dataKeyBytes, publicKey)
+			rsacrypto, err := plugin.GetCryptoManager().GetCrypto("rsa")
 			if err != nil {
-				log.Error("[Config][Service] rsa encrypt data key error.",
+				log.Error("[config][client] get rsa crypto fail", zap.Error(err))
+				return nil, err
+			}
+			cipherDataKey, err := rsacrypto.Encrypt(string(dataKeyBytes), []byte(publicKey))
+			if err != nil {
+				log.Error("[config][client] rsa encrypt data key error.",
 					zap.String("dataKey", dataKey), zap.Error(err))
 			} else {
 				dataKey = cipherDataKey

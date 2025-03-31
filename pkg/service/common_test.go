@@ -39,16 +39,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
-	_ "github.com/pole-io/pole-server/pkg/store/boltdb"
 	sqldb "github.com/pole-io/pole-server/pkg/store/mysql"
-	_ "github.com/pole-io/pole-server/plugin/cmdb/memory"
-	_ "github.com/pole-io/pole-server/plugin/discoverevent/local"
-	_ "github.com/pole-io/pole-server/plugin/healthchecker/p2p"
-	_ "github.com/pole-io/pole-server/plugin/healthchecker/redis"
-	_ "github.com/pole-io/pole-server/plugin/history/logger"
-	_ "github.com/pole-io/pole-server/plugin/ratelimit/token"
-	_ "github.com/pole-io/pole-server/plugin/statis/logger"
-	_ "github.com/pole-io/pole-server/plugin/statis/prometheus"
 	testsuit "github.com/pole-io/pole-server/test/suit"
 )
 

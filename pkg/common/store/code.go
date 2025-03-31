@@ -19,8 +19,7 @@ package store
 
 import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-
-	"github.com/pole-io/pole-server/pkg/store"
+	"github.com/pole-io/pole-server/apis/store"
 )
 
 var storeCodeAPICodeMap = map[store.StatusCode]apimodel.Code{

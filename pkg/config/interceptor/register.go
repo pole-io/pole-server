@@ -18,7 +18,7 @@
 package config_chain
 
 import (
-	"github.com/pole-io/pole-server/pkg/auth"
+	"github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/config"
 	config_auth "github.com/pole-io/pole-server/pkg/config/interceptor/auth"

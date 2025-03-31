@@ -20,24 +20,24 @@ cur_dir=$(pwd)
 
 # apiserver 模块的包信息
 apiserver_pkg=(
-    "github.com/pole-io/pole-server/pkg/apiserver"
-    "github.com/pole-io/pole-server/pkg/apiserver/eurekaserver"
-    "github.com/pole-io/pole-server/pkg/apiserver/xdsserverv3"
-    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver"
-    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/core"
-    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/v1"
-    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/v1/discover"
-    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/v1/config"
-    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/v2"
-    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/v2/discover"
-    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/v2/config"
-    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/v2/remote"
+    "github.com/pole-io/pole-server/plugin/apiserver"
+    "github.com/pole-io/pole-server/plugin/apiserver/eurekaserver"
+    "github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3"
+    "github.com/pole-io/pole-server/plugin/apiserver/nacosserver"
+    "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/core"
+    "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v1"
+    "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v1/discover"
+    "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v1/config"
+    "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2"
+    "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/discover"
+    "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/config"
+    "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/remote"
 )
 
 # 鉴权模块的包信息
 auth_pkg=(
-    "github.com/pole-io/pole-server/pkg/auth/user"
-    "github.com/pole-io/pole-server/pkg/auth/policy"
+    "github.com/pole-io/pole-server/plugin/access_control/auth/user"
+    "github.com/pole-io/pole-server/plugin/access_control/auth/policy"
 )
 
 # cache 模块的包信息

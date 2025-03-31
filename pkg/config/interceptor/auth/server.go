@@ -25,7 +25,7 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	"go.uber.org/zap"
 
-	"github.com/pole-io/pole-server/pkg/auth"
+	"github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"

@@ -17,7 +17,7 @@
 
 package sqldb
 
-import "github.com/pole-io/pole-server/store"
+import "github.com/pole-io/pole-server/pkg/store"
 
 type Tx struct {
 	delegateTx *BaseTx

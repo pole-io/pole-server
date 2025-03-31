@@ -20,7 +20,7 @@ package interceptor
 import (
 	"context"
 
-	"github.com/pole-io/pole-server/pkg/auth"
+	"github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	ns_auth "github.com/pole-io/pole-server/pkg/namespace/interceptor/auth"

@@ -24,7 +24,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"golang.org/x/sync/singleflight"
 
-	"github.com/pole-io/pole-server/pkg/auth"
+	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/pkg/cache"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/model"

@@ -24,7 +24,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/pole-io/pole-server/store"
+	"github.com/pole-io/pole-server/pkg/store"
 )
 
 // QueryHandler is the interface that wraps the basic Query method.

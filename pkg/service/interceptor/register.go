@@ -18,7 +18,7 @@
 package service_chain
 
 import (
-	"github.com/pole-io/pole-server/pkg/auth"
+	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/pkg/service"
 	service_auth "github.com/pole-io/pole-server/pkg/service/interceptor/auth"
 	"github.com/pole-io/pole-server/pkg/service/interceptor/paramcheck"
@@ -36,11 +36,11 @@ func init() {
 
 	err = service.RegisterServerProxy("auth", func(pre service.DiscoverServer,
 		s store.Store) (service.DiscoverServer, error) {
-		userSvr, err := auth.GetUserServer()
+		userSvr, err := authapi.GetUserServer()
 		if err != nil {
 			return nil, err
 		}
-		policySvr, err := auth.GetStrategyServer()
+		policySvr, err := authapi.GetStrategyServer()
 		if err != nil {
 			return nil, err
 		}

@@ -20,9 +20,9 @@ package inteceptor
 import (
 	"context"
 
+	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/pkg/admin"
 	admin_auth "github.com/pole-io/pole-server/pkg/admin/interceptor/auth"
-	"github.com/pole-io/pole-server/pkg/auth"
 )
 
 func init() {

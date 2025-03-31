@@ -20,7 +20,7 @@ package boltdb
 import (
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/pole-io/pole-server/store"
+	"github.com/pole-io/pole-server/pkg/store"
 )
 
 type Tx struct {

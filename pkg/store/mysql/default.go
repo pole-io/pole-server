@@ -23,7 +23,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
-	"github.com/pole-io/pole-server/store"
+	"github.com/pole-io/pole-server/pkg/store"
 )
 
 const (

@@ -35,7 +35,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/pole-io/pole-server/pkg/auth"
+	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/pkg/cache"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -45,6 +45,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/store"
 	"github.com/pole-io/pole-server/pkg/store/mock"
+	authplugin "github.com/pole-io/pole-server/plugin/access_control/auth"
 	testsuit "github.com/pole-io/pole-server/test/suit"
 )
 
@@ -1381,7 +1382,7 @@ func TestConcurrencyCreateSameService(t *testing.T) {
 		cacheMgr, err = cache.TestCacheInitialize(ctx, &cache.Config{}, mockStore)
 		assert.NoError(t, err)
 
-		userMgn, strategyMgn, err := auth.TestInitialize(ctx, &auth.Config{}, mockStore, cacheMgr)
+		userMgn, strategyMgn, err := authplugin.TestInitialize(ctx, &auth.Config{}, mockStore, cacheMgr)
 		assert.NoError(t, err)
 
 		nsSvr, err = testsuit.TestNamespaceInitialize(ctx, &namespace.Config{

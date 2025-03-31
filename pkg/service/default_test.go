@@ -26,13 +26,14 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/pkg/auth"
+	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/pkg/cache"
 	cachemock "github.com/pole-io/pole-server/pkg/cache/mock"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	"github.com/pole-io/pole-server/pkg/store/mock"
+	"github.com/pole-io/pole-server/plugin/access_control/auth"
 )
 
 func Test_Initialize(t *testing.T) {
@@ -48,7 +49,7 @@ func Test_Initialize(t *testing.T) {
 	cacheMgr.EXPECT().GetReportInterval().Return(time.Second).AnyTimes()
 	cacheMgr.EXPECT().GetUpdateCacheInterval().Return(time.Second).AnyTimes()
 
-	_, _, err := auth.TestInitialize(context.Background(), &auth.Config{
+	_, _, err := auth.TestInitialize(context.Background(), &authapi.Config{
 		Option: map[string]interface{}{},
 	}, s, cacheMgr)
 	assert.NoError(t, err)

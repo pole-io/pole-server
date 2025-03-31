@@ -21,7 +21,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 
-	"github.com/pole-io/pole-server/store"
+	"github.com/pole-io/pole-server/pkg/store"
 )
 
 type transactionFunc func(tx *bolt.Tx) ([]interface{}, error)

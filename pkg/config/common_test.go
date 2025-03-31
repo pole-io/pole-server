@@ -24,21 +24,14 @@ import (
 	"github.com/google/uuid"
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
-	"github.com/pole-io/pole-server/pkg/auth"
+	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/pkg/cache"
-	_ "github.com/pole-io/pole-server/pkg/cache"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/store"
-	_ "github.com/pole-io/pole-server/pkg/store/boltdb"
-	_ "github.com/pole-io/pole-server/pkg/store/mysql"
 	"github.com/pole-io/pole-server/plugin"
-	_ "github.com/pole-io/pole-server/plugin/crypto/aes"
-	_ "github.com/pole-io/pole-server/plugin/healthchecker/p2p"
-	_ "github.com/pole-io/pole-server/plugin/healthchecker/redis"
-	_ "github.com/pole-io/pole-server/plugin/history/logger"
 	testsuit "github.com/pole-io/pole-server/test/suit"
 )
 
