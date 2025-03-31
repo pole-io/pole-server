@@ -19,11 +19,11 @@ package config_chain
 
 import (
 	"github.com/pole-io/pole-server/apis/access_control/auth"
+	"github.com/pole-io/pole-server/apis/store"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/config"
 	config_auth "github.com/pole-io/pole-server/pkg/config/interceptor/auth"
 	"github.com/pole-io/pole-server/pkg/config/interceptor/paramcheck"
-	"github.com/pole-io/pole-server/pkg/store"
 )
 
 func init() {

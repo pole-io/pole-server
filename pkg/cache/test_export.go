@@ -20,7 +20,7 @@ package cache
 import (
 	"context"
 
-	"github.com/pole-io/pole-server/pkg/store"
+	"github.com/pole-io/pole-server/apis/store"
 )
 
 // TestCacheInitialize 由于某一些模块依赖Cache，但是由于Cache模块初始化采用sync.Once，会导致单元测试之间Cache存在脏数据问题，因此为了确保单

@@ -25,7 +25,7 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"github.com/pole-io/pole-server/pkg/common/model"
-	"github.com/pole-io/pole-server/pkg/store/mock"
+	"github.com/pole-io/pole-server/plugin/store/mock"
 )
 
 /**

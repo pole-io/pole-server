@@ -34,7 +34,8 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"gopkg.in/yaml.v2"
 
-	"github.com/pole-io/pole-server/apis/access_control/auth"
+	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -50,10 +51,11 @@ import (
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/pkg/store"
-	"github.com/pole-io/pole-server/pkg/store/boltdb"
-	sqldb "github.com/pole-io/pole-server/pkg/store/mysql"
 	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/plugin/access_control/auth"
+	storeplugin "github.com/pole-io/pole-server/plugin/store"
+	"github.com/pole-io/pole-server/plugin/store/boltdb"
+	sqldb "github.com/pole-io/pole-server/plugin/store/mysql"
 	testdata "github.com/pole-io/pole-server/test/data"
 )
 
@@ -103,11 +105,11 @@ type TestConfig struct {
 	DisableConfig       bool
 	Config              config.Config      `yaml:"config"`
 	HealthChecks        healthcheck.Config `yaml:"healthcheck"`
-	Store               store.Config       `yaml:"store"`
+	Store               storeapi.Config    `yaml:"store"`
 	DisableAuth         bool
-	Auth                auth.Config   `yaml:"auth"`
-	Plugin              plugin.Config `yaml:"plugin"`
-	ReplaceStore        store.Store
+	Auth                authapi.Config `yaml:"auth"`
+	Plugin              plugin.Config  `yaml:"plugin"`
+	ReplaceStore        storeapi.Store
 	ServiceCacheEntries []cachetypes.ConfigEntry
 }
 
@@ -125,17 +127,17 @@ type DiscoverTestSuit struct {
 	originSvr           service.DiscoverServer
 	healthCheckServer   *healthcheck.Server
 	cacheMgr            *cache.CacheManager
-	userMgn             auth.UserServer
-	strategyMgn         auth.StrategyServer
+	userMgn             authapi.UserServer
+	strategyMgn         authapi.StrategyServer
 	namespaceSvr        ns.NamespaceOperateServer
 	cancelFlag          bool
 	updateCacheInterval time.Duration
 	DefaultCtx          context.Context
 	cancel              context.CancelFunc
-	Storage             store.Store
+	Storage             storeapi.Store
 	bc                  *batch.Controller
 	cleanDataOp         TestDataClean
-	caller              func() store.Store
+	caller              func() storeapi.Store
 }
 
 func (d *DiscoverTestSuit) InjectSuit(*DiscoverTestSuit) {
@@ -178,11 +180,11 @@ func (d *DiscoverTestSuit) NamespaceServer() ns.NamespaceOperateServer {
 	return d.namespaceSvr
 }
 
-func (d *DiscoverTestSuit) UserServer() auth.UserServer {
+func (d *DiscoverTestSuit) UserServer() authapi.UserServer {
 	return d.userMgn
 }
 
-func (d *DiscoverTestSuit) StrategyServer() auth.StrategyServer {
+func (d *DiscoverTestSuit) StrategyServer() authapi.StrategyServer {
 	return d.strategyMgn
 }
 
@@ -253,7 +255,7 @@ func (d *DiscoverTestSuit) Initialize(opts ...options) error {
 	return d.initialize(opts...)
 }
 
-func (d *DiscoverTestSuit) ReplaceStore(caller func() store.Store) {
+func (d *DiscoverTestSuit) ReplaceStore(caller func() storeapi.Store) {
 	d.caller = caller
 }
 
@@ -294,8 +296,8 @@ func (d *DiscoverTestSuit) initialize(opts ...options) error {
 	if d.caller != nil {
 		d.Storage = d.caller()
 	} else {
-		store.SetStoreConfig(&d.cfg.Store)
-		s, _ := store.TestGetStore()
+		storeapi.SetStoreConfig(&d.cfg.Store)
+		s, _ := storeplugin.TestGetStore()
 		d.Storage = s
 	}
 
@@ -396,8 +398,8 @@ func (d *DiscoverTestSuit) initialize(opts ...options) error {
 	return nil
 }
 
-func TestNamespaceInitialize(ctx context.Context, nsOpt *namespace.Config, storage store.Store, cacheMgr *cache.CacheManager,
-	userMgn auth.UserServer, strategyMgn auth.StrategyServer) (namespace.NamespaceOperateServer, error) {
+func TestNamespaceInitialize(ctx context.Context, nsOpt *namespace.Config, storage storeapi.Store, cacheMgr *cache.CacheManager,
+	userMgn authapi.UserServer, strategyMgn authapi.StrategyServer) (namespace.NamespaceOperateServer, error) {
 
 	ctx = context.WithValue(ctx, commonmodel.ContextKeyUserSvr, userMgn)
 	ctx = context.WithValue(ctx, commonmodel.ContextKeyPolicySvr, strategyMgn)

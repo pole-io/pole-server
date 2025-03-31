@@ -22,6 +22,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/pole-io/pole-server/apis/store"
 	types "github.com/pole-io/pole-server/pkg/cache/api"
 	cacheauth "github.com/pole-io/pole-server/pkg/cache/auth"
 	cacheclient "github.com/pole-io/pole-server/pkg/cache/client"
@@ -30,7 +31,6 @@ import (
 	cachens "github.com/pole-io/pole-server/pkg/cache/namespace"
 	cachesvc "github.com/pole-io/pole-server/pkg/cache/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/pkg/store"
 )
 
 func init() {

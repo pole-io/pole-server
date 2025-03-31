@@ -33,6 +33,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/apiserver"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	boot_config "github.com/pole-io/pole-server/bootstrap/config"
 	"github.com/pole-io/pole-server/pkg/admin"
 	"github.com/pole-io/pole-server/pkg/cache"
@@ -50,7 +51,6 @@ import (
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/pkg/store"
 	"github.com/pole-io/pole-server/plugin"
 )
 
@@ -105,16 +105,16 @@ func Start(configFilePath string) {
 	plugin.SetPluginConfig(&cfg.Plugin)
 
 	// 初始化存储层
-	store.SetStoreConfig(&cfg.Store)
-	var s store.Store
-	s, err = store.GetStore()
+	storeapi.SetStoreConfig(&cfg.Store)
+	var s storeapi.Store
+	s, err = storeapi.GetStore()
 	if err != nil {
 		fmt.Printf("[ERROR] get store fail: %v", err)
 		return
 	}
 
 	// 开启进入启动流程，初始化插件，加载数据等
-	var tx store.Transaction
+	var tx storeapi.Transaction
 	tx, err = StartBootstrapInOrder(s, cfg)
 	if err != nil {
 		// 多次尝试加锁失败
@@ -150,7 +150,7 @@ func StartComponents(ctx context.Context, cfg *boot_config.Config) error {
 	var err error
 
 	// 获取存储层对象
-	s, err := store.GetStore()
+	s, err := storeapi.GetStore()
 	if err != nil {
 		log.Errorf("[Naming][Server] can not get store, err: %s", err.Error())
 		return errors.New("can not get store")
@@ -223,7 +223,7 @@ func StartComponents(ctx context.Context, cfg *boot_config.Config) error {
 	return nil
 }
 
-func StartDiscoverComponents(ctx context.Context, cfg *boot_config.Config, s store.Store,
+func StartDiscoverComponents(ctx context.Context, cfg *boot_config.Config, s storeapi.Store,
 	cacheMgn *cache.CacheManager) error {
 	// 批量控制器
 	namingBatchConfig, err := batch.ParseBatchConfig(cfg.Naming.Batch)
@@ -300,7 +300,7 @@ func parseConfDir(path string) string {
 }
 
 // StartConfigCenterComponents 启动配置中心模块
-func StartConfigCenterComponents(ctx context.Context, cfg *boot_config.Config, s store.Store,
+func StartConfigCenterComponents(ctx context.Context, cfg *boot_config.Config, s storeapi.Store,
 	cacheMgn *cache.CacheManager, userMgn auth.UserServer, strategyMgn auth.StrategyServer) error {
 	namespaceOperator, err := namespace.GetServer()
 	if err != nil {
@@ -378,7 +378,7 @@ func StopServers(servers []apiserver.Apiserver) {
 // StartBootstrapInOrder 开始进入启动加锁
 // 原因：Server启动的时候会从数据库拉取大量数据，防止同时启动把DB压死
 // 还有一种场景，server全部宕机批量重启，导致数据库被压死，导致雪崩
-func StartBootstrapInOrder(s store.Store, c *boot_config.Config) (store.Transaction, error) {
+func StartBootstrapInOrder(s storeapi.Store, c *boot_config.Config) (storeapi.Transaction, error) {
 	order := c.Bootstrap.StartInOrder
 	log.Infof("[Bootstrap] get bootstrap order config: %+v", order)
 	open, _ := order["open"].(bool)
@@ -429,7 +429,7 @@ func StartBootstrapInOrder(s store.Store, c *boot_config.Config) (store.Transact
 }
 
 // FinishBootstrapOrder 完成 提交锁
-func FinishBootstrapOrder(tx store.Transaction) error {
+func FinishBootstrapOrder(tx storeapi.Transaction) error {
 	if tx != nil {
 		return tx.Commit()
 	}

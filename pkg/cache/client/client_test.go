@@ -30,7 +30,7 @@ import (
 	types "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/pkg/store/mock"
+	"github.com/pole-io/pole-server/plugin/store/mock"
 )
 
 func newTestClientCache(t *testing.T) (*gomock.Controller, *mock.MockStore, *clientCache) {

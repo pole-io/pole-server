@@ -32,8 +32,8 @@ import (
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/pkg/store/mock"
 	"github.com/pole-io/pole-server/plugin/access_control/auth"
+	"github.com/pole-io/pole-server/plugin/store/mock"
 )
 
 func Test_Initialize(t *testing.T) {

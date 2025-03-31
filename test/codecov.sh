@@ -64,8 +64,8 @@ config_pkg=(
 
 # 存储模块
 store_pkg=(
-    "github.com/pole-io/pole-server/pkg/store/boltdb"
-    "github.com/pole-io/pole-server/pkg/store/mysql"
+    "github.com/pole-io/pole-server/apis/store/boltdb"
+    "github.com/pole-io/pole-server/apis/store/mysql"
 )
 
 # 插件模块

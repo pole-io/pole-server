@@ -29,6 +29,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -36,8 +37,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/batch"
-	"github.com/pole-io/pole-server/pkg/store"
-	"github.com/pole-io/pole-server/pkg/store/mock"
+	"github.com/pole-io/pole-server/plugin/store/mock"
 )
 
 func mockReportClients(cnt int) []*apiservice.Client {

@@ -25,12 +25,12 @@ import (
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
+	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
 	"github.com/pole-io/pole-server/pkg/namespace"
-	"github.com/pole-io/pole-server/pkg/store"
 	"github.com/pole-io/pole-server/plugin"
 	testsuit "github.com/pole-io/pole-server/test/suit"
 )

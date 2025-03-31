@@ -24,6 +24,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"golang.org/x/sync/singleflight"
 
+	"github.com/pole-io/pole-server/apis/store"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	cacheservice "github.com/pole-io/pole-server/pkg/cache/service"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
@@ -33,7 +34,6 @@ import (
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/pkg/store"
 	"github.com/pole-io/pole-server/plugin"
 )
 

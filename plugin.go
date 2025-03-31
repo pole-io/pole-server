@@ -28,8 +28,6 @@ import (
 	_ "github.com/pole-io/pole-server/pkg/config/interceptor"
 	_ "github.com/pole-io/pole-server/pkg/namespace/interceptor"
 	_ "github.com/pole-io/pole-server/pkg/service/interceptor"
-	_ "github.com/pole-io/pole-server/pkg/store/boltdb"
-	_ "github.com/pole-io/pole-server/pkg/store/mysql"
 	_ "github.com/pole-io/pole-server/plugin/access_control/auth/policy"
 	_ "github.com/pole-io/pole-server/plugin/access_control/auth/user"
 	_ "github.com/pole-io/pole-server/plugin/access_control/ratelimit/token"
@@ -49,4 +47,6 @@ import (
 	_ "github.com/pole-io/pole-server/plugin/observability/history/logger"
 	_ "github.com/pole-io/pole-server/plugin/observability/statis/logger"
 	_ "github.com/pole-io/pole-server/plugin/observability/statis/prometheus"
+	_ "github.com/pole-io/pole-server/plugin/store/boltdb"
+	_ "github.com/pole-io/pole-server/plugin/store/mysql"
 )

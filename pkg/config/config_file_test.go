@@ -35,9 +35,9 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	storemock "github.com/pole-io/pole-server/pkg/store/mock"
 	"github.com/pole-io/pole-server/plugin"
 	"github.com/pole-io/pole-server/plugin/crypto/aes"
+	storemock "github.com/pole-io/pole-server/plugin/store/mock"
 )
 
 var (

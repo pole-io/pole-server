@@ -28,9 +28,9 @@ import (
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	mockcache "github.com/pole-io/pole-server/pkg/cache/mock"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	mockstore "github.com/pole-io/pole-server/pkg/store/mock"
 	"github.com/pole-io/pole-server/plugin"
 	"github.com/pole-io/pole-server/plugin/access_control/auth"
+	mockstore "github.com/pole-io/pole-server/plugin/store/mock"
 )
 
 func Test_Initialize(t *testing.T) {

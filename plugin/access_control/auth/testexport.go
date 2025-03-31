@@ -21,8 +21,8 @@ import (
 	"context"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
+	"github.com/pole-io/pole-server/apis/store"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/store"
 )
 
 // TestInitialize 包裹了初始化函数，在 Initialize 的时候会在自动调用，全局初始化一次

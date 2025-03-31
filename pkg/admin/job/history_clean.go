@@ -22,7 +22,7 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/pole-io/pole-server/pkg/store"
+	"github.com/pole-io/pole-server/apis/store"
 )
 
 // 默认保存配置发布天数

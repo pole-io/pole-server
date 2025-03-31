@@ -22,7 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pole-io/pole-server/pkg/store"
+	"github.com/pole-io/pole-server/apis/store"
 )
 
 const adjustInterval = 60 * time.Second

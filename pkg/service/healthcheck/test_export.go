@@ -20,8 +20,8 @@ package healthcheck
 import (
 	"context"
 
+	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/service/batch"
-	"github.com/pole-io/pole-server/pkg/store"
 )
 
 func TestInitialize(ctx context.Context, hcOpt *Config, bc *batch.Controller,

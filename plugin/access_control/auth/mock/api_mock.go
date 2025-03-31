@@ -14,7 +14,7 @@ import (
 	auth "github.com/pole-io/pole-server/apis/access_control/auth"
 	api "github.com/pole-io/pole-server/pkg/cache/api"
 	auth0 "github.com/pole-io/pole-server/pkg/common/model/auth"
-	store "github.com/pole-io/pole-server/pkg/store"
+	store "github.com/pole-io/pole-server/apis/store"
 )
 
 // MockAuthChecker is a mock of AuthChecker interface.

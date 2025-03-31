@@ -34,7 +34,7 @@ import (
 	cachemock "github.com/pole-io/pole-server/pkg/cache/mock"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/pkg/store/mock"
+	"github.com/pole-io/pole-server/plugin/store/mock"
 )
 
 /**

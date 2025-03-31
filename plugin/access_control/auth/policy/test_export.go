@@ -18,8 +18,8 @@
 package policy
 
 import (
-	"github.com/pole-io/pole-server/pkg/store"
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
+	"github.com/pole-io/pole-server/apis/store"
 )
 
 // MockAuthChecker mock authapi.AuthChecker for unit test

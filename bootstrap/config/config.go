@@ -27,6 +27,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/apiserver"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/admin"
 	"github.com/pole-io/pole-server/pkg/cache"
 	"github.com/pole-io/pole-server/pkg/common/log"
@@ -34,7 +35,6 @@ import (
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/pkg/store"
 	"github.com/pole-io/pole-server/plugin"
 )
 
@@ -48,7 +48,7 @@ type Config struct {
 	Config       config.Config      `yaml:"config"`
 	HealthChecks healthcheck.Config `yaml:"healthcheck"`
 	Maintain     admin.Config       `yaml:"maintain"`
-	Store        store.Config       `yaml:"store"`
+	Store        storeapi.Config    `yaml:"store"`
 	Auth         auth.Config        `yaml:"auth"`
 	Plugin       plugin.Config      `yaml:"plugin"`
 }

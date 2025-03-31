@@ -39,7 +39,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
-	sqldb "github.com/pole-io/pole-server/pkg/store/mysql"
+	sqldb "github.com/pole-io/pole-server/plugin/store/mysql"
 	testsuit "github.com/pole-io/pole-server/test/suit"
 )
 

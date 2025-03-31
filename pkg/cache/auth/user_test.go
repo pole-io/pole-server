@@ -30,7 +30,7 @@ import (
 	types "github.com/pole-io/pole-server/pkg/cache/api"
 	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/pkg/store/mock"
+	"github.com/pole-io/pole-server/plugin/store/mock"
 )
 
 // 创建一个测试mock userCache

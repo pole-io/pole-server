@@ -27,14 +27,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
-	"github.com/pole-io/pole-server/pkg/store"
-	"github.com/pole-io/pole-server/pkg/store/mock"
+	storeplugin "github.com/pole-io/pole-server/plugin/store"
+	"github.com/pole-io/pole-server/plugin/store/mock"
 	testsuit "github.com/pole-io/pole-server/test/suit"
 )
 
@@ -135,7 +136,7 @@ func TestEurekaServer_renew(t *testing.T) {
 
 	eurekaSuit := newEurekaTestSuit()
 	eurekaSuit.ReplaceStore(func() store.Store {
-		store.TestGetStore()
+		storeplugin.TestGetStore()
 		store.StoreSlots["eureka_store_test"] = mockStore
 		return mockStore
 	})
@@ -144,7 +145,7 @@ func TestEurekaServer_renew(t *testing.T) {
 		conf.Cache = cache.Config{}
 		conf.DisableConfig = true
 		conf.ServiceCacheEntries = service.GetRegisterCaches()
-		store.TestInjectConfig(store.Config{
+		store.SetStoreConfig(&store.Config{
 			Name: "eureka_store_test",
 		})
 	})

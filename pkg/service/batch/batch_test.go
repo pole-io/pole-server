@@ -30,7 +30,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	smock "github.com/pole-io/pole-server/pkg/store/mock"
+	smock "github.com/pole-io/pole-server/plugin/store/mock"
 )
 
 func init() {

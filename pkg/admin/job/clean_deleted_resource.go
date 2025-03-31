@@ -23,7 +23,7 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/pole-io/pole-server/pkg/store"
+	"github.com/pole-io/pole-server/apis/store"
 )
 
 var cleanFuncMapping = map[string]func(timeout time.Duration, job *cleanDeletedResourceJob){

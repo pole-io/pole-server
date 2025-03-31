@@ -13,7 +13,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/cache/api"
 	model "github.com/pole-io/pole-server/pkg/common/model"
 	auth "github.com/pole-io/pole-server/pkg/common/model/auth"
-	store "github.com/pole-io/pole-server/pkg/store"
+	store "github.com/pole-io/pole-server/apis/store"
 	model0 "github.com/polarismesh/specification/source/go/api/v1/model"
 	security "github.com/polarismesh/specification/source/go/api/v1/security"
 	service_manage "github.com/polarismesh/specification/source/go/api/v1/service_manage"
