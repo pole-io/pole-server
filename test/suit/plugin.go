@@ -18,19 +18,18 @@
 package testsuit
 
 import (
-	_ "github.com/pole-io/pole-server/auth/policy"
-	_ "github.com/pole-io/pole-server/auth/user"
-	_ "github.com/pole-io/pole-server/config/interceptor"
+	_ "github.com/pole-io/pole-server/pkg/auth/policy"
+	_ "github.com/pole-io/pole-server/pkg/auth/user"
+	_ "github.com/pole-io/pole-server/pkg/config/interceptor"
+	_ "github.com/pole-io/pole-server/pkg/service/interceptor"
+	_ "github.com/pole-io/pole-server/pkg/store/boltdb"
 	_ "github.com/pole-io/pole-server/plugin/cmdb/memory"
 	_ "github.com/pole-io/pole-server/plugin/crypto/aes"
 	_ "github.com/pole-io/pole-server/plugin/discoverevent/local"
 	_ "github.com/pole-io/pole-server/plugin/healthchecker/p2p"
 	_ "github.com/pole-io/pole-server/plugin/healthchecker/redis"
 	_ "github.com/pole-io/pole-server/plugin/history/logger"
-	_ "github.com/pole-io/pole-server/plugin/password"
 	_ "github.com/pole-io/pole-server/plugin/ratelimit/token"
 	_ "github.com/pole-io/pole-server/plugin/statis/logger"
 	_ "github.com/pole-io/pole-server/plugin/statis/prometheus"
-	_ "github.com/pole-io/pole-server/service/interceptor"
-	_ "github.com/pole-io/pole-server/store/boltdb"
 )

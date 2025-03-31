@@ -24,7 +24,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 const (

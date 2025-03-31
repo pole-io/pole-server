@@ -25,7 +25,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // RegisterInstance 注册服务实例

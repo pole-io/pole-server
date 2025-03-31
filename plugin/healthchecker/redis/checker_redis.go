@@ -26,11 +26,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	commonlog "github.com/pole-io/pole-server/common/log"
-	"github.com/pole-io/pole-server/common/model"
-	"github.com/pole-io/pole-server/common/redispool"
-	commontime "github.com/pole-io/pole-server/common/time"
-	"github.com/pole-io/pole-server/common/utils"
+	commonlog "github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/pkg/common/redispool"
+	commontime "github.com/pole-io/pole-server/pkg/common/time"
+	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin"
 )
 

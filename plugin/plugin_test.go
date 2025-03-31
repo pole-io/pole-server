@@ -20,7 +20,7 @@ package plugin
 import (
 	"testing"
 
-	"github.com/pole-io/pole-server/common/metrics"
+	"github.com/pole-io/pole-server/pkg/common/metrics"
 )
 
 func Test_Statis(t *testing.T) {

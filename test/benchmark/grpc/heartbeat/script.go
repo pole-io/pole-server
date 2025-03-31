@@ -41,11 +41,11 @@ import (
 )
 
 var (
-	// ServerAddr 北极星服务端接入地址IP，默认为 127.0.0.1
+	// ServerAddr pole-server服务端接入地址IP，默认为 127.0.0.1
 	ServerAddr = os.Getenv("SERVER_IP")
-	// GRPCPort 北极星服务端接入地址 GRPC 协议端口，默认为 8091
+	// GRPCPort pole-server服务端接入地址 GRPC 协议端口，默认为 8091
 	GRPCPort, _ = strconv.ParseInt(os.Getenv("SERVER_PORT"), 10, 64)
-	// HttpPort 北极星服务端接入地址 HTTP 协议端口，默认为 8090
+	// HttpPort pole-server服务端接入地址 HTTP 协议端口，默认为 8090
 	HttpPort, _ = strconv.ParseInt(os.Getenv("SERVER_PORT"), 10, 64)
 	// RunMode 运行模式，内容为 VERIFY(验证模式)/BENCHMARK(压测模式)/ALL(同时执行验证模式+压测模式)
 	RunMode = os.Getenv("RUN_MODE")
@@ -282,7 +282,7 @@ func mainLoop() {
 	// 监听信号量
 	signal.Notify(ch, []os.Signal{
 		syscall.SIGINT, syscall.SIGTERM,
-		syscall.SIGSEGV, syscall.SIGUSR1, syscall.SIGUSR2,
+		syscall.SIGSEGV,
 	}...)
 
 	for {

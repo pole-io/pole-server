@@ -21,7 +21,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/pole-io/pole-server/common/metrics"
+	"github.com/pole-io/pole-server/pkg/common/metrics"
 )
 
 var (

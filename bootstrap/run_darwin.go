@@ -22,8 +22,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/pole-io/pole-server/apiserver"
-	"github.com/pole-io/pole-server/common/log"
+	"github.com/pole-io/pole-server/pkg/apiserver"
+	"github.com/pole-io/pole-server/pkg/common/log"
 )
 
 var (

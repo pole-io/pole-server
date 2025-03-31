@@ -23,9 +23,9 @@ import (
 
 var (
 	rootCmd = &cobra.Command{
-		Use:          "sergo-server",
-		Short:        "polaris server",
-		Long:         "polaris server",
+		Use:          "pole-server",
+		Short:        "pole-io server",
+		Long:         "pole-io server",
 		SilenceUsage: true,
 	}
 )

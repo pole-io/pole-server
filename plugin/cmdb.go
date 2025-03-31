@@ -20,8 +20,8 @@ package plugin
 import (
 	"os"
 
-	commonLog "github.com/pole-io/pole-server/common/log"
-	"github.com/pole-io/pole-server/common/model"
+	commonLog "github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 // CMDB CMDB插件接口

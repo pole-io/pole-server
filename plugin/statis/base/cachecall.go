@@ -23,9 +23,9 @@ import (
 	"sync"
 	"time"
 
-	commonlog "github.com/pole-io/pole-server/common/log"
-	"github.com/pole-io/pole-server/common/metrics"
-	commontime "github.com/pole-io/pole-server/common/time"
+	commonlog "github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pkg/common/metrics"
+	commontime "github.com/pole-io/pole-server/pkg/common/time"
 )
 
 // CacheCall 接口调用

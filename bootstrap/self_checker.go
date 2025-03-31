@@ -24,10 +24,10 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	api "github.com/pole-io/pole-server/common/api/v1"
-	"github.com/pole-io/pole-server/common/log"
-	"github.com/pole-io/pole-server/service"
-	"github.com/pole-io/pole-server/service/healthcheck"
+	api "github.com/pole-io/pole-server/pkg/common/api/v1"
+	"github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pkg/service"
+	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 )
 
 type SelfHeathChecker struct {

@@ -38,8 +38,8 @@ run:
     - pkg/model/pb
     - .*~
     - test
-    - "apiserver/nacosserver/v2/pb"
-    - "apiserver/xdsserverv3/cache"
+    - "pkg/apiserver/nacosserver/v2/pb"
+    - "pkg/apiserver/xdsserverv3/cache"
 
   # Which files to skip: they will be analyzed, but issues from them won't be reported.
   # Default value is empty list,

@@ -1,9 +1,9 @@
-sergo-server
-sergo-server-*
-sergo-server-release*
-sergo-server-release.tar.gz
+pole-server
+pole-server-*
+pole-server-release*
+pole-server-release.tar.gz
 
-log/
+logs/
 /statis/
 /discover-statis/
 /discover-event/

@@ -21,9 +21,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/pole-io/pole-server/common/log"
-	"github.com/pole-io/pole-server/common/metrics"
-	"github.com/pole-io/pole-server/store"
+	"github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pkg/common/metrics"
+	"github.com/pole-io/pole-server/pkg/store"
 )
 
 type BaseWorker struct {

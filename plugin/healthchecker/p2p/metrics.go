@@ -20,8 +20,8 @@ package heartbeatp2p
 import (
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/pole-io/pole-server/common/metrics"
-	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/metrics"
+	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 var (

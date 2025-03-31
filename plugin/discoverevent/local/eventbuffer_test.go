@@ -23,7 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/common/model"
+	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 func TestEventBufferTest(t *testing.T) {

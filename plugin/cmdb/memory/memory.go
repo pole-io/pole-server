@@ -25,8 +25,8 @@ import (
 
 	"go.uber.org/zap"
 
-	commonlog "github.com/pole-io/pole-server/common/log"
-	"github.com/pole-io/pole-server/common/model"
+	commonlog "github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/plugin"
 )
 

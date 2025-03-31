@@ -20,7 +20,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/pole-io/pole-server/common/log"
+	"github.com/pole-io/pole-server/pkg/common/log"
 )
 
 func defaultBootstrap() Bootstrap {

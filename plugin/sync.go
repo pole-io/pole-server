@@ -17,7 +17,7 @@
 
 package plugin
 
-import "github.com/pole-io/pole-server/common/model"
+import "github.com/pole-io/pole-server/pkg/common/model"
 
 // Syncer .
 type Syncer interface {

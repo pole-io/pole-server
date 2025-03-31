@@ -17,6 +17,6 @@
 
 package token
 
-import commonLog "github.com/pole-io/pole-server/common/log"
+import commonLog "github.com/pole-io/pole-server/pkg/common/log"
 
 var log = commonLog.RegisterScope(PluginName, "", 0)

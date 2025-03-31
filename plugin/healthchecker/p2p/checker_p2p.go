@@ -27,11 +27,11 @@ import (
 
 	"go.uber.org/zap"
 
-	commonhash "github.com/pole-io/pole-server/common/hash"
-	commontime "github.com/pole-io/pole-server/common/time"
-	"github.com/pole-io/pole-server/common/utils"
+	commonhash "github.com/pole-io/pole-server/pkg/common/hash"
+	commontime "github.com/pole-io/pole-server/pkg/common/time"
+	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/store"
 	"github.com/pole-io/pole-server/plugin"
-	"github.com/pole-io/pole-server/store"
 )
 
 const (

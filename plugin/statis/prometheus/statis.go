@@ -23,9 +23,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/pole-io/pole-server/common/log"
-	"github.com/pole-io/pole-server/common/metrics"
-	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pkg/common/metrics"
+	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin"
 	"github.com/pole-io/pole-server/plugin/statis/base"
 )

@@ -20,52 +20,52 @@ cur_dir=$(pwd)
 
 # apiserver 模块的包信息
 apiserver_pkg=(
-    "github.com/pole-io/pole-server/apiserver"
-    "github.com/pole-io/pole-server/apiserver/eurekaserver"
-    "github.com/pole-io/pole-server/apiserver/xdsserverv3"
-    "github.com/pole-io/pole-server/apiserver/nacosserver"
-    "github.com/pole-io/pole-server/apiserver/nacosserver/core"
-    "github.com/pole-io/pole-server/apiserver/nacosserver/v1"
-    "github.com/pole-io/pole-server/apiserver/nacosserver/v1/discover"
-    "github.com/pole-io/pole-server/apiserver/nacosserver/v1/config"
-    "github.com/pole-io/pole-server/apiserver/nacosserver/v2"
-    "github.com/pole-io/pole-server/apiserver/nacosserver/v2/discover"
-    "github.com/pole-io/pole-server/apiserver/nacosserver/v2/config"
-    "github.com/pole-io/pole-server/apiserver/nacosserver/v2/remote"
+    "github.com/pole-io/pole-server/pkg/apiserver"
+    "github.com/pole-io/pole-server/pkg/apiserver/eurekaserver"
+    "github.com/pole-io/pole-server/pkg/apiserver/xdsserverv3"
+    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver"
+    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/core"
+    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/v1"
+    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/v1/discover"
+    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/v1/config"
+    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/v2"
+    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/v2/discover"
+    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/v2/config"
+    "github.com/pole-io/pole-server/pkg/apiserver/nacosserver/v2/remote"
 )
 
 # 鉴权模块的包信息
 auth_pkg=(
-    "github.com/pole-io/pole-server/auth/user"
-    "github.com/pole-io/pole-server/auth/policy"
+    "github.com/pole-io/pole-server/pkg/auth/user"
+    "github.com/pole-io/pole-server/pkg/auth/policy"
 )
 
 # cache 模块的包信息
 cache_pkg=(
-    "github.com/pole-io/pole-server/cache"
-    "github.com/pole-io/pole-server/cache/service"
-    "github.com/pole-io/pole-server/cache/config"
-    "github.com/pole-io/pole-server/cache/gray"
-    "github.com/pole-io/pole-server/cache/auth"
-    "github.com/pole-io/pole-server/cache/client"
+    "github.com/pole-io/pole-server/pkg/cache"
+    "github.com/pole-io/pole-server/pkg/cache/service"
+    "github.com/pole-io/pole-server/pkg/cache/config"
+    "github.com/pole-io/pole-server/pkg/cache/gray"
+    "github.com/pole-io/pole-server/pkg/cache/auth"
+    "github.com/pole-io/pole-server/pkg/cache/client"
 )
 
 # 注册发现模块的包信息
 discover_pkg=(
-    "github.com/pole-io/pole-server/service"
-    "github.com/pole-io/pole-server/service/batch"
-    "github.com/pole-io/pole-server/service/healthcheck"
+    "github.com/pole-io/pole-server/pkg/service"
+    "github.com/pole-io/pole-server/pkg/service/batch"
+    "github.com/pole-io/pole-server/pkg/service/healthcheck"
 )
 
 # 配置模块
 config_pkg=(
-    "github.com/pole-io/pole-server/config"
+    "github.com/pole-io/pole-server/pkg/config"
 )
 
 # 存储模块
 store_pkg=(
-    "github.com/pole-io/pole-server/store/boltdb"
-    "github.com/pole-io/pole-server/store/mysql"
+    "github.com/pole-io/pole-server/pkg/store/boltdb"
+    "github.com/pole-io/pole-server/pkg/store/mysql"
 )
 
 # 插件模块
@@ -78,9 +78,9 @@ plugin_pkg=(
 
 # 普通包模块
 common_pkg=(
-    "github.com/pole-io/pole-server/common/eventhub"
-    "github.com/pole-io/pole-server/common/redispool"
-    "github.com/pole-io/pole-server/common/timewheel"
+    "github.com/pole-io/pole-server/pkg/common/eventhub"
+    "github.com/pole-io/pole-server/pkg/common/redispool"
+    "github.com/pole-io/pole-server/pkg/common/timewheel"
 )
 
 coverpkg=""

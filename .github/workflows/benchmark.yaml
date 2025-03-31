@@ -79,7 +79,7 @@ jobs:
       # Run interface tests
       - name: run benchmark
         run: |
-          work_dir=$(ls | grep sergo-server-release | sed -n '1p')
+          work_dir=$(ls | grep pole-server-release | sed -n '1p')
           echo "work_dir is $work_dir"
           cd $work_dir
 
@@ -88,11 +88,11 @@ jobs:
           if [[ "$(uname)" == "Darwin" ]]; then
               # Mac OS X 操作系统
               echo "Run on MacOS"
-              sed -i '' 's/consoleOpen: true/consoleOpen: false/g' conf/sergo-server.yaml
+              sed -i '' 's/consoleOpen: true/consoleOpen: false/g' conf/pole-server.yaml
           else
               # GNU/Linux操作系统
               echo "Run on Linux"
-              sed -i 's/consoleOpen: \(true\|false\)/consoleOpen: false/g' conf/sergo-server.yaml
+              sed -i 's/consoleOpen: \(true\|false\)/consoleOpen: false/g' conf/pole-server.yaml
           fi
 
           chmod +x ./tool/*.sh

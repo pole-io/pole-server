@@ -18,7 +18,7 @@
 package prometheus
 
 import (
-	"github.com/pole-io/pole-server/common/metrics"
+	"github.com/pole-io/pole-server/pkg/common/metrics"
 )
 
 func newDiscoveryMetricHandle() *discoveryMetricHandle {

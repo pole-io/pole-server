@@ -24,10 +24,10 @@ import (
 	"sync"
 	"time"
 
-	commonlog "github.com/pole-io/pole-server/common/log"
-	"github.com/pole-io/pole-server/common/model"
-	commontime "github.com/pole-io/pole-server/common/time"
-	"github.com/pole-io/pole-server/common/utils"
+	commonlog "github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pkg/common/model"
+	commontime "github.com/pole-io/pole-server/pkg/common/time"
+	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin"
 )
 

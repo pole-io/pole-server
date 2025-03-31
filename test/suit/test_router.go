@@ -25,7 +25,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
-	"github.com/pole-io/pole-server/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 func MockRoutingV2(t *testing.T, cnt int32) []*apitraffic.RouteRule {

@@ -28,7 +28,7 @@ import (
 	apifault "github.com/polarismesh/specification/source/go/api/v1/fault_tolerance"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	api "github.com/pole-io/pole-server/common/api/v1"
+	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
 // JSONFromCircuitBreakers marshals a slice of circuit breakers to JSON. 熔断规则数组转JSON

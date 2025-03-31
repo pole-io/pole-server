@@ -25,8 +25,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/common/redispool"
-	commontime "github.com/pole-io/pole-server/common/time"
+	"github.com/pole-io/pole-server/pkg/common/redispool"
+	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/plugin"
 )
 

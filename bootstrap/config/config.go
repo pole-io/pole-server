@@ -25,17 +25,17 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/pole-io/pole-server/admin"
-	"github.com/pole-io/pole-server/apiserver"
-	"github.com/pole-io/pole-server/auth"
-	"github.com/pole-io/pole-server/cache"
-	"github.com/pole-io/pole-server/common/log"
-	"github.com/pole-io/pole-server/config"
-	"github.com/pole-io/pole-server/namespace"
+	"github.com/pole-io/pole-server/pkg/admin"
+	"github.com/pole-io/pole-server/pkg/apiserver"
+	"github.com/pole-io/pole-server/pkg/auth"
+	"github.com/pole-io/pole-server/pkg/cache"
+	"github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pkg/config"
+	"github.com/pole-io/pole-server/pkg/namespace"
+	"github.com/pole-io/pole-server/pkg/service"
+	"github.com/pole-io/pole-server/pkg/service/healthcheck"
+	"github.com/pole-io/pole-server/pkg/store"
 	"github.com/pole-io/pole-server/plugin"
-	"github.com/pole-io/pole-server/service"
-	"github.com/pole-io/pole-server/service/healthcheck"
-	"github.com/pole-io/pole-server/store"
 )
 
 // Config 配置
@@ -88,11 +88,11 @@ type APIEntries struct {
 
 const (
 	// DefaultPolarisName default polaris name
-	DefaultPolarisName = "sergo-server"
+	DefaultPolarisName = "pole-server"
 	// DefaultPolarisNamespace default namespace
 	DefaultPolarisNamespace = "Polaris"
 	// DefaultFilePath default file path
-	DefaultFilePath = "sergo-server.yaml"
+	DefaultFilePath = "pole-server.yaml"
 	// DefaultHeartbeatInterval default interval second for heartbeat
 	DefaultHeartbeatInterval = 5
 )

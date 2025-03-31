@@ -1,0 +1,147 @@
+/**
+ * Tencent is pleased to support the open source community by making Polaris available.
+ *
+ * Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
+ *
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed
+ * under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+ * CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
+
+package paramcheck
+
+import (
+	"context"
+	"strconv"
+
+	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	api "github.com/pole-io/pole-server/pkg/common/api/v1"
+	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/pkg/common/utils"
+)
+
+// CreateConfigFile 创建配置文件
+func (s *Server) CreateConfigFile(ctx context.Context,
+	configFile *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
+	if checkRsp := s.checkConfigFileParams(configFile); checkRsp != nil {
+		return api.NewConfigFileResponse(apimodel.Code(checkRsp.Code.GetValue()), configFile)
+	}
+	return s.nextServer.CreateConfigFile(ctx, configFile)
+}
+
+// GetConfigFileRichInfo 获取单个配置文件基础信息，包含发布状态等信息
+func (s *Server) GetConfigFileRichInfo(ctx context.Context,
+	req *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
+	if errResp := checkReadFileParameter(req); errResp != nil {
+		return errResp
+	}
+	return s.nextServer.GetConfigFileRichInfo(ctx, req)
+}
+
+// SearchConfigFile 查询配置文件
+func (s *Server) SearchConfigFile(ctx context.Context,
+	filter map[string]string) *apiconfig.ConfigBatchQueryResponse {
+
+	offset, limit, err := utils.ParseOffsetAndLimit(filter)
+	if err != nil {
+		out := api.NewConfigBatchQueryResponse(apimodel.Code_BadRequest)
+		out.Info = utils.NewStringValue(err.Error())
+		return out
+	}
+	searchFilters := map[string]string{
+		"offset": strconv.FormatInt(int64(offset), 10),
+		"limit":  strconv.FormatInt(int64(limit), 10),
+	}
+	for k, v := range filter {
+		// 无效查询参数自动忽略
+		if v == "" {
+			continue
+		}
+		if _, ok := availableSearch["config_file"][k]; ok {
+			searchFilters[k] = v
+		}
+	}
+	return s.nextServer.SearchConfigFile(ctx, searchFilters)
+}
+
+// UpdateConfigFile 更新配置文件
+func (s *Server) UpdateConfigFile(
+	ctx context.Context, configFile *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
+	if checkRsp := s.checkConfigFileParams(configFile); checkRsp != nil {
+		return api.NewConfigFileResponse(apimodel.Code(checkRsp.Code.GetValue()), configFile)
+	}
+	return s.nextServer.UpdateConfigFile(ctx, configFile)
+}
+
+// DeleteConfigFile 删除配置文件，删除配置文件同时会通知客户端 Not_Found
+func (s *Server) DeleteConfigFile(ctx context.Context,
+	req *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
+
+	return s.nextServer.DeleteConfigFile(ctx, req)
+}
+
+// BatchDeleteConfigFile 批量删除配置文件
+func (s *Server) BatchDeleteConfigFile(ctx context.Context,
+	req []*apiconfig.ConfigFile) *apiconfig.ConfigResponse {
+
+	return s.nextServer.BatchDeleteConfigFile(ctx, req)
+}
+
+func (s *Server) ExportConfigFile(ctx context.Context,
+	configFileExport *apiconfig.ConfigFileExportRequest) *apiconfig.ConfigExportResponse {
+
+	return s.nextServer.ExportConfigFile(ctx, configFileExport)
+}
+
+func (s *Server) ImportConfigFile(ctx context.Context,
+	configFiles []*apiconfig.ConfigFile, conflictHandling string) *apiconfig.ConfigImportResponse {
+	for _, configFile := range configFiles {
+		if checkRsp := s.checkConfigFileParams(configFile); checkRsp != nil {
+			return api.NewConfigFileImportResponse(apimodel.Code(checkRsp.Code.GetValue()), nil, nil, nil)
+		}
+	}
+	return s.nextServer.ImportConfigFile(ctx, configFiles, conflictHandling)
+}
+
+func (s *Server) GetAllConfigEncryptAlgorithms(
+	ctx context.Context) *apiconfig.ConfigEncryptAlgorithmResponse {
+	return s.nextServer.GetAllConfigEncryptAlgorithms(ctx)
+}
+
+// GetClientSubscribers 获取客户端订阅者
+func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]string) *model.CommonResponse {
+	clientId := filter["client_id"]
+	if clientId == "" {
+		return model.NewCommonResponse(uint32(apimodel.Code_BadRequest))
+	}
+	return s.nextServer.GetClientSubscribers(ctx, filter)
+}
+
+// GetConfigSubscribers 获取配置订阅者
+func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]string) *model.CommonResponse {
+	namespace := filter["namespace"]
+	group := filter["group"]
+	fileName := filter["file_name"]
+
+	if err := CheckFileName(wrapperspb.String(fileName)); err != nil {
+		return model.NewCommonResponse(uint32(apimodel.Code_InvalidConfigFileName))
+	}
+	if err := utils.CheckResourceName(wrapperspb.String(group)); err != nil {
+		return model.NewCommonResponse(uint32(apimodel.Code_InvalidConfigFileGroupName))
+	}
+	if err := utils.CheckResourceName(wrapperspb.String(namespace)); err != nil {
+		return model.NewCommonResponse(uint32(apimodel.Code_InvalidNamespaceName))
+	}
+
+	return s.nextServer.GetConfigSubscribers(ctx, filter)
+}

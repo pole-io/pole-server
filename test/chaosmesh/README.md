@@ -1,1 +1,1 @@
-# ChaosMesh -- 北极星故障场景测试
+# ChaosMesh -- pole-server故障场景测试

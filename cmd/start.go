@@ -38,5 +38,5 @@ var (
 
 // init 解析命令参数
 func init() {
-	startCmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", "conf/sergo-server.yaml", "config file path")
+	startCmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", "conf/pole-server.yaml", "config file path")
 }
