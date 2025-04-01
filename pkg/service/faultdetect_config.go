@@ -30,9 +30,10 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -73,12 +74,12 @@ func (s *Server) UpdateFaultDetectRules(
 	return api.FormatBatchWriteResponse(responses)
 }
 
-func faultDetectRuleRecordEntry(ctx context.Context, req *apifault.FaultDetectRule, md *model.FaultDetectRule,
-	opt model.OperationType) *model.RecordEntry {
+func faultDetectRuleRecordEntry(ctx context.Context, req *apifault.FaultDetectRule, md *rules.FaultDetectRule,
+	opt types.OperationType) *types.RecordEntry {
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
-	entry := &model.RecordEntry{
-		ResourceType:  model.RFaultDetectRule,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RFaultDetectRule,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
 		Namespace:     req.GetNamespace(),
 		OperationType: opt,
@@ -116,7 +117,7 @@ func (s *Server) createFaultDetectRule(ctx context.Context, request *apifault.Fa
 		data.ID, request.GetName(), request.GetNamespace())
 	log.Info(msg, utils.RequestID(ctx))
 
-	s.RecordHistory(ctx, faultDetectRuleRecordEntry(ctx, request, data, model.OCreate))
+	s.RecordHistory(ctx, faultDetectRuleRecordEntry(ctx, request, data, types.OCreate))
 	request.Id = data.ID
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, request)
 }
@@ -147,7 +148,7 @@ func (s *Server) updateFaultDetectRule(ctx context.Context, request *apifault.Fa
 		request.GetId(), request.GetName(), request.GetNamespace())
 	log.Info(msg, utils.RequestID(ctx))
 
-	s.RecordHistory(ctx, faultDetectRuleRecordEntry(ctx, request, fdRule, model.OUpdate))
+	s.RecordHistory(ctx, faultDetectRuleRecordEntry(ctx, request, fdRule, types.OUpdate))
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, fdRuleId)
 }
 
@@ -163,8 +164,8 @@ func (s *Server) deleteFaultDetectRule(ctx context.Context, request *apifault.Fa
 		request.GetId(), request.GetName(), request.GetNamespace())
 	log.Info(msg, utils.RequestID(ctx))
 
-	cbRule := &model.FaultDetectRule{ID: request.GetId(), Name: request.GetName(), Namespace: request.GetNamespace()}
-	s.RecordHistory(ctx, faultDetectRuleRecordEntry(ctx, request, cbRule, model.ODelete))
+	cbRule := &rules.FaultDetectRule{ID: request.GetId(), Name: request.GetName(), Namespace: request.GetNamespace()}
+	s.RecordHistory(ctx, faultDetectRuleRecordEntry(ctx, request, cbRule, types.ODelete))
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, cbRuleId)
 }
 
@@ -223,13 +224,13 @@ func marshalFaultDetectRule(req *apifault.FaultDetectRule) (string, error) {
 }
 
 // api2FaultDetectRule 把API参数转化为内部数据结构
-func api2FaultDetectRule(req *apifault.FaultDetectRule) (*model.FaultDetectRule, error) {
+func api2FaultDetectRule(req *apifault.FaultDetectRule) (*rules.FaultDetectRule, error) {
 	rule, err := marshalFaultDetectRule(req)
 	if err != nil {
 		return nil, err
 	}
 
-	out := &model.FaultDetectRule{
+	out := &rules.FaultDetectRule{
 		Name:         req.GetName(),
 		Namespace:    req.GetNamespace(),
 		Description:  req.GetDescription(),
@@ -246,7 +247,7 @@ func api2FaultDetectRule(req *apifault.FaultDetectRule) (*model.FaultDetectRule,
 	return out, nil
 }
 
-func faultDetectRule2api(fdRule *model.FaultDetectRule) (*apifault.FaultDetectRule, error) {
+func faultDetectRule2api(fdRule *rules.FaultDetectRule) (*apifault.FaultDetectRule, error) {
 	if fdRule == nil {
 		return nil, nil
 	}
@@ -276,7 +277,7 @@ func faultDetectRule2api(fdRule *model.FaultDetectRule) (*apifault.FaultDetectRu
 }
 
 // faultDetectRule2ClientAPI 把内部数据结构转化为客户端API参数
-func faultDetectRule2ClientAPI(req *model.ServiceWithFaultDetectRules) (*apifault.FaultDetector, error) {
+func faultDetectRule2ClientAPI(req *rules.ServiceWithFaultDetectRules) (*apifault.FaultDetector, error) {
 	if req == nil {
 		return nil, nil
 	}
@@ -285,7 +286,7 @@ func faultDetectRule2ClientAPI(req *model.ServiceWithFaultDetectRules) (*apifaul
 	out.Revision = req.Revision
 	out.Rules = make([]*apifault.FaultDetectRule, 0, req.CountFaultDetectRules())
 	var iterateErr error
-	req.IterateFaultDetectRules(func(rule *model.FaultDetectRule) {
+	req.IterateFaultDetectRules(func(rule *rules.FaultDetectRule) {
 		cbRule, err := faultDetectRule2api(rule)
 		if err != nil {
 			iterateErr = err

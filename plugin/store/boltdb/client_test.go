@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 )
 
 func Test_ConvertToClientObject(t *testing.T) {
@@ -51,7 +51,7 @@ func Test_ConvertToClientObject(t *testing.T) {
 		},
 	}
 
-	ret, err := convertToClientObject(model.NewClient(client))
+	ret, err := convertToClientObject(types.NewClient(client))
 	assert.NoError(t, err)
 
 	cop, err := convertToModelClient(ret)
@@ -63,11 +63,11 @@ func Test_ConvertToClientObject(t *testing.T) {
 	assert.Equal(t, client, cop.Proto())
 }
 
-func createMockClients(total int) []*model.Client {
-	ret := make([]*model.Client, 0, total)
+func createMockClients(total int) []*types.Client {
+	ret := make([]*types.Client, 0, total)
 
 	for i := 0; i < total; i++ {
-		ret = append(ret, model.NewClient(&apiservice.Client{
+		ret = append(ret, types.NewClient(&apiservice.Client{
 			Host:    &wrapperspb.StringValue{Value: fmt.Sprintf("client-%d", i)},
 			Type:    0,
 			Version: &wrapperspb.StringValue{Value: fmt.Sprintf("client-%d", i)},

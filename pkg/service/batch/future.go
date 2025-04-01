@@ -26,8 +26,8 @@ import (
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
 	metrictypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 // InstanceFuture 创建实例的异步结构体
@@ -40,7 +40,7 @@ type InstanceFuture struct {
 	// api请求对象
 	request *apiservice.Instance
 	// 从数据库中读取到的model信息
-	instance *model.Instance
+	instance *svctypes.Instance
 	// 记录对外API的错误码
 	code apimodel.Code
 	// 这个 future 是否会被外部调用 Wait 接口
@@ -87,12 +87,12 @@ func (future *InstanceFuture) Wait() error {
 }
 
 // SetInstance 设置ins
-func (future *InstanceFuture) SetInstance(instance *model.Instance) {
+func (future *InstanceFuture) SetInstance(instance *svctypes.Instance) {
 	future.instance = instance
 }
 
 // Instance 获取ins
-func (future *InstanceFuture) Instance() *model.Instance {
+func (future *InstanceFuture) Instance() *svctypes.Instance {
 	return future.instance
 }
 

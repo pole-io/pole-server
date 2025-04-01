@@ -25,6 +25,7 @@ import (
 	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/observability/history"
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	cacheservice "github.com/pole-io/pole-server/pkg/cache/service"
@@ -117,14 +118,14 @@ func (s *Server) AddInstanceChain(chain ...InstanceChain) {
 }
 
 // GetServiceInstanceRevision 获取服务实例的revision
-func (s *Server) GetServiceInstanceRevision(serviceID string, instances []*model.Instance) (string, error) {
+func (s *Server) GetServiceInstanceRevision(serviceID string, instances []*svctypes.Instance) (string, error) {
 	if revision := s.caches.Service().GetRevisionWorker().GetServiceInstanceRevision(serviceID); revision != "" {
 		return revision, nil
 	}
 
 	svc := s.Cache().Service().GetServiceByID(serviceID)
 	if svc == nil {
-		return "", model.ErrorNoService
+		return "", types.ErrorNoService
 	}
 
 	data, err := cacheservice.ComputeRevision(svc.Revision, instances)
@@ -136,7 +137,7 @@ func (s *Server) GetServiceInstanceRevision(serviceID string, instances []*model
 }
 
 // 封装一下cmdb的GetLocation
-func (s *Server) getLocation(host string) *model.Location {
+func (s *Server) getLocation(host string) *svctypes.Location {
 	if s.cmdb == nil {
 		return nil
 	}

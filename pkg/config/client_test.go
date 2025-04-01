@@ -29,9 +29,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
 	testsuit "github.com/pole-io/pole-server/test/suit"
@@ -484,7 +484,7 @@ func TestWatchConfigFileAtFirstPublish(t *testing.T) {
 		t.Log("publish config file success")
 		assert.Equal(t, api.ExecuteSuccess, rsp2.Code.GetValue(), rsp2.GetInfo().GetValue())
 
-		saveData, err := testSuit.Storage.GetConfigFileActiveRelease(&model.ConfigFileKey{
+		saveData, err := testSuit.Storage.GetConfigFileActiveRelease(&conftypes.ConfigFileKey{
 			Name:      configFile.GetName().GetValue(),
 			Namespace: configFile.GetNamespace().GetValue(),
 			Group:     configFile.GetGroup().GetValue(),

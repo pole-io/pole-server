@@ -27,7 +27,7 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/resource"
@@ -145,7 +145,7 @@ func (eds *EDSBuilder) makeSelfEndpoint(option *resource.BuildOption) []types.Re
 	var lbEndpoints []*endpoint.LbEndpoint
 
 	selfServiceKey := option.SelfService
-	var servicePorts []*model.ServicePort
+	var servicePorts []*svctypes.ServicePort
 	selfServiceInfo, ok := option.Services[selfServiceKey]
 	if ok {
 		servicePorts = selfServiceInfo.Ports
@@ -159,7 +159,7 @@ func (eds *EDSBuilder) makeSelfEndpoint(option *resource.BuildOption) []types.Re
 					continue
 				}
 				if ret <= 65535 {
-					servicePorts = append(servicePorts, &model.ServicePort{
+					servicePorts = append(servicePorts, &svctypes.ServicePort{
 						Port:     uint32(ret),
 						Protocol: "TCP",
 					})

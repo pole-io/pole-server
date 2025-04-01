@@ -28,7 +28,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -41,13 +42,13 @@ func RandStringRunes(n int) string {
 	return string(b)
 }
 
-func createTestRateLimit(id string, createId bool) *model.RateLimit {
+func createTestRateLimit(id string, createId bool) *rules.RateLimit {
 
 	if strings.Compare(id, "") == 0 && createId {
 		id = uuid.NewString()
 	}
 
-	return &model.RateLimit{
+	return &rules.RateLimit{
 		ID:         id,
 		ServiceID:  RandStringRunes(10),
 		Labels:     RandStringRunes(20),
@@ -185,11 +186,11 @@ func Test_rateLimitStore_GetExtendRateLimits(t *testing.T) {
 			handler: handler,
 		}
 
-		vals := make([]*model.RateLimit, 0)
+		vals := make([]*rules.RateLimit, 0)
 
-		Cluster_2 := make([]*model.RateLimit, 0)
-		Cluster_3 := make([]*model.RateLimit, 0)
-		Cluster_5 := make([]*model.RateLimit, 0)
+		Cluster_2 := make([]*rules.RateLimit, 0)
+		Cluster_3 := make([]*rules.RateLimit, 0)
+		Cluster_5 := make([]*rules.RateLimit, 0)
 
 		for i := 0; i < 10; i++ {
 			testVal := createTestRateLimit(uuid.NewString(), false)
@@ -209,7 +210,7 @@ func Test_rateLimitStore_GetExtendRateLimits(t *testing.T) {
 			}
 
 			//  create service
-			svcS.AddService(&model.Service{
+			svcS.AddService(&svctypes.Service{
 				ID:        testVal.ServiceID,
 				Name:      testVal.ServiceID,
 				Namespace: testVal.ServiceID,
@@ -235,7 +236,7 @@ func Test_rateLimitStore_GetExtendRateLimits(t *testing.T) {
 			t.Fatalf("expect result cnt : %d, actual cnt : %d", len(Cluster_2), got)
 		}
 
-		got1Limits := make([]*model.RateLimit, 0)
+		got1Limits := make([]*rules.RateLimit, 0)
 		for i := range got1 {
 			got1Limits = append(got1Limits, got1[i].RateLimit)
 		}
@@ -274,7 +275,7 @@ func Test_rateLimitStore_GetExtendRateLimits(t *testing.T) {
 			t.Fatalf("expect result cnt : %d, actual cnt : %d", len(Cluster_3), got)
 		}
 
-		got1Limits = make([]*model.RateLimit, 0)
+		got1Limits = make([]*rules.RateLimit, 0)
 		for i := range got1 {
 			got1Limits = append(got1Limits, got1[i].RateLimit)
 		}
@@ -312,7 +313,7 @@ func Test_rateLimitStore_GetExtendRateLimitsDisable(t *testing.T) {
 			handler: handler,
 		}
 
-		vals := make([]*model.RateLimit, 0)
+		vals := make([]*rules.RateLimit, 0)
 
 		for i := 0; i < 10; i++ {
 			testVal := createTestRateLimit(uuid.NewString(), false)
@@ -322,7 +323,7 @@ func Test_rateLimitStore_GetExtendRateLimitsDisable(t *testing.T) {
 				testVal.Disable = false
 			}
 			//  create service
-			svcS.AddService(&model.Service{
+			svcS.AddService(&svctypes.Service{
 				ID:        testVal.ServiceID,
 				Name:      testVal.ServiceID,
 				Namespace: testVal.ServiceID,
@@ -393,7 +394,7 @@ func Test_rateLimitStore_GetRateLimitsForCache(t *testing.T) {
 			handler: handler,
 		}
 
-		vals := make([]*model.RateLimit, 0, 10)
+		vals := make([]*rules.RateLimit, 0, 10)
 
 		tN := time.Now().Add(time.Duration(-30) * time.Minute)
 
@@ -414,7 +415,7 @@ func Test_rateLimitStore_GetRateLimitsForCache(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		expectList := make([]*model.RateLimit, 0)
+		expectList := make([]*rules.RateLimit, 0)
 
 		for i := range vals {
 			item := vals[i]

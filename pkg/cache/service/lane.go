@@ -30,9 +30,10 @@ import (
 	protoV2 "google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	types "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -46,19 +47,19 @@ type LaneCache struct {
 	*types.BaseCache
 	// single .
 	single singleflight.Group
-	// groups id -> *model.LaneGroupProto
-	rules *utils.SyncMap[string, *model.LaneGroupProto]
-	// serviceRules namespace -> service -> []*model.LaneRuleProto
-	serviceRules *utils.SyncMap[string, *utils.SyncMap[string, *utils.SyncMap[string, *model.LaneGroupProto]]]
+	// groups id -> *rules.LaneGroupProto
+	rules *utils.SyncMap[string, *rules.LaneGroupProto]
+	// serviceRules namespace -> service -> []*rules.LaneRuleProto
+	serviceRules *utils.SyncMap[string, *utils.SyncMap[string, *utils.SyncMap[string, *rules.LaneGroupProto]]]
 	// revisions namespace -> service -> revision
 	revisions *utils.SyncMap[string, *utils.SyncMap[string, string]]
 }
 
 // Initialize .
 func (lc *LaneCache) Initialize(c map[string]interface{}) error {
-	lc.serviceRules = utils.NewSyncMap[string, *utils.SyncMap[string, *utils.SyncMap[string, *model.LaneGroupProto]]]()
+	lc.serviceRules = utils.NewSyncMap[string, *utils.SyncMap[string, *utils.SyncMap[string, *rules.LaneGroupProto]]]()
 	lc.revisions = utils.NewSyncMap[string, *utils.SyncMap[string, string]]()
-	lc.rules = utils.NewSyncMap[string, *model.LaneGroupProto]()
+	lc.rules = utils.NewSyncMap[string, *rules.LaneGroupProto]()
 	lc.single = singleflight.Group{}
 	return nil
 }
@@ -98,7 +99,7 @@ func (lc *LaneCache) realUpdate() (map[string]time.Time, int64, error) {
 	}, int64(len(rules)), err
 }
 
-func (lc *LaneCache) setLaneRules(items map[string]*model.LaneGroup) (time.Time, int, int, int) {
+func (lc *LaneCache) setLaneRules(items map[string]*rules.LaneGroup) (time.Time, int, int, int) {
 	lastMtime := lc.LastMtime().Unix()
 	add := 0
 	update := 0
@@ -138,7 +139,7 @@ func (lc *LaneCache) setLaneRules(items map[string]*model.LaneGroup) (time.Time,
 	return time.Unix(lastMtime, 0), add, update, del
 }
 
-func (lc *LaneCache) processLaneRuleUpsert(old, item *model.LaneGroupProto, affectSvcs map[string]map[string]struct{}) {
+func (lc *LaneCache) processLaneRuleUpsert(old, item *rules.LaneGroupProto, affectSvcs map[string]map[string]struct{}) {
 	waitDelServices := map[string]map[string]struct{}{}
 	addService := func(ns, svc string) {
 		if _, ok := waitDelServices[ns]; !ok {
@@ -151,7 +152,7 @@ func (lc *LaneCache) processLaneRuleUpsert(old, item *model.LaneGroupProto, affe
 		delete(waitDelServices[ns], svc)
 	}
 
-	handle := func(rule *model.LaneGroupProto, serviceOp func(ns, svc string), ruleOp func(string, string, *model.LaneGroupProto)) {
+	handle := func(rule *rules.LaneGroupProto, serviceOp func(ns, svc string), ruleOp func(string, string, *rules.LaneGroupProto)) {
 		if rule == nil {
 			return
 		}
@@ -164,15 +165,15 @@ func (lc *LaneCache) processLaneRuleUpsert(old, item *model.LaneGroupProto, affe
 
 		for i := range rule.Proto.Entries {
 			entry := rule.Proto.Entries[i]
-			switch model.TrafficEntryType(entry.Type) {
-			case model.TrafficEntry_MicroService:
+			switch rules.TrafficEntryType(entry.Type) {
+			case rules.TrafficEntry_MicroService:
 				selector := &apitraffic.ServiceSelector{}
 				if err := anyToSelector(entry.Selector, selector); err != nil {
 					continue
 				}
 				serviceOp(selector.Namespace, selector.Service)
 				ruleOp(selector.Namespace, selector.Service, rule)
-			case model.TrafficEntry_SpringCloudGateway:
+			case rules.TrafficEntry_SpringCloudGateway:
 				selector := &apitraffic.ServiceGatewaySelector{}
 				if err := anyToSelector(entry.Selector, selector); err != nil {
 					continue
@@ -185,14 +186,14 @@ func (lc *LaneCache) processLaneRuleUpsert(old, item *model.LaneGroupProto, affe
 		}
 	}
 
-	handle(item, addService, func(ns, svc string, group *model.LaneGroupProto) {
+	handle(item, addService, func(ns, svc string, group *rules.LaneGroupProto) {
 		if _, ok := affectSvcs[ns]; !ok {
 			affectSvcs[ns] = map[string]struct{}{}
 		}
 		affectSvcs[ns][svc] = struct{}{}
 		lc.upsertServiceRule(ns, svc, group)
 	})
-	handle(old, removeServiceIfExist, func(ns, svc string, group *model.LaneGroupProto) {
+	handle(old, removeServiceIfExist, func(ns, svc string, group *rules.LaneGroupProto) {
 		if _, ok := affectSvcs[ns]; !ok {
 			affectSvcs[ns] = map[string]struct{}{}
 		}
@@ -206,7 +207,7 @@ func (lc *LaneCache) processLaneRuleUpsert(old, item *model.LaneGroupProto, affe
 	}
 }
 
-func (lc *LaneCache) processLaneRuleDelete(item *model.LaneGroupProto, affectSvcs map[string]map[string]struct{}) {
+func (lc *LaneCache) processLaneRuleDelete(item *rules.LaneGroupProto, affectSvcs map[string]map[string]struct{}) {
 	message := item.Proto
 	// 先清理 destinations
 	for i := range message.Destinations {
@@ -222,8 +223,8 @@ func (lc *LaneCache) processLaneRuleDelete(item *model.LaneGroupProto, affectSvc
 		entry := message.Entries[i]
 		var ns string
 		var svc string
-		switch model.TrafficEntryType(entry.Type) {
-		case model.TrafficEntry_MicroService:
+		switch rules.TrafficEntryType(entry.Type) {
+		case rules.TrafficEntry_MicroService:
 			selector := &apitraffic.ServiceSelector{}
 			if err := anyToSelector(entry.Selector, selector); err != nil {
 				continue
@@ -231,7 +232,7 @@ func (lc *LaneCache) processLaneRuleDelete(item *model.LaneGroupProto, affectSvc
 			ns = selector.Namespace
 			svc = selector.Service
 			lc.cleanServiceRule(selector.Namespace, selector.Service, item)
-		case model.TrafficEntry_SpringCloudGateway:
+		case rules.TrafficEntry_SpringCloudGateway:
 			selector := &apitraffic.ServiceGatewaySelector{}
 			if err := anyToSelector(entry.Selector, selector); err != nil {
 				continue
@@ -247,19 +248,19 @@ func (lc *LaneCache) processLaneRuleDelete(item *model.LaneGroupProto, affectSvc
 	}
 }
 
-func (lc *LaneCache) upsertServiceRule(namespace, service string, item *model.LaneGroupProto) {
+func (lc *LaneCache) upsertServiceRule(namespace, service string, item *rules.LaneGroupProto) {
 	namespaceContainer, _ := lc.serviceRules.ComputeIfAbsent(namespace,
-		func(k string) *utils.SyncMap[string, *utils.SyncMap[string, *model.LaneGroupProto]] {
-			return utils.NewSyncMap[string, *utils.SyncMap[string, *model.LaneGroupProto]]()
+		func(k string) *utils.SyncMap[string, *utils.SyncMap[string, *rules.LaneGroupProto]] {
+			return utils.NewSyncMap[string, *utils.SyncMap[string, *rules.LaneGroupProto]]()
 		})
 	serviceContainer, _ := namespaceContainer.ComputeIfAbsent(service,
-		func(k string) *utils.SyncMap[string, *model.LaneGroupProto] {
-			return utils.NewSyncMap[string, *model.LaneGroupProto]()
+		func(k string) *utils.SyncMap[string, *rules.LaneGroupProto] {
+			return utils.NewSyncMap[string, *rules.LaneGroupProto]()
 		})
 	serviceContainer.Store(item.ID, item)
 }
 
-func (lc *LaneCache) cleanServiceRule(namespace, service string, item *model.LaneGroupProto) {
+func (lc *LaneCache) cleanServiceRule(namespace, service string, item *rules.LaneGroupProto) {
 	namespaceContainer, ok := lc.serviceRules.Load(namespace)
 	if !ok {
 		return
@@ -295,7 +296,7 @@ func (lc *LaneCache) postUpdateRevisions(affectSvcs map[string]map[string]struct
 			if !ok {
 				continue
 			}
-			svcContainer.Range(func(key string, val *model.LaneGroupProto) {
+			svcContainer.Range(func(key string, val *rules.LaneGroupProto) {
 				revisions = append(revisions, val.Revision)
 			})
 			revision, err := types.CompositeComputeRevision(revisions)
@@ -307,17 +308,17 @@ func (lc *LaneCache) postUpdateRevisions(affectSvcs map[string]map[string]struct
 	}
 }
 
-func (lc *LaneCache) GetLaneRules(serviceKey *model.Service) ([]*model.LaneGroupProto, string) {
+func (lc *LaneCache) GetLaneRules(serviceKey *svctypes.Service) ([]*rules.LaneGroupProto, string) {
 	namespaceContainer, ok := lc.serviceRules.Load(serviceKey.Namespace)
 	if !ok {
-		return []*model.LaneGroupProto{}, ""
+		return []*rules.LaneGroupProto{}, ""
 	}
 	serviceContainer, ok := namespaceContainer.Load(serviceKey.Name)
 	if !ok {
-		return []*model.LaneGroupProto{}, ""
+		return []*rules.LaneGroupProto{}, ""
 	}
-	ret := make([]*model.LaneGroupProto, 0, 32)
-	serviceContainer.Range(func(ruleId string, val *model.LaneGroupProto) {
+	ret := make([]*rules.LaneGroupProto, 0, 32)
+	serviceContainer.Range(func(ruleId string, val *rules.LaneGroupProto) {
 		ret = append(ret, val)
 	})
 
@@ -336,8 +337,8 @@ func (lc *LaneCache) LastMtime() time.Time {
 // Clear .
 func (lc *LaneCache) Clear() error {
 	lc.revisions = utils.NewSyncMap[string, *utils.SyncMap[string, string]]()
-	lc.rules = utils.NewSyncMap[string, *model.LaneGroupProto]()
-	lc.serviceRules = utils.NewSyncMap[string, *utils.SyncMap[string, *utils.SyncMap[string, *model.LaneGroupProto]]]()
+	lc.rules = utils.NewSyncMap[string, *rules.LaneGroupProto]()
+	lc.serviceRules = utils.NewSyncMap[string, *utils.SyncMap[string, *utils.SyncMap[string, *rules.LaneGroupProto]]]()
 	return nil
 }
 
@@ -355,16 +356,16 @@ func anyToSelector(data *anypb.Any, msg proto.Message) error {
 }
 
 var (
-	laneGroupSort = map[string]func(asc bool, a, b *model.LaneGroupProto) bool{
-		"mtime": func(asc bool, a, b *model.LaneGroupProto) bool {
+	laneGroupSort = map[string]func(asc bool, a, b *rules.LaneGroupProto) bool{
+		"mtime": func(asc bool, a, b *rules.LaneGroupProto) bool {
 			ret := a.ModifyTime.Before(b.ModifyTime)
 			return ret && asc
 		},
-		"id": func(asc bool, a, b *model.LaneGroupProto) bool {
+		"id": func(asc bool, a, b *rules.LaneGroupProto) bool {
 			ret := a.ID < b.ID
 			return ret && asc
 		},
-		"name": func(asc bool, a, b *model.LaneGroupProto) bool {
+		"name": func(asc bool, a, b *rules.LaneGroupProto) bool {
 			ret := a.Name < b.Name
 			return ret && asc
 		},
@@ -372,7 +373,7 @@ var (
 )
 
 // Query implements api.LaneCache.
-func (lc *LaneCache) Query(ctx context.Context, args *types.LaneGroupArgs) (uint32, []*model.LaneGroupProto, error) {
+func (lc *LaneCache) Query(ctx context.Context, args *types.LaneGroupArgs) (uint32, []*rules.LaneGroupProto, error) {
 	if err := lc.Update(); err != nil {
 		return 0, nil, err
 	}
@@ -382,9 +383,9 @@ func (lc *LaneCache) Query(ctx context.Context, args *types.LaneGroupArgs) (uint
 	searchName, hasName := args.Filter["name"]
 	searchId, hasId := args.Filter["id"]
 
-	results := make([]*model.LaneGroupProto, 0, 32)
+	results := make([]*rules.LaneGroupProto, 0, 32)
 
-	lc.rules.ReadRange(func(key string, val *model.LaneGroupProto) {
+	lc.rules.ReadRange(func(key string, val *rules.LaneGroupProto) {
 		if hasName && !utils.IsWildMatch(val.Name, searchName) {
 			return
 		}
@@ -414,8 +415,8 @@ func (lc *LaneCache) Query(ctx context.Context, args *types.LaneGroupArgs) (uint
 	return total, ret, nil
 }
 
-func (lc *LaneCache) toPage(total uint32, items []*model.LaneGroupProto,
-	args *types.LaneGroupArgs) (uint32, []*model.LaneGroupProto) {
+func (lc *LaneCache) toPage(total uint32, items []*rules.LaneGroupProto,
+	args *types.LaneGroupArgs) (uint32, []*rules.LaneGroupProto) {
 	if args.Limit == 0 {
 		return total, items
 	}
@@ -427,7 +428,7 @@ func (lc *LaneCache) toPage(total uint32, items []*model.LaneGroupProto,
 }
 
 // GetRule implements api.LaneCache.
-func (lc *LaneCache) GetRule(id string) *model.LaneGroup {
+func (lc *LaneCache) GetRule(id string) *rules.LaneGroup {
 	rule, _ := lc.rules.Load(id)
 	return rule.LaneGroup
 }

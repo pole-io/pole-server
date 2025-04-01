@@ -52,35 +52,8 @@ var (
 	}
 )
 
-// UpdateRoutingConfigs implements service.DiscoverServer.
-// Deprecated: not support from 1.19.x
-func (svr *Server) UpdateRoutingConfigs(ctx context.Context, req []*traffic_manage.Routing) *service_manage.BatchWriteResponse {
-	return svr.nextSvr.UpdateRoutingConfigs(ctx, req)
-}
-
-// GetRoutingConfigs implements service.DiscoverServer.
-// Deprecated: not support from 1.19.x
-func (svr *Server) GetRoutingConfigs(ctx context.Context,
-	query map[string]string) *service_manage.BatchQueryResponse {
-	return svr.nextSvr.GetRoutingConfigs(ctx, query)
-}
-
-// CreateRoutingConfigs implements service.DiscoverServer.
-// Deprecated: not support from 1.19.x
-func (svr *Server) CreateRoutingConfigs(ctx context.Context,
-	req []*traffic_manage.Routing) *service_manage.BatchWriteResponse {
-	return svr.nextSvr.CreateRoutingConfigs(ctx, req)
-}
-
-// DeleteRoutingConfigs implements service.DiscoverServer.
-// Deprecated: not support from 1.19.x
-func (svr *Server) DeleteRoutingConfigs(ctx context.Context,
-	req []*traffic_manage.Routing) *service_manage.BatchWriteResponse {
-	return svr.nextSvr.DeleteRoutingConfigs(ctx, req)
-}
-
 // CreateRoutingConfigsV2 implements service.DiscoverServer.
-func (svr *Server) CreateRoutingConfigsV2(ctx context.Context,
+func (svr *Server) CreateRoutingConfigs(ctx context.Context,
 	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
 	if err := checkBatchRoutingConfigV2(req); err != nil {
 		return err
@@ -94,7 +67,7 @@ func (svr *Server) CreateRoutingConfigsV2(ctx context.Context,
 	if !apiv1.IsSuccess(batchRsp) {
 		return batchRsp
 	}
-	return svr.nextSvr.CreateRoutingConfigsV2(ctx, req)
+	return svr.nextSvr.CreateRoutingConfigs(ctx, req)
 }
 
 // EnableRoutings implements service.DiscoverServer.
@@ -116,7 +89,7 @@ func (svr *Server) EnableRoutings(ctx context.Context,
 }
 
 // UpdateRoutingConfigsV2 implements service.DiscoverServer.
-func (svr *Server) UpdateRoutingConfigsV2(ctx context.Context,
+func (svr *Server) UpdateRoutingConfigs(ctx context.Context,
 	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
 	if err := checkBatchRoutingConfigV2(req); err != nil {
 		return err
@@ -130,11 +103,11 @@ func (svr *Server) UpdateRoutingConfigsV2(ctx context.Context,
 	if !apiv1.IsSuccess(batchRsp) {
 		return batchRsp
 	}
-	return svr.nextSvr.UpdateRoutingConfigsV2(ctx, req)
+	return svr.nextSvr.UpdateRoutingConfigs(ctx, req)
 }
 
 // QueryRoutingConfigsV2 implements service.DiscoverServer.
-func (svr *Server) QueryRoutingConfigsV2(ctx context.Context,
+func (svr *Server) QueryRoutingConfigs(ctx context.Context,
 	query map[string]string) *service_manage.BatchQueryResponse {
 
 	offset, limit, err := utils.ParseOffsetAndLimit(query)
@@ -153,11 +126,11 @@ func (svr *Server) QueryRoutingConfigsV2(ctx context.Context,
 	filter["offset"] = strconv.FormatUint(uint64(offset), 10)
 	filter["limit"] = strconv.FormatUint(uint64(limit), 10)
 
-	return svr.nextSvr.QueryRoutingConfigsV2(ctx, filter)
+	return svr.nextSvr.QueryRoutingConfigs(ctx, filter)
 }
 
 // DeleteRoutingConfigsV2 implements service.DiscoverServer.
-func (svr *Server) DeleteRoutingConfigsV2(ctx context.Context,
+func (svr *Server) DeleteRoutingConfigs(ctx context.Context,
 	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
 	if err := checkBatchRoutingConfigV2(req); err != nil {
 		return err
@@ -171,7 +144,7 @@ func (svr *Server) DeleteRoutingConfigsV2(ctx context.Context,
 	if !apiv1.IsSuccess(batchRsp) {
 		return batchRsp
 	}
-	return svr.nextSvr.DeleteRoutingConfigsV2(ctx, req)
+	return svr.nextSvr.DeleteRoutingConfigs(ctx, req)
 }
 
 // checkBatchRoutingConfig Check batch request

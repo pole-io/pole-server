@@ -25,30 +25,30 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
-var _ store.RoutingConfigStoreV2 = (*routingConfigStoreV2)(nil)
+var _ store.RouterRuleConfigStore = (*routerRuleStore)(nil)
 
-// RoutingConfigStoreV2 impl
-type routingConfigStoreV2 struct {
+// routerRuleStore impl
+type routerRuleStore struct {
 	master *BaseDB
 	slave  *BaseDB
 }
 
-// CreateRoutingConfigV2 Add a new routing configuration
-func (r *routingConfigStoreV2) CreateRoutingConfigV2(conf *model.RouterConfig) error {
+// CreateRoutingConfig Add a new routing configuration
+func (r *routerRuleStore) CreateRoutingConfig(conf *rules.RouterConfig) error {
 	if conf.ID == "" || conf.Revision == "" {
-		log.Errorf("[Store][boltdb] create routing config v2 missing id or revision")
+		log.Errorf("[Store][boltdb] create routing config  missing id or revision")
 		return store.NewStatusError(store.EmptyParamsErr, "missing id or revision")
 	}
 	if conf.Policy == "" || conf.Config == "" {
-		log.Errorf("[Store][boltdb] create routing config v2 missing params")
+		log.Errorf("[Store][boltdb] create routing config  missing params")
 		return store.NewStatusError(store.EmptyParamsErr, "missing some params")
 	}
 
-	err := RetryTransaction("CreateRoutingConfigV2", func() error {
+	err := RetryTransaction("CreateRoutingConfig", func() error {
 		tx, err := r.master.Begin()
 		if err != nil {
 			return err
@@ -57,12 +57,12 @@ func (r *routingConfigStoreV2) CreateRoutingConfigV2(conf *model.RouterConfig) e
 		defer func() {
 			_ = tx.Rollback()
 		}()
-		if err := r.createRoutingConfigV2Tx(tx, conf); err != nil {
+		if err := r.createRoutingConfigTx(tx, conf); err != nil {
 			return err
 		}
 
 		if err := tx.Commit(); err != nil {
-			log.Errorf("[Store][database] create routing config v2(%+v) commit: %s", conf, err.Error())
+			log.Errorf("[Store][database] create routing config (%+v) commit: %s", conf, err.Error())
 			return store.Error(err)
 		}
 
@@ -72,23 +72,23 @@ func (r *routingConfigStoreV2) CreateRoutingConfigV2(conf *model.RouterConfig) e
 	return store.Error(err)
 }
 
-func (r *routingConfigStoreV2) CreateRoutingConfigV2Tx(tx store.Tx, conf *model.RouterConfig) error {
+func (r *routerRuleStore) CreateRoutingConfigTx(tx store.Tx, conf *rules.RouterConfig) error {
 	if tx == nil {
 		return errors.New("tx is nil")
 	}
 
 	dbTx := tx.GetDelegateTx().(*BaseTx)
-	return r.createRoutingConfigV2Tx(dbTx, conf)
+	return r.createRoutingConfigTx(dbTx, conf)
 }
 
-func (r *routingConfigStoreV2) createRoutingConfigV2Tx(tx *BaseTx, conf *model.RouterConfig) error {
+func (r *routerRuleStore) createRoutingConfigTx(tx *BaseTx, conf *rules.RouterConfig) error {
 	// 删除无效的数据
-	if _, err := tx.Exec("DELETE FROM routing_config_v2 WHERE id = ? AND flag = 1", conf.ID); err != nil {
-		log.Errorf("[Store][database] create routing v2(%+v) err: %s", conf, err.Error())
+	if _, err := tx.Exec("DELETE FROM routing_config_ WHERE id = ? AND flag = 1", conf.ID); err != nil {
+		log.Errorf("[Store][database] create routing (%+v) err: %s", conf, err.Error())
 		return store.Error(err)
 	}
 
-	insertSQL := "INSERT INTO routing_config_v2(id, namespace, name, policy, config, enable, " +
+	insertSQL := "INSERT INTO routing_config_(id, namespace, name, policy, config, enable, " +
 		" priority, revision, description, ctime, mtime, etime) VALUES (?,?,?,?,?,?,?,?,?,sysdate(),sysdate(),%s)"
 
 	var enable int
@@ -100,18 +100,18 @@ func (r *routingConfigStoreV2) createRoutingConfigV2Tx(tx *BaseTx, conf *model.R
 		insertSQL = fmt.Sprintf(insertSQL, emptyEnableTime)
 	}
 
-	log.Debug("[Store][database] create routing v2", zap.String("sql", insertSQL))
+	log.Debug("[Store][database] create routing ", zap.String("sql", insertSQL))
 
 	if _, err := tx.Exec(insertSQL, conf.ID, conf.Namespace, conf.Name, conf.Policy,
 		conf.Config, enable, conf.Priority, conf.Revision, conf.Description); err != nil {
-		log.Errorf("[Store][database] create routing v2(%+v) err: %s", conf, err.Error())
+		log.Errorf("[Store][database] create routing (%+v) err: %s", conf, err.Error())
 		return store.Error(err)
 	}
 	return nil
 }
 
-// UpdateRoutingConfigV2 Update a routing configuration
-func (r *routingConfigStoreV2) UpdateRoutingConfigV2(conf *model.RouterConfig) error {
+// UpdateRoutingConfig Update a routing configuration
+func (r *routerRuleStore) UpdateRoutingConfig(conf *rules.RouterConfig) error {
 
 	tx, err := r.master.Begin()
 	if err != nil {
@@ -122,51 +122,51 @@ func (r *routingConfigStoreV2) UpdateRoutingConfigV2(conf *model.RouterConfig) e
 		_ = tx.Rollback()
 	}()
 
-	if err := r.updateRoutingConfigV2Tx(tx, conf); err != nil {
+	if err := r.updateRoutingConfigTx(tx, conf); err != nil {
 		return err
 	}
 
 	if err := tx.Commit(); err != nil {
-		log.Errorf("[Store][database] update routing config v2(%+v) commit: %s", conf, err.Error())
+		log.Errorf("[Store][database] update routing config (%+v) commit: %s", conf, err.Error())
 		return store.Error(err)
 	}
 
 	return nil
 }
 
-func (r *routingConfigStoreV2) UpdateRoutingConfigV2Tx(tx store.Tx, conf *model.RouterConfig) error {
+func (r *routerRuleStore) UpdateRoutingConfigTx(tx store.Tx, conf *rules.RouterConfig) error {
 	if tx == nil {
 		return errors.New("tx is nil")
 	}
 
 	dbTx := tx.GetDelegateTx().(*BaseTx)
-	return r.updateRoutingConfigV2Tx(dbTx, conf)
+	return r.updateRoutingConfigTx(dbTx, conf)
 }
 
-func (r *routingConfigStoreV2) updateRoutingConfigV2Tx(tx *BaseTx, conf *model.RouterConfig) error {
+func (r *routerRuleStore) updateRoutingConfigTx(tx *BaseTx, conf *rules.RouterConfig) error {
 	if conf.ID == "" || conf.Revision == "" {
-		log.Errorf("[Store][database] update routing config v2 missing id or revision")
+		log.Errorf("[Store][database] update routing config  missing id or revision")
 		return store.NewStatusError(store.EmptyParamsErr, "missing id or revision")
 	}
 	if conf.Policy == "" || conf.Config == "" {
-		log.Errorf("[Store][boltdb] create routing config v2 missing params")
+		log.Errorf("[Store][boltdb] create routing config  missing params")
 		return store.NewStatusError(store.EmptyParamsErr, "missing some params")
 	}
 
-	str := "update routing_config_v2 set name = ?, policy = ?, config = ?, revision = ?, priority = ?, " +
+	str := "update routing_config_ set name = ?, policy = ?, config = ?, revision = ?, priority = ?, " +
 		" description = ?, mtime = sysdate() where id = ?"
 	if _, err := tx.Exec(str, conf.Name, conf.Policy, conf.Config, conf.Revision, conf.Priority, conf.Description,
 		conf.ID); err != nil {
-		log.Errorf("[Store][database] update routing config v2(%+v) exec err: %s", conf, err.Error())
+		log.Errorf("[Store][database] update routing config (%+v) exec err: %s", conf, err.Error())
 		return store.Error(err)
 	}
 	return nil
 }
 
 // EnableRateLimit Enable current limit rules
-func (r *routingConfigStoreV2) EnableRouting(conf *model.RouterConfig) error {
+func (r *routerRuleStore) EnableRouting(conf *rules.RouterConfig) error {
 	if conf.ID == "" || conf.Revision == "" {
-		return errors.New("[Store][database] enable routing config v2 missing some params")
+		return errors.New("[Store][database] enable routing config  missing some params")
 	}
 
 	err := RetryTransaction("EnableRouting", func() error {
@@ -182,9 +182,9 @@ func (r *routingConfigStoreV2) EnableRouting(conf *model.RouterConfig) error {
 			etimeStr = emptyEnableTime
 		}
 		str := fmt.Sprintf(
-			`update routing_config_v2 set enable = ?, revision = ?, mtime = sysdate(), etime=%s where id = ?`, etimeStr)
+			`update routing_config_ set enable = ?, revision = ?, mtime = sysdate(), etime=%s where id = ?`, etimeStr)
 		if _, err := r.master.Exec(str, enable, conf.Revision, conf.ID); err != nil {
-			log.Errorf("[Store][database] update outing config v2(%+v), sql %s, err: %s", conf, str, err)
+			log.Errorf("[Store][database] update outing config (%+v), sql %s, err: %s", conf, str, err)
 			return err
 		}
 
@@ -194,39 +194,39 @@ func (r *routingConfigStoreV2) EnableRouting(conf *model.RouterConfig) error {
 	return store.Error(err)
 }
 
-// DeleteRoutingConfigV2 Delete a routing configuration
-func (r *routingConfigStoreV2) DeleteRoutingConfigV2(ruleID string) error {
+// DeleteRoutingConfig Delete a routing configuration
+func (r *routerRuleStore) DeleteRoutingConfig(ruleID string) error {
 
 	if ruleID == "" {
-		log.Errorf("[Store][database] delete routing config v2 missing service id")
+		log.Errorf("[Store][database] delete routing config  missing service id")
 		return store.NewStatusError(store.EmptyParamsErr, "missing service id")
 	}
 
-	str := `update routing_config_v2 set flag = 1, mtime = sysdate() where id = ?`
+	str := `update routing_config_ set flag = 1, mtime = sysdate() where id = ?`
 	if _, err := r.master.Exec(str, ruleID); err != nil {
-		log.Errorf("[Store][database] delete routing config v2(%s) err: %s", ruleID, err.Error())
+		log.Errorf("[Store][database] delete routing config (%s) err: %s", ruleID, err.Error())
 		return store.Error(err)
 	}
 
 	return nil
 }
 
-// GetRoutingConfigsV2ForCache Pull the incremental routing configuration information through mtime
-func (r *routingConfigStoreV2) GetRoutingConfigsV2ForCache(
-	mtime time.Time, firstUpdate bool) ([]*model.RouterConfig, error) {
+// GetRoutingConfigsForCache Pull the incremental routing configuration information through mtime
+func (r *routerRuleStore) GetRoutingConfigsForCache(
+	mtime time.Time, firstUpdate bool) ([]*rules.RouterConfig, error) {
 	str := `select id, name, policy, config, enable, revision, flag, priority, description,
 	unix_timestamp(ctime), unix_timestamp(mtime), unix_timestamp(etime)  
-	from routing_config_v2 where mtime > FROM_UNIXTIME(?) `
+	from routing_config_ where mtime > FROM_UNIXTIME(?) `
 
 	if firstUpdate {
 		str += " and flag != 1"
 	}
 	rows, err := r.slave.Query(str, timeToTimestamp(mtime))
 	if err != nil {
-		log.Errorf("[Store][database] query routing configs v2 with mtime err: %s", err.Error())
+		log.Errorf("[Store][database] query routing configs  with mtime err: %s", err.Error())
 		return nil, err
 	}
-	out, err := fetchRoutingConfigV2Rows(rows)
+	out, err := fetchRoutingConfigRows(rows)
 	if err != nil {
 		return nil, err
 	}
@@ -234,8 +234,8 @@ func (r *routingConfigStoreV2) GetRoutingConfigsV2ForCache(
 	return out, nil
 }
 
-// GetRoutingConfigV2WithID Pull the routing configuration according to the rules ID
-func (r *routingConfigStoreV2) GetRoutingConfigV2WithID(ruleID string) (*model.RouterConfig, error) {
+// GetRoutingConfigWithID Pull the routing configuration according to the rules ID
+func (r *routerRuleStore) GetRoutingConfigWithID(ruleID string) (*rules.RouterConfig, error) {
 
 	tx, err := r.master.Begin()
 	if err != nil {
@@ -245,33 +245,33 @@ func (r *routingConfigStoreV2) GetRoutingConfigV2WithID(ruleID string) (*model.R
 	defer func() {
 		_ = tx.Rollback()
 	}()
-	return r.getRoutingConfigV2WithIDTx(tx, ruleID)
+	return r.getRoutingConfigWithIDTx(tx, ruleID)
 }
 
-// GetRoutingConfigV2WithIDTx Pull the routing configuration according to the rules ID
-func (r *routingConfigStoreV2) GetRoutingConfigV2WithIDTx(tx store.Tx, ruleID string) (*model.RouterConfig, error) {
+// GetRoutingConfigWithIDTx Pull the routing configuration according to the rules ID
+func (r *routerRuleStore) GetRoutingConfigWithIDTx(tx store.Tx, ruleID string) (*rules.RouterConfig, error) {
 
 	if tx == nil {
 		return nil, errors.New("transaction is nil")
 	}
 
 	dbTx := tx.GetDelegateTx().(*BaseTx)
-	return r.getRoutingConfigV2WithIDTx(dbTx, ruleID)
+	return r.getRoutingConfigWithIDTx(dbTx, ruleID)
 }
 
-func (r *routingConfigStoreV2) getRoutingConfigV2WithIDTx(tx *BaseTx, ruleID string) (*model.RouterConfig, error) {
+func (r *routerRuleStore) getRoutingConfigWithIDTx(tx *BaseTx, ruleID string) (*rules.RouterConfig, error) {
 
 	str := `select id, name, policy, config, enable, revision, flag, priority, description,
 	unix_timestamp(ctime), unix_timestamp(mtime), unix_timestamp(etime)
-	from routing_config_v2 
+	from routing_config_ 
 	where id = ? and flag = 0`
 	rows, err := tx.Query(str, ruleID)
 	if err != nil {
-		log.Errorf("[Store][database] query routing v2 with id(%s) err: %s", ruleID, err.Error())
+		log.Errorf("[Store][database] query routing  with id(%s) err: %s", ruleID, err.Error())
 		return nil, err
 	}
 
-	out, err := fetchRoutingConfigV2Rows(rows)
+	out, err := fetchRoutingConfigRows(rows)
 	if err != nil {
 		return nil, err
 	}
@@ -284,12 +284,12 @@ func (r *routingConfigStoreV2) getRoutingConfigV2WithIDTx(tx *BaseTx, ruleID str
 }
 
 // fetchRoutingConfigRows Read the data of the database and release ROWS
-func fetchRoutingConfigV2Rows(rows *sql.Rows) ([]*model.RouterConfig, error) {
+func fetchRoutingConfigRows(rows *sql.Rows) ([]*rules.RouterConfig, error) {
 	defer rows.Close()
-	var out []*model.RouterConfig
+	var out []*rules.RouterConfig
 	for rows.Next() {
 		var (
-			entry               model.RouterConfig
+			entry               rules.RouterConfig
 			flag, enable        int
 			ctime, mtime, etime int64
 		)
@@ -297,7 +297,7 @@ func fetchRoutingConfigV2Rows(rows *sql.Rows) ([]*model.RouterConfig, error) {
 		err := rows.Scan(&entry.ID, &entry.Name, &entry.Policy, &entry.Config, &enable, &entry.Revision,
 			&flag, &entry.Priority, &entry.Description, &ctime, &mtime, &etime)
 		if err != nil {
-			log.Errorf("[database][store] fetch routing config v2 scan err: %s", err.Error())
+			log.Errorf("[database][store] fetch routing config  scan err: %s", err.Error())
 			return nil, err
 		}
 
@@ -313,7 +313,7 @@ func fetchRoutingConfigV2Rows(rows *sql.Rows) ([]*model.RouterConfig, error) {
 		out = append(out, &entry)
 	}
 	if err := rows.Err(); err != nil {
-		log.Errorf("[database][store] fetch routing config v2 next err: %s", err.Error())
+		log.Errorf("[database][store] fetch routing config  next err: %s", err.Error())
 		return nil, err
 	}
 

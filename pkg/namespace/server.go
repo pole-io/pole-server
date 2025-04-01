@@ -40,7 +40,7 @@ type Server struct {
 	hooks                 []ResourceHook
 }
 
-func (s *Server) afterNamespaceResource(ctx context.Context, req *apimodel.Namespace, save *model.Namespace,
+func (s *Server) afterNamespaceResource(ctx context.Context, req *apimodel.Namespace, save *types.Namespace,
 	remove bool) error {
 	event := &ResourceEvent{
 		ReqNamespace: req,
@@ -96,6 +96,6 @@ type ResourceHook interface {
 // ResourceEvent 资源事件
 type ResourceEvent struct {
 	ReqNamespace *apimodel.Namespace
-	Namespace    *model.Namespace
+	Namespace    *types.Namespace
 	IsRemove     bool
 }

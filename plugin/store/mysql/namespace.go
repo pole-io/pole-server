@@ -24,8 +24,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -36,7 +36,7 @@ type namespaceStore struct {
 }
 
 // AddNamespace 添加命名空间
-func (ns *namespaceStore) AddNamespace(namespace *model.Namespace) error {
+func (ns *namespaceStore) AddNamespace(namespace *types.Namespace) error {
 	if namespace.Name == "" {
 		return errors.New("store add namespace name is empty")
 	}
@@ -70,7 +70,7 @@ func (ns *namespaceStore) AddNamespace(namespace *model.Namespace) error {
 }
 
 // UpdateNamespace 更新命名空间，目前只更新owner
-func (ns *namespaceStore) UpdateNamespace(namespace *model.Namespace) error {
+func (ns *namespaceStore) UpdateNamespace(namespace *types.Namespace) error {
 	if namespace.Name == "" {
 		return errors.New("store update namespace name is empty")
 	}
@@ -116,7 +116,7 @@ func (ns *namespaceStore) UpdateNamespaceToken(name string, token string) error 
 }
 
 // GetNamespace 根据名字获取命名空间详情，只返回有效的
-func (ns *namespaceStore) GetNamespace(name string) (*model.Namespace, error) {
+func (ns *namespaceStore) GetNamespace(name string) (*types.Namespace, error) {
 	namespace, err := ns.getNamespace(name)
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func (ns *namespaceStore) GetNamespace(name string) (*model.Namespace, error) {
 
 // GetNamespaces 根据过滤条件查询命名空间及数目
 func (ns *namespaceStore) GetNamespaces(filter map[string][]string, offset, limit int) (
-	[]*model.Namespace, uint32, error) {
+	[]*types.Namespace, uint32, error) {
 	// 只查询有效数据
 	filter["flag"] = []string{"0"}
 
@@ -149,7 +149,7 @@ func (ns *namespaceStore) GetNamespaces(filter map[string][]string, offset, limi
 }
 
 // GetMoreNamespaces 根据mtime获取命名空间
-func (ns *namespaceStore) GetMoreNamespaces(mtime time.Time) ([]*model.Namespace, error) {
+func (ns *namespaceStore) GetMoreNamespaces(mtime time.Time) ([]*types.Namespace, error) {
 	str := genNamespaceSelectSQL() + " where mtime >= FROM_UNIXTIME(?)"
 	rows, err := ns.slave.Query(str, timeToTimestamp(mtime))
 	if err != nil {
@@ -180,7 +180,7 @@ func (ns *namespaceStore) getNamespacesCount(filter map[string][]string) (uint32
 }
 
 // getNamespaces 根据相关条件查询对应命名空间
-func (ns *namespaceStore) getNamespaces(filter map[string][]string, offset, limit int) ([]*model.Namespace, error) {
+func (ns *namespaceStore) getNamespaces(filter map[string][]string, offset, limit int) ([]*types.Namespace, error) {
 	str := genNamespaceSelectSQL()
 	order := &Order{"mtime", "desc"}
 	str, args := genNamespaceWhereSQLAndArgs(str, filter, order, offset, limit)
@@ -195,7 +195,7 @@ func (ns *namespaceStore) getNamespaces(filter map[string][]string, offset, limi
 }
 
 // getNamespace 获取namespace的内部函数，从数据库中拉取数据
-func (ns *namespaceStore) getNamespace(name string) (*model.Namespace, error) {
+func (ns *namespaceStore) getNamespace(name string) (*types.Namespace, error) {
 	if name == "" {
 		return nil, errors.New("store get namespace name is empty")
 	}
@@ -261,19 +261,19 @@ FROM namespace
 }
 
 // namespaceFetchRows 取出rows的数据
-func namespaceFetchRows(rows *sql.Rows) ([]*model.Namespace, error) {
+func namespaceFetchRows(rows *sql.Rows) ([]*types.Namespace, error) {
 	if rows == nil {
 		return nil, nil
 	}
 	defer rows.Close()
 
-	var out []*model.Namespace
+	var out []*types.Namespace
 	var ctime, mtime int64
 	var flag int
 	var serviceExportTo string
 
 	for rows.Next() {
-		space := &model.Namespace{}
+		space := &types.Namespace{}
 		err := rows.Scan(
 			&space.Name,
 			&space.Comment,

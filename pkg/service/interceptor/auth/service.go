@@ -26,9 +26,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -158,7 +158,7 @@ func (svr *Server) GetAllServices(ctx context.Context,
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 
-	ctx = cachetypes.AppendServicePredicate(ctx, func(ctx context.Context, cbr *model.Service) bool {
+	ctx = cachetypes.AppendServicePredicate(ctx, func(ctx context.Context, cbr *svctypes.Service) bool {
 		ok := svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
 			Type:     security.ResourceType_Services,
 			ID:       cbr.ID,
@@ -196,7 +196,7 @@ func (svr *Server) GetServices(
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 
 	// 注入查询条件拦截器
-	ctx = cachetypes.AppendServicePredicate(ctx, func(ctx context.Context, cbr *model.Service) bool {
+	ctx = cachetypes.AppendServicePredicate(ctx, func(ctx context.Context, cbr *svctypes.Service) bool {
 		ok := svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
 			Type:     security.ResourceType_Services,
 			ID:       cbr.ID,

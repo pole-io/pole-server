@@ -17,7 +17,11 @@
 
 package eventhub
 
-import "github.com/pole-io/pole-server/pkg/common/model"
+import (
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+)
 
 // 事件主题
 const (
@@ -39,7 +43,7 @@ const (
 
 // PublishConfigFileEvent 事件对象，包含类型和事件消息
 type PublishConfigFileEvent struct {
-	Message *model.SimpleConfigFileRelease
+	Message *conftypes.SimpleConfigFileRelease
 }
 
 // EventType common event type
@@ -55,17 +59,17 @@ const (
 )
 
 type CacheInstanceEvent struct {
-	Instance  *model.Instance
+	Instance  *svctypes.Instance
 	EventType EventType
 }
 
 type CacheClientEvent struct {
-	Client    *model.Client
+	Client    *types.Client
 	EventType EventType
 }
 
 type CacheNamespaceEvent struct {
-	OldItem   *model.Namespace
-	Item      *model.Namespace
+	OldItem   *types.Namespace
+	Item      *types.Namespace
 	EventType EventType
 }

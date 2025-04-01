@@ -27,9 +27,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/srand"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/timewheel"
@@ -84,7 +84,7 @@ type itemValue struct {
 type ResourceHealthCheckHandler struct {
 	svr                  *Server
 	ctx                  context.Context
-	instanceEventChannel chan *model.InstanceEvent
+	instanceEventChannel chan *svctypes.InstanceEvent
 }
 
 // newLeaderChangeEventHandler
@@ -103,9 +103,9 @@ func (handler *ResourceHealthCheckHandler) PreProcess(ctx context.Context, value
 func (handler *ResourceHealthCheckHandler) OnEvent(ctx context.Context, i interface{}) error {
 	s := handler.svr
 	switch event := i.(type) {
-	case model.InstanceEvent:
+	case svctypes.InstanceEvent:
 		log.Debugf("[Health Check]get instance event, id is %s, type is %s", event.Id, event.EType)
-		if event.EType != model.EventInstanceOffline {
+		if event.EType != svctypes.EventInstanceOffline {
 			return nil
 		}
 		insCache := s.cacheProvider.GetInstance(event.Id)
@@ -124,8 +124,8 @@ func (handler *ResourceHealthCheckHandler) OnEvent(ctx context.Context, i interf
 			log.Errorf("[Health Check]addr is %s:%d, id is %s, delete err is %s",
 				insCache.Host(), insCache.Port(), insCache.ID(), err)
 		}
-	case model.ClientEvent:
-		if event.EType != model.EventInstanceOffline {
+	case svctypes.ClientEvent:
+		if event.EType != svctypes.EventInstanceOffline {
 			return nil
 		}
 		clientCache := s.cacheProvider.GetClient(event.Id)
@@ -516,7 +516,7 @@ func (c *CheckScheduler) doCheckClient(ctx context.Context) {
 }
 
 // setInsDbStatus 修改实例状态, 需要打印操作记录
-func setInsDbStatus(svr *Server, instance *model.Instance, healthStatus bool, lastBeatTime int64) apimodel.Code {
+func setInsDbStatus(svr *Server, instance *svctypes.Instance, healthStatus bool, lastBeatTime int64) apimodel.Code {
 	id := instance.ID()
 	host := instance.Host()
 	port := instance.Port()
@@ -535,7 +535,7 @@ func setInsDbStatus(svr *Server, instance *model.Instance, healthStatus bool, la
 	// 这里为了避免多次发送重复的事件，对实例原本的health 状态以及 healthStatus 状态进行对比，不一致才
 	// 发布服务实例变更事件
 	if instance.Healthy() != healthStatus {
-		event := model.InstanceEvent{
+		event := svctypes.InstanceEvent{
 			Id:        id,
 			Namespace: instance.Namespace(),
 			Service:   instance.Service(),
@@ -544,9 +544,9 @@ func setInsDbStatus(svr *Server, instance *model.Instance, healthStatus bool, la
 
 		// 实例状态变化进行 DiscoverEvent 输出
 		if healthStatus {
-			event.EType = model.EventInstanceTurnHealth
+			event.EType = svctypes.EventInstanceTurnHealth
 		} else {
-			event.EType = model.EventInstanceTurnUnHealth
+			event.EType = svctypes.EventInstanceTurnUnHealth
 		}
 
 		svr.publishInstanceEvent(instance.ServiceID, event)
@@ -565,8 +565,8 @@ func asyncDeleteClient(svr *Server, client *apiservice.Client) apimodel.Code {
 		log.Error("[Health Check][Check] async delete client", zap.String("client-id", client.GetId().GetValue()),
 			zap.Error(err))
 	}
-	_ = eventhub.Publish(eventhub.ClientEventTopic, &model.ClientEvent{
-		EType: model.EventClientOffline,
+	_ = eventhub.Publish(eventhub.ClientEventTopic, &svctypes.ClientEvent{
+		EType: svctypes.EventClientOffline,
 		Id:    client.GetId().GetValue(),
 	})
 	return future.Code()
@@ -589,7 +589,7 @@ func asyncSetInsDbStatus(svr *Server, ins *apiservice.Instance, healthStatus boo
 // ins包括了req的内容，并且填充了instanceID与serviceToken
 func serialSetInsDbStatus(svr *Server, ins *apiservice.Instance, healthStatus bool, lastBeatTime int64) apimodel.Code {
 	id := ins.GetId().GetValue()
-	if err := svr.storage.SetInstanceHealthStatus(id, model.StatusBoolToInt(healthStatus), utils.NewUUID()); err != nil {
+	if err := svr.storage.SetInstanceHealthStatus(id, svctypes.StatusBoolToInt(healthStatus), utils.NewUUID()); err != nil {
 		log.Errorf("[Health Check][Check]id: %s set db status err:%s", id, err)
 		return commonstore.StoreCode2APICode(err)
 	}
@@ -598,7 +598,7 @@ func serialSetInsDbStatus(svr *Server, ins *apiservice.Instance, healthStatus bo
 			{
 				InstanceID: id,
 				Revision:   utils.NewUUID(),
-				Keys:       []string{model.MetadataInstanceLastHeartbeatTime},
+				Keys:       []string{svctypes.MetadataInstanceLastHeartbeatTime},
 			},
 		}); err != nil {
 			log.Errorf("[Batch] batch healthy check instances remove metadata err: %s", err.Error())
@@ -610,7 +610,7 @@ func serialSetInsDbStatus(svr *Server, ins *apiservice.Instance, healthStatus bo
 				InstanceID: id,
 				Revision:   utils.NewUUID(),
 				Metadata: map[string]string{
-					model.MetadataInstanceLastHeartbeatTime: strconv.FormatInt(lastBeatTime, 10),
+					svctypes.MetadataInstanceLastHeartbeatTime: strconv.FormatInt(lastBeatTime, 10),
 				},
 			},
 		}); err != nil {

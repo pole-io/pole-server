@@ -25,6 +25,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
@@ -104,7 +105,7 @@ func (svr *Server) GetServiceWithCache(
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 
-	ctx = cachetypes.AppendServicePredicate(ctx, func(ctx context.Context, cbr *model.Service) bool {
+	ctx = cachetypes.AppendServicePredicate(ctx, func(ctx context.Context, cbr *svctypes.Service) bool {
 		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
 			Type:     security.ResourceType_Services,
 			ID:       cbr.ID,

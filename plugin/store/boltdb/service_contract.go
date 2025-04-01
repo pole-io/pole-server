@@ -25,8 +25,8 @@ import (
 
 	bolt "go.etcd.io/bbolt"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -51,13 +51,13 @@ type serviceContractStore struct {
 }
 
 // CreateServiceContract 创建服务契约
-func (s *serviceContractStore) CreateServiceContract(contract *model.ServiceContract) error {
+func (s *serviceContractStore) CreateServiceContract(contract *svctypes.ServiceContract) error {
 	tn := time.Now()
 	contract.Valid = true
 	contract.CreateTime = tn
 	contract.ModifyTime = tn
 
-	if err := s.handler.SaveValue(tblServiceContract, contract.ID, s.toStore(&model.EnrichServiceContract{
+	if err := s.handler.SaveValue(tblServiceContract, contract.ID, s.toStore(&svctypes.EnrichServiceContract{
 		ServiceContract: contract,
 	})); err != nil {
 		return err
@@ -66,7 +66,7 @@ func (s *serviceContractStore) CreateServiceContract(contract *model.ServiceCont
 }
 
 // UpdateServiceContract .
-func (s *serviceContractStore) UpdateServiceContract(contract *model.ServiceContract) error {
+func (s *serviceContractStore) UpdateServiceContract(contract *svctypes.ServiceContract) error {
 	properties := map[string]interface{}{
 		ContractFieldRevision:   contract.Revision,
 		ContractFieldContent:    contract.Content,
@@ -80,7 +80,7 @@ func (s *serviceContractStore) UpdateServiceContract(contract *model.ServiceCont
 }
 
 // DeleteServiceContract 删除服务契约
-func (s *serviceContractStore) DeleteServiceContract(contract *model.ServiceContract) error {
+func (s *serviceContractStore) DeleteServiceContract(contract *svctypes.ServiceContract) error {
 	properties := map[string]interface{}{
 		ContractFieldValid:      false,
 		ContractFieldModifyTime: time.Now(),
@@ -93,7 +93,7 @@ func (s *serviceContractStore) DeleteServiceContract(contract *model.ServiceCont
 }
 
 // GetServiceContract .
-func (s *serviceContractStore) GetServiceContract(id string) (*model.EnrichServiceContract, error) {
+func (s *serviceContractStore) GetServiceContract(id string) (*svctypes.EnrichServiceContract, error) {
 	values, err := s.handler.LoadValues(tblServiceContract, []string{id}, &ServiceContract{})
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (s *serviceContractStore) GetServiceContract(id string) (*model.EnrichServi
 }
 
 // AddServiceContractInterfaces 创建服务契约API接口
-func (s *serviceContractStore) AddServiceContractInterfaces(contract *model.EnrichServiceContract) error {
+func (s *serviceContractStore) AddServiceContractInterfaces(contract *svctypes.EnrichServiceContract) error {
 	return s.handler.Execute(true, func(tx *bolt.Tx) error {
 		values := map[string]interface{}{}
 		if err := loadValues(tx, tblServiceContract, []string{contract.ID}, &ServiceContract{}, values); err != nil {
@@ -135,7 +135,7 @@ func (s *serviceContractStore) AddServiceContractInterfaces(contract *model.Enri
 }
 
 // AppendServiceContractInterfaces 追加服务契约API接口
-func (s *serviceContractStore) AppendServiceContractInterfaces(contract *model.EnrichServiceContract) error {
+func (s *serviceContractStore) AppendServiceContractInterfaces(contract *svctypes.EnrichServiceContract) error {
 	return s.handler.Execute(true, func(tx *bolt.Tx) error {
 		values := map[string]interface{}{}
 		if err := loadValues(tx, tblServiceContract, []string{contract.ID}, &ServiceContract{}, values); err != nil {
@@ -148,7 +148,7 @@ func (s *serviceContractStore) AppendServiceContractInterfaces(contract *model.E
 		record := values[contract.ID].(*ServiceContract)
 		enrichRecord := s.toModel(record)
 
-		interfaceMap := make(map[string]*model.InterfaceDescriptor, len(enrichRecord.Interfaces))
+		interfaceMap := make(map[string]*svctypes.InterfaceDescriptor, len(enrichRecord.Interfaces))
 		for i := range enrichRecord.Interfaces {
 			interfaceMap[enrichRecord.Interfaces[i].ID] = enrichRecord.Interfaces[i]
 		}
@@ -158,7 +158,7 @@ func (s *serviceContractStore) AppendServiceContractInterfaces(contract *model.E
 			contract.Interfaces[i].CreateTime = tN
 			interfaceMap[contract.Interfaces[i].ID] = contract.Interfaces[i]
 		}
-		interfaceSlice := make([]*model.InterfaceDescriptor, 0, len(interfaceMap))
+		interfaceSlice := make([]*svctypes.InterfaceDescriptor, 0, len(interfaceMap))
 		for i := range interfaceMap {
 			interfaceSlice = append(interfaceSlice, interfaceMap[i])
 		}
@@ -172,7 +172,7 @@ func (s *serviceContractStore) AppendServiceContractInterfaces(contract *model.E
 }
 
 // DeleteServiceContractInterfaces 删除服务契约API接口
-func (s *serviceContractStore) DeleteServiceContractInterfaces(contract *model.EnrichServiceContract) error {
+func (s *serviceContractStore) DeleteServiceContractInterfaces(contract *svctypes.EnrichServiceContract) error {
 	return s.handler.Execute(true, func(tx *bolt.Tx) error {
 		values := map[string]interface{}{}
 		if err := loadValues(tx, tblServiceContract, []string{contract.ID}, &ServiceContract{}, values); err != nil {
@@ -185,14 +185,14 @@ func (s *serviceContractStore) DeleteServiceContractInterfaces(contract *model.E
 		record := values[contract.ID].(*ServiceContract)
 		enrichRecord := s.toModel(record)
 
-		interfaceMap := make(map[string]*model.InterfaceDescriptor, len(enrichRecord.Interfaces))
+		interfaceMap := make(map[string]*svctypes.InterfaceDescriptor, len(enrichRecord.Interfaces))
 		for i := range enrichRecord.Interfaces {
 			interfaceMap[enrichRecord.Interfaces[i].ID] = enrichRecord.Interfaces[i]
 		}
 		for i := range contract.Interfaces {
 			delete(interfaceMap, contract.Interfaces[i].ID)
 		}
-		interfaceSlice := make([]*model.InterfaceDescriptor, 0, len(interfaceMap))
+		interfaceSlice := make([]*svctypes.InterfaceDescriptor, 0, len(interfaceMap))
 		for i := range interfaceMap {
 			interfaceSlice = append(interfaceSlice, interfaceMap[i])
 		}
@@ -227,7 +227,7 @@ var (
 )
 
 func (s *serviceContractStore) GetServiceContracts(ctx context.Context, filter map[string]string, offset,
-	limit uint32) (uint32, []*model.EnrichServiceContract, error) {
+	limit uint32) (uint32, []*svctypes.EnrichServiceContract, error) {
 
 	values, err := s.handler.LoadValuesByFilter(tblServiceContract, searchContractFields, &ServiceContract{},
 		func(m map[string]interface{}) bool {
@@ -271,7 +271,7 @@ func (s *serviceContractStore) GetServiceContracts(ctx context.Context, filter m
 		return 0, nil, store.Error(err)
 	}
 
-	ret := make([]*model.EnrichServiceContract, 0, len(values))
+	ret := make([]*svctypes.EnrichServiceContract, 0, len(values))
 	for _, v := range values {
 		ret = append(ret, s.toModel(v.(*ServiceContract)))
 	}
@@ -281,7 +281,7 @@ func (s *serviceContractStore) GetServiceContracts(ctx context.Context, filter m
 	return uint32(len(values)), toServiceContractPage(ret, offset, limit), nil
 }
 
-func toServiceContractPage(result []*model.EnrichServiceContract, offset, limit uint32) []*model.EnrichServiceContract {
+func toServiceContractPage(result []*svctypes.EnrichServiceContract, offset, limit uint32) []*svctypes.EnrichServiceContract {
 	// 所有符合条件的服务数量
 	amount := uint32(len(result))
 	// 判断 offset 和 limit 是否允许返回对应的服务
@@ -298,9 +298,9 @@ func toServiceContractPage(result []*model.EnrichServiceContract, offset, limit 
 
 // GetInterfaceDescriptors 查询服务接口列表
 func (s *serviceContractStore) GetInterfaceDescriptors(ctx context.Context, filter map[string]string, offset,
-	limit uint32) (uint32, []*model.InterfaceDescriptor, error) {
+	limit uint32) (uint32, []*svctypes.InterfaceDescriptor, error) {
 
-	result := make([]*model.InterfaceDescriptor, 0, limit)
+	result := make([]*svctypes.InterfaceDescriptor, 0, limit)
 	_, err := s.handler.LoadValuesByFilter(tblServiceContract, searchInterfaceFields, &ServiceContract{},
 		func(m map[string]interface{}) bool {
 			valid, _ := m[ContractFieldValid].(bool)
@@ -331,7 +331,7 @@ func (s *serviceContractStore) GetInterfaceDescriptors(ctx context.Context, filt
 					return false
 				}
 			}
-			interfaces := make([]*model.InterfaceDescriptor, 0, 4)
+			interfaces := make([]*svctypes.InterfaceDescriptor, 0, 4)
 			_ = json.Unmarshal([]byte(m[ContractFieldInterfaces].(string)), &interfaces)
 			for i := range interfaces {
 				if searchType, ok := filter["type"]; ok {
@@ -368,7 +368,7 @@ func (s *serviceContractStore) GetInterfaceDescriptors(ctx context.Context, filt
 	return uint32(len(result)), toServiceInterfacesPage(result, offset, limit), err
 }
 
-func toServiceInterfacesPage(result []*model.InterfaceDescriptor, offset, limit uint32) []*model.InterfaceDescriptor {
+func toServiceInterfacesPage(result []*svctypes.InterfaceDescriptor, offset, limit uint32) []*svctypes.InterfaceDescriptor {
 	// 所有符合条件的服务数量
 	amount := uint32(len(result))
 	// 判断 offset 和 limit 是否允许返回对应的服务
@@ -384,7 +384,7 @@ func toServiceInterfacesPage(result []*model.InterfaceDescriptor, offset, limit 
 }
 
 // ListVersions .
-func (s *serviceContractStore) ListVersions(ctx context.Context, service, namespace string) ([]*model.ServiceContract, error) {
+func (s *serviceContractStore) ListVersions(ctx context.Context, service, namespace string) ([]*svctypes.ServiceContract, error) {
 	fields := []string{ContractFieldValid, ContractFieldNamespace, ContractFieldService}
 	values, err := s.handler.LoadValuesByFilter(tblServiceContract, fields, &ServiceContract{},
 		func(m map[string]interface{}) bool {
@@ -402,7 +402,7 @@ func (s *serviceContractStore) ListVersions(ctx context.Context, service, namesp
 		return nil, store.Error(err)
 	}
 
-	ret := make([]*model.EnrichServiceContract, 0, len(values))
+	ret := make([]*svctypes.EnrichServiceContract, 0, len(values))
 	for _, v := range values {
 		data := s.toModel(v.(*ServiceContract))
 		data.Interfaces = nil
@@ -413,7 +413,7 @@ func (s *serviceContractStore) ListVersions(ctx context.Context, service, namesp
 }
 
 // GetMoreServiceContracts .
-func (s *serviceContractStore) GetMoreServiceContracts(firstUpdate bool, mtime time.Time) ([]*model.EnrichServiceContract, error) {
+func (s *serviceContractStore) GetMoreServiceContracts(firstUpdate bool, mtime time.Time) ([]*svctypes.EnrichServiceContract, error) {
 	if firstUpdate {
 		mtime = time.Unix(0, 0)
 	}
@@ -434,18 +434,18 @@ func (s *serviceContractStore) GetMoreServiceContracts(firstUpdate bool, mtime t
 		return nil, store.Error(err)
 	}
 
-	ret := make([]*model.EnrichServiceContract, 0, len(values))
+	ret := make([]*svctypes.EnrichServiceContract, 0, len(values))
 	for _, v := range values {
 		ret = append(ret, s.toModel(v.(*ServiceContract)))
 	}
 	return ret, nil
 }
 
-func (s *serviceContractStore) toModel(data *ServiceContract) *model.EnrichServiceContract {
-	interfaces := make([]*model.InterfaceDescriptor, 0, 4)
+func (s *serviceContractStore) toModel(data *ServiceContract) *svctypes.EnrichServiceContract {
+	interfaces := make([]*svctypes.InterfaceDescriptor, 0, 4)
 	_ = json.Unmarshal([]byte(data.Interfaces), &interfaces)
-	ret := &model.EnrichServiceContract{
-		ServiceContract: &model.ServiceContract{
+	ret := &svctypes.EnrichServiceContract{
+		ServiceContract: &svctypes.ServiceContract{
 			ID:            data.ID,
 			Namespace:     data.Namespace,
 			Service:       data.Service,
@@ -465,7 +465,7 @@ func (s *serviceContractStore) toModel(data *ServiceContract) *model.EnrichServi
 	return ret
 }
 
-func (s *serviceContractStore) toStore(data *model.EnrichServiceContract) *ServiceContract {
+func (s *serviceContractStore) toStore(data *svctypes.EnrichServiceContract) *ServiceContract {
 	return &ServiceContract{
 		ID:            data.ID,
 		Namespace:     data.Namespace,

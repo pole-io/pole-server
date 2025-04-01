@@ -32,15 +32,15 @@ import (
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
-// checkSameRoutingConfigV2 检查routingConfig前后是否一致
-func checkSameRoutingConfigV2V2(t *testing.T, lhs []*apitraffic.RouteRule, rhs []*apitraffic.RouteRule) {
+// checkSameRoutingConfig 检查routingConfig前后是否一致
+func checkSameRoutingConfig(t *testing.T, lhs []*apitraffic.RouteRule, rhs []*apitraffic.RouteRule) {
 	if len(lhs) != len(rhs) {
 		t.Fatal("error: len(lhs) != len(rhs)")
 	}
 }
 
-// TestCreateRoutingConfigV2 测试创建路由配置
-func TestCreateRoutingConfigV2(t *testing.T) {
+// TestCreateRoutingConfig 测试创建路由配置
+func TestCreateRoutingConfig(t *testing.T) {
 
 	discoverSuit := &DiscoverTestSuit{}
 	if err := discoverSuit.Initialize(); err != nil {
@@ -54,7 +54,7 @@ func TestCreateRoutingConfigV2(t *testing.T) {
 
 		// 对写进去的数据进行查询
 		_ = discoverSuit.CacheMgr().TestUpdate()
-		out := discoverSuit.DiscoverServer().QueryRoutingConfigsV2(discoverSuit.DefaultCtx, map[string]string{
+		out := discoverSuit.DiscoverServer().QueryRoutingConfigs(discoverSuit.DefaultCtx, map[string]string{
 			"limit":  "100",
 			"offset": "0",
 		})
@@ -62,14 +62,14 @@ func TestCreateRoutingConfigV2(t *testing.T) {
 			t.Fatalf("error: %+v", out)
 		}
 
-		ret, _ := unmarshalRoutingV2toAnySlice(out.GetData())
-		t.Logf("query routing v2 : %#v", ret)
+		ret, _ := unmarshalRoutingtoAnySlice(out.GetData())
+		t.Logf("query routing  : %#v", ret)
 
 		// assert.Equal(t, int(3), int(out.Amount), "query routing size")
 
 		// 按照名字查询
 
-		out = discoverSuit.DiscoverServer().QueryRoutingConfigsV2(discoverSuit.DefaultCtx, map[string]string{
+		out = discoverSuit.DiscoverServer().QueryRoutingConfigs(discoverSuit.DefaultCtx, map[string]string{
 			"limit":  "100",
 			"offset": "0",
 			"name":   req[0].Name,
@@ -77,10 +77,10 @@ func TestCreateRoutingConfigV2(t *testing.T) {
 		if !respSuccess(out) {
 			t.Fatalf("error: %+v", out)
 		}
-		rulesV2, err := unmarshalRoutingV2toAnySlice(out.GetData())
+		rules, err := unmarshalRoutingtoAnySlice(out.GetData())
 		assert.NoError(t, err)
-		for i := range rulesV2 {
-			item := rulesV2[i]
+		for i := range rules {
+			item := rules[i]
 			msg := &apitraffic.RuleRoutingConfig{}
 			err := ptypes.UnmarshalAny(item.GetRoutingConfig(), msg)
 			assert.NoError(t, err)
@@ -91,13 +91,13 @@ func TestCreateRoutingConfigV2(t *testing.T) {
 
 		assert.Equal(t, int(1), int(out.Amount.GetValue()), "query routing size")
 
-		item, err := service.Api2RoutingConfigV2(req[0])
+		item, err := service.Api2RoutingConfig(req[0])
 		assert.NoError(t, err)
 		expendItem, err := item.ToExpendRoutingConfig()
 		assert.NoError(t, err)
 
 		// 基于服务信息查询
-		out = discoverSuit.DiscoverServer().QueryRoutingConfigsV2(discoverSuit.DefaultCtx, map[string]string{
+		out = discoverSuit.DiscoverServer().QueryRoutingConfigs(discoverSuit.DefaultCtx, map[string]string{
 			"limit":     "100",
 			"offset":    "0",
 			"namespace": expendItem.RuleRouting.RuleRouting.Rules[0].Sources[0].Namespace,
@@ -106,10 +106,10 @@ func TestCreateRoutingConfigV2(t *testing.T) {
 		if !respSuccess(out) {
 			t.Fatalf("error: %+v", out)
 		}
-		rulesV2, err = unmarshalRoutingV2toAnySlice(out.GetData())
+		rules, err = unmarshalRoutingtoAnySlice(out.GetData())
 		assert.NoError(t, err)
-		for i := range rulesV2 {
-			item := rulesV2[i]
+		for i := range rules {
+			item := rules[i]
 			msg := &apitraffic.RuleRoutingConfig{}
 			err := ptypes.UnmarshalAny(item.GetRoutingConfig(), msg)
 			assert.NoError(t, err)
@@ -165,7 +165,7 @@ func TestUpdateRoutingConfigV2(t *testing.T) {
 		defer discoverSuit.cleanCommonRoutingConfigV2(req)
 		// 对写进去的数据进行查询
 		_ = discoverSuit.CacheMgr().TestUpdate()
-		out := discoverSuit.DiscoverServer().QueryRoutingConfigsV2(discoverSuit.DefaultCtx, map[string]string{
+		out := discoverSuit.DiscoverServer().QueryRoutingConfigs(discoverSuit.DefaultCtx, map[string]string{
 			"limit":  "100",
 			"offset": "0",
 		})
@@ -175,16 +175,16 @@ func TestUpdateRoutingConfigV2(t *testing.T) {
 
 		assert.Equal(t, uint32(1), out.Size.GetValue(), "query routing size")
 
-		ret, err := unmarshalRoutingV2toAnySlice(out.GetData())
+		ret, err := unmarshalRoutingtoAnySlice(out.GetData())
 		assert.NoError(t, err)
 		routing := ret[0]
 
 		updateName := "update routing second"
 		routing.Name = updateName
 
-		discoverSuit.DiscoverServer().UpdateRoutingConfigsV2(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{routing})
+		discoverSuit.DiscoverServer().UpdateRoutingConfigs(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{routing})
 		_ = discoverSuit.CacheMgr().TestUpdate()
-		out = discoverSuit.DiscoverServer().QueryRoutingConfigsV2(discoverSuit.DefaultCtx, map[string]string{
+		out = discoverSuit.DiscoverServer().QueryRoutingConfigs(discoverSuit.DefaultCtx, map[string]string{
 			"limit":  "100",
 			"offset": "0",
 			"id":     routing.Id,
@@ -195,14 +195,14 @@ func TestUpdateRoutingConfigV2(t *testing.T) {
 		}
 
 		assert.Equal(t, uint32(1), out.Size.GetValue(), "query routing size")
-		ret, err = unmarshalRoutingV2toAnySlice(out.GetData())
+		ret, err = unmarshalRoutingtoAnySlice(out.GetData())
 		assert.NoError(t, err)
 		assert.Equal(t, updateName, ret[0].Name)
 	})
 }
 
 // test对routing字段进行校验
-func TestCreateCheckRoutingFieldLenV2(t *testing.T) {
+func TestCreateCheckRoutingFieldLen(t *testing.T) {
 
 	discoverSuit := &DiscoverTestSuit{}
 	if err := discoverSuit.Initialize(); err != nil {
@@ -231,7 +231,7 @@ func TestCreateCheckRoutingFieldLenV2(t *testing.T) {
 		str := genSpecialStr(129)
 		oldName := req.Name
 		req.Name = str
-		resp := discoverSuit.DiscoverServer().CreateRoutingConfigsV2(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
+		resp := discoverSuit.DiscoverServer().CreateRoutingConfigs(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
 		req.Name = oldName
 		if resp.Code.GetValue() != uint32(apimodel.Code_InvalidRoutingName) {
 			t.Fatalf("%+v", resp)
@@ -240,7 +240,7 @@ func TestCreateCheckRoutingFieldLenV2(t *testing.T) {
 	t.Run("创建路由规则，路由规则类型不正确", func(t *testing.T) {
 		oldPolicy := req.RoutingPolicy
 		req.RoutingPolicy = apitraffic.RoutingPolicy(123)
-		resp := discoverSuit.DiscoverServer().CreateRoutingConfigsV2(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
+		resp := discoverSuit.DiscoverServer().CreateRoutingConfigs(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
 		req.RoutingPolicy = oldPolicy
 		if resp.Code.GetValue() != uint32(apimodel.Code_InvalidRoutingPolicy) {
 			t.Fatalf("%+v", resp)
@@ -249,7 +249,7 @@ func TestCreateCheckRoutingFieldLenV2(t *testing.T) {
 	t.Run("创建路由规则，路由规则类型不正确", func(t *testing.T) {
 		oldPolicy := req.RoutingPolicy
 		req.RoutingPolicy = apitraffic.RoutingPolicy_MetadataPolicy
-		resp := discoverSuit.DiscoverServer().CreateRoutingConfigsV2(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
+		resp := discoverSuit.DiscoverServer().CreateRoutingConfigs(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
 		req.RoutingPolicy = oldPolicy
 		if resp.Code.GetValue() != uint32(apimodel.Code_InvalidRoutingPolicy) {
 			t.Fatalf("%+v", resp)
@@ -258,7 +258,7 @@ func TestCreateCheckRoutingFieldLenV2(t *testing.T) {
 	t.Run("创建路由规则，路由优先级不正确", func(t *testing.T) {
 		oldPriority := req.Priority
 		req.Priority = 11
-		resp := discoverSuit.DiscoverServer().CreateRoutingConfigsV2(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
+		resp := discoverSuit.DiscoverServer().CreateRoutingConfigs(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
 		req.Priority = oldPriority
 		if resp.Code.GetValue() != uint32(apimodel.Code_InvalidRoutingPriority) {
 			t.Fatalf("%+v", resp)
@@ -266,8 +266,8 @@ func TestCreateCheckRoutingFieldLenV2(t *testing.T) {
 	})
 }
 
-// TestUpdateCheckRoutingFieldLenV2 test对routing字段进行校验
-func TestUpdateCheckRoutingFieldLenV2(t *testing.T) {
+// TestUpdateCheckRoutingFieldLen test对routing字段进行校验
+func TestUpdateCheckRoutingFieldLen(t *testing.T) {
 
 	discoverSuit := &DiscoverTestSuit{}
 	if err := discoverSuit.Initialize(); err != nil {
@@ -295,7 +295,7 @@ func TestUpdateCheckRoutingFieldLenV2(t *testing.T) {
 	t.Run("更新路由规则，规则ID为空", func(t *testing.T) {
 		oldId := req.Id
 		req.Id = ""
-		resp := discoverSuit.DiscoverServer().UpdateRoutingConfigsV2(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
+		resp := discoverSuit.DiscoverServer().UpdateRoutingConfigs(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
 		req.Id = oldId
 		if resp.Code.GetValue() != uint32(apimodel.Code_InvalidRoutingID) {
 			t.Fatalf("%+v", resp)
@@ -305,7 +305,7 @@ func TestUpdateCheckRoutingFieldLenV2(t *testing.T) {
 		str := genSpecialStr(129)
 		oldName := req.Name
 		req.Name = str
-		resp := discoverSuit.DiscoverServer().UpdateRoutingConfigsV2(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
+		resp := discoverSuit.DiscoverServer().UpdateRoutingConfigs(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
 		req.Name = oldName
 		if resp.Code.GetValue() != uint32(apimodel.Code_InvalidRoutingName) {
 			t.Fatalf("%+v", resp)
@@ -314,7 +314,7 @@ func TestUpdateCheckRoutingFieldLenV2(t *testing.T) {
 	t.Run("更新路由规则，路由规则类型不正确", func(t *testing.T) {
 		oldPolicy := req.RoutingPolicy
 		req.RoutingPolicy = apitraffic.RoutingPolicy(123)
-		resp := discoverSuit.DiscoverServer().UpdateRoutingConfigsV2(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
+		resp := discoverSuit.DiscoverServer().UpdateRoutingConfigs(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
 		req.RoutingPolicy = oldPolicy
 		if resp.Code.GetValue() != uint32(apimodel.Code_InvalidRoutingPolicy) {
 			t.Fatalf("%+v", resp)
@@ -323,7 +323,7 @@ func TestUpdateCheckRoutingFieldLenV2(t *testing.T) {
 	t.Run("更新路由规则，路由规则类型不正确", func(t *testing.T) {
 		oldPolicy := req.RoutingPolicy
 		req.RoutingPolicy = apitraffic.RoutingPolicy_MetadataPolicy
-		resp := discoverSuit.DiscoverServer().UpdateRoutingConfigsV2(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
+		resp := discoverSuit.DiscoverServer().UpdateRoutingConfigs(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
 		req.RoutingPolicy = oldPolicy
 		if resp.Code.GetValue() != uint32(apimodel.Code_InvalidRoutingPolicy) {
 			t.Fatalf("%+v", resp)
@@ -332,7 +332,7 @@ func TestUpdateCheckRoutingFieldLenV2(t *testing.T) {
 	t.Run("更新路由规则，路由优先级不正确", func(t *testing.T) {
 		oldPriority := req.Priority
 		req.Priority = 11
-		resp := discoverSuit.DiscoverServer().UpdateRoutingConfigsV2(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
+		resp := discoverSuit.DiscoverServer().UpdateRoutingConfigs(discoverSuit.DefaultCtx, []*apitraffic.RouteRule{req})
 		req.Priority = oldPriority
 		if resp.Code.GetValue() != uint32(apimodel.Code_InvalidRoutingPriority) {
 			t.Fatalf("%+v", resp)
@@ -340,8 +340,8 @@ func TestUpdateCheckRoutingFieldLenV2(t *testing.T) {
 	})
 }
 
-// marshalRoutingV2toAnySlice 转换为 []*apitraffic.RouteRule 数组
-func unmarshalRoutingV2toAnySlice(routings []*anypb.Any) ([]*apitraffic.RouteRule, error) {
+// marshalRoutingtoAnySlice 转换为 []*apitraffic.RouteRule 数组
+func unmarshalRoutingtoAnySlice(routings []*anypb.Any) ([]*apitraffic.RouteRule, error) {
 	ret := make([]*apitraffic.RouteRule, 0, len(routings))
 
 	for i := range routings {

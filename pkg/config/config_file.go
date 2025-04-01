@@ -29,16 +29,16 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // CreateConfigFile 创建配置文件
 func (s *Server) CreateConfigFile(ctx context.Context, req *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
-	savaData := model.ToConfigFileStore(req)
+	savaData := conftypes.ToConfigFileStore(req)
 	if errResp := s.chains.BeforeCreateFile(ctx, savaData); errResp != nil {
 		return errResp
 	}
@@ -73,7 +73,7 @@ func (s *Server) CreateConfigFile(ctx context.Context, req *apiconfig.ConfigFile
 func (s *Server) handleCreateConfigFile(ctx context.Context, tx store.Tx,
 	req *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
 
-	savaData := model.ToConfigFileStore(req)
+	savaData := conftypes.ToConfigFileStore(req)
 	if errResp := s.chains.BeforeCreateFile(ctx, savaData); errResp != nil {
 		return errResp
 	}
@@ -83,7 +83,7 @@ func (s *Server) handleCreateConfigFile(ctx context.Context, tx store.Tx,
 
 // _handleCreateConfigFile 不推荐直接调用，需统一通过 (*Server) handleCreateConfigFile 调用
 func (s *Server) _handleCreateConfigFile(ctx context.Context, tx store.Tx,
-	saveData *model.ConfigFile) *apiconfig.ConfigResponse {
+	saveData *conftypes.ConfigFile) *apiconfig.ConfigResponse {
 
 	data, err := s.storage.GetConfigFileTx(tx, saveData.Namespace, saveData.Group,
 		saveData.Name)
@@ -145,7 +145,7 @@ func (s *Server) handleUpdateConfigFile(ctx context.Context, tx store.Tx,
 	if saveData == nil {
 		return api.NewConfigResponse(apimodel.Code_NotFoundResource)
 	}
-	updateData, needUpdate := s.updateConfigFileAttribute(saveData, model.ToConfigFileStore(req))
+	updateData, needUpdate := s.updateConfigFileAttribute(saveData, conftypes.ToConfigFileStore(req))
 	if !needUpdate {
 		return api.NewConfigResponse(apimodel.Code_NoNeedUpdate)
 	}
@@ -159,10 +159,10 @@ func (s *Server) handleUpdateConfigFile(ctx context.Context, tx store.Tx,
 			utils.ZapNamespace(namespace), utils.ZapGroup(group), utils.ZapFileName(name), zap.Error(err))
 		return api.NewConfigFileResponse(commonstore.StoreCode2APICode(err), req)
 	}
-	return api.NewConfigFileResponse(apimodel.Code_ExecuteSuccess, model.ToConfigFileAPI(updateData))
+	return api.NewConfigFileResponse(apimodel.Code_ExecuteSuccess, conftypes.ToConfigFileAPI(updateData))
 }
 
-func (s *Server) updateConfigFileAttribute(saveData, updateData *model.ConfigFile) (*model.ConfigFile, bool) {
+func (s *Server) updateConfigFileAttribute(saveData, updateData *conftypes.ConfigFile) (*conftypes.ConfigFile, bool) {
 	needUpdate := false
 	oldMetadata := saveData.Metadata
 	oldEncrtptAlgo := saveData.EncryptAlgo
@@ -195,8 +195,8 @@ func (s *Server) updateConfigFileAttribute(saveData, updateData *model.ConfigFil
 		if len(saveData.Metadata) == 0 {
 			saveData.Metadata = map[string]string{}
 		}
-		saveData.Metadata[model.MetaKeyConfigFileDataKey] = oldMetadata[model.MetaKeyConfigFileDataKey]
-		saveData.Metadata[model.MetaKeyConfigFileEncryptAlgo] = oldMetadata[model.MetaKeyConfigFileEncryptAlgo]
+		saveData.Metadata[types.MetaKeyConfigFileDataKey] = oldMetadata[types.MetaKeyConfigFileDataKey]
+		saveData.Metadata[types.MetaKeyConfigFileEncryptAlgo] = oldMetadata[types.MetaKeyConfigFileEncryptAlgo]
 	}
 
 	return saveData, needUpdate
@@ -249,7 +249,7 @@ func (s *Server) DeleteConfigFile(ctx context.Context, req *apiconfig.ConfigFile
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	file, err := s.storage.LockConfigFile(tx, &model.ConfigFileKey{
+	file, err := s.storage.LockConfigFile(tx, &conftypes.ConfigFileKey{
 		Namespace: namespace,
 		Group:     group,
 		Name:      fileName,
@@ -308,7 +308,7 @@ func (s *Server) GetConfigFileRichInfo(ctx context.Context, req *apiconfig.Confi
 	if err != nil {
 		return api.NewConfigResponseWithInfo(apimodel.Code_ExecuteException, err.Error())
 	}
-	ret := model.ToConfigFileAPI(richFile)
+	ret := conftypes.ToConfigFileAPI(richFile)
 	return api.NewConfigFileResponse(apimodel.Code_ExecuteSuccess, ret)
 }
 
@@ -338,7 +338,7 @@ func (s *Server) SearchConfigFile(ctx context.Context, searchFilters map[string]
 				zap.Error(err))
 			return api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteException)
 		}
-		ret = append(ret, model.ToConfigFileAPI(file))
+		ret = append(ret, conftypes.ToConfigFileAPI(file))
 	}
 	out := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	out.Total = utils.NewUInt32Value(count)
@@ -364,7 +364,7 @@ func (s *Server) ExportConfigFile(ctx context.Context,
 	}
 	var (
 		isExportGroup bool
-		configFiles   []*model.ConfigFile
+		configFiles   []*conftypes.ConfigFile
 	)
 	if len(groups) >= 1 && len(names) == 0 {
 		// 导出配置组
@@ -400,11 +400,11 @@ func (s *Server) ExportConfigFile(ctx context.Context,
 		return api.NewConfigFileExportResponse(apimodel.Code_NotFoundResourceConfigFile, nil)
 	}
 	// 查询配置文件的标签
-	fileID2Tags := make(map[uint64][]*model.ConfigFileTag)
+	fileID2Tags := make(map[uint64][]*conftypes.ConfigFileTag)
 	for _, file := range configFiles {
-		filterTags := make([]*model.ConfigFileTag, 0, len(file.Metadata))
+		filterTags := make([]*conftypes.ConfigFileTag, 0, len(file.Metadata))
 		for tagKey, tagVal := range file.Metadata {
-			filterTags = append(filterTags, &model.ConfigFileTag{
+			filterTags = append(filterTags, &conftypes.ConfigFileTag{
 				Key:   tagKey,
 				Value: tagVal,
 			})
@@ -490,8 +490,8 @@ func (s *Server) ImportConfigFile(ctx context.Context,
 		createConfigFiles, skipConfigFiles, overwriteConfigFiles)
 }
 
-func (s *Server) getGroupAllConfigFiles(namespace, group string) ([]*model.ConfigFile, error) {
-	var configFiles []*model.ConfigFile
+func (s *Server) getGroupAllConfigFiles(namespace, group string) ([]*conftypes.ConfigFile, error) {
+	var configFiles []*conftypes.ConfigFile
 	offset := uint32(0)
 	limit := uint32(100)
 	for {

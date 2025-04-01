@@ -23,8 +23,8 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 var _ store.GrayStore = (*grayStore)(nil)
@@ -44,7 +44,7 @@ func newGrayStore(handler BoltHandler) *configFileReleaseStore {
 }
 
 // CreateGrayResourceTx 新建灰度资源
-func (cfr *grayStore) CreateGrayResourceTx(proxyTx store.Tx, grayResource *model.GrayResource) error {
+func (cfr *grayStore) CreateGrayResourceTx(proxyTx store.Tx, grayResource *rules.GrayResource) error {
 	tx := proxyTx.GetDelegateTx().(*bolt.Tx)
 
 	tN := time.Now()
@@ -59,7 +59,7 @@ func (cfr *grayStore) CreateGrayResourceTx(proxyTx store.Tx, grayResource *model
 	return nil
 }
 
-func (cfr *grayStore) CleanGrayResource(proxyTx store.Tx, data *model.GrayResource) error {
+func (cfr *grayStore) CleanGrayResource(proxyTx store.Tx, data *rules.GrayResource) error {
 	tx := proxyTx.GetDelegateTx().(*bolt.Tx)
 
 	properties := map[string]interface{}{
@@ -77,14 +77,14 @@ func (cfr *grayStore) CleanGrayResource(proxyTx store.Tx, data *model.GrayResour
 
 // GetMoreGrayResouces Get the last update time more than a certain time point
 func (cfr *grayStore) GetMoreGrayResouces(firstUpdate bool,
-	modifyTime time.Time) ([]*model.GrayResource, error) {
+	modifyTime time.Time) ([]*rules.GrayResource, error) {
 
 	if firstUpdate {
 		modifyTime = time.Time{}
 	}
 
 	fields := []string{GrayResourceFieldModifyTime}
-	values, err := cfr.handler.LoadValuesByFilter(tblGrayResource, fields, &model.GrayResource{},
+	values, err := cfr.handler.LoadValuesByFilter(tblGrayResource, fields, &rules.GrayResource{},
 		func(m map[string]interface{}) bool {
 			saveMt, _ := m[GrayResourceFieldModifyTime].(time.Time)
 			return !saveMt.Before(modifyTime)
@@ -95,13 +95,13 @@ func (cfr *grayStore) GetMoreGrayResouces(firstUpdate bool,
 	}
 
 	if len(values) == 0 {
-		return []*model.GrayResource{}, nil
+		return []*rules.GrayResource{}, nil
 	}
 
-	grayResources := make([]*model.GrayResource, 0, len(values))
+	grayResources := make([]*rules.GrayResource, 0, len(values))
 
 	for i := range values {
-		grayResource := values[i].(*model.GrayResource)
+		grayResource := values[i].(*rules.GrayResource)
 		grayResources = append(grayResources, grayResource)
 	}
 	return grayResources, nil

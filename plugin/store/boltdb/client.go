@@ -26,7 +26,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -62,7 +62,7 @@ type clientStore struct {
 }
 
 // BatchAddClients insert the client info
-func (cs *clientStore) BatchAddClients(clients []*model.Client) error {
+func (cs *clientStore) BatchAddClients(clients []*types.Client) error {
 	if err := cs.handler.Execute(true, func(tx *bolt.Tx) error {
 		for i := range clients {
 			client := clients[i]
@@ -105,7 +105,7 @@ func (cs *clientStore) BatchDeleteClients(ids []string) error {
 }
 
 // GetMoreClients 根据mtime获取增量clients，返回所有store的变更信息
-func (cs *clientStore) GetMoreClients(mtime time.Time, firstUpdate bool) (map[string]*model.Client, error) {
+func (cs *clientStore) GetMoreClients(mtime time.Time, firstUpdate bool) (map[string]*types.Client, error) {
 	fields := []string{ClientFieldMtime, ClientFieldValid}
 	if firstUpdate {
 		mtime = time.Time{}
@@ -124,11 +124,11 @@ func (cs *clientStore) GetMoreClients(mtime time.Time, firstUpdate bool) (map[st
 		return nil, err
 	}
 
-	clients := make(map[string]*model.Client, len(ret))
+	clients := make(map[string]*types.Client, len(ret))
 	for k, v := range ret {
 		client, err := convertToModelClient(v.(*clientObject))
 		if err != nil {
-			log.Error("[Client] convert clientObject to model.Client", zap.Error(err))
+			log.Error("[Client] convert clientObject to types.Client", zap.Error(err))
 			return nil, err
 		}
 
@@ -138,7 +138,7 @@ func (cs *clientStore) GetMoreClients(mtime time.Time, firstUpdate bool) (map[st
 	return clients, nil
 }
 
-func convertToClientObject(client *model.Client) (*clientObject, error) {
+func convertToClientObject(client *types.Client) (*clientObject, error) {
 	stat := client.Proto().Stat
 	data, err := json.Marshal(stat)
 	if err != nil {
@@ -162,7 +162,7 @@ func convertToClientObject(client *model.Client) (*clientObject, error) {
 	}, nil
 }
 
-func convertToModelClient(client *clientObject) (*model.Client, error) {
+func convertToModelClient(client *clientObject) (*types.Client, error) {
 	stat := make([]*apiservice.StatInfo, 0, 4)
 	err := json.Unmarshal([]byte(client.StatArrStr), &stat)
 	if err != nil {
@@ -184,7 +184,7 @@ func convertToModelClient(client *clientObject) (*model.Client, error) {
 		Stat: stat,
 	}
 
-	mc := model.NewClient(c)
+	mc := types.NewClient(c)
 	mc.SetValid(client.Valid)
 	return mc, nil
 }

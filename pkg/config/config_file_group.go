@@ -28,6 +28,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
@@ -58,7 +59,7 @@ func (s *Server) CreateConfigFileGroup(ctx context.Context, req *apiconfig.Confi
 		return api.NewConfigResponse(apimodel.Code_ExistedResource)
 	}
 
-	saveData := model.ToConfigGroupStore(req)
+	saveData := conftypes.ToConfigGroupStore(req)
 	saveData.CreateBy = utils.ParseUserName(ctx)
 	saveData.ModifyBy = utils.ParseUserName(ctx)
 
@@ -97,7 +98,7 @@ func (s *Server) UpdateConfigFileGroup(ctx context.Context, req *apiconfig.Confi
 		return api.NewConfigResponse(apimodel.Code_NotFoundResource)
 	}
 
-	updateData := model.ToConfigGroupStore(req)
+	updateData := conftypes.ToConfigGroupStore(req)
 	updateData.ModifyBy = utils.ParseOperator(ctx)
 	updateData, needUpdate := s.UpdateGroupAttribute(saveData, updateData)
 	if !needUpdate {
@@ -119,7 +120,7 @@ func (s *Server) UpdateConfigFileGroup(ctx context.Context, req *apiconfig.Confi
 	})
 }
 
-func (s *Server) UpdateGroupAttribute(saveData, updateData *model.ConfigFileGroup) (*model.ConfigFileGroup, bool) {
+func (s *Server) UpdateGroupAttribute(saveData, updateData *conftypes.ConfigFileGroup) (*conftypes.ConfigFileGroup, bool) {
 	needUpdate := false
 	if saveData.Comment != updateData.Comment {
 		needUpdate = true
@@ -266,7 +267,7 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 }
 
 // configGroupRecordEntry 生成服务的记录entry
-func configGroupRecordEntry(ctx context.Context, req *apiconfig.ConfigFileGroup, md *model.ConfigFileGroup,
+func configGroupRecordEntry(ctx context.Context, req *apiconfig.ConfigFileGroup, md *conftypes.ConfigFileGroup,
 	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}

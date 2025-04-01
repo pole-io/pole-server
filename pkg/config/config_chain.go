@@ -26,6 +26,8 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -38,15 +40,15 @@ type ConfigFileChain interface {
 	// Name
 	Name() string
 	// BeforeCreateFile
-	BeforeCreateFile(context.Context, *model.ConfigFile) *apiconfig.ConfigResponse
+	BeforeCreateFile(context.Context, *conftypes.ConfigFile) *apiconfig.ConfigResponse
 	// AfterGetFile
-	AfterGetFile(context.Context, *model.ConfigFile) (*model.ConfigFile, error)
+	AfterGetFile(context.Context, *conftypes.ConfigFile) (*conftypes.ConfigFile, error)
 	// BeforeUpdateFile
-	BeforeUpdateFile(context.Context, *model.ConfigFile) *apiconfig.ConfigResponse
+	BeforeUpdateFile(context.Context, *conftypes.ConfigFile) *apiconfig.ConfigResponse
 	// AfterGetFileRelease
-	AfterGetFileRelease(context.Context, *model.ConfigFileRelease) (*model.ConfigFileRelease, error)
+	AfterGetFileRelease(context.Context, *conftypes.ConfigFileRelease) (*conftypes.ConfigFileRelease, error)
 	// AfterGetFileHistory
-	AfterGetFileHistory(context.Context, *model.ConfigFileReleaseHistory) (*model.ConfigFileReleaseHistory, error)
+	AfterGetFileHistory(context.Context, *conftypes.ConfigFileReleaseHistory) (*conftypes.ConfigFileReleaseHistory, error)
 }
 
 type CryptoConfigFileChain struct {
@@ -63,7 +65,7 @@ func (chain *CryptoConfigFileChain) Name() string {
 
 // BeforeCreateFile
 func (chain *CryptoConfigFileChain) BeforeCreateFile(ctx context.Context,
-	file *model.ConfigFile) *apiconfig.ConfigResponse {
+	file *conftypes.ConfigFile) *apiconfig.ConfigResponse {
 	// 配置加密
 	if !file.IsEncrypted() {
 		return nil
@@ -79,7 +81,7 @@ func (chain *CryptoConfigFileChain) BeforeCreateFile(ctx context.Context,
 
 // AfterCreateFile
 func (chain *CryptoConfigFileChain) AfterGetFile(ctx context.Context,
-	file *model.ConfigFile) (*model.ConfigFile, error) {
+	file *conftypes.ConfigFile) (*conftypes.ConfigFile, error) {
 	encryptAlgo := file.GetEncryptAlgo()
 	dataKey := file.GetEncryptDataKey()
 	if file.IsEncrypted() {
@@ -105,7 +107,7 @@ func (chain *CryptoConfigFileChain) AfterGetFile(ctx context.Context,
 
 // BeforeUpdateFile
 func (chain *CryptoConfigFileChain) BeforeUpdateFile(ctx context.Context,
-	file *model.ConfigFile) *apiconfig.ConfigResponse {
+	file *conftypes.ConfigFile) *apiconfig.ConfigResponse {
 
 	// 配置加密
 	encryAlgo := file.GetEncryptAlgo()
@@ -127,7 +129,7 @@ func (chain *CryptoConfigFileChain) BeforeUpdateFile(ctx context.Context,
 
 // AfterGetFileRelease
 func (chain *CryptoConfigFileChain) AfterGetFileRelease(ctx context.Context,
-	release *model.ConfigFileRelease) (*model.ConfigFileRelease, error) {
+	release *conftypes.ConfigFileRelease) (*conftypes.ConfigFileRelease, error) {
 
 	s := chain.svr
 	// decryptConfigFileRelease 解密配置文件发布纪录
@@ -151,7 +153,7 @@ func (chain *CryptoConfigFileChain) AfterGetFileRelease(ctx context.Context,
 
 // AfterGetFileHistory
 func (chain *CryptoConfigFileChain) AfterGetFileHistory(ctx context.Context,
-	history *model.ConfigFileReleaseHistory) (*model.ConfigFileReleaseHistory, error) {
+	history *conftypes.ConfigFileReleaseHistory) (*conftypes.ConfigFileReleaseHistory, error) {
 	if history == nil {
 		return history, nil
 	}
@@ -202,14 +204,14 @@ func (chain *CryptoConfigFileChain) decryptConfigFileContent(dataKey, algorithm,
 }
 
 // cleanEncryptConfigFileInfo 清理配置加密文件的内容信息
-func (chain *CryptoConfigFileChain) cleanEncryptConfigFileInfo(ctx context.Context, configFile *model.ConfigFile) {
-	delete(configFile.Metadata, model.MetaKeyConfigFileDataKey)
-	delete(configFile.Metadata, model.MetaKeyConfigFileEncryptAlgo)
-	delete(configFile.Metadata, model.MetaKeyConfigFileUseEncrypted)
+func (chain *CryptoConfigFileChain) cleanEncryptConfigFileInfo(ctx context.Context, configFile *conftypes.ConfigFile) {
+	delete(configFile.Metadata, types.MetaKeyConfigFileDataKey)
+	delete(configFile.Metadata, types.MetaKeyConfigFileEncryptAlgo)
+	delete(configFile.Metadata, types.MetaKeyConfigFileUseEncrypted)
 }
 
 // encryptConfigFile 加密配置文件
-func (chain *CryptoConfigFileChain) encryptConfigFile(ctx context.Context, configFile *model.ConfigFile,
+func (chain *CryptoConfigFileChain) encryptConfigFile(ctx context.Context, configFile *conftypes.ConfigFile,
 	algorithm string, dataKey string) error {
 
 	s := chain.svr
@@ -263,13 +265,13 @@ func (chain *ReleaseConfigFileChain) Name() string {
 
 // BeforeCreateFile
 func (chain *ReleaseConfigFileChain) BeforeCreateFile(ctx context.Context,
-	file *model.ConfigFile) *apiconfig.ConfigResponse {
+	file *conftypes.ConfigFile) *apiconfig.ConfigResponse {
 	return nil
 }
 
 // AfterCreateFile
 func (chain *ReleaseConfigFileChain) AfterGetFile(ctx context.Context,
-	file *model.ConfigFile) (*model.ConfigFile, error) {
+	file *conftypes.ConfigFile) (*conftypes.ConfigFile, error) {
 
 	namespace := file.Namespace
 	group := file.Group
@@ -301,15 +303,15 @@ func (chain *ReleaseConfigFileChain) AfterGetFile(ctx context.Context,
 
 // BeforeUpdateFile
 func (chain *ReleaseConfigFileChain) BeforeUpdateFile(ctx context.Context,
-	file *model.ConfigFile) *apiconfig.ConfigResponse {
+	file *conftypes.ConfigFile) *apiconfig.ConfigResponse {
 	return nil
 }
 
 // AfterGetFileRelease
 func (chain *ReleaseConfigFileChain) AfterGetFileRelease(ctx context.Context,
-	ret *model.ConfigFileRelease) (*model.ConfigFileRelease, error) {
+	ret *conftypes.ConfigFileRelease) (*conftypes.ConfigFileRelease, error) {
 
-	if ret.ReleaseType == model.ReleaseTypeGray {
+	if ret.ReleaseType == conftypes.ReleaseTypeGray {
 		rule := chain.svr.caches.Gray().GetGrayRule(model.GetGrayConfigRealseKey(ret.SimpleConfigFileRelease))
 		if rule == nil {
 			return nil, fmt.Errorf("gray rule not found")
@@ -321,6 +323,6 @@ func (chain *ReleaseConfigFileChain) AfterGetFileRelease(ctx context.Context,
 
 // AfterGetFileHistory
 func (chain *ReleaseConfigFileChain) AfterGetFileHistory(ctx context.Context,
-	history *model.ConfigFileReleaseHistory) (*model.ConfigFileReleaseHistory, error) {
+	history *conftypes.ConfigFileReleaseHistory) (*conftypes.ConfigFileReleaseHistory, error) {
 	return history, nil
 }

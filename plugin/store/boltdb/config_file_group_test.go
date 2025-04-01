@@ -22,16 +22,15 @@ import (
 	"testing"
 	"time"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
-func mockConfigFileGroup(total int) []*model.ConfigFileGroup {
-	ret := make([]*model.ConfigFileGroup, 0, total)
+func mockConfigFileGroup(total int) []*conftypes.ConfigFileGroup {
+	ret := make([]*conftypes.ConfigFileGroup, 0, total)
 
 	for i := 0; i < total; i++ {
-		val := &model.ConfigFileGroup{
+		val := &conftypes.ConfigFileGroup{
 			Name:       fmt.Sprintf("history-%d", i),
 			Namespace:  "default",
 			CreateTime: time.Now(),
@@ -46,7 +45,7 @@ func mockConfigFileGroup(total int) []*model.ConfigFileGroup {
 	return ret
 }
 
-func resetConfigFileGroupTimeAndIDField(tN time.Time, restID bool, datas ...*model.ConfigFileGroup) {
+func resetConfigFileGroupTimeAndIDField(tN time.Time, restID bool, datas ...*conftypes.ConfigFileGroup) {
 	for i := range datas {
 		if restID {
 			datas[i].Id = 0

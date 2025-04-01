@@ -24,11 +24,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 )
 
-func mockConfigFile(total int, param map[string]string) []*model.ConfigFile {
-	ret := make([]*model.ConfigFile, 0, total)
+func mockConfigFile(total int, param map[string]string) []*conftypes.ConfigFile {
+	ret := make([]*conftypes.ConfigFile, 0, total)
 
 	for i := 0; i < total; i++ {
 
@@ -43,7 +43,7 @@ func mockConfigFile(total int, param map[string]string) []*model.ConfigFile {
 			group = fmt.Sprintf("cpnfig-file-%d", i)
 		}
 
-		ret = append(ret, &model.ConfigFile{
+		ret = append(ret, &conftypes.ConfigFile{
 			Id:         0,
 			Name:       fmt.Sprintf("cpnfig-file-%d", i),
 			Namespace:  namespace,
@@ -192,7 +192,7 @@ func Test_configFileStore(t *testing.T) {
 			s := &configFileStore{handler: handler}
 
 			mocks := mockConfigFile(10, map[string]string{})
-			results := make([]*model.ConfigFile, 0, len(mocks))
+			results := make([]*conftypes.ConfigFile, 0, len(mocks))
 
 			for i := range mocks {
 				waitSave := mocks[i]

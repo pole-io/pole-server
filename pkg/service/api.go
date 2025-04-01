@@ -24,8 +24,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 // DiscoverServer Server discovered by the service
@@ -34,8 +35,6 @@ type DiscoverServer interface {
 	CircuitBreakerOperateServer
 	// RateLimitOperateServer Lamflow rule operation interface definition
 	RateLimitOperateServer
-	// RouteRuleOperateServer Routing rules operation interface definition
-	RouteRuleOperateServer
 	// RouterRuleOperateServer Routing rules operation interface definition
 	RouterRuleOperateServer
 	// FaultDetectRuleOperateServer fault detect rules operation interface definition
@@ -55,7 +54,7 @@ type DiscoverServer interface {
 	// Cache Get cache management
 	Cache() cachetypes.CacheManager
 	// GetServiceInstanceRevision Get the version of the service
-	GetServiceInstanceRevision(serviceID string, instances []*model.Instance) (string, error)
+	GetServiceInstanceRevision(serviceID string, instances []*svctypes.Instance) (string, error)
 }
 
 // CircuitBreakerOperateServer Melting rule related treatment
@@ -84,18 +83,6 @@ type RateLimitOperateServer interface {
 	UpdateRateLimits(ctx context.Context, request []*apitraffic.Rule) *apiservice.BatchWriteResponse
 	// GetRateLimits Query RateLimit rules
 	GetRateLimits(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
-}
-
-// RouteRuleOperateServer Routing rules related operations
-type RouteRuleOperateServer interface {
-	// CreateRoutingConfigs Batch creation routing configuration
-	CreateRoutingConfigs(ctx context.Context, req []*apitraffic.Routing) *apiservice.BatchWriteResponse
-	// DeleteRoutingConfigs Batch delete routing configuration
-	DeleteRoutingConfigs(ctx context.Context, req []*apitraffic.Routing) *apiservice.BatchWriteResponse
-	// UpdateRoutingConfigs Batch update routing configuration
-	UpdateRoutingConfigs(ctx context.Context, req []*apitraffic.Routing) *apiservice.BatchWriteResponse
-	// GetRoutingConfigs Inquiry route configuration to OSS
-	GetRoutingConfigs(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
 }
 
 // ServiceOperateServer Service related operations
@@ -161,7 +148,7 @@ type ClientServer interface {
 	// ReportClient Client gets geographic location information
 	ReportClient(ctx context.Context, req *apiservice.Client) *apiservice.Response
 	// GetPrometheusTargets Used to obtain the ReportClient information and serve as the SD result of Prometheus
-	GetPrometheusTargets(ctx context.Context, query map[string]string) *model.PrometheusDiscoveryResponse
+	GetPrometheusTargets(ctx context.Context, query map[string]string) *types.PrometheusDiscoveryResponse
 	// GetServiceWithCache Used for client acquisition service information
 	GetServiceWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse
 	// ServiceInstancesCache Used for client acquisition service instance information
@@ -194,14 +181,14 @@ type ReportClientOperateServer interface {
 
 // RouterRuleOperateServer Routing rules related operations
 type RouterRuleOperateServer interface {
-	// CreateRoutingConfigsV2 Batch creation routing configuration
-	CreateRoutingConfigsV2(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse
-	// DeleteRoutingConfigsV2 Batch delete routing configuration
-	DeleteRoutingConfigsV2(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse
-	// UpdateRoutingConfigsV2 Batch update routing configuration
-	UpdateRoutingConfigsV2(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse
-	// QueryRoutingConfigsV2 Inquiry route configuration to OSS
-	QueryRoutingConfigsV2(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	// CreateRoutingConfigs Batch creation routing configuration
+	CreateRoutingConfigs(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse
+	// DeleteRoutingConfigs Batch delete routing configuration
+	DeleteRoutingConfigs(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse
+	// UpdateRoutingConfigs Batch update routing configuration
+	UpdateRoutingConfigs(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse
+	// QueryRoutingConfigs Inquiry route configuration to OSS
+	QueryRoutingConfigs(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
 	// EnableRoutings batch enable routing rules
 	EnableRoutings(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse
 }

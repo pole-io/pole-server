@@ -23,8 +23,8 @@ import (
 
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/plugin"
 )
 
@@ -106,7 +106,7 @@ func (handler *LeaderChangeEventHandler) stopCheckSelfServiceInstances() {
 }
 
 // startCheckSelfServiceInstances
-func (handler *LeaderChangeEventHandler) doCheckSelfServiceInstance(cachedInstance *model.Instance) {
+func (handler *LeaderChangeEventHandler) doCheckSelfServiceInstance(cachedInstance *svctypes.Instance) {
 	hcEnable, checker := handler.cacheProvider.isHealthCheckEnable(cachedInstance.Proto)
 	if !hcEnable {
 		log.Warnf("[Health Check][Check] selfService instance %s:%d not enable healthcheck",

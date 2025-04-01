@@ -29,10 +29,11 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -48,7 +49,7 @@ func (s *Server) DeregisterInstance(ctx context.Context, req *apiservice.Instanc
 
 // ReportServiceContract report client service interface info
 func (s *Server) ReportServiceContract(ctx context.Context, req *apiservice.ServiceContract) *apiservice.Response {
-	cacheData := s.caches.ServiceContract().Get(ctx, &model.ServiceContract{
+	cacheData := s.caches.ServiceContract().Get(ctx, &svctypes.ServiceContract{
 		Namespace: req.GetNamespace(),
 		Service:   req.GetService(),
 		Type:      req.GetName(),
@@ -106,24 +107,24 @@ func (s *Server) ReportClient(ctx context.Context, req *apiservice.Client) *apis
 
 // GetPrometheusTargets Used for client acquisition service information
 func (s *Server) GetPrometheusTargets(ctx context.Context,
-	query map[string]string) *model.PrometheusDiscoveryResponse {
+	query map[string]string) *types.PrometheusDiscoveryResponse {
 	if s.caches == nil {
-		return &model.PrometheusDiscoveryResponse{
+		return &types.PrometheusDiscoveryResponse{
 			Code:     api.NotFoundInstance,
-			Response: make([]model.PrometheusTarget, 0),
+			Response: make([]types.PrometheusTarget, 0),
 		}
 	}
 
-	targets := make([]model.PrometheusTarget, 0, 8)
+	targets := make([]types.PrometheusTarget, 0, 8)
 	expectSchema := map[string]struct{}{
 		"http":  {},
 		"https": {},
 	}
 
-	s.Cache().Client().IteratorClients(func(key string, value *model.Client) bool {
+	s.Cache().Client().IteratorClients(func(key string, value *types.Client) bool {
 		for i := range value.Proto().Stat {
 			stat := value.Proto().Stat[i]
-			if stat.Target.GetValue() != model.StatReportPrometheus {
+			if stat.Target.GetValue() != types.StatReportPrometheus {
 				continue
 			}
 			_, ok := expectSchema[strings.ToLower(stat.Protocol.GetValue())]
@@ -131,7 +132,7 @@ func (s *Server) GetPrometheusTargets(ctx context.Context,
 				continue
 			}
 
-			target := model.PrometheusTarget{
+			target := types.PrometheusTarget{
 				Targets: []string{fmt.Sprintf("%s:%d", value.Proto().Host.GetValue(), stat.Port.GetValue())},
 				Labels: map[string]string{
 					"__metrics_path__":         stat.Path.GetValue(),
@@ -149,7 +150,7 @@ func (s *Server) GetPrometheusTargets(ctx context.Context,
 	checkers := s.healthServer.ListCheckerServer()
 	for i := range checkers {
 		checker := checkers[i]
-		target := model.PrometheusTarget{
+		target := types.PrometheusTarget{
 			Targets: []string{fmt.Sprintf("%s:%d", checker.Host(), metrics.GetMetricsPort())},
 			Labels: map[string]string{
 				"__metrics_path__":         "/metrics",
@@ -160,7 +161,7 @@ func (s *Server) GetPrometheusTargets(ctx context.Context,
 		targets = append(targets, target)
 	}
 
-	return &model.PrometheusDiscoveryResponse{
+	return &types.PrometheusDiscoveryResponse{
 		Code:     api.ExecuteSuccess,
 		Response: targets,
 	}
@@ -178,7 +179,7 @@ func (s *Server) GetServiceWithCache(ctx context.Context, req *apiservice.Servic
 	resp := api.NewDiscoverServiceResponse(apimodel.Code_ExecuteSuccess, req)
 	var (
 		revision string
-		services []*model.Service
+		services []*svctypes.Service
 	)
 
 	if req.GetNamespace().GetValue() != "" {
@@ -297,7 +298,7 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	if aliasFor == nil {
 		// 这里只会出现，查询的目标服务和命名空间不存在，但是可见性的服务存在
 		// 所以这里需要用入口的服务名和命名空间填充服务数据结构，以便返回最终的应答服务名和命名空间
-		aliasFor = &model.Service{Name: svcName, Namespace: nsName}
+		aliasFor = &svctypes.Service{Name: svcName, Namespace: nsName}
 	}
 	// 填充service数据
 	resp.Service = service2Api(aliasFor)
@@ -317,8 +318,8 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 }
 
 func (s *Server) findVisibleServices(ctx context.Context, serviceName, namespaceName string,
-	req *apiservice.Service) (*model.Service, []*model.Service) {
-	visibleServices := make([]*model.Service, 0, 4)
+	req *apiservice.Service) (*svctypes.Service, []*svctypes.Service) {
+	visibleServices := make([]*svctypes.Service, 0, 4)
 	// 数据源都来自Cache，这里拿到的service，已经是源服务
 	aliasFor := s.getServiceCache(serviceName, namespaceName)
 	if aliasFor != nil {
@@ -370,7 +371,7 @@ func (s *Server) GetRateLimitWithCache(ctx context.Context, req *apiservice.Serv
 	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_RATE_LIMIT)
 	aliasFor := s.findServiceAlias(req)
 
-	rules, revision := s.caches.RateLimit().GetRateLimitRules(model.ServiceKey{
+	rules, revision := s.caches.RateLimit().GetRateLimitRules(svctypes.ServiceKey{
 		Namespace: aliasFor.Namespace,
 		Name:      aliasFor.Name,
 	})
@@ -477,7 +478,7 @@ func (s *Server) GetServiceContractWithCache(ctx context.Context,
 	// 获取源服务
 	aliasFor := s.findServiceAlias(resp.Service)
 
-	out := s.caches.ServiceContract().Get(ctx, &model.ServiceContract{
+	out := s.caches.ServiceContract().Get(ctx, &svctypes.ServiceContract{
 		Namespace: aliasFor.Namespace,
 		Service:   aliasFor.Name,
 		Version:   req.Version,
@@ -559,11 +560,11 @@ func (s *Server) GetRouterRuleWithCache(ctx context.Context, req *apiservice.Ser
 	return resp
 }
 
-func (s *Server) findServiceAlias(req *apiservice.Service) *model.Service {
+func (s *Server) findServiceAlias(req *apiservice.Service) *svctypes.Service {
 	// 获取源服务
 	aliasFor := s.getServiceCache(req.GetName().GetValue(), req.GetNamespace().GetValue())
 	if aliasFor == nil {
-		aliasFor = &model.Service{
+		aliasFor = &svctypes.Service{
 			Namespace: req.GetNamespace().GetValue(),
 			Name:      req.GetName().GetValue(),
 		}
@@ -590,7 +591,7 @@ func createCommonDiscoverResponse(req *apiservice.Service,
 }
 
 // 根据ServiceID获取instances
-func (s *Server) getInstancesCache(service *model.Service) []*model.Instance {
+func (s *Server) getInstancesCache(service *svctypes.Service) []*svctypes.Instance {
 	id := s.getSourceServiceID(service)
 	// TODO refer_filter还要处理一下
 	return s.caches.Instance().GetInstancesByServiceID(id)
@@ -598,7 +599,7 @@ func (s *Server) getInstancesCache(service *model.Service) []*model.Instance {
 
 // 获取顶级服务ID
 // 没有顶级ID，则返回自身
-func (s *Server) getSourceServiceID(service *model.Service) string {
+func (s *Server) getSourceServiceID(service *svctypes.Service) string {
 	if service == nil || service.ID == "" {
 		return ""
 	}
@@ -612,7 +613,7 @@ func (s *Server) getSourceServiceID(service *model.Service) string {
 
 // 根据服务名获取服务缓存数据
 // 注意，如果是服务别名查询，这里会返回别名的源服务，不会返回别名
-func (s *Server) getServiceCache(name string, namespace string) *model.Service {
+func (s *Server) getServiceCache(name string, namespace string) *svctypes.Service {
 	sc := s.caches.Service()
 	service := sc.GetServiceByName(name, namespace)
 	if service == nil {

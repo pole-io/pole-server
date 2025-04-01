@@ -21,8 +21,8 @@ import (
 	"database/sql"
 	"time"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 type configFileTemplateStore struct {
@@ -32,7 +32,7 @@ type configFileTemplateStore struct {
 
 // CreateConfigFileTemplate create config file template
 func (cf *configFileTemplateStore) CreateConfigFileTemplate(
-	template *model.ConfigFileTemplate) (*model.ConfigFileTemplate, error) {
+	template *conftypes.ConfigFileTemplate) (*conftypes.ConfigFileTemplate, error) {
 	createSql := `
 	INSERT INTO config_file_template (name, content, comment, format, create_time
 		, create_by, modify_time, modify_by)
@@ -49,7 +49,7 @@ func (cf *configFileTemplateStore) CreateConfigFileTemplate(
 }
 
 // GetConfigFileTemplate get config file template by name
-func (cf *configFileTemplateStore) GetConfigFileTemplate(name string) (*model.ConfigFileTemplate, error) {
+func (cf *configFileTemplateStore) GetConfigFileTemplate(name string) (*conftypes.ConfigFileTemplate, error) {
 	querySql := cf.baseSelectConfigFileTemplateSql() + " WHERE name = ?"
 	rows, err := cf.master.Query(querySql, name)
 	if err != nil {
@@ -67,7 +67,7 @@ func (cf *configFileTemplateStore) GetConfigFileTemplate(name string) (*model.Co
 }
 
 // QueryAllConfigFileTemplates query all config file templates
-func (cf *configFileTemplateStore) QueryAllConfigFileTemplates() ([]*model.ConfigFileTemplate, error) {
+func (cf *configFileTemplateStore) QueryAllConfigFileTemplates() ([]*conftypes.ConfigFileTemplate, error) {
 	querySql := cf.baseSelectConfigFileTemplateSql() + " ORDER BY id DESC"
 	rows, err := cf.master.Query(querySql)
 	if err != nil {
@@ -93,7 +93,7 @@ FROM config_file_template
 	`
 }
 
-func (cf *configFileTemplateStore) transferRows(rows *sql.Rows) ([]*model.ConfigFileTemplate, error) {
+func (cf *configFileTemplateStore) transferRows(rows *sql.Rows) ([]*conftypes.ConfigFileTemplate, error) {
 	if rows == nil {
 		return nil, nil
 	}
@@ -101,9 +101,9 @@ func (cf *configFileTemplateStore) transferRows(rows *sql.Rows) ([]*model.Config
 		_ = rows.Close()
 	}()
 
-	var templates []*model.ConfigFileTemplate
+	var templates []*conftypes.ConfigFileTemplate
 	for rows.Next() {
-		template := &model.ConfigFileTemplate{}
+		template := &conftypes.ConfigFileTemplate{}
 		var ctime, mtime int64
 		err := rows.Scan(&template.Id, &template.Name, &template.Content, &template.Comment, &template.Format,
 			&ctime, &template.CreateBy, &mtime, &template.ModifyBy)

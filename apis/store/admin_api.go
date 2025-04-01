@@ -20,7 +20,7 @@ package store
 import (
 	"time"
 
-	"github.com/pole-io/pole-server/pkg/common/model/admin"
+	"github.com/pole-io/pole-server/apis/pkg/types/admin"
 )
 
 const (

@@ -30,12 +30,12 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/pole-io/pole-server/apis/cmdb"
+	"github.com/pole-io/pole-server/apis/pkg/types/admin"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	"github.com/pole-io/pole-server/pkg/common/model/admin"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )

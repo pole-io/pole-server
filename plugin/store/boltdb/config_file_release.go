@@ -25,6 +25,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -70,7 +71,7 @@ func newConfigFileReleaseStore(handler BoltHandler) *configFileReleaseStore {
 
 // CreateConfigFileReleaseTx 新建配置文件发布
 func (cfr *configFileReleaseStore) CreateConfigFileReleaseTx(proxyTx store.Tx,
-	fileRelease *model.ConfigFileRelease) error {
+	fileRelease *conftypes.ConfigFileRelease) error {
 	tx := proxyTx.GetDelegateTx().(*bolt.Tx)
 	// 是否存在当前 release
 	values := map[string]interface{}{}
@@ -118,7 +119,7 @@ func (cfr *configFileReleaseStore) CreateConfigFileReleaseTx(proxyTx store.Tx,
 }
 
 // GetConfigFileRelease Get the configuration file release, only the record of FLAG = 0
-func (cfr *configFileReleaseStore) GetConfigFileRelease(args *model.ConfigFileReleaseKey) (*model.ConfigFileRelease, error) {
+func (cfr *configFileReleaseStore) GetConfigFileRelease(args *conftypes.ConfigFileReleaseKey) (*conftypes.ConfigFileRelease, error) {
 
 	values, err := cfr.handler.LoadValues(tblConfigFileRelease, []string{args.ReleaseKey()},
 		&ConfigFileRelease{})
@@ -133,7 +134,7 @@ func (cfr *configFileReleaseStore) GetConfigFileRelease(args *model.ConfigFileRe
 
 // GetConfigFileRelease Get the configuration file release, only the record of FLAG = 0
 func (cfr *configFileReleaseStore) GetConfigFileReleaseTx(tx store.Tx,
-	args *model.ConfigFileReleaseKey) (*model.ConfigFileRelease, error) {
+	args *conftypes.ConfigFileReleaseKey) (*conftypes.ConfigFileRelease, error) {
 	dbTx := tx.GetDelegateTx().(*bolt.Tx)
 	values := make(map[string]interface{}, 1)
 	err := loadValues(dbTx, tblConfigFileRelease, []string{args.ReleaseKey()},
@@ -148,7 +149,7 @@ func (cfr *configFileReleaseStore) GetConfigFileReleaseTx(tx store.Tx,
 }
 
 // GetConfigFileActiveRelease .
-func (cfr *configFileReleaseStore) GetConfigFileActiveRelease(file *model.ConfigFileKey) (*model.ConfigFileRelease, error) {
+func (cfr *configFileReleaseStore) GetConfigFileActiveRelease(file *conftypes.ConfigFileKey) (*conftypes.ConfigFileRelease, error) {
 	tx, err := cfr.handler.StartTx()
 	if err != nil {
 		return nil, store.Error(err)
@@ -160,7 +161,7 @@ func (cfr *configFileReleaseStore) GetConfigFileActiveRelease(file *model.Config
 }
 
 func (cfr *configFileReleaseStore) GetConfigFileActiveReleaseTx(tx store.Tx,
-	file *model.ConfigFileKey) (*model.ConfigFileRelease, error) {
+	file *conftypes.ConfigFileKey) (*conftypes.ConfigFileRelease, error) {
 	dbTx := tx.GetDelegateTx().(*bolt.Tx)
 
 	fields := []string{FileReleaseFieldActive, FileReleaseFieldNamespace, FileReleaseFieldGroup,
@@ -197,7 +198,7 @@ func (cfr *configFileReleaseStore) GetConfigFileActiveReleaseTx(tx store.Tx,
 }
 
 func (cfr *configFileReleaseStore) GetConfigFileBetaReleaseTx(tx store.Tx,
-	file *model.ConfigFileKey) (*model.ConfigFileRelease, error) {
+	file *conftypes.ConfigFileKey) (*conftypes.ConfigFileRelease, error) {
 	dbTx := tx.GetDelegateTx().(*bolt.Tx)
 
 	fields := []string{FileReleaseFieldActive, FileReleaseFieldNamespace, FileReleaseFieldGroup,
@@ -234,7 +235,7 @@ func (cfr *configFileReleaseStore) GetConfigFileBetaReleaseTx(tx store.Tx,
 }
 
 // DeleteConfigFileRelease Delete the release data
-func (cfr *configFileReleaseStore) DeleteConfigFileReleaseTx(tx store.Tx, data *model.ConfigFileReleaseKey) error {
+func (cfr *configFileReleaseStore) DeleteConfigFileReleaseTx(tx store.Tx, data *conftypes.ConfigFileReleaseKey) error {
 	dbTx := tx.GetDelegateTx().(*bolt.Tx)
 	properties := make(map[string]interface{})
 
@@ -313,7 +314,7 @@ func (cfr *configFileReleaseStore) CleanConfigFileReleasesTx(tx store.Tx, namesp
 // GetMoreReleaseFile Get the last update time more than a certain time point
 // pay attention to containing Flag = 1, in order to get the deleted Release
 func (cfr *configFileReleaseStore) GetMoreReleaseFile(firstUpdate bool,
-	modifyTime time.Time) ([]*model.ConfigFileRelease, error) {
+	modifyTime time.Time) ([]*conftypes.ConfigFileRelease, error) {
 
 	if firstUpdate {
 		modifyTime = time.Unix(0, 0)
@@ -330,7 +331,7 @@ func (cfr *configFileReleaseStore) GetMoreReleaseFile(firstUpdate bool,
 		return nil, err
 	}
 
-	releases := make([]*model.ConfigFileRelease, 0, len(ret))
+	releases := make([]*conftypes.ConfigFileRelease, 0, len(ret))
 	for _, v := range ret {
 		releases = append(releases, cfr.toModelData(v.(*ConfigFileRelease)))
 	}
@@ -340,7 +341,7 @@ func (cfr *configFileReleaseStore) GetMoreReleaseFile(firstUpdate bool,
 	return releases, nil
 }
 
-func (cfr *configFileReleaseStore) ActiveConfigFileReleaseTx(tx store.Tx, release *model.ConfigFileRelease) error {
+func (cfr *configFileReleaseStore) ActiveConfigFileReleaseTx(tx store.Tx, release *conftypes.ConfigFileRelease) error {
 	dbTx := tx.GetDelegateTx().(*bolt.Tx)
 	maxVersion, err := cfr.inactiveConfigFileRelease(dbTx, release)
 	if err != nil {
@@ -353,7 +354,7 @@ func (cfr *configFileReleaseStore) ActiveConfigFileReleaseTx(tx store.Tx, releas
 	return updateValue(dbTx, tblConfigFileRelease, release.ReleaseKey(), properties)
 }
 
-func (cfr *configFileReleaseStore) InactiveConfigFileReleaseTx(tx store.Tx, release *model.ConfigFileRelease) error {
+func (cfr *configFileReleaseStore) InactiveConfigFileReleaseTx(tx store.Tx, release *conftypes.ConfigFileRelease) error {
 	dbTx := tx.GetDelegateTx().(*bolt.Tx)
 	properties := make(map[string]interface{})
 	properties[FileReleaseFieldActive] = false
@@ -362,7 +363,7 @@ func (cfr *configFileReleaseStore) InactiveConfigFileReleaseTx(tx store.Tx, rele
 }
 
 func (cfr *configFileReleaseStore) inactiveConfigFileRelease(tx *bolt.Tx,
-	release *model.ConfigFileRelease) (uint64, error) {
+	release *conftypes.ConfigFileRelease) (uint64, error) {
 
 	fields := []string{FileReleaseFieldNamespace, FileReleaseFieldGroup, FileReleaseFieldFileName,
 		FileReleaseFieldVersion, FileReleaseFieldValid, FileReleaseFieldActive, FileReleaseFieldType}
@@ -454,7 +455,7 @@ type ConfigFileRelease struct {
 	Typ        string
 }
 
-func (cfr *configFileReleaseStore) toValisModelData(data *ConfigFileRelease) *model.ConfigFileRelease {
+func (cfr *configFileReleaseStore) toValisModelData(data *ConfigFileRelease) *conftypes.ConfigFileRelease {
 	saveData := cfr.toModelData(data)
 	if !saveData.Valid {
 		return nil
@@ -462,16 +463,16 @@ func (cfr *configFileReleaseStore) toValisModelData(data *ConfigFileRelease) *mo
 	return saveData
 }
 
-func (cfr *configFileReleaseStore) toModelData(data *ConfigFileRelease) *model.ConfigFileRelease {
-	return &model.ConfigFileRelease{
-		SimpleConfigFileRelease: &model.SimpleConfigFileRelease{
-			ConfigFileReleaseKey: &model.ConfigFileReleaseKey{
+func (cfr *configFileReleaseStore) toModelData(data *ConfigFileRelease) *conftypes.ConfigFileRelease {
+	return &conftypes.ConfigFileRelease{
+		SimpleConfigFileRelease: &conftypes.SimpleConfigFileRelease{
+			ConfigFileReleaseKey: &conftypes.ConfigFileReleaseKey{
 				Id:          data.Id,
 				Name:        data.Name,
 				Namespace:   data.Namespace,
 				Group:       data.Group,
 				FileName:    data.FileName,
-				ReleaseType: model.ReleaseType(data.Typ),
+				ReleaseType: conftypes.ReleaseType(data.Typ),
 			},
 			Comment:    data.Comment,
 			Md5:        data.Md5,
@@ -490,7 +491,7 @@ func (cfr *configFileReleaseStore) toModelData(data *ConfigFileRelease) *model.C
 	}
 }
 
-func (cfr *configFileReleaseStore) toStoreData(data *model.ConfigFileRelease) *ConfigFileRelease {
+func (cfr *configFileReleaseStore) toStoreData(data *conftypes.ConfigFileRelease) *ConfigFileRelease {
 	return &ConfigFileRelease{
 		Id:         data.Id,
 		Name:       data.Name,

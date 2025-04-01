@@ -32,10 +32,11 @@ import (
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/cache"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/resource"
+
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 var (
@@ -43,7 +44,7 @@ var (
 )
 
 type (
-	ServiceInfos               map[string]map[model.ServiceKey]*resource.ServiceInfo
+	ServiceInfos               map[string]map[svctypes.ServiceKey]*resource.ServiceInfo
 	CurrentServiceInfoProvider func() ServiceInfos
 )
 
@@ -139,7 +140,7 @@ func (x *XdsResourceGenerator) buildOneEnvoyXDSCache(node *resource.XDSClient) e
 		Client:    node,
 		TLSMode:   node.TLSMode,
 		Namespace: node.GetSelfNamespace(),
-		SelfService: model.ServiceKey{
+		SelfService: svctypes.ServiceKey{
 			Namespace: node.GetSelfNamespace(),
 			Name:      node.GetSelfService(),
 		},

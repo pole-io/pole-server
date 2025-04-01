@@ -27,8 +27,8 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -69,12 +69,12 @@ func newConfigFileStore(handler BoltHandler) *configFileStore {
 	return s
 }
 
-func (cf *configFileStore) LockConfigFile(tx store.Tx, file *model.ConfigFileKey) (*model.ConfigFile, error) {
+func (cf *configFileStore) LockConfigFile(tx store.Tx, file *conftypes.ConfigFileKey) (*conftypes.ConfigFile, error) {
 	return cf.GetConfigFileTx(tx, file.Namespace, file.Group, file.Name)
 }
 
 // CreateConfigFile 创建配置文件
-func (cf *configFileStore) CreateConfigFileTx(proxyTx store.Tx, file *model.ConfigFile) error {
+func (cf *configFileStore) CreateConfigFileTx(proxyTx store.Tx, file *conftypes.ConfigFile) error {
 	dbTx := proxyTx.GetDelegateTx().(*bolt.Tx)
 	table, err := dbTx.CreateBucketIfNotExists([]byte(tblConfigFile))
 	if err != nil {
@@ -98,7 +98,7 @@ func (cf *configFileStore) CreateConfigFileTx(proxyTx store.Tx, file *model.Conf
 	return nil
 }
 
-func (cf *configFileStore) GetConfigFile(namespace, group, name string) (*model.ConfigFile, error) {
+func (cf *configFileStore) GetConfigFile(namespace, group, name string) (*conftypes.ConfigFile, error) {
 	tx, err := cf.handler.StartTx()
 	if err != nil {
 		return nil, store.Error(err)
@@ -110,7 +110,7 @@ func (cf *configFileStore) GetConfigFile(namespace, group, name string) (*model.
 }
 
 // GetConfigFileTx 获取配置文件
-func (cf *configFileStore) GetConfigFileTx(tx store.Tx, namespace, group, name string) (*model.ConfigFile, error) {
+func (cf *configFileStore) GetConfigFileTx(tx store.Tx, namespace, group, name string) (*conftypes.ConfigFile, error) {
 	dbTx := tx.GetDelegateTx().(*bolt.Tx)
 	data, err := cf.getConfigFile(dbTx, namespace, group, name)
 	if err != nil {
@@ -120,11 +120,11 @@ func (cf *configFileStore) GetConfigFileTx(tx store.Tx, namespace, group, name s
 }
 
 // GetConfigFile 获取配置文件
-func (cf *configFileStore) getConfigFile(tx *bolt.Tx, namespace, group, name string) (*model.ConfigFile, error) {
+func (cf *configFileStore) getConfigFile(tx *bolt.Tx, namespace, group, name string) (*conftypes.ConfigFile, error) {
 	key := fmt.Sprintf("%s@%s@%s", namespace, group, name)
 
 	values := make(map[string]interface{})
-	if err := loadValues(tx, tblConfigFile, []string{key}, &model.ConfigFile{}, values); err != nil {
+	if err := loadValues(tx, tblConfigFile, []string{key}, &conftypes.ConfigFile{}, values); err != nil {
 		return nil, err
 	}
 
@@ -136,7 +136,7 @@ func (cf *configFileStore) getConfigFile(tx *bolt.Tx, namespace, group, name str
 		return nil, ErrMultipleConfigFileFound
 	}
 
-	data := values[key].(*model.ConfigFile)
+	data := values[key].(*conftypes.ConfigFile)
 	if data.Valid {
 		return data, nil
 	}
@@ -145,7 +145,7 @@ func (cf *configFileStore) getConfigFile(tx *bolt.Tx, namespace, group, name str
 
 // QueryConfigFiles 翻页查询配置文件，group、name可为模糊匹配
 func (cf *configFileStore) QueryConfigFiles(filter map[string]string,
-	offset, limit uint32) (uint32, []*model.ConfigFile, error) {
+	offset, limit uint32) (uint32, []*conftypes.ConfigFile, error) {
 	fields := []string{FileFieldNamespace, FileFieldGroup, FileFieldName, FileFieldValid}
 
 	namespace := filter["namespace"]
@@ -156,7 +156,7 @@ func (cf *configFileStore) QueryConfigFiles(filter map[string]string,
 	hasGroup := len(group) != 0
 	hasName := len(name) != 0
 
-	ret, err := cf.handler.LoadValuesByFilter(tblConfigFile, fields, &model.ConfigFile{},
+	ret, err := cf.handler.LoadValuesByFilter(tblConfigFile, fields, &conftypes.ConfigFile{},
 		func(m map[string]interface{}) bool {
 			valid, _ := m[FileFieldValid].(bool)
 			if !valid {
@@ -188,7 +188,7 @@ func (cf *configFileStore) QueryConfigFiles(filter map[string]string,
 }
 
 // UpdateConfigFile 更新配置文件
-func (cf *configFileStore) UpdateConfigFileTx(tx store.Tx, file *model.ConfigFile) error {
+func (cf *configFileStore) UpdateConfigFileTx(tx store.Tx, file *conftypes.ConfigFile) error {
 	dbTx := tx.GetDelegateTx().(*bolt.Tx)
 	key := fmt.Sprintf("%s@%s@%s", file.Namespace, file.Group, file.Name)
 	properties := make(map[string]interface{})
@@ -228,7 +228,7 @@ func (cf *configFileStore) CountConfigFiles(namespace, group string) (uint64, er
 
 	fields := []string{FileFieldNamespace, FileFieldGroup, FileFieldValid}
 
-	ret, err := cf.handler.LoadValuesByFilter(tblConfigFile, fields, &model.ConfigFile{},
+	ret, err := cf.handler.LoadValuesByFilter(tblConfigFile, fields, &conftypes.ConfigFile{},
 		func(m map[string]interface{}) bool {
 			valid, _ := m[FileFieldValid].(bool)
 			if !valid {
@@ -256,14 +256,14 @@ func (cf *configFileStore) CountConfigFiles(namespace, group string) (uint64, er
 }
 
 func (cf *configFileStore) CountConfigFileEachGroup() (map[string]map[string]int64, error) {
-	values, err := cf.handler.LoadValuesAll(tblConfigFile, &model.ConfigFile{})
+	values, err := cf.handler.LoadValuesAll(tblConfigFile, &conftypes.ConfigFile{})
 	if err != nil {
 		return nil, err
 	}
 
 	ret := make(map[string]map[string]int64)
 	for i := range values {
-		file := values[i].(*model.ConfigFile)
+		file := values[i].(*conftypes.ConfigFile)
 		if !file.Valid {
 			continue
 		}
@@ -280,8 +280,8 @@ func (cf *configFileStore) CountConfigFileEachGroup() (map[string]map[string]int
 }
 
 // doConfigFilePage 进行分页
-func doConfigFilePage(ret map[string]interface{}, offset, limit uint32) []*model.ConfigFile {
-	files := make([]*model.ConfigFile, 0, len(ret))
+func doConfigFilePage(ret map[string]interface{}, offset, limit uint32) []*conftypes.ConfigFile {
+	files := make([]*conftypes.ConfigFile, 0, len(ret))
 	beginIndex := offset
 	endIndex := beginIndex + limit
 	totalCount := uint32(len(ret))
@@ -299,7 +299,7 @@ func doConfigFilePage(ret map[string]interface{}, offset, limit uint32) []*model
 		endIndex = totalCount
 	}
 	for k := range ret {
-		files = append(files, ret[k].(*model.ConfigFile))
+		files = append(files, ret[k].(*conftypes.ConfigFile))
 	}
 
 	sort.Slice(files, func(i, j int) bool {

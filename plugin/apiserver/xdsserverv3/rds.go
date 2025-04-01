@@ -28,7 +28,8 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/resource"
@@ -73,7 +74,7 @@ func (rds *RDSBuilder) makeSidecarInBoundRouteConfiguration(option *resource.Bui
 	selfService := option.SelfService
 	// step 2: 生成 sidecar 所属服务的 INBOUND 规则
 	// 服务信息不存在或者不精确，不下发 InBound RDS 规则信息
-	if !selfService.IsExact() {
+	if !isExactSvc(selfService) {
 		return []types.Resource{}
 	}
 	routeConf := &route.RouteConfiguration{
@@ -148,7 +149,7 @@ func (rds *RDSBuilder) makeSidecarOutBoundRouteConfiguration(option *resource.Bu
 	return routeConfs
 }
 
-func (rds *RDSBuilder) makeSidecarInBoundRoutes(selfService model.ServiceKey,
+func (rds *RDSBuilder) makeSidecarInBoundRoutes(selfService svctypes.ServiceKey,
 	trafficDirection corev3.TrafficDirection, opt *resource.BuildOption) []*route.Route {
 	currentRoute := &route.Route{
 		Match: &route.RouteMatch{
@@ -207,6 +208,10 @@ func (rds *RDSBuilder) makeGatewayRouteConfiguration(option *resource.BuildOptio
 	return append(routeConfs, routeConfiguration), nil
 }
 
+func isExactSvc(s svctypes.ServiceKey) bool {
+	return s.Namespace != "" && s.Namespace != rules.MatchAll && s.Name != "" && s.Name != rules.MatchAll
+}
+
 // makeGatewayRoutes builds the route.Route list for the envoy_gateway scenario
 // In this scenario, it is mainly for the rule forwarding of path, /serviceA => serviceA
 // Currently only routing rules that meet the following conditions support xds converted to envoy_gateway
@@ -219,7 +224,7 @@ func (rds *RDSBuilder) makeGatewayRoutes(option *resource.BuildOption) ([]*route
 	selfService := option.SelfService
 	callerService := selfService.Name
 	callerNamespace := selfService.Namespace
-	if !selfService.IsExact() {
+	if !isExactSvc(selfService) {
 		return nil, nil
 	}
 

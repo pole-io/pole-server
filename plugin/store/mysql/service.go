@@ -24,8 +24,8 @@ import (
 	"strings"
 	"time"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -36,7 +36,7 @@ type serviceStore struct {
 }
 
 // AddService 增加服务
-func (ss *serviceStore) AddService(s *model.Service) error {
+func (ss *serviceStore) AddService(s *svctypes.Service) error {
 	if s.ID == "" || s.Name == "" || s.Namespace == "" {
 		return store.NewStatusError(store.EmptyParamsErr, fmt.Sprintf(
 			"add service missing some params, id is %s, name is %s, namespace is %s", s.ID, s.Name, s.Namespace))
@@ -49,7 +49,7 @@ func (ss *serviceStore) AddService(s *model.Service) error {
 }
 
 // addService add service
-func (ss *serviceStore) addService(s *model.Service) error {
+func (ss *serviceStore) addService(s *svctypes.Service) error {
 	tx, err := ss.master.Begin()
 	if err != nil {
 		return err
@@ -161,7 +161,7 @@ func (ss *serviceStore) DeleteServiceAlias(name string, namespace string) error 
 }
 
 // UpdateServiceAlias 更新服务别名
-func (ss *serviceStore) UpdateServiceAlias(alias *model.Service, needUpdateOwner bool) error {
+func (ss *serviceStore) UpdateServiceAlias(alias *svctypes.Service, needUpdateOwner bool) error {
 	if alias.ID == "" ||
 		alias.Name == "" ||
 		alias.Namespace == "" ||
@@ -179,7 +179,7 @@ func (ss *serviceStore) UpdateServiceAlias(alias *model.Service, needUpdateOwner
 }
 
 // updateServiceAlias update service alias
-func (ss *serviceStore) updateServiceAlias(alias *model.Service, needUpdateOwner bool) error {
+func (ss *serviceStore) updateServiceAlias(alias *svctypes.Service, needUpdateOwner bool) error {
 	tx, err := ss.master.Begin()
 	if err != nil {
 		log.Errorf("[Store][database] update service alias tx begin err: %s", err.Error())
@@ -241,7 +241,7 @@ func checkServiceAffectedRows(result sql.Result, count int64) error {
 }
 
 // UpdateService 更新完整的服务信息
-func (ss *serviceStore) UpdateService(service *model.Service, needUpdateOwner bool) error {
+func (ss *serviceStore) UpdateService(service *svctypes.Service, needUpdateOwner bool) error {
 	if service.ID == "" ||
 		service.Name == "" ||
 		service.Namespace == "" ||
@@ -264,7 +264,7 @@ func (ss *serviceStore) UpdateService(service *model.Service, needUpdateOwner bo
 }
 
 // updateService update service
-func (ss *serviceStore) updateService(service *model.Service, needUpdateOwner bool) error {
+func (ss *serviceStore) updateService(service *svctypes.Service, needUpdateOwner bool) error {
 	tx, err := ss.master.Begin()
 	if err != nil {
 		log.Errorf("[Store][database] update service tx begin err: %s", err.Error())
@@ -321,7 +321,7 @@ func (ss *serviceStore) UpdateServiceToken(id string, token string, revision str
 }
 
 // GetService 获取服务详情，只返回有效的数据
-func (ss *serviceStore) GetService(name string, namespace string) (*model.Service, error) {
+func (ss *serviceStore) GetService(name string, namespace string) (*svctypes.Service, error) {
 	service, err := ss.getService(name, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("getService err: %v", err)
@@ -336,11 +336,11 @@ func (ss *serviceStore) GetService(name string, namespace string) (*model.Servic
 
 // GetSourceServiceToken 获取只获取服务token
 // 返回服务ID，服务token
-func (ss *serviceStore) GetSourceServiceToken(name string, namespace string) (*model.Service, error) {
+func (ss *serviceStore) GetSourceServiceToken(name string, namespace string) (*svctypes.Service, error) {
 	str := `select id, token, IFNULL(platform_id, "") from service
 			where name = ? and namespace = ? and flag = 0 
 			and (reference is null or reference = '')`
-	var out model.Service
+	var out svctypes.Service
 	err := ss.master.QueryRow(str, name, namespace).Scan(&out.ID, &out.Token, &out.PlatformID)
 	switch {
 	case err == sql.ErrNoRows:
@@ -355,7 +355,7 @@ func (ss *serviceStore) GetSourceServiceToken(name string, namespace string) (*m
 }
 
 // GetServiceByID 根据服务ID查询服务详情
-func (ss *serviceStore) GetServiceByID(id string) (*model.Service, error) {
+func (ss *serviceStore) GetServiceByID(id string) (*svctypes.Service, error) {
 	service, err := ss.getServiceByID(id)
 	if err != nil {
 		return nil, err
@@ -369,7 +369,7 @@ func (ss *serviceStore) GetServiceByID(id string) (*model.Service, error) {
 
 // GetServices 根据相关条件查询对应服务及数目，不包括别名
 func (ss *serviceStore) GetServices(serviceFilters, serviceMetas map[string]string, instanceFilters *store.InstanceArgs,
-	offset, limit uint32) (uint32, []*model.Service, error) {
+	offset, limit uint32) (uint32, []*svctypes.Service, error) {
 	// 只查询flag=0的服务列表
 	serviceFilters["service.flag"] = "0"
 
@@ -393,7 +393,7 @@ func (ss *serviceStore) GetServicesCount() (uint32, error) {
 
 // GetMoreServices 根据modify_time获取增量数据
 func (ss *serviceStore) GetMoreServices(mtime time.Time, firstUpdate, disableBusiness, needMeta bool) (
-	map[string]*model.Service, error) {
+	map[string]*svctypes.Service, error) {
 	if needMeta {
 		services, err := getMoreServiceWithMeta(ss.slave.Query, mtime, firstUpdate, disableBusiness)
 		if err != nil {
@@ -411,7 +411,7 @@ func (ss *serviceStore) GetMoreServices(mtime time.Time, firstUpdate, disableBus
 }
 
 // GetSystemServices 获取系统服务
-func (ss *serviceStore) GetSystemServices() ([]*model.Service, error) {
+func (ss *serviceStore) GetSystemServices() ([]*svctypes.Service, error) {
 	str := genServiceSelectSQL()
 	str += " from service where flag = 0 and namespace = ?"
 	rows, err := ss.master.Query(str, SystemNamespace)
@@ -431,7 +431,7 @@ func (ss *serviceStore) GetSystemServices() ([]*model.Service, error) {
 
 // GetServiceAliases 获取服务别名列表
 func (ss *serviceStore) GetServiceAliases(filter map[string]string, offset uint32, limit uint32) (uint32,
-	[]*model.ServiceAlias, error) {
+	[]*svctypes.ServiceAlias, error) {
 
 	whereFilter := serviceAliasFilter2Where(filter)
 	count, err := ss.getServiceAliasesCount(whereFilter)
@@ -451,10 +451,10 @@ func (ss *serviceStore) GetServiceAliases(filter map[string]string, offset uint3
 
 // getServiceAliasesInfo 获取服务别名的详细信息
 func (ss *serviceStore) getServiceAliasesInfo(filter map[string]string, offset uint32,
-	limit uint32) ([]*model.ServiceAlias, error) {
+	limit uint32) ([]*svctypes.ServiceAlias, error) {
 	// limit为0，则直接返回
 	if limit == 0 {
-		return make([]*model.ServiceAlias, 0), nil
+		return make([]*svctypes.ServiceAlias, 0), nil
 	}
 
 	baseStr := `
@@ -474,10 +474,10 @@ func (ss *serviceStore) getServiceAliasesInfo(filter map[string]string, offset u
 	}
 	defer func() { _ = rows.Close() }()
 
-	var out []*model.ServiceAlias
+	var out []*svctypes.ServiceAlias
 	var ctime, mtime int64
 	for rows.Next() {
-		var entry model.ServiceAlias
+		var entry svctypes.ServiceAlias
 		err := rows.Scan(
 			&entry.ID, &entry.Alias, &entry.AliasNamespace, &ctime, &mtime, &entry.Comment,
 			&entry.ServiceID, &entry.Service, &entry.Namespace, &entry.Owner)
@@ -508,10 +508,10 @@ func (ss *serviceStore) getServiceAliasesCount(filter map[string]string) (uint32
 
 // getServices 根据相关条件查询对应服务，不包括别名
 func (ss *serviceStore) getServices(sFilters, sMetas map[string]string, iFilters *store.InstanceArgs,
-	offset, limit uint32) ([]*model.Service, error) {
+	offset, limit uint32) ([]*svctypes.Service, error) {
 	// 不查询任意内容，直接返回空数组
 	if limit == 0 {
-		return make([]*model.Service, 0), nil
+		return make([]*svctypes.Service, 0), nil
 	}
 
 	// 构造SQL语句
@@ -581,7 +581,7 @@ func (ss *serviceStore) getServicesCount(
 }
 
 // fetchRowServices 根据rows，获取到services，并且批量获取对应的metadata
-func (ss *serviceStore) fetchRowServices(rows *sql.Rows) ([]*model.Service, error) {
+func (ss *serviceStore) fetchRowServices(rows *sql.Rows) ([]*svctypes.Service, error) {
 	services, err := fetchServiceRows(rows)
 	if err != nil {
 		return nil, err
@@ -613,8 +613,8 @@ func (ss *serviceStore) fetchRowServices(rows *sql.Rows) ([]*model.Service, erro
 		}
 		for id, meta := range metas {
 			for _, entry := range objects {
-				if entry.(*model.Service).ID == id {
-					entry.(*model.Service).Meta = meta
+				if entry.(*svctypes.Service).ID == id {
+					entry.(*svctypes.Service).Meta = meta
 					break
 				}
 			}
@@ -646,7 +646,7 @@ func (ss *serviceStore) getServiceMeta(id string) (map[string]string, error) {
 }
 
 // getService 获取service内部函数
-func (ss *serviceStore) getService(name string, namespace string) (*model.Service, error) {
+func (ss *serviceStore) getService(name string, namespace string) (*svctypes.Service, error) {
 	if name == "" || namespace == "" {
 		return nil, fmt.Errorf("missing params, name: %s, namespace: %s", name, namespace)
 	}
@@ -669,7 +669,7 @@ func (ss *serviceStore) getService(name string, namespace string) (*model.Servic
 }
 
 // getServiceMain 获取服务表的信息，不包括metadata
-func (ss *serviceStore) getServiceMain(name string, namespace string) (*model.Service, error) {
+func (ss *serviceStore) getServiceMain(name string, namespace string) (*svctypes.Service, error) {
 	str := genServiceSelectSQL() + " from service where name = ? and namespace = ?"
 	rows, err := ss.master.Query(str, name, namespace)
 	if err != nil {
@@ -690,7 +690,7 @@ func (ss *serviceStore) getServiceMain(name string, namespace string) (*model.Se
 }
 
 // getServiceByID 根据服务ID获取服务详情的内部函数
-func (ss *serviceStore) getServiceByID(serviceID string) (*model.Service, error) {
+func (ss *serviceStore) getServiceByID(serviceID string) (*svctypes.Service, error) {
 	str := genServiceSelectSQL() + " from service where service.id = ?"
 	rows, err := ss.master.Query(str, serviceID)
 	if err != nil {
@@ -731,7 +731,7 @@ func cleanService(tx *BaseTx, name string, namespace string) error {
 
 // getMoreServiceWithMeta获取增量服务,包括元数据
 func getMoreServiceWithMeta(queryHandler QueryHandler, mtime time.Time, firstUpdate, disableBusiness bool) (
-	map[string]*model.Service, error) {
+	map[string]*svctypes.Service, error) {
 	// 首次拉取
 	if firstUpdate {
 		// 获取全量服务
@@ -771,13 +771,13 @@ func getMoreServiceWithMeta(queryHandler QueryHandler, mtime time.Time, firstUpd
 }
 
 // fetchServiceWithMetaRows 获取service+metadata rows里面的数据
-func fetchServiceWithMetaRows(rows *sql.Rows) (map[string]*model.Service, error) {
+func fetchServiceWithMetaRows(rows *sql.Rows) (map[string]*svctypes.Service, error) {
 	if rows == nil {
 		return nil, nil
 	}
 	defer rows.Close()
 
-	out := make(map[string]*model.Service)
+	out := make(map[string]*svctypes.Service)
 	var id, mKey, mValue string
 	var flag int
 	progress := 0
@@ -787,7 +787,7 @@ func fetchServiceWithMetaRows(rows *sql.Rows) (map[string]*model.Service, error)
 			log.Infof("[Store][database] services+meta row next progress: %d", progress)
 		}
 
-		var item model.Service
+		var item svctypes.Service
 		var exportTo string
 		if err := rows.Scan(&item.ID, &item.Name, &item.Namespace, &item.Business, &item.Comment,
 			&item.Token, &item.Revision, &item.Owner, &flag, &item.Ctime, &item.Mtime, &item.Ports,
@@ -826,7 +826,7 @@ func fetchServiceWithMetaRows(rows *sql.Rows) (map[string]*model.Service, error)
 
 // getMoreServiceMain get more service main
 func getMoreServiceMain(queryHandler QueryHandler, mtime time.Time,
-	firstUpdate, disableBusiness bool) (map[string]*model.Service, error) {
+	firstUpdate, disableBusiness bool) (map[string]*svctypes.Service, error) {
 	var args []interface{}
 	args = append(args, timeToTimestamp(mtime))
 	str := genServiceSelectSQL() + " from service where service.mtime >= FROM_UNIXTIME(?)"
@@ -842,8 +842,8 @@ func getMoreServiceMain(queryHandler QueryHandler, mtime time.Time,
 		log.Errorf("[Store][database] get more services query err: %s", err.Error())
 		return nil, err
 	}
-	out := make(map[string]*model.Service)
-	err = callFetchServiceRows(rows, func(entry *model.Service) (b bool, e error) {
+	out := make(map[string]*svctypes.Service)
+	err = callFetchServiceRows(rows, func(entry *svctypes.Service) (b bool, e error) {
 		out[entry.ID] = entry
 		return true, nil
 	})
@@ -871,7 +871,7 @@ func batchQueryServiceMeta(handler QueryHandler, services []interface{}) (*sql.R
 		} else {
 			str += ",?"
 		}
-		args = append(args, ele.(*model.Service).ID)
+		args = append(args, ele.(*svctypes.Service).ID)
 	}
 	str += ")"
 
@@ -885,7 +885,7 @@ func batchQueryServiceMeta(handler QueryHandler, services []interface{}) (*sql.R
 }
 
 // fetchMoreServiceMeta fetch more service meta
-func fetchMoreServiceMeta(services map[string]*model.Service, rows *sql.Rows) error {
+func fetchMoreServiceMeta(services map[string]*svctypes.Service, rows *sql.Rows) error {
 	err := callFetchServiceMetaRows(rows, func(id, key, value string) (b bool, e error) {
 		service, ok := services[id]
 		if !ok {
@@ -938,7 +938,7 @@ func callFetchServiceMetaRows(rows *sql.Rows, handler func(id, key, value string
 }
 
 // addServiceMain 增加service主表数据
-func addServiceMain(tx *BaseTx, s *model.Service) error {
+func addServiceMain(tx *BaseTx, s *svctypes.Service) error {
 	// 先把主表填充
 	insertStmt := `
 		insert into service
@@ -980,7 +980,7 @@ func addServiceMeta(tx *BaseTx, id string, meta map[string]string) error {
 }
 
 // updateServiceMain 更新service主表
-func updateServiceMain(tx *BaseTx, service *model.Service) error {
+func updateServiceMain(tx *BaseTx, service *svctypes.Service) error {
 	str := `update service set name = ?, namespace = ?, ports = ?, business = ?,
 	department = ?, cmdb_mod1 = ?, cmdb_mod2 = ?, cmdb_mod3 = ?, comment = ?, token = ?, platform_id = ?,
 	revision = ?, owner = ?, mtime = sysdate(), export_to = ? where id = ?`
@@ -1044,7 +1044,7 @@ func genServiceSelectSQL() string {
 }
 
 // callFetchServiceRows call fetch service rows
-func callFetchServiceRows(rows *sql.Rows, callback func(entry *model.Service) (bool, error)) error {
+func callFetchServiceRows(rows *sql.Rows, callback func(entry *svctypes.Service) (bool, error)) error {
 	if rows == nil {
 		return nil
 	}
@@ -1058,7 +1058,7 @@ func callFetchServiceRows(rows *sql.Rows, callback func(entry *model.Service) (b
 			log.Infof("[Store][database] services row next progress: %d", progress)
 		}
 
-		var item model.Service
+		var item svctypes.Service
 		var exportTo string
 		err := rows.Scan(
 			&item.ID, &item.Name, &item.Namespace, &item.Business, &item.Comment,
@@ -1095,9 +1095,9 @@ func callFetchServiceRows(rows *sql.Rows, callback func(entry *model.Service) (b
 }
 
 // fetchServiceRows 获取service rows里面的数据
-func fetchServiceRows(rows *sql.Rows) ([]*model.Service, error) {
-	var out []*model.Service
-	err := callFetchServiceRows(rows, func(entry *model.Service) (b bool, e error) {
+func fetchServiceRows(rows *sql.Rows) ([]*svctypes.Service, error) {
+	var out []*svctypes.Service
+	err := callFetchServiceRows(rows, func(entry *svctypes.Service) (b bool, e error) {
 		out = append(out, entry)
 		return true, nil
 	})
@@ -1142,7 +1142,7 @@ func filterMetadata(metas map[string]string) (string, []interface{}) {
 }
 
 // GetServicesBatch 查询多个服务的id
-func (ss *serviceStore) GetServicesBatch(services []*model.Service) ([]*model.Service, error) {
+func (ss *serviceStore) GetServicesBatch(services []*svctypes.Service) ([]*svctypes.Service, error) {
 	if len(services) == 0 {
 		return nil, nil
 	}
@@ -1164,7 +1164,7 @@ func (ss *serviceStore) GetServicesBatch(services []*model.Service) ([]*model.Se
 		return nil, err
 	}
 
-	res := make([]*model.Service, 0, len(services))
+	res := make([]*svctypes.Service, 0, len(services))
 	var namespace, name, id, owner string
 	for rows.Next() {
 		err := rows.Scan(&id, &name, &namespace, &owner)
@@ -1172,7 +1172,7 @@ func (ss *serviceStore) GetServicesBatch(services []*model.Service) ([]*model.Se
 			log.Errorf("[Store][database] fetch services batch scan err: %s", err.Error())
 			return nil, err
 		}
-		res = append(res, &model.Service{
+		res = append(res, &svctypes.Service{
 			ID:        id,
 			Name:      name,
 			Namespace: namespace,

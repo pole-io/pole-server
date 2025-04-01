@@ -27,9 +27,9 @@ import (
 	"github.com/pole-io/pole-server/apis/crypto"
 	"github.com/pole-io/pole-server/apis/observability/history"
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
 )
@@ -252,7 +252,7 @@ type ConfigChains struct {
 }
 
 // BeforeCreateFile
-func (cc *ConfigChains) BeforeCreateFile(ctx context.Context, file *model.ConfigFile) *apiconfig.ConfigResponse {
+func (cc *ConfigChains) BeforeCreateFile(ctx context.Context, file *conftypes.ConfigFile) *apiconfig.ConfigResponse {
 	for i := range cc.chains {
 		if errResp := cc.chains[i].BeforeCreateFile(ctx, file); errResp != nil {
 			return errResp
@@ -262,7 +262,7 @@ func (cc *ConfigChains) BeforeCreateFile(ctx context.Context, file *model.Config
 }
 
 // AfterGetFile
-func (cc *ConfigChains) AfterGetFile(ctx context.Context, file *model.ConfigFile) (*model.ConfigFile, error) {
+func (cc *ConfigChains) AfterGetFile(ctx context.Context, file *conftypes.ConfigFile) (*conftypes.ConfigFile, error) {
 	file.OriginContent = file.Content
 	for i := range cc.chains {
 		_file, err := cc.chains[i].AfterGetFile(ctx, file)
@@ -275,7 +275,7 @@ func (cc *ConfigChains) AfterGetFile(ctx context.Context, file *model.ConfigFile
 }
 
 // BeforeUpdateFile
-func (cc *ConfigChains) BeforeUpdateFile(ctx context.Context, file *model.ConfigFile) *apiconfig.ConfigResponse {
+func (cc *ConfigChains) BeforeUpdateFile(ctx context.Context, file *conftypes.ConfigFile) *apiconfig.ConfigResponse {
 	for i := range cc.chains {
 		if errResp := cc.chains[i].BeforeUpdateFile(ctx, file); errResp != nil {
 			return errResp
@@ -286,7 +286,7 @@ func (cc *ConfigChains) BeforeUpdateFile(ctx context.Context, file *model.Config
 
 // AfterGetFileRelease
 func (cc *ConfigChains) AfterGetFileRelease(ctx context.Context,
-	release *model.ConfigFileRelease) (*model.ConfigFileRelease, error) {
+	release *conftypes.ConfigFileRelease) (*conftypes.ConfigFileRelease, error) {
 
 	for i := range cc.chains {
 		_release, err := cc.chains[i].AfterGetFileRelease(ctx, release)
@@ -300,7 +300,7 @@ func (cc *ConfigChains) AfterGetFileRelease(ctx context.Context,
 
 // AfterGetFileHistory
 func (cc *ConfigChains) AfterGetFileHistory(ctx context.Context,
-	history *model.ConfigFileReleaseHistory) (*model.ConfigFileReleaseHistory, error) {
+	history *conftypes.ConfigFileReleaseHistory) (*conftypes.ConfigFileReleaseHistory, error) {
 	for i := range cc.chains {
 		_history, err := cc.chains[i].AfterGetFileHistory(ctx, history)
 		if err != nil {

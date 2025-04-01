@@ -26,8 +26,8 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -45,7 +45,7 @@ type laneStore struct {
 }
 
 // AddLaneGroup 添加泳道组
-func (l *laneStore) AddLaneGroup(tx store.Tx, item *model.LaneGroup) error {
+func (l *laneStore) AddLaneGroup(tx store.Tx, item *rules.LaneGroup) error {
 	dbTx := tx.GetDelegateTx().(*bolt.Tx)
 	// Before adding new data, you must clean up the old data
 	if err := deleteValues(dbTx, tblLaneGroup, []string{item.ID}); err != nil {
@@ -82,7 +82,7 @@ func (l *laneStore) AddLaneGroup(tx store.Tx, item *model.LaneGroup) error {
 }
 
 // UpdateLaneGroup 更新泳道组
-func (l *laneStore) UpdateLaneGroup(tx store.Tx, item *model.LaneGroup) error {
+func (l *laneStore) UpdateLaneGroup(tx store.Tx, item *rules.LaneGroup) error {
 	dbTx := tx.GetDelegateTx().(*bolt.Tx)
 
 	for i := range item.LaneRules {
@@ -118,7 +118,7 @@ func (l *laneStore) UpdateLaneGroup(tx store.Tx, item *model.LaneGroup) error {
 }
 
 // LockLaneGroup 锁住一个泳道分组
-func (l *laneStore) LockLaneGroup(tx store.Tx, name string) (*model.LaneGroup, error) {
+func (l *laneStore) LockLaneGroup(tx store.Tx, name string) (*rules.LaneGroup, error) {
 	dbTx := tx.GetDelegateTx().(*bolt.Tx)
 	ret, err := l.getLaneGroup(dbTx, name, false)
 	if err != nil {
@@ -127,8 +127,8 @@ func (l *laneStore) LockLaneGroup(tx store.Tx, name string) (*model.LaneGroup, e
 	return ret, nil
 }
 
-func (l *laneStore) GetLaneGroup(name string) (*model.LaneGroup, error) {
-	var ret *model.LaneGroup
+func (l *laneStore) GetLaneGroup(name string) (*rules.LaneGroup, error) {
+	var ret *rules.LaneGroup
 	var err error
 	err = l.handler.Execute(false, func(tx *bolt.Tx) error {
 		ret, err = l.getLaneGroup(tx, name, true)
@@ -140,8 +140,8 @@ func (l *laneStore) GetLaneGroup(name string) (*model.LaneGroup, error) {
 	return ret, nil
 }
 
-func (l *laneStore) GetLaneGroupByID(id string) (*model.LaneGroup, error) {
-	var ret *model.LaneGroup
+func (l *laneStore) GetLaneGroupByID(id string) (*rules.LaneGroup, error) {
+	var ret *rules.LaneGroup
 	var err error
 	err = l.handler.Execute(false, func(tx *bolt.Tx) error {
 		ret, err = l.getLaneGroup(tx, id, true)
@@ -153,7 +153,7 @@ func (l *laneStore) GetLaneGroupByID(id string) (*model.LaneGroup, error) {
 	return ret, nil
 }
 
-func (l *laneStore) getLaneGroup(tx *bolt.Tx, name string, brief bool) (*model.LaneGroup, error) {
+func (l *laneStore) getLaneGroup(tx *bolt.Tx, name string, brief bool) (*rules.LaneGroup, error) {
 	fields := []string{
 		CommonFieldValid, CommonFieldName, CommonFieldID,
 	}
@@ -180,7 +180,7 @@ func (l *laneStore) getLaneGroup(tx *bolt.Tx, name string, brief bool) (*model.L
 }
 
 // GetLaneGroups 查询泳道组
-func (l *laneStore) GetLaneGroups(filter map[string]string, offset, limit uint32) (uint32, []*model.LaneGroup, error) {
+func (l *laneStore) GetLaneGroups(filter map[string]string, offset, limit uint32) (uint32, []*rules.LaneGroup, error) {
 	fields := []string{
 		CommonFieldValid, CommonFieldID, CommonFieldName,
 	}
@@ -207,7 +207,7 @@ func (l *laneStore) GetLaneGroups(filter map[string]string, offset, limit uint32
 		log.Errorf("[Store][Lane] select lane group to kv error, %v", err)
 		return 0, nil, store.Error(err)
 	}
-	groups := make([]*model.LaneGroup, 0, len(result))
+	groups := make([]*rules.LaneGroup, 0, len(result))
 	for _, v := range result {
 		group := toLaneGroupModel(v.(*LaneGroup))
 		groups = append(groups, group)
@@ -215,7 +215,7 @@ func (l *laneStore) GetLaneGroups(filter map[string]string, offset, limit uint32
 	return uint32(len(result)), pageLaneGroups(groups, offset, limit, filter), nil
 }
 
-func pageLaneGroups(items []*model.LaneGroup, offset, limit uint32, order map[string]string) []*model.LaneGroup {
+func pageLaneGroups(items []*rules.LaneGroup, offset, limit uint32, order map[string]string) []*rules.LaneGroup {
 	orderField := order["order_field"]
 	asc := strings.ToLower(order["order_type"]) == "asc"
 
@@ -264,7 +264,7 @@ func (l *laneStore) DeleteLaneGroup(id string) error {
 }
 
 // GetMoreLaneGroups 获取泳道规则列表到缓存层
-func (l *laneStore) GetMoreLaneGroups(mtime time.Time, firstUpdate bool) (map[string]*model.LaneGroup, error) {
+func (l *laneStore) GetMoreLaneGroups(mtime time.Time, firstUpdate bool) (map[string]*rules.LaneGroup, error) {
 	if firstUpdate {
 		mtime = time.Unix(0, 0)
 	}
@@ -272,7 +272,7 @@ func (l *laneStore) GetMoreLaneGroups(mtime time.Time, firstUpdate bool) (map[st
 		CommonFieldModifyTime,
 	}
 
-	groups := make(map[string]*model.LaneGroup, 32)
+	groups := make(map[string]*rules.LaneGroup, 32)
 	err := l.handler.Execute(false, func(tx *bolt.Tx) error {
 		result := make(map[string]interface{})
 		err := loadValuesByFilter(tx, tblLaneGroup, fields, &LaneGroup{}, func(m map[string]interface{}) bool {
@@ -306,12 +306,12 @@ func (l *laneStore) GetLaneRuleMaxPriority() (int32, error) {
 		FieldLaneRules,
 		CommonFieldValid,
 	}
-	_, err := l.handler.LoadValuesByFilter(tblLaneGroup, fields, &model.LaneGroup{}, func(m map[string]interface{}) bool {
+	_, err := l.handler.LoadValuesByFilter(tblLaneGroup, fields, &rules.LaneGroup{}, func(m map[string]interface{}) bool {
 		valid, _ := m[CommonFieldValid].(bool)
 		if !valid {
 			return false
 		}
-		rules := make(map[string]*model.LaneRule)
+		rules := make(map[string]*rules.LaneRule)
 		_ = json.Unmarshal([]byte(m[FieldLaneRules].(string)), &rules)
 		for _, rule := range rules {
 			curPriority := rule.Priority
@@ -327,7 +327,7 @@ func (l *laneStore) GetLaneRuleMaxPriority() (int32, error) {
 	return maxPriority, err
 }
 
-func toLaneGroupStore(data *model.LaneGroup) *LaneGroup {
+func toLaneGroupStore(data *rules.LaneGroup) *LaneGroup {
 	return &LaneGroup{
 		ID:          data.ID,
 		Name:        data.Name,
@@ -341,8 +341,8 @@ func toLaneGroupStore(data *model.LaneGroup) *LaneGroup {
 	}
 }
 
-func toLaneGroupModel(data *LaneGroup) *model.LaneGroup {
-	ret := &model.LaneGroup{
+func toLaneGroupModel(data *LaneGroup) *rules.LaneGroup {
+	ret := &rules.LaneGroup{
 		ID:          data.ID,
 		Name:        data.Name,
 		Rule:        data.Rule,
@@ -351,7 +351,7 @@ func toLaneGroupModel(data *LaneGroup) *model.LaneGroup {
 		Valid:       data.Valid,
 		CreateTime:  data.CreateTime,
 		ModifyTime:  data.ModifyTime,
-		LaneRules:   map[string]*model.LaneRule{},
+		LaneRules:   map[string]*rules.LaneRule{},
 	}
 
 	_ = json.Unmarshal([]byte(data.Name), &ret.LaneRules)

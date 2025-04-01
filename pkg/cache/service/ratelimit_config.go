@@ -26,9 +26,10 @@ import (
 	"golang.org/x/sync/singleflight"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	types "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -92,7 +93,7 @@ func (rlc *rateLimitCache) Clear() error {
 	return nil
 }
 
-func (rlc *rateLimitCache) rateLimitToProto(rateLimit *model.RateLimit) error {
+func (rlc *rateLimitCache) rateLimitToProto(rateLimit *rules.RateLimit) error {
 	rateLimit.Proto = &apitraffic.Rule{}
 	if len(rateLimit.Rule) == 0 {
 		return nil
@@ -111,12 +112,12 @@ func (rlc *rateLimitCache) rateLimitToProto(rateLimit *model.RateLimit) error {
 }
 
 // setRateLimit 更新限流规则到缓存中
-func (rlc *rateLimitCache) setRateLimit(rateLimits []*model.RateLimit) map[string]time.Time {
+func (rlc *rateLimitCache) setRateLimit(rateLimits []*rules.RateLimit) map[string]time.Time {
 	if len(rateLimits) == 0 {
 		return nil
 	}
 	rlc.fixRulesServiceInfo()
-	updateService := map[model.ServiceKey]struct{}{}
+	updateService := map[svctypes.ServiceKey]struct{}{}
 	lastMtime := rlc.LastMtime(rlc.Name()).Unix()
 	for _, item := range rateLimits {
 		if err := rlc.rateLimitToProto(item); nil != err {
@@ -127,7 +128,7 @@ func (rlc *rateLimitCache) setRateLimit(rateLimits []*model.RateLimit) map[strin
 			lastMtime = item.ModifyTime.Unix()
 		}
 
-		key := model.ServiceKey{
+		key := svctypes.ServiceKey{
 			Namespace: item.Proto.GetNamespace().GetValue(),
 			Name:      item.Proto.GetService().GetValue(),
 		}
@@ -157,7 +158,7 @@ func (rlc *rateLimitCache) IteratorRateLimit(proc types.RateLimitIterProc) {
 }
 
 // GetRateLimitByServiceID 根据serviceID获取限流数据
-func (rlc *rateLimitCache) GetRateLimitRules(serviceKey model.ServiceKey) ([]*model.RateLimit, string) {
+func (rlc *rateLimitCache) GetRateLimitRules(serviceKey svctypes.ServiceKey) ([]*rules.RateLimit, string) {
 	rules, revision := rlc.rules.getRules(serviceKey)
 	return rules, revision
 }
@@ -167,7 +168,7 @@ func (rlc *rateLimitCache) GetRateLimitsCount() int {
 	return rlc.rules.count()
 }
 
-func (rlc *rateLimitCache) deleteWaitFixRule(rule *model.RateLimit) {
+func (rlc *rateLimitCache) deleteWaitFixRule(rule *rules.RateLimit) {
 	rlc.lock.Lock()
 	defer rlc.lock.Unlock()
 	delete(rlc.waitFixRules, rule.ID)
@@ -199,7 +200,7 @@ func (rlc *rateLimitCache) fixRulesServiceInfo() {
 	}
 }
 
-func (rlc *rateLimitCache) fixRuleServiceInfo(rateLimit *model.RateLimit) {
+func (rlc *rateLimitCache) fixRuleServiceInfo(rateLimit *rules.RateLimit) {
 	rlc.lock.Lock()
 	defer rlc.lock.Unlock()
 	svcId := rateLimit.ServiceID
@@ -226,6 +227,6 @@ func (rlc *rateLimitCache) fixRuleServiceInfo(rateLimit *model.RateLimit) {
 }
 
 // GetRule implements api.RateLimitCache.
-func (rlc *rateLimitCache) GetRule(id string) *model.RateLimit {
+func (rlc *rateLimitCache) GetRule(id string) *rules.RateLimit {
 	return rlc.rules.getRuleByID(id)
 }

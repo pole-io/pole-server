@@ -30,8 +30,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -77,7 +78,7 @@ func (s *Server) createCircuitBreakerRule(
 		data.ID, request.GetName(), request.GetNamespace())
 	log.Info(msg, utils.RequestID(ctx))
 
-	s.RecordHistory(ctx, circuitBreakerRuleRecordEntry(ctx, request, data, model.OCreate))
+	s.RecordHistory(ctx, circuitBreakerRuleRecordEntry(ctx, request, data, types.OCreate))
 	request.Id = data.ID
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, request)
 }
@@ -113,9 +114,9 @@ func (s *Server) deleteCircuitBreakerRule(
 		request.GetId(), request.GetName(), request.GetNamespace())
 	log.Info(msg, utils.RequestID(ctx))
 
-	cbRule := &model.CircuitBreakerRule{
+	cbRule := &rules.CircuitBreakerRule{
 		ID: request.GetId(), Name: request.GetName(), Namespace: request.GetNamespace()}
-	s.RecordHistory(ctx, circuitBreakerRuleRecordEntry(ctx, request, cbRule, model.ODelete))
+	s.RecordHistory(ctx, circuitBreakerRuleRecordEntry(ctx, request, cbRule, types.ODelete))
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, cbRuleId)
 }
 
@@ -137,7 +138,7 @@ func (s *Server) enableCircuitBreakerRule(
 		return resp
 	}
 	cbRuleId := &apifault.CircuitBreakerRule{Id: request.GetId()}
-	cbRule := &model.CircuitBreakerRule{
+	cbRule := &rules.CircuitBreakerRule{
 		ID:        request.GetId(),
 		Namespace: request.GetNamespace(),
 		Name:      request.GetName(),
@@ -153,7 +154,7 @@ func (s *Server) enableCircuitBreakerRule(
 		request.GetId(), request.GetName(), request.GetNamespace())
 	log.Info(msg, utils.RequestID(ctx))
 
-	s.RecordHistory(ctx, circuitBreakerRuleRecordEntry(ctx, request, cbRule, model.OUpdate))
+	s.RecordHistory(ctx, circuitBreakerRuleRecordEntry(ctx, request, cbRule, types.OUpdate))
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, cbRuleId)
 }
 
@@ -198,7 +199,7 @@ func (s *Server) updateCircuitBreakerRule(
 		request.GetId(), request.GetName(), request.GetNamespace())
 	log.Info(msg, utils.RequestID(ctx))
 
-	s.RecordHistory(ctx, circuitBreakerRuleRecordEntry(ctx, request, cbRule, model.OUpdate))
+	s.RecordHistory(ctx, circuitBreakerRuleRecordEntry(ctx, request, cbRule, types.OUpdate))
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, cbRuleId)
 }
 
@@ -248,12 +249,12 @@ func (s *Server) GetAllCircuitBreakerRules(ctx context.Context) *apiservice.Batc
 	return nil
 }
 
-func circuitBreakerRuleRecordEntry(ctx context.Context, req *apifault.CircuitBreakerRule, md *model.CircuitBreakerRule,
-	opt model.OperationType) *model.RecordEntry {
+func circuitBreakerRuleRecordEntry(ctx context.Context, req *apifault.CircuitBreakerRule, md *rules.CircuitBreakerRule,
+	opt types.OperationType) *types.RecordEntry {
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
-	entry := &model.RecordEntry{
-		ResourceType:  model.RCircuitBreakerRule,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RCircuitBreakerRule,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
 		Namespace:     req.GetNamespace(),
 		OperationType: opt,
@@ -282,13 +283,13 @@ func marshalCircuitBreakerRuleV2(req *apifault.CircuitBreakerRule) (string, erro
 }
 
 // api2CircuitBreakerRule 把API参数转化为内部数据结构
-func api2CircuitBreakerRule(req *apifault.CircuitBreakerRule) (*model.CircuitBreakerRule, error) {
+func api2CircuitBreakerRule(req *apifault.CircuitBreakerRule) (*rules.CircuitBreakerRule, error) {
 	rule, err := marshalCircuitBreakerRuleV2(req)
 	if err != nil {
 		return nil, err
 	}
 
-	out := &model.CircuitBreakerRule{
+	out := &rules.CircuitBreakerRule{
 		Name:         req.GetName(),
 		Namespace:    req.GetNamespace(),
 		Description:  req.GetDescription(),
@@ -308,7 +309,7 @@ func api2CircuitBreakerRule(req *apifault.CircuitBreakerRule) (*model.CircuitBre
 	return out, nil
 }
 
-func circuitBreakerRule2api(cbRule *model.CircuitBreakerRule) (*apifault.CircuitBreakerRule, error) {
+func circuitBreakerRule2api(cbRule *rules.CircuitBreakerRule) (*apifault.CircuitBreakerRule, error) {
 	if cbRule == nil {
 		return nil, nil
 	}
@@ -351,7 +352,7 @@ func circuitBreakerRule2api(cbRule *model.CircuitBreakerRule) (*apifault.Circuit
 
 // circuitBreaker2ClientAPI 把内部数据结构转化为客户端API参数
 func circuitBreaker2ClientAPI(
-	req *model.ServiceWithCircuitBreakerRules, service string, namespace string) (*apifault.CircuitBreaker, error) {
+	req *rules.ServiceWithCircuitBreakerRules, service string, namespace string) (*apifault.CircuitBreaker, error) {
 	if req == nil {
 		return nil, nil
 	}
@@ -360,7 +361,7 @@ func circuitBreaker2ClientAPI(
 	out.Revision = &wrappers.StringValue{Value: req.Revision}
 	out.Rules = make([]*apifault.CircuitBreakerRule, 0, req.CountCircuitBreakerRules())
 	var iterateErr error
-	req.IterateCircuitBreakerRules(func(rule *model.CircuitBreakerRule) {
+	req.IterateCircuitBreakerRules(func(rule *rules.CircuitBreakerRule) {
 		cbRule, err := circuitBreakerRule2api(rule)
 		if err != nil {
 			iterateErr = err

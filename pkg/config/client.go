@@ -28,6 +28,8 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/pole-io/pole-server/apis/crypto"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
@@ -35,7 +37,7 @@ import (
 )
 
 type (
-	CompareFunction func(clientInfo *apiconfig.ClientConfigFileInfo, file *model.ConfigFileRelease) bool
+	CompareFunction func(clientInfo *apiconfig.ClientConfigFileInfo, file *conftypes.ConfigFileRelease) bool
 )
 
 // GetConfigFileWithCache 从缓存中获取配置文件，如果客户端的版本号大于服务端，则服务端重新加载缓存
@@ -47,7 +49,7 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context,
 
 	req = formatClientRequest(ctx, req)
 	// 从缓存中获取灰度文件
-	var release *model.ConfigFileRelease
+	var release *conftypes.ConfigFileRelease
 	var match = false
 	if len(req.GetTags()) > 0 {
 		if release = s.fileCache.GetActiveGrayRelease(namespace, group, fileName); release != nil {
@@ -80,7 +82,7 @@ func formatClientRequest(ctx context.Context, client *apiconfig.ClientConfigFile
 	}
 	client.Tags = []*apiconfig.ConfigFileTag{
 		{
-			Key:   wrapperspb.String(model.ClientLabel_IP),
+			Key:   wrapperspb.String(types.ClientLabel_IP),
 			Value: wrapperspb.String(utils.ParseClientIP(ctx)),
 		},
 	}
@@ -119,10 +121,10 @@ func (s *Server) LongPullWatchFile(ctx context.Context,
 func BuildTimeoutWatchCtx(ctx context.Context, req *apiconfig.ClientWatchConfigFileRequest,
 	watchTimeOut time.Duration) WatchContextFactory {
 	labels := map[string]string{
-		model.ClientLabel_IP: utils.ParseClientIP(ctx),
+		types.ClientLabel_IP: utils.ParseClientIP(ctx),
 	}
 	if len(req.GetClientIp().GetValue()) != 0 {
-		labels[model.ClientLabel_IP] = req.GetClientIp().GetValue()
+		labels[types.ClientLabel_IP] = req.GetClientIp().GetValue()
 	}
 	return func(clientId string, matcher BetaReleaseMatcher) WatchContext {
 		watchCtx := &LongPollWatchContext{
@@ -207,7 +209,7 @@ func (s *Server) GetConfigGroupsWithCache(ctx context.Context, req *apiconfig.Cl
 }
 
 func toClientInfo(client *apiconfig.ClientConfigFileInfo,
-	release *model.ConfigFileRelease) (*apiconfig.ClientConfigFileInfo, error) {
+	release *conftypes.ConfigFileRelease) (*apiconfig.ClientConfigFileInfo, error) {
 
 	namespace := client.GetNamespace().GetValue()
 	group := client.GetGroup().GetValue()
@@ -219,7 +221,7 @@ func toClientInfo(client *apiconfig.ClientConfigFileInfo,
 		for k, v := range release.Metadata {
 			ret[k] = v
 		}
-		delete(ret, model.MetaKeyConfigFileDataKey)
+		delete(ret, types.MetaKeyConfigFileDataKey)
 		return ret
 	}()
 
@@ -325,9 +327,9 @@ func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]str
 
 		versionClients[curVer] = append(versionClients[curVer], &model.Subscriber{
 			ID:         watchCtx.ClientID(),
-			Host:       watchCtx.ClientLabels()[model.ClientLabel_Host],
-			Version:    watchCtx.ClientLabels()[model.ClientLabel_Version],
-			ClientType: watchCtx.ClientLabels()[model.ClientLabel_Language],
+			Host:       watchCtx.ClientLabels()[types.ClientLabel_Host],
+			Version:    watchCtx.ClientLabels()[types.ClientLabel_Version],
+			ClientType: watchCtx.ClientLabels()[types.ClientLabel_Language],
 		})
 	})
 
@@ -364,9 +366,9 @@ func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]str
 	data := &model.ClientSubscriber{
 		Subscriber: model.Subscriber{
 			ID:         watchCtx.ClientID(),
-			Host:       watchCtx.ClientLabels()[model.ClientLabel_Host],
-			Version:    watchCtx.ClientLabels()[model.ClientLabel_Version],
-			ClientType: watchCtx.ClientLabels()[model.ClientLabel_Language],
+			Host:       watchCtx.ClientLabels()[types.ClientLabel_Host],
+			Version:    watchCtx.ClientLabels()[types.ClientLabel_Version],
+			ClientType: watchCtx.ClientLabels()[types.ClientLabel_Language],
 		},
 		Files: []model.FileReleaseSubscribeInfo{},
 	}

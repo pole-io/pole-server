@@ -26,9 +26,10 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -97,12 +98,12 @@ func (s *Server) CreateServiceAlias(ctx context.Context, req *apiservice.Service
 		out.Alias = utils.NewStringValue(input.Name)
 	}
 	record := &apiservice.Service{Name: out.Alias, Namespace: out.AliasNamespace}
-	s.RecordHistory(ctx, serviceRecordEntry(ctx, record, input, model.OCreate))
+	s.RecordHistory(ctx, serviceRecordEntry(ctx, record, input, types.OCreate))
 	return api.NewServiceAliasResponse(apimodel.Code_ExecuteSuccess, out)
 }
 
 func (s *Server) checkPointServiceAlias(ctx context.Context,
-	tx store.Transaction, req *apiservice.ServiceAlias) (*model.Service, *apiservice.Response, bool) {
+	tx store.Transaction, req *apiservice.ServiceAlias) (*svctypes.Service, *apiservice.Response, bool) {
 	// 检查指向服务是否存在以及是否为别名
 	service, err := tx.LockService(req.GetService().GetValue(), req.GetNamespace().GetValue())
 	if err != nil {
@@ -145,7 +146,7 @@ func (s *Server) DeleteServiceAlias(ctx context.Context, req *apiservice.Service
 	s.RecordHistory(ctx, serviceRecordEntry(ctx, &apiservice.Service{
 		Name:      req.GetAlias(),
 		Namespace: req.GetAliasNamespace(),
-	}, alias, model.ODelete))
+	}, alias, types.ODelete))
 	return api.NewServiceAliasResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -209,7 +210,7 @@ func (s *Server) UpdateServiceAlias(ctx context.Context, req *apiservice.Service
 		req.GetService().GetValue(), req.GetNamespace().GetValue(), req.GetAlias().GetValue()), utils.RequestID(ctx))
 
 	record := &apiservice.Service{Name: req.Alias, Namespace: req.Namespace}
-	s.RecordHistory(ctx, serviceRecordEntry(ctx, record, alias, model.OUpdate))
+	s.RecordHistory(ctx, serviceRecordEntry(ctx, record, alias, types.OUpdate))
 
 	return api.NewServiceAliasResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -263,7 +264,7 @@ func (s *Server) GetServiceAliases(ctx context.Context, query map[string]string)
 }
 
 // updateServiceAliasAttribute 修改服务别名属性
-func (s *Server) updateServiceAliasAttribute(req *apiservice.ServiceAlias, alias *model.Service, serviceID string) (
+func (s *Server) updateServiceAliasAttribute(req *apiservice.ServiceAlias, alias *svctypes.Service, serviceID string) (
 	*apiservice.Response, bool, bool) {
 	var (
 		needUpdate      bool
@@ -301,8 +302,8 @@ func (s *Server) updateServiceAliasAttribute(req *apiservice.ServiceAlias, alias
 
 // createServiceAliasModel 构建存储结构
 func (s *Server) createServiceAliasModel(req *apiservice.ServiceAlias, svcId string) (
-	*model.Service, *apiservice.Response) {
-	out := &model.Service{
+	*svctypes.Service, *apiservice.Response) {
+	out := &svctypes.Service{
 		ID:        utils.NewUUID(),
 		Name:      req.GetAlias().GetValue(),
 		Namespace: req.GetAliasNamespace().GetValue(),

@@ -28,6 +28,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
@@ -97,7 +98,7 @@ func (svr *Server) GetLaneGroups(ctx context.Context, filter map[string]string) 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 
-	ctx = cachetypes.AppendLaneRulePredicate(ctx, func(ctx context.Context, cbr *model.LaneGroupProto) bool {
+	ctx = cachetypes.AppendLaneRulePredicate(ctx, func(ctx context.Context, cbr *rules.LaneGroupProto) bool {
 		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
 			Type:     security.ResourceType_LaneRules,
 			ID:       cbr.ID,

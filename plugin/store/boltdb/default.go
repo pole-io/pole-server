@@ -23,9 +23,10 @@ import (
 
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -67,11 +68,10 @@ type boltStore struct {
 	*serviceStore
 	*instanceStore
 	*l5Store
-	*routingStore
 	*rateLimitStore
 	*circuitBreakerStore
 	*faultDetectStore
-	*routingStoreV2
+	*routerRuleStore
 	*serviceContractStore
 	*laneStore
 
@@ -154,7 +154,7 @@ func (m *boltStore) initNamingStoreData() error {
 			return err
 		}
 		if val == nil {
-			if err := m.AddNamespace(&model.Namespace{
+			if err := m.AddNamespace(&types.Namespace{
 				Name:       namespace,
 				Token:      utils.NewUUID(),
 				Owner:      ownerToInit,
@@ -173,7 +173,7 @@ func (m *boltStore) initNamingStoreData() error {
 			return err
 		}
 		if val != nil {
-			if err := m.AddService(&model.Service{
+			if err := m.AddService(&svctypes.Service{
 				ID:         id,
 				Name:       svc,
 				Namespace:  namespacePolaris,
@@ -215,11 +215,10 @@ func (m *boltStore) newStore() error {
 func (m *boltStore) newDiscoverModuleStore() {
 	m.serviceStore = &serviceStore{handler: m.handler}
 	m.instanceStore = &instanceStore{handler: m.handler}
-	m.routingStore = &routingStore{handler: m.handler}
 	m.rateLimitStore = &rateLimitStore{handler: m.handler}
 	m.circuitBreakerStore = &circuitBreakerStore{handler: m.handler}
 	m.faultDetectStore = &faultDetectStore{handler: m.handler}
-	m.routingStoreV2 = &routingStoreV2{handler: m.handler}
+	m.routerRuleStore = &routerRuleStore{handler: m.handler}
 	m.serviceContractStore = &serviceContractStore{handler: m.handler}
 	m.laneStore = &laneStore{handler: m.handler}
 }

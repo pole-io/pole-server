@@ -22,13 +22,13 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	types "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // QueryRateLimitRules
-func (rlc *rateLimitCache) QueryRateLimitRules(ctx context.Context, args types.RateLimitRuleArgs) (uint32, []*model.RateLimit, error) {
+func (rlc *rateLimitCache) QueryRateLimitRules(ctx context.Context, args types.RateLimitRuleArgs) (uint32, []*rules.RateLimit, error) {
 	if err := rlc.Update(); err != nil {
 		return 0, nil, err
 	}
@@ -38,8 +38,8 @@ func (rlc *rateLimitCache) QueryRateLimitRules(ctx context.Context, args types.R
 	hasService := len(args.Service) != 0
 	hasNamespace := len(args.Namespace) != 0
 
-	res := make([]*model.RateLimit, 0, 8)
-	process := func(rule *model.RateLimit) {
+	res := make([]*rules.RateLimit, 0, 8)
+	process := func(rule *rules.RateLimit) {
 		if hasService && args.Service != rule.Proto.GetService().GetValue() {
 			return
 		}
@@ -73,8 +73,8 @@ func (rlc *rateLimitCache) QueryRateLimitRules(ctx context.Context, args types.R
 	return amount, routings, nil
 }
 
-func (rlc *rateLimitCache) sortBeforeTrim(rules []*model.RateLimit,
-	args types.RateLimitRuleArgs) (uint32, []*model.RateLimit) {
+func (rlc *rateLimitCache) sortBeforeTrim(rules []*rules.RateLimit,
+	args types.RateLimitRuleArgs) (uint32, []*rules.RateLimit) {
 	amount := uint32(len(rules))
 	if args.Offset >= amount || args.Limit == 0 {
 		return amount, nil
@@ -93,7 +93,7 @@ func (rlc *rateLimitCache) sortBeforeTrim(rules []*model.RateLimit,
 	return amount, rules[args.Offset:endIdx]
 }
 
-func orderByRateLimitPriority(a, b *model.RateLimit, asc bool) bool {
+func orderByRateLimitPriority(a, b *rules.RateLimit, asc bool) bool {
 	if a.Priority < b.Priority {
 		return asc
 	}
@@ -104,7 +104,7 @@ func orderByRateLimitPriority(a, b *model.RateLimit, asc bool) bool {
 	return strings.Compare(a.ID, b.ID) < 0 && asc
 }
 
-func orderByRateLimitModifyTime(a, b *model.RateLimit, asc bool) bool {
+func orderByRateLimitModifyTime(a, b *rules.RateLimit, asc bool) bool {
 	if a.ModifyTime.After(b.ModifyTime) {
 		return asc
 	}

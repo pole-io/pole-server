@@ -25,7 +25,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -45,7 +45,7 @@ func TestServiceStore_AddService(t *testing.T) {
 	sStore := &serviceStore{handler: handler}
 
 	for i := 0; i < serviceCount; i++ {
-		err := sStore.AddService(&model.Service{
+		err := sStore.AddService(&svctypes.Service{
 			ID:        "svcid" + strconv.Itoa(i),
 			Name:      "svcname" + strconv.Itoa(i),
 			Namespace: "testsvc",
@@ -71,7 +71,7 @@ func TestServiceStore_AddService(t *testing.T) {
 	}
 
 	for i := 0; i < aliasCount; i++ {
-		err := sStore.AddService(&model.Service{
+		err := sStore.AddService(&svctypes.Service{
 			ID:        "aliasid" + strconv.Itoa(i),
 			Name:      "aliasname " + strconv.Itoa(i),
 			Namespace: "testsvc",
@@ -130,9 +130,9 @@ func TestServiceStore_GetServicesBatch(t *testing.T) {
 
 	sStore := &serviceStore{handler: handler}
 
-	sArg := make([]*model.Service, 2)
+	sArg := make([]*svctypes.Service, 2)
 	for i := 0; i < 2; i++ {
-		sArg[i] = &model.Service{
+		sArg[i] = &svctypes.Service{
 			Name:      "svcname" + strconv.Itoa(i),
 			Namespace: "testsvc",
 		}
@@ -176,7 +176,7 @@ func TestServiceStore_UpdateService(t *testing.T) {
 
 	sStore := &serviceStore{handler: handler}
 
-	err = sStore.UpdateService(&model.Service{
+	err = sStore.UpdateService(&svctypes.Service{
 		ID:        "svcid1",
 		Name:      "svcname1",
 		Namespace: "testsvc",
@@ -326,7 +326,7 @@ func TestServiceStore_FuzzyGetService(t *testing.T) {
 
 	for i := 0; i < serviceCount; i++ {
 		idxStr := strconv.Itoa(i)
-		err := sStore.AddService(&model.Service{
+		err := sStore.AddService(&svctypes.Service{
 			ID:        "fuzzsvcid" + idxStr,
 			Name:      "fuzzsvcname" + idxStr,
 			Namespace: "testsvc",
@@ -431,7 +431,7 @@ func TestServiceStore_UpdateServiceAlias(t *testing.T) {
 
 	sStore := &serviceStore{handler: handler}
 
-	err = sStore.UpdateServiceAlias(&model.Service{
+	err = sStore.UpdateServiceAlias(&svctypes.Service{
 		ID:        "svcid2",
 		Name:      "svcname1",
 		Namespace: "testsvc",
@@ -462,7 +462,7 @@ func TestServiceStore_DeleteServiceAlias(t *testing.T) {
 
 		sStore := &serviceStore{handler: handler}
 
-		if err := sStore.AddService(&model.Service{
+		if err := sStore.AddService(&svctypes.Service{
 			ID:        utils.NewUUID(),
 			Name:      "service-alias",
 			Namespace: "namespace-alias",

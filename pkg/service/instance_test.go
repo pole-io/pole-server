@@ -35,11 +35,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 )
@@ -2501,8 +2501,8 @@ func Test_HealthCheckInstanceMetadata(t *testing.T) {
 		discoverSuit.DiscoverServer().Cache().(*cache.CacheManager).TestUpdate()
 		ins1Cache := discoverSuit.DiscoverServer().Cache().Instance().GetInstance(ins1.GetId().GetValue())
 		assert.NotNil(t, ins1Cache, "ins1Cache is nil")
-		val, ok := ins1Cache.Metadata()[model.MetadataInstanceLastHeartbeatTime]
-		assert.Truef(t, ok, "%s not exist", model.MetadataInstanceLastHeartbeatTime)
+		val, ok := ins1Cache.Metadata()[svctypes.MetadataInstanceLastHeartbeatTime]
+		assert.Truef(t, ok, "%s not exist", svctypes.MetadataInstanceLastHeartbeatTime)
 		assert.Equal(t, fmt.Sprintf("%d", lastBeatTime), val)
 	})
 
@@ -2515,8 +2515,8 @@ func Test_HealthCheckInstanceMetadata(t *testing.T) {
 		discoverSuit.DiscoverServer().Cache().(*cache.CacheManager).TestUpdate()
 		ins1Cache := discoverSuit.DiscoverServer().Cache().Instance().GetInstance(ins1.GetId().GetValue())
 		assert.NotNil(t, ins1Cache, "ins1Cache is nil")
-		_, ok := ins1Cache.Metadata()[model.MetadataInstanceLastHeartbeatTime]
-		assert.Falsef(t, ok, "%s exist", model.MetadataInstanceLastHeartbeatTime)
+		_, ok := ins1Cache.Metadata()[svctypes.MetadataInstanceLastHeartbeatTime]
+		assert.Falsef(t, ok, "%s exist", svctypes.MetadataInstanceLastHeartbeatTime)
 	})
 }
 

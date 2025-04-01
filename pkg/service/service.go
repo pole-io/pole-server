@@ -29,9 +29,10 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -41,8 +42,8 @@ const (
 	MetadataInternalAutoCreated string = "internal-auto-created"
 )
 
-// Service2Api *model.service转换为*api.service
-type Service2Api func(service *model.Service) *apiservice.Service
+// Service2Api *svctypes.Service转换为*api.service
+type Service2Api func(service *svctypes.Service) *apiservice.Service
 
 var (
 	serviceFilter           = 1 // 过滤服务的
@@ -135,7 +136,7 @@ func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *ap
 
 	log.Info(fmt.Sprintf("create service: namespace=%v, name=%v, meta=%+v",
 		namespaceName, serviceName, req.GetMetadata()), utils.RequestID(ctx))
-	s.RecordHistory(ctx, serviceRecordEntry(ctx, req, data, model.OCreate))
+	s.RecordHistory(ctx, serviceRecordEntry(ctx, req, data, types.OCreate))
 
 	out := &apiservice.Service{
 		Id:        utils.NewStringValue(data.ID),
@@ -187,7 +188,7 @@ func (s *Server) DeleteService(ctx context.Context, req *apiservice.Service) *ap
 
 	msg := fmt.Sprintf("delete service: namespace=%v, name=%v", namespaceName, serviceName)
 	log.Info(msg, utils.RequestID(ctx))
-	s.RecordHistory(ctx, serviceRecordEntry(ctx, req, nil, model.ODelete))
+	s.RecordHistory(ctx, serviceRecordEntry(ctx, req, nil, types.ODelete))
 	return api.NewServiceResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -237,7 +238,7 @@ func (s *Server) UpdateService(ctx context.Context, req *apiservice.Service) *ap
 
 	msg := fmt.Sprintf("update service: namespace=%v, name=%v", service.Namespace, service.Name)
 	log.Info(msg, utils.RequestID(ctx))
-	s.RecordHistory(ctx, serviceRecordEntry(ctx, req, service, model.OUpdate))
+	s.RecordHistory(ctx, serviceRecordEntry(ctx, req, service, types.OUpdate))
 	return api.NewServiceResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -263,7 +264,7 @@ func (s *Server) UpdateServiceToken(ctx context.Context, req *apiservice.Service
 	log.Info("update service token", zap.String("namespace", service.Namespace),
 		zap.String("name", service.Name), zap.String("service-id", service.ID),
 		utils.RequestID(ctx))
-	s.RecordHistory(ctx, serviceRecordEntry(ctx, req, service, model.OUpdateToken))
+	s.RecordHistory(ctx, serviceRecordEntry(ctx, req, service, types.OUpdateToken))
 
 	// 填充新的token返回
 	out := &apiservice.Service{
@@ -277,7 +278,7 @@ func (s *Server) UpdateServiceToken(ctx context.Context, req *apiservice.Service
 // GetAllServices query all service list by namespace
 func (s *Server) GetAllServices(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
 	var (
-		svcs []*model.Service
+		svcs []*svctypes.Service
 	)
 
 	if ns, ok := query["namespace"]; ok && len(ns) > 0 {
@@ -474,8 +475,8 @@ func (s *Server) createNamespaceIfAbsent(ctx context.Context, svc *apiservice.Se
 }
 
 // createServiceModel 创建存储层服务模型
-func (s *Server) createServiceModel(req *apiservice.Service) *model.Service {
-	return &model.Service{
+func (s *Server) createServiceModel(req *apiservice.Service) *svctypes.Service {
+	return &svctypes.Service{
 		ID:         utils.NewUUID(),
 		Name:       req.GetName().GetValue(),
 		Namespace:  req.GetNamespace().GetValue(),
@@ -491,13 +492,13 @@ func (s *Server) createServiceModel(req *apiservice.Service) *model.Service {
 		PlatformID: req.GetPlatformId().GetValue(),
 		Token:      utils.NewUUID(),
 		Revision:   utils.NewUUID(),
-		ExportTo:   model.ExportToMap(req.GetExportTo()),
+		ExportTo:   types.ExportToMap(req.GetExportTo()),
 	}
 }
 
 // updateServiceAttribute 修改服务属性
 func (s *Server) updateServiceAttribute(
-	req *apiservice.Service, service *model.Service) (*apiservice.Response, bool, bool) {
+	req *apiservice.Service, service *svctypes.Service) (*apiservice.Response, bool, bool) {
 	var (
 		needUpdate      = false
 		needNewRevision = false
@@ -572,7 +573,7 @@ func (s *Server) updateServiceAttribute(
 }
 
 func isEqualServiceExport(raw []*wrappers.StringValue, save map[string]struct{}) (bool, map[string]struct{}) {
-	cur := model.ExportToMap(raw)
+	cur := types.ExportToMap(raw)
 	if len(cur) != len(save) {
 		return false, cur
 	}
@@ -638,7 +639,7 @@ func (s *Server) getRateLimitingCountWithService(name string, namespace string) 
 }
 
 // isServiceExistedResource 检查服务下的资源存在情况，在删除服务的时候需要用到
-func (s *Server) isServiceExistedResource(ctx context.Context, service *model.Service) *apiservice.Response {
+func (s *Server) isServiceExistedResource(ctx context.Context, service *svctypes.Service) *apiservice.Response {
 	// 服务别名，不需要判断
 	if service.IsAlias() {
 		return nil
@@ -678,9 +679,9 @@ func (s *Server) isServiceExistedResource(ctx context.Context, service *model.Se
 	return nil
 }
 
-// checkServiceAuthority 对服务进行鉴权，并且返回model.Service
+// checkServiceAuthority 对服务进行鉴权，并且返回svctypes.Service
 // return service, token, response
-func (s *Server) checkServiceAuthority(ctx context.Context, req *apiservice.Service) (*model.Service,
+func (s *Server) checkServiceAuthority(ctx context.Context, req *apiservice.Service) (*svctypes.Service,
 	string, *apiservice.Response) {
 	namespaceName := req.GetNamespace().GetValue()
 	serviceName := req.GetName().GetValue()
@@ -710,8 +711,8 @@ func (s *Server) checkServiceAuthority(ctx context.Context, req *apiservice.Serv
 	return svc, expectToken, nil
 }
 
-// service2Api model.Service 转为 api.Service
-func service2Api(service *model.Service) *apiservice.Service {
+// service2Api svctypes.Service 转为 api.Service
+func service2Api(service *svctypes.Service) *apiservice.Service {
 	if service == nil {
 		return nil
 	}
@@ -742,9 +743,9 @@ func service2Api(service *model.Service) *apiservice.Service {
 	return out
 }
 
-// serviceOwner2Api model.Service转为api.Service
+// serviceOwner2Api svctypes.Service转为api.Service
 // 只转name+namespace+owner
-func serviceOwner2Api(service *model.Service) *apiservice.Service {
+func serviceOwner2Api(service *svctypes.Service) *apiservice.Service {
 	if service == nil {
 		return nil
 	}
@@ -757,7 +758,7 @@ func serviceOwner2Api(service *model.Service) *apiservice.Service {
 }
 
 // services2Api service数组转为[]*api.Service
-func services2Api(services []*model.Service, handler Service2Api) []*apiservice.Service {
+func services2Api(services []*svctypes.Service, handler Service2Api) []*apiservice.Service {
 	out := make([]*apiservice.Service, 0, len(services))
 	for _, entry := range services {
 		out = append(out, handler(entry))
@@ -767,7 +768,7 @@ func services2Api(services []*model.Service, handler Service2Api) []*apiservice.
 }
 
 // enhancedServices2Api service数组转为[]*api.Service
-func enhancedServices2Api(services []*model.EnhancedService, handler Service2Api) []*apiservice.Service {
+func enhancedServices2Api(services []*svctypes.EnhancedService, handler Service2Api) []*apiservice.Service {
 	out := make([]*apiservice.Service, 0, len(services))
 	for _, entry := range services {
 		outSvc := handler(entry.Service)
@@ -779,25 +780,25 @@ func enhancedServices2Api(services []*model.EnhancedService, handler Service2Api
 	return out
 }
 
-// apis2ServicesName api数组转为[]*model.Service
-func apis2ServicesName(reqs []*apiservice.Service) []*model.Service {
+// apis2ServicesName api数组转为[]*svctypes.Service
+func apis2ServicesName(reqs []*apiservice.Service) []*svctypes.Service {
 	if reqs == nil {
 		return nil
 	}
 
-	out := make([]*model.Service, 0, len(reqs))
+	out := make([]*svctypes.Service, 0, len(reqs))
 	for _, req := range reqs {
 		out = append(out, api2ServiceName(req))
 	}
 	return out
 }
 
-// api2ServiceName api转为*model.Service
-func api2ServiceName(req *apiservice.Service) *model.Service {
+// api2ServiceName api转为*svctypes.Service
+func api2ServiceName(req *apiservice.Service) *svctypes.Service {
 	if req == nil {
 		return nil
 	}
-	service := &model.Service{
+	service := &svctypes.Service{
 		Name:      req.GetName().GetValue(),
 		Namespace: req.GetNamespace().GetValue(),
 	}
@@ -805,7 +806,7 @@ func api2ServiceName(req *apiservice.Service) *model.Service {
 }
 
 // serviceMetaNeedUpdate 检查服务metadata是否需要更新
-func serviceMetaNeedUpdate(req *apiservice.Service, service *model.Service) bool {
+func serviceMetaNeedUpdate(req *apiservice.Service, service *svctypes.Service) bool {
 	// 收到的请求的metadata为空，则代表metadata不需要更新
 	if req.GetMetadata() == nil {
 		return false
@@ -869,14 +870,14 @@ func parseRequestToken(ctx context.Context, value string) string {
 }
 
 // serviceRecordEntry 生成服务的记录entry
-func serviceRecordEntry(ctx context.Context, req *apiservice.Service, md *model.Service,
-	operationType model.OperationType) *model.RecordEntry {
+func serviceRecordEntry(ctx context.Context, req *apiservice.Service, md *svctypes.Service,
+	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
 
-	entry := &model.RecordEntry{
-		ResourceType:  model.RService,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RService,
 		ResourceName:  req.GetName().GetValue(),
 		Namespace:     req.GetNamespace().GetValue(),
 		OperationType: operationType,

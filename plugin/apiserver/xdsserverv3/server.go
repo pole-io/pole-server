@@ -40,6 +40,7 @@ import (
 	"golang.org/x/sync/singleflight"
 	"google.golang.org/grpc"
 
+	"github.com/pole-io/pole-server/apis/apiserver"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
@@ -47,9 +48,10 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/apis/apiserver"
 	xdscache "github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/cache"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/resource"
+
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 type ResourceServer interface {
@@ -271,7 +273,7 @@ func (x *XDSServer) startSynTask(ctx context.Context) {
 					continue
 				}
 				if _, ok := needRemove[ns]; !ok {
-					needRemove[ns] = make(map[model.ServiceKey]*resource.ServiceInfo)
+					needRemove[ns] = make(map[svctypes.ServiceKey]*resource.ServiceInfo)
 				}
 				needRemove[ns][info.ServiceKey] = info
 			}
@@ -294,7 +296,7 @@ func (x *XDSServer) startSynTask(ctx context.Context) {
 				}
 				if showPush {
 					if _, ok := needPush[ns]; !ok {
-						needPush[ns] = make(map[model.ServiceKey]*resource.ServiceInfo)
+						needPush[ns] = make(map[svctypes.ServiceKey]*resource.ServiceInfo)
 					}
 					needPush[ns][info.ServiceKey] = info
 				}
@@ -327,11 +329,11 @@ func (x *XDSServer) fetchCurrentServices() ServiceInfos {
 }
 
 func (x *XDSServer) initRegistryInfo() error {
-	cur := map[string]map[model.ServiceKey]*resource.ServiceInfo{}
+	cur := map[string]map[svctypes.ServiceKey]*resource.ServiceInfo{}
 	namespaces := x.namingServer.Cache().Namespace().GetNamespaceList()
 	// 启动时，获取全量的 namespace 信息，用来推送空配置
 	for _, n := range namespaces {
-		cur[n.Name] = map[model.ServiceKey]*resource.ServiceInfo{}
+		cur[n.Name] = map[svctypes.ServiceKey]*resource.ServiceInfo{}
 	}
 	x.registryInfo.Store(cur)
 	return nil
@@ -342,12 +344,12 @@ func (x *XDSServer) getRegistryInfoWithCache(ctx context.Context,
 	registryInfo ServiceInfos) error {
 
 	// 从 cache 中获取全量的服务信息
-	serviceIterProc := func(key string, value *model.Service) (bool, error) {
+	serviceIterProc := func(key string, value *svctypes.Service) (bool, error) {
 		if _, ok := registryInfo[value.Namespace]; !ok {
-			registryInfo[value.Namespace] = map[model.ServiceKey]*resource.ServiceInfo{}
+			registryInfo[value.Namespace] = map[svctypes.ServiceKey]*resource.ServiceInfo{}
 		}
 
-		svcKey := model.ServiceKey{
+		svcKey := svctypes.ServiceKey{
 			Namespace: value.Namespace,
 			Name:      value.Name,
 		}

@@ -21,8 +21,8 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 type grayStore struct {
@@ -31,7 +31,7 @@ type grayStore struct {
 }
 
 // CreateGrayResourceTx 创建灰度资源
-func (g *grayStore) CreateGrayResourceTx(tx store.Tx, data *model.GrayResource) error {
+func (g *grayStore) CreateGrayResourceTx(tx store.Tx, data *rules.GrayResource) error {
 	if tx == nil {
 		return ErrTxIsNil
 	}
@@ -51,7 +51,7 @@ func (g *grayStore) CreateGrayResourceTx(tx store.Tx, data *model.GrayResource) 
 	return nil
 }
 
-func (g *grayStore) CleanGrayResource(tx store.Tx, data *model.GrayResource) error {
+func (g *grayStore) CleanGrayResource(tx store.Tx, data *rules.GrayResource) error {
 	if tx == nil {
 		return ErrTxIsNil
 	}
@@ -67,7 +67,7 @@ func (g *grayStore) CleanGrayResource(tx store.Tx, data *model.GrayResource) err
 
 // GetMoreGrayResouces  获取最近更新的灰度资源, 此方法用于 cache 增量更新，需要注意 modifyTime 应为数据库时间戳
 func (g *grayStore) GetMoreGrayResouces(firstUpdate bool,
-	modifyTime time.Time) ([]*model.GrayResource, error) {
+	modifyTime time.Time) ([]*rules.GrayResource, error) {
 
 	if firstUpdate {
 		modifyTime = time.Time{}
@@ -89,16 +89,16 @@ func (g *grayStore) GetMoreGrayResouces(firstUpdate bool,
 	return grayResources, nil
 }
 
-func (g *grayStore) fetchGrayResourceRows(rows *sql.Rows) ([]*model.GrayResource, error) {
+func (g *grayStore) fetchGrayResourceRows(rows *sql.Rows) ([]*rules.GrayResource, error) {
 	if rows == nil {
 		return nil, nil
 	}
 	defer rows.Close()
 
-	grayResources := make([]*model.GrayResource, 0, 32)
+	grayResources := make([]*rules.GrayResource, 0, 32)
 	for rows.Next() {
 		var ctime, mtime, valid int64
-		grayResource := &model.GrayResource{}
+		grayResource := &rules.GrayResource{}
 		if err := rows.Scan(&grayResource.Name, &grayResource.MatchRule, &ctime,
 			&grayResource.CreateBy, &mtime, &grayResource.ModifyBy, &valid); err != nil {
 			return nil, err
@@ -116,7 +116,7 @@ func (g *grayStore) fetchGrayResourceRows(rows *sql.Rows) ([]*model.GrayResource
 }
 
 // DeleteGrayResource 删除灰度资源
-func (g *grayStore) DeleteGrayResource(tx store.Tx, data *model.GrayResource) error {
+func (g *grayStore) DeleteGrayResource(tx store.Tx, data *rules.GrayResource) error {
 	s := "DELETE FROM  gray_resource  WHERE name= ?"
 	_, err := g.master.Exec(s, data.Name)
 	if err != nil {

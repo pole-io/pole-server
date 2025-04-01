@@ -26,6 +26,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
@@ -226,7 +228,7 @@ func Test_PublishConfigFile(t *testing.T) {
 		// 客户端读取数据正常
 		_ = testSuit.CacheMgr().TestUpdate()
 
-		cacheData := testSuit.CacheMgr().ConfigFile().GetRelease(model.ConfigFileReleaseKey{
+		cacheData := testSuit.CacheMgr().ConfigFile().GetRelease(conftypes.ConfigFileReleaseKey{
 			Namespace:   mockNamespace + "same-v1",
 			Group:       mockGroup + "same-v1",
 			FileName:    mockFileName + "same-v1",
@@ -570,7 +572,7 @@ func Test_GrayConfigFileRelease(t *testing.T) {
 			ReleaseType: wrapperspb.String(model.ReleaseTypeGray),
 			BetaLabels: []*apimodel.ClientLabel{
 				{
-					Key: model.ClientLabel_IP,
+					Key: types.ClientLabel_IP,
 					Value: &apimodel.MatchString{
 						Type:      apimodel.MatchString_EXACT,
 						Value:     wrapperspb.String(mockClientIP),
@@ -610,7 +612,7 @@ func Test_GrayConfigFileRelease(t *testing.T) {
 			FileName:  utils.NewStringValue(mockFileName),
 			Tags: []*config_manage.ConfigFileTag{
 				{
-					Key:   utils.NewStringValue(model.ClientLabel_IP),
+					Key:   utils.NewStringValue(types.ClientLabel_IP),
 					Value: utils.NewStringValue(mockClientIP),
 				},
 			},
@@ -625,7 +627,7 @@ func Test_GrayConfigFileRelease(t *testing.T) {
 			FileName:  utils.NewStringValue(mockFileName),
 			Tags: []*config_manage.ConfigFileTag{
 				{
-					Key:   utils.NewStringValue(model.ClientLabel_IP),
+					Key:   utils.NewStringValue(types.ClientLabel_IP),
 					Value: utils.NewStringValue(mockClientIP + "2"),
 				},
 			},
@@ -677,7 +679,7 @@ func Test_GrayConfigFileRelease(t *testing.T) {
 			FileName:  utils.NewStringValue(mockFileName),
 			Tags: []*config_manage.ConfigFileTag{
 				{
-					Key:   utils.NewStringValue(model.ClientLabel_IP),
+					Key:   utils.NewStringValue(types.ClientLabel_IP),
 					Value: utils.NewStringValue(mockClientIP),
 				},
 			},

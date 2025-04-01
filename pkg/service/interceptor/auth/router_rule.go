@@ -28,6 +28,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
@@ -35,7 +36,7 @@ import (
 )
 
 // CreateRoutingConfigsV2 批量创建路由配置
-func (svr *Server) CreateRoutingConfigsV2(ctx context.Context,
+func (svr *Server) CreateRoutingConfigs(ctx context.Context,
 	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 
 	// TODO not support RouteRuleV2 resource auth, so we set op is read
@@ -45,7 +46,7 @@ func (svr *Server) CreateRoutingConfigsV2(ctx context.Context,
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
-	resp := svr.nextSvr.CreateRoutingConfigsV2(ctx, req)
+	resp := svr.nextSvr.CreateRoutingConfigs(ctx, req)
 
 	for index := range resp.Responses {
 		item := resp.GetResponses()[index].GetData()
@@ -59,8 +60,8 @@ func (svr *Server) CreateRoutingConfigsV2(ctx context.Context,
 	return resp
 }
 
-// DeleteRoutingConfigsV2 批量删除路由配置
-func (svr *Server) DeleteRoutingConfigsV2(ctx context.Context,
+// DeleteRoutingConfigs 批量删除路由配置
+func (svr *Server) DeleteRoutingConfigs(ctx context.Context,
 	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 
 	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authcommon.Delete, authcommon.DeleteRouteRules)
@@ -69,7 +70,7 @@ func (svr *Server) DeleteRoutingConfigsV2(ctx context.Context,
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
-	resp := svr.nextSvr.DeleteRoutingConfigsV2(ctx, req)
+	resp := svr.nextSvr.DeleteRoutingConfigs(ctx, req)
 
 	for index := range resp.Responses {
 		item := resp.GetResponses()[index].GetData()
@@ -84,7 +85,7 @@ func (svr *Server) DeleteRoutingConfigsV2(ctx context.Context,
 }
 
 // UpdateRoutingConfigsV2 批量更新路由配置
-func (svr *Server) UpdateRoutingConfigsV2(ctx context.Context,
+func (svr *Server) UpdateRoutingConfigs(ctx context.Context,
 	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 
 	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authcommon.Modify, authcommon.UpdateRouteRules)
@@ -93,7 +94,7 @@ func (svr *Server) UpdateRoutingConfigsV2(ctx context.Context,
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.UpdateRoutingConfigsV2(ctx, req)
+	return svr.nextSvr.UpdateRoutingConfigs(ctx, req)
 }
 
 // EnableRoutings batch enable routing rules
@@ -110,7 +111,7 @@ func (svr *Server) EnableRoutings(ctx context.Context,
 }
 
 // QueryRoutingConfigsV2 提供给OSS的查询路由配置的接口
-func (svr *Server) QueryRoutingConfigsV2(ctx context.Context,
+func (svr *Server) QueryRoutingConfigs(ctx context.Context,
 	query map[string]string) *apiservice.BatchQueryResponse {
 	authCtx := svr.collectRouteRuleV2AuthContext(ctx, nil, authcommon.Read, authcommon.DescribeRouteRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -119,7 +120,7 @@ func (svr *Server) QueryRoutingConfigsV2(ctx context.Context,
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 
-	ctx = cachetypes.AppendRouterRulePredicate(ctx, func(ctx context.Context, cbr *model.ExtendRouterConfig) bool {
+	ctx = cachetypes.AppendRouterRulePredicate(ctx, func(ctx context.Context, cbr *rules.ExtendRouterConfig) bool {
 		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
 			Type:     security.ResourceType_RouteRules,
 			ID:       cbr.ID,
@@ -128,7 +129,7 @@ func (svr *Server) QueryRoutingConfigsV2(ctx context.Context,
 	})
 	authCtx.SetRequestContext(ctx)
 
-	resp := svr.nextSvr.QueryRoutingConfigsV2(ctx, query)
+	resp := svr.nextSvr.QueryRoutingConfigs(ctx, query)
 	for index := range resp.Data {
 		item := &apitraffic.RouteRule{}
 		_ = anypb.UnmarshalTo(resp.Data[index], item, proto.UnmarshalOptions{})

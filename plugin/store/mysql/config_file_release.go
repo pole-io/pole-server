@@ -23,8 +23,8 @@ import (
 	"errors"
 	"time"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -40,7 +40,7 @@ type configFileReleaseStore struct {
 }
 
 // CreateConfigFileRelease 新建配置文件发布
-func (cfr *configFileReleaseStore) CreateConfigFileReleaseTx(tx store.Tx, data *model.ConfigFileRelease) error {
+func (cfr *configFileReleaseStore) CreateConfigFileReleaseTx(tx store.Tx, data *conftypes.ConfigFileRelease) error {
 	if tx == nil {
 		return ErrTxIsNil
 	}
@@ -77,7 +77,7 @@ func (cfr *configFileReleaseStore) CreateConfigFileReleaseTx(tx store.Tx, data *
 }
 
 // GetConfigFileRelease 获取配置文件发布，只返回 flag=0 的记录
-func (cfr *configFileReleaseStore) GetConfigFileRelease(req *model.ConfigFileReleaseKey) (*model.ConfigFileRelease, error) {
+func (cfr *configFileReleaseStore) GetConfigFileRelease(req *conftypes.ConfigFileReleaseKey) (*conftypes.ConfigFileRelease, error) {
 	tx, err := cfr.master.Begin()
 	if err != nil {
 		return nil, store.Error(err)
@@ -90,7 +90,7 @@ func (cfr *configFileReleaseStore) GetConfigFileRelease(req *model.ConfigFileRel
 
 // GetConfigFileReleaseTx 在已开启的事务中获取配置文件发布内容，只获取 flag=0 的记录
 func (cfr *configFileReleaseStore) GetConfigFileReleaseTx(tx store.Tx,
-	req *model.ConfigFileReleaseKey) (*model.ConfigFileRelease, error) {
+	req *conftypes.ConfigFileReleaseKey) (*conftypes.ConfigFileRelease, error) {
 	if tx == nil {
 		return nil, ErrTxIsNil
 	}
@@ -118,7 +118,7 @@ func (cfr *configFileReleaseStore) GetConfigFileReleaseTx(tx store.Tx,
 }
 
 // DeleteConfigFileRelease
-func (cfr *configFileReleaseStore) DeleteConfigFileReleaseTx(tx store.Tx, data *model.ConfigFileReleaseKey) error {
+func (cfr *configFileReleaseStore) DeleteConfigFileReleaseTx(tx store.Tx, data *conftypes.ConfigFileReleaseKey) error {
 	if tx == nil {
 		return ErrTxIsNil
 	}
@@ -158,7 +158,7 @@ func (cfr *configFileReleaseStore) CleanDeletedConfigFileRelease(endTime time.Ti
 }
 
 // GetConfigFileActiveRelease .
-func (cfr *configFileReleaseStore) GetConfigFileActiveRelease(file *model.ConfigFileKey) (*model.ConfigFileRelease, error) {
+func (cfr *configFileReleaseStore) GetConfigFileActiveRelease(file *conftypes.ConfigFileKey) (*conftypes.ConfigFileRelease, error) {
 	tx, err := cfr.master.Begin()
 	if err != nil {
 		return nil, store.Error(err)
@@ -171,7 +171,7 @@ func (cfr *configFileReleaseStore) GetConfigFileActiveRelease(file *model.Config
 
 // GetConfigFileActiveReleaseTx .
 func (cfr *configFileReleaseStore) GetConfigFileActiveReleaseTx(tx store.Tx,
-	file *model.ConfigFileKey) (*model.ConfigFileRelease, error) {
+	file *conftypes.ConfigFileKey) (*conftypes.ConfigFileRelease, error) {
 	if tx == nil {
 		return nil, ErrTxIsNil
 	}
@@ -184,7 +184,7 @@ func (cfr *configFileReleaseStore) GetConfigFileActiveReleaseTx(tx store.Tx,
 		err  error
 	)
 
-	rows, err = dbTx.Query(querySql, file.Namespace, file.Group, file.Name, model.ReleaseTypeFull)
+	rows, err = dbTx.Query(querySql, file.Namespace, file.Group, file.Name, conftypes.ReleaseTypeFull)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func (cfr *configFileReleaseStore) GetConfigFileActiveReleaseTx(tx store.Tx,
 
 // GetConfigFileBetaReleaseTx .
 func (cfr *configFileReleaseStore) GetConfigFileBetaReleaseTx(tx store.Tx,
-	file *model.ConfigFileKey) (*model.ConfigFileRelease, error) {
+	file *conftypes.ConfigFileKey) (*conftypes.ConfigFileRelease, error) {
 	if tx == nil {
 		return nil, ErrTxIsNil
 	}
@@ -216,7 +216,7 @@ func (cfr *configFileReleaseStore) GetConfigFileBetaReleaseTx(tx store.Tx,
 		err  error
 	)
 
-	rows, err = dbTx.Query(querySql, file.Namespace, file.Group, file.Name, model.ReleaseTypeGray)
+	rows, err = dbTx.Query(querySql, file.Namespace, file.Group, file.Name, conftypes.ReleaseTypeGray)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +234,7 @@ func (cfr *configFileReleaseStore) GetConfigFileBetaReleaseTx(tx store.Tx,
 }
 
 // ActiveConfigFileReleaseTx
-func (cfr *configFileReleaseStore) ActiveConfigFileReleaseTx(tx store.Tx, release *model.ConfigFileRelease) error {
+func (cfr *configFileReleaseStore) ActiveConfigFileReleaseTx(tx store.Tx, release *conftypes.ConfigFileRelease) error {
 	if tx == nil {
 		return ErrTxIsNil
 	}
@@ -255,7 +255,7 @@ func (cfr *configFileReleaseStore) ActiveConfigFileReleaseTx(tx store.Tx, releas
 	return nil
 }
 
-func (cfr *configFileReleaseStore) InactiveConfigFileReleaseTx(tx store.Tx, release *model.ConfigFileRelease) error {
+func (cfr *configFileReleaseStore) InactiveConfigFileReleaseTx(tx store.Tx, release *conftypes.ConfigFileRelease) error {
 	if tx == nil {
 		return ErrTxIsNil
 	}
@@ -271,7 +271,7 @@ func (cfr *configFileReleaseStore) InactiveConfigFileReleaseTx(tx store.Tx, rele
 }
 
 func (cfr *configFileReleaseStore) inactiveConfigFileRelease(tx *BaseTx,
-	release *model.ConfigFileRelease) (uint64, error) {
+	release *conftypes.ConfigFileRelease) (uint64, error) {
 	if tx == nil {
 		return 0, ErrTxIsNil
 	}
@@ -285,7 +285,7 @@ func (cfr *configFileReleaseStore) inactiveConfigFileRelease(tx *BaseTx,
 	return cfr.selectMaxVersion(tx, release)
 }
 
-func (cfr *configFileReleaseStore) selectMaxVersion(tx *BaseTx, release *model.ConfigFileRelease) (uint64, error) {
+func (cfr *configFileReleaseStore) selectMaxVersion(tx *BaseTx, release *conftypes.ConfigFileRelease) (uint64, error) {
 	if tx == nil {
 		return 0, ErrTxIsNil
 	}
@@ -303,7 +303,7 @@ func (cfr *configFileReleaseStore) selectMaxVersion(tx *BaseTx, release *model.C
 
 // GetMoreReleaseFile 获取最近更新的配置文件发布, 此方法用于 cache 增量更新，需要注意 modifyTime 应为数据库时间戳
 func (cfr *configFileReleaseStore) GetMoreReleaseFile(firstUpdate bool,
-	modifyTime time.Time) ([]*model.ConfigFileRelease, error) {
+	modifyTime time.Time) ([]*conftypes.ConfigFileRelease, error) {
 
 	if firstUpdate {
 		modifyTime = time.Time{}
@@ -343,7 +343,7 @@ func (cfr *configFileReleaseStore) baseQuerySql() string {
 		" IFNULL(modify_by, ''), flag, IFNULL(tags, ''), active, IFNULL(description, ''), IFNULL(release_type, '') FROM config_file_release "
 }
 
-func (cfr *configFileReleaseStore) transferRows(rows *sql.Rows) ([]*model.ConfigFileRelease, error) {
+func (cfr *configFileReleaseStore) transferRows(rows *sql.Rows) ([]*conftypes.ConfigFileRelease, error) {
 	if rows == nil {
 		return nil, nil
 	}
@@ -351,10 +351,10 @@ func (cfr *configFileReleaseStore) transferRows(rows *sql.Rows) ([]*model.Config
 		_ = rows.Close()
 	}()
 
-	var fileReleases []*model.ConfigFileRelease
+	var fileReleases []*conftypes.ConfigFileRelease
 
 	for rows.Next() {
-		fileRelease := model.NewConfigFileRelease()
+		fileRelease := conftypes.NewConfigFileRelease()
 		var (
 			ctime, mtime, active int64
 			tags                 string

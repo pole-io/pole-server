@@ -31,9 +31,10 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -68,7 +69,7 @@ func (s *Server) CreateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 	if saveVal != nil {
 		return api.NewResponse(apimodel.Code_ExistedResource)
 	}
-	saveData := &model.LaneGroup{}
+	saveData := &rules.LaneGroup{}
 	if err := saveData.FromSpec(req); err != nil {
 		log.Error("[Service][Lane] create lane_group transfer spec to model", utils.RequestID(ctx), zap.Error(err))
 		return api.NewResponse(apimodel.Code_ExecuteException)
@@ -93,7 +94,7 @@ func (s *Server) CreateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 		return api.NewResponse(commonstore.StoreCode2APICode(err))
 	}
 
-	s.RecordHistory(ctx, laneGroupRecordEntry(ctx, req, saveData, model.OCreate))
+	s.RecordHistory(ctx, laneGroupRecordEntry(ctx, req, saveData, types.OCreate))
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -151,7 +152,7 @@ func (s *Server) UpdateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 		return api.NewResponse(commonstore.StoreCode2APICode(err))
 	}
 
-	s.RecordHistory(ctx, laneGroupRecordEntry(ctx, req, saveData, model.OUpdate))
+	s.RecordHistory(ctx, laneGroupRecordEntry(ctx, req, saveData, types.OUpdate))
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -167,7 +168,7 @@ func (s *Server) DeleteLaneGroups(ctx context.Context, req []*apitraffic.LaneGro
 
 // DeleteLaneGroup 删除泳道组
 func (s *Server) DeleteLaneGroup(ctx context.Context, req *apitraffic.LaneGroup) *apiservice.Response {
-	var saveData *model.LaneGroup
+	var saveData *rules.LaneGroup
 	var err error
 	if req.GetId() != "" {
 		saveData, err = s.storage.GetLaneGroupByID(req.GetId())
@@ -190,7 +191,7 @@ func (s *Server) DeleteLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 		return api.NewResponse(commonstore.StoreCode2APICode(err))
 	}
 	req.Id = saveData.ID
-	s.RecordHistory(ctx, laneGroupRecordEntry(ctx, req, saveData, model.ODelete))
+	s.RecordHistory(ctx, laneGroupRecordEntry(ctx, req, saveData, types.ODelete))
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -233,8 +234,8 @@ func (s *Server) GetAllLaneGroups(ctx context.Context) *apiservice.BatchQueryRes
 	return nil
 }
 
-func updateLaneGroupAttribute(req *apitraffic.LaneGroup, saveData *model.LaneGroup) (bool, error) {
-	updateData := &model.LaneGroup{}
+func updateLaneGroupAttribute(req *apitraffic.LaneGroup, saveData *rules.LaneGroup) (bool, error) {
+	updateData := &rules.LaneGroup{}
 	if err := updateData.FromSpec(req); err != nil {
 		return false, err
 	}
@@ -267,14 +268,14 @@ func updateLaneGroupAttribute(req *apitraffic.LaneGroup, saveData *model.LaneGro
 }
 
 // laneGroupRecordEntry 转换为鉴权策略的记录结构体
-func laneGroupRecordEntry(ctx context.Context, req *apitraffic.LaneGroup, md *model.LaneGroup,
-	operationType model.OperationType) *model.RecordEntry {
+func laneGroupRecordEntry(ctx context.Context, req *apitraffic.LaneGroup, md *rules.LaneGroup,
+	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
 
-	entry := &model.RecordEntry{
-		ResourceType:  model.RLaneGroup,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RLaneGroup,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
 		OperationType: operationType,
 		Operator:      utils.ParseOperator(ctx),

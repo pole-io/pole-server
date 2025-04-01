@@ -28,8 +28,9 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -126,13 +127,13 @@ func (s *Server) CreateServiceContract(ctx context.Context, contract *apiservice
 			log.Error("[Service][Contract] do update to store", utils.RequestID(ctx), zap.Error(err))
 			return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
 		}
-		s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, &model.EnrichServiceContract{
+		s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, &svctypes.EnrichServiceContract{
 			ServiceContract: existContract.ServiceContract,
-		}, model.OUpdate))
+		}, types.OUpdate))
 		return api.NewServiceContractResponse(apimodel.Code_ExecuteSuccess, &apiservice.ServiceContract{Id: contractId})
 	}
 
-	saveData := &model.ServiceContract{
+	saveData := &svctypes.ServiceContract{
 		ID:        contractId,
 		Type:      utils.DefaultString(contract.GetType(), contract.GetName()),
 		Namespace: contract.GetNamespace(),
@@ -156,9 +157,9 @@ func (s *Server) CreateServiceContract(ctx context.Context, contract *apiservice
 		log.Error("[Service][Contract] do save to store", utils.RequestID(ctx), zap.Error(err))
 		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
 	}
-	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, &model.EnrichServiceContract{
+	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, &svctypes.EnrichServiceContract{
 		ServiceContract: saveData,
-	}, model.OCreate))
+	}, types.OCreate))
 	return api.NewServiceContractResponse(apimodel.Code_ExecuteSuccess, &apiservice.ServiceContract{Id: contractId})
 }
 
@@ -299,7 +300,7 @@ func (s *Server) DeleteServiceContract(ctx context.Context,
 		return api.NewServiceContractResponse(apimodel.Code_ExecuteSuccess, nil)
 	}
 
-	deleteData := &model.ServiceContract{
+	deleteData := &svctypes.ServiceContract{
 		ID:        contract.Id,
 		Type:      utils.DefaultString(contract.GetType(), contract.GetName()),
 		Namespace: contract.Namespace,
@@ -312,9 +313,9 @@ func (s *Server) DeleteServiceContract(ctx context.Context,
 		log.Error("[Service][Contract] do delete from store", utils.RequestID(ctx), zap.Error(err))
 		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
 	}
-	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, &model.EnrichServiceContract{
+	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, &svctypes.EnrichServiceContract{
 		ServiceContract: deleteData,
-	}, model.ODelete))
+	}, types.ODelete))
 	return api.NewServiceContractResponse(apimodel.Code_ExecuteSuccess, &apiservice.ServiceContract{Id: contract.Id})
 }
 
@@ -366,16 +367,16 @@ func (s *Server) CreateServiceContractInterfaces(ctx context.Context,
 		return errRsp
 	}
 	contract.Type = utils.DefaultString(contract.GetType(), contract.GetName())
-	createData := &model.EnrichServiceContract{
-		ServiceContract: &model.ServiceContract{
+	createData := &svctypes.EnrichServiceContract{
+		ServiceContract: &svctypes.ServiceContract{
 			ID:       contract.Id,
 			Revision: utils.NewUUID(),
 		},
-		Interfaces: make([]*model.InterfaceDescriptor, 0, len(contract.Interfaces)),
+		Interfaces: make([]*svctypes.InterfaceDescriptor, 0, len(contract.Interfaces)),
 	}
 	retContract := &apiservice.ServiceContract{Id: contract.Id}
 	var err error
-	interfaces := make(map[string]*model.InterfaceDescriptor, len(contract.Interfaces))
+	interfaces := make(map[string]*svctypes.InterfaceDescriptor, len(contract.Interfaces))
 	for _, item := range contract.Interfaces {
 		interfaceId, errRsp := utils.CheckContractInterfaceTetrad(createData.ID, source, item)
 		if errRsp != nil {
@@ -383,7 +384,7 @@ func (s *Server) CreateServiceContractInterfaces(ctx context.Context,
 				zap.String("err", errRsp.GetInfo().GetValue()))
 			return errRsp
 		}
-		interfaceDescriptor := &model.InterfaceDescriptor{
+		interfaceDescriptor := &svctypes.InterfaceDescriptor{
 			ID:         interfaceId,
 			ContractID: contract.Id,
 			Namespace:  contract.Namespace,
@@ -447,7 +448,7 @@ func (s *Server) CreateServiceContractInterfaces(ctx context.Context,
 		log.Error("[Service][Contract] full replace service_contract interfaces", utils.RequestID(ctx), zap.Error(err))
 		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
 	}
-	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, createData, model.OUpdate))
+	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, createData, types.OUpdate))
 	return api.NewServiceContractResponse(apimodel.Code_ExecuteSuccess, retContract)
 }
 
@@ -468,12 +469,12 @@ func (s *Server) AppendServiceContractInterfaces(ctx context.Context,
 		return api.NewServiceContractResponse(apimodel.Code_NotFoundResource, nil)
 	}
 
-	appendData := &model.EnrichServiceContract{
-		ServiceContract: &model.ServiceContract{
+	appendData := &svctypes.EnrichServiceContract{
+		ServiceContract: &svctypes.ServiceContract{
 			ID:       contract.Id,
 			Revision: utils.NewUUID(),
 		},
-		Interfaces: make([]*model.InterfaceDescriptor, 0, len(contract.Interfaces)),
+		Interfaces: make([]*svctypes.InterfaceDescriptor, 0, len(contract.Interfaces)),
 	}
 	retContract := &apiservice.ServiceContract{Id: contract.Id}
 	for _, item := range contract.Interfaces {
@@ -483,7 +484,7 @@ func (s *Server) AppendServiceContractInterfaces(ctx context.Context,
 				zap.String("err", errRsp.GetInfo().GetValue()))
 			return errRsp
 		}
-		interfaceDescriptor := &model.InterfaceDescriptor{
+		interfaceDescriptor := &svctypes.InterfaceDescriptor{
 			ID:         interfaceId,
 			ContractID: contract.Id,
 			Namespace:  contract.Namespace,
@@ -509,7 +510,7 @@ func (s *Server) AppendServiceContractInterfaces(ctx context.Context,
 		log.Error("[Service][Contract] append service_contract interfaces", utils.RequestID(ctx), zap.Error(err))
 		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
 	}
-	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, appendData, model.OUpdate))
+	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, appendData, types.OUpdate))
 	return api.NewServiceContractResponse(apimodel.Code_ExecuteSuccess, retContract)
 }
 
@@ -530,12 +531,12 @@ func (s *Server) DeleteServiceContractInterfaces(ctx context.Context,
 		return api.NewServiceContractResponse(apimodel.Code_NotFoundResource, nil)
 	}
 
-	deleteData := &model.EnrichServiceContract{
-		ServiceContract: &model.ServiceContract{
+	deleteData := &svctypes.EnrichServiceContract{
+		ServiceContract: &svctypes.ServiceContract{
 			ID:       saveData.ID,
 			Revision: utils.NewUUID(),
 		},
-		Interfaces: make([]*model.InterfaceDescriptor, 0, len(contract.Interfaces)),
+		Interfaces: make([]*svctypes.InterfaceDescriptor, 0, len(contract.Interfaces)),
 	}
 	retContract := &apiservice.ServiceContract{Id: contract.Id}
 	for _, item := range contract.Interfaces {
@@ -545,7 +546,7 @@ func (s *Server) DeleteServiceContractInterfaces(ctx context.Context,
 				zap.String("err", errRsp.GetInfo().GetValue()))
 			return errRsp
 		}
-		deleteData.Interfaces = append(deleteData.Interfaces, &model.InterfaceDescriptor{
+		deleteData.Interfaces = append(deleteData.Interfaces, &svctypes.InterfaceDescriptor{
 			ID:         interfaceId,
 			ContractID: contract.Id,
 			Method:     item.Method,
@@ -558,7 +559,7 @@ func (s *Server) DeleteServiceContractInterfaces(ctx context.Context,
 		log.Error("[Service][Contract] delete service_contract interfaces", utils.RequestID(ctx), zap.Error(err))
 		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
 	}
-	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, deleteData, model.ODelete))
+	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, deleteData, types.ODelete))
 	return api.NewServiceContractResponse(apimodel.Code_ExecuteSuccess, retContract)
 }
 
@@ -634,14 +635,14 @@ func checkOperationServiceContractInterface(contract *apiservice.ServiceContract
 }
 
 // serviceContractRecordEntry 生成服务的记录entry
-func serviceContractRecordEntry(ctx context.Context, req *apiservice.ServiceContract, data *model.EnrichServiceContract,
-	operationType model.OperationType) *model.RecordEntry {
+func serviceContractRecordEntry(ctx context.Context, req *apiservice.ServiceContract, data *svctypes.EnrichServiceContract,
+	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
 
-	entry := &model.RecordEntry{
-		ResourceType:  model.RServiceContract,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RServiceContract,
 		ResourceName:  data.GetResourceName(),
 		Namespace:     req.GetNamespace(),
 		OperationType: operationType,

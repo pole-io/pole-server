@@ -21,13 +21,13 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 )
 
 // InstanceFuture 创建实例的异步结构体
 type ClientFuture struct {
 	request *apiservice.Client // api请求对象
-	client  *model.Client      // 从数据库中读取到的model信息
+	client  *types.Client      // 从数据库中读取到的model信息
 	code    apimodel.Code      // 记录对外API的错误码
 	result  chan error         // 执行成功/失败的应答chan
 }
@@ -49,12 +49,12 @@ func (future *ClientFuture) Wait() error {
 }
 
 // SetClient 设置 client 信息
-func (future *ClientFuture) SetClient(client *model.Client) {
+func (future *ClientFuture) SetClient(client *types.Client) {
 	future.client = client
 }
 
 // Client 获取 client 信息
-func (future *ClientFuture) Client() *model.Client {
+func (future *ClientFuture) Client() *types.Client {
 	return future.client
 }
 

@@ -25,8 +25,8 @@ import (
 
 	bolt "go.etcd.io/bbolt"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 const (
@@ -72,7 +72,7 @@ type circuitBreakerStore struct {
 	handler BoltHandler
 }
 
-func initCircuitBreakerRule(cb *model.CircuitBreakerRule) {
+func initCircuitBreakerRule(cb *rules.CircuitBreakerRule) {
 	cb.Valid = true
 	cb.CreateTime = time.Now()
 	cb.ModifyTime = time.Now()
@@ -90,7 +90,7 @@ func (c *circuitBreakerStore) cleanCircuitBreakerRule(id string) error {
 }
 
 // CreateCircuitBreakerRule create general circuitbreaker rule
-func (c *circuitBreakerStore) CreateCircuitBreakerRule(cbRule *model.CircuitBreakerRule) error {
+func (c *circuitBreakerStore) CreateCircuitBreakerRule(cbRule *rules.CircuitBreakerRule) error {
 	dbOp := c.handler
 
 	initCircuitBreakerRule(cbRule)
@@ -109,7 +109,7 @@ func (c *circuitBreakerStore) CreateCircuitBreakerRule(cbRule *model.CircuitBrea
 }
 
 // UpdateCircuitBreakerRule update general circuitbreaker rule
-func (c *circuitBreakerStore) UpdateCircuitBreakerRule(cbRule *model.CircuitBreakerRule) error {
+func (c *circuitBreakerStore) UpdateCircuitBreakerRule(cbRule *rules.CircuitBreakerRule) error {
 	dbOp := c.handler
 	properties := map[string]interface{}{
 		CommonFieldName:        cbRule.Name,
@@ -156,13 +156,13 @@ func (c *circuitBreakerStore) DeleteCircuitBreakerRule(id string) error {
 }
 
 // getCircuitBreakerRuleWithID 根据规则ID拉取熔断规则
-func (c *circuitBreakerStore) getCircuitBreakerRuleWithID(id string) (*model.CircuitBreakerRule, error) {
+func (c *circuitBreakerStore) getCircuitBreakerRuleWithID(id string) (*rules.CircuitBreakerRule, error) {
 	if id == "" {
 		return nil, ErrBadParam
 	}
 
 	handler := c.handler
-	result, err := handler.LoadValues(tblCircuitBreakerRule, []string{id}, &model.CircuitBreakerRule{})
+	result, err := handler.LoadValues(tblCircuitBreakerRule, []string{id}, &rules.CircuitBreakerRule{})
 
 	if err != nil {
 		log.Errorf("[Store][boltdb] get rate limit fail : %s", err.Error())
@@ -177,7 +177,7 @@ func (c *circuitBreakerStore) getCircuitBreakerRuleWithID(id string) (*model.Cir
 		return nil, nil
 	}
 
-	cbRule := result[id].(*model.CircuitBreakerRule)
+	cbRule := result[id].(*rules.CircuitBreakerRule)
 	if cbRule.Valid {
 		return cbRule, nil
 	}
@@ -238,7 +238,7 @@ var (
 
 // GetCircuitBreakerRules get all circuitbreaker rules by query and limit
 func (c *circuitBreakerStore) GetCircuitBreakerRules(
-	filter map[string]string, offset uint32, limit uint32) (uint32, []*model.CircuitBreakerRule, error) {
+	filter map[string]string, offset uint32, limit uint32) (uint32, []*rules.CircuitBreakerRule, error) {
 	svc, hasSvc := filter[svcSpecificQueryKeyService]
 	delete(filter, svcSpecificQueryKeyService)
 	svcNs, hasSvcNs := filter[svcSpecificQueryKeyNamespace]
@@ -252,7 +252,7 @@ func (c *circuitBreakerStore) GetCircuitBreakerRules(
 	for k, v := range filter {
 		lowerFilter[strings.ToLower(k)] = v
 	}
-	result, err := c.handler.LoadValuesByFilter(tblCircuitBreakerRule, cbSearchFields, &model.CircuitBreakerRule{},
+	result, err := c.handler.LoadValuesByFilter(tblCircuitBreakerRule, cbSearchFields, &rules.CircuitBreakerRule{},
 		func(m map[string]interface{}) bool {
 			validVal, ok := m[CommonFieldValid]
 			if ok && !validVal.(bool) {
@@ -330,14 +330,14 @@ func (c *circuitBreakerStore) GetCircuitBreakerRules(
 	if nil != err {
 		return 0, nil, err
 	}
-	out := make([]*model.CircuitBreakerRule, 0, len(result))
+	out := make([]*rules.CircuitBreakerRule, 0, len(result))
 	for _, value := range result {
-		out = append(out, value.(*model.CircuitBreakerRule))
+		out = append(out, value.(*rules.CircuitBreakerRule))
 	}
 	return uint32(len(out)), sublistCircuitBreakerRules(out, offset, limit), nil
 }
 
-func sublistCircuitBreakerRules(cbRules []*model.CircuitBreakerRule, offset, limit uint32) []*model.CircuitBreakerRule {
+func sublistCircuitBreakerRules(cbRules []*rules.CircuitBreakerRule, offset, limit uint32) []*rules.CircuitBreakerRule {
 	beginIndex := offset
 	endIndex := beginIndex + limit
 	totalCount := uint32(len(cbRules))
@@ -370,7 +370,7 @@ func sublistCircuitBreakerRules(cbRules []*model.CircuitBreakerRule, offset, lim
 
 // GetCircuitBreakerRulesForCache get increment circuitbreaker rules
 func (c *circuitBreakerStore) GetCircuitBreakerRulesForCache(
-	mtime time.Time, firstUpdate bool) ([]*model.CircuitBreakerRule, error) {
+	mtime time.Time, firstUpdate bool) ([]*rules.CircuitBreakerRule, error) {
 	handler := c.handler
 
 	if firstUpdate {
@@ -378,7 +378,7 @@ func (c *circuitBreakerStore) GetCircuitBreakerRulesForCache(
 	}
 
 	results, err := handler.LoadValuesByFilter(
-		tblCircuitBreakerRule, []string{CommonFieldModifyTime}, &model.CircuitBreakerRule{},
+		tblCircuitBreakerRule, []string{CommonFieldModifyTime}, &rules.CircuitBreakerRule{},
 		func(m map[string]interface{}) bool {
 			mt := m[CommonFieldModifyTime].(time.Time)
 			isAfter := !mt.Before(mtime)
@@ -390,19 +390,19 @@ func (c *circuitBreakerStore) GetCircuitBreakerRulesForCache(
 	}
 
 	if len(results) == 0 {
-		return []*model.CircuitBreakerRule{}, nil
+		return []*rules.CircuitBreakerRule{}, nil
 	}
 
-	out := make([]*model.CircuitBreakerRule, 0, len(results))
+	out := make([]*rules.CircuitBreakerRule, 0, len(results))
 	for _, value := range results {
-		out = append(out, value.(*model.CircuitBreakerRule))
+		out = append(out, value.(*rules.CircuitBreakerRule))
 	}
 
 	return out, nil
 }
 
 // EnableCircuitBreakerRule enable specific circuitbreaker rule
-func (c *circuitBreakerStore) EnableCircuitBreakerRule(cbRule *model.CircuitBreakerRule) error {
+func (c *circuitBreakerStore) EnableCircuitBreakerRule(cbRule *rules.CircuitBreakerRule) error {
 	handler := c.handler
 	return handler.Execute(true, func(tx *bolt.Tx) error {
 		properties := make(map[string]interface{})

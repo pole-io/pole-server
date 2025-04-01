@@ -27,7 +27,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	commonmodel "github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/core"
@@ -171,6 +171,6 @@ func (n *DiscoverServer) handleQueryInstances(ctx context.Context, params map[st
 	return result, nil
 }
 
-func mergeUpdateInstanceInfo(req *apiservice.Instance, saveVal *commonmodel.Instance) *apiservice.Instance {
+func mergeUpdateInstanceInfo(req *apiservice.Instance, saveVal *svctypes.Instance) *apiservice.Instance {
 	return req
 }

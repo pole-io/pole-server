@@ -23,6 +23,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/service"
 )
@@ -40,9 +41,9 @@ const (
 )
 
 var (
-	mockVipServices   = map[svcName]*model.Service{}
+	mockVipServices   = map[svcName]*svctypes.Service{}
 	mockVipInstances  = map[string]map[string]*model.Instance{}
-	mockSvipServices  = map[svcName]*model.Service{}
+	mockSvipServices  = map[svcName]*svctypes.Service{}
 	mockSvipInstances = map[string]map[string]*model.Instance{}
 )
 
@@ -96,8 +97,8 @@ func doVipFunctionMock() {
 	getCacheInstancesFunc = mockGetVipInstances
 }
 
-func mockGetVipServices(namingServer service.DiscoverServer, namespace string) map[string]*model.Service {
-	var newServices = make(map[string]*model.Service)
+func mockGetVipServices(namingServer service.DiscoverServer, namespace string) map[string]*svctypes.Service {
+	var newServices = make(map[string]*svctypes.Service)
 	for _, svc := range mockVipServices {
 		if namespace == svc.Namespace {
 			newServices[svc.ID] = svc
@@ -152,8 +153,8 @@ func doSVipFunctionMock() {
 	getCacheInstancesFunc = mockGetSvipInstances
 }
 
-func mockGetSvipServices(namingServer service.DiscoverServer, namespace string) map[string]*model.Service {
-	var newServices = make(map[string]*model.Service)
+func mockGetSvipServices(namingServer service.DiscoverServer, namespace string) map[string]*svctypes.Service {
+	var newServices = make(map[string]*svctypes.Service)
 	for _, svc := range mockSvipServices {
 		if namespace == svc.Namespace {
 			newServices[svc.ID] = svc

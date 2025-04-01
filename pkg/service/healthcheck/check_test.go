@@ -27,7 +27,7 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	"github.com/pole-io/pole-server/plugin"
@@ -57,7 +57,7 @@ func Test_serialSetInsDbStatus(t *testing.T) {
 		t.Logf("instacne-id: %s", resp.GetInstance().GetId().GetValue())
 	})
 
-	testFunc := func(t *testing.T, health bool, predicate func(t *testing.T, saveIns *model.Instance)) {
+	testFunc := func(t *testing.T, health bool, predicate func(t *testing.T, saveIns *svctypes.Instance)) {
 		mockSvr, err := healthcheck.NewHealthServer(context.TODO(), &healthcheck.Config{
 			Open: utils.BoolPtr(true),
 			Checkers: []plugin.ConfigEntry{
@@ -96,17 +96,17 @@ func Test_serialSetInsDbStatus(t *testing.T) {
 	}
 
 	t.Run("turn_unhealth", func(t *testing.T) {
-		testFunc(t, false, func(t *testing.T, saveIns *model.Instance) {
+		testFunc(t, false, func(t *testing.T, saveIns *svctypes.Instance) {
 			metadata := saveIns.Proto.GetMetadata()
-			_, exist := metadata[model.MetadataInstanceLastHeartbeatTime]
+			_, exist := metadata[svctypes.MetadataInstanceLastHeartbeatTime]
 			assert.True(t, exist, "internal-lastheartbeat must exist : %s", utils.MustJson(metadata))
 		})
 	})
 
 	t.Run("turn_health", func(t *testing.T) {
-		testFunc(t, true, func(t *testing.T, saveIns *model.Instance) {
+		testFunc(t, true, func(t *testing.T, saveIns *svctypes.Instance) {
 			metadata := saveIns.Proto.GetMetadata()
-			_, exist := metadata[model.MetadataInstanceLastHeartbeatTime]
+			_, exist := metadata[svctypes.MetadataInstanceLastHeartbeatTime]
 			assert.False(t, exist, "internal-lastheartbeat must not exist : %s", utils.MustJson(metadata))
 		})
 	})

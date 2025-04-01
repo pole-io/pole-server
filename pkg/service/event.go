@@ -21,10 +21,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
-type serviceNameResolver func(string) *model.Service
+type serviceNameResolver func(string) *svctypes.Service
 
 const maxRetryGetServiceName = 5
 
@@ -39,13 +39,13 @@ func NewBaseInstanceEventHandler(namingServer DiscoverServer) *BaseInstanceEvent
 	return eventHandler
 }
 
-func (b *BaseInstanceEventHandler) resolveService(svcId string) *model.Service {
+func (b *BaseInstanceEventHandler) resolveService(svcId string) *svctypes.Service {
 	return b.namingServer.Cache().Service().GetServiceByID(svcId)
 }
 
 // PreProcess do preprocess logic for event
 func (b *BaseInstanceEventHandler) PreProcess(ctx context.Context, value any) any {
-	instEvent, ok := value.(model.InstanceEvent)
+	instEvent, ok := value.(svctypes.InstanceEvent)
 	if !ok {
 		return value
 	}
@@ -53,7 +53,7 @@ func (b *BaseInstanceEventHandler) PreProcess(ctx context.Context, value any) an
 	return instEvent
 }
 
-func (b *BaseInstanceEventHandler) resolveServiceName(event *model.InstanceEvent) {
+func (b *BaseInstanceEventHandler) resolveServiceName(event *svctypes.InstanceEvent) {
 	if len(event.Service) == 0 && len(event.SvcId) > 0 {
 		for i := 0; i < maxRetryGetServiceName; i++ {
 			svcObject := b.svcResolver(event.SvcId)

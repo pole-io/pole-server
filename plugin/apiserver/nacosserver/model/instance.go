@@ -23,7 +23,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -80,7 +80,7 @@ type Instance struct {
 	Metadata    map[string]string `json:"metadata"`
 }
 
-func (i *Instance) FromSpecInstance(specIns *model.Instance) {
+func (i *Instance) FromSpecInstance(specIns *svctypes.Instance) {
 	i.Id = specIns.ID()
 	i.IP = specIns.Host()
 	i.Port = int32(specIns.Port())

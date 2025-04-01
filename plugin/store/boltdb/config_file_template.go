@@ -23,8 +23,8 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 const (
@@ -42,23 +42,23 @@ func newConfigFileTemplateStore(handler BoltHandler) *configFileTemplateStore {
 }
 
 // QueryAllConfigFileTemplates query all config file templates
-func (cf *configFileTemplateStore) QueryAllConfigFileTemplates() ([]*model.ConfigFileTemplate, error) {
-	ret, err := cf.handler.LoadValuesAll(tblConfigFileTemplate, &model.ConfigFileTemplate{})
+func (cf *configFileTemplateStore) QueryAllConfigFileTemplates() ([]*conftypes.ConfigFileTemplate, error) {
+	ret, err := cf.handler.LoadValuesAll(tblConfigFileTemplate, &conftypes.ConfigFileTemplate{})
 	if err != nil {
 		return nil, err
 	}
 	if len(ret) == 0 {
 		return nil, nil
 	}
-	var templates []*model.ConfigFileTemplate
+	var templates []*conftypes.ConfigFileTemplate
 	for _, v := range ret {
-		templates = append(templates, v.(*model.ConfigFileTemplate))
+		templates = append(templates, v.(*conftypes.ConfigFileTemplate))
 	}
 	return templates, nil
 }
 
 // GetConfigFileTemplate get config file template
-func (cf *configFileTemplateStore) GetConfigFileTemplate(name string) (*model.ConfigFileTemplate, error) {
+func (cf *configFileTemplateStore) GetConfigFileTemplate(name string) (*conftypes.ConfigFileTemplate, error) {
 	proxy, err := cf.handler.StartTx()
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (cf *configFileTemplateStore) GetConfigFileTemplate(name string) (*model.Co
 	}()
 
 	values := make(map[string]interface{})
-	if err = loadValues(tx, tblConfigFileTemplate, []string{name}, &model.ConfigFileTemplate{}, values); err != nil {
+	if err = loadValues(tx, tblConfigFileTemplate, []string{name}, &conftypes.ConfigFileTemplate{}, values); err != nil {
 		return nil, err
 	}
 
@@ -87,14 +87,14 @@ func (cf *configFileTemplateStore) GetConfigFileTemplate(name string) (*model.Co
 		return nil, ErrMultipleConfigFileFound
 	}
 
-	data := values[name].(*model.ConfigFileTemplate)
+	data := values[name].(*conftypes.ConfigFileTemplate)
 
 	return data, nil
 }
 
 // CreateConfigFileTemplate create config file template
 func (cf *configFileTemplateStore) CreateConfigFileTemplate(
-	template *model.ConfigFileTemplate) (*model.ConfigFileTemplate, error) {
+	template *conftypes.ConfigFileTemplate) (*conftypes.ConfigFileTemplate, error) {
 	proxy, err := cf.handler.StartTx()
 	if err != nil {
 		return nil, err

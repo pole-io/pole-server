@@ -36,11 +36,12 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
@@ -1373,7 +1374,7 @@ func TestConcurrencyCreateSameService(t *testing.T) {
 		)
 
 		mockStore := mock.NewMockStore(ctrl)
-		mockStore.EXPECT().GetMoreNamespaces(gomock.Any()).Return([]*model.Namespace{
+		mockStore.EXPECT().GetMoreNamespaces(gomock.Any()).Return([]*types.Namespace{
 			{
 				Name: "mock_ns",
 			},
@@ -1413,7 +1414,7 @@ func TestConcurrencyCreateSameService(t *testing.T) {
 	t.Run("正常创建服务", func(t *testing.T) {
 		svr, mockStore := createMockResource()
 
-		mockStore.EXPECT().GetNamespace(gomock.Any()).Return(&model.Namespace{
+		mockStore.EXPECT().GetNamespace(gomock.Any()).Return(&types.Namespace{
 			Name: "mock_ns",
 		}, nil).AnyTimes()
 		mockStore.EXPECT().GetService(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
@@ -1426,10 +1427,10 @@ func TestConcurrencyCreateSameService(t *testing.T) {
 
 	t.Run("正常创建服务-目标服务已存在", func(t *testing.T) {
 		svr, mockStore := createMockResource()
-		mockStore.EXPECT().GetNamespace(gomock.Any()).Return(&model.Namespace{
+		mockStore.EXPECT().GetNamespace(gomock.Any()).Return(&types.Namespace{
 			Name: "mock_ns",
 		}, nil).AnyTimes()
-		mockStore.EXPECT().GetService(gomock.Any(), gomock.Any()).Return(&model.Service{
+		mockStore.EXPECT().GetService(gomock.Any(), gomock.Any()).Return(&svctypes.Service{
 			ID: "mock_svc_id",
 		}, nil).AnyTimes()
 
@@ -1440,7 +1441,7 @@ func TestConcurrencyCreateSameService(t *testing.T) {
 
 	t.Run("正常创建服务-存储层主键冲突", func(t *testing.T) {
 		svr, mockStore := createMockResource()
-		mockStore.EXPECT().GetNamespace(gomock.Any()).Return(&model.Namespace{
+		mockStore.EXPECT().GetNamespace(gomock.Any()).Return(&types.Namespace{
 			Name: "mock_ns",
 		}, nil).AnyTimes()
 
@@ -1449,13 +1450,13 @@ func TestConcurrencyCreateSameService(t *testing.T) {
 			mockSvcId = "mock_svc_id"
 		)
 
-		mockStore.EXPECT().GetService(gomock.Any(), gomock.Any()).DoAndReturn(func(_, _ string) (*model.Service, error) {
+		mockStore.EXPECT().GetService(gomock.Any(), gomock.Any()).DoAndReturn(func(_, _ string) (*svctypes.Service, error) {
 			execTime++
 			if execTime == 1 {
 				return nil, nil
 			}
 			if execTime == 2 {
-				return &model.Service{ID: mockSvcId}, nil
+				return &svctypes.Service{ID: mockSvcId}, nil
 			}
 			return nil, errors.New("run to many times")
 		}).AnyTimes()
@@ -1496,8 +1497,8 @@ func Test_ServiceVisible(t *testing.T) {
 		assert.Equal(t, apimodel.Code_ExecuteSuccess, apimodel.Code(resp.GetCode().GetValue()))
 		assert.True(t, len(rsp.GetServices()) == 1)
 		assert.True(t, len(rsp.GetServices()[0].GetExportTo()) == 1)
-		assert.Equal(t, model.ExportToMap([]*wrappers.StringValue{wrapperspb.String("mock_namespace")}),
-			model.ExportToMap(rsp.GetServices()[0].GetExportTo()))
+		assert.Equal(t, types.ExportToMap([]*wrappers.StringValue{wrapperspb.String("mock_namespace")}),
+			types.ExportToMap(rsp.GetServices()[0].GetExportTo()))
 	})
 
 	t.Run("修改服务时指定可见性", func(t *testing.T) {
@@ -1514,8 +1515,8 @@ func Test_ServiceVisible(t *testing.T) {
 		assert.Equal(t, apimodel.Code_ExecuteSuccess, apimodel.Code(resp.GetCode().GetValue()))
 		assert.True(t, len(rsp.GetServices()) == 1)
 		assert.True(t, len(rsp.GetServices()[0].GetExportTo()) == 2)
-		assert.Equal(t, model.ExportToMap([]*wrapperspb.StringValue{wrapperspb.String("mock_ns_1"), wrapperspb.String("mock_ns_2")}),
-			model.ExportToMap(rsp.GetServices()[0].GetExportTo()))
+		assert.Equal(t, types.ExportToMap([]*wrapperspb.StringValue{wrapperspb.String("mock_ns_1"), wrapperspb.String("mock_ns_2")}),
+			types.ExportToMap(rsp.GetServices()[0].GetExportTo()))
 	})
 
 	t.Run("清空服务可见性", func(t *testing.T) {
@@ -1563,8 +1564,8 @@ func Test_NamespaceVisible(t *testing.T) {
 		assert.Equal(t, apimodel.Code_ExecuteSuccess, apimodel.Code(resp.GetCode().GetValue()))
 		assert.True(t, len(rsp.GetNamespaces()) == 1)
 		assert.True(t, len(rsp.GetNamespaces()[0].GetServiceExportTo()) == 1)
-		assert.Equal(t, model.ExportToMap([]*wrappers.StringValue{wrapperspb.String("mock_namespace")}),
-			model.ExportToMap(rsp.GetNamespaces()[0].GetServiceExportTo()))
+		assert.Equal(t, types.ExportToMap([]*wrappers.StringValue{wrapperspb.String("mock_namespace")}),
+			types.ExportToMap(rsp.GetNamespaces()[0].GetServiceExportTo()))
 	})
 
 	t.Run("修改命名空间时指定可见性", func(t *testing.T) {
@@ -1580,8 +1581,8 @@ func Test_NamespaceVisible(t *testing.T) {
 		assert.Equal(t, apimodel.Code_ExecuteSuccess, apimodel.Code(resp.GetCode().GetValue()))
 		assert.True(t, len(rsp.GetNamespaces()) == 1)
 		assert.True(t, len(rsp.GetNamespaces()[0].GetServiceExportTo()) == 2)
-		assert.Equal(t, model.ExportToMap([]*wrapperspb.StringValue{wrapperspb.String("mock_ns_1"), wrapperspb.String("mock_ns_2")}),
-			model.ExportToMap(rsp.GetNamespaces()[0].GetServiceExportTo()))
+		assert.Equal(t, types.ExportToMap([]*wrapperspb.StringValue{wrapperspb.String("mock_ns_1"), wrapperspb.String("mock_ns_2")}),
+			types.ExportToMap(rsp.GetNamespaces()[0].GetServiceExportTo()))
 	})
 
 	t.Run("清空命名空间可见性", func(t *testing.T) {

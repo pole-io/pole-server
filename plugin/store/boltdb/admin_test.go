@@ -26,8 +26,8 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 )
 
@@ -112,7 +112,7 @@ func TestAdminStore_BatchCleanDeletedInstances(t *testing.T) {
 	insStore := &instanceStore{handler: handler}
 
 	svcId := "svcid1"
-	sStore.AddService(&model.Service{
+	sStore.AddService(&svctypes.Service{
 		ID:        svcId,
 		Name:      svcId,
 		Namespace: svcId,
@@ -123,7 +123,7 @@ func TestAdminStore_BatchCleanDeletedInstances(t *testing.T) {
 
 	for i := 0; i < insCount; i++ {
 		nowt := commontime.Time2String(time.Now())
-		err := insStore.AddInstance(&model.Instance{
+		err := insStore.AddInstance(&svctypes.Instance{
 			Proto: &apiservice.Instance{
 				Id:                &wrappers.StringValue{Value: "insid" + strconv.Itoa(i)},
 				Host:              &wrappers.StringValue{Value: "1.1.1." + strconv.Itoa(i)},
@@ -236,7 +236,7 @@ func TestAdminStore_getUnHealthyInstancesBefore(t *testing.T) {
 	insStore := &instanceStore{handler: handler}
 
 	svcId := "svcid1"
-	sStore.AddService(&model.Service{
+	sStore.AddService(&svctypes.Service{
 		ID:        svcId,
 		Name:      svcId,
 		Namespace: svcId,
@@ -248,7 +248,7 @@ func TestAdminStore_getUnHealthyInstancesBefore(t *testing.T) {
 	mtime := time.Date(2023, 3, 4, 11, 0, 0, 0, time.Local)
 	for i := 0; i < insCount; i++ {
 		nowt := commontime.Time2String(mtime)
-		err := insStore.AddInstance(&model.Instance{
+		err := insStore.AddInstance(&svctypes.Instance{
 			Proto: &apiservice.Instance{
 				Id:                &wrappers.StringValue{Value: "insid" + strconv.Itoa(i)},
 				Host:              &wrappers.StringValue{Value: "1.1.1." + strconv.Itoa(i)},

@@ -30,9 +30,10 @@ import (
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	types "github.com/pole-io/pole-server/pkg/cache/api"
 	cachemock "github.com/pole-io/pole-server/pkg/cache/mock"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/store/mock"
 )
@@ -123,8 +124,8 @@ func buildRateLimitRuleProtoWithArguments(name string, method string) *apitraffi
 
 // genRateLimitsWithLabels 生成限流规则测试数据
 func genRateLimits(
-	beginNum, totalServices, totalRateLimits int, withLabels bool) []*model.RateLimit {
-	rateLimits := make([]*model.RateLimit, 0, totalRateLimits)
+	beginNum, totalServices, totalRateLimits int, withLabels bool) []*rules.RateLimit {
+	rateLimits := make([]*rules.RateLimit, 0, totalRateLimits)
 	rulePerService := totalRateLimits / totalServices
 
 	for i := beginNum; i < totalServices+beginNum; i++ {
@@ -141,7 +142,7 @@ func genRateLimits(
 			rule.Namespace = utils.NewStringValue("default")
 			str, _ := json.Marshal(rule)
 			labels, _ := json.Marshal(rule.GetLabels())
-			rateLimit := &model.RateLimit{
+			rateLimit := &rules.RateLimit{
 				ID:        fmt.Sprintf("id-%d-%d", i, j),
 				ServiceID: fmt.Sprintf("service-%d", i),
 				Name:      name,
@@ -160,7 +161,7 @@ func genRateLimits(
 /**
  * @brief 统计缓存中的限流数据
  */
-func getRateLimitsCount(serviceKey model.ServiceKey, rlc *rateLimitCache) int {
+func getRateLimitsCount(serviceKey svctypes.ServiceKey, rlc *rateLimitCache) int {
 	ret, _ := rlc.GetRateLimitRules(serviceKey)
 	return len(ret)
 }
@@ -185,7 +186,7 @@ func TestRateLimitUpdate(t *testing.T) {
 
 		// 检查数目是否一致
 		for i := 0; i < totalServices; i++ {
-			count := getRateLimitsCount(model.ServiceKey{
+			count := getRateLimitsCount(svctypes.ServiceKey{
 				Namespace: "default",
 				Name:      fmt.Sprintf("service-%d", i),
 			}, rlc)
@@ -332,7 +333,7 @@ func TestGetRateLimitsByServiceID(t *testing.T) {
 			t.Fatalf("error: %s", err.Error())
 		}
 
-		rules, _ := rlc.GetRateLimitRules(model.ServiceKey{
+		rules, _ := rlc.GetRateLimitRules(svctypes.ServiceKey{
 			Namespace: "default",
 			Name:      "service-1",
 		})
@@ -366,7 +367,7 @@ func TestGetRateLimitsByServiceID(t *testing.T) {
 			t.Fatalf("error: %s", err.Error())
 		}
 
-		rateLimits, _ = rlc.GetRateLimitRules(model.ServiceKey{
+		rateLimits, _ = rlc.GetRateLimitRules(svctypes.ServiceKey{
 			Namespace: "default",
 			Name:      "service-1",
 		})

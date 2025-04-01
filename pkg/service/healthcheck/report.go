@@ -24,8 +24,8 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin"
 )
@@ -48,7 +48,7 @@ func checkHeartbeatInstance(req *apiservice.Instance) (string, *apiservice.Respo
 
 const max404Count = 3
 
-func (s *Server) checkInstanceExists(ctx context.Context, id string) (int64, *model.Instance, apimodel.Code) {
+func (s *Server) checkInstanceExists(ctx context.Context, id string) (int64, *svctypes.Instance, apimodel.Code) {
 	ins := s.instanceCache.GetInstance(id)
 	if ins != nil {
 		return -1, ins, apimodel.Code_ExecuteSuccess
@@ -143,10 +143,10 @@ func (s *Server) baseReport(ctx context.Context, id string, reportReq *plugin.Re
 	reportReq.Count = count + 1
 	err := checker.Report(ctx, reportReq)
 	if nil != ins {
-		event := &model.InstanceEvent{
+		event := &svctypes.InstanceEvent{
 			Id:       id,
 			Instance: ins.Proto,
-			EType:    model.EventInstanceSendHeartbeat,
+			EType:    svctypes.EventInstanceSendHeartbeat,
 		}
 		event.InjectMetadata(ctx)
 		s.publishInstanceEvent(ins.ServiceID, *event)

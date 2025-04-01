@@ -29,11 +29,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/batch"
@@ -52,7 +52,7 @@ func mockReportClients(cnt int) []*apiservice.Client {
 			Id:       utils.NewStringValue(utils.NewUUID()),
 			Stat: []*apiservice.StatInfo{
 				{
-					Target:   utils.NewStringValue(model.StatReportPrometheus),
+					Target:   utils.NewStringValue(types.StatReportPrometheus),
 					Port:     utils.NewUInt32Value(uint32(1000 + i)),
 					Path:     utils.NewStringValue("/metrics"),
 					Protocol: utils.NewStringValue("http"),

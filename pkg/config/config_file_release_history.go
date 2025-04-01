@@ -24,17 +24,17 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // recordReleaseHistory 新增配置文件发布历史记录
-func (s *Server) recordReleaseHistory(ctx context.Context, fileRelease *model.ConfigFileRelease,
+func (s *Server) recordReleaseHistory(ctx context.Context, fileRelease *conftypes.ConfigFileRelease,
 	releaseType, status, reason string) {
 
-	releaseHistory := &model.ConfigFileReleaseHistory{
+	releaseHistory := &conftypes.ConfigFileReleaseHistory{
 		Name:               fileRelease.Name,
 		Namespace:          fileRelease.Namespace,
 		Group:              fileRelease.Group,
@@ -85,7 +85,7 @@ func (s *Server) GetConfigFileReleaseHistories(ctx context.Context,
 		if err != nil {
 			return api.NewConfigBatchQueryResponseWithInfo(apimodel.Code_ExecuteException, err.Error())
 		}
-		history := model.ToReleaseHistoryAPI(data)
+		history := conftypes.ToReleaseHistoryAPI(data)
 		histories = append(histories, history)
 	}
 	out := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)

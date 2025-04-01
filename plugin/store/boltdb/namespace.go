@@ -26,7 +26,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -65,7 +65,7 @@ func (n *namespaceStore) InitData() error {
 			return err
 		}
 		if ns == nil {
-			err = n.AddNamespace(&model.Namespace{
+			err = n.AddNamespace(&types.Namespace{
 				Name:       namespace,
 				Comment:    namespaceToComment[namespace],
 				Token:      namespaceToToken[namespace],
@@ -83,7 +83,7 @@ func (n *namespaceStore) InitData() error {
 }
 
 // AddNamespace add a namespace
-func (n *namespaceStore) AddNamespace(namespace *model.Namespace) error {
+func (n *namespaceStore) AddNamespace(namespace *types.Namespace) error {
 	if namespace.Name == "" {
 		return errors.New("store add namespace name is empty")
 	}
@@ -111,7 +111,7 @@ func (n *namespaceStore) cleanNamespace(name string) error {
 }
 
 // UpdateNamespace update a namespace
-func (n *namespaceStore) UpdateNamespace(namespace *model.Namespace) error {
+func (n *namespaceStore) UpdateNamespace(namespace *types.Namespace) error {
 	if namespace.Name == "" {
 		return errors.New("store update namespace name is empty")
 	}
@@ -141,7 +141,7 @@ func (n *namespaceStore) UpdateNamespaceToken(name string, token string) error {
 }
 
 // GetNamespace query namespace by name
-func (n *namespaceStore) GetNamespace(name string) (*model.Namespace, error) {
+func (n *namespaceStore) GetNamespace(name string) (*types.Namespace, error) {
 	values, err := n.handler.LoadValues(tblNameNamespace, []string{name}, &Namespace{})
 	if err != nil {
 		return nil, err
@@ -157,7 +157,7 @@ func (n *namespaceStore) GetNamespace(name string) (*model.Namespace, error) {
 	return n.toModel(ns), nil
 }
 
-type NamespaceSlice []*model.Namespace
+type NamespaceSlice []*types.Namespace
 
 // Len length of namespace slice
 func (ns NamespaceSlice) Len() int {
@@ -192,14 +192,14 @@ func matchFieldValueByPatterns(value string, patterns []string) bool {
 
 // GetNamespaces get namespaces by offset and limit
 func (n *namespaceStore) GetNamespaces(
-	filter map[string][]string, offset, limit int) ([]*model.Namespace, uint32, error) {
+	filter map[string][]string, offset, limit int) ([]*types.Namespace, uint32, error) {
 	values, err := n.handler.LoadValuesAll(tblNameNamespace, &Namespace{})
 	if err != nil {
 		return nil, 0, err
 	}
 	namespaces := NamespaceSlice(n.toNamespaces(values))
 
-	ret := make([]*model.Namespace, 0)
+	ret := make([]*types.Namespace, 0)
 	for i := range namespaces {
 		ns := namespaces[i]
 		if !ns.Valid {
@@ -237,8 +237,8 @@ func (n *namespaceStore) GetNamespaces(
 	return ret, uint32(len(namespaces)), nil
 }
 
-func (n *namespaceStore) toNamespaces(values map[string]interface{}) []*model.Namespace {
-	namespaces := make([]*model.Namespace, 0, len(values))
+func (n *namespaceStore) toNamespaces(values map[string]interface{}) []*types.Namespace {
+	namespaces := make([]*types.Namespace, 0, len(values))
 	for _, nsValue := range values {
 		namespaces = append(namespaces, n.toModel(nsValue.(*Namespace)))
 	}
@@ -246,7 +246,7 @@ func (n *namespaceStore) toNamespaces(values map[string]interface{}) []*model.Na
 }
 
 // GetMoreNamespaces get the latest updated namespaces
-func (n *namespaceStore) GetMoreNamespaces(mtime time.Time) ([]*model.Namespace, error) {
+func (n *namespaceStore) GetMoreNamespaces(mtime time.Time) ([]*types.Namespace, error) {
 	values, err := n.handler.LoadValuesByFilter(
 		tblNameNamespace, []string{"ModifyTime"}, &Namespace{}, func(value map[string]interface{}) bool {
 			mTimeValue, ok := value["ModifyTime"]
@@ -261,11 +261,11 @@ func (n *namespaceStore) GetMoreNamespaces(mtime time.Time) ([]*model.Namespace,
 	return n.toNamespaces(values), nil
 }
 
-func (n *namespaceStore) toModel(data *Namespace) *model.Namespace {
+func (n *namespaceStore) toModel(data *Namespace) *types.Namespace {
 	return toModelNamespace(data)
 }
 
-func toModelNamespace(data *Namespace) *model.Namespace {
+func toModelNamespace(data *Namespace) *types.Namespace {
 	if !data.Valid {
 		return nil
 	}
@@ -274,7 +274,7 @@ func toModelNamespace(data *Namespace) *model.Namespace {
 
 	metadata := make(map[string]string)
 	_ = json.Unmarshal([]byte(data.Metadata), &metadata)
-	return &model.Namespace{
+	return &types.Namespace{
 		Name:            data.Name,
 		Comment:         data.Comment,
 		Token:           data.Token,
@@ -287,7 +287,7 @@ func toModelNamespace(data *Namespace) *model.Namespace {
 	}
 }
 
-func (n *namespaceStore) toStore(data *model.Namespace) *Namespace {
+func (n *namespaceStore) toStore(data *types.Namespace) *Namespace {
 	return &Namespace{
 		Name:            data.Name,
 		Comment:         data.Comment,

@@ -27,6 +27,7 @@ import (
 
 	bolt "go.etcd.io/bbolt"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -66,7 +67,7 @@ type rateLimitStore struct {
 }
 
 // CreateRateLimit 新增限流规则
-func (r *rateLimitStore) CreateRateLimit(limit *model.RateLimit) error {
+func (r *rateLimitStore) CreateRateLimit(limit *rules.RateLimit) error {
 	if limit.ID == "" || limit.Revision == "" {
 		log.Error("[Store][boltdb] create ratelimit missing some params")
 		return ErrBadParam
@@ -76,7 +77,7 @@ func (r *rateLimitStore) CreateRateLimit(limit *model.RateLimit) error {
 }
 
 // UpdateRateLimit 更新限流规则
-func (r *rateLimitStore) UpdateRateLimit(limit *model.RateLimit) error {
+func (r *rateLimitStore) UpdateRateLimit(limit *rules.RateLimit) error {
 	if limit.ID == "" || limit.Revision == "" {
 		log.Error("[Store][boltdb] update ratelimit missing some params")
 		return ErrBadParam
@@ -86,7 +87,7 @@ func (r *rateLimitStore) UpdateRateLimit(limit *model.RateLimit) error {
 }
 
 // EnableRateLimit 激活限流规则
-func (r *rateLimitStore) EnableRateLimit(limit *model.RateLimit) error {
+func (r *rateLimitStore) EnableRateLimit(limit *rules.RateLimit) error {
 	if limit.ID == "" || limit.Revision == "" {
 		log.Error("[Store][boltdb] update ratelimit missing some params")
 		return ErrBadParam
@@ -95,7 +96,7 @@ func (r *rateLimitStore) EnableRateLimit(limit *model.RateLimit) error {
 }
 
 // DeleteRateLimit 删除限流规则
-func (r *rateLimitStore) DeleteRateLimit(limit *model.RateLimit) error {
+func (r *rateLimitStore) DeleteRateLimit(limit *rules.RateLimit) error {
 	if limit.ID == "" || limit.Revision == "" {
 		log.Error("[Store][boltdb] delete ratelimit missing some params")
 		return ErrBadParam
@@ -106,12 +107,12 @@ func (r *rateLimitStore) DeleteRateLimit(limit *model.RateLimit) error {
 
 // GetExtendRateLimits 根据过滤条件拉取限流规则
 func (r *rateLimitStore) GetExtendRateLimits(
-	query map[string]string, offset uint32, limit uint32) (uint32, []*model.ExtendRateLimit, error) {
+	query map[string]string, offset uint32, limit uint32) (uint32, []*rules.ExtendRateLimit, error) {
 
 	handler := r.handler
 	fields := append(utils.CollectMapKeys(query), RateConfFieldServiceID, RateConfFieldValid)
 
-	result, err := handler.LoadValuesByFilter(tblRateLimitConfig, fields, &model.RateLimit{},
+	result, err := handler.LoadValuesByFilter(tblRateLimitConfig, fields, &rules.RateLimit{},
 		func(m map[string]interface{}) bool {
 			validVal, ok := m[RateConfFieldValid]
 			if ok && !validVal.(bool) {
@@ -142,13 +143,13 @@ func (r *rateLimitStore) GetExtendRateLimits(
 		return 0, nil, err
 	}
 	if len(result) == 0 {
-		return 0, []*model.ExtendRateLimit{}, nil
+		return 0, []*rules.ExtendRateLimit{}, nil
 	}
 
-	out := make([]*model.ExtendRateLimit, 0, len(result))
+	out := make([]*rules.ExtendRateLimit, 0, len(result))
 	for _, r := range result {
-		var temp model.ExtendRateLimit
-		temp.RateLimit = r.(*model.RateLimit)
+		var temp rules.ExtendRateLimit
+		temp.RateLimit = r.(*rules.RateLimit)
 
 		out = append(out, &temp)
 	}
@@ -157,13 +158,13 @@ func (r *rateLimitStore) GetExtendRateLimits(
 }
 
 // GetRateLimitWithID 根据限流ID拉取限流规则
-func (r *rateLimitStore) GetRateLimitWithID(id string) (*model.RateLimit, error) {
+func (r *rateLimitStore) GetRateLimitWithID(id string) (*rules.RateLimit, error) {
 	if id == "" {
 		return nil, ErrBadParam
 	}
 
 	handler := r.handler
-	result, err := handler.LoadValues(tblRateLimitConfig, []string{id}, &model.RateLimit{})
+	result, err := handler.LoadValues(tblRateLimitConfig, []string{id}, &rules.RateLimit{})
 
 	if err != nil {
 		log.Errorf("[Store][boltdb] get rate limit fail : %s", err.Error())
@@ -178,7 +179,7 @@ func (r *rateLimitStore) GetRateLimitWithID(id string) (*model.RateLimit, error)
 		return nil, nil
 	}
 
-	rateLimitRet := result[id].(*model.RateLimit)
+	rateLimitRet := result[id].(*rules.RateLimit)
 	if rateLimitRet.Valid {
 		return rateLimitRet, nil
 	}
@@ -188,7 +189,7 @@ func (r *rateLimitStore) GetRateLimitWithID(id string) (*model.RateLimit, error)
 
 // GetRateLimitsForCache 根据修改时间拉取增量限流规则及最新版本号
 func (r *rateLimitStore) GetRateLimitsForCache(mtime time.Time,
-	firstUpdate bool) ([]*model.RateLimit, error) {
+	firstUpdate bool) ([]*rules.RateLimit, error) {
 	handler := r.handler
 
 	if firstUpdate {
@@ -210,13 +211,13 @@ func (r *rateLimitStore) GetRateLimitsForCache(mtime time.Time,
 	}
 
 	if len(limitResults) == 0 {
-		return []*model.RateLimit{}, nil
+		return []*rules.RateLimit{}, nil
 	}
 
-	limits := make([]*model.RateLimit, 0, len(limitResults))
+	limits := make([]*rules.RateLimit, 0, len(limitResults))
 
 	for i := range limitResults {
-		rule := limitResults[i].(*model.RateLimit)
+		rule := limitResults[i].(*rules.RateLimit)
 		limits = append(limits, rule)
 	}
 
@@ -228,7 +229,7 @@ func (r *rateLimitStore) GetRateLimitsForCache(mtime time.Time,
 //	@receiver r *rateLimitStore
 //	@param limit current limiting configuration data to be saved
 //	@return error
-func (r *rateLimitStore) createRateLimit(limit *model.RateLimit) error {
+func (r *rateLimitStore) createRateLimit(limit *rules.RateLimit) error {
 	handler := r.handler
 	tNow := time.Now()
 	limit.CreateTime = tNow
@@ -255,7 +256,7 @@ func (r *rateLimitStore) createRateLimit(limit *model.RateLimit) error {
 //	@receiver r
 //	@param limit
 //	@return error
-func (r *rateLimitStore) enableRateLimit(limit *model.RateLimit) error {
+func (r *rateLimitStore) enableRateLimit(limit *rules.RateLimit) error {
 	handler := r.handler
 	return handler.Execute(true, func(tx *bolt.Tx) error {
 		properties := make(map[string]interface{})
@@ -282,7 +283,7 @@ func (r *rateLimitStore) enableRateLimit(limit *model.RateLimit) error {
 //	@receiver r
 //	@param limit
 //	@return error
-func (r *rateLimitStore) updateRateLimit(limit *model.RateLimit) error {
+func (r *rateLimitStore) updateRateLimit(limit *rules.RateLimit) error {
 	handler := r.handler
 	return handler.Execute(true, func(tx *bolt.Tx) error {
 		properties := make(map[string]interface{})
@@ -315,7 +316,7 @@ func (r *rateLimitStore) updateRateLimit(limit *model.RateLimit) error {
 //	@receiver r
 //	@param limit
 //	@return error
-func (r *rateLimitStore) deleteRateLimit(limit *model.RateLimit) error {
+func (r *rateLimitStore) deleteRateLimit(limit *rules.RateLimit) error {
 	handler := r.handler
 
 	return handler.Execute(true, func(tx *bolt.Tx) error {
@@ -333,7 +334,7 @@ func (r *rateLimitStore) deleteRateLimit(limit *model.RateLimit) error {
 	})
 }
 
-func getRealRateConfList(routeConf []*model.ExtendRateLimit, offset, limit uint32) []*model.ExtendRateLimit {
+func getRealRateConfList(routeConf []*rules.ExtendRateLimit, offset, limit uint32) []*rules.ExtendRateLimit {
 
 	beginIndex := offset
 	endIndex := beginIndex + limit

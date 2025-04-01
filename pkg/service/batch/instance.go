@@ -28,6 +28,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -300,11 +301,11 @@ func (ctrl *InstanceCtrl) registerHandler(futures []*InstanceFuture) error {
 	}
 	// 构造model数据
 	for _, entry := range remains {
-		ins := model.CreateInstanceModel(entry.serviceId, entry.request)
+		ins := svctypes.CreateInstanceModel(entry.serviceId, entry.request)
 		entry.SetInstance(ins)
 	}
 	// 调用batch接口，创建实例
-	instances := make([]*model.Instance, 0, len(remains))
+	instances := make([]*svctypes.Instance, 0, len(remains))
 	for _, entry := range remains {
 		instances = append(instances, entry.instance)
 	}

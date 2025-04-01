@@ -28,7 +28,11 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/model"
@@ -139,8 +143,6 @@ type CacheManager interface {
 	Instance() InstanceCache
 	// RoutingConfig 获取路由配置的缓存信息
 	RoutingConfig() RoutingConfigCache
-	// CL5 获取l5缓存信息
-	CL5() L5Cache
 	// RateLimit 获取限流规则缓存信息
 	RateLimit() RateLimitCache
 	// CircuitBreaker 获取熔断规则缓存信息
@@ -171,7 +173,7 @@ type CacheManager interface {
 
 type (
 	// NamespacePredicate .
-	NamespacePredicate func(context.Context, *model.Namespace) bool
+	NamespacePredicate func(context.Context, *types.Namespace) bool
 	// NamespaceArgs
 	NamespaceArgs struct {
 		// Filter extend filter params
@@ -186,24 +188,24 @@ type (
 	NamespaceCache interface {
 		Cache
 		// GetNamespace get target namespace by id
-		GetNamespace(id string) *model.Namespace
+		GetNamespace(id string) *types.Namespace
 		// GetNamespacesByName list all namespace by name
-		GetNamespacesByName(names []string) []*model.Namespace
+		GetNamespacesByName(names []string) []*types.Namespace
 		// GetNamespaceList list all namespace
-		GetNamespaceList() []*model.Namespace
+		GetNamespaceList() []*types.Namespace
 		// GetVisibleNamespaces list target namespace can visible other namespaces
-		GetVisibleNamespaces(namespace string) []*model.Namespace
+		GetVisibleNamespaces(namespace string) []*types.Namespace
 		// Query .
-		Query(context.Context, *NamespaceArgs) (uint32, []*model.Namespace, error)
+		Query(context.Context, *NamespaceArgs) (uint32, []*types.Namespace, error)
 	}
 )
 
 type (
 	// ServicePredicate .
-	ServicePredicate func(context.Context, *model.Service) bool
+	ServicePredicate func(context.Context, *svctypes.Service) bool
 
 	// ServiceIterProc 迭代回调函数
-	ServiceIterProc func(key string, value *model.Service) (bool, error)
+	ServiceIterProc func(key string, value *svctypes.Service) (bool, error)
 
 	// ServiceArgs 服务查询条件
 	ServiceArgs struct {
@@ -238,13 +240,13 @@ type (
 		Cache
 		// GetNamespaceCntInfo Return to the service statistics according to the namespace,
 		// 	the count statistics and health instance statistics
-		GetNamespaceCntInfo(namespace string) model.NamespaceServiceCount
+		GetNamespaceCntInfo(namespace string) svctypes.NamespaceServiceCount
 		// GetAllNamespaces Return all namespaces
 		GetAllNamespaces() []string
 		// GetServiceByID According to ID query service information
-		GetServiceByID(id string) *model.Service
+		GetServiceByID(id string) *svctypes.Service
 		// GetServiceByName Inquiry service information according to service name
-		GetServiceByName(name string, namespace string) *model.Service
+		GetServiceByName(name string, namespace string) *svctypes.Service
 		// IteratorServices Iterative Cache Service Information
 		IteratorServices(iterProc ServiceIterProc) error
 		// CleanNamespace Clear the cache of NameSpace
@@ -252,24 +254,24 @@ type (
 		// GetServicesCount Get the number of services in the cache
 		GetServicesCount() int
 		// GetServiceByCl5Name Get the corresponding SID according to CL5name
-		GetServiceByCl5Name(cl5Name string) *model.Service
+		GetServiceByCl5Name(cl5Name string) *svctypes.Service
 		// GetServicesByFilter Serving the service filtering in the cache through Filter
 		GetServicesByFilter(ctx context.Context, serviceFilters *ServiceArgs,
-			instanceFilters *store.InstanceArgs, offset, limit uint32) (uint32, []*model.EnhancedService, error)
+			instanceFilters *store.InstanceArgs, offset, limit uint32) (uint32, []*svctypes.EnhancedService, error)
 		// ListServices get service list and revision by namespace
-		ListServices(ctx context.Context, ns string) (string, []*model.Service)
+		ListServices(ctx context.Context, ns string) (string, []*svctypes.Service)
 		// ListAllServices get all service and revision
-		ListAllServices(ctx context.Context) (string, []*model.Service)
+		ListAllServices(ctx context.Context) (string, []*svctypes.Service)
 		// ListServiceAlias list service link alias list
-		ListServiceAlias(namespace, name string) []*model.Service
+		ListServiceAlias(namespace, name string) []*svctypes.Service
 		// GetAliasFor get alias reference service info
-		GetAliasFor(name string, namespace string) *model.Service
+		GetAliasFor(name string, namespace string) *svctypes.Service
 		// GetRevisionWorker .
 		GetRevisionWorker() ServiceRevisionWorker
 		// GetVisibleServicesInOtherNamespace get same service in other namespace and it's visible
 		// 如果 name == *，表示返回所有对 namespace 可见的服务
 		// 如果 name 是具体服务，表示返回对 name + namespace 设置了可见的服务
-		GetVisibleServicesInOtherNamespace(ctx context.Context, name string, namespace string) []*model.Service
+		GetVisibleServicesInOtherNamespace(ctx context.Context, name string, namespace string) []*svctypes.Service
 	}
 
 	// ServiceRevisionWorker
@@ -286,24 +288,24 @@ type (
 	ServiceContractCache interface {
 		Cache
 		// Get .
-		Get(ctx context.Context, req *model.ServiceContract) *model.EnrichServiceContract
+		Get(ctx context.Context, req *svctypes.ServiceContract) *model.EnrichServiceContract
 	}
 )
 
 type (
 	// InstanceIterProc instance iter proc func
-	InstanceIterProc func(key string, value *model.Instance) (bool, error)
+	InstanceIterProc func(key string, value *svctypes.Instance) (bool, error)
 
 	// InstanceCache 实例相关的缓存接口
 	InstanceCache interface {
 		// Cache 公共缓存接口
 		Cache
 		// GetInstance 根据实例ID获取实例数据
-		GetInstance(instanceID string) *model.Instance
+		GetInstance(instanceID string) *svctypes.Instance
 		// GetInstancesByServiceID 根据服务名获取实例，先查找服务名对应的服务ID，再找实例列表
-		GetInstancesByServiceID(serviceID string) []*model.Instance
+		GetInstancesByServiceID(serviceID string) []*svctypes.Instance
 		// GetInstances 根据服务名获取实例，先查找服务名对应的服务ID，再找实例列表
-		GetInstances(serviceID string) *model.ServiceInstances
+		GetInstances(serviceID string) *svctypes.ServiceInstances
 		// IteratorInstances 迭代
 		IteratorInstances(iterProc InstanceIterProc) error
 		// IteratorInstancesWithService 根据服务ID进行迭代
@@ -311,15 +313,15 @@ type (
 		// GetInstancesCount 获取instance的个数
 		GetInstancesCount() int
 		// GetInstancesCountByServiceID 根据服务ID获取实例数
-		GetInstancesCountByServiceID(serviceID string) model.InstanceCount
+		GetInstancesCountByServiceID(serviceID string) svctypes.InstanceCount
 		// GetServicePorts 根据服务ID获取端口号
-		GetServicePorts(serviceID string) []*model.ServicePort
+		GetServicePorts(serviceID string) []*svctypes.ServicePort
 		// GetInstanceLabels Get the label of all instances under a service
 		GetInstanceLabels(serviceID string) *apiservice.InstanceLabels
 		// QueryInstances query instance for OSS
-		QueryInstances(filter, metaFilter map[string]string, offset, limit uint32) (uint32, []*model.Instance, error)
+		QueryInstances(filter, metaFilter map[string]string, offset, limit uint32) (uint32, []*svctypes.Instance, error)
 		// DiscoverServiceInstances 服务发现获取实例
-		DiscoverServiceInstances(serviceID string, onlyHealthy bool) []*model.Instance
+		DiscoverServiceInstances(serviceID string, onlyHealthy bool) []*svctypes.Instance
 		// RemoveService
 		RemoveService(serviceID string)
 	}
@@ -327,7 +329,7 @@ type (
 
 type (
 	// FaultDetectPredicate .
-	FaultDetectPredicate func(context.Context, *model.FaultDetectRule) bool
+	FaultDetectPredicate func(context.Context, *rules.FaultDetectRule) bool
 	// FaultDetectArgs
 	FaultDetectArgs struct {
 		// Filter extend filter params
@@ -342,17 +344,17 @@ type (
 	FaultDetectCache interface {
 		Cache
 		// Query .
-		Query(context.Context, *FaultDetectArgs) (uint32, []*model.FaultDetectRule, error)
+		Query(context.Context, *FaultDetectArgs) (uint32, []*rules.FaultDetectRule, error)
 		// GetFaultDetectConfig 根据ServiceID获取探测配置
-		GetFaultDetectConfig(svcName string, namespace string) *model.ServiceWithFaultDetectRules
+		GetFaultDetectConfig(svcName string, namespace string) *rules.ServiceWithFaultDetectRules
 		// GetRule 获取规则 ID 获取主动探测规则
-		GetRule(id string) *model.FaultDetectRule
+		GetRule(id string) *rules.FaultDetectRule
 	}
 )
 
 type (
 	// LanePredicate .
-	LanePredicate func(context.Context, *model.LaneGroupProto) bool
+	LanePredicate func(context.Context, *rules.LaneGroupProto) bool
 	// LaneGroupArgs .
 	LaneGroupArgs struct {
 		// Filter extend filter params
@@ -366,17 +368,17 @@ type (
 	LaneCache interface {
 		Cache
 		// Query .
-		Query(context.Context, *LaneGroupArgs) (uint32, []*model.LaneGroupProto, error)
+		Query(context.Context, *LaneGroupArgs) (uint32, []*rules.LaneGroupProto, error)
 		// GetLaneRules 根据serviceID获取泳道规则
-		GetLaneRules(serviceKey *model.Service) ([]*model.LaneGroupProto, string)
+		GetLaneRules(serviceKey *svctypes.Service) ([]*rules.LaneGroupProto, string)
 		// GetRule 获取规则 ID 获取全链路灰度规则
-		GetRule(id string) *model.LaneGroup
+		GetRule(id string) *rules.LaneGroup
 	}
 )
 
 type (
 	// RouteRulePredicate .
-	RouteRulePredicate func(context.Context, *model.ExtendRouterConfig) bool
+	RouteRulePredicate func(context.Context, *rules.ExtendRouterConfig) bool
 	// RoutingArgs Routing rules query parameters
 	RoutingArgs struct {
 		// Filter extend filter params
@@ -410,7 +412,7 @@ type (
 	}
 
 	// RouterRuleIterProc Method definition of routing rules
-	RouterRuleIterProc func(key string, value *model.ExtendRouterConfig)
+	RouterRuleIterProc func(key string, value *rules.ExtendRouterConfig)
 
 	// RoutingConfigCache Cache interface configured by routing
 	RoutingConfigCache interface {
@@ -423,22 +425,22 @@ type (
 		GetNearbyRouteRule(service, namespace string) ([]*apitraffic.RouteRule, string, error)
 		// GetRoutingConfigCount Get the total number of routing configuration cache
 		GetRoutingConfigCount() int
-		// QueryRoutingConfigsV2 Query Route Configuration List
-		QueryRoutingConfigsV2(context.Context, *RoutingArgs) (uint32, []*model.ExtendRouterConfig, error)
+		// QueryRoutingConfigs Query Route Configuration List
+		QueryRoutingConfigs(context.Context, *RoutingArgs) (uint32, []*rules.ExtendRouterConfig, error)
 		// ListRouterRule list all router rule
-		ListRouterRule(service, namespace string) []*model.ExtendRouterConfig
+		ListRouterRule(service, namespace string) []*rules.ExtendRouterConfig
 		// IsConvertFromV1 Whether the current routing rules are converted from the V1 rule
 		IsConvertFromV1(id string) (string, bool)
 		// IteratorRouterRule iterator router rule
 		IteratorRouterRule(iterProc RouterRuleIterProc)
 		// GetRule 获取规则 ID 获取路由规则
-		GetRule(id string) *model.ExtendRouterConfig
+		GetRule(id string) *rules.ExtendRouterConfig
 	}
 )
 
 type (
 	// RateLimitRulePredicate .
-	RateLimitRulePredicate func(context.Context, *model.RateLimit) bool
+	RateLimitRulePredicate func(context.Context, *rules.RateLimit) bool
 	// RateLimitRuleArgs ratelimit rules query parameters
 	RateLimitRuleArgs struct {
 		// Filter extend filter params
@@ -464,7 +466,7 @@ type (
 	}
 
 	// RateLimitIterProc rate limit iter func
-	RateLimitIterProc func(rateLimit *model.RateLimit)
+	RateLimitIterProc func(rateLimit *rules.RateLimit)
 
 	// RateLimitCache rateLimit的cache接口
 	RateLimitCache interface {
@@ -472,36 +474,19 @@ type (
 		// IteratorRateLimit 遍历所有的限流规则
 		IteratorRateLimit(rateLimitIterProc RateLimitIterProc)
 		// GetRateLimitRules 根据serviceID获取限流数据
-		GetRateLimitRules(serviceKey model.ServiceKey) ([]*model.RateLimit, string)
+		GetRateLimitRules(serviceKey svctypes.ServiceKey) ([]*rules.RateLimit, string)
 		// QueryRateLimitRules
-		QueryRateLimitRules(context.Context, RateLimitRuleArgs) (uint32, []*model.RateLimit, error)
+		QueryRateLimitRules(context.Context, RateLimitRuleArgs) (uint32, []*rules.RateLimit, error)
 		// GetRateLimitsCount 获取限流规则总数
 		GetRateLimitsCount() int
 		// GetRule 获取规则 ID 获取限流规则
-		GetRule(id string) *model.RateLimit
-	}
-)
-
-type (
-	// L5Cache L5的cache接口
-	L5Cache interface {
-		Cache
-		// GetRouteByIP 根据IP获取访问关系
-		GetRouteByIP(ip uint32) []*model.Route
-		// CheckRouteExisted 检查IP对应的SID是否存在访问关系
-		CheckRouteExisted(ip uint32, modID uint32, cmdID uint32) bool
-		// GetPolicy 获取有状态路由信息policy
-		GetPolicy(modID uint32) *model.Policy
-		// GetSection 获取有状态路由信息policy
-		GetSection(modeID uint32) []*model.Section
-		// GetIPConfig 获取IpConfig
-		GetIPConfig(ip uint32) *model.IPConfig
+		GetRule(id string) *rules.RateLimit
 	}
 )
 
 type (
 	// CircuitBreakerPredicate .
-	CircuitBreakerPredicate func(context.Context, *model.CircuitBreakerRule) bool
+	CircuitBreakerPredicate func(context.Context, *rules.CircuitBreakerRule) bool
 	// CircuitBreakerRuleArgs .
 	CircuitBreakerRuleArgs struct {
 		// Filter extend filter params
@@ -515,11 +500,11 @@ type (
 	CircuitBreakerCache interface {
 		Cache
 		// Query .
-		Query(context.Context, *CircuitBreakerRuleArgs) (uint32, []*model.CircuitBreakerRule, error)
+		Query(context.Context, *CircuitBreakerRuleArgs) (uint32, []*rules.CircuitBreakerRule, error)
 		// GetCircuitBreakerConfig 根据ServiceID获取熔断配置
-		GetCircuitBreakerConfig(svcName string, namespace string) *model.ServiceWithCircuitBreakerRules
+		GetCircuitBreakerConfig(svcName string, namespace string) *rules.ServiceWithCircuitBreakerRules
 		// GetRule 获取规则 ID 获取熔断规则
-		GetRule(id string) *model.CircuitBreakerRule
+		GetRule(id string) *rules.CircuitBreakerRule
 	}
 )
 
@@ -596,15 +581,15 @@ type (
 	ConfigFileCache interface {
 		Cache
 		// GetActiveRelease
-		GetGroupActiveReleases(namespace, group string) ([]*model.ConfigFileRelease, string)
+		GetGroupActiveReleases(namespace, group string) ([]*conftypes.ConfigFileRelease, string)
 		// GetActiveRelease
-		GetActiveRelease(namespace, group, fileName string) *model.ConfigFileRelease
+		GetActiveRelease(namespace, group, fileName string) *conftypes.ConfigFileRelease
 		// GetActiveGrayRelease
-		GetActiveGrayRelease(namespace, group, fileName string) *model.ConfigFileRelease
+		GetActiveGrayRelease(namespace, group, fileName string) *conftypes.ConfigFileRelease
 		// GetRelease
-		GetRelease(key model.ConfigFileReleaseKey) *model.ConfigFileRelease
+		GetRelease(key conftypes.ConfigFileReleaseKey) *conftypes.ConfigFileRelease
 		// QueryReleases
-		QueryReleases(args *ConfigReleaseArgs) (uint32, []*model.SimpleConfigFileRelease, error)
+		QueryReleases(args *ConfigReleaseArgs) (uint32, []*conftypes.SimpleConfigFileRelease, error)
 	}
 )
 
@@ -693,17 +678,17 @@ type (
 type (
 
 	// ClientIterProc client iter proc func
-	ClientIterProc func(key string, value *model.Client) bool
+	ClientIterProc func(key string, value *types.Client) bool
 
 	// ClientCache 客户端的 Cache 接口
 	ClientCache interface {
 		Cache
 		// GetClient get client
-		GetClient(id string) *model.Client
+		GetClient(id string) *types.Client
 		// IteratorClients 迭代
 		IteratorClients(iterProc ClientIterProc)
 		// GetClientsByFilter Query client information
-		GetClientsByFilter(filters map[string]string, offset, limit uint32) (uint32, []*model.Client, error)
+		GetClientsByFilter(filters map[string]string, offset, limit uint32) (uint32, []*types.Client, error)
 	}
 )
 

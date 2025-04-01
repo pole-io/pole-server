@@ -24,8 +24,8 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -45,7 +45,7 @@ func (s *Server) CreateConfigFileTemplate(
 		return api.NewConfigResponse(apimodel.Code_ExistedResource)
 	}
 
-	saveData = model.ToConfigFileTemplateStore(template)
+	saveData = conftypes.ToConfigFileTemplateStore(template)
 	userName := utils.ParseUserName(ctx)
 	template.CreateBy = utils.NewStringValue(userName)
 	template.ModifyBy = utils.NewStringValue(userName)
@@ -73,7 +73,7 @@ func (s *Server) GetConfigFileTemplate(ctx context.Context, name string) *apicon
 		return api.NewConfigResponse(apimodel.Code_NotFoundResource)
 	}
 	out := api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
-	out.ConfigFileTemplate = model.ToConfigFileTemplateAPI(saveData)
+	out.ConfigFileTemplate = conftypes.ToConfigFileTemplateAPI(saveData)
 	return out
 }
 
@@ -87,7 +87,7 @@ func (s *Server) GetAllConfigFileTemplates(ctx context.Context) *apiconfig.Confi
 
 	var apiTemplates []*apiconfig.ConfigFileTemplate
 	for _, template := range templates {
-		apiTemplates = append(apiTemplates, model.ToConfigFileTemplateAPI(template))
+		apiTemplates = append(apiTemplates, conftypes.ToConfigFileTemplateAPI(template))
 	}
 	return api.NewConfigFileTemplateBatchQueryResponse(apimodel.Code_ExecuteSuccess,
 		uint32(len(templates)), apiTemplates)

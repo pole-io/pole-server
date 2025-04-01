@@ -27,10 +27,10 @@ import (
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/crypto"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
 )
@@ -98,12 +98,12 @@ func (s *Server) TestCheckClientConfigFile(ctx context.Context, files []*apiconf
 	return api.NewConfigClientResponse(apimodel.Code_DataNoChange, nil), true
 }
 
-func TestCompareByVersion(clientInfo *apiconfig.ClientConfigFileInfo, file *model.ConfigFileRelease) bool {
+func TestCompareByVersion(clientInfo *apiconfig.ClientConfigFileInfo, file *conftypes.ConfigFileRelease) bool {
 	return clientInfo.GetVersion().GetValue() < file.Version
 }
 
 // TestDecryptConfigFile 解密配置文件
-func (s *Server) TestDecryptConfigFile(ctx context.Context, configFile *model.ConfigFile) (err error) {
+func (s *Server) TestDecryptConfigFile(ctx context.Context, configFile *conftypes.ConfigFile) (err error) {
 	for i := range s.chains.chains {
 		chain := s.chains.chains[i]
 		if val, ok := chain.(*CryptoConfigFileChain); ok {
@@ -117,7 +117,7 @@ func (s *Server) TestDecryptConfigFile(ctx context.Context, configFile *model.Co
 
 // TestEncryptConfigFile 解密配置文件
 func (s *Server) TestEncryptConfigFile(ctx context.Context,
-	configFile *model.ConfigFile, algorithm string, dataKey string) error {
+	configFile *conftypes.ConfigFile, algorithm string, dataKey string) error {
 	for i := range s.chains.chains {
 		chain := s.chains.chains[i]
 		if val, ok := chain.(*CryptoConfigFileChain); ok {

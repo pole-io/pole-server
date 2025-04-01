@@ -23,10 +23,11 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/hash"
 	commonhash "github.com/pole-io/pole-server/pkg/common/hash"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin"
 )
@@ -67,7 +68,7 @@ func newCacheProvider(selfService string, svr *Server) *CacheProvider {
 
 func (c *CacheProvider) isSelfServiceInstance(instance *apiservice.Instance) bool {
 	metadata := instance.GetMetadata()
-	if svcName, ok := metadata[model.MetaKeyPolarisService]; ok {
+	if svcName, ok := metadata[types.MetaKeyPolarisService]; ok {
 		return svcName == c.selfService
 	}
 	return false
@@ -108,7 +109,7 @@ func (c *CacheProvider) handleClientCacheEvent(ctx context.Context, args interfa
 // OnCreated callback when cache value created
 func (c *CacheProvider) OnCreated(value interface{}) {
 	switch actual := value.(type) {
-	case *model.Instance:
+	case *svctypes.Instance:
 		instProto := actual.Proto
 		if c.isSelfServiceInstance(instProto) {
 			storeServiceInstance(newInstanceWithChecker(actual, nil), c.selfServiceInstances)
@@ -121,7 +122,7 @@ func (c *CacheProvider) OnCreated(value interface{}) {
 		}
 		storeServiceInstance(newInstanceWithChecker(actual, checker), c.healthCheckInstances)
 		c.sendEvent(CacheEvent{healthCheckInstancesChanged: true})
-	case *model.Client:
+	case *types.Client:
 		checker, ok := c.getHealthChecker(apiservice.HealthCheck_HEARTBEAT)
 		if !ok {
 			return
@@ -150,7 +151,7 @@ func (c *CacheProvider) isHealthCheckEnable(instance *apiservice.Instance) (bool
 // OnUpdated callback when cache value updated
 func (c *CacheProvider) OnUpdated(value interface{}) {
 	switch actual := value.(type) {
-	case *model.Instance:
+	case *svctypes.Instance:
 		instProto := actual.Proto
 		if c.isSelfServiceInstance(instProto) {
 			if compareAndStoreServiceInstance(newInstanceWithChecker(actual, nil), c.selfServiceInstances) {
@@ -190,7 +191,7 @@ func (c *CacheProvider) OnUpdated(value interface{}) {
 			c.healthCheckInstances.Put(instanceId, newInstanceWithChecker(actual, checker))
 			c.sendEvent(CacheEvent{healthCheckInstancesChanged: true})
 		}
-	case *model.Client:
+	case *types.Client:
 		checker, ok := c.getHealthChecker(apiservice.HealthCheck_HEARTBEAT)
 		if !ok {
 			return
@@ -204,7 +205,7 @@ func (c *CacheProvider) OnUpdated(value interface{}) {
 // OnDeleted callback when cache value deleted
 func (c *CacheProvider) OnDeleted(value interface{}) {
 	switch actual := value.(type) {
-	case *model.Instance:
+	case *svctypes.Instance:
 		instProto := actual.Proto
 		if c.isSelfServiceInstance(instProto) {
 			deleteServiceInstance(instProto, c.selfServiceInstances)
@@ -216,21 +217,21 @@ func (c *CacheProvider) OnDeleted(value interface{}) {
 		}
 		deleteServiceInstance(instProto, c.healthCheckInstances)
 		c.sendEvent(CacheEvent{healthCheckInstancesChanged: true})
-	case *model.Client:
+	case *types.Client:
 		deleteClient(actual.Proto(), c.healthCheckClients)
 		c.sendEvent(CacheEvent{healthCheckClientChanged: true})
 	}
 }
 
 // RangeHealthCheckInstances range loop values
-func (c *CacheProvider) RangeHealthCheckInstances(check func(itemChecker ItemWithChecker, ins *model.Instance)) {
+func (c *CacheProvider) RangeHealthCheckInstances(check func(itemChecker ItemWithChecker, ins *svctypes.Instance)) {
 	c.healthCheckInstances.Range(func(instanceId string, value ItemWithChecker) {
 		check(value, value.GetInstance())
 	})
 }
 
 // RangeHealthCheckClients range loop values
-func (c *CacheProvider) RangeHealthCheckClients(check func(itemChecker ItemWithChecker, client *model.Client)) {
+func (c *CacheProvider) RangeHealthCheckClients(check func(itemChecker ItemWithChecker, client *types.Client)) {
 	c.healthCheckClients.Range(func(instanceId string, value ItemWithChecker) {
 		check(value, value.GetClient())
 	})
@@ -244,7 +245,7 @@ func (c *CacheProvider) RangeSelfServiceInstances(check func(instance *apiservic
 }
 
 // GetSelfServiceInstance get self service instance by id
-func (c *CacheProvider) GetSelfServiceInstance(instanceId string) *model.Instance {
+func (c *CacheProvider) GetSelfServiceInstance(instanceId string) *svctypes.Instance {
 	value, ok := c.selfServiceInstances.Get(instanceId)
 	if !ok {
 		return nil
@@ -258,7 +259,7 @@ func (c *CacheProvider) GetSelfServiceInstance(instanceId string) *model.Instanc
 }
 
 // GetInstance get instance by id
-func (c *CacheProvider) GetInstance(instanceId string) *model.Instance {
+func (c *CacheProvider) GetInstance(instanceId string) *svctypes.Instance {
 	value, ok := c.healthCheckInstances.Get(instanceId)
 	if !ok {
 		return nil
@@ -272,7 +273,7 @@ func (c *CacheProvider) GetInstance(instanceId string) *model.Instance {
 }
 
 // GetInstance get instance by id
-func (c *CacheProvider) GetClient(clientId string) *model.Client {
+func (c *CacheProvider) GetClient(clientId string) *types.Client {
 	value, ok := c.healthCheckClients.Get(clientId)
 	if !ok {
 		return nil
@@ -368,9 +369,9 @@ func deleteClient(client *apiservice.Client, values *utils.SegmentMap[string, It
 // GetInstance 与 GetClient 互斥
 type ItemWithChecker interface {
 	// GetInstance 获取服务实例
-	GetInstance() *model.Instance
+	GetInstance() *svctypes.Instance
 	// GetClient 获取上报客户端信息
-	GetClient() *model.Client
+	GetClient() *types.Client
 	// GetChecker 获取对应的 checker 对象
 	GetChecker() plugin.HealthChecker
 	// GetHashValue 获取 hashvalue 信息
@@ -379,18 +380,18 @@ type ItemWithChecker interface {
 
 // InstanceWithChecker instance and checker combine
 type InstanceWithChecker struct {
-	instance  *model.Instance
+	instance  *svctypes.Instance
 	checker   plugin.HealthChecker
 	hashValue uint
 }
 
 // GetInstance 获取服务实例
-func (ic *InstanceWithChecker) GetInstance() *model.Instance {
+func (ic *InstanceWithChecker) GetInstance() *svctypes.Instance {
 	return ic.instance
 }
 
 // GetClient 获取上报客户端信息
-func (ic *InstanceWithChecker) GetClient() *model.Client {
+func (ic *InstanceWithChecker) GetClient() *types.Client {
 	return nil
 }
 
@@ -404,7 +405,7 @@ func (ic *InstanceWithChecker) GetHashValue() uint {
 	return ic.hashValue
 }
 
-func newInstanceWithChecker(instance *model.Instance, checker plugin.HealthChecker) *InstanceWithChecker {
+func newInstanceWithChecker(instance *svctypes.Instance, checker plugin.HealthChecker) *InstanceWithChecker {
 	return &InstanceWithChecker{
 		instance:  instance,
 		checker:   checker,
@@ -414,18 +415,18 @@ func newInstanceWithChecker(instance *model.Instance, checker plugin.HealthCheck
 
 // ClientWithChecker instance and checker combine
 type ClientWithChecker struct {
-	client    *model.Client
+	client    *types.Client
 	checker   plugin.HealthChecker
 	hashValue uint
 }
 
 // GetInstance 获取服务实例
-func (ic *ClientWithChecker) GetInstance() *model.Instance {
+func (ic *ClientWithChecker) GetInstance() *svctypes.Instance {
 	return nil
 }
 
 // GetClient 获取上报客户端信息
-func (ic *ClientWithChecker) GetClient() *model.Client {
+func (ic *ClientWithChecker) GetClient() *types.Client {
 	return ic.client
 }
 
@@ -439,7 +440,7 @@ func (ic *ClientWithChecker) GetHashValue() uint {
 	return ic.hashValue
 }
 
-func newClientWithChecker(client *model.Client, checker plugin.HealthChecker) *ClientWithChecker {
+func newClientWithChecker(client *types.Client, checker plugin.HealthChecker) *ClientWithChecker {
 	return &ClientWithChecker{
 		client:    client,
 		checker:   checker,

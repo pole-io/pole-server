@@ -28,7 +28,6 @@ import (
 
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -515,18 +514,6 @@ func TestServiceAliasRelated(t *testing.T) {
 		disResp := discoverSuit.DiscoverServer().ServiceInstancesCache(discoverSuit.DefaultCtx, &apiservice.DiscoverFilter{}, service)
 		assert.True(t, api.IsSuccess(disResp), disResp.GetInfo().GetValue())
 		assert.Equal(t, len(disResp.Instances), 1)
-	})
-	t.Run("路由新建，不允许为别名新建路由", func(t *testing.T) {
-		routing := &apitraffic.Routing{
-			Service:      resp.Alias.Alias,
-			Namespace:    resp.Alias.Namespace,
-			ServiceToken: serviceResp.Token,
-			Inbounds:     make([]*apitraffic.Route, 0),
-		}
-		routingResp := discoverSuit.DiscoverServer().CreateRoutingConfigs(discoverSuit.DefaultCtx, []*apitraffic.Routing{routing})
-		assert.False(t, api.IsSuccess(routingResp), routingResp.GetInfo().GetValue())
-
-		t.Logf("create routing ret code(%d), info(%s)", routingResp.Code.Value, routingResp.Info.Value)
 	})
 	// Convey("路由Discover，别名查询路由，返回源服务的路由信息", t, func() {
 	// 	discoverSuit.createCommonRoutingConfig(t, serviceResp, 1, 0) // in=1, out=0

@@ -23,31 +23,31 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 func TestPreProcess(t *testing.T) {
 	svcId := "1234"
-	mockSvc := &model.Service{
+	mockSvc := &svctypes.Service{
 		ID:        svcId,
 		Namespace: DefaultNamespace,
 		Name:      "testSvc",
 	}
-	svr := &BaseInstanceEventHandler{svcResolver: func(s string) *model.Service {
+	svr := &BaseInstanceEventHandler{svcResolver: func(s string) *svctypes.Service {
 		if s == svcId {
 			return mockSvc
 		}
 		return nil
 	}}
-	event := model.InstanceEvent{SvcId: svcId}
+	event := svctypes.InstanceEvent{SvcId: svcId}
 	event0bj := svr.PreProcess(context.Background(), event)
-	eventNext := event0bj.(model.InstanceEvent)
+	eventNext := event0bj.(svctypes.InstanceEvent)
 	assert.Equal(t, mockSvc.Namespace, eventNext.Namespace)
 	assert.Equal(t, mockSvc.Name, eventNext.Service)
 
-	event = model.InstanceEvent{SvcId: "xyz"}
+	event = svctypes.InstanceEvent{SvcId: "xyz"}
 	event0bj = svr.PreProcess(context.Background(), event)
-	eventNext = event0bj.(model.InstanceEvent)
+	eventNext = event0bj.(svctypes.InstanceEvent)
 	assert.Equal(t, "", eventNext.Namespace)
 	assert.Equal(t, "", eventNext.Service)
 

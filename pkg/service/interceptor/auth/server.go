@@ -28,6 +28,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -274,7 +275,7 @@ func (svr *Server) queryServiceResource(
 	}
 
 	names := utils.NewSet[string]()
-	svcSet := utils.NewMap[string, *model.Service]()
+	svcSet := utils.NewMap[string, *svctypes.Service]()
 
 	for index := range req {
 		svcName := req[index].GetName().GetValue()
@@ -301,7 +302,7 @@ func (svr *Server) queryServiceAliasResource(
 	}
 
 	names := utils.NewSet[string]()
-	svcSet := utils.NewMap[string, *model.Service]()
+	svcSet := utils.NewMap[string, *svctypes.Service]()
 
 	for index := range req {
 		refSvcName := req[index].GetService().GetValue()
@@ -330,7 +331,7 @@ func (svr *Server) queryInstanceResource(
 	}
 
 	names := utils.NewSet[string]()
-	svcSet := utils.NewMap[string, *model.Service]()
+	svcSet := utils.NewMap[string, *svctypes.Service]()
 
 	for index := range req {
 		svcName := req[index].GetService().GetValue()
@@ -371,7 +372,7 @@ func (svr *Server) queryRouteRuleResource(
 	}
 
 	names := utils.NewSet[string]()
-	svcSet := utils.NewMap[string, *model.Service]()
+	svcSet := utils.NewMap[string, *svctypes.Service]()
 
 	for index := range req {
 		svcName := req[index].GetService().GetValue()
@@ -397,7 +398,7 @@ func (svr *Server) queryRateLimitConfigResource(
 	}
 
 	names := utils.NewSet[string]()
-	svcSet := utils.NewMap[string, *model.Service]()
+	svcSet := utils.NewMap[string, *svctypes.Service]()
 
 	for index := range req {
 		svcName := req[index].GetService().GetValue()
@@ -417,7 +418,7 @@ func (svr *Server) queryRateLimitConfigResource(
 
 // convertToDiscoverResourceEntryMaps 通用方法，进行转换为期望的、服务相关的 ResourceEntry
 func (svr *Server) convertToDiscoverResourceEntryMaps(nsSet *utils.Set[string],
-	svcSet *utils.Map[string, *model.Service]) map[apisecurity.ResourceType][]authcommon.ResourceEntry {
+	svcSet *utils.Map[string, *svctypes.Service]) map[apisecurity.ResourceType][]authcommon.ResourceEntry {
 	var (
 		param = nsSet.ToSlice()
 		nsArr = svr.Cache().Namespace().GetNamespacesByName(param)
@@ -434,7 +435,7 @@ func (svr *Server) convertToDiscoverResourceEntryMaps(nsSet *utils.Set[string],
 	}
 
 	svcRet := make([]authcommon.ResourceEntry, 0, svcSet.Len())
-	svcSet.Range(func(key string, svc *model.Service) {
+	svcSet.Range(func(key string, svc *svctypes.Service) {
 		svcRet = append(svcRet, authcommon.ResourceEntry{
 			Type:     apisecurity.ResourceType_Services,
 			ID:       svc.ID,

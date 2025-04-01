@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 )
 
 const (
@@ -36,7 +36,7 @@ const (
 
 func InitNamespaceData(nsStore *namespaceStore, nsCount int) error {
 	for i := 0; i < nsCount; i++ {
-		err := nsStore.AddNamespace(&model.Namespace{
+		err := nsStore.AddNamespace(&types.Namespace{
 			Name:       "default" + strconv.Itoa(i),
 			Comment:    nsComment,
 			Token:      nsToken,
@@ -63,7 +63,7 @@ func TestNamespaceStore_AddNamespace(t *testing.T) {
 	}()
 	nsStore := &namespaceStore{handler: handler}
 	for i := 0; i < nsCount; i++ {
-		err = nsStore.AddNamespace(&model.Namespace{
+		err = nsStore.AddNamespace(&types.Namespace{
 			Name:       "default" + strconv.Itoa(i),
 			Comment:    nsComment,
 			Token:      nsToken,
@@ -236,7 +236,7 @@ func TestNamespaceStore_UpdateNamespace(t *testing.T) {
 	}
 
 	for i := 0; i < nsCount; i++ {
-		nsRaw := &model.Namespace{
+		nsRaw := &types.Namespace{
 			Name:    "default" + strconv.Itoa(i),
 			Comment: nsComment + strconv.Itoa(i),
 			Owner:   nsOwner,

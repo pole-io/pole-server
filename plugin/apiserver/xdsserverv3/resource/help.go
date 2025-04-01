@@ -58,8 +58,8 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	types "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -215,7 +215,7 @@ func BuildWeightClustersV2(trafficDirection corev3.TrafficDirection,
 			}
 		}
 		weightCluster := &route.WeightedCluster_ClusterWeight{
-			Name: MakeServiceName(model.ServiceKey{
+			Name: MakeServiceName(svctypes.ServiceKey{
 				Namespace: destination.Namespace,
 				Name:      destination.Service,
 			}, trafficDirection, opt),
@@ -575,7 +575,7 @@ func MakeGatewayRoute(trafficDirection corev3.TrafficDirection, routeMatch *rout
 }
 
 // 默认路由
-func MakeDefaultRoute(trafficDirection corev3.TrafficDirection, svcKey model.ServiceKey, opt *BuildOption) *route.Route {
+func MakeDefaultRoute(trafficDirection corev3.TrafficDirection, svcKey svctypes.ServiceKey, opt *BuildOption) *route.Route {
 	routeConf := &route.Route{
 		Match: &route.RouteMatch{
 			PathSpecifier: &route.RouteMatch_Prefix{
@@ -664,7 +664,7 @@ var PassthroughCluster = &cluster.Cluster{
 }
 
 // MakeInBoundRouteConfigName .
-func MakeInBoundRouteConfigName(svcKey model.ServiceKey, demand bool) string {
+func MakeInBoundRouteConfigName(svcKey svctypes.ServiceKey, demand bool) string {
 	if demand {
 		return InBoundRouteConfigName + "|" + svcKey.Domain() + "|DEMAND"
 	}
@@ -672,7 +672,7 @@ func MakeInBoundRouteConfigName(svcKey model.ServiceKey, demand bool) string {
 }
 
 // MakeServiceName .
-func MakeServiceName(svcKey model.ServiceKey, trafficDirection corev3.TrafficDirection,
+func MakeServiceName(svcKey svctypes.ServiceKey, trafficDirection corev3.TrafficDirection,
 	opt *BuildOption) string {
 	if trafficDirection == core.TrafficDirection_INBOUND || !opt.IsDemand() {
 		return fmt.Sprintf("%s|%s|%s", corev3.TrafficDirection_name[int32(trafficDirection)],
@@ -684,7 +684,7 @@ func MakeServiceName(svcKey model.ServiceKey, trafficDirection corev3.TrafficDir
 }
 
 // MakeVHDSServiceName .
-func MakeVHDSServiceName(prefix string, svcKey model.ServiceKey) string {
+func MakeVHDSServiceName(prefix string, svcKey svctypes.ServiceKey) string {
 	return prefix + svcKey.Name + "." + svcKey.Namespace
 }
 
@@ -707,7 +707,7 @@ func MakeDefaultFilterChain() *listenerv3.FilterChain {
 	}
 }
 
-func makeRateLimitHCMFilter(svcKey model.ServiceKey) []*hcm.HttpFilter {
+func makeRateLimitHCMFilter(svcKey svctypes.ServiceKey) []*hcm.HttpFilter {
 	return []*hcm.HttpFilter{
 		{
 			Name: "envoy.filters.http.local_ratelimit",
@@ -760,7 +760,7 @@ func makeSidecarOnDemandHCMFilter(option *BuildOption) []*hcm.HttpFilter {
 	}
 }
 
-func MakeSidecarOnDemandOutBoundHCM(svcKey model.ServiceKey, option *BuildOption) *hcm.HttpConnectionManager {
+func MakeSidecarOnDemandOutBoundHCM(svcKey svctypes.ServiceKey, option *BuildOption) *hcm.HttpConnectionManager {
 
 	hcmFilters := makeSidecarOnDemandHCMFilter(option)
 
@@ -775,7 +775,7 @@ func MakeSidecarOnDemandOutBoundHCM(svcKey model.ServiceKey, option *BuildOption
 	return manager
 }
 
-func MakeSidecarBoundHCM(svcKey model.ServiceKey, trafficDirection corev3.TrafficDirection, opt *BuildOption) *hcm.HttpConnectionManager {
+func MakeSidecarBoundHCM(svcKey svctypes.ServiceKey, trafficDirection corev3.TrafficDirection, opt *BuildOption) *hcm.HttpConnectionManager {
 	hcmFilters := []*hcm.HttpFilter{
 		{
 			Name: wellknown.Router,
@@ -817,7 +817,7 @@ func MakeSidecarBoundHCM(svcKey model.ServiceKey, trafficDirection corev3.Traffi
 	return manager
 }
 
-func MakeGatewayBoundHCM(svcKey model.ServiceKey, opt *BuildOption) *hcm.HttpConnectionManager {
+func MakeGatewayBoundHCM(svcKey svctypes.ServiceKey, opt *BuildOption) *hcm.HttpConnectionManager {
 	hcmFilters := makeRateLimitHCMFilter(svcKey)
 	hcmFilters = append(hcmFilters, &hcm.HttpFilter{
 		Name: wellknown.Router,
@@ -877,7 +877,7 @@ func MustNewAny(src proto.Message) *anypb.Any {
 }
 
 func MakeGatewayLocalRateLimit(rateLimitCache types.RateLimitCache, pathSpecifier string,
-	svcKey model.ServiceKey) ([]*route.RateLimit, map[string]*anypb.Any, error) {
+	svcKey svctypes.ServiceKey) ([]*route.RateLimit, map[string]*anypb.Any, error) {
 	conf, _ := rateLimitCache.GetRateLimitRules(svcKey)
 	if conf == nil {
 		return nil, nil, nil
@@ -916,7 +916,7 @@ func MakeGatewayLocalRateLimit(rateLimitCache types.RateLimitCache, pathSpecifie
 }
 
 func MakeSidecarLocalRateLimit(rateLimitCache types.RateLimitCache,
-	svcKey model.ServiceKey) ([]*route.RateLimit, map[string]*anypb.Any, error) {
+	svcKey svctypes.ServiceKey) ([]*route.RateLimit, map[string]*anypb.Any, error) {
 	conf, _ := rateLimitCache.GetRateLimitRules(svcKey)
 	if conf == nil {
 		return nil, map[string]*anypb.Any{}, nil

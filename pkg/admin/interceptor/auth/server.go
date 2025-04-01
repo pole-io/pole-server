@@ -24,11 +24,11 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
+	admincommon "github.com/pole-io/pole-server/apis/pkg/types/admin"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/pkg/admin"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	admincommon "github.com/pole-io/pole-server/pkg/common/model/admin"
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 

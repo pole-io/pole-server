@@ -26,8 +26,8 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 type clientStore struct {
@@ -36,7 +36,7 @@ type clientStore struct {
 }
 
 // CreateClient insert the client info
-func (cs *clientStore) CreateClient(client *model.Client) error {
+func (cs *clientStore) CreateClient(client *types.Client) error {
 	clientID := client.Proto().GetId().GetValue()
 	if len(clientID) == 0 {
 		log.Errorf("[Store][database] add business missing id")
@@ -50,7 +50,7 @@ func (cs *clientStore) CreateClient(client *model.Client) error {
 }
 
 // UpdateClient update the client info
-func (cs *clientStore) UpdateClient(client *model.Client) error {
+func (cs *clientStore) UpdateClient(client *types.Client) error {
 	err := RetryTransaction("updateClient", func() error {
 		return cs.updateClient(client)
 	})
@@ -77,7 +77,7 @@ func deleteClient(tx *BaseTx, clientID string) error {
 }
 
 // BatchAddClients 增加多个实例
-func (cs *clientStore) BatchAddClients(clients []*model.Client) error {
+func (cs *clientStore) BatchAddClients(clients []*types.Client) error {
 	err := RetryTransaction("batchAddClients", func() error {
 		return cs.batchAddClients(clients)
 	})
@@ -99,7 +99,7 @@ func (cs *clientStore) BatchDeleteClients(ids []string) error {
 }
 
 // GetMoreClients 根据mtime获取增量clients，返回所有store的变更信息
-func (cs *clientStore) GetMoreClients(mtime time.Time, firstUpdate bool) (map[string]*model.Client, error) {
+func (cs *clientStore) GetMoreClients(mtime time.Time, firstUpdate bool) (map[string]*types.Client, error) {
 	str := `select client.id, client.host, client.type, IFNULL(client.version,""), IFNULL(client.region, ""),
 		 IFNULL(client.zone, ""), IFNULL(client.campus, ""), client.flag,  IFNULL(client_stat.target, ""), 
 		 IFNULL(client_stat.port, 0), IFNULL(client_stat.protocol, ""), IFNULL(client_stat.path, ""), 
@@ -115,13 +115,13 @@ func (cs *clientStore) GetMoreClients(mtime time.Time, firstUpdate bool) (map[st
 		return nil, err
 	}
 
-	out := make(map[string]*model.Client)
-	err = callFetchClientRows(rows, func(entry *model.ClientStore) (b bool, e error) {
+	out := make(map[string]*types.Client)
+	err = callFetchClientRows(rows, func(entry *types.ClientStore) (b bool, e error) {
 		outClient, ok := out[entry.ID]
 		if !ok {
-			out[entry.ID] = model.Store2Client(entry)
+			out[entry.ID] = types.Store2Client(entry)
 		} else {
-			statInfo := model.Store2ClientStat(&entry.Stat)
+			statInfo := types.Store2ClientStat(&entry.Stat)
 			outClient.Proto().Stat = append(outClient.Proto().Stat, statInfo)
 		}
 		return true, nil
@@ -134,7 +134,7 @@ func (cs *clientStore) GetMoreClients(mtime time.Time, firstUpdate bool) (map[st
 	return out, nil
 }
 
-func (cs *clientStore) batchAddClients(clients []*model.Client) error {
+func (cs *clientStore) batchAddClients(clients []*types.Client) error {
 	tx, err := cs.master.Begin()
 	if err != nil {
 		log.Errorf("[Store][database] batch add clients tx begin err: %s", err.Error())
@@ -231,7 +231,7 @@ func batchCleanClientStats(tx *BaseTx, ids []string) error {
 	})
 }
 
-func (cs *clientStore) GetClientStat(clientID string) ([]*model.ClientStatStore, error) {
+func (cs *clientStore) GetClientStat(clientID string) ([]*types.ClientStatStore, error) {
 	str := "select `target`, `port`, `protocol`, `path` from client_stat where client.id = ?"
 	rows, err := cs.master.Query(str, clientID)
 	if err != nil {
@@ -240,9 +240,9 @@ func (cs *clientStore) GetClientStat(clientID string) ([]*model.ClientStatStore,
 	}
 	defer rows.Close()
 
-	var clientStatStores []*model.ClientStatStore
+	var clientStatStores []*types.ClientStatStore
 	for rows.Next() {
-		clientStatStore := &model.ClientStatStore{}
+		clientStatStore := &types.ClientStatStore{}
 		if err := rows.Scan(&clientStatStore.Target,
 			&clientStatStore.Port, &clientStatStore.Protocol, &clientStatStore.Path); err != nil {
 			log.Errorf("[Store][database] get client meta rows scan err: %s", err.Error())
@@ -259,12 +259,12 @@ func (cs *clientStore) GetClientStat(clientID string) ([]*model.ClientStatStore,
 }
 
 // callFetchClientRows 带回调的fetch client
-func callFetchClientRows(rows *sql.Rows, callback func(entry *model.ClientStore) (bool, error)) error {
+func callFetchClientRows(rows *sql.Rows, callback func(entry *types.ClientStore) (bool, error)) error {
 	if rows == nil {
 		return nil
 	}
 	defer rows.Close()
-	var item model.ClientStore
+	var item types.ClientStore
 	progress := 0
 	for rows.Next() {
 		progress++
@@ -294,7 +294,7 @@ func callFetchClientRows(rows *sql.Rows, callback func(entry *model.ClientStore)
 	return nil
 }
 
-func (cs *clientStore) createClient(client *model.Client) error {
+func (cs *clientStore) createClient(client *types.Client) error {
 	tx, err := cs.master.Begin()
 	if err != nil {
 		log.Errorf("[Store][database] create client tx begin err: %s", err.Error())
@@ -320,7 +320,7 @@ func (cs *clientStore) createClient(client *model.Client) error {
 	return nil
 }
 
-func (cs *clientStore) updateClient(client *model.Client) error {
+func (cs *clientStore) updateClient(client *types.Client) error {
 	tx, err := cs.master.Begin()
 	if err != nil {
 		log.Errorf("[Store][database] update client tx begin err: %s", err.Error())
@@ -344,7 +344,7 @@ func (cs *clientStore) updateClient(client *model.Client) error {
 	return nil
 }
 
-func addClientMain(tx *BaseTx, client *model.Client) error {
+func addClientMain(tx *BaseTx, client *types.Client) error {
 	str := `insert into client(id, host, type, version, region, zone, campus, flag, ctime, mtime)
 			 values(?, ?, ?, ?, ?, ?, ?, 0, sysdate(), sysdate())`
 	_, err := tx.Exec(str,
@@ -359,7 +359,7 @@ func addClientMain(tx *BaseTx, client *model.Client) error {
 	return err
 }
 
-func batchAddClientMain(tx *BaseTx, clients []*model.Client) error {
+func batchAddClientMain(tx *BaseTx, clients []*types.Client) error {
 	str := `replace into client(id, host, type, version, region, zone, campus, flag, ctime, mtime)
 		 values`
 	first := true
@@ -410,7 +410,7 @@ func batchAddClientStat(tx *BaseTx, client2Stats map[string][]*apiservice.StatIn
 	return err
 }
 
-func addClientStat(tx *BaseTx, client *model.Client) error {
+func addClientStat(tx *BaseTx, client *types.Client) error {
 	stats := client.Proto().GetStat()
 	if len(stats) == 0 {
 		return nil
@@ -436,7 +436,7 @@ func addClientStat(tx *BaseTx, client *model.Client) error {
 	return err
 }
 
-func updateClientMain(tx *BaseTx, client *model.Client) error {
+func updateClientMain(tx *BaseTx, client *types.Client) error {
 	str := `update client set host = ?,
 	 type = ?, version = ?, region = ?, zone = ?, campus = ?, mtime = sysdate() where id = ?`
 
@@ -454,7 +454,7 @@ func updateClientMain(tx *BaseTx, client *model.Client) error {
 }
 
 // updateClientStat 更新client的stat表
-func updateClientStat(tx *BaseTx, client *model.Client) error {
+func updateClientStat(tx *BaseTx, client *types.Client) error {
 	deleteStr := "delete from client_stat where cliend_id = ?"
 	if _, err := tx.Exec(deleteStr, client.Proto().GetId().GetValue()); err != nil {
 		return err

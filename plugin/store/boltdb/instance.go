@@ -30,8 +30,8 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -49,8 +49,8 @@ const (
 )
 
 // AddInstance add an instance
-func (i *instanceStore) AddInstance(instance *model.Instance) error {
-	initInstance([]*model.Instance{instance})
+func (i *instanceStore) AddInstance(instance *svctypes.Instance) error {
+	initInstance([]*svctypes.Instance{instance})
 	// Before adding new data, you must clean up the old data
 	if err := i.handler.DeleteValues(tblNameInstance, []string{instance.ID()}); err != nil {
 		log.Errorf("[Store][boltdb] delete instance to kv error, %v", err)
@@ -66,7 +66,7 @@ func (i *instanceStore) AddInstance(instance *model.Instance) error {
 }
 
 // BatchAddInstances Add multiple instances
-func (i *instanceStore) BatchAddInstances(instances []*model.Instance) error {
+func (i *instanceStore) BatchAddInstances(instances []*svctypes.Instance) error {
 
 	if len(instances) == 0 {
 		return nil
@@ -95,7 +95,7 @@ func (i *instanceStore) BatchAddInstances(instances []*model.Instance) error {
 }
 
 // UpdateInstance Update instance
-func (i *instanceStore) UpdateInstance(instance *model.Instance) error {
+func (i *instanceStore) UpdateInstance(instance *svctypes.Instance) error {
 
 	properties := make(map[string]interface{})
 	properties[insFieldProto] = instance.Proto
@@ -170,7 +170,7 @@ func (i *instanceStore) BatchGetInstanceIsolate(ids map[string]bool) (map[string
 		pos++
 	}
 
-	result, err := i.handler.LoadValues(tblNameInstance, keys, &model.Instance{})
+	result, err := i.handler.LoadValues(tblNameInstance, keys, &svctypes.Instance{})
 	if err != nil {
 		log.Errorf("[Store][boltdb] list instance in kv error, %v", err)
 		return nil, err
@@ -181,7 +181,7 @@ func (i *instanceStore) BatchGetInstanceIsolate(ids map[string]bool) (map[string
 	}
 
 	for id, val := range result {
-		ins := val.(*model.Instance)
+		ins := val.(*svctypes.Instance)
 		if !ins.Valid {
 			continue
 		}
@@ -193,7 +193,7 @@ func (i *instanceStore) BatchGetInstanceIsolate(ids map[string]bool) (map[string
 }
 
 // GetInstancesBrief Get the token associated with the instance
-func (i *instanceStore) GetInstancesBrief(ids map[string]bool) (map[string]*model.Instance, error) {
+func (i *instanceStore) GetInstancesBrief(ids map[string]bool) (map[string]*svctypes.Instance, error) {
 
 	if len(ids) == 0 {
 		return nil, nil
@@ -202,7 +202,7 @@ func (i *instanceStore) GetInstancesBrief(ids map[string]bool) (map[string]*mode
 	fields := []string{insFieldProto, insFieldValid}
 
 	// find all instances with given ids
-	inss, err := i.handler.LoadValuesByFilter(tblNameInstance, fields, &model.Instance{},
+	inss, err := i.handler.LoadValuesByFilter(tblNameInstance, fields, &svctypes.Instance{},
 		func(m map[string]interface{}) bool {
 			valid, ok := m[insFieldValid]
 			if ok && !valid.(bool) {
@@ -225,7 +225,7 @@ func (i *instanceStore) GetInstancesBrief(ids map[string]bool) (map[string]*mode
 	// find the service corresponding to the instance and get the serviceToken
 	serviceIDs := make(map[string]bool)
 	for _, ins := range inss {
-		serviceID := ins.(*model.Instance).ServiceID
+		serviceID := ins.(*svctypes.Instance).ServiceID
 		serviceIDs[serviceID] = true
 	}
 
@@ -247,13 +247,13 @@ func (i *instanceStore) GetInstancesBrief(ids map[string]bool) (map[string]*mode
 		})
 
 	// assemble return data
-	out := make(map[string]*model.Instance, len(ids))
-	var item model.ExpandInstanceStore
-	var instance model.InstanceStore
+	out := make(map[string]*svctypes.Instance, len(ids))
+	var item svctypes.ExpandInstanceStore
+	var instance svctypes.InstanceStore
 	item.ServiceInstance = &instance
 
 	for _, ins := range inss {
-		tempIns := ins.(*model.Instance)
+		tempIns := ins.(*svctypes.Instance)
 		svc, ok := services[tempIns.ServiceID]
 		if !ok {
 			log.Errorf("[Store][boltdb] can not find instance service , instanceId is %s", tempIns.ID())
@@ -268,16 +268,16 @@ func (i *instanceStore) GetInstancesBrief(ids map[string]bool) (map[string]*mode
 		item.ServiceToken = tempService.Token
 		item.ServicePlatformID = tempService.PlatformID
 
-		out[instance.ID] = model.ExpandStore2Instance(&item)
+		out[instance.ID] = svctypes.ExpandStore2Instance(&item)
 	}
 
 	return out, nil
 }
 
 // GetInstance Query the details of an instance
-func (i *instanceStore) GetInstance(instanceID string) (*model.Instance, error) {
+func (i *instanceStore) GetInstance(instanceID string) (*svctypes.Instance, error) {
 	fields := []string{insFieldProto, insFieldValid}
-	ins, err := i.handler.LoadValuesByFilter(tblNameInstance, fields, &model.Instance{},
+	ins, err := i.handler.LoadValuesByFilter(tblNameInstance, fields, &svctypes.Instance{},
 		func(m map[string]interface{}) bool {
 			if insValid, _ := m[insFieldValid].(bool); !insValid {
 				return false
@@ -297,7 +297,7 @@ func (i *instanceStore) GetInstance(instanceID string) (*model.Instance, error) 
 	if !ok {
 		return nil, nil
 	}
-	return instance.(*model.Instance), nil
+	return instance.(*svctypes.Instance), nil
 }
 
 // GetInstancesCount Get the total number of instances
@@ -325,12 +325,12 @@ func (i *instanceStore) GetInstancesCountTx(tx store.Tx) (uint32, error) {
 }
 
 // GetInstancesMainByService Get instances based on service and Host
-func (i *instanceStore) GetInstancesMainByService(serviceID, host string) ([]*model.Instance, error) {
+func (i *instanceStore) GetInstancesMainByService(serviceID, host string) ([]*svctypes.Instance, error) {
 
 	// select by service_id and host
 	fields := []string{insFieldServiceID, insFieldProto, insFieldValid}
 
-	instances, err := i.handler.LoadValuesByFilter(tblNameInstance, fields, &model.Instance{},
+	instances, err := i.handler.LoadValuesByFilter(tblNameInstance, fields, &svctypes.Instance{},
 		func(m map[string]interface{}) bool {
 			valid, ok := m[insFieldValid]
 			if ok && !valid.(bool) {
@@ -366,9 +366,9 @@ func (i *instanceStore) GetInstancesMainByService(serviceID, host string) ([]*mo
 
 // GetExpandInstances View instance details and corresponding number according to filter conditions
 func (i *instanceStore) GetExpandInstances(filter, metaFilter map[string]string,
-	offset uint32, limit uint32) (uint32, []*model.Instance, error) {
+	offset uint32, limit uint32) (uint32, []*svctypes.Instance, error) {
 	if limit == 0 {
-		return 0, make([]*model.Instance, 0), nil
+		return 0, make([]*svctypes.Instance, 0), nil
 	}
 
 	// find service
@@ -387,14 +387,14 @@ func (i *instanceStore) GetExpandInstances(filter, metaFilter map[string]string,
 			svcIDFilterSet[svc.ID] = struct{}{}
 		}
 		if len(svcIDFilterSet) == 0 {
-			return 0, make([]*model.Instance, 0), nil
+			return 0, make([]*svctypes.Instance, 0), nil
 		}
 	}
 
 	svcIdsTmp := make(map[string]struct{})
 	fields := []string{insFieldProto, insFieldServiceID, insFieldValid}
 
-	instances, err := i.handler.LoadValuesByFilter(tblNameInstance, fields, &model.Instance{},
+	instances, err := i.handler.LoadValuesByFilter(tblNameInstance, fields, &svctypes.Instance{},
 		func(m map[string]interface{}) bool {
 			valid, ok := m[insFieldValid]
 			if ok && !valid.(bool) {
@@ -494,7 +494,7 @@ func (i *instanceStore) GetExpandInstances(filter, metaFilter map[string]string,
 		return 0, nil, err
 	}
 	for _, v := range instances {
-		ins := v.(*model.Instance)
+		ins := v.(*svctypes.Instance)
 		service, ok := svcRets[ins.ServiceID]
 		if !ok {
 			log.Errorf("[Store][boltdb] no found instance relate service, "+
@@ -512,7 +512,7 @@ func (i *instanceStore) GetExpandInstances(filter, metaFilter map[string]string,
 
 // GetMoreInstances Get incremental instances according to mtime
 func (i *instanceStore) GetMoreInstances(tx store.Tx, mtime time.Time, firstUpdate, needMeta bool,
-	serviceID []string) (map[string]*model.Instance, error) {
+	serviceID []string) (map[string]*svctypes.Instance, error) {
 
 	dbTx, _ := tx.GetDelegateTx().(*bolt.Tx)
 
@@ -523,7 +523,7 @@ func (i *instanceStore) GetMoreInstances(tx store.Tx, mtime time.Time, firstUpda
 	}
 
 	instances := make(map[string]interface{})
-	err := loadValuesByFilter(dbTx, tblNameInstance, fields, &model.Instance{},
+	err := loadValuesByFilter(dbTx, tblNameInstance, fields, &svctypes.Instance{},
 		func(m map[string]interface{}) bool {
 
 			if firstUpdate {
@@ -586,7 +586,7 @@ func (i *instanceStore) SetInstanceHealthStatus(instanceID string, flag int, rev
 	// get instance
 	fields := []string{insFieldProto}
 
-	instances, err := i.handler.LoadValuesByFilter(tblNameInstance, fields, &model.Instance{},
+	instances, err := i.handler.LoadValuesByFilter(tblNameInstance, fields, &svctypes.Instance{},
 		func(m map[string]interface{}) bool {
 			insProto, ok := m[insFieldProto]
 			if !ok {
@@ -606,7 +606,7 @@ func (i *instanceStore) SetInstanceHealthStatus(instanceID string, flag int, rev
 	}
 
 	// set status
-	ins := instances[instanceID].(*model.Instance)
+	ins := instances[instanceID].(*svctypes.Instance)
 	var healthy bool
 	if flag == 0 {
 		healthy = false
@@ -648,7 +648,7 @@ func (i *instanceStore) BatchSetInstanceIsolate(ids []interface{}, isolate int, 
 	fields := []string{insFieldProto}
 
 	// get all instances by given ids
-	instances, err := i.handler.LoadValuesByFilter(tblNameInstance, fields, &model.Instance{},
+	instances, err := i.handler.LoadValuesByFilter(tblNameInstance, fields, &svctypes.Instance{},
 		func(m map[string]interface{}) bool {
 			proto, ok := m[insFieldProto]
 			if !ok {
@@ -669,7 +669,7 @@ func (i *instanceStore) BatchSetInstanceIsolate(ids []interface{}, isolate int, 
 	}
 
 	for id, ins := range instances {
-		instance := ins.(*model.Instance).Proto
+		instance := ins.(*svctypes.Instance).Proto
 		instance.Isolate.Value = isolateStatus
 		instance.Revision.Value = revision
 
@@ -696,7 +696,7 @@ func (i *instanceStore) BatchAppendInstanceMetadata(requests []*store.InstanceMe
 	return i.handler.Execute(true, func(tx *bolt.Tx) error {
 		values := map[string]interface{}{}
 		fields := []string{insFieldProto, insFieldValid}
-		if err := loadValuesByFilter(tx, tblNameInstance, fields, &model.Instance{},
+		if err := loadValuesByFilter(tx, tblNameInstance, fields, &svctypes.Instance{},
 			func(m map[string]interface{}) bool {
 				valid, ok := m[insFieldValid]
 				if ok && !valid.(bool) {
@@ -726,7 +726,7 @@ func (i *instanceStore) BatchAppendInstanceMetadata(requests []*store.InstanceMe
 			if !ok {
 				return nil
 			}
-			ins := val.(*model.Instance)
+			ins := val.(*svctypes.Instance)
 			if len(ins.Proto.GetMetadata()) == 0 {
 				ins.Proto.Metadata = map[string]string{}
 			}
@@ -755,7 +755,7 @@ func (i *instanceStore) BatchRemoveInstanceMetadata(requests []*store.InstanceMe
 	return i.handler.Execute(true, func(tx *bolt.Tx) error {
 		values := map[string]interface{}{}
 		fields := []string{insFieldProto, insFieldValid}
-		if err := loadValuesByFilter(tx, tblNameInstance, fields, &model.Instance{},
+		if err := loadValuesByFilter(tx, tblNameInstance, fields, &svctypes.Instance{},
 			func(m map[string]interface{}) bool {
 				valid, ok := m[insFieldValid]
 				if ok && !valid.(bool) {
@@ -785,7 +785,7 @@ func (i *instanceStore) BatchRemoveInstanceMetadata(requests []*store.InstanceMe
 			if !ok {
 				continue
 			}
-			ins := val.(*model.Instance)
+			ins := val.(*svctypes.Instance)
 			if len(ins.Proto.GetMetadata()) == 0 {
 				ins.Proto.Metadata = map[string]string{}
 			}
@@ -806,17 +806,17 @@ func (i *instanceStore) BatchRemoveInstanceMetadata(requests []*store.InstanceMe
 	})
 }
 
-func toInstance(m map[string]interface{}) map[string]*model.Instance {
-	insMap := make(map[string]*model.Instance)
+func toInstance(m map[string]interface{}) map[string]*svctypes.Instance {
+	insMap := make(map[string]*svctypes.Instance)
 	for k, v := range m {
-		insMap[k] = v.(*model.Instance)
+		insMap[k] = v.(*svctypes.Instance)
 	}
 
 	return insMap
 }
 
-func getRealInstancesList(originServices map[string]interface{}, offset, limit uint32) []*model.Instance {
-	instances := make([]*model.Instance, 0)
+func getRealInstancesList(originServices map[string]interface{}, offset, limit uint32) []*svctypes.Instance {
+	instances := make([]*svctypes.Instance, 0)
 	beginIndex := offset
 	endIndex := beginIndex + limit
 	totalCount := uint32(len(originServices))
@@ -835,7 +835,7 @@ func getRealInstancesList(originServices map[string]interface{}, offset, limit u
 	}
 
 	for _, s := range originServices {
-		instances = append(instances, s.(*model.Instance))
+		instances = append(instances, s.(*svctypes.Instance))
 	}
 
 	sort.Slice(instances, func(i, j int) bool {
@@ -851,7 +851,7 @@ func getRealInstancesList(originServices map[string]interface{}, offset, limit u
 	return instances[beginIndex:endIndex]
 }
 
-func initInstance(instance []*model.Instance) {
+func initInstance(instance []*svctypes.Instance) {
 
 	if len(instance) == 0 {
 		return

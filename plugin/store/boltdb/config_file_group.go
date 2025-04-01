@@ -27,8 +27,8 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 const (
@@ -63,7 +63,7 @@ func newConfigFileGroupStore(handler BoltHandler) *configFileGroupStore {
 
 // CreateConfigFileGroup 创建配置文件组
 func (fg *configFileGroupStore) CreateConfigFileGroup(
-	fileGroup *model.ConfigFileGroup) (*model.ConfigFileGroup, error) {
+	fileGroup *conftypes.ConfigFileGroup) (*conftypes.ConfigFileGroup, error) {
 	if fileGroup.Namespace == "" || fileGroup.Name == "" {
 		return nil, store.NewStatusError(store.EmptyParamsErr, "ConfigFileGroup miss some param")
 	}
@@ -96,13 +96,13 @@ func (fg *configFileGroupStore) CreateConfigFileGroup(
 }
 
 // GetConfigFileGroup 获取配置文件组
-func (fg *configFileGroupStore) GetConfigFileGroup(namespace, name string) (*model.ConfigFileGroup, error) {
+func (fg *configFileGroupStore) GetConfigFileGroup(namespace, name string) (*conftypes.ConfigFileGroup, error) {
 	if namespace == "" || name == "" {
 		return nil, store.NewStatusError(store.EmptyParamsErr, "ConfigFileGroup miss some param")
 	}
 
 	key := fmt.Sprintf("%s@@%s", namespace, name)
-	ret, err := fg.handler.LoadValues(tblConfigFileGroup, []string{key}, &model.ConfigFileGroup{})
+	ret, err := fg.handler.LoadValues(tblConfigFileGroup, []string{key}, &conftypes.ConfigFileGroup{})
 	if err != nil {
 		log.Error("[ConfigFileGroup] find by namespace and name", zap.Error(err))
 		return nil, err
@@ -114,7 +114,7 @@ func (fg *configFileGroupStore) GetConfigFileGroup(namespace, name string) (*mod
 	if val == nil {
 		return nil, nil
 	}
-	cfg := val.(*model.ConfigFileGroup)
+	cfg := val.(*conftypes.ConfigFileGroup)
 	if !cfg.Valid {
 		return nil, nil
 	}
@@ -124,13 +124,13 @@ func (fg *configFileGroupStore) GetConfigFileGroup(namespace, name string) (*mod
 
 // QueryConfigFileGroups 翻页查询配置文件组, name 为模糊匹配关键字
 func (fg *configFileGroupStore) QueryConfigFileGroups(namespace, name string, offset, limit uint32) (uint32,
-	[]*model.ConfigFileGroup, error) {
+	[]*conftypes.ConfigFileGroup, error) {
 	var (
 		fields  = []string{FileGroupFieldNamespace, FileGroupFieldName, FileGroupFieldValid}
 		hasNs   = len(namespace) != 0
 		hasName = len(name) != 0
 	)
-	ret, err := fg.handler.LoadValuesByFilter(tblConfigFileGroup, fields, &model.ConfigFileGroup{},
+	ret, err := fg.handler.LoadValuesByFilter(tblConfigFileGroup, fields, &conftypes.ConfigFileGroup{},
 		func(m map[string]interface{}) bool {
 			valid, ok := m[FileGroupFieldValid].(bool)
 			if ok && !valid {
@@ -180,7 +180,7 @@ func (fg *configFileGroupStore) DeleteConfigFileGroup(namespace, name string) er
 }
 
 // UpdateConfigFileGroup 更新配置文件组信息
-func (fg *configFileGroupStore) UpdateConfigFileGroup(fileGroup *model.ConfigFileGroup) error {
+func (fg *configFileGroupStore) UpdateConfigFileGroup(fileGroup *conftypes.ConfigFileGroup) error {
 	if fileGroup.Namespace == "" || fileGroup.Name == "" {
 		return store.NewStatusError(store.EmptyParamsErr, "ConfigFileGroup miss some param")
 	}
@@ -202,14 +202,14 @@ func (fg *configFileGroupStore) UpdateConfigFileGroup(fileGroup *model.ConfigFil
 }
 
 func (fg *configFileGroupStore) GetMoreConfigGroup(firstUpdate bool,
-	mtime time.Time) ([]*model.ConfigFileGroup, error) {
+	mtime time.Time) ([]*conftypes.ConfigFileGroup, error) {
 
 	if firstUpdate {
 		mtime = time.Time{}
 	}
 
 	fields := []string{FileGroupFieldModifyTime}
-	ret, err := fg.handler.LoadValuesByFilter(tblConfigFileGroup, fields, &model.ConfigFileGroup{},
+	ret, err := fg.handler.LoadValuesByFilter(tblConfigFileGroup, fields, &conftypes.ConfigFileGroup{},
 		func(m map[string]interface{}) bool {
 			saveMt, _ := m[FileGroupFieldModifyTime].(time.Time)
 			return !saveMt.Before(mtime)
@@ -219,9 +219,9 @@ func (fg *configFileGroupStore) GetMoreConfigGroup(firstUpdate bool,
 		return nil, err
 	}
 
-	groups := make([]*model.ConfigFileGroup, 0, len(ret))
+	groups := make([]*conftypes.ConfigFileGroup, 0, len(ret))
 	for _, v := range ret {
-		groups = append(groups, v.(*model.ConfigFileGroup))
+		groups = append(groups, v.(*conftypes.ConfigFileGroup))
 	}
 
 	return groups, nil
@@ -230,7 +230,7 @@ func (fg *configFileGroupStore) GetMoreConfigGroup(firstUpdate bool,
 // CountConfigReleases count the release data
 func (fg *configFileGroupStore) CountConfigGroups(namespace string) (uint64, error) {
 	fields := []string{FileGroupFieldNamespace, FileGroupFieldValid}
-	ret, err := fg.handler.LoadValuesByFilter(tblConfigFileGroup, fields, &model.ConfigFileGroup{},
+	ret, err := fg.handler.LoadValuesByFilter(tblConfigFileGroup, fields, &conftypes.ConfigFileGroup{},
 		func(m map[string]interface{}) bool {
 			valid, _ := m[FileGroupFieldValid].(bool)
 			if !valid {
@@ -246,9 +246,9 @@ func (fg *configFileGroupStore) CountConfigGroups(namespace string) (uint64, err
 }
 
 // doConfigFileGroupPage 进行分页
-func doConfigFileGroupPage(ret map[string]interface{}, offset, limit uint32) []*model.ConfigFileGroup {
+func doConfigFileGroupPage(ret map[string]interface{}, offset, limit uint32) []*conftypes.ConfigFileGroup {
 	var (
-		groups     = make([]*model.ConfigFileGroup, 0, len(ret))
+		groups     = make([]*conftypes.ConfigFileGroup, 0, len(ret))
 		beginIndex = offset
 		endIndex   = beginIndex + limit
 		totalCount = uint32(len(ret))
@@ -266,7 +266,7 @@ func doConfigFileGroupPage(ret map[string]interface{}, offset, limit uint32) []*
 		endIndex = totalCount
 	}
 	for k := range ret {
-		groups = append(groups, ret[k].(*model.ConfigFileGroup))
+		groups = append(groups, ret[k].(*conftypes.ConfigFileGroup))
 	}
 
 	sort.Slice(groups, func(i, j int) bool {

@@ -36,33 +36,32 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
-// CreateRoutingConfigsV2 Create a routing configuration
-func (s *Server) CreateRoutingConfigsV2(
+// CreateRoutingConfigs Create a routing configuration
+func (s *Server) CreateRoutingConfigs(
 	ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 	resp := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range req {
-		apiv1.Collect(resp, s.createRoutingConfigV2(ctx, entry))
+		apiv1.Collect(resp, s.createRoutingConfig(ctx, entry))
 	}
 
 	return apiv1.FormatBatchWriteResponse(resp)
 }
 
-// createRoutingConfigV2 Create a routing configuration
-func (s *Server) createRoutingConfigV2(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
-	conf, err := Api2RoutingConfigV2(req)
+// createRoutingConfig Create a routing configuration
+func (s *Server) createRoutingConfig(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
+	conf, err := Api2RoutingConfig(req)
 	if err != nil {
-		log.Error("[Routing][V2] parse routing config v2 from request for create",
+		log.Error("[Routing][] parse routing config  from request for create",
 			utils.RequestID(ctx), zap.Error(err))
 		return apiv1.NewResponse(apimodel.Code_ExecuteException)
 	}
 
-	if err := s.storage.CreateRoutingConfigV2(conf); err != nil {
-		log.Error("[Routing][V2] create routing config v2 store layer",
+	if err := s.storage.CreateRoutingConfig(conf); err != nil {
+		log.Error("[Routing][] create routing config  store layer",
 			utils.RequestID(ctx), zap.Error(err))
 		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
 	}
@@ -72,22 +71,22 @@ func (s *Server) createRoutingConfigV2(ctx context.Context, req *apitraffic.Rout
 	return apiv1.NewRouterResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
-// DeleteRoutingConfigsV2 Batch delete routing configuration
-func (s *Server) DeleteRoutingConfigsV2(
+// DeleteRoutingConfigs Batch delete routing configuration
+func (s *Server) DeleteRoutingConfigs(
 	ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 	out := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range req {
-		resp := s.deleteRoutingConfigV2(ctx, entry)
+		resp := s.deleteRoutingConfig(ctx, entry)
 		apiv1.Collect(out, resp)
 	}
 
 	return apiv1.FormatBatchWriteResponse(out)
 }
 
-// DeleteRoutingConfigV2 Delete a routing configuration
-func (s *Server) deleteRoutingConfigV2(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
-	if err := s.storage.DeleteRoutingConfigV2(req.Id); err != nil {
-		log.Error("[Routing][V2] delete routing config v2 store layer",
+// DeleteRoutingConfig Delete a routing configuration
+func (s *Server) deleteRoutingConfig(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
+	if err := s.storage.DeleteRoutingConfig(req.Id); err != nil {
+		log.Error("[Routing][] delete routing config  store layer",
 			utils.RequestID(ctx), zap.Error(err))
 		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
 	}
@@ -99,24 +98,24 @@ func (s *Server) deleteRoutingConfigV2(ctx context.Context, req *apitraffic.Rout
 	return apiv1.NewRouterResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
-// UpdateRoutingConfigsV2 Batch update routing configuration
-func (s *Server) UpdateRoutingConfigsV2(
+// UpdateRoutingConfigs Batch update routing configuration
+func (s *Server) UpdateRoutingConfigs(
 	ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 	out := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range req {
-		resp := s.updateRoutingConfigV2(ctx, entry)
+		resp := s.updateRoutingConfig(ctx, entry)
 		apiv1.Collect(out, resp)
 	}
 
 	return apiv1.FormatBatchWriteResponse(out)
 }
 
-// updateRoutingConfigV2 Update a single routing configuration
-func (s *Server) updateRoutingConfigV2(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
+// updateRoutingConfig Update a single routing configuration
+func (s *Server) updateRoutingConfig(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
 	// Check whether the routing configuration exists
-	conf, err := s.storage.GetRoutingConfigV2WithID(req.Id)
+	conf, err := s.storage.GetRoutingConfigWithID(req.Id)
 	if err != nil {
-		log.Error("[Routing][V2] get routing config v2 store layer",
+		log.Error("[Routing][] get routing config  store layer",
 			utils.RequestID(ctx), zap.Error(err))
 		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
 	}
@@ -124,16 +123,16 @@ func (s *Server) updateRoutingConfigV2(ctx context.Context, req *apitraffic.Rout
 		return apiv1.NewResponse(apimodel.Code_NotFoundRouting)
 	}
 
-	reqModel, err := Api2RoutingConfigV2(req)
-	reqModel.Revision = utils.NewV2Revision()
+	reqModel, err := Api2RoutingConfig(req)
+	reqModel.Revision = utils.NewRevision()
 	if err != nil {
-		log.Error("[Routing][V2] parse routing config v2 from request for update",
+		log.Error("[Routing][] parse routing config  from request for update",
 			utils.RequestID(ctx), zap.Error(err))
 		return apiv1.NewResponse(apimodel.Code_ExecuteException)
 	}
 
-	if err := s.storage.UpdateRoutingConfigV2(reqModel); err != nil {
-		log.Error("[Routing][V2] update routing config v2 store layer",
+	if err := s.storage.UpdateRoutingConfig(reqModel); err != nil {
+		log.Error("[Routing][] update routing config  store layer",
 			utils.RequestID(ctx), zap.Error(err))
 		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
 	}
@@ -142,22 +141,22 @@ func (s *Server) updateRoutingConfigV2(ctx context.Context, req *apitraffic.Rout
 	return apiv1.NewResponse(apimodel.Code_ExecuteSuccess)
 }
 
-// QueryRoutingConfigsV2 The interface of the query configuration to the OSS
-func (s *Server) QueryRoutingConfigsV2(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+// QueryRoutingConfigs The interface of the query configuration to the OSS
+func (s *Server) QueryRoutingConfigs(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
 	args, presp := parseRoutingArgs(query, ctx)
 	if presp != nil {
 		return apiv1.NewBatchQueryResponse(apimodel.Code(presp.GetCode().GetValue()))
 	}
 
-	total, ret, err := s.Cache().RoutingConfig().QueryRoutingConfigsV2(ctx, args)
+	total, ret, err := s.Cache().RoutingConfig().QueryRoutingConfigs(ctx, args)
 	if err != nil {
-		log.Error("[Routing][V2] query routing list from cache", utils.RequestID(ctx), zap.Error(err))
+		log.Error("[Routing][] query routing list from cache", utils.RequestID(ctx), zap.Error(err))
 		return apiv1.NewBatchQueryResponse(apimodel.Code_ExecuteException)
 	}
 
-	routers, err := marshalRoutingV2toAnySlice(ret)
+	routers, err := marshalRoutingtoAnySlice(ret)
 	if err != nil {
-		log.Error("[Routing][V2] marshal routing list to anypb.Any list",
+		log.Error("[Routing][] marshal routing list to anypb.Any list",
 			utils.RequestID(ctx), zap.Error(err))
 		return apiv1.NewBatchQueryResponse(apimodel.Code_ExecuteException)
 	}
@@ -186,9 +185,9 @@ func (s *Server) EnableRoutings(ctx context.Context, req []*apitraffic.RouteRule
 }
 
 func (s *Server) enableRoutings(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
-	conf, err := s.storage.GetRoutingConfigV2WithID(req.Id)
+	conf, err := s.storage.GetRoutingConfigWithID(req.Id)
 	if err != nil {
-		log.Error("[Routing][V2] get routing config v2 store layer",
+		log.Error("[Routing][] get routing config  store layer",
 			utils.RequestID(ctx), zap.Error(err))
 		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
 	}
@@ -197,10 +196,10 @@ func (s *Server) enableRoutings(ctx context.Context, req *apitraffic.RouteRule) 
 	}
 
 	conf.Enable = req.GetEnable()
-	conf.Revision = utils.NewV2Revision()
+	conf.Revision = utils.NewRevision()
 
 	if err := s.storage.EnableRouting(conf); err != nil {
-		log.Error("[Routing][V2] enable routing config v2 store layer",
+		log.Error("[Routing][] enable routing config  store layer",
 			utils.RequestID(ctx), zap.Error(err))
 		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
 	}
@@ -245,17 +244,16 @@ func parseRoutingArgs(filter map[string]string, ctx context.Context) (*cachetype
 	return res, nil
 }
 
-// Api2RoutingConfigV2 Convert the API parameter to internal data structure
-func Api2RoutingConfigV2(req *apitraffic.RouteRule) (*model.RouterConfig, error) {
-	out := &model.RouterConfig{
+// Api2RoutingConfig Convert the API parameter to internal data structure
+func Api2RoutingConfig(req *apitraffic.RouteRule) (*rules.RouterConfig, error) {
+	out := &rules.RouterConfig{
 		Valid: true,
 	}
-
 	if req.Id == "" {
-		req.Id = utils.NewRoutingV2UUID()
+		req.Id = utils.NewUUID()
 	}
 	if req.Revision == "" {
-		req.Revision = utils.NewV2Revision()
+		req.Revision = utils.NewUUID()
 	}
 
 	if err := out.ParseRouteRuleFromAPI(req); err != nil {
@@ -264,8 +262,8 @@ func Api2RoutingConfigV2(req *apitraffic.RouteRule) (*model.RouterConfig, error)
 	return out, nil
 }
 
-// marshalRoutingV2toAnySlice Converted to []*anypb.Any array
-func marshalRoutingV2toAnySlice(routings []*model.ExtendRouterConfig) ([]*any.Any, error) {
+// marshalRoutingtoAnySlice Converted to []*anypb.Any array
+func marshalRoutingtoAnySlice(routings []*rules.ExtendRouterConfig) ([]*any.Any, error) {
 	ret := make([]*any.Any, 0, len(routings))
 
 	for i := range routings {

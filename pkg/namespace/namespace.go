@@ -134,8 +134,8 @@ func (s *Server) CreateNamespace(ctx context.Context, req *apimodel.Namespace) *
 /**
  * @brief 创建存储层命名空间模型
  */
-func (s *Server) createNamespaceModel(req *apimodel.Namespace) *model.Namespace {
-	namespace := &model.Namespace{
+func (s *Server) createNamespaceModel(req *apimodel.Namespace) *types.Namespace {
+	namespace := &types.Namespace{
 		Name:            req.GetName().GetValue(),
 		Comment:         req.GetComment().GetValue(),
 		Owner:           req.GetOwners().GetValue(),
@@ -218,7 +218,7 @@ func (s *Server) DeleteNamespace(ctx context.Context, req *apimodel.Namespace) *
 	log.Info("delete namespace", utils.RequestID(ctx), zap.String("name", namespace.Name))
 	s.RecordHistory(namespaceRecordEntry(ctx, req, types.ODelete))
 
-	_ = s.afterNamespaceResource(ctx, req, &model.Namespace{Name: req.GetName().GetValue()}, true)
+	_ = s.afterNamespaceResource(ctx, req, &types.Namespace{Name: req.GetName().GetValue()}, true)
 
 	return api.NewNamespaceResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -272,7 +272,7 @@ func (s *Server) UpdateNamespace(ctx context.Context, req *apimodel.Namespace) *
 /**
  * @brief 修改命名空间属性
  */
-func (s *Server) updateNamespaceAttribute(req *apimodel.Namespace, namespace *model.Namespace) {
+func (s *Server) updateNamespaceAttribute(req *apimodel.Namespace, namespace *types.Namespace) {
 	if req.GetComment() != nil {
 		namespace.Comment = req.GetComment().GetValue()
 	}
@@ -425,7 +425,7 @@ func (s *Server) loadNamespace(name string) (string, error) {
 
 // 检查namespace的权限，并且返回namespace
 func (s *Server) checkNamespaceAuthority(
-	ctx context.Context, req *apimodel.Namespace) (*model.Namespace, *apiservice.Response) {
+	ctx context.Context, req *apimodel.Namespace) (*types.Namespace, *apiservice.Response) {
 	namespaceName := req.GetName().GetValue()
 	// namespaceToken := parseNamespaceToken(ctx, req)
 

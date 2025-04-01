@@ -31,7 +31,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -67,8 +67,8 @@ func CheckContentLength(content string, max int) error {
 	return nil
 }
 
-func CompressConfigFiles(files []*model.ConfigFile,
-	fileID2Tags map[uint64][]*model.ConfigFileTag, isExportGroup bool) (*bytes.Buffer, error) {
+func CompressConfigFiles(files []*conftypes.ConfigFile,
+	fileID2Tags map[uint64][]*conftypes.ConfigFileTag, isExportGroup bool) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	w := zip.NewWriter(&buf)
 	defer w.Close()

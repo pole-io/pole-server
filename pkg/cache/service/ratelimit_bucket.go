@@ -25,20 +25,21 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	types "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 func newRateLimitRuleBucket() *RateLimitRuleContainer {
 	return &RateLimitRuleContainer{
-		ids:   utils.NewSyncMap[string, *model.RateLimit](),
+		ids:   utils.NewSyncMap[string, *rules.RateLimit](),
 		rules: utils.NewSyncMap[string, *subRateLimitRuleBucket](),
 	}
 }
 
 type RateLimitRuleContainer struct {
-	ids   *utils.SyncMap[string, *model.RateLimit]
+	ids   *utils.SyncMap[string, *rules.RateLimit]
 	rules *utils.SyncMap[string, *subRateLimitRuleBucket]
 }
 
@@ -52,18 +53,18 @@ func (r *RateLimitRuleContainer) count() int {
 	return r.ids.Len()
 }
 
-func (r *RateLimitRuleContainer) saveRule(rule *model.RateLimit) {
+func (r *RateLimitRuleContainer) saveRule(rule *rules.RateLimit) {
 	r.cleanOldSvcRule(rule)
 
 	r.ids.Store(rule.ID, rule)
-	key := (&model.ServiceKey{
+	key := (&svctypes.ServiceKey{
 		Namespace: rule.Proto.GetNamespace().GetValue(),
 		Name:      rule.Proto.GetService().GetValue(),
 	}).Domain()
 
 	if _, ok := r.rules.Load(key); !ok {
 		r.rules.Store(key, &subRateLimitRuleBucket{
-			rules: map[string]*model.RateLimit{},
+			rules: map[string]*rules.RateLimit{},
 		})
 	}
 
@@ -72,14 +73,14 @@ func (r *RateLimitRuleContainer) saveRule(rule *model.RateLimit) {
 }
 
 // cleanOldSvcRule 清理规则之前绑定的服务数据信息
-func (r *RateLimitRuleContainer) cleanOldSvcRule(rule *model.RateLimit) {
+func (r *RateLimitRuleContainer) cleanOldSvcRule(rule *rules.RateLimit) {
 	oldRule, ok := r.ids.Load(rule.ID)
 	if !ok {
 		return
 	}
 
 	// 清理原来老记录的绑定数据信息
-	key := (&model.ServiceKey{
+	key := (&svctypes.ServiceKey{
 		Namespace: oldRule.Proto.GetNamespace().GetValue(),
 		Name:      oldRule.Proto.GetService().GetValue(),
 	}).Domain()
@@ -94,11 +95,11 @@ func (r *RateLimitRuleContainer) cleanOldSvcRule(rule *model.RateLimit) {
 	}
 }
 
-func (r *RateLimitRuleContainer) delRule(rule *model.RateLimit) {
+func (r *RateLimitRuleContainer) delRule(rule *rules.RateLimit) {
 	r.cleanOldSvcRule(rule)
 	r.ids.Delete(rule.ID)
 
-	key := (&model.ServiceKey{
+	key := (&svctypes.ServiceKey{
 		Namespace: rule.Proto.GetNamespace().GetValue(),
 		Name:      rule.Proto.GetService().GetValue(),
 	}).Domain()
@@ -113,12 +114,12 @@ func (r *RateLimitRuleContainer) delRule(rule *model.RateLimit) {
 	}
 }
 
-func (r *RateLimitRuleContainer) getRuleByID(id string) *model.RateLimit {
+func (r *RateLimitRuleContainer) getRuleByID(id string) *rules.RateLimit {
 	ret, _ := r.ids.Load(id)
 	return ret
 }
 
-func (r *RateLimitRuleContainer) getRules(serviceKey model.ServiceKey) ([]*model.RateLimit, string) {
+func (r *RateLimitRuleContainer) getRules(serviceKey svctypes.ServiceKey) ([]*rules.RateLimit, string) {
 	key := (&serviceKey).Domain()
 	if _, ok := r.rules.Load(key); !ok {
 		return nil, ""
@@ -128,7 +129,7 @@ func (r *RateLimitRuleContainer) getRules(serviceKey model.ServiceKey) ([]*model
 	return b.toSlice(), b.revision
 }
 
-func (r *RateLimitRuleContainer) reloadRevision(serviceKey model.ServiceKey) {
+func (r *RateLimitRuleContainer) reloadRevision(serviceKey svctypes.ServiceKey) {
 	key := serviceKey.Domain()
 	v, ok := r.rules.Load(key)
 	if !ok {
@@ -140,17 +141,17 @@ func (r *RateLimitRuleContainer) reloadRevision(serviceKey model.ServiceKey) {
 type subRateLimitRuleBucket struct {
 	lock     sync.RWMutex
 	revision string
-	rules    map[string]*model.RateLimit
+	rules    map[string]*rules.RateLimit
 }
 
-func (r *subRateLimitRuleBucket) saveRule(rule *model.RateLimit) {
+func (r *subRateLimitRuleBucket) saveRule(rule *rules.RateLimit) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
 	r.rules[rule.ID] = rule
 }
 
-func (r *subRateLimitRuleBucket) delRule(rule *model.RateLimit) {
+func (r *subRateLimitRuleBucket) delRule(rule *rules.RateLimit) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -166,11 +167,11 @@ func (r *subRateLimitRuleBucket) foreach(proc types.RateLimitIterProc) {
 	}
 }
 
-func (r *subRateLimitRuleBucket) toSlice() []*model.RateLimit {
+func (r *subRateLimitRuleBucket) toSlice() []*rules.RateLimit {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	ret := make([]*model.RateLimit, 0, len(r.rules))
+	ret := make([]*rules.RateLimit, 0, len(r.rules))
 	for i := range r.rules {
 		ret = append(ret, r.rules[i])
 	}

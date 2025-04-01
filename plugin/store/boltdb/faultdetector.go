@@ -24,8 +24,8 @@ import (
 
 	bolt "go.etcd.io/bbolt"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 type faultDetectStore struct {
@@ -37,7 +37,7 @@ const (
 	tblFaultDetectRule string = "faultdetect_rule"
 )
 
-func initFaultDetectRule(cb *model.FaultDetectRule) {
+func initFaultDetectRule(cb *rules.FaultDetectRule) {
 	cb.Valid = true
 	cb.CreateTime = time.Now()
 	cb.ModifyTime = time.Now()
@@ -55,7 +55,7 @@ func (c *faultDetectStore) cleanFaultDetectRule(id string) error {
 }
 
 // CreateFaultDetectRule create fault detect rule
-func (c *faultDetectStore) CreateFaultDetectRule(fdRule *model.FaultDetectRule) error {
+func (c *faultDetectStore) CreateFaultDetectRule(fdRule *rules.FaultDetectRule) error {
 	dbOp := c.handler
 
 	initFaultDetectRule(fdRule)
@@ -74,7 +74,7 @@ func (c *faultDetectStore) CreateFaultDetectRule(fdRule *model.FaultDetectRule) 
 }
 
 // UpdateFaultDetectRule update fault detect rule
-func (c *faultDetectStore) UpdateFaultDetectRule(fdRule *model.FaultDetectRule) error {
+func (c *faultDetectStore) UpdateFaultDetectRule(fdRule *rules.FaultDetectRule) error {
 	dbOp := c.handler
 	fdRule.Valid = true
 	fdRule.ModifyTime = time.Now()
@@ -105,13 +105,13 @@ func (c *faultDetectStore) DeleteFaultDetectRule(id string) error {
 	})
 }
 
-func (c *faultDetectStore) getFaultDetectRuleWithID(id string) (*model.FaultDetectRule, error) {
+func (c *faultDetectStore) getFaultDetectRuleWithID(id string) (*rules.FaultDetectRule, error) {
 	if id == "" {
 		return nil, ErrBadParam
 	}
 
 	handler := c.handler
-	result, err := handler.LoadValues(tblFaultDetectRule, []string{id}, &model.FaultDetectRule{})
+	result, err := handler.LoadValues(tblFaultDetectRule, []string{id}, &rules.FaultDetectRule{})
 
 	if err != nil {
 		log.Errorf("[Store][fault-detect] get rule fail : %s", err.Error())
@@ -126,7 +126,7 @@ func (c *faultDetectStore) getFaultDetectRuleWithID(id string) (*model.FaultDete
 		return nil, nil
 	}
 
-	cbRule := result[id].(*model.FaultDetectRule)
+	cbRule := result[id].(*rules.FaultDetectRule)
 	if cbRule.Valid {
 		return cbRule, nil
 	}
@@ -192,7 +192,7 @@ var (
 
 // GetFaultDetectRules get all circuitbreaker rules by query and limit
 func (c *faultDetectStore) GetFaultDetectRules(
-	filter map[string]string, offset uint32, limit uint32) (uint32, []*model.FaultDetectRule, error) {
+	filter map[string]string, offset uint32, limit uint32) (uint32, []*rules.FaultDetectRule, error) {
 	svc, hasSvc := filter[svcSpecificQueryKeyService]
 	delete(filter, svcSpecificQueryKeyService)
 	svcNs, hasSvcNs := filter[svcSpecificQueryKeyNamespace]
@@ -202,7 +202,7 @@ func (c *faultDetectStore) GetFaultDetectRules(
 	excludeIdValue, hasExcludeId := filter[excludeId]
 	delete(filter, excludeId)
 	delete(filter, "brief")
-	result, err := c.handler.LoadValuesByFilter(tblFaultDetectRule, fdSearchFields, &model.FaultDetectRule{},
+	result, err := c.handler.LoadValuesByFilter(tblFaultDetectRule, fdSearchFields, &rules.FaultDetectRule{},
 		func(m map[string]interface{}) bool {
 			validVal, ok := m[CommonFieldValid]
 			if ok && !validVal.(bool) {
@@ -253,14 +253,14 @@ func (c *faultDetectStore) GetFaultDetectRules(
 	if nil != err {
 		return 0, nil, err
 	}
-	out := make([]*model.FaultDetectRule, 0, len(result))
+	out := make([]*rules.FaultDetectRule, 0, len(result))
 	for _, value := range result {
-		out = append(out, value.(*model.FaultDetectRule))
+		out = append(out, value.(*rules.FaultDetectRule))
 	}
 	return uint32(len(out)), sublistFaultDetectRules(out, offset, limit), nil
 }
 
-func sublistFaultDetectRules(cbRules []*model.FaultDetectRule, offset, limit uint32) []*model.FaultDetectRule {
+func sublistFaultDetectRules(cbRules []*rules.FaultDetectRule, offset, limit uint32) []*rules.FaultDetectRule {
 	beginIndex := offset
 	endIndex := beginIndex + limit
 	totalCount := uint32(len(cbRules))
@@ -293,7 +293,7 @@ func sublistFaultDetectRules(cbRules []*model.FaultDetectRule, offset, limit uin
 
 // GetFaultDetectRulesForCache get increment circuitbreaker rules
 func (c *faultDetectStore) GetFaultDetectRulesForCache(
-	mtime time.Time, firstUpdate bool) ([]*model.FaultDetectRule, error) {
+	mtime time.Time, firstUpdate bool) ([]*rules.FaultDetectRule, error) {
 	handler := c.handler
 
 	if firstUpdate {
@@ -301,7 +301,7 @@ func (c *faultDetectStore) GetFaultDetectRulesForCache(
 	}
 
 	results, err := handler.LoadValuesByFilter(
-		tblFaultDetectRule, []string{CommonFieldModifyTime}, &model.FaultDetectRule{},
+		tblFaultDetectRule, []string{CommonFieldModifyTime}, &rules.FaultDetectRule{},
 		func(m map[string]interface{}) bool {
 			mt := m[CommonFieldModifyTime].(time.Time)
 			isAfter := !mt.Before(mtime)
@@ -313,12 +313,12 @@ func (c *faultDetectStore) GetFaultDetectRulesForCache(
 	}
 
 	if len(results) == 0 {
-		return []*model.FaultDetectRule{}, nil
+		return []*rules.FaultDetectRule{}, nil
 	}
 
-	out := make([]*model.FaultDetectRule, 0, len(results))
+	out := make([]*rules.FaultDetectRule, 0, len(results))
 	for _, value := range results {
-		out = append(out, value.(*model.FaultDetectRule))
+		out = append(out, value.(*rules.FaultDetectRule))
 	}
 
 	return out, nil

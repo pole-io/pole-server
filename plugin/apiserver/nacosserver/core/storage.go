@@ -28,9 +28,9 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	nacosmodel "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 )
@@ -223,7 +223,7 @@ func (n *NacosDataStorage) syncTask() {
 	})
 }
 
-func (n *NacosDataStorage) loadNacosService(reversion string, svc *model.Service) *ServiceData {
+func (n *NacosDataStorage) loadNacosService(reversion string, svc *svctypes.Service) *ServiceData {
 	n.lock.Lock()
 	defer n.lock.Unlock()
 
@@ -279,7 +279,7 @@ type ServiceData struct {
 	instances                map[string]*nacosmodel.Instance
 }
 
-func (s *ServiceData) loadInstances(svcIns *model.ServiceInstances) {
+func (s *ServiceData) loadInstances(svcIns *svctypes.ServiceInstances) {
 	if svcIns == nil {
 		return
 	}

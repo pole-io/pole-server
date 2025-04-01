@@ -28,7 +28,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 )
 
@@ -54,7 +54,7 @@ func batchAddInstances(t *testing.T, insStore *instanceStore, svcId string, insC
 		handler: insStore.handler,
 	}
 
-	sStore.AddService(&model.Service{
+	sStore.AddService(&svctypes.Service{
 		ID:        svcId,
 		Name:      svcId,
 		Namespace: svcId,
@@ -67,7 +67,7 @@ func batchAddInstances(t *testing.T, insStore *instanceStore, svcId string, insC
 
 		nowt := commontime.Time2String(time.Now())
 
-		err := insStore.AddInstance(&model.Instance{
+		err := insStore.AddInstance(&svctypes.Instance{
 			Proto: &apiservice.Instance{
 				Id:                &wrappers.StringValue{Value: "insid" + strconv.Itoa(i)},
 				Host:              &wrappers.StringValue{Value: "1.1.1." + strconv.Itoa(i)},
@@ -107,12 +107,12 @@ func TestInstanceStore_BatchAddInstances(t *testing.T) {
 	}()
 	insStore := &instanceStore{handler: handler}
 
-	instances := make([]*model.Instance, 0)
+	instances := make([]*svctypes.Instance, 0)
 	for i := insCount; i < insCount+5; i++ {
 
 		nowt := commontime.Time2String(time.Now())
 
-		ins := &model.Instance{
+		ins := &svctypes.Instance{
 			Proto: &apiservice.Instance{
 				Id:                &wrappers.StringValue{Value: "insid" + strconv.Itoa(i)},
 				Host:              &wrappers.StringValue{Value: "1.1.1." + strconv.Itoa(i)},
@@ -300,7 +300,7 @@ func TestInstanceStore_UpdateInstance(t *testing.T) {
 	insStore := &instanceStore{handler: handler}
 	batchAddInstances(t, insStore, "svcid1", insCount)
 
-	insM := &model.Instance{
+	insM := &svctypes.Instance{
 		Proto: &apiservice.Instance{
 			Id:                &wrappers.StringValue{Value: "insid" + strconv.Itoa(0)},
 			Service:           &wrappers.StringValue{Value: "svcid1"},
@@ -354,7 +354,7 @@ func TestInstanceStore_GetInstancesBrief(t *testing.T) {
 	batchAddInstances(t, insStore, "svcid1", 5)
 	sStore := &serviceStore{handler: handler}
 
-	err = sStore.AddService(&model.Service{
+	err = sStore.AddService(&svctypes.Service{
 		ID:        "svcid1",
 		Name:      "svcname1",
 		Namespace: "testsvc",
@@ -378,7 +378,7 @@ func TestInstanceStore_GetInstancesBrief(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = sStore.AddService(&model.Service{
+	err = sStore.AddService(&svctypes.Service{
 		ID:        "svcid2",
 		Name:      "svcname2",
 		Namespace: "testsvc",

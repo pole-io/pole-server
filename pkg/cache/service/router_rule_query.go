@@ -24,12 +24,12 @@ import (
 
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	types "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
-func queryRoutingRuleV2ByService(rule *model.ExtendRouterConfig, sourceNamespace, sourceService,
+func queryRoutingRuleV2ByService(rule *rules.ExtendRouterConfig, sourceNamespace, sourceService,
 	destNamespace, destService string, both bool) bool {
 	var (
 		sourceFind bool
@@ -111,8 +111,8 @@ func queryRoutingRuleV2ByService(rule *model.ExtendRouterConfig, sourceNamespace
 	return false
 }
 
-// QueryRoutingConfigsV2 Query Route Configuration List
-func (rc *RouteRuleCache) QueryRoutingConfigsV2(ctx context.Context, args *types.RoutingArgs) (uint32, []*model.ExtendRouterConfig, error) {
+// QueryRoutingConfigs Query Route Configuration List
+func (rc *RouteRuleCache) QueryRoutingConfigs(ctx context.Context, args *types.RoutingArgs) (uint32, []*rules.ExtendRouterConfig, error) {
 	if err := rc.Update(); err != nil {
 		return 0, nil, err
 	}
@@ -121,9 +121,9 @@ func (rc *RouteRuleCache) QueryRoutingConfigsV2(ctx context.Context, args *types
 	hasDestQuery := len(args.DestinationService) != 0 || len(args.DestinationNamespace) != 0
 	needBoth := hasSourceQuery && hasDestQuery
 
-	res := make([]*model.ExtendRouterConfig, 0, 8)
+	res := make([]*rules.ExtendRouterConfig, 0, 8)
 
-	var process = func(_ string, routeRule *model.ExtendRouterConfig) {
+	var process = func(_ string, routeRule *rules.ExtendRouterConfig) {
 		if args.ID != "" && args.ID != routeRule.ID {
 			return
 		}
@@ -175,7 +175,7 @@ func (rc *RouteRuleCache) QueryRoutingConfigsV2(ctx context.Context, args *types
 
 	predicates := types.LoadRouterRulePredicates(ctx)
 
-	rc.IteratorRouterRule(func(key string, value *model.ExtendRouterConfig) {
+	rc.IteratorRouterRule(func(key string, value *rules.ExtendRouterConfig) {
 		for i := range predicates {
 			if !predicates[i](ctx, value) {
 				return
@@ -188,8 +188,8 @@ func (rc *RouteRuleCache) QueryRoutingConfigsV2(ctx context.Context, args *types
 	return amount, routings, nil
 }
 
-func (rc *RouteRuleCache) sortBeforeTrim(routings []*model.ExtendRouterConfig,
-	args *types.RoutingArgs) (uint32, []*model.ExtendRouterConfig) {
+func (rc *RouteRuleCache) sortBeforeTrim(routings []*rules.ExtendRouterConfig,
+	args *types.RoutingArgs) (uint32, []*rules.ExtendRouterConfig) {
 	amount := uint32(len(routings))
 	if args.Offset >= amount || args.Limit == 0 {
 		return amount, nil
@@ -208,7 +208,7 @@ func (rc *RouteRuleCache) sortBeforeTrim(routings []*model.ExtendRouterConfig,
 	return amount, routings[args.Offset:endIdx]
 }
 
-func orderByRoutingPriority(a, b *model.ExtendRouterConfig, asc bool) bool {
+func orderByRoutingPriority(a, b *rules.ExtendRouterConfig, asc bool) bool {
 	if a.Priority < b.Priority {
 		return asc
 	}
@@ -219,7 +219,7 @@ func orderByRoutingPriority(a, b *model.ExtendRouterConfig, asc bool) bool {
 	return strings.Compare(a.ID, b.ID) < 0 && asc
 }
 
-func orderByRoutingModifyTime(a, b *model.ExtendRouterConfig, asc bool) bool {
+func orderByRoutingModifyTime(a, b *rules.ExtendRouterConfig, asc bool) bool {
 	if a.ModifyTime.After(b.ModifyTime) {
 		return asc
 	}

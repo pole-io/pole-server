@@ -29,6 +29,7 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/service"
 )
@@ -56,9 +57,9 @@ type ApplicationsBuilder struct {
 	VersionIncrement int64
 }
 
-func getCacheServices(namingServer service.DiscoverServer, namespace string) map[string]*model.Service {
-	var newServices = make(map[string]*model.Service)
-	_ = namingServer.Cache().Service().IteratorServices(func(key string, value *model.Service) (bool, error) {
+func getCacheServices(namingServer service.DiscoverServer, namespace string) map[string]*svctypes.Service {
+	var newServices = make(map[string]*svctypes.Service)
+	_ = namingServer.Cache().Service().IteratorServices(func(key string, value *svctypes.Service) (bool, error) {
 		if value.Namespace == namespace {
 			newServices[value.Name] = value
 		}

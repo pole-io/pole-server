@@ -27,11 +27,11 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service/batch"
@@ -198,8 +198,8 @@ func (s *Server) CacheProvider() (*CacheProvider, error) {
 }
 
 // ListCheckerServer get checker server instance list
-func (s *Server) ListCheckerServer() []*model.Instance {
-	ret := make([]*model.Instance, 0, s.cacheProvider.selfServiceInstances.Count())
+func (s *Server) ListCheckerServer() []*svctypes.Instance {
+	ret := make([]*svctypes.Instance, 0, s.cacheProvider.selfServiceInstances.Count())
 	s.cacheProvider.selfServiceInstances.Range(func(instanceId string, value ItemWithChecker) {
 		ret = append(ret, value.GetInstance())
 	})
@@ -207,7 +207,7 @@ func (s *Server) ListCheckerServer() []*model.Instance {
 }
 
 // publishInstanceEvent 发布服务事件
-func (s *Server) publishInstanceEvent(serviceID string, event model.InstanceEvent) {
+func (s *Server) publishInstanceEvent(serviceID string, event svctypes.InstanceEvent) {
 	event.SvcId = serviceID
 	if event.Instance != nil {
 		// event.Instance = proto.Clone(event.Instance).(*apiservice.Instance)

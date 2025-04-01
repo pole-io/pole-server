@@ -25,8 +25,8 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -69,7 +69,7 @@ func (s *Server) checkAndStoreClient(ctx context.Context, req *apiservice.Client
 	return resp
 }
 
-func (s *Server) createClient(ctx context.Context, req *apiservice.Client) (*model.Client, *apiservice.Response) {
+func (s *Server) createClient(ctx context.Context, req *apiservice.Client) (*types.Client, *apiservice.Response) {
 	if namingServer.bc == nil || !namingServer.bc.ClientRegisterOpen() {
 		return nil, nil
 	}
@@ -80,7 +80,7 @@ func (s *Server) createClient(ctx context.Context, req *apiservice.Client) (*mod
 // 底层函数会合并create请求，增加并发创建的吞吐
 // req 原始请求
 // ins 包含了req数据与instanceID，serviceToken
-func (s *Server) asyncCreateClient(ctx context.Context, req *apiservice.Client) (*model.Client, *apiservice.Response) {
+func (s *Server) asyncCreateClient(ctx context.Context, req *apiservice.Client) (*types.Client, *apiservice.Response) {
 	future := s.bc.AsyncRegisterClient(req)
 	if err := future.Wait(); err != nil {
 		log.Error("[Server][ReportClient] async create client", zap.Error(err), utils.RequestID(ctx))
@@ -111,7 +111,7 @@ func (s *Server) GetReportClients(ctx context.Context, query map[string]string) 
 
 	var (
 		total   uint32
-		clients []*model.Client
+		clients []*types.Client
 	)
 
 	offset, limit, err = utils.ParseOffsetAndLimit(searchFilters)
@@ -132,10 +132,10 @@ func (s *Server) GetReportClients(ctx context.Context, query map[string]string) 
 	return resp
 }
 
-type Client2Api func(client *model.Client) *apiservice.Client
+type Client2Api func(client *types.Client) *apiservice.Client
 
 // client 数组转为[]*api.Client
-func enhancedClients2Api(clients []*model.Client, handler Client2Api) []*apiservice.Client {
+func enhancedClients2Api(clients []*types.Client, handler Client2Api) []*apiservice.Client {
 	out := make([]*apiservice.Client, 0, len(clients))
 	for _, entry := range clients {
 		outUser := handler(entry)
@@ -145,7 +145,7 @@ func enhancedClients2Api(clients []*model.Client, handler Client2Api) []*apiserv
 }
 
 // model.Client 转为 api.Client
-func client2Api(client *model.Client) *apiservice.Client {
+func client2Api(client *types.Client) *apiservice.Client {
 	if client == nil {
 		return nil
 	}

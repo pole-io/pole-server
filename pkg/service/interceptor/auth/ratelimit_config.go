@@ -26,6 +26,7 @@ import (
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
@@ -118,7 +119,7 @@ func (svr *Server) GetRateLimits(
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 
-	ctx = cachetypes.AppendRatelimitRulePredicate(ctx, func(ctx context.Context, cbr *model.RateLimit) bool {
+	ctx = cachetypes.AppendRatelimitRulePredicate(ctx, func(ctx context.Context, cbr *rules.RateLimit) bool {
 		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
 			Type:     security.ResourceType_RateLimitRules,
 			ID:       cbr.ID,

@@ -20,7 +20,7 @@ package resource
 import (
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
@@ -36,11 +36,11 @@ type BuildOption struct {
 	RunType   RunType
 	Namespace string
 	TLSMode   TLSMode
-	Services  map[model.ServiceKey]*ServiceInfo
+	Services  map[svctypes.ServiceKey]*ServiceInfo
 	// openOnDemand 是否开启按需能力，该能力只能在 RunSidecar 场景下才能生效
 	openOnDemand bool
 	// SelfService 当前服务信息，只有处理 INBOUND 级别的信息才能设置
-	SelfService model.ServiceKey
+	SelfService svctypes.ServiceKey
 	// 不是必须，只有在 EDS 生成，并且是处理 INBOUND 的时候才会设置
 	Client *XDSClient
 	// TrafficDirection 设置流量的出入方向，INBOUND|OUTBOUND

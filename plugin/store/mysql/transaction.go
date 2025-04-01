@@ -23,7 +23,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 // transaction 事务; 不支持多协程并发操作，当前先支持单个协程串行操作
@@ -78,13 +79,13 @@ func (t *transaction) LockBootstrap(key string, server string) error {
 }
 
 // LockNamespace 排它锁，锁住指定命名空间
-func (t *transaction) LockNamespace(name string) (*model.Namespace, error) {
+func (t *transaction) LockNamespace(name string) (*types.Namespace, error) {
 	str := genNamespaceSelectSQL() + " where name = ? and flag != 1 for update"
 	return t.getValidNamespace(str, name)
 }
 
 // RLockNamespace 共享锁，锁住命名空间
-func (t *transaction) RLockNamespace(name string) (*model.Namespace, error) {
+func (t *transaction) RLockNamespace(name string) (*types.Namespace, error) {
 	str := genNamespaceSelectSQL() + " where name = ? and flag != 1 lock in share mode"
 	return t.getValidNamespace(str, name)
 }
@@ -104,14 +105,14 @@ func (t *transaction) DeleteNamespace(name string) error {
 }
 
 // LockService 排它锁，锁住指定服务
-func (t *transaction) LockService(name string, namespace string) (*model.Service, error) {
+func (t *transaction) LockService(name string, namespace string) (*svctypes.Service, error) {
 	str := genServiceSelectSQL() +
 		" from service where name = ? and namespace = ? and flag !=1 for update"
 	return t.getValidService(str, name, namespace)
 }
 
 // RLockService 共享锁，锁住指定服务
-func (t *transaction) RLockService(name string, namespace string) (*model.Service, error) {
+func (t *transaction) RLockService(name string, namespace string) (*svctypes.Service, error) {
 	str := genServiceSelectSQL() +
 		" from service where name = ? and namespace = ? and flag !=1 lock in share mode"
 	return t.getValidService(str, name, namespace)
@@ -205,7 +206,7 @@ func (t *transaction) finish() error {
 }
 
 // getValidNamespace 获取有效的命名空间数据
-func (t *transaction) getValidNamespace(sql string, name string) (*model.Namespace, error) {
+func (t *transaction) getValidNamespace(sql string, name string) (*types.Namespace, error) {
 	if err := t.finish(); err != nil {
 		return nil, err
 	}
@@ -230,7 +231,7 @@ func (t *transaction) getValidNamespace(sql string, name string) (*model.Namespa
 
 // getValidService 获取有效的服务数据
 // 注意：该函数不会返回service_metadata
-func (t *transaction) getValidService(sql string, name string, namespace string) (*model.Service, error) {
+func (t *transaction) getValidService(sql string, name string, namespace string) (*svctypes.Service, error) {
 	if err := t.finish(); err != nil {
 		return nil, err
 	}

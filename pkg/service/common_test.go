@@ -296,107 +296,6 @@ func (d *DiscoverTestSuit) removeInstanceWithAttrs(
 	}
 }
 
-// 创建一个路由配置
-func (d *DiscoverTestSuit) createCommonRoutingConfig(
-	t *testing.T, service *apiservice.Service, inCount int, outCount int) (*apitraffic.Routing, *apitraffic.Routing) {
-	inBounds := make([]*apitraffic.Route, 0, inCount)
-	for i := 0; i < inCount; i++ {
-		matchString := &apimodel.MatchString{
-			Type:  apimodel.MatchString_EXACT,
-			Value: utils.NewStringValue(fmt.Sprintf("in-meta-value-%d", i)),
-		}
-		source := &apitraffic.Source{
-			Service:   utils.NewStringValue(fmt.Sprintf("in-source-service-%d", i)),
-			Namespace: utils.NewStringValue(fmt.Sprintf("in-source-service-%d", i)),
-			Metadata: map[string]*apimodel.MatchString{
-				fmt.Sprintf("in-metadata-%d", i): matchString,
-			},
-		}
-		destination := &apitraffic.Destination{
-			Service:   service.Name,
-			Namespace: service.Namespace,
-			Metadata: map[string]*apimodel.MatchString{
-				fmt.Sprintf("in-metadata-%d", i): matchString,
-			},
-			Priority: utils.NewUInt32Value(120),
-			Weight:   utils.NewUInt32Value(100),
-			Transfer: utils.NewStringValue("abcdefg"),
-		}
-
-		entry := &apitraffic.Route{
-			Sources:      []*apitraffic.Source{source},
-			Destinations: []*apitraffic.Destination{destination},
-		}
-		inBounds = append(inBounds, entry)
-	}
-
-	conf := &apitraffic.Routing{
-		Service:      utils.NewStringValue(service.GetName().GetValue()),
-		Namespace:    utils.NewStringValue(service.GetNamespace().GetValue()),
-		Inbounds:     inBounds,
-		ServiceToken: utils.NewStringValue(service.GetToken().GetValue()),
-	}
-
-	// TODO 是否应该先删除routing
-
-	resp := d.DiscoverServer().CreateRoutingConfigs(d.DefaultCtx, []*apitraffic.Routing{conf})
-	if respSuccess(resp) {
-		t.Fatalf("error: %+v", resp)
-	}
-
-	return conf, resp.Responses[0].GetRouting()
-}
-
-// 创建一个路由配置
-func (d *DiscoverTestSuit) createCommonRoutingConfigV1IntoOldStore(t *testing.T, svc *apiservice.Service,
-	inCount int, outCount int) (*apitraffic.Routing, *apitraffic.Routing) {
-
-	inBounds := make([]*apitraffic.Route, 0, inCount)
-	for i := 0; i < inCount; i++ {
-		matchString := &apimodel.MatchString{
-			Type:  apimodel.MatchString_EXACT,
-			Value: utils.NewStringValue(fmt.Sprintf("in-meta-value-%d", i)),
-		}
-		source := &apitraffic.Source{
-			Service:   utils.NewStringValue(fmt.Sprintf("in-source-service-%d", i)),
-			Namespace: utils.NewStringValue(fmt.Sprintf("in-source-service-%d", i)),
-			Metadata: map[string]*apimodel.MatchString{
-				fmt.Sprintf("in-metadata-%d", i): matchString,
-			},
-		}
-		destination := &apitraffic.Destination{
-			Service:   svc.Name,
-			Namespace: svc.Namespace,
-			Metadata: map[string]*apimodel.MatchString{
-				fmt.Sprintf("in-metadata-%d", i): matchString,
-			},
-			Priority: utils.NewUInt32Value(120),
-			Weight:   utils.NewUInt32Value(100),
-			Transfer: utils.NewStringValue("abcdefg"),
-		}
-
-		entry := &apitraffic.Route{
-			Sources:      []*apitraffic.Source{source},
-			Destinations: []*apitraffic.Destination{destination},
-		}
-		inBounds = append(inBounds, entry)
-	}
-
-	conf := &apitraffic.Routing{
-		Service:      utils.NewStringValue(svc.GetName().GetValue()),
-		Namespace:    utils.NewStringValue(svc.GetNamespace().GetValue()),
-		Inbounds:     inBounds,
-		ServiceToken: utils.NewStringValue(svc.GetToken().GetValue()),
-	}
-
-	resp := d.OriginDiscoverServer().(*service.Server).CreateRoutingConfig(d.DefaultCtx, conf)
-	if respSuccess(resp) {
-		t.Fatalf("error: %+v", resp)
-	}
-
-	return conf, resp.GetRouting()
-}
-
 func mockRoutingV1(serviceName, serviceNamespace string, inCount int) *apitraffic.Routing {
 	inBounds := make([]*apitraffic.Route, 0, inCount)
 	for i := 0; i < inCount; i++ {
@@ -448,7 +347,7 @@ func (d *DiscoverTestSuit) createCommonRoutingConfigV2(t *testing.T, cnt int32) 
 // 创建一个路由配置
 func (d *DiscoverTestSuit) createCommonRoutingConfigV2WithReq(
 	t *testing.T, rules []*apitraffic.RouteRule) []*apitraffic.RouteRule {
-	resp := d.DiscoverServer().CreateRoutingConfigsV2(d.DefaultCtx, rules)
+	resp := d.DiscoverServer().CreateRoutingConfigs(d.DefaultCtx, rules)
 	if !respSuccess(resp) {
 		t.Fatalf("error: %+v", resp)
 	}
@@ -474,26 +373,10 @@ func (d *DiscoverTestSuit) createCommonRoutingConfigV2WithReq(
 }
 
 // 删除一个路由配置
-func (d *DiscoverTestSuit) deleteCommonRoutingConfig(t *testing.T, req *apitraffic.Routing) {
-	resp := d.DiscoverServer().DeleteRoutingConfigs(d.DefaultCtx, []*apitraffic.Routing{req})
-	if !respSuccess(resp) {
-		t.Fatalf("%s", resp.GetInfo().GetValue())
-	}
-}
-
-// 删除一个路由配置
 func (d *DiscoverTestSuit) deleteCommonRoutingConfigV2(t *testing.T, req *apitraffic.RouteRule) {
-	resp := d.DiscoverServer().DeleteRoutingConfigsV2(d.DefaultCtx, []*apitraffic.RouteRule{req})
+	resp := d.DiscoverServer().DeleteRoutingConfigs(d.DefaultCtx, []*apitraffic.RouteRule{req})
 	if !respSuccess(resp) {
 		t.Fatalf("%s", resp.GetInfo())
-	}
-}
-
-// 更新一个路由配置
-func (d *DiscoverTestSuit) updateCommonRoutingConfig(t *testing.T, req *apitraffic.Routing) {
-	resp := d.DiscoverServer().UpdateRoutingConfigs(d.DefaultCtx, []*apitraffic.Routing{req})
-	if !respSuccess(resp) {
-		t.Fatalf("%s", resp.GetInfo().GetValue())
 	}
 }
 

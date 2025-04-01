@@ -24,14 +24,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 )
 
-func mockConfigFileHistory(total int, fileName string) []*model.ConfigFileReleaseHistory {
-	ret := make([]*model.ConfigFileReleaseHistory, 0, total)
+func mockConfigFileHistory(total int, fileName string) []*conftypes.ConfigFileReleaseHistory {
+	ret := make([]*conftypes.ConfigFileReleaseHistory, 0, total)
 
 	for i := 0; i < total; i++ {
-		val := &model.ConfigFileReleaseHistory{
+		val := &conftypes.ConfigFileReleaseHistory{
 			Name:       fmt.Sprintf("history-%d", i),
 			Namespace:  "default",
 			Group:      "default",
@@ -55,7 +55,7 @@ func mockConfigFileHistory(total int, fileName string) []*model.ConfigFileReleas
 	return ret
 }
 
-func resetHistoryTimeAndIDField(tN time.Time, datas ...*model.ConfigFileReleaseHistory) {
+func resetHistoryTimeAndIDField(tN time.Time, datas ...*conftypes.ConfigFileReleaseHistory) {
 	for i := range datas {
 		datas[i].Id = 0
 		datas[i].CreateTime = tN

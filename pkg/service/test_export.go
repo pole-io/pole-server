@@ -25,10 +25,10 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
@@ -81,7 +81,7 @@ func TestInitialize(ctx context.Context, namingOpt *Config, cacheOpt *cache.Conf
 // TestSerialCreateInstance .
 func (s *Server) TestSerialCreateInstance(
 	ctx context.Context, svcId string, req *apiservice.Instance, ins *apiservice.Instance) (
-	*model.Instance, *apiservice.Response) {
+	*svctypes.Instance, *apiservice.Response) {
 	return s.serialCreateInstance(ctx, svcId, req, ins)
 }
 

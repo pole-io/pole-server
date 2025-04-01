@@ -23,8 +23,6 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-
-	commontime "github.com/pole-io/pole-server/pkg/common/time"
 )
 
 // Client 客户端上报信息表
@@ -91,8 +89,8 @@ func Store2Client(is *ClientStore) *Client {
 				Zone:   &wrappers.StringValue{Value: is.Zone},
 				Region: &wrappers.StringValue{Value: is.Region},
 			},
-			Ctime: &wrappers.StringValue{Value: commontime.Int64Time2String(is.CreateTime)},
-			Mtime: &wrappers.StringValue{Value: commontime.Int64Time2String(is.ModifyTime)},
+			Ctime: &wrappers.StringValue{Value: int64Time2String(is.CreateTime)},
+			Mtime: &wrappers.StringValue{Value: int64Time2String(is.ModifyTime)},
 		},
 		valid:      is.Flag == 0,
 		modifyTime: time.Unix(is.ModifyTime, 0),
@@ -144,3 +142,7 @@ const (
 	// ClientLabel_Host 客户端主机名
 	ClientLabel_Host = "CLIENT_HOST"
 )
+
+func int64Time2String(t int64) string {
+	return time.Unix(t, 0).Format("2006-01-02 15:04:05")
+}

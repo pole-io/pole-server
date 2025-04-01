@@ -20,7 +20,8 @@ package boltdb
 import (
 	"time"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 type transaction struct {
@@ -38,11 +39,11 @@ func (t *transaction) LockBootstrap(key string, server string) error {
 }
 
 // LockNamespace 排它锁namespace
-func (t *transaction) LockNamespace(name string) (*model.Namespace, error) {
+func (t *transaction) LockNamespace(name string) (*types.Namespace, error) {
 	return t.loadNamespace(name)
 }
 
-func (t *transaction) loadNamespace(name string) (*model.Namespace, error) {
+func (t *transaction) loadNamespace(name string) (*types.Namespace, error) {
 	values, err := t.handler.LoadValues(tblNameNamespace, []string{name}, &Namespace{})
 	if err != nil {
 		return nil, err
@@ -55,7 +56,7 @@ func (t *transaction) loadNamespace(name string) (*model.Namespace, error) {
 }
 
 // RLockNamespace 共享锁namespace
-func (t *transaction) RLockNamespace(name string) (*model.Namespace, error) {
+func (t *transaction) RLockNamespace(name string) (*types.Namespace, error) {
 	return t.loadNamespace(name)
 }
 
@@ -75,7 +76,7 @@ const (
 	svcFieldValid     string = "Valid"
 )
 
-func (t *transaction) loadService(name string, namespace string) (*model.Service, error) {
+func (t *transaction) loadService(name string, namespace string) (*svctypes.Service, error) {
 	filter := func(m map[string]interface{}) bool {
 		validVal, ok := m[svcFieldValid]
 		if ok && !validVal.(bool) {
@@ -96,7 +97,7 @@ func (t *transaction) loadService(name string, namespace string) (*model.Service
 	if err != nil {
 		return nil, err
 	}
-	var svc *model.Service
+	var svc *svctypes.Service
 	for _, svcValue := range values {
 		svc = toModelService(svcValue.(*Service))
 		break
@@ -105,11 +106,11 @@ func (t *transaction) loadService(name string, namespace string) (*model.Service
 }
 
 // LockService 排它锁service
-func (t *transaction) LockService(name string, namespace string) (*model.Service, error) {
+func (t *transaction) LockService(name string, namespace string) (*svctypes.Service, error) {
 	return t.loadService(name, namespace)
 }
 
 // RLockService 共享锁service
-func (t *transaction) RLockService(name string, namespace string) (*model.Service, error) {
+func (t *transaction) RLockService(name string, namespace string) (*svctypes.Service, error) {
 	return t.loadService(name, namespace)
 }

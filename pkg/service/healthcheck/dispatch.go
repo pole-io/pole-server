@@ -25,8 +25,9 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	commonhash "github.com/pole-io/pole-server/pkg/common/hash"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 const (
@@ -149,7 +150,7 @@ func (d *Dispatcher) reloadManagedClients() {
 	nextClients := make(map[string]*ClientWithChecker)
 
 	if d.continuum != nil {
-		d.svr.cacheProvider.RangeHealthCheckClients(func(itemChecker ItemWithChecker, client *model.Client) {
+		d.svr.cacheProvider.RangeHealthCheckClients(func(itemChecker ItemWithChecker, client *types.Client) {
 			clientId := client.Proto().GetId().GetValue()
 			host := d.continuum.Hash(itemChecker.GetHashValue())
 			if host == d.svr.localHost {
@@ -188,7 +189,7 @@ func (d *Dispatcher) reloadManagedClients() {
 func (d *Dispatcher) reloadManagedInstances() {
 	nextInstances := make(map[string]*InstanceWithChecker)
 	if d.continuum != nil {
-		d.svr.cacheProvider.RangeHealthCheckInstances(func(itemChecker ItemWithChecker, instance *model.Instance) {
+		d.svr.cacheProvider.RangeHealthCheckInstances(func(itemChecker ItemWithChecker, instance *svctypes.Instance) {
 			instanceId := instance.ID()
 			host := d.continuum.Hash(itemChecker.GetHashValue())
 			if host == d.svr.localHost {

@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 var _ store.RateLimitStore = (*rateLimitStore)(nil)
@@ -38,7 +38,7 @@ type rateLimitStore struct {
 }
 
 // CreateRateLimit 新建限流规则
-func (rls *rateLimitStore) CreateRateLimit(limit *model.RateLimit) error {
+func (rls *rateLimitStore) CreateRateLimit(limit *rules.RateLimit) error {
 	if limit.ID == "" || limit.Revision == "" {
 		return errors.New("[Store][database] create rate limit missing some params")
 	}
@@ -49,7 +49,7 @@ func (rls *rateLimitStore) CreateRateLimit(limit *model.RateLimit) error {
 	return store.Error(err)
 }
 
-func limitToEtimeStr(limit *model.RateLimit) string {
+func limitToEtimeStr(limit *rules.RateLimit) string {
 	etimeStr := "sysdate()"
 	if limit.Disable {
 		etimeStr = emptyEnableTime
@@ -58,7 +58,7 @@ func limitToEtimeStr(limit *model.RateLimit) string {
 }
 
 // createRateLimit
-func (rls *rateLimitStore) createRateLimit(limit *model.RateLimit) error {
+func (rls *rateLimitStore) createRateLimit(limit *rules.RateLimit) error {
 	tx, err := rls.master.Begin()
 	if err != nil {
 		log.Errorf("[Store][database] create rate limit(%+v) begin tx err: %s", limit, err.Error())
@@ -89,7 +89,7 @@ func (rls *rateLimitStore) createRateLimit(limit *model.RateLimit) error {
 }
 
 // UpdateRateLimit 更新限流规则
-func (rls *rateLimitStore) UpdateRateLimit(limit *model.RateLimit) error {
+func (rls *rateLimitStore) UpdateRateLimit(limit *rules.RateLimit) error {
 	if limit.ID == "" || limit.Revision == "" {
 		return errors.New("[Store][database] update rate limit missing some params")
 	}
@@ -102,7 +102,7 @@ func (rls *rateLimitStore) UpdateRateLimit(limit *model.RateLimit) error {
 }
 
 // EnableRateLimit 启用限流规则
-func (rls *rateLimitStore) EnableRateLimit(limit *model.RateLimit) error {
+func (rls *rateLimitStore) EnableRateLimit(limit *rules.RateLimit) error {
 	if limit.ID == "" || limit.Revision == "" {
 		return errors.New("[Store][database] enable rate limit missing some params")
 	}
@@ -115,7 +115,7 @@ func (rls *rateLimitStore) EnableRateLimit(limit *model.RateLimit) error {
 }
 
 // enableRateLimit
-func (rls *rateLimitStore) enableRateLimit(limit *model.RateLimit) error {
+func (rls *rateLimitStore) enableRateLimit(limit *rules.RateLimit) error {
 	tx, err := rls.master.Begin()
 	if err != nil {
 		log.Errorf("[Store][database] update rate limit(%+v) begin tx err: %s", limit, err.Error())
@@ -142,7 +142,7 @@ func (rls *rateLimitStore) enableRateLimit(limit *model.RateLimit) error {
 }
 
 // updateRateLimit
-func (rls *rateLimitStore) updateRateLimit(limit *model.RateLimit) error {
+func (rls *rateLimitStore) updateRateLimit(limit *rules.RateLimit) error {
 	tx, err := rls.master.Begin()
 	if err != nil {
 		log.Errorf("[Store][database] update rate limit(%+v) begin tx err: %s", limit, err.Error())
@@ -170,7 +170,7 @@ func (rls *rateLimitStore) updateRateLimit(limit *model.RateLimit) error {
 }
 
 // DeleteRateLimit 删除限流规则
-func (rls *rateLimitStore) DeleteRateLimit(limit *model.RateLimit) error {
+func (rls *rateLimitStore) DeleteRateLimit(limit *rules.RateLimit) error {
 	if limit.ID == "" || limit.Revision == "" {
 		return errors.New("[Store][database] delete rate limit missing some params")
 	}
@@ -183,7 +183,7 @@ func (rls *rateLimitStore) DeleteRateLimit(limit *model.RateLimit) error {
 }
 
 // deleteRateLimit
-func (rls *rateLimitStore) deleteRateLimit(limit *model.RateLimit) error {
+func (rls *rateLimitStore) deleteRateLimit(limit *rules.RateLimit) error {
 	tx, err := rls.master.Begin()
 	if err != nil {
 		log.Errorf("[Store][database] delete rate limit(%+v) begin tx err: %s", limit, err.Error())
@@ -208,7 +208,7 @@ func (rls *rateLimitStore) deleteRateLimit(limit *model.RateLimit) error {
 }
 
 // GetRateLimitWithID 根据限流规则ID获取限流规则
-func (rls *rateLimitStore) GetRateLimitWithID(id string) (*model.RateLimit, error) {
+func (rls *rateLimitStore) GetRateLimitWithID(id string) (*rules.RateLimit, error) {
 	if id == "" {
 		log.Errorf("[Store][database] get rate limit missing some params")
 		return nil, errors.New("get rate limit missing some params")
@@ -233,11 +233,11 @@ func (rls *rateLimitStore) GetRateLimitWithID(id string) (*model.RateLimit, erro
 }
 
 // fetchRateLimitRows 读取限流数据
-func fetchRateLimitRows(rows *sql.Rows) ([]*model.RateLimit, error) {
+func fetchRateLimitRows(rows *sql.Rows) ([]*rules.RateLimit, error) {
 	defer rows.Close()
-	var out []*model.RateLimit
+	var out []*rules.RateLimit
 	for rows.Next() {
-		var rateLimit model.RateLimit
+		var rateLimit rules.RateLimit
 		var flag int
 		var ctime, mtime, etime int64
 		err := rows.Scan(&rateLimit.ID, &rateLimit.Name, &rateLimit.Disable, &rateLimit.ServiceID, &rateLimit.Method,
@@ -264,7 +264,7 @@ func fetchRateLimitRows(rows *sql.Rows) ([]*model.RateLimit, error) {
 
 // GetRateLimitsForCache 根据修改时间拉取增量限流规则及最新版本号
 func (rls *rateLimitStore) GetRateLimitsForCache(mtime time.Time,
-	firstUpdate bool) ([]*model.RateLimit, error) {
+	firstUpdate bool) ([]*rules.RateLimit, error) {
 	str := `select id, name, disable, ratelimit_config.service_id, method, labels, priority, rule, revision, flag,
 			unix_timestamp(ratelimit_config.ctime), unix_timestamp(ratelimit_config.mtime), 
 			unix_timestamp(ratelimit_config.etime) from ratelimit_config 
@@ -285,14 +285,14 @@ func (rls *rateLimitStore) GetRateLimitsForCache(mtime time.Time,
 }
 
 // fetchRateLimitCacheRows 读取限流数据以及最新版本号
-func fetchRateLimitCacheRows(rows *sql.Rows) ([]*model.RateLimit, error) {
+func fetchRateLimitCacheRows(rows *sql.Rows) ([]*rules.RateLimit, error) {
 	defer rows.Close()
 
-	var rateLimits []*model.RateLimit
+	var rateLimits []*rules.RateLimit
 
 	for rows.Next() {
 		var (
-			rateLimit           model.RateLimit
+			rateLimit           rules.RateLimit
 			ctime, mtime, etime int64
 			serviceID           string
 			flag                int
@@ -328,8 +328,8 @@ const (
 
 // GetExtendRateLimits 根据过滤条件获取限流规则及数目
 func (rls *rateLimitStore) GetExtendRateLimits(
-	filter map[string]string, offset uint32, limit uint32) (uint32, []*model.ExtendRateLimit, error) {
-	var out []*model.ExtendRateLimit
+	filter map[string]string, offset uint32, limit uint32) (uint32, []*rules.ExtendRateLimit, error) {
+	var out []*rules.ExtendRateLimit
 	var err error
 	if bValue, ok := filter[briefSearch]; ok && strings.ToLower(bValue) == "true" {
 		out, err = rls.getBriefRateLimits(filter, offset, limit)
@@ -348,7 +348,7 @@ func (rls *rateLimitStore) GetExtendRateLimits(
 
 // getBriefRateLimits 获取列表的概要信息
 func (rls *rateLimitStore) getBriefRateLimits(
-	filter map[string]string, offset uint32, limit uint32) ([]*model.ExtendRateLimit, error) {
+	filter map[string]string, offset uint32, limit uint32) ([]*rules.ExtendRateLimit, error) {
 	str := `select ratelimit_config.id, ratelimit_config.name, ratelimit_config.disable,
             ratelimit_config.service_id, ratelimit_config.method, unix_timestamp(ratelimit_config.ctime), 
 			unix_timestamp(ratelimit_config.mtime), unix_timestamp(ratelimit_config.etime) 
@@ -371,12 +371,12 @@ func (rls *rateLimitStore) getBriefRateLimits(
 }
 
 // fetchBriefRateLimitRows fetch the brief ratelimit list
-func fetchBriefRateLimitRows(rows *sql.Rows) ([]*model.ExtendRateLimit, error) {
+func fetchBriefRateLimitRows(rows *sql.Rows) ([]*rules.ExtendRateLimit, error) {
 	defer rows.Close()
-	var out []*model.ExtendRateLimit
+	var out []*rules.ExtendRateLimit
 	for rows.Next() {
-		var expand model.ExtendRateLimit
-		expand.RateLimit = &model.RateLimit{}
+		var expand rules.ExtendRateLimit
+		expand.RateLimit = &rules.RateLimit{}
 		var ctime, mtime, etime int64
 		err := rows.Scan(
 			&expand.RateLimit.ID,
@@ -402,7 +402,7 @@ func fetchBriefRateLimitRows(rows *sql.Rows) ([]*model.ExtendRateLimit, error) {
 
 // getExpandRateLimits 根据过滤条件获取限流规则
 func (rls *rateLimitStore) getExpandRateLimits(
-	filter map[string]string, offset uint32, limit uint32) ([]*model.ExtendRateLimit, error) {
+	filter map[string]string, offset uint32, limit uint32) ([]*rules.ExtendRateLimit, error) {
 	str := `select ratelimit_config.id, ratelimit_config.name, ratelimit_config.disable,
             ratelimit_config.service_id, ratelimit_config.method, ratelimit_config.labels, 
             ratelimit_config.priority, ratelimit_config.rule, ratelimit_config.revision, 
@@ -428,12 +428,12 @@ func (rls *rateLimitStore) getExpandRateLimits(
 }
 
 // fetchExpandRateLimitRows 读取包含服务信息的限流数据
-func fetchExpandRateLimitRows(rows *sql.Rows) ([]*model.ExtendRateLimit, error) {
+func fetchExpandRateLimitRows(rows *sql.Rows) ([]*rules.ExtendRateLimit, error) {
 	defer rows.Close()
-	var out []*model.ExtendRateLimit
+	var out []*rules.ExtendRateLimit
 	for rows.Next() {
-		var expand model.ExtendRateLimit
-		expand.RateLimit = &model.RateLimit{}
+		var expand rules.ExtendRateLimit
+		expand.RateLimit = &rules.RateLimit{}
 		var ctime, mtime, etime int64
 		err := rows.Scan(
 			&expand.RateLimit.ID,

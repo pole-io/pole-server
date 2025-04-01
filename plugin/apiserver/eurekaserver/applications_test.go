@@ -29,6 +29,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/service"
 )
@@ -50,19 +51,19 @@ type svcName struct {
 }
 
 var (
-	mockServices           = map[svcName]*model.Service{}
+	mockServices           = map[svcName]*svctypes.Service{}
 	mockInstances          = map[string]map[string]*model.Instance{}
-	mockUnhealthyServices  = map[svcName]*model.Service{}
+	mockUnhealthyServices  = map[svcName]*svctypes.Service{}
 	mockUnhealthyInstances = map[string]map[string]*model.Instance{}
 )
 
-func buildServices(count int, namespace string, services map[svcName]*model.Service) {
+func buildServices(count int, namespace string, services map[svcName]*svctypes.Service) {
 	for i := 0; i < count; i++ {
 		name := svcName{
 			name:      namespace + "_svc_" + strconv.Itoa(i),
 			namespace: namespace,
 		}
-		services[name] = &model.Service{
+		services[name] = &svctypes.Service{
 			ID:        uuid.NewString(),
 			Name:      name.name,
 			Namespace: name.namespace,
@@ -70,7 +71,7 @@ func buildServices(count int, namespace string, services map[svcName]*model.Serv
 	}
 }
 
-func buildMockInstance(idx int, svc *model.Service, healthy bool, vipAddresses string, svipAddresses string) *model.Instance {
+func buildMockInstance(idx int, svc *svctypes.Service, healthy bool, vipAddresses string, svipAddresses string) *model.Instance {
 	instance := &model.Instance{
 		Proto: &apiservice.Instance{
 			Id:                &wrappers.StringValue{Value: uuid.NewString()},
@@ -148,8 +149,8 @@ func buildMockUnhealthyInstances() {
 
 }
 
-func mockGetCacheServices(namingServer service.DiscoverServer, namespace string) map[string]*model.Service {
-	var newServices = make(map[string]*model.Service)
+func mockGetCacheServices(namingServer service.DiscoverServer, namespace string) map[string]*svctypes.Service {
+	var newServices = make(map[string]*svctypes.Service)
 	for _, svc := range mockServices {
 		if namespace == svc.Namespace {
 			newServices[svc.ID] = svc
@@ -213,8 +214,8 @@ func doUnhealthyFunctionMock() {
 	getCacheInstancesFunc = mockGetUnhealthyInstances
 }
 
-func mockGetUnhealthyServices(namingServer service.DiscoverServer, namespace string) map[string]*model.Service {
-	var newServices = make(map[string]*model.Service)
+func mockGetUnhealthyServices(namingServer service.DiscoverServer, namespace string) map[string]*svctypes.Service {
+	var newServices = make(map[string]*svctypes.Service)
 	for _, svc := range mockUnhealthyServices {
 		if namespace == svc.Namespace {
 			newServices[svc.ID] = svc
@@ -260,7 +261,7 @@ func TestBuildDataCenterInfo(t *testing.T) {
 // TestBuildInstance test to build the instance
 func TestBuildInstance(t *testing.T) {
 	CustomEurekaParameters[CustomKeyDciClass] = "com.netflix.appinfo.AmazonInfo"
-	svc := &model.Service{ID: "111", Name: "testInst0", Namespace: "test"}
+	svc := &svctypes.Service{ID: "111", Name: "testInst0", Namespace: "test"}
 	instance := buildMockInstance(0, svc, true, "xxx.com", "yyyy.com")
 	instanceInfo := buildInstance(svc.Name, instance.Proto, 123345550)
 	assert.Equal(t, CustomEurekaParameters[CustomKeyDciClass], instanceInfo.DataCenterInfo.Clazz)

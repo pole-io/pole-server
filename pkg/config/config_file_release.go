@@ -31,6 +31,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -77,19 +79,19 @@ func (s *Server) nextSequence() int64 {
 
 // PublishConfigFile 发布配置文件
 func (s *Server) handlePublishConfigFile(ctx context.Context, tx store.Tx,
-	req *apiconfig.ConfigFileRelease) (*model.ConfigFileRelease, *apiconfig.ConfigResponse) {
+	req *apiconfig.ConfigFileRelease) (*conftypes.ConfigFileRelease, *apiconfig.ConfigResponse) {
 	namespace := req.GetNamespace().GetValue()
 	group := req.GetGroup().GetValue()
 	fileName := req.GetFileName().GetValue()
 
-	fileRelease := &model.ConfigFileRelease{
-		SimpleConfigFileRelease: &model.SimpleConfigFileRelease{
-			ConfigFileReleaseKey: &model.ConfigFileReleaseKey{
+	fileRelease := &conftypes.ConfigFileRelease{
+		SimpleConfigFileRelease: &conftypes.SimpleConfigFileRelease{
+			ConfigFileReleaseKey: &conftypes.ConfigFileReleaseKey{
 				Name:        req.GetName().GetValue(),
 				Namespace:   namespace,
 				Group:       group,
 				FileName:    fileName,
-				ReleaseType: model.ReleaseType(req.GetReleaseType().GetValue()),
+				ReleaseType: conftypes.ReleaseType(req.GetReleaseType().GetValue()),
 			},
 		},
 	}
@@ -171,7 +173,7 @@ func (s *Server) handlePublishConfigFile(ctx context.Context, tx store.Tx,
 			}
 			raw = append(raw, json.RawMessage(data))
 		}
-		grayResource := &model.GrayResource{
+		grayResource := &rules.GrayResource{
 			Name:      model.GetGrayConfigRealseKey(fileRelease.SimpleConfigFileRelease),
 			MatchRule: string(utils.MustJson(raw)),
 			CreateBy:  utils.ParseUserName(ctx),
@@ -196,20 +198,20 @@ func (s *Server) GetConfigFileRelease(ctx context.Context, req *apiconfig.Config
 	fileName := req.GetFileName().GetValue()
 	releaseName := req.GetName().GetValue()
 	var (
-		ret *model.ConfigFileRelease
+		ret *conftypes.ConfigFileRelease
 		err error
 	)
 
 	// 如果没有指定专门的 releaseName，则直接查询 active 状态的配置发布, 兼容老的控制台查询逻辑
 	if releaseName != "" {
-		ret, err = s.storage.GetConfigFileRelease(&model.ConfigFileReleaseKey{
+		ret, err = s.storage.GetConfigFileRelease(&conftypes.ConfigFileReleaseKey{
 			Namespace: namespace,
 			Group:     group,
 			FileName:  fileName,
 			Name:      releaseName,
 		})
 	} else {
-		ret, err = s.storage.GetConfigFileActiveRelease(&model.ConfigFileKey{
+		ret, err = s.storage.GetConfigFileActiveRelease(&conftypes.ConfigFileKey{
 			Namespace: namespace,
 			Group:     group,
 			Name:      fileName,
@@ -234,7 +236,7 @@ func (s *Server) GetConfigFileRelease(ctx context.Context, req *apiconfig.Config
 		return out
 	}
 
-	release := model.ToConfiogFileReleaseApi(ret)
+	release := conftypes.ToConfiogFileReleaseApi(ret)
 	return api.NewConfigFileReleaseResponse(apimodel.Code_ExecuteSuccess, release)
 }
 
@@ -260,19 +262,19 @@ func (s *Server) DeleteConfigFileReleases(ctx context.Context,
 
 func (s *Server) DeleteConfigFileRelease(ctx context.Context,
 	req *apiconfig.ConfigFileRelease) *apiconfig.ConfigResponse {
-	release := &model.ConfigFileRelease{
-		SimpleConfigFileRelease: &model.SimpleConfigFileRelease{
-			ConfigFileReleaseKey: &model.ConfigFileReleaseKey{
+	release := &conftypes.ConfigFileRelease{
+		SimpleConfigFileRelease: &conftypes.SimpleConfigFileRelease{
+			ConfigFileReleaseKey: &conftypes.ConfigFileReleaseKey{
 				Name:        req.GetName().GetValue(),
 				Namespace:   req.GetNamespace().GetValue(),
 				Group:       req.GetGroup().GetValue(),
 				FileName:    req.GetFileName().GetValue(),
-				ReleaseType: model.ReleaseType(req.GetReleaseType().GetValue()),
+				ReleaseType: conftypes.ReleaseType(req.GetReleaseType().GetValue()),
 			},
 		},
 	}
 	var (
-		recordData *model.ConfigFileRelease
+		recordData *conftypes.ConfigFileRelease
 	)
 
 	tx, err := s.storage.StartTx()
@@ -427,14 +429,14 @@ func (s *Server) RollbackConfigFileReleases(ctx context.Context,
 // RollbackConfigFileRelease 回滚配置
 func (s *Server) RollbackConfigFileRelease(ctx context.Context,
 	req *apiconfig.ConfigFileRelease) *apiconfig.ConfigResponse {
-	data := &model.ConfigFileRelease{
-		SimpleConfigFileRelease: &model.SimpleConfigFileRelease{
-			ConfigFileReleaseKey: &model.ConfigFileReleaseKey{
+	data := &conftypes.ConfigFileRelease{
+		SimpleConfigFileRelease: &conftypes.SimpleConfigFileRelease{
+			ConfigFileReleaseKey: &conftypes.ConfigFileReleaseKey{
 				Name:        req.GetName().GetValue(),
 				Namespace:   req.GetNamespace().GetValue(),
 				Group:       req.GetGroup().GetValue(),
 				FileName:    req.GetFileName().GetValue(),
-				ReleaseType: model.ReleaseTypeFull,
+				ReleaseType: conftypes.ReleaseTypeFull,
 			},
 		},
 	}
@@ -471,7 +473,7 @@ func (s *Server) RollbackConfigFileRelease(ctx context.Context,
 
 // handleRollbackConfigFileRelease 回滚配置
 func (s *Server) handleRollbackConfigFileRelease(ctx context.Context, tx store.Tx,
-	data *model.ConfigFileRelease) (*model.ConfigFileRelease, *apiconfig.ConfigResponse) {
+	data *conftypes.ConfigFileRelease) (*conftypes.ConfigFileRelease, *apiconfig.ConfigResponse) {
 
 	targetRelease, err := s.storage.GetConfigFileReleaseTx(tx, data.ConfigFileReleaseKey)
 	if err != nil {
@@ -522,7 +524,7 @@ func (s *Server) CasUpsertAndReleaseConfigFile(ctx context.Context,
 	defer func() {
 		_ = tx.Rollback()
 	}()
-	saveFile, err := s.storage.LockConfigFile(tx, &model.ConfigFileKey{
+	saveFile, err := s.storage.LockConfigFile(tx, &conftypes.ConfigFileKey{
 		Namespace: req.GetNamespace().GetValue(),
 		Group:     req.GetGroup().GetValue(),
 		Name:      req.GetFileName().GetValue(),
@@ -614,7 +616,7 @@ func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
 	defer func() {
 		_ = tx.Rollback()
 	}()
-	saveFile, err := s.storage.LockConfigFile(tx, &model.ConfigFileKey{
+	saveFile, err := s.storage.LockConfigFile(tx, &conftypes.ConfigFileKey{
 		Namespace: req.GetNamespace().GetValue(),
 		Group:     req.GetGroup().GetValue(),
 		Name:      req.GetFileName().GetValue(),
@@ -715,7 +717,7 @@ func (s *Server) StopGrayConfigFileRelease(ctx context.Context, req *apiconfig.C
 		_ = tx.Rollback()
 	}()
 
-	fileKey := &model.ConfigFileKey{
+	fileKey := &conftypes.ConfigFileKey{
 		Namespace: req.GetNamespace().GetValue(),
 		Group:     req.GetGroup().GetValue(),
 		Name:      req.GetFileName().GetValue(),
@@ -733,13 +735,13 @@ func (s *Server) StopGrayConfigFileRelease(ctx context.Context, req *apiconfig.C
 	if betaRelease == nil {
 		return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 	}
-	if err := s.storage.CleanGrayResource(tx, &model.GrayResource{
-		Name: model.GetGrayConfigRealseKey(&model.SimpleConfigFileRelease{
-			ConfigFileReleaseKey: &model.ConfigFileReleaseKey{
+	if err := s.storage.CleanGrayResource(tx, &rules.GrayResource{
+		Name: model.GetGrayConfigRealseKey(&conftypes.SimpleConfigFileRelease{
+			ConfigFileReleaseKey: &conftypes.ConfigFileReleaseKey{
 				Namespace:   req.GetNamespace().GetValue(),
 				Group:       req.GetGroup().GetValue(),
 				Name:        req.GetFileName().GetValue(),
-				ReleaseType: model.ReleaseTypeGray,
+				ReleaseType: conftypes.ReleaseTypeGray,
 			},
 		}),
 	}); err != nil {
@@ -760,7 +762,7 @@ func (s *Server) StopGrayConfigFileRelease(ctx context.Context, req *apiconfig.C
 }
 
 func (s *Server) cleanConfigFileReleases(ctx context.Context, tx store.Tx,
-	file *model.ConfigFile) *apiconfig.ConfigResponse {
+	file *conftypes.ConfigFile) *apiconfig.ConfigResponse {
 
 	// 先重新 active 下当前正在发布的
 	saveData, err := s.storage.GetConfigFileActiveReleaseTx(tx, file.Key())
@@ -778,12 +780,12 @@ func (s *Server) cleanConfigFileReleases(ctx context.Context, tx store.Tx,
 	return nil
 }
 
-func (s *Server) recordReleaseSuccess(ctx context.Context, rType string, release *model.ConfigFileRelease) {
+func (s *Server) recordReleaseSuccess(ctx context.Context, rType string, release *conftypes.ConfigFileRelease) {
 	s.recordReleaseHistory(ctx, release, rType, utils.ReleaseStatusSuccess, "")
 }
 
 // configFileReleaseRecordEntry 生成服务的记录entry
-func configFileReleaseRecordEntry(ctx context.Context, req *apiconfig.ConfigFileRelease, md *model.ConfigFileRelease,
+func configFileReleaseRecordEntry(ctx context.Context, req *apiconfig.ConfigFileRelease, md *conftypes.ConfigFileRelease,
 	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}

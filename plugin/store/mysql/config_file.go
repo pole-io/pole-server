@@ -24,8 +24,8 @@ import (
 
 	"go.uber.org/zap"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -54,7 +54,7 @@ type configFileStore struct {
 }
 
 // LockConfigFile 加锁配置文件
-func (cf *configFileStore) LockConfigFile(tx store.Tx, file *model.ConfigFileKey) (*model.ConfigFile, error) {
+func (cf *configFileStore) LockConfigFile(tx store.Tx, file *conftypes.ConfigFileKey) (*conftypes.ConfigFile, error) {
 	if tx == nil {
 		return nil, ErrTxIsNil
 	}
@@ -79,7 +79,7 @@ func (cf *configFileStore) LockConfigFile(tx store.Tx, file *model.ConfigFileKey
 }
 
 // CreateConfigFile 创建配置文件
-func (cf *configFileStore) CreateConfigFileTx(tx store.Tx, file *model.ConfigFile) error {
+func (cf *configFileStore) CreateConfigFileTx(tx store.Tx, file *conftypes.ConfigFile) error {
 	if tx == nil {
 		return ErrTxIsNil
 	}
@@ -109,7 +109,7 @@ func (cf *configFileStore) CreateConfigFileTx(tx store.Tx, file *model.ConfigFil
 	return nil
 }
 
-func (cf *configFileStore) batchAddTags(tx *BaseTx, file *model.ConfigFile) error {
+func (cf *configFileStore) batchAddTags(tx *BaseTx, file *conftypes.ConfigFile) error {
 	if len(file.Metadata) == 0 {
 		return nil
 	}
@@ -129,7 +129,7 @@ func (cf *configFileStore) batchAddTags(tx *BaseTx, file *model.ConfigFile) erro
 	return store.Error(err)
 }
 
-func (cf *configFileStore) batchCleanTags(tx *BaseTx, file *model.ConfigFile) error {
+func (cf *configFileStore) batchCleanTags(tx *BaseTx, file *conftypes.ConfigFile) error {
 	// 添加配置标签
 	cleanSql := "DELETE FROM config_file_tag WHERE namespace = ? AND `group` = ? AND file_name = ? "
 	args := []interface{}{file.Namespace, file.Group, file.Name}
@@ -137,7 +137,7 @@ func (cf *configFileStore) batchCleanTags(tx *BaseTx, file *model.ConfigFile) er
 	return store.Error(err)
 }
 
-func (cf *configFileStore) loadFileTags(tx *BaseTx, file *model.ConfigFile) error {
+func (cf *configFileStore) loadFileTags(tx *BaseTx, file *conftypes.ConfigFile) error {
 	querySql := "SELECT `key`, `value` FROM config_file_tag WHERE namespace = ? AND " +
 		" `group` = ? AND file_name = ? "
 
@@ -173,7 +173,7 @@ func (cfr *configFileStore) CountConfigFiles(namespace, group string) (uint64, e
 }
 
 // GetConfigFile 获取配置文件
-func (cf *configFileStore) GetConfigFile(namespace, group, name string) (*model.ConfigFile, error) {
+func (cf *configFileStore) GetConfigFile(namespace, group, name string) (*conftypes.ConfigFile, error) {
 	tx, err := cf.master.Begin()
 	if err != nil {
 		return nil, store.Error(err)
@@ -187,7 +187,7 @@ func (cf *configFileStore) GetConfigFile(namespace, group, name string) (*model.
 
 // GetConfigFile 获取配置文件
 func (cf *configFileStore) GetConfigFileTx(tx store.Tx,
-	namespace, group, name string) (*model.ConfigFile, error) {
+	namespace, group, name string) (*conftypes.ConfigFile, error) {
 	if tx == nil {
 		return nil, ErrTxIsNil
 	}
@@ -212,7 +212,7 @@ func (cf *configFileStore) GetConfigFileTx(tx store.Tx,
 }
 
 // UpdateConfigFile 更新配置文件
-func (cf *configFileStore) UpdateConfigFileTx(tx store.Tx, file *model.ConfigFile) error {
+func (cf *configFileStore) UpdateConfigFileTx(tx store.Tx, file *conftypes.ConfigFile) error {
 	if tx == nil {
 		return ErrTxIsNil
 	}
@@ -250,7 +250,7 @@ func (cf *configFileStore) DeleteConfigFileTx(tx store.Tx, namespace, group, nam
 }
 
 // QueryConfigFiles 翻页查询配置文件，group、name可为模糊匹配
-func (cf *configFileStore) QueryConfigFiles(filter map[string]string, offset, limit uint32) (uint32, []*model.ConfigFile, error) {
+func (cf *configFileStore) QueryConfigFiles(filter map[string]string, offset, limit uint32) (uint32, []*conftypes.ConfigFile, error) {
 
 	countSql := "SELECT COUNT(*) FROM config_file WHERE flag = 0 "
 	querySql := cf.baseSelectConfigFileSql() + " WHERE flag = 0 "
@@ -361,18 +361,18 @@ func (cf *configFileStore) hardDeleteConfigFile(namespace, group, name string) e
 	return nil
 }
 
-func (cf *configFileStore) transferRows(rows *sql.Rows) ([]*model.ConfigFile, error) {
+func (cf *configFileStore) transferRows(rows *sql.Rows) ([]*conftypes.ConfigFile, error) {
 	if rows == nil {
 		return nil, nil
 	}
 	defer rows.Close()
 
 	var (
-		files = make([]*model.ConfigFile, 0, 32)
+		files = make([]*conftypes.ConfigFile, 0, 32)
 	)
 
 	for rows.Next() {
-		file := &model.ConfigFile{
+		file := &conftypes.ConfigFile{
 			Metadata: map[string]string{},
 		}
 		var ctime, mtime int64

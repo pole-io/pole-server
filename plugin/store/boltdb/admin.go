@@ -24,10 +24,10 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/admin"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	"github.com/pole-io/pole-server/pkg/common/model/admin"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 

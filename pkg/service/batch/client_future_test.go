@@ -20,14 +20,13 @@ package batch
 import (
 	"testing"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 func TestClientFuture_SetClient(t *testing.T) {
 	f := &ClientFuture{}
 
-	f.SetClient(&model.Client{})
+	f.SetClient(&types.Client{})
 	assert.NotNil(t, f.Client())
 }

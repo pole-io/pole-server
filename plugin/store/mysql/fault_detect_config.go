@@ -23,8 +23,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 var _ store.FaultDetectRuleStore = (*faultDetectRuleStore)(nil)
@@ -60,14 +60,14 @@ const (
 )
 
 // CreateFaultDetectRule create fault detect rule
-func (f *faultDetectRuleStore) CreateFaultDetectRule(fdRule *model.FaultDetectRule) error {
+func (f *faultDetectRuleStore) CreateFaultDetectRule(fdRule *rules.FaultDetectRule) error {
 	err := RetryTransaction(labelCreateFaultDetectRule, func() error {
 		return f.createFaultDetectRule(fdRule)
 	})
 	return store.Error(err)
 }
 
-func (f *faultDetectRuleStore) createFaultDetectRule(fdRule *model.FaultDetectRule) error {
+func (f *faultDetectRuleStore) createFaultDetectRule(fdRule *rules.FaultDetectRule) error {
 	return f.master.processWithTransaction(labelCreateFaultDetectRule, func(tx *BaseTx) error {
 		if _, err := tx.Exec(insertFaultDetectSql, fdRule.ID, fdRule.Name, fdRule.Namespace, fdRule.Revision,
 			fdRule.Description, fdRule.DstService, fdRule.DstNamespace, fdRule.DstMethod, fdRule.Rule); err != nil {
@@ -86,14 +86,14 @@ func (f *faultDetectRuleStore) createFaultDetectRule(fdRule *model.FaultDetectRu
 }
 
 // UpdateFaultDetectRule update fault detect rule
-func (f *faultDetectRuleStore) UpdateFaultDetectRule(fdRule *model.FaultDetectRule) error {
+func (f *faultDetectRuleStore) UpdateFaultDetectRule(fdRule *rules.FaultDetectRule) error {
 	err := RetryTransaction(labelUpdateFaultDetectRule, func() error {
 		return f.updateFaultDetectRule(fdRule)
 	})
 	return store.Error(err)
 }
 
-func (f *faultDetectRuleStore) updateFaultDetectRule(fdRule *model.FaultDetectRule) error {
+func (f *faultDetectRuleStore) updateFaultDetectRule(fdRule *rules.FaultDetectRule) error {
 	return f.master.processWithTransaction(labelUpdateFaultDetectRule, func(tx *BaseTx) error {
 		if _, err := tx.Exec(updateFaultDetectSql, fdRule.Name, fdRule.Namespace, fdRule.Revision,
 			fdRule.Description, fdRule.DstService, fdRule.DstNamespace, fdRule.DstMethod, fdRule.Rule, fdRule.ID); err != nil {
@@ -169,8 +169,8 @@ func (f *faultDetectRuleStore) HasFaultDetectRuleByNameExcludeId(
 
 // GetFaultDetectRules get all fault detect rules by query and limit
 func (f *faultDetectRuleStore) GetFaultDetectRules(
-	filter map[string]string, offset uint32, limit uint32) (uint32, []*model.FaultDetectRule, error) {
-	var out []*model.FaultDetectRule
+	filter map[string]string, offset uint32, limit uint32) (uint32, []*rules.FaultDetectRule, error) {
+	var out []*rules.FaultDetectRule
 	var err error
 
 	bValue, ok := filter[briefSearch]
@@ -194,7 +194,7 @@ func (f *faultDetectRuleStore) GetFaultDetectRules(
 
 // GetFaultDetectRulesForCache get increment circuitbreaker rules
 func (f *faultDetectRuleStore) GetFaultDetectRulesForCache(
-	mtime time.Time, firstUpdate bool) ([]*model.FaultDetectRule, error) {
+	mtime time.Time, firstUpdate bool) ([]*rules.FaultDetectRule, error) {
 	str := queryFaultDetectCacheSql
 	if firstUpdate {
 		str += " and flag != 1"
@@ -211,11 +211,11 @@ func (f *faultDetectRuleStore) GetFaultDetectRulesForCache(
 	return fdRules, nil
 }
 
-func fetchFaultDetectRulesRows(rows *sql.Rows) ([]*model.FaultDetectRule, error) {
+func fetchFaultDetectRulesRows(rows *sql.Rows) ([]*rules.FaultDetectRule, error) {
 	defer rows.Close()
-	var out []*model.FaultDetectRule
+	var out []*rules.FaultDetectRule
 	for rows.Next() {
-		var fdRule model.FaultDetectRule
+		var fdRule rules.FaultDetectRule
 		var flag int
 		var ctime, mtime int64
 		err := rows.Scan(&fdRule.ID, &fdRule.Name, &fdRule.Namespace, &fdRule.Revision,
@@ -300,7 +300,7 @@ func (f *faultDetectRuleStore) getFaultDetectRulesCount(filter map[string]string
 }
 
 func (f *faultDetectRuleStore) getBriefFaultDetectRules(
-	filter map[string]string, offset uint32, limit uint32) ([]*model.FaultDetectRule, error) {
+	filter map[string]string, offset uint32, limit uint32) ([]*rules.FaultDetectRule, error) {
 	queryStr, args := genFaultDetectRuleSQL(filter)
 	args = append(args, offset, limit)
 	str := queryFaultDetectBriefSql + queryStr + ` order by mtime desc limit ?, ?`
@@ -317,11 +317,11 @@ func (f *faultDetectRuleStore) getBriefFaultDetectRules(
 	return out, nil
 }
 
-func fetchBriefFaultDetectRules(rows *sql.Rows) ([]*model.FaultDetectRule, error) {
+func fetchBriefFaultDetectRules(rows *sql.Rows) ([]*rules.FaultDetectRule, error) {
 	defer rows.Close()
-	var out []*model.FaultDetectRule
+	var out []*rules.FaultDetectRule
 	for rows.Next() {
-		var fdRule model.FaultDetectRule
+		var fdRule rules.FaultDetectRule
 		var ctime, mtime int64
 		err := rows.Scan(&fdRule.ID, &fdRule.Name, &fdRule.Namespace, &fdRule.Revision,
 			&fdRule.Description, &fdRule.DstService, &fdRule.DstNamespace,
@@ -342,7 +342,7 @@ func fetchBriefFaultDetectRules(rows *sql.Rows) ([]*model.FaultDetectRule, error
 }
 
 func (f *faultDetectRuleStore) getFullFaultDetectRules(
-	filter map[string]string, offset uint32, limit uint32) ([]*model.FaultDetectRule, error) {
+	filter map[string]string, offset uint32, limit uint32) ([]*rules.FaultDetectRule, error) {
 	queryStr, args := genFaultDetectRuleSQL(filter)
 	args = append(args, offset, limit)
 	str := queryFaultDetectFullSql + queryStr + ` order by mtime desc limit ?, ?`
@@ -359,11 +359,11 @@ func (f *faultDetectRuleStore) getFullFaultDetectRules(
 	return out, nil
 }
 
-func fetchFullFaultDetectRules(rows *sql.Rows) ([]*model.FaultDetectRule, error) {
+func fetchFullFaultDetectRules(rows *sql.Rows) ([]*rules.FaultDetectRule, error) {
 	defer rows.Close()
-	var out []*model.FaultDetectRule
+	var out []*rules.FaultDetectRule
 	for rows.Next() {
-		var fdRule model.FaultDetectRule
+		var fdRule rules.FaultDetectRule
 		var ctime, mtime int64
 		err := rows.Scan(&fdRule.ID, &fdRule.Name, &fdRule.Namespace, &fdRule.Revision,
 			&fdRule.Description, &fdRule.DstService, &fdRule.DstNamespace,

@@ -25,9 +25,10 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	types "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -74,7 +75,7 @@ func (rc *RouteRuleCache) Update() error {
 
 // update The function of implementing the cache interface
 func (rc *RouteRuleCache) realUpdate() (map[string]time.Time, int64, error) {
-	outV2, err := rc.storage.GetRoutingConfigsV2ForCache(rc.LastFetchTime(), rc.IsFirstUpdate())
+	outV2, err := rc.storage.GetRoutingConfigsForCache(rc.LastFetchTime(), rc.IsFirstUpdate())
 	if err != nil {
 		log.Errorf("[Cache] routing config v2 cache get from store err: %s", err.Error())
 		return nil, -1, err
@@ -99,9 +100,9 @@ func (rc *RouteRuleCache) Name() string {
 	return types.RoutingConfigName
 }
 
-func (rc *RouteRuleCache) ListRouterRule(service, namespace string) []*model.ExtendRouterConfig {
+func (rc *RouteRuleCache) ListRouterRule(service, namespace string) []*rules.ExtendRouterConfig {
 	routerRules := rc.container.SearchCustomRules(service, namespace)
-	ret := make([]*model.ExtendRouterConfig, 0, len(routerRules))
+	ret := make([]*rules.ExtendRouterConfig, 0, len(routerRules))
 	ret = append(ret, routerRules...)
 	return ret
 }
@@ -127,7 +128,7 @@ func (rc *RouteRuleCache) GetRouterConfigV2(id, service, namespace string) (*api
 	revision, err := types.CompositeComputeRevision(revisions)
 	if err != nil {
 		log.Warn("[Cache][Routing] v2=>v1 compute revisions fail, use fake revision", zap.Error(err))
-		revision = utils.NewV2Revision()
+		revision = utils.NewRevision()
 	}
 
 	resp := &apitraffic.Routing{
@@ -145,18 +146,18 @@ func (rc *RouteRuleCache) GetRouterConfig(id, svcName, namespace string) (*apitr
 		return nil, nil
 	}
 
-	key := model.ServiceKey{Namespace: namespace, Name: svcName}
+	key := svctypes.ServiceKey{Namespace: namespace, Name: svcName}
 
 	revisions := []string{}
-	inRule, inRevision := rc.container.customContainers[model.TrafficDirection_INBOUND].SearchCustomRuleV1(key)
+	inRule, inRevision := rc.container.customContainers[rules.TrafficDirection_INBOUND].SearchCustomRuleV1(key)
 	revisions = append(revisions, inRevision...)
-	outRule, outRevision := rc.container.customContainers[model.TrafficDirection_OUTBOUND].SearchCustomRuleV1(key)
+	outRule, outRevision := rc.container.customContainers[rules.TrafficDirection_OUTBOUND].SearchCustomRuleV1(key)
 	revisions = append(revisions, outRevision...)
 
 	revision, err := types.CompositeComputeRevision(revisions)
 	if err != nil {
 		log.Warn("[Cache][Routing] v2=>v1 compute revisions fail, use fake revision", zap.Error(err))
-		revision = utils.NewV2Revision()
+		revision = utils.NewRevision()
 	}
 
 	return &apitraffic.Routing{
@@ -174,7 +175,7 @@ func (rc *RouteRuleCache) GetNearbyRouteRule(service, namespace string) ([]*apit
 		return nil, "", nil
 	}
 
-	svcKey := model.ServiceKey{
+	svcKey := svctypes.ServiceKey{
 		Namespace: namespace,
 		Name:      service,
 	}
@@ -194,7 +195,7 @@ func (rc *RouteRuleCache) GetNearbyRouteRule(service, namespace string) ([]*apit
 	revision, err := types.CompositeComputeRevision(revisions)
 	if err != nil {
 		log.Warn("[Cache][Routing] v2=>v1 compute revisions fail, use fake revision", zap.Error(err))
-		revision = utils.NewV2Revision()
+		revision = utils.NewRevision()
 	}
 
 	return ret, revision, nil
@@ -212,13 +213,13 @@ func (rc *RouteRuleCache) GetRoutingConfigCount() int {
 }
 
 // GetRule implements api.RoutingConfigCache.
-func (rc *RouteRuleCache) GetRule(id string) *model.ExtendRouterConfig {
+func (rc *RouteRuleCache) GetRule(id string) *rules.ExtendRouterConfig {
 	rule, _ := rc.container.rules.Load(id)
 	return rule
 }
 
 // setRouterRules Store V2 Router Caches
-func (rc *RouteRuleCache) setRouterRules(lastMtimes map[string]time.Time, cs []*model.RouterConfig) {
+func (rc *RouteRuleCache) setRouterRules(lastMtimes map[string]time.Time, cs []*rules.RouterConfig) {
 	if len(cs) == 0 {
 		return
 	}
@@ -250,7 +251,7 @@ func (rc *RouteRuleCache) IsConvertFromV1(id string) (string, bool) {
 	return val, ok
 }
 
-func (rc *RouteRuleCache) convertV1toV2(rule *model.RoutingConfig) (bool, []*model.ExtendRouterConfig, error) {
+func (rc *RouteRuleCache) convertV1toV2(rule *rules.RoutingConfig) (bool, []*rules.ExtendRouterConfig, error) {
 	svc := rc.serviceCache.GetServiceByID(rule.ID)
 	if svc == nil {
 		s, err := rc.storage.GetServiceByID(rule.ID)
@@ -266,12 +267,12 @@ func (rc *RouteRuleCache) convertV1toV2(rule *model.RoutingConfig) (bool, []*mod
 		return false, nil, fmt.Errorf("svc: %+v is alias", svc)
 	}
 
-	in, out, err := model.ConvertRoutingV1ToExtendV2(svc.Name, svc.Namespace, rule)
+	in, out, err := rules.ConvertRoutingV1ToExtendV2(svc.Name, svc.Namespace, rule)
 	if err != nil {
 		return false, nil, err
 	}
 
-	ret := make([]*model.ExtendRouterConfig, 0, len(in)+len(out))
+	ret := make([]*rules.ExtendRouterConfig, 0, len(in)+len(out))
 	ret = append(ret, in...)
 	ret = append(ret, out...)
 

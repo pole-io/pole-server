@@ -32,9 +32,9 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -125,7 +125,7 @@ func (s *Server) DeleteRateLimit(ctx context.Context, req *apitraffic.Rule) *api
 	log.Info(msg, utils.RequestID(ctx))
 
 	s.RecordHistory(ctx,
-		rateLimitRecordEntry(ctx, req, rateLimit, model.ODelete))
+		rateLimitRecordEntry(ctx, req, rateLimit, types.ODelete))
 	return api.NewRateLimitResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -147,7 +147,7 @@ func (s *Server) EnableRateLimit(ctx context.Context, req *apitraffic.Rule) *api
 	}
 
 	// 构造底层数据结构
-	rateLimit := &model.RateLimit{}
+	rateLimit := &rules.RateLimit{}
 	rateLimit.ID = data.ID
 	rateLimit.ServiceID = data.ServiceID
 	rateLimit.Disable = req.GetDisable().GetValue()
@@ -273,7 +273,7 @@ func parseRateLimitArgs(query map[string]string) (*cachetypes.RateLimitRuleArgs,
 
 // checkRateLimitValid 检查限流规则是否允许修改/删除
 func (s *Server) checkRateLimitValid(ctx context.Context, serviceID string, req *apitraffic.Rule) (
-	*model.Service, *apiservice.Response) {
+	*svctypes.Service, *apiservice.Response) {
 	requestID := utils.ParseRequestID(ctx)
 
 	service, err := s.storage.GetServiceByID(serviceID)
@@ -287,7 +287,7 @@ func (s *Server) checkRateLimitValid(ctx context.Context, serviceID string, req 
 
 // checkRateLimitExisted 检查限流规则是否存在
 func (s *Server) checkRateLimitExisted(ctx context.Context, id string,
-	req *apitraffic.Rule) (*model.RateLimit, *apiservice.Response) {
+	req *apitraffic.Rule) (*rules.RateLimit, *apiservice.Response) {
 
 	rateLimit, err := s.storage.GetRateLimitWithID(id)
 	if err != nil {
@@ -305,7 +305,7 @@ const (
 )
 
 // api2RateLimit 把API参数转化为内部数据结构
-func api2RateLimit(req *apitraffic.Rule, old *model.RateLimit) (*model.RateLimit, error) {
+func api2RateLimit(req *apitraffic.Rule, old *rules.RateLimit) (*rules.RateLimit, error) {
 	rule, err := marshalRateLimitRules(req)
 	if err != nil {
 		return nil, err
@@ -317,7 +317,7 @@ func api2RateLimit(req *apitraffic.Rule, old *model.RateLimit) (*model.RateLimit
 		labelStr, err = json.Marshal(labels)
 	}
 
-	out := &model.RateLimit{
+	out := &rules.RateLimit{
 		ID:       utils.NewUUID(),
 		Name:     req.GetName().GetValue(),
 		Method:   req.GetMethod().GetValue().GetValue(),
@@ -332,7 +332,7 @@ func api2RateLimit(req *apitraffic.Rule, old *model.RateLimit) (*model.RateLimit
 }
 
 // rateLimit2api 把内部数据结构转化为API参数
-func rateLimit2Console(rateLimit *model.RateLimit) (*apitraffic.Rule, error) {
+func rateLimit2Console(rateLimit *rules.RateLimit) (*apitraffic.Rule, error) {
 	if rateLimit == nil {
 		return nil, nil
 	}
@@ -376,7 +376,7 @@ func populateDefaultRuleValue(rule *apitraffic.Rule) {
 	}
 }
 
-func copyRateLimitProto(rateLimit *model.RateLimit, rule *apitraffic.Rule) {
+func copyRateLimitProto(rateLimit *rules.RateLimit, rule *apitraffic.Rule) {
 	// copy proto values
 	rule.Namespace = rateLimit.Proto.Namespace
 	rule.Service = rateLimit.Proto.Service
@@ -397,7 +397,7 @@ func copyRateLimitProto(rateLimit *model.RateLimit, rule *apitraffic.Rule) {
 
 // rateLimit2api 把内部数据结构转化为API参数
 func rateLimit2Client(
-	service string, namespace string, rateLimit *model.RateLimit) (*apitraffic.Rule, error) {
+	service string, namespace string, rateLimit *rules.RateLimit) (*apitraffic.Rule, error) {
 	if rateLimit == nil {
 		return nil, nil
 	}

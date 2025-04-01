@@ -42,7 +42,6 @@ import (
 	_ "github.com/pole-io/pole-server/plugin/crypto/aes"
 	_ "github.com/pole-io/pole-server/plugin/crypto/rsa"
 	_ "github.com/pole-io/pole-server/plugin/healthchecker/p2p"
-	_ "github.com/pole-io/pole-server/plugin/healthchecker/redis"
 	_ "github.com/pole-io/pole-server/plugin/observability/discoverevent/local"
 	_ "github.com/pole-io/pole-server/plugin/observability/history/logger"
 	_ "github.com/pole-io/pole-server/plugin/observability/statis/logger"

@@ -24,8 +24,8 @@ import (
 
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 )
 
@@ -190,9 +190,9 @@ func (ctrl *ClientCtrl) registerHandler(futures []*ClientFuture) error {
 	log.Infof("[Batch] Start batch creating clients count: %d", len(futures))
 
 	// 调用batch接口，创建实例
-	clients := make([]*model.Client, 0, len(futures))
+	clients := make([]*types.Client, 0, len(futures))
 	for _, entry := range futures {
-		clients = append(clients, model.NewClient(entry.request))
+		clients = append(clients, types.NewClient(entry.request))
 	}
 	if err := ctrl.storage.BatchAddClients(clients); err != nil {
 		SendClientReply(futures, commonstore.StoreCode2APICode(err), err)

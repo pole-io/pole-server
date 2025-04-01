@@ -22,12 +22,12 @@ import (
 
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 )
 
 func Test_queryRoutingRuleV2ByService(t *testing.T) {
 	type args struct {
-		rule            *model.ExtendRouterConfig
+		rule            *rules.ExtendRouterConfig
 		sourceNamespace string
 		sourceService   string
 		destNamespace   string
@@ -42,8 +42,8 @@ func Test_queryRoutingRuleV2ByService(t *testing.T) {
 		{
 			name: "命名空间-或-精确查询",
 			args: args{
-				rule: &model.ExtendRouterConfig{
-					RuleRouting: &model.RuleRoutingConfigWrapper{
+				rule: &rules.ExtendRouterConfig{
+					RuleRouting: &rules.RuleRoutingConfigWrapper{
 						RuleRouting: &apitraffic.RuleRoutingConfig{
 							Rules: []*apitraffic.SubRuleRouting{
 								{
@@ -75,8 +75,8 @@ func Test_queryRoutingRuleV2ByService(t *testing.T) {
 		{
 			name: "命名空间-与-精确查询",
 			args: args{
-				rule: &model.ExtendRouterConfig{
-					RuleRouting: &model.RuleRoutingConfigWrapper{
+				rule: &rules.ExtendRouterConfig{
+					RuleRouting: &rules.RuleRoutingConfigWrapper{
 						RuleRouting: &apitraffic.RuleRoutingConfig{
 							Rules: []*apitraffic.SubRuleRouting{
 								{
@@ -108,8 +108,8 @@ func Test_queryRoutingRuleV2ByService(t *testing.T) {
 		{
 			name: "命名空间-或-模糊查询",
 			args: args{
-				rule: &model.ExtendRouterConfig{
-					RuleRouting: &model.RuleRoutingConfigWrapper{
+				rule: &rules.ExtendRouterConfig{
+					RuleRouting: &rules.RuleRoutingConfigWrapper{
 						RuleRouting: &apitraffic.RuleRoutingConfig{
 							Rules: []*apitraffic.SubRuleRouting{
 								{
@@ -141,8 +141,8 @@ func Test_queryRoutingRuleV2ByService(t *testing.T) {
 		{
 			name: "命名空间-与-模糊查询",
 			args: args{
-				rule: &model.ExtendRouterConfig{
-					RuleRouting: &model.RuleRoutingConfigWrapper{
+				rule: &rules.ExtendRouterConfig{
+					RuleRouting: &rules.RuleRoutingConfigWrapper{
 						RuleRouting: &apitraffic.RuleRoutingConfig{
 							Rules: []*apitraffic.SubRuleRouting{
 								{
@@ -174,8 +174,8 @@ func Test_queryRoutingRuleV2ByService(t *testing.T) {
 		{
 			name: "(命名空间精确查询+服务名精确查询)-或",
 			args: args{
-				rule: &model.ExtendRouterConfig{
-					RuleRouting: &model.RuleRoutingConfigWrapper{
+				rule: &rules.ExtendRouterConfig{
+					RuleRouting: &rules.RuleRoutingConfigWrapper{
 						RuleRouting: &apitraffic.RuleRoutingConfig{
 							Rules: []*apitraffic.SubRuleRouting{
 								{
@@ -207,8 +207,8 @@ func Test_queryRoutingRuleV2ByService(t *testing.T) {
 		{
 			name: "(命名空间精确查询+服务名精确查询)-与",
 			args: args{
-				rule: &model.ExtendRouterConfig{
-					RuleRouting: &model.RuleRoutingConfigWrapper{
+				rule: &rules.ExtendRouterConfig{
+					RuleRouting: &rules.RuleRoutingConfigWrapper{
 						RuleRouting: &apitraffic.RuleRoutingConfig{
 							Rules: []*apitraffic.SubRuleRouting{
 								{
@@ -240,8 +240,8 @@ func Test_queryRoutingRuleV2ByService(t *testing.T) {
 		{
 			name: "(命名空间精确查询+服务名精确查询)-与",
 			args: args{
-				rule: &model.ExtendRouterConfig{
-					RuleRouting: &model.RuleRoutingConfigWrapper{
+				rule: &rules.ExtendRouterConfig{
+					RuleRouting: &rules.RuleRoutingConfigWrapper{
 						RuleRouting: &apitraffic.RuleRoutingConfig{
 							Rules: []*apitraffic.SubRuleRouting{
 								{
@@ -273,8 +273,8 @@ func Test_queryRoutingRuleV2ByService(t *testing.T) {
 		{
 			name: "(命名空间模糊+服务名精确查询)-或",
 			args: args{
-				rule: &model.ExtendRouterConfig{
-					RuleRouting: &model.RuleRoutingConfigWrapper{
+				rule: &rules.ExtendRouterConfig{
+					RuleRouting: &rules.RuleRoutingConfigWrapper{
 						RuleRouting: &apitraffic.RuleRoutingConfig{
 							Rules: []*apitraffic.SubRuleRouting{
 								{
@@ -306,8 +306,8 @@ func Test_queryRoutingRuleV2ByService(t *testing.T) {
 		{
 			name: "(命名空间模糊+服务名精确查询)-或",
 			args: args{
-				rule: &model.ExtendRouterConfig{
-					RuleRouting: &model.RuleRoutingConfigWrapper{
+				rule: &rules.ExtendRouterConfig{
+					RuleRouting: &rules.RuleRoutingConfigWrapper{
 						RuleRouting: &apitraffic.RuleRoutingConfig{
 							Rules: []*apitraffic.SubRuleRouting{
 								{
@@ -339,8 +339,8 @@ func Test_queryRoutingRuleV2ByService(t *testing.T) {
 		{
 			name: "(命名空间模糊+服务名精确查询)-或",
 			args: args{
-				rule: &model.ExtendRouterConfig{
-					RuleRouting: &model.RuleRoutingConfigWrapper{
+				rule: &rules.ExtendRouterConfig{
+					RuleRouting: &rules.RuleRoutingConfigWrapper{
 						RuleRouting: &apitraffic.RuleRoutingConfig{
 							Rules: []*apitraffic.SubRuleRouting{
 								{

@@ -50,12 +50,10 @@ type stableStore struct {
 	// 服务治理中心 stores
 	*serviceStore
 	*instanceStore
-	*routingConfigStore
-	*l5Store
+	*routerRuleStore
 	*rateLimitStore
 	*circuitBreakerStore
 	*faultDetectRuleStore
-	*routingConfigStoreV2
 	*serviceContractStore
 	*laneStore
 
@@ -255,12 +253,10 @@ func (s *stableStore) newStore() {
 
 	s.serviceStore = &serviceStore{master: s.master, slave: s.slave}
 	s.instanceStore = &instanceStore{master: s.master, slave: s.slave}
-	s.routingConfigStore = &routingConfigStore{master: s.master, slave: s.slave}
-	s.l5Store = &l5Store{master: s.master, slave: s.slave}
+	s.routerRuleStore = &routerRuleStore{master: s.master, slave: s.slave}
 	s.rateLimitStore = &rateLimitStore{master: s.master, slave: s.slave}
 	s.circuitBreakerStore = &circuitBreakerStore{master: s.master, slave: s.slave}
 	s.faultDetectRuleStore = &faultDetectRuleStore{master: s.master, slave: s.slave}
-	s.routingConfigStoreV2 = &routingConfigStoreV2{master: s.master, slave: s.slave}
 	s.serviceContractStore = &serviceContractStore{master: s.master, slave: s.slave}
 	s.laneStore = &laneStore{master: s.master, slave: s.slave}
 

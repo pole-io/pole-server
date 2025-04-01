@@ -21,9 +21,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 // NamingModuleStore Service discovery, governance center module storage interface
@@ -173,35 +173,35 @@ type CircuitBreakerStore interface {
 // ClientStore store interface for client info
 type ClientStore interface {
 	// BatchAddClients insert the client info
-	BatchAddClients(clients []*model.Client) error
+	BatchAddClients(clients []*types.Client) error
 	// BatchDeleteClients delete the client info
 	BatchDeleteClients(ids []string) error
 	// GetMoreClients 根据mtime获取增量clients，返回所有store的变更信息
 	// 此方法用于 cache 增量更新，需要注意 mtime 应为数据库时间戳
-	GetMoreClients(mtime time.Time, firstUpdate bool) (map[string]*model.Client, error)
+	GetMoreClients(mtime time.Time, firstUpdate bool) (map[string]*types.Client, error)
 }
 
 // RouterRuleConfigStore 路由配置表的存储接口
 type RouterRuleConfigStore interface {
 	// EnableRouting 设置路由规则是否启用
 	EnableRouting(conf *rules.RouterConfig) error
-	// CreateRoutingConfigV2 新增一个路由配置
-	CreateRoutingConfigV2(conf *rules.RouterConfig) error
-	// CreateRoutingConfigV2Tx 新增一个路由配置
-	CreateRoutingConfigV2Tx(tx Tx, conf *rules.RouterConfig) error
-	// UpdateRoutingConfigV2 更新一个路由配置
-	UpdateRoutingConfigV2(conf *rules.RouterConfig) error
-	// UpdateRoutingConfigV2Tx 更新一个路由配置
-	UpdateRoutingConfigV2Tx(tx Tx, conf *rules.RouterConfig) error
-	// DeleteRoutingConfigV2 删除一个路由配置
-	DeleteRoutingConfigV2(serviceID string) error
-	// GetRoutingConfigsV2ForCache 通过mtime拉取增量的路由配置信息
+	// CreateRoutingConfig 新增一个路由配置
+	CreateRoutingConfig(conf *rules.RouterConfig) error
+	// CreateRoutingConfigTx 新增一个路由配置
+	CreateRoutingConfigTx(tx Tx, conf *rules.RouterConfig) error
+	// UpdateRoutingConfig 更新一个路由配置
+	UpdateRoutingConfig(conf *rules.RouterConfig) error
+	// UpdateRoutingConfigTx 更新一个路由配置
+	UpdateRoutingConfigTx(tx Tx, conf *rules.RouterConfig) error
+	// DeleteRoutingConfig 删除一个路由配置
+	DeleteRoutingConfig(serviceID string) error
+	// GetRoutingConfigsForCache 通过mtime拉取增量的路由配置信息
 	// 此方法用于 cache 增量更新，需要注意 mtime 应为数据库时间戳
-	GetRoutingConfigsV2ForCache(mtime time.Time, firstUpdate bool) ([]*rules.RouterConfig, error)
-	// GetRoutingConfigV2WithID 根据服务ID拉取路由配置
-	GetRoutingConfigV2WithID(id string) (*rules.RouterConfig, error)
-	// GetRoutingConfigV2WithIDTx 根据服务ID拉取路由配置
-	GetRoutingConfigV2WithIDTx(tx Tx, id string) (*rules.RouterConfig, error)
+	GetRoutingConfigsForCache(mtime time.Time, firstUpdate bool) ([]*rules.RouterConfig, error)
+	// GetRoutingConfigWithID 根据服务ID拉取路由配置
+	GetRoutingConfigWithID(id string) (*rules.RouterConfig, error)
+	// GetRoutingConfigWithIDTx 根据服务ID拉取路由配置
+	GetRoutingConfigWithIDTx(tx Tx, id string) (*rules.RouterConfig, error)
 }
 
 // FaultDetectRuleStore store api for the fault detector config

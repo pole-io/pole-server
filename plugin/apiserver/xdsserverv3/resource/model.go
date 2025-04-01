@@ -27,7 +27,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 const (
@@ -200,13 +200,13 @@ type ServiceInfo struct {
 	ID                     string
 	Name                   string
 	Namespace              string
-	ServiceKey             model.ServiceKey
-	AliasFor               *model.Service
+	ServiceKey             svctypes.ServiceKey
+	AliasFor               *svctypes.Service
 	Instances              []*apiservice.Instance
 	SvcInsRevision         string
 	Routing                *traffic_manage.Routing
 	SvcRoutingRevision     string
-	Ports                  []*model.ServicePort
+	Ports                  []*svctypes.ServicePort
 	RateLimit              *traffic_manage.RateLimit
 	SvcRateLimitRevision   string
 	CircuitBreaker         *fault_tolerance.CircuitBreaker

@@ -20,6 +20,8 @@ package model
 import (
 	"fmt"
 	"time"
+
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 )
 
 type GrayModule string
@@ -43,6 +45,6 @@ type GrayResource struct {
 }
 
 // GetGrayConfigRealseKey 获取灰度资源key
-func GetGrayConfigRealseKey(release *SimpleConfigFileRelease) string {
+func GetGrayConfigRealseKey(release *conftypes.SimpleConfigFileRelease) string {
 	return fmt.Sprintf("%v@%v@%v@%v", GrayModuleConfig, release.Namespace, release.Group, release.FileName)
 }

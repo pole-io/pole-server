@@ -26,6 +26,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
@@ -46,7 +47,7 @@ var (
 )
 
 type (
-	BetaReleaseMatcher func(clientLabels map[string]string, event *model.SimpleConfigFileRelease) bool
+	BetaReleaseMatcher func(clientLabels map[string]string, event *conftypes.SimpleConfigFileRelease) bool
 
 	FileReleaseCallback func(clientId string, rsp *apiconfig.ConfigClientResponse) bool
 
@@ -62,7 +63,7 @@ type (
 		// RemoveInterest 客户端删除订阅列表
 		RemoveInterest(item *apiconfig.ClientConfigFileInfo)
 		// ShouldNotify 判断是不是需要通知客户端某个配置变动了
-		ShouldNotify(event *model.SimpleConfigFileRelease) bool
+		ShouldNotify(event *conftypes.SimpleConfigFileRelease) bool
 		// Reply 真正的通知逻辑
 		Reply(rsp *apiconfig.ConfigClientResponse)
 		// Close .
@@ -122,7 +123,7 @@ func (c *LongPollWatchContext) ClientID() string {
 	return c.clientId
 }
 
-func (c *LongPollWatchContext) ShouldNotify(event *model.SimpleConfigFileRelease) bool {
+func (c *LongPollWatchContext) ShouldNotify(event *conftypes.SimpleConfigFileRelease) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -238,7 +239,7 @@ func (wc *watchCenter) OnEvent(ctx context.Context, arg any) error {
 }
 
 func (wc *watchCenter) CheckQuickResponseClient(watchCtx WatchContext) *apiconfig.ConfigClientResponse {
-	buildRet := func(release *model.ConfigFileRelease) *apiconfig.ConfigClientResponse {
+	buildRet := func(release *conftypes.ConfigFileRelease) *apiconfig.ConfigClientResponse {
 		ret := &apiconfig.ClientConfigFileInfo{
 			Namespace: utils.NewStringValue(release.Namespace),
 			Group:     utils.NewStringValue(release.Group),
@@ -338,7 +339,7 @@ func (wc *watchCenter) RemoveWatcher(clientId string, watchConfigFiles []*apicon
 	}
 }
 
-func (wc *watchCenter) notifyToWatchers(publishConfigFile *model.SimpleConfigFileRelease) {
+func (wc *watchCenter) notifyToWatchers(publishConfigFile *conftypes.SimpleConfigFileRelease) {
 	watchFileId := utils.GenFileId(publishConfigFile.Namespace, publishConfigFile.Group, publishConfigFile.FileName)
 	clientIds, ok := wc.watchers.Load(watchFileId)
 	if !ok {
@@ -371,7 +372,7 @@ func (wc *watchCenter) notifyToWatchers(publishConfigFile *model.SimpleConfigFil
 		zap.Int("notify", notifyCnt))
 }
 
-func (wc *watchCenter) MatchBetaReleaseFile(clientLabels map[string]string, event *model.SimpleConfigFileRelease) bool {
+func (wc *watchCenter) MatchBetaReleaseFile(clientLabels map[string]string, event *conftypes.SimpleConfigFileRelease) bool {
 	return wc.cacheMgr.Gray().HitGrayRule(model.GetGrayConfigRealseKey(event), clientLabels)
 }
 

@@ -22,8 +22,8 @@ import (
 	"encoding/json"
 	"time"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -34,7 +34,7 @@ type configFileGroupStore struct {
 
 // CreateConfigFileGroup 创建配置文件组
 func (fg *configFileGroupStore) CreateConfigFileGroup(
-	fileGroup *model.ConfigFileGroup) (*model.ConfigFileGroup, error) {
+	fileGroup *conftypes.ConfigFileGroup) (*conftypes.ConfigFileGroup, error) {
 	err := fg.master.processWithTransaction("", func(tx *BaseTx) error {
 		if _, err := tx.Exec("DELETE FROM config_file_group WHERE flag = 1 AND namespace = ? AND name = ?",
 			fileGroup.Namespace, fileGroup.Name); err != nil {
@@ -66,7 +66,7 @@ VALUES (?, ?, ?, sysdate(), ?
 }
 
 // UpdateConfigFileGroup 更新配置文件组信息
-func (fg *configFileGroupStore) UpdateConfigFileGroup(fileGroup *model.ConfigFileGroup) error {
+func (fg *configFileGroupStore) UpdateConfigFileGroup(fileGroup *conftypes.ConfigFileGroup) error {
 	updateSql := "UPDATE config_file_group SET comment = ?, modify_time = sysdate(), modify_by = ?, " +
 		" business = ?, department = ?, metadata = ? WHERE namespace = ? and name = ?"
 
@@ -80,7 +80,7 @@ func (fg *configFileGroupStore) UpdateConfigFileGroup(fileGroup *model.ConfigFil
 }
 
 // GetConfigFileGroup 获取配置文件组
-func (fg *configFileGroupStore) GetConfigFileGroup(namespace, name string) (*model.ConfigFileGroup, error) {
+func (fg *configFileGroupStore) GetConfigFileGroup(namespace, name string) (*conftypes.ConfigFileGroup, error) {
 	querySql := fg.genConfigFileGroupSelectSql() + " WHERE namespace = ? AND name = ? AND flag = 0 "
 	rows, err := fg.master.Query(querySql, namespace, name)
 	if err != nil {
@@ -106,7 +106,7 @@ func (fg *configFileGroupStore) DeleteConfigFileGroup(namespace, name string) er
 }
 
 func (fg *configFileGroupStore) GetMoreConfigGroup(firstUpdate bool,
-	mtime time.Time) ([]*model.ConfigFileGroup, error) {
+	mtime time.Time) ([]*conftypes.ConfigFileGroup, error) {
 
 	if firstUpdate {
 		mtime = time.Unix(0, 1)
@@ -141,16 +141,16 @@ func (fg *configFileGroupStore) genConfigFileGroupSelectSql() string {
 		" flag FROM config_file_group "
 }
 
-func (fg *configFileGroupStore) transferRows(rows *sql.Rows) ([]*model.ConfigFileGroup, error) {
+func (fg *configFileGroupStore) transferRows(rows *sql.Rows) ([]*conftypes.ConfigFileGroup, error) {
 	if rows == nil {
 		return nil, nil
 	}
 	defer rows.Close()
 
-	var fileGroups []*model.ConfigFileGroup
+	var fileGroups []*conftypes.ConfigFileGroup
 
 	for rows.Next() {
-		fileGroup := &model.ConfigFileGroup{}
+		fileGroup := &conftypes.ConfigFileGroup{}
 		var (
 			ctime, mtime, flag int64
 			metadata           string

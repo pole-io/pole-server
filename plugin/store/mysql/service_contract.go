@@ -27,8 +27,8 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -38,7 +38,7 @@ type serviceContractStore struct {
 }
 
 // CreateServiceContract 创建服务契约
-func (s *serviceContractStore) CreateServiceContract(contract *model.ServiceContract) error {
+func (s *serviceContractStore) CreateServiceContract(contract *svctypes.ServiceContract) error {
 	addSql := "INSERT INTO service_contract(`id`,`type`, `namespace`, `service`, `protocol`,`version`, " +
 		" `revision`, `flag`, `content`, `content_digest`, `metadata`, `ctime`, `mtime`" +
 		") VALUES (?,?,?,?,?,?,?,0,?,?,?,sysdate(),sysdate())"
@@ -59,7 +59,7 @@ func (s *serviceContractStore) CreateServiceContract(contract *model.ServiceCont
 }
 
 // UpdateServiceContract 更新服务契约信息
-func (s *serviceContractStore) UpdateServiceContract(contract *model.ServiceContract) error {
+func (s *serviceContractStore) UpdateServiceContract(contract *svctypes.ServiceContract) error {
 	updateSql := "UPDATE service_contract SET content = ?, content_digest = ?, metadata = ?, revision = ?, " +
 		"mtime = sysdate() WHERE id = ?"
 	_, err := s.master.Exec(updateSql, contract.Content, contract.ContentDigest, contract.MetadataStr,
@@ -71,7 +71,7 @@ func (s *serviceContractStore) UpdateServiceContract(contract *model.ServiceCont
 }
 
 // DeleteServiceContract 删除服务契约 删除该版本的全部数据
-func (s *serviceContractStore) DeleteServiceContract(contract *model.ServiceContract) error {
+func (s *serviceContractStore) DeleteServiceContract(contract *svctypes.ServiceContract) error {
 	return s.master.processWithTransaction("DeleteServiceContract", func(tx *BaseTx) error {
 		deleteSql := "UPDATE service_contract SET flag = 1, mtime = sysdate() WHERE id = ?"
 		if _, err := tx.Exec(deleteSql, []interface{}{
@@ -94,20 +94,20 @@ func (s *serviceContractStore) DeleteServiceContract(contract *model.ServiceCont
 }
 
 // GetServiceContract 通过ID查询服务契约数据
-func (s *serviceContractStore) GetServiceContract(id string) (*model.EnrichServiceContract, error) {
+func (s *serviceContractStore) GetServiceContract(id string) (*svctypes.EnrichServiceContract, error) {
 	querySql := "SELECT id, type, namespace, service, protocol, version, revision, flag, content, content_digest, " +
 		"  IFNULL(metadata, ''), UNIX_TIMESTAMP(ctime), UNIX_TIMESTAMP(mtime) FROM service_contract WHERE flag = 0 AND id = ?"
 
 	args := []interface{}{id}
 
-	list := make([]*model.EnrichServiceContract, 0)
+	list := make([]*svctypes.EnrichServiceContract, 0)
 	err := s.slave.processWithTransaction("GetServiceContract", func(tx *BaseTx) error {
 		rows, err := tx.Query(querySql, args...)
 		if err != nil {
 			log.Error("[Store][Contract] list contract ", zap.String("query sql", querySql), zap.Any("args", args))
 			return err
 		}
-		err = transferEnrichServiceContract(rows, func(contract *model.EnrichServiceContract) {
+		err = transferEnrichServiceContract(rows, func(contract *svctypes.EnrichServiceContract) {
 			list = append(list, contract)
 		})
 		if err != nil {
@@ -142,15 +142,15 @@ func (s *serviceContractStore) GetServiceContract(id string) (*model.EnrichServi
 	return list[0], nil
 }
 
-func transferEnrichServiceContract(rows *sql.Rows, consumer func(contract *model.EnrichServiceContract)) error {
+func transferEnrichServiceContract(rows *sql.Rows, consumer func(contract *svctypes.EnrichServiceContract)) error {
 	defer func() {
 		_ = rows.Close()
 	}()
 
 	for rows.Next() {
 		var flag, ctime, mtime int64
-		contract := model.EnrichServiceContract{
-			ServiceContract: &model.ServiceContract{},
+		contract := svctypes.EnrichServiceContract{
+			ServiceContract: &svctypes.ServiceContract{},
 		}
 		if scanErr := rows.Scan(&contract.ID, &contract.Type, &contract.Namespace, &contract.Service,
 			&contract.Protocol, &contract.Version, &contract.Revision, &flag,
@@ -169,7 +169,7 @@ func transferEnrichServiceContract(rows *sql.Rows, consumer func(contract *model
 }
 
 // AddServiceContractInterfaces 创建服务契约API接口
-func (s *serviceContractStore) AddServiceContractInterfaces(contract *model.EnrichServiceContract) error {
+func (s *serviceContractStore) AddServiceContractInterfaces(contract *svctypes.EnrichServiceContract) error {
 	return s.master.processWithTransaction("AddServiceContractInterfaces", func(tx *BaseTx) error {
 		updateRevision := "UPDATE service_contract SET revision = ?, mtime = sysdate() WHERE id = ?"
 		if _, err := tx.Exec(updateRevision, contract.Revision, contract.ID); err != nil {
@@ -214,7 +214,7 @@ func (s *serviceContractStore) AddServiceContractInterfaces(contract *model.Enri
 }
 
 // AppendServiceContractInterfaces 追加服务契约API接口
-func (s *serviceContractStore) AppendServiceContractInterfaces(contract *model.EnrichServiceContract) error {
+func (s *serviceContractStore) AppendServiceContractInterfaces(contract *svctypes.EnrichServiceContract) error {
 	return s.master.processWithTransaction("AppendServiceContractDetail", func(tx *BaseTx) error {
 		updateRevision := "UPDATE service_contract SET revision = ?, mtime = sysdate() WHERE id = ?"
 		if _, err := tx.Exec(updateRevision, contract.Revision, contract.ID); err != nil {
@@ -252,7 +252,7 @@ func (s *serviceContractStore) AppendServiceContractInterfaces(contract *model.E
 }
 
 // DeleteServiceContractInterfaces 删除服务契约API接口
-func (s *serviceContractStore) DeleteServiceContractInterfaces(contract *model.EnrichServiceContract) error {
+func (s *serviceContractStore) DeleteServiceContractInterfaces(contract *svctypes.EnrichServiceContract) error {
 	return s.master.processWithTransaction("DeleteServiceContractInterfaces", func(tx *BaseTx) error {
 		updateRevision := "UPDATE service_contract SET revision = ?, mtime = sysdate() WHERE id = ?"
 		if _, err := tx.Exec(updateRevision, contract.Revision, contract.ID); err != nil {
@@ -285,7 +285,7 @@ func (s *serviceContractStore) DeleteServiceContractInterfaces(contract *model.E
 }
 
 func (s *serviceContractStore) GetServiceContracts(ctx context.Context, filter map[string]string,
-	offset, limit uint32) (uint32, []*model.EnrichServiceContract, error) {
+	offset, limit uint32) (uint32, []*svctypes.EnrichServiceContract, error) {
 
 	if _, ok := filter["order_field"]; !ok {
 		filter["order_field"] = "mtime"
@@ -328,7 +328,7 @@ WHERE flag = 0
 	querySql += fmt.Sprintf(" ORDER BY %s %s LIMIT ?, ? ", filter["order_field"], filter["order_type"])
 
 	var count int64
-	var list = make([]*model.EnrichServiceContract, 0, limit)
+	var list = make([]*svctypes.EnrichServiceContract, 0, limit)
 
 	err := s.master.processWithTransaction("GetServiceContracts", func(tx *BaseTx) error {
 		row := tx.QueryRow(countSql, args...)
@@ -349,7 +349,7 @@ WHERE flag = 0
 		}()
 
 		contractIds := make([]interface{}, 0, limit)
-		err = transferEnrichServiceContract(rows, func(contract *model.EnrichServiceContract) {
+		err = transferEnrichServiceContract(rows, func(contract *svctypes.EnrichServiceContract) {
 			list = append(list, contract)
 			contractIds = append(contractIds, contract.ID)
 		})
@@ -366,7 +366,7 @@ WHERE flag = 0
 				" FROM service_contract_detail "+
 				" WHERE contract_id IN (%s)", placeholders(len(contractIds)))
 
-			contractDetailMap := map[string][]*model.InterfaceDescriptor{}
+			contractDetailMap := map[string][]*svctypes.InterfaceDescriptor{}
 			interfaces, err := s.loadContractInterfaces(tx, queryDetailSql, contractIds)
 			if err != nil {
 				return err
@@ -374,7 +374,7 @@ WHERE flag = 0
 			for i := range interfaces {
 				descriptor := interfaces[i]
 				if _, ok := contractDetailMap[descriptor.ContractID]; !ok {
-					contractDetailMap[descriptor.ContractID] = make([]*model.InterfaceDescriptor, 0, 4)
+					contractDetailMap[descriptor.ContractID] = make([]*svctypes.InterfaceDescriptor, 0, 4)
 				}
 				contractDetailMap[descriptor.ContractID] = append(contractDetailMap[descriptor.ContractID], descriptor)
 			}
@@ -394,7 +394,7 @@ WHERE flag = 0
 }
 
 func (s *serviceContractStore) GetInterfaceDescriptors(ctx context.Context, filter map[string]string,
-	offset, limit uint32) (uint32, []*model.InterfaceDescriptor, error) {
+	offset, limit uint32) (uint32, []*svctypes.InterfaceDescriptor, error) {
 
 	countSql := "SELECT COUNT(*) FROM service_contract_detail sd WHERE flag = 0 "
 
@@ -425,7 +425,7 @@ WHERE flag = 0
 	}
 
 	var count uint32
-	var list []*model.InterfaceDescriptor
+	var list []*svctypes.InterfaceDescriptor
 
 	if len(conditions) > 0 {
 		countSql += " AND " + strings.Join(conditions, " AND ")
@@ -451,7 +451,7 @@ WHERE flag = 0
 	return count, list, nil
 }
 
-func (s *serviceContractStore) loadContractInterfaces(tx *BaseTx, query string, args []interface{}) ([]*model.InterfaceDescriptor, error) {
+func (s *serviceContractStore) loadContractInterfaces(tx *BaseTx, query string, args []interface{}) ([]*svctypes.InterfaceDescriptor, error) {
 	rows, err := tx.Query(query, args...)
 	if err != nil {
 		log.Error("[Store][Contract] load service_contract interface list", zap.String("sql", query), zap.Error(err))
@@ -462,10 +462,10 @@ func (s *serviceContractStore) loadContractInterfaces(tx *BaseTx, query string, 
 		_ = rows.Close()
 	}()
 
-	var list []*model.InterfaceDescriptor
+	var list []*svctypes.InterfaceDescriptor
 	for rows.Next() {
 		var flag, ctime, mtime, source int64
-		detailItem := &model.InterfaceDescriptor{}
+		detailItem := &svctypes.InterfaceDescriptor{}
 		if scanErr := rows.Scan(
 			&detailItem.ID, &detailItem.ContractID, &detailItem.Namespace, &detailItem.Service, &detailItem.Protocol,
 			&detailItem.Version, &detailItem.Type, &detailItem.Method,
@@ -492,8 +492,8 @@ func (s *serviceContractStore) loadContractInterfaces(tx *BaseTx, query string, 
 }
 
 // ListVersions .
-func (s *serviceContractStore) ListVersions(ctx context.Context, service, namespace string) ([]*model.ServiceContract, error) {
-	list := make([]*model.ServiceContract, 0, 4)
+func (s *serviceContractStore) ListVersions(ctx context.Context, service, namespace string) ([]*svctypes.ServiceContract, error) {
+	list := make([]*svctypes.ServiceContract, 0, 4)
 
 	querySql := `
 SELECT id, type, namespace, service, protocol
@@ -510,7 +510,7 @@ WHERE flag = 0 AND namespace = ? AND service = ?
 		return nil, store.Error(err)
 	}
 
-	err = transferEnrichServiceContract(rows, func(contract *model.EnrichServiceContract) {
+	err = transferEnrichServiceContract(rows, func(contract *svctypes.EnrichServiceContract) {
 		list = append(list, contract.ServiceContract)
 	})
 	if err != nil {
@@ -521,7 +521,7 @@ WHERE flag = 0 AND namespace = ? AND service = ?
 }
 
 // GetMoreServiceContracts .
-func (s *serviceContractStore) GetMoreServiceContracts(firstUpdate bool, mtime time.Time) ([]*model.EnrichServiceContract, error) {
+func (s *serviceContractStore) GetMoreServiceContracts(firstUpdate bool, mtime time.Time) ([]*svctypes.EnrichServiceContract, error) {
 	querySql := "SELECT id, type, namespace, service, protocol, version, revision, flag, content, content_digest, " +
 		"IFNULL(metadata, ''), UNIX_TIMESTAMP(ctime), UNIX_TIMESTAMP(mtime) FROM service_contract WHERE mtime >= ? "
 	if firstUpdate {
@@ -547,10 +547,10 @@ func (s *serviceContractStore) GetMoreServiceContracts(firstUpdate bool, mtime t
 		_ = rows.Close()
 	}()
 
-	list := make([]*model.EnrichServiceContract, 0)
+	list := make([]*svctypes.EnrichServiceContract, 0)
 	for rows.Next() {
 		var flag, ctime, mtime int64
-		contract := &model.ServiceContract{}
+		contract := &svctypes.ServiceContract{}
 		if scanErr := rows.Scan(&contract.ID, &contract.Type, &contract.Namespace, &contract.Service,
 			&contract.Protocol, &contract.Version, &contract.Revision, &flag,
 			&contract.Content, &contract.ContentDigest, &contract.MetadataStr, &ctime, &mtime); scanErr != nil {
@@ -563,12 +563,12 @@ func (s *serviceContractStore) GetMoreServiceContracts(firstUpdate bool, mtime t
 		contract.ModifyTime = time.Unix(mtime, 0)
 		contract.Metadata, _ = utils.ConvertStringValueToMetadata(contract.MetadataStr)
 
-		list = append(list, &model.EnrichServiceContract{
+		list = append(list, &svctypes.EnrichServiceContract{
 			ServiceContract: contract,
 		})
 	}
 
-	contractDetailMap := map[string][]*model.InterfaceDescriptor{}
+	contractDetailMap := map[string][]*svctypes.InterfaceDescriptor{}
 	if len(list) > 0 {
 		queryDetailSql := "SELECT sd.id, sd.contract_id, sd.type, sd.method, sd.path, sd.content, sd.content_digest, " +
 			"sd.revision, UNIX_TIMESTAMP(sd.ctime), UNIX_TIMESTAMP(sd.mtime), IFNULL(sd.source, 1) " +
@@ -584,7 +584,7 @@ func (s *serviceContractStore) GetMoreServiceContracts(firstUpdate bool, mtime t
 		}()
 		for detailRows.Next() {
 			var flag, ctime, mtime, source int64
-			detailItem := &model.InterfaceDescriptor{}
+			detailItem := &svctypes.InterfaceDescriptor{}
 			if scanErr := detailRows.Scan(
 				&detailItem.ID, &detailItem.ContractID, &detailItem.Type, &detailItem.Method,
 				&detailItem.Path, &detailItem.Content, &detailItem.ContentDigest, &detailItem.Revision,
@@ -605,7 +605,7 @@ func (s *serviceContractStore) GetMoreServiceContracts(firstUpdate bool, mtime t
 			}
 
 			if _, ok := contractDetailMap[detailItem.ContractID]; !ok {
-				contractDetailMap[detailItem.ContractID] = make([]*model.InterfaceDescriptor, 0, 4)
+				contractDetailMap[detailItem.ContractID] = make([]*svctypes.InterfaceDescriptor, 0, 4)
 			}
 			contractDetailMap[detailItem.ContractID] = append(contractDetailMap[detailItem.ContractID], detailItem)
 		}

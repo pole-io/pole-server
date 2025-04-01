@@ -24,17 +24,17 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 )
 
-func mockConfigFileRelease(total int) []*model.ConfigFileRelease {
+func mockConfigFileRelease(total int) []*conftypes.ConfigFileRelease {
 
-	ret := make([]*model.ConfigFileRelease, 0, total)
+	ret := make([]*conftypes.ConfigFileRelease, 0, total)
 
 	for i := 0; i < total; i++ {
-		ret = append(ret, &model.ConfigFileRelease{
-			SimpleConfigFileRelease: &model.SimpleConfigFileRelease{
-				ConfigFileReleaseKey: &model.ConfigFileReleaseKey{
+		ret = append(ret, &conftypes.ConfigFileRelease{
+			SimpleConfigFileRelease: &conftypes.SimpleConfigFileRelease{
+				ConfigFileReleaseKey: &conftypes.ConfigFileReleaseKey{
 					Name:      fmt.Sprintf("config-file-release-%d", i),
 					Namespace: fmt.Sprintf("config-file-release-%d", i),
 					Group:     fmt.Sprintf("config-file-release-%d", i),
@@ -95,7 +95,7 @@ func Test_configFileReleaseStore(t *testing.T) {
 				err = s.CreateConfigFileReleaseTx(tx, ret[i])
 				assert.NoError(t, err, err)
 
-				searchKey := &model.ConfigFileReleaseKey{
+				searchKey := &conftypes.ConfigFileReleaseKey{
 					Namespace: ret[i].Namespace,
 					Group:     ret[i].Group,
 					FileName:  ret[i].FileName,
@@ -121,7 +121,7 @@ func Test_configFileReleaseStore(t *testing.T) {
 
 			ret := mockConfigFileRelease(10)
 
-			save := make([]*model.ConfigFileRelease, 0, len(ret))
+			save := make([]*conftypes.ConfigFileRelease, 0, len(ret))
 
 			for i := range ret {
 				tx, err := handler.StartTx()

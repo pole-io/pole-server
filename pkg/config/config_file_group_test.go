@@ -26,8 +26,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
 )
@@ -226,28 +226,28 @@ func TestConfigFileGroupCRUD(t *testing.T) {
 
 func TestServer_UpdateGroupAttribute(t *testing.T) {
 	type args struct {
-		saveData   *model.ConfigFileGroup
-		updateData *model.ConfigFileGroup
+		saveData   *conftypes.ConfigFileGroup
+		updateData *conftypes.ConfigFileGroup
 	}
 	tests := []struct {
 		name  string
 		args  args
-		want  *model.ConfigFileGroup
+		want  *conftypes.ConfigFileGroup
 		want1 bool
 	}{
 		{
 			name: "01",
 			args: args{
-				saveData: &model.ConfigFileGroup{
+				saveData: &conftypes.ConfigFileGroup{
 					Comment:    "test",
 					Business:   "test",
 					Department: "test",
 				},
-				updateData: &model.ConfigFileGroup{
+				updateData: &conftypes.ConfigFileGroup{
 					Comment: "test-1",
 				},
 			},
-			want: &model.ConfigFileGroup{
+			want: &conftypes.ConfigFileGroup{
 				Comment: "test-1",
 			},
 			want1: true,

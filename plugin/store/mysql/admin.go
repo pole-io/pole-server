@@ -26,9 +26,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/admin"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model/admin"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 

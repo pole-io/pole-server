@@ -34,6 +34,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/crypto"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -550,7 +551,7 @@ func Test_encryptConfigFile(t *testing.T) {
 	type args struct {
 		ctx        context.Context
 		algorithm  string
-		configFile *model.ConfigFile
+		configFile *conftypes.ConfigFile
 		dataKey    string
 	}
 	dataKey, _ := hex.DecodeString("777b162a185673cb1b72b467a78221cd")
@@ -567,7 +568,7 @@ func Test_encryptConfigFile(t *testing.T) {
 			args: args{
 				ctx:       context.Background(),
 				algorithm: "AES",
-				configFile: &model.ConfigFile{
+				configFile: &conftypes.ConfigFile{
 					Content: "polaris",
 				},
 				dataKey: "",
@@ -579,7 +580,7 @@ func Test_encryptConfigFile(t *testing.T) {
 			args: args{
 				ctx:       context.Background(),
 				algorithm: "AES",
-				configFile: &model.ConfigFile{
+				configFile: &conftypes.ConfigFile{
 					Content: "polaris",
 				},
 				dataKey: base64.StdEncoding.EncodeToString(dataKey),
@@ -631,7 +632,7 @@ func Test_decryptConfigFile(t *testing.T) {
 	}()
 	type args struct {
 		ctx        context.Context
-		configFile *model.ConfigFile
+		configFile *conftypes.ConfigFile
 	}
 
 	dataKey, _ := hex.DecodeString("777b162a185673cb1b72b467a78221cd")
@@ -646,7 +647,7 @@ func Test_decryptConfigFile(t *testing.T) {
 			name: "decrypt config file",
 			args: args{
 				ctx: context.WithValue(context.Background(), utils.ContextUserNameKey, "polaris"),
-				configFile: &model.ConfigFile{
+				configFile: &conftypes.ConfigFile{
 					Content: "YnLZ0SYuujFBHjYHAZVN5A==",
 					Metadata: map[string]string{
 						model.MetaKeyConfigFileDataKey:     base64.StdEncoding.EncodeToString(dataKey),
@@ -662,7 +663,7 @@ func Test_decryptConfigFile(t *testing.T) {
 			name: "non creator can decrypt config file",
 			args: args{
 				ctx: context.WithValue(context.Background(), utils.ContextUserNameKey, "test"),
-				configFile: &model.ConfigFile{
+				configFile: &conftypes.ConfigFile{
 					Content: "YnLZ0SYuujFBHjYHAZVN5A==",
 					Metadata: map[string]string{
 						model.MetaKeyConfigFileDataKey:     base64.StdEncoding.EncodeToString(dataKey),

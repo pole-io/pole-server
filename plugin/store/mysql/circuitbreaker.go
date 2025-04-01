@@ -24,8 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 const (
@@ -75,7 +75,7 @@ type circuitBreakerStore struct {
 	slave  *BaseDB
 }
 
-func (c *circuitBreakerStore) CreateCircuitBreakerRule(cbRule *model.CircuitBreakerRule) error {
+func (c *circuitBreakerStore) CreateCircuitBreakerRule(cbRule *rules.CircuitBreakerRule) error {
 	err := RetryTransaction(labelCreateCircuitBreakerRule, func() error {
 		return c.createCircuitBreakerRule(cbRule)
 	})
@@ -83,7 +83,7 @@ func (c *circuitBreakerStore) CreateCircuitBreakerRule(cbRule *model.CircuitBrea
 	return store.Error(err)
 }
 
-func (c *circuitBreakerStore) createCircuitBreakerRule(cbRule *model.CircuitBreakerRule) error {
+func (c *circuitBreakerStore) createCircuitBreakerRule(cbRule *rules.CircuitBreakerRule) error {
 	return c.master.processWithTransaction(labelCreateCircuitBreakerRule, func(tx *BaseTx) error {
 		etimeStr := buildEtimeStr(cbRule.Enable)
 		str := fmt.Sprintf(insertCircuitBreakerRuleSql, etimeStr)
@@ -103,7 +103,7 @@ func (c *circuitBreakerStore) createCircuitBreakerRule(cbRule *model.CircuitBrea
 }
 
 // UpdateCircuitBreakerRule 更新熔断规则
-func (c *circuitBreakerStore) UpdateCircuitBreakerRule(cbRule *model.CircuitBreakerRule) error {
+func (c *circuitBreakerStore) UpdateCircuitBreakerRule(cbRule *rules.CircuitBreakerRule) error {
 	err := RetryTransaction(labelUpdateCircuitBreakerRule, func() error {
 		return c.updateCircuitBreakerRule(cbRule)
 	})
@@ -111,7 +111,7 @@ func (c *circuitBreakerStore) UpdateCircuitBreakerRule(cbRule *model.CircuitBrea
 	return store.Error(err)
 }
 
-func (c *circuitBreakerStore) updateCircuitBreakerRule(cbRule *model.CircuitBreakerRule) error {
+func (c *circuitBreakerStore) updateCircuitBreakerRule(cbRule *rules.CircuitBreakerRule) error {
 	return c.master.processWithTransaction(labelUpdateCircuitBreakerRule, func(tx *BaseTx) error {
 		etimeStr := buildEtimeStr(cbRule.Enable)
 		str := fmt.Sprintf(updateCircuitBreakerRuleSql, etimeStr)
@@ -189,11 +189,11 @@ func (c *circuitBreakerStore) HasCircuitBreakerRuleByNameExcludeId(
 	return count > 0, nil
 }
 
-func fetchCircuitBreakerRuleRows(rows *sql.Rows) ([]*model.CircuitBreakerRule, error) {
+func fetchCircuitBreakerRuleRows(rows *sql.Rows) ([]*rules.CircuitBreakerRule, error) {
 	defer rows.Close()
-	var out []*model.CircuitBreakerRule
+	var out []*rules.CircuitBreakerRule
 	for rows.Next() {
-		var cbRule model.CircuitBreakerRule
+		var cbRule rules.CircuitBreakerRule
 		var flag int
 		var ctime, mtime, etime int64
 		err := rows.Scan(&cbRule.ID, &cbRule.Name, &cbRule.Namespace, &cbRule.Enable, &cbRule.Revision,
@@ -220,8 +220,8 @@ func fetchCircuitBreakerRuleRows(rows *sql.Rows) ([]*model.CircuitBreakerRule, e
 }
 
 func (c *circuitBreakerStore) GetCircuitBreakerRules(
-	filter map[string]string, offset uint32, limit uint32) (uint32, []*model.CircuitBreakerRule, error) {
-	var out []*model.CircuitBreakerRule
+	filter map[string]string, offset uint32, limit uint32) (uint32, []*rules.CircuitBreakerRule, error) {
+	var out []*rules.CircuitBreakerRule
 	var err error
 
 	bValue, ok := filter[briefSearch]
@@ -244,7 +244,7 @@ func (c *circuitBreakerStore) GetCircuitBreakerRules(
 }
 
 func (c *circuitBreakerStore) getBriefCircuitBreakerRules(
-	filter map[string]string, offset uint32, limit uint32) ([]*model.CircuitBreakerRule, error) {
+	filter map[string]string, offset uint32, limit uint32) ([]*rules.CircuitBreakerRule, error) {
 	queryStr, args := genCircuitBreakerRuleSQL(filter)
 	args = append(args, offset, limit)
 	str := queryCircuitBreakerRuleBriefSql + queryStr + ` order by mtime desc limit ?, ?`
@@ -343,11 +343,11 @@ func genCircuitBreakerRuleSQL(query map[string]string) (string, []interface{}) {
 }
 
 // fetchBriefRateLimitRows fetch the brief ratelimit list
-func fetchBriefCircuitBreakerRules(rows *sql.Rows) ([]*model.CircuitBreakerRule, error) {
+func fetchBriefCircuitBreakerRules(rows *sql.Rows) ([]*rules.CircuitBreakerRule, error) {
 	defer rows.Close()
-	var out []*model.CircuitBreakerRule
+	var out []*rules.CircuitBreakerRule
 	for rows.Next() {
-		var cbRule model.CircuitBreakerRule
+		var cbRule rules.CircuitBreakerRule
 		var ctime, mtime, etime int64
 		err := rows.Scan(&cbRule.ID, &cbRule.Name, &cbRule.Namespace, &cbRule.Enable, &cbRule.Revision,
 			&cbRule.Level, &cbRule.SrcService, &cbRule.SrcNamespace, &cbRule.DstService, &cbRule.DstNamespace,
@@ -369,7 +369,7 @@ func fetchBriefCircuitBreakerRules(rows *sql.Rows) ([]*model.CircuitBreakerRule,
 }
 
 func (c *circuitBreakerStore) getFullCircuitBreakerRules(
-	filter map[string]string, offset uint32, limit uint32) ([]*model.CircuitBreakerRule, error) {
+	filter map[string]string, offset uint32, limit uint32) ([]*rules.CircuitBreakerRule, error) {
 	queryStr, args := genCircuitBreakerRuleSQL(filter)
 	args = append(args, offset, limit)
 	str := queryCircuitBreakerRuleFullSql + queryStr + ` order by mtime desc limit ?, ?`
@@ -386,11 +386,11 @@ func (c *circuitBreakerStore) getFullCircuitBreakerRules(
 	return out, nil
 }
 
-func fetchFullCircuitBreakerRules(rows *sql.Rows) ([]*model.CircuitBreakerRule, error) {
+func fetchFullCircuitBreakerRules(rows *sql.Rows) ([]*rules.CircuitBreakerRule, error) {
 	defer rows.Close()
-	var out []*model.CircuitBreakerRule
+	var out []*rules.CircuitBreakerRule
 	for rows.Next() {
-		var cbRule model.CircuitBreakerRule
+		var cbRule rules.CircuitBreakerRule
 		var ctime, mtime, etime int64
 		err := rows.Scan(&cbRule.ID, &cbRule.Name, &cbRule.Namespace, &cbRule.Enable, &cbRule.Revision,
 			&cbRule.Description, &cbRule.Level, &cbRule.SrcService, &cbRule.SrcNamespace, &cbRule.DstService,
@@ -429,7 +429,7 @@ func (c *circuitBreakerStore) getCircuitBreakerRulesCount(filter map[string]stri
 
 // GetCircuitBreakerRulesForCache list circuitbreaker rules by query
 func (c *circuitBreakerStore) GetCircuitBreakerRulesForCache(
-	mtime time.Time, firstUpdate bool) ([]*model.CircuitBreakerRule, error) {
+	mtime time.Time, firstUpdate bool) ([]*rules.CircuitBreakerRule, error) {
 	str := queryCircuitBreakerRuleCacheSql
 	if firstUpdate {
 		str += " and flag != 1"
@@ -447,7 +447,7 @@ func (c *circuitBreakerStore) GetCircuitBreakerRulesForCache(
 }
 
 // EnableCircuitBreakerRule enable circuitbreaker rule
-func (c *circuitBreakerStore) EnableCircuitBreakerRule(cbRule *model.CircuitBreakerRule) error {
+func (c *circuitBreakerStore) EnableCircuitBreakerRule(cbRule *rules.CircuitBreakerRule) error {
 	err := RetryTransaction("enableCircuitbreaker", func() error {
 		return c.enableCircuitBreakerRule(cbRule)
 	})
@@ -455,7 +455,7 @@ func (c *circuitBreakerStore) EnableCircuitBreakerRule(cbRule *model.CircuitBrea
 	return store.Error(err)
 }
 
-func (c *circuitBreakerStore) enableCircuitBreakerRule(cbRule *model.CircuitBreakerRule) error {
+func (c *circuitBreakerStore) enableCircuitBreakerRule(cbRule *rules.CircuitBreakerRule) error {
 	return c.master.processWithTransaction(labelEnableCircuitBreakerRule, func(tx *BaseTx) error {
 
 		etimeStr := buildEtimeStr(cbRule.Enable)

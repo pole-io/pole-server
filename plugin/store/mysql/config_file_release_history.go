@@ -23,8 +23,8 @@ import (
 	"strconv"
 	"time"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -35,7 +35,7 @@ type configFileReleaseHistoryStore struct {
 
 // CreateConfigFileReleaseHistory 创建配置文件发布历史记录
 func (rh *configFileReleaseHistoryStore) CreateConfigFileReleaseHistory(
-	history *model.ConfigFileReleaseHistory) error {
+	history *conftypes.ConfigFileReleaseHistory) error {
 
 	s := "INSERT INTO config_file_release_history(" +
 		" name, namespace, `group`, file_name, content, comment, md5, type, status, format, tags, " +
@@ -55,7 +55,7 @@ func (rh *configFileReleaseHistoryStore) CreateConfigFileReleaseHistory(
 
 // QueryConfigFileReleaseHistories 获取配置文件的发布历史记录
 func (rh *configFileReleaseHistoryStore) QueryConfigFileReleaseHistories(filter map[string]string,
-	offset, limit uint32) (uint32, []*model.ConfigFileReleaseHistory, error) {
+	offset, limit uint32) (uint32, []*conftypes.ConfigFileReleaseHistory, error) {
 	countSql := "SELECT COUNT(*) FROM config_file_release_history WHERE "
 	querySql := rh.genSelectSql() + " WHERE "
 
@@ -116,16 +116,16 @@ func (rh *configFileReleaseHistoryStore) genSelectSql() string {
 		" IFNULL(description, ''), IFNULL(version, 0) FROM config_file_release_history "
 }
 
-func (rh *configFileReleaseHistoryStore) transferRows(rows *sql.Rows) ([]*model.ConfigFileReleaseHistory, error) {
+func (rh *configFileReleaseHistoryStore) transferRows(rows *sql.Rows) ([]*conftypes.ConfigFileReleaseHistory, error) {
 	if rows == nil {
 		return nil, nil
 	}
 	defer rows.Close()
 
-	records := make([]*model.ConfigFileReleaseHistory, 0, 16)
+	records := make([]*conftypes.ConfigFileReleaseHistory, 0, 16)
 
 	for rows.Next() {
-		item := &model.ConfigFileReleaseHistory{}
+		item := &conftypes.ConfigFileReleaseHistory{}
 		var (
 			ctime, mtime int64
 			tags         string
