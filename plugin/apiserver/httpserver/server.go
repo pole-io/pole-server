@@ -35,20 +35,22 @@ import (
 	"go.uber.org/zap"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
+	"github.com/pole-io/pole-server/apis/access_control/ratelimit"
+	"github.com/pole-io/pole-server/apis/access_control/whitelist"
 	"github.com/pole-io/pole-server/apis/apiserver"
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/admin"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/conn/keepalive"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/secure"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/plugin"
 	confighttp "github.com/pole-io/pole-server/plugin/apiserver/httpserver/config"
 	v1 "github.com/pole-io/pole-server/plugin/apiserver/httpserver/discover/v1"
 	v2 "github.com/pole-io/pole-server/plugin/apiserver/httpserver/discover/v2"
@@ -87,9 +89,9 @@ type HTTPServer struct {
 	namingServer      service.DiscoverServer
 	configServer      config.ConfigCenterServer
 	healthCheckServer *healthcheck.Server
-	rateLimit         plugin.Ratelimit
-	statis            plugin.Statis
-	whitelist         plugin.Whitelist
+	rateLimit         ratelimit.Ratelimit
+	statis            statis.Statis
+	whitelist         whitelist.Whitelist
 
 	discoverV1 v1.HTTPServerV1
 	discoverV2 v2.HTTPServerV2
@@ -139,12 +141,12 @@ func (h *HTTPServer) Initialize(ctx context.Context, option map[string]interface
 		}
 		h.connLimitConfig = connLimitConfig
 	}
-	if rateLimit := plugin.GetRatelimit(); rateLimit != nil {
+	if rateLimit := ratelimit.GetRatelimit(); rateLimit != nil {
 		log.Infof("http server open the ratelimit")
 		h.rateLimit = rateLimit
 	}
 
-	if whitelist := plugin.GetWhitelist(); whitelist != nil {
+	if whitelist := whitelist.GetWhitelist(); whitelist != nil {
 		log.Infof("http server open the whitelist")
 		h.whitelist = whitelist
 	}
@@ -169,8 +171,6 @@ func (h *HTTPServer) Initialize(ctx context.Context, option map[string]interface
 			TrustedCAFile: tlsConfig.TrustedCAFile,
 		}
 	}
-
-	metrics.SetMetricsPort(int32(h.listenPort))
 	return nil
 }
 
@@ -232,7 +232,7 @@ func (h *HTTPServer) Run(errCh chan error) {
 		errCh <- err
 		return
 	}
-	h.statis = plugin.GetStatis()
+	h.statis = statis.GetStatis()
 
 	// 初始化配置中心模块
 	h.configServer, err = config.GetServer()
@@ -639,7 +639,7 @@ func (h *HTTPServer) enterRateLimit(req *restful.Request, rsp *restful.Response)
 	if len(segments) != 2 {
 		return nil
 	}
-	if ok := h.rateLimit.Allow(plugin.IPRatelimit, segments[0]); !ok {
+	if ok := h.rateLimit.Allow(ratelimit.IPRatelimit, segments[0]); !ok {
 		log.Error("ip ratelimit is not allow", zap.String("client", address),
 			utils.ZapRequestID(rid))
 		httpcommon.HTTPResponse(req, rsp, api.IPRateLimit)
@@ -649,7 +649,7 @@ func (h *HTTPServer) enterRateLimit(req *restful.Request, rsp *restful.Response)
 	// 接口级限流
 	apiName := fmt.Sprintf("%s:%s", req.Request.Method,
 		strings.TrimSuffix(req.Request.URL.Path, "/"))
-	if ok := h.rateLimit.Allow(plugin.APIRatelimit, apiName); !ok {
+	if ok := h.rateLimit.Allow(ratelimit.APIRatelimit, apiName); !ok {
 		log.Error("api ratelimit is not allow", zap.String("client", address),
 			utils.ZapRequestID(rid), zap.String("api", apiName))
 		httpcommon.HTTPResponse(req, rsp, api.APIRateLimit)

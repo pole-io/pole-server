@@ -22,7 +22,8 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 
-	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/apis/access_control/ratelimit"
 )
 
 // baseConfigOption 返回一个基础的正常option配置
@@ -55,7 +56,7 @@ func TestTokenBucket_Name(t *testing.T) {
 
 // TestTokenBucket_Initialize 测试初始化函数
 func TestTokenBucket_Initialize(t *testing.T) {
-	configEntry := &plugin.ConfigEntry{Name: PluginName}
+	configEntry := &apis.ConfigEntry{Name: PluginName}
 	tb := &tokenBucket{}
 	Convey("配置option为空，返回失败", t, func() {
 		So(tb.Initialize(configEntry), ShouldNotBeNil)
@@ -85,47 +86,47 @@ func TestTokenBucket_Initialize(t *testing.T) {
 	Convey("配置有效，可以正常初始化", t, func() {
 		configEntry.Option = baseConfigOption()
 		So(tb.Initialize(configEntry), ShouldBeNil)
-		So(tb.limiters[plugin.IPRatelimit], ShouldNotBeNil)
-		So(tb.limiters[plugin.APIRatelimit], ShouldNotBeNil)
+		So(tb.limiters[ratelimit.IPRatelimit], ShouldNotBeNil)
+		So(tb.limiters[ratelimit.APIRatelimit], ShouldNotBeNil)
 	})
 }
 
 // TestTokenBucket_Allow 测试Allow函数
 func TestTokenBucket_Allow(t *testing.T) {
-	configEntry := &plugin.ConfigEntry{Name: PluginName}
+	configEntry := &apis.ConfigEntry{Name: PluginName}
 	configEntry.Option = baseConfigOption()
 	tb := &tokenBucket{}
 	if err := tb.Initialize(configEntry); err != nil {
 		t.Fatalf("error: %s", err.Error())
 	}
-	ipLimiter := tb.limiters[plugin.IPRatelimit].(*resourceRatelimit)
-	apiLimiter := tb.limiters[plugin.APIRatelimit].(*apiRatelimit)
+	ipLimiter := tb.limiters[ratelimit.IPRatelimit].(*resourceRatelimit)
+	apiLimiter := tb.limiters[ratelimit.APIRatelimit].(*apiRatelimit)
 	Convey("IP正常限流", t, func() {
 		cnt := 0
 		for i := 0; i < ipLimiter.config.Global.Bucket*2; i++ {
-			if ok := tb.Allow(plugin.IPRatelimit, "1.2.3.4"); ok {
+			if ok := tb.Allow(ratelimit.IPRatelimit, "1.2.3.4"); ok {
 				cnt++
 			}
 		}
 		So(cnt, ShouldEqual, ipLimiter.config.Global.Bucket)
 		// 其他IP可以正常通过
-		So(tb.Allow(plugin.IPRatelimit, "2.3.4.5"), ShouldEqual, true)
+		So(tb.Allow(ratelimit.IPRatelimit, "2.3.4.5"), ShouldEqual, true)
 	})
 	Convey("api正常限流", t, func() {
 		cnt := 0
 		for i := 0; i < apiLimiter.rules["rule-1"].Bucket*2; i++ {
-			if ok := tb.Allow(plugin.APIRatelimit, "api-1"); ok {
+			if ok := tb.Allow(ratelimit.APIRatelimit, "api-1"); ok {
 				cnt++
 			}
 		}
 		So(cnt, ShouldEqual, apiLimiter.rules["rule-1"].Bucket)
 		// 其他接口没有限流的可以通过
-		So(tb.Allow(plugin.APIRatelimit, "api-2"), ShouldEqual, true)
+		So(tb.Allow(ratelimit.APIRatelimit, "api-2"), ShouldEqual, true)
 	})
 	Convey("空的key，正常限流", t, func() {
-		So(tb.Allow(plugin.APIRatelimit, ""), ShouldEqual, true)
+		So(tb.Allow(ratelimit.APIRatelimit, ""), ShouldEqual, true)
 	})
 	Convey("非法的限制类型，直接通过", t, func() {
-		So(tb.Allow(plugin.RatelimitType(100), "123"), ShouldEqual, true)
+		So(tb.Allow(ratelimit.RatelimitType(100), "123"), ShouldEqual, true)
 	})
 }

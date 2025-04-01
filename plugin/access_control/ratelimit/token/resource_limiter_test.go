@@ -24,19 +24,19 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 
-	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/apis/access_control/ratelimit"
 )
 
 // TestNewResourceRatelimit 测试新建
 func TestNewResourceRatelimit(t *testing.T) {
 	Convey("测试新建一个资源限制器", t, func() {
 		Convey("config为空", func() {
-			limiter, err := newResourceRatelimit(plugin.InstanceRatelimit, nil)
+			limiter, err := newResourceRatelimit(ratelimit.InstanceRatelimit, nil)
 			So(limiter, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 		})
 		Convey("不开启限制器", func() {
-			limiter, err := newResourceRatelimit(plugin.InstanceRatelimit, &ResourceLimitConfig{
+			limiter, err := newResourceRatelimit(ratelimit.InstanceRatelimit, &ResourceLimitConfig{
 				Open: false,
 			})
 			So(limiter, ShouldNotBeNil)
@@ -44,7 +44,7 @@ func TestNewResourceRatelimit(t *testing.T) {
 			So(limiter.allow("11111"), ShouldBeTrue)
 		})
 		Convey("开启了限制器，global为空", func() {
-			limiter, err := newResourceRatelimit(plugin.InstanceRatelimit, &ResourceLimitConfig{
+			limiter, err := newResourceRatelimit(ratelimit.InstanceRatelimit, &ResourceLimitConfig{
 				Open: true,
 			})
 			So(limiter, ShouldBeNil)
@@ -52,21 +52,21 @@ func TestNewResourceRatelimit(t *testing.T) {
 			t.Logf("%s", err.Error())
 		})
 		Convey("开启了限制器，global其他参数不合法", func() {
-			limiter, err := newResourceRatelimit(plugin.InstanceRatelimit, &ResourceLimitConfig{
+			limiter, err := newResourceRatelimit(ratelimit.InstanceRatelimit, &ResourceLimitConfig{
 				Open:   true,
 				Global: &BucketRatelimit{},
 			})
 			So(limiter, ShouldBeNil)
 			So(err, ShouldNotBeNil)
 
-			limiter, err = newResourceRatelimit(plugin.InstanceRatelimit, &ResourceLimitConfig{
+			limiter, err = newResourceRatelimit(ratelimit.InstanceRatelimit, &ResourceLimitConfig{
 				Open:   true,
 				Global: &BucketRatelimit{true, 10, 10},
 			})
 			So(limiter, ShouldBeNil)
 			So(err, ShouldNotBeNil)
 
-			limiter, err = newResourceRatelimit(plugin.InstanceRatelimit, &ResourceLimitConfig{
+			limiter, err = newResourceRatelimit(ratelimit.InstanceRatelimit, &ResourceLimitConfig{
 				Open:                   true,
 				Global:                 &BucketRatelimit{true, 10, 10},
 				MaxResourceCacheAmount: -1,
@@ -75,7 +75,7 @@ func TestNewResourceRatelimit(t *testing.T) {
 			So(err, ShouldNotBeNil)
 		})
 		Convey("正常新建限制器", func() {
-			limiter, err := newResourceRatelimit(plugin.InstanceRatelimit, &ResourceLimitConfig{
+			limiter, err := newResourceRatelimit(ratelimit.InstanceRatelimit, &ResourceLimitConfig{
 				Open:                   true,
 				Global:                 &BucketRatelimit{true, 10, 5},
 				MaxResourceCacheAmount: 10,
@@ -84,7 +84,7 @@ func TestNewResourceRatelimit(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 		Convey("白名单正常解析", func() {
-			limiter, err := newResourceRatelimit(plugin.InstanceRatelimit, &ResourceLimitConfig{
+			limiter, err := newResourceRatelimit(ratelimit.InstanceRatelimit, &ResourceLimitConfig{
 				Open:                   true,
 				Global:                 &BucketRatelimit{true, 10, 5},
 				MaxResourceCacheAmount: 10,
@@ -101,7 +101,7 @@ func TestNewResourceRatelimit(t *testing.T) {
 func TestResourceAllow(t *testing.T) {
 	Convey("测试allow", t, func() {
 		Convey("正常限流", func() {
-			limiter, err := newResourceRatelimit(plugin.InstanceRatelimit, &ResourceLimitConfig{
+			limiter, err := newResourceRatelimit(ratelimit.InstanceRatelimit, &ResourceLimitConfig{
 				Open:                   true,
 				Global:                 &BucketRatelimit{true, 5, 5},
 				MaxResourceCacheAmount: 2,
@@ -124,7 +124,7 @@ func TestResourceAllow(t *testing.T) {
 			So(limiter.allow("13579"), ShouldBeTrue)
 		})
 		Convey("max-resource测试", func() {
-			limiter, err := newResourceRatelimit(plugin.InstanceRatelimit, &ResourceLimitConfig{
+			limiter, err := newResourceRatelimit(ratelimit.InstanceRatelimit, &ResourceLimitConfig{
 				Open:                   true,
 				Global:                 &BucketRatelimit{true, 5, 5},
 				MaxResourceCacheAmount: 2,
@@ -140,7 +140,7 @@ func TestResourceAllow(t *testing.T) {
 			So(cnt, ShouldEqual, limiter.config.Global.Rate*20)
 		})
 		Convey("白名单测试", func() {
-			limiter, err := newResourceRatelimit(plugin.InstanceRatelimit, &ResourceLimitConfig{
+			limiter, err := newResourceRatelimit(ratelimit.InstanceRatelimit, &ResourceLimitConfig{
 				Open:                   true,
 				Global:                 &BucketRatelimit{true, 5, 5},
 				MaxResourceCacheAmount: 1024,

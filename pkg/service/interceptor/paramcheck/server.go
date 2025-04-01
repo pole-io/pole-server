@@ -18,12 +18,12 @@
 package paramcheck
 
 import (
+	"github.com/pole-io/pole-server/apis/access_control/ratelimit"
 	"github.com/pole-io/pole-server/apis/store"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/service"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // Server 带有鉴权能力的 discoverServer
@@ -32,7 +32,7 @@ import (
 type Server struct {
 	storage   store.Store
 	nextSvr   service.DiscoverServer
-	ratelimit plugin.Ratelimit
+	ratelimit ratelimit.Ratelimit
 }
 
 func NewServer(nextSvr service.DiscoverServer, s store.Store) service.DiscoverServer {
@@ -41,7 +41,7 @@ func NewServer(nextSvr service.DiscoverServer, s store.Store) service.DiscoverSe
 		storage: s,
 	}
 	// 获取限流插件
-	proxy.ratelimit = plugin.GetRatelimit()
+	proxy.ratelimit = ratelimit.GetRatelimit()
 	if proxy.ratelimit == nil {
 		log.Warnf("Not found Ratelimit Plugin")
 	}

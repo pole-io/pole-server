@@ -18,10 +18,10 @@
 package config
 
 import (
-	"github.com/pole-io/pole-server/pkg/common/metrics"
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 func (fc *configGroupCache) reportMetricsInfo() {
@@ -35,7 +35,7 @@ func (fc *configGroupCache) reportMetricsInfo() {
 				metrics.LabelNamespace: ns,
 			},
 		}
-		plugin.GetStatis().ReportConfigMetrics(reportValue)
+		statis.GetStatis().ReportConfigMetrics(reportValue)
 	})
 
 }

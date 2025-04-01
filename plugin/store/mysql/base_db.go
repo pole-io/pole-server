@@ -24,9 +24,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // db抛出的异常，需要重试的字符串组
@@ -37,7 +37,6 @@ type BaseDB struct {
 	*sql.DB
 	cfg            *dbConfig
 	isolationLevel sql.IsolationLevel
-	parsePwd       plugin.ParsePassword
 }
 
 // dbConfig store的配置
@@ -174,7 +173,7 @@ func (b *BaseDB) Begin() (*BaseTx, error) {
 }
 
 func reportCallMetrics(label string, start time.Time, err error) {
-	plugin.GetStatis().ReportCallMetrics(metrics.CallMetric{
+	statis.GetStatis().ReportCallMetrics(metrics.CallMetric{
 		Type:     metrics.StoreCallMetric,
 		API:      label,
 		Protocol: "MySQL",

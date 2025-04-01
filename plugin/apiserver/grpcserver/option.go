@@ -18,8 +18,8 @@
 package grpcserver
 
 import (
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 )
 
 type InitOption func(svr *BaseGrpcServer)

@@ -24,7 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 )
 
 func buildUserIds(users []*authcommon.User) map[string]struct{} {

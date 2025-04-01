@@ -28,6 +28,8 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/observability/event"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
@@ -35,7 +37,6 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/plugin"
 	nacosmodel "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/remote"
 )
@@ -240,24 +241,24 @@ func (c *Checker) realCheck() {
 		if !exist && isHealth {
 			// 如果实例对应的连接ID不存在，设置为不健康
 			turnUnhealth[instanceID] = struct{}{}
-			plugin.GetDiscoverEvent().PublishEvent(model.InstanceEvent{
+			event.GetDiscoverEvent().PublishEvent(svctypes.InstanceEvent{
 				Id:        instanceID,
 				Namespace: instance.GetNamespace().GetValue(),
 				Service:   instance.GetService().GetValue(),
 				Instance:  instance,
-				EType:     model.EventInstanceTurnUnHealth,
+				EType:     svctypes.EventInstanceTurnUnHealth,
 			})
 			continue
 		}
 		if !isHealth && exist {
 			turnHealth[instanceID] = struct{}{}
-			plugin.GetDiscoverEvent().PublishEvent(model.InstanceEvent{
+			event.GetDiscoverEvent().PublishEvent(svctypes.InstanceEvent{
 				Id:        instanceID,
 				SvcId:     instance.GetService().GetValue(),
 				Namespace: instance.GetNamespace().GetValue(),
 				Service:   instance.GetService().GetValue(),
 				Instance:  instance,
-				EType:     model.EventInstanceTurnHealth,
+				EType:     svctypes.EventInstanceTurnHealth,
 			})
 		}
 	}

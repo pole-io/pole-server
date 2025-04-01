@@ -143,11 +143,6 @@ func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *ap
 		Namespace: req.GetNamespace(),
 		Token:     utils.NewStringValue(data.Token),
 	}
-
-	if err := s.afterServiceResource(ctx, req, data, false); err != nil {
-		return api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
-	}
-
 	return api.NewServiceResponse(apimodel.Code_ExecuteSuccess, out)
 }
 
@@ -193,10 +188,6 @@ func (s *Server) DeleteService(ctx context.Context, req *apiservice.Service) *ap
 	msg := fmt.Sprintf("delete service: namespace=%v, name=%v", namespaceName, serviceName)
 	log.Info(msg, utils.RequestID(ctx))
 	s.RecordHistory(ctx, serviceRecordEntry(ctx, req, nil, model.ODelete))
-
-	if err := s.afterServiceResource(ctx, req, service, true); err != nil {
-		return api.NewServiceResponse(apimodel.Code_ExecuteException, req)
-	}
 	return api.NewServiceResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -235,10 +226,6 @@ func (s *Server) UpdateService(ctx context.Context, req *apiservice.Service) *ap
 	if !needUpdate {
 		log.Info("update service data no change, no need update",
 			utils.RequestID(ctx), zap.String("service", req.String()))
-		if err := s.afterServiceResource(ctx, req, service, false); err != nil {
-			return api.NewServiceResponse(apimodel.Code_ExecuteException, req)
-		}
-
 		return api.NewServiceResponse(apimodel.Code_NoNeedUpdate, req)
 	}
 
@@ -251,11 +238,6 @@ func (s *Server) UpdateService(ctx context.Context, req *apiservice.Service) *ap
 	msg := fmt.Sprintf("update service: namespace=%v, name=%v", service.Namespace, service.Name)
 	log.Info(msg, utils.RequestID(ctx))
 	s.RecordHistory(ctx, serviceRecordEntry(ctx, req, service, model.OUpdate))
-
-	if err := s.afterServiceResource(ctx, req, service, false); err != nil {
-		return api.NewServiceResponse(apimodel.Code_ExecuteException, req)
-	}
-
 	return api.NewServiceResponse(apimodel.Code_ExecuteSuccess, req)
 }
 

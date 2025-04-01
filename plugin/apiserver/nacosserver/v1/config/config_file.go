@@ -30,13 +30,13 @@ import (
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 	commonmodel "github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
-	"github.com/pole-io/pole-server/plugin"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 	nacoshttp "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v1/http"
 )
@@ -71,7 +71,7 @@ func (n *ConfigServer) handleGetConfig(ctx context.Context, req *model.ConfigFil
 	var queryResp *config_manage.ConfigClientResponse
 	startTime := commontime.CurrentMillisecond()
 	defer func() {
-		plugin.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
+		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    model.ActionGetConfigFile,
 			ClientIP:  utils.ParseClientAddress(ctx),
 			Namespace: req.Namespace,

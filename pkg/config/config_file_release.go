@@ -30,6 +30,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -184,7 +185,7 @@ func (s *Server) handlePublishConfigFile(ctx context.Context, tx store.Tx,
 		}
 	}
 
-	s.RecordHistory(ctx, configFileReleaseRecordEntry(ctx, req, fileRelease, model.OCreate))
+	s.RecordHistory(ctx, configFileReleaseRecordEntry(ctx, req, fileRelease, types.OCreate))
 	return fileRelease, api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
 
@@ -322,7 +323,7 @@ func (s *Server) DeleteConfigFileRelease(ctx context.Context,
 		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
 	}
 	s.recordReleaseSuccess(ctx, utils.ReleaseTypeDelete, recordData)
-	s.RecordHistory(ctx, configFileReleaseRecordEntry(ctx, req, release, model.ODelete))
+	s.RecordHistory(ctx, configFileReleaseRecordEntry(ctx, req, release, types.ODelete))
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
 
@@ -464,7 +465,7 @@ func (s *Server) RollbackConfigFileRelease(ctx context.Context,
 	}
 
 	s.recordReleaseSuccess(ctx, utils.ReleaseTypeRollback, data)
-	s.RecordHistory(ctx, configFileReleaseRecordEntry(ctx, req, data, model.ORollback))
+	s.RecordHistory(ctx, configFileReleaseRecordEntry(ctx, req, data, types.ORollback))
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
 
@@ -539,7 +540,7 @@ func (s *Server) CasUpsertAndReleaseConfigFile(ctx context.Context,
 	if saveFile == nil {
 		upsertResp = s.handleCreateConfigFile(ctx, tx, upsertFileReq)
 		historyRecords = append(historyRecords, func() {
-			s.RecordHistory(ctx, configFileRecordEntry(ctx, upsertFileReq, model.OCreate))
+			s.RecordHistory(ctx, configFileRecordEntry(ctx, upsertFileReq, types.OCreate))
 		})
 	} else {
 		actualMd5 := CalMd5(saveFile.Content)
@@ -552,7 +553,7 @@ func (s *Server) CasUpsertAndReleaseConfigFile(ctx context.Context,
 		}
 		upsertResp = s.handleUpdateConfigFile(ctx, tx, upsertFileReq)
 		historyRecords = append(historyRecords, func() {
-			s.RecordHistory(ctx, configFileRecordEntry(ctx, upsertFileReq, model.OUpdate))
+			s.RecordHistory(ctx, configFileRecordEntry(ctx, upsertFileReq, types.OUpdate))
 		})
 	}
 	if upsertResp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
@@ -631,7 +632,7 @@ func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
 	if saveFile == nil {
 		upsertResp = s.handleCreateConfigFile(ctx, tx, upsertFileReq)
 		historyRecords = append(historyRecords, func() {
-			s.RecordHistory(ctx, configFileRecordEntry(ctx, upsertFileReq, model.OCreate))
+			s.RecordHistory(ctx, configFileRecordEntry(ctx, upsertFileReq, types.OCreate))
 		})
 	} else {
 		actualMd5 := CalMd5(saveFile.Content)
@@ -645,7 +646,7 @@ func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
 		}
 		upsertResp = s.handleUpdateConfigFile(ctx, tx, upsertFileReq)
 		historyRecords = append(historyRecords, func() {
-			s.RecordHistory(ctx, configFileRecordEntry(ctx, upsertFileReq, model.OUpdate))
+			s.RecordHistory(ctx, configFileRecordEntry(ctx, upsertFileReq, types.OUpdate))
 		})
 	}
 	if upsertResp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
@@ -783,13 +784,13 @@ func (s *Server) recordReleaseSuccess(ctx context.Context, rType string, release
 
 // configFileReleaseRecordEntry 生成服务的记录entry
 func configFileReleaseRecordEntry(ctx context.Context, req *apiconfig.ConfigFileRelease, md *model.ConfigFileRelease,
-	operationType model.OperationType) *model.RecordEntry {
+	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
 
-	entry := &model.RecordEntry{
-		ResourceType:  model.RConfigFileRelease,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RConfigFileRelease,
 		ResourceName:  req.GetName().GetValue(),
 		Namespace:     req.GetNamespace().GetValue(),
 		OperationType: operationType,

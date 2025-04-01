@@ -23,9 +23,9 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 

@@ -206,18 +206,6 @@ func (s *Server) ListCheckerServer() []*model.Instance {
 	return ret
 }
 
-// RecordHistory server对外提供history插件的简单封装
-func (s *Server) RecordHistory(entry *model.RecordEntry) {
-	// 如果插件没有初始化，那么不记录history
-	// 如果数据为空，则不需要打印了
-	if entry == nil {
-		return
-	}
-
-	// 调用插件记录history
-	plugin.GetHistory().Record(entry)
-}
-
 // publishInstanceEvent 发布服务事件
 func (s *Server) publishInstanceEvent(serviceID string, event model.InstanceEvent) {
 	event.SvcId = serviceID

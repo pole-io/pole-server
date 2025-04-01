@@ -23,10 +23,11 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"golang.org/x/sync/singleflight"
 
+	"github.com/pole-io/pole-server/apis/observability/history"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 var _ NamespaceOperateServer = (*Server)(nil)
@@ -58,9 +59,9 @@ func (s *Server) afterNamespaceResource(ctx context.Context, req *apimodel.Names
 }
 
 // RecordHistory server对外提供history插件的简单封装
-func (s *Server) RecordHistory(entry *model.RecordEntry) {
+func (s *Server) RecordHistory(entry *types.RecordEntry) {
 	// 如果插件没有初始化，那么不记录history
-	if plugin.GetHistory() == nil {
+	if history.GetHistory() == nil {
 		return
 	}
 	// 如果数据为空，则不需要打印了
@@ -69,7 +70,7 @@ func (s *Server) RecordHistory(entry *model.RecordEntry) {
 	}
 
 	// 调用插件记录history
-	plugin.GetHistory().Record(entry)
+	history.GetHistory().Record(entry)
 }
 
 // SetResourceHooks 返回Cache

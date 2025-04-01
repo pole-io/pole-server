@@ -12,7 +12,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	api "github.com/pole-io/pole-server/pkg/cache/api"
 	model "github.com/pole-io/pole-server/pkg/common/model"
-	auth "github.com/pole-io/pole-server/pkg/common/model/auth"
+	auth "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	store "github.com/pole-io/pole-server/apis/store"
 	model0 "github.com/polarismesh/specification/source/go/api/v1/model"
 	security "github.com/polarismesh/specification/source/go/api/v1/security"

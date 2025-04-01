@@ -27,10 +27,10 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -45,7 +45,18 @@ func (svr *Server) CreateRoutingConfigsV2(ctx context.Context,
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.CreateRoutingConfigsV2(ctx, req)
+	resp := svr.nextSvr.CreateRoutingConfigsV2(ctx, req)
+
+	for index := range resp.Responses {
+		item := resp.GetResponses()[index].GetData()
+		rule := &apitraffic.RouteRule{}
+		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
+		_ = svr.afterRuleResource(ctx, model.RRouting, authcommon.ResourceEntry{
+			ID:   rule.Id,
+			Type: security.ResourceType_RouteRules,
+		}, false)
+	}
+	return resp
 }
 
 // DeleteRoutingConfigsV2 批量删除路由配置
@@ -58,7 +69,18 @@ func (svr *Server) DeleteRoutingConfigsV2(ctx context.Context,
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.DeleteRoutingConfigsV2(ctx, req)
+	resp := svr.nextSvr.DeleteRoutingConfigsV2(ctx, req)
+
+	for index := range resp.Responses {
+		item := resp.GetResponses()[index].GetData()
+		rule := &apitraffic.RouteRule{}
+		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
+		_ = svr.afterRuleResource(ctx, model.RRouting, authcommon.ResourceEntry{
+			ID:   rule.Id,
+			Type: security.ResourceType_RouteRules,
+		}, true)
+	}
+	return resp
 }
 
 // UpdateRoutingConfigsV2 批量更新路由配置

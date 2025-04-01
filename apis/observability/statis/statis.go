@@ -15,13 +15,14 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package plugin
+package statis
 
 import (
-	"os"
+	"fmt"
 	"sync"
 
-	"github.com/pole-io/pole-server/pkg/common/metrics"
+	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 )
 
 var (
@@ -31,7 +32,7 @@ var (
 
 // Statis Statistical plugin interface
 type Statis interface {
-	Plugin
+	apis.Plugin
 	// ReportCallMetrics report call metrics info
 	ReportCallMetrics(metric metrics.CallMetric)
 	// ReportDiscoveryMetrics report discovery metrics
@@ -45,26 +46,24 @@ type Statis interface {
 // compositeStatis is used to receive discover events from the agent
 type compositeStatis struct {
 	chain   []Statis
-	options []ConfigEntry
+	options []apis.ConfigEntry
 }
 
 func (c *compositeStatis) Name() string {
 	return "compositeStatis"
 }
 
-func (c *compositeStatis) Initialize(config *ConfigEntry) error {
+func (c *compositeStatis) Initialize(config *apis.ConfigEntry) error {
 	for i := range c.options {
 		entry := c.options[i]
-		item, exist := pluginSet[entry.Name]
+		item, exist := apis.GetPlugin(apis.PluginTypeStatis, entry.Name)
 		if !exist {
-			log.Errorf("plugin Statis not found target: %s", entry.Name)
-			continue
+			return fmt.Errorf("plugin Statis not found target: %s", entry.Name)
 		}
 
 		statis, ok := item.(Statis)
 		if !ok {
-			log.Errorf("plugin target: %s not Statis", entry.Name)
-			continue
+			return fmt.Errorf("plugin target: %s not Statis", entry.Name)
 		}
 
 		if err := statis.Initialize(&entry); err != nil {
@@ -73,6 +72,10 @@ func (c *compositeStatis) Initialize(config *ConfigEntry) error {
 		c.chain = append(c.chain, statis)
 	}
 	return nil
+}
+
+func (c *compositeStatis) Type() apis.PluginType {
+	return apis.PluginTypeStatis
 }
 
 func (c *compositeStatis) Destroy() error {
@@ -120,8 +123,8 @@ func GetStatis() Statis {
 
 	statisOnce.Do(func() {
 		var (
-			entries        []ConfigEntry
-			defaultEntries = []ConfigEntry{
+			entries        []apis.ConfigEntry
+			defaultEntries = []apis.ConfigEntry{
 				{
 					Name: "local",
 				},
@@ -131,15 +134,15 @@ func GetStatis() Statis {
 			}
 		)
 
-		if len(config.Statis.Entries) != 0 {
-			entries = append(entries, config.Statis.Entries...)
+		if len(apis.GetPluginConfig().Statis.Entries) != 0 {
+			entries = append(entries, apis.GetPluginConfig().Statis.Entries...)
 		} else {
-			if config.Statis.Name == "local" {
+			if apis.GetPluginConfig().Statis.Name == "local" {
 				entries = defaultEntries
 			} else {
-				entries = append(entries, ConfigEntry{
-					Name:   config.Statis.Name,
-					Option: config.Statis.Option,
+				entries = append(entries, apis.ConfigEntry{
+					Name:   apis.GetPluginConfig().Statis.Name,
+					Option: apis.GetPluginConfig().Statis.Option,
 				})
 			}
 		}
@@ -149,8 +152,7 @@ func GetStatis() Statis {
 			options: entries,
 		}
 		if err := _statis.Initialize(nil); err != nil {
-			log.Errorf("Statis plugin init err: %s", err.Error())
-			os.Exit(-1)
+			panic(fmt.Sprintf("Statis plugin init err: %s", err.Error()))
 		}
 	})
 

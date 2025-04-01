@@ -51,7 +51,6 @@ func TestNewServer(mockStore store.Store, nsSvr namespace.NamespaceOperateServer
 		namespaceSvr:        nsSvr,
 		caches:              cacheMgr,
 		createServiceSingle: &singleflight.Group{},
-		hooks:               []ResourceHook{},
 	}
 }
 

@@ -25,10 +25,12 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
+	"github.com/pole-io/pole-server/apis/cmdb"
+	"github.com/pole-io/pole-server/apis/observability/event"
+	"github.com/pole-io/pole-server/apis/observability/history"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 const (
@@ -150,11 +152,11 @@ func (s *Server) Initialize(context.Context, store.Store) error {
 
 type PluginInstanceEventHandler struct {
 	*BaseInstanceEventHandler
-	subscriber plugin.DiscoverChannel
+	subscriber event.DiscoverChannel
 }
 
 func (p *PluginInstanceEventHandler) OnEvent(ctx context.Context, any2 any) error {
-	e := any2.(model.InstanceEvent)
+	e := any2.(svctypes.InstanceEvent)
 	p.subscriber.PublishEvent(e)
 	return nil
 }
@@ -162,18 +164,18 @@ func (p *PluginInstanceEventHandler) OnEvent(ctx context.Context, any2 any) erro
 // 插件初始化
 func (s *Server) pluginInitialize() {
 	// 获取CMDB插件
-	s.cmdb = plugin.GetCMDB()
+	s.cmdb = cmdb.GetCMDB()
 	if s.cmdb == nil {
 		log.Warnf("Not Found CMDB Plugin")
 	}
 
 	// 获取History插件，注意：插件的配置在bootstrap已经设置好
-	s.history = plugin.GetHistory()
+	s.history = history.GetHistory()
 	if s.history == nil {
 		log.Warnf("Not Found History Log Plugin")
 	}
 
-	subscriber := plugin.GetDiscoverEvent()
+	subscriber := event.GetDiscoverEvent()
 	if subscriber == nil {
 		log.Warnf("Not found DiscoverEvent Plugin")
 		return

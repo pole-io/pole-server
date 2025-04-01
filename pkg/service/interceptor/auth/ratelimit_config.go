@@ -25,10 +25,10 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -44,7 +44,14 @@ func (svr *Server) CreateRateLimits(
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 
-	return svr.nextSvr.CreateRateLimits(ctx, reqs)
+	rsp := svr.nextSvr.CreateRateLimits(ctx, reqs)
+	for index := range rsp.Responses {
+		_ = svr.afterRuleResource(ctx, model.RRateLimit, authcommon.ResourceEntry{
+			ID:   rsp.Responses[index].GetRateLimit().GetId().GetValue(),
+			Type: security.ResourceType_RateLimitRules,
+		}, false)
+	}
+	return rsp
 }
 
 // DeleteRateLimits deletes rate limits for a namespace.
@@ -59,7 +66,14 @@ func (svr *Server) DeleteRateLimits(
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 
-	return svr.nextSvr.DeleteRateLimits(ctx, reqs)
+	rsp := svr.nextSvr.DeleteRateLimits(ctx, reqs)
+	for index := range rsp.Responses {
+		_ = svr.afterRuleResource(ctx, model.RRateLimit, authcommon.ResourceEntry{
+			ID:   rsp.Responses[index].GetRateLimit().GetId().GetValue(),
+			Type: security.ResourceType_RateLimitRules,
+		}, true)
+	}
+	return rsp
 }
 
 // UpdateRateLimits updates rate limits for a namespace.

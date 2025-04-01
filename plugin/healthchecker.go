@@ -19,7 +19,7 @@ package plugin
 
 import (
 	"context"
-	"os"
+	"fmt"
 	"sync"
 
 	"github.com/pole-io/pole-server/pkg/common/model"
@@ -129,8 +129,7 @@ func GetHealthChecker(name string, cfg *ConfigEntry) HealthChecker {
 
 	healthCheckOnce.Do(func() {
 		if err := plugin.Initialize(cfg); err != nil {
-			log.Errorf("HealthChecker plugin init err: %s", err.Error())
-			os.Exit(-1)
+			panic(fmt.Errorf("HealthChecker plugin init err: %s", err.Error()))
 		}
 	})
 

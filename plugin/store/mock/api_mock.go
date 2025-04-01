@@ -12,7 +12,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	model "github.com/pole-io/pole-server/pkg/common/model"
 	admin "github.com/pole-io/pole-server/pkg/common/model/admin"
-	auth "github.com/pole-io/pole-server/pkg/common/model/auth"
+	auth "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	store "github.com/pole-io/pole-server/apis/store"
 )
 

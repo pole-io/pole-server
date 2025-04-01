@@ -26,7 +26,7 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	"github.com/stretchr/testify/assert"
 
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 

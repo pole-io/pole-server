@@ -27,8 +27,8 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pole-io/pole-server/apis/apiserver"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	"github.com/pole-io/pole-server/plugin/apiserver/grpcserver"

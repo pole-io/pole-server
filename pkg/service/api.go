@@ -26,7 +26,6 @@ import (
 
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 )
 
 // DiscoverServer Server discovered by the service
@@ -61,42 +60,6 @@ type DiscoverServer interface {
 
 // CircuitBreakerOperateServer Melting rule related treatment
 type CircuitBreakerOperateServer interface {
-	// CreateCircuitBreakers Create a CircuitBreaker rule
-	// Deprecated: not support from 1.14.x
-	CreateCircuitBreakers(ctx context.Context, req []*apifault.CircuitBreaker) *apiservice.BatchWriteResponse
-	// CreateCircuitBreakerVersions Create a melt rule version
-	// Deprecated: not support from 1.14.x
-	CreateCircuitBreakerVersions(ctx context.Context, req []*apifault.CircuitBreaker) *apiservice.BatchWriteResponse
-	// DeleteCircuitBreakers Delete CircuitBreaker rules
-	// Deprecated: not support from 1.14.x
-	DeleteCircuitBreakers(ctx context.Context, req []*apifault.CircuitBreaker) *apiservice.BatchWriteResponse
-	// UpdateCircuitBreakers Modify the CircuitBreaker rule
-	// Deprecated: not support from 1.14.x
-	UpdateCircuitBreakers(ctx context.Context, req []*apifault.CircuitBreaker) *apiservice.BatchWriteResponse
-	// ReleaseCircuitBreakers Release CircuitBreaker rule
-	// Deprecated: not support from 1.14.x
-	ReleaseCircuitBreakers(ctx context.Context, req []*apiservice.ConfigRelease) *apiservice.BatchWriteResponse
-	// UnBindCircuitBreakers Solution CircuitBreaker rule
-	// Deprecated: not support from 1.14.x
-	UnBindCircuitBreakers(ctx context.Context, req []*apiservice.ConfigRelease) *apiservice.BatchWriteResponse
-	// GetCircuitBreaker Get CircuitBreaker regular according to ID and VERSION
-	// Deprecated: not support from 1.14.x
-	GetCircuitBreaker(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
-	// GetCircuitBreakerVersions Query all versions of the CircuitBreaker rule
-	// Deprecated: not support from 1.14.x
-	GetCircuitBreakerVersions(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
-	// GetMasterCircuitBreakers Query Master CircuitBreaker rules
-	// Deprecated: not support from 1.14.x
-	GetMasterCircuitBreakers(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
-	// GetReleaseCircuitBreakers Query the released CircuitBreaker rule according to the rule ID
-	// Deprecated: not support from 1.14.x
-	GetReleaseCircuitBreakers(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
-	// GetCircuitBreakerByService Binding CircuitBreaker rule based on service query
-	// Deprecated: not support from 1.14.x
-	GetCircuitBreakerByService(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
-	// GetCircuitBreakerToken Get CircuitBreaker rules token
-	// Deprecated: not support from 1.14.x
-	GetCircuitBreakerToken(ctx context.Context, req *apifault.CircuitBreaker) *apiservice.Response
 	// CreateCircuitBreakerRules Create a CircuitBreaker rule
 	CreateCircuitBreakerRules(ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse
 	// DeleteCircuitBreakerRules Delete current CircuitBreaker rules
@@ -285,28 +248,4 @@ type LaneOperateServer interface {
 	DeleteLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse
 	// GetLaneGroups 查询泳道组列表
 	GetLaneGroups(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse
-}
-
-// ResourceHook The listener is placed before and after the resource operation, only normal flow
-type ResourceHook interface {
-
-	// Before
-	//  @param ctx
-	//  @param resourceType
-	Before(ctx context.Context, resourceType model.Resource)
-
-	// After
-	//  @param ctx
-	//  @param resourceType
-	//  @param res
-	After(ctx context.Context, resourceType model.Resource, res *ResourceEvent) error
-}
-
-// ResourceEvent 资源事件
-type ResourceEvent struct {
-	Resource authcommon.ResourceEntry
-
-	AddPrincipals []authcommon.Principal
-	DelPrincipals []authcommon.Principal
-	IsRemove      bool
 }

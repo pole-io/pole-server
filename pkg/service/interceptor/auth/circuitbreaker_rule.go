@@ -27,10 +27,10 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -45,7 +45,17 @@ func (svr *Server) CreateCircuitBreakerRules(
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.CreateCircuitBreakerRules(ctx, request)
+	rsp := svr.nextSvr.CreateCircuitBreakerRules(ctx, request)
+	for index := range rsp.Responses {
+		item := rsp.GetResponses()[index].GetData()
+		rule := &apifault.CircuitBreakerRule{}
+		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
+		_ = svr.afterRuleResource(ctx, model.RRouting, authcommon.ResourceEntry{
+			ID:   rule.Id,
+			Type: security.ResourceType_CircuitBreakerRules,
+		}, false)
+	}
+	return rsp
 }
 
 func (svr *Server) DeleteCircuitBreakerRules(
@@ -58,7 +68,17 @@ func (svr *Server) DeleteCircuitBreakerRules(
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.DeleteCircuitBreakerRules(ctx, request)
+	rsp := svr.nextSvr.DeleteCircuitBreakerRules(ctx, request)
+	for index := range rsp.Responses {
+		item := rsp.GetResponses()[index].GetData()
+		rule := &apifault.CircuitBreakerRule{}
+		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
+		_ = svr.afterRuleResource(ctx, model.RRouting, authcommon.ResourceEntry{
+			ID:   rule.Id,
+			Type: security.ResourceType_CircuitBreakerRules,
+		}, true)
+	}
+	return rsp
 }
 
 func (svr *Server) EnableCircuitBreakerRules(

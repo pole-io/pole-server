@@ -23,9 +23,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	metrictypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 func (fc *fileCache) reportMetricsInfo() {
@@ -37,7 +38,7 @@ func (fc *fileCache) reportMetricsInfo() {
 		fc.lastReportTime.Store(time.Now())
 	}()
 
-	metricValues := make([]metrics.ConfigMetrics, 0, 64)
+	metricValues := make([]metrictypes.ConfigMetrics, 0, 64)
 
 	configFiles, err := fc.storage.CountConfigFileEachGroup()
 	if err != nil {
@@ -58,8 +59,8 @@ func (fc *fileCache) reportMetricsInfo() {
 
 	for ns, groups := range configFiles {
 		for group, total := range groups {
-			metricValues = append(metricValues, metrics.ConfigMetrics{
-				Type:  metrics.FileMetric,
+			metricValues = append(metricValues, metrictypes.ConfigMetrics{
+				Type:  metrictypes.FileMetric,
 				Total: total,
 				Labels: map[string]string{
 					metrics.LabelNamespace: ns,
@@ -71,8 +72,8 @@ func (fc *fileCache) reportMetricsInfo() {
 
 	fc.metricsReleaseCount.ReadRange(func(namespace string, groups *utils.SyncMap[string, uint64]) {
 		groups.ReadRange(func(groupName string, count uint64) {
-			metricValues = append(metricValues, metrics.ConfigMetrics{
-				Type:  metrics.ReleaseFileMetric,
+			metricValues = append(metricValues, metrictypes.ConfigMetrics{
+				Type:  metrictypes.ReleaseFileMetric,
 				Total: int64(count),
 				Labels: map[string]string{
 					metrics.LabelNamespace: namespace,
@@ -82,7 +83,7 @@ func (fc *fileCache) reportMetricsInfo() {
 		})
 	})
 
-	plugin.GetStatis().ReportConfigMetrics(metricValues...)
+	statis.GetStatis().ReportConfigMetrics(metricValues...)
 }
 
 func cleanExpireConfigFileMetricLabel(pre, curr map[string]map[string]struct{}) (map[string]struct{}, map[string]map[string]struct{}) {

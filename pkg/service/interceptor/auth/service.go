@@ -20,14 +20,15 @@ package service_auth
 import (
 	"context"
 
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"github.com/polarismesh/specification/source/go/api/v1/security"
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -54,7 +55,17 @@ func (svr *Server) CreateServices(
 	}
 
 	resp := svr.nextSvr.CreateServices(ctx, reqs)
-	return resp
+
+	nRsp := api.NewBatchWriteResponse(apimodel.Code(resp.Code.Value))
+	for index := range resp.Responses {
+		item := resp.Responses[index].Service
+		if err := svr.afterServiceResource(ctx, item, false); err != nil {
+			api.Collect(nRsp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.Collect(nRsp, resp.Responses[index])
+		}
+	}
+	return nRsp
 }
 
 // DeleteServices 批量删除服务
@@ -73,7 +84,17 @@ func (svr *Server) DeleteServices(
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 	resp := svr.nextSvr.DeleteServices(ctx, reqs)
-	return resp
+
+	nRsp := api.NewBatchWriteResponse(apimodel.Code(resp.Code.Value))
+	for index := range resp.Responses {
+		item := resp.Responses[index].Service
+		if err := svr.afterServiceResource(ctx, item, true); err != nil {
+			api.Collect(nRsp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.Collect(nRsp, resp.Responses[index])
+		}
+	}
+	return nRsp
 }
 
 // UpdateServices 对于服务修改来说，只针对服务本身，而不需要检查命名空间
@@ -92,7 +113,19 @@ func (svr *Server) UpdateServices(
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.UpdateServices(ctx, reqs)
+	resp := svr.nextSvr.UpdateServices(ctx, reqs)
+
+	nRsp := api.NewBatchWriteResponse(apimodel.Code(resp.Code.Value))
+	for index := range resp.Responses {
+		item := resp.Responses[index].Service
+		if err := svr.afterServiceResource(ctx, item, true); err != nil {
+			api.Collect(nRsp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.Collect(nRsp, resp.Responses[index])
+		}
+	}
+
+	return nRsp
 }
 
 // UpdateServiceToken 更新服务的 token

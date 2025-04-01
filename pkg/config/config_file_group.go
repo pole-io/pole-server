@@ -27,6 +27,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
@@ -73,14 +74,12 @@ func (s *Server) CreateConfigFileGroup(ctx context.Context, req *apiconfig.Confi
 
 	// 这里设置在 config-group 的 id 信息
 	req.Id = utils.NewUInt64Value(ret.Id)
-	if err := s.afterConfigGroupResource(ctx, req); err != nil {
-		log.Error("[Config][Group] create config_file_group after resource",
-			utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(apimodel.Code_ExecuteException)
-	}
-
-	s.RecordHistory(ctx, configGroupRecordEntry(ctx, req, saveData, model.OCreate))
-	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
+	s.RecordHistory(ctx, configGroupRecordEntry(ctx, req, saveData, types.OCreate))
+	return api.NewConfigGroupResponse(apimodel.Code_ExecuteSuccess, &apiconfig.ConfigFileGroup{
+		Id:        utils.NewUInt64Value(saveData.Id),
+		Namespace: utils.NewStringValue(saveData.Namespace),
+		Name:      utils.NewStringValue(saveData.Name),
+	})
 }
 
 // UpdateConfigFileGroup 更新配置文件组
@@ -112,14 +111,12 @@ func (s *Server) UpdateConfigFileGroup(ctx context.Context, req *apiconfig.Confi
 	}
 
 	req.Id = utils.NewUInt64Value(saveData.Id)
-	if err := s.afterConfigGroupResource(ctx, req); err != nil {
-		log.Error("[Config][Group] update config_file_group after resource",
-			utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(apimodel.Code_ExecuteException)
-	}
-
-	s.RecordHistory(ctx, configGroupRecordEntry(ctx, req, updateData, model.OUpdate))
-	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
+	s.RecordHistory(ctx, configGroupRecordEntry(ctx, req, updateData, types.OUpdate))
+	return api.NewConfigGroupResponse(apimodel.Code_ExecuteSuccess, &apiconfig.ConfigFileGroup{
+		Id:        utils.NewUInt64Value(updateData.Id),
+		Namespace: utils.NewStringValue(updateData.Namespace),
+		Name:      utils.NewStringValue(updateData.Name),
+	})
 }
 
 func (s *Server) UpdateGroupAttribute(saveData, updateData *model.ConfigFileGroup) (*model.ConfigFileGroup, bool) {
@@ -187,20 +184,16 @@ func (s *Server) DeleteConfigFileGroup(ctx context.Context, namespace, name stri
 		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
 	}
 
-	if err := s.afterConfigGroupResource(ctx, &apiconfig.ConfigFileGroup{
+	s.RecordHistory(ctx, configGroupRecordEntry(ctx, &apiconfig.ConfigFileGroup{
 		Id:        utils.NewUInt64Value(configGroup.Id),
 		Namespace: utils.NewStringValue(configGroup.Namespace),
 		Name:      utils.NewStringValue(configGroup.Name),
-	}); err != nil {
-		log.Error("[Config][Group] delete config_file_group after resource",
-			utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(apimodel.Code_ExecuteException)
-	}
-	s.RecordHistory(ctx, configGroupRecordEntry(ctx, &apiconfig.ConfigFileGroup{
-		Namespace: utils.NewStringValue(namespace),
-		Name:      utils.NewStringValue(name),
-	}, configGroup, model.ODelete))
-	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
+	}, configGroup, types.ODelete))
+	return api.NewConfigGroupResponse(apimodel.Code_ExecuteSuccess, &apiconfig.ConfigFileGroup{
+		Id:        utils.NewUInt64Value(configGroup.Id),
+		Namespace: utils.NewStringValue(configGroup.Namespace),
+		Name:      utils.NewStringValue(configGroup.Name),
+	})
 }
 
 func (s *Server) hasResourceInConfigGroup(ctx context.Context, namespace, name string) *apiconfig.ConfigResponse {
@@ -274,13 +267,13 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 
 // configGroupRecordEntry 生成服务的记录entry
 func configGroupRecordEntry(ctx context.Context, req *apiconfig.ConfigFileGroup, md *model.ConfigFileGroup,
-	operationType model.OperationType) *model.RecordEntry {
+	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
 
-	entry := &model.RecordEntry{
-		ResourceType:  model.RConfigGroup,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RConfigGroup,
 		ResourceName:  req.GetName().GetValue(),
 		Namespace:     req.GetNamespace().GetValue(),
 		OperationType: operationType,

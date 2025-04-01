@@ -28,6 +28,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
@@ -63,7 +64,7 @@ func (s *Server) CreateConfigFile(ctx context.Context, req *apiconfig.ConfigFile
 		log.Error("[Config][File] create config file commit tx.", utils.RequestID(ctx), zap.Error(err))
 		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
 	}
-	s.RecordHistory(ctx, configFileRecordEntry(ctx, req, model.OCreate))
+	s.RecordHistory(ctx, configFileRecordEntry(ctx, req, types.OCreate))
 	resp.ConfigFile = req
 	return resp
 }
@@ -124,7 +125,7 @@ func (s *Server) UpdateConfigFile(ctx context.Context, req *apiconfig.ConfigFile
 		log.Error("[Config][File] update config file commit tx.", utils.RequestID(ctx), zap.Error(err))
 		return api.NewConfigResponseWithInfo(commonstore.StoreCode2APICode(err), err.Error())
 	}
-	s.RecordHistory(ctx, configFileRecordEntry(ctx, req, model.OUpdate))
+	s.RecordHistory(ctx, configFileRecordEntry(ctx, req, types.OUpdate))
 	return resp
 }
 
@@ -282,7 +283,7 @@ func (s *Server) DeleteConfigFile(ctx context.Context, req *apiconfig.ConfigFile
 		Namespace: utils.NewStringValue(namespace),
 		Group:     utils.NewStringValue(group),
 		Name:      utils.NewStringValue(fileName),
-	}, model.ODelete))
+	}, types.ODelete))
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
 
@@ -465,7 +466,7 @@ func (s *Server) ImportConfigFile(ctx context.Context,
 					return api.NewConfigFileImportResponse(commonstore.StoreCode2APICode(err), nil, nil, nil)
 				}
 				overwriteConfigFiles = append(overwriteConfigFiles, configFile)
-				s.RecordHistory(ctx, configFileRecordEntry(ctx, configFile, model.OUpdate))
+				s.RecordHistory(ctx, configFileRecordEntry(ctx, configFile, types.OUpdate))
 			}
 		} else {
 			// 配置文件不存在则创建
@@ -476,7 +477,7 @@ func (s *Server) ImportConfigFile(ctx context.Context,
 				return api.NewConfigFileImportResponse(commonstore.StoreCode2APICode(err), nil, nil, nil)
 			}
 			createConfigFiles = append(createConfigFiles, configFile)
-			s.RecordHistory(ctx, configFileRecordEntry(ctx, configFile, model.OCreate))
+			s.RecordHistory(ctx, configFileRecordEntry(ctx, configFile, types.OCreate))
 		}
 	}
 
@@ -524,13 +525,13 @@ func (s *Server) GetAllConfigEncryptAlgorithms(ctx context.Context) *apiconfig.C
 
 // configFileRecordEntry 生成服务的记录entry
 func configFileRecordEntry(ctx context.Context, req *apiconfig.ConfigFile,
-	operationType model.OperationType) *model.RecordEntry {
+	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
 
-	entry := &model.RecordEntry{
-		ResourceType:  model.RConfigFile,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RConfigFile,
 		ResourceName:  req.GetName().GetValue(),
 		Namespace:     req.GetNamespace().GetValue(),
 		OperationType: operationType,

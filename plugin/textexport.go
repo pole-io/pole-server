@@ -17,9 +17,5 @@
 
 package plugin
 
-import "sync"
-
 func TestCleanCryptoPlugin() {
-	cryptoManagerOnce = sync.Once{}
-	cryptoManager = nil
 }

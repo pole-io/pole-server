@@ -24,12 +24,14 @@ import (
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
+	"github.com/pole-io/pole-server/apis/crypto"
+	"github.com/pole-io/pole-server/apis/observability/history"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 var _ ConfigCenterServer = (*Server)(nil)
@@ -77,9 +79,8 @@ type Server struct {
 	namespaceOperator namespace.NamespaceOperateServer
 	initialized       bool
 
-	history       plugin.History
-	cryptoManager plugin.CryptoManager
-	hooks         []ResourceHook
+	history       history.History
+	cryptoManager crypto.CryptoManager
 
 	// chains
 	chains *ConfigChains
@@ -159,12 +160,12 @@ func (s *Server) initialize(ctx context.Context, config Config, ss store.Store,
 	}
 
 	// 获取History插件，注意：插件的配置在bootstrap已经设置好
-	s.history = plugin.GetHistory()
+	s.history = history.GetHistory()
 	if s.history == nil {
 		log.Warnf("Not Found History Log Plugin")
 	}
 	// 获取Crypto插件
-	s.cryptoManager = plugin.GetCryptoManager()
+	s.cryptoManager = crypto.GetCryptoManager()
 	if s.cryptoManager == nil {
 		log.Warnf("Not Found Crypto Plugin")
 	}
@@ -216,30 +217,12 @@ func (s *Server) GroupCache() cachetypes.ConfigGroupCache {
 }
 
 // CryptoManager 获取加密管理
-func (s *Server) CryptoManager() plugin.CryptoManager {
+func (s *Server) CryptoManager() crypto.CryptoManager {
 	return s.cryptoManager
 }
 
-// SetResourceHooks 设置资源钩子
-func (s *Server) SetResourceHooks(hooks ...ResourceHook) {
-	s.hooks = hooks
-}
-
-func (s *Server) afterConfigGroupResource(ctx context.Context, req *apiconfig.ConfigFileGroup) error {
-	event := &ResourceEvent{
-		ConfigGroup: req,
-	}
-
-	for _, hook := range s.hooks {
-		if err := hook.After(ctx, model.RConfigGroup, event); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // RecordHistory server对外提供history插件的简单封装
-func (s *Server) RecordHistory(ctx context.Context, entry *model.RecordEntry) {
+func (s *Server) RecordHistory(ctx context.Context, entry *types.RecordEntry) {
 	// 如果插件没有初始化，那么不记录history
 	if s.history == nil {
 		return

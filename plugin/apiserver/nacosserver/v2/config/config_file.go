@@ -25,12 +25,12 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
-	"github.com/pole-io/pole-server/pkg/common/metrics"
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
-	"github.com/pole-io/pole-server/plugin"
 	nacosmodel "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 	nacospb "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/pb"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/remote"
@@ -51,7 +51,7 @@ func (h *ConfigServer) handlePublishConfigRequest(ctx context.Context, req nacos
 	var resp *config_manage.ConfigResponse
 	startTime := commontime.CurrentMillisecond()
 	defer func() {
-		plugin.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
+		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    nacosmodel.ActionGrpcPublishConfigFile,
 			ClientIP:  meta.ConnectionID,
 			Namespace: configReq.Tenant,
@@ -96,7 +96,7 @@ func (h *ConfigServer) handleGetConfigRequest(ctx context.Context, req nacospb.B
 
 	startTime := commontime.CurrentMillisecond()
 	defer func() {
-		plugin.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
+		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    nacosmodel.ActionGrpcGetConfigFile,
 			ClientIP:  meta.ConnectionID,
 			Namespace: configReq.Tenant,

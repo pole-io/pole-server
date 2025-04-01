@@ -26,11 +26,11 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
 
@@ -64,7 +64,7 @@ func (h *HTTPServer) ClientGetConfigFile(req *restful.Request, rsp *restful.Resp
 	startTime := commontime.CurrentMillisecond()
 	var ret *apiconfig.ConfigClientResponse
 	defer func() {
-		plugin.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
+		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    metrics.ActionGetConfigFile,
 			ClientIP:  utils.ParseClientAddress(ctx),
 			Namespace: configFile.GetNamespace().GetValue(),
@@ -119,7 +119,7 @@ func (h *HTTPServer) GetConfigFileMetadataList(req *restful.Request, rsp *restfu
 	var out *apiconfig.ConfigClientListResponse
 	startTime := commontime.CurrentMillisecond()
 	defer func() {
-		plugin.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
+		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    metrics.ActionListConfigFiles,
 			ClientIP:  utils.ParseClientAddress(ctx),
 			Namespace: in.GetConfigFileGroup().GetNamespace().GetValue(),
@@ -153,7 +153,7 @@ func (h *HTTPServer) Discover(req *restful.Request, rsp *restful.Response) {
 	var action string
 	startTime := commontime.CurrentMillisecond()
 	defer func() {
-		plugin.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
+		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    action,
 			ClientIP:  utils.ParseClientAddress(ctx),
 			Namespace: in.GetConfigFile().GetNamespace().GetValue(),

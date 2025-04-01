@@ -33,6 +33,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/apiserver"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	boot_config "github.com/pole-io/pole-server/bootstrap/config"
 	"github.com/pole-io/pole-server/pkg/admin"
@@ -43,7 +44,6 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/version"
 	config_center "github.com/pole-io/pole-server/pkg/config"

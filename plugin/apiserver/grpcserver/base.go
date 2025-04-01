@@ -32,15 +32,15 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 
+	"github.com/pole-io/pole-server/apis/access_control/ratelimit"
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	connhook "github.com/pole-io/pole-server/pkg/common/conn/hook"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/secure"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // InitServer BaseGrpcServer.Run 中回调函数的定义
@@ -61,8 +61,8 @@ type BaseGrpcServer struct {
 	bz authcommon.BzModule
 
 	server     *grpc.Server
-	statis     plugin.Statis
-	ratelimit  plugin.Ratelimit
+	statis     statis.Statis
+	ratelimit  ratelimit.Ratelimit
 	OpenMethod map[string]bool
 
 	cache   Cache
@@ -105,7 +105,7 @@ func (b *BaseGrpcServer) Initialize(ctx context.Context, conf map[string]interfa
 		}
 	}
 
-	if ratelimit := plugin.GetRatelimit(); ratelimit != nil {
+	if ratelimit := ratelimit.GetRatelimit(); ratelimit != nil {
 		b.log.Infof("[API-Server] %s server open the ratelimit", b.protocol)
 		b.ratelimit = ratelimit
 	}
@@ -153,9 +153,9 @@ func (b *BaseGrpcServer) Run(errCh chan error, protocol string, initServer InitS
 	}
 
 	b.log.Infof("[API-Server][GRPC] open connection counter net.Listener")
-	listener = connhook.NewHookListener(listener, &connCounterHook{
-		bz: b.bz,
-	})
+	// listener = connhook.NewHookListener(listener, &connCounterHook{
+	// 	bz: b.bz,
+	// })
 
 	// 指定使用服务端证书创建一个 TLS credentials
 	var creds credentials.TransportCredentials
@@ -185,7 +185,7 @@ func (b *BaseGrpcServer) Run(errCh chan error, protocol string, initServer InitS
 	}
 	b.server = server
 
-	b.statis = plugin.GetStatis()
+	b.statis = statis.GetStatis()
 
 	if err := server.Serve(listener); err != nil {
 		b.log.Errorf("[API-Server][GRPC] %v", err)
@@ -411,13 +411,13 @@ func (b *BaseGrpcServer) EnterRatelimit(ip string, method string) uint32 {
 	}
 
 	// ipRatelimit
-	if ok := b.ratelimit.Allow(plugin.IPRatelimit, ip); !ok {
+	if ok := b.ratelimit.Allow(ratelimit.IPRatelimit, ip); !ok {
 		b.log.Error("[API-Server][GRPC] ip ratelimit is not allow", zap.String("client-ip", ip),
 			zap.String("method", method))
 		return api.IPRateLimit
 	}
 	// apiRatelimit
-	if ok := b.ratelimit.Allow(plugin.APIRatelimit, method); !ok {
+	if ok := b.ratelimit.Allow(ratelimit.APIRatelimit, method); !ok {
 		b.log.Error("[API-Server][GRPC] api rate limit is not allow", zap.String("client-ip", ip),
 			zap.String("method", method))
 		return api.APIRateLimit
@@ -435,32 +435,32 @@ func (b *BaseGrpcServer) AllowAccess(method string) bool {
 	return ok
 }
 
-type connCounterHook struct {
-	bz authcommon.BzModule
-}
+// type connCounterHook struct {
+// 	bz authcommon.BzModule
+// }
 
-func (h *connCounterHook) OnAccept(conn net.Conn) {
-	if h.bz == authcommon.DiscoverModule {
-		metrics.AddDiscoveryClientConn()
-	}
-	if h.bz == authcommon.ConfigModule {
-		metrics.AddConfigurationClientConn()
-	}
-	metrics.AddSDKClientConn()
-}
+// func (h *connCounterHook) OnAccept(conn net.Conn) {
+// 	if h.bz == authcommon.DiscoverModule {
+// 		metrics.AddDiscoveryClientConn()
+// 	}
+// 	if h.bz == authcommon.ConfigModule {
+// 		metrics.AddConfigurationClientConn()
+// 	}
+// 	metrics.AddSDKClientConn()
+// }
 
-func (h *connCounterHook) OnRelease(conn net.Conn) {
-	if h.bz == authcommon.DiscoverModule {
-		metrics.RemoveDiscoveryClientConn()
-	}
-	if h.bz == authcommon.ConfigModule {
-		metrics.RemoveConfigurationClientConn()
-	}
-	metrics.RemoveSDKClientConn()
-}
+// func (h *connCounterHook) OnRelease(conn net.Conn) {
+// 	if h.bz == authcommon.DiscoverModule {
+// 		metrics.RemoveDiscoveryClientConn()
+// 	}
+// 	if h.bz == authcommon.ConfigModule {
+// 		metrics.RemoveConfigurationClientConn()
+// 	}
+// 	metrics.RemoveSDKClientConn()
+// }
 
-func (h *connCounterHook) OnClose() {
-	metrics.ResetDiscoveryClientConn()
-	metrics.ResetConfigurationClientConn()
-	metrics.ResetSDKClientConn()
-}
+// func (h *connCounterHook) OnClose() {
+// 	metrics.ResetDiscoveryClientConn()
+// 	metrics.ResetConfigurationClientConn()
+// 	metrics.ResetSDKClientConn()
+// }

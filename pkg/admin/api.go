@@ -23,9 +23,9 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/model/admin"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 )
 
 // AdminOperateServer Maintain related operation

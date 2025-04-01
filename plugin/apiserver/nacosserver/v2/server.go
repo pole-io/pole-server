@@ -32,14 +32,16 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 
+	"github.com/pole-io/pole-server/apis/access_control/ratelimit"
+	"github.com/pole-io/pole-server/apis/access_control/whitelist"
 	"github.com/pole-io/pole-server/apis/apiserver"
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	connhook "github.com/pole-io/pole-server/pkg/common/conn/hook"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/secure"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/core"
 	v1 "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v1"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/config"
@@ -90,10 +92,9 @@ type NacosV2Server struct {
 	protocol        string
 
 	server     *grpc.Server
-	ratelimit  plugin.Ratelimit
+	ratelimit  ratelimit.Ratelimit
 	OpenMethod map[string]bool
-	rateLimit  plugin.Ratelimit
-	whitelist  plugin.Whitelist
+	whitelist  whitelist.Whitelist
 
 	discoverOpt *discover.ServerOption
 	discoverSvr *discover.DiscoverServer
@@ -137,7 +138,7 @@ func (h *NacosV2Server) Initialize(ctx context.Context, option map[string]interf
 		}
 	}
 
-	if ratelimit := plugin.GetRatelimit(); ratelimit != nil {
+	if ratelimit := ratelimit.GetRatelimit(); ratelimit != nil {
 		nacoslog.Infof("[API-Server] %s server open the ratelimit", h.protocol)
 		h.ratelimit = ratelimit
 	}
@@ -308,7 +309,7 @@ func (b *NacosV2Server) streamInterceptor(srv interface{}, ss grpc.ServerStream,
 			)
 		}
 
-		plugin.GetStatis().ReportCallMetrics(metrics.CallMetric{
+		statis.GetStatis().ReportCallMetrics(metrics.CallMetric{
 			Type:     metrics.ServerCallMetric,
 			API:      stream.Method,
 			Protocol: "NACOS-V2",
@@ -335,7 +336,7 @@ func (b *NacosV2Server) postprocess(stream *VirtualStream, m interface{}) {
 	// 接口调用统计
 	diff := time.Since(stream.StartTime)
 
-	plugin.GetStatis().ReportCallMetrics(metrics.CallMetric{
+	statis.GetStatis().ReportCallMetrics(metrics.CallMetric{
 		Type:     metrics.ServerCallMetric,
 		API:      stream.Method,
 		Protocol: "NACOS-V2",
@@ -364,13 +365,13 @@ func (h *NacosV2Server) EnterRatelimit(ip string, method string) uint32 {
 	}
 
 	// ipRatelimit
-	if ok := h.ratelimit.Allow(plugin.IPRatelimit, ip); !ok {
+	if ok := h.ratelimit.Allow(ratelimit.IPRatelimit, ip); !ok {
 		nacoslog.Error("[API-Server][NACOS-V2] ip ratelimit is not allow", zap.String("client-ip", ip),
 			zap.String("method", method))
 		return api.IPRateLimit
 	}
 	// apiRatelimit
-	if ok := h.ratelimit.Allow(plugin.APIRatelimit, method); !ok {
+	if ok := h.ratelimit.Allow(ratelimit.APIRatelimit, method); !ok {
 		nacoslog.Error("[API-Server][NACOS-V2] api rate limit is not allow", zap.String("client-ip", ip),
 			zap.String("method", method))
 		return api.APIRateLimit

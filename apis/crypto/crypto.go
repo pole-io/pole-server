@@ -15,12 +15,13 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package plugin
+package crypto
 
 import (
 	"fmt"
-	"os"
 	"sync"
+
+	"github.com/pole-io/pole-server/apis"
 )
 
 var (
@@ -30,7 +31,7 @@ var (
 
 // Crypto Crypto interface
 type Crypto interface {
-	Plugin
+	apis.Plugin
 	GenerateKey() ([]byte, error)
 	Encrypt(plaintext string, key []byte) (cryptotext string, err error)
 	Decrypt(cryptotext string, key []byte) (string, error)
@@ -44,24 +45,16 @@ func GetCryptoManager() CryptoManager {
 
 	cryptoManagerOnce.Do(func() {
 		var (
-			entries []ConfigEntry
+			entries []apis.ConfigEntry
 		)
-		if len(config.Crypto.Entries) != 0 {
-			entries = append(entries, config.Crypto.Entries...)
-		} else {
-			entries = append(entries, ConfigEntry{
-				Name:   config.Crypto.Name,
-				Option: config.Crypto.Option,
-			})
-		}
+		entries = append(entries, apis.GetPluginConfig().Crypto.Entries...)
 		cryptoManager = &defaultCryptoManager{
 			cryptos: make(map[string]Crypto),
 			options: entries,
 		}
 
 		if err := cryptoManager.Initialize(); err != nil {
-			log.Errorf("Crypto plugin init err: %s", err.Error())
-			os.Exit(-1)
+			panic(fmt.Errorf("Crypto plugin init err: %s", err.Error()))
 		}
 	})
 	return cryptoManager
@@ -79,7 +72,7 @@ type CryptoManager interface {
 // defaultCryptoManager crypto algorithm manager
 type defaultCryptoManager struct {
 	cryptos map[string]Crypto
-	options []ConfigEntry
+	options []apis.ConfigEntry
 }
 
 func (c *defaultCryptoManager) Name() string {
@@ -89,15 +82,13 @@ func (c *defaultCryptoManager) Name() string {
 func (c *defaultCryptoManager) Initialize() error {
 	for i := range c.options {
 		entry := c.options[i]
-		item, exist := pluginSet[entry.Name]
+		item, exist := apis.GetPlugin(apis.PluginTypeCrypto, entry.Name)
 		if !exist {
-			log.Errorf("plugin Crypto not found target: %s", entry.Name)
-			continue
+			return fmt.Errorf("plugin Crypto not found target: %s", entry.Name)
 		}
 		crypto, ok := item.(Crypto)
 		if !ok {
-			log.Errorf("plugin target: %s not Crypto", entry.Name)
-			continue
+			return fmt.Errorf("plugin target: %s not Crypto", entry.Name)
 		}
 		if err := crypto.Initialize(&entry); err != nil {
 			return err
@@ -127,7 +118,6 @@ func (c *defaultCryptoManager) GetCryptoAlgoNames() []string {
 func (c *defaultCryptoManager) GetCrypto(algo string) (Crypto, error) {
 	crypto, ok := c.cryptos[algo]
 	if !ok {
-		log.Errorf("plugin Crypto not found target: %s", algo)
 		return nil, fmt.Errorf("plugin Crypto not found target: %s", algo)
 	}
 	return crypto, nil

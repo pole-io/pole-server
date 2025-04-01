@@ -28,7 +28,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	admincommon "github.com/pole-io/pole-server/pkg/common/model/admin"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 

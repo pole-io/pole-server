@@ -125,12 +125,6 @@ func (h *HTTPServerV1) addDefaultReadAccess(ws *restful.WebService) {
 	ws.Route(ws.GET("/namespace/token").To(h.GetNamespaceToken))
 	ws.Route(ws.GET("/service/token").To(h.GetServiceToken))
 	ws.Route(ws.POST("/service/owner").To(h.GetServiceOwner))
-	ws.Route(ws.GET("/service/circuitbreaker").To(h.GetCircuitBreakerByService))
-	ws.Route(ws.GET("/circuitbreaker").To(h.GetCircuitBreaker))
-	ws.Route(ws.GET("/circuitbreaker/versions").To(h.GetCircuitBreakerVersions))
-	ws.Route(ws.GET("/circuitbreakers/master").To(h.GetMasterCircuitBreakers))
-	ws.Route(ws.GET("/circuitbreakers/release").To(h.GetReleaseCircuitBreakers))
-	ws.Route(ws.GET("/circuitbreaker/token").To(h.GetCircuitBreakerToken))
 	ws.Route(ws.GET("/routings").To(h.GetRoutings))
 	// Deprecate -- end
 }
@@ -226,20 +220,6 @@ func (h *HTTPServerV1) addRateLimitRuleAccess(ws *restful.WebService) {
 }
 
 func (h *HTTPServerV1) addCircuitBreakerRuleAccess(ws *restful.WebService) {
-	// Deprecate -- start
-	ws.Route(ws.POST("/circuitbreakers").To(h.CreateCircuitBreakers))
-	ws.Route(ws.POST("/circuitbreakers/version").To(h.CreateCircuitBreakerVersions))
-	ws.Route(ws.POST("/circuitbreakers/delete").To(h.DeleteCircuitBreakers))
-	ws.Route(ws.PUT("/circuitbreakers").To(h.UpdateCircuitBreakers))
-	ws.Route(ws.POST("/circuitbreakers/release").To(h.ReleaseCircuitBreakers))
-	ws.Route(ws.POST("/circuitbreakers/unbind").To(h.UnBindCircuitBreakers))
-	ws.Route(ws.GET("/circuitbreaker").To(h.GetCircuitBreaker))
-	ws.Route(ws.GET("/circuitbreaker/versions").To(h.GetCircuitBreakerVersions))
-	ws.Route(ws.GET("/circuitbreakers/master").To(h.GetMasterCircuitBreakers))
-	ws.Route(ws.GET("/circuitbreakers/release").To(h.GetReleaseCircuitBreakers))
-	ws.Route(ws.GET("/circuitbreaker/token").To(h.GetCircuitBreakerToken))
-	// Deprecate -- end
-
 	ws.Route(docs.EnrichGetCircuitBreakerRulesApiDocs(
 		ws.GET("/circuitbreaker/rules").To(h.GetCircuitBreakerRules)))
 	ws.Route(docs.EnrichCreateCircuitBreakerRulesApiDocs(

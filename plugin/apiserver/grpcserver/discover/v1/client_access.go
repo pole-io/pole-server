@@ -30,12 +30,12 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 var (
@@ -140,7 +140,7 @@ func (g *DiscoverServer) handleDiscoverRequest(ctx context.Context, in *apiservi
 	var action string
 	startTime := commontime.CurrentMillisecond()
 	defer func() {
-		plugin.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
+		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    action,
 			ClientIP:  utils.ParseClientAddress(ctx),
 			Namespace: in.GetService().GetNamespace().GetValue(),

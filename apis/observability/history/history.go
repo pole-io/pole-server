@@ -15,13 +15,15 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package plugin
+package history
 
 import (
 	"os"
 	"sync"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/pkg/common/log"
 )
 
 var (
@@ -32,8 +34,8 @@ var (
 
 // History 历史记录插件
 type History interface {
-	Plugin
-	Record(entry *model.RecordEntry)
+	apis.Plugin
+	Record(entry *types.RecordEntry)
 }
 
 // GetHistory Get the historical record plugin
@@ -43,19 +45,7 @@ func GetHistory() History {
 	}
 
 	historyOnce.Do(func() {
-		var (
-			entries []ConfigEntry
-		)
-
-		if len(config.History.Entries) != 0 {
-			entries = append(entries, config.History.Entries...)
-		} else {
-			entries = append(entries, ConfigEntry{
-				Name:   config.History.Name,
-				Option: config.History.Option,
-			})
-		}
-
+		entries := apis.GetPluginConfig().History.Entries
 		compositeHistory = &CompositeHistory{
 			chain:   make([]History, 0, len(entries)),
 			options: entries,
@@ -72,17 +62,17 @@ func GetHistory() History {
 
 type CompositeHistory struct {
 	chain   []History
-	options []ConfigEntry
+	options []apis.ConfigEntry
 }
 
 func (c *CompositeHistory) Name() string {
 	return "CompositeHistory"
 }
 
-func (c *CompositeHistory) Initialize(config *ConfigEntry) error {
+func (c *CompositeHistory) Initialize(config *apis.ConfigEntry) error {
 	for i := range c.options {
 		entry := c.options[i]
-		item, exist := pluginSet[entry.Name]
+		item, exist := apis.GetPlugin(apis.PluginTypeHistory, entry.Name)
 		if !exist {
 			log.Errorf("plugin History not found target: %s", entry.Name)
 			continue
@@ -111,7 +101,11 @@ func (c *CompositeHistory) Destroy() error {
 	return nil
 }
 
-func (c *CompositeHistory) Record(entry *model.RecordEntry) {
+func (c *CompositeHistory) Type() apis.PluginType {
+	return apis.PluginTypeHistory
+}
+
+func (c *CompositeHistory) Record(entry *types.RecordEntry) {
 	for i := range c.chain {
 		c.chain[i].Record(entry)
 	}

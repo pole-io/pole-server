@@ -27,8 +27,8 @@ import (
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 )
 
 // DefaultData 默认数据信息

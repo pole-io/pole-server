@@ -29,8 +29,8 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"gopkg.in/yaml.v3"
 
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 )
 
 func CreateTableDBHandlerAndRun(t *testing.T, tableName string, tf func(t *testing.T, handler BoltHandler)) {

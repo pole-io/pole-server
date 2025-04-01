@@ -17,7 +17,7 @@
 
 package token
 
-import "github.com/pole-io/pole-server/plugin"
+import "github.com/pole-io/pole-server/apis"
 
 const (
 	PluginName = "token-bucket"
@@ -25,5 +25,5 @@ const (
 
 // init 插件入口注册函数
 func init() {
-	plugin.RegisterPlugin(PluginName, &tokenBucket{})
+	apis.RegisterPlugin(PluginName, &tokenBucket{})
 }

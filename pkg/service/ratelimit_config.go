@@ -26,15 +26,15 @@ import (
 
 	"github.com/gogo/protobuf/jsonpb"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	"github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -85,11 +85,7 @@ func (s *Server) CreateRateLimit(ctx context.Context, req *apitraffic.Rule) *api
 		data.ID, req.GetNamespace().GetValue(), req.GetService().GetValue(), req.GetName().GetValue())
 	log.Info(msg, utils.RequestID(ctx))
 
-	s.RecordHistory(ctx, rateLimitRecordEntry(ctx, req, data, model.OCreate))
-	_ = s.afterRuleResource(ctx, model.RRouting, authcommon.ResourceEntry{
-		ID:   req.GetId().GetValue(),
-		Type: security.ResourceType_RateLimitRules,
-	}, false)
+	s.RecordHistory(ctx, rateLimitRecordEntry(ctx, req, data, types.OCreate))
 	req.Id = utils.NewStringValue(data.ID)
 	return api.NewRateLimitResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -130,10 +126,6 @@ func (s *Server) DeleteRateLimit(ctx context.Context, req *apitraffic.Rule) *api
 
 	s.RecordHistory(ctx,
 		rateLimitRecordEntry(ctx, req, rateLimit, model.ODelete))
-	_ = s.afterRuleResource(ctx, model.RRouting, authcommon.ResourceEntry{
-		ID:   req.GetId().GetValue(),
-		Type: security.ResourceType_RateLimitRules,
-	}, true)
 	return api.NewRateLimitResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -170,7 +162,7 @@ func (s *Server) EnableRateLimit(ctx context.Context, req *apitraffic.Rule) *api
 		rateLimit.ID, rateLimit.Disable)
 	log.Info(msg, utils.RequestID(ctx))
 
-	s.RecordHistory(ctx, rateLimitRecordEntry(ctx, req, rateLimit, model.OUpdateEnable))
+	s.RecordHistory(ctx, rateLimitRecordEntry(ctx, req, rateLimit, types.OUpdateEnable))
 	return api.NewRateLimitResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -208,7 +200,7 @@ func (s *Server) UpdateRateLimit(ctx context.Context, req *apitraffic.Rule) *api
 		rateLimit.ID, req.GetNamespace().GetValue(), req.GetService().GetValue(), rateLimit.Name)
 	log.Info(msg, utils.RequestID(ctx))
 
-	s.RecordHistory(ctx, rateLimitRecordEntry(ctx, req, rateLimit, model.OUpdate))
+	s.RecordHistory(ctx, rateLimitRecordEntry(ctx, req, rateLimit, types.OUpdate))
 	return api.NewRateLimitResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -451,14 +443,14 @@ func marshalRateLimitRules(req *apitraffic.Rule) (string, error) {
 }
 
 // rateLimitRecordEntry 构建rateLimit的记录entry
-func rateLimitRecordEntry(ctx context.Context, req *apitraffic.Rule, md *model.RateLimit,
-	opt model.OperationType) *model.RecordEntry {
+func rateLimitRecordEntry(ctx context.Context, req *apitraffic.Rule, md *rules.RateLimit,
+	opt types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
 
-	entry := &model.RecordEntry{
-		ResourceType:  model.RRateLimit,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RRateLimit,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
 		Namespace:     req.GetNamespace().GetValue(),
 		Operator:      utils.ParseOperator(ctx),

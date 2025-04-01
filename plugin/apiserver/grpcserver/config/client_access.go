@@ -29,12 +29,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 var (
@@ -49,7 +49,7 @@ func (g *ConfigGRPCServer) GetConfigFile(ctx context.Context,
 	startTime := commontime.CurrentMillisecond()
 	var ret *apiconfig.ConfigClientResponse
 	defer func() {
-		plugin.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
+		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    metrics.ActionGetConfigFile,
 			ClientIP:  utils.ParseClientAddress(ctx),
 			Namespace: req.GetNamespace().GetValue(),
@@ -122,7 +122,7 @@ func (g *ConfigGRPCServer) GetConfigFileMetadataList(ctx context.Context,
 	startTime := commontime.CurrentMillisecond()
 	var ret *apiconfig.ConfigClientListResponse
 	defer func() {
-		plugin.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
+		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    metrics.ActionListConfigFiles,
 			ClientIP:  utils.ParseClientAddress(ctx),
 			Namespace: req.GetConfigFileGroup().GetNamespace().GetValue(),
@@ -194,7 +194,7 @@ func (g *ConfigGRPCServer) handleDiscoverRequest(ctx context.Context, in *apicon
 	var action string
 	startTime := commontime.CurrentMillisecond()
 	defer func() {
-		plugin.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
+		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    action,
 			ClientIP:  utils.ParseClientAddress(ctx),
 			Namespace: in.GetConfigFile().GetNamespace().GetValue(),

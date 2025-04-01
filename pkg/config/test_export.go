@@ -26,13 +26,13 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
+	"github.com/pole-io/pole-server/apis/crypto"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // Initialize 初始化配置中心模块
@@ -133,6 +133,6 @@ func (s *Server) TestMockStore(ms store.Store) {
 }
 
 // TestMockCryptoManager 获取加密管理
-func (s *Server) TestMockCryptoManager(mgr plugin.CryptoManager) {
+func (s *Server) TestMockCryptoManager(mgr crypto.CryptoManager) {
 	s.cryptoManager = mgr
 }

@@ -29,15 +29,15 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/cmdb"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/model/admin"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // HasMainUser 判断是否存在主用户
@@ -229,7 +229,7 @@ func (s *Server) ReleaseLeaderElection(_ context.Context, electKey string) error
 }
 
 func (svr *Server) GetCMDBInfo(ctx context.Context) ([]model.LocationView, error) {
-	cmdb := plugin.GetCMDB()
+	cmdb := cmdb.GetCMDB()
 	if cmdb == nil {
 		return []model.LocationView{}, nil
 	}

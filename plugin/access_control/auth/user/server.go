@@ -27,13 +27,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
+	"github.com/pole-io/pole-server/apis/observability/history"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // AuthConfig 鉴权配置
@@ -163,8 +163,8 @@ func (svr *Server) Login(req *apisecurity.LoginRequest) *apiservice.Response {
 }
 
 // RecordHistory Server对外提供history插件的简单封装
-func (svr *Server) RecordHistory(entry *model.RecordEntry) {
-	plugin.GetHistory().Record(entry)
+func (svr *Server) RecordHistory(entry *types.RecordEntry) {
+	history.GetHistory().Record(entry)
 }
 
 func (svr *Server) GetUserHelper() authapi.UserHelper {

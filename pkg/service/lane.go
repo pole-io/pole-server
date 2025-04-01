@@ -25,7 +25,6 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	"github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"go.uber.org/zap"
@@ -35,7 +34,6 @@ import (
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -96,10 +94,6 @@ func (s *Server) CreateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 	}
 
 	s.RecordHistory(ctx, laneGroupRecordEntry(ctx, req, saveData, model.OCreate))
-	_ = s.afterRuleResource(ctx, model.RRouting, authcommon.ResourceEntry{
-		ID:   req.GetId(),
-		Type: security.ResourceType_LaneRules,
-	}, false)
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -197,10 +191,6 @@ func (s *Server) DeleteLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 	}
 	req.Id = saveData.ID
 	s.RecordHistory(ctx, laneGroupRecordEntry(ctx, req, saveData, model.ODelete))
-	_ = s.afterRuleResource(ctx, model.RRouting, authcommon.ResourceEntry{
-		ID:   req.GetId(),
-		Type: security.ResourceType_LaneRules,
-	}, true)
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, req)
 }
 

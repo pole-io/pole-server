@@ -18,14 +18,14 @@
 package cache_client
 
 import (
-	"github.com/pole-io/pole-server/pkg/common/metrics"
-	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 )
 
 func (c *clientCache) reportMetricsInfo() {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	plugin.GetStatis().ReportDiscoveryMetrics(metrics.DiscoveryMetric{
+	statis.GetStatis().ReportDiscoveryMetrics(metrics.DiscoveryMetric{
 		Type:  metrics.ClientMetrics,
 		Total: int64(len(c.clients)),
 	})

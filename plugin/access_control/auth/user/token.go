@@ -29,8 +29,8 @@ import (
 
 	"github.com/google/uuid"
 
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 )
 
 // decodeToken 解析 token 信息，如果 t == ""，直接返回一个空对象

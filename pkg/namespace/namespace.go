@@ -26,6 +26,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
@@ -125,7 +126,7 @@ func (s *Server) CreateNamespace(ctx context.Context, req *apimodel.Namespace) *
 		Token: utils.NewStringValue(data.Token),
 	}
 
-	s.RecordHistory(namespaceRecordEntry(ctx, req, model.OCreate))
+	s.RecordHistory(namespaceRecordEntry(ctx, req, types.OCreate))
 	_ = s.afterNamespaceResource(ctx, req, data, false)
 	return api.NewNamespaceResponse(apimodel.Code_ExecuteSuccess, out)
 }
@@ -215,7 +216,7 @@ func (s *Server) DeleteNamespace(ctx context.Context, req *apimodel.Namespace) *
 	s.caches.Service().CleanNamespace(namespace.Name)
 
 	log.Info("delete namespace", utils.RequestID(ctx), zap.String("name", namespace.Name))
-	s.RecordHistory(namespaceRecordEntry(ctx, req, model.ODelete))
+	s.RecordHistory(namespaceRecordEntry(ctx, req, types.ODelete))
 
 	_ = s.afterNamespaceResource(ctx, req, &model.Namespace{Name: req.GetName().GetValue()}, true)
 
@@ -259,7 +260,7 @@ func (s *Server) UpdateNamespace(ctx context.Context, req *apimodel.Namespace) *
 	}
 
 	log.Info("update namespace", zap.String("name", namespace.Name), utils.RequestID(ctx))
-	s.RecordHistory(namespaceRecordEntry(ctx, req, model.OUpdate))
+	s.RecordHistory(namespaceRecordEntry(ctx, req, types.OUpdate))
 
 	if err := s.afterNamespaceResource(ctx, req, namespace, false); err != nil {
 		return api.NewNamespaceResponse(apimodel.Code_ExecuteException, req)
@@ -309,7 +310,7 @@ func (s *Server) UpdateNamespaceToken(ctx context.Context, req *apimodel.Namespa
 	}
 
 	log.Info("update namespace token", zap.String("name", namespace.Name), utils.RequestID(ctx))
-	s.RecordHistory(namespaceRecordEntry(ctx, req, model.OUpdateToken))
+	s.RecordHistory(namespaceRecordEntry(ctx, req, types.OUpdateToken))
 
 	out := &apimodel.Namespace{
 		Name:  req.GetName(),
@@ -518,11 +519,11 @@ func parseNamespaceToken(ctx context.Context, req *apimodel.Namespace) string {
 }
 
 // 生成命名空间的记录entry
-func namespaceRecordEntry(ctx context.Context, req *apimodel.Namespace, opt model.OperationType) *model.RecordEntry {
+func namespaceRecordEntry(ctx context.Context, req *apimodel.Namespace, opt types.OperationType) *types.RecordEntry {
 	marshaler := jsonpb.Marshaler{}
 	datail, _ := marshaler.MarshalToString(req)
-	return &model.RecordEntry{
-		ResourceType:  model.RNamespace,
+	return &types.RecordEntry{
+		ResourceType:  types.RNamespace,
 		ResourceName:  req.GetName().GetValue(),
 		Namespace:     req.GetName().GetValue(),
 		OperationType: opt,

@@ -23,7 +23,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"golang.org/x/time/rate"
 
-	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/apis/access_control/ratelimit"
 )
 
 // 资源限制器
@@ -35,8 +35,8 @@ type resourceRatelimit struct {
 }
 
 // 新建资源限制器
-func newResourceRatelimit(typ plugin.RatelimitType, config *ResourceLimitConfig) (*resourceRatelimit, error) {
-	r := &resourceRatelimit{typStr: plugin.RatelimitStr[typ]}
+func newResourceRatelimit(typ ratelimit.RatelimitType, config *ResourceLimitConfig) (*resourceRatelimit, error) {
+	r := &resourceRatelimit{typStr: ratelimit.RatelimitStr[typ]}
 	if err := r.initialize(config); err != nil {
 		return nil, err
 	}

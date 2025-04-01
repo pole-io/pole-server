@@ -24,13 +24,13 @@ import (
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
-	"github.com/pole-io/pole-server/plugin"
 	nacosmodel "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 	nacospb "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/pb"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/remote"
@@ -159,7 +159,7 @@ func (c *StreamWatchContext) Reply(event *apiconfig.ConfigClientResponse) {
 	success := false
 	startTime := commontime.CurrentMillisecond()
 	defer func() {
-		plugin.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
+		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    nacosmodel.ActionGrpcPushConfigFile,
 			ClientIP:  c.ClientID(),
 			Namespace: notifyRequest.Tenant,

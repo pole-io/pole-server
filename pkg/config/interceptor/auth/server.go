@@ -26,9 +26,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
 )
@@ -50,9 +50,6 @@ func New(nextServer config.ConfigCenterServer, cacheMgr cachetypes.CacheManager,
 		cacheMgr:   cacheMgr,
 		userSvr:    userSvr,
 		policySvr:  policySvr,
-	}
-	if val, ok := nextServer.(*config.Server); ok {
-		val.SetResourceHooks(proxy)
 	}
 	return proxy
 }
@@ -347,4 +344,21 @@ func (s *Server) queryWatchConfigFilesResource(ctx context.Context,
 	authLog.Debug("[Config][Server] collect config_file watch access res",
 		utils.RequestID(ctx), zap.Any("res", ret))
 	return ret
+}
+
+// ResourceEvent 资源事件
+type ResourceEvent struct {
+	ConfigGroup   *apiconfig.ConfigFileGroup
+	AddPrincipals []authcommon.Principal
+	DelPrincipals []authcommon.Principal
+	IsRemove      bool
+}
+
+func (s *Server) afterConfigGroupResource(ctx context.Context, req *apiconfig.ConfigFileGroup, isRemove bool) error {
+	event := &ResourceEvent{
+		ConfigGroup: req,
+		IsRemove:    isRemove,
+	}
+
+	return s.After(ctx, model.RConfigGroup, event)
 }

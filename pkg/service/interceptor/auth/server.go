@@ -27,9 +27,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 )
@@ -49,10 +49,6 @@ func NewServer(nextSvr service.DiscoverServer,
 		nextSvr:   nextSvr,
 		userSvr:   userSvr,
 		policySvr: policySvr,
-	}
-
-	if actualSvr, ok := nextSvr.(*service.Server); ok {
-		actualSvr.SetResourceHooks(proxy)
 	}
 	return proxy
 }
@@ -363,31 +359,6 @@ func (svr *Server) queryInstanceResource(
 	ret := svr.convertToDiscoverResourceEntryMaps(names, svcSet)
 	if authLog.DebugEnabled() {
 		authLog.Debug("[Auth][Server] collect instance access res", zap.Any("res", ret))
-	}
-	return ret
-}
-
-// queryCircuitBreakerResource 根据所给的 CircuitBreaker 信息，收集对应的 ResourceEntry 列表
-func (svr *Server) queryCircuitBreakerResource(
-	req []*apifault.CircuitBreaker) map[apisecurity.ResourceType][]authcommon.ResourceEntry {
-	if len(req) == 0 {
-		return make(map[apisecurity.ResourceType][]authcommon.ResourceEntry)
-	}
-
-	names := utils.NewSet[string]()
-	svcSet := utils.NewMap[string, *model.Service]()
-
-	for index := range req {
-		svcName := req[index].GetService().GetValue()
-		svcNamespace := req[index].GetNamespace().GetValue()
-		svc := svr.Cache().Service().GetServiceByName(svcName, svcNamespace)
-		if svc != nil {
-			svcSet.Store(svc.ID, svc)
-		}
-	}
-	ret := svr.convertToDiscoverResourceEntryMaps(names, svcSet)
-	if authLog.DebugEnabled() {
-		authLog.Debug("[Auth][Server] collect circuit-breaker access res", zap.Any("res", ret))
 	}
 	return ret
 }

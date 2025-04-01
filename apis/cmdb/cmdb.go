@@ -15,18 +15,23 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package plugin
+package cmdb
 
 import (
-	"os"
+	"fmt"
+	"sync"
 
-	commonLog "github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/pkg/common/model"
+)
+
+var (
+	once sync.Once
 )
 
 // CMDB CMDB插件接口
 type CMDB interface {
-	Plugin
+	apis.Plugin
 
 	// GetLocation 在CMDB中没有找到Host，返回error为nil，location为nil
 	// 插件内部出现错误，返回error不为nil，忽略location
@@ -45,19 +50,17 @@ type CMDB interface {
 
 // GetCMDB 获取CMDB插件
 func GetCMDB() CMDB {
-	c := &config.CMDB
+	c := &apis.GetPluginConfig().CMDB
 
-	plugin, exist := pluginSet[c.Name]
+	plugin, exist := apis.GetPlugin(apis.PluginTypeCMDB, c.Name)
 	if !exist {
 		return nil
 	}
 
 	once.Do(func() {
 		if err := plugin.Initialize(c); err != nil {
-			commonLog.GetScopeOrDefaultByName(c.Name).Errorf("plugin init err: %s", err.Error())
-			os.Exit(-1)
+			panic(fmt.Errorf("plugin init err: %s", err.Error()))
 		}
 	})
-
 	return plugin.(CMDB)
 }

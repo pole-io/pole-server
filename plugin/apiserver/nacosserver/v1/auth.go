@@ -22,7 +22,7 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	nacoshttp "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v1/http"
 )
 

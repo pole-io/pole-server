@@ -27,10 +27,10 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -43,7 +43,19 @@ func (svr *Server) CreateFaultDetectRules(
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.CreateFaultDetectRules(ctx, request)
+
+	resp := svr.nextSvr.CreateFaultDetectRules(ctx, request)
+
+	for index := range resp.Responses {
+		item := resp.GetResponses()[index].GetData()
+		rule := &apifault.FaultDetectRule{}
+		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
+		_ = svr.afterRuleResource(ctx, model.RFaultDetectRule, authcommon.ResourceEntry{
+			ID:   rule.Id,
+			Type: security.ResourceType_FaultDetectRules,
+		}, false)
+	}
+	return resp
 }
 
 func (svr *Server) DeleteFaultDetectRules(
@@ -55,7 +67,17 @@ func (svr *Server) DeleteFaultDetectRules(
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.DeleteFaultDetectRules(ctx, request)
+	resp := svr.nextSvr.DeleteFaultDetectRules(ctx, request)
+	for index := range resp.Responses {
+		item := resp.GetResponses()[index].GetData()
+		rule := &apifault.FaultDetectRule{}
+		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
+		_ = svr.afterRuleResource(ctx, model.RFaultDetectRule, authcommon.ResourceEntry{
+			ID:   rule.Id,
+			Type: security.ResourceType_FaultDetectRules,
+		}, true)
+	}
+	return resp
 }
 
 func (svr *Server) UpdateFaultDetectRules(

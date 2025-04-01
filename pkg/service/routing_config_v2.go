@@ -28,15 +28,15 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	"github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -67,11 +67,7 @@ func (s *Server) createRoutingConfigV2(ctx context.Context, req *apitraffic.Rout
 		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
 	}
 
-	s.RecordHistory(ctx, routeRuleRecordEntry(ctx, req, conf, model.OCreate))
-	_ = s.afterRuleResource(ctx, model.RRouting, authcommon.ResourceEntry{
-		ID:   req.GetId(),
-		Type: security.ResourceType_RouteRules,
-	}, false)
+	s.RecordHistory(ctx, routeRuleRecordEntry(ctx, req, conf, types.OCreate))
 	req.Id = conf.ID
 	return apiv1.NewRouterResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -96,15 +92,10 @@ func (s *Server) deleteRoutingConfigV2(ctx context.Context, req *apitraffic.Rout
 		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
 	}
 
-	s.RecordHistory(ctx, routeRuleRecordEntry(ctx, req, &model.RouterConfig{
+	s.RecordHistory(ctx, routeRuleRecordEntry(ctx, req, &rules.RouterConfig{
 		ID:   req.GetId(),
 		Name: req.GetName(),
-	}, model.ODelete))
-
-	_ = s.afterRuleResource(ctx, model.RRouting, authcommon.ResourceEntry{
-		ID:   req.GetId(),
-		Type: security.ResourceType_RouteRules,
-	}, true)
+	}, types.ODelete))
 	return apiv1.NewRouterResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -147,7 +138,7 @@ func (s *Server) updateRoutingConfigV2(ctx context.Context, req *apitraffic.Rout
 		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
 	}
 
-	s.RecordHistory(ctx, routeRuleRecordEntry(ctx, req, reqModel, model.OUpdate))
+	s.RecordHistory(ctx, routeRuleRecordEntry(ctx, req, reqModel, types.OUpdate))
 	return apiv1.NewResponse(apimodel.Code_ExecuteSuccess)
 }
 
@@ -214,7 +205,7 @@ func (s *Server) enableRoutings(ctx context.Context, req *apitraffic.RouteRule) 
 		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
 	}
 
-	s.RecordHistory(ctx, routeRuleRecordEntry(ctx, req, conf, model.OUpdate))
+	s.RecordHistory(ctx, routeRuleRecordEntry(ctx, req, conf, types.OUpdate))
 	return apiv1.NewResponse(apimodel.Code_ExecuteSuccess)
 }
 
@@ -294,14 +285,14 @@ func marshalRoutingV2toAnySlice(routings []*model.ExtendRouterConfig) ([]*any.An
 }
 
 // routeRuleRecordEntry Construction of RoutingConfig's record Entry
-func routeRuleRecordEntry(ctx context.Context, req *apitraffic.RouteRule, md *model.RouterConfig,
-	opt model.OperationType) *model.RecordEntry {
+func routeRuleRecordEntry(ctx context.Context, req *apitraffic.RouteRule, md *rules.RouterConfig,
+	opt types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
 
-	entry := &model.RecordEntry{
-		ResourceType:  model.RRouting,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RRouting,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
 		Namespace:     req.GetNamespace(),
 		OperationType: opt,

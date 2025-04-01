@@ -30,14 +30,14 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 
+	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 )
 
 type (
@@ -131,7 +131,7 @@ func (svr *Server) createUser(ctx context.Context, req *apisecurity.User) *apise
 	}
 
 	log.Info("[Auth][User] create user", utils.RequestID(ctx), zap.String("name", req.GetName().GetValue()))
-	svr.RecordHistory(userRecordEntry(ctx, req, data, model.OCreate))
+	svr.RecordHistory(userRecordEntry(ctx, req, data, types.OCreate))
 
 	// 去除 owner 信息
 	req.Owner = utils.NewStringValue("")
@@ -170,7 +170,7 @@ func (svr *Server) UpdateUser(ctx context.Context, req *apisecurity.User) *apise
 	}
 
 	log.Info("[Auth][User] update user", utils.RequestID(ctx), zap.String("name", req.GetName().GetValue()))
-	svr.RecordHistory(userRecordEntry(ctx, req, user, model.OUpdate))
+	svr.RecordHistory(userRecordEntry(ctx, req, user, types.OUpdate))
 
 	return api.NewUserResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -284,7 +284,7 @@ func (svr *Server) DeleteUser(ctx context.Context, req *apisecurity.User) *apise
 	}
 
 	log.Info("[Auth][User] delete user", utils.RequestID(ctx), zap.String("name", req.Name.GetValue()))
-	svr.RecordHistory(userRecordEntry(ctx, req, user, model.ODelete))
+	svr.RecordHistory(userRecordEntry(ctx, req, user, types.ODelete))
 
 	return api.NewUserResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -371,7 +371,7 @@ func (svr *Server) EnableUserToken(ctx context.Context, req *apisecurity.User) *
 
 	log.Info("[Auth][User] update user token", utils.RequestID(ctx),
 		zap.String("id", req.GetId().GetValue()), zap.Bool("enable", req.GetTokenEnable().GetValue()))
-	svr.RecordHistory(userRecordEntry(ctx, req, user, model.OUpdateToken))
+	svr.RecordHistory(userRecordEntry(ctx, req, user, types.OUpdateToken))
 
 	return api.NewUserResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -405,7 +405,7 @@ func (svr *Server) ResetUserToken(ctx context.Context, req *apisecurity.User) *a
 	}
 
 	log.Info("[Auth][User] reset user token", utils.RequestID(ctx), zap.String("id", req.GetId().GetValue()))
-	svr.RecordHistory(userRecordEntry(ctx, req, user, model.OUpdateToken))
+	svr.RecordHistory(userRecordEntry(ctx, req, user, types.OUpdateToken))
 
 	req.AuthToken = utils.NewStringValue(user.Token)
 
@@ -552,13 +552,13 @@ func user2Api(user *authcommon.User) *apisecurity.User {
 
 // 生成用户的记录entry
 func userRecordEntry(ctx context.Context, req *apisecurity.User, md *authcommon.User,
-	operationType model.OperationType) *model.RecordEntry {
+	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
 
-	entry := &model.RecordEntry{
-		ResourceType:  model.RUser,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RUser,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
 		OperationType: operationType,
 		Operator:      utils.ParseOperator(ctx),

@@ -24,10 +24,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/pole-io/pole-server/pkg/common/metrics"
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/core"
 	nacosmodel "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 	nacospb "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/pb"
@@ -116,7 +116,7 @@ func (h *DiscoverServer) sendPushData(sub core.Subscriber, data *core.PushData) 
 				zap.String("namespace", data.Service.Namespace), zap.String("svc", data.Service.Name),
 				zap.Any("resp", resp))
 		}
-		plugin.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
+		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			ClientIP:  client.Addr.String(),
 			Action:    attachment["action"].(string),
 			Namespace: attachment["namespace"].(string),

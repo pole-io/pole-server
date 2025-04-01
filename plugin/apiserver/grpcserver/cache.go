@@ -24,8 +24,8 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"google.golang.org/grpc"
 
-	"github.com/pole-io/pole-server/pkg/common/metrics"
-	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 )
 
 const (
@@ -112,7 +112,7 @@ func (pc *protobufCache) Get(cacheType string, key string) *CacheObject {
 	}
 
 	val, exist := c.Get(key)
-	plugin.GetStatis().ReportCallMetrics(metrics.CallMetric{
+	statis.GetStatis().ReportCallMetrics(metrics.CallMetric{
 		Type:     metrics.ProtobufCacheCallMetric,
 		Protocol: cacheType,
 		Success:  exist,

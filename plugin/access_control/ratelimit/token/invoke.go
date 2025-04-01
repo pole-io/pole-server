@@ -18,13 +18,14 @@
 package token
 
 import (
-	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/apis/access_control/ratelimit"
 )
 
 // tokenBucket 实现Plugin接口
 type tokenBucket struct {
 	config   *Config
-	limiters map[plugin.RatelimitType]limiter
+	limiters map[ratelimit.RatelimitType]limiter
 }
 
 // Name 实现Plugin接口，Name方法
@@ -33,7 +34,7 @@ func (tb *tokenBucket) Name() string {
 }
 
 // Initialize 实现Plugin接口，Initialize方法
-func (tb *tokenBucket) Initialize(c *plugin.ConfigEntry) error {
+func (tb *tokenBucket) Initialize(c *apis.ConfigEntry) error {
 	return tb.initialize(c)
 }
 
@@ -42,8 +43,12 @@ func (tb *tokenBucket) Destroy() error {
 	return nil
 }
 
+func (tb *tokenBucket) Type() apis.PluginType {
+	return apis.PluginTypeRateLimit
+}
+
 // Allow 限流接口实现
-func (tb *tokenBucket) Allow(typ plugin.RatelimitType, key string) bool {
+func (tb *tokenBucket) Allow(typ ratelimit.RatelimitType, key string) bool {
 	if !tb.config.Enable {
 		return true
 	}

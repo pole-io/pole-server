@@ -27,11 +27,11 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/crypto"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 type (
@@ -243,7 +243,7 @@ func toClientInfo(client *apiconfig.ClientConfigFileInfo,
 			return nil, err
 		}
 		if publicKey != "" {
-			rsacrypto, err := plugin.GetCryptoManager().GetCrypto("rsa")
+			rsacrypto, err := crypto.GetCryptoManager().GetCrypto("rsa")
 			if err != nil {
 				log.Error("[config][client] get rsa crypto fail", zap.Error(err))
 				return nil, err

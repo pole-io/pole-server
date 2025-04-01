@@ -20,21 +20,20 @@ package service
 import (
 	"context"
 
-	"github.com/polarismesh/specification/source/go/api/v1/security"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"golang.org/x/sync/singleflight"
 
+	"github.com/pole-io/pole-server/apis/cmdb"
+	"github.com/pole-io/pole-server/apis/observability/history"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	cacheservice "github.com/pole-io/pole-server/pkg/cache/service"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	"github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // Server 对接API层的server层，用以处理业务逻辑
@@ -50,13 +49,11 @@ type Server struct {
 
 	healthServer *healthcheck.Server
 
-	cmdb    plugin.CMDB
-	history plugin.History
+	cmdb    cmdb.CMDB
+	history history.History
 
 	createServiceSingle *singleflight.Group
-
-	hooks   []ResourceHook
-	subCtxs []*eventhub.SubscribtionContext
+	subCtxs             []*eventhub.SubscribtionContext
 
 	// instanceChains 实例信息变化回调
 	instanceChains []InstanceChain
@@ -95,13 +92,8 @@ func (s *Server) Namespace() namespace.NamespaceOperateServer {
 	return s.namespaceSvr
 }
 
-// SetResourceHooks 设置资源操作的Hook
-func (s *Server) SetResourceHooks(hooks ...ResourceHook) {
-	s.hooks = hooks
-}
-
 // RecordHistory server对外提供history插件的简单封装
-func (s *Server) RecordHistory(ctx context.Context, entry *model.RecordEntry) {
+func (s *Server) RecordHistory(ctx context.Context, entry *types.RecordEntry) {
 	// 如果插件没有初始化，那么不记录history
 	if s.history == nil {
 		return
@@ -155,73 +147,6 @@ func (s *Server) getLocation(host string) *model.Location {
 		return nil
 	}
 	return location
-}
-
-func (s *Server) afterRuleResource(ctx context.Context, r model.Resource, res auth.ResourceEntry, remove bool) error {
-	event := &ResourceEvent{
-		Resource: res,
-		IsRemove: remove,
-	}
-
-	for index := range s.hooks {
-		hook := s.hooks[index]
-		if err := hook.After(ctx, r, event); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *Server) afterServiceResource(ctx context.Context, req *apiservice.Service, save *model.Service,
-	remove bool) error {
-	event := &ResourceEvent{
-		Resource: auth.ResourceEntry{
-			Type:     security.ResourceType_Services,
-			ID:       save.ID,
-			Metadata: save.Meta,
-		},
-		AddPrincipals: func() []auth.Principal {
-			ret := make([]auth.Principal, 0, 4)
-			for i := range req.UserIds {
-				ret = append(ret, auth.Principal{
-					PrincipalType: auth.PrincipalUser,
-					PrincipalID:   req.UserIds[i].GetValue(),
-				})
-			}
-			for i := range req.GroupIds {
-				ret = append(ret, auth.Principal{
-					PrincipalType: auth.PrincipalGroup,
-					PrincipalID:   req.GroupIds[i].GetValue(),
-				})
-			}
-			return ret
-		}(),
-		DelPrincipals: func() []auth.Principal {
-			ret := make([]auth.Principal, 0, 4)
-			for i := range req.RemoveUserIds {
-				ret = append(ret, auth.Principal{
-					PrincipalType: auth.PrincipalUser,
-					PrincipalID:   req.RemoveUserIds[i].GetValue(),
-				})
-			}
-			for i := range req.RemoveGroupIds {
-				ret = append(ret, auth.Principal{
-					PrincipalType: auth.PrincipalGroup,
-					PrincipalID:   req.RemoveGroupIds[i].GetValue(),
-				})
-			}
-			return ret
-		}(),
-		IsRemove: remove,
-	}
-
-	for index := range s.hooks {
-		hook := s.hooks[index]
-		if err := hook.After(ctx, model.RService, event); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func AllowAutoCreate(ctx context.Context) context.Context {

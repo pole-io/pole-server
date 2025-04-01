@@ -27,8 +27,8 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	types "github.com/pole-io/pole-server/pkg/cache/api"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/store/mock"
 )

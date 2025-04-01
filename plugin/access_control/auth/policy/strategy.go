@@ -33,10 +33,11 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -74,7 +75,7 @@ func (svr *Server) CreateStrategy(ctx context.Context, req *apisecurity.AuthStra
 	}
 
 	log.Info("[Auth][Strategy] create strategy", utils.RequestID(ctx), zap.String("name", req.Name.GetValue()))
-	svr.RecordHistory(authStrategyRecordEntry(ctx, req, data, model.OCreate))
+	svr.RecordHistory(authStrategyRecordEntry(ctx, req, data, types.OCreate))
 
 	return api.NewAuthStrategyResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -121,7 +122,7 @@ func (svr *Server) UpdateStrategy(ctx context.Context, req *apisecurity.ModifyAu
 
 	log.Info("[Auth][Strategy] update strategy into store", utils.RequestID(ctx),
 		zap.String("name", strategy.Name))
-	svr.RecordHistory(authModifyStrategyRecordEntry(ctx, req, data, model.OUpdate))
+	svr.RecordHistory(authModifyStrategyRecordEntry(ctx, req, data, types.OUpdate))
 
 	return api.NewModifyAuthStrategyResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -170,7 +171,7 @@ func (svr *Server) DeleteStrategy(ctx context.Context, req *apisecurity.AuthStra
 
 	log.Info("[Auth][Strategy] delete strategy from store", utils.RequestID(ctx),
 		zap.String("name", req.Name.GetValue()))
-	svr.RecordHistory(authStrategyRecordEntry(ctx, req, strategy, model.ODelete))
+	svr.RecordHistory(authStrategyRecordEntry(ctx, req, strategy, types.ODelete))
 
 	return api.NewAuthStrategyResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -819,13 +820,13 @@ func collectPrincipalEntry(ruleID string, uType authcommon.PrincipalType, res []
 
 // authStrategyRecordEntry 转换为鉴权策略的记录结构体
 func authStrategyRecordEntry(ctx context.Context, req *apisecurity.AuthStrategy, md *authcommon.StrategyDetail,
-	operationType model.OperationType) *model.RecordEntry {
+	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
 
-	entry := &model.RecordEntry{
-		ResourceType:  model.RAuthStrategy,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RAuthStrategy,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
 		OperationType: operationType,
 		Operator:      utils.ParseOperator(ctx),
@@ -839,13 +840,13 @@ func authStrategyRecordEntry(ctx context.Context, req *apisecurity.AuthStrategy,
 // authModifyStrategyRecordEntry
 func authModifyStrategyRecordEntry(
 	ctx context.Context, req *apisecurity.ModifyAuthStrategy, md *authcommon.ModifyStrategyDetail,
-	operationType model.OperationType) *model.RecordEntry {
+	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
 
-	entry := &model.RecordEntry{
-		ResourceType:  model.RAuthStrategy,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RAuthStrategy,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
 		OperationType: operationType,
 		Operator:      utils.ParseOperator(ctx),

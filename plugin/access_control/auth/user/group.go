@@ -28,10 +28,11 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -95,7 +96,7 @@ func (svr *Server) CreateGroup(ctx context.Context, req *apisecurity.UserGroup) 
 	}
 
 	log.Info("create group", zap.String("name", req.Name.GetValue()), utils.RequestID(ctx))
-	svr.RecordHistory(userGroupRecordEntry(ctx, req, data.UserGroup, model.OCreate))
+	svr.RecordHistory(userGroupRecordEntry(ctx, req, data.UserGroup, types.OCreate))
 
 	req.Id = utils.NewStringValue(data.ID)
 	return api.NewGroupResponse(apimodel.Code_ExecuteSuccess, req)
@@ -136,7 +137,7 @@ func (svr *Server) UpdateGroup(ctx context.Context, req *apisecurity.ModifyUserG
 	}
 
 	log.Info("update group", zap.String("name", data.Name), utils.RequestID(ctx))
-	svr.RecordHistory(modifyUserGroupRecordEntry(ctx, req, data.UserGroup, model.OUpdateGroup))
+	svr.RecordHistory(modifyUserGroupRecordEntry(ctx, req, data.UserGroup, types.OUpdateGroup))
 
 	return api.NewModifyGroupResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -190,7 +191,7 @@ func (svr *Server) DeleteGroup(ctx context.Context, req *apisecurity.UserGroup) 
 	}
 
 	log.Info("delete group", utils.RequestID(ctx), zap.String("name", req.Name.GetValue()))
-	svr.RecordHistory(userGroupRecordEntry(ctx, req, group.UserGroup, model.ODelete))
+	svr.RecordHistory(userGroupRecordEntry(ctx, req, group.UserGroup, types.ODelete))
 
 	return api.NewGroupResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -279,7 +280,7 @@ func (svr *Server) EnableGroupToken(ctx context.Context, req *apisecurity.UserGr
 
 	log.Info("update group token", zap.String("id", req.Id.GetValue()),
 		zap.Bool("enable", group.TokenEnable), utils.RequestID(ctx))
-	svr.RecordHistory(userGroupRecordEntry(ctx, req, group.UserGroup, model.OUpdateToken))
+	svr.RecordHistory(userGroupRecordEntry(ctx, req, group.UserGroup, types.OUpdateToken))
 
 	return api.NewGroupResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -320,7 +321,7 @@ func (svr *Server) ResetGroupToken(ctx context.Context, req *apisecurity.UserGro
 
 	log.Info("reset group token", zap.String("group-id", req.Id.GetValue()),
 		utils.RequestID(ctx))
-	svr.RecordHistory(userGroupRecordEntry(ctx, req, group.UserGroup, model.OUpdate))
+	svr.RecordHistory(userGroupRecordEntry(ctx, req, group.UserGroup, types.OUpdate))
 
 	req.AuthToken = utils.NewStringValue(newToken)
 
@@ -513,13 +514,13 @@ func (svr *Server) userGroupDetail2Api(group *authcommon.UserGroupDetail) *apise
 
 // userGroupRecordEntry 生成用户组的记录entry
 func userGroupRecordEntry(ctx context.Context, req *apisecurity.UserGroup, md *authcommon.UserGroup,
-	operationType model.OperationType) *model.RecordEntry {
+	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
 	datail, _ := marshaler.MarshalToString(req)
 
-	entry := &model.RecordEntry{
-		ResourceType:  model.RUserGroup,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RUserGroup,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
 		OperationType: operationType,
 		Operator:      utils.ParseOperator(ctx),
@@ -532,13 +533,13 @@ func userGroupRecordEntry(ctx context.Context, req *apisecurity.UserGroup, md *a
 
 // 生成修改用户组的记录entry
 func modifyUserGroupRecordEntry(ctx context.Context, req *apisecurity.ModifyUserGroup, md *authcommon.UserGroup,
-	operationType model.OperationType) *model.RecordEntry {
+	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
 
-	entry := &model.RecordEntry{
-		ResourceType:  model.RUserGroup,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RUserGroup,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
 		OperationType: operationType,
 		Operator:      utils.ParseOperator(ctx),

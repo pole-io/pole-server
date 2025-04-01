@@ -22,14 +22,15 @@ import (
 	"strconv"
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"github.com/polarismesh/specification/source/go/api/v1/security"
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
+	"go.uber.org/zap"
 
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	"github.com/pole-io/pole-server/pkg/common/model/auth"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -47,7 +48,56 @@ func (s *Server) CreateConfigFileGroup(ctx context.Context,
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 
-	return s.nextServer.CreateConfigFileGroup(ctx, configFileGroup)
+	resp := s.nextServer.CreateConfigFileGroup(ctx, configFileGroup)
+	if err := s.afterConfigGroupResource(ctx, resp.GetConfigFileGroup(), false); err != nil {
+		log.Error("[Config][Group] create config_file_group after resource",
+			utils.RequestID(ctx), zap.Error(err))
+		return api.NewConfigResponse(apimodel.Code_ExecuteException)
+	}
+	return resp
+}
+
+// UpdateConfigFileGroup 更新配置文件组
+func (s *Server) UpdateConfigFileGroup(ctx context.Context,
+	configFileGroup *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse {
+	authCtx := s.collectConfigGroupAuthContext(ctx, []*apiconfig.ConfigFileGroup{configFileGroup},
+		authcommon.Modify, authcommon.UpdateConfigFileGroup)
+
+	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewConfigResponse(authcommon.ConvertToErrCode(err))
+	}
+
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	resp := s.nextServer.UpdateConfigFileGroup(ctx, configFileGroup)
+	if err := s.afterConfigGroupResource(ctx, resp.GetConfigFileGroup(), false); err != nil {
+		log.Error("[Config][Group] update config_file_group after resource",
+			utils.RequestID(ctx), zap.Error(err))
+		return api.NewConfigResponse(apimodel.Code_ExecuteException)
+	}
+	return resp
+}
+
+// DeleteConfigFileGroup 删除配置文件组
+func (s *Server) DeleteConfigFileGroup(
+	ctx context.Context, namespace, name string) *apiconfig.ConfigResponse {
+	authCtx := s.collectConfigGroupAuthContext(ctx, []*apiconfig.ConfigFileGroup{{Name: utils.NewStringValue(name),
+		Namespace: utils.NewStringValue(namespace)}}, authcommon.Delete, authcommon.DeleteConfigFileGroup)
+
+	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewConfigResponse(authcommon.ConvertToErrCode(err))
+	}
+
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+
+	resp := s.nextServer.DeleteConfigFileGroup(ctx, namespace, name)
+	if err := s.afterConfigGroupResource(ctx, resp.GetConfigFileGroup(), true); err != nil {
+		log.Error("[Config][Group] delete config_file_group after resource",
+			utils.RequestID(ctx), zap.Error(err))
+		return api.NewConfigResponse(apimodel.Code_ExecuteException)
+	}
+	return resp
 }
 
 // QueryConfigFileGroups 查询配置文件组
@@ -114,35 +164,4 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 		}
 	}
 	return resp
-}
-
-// DeleteConfigFileGroup 删除配置文件组
-func (s *Server) DeleteConfigFileGroup(
-	ctx context.Context, namespace, name string) *apiconfig.ConfigResponse {
-	authCtx := s.collectConfigGroupAuthContext(ctx, []*apiconfig.ConfigFileGroup{{Name: utils.NewStringValue(name),
-		Namespace: utils.NewStringValue(namespace)}}, auth.Delete, auth.DeleteConfigFileGroup)
-
-	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewConfigResponse(auth.ConvertToErrCode(err))
-	}
-
-	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
-
-	return s.nextServer.DeleteConfigFileGroup(ctx, namespace, name)
-}
-
-// UpdateConfigFileGroup 更新配置文件组
-func (s *Server) UpdateConfigFileGroup(ctx context.Context,
-	configFileGroup *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse {
-	authCtx := s.collectConfigGroupAuthContext(ctx, []*apiconfig.ConfigFileGroup{configFileGroup},
-		auth.Modify, auth.UpdateConfigFileGroup)
-
-	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewConfigResponse(auth.ConvertToErrCode(err))
-	}
-
-	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
-	return s.nextServer.UpdateConfigFileGroup(ctx, configFileGroup)
 }

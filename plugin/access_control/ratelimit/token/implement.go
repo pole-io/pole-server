@@ -18,11 +18,12 @@
 package token
 
 import (
-	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/apis/access_control/ratelimit"
 )
 
 // initialize 插件初始化函数
-func (tb *tokenBucket) initialize(c *plugin.ConfigEntry) error {
+func (tb *tokenBucket) initialize(c *apis.ConfigEntry) error {
 	config, err := decodeConfig(c.Option)
 	if err != nil {
 		log.Errorf("[Plugin][%s] initialize err: %s", PluginName, err.Error())
@@ -46,34 +47,34 @@ func (tb *tokenBucket) initialize(c *plugin.ConfigEntry) error {
 	}
 
 	tb.config = config
-	tb.limiters = make(map[plugin.RatelimitType]limiter)
+	tb.limiters = make(map[ratelimit.RatelimitType]limiter)
 
 	// IP限流
-	irt, err := newResourceRatelimit(plugin.IPRatelimit, config.IPLimitConf)
+	irt, err := newResourceRatelimit(ratelimit.IPRatelimit, config.IPLimitConf)
 	if err != nil {
 		return err
 	}
-	tb.limiters[plugin.IPRatelimit] = irt
+	tb.limiters[ratelimit.IPRatelimit] = irt
 
 	// 接口限流
 	art, err := newAPIRatelimit(config.APILimitConf)
 	if err != nil {
 		return err
 	}
-	tb.limiters[plugin.APIRatelimit] = art
+	tb.limiters[ratelimit.APIRatelimit] = art
 
 	// 操作实例限流
-	instance, err := newResourceRatelimit(plugin.InstanceRatelimit, config.InstanceLimitConf)
+	instance, err := newResourceRatelimit(ratelimit.InstanceRatelimit, config.InstanceLimitConf)
 	if err != nil {
 		return err
 	}
-	tb.limiters[plugin.InstanceRatelimit] = instance
+	tb.limiters[ratelimit.InstanceRatelimit] = instance
 
 	return nil
 }
 
 // allow 插件的限流实现函数
-func (tb *tokenBucket) allow(typ plugin.RatelimitType, key string) bool {
+func (tb *tokenBucket) allow(typ ratelimit.RatelimitType, key string) bool {
 	// key为空，则不作限制
 	if key == "" {
 		return true

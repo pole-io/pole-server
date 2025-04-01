@@ -29,12 +29,12 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
+	"github.com/pole-io/pole-server/apis/observability/history"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // AuthConfig 鉴权配置
@@ -167,8 +167,8 @@ func (svr *Server) GetAuthChecker() authapi.AuthChecker {
 }
 
 // RecordHistory Server对外提供history插件的简单封装
-func (svr *Server) RecordHistory(entry *model.RecordEntry) {
-	plugin.GetHistory().Record(entry)
+func (svr *Server) RecordHistory(entry *types.RecordEntry) {
+	history.GetHistory().Record(entry)
 }
 
 func (svr *Server) isOpenAuth() bool {
@@ -333,8 +333,8 @@ func (svr *Server) changePrincipalPolicies(id, ownerId string, uType authcommon.
 		}
 	}
 
-	entry := &model.RecordEntry{
-		ResourceType: model.RAuthStrategy,
+	entry := &types.RecordEntry{
+		ResourceType: types.RAuthStrategy,
 		ResourceName: fmt.Sprintf("%s(%s)", strategy.Name, strategy.ID),
 		Operator:     utils.ParseOperator(afterCtx.GetRequestContext()),
 		Detail:       utils.MustJson(strategyResource),
@@ -348,8 +348,8 @@ func (svr *Server) changePrincipalPolicies(id, ownerId string, uType authcommon.
 				zap.String("type", authcommon.PrincipalNames[uType]), zap.Error(err))
 			return err
 		}
-		entry.OperationType = model.ODelete
-		plugin.GetHistory().Record(entry)
+		entry.OperationType = types.ODelete
+		history.GetHistory().Record(entry)
 		return nil
 	}
 	// 如果是写操作，那么采用松添加操作进行新增资源的添加操作(仅忽略主键冲突的错误)
@@ -359,7 +359,7 @@ func (svr *Server) changePrincipalPolicies(id, ownerId string, uType authcommon.
 			zap.String("type", authcommon.PrincipalNames[uType]), zap.Error(err))
 		return err
 	}
-	entry.OperationType = model.OUpdate
-	plugin.GetHistory().Record(entry)
+	entry.OperationType = types.OUpdate
+	history.GetHistory().Record(entry)
 	return nil
 }

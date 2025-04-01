@@ -23,10 +23,9 @@ import (
 
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	"github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/pkg/config"
 )
 
 // Before this function is called before the resource operation
@@ -35,7 +34,7 @@ func (s *Server) Before(ctx context.Context, resourceType model.Resource) {
 }
 
 // After this function is called after the resource operation
-func (s *Server) After(ctx context.Context, resourceType model.Resource, res *config.ResourceEvent) error {
+func (s *Server) After(ctx context.Context, resourceType model.Resource, res *ResourceEvent) error {
 	switch resourceType {
 	case model.RConfigGroup:
 		return s.onConfigGroupResource(ctx, res)
@@ -45,7 +44,7 @@ func (s *Server) After(ctx context.Context, resourceType model.Resource, res *co
 }
 
 // onConfigGroupResource
-func (s *Server) onConfigGroupResource(ctx context.Context, res *config.ResourceEvent) error {
+func (s *Server) onConfigGroupResource(ctx context.Context, res *ResourceEvent) error {
 	authCtx := ctx.Value(utils.ContextAuthContextKey).(*auth.AcquireContext)
 
 	authCtx.SetAttachment(auth.ResourceAttachmentKey, map[apisecurity.ResourceType][]auth.ResourceEntry{

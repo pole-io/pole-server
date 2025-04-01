@@ -27,10 +27,10 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -43,7 +43,17 @@ func (svr *Server) CreateLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.CreateLaneGroups(ctx, reqs)
+	rsp := svr.nextSvr.CreateLaneGroups(ctx, reqs)
+	for index := range rsp.Responses {
+		item := rsp.GetResponses()[index].GetData()
+		rule := &apitraffic.LaneGroup{}
+		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
+		_ = svr.afterRuleResource(ctx, model.RLaneGroup, authcommon.ResourceEntry{
+			ID:   rule.Id,
+			Type: security.ResourceType_LaneRules,
+		}, false)
+	}
+	return rsp
 }
 
 // UpdateLaneGroups 批量更新泳道组
@@ -65,7 +75,17 @@ func (svr *Server) DeleteLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.DeleteLaneGroups(ctx, reqs)
+	rsp := svr.nextSvr.DeleteLaneGroups(ctx, reqs)
+	for index := range rsp.Responses {
+		item := rsp.GetResponses()[index].GetData()
+		rule := &apitraffic.LaneGroup{}
+		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
+		_ = svr.afterRuleResource(ctx, model.RLaneGroup, authcommon.ResourceEntry{
+			ID:   rule.Id,
+			Type: security.ResourceType_LaneRules,
+		}, true)
+	}
+	return rsp
 }
 
 // GetLaneGroups 查询泳道组列表

@@ -20,13 +20,23 @@ package service_auth
 import (
 	"context"
 
+	"github.com/polarismesh/specification/source/go/api/v1/security"
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
+	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/pkg/service"
 )
+
+// ResourceEvent 资源事件
+type ResourceEvent struct {
+	Resource authcommon.ResourceEntry
+
+	AddPrincipals []authcommon.Principal
+	DelPrincipals []authcommon.Principal
+	IsRemove      bool
+}
 
 // Before this function is called before the resource operation
 func (svr *Server) Before(ctx context.Context, resourceType model.Resource) {
@@ -34,13 +44,13 @@ func (svr *Server) Before(ctx context.Context, resourceType model.Resource) {
 }
 
 // After this function is called after the resource operation
-func (svr *Server) After(ctx context.Context, resourceType model.Resource, res *service.ResourceEvent) error {
+func (svr *Server) After(ctx context.Context, resourceType model.Resource, res *ResourceEvent) error {
 	// 资源删除，触发所有关联的策略进行一个 update 操作更新
 	return svr.onChangeResource(ctx, res)
 }
 
 // onChangeResource 服务资源的处理，只处理服务，namespace 只由 namespace 相关的进行处理，
-func (svr *Server) onChangeResource(ctx context.Context, res *service.ResourceEvent) error {
+func (svr *Server) onChangeResource(ctx context.Context, res *ResourceEvent) error {
 	authCtx := ctx.Value(utils.ContextAuthContextKey).(*authcommon.AcquireContext)
 
 	authCtx.SetAttachment(authcommon.ResourceAttachmentKey, map[apisecurity.ResourceType][]authcommon.ResourceEntry{
@@ -76,4 +86,57 @@ func (svr *Server) onChangeResource(ctx context.Context, res *service.ResourceEv
 	authCtx.SetAttachment(authcommon.RemoveLinkGroupsKey, removeGroups)
 
 	return svr.policySvr.AfterResourceOperation(authCtx)
+}
+
+func (s *Server) afterRuleResource(ctx context.Context, r model.Resource, res authcommon.ResourceEntry, remove bool) error {
+	event := &ResourceEvent{
+		Resource: res,
+		IsRemove: remove,
+	}
+
+	return s.After(ctx, r, event)
+}
+
+func (s *Server) afterServiceResource(ctx context.Context, req *apiservice.Service, remove bool) error {
+	event := &ResourceEvent{
+		Resource: authcommon.ResourceEntry{
+			Type:     security.ResourceType_Services,
+			ID:       req.GetId().GetValue(),
+			Metadata: req.GetMetadata(),
+		},
+		AddPrincipals: func() []authcommon.Principal {
+			ret := make([]authcommon.Principal, 0, 4)
+			for i := range req.UserIds {
+				ret = append(ret, authcommon.Principal{
+					PrincipalType: authcommon.PrincipalUser,
+					PrincipalID:   req.UserIds[i].GetValue(),
+				})
+			}
+			for i := range req.GroupIds {
+				ret = append(ret, authcommon.Principal{
+					PrincipalType: authcommon.PrincipalGroup,
+					PrincipalID:   req.GroupIds[i].GetValue(),
+				})
+			}
+			return ret
+		}(),
+		DelPrincipals: func() []authcommon.Principal {
+			ret := make([]authcommon.Principal, 0, 4)
+			for i := range req.RemoveUserIds {
+				ret = append(ret, authcommon.Principal{
+					PrincipalType: authcommon.PrincipalUser,
+					PrincipalID:   req.RemoveUserIds[i].GetValue(),
+				})
+			}
+			for i := range req.RemoveGroupIds {
+				ret = append(ret, authcommon.Principal{
+					PrincipalType: authcommon.PrincipalGroup,
+					PrincipalID:   req.RemoveGroupIds[i].GetValue(),
+				})
+			}
+			return ret
+		}(),
+		IsRemove: remove,
+	}
+	return s.After(ctx, model.RService, event)
 }

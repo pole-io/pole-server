@@ -24,9 +24,10 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	metrictypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // InstanceFuture 创建实例的异步结构体
@@ -124,8 +125,8 @@ func sendReply(futures interface{}, code apimodel.Code, result error) {
 
 func reportRegisInstanceCost(begin, cur time.Time, code apimodel.Code) {
 	diff := cur.Sub(begin)
-	plugin.GetStatis().ReportCallMetrics(metrics.CallMetric{
-		Type:     metrics.SystemCallMetric,
+	statis.GetStatis().ReportCallMetrics(metrictypes.CallMetric{
+		Type:     metrictypes.SystemCallMetric,
 		API:      "AsyncRegisInstance",
 		Code:     int(code),
 		Duration: diff,

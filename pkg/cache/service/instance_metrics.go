@@ -21,10 +21,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	metrictypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	types "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 var preServiceInfos = map[string]map[string]struct{}{}
@@ -38,7 +39,7 @@ func (ic *instanceCache) reportMetricsInfo() {
 	offlineService := map[string]map[string]struct{}{}
 	abnormalService := map[string]map[string]struct{}{}
 	serviceCache := cacheMgr.GetCacher(types.CacheService).(*serviceCache)
-	metricValues := make([]metrics.DiscoveryMetric, 0, 32)
+	metricValues := make([]metrictypes.DiscoveryMetric, 0, 32)
 
 	_ = serviceCache.IteratorServices(func(key string, svc *model.Service) (bool, error) {
 		if _, ok := tmpServiceInfos[svc.Namespace]; !ok {
@@ -83,15 +84,15 @@ func (ic *instanceCache) reportMetricsInfo() {
 			onlineService[svc.Namespace][svc.Name] = struct{}{}
 		}
 
-		metricValues = append(metricValues, metrics.DiscoveryMetric{
-			Type:     metrics.InstanceMetrics,
+		metricValues = append(metricValues, metrictypes.DiscoveryMetric{
+			Type:     metrictypes.InstanceMetrics,
 			Total:    int64(countInfo.TotalInstanceCount),
 			Abnormal: int64(countInfo.TotalInstanceCount - countInfo.HealthyInstanceCount),
 			Online:   int64(countInfo.HealthyInstanceCount),
 			Isolate:  int64(countInfo.IsolateInstanceCount),
 			Labels: map[string]string{
-				metrics.LabelNamespace: svc.Namespace,
-				metrics.LabelService:   svc.Name,
+				metrictypes.LabelNamespace: svc.Namespace,
+				metrictypes.LabelService:   svc.Name,
 			},
 		})
 
@@ -99,21 +100,21 @@ func (ic *instanceCache) reportMetricsInfo() {
 	})
 
 	for ns := range allServices {
-		metricValues = append(metricValues, metrics.DiscoveryMetric{
-			Type:     metrics.ServiceMetrics,
+		metricValues = append(metricValues, metrictypes.DiscoveryMetric{
+			Type:     metrictypes.ServiceMetrics,
 			Total:    int64(len(allServices[ns])),
 			Abnormal: int64(len(abnormalService[ns])),
 			Offline:  int64(len(offlineService[ns])),
 			Online:   int64(len(onlineService[ns])),
 			Labels: map[string]string{
-				metrics.LabelNamespace: ns,
+				metrictypes.LabelNamespace: ns,
 			},
 		})
 	}
 
 	cleanExpireServiceMetricLabel(preServiceInfos, tmpServiceInfos)
 	preServiceInfos = tmpServiceInfos
-	plugin.GetStatis().ReportDiscoveryMetrics(metricValues...)
+	statis.GetStatis().ReportDiscoveryMetrics(metricValues...)
 }
 
 func cleanExpireServiceMetricLabel(pre, curr map[string]map[string]struct{}) {

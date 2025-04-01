@@ -29,10 +29,10 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/access_control/ratelimit"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 var (
@@ -353,7 +353,7 @@ func (s *Server) allowInstanceAccess(instanceID string) bool {
 		return true
 	}
 
-	return s.ratelimit.Allow(plugin.InstanceRatelimit, instanceID)
+	return s.ratelimit.Allow(ratelimit.InstanceRatelimit, instanceID)
 }
 
 /**

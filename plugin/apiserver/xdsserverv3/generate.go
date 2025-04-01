@@ -30,10 +30,10 @@ import (
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
-	"github.com/pole-io/pole-server/pkg/common/metrics"
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/service"
-	"github.com/pole-io/pole-server/plugin"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/cache"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/resource"
 )
@@ -204,7 +204,7 @@ func (x *XdsResourceGenerator) generateXDSResource(xdsType resource.XDSType,
 	// 需要预埋相关 XDS 资源生成时间开销
 	start := time.Now()
 	defer func() {
-		plugin.GetStatis().ReportCallMetrics(metrics.CallMetric{
+		statis.GetStatis().ReportCallMetrics(metrics.CallMetric{
 			Type:     metrics.XDSResourceBuildCallMetric,
 			API:      xdsType.String(),
 			Protocol: "XDS",

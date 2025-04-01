@@ -31,14 +31,16 @@ import (
 	"go.uber.org/zap"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
+	"github.com/pole-io/pole-server/apis/access_control/ratelimit"
+	"github.com/pole-io/pole-server/apis/access_control/whitelist"
 	"github.com/pole-io/pole-server/apis/apiserver"
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	keepalive "github.com/pole-io/pole-server/pkg/common/conn/keepalive"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/secure"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/core"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v1/config"
@@ -83,8 +85,8 @@ type NacosV1Server struct {
 	start           bool
 
 	server    *http.Server
-	rateLimit plugin.Ratelimit
-	whitelist plugin.Whitelist
+	rateLimit ratelimit.Ratelimit
+	whitelist whitelist.Whitelist
 
 	pushCenter core.PushCenter
 	store      *core.NacosDataStorage
@@ -109,12 +111,12 @@ func (h *NacosV1Server) Initialize(_ context.Context, option map[string]interfac
 	h.openAPI = apiConf
 	h.listenIP = option["listenIP"].(string)
 	h.listenPort = port
-	if rateLimit := plugin.GetRatelimit(); rateLimit != nil {
+	if rateLimit := ratelimit.GetRatelimit(); rateLimit != nil {
 		log.Infof("nacos http server open the ratelimit")
 		h.rateLimit = rateLimit
 	}
 
-	if whitelist := plugin.GetWhitelist(); whitelist != nil {
+	if whitelist := whitelist.GetWhitelist(); whitelist != nil {
 		log.Infof("nacos http server open the whitelist")
 		h.whitelist = whitelist
 	}
@@ -302,7 +304,7 @@ func (h *NacosV1Server) postProcess(req *restful.Request, rsp *restful.Response)
 	}
 
 	if recordApiCall {
-		plugin.GetStatis().ReportCallMetrics(metrics.CallMetric{
+		statis.GetStatis().ReportCallMetrics(metrics.CallMetric{
 			Type:     metrics.ServerCallMetric,
 			API:      method,
 			Protocol: "HTTP",
@@ -353,7 +355,7 @@ func (h *NacosV1Server) enterRateLimit(req *restful.Request, rsp *restful.Respon
 	if len(segments) != 2 {
 		return nil
 	}
-	if ok := h.rateLimit.Allow(plugin.IPRatelimit, segments[0]); !ok {
+	if ok := h.rateLimit.Allow(ratelimit.IPRatelimit, segments[0]); !ok {
 		log.Error("nacos http server ip ratelimit is not allow", zap.String("client", address),
 			utils.ZapRequestID(rid))
 		nacoshttp.WrirteNacosErrorResponse(&model.NacosApiError{
@@ -365,7 +367,7 @@ func (h *NacosV1Server) enterRateLimit(req *restful.Request, rsp *restful.Respon
 	// 接口级限流
 	apiName := fmt.Sprintf("%s:%s", req.Request.Method,
 		strings.TrimSuffix(req.Request.URL.Path, "/"))
-	if ok := h.rateLimit.Allow(plugin.APIRatelimit, apiName); !ok {
+	if ok := h.rateLimit.Allow(ratelimit.APIRatelimit, apiName); !ok {
 		log.Error("nacos http server api ratelimit is not allow", zap.String("client", address),
 			utils.ZapRequestID(rid), zap.String("api", apiName))
 		nacoshttp.WrirteNacosErrorResponse(&model.NacosApiError{

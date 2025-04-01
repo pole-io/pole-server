@@ -15,13 +15,15 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package plugin
+package event
 
 import (
 	"os"
 	"sync"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	"github.com/pole-io/pole-server/pkg/common/log"
 )
 
 var (
@@ -31,9 +33,9 @@ var (
 
 // DiscoverChannel is used to receive discover events from the agent
 type DiscoverChannel interface {
-	Plugin
+	apis.Plugin
 	// PublishEvent Release a service event
-	PublishEvent(event model.InstanceEvent)
+	PublishEvent(event svctypes.InstanceEvent)
 }
 
 // GetDiscoverEvent Get service discovery event plug -in
@@ -44,17 +46,10 @@ func GetDiscoverEvent() DiscoverChannel {
 
 	discoverEventOnce.Do(func() {
 		var (
-			entries []ConfigEntry
+			entries []apis.ConfigEntry
 		)
 
-		if len(config.DiscoverEvent.Entries) != 0 {
-			entries = append(entries, config.DiscoverEvent.Entries...)
-		} else {
-			entries = append(entries, ConfigEntry{
-				Name:   config.DiscoverEvent.Name,
-				Option: config.DiscoverEvent.Option,
-			})
-		}
+		entries = append(entries, apis.GetPluginConfig().DiscoverEvent.Entries...)
 
 		_discoverChannel = newCompositeDiscoverChannel(entries)
 		if err := _discoverChannel.Initialize(nil); err != nil {
@@ -67,7 +62,7 @@ func GetDiscoverEvent() DiscoverChannel {
 }
 
 // newCompositeDiscoverChannel creates Composite DiscoverChannel
-func newCompositeDiscoverChannel(options []ConfigEntry) *compositeDiscoverChannel {
+func newCompositeDiscoverChannel(options []apis.ConfigEntry) *compositeDiscoverChannel {
 	return &compositeDiscoverChannel{
 		chain:   make([]DiscoverChannel, 0, len(options)),
 		options: options,
@@ -77,17 +72,17 @@ func newCompositeDiscoverChannel(options []ConfigEntry) *compositeDiscoverChanne
 // compositeDiscoverChannel is used to receive discover events from the agent
 type compositeDiscoverChannel struct {
 	chain   []DiscoverChannel
-	options []ConfigEntry
+	options []apis.ConfigEntry
 }
 
 func (c *compositeDiscoverChannel) Name() string {
 	return "CompositeDiscoverChannel"
 }
 
-func (c *compositeDiscoverChannel) Initialize(config *ConfigEntry) error {
+func (c *compositeDiscoverChannel) Initialize(config *apis.ConfigEntry) error {
 	for i := range c.options {
 		entry := c.options[i]
-		item, exist := pluginSet[entry.Name]
+		item, exist := apis.GetPlugin(apis.PluginTypeDiscoverEvent, entry.Name)
 		if !exist {
 			log.Errorf("plugin DiscoverChannel not found target: %s", entry.Name)
 			continue
@@ -117,8 +112,12 @@ func (c *compositeDiscoverChannel) Destroy() error {
 }
 
 // PublishEvent Release a service event
-func (c *compositeDiscoverChannel) PublishEvent(event model.InstanceEvent) {
+func (c *compositeDiscoverChannel) PublishEvent(event svctypes.InstanceEvent) {
 	for i := range c.chain {
 		c.chain[i].PublishEvent(event)
 	}
+}
+
+func (c *compositeDiscoverChannel) Type() apis.PluginType {
+	return apis.PluginTypeDiscoverEvent
 }

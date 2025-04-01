@@ -30,16 +30,17 @@ import (
 	"github.com/emicklei/go-restful/v3"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/access_control/ratelimit"
 	"github.com/pole-io/pole-server/apis/apiserver"
+	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/conn/keepalive"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/secure"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 const (
@@ -140,8 +141,8 @@ type EurekaServer struct {
 	exitCh                 chan struct{}
 	start                  bool
 	restart                bool
-	rateLimit              plugin.Ratelimit
-	statis                 plugin.Statis
+	rateLimit              ratelimit.Ratelimit
+	statis                 statis.Statis
 	namespace              string
 	refreshInterval        time.Duration
 	deltaExpireInterval    time.Duration
@@ -355,7 +356,7 @@ func (h *EurekaServer) Run(errCh chan error) {
 	h.registerInstanceChain()
 	h.workers = NewApplicationsWorkers(h.refreshInterval, h.deltaExpireInterval, h.enableSelfPreservation,
 		h.namingServer, h.healthCheckServer, h.namespace)
-	h.statis = plugin.GetStatis()
+	h.statis = statis.GetStatis()
 	// 初始化http server
 	address := fmt.Sprintf("%v:%v", h.listenIP, h.listenPort)
 
@@ -482,7 +483,7 @@ func (h *EurekaServer) enterRateLimit(req *restful.Request, rsp *restful.Respons
 	if len(segments) != 2 {
 		return nil
 	}
-	if ok := h.rateLimit.Allow(plugin.IPRatelimit, segments[0]); !ok {
+	if ok := h.rateLimit.Allow(ratelimit.IPRatelimit, segments[0]); !ok {
 		accesslog.Error("ip ratelimit is not allow", zap.String("client", address))
 		RateLimitResponse(rsp)
 		return errors.New("ip ratelimit is not allow")
@@ -491,7 +492,7 @@ func (h *EurekaServer) enterRateLimit(req *restful.Request, rsp *restful.Respons
 	// 接口级限流
 	apiName := fmt.Sprintf("%s:%s", req.Request.Method,
 		strings.TrimSuffix(req.Request.URL.Path, "/"))
-	if ok := h.rateLimit.Allow(plugin.APIRatelimit, apiName); !ok {
+	if ok := h.rateLimit.Allow(ratelimit.APIRatelimit, apiName); !ok {
 		accesslog.Error("api ratelimit is not allow", zap.String("client", address), zap.String("api", apiName))
 		RateLimitResponse(rsp)
 		return errors.New("api ratelimit is not allow")

@@ -32,10 +32,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/apis/crypto"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 	"github.com/pole-io/pole-server/plugin/crypto/aes"
 	storemock "github.com/pole-io/pole-server/plugin/store/mock"
 )
@@ -737,10 +738,10 @@ func Test_CreateConfigFile(t *testing.T) {
 	defer ctrl.Finish()
 
 	t.Run("加密配置文件-返回error", func(t *testing.T) {
-		crypto := &MockCrypto{}
+		_crypto := &MockCrypto{}
 		testSuit.OriginConfigServer().TestMockCryptoManager(&MockCryptoManager{
-			repos: map[string]plugin.Crypto{
-				crypto.Name(): crypto,
+			repos: map[string]crypto.Crypto{
+				_crypto.Name(): _crypto,
 			},
 		})
 
@@ -778,7 +779,7 @@ func Test_GetConfigFileRichInfo(t *testing.T) {
 		svr := testSuit.OriginConfigServer()
 		svr.TestMockStore(storage)
 		svr.TestMockCryptoManager(&MockCryptoManager{
-			repos: map[string]plugin.Crypto{
+			repos: map[string]crypto.Crypto{
 				(&aes.AESCrypto{}).Name(): &MockCrypto{
 					mockDecrypt: func(cryptotext string, key []byte) (string, error) {
 						return "", errors.New("mock encrypt error")
@@ -792,7 +793,7 @@ func Test_GetConfigFileRichInfo(t *testing.T) {
 }
 
 type MockCryptoManager struct {
-	repos map[string]plugin.Crypto
+	repos map[string]crypto.Crypto
 }
 
 func (m *MockCryptoManager) Name() string {
@@ -811,7 +812,7 @@ func (m *MockCryptoManager) GetCryptoAlgoNames() []string {
 	return []string{}
 }
 
-func (m *MockCryptoManager) GetCrypto(algo string) (plugin.Crypto, error) {
+func (m *MockCryptoManager) GetCrypto(algo string) (crypto.Crypto, error) {
 	val, ok := m.repos[algo]
 	if !ok {
 		return nil, errors.New("Not Exist")
@@ -827,12 +828,16 @@ func (m *MockCrypto) Name() string {
 	return (&aes.AESCrypto{}).Name()
 }
 
-func (m *MockCrypto) Initialize(c *plugin.ConfigEntry) error {
+func (m *MockCrypto) Initialize(c *apis.ConfigEntry) error {
 	return nil
 }
 
 func (m *MockCrypto) Destroy() error {
 	return nil
+}
+
+func (m *MockCrypto) Type() apis.PluginType {
+	return apis.PluginTypeCrypto
 }
 
 func (m *MockCrypto) GenerateKey() ([]byte, error) {

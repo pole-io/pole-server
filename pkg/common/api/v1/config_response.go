@@ -87,6 +87,14 @@ func NewConfigResponse(code apimodel.Code) *apiconfig.ConfigResponse {
 	}
 }
 
+func NewConfigGroupResponse(code apimodel.Code, g *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse {
+	return &apiconfig.ConfigResponse{
+		Code:            &wrappers.UInt32Value{Value: uint32(code)},
+		Info:            &wrappers.StringValue{Value: code2info[uint32(code)]},
+		ConfigFileGroup: g,
+	}
+}
+
 func NewConfigFileGroupResponseWithMessage(code apimodel.Code, message string) *apiconfig.ConfigResponse {
 	return &apiconfig.ConfigResponse{
 		Code: &wrappers.UInt32Value{Value: uint32(code)},

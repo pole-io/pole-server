@@ -20,7 +20,7 @@ package store
 import (
 	"time"
 
-	authcommon "github.com/pole-io/pole-server/pkg/common/model/auth"
+	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 )
 
 type AuthStore interface {
