@@ -29,9 +29,10 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/pkg/types/admin"
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
@@ -60,7 +61,7 @@ func (s *Server) InitMainUser(_ context.Context, user *apisecurity.User) *apiser
 	if user.GetSource().GetValue() == "" {
 		user.Source = utils.NewStringValue("Polaris")
 	}
-	ctx := context.WithValue(context.Background(), authcommon.ContextKeyInitMainUser{}, true)
+	ctx := context.WithValue(context.Background(), authapi.ContextKeyInitMainUser, true)
 	rsp := s.userSvr.CreateUsers(ctx, []*apisecurity.User{
 		user,
 	})
@@ -252,6 +253,6 @@ func (svr *Server) GetCMDBInfo(ctx context.Context) ([]svctypes.LocationView, er
 }
 
 // GetServerFunctions 获取服务端支持的功能列表
-func (svr *Server) GetServerFunctions(ctx context.Context) []authcommon.ServerFunctionGroup {
-	return authcommon.ServerFunctions
+func (svr *Server) GetServerFunctions(ctx context.Context) []authtypes.ServerFunctionGroup {
+	return authtypes.ServerFunctions
 }

@@ -31,9 +31,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
+	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
@@ -440,9 +440,9 @@ func (svr *Server) CheckCredential(authCtx *authtypes.AcquireContext) error {
 
 		operator.OwnerID = ownerId
 		ctx := authCtx.GetRequestContext()
-		ctx = context.WithValue(ctx, utils.ContextIsOwnerKey, isOwner)
-		ctx = context.WithValue(ctx, utils.ContextUserIDKey, operator.OperatorID)
-		ctx = context.WithValue(ctx, utils.ContextOwnerIDKey, ownerId)
+		ctx = context.WithValue(ctx, types.ContextIsOwnerKey, isOwner)
+		ctx = context.WithValue(ctx, types.ContextUserIDKey, operator.OperatorID)
+		ctx = context.WithValue(ctx, types.ContextOwnerIDKey, ownerId)
 		authCtx.SetRequestContext(ctx)
 		svr.parseOperatorInfo(operator, authCtx)
 		if operator.Disable {
@@ -472,15 +472,15 @@ func (svr *Server) parseOperatorInfo(operator authapi.OperatorInfo, authCtx *aut
 		user := svr.cacheMgr.User().GetUserByID(operator.OperatorID)
 		if user != nil {
 			operator.Role = user.Type
-			ctx = context.WithValue(ctx, utils.ContextOperator, user.Name)
-			ctx = context.WithValue(ctx, utils.ContextUserNameKey, user.Name)
-			ctx = context.WithValue(ctx, utils.ContextUserRoleIDKey, user.Type)
+			ctx = context.WithValue(ctx, types.ContextOperator, user.Name)
+			ctx = context.WithValue(ctx, types.ContextUserNameKey, user.Name)
+			ctx = context.WithValue(ctx, types.ContextUserRoleIDKey, user.Type)
 		}
 	} else {
 		userGroup := svr.cacheMgr.User().GetGroup(operator.OperatorID)
 		if userGroup != nil {
-			ctx = context.WithValue(ctx, utils.ContextOperator, userGroup.Name)
-			ctx = context.WithValue(ctx, utils.ContextUserNameKey, userGroup.Name)
+			ctx = context.WithValue(ctx, types.ContextOperator, userGroup.Name)
+			ctx = context.WithValue(ctx, types.ContextUserNameKey, userGroup.Name)
 		}
 	}
 
@@ -583,7 +583,7 @@ func checkCreateUser(ctx context.Context, req *apisecurity.User) *apiservice.Res
 		return api.NewUserResponse(apimodel.Code_InvalidUserPassword, req)
 	}
 
-	if !authtypes.IsInitMainUser(ctx) {
+	if !authapi.IsInitMainUser(ctx) {
 		if err := CheckOwner(req.Owner); err != nil {
 			return api.NewUserResponse(apimodel.Code_InvalidUserOwners, req)
 		}

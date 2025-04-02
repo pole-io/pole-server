@@ -27,12 +27,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
-	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 func (svr *Server) CreateFaultDetectRules(
@@ -43,7 +42,7 @@ func (svr *Server) CreateFaultDetectRules(
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	resp := svr.nextSvr.CreateFaultDetectRules(ctx, request)
 
@@ -67,7 +66,7 @@ func (svr *Server) DeleteFaultDetectRules(
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	resp := svr.nextSvr.DeleteFaultDetectRules(ctx, request)
 	for index := range resp.Responses {
 		item := resp.GetResponses()[index].GetData()
@@ -89,7 +88,7 @@ func (svr *Server) UpdateFaultDetectRules(
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.UpdateFaultDetectRules(ctx, request)
 }
 
@@ -100,7 +99,7 @@ func (svr *Server) GetFaultDetectRules(
 		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	ctx = cacheapi.AppendFaultDetectRulePredicate(ctx, func(ctx context.Context, cbr *rules.FaultDetectRule) bool {
 		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{

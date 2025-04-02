@@ -27,6 +27,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
@@ -41,7 +42,7 @@ func (h *HTTPServer) CreateConfigFileGroup(req *restful.Request, rsp *restful.Re
 
 	configFileGroup := &apiconfig.ConfigFileGroup{}
 	ctx, err := handler.Parse(configFileGroup)
-	requestId := ctx.Value(utils.StringContext("request-id"))
+	requestId := ctx.Value(types.StringContext("request-id"))
 
 	if err != nil {
 		configLog.Error("[Config][HttpServer] parse config file group from request error.",
@@ -431,7 +432,7 @@ func (h *HTTPServer) CreateConfigFileTemplate(req *restful.Request, rsp *restful
 
 	configFileTemplate := &apiconfig.ConfigFileTemplate{}
 	ctx, err := handler.Parse(configFileTemplate)
-	requestId := ctx.Value(utils.StringContext("request-id"))
+	requestId := ctx.Value(types.StringContext("request-id"))
 
 	if err != nil {
 		configLog.Error("[Config][HttpServer] parse config file template from request error.",

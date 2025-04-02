@@ -29,9 +29,9 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
@@ -121,7 +121,7 @@ func (h *EurekaServer) doBatchReplicate(
 func (h *EurekaServer) dispatch(
 	replicationInstance *ReplicationInstance, token string, namespace string) (*ReplicationInstanceResponse, uint32) {
 	appName := formatReadName(replicationInstance.AppName)
-	ctx := context.WithValue(context.Background(), utils.ContextAuthTokenKey, token)
+	ctx := context.WithValue(context.Background(), types.ContextAuthTokenKey, token)
 	var retCode = api.ExecuteSuccess
 	eurekalog.Debugf("[EurekaServer]dispatch replicate request %+v", replicationInstance)
 	if nil != replicationInstance.InstanceInfo {

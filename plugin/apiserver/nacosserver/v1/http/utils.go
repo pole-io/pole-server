@@ -30,6 +30,7 @@ import (
 
 	restful "github.com/emicklei/go-restful/v3"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 )
@@ -68,14 +69,14 @@ type Handler struct {
 
 func (h *Handler) postParseMessage(requestID string) (context.Context, error) {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, utils.StringContext("request-id"), requestID)
+	ctx = context.WithValue(ctx, types.StringContext("request-id"), requestID)
 
 	var operator string
 	addrSlice := strings.Split(h.Request.Request.RemoteAddr, ":")
 	if len(addrSlice) == 2 {
 		operator = "HTTP:" + addrSlice[0]
 	}
-	ctx = context.WithValue(ctx, utils.StringContext("operator"), operator)
+	ctx = context.WithValue(ctx, types.StringContext("operator"), operator)
 
 	return ctx, nil
 }
@@ -88,15 +89,15 @@ func (h *Handler) ParseHeaderContext() context.Context {
 	if requestID == "" {
 		requestID = utils.NewUUID()
 	}
-	ctx = context.WithValue(ctx, utils.StringContext("request-id"), requestID)
+	ctx = context.WithValue(ctx, types.StringContext("request-id"), requestID)
 
 	var operator string
 	addrSlice := strings.Split(h.Request.Request.RemoteAddr, ":")
 	if len(addrSlice) == 2 {
 		operator = "HTTP:" + addrSlice[0]
 	}
-	ctx = context.WithValue(ctx, utils.StringContext("operator"), operator)
-	ctx = context.WithValue(ctx, utils.ContextClientAddress, h.Request.Request.RemoteAddr)
+	ctx = context.WithValue(ctx, types.StringContext("operator"), operator)
+	ctx = context.WithValue(ctx, types.ContextClientAddress, h.Request.Request.RemoteAddr)
 	return ctx
 }
 

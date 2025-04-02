@@ -25,6 +25,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -42,7 +43,7 @@ func (svr *Server) CreateServiceAlias(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	// 填充 ownerId 信息数据
 	ownerId := utils.ParseOwnerID(ctx)
@@ -63,7 +64,7 @@ func (svr *Server) DeleteServiceAliases(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.DeleteServiceAliases(ctx, reqs)
 }
@@ -79,7 +80,7 @@ func (svr *Server) UpdateServiceAlias(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.UpdateServiceAlias(ctx, req)
 }
@@ -94,7 +95,7 @@ func (svr *Server) GetServiceAliases(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	ctx = cacheapi.AppendServicePredicate(ctx, func(ctx context.Context, cbr *svctypes.Service) bool {
 		sourceSvc := svr.Cache().Service().GetServiceByID(cbr.Reference)

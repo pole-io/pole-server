@@ -36,6 +36,7 @@ import (
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -204,7 +205,7 @@ func (d *DiscoverTestSuit) loadConfig() error {
 	if os.Getenv("STORE_MODE") == "sqldb" {
 		fmt.Printf("run store mode : sqldb\n")
 		confFileName = testdata.Path("service_test_sqldb.yaml")
-		d.DefaultCtx = context.WithValue(d.DefaultCtx, utils.ContextAuthTokenKey,
+		d.DefaultCtx = context.WithValue(d.DefaultCtx, types.ContextAuthTokenKey,
 			"nu/0WRA4EqSR1FagrjRj0fZwPXuGlMpX+zCuWu4uMqy8xr1vRjisSbA25aAC3mtU8MeeRsKhQiDAynUR09I=")
 	} else {
 		fmt.Printf("run store mode : boltdb\n")
@@ -261,8 +262,8 @@ func (d *DiscoverTestSuit) ReplaceStore(caller func() storeapi.Store) {
 // 内部初始化函数
 func (d *DiscoverTestSuit) initialize(opts ...options) error {
 	// 初始化defaultCtx
-	d.DefaultCtx = context.WithValue(context.Background(), utils.StringContext("request-id"), "test-1")
-	d.DefaultCtx = context.WithValue(d.DefaultCtx, utils.ContextAuthTokenKey,
+	d.DefaultCtx = context.WithValue(context.Background(), types.ContextRequestId, "test-1")
+	d.DefaultCtx = context.WithValue(d.DefaultCtx, types.ContextAuthTokenKey,
 		"nu/0WRA4EqSR1FagrjRj0fZwPXuGlMpX+zCuWu4uMqy8xr1vRjisSbA25aAC3mtU8MeeRsKhQiDAynUR09I=")
 
 	if err := os.RemoveAll("polaris.bolt"); err != nil {

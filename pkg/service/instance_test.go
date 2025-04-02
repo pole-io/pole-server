@@ -35,6 +35,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
@@ -1804,7 +1805,7 @@ func TestBatchDeleteInstances(t *testing.T) {
 			instance.ServiceToken = nil
 			instance.Id = nil
 		}
-		ctx := context.WithValue(discoverSuit.DefaultCtx, utils.StringContext("polaris-token"), service.GetToken().GetValue())
+		ctx := context.WithValue(discoverSuit.DefaultCtx, types.StringContext("polaris-token"), service.GetToken().GetValue())
 		if out := discoverSuit.DiscoverServer().DeleteInstances(ctx, instances); !respSuccess(out) {
 			t.Fatalf("error: %+v", out)
 		} else {

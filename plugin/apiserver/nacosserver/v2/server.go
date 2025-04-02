@@ -36,6 +36,7 @@ import (
 	"github.com/pole-io/pole-server/apis/access_control/whitelist"
 	"github.com/pole-io/pole-server/apis/apiserver"
 	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	connhook "github.com/pole-io/pole-server/pkg/common/conn/hook"
@@ -430,12 +431,12 @@ func (h *NacosV2Server) ConvertContext(ctx context.Context) context.Context {
 	}
 
 	ctx = context.Background()
-	ctx = context.WithValue(ctx, utils.ContextGrpcHeader, meta)
-	ctx = context.WithValue(ctx, utils.StringContext("request-id"), requestID)
-	ctx = context.WithValue(ctx, utils.ContextClientAddress, address)
-	ctx = context.WithValue(ctx, utils.StringContext("user-agent"), userAgent)
-	ctx = context.WithValue(ctx, remote.ClientIPKey{}, clientIP)
-	ctx = context.WithValue(ctx, remote.ConnIDKey{}, connID)
-	ctx = context.WithValue(ctx, remote.ConnectionInfoKey{}, connMeta)
+	ctx = context.WithValue(ctx, types.ContextGrpcHeader, meta)
+	ctx = context.WithValue(ctx, types.StringContext("request-id"), requestID)
+	ctx = context.WithValue(ctx, types.ContextClientAddress, address)
+	ctx = context.WithValue(ctx, types.StringContext("user-agent"), userAgent)
+	ctx = context.WithValue(ctx, remote.ClientIPKey, clientIP)
+	ctx = context.WithValue(ctx, remote.ConnIDKey, connID)
+	ctx = context.WithValue(ctx, remote.ConnectionInfoKey, connMeta)
 	return ctx
 }

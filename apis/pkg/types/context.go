@@ -15,14 +15,10 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package auth
-
-import "context"
+package types
 
 type (
-	StringContext          string
-	ContextKeyConditions   struct{}
-	ContextKeyInitMainUser struct{}
+	StringContext string
 )
 
 const (
@@ -36,6 +32,10 @@ const (
 	HeaderOwnerIDKey string = "X-Owner-ID"
 	// HeaderUserRoleKey user role key
 	HeaderUserRoleKey string = "X-Polaris-User-Role"
+	// HeaderRequestId request-id
+	HeaderRequestId string = "request-id"
+	// HeaderUserAgent user agent
+	HeaderUserAgent string = "user-agent"
 
 	// ContextAuthTokenKey auth token key
 	ContextAuthTokenKey = StringContext(HeaderAuthTokenKey)
@@ -65,11 +65,14 @@ const (
 	ContextOperator = StringContext("operator")
 	// ContextRequestHeaders request headers, save value type is map[string][]string
 	ContextRequestHeaders = StringContext("request-headers")
+	// ContextRequestHeaderKey request header key
+	ContextRequestId = StringContext(HeaderRequestId)
+	// ContextPolarisToken polaris token
+	ContextPolarisToken = StringContext("polaris-token")
+	// ContextClientIP client ip
+	ContextClientIP = StringContext("client-ip")
+	// ContextUserAgent user agent
+	ContextUserAgent = StringContext(HeaderUserAgent)
+	// ContextKeyConditions key conditions
+	ContextKeyConditions = StringContext("key-conditions")
 )
-
-// IsInitMainUser .
-func IsInitMainUser(ctx context.Context) bool {
-	val := ctx.Value(ContextKeyInitMainUser{})
-	ret, _ := val.(bool)
-	return ret
-}

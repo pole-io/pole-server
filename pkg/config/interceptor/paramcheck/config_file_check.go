@@ -25,8 +25,8 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -119,28 +119,28 @@ func (s *Server) GetAllConfigEncryptAlgorithms(
 }
 
 // GetClientSubscribers 获取客户端订阅者
-func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]string) *model.CommonResponse {
+func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]string) *types.CommonResponse {
 	clientId := filter["client_id"]
 	if clientId == "" {
-		return model.NewCommonResponse(uint32(apimodel.Code_BadRequest))
+		return types.NewCommonResponse(uint32(apimodel.Code_BadRequest))
 	}
 	return s.nextServer.GetClientSubscribers(ctx, filter)
 }
 
 // GetConfigSubscribers 获取配置订阅者
-func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]string) *model.CommonResponse {
+func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]string) *types.CommonResponse {
 	namespace := filter["namespace"]
 	group := filter["group"]
 	fileName := filter["file_name"]
 
 	if err := CheckFileName(wrapperspb.String(fileName)); err != nil {
-		return model.NewCommonResponse(uint32(apimodel.Code_InvalidConfigFileName))
+		return types.NewCommonResponse(uint32(apimodel.Code_InvalidConfigFileName))
 	}
 	if err := utils.CheckResourceName(wrapperspb.String(group)); err != nil {
-		return model.NewCommonResponse(uint32(apimodel.Code_InvalidConfigFileGroupName))
+		return types.NewCommonResponse(uint32(apimodel.Code_InvalidConfigFileGroupName))
 	}
 	if err := utils.CheckResourceName(wrapperspb.String(namespace)); err != nil {
-		return model.NewCommonResponse(uint32(apimodel.Code_InvalidNamespaceName))
+		return types.NewCommonResponse(uint32(apimodel.Code_InvalidNamespaceName))
 	}
 
 	return s.nextServer.GetConfigSubscribers(ctx, filter)

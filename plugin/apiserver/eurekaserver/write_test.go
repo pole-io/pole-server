@@ -28,12 +28,12 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	storeplugin "github.com/pole-io/pole-server/plugin/store"
@@ -126,7 +126,7 @@ func TestEurekaServer_renew(t *testing.T) {
 
 	mockStore.EXPECT().GetMoreServiceContracts(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	mockStore.EXPECT().GetMoreClients(gomock.Any(), gomock.Any()).Return(map[string]*types.Client{}, nil).AnyTimes()
-	mockStore.EXPECT().GetMoreGrayResouces(gomock.Any(), gomock.Any()).Return([]*model.GrayResource{}, nil).AnyTimes()
+	mockStore.EXPECT().GetMoreGrayResouces(gomock.Any(), gomock.Any()).Return([]*rules.GrayResource{}, nil).AnyTimes()
 	mockStore.EXPECT().GetInstancesCountTx(gomock.Any()).AnyTimes().Return(uint32(1), nil)
 	mockStore.EXPECT().GetUnixSecond(gomock.Any()).AnyTimes().Return(time.Now().Unix(), nil)
 	mockStore.EXPECT().GetServicesCount().Return(uint32(1), nil).AnyTimes()

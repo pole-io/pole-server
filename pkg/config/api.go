@@ -23,7 +23,6 @@ import (
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 type (
@@ -71,9 +70,9 @@ type ConfigFileOperate interface {
 	// GetAllConfigEncryptAlgorithms 获取配置加密算法
 	GetAllConfigEncryptAlgorithms(ctx context.Context) *apiconfig.ConfigEncryptAlgorithmResponse
 	// GetClientSubscribers 获取客户端订阅者
-	GetClientSubscribers(ctx context.Context, filter map[string]string) *model.CommonResponse
+	GetClientSubscribers(ctx context.Context, filter map[string]string) *types.CommonResponse
 	// GetConfigSubscribers 获取配置订阅者
-	GetConfigSubscribers(ctx context.Context, filter map[string]string) *model.CommonResponse
+	GetConfigSubscribers(ctx context.Context, filter map[string]string) *types.CommonResponse
 }
 
 // ConfigFileReleaseOperate 配置文件发布接口

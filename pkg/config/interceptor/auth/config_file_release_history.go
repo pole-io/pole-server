@@ -22,9 +22,9 @@ import (
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/auth"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // GetConfigFileReleaseHistory 获取配置文件发布历史记录
@@ -37,6 +37,6 @@ func (s *Server) GetConfigFileReleaseHistories(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return s.nextServer.GetConfigFileReleaseHistories(ctx, filter)
 }

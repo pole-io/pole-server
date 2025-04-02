@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 )
@@ -261,13 +262,13 @@ func ConvertGRPCContext(ctx context.Context) context.Context {
 	}
 
 	ctx = context.Background()
-	ctx = context.WithValue(ctx, ContextGrpcHeader, meta)
-	ctx = context.WithValue(ctx, ContextRequestHeaders, meta)
-	ctx = context.WithValue(ctx, StringContext("request-id"), requestID)
-	ctx = context.WithValue(ctx, StringContext("client-ip"), clientIP)
-	ctx = context.WithValue(ctx, ContextClientAddress, address)
-	ctx = context.WithValue(ctx, StringContext("user-agent"), userAgent)
-	ctx = context.WithValue(ctx, ContextAuthTokenKey, token)
+	ctx = context.WithValue(ctx, types.ContextGrpcHeader, meta)
+	ctx = context.WithValue(ctx, types.ContextRequestHeaders, meta)
+	ctx = context.WithValue(ctx, types.ContextRequestId, requestID)
+	ctx = context.WithValue(ctx, types.ContextClientIP, clientIP)
+	ctx = context.WithValue(ctx, types.ContextClientAddress, address)
+	ctx = context.WithValue(ctx, types.ContextUserAgent, userAgent)
+	ctx = context.WithValue(ctx, types.ContextAuthTokenKey, token)
 
 	return ctx
 }

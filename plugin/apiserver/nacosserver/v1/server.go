@@ -35,6 +35,7 @@ import (
 	"github.com/pole-io/pole-server/apis/access_control/whitelist"
 	"github.com/pole-io/pole-server/apis/apiserver"
 	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	keepalive "github.com/pole-io/pole-server/pkg/common/conn/keepalive"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
@@ -264,7 +265,7 @@ func (h *NacosV1Server) preprocess(req *restful.Request, rsp *restful.Response) 
 	// 处理 jwt
 	accessToken := req.QueryParameter("accessToken")
 	if accessToken != "" {
-		req.Request.Header.Set(utils.HeaderAuthTokenKey, accessToken)
+		req.Request.Header.Set(types.HeaderAuthTokenKey, accessToken)
 	}
 
 	return nil

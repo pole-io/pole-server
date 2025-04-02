@@ -99,7 +99,7 @@ func TestConfigFileCRUD(t *testing.T) {
 	})
 
 	t.Run("step3-update", func(t *testing.T) {
-		testSuit.DefaultCtx = context.WithValue(testSuit.DefaultCtx, utils.ContextUserNameKey, "polaris")
+		testSuit.DefaultCtx = context.WithValue(testSuit.DefaultCtx, types.ContextUserNameKey, "polaris")
 
 		rsp := testSuit.ConfigServer().GetConfigFileRichInfo(testSuit.DefaultCtx, &apiconfig.ConfigFile{
 			Namespace: utils.NewStringValue(testNamespace),
@@ -646,7 +646,7 @@ func Test_decryptConfigFile(t *testing.T) {
 		{
 			name: "decrypt config file",
 			args: args{
-				ctx: context.WithValue(context.Background(), utils.ContextUserNameKey, "polaris"),
+				ctx: context.WithValue(context.Background(), types.ContextUserNameKey, "polaris"),
 				configFile: &conftypes.ConfigFile{
 					Content: "YnLZ0SYuujFBHjYHAZVN5A==",
 					Metadata: map[string]string{
@@ -662,7 +662,7 @@ func Test_decryptConfigFile(t *testing.T) {
 		{
 			name: "non creator can decrypt config file",
 			args: args{
-				ctx: context.WithValue(context.Background(), utils.ContextUserNameKey, "test"),
+				ctx: context.WithValue(context.Background(), types.ContextUserNameKey, "test"),
 				configFile: &conftypes.ConfigFile{
 					Content: "YnLZ0SYuujFBHjYHAZVN5A==",
 					Metadata: map[string]string{

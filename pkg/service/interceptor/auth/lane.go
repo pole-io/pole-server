@@ -27,12 +27,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
-	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // CreateLaneGroups 批量创建泳道组
@@ -43,7 +42,7 @@ func (svr *Server) CreateLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	rsp := svr.nextSvr.CreateLaneGroups(ctx, reqs)
 	for index := range rsp.Responses {
 		item := rsp.GetResponses()[index].GetData()
@@ -64,7 +63,7 @@ func (svr *Server) UpdateLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.UpdateLaneGroups(ctx, reqs)
 }
 
@@ -75,7 +74,7 @@ func (svr *Server) DeleteLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	rsp := svr.nextSvr.DeleteLaneGroups(ctx, reqs)
 	for index := range rsp.Responses {
 		item := rsp.GetResponses()[index].GetData()
@@ -96,7 +95,7 @@ func (svr *Server) GetLaneGroups(ctx context.Context, filter map[string]string) 
 		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	ctx = cacheapi.AppendLaneRulePredicate(ctx, func(ctx context.Context, cbr *rules.LaneGroupProto) bool {
 		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{

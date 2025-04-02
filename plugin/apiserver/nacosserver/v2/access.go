@@ -26,6 +26,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	nacosmodel "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 	nacospb "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/pb"
@@ -195,10 +196,10 @@ func injectPayloadHeader(ctx context.Context, payload *nacospb.Payload) context.
 	}
 	token, exist := metadata.Headers[nacosmodel.NacosClientAuthHeader]
 	if exist {
-		ctx = context.WithValue(ctx, utils.ContextAuthTokenKey, token)
+		ctx = context.WithValue(ctx, types.ContextAuthTokenKey, token)
 	}
 	for k, v := range metadata.Headers {
-		ctx = context.WithValue(ctx, utils.StringContext(k), v)
+		ctx = context.WithValue(ctx, types.StringContext(k), v)
 	}
 	return ctx
 }

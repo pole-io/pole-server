@@ -26,6 +26,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -43,7 +44,7 @@ func (svr *Server) CreateServices(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	// 填充 ownerID 信息数据
 	ownerID := utils.ParseOwnerID(ctx)
@@ -82,7 +83,7 @@ func (svr *Server) DeleteServices(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	resp := svr.nextSvr.DeleteServices(ctx, reqs)
 
 	nRsp := api.NewBatchWriteResponse(apimodel.Code(resp.Code.Value))
@@ -112,7 +113,7 @@ func (svr *Server) UpdateServices(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	resp := svr.nextSvr.UpdateServices(ctx, reqs)
 
 	nRsp := api.NewBatchWriteResponse(apimodel.Code(resp.Code.Value))
@@ -143,7 +144,7 @@ func (svr *Server) UpdateServiceToken(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.UpdateServiceToken(ctx, req)
 }
 
@@ -156,7 +157,7 @@ func (svr *Server) GetAllServices(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	ctx = cacheapi.AppendServicePredicate(ctx, func(ctx context.Context, cbr *svctypes.Service) bool {
 		ok := svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
@@ -193,7 +194,7 @@ func (svr *Server) GetServices(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	// 注入查询条件拦截器
 	ctx = cacheapi.AppendServicePredicate(ctx, func(ctx context.Context, cbr *svctypes.Service) bool {
@@ -257,7 +258,7 @@ func (svr *Server) GetServicesCount(ctx context.Context) *apiservice.BatchQueryR
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.GetServicesCount(ctx)
 }
 
@@ -271,7 +272,7 @@ func (svr *Server) GetServiceToken(ctx context.Context, req *apiservice.Service)
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.GetServiceToken(ctx, req)
 }
 
@@ -285,7 +286,7 @@ func (svr *Server) GetServiceOwner(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.GetServiceOwner(ctx, req)
 }

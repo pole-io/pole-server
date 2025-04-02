@@ -27,12 +27,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
-	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 func (svr *Server) CreateCircuitBreakerRules(
@@ -45,7 +44,7 @@ func (svr *Server) CreateCircuitBreakerRules(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	rsp := svr.nextSvr.CreateCircuitBreakerRules(ctx, request)
 	for index := range rsp.Responses {
 		item := rsp.GetResponses()[index].GetData()
@@ -68,7 +67,7 @@ func (svr *Server) DeleteCircuitBreakerRules(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	rsp := svr.nextSvr.DeleteCircuitBreakerRules(ctx, request)
 	for index := range rsp.Responses {
 		item := rsp.GetResponses()[index].GetData()
@@ -91,7 +90,7 @@ func (svr *Server) EnableCircuitBreakerRules(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.EnableCircuitBreakerRules(ctx, request)
 }
 
@@ -104,7 +103,7 @@ func (svr *Server) UpdateCircuitBreakerRules(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.UpdateCircuitBreakerRules(ctx, request)
 }
 
@@ -117,7 +116,7 @@ func (svr *Server) GetCircuitBreakerRules(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	ctx = cacheapi.AppendCircuitBreakerRulePredicate(ctx,
 		func(ctx context.Context, cbr *rules.CircuitBreakerRule) bool {

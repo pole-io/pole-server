@@ -22,9 +22,9 @@ import (
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/auth"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
 )
 
@@ -38,7 +38,7 @@ func (s *Server) UpsertAndReleaseConfigFileFromClient(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.UpsertAndReleaseConfigFileFromClient(ctx, req)
 }
@@ -57,7 +57,7 @@ func (s *Server) CreateConfigFileFromClient(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.CreateConfigFileFromClient(ctx, fileInfo)
 }
@@ -72,7 +72,7 @@ func (s *Server) UpdateConfigFileFromClient(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.UpdateConfigFileFromClient(ctx, fileInfo)
 }
@@ -88,7 +88,7 @@ func (s *Server) DeleteConfigFileFromClient(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.DeleteConfigFileFromClient(ctx, req)
 }
@@ -107,7 +107,7 @@ func (s *Server) PublishConfigFileFromClient(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.PublishConfigFileFromClient(ctx, fileInfo)
 }
@@ -126,7 +126,7 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return s.nextServer.GetConfigFileWithCache(ctx, fileInfo)
 }
 
@@ -141,7 +141,7 @@ func (s *Server) LongPullWatchFile(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.LongPullWatchFile(ctx, request)
 }
@@ -162,7 +162,7 @@ func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return s.nextServer.GetConfigFileNamesWithCache(ctx, req)
 }
 
@@ -181,6 +181,6 @@ func (s *Server) GetConfigGroupsWithCache(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return s.nextServer.GetConfigGroupsWithCache(ctx, req)
 }

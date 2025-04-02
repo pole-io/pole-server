@@ -25,6 +25,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
@@ -63,7 +64,7 @@ func (h *HTTPServerV1) RegisterInstance(req *restful.Request, rsp *restful.Respo
 	}
 	// 客户端请求中带了 token 的，优先已请求中的为准
 	if instance.GetServiceToken().GetValue() != "" {
-		ctx = context.WithValue(ctx, utils.ContextAuthTokenKey, instance.GetServiceToken().GetValue())
+		ctx = context.WithValue(ctx, types.ContextAuthTokenKey, instance.GetServiceToken().GetValue())
 	}
 
 	handler.WriteHeaderAndProto(h.namingServer.RegisterInstance(ctx, instance))
@@ -84,7 +85,7 @@ func (h *HTTPServerV1) DeregisterInstance(req *restful.Request, rsp *restful.Res
 	}
 	// 客户端请求中带了 token 的，优先已请求中的为准
 	if instance.GetServiceToken().GetValue() != "" {
-		ctx = context.WithValue(ctx, utils.ContextAuthTokenKey, instance.GetServiceToken().GetValue())
+		ctx = context.WithValue(ctx, types.ContextAuthTokenKey, instance.GetServiceToken().GetValue())
 	}
 	handler.WriteHeaderAndProto(h.namingServer.DeregisterInstance(ctx, instance))
 }

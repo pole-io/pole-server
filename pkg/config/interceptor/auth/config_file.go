@@ -22,10 +22,9 @@ import (
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
-	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/auth"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
 // CreateConfigFile 创建配置文件
@@ -38,7 +37,7 @@ func (s *Server) CreateConfigFile(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.CreateConfigFile(ctx, configFile)
 }
@@ -53,7 +52,7 @@ func (s *Server) GetConfigFileRichInfo(ctx context.Context,
 		return api.NewConfigResponse(auth.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return s.nextServer.GetConfigFileRichInfo(ctx, req)
 }
 
@@ -66,7 +65,7 @@ func (s *Server) SearchConfigFile(ctx context.Context,
 		return api.NewConfigBatchQueryResponse(auth.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.SearchConfigFile(ctx, filter)
 }
@@ -81,7 +80,7 @@ func (s *Server) UpdateConfigFile(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.UpdateConfigFile(ctx, configFile)
 }
@@ -97,7 +96,7 @@ func (s *Server) DeleteConfigFile(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.DeleteConfigFile(ctx, req)
 }
@@ -112,7 +111,7 @@ func (s *Server) BatchDeleteConfigFile(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.BatchDeleteConfigFile(ctx, req)
 }
@@ -132,7 +131,7 @@ func (s *Server) ExportConfigFile(ctx context.Context,
 		return api.NewConfigFileExportResponse(auth.ConvertToErrCode(err), nil)
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.ExportConfigFile(ctx, configFileExport)
 }
@@ -145,7 +144,7 @@ func (s *Server) ImportConfigFile(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return s.nextServer.ImportConfigFile(ctx, configFiles, conflictHandling)
 }
 
@@ -155,11 +154,11 @@ func (s *Server) GetAllConfigEncryptAlgorithms(
 }
 
 // GetClientSubscribers 获取客户端订阅者
-func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]string) *model.CommonResponse {
+func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]string) *types.CommonResponse {
 	return s.nextServer.GetClientSubscribers(ctx, filter)
 }
 
 // GetConfigSubscribers 获取配置订阅者
-func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]string) *model.CommonResponse {
+func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]string) *types.CommonResponse {
 	return s.nextServer.GetConfigSubscribers(ctx, filter)
 }

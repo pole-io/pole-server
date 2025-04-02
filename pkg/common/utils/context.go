@@ -20,8 +20,6 @@ package utils
 import "context"
 
 type (
-	// StringContext is a context key that carries a string.
-	StringContext string
 	// localhostCtx is a context key that carries localhost info.
 	localhostCtx struct{}
 	// ContextAPIServerSlot

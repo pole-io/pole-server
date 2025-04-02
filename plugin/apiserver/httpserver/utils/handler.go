@@ -37,6 +37,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -98,36 +99,29 @@ func (h *Handler) Parse(message proto.Message) (context.Context, error) {
 // ParseHeaderContext 将http请求header中携带的用户信息提取出来
 func (h *Handler) ParseHeaderContext() context.Context {
 	requestID := h.Request.HeaderParameter("Request-Id")
-	platformID := h.Request.HeaderParameter("Platform-Id")
-	platformToken := h.Request.HeaderParameter("Platform-Token")
 	token := h.Request.HeaderParameter("Polaris-Token")
-	authToken := h.Request.HeaderParameter(utils.HeaderAuthTokenKey)
+	authToken := h.Request.HeaderParameter(types.HeaderAuthTokenKey)
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, utils.StringContext("request-id"), requestID)
-	ctx = context.WithValue(ctx, utils.StringContext("platform-id"), platformID)
-	ctx = context.WithValue(ctx, utils.StringContext("platform-token"), platformToken)
-	ctx = context.WithValue(ctx, utils.ContextRequestHeaders, h.Request.Request.Header)
-	ctx = context.WithValue(ctx, utils.ContextClientAddress, h.Request.Request.RemoteAddr)
+	ctx = context.WithValue(ctx, types.StringContext("request-id"), requestID)
+	ctx = context.WithValue(ctx, types.ContextRequestHeaders, h.Request.Request.Header)
+	ctx = context.WithValue(ctx, types.ContextClientAddress, h.Request.Request.RemoteAddr)
 	if token != "" {
-		ctx = context.WithValue(ctx, utils.StringContext("polaris-token"), token)
+		ctx = context.WithValue(ctx, types.StringContext("polaris-token"), token)
 	}
 	if authToken != "" {
-		ctx = context.WithValue(ctx, utils.ContextAuthTokenKey, authToken)
+		ctx = context.WithValue(ctx, types.ContextAuthTokenKey, authToken)
 	}
 
 	var operator string
 	addrSlice := strings.Split(h.Request.Request.RemoteAddr, ":")
 	if len(addrSlice) == 2 {
 		operator = "HTTP:" + addrSlice[0]
-		if platformID != "" {
-			operator += "(" + platformID + ")"
-		}
 	}
 	if staffName := h.Request.HeaderParameter("Staffname"); staffName != "" {
 		operator = staffName
 	}
-	ctx = context.WithValue(ctx, utils.StringContext("operator"), operator)
+	ctx = context.WithValue(ctx, types.StringContext("operator"), operator)
 
 	return ctx
 }

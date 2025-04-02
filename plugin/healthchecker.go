@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 )
 
 type CheckerPeer struct {
@@ -117,7 +117,7 @@ type HealthChecker interface {
 	// Delete delete the id
 	Delete(ctx context.Context, id string) error
 	// DebugHandlers return debug handlers
-	DebugHandlers() []model.DebugHandler
+	DebugHandlers() []types.DebugHandler
 }
 
 // GetHealthChecker get the health checker by name

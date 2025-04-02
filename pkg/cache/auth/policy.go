@@ -30,9 +30,10 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
-	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -319,7 +320,7 @@ func (sc *policyCache) Hint(ctx context.Context, p authtypes.Principal, r *autht
 func (sc *policyCache) hintLabels(ctx context.Context, p authtypes.Principal, r *authtypes.ResourceEntry,
 	policies []*authtypes.StrategyDetail) bool {
 	var principalCondition []authtypes.Condition
-	if val, ok := ctx.Value(authtypes.ContextKeyConditions{}).([]authtypes.Condition); ok {
+	if val, ok := ctx.Value(types.ContextKeyConditions).([]authtypes.Condition); ok {
 		principalCondition = val
 	}
 

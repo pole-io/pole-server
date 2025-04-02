@@ -26,8 +26,8 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 const (
@@ -382,7 +382,7 @@ func (h *EurekaServer) RegisterApplication(req *restful.Request, rsp *restful.Re
 		return
 	}
 
-	ctx := context.WithValue(context.Background(), utils.ContextAuthTokenKey, token)
+	ctx := context.WithValue(context.Background(), types.ContextAuthTokenKey, token)
 
 	namespace := readNamespaceFromRequest(req, h.namespace)
 	eurekalog.Infof(

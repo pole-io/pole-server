@@ -26,9 +26,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
@@ -76,7 +76,7 @@ func (svr *Server) CreateNamespace(ctx context.Context, req *apimodel.Namespace)
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	// 填充 ownerId 信息数据
 	if ownerId := utils.ParseOwnerID(ctx); len(ownerId) > 0 {
@@ -99,7 +99,7 @@ func (svr *Server) CreateNamespaces(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	// 填充 ownerId 信息数据
 	ownerId := utils.ParseOwnerID(ctx)
@@ -127,7 +127,7 @@ func (svr *Server) DeleteNamespaces(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	resp := svr.nextSvr.DeleteNamespaces(ctx, reqs)
 
@@ -147,7 +147,7 @@ func (svr *Server) UpdateNamespaces(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	resp := svr.nextSvr.UpdateNamespaces(ctx, req)
 	for i := range resp.Responses {
@@ -166,7 +166,7 @@ func (svr *Server) UpdateNamespaceToken(ctx context.Context, req *apimodel.Names
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.UpdateNamespaceToken(ctx, req)
 }
@@ -180,7 +180,7 @@ func (svr *Server) GetNamespaces(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	ctx = cacheapi.AppendNamespacePredicate(ctx, func(ctx context.Context, n *types.Namespace) bool {
 		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
@@ -231,7 +231,7 @@ func (svr *Server) GetNamespaceToken(ctx context.Context, req *apimodel.Namespac
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.GetNamespaceToken(ctx, req)
 }
 

@@ -22,6 +22,7 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -44,7 +45,7 @@ func (svr *Server) CreateServiceContracts(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.CreateServiceContracts(ctx, req)
 }
 
@@ -57,7 +58,7 @@ func (svr *Server) GetServiceContracts(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.GetServiceContracts(ctx, query)
 }
 
@@ -71,7 +72,7 @@ func (svr *Server) GetServiceContractVersions(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.GetServiceContractVersions(ctx, filter)
 }
 
@@ -92,7 +93,7 @@ func (svr *Server) DeleteServiceContracts(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.DeleteServiceContracts(ctx, req)
 }
 
@@ -110,7 +111,7 @@ func (svr *Server) CreateServiceContractInterfaces(ctx context.Context, contract
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.CreateServiceContractInterfaces(ctx, contract, source)
 }
 
@@ -128,7 +129,7 @@ func (svr *Server) AppendServiceContractInterfaces(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.AppendServiceContractInterfaces(ctx, contract, source)
 }
 
@@ -146,6 +147,6 @@ func (svr *Server) DeleteServiceContractInterfaces(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.DeleteServiceContractInterfaces(ctx, contract)
 }

@@ -44,13 +44,13 @@ import (
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	xdscache "github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/cache"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/resource"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
@@ -459,8 +459,8 @@ func (x *XDSServer) Generate(needPush, needRemove ServiceInfos) {
 	x.resourceGenerator.Generate(versionLocal, needPush, needRemove)
 }
 
-func (x *XDSServer) DebugHandlers() []model.DebugHandler {
-	return []model.DebugHandler{
+func (x *XDSServer) DebugHandlers() []types.DebugHandler {
+	return []types.DebugHandler{
 		{
 			Path:    "/debug/apiserver/xds/envoy_nodes",
 			Desc:    "Query the list of Envoy nodes, query parameter name is 'type', value is [sidecar, gateway]",

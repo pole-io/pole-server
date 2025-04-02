@@ -25,12 +25,11 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
-	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // CreateRateLimits creates rate limits for a namespace.
@@ -43,7 +42,7 @@ func (svr *Server) CreateRateLimits(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	rsp := svr.nextSvr.CreateRateLimits(ctx, reqs)
 	for index := range rsp.Responses {
@@ -65,7 +64,7 @@ func (svr *Server) DeleteRateLimits(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	rsp := svr.nextSvr.DeleteRateLimits(ctx, reqs)
 	for index := range rsp.Responses {
@@ -87,7 +86,7 @@ func (svr *Server) UpdateRateLimits(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.UpdateRateLimits(ctx, reqs)
 }
@@ -102,7 +101,7 @@ func (svr *Server) EnableRateLimits(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.EnableRateLimits(ctx, reqs)
 }
@@ -117,7 +116,7 @@ func (svr *Server) GetRateLimits(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	ctx = cacheapi.AppendRatelimitRulePredicate(ctx, func(ctx context.Context, cbr *rules.RateLimit) bool {
 		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{

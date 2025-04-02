@@ -28,10 +28,10 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
@@ -208,7 +208,7 @@ func (h *EurekaServer) registerInstances(
 	ctx context.Context, namespace string, appId string, instance *InstanceInfo, replicated bool) uint32 {
 	ctx = context.WithValue(
 		ctx, svctypes.CtxEventKeyMetadata, map[string]string{MetadataReplicate: strconv.FormatBool(replicated)})
-	ctx = context.WithValue(ctx, utils.ContextOpenAsyncRegis, h.allowAsyncRegis)
+	ctx = context.WithValue(ctx, types.ContextOpenAsyncRegis, h.allowAsyncRegis)
 	appId = formatWriteName(appId)
 	// 1. 先转换数据结构
 	totalInstance := convertEurekaInstance(instance, namespace, h.namespace, appId, h.generateUniqueInstId)
@@ -242,7 +242,7 @@ func (h *EurekaServer) deregisterInstance(
 			MetadataReplicate:  strconv.FormatBool(replicated),
 			MetadataInstanceId: instanceId,
 		})
-	ctx = context.WithValue(ctx, utils.ContextOpenAsyncRegis, true)
+	ctx = context.WithValue(ctx, types.ContextOpenAsyncRegis, true)
 	instanceId = checkOrBuildNewInstanceIdByNamespace(namespace, h.namespace, appId, instanceId, h.generateUniqueInstId)
 	resp := h.namingServer.DeregisterInstance(ctx, &apiservice.Instance{Id: &wrappers.StringValue{Value: instanceId}})
 	return resp.GetCode().GetValue()

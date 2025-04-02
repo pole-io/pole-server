@@ -60,7 +60,7 @@ func (svr *Server) After(ctx context.Context, resourceType types.Resource, res *
 
 // onNamespaceResource
 func (svr *Server) onNamespaceResource(ctx context.Context, res *ResourceEvent) error {
-	authCtx, _ := ctx.Value(utils.ContextAuthContextKey).(*authcommon.AcquireContext)
+	authCtx, _ := ctx.Value(types.ContextAuthContextKey).(*authcommon.AcquireContext)
 	if authCtx == nil {
 		log.Warn("[Namespace][ResourceHook] get auth context is nil, ignore", utils.RequestID(ctx))
 		return nil

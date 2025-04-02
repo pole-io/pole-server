@@ -37,6 +37,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
 )
@@ -328,7 +329,7 @@ func ParseRequestID(ctx context.Context) string {
 	if ctx == nil {
 		return ""
 	}
-	rid, _ := ctx.Value(StringContext("request-id")).(string)
+	rid, _ := ctx.Value(types.ContextRequestId).(string)
 	return rid
 }
 
@@ -337,7 +338,7 @@ func ParseClientAddress(ctx context.Context) string {
 	if ctx == nil {
 		return ""
 	}
-	rid, _ := ctx.Value(ContextClientAddress).(string)
+	rid, _ := ctx.Value(types.ContextClientAddress).(string)
 	return rid
 }
 
@@ -346,7 +347,7 @@ func ParseClientIP(ctx context.Context) string {
 	if ctx == nil {
 		return ""
 	}
-	rid, _ := ctx.Value(ContextClientAddress).(string)
+	rid, _ := ctx.Value(types.ContextClientAddress).(string)
 	if strings.Contains(rid, ":") {
 		return strings.Split(rid, ":")[0]
 	}
@@ -359,7 +360,7 @@ func ParseAuthToken(ctx context.Context) string {
 		return ""
 	}
 
-	token, _ := ctx.Value(ContextAuthTokenKey).(string)
+	token, _ := ctx.Value(types.ContextAuthTokenKey).(string)
 	return token
 }
 
@@ -369,7 +370,7 @@ func ParseIsOwner(ctx context.Context) bool {
 		return false
 	}
 
-	isOwner, _ := ctx.Value(ContextIsOwnerKey).(bool)
+	isOwner, _ := ctx.Value(types.ContextIsOwnerKey).(bool)
 	return isOwner
 }
 
@@ -379,7 +380,7 @@ func ParseUserID(ctx context.Context) string {
 		return ""
 	}
 
-	userID, _ := ctx.Value(ContextUserIDKey).(string)
+	userID, _ := ctx.Value(types.ContextUserIDKey).(string)
 	return userID
 }
 
@@ -389,7 +390,7 @@ func ParseUserName(ctx context.Context) string {
 		return ""
 	}
 
-	userName, _ := ctx.Value(ContextUserNameKey).(string)
+	userName, _ := ctx.Value(types.ContextUserNameKey).(string)
 	if userName == "" {
 		return ParseOperator(ctx)
 	}
@@ -402,7 +403,7 @@ func ParseOwnerID(ctx context.Context) string {
 		return ""
 	}
 
-	ownerID, _ := ctx.Value(ContextOwnerIDKey).(string)
+	ownerID, _ := ctx.Value(types.ContextOwnerIDKey).(string)
 	return ownerID
 }
 
@@ -412,7 +413,7 @@ func ParseToken(ctx context.Context) string {
 		return ""
 	}
 
-	token, _ := ctx.Value(StringContext("polaris-token")).(string)
+	token, _ := ctx.Value(types.ContextPolarisToken).(string)
 	return token
 }
 
@@ -423,29 +424,11 @@ func ParseOperator(ctx context.Context) string {
 		return defaultOperator
 	}
 
-	if operator, _ := ctx.Value(ContextOperator).(string); operator != "" {
+	if operator, _ := ctx.Value(types.ContextOperator).(string); operator != "" {
 		return operator
 	}
 
 	return defaultOperator
-}
-
-// ParsePlatformID 从ctx中获取Platform-Id
-func ParsePlatformID(ctx context.Context) string {
-	if ctx == nil {
-		return ""
-	}
-	pid, _ := ctx.Value(StringContext("platform-id")).(string)
-	return pid
-}
-
-// ParsePlatformToken 从ctx中获取Platform-Token
-func ParsePlatformToken(ctx context.Context) string {
-	if ctx == nil {
-		return ""
-	}
-	pToken, _ := ctx.Value(StringContext("platform-token")).(string)
-	return pToken
 }
 
 // ZapRequestID 生成Request-ID的日志描述

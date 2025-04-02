@@ -26,10 +26,10 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // some options config
@@ -90,7 +90,7 @@ const (
 	MaxDbRoutingName = MaxRuleName
 
 	// ContextDiscoverParam key for discover parameters in context
-	ContextDiscoverParam = utils.StringContext("discover-param")
+	ContextDiscoverParam = types.StringContext("discover-param")
 
 	// ParamKeyInstanceId key for parameter key instanceId
 	ParamKeyInstanceId = "instanceId"

@@ -22,9 +22,9 @@ import (
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/auth"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // PublishConfigFile 发布配置文件
@@ -39,7 +39,7 @@ func (s *Server) PublishConfigFile(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.PublishConfigFile(ctx, configFileRelease)
 }
@@ -55,7 +55,7 @@ func (s *Server) GetConfigFileRelease(ctx context.Context,
 		return api.NewConfigResponse(auth.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return s.nextServer.GetConfigFileRelease(ctx, req)
 }
 
@@ -69,7 +69,7 @@ func (s *Server) DeleteConfigFileReleases(ctx context.Context,
 		return api.NewConfigBatchWriteResponse(auth.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return s.nextServer.DeleteConfigFileReleases(ctx, reqs)
 }
 
@@ -82,7 +82,7 @@ func (s *Server) GetConfigFileReleaseVersions(ctx context.Context,
 		return api.NewConfigBatchQueryResponse(auth.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return s.nextServer.GetConfigFileReleaseVersions(ctx, filters)
 }
 
@@ -96,7 +96,7 @@ func (s *Server) GetConfigFileReleases(ctx context.Context,
 		return api.NewConfigBatchQueryResponse(auth.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.GetConfigFileReleases(ctx, filters)
 }
@@ -111,7 +111,7 @@ func (s *Server) RollbackConfigFileReleases(ctx context.Context,
 		return api.NewConfigBatchWriteResponse(auth.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return s.nextServer.RollbackConfigFileReleases(ctx, reqs)
 }
 
@@ -125,7 +125,7 @@ func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.UpsertAndReleaseConfigFile(ctx, req)
 }
@@ -140,7 +140,7 @@ func (s *Server) StopGrayConfigFileReleases(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.StopGrayConfigFileReleases(ctx, reqs)
 }

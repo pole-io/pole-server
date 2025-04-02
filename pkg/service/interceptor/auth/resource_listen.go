@@ -25,16 +25,15 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 )
 
 // ResourceEvent 资源事件
 type ResourceEvent struct {
-	Resource authcommon.ResourceEntry
+	Resource authtypes.ResourceEntry
 
-	AddPrincipals []authcommon.Principal
-	DelPrincipals []authcommon.Principal
+	AddPrincipals []authtypes.Principal
+	DelPrincipals []authtypes.Principal
 	IsRemove      bool
 }
 
@@ -51,9 +50,9 @@ func (svr *Server) After(ctx context.Context, resourceType types.Resource, res *
 
 // onChangeResource 服务资源的处理，只处理服务，namespace 只由 namespace 相关的进行处理，
 func (svr *Server) onChangeResource(ctx context.Context, res *ResourceEvent) error {
-	authCtx := ctx.Value(utils.ContextAuthContextKey).(*authcommon.AcquireContext)
+	authCtx := ctx.Value(types.ContextAuthContextKey).(*authtypes.AcquireContext)
 
-	authCtx.SetAttachment(authcommon.ResourceAttachmentKey, map[apisecurity.ResourceType][]authcommon.ResourceEntry{
+	authCtx.SetAttachment(authtypes.ResourceAttachmentKey, map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 		res.Resource.Type: {
 			res.Resource,
 		},
@@ -64,31 +63,31 @@ func (svr *Server) onChangeResource(ctx context.Context, res *ResourceEvent) err
 
 	for i := range res.AddPrincipals {
 		switch res.AddPrincipals[i].PrincipalType {
-		case authcommon.PrincipalUser:
+		case authtypes.PrincipalUser:
 			users = append(users, res.AddPrincipals[i].PrincipalID)
-		case authcommon.PrincipalGroup:
+		case authtypes.PrincipalGroup:
 			groups = append(groups, res.AddPrincipals[i].PrincipalID)
 		}
 	}
 	for i := range res.DelPrincipals {
 		switch res.DelPrincipals[i].PrincipalType {
-		case authcommon.PrincipalUser:
+		case authtypes.PrincipalUser:
 			removeUsers = append(removeUsers, res.DelPrincipals[i].PrincipalID)
-		case authcommon.PrincipalGroup:
+		case authtypes.PrincipalGroup:
 			removeGroups = append(removeGroups, res.DelPrincipals[i].PrincipalID)
 		}
 	}
 
-	authCtx.SetAttachment(authcommon.LinkUsersKey, users)
-	authCtx.SetAttachment(authcommon.RemoveLinkUsersKey, removeUsers)
+	authCtx.SetAttachment(authtypes.LinkUsersKey, users)
+	authCtx.SetAttachment(authtypes.RemoveLinkUsersKey, removeUsers)
 
-	authCtx.SetAttachment(authcommon.LinkGroupsKey, groups)
-	authCtx.SetAttachment(authcommon.RemoveLinkGroupsKey, removeGroups)
+	authCtx.SetAttachment(authtypes.LinkGroupsKey, groups)
+	authCtx.SetAttachment(authtypes.RemoveLinkGroupsKey, removeGroups)
 
 	return svr.policySvr.AfterResourceOperation(authCtx)
 }
 
-func (s *Server) afterRuleResource(ctx context.Context, r types.Resource, res authcommon.ResourceEntry, remove bool) error {
+func (s *Server) afterRuleResource(ctx context.Context, r types.Resource, res authtypes.ResourceEntry, remove bool) error {
 	event := &ResourceEvent{
 		Resource: res,
 		IsRemove: remove,
@@ -99,38 +98,38 @@ func (s *Server) afterRuleResource(ctx context.Context, r types.Resource, res au
 
 func (s *Server) afterServiceResource(ctx context.Context, req *apiservice.Service, remove bool) error {
 	event := &ResourceEvent{
-		Resource: authcommon.ResourceEntry{
+		Resource: authtypes.ResourceEntry{
 			Type:     security.ResourceType_Services,
 			ID:       req.GetId().GetValue(),
 			Metadata: req.GetMetadata(),
 		},
-		AddPrincipals: func() []authcommon.Principal {
-			ret := make([]authcommon.Principal, 0, 4)
+		AddPrincipals: func() []authtypes.Principal {
+			ret := make([]authtypes.Principal, 0, 4)
 			for i := range req.UserIds {
-				ret = append(ret, authcommon.Principal{
-					PrincipalType: authcommon.PrincipalUser,
+				ret = append(ret, authtypes.Principal{
+					PrincipalType: authtypes.PrincipalUser,
 					PrincipalID:   req.UserIds[i].GetValue(),
 				})
 			}
 			for i := range req.GroupIds {
-				ret = append(ret, authcommon.Principal{
-					PrincipalType: authcommon.PrincipalGroup,
+				ret = append(ret, authtypes.Principal{
+					PrincipalType: authtypes.PrincipalGroup,
 					PrincipalID:   req.GroupIds[i].GetValue(),
 				})
 			}
 			return ret
 		}(),
-		DelPrincipals: func() []authcommon.Principal {
-			ret := make([]authcommon.Principal, 0, 4)
+		DelPrincipals: func() []authtypes.Principal {
+			ret := make([]authtypes.Principal, 0, 4)
 			for i := range req.RemoveUserIds {
-				ret = append(ret, authcommon.Principal{
-					PrincipalType: authcommon.PrincipalUser,
+				ret = append(ret, authtypes.Principal{
+					PrincipalType: authtypes.PrincipalUser,
 					PrincipalID:   req.RemoveUserIds[i].GetValue(),
 				})
 			}
 			for i := range req.RemoveGroupIds {
-				ret = append(ret, authcommon.Principal{
-					PrincipalType: authcommon.PrincipalGroup,
+				ret = append(ret, authtypes.Principal{
+					PrincipalType: authtypes.PrincipalGroup,
 					PrincipalID:   req.RemoveGroupIds[i].GetValue(),
 				})
 			}

@@ -24,6 +24,7 @@ import (
 
 	"google.golang.org/grpc/metadata"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -95,7 +96,7 @@ func TestConvertContext(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := utils.ConvertGRPCContext(tt.args.ctx); !reflect.DeepEqual(got.Value(utils.ContextGrpcHeader), tt.want) {
+			if got := utils.ConvertGRPCContext(tt.args.ctx); !reflect.DeepEqual(got.Value(types.ContextGrpcHeader), tt.want) {
 				t.Errorf("ConvertContext() = %v, \n want %v", got, tt.want)
 			}
 		})

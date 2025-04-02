@@ -102,7 +102,7 @@ func (h *DiscoverServer) sendPushData(sub core.Subscriber, data *core.PushData) 
 		ServiceInfo: data.ServiceInfo,
 	}
 
-	connCtx := context.WithValue(context.TODO(), remote.ConnIDKey{}, watcher.Key)
+	connCtx := context.WithValue(context.TODO(), remote.ConnIDKey, watcher.Key)
 	callback := func(attachment map[string]interface{}, resp nacospb.BaseResponse, err error) {
 		if err != nil {
 			nacoslog.Error("[NACOS-V2][PushCenter] receive client push error",

@@ -30,7 +30,6 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
 )
 
@@ -232,7 +231,7 @@ func (s *Server) RecordHistory(ctx context.Context, entry *types.RecordEntry) {
 		return
 	}
 
-	fromClient, _ := ctx.Value(utils.ContextIsFromClient).(bool)
+	fromClient, _ := ctx.Value(types.ContextIsFromClient).(bool)
 	if fromClient {
 		return
 	}

@@ -30,6 +30,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
@@ -141,10 +142,10 @@ func (g *ConfigGRPCServer) GetConfigFileMetadataList(ctx context.Context,
 
 func (g *ConfigGRPCServer) Discover(svr apiconfig.PolarisConfigGRPC_DiscoverServer) error {
 	ctx := utils.ConvertGRPCContext(svr.Context())
-	clientIP, _ := ctx.Value(utils.StringContext("client-ip")).(string)
-	clientAddress, _ := ctx.Value(utils.StringContext("client-address")).(string)
-	requestID, _ := ctx.Value(utils.StringContext("request-id")).(string)
-	userAgent, _ := ctx.Value(utils.StringContext("user-agent")).(string)
+	clientIP, _ := ctx.Value(types.StringContext("client-ip")).(string)
+	clientAddress, _ := ctx.Value(types.StringContext("client-address")).(string)
+	requestID, _ := ctx.Value(types.StringContext("request-id")).(string)
+	userAgent, _ := ctx.Value(types.StringContext("user-agent")).(string)
 	method, _ := grpc.MethodFromServerStream(svr)
 
 	for {

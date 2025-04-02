@@ -22,9 +22,9 @@ import (
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
-	api "github.com/pole-io/pole-server/pkg/common/api/v1"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/auth"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
 // GetAllConfigFileTemplates get all config file templates
@@ -36,7 +36,7 @@ func (s *Server) GetAllConfigFileTemplates(ctx context.Context) *apiconfig.Confi
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return s.nextServer.GetAllConfigFileTemplates(ctx)
 }
 
@@ -49,7 +49,7 @@ func (s *Server) GetConfigFileTemplate(ctx context.Context, name string) *apicon
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return s.nextServer.GetConfigFileTemplate(ctx, name)
 }
 
@@ -64,6 +64,6 @@ func (s *Server) CreateConfigFileTemplate(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return s.nextServer.CreateConfigFileTemplate(ctx, template)
 }

@@ -440,9 +440,9 @@ func FinishBootstrapOrder(tx storeapi.Transaction) error {
 
 func genContext() context.Context {
 	ctx := context.Background()
-	reqCtx := context.WithValue(context.Background(), utils.ContextAuthTokenKey, "")
-	ctx = context.WithValue(ctx, utils.StringContext("request-id"), fmt.Sprintf("self-%d", time.Now().Nanosecond()))
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey,
+	reqCtx := context.WithValue(context.Background(), types.ContextAuthTokenKey, "")
+	ctx = context.WithValue(ctx, types.StringContext("request-id"), fmt.Sprintf("self-%d", time.Now().Nanosecond()))
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey,
 		authtypes.NewAcquireContext(
 			authtypes.WithOperation(authtypes.Read),
 			authtypes.WithModule(authtypes.BootstrapModule),

@@ -26,6 +26,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -185,7 +186,7 @@ func (h *DiscoverServer) handleBatchInstanceRequest(ctx context.Context, req nac
 		batchResp = api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	)
 
-	ctx = context.WithValue(ctx, utils.ContextOpenAsyncRegis, true)
+	ctx = context.WithValue(ctx, types.ContextOpenAsyncRegis, true)
 	switch batchInsReq.Type {
 	case "batchRegisterInstance":
 		for i := range batchInsReq.Instances {

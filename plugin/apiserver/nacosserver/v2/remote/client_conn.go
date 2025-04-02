@@ -36,12 +36,14 @@ import (
 	nacospb "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/pb"
 )
 
+const (
+	ConnIDKey         string = "nacos_client_conn_id"
+	ClientIPKey       string = "nacos_client_ip"
+	ConnectionInfoKey string = "nacos_client_conn_meta"
+)
+
 type (
 	EventType int32
-
-	ConnIDKey         struct{}
-	ClientIPKey       struct{}
-	ConnectionInfoKey struct{}
 
 	// Client
 	Client struct {
@@ -288,7 +290,7 @@ func (h *ConnectionManager) TagConn(ctx context.Context, connInfo *stats.ConnTag
 	}
 
 	client = h.connections[clientAddr.String()]
-	return context.WithValue(ctx, ConnIDKey{}, client.ID)
+	return context.WithValue(ctx, ConnIDKey, client.ID)
 }
 
 // HandleConn processes the Conn stats.
@@ -297,7 +299,7 @@ func (h *ConnectionManager) HandleConn(ctx context.Context, s stats.ConnStats) {
 	case *stats.ConnBegin:
 		h.lock.RLock()
 		defer h.lock.RUnlock()
-		connID, _ := ctx.Value(ConnIDKey{}).(string)
+		connID, _ := ctx.Value(ConnIDKey).(string)
 		nacoslog.Info("[NACOS-V2][ConnMgr] grpc conn begin", zap.String("conn-id", connID))
 		_ = eventhub.Publish(ClientConnectionEvent, &ConnectionEvent{
 			EventType: EventClientConnected,
@@ -305,7 +307,7 @@ func (h *ConnectionManager) HandleConn(ctx context.Context, s stats.ConnStats) {
 			Client:    h.clients[connID],
 		})
 	case *stats.ConnEnd:
-		connID, _ := ctx.Value(ConnIDKey{}).(string)
+		connID, _ := ctx.Value(ConnIDKey).(string)
 		nacoslog.Info("[NACOS-V2][ConnMgr] grpc conn end", zap.String("conn-id", connID))
 		h.UnRegisterConnection(connID)
 	}
@@ -440,16 +442,16 @@ func (h *ConnectionManager) ejectOutdateConnection() {
 }
 
 func ValueConnID(ctx context.Context) string {
-	ret, _ := ctx.Value(ConnIDKey{}).(string)
+	ret, _ := ctx.Value(ConnIDKey).(string)
 	return ret
 }
 
 func ValueClientIP(ctx context.Context) string {
-	ret, _ := ctx.Value(ClientIPKey{}).(string)
+	ret, _ := ctx.Value(ClientIPKey).(string)
 	return ret
 }
 
 func ValueConnMeta(ctx context.Context) ConnectionMeta {
-	ret, _ := ctx.Value(ConnectionInfoKey{}).(ConnectionMeta)
+	ret, _ := ctx.Value(ConnectionInfoKey).(ConnectionMeta)
 	return ret
 }

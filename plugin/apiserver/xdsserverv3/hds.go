@@ -40,6 +40,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
@@ -84,9 +85,9 @@ import (
 // TODO(htuch): Add @amb67's diagram.
 func (x *XDSServer) StreamHealthCheck(checksvr healthservice.HealthDiscoveryService_StreamHealthCheckServer) error {
 	ctx := utils.ConvertGRPCContext(checksvr.Context())
-	clientIP, _ := ctx.Value(utils.StringContext("client-ip")).(string)
-	clientAddress, _ := ctx.Value(utils.StringContext("client-address")).(string)
-	userAgent, _ := ctx.Value(utils.StringContext("user-agent")).(string)
+	clientIP, _ := ctx.Value(types.StringContext("client-ip")).(string)
+	clientAddress, _ := ctx.Value(types.StringContext("client-address")).(string)
+	userAgent, _ := ctx.Value(types.StringContext("user-agent")).(string)
 
 	log.Info("[XDSV3] receive envoy node stream healthcheck",
 		zap.String("client-ip", clientIP),

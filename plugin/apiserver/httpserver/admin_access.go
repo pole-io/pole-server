@@ -29,6 +29,7 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/admin"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -348,9 +349,9 @@ func (h *HTTPServer) GetServerFunctions(req *restful.Request, rsp *restful.Respo
 func initContext(req *restful.Request) context.Context {
 	ctx := context.Background()
 
-	authToken := req.HeaderParameter(utils.HeaderAuthTokenKey)
+	authToken := req.HeaderParameter(types.HeaderAuthTokenKey)
 	if authToken != "" {
-		ctx = context.WithValue(ctx, utils.ContextAuthTokenKey, authToken)
+		ctx = context.WithValue(ctx, types.ContextAuthTokenKey, authToken)
 	}
 
 	return ctx

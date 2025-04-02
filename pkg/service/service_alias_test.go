@@ -31,6 +31,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -111,14 +112,14 @@ func TestCreateServiceAlias(t *testing.T) {
 			AliasNamespace: serviceResp.Namespace,
 			Type:           apiservice.AliasType_CL5SID,
 		}
-		ctx := context.WithValue(discoverSuit.DefaultCtx, utils.StringContext("polaris-token"),
+		ctx := context.WithValue(discoverSuit.DefaultCtx, types.ContextPolarisToken,
 			serviceResp.GetToken().GetValue())
 		resp := discoverSuit.DiscoverServer().CreateServiceAlias(ctx, req)
 		assert.True(t, api.IsSuccess(resp), resp.GetInfo().GetValue())
 		discoverSuit.cleanServiceName(resp.Alias.Alias.Value, serviceResp.GetNamespace().GetValue())
 
 		// 带上系统token，也可以成功
-		ctx = context.WithValue(discoverSuit.DefaultCtx, utils.StringContext("polaris-token"),
+		ctx = context.WithValue(discoverSuit.DefaultCtx, types.ContextPolarisToken,
 			"polaris@12345678")
 		resp = discoverSuit.DiscoverServer().CreateServiceAlias(ctx, req)
 		assert.True(t, api.IsSuccess(resp), resp.GetInfo().GetValue())
@@ -468,7 +469,7 @@ func TestDeleteServiceAlias(t *testing.T) {
 
 		defer discoverSuit.cleanServiceName(resp.Alias.Alias.Value, serviceResp.Namespace.Value)
 
-		ctx := context.WithValue(discoverSuit.DefaultCtx, utils.StringContext("polaris-token"),
+		ctx := context.WithValue(discoverSuit.DefaultCtx, types.ContextPolarisToken,
 			"polaris@12345678")
 		batchResp := discoverSuit.DiscoverServer().DeleteServiceAliases(ctx, []*apiservice.ServiceAlias{resp.Alias})
 		assert.True(t, api.IsSuccess(batchResp), batchResp.GetInfo().GetValue())

@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc/peer"
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
@@ -51,17 +52,17 @@ func (g *DiscoverServer) ReportClient(ctx context.Context, in *apiservice.Client
 func (g *DiscoverServer) RegisterInstance(ctx context.Context, in *apiservice.Instance) (*apiservice.Response, error) {
 	// 需要记录操作来源，提高效率，只针对特殊接口添加operator
 	rCtx := utils.ConvertGRPCContext(ctx)
-	rCtx = context.WithValue(rCtx, utils.StringContext("operator"), ParseGrpcOperator(ctx))
+	rCtx = context.WithValue(rCtx, types.StringContext("operator"), ParseGrpcOperator(ctx))
 
 	// 客户端请求中带了 token 的，优先已请求中的为准
 	if in.GetServiceToken().GetValue() != "" {
-		rCtx = context.WithValue(rCtx, utils.ContextAuthTokenKey, in.GetServiceToken().GetValue())
+		rCtx = context.WithValue(rCtx, types.ContextAuthTokenKey, in.GetServiceToken().GetValue())
 	}
 
-	grpcHeader := rCtx.Value(utils.ContextGrpcHeader).(metadata.MD)
+	grpcHeader := rCtx.Value(types.ContextGrpcHeader).(metadata.MD)
 
 	if _, ok := grpcHeader["async-regis"]; ok {
-		rCtx = context.WithValue(rCtx, utils.ContextOpenAsyncRegis, true)
+		rCtx = context.WithValue(rCtx, types.ContextOpenAsyncRegis, true)
 	}
 
 	out := g.namingServer.RegisterInstance(rCtx, in)
@@ -73,11 +74,11 @@ func (g *DiscoverServer) DeregisterInstance(
 	ctx context.Context, in *apiservice.Instance) (*apiservice.Response, error) {
 	// 需要记录操作来源，提高效率，只针对特殊接口添加operator
 	rCtx := utils.ConvertGRPCContext(ctx)
-	rCtx = context.WithValue(rCtx, utils.StringContext("operator"), ParseGrpcOperator(ctx))
+	rCtx = context.WithValue(rCtx, types.StringContext("operator"), ParseGrpcOperator(ctx))
 
 	// 客户端请求中带了 token 的，优先已请求中的为准
 	if in.GetServiceToken().GetValue() != "" {
-		rCtx = context.WithValue(rCtx, utils.ContextAuthTokenKey, in.GetServiceToken().GetValue())
+		rCtx = context.WithValue(rCtx, types.ContextAuthTokenKey, in.GetServiceToken().GetValue())
 	}
 
 	out := g.namingServer.DeregisterInstance(rCtx, in)
@@ -87,10 +88,10 @@ func (g *DiscoverServer) DeregisterInstance(
 // Discover 统一发现接口
 func (g *DiscoverServer) Discover(server apiservice.PolarisGRPC_DiscoverServer) error {
 	ctx := utils.ConvertGRPCContext(server.Context())
-	clientIP, _ := ctx.Value(utils.StringContext("client-ip")).(string)
-	clientAddress, _ := ctx.Value(utils.StringContext("client-address")).(string)
-	requestID, _ := ctx.Value(utils.StringContext("request-id")).(string)
-	userAgent, _ := ctx.Value(utils.StringContext("user-agent")).(string)
+	clientIP, _ := ctx.Value(types.StringContext("client-ip")).(string)
+	clientAddress, _ := ctx.Value(types.StringContext("client-address")).(string)
+	requestID, _ := ctx.Value(types.StringContext("request-id")).(string)
+	userAgent, _ := ctx.Value(types.StringContext("user-agent")).(string)
 	method, _ := grpc.MethodFromServerStream(server)
 
 	for {
@@ -154,7 +155,7 @@ func (g *DiscoverServer) handleDiscoverRequest(ctx context.Context, in *apiservi
 
 	// 兼容。如果请求中带了token，优先使用该token
 	if in.GetService().GetToken().GetValue() != "" {
-		ctx = context.WithValue(ctx, utils.ContextAuthTokenKey, in.GetService().GetToken().GetValue())
+		ctx = context.WithValue(ctx, types.ContextAuthTokenKey, in.GetService().GetToken().GetValue())
 	}
 
 	switch in.Type {
@@ -189,7 +190,7 @@ func (g *DiscoverServer) handleDiscoverRequest(ctx context.Context, in *apiservi
 func (g *DiscoverServer) ReportServiceContract(ctx context.Context, in *apiservice.ServiceContract) (*apiservice.Response, error) {
 	// 需要记录操作来源，提高效率，只针对特殊接口添加operator
 	rCtx := utils.ConvertGRPCContext(ctx)
-	rCtx = context.WithValue(rCtx, utils.StringContext("operator"), ParseGrpcOperator(ctx))
+	rCtx = context.WithValue(rCtx, types.StringContext("operator"), ParseGrpcOperator(ctx))
 
 	out := g.namingServer.ReportServiceContract(rCtx, in)
 	return out, nil
@@ -199,7 +200,7 @@ func (g *DiscoverServer) ReportServiceContract(ctx context.Context, in *apiservi
 func (g *DiscoverServer) GetServiceContract(ctx context.Context, req *apiservice.ServiceContract) (*apiservice.Response, error) {
 	// 需要记录操作来源，提高效率，只针对特殊接口添加operator
 	rCtx := utils.ConvertGRPCContext(ctx)
-	rCtx = context.WithValue(rCtx, utils.StringContext("operator"), ParseGrpcOperator(ctx))
+	rCtx = context.WithValue(rCtx, types.StringContext("operator"), ParseGrpcOperator(ctx))
 
 	out := g.namingServer.GetServiceContractWithCache(rCtx, req)
 	return out, nil

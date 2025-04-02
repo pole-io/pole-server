@@ -156,7 +156,7 @@ func (s *Server) createInstance(ctx context.Context, req *apiservice.Instance, i
 func (s *Server) asyncCreateInstance(
 	ctx context.Context, svcId string, req *apiservice.Instance, ins *apiservice.Instance) (
 	*svctypes.Instance, *apiservice.Response) {
-	allowAsyncRegis, _ := ctx.Value(utils.ContextOpenAsyncRegis).(bool)
+	allowAsyncRegis, _ := ctx.Value(types.ContextOpenAsyncRegis).(bool)
 	future := s.bc.AsyncCreateInstance(svcId, ins, !allowAsyncRegis)
 
 	if err := future.Wait(); err != nil {
@@ -270,7 +270,7 @@ func (s *Server) serialDeleteInstance(
 func (s *Server) asyncDeleteInstance(
 	ctx context.Context, req *apiservice.Instance, ins *apiservice.Instance) *apiservice.Response {
 	start := time.Now()
-	allowAsyncRegis, _ := ctx.Value(utils.ContextOpenAsyncRegis).(bool)
+	allowAsyncRegis, _ := ctx.Value(types.ContextOpenAsyncRegis).(bool)
 	future := s.bc.AsyncDeleteInstance(ins, !allowAsyncRegis)
 	if err := future.Wait(); err != nil {
 		// 如果发现不存在资源，意味着实例已经被删除，直接返回成功

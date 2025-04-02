@@ -45,7 +45,7 @@ func (s *Server) After(ctx context.Context, resourceType types.Resource, res *Re
 
 // onConfigGroupResource
 func (s *Server) onConfigGroupResource(ctx context.Context, res *ResourceEvent) error {
-	authCtx := ctx.Value(utils.ContextAuthContextKey).(*auth.AcquireContext)
+	authCtx := ctx.Value(types.ContextAuthContextKey).(*auth.AcquireContext)
 
 	authCtx.SetAttachment(auth.ResourceAttachmentKey, map[apisecurity.ResourceType][]auth.ResourceEntry{
 		apisecurity.ResourceType_ConfigGroups: {

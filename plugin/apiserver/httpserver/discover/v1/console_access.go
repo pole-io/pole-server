@@ -30,6 +30,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -130,7 +131,7 @@ func (h *HTTPServerV1) GetNamespaceToken(req *restful.Request, rsp *restful.Resp
 	}
 
 	token := req.HeaderParameter("Polaris-Token")
-	ctx := context.WithValue(context.Background(), utils.StringContext("polaris-token"), token)
+	ctx := context.WithValue(context.Background(), types.StringContext("polaris-token"), token)
 
 	queryParams := httpcommon.ParseQueryParams(req)
 	namespace := &apimodel.Namespace{
@@ -277,7 +278,7 @@ func (h *HTTPServerV1) GetServiceToken(req *restful.Request, rsp *restful.Respon
 		Response: rsp,
 	}
 	token := req.HeaderParameter("Polaris-Token")
-	ctx := context.WithValue(context.Background(), utils.StringContext("polaris-token"), token)
+	ctx := context.WithValue(context.Background(), types.StringContext("polaris-token"), token)
 
 	queryParams := httpcommon.ParseQueryParams(req)
 	service := &apiservice.Service{

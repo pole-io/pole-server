@@ -29,7 +29,6 @@ import (
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // RegisterInstance create one instance
@@ -44,7 +43,7 @@ func (svr *Server) RegisterInstance(ctx context.Context, req *apiservice.Instanc
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.RegisterInstance(ctx, req)
 }
@@ -59,7 +58,7 @@ func (svr *Server) DeregisterInstance(ctx context.Context, req *apiservice.Insta
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.DeregisterInstance(ctx, req)
 }
@@ -82,7 +81,7 @@ func (svr *Server) ReportServiceContract(ctx context.Context, req *apiservice.Se
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	return svr.nextSvr.ReportServiceContract(ctx, req)
 }
 
@@ -103,7 +102,7 @@ func (svr *Server) GetServiceWithCache(
 		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	ctx = cacheapi.AppendServicePredicate(ctx, func(ctx context.Context, cbr *svctypes.Service) bool {
 		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
@@ -127,7 +126,7 @@ func (svr *Server) ServiceInstancesCache(
 		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.ServiceInstancesCache(ctx, filter, req)
 }
@@ -142,7 +141,7 @@ func (svr *Server) GetRoutingConfigWithCache(
 		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.GetRoutingConfigWithCache(ctx, req)
 }
@@ -157,7 +156,7 @@ func (svr *Server) GetRateLimitWithCache(
 		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.GetRateLimitWithCache(ctx, req)
 }
@@ -172,7 +171,7 @@ func (svr *Server) GetCircuitBreakerWithCache(
 		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.GetCircuitBreakerWithCache(ctx, req)
 }
@@ -187,7 +186,7 @@ func (svr *Server) GetFaultDetectWithCache(
 		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.GetFaultDetectWithCache(ctx, req)
 }
@@ -202,7 +201,7 @@ func (svr *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance)
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.UpdateInstance(ctx, req)
 }
@@ -220,7 +219,7 @@ func (svr *Server) GetServiceContractWithCache(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.GetServiceContractWithCache(ctx, req)
 }
@@ -233,7 +232,7 @@ func (svr *Server) GetLaneRuleWithCache(ctx context.Context, req *apiservice.Ser
 		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.GetLaneRuleWithCache(ctx, req)
 }
@@ -246,7 +245,7 @@ func (svr *Server) GetRouterRuleWithCache(ctx context.Context, req *apiservice.S
 		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.GetRouterRuleWithCache(ctx, req)
 }

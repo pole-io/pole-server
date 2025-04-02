@@ -19,32 +19,12 @@ package model
 
 import (
 	"fmt"
-	"time"
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 )
-
-type GrayModule string
-
-const (
-	GrayModuleConfig         GrayModule = "config"
-	GrayModuleRatelimit      GrayModule = "ratelimit"
-	GrayModuleCircuitbreaker GrayModule = "circuitbreaker"
-	GrayModuleRoute          GrayModule = "route"
-)
-
-// GrayRule 灰度资源
-type GrayResource struct {
-	Name       string
-	MatchRule  string
-	CreateTime time.Time
-	ModifyTime time.Time
-	CreateBy   string
-	ModifyBy   string
-	Valid      bool
-}
 
 // GetGrayConfigRealseKey 获取灰度资源key
 func GetGrayConfigRealseKey(release *conftypes.SimpleConfigFileRelease) string {
-	return fmt.Sprintf("%v@%v@%v@%v", GrayModuleConfig, release.Namespace, release.Group, release.FileName)
+	return fmt.Sprintf("%v@%v@%v@%v", rules.GrayModuleConfig, release.Namespace, release.Group, release.FileName)
 }

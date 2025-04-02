@@ -46,7 +46,7 @@ func (h *DefaultPolicyHelper) GetPolicyRule(id string) *authtypes.StrategyDetail
 
 // CreatePrincipal 创建 principal 的默认 policy 资源
 func (h *DefaultPolicyHelper) CreatePrincipalPolicy(ctx context.Context, tx store.Tx, p authtypes.Principal) error {
-	if p.PrincipalType == authtypes.PrincipalUser && authtypes.IsInitMainUser(ctx) {
+	if p.PrincipalType == authtypes.PrincipalUser && authapi.IsInitMainUser(ctx) {
 		// 创建的是管理员帐户策略
 		if err := h.storage.AddStrategy(tx, mainUserPrincipalPolicy(p)); err != nil {
 			return err

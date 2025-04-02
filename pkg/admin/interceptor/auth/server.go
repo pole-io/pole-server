@@ -24,12 +24,12 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	admincommon "github.com/pole-io/pole-server/apis/pkg/types/admin"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/admin"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 var _ admin.AdminOperateServer = (*Server)(nil)
@@ -77,7 +77,7 @@ func (svr *Server) GetServerConnections(ctx context.Context, req *admincommon.Co
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.GetServerConnections(ctx, req)
 }
@@ -89,7 +89,7 @@ func (svr *Server) GetServerConnStats(ctx context.Context, req *admincommon.Conn
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.GetServerConnStats(ctx, req)
 }
@@ -101,7 +101,7 @@ func (svr *Server) CloseConnections(ctx context.Context, reqs []admincommon.Conn
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.CloseConnections(ctx, reqs)
 }
@@ -113,7 +113,7 @@ func (svr *Server) FreeOSMemory(ctx context.Context) error {
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.FreeOSMemory(ctx)
 }
@@ -125,7 +125,7 @@ func (svr *Server) CleanInstance(ctx context.Context, req *apiservice.Instance) 
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.CleanInstance(ctx, req)
 }
@@ -146,7 +146,7 @@ func (svr *Server) GetLastHeartbeat(ctx context.Context, req *apiservice.Instanc
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.GetLastHeartbeat(ctx, req)
 }
@@ -158,7 +158,7 @@ func (svr *Server) GetLogOutputLevel(ctx context.Context) ([]admincommon.ScopeLe
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.GetLogOutputLevel(ctx)
 }
@@ -179,7 +179,7 @@ func (svr *Server) ListLeaderElections(ctx context.Context) ([]*admincommon.Lead
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.ListLeaderElections(ctx)
 }
@@ -191,7 +191,7 @@ func (svr *Server) ReleaseLeaderElection(ctx context.Context, electKey string) e
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.ReleaseLeaderElection(ctx, electKey)
 }
@@ -203,7 +203,7 @@ func (svr *Server) GetCMDBInfo(ctx context.Context) ([]svctypes.LocationView, er
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.GetCMDBInfo(ctx)
 }

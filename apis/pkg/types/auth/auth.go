@@ -28,6 +28,7 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/utils"
 )
 
@@ -513,7 +514,7 @@ func ParseUserRole(ctx context.Context) UserRoleType {
 		return SubAccountUserRole
 	}
 
-	role, _ := ctx.Value(ContextUserRoleIDKey).(UserRoleType)
+	role, _ := ctx.Value(types.ContextUserRoleIDKey).(UserRoleType)
 	return role
 }
 

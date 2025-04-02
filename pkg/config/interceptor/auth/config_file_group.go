@@ -27,9 +27,10 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	"go.uber.org/zap"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
-	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -46,7 +47,7 @@ func (s *Server) CreateConfigFileGroup(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	resp := s.nextServer.CreateConfigFileGroup(ctx, configFileGroup)
 	if err := s.afterConfigGroupResource(ctx, resp.GetConfigFileGroup(), false); err != nil {
@@ -68,7 +69,7 @@ func (s *Server) UpdateConfigFileGroup(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	resp := s.nextServer.UpdateConfigFileGroup(ctx, configFileGroup)
 	if err := s.afterConfigGroupResource(ctx, resp.GetConfigFileGroup(), false); err != nil {
 		log.Error("[Config][Group] update config_file_group after resource",
@@ -89,7 +90,7 @@ func (s *Server) DeleteConfigFileGroup(
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	resp := s.nextServer.DeleteConfigFileGroup(ctx, namespace, name)
 	if err := s.afterConfigGroupResource(ctx, resp.GetConfigFileGroup(), true); err != nil {
@@ -110,7 +111,7 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 	}
 
 	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	ctx = cacheapi.AppendConfigGroupPredicate(ctx, func(ctx context.Context, cfg *conftypes.ConfigFileGroup) bool {
 		ok := s.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{

@@ -301,7 +301,7 @@ func (s *Server) PublishConfigFileFromClient(ctx context.Context,
 }
 
 // GetConfigSubscribers 根据配置视角获取订阅者列表
-func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]string) *model.CommonResponse {
+func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]string) *types.CommonResponse {
 	namespace := filter["namespace"]
 	group := filter["group"]
 	fileName := filter["file_name"]
@@ -309,7 +309,7 @@ func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]str
 	key := utils.GenFileId(namespace, group, fileName)
 	clientIds, _ := s.watchCenter.watchers.Load(key)
 	if clientIds == nil {
-		return model.NewCommonResponse(uint32(apimodel.Code_NotFoundResource))
+		return types.NewCommonResponse(uint32(apimodel.Code_NotFoundResource))
 	}
 
 	versionClients := map[uint64][]*conftypes.Subscriber{}
@@ -333,7 +333,7 @@ func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]str
 		})
 	})
 
-	rsp := model.NewCommonResponse(uint32(apimodel.Code_ExecuteSuccess))
+	rsp := types.NewCommonResponse(uint32(apimodel.Code_ExecuteSuccess))
 	rsp.Data = &conftypes.ConfigSubscribers{
 		Key: conftypes.ConfigFileKey{
 			Namespace: namespace,
@@ -355,11 +355,11 @@ func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]str
 }
 
 // GetClientSubscribers 根据客户端视角获取订阅的配置文件列表
-func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]string) *model.CommonResponse {
+func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]string) *types.CommonResponse {
 	clientId := filter["client_id"]
 	watchCtx, ok := s.watchCenter.clients.Load(clientId)
 	if !ok {
-		return model.NewCommonResponse(uint32(apimodel.Code_NotFoundResource))
+		return types.NewCommonResponse(uint32(apimodel.Code_NotFoundResource))
 	}
 
 	watchFiles := watchCtx.ListWatchFiles()
@@ -398,7 +398,7 @@ func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]str
 		})
 	}
 
-	rsp := model.NewCommonResponse(uint32(apimodel.Code_ExecuteSuccess))
+	rsp := types.NewCommonResponse(uint32(apimodel.Code_ExecuteSuccess))
 	rsp.Data = data
 	return rsp
 }

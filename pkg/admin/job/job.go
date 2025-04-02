@@ -23,10 +23,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
@@ -170,7 +170,7 @@ func buildContext(storage store.Store) (context.Context, error) {
 		return nil, err
 	}
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, utils.ContextAuthTokenKey, token)
-	ctx = context.WithValue(ctx, utils.ContextOperator, "maintain-job")
+	ctx = context.WithValue(ctx, types.ContextAuthTokenKey, token)
+	ctx = context.WithValue(ctx, types.ContextOperator, "maintain-job")
 	return ctx, nil
 }

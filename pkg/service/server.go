@@ -31,7 +31,6 @@ import (
 	cacheservice "github.com/pole-io/pole-server/pkg/cache/service"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
@@ -97,7 +96,7 @@ func (s *Server) RecordHistory(ctx context.Context, entry *types.RecordEntry) {
 		return
 	}
 
-	fromClient, _ := ctx.Value(utils.ContextIsFromClient).(bool)
+	fromClient, _ := ctx.Value(types.ContextIsFromClient).(bool)
 	if fromClient {
 		return
 	}

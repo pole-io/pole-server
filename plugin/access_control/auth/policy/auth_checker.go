@@ -28,6 +28,7 @@ import (
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -141,7 +142,7 @@ func (d *DefaultAuthChecker) CheckConsolePermission(preCtx *authtypes.AcquireCon
 		preCtx.SetAllowAnonymous(true)
 	}
 	// 如果是初始化主用户的请求，直接放行
-	if authtypes.IsInitMainUser(preCtx.GetRequestContext()) {
+	if authapi.IsInitMainUser(preCtx.GetRequestContext()) {
 		return true, nil
 	}
 	return d.CheckPermission(preCtx)
@@ -241,7 +242,7 @@ func (d *DefaultAuthChecker) listAllPrincipals(p authtypes.Principal) []authtype
 
 // IsCredible 检查是否是可信的请求
 func (d *DefaultAuthChecker) IsCredible(authCtx *authtypes.AcquireContext) bool {
-	reqHeaders, ok := authCtx.GetRequestContext().Value(utils.ContextRequestHeaders).(map[string][]string)
+	reqHeaders, ok := authCtx.GetRequestContext().Value(types.ContextRequestHeaders).(map[string][]string)
 	if !ok || len(d.conf.CredibleHeaders) == 0 {
 		return false
 	}
@@ -357,7 +358,7 @@ func (d *DefaultAuthChecker) MatchResourceOperateable(authCtx *authtypes.Acquire
 
 	ctx := context.Background()
 	if len(principalCondition) != 0 {
-		ctx = context.WithValue(context.Background(), authtypes.ContextKeyConditions{}, principalCondition)
+		ctx = context.WithValue(context.Background(), types.ContextKeyConditions, principalCondition)
 	}
 
 	matchCheck := func(resType apisecurity.ResourceType, resources []authtypes.ResourceEntry) bool {
