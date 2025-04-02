@@ -25,24 +25,25 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 var (
-	_ types.ClientCache = (*clientCache)(nil)
+	_ cacheapi.ClientCache = (*clientCache)(nil)
 )
 
 // clientCache 客户端缓存的类
 type clientCache struct {
-	*types.BaseCache
+	*cachebase.BaseCache
 
 	storage         store.Store
 	lastMtimeLogged int64
-	clients         map[string]*model.Client // instance id -> instance
+	clients         map[string]*types.Client // instance id -> instance
 	lock            sync.RWMutex
 	singleFlight    *singleflight.Group
 	lastUpdateTime  time.Time
@@ -50,7 +51,7 @@ type clientCache struct {
 
 // name 获取资源名称
 func (c *clientCache) Name() string {
-	return types.ClientName
+	return cacheapi.ClientName
 }
 
 // LastMtime 最后一次更新时间
@@ -59,11 +60,11 @@ func (c *clientCache) LastMtime() time.Time {
 }
 
 // NewClientCache 新建一个clientCache
-func NewClientCache(storage store.Store, cacheMgr types.CacheManager) types.ClientCache {
+func NewClientCache(storage store.Store, cacheMgr cacheapi.CacheManager) cacheapi.ClientCache {
 	return &clientCache{
-		BaseCache: types.NewBaseCache(storage, cacheMgr),
+		BaseCache: cachebase.NewBaseCache(storage, cacheMgr),
 		storage:   storage,
-		clients:   map[string]*model.Client{},
+		clients:   map[string]*types.Client{},
 	}
 }
 
@@ -79,7 +80,7 @@ func (c *clientCache) Update() error {
 	// 多个线程竞争，只有一个线程进行更新
 	_, err, _ := c.singleFlight.Do(c.Name(), func() (interface{}, error) {
 		defer func() {
-			c.lastMtimeLogged = types.LogLastMtime(c.lastMtimeLogged, c.LastMtime().Unix(), "Client")
+			c.lastMtimeLogged = cachebase.LogLastMtime(c.lastMtimeLogged, c.LastMtime().Unix(), "Client")
 			c.reportMetricsInfo()
 		}()
 		return nil, c.DoCacheUpdate(c.Name(), c.realUpdate)
@@ -108,7 +109,7 @@ func (c *clientCache) realUpdate() (map[string]time.Time, int64, error) {
 	return lastMtimes, int64(len(clients)), nil
 }
 
-func (c *clientCache) getClient(id string) (*model.Client, bool) {
+func (c *clientCache) getClient(id string) (*types.Client, bool) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -122,7 +123,7 @@ func (c *clientCache) deleteClient(id string) {
 	c.lock.Unlock()
 }
 
-func (c *clientCache) storeClient(id string, client *model.Client) {
+func (c *clientCache) storeClient(id string, client *types.Client) {
 	c.lock.Lock()
 	c.clients[id] = client
 	c.lock.Unlock()
@@ -130,7 +131,7 @@ func (c *clientCache) storeClient(id string, client *model.Client) {
 
 // setClients 保存client到内存中
 // 返回：更新个数，删除个数
-func (c *clientCache) setClients(clients map[string]*model.Client) (map[string]time.Time, int, int) {
+func (c *clientCache) setClients(clients map[string]*types.Client) (map[string]time.Time, int, int) {
 	if len(clients) == 0 {
 		return nil, 0, 0
 	}
@@ -192,7 +193,7 @@ func (c *clientCache) setClients(clients map[string]*model.Client) (map[string]t
 func (c *clientCache) Clear() error {
 	c.BaseCache.Clear()
 	c.lock.Lock()
-	c.clients = map[string]*model.Client{}
+	c.clients = map[string]*types.Client{}
 	c.lock.Unlock()
 	return nil
 }
@@ -200,7 +201,7 @@ func (c *clientCache) Clear() error {
 // GetClient get client
 // @param id
 // @return *model.Client
-func (c *clientCache) GetClient(id string) *model.Client {
+func (c *clientCache) GetClient(id string) *types.Client {
 	if id == "" {
 		return nil
 	}
@@ -214,7 +215,7 @@ func (c *clientCache) GetClient(id string) *model.Client {
 }
 
 // IteratorClients 迭代
-func (c *clientCache) IteratorClients(iterProc types.ClientIterProc) {
+func (c *clientCache) IteratorClients(iterProc cacheapi.ClientIterProc) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -227,15 +228,15 @@ func (c *clientCache) IteratorClients(iterProc types.ClientIterProc) {
 
 // GetClientsByFilter Query client information
 func (c *clientCache) GetClientsByFilter(filters map[string]string, offset, limit uint32) (uint32,
-	[]*model.Client, error) {
+	[]*types.Client, error) {
 	var (
-		ret                 = make([]*model.Client, 0, 16)
+		ret                 = make([]*types.Client, 0, 16)
 		host, hasHost       = filters["host"]
 		clientType, hasType = filters["type"]
 		version, hasVer     = filters["version"]
 		id, hasId           = filters["id"]
 	)
-	c.IteratorClients(func(_ string, value *model.Client) bool {
+	c.IteratorClients(func(_ string, value *types.Client) bool {
 		if hasHost && value.Proto().GetHost().GetValue() != host {
 			return true
 		}
@@ -257,8 +258,8 @@ func (c *clientCache) GetClientsByFilter(filters map[string]string, offset, limi
 }
 
 // doClientPage 进行分页, 仅用于控制台查询时的排序
-func doClientPage(ret []*model.Client, offset, limit uint32) []*model.Client {
-	clients := make([]*model.Client, 0, len(ret))
+func doClientPage(ret []*types.Client, offset, limit uint32) []*types.Client {
+	clients := make([]*types.Client, 0, len(ret))
 	beginIndex := offset
 	endIndex := beginIndex + limit
 	totalCount := uint32(len(ret))

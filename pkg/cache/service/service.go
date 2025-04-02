@@ -29,26 +29,27 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
+	types "github.com/pole-io/pole-server/apis/cache"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
+	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // serviceCache Service data cache implementation class
 type serviceCache struct {
-	*types.BaseCache
+	*cachebase.BaseCache
 
 	storage store.Store
 	// service_id -> service
-	ids *utils.SyncMap[string, *model.Service]
+	ids *utils.SyncMap[string, *svctypes.Service]
 	// namespace -> [serviceName -> service]
-	names *utils.SyncMap[string, *utils.SyncMap[string, *model.Service]]
+	names *utils.SyncMap[string, *utils.SyncMap[string, *svctypes.Service]]
 	// 兼容Cl5，sid -> name
 	cl5Sid2Name *utils.SyncMap[string, string]
 	// 兼容Cl5，name -> service
-	cl5Names        *utils.SyncMap[string, *model.Service]
+	cl5Names        *utils.SyncMap[string, *svctypes.Service]
 	alias           *serviceAliasBucket
 	serviceList     *serviceNamespaceBucket
 	disableBusiness bool
@@ -61,7 +62,7 @@ type serviceCache struct {
 	pendingServices *utils.SyncMap[string, struct{}]
 	countLock       sync.Mutex
 	// namespace -> model.NamespaceServiceCount
-	namespaceServiceCnt *utils.SyncMap[string, *model.NamespaceServiceCount]
+	namespaceServiceCnt *utils.SyncMap[string, *svctypes.NamespaceServiceCount]
 
 	lastMtimeLogged  int64
 	lastCheckAllTime int64
@@ -72,8 +73,8 @@ type serviceCache struct {
 
 	// exportNamespace 某个命名空间下的所有服务的可见性
 	exportNamespace *utils.SyncMap[string, *utils.SyncSet[string]]
-	// exportServices 某个服务对部分命名空间全部可见 exportNamespace -> svcName -> model.Service
-	exportServices *utils.SyncMap[string, *utils.SyncMap[string, *model.Service]]
+	// exportServices 某个服务对部分命名空间全部可见 exportNamespace -> svcName -> svctypes.Service
+	exportServices *utils.SyncMap[string, *utils.SyncMap[string, *svctypes.Service]]
 
 	subCtx *eventhub.SubscribtionContext
 }
@@ -81,7 +82,7 @@ type serviceCache struct {
 // NewServiceCache 返回一个serviceCache
 func NewServiceCache(storage store.Store, cacheMgr types.CacheManager) types.ServiceCache {
 	return &serviceCache{
-		BaseCache:   types.NewBaseCache(storage, cacheMgr),
+		BaseCache:   cachebase.NewBaseCache(storage, cacheMgr),
 		storage:     storage,
 		alias:       newServiceAliasBucket(),
 		serviceList: newServiceNamespaceBucket(),
@@ -92,14 +93,14 @@ func NewServiceCache(storage store.Store, cacheMgr types.CacheManager) types.Ser
 func (sc *serviceCache) Initialize(opt map[string]interface{}) error {
 	sc.instCache = sc.BaseCache.CacheMgr.GetCacher(types.CacheInstance).(*instanceCache)
 	sc.singleFlight = new(singleflight.Group)
-	sc.ids = utils.NewSyncMap[string, *model.Service]()
-	sc.names = utils.NewSyncMap[string, *utils.SyncMap[string, *model.Service]]()
+	sc.ids = utils.NewSyncMap[string, *svctypes.Service]()
+	sc.names = utils.NewSyncMap[string, *utils.SyncMap[string, *svctypes.Service]]()
 	sc.cl5Sid2Name = utils.NewSyncMap[string, string]()
-	sc.cl5Names = utils.NewSyncMap[string, *model.Service]()
+	sc.cl5Names = utils.NewSyncMap[string, *svctypes.Service]()
 	sc.pendingServices = utils.NewSyncMap[string, struct{}]()
-	sc.namespaceServiceCnt = utils.NewSyncMap[string, *model.NamespaceServiceCount]()
+	sc.namespaceServiceCnt = utils.NewSyncMap[string, *svctypes.NamespaceServiceCount]()
 	sc.exportNamespace = utils.NewSyncMap[string, *utils.SyncSet[string]]()
-	sc.exportServices = utils.NewSyncMap[string, *utils.SyncMap[string, *model.Service]]()
+	sc.exportServices = utils.NewSyncMap[string, *utils.SyncMap[string, *svctypes.Service]]()
 	ctx, cancel := context.WithCancel(context.Background())
 	sc.cancel = cancel
 	sc.revisionWorker = newRevisionWorker(sc, sc.instCache.(*instanceCache), opt)
@@ -143,7 +144,7 @@ func (sc *serviceCache) Update() error {
 	// 多个线程竞争，只有一个线程进行更新
 	_, err, _ := sc.singleFlight.Do(sc.Name(), func() (interface{}, error) {
 		defer func() {
-			sc.lastMtimeLogged = types.LogLastMtime(sc.lastMtimeLogged, sc.LastMtime().Unix(), "Service")
+			sc.lastMtimeLogged = cachebase.LogLastMtime(sc.lastMtimeLogged, sc.LastMtime().Unix(), "Service")
 			sc.checkAll()
 		}()
 		return nil, sc.DoCacheUpdate(sc.Name(), sc.realUpdate)
@@ -192,16 +193,16 @@ func (sc *serviceCache) realUpdate() (map[string]time.Time, int64, error) {
 // clear 清理内部缓存数据
 func (sc *serviceCache) Clear() error {
 	sc.BaseCache.Clear()
-	sc.ids = utils.NewSyncMap[string, *model.Service]()
-	sc.names = utils.NewSyncMap[string, *utils.SyncMap[string, *model.Service]]()
+	sc.ids = utils.NewSyncMap[string, *svctypes.Service]()
+	sc.names = utils.NewSyncMap[string, *utils.SyncMap[string, *svctypes.Service]]()
 	sc.cl5Sid2Name = utils.NewSyncMap[string, string]()
-	sc.cl5Names = utils.NewSyncMap[string, *model.Service]()
+	sc.cl5Names = utils.NewSyncMap[string, *svctypes.Service]()
 	sc.pendingServices = utils.NewSyncMap[string, struct{}]()
-	sc.namespaceServiceCnt = utils.NewSyncMap[string, *model.NamespaceServiceCount]()
+	sc.namespaceServiceCnt = utils.NewSyncMap[string, *svctypes.NamespaceServiceCount]()
 	sc.alias = newServiceAliasBucket()
 	sc.serviceList = newServiceNamespaceBucket()
 	sc.exportNamespace = utils.NewSyncMap[string, *utils.SyncSet[string]]()
-	sc.exportServices = utils.NewSyncMap[string, *utils.SyncMap[string, *model.Service]]()
+	sc.exportServices = utils.NewSyncMap[string, *utils.SyncMap[string, *svctypes.Service]]()
 	return nil
 }
 
@@ -210,7 +211,7 @@ func (sc *serviceCache) Name() string {
 	return types.ServiceName
 }
 
-func (sc *serviceCache) GetAliasFor(name string, namespace string) *model.Service {
+func (sc *serviceCache) GetAliasFor(name string, namespace string) *svctypes.Service {
 	svc := sc.GetServiceByName(name, namespace)
 	if svc == nil {
 		return nil
@@ -222,7 +223,7 @@ func (sc *serviceCache) GetAliasFor(name string, namespace string) *model.Servic
 }
 
 // GetServiceByID 根据服务ID获取服务数据
-func (sc *serviceCache) GetServiceByID(id string) *model.Service {
+func (sc *serviceCache) GetServiceByID(id string) *svctypes.Service {
 	if id == "" {
 		return nil
 	}
@@ -235,7 +236,7 @@ func (sc *serviceCache) GetServiceByID(id string) *model.Service {
 }
 
 // GetOrLoadServiceByID 先从缓存获取服务，如果没有的话，再从存储层获取，并设置到 Cache 中
-func (sc *serviceCache) GetOrLoadServiceByID(id string) *model.Service {
+func (sc *serviceCache) GetOrLoadServiceByID(id string) *svctypes.Service {
 	if id == "" {
 		return nil
 	}
@@ -260,7 +261,7 @@ func (sc *serviceCache) GetOrLoadServiceByID(id string) *model.Service {
 }
 
 // GetServiceByName 根据服务名获取服务数据
-func (sc *serviceCache) GetServiceByName(name string, namespace string) *model.Service {
+func (sc *serviceCache) GetServiceByName(name string, namespace string) *svctypes.Service {
 	if name == "" || namespace == "" {
 		return nil
 	}
@@ -278,7 +279,7 @@ func (sc *serviceCache) GetServiceByName(name string, namespace string) *model.S
 	return svc
 }
 
-func (sc *serviceCache) fillServicePorts(svc *model.Service) {
+func (sc *serviceCache) fillServicePorts(svc *svctypes.Service) {
 	if svc == nil {
 		return
 	}
@@ -308,7 +309,7 @@ func (sc *serviceCache) CleanNamespace(namespace string) {
 // IteratorServices 对缓存中的服务进行迭代
 func (sc *serviceCache) IteratorServices(iterProc types.ServiceIterProc) error {
 	var err error
-	proc := func(k string, svc *model.Service) {
+	proc := func(k string, svc *svctypes.Service) {
 		sc.fillServicePorts(svc)
 		if _, err = iterProc(k, svc); err != nil {
 			return
@@ -321,11 +322,11 @@ func (sc *serviceCache) IteratorServices(iterProc types.ServiceIterProc) error {
 // GetNamespaceCntInfo Return to the service statistics according to the namespace,
 //
 //	the count statistics and health instance statistics
-func (sc *serviceCache) GetNamespaceCntInfo(namespace string) model.NamespaceServiceCount {
+func (sc *serviceCache) GetNamespaceCntInfo(namespace string) svctypes.NamespaceServiceCount {
 	val, _ := sc.namespaceServiceCnt.Load(namespace)
 	if val == nil {
-		return model.NamespaceServiceCount{
-			InstanceCnt: &model.InstanceCount{},
+		return svctypes.NamespaceServiceCount{
+			InstanceCnt: &svctypes.InstanceCount{},
 		}
 	}
 
@@ -338,10 +339,10 @@ func (sc *serviceCache) GetServicesCount() int {
 }
 
 // ListServices get service list and revision by namespace
-func (sc *serviceCache) ListServices(ctx context.Context, ns string) (string, []*model.Service) {
+func (sc *serviceCache) ListServices(ctx context.Context, ns string) (string, []*svctypes.Service) {
 	revision, matchServices := sc.serviceList.ListServices(ns)
 	predicates := types.LoadServicePredicates(ctx)
-	ret := make([]*model.Service, 0, len(matchServices))
+	ret := make([]*svctypes.Service, 0, len(matchServices))
 	for i := range matchServices {
 		allMatch := true
 		for j := range predicates {
@@ -359,10 +360,10 @@ func (sc *serviceCache) ListServices(ctx context.Context, ns string) (string, []
 }
 
 // ListAllServices get all service and revision
-func (sc *serviceCache) ListAllServices(ctx context.Context) (string, []*model.Service) {
+func (sc *serviceCache) ListAllServices(ctx context.Context) (string, []*svctypes.Service) {
 	revision, matchServices := sc.serviceList.ListAllServices()
 	predicates := types.LoadServicePredicates(ctx)
-	ret := make([]*model.Service, 0, len(matchServices))
+	ret := make([]*svctypes.Service, 0, len(matchServices))
 	for i := range matchServices {
 		pass := true
 		for j := range predicates {
@@ -380,15 +381,15 @@ func (sc *serviceCache) ListAllServices(ctx context.Context) (string, []*model.S
 }
 
 // ListServiceAlias get all service alias by target service
-func (sc *serviceCache) ListServiceAlias(namespace, name string) []*model.Service {
-	return sc.alias.getServiceAliases(&model.Service{
+func (sc *serviceCache) ListServiceAlias(namespace, name string) []*svctypes.Service {
+	return sc.alias.getServiceAliases(&svctypes.Service{
 		Namespace: namespace,
 		Name:      name,
 	})
 }
 
 // GetServiceByCl5Name obtains the corresponding SID according to cl5Name
-func (sc *serviceCache) GetServiceByCl5Name(cl5Name string) *model.Service {
+func (sc *serviceCache) GetServiceByCl5Name(cl5Name string) *svctypes.Service {
 	value, ok := sc.cl5Names.Load(genCl5Name(cl5Name))
 	if !ok {
 		return nil
@@ -398,7 +399,7 @@ func (sc *serviceCache) GetServiceByCl5Name(cl5Name string) *model.Service {
 }
 
 // removeServices Delete the service data from the cache
-func (sc *serviceCache) removeServices(service *model.Service) {
+func (sc *serviceCache) removeServices(service *svctypes.Service) {
 	// Delete the index of serviceid
 	sc.ids.Delete(service.ID)
 	// delete service item from name list
@@ -426,7 +427,7 @@ func (sc *serviceCache) removeServices(service *model.Service) {
 
 // setServices 服务缓存更新
 // 返回：更新数量，删除数量
-func (sc *serviceCache) setServices(services map[string]*model.Service) (map[string]time.Time, int, int) {
+func (sc *serviceCache) setServices(services map[string]*svctypes.Service) (map[string]time.Time, int, int) {
 	if len(services) == 0 {
 		return nil, 0, 0
 	}
@@ -441,7 +442,7 @@ func (sc *serviceCache) setServices(services map[string]*model.Service) (map[str
 	changeNs := make(map[string]struct{})
 	svcCount := sc.ids.Len()
 
-	aliases := make([]*model.Service, 0, 32)
+	aliases := make([]*svctypes.Service, 0, 32)
 
 	for _, service := range services {
 		progress++
@@ -480,7 +481,7 @@ func (sc *serviceCache) setServices(services map[string]*model.Service) (map[str
 
 		spaces, ok := sc.names.Load(spaceName)
 		if !ok {
-			spaces = utils.NewSyncMap[string, *model.Service]()
+			spaces = utils.NewSyncMap[string, *svctypes.Service]()
 			sc.names.Store(spaceName, spaces)
 		}
 		spaces.Store(service.Name, service)
@@ -550,7 +551,7 @@ func (sc *serviceCache) appendServiceCountChangeNamespace(changeNs map[string]st
 	return changeNs
 }
 
-func (sc *serviceCache) postProcessServiceAlias(aliases []*model.Service) {
+func (sc *serviceCache) postProcessServiceAlias(aliases []*svctypes.Service) {
 	for i := range aliases {
 		alias := aliases[i]
 
@@ -585,15 +586,15 @@ func (sc *serviceCache) postProcessUpdatedServices(affect map[string]struct{}) {
 			continue
 		}
 
-		count, _ := sc.namespaceServiceCnt.ComputeIfAbsent(namespace, func(_ string) *model.NamespaceServiceCount {
-			return &model.NamespaceServiceCount{}
+		count, _ := sc.namespaceServiceCnt.ComputeIfAbsent(namespace, func(_ string) *svctypes.NamespaceServiceCount {
+			return &svctypes.NamespaceServiceCount{}
 		})
 
 		// For count information under the Namespace involved in the change, it is necessary to re-come over.
 		count.ServiceCount = 0
-		count.InstanceCnt = &model.InstanceCount{}
+		count.InstanceCnt = &svctypes.InstanceCount{}
 
-		value.ReadRange(func(key string, svc *model.Service) {
+		value.ReadRange(func(key string, svc *svctypes.Service) {
 			count.ServiceCount++
 			insCnt := sc.instCache.GetInstancesCountByServiceID(svc.ID)
 			count.InstanceCnt.TotalInstanceCount += insCnt.TotalInstanceCount
@@ -603,7 +604,7 @@ func (sc *serviceCache) postProcessUpdatedServices(affect map[string]struct{}) {
 }
 
 // updateCl5SidAndNames 更新cl5的服务数据
-func (sc *serviceCache) updateCl5SidAndNames(service *model.Service) {
+func (sc *serviceCache) updateCl5SidAndNames(service *svctypes.Service) {
 	// 不是cl5服务的，不需要更新
 	if _, ok := service.Meta["internal-cl5-sid"]; !ok {
 		return
@@ -629,14 +630,14 @@ func (sc *serviceCache) updateCl5SidAndNames(service *model.Service) {
 }
 
 // GetVisibleServicesInOtherNamespace 查询是否存在别的命名空间下存在名称相同且可见的服务
-func (sc *serviceCache) GetVisibleServicesInOtherNamespace(ctx context.Context, svcName, namespace string) []*model.Service {
-	ret := make(map[string]*model.Service)
+func (sc *serviceCache) GetVisibleServicesInOtherNamespace(ctx context.Context, svcName, namespace string) []*svctypes.Service {
+	ret := make(map[string]*svctypes.Service)
 	// 根据服务级别的可见性进行查询, 先查询精确匹配
-	sc.exportServices.ReadRange(func(exportToNs string, services *utils.SyncMap[string, *model.Service]) {
+	sc.exportServices.ReadRange(func(exportToNs string, services *utils.SyncMap[string, *svctypes.Service]) {
 		if exportToNs != namespace && exportToNs != types.AllMatched {
 			return
 		}
-		services.ReadRange(func(_ string, svc *model.Service) {
+		services.ReadRange(func(_ string, svc *svctypes.Service) {
 			if (svc.Name == svcName || utils.IsMatchAll(svcName)) && svc.Namespace != namespace {
 				ret[svc.ID] = svc
 			}
@@ -685,7 +686,7 @@ func (sc *serviceCache) GetVisibleServicesInOtherNamespace(ctx context.Context, 
 	})
 
 	existSvcs := make(map[string]struct{})
-	visibleServices := make([]*model.Service, 0, len(ret))
+	visibleServices := make([]*svctypes.Service, 0, len(ret))
 	for _, svc := range ret {
 		if svc.IsAlias() {
 			// 如果是别名，那就看下指向的别名是不是已经在待返回列表，存在，跳过
@@ -708,14 +709,14 @@ func (sc *serviceCache) GetVisibleServicesInOtherNamespace(ctx context.Context, 
 	return visibleServices
 }
 
-func (sc *serviceCache) postProcessServiceExports(services map[string]*model.Service) {
+func (sc *serviceCache) postProcessServiceExports(services map[string]*svctypes.Service) {
 
 	for i := range services {
 		svc := services[i]
 		if !svc.Valid {
 			// 服务被删除了，把所有的可见性都取消
 			// delete export services cache
-			sc.exportServices.ReadRange(func(key string, val *utils.SyncMap[string, *model.Service]) {
+			sc.exportServices.ReadRange(func(key string, val *utils.SyncMap[string, *svctypes.Service]) {
 				val.Delete(svc.ID)
 			})
 			continue
@@ -731,8 +732,8 @@ func (sc *serviceCache) postProcessServiceExports(services map[string]*model.Ser
 		}
 
 		for exportNs := range svc.ExportTo {
-			services, _ := sc.exportServices.ComputeIfAbsent(exportNs, func(k string) *utils.SyncMap[string, *model.Service] {
-				return utils.NewSyncMap[string, *model.Service]()
+			services, _ := sc.exportServices.ComputeIfAbsent(exportNs, func(k string) *utils.SyncMap[string, *svctypes.Service] {
+				return utils.NewSyncMap[string, *svctypes.Service]()
 			})
 			services.Store(svc.ID, svc)
 		}
@@ -784,7 +785,7 @@ func genCl5Name(name string) string {
 }
 
 // ComputeRevision 计算唯一的版本标识
-func ComputeRevision(serviceRevision string, instances []*model.Instance) (string, error) {
+func ComputeRevision(serviceRevision string, instances []*svctypes.Instance) (string, error) {
 	h := sha1.New()
 	if _, err := h.Write([]byte(serviceRevision)); err != nil {
 		return "", err

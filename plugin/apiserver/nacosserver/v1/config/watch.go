@@ -24,7 +24,7 @@ import (
 
 	"github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/pkg/config"
 )
 
@@ -76,7 +76,7 @@ func (c *LongPollWatchContext) ClientID() string {
 }
 
 // ShouldNotify .
-func (c *LongPollWatchContext) ShouldNotify(event *model.SimpleConfigFileRelease) bool {
+func (c *LongPollWatchContext) ShouldNotify(event *conftypes.SimpleConfigFileRelease) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -116,7 +116,7 @@ func (c *LongPollWatchContext) AppendInterest(item *config_manage.ClientConfigFi
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	key := model.BuildKeyForClientConfigFileInfo(item)
+	key := conftypes.BuildKeyForClientConfigFileInfo(item)
 	c.watchConfigFiles[key] = item
 }
 
@@ -125,7 +125,7 @@ func (c *LongPollWatchContext) RemoveInterest(item *config_manage.ClientConfigFi
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	key := model.BuildKeyForClientConfigFileInfo(item)
+	key := conftypes.BuildKeyForClientConfigFileInfo(item)
 	delete(c.watchConfigFiles, key)
 }
 

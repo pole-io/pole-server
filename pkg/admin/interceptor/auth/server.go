@@ -26,9 +26,9 @@ import (
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	admincommon "github.com/pole-io/pole-server/apis/pkg/types/admin"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/admin"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -196,7 +196,7 @@ func (svr *Server) ReleaseLeaderElection(ctx context.Context, electKey string) e
 	return svr.nextSvr.ReleaseLeaderElection(ctx, electKey)
 }
 
-func (svr *Server) GetCMDBInfo(ctx context.Context) ([]model.LocationView, error) {
+func (svr *Server) GetCMDBInfo(ctx context.Context) ([]svctypes.LocationView, error) {
 	authCtx := svr.collectMaintainAuthContext(ctx, authcommon.Read, authcommon.DescribeCMDBInfo)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return nil, err

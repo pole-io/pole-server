@@ -12,7 +12,7 @@ import (
 	security "github.com/polarismesh/specification/source/go/api/v1/security"
 	service_manage "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	auth "github.com/pole-io/pole-server/apis/access_control/auth"
-	api "github.com/pole-io/pole-server/pkg/cache/api"
+	cache "github.com/pole-io/pole-server/apis/cache"
 	auth0 "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	store "github.com/pole-io/pole-server/apis/store"
 )
@@ -276,7 +276,7 @@ func (mr *MockStrategyServerMockRecorder) GetStrategy(ctx, strategy interface{})
 }
 
 // Initialize mocks base method.
-func (m *MockStrategyServer) Initialize(arg0 *auth.Config, arg1 store.Store, arg2 api.CacheManager, arg3 auth.UserServer) error {
+func (m *MockStrategyServer) Initialize(arg0 *auth.Config, arg1 store.Store, arg2 cache.CacheManager, arg3 auth.UserServer) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Initialize", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
@@ -737,7 +737,7 @@ func (mr *MockUserServerMockRecorder) GetUsers(ctx, query interface{}) *gomock.C
 }
 
 // Initialize mocks base method.
-func (m *MockUserServer) Initialize(arg0 *auth.Config, arg1 store.Store, arg2 auth.StrategyServer, arg3 api.CacheManager) error {
+func (m *MockUserServer) Initialize(arg0 *auth.Config, arg1 store.Store, arg2 auth.StrategyServer, arg3 cache.CacheManager) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Initialize", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)

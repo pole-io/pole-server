@@ -24,10 +24,13 @@ import (
 	"log"
 	"sync"
 
+	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/cache"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
-	commonmodel "github.com/pole-io/pole-server/pkg/common/model"
+)
+
+const (
+	ContextKeyUserSvr   = "userSvr"
+	ContextKeyPolicySvr = "policySvr"
 )
 
 const (
@@ -127,7 +130,7 @@ func GetUserServerContext(ctx context.Context) (UserServer, error) {
 		return nil, errors.New("UserServer has not done Initialize")
 	}
 	userSvr := userMgr
-	userSvrVal := ctx.Value(commonmodel.ContextKeyUserSvr)
+	userSvrVal := ctx.Value(ContextKeyUserSvr)
 	if userSvrVal == nil {
 		svr, err := GetUserServer()
 		if err != nil {
@@ -165,7 +168,7 @@ func GetStrategyServerContext(ctx context.Context) (StrategyServer, error) {
 		return nil, errors.New("UserServer has not done Initialize")
 	}
 	policySvr := policyMgr
-	policySvrVal := ctx.Value(commonmodel.ContextKeyPolicySvr)
+	policySvrVal := ctx.Value(ContextKeyPolicySvr)
 	if policySvrVal == nil {
 		svr, err := GetStrategyServer()
 		if err != nil {
@@ -179,10 +182,10 @@ func GetStrategyServerContext(ctx context.Context) (StrategyServer, error) {
 }
 
 // Initialize 初始化
-func Initialize(ctx context.Context, authOpt *Config, storage store.Store, cacheMgn *cache.CacheManager) error {
+func Initialize(ctx context.Context, authOpt *Config, storage store.Store, cacheMgr cachetypes.CacheManager) error {
 	var err error
 	once.Do(func() {
-		userMgr, policyMgr, err = BuildAuthComponent(ctx, authOpt, storage, cacheMgn)
+		userMgr, policyMgr, err = BuildAuthComponent(ctx, authOpt, storage, cacheMgr)
 	})
 
 	if err != nil {

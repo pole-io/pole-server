@@ -15,12 +15,10 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package api
+package cache
 
 import (
 	"context"
-	"runtime"
-	"sync"
 	"time"
 
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
@@ -29,13 +27,11 @@ import (
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 const (
@@ -49,8 +45,6 @@ const (
 	ServiceName = "service"
 	// InstanceName instance name
 	InstanceName = "instance"
-	// L5Name l5 name
-	L5Name = "l5"
 	// RoutingConfigName router config name
 	RoutingConfigName = "routingConfig"
 	// LaneRuleName lane rule config name
@@ -87,7 +81,6 @@ const (
 	CacheService CacheIndex = iota
 	CacheInstance
 	CacheRoutingConfig
-	CacheCL5
 	CacheRateLimit
 	CacheCircuitBreaker
 	CacheUser
@@ -288,7 +281,7 @@ type (
 	ServiceContractCache interface {
 		Cache
 		// Get .
-		Get(ctx context.Context, req *svctypes.ServiceContract) *model.EnrichServiceContract
+		Get(ctx context.Context, req *svctypes.ServiceContract) *svctypes.EnrichServiceContract
 	}
 )
 
@@ -429,8 +422,6 @@ type (
 		QueryRoutingConfigs(context.Context, *RoutingArgs) (uint32, []*rules.ExtendRouterConfig, error)
 		// ListRouterRule list all router rule
 		ListRouterRule(service, namespace string) []*rules.ExtendRouterConfig
-		// IsConvertFromV1 Whether the current routing rules are converted from the V1 rule
-		IsConvertFromV1(id string) (string, bool)
 		// IteratorRouterRule iterator router rule
 		IteratorRouterRule(iterProc RouterRuleIterProc)
 		// GetRule 获取规则 ID 获取路由规则
@@ -562,19 +553,19 @@ type (
 	}
 
 	// ConfigGroupPredicate .
-	ConfigGroupPredicate func(context.Context, *model.ConfigFileGroup) bool
+	ConfigGroupPredicate func(context.Context, *conftypes.ConfigFileGroup) bool
 
 	// ConfigGroupCache file cache
 	ConfigGroupCache interface {
 		Cache
 		// GetGroupByName
-		GetGroupByName(namespace, name string) *model.ConfigFileGroup
+		GetGroupByName(namespace, name string) *conftypes.ConfigFileGroup
 		// GetGroupByID
-		GetGroupByID(id uint64) *model.ConfigFileGroup
+		GetGroupByID(id uint64) *conftypes.ConfigFileGroup
 		// ListGroups
-		ListGroups(namespace string) ([]*model.ConfigFileGroup, string)
+		ListGroups(namespace string) ([]*conftypes.ConfigFileGroup, string)
 		// Query
-		Query(args *ConfigGroupArgs) (uint32, []*model.ConfigFileGroup, error)
+		Query(args *ConfigGroupArgs) (uint32, []*conftypes.ConfigFileGroup, error)
 	}
 
 	// ConfigFileCache file cache
@@ -606,20 +597,20 @@ type (
 	}
 
 	// UserPredicate .
-	UserPredicate func(context.Context, *authcommon.User) bool
+	UserPredicate func(context.Context, *authtypes.User) bool
 	// UserGroupPredicate .
-	UserGroupPredicate func(context.Context, *authcommon.UserGroupDetail) bool
+	UserGroupPredicate func(context.Context, *authtypes.UserGroupDetail) bool
 	// UserCache User information cache
 	UserCache interface {
 		Cache
 		// GetAdmin 获取管理员信息
-		GetAdmin() *authcommon.User
+		GetAdmin() *authtypes.User
 		// GetUserByID
-		GetUserByID(id string) *authcommon.User
+		GetUserByID(id string) *authtypes.User
 		// GetUserByName
-		GetUserByName(name, ownerName string) *authcommon.User
+		GetUserByName(name, ownerName string) *authtypes.User
 		// GetUserGroup
-		GetGroup(id string) *authcommon.UserGroupDetail
+		GetGroup(id string) *authtypes.UserGroupDetail
 		// IsUserInGroup 判断 userid 是否在对应的 group 中
 		IsUserInGroup(userId, groupId string) bool
 		// IsOwner
@@ -627,9 +618,9 @@ type (
 		// GetUserLinkGroupIds
 		GetUserLinkGroupIds(id string) []string
 		// QueryUsers .
-		QueryUsers(context.Context, UserSearchArgs) (uint32, []*authcommon.User, error)
+		QueryUsers(context.Context, UserSearchArgs) (uint32, []*authtypes.User, error)
 		// QueryUserGroups .
-		QueryUserGroups(context.Context, UserGroupSearchArgs) (uint32, []*authcommon.UserGroupDetail, error)
+		QueryUserGroups(context.Context, UserGroupSearchArgs) (uint32, []*authtypes.UserGroupDetail, error)
 	}
 
 	PolicySearchArgs struct {
@@ -639,19 +630,19 @@ type (
 	}
 
 	// AuthPolicyPredicate .
-	AuthPolicyPredicate func(context.Context, *authcommon.StrategyDetail) bool
+	AuthPolicyPredicate func(context.Context, *authtypes.StrategyDetail) bool
 
 	// StrategyCache is a cache for strategy rules.
 	StrategyCache interface {
 		Cache
 		// GetPolicyRule 获取策略信息
-		GetPolicyRule(id string) *authcommon.StrategyDetail
+		GetPolicyRule(id string) *authtypes.StrategyDetail
 		// GetPrincipalPolicies 根据 effect 获取 principal 的策略信息
-		GetPrincipalPolicies(effect string, p authcommon.Principal) []*authcommon.StrategyDetail
+		GetPrincipalPolicies(effect string, p authtypes.Principal) []*authtypes.StrategyDetail
 		// Hint 确认某个 principal 对于资源的访问权限
-		Hint(ctx context.Context, p authcommon.Principal, r *authcommon.ResourceEntry) apisecurity.AuthAction
+		Hint(ctx context.Context, p authtypes.Principal, r *authtypes.ResourceEntry) apisecurity.AuthAction
 		// Query .
-		Query(context.Context, PolicySearchArgs) (uint32, []*authcommon.StrategyDetail, error)
+		Query(context.Context, PolicySearchArgs) (uint32, []*authtypes.StrategyDetail, error)
 	}
 
 	RoleSearchArgs struct {
@@ -661,17 +652,17 @@ type (
 	}
 
 	// AuthPolicyPredicate .
-	AuthRolePredicate func(context.Context, *authcommon.Role) bool
+	AuthRolePredicate func(context.Context, *authtypes.Role) bool
 
 	// RoleCache .
 	RoleCache interface {
 		Cache
 		// GetRole .
-		GetRole(id string) *authcommon.Role
+		GetRole(id string) *authtypes.Role
 		// Query .
-		Query(context.Context, RoleSearchArgs) (uint32, []*authcommon.Role, error)
+		Query(context.Context, RoleSearchArgs) (uint32, []*authtypes.Role, error)
 		// GetPrincipalRoles .
-		GetPrincipalRoles(authcommon.Principal) []*authcommon.Role
+		GetPrincipalRoles(authtypes.Principal) []*authtypes.Role
 	}
 )
 
@@ -691,175 +682,6 @@ type (
 		GetClientsByFilter(filters map[string]string, offset, limit uint32) (uint32, []*types.Client, error)
 	}
 )
-
-var (
-	// DefaultTimeDiff default time diff
-	DefaultTimeDiff = -5 * time.Second
-)
-
-// BaseCache 对于 Cache 中的一些 func 做统一实现，避免重复逻辑
-type BaseCache struct {
-	lock sync.RWMutex
-	// firstUpdate Whether the cache is loaded for the first time
-	// this field can only make value on exec initialize/clean, and set it to false on exec update
-	firstUpdate           bool
-	s                     store.Store
-	lastFetchTime         int64
-	lastMtimes            map[string]time.Time
-	CacheMgr              CacheManager
-	reportMetrics         func()
-	lastReportMetricsTime time.Time
-}
-
-func NewBaseCache(s store.Store, cacheMgr CacheManager) *BaseCache {
-	c := &BaseCache{
-		s:        s,
-		CacheMgr: cacheMgr,
-	}
-
-	c.initialize()
-	return c
-}
-
-func NewBaseCacheWithRepoerMetrics(s store.Store, cacheMgr CacheManager, reportMetrics func()) *BaseCache {
-	c := &BaseCache{
-		s:             s,
-		CacheMgr:      cacheMgr,
-		reportMetrics: reportMetrics,
-	}
-
-	c.initialize()
-	return c
-}
-
-func (bc *BaseCache) initialize() {
-	bc.lock.Lock()
-	defer bc.lock.Unlock()
-
-	bc.lastFetchTime = 1
-	bc.firstUpdate = true
-	bc.lastMtimes = map[string]time.Time{}
-}
-
-var (
-	zeroTime = time.Unix(0, 0)
-)
-
-func (bc *BaseCache) Store() store.Store {
-	return bc.s
-}
-
-func (bc *BaseCache) ResetLastMtime(label string) {
-	bc.lock.Lock()
-	defer bc.lock.Unlock()
-	bc.lastMtimes[label] = time.Unix(0, 0)
-}
-
-func (bc *BaseCache) ResetLastFetchTime() {
-	bc.lock.Lock()
-	defer bc.lock.Unlock()
-	bc.lastFetchTime = 1
-}
-
-func (bc *BaseCache) LastMtime(label string) time.Time {
-	bc.lock.RLock()
-	defer bc.lock.RUnlock()
-	v, ok := bc.lastMtimes[label]
-	if ok {
-		return v
-	}
-
-	return time.Unix(0, 0)
-}
-
-func (bc *BaseCache) LastFetchTime() time.Time {
-	lastTime := time.Unix(bc.lastFetchTime, 0)
-	tmp := lastTime.Add(DefaultTimeDiff)
-	if zeroTime.After(tmp) {
-		return lastTime
-	}
-	lastTime = tmp
-	return lastTime
-}
-
-// OriginLastFetchTime only for test
-func (bc *BaseCache) OriginLastFetchTime() time.Time {
-	lastTime := time.Unix(bc.lastFetchTime, 0)
-	return lastTime
-}
-
-func (bc *BaseCache) IsFirstUpdate() bool {
-	return bc.firstUpdate
-}
-
-// update
-func (bc *BaseCache) DoCacheUpdate(name string, executor func() (map[string]time.Time, int64, error)) error {
-	if bc.IsFirstUpdate() {
-		log.Infof("[Cache][%s] begin run cache update work", name)
-	}
-
-	curStoreTime, err := bc.s.GetUnixSecond(0)
-	if err != nil {
-		curStoreTime = bc.lastFetchTime
-		log.Warnf("[Cache][%s] get store timestamp fail, skip update lastMtime, err : %v", name, err)
-	}
-	defer func() {
-		if err := recover(); err != nil {
-			var buf [4086]byte
-			n := runtime.Stack(buf[:], false)
-			log.Errorf("[Cache][%s] run cache update panic: %+v, stack\n%s\n", name, err, string(buf[:n]))
-		} else {
-			bc.lastFetchTime = curStoreTime
-		}
-	}()
-
-	start := time.Now()
-	lastMtimes, total, err := executor()
-	if err != nil {
-		return err
-	}
-
-	bc.lock.Lock()
-	defer bc.lock.Unlock()
-	if len(lastMtimes) != 0 {
-		if len(bc.lastMtimes) != 0 {
-			for label, lastMtime := range lastMtimes {
-				preLastMtime := bc.lastMtimes[label]
-				log.Infof("[Cache][%s] lastFetchTime %s, lastMtime update from %s to %s",
-					label, time.Unix(bc.lastFetchTime, 0), preLastMtime, lastMtime)
-			}
-		}
-		bc.lastMtimes = lastMtimes
-	}
-
-	if total >= 0 {
-		metrics.RecordCacheUpdateCost(time.Since(start), name, total)
-	}
-	if bc.reportMetrics != nil {
-		if time.Since(bc.lastReportMetricsTime) >= bc.CacheMgr.GetReportInterval() {
-			bc.reportMetrics()
-			bc.lastReportMetricsTime = start
-		}
-	}
-	bc.firstUpdate = false
-	return nil
-}
-
-func (bc *BaseCache) Clear() {
-	bc.lock.Lock()
-	defer bc.lock.Unlock()
-	bc.lastMtimes = make(map[string]time.Time)
-	bc.lastFetchTime = 1
-	bc.firstUpdate = true
-}
-
-func (bc *BaseCache) Close() error {
-	return nil
-}
-
-func (bc *BaseCache) RefreshInterval() time.Duration {
-	return time.Second
-}
 
 type (
 	// GrayCache 灰度 Cache 接口

@@ -27,9 +27,9 @@ import (
 	"go.uber.org/zap"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	cachetypes "github.com/pole-io/pole-server/apis/cache"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -93,7 +93,7 @@ func (d *DefaultAuthChecker) IsOpenAuth() bool {
 }
 
 // AllowResourceOperate 是否允许资源的操作
-func (d *DefaultAuthChecker) ResourcePredicate(ctx *authcommon.AcquireContext, res *authcommon.ResourceEntry) bool {
+func (d *DefaultAuthChecker) ResourcePredicate(ctx *authtypes.AcquireContext, res *authtypes.ResourceEntry) bool {
 	// 如果是客户端请求，并且鉴权能力没有开启，那就默认都可以进行操作
 	if ctx.IsFromClient() && !d.IsOpenClientAuth() {
 		return true
@@ -103,13 +103,13 @@ func (d *DefaultAuthChecker) ResourcePredicate(ctx *authcommon.AcquireContext, r
 		return true
 	}
 
-	p, ok := ctx.GetAttachment(authcommon.PrincipalKey)
+	p, ok := ctx.GetAttachment(authtypes.PrincipalKey)
 	if !ok {
 		return false
 	}
 	policyCache := d.cacheMgr.AuthStrategy()
 
-	principals := d.listAllPrincipals(p.(authcommon.Principal))
+	principals := d.listAllPrincipals(p.(authtypes.Principal))
 	for i := range principals {
 		ret := policyCache.Hint(ctx.GetRequestContext(), principals[i], res)
 		if ret != apisecurity.AuthAction_DENY {
@@ -120,7 +120,7 @@ func (d *DefaultAuthChecker) ResourcePredicate(ctx *authcommon.AcquireContext, r
 }
 
 // CheckClientPermission 执行检查客户端动作判断是否有权限，并且对 RequestContext 注入操作者数据
-func (d *DefaultAuthChecker) CheckClientPermission(preCtx *authcommon.AcquireContext) (bool, error) {
+func (d *DefaultAuthChecker) CheckClientPermission(preCtx *authtypes.AcquireContext) (bool, error) {
 	preCtx.SetFromClient()
 	if !d.IsOpenClientAuth() {
 		return true, nil
@@ -132,7 +132,7 @@ func (d *DefaultAuthChecker) CheckClientPermission(preCtx *authcommon.AcquireCon
 }
 
 // CheckConsolePermission 执行检查控制台动作判断是否有权限，并且对 RequestContext 注入操作者数据
-func (d *DefaultAuthChecker) CheckConsolePermission(preCtx *authcommon.AcquireContext) (bool, error) {
+func (d *DefaultAuthChecker) CheckConsolePermission(preCtx *authtypes.AcquireContext) (bool, error) {
 	preCtx.SetFromConsole()
 	if !d.IsOpenConsoleAuth() {
 		return true, nil
@@ -141,14 +141,14 @@ func (d *DefaultAuthChecker) CheckConsolePermission(preCtx *authcommon.AcquireCo
 		preCtx.SetAllowAnonymous(true)
 	}
 	// 如果是初始化主用户的请求，直接放行
-	if authcommon.IsInitMainUser(preCtx.GetRequestContext()) {
+	if authtypes.IsInitMainUser(preCtx.GetRequestContext()) {
 		return true, nil
 	}
 	return d.CheckPermission(preCtx)
 }
 
 // CheckPermission 执行检查动作判断是否有权限
-func (d *DefaultAuthChecker) CheckPermission(authCtx *authcommon.AcquireContext) (bool, error) {
+func (d *DefaultAuthChecker) CheckPermission(authCtx *authtypes.AcquireContext) (bool, error) {
 	if err := d.userSvr.CheckCredential(authCtx); err != nil {
 		return false, err
 	}
@@ -166,7 +166,7 @@ func (d *DefaultAuthChecker) CheckPermission(authCtx *authcommon.AcquireContext)
 	return d.doCheckPermission(authCtx)
 }
 
-func (d *DefaultAuthChecker) resyncData(authCtx *authcommon.AcquireContext) error {
+func (d *DefaultAuthChecker) resyncData(authCtx *authtypes.AcquireContext) error {
 	if err := d.cacheMgr.AuthStrategy().Update(); err != nil {
 		log.Error("[Auth][Checker] force sync policy failed", utils.RequestID(authCtx.GetRequestContext()), zap.Error(err))
 		return err
@@ -179,11 +179,11 @@ func (d *DefaultAuthChecker) resyncData(authCtx *authcommon.AcquireContext) erro
 }
 
 // doCheckPermission 执行权限检查
-func (d *DefaultAuthChecker) doCheckPermission(authCtx *authcommon.AcquireContext) (bool, error) {
+func (d *DefaultAuthChecker) doCheckPermission(authCtx *authtypes.AcquireContext) (bool, error) {
 	if d.IsCredible(authCtx) {
 		return true, nil
 	}
-	cur := authCtx.GetAttachments()[authcommon.PrincipalKey].(authcommon.Principal)
+	cur := authCtx.GetAttachments()[authtypes.PrincipalKey].(authtypes.Principal)
 
 	principals := d.listAllPrincipals(cur)
 
@@ -214,25 +214,25 @@ func (d *DefaultAuthChecker) doCheckPermission(authCtx *authcommon.AcquireContex
 	return false, ErrorNotPermission
 }
 
-func (d *DefaultAuthChecker) listAllPrincipals(p authcommon.Principal) []authcommon.Principal {
-	principals := make([]authcommon.Principal, 0, 4)
+func (d *DefaultAuthChecker) listAllPrincipals(p authtypes.Principal) []authtypes.Principal {
+	principals := make([]authtypes.Principal, 0, 4)
 	principals = append(principals, p)
 	// 获取角色列表
 	roles := d.cacheMgr.Role().GetPrincipalRoles(p)
 	for i := range roles {
-		principals = append(principals, authcommon.Principal{
+		principals = append(principals, authtypes.Principal{
 			PrincipalID:   roles[i].ID,
-			PrincipalType: authcommon.PrincipalRole,
+			PrincipalType: authtypes.PrincipalRole,
 		})
 	}
 
 	// 如果是用户，获取所在的用户组列表
-	if p.PrincipalType == authcommon.PrincipalUser {
+	if p.PrincipalType == authtypes.PrincipalUser {
 		groups := d.cacheMgr.User().GetUserLinkGroupIds(p.PrincipalID)
 		for i := range groups {
-			principals = append(principals, authcommon.Principal{
+			principals = append(principals, authtypes.Principal{
 				PrincipalID:   groups[i],
-				PrincipalType: authcommon.PrincipalGroup,
+				PrincipalType: authtypes.PrincipalGroup,
 			})
 		}
 	}
@@ -240,7 +240,7 @@ func (d *DefaultAuthChecker) listAllPrincipals(p authcommon.Principal) []authcom
 }
 
 // IsCredible 检查是否是可信的请求
-func (d *DefaultAuthChecker) IsCredible(authCtx *authcommon.AcquireContext) bool {
+func (d *DefaultAuthChecker) IsCredible(authCtx *authtypes.AcquireContext) bool {
 	reqHeaders, ok := authCtx.GetRequestContext().Value(utils.ContextRequestHeaders).(map[string][]string)
 	if !ok || len(d.conf.CredibleHeaders) == 0 {
 		return false
@@ -264,8 +264,8 @@ func (d *DefaultAuthChecker) IsCredible(authCtx *authcommon.AcquireContext) bool
 }
 
 // MatchPolicy 检查策略是否匹配
-func (d *DefaultAuthChecker) MatchPolicy(authCtx *authcommon.AcquireContext, policy *authcommon.StrategyDetail,
-	principal authcommon.Principal, resources map[apisecurity.ResourceType][]authcommon.ResourceEntry) bool {
+func (d *DefaultAuthChecker) MatchPolicy(authCtx *authtypes.AcquireContext, policy *authtypes.StrategyDetail,
+	principal authtypes.Principal, resources map[apisecurity.ResourceType][]authtypes.ResourceEntry) bool {
 	if !d.MatchCalleeFunctions(authCtx, principal, policy) {
 		log.Error("server function match policy fail", utils.RequestID(authCtx.GetRequestContext()),
 			zap.String("principal", principal.String()), zap.String("policy-id", policy.ID))
@@ -280,8 +280,8 @@ func (d *DefaultAuthChecker) MatchPolicy(authCtx *authcommon.AcquireContext, pol
 }
 
 // MatchCalleeFunctions 检查操作方法是否和策略匹配
-func (d *DefaultAuthChecker) MatchCalleeFunctions(authCtx *authcommon.AcquireContext,
-	principal authcommon.Principal, policy *authcommon.StrategyDetail) bool {
+func (d *DefaultAuthChecker) MatchCalleeFunctions(authCtx *authtypes.AcquireContext,
+	principal authtypes.Principal, policy *authtypes.StrategyDetail) bool {
 
 	// 如果开启了兼容模式，并且策略没有对可调用方法的拦截，那么就认为匹配成功
 	if d.conf.Compatible && len(policy.CalleeMethods) == 0 {
@@ -314,13 +314,13 @@ func (d *DefaultAuthChecker) MatchCalleeFunctions(authCtx *authcommon.AcquireCon
 }
 
 type (
-	compatibleChecker func(ctx context.Context, cacheSvr cachetypes.CacheManager, resource *authcommon.ResourceEntry) bool
+	compatibleChecker func(ctx context.Context, cacheSvr cachetypes.CacheManager, resource *authtypes.ResourceEntry) bool
 )
 
 var (
 	compatibleResource = map[apisecurity.ResourceType]compatibleChecker{
 		apisecurity.ResourceType_UserGroups: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
-			resource *authcommon.ResourceEntry) bool {
+			resource *authtypes.ResourceEntry) bool {
 			saveVal := cacheSvr.User().GetGroup(resource.ID)
 			if saveVal == nil {
 				return false
@@ -330,7 +330,7 @@ var (
 			return exist
 		},
 		apisecurity.ResourceType_PolicyRules: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
-			resource *authcommon.ResourceEntry) bool {
+			resource *authtypes.ResourceEntry) bool {
 			saveVal := cacheSvr.AuthStrategy().GetPolicyRule(resource.ID)
 			if saveVal == nil {
 				return false
@@ -347,20 +347,20 @@ var (
 )
 
 // checkAction 检查操作资源是否和策略匹配
-func (d *DefaultAuthChecker) MatchResourceOperateable(authCtx *authcommon.AcquireContext,
-	principal authcommon.Principal, policy *authcommon.StrategyDetail) bool {
+func (d *DefaultAuthChecker) MatchResourceOperateable(authCtx *authtypes.AcquireContext,
+	principal authtypes.Principal, policy *authtypes.StrategyDetail) bool {
 
 	// 检查下 principal 有没有 condition 信息
-	principalCondition := make([]authcommon.Condition, 0, 4)
+	principalCondition := make([]authtypes.Condition, 0, 4)
 	// 这里主要兼容一些内部特殊场景，可能在 role/user/group 关联某个策略时，会有一些额外的关系属性，这里在 extend 统一查找
 	_ = json.Unmarshal([]byte(principal.Extend["condition"]), &principalCondition)
 
 	ctx := context.Background()
 	if len(principalCondition) != 0 {
-		ctx = context.WithValue(context.Background(), authcommon.ContextKeyConditions{}, principalCondition)
+		ctx = context.WithValue(context.Background(), authtypes.ContextKeyConditions{}, principalCondition)
 	}
 
-	matchCheck := func(resType apisecurity.ResourceType, resources []authcommon.ResourceEntry) bool {
+	matchCheck := func(resType apisecurity.ResourceType, resources []authtypes.ResourceEntry) bool {
 		for i := range resources {
 			actionResult := d.cacheMgr.AuthStrategy().Hint(ctx, principal, &resources[i])
 			if policy.IsMatchAction(actionResult.String()) {

@@ -23,9 +23,9 @@ import (
 
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -140,7 +140,7 @@ func (s *ServiceWithRouterRules) reloadRevision() {
 	for i := range s.sortKeys {
 		revisioins = append(revisioins, s.rules[s.sortKeys[i]].Revision)
 	}
-	s.revision, _ = types.CompositeComputeRevision(revisioins)
+	s.revision, _ = cacheapi.CompositeComputeRevision(revisioins)
 }
 
 func (s *ServiceWithRouterRules) reloadV1Rules() {
@@ -182,7 +182,7 @@ func newClientRouteRuleContainer(direction rules.TrafficDirection) *ClientRouteR
 		direction:        direction,
 		exactRules:       utils.NewSyncMap[string, *ServiceWithRouterRules](),
 		nsWildcardRules:  utils.NewSyncMap[string, *ServiceWithRouterRules](),
-		allWildcardRules: NewServiceWithRouterRules(svctypes.ServiceKey{Namespace: types.AllMatched, Name: types.AllMatched}, direction),
+		allWildcardRules: NewServiceWithRouterRules(svctypes.ServiceKey{Namespace: cacheapi.AllMatched, Name: cacheapi.AllMatched}, direction),
 	}
 }
 
@@ -499,7 +499,7 @@ func (b *RouteRuleContainer) SearchCustomRules(svcName, namespace string) []*rul
 }
 
 // foreach Traversing all routing rules
-func (b *RouteRuleContainer) foreach(proc types.RouterRuleIterProc) {
+func (b *RouteRuleContainer) foreach(proc cacheapi.RouterRuleIterProc) {
 	b.rules.Range(func(key string, val *rules.ExtendRouterConfig) {
 		proc(key, val)
 	})

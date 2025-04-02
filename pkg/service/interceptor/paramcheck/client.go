@@ -24,8 +24,8 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 )
@@ -42,7 +42,7 @@ var (
 
 // GetPrometheusTargets implements service.DiscoverServer.
 func (svr *Server) GetPrometheusTargets(ctx context.Context,
-	query map[string]string) *model.PrometheusDiscoveryResponse {
+	query map[string]string) *types.PrometheusDiscoveryResponse {
 	return svr.nextSvr.GetPrometheusTargets(ctx, query)
 }
 

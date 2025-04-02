@@ -23,9 +23,9 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	cachetypes "github.com/pole-io/pole-server/apis/cache"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -36,23 +36,23 @@ type DefaultPolicyHelper struct {
 	checker  authapi.AuthChecker
 }
 
-func (h *DefaultPolicyHelper) GetRole(id string) *authcommon.Role {
+func (h *DefaultPolicyHelper) GetRole(id string) *authtypes.Role {
 	return h.cacheMgr.Role().GetRole(id)
 }
 
-func (h *DefaultPolicyHelper) GetPolicyRule(id string) *authcommon.StrategyDetail {
+func (h *DefaultPolicyHelper) GetPolicyRule(id string) *authtypes.StrategyDetail {
 	return h.cacheMgr.AuthStrategy().GetPolicyRule(id)
 }
 
 // CreatePrincipal 创建 principal 的默认 policy 资源
-func (h *DefaultPolicyHelper) CreatePrincipalPolicy(ctx context.Context, tx store.Tx, p authcommon.Principal) error {
-	if p.PrincipalType == authcommon.PrincipalUser && authcommon.IsInitMainUser(ctx) {
+func (h *DefaultPolicyHelper) CreatePrincipalPolicy(ctx context.Context, tx store.Tx, p authtypes.Principal) error {
+	if p.PrincipalType == authtypes.PrincipalUser && authtypes.IsInitMainUser(ctx) {
 		// 创建的是管理员帐户策略
 		if err := h.storage.AddStrategy(tx, mainUserPrincipalPolicy(p)); err != nil {
 			return err
 		}
 		// 创建默认策略
-		policies := []*authcommon.StrategyDetail{defaultReadWritePolicy(p), defaultReadOnlyPolicy(p)}
+		policies := []*authtypes.StrategyDetail{defaultReadWritePolicy(p), defaultReadOnlyPolicy(p)}
 		for i := range policies {
 			if err := h.storage.AddStrategy(tx, policies[i]); err != nil {
 				return err
@@ -63,14 +63,14 @@ func (h *DefaultPolicyHelper) CreatePrincipalPolicy(ctx context.Context, tx stor
 	return h.storage.AddStrategy(tx, defaultPrincipalPolicy(p))
 }
 
-func mainUserPrincipalPolicy(p authcommon.Principal) *authcommon.StrategyDetail {
+func mainUserPrincipalPolicy(p authtypes.Principal) *authtypes.StrategyDetail {
 	// Create the user's default weight policy
 	ruleId := utils.NewUUID()
 
-	resources := []authcommon.StrategyResource{}
+	resources := []authtypes.StrategyResource{}
 
 	for _, v := range apisecurity.ResourceType_value {
-		resources = append(resources, authcommon.StrategyResource{
+		resources = append(resources, authtypes.StrategyResource{
 			StrategyID: ruleId,
 			ResType:    v,
 			ResID:      "*",
@@ -78,30 +78,30 @@ func mainUserPrincipalPolicy(p authcommon.Principal) *authcommon.StrategyDetail 
 	}
 
 	calleeMethods := []string{"*"}
-	return &authcommon.StrategyDetail{
+	return &authtypes.StrategyDetail{
 		ID:            ruleId,
-		Name:          authcommon.BuildDefaultStrategyName(p.PrincipalType, p.Name),
+		Name:          authtypes.BuildDefaultStrategyName(p.PrincipalType, p.Name),
 		Action:        apisecurity.AuthAction_ALLOW.String(),
 		Default:       true,
 		Owner:         p.PrincipalID,
 		Revision:      utils.NewUUID(),
 		Source:        "Polaris",
 		Resources:     resources,
-		Principals:    []authcommon.Principal{p},
+		Principals:    []authtypes.Principal{p},
 		CalleeMethods: calleeMethods,
 		Valid:         true,
 		Comment:       "default main user auth policy rule",
 	}
 }
 
-func defaultReadWritePolicy(p authcommon.Principal) *authcommon.StrategyDetail {
+func defaultReadWritePolicy(p authtypes.Principal) *authtypes.StrategyDetail {
 	// Create the user's default weight policy
 	ruleId := utils.NewUUID()
 
-	resources := []authcommon.StrategyResource{}
+	resources := []authtypes.StrategyResource{}
 
 	for _, v := range apisecurity.ResourceType_value {
-		resources = append(resources, authcommon.StrategyResource{
+		resources = append(resources, authtypes.StrategyResource{
 			StrategyID: ruleId,
 			ResType:    v,
 			ResID:      "*",
@@ -109,7 +109,7 @@ func defaultReadWritePolicy(p authcommon.Principal) *authcommon.StrategyDetail {
 	}
 
 	calleeMethods := []string{"*"}
-	return &authcommon.StrategyDetail{
+	return &authtypes.StrategyDetail{
 		ID:            ruleId,
 		Name:          "全局读写策略",
 		Action:        apisecurity.AuthAction_ALLOW.String(),
@@ -122,19 +122,19 @@ func defaultReadWritePolicy(p authcommon.Principal) *authcommon.StrategyDetail {
 		Valid:         true,
 		Comment:       "global resources read and write",
 		Metadata: map[string]string{
-			authcommon.MetadKeySystemDefaultPolicy: "true",
+			authtypes.MetadKeySystemDefaultPolicy: "true",
 		},
 	}
 }
 
-func defaultReadOnlyPolicy(p authcommon.Principal) *authcommon.StrategyDetail {
+func defaultReadOnlyPolicy(p authtypes.Principal) *authtypes.StrategyDetail {
 	// Create the user's default weight policy
 	ruleId := utils.NewUUID()
 
-	resources := []authcommon.StrategyResource{}
+	resources := []authtypes.StrategyResource{}
 
 	for _, v := range apisecurity.ResourceType_value {
-		resources = append(resources, authcommon.StrategyResource{
+		resources = append(resources, authtypes.StrategyResource{
 			StrategyID: ruleId,
 			ResType:    v,
 			ResID:      "*",
@@ -146,7 +146,7 @@ func defaultReadOnlyPolicy(p authcommon.Principal) *authcommon.StrategyDetail {
 		"List*",
 		"Get*",
 	}
-	return &authcommon.StrategyDetail{
+	return &authtypes.StrategyDetail{
 		ID:            ruleId,
 		Name:          "全局只读策略",
 		Action:        apisecurity.AuthAction_ALLOW.String(),
@@ -159,57 +159,57 @@ func defaultReadOnlyPolicy(p authcommon.Principal) *authcommon.StrategyDetail {
 		Valid:         true,
 		Comment:       "global resources read only policy rule",
 		Metadata: map[string]string{
-			authcommon.MetadKeySystemDefaultPolicy: "true",
+			authtypes.MetadKeySystemDefaultPolicy: "true",
 		},
 	}
 }
 
-func defaultPrincipalPolicy(p authcommon.Principal) *authcommon.StrategyDetail {
+func defaultPrincipalPolicy(p authtypes.Principal) *authtypes.StrategyDetail {
 	// Create the user's default weight policy
 	ruleId := utils.NewUUID()
 
-	resources := []authcommon.StrategyResource{}
+	resources := []authtypes.StrategyResource{}
 	calleeMethods := []string{
 		// 用户操作权限
-		string(authcommon.DescribeUsers),
+		string(authtypes.DescribeUsers),
 		// 鉴权策略
-		string(authcommon.DescribeAuthPolicies),
-		string(authcommon.DescribeAuthPolicyDetail),
+		string(authtypes.DescribeAuthPolicies),
+		string(authtypes.DescribeAuthPolicyDetail),
 		// 角色
-		string(authcommon.DescribeAuthRoles),
+		string(authtypes.DescribeAuthRoles),
 	}
-	if p.PrincipalType == authcommon.PrincipalUser {
-		resources = append(resources, authcommon.StrategyResource{
+	if p.PrincipalType == authtypes.PrincipalUser {
+		resources = append(resources, authtypes.StrategyResource{
 			StrategyID: ruleId,
 			ResType:    int32(apisecurity.ResourceType_Users),
 			ResID:      p.PrincipalID,
 		})
 		calleeMethods = []string{
 			// 用户操作权限
-			string(authcommon.DescribeUsers),
-			string(authcommon.DescribeUserToken),
-			string(authcommon.UpdateUser),
-			string(authcommon.UpdateUserPassword),
-			string(authcommon.EnableUserToken),
-			string(authcommon.ResetUserToken),
+			string(authtypes.DescribeUsers),
+			string(authtypes.DescribeUserToken),
+			string(authtypes.UpdateUser),
+			string(authtypes.UpdateUserPassword),
+			string(authtypes.EnableUserToken),
+			string(authtypes.ResetUserToken),
 			// 鉴权策略
-			string(authcommon.DescribeAuthPolicies),
-			string(authcommon.DescribeAuthPolicyDetail),
+			string(authtypes.DescribeAuthPolicies),
+			string(authtypes.DescribeAuthPolicyDetail),
 			// 角色
-			string(authcommon.DescribeAuthRoles),
+			string(authtypes.DescribeAuthRoles),
 		}
 	}
 
-	return &authcommon.StrategyDetail{
+	return &authtypes.StrategyDetail{
 		ID:            ruleId,
-		Name:          authcommon.BuildDefaultStrategyName(p.PrincipalType, p.Name),
+		Name:          authtypes.BuildDefaultStrategyName(p.PrincipalType, p.Name),
 		Action:        apisecurity.AuthAction_ALLOW.String(),
 		Default:       true,
 		Owner:         p.Owner,
 		Revision:      utils.NewUUID(),
 		Source:        "Polaris",
 		Resources:     resources,
-		Principals:    []authcommon.Principal{p},
+		Principals:    []authtypes.Principal{p},
 		CalleeMethods: calleeMethods,
 		Valid:         true,
 		Comment:       "default principal auth policy rule",
@@ -217,7 +217,7 @@ func defaultPrincipalPolicy(p authcommon.Principal) *authcommon.StrategyDetail {
 }
 
 // CleanPrincipal 清理 principal 所关联的 policy、role 资源
-func (h *DefaultPolicyHelper) CleanPrincipal(ctx context.Context, tx store.Tx, p authcommon.Principal) error {
+func (h *DefaultPolicyHelper) CleanPrincipal(ctx context.Context, tx store.Tx, p authtypes.Principal) error {
 	if err := h.storage.CleanPrincipalPolicies(tx, p); err != nil {
 		return err
 	}

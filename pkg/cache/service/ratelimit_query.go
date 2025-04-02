@@ -23,17 +23,17 @@ import (
 	"strings"
 
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // QueryRateLimitRules
-func (rlc *rateLimitCache) QueryRateLimitRules(ctx context.Context, args types.RateLimitRuleArgs) (uint32, []*rules.RateLimit, error) {
+func (rlc *rateLimitCache) QueryRateLimitRules(ctx context.Context, args cacheapi.RateLimitRuleArgs) (uint32, []*rules.RateLimit, error) {
 	if err := rlc.Update(); err != nil {
 		return 0, nil, err
 	}
 
-	predicates := types.LoadRatelimitRulePredicates(ctx)
+	predicates := cacheapi.LoadRatelimitRulePredicates(ctx)
 
 	hasService := len(args.Service) != 0
 	hasNamespace := len(args.Namespace) != 0
@@ -74,7 +74,7 @@ func (rlc *rateLimitCache) QueryRateLimitRules(ctx context.Context, args types.R
 }
 
 func (rlc *rateLimitCache) sortBeforeTrim(rules []*rules.RateLimit,
-	args types.RateLimitRuleArgs) (uint32, []*rules.RateLimit) {
+	args cacheapi.RateLimitRuleArgs) (uint32, []*rules.RateLimit) {
 	amount := uint32(len(rules))
 	if args.Offset >= amount || args.Limit == 0 {
 		return amount, nil

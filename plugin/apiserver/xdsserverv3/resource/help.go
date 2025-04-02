@@ -59,7 +59,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -876,7 +876,7 @@ func MustNewAny(src proto.Message) *anypb.Any {
 	return a
 }
 
-func MakeGatewayLocalRateLimit(rateLimitCache types.RateLimitCache, pathSpecifier string,
+func MakeGatewayLocalRateLimit(rateLimitCache cacheapi.RateLimitCache, pathSpecifier string,
 	svcKey svctypes.ServiceKey) ([]*route.RateLimit, map[string]*anypb.Any, error) {
 	conf, _ := rateLimitCache.GetRateLimitRules(svcKey)
 	if conf == nil {
@@ -915,7 +915,7 @@ func MakeGatewayLocalRateLimit(rateLimitCache types.RateLimitCache, pathSpecifie
 	return ratelimits, filters, nil
 }
 
-func MakeSidecarLocalRateLimit(rateLimitCache types.RateLimitCache,
+func MakeSidecarLocalRateLimit(rateLimitCache cacheapi.RateLimitCache,
 	svcKey svctypes.ServiceKey) ([]*route.RateLimit, map[string]*anypb.Any, error) {
 	conf, _ := rateLimitCache.GetRateLimitRules(svcKey)
 	if conf == nil {

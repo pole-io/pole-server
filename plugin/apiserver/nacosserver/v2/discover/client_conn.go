@@ -24,8 +24,8 @@ import (
 
 	"go.uber.org/zap"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/remote"
 )
 
@@ -53,7 +53,7 @@ type (
 		ConnID string
 		lock   sync.RWMutex
 		// PublishInstances 这个连接上发布的实例信息
-		PublishInstances map[model.ServiceKey]map[string]struct{}
+		PublishInstances map[svctypes.ServiceKey]map[string]struct{}
 		destroy          int32
 	}
 )
@@ -113,7 +113,7 @@ func (c *ConnectionClientManager) delClient(connID string) (*ConnectionClient, b
 	return client, ok
 }
 
-func (c *ConnectionClientManager) addServiceInstance(connID string, svc model.ServiceKey, instanceIDS ...string) {
+func (c *ConnectionClientManager) addServiceInstance(connID string, svc svctypes.ServiceKey, instanceIDS ...string) {
 	c.addConnectionClientIfAbsent(connID)
 	c.lock.RLock()
 	defer c.lock.RUnlock()
@@ -121,7 +121,7 @@ func (c *ConnectionClientManager) addServiceInstance(connID string, svc model.Se
 	client.addServiceInstance(svc, instanceIDS...)
 }
 
-func (c *ConnectionClientManager) delServiceInstance(connID string, svc model.ServiceKey, instanceIDS ...string) {
+func (c *ConnectionClientManager) delServiceInstance(connID string, svc svctypes.ServiceKey, instanceIDS ...string) {
 	c.addConnectionClientIfAbsent(connID)
 	c.lock.RLock()
 	defer c.lock.RUnlock()
@@ -136,13 +136,13 @@ func (c *ConnectionClientManager) addConnectionClientIfAbsent(connID string) {
 	if _, ok := c.clients[connID]; !ok {
 		client := &ConnectionClient{
 			ConnID:           connID,
-			PublishInstances: make(map[model.ServiceKey]map[string]struct{}),
+			PublishInstances: make(map[svctypes.ServiceKey]map[string]struct{}),
 		}
 		c.clients[connID] = client
 	}
 }
 
-func (c *ConnectionClient) RangePublishInstance(f func(svc model.ServiceKey, ids []string)) {
+func (c *ConnectionClient) RangePublishInstance(f func(svc svctypes.ServiceKey, ids []string)) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -155,7 +155,7 @@ func (c *ConnectionClient) RangePublishInstance(f func(svc model.ServiceKey, ids
 	}
 }
 
-func (c *ConnectionClient) addServiceInstance(svc model.ServiceKey, instanceIDS ...string) {
+func (c *ConnectionClient) addServiceInstance(svc svctypes.ServiceKey, instanceIDS ...string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -170,7 +170,7 @@ func (c *ConnectionClient) addServiceInstance(svc model.ServiceKey, instanceIDS 
 	c.PublishInstances[svc] = publishInfos
 }
 
-func (c *ConnectionClient) delServiceInstance(svc model.ServiceKey, instanceIDS ...string) {
+func (c *ConnectionClient) delServiceInstance(svc svctypes.ServiceKey, instanceIDS ...string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 

@@ -23,8 +23,8 @@ import (
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
 )
@@ -104,7 +104,7 @@ func (s *Server) PublishConfigFileFromClient(ctx context.Context,
 		ret := api.NewConfigResponse(apimodel.Code_NotFoundNamespace)
 		return api.NewConfigClientResponseFromConfigResponse(ret)
 	}
-	if req.GetReleaseType().GetValue() == model.ReleaseTypeGray && len(req.GetBetaLabels()) == 0 {
+	if req.GetReleaseType().GetValue() == conftypes.ReleaseTypeGray && len(req.GetBetaLabels()) == 0 {
 		ret := api.NewConfigResponse(apimodel.Code_InvalidMatchRule)
 		return api.NewConfigClientResponseFromConfigResponse(ret)
 	}

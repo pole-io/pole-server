@@ -30,7 +30,6 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
@@ -68,10 +67,10 @@ func getCacheServices(namingServer service.DiscoverServer, namespace string) map
 	return newServices
 }
 
-func getCacheInstances(namingServer service.DiscoverServer, svcId string) ([]*model.Instance, string, error) {
-	var instances []*model.Instance
+func getCacheInstances(namingServer service.DiscoverServer, svcId string) ([]*svctypes.Instance, string, error) {
+	var instances []*svctypes.Instance
 	_ = namingServer.Cache().Instance().IteratorInstancesWithService(svcId,
-		func(key string, value *model.Instance) (bool, error) {
+		func(key string, value *svctypes.Instance) (bool, error) {
 			instances = append(instances, value)
 			return true, nil
 		})
@@ -85,7 +84,7 @@ func (a *ApplicationsBuilder) BuildApplications(oldAppsCache *ApplicationsRespCa
 	var newServices = getCacheServicesFunc(a.namingServer, a.namespace)
 	var instCount int
 	svcToRevision := make(map[string]string, len(newServices))
-	svcToToInstances := make(map[string][]*model.Instance)
+	svcToToInstances := make(map[string][]*svctypes.Instance)
 	var changed bool
 	for _, newService := range newServices {
 		instances, revision, err := getCacheInstancesFunc(a.namingServer, newService.ID)
@@ -147,7 +146,7 @@ func (a *ApplicationsBuilder) BuildApplications(oldAppsCache *ApplicationsRespCa
 	return constructResponseCache(newApps, instCount, false)
 }
 
-func (a *ApplicationsBuilder) constructApplication(app *Application, instances []*model.Instance) {
+func (a *ApplicationsBuilder) constructApplication(app *Application, instances []*svctypes.Instance) {
 	if len(instances) == 0 {
 		return
 	}

@@ -29,7 +29,6 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -199,7 +198,7 @@ func (r *rateLimitStore) GetRateLimitsForCache(mtime time.Time,
 	var (
 		fields = []string{RateConfFieldMtime, RateConfFieldServiceID}
 	)
-	limitResults, err := handler.LoadValuesByFilter(tblRateLimitConfig, fields, &model.RateLimit{},
+	limitResults, err := handler.LoadValuesByFilter(tblRateLimitConfig, fields, &rules.RateLimit{},
 		func(m map[string]interface{}) bool {
 			mt := m[RateConfFieldMtime].(time.Time)
 			isAfter := !mt.Before(mtime)

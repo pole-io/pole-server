@@ -25,22 +25,22 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 type serviceAliasBucket struct {
 	lock sync.RWMutex
 	// aliase namespace->service->alias_id
-	alias map[string]map[string]map[string]*model.Service
+	alias map[string]map[string]map[string]*svctypes.Service
 }
 
 func newServiceAliasBucket() *serviceAliasBucket {
 	return &serviceAliasBucket{
-		alias: make(map[string]map[string]map[string]*model.Service),
+		alias: make(map[string]map[string]map[string]*svctypes.Service),
 	}
 }
 
-func (s *serviceAliasBucket) cleanServiceAlias(aliasFor *model.Service) {
+func (s *serviceAliasBucket) cleanServiceAlias(aliasFor *svctypes.Service) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -50,22 +50,22 @@ func (s *serviceAliasBucket) cleanServiceAlias(aliasFor *model.Service) {
 	delete(s.alias[aliasFor.Namespace], aliasFor.Name)
 }
 
-func (s *serviceAliasBucket) addServiceAlias(alias, aliasFor *model.Service) {
+func (s *serviceAliasBucket) addServiceAlias(alias, aliasFor *svctypes.Service) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	if _, ok := s.alias[aliasFor.Namespace]; !ok {
-		s.alias[aliasFor.Namespace] = map[string]map[string]*model.Service{}
+		s.alias[aliasFor.Namespace] = map[string]map[string]*svctypes.Service{}
 	}
 	if _, ok := s.alias[aliasFor.Namespace][aliasFor.Name]; !ok {
-		s.alias[aliasFor.Namespace][aliasFor.Name] = map[string]*model.Service{}
+		s.alias[aliasFor.Namespace][aliasFor.Name] = map[string]*svctypes.Service{}
 	}
 
 	bucket := s.alias[aliasFor.Namespace][aliasFor.Name]
 	bucket[alias.ID] = alias
 }
 
-func (s *serviceAliasBucket) delServiceAlias(alias, aliasFor *model.Service) {
+func (s *serviceAliasBucket) delServiceAlias(alias, aliasFor *svctypes.Service) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -80,11 +80,11 @@ func (s *serviceAliasBucket) delServiceAlias(alias, aliasFor *model.Service) {
 	delete(bucket, alias.ID)
 }
 
-func (s *serviceAliasBucket) getServiceAliases(aliasFor *model.Service) []*model.Service {
+func (s *serviceAliasBucket) getServiceAliases(aliasFor *svctypes.Service) []*svctypes.Service {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	ret := make([]*model.Service, 0, 8)
+	ret := make([]*svctypes.Service, 0, 8)
 	if _, ok := s.alias[aliasFor.Namespace]; !ok {
 		return ret
 	}
@@ -111,26 +111,26 @@ func newServiceNamespaceBucket() *serviceNamespaceBucket {
 	}
 }
 
-func (s *serviceNamespaceBucket) addService(svc *model.Service) {
+func (s *serviceNamespaceBucket) addService(svc *svctypes.Service) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	if _, ok := s.names[svc.Namespace]; !ok {
 		s.names[svc.Namespace] = &serviceNameBucket{
-			names: make(map[string]*model.Service),
+			names: make(map[string]*svctypes.Service),
 		}
 	}
 
 	s.names[svc.Namespace].addService(svc)
 }
 
-func (s *serviceNamespaceBucket) removeService(svc *model.Service) {
+func (s *serviceNamespaceBucket) removeService(svc *svctypes.Service) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	if _, ok := s.names[svc.Namespace]; !ok {
 		s.names[svc.Namespace] = &serviceNameBucket{
-			names: make(map[string]*model.Service),
+			names: make(map[string]*svctypes.Service),
 		}
 	}
 
@@ -159,11 +159,11 @@ func (s *serviceNamespaceBucket) reloadRevision() {
 	s.revision = hex.EncodeToString(h.Sum(nil))
 }
 
-func (s *serviceNamespaceBucket) ListAllServices() (string, []*model.Service) {
+func (s *serviceNamespaceBucket) ListAllServices() (string, []*svctypes.Service) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	ret := make([]*model.Service, 0, 32)
+	ret := make([]*svctypes.Service, 0, 32)
 	for namespace := range s.names {
 		if val, ok := s.names[namespace]; ok {
 			_, svcs := val.listServices()
@@ -174,13 +174,13 @@ func (s *serviceNamespaceBucket) ListAllServices() (string, []*model.Service) {
 	return s.revision, ret
 }
 
-func (s *serviceNamespaceBucket) ListServices(namespace string) (string, []*model.Service) {
+func (s *serviceNamespaceBucket) ListServices(namespace string) (string, []*svctypes.Service) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
 	b, ok := s.names[namespace]
 	if !ok {
-		return "", []*model.Service{}
+		return "", []*svctypes.Service{}
 	}
 
 	return b.listServices()
@@ -189,28 +189,28 @@ func (s *serviceNamespaceBucket) ListServices(namespace string) (string, []*mode
 type serviceNameBucket struct {
 	lock      sync.RWMutex
 	revisions string
-	names     map[string]*model.Service
+	names     map[string]*svctypes.Service
 }
 
-func (s *serviceNameBucket) addService(svc *model.Service) {
+func (s *serviceNameBucket) addService(svc *svctypes.Service) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	s.names[svc.Name] = svc
 }
 
-func (s *serviceNameBucket) removeService(svc *model.Service) {
+func (s *serviceNameBucket) removeService(svc *svctypes.Service) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	delete(s.names, svc.Name)
 }
 
-func (s *serviceNameBucket) listServices() (string, []*model.Service) {
+func (s *serviceNameBucket) listServices() (string, []*svctypes.Service) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	ret := make([]*model.Service, 0, len(s.names))
+	ret := make([]*svctypes.Service, 0, len(s.names))
 	for i := range s.names {
 		ret = append(ret, s.names[i])
 	}

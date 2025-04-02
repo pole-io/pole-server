@@ -18,8 +18,8 @@
 package logger
 
 import (
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	commonLog "github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin"
 )
@@ -57,7 +57,7 @@ func (h *HistoryLogger) Initialize(c *plugin.ConfigEntry) error {
 }
 
 // Record 记录操作记录到日志中
-func (h *HistoryLogger) Record(entry *model.RecordEntry) {
+func (h *HistoryLogger) Record(entry *types.RecordEntry) {
 	entry.Server = utils.LocalHost
 	log.Info(entry.String())
 }

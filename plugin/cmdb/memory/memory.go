@@ -26,8 +26,8 @@ import (
 	"go.uber.org/zap"
 
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/plugin"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 const (
@@ -82,7 +82,7 @@ func (m *Memory) Initialize(c *plugin.ConfigEntry) error {
 }
 
 // GetLocation 实现CMDB插件接口
-func (m *Memory) GetLocation(host string) (*model.Location, error) {
+func (m *Memory) GetLocation(host string) (*svctypes.Location, error) {
 	val := m.IPs.Load()
 	if val == nil {
 		return nil, nil
@@ -159,7 +159,7 @@ func (m *Memory) Destroy() error {
 }
 
 // Range 实现CMDB插件接口
-func (m *Memory) Range(handler func(host string, location *model.Location) (bool, error)) error {
+func (m *Memory) Range(handler func(host string, location *svctypes.Location) (bool, error)) error {
 	val := m.IPs.Load()
 	if val == nil {
 		return nil

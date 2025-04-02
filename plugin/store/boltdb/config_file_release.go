@@ -27,7 +27,6 @@ import (
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -178,7 +177,7 @@ func (cfr *configFileReleaseStore) GetConfigFileActiveReleaseTx(tx store.Tx,
 			if !active {
 				return false
 			}
-			if relType, _ := m[FileReleaseFieldType].(string); relType != model.ReleaseTypeFull {
+			if relType, _ := m[FileReleaseFieldType].(string); relType != conftypes.ReleaseTypeFull {
 				return false
 			}
 			saveNs, _ := m[FileReleaseFieldNamespace].(string)
@@ -215,7 +214,7 @@ func (cfr *configFileReleaseStore) GetConfigFileBetaReleaseTx(tx store.Tx,
 			if !active {
 				return false
 			}
-			if relType, _ := m[FileReleaseFieldType].(string); relType != model.ReleaseTypeGray {
+			if relType, _ := m[FileReleaseFieldType].(string); relType != conftypes.ReleaseTypeGray {
 				return false
 			}
 			saveNs, _ := m[FileReleaseFieldNamespace].(string)

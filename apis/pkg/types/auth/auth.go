@@ -28,8 +28,7 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	commontime "github.com/pole-io/pole-server/pkg/common/time"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/apis/pkg/utils"
 )
 
 var (
@@ -295,8 +294,8 @@ func (ugd *UserGroupDetail) ToSpec() *apisecurity.UserGroup {
 		AuthToken:   wrapperspb.String(ugd.Token),
 		TokenEnable: wrapperspb.Bool(ugd.TokenEnable),
 		Comment:     wrapperspb.String(ugd.Comment),
-		Ctime:       wrapperspb.String(commontime.Time2String(ugd.CreateTime)),
-		Mtime:       wrapperspb.String(commontime.Time2String(ugd.ModifyTime)),
+		Ctime:       wrapperspb.String(utils.Time2String(ugd.CreateTime)),
+		Mtime:       wrapperspb.String(utils.Time2String(ugd.ModifyTime)),
 		Relation: &apisecurity.UserGroupRelation{
 			GroupId: wrapperspb.String(ugd.ID),
 			Users:   ugd.ListSpecUser(),
@@ -444,45 +443,6 @@ func (s *StrategyDetail) IsDeny() bool {
 	return s.Action == apisecurity.AuthAction_DENY.String()
 }
 
-func NewPolicyDetailCache(d *StrategyDetail) *PolicyDetailCache {
-	users := make(map[string]Principal, 0)
-	groups := make(map[string]Principal, 0)
-
-	for index := range d.Principals {
-		principal := d.Principals[index]
-		if principal.PrincipalType == PrincipalUser {
-			users[principal.PrincipalID] = principal
-		} else {
-			groups[principal.PrincipalID] = principal
-		}
-	}
-
-	resources := map[apisecurity.ResourceType]*utils.SyncSet[string]{}
-	for index := range d.Resources {
-		resource := d.Resources[index]
-		resType := apisecurity.ResourceType(resource.ResType)
-		if _, ok := resources[resType]; !ok {
-			resources[resType] = utils.NewSyncSet[string]()
-		}
-		resources[resType].Add(resource.ResID)
-	}
-
-	return &PolicyDetailCache{
-		StrategyDetail: d,
-		UserPrincipal:  users,
-		GroupPrincipal: groups,
-		ResourceDict:   resources,
-	}
-}
-
-// PolicyDetailCache 鉴权策略详细
-type PolicyDetailCache struct {
-	*StrategyDetail
-	UserPrincipal  map[string]Principal
-	GroupPrincipal map[string]Principal
-	ResourceDict   map[apisecurity.ResourceType]*utils.SyncSet[string]
-}
-
 // ModifyStrategyDetail 修改鉴权策略详细
 type ModifyStrategyDetail struct {
 	ID               string
@@ -524,27 +484,6 @@ func (s StrategyResource) Key() string {
 	return strconv.Itoa(int(s.ResType)) + "/" + s.ResID
 }
 
-func forUserPrincipal(id string) Principal {
-	return Principal{
-		PrincipalID:   id,
-		PrincipalType: PrincipalUser,
-	}
-}
-
-func forUserGroupPrincipal(id string) Principal {
-	return Principal{
-		PrincipalID:   id,
-		PrincipalType: PrincipalGroup,
-	}
-}
-
-func forRolePrincipal(id string) Principal {
-	return Principal{
-		PrincipalID:   id,
-		PrincipalType: PrincipalRole,
-	}
-}
-
 // Principal 策略相关人
 type Principal struct {
 	StrategyID    string
@@ -574,7 +513,7 @@ func ParseUserRole(ctx context.Context) UserRoleType {
 		return SubAccountUserRole
 	}
 
-	role, _ := ctx.Value(utils.ContextUserRoleIDKey).(UserRoleType)
+	role, _ := ctx.Value(ContextUserRoleIDKey).(UserRoleType)
 	return role
 }
 

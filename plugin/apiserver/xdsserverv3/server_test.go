@@ -38,7 +38,7 @@ import (
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/resource"
 	testdata "github.com/pole-io/pole-server/test/data"
 )
@@ -124,10 +124,10 @@ func generateRateLimitString(ruleType apitraffic.Rule_Type) (string, string, map
 	return string(ruleStr), string(labelStr), expectRes
 }
 
-func generateGlobalRateLimitRule() ([]*model.RateLimit, map[string]*anypb.Any) {
+func generateGlobalRateLimitRule() ([]*rules.RateLimit, map[string]*anypb.Any) {
 	ruleStr, labelStr, expectRes := generateRateLimitString(apitraffic.Rule_GLOBAL)
-	var rateLimits []*model.RateLimit
-	rateLimits = append(rateLimits, &model.RateLimit{
+	var rateLimits []*rules.RateLimit
+	rateLimits = append(rateLimits, &rules.RateLimit{
 		ID:         "ratelimit-1",
 		ServiceID:  "service-1",
 		Labels:     labelStr,
@@ -141,10 +141,10 @@ func generateGlobalRateLimitRule() ([]*model.RateLimit, map[string]*anypb.Any) {
 	return rateLimits, expectRes
 }
 
-func generateLocalRateLimitRule() ([]*model.RateLimit, map[string]*anypb.Any) {
+func generateLocalRateLimitRule() ([]*rules.RateLimit, map[string]*anypb.Any) {
 	ruleStr, labelStr, expectRes := generateRateLimitString(apitraffic.Rule_LOCAL)
-	var rateLimits []*model.RateLimit
-	rateLimits = append(rateLimits, &model.RateLimit{
+	var rateLimits []*rules.RateLimit
+	rateLimits = append(rateLimits, &rules.RateLimit{
 		ID:         "ratelimit-2",
 		ServiceID:  "service-2",
 		Labels:     labelStr,

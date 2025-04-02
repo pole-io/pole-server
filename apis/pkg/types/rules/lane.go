@@ -23,9 +23,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
-
-	commontime "github.com/pole-io/pole-server/pkg/common/time"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	
+	"github.com/pole-io/pole-server/apis/pkg/utils"
 )
 
 type TrafficEntryType string
@@ -91,8 +90,8 @@ func (l *LaneGroup) ToProto() (*LaneGroupProto, error) {
 	ret.Revision = l.Revision
 	ret.Description = l.Description
 	ret.Rules = make([]*apitraffic.LaneRule, 0, 32)
-	ret.Ctime = commontime.Time2String(l.CreateTime)
-	ret.Mtime = commontime.Time2String(l.ModifyTime)
+	ret.Ctime = utils.Time2String(l.CreateTime)
+	ret.Mtime = utils.Time2String(l.ModifyTime)
 	protoG := &LaneGroupProto{
 		LaneGroup: l,
 		Proto:     ret,
@@ -182,11 +181,11 @@ func (l *LaneRule) ToProto() (*LaneRuleProto, error) {
 	rule.Description = l.Description
 	rule.Priority = l.Priority
 	rule.Revision = l.Revision
-	rule.Ctime = commontime.Time2String(l.CreateTime)
-	rule.Mtime = commontime.Time2String(l.ModifyTime)
+	rule.Ctime = utils.Time2String(l.CreateTime)
+	rule.Mtime = utils.Time2String(l.ModifyTime)
 
 	if l.EnableTime.Year() > 2000 {
-		rule.Etime = commontime.Time2String(l.EnableTime)
+		rule.Etime = utils.Time2String(l.EnableTime)
 	} else {
 		rule.Etime = ""
 	}

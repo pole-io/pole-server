@@ -25,9 +25,9 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -35,11 +35,11 @@ import (
 // CreateServices 批量创建服务
 func (svr *Server) CreateServices(
 	ctx context.Context, reqs []*apiservice.Service) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectServiceAuthContext(ctx, reqs, authcommon.Create, authcommon.CreateServices)
+	authCtx := svr.collectServiceAuthContext(ctx, reqs, authtypes.Create, authtypes.CreateServices)
 
 	_, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx)
 	if err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
@@ -71,14 +71,14 @@ func (svr *Server) CreateServices(
 // DeleteServices 批量删除服务
 func (svr *Server) DeleteServices(
 	ctx context.Context, reqs []*apiservice.Service) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectServiceAuthContext(ctx, reqs, authcommon.Delete, authcommon.DeleteServices)
+	authCtx := svr.collectServiceAuthContext(ctx, reqs, authtypes.Delete, authtypes.DeleteServices)
 
 	accessRes := authCtx.GetAccessResources()
 	delete(accessRes, apisecurity.ResourceType_Namespaces)
 	authCtx.SetAccessResources(accessRes)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
@@ -100,7 +100,7 @@ func (svr *Server) DeleteServices(
 // UpdateServices 对于服务修改来说，只针对服务本身，而不需要检查命名空间
 func (svr *Server) UpdateServices(
 	ctx context.Context, reqs []*apiservice.Service) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectServiceAuthContext(ctx, reqs, authcommon.Modify, authcommon.UpdateServices)
+	authCtx := svr.collectServiceAuthContext(ctx, reqs, authtypes.Modify, authtypes.UpdateServices)
 
 	accessRes := authCtx.GetAccessResources()
 	delete(accessRes, apisecurity.ResourceType_Namespaces)
@@ -108,7 +108,7 @@ func (svr *Server) UpdateServices(
 
 	_, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx)
 	if err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
@@ -132,14 +132,14 @@ func (svr *Server) UpdateServices(
 func (svr *Server) UpdateServiceToken(
 	ctx context.Context, req *apiservice.Service) *apiservice.Response {
 	authCtx := svr.collectServiceAuthContext(
-		ctx, []*apiservice.Service{req}, authcommon.Modify, authcommon.UpdateServiceToken)
+		ctx, []*apiservice.Service{req}, authtypes.Modify, authtypes.UpdateServiceToken)
 
 	accessRes := authCtx.GetAccessResources()
 	delete(accessRes, apisecurity.ResourceType_Namespaces)
 	authCtx.SetAccessResources(accessRes)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authcommon.ConvertToErrCode(err))
+		return api.NewResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
@@ -149,17 +149,17 @@ func (svr *Server) UpdateServiceToken(
 
 func (svr *Server) GetAllServices(ctx context.Context,
 	query map[string]string) *apiservice.BatchQueryResponse {
-	authCtx := svr.collectServiceAuthContext(ctx, nil, authcommon.Read, authcommon.DescribeAllServices)
+	authCtx := svr.collectServiceAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeAllServices)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchQueryResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 
-	ctx = cachetypes.AppendServicePredicate(ctx, func(ctx context.Context, cbr *svctypes.Service) bool {
-		ok := svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
+	ctx = cacheapi.AppendServicePredicate(ctx, func(ctx context.Context, cbr *svctypes.Service) bool {
+		ok := svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
 			Type:     security.ResourceType_Services,
 			ID:       cbr.ID,
 			Metadata: cbr.Meta,
@@ -172,7 +172,7 @@ func (svr *Server) GetAllServices(ctx context.Context,
 			return false
 		}
 		// 检查下是否可以访问对应的 namespace
-		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
+		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
 			Type:     security.ResourceType_Namespaces,
 			ID:       saveNs.Name,
 			Metadata: saveNs.Metadata,
@@ -186,18 +186,18 @@ func (svr *Server) GetAllServices(ctx context.Context,
 // GetServices 批量获取服务
 func (svr *Server) GetServices(
 	ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
-	authCtx := svr.collectServiceAuthContext(ctx, nil, authcommon.Read, authcommon.DescribeServices)
+	authCtx := svr.collectServiceAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeServices)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchQueryResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 
 	// 注入查询条件拦截器
-	ctx = cachetypes.AppendServicePredicate(ctx, func(ctx context.Context, cbr *svctypes.Service) bool {
-		ok := svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
+	ctx = cacheapi.AppendServicePredicate(ctx, func(ctx context.Context, cbr *svctypes.Service) bool {
+		ok := svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
 			Type:     security.ResourceType_Services,
 			ID:       cbr.ID,
 			Metadata: cbr.Meta,
@@ -210,7 +210,7 @@ func (svr *Server) GetServices(
 			return false
 		}
 		// 检查下是否可以访问对应的 namespace
-		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
+		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
 			Type:     security.ResourceType_Namespaces,
 			ID:       saveNs.Name,
 			Metadata: saveNs.Metadata,
@@ -221,7 +221,7 @@ func (svr *Server) GetServices(
 	resp := svr.nextSvr.GetServices(ctx, query)
 	for index := range resp.Services {
 		item := resp.Services[index]
-		authCtx.SetAccessResources(map[apisecurity.ResourceType][]authcommon.ResourceEntry{
+		authCtx.SetAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_Services: {
 				{
 					Type:     apisecurity.ResourceType_Services,
@@ -232,14 +232,14 @@ func (svr *Server) GetServices(
 		})
 
 		// 检查 write 操作权限
-		authCtx.SetMethod([]authcommon.ServerFunctionName{authcommon.UpdateServices})
+		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateServices})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 			item.Editable = utils.NewBoolValue(false)
 		}
 
 		// 检查 delete 操作权限
-		authCtx.SetMethod([]authcommon.ServerFunctionName{authcommon.DeleteServices})
+		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteServices})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 			item.Deleteable = utils.NewBoolValue(false)
@@ -250,10 +250,10 @@ func (svr *Server) GetServices(
 
 // GetServicesCount 批量获取服务数量
 func (svr *Server) GetServicesCount(ctx context.Context) *apiservice.BatchQueryResponse {
-	authCtx := svr.collectServiceAuthContext(ctx, nil, authcommon.Read, authcommon.DescribeServicesCount)
+	authCtx := svr.collectServiceAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeServicesCount)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchQueryResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
@@ -263,11 +263,11 @@ func (svr *Server) GetServicesCount(ctx context.Context) *apiservice.BatchQueryR
 
 // GetServiceToken 获取服务的 token
 func (svr *Server) GetServiceToken(ctx context.Context, req *apiservice.Service) *apiservice.Response {
-	authCtx := svr.collectServiceAuthContext(ctx, []*apiservice.Service{req}, authcommon.Read,
-		authcommon.DescribeServiceToken)
+	authCtx := svr.collectServiceAuthContext(ctx, []*apiservice.Service{req}, authtypes.Read,
+		authtypes.DescribeServiceToken)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authcommon.ConvertToErrCode(err))
+		return api.NewResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
@@ -278,10 +278,10 @@ func (svr *Server) GetServiceToken(ctx context.Context, req *apiservice.Service)
 // GetServiceOwner 获取服务的 owner
 func (svr *Server) GetServiceOwner(
 	ctx context.Context, req []*apiservice.Service) *apiservice.BatchQueryResponse {
-	authCtx := svr.collectServiceAuthContext(ctx, req, authcommon.Read, authcommon.DescribeServiceOwner)
+	authCtx := svr.collectServiceAuthContext(ctx, req, authtypes.Read, authtypes.DescribeServiceOwner)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchQueryResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()

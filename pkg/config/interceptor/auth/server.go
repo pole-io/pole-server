@@ -26,9 +26,10 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
 )
@@ -37,13 +38,13 @@ var _ config.ConfigCenterServer = (*Server)(nil)
 
 // Server 配置中心核心服务
 type Server struct {
-	cacheMgr   cachetypes.CacheManager
+	cacheMgr   cacheapi.CacheManager
 	nextServer config.ConfigCenterServer
 	userSvr    auth.UserServer
 	policySvr  auth.StrategyServer
 }
 
-func New(nextServer config.ConfigCenterServer, cacheMgr cachetypes.CacheManager,
+func New(nextServer config.ConfigCenterServer, cacheMgr cacheapi.CacheManager,
 	userSvr auth.UserServer, policySvr auth.StrategyServer) config.ConfigCenterServer {
 	proxy := &Server{
 		nextServer: nextServer,
@@ -55,108 +56,108 @@ func New(nextServer config.ConfigCenterServer, cacheMgr cachetypes.CacheManager,
 }
 
 func (s *Server) collectConfigFileAuthContext(ctx context.Context, req []*apiconfig.ConfigFile,
-	op authcommon.ResourceOperation, methodName authcommon.ServerFunctionName) *authcommon.AcquireContext {
-	return authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithModule(authcommon.ConfigModule),
-		authcommon.WithOperation(op),
-		authcommon.WithMethod(methodName),
-		authcommon.WithAccessResources(s.queryConfigFileResource(ctx, req)),
+	op authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
+	return authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithModule(authtypes.ConfigModule),
+		authtypes.WithOperation(op),
+		authtypes.WithMethod(methodName),
+		authtypes.WithAccessResources(s.queryConfigFileResource(ctx, req)),
 	)
 }
 
 func (s *Server) collectClientConfigFileAuthContext(ctx context.Context, req []*apiconfig.ConfigFile,
-	op authcommon.ResourceOperation, methodName authcommon.ServerFunctionName) *authcommon.AcquireContext {
-	return authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithModule(authcommon.ConfigModule),
-		authcommon.WithOperation(op),
-		authcommon.WithMethod(methodName),
-		authcommon.WithFromClient(),
-		authcommon.WithAccessResources(s.queryConfigFileResource(ctx, req)),
+	op authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
+	return authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithModule(authtypes.ConfigModule),
+		authtypes.WithOperation(op),
+		authtypes.WithMethod(methodName),
+		authtypes.WithFromClient(),
+		authtypes.WithAccessResources(s.queryConfigFileResource(ctx, req)),
 	)
 }
 
 func (s *Server) collectClientWatchConfigFiles(ctx context.Context, req *apiconfig.ClientWatchConfigFileRequest,
-	op authcommon.ResourceOperation, methodName authcommon.ServerFunctionName) *authcommon.AcquireContext {
-	return authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithModule(authcommon.ConfigModule),
-		authcommon.WithOperation(op),
-		authcommon.WithMethod(methodName),
-		authcommon.WithFromClient(),
-		authcommon.WithAccessResources(s.queryWatchConfigFilesResource(ctx, req)),
+	op authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
+	return authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithModule(authtypes.ConfigModule),
+		authtypes.WithOperation(op),
+		authtypes.WithMethod(methodName),
+		authtypes.WithFromClient(),
+		authtypes.WithAccessResources(s.queryWatchConfigFilesResource(ctx, req)),
 	)
 }
 
 func (s *Server) collectConfigFileReleaseAuthContext(ctx context.Context, req []*apiconfig.ConfigFileRelease,
-	op authcommon.ResourceOperation, methodName authcommon.ServerFunctionName) *authcommon.AcquireContext {
-	return authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithModule(authcommon.ConfigModule),
-		authcommon.WithOperation(op),
-		authcommon.WithMethod(methodName),
-		authcommon.WithAccessResources(s.queryConfigFileReleaseResource(ctx, req)),
+	op authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
+	return authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithModule(authtypes.ConfigModule),
+		authtypes.WithOperation(op),
+		authtypes.WithMethod(methodName),
+		authtypes.WithAccessResources(s.queryConfigFileReleaseResource(ctx, req)),
 	)
 }
 
 func (s *Server) collectConfigFilePublishAuthContext(ctx context.Context, req []*apiconfig.ConfigFilePublishInfo,
-	op authcommon.ResourceOperation, methodName authcommon.ServerFunctionName) *authcommon.AcquireContext {
-	return authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithModule(authcommon.ConfigModule),
-		authcommon.WithOperation(op),
-		authcommon.WithMethod(methodName),
-		authcommon.WithAccessResources(s.queryConfigFilePublishResource(ctx, req)),
+	op authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
+	return authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithModule(authtypes.ConfigModule),
+		authtypes.WithOperation(op),
+		authtypes.WithMethod(methodName),
+		authtypes.WithAccessResources(s.queryConfigFilePublishResource(ctx, req)),
 	)
 }
 
 func (s *Server) collectClientConfigFileRelease(ctx context.Context, req []*apiconfig.ConfigFileRelease,
-	op authcommon.ResourceOperation, methodName authcommon.ServerFunctionName) *authcommon.AcquireContext {
-	return authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithModule(authcommon.ConfigModule),
-		authcommon.WithOperation(op),
-		authcommon.WithMethod(methodName),
-		authcommon.WithFromClient(),
-		authcommon.WithAccessResources(s.queryConfigFileReleaseResource(ctx, req)),
+	op authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
+	return authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithModule(authtypes.ConfigModule),
+		authtypes.WithOperation(op),
+		authtypes.WithMethod(methodName),
+		authtypes.WithFromClient(),
+		authtypes.WithAccessResources(s.queryConfigFileReleaseResource(ctx, req)),
 	)
 }
 
 func (s *Server) collectConfigFileReleaseHistoryAuthContext(
 	ctx context.Context,
 	req []*apiconfig.ConfigFileReleaseHistory,
-	op authcommon.ResourceOperation, methodName authcommon.ServerFunctionName) *authcommon.AcquireContext {
-	return authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithModule(authcommon.ConfigModule),
-		authcommon.WithOperation(op),
-		authcommon.WithMethod(methodName),
-		authcommon.WithAccessResources(s.queryConfigFileReleaseHistoryResource(ctx, req)),
+	op authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
+	return authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithModule(authtypes.ConfigModule),
+		authtypes.WithOperation(op),
+		authtypes.WithMethod(methodName),
+		authtypes.WithAccessResources(s.queryConfigFileReleaseHistoryResource(ctx, req)),
 	)
 }
 
 func (s *Server) collectConfigGroupAuthContext(ctx context.Context, req []*apiconfig.ConfigFileGroup,
-	op authcommon.ResourceOperation, methodName authcommon.ServerFunctionName) *authcommon.AcquireContext {
-	return authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithModule(authcommon.ConfigModule),
-		authcommon.WithOperation(op),
-		authcommon.WithMethod(methodName),
-		authcommon.WithAccessResources(s.queryConfigGroupResource(ctx, req)),
+	op authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
+	return authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithModule(authtypes.ConfigModule),
+		authtypes.WithOperation(op),
+		authtypes.WithMethod(methodName),
+		authtypes.WithAccessResources(s.queryConfigGroupResource(ctx, req)),
 	)
 }
 
 func (s *Server) collectConfigFileTemplateAuthContext(ctx context.Context, req []*apiconfig.ConfigFileTemplate,
-	op authcommon.ResourceOperation, methodName authcommon.ServerFunctionName) *authcommon.AcquireContext {
-	return authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithModule(authcommon.ConfigModule),
+	op authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
+	return authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithModule(authtypes.ConfigModule),
 	)
 }
 
 func (s *Server) queryConfigGroupResource(ctx context.Context,
-	req []*apiconfig.ConfigFileGroup) map[apisecurity.ResourceType][]authcommon.ResourceEntry {
+	req []*apiconfig.ConfigFileGroup) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
 
 	if len(req) == 0 {
 		return nil
@@ -176,7 +177,7 @@ func (s *Server) queryConfigGroupResource(ctx context.Context,
 			utils.RequestID(ctx), zap.Error(err))
 		return nil
 	}
-	ret := map[apisecurity.ResourceType][]authcommon.ResourceEntry{
+	ret := map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 		apisecurity.ResourceType_ConfigGroups: entries,
 	}
 	authLog.Debug("[Config][Server] collect config_file_group access res",
@@ -186,7 +187,7 @@ func (s *Server) queryConfigGroupResource(ctx context.Context,
 
 // queryConfigFileResource config file资源的鉴权转换为config group的鉴权
 func (s *Server) queryConfigFileResource(ctx context.Context,
-	req []*apiconfig.ConfigFile) map[apisecurity.ResourceType][]authcommon.ResourceEntry {
+	req []*apiconfig.ConfigFile) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
 
 	if len(req) == 0 {
 		return nil
@@ -203,7 +204,7 @@ func (s *Server) queryConfigFileResource(ctx context.Context,
 			utils.RequestID(ctx), zap.Error(err))
 		return nil
 	}
-	ret := map[apisecurity.ResourceType][]authcommon.ResourceEntry{
+	ret := map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 		apisecurity.ResourceType_ConfigGroups: entries,
 	}
 	authLog.Debug("[Config][Server] collect config_file access res",
@@ -212,7 +213,7 @@ func (s *Server) queryConfigFileResource(ctx context.Context,
 }
 
 func (s *Server) queryConfigFileReleaseResource(ctx context.Context,
-	req []*apiconfig.ConfigFileRelease) map[apisecurity.ResourceType][]authcommon.ResourceEntry {
+	req []*apiconfig.ConfigFileRelease) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
 
 	if len(req) == 0 {
 		return nil
@@ -229,7 +230,7 @@ func (s *Server) queryConfigFileReleaseResource(ctx context.Context,
 			utils.RequestID(ctx), zap.Error(err))
 		return nil
 	}
-	ret := map[apisecurity.ResourceType][]authcommon.ResourceEntry{
+	ret := map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 		apisecurity.ResourceType_ConfigGroups: entries,
 	}
 	authLog.Debug("[Config][Server] collect config_file access res",
@@ -238,7 +239,7 @@ func (s *Server) queryConfigFileReleaseResource(ctx context.Context,
 }
 
 func (s *Server) queryConfigFilePublishResource(ctx context.Context,
-	req []*apiconfig.ConfigFilePublishInfo) map[apisecurity.ResourceType][]authcommon.ResourceEntry {
+	req []*apiconfig.ConfigFilePublishInfo) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
 
 	if len(req) == 0 {
 		return nil
@@ -254,7 +255,7 @@ func (s *Server) queryConfigFilePublishResource(ctx context.Context,
 		authLog.Debug("[Config][Server] collect config_file res", utils.RequestID(ctx), zap.Error(err))
 		return nil
 	}
-	ret := map[apisecurity.ResourceType][]authcommon.ResourceEntry{
+	ret := map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 		apisecurity.ResourceType_ConfigGroups: entries,
 	}
 	authLog.Debug("[Config][Server] collect config_file access res", utils.RequestID(ctx), zap.Any("res", ret))
@@ -262,7 +263,7 @@ func (s *Server) queryConfigFilePublishResource(ctx context.Context,
 }
 
 func (s *Server) queryConfigFileReleaseHistoryResource(ctx context.Context,
-	req []*apiconfig.ConfigFileReleaseHistory) map[apisecurity.ResourceType][]authcommon.ResourceEntry {
+	req []*apiconfig.ConfigFileReleaseHistory) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
 
 	if len(req) == 0 {
 		return nil
@@ -279,7 +280,7 @@ func (s *Server) queryConfigFileReleaseHistoryResource(ctx context.Context,
 			utils.RequestID(ctx), zap.Error(err))
 		return nil
 	}
-	ret := map[apisecurity.ResourceType][]authcommon.ResourceEntry{
+	ret := map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 		apisecurity.ResourceType_ConfigGroups: entries,
 	}
 	authLog.Debug("[Config][Server] collect config_file access res",
@@ -288,9 +289,9 @@ func (s *Server) queryConfigFileReleaseHistoryResource(ctx context.Context,
 }
 
 func (s *Server) queryConfigGroupRsEntryByNames(ctx context.Context, namespace string,
-	names []string) ([]authcommon.ResourceEntry, error) {
+	names []string) ([]authtypes.ResourceEntry, error) {
 
-	configFileGroups := make([]*model.ConfigFileGroup, 0, len(names))
+	configFileGroups := make([]*conftypes.ConfigFileGroup, 0, len(names))
 	for i := range names {
 		data := s.cacheMgr.ConfigGroup().GetGroupByName(namespace, names[i])
 		if data == nil {
@@ -300,11 +301,11 @@ func (s *Server) queryConfigGroupRsEntryByNames(ctx context.Context, namespace s
 		configFileGroups = append(configFileGroups, data)
 	}
 
-	entries := make([]authcommon.ResourceEntry, 0, len(configFileGroups))
+	entries := make([]authtypes.ResourceEntry, 0, len(configFileGroups))
 
 	for index := range configFileGroups {
 		group := configFileGroups[index]
-		entries = append(entries, authcommon.ResourceEntry{
+		entries = append(entries, authtypes.ResourceEntry{
 			ID:    strconv.FormatUint(group.Id, 10),
 			Owner: group.Owner,
 		})
@@ -313,13 +314,13 @@ func (s *Server) queryConfigGroupRsEntryByNames(ctx context.Context, namespace s
 }
 
 func (s *Server) queryWatchConfigFilesResource(ctx context.Context,
-	req *apiconfig.ClientWatchConfigFileRequest) map[apisecurity.ResourceType][]authcommon.ResourceEntry {
+	req *apiconfig.ClientWatchConfigFileRequest) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
 	files := req.GetWatchFiles()
 	if len(files) == 0 {
 		return nil
 	}
 	temp := map[string]struct{}{}
-	entries := make([]authcommon.ResourceEntry, 0, len(files))
+	entries := make([]authtypes.ResourceEntry, 0, len(files))
 	for _, apiConfigFile := range files {
 		namespace := apiConfigFile.GetNamespace().GetValue()
 		groupName := apiConfigFile.GetGroup().GetValue()
@@ -332,13 +333,13 @@ func (s *Server) queryWatchConfigFilesResource(ctx context.Context,
 		if data == nil {
 			continue
 		}
-		entries = append(entries, authcommon.ResourceEntry{
+		entries = append(entries, authtypes.ResourceEntry{
 			ID:    strconv.FormatUint(data.Id, 10),
 			Owner: data.Owner,
 		})
 	}
 
-	ret := map[apisecurity.ResourceType][]authcommon.ResourceEntry{
+	ret := map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 		apisecurity.ResourceType_ConfigGroups: entries,
 	}
 	authLog.Debug("[Config][Server] collect config_file watch access res",
@@ -349,8 +350,8 @@ func (s *Server) queryWatchConfigFilesResource(ctx context.Context,
 // ResourceEvent 资源事件
 type ResourceEvent struct {
 	ConfigGroup   *apiconfig.ConfigFileGroup
-	AddPrincipals []authcommon.Principal
-	DelPrincipals []authcommon.Principal
+	AddPrincipals []authtypes.Principal
+	DelPrincipals []authtypes.Principal
 	IsRemove      bool
 }
 
@@ -360,5 +361,5 @@ func (s *Server) afterConfigGroupResource(ctx context.Context, req *apiconfig.Co
 		IsRemove:    isRemove,
 	}
 
-	return s.After(ctx, model.RConfigGroup, event)
+	return s.After(ctx, types.RConfigGroup, event)
 }

@@ -24,51 +24,52 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
+	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // NewRoleCache
-func NewRoleCache(storage store.Store, cacheMgr types.CacheManager) types.RoleCache {
+func NewRoleCache(storage store.Store, cacheMgr cacheapi.CacheManager) cacheapi.RoleCache {
 	return &roleCache{
-		BaseCache:    types.NewBaseCache(storage, cacheMgr),
+		BaseCache:    cachebase.NewBaseCache(storage, cacheMgr),
 		singleFlight: new(singleflight.Group),
 	}
 }
 
 type roleCache struct {
-	*types.BaseCache
+	*cachebase.BaseCache
 	// roles
-	roles *utils.SyncMap[string, *authcommon.Role]
+	roles *utils.SyncMap[string, *authtypes.Role]
 	// principalRoles
-	principalRoles map[authcommon.PrincipalType]*utils.SyncMap[string, *utils.SyncSet[string]]
+	principalRoles map[authtypes.PrincipalType]*utils.SyncMap[string, *utils.SyncSet[string]]
 	singleFlight   *singleflight.Group
 }
 
 // Initialize implements api.RoleCache.
 func (r *roleCache) Initialize(c map[string]interface{}) error {
-	r.roles = utils.NewSyncMap[string, *authcommon.Role]()
-	r.principalRoles = map[authcommon.PrincipalType]*utils.SyncMap[string, *utils.SyncSet[string]]{
-		authcommon.PrincipalUser:  utils.NewSyncMap[string, *utils.SyncSet[string]](),
-		authcommon.PrincipalGroup: utils.NewSyncMap[string, *utils.SyncSet[string]](),
+	r.roles = utils.NewSyncMap[string, *authtypes.Role]()
+	r.principalRoles = map[authtypes.PrincipalType]*utils.SyncMap[string, *utils.SyncSet[string]]{
+		authtypes.PrincipalUser:  utils.NewSyncMap[string, *utils.SyncSet[string]](),
+		authtypes.PrincipalGroup: utils.NewSyncMap[string, *utils.SyncSet[string]](),
 	}
 	return nil
 }
 
 // Name implements api.RoleCache.
 func (r *roleCache) Name() string {
-	return types.RolesName
+	return cacheapi.RolesName
 }
 
 // Clear implements api.RoleCache.
 // Subtle: this method shadows the method (*BaseCache).Clear of roleCache.BaseCache.
 func (r *roleCache) Clear() error {
-	r.roles = utils.NewSyncMap[string, *authcommon.Role]()
-	r.principalRoles = map[authcommon.PrincipalType]*utils.SyncMap[string, *utils.SyncSet[string]]{
-		authcommon.PrincipalUser:  utils.NewSyncMap[string, *utils.SyncSet[string]](),
-		authcommon.PrincipalGroup: utils.NewSyncMap[string, *utils.SyncSet[string]](),
+	r.roles = utils.NewSyncMap[string, *authtypes.Role]()
+	r.principalRoles = map[authtypes.PrincipalType]*utils.SyncMap[string, *utils.SyncSet[string]]{
+		authtypes.PrincipalUser:  utils.NewSyncMap[string, *utils.SyncSet[string]](),
+		authtypes.PrincipalGroup: utils.NewSyncMap[string, *utils.SyncSet[string]](),
 	}
 	return nil
 }
@@ -103,7 +104,7 @@ func (r *roleCache) realUpdate() (map[string]time.Time, int64, error) {
 	}, int64(len(roles)), nil
 }
 
-func (r *roleCache) setRoles(roles []*authcommon.Role) (time.Time, int, int, int) {
+func (r *roleCache) setRoles(roles []*authtypes.Role) (time.Time, int, int, int) {
 	var add, remove, update int
 	lastMtime := r.LastMtime(r.Name()).Unix()
 
@@ -140,14 +141,14 @@ func (r *roleCache) cleanEmptyPrincipalRoles() {
 }
 
 // dealPrincipalRoles 处理 principal 和 role 的关联关系
-func (r *roleCache) dealPrincipalRoles(role *authcommon.Role, isDel bool) {
+func (r *roleCache) dealPrincipalRoles(role *authtypes.Role, isDel bool) {
 	if role == nil {
 		return
 	}
 	if isDel {
 		users := role.Users
 		for i := range users {
-			container, _ := r.principalRoles[authcommon.PrincipalUser].ComputeIfAbsent(users[i].PrincipalID,
+			container, _ := r.principalRoles[authtypes.PrincipalUser].ComputeIfAbsent(users[i].PrincipalID,
 				func(k string) *utils.SyncSet[string] {
 					return utils.NewSyncSet[string]()
 				})
@@ -155,7 +156,7 @@ func (r *roleCache) dealPrincipalRoles(role *authcommon.Role, isDel bool) {
 		}
 		groups := role.UserGroups
 		for i := range groups {
-			container, _ := r.principalRoles[authcommon.PrincipalGroup].ComputeIfAbsent(groups[i].PrincipalID,
+			container, _ := r.principalRoles[authtypes.PrincipalGroup].ComputeIfAbsent(groups[i].PrincipalID,
 				func(k string) *utils.SyncSet[string] {
 					return utils.NewSyncSet[string]()
 				})
@@ -165,7 +166,7 @@ func (r *roleCache) dealPrincipalRoles(role *authcommon.Role, isDel bool) {
 	}
 	users := role.Users
 	for i := range users {
-		container, _ := r.principalRoles[authcommon.PrincipalUser].ComputeIfAbsent(users[i].PrincipalID,
+		container, _ := r.principalRoles[authtypes.PrincipalUser].ComputeIfAbsent(users[i].PrincipalID,
 			func(k string) *utils.SyncSet[string] {
 				return utils.NewSyncSet[string]()
 			})
@@ -173,7 +174,7 @@ func (r *roleCache) dealPrincipalRoles(role *authcommon.Role, isDel bool) {
 	}
 	groups := role.UserGroups
 	for i := range groups {
-		container, _ := r.principalRoles[authcommon.PrincipalGroup].ComputeIfAbsent(groups[i].PrincipalID,
+		container, _ := r.principalRoles[authtypes.PrincipalGroup].ComputeIfAbsent(groups[i].PrincipalID,
 			func(k string) *utils.SyncSet[string] {
 				return utils.NewSyncSet[string]()
 			})
@@ -182,22 +183,22 @@ func (r *roleCache) dealPrincipalRoles(role *authcommon.Role, isDel bool) {
 }
 
 // Query implements api.RoleCache.
-func (r *roleCache) Query(ctx context.Context, args types.RoleSearchArgs) (uint32, []*authcommon.Role, error) {
+func (r *roleCache) Query(ctx context.Context, args cacheapi.RoleSearchArgs) (uint32, []*authtypes.Role, error) {
 	if err := r.Update(); err != nil {
 		return 0, nil, err
 	}
 	var (
 		total uint32
-		roles []*authcommon.Role
+		roles []*authtypes.Role
 	)
 
 	searchId, hasId := args.Filters["id"]
 	searchName, hasName := args.Filters["name"]
 	searchSource, hasSource := args.Filters["source"]
 
-	predicates := types.LoadAuthRolePredicates(ctx)
+	predicates := cacheapi.LoadAuthRolePredicates(ctx)
 
-	r.roles.Range(func(key string, val *authcommon.Role) {
+	r.roles.Range(func(key string, val *authtypes.Role) {
 		if hasId && key != searchId {
 			return
 		}
@@ -223,7 +224,7 @@ func (r *roleCache) Query(ctx context.Context, args types.RoleSearchArgs) (uint3
 	return total, roles, nil
 }
 
-func (r *roleCache) toPage(total uint32, roles []*authcommon.Role, args types.RoleSearchArgs) (uint32, []*authcommon.Role) {
+func (r *roleCache) toPage(total uint32, roles []*authtypes.Role, args cacheapi.RoleSearchArgs) (uint32, []*authtypes.Role) {
 	if args.Limit == 0 {
 		return total, roles
 	}
@@ -239,7 +240,7 @@ func (r *roleCache) toPage(total uint32, roles []*authcommon.Role, args types.Ro
 }
 
 // GetPrincipalRoles implements api.RoleCache.
-func (r *roleCache) GetPrincipalRoles(p authcommon.Principal) []*authcommon.Role {
+func (r *roleCache) GetPrincipalRoles(p authtypes.Principal) []*authtypes.Role {
 	roleContainers, ok := r.principalRoles[p.PrincipalType]
 	if !ok {
 		return nil
@@ -249,7 +250,7 @@ func (r *roleCache) GetPrincipalRoles(p authcommon.Principal) []*authcommon.Role
 		return nil
 	}
 
-	result := make([]*authcommon.Role, 0, containers.Len())
+	result := make([]*authtypes.Role, 0, containers.Len())
 	containers.Range(func(val string) {
 		role, ok := r.roles.Load(val)
 		if !ok {
@@ -261,7 +262,7 @@ func (r *roleCache) GetPrincipalRoles(p authcommon.Principal) []*authcommon.Role
 }
 
 // GetRole implements api.RoleCache.
-func (r *roleCache) GetRole(id string) *authcommon.Role {
+func (r *roleCache) GetRole(id string) *authtypes.Role {
 	ret, _ := r.roles.Load(id)
 	return ret
 }

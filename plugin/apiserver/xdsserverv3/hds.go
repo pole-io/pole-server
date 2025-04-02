@@ -40,7 +40,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
@@ -240,7 +240,7 @@ const (
 	defaultTTl = 10
 )
 
-func convertInstances(client *resource.XDSClient, registerFrom string) map[model.ServiceKey][]*service_manage.Instance {
+func convertInstances(client *resource.XDSClient, registerFrom string) map[svctypes.ServiceKey][]*service_manage.Instance {
 	if len(client.GetRegisterServices()) == 0 {
 		return nil
 	}
@@ -253,7 +253,7 @@ func convertInstances(client *resource.XDSClient, registerFrom string) map[model
 		}
 	}
 
-	svcInstances := make(map[model.ServiceKey][]*service_manage.Instance, len(client.GetRegisterServices()))
+	svcInstances := make(map[svctypes.ServiceKey][]*service_manage.Instance, len(client.GetRegisterServices()))
 	for _, svc := range client.GetRegisterServices() {
 		if len(svc.Ports) == 0 {
 			continue
@@ -284,12 +284,12 @@ func convertInstances(client *resource.XDSClient, registerFrom string) map[model
 					Type: service_manage.HealthCheck_HEARTBEAT,
 				}
 				instance.Metadata = make(map[string]string)
-				instance.Metadata[model.MetadataRegisterFrom] = registerFrom
+				instance.Metadata[svctypes.MetadataRegisterFrom] = registerFrom
 				if len(svc.HealthCheckPath) > 0 {
-					instance.Metadata[model.MetadataInternalMetaHealthCheckPath] = svc.HealthCheckPath
+					instance.Metadata[svctypes.MetadataInternalMetaHealthCheckPath] = svc.HealthCheckPath
 				}
 				if svc.TracingSampling > 0 {
-					instance.Metadata[model.MetadataInternalMetaTraceSampling] = strconv.Itoa(int(svc.TracingSampling))
+					instance.Metadata[svctypes.MetadataInternalMetaTraceSampling] = strconv.Itoa(int(svc.TracingSampling))
 				}
 				metadata := client.Metadata
 				if len(metadata) > 0 {
@@ -298,7 +298,7 @@ func convertInstances(client *resource.XDSClient, registerFrom string) map[model
 					}
 				}
 
-				svcKey := model.ServiceKey{
+				svcKey := svctypes.ServiceKey{
 					Namespace: client.GetSelfNamespace(),
 					Name:      svc.Name,
 				}

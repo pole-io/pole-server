@@ -20,24 +20,38 @@ package auth
 import (
 	"context"
 
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
-	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/pkg/namespace"
 )
 
+// ResourceEvent 资源事件
+type ResourceEvent struct {
+	ReqNamespace *apimodel.Namespace
+	IsRemove     bool
+}
+
+func (svr *Server) afterNamespaceResource(ctx context.Context, req *apimodel.Namespace, remove bool) error {
+	event := &ResourceEvent{
+		ReqNamespace: req,
+		IsRemove:     remove,
+	}
+	return svr.After(ctx, types.RNamespace, event)
+}
+
 // Before this function is called before the resource operation
-func (svr *Server) Before(ctx context.Context, resourceType model.Resource) {
+func (svr *Server) Before(ctx context.Context, resourceType types.Resource) {
 	// do nothing
 }
 
 // After this function is called after the resource operation
-func (svr *Server) After(ctx context.Context, resourceType model.Resource, res *namespace.ResourceEvent) error {
+func (svr *Server) After(ctx context.Context, resourceType types.Resource, res *ResourceEvent) error {
 	switch resourceType {
-	case model.RNamespace:
+	case types.RNamespace:
 		return svr.onNamespaceResource(ctx, res)
 	default:
 		return nil
@@ -45,7 +59,7 @@ func (svr *Server) After(ctx context.Context, resourceType model.Resource, res *
 }
 
 // onNamespaceResource
-func (svr *Server) onNamespaceResource(ctx context.Context, res *namespace.ResourceEvent) error {
+func (svr *Server) onNamespaceResource(ctx context.Context, res *ResourceEvent) error {
 	authCtx, _ := ctx.Value(utils.ContextAuthContextKey).(*authcommon.AcquireContext)
 	if authCtx == nil {
 		log.Warn("[Namespace][ResourceHook] get auth context is nil, ignore", utils.RequestID(ctx))
@@ -55,7 +69,7 @@ func (svr *Server) onNamespaceResource(ctx context.Context, res *namespace.Resou
 	authCtx.SetAttachment(authcommon.ResourceAttachmentKey, map[apisecurity.ResourceType][]authcommon.ResourceEntry{
 		apisecurity.ResourceType_Namespaces: {
 			{
-				ID:    res.Namespace.Name,
+				ID:    res.ReqNamespace.GetName().GetValue(),
 				Owner: utils.ParseOwnerID(ctx),
 			},
 		},

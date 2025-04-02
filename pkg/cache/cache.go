@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
+	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -38,31 +38,33 @@ const (
 )
 
 var (
-	ReportInterval = 1 * time.Second
+	// DefaultTimeDiff default time diff
+	DefaultTimeDiff = -5 * time.Second
+	ReportInterval  = 1 * time.Second
 )
 
 // CacheManager 名字服务缓存
 type CacheManager struct {
 	storage  store.Store
-	caches   []types.Cache
+	caches   []cachetypes.Cache
 	needLoad *utils.SyncSet[string]
 }
 
 // Initialize 缓存对象初始化
 func (nc *CacheManager) Initialize() error {
 	if config.DiffTime != 0 {
-		types.DefaultTimeDiff = -1 * (config.DiffTime.Abs())
+		DefaultTimeDiff = -1 * (config.DiffTime.Abs())
 	}
-	if types.DefaultTimeDiff > 0 {
-		return fmt.Errorf("cache diff time to pull store must negative number: %+v", types.DefaultTimeDiff)
+	if DefaultTimeDiff > 0 {
+		return fmt.Errorf("cache diff time to pull store must negative number: %+v", DefaultTimeDiff)
 	}
 	return nil
 }
 
 // OpenResourceCache 开启资源缓存
-func (nc *CacheManager) OpenResourceCache(entries ...types.ConfigEntry) error {
+func (nc *CacheManager) OpenResourceCache(entries ...cachetypes.ConfigEntry) error {
 	for _, obj := range nc.caches {
-		var entryItem *types.ConfigEntry
+		var entryItem *cachetypes.ConfigEntry
 		for _, entry := range entries {
 			if obj.Name() == entry.Name {
 				entryItem = &entry
@@ -91,7 +93,7 @@ func (nc *CacheManager) warmUp() error {
 			return fmt.Errorf("cache resource %s not exists", name)
 		}
 		wg.Add(1)
-		go func(c types.Cache) {
+		go func(c cachetypes.Cache) {
 			defer wg.Done()
 			_ = c.Update()
 		}(nc.caches[index])
@@ -142,7 +144,7 @@ func (nc *CacheManager) Start(ctx context.Context) error {
 			return fmt.Errorf("cache resource %s not exists", name)
 		}
 		// 每个缓存各自在自己的协程内部按照期望的缓存更新时间完成数据缓存刷新
-		go func(c types.Cache) {
+		go func(c cachetypes.Cache) {
 			ticker := time.NewTicker(nc.GetUpdateCacheInterval())
 			for {
 				select {
@@ -175,96 +177,91 @@ func (nc *CacheManager) GetReportInterval() time.Duration {
 }
 
 // Service 获取Service缓存信息
-func (nc *CacheManager) Service() types.ServiceCache {
-	return nc.caches[types.CacheService].(types.ServiceCache)
+func (nc *CacheManager) Service() cachetypes.ServiceCache {
+	return nc.caches[cachetypes.CacheService].(cachetypes.ServiceCache)
 }
 
 // Instance 获取Instance缓存信息
-func (nc *CacheManager) Instance() types.InstanceCache {
-	return nc.caches[types.CacheInstance].(types.InstanceCache)
+func (nc *CacheManager) Instance() cachetypes.InstanceCache {
+	return nc.caches[cachetypes.CacheInstance].(cachetypes.InstanceCache)
 }
 
 // RoutingConfig 获取路由配置的缓存信息
-func (nc *CacheManager) RoutingConfig() types.RoutingConfigCache {
-	return nc.caches[types.CacheRoutingConfig].(types.RoutingConfigCache)
-}
-
-// CL5 获取l5缓存信息
-func (nc *CacheManager) CL5() types.L5Cache {
-	return nc.caches[types.CacheCL5].(types.L5Cache)
+func (nc *CacheManager) RoutingConfig() cachetypes.RoutingConfigCache {
+	return nc.caches[cachetypes.CacheRoutingConfig].(cachetypes.RoutingConfigCache)
 }
 
 // RateLimit 获取限流规则缓存信息
-func (nc *CacheManager) RateLimit() types.RateLimitCache {
-	return nc.caches[types.CacheRateLimit].(types.RateLimitCache)
+func (nc *CacheManager) RateLimit() cachetypes.RateLimitCache {
+	return nc.caches[cachetypes.CacheRateLimit].(cachetypes.RateLimitCache)
 }
 
 // CircuitBreaker 获取熔断规则缓存信息
-func (nc *CacheManager) CircuitBreaker() types.CircuitBreakerCache {
-	return nc.caches[types.CacheCircuitBreaker].(types.CircuitBreakerCache)
+func (nc *CacheManager) CircuitBreaker() cachetypes.CircuitBreakerCache {
+	return nc.caches[cachetypes.CacheCircuitBreaker].(cachetypes.CircuitBreakerCache)
 }
 
 // FaultDetector 获取探测规则缓存信息
-func (nc *CacheManager) FaultDetector() types.FaultDetectCache {
-	return nc.caches[types.CacheFaultDetector].(types.FaultDetectCache)
+func (nc *CacheManager) FaultDetector() cachetypes.FaultDetectCache {
+	return nc.caches[cachetypes.CacheFaultDetector].(cachetypes.FaultDetectCache)
 }
 
 // ServiceContract 获取服务契约缓存
-func (nc *CacheManager) ServiceContract() types.ServiceContractCache {
-	return nc.caches[types.CacheServiceContract].(types.ServiceContractCache)
+func (nc *CacheManager) ServiceContract() cachetypes.ServiceContractCache {
+	return nc.caches[cachetypes.CacheServiceContract].(cachetypes.ServiceContractCache)
 }
 
 // LaneRule 获取泳道规则缓存信息
-func (nc *CacheManager) LaneRule() types.LaneCache {
-	return nc.caches[types.CacheLaneRule].(types.LaneCache)
+func (nc *CacheManager) LaneRule() cachetypes.LaneCache {
+	return nc.caches[cachetypes.CacheLaneRule].(cachetypes.LaneCache)
 }
 
 // User Get user information cache information
-func (nc *CacheManager) User() types.UserCache {
-	return nc.caches[types.CacheUser].(types.UserCache)
+func (nc *CacheManager) User() cachetypes.UserCache {
+	return nc.caches[cachetypes.CacheUser].(cachetypes.UserCache)
 }
 
 // AuthStrategy Get authentication cache information
-func (nc *CacheManager) AuthStrategy() types.StrategyCache {
-	return nc.caches[types.CacheAuthStrategy].(types.StrategyCache)
+func (nc *CacheManager) AuthStrategy() cachetypes.StrategyCache {
+	return nc.caches[cachetypes.CacheAuthStrategy].(cachetypes.StrategyCache)
 }
 
 // Namespace Get namespace cache information
-func (nc *CacheManager) Namespace() types.NamespaceCache {
-	return nc.caches[types.CacheNamespace].(types.NamespaceCache)
+func (nc *CacheManager) Namespace() cachetypes.NamespaceCache {
+	return nc.caches[cachetypes.CacheNamespace].(cachetypes.NamespaceCache)
 }
 
 // Client Get client cache information
-func (nc *CacheManager) Client() types.ClientCache {
-	return nc.caches[types.CacheClient].(types.ClientCache)
+func (nc *CacheManager) Client() cachetypes.ClientCache {
+	return nc.caches[cachetypes.CacheClient].(cachetypes.ClientCache)
 }
 
 // ConfigFile get config file cache information
-func (nc *CacheManager) ConfigFile() types.ConfigFileCache {
-	return nc.caches[types.CacheConfigFile].(types.ConfigFileCache)
+func (nc *CacheManager) ConfigFile() cachetypes.ConfigFileCache {
+	return nc.caches[cachetypes.CacheConfigFile].(cachetypes.ConfigFileCache)
 }
 
 // ConfigGroup get config group cache information
-func (nc *CacheManager) ConfigGroup() types.ConfigGroupCache {
-	return nc.caches[types.CacheConfigGroup].(types.ConfigGroupCache)
+func (nc *CacheManager) ConfigGroup() cachetypes.ConfigGroupCache {
+	return nc.caches[cachetypes.CacheConfigGroup].(cachetypes.ConfigGroupCache)
 }
 
 // Gray get Gray cache information
-func (nc *CacheManager) Gray() types.GrayCache {
-	return nc.caches[types.CacheGray].(types.GrayCache)
+func (nc *CacheManager) Gray() cachetypes.GrayCache {
+	return nc.caches[cachetypes.CacheGray].(cachetypes.GrayCache)
 }
 
 // Role get Role cache information
-func (nc *CacheManager) Role() types.RoleCache {
-	return nc.caches[types.CacheRole].(types.RoleCache)
+func (nc *CacheManager) Role() cachetypes.RoleCache {
+	return nc.caches[cachetypes.CacheRole].(cachetypes.RoleCache)
 }
 
-// GetCacher get types.Cache impl
-func (nc *CacheManager) GetCacher(cacheIndex types.CacheIndex) types.Cache {
+// GetCacher get cachetypes.Cache impl
+func (nc *CacheManager) GetCacher(cacheIndex cachetypes.CacheIndex) cachetypes.Cache {
 	return nc.caches[cacheIndex]
 }
 
-func (nc *CacheManager) RegisterCacher(cacheType types.CacheIndex, item types.Cache) {
+func (nc *CacheManager) RegisterCacher(cacheType cachetypes.CacheIndex, item cachetypes.Cache) {
 	nc.caches[cacheType] = item
 }
 
@@ -274,7 +271,7 @@ func (nc *CacheManager) GetStore() store.Store {
 }
 
 // RegisterCache 注册缓存资源
-func RegisterCache(name string, index types.CacheIndex) {
+func RegisterCache(name string, index cachetypes.CacheIndex) {
 	if _, exist := cacheSet[name]; exist {
 		log.Warnf("existed cache resource: name = %s", name)
 	}

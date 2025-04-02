@@ -30,10 +30,10 @@ import (
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"go.uber.org/zap"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
@@ -239,7 +239,7 @@ func (s *Server) GetAllRateLimits(ctx context.Context) *apiservice.BatchQueryRes
 	return nil
 }
 
-func parseRateLimitArgs(query map[string]string) (*cachetypes.RateLimitRuleArgs, *apiservice.BatchQueryResponse) {
+func parseRateLimitArgs(query map[string]string) (*cacheapi.RateLimitRuleArgs, *apiservice.BatchQueryResponse) {
 	for key := range query {
 		if _, ok := RateLimitFilters[key]; !ok {
 			log.Errorf("params %s is not allowed in querying rate limits", key)
@@ -252,7 +252,7 @@ func parseRateLimitArgs(query map[string]string) (*cachetypes.RateLimitRuleArgs,
 		return nil, api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}
 
-	args := &cachetypes.RateLimitRuleArgs{
+	args := &cacheapi.RateLimitRuleArgs{
 		Filter:     query,
 		ID:         query["id"],
 		Name:       query["name"],

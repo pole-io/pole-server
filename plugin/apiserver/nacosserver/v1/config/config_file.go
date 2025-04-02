@@ -31,6 +31,8 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonmodel "github.com/pole-io/pole-server/pkg/common/model"
@@ -185,7 +187,7 @@ func (n *ConfigServer) handleWatch(ctx context.Context, listenCtx *model.ConfigW
 func (n *ConfigServer) diffChangeFiles(ctx context.Context,
 	listenCtx *config_manage.ClientWatchConfigFileRequest) []*model.ConfigListenItem {
 	clientLabels := map[string]string{
-		commonmodel.ClientLabel_IP: utils.ParseClientIP(ctx),
+		types.ClientLabel_IP: utils.ParseClientIP(ctx),
 	}
 	changeKeys := make([]*model.ConfigListenItem, 0, 4)
 	// quick get file and compare
@@ -220,7 +222,7 @@ func (n *ConfigServer) diffChangeFiles(ctx context.Context,
 
 func (n *ConfigServer) BuildTimeoutWatchCtx(ctx context.Context, watchTimeOut time.Duration) config.WatchContextFactory {
 	labels := map[string]string{}
-	labels[commonmodel.ClientLabel_IP] = utils.ParseClientIP(ctx)
+	labels[types.ClientLabel_IP] = utils.ParseClientIP(ctx)
 
 	return func(clientId string, matcher config.BetaReleaseMatcher) config.WatchContext {
 		watchCtx := &LongPollWatchContext{
@@ -229,7 +231,7 @@ func (n *ConfigServer) BuildTimeoutWatchCtx(ctx context.Context, watchTimeOut ti
 			finishTime:       time.Now().Add(watchTimeOut),
 			finishChan:       make(chan *config_manage.ConfigClientResponse),
 			watchConfigFiles: map[string]*config_manage.ClientConfigFileInfo{},
-			betaMatcher: func(clientLabels map[string]string, event *commonmodel.SimpleConfigFileRelease) bool {
+			betaMatcher: func(clientLabels map[string]string, event *conftypes.SimpleConfigFileRelease) bool {
 				return n.cacheSvr.Gray().HitGrayRule(commonmodel.GetGrayConfigRealseKey(event), clientLabels)
 			},
 		}

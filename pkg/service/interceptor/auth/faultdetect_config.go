@@ -27,19 +27,20 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 func (svr *Server) CreateFaultDetectRules(
 	ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
 
-	authCtx := svr.collectFaultDetectAuthContext(ctx, request, authcommon.Create, authcommon.CreateFaultDetectRules)
+	authCtx := svr.collectFaultDetectAuthContext(ctx, request, authtypes.Create, authtypes.CreateFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
@@ -50,7 +51,7 @@ func (svr *Server) CreateFaultDetectRules(
 		item := resp.GetResponses()[index].GetData()
 		rule := &apifault.FaultDetectRule{}
 		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
-		_ = svr.afterRuleResource(ctx, model.RFaultDetectRule, authcommon.ResourceEntry{
+		_ = svr.afterRuleResource(ctx, types.RFaultDetectRule, authtypes.ResourceEntry{
 			ID:   rule.Id,
 			Type: security.ResourceType_FaultDetectRules,
 		}, false)
@@ -61,9 +62,9 @@ func (svr *Server) CreateFaultDetectRules(
 func (svr *Server) DeleteFaultDetectRules(
 	ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
 
-	authCtx := svr.collectFaultDetectAuthContext(ctx, request, authcommon.Delete, authcommon.DeleteFaultDetectRules)
+	authCtx := svr.collectFaultDetectAuthContext(ctx, request, authtypes.Delete, authtypes.DeleteFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
@@ -72,7 +73,7 @@ func (svr *Server) DeleteFaultDetectRules(
 		item := resp.GetResponses()[index].GetData()
 		rule := &apifault.FaultDetectRule{}
 		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
-		_ = svr.afterRuleResource(ctx, model.RFaultDetectRule, authcommon.ResourceEntry{
+		_ = svr.afterRuleResource(ctx, types.RFaultDetectRule, authtypes.ResourceEntry{
 			ID:   rule.Id,
 			Type: security.ResourceType_FaultDetectRules,
 		}, true)
@@ -83,9 +84,9 @@ func (svr *Server) DeleteFaultDetectRules(
 func (svr *Server) UpdateFaultDetectRules(
 	ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
 
-	authCtx := svr.collectFaultDetectAuthContext(ctx, request, authcommon.Modify, authcommon.UpdateFaultDetectRules)
+	authCtx := svr.collectFaultDetectAuthContext(ctx, request, authtypes.Modify, authtypes.UpdateFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
@@ -94,15 +95,15 @@ func (svr *Server) UpdateFaultDetectRules(
 
 func (svr *Server) GetFaultDetectRules(
 	ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
-	authCtx := svr.collectFaultDetectAuthContext(ctx, nil, authcommon.Read, authcommon.DescribeFaultDetectRules)
+	authCtx := svr.collectFaultDetectAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchQueryResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 
-	ctx = cachetypes.AppendFaultDetectRulePredicate(ctx, func(ctx context.Context, cbr *model.FaultDetectRule) bool {
-		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
+	ctx = cacheapi.AppendFaultDetectRulePredicate(ctx, func(ctx context.Context, cbr *rules.FaultDetectRule) bool {
+		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
 			Type:     security.ResourceType_FaultDetectRules,
 			ID:       cbr.ID,
 			Metadata: cbr.Proto.GetMetadata(),
@@ -115,7 +116,7 @@ func (svr *Server) GetFaultDetectRules(
 	for index := range resp.Data {
 		item := &apifault.FaultDetectRule{}
 		_ = anypb.UnmarshalTo(resp.Data[index], item, proto.UnmarshalOptions{})
-		authCtx.SetAccessResources(map[security.ResourceType][]authcommon.ResourceEntry{
+		authCtx.SetAccessResources(map[security.ResourceType][]authtypes.ResourceEntry{
 			security.ResourceType_FaultDetectRules: {
 				{
 					Type:     apisecurity.ResourceType_FaultDetectRules,
@@ -126,14 +127,14 @@ func (svr *Server) GetFaultDetectRules(
 		})
 
 		// 检查 write 操作权限
-		authCtx.SetMethod([]authcommon.ServerFunctionName{authcommon.UpdateFaultDetectRules, authcommon.EnableFaultDetectRules})
+		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateFaultDetectRules, authtypes.EnableFaultDetectRules})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 			item.Editable = false
 		}
 
 		// 检查 delete 操作权限
-		authCtx.SetMethod([]authcommon.ServerFunctionName{authcommon.DeleteFaultDetectRules})
+		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteFaultDetectRules})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 			item.Deleteable = false

@@ -26,10 +26,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	authmodel "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	cachetypes "github.com/pole-io/pole-server/apis/cache"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -64,7 +63,7 @@ func (svr *Server) Login(req *apisecurity.LoginRequest) *apiservice.Response {
 }
 
 // CheckCredential 检查当前操作用户凭证
-func (svr *Server) CheckCredential(authCtx *authmodel.AcquireContext) error {
+func (svr *Server) CheckCredential(authCtx *authtypes.AcquireContext) error {
 	return svr.nextSvr.CheckCredential(authCtx)
 }
 
@@ -75,15 +74,15 @@ func (svr *Server) GetUserHelper() authapi.UserHelper {
 
 // CreateUsers 批量创建用户
 func (svr *Server) CreateUsers(ctx context.Context, users []*apisecurity.User) *apiservice.BatchWriteResponse {
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Create),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.CreateUsers),
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Create),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.CreateUsers),
 	)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	return svr.nextSvr.CreateUsers(authCtx.GetRequestContext(), users)
 }
@@ -96,14 +95,14 @@ func (svr *Server) UpdateUser(ctx context.Context, user *apisecurity.User) *apis
 		return api.NewResponse(apimodel.Code_NotFoundUser)
 	}
 
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Modify),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.UpdateUser),
-		authcommon.WithAccessResources(map[apisecurity.ResourceType][]authmodel.ResourceEntry{
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Modify),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.UpdateUser),
+		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_Users: {
-				authmodel.ResourceEntry{
+				authtypes.ResourceEntry{
 					ID:       user.GetId().GetValue(),
 					Type:     apisecurity.ResourceType_Users,
 					Metadata: saveUser.Metadata,
@@ -113,7 +112,7 @@ func (svr *Server) UpdateUser(ctx context.Context, user *apisecurity.User) *apis
 	)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authcommon.ConvertToErrCode(err))
+		return api.NewResponse(authtypes.ConvertToErrCode(err))
 	}
 	return svr.nextSvr.UpdateUser(authCtx.GetRequestContext(), user)
 }
@@ -126,14 +125,14 @@ func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.Modi
 		return api.NewResponse(apimodel.Code_NotFoundUser)
 	}
 
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Modify),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.UpdateUserPassword),
-		authcommon.WithAccessResources(map[apisecurity.ResourceType][]authmodel.ResourceEntry{
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Modify),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.UpdateUserPassword),
+		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_Users: {
-				authmodel.ResourceEntry{
+				authtypes.ResourceEntry{
 					ID:       req.GetId().GetValue(),
 					Type:     apisecurity.ResourceType_Users,
 					Metadata: saveUser.Metadata,
@@ -143,7 +142,7 @@ func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.Modi
 	)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authcommon.ConvertToErrCode(err))
+		return api.NewResponse(authtypes.ConvertToErrCode(err))
 	}
 	return svr.nextSvr.UpdateUserPassword(authCtx.GetRequestContext(), req)
 }
@@ -151,54 +150,54 @@ func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.Modi
 // DeleteUsers 批量删除用户
 func (svr *Server) DeleteUsers(ctx context.Context, users []*apisecurity.User) *apiservice.BatchWriteResponse {
 	helper := svr.nextSvr.GetUserHelper()
-	resources := make([]authcommon.ResourceEntry, 0, len(users))
+	resources := make([]authtypes.ResourceEntry, 0, len(users))
 	for i := range users {
 		saveUser := helper.GetUserByID(ctx, users[i].GetId().GetValue())
 		if saveUser == nil {
 			return api.NewBatchWriteResponse(apimodel.Code_NotFoundUser)
 		}
-		resources = append(resources, authmodel.ResourceEntry{
+		resources = append(resources, authtypes.ResourceEntry{
 			ID:       users[i].GetId().GetValue(),
 			Type:     apisecurity.ResourceType_Users,
 			Metadata: saveUser.Metadata,
 		})
 	}
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Delete),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.DeleteUsers),
-		authcommon.WithAccessResources(map[apisecurity.ResourceType][]authmodel.ResourceEntry{
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Delete),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.DeleteUsers),
+		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_Users: resources,
 		}),
 	)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	return svr.nextSvr.DeleteUsers(authCtx.GetRequestContext(), users)
 }
 
 // GetUsers 查询用户列表
 func (svr *Server) GetUsers(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Read),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.DescribeUsers),
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Read),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.DescribeUsers),
 	)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchQueryResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	query["hide_admin"] = strconv.FormatBool(true)
 	// 如果不是超级管理员，查看数据有限制
-	if authcommon.ParseUserRole(ctx) != authmodel.AdminUserRole {
+	if authtypes.ParseUserRole(ctx) != authtypes.AdminUserRole {
 		// 设置 owner 参数，只能查看对应 owner 下的用户
 		query["owner"] = utils.ParseOwnerID(ctx)
 	}
 
-	ctx = cachetypes.AppendUserPredicate(ctx, func(ctx context.Context, u *authcommon.User) bool {
-		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authmodel.ResourceEntry{
+	ctx = cachetypes.AppendUserPredicate(ctx, func(ctx context.Context, u *authtypes.User) bool {
+		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
 			Type:     apisecurity.ResourceType_Users,
 			ID:       u.ID,
 			Metadata: u.Metadata,
@@ -215,14 +214,14 @@ func (svr *Server) GetUserToken(ctx context.Context, user *apisecurity.User) *ap
 	if saveUser == nil {
 		return api.NewResponse(apimodel.Code_NotFoundUser)
 	}
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Read),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.DescribeUserToken),
-		authcommon.WithAccessResources(map[apisecurity.ResourceType][]authmodel.ResourceEntry{
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Read),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.DescribeUserToken),
+		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_Users: {
-				authmodel.ResourceEntry{
+				authtypes.ResourceEntry{
 					ID:       user.GetId().GetValue(),
 					Type:     apisecurity.ResourceType_Users,
 					Metadata: saveUser.Metadata,
@@ -232,7 +231,7 @@ func (svr *Server) GetUserToken(ctx context.Context, user *apisecurity.User) *ap
 	)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authcommon.ConvertToErrCode(err))
+		return api.NewResponse(authtypes.ConvertToErrCode(err))
 	}
 	return svr.nextSvr.GetUserToken(authCtx.GetRequestContext(), user)
 }
@@ -244,14 +243,14 @@ func (svr *Server) EnableUserToken(ctx context.Context, user *apisecurity.User) 
 	if saveUser == nil {
 		return api.NewResponse(apimodel.Code_NotFoundUser)
 	}
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Modify),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.EnableUserToken),
-		authcommon.WithAccessResources(map[apisecurity.ResourceType][]authmodel.ResourceEntry{
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Modify),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.EnableUserToken),
+		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_Users: {
-				authmodel.ResourceEntry{
+				authtypes.ResourceEntry{
 					ID:       user.GetId().GetValue(),
 					Type:     apisecurity.ResourceType_Users,
 					Metadata: saveUser.Metadata,
@@ -261,7 +260,7 @@ func (svr *Server) EnableUserToken(ctx context.Context, user *apisecurity.User) 
 	)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authcommon.ConvertToErrCode(err))
+		return api.NewResponse(authtypes.ConvertToErrCode(err))
 	}
 	return svr.nextSvr.EnableUserToken(authCtx.GetRequestContext(), user)
 }
@@ -273,14 +272,14 @@ func (svr *Server) ResetUserToken(ctx context.Context, user *apisecurity.User) *
 	if saveUser == nil {
 		return api.NewResponse(apimodel.Code_NotFoundUser)
 	}
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Modify),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.ResetUserToken),
-		authcommon.WithAccessResources(map[apisecurity.ResourceType][]authmodel.ResourceEntry{
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Modify),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.ResetUserToken),
+		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_Users: {
-				authmodel.ResourceEntry{
+				authtypes.ResourceEntry{
 					ID:       user.GetId().GetValue(),
 					Type:     apisecurity.ResourceType_Users,
 					Metadata: saveUser.Metadata,
@@ -290,22 +289,22 @@ func (svr *Server) ResetUserToken(ctx context.Context, user *apisecurity.User) *
 	)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponseWithMsg(authcommon.ConvertToErrCode(err), err.Error())
+		return api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error())
 	}
 	return svr.nextSvr.ResetUserToken(authCtx.GetRequestContext(), user)
 }
 
 // CreateGroup 创建用户组
 func (svr *Server) CreateGroup(ctx context.Context, group *apisecurity.UserGroup) *apiservice.Response {
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Create),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.CreateUserGroup),
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Create),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.CreateUserGroup),
 	)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authcommon.ConvertToErrCode(err))
+		return api.NewResponse(authtypes.ConvertToErrCode(err))
 	}
 	return svr.nextSvr.CreateGroup(authCtx.GetRequestContext(), group)
 }
@@ -313,31 +312,31 @@ func (svr *Server) CreateGroup(ctx context.Context, group *apisecurity.UserGroup
 // UpdateGroups 更新用户组
 func (svr *Server) UpdateGroups(ctx context.Context, groups []*apisecurity.ModifyUserGroup) *apiservice.BatchWriteResponse {
 	helper := svr.nextSvr.GetUserHelper()
-	resources := make([]authcommon.ResourceEntry, 0, len(groups))
+	resources := make([]authtypes.ResourceEntry, 0, len(groups))
 	for i := range groups {
 		saveGroup := helper.GetGroup(ctx, &apisecurity.UserGroup{Id: groups[i].GetId()})
 		if saveGroup == nil {
 			return api.NewBatchWriteResponse(apimodel.Code_NotFoundUserGroup)
 		}
-		resources = append(resources, authmodel.ResourceEntry{
+		resources = append(resources, authtypes.ResourceEntry{
 			Type:     apisecurity.ResourceType_UserGroups,
 			ID:       groups[i].GetId().GetValue(),
 			Metadata: saveGroup.Metadata,
 		})
 	}
 
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Modify),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.UpdateUserGroups),
-		authcommon.WithAccessResources(map[apisecurity.ResourceType][]authmodel.ResourceEntry{
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Modify),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.UpdateUserGroups),
+		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_UserGroups: resources,
 		}),
 	)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	return svr.nextSvr.UpdateGroups(authCtx.GetRequestContext(), groups)
 }
@@ -345,47 +344,47 @@ func (svr *Server) UpdateGroups(ctx context.Context, groups []*apisecurity.Modif
 // DeleteGroups 批量删除用户组
 func (svr *Server) DeleteGroups(ctx context.Context, groups []*apisecurity.UserGroup) *apiservice.BatchWriteResponse {
 	helper := svr.nextSvr.GetUserHelper()
-	resources := make([]authcommon.ResourceEntry, 0, len(groups))
+	resources := make([]authtypes.ResourceEntry, 0, len(groups))
 	for i := range groups {
 		saveGroup := helper.GetGroup(ctx, &apisecurity.UserGroup{Id: groups[i].GetId()})
 		if saveGroup == nil {
 			return api.NewBatchWriteResponse(apimodel.Code_NotFoundUserGroup)
 		}
-		resources = append(resources, authmodel.ResourceEntry{
+		resources = append(resources, authtypes.ResourceEntry{
 			ID: groups[i].GetId().GetValue(),
 		})
 	}
 
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Modify),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.DeleteUserGroups),
-		authcommon.WithAccessResources(map[apisecurity.ResourceType][]authmodel.ResourceEntry{
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Modify),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.DeleteUserGroups),
+		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_UserGroups: resources,
 		}),
 	)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	return svr.nextSvr.DeleteGroups(authCtx.GetRequestContext(), groups)
 }
 
 // GetGroups 查询用户组列表（不带用户详细信息）
 func (svr *Server) GetGroups(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Read),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.DescribeUserGroups),
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Read),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.DescribeUserGroups),
 	)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchQueryResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	ctx = cachetypes.AppendUserGroupPredicate(ctx, func(ctx context.Context, u *authcommon.UserGroupDetail) bool {
-		ok := svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authmodel.ResourceEntry{
+	ctx = cachetypes.AppendUserGroupPredicate(ctx, func(ctx context.Context, u *authtypes.UserGroupDetail) bool {
+		ok := svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
 			Type:     apisecurity.ResourceType_UserGroups,
 			ID:       u.ID,
 			Metadata: u.Metadata,
@@ -411,14 +410,14 @@ func (svr *Server) GetGroup(ctx context.Context, req *apisecurity.UserGroup) *ap
 	if saveGroup == nil {
 		return api.NewResponse(apimodel.Code_NotFoundUserGroup)
 	}
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Read),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.DescribeUserGroupDetail),
-		authcommon.WithAccessResources(map[apisecurity.ResourceType][]authmodel.ResourceEntry{
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Read),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.DescribeUserGroupDetail),
+		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_UserGroups: {
-				authmodel.ResourceEntry{
+				authtypes.ResourceEntry{
 					Type:     apisecurity.ResourceType_UserGroups,
 					ID:       req.GetId().GetValue(),
 					Metadata: saveGroup.Metadata,
@@ -428,7 +427,7 @@ func (svr *Server) GetGroup(ctx context.Context, req *apisecurity.UserGroup) *ap
 	)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authcommon.ConvertToErrCode(err))
+		return api.NewResponse(authtypes.ConvertToErrCode(err))
 	}
 	return svr.nextSvr.GetGroup(authCtx.GetRequestContext(), req)
 }
@@ -440,14 +439,14 @@ func (svr *Server) GetGroupToken(ctx context.Context, group *apisecurity.UserGro
 	if saveGroup == nil {
 		return api.NewResponse(apimodel.Code_NotFoundUserGroup)
 	}
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Read),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.DescribeUserGroupToken),
-		authcommon.WithAccessResources(map[apisecurity.ResourceType][]authmodel.ResourceEntry{
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Read),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.DescribeUserGroupToken),
+		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_UserGroups: {
-				authmodel.ResourceEntry{
+				authtypes.ResourceEntry{
 					ID:       group.GetId().GetValue(),
 					Type:     apisecurity.ResourceType_UserGroups,
 					Metadata: saveGroup.Metadata,
@@ -457,7 +456,7 @@ func (svr *Server) GetGroupToken(ctx context.Context, group *apisecurity.UserGro
 	)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authcommon.ConvertToErrCode(err))
+		return api.NewResponse(authtypes.ConvertToErrCode(err))
 	}
 	return svr.nextSvr.GetGroupToken(authCtx.GetRequestContext(), group)
 }
@@ -469,14 +468,14 @@ func (svr *Server) EnableGroupToken(ctx context.Context, group *apisecurity.User
 	if saveGroup == nil {
 		return api.NewResponse(apimodel.Code_NotFoundUserGroup)
 	}
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Modify),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.EnableUserGroupToken),
-		authcommon.WithAccessResources(map[apisecurity.ResourceType][]authmodel.ResourceEntry{
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Modify),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.EnableUserGroupToken),
+		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_UserGroups: {
-				authmodel.ResourceEntry{
+				authtypes.ResourceEntry{
 					ID:       group.GetId().GetValue(),
 					Type:     apisecurity.ResourceType_UserGroups,
 					Metadata: saveGroup.Metadata,
@@ -486,7 +485,7 @@ func (svr *Server) EnableGroupToken(ctx context.Context, group *apisecurity.User
 	)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authcommon.ConvertToErrCode(err))
+		return api.NewResponse(authtypes.ConvertToErrCode(err))
 	}
 	return svr.nextSvr.EnableGroupToken(authCtx.GetRequestContext(), group)
 }
@@ -498,14 +497,14 @@ func (svr *Server) ResetGroupToken(ctx context.Context, group *apisecurity.UserG
 	if saveGroup == nil {
 		return api.NewResponse(apimodel.Code_NotFoundUserGroup)
 	}
-	authCtx := authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(authcommon.Modify),
-		authcommon.WithModule(authcommon.AuthModule),
-		authcommon.WithMethod(authcommon.ResetUserGroupToken),
-		authcommon.WithAccessResources(map[apisecurity.ResourceType][]authmodel.ResourceEntry{
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(authtypes.Modify),
+		authtypes.WithModule(authtypes.AuthModule),
+		authtypes.WithMethod(authtypes.ResetUserGroupToken),
+		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_UserGroups: {
-				authmodel.ResourceEntry{
+				authtypes.ResourceEntry{
 					ID:       group.GetId().GetValue(),
 					Type:     apisecurity.ResourceType_UserGroups,
 					Metadata: saveGroup.Metadata,
@@ -515,7 +514,7 @@ func (svr *Server) ResetGroupToken(ctx context.Context, group *apisecurity.UserG
 	)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authcommon.ConvertToErrCode(err))
+		return api.NewResponse(authtypes.ConvertToErrCode(err))
 	}
 	return svr.nextSvr.ResetGroupToken(authCtx.GetRequestContext(), group)
 }

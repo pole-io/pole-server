@@ -29,11 +29,12 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
 
+	cachetypes "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
 	cachemock "github.com/pole-io/pole-server/pkg/cache/mock"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/store/mock"
 )
@@ -48,8 +49,8 @@ func newTestServiceCache(t *testing.T) (*gomock.Controller, *mock.MockStore, *se
 	mockSvcCache := NewServiceCache(storage, mockCacheMgr)
 	mockInstCache := NewInstanceCache(storage, mockCacheMgr)
 
-	mockCacheMgr.EXPECT().GetCacher(types.CacheService).Return(mockSvcCache).AnyTimes()
-	mockCacheMgr.EXPECT().GetCacher(types.CacheInstance).Return(mockInstCache).AnyTimes()
+	mockCacheMgr.EXPECT().GetCacher(cachetypes.CacheService).Return(mockSvcCache).AnyTimes()
+	mockCacheMgr.EXPECT().GetCacher(cachetypes.CacheInstance).Return(mockInstCache).AnyTimes()
 	mockCacheMgr.EXPECT().GetReportInterval().Return(time.Second).AnyTimes()
 	mockCacheMgr.EXPECT().GetUpdateCacheInterval().Return(time.Second).AnyTimes()
 
@@ -73,7 +74,7 @@ func newTestServiceCache(t *testing.T) (*gomock.Controller, *mock.MockStore, *se
 // 获取当前缓存中的services总数
 func getServiceCacheCount(sc *serviceCache) int {
 	sum := 0
-	_ = sc.IteratorServices(func(key string, value *model.Service) (bool, error) {
+	_ = sc.IteratorServices(func(key string, value *svctypes.Service) (bool, error) {
 		sum++
 		return true, nil
 	})
@@ -81,10 +82,10 @@ func getServiceCacheCount(sc *serviceCache) int {
 }
 
 // 生成一些测试的services
-func genModelService(total int) map[string]*model.Service {
-	out := make(map[string]*model.Service)
+func genModelService(total int) map[string]*svctypes.Service {
+	out := make(map[string]*svctypes.Service)
 	for i := 0; i < total; i++ {
-		item := &model.Service{
+		item := &svctypes.Service{
 			ID:         fmt.Sprintf("ID-%d", i),
 			Namespace:  fmt.Sprintf("Namespace-%d", i),
 			Name:       fmt.Sprintf("Name-%d", i),
@@ -99,10 +100,10 @@ func genModelService(total int) map[string]*model.Service {
 }
 
 // 生成一些测试的services
-func genModelServiceByNamespace(total int, namespace string) map[string]*model.Service {
-	out := make(map[string]*model.Service)
+func genModelServiceByNamespace(total int, namespace string) map[string]*svctypes.Service {
+	out := make(map[string]*svctypes.Service)
 	for i := 0; i < total; i++ {
-		item := &model.Service{
+		item := &svctypes.Service{
 			ID:         fmt.Sprintf("%s-ID-%d", namespace, i),
 			Namespace:  namespace,
 			Name:       fmt.Sprintf("Name-%d", i),
@@ -117,15 +118,15 @@ func genModelServiceByNamespace(total int, namespace string) map[string]*model.S
 }
 
 func genModelInstancesByServicesWithInsId(
-	services map[string]*model.Service, instCount int, insIdPrefix string) (map[string][]*model.Instance, map[string]*model.Instance) {
-	var svcToInstances = make(map[string][]*model.Instance, len(services))
-	var allInstances = make(map[string]*model.Instance, len(services)*instCount)
+	services map[string]*svctypes.Service, instCount int, insIdPrefix string) (map[string][]*svctypes.Instance, map[string]*svctypes.Instance) {
+	var svcToInstances = make(map[string][]*svctypes.Instance, len(services))
+	var allInstances = make(map[string]*svctypes.Instance, len(services)*instCount)
 	var idx int
 	for id, svc := range services {
 		label := svc.Name
-		instancesSvc := make([]*model.Instance, 0, instCount)
+		instancesSvc := make([]*svctypes.Instance, 0, instCount)
 		for i := 0; i < instCount; i++ {
-			entry := &model.Instance{
+			entry := &svctypes.Instance{
 				Proto: &apiservice.Instance{
 					Id:   utils.NewStringValue(fmt.Sprintf("%s-instanceID-%s-%d", insIdPrefix, label, idx)),
 					Host: utils.NewStringValue(fmt.Sprintf("host-%s-%d", label, idx)),
@@ -144,10 +145,10 @@ func genModelInstancesByServicesWithInsId(
 }
 
 // 生成一些测试的services
-func genModelServiceByNamespaces(total int, namespace []string) map[string]*model.Service {
-	out := make(map[string]*model.Service)
+func genModelServiceByNamespaces(total int, namespace []string) map[string]*svctypes.Service {
+	out := make(map[string]*svctypes.Service)
 	for i := 0; i < total; i++ {
-		item := &model.Service{
+		item := &svctypes.Service{
 			ID:         fmt.Sprintf("ID-%d", i),
 			Namespace:  namespace[rand.Intn(len(namespace))],
 			Name:       fmt.Sprintf("Name-%d", i),
@@ -363,15 +364,15 @@ func TestServiceCache_GetServiceByID(t *testing.T) {
 }
 
 func genModelInstancesByServices(
-	services map[string]*model.Service, instCount int) (map[string][]*model.Instance, map[string]*model.Instance) {
-	var svcToInstances = make(map[string][]*model.Instance, len(services))
-	var allInstances = make(map[string]*model.Instance, len(services)*instCount)
+	services map[string]*svctypes.Service, instCount int) (map[string][]*svctypes.Instance, map[string]*svctypes.Instance) {
+	var svcToInstances = make(map[string][]*svctypes.Instance, len(services))
+	var allInstances = make(map[string]*svctypes.Instance, len(services)*instCount)
 	var idx int
 	for id, svc := range services {
 		label := svc.Name
-		instancesSvc := make([]*model.Instance, 0, instCount)
+		instancesSvc := make([]*svctypes.Instance, 0, instCount)
 		for i := 0; i < instCount; i++ {
-			entry := &model.Instance{
+			entry := &svctypes.Instance{
 				Proto: &apiservice.Instance{
 					Id:   utils.NewStringValue(fmt.Sprintf("instanceID-%s-%d", label, idx)),
 					Host: utils.NewStringValue(fmt.Sprintf("host-%s-%d", label, idx)),
@@ -417,7 +418,7 @@ func TestServiceCache_GetServicesByFilter(t *testing.T) {
 			instArgs := &store.InstanceArgs{
 				Hosts: []string{host},
 			}
-			svcArgs := &types.ServiceArgs{
+			svcArgs := &cachetypes.ServiceArgs{
 				EmptyCondition: true,
 			}
 			amount, services, err := sc.GetServicesByFilter(context.Background(), svcArgs, instArgs, 0, 10)
@@ -496,8 +497,8 @@ func TestRevisionWorker(t *testing.T) {
 	t.Run("revision计算, chan可以正常收发", func(t *testing.T) {
 		svcCache := NewServiceCache(storage, mockCacheMgr)
 		mockInstCache := NewInstanceCache(storage, mockCacheMgr)
-		mockCacheMgr.EXPECT().GetCacher(types.CacheInstance).Return(mockInstCache).AnyTimes()
-		mockCacheMgr.EXPECT().GetCacher(types.CacheService).Return(svcCache).AnyTimes()
+		mockCacheMgr.EXPECT().GetCacher(cachetypes.CacheInstance).Return(mockInstCache).AnyTimes()
+		mockCacheMgr.EXPECT().GetCacher(cachetypes.CacheService).Return(svcCache).AnyTimes()
 		_ = svcCache.Initialize(map[string]interface{}{})
 		_ = mockInstCache.Initialize(map[string]interface{}{})
 
@@ -508,9 +509,9 @@ func TestRevisionWorker(t *testing.T) {
 
 		// mock一下cache中服务的数据
 		maxTotal := 20480
-		services := make(map[string]*model.Service)
+		services := make(map[string]*svctypes.Service)
 		for i := 0; i < maxTotal; i++ {
-			item := &model.Service{
+			item := &svctypes.Service{
 				ID:       fmt.Sprintf("service-id-%d", i),
 				Revision: fmt.Sprintf("revision-%d", i),
 				Valid:    true,
@@ -524,10 +525,10 @@ func TestRevisionWorker(t *testing.T) {
 		time.Sleep(time.Second * 10)
 		assert.Equal(t, maxTotal, svcCache.GetRevisionWorker().GetServiceRevisionCount())
 
-		services = make(map[string]*model.Service)
+		services = make(map[string]*svctypes.Service)
 		for i := 0; i < maxTotal; i++ {
 			if i%2 == 0 {
-				item := &model.Service{
+				item := &svctypes.Service{
 					ID:       fmt.Sprintf("service-id-%d", i),
 					Revision: fmt.Sprintf("revision-%d", i),
 					Valid:    false,
@@ -554,9 +555,9 @@ func TestComputeRevision(t *testing.T) {
 	})
 
 	t.Run("instances内容一样, 不同顺序, 计算出的revision一样", func(t *testing.T) {
-		instances := make([]*model.Instance, 0, 6)
+		instances := make([]*svctypes.Instance, 0, 6)
 		for i := 0; i < 6; i++ {
-			instances = append(instances, &model.Instance{
+			instances = append(instances, &svctypes.Instance{
 				Proto: &apiservice.Instance{
 					Revision: utils.NewStringValue(fmt.Sprintf("revision-%d", i)),
 				},
@@ -589,13 +590,13 @@ func TestComputeRevision(t *testing.T) {
 	})
 
 	t.Run("instances内容改变, 返回改变", func(t *testing.T) {
-		instance := &model.Instance{Proto: &apiservice.Instance{Revision: utils.NewStringValue("123456")}}
-		lhs, err := ComputeRevision("123", []*model.Instance{instance})
+		instance := &svctypes.Instance{Proto: &apiservice.Instance{Revision: utils.NewStringValue("123456")}}
+		lhs, err := ComputeRevision("123", []*svctypes.Instance{instance})
 		assert.NoError(t, err)
 		assert.NotEmpty(t, lhs)
 
 		instance.Proto.Revision.Value = "654321"
-		rhs, err := ComputeRevision("456", []*model.Instance{instance})
+		rhs, err := ComputeRevision("456", []*svctypes.Instance{instance})
 		assert.NoError(t, err)
 		assert.NotEqual(t, lhs, rhs)
 	})
@@ -610,7 +611,7 @@ func Test_serviceCache_GetVisibleServicesInOtherNamespace(t *testing.T) {
 	defer ctl.Finish()
 
 	t.Run("服务可见性查询判断", func(t *testing.T) {
-		serviceList := map[string]*model.Service{
+		serviceList := map[string]*svctypes.Service{
 			"service-1": {
 				ID:        "service-1",
 				Name:      "service-1",
@@ -640,8 +641,8 @@ func Test_serviceCache_GetVisibleServicesInOtherNamespace(t *testing.T) {
 
 		svcCache := NewServiceCache(storage, mockCacheMgr).(*serviceCache)
 		mockInstCache := NewInstanceCache(storage, mockCacheMgr)
-		mockCacheMgr.EXPECT().GetCacher(types.CacheInstance).Return(mockInstCache).AnyTimes()
-		mockCacheMgr.EXPECT().GetCacher(types.CacheService).Return(svcCache).AnyTimes()
+		mockCacheMgr.EXPECT().GetCacher(cachetypes.CacheInstance).Return(mockInstCache).AnyTimes()
+		mockCacheMgr.EXPECT().GetCacher(cachetypes.CacheService).Return(svcCache).AnyTimes()
 		_ = svcCache.Initialize(map[string]interface{}{})
 		_ = mockInstCache.Initialize(map[string]interface{}{})
 		t.Cleanup(func() {
@@ -656,7 +657,7 @@ func Test_serviceCache_GetVisibleServicesInOtherNamespace(t *testing.T) {
 	})
 
 	t.Run("服务可见性查询判断", func(t *testing.T) {
-		serviceList := map[string]*model.Service{
+		serviceList := map[string]*svctypes.Service{
 			"service-1": {
 				ID:        "service-1",
 				Name:      "service-1",
@@ -685,8 +686,8 @@ func Test_serviceCache_GetVisibleServicesInOtherNamespace(t *testing.T) {
 
 		svcCache := NewServiceCache(storage, mockCacheMgr).(*serviceCache)
 		mockInstCache := NewInstanceCache(storage, mockCacheMgr)
-		mockCacheMgr.EXPECT().GetCacher(types.CacheInstance).Return(mockInstCache).AnyTimes()
-		mockCacheMgr.EXPECT().GetCacher(types.CacheService).Return(svcCache).AnyTimes()
+		mockCacheMgr.EXPECT().GetCacher(cachetypes.CacheInstance).Return(mockInstCache).AnyTimes()
+		mockCacheMgr.EXPECT().GetCacher(cachetypes.CacheService).Return(svcCache).AnyTimes()
 		_ = svcCache.Initialize(map[string]interface{}{})
 		_ = mockInstCache.Initialize(map[string]interface{}{})
 		t.Cleanup(func() {
@@ -698,7 +699,7 @@ func Test_serviceCache_GetVisibleServicesInOtherNamespace(t *testing.T) {
 
 		svcCache.handleNamespaceChange(context.Background(), &eventhub.CacheNamespaceEvent{
 			EventType: eventhub.EventCreated,
-			Item: &model.Namespace{
+			Item: &types.Namespace{
 				Name: "ns-1",
 				ServiceExportTo: map[string]struct{}{
 					"ns-2": {},

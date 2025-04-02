@@ -6,9 +6,8 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	"github.com/pole-io/pole-server/apis/pkg/utils"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-
-	commontime "github.com/pole-io/pole-server/pkg/common/time"
 )
 
 type ServicePort struct {
@@ -60,8 +59,8 @@ func (s *Service) ToSpec() *apiservice.Service {
 		Comment:    wrapperspb.String(s.Comment),
 		Owners:     wrapperspb.String(s.Owner),
 		Token:      wrapperspb.String(s.Token),
-		Ctime:      wrapperspb.String(commontime.Time2String(s.CreateTime)),
-		Mtime:      wrapperspb.String(commontime.Time2String(s.ModifyTime)),
+		Ctime:      wrapperspb.String(utils.Time2String(s.CreateTime)),
+		Mtime:      wrapperspb.String(utils.Time2String(s.ModifyTime)),
 		Revision:   wrapperspb.String(s.Revision),
 		Id:         wrapperspb.String(s.ID),
 		ExportTo:   s.ListExportTo(),

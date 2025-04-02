@@ -20,12 +20,12 @@ package service
 import (
 	"testing"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 func Test_matchServiceFilter_ignoreServiceCI(t *testing.T) {
 	type args struct {
-		svc       *model.Service
+		svc       *svctypes.Service
 		svcFilter map[string]string
 		matchName bool
 	}
@@ -37,7 +37,7 @@ func Test_matchServiceFilter_ignoreServiceCI(t *testing.T) {
 		{
 			name: "Test_1",
 			args: args{
-				svc: &model.Service{
+				svc: &svctypes.Service{
 					Namespace: "default",
 					Name:      "TestCaseService",
 				},
@@ -51,7 +51,7 @@ func Test_matchServiceFilter_ignoreServiceCI(t *testing.T) {
 		{
 			name: "Test_1",
 			args: args{
-				svc: &model.Service{
+				svc: &svctypes.Service{
 					Namespace: "default",
 					Name:      "TestCaseService",
 				},
@@ -65,7 +65,7 @@ func Test_matchServiceFilter_ignoreServiceCI(t *testing.T) {
 		{
 			name: "Test_1",
 			args: args{
-				svc: &model.Service{
+				svc: &svctypes.Service{
 					Namespace: "default",
 					Name:      "TestCaseService",
 				},
@@ -79,7 +79,7 @@ func Test_matchServiceFilter_ignoreServiceCI(t *testing.T) {
 		{
 			name: "Test_1",
 			args: args{
-				svc: &model.Service{
+				svc: &svctypes.Service{
 					Namespace: "default",
 					Name:      "TestCaseService",
 				},
@@ -102,7 +102,7 @@ func Test_matchServiceFilter_ignoreServiceCI(t *testing.T) {
 
 func Test_matchServiceFilter_business(t *testing.T) {
 	type args struct {
-		svc       *model.Service
+		svc       *svctypes.Service
 		svcFilter map[string]string
 		matchName bool
 	}
@@ -114,7 +114,7 @@ func Test_matchServiceFilter_business(t *testing.T) {
 		{
 			name: "Test_1",
 			args: args{
-				svc: &model.Service{
+				svc: &svctypes.Service{
 					Namespace: "default",
 					Business:  "TSE",
 				},
@@ -128,7 +128,7 @@ func Test_matchServiceFilter_business(t *testing.T) {
 		{
 			name: "Test_1",
 			args: args{
-				svc: &model.Service{
+				svc: &svctypes.Service{
 					Namespace: "default",
 					Business:  "TSE",
 				},
@@ -142,7 +142,7 @@ func Test_matchServiceFilter_business(t *testing.T) {
 		{
 			name: "Test_1",
 			args: args{
-				svc: &model.Service{
+				svc: &svctypes.Service{
 					Namespace: "default",
 					Business:  "TSe",
 				},
@@ -156,7 +156,7 @@ func Test_matchServiceFilter_business(t *testing.T) {
 		{
 			name: "Test_1",
 			args: args{
-				svc: &model.Service{
+				svc: &svctypes.Service{
 					Namespace: "default",
 					Business:  "Te",
 				},

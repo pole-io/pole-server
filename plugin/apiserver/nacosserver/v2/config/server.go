@@ -19,7 +19,7 @@ package config
 
 import (
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/config"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/core"
@@ -49,7 +49,7 @@ type ConfigServer struct {
 	namespaceSvr    namespace.NamespaceOperateServer
 	configSvr       config.ConfigCenterServer
 	originConfigSvr config.ConfigCenterServer
-	cacheSvr        cachetypes.CacheManager
+	cacheSvr        cacheapi.CacheManager
 	handleRegistry  map[string]*remote.RequestHandlerWarrper
 }
 

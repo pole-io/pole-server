@@ -27,7 +27,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
@@ -42,13 +42,13 @@ type Config struct {
 
 // Server 配置中心核心服务
 type Server struct {
-	cacheMgr   cachetypes.CacheManager
+	cacheMgr   cacheapi.CacheManager
 	nextServer config.ConfigCenterServer
 	storage    store.Store
 	cfg        Config
 }
 
-func New(nextServer config.ConfigCenterServer, cacheMgr cachetypes.CacheManager,
+func New(nextServer config.ConfigCenterServer, cacheMgr cacheapi.CacheManager,
 	storage store.Store, cfg config.Config) config.ConfigCenterServer {
 	proxy := &Server{
 		nextServer: nextServer,

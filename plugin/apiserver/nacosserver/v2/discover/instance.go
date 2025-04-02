@@ -26,8 +26,8 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/core"
 	nacosmodel "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
@@ -64,7 +64,7 @@ func (h *DiscoverServer) handleInstanceRequest(ctx context.Context, req nacospb.
 		respType = "registerInstance"
 		resp = h.discoverSvr.RegisterInstance(ctx, ins)
 		insID := resp.GetInstance().GetId().GetValue()
-		h.clientManager.addServiceInstance(meta.ConnectionID, model.ServiceKey{
+		h.clientManager.addServiceInstance(meta.ConnectionID, svctypes.ServiceKey{
 			Namespace: ins.GetNamespace().GetValue(),
 			Name:      ins.GetService().GetValue(),
 		}, insID)
@@ -79,7 +79,7 @@ func (h *DiscoverServer) handleInstanceRequest(ctx context.Context, req nacospb.
 		}
 		ins.Id = utils.NewStringValue(insID)
 		resp = h.discoverSvr.DeregisterInstance(ctx, ins)
-		h.clientManager.delServiceInstance(meta.ConnectionID, model.ServiceKey{
+		h.clientManager.delServiceInstance(meta.ConnectionID, svctypes.ServiceKey{
 			Namespace: ins.GetNamespace().GetValue(),
 			Name:      ins.GetService().GetValue(),
 		}, insID)
@@ -199,7 +199,7 @@ func (h *DiscoverServer) handleBatchInstanceRequest(ctx context.Context, req nac
 			api.Collect(batchResp, resp)
 			if resp.GetCode().GetValue() == uint32(apimodel.Code_ExecuteSuccess) {
 				insID := resp.GetInstance().GetId().GetValue()
-				h.clientManager.addServiceInstance(meta.ConnectionID, model.ServiceKey{
+				h.clientManager.addServiceInstance(meta.ConnectionID, svctypes.ServiceKey{
 					Namespace: ins.GetNamespace().GetValue(),
 					Name:      ins.GetService().GetValue(),
 				}, insID)
@@ -254,7 +254,7 @@ func (h *DiscoverServer) HandleClientDisConnect(ctx context.Context, client *rem
 		return
 	}
 
-	connClient.RangePublishInstance(func(svc model.ServiceKey, ids []string) {
+	connClient.RangePublishInstance(func(svc svctypes.ServiceKey, ids []string) {
 		req := make([]*service_manage.Instance, 0, len(ids))
 		for i := range ids {
 			req = append(req, &service_manage.Instance{
@@ -266,7 +266,7 @@ func (h *DiscoverServer) HandleClientDisConnect(ctx context.Context, client *rem
 		}
 		nacoslog.Info("[NACOS-V2][Connection] receive client disconnect event, do deregist all publish instance",
 			zap.String("conn-id", connClient.ConnID), zap.Any("svc", svc), zap.Strings("instance-ids", ids))
-		h.clientManager.delServiceInstance(connClient.ConnID, model.ServiceKey{
+		h.clientManager.delServiceInstance(connClient.ConnID, svctypes.ServiceKey{
 			Namespace: svc.Namespace,
 			Name:      svc.Name,
 		}, ids...)

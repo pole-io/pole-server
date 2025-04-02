@@ -22,6 +22,7 @@ import (
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
@@ -142,9 +143,9 @@ type ConfigCenterServer interface {
 // ResourceHook The listener is placed before and after the resource operation, only normal flow
 type ResourceHook interface {
 	// Before
-	Before(ctx context.Context, resourceType model.Resource)
+	Before(ctx context.Context, resourceType types.Resource)
 	// After
-	After(ctx context.Context, resourceType model.Resource, res *ResourceEvent) error
+	After(ctx context.Context, resourceType types.Resource, res *ResourceEvent) error
 }
 
 // ResourceEvent 资源事件

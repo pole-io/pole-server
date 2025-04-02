@@ -24,7 +24,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 // IPType ip type
@@ -67,7 +67,7 @@ type IP struct {
 	IP    string
 	Type  IPType
 	ipNet *net.IPNet
-	loc   *model.Location
+	loc   *svctypes.Location
 }
 
 func NewIP(info IPInfo) (IP, error) {
@@ -88,7 +88,7 @@ func NewIP(info IPInfo) (IP, error) {
 
 	ip.IP = info.IP
 	ip.Type = info.Type
-	ip.loc = &model.Location{
+	ip.loc = &svctypes.Location{
 		Proto: &apimodel.Location{
 			Region: &wrapperspb.StringValue{
 				Value: info.Region.Name,

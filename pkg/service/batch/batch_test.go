@@ -27,8 +27,8 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	smock "github.com/pole-io/pole-server/plugin/store/mock"
 )
@@ -132,7 +132,7 @@ func TestAsyncCreateInstance(t *testing.T) {
 			ctrl.Finish()
 			cancel()
 		})
-		mockSvc := &model.Service{ID: "1"}
+		mockSvc := &svctypes.Service{ID: "1"}
 		totalIns := int32(100)
 		storage.EXPECT().BatchGetInstanceIsolate(gomock.Any()).Return(nil, nil).AnyTimes()
 		storage.EXPECT().GetSourceServiceToken(gomock.Any(), gomock.Any()).

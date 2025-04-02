@@ -32,7 +32,6 @@ import (
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -355,20 +354,20 @@ func (ctrl *InstanceCtrl) heartbeatHandler(futures []*InstanceFuture) error {
 				removeMetaReqs = append(removeMetaReqs, &store.InstanceMetadataRequest{
 					InstanceID: id,
 					Revision:   revision,
-					Keys:       []string{model.MetadataInstanceLastHeartbeatTime},
+					Keys:       []string{svctypes.MetadataInstanceLastHeartbeatTime},
 				})
 			} else {
 				appendMetaReqs = append(appendMetaReqs, &store.InstanceMetadataRequest{
 					InstanceID: id,
 					Revision:   revision,
 					Metadata: map[string]string{
-						model.MetadataInstanceLastHeartbeatTime: strconv.FormatInt(values[id], 10),
+						svctypes.MetadataInstanceLastHeartbeatTime: strconv.FormatInt(values[id], 10),
 					},
 				})
 			}
 			idValues = append(idValues, id)
 		}
-		err := ctrl.storage.BatchSetInstanceHealthStatus(idValues, model.StatusBoolToInt(healthy), utils.NewUUID())
+		err := ctrl.storage.BatchSetInstanceHealthStatus(idValues, utils.StatusBoolToInt(healthy), utils.NewUUID())
 		if err != nil {
 			log.Errorf("[Batch] batch healthy check instances err: %s", err.Error())
 			sendReply(futures, commonstore.StoreCode2APICode(err), err)

@@ -18,16 +18,12 @@
 package namespace
 
 import (
-	"context"
-
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/pole-io/pole-server/apis/observability/history"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 var _ NamespaceOperateServer = (*Server)(nil)
@@ -37,25 +33,6 @@ type Server struct {
 	caches                *cache.CacheManager
 	createNamespaceSingle *singleflight.Group
 	cfg                   Config
-	hooks                 []ResourceHook
-}
-
-func (s *Server) afterNamespaceResource(ctx context.Context, req *apimodel.Namespace, save *types.Namespace,
-	remove bool) error {
-	event := &ResourceEvent{
-		ReqNamespace: req,
-		Namespace:    save,
-		IsRemove:     remove,
-	}
-
-	for index := range s.hooks {
-		hook := s.hooks[index]
-		if err := hook.After(ctx, model.RNamespace, event); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // RecordHistory server对外提供history插件的简单封装
@@ -71,31 +48,4 @@ func (s *Server) RecordHistory(entry *types.RecordEntry) {
 
 	// 调用插件记录history
 	history.GetHistory().Record(entry)
-}
-
-// SetResourceHooks 返回Cache
-func (s *Server) SetResourceHooks(hooks ...ResourceHook) {
-	s.hooks = hooks
-}
-
-// ResourceHook The listener is placed before and after the resource operation, only normal flow
-type ResourceHook interface {
-
-	// Before
-	//  @param ctx
-	//  @param resourceType
-	Before(ctx context.Context, resourceType model.Resource)
-
-	// After
-	//  @param ctx
-	//  @param resourceType
-	//  @param res
-	After(ctx context.Context, resourceType model.Resource, res *ResourceEvent) error
-}
-
-// ResourceEvent 资源事件
-type ResourceEvent struct {
-	ReqNamespace *apimodel.Namespace
-	Namespace    *types.Namespace
-	IsRemove     bool
 }

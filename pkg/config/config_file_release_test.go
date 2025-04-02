@@ -28,7 +28,6 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
 )
@@ -85,7 +84,7 @@ func Test_PublishConfigFile_Check(t *testing.T) {
 				Namespace:   utils.NewStringValue(mockNamespace),
 				Group:       utils.NewStringValue(mockGroup),
 				FileName:    utils.NewStringValue(mockFileName),
-				ReleaseType: wrapperspb.String(model.ReleaseTypeGray),
+				ReleaseType: wrapperspb.String(conftypes.ReleaseTypeGray),
 			})
 			// 发布失败
 			assert.Equal(t, uint32(apimodel.Code_InvalidMatchRule), pubResp.GetCode().GetValue(), pubResp.GetInfo().GetValue())
@@ -233,7 +232,7 @@ func Test_PublishConfigFile(t *testing.T) {
 			Group:       mockGroup + "same-v1",
 			FileName:    mockFileName + "same-v1",
 			Name:        mockReleaseName + "same-v1",
-			ReleaseType: model.ReleaseTypeFull,
+			ReleaseType: conftypes.ReleaseTypeFull,
 		})
 		assert.NotNil(t, cacheData)
 		assert.Equal(t, mockContent+"same-v1", cacheData.Content)
@@ -569,7 +568,7 @@ func Test_GrayConfigFileRelease(t *testing.T) {
 			FileName:    utils.NewStringValue(mockFileName),
 			Content:     utils.NewStringValue(mockNewContent),
 			Name:        utils.NewStringValue(mockBetaReleaseName),
-			ReleaseType: wrapperspb.String(model.ReleaseTypeGray),
+			ReleaseType: wrapperspb.String(conftypes.ReleaseTypeGray),
 			BetaLabels: []*apimodel.ClientLabel{
 				{
 					Key: types.ClientLabel_IP,

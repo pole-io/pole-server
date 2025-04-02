@@ -28,8 +28,8 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
@@ -207,7 +207,7 @@ func convertEurekaInstance(
 func (h *EurekaServer) registerInstances(
 	ctx context.Context, namespace string, appId string, instance *InstanceInfo, replicated bool) uint32 {
 	ctx = context.WithValue(
-		ctx, model.CtxEventKeyMetadata, map[string]string{MetadataReplicate: strconv.FormatBool(replicated)})
+		ctx, svctypes.CtxEventKeyMetadata, map[string]string{MetadataReplicate: strconv.FormatBool(replicated)})
 	ctx = context.WithValue(ctx, utils.ContextOpenAsyncRegis, h.allowAsyncRegis)
 	appId = formatWriteName(appId)
 	// 1. 先转换数据结构
@@ -238,7 +238,7 @@ func (h *EurekaServer) registerInstances(
 func (h *EurekaServer) deregisterInstance(
 	ctx context.Context, namespace string, appId string, instanceId string, replicated bool) uint32 {
 	ctx = context.WithValue(
-		ctx, model.CtxEventKeyMetadata, map[string]string{
+		ctx, svctypes.CtxEventKeyMetadata, map[string]string{
 			MetadataReplicate:  strconv.FormatBool(replicated),
 			MetadataInstanceId: instanceId,
 		})
@@ -251,7 +251,7 @@ func (h *EurekaServer) deregisterInstance(
 func (h *EurekaServer) updateStatus(
 	ctx context.Context, namespace string, appId string, instanceId string, status string, replicated bool) uint32 {
 	ctx = context.WithValue(
-		ctx, model.CtxEventKeyMetadata, map[string]string{
+		ctx, svctypes.CtxEventKeyMetadata, map[string]string{
 			MetadataReplicate:  strconv.FormatBool(replicated),
 			MetadataInstanceId: instanceId,
 		})
@@ -284,7 +284,7 @@ func (h *EurekaServer) updateStatus(
 func (h *EurekaServer) renew(ctx context.Context, namespace string, appId string,
 	instanceId string, replicated bool) uint32 {
 	ctx = context.WithValue(
-		ctx, model.CtxEventKeyMetadata, map[string]string{
+		ctx, svctypes.CtxEventKeyMetadata, map[string]string{
 			MetadataReplicate:  strconv.FormatBool(replicated),
 			MetadataInstanceId: instanceId,
 		})

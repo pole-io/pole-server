@@ -30,7 +30,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
@@ -52,9 +51,9 @@ type svcName struct {
 
 var (
 	mockServices           = map[svcName]*svctypes.Service{}
-	mockInstances          = map[string]map[string]*model.Instance{}
+	mockInstances          = map[string]map[string]*svctypes.Instance{}
 	mockUnhealthyServices  = map[svcName]*svctypes.Service{}
-	mockUnhealthyInstances = map[string]map[string]*model.Instance{}
+	mockUnhealthyInstances = map[string]map[string]*svctypes.Instance{}
 )
 
 func buildServices(count int, namespace string, services map[svcName]*svctypes.Service) {
@@ -71,8 +70,8 @@ func buildServices(count int, namespace string, services map[svcName]*svctypes.S
 	}
 }
 
-func buildMockInstance(idx int, svc *svctypes.Service, healthy bool, vipAddresses string, svipAddresses string) *model.Instance {
-	instance := &model.Instance{
+func buildMockInstance(idx int, svc *svctypes.Service, healthy bool, vipAddresses string, svipAddresses string) *svctypes.Instance {
+	instance := &svctypes.Instance{
 		Proto: &apiservice.Instance{
 			Id:                &wrappers.StringValue{Value: uuid.NewString()},
 			Service:           &wrappers.StringValue{Value: svc.Name},
@@ -120,7 +119,7 @@ func buildMockSvcInstances() {
 	buildServices(productionSvcCount, namespaceProduction, mockServices)
 	idx := 0
 	for _, svc := range mockServices {
-		instances := make(map[string]*model.Instance, instanceCount)
+		instances := make(map[string]*svctypes.Instance, instanceCount)
 		for i := 0; i < instanceCount; i++ {
 			idx++
 			instance := buildMockInstance(idx, svc, true, "", "")
@@ -138,7 +137,7 @@ func buildMockUnhealthyInstances() {
 		if idx%(3*instanceCount) == 0 {
 			allUnhealthy = true
 		}
-		instances := make(map[string]*model.Instance, instanceCount)
+		instances := make(map[string]*svctypes.Instance, instanceCount)
 		for i := 0; i < instanceCount; i++ {
 			idx++
 			instance := buildMockInstance(idx, svc, !allUnhealthy, "", "")
@@ -159,9 +158,9 @@ func mockGetCacheServices(namingServer service.DiscoverServer, namespace string)
 	return newServices
 }
 
-func mockGetCacheInstances(namingServer service.DiscoverServer, svcId string) ([]*model.Instance, string, error) {
+func mockGetCacheInstances(namingServer service.DiscoverServer, svcId string) ([]*svctypes.Instance, string, error) {
 	instances := mockInstances[svcId]
-	var retValue = make([]*model.Instance, 0, len(instances))
+	var retValue = make([]*svctypes.Instance, 0, len(instances))
 	if len(instances) == 0 {
 		return retValue, uuid.NewString(), nil
 	}
@@ -224,9 +223,9 @@ func mockGetUnhealthyServices(namingServer service.DiscoverServer, namespace str
 	return newServices
 }
 
-func mockGetUnhealthyInstances(namingServer service.DiscoverServer, svcId string) ([]*model.Instance, string, error) {
+func mockGetUnhealthyInstances(namingServer service.DiscoverServer, svcId string) ([]*svctypes.Instance, string, error) {
 	instances := mockUnhealthyInstances[svcId]
-	var retValue = make([]*model.Instance, 0, len(instances))
+	var retValue = make([]*svctypes.Instance, 0, len(instances))
 	if len(instances) == 0 {
 		return retValue, uuid.NewString(), nil
 	}

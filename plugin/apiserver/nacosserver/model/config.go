@@ -27,9 +27,8 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 	"github.com/polarismesh/specification/source/go/api/v1/config_manage"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-
-	commonmodel "github.com/pole-io/pole-server/pkg/common/model"
 )
 
 type ConfigFileBase struct {
@@ -86,7 +85,7 @@ func (i *ConfigFile) ToSpecConfigFile() *config_manage.ConfigFilePublishInfo {
 		specFile.EncryptAlgo = wrapperspb.String(strings.Split(i.DataId, "-")[1])
 		if i.EncryptedDataKey != "" {
 			specFile.Tags = append(specFile.Tags, &config_manage.ConfigFileTag{
-				Key:   wrapperspb.String(commonmodel.MetaKeyConfigFileDataKey),
+				Key:   wrapperspb.String(types.MetaKeyConfigFileDataKey),
 				Value: wrapperspb.String(i.EncryptedDataKey),
 			})
 		}

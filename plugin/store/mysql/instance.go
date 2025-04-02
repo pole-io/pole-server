@@ -288,7 +288,7 @@ func (ins *instanceStore) BatchGetInstanceIsolate(ids map[string]bool) (map[stri
 			log.Errorf("[Store][database] check instances existed scan err: %s", err.Error())
 			return nil, err
 		}
-		instanceIsolate[idx] = svctypes.Int2bool(isolate)
+		instanceIsolate[idx] = utils.Int2bool(isolate)
 	}
 
 	return instanceIsolate, nil

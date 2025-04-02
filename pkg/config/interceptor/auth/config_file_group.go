@@ -27,10 +27,10 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	"go.uber.org/zap"
 
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -38,11 +38,11 @@ import (
 func (s *Server) CreateConfigFileGroup(ctx context.Context,
 	configFileGroup *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse {
 	authCtx := s.collectConfigGroupAuthContext(ctx, []*apiconfig.ConfigFileGroup{configFileGroup},
-		authcommon.Create, authcommon.CreateConfigFileGroup)
+		authtypes.Create, authtypes.CreateConfigFileGroup)
 
 	// 验证 token 信息
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewConfigResponse(authcommon.ConvertToErrCode(err))
+		return api.NewConfigResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
@@ -61,10 +61,10 @@ func (s *Server) CreateConfigFileGroup(ctx context.Context,
 func (s *Server) UpdateConfigFileGroup(ctx context.Context,
 	configFileGroup *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse {
 	authCtx := s.collectConfigGroupAuthContext(ctx, []*apiconfig.ConfigFileGroup{configFileGroup},
-		authcommon.Modify, authcommon.UpdateConfigFileGroup)
+		authtypes.Modify, authtypes.UpdateConfigFileGroup)
 
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewConfigResponse(authcommon.ConvertToErrCode(err))
+		return api.NewConfigResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
@@ -82,10 +82,10 @@ func (s *Server) UpdateConfigFileGroup(ctx context.Context,
 func (s *Server) DeleteConfigFileGroup(
 	ctx context.Context, namespace, name string) *apiconfig.ConfigResponse {
 	authCtx := s.collectConfigGroupAuthContext(ctx, []*apiconfig.ConfigFileGroup{{Name: utils.NewStringValue(name),
-		Namespace: utils.NewStringValue(namespace)}}, authcommon.Delete, authcommon.DeleteConfigFileGroup)
+		Namespace: utils.NewStringValue(namespace)}}, authtypes.Delete, authtypes.DeleteConfigFileGroup)
 
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewConfigResponse(authcommon.ConvertToErrCode(err))
+		return api.NewConfigResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
@@ -103,17 +103,17 @@ func (s *Server) DeleteConfigFileGroup(
 // QueryConfigFileGroups 查询配置文件组
 func (s *Server) QueryConfigFileGroups(ctx context.Context,
 	filter map[string]string) *apiconfig.ConfigBatchQueryResponse {
-	authCtx := s.collectConfigGroupAuthContext(ctx, nil, authcommon.Read, authcommon.DescribeConfigFileGroups)
+	authCtx := s.collectConfigGroupAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeConfigFileGroups)
 
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewConfigBatchQueryResponse(authcommon.ConvertToErrCode(err))
+		return api.NewConfigBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 
-	ctx = cachetypes.AppendConfigGroupPredicate(ctx, func(ctx context.Context, cfg *model.ConfigFileGroup) bool {
-		ok := s.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
+	ctx = cacheapi.AppendConfigGroupPredicate(ctx, func(ctx context.Context, cfg *conftypes.ConfigFileGroup) bool {
+		ok := s.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
 			Type:     apisecurity.ResourceType_ConfigGroups,
 			ID:       strconv.FormatUint(cfg.Id, 10),
 			Metadata: cfg.Metadata,
@@ -126,7 +126,7 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 			return false
 		}
 		// 检查下是否可以访问对应的 namespace
-		return s.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
+		return s.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
 			Type:     security.ResourceType_Namespaces,
 			ID:       saveNs.Name,
 			Metadata: saveNs.Metadata,
@@ -138,7 +138,7 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 	if len(resp.ConfigFileGroups) != 0 {
 		for index := range resp.ConfigFileGroups {
 			item := resp.ConfigFileGroups[index]
-			authCtx.SetAccessResources(map[apisecurity.ResourceType][]authcommon.ResourceEntry{
+			authCtx.SetAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 				apisecurity.ResourceType_ConfigGroups: {
 					{
 						Type:     apisecurity.ResourceType_ConfigGroups,
@@ -149,14 +149,14 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 			})
 
 			// 检查 write 操作权限
-			authCtx.SetMethod([]authcommon.ServerFunctionName{authcommon.UpdateConfigFileGroup})
+			authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateConfigFileGroup})
 			// 如果检查不通过，设置 editable 为 false
 			if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 				item.Editable = utils.NewBoolValue(false)
 			}
 
 			// 检查 delete 操作权限
-			authCtx.SetMethod([]authcommon.ServerFunctionName{authcommon.DeleteConfigFileGroup})
+			authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteConfigFileGroup})
 			// 如果检查不通过，设置 editable 为 false
 			if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 				item.Deleteable = utils.NewBoolValue(false)

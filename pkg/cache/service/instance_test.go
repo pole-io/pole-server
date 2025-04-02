@@ -28,10 +28,10 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
 	cachemock "github.com/pole-io/pole-server/pkg/cache/mock"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/store/mock"
 )
@@ -46,8 +46,8 @@ func newTestInstanceCache(t *testing.T) (*gomock.Controller, *mock.MockStore, *i
 	mockSvcCache := NewServiceCache(storage, mockCacheMgr)
 	mockInstCache := NewInstanceCache(storage, mockCacheMgr)
 
-	mockCacheMgr.EXPECT().GetCacher(types.CacheService).Return(mockSvcCache).AnyTimes()
-	mockCacheMgr.EXPECT().GetCacher(types.CacheInstance).Return(mockInstCache).AnyTimes()
+	mockCacheMgr.EXPECT().GetCacher(cacheapi.CacheService).Return(mockSvcCache).AnyTimes()
+	mockCacheMgr.EXPECT().GetCacher(cacheapi.CacheInstance).Return(mockInstCache).AnyTimes()
 	mockCacheMgr.EXPECT().GetReportInterval().Return(time.Second).AnyTimes()
 	mockCacheMgr.EXPECT().GetUpdateCacheInterval().Return(time.Second).AnyTimes()
 
@@ -70,10 +70,10 @@ func newTestInstanceCache(t *testing.T) (*gomock.Controller, *mock.MockStore, *i
 }
 
 // 生成测试数据
-func genModelInstances(label string, total int) map[string]*model.Instance {
-	out := make(map[string]*model.Instance)
+func genModelInstances(label string, total int) map[string]*svctypes.Instance {
+	out := make(map[string]*svctypes.Instance)
 	for i := 0; i < total; i++ {
-		entry := &model.Instance{
+		entry := &svctypes.Instance{
 			Proto: &apiservice.Instance{
 				Id:   utils.NewStringValue(fmt.Sprintf("instanceID-%s-%d", label, i)),
 				Host: utils.NewStringValue(fmt.Sprintf("host-%s-%d", label, i)),
@@ -98,7 +98,7 @@ func genModelInstances(label string, total int) map[string]*model.Instance {
 func iteratorInstances(ic *instanceCache) (int, int) {
 	instancesCount := 0
 	services := make(map[string]bool)
-	_ = ic.IteratorInstances(func(key string, value *model.Instance) (b bool, e error) {
+	_ = ic.IteratorInstances(func(key string, value *svctypes.Instance) (b bool, e error) {
 		instancesCount++
 		if _, ok := services[value.ServiceID]; !ok {
 			services[value.ServiceID] = true
@@ -115,7 +115,7 @@ func TestInstanceCache_Update(t *testing.T) {
 	defer ctl.Finish()
 	t.Run("正常更新缓存，缓存数据符合预期", func(t *testing.T) {
 		_ = ic.Clear()
-		ret := make(map[string]*model.Instance)
+		ret := make(map[string]*svctypes.Instance)
 		instances1 := genModelInstances("service1", 10) // 每次gen为一个服务的
 		instances2 := genModelInstances("service2", 5)
 
@@ -235,7 +235,7 @@ func TestInstanceCache_Update2(t *testing.T) {
 		storage.EXPECT().GetInstancesCountTx(gomock.Any()).Return(uint32(0), nil).AnyTimes()
 		storage.EXPECT().
 			GetMoreInstances(gomock.Any(), gomock.Any(), ic.IsFirstUpdate(), ic.needMeta, ic.systemServiceID).
-			DoAndReturn(func(tx store.Tx, mtime time.Time, firstUpdate, needMeta bool, svcIds []string) (map[string]*model.Instance, error) {
+			DoAndReturn(func(tx store.Tx, mtime time.Time, firstUpdate, needMeta bool, svcIds []string) (map[string]*svctypes.Instance, error) {
 				atomic.AddInt32(&queryCount, 1)
 				if atomic.LoadInt32(&queryCount) == 2 {
 					assert.Equal(t, time.Unix(0, 0), mtime)
@@ -281,12 +281,12 @@ func TestInstanceCache_GetServicePorts(t *testing.T) {
 		_ = ic.Clear()
 		instances := genModelInstances("my-services", 10)
 
-		ports := make(map[string][]*model.ServicePort)
+		ports := make(map[string][]*svctypes.ServicePort)
 
 		for i := range instances {
 			ins := instances[i]
 			if _, ok := ports[ins.ServiceID]; !ok {
-				ports[ins.ServiceID] = make([]*model.ServicePort, 0, 4)
+				ports[ins.ServiceID] = make([]*svctypes.ServicePort, 0, 4)
 			}
 
 			values := ports[ins.ServiceID]
@@ -300,7 +300,7 @@ func TestInstanceCache_GetServicePorts(t *testing.T) {
 			}
 
 			if !find {
-				values = append(values, &model.ServicePort{
+				values = append(values, &svctypes.ServicePort{
 					Port: ins.Port(),
 				})
 			}
@@ -394,7 +394,7 @@ func TestGetInstancesByServiceID(t *testing.T) {
 		instances2 := genModelInstances("my-services-a", instances2Count)
 		// instances2 = append(instances2, instances1...)
 
-		ret := make(map[string]*model.Instance)
+		ret := make(map[string]*svctypes.Instance)
 		for id, instance := range instances1 {
 			ret[id] = instance
 		}

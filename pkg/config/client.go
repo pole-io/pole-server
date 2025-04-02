@@ -54,7 +54,7 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context,
 	if len(req.GetTags()) > 0 {
 		if release = s.fileCache.GetActiveGrayRelease(namespace, group, fileName); release != nil {
 			key := model.GetGrayConfigRealseKey(release.SimpleConfigFileRelease)
-			match = s.grayCache.HitGrayRule(key, model.ToTagMap(req.GetTags()))
+			match = s.grayCache.HitGrayRule(key, conftypes.ToTagMap(req.GetTags()))
 		}
 	}
 	if !match {
@@ -162,7 +162,7 @@ func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
 			Name:        utils.NewStringValue(releases[i].Name),
 			Version:     utils.NewUInt64Value(releases[i].Version),
 			ReleaseTime: utils.NewStringValue(commontime.Time2String(releases[i].ModifyTime)),
-			Tags:        model.FromTagMap(releases[i].Metadata),
+			Tags:        conftypes.FromTagMap(releases[i].Metadata),
 		})
 	}
 
@@ -233,7 +233,7 @@ func toClientInfo(client *apiconfig.ClientConfigFileInfo,
 		Version:   utils.NewUInt64Value(release.Version),
 		Md5:       utils.NewStringValue(release.Md5),
 		Encrypted: utils.NewBoolValue(release.IsEncrypted()),
-		Tags:      model.FromTagMap(copyMetadata),
+		Tags:      conftypes.FromTagMap(copyMetadata),
 	}
 
 	dataKey := release.GetEncryptDataKey()
@@ -260,7 +260,7 @@ func toClientInfo(client *apiconfig.ClientConfigFileInfo,
 		}
 		configFile.Tags = append(configFile.Tags,
 			&apiconfig.ConfigFileTag{
-				Key:   utils.NewStringValue(model.MetaKeyConfigFileDataKey),
+				Key:   utils.NewStringValue(types.MetaKeyConfigFileDataKey),
 				Value: utils.NewStringValue(dataKey),
 			},
 		)
@@ -312,7 +312,7 @@ func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]str
 		return model.NewCommonResponse(uint32(apimodel.Code_NotFoundResource))
 	}
 
-	versionClients := map[uint64][]*model.Subscriber{}
+	versionClients := map[uint64][]*conftypes.Subscriber{}
 	clientIds.Range(func(val string) {
 		watchCtx, ok := s.watchCenter.clients.Load(val)
 		if !ok {
@@ -320,12 +320,12 @@ func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]str
 		}
 		curVer := watchCtx.CurWatchVersion(key)
 		if _, ok := versionClients[curVer]; !ok {
-			versionClients[curVer] = []*model.Subscriber{}
+			versionClients[curVer] = []*conftypes.Subscriber{}
 		}
 
 		watchCtx.ClientLabels()
 
-		versionClients[curVer] = append(versionClients[curVer], &model.Subscriber{
+		versionClients[curVer] = append(versionClients[curVer], &conftypes.Subscriber{
 			ID:         watchCtx.ClientID(),
 			Host:       watchCtx.ClientLabels()[types.ClientLabel_Host],
 			Version:    watchCtx.ClientLabels()[types.ClientLabel_Version],
@@ -334,16 +334,16 @@ func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]str
 	})
 
 	rsp := model.NewCommonResponse(uint32(apimodel.Code_ExecuteSuccess))
-	rsp.Data = &model.ConfigSubscribers{
-		Key: model.ConfigFileKey{
+	rsp.Data = &conftypes.ConfigSubscribers{
+		Key: conftypes.ConfigFileKey{
 			Namespace: namespace,
 			Group:     group,
 			Name:      fileName,
 		},
-		VersionClients: func() []*model.VersionClient {
-			ret := make([]*model.VersionClient, 0, len(versionClients))
+		VersionClients: func() []*conftypes.VersionClient {
+			ret := make([]*conftypes.VersionClient, 0, len(versionClients))
 			for ver, clients := range versionClients {
-				ret = append(ret, &model.VersionClient{
+				ret = append(ret, &conftypes.VersionClient{
 					Versoin:     ver,
 					Subscribers: clients,
 				})
@@ -363,36 +363,36 @@ func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]str
 	}
 
 	watchFiles := watchCtx.ListWatchFiles()
-	data := &model.ClientSubscriber{
-		Subscriber: model.Subscriber{
+	data := &conftypes.ClientSubscriber{
+		Subscriber: conftypes.Subscriber{
 			ID:         watchCtx.ClientID(),
 			Host:       watchCtx.ClientLabels()[types.ClientLabel_Host],
 			Version:    watchCtx.ClientLabels()[types.ClientLabel_Version],
 			ClientType: watchCtx.ClientLabels()[types.ClientLabel_Language],
 		},
-		Files: []model.FileReleaseSubscribeInfo{},
+		Files: []conftypes.FileReleaseSubscribeInfo{},
 	}
 
 	for _, file := range watchFiles {
-		key := model.BuildKeyForClientConfigFileInfo(file)
+		key := conftypes.BuildKeyForClientConfigFileInfo(file)
 		curVer := watchCtx.CurWatchVersion(key)
 
 		ns := file.GetNamespace().GetValue()
 		group := file.GetGroup().GetValue()
 		filename := file.GetFileName().GetValue()
 
-		data.Files = append(data.Files, model.FileReleaseSubscribeInfo{
+		data.Files = append(data.Files, conftypes.FileReleaseSubscribeInfo{
 			Name:      file.GetName().GetValue(),
 			Namespace: ns,
 			Group:     group,
 			FileName:  filename,
-			ReleaseType: func() model.ReleaseType {
+			ReleaseType: func() conftypes.ReleaseType {
 				if gray := s.fileCache.GetActiveGrayRelease(ns, group, filename); gray != nil {
 					if gray.Version == curVer {
-						return model.ReleaseTypeGray
+						return conftypes.ReleaseTypeGray
 					}
 				}
-				return model.ReleaseTypeFull
+				return conftypes.ReleaseTypeFull
 			}(),
 			Version: curVer,
 		})

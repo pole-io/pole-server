@@ -18,7 +18,6 @@
 package rules
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -31,8 +30,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/pole-io/pole-server/apis/pkg/types/service"
-	commontime "github.com/pole-io/pole-server/pkg/common/time"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/apis/pkg/utils"
 )
 
 type TrafficDirection string
@@ -47,12 +45,6 @@ const (
 	V2RuleIDKey = "__routing_v2_id__"
 	// V2RuleIDPriority v2 版本的规则路由优先级
 	V2RuleIDPriority = "__routing_v2_priority__"
-	// V1RuleIDKey v1 版本的路由规则 ID
-	V1RuleIDKey = "__routing_v1_id__"
-	// V1RuleRouteIndexKey v1 版本 route 规则在自己 route 链中的 index 信息
-	V1RuleRouteIndexKey = "__routing_v1_route_index__"
-	// V1RuleRouteTypeKey 标识当前 v2 路由规则在 v1 的 inBound 还是 outBound
-	V1RuleRouteTypeKey = "__routing_v1_route_type__"
 	// V1RuleInRoute inBound 类型
 	V1RuleInRoute = "in"
 	// V1RuleOutRoute outBound 类型
@@ -144,16 +136,16 @@ func (r *ExtendRouterConfig) ToApi() (*apitraffic.RouteRule, error) {
 		RoutingPolicy: r.GetRoutingPolicy(),
 		RoutingConfig: anyValue,
 		Revision:      r.Revision,
-		Ctime:         commontime.Time2String(r.CreateTime),
-		Mtime:         commontime.Time2String(r.ModifyTime),
-		Etime:         commontime.Time2String(r.EnableTime),
+		Ctime:         utils.Time2String(r.CreateTime),
+		Mtime:         utils.Time2String(r.ModifyTime),
+		Etime:         utils.Time2String(r.EnableTime),
 		Priority:      r.Priority,
 		Description:   r.Description,
 		Editable:      true,
 		Deleteable:    true,
 	}
 	if r.EnableTime.Year() > 2000 {
-		rule.Etime = commontime.Time2String(r.EnableTime)
+		rule.Etime = utils.Time2String(r.EnableTime)
 	} else {
 		rule.Etime = ""
 	}
@@ -415,38 +407,6 @@ const (
 	MatchAll = "*"
 )
 
-// RoutingConfigV1ToAPI Convert the internal data structure to API parameter to pass out
-func RoutingConfigV1ToAPI(req *RoutingConfig, service string, namespace string) (*apitraffic.Routing, error) {
-	if req == nil {
-		return nil, nil
-	}
-
-	out := &apitraffic.Routing{
-		Service:   utils.NewStringValue(service),
-		Namespace: utils.NewStringValue(namespace),
-		Revision:  utils.NewStringValue(req.Revision),
-		Ctime:     utils.NewStringValue(commontime.Time2String(req.CreateTime)),
-		Mtime:     utils.NewStringValue(commontime.Time2String(req.ModifyTime)),
-	}
-
-	if req.InBounds != "" {
-		var inBounds []*apitraffic.Route
-		if err := json.Unmarshal([]byte(req.InBounds), &inBounds); err != nil {
-			return nil, err
-		}
-		out.Inbounds = inBounds
-	}
-	if req.OutBounds != "" {
-		var outBounds []*apitraffic.Route
-		if err := json.Unmarshal([]byte(req.OutBounds), &outBounds); err != nil {
-			return nil, err
-		}
-		out.Outbounds = outBounds
-	}
-
-	return out, nil
-}
-
 // RoutingLabels2Arguments Adapting the old label model into a list of parameters
 func RoutingLabels2Arguments(labels map[string]*apimodel.MatchString) []*apitraffic.SourceMatch {
 	if len(labels) == 0 {
@@ -504,109 +464,6 @@ func RoutingArguments2Labels(args []*apitraffic.SourceMatch) map[string]*apimode
 	return labels
 }
 
-// BuildV2RoutingFromV1Route Build a V2 version of API data object routing rules
-func BuildV2RoutingFromV1Route(req *apitraffic.Routing, route *apitraffic.Route) (*apitraffic.RouteRule, error) {
-	var v2Id string
-	if extendInfo := route.GetExtendInfo(); len(extendInfo) > 0 {
-		v2Id = extendInfo[V2RuleIDKey]
-	} else {
-		v2Id = utils.NewRoutingV2UUID()
-	}
-
-	rule := convertV1RouteToV2Route(route)
-	any, err := ptypes.MarshalAny(rule)
-	if err != nil {
-		return nil, err
-	}
-
-	routing := &apitraffic.RouteRule{
-		Id:            v2Id,
-		Name:          "",
-		Enable:        false,
-		RoutingPolicy: apitraffic.RoutingPolicy_RulePolicy,
-		RoutingConfig: any,
-		Revision:      utils.NewV2Revision(),
-		Priority:      0,
-	}
-
-	return routing, nil
-}
-
-// BuildV2ExtendRouting Build the internal data object routing rules of V2 version
-func BuildV2ExtendRouting(req *apitraffic.Routing, route *apitraffic.Route) (*ExtendRouterConfig, error) {
-	var v2Id string
-	if extendInfo := route.GetExtendInfo(); len(extendInfo) > 0 {
-		v2Id = extendInfo[V2RuleIDKey]
-	}
-	if v2Id == "" {
-		v2Id = utils.NewRoutingV2UUID()
-	}
-
-	routing := &ExtendRouterConfig{
-		RouterConfig: &RouterConfig{
-			ID:       v2Id,
-			Name:     v2Id,
-			Enable:   true,
-			Policy:   apitraffic.RoutingPolicy_RulePolicy.String(),
-			Revision: req.GetRevision().GetValue(),
-			Priority: 0,
-		},
-		RuleRouting: parseSubRouteRule(convertV1RouteToV2Route(route)),
-	}
-
-	return routing, nil
-}
-
-// convertV1RouteToV2Route Turn the routing rules of the V1 version to the routing rules of V2 version
-func convertV1RouteToV2Route(route *apitraffic.Route) *apitraffic.RuleRoutingConfig {
-	v2sources := make([]*apitraffic.SourceService, 0, len(route.GetSources()))
-	v1sources := route.GetSources()
-	for i := range v1sources {
-		entry := &apitraffic.SourceService{
-			Service:   v1sources[i].GetService().GetValue(),
-			Namespace: v1sources[i].GetNamespace().GetValue(),
-		}
-
-		entry.Arguments = RoutingLabels2Arguments(v1sources[i].GetMetadata())
-		v2sources = append(v2sources, entry)
-	}
-
-	v2destinations := make([]*apitraffic.DestinationGroup, 0, len(route.GetDestinations()))
-	v1destinations := route.GetDestinations()
-	for i := range v1destinations {
-		entry := &apitraffic.DestinationGroup{
-			Service:   v1destinations[i].GetService().GetValue(),
-			Namespace: v1destinations[i].GetNamespace().GetValue(),
-			Priority:  v1destinations[i].GetPriority().GetValue(),
-			Weight:    v1destinations[i].GetWeight().GetValue(),
-			Transfer:  v1destinations[i].GetTransfer().GetValue(),
-			Isolate:   v1destinations[i].GetIsolate().GetValue(),
-		}
-
-		v2labels := make(map[string]*apimodel.MatchString)
-		v1labels := v1destinations[i].GetMetadata()
-		for index := range v1labels {
-			v2labels[index] = &apimodel.MatchString{
-				Type:      v1labels[index].GetType(),
-				Value:     v1labels[index].GetValue(),
-				ValueType: v1labels[index].GetValueType(),
-			}
-		}
-
-		entry.Labels = v2labels
-		v2destinations = append(v2destinations, entry)
-	}
-
-	return &apitraffic.RuleRoutingConfig{
-		Rules: []*apitraffic.SubRuleRouting{
-			{
-				Sources:      v2sources,
-				Destinations: v2destinations,
-			},
-		},
-	}
-}
-
 // CompareRoutingV2 Compare the priority of two routing.
 func CompareRoutingV2(a, b *ExtendRouterConfig) bool {
 	if a.Priority != b.Priority {
@@ -621,90 +478,6 @@ func CompareRoutingV1(a, b *apitraffic.Route) bool {
 	ap := a.ExtendInfo[V2RuleIDPriority]
 	bp := b.ExtendInfo[V2RuleIDPriority]
 	return ap < bp
-}
-
-// ConvertRoutingV1ToExtendV2 The routing rules of the V1 version are converted to V2 version for storage
-// TODO Reduce duplicate code logic
-func ConvertRoutingV1ToExtendV2(svcName, svcNamespace string,
-	rule *RoutingConfig) ([]*ExtendRouterConfig, []*ExtendRouterConfig, error) {
-	inRet := make([]*ExtendRouterConfig, 0, 4)
-	outRet := make([]*ExtendRouterConfig, 0, 4)
-
-	if rule.InBounds != "" {
-		var inBounds []*apitraffic.Route
-		if err := json.Unmarshal([]byte(rule.InBounds), &inBounds); err != nil {
-			return nil, nil, err
-		}
-
-		priorityMax := 0
-
-		for i := range inBounds {
-			routing, err := BuildV2ExtendRouting(&apitraffic.Routing{
-				Namespace: utils.NewStringValue(svcNamespace),
-			}, inBounds[i])
-			if err != nil {
-				return nil, nil, err
-			}
-			routing.ID = fmt.Sprintf("%sin%d", rule.ID, i)
-			routing.Revision = rule.Revision
-			routing.Enable = true
-			routing.CreateTime = rule.CreateTime
-			routing.ModifyTime = rule.ModifyTime
-			routing.EnableTime = rule.CreateTime
-			routing.Metadata = map[string]string{
-				V1RuleIDKey:         rule.ID,
-				V1RuleRouteIndexKey: fmt.Sprintf("%d", i),
-				V1RuleRouteTypeKey:  V1RuleInRoute,
-			}
-
-			if priorityMax > 10 {
-				priorityMax = 10
-			}
-
-			routing.Priority = uint32(priorityMax)
-			priorityMax++
-
-			inRet = append(inRet, routing)
-		}
-	}
-	if rule.OutBounds != "" {
-		var outBounds []*apitraffic.Route
-		if err := json.Unmarshal([]byte(rule.OutBounds), &outBounds); err != nil {
-			return nil, nil, err
-		}
-
-		priorityMax := 0
-
-		for i := range outBounds {
-			routing, err := BuildV2ExtendRouting(&apitraffic.Routing{
-				Namespace: utils.NewStringValue(svcNamespace),
-			}, outBounds[i])
-			if err != nil {
-				return nil, nil, err
-			}
-			routing.ID = fmt.Sprintf("%sout%d", rule.ID, i)
-			routing.Revision = rule.Revision
-			routing.CreateTime = rule.CreateTime
-			routing.ModifyTime = rule.ModifyTime
-			routing.EnableTime = rule.CreateTime
-			routing.Metadata = map[string]string{
-				V1RuleIDKey:         rule.ID,
-				V1RuleRouteIndexKey: fmt.Sprintf("%d", i),
-				V1RuleRouteTypeKey:  V1RuleOutRoute,
-			}
-
-			if priorityMax > 10 {
-				priorityMax = 10
-			}
-
-			routing.Priority = uint32(priorityMax)
-			priorityMax++
-
-			outRet = append(outRet, routing)
-		}
-	}
-
-	return inRet, outRet, nil
 }
 
 func BuildRoutes(item *ExtendRouterConfig, direction TrafficDirection) []*apitraffic.Route {

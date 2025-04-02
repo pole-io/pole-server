@@ -67,7 +67,6 @@ type boltStore struct {
 	// 服务注册发现、治理
 	*serviceStore
 	*instanceStore
-	*l5Store
 	*rateLimitStore
 	*circuitBreakerStore
 	*faultDetectStore
@@ -194,11 +193,6 @@ func (m *boltStore) initNamingStoreData() error {
 
 func (m *boltStore) newStore() error {
 	var err error
-
-	m.l5Store = &l5Store{handler: m.handler}
-	if err = m.l5Store.InitL5Data(); err != nil {
-		return err
-	}
 	m.namespaceStore = &namespaceStore{handler: m.handler}
 	if err = m.namespaceStore.InitData(); err != nil {
 		return err

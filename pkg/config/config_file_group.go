@@ -29,9 +29,8 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -225,7 +224,7 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 
 	offset, limit, _ := utils.ParseOffsetAndLimit(searchFilters)
 
-	args := &cachetypes.ConfigGroupArgs{
+	args := &cacheapi.ConfigGroupArgs{
 		Namespace:  searchFilters["namespace"],
 		Name:       searchFilters["name"],
 		Business:   searchFilters["business"],
@@ -244,7 +243,7 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 	}
 	values := make([]*apiconfig.ConfigFileGroup, 0, len(ret))
 	for i := range ret {
-		item := model.ToConfigGroupAPI(ret[i])
+		item := conftypes.ToConfigGroupAPI(ret[i])
 		fileCount, err := s.storage.CountConfigFiles(ret[i].Namespace, ret[i].Name)
 		if err != nil {
 			log.Error("[Config][Service] get config file count for group error.", utils.RequestID(ctx),
@@ -252,7 +251,7 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 		}
 
 		// 如果包含特殊标签，也不允许修改
-		if _, ok := item.GetMetadata()[model.MetaKey3RdPlatform]; ok {
+		if _, ok := item.GetMetadata()[types.MetaKey3RdPlatform]; ok {
 			item.Editable = utils.NewBoolValue(false)
 		}
 

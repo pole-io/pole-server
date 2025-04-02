@@ -15,27 +15,16 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package api
+package cache
 
 import (
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"hash"
-	"time"
 )
 
 const mtimeLogIntervalSec = 120
-
-// LogLastMtime 定时打印mtime更新结果
-func LogLastMtime(lastMtimeLogged int64, lastMtime int64, prefix string) int64 {
-	curTimeSec := time.Now().Unix()
-	if lastMtimeLogged == 0 || curTimeSec-lastMtimeLogged >= mtimeLogIntervalSec {
-		lastMtimeLogged = curTimeSec
-		log.Infof("[Cache][%s] current lastMtime is %s", prefix, time.Unix(lastMtime, 0))
-	}
-	return lastMtimeLogged
-}
 
 func ComputeRevisionBySlice(h hash.Hash, slice []string) (string, error) {
 	for _, revision := range slice {

@@ -115,18 +115,11 @@ func (h *HTTPServerV1) addDefaultReadAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichGetCircuitBreakerRulesApiDocs(
 		ws.GET("/circuitbreaker/rules").To(h.GetCircuitBreakerRules)))
 	ws.Route(docs.EnrichGetFaultDetectRulesApiDocs(ws.GET("/faultdetectors").To(h.GetFaultDetectRules)))
-
 	ws.Route(docs.EnrichGetServiceContractsApiDocs(
 		ws.GET("/service/contracts").To(h.GetServiceContracts)))
 	ws.Route(docs.EnrichGetServiceContractsApiDocs(
 		ws.GET("/service/contract/versions").To(h.GetServiceContractVersions)))
-
-	// Deprecate -- start
-	ws.Route(ws.GET("/namespace/token").To(h.GetNamespaceToken))
-	ws.Route(ws.GET("/service/token").To(h.GetServiceToken))
-	ws.Route(ws.POST("/service/owner").To(h.GetServiceOwner))
 	ws.Route(ws.GET("/routings").To(h.GetRoutings))
-	// Deprecate -- end
 }
 
 // addDefaultAccess 增加默认接口
@@ -195,12 +188,11 @@ func (h *HTTPServerV1) addServiceAccess(ws *restful.WebService) {
 
 // addRoutingRuleAccess 增加默认接口
 func (h *HTTPServerV1) addRoutingRuleAccess(ws *restful.WebService) {
-	// Deprecate -- start
-	ws.Route(ws.POST("/routings").To(h.CreateRoutings))
-	ws.Route(ws.POST("/routings/delete").To(h.DeleteRoutings))
-	ws.Route(ws.PUT("/routings").To(h.UpdateRoutings))
-	ws.Route(ws.GET("/routings").To(h.GetRoutings))
-	// Deprecate -- end
+	ws.Route(docs.EnrichCreateRouterRuleApiDocs(ws.POST("/routings").To(h.CreateRoutings)))
+	ws.Route(docs.EnrichDeleteRouterRuleApiDocs(ws.POST("/routings/delete").To(h.DeleteRoutings)))
+	ws.Route(docs.EnrichUpdateRouterRuleApiDocs(ws.PUT("/routings").To(h.UpdateRoutings)))
+	ws.Route(docs.EnrichGetRouterRuleApiDocs(ws.GET("/routings").To(h.GetRoutings)))
+	ws.Route(docs.EnrichEnableRouterRuleApiDocs(ws.PUT("/routings/enable").To(h.EnableRoutings)))
 }
 
 // addLaneRuleAccess 泳道规则

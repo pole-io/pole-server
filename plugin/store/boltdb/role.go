@@ -26,7 +26,6 @@ import (
 
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -192,7 +191,7 @@ func (s *roleStore) CleanPrincipalRoles(tx store.Tx, p *authcommon.Principal) er
 
 // GetRole get more role for cache update
 func (s *roleStore) GetRole(id string) (*authcommon.Role, error) {
-	ret, err := s.handle.LoadValues(tblRole, []string{id}, &model.RoutingConfig{})
+	ret, err := s.handle.LoadValues(tblRole, []string{id}, &authcommon.Role{})
 	if err != nil {
 		log.Errorf("[Store][role] get one role, %v", err)
 		return nil, store.Error(err)
@@ -208,7 +207,7 @@ func (s *roleStore) GetRole(id string) (*authcommon.Role, error) {
 func (s *roleStore) GetMoreRoles(firstUpdate bool, mtime time.Time) ([]*authcommon.Role, error) {
 	fields := []string{CommonFieldModifyTime, CommonFieldValid}
 
-	ret, err := s.handle.LoadValuesByFilter(tblRole, fields, &model.RoutingConfig{},
+	ret, err := s.handle.LoadValuesByFilter(tblRole, fields, &authcommon.Role{},
 		func(m map[string]interface{}) bool {
 			if firstUpdate {
 				valid, _ := m[CommonFieldValid].(bool)

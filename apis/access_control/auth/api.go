@@ -24,23 +24,23 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cachetypes "github.com/pole-io/pole-server/apis/cache"
 )
 
 // AuthChecker 权限管理通用接口定义
 type AuthChecker interface {
 	// CheckClientPermission 执行检查客户端动作判断是否有权限，并且对 RequestContext 注入操作者数据
-	CheckClientPermission(preCtx *authcommon.AcquireContext) (bool, error)
+	CheckClientPermission(preCtx *authtypes.AcquireContext) (bool, error)
 	// CheckConsolePermission 执行检查控制台动作判断是否有权限，并且对 RequestContext 注入操作者数据
-	CheckConsolePermission(preCtx *authcommon.AcquireContext) (bool, error)
+	CheckConsolePermission(preCtx *authtypes.AcquireContext) (bool, error)
 	// IsOpenConsoleAuth 返回是否开启了操作鉴权，可以用于前端查询
 	IsOpenConsoleAuth() bool
 	// IsOpenClientAuth
 	IsOpenClientAuth() bool
 	// ResourcePredicate 是否允许资源的操作
-	ResourcePredicate(ctx *authcommon.AcquireContext, opInfo *authcommon.ResourceEntry) bool
+	ResourcePredicate(ctx *authtypes.AcquireContext, opInfo *authtypes.ResourceEntry) bool
 }
 
 // StrategyServer 策略相关操作
@@ -58,7 +58,7 @@ type StrategyServer interface {
 	// GetAuthChecker 获取鉴权检查器
 	GetAuthChecker() AuthChecker
 	// AfterResourceOperation 操作完资源的后置处理逻辑
-	AfterResourceOperation(afterCtx *authcommon.AcquireContext) error
+	AfterResourceOperation(afterCtx *authtypes.AcquireContext) error
 }
 
 // PolicyOperator 策略管理
@@ -100,7 +100,7 @@ type UserServer interface {
 	// Login 登录动作
 	Login(req *apisecurity.LoginRequest) *apiservice.Response
 	// CheckCredential 检查当前操作用户凭证
-	CheckCredential(authCtx *authcommon.AcquireContext) error
+	CheckCredential(authCtx *authtypes.AcquireContext) error
 	// UserOperator
 	UserOperator
 	// GroupOperator
@@ -167,13 +167,13 @@ type UserHelper interface {
 // PolicyHelper .
 type PolicyHelper interface {
 	// GetPolicyRule .
-	GetPolicyRule(id string) *authcommon.StrategyDetail
+	GetPolicyRule(id string) *authtypes.StrategyDetail
 	// CreatePrincipalPolicy 创建 principal 的默认 policy 资源
-	CreatePrincipalPolicy(ctx context.Context, tx store.Tx, p authcommon.Principal) error
+	CreatePrincipalPolicy(ctx context.Context, tx store.Tx, p authtypes.Principal) error
 	// CleanPrincipal 清理 principal 所关联的 policy、role 资源
-	CleanPrincipal(ctx context.Context, tx store.Tx, p authcommon.Principal) error
+	CleanPrincipal(ctx context.Context, tx store.Tx, p authtypes.Principal) error
 	// GetRole .
-	GetRole(id string) *authcommon.Role
+	GetRole(id string) *authtypes.Role
 }
 
 // OperatorInfo 根据 token 解析出来的具体额外信息
@@ -185,7 +185,7 @@ type OperatorInfo struct {
 	// OwnerID 当前用户/用户组对应的 owner
 	OwnerID string
 	// Role 如果当前是 user token 的话，该值才能有信息
-	Role authcommon.UserRoleType
+	Role authtypes.UserRoleType
 	// IsUserToken 当前 token 是否是 user 的 token
 	IsUserToken bool
 	// Disable 标识用户 token 是否被禁用
@@ -210,7 +210,7 @@ func IsEmptyOperator(t OperatorInfo) bool {
 
 // IsSubAccount 当前 token 对应的账户类型
 func IsSubAccount(t OperatorInfo) bool {
-	return t.Role == authcommon.SubAccountUserRole
+	return t.Role == authtypes.SubAccountUserRole
 }
 
 func (t *OperatorInfo) String() string {

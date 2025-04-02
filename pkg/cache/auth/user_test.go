@@ -27,8 +27,8 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/store/mock"
 )
@@ -37,7 +37,7 @@ import (
 func newTestUserCache(t *testing.T) (*gomock.Controller, *mock.MockStore, *userCache) {
 	ctl := gomock.NewController(t)
 
-	var cacheMgr types.CacheManager
+	var cacheMgr cacheapi.CacheManager
 	mockStore := mock.NewMockStore(ctl)
 
 	uc := NewUserCache(mockStore, cacheMgr)
@@ -49,24 +49,24 @@ func newTestUserCache(t *testing.T) (*gomock.Controller, *mock.MockStore, *userC
 }
 
 // 生成测试数据
-func genModelUsers(total int) []*authcommon.User {
+func genModelUsers(total int) []*authtypes.User {
 	if total%10 != 0 {
 		panic(errors.New("total must like 10, 20, 30, 40, ..."))
 	}
 
-	out := make([]*authcommon.User, 0, total)
+	out := make([]*authtypes.User, 0, total)
 
-	var owner *authcommon.User
+	var owner *authtypes.User
 
 	for i := 0; i < total; i++ {
 		if i%10 == 0 {
-			owner = &authcommon.User{
+			owner = &authtypes.User{
 				ID:       fmt.Sprintf("owner-user-%d", i),
 				Name:     fmt.Sprintf("owner-user-%d", i),
 				Password: fmt.Sprintf("owner-user-%d", i),
 				Owner:    "",
 				Source:   "Polaris",
-				Type:     authcommon.OwnerUserRole,
+				Type:     authtypes.OwnerUserRole,
 				Token:    fmt.Sprintf("owner-user-%d", i),
 				Valid:    true,
 			}
@@ -74,13 +74,13 @@ func genModelUsers(total int) []*authcommon.User {
 			continue
 		}
 
-		entry := &authcommon.User{
+		entry := &authtypes.User{
 			ID:       fmt.Sprintf("sub-user-%d", i),
 			Name:     fmt.Sprintf("sub-user-%d", i),
 			Password: fmt.Sprintf("sub-user-%d", i),
 			Owner:    owner.ID,
 			Source:   "Polaris",
-			Type:     authcommon.SubAccountUserRole,
+			Type:     authtypes.SubAccountUserRole,
 			Token:    fmt.Sprintf("sub-user-%d", i),
 			Valid:    true,
 		}
@@ -90,13 +90,13 @@ func genModelUsers(total int) []*authcommon.User {
 	return out
 }
 
-func genModelUserGroups(users []*authcommon.User) []*authcommon.UserGroupDetail {
+func genModelUserGroups(users []*authtypes.User) []*authtypes.UserGroupDetail {
 
-	out := make([]*authcommon.UserGroupDetail, 0, len(users))
+	out := make([]*authtypes.UserGroupDetail, 0, len(users))
 
 	for i := 0; i < len(users); i++ {
-		entry := &authcommon.UserGroupDetail{
-			UserGroup: &authcommon.UserGroup{
+		entry := &authtypes.UserGroupDetail{
+			UserGroup: &authtypes.UserGroup{
 				ID:          utils.NewUUID(),
 				Name:        fmt.Sprintf("group-%d", i),
 				Owner:       users[0].ID,
@@ -124,16 +124,16 @@ func TestUserCache_UpdateNormal(t *testing.T) {
 
 	users := genModelUsers(10)
 	groups := genModelUserGroups(users)
-	admin := &authcommon.User{
+	admin := &authtypes.User{
 		ID:    "admin-polaris",
 		Name:  "admin-polaris",
-		Type:  authcommon.AdminUserRole,
+		Type:  authtypes.AdminUserRole,
 		Valid: true,
 	}
 
 	t.Run("首次更新用户", func(t *testing.T) {
-		copyUsers := make([]*authcommon.User, 0, len(users))
-		copyGroups := make([]*authcommon.UserGroupDetail, 0, len(groups))
+		copyUsers := make([]*authtypes.User, 0, len(users))
+		copyGroups := make([]*authtypes.UserGroupDetail, 0, len(groups))
 
 		for i := range users {
 			copyUser := *users[i]
@@ -187,7 +187,7 @@ func TestUserCache_UpdateNormal(t *testing.T) {
 		deleteCnt := 0
 		for i := range users {
 			// 主账户/管理账户 不能删除，因此这里对于第一个用户需要跳过
-			if users[i].Type != authcommon.SubAccountUserRole {
+			if users[i].Type != authtypes.SubAccountUserRole {
 				continue
 			}
 			if rand.Int31n(3) < 1 {
@@ -199,8 +199,8 @@ func TestUserCache_UpdateNormal(t *testing.T) {
 			users[i].Comment = fmt.Sprintf("Update user %d", i)
 		}
 
-		copyUsers := make([]*authcommon.User, 0, len(users))
-		copyGroups := make([]*authcommon.UserGroupDetail, 0, len(groups))
+		copyUsers := make([]*authtypes.User, 0, len(users))
+		copyGroups := make([]*authtypes.UserGroupDetail, 0, len(groups))
 
 		for i := range users {
 			copyUser := *users[i]

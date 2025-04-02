@@ -24,8 +24,8 @@ import (
 
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -112,7 +112,7 @@ func queryRoutingRuleV2ByService(rule *rules.ExtendRouterConfig, sourceNamespace
 }
 
 // QueryRoutingConfigs Query Route Configuration List
-func (rc *RouteRuleCache) QueryRoutingConfigs(ctx context.Context, args *types.RoutingArgs) (uint32, []*rules.ExtendRouterConfig, error) {
+func (rc *RouteRuleCache) QueryRoutingConfigs(ctx context.Context, args *cacheapi.RoutingArgs) (uint32, []*rules.ExtendRouterConfig, error) {
 	if err := rc.Update(); err != nil {
 		return 0, nil, err
 	}
@@ -173,7 +173,7 @@ func (rc *RouteRuleCache) QueryRoutingConfigs(ctx context.Context, args *types.R
 		res = append(res, routeRule)
 	}
 
-	predicates := types.LoadRouterRulePredicates(ctx)
+	predicates := cacheapi.LoadRouterRulePredicates(ctx)
 
 	rc.IteratorRouterRule(func(key string, value *rules.ExtendRouterConfig) {
 		for i := range predicates {
@@ -189,7 +189,7 @@ func (rc *RouteRuleCache) QueryRoutingConfigs(ctx context.Context, args *types.R
 }
 
 func (rc *RouteRuleCache) sortBeforeTrim(routings []*rules.ExtendRouterConfig,
-	args *types.RoutingArgs) (uint32, []*rules.ExtendRouterConfig) {
+	args *cacheapi.RoutingArgs) (uint32, []*rules.ExtendRouterConfig) {
 	amount := uint32(len(routings))
 	if args.Offset >= amount || args.Limit == 0 {
 		return amount, nil

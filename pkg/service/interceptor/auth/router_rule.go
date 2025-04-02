@@ -27,11 +27,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -40,9 +40,9 @@ func (svr *Server) CreateRoutingConfigs(ctx context.Context,
 	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 
 	// TODO not support RouteRuleV2 resource auth, so we set op is read
-	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authcommon.Create, authcommon.CreateRouteRules)
+	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Create, authtypes.CreateRouteRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
@@ -52,7 +52,7 @@ func (svr *Server) CreateRoutingConfigs(ctx context.Context,
 		item := resp.GetResponses()[index].GetData()
 		rule := &apitraffic.RouteRule{}
 		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
-		_ = svr.afterRuleResource(ctx, model.RRouting, authcommon.ResourceEntry{
+		_ = svr.afterRuleResource(ctx, types.RRouting, authtypes.ResourceEntry{
 			ID:   rule.Id,
 			Type: security.ResourceType_RouteRules,
 		}, false)
@@ -64,9 +64,9 @@ func (svr *Server) CreateRoutingConfigs(ctx context.Context,
 func (svr *Server) DeleteRoutingConfigs(ctx context.Context,
 	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 
-	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authcommon.Delete, authcommon.DeleteRouteRules)
+	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Delete, authtypes.DeleteRouteRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
@@ -76,7 +76,7 @@ func (svr *Server) DeleteRoutingConfigs(ctx context.Context,
 		item := resp.GetResponses()[index].GetData()
 		rule := &apitraffic.RouteRule{}
 		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
-		_ = svr.afterRuleResource(ctx, model.RRouting, authcommon.ResourceEntry{
+		_ = svr.afterRuleResource(ctx, types.RRouting, authtypes.ResourceEntry{
 			ID:   rule.Id,
 			Type: security.ResourceType_RouteRules,
 		}, true)
@@ -88,9 +88,9 @@ func (svr *Server) DeleteRoutingConfigs(ctx context.Context,
 func (svr *Server) UpdateRoutingConfigs(ctx context.Context,
 	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 
-	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authcommon.Modify, authcommon.UpdateRouteRules)
+	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Modify, authtypes.UpdateRouteRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
@@ -101,9 +101,9 @@ func (svr *Server) UpdateRoutingConfigs(ctx context.Context,
 func (svr *Server) EnableRoutings(ctx context.Context,
 	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 
-	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authcommon.Modify, authcommon.EnableRouteRules)
+	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Modify, authtypes.EnableRouteRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
@@ -113,15 +113,15 @@ func (svr *Server) EnableRoutings(ctx context.Context,
 // QueryRoutingConfigsV2 提供给OSS的查询路由配置的接口
 func (svr *Server) QueryRoutingConfigs(ctx context.Context,
 	query map[string]string) *apiservice.BatchQueryResponse {
-	authCtx := svr.collectRouteRuleV2AuthContext(ctx, nil, authcommon.Read, authcommon.DescribeRouteRules)
+	authCtx := svr.collectRouteRuleV2AuthContext(ctx, nil, authtypes.Read, authtypes.DescribeRouteRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchQueryResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 
-	ctx = cachetypes.AppendRouterRulePredicate(ctx, func(ctx context.Context, cbr *rules.ExtendRouterConfig) bool {
-		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
+	ctx = cacheapi.AppendRouterRulePredicate(ctx, func(ctx context.Context, cbr *rules.ExtendRouterConfig) bool {
+		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
 			Type:     security.ResourceType_RouteRules,
 			ID:       cbr.ID,
 			Metadata: cbr.Metadata,
@@ -133,7 +133,7 @@ func (svr *Server) QueryRoutingConfigs(ctx context.Context,
 	for index := range resp.Data {
 		item := &apitraffic.RouteRule{}
 		_ = anypb.UnmarshalTo(resp.Data[index], item, proto.UnmarshalOptions{})
-		authCtx.SetAccessResources(map[security.ResourceType][]authcommon.ResourceEntry{
+		authCtx.SetAccessResources(map[security.ResourceType][]authtypes.ResourceEntry{
 			security.ResourceType_RouteRules: {
 				{
 					Type:     apisecurity.ResourceType_RouteRules,
@@ -144,14 +144,14 @@ func (svr *Server) QueryRoutingConfigs(ctx context.Context,
 		})
 
 		// 检查 write 操作权限
-		authCtx.SetMethod([]authcommon.ServerFunctionName{authcommon.UpdateRouteRules, authcommon.EnableRouteRules})
+		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateRouteRules, authtypes.EnableRouteRules})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 			item.Editable = false
 		}
 
 		// 检查 delete 操作权限
-		authCtx.SetMethod([]authcommon.ServerFunctionName{authcommon.DeleteRouteRules})
+		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteRouteRules})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 			item.Deleteable = false

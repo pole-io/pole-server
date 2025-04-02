@@ -25,7 +25,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types/admin"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 // AdminOperateServer Maintain related operation
@@ -53,7 +53,7 @@ type AdminOperateServer interface {
 	// ReleaseLeaderElection
 	ReleaseLeaderElection(ctx context.Context, electKey string) error
 	// GetCMDBInfo get cmdb info
-	GetCMDBInfo(ctx context.Context) ([]model.LocationView, error)
+	GetCMDBInfo(ctx context.Context) ([]svctypes.LocationView, error)
 	// HasMainUser .
 	HasMainUser(ctx context.Context) *apiservice.Response
 	// InitMainUser .

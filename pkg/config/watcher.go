@@ -26,8 +26,8 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/model"
@@ -127,7 +127,7 @@ func (c *LongPollWatchContext) ShouldNotify(event *conftypes.SimpleConfigFileRel
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
-	if event.ReleaseType == model.ReleaseTypeGray && !c.betaMatcher(c.ClientLabels(), event) {
+	if event.ReleaseType == conftypes.ReleaseTypeGray && !c.betaMatcher(c.ClientLabels(), event) {
 		return false
 	}
 
@@ -162,7 +162,7 @@ func (c *LongPollWatchContext) AppendInterest(item *apiconfig.ClientConfigFileIn
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	key := model.BuildKeyForClientConfigFileInfo(item)
+	key := conftypes.BuildKeyForClientConfigFileInfo(item)
 	c.watchConfigFiles[key] = item
 }
 
@@ -171,7 +171,7 @@ func (c *LongPollWatchContext) RemoveInterest(item *apiconfig.ClientConfigFileIn
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	key := model.BuildKeyForClientConfigFileInfo(item)
+	key := conftypes.BuildKeyForClientConfigFileInfo(item)
 	delete(c.watchConfigFiles, key)
 }
 
@@ -196,13 +196,13 @@ type watchCenter struct {
 	// fileId -> []clientId
 	watchers *utils.SyncMap[string, *utils.SyncSet[string]]
 	// fileCache
-	fileCache cachetypes.ConfigFileCache
-	cacheMgr  cachetypes.CacheManager
+	fileCache cacheapi.ConfigFileCache
+	cacheMgr  cacheapi.CacheManager
 	cancel    context.CancelFunc
 }
 
 // NewWatchCenter 创建一个客户端监听配置发布的处理中心
-func NewWatchCenter(cacheMgr cachetypes.CacheManager) (*watchCenter, error) {
+func NewWatchCenter(cacheMgr cacheapi.CacheManager) (*watchCenter, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	wc := &watchCenter{

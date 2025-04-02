@@ -27,11 +27,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
+	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/observability/history"
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -148,9 +148,9 @@ func (svr *Server) Login(req *apisecurity.LoginRequest) *apiservice.Response {
 	if err != nil {
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			return api.NewAuthResponseWithMsg(
-				apimodel.Code_NotAllowedAccess, authcommon.ErrorWrongUsernameOrPassword.Error())
+				apimodel.Code_NotAllowedAccess, authtypes.ErrorWrongUsernameOrPassword.Error())
 		}
-		return api.NewAuthResponseWithMsg(apimodel.Code_ExecuteException, authcommon.ErrorWrongUsernameOrPassword.Error())
+		return api.NewAuthResponseWithMsg(apimodel.Code_ExecuteException, authtypes.ErrorWrongUsernameOrPassword.Error())
 	}
 
 	return api.NewLoginResponse(apimodel.Code_ExecuteSuccess, &apisecurity.LoginResponse{
@@ -158,7 +158,7 @@ func (svr *Server) Login(req *apisecurity.LoginRequest) *apiservice.Response {
 		OwnerId: utils.NewStringValue(user.Owner),
 		Token:   utils.NewStringValue(user.Token),
 		Name:    utils.NewStringValue(user.Name),
-		Role:    utils.NewStringValue(authcommon.UserRoleNames[user.Type]),
+		Role:    utils.NewStringValue(authtypes.UserRoleNames[user.Type]),
 	})
 }
 

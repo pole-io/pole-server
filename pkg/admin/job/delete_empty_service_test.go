@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 func Test_DeleteEmptyAutoCreatedServiceJobConfigInit(t *testing.T) {
@@ -63,7 +63,7 @@ func Test_FilterToDeletedServices(t *testing.T) {
 		"b": t2,
 	}
 
-	services := []*model.Service{
+	services := []*svctypes.Service{
 		{
 			ID: "a",
 		},

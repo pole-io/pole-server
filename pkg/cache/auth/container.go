@@ -20,6 +20,7 @@ package auth
 import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -61,7 +62,7 @@ func (p *PrincipalResourceContainer) Hint(rt apisecurity.ResourceType, resId str
 }
 
 // SaveResource 保存资源
-func (p *PrincipalResourceContainer) SaveResource(a apisecurity.AuthAction, r StrategyResource) {
+func (p *PrincipalResourceContainer) SaveResource(a apisecurity.AuthAction, r authtypes.StrategyResource) {
 	if a == apisecurity.AuthAction_ALLOW {
 		p.saveResource(p.allowResources, r)
 	} else {
@@ -70,7 +71,7 @@ func (p *PrincipalResourceContainer) SaveResource(a apisecurity.AuthAction, r St
 }
 
 // DelResource 删除资源
-func (p *PrincipalResourceContainer) DelResource(a apisecurity.AuthAction, r StrategyResource) {
+func (p *PrincipalResourceContainer) DelResource(a apisecurity.AuthAction, r authtypes.StrategyResource) {
 	if a == apisecurity.AuthAction_ALLOW {
 		p.delResource(p.allowResources, r)
 	} else {
@@ -79,7 +80,7 @@ func (p *PrincipalResourceContainer) DelResource(a apisecurity.AuthAction, r Str
 }
 
 func (p *PrincipalResourceContainer) saveResource(
-	container *utils.SyncMap[apisecurity.ResourceType, *utils.RefSyncSet[string, string]], res StrategyResource) {
+	container *utils.SyncMap[apisecurity.ResourceType, *utils.RefSyncSet[string, string]], res authtypes.StrategyResource) {
 
 	resType := apisecurity.ResourceType(res.ResType)
 	container.ComputeIfAbsent(resType, func(k apisecurity.ResourceType) *utils.RefSyncSet[string, string] {
@@ -94,7 +95,7 @@ func (p *PrincipalResourceContainer) saveResource(
 }
 
 func (p *PrincipalResourceContainer) delResource(
-	container *utils.SyncMap[apisecurity.ResourceType, *utils.RefSyncSet[string, string]], res StrategyResource) {
+	container *utils.SyncMap[apisecurity.ResourceType, *utils.RefSyncSet[string, string]], res authtypes.StrategyResource) {
 
 	resType := apisecurity.ResourceType(res.ResType)
 	container.ComputeIfAbsent(resType, func(k apisecurity.ResourceType) *utils.RefSyncSet[string, string] {

@@ -28,10 +28,10 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cachetypes "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -50,7 +50,7 @@ func (svr *Server) CreateRoles(ctx context.Context, reqs []*apisecurity.Role) *a
 func (svr *Server) CreateRole(ctx context.Context, req *apisecurity.Role) *apiservice.Response {
 	req.Owner = utils.ParseOwnerID(ctx)
 
-	saveData := &authcommon.Role{}
+	saveData := &authtypes.Role{}
 	saveData.FromSpec(req)
 
 	if err := svr.storage.AddRole(saveData); err != nil {
@@ -74,7 +74,7 @@ func (svr *Server) UpdateRoles(ctx context.Context, reqs []*apisecurity.Role) *a
 
 // UpdateRole 批量更新角色
 func (svr *Server) UpdateRole(ctx context.Context, req *apisecurity.Role) *apiservice.Response {
-	newData := &authcommon.Role{}
+	newData := &authtypes.Role{}
 	newData.FromSpec(req)
 
 	saveData, err := svr.storage.GetRole(newData.ID)
@@ -113,7 +113,7 @@ func (svr *Server) DeleteRoles(ctx context.Context, reqs []*apisecurity.Role) *a
 
 // DeleteRole 批量删除角色
 func (svr *Server) DeleteRole(ctx context.Context, req *apisecurity.Role) *apiservice.Response {
-	newData := &authcommon.Role{}
+	newData := &authtypes.Role{}
 	newData.FromSpec(req)
 
 	saveData, err := svr.storage.GetRole(newData.ID)
@@ -140,9 +140,9 @@ func (svr *Server) DeleteRole(ctx context.Context, req *apisecurity.Role) *apise
 			zap.Error(err))
 		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
 	}
-	if err := svr.storage.CleanPrincipalPolicies(tx, authcommon.Principal{
+	if err := svr.storage.CleanPrincipalPolicies(tx, authtypes.Principal{
 		PrincipalID:   saveData.ID,
-		PrincipalType: authcommon.PrincipalRole,
+		PrincipalType: authtypes.PrincipalRole,
 	}); err != nil {
 		log.Error("[Auth][Role] clean role link policies", utils.RequestID(ctx),
 			zap.Error(err))
@@ -184,12 +184,12 @@ func (svr *Server) GetRoles(ctx context.Context, filters map[string]string) *api
 	return rsp
 }
 
-func recordRoleEntry(ctx context.Context, req *apisecurity.Role, data *authcommon.Role, op model.OperationType) *model.RecordEntry {
+func recordRoleEntry(ctx context.Context, req *apisecurity.Role, data *authtypes.Role, op types.OperationType) *types.RecordEntry {
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
 
-	entry := &model.RecordEntry{
-		ResourceType:  model.RAuthRole,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RAuthRole,
 		ResourceName:  fmt.Sprintf("%s(%s)", data.Name, data.ID),
 		OperationType: op,
 		Operator:      utils.ParseOperator(ctx),

@@ -23,7 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 func TestEventBufferTest(t *testing.T) {
@@ -33,7 +33,7 @@ func TestEventBufferTest(t *testing.T) {
 	expectCnt := int64(0)
 	for i := 0; i < 10; i++ {
 		now := time.Now()
-		bufferHolder.Put(model.InstanceEvent{
+		bufferHolder.Put(svctypes.InstanceEvent{
 			CreateTime: now,
 		})
 
@@ -54,7 +54,7 @@ func TestEventBufferTest(t *testing.T) {
 	expectCnt = int64(0)
 	for i := 20; i < 40; i++ {
 		now := time.Now()
-		bufferHolder.Put(model.InstanceEvent{
+		bufferHolder.Put(svctypes.InstanceEvent{
 			CreateTime: now,
 		})
 

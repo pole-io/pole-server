@@ -22,9 +22,9 @@ import (
 	"sort"
 	"strings"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -41,8 +41,8 @@ func (sc *serviceCache) forceUpdate() error {
 }
 
 // GetServicesByFilter 通过filter在缓存中进行服务过滤
-func (sc *serviceCache) GetServicesByFilter(ctx context.Context, serviceFilters *types.ServiceArgs,
-	instanceFilters *store.InstanceArgs, offset, limit uint32) (uint32, []*model.EnhancedService, error) {
+func (sc *serviceCache) GetServicesByFilter(ctx context.Context, serviceFilters *cacheapi.ServiceArgs,
+	instanceFilters *store.InstanceArgs, offset, limit uint32) (uint32, []*svctypes.EnhancedService, error) {
 
 	if err := sc.forceUpdate(); err != nil {
 		return 0, nil, err
@@ -50,7 +50,7 @@ func (sc *serviceCache) GetServicesByFilter(ctx context.Context, serviceFilters 
 
 	var amount uint32
 	var err error
-	var matchServices []*model.Service
+	var matchServices []*svctypes.Service
 
 	// 如果具有名字条件，并且不是模糊查询，直接获取对应命名空间下面的服务，并检查是否匹配所有条件
 	if serviceFilters.Name != "" && !serviceFilters.WildName && !serviceFilters.WildNamespace {
@@ -60,7 +60,7 @@ func (sc *serviceCache) GetServicesByFilter(ctx context.Context, serviceFilters 
 	}
 
 	if serviceFilters.OnlyExistHealthInstance || serviceFilters.OnlyExistInstance {
-		tmpSvcs := make([]*model.Service, 0, len(matchServices))
+		tmpSvcs := make([]*svctypes.Service, 0, len(matchServices))
 		for i := range matchServices {
 			count := sc.instCache.GetInstancesCountByServiceID(matchServices[i].ID)
 			if serviceFilters.OnlyExistInstance && count.TotalInstanceCount == 0 {
@@ -75,8 +75,8 @@ func (sc *serviceCache) GetServicesByFilter(ctx context.Context, serviceFilters 
 	}
 
 	// 这里需要额外做过滤判断
-	predicates := types.LoadServicePredicates(ctx)
-	ret := make([]*model.Service, 0, len(matchServices))
+	predicates := cacheapi.LoadServicePredicates(ctx)
+	ret := make([]*svctypes.Service, 0, len(matchServices))
 	for i := range matchServices {
 		pass := true
 		for pi := range predicates {
@@ -93,12 +93,12 @@ func (sc *serviceCache) GetServicesByFilter(ctx context.Context, serviceFilters 
 
 	amount, services := sortBeforeTrim(matchServices, offset, limit)
 
-	var enhancedServices []*model.EnhancedService
+	var enhancedServices []*svctypes.EnhancedService
 	if amount > 0 {
-		enhancedServices = make([]*model.EnhancedService, 0, len(services))
+		enhancedServices = make([]*svctypes.EnhancedService, 0, len(services))
 		for _, service := range services {
 			count := sc.instCache.GetInstancesCountByServiceID(service.ID)
-			enhancedService := &model.EnhancedService{
+			enhancedService := &svctypes.EnhancedService{
 				Service:              service,
 				TotalInstanceCount:   count.TotalInstanceCount,
 				HealthyInstanceCount: count.HealthyInstanceCount,
@@ -117,7 +117,7 @@ func hasInstanceFilter(instanceFilters *store.InstanceArgs) bool {
 	return true
 }
 
-func (sc *serviceCache) matchInstances(instances []*model.Instance, instanceFilters *store.InstanceArgs) bool {
+func (sc *serviceCache) matchInstances(instances []*svctypes.Instance, instanceFilters *store.InstanceArgs) bool {
 	if len(instances) == 0 {
 		return false
 	}
@@ -179,16 +179,16 @@ func (sc *serviceCache) matchInstances(instances []*model.Instance, instanceFilt
 // GetAllNamespaces 返回所有的命名空间
 func (sc *serviceCache) GetAllNamespaces() []string {
 	var res []string
-	sc.names.ReadRange(func(k string, v *utils.SyncMap[string, *model.Service]) {
+	sc.names.ReadRange(func(k string, v *utils.SyncMap[string, *svctypes.Service]) {
 		res = append(res, k)
 	})
 	return res
 }
 
 // 通过具体的名字来进行查询服务
-func (sc *serviceCache) getServicesFromCacheByName(svcArgs *types.ServiceArgs, instArgs *store.InstanceArgs,
-	offset, limit uint32) ([]*model.Service, error) {
-	var res []*model.Service
+func (sc *serviceCache) getServicesFromCacheByName(svcArgs *cacheapi.ServiceArgs, instArgs *store.InstanceArgs,
+	offset, limit uint32) ([]*svctypes.Service, error) {
+	var res []*svctypes.Service
 	if svcArgs.Namespace != "" {
 		svc := sc.GetServiceByName(svcArgs.Name, svcArgs.Namespace)
 		if svc != nil && !svc.IsAlias() && matchService(svc, svcArgs.Filter, svcArgs.Metadata, false, false) &&
@@ -207,7 +207,7 @@ func (sc *serviceCache) getServicesFromCacheByName(svcArgs *types.ServiceArgs, i
 	return res, nil
 }
 
-func sortBeforeTrim(services []*model.Service, offset, limit uint32) (uint32, []*model.Service) {
+func sortBeforeTrim(services []*svctypes.Service, offset, limit uint32) (uint32, []*svctypes.Service) {
 	// 所有符合条件的服务数量
 	amount := uint32(len(services))
 	// 判断 offset 和 limit 是否允许返回对应的服务
@@ -235,7 +235,7 @@ func sortBeforeTrim(services []*model.Service, offset, limit uint32) (uint32, []
 }
 
 // matchService 根据查询条件比较一个服务是否符合条件
-func matchService(svc *model.Service, svcFilter map[string]string, metaFilter map[string]string,
+func matchService(svc *svctypes.Service, svcFilter map[string]string, metaFilter map[string]string,
 	isWildName, isWildNamespace bool) bool {
 	if !matchServiceFilter(svc, svcFilter, isWildName, isWildNamespace) {
 		return false
@@ -244,7 +244,7 @@ func matchService(svc *model.Service, svcFilter map[string]string, metaFilter ma
 }
 
 // matchServiceFilter 查询一个服务是否满足服务相关字段的条件
-func matchServiceFilter(svc *model.Service, svcFilter map[string]string, isWildName, isWildNamespace bool) bool {
+func matchServiceFilter(svc *svctypes.Service, svcFilter map[string]string, isWildName, isWildNamespace bool) bool {
 	var value string
 	var exist bool
 	if isWildName {
@@ -288,7 +288,7 @@ func matchServiceFilter(svc *model.Service, svcFilter map[string]string, isWildN
 }
 
 // matchMetadata 检查一个服务是否包含有相关的元数据
-func matchMetadata(svc *model.Service, metaFilter map[string]string) bool {
+func matchMetadata(svc *svctypes.Service, metaFilter map[string]string) bool {
 	for k, v := range metaFilter {
 		value, ok := svc.Meta[k]
 		if !ok || value != v {
@@ -298,7 +298,7 @@ func matchMetadata(svc *model.Service, metaFilter map[string]string) bool {
 	return true
 }
 
-func (sc *serviceCache) matchInstance(svc *model.Service, instArgs *store.InstanceArgs) bool {
+func (sc *serviceCache) matchInstance(svc *svctypes.Service, instArgs *store.InstanceArgs) bool {
 	if hasInstanceFilter(instArgs) {
 		instances := sc.instCache.GetInstancesByServiceID(svc.ID)
 		if !sc.matchInstances(instances, instArgs) {
@@ -310,9 +310,9 @@ func (sc *serviceCache) matchInstance(svc *model.Service, instArgs *store.Instan
 
 // getServicesByIteratingCache 通过遍历缓存中的服务
 func (sc *serviceCache) getServicesByIteratingCache(
-	svcArgs *types.ServiceArgs, instArgs *store.InstanceArgs, offset, limit uint32) ([]*model.Service, error) {
-	var res []*model.Service
-	var process = func(svc *model.Service) {
+	svcArgs *cacheapi.ServiceArgs, instArgs *store.InstanceArgs, offset, limit uint32) ([]*svctypes.Service, error) {
+	var res []*svctypes.Service
+	var process = func(svc *svctypes.Service) {
 		// 如果是别名，直接略过
 		if svc.IsAlias() {
 			return
@@ -333,12 +333,12 @@ func (sc *serviceCache) getServicesByIteratingCache(
 		if !ok {
 			return nil, nil
 		}
-		spaces.ReadRange(func(key string, value *model.Service) {
+		spaces.ReadRange(func(key string, value *svctypes.Service) {
 			process(value)
 		})
 	} else {
 		// 直接名字匹配
-		_ = sc.IteratorServices(func(key string, svc *model.Service) (bool, error) {
+		_ = sc.IteratorServices(func(key string, svc *svctypes.Service) (bool, error) {
 			process(svc)
 			return true, nil
 		})

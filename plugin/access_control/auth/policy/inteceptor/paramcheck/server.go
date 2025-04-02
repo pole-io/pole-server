@@ -27,9 +27,9 @@ import (
 	"go.uber.org/zap"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	cachetypes "github.com/pole-io/pole-server/apis/cache"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
@@ -158,7 +158,7 @@ func (svr *Server) GetAuthChecker() authapi.AuthChecker {
 }
 
 // AfterResourceOperation 操作完资源的后置处理逻辑
-func (svr *Server) AfterResourceOperation(afterCtx *authcommon.AcquireContext) error {
+func (svr *Server) AfterResourceOperation(afterCtx *authtypes.AcquireContext) error {
 	return svr.nextSvr.AfterResourceOperation(afterCtx)
 }
 
@@ -207,7 +207,7 @@ func (svr *Server) checkCreateStrategy(req *apisecurity.AuthStrategy) *apiservic
 // Case 1. 修改的是默认鉴权策略的话，只能修改资源，不能添加用户 or 用户组
 // Case 2. 鉴权策略只能被自己的 owner 对应的用户修改
 func (svr *Server) checkUpdateStrategy(ctx context.Context, req *apisecurity.ModifyAuthStrategy,
-	saved *authcommon.StrategyDetail) *apiservice.Response {
+	saved *authtypes.StrategyDetail) *apiservice.Response {
 	if saved.Default {
 		if len(req.AddPrincipals.Users) != 0 ||
 			len(req.AddPrincipals.Groups) != 0 ||
@@ -217,7 +217,7 @@ func (svr *Server) checkUpdateStrategy(ctx context.Context, req *apisecurity.Mod
 		}
 
 		// 主账户的默认策略禁止编辑
-		if len(saved.Principals) == 1 && saved.Principals[0].PrincipalType == authcommon.PrincipalUser {
+		if len(saved.Principals) == 1 && saved.Principals[0].PrincipalType == authtypes.PrincipalUser {
 			if saved.Principals[0].PrincipalID == utils.ParseOwnerID(ctx) {
 				return api.NewAuthResponse(apimodel.Code_NotAllowModifyOwnerDefaultStrategy)
 			}

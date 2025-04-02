@@ -27,7 +27,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
@@ -88,7 +88,7 @@ func (s *Server) CreateNamespaceIfAbsent(ctx context.Context, req *apimodel.Name
 		code = resp.GetCode().GetValue()
 	)
 	if code == uint32(apimodel.Code_ExecuteSuccess) || code == uint32(apimodel.Code_ExistedResource) {
-		return name, nil
+		return name, api.NewNamespaceResponse(apimodel.Code_ExecuteSuccess, req)
 	}
 	return "", resp
 }
@@ -127,7 +127,6 @@ func (s *Server) CreateNamespace(ctx context.Context, req *apimodel.Namespace) *
 	}
 
 	s.RecordHistory(namespaceRecordEntry(ctx, req, types.OCreate))
-	_ = s.afterNamespaceResource(ctx, req, data, false)
 	return api.NewNamespaceResponse(apimodel.Code_ExecuteSuccess, out)
 }
 
@@ -140,7 +139,7 @@ func (s *Server) createNamespaceModel(req *apimodel.Namespace) *types.Namespace 
 		Comment:         req.GetComment().GetValue(),
 		Owner:           req.GetOwners().GetValue(),
 		Token:           utils.NewUUID(),
-		ServiceExportTo: model.ExportToMap(req.GetServiceExportTo()),
+		ServiceExportTo: types.ExportToMap(req.GetServiceExportTo()),
 		Metadata:        req.GetMetadata(),
 	}
 	return namespace
@@ -217,9 +216,6 @@ func (s *Server) DeleteNamespace(ctx context.Context, req *apimodel.Namespace) *
 
 	log.Info("delete namespace", utils.RequestID(ctx), zap.String("name", namespace.Name))
 	s.RecordHistory(namespaceRecordEntry(ctx, req, types.ODelete))
-
-	_ = s.afterNamespaceResource(ctx, req, &types.Namespace{Name: req.GetName().GetValue()}, true)
-
 	return api.NewNamespaceResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -261,11 +257,6 @@ func (s *Server) UpdateNamespace(ctx context.Context, req *apimodel.Namespace) *
 
 	log.Info("update namespace", zap.String("name", namespace.Name), utils.RequestID(ctx))
 	s.RecordHistory(namespaceRecordEntry(ctx, req, types.OUpdate))
-
-	if err := s.afterNamespaceResource(ctx, req, namespace, false); err != nil {
-		return api.NewNamespaceResponse(apimodel.Code_ExecuteException, req)
-	}
-
 	return api.NewNamespaceResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -327,7 +318,7 @@ func (s *Server) GetNamespaces(ctx context.Context, query map[string][]string) *
 		return checkError
 	}
 
-	amount, namespaces, err := s.caches.Namespace().Query(ctx, &cachetypes.NamespaceArgs{
+	amount, namespaces, err := s.caches.Namespace().Query(ctx, &cacheapi.NamespaceArgs{
 		Filter: filter,
 		Offset: offset,
 		Limit:  limit,

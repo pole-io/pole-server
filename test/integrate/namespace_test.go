@@ -28,10 +28,10 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	v1 "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/test/integrate/http"
 	"github.com/pole-io/pole-server/test/integrate/resource"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 /**
@@ -102,7 +102,7 @@ func TestCountNamespaceService(t *testing.T) {
 	}
 	t.Log("create namepsaces success")
 
-	expectRes := make(map[string]model.NamespaceServiceCount)
+	expectRes := make(map[string]svctypes.NamespaceServiceCount)
 
 	for _, namespace := range ret.Responses {
 		createServiceAndInstance(t, &expectRes, client, namespace.Namespace)
@@ -220,7 +220,7 @@ func TestDeleteNamespaceWhenHaveConfigGroup(t *testing.T) {
 	}
 }
 
-func createServiceAndInstance(t *testing.T, expectRes *map[string]model.NamespaceServiceCount, client *http.Client, namespace *apimodel.Namespace) ([]*apiservice.Service, []*apiservice.Instance) {
+func createServiceAndInstance(t *testing.T, expectRes *map[string]svctypes.NamespaceServiceCount, client *http.Client, namespace *apimodel.Namespace) ([]*apiservice.Service, []*apiservice.Instance) {
 	services := resource.CreateServices(namespace)
 
 	_, err := client.CreateServices(services)
@@ -229,9 +229,9 @@ func createServiceAndInstance(t *testing.T, expectRes *map[string]model.Namespac
 		t.Fatal(err)
 	}
 
-	cntVal := &model.NamespaceServiceCount{
+	cntVal := &svctypes.NamespaceServiceCount{
 		ServiceCount: uint32(len(services)),
-		InstanceCnt:  &model.InstanceCount{},
+		InstanceCnt:  &svctypes.InstanceCount{},
 	}
 
 	finalInstances := make([]*apiservice.Instance, 0)

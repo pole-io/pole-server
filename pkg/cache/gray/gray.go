@@ -28,27 +28,28 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
+	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 var (
-	_ types.GrayCache = (*grayCache)(nil)
+	_ cacheapi.GrayCache = (*grayCache)(nil)
 )
 
 type grayCache struct {
-	*types.BaseCache
+	*cachebase.BaseCache
 	storage       store.Store
 	grayResources *utils.SyncMap[string, []*apimodel.ClientLabel]
 	updater       *singleflight.Group
 }
 
 // NewGrayCache create gray cache obj
-func NewGrayCache(storage store.Store, cacheMgr types.CacheManager) types.GrayCache {
+func NewGrayCache(storage store.Store, cacheMgr cacheapi.CacheManager) cacheapi.GrayCache {
 	return &grayCache{
-		BaseCache: types.NewBaseCache(storage, cacheMgr),
+		BaseCache: cachebase.NewBaseCache(storage, cacheMgr),
 		storage:   storage,
 	}
 }
@@ -87,7 +88,7 @@ func (gc *grayCache) realUpdate() (map[string]time.Time, int64, error) {
 	return lastMtimes, int64(len(grayResources)), nil
 }
 
-func (gc *grayCache) setGrayResources(grayResources []*model.GrayResource) (map[string]time.Time, error) {
+func (gc *grayCache) setGrayResources(grayResources []*rules.GrayResource) (map[string]time.Time, error) {
 	lastMtime := gc.LastMtime(gc.Name()).Unix()
 	for _, grayResource := range grayResources {
 		modifyUnix := grayResource.ModifyTime.Unix()
@@ -124,7 +125,7 @@ func (gc *grayCache) Clear() error {
 
 // Name return gray name
 func (gc *grayCache) Name() string {
-	return types.GrayName
+	return cacheapi.GrayName
 }
 
 // GetGrayRule get gray rule

@@ -27,8 +27,8 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
 
-	types "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/store/mock"
 )
@@ -36,7 +36,7 @@ import (
 func newTestClientCache(t *testing.T) (*gomock.Controller, *mock.MockStore, *clientCache) {
 	ctl := gomock.NewController(t)
 
-	var cacheMgr types.CacheManager
+	var cacheMgr cacheapi.CacheManager
 
 	storage := mock.NewMockStore(ctl)
 	rlc := NewClientCache(storage, cacheMgr)
@@ -46,14 +46,14 @@ func newTestClientCache(t *testing.T) (*gomock.Controller, *mock.MockStore, *cli
 	return ctl, storage, rlc.(*clientCache)
 }
 
-func mockClients(cnt int) map[string]*model.Client {
-	ret := make(map[string]*model.Client)
+func mockClients(cnt int) map[string]*types.Client {
+	ret := make(map[string]*types.Client)
 
 	for i := 0; i < cnt; i++ {
 
 		id := utils.NewUUID()
 
-		ret[id] = model.NewClient(&apiservice.Client{
+		ret[id] = types.NewClient(&apiservice.Client{
 			Host:    utils.NewStringValue(fmt.Sprintf("127.0.0.%d", i+1)),
 			Type:    0,
 			Version: utils.NewStringValue("v1.0.0"),

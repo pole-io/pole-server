@@ -25,10 +25,11 @@ import (
 	"time"
 
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin"
+
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 const (
@@ -47,7 +48,7 @@ type eventBufferHolder struct {
 	writeCursor int
 	readCursor  int
 	size        int
-	buffer      []model.InstanceEvent
+	buffer      []svctypes.InstanceEvent
 }
 
 func newEventBufferHolder(cap int) *eventBufferHolder {
@@ -55,7 +56,7 @@ func newEventBufferHolder(cap int) *eventBufferHolder {
 		writeCursor: 0,
 		readCursor:  0,
 		size:        0,
-		buffer:      make([]model.InstanceEvent, cap),
+		buffer:      make([]svctypes.InstanceEvent, cap),
 	}
 }
 
@@ -67,7 +68,7 @@ func (holder *eventBufferHolder) Reset() {
 }
 
 // Put 放入一个 model.DiscoverEvent
-func (holder *eventBufferHolder) Put(event model.InstanceEvent) {
+func (holder *eventBufferHolder) Put(event svctypes.InstanceEvent) {
 	holder.buffer[holder.writeCursor] = event
 	holder.size++
 	holder.writeCursor++
@@ -82,7 +83,7 @@ func (holder *eventBufferHolder) HasNext() bool {
 //
 //	@return model.DiscoverEvent 元素
 //	@return bool 是否还有下一个元素可以继续读取
-func (holder *eventBufferHolder) Next() model.InstanceEvent {
+func (holder *eventBufferHolder) Next() svctypes.InstanceEvent {
 	event := holder.buffer[holder.readCursor]
 	holder.readCursor++
 
@@ -95,7 +96,7 @@ func (holder *eventBufferHolder) Size() int {
 }
 
 type discoverEventLocal struct {
-	eventCh        chan model.InstanceEvent
+	eventCh        chan svctypes.InstanceEvent
 	bufferPool     sync.Pool
 	curEventBuffer *eventBufferHolder
 	cursor         int
@@ -127,7 +128,7 @@ func (el *discoverEventLocal) Initialize(conf *plugin.ConfigEntry) error {
 		return err
 	}
 
-	el.eventCh = make(chan model.InstanceEvent, config.QueueSize)
+	el.eventCh = make(chan svctypes.InstanceEvent, config.QueueSize)
 	el.eventHandler = el.writeToFile
 	el.bufferPool = sync.Pool{
 		New: func() interface{} {
@@ -152,7 +153,7 @@ func (el *discoverEventLocal) Destroy() error {
 }
 
 // PublishEvent 发布一个服务事件
-func (el *discoverEventLocal) PublishEvent(event model.InstanceEvent) {
+func (el *discoverEventLocal) PublishEvent(event svctypes.InstanceEvent) {
 	select {
 	case el.eventCh <- event:
 		return
@@ -162,13 +163,13 @@ func (el *discoverEventLocal) PublishEvent(event model.InstanceEvent) {
 }
 
 var (
-	subscribeEvents = map[model.InstanceEventType]struct{}{
-		model.EventInstanceCloseIsolate: {},
-		model.EventInstanceOpenIsolate:  {},
-		model.EventInstanceOffline:      {},
-		model.EventInstanceOnline:       {},
-		model.EventInstanceTurnHealth:   {},
-		model.EventInstanceTurnUnHealth: {},
+	subscribeEvents = map[svctypes.InstanceEventType]struct{}{
+		svctypes.EventInstanceCloseIsolate: {},
+		svctypes.EventInstanceOpenIsolate:  {},
+		svctypes.EventInstanceOffline:      {},
+		svctypes.EventInstanceOnline:       {},
+		svctypes.EventInstanceTurnHealth:   {},
+		svctypes.EventInstanceTurnUnHealth: {},
 	}
 )
 

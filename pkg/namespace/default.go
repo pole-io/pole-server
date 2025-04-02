@@ -27,7 +27,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 )
 
 var (
@@ -39,7 +39,7 @@ var (
 	serverProxyFactories = map[string]ServerProxyFactory{}
 )
 
-type ServerProxyFactory func(context.Context, NamespaceOperateServer, cachetypes.CacheManager) (NamespaceOperateServer, error)
+type ServerProxyFactory func(context.Context, NamespaceOperateServer, cacheapi.CacheManager) (NamespaceOperateServer, error)
 
 func RegisterServerProxy(name string, factor ServerProxyFactory) error {
 	if _, ok := serverProxyFactories[name]; ok {
@@ -77,8 +77,8 @@ func Initialize(ctx context.Context, nsOpt *Config, storage store.Store, cacheMg
 
 func InitServer(ctx context.Context, nsOpt *Config, storage store.Store,
 	cacheMgr *cache.CacheManager) (*Server, NamespaceOperateServer, error) {
-	if err := cacheMgr.OpenResourceCache(cachetypes.ConfigEntry{
-		Name: cachetypes.NamespaceName,
+	if err := cacheMgr.OpenResourceCache(cacheapi.ConfigEntry{
+		Name: cacheapi.NamespaceName,
 	}); err != nil {
 		return nil, nil, err
 	}

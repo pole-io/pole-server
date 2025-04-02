@@ -29,8 +29,8 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 )
@@ -166,7 +166,7 @@ func (h *EurekaServer) dispatch(
 	}, retCode
 }
 
-func eventToInstance(event *model.InstanceEvent, appName string, curTimeMilli int64) *InstanceInfo {
+func eventToInstance(event *svctypes.InstanceEvent, appName string, curTimeMilli int64) *InstanceInfo {
 	instance := &apiservice.Instance{
 		Id:                &wrappers.StringValue{Value: event.Id},
 		Host:              &wrappers.StringValue{Value: event.Instance.GetHost().GetValue()},
@@ -182,19 +182,19 @@ func eventToInstance(event *model.InstanceEvent, appName string, curTimeMilli in
 		Location:          event.Instance.GetLocation(),
 		Metadata:          event.Instance.GetMetadata(),
 	}
-	if event.EType == model.EventInstanceTurnHealth {
+	if event.EType == svctypes.EventInstanceTurnHealth {
 		instance.Healthy = &wrappers.BoolValue{Value: true}
-	} else if event.EType == model.EventInstanceTurnUnHealth {
+	} else if event.EType == svctypes.EventInstanceTurnUnHealth {
 		instance.Healthy = &wrappers.BoolValue{Value: false}
-	} else if event.EType == model.EventInstanceOpenIsolate {
+	} else if event.EType == svctypes.EventInstanceOpenIsolate {
 		instance.Isolate = &wrappers.BoolValue{Value: true}
-	} else if event.EType == model.EventInstanceCloseIsolate {
+	} else if event.EType == svctypes.EventInstanceCloseIsolate {
 		instance.Isolate = &wrappers.BoolValue{Value: false}
 	}
 	return buildInstance(appName, instance, curTimeMilli)
 }
 
-func (h *EurekaServer) shouldReplicate(e model.InstanceEvent) bool {
+func (h *EurekaServer) shouldReplicate(e svctypes.InstanceEvent) bool {
 	if h.replicateWorkers == nil {
 		return false
 	}
@@ -227,7 +227,7 @@ func (e *EurekaInstanceEventHandler) OnEvent(ctx context.Context, any2 any) erro
 }
 
 func (h *EurekaServer) handleInstanceEvent(ctx context.Context, i interface{}) error {
-	e := i.(model.InstanceEvent)
+	e := i.(svctypes.InstanceEvent)
 	if !h.shouldReplicate(e) {
 		return nil
 	}
@@ -245,7 +245,7 @@ func (h *EurekaServer) handleInstanceEvent(ctx context.Context, i interface{}) e
 	}
 	replicateWorker, _ := h.replicateWorkers.Get(namespace)
 	switch e.EType {
-	case model.EventInstanceOnline, model.EventInstanceUpdate, model.EventInstanceTurnHealth:
+	case svctypes.EventInstanceOnline, svctypes.EventInstanceUpdate, svctypes.EventInstanceTurnHealth:
 		instanceInfo := eventToInstance(&e, appName, curTimeMilli)
 		replicateWorker.AddReplicateTask(&ReplicationInstance{
 			AppName:            appName,
@@ -255,13 +255,13 @@ func (h *EurekaServer) handleInstanceEvent(ctx context.Context, i interface{}) e
 			InstanceInfo:       instanceInfo,
 			Action:             actionRegister,
 		})
-	case model.EventInstanceOffline, model.EventInstanceTurnUnHealth:
+	case svctypes.EventInstanceOffline, svctypes.EventInstanceTurnUnHealth:
 		replicateWorker.AddReplicateTask(&ReplicationInstance{
 			AppName: appName,
 			Id:      eurekaInstanceId,
 			Action:  actionCancel,
 		})
-	case model.EventInstanceSendHeartbeat:
+	case svctypes.EventInstanceSendHeartbeat:
 		instanceInfo := eventToInstance(&e, appName, curTimeMilli)
 		rInstance := &ReplicationInstance{
 			AppName:      appName,
@@ -271,7 +271,7 @@ func (h *EurekaServer) handleInstanceEvent(ctx context.Context, i interface{}) e
 			Action:       actionHeartbeat,
 		}
 		replicateWorker.AddReplicateTask(rInstance)
-	case model.EventInstanceOpenIsolate, model.EventInstanceCloseIsolate:
+	case svctypes.EventInstanceOpenIsolate, svctypes.EventInstanceCloseIsolate:
 		replicateWorker.AddReplicateTask(&ReplicationInstance{
 			AppName:            appName,
 			Id:                 eurekaInstanceId,

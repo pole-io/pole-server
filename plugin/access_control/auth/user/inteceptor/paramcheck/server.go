@@ -27,9 +27,9 @@ import (
 	"go.uber.org/zap"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -88,7 +88,7 @@ func (svr *Server) Login(req *apisecurity.LoginRequest) *apiservice.Response {
 }
 
 // CheckCredential 检查当前操作用户凭证
-func (svr *Server) CheckCredential(authCtx *authcommon.AcquireContext) error {
+func (svr *Server) CheckCredential(authCtx *authtypes.AcquireContext) error {
 	return svr.nextSvr.CheckCredential(authCtx)
 }
 
@@ -155,8 +155,8 @@ func (svr *Server) EnableUserToken(ctx context.Context, user *apisecurity.User) 
 	if saveUser == nil {
 		return api.NewResponse(apimodel.Code_NotFoundUser)
 	}
-	if authcommon.ParseUserRole(ctx) != authcommon.AdminUserRole {
-		if saveUser.GetUserType().GetValue() != strconv.Itoa(int(authcommon.SubAccountUserRole)) {
+	if authtypes.ParseUserRole(ctx) != authtypes.AdminUserRole {
+		if saveUser.GetUserType().GetValue() != strconv.Itoa(int(authtypes.SubAccountUserRole)) {
 			return api.NewUserResponseWithMsg(apimodel.Code_NotAllowedAccess, "only disable sub-account token", user)
 		}
 	}

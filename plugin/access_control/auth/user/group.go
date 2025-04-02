@@ -28,11 +28,10 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -40,7 +39,7 @@ import (
 
 type (
 	// UserGroup2Api is the user group to api
-	UserGroup2Api func(user *authcommon.UserGroup) *apisecurity.UserGroup
+	UserGroup2Api func(user *authtypes.UserGroup) *apisecurity.UserGroup
 )
 
 // CreateGroup create a group
@@ -81,9 +80,9 @@ func (svr *Server) CreateGroup(ctx context.Context, req *apisecurity.UserGroup) 
 		log.Error(err.Error(), utils.RequestID(ctx))
 		return api.NewAuthResponseWithMsg(commonstore.StoreCode2APICode(err), err.Error())
 	}
-	if err := svr.policySvr.PolicyHelper().CreatePrincipalPolicy(ctx, tx, authcommon.Principal{
+	if err := svr.policySvr.PolicyHelper().CreatePrincipalPolicy(ctx, tx, authtypes.Principal{
 		PrincipalID:   data.ID,
-		PrincipalType: authcommon.PrincipalGroup,
+		PrincipalType: authtypes.PrincipalGroup,
 		Owner:         data.Owner,
 		Name:          data.Name,
 	}); err != nil {
@@ -176,9 +175,9 @@ func (svr *Server) DeleteGroup(ctx context.Context, req *apisecurity.UserGroup) 
 		log.Error("delete group from store", utils.RequestID(ctx), zap.Error(err))
 		return api.NewAuthResponseWithMsg(commonstore.StoreCode2APICode(err), err.Error())
 	}
-	if err := svr.policySvr.PolicyHelper().CleanPrincipal(ctx, tx, authcommon.Principal{
+	if err := svr.policySvr.PolicyHelper().CleanPrincipal(ctx, tx, authtypes.Principal{
 		PrincipalID:   group.ID,
-		PrincipalType: authcommon.PrincipalGroup,
+		PrincipalType: authtypes.PrincipalGroup,
 		Owner:         group.Owner,
 	}); err != nil {
 		log.Error("[Auth][User] delete user_group from policy server", utils.RequestID(ctx), zap.Error(err))
@@ -265,7 +264,7 @@ func (svr *Server) EnableGroupToken(ctx context.Context, req *apisecurity.UserGr
 
 	group.TokenEnable = req.TokenEnable.GetValue()
 
-	modifyReq := &authcommon.ModifyUserGroup{
+	modifyReq := &authtypes.ModifyUserGroup{
 		ID:          group.ID,
 		Owner:       group.Owner,
 		Token:       group.Token,
@@ -306,7 +305,7 @@ func (svr *Server) ResetGroupToken(ctx context.Context, req *apisecurity.UserGro
 	}
 
 	group.Token = newToken
-	modifyReq := &authcommon.ModifyUserGroup{
+	modifyReq := &authtypes.ModifyUserGroup{
 		ID:          group.ID,
 		Owner:       group.Owner,
 		Token:       group.Token,
@@ -329,7 +328,7 @@ func (svr *Server) ResetGroupToken(ctx context.Context, req *apisecurity.UserGro
 }
 
 // getGroupFromDB 获取用户组
-func (svr *Server) getGroupFromDB(id string) (*authcommon.UserGroupDetail, *apiservice.Response) {
+func (svr *Server) getGroupFromDB(id string) (*authtypes.UserGroupDetail, *apiservice.Response) {
 	group, err := svr.storage.GetGroup(id)
 	if err != nil {
 		log.Error("get group from store", zap.Error(err))
@@ -375,11 +374,11 @@ func (svr *Server) checkUpdateGroup(ctx context.Context, req *apisecurity.Modify
 }
 
 // UpdateGroupAttribute 更新计算用户组更新时的结构体数据，并判断是否需要执行更新操作
-func UpdateGroupAttribute(ctx context.Context, old *authcommon.UserGroup, newUser *apisecurity.ModifyUserGroup) (
-	*authcommon.ModifyUserGroup, bool) {
+func UpdateGroupAttribute(ctx context.Context, old *authtypes.UserGroup, newUser *apisecurity.ModifyUserGroup) (
+	*authtypes.ModifyUserGroup, bool) {
 	var (
 		needUpdate bool
-		ret        = &authcommon.ModifyUserGroup{
+		ret        = &authtypes.ModifyUserGroup{
 			ID:          old.ID,
 			Token:       old.Token,
 			TokenEnable: old.TokenEnable,
@@ -418,7 +417,7 @@ func UpdateGroupAttribute(ctx context.Context, old *authcommon.UserGroup, newUse
 }
 
 // enhancedGroups2Api 数组专为 []*apisecurity.UserGroup
-func enhancedGroups2Api(groups []*authcommon.UserGroupDetail, handler UserGroup2Api) []*apisecurity.UserGroup {
+func enhancedGroups2Api(groups []*authtypes.UserGroupDetail, handler UserGroup2Api) []*apisecurity.UserGroup {
 	out := make([]*apisecurity.UserGroup, 0, len(groups))
 	for k := range groups {
 		out = append(out, handler(groups[k].UserGroup))
@@ -428,14 +427,14 @@ func enhancedGroups2Api(groups []*authcommon.UserGroupDetail, handler UserGroup2
 }
 
 // createGroupModel 创建用户组的存储模型
-func (svr *Server) createGroupModel(req *apisecurity.UserGroup) (group *authcommon.UserGroupDetail, err error) {
+func (svr *Server) createGroupModel(req *apisecurity.UserGroup) (group *authtypes.UserGroupDetail, err error) {
 	ids := make(map[string]struct{}, len(req.GetRelation().GetUsers()))
 	for index := range req.GetRelation().GetUsers() {
 		ids[req.GetRelation().GetUsers()[index].GetId().GetValue()] = struct{}{}
 	}
 
-	group = &authcommon.UserGroupDetail{
-		UserGroup: &authcommon.UserGroup{
+	group = &authtypes.UserGroupDetail{
+		UserGroup: &authtypes.UserGroup{
 			ID:          utils.NewUUID(),
 			Name:        req.GetName().GetValue(),
 			Owner:       req.GetOwner().GetValue(),
@@ -455,7 +454,7 @@ func (svr *Server) createGroupModel(req *apisecurity.UserGroup) (group *authcomm
 }
 
 // model.UserGroup 转为 api.UserGroup
-func userGroup2Api(group *authcommon.UserGroup) *apisecurity.UserGroup {
+func userGroup2Api(group *authtypes.UserGroup) *apisecurity.UserGroup {
 	if group == nil {
 		return nil
 	}
@@ -475,7 +474,7 @@ func userGroup2Api(group *authcommon.UserGroup) *apisecurity.UserGroup {
 }
 
 // model.UserGroupDetail 转为 api.UserGroup，并且主动填充 user 的信息数据
-func (svr *Server) userGroupDetail2Api(group *authcommon.UserGroupDetail) *apisecurity.UserGroup {
+func (svr *Server) userGroupDetail2Api(group *authtypes.UserGroupDetail) *apisecurity.UserGroup {
 	if group == nil {
 		return nil
 	}
@@ -513,7 +512,7 @@ func (svr *Server) userGroupDetail2Api(group *authcommon.UserGroupDetail) *apise
 }
 
 // userGroupRecordEntry 生成用户组的记录entry
-func userGroupRecordEntry(ctx context.Context, req *apisecurity.UserGroup, md *authcommon.UserGroup,
+func userGroupRecordEntry(ctx context.Context, req *apisecurity.UserGroup, md *authtypes.UserGroup,
 	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
@@ -532,7 +531,7 @@ func userGroupRecordEntry(ctx context.Context, req *apisecurity.UserGroup, md *a
 }
 
 // 生成修改用户组的记录entry
-func modifyUserGroupRecordEntry(ctx context.Context, req *apisecurity.ModifyUserGroup, md *authcommon.UserGroup,
+func modifyUserGroupRecordEntry(ctx context.Context, req *apisecurity.ModifyUserGroup, md *authtypes.UserGroup,
 	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
@@ -551,14 +550,14 @@ func modifyUserGroupRecordEntry(ctx context.Context, req *apisecurity.ModifyUser
 }
 
 // 生成用户-用户组关联关系的记录entry
-func userRelationRecordEntry(ctx context.Context, req *apisecurity.UserGroupRelation, md *authcommon.UserGroup,
-	operationType model.OperationType) *model.RecordEntry {
+func userRelationRecordEntry(ctx context.Context, req *apisecurity.UserGroupRelation, md *authtypes.UserGroup,
+	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
 	detail, _ := marshaler.MarshalToString(req)
 
-	entry := &model.RecordEntry{
-		ResourceType:  model.RUserGroupRelation,
+	entry := &types.RecordEntry{
+		ResourceType:  types.RUserGroupRelation,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
 		OperationType: operationType,
 		Operator:      utils.ParseOperator(ctx),
@@ -569,16 +568,16 @@ func userRelationRecordEntry(ctx context.Context, req *apisecurity.UserGroupRela
 	return entry
 }
 
-func defaultUserGroupPolicy(u *authcommon.UserGroupDetail) *authcommon.StrategyDetail {
+func defaultUserGroupPolicy(u *authtypes.UserGroupDetail) *authtypes.StrategyDetail {
 	// Create the user's default weight policy
-	return &authcommon.StrategyDetail{
+	return &authtypes.StrategyDetail{
 		ID:        utils.NewUUID(),
-		Name:      authcommon.BuildDefaultStrategyName(authcommon.PrincipalGroup, u.Name),
+		Name:      authtypes.BuildDefaultStrategyName(authtypes.PrincipalGroup, u.Name),
 		Action:    apisecurity.AuthAction_READ_WRITE.String(),
 		Default:   true,
 		Owner:     u.Owner,
 		Revision:  utils.NewUUID(),
-		Resources: []authcommon.StrategyResource{},
+		Resources: []authtypes.StrategyResource{},
 		Valid:     true,
 		Comment:   "Default Strategy",
 	}

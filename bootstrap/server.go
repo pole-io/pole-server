@@ -33,17 +33,18 @@ import (
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/apiserver"
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	boot_config "github.com/pole-io/pole-server/bootstrap/config"
 	"github.com/pole-io/pole-server/pkg/admin"
 	"github.com/pole-io/pole-server/pkg/cache"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/version"
 	config_center "github.com/pole-io/pole-server/pkg/config"
@@ -167,8 +168,8 @@ func StartComponents(ctx context.Context, cfg *boot_config.Config) error {
 	}
 
 	// 开启灰度规则缓存
-	_ = cacheMgn.OpenResourceCache(cachetypes.ConfigEntry{
-		Name: cachetypes.GrayName,
+	_ = cacheMgn.OpenResourceCache(cacheapi.ConfigEntry{
+		Name: cacheapi.GrayName,
 	})
 
 	// 初始化鉴权层
@@ -442,10 +443,10 @@ func genContext() context.Context {
 	reqCtx := context.WithValue(context.Background(), utils.ContextAuthTokenKey, "")
 	ctx = context.WithValue(ctx, utils.StringContext("request-id"), fmt.Sprintf("self-%d", time.Now().Nanosecond()))
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey,
-		authcommon.NewAcquireContext(
-			authcommon.WithOperation(authcommon.Read),
-			authcommon.WithModule(authcommon.BootstrapModule),
-			authcommon.WithRequestContext(reqCtx)))
+		authtypes.NewAcquireContext(
+			authtypes.WithOperation(authtypes.Read),
+			authtypes.WithModule(authtypes.BootstrapModule),
+			authtypes.WithRequestContext(reqCtx)))
 	return ctx
 }
 
@@ -581,8 +582,8 @@ func selfRegister(
 	if len(metadata) == 0 {
 		metadata = make(map[string]string)
 	}
-	metadata[model.MetaKeyBuildRevision] = version.GetRevision()
-	metadata[model.MetaKeyPolarisService] = name
+	metadata[types.MetaKeyBuildRevision] = version.GetRevision()
+	metadata[types.MetaKeyPolarisService] = name
 
 	req := &apiservice.Instance{
 		Service:           utils.NewStringValue(name),
@@ -660,17 +661,17 @@ func getLocalHost(addr string) (string, error) {
 }
 
 // getSelfRegisterPolarsServiceKeySet 获取自注册的系统服务集合
-func getSelfRegisterPolarsServiceKeySet(polarisServiceCfg *boot_config.PolarisService) map[model.ServiceKey]struct{} {
+func getSelfRegisterPolarsServiceKeySet(polarisServiceCfg *boot_config.PolarisService) map[svctypes.ServiceKey]struct{} {
 	if polarisServiceCfg == nil {
 		return nil
 	}
-	polarisServiceSet := make(map[model.ServiceKey]struct{})
+	polarisServiceSet := make(map[svctypes.ServiceKey]struct{})
 	for _, svc := range polarisServiceCfg.Services {
 		ns, n := svc.Namespace, svc.Name
 		if ns == "" {
 			ns = boot_config.DefaultPolarisNamespace
 		}
-		polarisServiceSet[model.ServiceKey{Namespace: ns, Name: n}] = struct{}{}
+		polarisServiceSet[svctypes.ServiceKey{Namespace: ns, Name: n}] = struct{}{}
 	}
 	return polarisServiceSet
 }

@@ -24,9 +24,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 )
 
 // DiscoverServer Server discovered by the service
@@ -52,7 +52,7 @@ type DiscoverServer interface {
 	// ClientServer Client operation interface definition
 	ClientServer
 	// Cache Get cache management
-	Cache() cachetypes.CacheManager
+	Cache() cacheapi.CacheManager
 	// GetServiceInstanceRevision Get the version of the service
 	GetServiceInstanceRevision(serviceID string, instances []*svctypes.Instance) (string, error)
 }

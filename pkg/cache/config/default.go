@@ -18,10 +18,10 @@
 package config
 
 import (
-	types "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 )
 
 var (
-	_ types.ConfigFileCache  = (*fileCache)(nil)
-	_ types.ConfigGroupCache = (*configGroupCache)(nil)
+	_ cacheapi.ConfigFileCache  = (*fileCache)(nil)
+	_ cacheapi.ConfigGroupCache = (*configGroupCache)(nil)
 )

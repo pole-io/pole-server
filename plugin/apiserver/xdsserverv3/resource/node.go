@@ -31,7 +31,7 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"go.uber.org/zap"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 type RunType string
@@ -327,8 +327,8 @@ func (n *XDSClient) GetRegisterServices() []*RegisterService {
 }
 
 // GetSelfServiceKey 获取 envoy 对应的 service 信息
-func (n *XDSClient) GetSelfServiceKey() model.ServiceKey {
-	return model.ServiceKey{
+func (n *XDSClient) GetSelfServiceKey() svctypes.ServiceKey {
+	return svctypes.ServiceKey{
 		Namespace: n.GetSelfNamespace(),
 		Name:      n.GetSelfService(),
 	}

@@ -18,12 +18,11 @@
 package event
 
 import (
-	"os"
+	"fmt"
 	"sync"
 
 	"github.com/pole-io/pole-server/apis"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	"github.com/pole-io/pole-server/pkg/common/log"
 )
 
 var (
@@ -53,8 +52,7 @@ func GetDiscoverEvent() DiscoverChannel {
 
 		_discoverChannel = newCompositeDiscoverChannel(entries)
 		if err := _discoverChannel.Initialize(nil); err != nil {
-			log.Errorf("DiscoverChannel plugin init err: %s", err.Error())
-			os.Exit(-1)
+			panic(fmt.Errorf("DiscoverChannel plugin init err: %s", err.Error()))
 		}
 	})
 
@@ -84,14 +82,12 @@ func (c *compositeDiscoverChannel) Initialize(config *apis.ConfigEntry) error {
 		entry := c.options[i]
 		item, exist := apis.GetPlugin(apis.PluginTypeDiscoverEvent, entry.Name)
 		if !exist {
-			log.Errorf("plugin DiscoverChannel not found target: %s", entry.Name)
-			continue
+			panic(fmt.Errorf("plugin DiscoverChannel not found target: %s", entry.Name))
 		}
 
 		discoverChannel, ok := item.(DiscoverChannel)
 		if !ok {
-			log.Errorf("plugin target: %s not DiscoverChannel", entry.Name)
-			continue
+			panic(fmt.Errorf("plugin target: %s not DiscoverChannel", entry.Name))
 		}
 
 		if err := discoverChannel.Initialize(&entry); err != nil {

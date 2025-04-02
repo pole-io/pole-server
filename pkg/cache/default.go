@@ -22,8 +22,8 @@ import (
 	"errors"
 	"sync"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
 	cacheauth "github.com/pole-io/pole-server/pkg/cache/auth"
 	cacheclient "github.com/pole-io/pole-server/pkg/cache/client"
 	cacheconfig "github.com/pole-io/pole-server/pkg/cache/config"
@@ -34,23 +34,22 @@ import (
 )
 
 func init() {
-	RegisterCache(types.NamespaceName, types.CacheNamespace)
-	RegisterCache(types.ServiceName, types.CacheService)
-	RegisterCache(types.InstanceName, types.CacheInstance)
-	RegisterCache(types.RoutingConfigName, types.CacheRoutingConfig)
-	RegisterCache(types.RateLimitConfigName, types.CacheRateLimit)
-	RegisterCache(types.FaultDetectRuleName, types.CacheFaultDetector)
-	RegisterCache(types.CircuitBreakerName, types.CacheCircuitBreaker)
-	RegisterCache(types.L5Name, types.CacheCL5)
-	RegisterCache(types.ConfigFileCacheName, types.CacheConfigFile)
-	RegisterCache(types.ConfigGroupCacheName, types.CacheConfigGroup)
-	RegisterCache(types.UsersName, types.CacheUser)
-	RegisterCache(types.StrategyRuleName, types.CacheAuthStrategy)
-	RegisterCache(types.ClientName, types.CacheClient)
-	RegisterCache(types.ServiceContractName, types.CacheServiceContract)
-	RegisterCache(types.GrayName, types.CacheGray)
-	RegisterCache(types.LaneRuleName, types.CacheLaneRule)
-	RegisterCache(types.RolesName, types.CacheRole)
+	RegisterCache(cacheapi.NamespaceName, cacheapi.CacheNamespace)
+	RegisterCache(cacheapi.ServiceName, cacheapi.CacheService)
+	RegisterCache(cacheapi.InstanceName, cacheapi.CacheInstance)
+	RegisterCache(cacheapi.RoutingConfigName, cacheapi.CacheRoutingConfig)
+	RegisterCache(cacheapi.RateLimitConfigName, cacheapi.CacheRateLimit)
+	RegisterCache(cacheapi.FaultDetectRuleName, cacheapi.CacheFaultDetector)
+	RegisterCache(cacheapi.CircuitBreakerName, cacheapi.CacheCircuitBreaker)
+	RegisterCache(cacheapi.ConfigFileCacheName, cacheapi.CacheConfigFile)
+	RegisterCache(cacheapi.ConfigGroupCacheName, cacheapi.CacheConfigGroup)
+	RegisterCache(cacheapi.UsersName, cacheapi.CacheUser)
+	RegisterCache(cacheapi.StrategyRuleName, cacheapi.CacheAuthStrategy)
+	RegisterCache(cacheapi.ClientName, cacheapi.CacheClient)
+	RegisterCache(cacheapi.ServiceContractName, cacheapi.CacheServiceContract)
+	RegisterCache(cacheapi.GrayName, cacheapi.CacheGray)
+	RegisterCache(cacheapi.LaneRuleName, cacheapi.CacheLaneRule)
+	RegisterCache(cacheapi.RolesName, cacheapi.CacheRole)
 }
 
 var (
@@ -85,35 +84,34 @@ func newCacheManager(ctx context.Context, cacheOpt *Config, storage store.Store)
 	SetCacheConfig(cacheOpt)
 	mgr := &CacheManager{
 		storage:  storage,
-		caches:   make([]types.Cache, types.CacheLast),
+		caches:   make([]cacheapi.Cache, cacheapi.CacheLast),
 		needLoad: utils.NewSyncSet[string](),
 	}
 
 	// 命名空间缓存
-	mgr.RegisterCacher(types.CacheNamespace, cachens.NewNamespaceCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheNamespace, cachens.NewNamespaceCache(storage, mgr))
 	// 注册发现 & 服务治理缓存
-	mgr.RegisterCacher(types.CacheService, cachesvc.NewServiceCache(storage, mgr))
-	mgr.RegisterCacher(types.CacheInstance, cachesvc.NewInstanceCache(storage, mgr))
-	mgr.RegisterCacher(types.CacheRoutingConfig, cachesvc.NewRouteRuleCache(storage, mgr))
-	mgr.RegisterCacher(types.CacheRateLimit, cachesvc.NewRateLimitCache(storage, mgr))
-	mgr.RegisterCacher(types.CacheCircuitBreaker, cachesvc.NewCircuitBreakerCache(storage, mgr))
-	mgr.RegisterCacher(types.CacheFaultDetector, cachesvc.NewFaultDetectCache(storage, mgr))
-	mgr.RegisterCacher(types.CacheCL5, cachesvc.NewL5Cache(storage, mgr))
-	mgr.RegisterCacher(types.CacheServiceContract, cachesvc.NewServiceContractCache(storage, mgr))
-	mgr.RegisterCacher(types.CacheLaneRule, cachesvc.NewLaneCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheService, cachesvc.NewServiceCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheInstance, cachesvc.NewInstanceCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheRoutingConfig, cachesvc.NewRouteRuleCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheRateLimit, cachesvc.NewRateLimitCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheCircuitBreaker, cachesvc.NewCircuitBreakerCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheFaultDetector, cachesvc.NewFaultDetectCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheServiceContract, cachesvc.NewServiceContractCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheLaneRule, cachesvc.NewLaneCache(storage, mgr))
 	// 配置分组 & 配置发布缓存
-	mgr.RegisterCacher(types.CacheConfigFile, cacheconfig.NewConfigFileCache(storage, mgr))
-	mgr.RegisterCacher(types.CacheConfigGroup, cacheconfig.NewConfigGroupCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheConfigFile, cacheconfig.NewConfigFileCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheConfigGroup, cacheconfig.NewConfigGroupCache(storage, mgr))
 	// 用户/用户组 & 鉴权规则缓存
-	mgr.RegisterCacher(types.CacheUser, cacheauth.NewUserCache(storage, mgr))
-	mgr.RegisterCacher(types.CacheAuthStrategy, cacheauth.NewStrategyCache(storage, mgr))
-	mgr.RegisterCacher(types.CacheRole, cacheauth.NewRoleCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheUser, cacheauth.NewUserCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheAuthStrategy, cacheauth.NewStrategyCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheRole, cacheauth.NewRoleCache(storage, mgr))
 	// pole-serverSDK Client
-	mgr.RegisterCacher(types.CacheClient, cacheclient.NewClientCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheClient, cacheclient.NewClientCache(storage, mgr))
 	// 灰度规则
-	mgr.RegisterCacher(types.CacheGray, cachegray.NewGrayCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheGray, cachegray.NewGrayCache(storage, mgr))
 
-	if len(mgr.caches) != int(types.CacheLast) {
+	if len(mgr.caches) != int(cacheapi.CacheLast) {
 		return nil, errors.New("some Cache implement not loaded into CacheManager")
 	}
 

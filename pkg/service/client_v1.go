@@ -30,8 +30,8 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -193,7 +193,7 @@ func (s *Server) GetServiceWithCache(ctx context.Context, req *apiservice.Servic
 		}
 		services = append(services, visibleSvcs...)
 		// 需要重新计算 revison
-		if rever, err := cachetypes.CompositeComputeRevision(revisions); err != nil {
+		if rever, err := cacheapi.CompositeComputeRevision(revisions); err != nil {
 			log.Error("[Server][Discover] list services compute multi revision",
 				zap.String("namespace", req.GetNamespace().GetValue()), zap.Error(err))
 			return api.NewDiscoverInstanceResponse(apimodel.Code_ExecuteException, req)
@@ -264,7 +264,7 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 		revision := s.caches.Service().GetRevisionWorker().GetServiceInstanceRevision(svc.ID)
 		revisions = append(revisions, revision)
 	}
-	aggregateRevision, err := cachetypes.CompositeComputeRevision(revisions)
+	aggregateRevision, err := cacheapi.CompositeComputeRevision(revisions)
 	if err != nil {
 		log.Errorf("[Server][Service][Instance] compute multi revision service(%s:%s) err: %s",
 			svcName, nsName, err.Error())

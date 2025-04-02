@@ -29,8 +29,7 @@ import (
 
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	commontime "github.com/pole-io/pole-server/pkg/common/time"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/apis/pkg/utils"
 )
 
 // InstanceCount Service instance statistics
@@ -307,18 +306,18 @@ func Store2Instance(is *InstanceStore) *Instance {
 			Version:           &wrappers.StringValue{Value: is.Version},
 			Priority:          &wrappers.UInt32Value{Value: is.Priority},
 			Weight:            &wrappers.UInt32Value{Value: is.Weight},
-			EnableHealthCheck: &wrappers.BoolValue{Value: Int2bool(is.EnableHealthCheck)},
-			Healthy:           &wrappers.BoolValue{Value: Int2bool(is.HealthStatus)},
+			EnableHealthCheck: &wrappers.BoolValue{Value: utils.Int2bool(is.EnableHealthCheck)},
+			Healthy:           &wrappers.BoolValue{Value: utils.Int2bool(is.HealthStatus)},
 			Location: &apimodel.Location{
 				Region: &wrappers.StringValue{Value: is.Region},
 				Zone:   &wrappers.StringValue{Value: is.Zone},
 				Campus: &wrappers.StringValue{Value: is.Campus},
 			},
-			Isolate:  &wrappers.BoolValue{Value: Int2bool(is.Isolate)},
+			Isolate:  &wrappers.BoolValue{Value: utils.Int2bool(is.Isolate)},
 			Metadata: is.Meta,
 			LogicSet: &wrappers.StringValue{Value: is.LogicSet},
-			Ctime:    &wrappers.StringValue{Value: commontime.Int64Time2String(is.CreateTime)},
-			Mtime:    &wrappers.StringValue{Value: commontime.Int64Time2String(is.ModifyTime)},
+			Ctime:    &wrappers.StringValue{Value: utils.Int64Time2String(is.CreateTime)},
+			Mtime:    &wrappers.StringValue{Value: utils.Int64Time2String(is.ModifyTime)},
 			Revision: &wrappers.StringValue{Value: is.Revision},
 		},
 		ServiceID:  is.ServiceID,
@@ -629,19 +628,6 @@ func (si *ServiceInstances) RunHealthyProtect() {
 // needZeroProtect .
 func needZeroProtect(lastBeat, beatTime, ttl int64) bool {
 	return lastBeat-3*ttl > beatTime
-}
-
-// Int2bool 整数转换为bool值
-func Int2bool(entry int) bool {
-	return entry != 0
-}
-
-// StatusBoolToInt 状态bool转int
-func StatusBoolToInt(value bool) int {
-	if value {
-		return 1
-	}
-	return 0
 }
 
 // store的flag转换为valid

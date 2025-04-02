@@ -19,10 +19,10 @@ package paramcheck
 
 import (
 	"github.com/pole-io/pole-server/apis/access_control/ratelimit"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
@@ -49,12 +49,12 @@ func NewServer(nextSvr service.DiscoverServer, s store.Store) service.DiscoverSe
 }
 
 // Cache Get cache management
-func (svr *Server) Cache() cachetypes.CacheManager {
+func (svr *Server) Cache() cacheapi.CacheManager {
 	return svr.nextSvr.Cache()
 }
 
 // GetServiceInstanceRevision 获取服务实例的版本号
 func (svr *Server) GetServiceInstanceRevision(serviceID string,
-	instances []*model.Instance) (string, error) {
+	instances []*svctypes.Instance) (string, error) {
 	return svr.nextSvr.GetServiceInstanceRevision(serviceID, instances)
 }

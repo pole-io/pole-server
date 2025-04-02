@@ -53,7 +53,6 @@ import (
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	confighttp "github.com/pole-io/pole-server/plugin/apiserver/httpserver/config"
 	v1 "github.com/pole-io/pole-server/plugin/apiserver/httpserver/discover/v1"
-	v2 "github.com/pole-io/pole-server/plugin/apiserver/httpserver/discover/v2"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
 
@@ -94,7 +93,6 @@ type HTTPServer struct {
 	whitelist         whitelist.Whitelist
 
 	discoverV1 v1.HTTPServerV1
-	discoverV2 v2.HTTPServerV2
 	configSvr  confighttp.HTTPServer
 
 	userMgn     authapi.UserServer
@@ -243,7 +241,6 @@ func (h *HTTPServer) Run(errCh chan error) {
 	}
 
 	h.discoverV1 = *v1.NewV1Server(h.namespaceServer, h.namingServer, h.healthCheckServer)
-	h.discoverV2 = *v2.NewV2Server(h.namespaceServer, h.namingServer, h.healthCheckServer)
 	h.configSvr = *confighttp.NewServer(h.maintainServer, h.namespaceServer, h.configServer)
 
 	// 初始化http server
@@ -388,12 +385,6 @@ func (h *HTTPServer) createRestfulContainer() (*restful.Container, error) {
 					return nil, err
 				}
 				wsContainer.Add(namingServiceV1)
-
-				namingServiceV2, err := h.discoverV2.GetConsoleAccessServer(apiConfig.Include)
-				if err != nil {
-					return nil, err
-				}
-				wsContainer.Add(namingServiceV2)
 
 				configService, err := h.configSvr.GetConsoleAccessServer(apiConfig.Include)
 				if err != nil {

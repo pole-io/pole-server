@@ -23,9 +23,9 @@ import (
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
 	metrictypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 var preServiceInfos = map[string]map[string]struct{}{}
@@ -38,10 +38,10 @@ func (ic *instanceCache) reportMetricsInfo() {
 	onlineService := map[string]map[string]struct{}{}
 	offlineService := map[string]map[string]struct{}{}
 	abnormalService := map[string]map[string]struct{}{}
-	serviceCache := cacheMgr.GetCacher(types.CacheService).(*serviceCache)
+	serviceCache := cacheMgr.GetCacher(cacheapi.CacheService).(*serviceCache)
 	metricValues := make([]metrictypes.DiscoveryMetric, 0, 32)
 
-	_ = serviceCache.IteratorServices(func(key string, svc *model.Service) (bool, error) {
+	_ = serviceCache.IteratorServices(func(key string, svc *svctypes.Service) (bool, error) {
 		if _, ok := tmpServiceInfos[svc.Namespace]; !ok {
 			tmpServiceInfos[svc.Namespace] = map[string]struct{}{}
 		}
@@ -63,7 +63,7 @@ func (ic *instanceCache) reportMetricsInfo() {
 	})
 
 	// instance count metrics
-	ic.instanceCounts.ReadRange(func(serviceID string, countInfo *model.InstanceCount) {
+	ic.instanceCounts.ReadRange(func(serviceID string, countInfo *svctypes.InstanceCount) {
 		svc := serviceCache.GetServiceByID(serviceID)
 		if svc == nil {
 			log.Debug("[Cache][Instance] report metrics get service not found", zap.String("svc-id", serviceID))

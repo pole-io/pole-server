@@ -26,37 +26,38 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
+	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 var (
-	_ types.NamespaceCache = (*namespaceCache)(nil)
+	_ cacheapi.NamespaceCache = (*namespaceCache)(nil)
 )
 
 type namespaceCache struct {
-	*types.BaseCache
+	*cachebase.BaseCache
 	storage store.Store
-	ids     *utils.SyncMap[string, *model.Namespace]
+	ids     *utils.SyncMap[string, *types.Namespace]
 	updater *singleflight.Group
 	// exportNamespace 某个命名空间下的所有服务的可见性
 	exportNamespace *utils.SyncMap[string, *utils.SyncSet[string]]
 }
 
-func NewNamespaceCache(storage store.Store, cacheMgr types.CacheManager) types.NamespaceCache {
+func NewNamespaceCache(storage store.Store, cacheMgr cacheapi.CacheManager) cacheapi.NamespaceCache {
 	return &namespaceCache{
-		BaseCache: types.NewBaseCache(storage, cacheMgr),
+		BaseCache: cachebase.NewBaseCache(storage, cacheMgr),
 		storage:   storage,
 	}
 }
 
 // Initialize
 func (nsCache *namespaceCache) Initialize(c map[string]interface{}) error {
-	nsCache.ids = utils.NewSyncMap[string, *model.Namespace]()
+	nsCache.ids = utils.NewSyncMap[string, *types.Namespace]()
 	nsCache.updater = new(singleflight.Group)
 	nsCache.exportNamespace = utils.NewSyncMap[string, *utils.SyncSet[string]]()
 	return nil
@@ -82,7 +83,7 @@ func (nsCache *namespaceCache) realUpdate() (map[string]time.Time, int64, error)
 	return lastMtimes, int64(len(ret)), nil
 }
 
-func (nsCache *namespaceCache) setNamespaces(nsSlice []*model.Namespace) map[string]time.Time {
+func (nsCache *namespaceCache) setNamespaces(nsSlice []*types.Namespace) map[string]time.Time {
 	lastMtime := nsCache.LastMtime(nsCache.Name()).Unix()
 
 	for index := range nsSlice {
@@ -114,7 +115,7 @@ func (nsCache *namespaceCache) setNamespaces(nsSlice []*model.Namespace) map[str
 	}
 }
 
-func (nsCache *namespaceCache) handleNamespaceChange(et eventhub.EventType, oldItem, item *model.Namespace) {
+func (nsCache *namespaceCache) handleNamespaceChange(et eventhub.EventType, oldItem, item *types.Namespace) {
 	switch et {
 	case eventhub.EventUpdated, eventhub.EventCreated:
 		exportTo := item.ServiceExportTo
@@ -128,14 +129,14 @@ func (nsCache *namespaceCache) handleNamespaceChange(et eventhub.EventType, oldI
 	}
 }
 
-func (nsCache *namespaceCache) GetVisibleNamespaces(namespace string) []*model.Namespace {
-	ret := make(map[string]*model.Namespace, 8)
+func (nsCache *namespaceCache) GetVisibleNamespaces(namespace string) []*types.Namespace {
+	ret := make(map[string]*types.Namespace, 8)
 
 	// 根据命名空间级别的可见性进行查询
 	// 先看精确的
 	nsCache.exportNamespace.Range(func(exportNs string, viewerNs *utils.SyncSet[string]) {
 		exactMatch := viewerNs.Contains(namespace)
-		allMatch := viewerNs.Contains(types.AllMatched)
+		allMatch := viewerNs.Contains(cacheapi.AllMatched)
 		if !exactMatch && !allMatch {
 			return
 		}
@@ -145,7 +146,7 @@ func (nsCache *namespaceCache) GetVisibleNamespaces(namespace string) []*model.N
 		}
 	})
 
-	values := make([]*model.Namespace, 0, len(ret))
+	values := make([]*types.Namespace, 0, len(ret))
 	for _, item := range ret {
 		values = append(values, item)
 	}
@@ -155,18 +156,18 @@ func (nsCache *namespaceCache) GetVisibleNamespaces(namespace string) []*model.N
 // Clear .
 func (nsCache *namespaceCache) Clear() error {
 	nsCache.BaseCache.Clear()
-	nsCache.ids = utils.NewSyncMap[string, *model.Namespace]()
+	nsCache.ids = utils.NewSyncMap[string, *types.Namespace]()
 	nsCache.exportNamespace = utils.NewSyncMap[string, *utils.SyncSet[string]]()
 	return nil
 }
 
 // Name .
 func (nsCache *namespaceCache) Name() string {
-	return types.NamespaceName
+	return cacheapi.NamespaceName
 }
 
 // GetNamespace get namespace by id
-func (nsCache *namespaceCache) GetNamespace(id string) *model.Namespace {
+func (nsCache *namespaceCache) GetNamespace(id string) *types.Namespace {
 	val, ok := nsCache.ids.Load(id)
 	if !ok {
 		return nil
@@ -175,8 +176,8 @@ func (nsCache *namespaceCache) GetNamespace(id string) *model.Namespace {
 }
 
 // GetNamespacesByName batch get namespace by name
-func (nsCache *namespaceCache) GetNamespacesByName(names []string) []*model.Namespace {
-	nsArr := make([]*model.Namespace, 0, len(names))
+func (nsCache *namespaceCache) GetNamespacesByName(names []string) []*types.Namespace {
+	nsArr := make([]*types.Namespace, 0, len(names))
 	for _, name := range names {
 		if ns := nsCache.GetNamespace(name); ns != nil {
 			nsArr = append(nsArr, ns)
@@ -189,11 +190,11 @@ func (nsCache *namespaceCache) GetNamespacesByName(names []string) []*model.Name
 // GetNamespaceList
 //
 //	@receiver nsCache
-//	@return []*model.Namespace
-func (nsCache *namespaceCache) GetNamespaceList() []*model.Namespace {
-	nsArr := make([]*model.Namespace, 0, 8)
+//	@return []*types.Namespace
+func (nsCache *namespaceCache) GetNamespaceList() []*types.Namespace {
+	nsArr := make([]*types.Namespace, 0, 8)
 
-	nsCache.ids.Range(func(key string, ns *model.Namespace) {
+	nsCache.ids.Range(func(key string, ns *types.Namespace) {
 		nsArr = append(nsArr, ns)
 	})
 
@@ -220,19 +221,19 @@ func (nsCache *namespaceCache) singleUpdate() (error, bool) {
 	return err, shared
 }
 
-func (nsCache *namespaceCache) Query(ctx context.Context, args *types.NamespaceArgs) (uint32, []*model.Namespace, error) {
+func (nsCache *namespaceCache) Query(ctx context.Context, args *cacheapi.NamespaceArgs) (uint32, []*types.Namespace, error) {
 	if err := nsCache.forceQueryUpdate(); err != nil {
 		return 0, nil, err
 	}
 
-	ret := make([]*model.Namespace, 0, 32)
+	ret := make([]*types.Namespace, 0, 32)
 
-	predicates := types.LoadNamespacePredicates(ctx)
+	predicates := cacheapi.LoadNamespacePredicates(ctx)
 
 	searchName, hasName := args.Filter["name"]
 	searchOwner, hasOwner := args.Filter["owner"]
 
-	nsCache.ids.ReadRange(func(key string, val *model.Namespace) {
+	nsCache.ids.ReadRange(func(key string, val *types.Namespace) {
 		for i := range predicates {
 			if !predicates[i](ctx, val) {
 				return
@@ -278,10 +279,10 @@ func (nsCache *namespaceCache) Query(ctx context.Context, args *types.NamespaceA
 	return uint32(total), ret, nil
 }
 
-func (c *namespaceCache) toPage(total int, items []*model.Namespace,
-	args *types.NamespaceArgs) (int, []*model.Namespace) {
+func (c *namespaceCache) toPage(total int, items []*types.Namespace,
+	args *cacheapi.NamespaceArgs) (int, []*types.Namespace) {
 	if len(items) == 0 {
-		return 0, []*model.Namespace{}
+		return 0, []*types.Namespace{}
 	}
 	if args.Limit == 0 {
 		return total, items

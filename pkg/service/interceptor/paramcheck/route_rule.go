@@ -27,9 +27,9 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -251,13 +251,13 @@ func checkRoutingPolicyV2(req *apitraffic.RouteRule) *apiservice.Response {
 	// Automatically supplement @Type attribute according to Policy
 	if req.RoutingConfig.TypeUrl == "" {
 		if req.GetRoutingPolicy() == apitraffic.RoutingPolicy_RulePolicy {
-			req.RoutingConfig.TypeUrl = model.RuleRoutingTypeUrl
+			req.RoutingConfig.TypeUrl = rules.RuleRoutingTypeUrl
 		}
 		if req.GetRoutingPolicy() == apitraffic.RoutingPolicy_MetadataPolicy {
-			req.RoutingConfig.TypeUrl = model.MetaRoutingTypeUrl
+			req.RoutingConfig.TypeUrl = rules.MetaRoutingTypeUrl
 		}
 		if req.GetRoutingPolicy() == apitraffic.RoutingPolicy_NearbyPolicy {
-			req.RoutingConfig.TypeUrl = model.NearbyRoutingTypeUrl
+			req.RoutingConfig.TypeUrl = rules.NearbyRoutingTypeUrl
 		}
 	}
 

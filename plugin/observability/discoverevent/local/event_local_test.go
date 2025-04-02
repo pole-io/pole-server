@@ -27,7 +27,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 func Test_discoverEventLocal_Run(t *testing.T) {
@@ -50,7 +50,7 @@ func Test_discoverEventLocal_Run(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	l := &discoverEventLocal{
-		eventCh: make(chan model.InstanceEvent, 32),
+		eventCh: make(chan svctypes.InstanceEvent, 32),
 		bufferPool: sync.Pool{
 			New: func() interface{} { return newEventBufferHolder(defaultBufferSize) },
 		},
@@ -68,7 +68,7 @@ func Test_discoverEventLocal_Run(t *testing.T) {
 	go l.Run(ctx)
 
 	for i := 0; i < totalCnt; i++ {
-		l.PublishEvent(model.InstanceEvent{
+		l.PublishEvent(svctypes.InstanceEvent{
 			Id:        "123456",
 			Namespace: "DemoNamespace",
 			Service:   "DemoService",
@@ -76,11 +76,11 @@ func Test_discoverEventLocal_Run(t *testing.T) {
 				Host: &wrappers.StringValue{Value: "127.0.0.1"},
 				Port: &wrappers.UInt32Value{Value: 8080},
 			},
-			EType:      model.EventInstanceCloseIsolate,
+			EType:      svctypes.EventInstanceCloseIsolate,
 			CreateTime: time.Time{},
 		})
 
-		l.PublishEvent(model.InstanceEvent{
+		l.PublishEvent(svctypes.InstanceEvent{
 			Id:        "111111",
 			Namespace: "DemoNamespace",
 			Service:   "DemoService",
@@ -88,11 +88,11 @@ func Test_discoverEventLocal_Run(t *testing.T) {
 				Host: &wrappers.StringValue{Value: "127.0.0.1"},
 				Port: &wrappers.UInt32Value{Value: 8080},
 			},
-			EType:      model.EventInstanceSendHeartbeat,
+			EType:      svctypes.EventInstanceSendHeartbeat,
 			CreateTime: time.Time{},
 		})
 
-		l.PublishEvent(model.InstanceEvent{
+		l.PublishEvent(svctypes.InstanceEvent{
 			Id:        "111111",
 			Namespace: "DemoNamespace",
 			Service:   "DemoService",
@@ -100,7 +100,7 @@ func Test_discoverEventLocal_Run(t *testing.T) {
 				Host: &wrappers.StringValue{Value: "127.0.0.1"},
 				Port: &wrappers.UInt32Value{Value: 8080},
 			},
-			EType:      model.EventInstanceUpdate,
+			EType:      svctypes.EventInstanceUpdate,
 			CreateTime: time.Time{},
 		})
 	}

@@ -25,8 +25,8 @@ import (
 
 	"go.uber.org/zap"
 
-	types "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -143,18 +143,18 @@ func (ic *instanceCache) forceQueryUpdate() error {
 }
 
 func (ic *instanceCache) QueryInstances(filter, metaFilter map[string]string,
-	offset, limit uint32) (uint32, []*model.Instance, error) {
+	offset, limit uint32) (uint32, []*svctypes.Instance, error) {
 	if err := ic.forceQueryUpdate(); err != nil {
 		return 0, nil, err
 	}
 	var (
-		tempInstances = make([]*model.Instance, 0, 32)
+		tempInstances = make([]*svctypes.Instance, 0, 32)
 		args          = parseInstanceSearchArgs(filter, metaFilter)
 	)
 	naminglog.Info("[Server][Instances][Query] instances filter parameters", zap.String("args", args.String()))
 
-	svcCache, _ := ic.BaseCache.CacheMgr.GetCacher(types.CacheService).(*serviceCache)
-	_ = ic.IteratorInstances(func(key string, value *model.Instance) (bool, error) {
+	svcCache, _ := ic.BaseCache.CacheMgr.GetCacher(cacheapi.CacheService).(*serviceCache)
+	_ = ic.IteratorInstances(func(key string, value *svctypes.Instance) (bool, error) {
 		svc := svcCache.GetOrLoadServiceByID(value.ServiceID)
 		if svc == nil {
 			return true, nil
@@ -218,7 +218,7 @@ func (ic *instanceCache) QueryInstances(filter, metaFilter map[string]string,
 	return total, ret, nil
 }
 
-func sortInstances(tempInstances []*model.Instance) {
+func sortInstances(tempInstances []*svctypes.Instance) {
 	sort.Slice(tempInstances, func(i, j int) bool {
 		aTime := tempInstances[i].ModifyTime
 		bTime := tempInstances[j].ModifyTime
@@ -233,10 +233,10 @@ func sortInstances(tempInstances []*model.Instance) {
 	})
 }
 
-func (ic *instanceCache) doPage(ins []*model.Instance, offset, limit uint32) (uint32, []*model.Instance) {
+func (ic *instanceCache) doPage(ins []*svctypes.Instance, offset, limit uint32) (uint32, []*svctypes.Instance) {
 	total := uint32(len(ins))
 	if offset > total {
-		return total, []*model.Instance{}
+		return total, []*svctypes.Instance{}
 	}
 	if offset+limit > total {
 		return total, ins[offset:]

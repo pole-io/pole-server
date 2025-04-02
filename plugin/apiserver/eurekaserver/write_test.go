@@ -27,6 +27,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -41,7 +43,7 @@ import (
 
 func TestEurekaServer_renew(t *testing.T) {
 	eventhub.InitEventHub()
-	ins := &model.Instance{
+	ins := &svctypes.Instance{
 		ServiceID: utils.NewUUID(),
 		Proto: &apiservice.Instance{
 			Service:   utils.NewStringValue("echo"),
@@ -68,7 +70,7 @@ func TestEurekaServer_renew(t *testing.T) {
 
 	ins.Proto.Id = utils.NewStringValue(insId)
 
-	disableBeatIns := &model.Instance{
+	disableBeatIns := &svctypes.Instance{
 		ServiceID: utils.NewUUID(),
 		Proto: &apiservice.Instance{
 			Service:   utils.NewStringValue("echo"),
@@ -106,7 +108,7 @@ func TestEurekaServer_renew(t *testing.T) {
 	mockStore.EXPECT().
 		GetMoreInstances(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		AnyTimes().
-		Return(map[string]*model.Instance{
+		Return(map[string]*svctypes.Instance{
 			insId:            ins,
 			disableBeatInsId: disableBeatIns,
 		}, nil)
@@ -114,7 +116,7 @@ func TestEurekaServer_renew(t *testing.T) {
 	mockStore.EXPECT().
 		GetMoreServices(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		AnyTimes().
-		Return(map[string]*model.Service{
+		Return(map[string]*svctypes.Service{
 			ins.ServiceID: {
 				ID:        ins.ServiceID,
 				Name:      ins.Proto.GetService().GetValue(),
@@ -123,7 +125,7 @@ func TestEurekaServer_renew(t *testing.T) {
 		}, nil)
 
 	mockStore.EXPECT().GetMoreServiceContracts(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
-	mockStore.EXPECT().GetMoreClients(gomock.Any(), gomock.Any()).Return(map[string]*model.Client{}, nil).AnyTimes()
+	mockStore.EXPECT().GetMoreClients(gomock.Any(), gomock.Any()).Return(map[string]*types.Client{}, nil).AnyTimes()
 	mockStore.EXPECT().GetMoreGrayResouces(gomock.Any(), gomock.Any()).Return([]*model.GrayResource{}, nil).AnyTimes()
 	mockStore.EXPECT().GetInstancesCountTx(gomock.Any()).AnyTimes().Return(uint32(1), nil)
 	mockStore.EXPECT().GetUnixSecond(gomock.Any()).AnyTimes().Return(time.Now().Unix(), nil)

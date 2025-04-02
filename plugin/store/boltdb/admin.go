@@ -25,9 +25,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types/admin"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -106,7 +106,7 @@ func (m *adminStore) ReleaseLeaderElection(key string) error {
 func (m *adminStore) BatchCleanDeletedInstances(timeout time.Duration, batchSize uint32) (uint32, error) {
 	mtime := time.Now().Add(-timeout)
 	fields := []string{insFieldValid, insFieldModifyTime}
-	values, err := m.handler.LoadValuesByFilter(tblNameInstance, fields, &model.Instance{},
+	values, err := m.handler.LoadValuesByFilter(tblNameInstance, fields, &svctypes.Instance{},
 		func(m map[string]interface{}) bool {
 			valid, ok := m[insFieldValid]
 			if !ok {
@@ -155,7 +155,7 @@ func (m *adminStore) GetUnHealthyInstances(timeout time.Duration, limit uint32) 
 
 func (m *adminStore) getUnHealthyInstancesBefore(mtime time.Time, limit uint32) ([]string, error) {
 	fields := []string{insFieldProto, insFieldValid}
-	instances, err := m.handler.LoadValuesByFilter(tblNameInstance, fields, &model.Instance{},
+	instances, err := m.handler.LoadValuesByFilter(tblNameInstance, fields, &svctypes.Instance{},
 		func(m map[string]interface{}) bool {
 			if valid, ok := m[insFieldValid]; ok && !valid.(bool) {
 				return false
@@ -184,7 +184,7 @@ func (m *adminStore) getUnHealthyInstancesBefore(mtime time.Time, limit uint32) 
 	var instanceIds []string
 	var count uint32 = 0
 	for _, v := range instances {
-		instanceIds = append(instanceIds, v.(*model.Instance).ID())
+		instanceIds = append(instanceIds, v.(*svctypes.Instance).ID())
 		count += 1
 		if count >= limit {
 			break
@@ -242,7 +242,7 @@ func (m *adminStore) BatchCleanDeletedClients(timeout time.Duration, batchSize u
 func (m *adminStore) BatchCleanDeletedServices(timeout time.Duration, batchSize uint32) (uint32, error) {
 	mtime := time.Now().Add(-timeout)
 	fields := []string{svcFieldValid, SvcFieldModifyTime}
-	values, err := m.handler.LoadValuesByFilter(tblNameService, fields, &model.Service{},
+	values, err := m.handler.LoadValuesByFilter(tblNameService, fields, &svctypes.Service{},
 		func(m map[string]interface{}) bool {
 			valid, ok := m[svcFieldValid]
 			if !ok {

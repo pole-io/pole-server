@@ -21,14 +21,14 @@ import (
 	"context"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	ns_auth "github.com/pole-io/pole-server/pkg/namespace/interceptor/auth"
 )
 
 func init() {
 	err := namespace.RegisterServerProxy("auth", func(ctx context.Context,
-		pre namespace.NamespaceOperateServer, cacheSvr cachetypes.CacheManager) (namespace.NamespaceOperateServer, error) {
+		pre namespace.NamespaceOperateServer, cacheSvr cacheapi.CacheManager) (namespace.NamespaceOperateServer, error) {
 
 		userSvr, err := auth.GetUserServerContext(ctx)
 		if err != nil {

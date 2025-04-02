@@ -18,10 +18,10 @@
 package auth
 
 import (
-	types "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 )
 
 var (
-	_ types.UserCache     = (*userCache)(nil)
-	_ types.StrategyCache = (*policyCache)(nil)
+	_ cacheapi.UserCache     = (*userCache)(nil)
+	_ cacheapi.StrategyCache = (*policyCache)(nil)
 )

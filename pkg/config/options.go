@@ -21,12 +21,12 @@ import (
 	"os"
 	"path/filepath"
 
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 var (
-	configCacheEntries = []cachetypes.ConfigEntry{
+	configCacheEntries = []cacheapi.ConfigEntry{
 		{
 			Name: "configFile",
 		},
@@ -37,7 +37,7 @@ var (
 )
 
 var (
-	testConfigCacheEntries = []cachetypes.ConfigEntry{
+	testConfigCacheEntries = []cacheapi.ConfigEntry{
 		{
 			Name: "configFile",
 			Option: map[string]interface{}{

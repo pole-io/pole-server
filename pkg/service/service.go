@@ -29,9 +29,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
@@ -376,9 +376,9 @@ func (s *Server) GetServices(ctx context.Context, query map[string]string) *apis
 
 // parseServiceArgs 解析服务的查询条件
 func parseServiceArgs(filter map[string]string, metaFilter map[string]string,
-	ctx context.Context) *cachetypes.ServiceArgs {
+	ctx context.Context) *cacheapi.ServiceArgs {
 
-	res := &cachetypes.ServiceArgs{
+	res := &cacheapi.ServiceArgs{
 		Filter:    filter,
 		Metadata:  metaFilter,
 		Namespace: filter["namespace"],

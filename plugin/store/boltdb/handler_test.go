@@ -29,8 +29,9 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	"github.com/pole-io/pole-server/pkg/common/model"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 func CreateTableDBHandlerAndRun(t *testing.T, tableName string, tf func(t *testing.T, handler BoltHandler)) {
@@ -57,7 +58,7 @@ func TestBoltHandler_SaveNamespace(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer handler.Close()
-	nsValue := &model.Namespace{
+	nsValue := &types.Namespace{
 		Name:       "Test",
 		Comment:    "test ns",
 		Token:      "111111",
@@ -78,7 +79,7 @@ func TestBoltHandler_LoadNamespace(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer handler.Close()
-	nsValue := &model.Namespace{
+	nsValue := &types.Namespace{
 		Name:       "Test",
 		Comment:    "test ns",
 		Token:      "111111",
@@ -105,7 +106,7 @@ func TestBoltHandler_DeleteNamespace(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer handler.Close()
-	nsValue := &model.Namespace{
+	nsValue := &types.Namespace{
 		Name: "Test",
 	}
 	err = handler.DeleteValues(tblNameNamespace, []string{nsValue.Name})
@@ -120,7 +121,7 @@ func TestBoltHandler_Service(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer handler.Close()
-	svcValue := &model.Service{
+	svcValue := &svctypes.Service{
 		ID:         "idSvc1234",
 		Namespace:  "Test",
 		Name:       "TestSvc",
@@ -167,7 +168,7 @@ func TestBoltHandler_Location(t *testing.T) {
 	}
 	defer handler.Close()
 	id := "12345"
-	locValue := &model.Location{
+	locValue := &svctypes.Location{
 		Proto: &apimodel.Location{
 			Region: &wrappers.StringValue{Value: "huabei"},
 			Zone:   &wrappers.StringValue{Value: "shenzhen"},
@@ -182,12 +183,12 @@ func TestBoltHandler_Location(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	locValues, err := handler.LoadValues("location", []string{id}, &model.Location{})
+	locValues, err := handler.LoadValues("location", []string{id}, &svctypes.Location{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	targetLocValue := locValues[id]
-	targetLoc := targetLocValue.(*model.Location)
+	targetLoc := targetLocValue.(*svctypes.Location)
 	fmt.Printf("loaded loc is %+v\n", targetLoc)
 	err = handler.DeleteValues("location", []string{id})
 	if err != nil {
@@ -205,10 +206,10 @@ func TestBoltHandler_CountValues(t *testing.T) {
 	_ = os.RemoveAll("./table.bolt")
 
 	count := 5
-	var idToServices = make(map[string]*model.Service)
+	var idToServices = make(map[string]*svctypes.Service)
 	var ids = make([]string, 0)
 	for i := 0; i < count; i++ {
-		svcValue := &model.Service{
+		svcValue := &svctypes.Service{
 			ID:         "idSvcCount" + strconv.Itoa(i),
 			Namespace:  "Test",
 			Name:       "TestSvc" + strconv.Itoa(i),
@@ -276,10 +277,10 @@ func TestBoltHandler_CountValues(t *testing.T) {
 
 func TestBoltHandler_LoadValuesByFilter(t *testing.T) {
 	count := 5
-	var idToServices = make(map[string]*model.Service)
+	var idToServices = make(map[string]*svctypes.Service)
 	var ids = make([]string, 0)
 	for i := 0; i < count; i++ {
-		svcValue := &model.Service{
+		svcValue := &svctypes.Service{
 			ID:         "idSvcCount" + strconv.Itoa(i),
 			Namespace:  "Test",
 			Name:       "TestSvc" + strconv.Itoa(i),
@@ -327,10 +328,10 @@ func TestBoltHandler_LoadValuesByFilter(t *testing.T) {
 
 func TestBoltHandler_IterateFields(t *testing.T) {
 	count := 5
-	var idToServices = make(map[string]*model.Service)
+	var idToServices = make(map[string]*svctypes.Service)
 	var ids = make([]string, 0)
 	for i := 0; i < count; i++ {
-		svcValue := &model.Service{
+		svcValue := &svctypes.Service{
 			ID:         "idSvcCount" + strconv.Itoa(i),
 			Namespace:  "Test",
 			Name:       "TestSvc" + strconv.Itoa(i),
@@ -360,7 +361,7 @@ func TestBoltHandler_IterateFields(t *testing.T) {
 		}
 	}
 	names := make([]string, 0)
-	err = handler.IterateFields(tblService, "Name", &model.Service{}, func(value interface{}) {
+	err = handler.IterateFields(tblService, "Name", &svctypes.Service{}, func(value interface{}) {
 		names = append(names, value.(string))
 	})
 	if err != nil {
@@ -377,10 +378,10 @@ func TestBoltHandler_IterateFields(t *testing.T) {
 
 func TestBoltHandler_UpdateValue(t *testing.T) {
 	count := 5
-	var idToServices = make(map[string]*model.Service)
+	var idToServices = make(map[string]*svctypes.Service)
 	var ids = make([]string, 0)
 	for i := 0; i < count; i++ {
-		svcValue := &model.Service{
+		svcValue := &svctypes.Service{
 			ID:         "idSvcCount" + strconv.Itoa(i),
 			Namespace:  "Test",
 			Name:       "TestSvc" + strconv.Itoa(i),

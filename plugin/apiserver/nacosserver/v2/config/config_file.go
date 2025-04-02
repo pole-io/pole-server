@@ -26,6 +26,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
@@ -201,7 +203,7 @@ func (h *ConfigServer) handleWatchConfigRequest(ctx context.Context, req nacospb
 			dataId := item.GetFileName().GetValue()
 			mdval := item.GetMd5().GetValue()
 
-			var active *model.ConfigFileRelease
+			var active *conftypes.ConfigFileRelease
 			var match bool
 			if betaActive := h.cacheSvr.ConfigFile().GetActiveGrayRelease(namespace, group, dataId); betaActive != nil {
 				match = h.cacheSvr.Gray().HitGrayRule(model.GetGrayConfigRealseKey(betaActive.SimpleConfigFileRelease), watchCtx.ClientLabels())
@@ -235,7 +237,7 @@ func (h *ConfigServer) handleWatchConfigRequest(ctx context.Context, req nacospb
 // BuildGrpcWatchCtx .
 func (h *ConfigServer) BuildGrpcWatchCtx(ctx context.Context) config.WatchContextFactory {
 	labels := map[string]string{}
-	labels[model.ClientLabel_IP] = utils.ParseClientIP(ctx)
+	labels[types.ClientLabel_IP] = utils.ParseClientIP(ctx)
 
 	return func(clientId string, matcher config.BetaReleaseMatcher) config.WatchContext {
 		watchCtx := &StreamWatchContext{
@@ -243,7 +245,7 @@ func (h *ConfigServer) BuildGrpcWatchCtx(ctx context.Context) config.WatchContex
 			connMgr:          h.connMgr,
 			labels:           labels,
 			watchConfigFiles: utils.NewSyncMap[string, *config_manage.ClientConfigFileInfo](),
-			betaMatcher: func(clientLabels map[string]string, event *model.SimpleConfigFileRelease) bool {
+			betaMatcher: func(clientLabels map[string]string, event *conftypes.SimpleConfigFileRelease) bool {
 				return h.cacheSvr.Gray().HitGrayRule(model.GetGrayConfigRealseKey(event), clientLabels)
 			},
 		}

@@ -25,9 +25,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
@@ -101,8 +101,8 @@ func (c *StreamWatchContext) ClientID() string {
 }
 
 // ShouldNotify .
-func (c *StreamWatchContext) ShouldNotify(event *model.SimpleConfigFileRelease) bool {
-	if event.ReleaseType == model.ReleaseTypeGray && !c.betaMatcher(c.ClientLabels(), event) {
+func (c *StreamWatchContext) ShouldNotify(event *conftypes.SimpleConfigFileRelease) bool {
+	if event.ReleaseType == conftypes.ReleaseTypeGray && !c.betaMatcher(c.ClientLabels(), event) {
 		return false
 	}
 	key := event.FileKey()
@@ -133,13 +133,13 @@ func (c *StreamWatchContext) CurWatchVersion(k string) uint64 {
 
 // AppendInterest .
 func (c *StreamWatchContext) AppendInterest(item *apiconfig.ClientConfigFileInfo) {
-	key := model.BuildKeyForClientConfigFileInfo(item)
+	key := conftypes.BuildKeyForClientConfigFileInfo(item)
 	c.watchConfigFiles.Store(key, item)
 }
 
 // RemoveInterest .
 func (c *StreamWatchContext) RemoveInterest(item *apiconfig.ClientConfigFileInfo) {
-	key := model.BuildKeyForClientConfigFileInfo(item)
+	key := conftypes.BuildKeyForClientConfigFileInfo(item)
 	c.watchConfigFiles.Delete(key)
 }
 

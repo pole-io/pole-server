@@ -24,8 +24,8 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -39,12 +39,12 @@ type ResourceEvent struct {
 }
 
 // Before this function is called before the resource operation
-func (svr *Server) Before(ctx context.Context, resourceType model.Resource) {
+func (svr *Server) Before(ctx context.Context, resourceType types.Resource) {
 	// do nothing
 }
 
 // After this function is called after the resource operation
-func (svr *Server) After(ctx context.Context, resourceType model.Resource, res *ResourceEvent) error {
+func (svr *Server) After(ctx context.Context, resourceType types.Resource, res *ResourceEvent) error {
 	// 资源删除，触发所有关联的策略进行一个 update 操作更新
 	return svr.onChangeResource(ctx, res)
 }
@@ -88,7 +88,7 @@ func (svr *Server) onChangeResource(ctx context.Context, res *ResourceEvent) err
 	return svr.policySvr.AfterResourceOperation(authCtx)
 }
 
-func (s *Server) afterRuleResource(ctx context.Context, r model.Resource, res authcommon.ResourceEntry, remove bool) error {
+func (s *Server) afterRuleResource(ctx context.Context, r types.Resource, res authcommon.ResourceEntry, remove bool) error {
 	event := &ResourceEvent{
 		Resource: res,
 		IsRemove: remove,
@@ -138,5 +138,5 @@ func (s *Server) afterServiceResource(ctx context.Context, req *apiservice.Servi
 		}(),
 		IsRemove: remove,
 	}
-	return s.After(ctx, model.RService, event)
+	return s.After(ctx, types.RService, event)
 }

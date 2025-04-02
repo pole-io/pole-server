@@ -24,12 +24,12 @@ import (
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/crypto"
 	"github.com/pole-io/pole-server/apis/observability/history"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
 )
@@ -48,7 +48,7 @@ var (
 	serverProxyFactories = map[string]ServerProxyFactory{}
 )
 
-type ServerProxyFactory func(cacheMgr cachetypes.CacheManager, s store.Store,
+type ServerProxyFactory func(cacheMgr cacheapi.CacheManager, s store.Store,
 	pre ConfigCenterServer, cfg Config) (ConfigCenterServer, error)
 
 func RegisterServerProxy(name string, factor ServerProxyFactory) error {
@@ -71,10 +71,10 @@ type Server struct {
 	cfg *Config
 
 	storage           store.Store
-	fileCache         cachetypes.ConfigFileCache
-	groupCache        cachetypes.ConfigGroupCache
-	grayCache         cachetypes.GrayCache
-	caches            cachetypes.CacheManager
+	fileCache         cacheapi.ConfigFileCache
+	groupCache        cacheapi.ConfigGroupCache
+	grayCache         cacheapi.GrayCache
+	caches            cacheapi.CacheManager
 	watchCenter       *watchCenter
 	namespaceOperator namespace.NamespaceOperateServer
 	initialized       bool
@@ -89,7 +89,7 @@ type Server struct {
 }
 
 // Initialize 初始化配置中心模块
-func Initialize(ctx context.Context, config Config, s store.Store, cacheMgr cachetypes.CacheManager,
+func Initialize(ctx context.Context, config Config, s store.Store, cacheMgr cacheapi.CacheManager,
 	namespaceOperator namespace.NamespaceOperateServer) error {
 	if originServer.initialized {
 		return nil
@@ -103,7 +103,7 @@ func Initialize(ctx context.Context, config Config, s store.Store, cacheMgr cach
 	return nil
 }
 
-func doInitialize(ctx context.Context, svcConf Config, s store.Store, cacheMgr cachetypes.CacheManager,
+func doInitialize(ctx context.Context, svcConf Config, s store.Store, cacheMgr cacheapi.CacheManager,
 	namespaceOperator namespace.NamespaceOperateServer) (ConfigCenterServer, *Server, error) {
 	var proxySvr ConfigCenterServer
 	originSvr := &Server{}
@@ -142,7 +142,7 @@ func doInitialize(ctx context.Context, svcConf Config, s store.Store, cacheMgr c
 }
 
 func (s *Server) initialize(ctx context.Context, config Config, ss store.Store,
-	namespaceOperator namespace.NamespaceOperateServer, cacheMgr cachetypes.CacheManager) error {
+	namespaceOperator namespace.NamespaceOperateServer, cacheMgr cacheapi.CacheManager) error {
 	var err error
 	s.cfg = &config
 	if s.cfg.ContentMaxLength <= 0 {
@@ -202,17 +202,17 @@ func (s *Server) WatchCenter() *watchCenter {
 	return s.watchCenter
 }
 
-func (s *Server) CacheManager() cachetypes.CacheManager {
+func (s *Server) CacheManager() cacheapi.CacheManager {
 	return s.caches
 }
 
 // Cache 获取配置中心缓存模块
-func (s *Server) FileCache() cachetypes.ConfigFileCache {
+func (s *Server) FileCache() cacheapi.ConfigFileCache {
 	return s.fileCache
 }
 
 // Cache 获取配置中心缓存模块
-func (s *Server) GroupCache() cachetypes.ConfigGroupCache {
+func (s *Server) GroupCache() cacheapi.ConfigGroupCache {
 	return s.groupCache
 }
 

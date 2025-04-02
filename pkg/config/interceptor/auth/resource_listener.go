@@ -23,20 +23,20 @@ import (
 
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/auth"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // Before this function is called before the resource operation
-func (s *Server) Before(ctx context.Context, resourceType model.Resource) {
+func (s *Server) Before(ctx context.Context, resourceType types.Resource) {
 	// do nothing
 }
 
 // After this function is called after the resource operation
-func (s *Server) After(ctx context.Context, resourceType model.Resource, res *ResourceEvent) error {
+func (s *Server) After(ctx context.Context, resourceType types.Resource, res *ResourceEvent) error {
 	switch resourceType {
-	case model.RConfigGroup:
+	case types.RConfigGroup:
 		return s.onConfigGroupResource(ctx, res)
 	default:
 		return nil

@@ -32,9 +32,9 @@ import (
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"go.uber.org/zap"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -209,9 +209,9 @@ func (s *Server) enableRoutings(ctx context.Context, req *apitraffic.RouteRule) 
 }
 
 // parseServiceArgs The query conditions of the analysis service
-func parseRoutingArgs(filter map[string]string, ctx context.Context) (*cachetypes.RoutingArgs, *apiservice.Response) {
+func parseRoutingArgs(filter map[string]string, ctx context.Context) (*cacheapi.RoutingArgs, *apiservice.Response) {
 	offset, limit, _ := utils.ParseOffsetAndLimit(filter)
-	res := &cachetypes.RoutingArgs{
+	res := &cacheapi.RoutingArgs{
 		Filter:     filter,
 		Name:       filter["name"],
 		ID:         filter["id"],

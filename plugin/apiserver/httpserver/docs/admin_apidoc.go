@@ -23,8 +23,9 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
-	"github.com/pole-io/pole-server/pkg/common/model/admin"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/admin"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 var (
@@ -131,14 +132,14 @@ func EnrichGetCMDBInfoApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {
 	return r.
 		Doc("查询CMDB信息").
 		Metadata(restfulspec.KeyOpenAPITags, maintainApiTags).
-		Returns(0, "", []model.LocationView{})
+		Returns(0, "", []svctypes.LocationView{})
 }
 
 func EnrichGetReportClientsApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {
 	return r.
 		Doc("查询SDK实例列表").
 		Metadata(restfulspec.KeyOpenAPITags, maintainApiTags).
-		Returns(0, "", model.PrometheusDiscoveryResponse{})
+		Returns(0, "", types.PrometheusDiscoveryResponse{})
 }
 
 func EnrichEnablePprofApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {

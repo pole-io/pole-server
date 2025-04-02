@@ -24,7 +24,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
@@ -42,16 +41,16 @@ const (
 
 var (
 	mockVipServices   = map[svcName]*svctypes.Service{}
-	mockVipInstances  = map[string]map[string]*model.Instance{}
+	mockVipInstances  = map[string]map[string]*svctypes.Instance{}
 	mockSvipServices  = map[svcName]*svctypes.Service{}
-	mockSvipInstances = map[string]map[string]*model.Instance{}
+	mockSvipInstances = map[string]map[string]*svctypes.Instance{}
 )
 
 func buildMockVipInstances() {
 	buildServices(vipSvcCount, namespaceDefault, mockVipServices)
 	idx := 0
 	for _, svc := range mockVipServices {
-		instances := make(map[string]*model.Instance, vipInstanceCount)
+		instances := make(map[string]*svctypes.Instance, vipInstanceCount)
 		for i := 0; i < vipInstanceCount; i++ {
 			idx++
 			var vipAddress string
@@ -73,7 +72,7 @@ func buildMockSvipInstances() {
 	buildServices(vipSvcCount, namespaceDefault, mockSvipServices)
 	idx := 0
 	for _, svc := range mockSvipServices {
-		instances := make(map[string]*model.Instance, svipInstanceCount)
+		instances := make(map[string]*svctypes.Instance, svipInstanceCount)
 		for i := 0; i < svipInstanceCount; i++ {
 			idx++
 			var vipAddress string
@@ -107,9 +106,9 @@ func mockGetVipServices(namingServer service.DiscoverServer, namespace string) m
 	return newServices
 }
 
-func mockGetVipInstances(namingServer service.DiscoverServer, svcId string) ([]*model.Instance, string, error) {
+func mockGetVipInstances(namingServer service.DiscoverServer, svcId string) ([]*svctypes.Instance, string, error) {
 	instances := mockVipInstances[svcId]
-	var retValue = make([]*model.Instance, 0, len(instances))
+	var retValue = make([]*svctypes.Instance, 0, len(instances))
 	if len(instances) == 0 {
 		return retValue, uuid.NewString(), nil
 	}
@@ -163,9 +162,9 @@ func mockGetSvipServices(namingServer service.DiscoverServer, namespace string) 
 	return newServices
 }
 
-func mockGetSvipInstances(namingServer service.DiscoverServer, svcId string) ([]*model.Instance, string, error) {
+func mockGetSvipInstances(namingServer service.DiscoverServer, svcId string) ([]*svctypes.Instance, string, error) {
 	instances := mockSvipInstances[svcId]
-	var retValue = make([]*model.Instance, 0, len(instances))
+	var retValue = make([]*svctypes.Instance, 0, len(instances))
 	if len(instances) == 0 {
 		return retValue, uuid.NewString(), nil
 	}

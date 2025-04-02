@@ -34,9 +34,9 @@ import (
 
 	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/crypto"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/crypto/aes"
 	storemock "github.com/pole-io/pole-server/plugin/store/mock"
@@ -600,13 +600,13 @@ func Test_encryptConfigFile(t *testing.T) {
 			hasDataKeyTag := false
 			hasAlgoTag := false
 			for tagKey, tagVal := range tt.args.configFile.Metadata {
-				if tagKey == model.MetaKeyConfigFileDataKey {
+				if tagKey == types.MetaKeyConfigFileDataKey {
 					hasDataKeyTag = true
 					if tt.args.dataKey != "" {
 						assert.Equal(t, tt.args.dataKey, tagVal)
 					}
 				}
-				if tagKey == model.MetaKeyConfigFileEncryptAlgo {
+				if tagKey == types.MetaKeyConfigFileEncryptAlgo {
 					hasAlgoTag = true
 					assert.Equal(t, tt.args.algorithm, tagVal)
 				}
@@ -650,8 +650,8 @@ func Test_decryptConfigFile(t *testing.T) {
 				configFile: &conftypes.ConfigFile{
 					Content: "YnLZ0SYuujFBHjYHAZVN5A==",
 					Metadata: map[string]string{
-						model.MetaKeyConfigFileDataKey:     base64.StdEncoding.EncodeToString(dataKey),
-						model.MetaKeyConfigFileEncryptAlgo: "AES",
+						types.MetaKeyConfigFileDataKey:     base64.StdEncoding.EncodeToString(dataKey),
+						types.MetaKeyConfigFileEncryptAlgo: "AES",
 					},
 					CreateBy: "polaris",
 				},
@@ -666,8 +666,8 @@ func Test_decryptConfigFile(t *testing.T) {
 				configFile: &conftypes.ConfigFile{
 					Content: "YnLZ0SYuujFBHjYHAZVN5A==",
 					Metadata: map[string]string{
-						model.MetaKeyConfigFileDataKey:     base64.StdEncoding.EncodeToString(dataKey),
-						model.MetaKeyConfigFileEncryptAlgo: "AES",
+						types.MetaKeyConfigFileDataKey:     base64.StdEncoding.EncodeToString(dataKey),
+						types.MetaKeyConfigFileEncryptAlgo: "AES",
 					},
 					CreateBy: "polaris",
 				},
@@ -683,7 +683,7 @@ func Test_decryptConfigFile(t *testing.T) {
 			assert.Equal(t, tt.wantErr, err, tt.name)
 			assert.Equal(t, tt.want, tt.args.configFile.Content, tt.name)
 			for tagKey := range tt.args.configFile.Metadata {
-				if tagKey == model.MetaKeyConfigFileDataKey {
+				if tagKey == types.MetaKeyConfigFileDataKey {
 					t.Fatal("config tags has data key")
 				}
 			}
@@ -770,7 +770,7 @@ func Test_GetConfigFileRichInfo(t *testing.T) {
 		configFile := assembleConfigFile()
 
 		storage := storemock.NewMockStore(ctrl)
-		storage.EXPECT().GetConfigFile(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(&model.ConfigFile{
+		storage.EXPECT().GetConfigFile(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(&conftypes.ConfigFile{
 			Namespace: configFile.Namespace.Value,
 			Group:     configFile.Group.Value,
 			Name:      configFile.Name.Value,

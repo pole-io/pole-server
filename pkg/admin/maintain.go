@@ -32,10 +32,10 @@ import (
 	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/pkg/types/admin"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -228,15 +228,15 @@ func (s *Server) ReleaseLeaderElection(_ context.Context, electKey string) error
 	return s.storage.ReleaseLeaderElection(electKey)
 }
 
-func (svr *Server) GetCMDBInfo(ctx context.Context) ([]model.LocationView, error) {
+func (svr *Server) GetCMDBInfo(ctx context.Context) ([]svctypes.LocationView, error) {
 	cmdb := cmdb.GetCMDB()
 	if cmdb == nil {
-		return []model.LocationView{}, nil
+		return []svctypes.LocationView{}, nil
 	}
 
-	ret := make([]model.LocationView, 0, 32)
-	_ = cmdb.Range(func(host string, location *model.Location) (bool, error) {
-		ret = append(ret, model.LocationView{
+	ret := make([]svctypes.LocationView, 0, 32)
+	_ = cmdb.Range(func(host string, location *svctypes.Location) (bool, error) {
+		ret = append(ret, svctypes.LocationView{
 			IP:       host,
 			Region:   location.Proto.GetRegion().GetValue(),
 			Zone:     location.Proto.GetZone().GetValue(),

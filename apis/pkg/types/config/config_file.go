@@ -25,8 +25,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	commontime "github.com/pole-io/pole-server/pkg/common/time"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/apis/pkg/utils"
 )
 
 type ReleaseType string
@@ -336,9 +335,9 @@ func ToConfigFileAPI(file *ConfigFile) *config_manage.ConfigFile {
 		CreateBy:    utils.NewStringValue(file.CreateBy),
 		ModifyBy:    utils.NewStringValue(file.ModifyBy),
 		ReleaseBy:   utils.NewStringValue(file.ReleaseBy),
-		CreateTime:  utils.NewStringValue(commontime.Time2String(file.CreateTime)),
-		ModifyTime:  utils.NewStringValue(commontime.Time2String(file.ModifyTime)),
-		ReleaseTime: utils.NewStringValue(commontime.Time2String(file.ReleaseTime)),
+		CreateTime:  utils.NewStringValue(utils.Time2String(file.CreateTime)),
+		ModifyTime:  utils.NewStringValue(utils.Time2String(file.ModifyTime)),
+		ReleaseTime: utils.NewStringValue(utils.Time2String(file.ReleaseTime)),
 	}
 }
 
@@ -360,9 +359,9 @@ func ToConfiogFileReleaseApi(release *ConfigFileRelease) *config_manage.ConfigFi
 		Md5:                utils.NewStringValue(release.Md5),
 		Version:            utils.NewUInt64Value(release.Version),
 		CreateBy:           utils.NewStringValue(release.CreateBy),
-		CreateTime:         utils.NewStringValue(commontime.Time2String(release.CreateTime)),
+		CreateTime:         utils.NewStringValue(utils.Time2String(release.CreateTime)),
 		ModifyBy:           utils.NewStringValue(release.ModifyBy),
-		ModifyTime:         utils.NewStringValue(commontime.Time2String(release.ModifyTime)),
+		ModifyTime:         utils.NewStringValue(utils.Time2String(release.ModifyTime)),
 		ReleaseDescription: utils.NewStringValue(release.ReleaseDescription),
 		Tags:               FromTagMap(release.Metadata),
 		Active:             utils.NewBoolValue(release.Active),
@@ -441,9 +440,9 @@ func ToReleaseHistoryAPI(releaseHistory *ConfigFileReleaseHistory) *config_manag
 		Type:               utils.NewStringValue(releaseHistory.Type),
 		Status:             utils.NewStringValue(releaseHistory.Status),
 		CreateBy:           utils.NewStringValue(releaseHistory.CreateBy),
-		CreateTime:         utils.NewStringValue(commontime.Time2String(releaseHistory.CreateTime)),
+		CreateTime:         utils.NewStringValue(utils.Time2String(releaseHistory.CreateTime)),
 		ModifyBy:           utils.NewStringValue(releaseHistory.ModifyBy),
-		ModifyTime:         utils.NewStringValue(commontime.Time2String(releaseHistory.ModifyTime)),
+		ModifyTime:         utils.NewStringValue(utils.Time2String(releaseHistory.ModifyTime)),
 		ReleaseDescription: utils.NewStringValue(releaseHistory.ReleaseDescription),
 		Reason:             utils.NewStringValue(releaseHistory.Reason),
 	}
@@ -488,8 +487,8 @@ func ToConfigGroupAPI(group *ConfigFileGroup) *config_manage.ConfigFileGroup {
 		Owner:      utils.NewStringValue(group.Owner),
 		CreateBy:   utils.NewStringValue(group.CreateBy),
 		ModifyBy:   utils.NewStringValue(group.ModifyBy),
-		CreateTime: utils.NewStringValue(commontime.Time2String(group.CreateTime)),
-		ModifyTime: utils.NewStringValue(commontime.Time2String(group.ModifyTime)),
+		CreateTime: utils.NewStringValue(utils.Time2String(group.CreateTime)),
+		ModifyTime: utils.NewStringValue(utils.Time2String(group.ModifyTime)),
 		Business:   utils.NewStringValue(group.Business),
 		Department: utils.NewStringValue(group.Department),
 		Metadata:   group.Metadata,
@@ -534,9 +533,9 @@ func ToConfigFileTemplateAPI(template *ConfigFileTemplate) *config_manage.Config
 		Comment:    utils.NewStringValue(template.Comment),
 		Format:     utils.NewStringValue(template.Format),
 		CreateBy:   utils.NewStringValue(template.CreateBy),
-		CreateTime: utils.NewStringValue(commontime.Time2String(template.CreateTime)),
+		CreateTime: utils.NewStringValue(utils.Time2String(template.CreateTime)),
 		ModifyBy:   utils.NewStringValue(template.ModifyBy),
-		ModifyTime: utils.NewStringValue(commontime.Time2String(template.ModifyTime)),
+		ModifyTime: utils.NewStringValue(utils.Time2String(template.ModifyTime)),
 	}
 }
 

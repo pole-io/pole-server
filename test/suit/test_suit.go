@@ -35,15 +35,14 @@ import (
 	"gopkg.in/yaml.v2"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
-	commonmodel "github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
 	"github.com/pole-io/pole-server/pkg/namespace"
@@ -110,7 +109,7 @@ type TestConfig struct {
 	Auth                authapi.Config `yaml:"auth"`
 	Plugin              plugin.Config  `yaml:"plugin"`
 	ReplaceStore        storeapi.Store
-	ServiceCacheEntries []cachetypes.ConfigEntry
+	ServiceCacheEntries []cacheapi.ConfigEntry
 }
 
 var InjectTestDataClean func() TestDataClean
@@ -313,8 +312,8 @@ func (d *DiscoverTestSuit) initialize(opts ...options) error {
 		panic(err)
 	}
 	d.cacheMgr = cacheMgn
-	_ = d.cacheMgr.OpenResourceCache(cachetypes.ConfigEntry{
-		Name: cachetypes.GrayName,
+	_ = d.cacheMgr.OpenResourceCache(cacheapi.ConfigEntry{
+		Name: cacheapi.GrayName,
 	})
 
 	if !d.cfg.DisableAuth {
@@ -401,8 +400,8 @@ func (d *DiscoverTestSuit) initialize(opts ...options) error {
 func TestNamespaceInitialize(ctx context.Context, nsOpt *namespace.Config, storage storeapi.Store, cacheMgr *cache.CacheManager,
 	userMgn authapi.UserServer, strategyMgn authapi.StrategyServer) (namespace.NamespaceOperateServer, error) {
 
-	ctx = context.WithValue(ctx, commonmodel.ContextKeyUserSvr, userMgn)
-	ctx = context.WithValue(ctx, commonmodel.ContextKeyPolicySvr, strategyMgn)
+	ctx = context.WithValue(ctx, authapi.ContextKeyUserSvr, userMgn)
+	ctx = context.WithValue(ctx, authapi.ContextKeyPolicySvr, strategyMgn)
 
 	_, proxySvr, err := namespace.InitServer(ctx, nsOpt, storage, cacheMgr)
 	if err != nil {

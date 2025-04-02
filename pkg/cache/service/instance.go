@@ -27,10 +27,11 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
+	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -41,17 +42,17 @@ const (
 
 // instanceCache 实例缓存的类
 type instanceCache struct {
-	*types.BaseCache
+	*cachebase.BaseCache
 
 	svcCache        *serviceCache
 	storage         store.Store
 	lastMtimeLogged int64
 	// instanceid -> instance
-	ids *utils.SyncMap[string, *model.Instance]
+	ids *utils.SyncMap[string, *svctypes.Instance]
 	// service id -> [instanceid ->instance]
-	services *utils.SyncMap[string, *model.ServiceInstances]
+	services *utils.SyncMap[string, *svctypes.ServiceInstances]
 	// service id -> [instanceCount]
-	instanceCounts   *utils.SyncMap[string, *model.InstanceCount]
+	instanceCounts   *utils.SyncMap[string, *svctypes.InstanceCount]
 	instancePorts    *instancePorts
 	disableBusiness  bool
 	needMeta         bool
@@ -62,22 +63,22 @@ type instanceCache struct {
 }
 
 // NewInstanceCache 新建一个instanceCache
-func NewInstanceCache(storage store.Store, cacheMgr types.CacheManager) types.InstanceCache {
+func NewInstanceCache(storage store.Store, cacheMgr cacheapi.CacheManager) cacheapi.InstanceCache {
 	ic := &instanceCache{
 		storage:      storage,
 		singleFlight: new(singleflight.Group),
 	}
 
-	ic.BaseCache = types.NewBaseCacheWithRepoerMetrics(storage, cacheMgr, ic.reportMetricsInfo)
+	ic.BaseCache = cachebase.NewBaseCacheWithRepoerMetrics(storage, cacheMgr, ic.reportMetricsInfo)
 	return ic
 }
 
 // Initialize 初始化函数
 func (ic *instanceCache) Initialize(opt map[string]interface{}) error {
-	ic.svcCache = ic.BaseCache.CacheMgr.GetCacher(types.CacheService).(*serviceCache)
-	ic.ids = utils.NewSyncMap[string, *model.Instance]()
-	ic.services = utils.NewSyncMap[string, *model.ServiceInstances]()
-	ic.instanceCounts = utils.NewSyncMap[string, *model.InstanceCount]()
+	ic.svcCache = ic.BaseCache.CacheMgr.GetCacher(cacheapi.CacheService).(*serviceCache)
+	ic.ids = utils.NewSyncMap[string, *svctypes.Instance]()
+	ic.services = utils.NewSyncMap[string, *svctypes.ServiceInstances]()
+	ic.instanceCounts = utils.NewSyncMap[string, *svctypes.InstanceCount]()
 	ic.instancePorts = newInstancePorts()
 	if opt == nil {
 		return nil
@@ -180,7 +181,7 @@ func (ic *instanceCache) handleUpdate(start time.Time, tx store.Tx) ([]*eventhub
 	map[string]time.Time, int64, error) {
 
 	defer func() {
-		ic.lastMtimeLogged = types.LogLastMtime(ic.lastMtimeLogged, ic.LastMtime().Unix(), "Instance")
+		ic.lastMtimeLogged = cachebase.LogLastMtime(ic.lastMtimeLogged, ic.LastMtime().Unix(), "Instance")
 		ic.checkAll(tx)
 	}()
 
@@ -202,9 +203,9 @@ func (ic *instanceCache) handleUpdate(start time.Time, tx store.Tx) ([]*eventhub
 // Clear 清理内部缓存数据
 func (ic *instanceCache) Clear() error {
 	ic.BaseCache.Clear()
-	ic.ids = utils.NewSyncMap[string, *model.Instance]()
-	ic.services = utils.NewSyncMap[string, *model.ServiceInstances]()
-	ic.instanceCounts = utils.NewSyncMap[string, *model.InstanceCount]()
+	ic.ids = utils.NewSyncMap[string, *svctypes.Instance]()
+	ic.services = utils.NewSyncMap[string, *svctypes.ServiceInstances]()
+	ic.instanceCounts = utils.NewSyncMap[string, *svctypes.InstanceCount]()
 	ic.instancePorts.reset()
 	ic.instanceCount = 0
 	return nil
@@ -212,11 +213,11 @@ func (ic *instanceCache) Clear() error {
 
 // Name 获取资源名称
 func (ic *instanceCache) Name() string {
-	return types.InstanceName
+	return cacheapi.InstanceName
 }
 
 // getSystemServices 获取系统服务ID
-func (ic *instanceCache) getSystemServices() ([]*model.Service, error) {
+func (ic *instanceCache) getSystemServices() ([]*svctypes.Service, error) {
 	services, err := ic.storage.GetSystemServices()
 	if err != nil {
 		log.Errorf("[Cache][Instance] get system services err: %s", err.Error())
@@ -227,7 +228,7 @@ func (ic *instanceCache) getSystemServices() ([]*model.Service, error) {
 
 // setInstances 保存instance到内存中
 // 返回：更新个数，删除个数
-func (ic *instanceCache) setInstances(ins map[string]*model.Instance) ([]*eventhub.CacheInstanceEvent,
+func (ic *instanceCache) setInstances(ins map[string]*svctypes.Instance) ([]*eventhub.CacheInstanceEvent,
 	map[string]time.Time, int, int) {
 
 	if len(ins) == 0 {
@@ -247,10 +248,10 @@ func (ic *instanceCache) setInstances(ins map[string]*model.Instance) ([]*eventh
 
 	for _, item := range ins {
 		if _, ok := ic.services.Load(item.ServiceID); !ok {
-			ic.services.Store(item.ServiceID, model.NewServiceInstances(0))
+			ic.services.Store(item.ServiceID, svctypes.NewServiceInstances(0))
 		}
 		serviceInstances, _ := ic.services.Load(item.ServiceID)
-		svc := ic.BaseCache.CacheMgr.GetCacher(types.CacheService).(types.ServiceCache).GetServiceByID(item.ServiceID)
+		svc := ic.BaseCache.CacheMgr.GetCacher(cacheapi.CacheService).(cacheapi.ServiceCache).GetServiceByID(item.ServiceID)
 		if svc != nil {
 			// 填充实例的服务名称数据信息
 			item.Proto.Namespace = utils.NewStringValue(svc.Namespace)
@@ -345,7 +346,7 @@ func (ic *instanceCache) setInstances(ins map[string]*model.Instance) ([]*eventh
 	}, update, del
 }
 
-func fillInternalLabels(item *model.Instance) *model.Instance {
+func fillInternalLabels(item *svctypes.Instance) *svctypes.Instance {
 	if len(item.Version()) > 0 {
 		item.Proto.Metadata["version"] = item.Version()
 	}
@@ -390,12 +391,12 @@ func (ic *instanceCache) computeInstanceCount(affect map[string]bool) {
 			ic.instanceCounts.Delete(serviceID)
 			continue
 		}
-		count := &model.InstanceCount{
-			VersionCounts: map[string]*model.InstanceVersionCount{},
+		count := &svctypes.InstanceCount{
+			VersionCounts: map[string]*svctypes.InstanceVersionCount{},
 		}
-		serviceInstances.Range(func(key string, instance *model.Instance) {
+		serviceInstances.Range(func(key string, instance *svctypes.Instance) {
 			if _, ok := count.VersionCounts[instance.Version()]; !ok {
-				count.VersionCounts[instance.Version()] = &model.InstanceVersionCount{}
+				count.VersionCounts[instance.Version()] = &svctypes.InstanceVersionCount{}
 			}
 			count.TotalInstanceCount++
 			count.VersionCounts[instance.Version()].TotalInstanceCount++
@@ -416,12 +417,12 @@ func (ic *instanceCache) computeInstanceCount(affect map[string]bool) {
 	}
 }
 
-func isInstanceHealthy(instance *model.Instance) bool {
+func isInstanceHealthy(instance *svctypes.Instance) bool {
 	return instance.Proto.GetHealthy().GetValue() && !instance.Proto.GetIsolate().GetValue()
 }
 
 // GetInstance 根据实例ID获取实例数据
-func (ic *instanceCache) GetInstance(instanceID string) *model.Instance {
+func (ic *instanceCache) GetInstance(instanceID string) *svctypes.Instance {
 	if instanceID == "" {
 		return nil
 	}
@@ -435,7 +436,7 @@ func (ic *instanceCache) GetInstance(instanceID string) *model.Instance {
 }
 
 // GetInstances 根据服务名获取实例，先查找服务名对应的服务ID，再找实例列表
-func (ic *instanceCache) GetInstances(serviceID string) *model.ServiceInstances {
+func (ic *instanceCache) GetInstances(serviceID string) *svctypes.ServiceInstances {
 	if serviceID == "" {
 		return nil
 	}
@@ -448,7 +449,7 @@ func (ic *instanceCache) GetInstances(serviceID string) *model.ServiceInstances 
 }
 
 // GetInstancesByServiceID 根据ServiceID获取实例数据
-func (ic *instanceCache) GetInstancesByServiceID(serviceID string) []*model.Instance {
+func (ic *instanceCache) GetInstancesByServiceID(serviceID string) []*svctypes.Instance {
 	if serviceID == "" {
 		return nil
 	}
@@ -458,8 +459,8 @@ func (ic *instanceCache) GetInstancesByServiceID(serviceID string) []*model.Inst
 		return nil
 	}
 
-	out := make([]*model.Instance, 0, value.TotalCount())
-	value.Range(func(k string, v *model.Instance) {
+	out := make([]*svctypes.Instance, 0, value.TotalCount())
+	value.Range(func(k string, v *svctypes.Instance) {
 		out = append(out, v)
 	})
 
@@ -467,34 +468,34 @@ func (ic *instanceCache) GetInstancesByServiceID(serviceID string) []*model.Inst
 }
 
 // GetInstancesCountByServiceID 根据服务ID获取实例数
-func (ic *instanceCache) GetInstancesCountByServiceID(serviceID string) model.InstanceCount {
+func (ic *instanceCache) GetInstancesCountByServiceID(serviceID string) svctypes.InstanceCount {
 	if serviceID == "" {
-		return model.InstanceCount{}
+		return svctypes.InstanceCount{}
 	}
 
 	value, ok := ic.instanceCounts.Load(serviceID)
 	if !ok {
-		return model.InstanceCount{}
+		return svctypes.InstanceCount{}
 	}
 	return *value
 }
 
 // DiscoverServiceInstances 服务发现获取实例
-func (ic *instanceCache) DiscoverServiceInstances(serviceID string, onlyHealthy bool) []*model.Instance {
+func (ic *instanceCache) DiscoverServiceInstances(serviceID string, onlyHealthy bool) []*svctypes.Instance {
 	svcInstances, ok := ic.services.Load(serviceID)
 	if !ok {
-		return []*model.Instance{}
+		return []*svctypes.Instance{}
 	}
 	return svcInstances.GetInstances(onlyHealthy)
 }
 
 // IteratorInstances 迭代所有的instance的函数
-func (ic *instanceCache) IteratorInstances(iterProc types.InstanceIterProc) error {
+func (ic *instanceCache) IteratorInstances(iterProc cacheapi.InstanceIterProc) error {
 	return iteratorInstancesProc(ic.ids, iterProc)
 }
 
 // IteratorInstancesWithService 根据服务ID进行迭代回调
-func (ic *instanceCache) IteratorInstancesWithService(serviceID string, iterProc types.InstanceIterProc) error {
+func (ic *instanceCache) IteratorInstancesWithService(serviceID string, iterProc cacheapi.InstanceIterProc) error {
 	if serviceID == "" {
 		return nil
 	}
@@ -502,7 +503,7 @@ func (ic *instanceCache) IteratorInstancesWithService(serviceID string, iterProc
 	if !ok {
 		return nil
 	}
-	value.Range(func(id string, ins *model.Instance) {
+	value.Range(func(id string, ins *svctypes.Instance) {
 		_, _ = iterProc(id, ins)
 	})
 	return nil
@@ -529,7 +530,7 @@ func (ic *instanceCache) GetInstanceLabels(serviceID string) *apiservice.Instanc
 	}
 
 	tmp := make(map[string]map[string]struct{}, 64)
-	value.Range(func(key string, value *model.Instance) {
+	value.Range(func(key string, value *svctypes.Instance) {
 		metadata := value.Metadata()
 		for k, v := range metadata {
 			if _, ok := tmp[k]; !ok {
@@ -553,7 +554,7 @@ func (ic *instanceCache) GetInstanceLabels(serviceID string) *apiservice.Instanc
 }
 
 // GetServicePorts .
-func (ic *instanceCache) GetServicePorts(serviceID string) []*model.ServicePort {
+func (ic *instanceCache) GetServicePorts(serviceID string) []*svctypes.ServicePort {
 	return ic.instancePorts.listPort(serviceID)
 }
 
@@ -564,9 +565,9 @@ func (ic *instanceCache) RemoveService(serviceID string) {
 }
 
 // iteratorInstancesProc 迭代指定的instance数据，id->instance
-func iteratorInstancesProc(data *utils.SyncMap[string, *model.Instance], iterProc types.InstanceIterProc) error {
+func iteratorInstancesProc(data *utils.SyncMap[string, *svctypes.Instance], iterProc cacheapi.InstanceIterProc) error {
 	var err error
-	proc := func(k string, v *model.Instance) {
+	proc := func(k string, v *svctypes.Instance) {
 		if _, err = iterProc(k, v); err != nil {
 			return
 		}
@@ -579,21 +580,21 @@ func iteratorInstancesProc(data *utils.SyncMap[string, *model.Instance], iterPro
 // newInstancePorts 创建实例
 func newInstancePorts() *instancePorts {
 	return &instancePorts{
-		ports: map[string]map[string]*model.ServicePort{},
+		ports: map[string]map[string]*svctypes.ServicePort{},
 	}
 }
 
 type instancePorts struct {
 	lock sync.RWMutex
 	// ports service-id -> []port
-	ports map[string]map[string]*model.ServicePort
+	ports map[string]map[string]*svctypes.ServicePort
 }
 
 func (b *instancePorts) reset() {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
-	b.ports = make(map[string]map[string]*model.ServicePort)
+	b.ports = make(map[string]map[string]*svctypes.ServicePort)
 }
 
 func (b *instancePorts) removeService(serviceID string) {
@@ -612,22 +613,22 @@ func (b *instancePorts) appendPort(serviceID string, protocol string, port uint3
 	defer b.lock.Unlock()
 
 	if _, ok := b.ports[serviceID]; !ok {
-		b.ports[serviceID] = map[string]*model.ServicePort{}
+		b.ports[serviceID] = map[string]*svctypes.ServicePort{}
 	}
 
 	key := strconv.FormatInt(int64(port), 10) + "-" + protocol
 	ports := b.ports[serviceID]
-	ports[key] = &model.ServicePort{
+	ports[key] = &svctypes.ServicePort{
 		Port:     port,
 		Protocol: protocol,
 	}
 }
 
-func (b *instancePorts) listPort(serviceID string) []*model.ServicePort {
+func (b *instancePorts) listPort(serviceID string) []*svctypes.ServicePort {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 
-	ret := make([]*model.ServicePort, 0, 4)
+	ret := make([]*svctypes.ServicePort, 0, 4)
 
 	val, ok := b.ports[serviceID]
 	if !ok {

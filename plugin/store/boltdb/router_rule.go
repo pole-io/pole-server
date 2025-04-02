@@ -26,7 +26,6 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 var _ store.RouterRuleConfigStore = (*routerRuleStore)(nil)
@@ -269,7 +268,7 @@ func (r *routerRuleStore) GetRoutingConfigWithIDTx(tx store.Tx, id string) (*rul
 
 func (r *routerRuleStore) getRoutingConfigWithIDTx(tx *bolt.Tx, id string) (*rules.RouterConfig, error) {
 	ret := make(map[string]interface{})
-	if err := loadValues(tx, tblNameRouting, []string{id}, &model.RouterConfig{}, ret); err != nil {
+	if err := loadValues(tx, tblNameRouting, []string{id}, &rules.RouterConfig{}, ret); err != nil {
 		log.Error("[Store][boltdb] load route config  from kv", zap.String("routing-id", id), zap.Error(err))
 		return nil, err
 	}

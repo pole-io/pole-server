@@ -31,9 +31,9 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -198,7 +198,7 @@ func (s *Server) DeleteLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 // GetLaneGroups 查询泳道组列表
 func (s *Server) GetLaneGroups(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse {
 	offset, limit, _ := utils.ParseOffsetAndLimit(filter)
-	total, ret, err := s.caches.LaneRule().Query(ctx, &cachetypes.LaneGroupArgs{
+	total, ret, err := s.caches.LaneRule().Query(ctx, &cacheapi.LaneGroupArgs{
 		Filter: filter,
 		Offset: offset,
 		Limit:  limit,

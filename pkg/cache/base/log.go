@@ -15,21 +15,10 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package v2
+package base
 
-import (
-	"github.com/golang/protobuf/proto"
-	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
+import commonlog "github.com/pole-io/pole-server/pkg/common/log"
+
+var (
+	log = commonlog.GetScopeOrDefaultByName(commonlog.CacheLoggerName)
 )
-
-// RoutingArr 路由规则数组定义
-type RoutingArr []*apitraffic.RouteRule
-
-// Reset reset initialization
-func (m *RoutingArr) Reset() { *m = RoutingArr{} }
-
-// String return string
-func (m *RoutingArr) String() string { return proto.CompactTextString(m) }
-
-// ProtoMessage return proto message
-func (*RoutingArr) ProtoMessage() {}

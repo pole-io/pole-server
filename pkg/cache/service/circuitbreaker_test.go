@@ -24,7 +24,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/plugin/store/mock"
 )
 
@@ -45,11 +45,11 @@ func newTestCircuitBreakerCache(t *testing.T) (*gomock.Controller, *mock.MockSto
 /**
  * @brief 生成熔断规则测试数据
  */
-func genModelCircuitBreakers(beginNum, total int) []*model.CircuitBreakerRule {
-	out := make([]*model.CircuitBreakerRule, 0, total)
+func genModelCircuitBreakers(beginNum, total int) []*rules.CircuitBreakerRule {
+	out := make([]*rules.CircuitBreakerRule, 0, total)
 
 	for i := beginNum; i < total+beginNum; i++ {
-		item := &model.CircuitBreakerRule{
+		item := &rules.CircuitBreakerRule{
 			ID:           fmt.Sprintf("id-%d", i),
 			Name:         fmt.Sprintf("rule-%d", i),
 			DstService:   fmt.Sprintf("svc-%d", i),

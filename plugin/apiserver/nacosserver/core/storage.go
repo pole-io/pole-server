@@ -29,7 +29,7 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	nacosmodel "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
@@ -50,7 +50,7 @@ type (
 		ins []*nacosmodel.Instance, healthyCount int32) *nacosmodel.ServiceInfo
 )
 
-func NewNacosDataStorage(cacheMgr cachetypes.CacheManager) *NacosDataStorage {
+func NewNacosDataStorage(cacheMgr cacheapi.CacheManager) *NacosDataStorage {
 	ctx, cancel := context.WithCancel(context.Background())
 	notifier, notifierFinish := context.WithCancel(context.Background())
 	store := &NacosDataStorage{
@@ -67,7 +67,7 @@ func NewNacosDataStorage(cacheMgr cachetypes.CacheManager) *NacosDataStorage {
 
 // NacosDataStorage .
 type NacosDataStorage struct {
-	cacheMgr cachetypes.CacheManager
+	cacheMgr cacheapi.CacheManager
 	ctx      context.Context
 	cancel   context.CancelFunc
 
@@ -82,7 +82,7 @@ type NacosDataStorage struct {
 	revisions  map[string]string
 }
 
-func (n *NacosDataStorage) Cache() cachetypes.CacheManager {
+func (n *NacosDataStorage) Cache() cacheapi.CacheManager {
 	return n.cacheMgr
 }
 
@@ -343,7 +343,7 @@ func SelectInstancesWithHealthyProtection(ctx *FilterContext, result *nacosmodel
 	return result
 }
 
-func ToNacosService(cacheMgr cachetypes.CacheManager, namespace, service, group string) *nacosmodel.ServiceMetadata {
+func ToNacosService(cacheMgr cacheapi.CacheManager, namespace, service, group string) *nacosmodel.ServiceMetadata {
 	ret := &nacosmodel.ServiceMetadata{
 		ServiceKey: nacosmodel.ServiceKey{
 			Namespace: namespace,

@@ -23,10 +23,10 @@ import (
 	"github.com/mitchellh/mapstructure"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 )
@@ -81,14 +81,14 @@ func (job *deleteEmptyServiceJob) clear() {
 	job.emptyServices = map[string]time.Time{}
 }
 
-func (job *deleteEmptyServiceJob) getEmptyServices() []*model.Service {
+func (job *deleteEmptyServiceJob) getEmptyServices() []*svctypes.Service {
 	services := job.getAllEmptyServices()
 	return job.filterToDeletedServices(services, time.Now(), job.cfg.ServiceDeleteTimeout)
 }
 
-func (job *deleteEmptyServiceJob) getAllEmptyServices() []*model.Service {
-	var res []*model.Service
-	_ = job.cacheMgn.Service().IteratorServices(func(key string, svc *model.Service) (bool, error) {
+func (job *deleteEmptyServiceJob) getAllEmptyServices() []*svctypes.Service {
+	var res []*svctypes.Service
+	_ = job.cacheMgn.Service().IteratorServices(func(key string, svc *svctypes.Service) (bool, error) {
 		if svc.IsAlias() {
 			return true, nil
 		}
@@ -101,9 +101,9 @@ func (job *deleteEmptyServiceJob) getAllEmptyServices() []*model.Service {
 	return res
 }
 
-func (job *deleteEmptyServiceJob) filterToDeletedServices(services []*model.Service,
-	now time.Time, timeout time.Duration) []*model.Service {
-	var toDeleteServices []*model.Service
+func (job *deleteEmptyServiceJob) filterToDeletedServices(services []*svctypes.Service,
+	now time.Time, timeout time.Duration) []*svctypes.Service {
+	var toDeleteServices []*svctypes.Service
 	m := map[string]time.Time{}
 	for _, svc := range services {
 		value, ok := job.emptyServices[svc.ID]
@@ -149,7 +149,7 @@ func (job *deleteEmptyServiceJob) deleteEmptyServices() error {
 	return nil
 }
 
-func convertDeleteServiceRequest(infos []*model.Service) []*apiservice.Service {
+func convertDeleteServiceRequest(infos []*svctypes.Service) []*apiservice.Service {
 	var entries = make([]*apiservice.Service, len(infos))
 	for i, info := range infos {
 		entries[i] = &apiservice.Service{

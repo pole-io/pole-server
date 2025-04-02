@@ -30,9 +30,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
@@ -171,7 +171,7 @@ func (s *Server) deleteFaultDetectRule(ctx context.Context, request *apifault.Fa
 
 func (s *Server) GetFaultDetectRules(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
 	offset, limit, _ := utils.ParseOffsetAndLimit(query)
-	total, cbRules, err := s.caches.FaultDetector().Query(ctx, &cachetypes.FaultDetectArgs{
+	total, cbRules, err := s.caches.FaultDetector().Query(ctx, &cacheapi.FaultDetectArgs{
 		Filter: query,
 		Offset: offset,
 		Limit:  limit,

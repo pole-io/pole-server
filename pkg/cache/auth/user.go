@@ -28,9 +28,10 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
+	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -50,17 +51,17 @@ type userRefreshResult struct {
 
 // userCache 用户信息缓存
 type userCache struct {
-	*types.BaseCache
+	*cachebase.BaseCache
 
 	storage store.Store
 
 	adminUser atomic.Value
 	// userid -> user
-	users *utils.SyncMap[string, *authcommon.User]
+	users *utils.SyncMap[string, *authtypes.User]
 	// username -> user
-	name2Users *utils.SyncMap[string, *authcommon.User]
+	name2Users *utils.SyncMap[string, *authtypes.User]
 	// groupid -> group
-	groups *utils.SyncMap[string, *authcommon.UserGroupDetail]
+	groups *utils.SyncMap[string, *authtypes.UserGroupDetail]
 	// userid -> groups
 	user2Groups *utils.SyncMap[string, *utils.SyncSet[string]]
 
@@ -71,18 +72,18 @@ type userCache struct {
 }
 
 // NewUserCache
-func NewUserCache(storage store.Store, cacheMgr types.CacheManager) types.UserCache {
+func NewUserCache(storage store.Store, cacheMgr cacheapi.CacheManager) cacheapi.UserCache {
 	return &userCache{
-		BaseCache: types.NewBaseCache(storage, cacheMgr),
+		BaseCache: cachebase.NewBaseCache(storage, cacheMgr),
 		storage:   storage,
 	}
 }
 
 // Initialize
 func (uc *userCache) Initialize(_ map[string]interface{}) error {
-	uc.users = utils.NewSyncMap[string, *authcommon.User]()
-	uc.name2Users = utils.NewSyncMap[string, *authcommon.User]()
-	uc.groups = utils.NewSyncMap[string, *authcommon.UserGroupDetail]()
+	uc.users = utils.NewSyncMap[string, *authtypes.User]()
+	uc.name2Users = utils.NewSyncMap[string, *authtypes.User]()
+	uc.groups = utils.NewSyncMap[string, *authtypes.UserGroupDetail]()
 	uc.user2Groups = utils.NewSyncMap[string, *utils.SyncSet[string]]()
 	uc.adminUser = atomic.Value{}
 	uc.singleFlight = new(singleflight.Group)
@@ -123,12 +124,12 @@ func (uc *userCache) realUpdate() (map[string]time.Time, int64, error) {
 	return lastMimes, int64(len(users) + len(groups)), nil
 }
 
-func (uc *userCache) setUserAndGroups(users []*authcommon.User,
-	groups []*authcommon.UserGroupDetail) (map[string]time.Time, userRefreshResult) {
+func (uc *userCache) setUserAndGroups(users []*authtypes.User,
+	groups []*authtypes.UserGroupDetail) (map[string]time.Time, userRefreshResult) {
 	ret := userRefreshResult{}
 
-	ownerSupplier := func(user *authcommon.User) *authcommon.User {
-		if user.Type == authcommon.SubAccountUserRole {
+	ownerSupplier := func(user *authtypes.User) *authtypes.User {
+		if user.Type == authtypes.SubAccountUserRole {
 			owner, _ := uc.users.Load(user.Owner)
 			return owner
 		}
@@ -139,13 +140,13 @@ func (uc *userCache) setUserAndGroups(users []*authcommon.User,
 
 	// 更新 users 缓存
 	// step 1. 先更新 owner 用户
-	uc.handlerUserCacheUpdate(lastMimes, &ret, users, func(user *authcommon.User) bool {
-		return user.Type == authcommon.OwnerUserRole
+	uc.handlerUserCacheUpdate(lastMimes, &ret, users, func(user *authtypes.User) bool {
+		return user.Type == authtypes.OwnerUserRole
 	}, ownerSupplier)
 
 	// step 2. 更新非 owner 用户
-	uc.handlerUserCacheUpdate(lastMimes, &ret, users, func(user *authcommon.User) bool {
-		return user.Type == authcommon.SubAccountUserRole
+	uc.handlerUserCacheUpdate(lastMimes, &ret, users, func(user *authtypes.User) bool {
+		return user.Type == authtypes.SubAccountUserRole
 	}, ownerSupplier)
 
 	uc.handlerGroupCacheUpdate(lastMimes, &ret, groups)
@@ -153,8 +154,8 @@ func (uc *userCache) setUserAndGroups(users []*authcommon.User,
 }
 
 // handlerUserCacheUpdate 处理用户信息更新
-func (uc *userCache) handlerUserCacheUpdate(lastMimes map[string]time.Time, ret *userRefreshResult, users []*authcommon.User,
-	filter func(user *authcommon.User) bool, ownerSupplier func(user *authcommon.User) *authcommon.User) {
+func (uc *userCache) handlerUserCacheUpdate(lastMimes map[string]time.Time, ret *userRefreshResult, users []*authtypes.User,
+	filter func(user *authtypes.User) bool, ownerSupplier func(user *authtypes.User) *authtypes.User) {
 
 	lastUserMtime := uc.LastMtime("users").Unix()
 
@@ -163,7 +164,7 @@ func (uc *userCache) handlerUserCacheUpdate(lastMimes map[string]time.Time, ret 
 
 		lastUserMtime = int64(math.Max(float64(lastUserMtime), float64(user.ModifyTime.Unix())))
 
-		if user.Type == authcommon.AdminUserRole {
+		if user.Type == authtypes.AdminUserRole {
 			uc.adminUser.Store(user)
 			uc.users.Store(user.ID, user)
 			uc.name2Users.Store(fmt.Sprintf(NameLinkOwnerTemp, user.Name, user.Name), user)
@@ -199,7 +200,7 @@ func (uc *userCache) handlerUserCacheUpdate(lastMimes map[string]time.Time, ret 
 
 // handlerGroupCacheUpdate 处理用户组信息更新
 func (uc *userCache) handlerGroupCacheUpdate(lastMimes map[string]time.Time, ret *userRefreshResult,
-	groups []*authcommon.UserGroupDetail) {
+	groups []*authtypes.UserGroupDetail) {
 
 	lastGroupMtime := uc.LastMtime("group").Unix()
 
@@ -213,7 +214,7 @@ func (uc *userCache) handlerGroupCacheUpdate(lastMimes map[string]time.Time, ret
 			uc.groups.Delete(group.ID)
 			ret.groupDel++
 		} else {
-			var oldGroup *authcommon.UserGroupDetail
+			var oldGroup *authtypes.UserGroupDetail
 			if oldVal, ok := uc.groups.Load(group.ID); ok {
 				ret.groupUpdate++
 				oldGroup = oldVal
@@ -255,9 +256,9 @@ func (uc *userCache) handlerGroupCacheUpdate(lastMimes map[string]time.Time, ret
 
 func (uc *userCache) Clear() error {
 	uc.BaseCache.Clear()
-	uc.users = utils.NewSyncMap[string, *authcommon.User]()
-	uc.name2Users = utils.NewSyncMap[string, *authcommon.User]()
-	uc.groups = utils.NewSyncMap[string, *authcommon.UserGroupDetail]()
+	uc.users = utils.NewSyncMap[string, *authtypes.User]()
+	uc.name2Users = utils.NewSyncMap[string, *authtypes.User]()
+	uc.groups = utils.NewSyncMap[string, *authtypes.UserGroupDetail]()
 	uc.user2Groups = utils.NewSyncMap[string, *utils.SyncSet[string]]()
 	uc.adminUser = atomic.Value{}
 	uc.lastUserMtime = 0
@@ -266,17 +267,17 @@ func (uc *userCache) Clear() error {
 }
 
 func (uc *userCache) Name() string {
-	return types.UsersName
+	return cacheapi.UsersName
 }
 
 // GetAdmin 获取管理员数据信息
-func (uc *userCache) GetAdmin() *authcommon.User {
+func (uc *userCache) GetAdmin() *authtypes.User {
 	val := uc.adminUser.Load()
 	if val == nil {
 		return nil
 	}
 
-	return val.(*authcommon.User)
+	return val.(*authtypes.User)
 }
 
 // IsOwner 判断当前用户是否是 owner 角色
@@ -286,7 +287,7 @@ func (uc *userCache) IsOwner(id string) bool {
 		return false
 	}
 	ut := val.Type
-	return ut == authcommon.AdminUserRole || ut == authcommon.OwnerUserRole
+	return ut == authtypes.AdminUserRole || ut == authtypes.OwnerUserRole
 }
 
 func (uc *userCache) IsUserInGroup(userId, groupId string) bool {
@@ -299,7 +300,7 @@ func (uc *userCache) IsUserInGroup(userId, groupId string) bool {
 }
 
 // GetUserByID 根据用户ID获取用户缓存对象
-func (uc *userCache) GetUserByID(id string) *authcommon.User {
+func (uc *userCache) GetUserByID(id string) *authtypes.User {
 	if id == "" {
 		return nil
 	}
@@ -312,7 +313,7 @@ func (uc *userCache) GetUserByID(id string) *authcommon.User {
 }
 
 // GetUserByName 通过用户 name 以及 owner 获取用户缓存对象
-func (uc *userCache) GetUserByName(name, ownerName string) *authcommon.User {
+func (uc *userCache) GetUserByName(name, ownerName string) *authtypes.User {
 	val, ok := uc.name2Users.Load(fmt.Sprintf(NameLinkOwnerTemp, ownerName, name))
 
 	if !ok {
@@ -322,7 +323,7 @@ func (uc *userCache) GetUserByName(name, ownerName string) *authcommon.User {
 }
 
 // GetGroup 通过用户组ID获取用户组缓存对象
-func (uc *userCache) GetGroup(id string) *authcommon.UserGroupDetail {
+func (uc *userCache) GetGroup(id string) *authtypes.UserGroupDetail {
 	if id == "" {
 		return nil
 	}
@@ -348,30 +349,30 @@ func (uc *userCache) GetUserLinkGroupIds(userId string) []string {
 }
 
 // QueryUsers .
-func (uc *userCache) QueryUsers(ctx context.Context, args types.UserSearchArgs) (uint32, []*authcommon.User, error) {
+func (uc *userCache) QueryUsers(ctx context.Context, args cacheapi.UserSearchArgs) (uint32, []*authtypes.User, error) {
 	searchId, hasId := args.Filters["id"]
 	searchName, hasName := args.Filters["name"]
 	searchOwner, hasOwner := args.Filters["owner"]
 	searchSource, hasSource := args.Filters["source"]
 	searchGroupId, hasGroup := args.Filters["group_id"]
 
-	predicates := types.LoadUserPredicates(ctx)
+	predicates := cacheapi.LoadUserPredicates(ctx)
 
 	if hasGroup {
 		g, ok := uc.groups.Load(searchGroupId)
 		if !ok {
 			return 0, nil, nil
 		}
-		predicates = append(predicates, func(ctx context.Context, u *authcommon.User) bool {
+		predicates = append(predicates, func(ctx context.Context, u *authtypes.User) bool {
 			_, exist := g.UserIds[u.ID]
 			return exist
 		})
 	}
 
-	result := make([]*authcommon.User, 0, 32)
-	uc.users.Range(func(key string, val *authcommon.User) {
+	result := make([]*authtypes.User, 0, 32)
+	uc.users.Range(func(key string, val *authtypes.User) {
 		// 超级账户不做展示
-		if authcommon.UserRoleType(val.Type) == authcommon.AdminUserRole {
+		if authtypes.UserRoleType(val.Type) == authtypes.AdminUserRole {
 			return
 		}
 		if hasId && searchId != key {
@@ -401,7 +402,7 @@ func (uc *userCache) QueryUsers(ctx context.Context, args types.UserSearchArgs) 
 	return total, ret, nil
 }
 
-func (uc *userCache) listUsersPage(users []*authcommon.User, args types.UserSearchArgs) (uint32, []*authcommon.User) {
+func (uc *userCache) listUsersPage(users []*authtypes.User, args cacheapi.UserSearchArgs) (uint32, []*authtypes.User) {
 	total := uint32(len(users))
 	if args.Offset >= total || args.Limit == 0 {
 		return total, nil
@@ -414,7 +415,7 @@ func (uc *userCache) listUsersPage(users []*authcommon.User, args types.UserSear
 }
 
 // QueryUserGroups .
-func (uc *userCache) QueryUserGroups(ctx context.Context, args types.UserGroupSearchArgs) (uint32, []*authcommon.UserGroupDetail, error) {
+func (uc *userCache) QueryUserGroups(ctx context.Context, args cacheapi.UserGroupSearchArgs) (uint32, []*authtypes.UserGroupDetail, error) {
 	if err := uc.Update(); err != nil {
 		return 0, nil, err
 	}
@@ -424,21 +425,21 @@ func (uc *userCache) QueryUserGroups(ctx context.Context, args types.UserGroupSe
 	searchOwner, hasOwner := args.Filters["owner"]
 	searchSource, hasSource := args.Filters["source"]
 
-	predicates := types.LoadUserGroupPredicates(ctx)
+	predicates := cacheapi.LoadUserGroupPredicates(ctx)
 
 	searchUserId, hasUserId := args.Filters["user_id"]
 	if hasUserId {
 		if _, ok := uc.users.Load(searchUserId); !ok {
 			return 0, nil, nil
 		}
-		predicates = append(predicates, func(ctx context.Context, ugd *authcommon.UserGroupDetail) bool {
+		predicates = append(predicates, func(ctx context.Context, ugd *authtypes.UserGroupDetail) bool {
 			_, exist := ugd.UserIds[searchUserId]
 			return exist
 		})
 	}
 
-	result := make([]*authcommon.UserGroupDetail, 0, 32)
-	uc.groups.Range(func(key string, val *authcommon.UserGroupDetail) {
+	result := make([]*authtypes.UserGroupDetail, 0, 32)
+	uc.groups.Range(func(key string, val *authtypes.UserGroupDetail) {
 		// 超级账户不做展示
 		if hasId && searchId != key {
 			return
@@ -464,8 +465,8 @@ func (uc *userCache) QueryUserGroups(ctx context.Context, args types.UserGroupSe
 	return total, ret, nil
 }
 
-func (uc *userCache) listUserGroupsPage(groups []*authcommon.UserGroupDetail,
-	args types.UserGroupSearchArgs) (uint32, []*authcommon.UserGroupDetail) {
+func (uc *userCache) listUserGroupsPage(groups []*authtypes.UserGroupDetail,
+	args cacheapi.UserGroupSearchArgs) (uint32, []*authtypes.UserGroupDetail) {
 	total := uint32(len(groups))
 	if args.Limit == 0 {
 		return total, nil

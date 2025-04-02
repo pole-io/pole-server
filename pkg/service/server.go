@@ -22,12 +22,12 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/observability/history"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	cacheservice "github.com/pole-io/pole-server/pkg/cache/service"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/model"
@@ -45,7 +45,7 @@ type Server struct {
 
 	namespaceSvr namespace.NamespaceOperateServer
 
-	caches cachetypes.CacheManager
+	caches cacheapi.CacheManager
 	bc     *batch.Controller
 
 	healthServer *healthcheck.Server
@@ -58,13 +58,6 @@ type Server struct {
 
 	// instanceChains 实例信息变化回调
 	instanceChains []InstanceChain
-}
-
-func (s *Server) isSupportL5() bool {
-	if s.config.L5Open != nil {
-		return *s.config.L5Open
-	}
-	return true
 }
 
 func (s *Server) allowAutoCreate() bool {
@@ -84,7 +77,7 @@ func (s *Server) HealthServer() *healthcheck.Server {
 }
 
 // Cache 返回Cache
-func (s *Server) Cache() cachetypes.CacheManager {
+func (s *Server) Cache() cacheapi.CacheManager {
 	return s.caches
 }
 

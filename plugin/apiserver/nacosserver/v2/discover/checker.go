@@ -29,11 +29,11 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/observability/event"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
@@ -45,7 +45,7 @@ type Checker struct {
 	discoverSvr service.DiscoverServer
 	healthSvr   *healthcheck.Server
 
-	cacheMgr  cachetypes.CacheManager
+	cacheMgr  cacheapi.CacheManager
 	connMgr   *remote.ConnectionManager
 	clientMgr *ConnectionClientManager
 
@@ -109,11 +109,11 @@ func newChecker(
 func (c *Checker) syncCacheData(cancel context.CancelFunc) {
 	defer cancel()
 
-	handle := func(key string, val *model.Instance) {
+	handle := func(key string, val *svctypes.Instance) {
 		c.OnUpsert(val)
 	}
 
-	_ = c.cacheMgr.Instance().IteratorInstances(func(key string, value *model.Instance) (bool, error) {
+	_ = c.cacheMgr.Instance().IteratorInstances(func(key string, value *svctypes.Instance) (bool, error) {
 		handle(key, value)
 		return true, nil
 	})
@@ -146,7 +146,7 @@ func (c *Checker) OnEvent(ctx context.Context, value any) error {
 
 // OnUpsert callback when cache value upsert
 func (c *Checker) OnUpsert(value interface{}) {
-	ins, _ := value.(*model.Instance)
+	ins, _ := value.(*svctypes.Instance)
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -162,7 +162,7 @@ func (c *Checker) OnUpsert(value interface{}) {
 
 // OnDeleted callback when cache value deleted
 func (c *Checker) OnDeleted(value interface{}) {
-	ins, _ := value.(*model.Instance)
+	ins, _ := value.(*svctypes.Instance)
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -271,7 +271,7 @@ func (c *Checker) realCheck() {
 		nacoslog.Info("[NACOS-V2][Checker] batch set instance health_status to unhealthy",
 			zap.Any("instance-ids", ids))
 		if err := svr.Store().
-			BatchSetInstanceHealthStatus(ids, model.StatusBoolToInt(false), utils.NewUUID()); err != nil {
+			BatchSetInstanceHealthStatus(ids, utils.StatusBoolToInt(false), utils.NewUUID()); err != nil {
 			nacoslog.Error("[NACOS-V2][Checker] batch set instance health_status to unhealthy",
 				zap.Any("instance-ids", ids), zap.Error(err))
 		}
@@ -285,7 +285,7 @@ func (c *Checker) realCheck() {
 		nacoslog.Info("[NACOS-V2][Checker] batch set instance health_status to healty",
 			zap.Any("instance-ids", ids))
 		if err := svr.Store().
-			BatchSetInstanceHealthStatus(ids, model.StatusBoolToInt(true), utils.NewUUID()); err != nil {
+			BatchSetInstanceHealthStatus(ids, utils.StatusBoolToInt(true), utils.NewUUID()); err != nil {
 			nacoslog.Error("[NACOS-V2][Checker] batch set instance health_status to healty",
 				zap.Any("instance-ids", ids), zap.Error(err))
 		}
@@ -321,7 +321,7 @@ func (c *CheckerLeaderSubscriber) OnEvent(ctx context.Context, i interface{}) er
 
 func (c *Checker) isSelfServiceInstance(instance *service_manage.Instance) bool {
 	metadata := instance.GetMetadata()
-	if svcName, ok := metadata[model.MetaKeyPolarisService]; ok {
+	if svcName, ok := metadata[types.MetaKeyPolarisService]; ok {
 		return svcName == c.healthSvr.SelfService()
 	}
 	return false

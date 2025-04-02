@@ -18,24 +18,24 @@
 package service
 
 import (
-	"fmt"
 	"time"
 
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
+	types "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
+	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 type (
 	// RouteRuleCache Routing rules cache
 	RouteRuleCache struct {
-		*types.BaseCache
+		*cachebase.BaseCache
 
 		serviceCache types.ServiceCache
 		storage      store.Store
@@ -51,7 +51,7 @@ type (
 // NewRouteRuleCache Return a object of operating RouteRuleCache
 func NewRouteRuleCache(s store.Store, cacheMgr types.CacheManager) types.RoutingConfigCache {
 	return &RouteRuleCache{
-		BaseCache: types.NewBaseCache(s, cacheMgr),
+		BaseCache: cachebase.NewBaseCache(s, cacheMgr),
 		storage:   s,
 	}
 }
@@ -244,37 +244,4 @@ func (rc *RouteRuleCache) setRouterRules(lastMtimes map[string]time.Time, cs []*
 		rc.container.saveV2(extendEntry)
 	}
 	lastMtimes[rc.Name()+"v2"] = time.Unix(lastMtimeV2, 0)
-}
-
-func (rc *RouteRuleCache) IsConvertFromV1(id string) (string, bool) {
-	val, ok := rc.container.v1rulesToOld[id]
-	return val, ok
-}
-
-func (rc *RouteRuleCache) convertV1toV2(rule *rules.RoutingConfig) (bool, []*rules.ExtendRouterConfig, error) {
-	svc := rc.serviceCache.GetServiceByID(rule.ID)
-	if svc == nil {
-		s, err := rc.storage.GetServiceByID(rule.ID)
-		if err != nil {
-			return false, nil, err
-		}
-		if s == nil {
-			return true, nil, nil
-		}
-		svc = s
-	}
-	if svc.IsAlias() {
-		return false, nil, fmt.Errorf("svc: %+v is alias", svc)
-	}
-
-	in, out, err := rules.ConvertRoutingV1ToExtendV2(svc.Name, svc.Namespace, rule)
-	if err != nil {
-		return false, nil, err
-	}
-
-	ret := make([]*rules.ExtendRouterConfig, 0, len(in)+len(out))
-	ret = append(ret, in...)
-	ret = append(ret, out...)
-
-	return true, ret, nil
 }

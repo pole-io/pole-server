@@ -27,7 +27,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -43,7 +43,7 @@ type RateLimitRuleContainer struct {
 	rules *utils.SyncMap[string, *subRateLimitRuleBucket]
 }
 
-func (r *RateLimitRuleContainer) foreach(proc types.RateLimitIterProc) {
+func (r *RateLimitRuleContainer) foreach(proc cacheapi.RateLimitIterProc) {
 	r.rules.Range(func(key string, val *subRateLimitRuleBucket) {
 		val.foreach(proc)
 	})
@@ -158,7 +158,7 @@ func (r *subRateLimitRuleBucket) delRule(rule *rules.RateLimit) {
 	delete(r.rules, rule.ID)
 }
 
-func (r *subRateLimitRuleBucket) foreach(proc types.RateLimitIterProc) {
+func (r *subRateLimitRuleBucket) foreach(proc cacheapi.RateLimitIterProc) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 

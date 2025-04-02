@@ -22,8 +22,8 @@ import (
 
 	"go.uber.org/zap"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 )
@@ -43,7 +43,7 @@ type EurekaInstanceChain struct {
 	s store.Store
 }
 
-func (c *EurekaInstanceChain) AfterUpdate(ctx context.Context, instances ...*model.Instance) {
+func (c *EurekaInstanceChain) AfterUpdate(ctx context.Context, instances ...*svctypes.Instance) {
 	isFromEureka, _ := ctx.Value(sourceFromEureka{}).(bool)
 	if isFromEureka {
 		return

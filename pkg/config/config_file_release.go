@@ -30,11 +30,11 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
 	commonstore "github.com/pole-io/pole-server/pkg/common/store"
@@ -63,7 +63,7 @@ func (s *Server) PublishConfigFile(ctx context.Context, req *apiconfig.ConfigFil
 		log.Error("[Config][Release] publish config file commit tx.", utils.RequestID(ctx), zap.Error(err))
 		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
 	}
-	if req.GetReleaseType().GetValue() == model.ReleaseTypeGray {
+	if req.GetReleaseType().GetValue() == conftypes.ReleaseTypeGray {
 		s.recordReleaseSuccess(ctx, utils.ReleaseTypeGray, data)
 	} else {
 		s.recordReleaseSuccess(ctx, utils.ReleaseTypeNormal, data)
@@ -159,7 +159,7 @@ func (s *Server) handlePublishConfigFile(ctx context.Context, tx store.Tx,
 			return fileRelease, api.NewConfigResponse(commonstore.StoreCode2APICode(err))
 		}
 	}
-	if req.GetReleaseType().GetValue() == model.ReleaseTypeGray {
+	if req.GetReleaseType().GetValue() == conftypes.ReleaseTypeGray {
 		clientLabels := req.GetBetaLabels()
 		raw := make([]json.RawMessage, 0, len(clientLabels))
 		marshaler := jsonpb.Marshaler{}
@@ -332,8 +332,8 @@ func (s *Server) DeleteConfigFileRelease(ctx context.Context,
 func (s *Server) GetConfigFileReleaseVersions(ctx context.Context,
 	searchFilters map[string]string) *apiconfig.ConfigBatchQueryResponse {
 
-	args := cachetypes.ConfigReleaseArgs{
-		BaseConfigArgs: cachetypes.BaseConfigArgs{
+	args := cacheapi.ConfigReleaseArgs{
+		BaseConfigArgs: cacheapi.BaseConfigArgs{
 			Namespace: searchFilters["namespace"],
 			Group:     searchFilters["group"],
 		},
@@ -349,8 +349,8 @@ func (s *Server) GetConfigFileReleases(ctx context.Context,
 
 	offset, limit, _ := utils.ParseOffsetAndLimit(searchFilters)
 
-	args := cachetypes.ConfigReleaseArgs{
-		BaseConfigArgs: cachetypes.BaseConfigArgs{
+	args := cacheapi.ConfigReleaseArgs{
+		BaseConfigArgs: cacheapi.BaseConfigArgs{
 			Namespace:  searchFilters["namespace"],
 			Group:      searchFilters["group"],
 			Offset:     offset,
@@ -367,7 +367,7 @@ func (s *Server) GetConfigFileReleases(ctx context.Context,
 }
 
 func (s *Server) handleDescribeConfigFileReleases(ctx context.Context,
-	args cachetypes.ConfigReleaseArgs) *apiconfig.ConfigBatchQueryResponse {
+	args cacheapi.ConfigReleaseArgs) *apiconfig.ConfigBatchQueryResponse {
 
 	total, simpleReleases, err := s.fileCache.QueryReleases(&args)
 	if err != nil {
@@ -390,11 +390,11 @@ func (s *Server) handleDescribeConfigFileReleases(ctx context.Context,
 			CreateBy:           utils.NewStringValue(item.CreateBy),
 			ModifyBy:           utils.NewStringValue(item.ModifyBy),
 			ReleaseDescription: utils.NewStringValue(item.ReleaseDescription),
-			Tags:               model.FromTagMap(item.Metadata),
+			Tags:               conftypes.FromTagMap(item.Metadata),
 			ReleaseType:        utils.NewStringValue(string(item.ReleaseType)),
 		}
 		// 查询配置灰度规则标签
-		if item.ReleaseType == model.ReleaseTypeGray {
+		if item.ReleaseType == conftypes.ReleaseTypeGray {
 			viewData.BetaLabels = s.caches.Gray().GetGrayRule(model.GetGrayConfigRealseKey(item))
 		}
 		ret = append(ret, viewData)

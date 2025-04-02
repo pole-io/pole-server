@@ -30,6 +30,19 @@ import (
 
 var emptyVal = struct{}{}
 
+// Int2bool 整数转换为bool值
+func Int2bool(entry int) bool {
+	return entry != 0
+}
+
+// StatusBoolToInt 状态bool转int
+func StatusBoolToInt(value bool) int {
+	if value {
+		return 1
+	}
+	return 0
+}
+
 // ConvertFilter map[string]string to  map[string][]string
 func ConvertFilter(filters map[string]string) map[string][]string {
 	newFilters := make(map[string][]string)

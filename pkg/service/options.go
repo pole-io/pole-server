@@ -20,7 +20,7 @@ package service
 import (
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
@@ -33,62 +33,58 @@ import (
    - name: client # Load Client-SDK instance data
 */
 
-func GetRegisterCaches() []cachetypes.ConfigEntry {
-	ret := []cachetypes.ConfigEntry{}
+func GetRegisterCaches() []cacheapi.ConfigEntry {
+	ret := []cacheapi.ConfigEntry{}
 	// ret = append(ret, l5CacheEntry)
 	ret = append(ret, namingCacheEntries...)
 	return ret
 }
 
-func GetAllCaches() []cachetypes.ConfigEntry {
-	ret := []cachetypes.ConfigEntry{}
-	ret = append(ret, l5CacheEntry)
+func GetAllCaches() []cacheapi.ConfigEntry {
+	ret := []cacheapi.ConfigEntry{}
 	ret = append(ret, namingCacheEntries...)
 	ret = append(ret, governanceCacheEntries...)
 	return ret
 }
 
 var (
-	l5CacheEntry = cachetypes.ConfigEntry{
-		Name: cachetypes.L5Name,
-	}
-	namingCacheEntries = []cachetypes.ConfigEntry{
+	namingCacheEntries = []cacheapi.ConfigEntry{
 		{
-			Name: cachetypes.ServiceName,
+			Name: cacheapi.ServiceName,
 			Option: map[string]interface{}{
 				"disableBusiness": false,
 				"needMeta":        true,
 			},
 		},
 		{
-			Name: cachetypes.InstanceName,
+			Name: cacheapi.InstanceName,
 			Option: map[string]interface{}{
 				"disableBusiness": false,
 				"needMeta":        true,
 			},
 		},
 		{
-			Name: cachetypes.ServiceContractName,
+			Name: cacheapi.ServiceContractName,
 		},
 		{
-			Name: cachetypes.ClientName,
+			Name: cacheapi.ClientName,
 		},
 	}
-	governanceCacheEntries = []cachetypes.ConfigEntry{
+	governanceCacheEntries = []cacheapi.ConfigEntry{
 		{
-			Name: cachetypes.RoutingConfigName,
+			Name: cacheapi.RoutingConfigName,
 		},
 		{
-			Name: cachetypes.RateLimitConfigName,
+			Name: cacheapi.RateLimitConfigName,
 		},
 		{
-			Name: cachetypes.CircuitBreakerName,
+			Name: cacheapi.CircuitBreakerName,
 		},
 		{
-			Name: cachetypes.FaultDetectRuleName,
+			Name: cacheapi.FaultDetectRuleName,
 		},
 		{
-			Name: cachetypes.LaneRuleName,
+			Name: cacheapi.LaneRuleName,
 		},
 	}
 )
@@ -113,7 +109,7 @@ func WithStorage(storage store.Store) InitOption {
 	}
 }
 
-func WithCacheManager(cacheOpt *cache.Config, c cachetypes.CacheManager, entries ...cachetypes.ConfigEntry) InitOption {
+func WithCacheManager(cacheOpt *cache.Config, c cacheapi.CacheManager, entries ...cacheapi.ConfigEntry) InitOption {
 	return func(s *Server) {
 		log.Infof("[Naming][Server] cache is open, can access the client api function")
 		if len(entries) != 0 {
@@ -121,9 +117,6 @@ func WithCacheManager(cacheOpt *cache.Config, c cachetypes.CacheManager, entries
 		} else {
 			_ = c.OpenResourceCache(namingCacheEntries...)
 			_ = c.OpenResourceCache(governanceCacheEntries...)
-			if s.isSupportL5() {
-				_ = c.OpenResourceCache(l5CacheEntry)
-			}
 		}
 		s.caches = c
 	}

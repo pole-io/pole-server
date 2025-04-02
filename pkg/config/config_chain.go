@@ -101,7 +101,7 @@ func (chain *CryptoConfigFileChain) AfterGetFile(ctx context.Context,
 			utils.ZapNamespace(file.Namespace), utils.ZapGroup(file.Group),
 			utils.ZapFileName(file.Name), zap.Error(err))
 	}
-	delete(file.Metadata, model.MetaKeyConfigFileDataKey)
+	delete(file.Metadata, types.MetaKeyConfigFileDataKey)
 	return file, nil
 }
 
@@ -147,7 +147,7 @@ func (chain *CryptoConfigFileChain) AfterGetFileRelease(ctx context.Context,
 			utils.ZapNamespace(release.Namespace), utils.ZapGroup(release.Group),
 			utils.ZapFileName(release.Name), zap.Error(err))
 	}
-	delete(release.Metadata, model.MetaKeyConfigFileDataKey)
+	delete(release.Metadata, types.MetaKeyConfigFileDataKey)
 	return release, nil
 }
 
@@ -170,7 +170,7 @@ func (chain *CryptoConfigFileChain) AfterGetFileHistory(ctx context.Context,
 			utils.ZapNamespace(history.Namespace), utils.ZapGroup(history.Group),
 			utils.ZapFileName(history.Name), zap.Error(err))
 	}
-	delete(history.Metadata, model.MetaKeyConfigFileDataKey)
+	delete(history.Metadata, types.MetaKeyConfigFileDataKey)
 	return history, err
 }
 
@@ -244,9 +244,9 @@ func (chain *CryptoConfigFileChain) encryptConfigFile(ctx context.Context, confi
 	if len(configFile.Metadata) == 0 {
 		configFile.Metadata = map[string]string{}
 	}
-	configFile.Metadata[model.MetaKeyConfigFileDataKey] = base64.StdEncoding.EncodeToString(dateKeyBytes)
-	configFile.Metadata[model.MetaKeyConfigFileEncryptAlgo] = algorithm
-	configFile.Metadata[model.MetaKeyConfigFileUseEncrypted] = "true"
+	configFile.Metadata[types.MetaKeyConfigFileDataKey] = base64.StdEncoding.EncodeToString(dateKeyBytes)
+	configFile.Metadata[types.MetaKeyConfigFileEncryptAlgo] = algorithm
+	configFile.Metadata[types.MetaKeyConfigFileUseEncrypted] = "true"
 
 	return nil
 }

@@ -589,7 +589,7 @@ func asyncSetInsDbStatus(svr *Server, ins *apiservice.Instance, healthStatus boo
 // ins包括了req的内容，并且填充了instanceID与serviceToken
 func serialSetInsDbStatus(svr *Server, ins *apiservice.Instance, healthStatus bool, lastBeatTime int64) apimodel.Code {
 	id := ins.GetId().GetValue()
-	if err := svr.storage.SetInstanceHealthStatus(id, svctypes.StatusBoolToInt(healthStatus), utils.NewUUID()); err != nil {
+	if err := svr.storage.SetInstanceHealthStatus(id, utils.StatusBoolToInt(healthStatus), utils.NewUUID()); err != nil {
 		log.Errorf("[Health Check][Check]id: %s set db status err:%s", id, err)
 		return commonstore.StoreCode2APICode(err)
 	}

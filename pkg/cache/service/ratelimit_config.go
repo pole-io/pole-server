@@ -26,16 +26,17 @@ import (
 	"golang.org/x/sync/singleflight"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	types "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
+	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // rateLimitCache的实现
 type rateLimitCache struct {
-	*types.BaseCache
+	*cachebase.BaseCache
 
 	lock         sync.RWMutex
 	waitFixRules map[string]struct{}
@@ -48,7 +49,7 @@ type rateLimitCache struct {
 // NewRateLimitCache 返回一个操作RateLimitCache的对象
 func NewRateLimitCache(s store.Store, cacheMgr types.CacheManager) types.RateLimitCache {
 	return &rateLimitCache{
-		BaseCache:    types.NewBaseCache(s, cacheMgr),
+		BaseCache:    cachebase.NewBaseCache(s, cacheMgr),
 		storage:      s,
 		waitFixRules: map[string]struct{}{},
 	}

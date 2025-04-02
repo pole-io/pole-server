@@ -28,22 +28,23 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
+	cachetypes "github.com/pole-io/pole-server/apis/cache"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
+	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 func NewServiceContractCache(storage store.Store, cacheMgr cachetypes.CacheManager) cachetypes.ServiceContractCache {
 	return &ServiceContractCache{
-		BaseCache: cachetypes.NewBaseCache(storage, cacheMgr),
+		BaseCache: cachebase.NewBaseCache(storage, cacheMgr),
 	}
 }
 
 type ServiceContractCache struct {
-	*cachetypes.BaseCache
-	// data namespace/service/type/protocol/version -> *model.EnrichServiceContract
-	data *utils.SyncMap[string, *model.EnrichServiceContract]
+	*cachebase.BaseCache
+	// data namespace/service/type/protocol/version -> *svctypes.EnrichServiceContract
+	data *utils.SyncMap[string, *svctypes.EnrichServiceContract]
 	// valueCache save ConfigFileRelease.Content into local file to reduce memory use
 	valueCache  *bbolt.DB
 	singleGroup singleflight.Group
@@ -56,7 +57,7 @@ func (sc *ServiceContractCache) Initialize(c map[string]interface{}) error {
 		return err
 	}
 	sc.valueCache = valueCache
-	sc.data = utils.NewSyncMap[string, *model.EnrichServiceContract]()
+	sc.data = utils.NewSyncMap[string, *svctypes.EnrichServiceContract]()
 	return nil
 }
 
@@ -107,7 +108,7 @@ func (sc *ServiceContractCache) realUpdate() (map[string]time.Time, int64, error
 	return lastMtimes, int64(len(values)), err
 }
 
-func (sc *ServiceContractCache) setContracts(values []*model.EnrichServiceContract) (map[string]time.Time, int, int) {
+func (sc *ServiceContractCache) setContracts(values []*svctypes.EnrichServiceContract) (map[string]time.Time, int, int) {
 	var (
 		upsert, del int
 		lastMtime   time.Time
@@ -129,7 +130,7 @@ func (sc *ServiceContractCache) setContracts(values []*model.EnrichServiceContra
 
 // Clear
 func (sc *ServiceContractCache) Clear() error {
-	sc.data = utils.NewSyncMap[string, *model.EnrichServiceContract]()
+	sc.data = utils.NewSyncMap[string, *svctypes.EnrichServiceContract]()
 	return nil
 }
 
@@ -138,12 +139,12 @@ func (sc *ServiceContractCache) Name() string {
 	return cachetypes.ServiceContractName
 }
 
-func (sc *ServiceContractCache) Get(ctx context.Context, req *model.ServiceContract) *model.EnrichServiceContract {
+func (sc *ServiceContractCache) Get(ctx context.Context, req *svctypes.ServiceContract) *svctypes.EnrichServiceContract {
 	ret, _ := sc.loadValueCache(req)
 	return ret
 }
 
-func (fc *ServiceContractCache) upsertValueCache(item *model.EnrichServiceContract, del bool) error {
+func (fc *ServiceContractCache) upsertValueCache(item *svctypes.EnrichServiceContract, del bool) error {
 	return fc.valueCache.Update(func(tx *bbolt.Tx) error {
 		if del {
 			return tx.DeleteBucket([]byte(item.GetCacheKey()))
@@ -156,8 +157,8 @@ func (fc *ServiceContractCache) upsertValueCache(item *model.EnrichServiceContra
 	})
 }
 
-func (fc *ServiceContractCache) loadValueCache(release *model.ServiceContract) (*model.EnrichServiceContract, error) {
-	ret := &model.EnrichServiceContract{}
+func (fc *ServiceContractCache) loadValueCache(release *svctypes.ServiceContract) (*svctypes.EnrichServiceContract, error) {
+	ret := &svctypes.EnrichServiceContract{}
 	found := false
 	err := fc.valueCache.View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte(release.GetCacheKey()))
@@ -169,7 +170,7 @@ func (fc *ServiceContractCache) loadValueCache(release *model.ServiceContract) (
 		return json.Unmarshal(val, ret)
 	})
 	if !found {
-		ret.ServiceContract = &model.ServiceContract{}
+		ret.ServiceContract = &svctypes.ServiceContract{}
 	}
 	return ret, err
 }

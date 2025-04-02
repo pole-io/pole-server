@@ -27,20 +27,20 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // CreateLaneGroups 批量创建泳道组
 func (svr *Server) CreateLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
 
-	authCtx := svr.collectLaneRuleAuthContext(ctx, reqs, authcommon.Create, authcommon.CreateLaneGroups)
+	authCtx := svr.collectLaneRuleAuthContext(ctx, reqs, authtypes.Create, authtypes.CreateLaneGroups)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
@@ -49,7 +49,7 @@ func (svr *Server) CreateLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 		item := rsp.GetResponses()[index].GetData()
 		rule := &apitraffic.LaneGroup{}
 		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
-		_ = svr.afterRuleResource(ctx, model.RLaneGroup, authcommon.ResourceEntry{
+		_ = svr.afterRuleResource(ctx, types.RLaneGroup, authtypes.ResourceEntry{
 			ID:   rule.Id,
 			Type: security.ResourceType_LaneRules,
 		}, false)
@@ -59,9 +59,9 @@ func (svr *Server) CreateLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 
 // UpdateLaneGroups 批量更新泳道组
 func (svr *Server) UpdateLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectLaneRuleAuthContext(ctx, reqs, authcommon.Modify, authcommon.UpdateLaneGroups)
+	authCtx := svr.collectLaneRuleAuthContext(ctx, reqs, authtypes.Modify, authtypes.UpdateLaneGroups)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
@@ -70,9 +70,9 @@ func (svr *Server) UpdateLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 
 // DeleteLaneGroups 批量删除泳道组
 func (svr *Server) DeleteLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectLaneRuleAuthContext(ctx, reqs, authcommon.Delete, authcommon.DeleteLaneGroups)
+	authCtx := svr.collectLaneRuleAuthContext(ctx, reqs, authtypes.Delete, authtypes.DeleteLaneGroups)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchWriteResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
@@ -81,7 +81,7 @@ func (svr *Server) DeleteLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 		item := rsp.GetResponses()[index].GetData()
 		rule := &apitraffic.LaneGroup{}
 		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
-		_ = svr.afterRuleResource(ctx, model.RLaneGroup, authcommon.ResourceEntry{
+		_ = svr.afterRuleResource(ctx, types.RLaneGroup, authtypes.ResourceEntry{
 			ID:   rule.Id,
 			Type: security.ResourceType_LaneRules,
 		}, true)
@@ -91,15 +91,15 @@ func (svr *Server) DeleteLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 
 // GetLaneGroups 查询泳道组列表
 func (svr *Server) GetLaneGroups(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse {
-	authCtx := svr.collectFaultDetectAuthContext(ctx, nil, authcommon.Read, authcommon.DescribeFaultDetectRules)
+	authCtx := svr.collectFaultDetectAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewBatchQueryResponse(authcommon.ConvertToErrCode(err))
+		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, utils.ContextAuthContextKey, authCtx)
 
-	ctx = cachetypes.AppendLaneRulePredicate(ctx, func(ctx context.Context, cbr *rules.LaneGroupProto) bool {
-		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
+	ctx = cacheapi.AppendLaneRulePredicate(ctx, func(ctx context.Context, cbr *rules.LaneGroupProto) bool {
+		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
 			Type:     security.ResourceType_LaneRules,
 			ID:       cbr.ID,
 			Metadata: cbr.Proto.Metadata,
@@ -112,7 +112,7 @@ func (svr *Server) GetLaneGroups(ctx context.Context, filter map[string]string) 
 	for index := range resp.Data {
 		item := &apitraffic.LaneGroup{}
 		_ = anypb.UnmarshalTo(resp.Data[index], item, proto.UnmarshalOptions{})
-		authCtx.SetAccessResources(map[security.ResourceType][]authcommon.ResourceEntry{
+		authCtx.SetAccessResources(map[security.ResourceType][]authtypes.ResourceEntry{
 			security.ResourceType_LaneRules: {
 				{
 					Type:     apisecurity.ResourceType_LaneRules,
@@ -123,14 +123,14 @@ func (svr *Server) GetLaneGroups(ctx context.Context, filter map[string]string) 
 		})
 
 		// 检查 write 操作权限
-		authCtx.SetMethod([]authcommon.ServerFunctionName{authcommon.UpdateLaneGroups, authcommon.EnableLaneGroups})
+		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateLaneGroups, authtypes.EnableLaneGroups})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 			item.Editable = false
 		}
 
 		// 检查 delete 操作权限
-		authCtx.SetMethod([]authcommon.ServerFunctionName{authcommon.DeleteLaneGroups})
+		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteLaneGroups})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 			item.Deleteable = false
@@ -142,13 +142,13 @@ func (svr *Server) GetLaneGroups(ctx context.Context, filter map[string]string) 
 
 // collectLaneRuleAuthContext 收集全链路灰度规则
 func (svr *Server) collectLaneRuleAuthContext(ctx context.Context, req []*apitraffic.LaneGroup,
-	op authcommon.ResourceOperation, methodName authcommon.ServerFunctionName) *authcommon.AcquireContext {
+	op authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
 
-	resources := make([]authcommon.ResourceEntry, 0, len(req))
+	resources := make([]authtypes.ResourceEntry, 0, len(req))
 	for i := range req {
 		saveRule := svr.Cache().LaneRule().GetRule(req[i].GetId())
 		if saveRule != nil {
-			resources = append(resources, authcommon.ResourceEntry{
+			resources = append(resources, authtypes.ResourceEntry{
 				Type:     apisecurity.ResourceType_LaneRules,
 				ID:       saveRule.ID,
 				Metadata: saveRule.Labels,
@@ -156,12 +156,12 @@ func (svr *Server) collectLaneRuleAuthContext(ctx context.Context, req []*apitra
 		}
 	}
 
-	return authcommon.NewAcquireContext(
-		authcommon.WithRequestContext(ctx),
-		authcommon.WithOperation(op),
-		authcommon.WithModule(authcommon.DiscoverModule),
-		authcommon.WithMethod(methodName),
-		authcommon.WithAccessResources(map[apisecurity.ResourceType][]authcommon.ResourceEntry{
+	return authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(op),
+		authtypes.WithModule(authtypes.DiscoverModule),
+		authtypes.WithMethod(methodName),
+		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_LaneRules: resources,
 		}),
 	)

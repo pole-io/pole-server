@@ -18,16 +18,15 @@
 package service
 
 import (
-	types "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 )
 
 var (
-	_ types.InstanceCache       = (*instanceCache)(nil)
-	_ types.ServiceCache        = (*serviceCache)(nil)
-	_ types.RoutingConfigCache  = (*RouteRuleCache)(nil)
-	_ types.CircuitBreakerCache = (*circuitBreakerCache)(nil)
-	_ types.RateLimitCache      = (*rateLimitCache)(nil)
-	_ types.FaultDetectCache    = (*faultDetectCache)(nil)
-	_ types.L5Cache             = (*l5Cache)(nil)
-	_ types.FaultDetectCache    = (*faultDetectCache)(nil)
+	_ cacheapi.InstanceCache       = (*instanceCache)(nil)
+	_ cacheapi.ServiceCache        = (*serviceCache)(nil)
+	_ cacheapi.RoutingConfigCache  = (*RouteRuleCache)(nil)
+	_ cacheapi.CircuitBreakerCache = (*circuitBreakerCache)(nil)
+	_ cacheapi.RateLimitCache      = (*rateLimitCache)(nil)
+	_ cacheapi.FaultDetectCache    = (*faultDetectCache)(nil)
+	_ cacheapi.FaultDetectCache    = (*faultDetectCache)(nil)
 )

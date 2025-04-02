@@ -30,27 +30,29 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
+	types "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
+	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // circuitBreaker的实现
 type circuitBreakerCache struct {
-	*types.BaseCache
+	*cachebase.BaseCache
 
 	storage store.Store
-	// rules record id -> *model.CircuitBreakerRule
-	rules *utils.SyncMap[string, *model.CircuitBreakerRule]
+	// rules record id -> *rules.CircuitBreakerRule
+	rules *utils.SyncMap[string, *rules.CircuitBreakerRule]
 	// increment cache
 	// fetched service cache
 	// key1: namespace, key2: service
-	circuitBreakers map[string]map[string]*model.ServiceWithCircuitBreakerRules
+	circuitBreakers map[string]map[string]*rules.ServiceWithCircuitBreakerRules
 	// key1: namespace
-	nsWildcardRules map[string]*model.ServiceWithCircuitBreakerRules
+	nsWildcardRules map[string]*rules.ServiceWithCircuitBreakerRules
 	// all rules are wildcard specific
-	allWildcardRules *model.ServiceWithCircuitBreakerRules
+	allWildcardRules *rules.ServiceWithCircuitBreakerRules
 	lock             sync.RWMutex
 
 	singleFlight singleflight.Group
@@ -59,12 +61,12 @@ type circuitBreakerCache struct {
 // NewCircuitBreakerCache 返回一个操作CircuitBreakerCache的对象
 func NewCircuitBreakerCache(s store.Store, cacheMgr types.CacheManager) types.CircuitBreakerCache {
 	return &circuitBreakerCache{
-		BaseCache:       types.NewBaseCache(s, cacheMgr),
+		BaseCache:       cachebase.NewBaseCache(s, cacheMgr),
 		storage:         s,
-		rules:           utils.NewSyncMap[string, *model.CircuitBreakerRule](),
-		circuitBreakers: make(map[string]map[string]*model.ServiceWithCircuitBreakerRules),
-		nsWildcardRules: make(map[string]*model.ServiceWithCircuitBreakerRules),
-		allWildcardRules: model.NewServiceWithCircuitBreakerRules(model.ServiceKey{
+		rules:           utils.NewSyncMap[string, *rules.CircuitBreakerRule](),
+		circuitBreakers: make(map[string]map[string]*rules.ServiceWithCircuitBreakerRules),
+		nsWildcardRules: make(map[string]*rules.ServiceWithCircuitBreakerRules),
+		allWildcardRules: rules.NewServiceWithCircuitBreakerRules(svctypes.ServiceKey{
 			Namespace: types.AllMatched,
 			Name:      types.AllMatched,
 		}),
@@ -104,9 +106,9 @@ func (c *circuitBreakerCache) Clear() error {
 	c.BaseCache.Clear()
 	c.lock.Lock()
 	c.allWildcardRules.Clear()
-	c.rules = utils.NewSyncMap[string, *model.CircuitBreakerRule]()
-	c.nsWildcardRules = make(map[string]*model.ServiceWithCircuitBreakerRules)
-	c.circuitBreakers = make(map[string]map[string]*model.ServiceWithCircuitBreakerRules)
+	c.rules = utils.NewSyncMap[string, *rules.CircuitBreakerRule]()
+	c.nsWildcardRules = make(map[string]*rules.ServiceWithCircuitBreakerRules)
+	c.circuitBreakers = make(map[string]map[string]*rules.ServiceWithCircuitBreakerRules)
 	c.lock.Unlock()
 	return nil
 }
@@ -118,7 +120,7 @@ func (c *circuitBreakerCache) Name() string {
 
 // GetCircuitBreakerConfig 根据serviceID获取熔断规则
 func (c *circuitBreakerCache) GetCircuitBreakerConfig(
-	name string, namespace string) *model.ServiceWithCircuitBreakerRules {
+	name string, namespace string) *rules.ServiceWithCircuitBreakerRules {
 	// check service specific
 	rules := c.checkServiceSpecificCache(name, namespace)
 	if nil != rules {
@@ -132,7 +134,7 @@ func (c *circuitBreakerCache) GetCircuitBreakerConfig(
 }
 
 func (c *circuitBreakerCache) checkServiceSpecificCache(
-	name string, namespace string) *model.ServiceWithCircuitBreakerRules {
+	name string, namespace string) *rules.ServiceWithCircuitBreakerRules {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	svcRules, ok := c.circuitBreakers[namespace]
@@ -142,20 +144,20 @@ func (c *circuitBreakerCache) checkServiceSpecificCache(
 	return nil
 }
 
-func (c *circuitBreakerCache) checkNamespaceSpecificCache(namespace string) *model.ServiceWithCircuitBreakerRules {
+func (c *circuitBreakerCache) checkNamespaceSpecificCache(namespace string) *rules.ServiceWithCircuitBreakerRules {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.nsWildcardRules[namespace]
 }
 
-func (c *circuitBreakerCache) reloadRevision(svcRules *model.ServiceWithCircuitBreakerRules) {
+func (c *circuitBreakerCache) reloadRevision(svcRules *rules.ServiceWithCircuitBreakerRules) {
 	rulesCount := svcRules.CountCircuitBreakerRules()
 	if rulesCount == 0 {
 		svcRules.Revision = ""
 		return
 	}
 	revisions := make([]string, 0, rulesCount)
-	svcRules.IterateCircuitBreakerRules(func(rule *model.CircuitBreakerRule) {
+	svcRules.IterateCircuitBreakerRules(func(rule *rules.CircuitBreakerRule) {
 		revisions = append(revisions, rule.Revision)
 	})
 	sort.Strings(revisions)
@@ -170,12 +172,12 @@ func (c *circuitBreakerCache) reloadRevision(svcRules *model.ServiceWithCircuitB
 }
 
 func (c *circuitBreakerCache) deleteAndReloadCircuitBreakerRules(
-	svcRules *model.ServiceWithCircuitBreakerRules, id string) {
+	svcRules *rules.ServiceWithCircuitBreakerRules, id string) {
 	svcRules.DelCircuitBreakerRule(id)
 	c.reloadRevision(svcRules)
 }
 
-func (c *circuitBreakerCache) deleteCircuitBreakerFromServiceCache(id string, svcKeys map[model.ServiceKey]bool) {
+func (c *circuitBreakerCache) deleteCircuitBreakerFromServiceCache(id string, svcKeys map[svctypes.ServiceKey]bool) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	if len(svcKeys) == 0 {
@@ -191,7 +193,7 @@ func (c *circuitBreakerCache) deleteCircuitBreakerFromServiceCache(id string, sv
 		}
 		return
 	}
-	svcToReloads := make(map[model.ServiceKey]bool)
+	svcToReloads := make(map[svctypes.ServiceKey]bool)
 	for svcKey := range svcKeys {
 		if svcKey.Name == types.AllMatched {
 			rules, ok := c.nsWildcardRules[svcKey.Namespace]
@@ -201,7 +203,7 @@ func (c *circuitBreakerCache) deleteCircuitBreakerFromServiceCache(id string, sv
 			svcRules, ok := c.circuitBreakers[svcKey.Namespace]
 			if ok {
 				for svc := range svcRules {
-					svcToReloads[model.ServiceKey{Namespace: svcKey.Namespace, Name: svc}] = true
+					svcToReloads[svctypes.ServiceKey{Namespace: svcKey.Namespace, Name: svc}] = true
 				}
 			}
 		} else {
@@ -222,20 +224,20 @@ func (c *circuitBreakerCache) deleteCircuitBreakerFromServiceCache(id string, sv
 }
 
 func (c *circuitBreakerCache) storeAndReloadCircuitBreakerRules(
-	svcRules *model.ServiceWithCircuitBreakerRules, cbRule *model.CircuitBreakerRule) {
+	svcRules *rules.ServiceWithCircuitBreakerRules, cbRule *rules.CircuitBreakerRule) {
 	svcRules.AddCircuitBreakerRule(cbRule)
 	c.reloadRevision(svcRules)
 }
 
-func createAndStoreServiceWithCircuitBreakerRules(svcKey model.ServiceKey, key string,
-	values map[string]*model.ServiceWithCircuitBreakerRules) *model.ServiceWithCircuitBreakerRules {
-	rules := model.NewServiceWithCircuitBreakerRules(svcKey)
+func createAndStoreServiceWithCircuitBreakerRules(svcKey svctypes.ServiceKey, key string,
+	values map[string]*rules.ServiceWithCircuitBreakerRules) *rules.ServiceWithCircuitBreakerRules {
+	rules := rules.NewServiceWithCircuitBreakerRules(svcKey)
 	values[key] = rules
 	return rules
 }
 
 func (c *circuitBreakerCache) storeCircuitBreakerToServiceCache(
-	entry *model.CircuitBreakerRule, svcKeys map[model.ServiceKey]bool) {
+	entry *rules.CircuitBreakerRule, svcKeys map[svctypes.ServiceKey]bool) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -252,16 +254,16 @@ func (c *circuitBreakerCache) storeCircuitBreakerToServiceCache(
 		}
 		return
 	}
-	svcToReloads := make(map[model.ServiceKey]bool)
+	svcToReloads := make(map[svctypes.ServiceKey]bool)
 	for svcKey := range svcKeys {
 		if svcKey.Name == types.AllMatched {
-			var wildcardRules *model.ServiceWithCircuitBreakerRules
+			var wildcardRules *rules.ServiceWithCircuitBreakerRules
 			var ok bool
 			wildcardRules, ok = c.nsWildcardRules[svcKey.Namespace]
 			if !ok {
 				wildcardRules = createAndStoreServiceWithCircuitBreakerRules(svcKey, svcKey.Namespace, c.nsWildcardRules)
 				// add all exists wildcard rules
-				c.allWildcardRules.IterateCircuitBreakerRules(func(rule *model.CircuitBreakerRule) {
+				c.allWildcardRules.IterateCircuitBreakerRules(func(rule *rules.CircuitBreakerRule) {
 					wildcardRules.AddCircuitBreakerRule(rule)
 				})
 			}
@@ -269,7 +271,7 @@ func (c *circuitBreakerCache) storeCircuitBreakerToServiceCache(
 			svcRules, ok := c.circuitBreakers[svcKey.Namespace]
 			if ok {
 				for svc := range svcRules {
-					svcToReloads[model.ServiceKey{Namespace: svcKey.Namespace, Name: svc}] = true
+					svcToReloads[svctypes.ServiceKey{Namespace: svcKey.Namespace, Name: svc}] = true
 				}
 			}
 		} else {
@@ -278,36 +280,36 @@ func (c *circuitBreakerCache) storeCircuitBreakerToServiceCache(
 	}
 	if len(svcToReloads) > 0 {
 		for svcToReload := range svcToReloads {
-			var rules *model.ServiceWithCircuitBreakerRules
-			var svcRules map[string]*model.ServiceWithCircuitBreakerRules
+			var breakerrules *rules.ServiceWithCircuitBreakerRules
+			var svcRules map[string]*rules.ServiceWithCircuitBreakerRules
 			var ok bool
 			svcRules, ok = c.circuitBreakers[svcToReload.Namespace]
 			if !ok {
-				svcRules = make(map[string]*model.ServiceWithCircuitBreakerRules)
+				svcRules = make(map[string]*rules.ServiceWithCircuitBreakerRules)
 				c.circuitBreakers[svcToReload.Namespace] = svcRules
 			}
-			rules, ok = svcRules[svcToReload.Name]
+			breakerrules, ok = svcRules[svcToReload.Name]
 			if !ok {
-				rules = createAndStoreServiceWithCircuitBreakerRules(svcToReload, svcToReload.Name, svcRules)
+				breakerrules = createAndStoreServiceWithCircuitBreakerRules(svcToReload, svcToReload.Name, svcRules)
 				// add all exists wildcard rules
-				c.allWildcardRules.IterateCircuitBreakerRules(func(rule *model.CircuitBreakerRule) {
-					rules.AddCircuitBreakerRule(rule)
+				c.allWildcardRules.IterateCircuitBreakerRules(func(rule *rules.CircuitBreakerRule) {
+					breakerrules.AddCircuitBreakerRule(rule)
 				})
 				// add all namespace wildcard rules
 				nsRules, ok := c.nsWildcardRules[svcToReload.Namespace]
 				if ok {
-					nsRules.IterateCircuitBreakerRules(func(rule *model.CircuitBreakerRule) {
-						rules.AddCircuitBreakerRule(rule)
+					nsRules.IterateCircuitBreakerRules(func(rule *rules.CircuitBreakerRule) {
+						breakerrules.AddCircuitBreakerRule(rule)
 					})
 				}
 			}
-			c.storeAndReloadCircuitBreakerRules(rules, entry)
+			c.storeAndReloadCircuitBreakerRules(breakerrules, entry)
 		}
 	}
 }
 
-func getServicesInvolveByCircuitBreakerRule(cbRule *model.CircuitBreakerRule) map[model.ServiceKey]bool {
-	svcKeys := make(map[model.ServiceKey]bool)
+func getServicesInvolveByCircuitBreakerRule(cbRule *rules.CircuitBreakerRule) map[svctypes.ServiceKey]bool {
+	svcKeys := make(map[svctypes.ServiceKey]bool)
 	addService := func(name string, namespace string) {
 		if len(name) == 0 && len(namespace) == 0 {
 			return
@@ -315,7 +317,7 @@ func getServicesInvolveByCircuitBreakerRule(cbRule *model.CircuitBreakerRule) ma
 		if name == types.AllMatched && namespace == types.AllMatched {
 			return
 		}
-		svcKeys[model.ServiceKey{
+		svcKeys[svctypes.ServiceKey{
 			Namespace: namespace,
 			Name:      name,
 		}] = true
@@ -326,7 +328,7 @@ func getServicesInvolveByCircuitBreakerRule(cbRule *model.CircuitBreakerRule) ma
 
 // setCircuitBreaker 更新store的数据到cache中
 func (c *circuitBreakerCache) setCircuitBreaker(
-	cbRules []*model.CircuitBreakerRule) (map[string]time.Time, int, int) {
+	cbRules []*rules.CircuitBreakerRule) (map[string]time.Time, int, int) {
 
 	if len(cbRules) == 0 {
 		return nil, 0, 0
@@ -376,17 +378,17 @@ func (c *circuitBreakerCache) GetCircuitBreakerCount() int {
 	defer c.lock.RUnlock()
 
 	names := make(map[string]bool)
-	c.allWildcardRules.IterateCircuitBreakerRules(func(rule *model.CircuitBreakerRule) {
+	c.allWildcardRules.IterateCircuitBreakerRules(func(rule *rules.CircuitBreakerRule) {
 		names[rule.Name] = true
 	})
-	for _, rules := range c.nsWildcardRules {
-		rules.IterateCircuitBreakerRules(func(rule *model.CircuitBreakerRule) {
+	for _, breakerrules := range c.nsWildcardRules {
+		breakerrules.IterateCircuitBreakerRules(func(rule *rules.CircuitBreakerRule) {
 			names[rule.Name] = true
 		})
 	}
 	for _, values := range c.circuitBreakers {
-		for _, rules := range values {
-			rules.IterateCircuitBreakerRules(func(rule *model.CircuitBreakerRule) {
+		for _, breakerrules := range values {
+			breakerrules.IterateCircuitBreakerRules(func(rule *rules.CircuitBreakerRule) {
 				names[rule.Name] = true
 			})
 		}
@@ -403,34 +405,34 @@ var (
 		"excludeId":        {},
 	}
 
-	cbBlurSearchFields = map[string]func(*model.CircuitBreakerRule) string{
-		"name": func(cbr *model.CircuitBreakerRule) string {
+	cbBlurSearchFields = map[string]func(*rules.CircuitBreakerRule) string{
+		"name": func(cbr *rules.CircuitBreakerRule) string {
 			return cbr.Name
 		},
-		"description": func(cbr *model.CircuitBreakerRule) string {
+		"description": func(cbr *rules.CircuitBreakerRule) string {
 			return cbr.Description
 		},
-		"srcservice": func(cbr *model.CircuitBreakerRule) string {
+		"srcservice": func(cbr *rules.CircuitBreakerRule) string {
 			return cbr.SrcService
 		},
-		"dstservice": func(cbr *model.CircuitBreakerRule) string {
+		"dstservice": func(cbr *rules.CircuitBreakerRule) string {
 			return cbr.DstService
 		},
-		"dstmethod": func(cbr *model.CircuitBreakerRule) string {
+		"dstmethod": func(cbr *rules.CircuitBreakerRule) string {
 			return cbr.DstMethod
 		},
 	}
 
-	circuitBreakerSort = map[string]func(asc bool, a, b *model.CircuitBreakerRule) bool{
-		"mtime": func(asc bool, a, b *model.CircuitBreakerRule) bool {
+	circuitBreakerSort = map[string]func(asc bool, a, b *rules.CircuitBreakerRule) bool{
+		"mtime": func(asc bool, a, b *rules.CircuitBreakerRule) bool {
 			ret := a.ModifyTime.Before(b.ModifyTime)
 			return ret && asc
 		},
-		"id": func(asc bool, a, b *model.CircuitBreakerRule) bool {
+		"id": func(asc bool, a, b *rules.CircuitBreakerRule) bool {
 			ret := a.ID < b.ID
 			return ret && asc
 		},
-		"name": func(asc bool, a, b *model.CircuitBreakerRule) bool {
+		"name": func(asc bool, a, b *rules.CircuitBreakerRule) bool {
 			ret := a.Name < b.Name
 			return ret && asc
 		},
@@ -438,7 +440,7 @@ var (
 )
 
 // Query implements api.CircuitBreakerCache.
-func (c *circuitBreakerCache) Query(ctx context.Context, args *types.CircuitBreakerRuleArgs) (uint32, []*model.CircuitBreakerRule, error) {
+func (c *circuitBreakerCache) Query(ctx context.Context, args *types.CircuitBreakerRuleArgs) (uint32, []*rules.CircuitBreakerRule, error) {
 	if err := c.Update(); err != nil {
 		return 0, nil, err
 	}
@@ -458,8 +460,8 @@ func (c *circuitBreakerCache) Query(ctx context.Context, args *types.CircuitBrea
 		lowerFilter[strings.ToLower(k)] = v
 	}
 
-	results := make([]*model.CircuitBreakerRule, 0, 32)
-	c.rules.ReadRange(func(key string, val *model.CircuitBreakerRule) {
+	results := make([]*rules.CircuitBreakerRule, 0, 32)
+	c.rules.ReadRange(func(key string, val *rules.CircuitBreakerRule) {
 		if hasSvcNs {
 			srcNsValue := val.SrcNamespace
 			dstNsValue := val.DstNamespace
@@ -529,8 +531,8 @@ func (c *circuitBreakerCache) Query(ctx context.Context, args *types.CircuitBrea
 	return total, ret, nil
 }
 
-func (c *circuitBreakerCache) toPage(total uint32, items []*model.CircuitBreakerRule,
-	args *types.CircuitBreakerRuleArgs) (uint32, []*model.CircuitBreakerRule) {
+func (c *circuitBreakerCache) toPage(total uint32, items []*rules.CircuitBreakerRule,
+	args *types.CircuitBreakerRuleArgs) (uint32, []*rules.CircuitBreakerRule) {
 	if args.Limit == 0 {
 		return total, items
 	}
@@ -542,7 +544,7 @@ func (c *circuitBreakerCache) toPage(total uint32, items []*model.CircuitBreaker
 }
 
 // GetRule implements api.CircuitBreakerCache.
-func (c *circuitBreakerCache) GetRule(id string) *model.CircuitBreakerRule {
+func (c *circuitBreakerCache) GetRule(id string) *rules.CircuitBreakerRule {
 	rule, _ := c.rules.Load(id)
 	return rule
 }

@@ -18,12 +18,11 @@
 package history
 
 import (
-	"os"
+	"fmt"
 	"sync"
 
 	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/pkg/common/log"
 )
 
 var (
@@ -52,8 +51,7 @@ func GetHistory() History {
 		}
 
 		if err := compositeHistory.Initialize(nil); err != nil {
-			log.Errorf("History plugin init err: %s", err.Error())
-			os.Exit(-1)
+			panic(fmt.Errorf("History plugin init err: %s", err.Error()))
 		}
 	})
 
@@ -74,14 +72,12 @@ func (c *CompositeHistory) Initialize(config *apis.ConfigEntry) error {
 		entry := c.options[i]
 		item, exist := apis.GetPlugin(apis.PluginTypeHistory, entry.Name)
 		if !exist {
-			log.Errorf("plugin History not found target: %s", entry.Name)
-			continue
+			panic(fmt.Errorf("plugin History not found target: %s", entry.Name))
 		}
 
 		history, ok := item.(History)
 		if !ok {
-			log.Errorf("plugin target: %s not History", entry.Name)
-			continue
+			return fmt.Errorf("plugin %s not implement History interface", entry.Name)
 		}
 
 		if err := history.Initialize(&entry); err != nil {

@@ -28,7 +28,7 @@ import (
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
@@ -56,11 +56,11 @@ func TestNewServer(mockStore store.Store, nsSvr namespace.NamespaceOperateServer
 
 // TestInitialize 初始化
 func TestInitialize(ctx context.Context, namingOpt *Config, cacheOpt *cache.Config,
-	cacheEntries []cachetypes.ConfigEntry, bc *batch.Controller, cacheMgr *cache.CacheManager,
+	cacheEntries []cacheapi.ConfigEntry, bc *batch.Controller, cacheMgr *cache.CacheManager,
 	storage store.Store, namespaceSvr namespace.NamespaceOperateServer,
 	healthSvr *healthcheck.Server,
 	userMgn auth.UserServer, strategyMgn auth.StrategyServer) (DiscoverServer, DiscoverServer, error) {
-	entrites := []cachetypes.ConfigEntry{}
+	entrites := []cacheapi.ConfigEntry{}
 	if len(cacheEntries) != 0 {
 		entrites = cacheEntries
 	} else {

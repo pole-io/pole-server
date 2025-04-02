@@ -27,9 +27,9 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
@@ -56,8 +56,8 @@ type Server struct {
 	checkScheduler *CheckScheduler
 	localHost      string
 	bc             *batch.Controller
-	serviceCache   cachetypes.ServiceCache
-	instanceCache  cachetypes.InstanceCache
+	serviceCache   cacheapi.ServiceCache
+	instanceCache  cacheapi.InstanceCache
 
 	subCtxs []*eventhub.SubscribtionContext
 }
@@ -180,12 +180,12 @@ func SetServer(srv *Server) {
 }
 
 // SetServiceCache 设置服务缓存
-func (s *Server) SetServiceCache(serviceCache cachetypes.ServiceCache) {
+func (s *Server) SetServiceCache(serviceCache cacheapi.ServiceCache) {
 	s.serviceCache = serviceCache
 }
 
 // SetInstanceCache 设置服务实例缓存
-func (s *Server) SetInstanceCache(instanceCache cachetypes.InstanceCache) {
+func (s *Server) SetInstanceCache(instanceCache cacheapi.InstanceCache) {
 	s.instanceCache = instanceCache
 }
 

@@ -27,13 +27,13 @@ import (
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	"github.com/pole-io/pole-server/pkg/common/model"
 )
 
 // DefaultData 默认数据信息
 type DefaultData struct {
-	Namespaces []*model.Namespace           `yaml:"namespaces"`
+	Namespaces []*types.Namespace           `yaml:"namespaces"`
 	Users      []*authcommon.User           `yaml:"users"`
 	Policies   []*authcommon.StrategyDetail `yaml:"policies"`
 }

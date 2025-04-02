@@ -25,19 +25,20 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
-	types "github.com/pole-io/pole-server/pkg/cache/api"
-	"github.com/pole-io/pole-server/pkg/common/model"
+	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 type configGroupCache struct {
-	*types.BaseCache
+	*cachebase.BaseCache
 	storage store.Store
-	// files config_file_group.id -> model.ConfigFileGroup
-	groups *utils.SyncMap[uint64, *model.ConfigFileGroup]
-	// name2files config_file.<namespace, group> -> model.ConfigFileGroup
-	name2groups *utils.SyncMap[string, *utils.SyncMap[string, *model.ConfigFileGroup]]
+	// files config_file_group.id -> conftypes.ConfigFileGroup
+	groups *utils.SyncMap[uint64, *conftypes.ConfigFileGroup]
+	// name2files config_file.<namespace, group> -> conftypes.ConfigFileGroup
+	name2groups *utils.SyncMap[string, *utils.SyncMap[string, *conftypes.ConfigFileGroup]]
 	// revisions namespace -> [revision]
 	revisions *utils.SyncMap[string, string]
 	// singleGroup
@@ -45,18 +46,18 @@ type configGroupCache struct {
 }
 
 // NewConfigGroupCache 创建文件缓存
-func NewConfigGroupCache(storage store.Store, cacheMgr types.CacheManager) types.ConfigGroupCache {
+func NewConfigGroupCache(storage store.Store, cacheMgr cacheapi.CacheManager) cacheapi.ConfigGroupCache {
 	gc := &configGroupCache{
 		storage: storage,
 	}
-	gc.BaseCache = types.NewBaseCacheWithRepoerMetrics(storage, cacheMgr, gc.reportMetricsInfo)
+	gc.BaseCache = cachebase.NewBaseCacheWithRepoerMetrics(storage, cacheMgr, gc.reportMetricsInfo)
 	return gc
 }
 
 // Initialize
 func (fc *configGroupCache) Initialize(opt map[string]interface{}) error {
-	fc.groups = utils.NewSyncMap[uint64, *model.ConfigFileGroup]()
-	fc.name2groups = utils.NewSyncMap[string, *utils.SyncMap[string, *model.ConfigFileGroup]]()
+	fc.groups = utils.NewSyncMap[uint64, *conftypes.ConfigFileGroup]()
+	fc.name2groups = utils.NewSyncMap[string, *utils.SyncMap[string, *conftypes.ConfigFileGroup]]()
 	fc.singleGroup = &singleflight.Group{}
 	fc.revisions = utils.NewSyncMap[string, string]()
 	return nil
@@ -96,7 +97,7 @@ func (fc *configGroupCache) LastMtime() time.Time {
 	return fc.BaseCache.LastMtime(fc.Name())
 }
 
-func (fc *configGroupCache) setConfigGroups(groups []*model.ConfigFileGroup) (map[string]time.Time, int, int) {
+func (fc *configGroupCache) setConfigGroups(groups []*conftypes.ConfigFileGroup) (map[string]time.Time, int, int) {
 	lastMtime := fc.LastMtime().Unix()
 	update := 0
 	del := 0
@@ -118,7 +119,7 @@ func (fc *configGroupCache) setConfigGroups(groups []*model.ConfigFileGroup) (ma
 			update++
 			fc.groups.Store(item.Id, item)
 			if _, ok := fc.name2groups.Load(item.Namespace); !ok {
-				fc.name2groups.Store(item.Namespace, utils.NewSyncMap[string, *model.ConfigFileGroup]())
+				fc.name2groups.Store(item.Namespace, utils.NewSyncMap[string, *conftypes.ConfigFileGroup]())
 			}
 			nsBucket, _ := fc.name2groups.Load(item.Namespace)
 			nsBucket.Store(item.Name, item)
@@ -146,11 +147,11 @@ func (fc *configGroupCache) postProcessUpdatedGroups(affect map[string]struct{})
 		}
 		count := nsBucket.Len()
 		revisions := make([]string, 0, count)
-		nsBucket.Range(func(key string, val *model.ConfigFileGroup) {
+		nsBucket.Range(func(key string, val *conftypes.ConfigFileGroup) {
 			revisions = append(revisions, val.Revision)
 		})
 
-		revision, err := types.CompositeComputeRevision(revisions)
+		revision, err := cacheapi.CompositeComputeRevision(revisions)
 		if err != nil {
 			revision = utils.NewUUID()
 		}
@@ -160,8 +161,8 @@ func (fc *configGroupCache) postProcessUpdatedGroups(affect map[string]struct{})
 
 // Clear
 func (fc *configGroupCache) Clear() error {
-	fc.groups = utils.NewSyncMap[uint64, *model.ConfigFileGroup]()
-	fc.name2groups = utils.NewSyncMap[string, *utils.SyncMap[string, *model.ConfigFileGroup]]()
+	fc.groups = utils.NewSyncMap[uint64, *conftypes.ConfigFileGroup]()
+	fc.name2groups = utils.NewSyncMap[string, *utils.SyncMap[string, *conftypes.ConfigFileGroup]]()
 	fc.singleGroup = &singleflight.Group{}
 	fc.revisions = utils.NewSyncMap[string, string]()
 	return nil
@@ -169,16 +170,16 @@ func (fc *configGroupCache) Clear() error {
 
 // Name
 func (fc *configGroupCache) Name() string {
-	return types.ConfigGroupCacheName
+	return cacheapi.ConfigGroupCacheName
 }
 
-func (fc *configGroupCache) ListGroups(namespace string) ([]*model.ConfigFileGroup, string) {
+func (fc *configGroupCache) ListGroups(namespace string) ([]*conftypes.ConfigFileGroup, string) {
 	nsBucket, ok := fc.name2groups.Load(namespace)
 	if !ok {
 		return nil, ""
 	}
-	ret := make([]*model.ConfigFileGroup, 0, nsBucket.Len())
-	nsBucket.Range(func(key string, val *model.ConfigFileGroup) {
+	ret := make([]*conftypes.ConfigFileGroup, 0, nsBucket.Len())
+	nsBucket.Range(func(key string, val *conftypes.ConfigFileGroup) {
 		ret = append(ret, val)
 	})
 
@@ -191,7 +192,7 @@ func (fc *configGroupCache) ListGroups(namespace string) ([]*model.ConfigFileGro
 }
 
 // GetGroupByName
-func (fc *configGroupCache) GetGroupByName(namespace, name string) *model.ConfigFileGroup {
+func (fc *configGroupCache) GetGroupByName(namespace, name string) *conftypes.ConfigFileGroup {
 	nsBucket, ok := fc.name2groups.Load(namespace)
 	if !ok {
 		return nil
@@ -202,7 +203,7 @@ func (fc *configGroupCache) GetGroupByName(namespace, name string) *model.Config
 }
 
 // GetGroupByID
-func (fc *configGroupCache) GetGroupByID(id uint64) *model.ConfigFileGroup {
+func (fc *configGroupCache) GetGroupByID(id uint64) *conftypes.ConfigFileGroup {
 	val, _ := fc.groups.Load(id)
 	return val
 }
@@ -220,17 +221,17 @@ func (fc *configGroupCache) forceQueryUpdate() error {
 }
 
 // Query
-func (fc *configGroupCache) Query(args *types.ConfigGroupArgs) (uint32, []*model.ConfigFileGroup, error) {
+func (fc *configGroupCache) Query(args *cacheapi.ConfigGroupArgs) (uint32, []*conftypes.ConfigFileGroup, error) {
 	if err := fc.forceQueryUpdate(); err != nil {
 		return 0, nil, err
 	}
 
-	values := make([]*model.ConfigFileGroup, 0, 8)
-	fc.name2groups.ReadRange(func(namespce string, groups *utils.SyncMap[string, *model.ConfigFileGroup]) {
+	values := make([]*conftypes.ConfigFileGroup, 0, 8)
+	fc.name2groups.ReadRange(func(namespce string, groups *utils.SyncMap[string, *conftypes.ConfigFileGroup]) {
 		if args.Namespace != "" && utils.IsWildNotMatch(namespce, args.Namespace) {
 			return
 		}
-		groups.ReadRange(func(name string, group *model.ConfigFileGroup) {
+		groups.ReadRange(func(name string, group *conftypes.ConfigFileGroup) {
 			if args.Name != "" && utils.IsWildNotMatch(name, args.Name) {
 				return
 			}
@@ -263,7 +264,7 @@ func (fc *configGroupCache) Query(args *types.ConfigGroupArgs) (uint32, []*model
 	return uint32(len(values)), doPageConfigGroups(values, args.Offset, args.Limit), nil
 }
 
-func orderByConfigGroupName(a, b *model.ConfigFileGroup, asc bool) bool {
+func orderByConfigGroupName(a, b *conftypes.ConfigFileGroup, asc bool) bool {
 	if a.Name < b.Name {
 		return asc
 	}
@@ -274,7 +275,7 @@ func orderByConfigGroupName(a, b *model.ConfigFileGroup, asc bool) bool {
 	return a.Id < b.Id && asc
 }
 
-func orderByConfigGroupMtime(a, b *model.ConfigFileGroup, asc bool) bool {
+func orderByConfigGroupMtime(a, b *conftypes.ConfigFileGroup, asc bool) bool {
 	if a.ModifyTime.After(b.ModifyTime) {
 		return asc
 	}
@@ -285,7 +286,7 @@ func orderByConfigGroupMtime(a, b *model.ConfigFileGroup, asc bool) bool {
 	return a.Id < b.Id && asc
 }
 
-func doPageConfigGroups(ret []*model.ConfigFileGroup, offset, limit uint32) []*model.ConfigFileGroup {
+func doPageConfigGroups(ret []*conftypes.ConfigFileGroup, offset, limit uint32) []*conftypes.ConfigFileGroup {
 	amount := uint32(len(ret))
 	if offset >= amount || limit == 0 {
 		return nil

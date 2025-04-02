@@ -20,14 +20,14 @@ package config_chain
 import (
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/store"
-	cachetypes "github.com/pole-io/pole-server/pkg/cache/api"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/config"
 	config_auth "github.com/pole-io/pole-server/pkg/config/interceptor/auth"
 	"github.com/pole-io/pole-server/pkg/config/interceptor/paramcheck"
 )
 
 func init() {
-	err := config.RegisterServerProxy("paramcheck", func(cacheMgr cachetypes.CacheManager, s store.Store,
+	err := config.RegisterServerProxy("paramcheck", func(cacheMgr cacheapi.CacheManager, s store.Store,
 		next config.ConfigCenterServer, cfg config.Config) (config.ConfigCenterServer, error) {
 		return paramcheck.New(next, cacheMgr, s, cfg), nil
 	})
@@ -35,7 +35,7 @@ func init() {
 		panic(err)
 	}
 
-	err = config.RegisterServerProxy("auth", func(cacheMgr cachetypes.CacheManager, s store.Store,
+	err = config.RegisterServerProxy("auth", func(cacheMgr cacheapi.CacheManager, s store.Store,
 		next config.ConfigCenterServer, cfg config.Config) (config.ConfigCenterServer, error) {
 		userMgr, err := auth.GetUserServer()
 		if err != nil {
