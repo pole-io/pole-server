@@ -25,9 +25,9 @@ import (
 
 	"go.uber.org/zap"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/plugin"
-	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 const (

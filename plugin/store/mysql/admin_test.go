@@ -25,9 +25,9 @@ import (
 
 	"github.com/golang/mock/gomock"
 
-	"github.com/pole-io/pole-server/plugin/store/mock"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/plugin/store/mock"
 )
 
 const (

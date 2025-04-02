@@ -18,10 +18,10 @@
 package discover
 
 import (
+	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/core"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/remote"
 )

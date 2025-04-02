@@ -27,9 +27,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 )

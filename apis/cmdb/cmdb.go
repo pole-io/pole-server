@@ -22,7 +22,6 @@ import (
 	"sync"
 
 	"github.com/pole-io/pole-server/apis"
-
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 

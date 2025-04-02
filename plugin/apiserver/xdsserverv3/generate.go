@@ -32,11 +32,10 @@ import (
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/cache"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/resource"
-
-	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 var (

@@ -27,11 +27,11 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	v1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/test/integrate/http"
 	"github.com/pole-io/pole-server/test/integrate/resource"
-	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 /**

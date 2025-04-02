@@ -21,10 +21,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/observability/statis"
 	metrictypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 )
 

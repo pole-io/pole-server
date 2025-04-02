@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package heartbeatp2p
+package heartbeat
 
 import (
 	"fmt"

@@ -27,8 +27,9 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 	"github.com/polarismesh/specification/source/go/api/v1/config_manage"
-	"github.com/pole-io/pole-server/apis/pkg/types"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	"github.com/pole-io/pole-server/apis/pkg/types"
 )
 
 type ConfigFileBase struct {

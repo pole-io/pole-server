@@ -24,9 +24,10 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/pole-io/pole-server/apis/pkg/types"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
+
+	"github.com/pole-io/pole-server/apis/pkg/types"
 )
 
 var emptyVal = struct{}{}

@@ -26,9 +26,9 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
-	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
+	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/log"
 )

@@ -41,6 +41,8 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pole-io/pole-server/apis/apiserver"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
@@ -49,9 +51,6 @@ import (
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	xdscache "github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/cache"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/resource"
-
-	"github.com/pole-io/pole-server/apis/pkg/types"
-	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 type ResourceServer interface {

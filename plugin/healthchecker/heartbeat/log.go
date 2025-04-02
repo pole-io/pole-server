@@ -15,34 +15,13 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package heartbeatp2p
+package heartbeat
 
 import (
-	"github.com/mitchellh/mapstructure"
+	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 )
 
-type Config struct {
-	SoltNum   int32 `json:"soltNum"`
-	StreamNum int32 `json:"streamNum"`
-	// only use for test
-	checkLeader bool
-}
-
-func unmarshal(options map[string]interface{}) (*Config, error) {
-	config := &Config{
-		SoltNum:   DefaultSoltNum,
-		StreamNum: int32(streamNum),
-	}
-	decodeConfig := &mapstructure.DecoderConfig{
-		DecodeHook: mapstructure.StringToTimeDurationHookFunc(),
-		Result:     config,
-	}
-	decoder, err := mapstructure.NewDecoder(decodeConfig)
-	if err != nil {
-		return nil, err
-	}
-	if err = decoder.Decode(options); err != nil {
-		return nil, err
-	}
-	return config, nil
-}
+var (
+	log  = commonlog.GetScopeOrDefaultByName(commonlog.HealthcheckLoggerName)
+	plog = commonlog.GetScopeByName(PluginName, commonlog.HealthcheckLoggerName)
+)

@@ -20,8 +20,9 @@ package batch
 import (
 	"testing"
 
-	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pole-io/pole-server/apis/pkg/types"
 )
 
 func TestClientFuture_SetClient(t *testing.T) {

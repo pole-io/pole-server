@@ -25,10 +25,10 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
-	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"

@@ -15,13 +15,33 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package heartbeatp2p
+package heartbeat
 
 import (
-	commonlog "github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/pole-io/pole-server/pkg/common/metrics"
+	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 var (
-	log  = commonlog.GetScopeOrDefaultByName(commonlog.HealthcheckLoggerName)
-	plog = commonlog.GetScopeByName(PluginName, commonlog.HealthcheckLoggerName)
+	beatRecordCost *prometheus.HistogramVec
 )
+
+const (
+	labelAction = "action"
+	labelCode   = "code"
+)
+
+func registerMetrics() {
+	beatRecordCost = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name: "p2p_checker_heartbeat_op",
+		Help: "desc p2p_checker heartbeat operation time cost",
+		ConstLabels: map[string]string{
+			metrics.LabelServerNode: utils.LocalHost,
+		},
+		Buckets: []float64{5, 10, 15, 20, 30, 50, 100, 500, 1000, 5000},
+	}, []string{labelAction, labelCode})
+
+	_ = metrics.GetRegistry().Register(beatRecordCost)
+}

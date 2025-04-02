@@ -25,9 +25,9 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
-	cacheapi "github.com/pole-io/pole-server/apis/cache"
 )
 
 var (

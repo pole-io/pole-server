@@ -22,8 +22,9 @@ import (
 	"testing"
 	"time"
 
-	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/stretchr/testify/assert"
+
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 )
 
 func mockConfigFileGroup(total int) []*conftypes.ConfigFileGroup {
