@@ -26,9 +26,10 @@ import (
 	"strings"
 	"time"
 
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
+
+	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"

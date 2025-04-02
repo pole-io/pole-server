@@ -23,6 +23,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
+
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 

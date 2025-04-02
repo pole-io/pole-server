@@ -26,8 +26,9 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
+
+	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"

@@ -25,10 +25,11 @@ import (
 	"time"
 
 	"github.com/emicklei/go-restful/v3"
-	"github.com/polarismesh/specification/source/go/api/v1/config_manage"
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
+
+	"github.com/polarismesh/specification/source/go/api/v1/config_manage"
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
 	"github.com/pole-io/pole-server/apis/pkg/types"

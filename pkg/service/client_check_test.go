@@ -23,9 +23,10 @@ import (
 	"testing"
 	"time"
 
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	testsuit "github.com/pole-io/pole-server/test/suit"
 )

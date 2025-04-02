@@ -80,7 +80,7 @@ plugin_pkg=(
 common_pkg=(
     "github.com/pole-io/pole-server/pkg/common/eventhub"
     "github.com/pole-io/pole-server/pkg/common/redispool"
-    "github.com/pole-io/pole-server/pkg/common/timewheel"
+    "github.com/pole-io/pole-server/pkg/common/syncs/timewheel"
 )
 
 coverpkg=""

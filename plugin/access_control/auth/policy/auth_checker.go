@@ -23,8 +23,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	"go.uber.org/zap"
+
+	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"

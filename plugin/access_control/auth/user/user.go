@@ -24,18 +24,19 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
+	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -70,7 +71,7 @@ func (svr *Server) CreateUser(ctx context.Context, req *apisecurity.User) *apise
 		owner, err := svr.storage.GetUser(ownerID)
 		if err != nil {
 			log.Error("[Auth][User] get owner user", utils.RequestID(ctx), zap.Error(err), zap.String("owner", ownerID))
-			return api.NewUserResponse(commonstore.StoreCode2APICode(err), req)
+			return api.NewUserResponse(storeapi.StoreCode2APICode(err), req)
 		}
 
 		if owner.Name == req.Name.GetValue() {
@@ -85,7 +86,7 @@ func (svr *Server) CreateUser(ctx context.Context, req *apisecurity.User) *apise
 	if err != nil {
 		log.Error("[Auth][User] get user by name and owner", utils.RequestID(ctx),
 			zap.Error(err), zap.String("owner", ownerID), zap.String("name", req.GetName().GetValue()))
-		return api.NewUserResponse(commonstore.StoreCode2APICode(err), req)
+		return api.NewUserResponse(storeapi.StoreCode2APICode(err), req)
 	}
 	if user != nil {
 		return api.NewUserResponse(apimodel.Code_UserExisted, req)
@@ -112,7 +113,7 @@ func (svr *Server) createUser(ctx context.Context, req *apisecurity.User) *apise
 
 	if err := svr.storage.AddUser(tx, data); err != nil {
 		log.Error("[Auth][User] add user into store", utils.RequestID(ctx), zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	if err := svr.policySvr.PolicyHelper().CreatePrincipalPolicy(ctx, tx, authtypes.Principal{
@@ -122,7 +123,7 @@ func (svr *Server) createUser(ctx context.Context, req *apisecurity.User) *apise
 		Name:          data.Name,
 	}); err != nil {
 		log.Error("[Auth][User] add user default policy rule", utils.RequestID(ctx), zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -148,7 +149,7 @@ func (svr *Server) UpdateUser(ctx context.Context, req *apisecurity.User) *apise
 	user, err := svr.storage.GetUser(req.Id.GetValue())
 	if err != nil {
 		log.Error("[Auth][User] get user", utils.RequestID(ctx), zap.String("user-id", req.GetId().GetValue()), zap.Error(err))
-		return api.NewUserResponse(commonstore.StoreCode2APICode(err), req)
+		return api.NewUserResponse(storeapi.StoreCode2APICode(err), req)
 	}
 	if user == nil {
 		return api.NewUserResponse(apimodel.Code_NotFoundUser, req)
@@ -166,7 +167,7 @@ func (svr *Server) UpdateUser(ctx context.Context, req *apisecurity.User) *apise
 
 	if err := svr.storage.UpdateUser(data); err != nil {
 		log.Error("[Auth][User] update user from store", utils.RequestID(ctx), zap.Error(err))
-		return api.NewAuthResponseWithMsg(commonstore.StoreCode2APICode(err), err.Error())
+		return api.NewAuthResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 
 	log.Info("[Auth][User] update user", utils.RequestID(ctx), zap.String("name", req.GetName().GetValue()))
@@ -181,7 +182,7 @@ func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.Modi
 	if err != nil {
 		log.Error("[Auth][User] get user", utils.RequestID(ctx),
 			zap.String("user-id", req.Id.GetValue()), zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 	if user == nil {
 		return api.NewAuthResponse(apimodel.Code_NotFoundUser)
@@ -205,7 +206,7 @@ func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.Modi
 	if err := svr.storage.UpdateUser(data); err != nil {
 		log.Error("[Auth][User] update user from store", utils.RequestID(ctx),
 			zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	log.Info("[Auth][User] update user", utils.RequestID(ctx), zap.String("user-id", req.Id.GetValue()))
@@ -234,7 +235,7 @@ func (svr *Server) DeleteUser(ctx context.Context, req *apisecurity.User) *apise
 	user, err := svr.storage.GetUser(req.Id.GetValue())
 	if err != nil {
 		log.Error("[Auth][User] get user from store", utils.RequestID(ctx), zap.Error(err))
-		return api.NewUserResponse(commonstore.StoreCode2APICode(err), req)
+		return api.NewUserResponse(storeapi.StoreCode2APICode(err), req)
 	}
 	if user == nil {
 		return api.NewUserResponse(apimodel.Code_ExecuteSuccess, req)
@@ -250,7 +251,7 @@ func (svr *Server) DeleteUser(ctx context.Context, req *apisecurity.User) *apise
 		if err != nil {
 			log.Error("[Auth][User] get user sub-account", zap.String("owner", user.ID),
 				utils.RequestID(ctx), zap.Error(err))
-			return api.NewUserResponse(commonstore.StoreCode2APICode(err), req)
+			return api.NewUserResponse(storeapi.StoreCode2APICode(err), req)
 		}
 		if count != 0 {
 			log.Error("[Auth][User] delete user but some sub-account existed", zap.String("owner", user.ID))
@@ -268,7 +269,7 @@ func (svr *Server) DeleteUser(ctx context.Context, req *apisecurity.User) *apise
 
 	if err := svr.storage.DeleteUser(tx, user); err != nil {
 		log.Error("[Auth][User] delete user from store", utils.RequestID(ctx), zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 	if err := svr.policySvr.PolicyHelper().CleanPrincipal(ctx, tx, authtypes.Principal{
 		PrincipalID:   user.ID,
@@ -276,7 +277,7 @@ func (svr *Server) DeleteUser(ctx context.Context, req *apisecurity.User) *apise
 		Owner:         user.Owner,
 	}); err != nil {
 		log.Error("[Auth][User] delete user from policy server", utils.RequestID(ctx), zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 	if err := tx.Commit(); err != nil {
 		log.Error("[Auth][User] delete user commit storage tx", utils.RequestID(ctx), zap.Error(err))
@@ -301,7 +302,7 @@ func (svr *Server) GetUsers(ctx context.Context, filters map[string]string) *api
 	if err != nil {
 		log.Error("[Auth][User] get user from store", utils.RequestID(ctx), zap.Any("req", filters),
 			zap.Error(err))
-		return api.NewAuthBatchQueryResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	resp := api.NewAuthBatchQueryResponse(apimodel.Code_ExecuteSuccess)
@@ -356,7 +357,7 @@ func (svr *Server) EnableUserToken(ctx context.Context, req *apisecurity.User) *
 	user, err := svr.storage.GetUser(req.GetId().GetValue())
 	if err != nil {
 		log.Error("[Auth][User] get user from store", utils.RequestID(ctx), zap.Error(err))
-		return api.NewUserResponse(commonstore.StoreCode2APICode(err), req)
+		return api.NewUserResponse(storeapi.StoreCode2APICode(err), req)
 	}
 	if user == nil {
 		return api.NewUserResponse(apimodel.Code_NotFoundUser, req)
@@ -366,7 +367,7 @@ func (svr *Server) EnableUserToken(ctx context.Context, req *apisecurity.User) *
 
 	if err := svr.storage.UpdateUser(user); err != nil {
 		log.Error("[Auth][User] update user token into store", utils.RequestID(ctx), zap.Error(err))
-		return api.NewAuthResponseWithMsg(commonstore.StoreCode2APICode(err), err.Error())
+		return api.NewAuthResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 
 	log.Info("[Auth][User] update user token", utils.RequestID(ctx),
@@ -385,7 +386,7 @@ func (svr *Server) ResetUserToken(ctx context.Context, req *apisecurity.User) *a
 	user, err := svr.storage.GetUser(req.Id.GetValue())
 	if err != nil {
 		log.Error("[Auth][User] get user from store", utils.RequestID(ctx), zap.Error(err))
-		return api.NewUserResponse(commonstore.StoreCode2APICode(err), req)
+		return api.NewUserResponse(storeapi.StoreCode2APICode(err), req)
 	}
 	if user == nil {
 		return api.NewUserResponse(apimodel.Code_NotFoundUser, req)
@@ -401,7 +402,7 @@ func (svr *Server) ResetUserToken(ctx context.Context, req *apisecurity.User) *a
 
 	if err := svr.storage.UpdateUser(user); err != nil {
 		log.Error("[Auth][User] update user token into store", utils.RequestID(ctx), zap.Error(err))
-		return api.NewUserResponse(commonstore.StoreCode2APICode(err), req)
+		return api.NewUserResponse(storeapi.StoreCode2APICode(err), req)
 	}
 
 	log.Info("[Auth][User] reset user token", utils.RequestID(ctx), zap.String("id", req.GetId().GetValue()))

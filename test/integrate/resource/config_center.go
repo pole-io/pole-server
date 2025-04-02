@@ -20,9 +20,10 @@ package resource
 import (
 	"fmt"
 
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )

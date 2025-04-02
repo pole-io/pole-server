@@ -20,9 +20,10 @@ package service
 import (
 	"context"
 
+	"golang.org/x/sync/singleflight"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"golang.org/x/sync/singleflight"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	cacheapi "github.com/pole-io/pole-server/apis/cache"

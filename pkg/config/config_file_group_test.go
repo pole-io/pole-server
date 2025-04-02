@@ -22,9 +22,10 @@ import (
 	"reflect"
 	"testing"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"

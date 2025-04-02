@@ -21,18 +21,19 @@ import (
 	"context"
 	"strconv"
 
+	"go.uber.org/zap"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"go.uber.org/zap"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -100,7 +101,7 @@ func (svr *Server) UpdateStrategies(ctx context.Context, reqs []*apisecurity.Mod
 		strategy, err := svr.storage.GetStrategyDetail(reqs[i].GetId().GetValue())
 		if err != nil {
 			log.Error("[Auth][Strategy] get strategy from store", utils.RequestID(ctx), zap.Error(err))
-			rsp = api.NewModifyAuthStrategyResponse(commonstore.StoreCode2APICode(err), reqs[i])
+			rsp = api.NewModifyAuthStrategyResponse(storeapi.StoreCode2APICode(err), reqs[i])
 		}
 		if strategy == nil {
 			continue

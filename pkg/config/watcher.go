@@ -22,9 +22,10 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	"go.uber.org/zap"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"

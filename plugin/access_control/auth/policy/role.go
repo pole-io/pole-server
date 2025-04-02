@@ -23,16 +23,17 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
+	"go.uber.org/zap"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"go.uber.org/zap"
 
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -56,7 +57,7 @@ func (svr *Server) CreateRole(ctx context.Context, req *apisecurity.Role) *apise
 	if err := svr.storage.AddRole(saveData); err != nil {
 		log.Error("[Auth][Role] create role into store", utils.RequestID(ctx),
 			zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	return api.NewResponse(apimodel.Code_ExecuteSuccess)
@@ -81,7 +82,7 @@ func (svr *Server) UpdateRole(ctx context.Context, req *apisecurity.Role) *apise
 	if err != nil {
 		log.Error("[Auth][Role] get one role from store", utils.RequestID(ctx),
 			zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 	if saveData == nil {
 		log.Error("[Auth][Role] not find expect role", utils.RequestID(ctx),
@@ -95,7 +96,7 @@ func (svr *Server) UpdateRole(ctx context.Context, req *apisecurity.Role) *apise
 	if err := svr.storage.AddRole(newData); err != nil {
 		log.Error("[Auth][Role] update role into store", utils.RequestID(ctx),
 			zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	return api.NewResponse(apimodel.Code_ExecuteSuccess)
@@ -120,7 +121,7 @@ func (svr *Server) DeleteRole(ctx context.Context, req *apisecurity.Role) *apise
 	if err != nil {
 		log.Error("[Auth][Role] get one role from store", utils.RequestID(ctx),
 			zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 	if saveData == nil {
 		return api.NewAuthResponse(apimodel.Code_ExecuteSuccess)
@@ -129,7 +130,7 @@ func (svr *Server) DeleteRole(ctx context.Context, req *apisecurity.Role) *apise
 	tx, err := svr.storage.StartTx()
 	if err != nil {
 		log.Error("[Auth][Role] start tx", utils.RequestID(ctx), zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 	defer func() {
 		_ = tx.Rollback()
@@ -138,7 +139,7 @@ func (svr *Server) DeleteRole(ctx context.Context, req *apisecurity.Role) *apise
 	if err := svr.storage.DeleteRole(tx, newData); err != nil {
 		log.Error("[Auth][Role] update role into store", utils.RequestID(ctx),
 			zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 	if err := svr.storage.CleanPrincipalPolicies(tx, authtypes.Principal{
 		PrincipalID:   saveData.ID,
@@ -146,12 +147,12 @@ func (svr *Server) DeleteRole(ctx context.Context, req *apisecurity.Role) *apise
 	}); err != nil {
 		log.Error("[Auth][Role] clean role link policies", utils.RequestID(ctx),
 			zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	if err := tx.Commit(); err != nil {
 		log.Error("[Auth][Role] delete role commit tx", utils.RequestID(ctx), zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	return api.NewResponse(apimodel.Code_ExecuteSuccess)
@@ -168,7 +169,7 @@ func (svr *Server) GetRoles(ctx context.Context, filters map[string]string) *api
 	})
 	if err != nil {
 		log.Error("[Auth][Role] query roles list", utils.RequestID(ctx), zap.Error(err))
-		return api.NewBatchQueryResponse(commonstore.StoreCode2APICode(err))
+		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	rsp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)

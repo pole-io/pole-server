@@ -22,9 +22,10 @@ import (
 	"sync"
 	"time"
 
-	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"golang.org/x/sync/singleflight"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
 	types "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"

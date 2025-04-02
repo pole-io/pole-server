@@ -23,10 +23,11 @@ import (
 	"os"
 	"testing"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/test/integrate/http"

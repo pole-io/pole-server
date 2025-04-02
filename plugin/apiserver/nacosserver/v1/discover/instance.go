@@ -23,9 +23,10 @@ import (
 	"strconv"
 	"strings"
 
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"

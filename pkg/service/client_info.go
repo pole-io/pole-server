@@ -21,13 +21,14 @@ import (
 	"context"
 	"sort"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -122,7 +123,7 @@ func (s *Server) GetReportClients(ctx context.Context, query map[string]string) 
 	total, services, err := s.caches.Client().GetClientsByFilter(searchFilters, offset, limit)
 	if err != nil {
 		log.Errorf("[Server][Client][Query] req(%+v) store err: %s", query, err.Error())
-		return api.NewBatchQueryResponse(commonstore.StoreCode2APICode(err))
+		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)

@@ -25,17 +25,18 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
+	"go.uber.org/zap"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
-	"go.uber.org/zap"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -215,7 +216,7 @@ func (s *Server) GetRateLimits(ctx context.Context, query map[string]string) *ap
 	total, extendRateLimits, err := s.Cache().RateLimit().QueryRateLimitRules(ctx, *args)
 	if err != nil {
 		log.Error("get rate limits store", zap.Error(err), utils.RequestID(ctx))
-		return api.NewBatchQueryResponse(commonstore.StoreCode2APICode(err))
+		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
@@ -279,7 +280,7 @@ func (s *Server) checkRateLimitValid(ctx context.Context, serviceID string, req 
 	service, err := s.storage.GetServiceByID(serviceID)
 	if err != nil {
 		log.Error(err.Error(), utils.ZapRequestID(requestID))
-		return nil, api.NewRateLimitResponse(commonstore.StoreCode2APICode(err), req)
+		return nil, api.NewRateLimitResponse(storeapi.StoreCode2APICode(err), req)
 	}
 
 	return service, nil
@@ -292,7 +293,7 @@ func (s *Server) checkRateLimitExisted(ctx context.Context, id string,
 	rateLimit, err := s.storage.GetRateLimitWithID(id)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
-		return nil, api.NewRateLimitResponse(commonstore.StoreCode2APICode(err), req)
+		return nil, api.NewRateLimitResponse(storeapi.StoreCode2APICode(err), req)
 	}
 	if rateLimit == nil {
 		return nil, api.NewRateLimitResponse(apimodel.Code_NotFoundRateLimit, req)
@@ -467,7 +468,7 @@ func wrapperRateLimitStoreResponse(rule *apitraffic.Rule, err error) *apiservice
 	if err == nil {
 		return nil
 	}
-	resp := api.NewResponseWithMsg(commonstore.StoreCode2APICode(err), err.Error())
+	resp := api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	resp.RateLimit = rule
 	return resp
 }

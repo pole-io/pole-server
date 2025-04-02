@@ -25,16 +25,17 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"go.uber.org/zap"
+
 	apifault "github.com/polarismesh/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"go.uber.org/zap"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -100,7 +101,7 @@ func (s *Server) createFaultDetectRule(ctx context.Context, request *apifault.Fa
 	exists, err := s.storage.HasFaultDetectRuleByName(data.Name, data.Namespace)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewResponseWithMsg(commonstore.StoreCode2APICode(err), err.Error())
+		return api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 	if exists {
 		return api.NewResponse(apimodel.Code_FaultDetectRuleExisted)
@@ -110,7 +111,7 @@ func (s *Server) createFaultDetectRule(ctx context.Context, request *apifault.Fa
 	// 存储层操作
 	if err := s.storage.CreateFaultDetectRule(data); err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewResponseWithMsg(commonstore.StoreCode2APICode(err), err.Error())
+		return api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 
 	msg := fmt.Sprintf("create fault detect rule: id=%v, name=%v, namespace=%v",
@@ -134,7 +135,7 @@ func (s *Server) updateFaultDetectRule(ctx context.Context, request *apifault.Fa
 	exists, err := s.storage.HasFaultDetectRuleByNameExcludeId(fdRule.Name, fdRule.Namespace, fdRule.ID)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewResponseWithMsg(commonstore.StoreCode2APICode(err), err.Error())
+		return api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 	if exists {
 		return api.NewAnyDataResponse(apimodel.Code_FaultDetectRuleExisted, fdRuleId)
@@ -178,7 +179,7 @@ func (s *Server) GetFaultDetectRules(ctx context.Context, query map[string]strin
 	})
 	if err != nil {
 		log.Errorf("get fault detect rules store err: %s", err.Error())
-		return api.NewBatchQueryResponse(commonstore.StoreCode2APICode(err))
+		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	out.Amount = utils.NewUInt32Value(total)

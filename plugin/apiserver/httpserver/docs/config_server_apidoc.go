@@ -20,6 +20,7 @@ package docs
 import (
 	"github.com/emicklei/go-restful/v3"
 	restfulspec "github.com/polarismesh/go-restful-openapi/v2"
+
 	"github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 )

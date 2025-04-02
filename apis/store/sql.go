@@ -17,6 +17,10 @@
 
 package store
 
+import (
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+)
+
 // InstanceArgs 用于通过服务实例查询服务的参数
 type InstanceArgs struct {
 	Hosts []string
@@ -29,4 +33,27 @@ type InstanceMetadataRequest struct {
 	Revision   string
 	Keys       []string
 	Metadata   map[string]string
+}
+
+var storeCodeAPICodeMap = map[StatusCode]apimodel.Code{
+	EmptyParamsErr:             apimodel.Code_InvalidParameter,
+	OutOfRangeErr:              apimodel.Code_InvalidParameter,
+	DataConflictErr:            apimodel.Code_DataConflict,
+	NotFoundNamespace:          apimodel.Code_NotFoundNamespace,
+	NotFoundService:            apimodel.Code_NotFoundService,
+	NotFoundMasterConfig:       apimodel.Code_NotFoundMasterConfig,
+	NotFoundTagConfigOrService: apimodel.Code_NotFoundTagConfigOrService,
+	ExistReleasedConfig:        apimodel.Code_ExistReleasedConfig,
+	DuplicateEntryErr:          apimodel.Code_ExistedResource,
+}
+
+// StoreCode2APICode store code to api code
+func StoreCode2APICode(err error) apimodel.Code {
+	code := Code(err)
+	apiCode, ok := storeCodeAPICodeMap[code]
+	if ok {
+		return apiCode
+	}
+
+	return apimodel.Code_StoreLayerException
 }

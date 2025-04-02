@@ -20,11 +20,12 @@ package service_auth
 import (
 	"context"
 
+	"go.uber.org/zap"
+
 	apifault "github.com/polarismesh/specification/source/go/api/v1/fault_tolerance"
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
-	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	cacheapi "github.com/pole-io/pole-server/apis/cache"

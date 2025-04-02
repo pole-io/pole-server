@@ -25,8 +25,9 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"github.com/stretchr/testify/assert"
+
+	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"

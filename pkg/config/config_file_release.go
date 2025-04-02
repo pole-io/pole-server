@@ -26,18 +26,19 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
+	"go.uber.org/zap"
+
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	"go.uber.org/zap"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -47,7 +48,7 @@ func (s *Server) PublishConfigFile(ctx context.Context, req *apiconfig.ConfigFil
 	tx, err := s.storage.StartTx()
 	if err != nil {
 		log.Error("[Config][Release] publish config file begin tx.", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	defer func() {
 		_ = tx.Rollback()
@@ -61,7 +62,7 @@ func (s *Server) PublishConfigFile(ctx context.Context, req *apiconfig.ConfigFil
 
 	if err := tx.Commit(); err != nil {
 		log.Error("[Config][Release] publish config file commit tx.", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	if req.GetReleaseType().GetValue() == conftypes.ReleaseTypeGray {
 		s.recordReleaseSuccess(ctx, utils.ReleaseTypeGray, data)
@@ -100,7 +101,7 @@ func (s *Server) handlePublishConfigFile(ctx context.Context, tx store.Tx,
 	betaRelease, err := s.storage.GetConfigFileBetaReleaseTx(tx, fileRelease.ToFileKey())
 	if err != nil {
 		log.Error("[Config][File] get beta config file release in get target.", utils.RequestID(ctx), zap.Error(err))
-		return nil, api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return nil, api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	if betaRelease != nil {
 		log.Error("[Config][File] still exist beta config file release.", utils.RequestID(ctx), zap.Error(err))
@@ -113,7 +114,7 @@ func (s *Server) handlePublishConfigFile(ctx context.Context, tx store.Tx,
 		log.Error("[Config][Release] publish config file when get file.", utils.RequestID(ctx),
 			utils.ZapNamespace(namespace), utils.ZapGroup(group), utils.ZapFileName(fileName),
 			zap.Error(err))
-		return nil, api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return nil, api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	if toPublishFile == nil {
 		return nil, api.NewConfigResponse(apimodel.Code_NotFoundResource)
@@ -138,7 +139,7 @@ func (s *Server) handlePublishConfigFile(ctx context.Context, tx store.Tx,
 		log.Error("[Config][Release] publish config file when get release.",
 			utils.RequestID(ctx), utils.ZapNamespace(namespace), utils.ZapGroup(group),
 			utils.ZapFileName(fileName), zap.Error(err))
-		return fileRelease, api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return fileRelease, api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	// 重新激活
 	if saveRelease != nil {
@@ -149,14 +150,14 @@ func (s *Server) handlePublishConfigFile(ctx context.Context, tx store.Tx,
 			log.Error("[Config][Release] re-active config file release error.",
 				utils.RequestID(ctx), utils.ZapNamespace(namespace), utils.ZapGroup(group),
 				utils.ZapFileName(fileName), zap.Error(err))
-			return fileRelease, api.NewConfigFileResponse(commonstore.StoreCode2APICode(err), nil)
+			return fileRelease, api.NewConfigFileResponse(storeapi.StoreCode2APICode(err), nil)
 		}
 	} else {
 		if err = s.storage.CreateConfigFileReleaseTx(tx, fileRelease); err != nil {
 			log.Error("[Config][Release] publish config file when create release.",
 				utils.RequestID(ctx), utils.ZapNamespace(namespace), utils.ZapGroup(group),
 				utils.ZapFileName(fileName), zap.Error(err))
-			return fileRelease, api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+			return fileRelease, api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 		}
 	}
 	if req.GetReleaseType().GetValue() == conftypes.ReleaseTypeGray {
@@ -183,7 +184,7 @@ func (s *Server) handlePublishConfigFile(ctx context.Context, tx store.Tx,
 			log.Error("[Config][Release] create gray resource error.",
 				utils.RequestID(ctx), utils.ZapNamespace(namespace), utils.ZapGroup(group),
 				utils.ZapFileName(fileName), zap.Error(err))
-			return fileRelease, api.NewConfigFileResponse(commonstore.StoreCode2APICode(err), nil)
+			return fileRelease, api.NewConfigFileResponse(storeapi.StoreCode2APICode(err), nil)
 		}
 	}
 
@@ -221,7 +222,7 @@ func (s *Server) GetConfigFileRelease(ctx context.Context, req *apiconfig.Config
 	if err != nil {
 		log.Error("[Config][Release] get config file release.", utils.RequestID(ctx),
 			utils.ZapNamespace(namespace), utils.ZapGroup(group), utils.ZapFileName(fileName), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	if ret == nil {
 		return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
@@ -281,7 +282,7 @@ func (s *Server) DeleteConfigFileRelease(ctx context.Context,
 	if err != nil {
 		log.Error("[Config][File] delete config file release when begin tx.",
 			utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	defer func() {
 		_ = tx.Rollback()
@@ -289,12 +290,12 @@ func (s *Server) DeleteConfigFileRelease(ctx context.Context,
 	if _, err := s.storage.LockConfigFile(tx, release.ToFileKey()); err != nil {
 		log.Error("[Config][File] delete config file release when lock.",
 			utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	saveData, err := s.storage.GetConfigFileReleaseTx(tx, release.ConfigFileReleaseKey)
 	if err != nil {
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	recordData = saveData
 	if saveData == nil {
@@ -305,7 +306,7 @@ func (s *Server) DeleteConfigFileRelease(ctx context.Context,
 		if err := s.storage.ActiveConfigFileReleaseTx(tx, saveData); err != nil {
 			log.Error("[Config][File] delete config file release when re-active.",
 				utils.RequestID(ctx), zap.Error(err))
-			return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+			return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 		}
 	}
 
@@ -314,7 +315,7 @@ func (s *Server) DeleteConfigFileRelease(ctx context.Context,
 			utils.RequestID(ctx), utils.ZapNamespace(req.GetNamespace().GetValue()),
 			utils.ZapGroup(req.GetGroup().GetValue()), utils.ZapFileName(req.GetFileName().GetValue()),
 			zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -322,7 +323,7 @@ func (s *Server) DeleteConfigFileRelease(ctx context.Context,
 			utils.RequestID(ctx), utils.ZapNamespace(req.GetNamespace().GetValue()),
 			utils.ZapGroup(req.GetGroup().GetValue()), utils.ZapFileName(req.GetFileName().GetValue()),
 			zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	s.recordReleaseSuccess(ctx, utils.ReleaseTypeDelete, recordData)
 	s.RecordHistory(ctx, configFileReleaseRecordEntry(ctx, req, release, types.ODelete))
@@ -445,7 +446,7 @@ func (s *Server) RollbackConfigFileRelease(ctx context.Context,
 	if err != nil {
 		log.Error("[Config][File] rollback config file releasw when begin tx.",
 			utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	defer func() {
 		_ = tx.Rollback()
@@ -463,7 +464,7 @@ func (s *Server) RollbackConfigFileRelease(ctx context.Context,
 	if err := tx.Commit(); err != nil {
 		log.Error("[Config][File] rollback config file releasw when commit tx.",
 			utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	s.recordReleaseSuccess(ctx, utils.ReleaseTypeRollback, data)
@@ -478,7 +479,7 @@ func (s *Server) handleRollbackConfigFileRelease(ctx context.Context, tx store.T
 	targetRelease, err := s.storage.GetConfigFileReleaseTx(tx, data.ConfigFileReleaseKey)
 	if err != nil {
 		log.Error("[Config][Release] rollback config file get target release", zap.Error(err))
-		return nil, api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return nil, api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	if targetRelease == nil {
 		log.Error("[Config][Release] rollback config file to target release not found")
@@ -489,7 +490,7 @@ func (s *Server) handleRollbackConfigFileRelease(ctx context.Context, tx store.T
 		log.Error("[Config][Release] rollback config file release error.",
 			utils.RequestID(ctx), zap.String("namespace", data.Namespace),
 			zap.String("group", data.Group), zap.String("fileName", data.FileName), zap.Error(err))
-		return targetRelease, api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return targetRelease, api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	return targetRelease, nil
 }
@@ -518,7 +519,7 @@ func (s *Server) CasUpsertAndReleaseConfigFile(ctx context.Context,
 		log.Error("[Config][File] upsert config file when begin tx.", utils.RequestID(ctx),
 			zap.String("namespace", req.GetNamespace().GetValue()), zap.String("group", req.GetGroup().GetValue()),
 			zap.String("fileName", req.GetFileName().GetValue()), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	defer func() {
@@ -533,7 +534,7 @@ func (s *Server) CasUpsertAndReleaseConfigFile(ctx context.Context,
 		log.Error("[Config][File] lock config file when begin tx.", utils.RequestID(ctx),
 			zap.String("namespace", req.GetNamespace().GetValue()), zap.String("group", req.GetGroup().GetValue()),
 			zap.String("fileName", req.GetFileName().GetValue()), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	historyRecords := []func(){}
@@ -578,7 +579,7 @@ func (s *Server) CasUpsertAndReleaseConfigFile(ctx context.Context,
 
 	if err := tx.Commit(); err != nil {
 		log.Error("[Config][File] upsert config file when commit tx.", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	for i := range historyRecords {
 		historyRecords[i]()
@@ -610,7 +611,7 @@ func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
 		log.Error("[Config][File] upsert config file when begin tx.", utils.RequestID(ctx),
 			zap.String("namespace", req.GetNamespace().GetValue()), zap.String("group", req.GetGroup().GetValue()),
 			zap.String("fileName", req.GetFileName().GetValue()), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	defer func() {
@@ -625,7 +626,7 @@ func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
 		log.Error("[Config][File] lock config file when begin tx.", utils.RequestID(ctx),
 			zap.String("namespace", req.GetNamespace().GetValue()), zap.String("group", req.GetGroup().GetValue()),
 			zap.String("fileName", req.GetFileName().GetValue()), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	historyRecords := []func(){}
@@ -671,7 +672,7 @@ func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
 
 	if err := tx.Commit(); err != nil {
 		log.Error("[Config][File] upsert config file when commit tx.", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	for i := range historyRecords {
 		historyRecords[i]()
@@ -710,7 +711,7 @@ func (s *Server) StopGrayConfigFileRelease(ctx context.Context, req *apiconfig.C
 	tx, err := s.storage.StartTx()
 	if err != nil {
 		log.Error("[Config][File] stop beta config file when begin tx.", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	defer func() {
@@ -725,12 +726,12 @@ func (s *Server) StopGrayConfigFileRelease(ctx context.Context, req *apiconfig.C
 
 	if _, err := s.storage.LockConfigFile(tx, fileKey); err != nil {
 		log.Error("[Config][File] stop beta config file release in lock file.", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	betaRelease, err := s.storage.GetConfigFileBetaReleaseTx(tx, fileKey)
 	if err != nil {
 		log.Error("[Config][File] stop beta config file release in get target.", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	if betaRelease == nil {
 		return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
@@ -746,16 +747,16 @@ func (s *Server) StopGrayConfigFileRelease(ctx context.Context, req *apiconfig.C
 		}),
 	}); err != nil {
 		log.Error("[Config][File] stop beta config file release when clean beta rule.", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	if err = s.storage.InactiveConfigFileReleaseTx(tx, betaRelease); err != nil {
 		log.Error("[Config][File] stop beta config file release.", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	if err := tx.Commit(); err != nil {
 		log.Error("[Config][File] stop config file release when commit tx.", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	s.recordReleaseHistory(ctx, betaRelease, utils.ReleaseTypeCancelGray, utils.ReleaseStatusSuccess, "")
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
@@ -767,15 +768,15 @@ func (s *Server) cleanConfigFileReleases(ctx context.Context, tx store.Tx,
 	// 先重新 active 下当前正在发布的
 	saveData, err := s.storage.GetConfigFileActiveReleaseTx(tx, file.Key())
 	if err != nil {
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	if saveData != nil {
 		if err := s.storage.ActiveConfigFileReleaseTx(tx, saveData); err != nil {
-			return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+			return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 		}
 	}
 	if err := s.storage.CleanConfigFileReleasesTx(tx, file.Namespace, file.Group, file.Name); err != nil {
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	return nil
 }

@@ -20,13 +20,14 @@ package config
 import (
 	"context"
 
-	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
+	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -70,7 +71,7 @@ func (s *Server) GetConfigFileReleaseHistories(ctx context.Context,
 	if err != nil {
 		log.Error("[Config][History] get config file release history error.", utils.RequestID(ctx),
 			zap.Any("filter", searchFilter), zap.Error(err))
-		return api.NewConfigBatchQueryResponseWithInfo(commonstore.StoreCode2APICode(err), err.Error())
+		return api.NewConfigBatchQueryResponseWithInfo(storeapi.StoreCode2APICode(err), err.Error())
 	}
 
 	if len(saveDatas) == 0 {

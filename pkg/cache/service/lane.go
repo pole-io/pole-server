@@ -24,11 +24,12 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 	protoV2 "google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+
+	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
 	types "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"

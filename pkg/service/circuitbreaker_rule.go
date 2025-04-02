@@ -25,15 +25,16 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"go.uber.org/zap"
+
 	apifault "github.com/polarismesh/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -61,7 +62,7 @@ func (s *Server) createCircuitBreakerRule(
 	exists, err := s.storage.HasCircuitBreakerRuleByName(data.Name, data.Namespace)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewResponseWithMsg(commonstore.StoreCode2APICode(err), err.Error())
+		return api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 	if exists {
 		return api.NewResponse(apimodel.Code_ServiceExistedCircuitBreakers)
@@ -71,7 +72,7 @@ func (s *Server) createCircuitBreakerRule(
 	// 存储层操作
 	if err := s.storage.CreateCircuitBreakerRule(data); err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewResponseWithMsg(commonstore.StoreCode2APICode(err), err.Error())
+		return api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 
 	msg := fmt.Sprintf("create circuitBreaker rule: id=%v, name=%v, namespace=%v",
@@ -185,7 +186,7 @@ func (s *Server) updateCircuitBreakerRule(
 	exists, err := s.storage.HasCircuitBreakerRuleByNameExcludeId(cbRule.Name, cbRule.Namespace, cbRule.ID)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewResponseWithMsg(commonstore.StoreCode2APICode(err), err.Error())
+		return api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 	if exists {
 		return api.NewResponse(apimodel.Code_ServiceExistedCircuitBreakers)
@@ -207,7 +208,7 @@ func (s *Server) checkCircuitBreakerRuleExists(ctx context.Context, id string) *
 	exists, err := s.storage.HasCircuitBreakerRule(id)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewResponse(commonstore.StoreCode2APICode(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	if !exists {
 		return api.NewResponse(apimodel.Code_NotFoundCircuitBreaker)
@@ -221,7 +222,7 @@ func (s *Server) GetCircuitBreakerRules(ctx context.Context, query map[string]st
 	total, cbRules, err := s.storage.GetCircuitBreakerRules(query, offset, limit)
 	if err != nil {
 		log.Error("get circuitbreaker rules store", utils.RequestID(ctx), zap.Error(err))
-		return api.NewBatchQueryResponse(commonstore.StoreCode2APICode(err))
+		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	out.Amount = utils.NewUInt32Value(total)

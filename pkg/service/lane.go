@@ -24,18 +24,19 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
+
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -54,7 +55,7 @@ func (s *Server) CreateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 	tx, err := s.storage.StartTx()
 	if err != nil {
 		log.Error("[Service][Lane] open store transaction fail", utils.RequestID(ctx), zap.Error(err))
-		return api.NewResponse(commonstore.StoreCode2APICode(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	defer func() {
 		_ = tx.Rollback()
@@ -64,7 +65,7 @@ func (s *Server) CreateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 	if err != nil {
 		log.Error("[Service][Lane] lock one lane_group", utils.RequestID(ctx),
 			zap.String("name", req.GetName()), zap.Error(err))
-		return api.NewResponse(commonstore.StoreCode2APICode(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	if saveVal != nil {
 		return api.NewResponse(apimodel.Code_ExistedResource)
@@ -85,13 +86,13 @@ func (s *Server) CreateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 
 	if err := s.storage.AddLaneGroup(tx, saveData); err != nil {
 		log.Error("[Service][Lane] save lane_group", utils.RequestID(ctx), zap.String("name", saveData.Name), zap.Error(err))
-		return api.NewResponse(commonstore.StoreCode2APICode(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	req.Id = saveData.ID
 
 	if err := tx.Commit(); err != nil {
 		log.Error("[Service][Lane] commit store transaction fail", utils.RequestID(ctx), zap.Error(err))
-		return api.NewResponse(commonstore.StoreCode2APICode(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	s.RecordHistory(ctx, laneGroupRecordEntry(ctx, req, saveData, types.OCreate))
@@ -113,7 +114,7 @@ func (s *Server) UpdateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 	tx, err := s.storage.StartTx()
 	if err != nil {
 		log.Error("[Service][Lane] open store transaction fail", utils.RequestID(ctx), zap.Error(err))
-		return api.NewResponse(commonstore.StoreCode2APICode(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	defer func() {
 		_ = tx.Rollback()
@@ -123,7 +124,7 @@ func (s *Server) UpdateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 	if err != nil {
 		log.Error("[Service][Lane] lock one lane_group", utils.RequestID(ctx),
 			zap.String("name", req.GetName()), zap.Error(err))
-		return api.NewResponse(commonstore.StoreCode2APICode(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	if saveData == nil {
 		log.Error("[Service][Lane] lock one lane_group not found", utils.RequestID(ctx),
@@ -143,13 +144,13 @@ func (s *Server) UpdateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 	saveData.Revision = utils.DefaultString(req.GetRevision(), utils.NewUUID())
 	if err := s.storage.UpdateLaneGroup(tx, saveData); err != nil {
 		log.Error("[Service][Lane] update lane_group", utils.RequestID(ctx), zap.String("name", saveData.Name), zap.Error(err))
-		return api.NewResponse(commonstore.StoreCode2APICode(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	req.Id = saveData.ID
 
 	if err := tx.Commit(); err != nil {
 		log.Error("[Service][Lane] commit store transaction fail", utils.RequestID(ctx), zap.Error(err))
-		return api.NewResponse(commonstore.StoreCode2APICode(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	s.RecordHistory(ctx, laneGroupRecordEntry(ctx, req, saveData, types.OUpdate))
@@ -178,7 +179,7 @@ func (s *Server) DeleteLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 	if err != nil {
 		log.Error("[Server][LaneGroup] get target lane_group when delete", zap.String("id", req.GetId()),
 			zap.String("name", req.GetName()), utils.RequestID(ctx), zap.Error(err))
-		return api.NewResponse(commonstore.StoreCode2APICode(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	if saveData == nil {
 		log.Info("[Server][LaneGroup] delete target lane_group but not found", zap.String("id", req.GetId()),
@@ -188,7 +189,7 @@ func (s *Server) DeleteLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 
 	saveData.Revision = utils.DefaultString(req.GetRevision(), utils.NewUUID())
 	if err := s.storage.DeleteLaneGroup(saveData.ID); err != nil {
-		return api.NewResponse(commonstore.StoreCode2APICode(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	req.Id = saveData.ID
 	s.RecordHistory(ctx, laneGroupRecordEntry(ctx, req, saveData, types.ODelete))
@@ -205,7 +206,7 @@ func (s *Server) GetLaneGroups(ctx context.Context, filter map[string]string) *a
 	})
 	if err != nil {
 		log.Error("[Server][LaneGroup][Query] get lane_groups from store", utils.RequestID(ctx), zap.Error(err))
-		return api.NewBatchQueryResponse(commonstore.StoreCode2APICode(err))
+		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	rsp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)

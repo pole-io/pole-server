@@ -21,8 +21,9 @@ import (
 	"context"
 	"fmt"
 
-	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	"google.golang.org/grpc"
+
+	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
 	"github.com/pole-io/pole-server/apis/apiserver"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"

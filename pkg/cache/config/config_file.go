@@ -37,6 +37,7 @@ import (
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
+	commonatomic "github.com/pole-io/pole-server/pkg/common/syncs/atomic"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -59,9 +60,9 @@ type fileCache struct {
 	// metricsReleaseCount
 	metricsReleaseCount *utils.SyncMap[string, *utils.SyncMap[string, uint64]]
 	// preMetricsFiles
-	preMetricsFiles *utils.AtomicValue[map[string]map[string]struct{}]
+	preMetricsFiles *commonatomic.AtomicValue[map[string]map[string]struct{}]
 	// lastReportTime
-	lastReportTime *utils.AtomicValue[time.Time]
+	lastReportTime *commonatomic.AtomicValue[time.Time]
 }
 
 // NewConfigFileCache 创建文件缓存
@@ -85,8 +86,8 @@ func (fc *fileCache) Initialize(opt map[string]interface{}) error {
 	fc.activeReleaseRevisions = utils.NewSyncMap[string, *utils.SyncMap[string, string]]()
 	fc.singleGroup = &singleflight.Group{}
 	fc.metricsReleaseCount = utils.NewSyncMap[string, *utils.SyncMap[string, uint64]]()
-	fc.preMetricsFiles = utils.NewAtomicValue[map[string]map[string]struct{}](map[string]map[string]struct{}{})
-	fc.lastReportTime = utils.NewAtomicValue[time.Time](time.Time{})
+	fc.preMetricsFiles = commonatomic.NewAtomicValue[map[string]map[string]struct{}](map[string]map[string]struct{}{})
+	fc.lastReportTime = commonatomic.NewAtomicValue[time.Time](time.Time{})
 	valueCache, err := openBoltCache(opt)
 	if err != nil {
 		return err

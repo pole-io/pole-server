@@ -18,8 +18,9 @@
 package docs
 
 import (
-	"github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	"github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 )
 
 type BaseResponse struct {

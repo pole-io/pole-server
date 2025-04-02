@@ -25,14 +25,15 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
+
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -309,7 +310,7 @@ func (ctrl *InstanceCtrl) registerHandler(futures []*InstanceFuture) error {
 		instances = append(instances, entry.instance)
 	}
 	if err := ctrl.storage.BatchAddInstances(instances); err != nil {
-		sendReply(remains, commonstore.StoreCode2APICode(err), err)
+		sendReply(remains, storeapi.StoreCode2APICode(err), err)
 		return err
 	}
 
@@ -370,17 +371,17 @@ func (ctrl *InstanceCtrl) heartbeatHandler(futures []*InstanceFuture) error {
 		err := ctrl.storage.BatchSetInstanceHealthStatus(idValues, utils.StatusBoolToInt(healthy), utils.NewUUID())
 		if err != nil {
 			log.Errorf("[Batch] batch healthy check instances err: %s", err.Error())
-			sendReply(futures, commonstore.StoreCode2APICode(err), err)
+			sendReply(futures, storeapi.StoreCode2APICode(err), err)
 			return err
 		}
 		if err := ctrl.storage.BatchAppendInstanceMetadata(appendMetaReqs); err != nil {
 			log.Errorf("[Batch] batch healthy check instances append metadata err: %s", err.Error())
-			sendReply(futures, commonstore.StoreCode2APICode(err), err)
+			sendReply(futures, storeapi.StoreCode2APICode(err), err)
 			return err
 		}
 		if err := ctrl.storage.BatchRemoveInstanceMetadata(removeMetaReqs); err != nil {
 			log.Errorf("[Batch] batch healthy check instances remove metadata err: %s", err.Error())
-			sendReply(futures, commonstore.StoreCode2APICode(err), err)
+			sendReply(futures, storeapi.StoreCode2APICode(err), err)
 			return err
 		}
 	}
@@ -419,7 +420,7 @@ func (ctrl *InstanceCtrl) deregisterHandler(futures []*InstanceFuture) error {
 	instances, err := ctrl.storage.GetInstancesBrief(ids)
 	if err != nil {
 		log.Errorf("[Batch] get instances service token err: %s", err.Error())
-		sendReply(remains, commonstore.StoreCode2APICode(err), err)
+		sendReply(remains, storeapi.StoreCode2APICode(err), err)
 		return err
 	}
 	for _, future := range futures {
@@ -446,7 +447,7 @@ func (ctrl *InstanceCtrl) deregisterHandler(futures []*InstanceFuture) error {
 	}
 	if err := ctrl.storage.BatchDeleteInstances(args); err != nil {
 		log.Errorf("[Batch] batch delete instances err: %s", err.Error())
-		sendReply(remains, commonstore.StoreCode2APICode(err), err)
+		sendReply(remains, storeapi.StoreCode2APICode(err), err)
 		return err
 	}
 
@@ -469,7 +470,7 @@ func (ctrl *InstanceCtrl) batchRestoreInstanceIsolate(futures map[string]*Instan
 	var err error
 	if id2Isolate, err = ctrl.storage.BatchGetInstanceIsolate(ids); err != nil {
 		log.Errorf("[Batch] check instances existed storage err: %s", err.Error())
-		sendReply(futures, commonstore.StoreCode2APICode(err), err)
+		sendReply(futures, storeapi.StoreCode2APICode(err), err)
 		return err
 	}
 

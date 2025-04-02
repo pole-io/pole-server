@@ -34,11 +34,12 @@ import (
 	secretservice "github.com/envoyproxy/go-control-plane/envoy/service/secret/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/server/sotw/v3"
 	serverv3 "github.com/envoyproxy/go-control-plane/pkg/server/v3"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 	"google.golang.org/grpc"
+
+	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/apiserver"
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -46,6 +47,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
+	commonatomic "github.com/pole-io/pole-server/pkg/common/syncs/atomic"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
@@ -73,7 +75,7 @@ type XDSServer struct {
 	connLimitConfig *connlimit.Config
 
 	nodeMgr           *resource.XDSNodeManager
-	registryInfo      *utils.AtomicValue[ServiceInfos]
+	registryInfo      *commonatomic.AtomicValue[ServiceInfos]
 	resourceGenerator *XdsResourceGenerator
 
 	active         *atomic.Bool
@@ -86,7 +88,7 @@ type XDSServer struct {
 // Initialize 初始化
 func (x *XDSServer) Initialize(ctx context.Context, option map[string]interface{},
 	apiConf map[string]apiserver.APIConfig) error {
-	x.registryInfo = utils.NewAtomicValue[ServiceInfos](ServiceInfos{})
+	x.registryInfo = commonatomic.NewAtomicValue[ServiceInfos](ServiceInfos{})
 	x.listenPort = uint32(option["listenPort"].(int))
 	x.listenIP = option["listenIP"].(string)
 	x.nodeMgr = resource.NewXDSNodeManager()

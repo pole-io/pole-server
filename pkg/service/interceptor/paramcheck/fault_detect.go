@@ -27,9 +27,9 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -148,7 +148,7 @@ func (svr *Server) checkFaultDetectRuleExists(ctx context.Context, id string) *a
 	exists, err := svr.storage.HasFaultDetectRule(id)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewResponse(commonstore.StoreCode2APICode(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	if !exists {
 		return api.NewResponse(apimodel.Code_NotFoundResource)

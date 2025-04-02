@@ -20,9 +20,10 @@ package grpc
 import (
 	"fmt"
 
+	"google.golang.org/grpc"
+
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"google.golang.org/grpc"
 )
 
 // NewClient 创建GRPC客户端

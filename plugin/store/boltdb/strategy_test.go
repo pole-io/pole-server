@@ -23,8 +23,9 @@ import (
 	"testing"
 	"time"
 
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	"github.com/stretchr/testify/assert"
+
+	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/pkg/common/utils"

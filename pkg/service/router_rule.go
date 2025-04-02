@@ -27,16 +27,17 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"go.uber.org/zap"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
-	"go.uber.org/zap"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -63,7 +64,7 @@ func (s *Server) createRoutingConfig(ctx context.Context, req *apitraffic.RouteR
 	if err := s.storage.CreateRoutingConfig(conf); err != nil {
 		log.Error("[Routing][] create routing config  store layer",
 			utils.RequestID(ctx), zap.Error(err))
-		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
+		return apiv1.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	s.RecordHistory(ctx, routeRuleRecordEntry(ctx, req, conf, types.OCreate))
@@ -88,7 +89,7 @@ func (s *Server) deleteRoutingConfig(ctx context.Context, req *apitraffic.RouteR
 	if err := s.storage.DeleteRoutingConfig(req.Id); err != nil {
 		log.Error("[Routing][] delete routing config  store layer",
 			utils.RequestID(ctx), zap.Error(err))
-		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
+		return apiv1.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	s.RecordHistory(ctx, routeRuleRecordEntry(ctx, req, &rules.RouterConfig{
@@ -117,7 +118,7 @@ func (s *Server) updateRoutingConfig(ctx context.Context, req *apitraffic.RouteR
 	if err != nil {
 		log.Error("[Routing][] get routing config  store layer",
 			utils.RequestID(ctx), zap.Error(err))
-		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
+		return apiv1.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	if conf == nil {
 		return apiv1.NewResponse(apimodel.Code_NotFoundRouting)
@@ -134,7 +135,7 @@ func (s *Server) updateRoutingConfig(ctx context.Context, req *apitraffic.RouteR
 	if err := s.storage.UpdateRoutingConfig(reqModel); err != nil {
 		log.Error("[Routing][] update routing config  store layer",
 			utils.RequestID(ctx), zap.Error(err))
-		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
+		return apiv1.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	s.RecordHistory(ctx, routeRuleRecordEntry(ctx, req, reqModel, types.OUpdate))
@@ -189,7 +190,7 @@ func (s *Server) enableRoutings(ctx context.Context, req *apitraffic.RouteRule) 
 	if err != nil {
 		log.Error("[Routing][] get routing config  store layer",
 			utils.RequestID(ctx), zap.Error(err))
-		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
+		return apiv1.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	if conf == nil {
 		return apiv1.NewResponse(apimodel.Code_NotFoundRouting)
@@ -201,7 +202,7 @@ func (s *Server) enableRoutings(ctx context.Context, req *apitraffic.RouteRule) 
 	if err := s.storage.EnableRouting(conf); err != nil {
 		log.Error("[Routing][] enable routing config  store layer",
 			utils.RequestID(ctx), zap.Error(err))
-		return apiv1.NewResponse(commonstore.StoreCode2APICode(err))
+		return apiv1.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	s.RecordHistory(ctx, routeRuleRecordEntry(ctx, req, conf, types.OUpdate))

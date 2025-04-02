@@ -33,11 +33,13 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/wrappers"
-	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
+	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -184,11 +186,11 @@ func getConfigFilesFromZIP(data []byte) ([]*apiconfig.ConfigFile, error) {
 	}
 	var (
 		configFiles []*apiconfig.ConfigFile
-		metas       map[string]*utils.ConfigFileMeta
+		metas       map[string]*conftypes.ConfigFileMeta
 	)
 	// 提取元数据文件
 	for _, file := range zr.File {
-		if file.Name == utils.ConfigFileMetaFileName {
+		if file.Name == conftypes.ConfigFileMetaFileName {
 			content, err := extractFileContent(file)
 			if err != nil {
 				return nil, err
@@ -203,7 +205,7 @@ func getConfigFilesFromZIP(data []byte) ([]*apiconfig.ConfigFile, error) {
 	// 提取配置文件
 	for _, file := range zr.File {
 		// 跳过目录文件和元数据文件
-		if file.FileInfo().IsDir() || file.Name == utils.ConfigFileMetaFileName {
+		if file.FileInfo().IsDir() || file.Name == conftypes.ConfigFileMetaFileName {
 			continue
 		}
 		// 提取文件内容

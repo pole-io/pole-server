@@ -21,9 +21,10 @@ import (
 	"context"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
 	"github.com/pole-io/pole-server/apis/pkg/types"

@@ -26,7 +26,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 )
 
 // InstanceCtrl 批量操作实例的类
@@ -195,7 +195,7 @@ func (ctrl *ClientCtrl) registerHandler(futures []*ClientFuture) error {
 		clients = append(clients, types.NewClient(entry.request))
 	}
 	if err := ctrl.storage.BatchAddClients(clients); err != nil {
-		SendClientReply(futures, commonstore.StoreCode2APICode(err), err)
+		SendClientReply(futures, storeapi.StoreCode2APICode(err), err)
 		return err
 	}
 
@@ -221,7 +221,7 @@ func (ctrl *ClientCtrl) deregisterHandler(futures []*ClientFuture) error {
 		clients = append(clients, id)
 	}
 	if err := ctrl.storage.BatchDeleteClients(clients); err != nil {
-		SendClientReply(futures, commonstore.StoreCode2APICode(err), err)
+		SendClientReply(futures, storeapi.StoreCode2APICode(err), err)
 		return err
 	}
 

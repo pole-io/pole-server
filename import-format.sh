@@ -45,4 +45,4 @@ fi
 go fmt ./...
 
 find . -name "*.go" -type f | grep -v .pb.go | grep -v test/tools/tools.go | grep -v ./plugin.go |
-    xargs -I {} ./goimports-reviser -rm-unused -local github.com/polarismesh/specification -project-name github.com/pole-io/pole-server -format {}
+    xargs -I {} ./goimports-reviser -rm-unused -company-prefixes github.com/polarismesh/specification -project-name github.com/pole-io/pole-server -format {}

@@ -19,6 +19,7 @@ package config
 
 import (
 	"github.com/golang/protobuf/proto"
+
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"

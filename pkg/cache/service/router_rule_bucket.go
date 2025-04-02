@@ -26,6 +26,7 @@ import (
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	commonatomic "github.com/pole-io/pole-server/pkg/common/syncs/atomic"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -39,7 +40,7 @@ type ServiceWithRouterRules struct {
 	rules    map[string]*rules.ExtendRouterConfig
 	revision string
 
-	customv1RuleRef *utils.AtomicValue[*apitraffic.Routing]
+	customv1RuleRef *commonatomic.AtomicValue[*apitraffic.Routing]
 }
 
 func NewServiceWithRouterRules(svcKey svctypes.ServiceKey, direction rules.TrafficDirection) *ServiceWithRouterRules {
@@ -53,7 +54,7 @@ func NewServiceWithRouterRules(svcKey svctypes.ServiceKey, direction rules.Traff
 // AddRouterRule 添加路由规则，注意，这里只会保留处于 Enable 状态的路由规则
 func (s *ServiceWithRouterRules) AddRouterRule(rule *rules.ExtendRouterConfig) {
 	if rule.GetRoutingPolicy() == apitraffic.RoutingPolicy_RulePolicy {
-		s.customv1RuleRef = utils.NewAtomicValue[*apitraffic.Routing](&apitraffic.Routing{
+		s.customv1RuleRef = commonatomic.NewAtomicValue[*apitraffic.Routing](&apitraffic.Routing{
 			Inbounds:  []*apitraffic.Route{},
 			Outbounds: []*apitraffic.Route{},
 		})

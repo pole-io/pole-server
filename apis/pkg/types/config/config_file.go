@@ -30,13 +30,6 @@ import (
 
 type ReleaseType string
 
-const (
-	// ReleaseTypeFull 全量类型
-	ReleaseTypeFull = ""
-	// ReleaseTypeGray 灰度类型
-	ReleaseTypeGray = "gray"
-)
-
 /** ----------- DataObject ------------- */
 
 // ConfigFileGroup 配置文件组数据持久化对象

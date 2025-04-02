@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	regexp "github.com/dlclark/regexp2"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 )
 

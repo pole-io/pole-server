@@ -34,7 +34,7 @@ import (
 	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc/grpclog"
 
-	"github.com/pole-io/pole-server/pkg/common/timewheel"
+	"github.com/pole-io/pole-server/pkg/common/syncs/timewheel"
 )
 
 // none is used to disable logging output as well as to disable stack tracing.

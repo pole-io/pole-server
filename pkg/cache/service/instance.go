@@ -22,10 +22,11 @@ import (
 	"sync"
 	"time"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
+
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"

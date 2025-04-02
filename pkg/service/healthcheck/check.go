@@ -23,16 +23,17 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"go.uber.org/zap"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/srand"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
-	"github.com/pole-io/pole-server/pkg/common/timewheel"
+	"github.com/pole-io/pole-server/pkg/common/syncs/timewheel"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin"
 )
@@ -591,7 +592,7 @@ func serialSetInsDbStatus(svr *Server, ins *apiservice.Instance, healthStatus bo
 	id := ins.GetId().GetValue()
 	if err := svr.storage.SetInstanceHealthStatus(id, utils.StatusBoolToInt(healthStatus), utils.NewUUID()); err != nil {
 		log.Errorf("[Health Check][Check]id: %s set db status err:%s", id, err)
-		return commonstore.StoreCode2APICode(err)
+		return storeapi.StoreCode2APICode(err)
 	}
 	if healthStatus {
 		if err := svr.storage.BatchRemoveInstanceMetadata([]*store.InstanceMetadataRequest{
@@ -602,7 +603,7 @@ func serialSetInsDbStatus(svr *Server, ins *apiservice.Instance, healthStatus bo
 			},
 		}); err != nil {
 			log.Errorf("[Batch] batch healthy check instances remove metadata err: %s", err.Error())
-			return commonstore.StoreCode2APICode(err)
+			return storeapi.StoreCode2APICode(err)
 		}
 	} else {
 		if err := svr.storage.BatchAppendInstanceMetadata([]*store.InstanceMetadataRequest{
@@ -615,7 +616,7 @@ func serialSetInsDbStatus(svr *Server, ins *apiservice.Instance, healthStatus bo
 			},
 		}); err != nil {
 			log.Errorf("[Batch] batch healthy check instances append metadata err: %s", err.Error())
-			return commonstore.StoreCode2APICode(err)
+			return storeapi.StoreCode2APICode(err)
 		}
 	}
 	return apimodel.Code_ExecuteSuccess

@@ -24,12 +24,13 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/wrappers"
+
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 )
 
 // some options config
@@ -102,9 +103,9 @@ func storeError2AnyResponse(err error, msg proto.Message) *apiservice.Response {
 		return nil
 	}
 	if nil == msg {
-		return api.NewResponseWithMsg(commonstore.StoreCode2APICode(err), err.Error())
+		return api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
-	resp := api.NewAnyDataResponse(commonstore.StoreCode2APICode(err), msg)
+	resp := api.NewAnyDataResponse(storeapi.StoreCode2APICode(err), msg)
 	resp.Info = &wrappers.StringValue{Value: err.Error()}
 	return resp
 }

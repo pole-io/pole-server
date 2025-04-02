@@ -21,8 +21,9 @@ import (
 	"context"
 	"time"
 
-	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	"go.uber.org/zap"
+
+	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"

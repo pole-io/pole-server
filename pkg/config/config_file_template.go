@@ -20,13 +20,14 @@ package config
 import (
 	"context"
 
-	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 
+	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -39,7 +40,7 @@ func (s *Server) CreateConfigFileTemplate(
 	if err != nil {
 		log.Error("[Config][Service] get config file template error.",
 			utils.RequestID(ctx), zap.String("name", name), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	if saveData != nil {
 		return api.NewConfigResponse(apimodel.Code_ExistedResource)
@@ -51,7 +52,7 @@ func (s *Server) CreateConfigFileTemplate(
 	template.ModifyBy = utils.NewStringValue(userName)
 	if _, err := s.storage.CreateConfigFileTemplate(saveData); err != nil {
 		log.Error("[Config][Service] create config file template error.", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
@@ -67,7 +68,7 @@ func (s *Server) GetConfigFileTemplate(ctx context.Context, name string) *apicon
 	if err != nil {
 		log.Error("[Config][Service] get config file template error.",
 			utils.RequestID(ctx), zap.String("name", name), zap.Error(err))
-		return api.NewConfigResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	if saveData == nil {
 		return api.NewConfigResponse(apimodel.Code_NotFoundResource)
@@ -82,7 +83,7 @@ func (s *Server) GetAllConfigFileTemplates(ctx context.Context) *apiconfig.Confi
 	templates, err := s.storage.QueryAllConfigFileTemplates()
 	if err != nil {
 		log.Error("[Config][Service]query all config file templates error.", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigBatchQueryResponse(commonstore.StoreCode2APICode(err))
+		return api.NewConfigBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	var apiTemplates []*apiconfig.ConfigFileTemplate

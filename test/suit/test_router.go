@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 

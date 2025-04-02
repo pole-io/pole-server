@@ -25,9 +25,10 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"github.com/stretchr/testify/assert"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/service"

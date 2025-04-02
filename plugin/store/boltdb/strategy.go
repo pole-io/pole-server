@@ -24,9 +24,10 @@ import (
 	"strings"
 	"time"
 
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
+
+	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"

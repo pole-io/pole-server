@@ -73,14 +73,14 @@ func CompressConfigFiles(files []*conftypes.ConfigFile,
 	w := zip.NewWriter(&buf)
 	defer w.Close()
 
-	var configFileMetas = make(map[string]*utils.ConfigFileMeta)
+	var configFileMetas = make(map[string]*conftypes.ConfigFileMeta)
 	for _, file := range files {
 		fileName := file.Name
 		if isExportGroup {
 			fileName = path.Join(file.Group, file.Name)
 		}
 
-		configFileMetas[fileName] = &utils.ConfigFileMeta{
+		configFileMetas[fileName] = &conftypes.ConfigFileMeta{
 			Tags:    make(map[string]string),
 			Comment: file.Comment,
 		}

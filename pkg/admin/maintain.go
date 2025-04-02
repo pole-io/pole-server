@@ -23,21 +23,22 @@ import (
 	"runtime/debug"
 	"time"
 
+	"go.uber.org/zap"
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"go.uber.org/zap"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/pkg/types/admin"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -189,7 +190,7 @@ func (s *Server) CleanInstance(ctx context.Context, req *apiservice.Instance) *a
 	if err := s.storage.CleanInstance(instanceID); err != nil {
 		log.Error("Clean instance",
 			zap.String("err", err.Error()), utils.RequestID(ctx))
-		return api.NewInstanceResponse(commonstore.StoreCode2APICode(err), req)
+		return api.NewInstanceResponse(storeapi.StoreCode2APICode(err), req)
 	}
 
 	log.Info("Clean instance", utils.RequestID(ctx), utils.ZapInstanceID(instanceID))

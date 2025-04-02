@@ -27,18 +27,19 @@ import (
 
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"go.uber.org/zap"
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"go.uber.org/zap"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/model"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -58,7 +59,7 @@ func (svr *Server) CreateStrategy(ctx context.Context, req *apisecurity.AuthStra
 	tx, err := svr.storage.StartTx()
 	if err != nil {
 		log.Error("[Auth][Strategy] start tx", utils.RequestID(ctx), zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 	defer func() {
 		_ = tx.Rollback()
@@ -67,11 +68,11 @@ func (svr *Server) CreateStrategy(ctx context.Context, req *apisecurity.AuthStra
 	if err := svr.storage.AddStrategy(tx, data); err != nil {
 		log.Error("[Auth][Strategy] create strategy into store", utils.RequestID(ctx),
 			zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 	if err := tx.Commit(); err != nil {
 		log.Error("[Auth][Strategy] create strategy  commit tx", utils.RequestID(ctx), zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	log.Info("[Auth][Strategy] create strategy", utils.RequestID(ctx), zap.String("name", req.Name.GetValue()))
@@ -102,7 +103,7 @@ func (svr *Server) UpdateStrategy(ctx context.Context, req *apisecurity.ModifyAu
 	if err != nil {
 		log.Error("[Auth][Strategy] get strategy from store", utils.RequestID(ctx),
 			zap.Error(err))
-		return api.NewModifyAuthStrategyResponse(commonstore.StoreCode2APICode(err), req)
+		return api.NewModifyAuthStrategyResponse(storeapi.StoreCode2APICode(err), req)
 	}
 	if strategy == nil {
 		return api.NewModifyAuthStrategyResponse(apimodel.Code_NotFoundAuthStrategyRule, req)
@@ -117,7 +118,7 @@ func (svr *Server) UpdateStrategy(ctx context.Context, req *apisecurity.ModifyAu
 	if err := svr.storage.UpdateStrategy(data); err != nil {
 		log.Error("[Auth][Strategy] update strategy into store",
 			utils.RequestID(ctx), zap.Error(err))
-		return api.NewAuthResponseWithMsg(commonstore.StoreCode2APICode(err), err.Error())
+		return api.NewAuthResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 
 	log.Info("[Auth][Strategy] update strategy into store", utils.RequestID(ctx),
@@ -147,7 +148,7 @@ func (svr *Server) DeleteStrategy(ctx context.Context, req *apisecurity.AuthStra
 	if err != nil {
 		log.Error("[Auth][Strategy] get strategy from store", utils.RequestID(ctx),
 			zap.Error(err))
-		return api.NewAuthStrategyResponse(commonstore.StoreCode2APICode(err), req)
+		return api.NewAuthStrategyResponse(storeapi.StoreCode2APICode(err), req)
 	}
 
 	if strategy == nil {
@@ -166,7 +167,7 @@ func (svr *Server) DeleteStrategy(ctx context.Context, req *apisecurity.AuthStra
 	if err := svr.storage.DeleteStrategy(req.GetId().GetValue()); err != nil {
 		log.Error("[Auth][Strategy] delete strategy from store",
 			utils.RequestID(ctx), zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	log.Info("[Auth][Strategy] delete strategy from store", utils.RequestID(ctx),
@@ -208,7 +209,7 @@ func (svr *Server) GetStrategies(ctx context.Context, filters map[string]string)
 	if err != nil {
 		log.Error("[Auth][Strategy] get strategies from store", zap.Any("query", filters),
 			utils.RequestID(ctx), zap.Error(err))
-		return api.NewAuthBatchQueryResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	resp := api.NewAuthBatchQueryResponse(apimodel.Code_ExecuteSuccess)
@@ -275,7 +276,7 @@ func (svr *Server) GetStrategy(ctx context.Context, req *apisecurity.AuthStrateg
 	if err != nil {
 		log.Error("[Auth][Strategy] get strategt from store",
 			utils.RequestID(ctx), zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 	if ret == nil {
 		return api.NewAuthStrategyResponse(apimodel.Code_NotFoundAuthStrategyRule, req)
@@ -360,7 +361,7 @@ func (svr *Server) GetPrincipalResources(ctx context.Context, query map[string]s
 			if err != nil {
 				log.Error("[Auth][Strategy] get principal link resource", utils.RequestID(ctx),
 					zap.String("principal-id", principalId), zap.Any("principal-role", principalRole), zap.Error(err))
-				return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+				return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 			}
 			resources = append(resources, res...)
 		}
@@ -370,7 +371,7 @@ func (svr *Server) GetPrincipalResources(ctx context.Context, query map[string]s
 	if err != nil {
 		log.Error("[Auth][Strategy] get principal link resource", utils.RequestID(ctx),
 			zap.String("principal-id", principalId), zap.Any("principal-role", principalRole), zap.Error(err))
-		return api.NewAuthResponse(commonstore.StoreCode2APICode(err))
+		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	resources = append(resources, pResources...)

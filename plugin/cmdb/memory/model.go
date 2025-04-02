@@ -21,8 +21,9 @@ import (
 	"net"
 	"strings"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )

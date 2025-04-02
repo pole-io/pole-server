@@ -22,9 +22,10 @@ import (
 	"reflect"
 	"testing"
 
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/pole-io/pole-server/plugin/apiserver/grpcserver"
 )

@@ -24,9 +24,10 @@ import (
 	"strconv"
 	"time"
 
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/utils"

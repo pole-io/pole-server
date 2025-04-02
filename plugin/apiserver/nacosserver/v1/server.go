@@ -27,8 +27,9 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 	"github.com/pkg/errors"
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
+
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/access_control/ratelimit"

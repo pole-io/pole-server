@@ -20,9 +20,10 @@ package service_auth
 import (
 	"context"
 
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
 	"github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"

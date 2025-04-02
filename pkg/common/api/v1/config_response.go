@@ -19,9 +19,10 @@ package v1
 
 import (
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // ConfigCollect BatchWriteResponse添加Response

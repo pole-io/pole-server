@@ -26,9 +26,10 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/ptypes/duration"
+	"github.com/stretchr/testify/assert"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
-	"github.com/stretchr/testify/assert"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	types "github.com/pole-io/pole-server/apis/cache"

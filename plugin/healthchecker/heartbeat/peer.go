@@ -26,11 +26,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+
+	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	commonhash "github.com/pole-io/pole-server/pkg/common/hash"
 	"github.com/pole-io/pole-server/pkg/common/utils"

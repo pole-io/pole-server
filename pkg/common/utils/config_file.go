@@ -72,9 +72,3 @@ func ParseFileId(fileId string) (namespace, group, fileName string) {
 	fileInfo := strings.Split(fileId, FileIdSeparator)
 	return fileInfo[0], fileInfo[1], fileInfo[2]
 }
-
-// ConfigFileMeta 导入配置文件ZIP包中的元数据结构
-type ConfigFileMeta struct {
-	Tags    map[string]string `json:"tags"`
-	Comment string            `json:"comment"`
-}

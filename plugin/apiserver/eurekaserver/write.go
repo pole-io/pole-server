@@ -24,14 +24,15 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"go.uber.org/zap"
+
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
@@ -261,7 +262,7 @@ func (h *EurekaServer) updateStatus(
 	saveIns, err := svr.Store().GetInstance(instanceId)
 	if err != nil {
 		eurekalog.Error("[EUREKA-SERVER] get instance from store when update status", zap.Error(err))
-		return uint32(commonstore.StoreCode2APICode(err))
+		return uint32(storeapi.StoreCode2APICode(err))
 	}
 	if saveIns == nil {
 		return uint32(apimodel.Code_NotFoundInstance)

@@ -23,15 +23,16 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commonstore "github.com/pole-io/pole-server/pkg/common/store"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -97,7 +98,7 @@ func (s *Server) CreateServiceContract(ctx context.Context, contract *apiservice
 	if err != nil {
 		log.Error("[Service][Contract] get service_contract from store when create", utils.RequestID(ctx),
 			zap.Error(err))
-		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+		return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 	}
 	if existContract != nil {
 		var needUpdate = false
@@ -106,7 +107,7 @@ func (s *Server) CreateServiceContract(ctx context.Context, contract *apiservice
 			if existContract.ContentDigest, err = utils.BuildSha1Digest(existContract.Content); err != nil {
 				log.Error("[Service][Contract] do build content digest for update contract", utils.RequestID(ctx),
 					zap.Error(err))
-				return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+				return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 			}
 			needUpdate = true
 		}
@@ -115,7 +116,7 @@ func (s *Server) CreateServiceContract(ctx context.Context, contract *apiservice
 			if existContract.MetadataStr, err = utils.ConvertMetadataToStringValue(existContract.Metadata); err != nil {
 				log.Error("[Service][Contract] do serialize metadata for update contract", utils.RequestID(ctx),
 					zap.Error(err))
-				return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+				return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 			}
 			needUpdate = true
 		}
@@ -125,7 +126,7 @@ func (s *Server) CreateServiceContract(ctx context.Context, contract *apiservice
 		existContract.Revision = utils.NewUUID()
 		if err := s.storage.UpdateServiceContract(existContract.ServiceContract); err != nil {
 			log.Error("[Service][Contract] do update to store", utils.RequestID(ctx), zap.Error(err))
-			return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+			return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 		}
 		s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, &svctypes.EnrichServiceContract{
 			ServiceContract: existContract.ServiceContract,
@@ -146,16 +147,16 @@ func (s *Server) CreateServiceContract(ctx context.Context, contract *apiservice
 	}
 	if saveData.ContentDigest, err = utils.BuildSha1Digest(saveData.Content); err != nil {
 		log.Error("[Service][Contract] do build content digest for create contract", utils.RequestID(ctx), zap.Error(err))
-		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+		return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 	}
 	if saveData.MetadataStr, err = utils.ConvertMetadataToStringValue(saveData.Metadata); err != nil {
 		log.Error("[Service][Contract] do serialize metadata for create contract", utils.RequestID(ctx), zap.Error(err))
-		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+		return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 	}
 
 	if err := s.storage.CreateServiceContract(saveData); err != nil {
 		log.Error("[Service][Contract] do save to store", utils.RequestID(ctx), zap.Error(err))
-		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+		return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 	}
 	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, &svctypes.EnrichServiceContract{
 		ServiceContract: saveData,
@@ -200,7 +201,7 @@ func (s *Server) GetServiceContracts(ctx context.Context, query map[string]strin
 
 	totalCount, ret, err := s.storage.GetServiceContracts(ctx, searchFilters, offset, limit)
 	if err != nil {
-		out = api.NewBatchQueryResponseWithMsg(commonstore.StoreCode2APICode(err), err.Error())
+		out = api.NewBatchQueryResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 		return out
 	}
 	for _, item := range ret {
@@ -294,7 +295,7 @@ func (s *Server) DeleteServiceContract(ctx context.Context,
 	saveData, err := s.storage.GetServiceContract(contract.Id)
 	if err != nil {
 		log.Error("[Service][Contract] get save service_contract when delete", utils.RequestID(ctx), zap.Error(err))
-		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+		return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 	}
 	if saveData == nil {
 		return api.NewServiceContractResponse(apimodel.Code_ExecuteSuccess, nil)
@@ -311,7 +312,7 @@ func (s *Server) DeleteServiceContract(ctx context.Context,
 
 	if createErr := s.storage.DeleteServiceContract(deleteData); createErr != nil {
 		log.Error("[Service][Contract] do delete from store", utils.RequestID(ctx), zap.Error(err))
-		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+		return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 	}
 	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, &svctypes.EnrichServiceContract{
 		ServiceContract: deleteData,
@@ -329,7 +330,7 @@ func (s *Server) GetServiceContractVersions(ctx context.Context, filter map[stri
 	ret, err := s.storage.ListVersions(ctx, serviceName, namespace)
 	if err != nil {
 		log.Error("[Service][Contract] list save service_contract versions", utils.RequestID(ctx), zap.Error(err))
-		return api.NewBatchQueryResponse(commonstore.StoreCode2APICode(err))
+		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	resp.Data = make([]*anypb.Any, 0, len(ret))
@@ -400,7 +401,7 @@ func (s *Server) CreateServiceContractInterfaces(ctx context.Context,
 		}
 		if interfaceDescriptor.ContentDigest, err = utils.BuildSha1Digest(interfaceDescriptor.Content); err != nil {
 			log.Error("[Service][Contract] do build content digest for create interface descriptor", utils.RequestID(ctx), zap.Error(err))
-			return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+			return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 		}
 		interfaces[interfaceId] = interfaceDescriptor
 		createData.Interfaces = append(createData.Interfaces, interfaceDescriptor)
@@ -411,7 +412,7 @@ func (s *Server) CreateServiceContractInterfaces(ctx context.Context,
 	saveData, err := s.storage.GetServiceContract(contract.Id)
 	if err != nil {
 		log.Error("[Service][Contract] get save service_contract when add interfaces", utils.RequestID(ctx), zap.Error(err))
-		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+		return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 	}
 	var needUpdate = false
 	if saveData != nil {
@@ -446,7 +447,7 @@ func (s *Server) CreateServiceContractInterfaces(ctx context.Context,
 	}
 	if err := s.storage.AddServiceContractInterfaces(createData); err != nil {
 		log.Error("[Service][Contract] full replace service_contract interfaces", utils.RequestID(ctx), zap.Error(err))
-		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+		return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 	}
 	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, createData, types.OUpdate))
 	return api.NewServiceContractResponse(apimodel.Code_ExecuteSuccess, retContract)
@@ -463,7 +464,7 @@ func (s *Server) AppendServiceContractInterfaces(ctx context.Context,
 	saveData, err := s.storage.GetServiceContract(contract.Id)
 	if err != nil {
 		log.Error("[Service][Contract] get save service_contract when append interfaces", utils.RequestID(ctx), zap.Error(err))
-		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+		return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 	}
 	if saveData == nil {
 		return api.NewServiceContractResponse(apimodel.Code_NotFoundResource, nil)
@@ -500,7 +501,7 @@ func (s *Server) AppendServiceContractInterfaces(ctx context.Context,
 		}
 		if interfaceDescriptor.ContentDigest, err = utils.BuildSha1Digest(interfaceDescriptor.Content); err != nil {
 			log.Error("[Service][Contract] do build content digest for create interface descriptor", utils.RequestID(ctx), zap.Error(err))
-			return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+			return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 		}
 		appendData.Interfaces = append(appendData.Interfaces, interfaceDescriptor)
 		retContract.Interfaces = append(retContract.Interfaces, &apiservice.InterfaceDescriptor{Id: interfaceId})
@@ -508,7 +509,7 @@ func (s *Server) AppendServiceContractInterfaces(ctx context.Context,
 	}
 	if err := s.storage.AppendServiceContractInterfaces(appendData); err != nil {
 		log.Error("[Service][Contract] append service_contract interfaces", utils.RequestID(ctx), zap.Error(err))
-		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+		return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 	}
 	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, appendData, types.OUpdate))
 	return api.NewServiceContractResponse(apimodel.Code_ExecuteSuccess, retContract)
@@ -525,7 +526,7 @@ func (s *Server) DeleteServiceContractInterfaces(ctx context.Context,
 	saveData, err := s.storage.GetServiceContract(contract.Id)
 	if err != nil {
 		log.Error("[Service][Contract] get save service_contract when delete interfaces", utils.RequestID(ctx), zap.Error(err))
-		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+		return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 	}
 	if saveData == nil {
 		return api.NewServiceContractResponse(apimodel.Code_NotFoundResource, nil)
@@ -557,7 +558,7 @@ func (s *Server) DeleteServiceContractInterfaces(ctx context.Context,
 	}
 	if err := s.storage.DeleteServiceContractInterfaces(deleteData); err != nil {
 		log.Error("[Service][Contract] delete service_contract interfaces", utils.RequestID(ctx), zap.Error(err))
-		return api.NewServiceContractResponse(commonstore.StoreCode2APICode(err), nil)
+		return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 	}
 	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, deleteData, types.ODelete))
 	return api.NewServiceContractResponse(apimodel.Code_ExecuteSuccess, retContract)
@@ -606,7 +607,7 @@ func (s *Server) GetServiceInterfaces(ctx context.Context, filter map[string]str
 	total, ret, err := s.storage.GetInterfaceDescriptors(ctx, searchFilters, offset, limit)
 	if err != nil {
 		log.Error("[Service][Contract] query service_contract interfaces fail", utils.RequestID(ctx), zap.Error(err))
-		return api.NewBatchQueryResponse(commonstore.StoreCode2APICode(err))
+		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 	out.Amount = utils.NewUInt32Value(total)
 	out.Size = utils.NewUInt32Value(uint32(len(ret)))
