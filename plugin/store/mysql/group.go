@@ -24,7 +24,7 @@ import (
 
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 const (
@@ -317,7 +317,7 @@ func (u *groupStore) addGroupRelation(tx *BaseTx, groupId string, userIds []stri
 		return store.NewStatusError(store.EmptyParamsErr, fmt.Sprintf(
 			"add user relation missing some params, groupid is %s", groupId))
 	}
-	if len(userIds) > utils.MaxBatchSize {
+	if len(userIds) > valid.MaxBatchSize {
 		return store.NewStatusError(store.InvalidUserIDSlice, fmt.Sprintf(
 			"user id slice is invalid, len=%d", len(userIds)))
 	}
@@ -344,7 +344,7 @@ func (u *groupStore) removeGroupRelation(tx *BaseTx, groupId string, userIds []s
 		return store.NewStatusError(store.EmptyParamsErr, fmt.Sprintf(
 			"delete user relation missing some params, groupid is %s", groupId))
 	}
-	if len(userIds) > utils.MaxBatchSize {
+	if len(userIds) > valid.MaxBatchSize {
 		return store.NewStatusError(store.InvalidUserIDSlice, fmt.Sprintf(
 			"user id slice is invalid, len=%d", len(userIds)))
 	}

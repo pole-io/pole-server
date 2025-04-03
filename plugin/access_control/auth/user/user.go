@@ -39,6 +39,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 type (
@@ -292,7 +293,7 @@ func (svr *Server) DeleteUser(ctx context.Context, req *apisecurity.User) *apise
 
 // GetUsers 查询用户列表
 func (svr *Server) GetUsers(ctx context.Context, filters map[string]string) *apiservice.BatchQueryResponse {
-	offset, limit, _ := utils.ParseOffsetAndLimit(filters)
+	offset, limit, _ := valid.ParseOffsetAndLimit(filters)
 
 	total, users, err := svr.cacheMgr.User().QueryUsers(ctx, cachetypes.UserSearchArgs{
 		Filters: filters,

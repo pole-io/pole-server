@@ -35,6 +35,7 @@ import (
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // CreateConfigFile 创建配置文件
@@ -315,7 +316,7 @@ func (s *Server) GetConfigFileRichInfo(ctx context.Context, req *apiconfig.Confi
 
 // SearchConfigFile 查询配置文件
 func (s *Server) SearchConfigFile(ctx context.Context, searchFilters map[string]string) *apiconfig.ConfigBatchQueryResponse {
-	offset, limit, _ := utils.ParseOffsetAndLimit(searchFilters)
+	offset, limit, _ := valid.ParseOffsetAndLimit(searchFilters)
 	count, files, err := s.storage.QueryConfigFiles(searchFilters, offset, limit)
 	if err != nil {
 		log.Error("[Config][File] search config files.", utils.RequestID(ctx), zap.Error(err))
@@ -360,7 +361,7 @@ func (s *Server) ExportConfigFile(ctx context.Context,
 		names = append(names, name.GetValue())
 	}
 	// 检查参数
-	if err := utils.CheckResourceName(configFileExport.Namespace); err != nil {
+	if err := valid.CheckResourceName(configFileExport.Namespace); err != nil {
 		return api.NewConfigFileExportResponse(apimodel.Code_InvalidNamespaceName, nil)
 	}
 	var (

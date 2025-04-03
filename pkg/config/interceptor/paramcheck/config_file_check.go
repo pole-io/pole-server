@@ -29,6 +29,7 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // CreateConfigFile 创建配置文件
@@ -53,7 +54,7 @@ func (s *Server) GetConfigFileRichInfo(ctx context.Context,
 func (s *Server) SearchConfigFile(ctx context.Context,
 	filter map[string]string) *apiconfig.ConfigBatchQueryResponse {
 
-	offset, limit, err := utils.ParseOffsetAndLimit(filter)
+	offset, limit, err := valid.ParseOffsetAndLimit(filter)
 	if err != nil {
 		out := api.NewConfigBatchQueryResponse(apimodel.Code_BadRequest)
 		out.Info = utils.NewStringValue(err.Error())
@@ -137,10 +138,10 @@ func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]str
 	if err := CheckFileName(wrapperspb.String(fileName)); err != nil {
 		return types.NewCommonResponse(uint32(apimodel.Code_InvalidConfigFileName))
 	}
-	if err := utils.CheckResourceName(wrapperspb.String(group)); err != nil {
+	if err := valid.CheckResourceName(wrapperspb.String(group)); err != nil {
 		return types.NewCommonResponse(uint32(apimodel.Code_InvalidConfigFileGroupName))
 	}
-	if err := utils.CheckResourceName(wrapperspb.String(namespace)); err != nil {
+	if err := valid.CheckResourceName(wrapperspb.String(namespace)); err != nil {
 		return types.NewCommonResponse(uint32(apimodel.Code_InvalidNamespaceName))
 	}
 

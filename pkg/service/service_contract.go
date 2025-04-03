@@ -35,6 +35,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 var (
@@ -87,7 +88,7 @@ func (s *Server) CreateServiceContract(ctx context.Context, contract *apiservice
 	}
 	contractId := contract.GetId()
 	if contractId == "" {
-		tmpId, errRsp := utils.CheckContractTetrad(contract)
+		tmpId, errRsp := valid.CheckContractTetrad(contract)
 		if errRsp != nil {
 			return errRsp
 		}
@@ -186,7 +187,7 @@ func (s *Server) GetServiceContracts(ctx context.Context, query map[string]strin
 		}
 		searchFilters[newK] = v
 	}
-	offset, limit, err := utils.ParseOffsetAndLimit(searchFilters)
+	offset, limit, err := valid.ParseOffsetAndLimit(searchFilters)
 	if err != nil {
 		out = api.NewBatchQueryResponseWithMsg(apimodel.Code_InvalidParameter, err.Error())
 		return out
@@ -285,7 +286,7 @@ func (s *Server) DeleteServiceContract(ctx context.Context,
 	contract *apiservice.ServiceContract) *apiservice.Response {
 
 	if contract.Id == "" {
-		id, errRsp := utils.CheckContractTetrad(contract)
+		id, errRsp := valid.CheckContractTetrad(contract)
 		if errRsp != nil {
 			return errRsp
 		}
@@ -591,7 +592,7 @@ func (s *Server) GetServiceInterfaces(ctx context.Context, filter map[string]str
 		}
 		searchFilters[newK] = v
 	}
-	offset, limit, err := utils.ParseOffsetAndLimit(searchFilters)
+	offset, limit, err := valid.ParseOffsetAndLimit(searchFilters)
 	if err != nil {
 		out = api.NewBatchQueryResponseWithMsg(apimodel.Code_InvalidParameter, err.Error())
 		return out
@@ -627,7 +628,7 @@ func checkOperationServiceContractInterface(contract *apiservice.ServiceContract
 	if contract.Id != "" {
 		return nil
 	}
-	id, errRsp := utils.CheckContractTetrad(contract)
+	id, errRsp := valid.CheckContractTetrad(contract)
 	if errRsp != nil {
 		return errRsp
 	}
@@ -656,7 +657,7 @@ func serviceContractRecordEntry(ctx context.Context, req *apiservice.ServiceCont
 }
 
 func checkBaseServiceContract(req *apiservice.ServiceContract) *apiservice.Response {
-	if err := utils.CheckResourceName(utils.NewStringValue(req.GetNamespace())); err != nil {
+	if err := valid.CheckResourceName(utils.NewStringValue(req.GetNamespace())); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
 	}
 	if req.GetName() == "" && req.GetType() == "" {

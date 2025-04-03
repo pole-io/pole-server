@@ -26,6 +26,7 @@ import (
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // CreateServiceContracts implements service.DiscoverServer.
@@ -96,7 +97,7 @@ func (svr *Server) DeleteServiceContractInterfaces(ctx context.Context,
 }
 
 func checkBaseServiceContract(req *apiservice.ServiceContract) *apiservice.Response {
-	if err := utils.CheckResourceName(utils.NewStringValue(req.GetNamespace())); err != nil {
+	if err := valid.CheckResourceName(utils.NewStringValue(req.GetNamespace())); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
 	}
 	if req.GetName() == "" {
@@ -115,7 +116,7 @@ func checkOperationServiceContractInterface(contract *apiservice.ServiceContract
 	if err := checkBaseServiceContract(contract); err != nil {
 		return err
 	}
-	id, errRsp := utils.CheckContractTetrad(contract)
+	id, errRsp := valid.CheckContractTetrad(contract)
 	if errRsp != nil {
 		return errRsp
 	}
@@ -128,7 +129,7 @@ func checkBatchContractRules(req []*service_manage.ServiceContract) *apiservice.
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
 
-	if len(req) > utils.MaxBatchSize {
+	if len(req) > valid.MaxBatchSize {
 		return api.NewBatchWriteResponse(apimodel.Code_BatchSizeOverLimit)
 	}
 	return nil

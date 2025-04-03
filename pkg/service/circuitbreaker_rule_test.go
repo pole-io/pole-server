@@ -32,7 +32,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
@@ -183,7 +183,7 @@ func TestCreateCircuitBreakerRule(t *testing.T) {
 
 		t.Run("too_many_request", func(t *testing.T) {
 			requests := []*apifault.CircuitBreakerRule{}
-			for i := 0; i < utils.MaxBatchSize+10; i++ {
+			for i := 0; i < valid.MaxBatchSize+10; i++ {
 				requests = append(requests, &apifault.CircuitBreakerRule{
 					Id: "123123",
 				})

@@ -26,7 +26,7 @@ import (
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/pole-io/pole-server/plugin"
 )
 
@@ -43,7 +43,7 @@ func checkHeartbeatInstance(req *apiservice.Instance) (string, *apiservice.Respo
 		}
 		return req.GetId().GetValue(), nil
 	}
-	return utils.CheckInstanceTetrad(req)
+	return valid.CheckInstanceTetrad(req)
 }
 
 const max404Count = 3

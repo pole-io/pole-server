@@ -35,6 +35,7 @@ import (
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // CreateRoles 批量创建角色
@@ -160,7 +161,7 @@ func (svr *Server) DeleteRole(ctx context.Context, req *apisecurity.Role) *apise
 
 // GetRoles 查询角色列表
 func (svr *Server) GetRoles(ctx context.Context, filters map[string]string) *apiservice.BatchQueryResponse {
-	offset, limit, _ := utils.ParseOffsetAndLimit(filters)
+	offset, limit, _ := valid.ParseOffsetAndLimit(filters)
 
 	total, ret, err := svr.cacheMgr.Role().Query(ctx, cachetypes.RoleSearchArgs{
 		Filters: filters,

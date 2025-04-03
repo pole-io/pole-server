@@ -25,17 +25,17 @@ import (
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/pole-io/pole-server/pkg/config"
 )
 
 // UpsertAndReleaseConfigFileFromClient 创建/更新配置文件并发布
 func (s *Server) UpsertAndReleaseConfigFileFromClient(ctx context.Context,
 	req *apiconfig.ConfigFilePublishInfo) *apiconfig.ConfigResponse {
-	if err := utils.CheckResourceName(req.GetNamespace()); err != nil {
+	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
 		return api.NewConfigResponseWithInfo(apimodel.Code_BadRequest, "invalid config namespace")
 	}
-	if err := utils.CheckResourceName(req.GetGroup()); err != nil {
+	if err := valid.CheckResourceName(req.GetGroup()); err != nil {
 		return api.NewConfigResponseWithInfo(apimodel.Code_BadRequest, "invalid config group")
 	}
 	if err := CheckFileName(req.GetFileName()); err != nil {
@@ -92,11 +92,11 @@ func (s *Server) PublishConfigFileFromClient(ctx context.Context,
 		ret := api.NewConfigResponse(apimodel.Code_InvalidConfigFileName)
 		return api.NewConfigClientResponseFromConfigResponse(ret)
 	}
-	if err := utils.CheckResourceName(req.GetNamespace()); err != nil {
+	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
 		ret := api.NewConfigResponse(apimodel.Code_InvalidNamespaceName)
 		return api.NewConfigClientResponseFromConfigResponse(ret)
 	}
-	if err := utils.CheckResourceName(req.GetGroup()); err != nil {
+	if err := valid.CheckResourceName(req.GetGroup()); err != nil {
 		ret := api.NewConfigResponse(apimodel.Code_InvalidConfigFileGroupName)
 		return api.NewConfigClientResponseFromConfigResponse(ret)
 	}

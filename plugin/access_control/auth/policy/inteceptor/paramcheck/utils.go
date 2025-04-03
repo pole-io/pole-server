@@ -25,6 +25,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 var (
@@ -46,7 +47,7 @@ func CheckName(name *wrappers.StringValue) error {
 		return errors.New("illegal username")
 	}
 
-	if utf8.RuneCountInString(name.GetValue()) > utils.MaxNameLength {
+	if utf8.RuneCountInString(name.GetValue()) > valid.MaxNameLength {
 		return errors.New("name too long")
 	}
 

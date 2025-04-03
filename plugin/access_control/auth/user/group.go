@@ -36,6 +36,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 type (
@@ -198,7 +199,7 @@ func (svr *Server) DeleteGroup(ctx context.Context, req *apisecurity.UserGroup) 
 
 // GetGroups 查看用户组
 func (svr *Server) GetGroups(ctx context.Context, filters map[string]string) *apiservice.BatchQueryResponse {
-	offset, limit, _ := utils.ParseOffsetAndLimit(filters)
+	offset, limit, _ := valid.ParseOffsetAndLimit(filters)
 	total, groups, err := svr.cacheMgr.User().QueryUserGroups(ctx, cachetypes.UserGroupSearchArgs{
 		Filters: filters,
 		Offset:  offset,

@@ -22,13 +22,12 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/anypb"
 
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
-
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 func TestServer_CreateServiceContracts(t *testing.T) {
@@ -70,7 +69,7 @@ func TestServer_CreateServiceContracts(t *testing.T) {
 			uRsp := discoverSuit.DiscoverServer().CreateServiceContracts(discoverSuit.DefaultCtx, []*service_manage.ServiceContract{mockData[0]})
 			assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), uRsp.GetCode().GetValue(), uRsp.String())
 
-			mockId, _ := utils.CheckContractTetrad(mockData[0])
+			mockId, _ := valid.CheckContractTetrad(mockData[0])
 			discoverSuit.Storage.GetServiceContract(mockId)
 
 			_ = discoverSuit.CacheMgr().TestUpdate()

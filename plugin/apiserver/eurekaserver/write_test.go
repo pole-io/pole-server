@@ -36,6 +36,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/pole-io/pole-server/pkg/service"
 	storeplugin "github.com/pole-io/pole-server/plugin/store"
 	"github.com/pole-io/pole-server/plugin/store/mock"
@@ -63,7 +64,7 @@ func TestEurekaServer_renew(t *testing.T) {
 		Valid: true,
 	}
 
-	insId, resp := utils.CheckInstanceTetrad(ins.Proto)
+	insId, resp := valid.CheckInstanceTetrad(ins.Proto)
 	if resp != nil {
 		t.Fatal(resp.GetInfo().GetValue())
 		return
@@ -90,7 +91,7 @@ func TestEurekaServer_renew(t *testing.T) {
 		Valid: true,
 	}
 
-	disableBeatInsId, resp := utils.CheckInstanceTetrad(disableBeatIns.Proto)
+	disableBeatInsId, resp := valid.CheckInstanceTetrad(disableBeatIns.Proto)
 	if resp != nil {
 		t.Fatal(resp.GetInfo().GetValue())
 		return

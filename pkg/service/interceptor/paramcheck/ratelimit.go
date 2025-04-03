@@ -32,6 +32,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // CreateRateLimits implements service.DiscoverServer.
@@ -136,7 +137,7 @@ func checkBatchRateLimits(req []*apitraffic.Rule) *apiservice.BatchWriteResponse
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
 
-	if len(req) > utils.MaxBatchSize {
+	if len(req) > valid.MaxBatchSize {
 		return api.NewBatchWriteResponse(apimodel.Code_BatchSizeOverLimit)
 	}
 
@@ -148,10 +149,10 @@ func checkRateLimitParams(req *apitraffic.Rule) *apiservice.Response {
 	if req == nil {
 		return api.NewRateLimitResponse(apimodel.Code_EmptyRequest, req)
 	}
-	if err := utils.CheckResourceName(req.GetNamespace()); err != nil {
+	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
 		return api.NewRateLimitResponse(apimodel.Code_InvalidNamespaceName, req)
 	}
-	if err := utils.CheckResourceName(req.GetService()); err != nil {
+	if err := valid.CheckResourceName(req.GetService()); err != nil {
 		return api.NewRateLimitResponse(apimodel.Code_InvalidServiceName, req)
 	}
 	if resp := checkRateLimitParamsDbLen(req); nil != resp {
@@ -162,13 +163,13 @@ func checkRateLimitParams(req *apitraffic.Rule) *apiservice.Response {
 
 // checkRateLimitParams 检查限流规则基础参数
 func checkRateLimitParamsDbLen(req *apitraffic.Rule) *apiservice.Response {
-	if err := utils.CheckDbStrFieldLen(req.GetService(), utils.MaxDbServiceNameLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetService(), valid.MaxDbServiceNameLength); err != nil {
 		return api.NewRateLimitResponse(apimodel.Code_InvalidServiceName, req)
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewRateLimitResponse(apimodel.Code_InvalidNamespaceName, req)
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetName(), utils.MaxDbRateLimitName); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetName(), utils.MaxDbRateLimitName); err != nil {
 		return api.NewRateLimitResponse(apimodel.Code_InvalidRateLimitName, req)
 	}
 	return nil

@@ -39,6 +39,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 var (
@@ -248,7 +249,7 @@ func parseRateLimitArgs(query map[string]string) (*cacheapi.RateLimitRuleArgs, *
 		}
 	}
 	// 处理offset和limit
-	offset, limit, err := utils.ParseOffsetAndLimit(query)
+	offset, limit, err := valid.ParseOffsetAndLimit(query)
 	if err != nil {
 		return nil, api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}

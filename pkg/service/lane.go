@@ -38,6 +38,7 @@ import (
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // CreateLaneGroups 批量创建泳道组
@@ -198,7 +199,7 @@ func (s *Server) DeleteLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 
 // GetLaneGroups 查询泳道组列表
 func (s *Server) GetLaneGroups(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse {
-	offset, limit, _ := utils.ParseOffsetAndLimit(filter)
+	offset, limit, _ := valid.ParseOffsetAndLimit(filter)
 	total, ret, err := s.caches.LaneRule().Query(ctx, &cacheapi.LaneGroupArgs{
 		Filter: filter,
 		Offset: offset,

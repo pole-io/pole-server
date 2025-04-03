@@ -22,11 +22,6 @@ import (
 )
 
 var (
-	_ cacheapi.InstanceCache       = (*instanceCache)(nil)
-	_ cacheapi.ServiceCache        = (*serviceCache)(nil)
-	_ cacheapi.RoutingConfigCache  = (*RouteRuleCache)(nil)
-	_ cacheapi.CircuitBreakerCache = (*circuitBreakerCache)(nil)
-	_ cacheapi.RateLimitCache      = (*rateLimitCache)(nil)
-	_ cacheapi.FaultDetectCache    = (*faultDetectCache)(nil)
-	_ cacheapi.FaultDetectCache    = (*faultDetectCache)(nil)
+	_ cacheapi.InstanceCache = (*instanceCache)(nil)
+	_ cacheapi.ServiceCache  = (*serviceCache)(nil)
 )

@@ -34,6 +34,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 var (
@@ -135,7 +136,7 @@ func (svr *Server) GetUsers(ctx context.Context, query map[string]string) *apise
 		searchFilters[key] = value
 	}
 
-	offset, limit, err = utils.ParseOffsetAndLimit(searchFilters)
+	offset, limit, err = valid.ParseOffsetAndLimit(searchFilters)
 	if err != nil {
 		return api.NewAuthBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}
@@ -189,7 +190,7 @@ func (svr *Server) GetGroups(ctx context.Context, query map[string]string) *apis
 	log.Info("[Auth][Group] origin get groups query params",
 		utils.RequestID(ctx), zap.Any("query", query))
 
-	offset, limit, err := utils.ParseOffsetAndLimit(query)
+	offset, limit, err := valid.ParseOffsetAndLimit(query)
 	if err != nil {
 		return api.NewAuthBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}

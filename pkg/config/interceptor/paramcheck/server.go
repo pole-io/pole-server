@@ -31,6 +31,7 @@ import (
 	"github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/pole-io/pole-server/pkg/config"
 )
 
@@ -111,7 +112,7 @@ func (s *Server) checkConfigFileParams(configFile *apiconfig.ConfigFile) *apicon
 	if err := CheckFileName(configFile.Name); err != nil {
 		return api.NewConfigFileResponse(apimodel.Code_InvalidConfigFileName, configFile)
 	}
-	if err := utils.CheckResourceName(configFile.Namespace); err != nil {
+	if err := valid.CheckResourceName(configFile.Namespace); err != nil {
 		return api.NewConfigFileResponse(apimodel.Code_InvalidNamespaceName, configFile)
 	}
 	if err := CheckContentLength(configFile.Content.GetValue(), int(s.cfg.ContentMaxLength)); err != nil {

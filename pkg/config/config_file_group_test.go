@@ -29,7 +29,7 @@ import (
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/pole-io/pole-server/pkg/config"
 )
 
@@ -60,7 +60,7 @@ func Test_CheckCreateFileGroupParam(t *testing.T) {
 	t.Run("invalid_metadata_len", func(t *testing.T) {
 		mockGroup := assembleConfigFileGroup()
 		mockGroup.Metadata = map[string]string{}
-		for i := 0; i < utils.MaxMetadataLength+10; i++ {
+		for i := 0; i < valid.MaxMetadataLength+10; i++ {
 			mockGroup.Metadata[fmt.Sprintf("Key_%d", i)] = fmt.Sprintf("Value_%d", i)
 		}
 		rsp := testSuit.ConfigServer().CreateConfigFileGroup(testSuit.DefaultCtx, mockGroup)

@@ -38,6 +38,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // CreateFaultDetectRules Create a FaultDetect rule
@@ -171,7 +172,7 @@ func (s *Server) deleteFaultDetectRule(ctx context.Context, request *apifault.Fa
 }
 
 func (s *Server) GetFaultDetectRules(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
-	offset, limit, _ := utils.ParseOffsetAndLimit(query)
+	offset, limit, _ := valid.ParseOffsetAndLimit(query)
 	total, cbRules, err := s.caches.FaultDetector().Query(ctx, &cacheapi.FaultDetectArgs{
 		Filter: query,
 		Offset: offset,

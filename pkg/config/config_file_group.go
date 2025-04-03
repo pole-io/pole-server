@@ -34,6 +34,7 @@ import (
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // CreateConfigFileGroup 创建配置文件组
@@ -223,7 +224,7 @@ func (s *Server) hasResourceInConfigGroup(ctx context.Context, namespace, name s
 func (s *Server) QueryConfigFileGroups(ctx context.Context,
 	searchFilters map[string]string) *apiconfig.ConfigBatchQueryResponse {
 
-	offset, limit, _ := utils.ParseOffsetAndLimit(searchFilters)
+	offset, limit, _ := valid.ParseOffsetAndLimit(searchFilters)
 
 	args := &cacheapi.ConfigGroupArgs{
 		Namespace:  searchFilters["namespace"],

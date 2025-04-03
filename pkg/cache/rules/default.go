@@ -15,45 +15,16 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package srand
+package rules
 
 import (
-	"math/rand"
-	"testing"
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 )
 
-func BenchmarkSingleCore(b *testing.B) {
-
-	b.Run("scalable_rand-Intn()", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			_ = Intn(1000)
-		}
-	})
-
-	b.Run("math/rand-Intn()", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			_ = rand.Intn(1000)
-		}
-	})
-
-}
-
-func BenchmarkMultipleCore(b *testing.B) {
-
-	b.Run("scalable_rand-Intn()", func(b *testing.B) {
-		b.RunParallel(func(pb *testing.PB) {
-			for pb.Next() {
-				_ = Intn(1000)
-			}
-		})
-	})
-
-	b.Run("math/rand-Intn()", func(b *testing.B) {
-		b.RunParallel(func(pb *testing.PB) {
-			for pb.Next() {
-				_ = rand.Intn(1000)
-			}
-		})
-	})
-
-}
+var (
+	_ cacheapi.RoutingConfigCache  = (*RouteRuleCache)(nil)
+	_ cacheapi.CircuitBreakerCache = (*circuitBreakerCache)(nil)
+	_ cacheapi.RateLimitCache      = (*rateLimitCache)(nil)
+	_ cacheapi.FaultDetectCache    = (*faultDetectCache)(nil)
+	_ cacheapi.FaultDetectCache    = (*faultDetectCache)(nil)
+)

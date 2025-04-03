@@ -42,6 +42,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 type (
@@ -191,7 +192,7 @@ func (svr *Server) DeleteStrategy(ctx context.Context, req *apisecurity.AuthStra
 //		c. 如果当前是子账户，则自动注入 principal_id 以及 principal_type 字段，即稚嫩查询与自己有关的策略
 func (svr *Server) GetStrategies(ctx context.Context, filters map[string]string) *apiservice.BatchQueryResponse {
 	filters = ParseStrategySearchArgs(ctx, filters)
-	offset, limit, _ := utils.ParseOffsetAndLimit(filters)
+	offset, limit, _ := valid.ParseOffsetAndLimit(filters)
 
 	// 透传兼容模式信息数据
 	ctx = context.WithValue(ctx, model.ContextKeyCompatible{}, svr.options.Compatible)

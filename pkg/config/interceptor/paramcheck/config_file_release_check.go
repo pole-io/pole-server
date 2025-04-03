@@ -26,7 +26,7 @@ import (
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // PublishConfigFile 发布配置文件
@@ -35,10 +35,10 @@ func (s *Server) PublishConfigFile(ctx context.Context,
 	if err := CheckFileName(req.GetFileName()); err != nil {
 		return api.NewConfigResponse(apimodel.Code_InvalidConfigFileName)
 	}
-	if err := utils.CheckResourceName(req.GetNamespace()); err != nil {
+	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
 		return api.NewConfigResponse(apimodel.Code_InvalidNamespaceName)
 	}
-	if err := utils.CheckResourceName(req.GetGroup()); err != nil {
+	if err := valid.CheckResourceName(req.GetGroup()); err != nil {
 		return api.NewConfigResponse(apimodel.Code_InvalidConfigFileGroupName)
 	}
 	if !s.checkNamespaceExisted(req.GetNamespace().GetValue()) {
@@ -96,7 +96,7 @@ func (s *Server) GetConfigFileReleaseVersions(ctx context.Context,
 func (s *Server) GetConfigFileReleases(ctx context.Context,
 	filters map[string]string) *apiconfig.ConfigBatchQueryResponse {
 
-	offset, limit, err := utils.ParseOffsetAndLimit(filters)
+	offset, limit, err := valid.ParseOffsetAndLimit(filters)
 	if err != nil {
 		return api.NewConfigBatchQueryResponseWithInfo(apimodel.Code_BadRequest, err.Error())
 	}

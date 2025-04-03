@@ -40,6 +40,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/pole-io/pole-server/plugin"
 )
 
@@ -675,7 +676,7 @@ func (s *Server) GetInstances(ctx context.Context, query map[string]string) *api
 		return batchErr
 	}
 	// 分页数据
-	offset, limit, _ := utils.ParseOffsetAndLimit(filters)
+	offset, limit, _ := valid.ParseOffsetAndLimit(filters)
 
 	total, instances, err := s.Cache().Instance().QueryInstances(filters, metaFilter, offset, limit)
 	if err != nil {

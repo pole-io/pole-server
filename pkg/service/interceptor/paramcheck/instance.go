@@ -34,6 +34,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 var (
@@ -200,7 +201,7 @@ func (svr *Server) GetInstances(ctx context.Context,
 		}
 	}
 
-	offset, limit, err := utils.ParseOffsetAndLimit(query)
+	offset, limit, err := valid.ParseOffsetAndLimit(query)
 	if err != nil {
 		return api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}
@@ -263,7 +264,7 @@ func checkBatchInstance(req []*apiservice.Instance) *apiservice.BatchWriteRespon
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
 
-	if len(req) > utils.MaxBatchSize {
+	if len(req) > valid.MaxBatchSize {
 		return api.NewBatchWriteResponse(apimodel.Code_BatchSizeOverLimit)
 	}
 
@@ -288,7 +289,7 @@ func checkCreateInstance(req *apiservice.Instance) (string, *apiservice.Response
 		return "", err
 	}
 
-	return utils.CheckInstanceTetrad(req)
+	return valid.CheckInstanceTetrad(req)
 }
 
 /*
@@ -312,30 +313,30 @@ func checkReviseInstance(req *apiservice.Instance) (string, *apiservice.Response
 		return "", err
 	}
 
-	return utils.CheckInstanceTetrad(req)
+	return valid.CheckInstanceTetrad(req)
 }
 
 // CheckDbInstanceFieldLen 检查DB中service表对应的入参字段合法性
 func CheckDbInstanceFieldLen(req *apiservice.Instance) (*apiservice.Response, bool) {
-	if err := utils.CheckDbStrFieldLen(req.GetService(), utils.MaxDbServiceNameLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetService(), valid.MaxNameLength); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidServiceName, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidNamespaceName, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetHost(), utils.MaxDbInsHostLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetHost(), utils.MaxDbInsHostLength); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidInstanceHost, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetProtocol(), utils.MaxDbInsProtocolLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetProtocol(), utils.MaxDbInsProtocolLength); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidInstanceProtocol, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetVersion(), utils.MaxDbInsVersionLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetVersion(), utils.MaxDbInsVersionLength); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidInstanceVersion, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetLogicSet(), utils.MaxDbInsLogicSetLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetLogicSet(), utils.MaxDbInsLogicSetLength); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidInstanceLogicSet, req), true
 	}
-	if err := utils.CheckDbMetaDataFieldLen(req.GetMetadata()); err != nil {
+	if err := valid.CheckDbMetaDataFieldLen(req.GetMetadata()); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidMetadata, req), true
 	}
 	if req.GetPort().GetValue() > 65535 {
@@ -364,10 +365,10 @@ func checkInstanceByHost(req *apiservice.Instance) *apiservice.Response {
 	if req == nil {
 		return api.NewInstanceResponse(apimodel.Code_EmptyRequest, req)
 	}
-	if err := utils.CheckResourceName(req.GetService()); err != nil {
+	if err := valid.CheckResourceName(req.GetService()); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidServiceName, req)
 	}
-	if err := utils.CheckResourceName(req.GetNamespace()); err != nil {
+	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidNamespaceName, req)
 	}
 	if err := checkInstanceHost(req.GetHost()); err != nil {

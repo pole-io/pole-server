@@ -30,6 +30,7 @@ import (
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 var (
@@ -115,7 +116,7 @@ func (s *Server) GetReportClients(ctx context.Context, query map[string]string) 
 		clients []*types.Client
 	)
 
-	offset, limit, err = utils.ParseOffsetAndLimit(searchFilters)
+	offset, limit, err = valid.ParseOffsetAndLimit(searchFilters)
 	if err != nil {
 		return api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}

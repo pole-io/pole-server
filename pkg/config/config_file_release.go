@@ -41,6 +41,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // PublishConfigFile 发布配置文件
@@ -348,7 +349,7 @@ func (s *Server) GetConfigFileReleaseVersions(ctx context.Context,
 func (s *Server) GetConfigFileReleases(ctx context.Context,
 	searchFilters map[string]string) *apiconfig.ConfigBatchQueryResponse {
 
-	offset, limit, _ := utils.ParseOffsetAndLimit(searchFilters)
+	offset, limit, _ := valid.ParseOffsetAndLimit(searchFilters)
 
 	args := cacheapi.ConfigReleaseArgs{
 		BaseConfigArgs: cacheapi.BaseConfigArgs{
@@ -699,10 +700,10 @@ func (s *Server) StopGrayConfigFileReleases(ctx context.Context, reqs []*apiconf
 }
 
 func (s *Server) StopGrayConfigFileRelease(ctx context.Context, req *apiconfig.ConfigFileRelease) *apiconfig.ConfigResponse {
-	if err := utils.CheckResourceName(req.GetNamespace()); err != nil {
+	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
 		return api.NewConfigResponseWithInfo(apimodel.Code_BadRequest, "invalid config namespace")
 	}
-	if err := utils.CheckResourceName(req.GetGroup()); err != nil {
+	if err := valid.CheckResourceName(req.GetGroup()); err != nil {
 		return api.NewConfigResponseWithInfo(apimodel.Code_BadRequest, "invalid config group")
 	}
 	if err := CheckFileName(req.GetFileName()); err != nil {

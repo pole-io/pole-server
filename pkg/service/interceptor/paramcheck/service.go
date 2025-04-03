@@ -30,6 +30,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 var (
@@ -177,7 +178,7 @@ func (svr *Server) GetServices(ctx context.Context, query map[string]string) *se
 	}
 
 	// 判断offset和limit是否为int，并从filters清除offset/limit参数
-	offset, limit, err := utils.ParseOffsetAndLimit(query)
+	offset, limit, err := valid.ParseOffsetAndLimit(query)
 	if err != nil {
 		return api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}
@@ -207,7 +208,7 @@ func checkBatchService(req []*apiservice.Service) *apiservice.BatchWriteResponse
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
 
-	if len(req) > utils.MaxBatchSize {
+	if len(req) > valid.MaxBatchSize {
 		return api.NewBatchWriteResponse(apimodel.Code_BatchSizeOverLimit)
 	}
 
@@ -220,7 +221,7 @@ func checkBatchReadService(req []*apiservice.Service) *apiservice.BatchQueryResp
 		return api.NewBatchQueryResponse(apimodel.Code_EmptyRequest)
 	}
 
-	if len(req) > utils.MaxBatchSize {
+	if len(req) > valid.MaxBatchSize {
 		return api.NewBatchQueryResponse(apimodel.Code_BatchSizeOverLimit)
 	}
 
@@ -233,11 +234,11 @@ func checkCreateService(req *apiservice.Service) *apiservice.Response {
 		return api.NewServiceResponse(apimodel.Code_EmptyRequest, req)
 	}
 
-	if err := utils.CheckResourceName(req.GetName()); err != nil {
+	if err := valid.CheckResourceName(req.GetName()); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceName, req)
 	}
 
-	if err := utils.CheckResourceName(req.GetNamespace()); err != nil {
+	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidNamespaceName, req)
 	}
 
@@ -260,11 +261,11 @@ func checkReviseService(req *apiservice.Service) *apiservice.Response {
 		return api.NewServiceResponse(apimodel.Code_EmptyRequest, req)
 	}
 
-	if err := utils.CheckResourceName(req.GetName()); err != nil {
+	if err := valid.CheckResourceName(req.GetName()); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceName, req)
 	}
 
-	if err := utils.CheckResourceName(req.GetNamespace()); err != nil {
+	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidNamespaceName, req)
 	}
 
@@ -279,43 +280,43 @@ func checkReviseService(req *apiservice.Service) *apiservice.Response {
 
 // CheckDbServiceFieldLen 检查DB中service表对应的入参字段合法性
 func CheckDbServiceFieldLen(req *apiservice.Service) (*apiservice.Response, bool) {
-	if err := utils.CheckDbStrFieldLen(req.GetName(), utils.MaxDbServiceNameLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetName(), valid.MaxNameLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceName, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidNamespaceName, req), true
 	}
-	if err := utils.CheckDbMetaDataFieldLen(req.GetMetadata()); err != nil {
+	if err := valid.CheckDbMetaDataFieldLen(req.GetMetadata()); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidMetadata, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetPorts(), utils.MaxDbServicePortsLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetPorts(), utils.MaxDbServicePortsLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServicePorts, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetBusiness(), utils.MaxDbServiceBusinessLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetBusiness(), utils.MaxDbServiceBusinessLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceBusiness, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetDepartment(), utils.MaxDbServiceDeptLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetDepartment(), utils.MaxDbServiceDeptLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceDepartment, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetCmdbMod1(), utils.MaxDbServiceCMDBLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetCmdbMod1(), utils.MaxDbServiceCMDBLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceCMDB, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetCmdbMod2(), utils.MaxDbServiceCMDBLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetCmdbMod2(), utils.MaxDbServiceCMDBLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceCMDB, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetCmdbMod3(), utils.MaxDbServiceCMDBLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetCmdbMod3(), utils.MaxDbServiceCMDBLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceCMDB, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetComment(), utils.MaxDbServiceCommentLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetComment(), utils.MaxDbServiceCommentLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceComment, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetOwners(), utils.MaxDbServiceOwnerLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetOwners(), utils.MaxDbServiceOwnerLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceOwners, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetToken(), utils.MaxDbServiceToken); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetToken(), utils.MaxDbServiceToken); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceToken, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetPlatformId(), utils.MaxPlatformIDLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetPlatformId(), utils.MaxPlatformIDLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidPlatformID, req), true
 	}
 	return nil, false
@@ -328,7 +329,7 @@ func checkMetadata(meta map[string]string) error {
 		return nil
 	}
 
-	if len(meta) > utils.MaxMetadataLength {
+	if len(meta) > valid.MaxMetadataLength {
 		return errors.New("metadata is too long")
 	}
 

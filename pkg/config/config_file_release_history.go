@@ -29,6 +29,7 @@ import (
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // recordReleaseHistory 新增配置文件发布历史记录
@@ -65,7 +66,7 @@ func (s *Server) recordReleaseHistory(ctx context.Context, fileRelease *conftype
 func (s *Server) GetConfigFileReleaseHistories(ctx context.Context,
 	searchFilter map[string]string) *apiconfig.ConfigBatchQueryResponse {
 
-	offset, limit, _ := utils.ParseOffsetAndLimit(searchFilter)
+	offset, limit, _ := valid.ParseOffsetAndLimit(searchFilter)
 
 	count, saveDatas, err := s.storage.QueryConfigFileReleaseHistories(searchFilter, offset, limit)
 	if err != nil {

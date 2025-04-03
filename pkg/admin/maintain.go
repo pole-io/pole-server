@@ -40,6 +40,7 @@ import (
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // HasMainUser 判断是否存在主用户
@@ -180,7 +181,7 @@ func (s *Server) CleanInstance(ctx context.Context, req *apiservice.Instance) *a
 			}
 			return req.GetId().GetValue(), nil
 		}
-		return utils.CheckInstanceTetrad(req)
+		return valid.CheckInstanceTetrad(req)
 	}
 
 	instanceID, resp := getInstanceID()

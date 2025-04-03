@@ -1,6 +1,3 @@
-//go:build tools
-// +build tools
-
 /**
  * Tencent is pleased to support the open source community by making Polaris available.
  *
@@ -18,12 +15,11 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package tools
+package rules
 
-import (
-	_ "github.com/client9/misspell/cmd/misspell"
-	_ "github.com/golang/protobuf/protoc-gen-go"
-	_ "golang.org/x/lint/golint"
-	_ "golang.org/x/tools/cmd/goimports"
-	_ "honnef.co/go/tools/cmd/staticcheck"
+import commonlog "github.com/pole-io/pole-server/pkg/common/log"
+
+var (
+	log       = commonlog.GetScopeOrDefaultByName(commonlog.CacheLoggerName)
+	naminglog = commonlog.GetScopeOrDefaultByName(commonlog.NamingLoggerName)
 )

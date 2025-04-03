@@ -30,6 +30,7 @@ import (
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/core"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
@@ -50,7 +51,7 @@ func (n *DiscoverServer) handleRegister(ctx context.Context, namespace, serviceN
 func (n *DiscoverServer) handleUpdate(ctx context.Context, namespace, serviceName string, ins *model.Instance) error {
 	specIns := model.PrepareSpecInstance(namespace, serviceName, ins)
 	if specIns.Id == nil || specIns.GetId().GetValue() == "" {
-		insId, errRsp := utils.CheckInstanceTetrad(specIns)
+		insId, errRsp := valid.CheckInstanceTetrad(specIns)
 		if errRsp != nil {
 			return &model.NacosError{
 				ErrCode: int32(model.ExceptionCode_ServerError),

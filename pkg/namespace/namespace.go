@@ -34,6 +34,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 var _ NamespaceOperateServer = (*Server)(nil)
@@ -439,7 +440,7 @@ func checkBatchNamespace(req []*apimodel.Namespace) *apiservice.BatchWriteRespon
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
 
-	if len(req) > utils.MaxBatchSize {
+	if len(req) > valid.MaxBatchSize {
 		return api.NewBatchWriteResponse(apimodel.Code_BatchSizeOverLimit)
 	}
 
@@ -452,7 +453,7 @@ func checkCreateNamespace(req *apimodel.Namespace) *apiservice.Response {
 		return api.NewNamespaceResponse(apimodel.Code_EmptyRequest, req)
 	}
 
-	if err := utils.CheckResourceName(req.GetName()); err != nil {
+	if err := valid.CheckResourceName(req.GetName()); err != nil {
 		return api.NewNamespaceResponse(apimodel.Code_InvalidNamespaceName, req)
 	}
 
@@ -465,7 +466,7 @@ func checkReviseNamespace(ctx context.Context, req *apimodel.Namespace) *apiserv
 		return api.NewNamespaceResponse(apimodel.Code_EmptyRequest, req)
 	}
 
-	if err := utils.CheckResourceName(req.GetName()); err != nil {
+	if err := valid.CheckResourceName(req.GetName()); err != nil {
 		return api.NewNamespaceResponse(apimodel.Code_InvalidNamespaceName, req)
 	}
 	return nil
@@ -483,12 +484,12 @@ func checkGetNamespace(query map[string][]string) (map[string][]string, int, int
 		filter["owner"] = value
 	}
 
-	offset, err := utils.CheckQueryOffset(query["offset"])
+	offset, err := valid.CheckQueryOffset(query["offset"])
 	if err != nil {
 		return nil, 0, 0, api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}
 
-	limit, err := utils.CheckQueryLimit(query["limit"])
+	limit, err := valid.CheckQueryLimit(query["limit"])
 	if err != nil {
 		return nil, 0, 0, api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}

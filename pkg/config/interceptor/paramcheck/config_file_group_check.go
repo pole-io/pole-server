@@ -26,6 +26,7 @@ import (
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // CreateConfigFileGroup 创建配置文件组
@@ -41,7 +42,7 @@ func (s *Server) CreateConfigFileGroup(ctx context.Context,
 func (s *Server) QueryConfigFileGroups(ctx context.Context,
 	filter map[string]string) *apiconfig.ConfigBatchQueryResponse {
 
-	offset, limit, err := utils.ParseOffsetAndLimit(filter)
+	offset, limit, err := valid.ParseOffsetAndLimit(filter)
 	if err != nil {
 		resp := api.NewConfigBatchQueryResponse(apimodel.Code_BadRequest)
 		resp.Info = utils.NewStringValue(err.Error())
@@ -64,10 +65,10 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 // DeleteConfigFileGroup 删除配置文件组
 func (s *Server) DeleteConfigFileGroup(
 	ctx context.Context, namespace, name string) *apiconfig.ConfigResponse {
-	if err := utils.CheckResourceName(utils.NewStringValue(namespace)); err != nil {
+	if err := valid.CheckResourceName(utils.NewStringValue(namespace)); err != nil {
 		return api.NewConfigResponse(apimodel.Code_InvalidNamespaceName)
 	}
-	if err := utils.CheckResourceName(utils.NewStringValue(name)); err != nil {
+	if err := valid.CheckResourceName(utils.NewStringValue(name)); err != nil {
 		return api.NewConfigResponse(apimodel.Code_InvalidConfigFileGroupName)
 	}
 	return s.nextServer.DeleteConfigFileGroup(ctx, namespace, name)
@@ -86,13 +87,13 @@ func checkConfigFileGroupParams(configFileGroup *apiconfig.ConfigFileGroup) *api
 	if configFileGroup == nil {
 		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
 	}
-	if err := utils.CheckResourceName(configFileGroup.Name); err != nil {
+	if err := valid.CheckResourceName(configFileGroup.Name); err != nil {
 		return api.NewConfigResponse(apimodel.Code_InvalidConfigFileGroupName)
 	}
-	if err := utils.CheckResourceName(configFileGroup.Namespace); err != nil {
+	if err := valid.CheckResourceName(configFileGroup.Namespace); err != nil {
 		return api.NewConfigResponse(apimodel.Code_InvalidNamespaceName)
 	}
-	if len(configFileGroup.GetMetadata()) > utils.MaxMetadataLength {
+	if len(configFileGroup.GetMetadata()) > valid.MaxMetadataLength {
 		return api.NewConfigResponse(apimodel.Code_InvalidMetadata)
 	}
 	return nil

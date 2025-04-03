@@ -31,6 +31,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 var (
@@ -89,7 +90,7 @@ func (svr *Server) DeleteLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 
 // GetLaneGroups 查询泳道组列表
 func (svr *Server) GetLaneGroups(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse {
-	offset, limit, err := utils.ParseOffsetAndLimit(filter)
+	offset, limit, err := valid.ParseOffsetAndLimit(filter)
 	if err != nil {
 		return api.NewBatchQueryResponseWithMsg(apimodel.Code_BadRequest, err.Error())
 	}
@@ -122,7 +123,7 @@ func checkBatchLaneGroupRules(req []*apitraffic.LaneGroup) *apiservice.BatchWrit
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
 
-	if len(req) > utils.MaxBatchSize {
+	if len(req) > valid.MaxBatchSize {
 		return api.NewBatchWriteResponse(apimodel.Code_BatchSizeOverLimit)
 	}
 	return nil
@@ -132,15 +133,15 @@ func checkLaneGroupParam(req *apitraffic.LaneGroup, update bool) *apiservice.Res
 	if len(req.GetName()) >= utils.MaxRuleName {
 		return api.NewResponseWithMsg(apimodel.Code_InvalidParameter, "lane_group name size must be <= 64")
 	}
-	if err := utils.CheckResourceName(wrapperspb.String(req.GetName())); err != nil {
+	if err := valid.CheckResourceName(wrapperspb.String(req.GetName())); err != nil {
 		return api.NewResponseWithMsg(apimodel.Code_InvalidParameter, err.Error())
 	}
-	if len(req.Rules) > utils.MaxBatchSize {
+	if len(req.Rules) > valid.MaxBatchSize {
 		return api.NewResponseWithMsg(apimodel.Code_InvalidParameter, "lane_rule size must be <= 100")
 	}
 	for i := range req.Rules {
 		rule := req.Rules[i]
-		if err := utils.CheckResourceName(wrapperspb.String(rule.GetName())); err != nil {
+		if err := valid.CheckResourceName(wrapperspb.String(rule.GetName())); err != nil {
 			return api.NewResponseWithMsg(apimodel.Code_InvalidParameter, err.Error())
 		}
 		if len(rule.GetName()) >= utils.MaxRuleName {

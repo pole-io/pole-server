@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package service
+package rules
 
 import (
 	"context"
@@ -36,6 +36,7 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	cachemock "github.com/pole-io/pole-server/pkg/cache/mock"
+	"github.com/pole-io/pole-server/pkg/cache/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/store/mock"
 )
@@ -49,8 +50,8 @@ func newTestRateLimitCache(t *testing.T) (*gomock.Controller, *mock.MockStore, *
 	storage := mock.NewMockStore(ctl)
 	mockCacheMgr := cachemock.NewMockCacheManager(ctl)
 
-	mockSvcCache := NewServiceCache(storage, mockCacheMgr)
-	mockInstCache := NewInstanceCache(storage, mockCacheMgr)
+	mockSvcCache := service.NewServiceCache(storage, mockCacheMgr)
+	mockInstCache := service.NewInstanceCache(storage, mockCacheMgr)
 	mockRateLimitCache := NewRateLimitCache(storage, mockCacheMgr)
 
 	mockCacheMgr.EXPECT().GetCacher(types.CacheService).Return(mockSvcCache).AnyTimes()

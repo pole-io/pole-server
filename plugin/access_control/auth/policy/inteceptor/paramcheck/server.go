@@ -35,6 +35,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 var (
@@ -133,7 +134,7 @@ func (svr *Server) GetStrategies(ctx context.Context, query map[string]string) *
 		searchFilters[key] = value
 	}
 
-	offset, limit, err := utils.ParseOffsetAndLimit(searchFilters)
+	offset, limit, err := valid.ParseOffsetAndLimit(searchFilters)
 
 	if err != nil {
 		return api.NewAuthBatchQueryResponse(apimodel.Code_InvalidParameter)

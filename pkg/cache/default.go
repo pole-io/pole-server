@@ -29,6 +29,7 @@ import (
 	cacheconfig "github.com/pole-io/pole-server/pkg/cache/config"
 	cachegray "github.com/pole-io/pole-server/pkg/cache/gray"
 	cachens "github.com/pole-io/pole-server/pkg/cache/namespace"
+	cacherules "github.com/pole-io/pole-server/pkg/cache/rules"
 	cachesvc "github.com/pole-io/pole-server/pkg/cache/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -90,15 +91,16 @@ func newCacheManager(ctx context.Context, cacheOpt *Config, storage store.Store)
 
 	// 命名空间缓存
 	mgr.RegisterCacher(cacheapi.CacheNamespace, cachens.NewNamespaceCache(storage, mgr))
-	// 注册发现 & 服务治理缓存
+	// 注册发现缓存
 	mgr.RegisterCacher(cacheapi.CacheService, cachesvc.NewServiceCache(storage, mgr))
 	mgr.RegisterCacher(cacheapi.CacheInstance, cachesvc.NewInstanceCache(storage, mgr))
-	mgr.RegisterCacher(cacheapi.CacheRoutingConfig, cachesvc.NewRouteRuleCache(storage, mgr))
-	mgr.RegisterCacher(cacheapi.CacheRateLimit, cachesvc.NewRateLimitCache(storage, mgr))
-	mgr.RegisterCacher(cacheapi.CacheCircuitBreaker, cachesvc.NewCircuitBreakerCache(storage, mgr))
-	mgr.RegisterCacher(cacheapi.CacheFaultDetector, cachesvc.NewFaultDetectCache(storage, mgr))
+	// 治理规则缓存
 	mgr.RegisterCacher(cacheapi.CacheServiceContract, cachesvc.NewServiceContractCache(storage, mgr))
-	mgr.RegisterCacher(cacheapi.CacheLaneRule, cachesvc.NewLaneCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheRoutingConfig, cacherules.NewRouteRuleCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheRateLimit, cacherules.NewRateLimitCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheCircuitBreaker, cacherules.NewCircuitBreakerCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheFaultDetector, cacherules.NewFaultDetectCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheLaneRule, cacherules.NewLaneCache(storage, mgr))
 	// 配置分组 & 配置发布缓存
 	mgr.RegisterCacher(cacheapi.CacheConfigFile, cacheconfig.NewConfigFileCache(storage, mgr))
 	mgr.RegisterCacher(cacheapi.CacheConfigGroup, cacheconfig.NewConfigGroupCache(storage, mgr))

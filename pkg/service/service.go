@@ -37,6 +37,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 const (
@@ -359,7 +360,7 @@ func (s *Server) GetServices(ctx context.Context, query map[string]string) *apis
 	}
 
 	// 判断offset和limit是否为int，并从filters清除offset/limit参数
-	offset, limit, _ := utils.ParseOffsetAndLimit(serviceFilters)
+	offset, limit, _ := valid.ParseOffsetAndLimit(serviceFilters)
 
 	serviceArgs := parseServiceArgs(serviceFilters, serviceMetas, ctx)
 	total, services, err := s.caches.Service().GetServicesByFilter(ctx, serviceArgs, instanceArgs, offset, limit)

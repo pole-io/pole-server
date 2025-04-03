@@ -39,6 +39,7 @@ import (
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // CreateRoutingConfigs Create a routing configuration
@@ -211,7 +212,7 @@ func (s *Server) enableRoutings(ctx context.Context, req *apitraffic.RouteRule) 
 
 // parseServiceArgs The query conditions of the analysis service
 func parseRoutingArgs(filter map[string]string, ctx context.Context) (*cacheapi.RoutingArgs, *apiservice.Response) {
-	offset, limit, _ := utils.ParseOffsetAndLimit(filter)
+	offset, limit, _ := valid.ParseOffsetAndLimit(filter)
 	res := &cacheapi.RoutingArgs{
 		Filter:     filter,
 		Name:       filter["name"],

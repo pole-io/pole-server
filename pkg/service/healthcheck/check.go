@@ -32,7 +32,7 @@ import (
 	"github.com/pole-io/pole-server/apis/store"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/srand"
+	"github.com/pole-io/pole-server/pkg/common/syncs/srand"
 	"github.com/pole-io/pole-server/pkg/common/syncs/timewheel"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin"

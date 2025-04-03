@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/pole-io/pole-server/plugin/access_control/auth/policy"
 )
 
@@ -52,7 +53,7 @@ func TestCheckName(t *testing.T) {
 		},
 		{
 			name:     "测试名称长度超过限制",
-			input:    utils.NewStringValue(strings.Repeat("a", utils.MaxNameLength+1)),
+			input:    utils.NewStringValue(strings.Repeat("a", valid.MaxNameLength+1)),
 			expected: errors.New("name too long"),
 		},
 		{

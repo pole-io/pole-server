@@ -31,6 +31,7 @@ import (
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/core"
 	nacosmodel "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 	nacospb "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/pb"
@@ -72,7 +73,7 @@ func (h *DiscoverServer) handleInstanceRequest(ctx context.Context, req nacospb.
 		}, insID)
 	case "deregisterInstance":
 		respType = "deregisterInstance"
-		insID, errRsp := utils.CheckInstanceTetrad(ins)
+		insID, errRsp := valid.CheckInstanceTetrad(ins)
 		if errRsp != nil {
 			return nil, &nacosmodel.NacosError{
 				ErrCode: int32(errRsp.GetCode().GetValue()),
@@ -143,7 +144,7 @@ func (h *DiscoverServer) handlePersistentInstanceRequest(ctx context.Context, re
 		resp = h.discoverSvr.RegisterInstance(ctx, ins)
 	case "deregisterInstance":
 		respType = "deregisterInstance"
-		insID, errRsp := utils.CheckInstanceTetrad(ins)
+		insID, errRsp := valid.CheckInstanceTetrad(ins)
 		if errRsp != nil {
 			return nil, &nacosmodel.NacosError{
 				ErrCode: int32(errRsp.GetCode().GetValue()),

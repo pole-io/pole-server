@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package service
+package rules
 
 import (
 	"time"
@@ -61,7 +61,7 @@ func NewRouteRuleCache(s store.Store, cacheMgr types.CacheManager) types.Routing
 func (rc *RouteRuleCache) Initialize(_ map[string]interface{}) error {
 	rc.lastMtime = time.Unix(0, 0)
 	rc.container = newRouteRuleContainer()
-	rc.serviceCache = rc.BaseCache.CacheMgr.GetCacher(types.CacheService).(*serviceCache)
+	rc.serviceCache = rc.BaseCache.CacheMgr.GetCacher(types.CacheService).(types.ServiceCache)
 	return nil
 }
 

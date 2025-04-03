@@ -37,6 +37,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // CreateCircuitBreakerRules Create a CircuitBreaker rule
@@ -218,7 +219,7 @@ func (s *Server) checkCircuitBreakerRuleExists(ctx context.Context, id string) *
 
 // GetCircuitBreakerRules Query CircuitBreaker rules
 func (s *Server) GetCircuitBreakerRules(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
-	offset, limit, _ := utils.ParseOffsetAndLimit(query)
+	offset, limit, _ := valid.ParseOffsetAndLimit(query)
 	total, cbRules, err := s.storage.GetCircuitBreakerRules(query, offset, limit)
 	if err != nil {
 		log.Error("get circuitbreaker rules store", utils.RequestID(ctx), zap.Error(err))

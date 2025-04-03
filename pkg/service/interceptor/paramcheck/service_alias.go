@@ -26,6 +26,7 @@ import (
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 // CreateServiceAlias implements service.DiscoverServer.
@@ -75,7 +76,7 @@ func checkBatchAlias(req []*apiservice.ServiceAlias) *apiservice.BatchWriteRespo
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
 
-	if len(req) > utils.MaxBatchSize {
+	if len(req) > valid.MaxBatchSize {
 		return api.NewBatchWriteResponse(apimodel.Code_BatchSizeOverLimit)
 	}
 
@@ -103,12 +104,12 @@ func checkReviseServiceAliasReq(ctx context.Context, req *apiservice.ServiceAlia
 		return resp
 	}
 	// 检查服务名
-	if err := utils.CheckResourceName(req.GetService()); err != nil {
+	if err := valid.CheckResourceName(req.GetService()); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceName, req)
 	}
 
 	// 检查命名空间
-	if err := utils.CheckResourceName(req.GetNamespace()); err != nil {
+	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidNamespaceName, req)
 	}
 	return nil
@@ -121,12 +122,12 @@ func checkDeleteServiceAliasReq(ctx context.Context, req *apiservice.ServiceAlia
 	}
 
 	// 检查服务别名
-	if err := utils.CheckResourceName(req.GetAlias()); err != nil {
+	if err := valid.CheckResourceName(req.GetAlias()); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceAlias, req)
 	}
 
 	// 检查服务别名命名空间
-	if err := utils.CheckResourceName(req.GetAliasNamespace()); err != nil {
+	if err := valid.CheckResourceName(req.GetAliasNamespace()); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidNamespaceWithAlias, req)
 	}
 
@@ -144,21 +145,21 @@ func preCheckAlias(req *apiservice.ServiceAlias) (*apiservice.Response, bool) {
 		return api.NewServiceAliasResponse(apimodel.Code_EmptyRequest, req), true
 	}
 
-	if err := utils.CheckResourceName(req.GetService()); err != nil {
+	if err := valid.CheckResourceName(req.GetService()); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceName, req), true
 	}
 
-	if err := utils.CheckResourceName(req.GetNamespace()); err != nil {
+	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidNamespaceName, req), true
 	}
 
-	if err := utils.CheckResourceName(req.GetAliasNamespace()); err != nil {
+	if err := valid.CheckResourceName(req.GetAliasNamespace()); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidNamespaceName, req), true
 	}
 
 	// 默认类型，需要检查alias是否为空
 	if req.GetType() == apiservice.AliasType_DEFAULT {
-		if err := utils.CheckResourceName(req.GetAlias()); err != nil {
+		if err := valid.CheckResourceName(req.GetAlias()); err != nil {
 			return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceAlias, req), true
 		}
 	}
@@ -167,22 +168,22 @@ func preCheckAlias(req *apiservice.ServiceAlias) (*apiservice.Response, bool) {
 
 // CheckDbServiceAliasFieldLen 检查DB中service表对应的入参字段合法性
 func CheckDbServiceAliasFieldLen(req *apiservice.ServiceAlias) (*apiservice.Response, bool) {
-	if err := utils.CheckDbStrFieldLen(req.GetService(), utils.MaxDbServiceNameLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetService(), valid.MaxNameLength); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceName, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidNamespaceName, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetAlias(), utils.MaxDbServiceNameLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetAlias(), valid.MaxNameLength); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceAlias, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetAliasNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetAliasNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidNamespaceWithAlias, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetComment(), utils.MaxDbServiceCommentLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetComment(), utils.MaxDbServiceCommentLength); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceAliasComment, req), true
 	}
-	if err := utils.CheckDbStrFieldLen(req.GetOwners(), utils.MaxDbServiceOwnerLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetOwners(), utils.MaxDbServiceOwnerLength); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceAliasOwners, req), true
 	}
 	return nil, false

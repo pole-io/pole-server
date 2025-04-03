@@ -31,6 +31,7 @@ import (
 	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 var (
@@ -110,7 +111,7 @@ func (svr *Server) UpdateRoutingConfigs(ctx context.Context,
 func (svr *Server) QueryRoutingConfigs(ctx context.Context,
 	query map[string]string) *service_manage.BatchQueryResponse {
 
-	offset, limit, err := utils.ParseOffsetAndLimit(query)
+	offset, limit, err := valid.ParseOffsetAndLimit(query)
 	if err != nil {
 		return apiv1.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}
@@ -153,7 +154,7 @@ func checkBatchRoutingConfigV2(req []*apitraffic.RouteRule) *apiservice.BatchWri
 		return apiv1.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
 
-	if len(req) > utils.MaxBatchSize {
+	if len(req) > valid.MaxBatchSize {
 		return apiv1.NewBatchWriteResponse(apimodel.Code_BatchSizeOverLimit)
 	}
 
@@ -203,11 +204,11 @@ func checkUpdateRoutingConfigV2(req *apitraffic.RouteRule) *apiservice.Response 
 }
 
 func checkRoutingNameAndNamespace(req *apitraffic.RouteRule) *apiservice.Response {
-	if err := utils.CheckDbStrFieldLen(utils.NewStringValue(req.GetName()), utils.MaxRuleName); err != nil {
+	if err := valid.CheckDbStrFieldLen(utils.NewStringValue(req.GetName()), utils.MaxRuleName); err != nil {
 		return apiv1.NewRouterResponse(apimodel.Code_InvalidRoutingName, req)
 	}
 
-	if err := utils.CheckDbStrFieldLen(utils.NewStringValue(req.GetNamespace()),
+	if err := valid.CheckDbStrFieldLen(utils.NewStringValue(req.GetNamespace()),
 		utils.MaxDbServiceNamespaceLength); err != nil {
 		return apiv1.NewRouterResponse(apimodel.Code_InvalidNamespaceName, req)
 	}

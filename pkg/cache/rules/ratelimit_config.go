@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package service
+package rules
 
 import (
 	"encoding/json"
@@ -59,7 +59,7 @@ func NewRateLimitCache(s store.Store, cacheMgr types.CacheManager) types.RateLim
 // Initialize 实现Cache接口的initialize函数
 func (rlc *rateLimitCache) Initialize(_ map[string]interface{}) error {
 	rlc.rules = newRateLimitRuleBucket()
-	rlc.svcCache = rlc.CacheMgr.GetCacher(types.CacheService).(*serviceCache)
+	rlc.svcCache = rlc.CacheMgr.GetCacher(types.CacheService).(types.ServiceCache)
 	return nil
 }
 

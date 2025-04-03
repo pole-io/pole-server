@@ -31,6 +31,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
 var (
@@ -84,7 +85,7 @@ func (svr *Server) GetFaultDetectRules(ctx context.Context,
 			return api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
 		}
 	}
-	offset, limit, err := utils.ParseOffsetAndLimit(query)
+	offset, limit, err := valid.ParseOffsetAndLimit(query)
 	if err != nil {
 		return api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}
@@ -161,7 +162,7 @@ func checkBatchFaultDetectRules(req []*apifault.FaultDetectRule) *apiservice.Bat
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
 
-	if len(req) > utils.MaxBatchSize {
+	if len(req) > valid.MaxBatchSize {
 		return api.NewBatchWriteResponse(apimodel.Code_BatchSizeOverLimit)
 	}
 
@@ -186,20 +187,20 @@ func checkFaultDetectRuleParams(
 }
 
 func checkFaultDetectRuleParamsDbLen(req *apifault.FaultDetectRule) *apiservice.Response {
-	if err := utils.CheckDbRawStrFieldLen(req.GetTargetService().GetService(), utils.MaxDbServiceNameLength); err != nil {
+	if err := valid.CheckDbRawStrFieldLen(req.GetTargetService().GetService(), valid.MaxDbServiceNameLength); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidServiceName)
 	}
-	if err := utils.CheckDbRawStrFieldLen(
+	if err := valid.CheckDbRawStrFieldLen(
 		req.GetTargetService().GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
 	}
-	if err := utils.CheckDbRawStrFieldLen(req.GetName(), utils.MaxRuleName); err != nil {
+	if err := valid.CheckDbRawStrFieldLen(req.GetName(), utils.MaxRuleName); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidRateLimitName)
 	}
-	if err := utils.CheckDbRawStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
+	if err := valid.CheckDbRawStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
 	}
-	if err := utils.CheckDbRawStrFieldLen(req.GetDescription(), utils.MaxCommentLength); err != nil {
+	if err := valid.CheckDbRawStrFieldLen(req.GetDescription(), valid.MaxMetadataLength); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidServiceComment)
 	}
 	return nil

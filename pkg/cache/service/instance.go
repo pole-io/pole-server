@@ -59,7 +59,6 @@ type instanceCache struct {
 	needMeta         bool
 	systemServiceID  []string
 	singleFlight     *singleflight.Group
-	instanceCount    int64
 	lastCheckAllTime int64
 }
 
@@ -134,12 +133,12 @@ func (ic *instanceCache) checkAll(tx store.Tx) {
 		log.Errorf("[Cache][Instance] get instance count from storage err: %s", err.Error())
 		return
 	}
-	if ic.instanceCount == int64(count) {
+	if int64(ic.ids.Len()) == int64(count) {
 		return
 	}
 	log.Infof(
 		"[Cache][Instance] instance count not match, expect %d, actual %d, fallback to load all",
-		count, ic.instanceCount)
+		count, ic.ids.Len())
 	ic.ResetLastMtime(ic.Name())
 	ic.ResetLastFetchTime()
 }
@@ -208,7 +207,6 @@ func (ic *instanceCache) Clear() error {
 	ic.services = utils.NewSyncMap[string, *svctypes.ServiceInstances]()
 	ic.instanceCounts = utils.NewSyncMap[string, *svctypes.InstanceCount]()
 	ic.instancePorts.reset()
-	ic.instanceCount = 0
 	return nil
 }
 
@@ -245,7 +243,7 @@ func (ic *instanceCache) setInstances(ins map[string]*svctypes.Instance) ([]*eve
 	del := 0
 	affect := make(map[string]bool)
 	progress := 0
-	instanceCount := ic.instanceCount
+	curInsCnt := ic.ids.Len()
 
 	for _, item := range ins {
 		if _, ok := ic.services.Load(item.ServiceID); !ok {
@@ -280,7 +278,6 @@ func (ic *instanceCache) setInstances(ins map[string]*svctypes.Instance) ([]*eve
 					Instance:  oldInstance,
 					EventType: eventhub.EventDeleted,
 				})
-				instanceCount--
 				affect[oldInstance.ServiceID] = true
 				if val, ok := ic.services.Load(oldInstance.ServiceID); ok {
 					val.RemoveInstance(oldInstance)
@@ -297,7 +294,6 @@ func (ic *instanceCache) setInstances(ins map[string]*svctypes.Instance) ([]*eve
 					Instance:  item,
 					EventType: eventhub.EventDeleted,
 				})
-				instanceCount--
 			}
 
 			serviceInstances.RemoveInstance(item)
@@ -315,7 +311,6 @@ func (ic *instanceCache) setInstances(ins map[string]*svctypes.Instance) ([]*eve
 		ic.ids.Store(item.ID(), item)
 		if !itemExist {
 			addInstances[item.ID()] = item.Revision()
-			instanceCount++
 			events = append(events, &eventhub.CacheInstanceEvent{
 				Instance:  item,
 				EventType: eventhub.EventCreated,
@@ -331,10 +326,9 @@ func (ic *instanceCache) setInstances(ins map[string]*svctypes.Instance) ([]*eve
 		ic.instancePorts.appendPort(item.ServiceID, item.Protocol(), item.Port())
 	}
 
-	if ic.instanceCount != instanceCount {
+	if ic.ids.Len() != curInsCnt {
 		log.Infof("[Cache][Instance] instance count update from %d to %d",
-			ic.instanceCount, instanceCount)
-		ic.instanceCount = instanceCount
+			ic.ids.Len(), curInsCnt)
 	}
 
 	log.Info("[Cache][Instance] instances change info", zap.Any("add", addInstances),
