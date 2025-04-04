@@ -32,6 +32,7 @@ import (
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -42,10 +43,10 @@ var (
 type namespaceCache struct {
 	*cachebase.BaseCache
 	storage store.Store
-	ids     *utils.SyncMap[string, *types.Namespace]
+	ids     *container.SyncMap[string, *types.Namespace]
 	updater *singleflight.Group
 	// exportNamespace 某个命名空间下的所有服务的可见性
-	exportNamespace *utils.SyncMap[string, *utils.SyncSet[string]]
+	exportNamespace *container.SyncMap[string, *container.SyncSet[string]]
 }
 
 func NewNamespaceCache(storage store.Store, cacheMgr cacheapi.CacheManager) cacheapi.NamespaceCache {
@@ -57,9 +58,9 @@ func NewNamespaceCache(storage store.Store, cacheMgr cacheapi.CacheManager) cach
 
 // Initialize
 func (nsCache *namespaceCache) Initialize(c map[string]interface{}) error {
-	nsCache.ids = utils.NewSyncMap[string, *types.Namespace]()
+	nsCache.ids = container.NewSyncMap[string, *types.Namespace]()
 	nsCache.updater = new(singleflight.Group)
-	nsCache.exportNamespace = utils.NewSyncMap[string, *utils.SyncSet[string]]()
+	nsCache.exportNamespace = container.NewSyncMap[string, *container.SyncSet[string]]()
 	return nil
 }
 
@@ -119,7 +120,7 @@ func (nsCache *namespaceCache) handleNamespaceChange(et eventhub.EventType, oldI
 	switch et {
 	case eventhub.EventUpdated, eventhub.EventCreated:
 		exportTo := item.ServiceExportTo
-		viewer := utils.NewSyncSet[string]()
+		viewer := container.NewSyncSet[string]()
 		for i := range exportTo {
 			viewer.Add(i)
 		}
@@ -134,7 +135,7 @@ func (nsCache *namespaceCache) GetVisibleNamespaces(namespace string) []*types.N
 
 	// 根据命名空间级别的可见性进行查询
 	// 先看精确的
-	nsCache.exportNamespace.Range(func(exportNs string, viewerNs *utils.SyncSet[string]) {
+	nsCache.exportNamespace.Range(func(exportNs string, viewerNs *container.SyncSet[string]) {
 		exactMatch := viewerNs.Contains(namespace)
 		allMatch := viewerNs.Contains(cacheapi.AllMatched)
 		if !exactMatch && !allMatch {
@@ -156,8 +157,8 @@ func (nsCache *namespaceCache) GetVisibleNamespaces(namespace string) []*types.N
 // Clear .
 func (nsCache *namespaceCache) Clear() error {
 	nsCache.BaseCache.Clear()
-	nsCache.ids = utils.NewSyncMap[string, *types.Namespace]()
-	nsCache.exportNamespace = utils.NewSyncMap[string, *utils.SyncSet[string]]()
+	nsCache.ids = container.NewSyncMap[string, *types.Namespace]()
+	nsCache.exportNamespace = container.NewSyncMap[string, *container.SyncSet[string]]()
 	return nil
 }
 

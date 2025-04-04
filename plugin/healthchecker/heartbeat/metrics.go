@@ -20,6 +20,7 @@ package heartbeat
 import (
 	"github.com/prometheus/client_golang/prometheus"
 
+	metricstypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -38,7 +39,7 @@ func registerMetrics() {
 		Name: "p2p_checker_heartbeat_op",
 		Help: "desc p2p_checker heartbeat operation time cost",
 		ConstLabels: map[string]string{
-			metrics.LabelServerNode: utils.LocalHost,
+			metricstypes.LabelServerNode: utils.LocalHost,
 		},
 		Buckets: []float64{5, 10, 15, 20, 30, 50, 100, 500, 1000, 5000},
 	}, []string{labelAction, labelCode})

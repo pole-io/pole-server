@@ -30,6 +30,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/pkg/utils"
 )
@@ -507,13 +508,13 @@ func BuildInBoundsRoute(item *ExtendRouterConfig) []*apitraffic.Route {
 		for i := range destinations {
 			name := fmt.Sprintf("%s.%s.%s", item.Name, subRule.Name, destinations[i].Name)
 			entry := &apitraffic.Destination{
-				Name:      utils.NewStringValue(name),
-				Service:   utils.NewStringValue(item.RuleRouting.Callee.Name),
-				Namespace: utils.NewStringValue(item.RuleRouting.Callee.Namespace),
-				Priority:  utils.NewUInt32Value(destinations[i].GetPriority()),
-				Weight:    utils.NewUInt32Value(destinations[i].GetWeight()),
-				Transfer:  utils.NewStringValue(destinations[i].GetTransfer()),
-				Isolate:   utils.NewBoolValue(destinations[i].GetIsolate()),
+				Name:      protobuf.NewStringValue(name),
+				Service:   protobuf.NewStringValue(item.RuleRouting.Callee.Name),
+				Namespace: protobuf.NewStringValue(item.RuleRouting.Callee.Namespace),
+				Priority:  protobuf.NewUInt32Value(destinations[i].GetPriority()),
+				Weight:    protobuf.NewUInt32Value(destinations[i].GetWeight()),
+				Transfer:  protobuf.NewStringValue(destinations[i].GetTransfer()),
+				Isolate:   protobuf.NewBoolValue(destinations[i].GetIsolate()),
 			}
 
 			v1labels := make(map[string]*apimodel.MatchString)
@@ -534,8 +535,8 @@ func BuildInBoundsRoute(item *ExtendRouterConfig) []*apitraffic.Route {
 		v1sources := make([]*apitraffic.Source, 0, len(sources))
 		for i := range sources {
 			entry := &apitraffic.Source{
-				Service:   utils.NewStringValue(sources[i].Service),
-				Namespace: utils.NewStringValue(sources[i].Namespace),
+				Service:   protobuf.NewStringValue(sources[i].Service),
+				Namespace: protobuf.NewStringValue(sources[i].Namespace),
 			}
 
 			entry.Metadata = RoutingArguments2Labels(sources[i].GetArguments())
@@ -572,8 +573,8 @@ func BuildOutBoundsRoutes(item *ExtendRouterConfig) []*apitraffic.Route {
 		v1sources := make([]*apitraffic.Source, 0, len(sources))
 		for i := range sources {
 			entry := &apitraffic.Source{
-				Service:   utils.NewStringValue(item.RuleRouting.Caller.Name),
-				Namespace: utils.NewStringValue(item.RuleRouting.Caller.Namespace),
+				Service:   protobuf.NewStringValue(item.RuleRouting.Caller.Name),
+				Namespace: protobuf.NewStringValue(item.RuleRouting.Caller.Namespace),
 			}
 			entry.Metadata = RoutingArguments2Labels(sources[i].GetArguments())
 			v1sources = append(v1sources, entry)
@@ -584,13 +585,13 @@ func BuildOutBoundsRoutes(item *ExtendRouterConfig) []*apitraffic.Route {
 		for i := range destinations {
 			name := fmt.Sprintf("%s.%s.%s", item.Name, subRule.Name, destinations[i].Name)
 			entry := &apitraffic.Destination{
-				Name:      utils.NewStringValue(name),
-				Service:   utils.NewStringValue(destinations[i].Service),
-				Namespace: utils.NewStringValue(destinations[i].Namespace),
-				Priority:  utils.NewUInt32Value(destinations[i].GetPriority()),
-				Weight:    utils.NewUInt32Value(destinations[i].GetWeight()),
-				Transfer:  utils.NewStringValue(destinations[i].GetTransfer()),
-				Isolate:   utils.NewBoolValue(destinations[i].GetIsolate()),
+				Name:      protobuf.NewStringValue(name),
+				Service:   protobuf.NewStringValue(destinations[i].Service),
+				Namespace: protobuf.NewStringValue(destinations[i].Namespace),
+				Priority:  protobuf.NewUInt32Value(destinations[i].GetPriority()),
+				Weight:    protobuf.NewUInt32Value(destinations[i].GetWeight()),
+				Transfer:  protobuf.NewStringValue(destinations[i].GetTransfer()),
+				Isolate:   protobuf.NewBoolValue(destinations[i].GetIsolate()),
 			}
 
 			v1labels := make(map[string]*apimodel.MatchString)

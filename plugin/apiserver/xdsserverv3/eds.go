@@ -27,8 +27,8 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/resource"
 )
@@ -113,7 +113,7 @@ func (eds *EDSBuilder) buildServiceEndpoint(serviceInfo *resource.ServiceInfo) [
 				},
 			},
 			HealthStatus:        resource.FormatEndpointHealth(instance),
-			LoadBalancingWeight: utils.NewUInt32Value(instance.GetWeight().GetValue()),
+			LoadBalancingWeight: protobuf.NewUInt32Value(instance.GetWeight().GetValue()),
 			Metadata:            resource.GenEndpointMetaFromPolarisIns(instance),
 		}
 		locality[region][zone][campus] = append(locality[region][zone][campus], ep)

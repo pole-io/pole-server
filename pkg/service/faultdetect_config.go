@@ -33,6 +33,7 @@ import (
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -183,8 +184,8 @@ func (s *Server) GetFaultDetectRules(ctx context.Context, query map[string]strin
 		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Amount = utils.NewUInt32Value(total)
-	out.Size = utils.NewUInt32Value(uint32(len(cbRules)))
+	out.Amount = protobuf.NewUInt32Value(total)
+	out.Size = protobuf.NewUInt32Value(uint32(len(cbRules)))
 	for _, cbRule := range cbRules {
 		cbRuleProto, err := faultDetectRule2api(cbRule)
 		if nil != err {

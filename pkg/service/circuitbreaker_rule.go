@@ -32,6 +32,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -226,8 +227,8 @@ func (s *Server) GetCircuitBreakerRules(ctx context.Context, query map[string]st
 		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Amount = utils.NewUInt32Value(total)
-	out.Size = utils.NewUInt32Value(uint32(len(cbRules)))
+	out.Amount = protobuf.NewUInt32Value(total)
+	out.Size = protobuf.NewUInt32Value(uint32(len(cbRules)))
 	for _, cbRule := range cbRules {
 		cbRuleProto, err := circuitBreakerRule2api(cbRule)
 		if nil != err {
@@ -375,8 +376,8 @@ func circuitBreaker2ClientAPI(
 		return nil, iterateErr
 	}
 
-	out.Service = utils.NewStringValue(service)
-	out.ServiceNamespace = utils.NewStringValue(namespace)
+	out.Service = protobuf.NewStringValue(service)
+	out.ServiceNamespace = protobuf.NewStringValue(namespace)
 
 	return out, nil
 }

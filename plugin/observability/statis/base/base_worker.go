@@ -21,9 +21,9 @@ import (
 	"context"
 	"time"
 
+	metricstypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 )
 
 type BaseWorker struct {
@@ -37,13 +37,13 @@ func NewBaseWorker(ctx context.Context, handler MetricsHandler) (*BaseWorker, er
 		return nil, err
 	}
 	return &BaseWorker{
-		apiStatis:   NewComponentStatics(ctx, metrics.ServerCallMetric, handler),
+		apiStatis:   NewComponentStatics(ctx, metricstypes.ServerCallMetric, handler),
 		cacheStatis: cacheStatis,
 	}, nil
 }
 
 // ReportCallMetrics report call metrics info
-func (s *BaseWorker) ReportCallMetrics(metric metrics.CallMetric) {
+func (s *BaseWorker) ReportCallMetrics(metric metricstypes.CallMetric) {
 	switch metric.Type {
 	default:
 		item := &APICall{
@@ -53,13 +53,13 @@ func (s *BaseWorker) ReportCallMetrics(metric metrics.CallMetric) {
 			Code:             metric.Code,
 			Duration:         int64(metric.Duration.Nanoseconds()),
 			Component:        metric.Type,
-			TrafficDirection: string(metrics.TrafficDirectionInBound),
+			TrafficDirection: string(metricstypes.TrafficDirectionInBound),
 		}
 		if metric.TrafficDirection != "" {
 			item.TrafficDirection = string(metric.TrafficDirection)
 		}
 		s.apiStatis.Add(item)
-	case metrics.ProtobufCacheCallMetric:
+	case metricstypes.ProtobufCacheCallMetric:
 		s.cacheStatis.Add(metric)
 	}
 }

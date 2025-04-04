@@ -24,8 +24,8 @@ import (
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
@@ -45,7 +45,7 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 	offset, limit, err := valid.ParseOffsetAndLimit(filter)
 	if err != nil {
 		resp := api.NewConfigBatchQueryResponse(apimodel.Code_BadRequest)
-		resp.Info = utils.NewStringValue(err.Error())
+		resp.Info = protobuf.NewStringValue(err.Error())
 		return resp
 	}
 
@@ -65,10 +65,10 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 // DeleteConfigFileGroup 删除配置文件组
 func (s *Server) DeleteConfigFileGroup(
 	ctx context.Context, namespace, name string) *apiconfig.ConfigResponse {
-	if err := valid.CheckResourceName(utils.NewStringValue(namespace)); err != nil {
+	if err := valid.CheckResourceName(protobuf.NewStringValue(namespace)); err != nil {
 		return api.NewConfigResponse(apimodel.Code_InvalidNamespaceName)
 	}
-	if err := valid.CheckResourceName(utils.NewStringValue(name)); err != nil {
+	if err := valid.CheckResourceName(protobuf.NewStringValue(name)); err != nil {
 		return api.NewConfigResponse(apimodel.Code_InvalidConfigFileGroupName)
 	}
 	return s.nextServer.DeleteConfigFileGroup(ctx, namespace, name)

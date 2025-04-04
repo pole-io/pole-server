@@ -24,8 +24,8 @@ import (
 	"strconv"
 	"time"
 
+	metricstypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/plugin"
 	"github.com/pole-io/pole-server/plugin/observability/statis/base"
@@ -83,24 +83,24 @@ func (s *StatisWorker) Destroy() error {
 }
 
 // ReportCallMetrics report call metrics info
-func (s *StatisWorker) ReportCallMetrics(metric metrics.CallMetric) {
+func (s *StatisWorker) ReportCallMetrics(metric metricstypes.CallMetric) {
 	s.BaseWorker.ReportCallMetrics(metric)
 }
 
 // ReportDiscoveryMetrics report discovery metrics
-func (s *StatisWorker) ReportDiscoveryMetrics(metric ...metrics.DiscoveryMetric) {
+func (s *StatisWorker) ReportDiscoveryMetrics(metric ...metricstypes.DiscoveryMetric) {
 }
 
 // ReportConfigMetrics report config_center metrics
-func (s *StatisWorker) ReportConfigMetrics(metric ...metrics.ConfigMetrics) {
+func (s *StatisWorker) ReportConfigMetrics(metric ...metricstypes.ConfigMetrics) {
 }
 
 // ReportDiscoverCall report discover service times
-func (s *StatisWorker) ReportDiscoverCall(metric metrics.ClientDiscoverMetric) {
+func (s *StatisWorker) ReportDiscoverCall(metric metricstypes.ClientDiscoverMetric) {
 	discoverlog.Info(metric.String())
 }
 
-func (a *StatisWorker) metricsHandle(mt metrics.CallMetricType, start time.Time,
+func (a *StatisWorker) metricsHandle(mt metricstypes.CallMetricType, start time.Time,
 	statics []*base.APICallStatisItem) {
 	startStr := commontime.Time2String(start)
 	if len(statics) == 0 {
@@ -135,7 +135,7 @@ func (a *StatisWorker) metricsHandle(mt metrics.CallMetricType, start time.Time,
 	log.Info(header + msg)
 }
 
-func formatAPICallStatisItem(prefixMax int, mt metrics.CallMetricType, item *base.APICallStatisItem) string {
+func formatAPICallStatisItem(prefixMax int, mt metricstypes.CallMetricType, item *base.APICallStatisItem) string {
 	if item.Count == 0 {
 		return ""
 	}

@@ -37,9 +37,9 @@ import (
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
@@ -52,7 +52,7 @@ type (
 
 // CreateStrategy 创建鉴权策略
 func (svr *Server) CreateStrategy(ctx context.Context, req *apisecurity.AuthStrategy) *apiservice.Response {
-	req.Owner = utils.NewStringValue(utils.ParseOwnerID(ctx))
+	req.Owner = protobuf.NewStringValue(utils.ParseOwnerID(ctx))
 	req.Resources = svr.normalizeResource(req.Resources)
 
 	data := svr.createAuthStrategyModel(req)
@@ -195,7 +195,7 @@ func (svr *Server) GetStrategies(ctx context.Context, filters map[string]string)
 	offset, limit, _ := valid.ParseOffsetAndLimit(filters)
 
 	// 透传兼容模式信息数据
-	ctx = context.WithValue(ctx, model.ContextKeyCompatible{}, svr.options.Compatible)
+	ctx = context.WithValue(ctx, utils.ContextKeyCompatible{}, svr.options.Compatible)
 
 	// 这里需要框定大体的数据查询范围
 	if authtypes.ParseUserRole(ctx) != authtypes.AdminUserRole {
@@ -214,8 +214,8 @@ func (svr *Server) GetStrategies(ctx context.Context, filters map[string]string)
 	}
 
 	resp := api.NewAuthBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Amount = utils.NewUInt32Value(total)
-	resp.Size = utils.NewUInt32Value(uint32(len(strategies)))
+	resp.Amount = protobuf.NewUInt32Value(total)
+	resp.Size = protobuf.NewUInt32Value(uint32(len(strategies)))
 
 	if strings.Compare(filters["show_detail"], "true") == 0 {
 		log.Info("[Auth][Strategy] fill strategy detail", utils.RequestID(ctx))
@@ -405,14 +405,14 @@ func (svr *Server) authStrategy2Api(ctx context.Context, s *authtypes.StrategyDe
 
 	// note: 不包括token，token比较特殊
 	out := &apisecurity.AuthStrategy{
-		Id:              utils.NewStringValue(s.ID),
-		Name:            utils.NewStringValue(s.Name),
-		Owner:           utils.NewStringValue(s.Owner),
-		Comment:         utils.NewStringValue(s.Comment),
-		Ctime:           utils.NewStringValue(commontime.Time2String(s.CreateTime)),
-		Mtime:           utils.NewStringValue(commontime.Time2String(s.ModifyTime)),
+		Id:              protobuf.NewStringValue(s.ID),
+		Name:            protobuf.NewStringValue(s.Name),
+		Owner:           protobuf.NewStringValue(s.Owner),
+		Comment:         protobuf.NewStringValue(s.Comment),
+		Ctime:           protobuf.NewStringValue(commontime.Time2String(s.CreateTime)),
+		Mtime:           protobuf.NewStringValue(commontime.Time2String(s.ModifyTime)),
 		Action:          apisecurity.AuthAction(apisecurity.AuthAction_value[s.Action]),
-		DefaultStrategy: utils.NewBoolValue(s.Default),
+		DefaultStrategy: protobuf.NewBoolValue(s.Default),
 	}
 
 	return out
@@ -429,22 +429,22 @@ func (svr *Server) authStrategyFull2Api(ctx context.Context, data *authtypes.Str
 	for index := range data.Principals {
 		principal := data.Principals[index]
 		if principal.PrincipalType == authtypes.PrincipalUser {
-			users = append(users, utils.NewStringValue(principal.PrincipalID))
+			users = append(users, protobuf.NewStringValue(principal.PrincipalID))
 		} else {
-			groups = append(groups, utils.NewStringValue(principal.PrincipalID))
+			groups = append(groups, protobuf.NewStringValue(principal.PrincipalID))
 		}
 	}
 
 	// note: 不包括token，token比较特殊
 	out := &apisecurity.AuthStrategy{
-		Id:              utils.NewStringValue(data.ID),
-		Name:            utils.NewStringValue(data.Name),
-		Owner:           utils.NewStringValue(data.Owner),
-		Comment:         utils.NewStringValue(data.Comment),
-		Ctime:           utils.NewStringValue(commontime.Time2String(data.CreateTime)),
-		Mtime:           utils.NewStringValue(commontime.Time2String(data.ModifyTime)),
+		Id:              protobuf.NewStringValue(data.ID),
+		Name:            protobuf.NewStringValue(data.Name),
+		Owner:           protobuf.NewStringValue(data.Owner),
+		Comment:         protobuf.NewStringValue(data.Comment),
+		Ctime:           protobuf.NewStringValue(commontime.Time2String(data.CreateTime)),
+		Mtime:           protobuf.NewStringValue(commontime.Time2String(data.ModifyTime)),
 		Action:          apisecurity.AuthAction(apisecurity.AuthAction_value[data.Action]),
-		DefaultStrategy: utils.NewBoolValue(data.Default),
+		DefaultStrategy: protobuf.NewBoolValue(data.Default),
 		Functions:       data.CalleeMethods,
 		Metadata:        data.Metadata,
 	}
@@ -675,7 +675,7 @@ func (svr *Server) normalizeResource(resources *apisecurity.StrategyResources) *
 			resId := item.FieldByName("Id").Interface().(pbStringValue)
 			if resId.GetValue() == utils.MatchAll {
 				sliceVal.Set(reflect.ValueOf([]*apisecurity.StrategyResourceEntry{{
-					Id: utils.NewStringValue("*"),
+					Id: protobuf.NewStringValue("*"),
 				}}))
 			}
 		}
@@ -696,8 +696,8 @@ func (svr *Server) enrichPrincipalInfo(resp *apisecurity.AuthStrategy, data *aut
 				Id: wrapperspb.String(principal.PrincipalID),
 			}); user != nil {
 				users = append(users, &apisecurity.Principal{
-					Id:   utils.NewStringValue(user.GetId().GetValue()),
-					Name: utils.NewStringValue(user.GetName().GetValue()),
+					Id:   protobuf.NewStringValue(user.GetId().GetValue()),
+					Name: protobuf.NewStringValue(user.GetName().GetValue()),
 				})
 			}
 		case authtypes.PrincipalGroup:
@@ -705,15 +705,15 @@ func (svr *Server) enrichPrincipalInfo(resp *apisecurity.AuthStrategy, data *aut
 				Id: wrapperspb.String(principal.PrincipalID),
 			}); group != nil {
 				groups = append(groups, &apisecurity.Principal{
-					Id:   utils.NewStringValue(group.GetId().GetValue()),
-					Name: utils.NewStringValue(group.GetName().GetValue()),
+					Id:   protobuf.NewStringValue(group.GetId().GetValue()),
+					Name: protobuf.NewStringValue(group.GetName().GetValue()),
 				})
 			}
 		case authtypes.PrincipalRole:
 			if role := svr.PolicyHelper().GetRole(principal.PrincipalID); role != nil {
 				roles = append(roles, &apisecurity.Principal{
-					Id:   utils.NewStringValue(role.ID),
-					Name: utils.NewStringValue(role.Name),
+					Id:   protobuf.NewStringValue(role.ID),
+					Name: protobuf.NewStringValue(role.Name),
 				})
 			}
 		}
@@ -764,9 +764,9 @@ func (svr *Server) enrichResourceDetial(ctx context.Context, item authtypes.Stra
 		allMatch[resType] = struct{}{}
 		sliceVal.Set(reflect.ValueOf([]*apisecurity.StrategyResourceEntry{
 			{
-				Id:        utils.NewStringValue("*"),
-				Namespace: utils.NewStringValue("*"),
-				Name:      utils.NewStringValue("*"),
+				Id:        protobuf.NewStringValue("*"),
+				Namespace: protobuf.NewStringValue("*"),
+				Name:      protobuf.NewStringValue("*"),
 			},
 		}))
 		return
@@ -963,9 +963,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        utils.NewStringValue(item.ResID),
-				Namespace: utils.NewStringValue(user.Name),
-				Name:      utils.NewStringValue(user.Name),
+				Id:        protobuf.NewStringValue(item.ResID),
+				Namespace: protobuf.NewStringValue(user.Name),
+				Name:      protobuf.NewStringValue(user.Name),
 			}
 		},
 		apisecurity.ResourceType_ConfigGroups: func(ctx context.Context, svr *Server,
@@ -978,9 +978,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        utils.NewStringValue(item.ResID),
-				Namespace: utils.NewStringValue(user.Namespace),
-				Name:      utils.NewStringValue(user.Name),
+				Id:        protobuf.NewStringValue(item.ResID),
+				Namespace: protobuf.NewStringValue(user.Namespace),
+				Name:      protobuf.NewStringValue(user.Name),
 			}
 		},
 		apisecurity.ResourceType_Services: func(ctx context.Context, svr *Server,
@@ -992,9 +992,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        utils.NewStringValue(item.ResID),
-				Namespace: utils.NewStringValue(user.Name),
-				Name:      utils.NewStringValue(user.Name),
+				Id:        protobuf.NewStringValue(item.ResID),
+				Namespace: protobuf.NewStringValue(user.Name),
+				Name:      protobuf.NewStringValue(user.Name),
 			}
 		},
 		apisecurity.ResourceType_RouteRules: func(ctx context.Context, svr *Server,
@@ -1006,9 +1006,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        utils.NewStringValue(item.ResID),
-				Namespace: utils.NewStringValue(user.Name),
-				Name:      utils.NewStringValue(user.Name),
+				Id:        protobuf.NewStringValue(item.ResID),
+				Namespace: protobuf.NewStringValue(user.Name),
+				Name:      protobuf.NewStringValue(user.Name),
 			}
 		},
 		apisecurity.ResourceType_LaneRules: func(ctx context.Context, svr *Server,
@@ -1020,9 +1020,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        utils.NewStringValue(item.ResID),
-				Namespace: utils.NewStringValue(user.Name),
-				Name:      utils.NewStringValue(user.Name),
+				Id:        protobuf.NewStringValue(item.ResID),
+				Namespace: protobuf.NewStringValue(user.Name),
+				Name:      protobuf.NewStringValue(user.Name),
 			}
 		},
 		apisecurity.ResourceType_RateLimitRules: func(ctx context.Context, svr *Server,
@@ -1034,9 +1034,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        utils.NewStringValue(item.ResID),
-				Namespace: utils.NewStringValue(user.Name),
-				Name:      utils.NewStringValue(user.Name),
+				Id:        protobuf.NewStringValue(item.ResID),
+				Namespace: protobuf.NewStringValue(user.Name),
+				Name:      protobuf.NewStringValue(user.Name),
 			}
 		},
 		apisecurity.ResourceType_CircuitBreakerRules: func(ctx context.Context, svr *Server,
@@ -1048,9 +1048,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        utils.NewStringValue(item.ResID),
-				Namespace: utils.NewStringValue(user.Name),
-				Name:      utils.NewStringValue(user.Name),
+				Id:        protobuf.NewStringValue(item.ResID),
+				Namespace: protobuf.NewStringValue(user.Name),
+				Name:      protobuf.NewStringValue(user.Name),
 			}
 		},
 		apisecurity.ResourceType_FaultDetectRules: func(ctx context.Context, svr *Server,
@@ -1062,9 +1062,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        utils.NewStringValue(item.ResID),
-				Namespace: utils.NewStringValue(user.Name),
-				Name:      utils.NewStringValue(user.Name),
+				Id:        protobuf.NewStringValue(item.ResID),
+				Namespace: protobuf.NewStringValue(user.Name),
+				Name:      protobuf.NewStringValue(user.Name),
 			}
 		},
 		// 鉴权资源
@@ -1077,8 +1077,8 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:   utils.NewStringValue(item.ResID),
-				Name: utils.NewStringValue(user.Name),
+				Id:   protobuf.NewStringValue(item.ResID),
+				Name: protobuf.NewStringValue(user.Name),
 			}
 		},
 		apisecurity.ResourceType_UserGroups: func(ctx context.Context, svr *Server,
@@ -1090,8 +1090,8 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:   utils.NewStringValue(item.ResID),
-				Name: utils.NewStringValue(user.Name),
+				Id:   protobuf.NewStringValue(item.ResID),
+				Name: protobuf.NewStringValue(user.Name),
 			}
 		},
 		apisecurity.ResourceType_Roles: func(ctx context.Context, svr *Server,
@@ -1103,8 +1103,8 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:   utils.NewStringValue(item.ResID),
-				Name: utils.NewStringValue(user.Name),
+				Id:   protobuf.NewStringValue(item.ResID),
+				Name: protobuf.NewStringValue(user.Name),
 			}
 		},
 		apisecurity.ResourceType_PolicyRules: func(ctx context.Context, svr *Server,
@@ -1116,8 +1116,8 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:   utils.NewStringValue(item.ResID),
-				Name: utils.NewStringValue(user.Name),
+				Id:   protobuf.NewStringValue(item.ResID),
+				Name: protobuf.NewStringValue(user.Name),
 			}
 		},
 	}

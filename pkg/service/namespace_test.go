@@ -24,15 +24,15 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 )
 
 // create
 func (d *DiscoverTestSuit) createCommonNamespace(t *testing.T, id int) (*apimodel.Namespace, *apimodel.Namespace) {
 	req := &apimodel.Namespace{
-		Name:    utils.NewStringValue(fmt.Sprintf("namespace-%d", id)),
-		Comment: utils.NewStringValue(fmt.Sprintf("comment-%d", id)),
-		Owners:  utils.NewStringValue(fmt.Sprintf("owner-%d", id)),
+		Name:    protobuf.NewStringValue(fmt.Sprintf("namespace-%d", id)),
+		Comment: protobuf.NewStringValue(fmt.Sprintf("comment-%d", id)),
+		Owners:  protobuf.NewStringValue(fmt.Sprintf("owner-%d", id)),
 	}
 	d.cleanNamespace(req.GetName().GetValue())
 
@@ -149,9 +149,9 @@ func TestRemoveNamespace(t *testing.T) {
 		defer discoverSuit.cleanNamespace(namespaceResp.GetName().GetValue())
 
 		serviceReq := &apiservice.Service{
-			Name:      utils.NewStringValue("abc"),
+			Name:      protobuf.NewStringValue("abc"),
 			Namespace: namespaceResp.GetName(),
-			Owners:    utils.NewStringValue("123"),
+			Owners:    protobuf.NewStringValue("123"),
 		}
 		if resp := discoverSuit.DiscoverServer().CreateServices(discoverSuit.DefaultCtx, []*apiservice.Service{serviceReq}); !respSuccess(resp) {
 			t.Fatalf("errror: %s", resp.GetInfo().GetValue())
@@ -181,7 +181,7 @@ func TestUpdateNamespace(t *testing.T) {
 		_ = discoverSuit.CacheMgr().TestUpdate()
 
 		req.Token = resp.Token
-		req.Comment = utils.NewStringValue("new-comment")
+		req.Comment = protobuf.NewStringValue("new-comment")
 
 		discoverSuit.updateCommonNamespaces(t, []*apimodel.Namespace{req})
 		t.Logf("pass")

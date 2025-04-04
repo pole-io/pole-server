@@ -30,8 +30,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	nacosmodel "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 )
 
@@ -150,7 +150,7 @@ type (
 
 	WatchClient struct {
 		id                 string
-		subscribers        *utils.SyncMap[string, Subscriber]
+		subscribers        *container.SyncMap[string, Subscriber]
 		notifier           Notifier
 		lastRefreshTimeRef atomic.Int64
 		lastCheclksum      string
@@ -289,7 +289,7 @@ func (pc *BasePushCenter) AddSubscriber(s Subscriber, notifier Notifier) bool {
 	if _, ok := pc.clients[id]; !ok {
 		pc.clients[id] = &WatchClient{
 			id:          id,
-			subscribers: utils.NewSyncMap[string, Subscriber](),
+			subscribers: container.NewSyncMap[string, Subscriber](),
 			notifier:    notifier,
 		}
 	}

@@ -28,9 +28,9 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/core"
 	nacosmodel "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
@@ -80,7 +80,7 @@ func (h *DiscoverServer) handleInstanceRequest(ctx context.Context, req nacospb.
 				ErrMsg:  errRsp.GetInfo().GetValue(),
 			}
 		}
-		ins.Id = utils.NewStringValue(insID)
+		ins.Id = protobuf.NewStringValue(insID)
 		resp = h.discoverSvr.DeregisterInstance(ctx, ins)
 		h.clientManager.delServiceInstance(meta.ConnectionID, svctypes.ServiceKey{
 			Namespace: ins.GetNamespace().GetValue(),
@@ -151,7 +151,7 @@ func (h *DiscoverServer) handlePersistentInstanceRequest(ctx context.Context, re
 				ErrMsg:  errRsp.GetInfo().GetValue(),
 			}
 		}
-		ins.Id = utils.NewStringValue(insID)
+		ins.Id = protobuf.NewStringValue(insID)
 		resp = h.discoverSvr.DeregisterInstance(ctx, ins)
 	default:
 		return nil, &nacosmodel.NacosError{
@@ -261,7 +261,7 @@ func (h *DiscoverServer) HandleClientDisConnect(ctx context.Context, client *rem
 		req := make([]*service_manage.Instance, 0, len(ids))
 		for i := range ids {
 			req = append(req, &service_manage.Instance{
-				Id: utils.NewStringValue(ids[i]),
+				Id: protobuf.NewStringValue(ids[i]),
 			})
 		}
 		if len(req) == 0 {

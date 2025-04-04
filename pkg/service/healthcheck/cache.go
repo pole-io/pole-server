@@ -28,7 +28,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/hash"
 	commonhash "github.com/pole-io/pole-server/pkg/common/hash"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/plugin"
 )
 
@@ -44,9 +44,9 @@ func init() {
 type CacheProvider struct {
 	svr                  *Server
 	selfService          string
-	selfServiceInstances *utils.SegmentMap[string, ItemWithChecker]
-	healthCheckInstances *utils.SegmentMap[string, ItemWithChecker]
-	healthCheckClients   *utils.SegmentMap[string, ItemWithChecker]
+	selfServiceInstances *container.SegmentMap[string, ItemWithChecker]
+	healthCheckInstances *container.SegmentMap[string, ItemWithChecker]
+	healthCheckClients   *container.SegmentMap[string, ItemWithChecker]
 }
 
 // CacheEvent provides the event for cache changes
@@ -60,9 +60,9 @@ func newCacheProvider(selfService string, svr *Server) *CacheProvider {
 	return &CacheProvider{
 		svr:                  svr,
 		selfService:          selfService,
-		selfServiceInstances: utils.NewSegmentMap[string, ItemWithChecker](1, hash.Fnv32),
-		healthCheckInstances: utils.NewSegmentMap[string, ItemWithChecker](int(DefaultShardSize), hash.Fnv32),
-		healthCheckClients:   utils.NewSegmentMap[string, ItemWithChecker](int(DefaultShardSize), hash.Fnv32),
+		selfServiceInstances: container.NewSegmentMap[string, ItemWithChecker](1, hash.Fnv32),
+		healthCheckInstances: container.NewSegmentMap[string, ItemWithChecker](int(DefaultShardSize), hash.Fnv32),
+		healthCheckClients:   container.NewSegmentMap[string, ItemWithChecker](int(DefaultShardSize), hash.Fnv32),
 	}
 }
 
@@ -291,7 +291,7 @@ func (c *CacheProvider) sendEvent(event CacheEvent) {
 }
 
 func compareAndStoreServiceInstance(instanceWithChecker *InstanceWithChecker,
-	values *utils.SegmentMap[string, ItemWithChecker]) bool {
+	values *container.SegmentMap[string, ItemWithChecker]) bool {
 	instanceId := instanceWithChecker.instance.ID()
 	value, isNew := values.PutIfAbsent(instanceId, instanceWithChecker)
 	if isNew {
@@ -314,7 +314,7 @@ func compareAndStoreServiceInstance(instanceWithChecker *InstanceWithChecker,
 }
 
 func storeServiceInstance(instanceWithChecker *InstanceWithChecker,
-	values *utils.SegmentMap[string, ItemWithChecker]) bool {
+	values *container.SegmentMap[string, ItemWithChecker]) bool {
 	log.Infof("[Health Check][Cache]create service instance is %s:%d, id is %s",
 		instanceWithChecker.instance.Host(), instanceWithChecker.instance.Port(),
 		instanceWithChecker.instance.ID())
@@ -323,7 +323,7 @@ func storeServiceInstance(instanceWithChecker *InstanceWithChecker,
 	return true
 }
 
-func deleteServiceInstance(instance *apiservice.Instance, values *utils.SegmentMap[string, ItemWithChecker]) bool {
+func deleteServiceInstance(instance *apiservice.Instance, values *container.SegmentMap[string, ItemWithChecker]) bool {
 	instanceId := instance.GetId().GetValue()
 	ok := values.Del(instanceId)
 	if ok {
@@ -334,7 +334,7 @@ func deleteServiceInstance(instance *apiservice.Instance, values *utils.SegmentM
 }
 
 func compareAndStoreClient(clientWithChecker *ClientWithChecker,
-	values *utils.SegmentMap[string, ItemWithChecker]) bool {
+	values *container.SegmentMap[string, ItemWithChecker]) bool {
 	clientId := clientWithChecker.client.Proto().GetId().GetValue()
 	_, isNew := values.PutIfAbsent(clientId, clientWithChecker)
 	if isNew {
@@ -346,7 +346,7 @@ func compareAndStoreClient(clientWithChecker *ClientWithChecker,
 }
 
 func storeClient(clientWithChecker *ClientWithChecker,
-	values *utils.SegmentMap[string, ItemWithChecker]) bool {
+	values *container.SegmentMap[string, ItemWithChecker]) bool {
 
 	log.Infof("[Health Check][Cache]create client is %s, id is %s",
 		clientWithChecker.client.Proto().GetHost().GetValue(), clientWithChecker.client.Proto().GetId().GetValue())
@@ -355,7 +355,7 @@ func storeClient(clientWithChecker *ClientWithChecker,
 	return true
 }
 
-func deleteClient(client *apiservice.Client, values *utils.SegmentMap[string, ItemWithChecker]) bool {
+func deleteClient(client *apiservice.Client, values *container.SegmentMap[string, ItemWithChecker]) bool {
 	clientId := client.GetId().GetValue()
 	ok := values.Del(clientId)
 	if ok {

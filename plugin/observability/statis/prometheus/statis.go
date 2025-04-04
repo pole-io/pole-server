@@ -23,6 +23,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	metricstypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -96,7 +97,7 @@ func (s *StatisWorker) registerMetrics() error {
 				Name: desc.Name,
 				Help: desc.Help,
 				ConstLabels: prometheus.Labels{
-					metrics.LabelServerNode: utils.LocalHost,
+					metricstypes.LabelServerNode: utils.LocalHost,
 				},
 			}, desc.LabelNames)
 			s.metricVecCaches[desc.Name] = collector.(*prometheus.GaugeVec)
@@ -113,32 +114,32 @@ func (s *StatisWorker) registerMetrics() error {
 }
 
 // ReportCallMetrics report call metrics info
-func (s *StatisWorker) ReportCallMetrics(metric metrics.CallMetric) {
+func (s *StatisWorker) ReportCallMetrics(metric metricstypes.CallMetric) {
 	// 只上报服务端接受客户端请求调用的结果
-	if metric.Type != metrics.ServerCallMetric {
+	if metric.Type != metricstypes.ServerCallMetric {
 		return
 	}
 	s.BaseWorker.ReportCallMetrics(metric)
 }
 
 // ReportDiscoveryMetrics report discovery metrics
-func (s *StatisWorker) ReportDiscoveryMetrics(metric ...metrics.DiscoveryMetric) {
+func (s *StatisWorker) ReportDiscoveryMetrics(metric ...metricstypes.DiscoveryMetric) {
 	s.discoveryHandler.handle(metric)
 }
 
 // ReportConfigMetrics report config_center metrics
-func (s *StatisWorker) ReportConfigMetrics(metric ...metrics.ConfigMetrics) {
+func (s *StatisWorker) ReportConfigMetrics(metric ...metricstypes.ConfigMetrics) {
 	s.configHandler.handle(metric)
 }
 
 // ReportDiscoverCall report discover service times
-func (s *StatisWorker) ReportDiscoverCall(metric metrics.ClientDiscoverMetric) {
+func (s *StatisWorker) ReportDiscoverCall(metric metricstypes.ClientDiscoverMetric) {
 	// ignore not support this
 }
 
-func (a *StatisWorker) metricsHandle(mt metrics.CallMetricType, start time.Time,
+func (a *StatisWorker) metricsHandle(mt metricstypes.CallMetricType, start time.Time,
 	staticsSlice []*base.APICallStatisItem) {
-	if mt != metrics.ServerCallMetric {
+	if mt != metricstypes.ServerCallMetric {
 		return
 	}
 	if len(staticsSlice) == 0 {

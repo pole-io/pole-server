@@ -31,6 +31,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -46,17 +47,17 @@ func mockReportClients(cnt int) []*apiservice.Client {
 
 	for i := 0; i < cnt; i++ {
 		ret = append(ret, &apiservice.Client{
-			Host:     utils.NewStringValue("127.0.0.1"),
+			Host:     protobuf.NewStringValue("127.0.0.1"),
 			Type:     apiservice.Client_SDK,
-			Version:  utils.NewStringValue("v1.0.0"),
+			Version:  protobuf.NewStringValue("v1.0.0"),
 			Location: &apimodel.Location{},
-			Id:       utils.NewStringValue(utils.NewUUID()),
+			Id:       protobuf.NewStringValue(utils.NewUUID()),
 			Stat: []*apiservice.StatInfo{
 				{
-					Target:   utils.NewStringValue(types.StatReportPrometheus),
-					Port:     utils.NewUInt32Value(uint32(1000 + i)),
-					Path:     utils.NewStringValue("/metrics"),
-					Protocol: utils.NewStringValue("http"),
+					Target:   protobuf.NewStringValue(types.StatReportPrometheus),
+					Port:     protobuf.NewUInt32Value(uint32(1000 + i)),
+					Path:     protobuf.NewStringValue("/metrics"),
+					Protocol: protobuf.NewStringValue("http"),
 				},
 			},
 		})
@@ -204,21 +205,21 @@ func TestServer_GetReportClients(t *testing.T) {
 
 		mockClientId := utils.NewUUID()
 		resp := svr.ReportClient(context.Background(), &service_manage.Client{
-			Host:    utils.NewStringValue("127.0.0.1"),
+			Host:    protobuf.NewStringValue("127.0.0.1"),
 			Type:    service_manage.Client_SDK,
-			Version: utils.NewStringValue("1.0.0"),
+			Version: protobuf.NewStringValue("1.0.0"),
 			Location: &apimodel.Location{
-				Region: utils.NewStringValue("region"),
-				Zone:   utils.NewStringValue("zone"),
-				Campus: utils.NewStringValue("campus"),
+				Region: protobuf.NewStringValue("region"),
+				Zone:   protobuf.NewStringValue("zone"),
+				Campus: protobuf.NewStringValue("campus"),
 			},
-			Id: utils.NewStringValue(mockClientId),
+			Id: protobuf.NewStringValue(mockClientId),
 			Stat: []*service_manage.StatInfo{
 				{
-					Target:   utils.NewStringValue("prometheus"),
-					Port:     utils.NewUInt32Value(8080),
-					Path:     utils.NewStringValue("/metrics"),
-					Protocol: utils.NewStringValue("http"),
+					Target:   protobuf.NewStringValue("prometheus"),
+					Port:     protobuf.NewUInt32Value(8080),
+					Path:     protobuf.NewStringValue("/metrics"),
+					Protocol: protobuf.NewStringValue("http"),
 				},
 			},
 		})

@@ -24,7 +24,14 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	metrictypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+)
+
+const (
+	labelCacheType        = "cache_type"
+	labelCacheUpdateCount = "cache_update_count"
+	labelBatchJobLabel    = "batch_label"
 )
 
 var (
@@ -38,7 +45,7 @@ func registerSysMetrics() {
 		Name: "instance_regis_cost_time",
 		Help: "instance regis cost time",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
 	})
 
@@ -47,7 +54,7 @@ func registerSysMetrics() {
 		Name: "instance_regis_task_expire",
 		Help: "instance regis task expire that server drop it",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
 	})
 
@@ -55,7 +62,7 @@ func registerSysMetrics() {
 		Name: "redis_read_failure",
 		Help: "polaris exec redis read operation failure",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
 	})
 
@@ -63,7 +70,7 @@ func registerSysMetrics() {
 		Name: "redis_write_failure",
 		Help: "polaris exec redis write operation failure",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
 	})
 
@@ -125,28 +132,6 @@ func ReportInstanceRegisCost(cost time.Duration) {
 // ReportDropInstanceRegisTask Record the number of registered tasks discarded
 func ReportDropInstanceRegisTask() {
 	instanceRegisTaskExpire.Inc()
-}
-
-// ReportRedisReadFailure report redis exec read operatio failure
-func ReportRedisReadFailure() {
-	lastRedisReadFailureReport.Store(time.Now())
-	redisReadFailure.Inc()
-}
-
-// ReportRedisWriteFailure report redis exec write operatio failure
-func ReportRedisWriteFailure() {
-	lastRedisWriteFailureReport.Store(time.Now())
-	redisWriteFailure.Inc()
-}
-
-// ReportRedisIsDead report redis alive status is dead
-func ReportRedisIsDead() {
-	redisAliveStatus.Set(0)
-}
-
-// ReportRedisIsAlive report redis alive status is health
-func ReportRedisIsAlive() {
-	redisAliveStatus.Set(1)
 }
 
 // RecordCacheUpdateCost record per cache update cost time

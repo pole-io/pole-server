@@ -28,19 +28,19 @@ import (
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 )
 
 func newRateLimitRuleBucket() *RateLimitRuleContainer {
 	return &RateLimitRuleContainer{
-		ids:   utils.NewSyncMap[string, *rules.RateLimit](),
-		rules: utils.NewSyncMap[string, *subRateLimitRuleBucket](),
+		ids:   container.NewSyncMap[string, *rules.RateLimit](),
+		rules: container.NewSyncMap[string, *subRateLimitRuleBucket](),
 	}
 }
 
 type RateLimitRuleContainer struct {
-	ids   *utils.SyncMap[string, *rules.RateLimit]
-	rules *utils.SyncMap[string, *subRateLimitRuleBucket]
+	ids   *container.SyncMap[string, *rules.RateLimit]
+	rules *container.SyncMap[string, *subRateLimitRuleBucket]
 }
 
 func (r *RateLimitRuleContainer) foreach(proc cacheapi.RateLimitIterProc) {

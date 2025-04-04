@@ -29,8 +29,8 @@ import (
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
 	nacosmodel "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 	nacospb "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/pb"
@@ -79,7 +79,7 @@ type StreamWatchContext struct {
 	clientId         string
 	labels           map[string]string
 	connMgr          *remote.ConnectionManager
-	watchConfigFiles *utils.SyncMap[string, *apiconfig.ClientConfigFileInfo]
+	watchConfigFiles *container.SyncMap[string, *apiconfig.ClientConfigFileInfo]
 	betaMatcher      config.BetaReleaseMatcher
 }
 

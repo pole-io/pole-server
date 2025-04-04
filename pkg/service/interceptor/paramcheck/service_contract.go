@@ -24,8 +24,8 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
@@ -97,7 +97,7 @@ func (svr *Server) DeleteServiceContractInterfaces(ctx context.Context,
 }
 
 func checkBaseServiceContract(req *apiservice.ServiceContract) *apiservice.Response {
-	if err := valid.CheckResourceName(utils.NewStringValue(req.GetNamespace())); err != nil {
+	if err := valid.CheckResourceName(protobuf.NewStringValue(req.GetNamespace())); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
 	}
 	if req.GetName() == "" {

@@ -22,7 +22,7 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 )
 
 const (
@@ -40,22 +40,22 @@ func CreateInstances(service *apiservice.Service) []*apiservice.Instance {
 		instance := &apiservice.Instance{
 			Service:   service.GetName(),
 			Namespace: service.GetNamespace(),
-			Host:      utils.NewStringValue(host),
-			Port:      utils.NewUInt32Value(8),
-			Protocol:  utils.NewStringValue("test"),
-			Version:   utils.NewStringValue("8.8.8"),
-			Priority:  utils.NewUInt32Value(8),
-			Weight:    utils.NewUInt32Value(8),
+			Host:      protobuf.NewStringValue(host),
+			Port:      protobuf.NewUInt32Value(8),
+			Protocol:  protobuf.NewStringValue("test"),
+			Version:   protobuf.NewStringValue("8.8.8"),
+			Priority:  protobuf.NewUInt32Value(8),
+			Weight:    protobuf.NewUInt32Value(8),
 			HealthCheck: &apiservice.HealthCheck{
 				Type: apiservice.HealthCheck_HEARTBEAT,
 				Heartbeat: &apiservice.HeartbeatHealthCheck{
-					Ttl: utils.NewUInt32Value(8),
+					Ttl: protobuf.NewUInt32Value(8),
 				},
 			},
-			Healthy:      utils.NewBoolValue(false),
-			Isolate:      utils.NewBoolValue(false),
+			Healthy:      protobuf.NewBoolValue(false),
+			Isolate:      protobuf.NewBoolValue(false),
 			Metadata:     map[string]string{"test": "test"},
-			LogicSet:     utils.NewStringValue("test"),
+			LogicSet:     protobuf.NewStringValue("test"),
 			ServiceToken: service.GetToken(),
 		}
 		instances = append(instances, instance)
@@ -69,11 +69,11 @@ func CreateInstances(service *apiservice.Service) []*apiservice.Instance {
  */
 func UpdateInstances(instances []*apiservice.Instance) {
 	for _, instance := range instances {
-		instance.Protocol = utils.NewStringValue("update")
-		instance.Version = utils.NewStringValue("4.4.4")
-		instance.Priority = utils.NewUInt32Value(4)
-		instance.Weight = utils.NewUInt32Value(4)
+		instance.Protocol = protobuf.NewStringValue("update")
+		instance.Version = protobuf.NewStringValue("4.4.4")
+		instance.Priority = protobuf.NewUInt32Value(4)
+		instance.Weight = protobuf.NewUInt32Value(4)
 		instance.Metadata = map[string]string{"update": "update"}
-		instance.LogicSet = utils.NewStringValue("update")
+		instance.LogicSet = protobuf.NewStringValue("update")
 	}
 }

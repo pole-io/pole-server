@@ -35,6 +35,7 @@ import (
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -44,7 +45,7 @@ type circuitBreakerCache struct {
 
 	storage store.Store
 	// rules record id -> *rules.CircuitBreakerRule
-	rules *utils.SyncMap[string, *rules.CircuitBreakerRule]
+	rules *container.SyncMap[string, *rules.CircuitBreakerRule]
 	// increment cache
 	// fetched service cache
 	// key1: namespace, key2: service
@@ -63,7 +64,7 @@ func NewCircuitBreakerCache(s store.Store, cacheMgr types.CacheManager) types.Ci
 	return &circuitBreakerCache{
 		BaseCache:       cachebase.NewBaseCache(s, cacheMgr),
 		storage:         s,
-		rules:           utils.NewSyncMap[string, *rules.CircuitBreakerRule](),
+		rules:           container.NewSyncMap[string, *rules.CircuitBreakerRule](),
 		circuitBreakers: make(map[string]map[string]*rules.ServiceWithCircuitBreakerRules),
 		nsWildcardRules: make(map[string]*rules.ServiceWithCircuitBreakerRules),
 		allWildcardRules: rules.NewServiceWithCircuitBreakerRules(svctypes.ServiceKey{
@@ -106,7 +107,7 @@ func (c *circuitBreakerCache) Clear() error {
 	c.BaseCache.Clear()
 	c.lock.Lock()
 	c.allWildcardRules.Clear()
-	c.rules = utils.NewSyncMap[string, *rules.CircuitBreakerRule]()
+	c.rules = container.NewSyncMap[string, *rules.CircuitBreakerRule]()
 	c.nsWildcardRules = make(map[string]*rules.ServiceWithCircuitBreakerRules)
 	c.circuitBreakers = make(map[string]map[string]*rules.ServiceWithCircuitBreakerRules)
 	c.lock.Unlock()

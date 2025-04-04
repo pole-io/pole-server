@@ -29,10 +29,10 @@ import (
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/crypto"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
 )
 
@@ -87,11 +87,11 @@ func (s *Server) TestCheckClientConfigFile(ctx context.Context, files []*apiconf
 		release := s.fileCache.GetActiveRelease(namespace, group, fileName)
 		if release != nil && compartor(configFile, release) {
 			ret := &apiconfig.ClientConfigFileInfo{
-				Namespace: utils.NewStringValue(namespace),
-				Group:     utils.NewStringValue(group),
-				FileName:  utils.NewStringValue(fileName),
-				Version:   utils.NewUInt64Value(release.Version),
-				Md5:       utils.NewStringValue(release.Md5),
+				Namespace: protobuf.NewStringValue(namespace),
+				Group:     protobuf.NewStringValue(group),
+				FileName:  protobuf.NewStringValue(fileName),
+				Version:   protobuf.NewUInt64Value(release.Version),
+				Md5:       protobuf.NewStringValue(release.Md5),
 			}
 			return api.NewConfigClientResponse(apimodel.Code_ExecuteSuccess, ret), false
 		}

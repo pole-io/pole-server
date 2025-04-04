@@ -43,12 +43,12 @@ import (
 
 	"github.com/pole-io/pole-server/apis/apiserver"
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
 	commonatomic "github.com/pole-io/pole-server/pkg/common/syncs/atomic"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	xdscache "github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/cache"
@@ -376,9 +376,9 @@ func (x *XDSServer) getRegistryInfoWithCache(ctx context.Context,
 	for _, v := range registryInfo {
 		for _, svc := range v {
 			s := &apiservice.Service{
-				Name:      utils.NewStringValue(svc.Name),
-				Namespace: utils.NewStringValue(svc.Namespace),
-				Revision:  utils.NewStringValue("-1"),
+				Name:      protobuf.NewStringValue(svc.Name),
+				Namespace: protobuf.NewStringValue(svc.Namespace),
+				Revision:  protobuf.NewStringValue("-1"),
 			}
 
 			// 获取routing配置

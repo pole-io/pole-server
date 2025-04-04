@@ -33,6 +33,7 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -43,7 +44,7 @@ var (
 type grayCache struct {
 	*cachebase.BaseCache
 	storage       store.Store
-	grayResources *utils.SyncMap[string, []*apimodel.ClientLabel]
+	grayResources *container.SyncMap[string, []*apimodel.ClientLabel]
 	updater       *singleflight.Group
 }
 
@@ -57,7 +58,7 @@ func NewGrayCache(storage store.Store, cacheMgr cacheapi.CacheManager) cacheapi.
 
 // Initialize init gray cache
 func (gc *grayCache) Initialize(opt map[string]interface{}) error {
-	gc.grayResources = utils.NewSyncMap[string, []*apimodel.ClientLabel]()
+	gc.grayResources = container.NewSyncMap[string, []*apimodel.ClientLabel]()
 	gc.updater = &singleflight.Group{}
 	return nil
 }
@@ -120,7 +121,7 @@ func (gc *grayCache) setGrayResources(grayResources []*rules.GrayResource) (map[
 // Clear clear cache
 func (gc *grayCache) Clear() error {
 	gc.BaseCache.Clear()
-	gc.grayResources = utils.NewSyncMap[string, []*apimodel.ClientLabel]()
+	gc.grayResources = container.NewSyncMap[string, []*apimodel.ClientLabel]()
 	return nil
 }
 

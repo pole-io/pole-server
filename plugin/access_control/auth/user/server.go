@@ -32,9 +32,9 @@ import (
 	"github.com/pole-io/pole-server/apis/observability/history"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // AuthConfig 鉴权配置
@@ -155,11 +155,11 @@ func (svr *Server) Login(req *apisecurity.LoginRequest) *apiservice.Response {
 	}
 
 	return api.NewLoginResponse(apimodel.Code_ExecuteSuccess, &apisecurity.LoginResponse{
-		UserId:  utils.NewStringValue(user.ID),
-		OwnerId: utils.NewStringValue(user.Owner),
-		Token:   utils.NewStringValue(user.Token),
-		Name:    utils.NewStringValue(user.Name),
-		Role:    utils.NewStringValue(authtypes.UserRoleNames[user.Type]),
+		UserId:  protobuf.NewStringValue(user.ID),
+		OwnerId: protobuf.NewStringValue(user.Owner),
+		Token:   protobuf.NewStringValue(user.Token),
+		Name:    protobuf.NewStringValue(user.Name),
+		Role:    protobuf.NewStringValue(authtypes.UserRoleNames[user.Type]),
 	})
 }
 

@@ -38,6 +38,7 @@ import (
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	commonatomic "github.com/pole-io/pole-server/pkg/common/syncs/atomic"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -45,20 +46,20 @@ type fileCache struct {
 	*cachebase.BaseCache
 	storage store.Store
 	// releases config_release.id -> conftypes.SimpleConfigFileRelease
-	releases *utils.SegmentMap[uint64, *conftypes.SimpleConfigFileRelease]
+	releases *container.SegmentMap[uint64, *conftypes.SimpleConfigFileRelease]
 	// name2release namespace -> group -> file_name -> []conftypes.ConfigFileRelease
-	name2release *utils.SyncMap[string, *utils.SyncMap[string, *utils.SyncMap[string,
-		*utils.SyncMap[string, *conftypes.SimpleConfigFileRelease]]]]
+	name2release *container.SyncMap[string, *container.SyncMap[string, *container.SyncMap[string,
+		*container.SyncMap[string, *conftypes.SimpleConfigFileRelease]]]]
 	// activeReleases namespace -> group -> []conftypes.ConfigFileRelease
-	activeReleases *utils.SyncMap[string, *utils.SyncMap[string, *utils.SyncMap[string, *conftypes.SimpleConfigFileRelease]]]
+	activeReleases *container.SyncMap[string, *container.SyncMap[string, *container.SyncMap[string, *conftypes.SimpleConfigFileRelease]]]
 	// groupedActiveReleaseRevisions namespace -> group -> revision
-	activeReleaseRevisions *utils.SyncMap[string, *utils.SyncMap[string, string]]
+	activeReleaseRevisions *container.SyncMap[string, *container.SyncMap[string, string]]
 	// singleGroup
 	singleGroup *singleflight.Group
 	// valueCache save ConfigFileRelease.Content into local file to reduce memory use
 	valueCache *bbolt.DB
 	// metricsReleaseCount
-	metricsReleaseCount *utils.SyncMap[string, *utils.SyncMap[string, uint64]]
+	metricsReleaseCount *container.SyncMap[string, *container.SyncMap[string, uint64]]
 	// preMetricsFiles
 	preMetricsFiles *commonatomic.AtomicValue[map[string]map[string]struct{}]
 	// lastReportTime
@@ -76,16 +77,16 @@ func NewConfigFileCache(storage store.Store, cacheMgr cacheapi.CacheManager) cac
 
 // Initialize
 func (fc *fileCache) Initialize(opt map[string]interface{}) error {
-	fc.releases = utils.NewSegmentMap[uint64, *conftypes.SimpleConfigFileRelease](1, func(k uint64) int {
+	fc.releases = container.NewSegmentMap[uint64, *conftypes.SimpleConfigFileRelease](1, func(k uint64) int {
 		return int(k)
 	})
-	fc.name2release = utils.NewSyncMap[string, *utils.SyncMap[string, *utils.SyncMap[string,
-		*utils.SyncMap[string, *conftypes.SimpleConfigFileRelease]]]]()
-	fc.activeReleases = utils.NewSyncMap[string, *utils.SyncMap[string,
-		*utils.SyncMap[string, *conftypes.SimpleConfigFileRelease]]]()
-	fc.activeReleaseRevisions = utils.NewSyncMap[string, *utils.SyncMap[string, string]]()
+	fc.name2release = container.NewSyncMap[string, *container.SyncMap[string, *container.SyncMap[string,
+		*container.SyncMap[string, *conftypes.SimpleConfigFileRelease]]]]()
+	fc.activeReleases = container.NewSyncMap[string, *container.SyncMap[string,
+		*container.SyncMap[string, *conftypes.SimpleConfigFileRelease]]]()
+	fc.activeReleaseRevisions = container.NewSyncMap[string, *container.SyncMap[string, string]]()
 	fc.singleGroup = &singleflight.Group{}
-	fc.metricsReleaseCount = utils.NewSyncMap[string, *utils.SyncMap[string, uint64]]()
+	fc.metricsReleaseCount = container.NewSyncMap[string, *container.SyncMap[string, uint64]]()
 	fc.preMetricsFiles = commonatomic.NewAtomicValue[map[string]map[string]struct{}](map[string]map[string]struct{}{})
 	fc.lastReportTime = commonatomic.NewAtomicValue[time.Time](time.Time{})
 	valueCache, err := openBoltCache(opt)
@@ -215,16 +216,16 @@ func (fc *fileCache) handleUpdateRelease(oldVal *conftypes.SimpleConfigFileRelea
 	func() {
 		// 记录 namespace -> group -> file_name -> []SimpleRelease 信息
 		if _, ok := fc.name2release.Load(item.Namespace); !ok {
-			fc.name2release.Store(item.Namespace, utils.NewSyncMap[string,
-				*utils.SyncMap[string, *utils.SyncMap[string, *conftypes.SimpleConfigFileRelease]]]())
+			fc.name2release.Store(item.Namespace, container.NewSyncMap[string,
+				*container.SyncMap[string, *container.SyncMap[string, *conftypes.SimpleConfigFileRelease]]]())
 		}
 		namespace, _ := fc.name2release.Load(item.Namespace)
 		if _, ok := namespace.Load(item.Group); !ok {
-			namespace.Store(item.Group, utils.NewSyncMap[string, *utils.SyncMap[string, *conftypes.SimpleConfigFileRelease]]())
+			namespace.Store(item.Group, container.NewSyncMap[string, *container.SyncMap[string, *conftypes.SimpleConfigFileRelease]]())
 		}
 		group, _ := namespace.Load(item.Group)
-		_, _ = group.ComputeIfAbsent(item.FileName, func(k string) *utils.SyncMap[string, *conftypes.SimpleConfigFileRelease] {
-			return utils.NewSyncMap[string, *conftypes.SimpleConfigFileRelease]()
+		_, _ = group.ComputeIfAbsent(item.FileName, func(k string) *container.SyncMap[string, *conftypes.SimpleConfigFileRelease] {
+			return container.NewSyncMap[string, *conftypes.SimpleConfigFileRelease]()
 		})
 		files, _ := group.Load(item.FileName)
 		files.Store(item.Name, item.SimpleConfigFileRelease)
@@ -277,12 +278,12 @@ func (fc *fileCache) handleDeleteRelease(release *conftypes.SimpleConfigFileRele
 func (fc *fileCache) saveActiveRelease(item *conftypes.ConfigFileRelease) error {
 	// 保存 active 状态的所有发布 release 信息
 	if _, ok := fc.activeReleases.Load(item.Namespace); !ok {
-		fc.activeReleases.Store(item.Namespace, utils.NewSyncMap[string,
-			*utils.SyncMap[string, *conftypes.SimpleConfigFileRelease]]())
+		fc.activeReleases.Store(item.Namespace, container.NewSyncMap[string,
+			*container.SyncMap[string, *conftypes.SimpleConfigFileRelease]]())
 	}
 	namespace, _ := fc.activeReleases.Load(item.Namespace)
 	if _, ok := namespace.Load(item.Group); !ok {
-		namespace.Store(item.Group, utils.NewSyncMap[string, *conftypes.SimpleConfigFileRelease]())
+		namespace.Store(item.Group, container.NewSyncMap[string, *conftypes.SimpleConfigFileRelease]())
 	}
 	group, _ := namespace.Load(item.Group)
 	group.Store(item.ActiveKey(), item.SimpleConfigFileRelease)
@@ -336,7 +337,7 @@ func (fc *fileCache) postProcessUpdatedRelease(affect map[string]map[string]stru
 			continue
 		}
 		if _, ok := fc.metricsReleaseCount.Load(ns); !ok {
-			fc.metricsReleaseCount.Store(ns, utils.NewSyncMap[string, uint64]())
+			fc.metricsReleaseCount.Store(ns, container.NewSyncMap[string, uint64]())
 		}
 		nsMetric, _ := fc.metricsReleaseCount.Load(ns)
 		for group := range groups {
@@ -371,8 +372,8 @@ func (fc *fileCache) reloadGroupRevisions(namespace, group string) {
 		}
 	}
 	nsRevisions, _ := fc.activeReleaseRevisions.ComputeIfAbsent(namespace,
-		func(k string) *utils.SyncMap[string, string] {
-			return utils.NewSyncMap[string, string]()
+		func(k string) *container.SyncMap[string, string] {
+			return container.NewSyncMap[string, string]()
 		})
 	nsRevisions.Store(group, hex.EncodeToString(h.Sum(nil)))
 }
@@ -426,7 +427,7 @@ func (fc *fileCache) GetGroupActiveReleases(namespace, group string) ([]*conftyp
 
 // GetActiveRelease .
 func (fc *fileCache) GetActiveRelease(namespace, group, fileName string) *conftypes.ConfigFileRelease {
-	return fc.handleGetActiveRelease(namespace, group, fileName, conftypes.ReleaseTypeFull)
+	return fc.handleGetActiveRelease(namespace, group, fileName, conftypes.ReleaseTypeNormal)
 }
 
 // GetActiveGrayRelease .
@@ -498,19 +499,19 @@ func (fc *fileCache) QueryReleases(args *cacheapi.ConfigReleaseArgs) (uint32, []
 	}
 
 	values := make([]*conftypes.SimpleConfigFileRelease, 0, args.Limit)
-	fc.name2release.ReadRange(func(namespace string, groups *utils.SyncMap[string, *utils.SyncMap[string,
-		*utils.SyncMap[string, *conftypes.SimpleConfigFileRelease]]]) {
+	fc.name2release.ReadRange(func(namespace string, groups *container.SyncMap[string, *container.SyncMap[string,
+		*container.SyncMap[string, *conftypes.SimpleConfigFileRelease]]]) {
 
 		if args.Namespace != "" && utils.IsWildNotMatch(namespace, args.Namespace) {
 			return
 		}
-		groups.ReadRange(func(group string, files *utils.SyncMap[string, *utils.SyncMap[string,
+		groups.ReadRange(func(group string, files *container.SyncMap[string, *container.SyncMap[string,
 			*conftypes.SimpleConfigFileRelease]]) {
 
 			if args.Group != "" && utils.IsWildNotMatch(group, args.Group) {
 				return
 			}
-			files.Range(func(fileName string, releases *utils.SyncMap[string, *conftypes.SimpleConfigFileRelease]) {
+			files.Range(func(fileName string, releases *container.SyncMap[string, *conftypes.SimpleConfigFileRelease]) {
 				if args.FileName != "" && utils.IsWildNotMatch(fileName, args.FileName) {
 					return
 				}

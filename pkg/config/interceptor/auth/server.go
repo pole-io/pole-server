@@ -31,6 +31,7 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
 )
@@ -164,7 +165,7 @@ func (s *Server) queryConfigGroupResource(ctx context.Context,
 		return nil
 	}
 
-	names := utils.NewSet[string]()
+	names := container.NewSet[string]()
 	namespace := req[0].GetNamespace().GetValue()
 	for index := range req {
 		if req[index] == nil {
@@ -194,7 +195,7 @@ func (s *Server) queryConfigFileResource(ctx context.Context,
 		return nil
 	}
 	namespace := req[0].Namespace.GetValue()
-	groupNames := utils.NewSet[string]()
+	groupNames := container.NewSet[string]()
 
 	for _, apiConfigFile := range req {
 		groupNames.Add(apiConfigFile.Group.GetValue())
@@ -220,7 +221,7 @@ func (s *Server) queryConfigFileReleaseResource(ctx context.Context,
 		return nil
 	}
 	namespace := req[0].Namespace.GetValue()
-	groupNames := utils.NewSet[string]()
+	groupNames := container.NewSet[string]()
 
 	for _, apiConfigFile := range req {
 		groupNames.Add(apiConfigFile.Group.GetValue())
@@ -246,7 +247,7 @@ func (s *Server) queryConfigFilePublishResource(ctx context.Context,
 		return nil
 	}
 	namespace := req[0].GetNamespace().GetValue()
-	groupNames := utils.NewSet[string]()
+	groupNames := container.NewSet[string]()
 
 	for _, apiConfigFile := range req {
 		groupNames.Add(apiConfigFile.GetGroup().GetValue())
@@ -270,7 +271,7 @@ func (s *Server) queryConfigFileReleaseHistoryResource(ctx context.Context,
 		return nil
 	}
 	namespace := req[0].Namespace.GetValue()
-	groupNames := utils.NewSet[string]()
+	groupNames := container.NewSet[string]()
 
 	for _, apiConfigFile := range req {
 		groupNames.Add(apiConfigFile.Group.GetValue())

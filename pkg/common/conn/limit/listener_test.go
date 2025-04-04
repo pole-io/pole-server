@@ -31,7 +31,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 
 	"github.com/pole-io/pole-server/pkg/common/conn/limit/mock_net"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 )
 
 // TestConnLimit 模拟一下连接限制
@@ -443,6 +443,6 @@ func NewTestLimitListener(maxLimit int32, hostLimit int32) *Listener {
 		maxConnPerHost:       hostLimit,
 		purgeCounterInterval: time.Hour,
 		purgeCounterExpire:   300,
-		conns:                utils.NewSyncMap[string, *counter](),
+		conns:                container.NewSyncMap[string, *counter](),
 	}
 }

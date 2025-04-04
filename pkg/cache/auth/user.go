@@ -32,6 +32,7 @@ import (
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -57,13 +58,13 @@ type userCache struct {
 
 	adminUser atomic.Value
 	// userid -> user
-	users *utils.SyncMap[string, *authtypes.User]
+	users *container.SyncMap[string, *authtypes.User]
 	// username -> user
-	name2Users *utils.SyncMap[string, *authtypes.User]
+	name2Users *container.SyncMap[string, *authtypes.User]
 	// groupid -> group
-	groups *utils.SyncMap[string, *authtypes.UserGroupDetail]
+	groups *container.SyncMap[string, *authtypes.UserGroupDetail]
 	// userid -> groups
-	user2Groups *utils.SyncMap[string, *utils.SyncSet[string]]
+	user2Groups *container.SyncMap[string, *container.SyncSet[string]]
 
 	lastUserMtime  int64
 	lastGroupMtime int64
@@ -81,10 +82,10 @@ func NewUserCache(storage store.Store, cacheMgr cacheapi.CacheManager) cacheapi.
 
 // Initialize
 func (uc *userCache) Initialize(_ map[string]interface{}) error {
-	uc.users = utils.NewSyncMap[string, *authtypes.User]()
-	uc.name2Users = utils.NewSyncMap[string, *authtypes.User]()
-	uc.groups = utils.NewSyncMap[string, *authtypes.UserGroupDetail]()
-	uc.user2Groups = utils.NewSyncMap[string, *utils.SyncSet[string]]()
+	uc.users = container.NewSyncMap[string, *authtypes.User]()
+	uc.name2Users = container.NewSyncMap[string, *authtypes.User]()
+	uc.groups = container.NewSyncMap[string, *authtypes.UserGroupDetail]()
+	uc.user2Groups = container.NewSyncMap[string, *container.SyncSet[string]]()
 	uc.adminUser = atomic.Value{}
 	uc.singleFlight = new(singleflight.Group)
 	return nil
@@ -243,7 +244,7 @@ func (uc *userCache) handlerGroupCacheUpdate(lastMimes map[string]time.Time, ret
 			for uid := range group.UserIds {
 				_, exist := uc.user2Groups.Load(uid)
 				if !exist {
-					uc.user2Groups.Store(uid, utils.NewSyncSet[string]())
+					uc.user2Groups.Store(uid, container.NewSyncSet[string]())
 				}
 				val, _ := uc.user2Groups.Load(uid)
 				val.Add(group.ID)
@@ -256,10 +257,10 @@ func (uc *userCache) handlerGroupCacheUpdate(lastMimes map[string]time.Time, ret
 
 func (uc *userCache) Clear() error {
 	uc.BaseCache.Clear()
-	uc.users = utils.NewSyncMap[string, *authtypes.User]()
-	uc.name2Users = utils.NewSyncMap[string, *authtypes.User]()
-	uc.groups = utils.NewSyncMap[string, *authtypes.UserGroupDetail]()
-	uc.user2Groups = utils.NewSyncMap[string, *utils.SyncSet[string]]()
+	uc.users = container.NewSyncMap[string, *authtypes.User]()
+	uc.name2Users = container.NewSyncMap[string, *authtypes.User]()
+	uc.groups = container.NewSyncMap[string, *authtypes.UserGroupDetail]()
+	uc.user2Groups = container.NewSyncMap[string, *container.SyncSet[string]]()
 	uc.adminUser = atomic.Value{}
 	uc.lastUserMtime = 0
 	uc.lastGroupMtime = 0

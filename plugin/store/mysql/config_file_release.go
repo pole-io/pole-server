@@ -184,7 +184,7 @@ func (cfr *configFileReleaseStore) GetConfigFileActiveReleaseTx(tx store.Tx,
 		err  error
 	)
 
-	rows, err = dbTx.Query(querySql, file.Namespace, file.Group, file.Name, conftypes.ReleaseTypeFull)
+	rows, err = dbTx.Query(querySql, file.Namespace, file.Group, file.Name, conftypes.ReleaseTypeNormal)
 	if err != nil {
 		return nil, err
 	}

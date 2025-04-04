@@ -321,19 +321,19 @@ func CheckDbInstanceFieldLen(req *apiservice.Instance) (*apiservice.Response, bo
 	if err := valid.CheckDbStrFieldLen(req.GetService(), valid.MaxNameLength); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidServiceName, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidNamespaceName, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetHost(), utils.MaxDbInsHostLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetHost(), valid.MaxDbInsHostLength); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidInstanceHost, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetProtocol(), utils.MaxDbInsProtocolLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetProtocol(), valid.MaxDbInsProtocolLength); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidInstanceProtocol, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetVersion(), utils.MaxDbInsVersionLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetVersion(), valid.MaxDbInsVersionLength); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidInstanceVersion, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetLogicSet(), utils.MaxDbInsLogicSetLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetLogicSet(), valid.MaxDbInsLogicSetLength); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidInstanceLogicSet, req), true
 	}
 	if err := valid.CheckDbMetaDataFieldLen(req.GetMetadata()); err != nil {

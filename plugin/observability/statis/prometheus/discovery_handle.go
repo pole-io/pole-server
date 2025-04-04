@@ -18,6 +18,7 @@
 package prometheus
 
 import (
+	metricstypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 )
 
@@ -28,21 +29,21 @@ func newDiscoveryMetricHandle() *discoveryMetricHandle {
 type discoveryMetricHandle struct {
 }
 
-func (h *discoveryMetricHandle) handle(ms []metrics.DiscoveryMetric) {
+func (h *discoveryMetricHandle) handle(ms []metricstypes.DiscoveryMetric) {
 	for i := range ms {
 		m := ms[i]
 		switch m.Type {
-		case metrics.ServiceMetrics:
+		case metricstypes.ServiceMetrics:
 			metrics.GetServiceCount().With(m.Labels).Set(float64(m.Total))
 			metrics.GetServiceAbnormalCountl().With(m.Labels).Set(float64(m.Abnormal))
 			metrics.GetServiceOfflineCountl().With(m.Labels).Set(float64(m.Offline))
 			metrics.GetServiceOnlineCountl().With(m.Labels).Set(float64(m.Online))
-		case metrics.InstanceMetrics:
+		case metricstypes.InstanceMetrics:
 			metrics.GetInstanceCount().With(m.Labels).Set(float64(m.Total))
 			metrics.GetInstanceAbnormalCountl().With(m.Labels).Set(float64(m.Abnormal))
 			metrics.GetInstanceIsolateCountl().With(m.Labels).Set(float64(m.Isolate))
 			metrics.GetInstanceOnlineCountl().With(m.Labels).Set(float64(m.Online))
-		case metrics.ClientMetrics:
+		case metricstypes.ClientMetrics:
 			metrics.GetClientInstanceTotal().Set(float64(m.Total))
 		}
 	}

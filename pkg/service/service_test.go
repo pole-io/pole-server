@@ -39,6 +39,7 @@ import (
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
@@ -108,9 +109,9 @@ func TestCreateService(t *testing.T) {
 		})
 
 		req := &apiservice.Service{
-			Name:      utils.NewStringValue(serviceResp.GetName().GetValue()),
-			Namespace: utils.NewStringValue(serviceResp.GetNamespace().GetValue()),
-			Token:     utils.NewStringValue(serviceResp.GetToken().GetValue()),
+			Name:      protobuf.NewStringValue(serviceResp.GetName().GetValue()),
+			Namespace: protobuf.NewStringValue(serviceResp.GetNamespace().GetValue()),
+			Token:     protobuf.NewStringValue(serviceResp.GetToken().GetValue()),
 		}
 		discoverSuit.removeCommonServices(t, []*apiservice.Service{req})
 
@@ -177,9 +178,9 @@ func TestCreateService(t *testing.T) {
 		})
 
 		service := &apiservice.Service{
-			Name:      utils.NewStringValue("abc"),
-			Namespace: utils.NewStringValue(utils.NewUUID()),
-			Owners:    utils.NewStringValue("my"),
+			Name:      protobuf.NewStringValue("abc"),
+			Namespace: protobuf.NewStringValue(utils.NewUUID()),
+			Owners:    protobuf.NewStringValue("my"),
 		}
 		resp := discoverSuit.DiscoverServer().CreateServices(discoverSuit.DefaultCtx, []*apiservice.Service{service})
 		if !respSuccess(resp) {
@@ -198,9 +199,9 @@ func TestCreateService(t *testing.T) {
 		})
 
 		svc := &apiservice.Service{
-			Name:      utils.NewStringValue("999"),
-			Namespace: utils.NewStringValue("Polaris"),
-			Owners:    utils.NewStringValue("my"),
+			Name:      protobuf.NewStringValue("999"),
+			Namespace: protobuf.NewStringValue("Polaris"),
+			Owners:    protobuf.NewStringValue("my"),
 		}
 		svc.Metadata = make(map[string]string)
 		for i := 0; i < service.MaxMetadataLength+1; i++ {
@@ -228,9 +229,9 @@ func TestRemoveServices(t *testing.T) {
 		defer discoverSuit.cleanServiceName(serviceReq.GetName().GetValue(), serviceReq.GetNamespace().GetValue())
 
 		req := &apiservice.Service{
-			Name:      utils.NewStringValue(serviceResp.GetName().GetValue()),
-			Namespace: utils.NewStringValue(serviceResp.GetNamespace().GetValue()),
-			Token:     utils.NewStringValue(serviceResp.GetToken().GetValue()),
+			Name:      protobuf.NewStringValue(serviceResp.GetName().GetValue()),
+			Namespace: protobuf.NewStringValue(serviceResp.GetNamespace().GetValue()),
+			Token:     protobuf.NewStringValue(serviceResp.GetToken().GetValue()),
 		}
 
 		// wait for data cache
@@ -251,9 +252,9 @@ func TestRemoveServices(t *testing.T) {
 			serviceReq, serviceResp := discoverSuit.createCommonService(t, i)
 			defer discoverSuit.cleanServiceName(serviceReq.GetName().GetValue(), serviceReq.GetNamespace().GetValue())
 			req := &apiservice.Service{
-				Name:      utils.NewStringValue(serviceResp.GetName().GetValue()),
-				Namespace: utils.NewStringValue(serviceResp.GetNamespace().GetValue()),
-				Token:     utils.NewStringValue(serviceResp.GetToken().GetValue()),
+				Name:      protobuf.NewStringValue(serviceResp.GetName().GetValue()),
+				Namespace: protobuf.NewStringValue(serviceResp.GetNamespace().GetValue()),
+				Token:     protobuf.NewStringValue(serviceResp.GetToken().GetValue()),
 			}
 			reqs = append(reqs, req)
 		}
@@ -268,9 +269,9 @@ func TestRemoveServices(t *testing.T) {
 		defer discoverSuit.cleanServiceName(serviceReq.GetName().GetValue(), serviceReq.GetNamespace().GetValue())
 
 		req := &apiservice.Service{
-			Name:      utils.NewStringValue(serviceResp.GetName().GetValue()),
-			Namespace: utils.NewStringValue(serviceResp.GetNamespace().GetValue()),
-			Token:     utils.NewStringValue(serviceResp.GetToken().GetValue()),
+			Name:      protobuf.NewStringValue(serviceResp.GetName().GetValue()),
+			Namespace: protobuf.NewStringValue(serviceResp.GetNamespace().GetValue()),
+			Token:     protobuf.NewStringValue(serviceResp.GetToken().GetValue()),
 		}
 		discoverSuit.removeCommonServices(t, []*apiservice.Service{req})
 	})
@@ -296,9 +297,9 @@ func TestRemoveServices(t *testing.T) {
 			serviceReq, serviceResp := discoverSuit.createCommonService(t, i)
 			defer discoverSuit.cleanServiceName(serviceReq.GetName().GetValue(), serviceReq.GetNamespace().GetValue())
 			req := &apiservice.Service{
-				Name:      utils.NewStringValue(serviceResp.GetName().GetValue()),
-				Namespace: utils.NewStringValue(serviceResp.GetNamespace().GetValue()),
-				Token:     utils.NewStringValue(serviceResp.GetToken().GetValue()),
+				Name:      protobuf.NewStringValue(serviceResp.GetName().GetValue()),
+				Namespace: protobuf.NewStringValue(serviceResp.GetNamespace().GetValue()),
+				Token:     protobuf.NewStringValue(serviceResp.GetToken().GetValue()),
 			}
 
 			wg.Add(1)
@@ -367,8 +368,8 @@ func TestGetServiceOwner(t *testing.T) {
 		reqs := make([]*apiservice.Service, 0, 101)
 		for i := 0; i < 101; i++ {
 			req := &apiservice.Service{
-				Namespace: utils.NewStringValue("Test"),
-				Name:      utils.NewStringValue("test"),
+				Namespace: protobuf.NewStringValue("Test"),
+				Name:      protobuf.NewStringValue("test"),
 			}
 			reqs = append(reqs, req)
 		}
@@ -383,8 +384,8 @@ func TestGetServiceOwner(t *testing.T) {
 		reqs := make([]*apiservice.Service, 0, 100)
 		for i := 0; i < 100; i++ {
 			req := &apiservice.Service{
-				Namespace: utils.NewStringValue("Development"),
-				Name:      utils.NewStringValue(genSpecialStr(128)),
+				Namespace: protobuf.NewStringValue("Development"),
+				Name:      protobuf.NewStringValue(genSpecialStr(128)),
 			}
 			reqs = append(reqs, req)
 		}
@@ -569,7 +570,7 @@ func TestGetService3(t *testing.T) {
 		namespaceReq, _ := discoverSuit.createCommonNamespace(t, 100)
 		defer discoverSuit.cleanNamespace(namespaceReq.GetName().GetValue())
 
-		serviceReq.Namespace = utils.NewStringValue(namespaceReq.GetName().GetValue())
+		serviceReq.Namespace = protobuf.NewStringValue(namespaceReq.GetName().GetValue())
 		if resp := discoverSuit.DiscoverServer().CreateServices(discoverSuit.DefaultCtx, []*apiservice.Service{serviceReq}); !respSuccess(resp) {
 			t.Fatalf("error: %s", resp.GetInfo().GetValue())
 		}
@@ -931,14 +932,14 @@ func TestUpdateService(t *testing.T) {
 				"new-key-2": "2",
 				"new-key-3": "3",
 			},
-			Ports:      utils.NewStringValue("new-ports"),
-			Business:   utils.NewStringValue("new-business"),
-			Department: utils.NewStringValue("new-business"),
-			CmdbMod1:   utils.NewStringValue("new-cmdb-mod1"),
-			CmdbMod2:   utils.NewStringValue("new-cmdb-mo2"),
-			CmdbMod3:   utils.NewStringValue("new-cmdb-mod3"),
-			Comment:    utils.NewStringValue("new-comment"),
-			Owners:     utils.NewStringValue("new-owner"),
+			Ports:      protobuf.NewStringValue("new-ports"),
+			Business:   protobuf.NewStringValue("new-business"),
+			Department: protobuf.NewStringValue("new-business"),
+			CmdbMod1:   protobuf.NewStringValue("new-cmdb-mod1"),
+			CmdbMod2:   protobuf.NewStringValue("new-cmdb-mo2"),
+			CmdbMod3:   protobuf.NewStringValue("new-cmdb-mod3"),
+			Comment:    protobuf.NewStringValue("new-comment"),
+			Owners:     protobuf.NewStringValue("new-owner"),
 			Token:      serviceResp.Token,
 		}
 		resp := discoverSuit.DiscoverServer().UpdateServices(discoverSuit.DefaultCtx, []*apiservice.Service{updateReq})
@@ -992,7 +993,7 @@ func TestUpdateService(t *testing.T) {
 		aliasService := &apiservice.Service{
 			Name:       aliasResp.Alias.Alias,
 			Namespace:  serviceResp.Namespace,
-			Department: utils.NewStringValue("123"),
+			Department: protobuf.NewStringValue("123"),
 			Token:      serviceResp.Token,
 		}
 		if resp := discoverSuit.DiscoverServer().UpdateServices(discoverSuit.DefaultCtx, []*apiservice.Service{aliasService}); respSuccess(resp) {
@@ -1043,7 +1044,7 @@ func TestNoNeedUpdateService(t *testing.T) {
 	})
 	t.Run("其他字段更新，metadata没有更新，不需要更新metadata", func(t *testing.T) {
 		req.Metadata = serviceResp.Metadata
-		req.Comment = utils.NewStringValue("1357986420")
+		req.Comment = protobuf.NewStringValue("1357986420")
 		if resp := discoverSuit.DiscoverServer().UpdateServices(discoverSuit.DefaultCtx, []*apiservice.Service{req}); resp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
 			t.Fatalf("error: %+v", resp)
 		}
@@ -1056,49 +1057,49 @@ func TestNoNeedUpdateService(t *testing.T) {
 		}
 
 		r := baseReq
-		r.Ports = utils.NewStringValue("90909090")
+		r.Ports = protobuf.NewStringValue("90909090")
 		if resp := discoverSuit.DiscoverServer().UpdateServices(discoverSuit.DefaultCtx, []*apiservice.Service{&r}); resp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
 			t.Fatalf("error: %+v", resp)
 		}
 
 		r = baseReq
-		r.Business = utils.NewStringValue("new-business")
+		r.Business = protobuf.NewStringValue("new-business")
 		if resp := discoverSuit.DiscoverServer().UpdateServices(discoverSuit.DefaultCtx, []*apiservice.Service{&r}); resp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
 			t.Fatalf("error: %+v", resp)
 		}
 
 		r = baseReq
-		r.Department = utils.NewStringValue("new-department-1")
+		r.Department = protobuf.NewStringValue("new-department-1")
 		if resp := discoverSuit.DiscoverServer().UpdateServices(discoverSuit.DefaultCtx, []*apiservice.Service{&r}); resp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
 			t.Fatalf("error: %+v", resp)
 		}
 
 		r = baseReq
-		r.CmdbMod1 = utils.NewStringValue("new-CmdbMod1-1")
+		r.CmdbMod1 = protobuf.NewStringValue("new-CmdbMod1-1")
 		if resp := discoverSuit.DiscoverServer().UpdateServices(discoverSuit.DefaultCtx, []*apiservice.Service{&r}); resp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
 			t.Fatalf("error: %+v", resp)
 		}
 
 		r = baseReq
-		r.CmdbMod2 = utils.NewStringValue("new-CmdbMod2-1")
+		r.CmdbMod2 = protobuf.NewStringValue("new-CmdbMod2-1")
 		if resp := discoverSuit.DiscoverServer().UpdateServices(discoverSuit.DefaultCtx, []*apiservice.Service{&r}); resp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
 			t.Fatalf("error: %+v", resp)
 		}
 
 		r = baseReq
-		r.CmdbMod3 = utils.NewStringValue("new-CmdbMod3-1")
+		r.CmdbMod3 = protobuf.NewStringValue("new-CmdbMod3-1")
 		if resp := discoverSuit.DiscoverServer().UpdateServices(discoverSuit.DefaultCtx, []*apiservice.Service{&r}); resp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
 			t.Fatalf("error: %+v", resp)
 		}
 
 		r = baseReq
-		r.Comment = utils.NewStringValue("new-Comment-1")
+		r.Comment = protobuf.NewStringValue("new-Comment-1")
 		if resp := discoverSuit.DiscoverServer().UpdateServices(discoverSuit.DefaultCtx, []*apiservice.Service{&r}); resp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
 			t.Fatalf("error: %+v", resp)
 		}
 
 		r = baseReq
-		r.Owners = utils.NewStringValue("new-Owners-1")
+		r.Owners = protobuf.NewStringValue("new-Owners-1")
 		if resp := discoverSuit.DiscoverServer().UpdateServices(discoverSuit.DefaultCtx, []*apiservice.Service{&r}); resp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
 			t.Fatalf("error: %+v", resp)
 		}
@@ -1251,7 +1252,7 @@ func TestCheckServiceFieldLen(t *testing.T) {
 	t.Run("服务名超长", func(t *testing.T) {
 		str := genSpecialStr(129)
 		oldName := service.Name
-		service.Name = utils.NewStringValue(str)
+		service.Name = protobuf.NewStringValue(str)
 		resp := discoverSuit.DiscoverServer().CreateServices(discoverSuit.DefaultCtx, []*apiservice.Service{service})
 		service.Name = oldName
 		if resp.Code.Value != api.InvalidServiceName {
@@ -1261,7 +1262,7 @@ func TestCheckServiceFieldLen(t *testing.T) {
 	t.Run("命名空间超长", func(t *testing.T) {
 		str := genSpecialStr(129)
 		oldNameSpace := service.Namespace
-		service.Namespace = utils.NewStringValue(str)
+		service.Namespace = protobuf.NewStringValue(str)
 		resp := discoverSuit.DiscoverServer().CreateServices(discoverSuit.DefaultCtx, []*apiservice.Service{service})
 		service.Namespace = oldNameSpace
 		if resp.Code.Value != api.InvalidNamespaceName {
@@ -1281,7 +1282,7 @@ func TestCheckServiceFieldLen(t *testing.T) {
 	t.Run("服务ports超长", func(t *testing.T) {
 		str := genSpecialStr(8193)
 		oldPort := service.Ports
-		service.Ports = utils.NewStringValue(str)
+		service.Ports = protobuf.NewStringValue(str)
 		resp := discoverSuit.DiscoverServer().CreateServices(discoverSuit.DefaultCtx, []*apiservice.Service{service})
 		service.Ports = oldPort
 		if resp.Code.Value != api.InvalidServicePorts {
@@ -1291,7 +1292,7 @@ func TestCheckServiceFieldLen(t *testing.T) {
 	t.Run("服务Business超长", func(t *testing.T) {
 		str := genSpecialStr(129)
 		oldBusiness := service.Business
-		service.Business = utils.NewStringValue(str)
+		service.Business = protobuf.NewStringValue(str)
 		resp := discoverSuit.DiscoverServer().CreateServices(discoverSuit.DefaultCtx, []*apiservice.Service{service})
 		service.Business = oldBusiness
 		if resp.Code.Value != api.InvalidServiceBusiness {
@@ -1301,7 +1302,7 @@ func TestCheckServiceFieldLen(t *testing.T) {
 	t.Run("服务-部门超长", func(t *testing.T) {
 		str := genSpecialStr(1025)
 		oldDepartment := service.Department
-		service.Department = utils.NewStringValue(str)
+		service.Department = protobuf.NewStringValue(str)
 		resp := discoverSuit.DiscoverServer().CreateServices(discoverSuit.DefaultCtx, []*apiservice.Service{service})
 		service.Department = oldDepartment
 		if resp.Code.Value != api.InvalidServiceDepartment {
@@ -1311,7 +1312,7 @@ func TestCheckServiceFieldLen(t *testing.T) {
 	t.Run("服务cmdb超长", func(t *testing.T) {
 		str := genSpecialStr(1025)
 		oldCMDB := service.CmdbMod1
-		service.CmdbMod1 = utils.NewStringValue(str)
+		service.CmdbMod1 = protobuf.NewStringValue(str)
 		resp := discoverSuit.DiscoverServer().CreateServices(discoverSuit.DefaultCtx, []*apiservice.Service{service})
 		service.CmdbMod1 = oldCMDB
 		if resp.Code.Value != api.InvalidServiceCMDB {
@@ -1321,7 +1322,7 @@ func TestCheckServiceFieldLen(t *testing.T) {
 	t.Run("服务comment超长", func(t *testing.T) {
 		str := genSpecialStr(1025)
 		oldComment := service.Comment
-		service.Comment = utils.NewStringValue(str)
+		service.Comment = protobuf.NewStringValue(str)
 		resp := discoverSuit.DiscoverServer().CreateServices(discoverSuit.DefaultCtx, []*apiservice.Service{service})
 		service.Comment = oldComment
 		if resp.Code.Value != api.InvalidServiceComment {
@@ -1331,7 +1332,7 @@ func TestCheckServiceFieldLen(t *testing.T) {
 	t.Run("服务token超长", func(t *testing.T) {
 		str := genSpecialStr(2049)
 		oldToken := service.Token
-		service.Token = utils.NewStringValue(str)
+		service.Token = protobuf.NewStringValue(str)
 		resp := discoverSuit.DiscoverServer().CreateServices(discoverSuit.DefaultCtx, []*apiservice.Service{service})
 		service.Token = oldToken
 		if resp.Code.Value != api.InvalidServiceToken {
@@ -1349,7 +1350,7 @@ func TestCheckServiceFieldLen(t *testing.T) {
 	})
 	t.Run("检测字段为空", func(t *testing.T) {
 		oldName := service.Name
-		service.Name = utils.NewStringValue("")
+		service.Name = protobuf.NewStringValue("")
 		resp := discoverSuit.DiscoverServer().CreateServices(discoverSuit.DefaultCtx, []*apiservice.Service{service})
 		service.Name = oldName
 		if resp.Code.Value != api.InvalidServiceName {

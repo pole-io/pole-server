@@ -33,11 +33,11 @@ import (
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	types "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	cachemock "github.com/pole-io/pole-server/pkg/cache/mock"
 	"github.com/pole-io/pole-server/pkg/cache/service"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/store/mock"
 )
 
@@ -69,33 +69,33 @@ func newTestRateLimitCache(t *testing.T) (*gomock.Controller, *mock.MockStore, *
 
 func buildRateLimitRuleProtoWithLabels(name string, method string) *apitraffic.Rule {
 	rule := &apitraffic.Rule{
-		Priority: utils.NewUInt32Value(0),
+		Priority: protobuf.NewUInt32Value(0),
 		Resource: apitraffic.Rule_QPS,
 		Type:     apitraffic.Rule_LOCAL,
 		Labels: map[string]*apimodel.MatchString{"http.method": {
 			Type:  apimodel.MatchString_EXACT,
-			Value: utils.NewStringValue("post"),
+			Value: protobuf.NewStringValue("post"),
 		}},
 		Amounts: []*apitraffic.Amount{{
-			MaxAmount:     utils.NewUInt32Value(100),
+			MaxAmount:     protobuf.NewUInt32Value(100),
 			ValidDuration: &duration.Duration{Seconds: 1},
 		}},
-		Action:       utils.NewStringValue("reject"),
-		Disable:      utils.NewBoolValue(false),
-		RegexCombine: utils.NewBoolValue(false),
+		Action:       protobuf.NewStringValue("reject"),
+		Disable:      protobuf.NewBoolValue(false),
+		RegexCombine: protobuf.NewBoolValue(false),
 		Failover:     apitraffic.Rule_FAILOVER_LOCAL,
 		Method: &apimodel.MatchString{
 			Type:  apimodel.MatchString_EXACT,
-			Value: utils.NewStringValue(method),
+			Value: protobuf.NewStringValue(method),
 		},
-		Name: utils.NewStringValue(name),
+		Name: protobuf.NewStringValue(name),
 	}
 	return rule
 }
 
 func buildRateLimitRuleProtoWithArguments(name string, method string) *apitraffic.Rule {
 	rule := &apitraffic.Rule{
-		Priority: utils.NewUInt32Value(0),
+		Priority: protobuf.NewUInt32Value(0),
 		Resource: apitraffic.Rule_QPS,
 		Type:     apitraffic.Rule_LOCAL,
 		Arguments: []*apitraffic.MatchArgument{
@@ -104,23 +104,23 @@ func buildRateLimitRuleProtoWithArguments(name string, method string) *apitraffi
 				Key:  "host",
 				Value: &apimodel.MatchString{
 					Type:  apimodel.MatchString_EXACT,
-					Value: utils.NewStringValue("localhost"),
+					Value: protobuf.NewStringValue("localhost"),
 				},
 			},
 		},
 		Amounts: []*apitraffic.Amount{{
-			MaxAmount:     utils.NewUInt32Value(100),
+			MaxAmount:     protobuf.NewUInt32Value(100),
 			ValidDuration: &duration.Duration{Seconds: 1},
 		}},
-		Action:       utils.NewStringValue("reject"),
-		Disable:      utils.NewBoolValue(false),
-		RegexCombine: utils.NewBoolValue(false),
+		Action:       protobuf.NewStringValue("reject"),
+		Disable:      protobuf.NewBoolValue(false),
+		RegexCombine: protobuf.NewBoolValue(false),
 		Failover:     apitraffic.Rule_FAILOVER_LOCAL,
 		Method: &apimodel.MatchString{
 			Type:  apimodel.MatchString_EXACT,
-			Value: utils.NewStringValue(method),
+			Value: protobuf.NewStringValue(method),
 		},
-		Name: utils.NewStringValue(name),
+		Name: protobuf.NewStringValue(name),
 	}
 	return rule
 }
@@ -141,8 +141,8 @@ func genRateLimits(
 			} else {
 				rule = buildRateLimitRuleProtoWithArguments(name, method)
 			}
-			rule.Service = utils.NewStringValue(fmt.Sprintf("service-%d", i))
-			rule.Namespace = utils.NewStringValue("default")
+			rule.Service = protobuf.NewStringValue(fmt.Sprintf("service-%d", i))
+			rule.Namespace = protobuf.NewStringValue("default")
 			str, _ := json.Marshal(rule)
 			labels, _ := json.Marshal(rule.GetLabels())
 			rateLimit := &rules.RateLimit{

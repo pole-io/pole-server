@@ -28,6 +28,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	storeapi "github.com/pole-io/pole-server/apis/store"
@@ -97,7 +98,7 @@ func (s *Server) CreateServiceAlias(ctx context.Context, req *apiservice.Service
 		ServiceToken:   &wrappers.StringValue{Value: input.Token},
 	}
 	if out.GetAlias().GetValue() == "" {
-		out.Alias = utils.NewStringValue(input.Name)
+		out.Alias = protobuf.NewStringValue(input.Name)
 	}
 	record := &apiservice.Service{Name: out.Alias, Namespace: out.AliasNamespace}
 	s.RecordHistory(ctx, serviceRecordEntry(ctx, record, input, types.OCreate))
@@ -242,22 +243,22 @@ func (s *Server) GetServiceAliases(ctx context.Context, query map[string]string)
 	}
 
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Amount = utils.NewUInt32Value(total)
-	resp.Size = utils.NewUInt32Value(uint32(len(aliases)))
+	resp.Amount = protobuf.NewUInt32Value(total)
+	resp.Size = protobuf.NewUInt32Value(uint32(len(aliases)))
 	resp.Aliases = make([]*apiservice.ServiceAlias, 0, len(aliases))
 	for _, entry := range aliases {
 		item := &apiservice.ServiceAlias{
-			Id:             utils.NewStringValue(entry.ID),
-			Service:        utils.NewStringValue(entry.Service),
-			Namespace:      utils.NewStringValue(entry.Namespace),
-			Alias:          utils.NewStringValue(entry.Alias),
-			AliasNamespace: utils.NewStringValue(entry.AliasNamespace),
-			Owners:         utils.NewStringValue(entry.Owner),
-			Comment:        utils.NewStringValue(entry.Comment),
-			Ctime:          utils.NewStringValue(commontime.Time2String(entry.CreateTime)),
-			Mtime:          utils.NewStringValue(commontime.Time2String(entry.ModifyTime)),
-			Editable:       utils.NewBoolValue(true),
-			Deleteable:     utils.NewBoolValue(true),
+			Id:             protobuf.NewStringValue(entry.ID),
+			Service:        protobuf.NewStringValue(entry.Service),
+			Namespace:      protobuf.NewStringValue(entry.Namespace),
+			Alias:          protobuf.NewStringValue(entry.Alias),
+			AliasNamespace: protobuf.NewStringValue(entry.AliasNamespace),
+			Owners:         protobuf.NewStringValue(entry.Owner),
+			Comment:        protobuf.NewStringValue(entry.Comment),
+			Ctime:          protobuf.NewStringValue(commontime.Time2String(entry.CreateTime)),
+			Mtime:          protobuf.NewStringValue(commontime.Time2String(entry.ModifyTime)),
+			Editable:       protobuf.NewBoolValue(true),
+			Deleteable:     protobuf.NewBoolValue(true),
 		}
 		resp.Aliases = append(resp.Aliases, item)
 	}

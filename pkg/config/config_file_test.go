@@ -37,6 +37,7 @@ import (
 	"github.com/pole-io/pole-server/apis/crypto"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/crypto/aes"
@@ -67,9 +68,9 @@ func TestConfigFileCRUD(t *testing.T) {
 
 	t.Run("step1-query", func(t *testing.T) {
 		rsp := testSuit.ConfigServer().GetConfigFileRichInfo(testSuit.DefaultCtx, &apiconfig.ConfigFile{
-			Namespace: utils.NewStringValue(testNamespace),
-			Group:     utils.NewStringValue(testGroup),
-			Name:      utils.NewStringValue(testFile),
+			Namespace: protobuf.NewStringValue(testNamespace),
+			Group:     protobuf.NewStringValue(testGroup),
+			Name:      protobuf.NewStringValue(testFile),
 		})
 		assert.Equal(t, uint32(api.NotFoundResource), rsp.Code.GetValue())
 		assert.Nil(t, rsp.ConfigFile)
@@ -86,9 +87,9 @@ func TestConfigFileCRUD(t *testing.T) {
 
 		// 创建完之后再查询
 		rsp3 := testSuit.ConfigServer().GetConfigFileRichInfo(testSuit.DefaultCtx, &apiconfig.ConfigFile{
-			Namespace: utils.NewStringValue(testNamespace),
-			Group:     utils.NewStringValue(testGroup),
-			Name:      utils.NewStringValue(testFile),
+			Namespace: protobuf.NewStringValue(testNamespace),
+			Group:     protobuf.NewStringValue(testGroup),
+			Name:      protobuf.NewStringValue(testFile),
 		})
 		assert.Equal(t, api.ExecuteSuccess, rsp3.Code.GetValue())
 		assert.NotNil(t, rsp3.ConfigFile)
@@ -103,17 +104,17 @@ func TestConfigFileCRUD(t *testing.T) {
 		testSuit.DefaultCtx = context.WithValue(testSuit.DefaultCtx, types.ContextUserNameKey, "polaris")
 
 		rsp := testSuit.ConfigServer().GetConfigFileRichInfo(testSuit.DefaultCtx, &apiconfig.ConfigFile{
-			Namespace: utils.NewStringValue(testNamespace),
-			Group:     utils.NewStringValue(testGroup),
-			Name:      utils.NewStringValue(testFile),
+			Namespace: protobuf.NewStringValue(testNamespace),
+			Group:     protobuf.NewStringValue(testGroup),
+			Name:      protobuf.NewStringValue(testFile),
 		})
 		assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 
 		configFile := rsp.ConfigFile
 		newContent := "k1=v1"
 		modifyBy := "polaris"
-		configFile.Content = utils.NewStringValue(newContent)
-		configFile.ModifyBy = utils.NewStringValue(modifyBy)
+		configFile.Content = protobuf.NewStringValue(newContent)
+		configFile.ModifyBy = protobuf.NewStringValue(modifyBy)
 
 		rsp2 := testSuit.ConfigServer().UpdateConfigFile(testSuit.DefaultCtx, configFile)
 		assert.Equal(t, api.ExecuteSuccess, rsp2.Code.GetValue())
@@ -121,9 +122,9 @@ func TestConfigFileCRUD(t *testing.T) {
 
 		// 更新完之后再查询
 		rsp3 := testSuit.ConfigServer().GetConfigFileRichInfo(testSuit.DefaultCtx, &apiconfig.ConfigFile{
-			Namespace: utils.NewStringValue(testNamespace),
-			Group:     utils.NewStringValue(testGroup),
-			Name:      utils.NewStringValue(testFile),
+			Namespace: protobuf.NewStringValue(testNamespace),
+			Group:     protobuf.NewStringValue(testGroup),
+			Name:      protobuf.NewStringValue(testFile),
 		})
 		assert.Equal(t, api.ExecuteSuccess, rsp3.Code.GetValue())
 		assert.NotNil(t, rsp.ConfigFile)
@@ -144,17 +145,17 @@ func TestConfigFileCRUD(t *testing.T) {
 		assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 
 		rsp2 := testSuit.ConfigServer().DeleteConfigFile(testSuit.DefaultCtx, &apiconfig.ConfigFile{
-			Namespace: utils.NewStringValue(testNamespace),
-			Group:     utils.NewStringValue(testGroup),
-			Name:      utils.NewStringValue(testFile),
+			Namespace: protobuf.NewStringValue(testNamespace),
+			Group:     protobuf.NewStringValue(testGroup),
+			Name:      protobuf.NewStringValue(testFile),
 		})
 		assert.Equal(t, api.ExecuteSuccess, rsp2.Code.GetValue())
 
 		// 删除后，查询不到
 		rsp3 := testSuit.ConfigServer().GetConfigFileRichInfo(testSuit.DefaultCtx, &apiconfig.ConfigFile{
-			Namespace: utils.NewStringValue(testNamespace),
-			Group:     utils.NewStringValue(testGroup),
-			Name:      utils.NewStringValue(testFile),
+			Namespace: protobuf.NewStringValue(testNamespace),
+			Group:     protobuf.NewStringValue(testGroup),
+			Name:      protobuf.NewStringValue(testFile),
 		})
 		assert.Equal(t, uint32(api.NotFoundResource), rsp3.Code.GetValue())
 		assert.Nil(t, rsp2.ConfigFile)
@@ -320,52 +321,52 @@ func TestConfigFileCRUD(t *testing.T) {
 		}
 		// 导出 group
 		configFileExport := &apiconfig.ConfigFileExportRequest{
-			Namespace: utils.NewStringValue("namespace_0"),
+			Namespace: protobuf.NewStringValue("namespace_0"),
 			Groups: []*wrappers.StringValue{
-				utils.NewStringValue("group_0"),
-				utils.NewStringValue("group_1"),
+				protobuf.NewStringValue("group_0"),
+				protobuf.NewStringValue("group_1"),
 			},
 		}
 		rsp := testSuit.ConfigServer().ExportConfigFile(testSuit.DefaultCtx, configFileExport)
 		assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 		// 导出 file
 		configFileExport = &apiconfig.ConfigFileExportRequest{
-			Namespace: utils.NewStringValue("namespace_0"),
+			Namespace: protobuf.NewStringValue("namespace_0"),
 			Groups: []*wrappers.StringValue{
-				utils.NewStringValue("group_0"),
+				protobuf.NewStringValue("group_0"),
 			},
 			Names: []*wrappers.StringValue{
-				utils.NewStringValue("file_0"),
-				utils.NewStringValue("file_1"),
-				utils.NewStringValue("file_2"),
+				protobuf.NewStringValue("file_0"),
+				protobuf.NewStringValue("file_1"),
+				protobuf.NewStringValue("file_2"),
 			},
 		}
 		rsp = testSuit.ConfigServer().ExportConfigFile(testSuit.DefaultCtx, configFileExport)
 		assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 		// 导出参数错误：无效的命名空间
 		configFileExport = &apiconfig.ConfigFileExportRequest{
-			Namespace: utils.NewStringValue(""),
+			Namespace: protobuf.NewStringValue(""),
 		}
 		rsp = testSuit.ConfigServer().ExportConfigFile(testSuit.DefaultCtx, configFileExport)
 		assert.Equal(t, api.InvalidNamespaceName, rsp.Code.GetValue())
 		// 导出参数错误：无效的组和文件
 		configFileExport = &apiconfig.ConfigFileExportRequest{
-			Namespace: utils.NewStringValue("namespace_0"),
+			Namespace: protobuf.NewStringValue("namespace_0"),
 			Groups: []*wrappers.StringValue{
-				utils.NewStringValue("group_0"),
-				utils.NewStringValue("group_1"),
+				protobuf.NewStringValue("group_0"),
+				protobuf.NewStringValue("group_1"),
 			},
 			Names: []*wrappers.StringValue{
-				utils.NewStringValue("file_0"),
+				protobuf.NewStringValue("file_0"),
 			},
 		}
 		rsp = testSuit.ConfigServer().ExportConfigFile(testSuit.DefaultCtx, configFileExport)
 		assert.Equal(t, api.InvalidParameter, rsp.Code.GetValue())
 		// 导出配置不存在
 		configFileExport = &apiconfig.ConfigFileExportRequest{
-			Namespace: utils.NewStringValue("namespace_0"),
+			Namespace: protobuf.NewStringValue("namespace_0"),
 			Groups: []*wrappers.StringValue{
-				utils.NewStringValue("group_10"),
+				protobuf.NewStringValue("group_10"),
 			},
 		}
 		rsp = testSuit.ConfigServer().ExportConfigFile(testSuit.DefaultCtx, configFileExport)
@@ -443,8 +444,8 @@ func TestConfigFileCRUD(t *testing.T) {
 
 	t.Run("step12-create-entrypted", func(t *testing.T) {
 		configFile := assembleConfigFile()
-		configFile.Encrypted = utils.NewBoolValue(true)
-		configFile.EncryptAlgo = utils.NewStringValue("AES")
+		configFile.Encrypted = protobuf.NewBoolValue(true)
+		configFile.EncryptAlgo = protobuf.NewStringValue("AES")
 		rsp := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, configFile)
 		assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue(), rsp.GetInfo().GetValue())
 
@@ -454,9 +455,9 @@ func TestConfigFileCRUD(t *testing.T) {
 
 		// 创建完之后再查询
 		rsp3 := testSuit.ConfigServer().GetConfigFileRichInfo(testSuit.DefaultCtx, &apiconfig.ConfigFile{
-			Namespace: utils.NewStringValue(testNamespace),
-			Group:     utils.NewStringValue(testGroup),
-			Name:      utils.NewStringValue(testFile),
+			Namespace: protobuf.NewStringValue(testNamespace),
+			Group:     protobuf.NewStringValue(testGroup),
+			Name:      protobuf.NewStringValue(testFile),
 		})
 		assert.Equal(t, api.ExecuteSuccess, rsp3.Code.GetValue(), rsp3.GetInfo().GetValue())
 		assert.NotNil(t, rsp3.ConfigFile)
@@ -490,9 +491,9 @@ func TestPublishConfigFile(t *testing.T) {
 	assert.Equal(t, api.ExecuteSuccess, rsp2.Code.GetValue())
 
 	rsp3 := testSuit.ConfigServer().GetConfigFileRelease(testSuit.DefaultCtx, &apiconfig.ConfigFileRelease{
-		Namespace: utils.NewStringValue(testNamespace),
-		Group:     utils.NewStringValue(testGroup),
-		FileName:  utils.NewStringValue(testFile),
+		Namespace: protobuf.NewStringValue(testNamespace),
+		Group:     protobuf.NewStringValue(testGroup),
+		FileName:  protobuf.NewStringValue(testFile),
 	})
 	assert.Equal(t, api.ExecuteSuccess, rsp3.Code.GetValue(), rsp3.GetInfo().GetValue())
 	assert.Equal(t, uint64(1), rsp3.ConfigFileRelease.Version.GetValue())
@@ -502,23 +503,23 @@ func TestPublishConfigFile(t *testing.T) {
 	assert.Equal(t, configFile.Content.GetValue(), rsp3.ConfigFileRelease.Content.GetValue())
 
 	rsp5 := testSuit.ConfigServer().GetConfigFileRichInfo(testSuit.DefaultCtx, &apiconfig.ConfigFile{
-		Namespace: utils.NewStringValue(testNamespace),
-		Group:     utils.NewStringValue(testGroup),
-		Name:      utils.NewStringValue(testFile),
+		Namespace: protobuf.NewStringValue(testNamespace),
+		Group:     protobuf.NewStringValue(testGroup),
+		Name:      protobuf.NewStringValue(testFile),
 	})
 	assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), rsp5.GetCode().GetValue())
 
 	// 第二次修改发布
 	secondReleaseContent := "k3=v3"
-	secondReleaseFormat := utils.FileFormatHtml
-	configFile.Content = utils.NewStringValue(secondReleaseContent)
-	configFile.Format = utils.NewStringValue(secondReleaseFormat)
+	secondReleaseFormat := conftypes.FileFormatHtml
+	configFile.Content = protobuf.NewStringValue(secondReleaseContent)
+	configFile.Format = protobuf.NewStringValue(secondReleaseFormat)
 
 	rsp6 := testSuit.ConfigServer().UpdateConfigFile(testSuit.DefaultCtx, configFile)
 	assert.Equal(t, api.ExecuteSuccess, rsp6.Code.GetValue())
 
-	configFileRelease.Name = utils.NewStringValue("")
-	configFileRelease.CreateBy = utils.NewStringValue("ledou3")
+	configFileRelease.Name = protobuf.NewStringValue("")
+	configFileRelease.CreateBy = protobuf.NewStringValue("ledou3")
 	rsp7 := testSuit.ConfigServer().PublishConfigFile(testSuit.DefaultCtx, configFileRelease)
 	assert.Equal(t, api.ExecuteSuccess, rsp7.Code.GetValue(), rsp7.GetInfo().GetValue())
 
@@ -712,7 +713,7 @@ func Test_GetConfigEncryptAlgorithm(t *testing.T) {
 		{
 			name: "get config encrypt algorithm",
 			want: []*wrapperspb.StringValue{
-				utils.NewStringValue("AES"),
+				protobuf.NewStringValue("AES"),
 			},
 		},
 	}

@@ -24,8 +24,8 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 type Service struct {
@@ -167,8 +167,8 @@ func PrepareSpecInstance(namespace, service string, ins *Instance) *apiservice.I
 	pSvc := ReplaceNacosService(service)
 
 	specIns := ins.ToSpecInstance()
-	specIns.Service = utils.NewStringValue(pSvc)
-	specIns.Namespace = utils.NewStringValue(namespace)
+	specIns.Service = protobuf.NewStringValue(pSvc)
+	specIns.Namespace = protobuf.NewStringValue(namespace)
 
 	specIns.Metadata[InternalNacosCluster] = ins.ClusterName
 	specIns.Metadata[InternalNacosServiceName] = service

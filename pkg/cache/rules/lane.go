@@ -36,6 +36,7 @@ import (
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -50,18 +51,18 @@ type LaneCache struct {
 	// single .
 	single singleflight.Group
 	// groups id -> *rules.LaneGroupProto
-	rules *utils.SyncMap[string, *rules.LaneGroupProto]
+	rules *container.SyncMap[string, *rules.LaneGroupProto]
 	// serviceRules namespace -> service -> []*rules.LaneRuleProto
-	serviceRules *utils.SyncMap[string, *utils.SyncMap[string, *utils.SyncMap[string, *rules.LaneGroupProto]]]
+	serviceRules *container.SyncMap[string, *container.SyncMap[string, *container.SyncMap[string, *rules.LaneGroupProto]]]
 	// revisions namespace -> service -> revision
-	revisions *utils.SyncMap[string, *utils.SyncMap[string, string]]
+	revisions *container.SyncMap[string, *container.SyncMap[string, string]]
 }
 
 // Initialize .
 func (lc *LaneCache) Initialize(c map[string]interface{}) error {
-	lc.serviceRules = utils.NewSyncMap[string, *utils.SyncMap[string, *utils.SyncMap[string, *rules.LaneGroupProto]]]()
-	lc.revisions = utils.NewSyncMap[string, *utils.SyncMap[string, string]]()
-	lc.rules = utils.NewSyncMap[string, *rules.LaneGroupProto]()
+	lc.serviceRules = container.NewSyncMap[string, *container.SyncMap[string, *container.SyncMap[string, *rules.LaneGroupProto]]]()
+	lc.revisions = container.NewSyncMap[string, *container.SyncMap[string, string]]()
+	lc.rules = container.NewSyncMap[string, *rules.LaneGroupProto]()
 	lc.single = singleflight.Group{}
 	return nil
 }
@@ -252,12 +253,12 @@ func (lc *LaneCache) processLaneRuleDelete(item *rules.LaneGroupProto, affectSvc
 
 func (lc *LaneCache) upsertServiceRule(namespace, service string, item *rules.LaneGroupProto) {
 	namespaceContainer, _ := lc.serviceRules.ComputeIfAbsent(namespace,
-		func(k string) *utils.SyncMap[string, *utils.SyncMap[string, *rules.LaneGroupProto]] {
-			return utils.NewSyncMap[string, *utils.SyncMap[string, *rules.LaneGroupProto]]()
+		func(k string) *container.SyncMap[string, *container.SyncMap[string, *rules.LaneGroupProto]] {
+			return container.NewSyncMap[string, *container.SyncMap[string, *rules.LaneGroupProto]]()
 		})
 	serviceContainer, _ := namespaceContainer.ComputeIfAbsent(service,
-		func(k string) *utils.SyncMap[string, *rules.LaneGroupProto] {
-			return utils.NewSyncMap[string, *rules.LaneGroupProto]()
+		func(k string) *container.SyncMap[string, *rules.LaneGroupProto] {
+			return container.NewSyncMap[string, *rules.LaneGroupProto]()
 		})
 	serviceContainer.Store(item.ID, item)
 }
@@ -288,8 +289,8 @@ func (lc *LaneCache) postUpdateRevisions(affectSvcs map[string]map[string]struct
 		if !ok {
 			continue
 		}
-		lc.revisions.ComputeIfAbsent(ns, func(k string) *utils.SyncMap[string, string] {
-			return utils.NewSyncMap[string, string]()
+		lc.revisions.ComputeIfAbsent(ns, func(k string) *container.SyncMap[string, string] {
+			return container.NewSyncMap[string, string]()
 		})
 		nsRevisions, _ := lc.revisions.Load(ns)
 		for svc := range svsList {
@@ -338,9 +339,9 @@ func (lc *LaneCache) LastMtime() time.Time {
 
 // Clear .
 func (lc *LaneCache) Clear() error {
-	lc.revisions = utils.NewSyncMap[string, *utils.SyncMap[string, string]]()
-	lc.rules = utils.NewSyncMap[string, *rules.LaneGroupProto]()
-	lc.serviceRules = utils.NewSyncMap[string, *utils.SyncMap[string, *utils.SyncMap[string, *rules.LaneGroupProto]]]()
+	lc.revisions = container.NewSyncMap[string, *container.SyncMap[string, string]]()
+	lc.rules = container.NewSyncMap[string, *rules.LaneGroupProto]()
+	lc.serviceRules = container.NewSyncMap[string, *container.SyncMap[string, *container.SyncMap[string, *rules.LaneGroupProto]]]()
 	return nil
 }
 

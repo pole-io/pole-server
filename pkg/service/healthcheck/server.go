@@ -28,12 +28,12 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/plugin"
 )
@@ -224,7 +224,7 @@ func (s *Server) GetLastHeartbeat(req *apiservice.Instance) *apiservice.Response
 	if errRsp != nil {
 		return errRsp
 	}
-	req.Id = utils.NewStringValue(id)
+	req.Id = protobuf.NewStringValue(id)
 	insCache := s.cacheProvider.GetInstance(id)
 	if insCache == nil {
 		return api.NewInstanceResponse(apimodel.Code_NotFoundResource, req)

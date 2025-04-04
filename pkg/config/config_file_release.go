@@ -34,11 +34,11 @@ import (
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
@@ -66,9 +66,9 @@ func (s *Server) PublishConfigFile(ctx context.Context, req *apiconfig.ConfigFil
 		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	if req.GetReleaseType().GetValue() == conftypes.ReleaseTypeGray {
-		s.recordReleaseSuccess(ctx, utils.ReleaseTypeGray, data)
+		s.recordReleaseSuccess(ctx, conftypes.ReleaseTypeGray, data)
 	} else {
-		s.recordReleaseSuccess(ctx, utils.ReleaseTypeNormal, data)
+		s.recordReleaseSuccess(ctx, conftypes.ReleaseTypeNormal, data)
 	}
 
 	resp.ConfigFileRelease = req
@@ -122,7 +122,7 @@ func (s *Server) handlePublishConfigFile(ctx context.Context, tx store.Tx,
 	}
 	if releaseName := req.GetName().GetValue(); releaseName == "" {
 		// 这里要保证每一次发布都有唯一的 release_name 名称
-		req.Name = utils.NewStringValue(fmt.Sprintf("%s-%d-%d", fileName, time.Now().Unix(), s.nextSequence()))
+		req.Name = protobuf.NewStringValue(fmt.Sprintf("%s-%d-%d", fileName, time.Now().Unix(), s.nextSequence()))
 	}
 
 	fileRelease.Name = req.GetName().GetValue()
@@ -176,7 +176,7 @@ func (s *Server) handlePublishConfigFile(ctx context.Context, tx store.Tx,
 			raw = append(raw, json.RawMessage(data))
 		}
 		grayResource := &rules.GrayResource{
-			Name:      model.GetGrayConfigRealseKey(fileRelease.SimpleConfigFileRelease),
+			Name:      utils.GetGrayConfigRealseKey(fileRelease.SimpleConfigFileRelease),
 			MatchRule: string(utils.MustJson(raw)),
 			CreateBy:  utils.ParseUserName(ctx),
 			ModifyBy:  utils.ParseUserName(ctx),
@@ -326,7 +326,7 @@ func (s *Server) DeleteConfigFileRelease(ctx context.Context,
 			zap.Error(err))
 		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
-	s.recordReleaseSuccess(ctx, utils.ReleaseTypeDelete, recordData)
+	s.recordReleaseSuccess(ctx, conftypes.ReleaseTypeDelete, recordData)
 	s.RecordHistory(ctx, configFileReleaseRecordEntry(ctx, req, release, types.ODelete))
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
@@ -379,31 +379,31 @@ func (s *Server) handleDescribeConfigFileReleases(ctx context.Context,
 	for i := range simpleReleases {
 		item := simpleReleases[i]
 		viewData := &apiconfig.ConfigFileRelease{
-			Id:                 utils.NewUInt64Value(item.Id),
-			Name:               utils.NewStringValue(item.Name),
-			Namespace:          utils.NewStringValue(item.Namespace),
-			Group:              utils.NewStringValue(item.Group),
-			FileName:           utils.NewStringValue(item.FileName),
-			Format:             utils.NewStringValue(item.Format),
-			Version:            utils.NewUInt64Value(item.Version),
-			Active:             utils.NewBoolValue(item.Active),
-			CreateTime:         utils.NewStringValue(commontime.Time2String(item.CreateTime)),
-			ModifyTime:         utils.NewStringValue(commontime.Time2String(item.ModifyTime)),
-			CreateBy:           utils.NewStringValue(item.CreateBy),
-			ModifyBy:           utils.NewStringValue(item.ModifyBy),
-			ReleaseDescription: utils.NewStringValue(item.ReleaseDescription),
+			Id:                 protobuf.NewUInt64Value(item.Id),
+			Name:               protobuf.NewStringValue(item.Name),
+			Namespace:          protobuf.NewStringValue(item.Namespace),
+			Group:              protobuf.NewStringValue(item.Group),
+			FileName:           protobuf.NewStringValue(item.FileName),
+			Format:             protobuf.NewStringValue(item.Format),
+			Version:            protobuf.NewUInt64Value(item.Version),
+			Active:             protobuf.NewBoolValue(item.Active),
+			CreateTime:         protobuf.NewStringValue(commontime.Time2String(item.CreateTime)),
+			ModifyTime:         protobuf.NewStringValue(commontime.Time2String(item.ModifyTime)),
+			CreateBy:           protobuf.NewStringValue(item.CreateBy),
+			ModifyBy:           protobuf.NewStringValue(item.ModifyBy),
+			ReleaseDescription: protobuf.NewStringValue(item.ReleaseDescription),
 			Tags:               conftypes.FromTagMap(item.Metadata),
-			ReleaseType:        utils.NewStringValue(string(item.ReleaseType)),
+			ReleaseType:        protobuf.NewStringValue(string(item.ReleaseType)),
 		}
 		// 查询配置灰度规则标签
 		if item.ReleaseType == conftypes.ReleaseTypeGray {
-			viewData.BetaLabels = s.caches.Gray().GetGrayRule(model.GetGrayConfigRealseKey(item))
+			viewData.BetaLabels = s.caches.Gray().GetGrayRule(utils.GetGrayConfigRealseKey(item))
 		}
 		ret = append(ret, viewData)
 	}
 
 	resp := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Total = utils.NewUInt32Value(total)
+	resp.Total = protobuf.NewUInt32Value(total)
 	resp.ConfigFileReleases = ret
 	return resp
 }
@@ -438,7 +438,7 @@ func (s *Server) RollbackConfigFileRelease(ctx context.Context,
 				Namespace:   req.GetNamespace().GetValue(),
 				Group:       req.GetGroup().GetValue(),
 				FileName:    req.GetFileName().GetValue(),
-				ReleaseType: conftypes.ReleaseTypeFull,
+				ReleaseType: conftypes.ReleaseTypeNormal,
 			},
 		},
 	}
@@ -468,7 +468,7 @@ func (s *Server) RollbackConfigFileRelease(ctx context.Context,
 		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
-	s.recordReleaseSuccess(ctx, utils.ReleaseTypeRollback, data)
+	s.recordReleaseSuccess(ctx, conftypes.ReleaseTypeRollback, data)
 	s.RecordHistory(ctx, configFileReleaseRecordEntry(ctx, req, data, types.ORollback))
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
@@ -507,9 +507,9 @@ func (s *Server) CasUpsertAndReleaseConfigFile(ctx context.Context,
 		Format:      req.GetFormat(),
 		Comment:     req.GetComment(),
 		Tags:        req.GetTags(),
-		CreateBy:    utils.NewStringValue(utils.ParseUserName(ctx)),
-		ModifyBy:    utils.NewStringValue(utils.ParseUserName(ctx)),
-		ReleaseTime: utils.NewStringValue(req.GetReleaseDescription().GetValue()),
+		CreateBy:    protobuf.NewStringValue(utils.ParseUserName(ctx)),
+		ModifyBy:    protobuf.NewStringValue(utils.ParseUserName(ctx)),
+		ReleaseTime: protobuf.NewStringValue(req.GetReleaseDescription().GetValue()),
 	}
 	if rsp := s.prepareCreateConfigFile(ctx, upsertFileReq); rsp.Code.Value != api.ExecuteSuccess {
 		return rsp
@@ -569,8 +569,8 @@ func (s *Server) CasUpsertAndReleaseConfigFile(ctx context.Context,
 		Namespace:          req.GetNamespace(),
 		Group:              req.GetGroup(),
 		FileName:           req.GetFileName(),
-		CreateBy:           utils.NewStringValue(utils.ParseUserName(ctx)),
-		ModifyBy:           utils.NewStringValue(utils.ParseUserName(ctx)),
+		CreateBy:           protobuf.NewStringValue(utils.ParseUserName(ctx)),
+		ModifyBy:           protobuf.NewStringValue(utils.ParseUserName(ctx)),
 		ReleaseDescription: req.GetReleaseDescription(),
 	})
 	if releaseResp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
@@ -585,7 +585,7 @@ func (s *Server) CasUpsertAndReleaseConfigFile(ctx context.Context,
 	for i := range historyRecords {
 		historyRecords[i]()
 	}
-	s.recordReleaseHistory(ctx, data, utils.ReleaseTypeNormal, utils.ReleaseStatusSuccess, "")
+	s.recordReleaseHistory(ctx, data, conftypes.ReleaseTypeNormal, conftypes.ReleaseStatusSuccess, "")
 	return releaseResp
 }
 
@@ -599,9 +599,9 @@ func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
 		Format:      req.GetFormat(),
 		Comment:     req.GetComment(),
 		Tags:        req.GetTags(),
-		CreateBy:    utils.NewStringValue(utils.ParseUserName(ctx)),
-		ModifyBy:    utils.NewStringValue(utils.ParseUserName(ctx)),
-		ReleaseTime: utils.NewStringValue(req.GetReleaseDescription().GetValue()),
+		CreateBy:    protobuf.NewStringValue(utils.ParseUserName(ctx)),
+		ModifyBy:    protobuf.NewStringValue(utils.ParseUserName(ctx)),
+		ReleaseTime: protobuf.NewStringValue(req.GetReleaseDescription().GetValue()),
 	}
 	if rsp := s.prepareCreateConfigFile(ctx, upsertFileReq); rsp.Code.Value != api.ExecuteSuccess {
 		return rsp
@@ -662,8 +662,8 @@ func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
 		Namespace:          req.GetNamespace(),
 		Group:              req.GetGroup(),
 		FileName:           req.GetFileName(),
-		CreateBy:           utils.NewStringValue(utils.ParseUserName(ctx)),
-		ModifyBy:           utils.NewStringValue(utils.ParseUserName(ctx)),
+		CreateBy:           protobuf.NewStringValue(utils.ParseUserName(ctx)),
+		ModifyBy:           protobuf.NewStringValue(utils.ParseUserName(ctx)),
 		ReleaseDescription: req.GetReleaseDescription(),
 	})
 	if releaseResp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
@@ -678,7 +678,7 @@ func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
 	for i := range historyRecords {
 		historyRecords[i]()
 	}
-	s.recordReleaseHistory(ctx, data, utils.ReleaseTypeNormal, utils.ReleaseStatusSuccess, "")
+	s.recordReleaseHistory(ctx, data, conftypes.ReleaseTypeNormal, conftypes.ReleaseStatusSuccess, "")
 	return releaseResp
 }
 
@@ -738,7 +738,7 @@ func (s *Server) StopGrayConfigFileRelease(ctx context.Context, req *apiconfig.C
 		return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 	}
 	if err := s.storage.CleanGrayResource(tx, &rules.GrayResource{
-		Name: model.GetGrayConfigRealseKey(&conftypes.SimpleConfigFileRelease{
+		Name: utils.GetGrayConfigRealseKey(&conftypes.SimpleConfigFileRelease{
 			ConfigFileReleaseKey: &conftypes.ConfigFileReleaseKey{
 				Namespace:   req.GetNamespace().GetValue(),
 				Group:       req.GetGroup().GetValue(),
@@ -759,7 +759,7 @@ func (s *Server) StopGrayConfigFileRelease(ctx context.Context, req *apiconfig.C
 		log.Error("[Config][File] stop config file release when commit tx.", utils.RequestID(ctx), zap.Error(err))
 		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
-	s.recordReleaseHistory(ctx, betaRelease, utils.ReleaseTypeCancelGray, utils.ReleaseStatusSuccess, "")
+	s.recordReleaseHistory(ctx, betaRelease, conftypes.ReleaseTypeCancelGray, conftypes.ReleaseStatusSuccess, "")
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
 
@@ -783,7 +783,7 @@ func (s *Server) cleanConfigFileReleases(ctx context.Context, tx store.Tx,
 }
 
 func (s *Server) recordReleaseSuccess(ctx context.Context, rType string, release *conftypes.ConfigFileRelease) {
-	s.recordReleaseHistory(ctx, release, rType, utils.ReleaseStatusSuccess, "")
+	s.recordReleaseHistory(ctx, release, rType, conftypes.ReleaseStatusSuccess, "")
 }
 
 // configFileReleaseRecordEntry 生成服务的记录entry

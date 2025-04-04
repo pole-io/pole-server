@@ -22,8 +22,6 @@ import "strings"
 const (
 	// ReleaseTypeNormal 发布类型，全量发布
 	ReleaseTypeNormal = "normal"
-	// ReleaseTypeFull 全量类型
-	ReleaseTypeFull = ""
 	// ReleaseTypeGray 灰度类型
 	ReleaseTypeGray = "gray"
 	// ReleaseTypeCancelGray 取消灰度发布

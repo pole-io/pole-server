@@ -32,6 +32,7 @@ import (
 
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	cachemock "github.com/pole-io/pole-server/pkg/cache/mock"
@@ -129,9 +130,9 @@ func genModelInstancesByServicesWithInsId(
 		for i := 0; i < instCount; i++ {
 			entry := &svctypes.Instance{
 				Proto: &apiservice.Instance{
-					Id:   utils.NewStringValue(fmt.Sprintf("%s-instanceID-%s-%d", insIdPrefix, label, idx)),
-					Host: utils.NewStringValue(fmt.Sprintf("host-%s-%d", label, idx)),
-					Port: utils.NewUInt32Value(uint32(idx + 10)),
+					Id:   protobuf.NewStringValue(fmt.Sprintf("%s-instanceID-%s-%d", insIdPrefix, label, idx)),
+					Host: protobuf.NewStringValue(fmt.Sprintf("host-%s-%d", label, idx)),
+					Port: protobuf.NewUInt32Value(uint32(idx + 10)),
 				},
 				ServiceID: svc.ID,
 				Valid:     true,
@@ -375,9 +376,9 @@ func genModelInstancesByServices(
 		for i := 0; i < instCount; i++ {
 			entry := &svctypes.Instance{
 				Proto: &apiservice.Instance{
-					Id:   utils.NewStringValue(fmt.Sprintf("instanceID-%s-%d", label, idx)),
-					Host: utils.NewStringValue(fmt.Sprintf("host-%s-%d", label, idx)),
-					Port: utils.NewUInt32Value(uint32(idx + 10)),
+					Id:   protobuf.NewStringValue(fmt.Sprintf("instanceID-%s-%d", label, idx)),
+					Host: protobuf.NewStringValue(fmt.Sprintf("host-%s-%d", label, idx)),
+					Port: protobuf.NewUInt32Value(uint32(idx + 10)),
 				},
 				ServiceID: svc.ID,
 				Valid:     true,
@@ -560,7 +561,7 @@ func TestComputeRevision(t *testing.T) {
 		for i := 0; i < 6; i++ {
 			instances = append(instances, &svctypes.Instance{
 				Proto: &apiservice.Instance{
-					Revision: utils.NewStringValue(fmt.Sprintf("revision-%d", i)),
+					Revision: protobuf.NewStringValue(fmt.Sprintf("revision-%d", i)),
 				},
 			})
 		}
@@ -591,7 +592,7 @@ func TestComputeRevision(t *testing.T) {
 	})
 
 	t.Run("instances内容改变, 返回改变", func(t *testing.T) {
-		instance := &svctypes.Instance{Proto: &apiservice.Instance{Revision: utils.NewStringValue("123456")}}
+		instance := &svctypes.Instance{Proto: &apiservice.Instance{Revision: protobuf.NewStringValue("123456")}}
 		lhs, err := ComputeRevision("123", []*svctypes.Instance{instance})
 		assert.NoError(t, err)
 		assert.NotEmpty(t, lhs)

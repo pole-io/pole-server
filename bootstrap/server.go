@@ -37,6 +37,7 @@ import (
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	boot_config "github.com/pole-io/pole-server/bootstrap/config"
@@ -587,14 +588,14 @@ func selfRegister(
 	metadata[types.MetaKeyPolarisService] = name
 
 	req := &apiservice.Instance{
-		Service:           utils.NewStringValue(name),
-		Namespace:         utils.NewStringValue(polarisNamespace),
-		Host:              utils.NewStringValue(host),
-		Port:              utils.NewUInt32Value(port),
-		Protocol:          utils.NewStringValue(protocol),
-		Version:           utils.NewStringValue(version.Get()),
-		EnableHealthCheck: utils.NewBoolValue(true),
-		Isolate:           utils.NewBoolValue(isolated),
+		Service:           protobuf.NewStringValue(name),
+		Namespace:         protobuf.NewStringValue(polarisNamespace),
+		Host:              protobuf.NewStringValue(host),
+		Port:              protobuf.NewUInt32Value(port),
+		Protocol:          protobuf.NewStringValue(protocol),
+		Version:           protobuf.NewStringValue(version.Get()),
+		EnableHealthCheck: protobuf.NewBoolValue(true),
+		Isolate:           protobuf.NewBoolValue(isolated),
 		HealthCheck: &apiservice.HealthCheck{
 			Type: apiservice.HealthCheck_HEARTBEAT,
 			Heartbeat: &apiservice.HeartbeatHealthCheck{

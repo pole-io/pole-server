@@ -32,6 +32,7 @@ import (
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -44,7 +45,7 @@ func NewServiceContractCache(storage store.Store, cacheMgr cachetypes.CacheManag
 type ServiceContractCache struct {
 	*cachebase.BaseCache
 	// data namespace/service/type/protocol/version -> *svctypes.EnrichServiceContract
-	data *utils.SyncMap[string, *svctypes.EnrichServiceContract]
+	data *container.SyncMap[string, *svctypes.EnrichServiceContract]
 	// valueCache save ConfigFileRelease.Content into local file to reduce memory use
 	valueCache  *bbolt.DB
 	singleGroup singleflight.Group
@@ -57,7 +58,7 @@ func (sc *ServiceContractCache) Initialize(c map[string]interface{}) error {
 		return err
 	}
 	sc.valueCache = valueCache
-	sc.data = utils.NewSyncMap[string, *svctypes.EnrichServiceContract]()
+	sc.data = container.NewSyncMap[string, *svctypes.EnrichServiceContract]()
 	return nil
 }
 
@@ -130,7 +131,7 @@ func (sc *ServiceContractCache) setContracts(values []*svctypes.EnrichServiceCon
 
 // Clear
 func (sc *ServiceContractCache) Clear() error {
-	sc.data = utils.NewSyncMap[string, *svctypes.EnrichServiceContract]()
+	sc.data = container.NewSyncMap[string, *svctypes.EnrichServiceContract]()
 	return nil
 }
 

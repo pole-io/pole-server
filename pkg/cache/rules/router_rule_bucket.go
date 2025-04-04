@@ -27,7 +27,7 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	commonatomic "github.com/pole-io/pole-server/pkg/common/syncs/atomic"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 )
 
 // ServiceWithRouterRules 与服务绑定的路由规则数据
@@ -181,8 +181,8 @@ func (s *ServiceWithRouterRules) reloadV1Rules() {
 func newClientRouteRuleContainer(direction rules.TrafficDirection) *ClientRouteRuleContainer {
 	return &ClientRouteRuleContainer{
 		direction:        direction,
-		exactRules:       utils.NewSyncMap[string, *ServiceWithRouterRules](),
-		nsWildcardRules:  utils.NewSyncMap[string, *ServiceWithRouterRules](),
+		exactRules:       container.NewSyncMap[string, *ServiceWithRouterRules](),
+		nsWildcardRules:  container.NewSyncMap[string, *ServiceWithRouterRules](),
 		allWildcardRules: NewServiceWithRouterRules(svctypes.ServiceKey{Namespace: cacheapi.AllMatched, Name: cacheapi.AllMatched}, direction),
 	}
 }
@@ -193,9 +193,9 @@ type ClientRouteRuleContainer struct {
 
 	direction rules.TrafficDirection
 	// key1: namespace, key2: service
-	exactRules *utils.SyncMap[string, *ServiceWithRouterRules]
+	exactRules *container.SyncMap[string, *ServiceWithRouterRules]
 	// key1: namespace is exact, service is full match
-	nsWildcardRules *utils.SyncMap[string, *ServiceWithRouterRules]
+	nsWildcardRules *container.SyncMap[string, *ServiceWithRouterRules]
 	// all rules are wildcard specific
 	allWildcardRules *ServiceWithRouterRules
 }
@@ -338,7 +338,7 @@ func (c *ClientRouteRuleContainer) CleanAllRule(ruleId string) {
 
 func newRouteRuleContainer() *RouteRuleContainer {
 	return &RouteRuleContainer{
-		rules:            utils.NewSyncMap[string, *rules.ExtendRouterConfig](),
+		rules:            container.NewSyncMap[string, *rules.ExtendRouterConfig](),
 		v1rules:          map[string][]*rules.ExtendRouterConfig{},
 		v1rulesToOld:     map[string]string{},
 		nearbyContainers: newClientRouteRuleContainer(rules.TrafficDirection_INBOUND),
@@ -346,14 +346,14 @@ func newRouteRuleContainer() *RouteRuleContainer {
 			rules.TrafficDirection_INBOUND:  newClientRouteRuleContainer(rules.TrafficDirection_INBOUND),
 			rules.TrafficDirection_OUTBOUND: newClientRouteRuleContainer(rules.TrafficDirection_OUTBOUND),
 		},
-		effect: utils.NewSyncSet[svctypes.ServiceKey](),
+		effect: container.NewSyncSet[svctypes.ServiceKey](),
 	}
 }
 
 // RouteRuleContainer v2 路由规则缓存 bucket
 type RouteRuleContainer struct {
 	// rules id => routing rule
-	rules *utils.SyncMap[string, *rules.ExtendRouterConfig]
+	rules *container.SyncMap[string, *rules.ExtendRouterConfig]
 
 	// 就近路由规则缓存
 	nearbyContainers *ClientRouteRuleContainer
@@ -361,7 +361,7 @@ type RouteRuleContainer struct {
 	customContainers map[rules.TrafficDirection]*ClientRouteRuleContainer
 
 	// effect 记录一次缓存更新中，那些服务的路由出现了更新
-	effect *utils.SyncSet[svctypes.ServiceKey]
+	effect *container.SyncSet[svctypes.ServiceKey]
 
 	// ------- 这里的逻辑都是为了兼容老的数据规则，这个将在1.18.2代码中移除，通过升级工具一次性处理 ------
 	lock sync.RWMutex

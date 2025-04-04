@@ -29,7 +29,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 )
 
 const (
@@ -59,16 +59,16 @@ func newCounter() *counter {
 // Listener 包装 net.Listener
 type Listener struct {
 	net.Listener
-	protocol             string                           // 协议，主要用以日志记录与全局对象索引
-	conns                *utils.SyncMap[string, *counter] // 保存 ip -> counter
-	maxConnPerHost       int32                            // 每个IP最多的连接数
-	maxConnLimit         int32                            // 当前listener最大的连接数限制
-	whiteList            map[string]bool                  // 白名单列表
-	readTimeout          time.Duration                    // 读超时
-	connCount            int32                            // 当前listener保持连接的个数
-	purgeCounterInterval time.Duration                    // 回收过期counter的
-	purgeCounterExpire   int64                            // counter过期的秒数
-	purgeCancel          context.CancelFunc               // 停止purge协程的ctx
+	protocol             string                               // 协议，主要用以日志记录与全局对象索引
+	conns                *container.SyncMap[string, *counter] // 保存 ip -> counter
+	maxConnPerHost       int32                                // 每个IP最多的连接数
+	maxConnLimit         int32                                // 当前listener最大的连接数限制
+	whiteList            map[string]bool                      // 白名单列表
+	readTimeout          time.Duration                        // 读超时
+	connCount            int32                                // 当前listener保持连接的个数
+	purgeCounterInterval time.Duration                        // 回收过期counter的
+	purgeCounterExpire   int64                                // counter过期的秒数
+	purgeCancel          context.CancelFunc                   // 停止purge协程的ctx
 }
 
 // NewListener returns a new listener
@@ -116,7 +116,7 @@ func NewListener(l net.Listener, protocol string, config *Config) (net.Listener,
 		readTimeout:          config.ReadTimeout,
 		purgeCounterInterval: config.PurgeCounterInterval,
 		purgeCounterExpire:   int64(config.PurgeCounterExpire / time.Second),
-		conns:                utils.NewSyncMap[string, *counter](),
+		conns:                container.NewSyncMap[string, *counter](),
 	}
 	// 把listener放到全局变量中，方便外部访问
 	if err := SetLimitListener(lis); err != nil {

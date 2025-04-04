@@ -42,6 +42,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
@@ -382,10 +383,10 @@ func (x *XDSServer) processEndpointHealthResponse(
 				}
 
 				ins := &service_manage.Instance{
-					Namespace: utils.NewStringValue(client.GetSelfNamespace()),
-					Service:   utils.NewStringValue(client.GetSelfService()),
-					Host:      utils.NewStringValue(host),
-					Port:      utils.NewUInt32Value(port),
+					Namespace: protobuf.NewStringValue(client.GetSelfNamespace()),
+					Service:   protobuf.NewStringValue(client.GetSelfService()),
+					Host:      protobuf.NewStringValue(host),
+					Port:      protobuf.NewUInt32Value(port),
 				}
 
 				switch endopint.GetHealthStatus() {

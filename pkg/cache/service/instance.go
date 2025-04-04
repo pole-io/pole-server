@@ -29,11 +29,12 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 )
 
 const (
@@ -49,11 +50,11 @@ type instanceCache struct {
 	storage         store.Store
 	lastMtimeLogged int64
 	// instanceid -> instance
-	ids *utils.SyncMap[string, *svctypes.Instance]
+	ids *container.SyncMap[string, *svctypes.Instance]
 	// service id -> [instanceid ->instance]
-	services *utils.SyncMap[string, *svctypes.ServiceInstances]
+	services *container.SyncMap[string, *svctypes.ServiceInstances]
 	// service id -> [instanceCount]
-	instanceCounts   *utils.SyncMap[string, *svctypes.InstanceCount]
+	instanceCounts   *container.SyncMap[string, *svctypes.InstanceCount]
 	instancePorts    *instancePorts
 	disableBusiness  bool
 	needMeta         bool
@@ -76,9 +77,9 @@ func NewInstanceCache(storage store.Store, cacheMgr cacheapi.CacheManager) cache
 // Initialize 初始化函数
 func (ic *instanceCache) Initialize(opt map[string]interface{}) error {
 	ic.svcCache = ic.BaseCache.CacheMgr.GetCacher(cacheapi.CacheService).(*serviceCache)
-	ic.ids = utils.NewSyncMap[string, *svctypes.Instance]()
-	ic.services = utils.NewSyncMap[string, *svctypes.ServiceInstances]()
-	ic.instanceCounts = utils.NewSyncMap[string, *svctypes.InstanceCount]()
+	ic.ids = container.NewSyncMap[string, *svctypes.Instance]()
+	ic.services = container.NewSyncMap[string, *svctypes.ServiceInstances]()
+	ic.instanceCounts = container.NewSyncMap[string, *svctypes.InstanceCount]()
 	ic.instancePorts = newInstancePorts()
 	if opt == nil {
 		return nil
@@ -203,9 +204,9 @@ func (ic *instanceCache) handleUpdate(start time.Time, tx store.Tx) ([]*eventhub
 // Clear 清理内部缓存数据
 func (ic *instanceCache) Clear() error {
 	ic.BaseCache.Clear()
-	ic.ids = utils.NewSyncMap[string, *svctypes.Instance]()
-	ic.services = utils.NewSyncMap[string, *svctypes.ServiceInstances]()
-	ic.instanceCounts = utils.NewSyncMap[string, *svctypes.InstanceCount]()
+	ic.ids = container.NewSyncMap[string, *svctypes.Instance]()
+	ic.services = container.NewSyncMap[string, *svctypes.ServiceInstances]()
+	ic.instanceCounts = container.NewSyncMap[string, *svctypes.InstanceCount]()
 	ic.instancePorts.reset()
 	return nil
 }
@@ -253,8 +254,8 @@ func (ic *instanceCache) setInstances(ins map[string]*svctypes.Instance) ([]*eve
 		svc := ic.BaseCache.CacheMgr.GetCacher(cacheapi.CacheService).(cacheapi.ServiceCache).GetServiceByID(item.ServiceID)
 		if svc != nil {
 			// 填充实例的服务名称数据信息
-			item.Proto.Namespace = utils.NewStringValue(svc.Namespace)
-			item.Proto.Service = utils.NewStringValue(svc.Name)
+			item.Proto.Namespace = protobuf.NewStringValue(svc.Namespace)
+			item.Proto.Service = protobuf.NewStringValue(svc.Name)
 			serviceInstances.UpdateProtectThreshold(svc.ProtectThreshold())
 		}
 
@@ -560,7 +561,7 @@ func (ic *instanceCache) RemoveService(serviceID string) {
 }
 
 // iteratorInstancesProc 迭代指定的instance数据，id->instance
-func iteratorInstancesProc(data *utils.SyncMap[string, *svctypes.Instance], iterProc cacheapi.InstanceIterProc) error {
+func iteratorInstancesProc(data *container.SyncMap[string, *svctypes.Instance], iterProc cacheapi.InstanceIterProc) error {
 	var err error
 	proc := func(k string, v *svctypes.Instance) {
 		if _, err = iterProc(k, v); err != nil {

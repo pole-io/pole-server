@@ -26,7 +26,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 )
 
 func MockRoutingV2(t *testing.T, cnt int32) []*apitraffic.RouteRule {
@@ -34,7 +34,7 @@ func MockRoutingV2(t *testing.T, cnt int32) []*apitraffic.RouteRule {
 	for i := int32(0); i < cnt; i++ {
 		matchString := &apimodel.MatchString{
 			Type:  apimodel.MatchString_EXACT,
-			Value: utils.NewStringValue(fmt.Sprintf("in-meta-value-%d", i)),
+			Value: protobuf.NewStringValue(fmt.Sprintf("in-meta-value-%d", i)),
 		}
 		source := &apitraffic.SourceService{
 			Service:   fmt.Sprintf("in-source-service-%d", i),

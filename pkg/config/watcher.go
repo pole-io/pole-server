@@ -29,9 +29,10 @@ import (
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -42,7 +43,7 @@ const (
 
 var (
 	notModifiedResponse = &apiconfig.ConfigClientResponse{
-		Code:       utils.NewUInt32Value(uint32(apimodel.Code_DataNoChange)),
+		Code:       protobuf.NewUInt32Value(uint32(apimodel.Code_DataNoChange)),
 		ConfigFile: nil,
 	}
 )
@@ -193,9 +194,9 @@ type watchCenter struct {
 	subCtx *eventhub.SubscribtionContext
 	lock   sync.Mutex
 	// clientId -> watchContext
-	clients *utils.SyncMap[string, WatchContext]
+	clients *container.SyncMap[string, WatchContext]
 	// fileId -> []clientId
-	watchers *utils.SyncMap[string, *utils.SyncSet[string]]
+	watchers *container.SyncMap[string, *container.SyncSet[string]]
 	// fileCache
 	fileCache cacheapi.ConfigFileCache
 	cacheMgr  cacheapi.CacheManager
@@ -207,8 +208,8 @@ func NewWatchCenter(cacheMgr cacheapi.CacheManager) (*watchCenter, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	wc := &watchCenter{
-		clients:   utils.NewSyncMap[string, WatchContext](),
-		watchers:  utils.NewSyncMap[string, *utils.SyncSet[string]](),
+		clients:   container.NewSyncMap[string, WatchContext](),
+		watchers:  container.NewSyncMap[string, *container.SyncSet[string]](),
 		fileCache: cacheMgr.ConfigFile(),
 		cacheMgr:  cacheMgr,
 		cancel:    cancel,
@@ -242,12 +243,12 @@ func (wc *watchCenter) OnEvent(ctx context.Context, arg any) error {
 func (wc *watchCenter) CheckQuickResponseClient(watchCtx WatchContext) *apiconfig.ConfigClientResponse {
 	buildRet := func(release *conftypes.ConfigFileRelease) *apiconfig.ConfigClientResponse {
 		ret := &apiconfig.ClientConfigFileInfo{
-			Namespace: utils.NewStringValue(release.Namespace),
-			Group:     utils.NewStringValue(release.Group),
-			FileName:  utils.NewStringValue(release.FileName),
-			Version:   utils.NewUInt64Value(release.Version),
-			Md5:       utils.NewStringValue(release.Md5),
-			Name:      utils.NewStringValue(release.Name),
+			Namespace: protobuf.NewStringValue(release.Namespace),
+			Group:     protobuf.NewStringValue(release.Group),
+			FileName:  protobuf.NewStringValue(release.FileName),
+			Version:   protobuf.NewUInt64Value(release.Version),
+			Md5:       protobuf.NewStringValue(release.Md5),
+			Name:      protobuf.NewStringValue(release.Name),
 		}
 		return api.NewConfigClientResponse(apimodel.Code_ExecuteSuccess, ret)
 	}
@@ -294,8 +295,8 @@ func (wc *watchCenter) AddWatcher(clientId string,
 		fileKey := utils.GenFileId(file.GetNamespace().GetValue(), file.GetGroup().GetValue(), file.GetFileName().GetValue())
 
 		watchCtx.AppendInterest(file)
-		clientIds, _ := wc.watchers.ComputeIfAbsent(fileKey, func(k string) *utils.SyncSet[string] {
-			return utils.NewSyncSet[string]()
+		clientIds, _ := wc.watchers.ComputeIfAbsent(fileKey, func(k string) *container.SyncSet[string] {
+			return container.NewSyncSet[string]()
 		})
 		clientIds.Add(clientId)
 	}
@@ -374,7 +375,7 @@ func (wc *watchCenter) notifyToWatchers(publishConfigFile *conftypes.SimpleConfi
 }
 
 func (wc *watchCenter) MatchBetaReleaseFile(clientLabels map[string]string, event *conftypes.SimpleConfigFileRelease) bool {
-	return wc.cacheMgr.Gray().HitGrayRule(model.GetGrayConfigRealseKey(event), clientLabels)
+	return wc.cacheMgr.Gray().HitGrayRule(utils.GetGrayConfigRealseKey(event), clientLabels)
 }
 
 func (wc *watchCenter) Close() {

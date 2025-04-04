@@ -28,8 +28,8 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 const (
@@ -171,16 +171,16 @@ func convertToModelClient(client *clientObject) (*types.Client, error) {
 	}
 
 	c := &apiservice.Client{
-		Id:      utils.NewStringValue(client.Id),
-		Host:    utils.NewStringValue(client.Host),
+		Id:      protobuf.NewStringValue(client.Id),
+		Host:    protobuf.NewStringValue(client.Host),
 		Type:    apiservice.Client_ClientType(apiservice.Client_ClientType_value[client.Type]),
-		Version: utils.NewStringValue(client.Version),
-		Ctime:   utils.NewStringValue(commontime.Time2String(client.Ctime)),
-		Mtime:   utils.NewStringValue(commontime.Time2String(client.Mtime)),
+		Version: protobuf.NewStringValue(client.Version),
+		Ctime:   protobuf.NewStringValue(commontime.Time2String(client.Ctime)),
+		Mtime:   protobuf.NewStringValue(commontime.Time2String(client.Mtime)),
 		Location: &apimodel.Location{
-			Region: utils.NewStringValue(client.Location["region"]),
-			Zone:   utils.NewStringValue(client.Location["zone"]),
-			Campus: utils.NewStringValue(client.Location["campus"]),
+			Region: protobuf.NewStringValue(client.Location["region"]),
+			Zone:   protobuf.NewStringValue(client.Location["zone"]),
+			Campus: protobuf.NewStringValue(client.Location["campus"]),
 		},
 		Stat: stat,
 	}

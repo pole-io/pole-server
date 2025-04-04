@@ -32,9 +32,9 @@ import (
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
 
@@ -136,8 +136,8 @@ func (h *HTTPServerV1) GetNamespaceToken(req *restful.Request, rsp *restful.Resp
 
 	queryParams := httpcommon.ParseQueryParams(req)
 	namespace := &apimodel.Namespace{
-		Name:  utils.NewStringValue(queryParams["name"]),
-		Token: utils.NewStringValue(queryParams["token"]),
+		Name:  protobuf.NewStringValue(queryParams["name"]),
+		Token: protobuf.NewStringValue(queryParams["token"]),
 	}
 
 	ret := h.namespaceServer.GetNamespaceToken(ctx, namespace)
@@ -283,9 +283,9 @@ func (h *HTTPServerV1) GetServiceToken(req *restful.Request, rsp *restful.Respon
 
 	queryParams := httpcommon.ParseQueryParams(req)
 	service := &apiservice.Service{
-		Name:      utils.NewStringValue(queryParams["name"]),
-		Namespace: utils.NewStringValue(queryParams["namespace"]),
-		Token:     utils.NewStringValue(queryParams["token"]),
+		Name:      protobuf.NewStringValue(queryParams["name"]),
+		Namespace: protobuf.NewStringValue(queryParams["namespace"]),
+		Token:     protobuf.NewStringValue(queryParams["token"]),
 	}
 
 	ret := h.namingServer.GetServiceToken(ctx, service)

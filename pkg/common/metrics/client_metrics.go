@@ -20,6 +20,7 @@ package metrics
 import (
 	"github.com/prometheus/client_golang/prometheus"
 
+	metrictypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -29,7 +30,7 @@ func registerClientMetrics() {
 		Name: "discovery_conn_total",
 		Help: "polaris discovery client connection total",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
 	})
 
@@ -38,7 +39,7 @@ func registerClientMetrics() {
 		Name: "config_conn_total",
 		Help: "polaris configuration client connection total",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
 	})
 
@@ -47,7 +48,7 @@ func registerClientMetrics() {
 		Name: "sdk_client_total",
 		Help: "polaris client connection total",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
 	})
 

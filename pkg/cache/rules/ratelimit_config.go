@@ -28,11 +28,11 @@ import (
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
 	types "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // rateLimitCache的实现
@@ -195,8 +195,8 @@ func (rlc *rateLimitCache) fixRulesServiceInfo() {
 			svc = svc2
 		}
 		if svc != nil {
-			rule.Proto.Namespace = utils.NewStringValue(svc.Namespace)
-			rule.Proto.Name = utils.NewStringValue(svc.Name)
+			rule.Proto.Namespace = protobuf.NewStringValue(svc.Namespace)
+			rule.Proto.Name = protobuf.NewStringValue(svc.Name)
 			delete(rlc.waitFixRules, rule.ID)
 		}
 	}
@@ -222,8 +222,8 @@ func (rlc *rateLimitCache) fixRuleServiceInfo(rateLimit *rules.RateLimit) {
 	}
 
 	if svc != nil {
-		rateLimit.Proto.Namespace = utils.NewStringValue(svc.Namespace)
-		rateLimit.Proto.Name = utils.NewStringValue(svc.Name)
+		rateLimit.Proto.Namespace = protobuf.NewStringValue(svc.Namespace)
+		rateLimit.Proto.Name = protobuf.NewStringValue(svc.Name)
 	}
 	delete(rlc.waitFixRules, rateLimit.ID)
 }

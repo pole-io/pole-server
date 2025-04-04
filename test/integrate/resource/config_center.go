@@ -25,6 +25,7 @@ import (
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -77,7 +78,7 @@ func MockConfigFiles(group *apiconfig.ConfigFileGroup) []*apiconfig.ConfigFile {
 				Value: "yaml",
 			},
 			Status: &wrapperspb.StringValue{
-				Value: utils.ReleaseStatusToRelease,
+				Value: conftypes.ReleaseStatusToRelease,
 			},
 			Tags: []*apiconfig.ConfigFileTag{},
 		})

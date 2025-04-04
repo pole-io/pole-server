@@ -31,8 +31,8 @@ import (
 	"github.com/pole-io/pole-server/apis/crypto"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -54,7 +54,7 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context,
 	var match = false
 	if len(req.GetTags()) > 0 {
 		if release = s.fileCache.GetActiveGrayRelease(namespace, group, fileName); release != nil {
-			key := model.GetGrayConfigRealseKey(release.SimpleConfigFileRelease)
+			key := utils.GetGrayConfigRealseKey(release.SimpleConfigFileRelease)
 			match = s.grayCache.HitGrayRule(key, conftypes.ToTagMap(req.GetTags()))
 		}
 	}
@@ -157,20 +157,20 @@ func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
 	ret := make([]*apiconfig.ClientConfigFileInfo, 0, len(releases))
 	for i := range releases {
 		ret = append(ret, &apiconfig.ClientConfigFileInfo{
-			Namespace:   utils.NewStringValue(releases[i].Namespace),
-			Group:       utils.NewStringValue(releases[i].Group),
-			FileName:    utils.NewStringValue(releases[i].FileName),
-			Name:        utils.NewStringValue(releases[i].Name),
-			Version:     utils.NewUInt64Value(releases[i].Version),
-			ReleaseTime: utils.NewStringValue(commontime.Time2String(releases[i].ModifyTime)),
+			Namespace:   protobuf.NewStringValue(releases[i].Namespace),
+			Group:       protobuf.NewStringValue(releases[i].Group),
+			FileName:    protobuf.NewStringValue(releases[i].FileName),
+			Name:        protobuf.NewStringValue(releases[i].Name),
+			Version:     protobuf.NewUInt64Value(releases[i].Version),
+			ReleaseTime: protobuf.NewStringValue(commontime.Time2String(releases[i].ModifyTime)),
 			Tags:        conftypes.FromTagMap(releases[i].Metadata),
 		})
 	}
 
 	return &apiconfig.ConfigClientListResponse{
-		Code:            utils.NewUInt32Value(uint32(apimodel.Code_ExecuteSuccess)),
-		Info:            utils.NewStringValue(api.Code2Info(uint32(apimodel.Code_ExecuteSuccess))),
-		Revision:        utils.NewStringValue(revision),
+		Code:            protobuf.NewUInt32Value(uint32(apimodel.Code_ExecuteSuccess)),
+		Info:            protobuf.NewStringValue(api.Code2Info(uint32(apimodel.Code_ExecuteSuccess))),
+		Revision:        protobuf.NewStringValue(revision),
 		Namespace:       namespace,
 		Group:           group,
 		ConfigFileInfos: ret,
@@ -227,13 +227,13 @@ func toClientInfo(client *apiconfig.ClientConfigFileInfo,
 	}()
 
 	configFile := &apiconfig.ClientConfigFileInfo{
-		Namespace: utils.NewStringValue(namespace),
-		Group:     utils.NewStringValue(group),
-		FileName:  utils.NewStringValue(fileName),
-		Content:   utils.NewStringValue(release.Content),
-		Version:   utils.NewUInt64Value(release.Version),
-		Md5:       utils.NewStringValue(release.Md5),
-		Encrypted: utils.NewBoolValue(release.IsEncrypted()),
+		Namespace: protobuf.NewStringValue(namespace),
+		Group:     protobuf.NewStringValue(group),
+		FileName:  protobuf.NewStringValue(fileName),
+		Content:   protobuf.NewStringValue(release.Content),
+		Version:   protobuf.NewUInt64Value(release.Version),
+		Md5:       protobuf.NewStringValue(release.Md5),
+		Encrypted: protobuf.NewBoolValue(release.IsEncrypted()),
 		Tags:      conftypes.FromTagMap(copyMetadata),
 	}
 
@@ -261,8 +261,8 @@ func toClientInfo(client *apiconfig.ClientConfigFileInfo,
 		}
 		configFile.Tags = append(configFile.Tags,
 			&apiconfig.ConfigFileTag{
-				Key:   utils.NewStringValue(types.MetaKeyConfigFileDataKey),
-				Value: utils.NewStringValue(dataKey),
+				Key:   protobuf.NewStringValue(types.MetaKeyConfigFileDataKey),
+				Value: protobuf.NewStringValue(dataKey),
 			},
 		)
 	}
@@ -393,7 +393,7 @@ func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]str
 						return conftypes.ReleaseTypeGray
 					}
 				}
-				return conftypes.ReleaseTypeFull
+				return conftypes.ReleaseTypeNormal
 			}(),
 			Version: curVer,
 		})

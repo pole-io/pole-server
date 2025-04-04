@@ -30,6 +30,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -168,8 +169,8 @@ func (s *Server) CreateServiceContract(ctx context.Context, contract *apiservice
 func (s *Server) GetServiceContracts(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
 
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Amount = utils.NewUInt32Value(0)
-	out.Size = utils.NewUInt32Value(0)
+	out.Amount = protobuf.NewUInt32Value(0)
+	out.Size = protobuf.NewUInt32Value(0)
 
 	var isBrief = false
 	if bValue, ok := query[briefSearch]; ok && strings.ToLower(bValue) == "true" {
@@ -264,8 +265,8 @@ func (s *Server) GetServiceContracts(ctx context.Context, query map[string]strin
 		}
 	}
 
-	out.Amount = utils.NewUInt32Value(totalCount)
-	out.Size = utils.NewUInt32Value(uint32(len(ret)))
+	out.Amount = protobuf.NewUInt32Value(totalCount)
+	out.Size = protobuf.NewUInt32Value(uint32(len(ret)))
 	return out
 }
 
@@ -356,8 +357,8 @@ func (s *Server) GetServiceContractVersions(ctx context.Context, filter map[stri
 			return api.NewBatchQueryResponse(apimodel.Code_ExecuteException)
 		}
 	}
-	resp.Amount = utils.NewUInt32Value(uint32(len(ret)))
-	resp.Size = utils.NewUInt32Value(uint32(len(ret)))
+	resp.Amount = protobuf.NewUInt32Value(uint32(len(ret)))
+	resp.Size = protobuf.NewUInt32Value(uint32(len(ret)))
 	return resp
 }
 
@@ -571,8 +572,8 @@ const (
 
 func (s *Server) GetServiceInterfaces(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse {
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Amount = utils.NewUInt32Value(0)
-	out.Size = utils.NewUInt32Value(0)
+	out.Amount = protobuf.NewUInt32Value(0)
+	out.Size = protobuf.NewUInt32Value(0)
 
 	var isBrief = false
 	if bValue, ok := filter[briefSearch]; ok && strings.ToLower(bValue) == "true" {
@@ -610,8 +611,8 @@ func (s *Server) GetServiceInterfaces(ctx context.Context, filter map[string]str
 		log.Error("[Service][Contract] query service_contract interfaces fail", utils.RequestID(ctx), zap.Error(err))
 		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
-	out.Amount = utils.NewUInt32Value(total)
-	out.Size = utils.NewUInt32Value(uint32(len(ret)))
+	out.Amount = protobuf.NewUInt32Value(total)
+	out.Size = protobuf.NewUInt32Value(uint32(len(ret)))
 	for i := range ret {
 		if isBrief {
 			ret[i].Content = ""
@@ -657,7 +658,7 @@ func serviceContractRecordEntry(ctx context.Context, req *apiservice.ServiceCont
 }
 
 func checkBaseServiceContract(req *apiservice.ServiceContract) *apiservice.Response {
-	if err := valid.CheckResourceName(utils.NewStringValue(req.GetNamespace())); err != nil {
+	if err := valid.CheckResourceName(protobuf.NewStringValue(req.GetNamespace())); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
 	}
 	if req.GetName() == "" && req.GetType() == "" {

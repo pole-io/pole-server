@@ -22,7 +22,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	defaultuser "github.com/pole-io/pole-server/plugin/access_control/auth/user"
 )
 
@@ -37,61 +37,61 @@ func Test_checkPassword(t *testing.T) {
 	}{
 		{
 			args: args{
-				password: utils.NewStringValue("1234"),
+				password: protobuf.NewStringValue("1234"),
 			},
 			wantErr: true,
 		},
 		{
 			args: args{
-				password: utils.NewStringValue("123456"),
+				password: protobuf.NewStringValue("123456"),
 			},
 			wantErr: false,
 		},
 		{
 			args: args{
-				password: utils.NewStringValue("abc45"),
+				password: protobuf.NewStringValue("abc45"),
 			},
 			wantErr: true,
 		},
 		{
 			args: args{
-				password: utils.NewStringValue("Aabc456"),
+				password: protobuf.NewStringValue("Aabc456"),
 			},
 			wantErr: false,
 		},
 		{
 			args: args{
-				password: utils.NewStringValue("Aa@@bc456"),
+				password: protobuf.NewStringValue("Aa@@bc456"),
 			},
 			wantErr: false,
 		},
 		{
 			args: args{
-				password: utils.NewStringValue("Aa@@bc45~6"),
+				password: protobuf.NewStringValue("Aa@@bc45~6"),
 			},
 			wantErr: false,
 		},
 		{
 			args: args{
-				password: utils.NewStringValue("abc456abc4565612"),
+				password: protobuf.NewStringValue("abc456abc4565612"),
 			},
 			wantErr: false,
 		},
 		{
 			args: args{
-				password: utils.NewStringValue("abc456abc456abc456"),
+				password: protobuf.NewStringValue("abc456abc456abc456"),
 			},
 			wantErr: true,
 		},
 		{
 			args: args{
-				password: utils.NewStringValue("123456123456123456"),
+				password: protobuf.NewStringValue("123456123456123456"),
 			},
 			wantErr: true,
 		},
 		{
 			args: args{
-				password: utils.NewStringValue("abc456abc456abc45612"),
+				password: protobuf.NewStringValue("abc456abc456abc45612"),
 			},
 			wantErr: true,
 		},
@@ -116,31 +116,31 @@ func Test_checkName(t *testing.T) {
 	}{
 		{
 			args: args{
-				name: utils.NewStringValue("123123"),
+				name: protobuf.NewStringValue("123123"),
 			},
 			wantErr: false,
 		},
 		{
 			args: args{
-				name: utils.NewStringValue("测试鉴权策略-1"),
+				name: protobuf.NewStringValue("测试鉴权策略-1"),
 			},
 			wantErr: false,
 		},
 		{
 			args: args{
-				name: utils.NewStringValue("测试鉴-权策略_1."),
+				name: protobuf.NewStringValue("测试鉴-权策略_1."),
 			},
 			wantErr: false,
 		},
 		{
 			args: args{
-				name: utils.NewStringValue("qweqwe-权qweqw策略_1"),
+				name: protobuf.NewStringValue("qweqwe-权qweqw策略_1"),
 			},
 			wantErr: false,
 		},
 		{
 			args: args{
-				name: utils.NewStringValue("测试鉴权策略&1"),
+				name: protobuf.NewStringValue("测试鉴权策略&1"),
 			},
 			wantErr: true,
 		},

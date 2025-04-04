@@ -35,6 +35,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	_ "github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
@@ -94,8 +95,8 @@ func (d *DiscoverTestSuit) createCommonService(t *testing.T, id int) (*apiservic
 
 func (d *DiscoverTestSuit) HeartBeat(t *testing.T, service *apiservice.Service, instanceID string) {
 	req := &apiservice.Instance{
-		ServiceToken: utils.NewStringValue(service.GetToken().GetValue()),
-		Id:           utils.NewStringValue(instanceID),
+		ServiceToken: protobuf.NewStringValue(service.GetToken().GetValue()),
+		Id:           protobuf.NewStringValue(instanceID),
 	}
 
 	resp := d.HealthCheckServer().Report(d.DefaultCtx, req)
@@ -107,8 +108,8 @@ func (d *DiscoverTestSuit) HeartBeat(t *testing.T, service *apiservice.Service, 
 func (d *DiscoverTestSuit) GetLastHeartBeat(t *testing.T, service *apiservice.Service,
 	instanceID string) *apiservice.Response {
 	req := &apiservice.Instance{
-		ServiceToken: utils.NewStringValue(service.GetToken().GetValue()),
-		Id:           utils.NewStringValue(instanceID),
+		ServiceToken: protobuf.NewStringValue(service.GetToken().GetValue()),
+		Id:           protobuf.NewStringValue(instanceID),
 	}
 
 	return d.HealthCheckServer().GetLastHeartbeat(req)
@@ -117,17 +118,17 @@ func (d *DiscoverTestSuit) GetLastHeartBeat(t *testing.T, service *apiservice.Se
 // 生成服务的主要数据
 func genMainService(id int) *apiservice.Service {
 	return &apiservice.Service{
-		Name:       utils.NewStringValue(fmt.Sprintf("test-service-%d", id)),
-		Namespace:  utils.NewStringValue(service.DefaultNamespace),
+		Name:       protobuf.NewStringValue(fmt.Sprintf("test-service-%d", id)),
+		Namespace:  protobuf.NewStringValue(service.DefaultNamespace),
 		Metadata:   make(map[string]string),
-		Ports:      utils.NewStringValue(fmt.Sprintf("ports-%d", id)),
-		Business:   utils.NewStringValue(fmt.Sprintf("business-%d", id)),
-		Department: utils.NewStringValue(fmt.Sprintf("department-%d", id)),
-		CmdbMod1:   utils.NewStringValue(fmt.Sprintf("cmdb-mod1-%d", id)),
-		CmdbMod2:   utils.NewStringValue(fmt.Sprintf("cmdb-mod2-%d", id)),
-		CmdbMod3:   utils.NewStringValue(fmt.Sprintf("cmdb-mod2-%d", id)),
-		Comment:    utils.NewStringValue(fmt.Sprintf("service-comment-%d", id)),
-		Owners:     utils.NewStringValue(fmt.Sprintf("service-owner-%d", id)),
+		Ports:      protobuf.NewStringValue(fmt.Sprintf("ports-%d", id)),
+		Business:   protobuf.NewStringValue(fmt.Sprintf("business-%d", id)),
+		Department: protobuf.NewStringValue(fmt.Sprintf("department-%d", id)),
+		CmdbMod1:   protobuf.NewStringValue(fmt.Sprintf("cmdb-mod1-%d", id)),
+		CmdbMod2:   protobuf.NewStringValue(fmt.Sprintf("cmdb-mod2-%d", id)),
+		CmdbMod3:   protobuf.NewStringValue(fmt.Sprintf("cmdb-mod2-%d", id)),
+		Comment:    protobuf.NewStringValue(fmt.Sprintf("service-comment-%d", id)),
+		Owners:     protobuf.NewStringValue(fmt.Sprintf("service-owner-%d", id)),
 	}
 }
 
@@ -149,25 +150,25 @@ func (d *DiscoverTestSuit) removeCommonServiceAliases(t *testing.T, req []*apise
 func (d *DiscoverTestSuit) createCommonInstanceById(t *testing.T, svc *apiservice.Service, count int, instanceID string) (
 	*apiservice.Instance, *apiservice.Instance) {
 	instanceReq := &apiservice.Instance{
-		ServiceToken: utils.NewStringValue(svc.GetToken().GetValue()),
-		Service:      utils.NewStringValue(svc.GetName().GetValue()),
-		Namespace:    utils.NewStringValue(svc.GetNamespace().GetValue()),
-		VpcId:        utils.NewStringValue(fmt.Sprintf("vpcid-%d", count)),
-		Host:         utils.NewStringValue(fmt.Sprintf("9.9.9.%d", count)),
-		Port:         utils.NewUInt32Value(8000 + uint32(count)),
-		Protocol:     utils.NewStringValue(fmt.Sprintf("protocol-%d", count)),
-		Version:      utils.NewStringValue(fmt.Sprintf("version-%d", count)),
-		Priority:     utils.NewUInt32Value(1 + uint32(count)%10),
-		Weight:       utils.NewUInt32Value(1 + uint32(count)%1000),
+		ServiceToken: protobuf.NewStringValue(svc.GetToken().GetValue()),
+		Service:      protobuf.NewStringValue(svc.GetName().GetValue()),
+		Namespace:    protobuf.NewStringValue(svc.GetNamespace().GetValue()),
+		VpcId:        protobuf.NewStringValue(fmt.Sprintf("vpcid-%d", count)),
+		Host:         protobuf.NewStringValue(fmt.Sprintf("9.9.9.%d", count)),
+		Port:         protobuf.NewUInt32Value(8000 + uint32(count)),
+		Protocol:     protobuf.NewStringValue(fmt.Sprintf("protocol-%d", count)),
+		Version:      protobuf.NewStringValue(fmt.Sprintf("version-%d", count)),
+		Priority:     protobuf.NewUInt32Value(1 + uint32(count)%10),
+		Weight:       protobuf.NewUInt32Value(1 + uint32(count)%1000),
 		HealthCheck: &apiservice.HealthCheck{
 			Type: apiservice.HealthCheck_HEARTBEAT,
 			Heartbeat: &apiservice.HeartbeatHealthCheck{
-				Ttl: utils.NewUInt32Value(3),
+				Ttl: protobuf.NewUInt32Value(3),
 			},
 		},
-		Healthy:  utils.NewBoolValue(false), // 默认是非健康，因为打开了healthCheck
-		Isolate:  utils.NewBoolValue(false),
-		LogicSet: utils.NewStringValue(fmt.Sprintf("logic-set-%d", count)),
+		Healthy:  protobuf.NewBoolValue(false), // 默认是非健康，因为打开了healthCheck
+		Isolate:  protobuf.NewBoolValue(false),
+		LogicSet: protobuf.NewStringValue(fmt.Sprintf("logic-set-%d", count)),
 		Metadata: map[string]string{
 			"internal-personal-xxx":        fmt.Sprintf("internal-personal-xxx_%d", count),
 			"2my-meta":                     fmt.Sprintf("my-meta-%d", count),
@@ -188,7 +189,7 @@ func (d *DiscoverTestSuit) createCommonInstanceById(t *testing.T, svc *apiservic
 		},
 	}
 	if len(instanceID) > 0 {
-		instanceReq.Id = utils.NewStringValue(instanceID)
+		instanceReq.Id = protobuf.NewStringValue(instanceID)
 	}
 
 	resp := d.DiscoverServer().CreateInstances(d.DefaultCtx, []*apiservice.Instance{instanceReq})
@@ -226,13 +227,13 @@ func (d *DiscoverTestSuit) createCommonInstance(t *testing.T, svc *apiservice.Se
 func (d *DiscoverTestSuit) addHostPortInstance(t *testing.T, service *apiservice.Service, host string, port uint32) (
 	*apiservice.Instance, *apiservice.Instance) {
 	instanceReq := &apiservice.Instance{
-		ServiceToken: utils.NewStringValue(service.GetToken().GetValue()),
-		Service:      utils.NewStringValue(service.GetName().GetValue()),
-		Namespace:    utils.NewStringValue(service.GetNamespace().GetValue()),
-		Host:         utils.NewStringValue(host),
-		Port:         utils.NewUInt32Value(port),
-		Healthy:      utils.NewBoolValue(true),
-		Isolate:      utils.NewBoolValue(false),
+		ServiceToken: protobuf.NewStringValue(service.GetToken().GetValue()),
+		Service:      protobuf.NewStringValue(service.GetName().GetValue()),
+		Namespace:    protobuf.NewStringValue(service.GetNamespace().GetValue()),
+		Host:         protobuf.NewStringValue(host),
+		Port:         protobuf.NewUInt32Value(port),
+		Healthy:      protobuf.NewBoolValue(true),
+		Isolate:      protobuf.NewBoolValue(false),
 	}
 	resp := d.DiscoverServer().CreateInstances(d.DefaultCtx, []*apiservice.Instance{instanceReq})
 	if respSuccess(resp) {
@@ -270,8 +271,8 @@ func (d *DiscoverTestSuit) addInstance(t *testing.T, ins *apiservice.Instance) (
 // 删除一个实例
 func (d *DiscoverTestSuit) removeCommonInstance(t *testing.T, service *apiservice.Service, instanceID string) {
 	req := &apiservice.Instance{
-		ServiceToken: utils.NewStringValue(service.GetToken().GetValue()),
-		Id:           utils.NewStringValue(instanceID),
+		ServiceToken: protobuf.NewStringValue(service.GetToken().GetValue()),
+		Id:           protobuf.NewStringValue(instanceID),
 	}
 
 	resp := d.DiscoverServer().DeleteInstances(d.DefaultCtx, []*apiservice.Instance{req})
@@ -285,12 +286,12 @@ func (d *DiscoverTestSuit) removeCommonInstance(t *testing.T, service *apiservic
 func (d *DiscoverTestSuit) removeInstanceWithAttrs(
 	t *testing.T, service *apiservice.Service, instance *apiservice.Instance) {
 	req := &apiservice.Instance{
-		ServiceToken: utils.NewStringValue(service.GetToken().GetValue()),
-		Service:      utils.NewStringValue(service.GetName().GetValue()),
-		Namespace:    utils.NewStringValue(service.GetNamespace().GetValue()),
-		VpcId:        utils.NewStringValue(instance.GetVpcId().GetValue()),
-		Host:         utils.NewStringValue(instance.GetHost().GetValue()),
-		Port:         utils.NewUInt32Value(instance.GetPort().GetValue()),
+		ServiceToken: protobuf.NewStringValue(service.GetToken().GetValue()),
+		Service:      protobuf.NewStringValue(service.GetName().GetValue()),
+		Namespace:    protobuf.NewStringValue(service.GetNamespace().GetValue()),
+		VpcId:        protobuf.NewStringValue(instance.GetVpcId().GetValue()),
+		Host:         protobuf.NewStringValue(instance.GetHost().GetValue()),
+		Port:         protobuf.NewUInt32Value(instance.GetPort().GetValue()),
 	}
 	if resp := d.DiscoverServer().DeleteInstances(d.DefaultCtx, []*apiservice.Instance{req}); !respSuccess(resp) {
 		t.Fatalf("error: %s", resp.GetInfo().GetValue())
@@ -302,24 +303,24 @@ func mockRoutingV1(serviceName, serviceNamespace string, inCount int) *apitraffi
 	for i := 0; i < inCount; i++ {
 		matchString := &apimodel.MatchString{
 			Type:  apimodel.MatchString_EXACT,
-			Value: utils.NewStringValue(fmt.Sprintf("in-meta-value-%d", i)),
+			Value: protobuf.NewStringValue(fmt.Sprintf("in-meta-value-%d", i)),
 		}
 		source := &apitraffic.Source{
-			Service:   utils.NewStringValue(fmt.Sprintf("in-source-service-%d", i)),
-			Namespace: utils.NewStringValue(fmt.Sprintf("in-source-service-%d", i)),
+			Service:   protobuf.NewStringValue(fmt.Sprintf("in-source-service-%d", i)),
+			Namespace: protobuf.NewStringValue(fmt.Sprintf("in-source-service-%d", i)),
 			Metadata: map[string]*apimodel.MatchString{
 				fmt.Sprintf("in-metadata-%d", i): matchString,
 			},
 		}
 		destination := &apitraffic.Destination{
-			Service:   utils.NewStringValue(serviceName),
-			Namespace: utils.NewStringValue(serviceNamespace),
+			Service:   protobuf.NewStringValue(serviceName),
+			Namespace: protobuf.NewStringValue(serviceNamespace),
 			Metadata: map[string]*apimodel.MatchString{
 				fmt.Sprintf("in-metadata-%d", i): matchString,
 			},
-			Priority: utils.NewUInt32Value(120),
-			Weight:   utils.NewUInt32Value(100),
-			Transfer: utils.NewStringValue("abcdefg"),
+			Priority: protobuf.NewUInt32Value(120),
+			Weight:   protobuf.NewUInt32Value(100),
+			Transfer: protobuf.NewStringValue("abcdefg"),
 		}
 
 		entry := &apitraffic.Route{
@@ -330,8 +331,8 @@ func mockRoutingV1(serviceName, serviceNamespace string, inCount int) *apitraffi
 	}
 
 	conf := &apitraffic.Routing{
-		Service:   utils.NewStringValue(serviceName),
-		Namespace: utils.NewStringValue(serviceNamespace),
+		Service:   protobuf.NewStringValue(serviceName),
+		Namespace: protobuf.NewStringValue(serviceNamespace),
 		Inbounds:  inBounds,
 	}
 
@@ -558,7 +559,7 @@ func (d *DiscoverTestSuit) createCommonRateLimit(
 		Name:      &wrappers.StringValue{Value: fmt.Sprintf("rule_name_%d", index)},
 		Service:   service.GetName(),
 		Namespace: service.GetNamespace(),
-		Priority:  utils.NewUInt32Value(uint32(index)),
+		Priority:  protobuf.NewUInt32Value(uint32(index)),
 		Resource:  apitraffic.Rule_QPS,
 		Type:      apitraffic.Rule_GLOBAL,
 		Arguments: []*apitraffic.MatchArgument{
@@ -567,7 +568,7 @@ func (d *DiscoverTestSuit) createCommonRateLimit(
 				Key:  fmt.Sprintf("name-%d", index),
 				Value: &apimodel.MatchString{
 					Type:  apimodel.MatchString_EXACT,
-					Value: utils.NewStringValue(fmt.Sprintf("value-%d", index)),
+					Value: protobuf.NewStringValue(fmt.Sprintf("value-%d", index)),
 				},
 			},
 			{
@@ -575,26 +576,26 @@ func (d *DiscoverTestSuit) createCommonRateLimit(
 				Key:  fmt.Sprintf("name-%d", index+1),
 				Value: &apimodel.MatchString{
 					Type:  apimodel.MatchString_EXACT,
-					Value: utils.NewStringValue(fmt.Sprintf("value-%d", index+1)),
+					Value: protobuf.NewStringValue(fmt.Sprintf("value-%d", index+1)),
 				},
 			},
 		},
 		Amounts: []*apitraffic.Amount{
 			{
-				MaxAmount: utils.NewUInt32Value(uint32(10 * index)),
+				MaxAmount: protobuf.NewUInt32Value(uint32(10 * index)),
 				ValidDuration: &duration.Duration{
 					Seconds: int64(index),
 					Nanos:   int32(index),
 				},
 			},
 		},
-		Action:  utils.NewStringValue(fmt.Sprintf("behavior-%d", index)),
-		Disable: utils.NewBoolValue(false),
+		Action:  protobuf.NewStringValue(fmt.Sprintf("behavior-%d", index)),
+		Disable: protobuf.NewBoolValue(false),
 		Report: &apitraffic.Report{
 			Interval: &duration.Duration{
 				Seconds: int64(index),
 			},
-			AmountPercent: utils.NewUInt32Value(uint32(index)),
+			AmountPercent: protobuf.NewUInt32Value(uint32(index)),
 		},
 	}
 
@@ -630,34 +631,34 @@ func (d *DiscoverTestSuit) cleanRateLimitRevision(service, namespace string) {
 
 // 更新限流规则内容
 func updateRateLimitContent(rateLimit *apitraffic.Rule, index int) {
-	rateLimit.Priority = utils.NewUInt32Value(uint32(index))
+	rateLimit.Priority = protobuf.NewUInt32Value(uint32(index))
 	rateLimit.Resource = apitraffic.Rule_CONCURRENCY
 	rateLimit.Type = apitraffic.Rule_LOCAL
 	rateLimit.Labels = map[string]*apimodel.MatchString{
 		fmt.Sprintf("name-%d", index): {
 			Type:  apimodel.MatchString_EXACT,
-			Value: utils.NewStringValue(fmt.Sprintf("value-%d", index)),
+			Value: protobuf.NewStringValue(fmt.Sprintf("value-%d", index)),
 		},
 		fmt.Sprintf("name-%d", index+1): {
 			Type:  apimodel.MatchString_REGEX,
-			Value: utils.NewStringValue(fmt.Sprintf("value-%d", index+1)),
+			Value: protobuf.NewStringValue(fmt.Sprintf("value-%d", index+1)),
 		},
 	}
 	rateLimit.Amounts = []*apitraffic.Amount{
 		{
-			MaxAmount: utils.NewUInt32Value(uint32(index)),
+			MaxAmount: protobuf.NewUInt32Value(uint32(index)),
 			ValidDuration: &duration.Duration{
 				Seconds: int64(index),
 			},
 		},
 	}
-	rateLimit.Action = utils.NewStringValue(fmt.Sprintf("value-%d", index))
-	rateLimit.Disable = utils.NewBoolValue(true)
+	rateLimit.Action = protobuf.NewStringValue(fmt.Sprintf("value-%d", index))
+	rateLimit.Disable = protobuf.NewBoolValue(true)
 	rateLimit.Report = &apitraffic.Report{
 		Interval: &duration.Duration{
 			Seconds: int64(index),
 		},
-		AmountPercent: utils.NewUInt32Value(uint32(index)),
+		AmountPercent: protobuf.NewUInt32Value(uint32(index)),
 	}
 }
 

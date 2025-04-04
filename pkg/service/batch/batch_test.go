@@ -28,6 +28,7 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -104,8 +105,8 @@ func sendAsyncCreateInstance(bc *Controller, cnt int32) error {
 		go func(index int32) {
 			defer wg.Done()
 			future := bc.AsyncCreateInstance(utils.NewUUID(), &apiservice.Instance{
-				Id:           utils.NewStringValue(fmt.Sprintf("%d", index)),
-				ServiceToken: utils.NewStringValue(fmt.Sprintf("%d", index)),
+				Id:           protobuf.NewStringValue(fmt.Sprintf("%d", index)),
+				ServiceToken: protobuf.NewStringValue(fmt.Sprintf("%d", index)),
 			}, true)
 			if err := future.Wait(); err != nil {
 				fmt.Printf("%+v\n", err)

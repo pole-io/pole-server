@@ -29,7 +29,6 @@ import (
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
@@ -283,41 +282,38 @@ func CheckDbServiceFieldLen(req *apiservice.Service) (*apiservice.Response, bool
 	if err := valid.CheckDbStrFieldLen(req.GetName(), valid.MaxNameLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceName, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidNamespaceName, req), true
 	}
 	if err := valid.CheckDbMetaDataFieldLen(req.GetMetadata()); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidMetadata, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetPorts(), utils.MaxDbServicePortsLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetPorts(), valid.MaxDbServicePortsLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServicePorts, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetBusiness(), utils.MaxDbServiceBusinessLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetBusiness(), valid.MaxDbServiceBusinessLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceBusiness, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetDepartment(), utils.MaxDbServiceDeptLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetDepartment(), valid.MaxDbServiceDeptLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceDepartment, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetCmdbMod1(), utils.MaxDbServiceCMDBLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetCmdbMod1(), valid.MaxDbServiceCMDBLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceCMDB, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetCmdbMod2(), utils.MaxDbServiceCMDBLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetCmdbMod2(), valid.MaxDbServiceCMDBLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceCMDB, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetCmdbMod3(), utils.MaxDbServiceCMDBLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetCmdbMod3(), valid.MaxDbServiceCMDBLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceCMDB, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetComment(), utils.MaxDbServiceCommentLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetComment(), valid.MaxDbServiceCommentLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceComment, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetOwners(), utils.MaxDbServiceOwnerLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetOwners(), valid.MaxDbServiceOwnerLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceOwners, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetToken(), utils.MaxDbServiceToken); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetToken(), valid.MaxDbServiceToken); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceToken, req), true
-	}
-	if err := valid.CheckDbStrFieldLen(req.GetPlatformId(), utils.MaxPlatformIDLength); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidPlatformID, req), true
 	}
 	return nil, false
 }

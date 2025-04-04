@@ -25,6 +25,7 @@ import (
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -179,7 +180,7 @@ func (sc *serviceCache) matchInstances(instances []*svctypes.Instance, instanceF
 // GetAllNamespaces 返回所有的命名空间
 func (sc *serviceCache) GetAllNamespaces() []string {
 	var res []string
-	sc.names.ReadRange(func(k string, v *utils.SyncMap[string, *svctypes.Service]) {
+	sc.names.ReadRange(func(k string, v *container.SyncMap[string, *svctypes.Service]) {
 		res = append(res, k)
 	})
 	return res

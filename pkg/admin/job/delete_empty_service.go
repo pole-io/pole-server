@@ -24,11 +24,11 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
@@ -154,8 +154,8 @@ func convertDeleteServiceRequest(infos []*svctypes.Service) []*apiservice.Servic
 	var entries = make([]*apiservice.Service, len(infos))
 	for i, info := range infos {
 		entries[i] = &apiservice.Service{
-			Namespace: utils.NewStringValue(info.Namespace),
-			Name:      utils.NewStringValue(info.Name),
+			Namespace: protobuf.NewStringValue(info.Namespace),
+			Name:      protobuf.NewStringValue(info.Name),
 		}
 	}
 	return entries

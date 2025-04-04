@@ -25,6 +25,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/test/integrate/http"
@@ -65,7 +66,7 @@ func TestConfigCenter_ConfigFileGroup(t *testing.T) {
 
 		group := groups[0]
 
-		newComment := utils.NewStringValue("update config_file_group " + utils.NewUUID())
+		newComment := protobuf.NewStringValue("update config_file_group " + utils.NewUUID())
 		group.Comment = newComment
 
 		resp, err := client.UpdateConfigGroup(group)

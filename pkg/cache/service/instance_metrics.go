@@ -143,36 +143,36 @@ func cleanExpireServiceMetricLabel(pre, curr map[string]map[string]struct{}) {
 
 	for ns := range removeNs {
 		metrics.GetServiceCount().Delete(prometheus.Labels{
-			metrics.LabelNamespace: ns,
+			metrictypes.LabelNamespace: ns,
 		})
 		metrics.GetServiceOfflineCountl().Delete(prometheus.Labels{
-			metrics.LabelNamespace: ns,
+			metrictypes.LabelNamespace: ns,
 		})
 		metrics.GetServiceOnlineCountl().Delete(prometheus.Labels{
-			metrics.LabelNamespace: ns,
+			metrictypes.LabelNamespace: ns,
 		})
 		metrics.GetServiceAbnormalCountl().Delete(prometheus.Labels{
-			metrics.LabelNamespace: ns,
+			metrictypes.LabelNamespace: ns,
 		})
 	}
 
 	for ns, services := range remove {
 		for service := range services {
 			metrics.GetInstanceCount().Delete(prometheus.Labels{
-				metrics.LabelNamespace: ns,
-				metrics.LabelService:   service,
+				metrictypes.LabelNamespace: ns,
+				metrictypes.LabelService:   service,
 			})
 			metrics.GetInstanceAbnormalCountl().Delete(prometheus.Labels{
-				metrics.LabelNamespace: ns,
-				metrics.LabelService:   service,
+				metrictypes.LabelNamespace: ns,
+				metrictypes.LabelService:   service,
 			})
 			metrics.GetInstanceIsolateCountl().Delete(prometheus.Labels{
-				metrics.LabelNamespace: ns,
-				metrics.LabelService:   service,
+				metrictypes.LabelNamespace: ns,
+				metrictypes.LabelService:   service,
 			})
 			metrics.GetInstanceOnlineCountl().Delete(prometheus.Labels{
-				metrics.LabelNamespace: ns,
-				metrics.LabelService:   service,
+				metrictypes.LabelNamespace: ns,
+				metrictypes.LabelService:   service,
 			})
 		}
 	}

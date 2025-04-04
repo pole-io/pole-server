@@ -31,6 +31,7 @@ import (
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -75,12 +76,12 @@ func (s *Server) CreateConfigFileGroup(ctx context.Context, req *apiconfig.Confi
 		utils.ZapNamespace(namespace), utils.ZapGroup(groupName))
 
 	// 这里设置在 config-group 的 id 信息
-	req.Id = utils.NewUInt64Value(ret.Id)
+	req.Id = protobuf.NewUInt64Value(ret.Id)
 	s.RecordHistory(ctx, configGroupRecordEntry(ctx, req, saveData, types.OCreate))
 	return api.NewConfigGroupResponse(apimodel.Code_ExecuteSuccess, &apiconfig.ConfigFileGroup{
-		Id:        utils.NewUInt64Value(saveData.Id),
-		Namespace: utils.NewStringValue(saveData.Namespace),
-		Name:      utils.NewStringValue(saveData.Name),
+		Id:        protobuf.NewUInt64Value(saveData.Id),
+		Namespace: protobuf.NewStringValue(saveData.Namespace),
+		Name:      protobuf.NewStringValue(saveData.Name),
 	})
 }
 
@@ -112,12 +113,12 @@ func (s *Server) UpdateConfigFileGroup(ctx context.Context, req *apiconfig.Confi
 		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
-	req.Id = utils.NewUInt64Value(saveData.Id)
+	req.Id = protobuf.NewUInt64Value(saveData.Id)
 	s.RecordHistory(ctx, configGroupRecordEntry(ctx, req, updateData, types.OUpdate))
 	return api.NewConfigGroupResponse(apimodel.Code_ExecuteSuccess, &apiconfig.ConfigFileGroup{
-		Id:        utils.NewUInt64Value(updateData.Id),
-		Namespace: utils.NewStringValue(updateData.Namespace),
-		Name:      utils.NewStringValue(updateData.Name),
+		Id:        protobuf.NewUInt64Value(updateData.Id),
+		Namespace: protobuf.NewStringValue(updateData.Namespace),
+		Name:      protobuf.NewStringValue(updateData.Name),
 	})
 }
 
@@ -187,14 +188,14 @@ func (s *Server) DeleteConfigFileGroup(ctx context.Context, namespace, name stri
 	}
 
 	s.RecordHistory(ctx, configGroupRecordEntry(ctx, &apiconfig.ConfigFileGroup{
-		Id:        utils.NewUInt64Value(configGroup.Id),
-		Namespace: utils.NewStringValue(configGroup.Namespace),
-		Name:      utils.NewStringValue(configGroup.Name),
+		Id:        protobuf.NewUInt64Value(configGroup.Id),
+		Namespace: protobuf.NewStringValue(configGroup.Namespace),
+		Name:      protobuf.NewStringValue(configGroup.Name),
 	}, configGroup, types.ODelete))
 	return api.NewConfigGroupResponse(apimodel.Code_ExecuteSuccess, &apiconfig.ConfigFileGroup{
-		Id:        utils.NewUInt64Value(configGroup.Id),
-		Namespace: utils.NewStringValue(configGroup.Namespace),
-		Name:      utils.NewStringValue(configGroup.Name),
+		Id:        protobuf.NewUInt64Value(configGroup.Id),
+		Namespace: protobuf.NewStringValue(configGroup.Namespace),
+		Name:      protobuf.NewStringValue(configGroup.Name),
 	})
 }
 
@@ -240,7 +241,7 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 	total, ret, err := s.groupCache.Query(args)
 	if err != nil {
 		resp := api.NewConfigBatchQueryResponse(storeapi.StoreCode2APICode(err))
-		resp.Info = utils.NewStringValue(err.Error())
+		resp.Info = protobuf.NewStringValue(err.Error())
 		return resp
 	}
 	values := make([]*apiconfig.ConfigFileGroup, 0, len(ret))
@@ -254,7 +255,7 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 
 		// 如果包含特殊标签，也不允许修改
 		if _, ok := item.GetMetadata()[types.MetaKey3RdPlatform]; ok {
-			item.Editable = utils.NewBoolValue(false)
+			item.Editable = protobuf.NewBoolValue(false)
 		}
 
 		item.FileCount = wrapperspb.UInt64(fileCount)
@@ -262,7 +263,7 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 	}
 
 	resp := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Total = utils.NewUInt32Value(total)
+	resp.Total = protobuf.NewUInt32Value(total)
 	resp.ConfigFileGroups = values
 	return resp
 }

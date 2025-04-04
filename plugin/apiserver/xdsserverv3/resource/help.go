@@ -60,6 +60,7 @@ import (
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -220,7 +221,7 @@ func BuildWeightClustersV2(trafficDirection corev3.TrafficDirection,
 				Namespace: destination.Namespace,
 				Name:      destination.Service,
 			}, trafficDirection, opt),
-			Weight: utils.NewUInt32Value(destination.GetWeight()),
+			Weight: protobuf.NewUInt32Value(destination.GetWeight()),
 			MetadataMatch: &core.Metadata{
 				FilterMetadata: map[string]*_struct.Struct{
 					"envoy.lb": {

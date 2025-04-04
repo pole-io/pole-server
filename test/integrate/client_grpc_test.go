@@ -31,8 +31,8 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/test/integrate/grpc"
 	"github.com/pole-io/pole-server/test/integrate/http"
 	"github.com/pole-io/pole-server/test/integrate/resource"
@@ -91,7 +91,7 @@ func TestClientGRPC_DiscoverInstance(t *testing.T) {
 			t.Run("GRPC——二次发现实例", func(t *testing.T) {
 				// 查询服务实例
 				copySvc := &(*services[0])
-				copySvc.Revision = utils.NewStringValue(revision)
+				copySvc.Revision = protobuf.NewStringValue(revision)
 
 				err = clientGRPC.Discover(apiservice.DiscoverRequest_INSTANCE, copySvc, func(resp *apiservice.DiscoverResponse) {
 					assert.Equal(t, api.DataNoChange, resp.Code.GetValue(), "discover instance must be datanotchange")

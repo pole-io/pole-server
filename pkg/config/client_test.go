@@ -31,8 +31,10 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
 	testsuit "github.com/pole-io/pole-server/test/suit"
@@ -311,7 +313,7 @@ func TestClientVersionBehindServer(t *testing.T) {
 	assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 
 	for i := 0; i < 5; i++ {
-		configFile.Content = utils.NewStringValue("content" + strconv.Itoa(i))
+		configFile.Content = protobuf.NewStringValue("content" + strconv.Itoa(i))
 		// 更新
 		rsp2 := testSuit.ConfigServer().UpdateConfigFile(testSuit.DefaultCtx, configFile)
 		assert.Equal(t, api.ExecuteSuccess, rsp2.Code.GetValue(), rsp2.GetInfo().GetValue())
@@ -370,7 +372,7 @@ func TestWatchConfigFileAtFirstPublish(t *testing.T) {
 
 	t.Run("00_QuickCheck", func(t *testing.T) {
 		curConfigFile := assembleConfigFile()
-		curConfigFile.Namespace = utils.NewStringValue("QuickCheck")
+		curConfigFile.Namespace = protobuf.NewStringValue("QuickCheck")
 
 		rsp := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, curConfigFile)
 		t.Log("create config file success")
@@ -426,7 +428,7 @@ func TestWatchConfigFileAtFirstPublish(t *testing.T) {
 
 		t.Run("03_gray", func(t *testing.T) {
 			// 发布一个灰度配置文件
-			curConfigFile.Content = utils.NewStringValue("gray polaris test")
+			curConfigFile.Content = protobuf.NewStringValue("gray polaris test")
 			grayRelease := assembleConfigFileRelease(curConfigFile)
 			grayRelease.ReleaseType = wrapperspb.String("gray")
 			grayRelease.BetaLabels = []*apimodel.ClientLabel{
@@ -434,7 +436,7 @@ func TestWatchConfigFileAtFirstPublish(t *testing.T) {
 					Key: "CLIENT_IP",
 					Value: &apimodel.MatchString{
 						Type:      apimodel.MatchString_EXACT,
-						Value:     utils.NewStringValue("172.0.0.1"),
+						Value:     protobuf.NewStringValue("172.0.0.1"),
 						ValueType: apimodel.MatchString_TEXT,
 					},
 				},
@@ -532,7 +534,7 @@ func TestWatchConfigFileAtFirstPublish(t *testing.T) {
 	t.Run("03_clean_invalid_client", func(t *testing.T) {
 		watchConfigFiles := assembleDefaultClientConfigFile(1)
 		for i := range watchConfigFiles {
-			watchConfigFiles[i].Namespace = utils.NewStringValue("03_clean_invalid_client")
+			watchConfigFiles[i].Namespace = protobuf.NewStringValue("03_clean_invalid_client")
 		}
 
 		// watchCtx 默认为 1s 超时
@@ -553,8 +555,8 @@ func TestManyClientWatchConfigFile(t *testing.T) {
 	testSuit := newConfigCenterTestSuit(t)
 
 	clientSize := 100
-	received := utils.NewSyncMap[string, bool]()
-	receivedVersion := utils.NewSyncMap[string, uint64]()
+	received := container.NewSyncMap[string, bool]()
+	receivedVersion := container.NewSyncMap[string, uint64]()
 	watchConfigFiles := assembleDefaultClientConfigFile(0)
 
 	for i := 0; i < clientSize; i++ {
@@ -641,9 +643,9 @@ func TestDeleteConfigFile(t *testing.T) {
 	t.Log("remove config file")
 	rsp3 := testSuit.ConfigServer().BatchDeleteConfigFile(testSuit.DefaultCtx, []*apiconfig.ConfigFile{
 		&apiconfig.ConfigFile{
-			Namespace: utils.NewStringValue(newMockNs),
-			Group:     utils.NewStringValue(testGroup),
-			Name:      utils.NewStringValue(testFile),
+			Namespace: protobuf.NewStringValue(newMockNs),
+			Group:     protobuf.NewStringValue(testGroup),
+			Name:      protobuf.NewStringValue(testFile),
 		},
 	})
 	assert.Equal(t, api.ExecuteSuccess, rsp3.Code.GetValue())
@@ -699,24 +701,24 @@ func TestServer_GetConfigFileNamesWithCache(t *testing.T) {
 	t.Run("bad-request", func(t *testing.T) {
 		rsp := testSuit.ConfigServer().GetConfigFileNamesWithCache(testSuit.DefaultCtx, &apiconfig.ConfigFileGroupRequest{
 			ConfigFileGroup: &apiconfig.ConfigFileGroup{
-				Namespace: utils.NewStringValue(""),
-				Name:      utils.NewStringValue("group-0"),
+				Namespace: protobuf.NewStringValue(""),
+				Name:      protobuf.NewStringValue("group-0"),
 			},
 		})
 		assert.Equal(t, uint32(apimodel.Code_BadRequest), rsp.Code.GetValue())
 
 		rsp = testSuit.ConfigServer().GetConfigFileNamesWithCache(testSuit.DefaultCtx, &apiconfig.ConfigFileGroupRequest{
 			ConfigFileGroup: &apiconfig.ConfigFileGroup{
-				Namespace: utils.NewStringValue(""),
-				Name:      utils.NewStringValue(""),
+				Namespace: protobuf.NewStringValue(""),
+				Name:      protobuf.NewStringValue(""),
 			},
 		})
 		assert.Equal(t, uint32(apimodel.Code_BadRequest), rsp.Code.GetValue())
 
 		rsp = testSuit.ConfigServer().GetConfigFileNamesWithCache(testSuit.DefaultCtx, &apiconfig.ConfigFileGroupRequest{
 			ConfigFileGroup: &apiconfig.ConfigFileGroup{
-				Namespace: utils.NewStringValue("mock-ns"),
-				Name:      utils.NewStringValue(""),
+				Namespace: protobuf.NewStringValue("mock-ns"),
+				Name:      protobuf.NewStringValue(""),
 			},
 		})
 		assert.Equal(t, uint32(apimodel.Code_BadRequest), rsp.Code.GetValue())
@@ -725,8 +727,8 @@ func TestServer_GetConfigFileNamesWithCache(t *testing.T) {
 	t.Run("no-publish-file", func(t *testing.T) {
 		rsp := testSuit.ConfigServer().GetConfigFileNamesWithCache(testSuit.DefaultCtx, &apiconfig.ConfigFileGroupRequest{
 			ConfigFileGroup: &apiconfig.ConfigFileGroup{
-				Namespace: utils.NewStringValue(testNamespace),
-				Name:      utils.NewStringValue("group-0"),
+				Namespace: protobuf.NewStringValue(testNamespace),
+				Name:      protobuf.NewStringValue("group-0"),
 			},
 		})
 		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), rsp.Code.GetValue(), rsp.Info.Value)
@@ -748,8 +750,8 @@ func TestServer_GetConfigFileNamesWithCache(t *testing.T) {
 		t.Run("revision-fetch", func(t *testing.T) {
 			rsp := testSuit.ConfigServer().GetConfigFileNamesWithCache(testSuit.DefaultCtx, &apiconfig.ConfigFileGroupRequest{
 				ConfigFileGroup: &apiconfig.ConfigFileGroup{
-					Namespace: utils.NewStringValue(testNamespace),
-					Name:      utils.NewStringValue("group-0"),
+					Namespace: protobuf.NewStringValue(testNamespace),
+					Name:      protobuf.NewStringValue("group-0"),
 				},
 			})
 
@@ -759,8 +761,8 @@ func TestServer_GetConfigFileNamesWithCache(t *testing.T) {
 			secondRsp := testSuit.ConfigServer().GetConfigFileNamesWithCache(testSuit.DefaultCtx, &apiconfig.ConfigFileGroupRequest{
 				Revision: wrapperspb.String(rsp.GetRevision().GetValue()),
 				ConfigFileGroup: &apiconfig.ConfigFileGroup{
-					Namespace: utils.NewStringValue(testNamespace),
-					Name:      utils.NewStringValue("group-0"),
+					Namespace: protobuf.NewStringValue(testNamespace),
+					Name:      protobuf.NewStringValue("group-0"),
 				},
 			})
 

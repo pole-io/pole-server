@@ -27,6 +27,7 @@ import (
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -48,7 +49,7 @@ func (svr *Server) CreateServiceAlias(
 	// 填充 ownerId 信息数据
 	ownerId := utils.ParseOwnerID(ctx)
 	if len(ownerId) > 0 {
-		req.Owners = utils.NewStringValue(ownerId)
+		req.Owners = protobuf.NewStringValue(ownerId)
 	}
 
 	return svr.nextSvr.CreateServiceAlias(ctx, req)
@@ -116,8 +117,8 @@ func (svr *Server) GetServiceAliases(ctx context.Context,
 		item := resp.Aliases[i]
 		sourceSvc := svr.Cache().Service().GetServiceByName(item.GetAlias().GetValue(), item.GetAliasNamespace().GetValue())
 		if sourceSvc == nil {
-			item.Editable = utils.NewBoolValue(false)
-			item.Deleteable = utils.NewBoolValue(false)
+			item.Editable = protobuf.NewBoolValue(false)
+			item.Deleteable = protobuf.NewBoolValue(false)
 			continue
 		}
 		authCtx.SetAccessResources(map[security.ResourceType][]authtypes.ResourceEntry{
@@ -134,14 +135,14 @@ func (svr *Server) GetServiceAliases(ctx context.Context,
 		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateRateLimitRules, authtypes.EnableRateLimitRules})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-			item.Editable = utils.NewBoolValue(false)
+			item.Editable = protobuf.NewBoolValue(false)
 		}
 
 		// 检查 delete 操作权限
 		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteRateLimitRules})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-			item.Deleteable = utils.NewBoolValue(false)
+			item.Deleteable = protobuf.NewBoolValue(false)
 		}
 	}
 

@@ -27,10 +27,10 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
@@ -204,12 +204,12 @@ func checkUpdateRoutingConfigV2(req *apitraffic.RouteRule) *apiservice.Response 
 }
 
 func checkRoutingNameAndNamespace(req *apitraffic.RouteRule) *apiservice.Response {
-	if err := valid.CheckDbStrFieldLen(utils.NewStringValue(req.GetName()), utils.MaxRuleName); err != nil {
+	if err := valid.CheckDbStrFieldLen(protobuf.NewStringValue(req.GetName()), valid.MaxRuleName); err != nil {
 		return apiv1.NewRouterResponse(apimodel.Code_InvalidRoutingName, req)
 	}
 
-	if err := valid.CheckDbStrFieldLen(utils.NewStringValue(req.GetNamespace()),
-		utils.MaxDbServiceNamespaceLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(protobuf.NewStringValue(req.GetNamespace()),
+		valid.MaxDbServiceNamespaceLength); err != nil {
 		return apiv1.NewRouterResponse(apimodel.Code_InvalidNamespaceName, req)
 	}
 

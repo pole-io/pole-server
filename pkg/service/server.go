@@ -30,7 +30,7 @@ import (
 	"github.com/pole-io/pole-server/apis/store"
 	cacheservice "github.com/pole-io/pole-server/pkg/cache/service"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/model"
+	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
@@ -143,6 +143,6 @@ func (s *Server) getLocation(host string) *svctypes.Location {
 }
 
 func AllowAutoCreate(ctx context.Context) context.Context {
-	ctx = context.WithValue(ctx, model.ContextKeyAutoCreateService{}, true)
+	ctx = context.WithValue(ctx, utils.ContextKeyAutoCreateService{}, true)
 	return ctx
 }

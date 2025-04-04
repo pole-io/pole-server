@@ -32,6 +32,7 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -83,8 +84,8 @@ func (s *Server) UpdateConfigFileGroup(ctx context.Context,
 // DeleteConfigFileGroup 删除配置文件组
 func (s *Server) DeleteConfigFileGroup(
 	ctx context.Context, namespace, name string) *apiconfig.ConfigResponse {
-	authCtx := s.collectConfigGroupAuthContext(ctx, []*apiconfig.ConfigFileGroup{{Name: utils.NewStringValue(name),
-		Namespace: utils.NewStringValue(namespace)}}, authtypes.Delete, authtypes.DeleteConfigFileGroup)
+	authCtx := s.collectConfigGroupAuthContext(ctx, []*apiconfig.ConfigFileGroup{{Name: protobuf.NewStringValue(name),
+		Namespace: protobuf.NewStringValue(namespace)}}, authtypes.Delete, authtypes.DeleteConfigFileGroup)
 
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewConfigResponse(authtypes.ConvertToErrCode(err))
@@ -154,14 +155,14 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 			authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateConfigFileGroup})
 			// 如果检查不通过，设置 editable 为 false
 			if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-				item.Editable = utils.NewBoolValue(false)
+				item.Editable = protobuf.NewBoolValue(false)
 			}
 
 			// 检查 delete 操作权限
 			authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteConfigFileGroup})
 			// 如果检查不通过，设置 editable 为 false
 			if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-				item.Deleteable = utils.NewBoolValue(false)
+				item.Deleteable = protobuf.NewBoolValue(false)
 			}
 		}
 	}

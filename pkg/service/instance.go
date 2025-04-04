@@ -34,6 +34,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -91,7 +92,7 @@ func (s *Server) CreateInstance(ctx context.Context, req *apiservice.Instance) *
 
 	// Prevent pollution api.Instance struct, copy and fill token
 	ins := *req
-	ins.ServiceToken = utils.NewStringValue(parseInstanceReqToken(ctx, req))
+	ins.ServiceToken = protobuf.NewStringValue(parseInstanceReqToken(ctx, req))
 	data, resp := s.createInstance(ctx, req, &ins)
 	if resp != nil {
 		return resp
@@ -163,7 +164,7 @@ func (s *Server) asyncCreateInstance(
 
 	if err := future.Wait(); err != nil {
 		if future.Code() == apimodel.Code_ExistedResource {
-			req.Id = utils.NewStringValue(ins.GetId().GetValue())
+			req.Id = protobuf.NewStringValue(ins.GetId().GetValue())
 		}
 		return nil, api.NewInstanceResponse(future.Code(), req)
 	}
@@ -206,7 +207,7 @@ func (s *Server) DeleteInstances(ctx context.Context, req []*apiservice.Instance
 // DeleteInstance 删除单个服务实例
 func (s *Server) DeleteInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
 	ins := *req // 防止污染外部的req
-	ins.ServiceToken = utils.NewStringValue(parseInstanceReqToken(ctx, req))
+	ins.ServiceToken = protobuf.NewStringValue(parseInstanceReqToken(ctx, req))
 	return s.deleteInstance(ctx, req, &ins)
 }
 
@@ -475,7 +476,7 @@ func (s *Server) UpdateInstanceIsolate(ctx context.Context, req *apiservice.Inst
 				CreateTime: time.Time{},
 			})
 		}
-		instance.Proto.Isolate = utils.NewBoolValue(req.GetIsolate().GetValue())
+		instance.Proto.Isolate = protobuf.NewBoolValue(req.GetIsolate().GetValue())
 	}
 	for i := range s.instanceChains {
 		s.instanceChains[i].AfterUpdate(ctx, instances...)
@@ -588,7 +589,7 @@ func (s *Server) updateInstanceAttribute(
 
 	// 每次更改，都要生成一个新的uuid
 	if needUpdate {
-		insProto.Revision = utils.NewStringValue(utils.NewUUID())
+		insProto.Revision = protobuf.NewStringValue(utils.NewUUID())
 	}
 
 	return needUpdate, updateEvents
@@ -623,8 +624,8 @@ func updateHealthCheck(req *apiservice.Instance, instance *svctypes.Instance) bo
 		// 那么一旦打开，status需置为false，等待一次心跳成功才能变成true
 		if !instance.EnableHealthCheck() {
 			// 需要重置healthy，则认为有变更
-			insProto.Healthy = utils.NewBoolValue(false)
-			insProto.EnableHealthCheck = utils.NewBoolValue(true)
+			insProto.Healthy = protobuf.NewBoolValue(false)
+			insProto.EnableHealthCheck = protobuf.NewBoolValue(true)
 			needUpdate = true
 		}
 
@@ -643,7 +644,7 @@ func updateHealthCheck(req *apiservice.Instance, instance *svctypes.Instance) bo
 		insProto.HealthCheck = req.GetHealthCheck()
 		insProto.HealthCheck.Type = apiservice.HealthCheck_HEARTBEAT
 		if insProto.HealthCheck.Heartbeat.Ttl == nil {
-			insProto.HealthCheck.Heartbeat.Ttl = utils.NewUInt32Value(0)
+			insProto.HealthCheck.Heartbeat.Ttl = protobuf.NewUInt32Value(0)
 		}
 		insProto.HealthCheck.Heartbeat.Ttl.Value = ttl
 	}
@@ -657,7 +658,7 @@ func updateHealthCheck(req *apiservice.Instance, instance *svctypes.Instance) bo
 			needUpdate = true
 		}
 
-		insProto.EnableHealthCheck = utils.NewBoolValue(false)
+		insProto.EnableHealthCheck = protobuf.NewBoolValue(false)
 		insProto.HealthCheck = nil
 	}
 
@@ -685,8 +686,8 @@ func (s *Server) GetInstances(ctx context.Context, query map[string]string) *api
 	}
 
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Amount = utils.NewUInt32Value(total)
-	out.Size = utils.NewUInt32Value(uint32(len(instances)))
+	out.Amount = protobuf.NewUInt32Value(total)
+	out.Size = protobuf.NewUInt32Value(uint32(len(instances)))
 
 	svcInfos := make(map[string]*svctypes.Service, 4)
 	apiInstances := make([]*apiservice.Instance, 0, len(instances))
@@ -838,7 +839,7 @@ func (s *Server) GetInstancesCount(ctx context.Context) *apiservice.BatchQueryRe
 	}
 
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Amount = utils.NewUInt32Value(count)
+	out.Amount = protobuf.NewUInt32Value(count)
 	out.Instances = make([]*apiservice.Instance, 0)
 	return out
 }
@@ -979,14 +980,14 @@ func (s *Server) createServiceIfAbsent(
 		return "", api.NewResponse(apimodel.Code_NotFoundService)
 	}
 	simpleService := &apiservice.Service{
-		Name:      utils.NewStringValue(svcName),
-		Namespace: utils.NewStringValue(namespace),
+		Name:      protobuf.NewStringValue(svcName),
+		Namespace: protobuf.NewStringValue(namespace),
 		Owners: func() *wrapperspb.StringValue {
 			owner := utils.ParseOwnerID(ctx)
 			if owner == "" {
-				return utils.NewStringValue("Polaris")
+				return protobuf.NewStringValue("Polaris")
 			}
-			return utils.NewStringValue(owner)
+			return protobuf.NewStringValue(owner)
 		}(),
 	}
 	key := fmt.Sprintf("%s:%s", simpleService.Namespace, simpleService.Name)

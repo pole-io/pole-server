@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/pole-io/pole-server/plugin/access_control/auth/policy"
@@ -43,27 +44,27 @@ func TestCheckName(t *testing.T) {
 		},
 		{
 			name:     "测试空名称",
-			input:    utils.NewStringValue(""),
+			input:    protobuf.NewStringValue(""),
 			expected: errors.New(utils.EmptyErrString),
 		},
 		{
 			name:     "测试非法用户名",
-			input:    utils.NewStringValue("polariadmin"),
+			input:    protobuf.NewStringValue("polariadmin"),
 			expected: errors.New("illegal username"),
 		},
 		{
 			name:     "测试名称长度超过限制",
-			input:    utils.NewStringValue(strings.Repeat("a", valid.MaxNameLength+1)),
+			input:    protobuf.NewStringValue(strings.Repeat("a", valid.MaxNameLength+1)),
 			expected: errors.New("name too long"),
 		},
 		{
 			name:     "测试包含无效字符的名称",
-			input:    utils.NewStringValue("invalid*name"),
+			input:    protobuf.NewStringValue("invalid*name"),
 			expected: errors.New("name contains invalid character"),
 		},
 		{
 			name:     "测试有效的名称",
-			input:    utils.NewStringValue("valid_name"),
+			input:    protobuf.NewStringValue("valid_name"),
 			expected: nil,
 		},
 	}

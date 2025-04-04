@@ -28,7 +28,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/test/integrate/http"
 )
 
@@ -58,9 +58,9 @@ func reqCreateIllegalNamespace(lang string) (*apiservice.BatchWriteResponse, err
 	c := http.NewClient(httpserverAddress, httpserverVersion)
 	url := fmt.Sprintf("http://%v/naming/%v/namespaces?lang=%s", c.Address, c.Version, lang)
 	body, err := http.JSONFromNamespaces([]*apimodel.Namespace{{
-		Name:    utils.NewStringValue("+$#@+"),
-		Comment: utils.NewStringValue("test"),
-		Owners:  utils.NewStringValue("test"),
+		Name:    protobuf.NewStringValue("+$#@+"),
+		Comment: protobuf.NewStringValue("test"),
+		Owners:  protobuf.NewStringValue("test"),
 	}})
 	if err != nil {
 		return nil, err

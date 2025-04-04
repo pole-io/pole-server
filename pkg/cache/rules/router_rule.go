@@ -26,6 +26,7 @@ import (
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
 	types "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
@@ -133,10 +134,10 @@ func (rc *RouteRuleCache) GetRouterConfigV2(id, service, namespace string) (*api
 	}
 
 	resp := &apitraffic.Routing{
-		Namespace: utils.NewStringValue(namespace),
-		Service:   utils.NewStringValue(service),
+		Namespace: protobuf.NewStringValue(namespace),
+		Service:   protobuf.NewStringValue(service),
 		Rules:     rulesV2,
-		Revision:  utils.NewStringValue(revision),
+		Revision:  protobuf.NewStringValue(revision),
 	}
 	return resp, nil
 }
@@ -162,11 +163,11 @@ func (rc *RouteRuleCache) GetRouterConfig(id, svcName, namespace string) (*apitr
 	}
 
 	return &apitraffic.Routing{
-		Namespace: utils.NewStringValue(namespace),
-		Service:   utils.NewStringValue(svcName),
+		Namespace: protobuf.NewStringValue(namespace),
+		Service:   protobuf.NewStringValue(svcName),
 		Inbounds:  inRule.Inbounds,
 		Outbounds: outRule.Outbounds,
-		Revision:  utils.NewStringValue(revision),
+		Revision:  protobuf.NewStringValue(revision),
 	}, nil
 }
 

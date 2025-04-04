@@ -25,7 +25,6 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
@@ -171,19 +170,19 @@ func CheckDbServiceAliasFieldLen(req *apiservice.ServiceAlias) (*apiservice.Resp
 	if err := valid.CheckDbStrFieldLen(req.GetService(), valid.MaxNameLength); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceName, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidNamespaceName, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetAlias(), valid.MaxNameLength); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceAlias, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetAliasNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetAliasNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidNamespaceWithAlias, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetComment(), utils.MaxDbServiceCommentLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetComment(), valid.MaxDbServiceCommentLength); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceAliasComment, req), true
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetOwners(), utils.MaxDbServiceOwnerLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetOwners(), valid.MaxDbServiceOwnerLength); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceAliasOwners, req), true
 	}
 	return nil, false

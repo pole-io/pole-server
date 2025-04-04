@@ -22,7 +22,7 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 )
 
 const (
@@ -34,8 +34,8 @@ const (
  */
 func CreateClient(index uint32) *apiservice.Client {
 	return &apiservice.Client{
-		Host:    utils.NewStringValue(fmt.Sprintf(clientHost, index, index, index, index)),
+		Host:    protobuf.NewStringValue(fmt.Sprintf(clientHost, index, index, index, index)),
 		Type:    apiservice.Client_SDK,
-		Version: utils.NewStringValue("8.8.8"),
+		Version: protobuf.NewStringValue("8.8.8"),
 	}
 }

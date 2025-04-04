@@ -27,6 +27,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -87,7 +88,7 @@ func (s *Server) asyncCreateClient(ctx context.Context, req *apiservice.Client) 
 	if err := future.Wait(); err != nil {
 		log.Error("[Server][ReportClient] async create client", zap.Error(err), utils.RequestID(ctx))
 		if future.Code() == apimodel.Code_ExistedResource {
-			req.Id = utils.NewStringValue(req.GetId().GetValue())
+			req.Id = protobuf.NewStringValue(req.GetId().GetValue())
 		}
 		return nil, api.NewClientResponse(apimodel.Code(future.Code()), req)
 	}
@@ -128,8 +129,8 @@ func (s *Server) GetReportClients(ctx context.Context, query map[string]string) 
 	}
 
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Amount = utils.NewUInt32Value(total)
-	resp.Size = utils.NewUInt32Value(uint32(len(services)))
+	resp.Amount = protobuf.NewUInt32Value(total)
+	resp.Size = protobuf.NewUInt32Value(uint32(len(services)))
 	resp.Clients = enhancedClients2Api(clients, client2Api)
 	return resp
 }

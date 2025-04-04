@@ -29,6 +29,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
@@ -48,10 +49,10 @@ func TestEurekaServer_renew(t *testing.T) {
 	ins := &svctypes.Instance{
 		ServiceID: utils.NewUUID(),
 		Proto: &apiservice.Instance{
-			Service:   utils.NewStringValue("echo"),
-			Namespace: utils.NewStringValue("default"),
-			Host:      utils.NewStringValue("127.0.0.1"),
-			Port:      utils.NewUInt32Value(8080),
+			Service:   protobuf.NewStringValue("echo"),
+			Namespace: protobuf.NewStringValue("default"),
+			Host:      protobuf.NewStringValue("127.0.0.1"),
+			Port:      protobuf.NewUInt32Value(8080),
 			HealthCheck: &apiservice.HealthCheck{
 				Type: apiservice.HealthCheck_HEARTBEAT,
 				Heartbeat: &apiservice.HeartbeatHealthCheck{
@@ -70,15 +71,15 @@ func TestEurekaServer_renew(t *testing.T) {
 		return
 	}
 
-	ins.Proto.Id = utils.NewStringValue(insId)
+	ins.Proto.Id = protobuf.NewStringValue(insId)
 
 	disableBeatIns := &svctypes.Instance{
 		ServiceID: utils.NewUUID(),
 		Proto: &apiservice.Instance{
-			Service:   utils.NewStringValue("echo"),
-			Namespace: utils.NewStringValue("default"),
-			Host:      utils.NewStringValue("127.0.0.2"),
-			Port:      utils.NewUInt32Value(8081),
+			Service:   protobuf.NewStringValue("echo"),
+			Namespace: protobuf.NewStringValue("default"),
+			Host:      protobuf.NewStringValue("127.0.0.2"),
+			Port:      protobuf.NewUInt32Value(8081),
 			HealthCheck: &apiservice.HealthCheck{
 				Type: apiservice.HealthCheck_HEARTBEAT,
 				Heartbeat: &apiservice.HeartbeatHealthCheck{
@@ -97,7 +98,7 @@ func TestEurekaServer_renew(t *testing.T) {
 		return
 	}
 
-	disableBeatIns.Proto.Id = utils.NewStringValue(disableBeatInsId)
+	disableBeatIns.Proto.Id = protobuf.NewStringValue(disableBeatInsId)
 
 	ctrl := gomock.NewController(t)
 

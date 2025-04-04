@@ -29,6 +29,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
@@ -133,9 +134,9 @@ func (h *HTTPServer) GetConfigFile(req *restful.Request, rsp *restful.Response) 
 	name := handler.Request.QueryParameter("name")
 
 	fileReq := &apiconfig.ConfigFile{
-		Namespace: utils.NewStringValue(namespace),
-		Group:     utils.NewStringValue(group),
-		Name:      utils.NewStringValue(name),
+		Namespace: protobuf.NewStringValue(namespace),
+		Group:     protobuf.NewStringValue(group),
+		Name:      protobuf.NewStringValue(name),
 	}
 
 	response := h.configServer.GetConfigFileRichInfo(handler.ParseHeaderContext(), fileReq)
@@ -186,9 +187,9 @@ func (h *HTTPServer) DeleteConfigFile(req *restful.Request, rsp *restful.Respons
 	name := handler.Request.QueryParameter("name")
 
 	fileReq := &apiconfig.ConfigFile{
-		Namespace: utils.NewStringValue(namespace),
-		Group:     utils.NewStringValue(group),
-		Name:      utils.NewStringValue(name),
+		Namespace: protobuf.NewStringValue(namespace),
+		Group:     protobuf.NewStringValue(group),
+		Name:      protobuf.NewStringValue(name),
 	}
 
 	response := h.configServer.DeleteConfigFile(handler.ParseHeaderContext(), fileReq)
@@ -263,9 +264,9 @@ func (h *HTTPServer) ImportConfigFile(req *restful.Request, rsp *restful.Respons
 	conflictHandling := handler.Request.QueryParameter("conflict_handling")
 
 	for _, file := range configFiles {
-		file.Namespace = utils.NewStringValue(namespace)
+		file.Namespace = protobuf.NewStringValue(namespace)
 		if group != "" {
-			file.Group = utils.NewStringValue(group)
+			file.Group = protobuf.NewStringValue(group)
 		}
 	}
 
@@ -389,10 +390,10 @@ func (h *HTTPServer) GetConfigFileRelease(req *restful.Request, rsp *restful.Res
 	}
 
 	fileReq := &apiconfig.ConfigFileRelease{
-		Namespace: utils.NewStringValue(namespace),
-		Group:     utils.NewStringValue(group),
-		FileName:  utils.NewStringValue(fileName),
-		Name:      utils.NewStringValue(name),
+		Namespace: protobuf.NewStringValue(namespace),
+		Group:     protobuf.NewStringValue(group),
+		FileName:  protobuf.NewStringValue(fileName),
+		Name:      protobuf.NewStringValue(name),
 	}
 
 	response := h.configServer.GetConfigFileRelease(handler.ParseHeaderContext(), fileReq)

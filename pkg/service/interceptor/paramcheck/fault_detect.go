@@ -191,13 +191,13 @@ func checkFaultDetectRuleParamsDbLen(req *apifault.FaultDetectRule) *apiservice.
 		return api.NewResponse(apimodel.Code_InvalidServiceName)
 	}
 	if err := valid.CheckDbRawStrFieldLen(
-		req.GetTargetService().GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
+		req.GetTargetService().GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
 	}
-	if err := valid.CheckDbRawStrFieldLen(req.GetName(), utils.MaxRuleName); err != nil {
+	if err := valid.CheckDbRawStrFieldLen(req.GetName(), valid.MaxRuleName); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidRateLimitName)
 	}
-	if err := valid.CheckDbRawStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
+	if err := valid.CheckDbRawStrFieldLen(req.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
 	}
 	if err := valid.CheckDbRawStrFieldLen(req.GetDescription(), valid.MaxMetadataLength); err != nil {

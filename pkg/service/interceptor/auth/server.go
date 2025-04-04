@@ -31,7 +31,7 @@ import (
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
@@ -274,8 +274,8 @@ func (svr *Server) queryServiceResource(
 		return make(map[apisecurity.ResourceType][]authtypes.ResourceEntry)
 	}
 
-	names := utils.NewSet[string]()
-	svcSet := utils.NewMap[string, *svctypes.Service]()
+	names := container.NewSet[string]()
+	svcSet := container.NewMap[string, *svctypes.Service]()
 
 	for index := range req {
 		svcName := req[index].GetName().GetValue()
@@ -301,8 +301,8 @@ func (svr *Server) queryServiceAliasResource(
 		return make(map[apisecurity.ResourceType][]authtypes.ResourceEntry)
 	}
 
-	names := utils.NewSet[string]()
-	svcSet := utils.NewMap[string, *svctypes.Service]()
+	names := container.NewSet[string]()
+	svcSet := container.NewMap[string, *svctypes.Service]()
 
 	for index := range req {
 		refSvcName := req[index].GetService().GetValue()
@@ -330,8 +330,8 @@ func (svr *Server) queryInstanceResource(
 		return make(map[apisecurity.ResourceType][]authtypes.ResourceEntry)
 	}
 
-	names := utils.NewSet[string]()
-	svcSet := utils.NewMap[string, *svctypes.Service]()
+	names := container.NewSet[string]()
+	svcSet := container.NewMap[string, *svctypes.Service]()
 
 	for index := range req {
 		svcName := req[index].GetService().GetValue()
@@ -371,8 +371,8 @@ func (svr *Server) queryRouteRuleResource(
 		return make(map[apisecurity.ResourceType][]authtypes.ResourceEntry)
 	}
 
-	names := utils.NewSet[string]()
-	svcSet := utils.NewMap[string, *svctypes.Service]()
+	names := container.NewSet[string]()
+	svcSet := container.NewMap[string, *svctypes.Service]()
 
 	for index := range req {
 		svcName := req[index].GetService().GetValue()
@@ -397,8 +397,8 @@ func (svr *Server) queryRateLimitConfigResource(
 		return make(map[apisecurity.ResourceType][]authtypes.ResourceEntry)
 	}
 
-	names := utils.NewSet[string]()
-	svcSet := utils.NewMap[string, *svctypes.Service]()
+	names := container.NewSet[string]()
+	svcSet := container.NewMap[string, *svctypes.Service]()
 
 	for index := range req {
 		svcName := req[index].GetService().GetValue()
@@ -417,8 +417,8 @@ func (svr *Server) queryRateLimitConfigResource(
 }
 
 // convertToDiscoverResourceEntryMaps 通用方法，进行转换为期望的、服务相关的 ResourceEntry
-func (svr *Server) convertToDiscoverResourceEntryMaps(nsSet *utils.Set[string],
-	svcSet *utils.Map[string, *svctypes.Service]) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
+func (svr *Server) convertToDiscoverResourceEntryMaps(nsSet *container.Set[string],
+	svcSet *container.Map[string, *svctypes.Service]) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
 	var (
 		param = nsSet.ToSlice()
 		nsArr = svr.Cache().Namespace().GetNamespacesByName(param)

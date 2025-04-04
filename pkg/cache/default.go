@@ -31,7 +31,7 @@ import (
 	cachens "github.com/pole-io/pole-server/pkg/cache/namespace"
 	cacherules "github.com/pole-io/pole-server/pkg/cache/rules"
 	cachesvc "github.com/pole-io/pole-server/pkg/cache/service"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 )
 
 func init() {
@@ -86,7 +86,7 @@ func newCacheManager(ctx context.Context, cacheOpt *Config, storage store.Store)
 	mgr := &CacheManager{
 		storage:  storage,
 		caches:   make([]cacheapi.Cache, cacheapi.CacheLast),
-		needLoad: utils.NewSyncSet[string](),
+		needLoad: container.NewSyncSet[string](),
 	}
 
 	// 命名空间缓存

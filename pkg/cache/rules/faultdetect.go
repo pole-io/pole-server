@@ -34,6 +34,7 @@ import (
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -42,7 +43,7 @@ type faultDetectCache struct {
 
 	storage store.Store
 	// rules record id -> *rules.FaultDetectRule
-	rules *utils.SyncMap[string, *rules.FaultDetectRule]
+	rules *container.SyncMap[string, *rules.FaultDetectRule]
 	// increment cache
 	// fetched service cache
 	// key1: namespace, key2: service
@@ -60,7 +61,7 @@ func NewFaultDetectCache(s store.Store, cacheMgr types.CacheManager) types.Fault
 	return &faultDetectCache{
 		BaseCache:        cachebase.NewBaseCache(s, cacheMgr),
 		storage:          s,
-		rules:            utils.NewSyncMap[string, *rules.FaultDetectRule](),
+		rules:            container.NewSyncMap[string, *rules.FaultDetectRule](),
 		svcSpecificRules: make(map[string]map[string]*rules.ServiceWithFaultDetectRules),
 		nsWildcardRules:  make(map[string]*rules.ServiceWithFaultDetectRules),
 		allWildcardRules: rules.NewServiceWithFaultDetectRules(svctypes.ServiceKey{
@@ -99,7 +100,7 @@ func (f *faultDetectCache) Clear() error {
 	f.BaseCache.Clear()
 	f.lock.Lock()
 	f.allWildcardRules.Clear()
-	f.rules = utils.NewSyncMap[string, *rules.FaultDetectRule]()
+	f.rules = container.NewSyncMap[string, *rules.FaultDetectRule]()
 	f.nsWildcardRules = make(map[string]*rules.ServiceWithFaultDetectRules)
 	f.svcSpecificRules = make(map[string]map[string]*rules.ServiceWithFaultDetectRules)
 	f.lock.Unlock()

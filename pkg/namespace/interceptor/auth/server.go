@@ -30,7 +30,9 @@ import (
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
 )
@@ -81,7 +83,7 @@ func (svr *Server) CreateNamespace(ctx context.Context, req *apimodel.Namespace)
 
 	// 填充 ownerId 信息数据
 	if ownerId := utils.ParseOwnerID(ctx); len(ownerId) > 0 {
-		req.Owners = utils.NewStringValue(ownerId)
+		req.Owners = protobuf.NewStringValue(ownerId)
 	}
 
 	resp := svr.nextSvr.CreateNamespace(ctx, req)
@@ -107,7 +109,7 @@ func (svr *Server) CreateNamespaces(
 	if len(ownerId) > 0 {
 		for index := range reqs {
 			req := reqs[index]
-			req.Owners = utils.NewStringValue(ownerId)
+			req.Owners = protobuf.NewStringValue(ownerId)
 		}
 	}
 	resp := svr.nextSvr.CreateNamespaces(ctx, reqs)
@@ -209,14 +211,14 @@ func (svr *Server) GetNamespaces(
 		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateNamespaces})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-			item.Editable = utils.NewBoolValue(false)
+			item.Editable = protobuf.NewBoolValue(false)
 		}
 
 		// 检查 delete 操作权限
 		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteNamespaces})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-			item.Deleteable = utils.NewBoolValue(false)
+			item.Deleteable = protobuf.NewBoolValue(false)
 		}
 	}
 	return resp
@@ -255,7 +257,7 @@ func (svr *Server) queryNamespaceResource(
 		return map[apisecurity.ResourceType][]authtypes.ResourceEntry{}
 	}
 
-	names := utils.NewSet[string]()
+	names := container.NewSet[string]()
 	for index := range req {
 		names.Add(req[index].Name.GetValue())
 	}

@@ -30,6 +30,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/utils"
 )
 
@@ -384,33 +385,33 @@ func CreateInstanceModel(serviceID string, req *apiservice.Instance) *Instance {
 
 	protoIns := &apiservice.Instance{
 		Id:       req.GetId(),
-		Host:     utils.NewStringValue(strings.TrimSpace(req.GetHost().GetValue())),
+		Host:     protobuf.NewStringValue(strings.TrimSpace(req.GetHost().GetValue())),
 		VpcId:    req.GetVpcId(),
 		Port:     req.GetPort(),
 		Protocol: req.GetProtocol(),
 		Version:  req.GetVersion(),
 		Priority: req.GetPriority(),
-		Weight:   utils.NewUInt32Value(weight),
-		Healthy:  utils.NewBoolValue(healthy),
-		Isolate:  utils.NewBoolValue(isolate),
+		Weight:   protobuf.NewUInt32Value(weight),
+		Healthy:  protobuf.NewBoolValue(healthy),
+		Isolate:  protobuf.NewBoolValue(isolate),
 		Location: req.Location,
 		Metadata: req.Metadata,
 		LogicSet: req.GetLogicSet(),
-		Revision: utils.NewStringValue(utils.NewUUID()), // 更新版本号
+		Revision: protobuf.NewStringValue(utils.NewUUID()), // 更新版本号
 	}
 
 	// health Check，healthCheck不能为空，且没有显示把enable_health_check置为false
 	// 如果create的时候，打开了healthCheck，那么实例模式是unhealthy，必须要一次心跳才会healthy
 	if req.GetHealthCheck().GetHeartbeat() != nil &&
 		(req.GetEnableHealthCheck() == nil || req.GetEnableHealthCheck().GetValue()) {
-		protoIns.EnableHealthCheck = utils.NewBoolValue(true)
+		protoIns.EnableHealthCheck = protobuf.NewBoolValue(true)
 		protoIns.HealthCheck = req.HealthCheck
 		protoIns.HealthCheck.Type = apiservice.HealthCheck_HEARTBEAT
 		// ttl range: (0, 60]
 		ttl := protoIns.GetHealthCheck().GetHeartbeat().GetTtl().GetValue()
 		if ttl == 0 || ttl > 60 {
 			if protoIns.HealthCheck.Heartbeat.Ttl == nil {
-				protoIns.HealthCheck.Heartbeat.Ttl = utils.NewUInt32Value(5)
+				protoIns.HealthCheck.Heartbeat.Ttl = protobuf.NewUInt32Value(5)
 			}
 			protoIns.HealthCheck.Heartbeat.Ttl.Value = 5
 		}

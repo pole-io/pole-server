@@ -29,7 +29,6 @@ import (
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
@@ -186,13 +185,13 @@ func checkCircuitBreakerRuleParamsDbLen(req *apifault.CircuitBreakerRule) *apise
 		return api.NewResponse(apimodel.Code_InvalidServiceName)
 	}
 	if err := valid.CheckDbRawStrFieldLen(
-		req.RuleMatcher.GetSource().GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
+		req.RuleMatcher.GetSource().GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
 	}
-	if err := valid.CheckDbRawStrFieldLen(req.GetName(), utils.MaxRuleName); err != nil {
+	if err := valid.CheckDbRawStrFieldLen(req.GetName(), valid.MaxRuleName); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidCircuitBreakerName)
 	}
-	if err := valid.CheckDbRawStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
+	if err := valid.CheckDbRawStrFieldLen(req.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
 	}
 	if err := valid.CheckDbRawStrFieldLen(req.GetDescription(), valid.MaxCommentLength); err != nil {

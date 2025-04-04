@@ -20,6 +20,7 @@ package metrics
 import (
 	"github.com/prometheus/client_golang/prometheus"
 
+	metrictypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -28,25 +29,25 @@ func registerConfigFileMetrics() {
 		Name: "config_group_count",
 		Help: "polaris config group total number",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
-	}, []string{LabelNamespace})
+	}, []string{metrictypes.LabelNamespace})
 
 	configFileTotal = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "config_file_count",
 		Help: "total number of config_file each config group",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
-	}, []string{LabelNamespace, LabelGroup})
+	}, []string{metrictypes.LabelNamespace, metrictypes.LabelGroup})
 
 	releaseConfigFileTotal = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "config_release_file_count",
 		Help: "total number of config_release_file each config group",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
-	}, []string{LabelNamespace, LabelGroup})
+	}, []string{metrictypes.LabelNamespace, metrictypes.LabelGroup})
 
 	_ = GetRegistry().Register(configGroupTotal)
 	_ = GetRegistry().Register(configFileTotal)

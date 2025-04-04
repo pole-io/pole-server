@@ -166,10 +166,10 @@ func checkRateLimitParamsDbLen(req *apitraffic.Rule) *apiservice.Response {
 	if err := valid.CheckDbStrFieldLen(req.GetService(), valid.MaxDbServiceNameLength); err != nil {
 		return api.NewRateLimitResponse(apimodel.Code_InvalidServiceName, req)
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), utils.MaxDbServiceNamespaceLength); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
 		return api.NewRateLimitResponse(apimodel.Code_InvalidNamespaceName, req)
 	}
-	if err := valid.CheckDbStrFieldLen(req.GetName(), utils.MaxDbRateLimitName); err != nil {
+	if err := valid.CheckDbStrFieldLen(req.GetName(), valid.MaxDbRateLimitName); err != nil {
 		return api.NewRateLimitResponse(apimodel.Code_InvalidRateLimitName, req)
 	}
 	return nil

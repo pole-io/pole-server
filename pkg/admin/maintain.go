@@ -34,6 +34,7 @@ import (
 	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/pkg/types/admin"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -61,7 +62,7 @@ func (s *Server) HasMainUser(ctx context.Context) *apiservice.Response {
 // InitMainUser 初始化主用户
 func (s *Server) InitMainUser(_ context.Context, user *apisecurity.User) *apiservice.Response {
 	if user.GetSource().GetValue() == "" {
-		user.Source = utils.NewStringValue("Polaris")
+		user.Source = protobuf.NewStringValue("Polaris")
 	}
 	ctx := context.WithValue(context.Background(), authapi.ContextKeyInitMainUser, true)
 	rsp := s.userSvr.CreateUsers(ctx, []*apisecurity.User{

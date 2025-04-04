@@ -27,7 +27,7 @@ import (
 
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 )
 
 func TestParseRouteRuleFromAPI(t *testing.T) {
@@ -59,7 +59,7 @@ func TestToExpendRoutingConfig(t *testing.T) {
 		},
 	}
 	// 1. check json text
-	text, err := utils.MarshalToJsonString(ruleRouting)
+	text, err := protobuf.MarshalToJsonString(ruleRouting)
 	assert.Nil(t, err)
 	rConfig := &RouterConfig{}
 	rConfig.Config = text

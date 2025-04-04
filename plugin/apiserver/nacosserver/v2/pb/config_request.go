@@ -21,6 +21,8 @@ import (
 
 	"github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 )
@@ -167,10 +169,10 @@ func (c *ConfigPublishRequest) ToSpec() *config_manage.ConfigFilePublishInfo {
 		FileName:  wrapperspb.String(c.DataId),
 		Content:   wrapperspb.String(c.Content),
 		Tags:      make([]*config_manage.ConfigFileTag, 0, len(c.AdditionMap)),
-		Format:    utils.NewStringValue(utils.FileFormatText),
+		Format:    protobuf.NewStringValue(conftypes.FileFormatText),
 	}
 	if val, ok := c.AdditionMap["type"]; ok {
-		ret.Format = utils.NewStringValue(val)
+		ret.Format = protobuf.NewStringValue(val)
 	}
 
 	for k, v := range c.AdditionMap {

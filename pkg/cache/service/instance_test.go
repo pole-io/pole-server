@@ -30,10 +30,10 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	cachemock "github.com/pole-io/pole-server/pkg/cache/mock"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/store/mock"
 )
 
@@ -76,13 +76,13 @@ func genModelInstances(label string, total int) map[string]*svctypes.Instance {
 	for i := 0; i < total; i++ {
 		entry := &svctypes.Instance{
 			Proto: &apiservice.Instance{
-				Id:   utils.NewStringValue(fmt.Sprintf("instanceID-%s-%d", label, i)),
-				Host: utils.NewStringValue(fmt.Sprintf("host-%s-%d", label, i)),
-				Port: utils.NewUInt32Value(uint32(i + 10)),
+				Id:   protobuf.NewStringValue(fmt.Sprintf("instanceID-%s-%d", label, i)),
+				Host: protobuf.NewStringValue(fmt.Sprintf("host-%s-%d", label, i)),
+				Port: protobuf.NewUInt32Value(uint32(i + 10)),
 				Location: &apimodel.Location{
-					Region: utils.NewStringValue("china"),
-					Zone:   utils.NewStringValue("ap-shenzheng"),
-					Campus: utils.NewStringValue("ap-shenzheng-1"),
+					Region: protobuf.NewStringValue("china"),
+					Zone:   protobuf.NewStringValue("ap-shenzheng"),
+					Campus: protobuf.NewStringValue("ap-shenzheng-1"),
 				},
 			},
 			ServiceID: fmt.Sprintf("serviceID-%s", label),

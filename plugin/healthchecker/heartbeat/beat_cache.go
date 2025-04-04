@@ -25,7 +25,7 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 )
 
 // ReadBeatRecord Heartbeat records read results
@@ -85,7 +85,7 @@ func newLocalBeatRecordCache(soltNum int32, hashFunc HashFunction) BeatRecordCac
 	return &LocalBeatRecordCache{
 		soltNum:  soltNum,
 		hashFunc: hashFunc,
-		beatCache: utils.NewSegmentMap[string, RecordValue](int(soltNum), func(k string) int {
+		beatCache: container.NewSegmentMap[string, RecordValue](int(soltNum), func(k string) int {
 			return hashFunc(k)
 		}),
 	}
@@ -96,7 +96,7 @@ type LocalBeatRecordCache struct {
 	lock      sync.RWMutex
 	soltNum   int32
 	hashFunc  HashFunction
-	beatCache *utils.SegmentMap[string, RecordValue]
+	beatCache *container.SegmentMap[string, RecordValue]
 }
 
 func (lc *LocalBeatRecordCache) Ping() error {
@@ -147,7 +147,7 @@ func (lc *LocalBeatRecordCache) Del(keys ...string) error {
 func (lc *LocalBeatRecordCache) Clean() {
 	lc.lock.Lock()
 	defer lc.lock.Unlock()
-	lc.beatCache = utils.NewSegmentMap[string, RecordValue](int(lc.soltNum), func(k string) int {
+	lc.beatCache = container.NewSegmentMap[string, RecordValue](int(lc.soltNum), func(k string) int {
 		return lc.hashFunc(k)
 	})
 }

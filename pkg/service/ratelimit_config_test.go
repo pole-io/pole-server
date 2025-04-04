@@ -34,9 +34,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 type CacheListener struct {
@@ -201,14 +201,14 @@ func TestCreateRateLimit(t *testing.T) {
 			Labels:    map[string]*apimodel.MatchString{},
 			Amounts: []*apitraffic.Amount{
 				{
-					MaxAmount: utils.NewUInt32Value(1),
+					MaxAmount: protobuf.NewUInt32Value(1),
 					ValidDuration: &duration.Duration{
 						Seconds: 10,
 						Nanos:   10,
 					},
 				},
 				{
-					MaxAmount: utils.NewUInt32Value(2),
+					MaxAmount: protobuf.NewUInt32Value(2),
 					ValidDuration: &duration.Duration{
 						Seconds: 10,
 						Nanos:   10,
@@ -321,7 +321,7 @@ func TestDeleteRateLimit(t *testing.T) {
 	t.Run("删除限流规则时，没有传递token，返回失败", func(t *testing.T) {
 		rateLimitReq, rateLimitResp := discoverSuit.createCommonRateLimit(t, serviceResp, 3)
 		defer discoverSuit.cleanRateLimit(rateLimitResp.GetId().GetValue())
-		rateLimitReq.ServiceToken = utils.NewStringValue("")
+		rateLimitReq.ServiceToken = protobuf.NewStringValue("")
 
 		oldCtx := discoverSuit.DefaultCtx
 
@@ -404,7 +404,7 @@ func TestUpdateRateLimit(t *testing.T) {
 			discoverSuit.DefaultCtx = oldCtx
 		}()
 
-		rateLimitResp.ServiceToken = utils.NewStringValue("")
+		rateLimitResp.ServiceToken = protobuf.NewStringValue("")
 		if resp := discoverSuit.DiscoverServer().UpdateRateLimits(discoverSuit.DefaultCtx, []*apitraffic.Rule{rateLimitResp}); !respSuccess(resp) {
 			t.Logf("pass: %s", resp.GetInfo().GetValue())
 		} else {
@@ -506,8 +506,8 @@ func TestDisableRateLimit(t *testing.T) {
 		check := func(label string, disable bool) {
 			ruleContents := []*apitraffic.Rule{
 				{
-					Id:      utils.NewStringValue(rateLimitResp.GetId().GetValue()),
-					Disable: utils.NewBoolValue(disable),
+					Id:      protobuf.NewStringValue(rateLimitResp.GetId().GetValue()),
+					Disable: protobuf.NewBoolValue(disable),
 				},
 			}
 
@@ -595,8 +595,8 @@ func TestGetRateLimit(t *testing.T) {
 		defer discoverSuit.cleanRateLimitRevision(serviceName, namespaceName)
 		for j := 0; j < rateLimitsNum/serviceNum; j++ {
 			_, rateLimitResp := discoverSuit.createCommonRateLimit(t, &apiservice.Service{
-				Name:      utils.NewStringValue(serviceName),
-				Namespace: utils.NewStringValue(namespaceName),
+				Name:      protobuf.NewStringValue(serviceName),
+				Namespace: protobuf.NewStringValue(namespaceName),
 			}, j)
 			defer discoverSuit.cleanRateLimit(rateLimitResp.GetId().GetValue())
 			rateLimits = append(rateLimits, rateLimitResp)
@@ -728,15 +728,15 @@ func TestCheckRatelimitFieldLen(t *testing.T) {
 	defer discoverSuit.Destroy()
 
 	rateLimit := &apitraffic.Rule{
-		Service:      utils.NewStringValue("test"),
-		Namespace:    utils.NewStringValue("default"),
+		Service:      protobuf.NewStringValue("test"),
+		Namespace:    protobuf.NewStringValue("default"),
 		Labels:       map[string]*apimodel.MatchString{},
-		ServiceToken: utils.NewStringValue("test"),
+		ServiceToken: protobuf.NewStringValue("test"),
 	}
 	t.Run("创建限流规则，服务名超长", func(t *testing.T) {
 		str := genSpecialStr(129)
 		oldName := rateLimit.Service
-		rateLimit.Service = utils.NewStringValue(str)
+		rateLimit.Service = protobuf.NewStringValue(str)
 		resp := discoverSuit.DiscoverServer().CreateRateLimits(discoverSuit.DefaultCtx, []*apitraffic.Rule{rateLimit})
 		rateLimit.Service = oldName
 		if resp.Code.Value != api.InvalidServiceName {
@@ -746,7 +746,7 @@ func TestCheckRatelimitFieldLen(t *testing.T) {
 	t.Run("创建限流规则，命名空间超长", func(t *testing.T) {
 		str := genSpecialStr(129)
 		oldNamespace := rateLimit.Namespace
-		rateLimit.Namespace = utils.NewStringValue(str)
+		rateLimit.Namespace = protobuf.NewStringValue(str)
 		resp := discoverSuit.DiscoverServer().CreateRateLimits(discoverSuit.DefaultCtx, []*apitraffic.Rule{rateLimit})
 		rateLimit.Namespace = oldNamespace
 		if resp.Code.Value != api.InvalidNamespaceName {
@@ -756,7 +756,7 @@ func TestCheckRatelimitFieldLen(t *testing.T) {
 	t.Run("创建限流规则，名称超长", func(t *testing.T) {
 		str := genSpecialStr(2049)
 		oldName := rateLimit.Name
-		rateLimit.Name = utils.NewStringValue(str)
+		rateLimit.Name = protobuf.NewStringValue(str)
 		resp := discoverSuit.DiscoverServer().CreateRateLimits(discoverSuit.DefaultCtx, []*apitraffic.Rule{rateLimit})
 		rateLimit.Name = oldName
 		if resp.Code.Value != api.InvalidRateLimitName {

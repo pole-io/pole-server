@@ -29,6 +29,7 @@ import (
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -36,11 +37,11 @@ type configGroupCache struct {
 	*cachebase.BaseCache
 	storage store.Store
 	// files config_file_group.id -> conftypes.ConfigFileGroup
-	groups *utils.SyncMap[uint64, *conftypes.ConfigFileGroup]
+	groups *container.SyncMap[uint64, *conftypes.ConfigFileGroup]
 	// name2files config_file.<namespace, group> -> conftypes.ConfigFileGroup
-	name2groups *utils.SyncMap[string, *utils.SyncMap[string, *conftypes.ConfigFileGroup]]
+	name2groups *container.SyncMap[string, *container.SyncMap[string, *conftypes.ConfigFileGroup]]
 	// revisions namespace -> [revision]
-	revisions *utils.SyncMap[string, string]
+	revisions *container.SyncMap[string, string]
 	// singleGroup
 	singleGroup *singleflight.Group
 }
@@ -56,10 +57,10 @@ func NewConfigGroupCache(storage store.Store, cacheMgr cacheapi.CacheManager) ca
 
 // Initialize
 func (fc *configGroupCache) Initialize(opt map[string]interface{}) error {
-	fc.groups = utils.NewSyncMap[uint64, *conftypes.ConfigFileGroup]()
-	fc.name2groups = utils.NewSyncMap[string, *utils.SyncMap[string, *conftypes.ConfigFileGroup]]()
+	fc.groups = container.NewSyncMap[uint64, *conftypes.ConfigFileGroup]()
+	fc.name2groups = container.NewSyncMap[string, *container.SyncMap[string, *conftypes.ConfigFileGroup]]()
 	fc.singleGroup = &singleflight.Group{}
-	fc.revisions = utils.NewSyncMap[string, string]()
+	fc.revisions = container.NewSyncMap[string, string]()
 	return nil
 }
 
@@ -119,7 +120,7 @@ func (fc *configGroupCache) setConfigGroups(groups []*conftypes.ConfigFileGroup)
 			update++
 			fc.groups.Store(item.Id, item)
 			if _, ok := fc.name2groups.Load(item.Namespace); !ok {
-				fc.name2groups.Store(item.Namespace, utils.NewSyncMap[string, *conftypes.ConfigFileGroup]())
+				fc.name2groups.Store(item.Namespace, container.NewSyncMap[string, *conftypes.ConfigFileGroup]())
 			}
 			nsBucket, _ := fc.name2groups.Load(item.Namespace)
 			nsBucket.Store(item.Name, item)
@@ -161,10 +162,10 @@ func (fc *configGroupCache) postProcessUpdatedGroups(affect map[string]struct{})
 
 // Clear
 func (fc *configGroupCache) Clear() error {
-	fc.groups = utils.NewSyncMap[uint64, *conftypes.ConfigFileGroup]()
-	fc.name2groups = utils.NewSyncMap[string, *utils.SyncMap[string, *conftypes.ConfigFileGroup]]()
+	fc.groups = container.NewSyncMap[uint64, *conftypes.ConfigFileGroup]()
+	fc.name2groups = container.NewSyncMap[string, *container.SyncMap[string, *conftypes.ConfigFileGroup]]()
 	fc.singleGroup = &singleflight.Group{}
-	fc.revisions = utils.NewSyncMap[string, string]()
+	fc.revisions = container.NewSyncMap[string, string]()
 	return nil
 }
 
@@ -227,7 +228,7 @@ func (fc *configGroupCache) Query(args *cacheapi.ConfigGroupArgs) (uint32, []*co
 	}
 
 	values := make([]*conftypes.ConfigFileGroup, 0, 8)
-	fc.name2groups.ReadRange(func(namespce string, groups *utils.SyncMap[string, *conftypes.ConfigFileGroup]) {
+	fc.name2groups.ReadRange(func(namespce string, groups *container.SyncMap[string, *conftypes.ConfigFileGroup]) {
 		if args.Namespace != "" && utils.IsWildNotMatch(namespce, args.Namespace) {
 			return
 		}

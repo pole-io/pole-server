@@ -26,8 +26,8 @@ import (
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 const (
@@ -89,12 +89,12 @@ func TestConfigFileTemplateCRUD(t *testing.T) {
 
 func assembleConfigFileTemplate(name string) *apiconfig.ConfigFileTemplate {
 	return &apiconfig.ConfigFileTemplate{
-		Name:     utils.NewStringValue(name),
-		Content:  utils.NewStringValue("some content"),
-		Comment:  utils.NewStringValue("comment"),
-		Format:   utils.NewStringValue("json"),
-		CreateBy: utils.NewStringValue("testUser"),
-		ModifyBy: utils.NewStringValue("testUser"),
+		Name:     protobuf.NewStringValue(name),
+		Content:  protobuf.NewStringValue("some content"),
+		Comment:  protobuf.NewStringValue("comment"),
+		Format:   protobuf.NewStringValue("json"),
+		CreateBy: protobuf.NewStringValue("testUser"),
+		ModifyBy: protobuf.NewStringValue("testUser"),
 	}
 }
 

@@ -36,6 +36,7 @@ import (
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -47,12 +48,12 @@ const (
 type policyCache struct {
 	*cachebase.BaseCache
 
-	rules         *utils.SyncMap[string, *PolicyDetailCache]
-	allowPolicies map[authtypes.PrincipalType]*utils.SyncMap[string, *utils.SyncSet[string]]
-	denyPolicies  map[authtypes.PrincipalType]*utils.SyncMap[string, *utils.SyncSet[string]]
+	rules         *container.SyncMap[string, *PolicyDetailCache]
+	allowPolicies map[authtypes.PrincipalType]*container.SyncMap[string, *container.SyncSet[string]]
+	denyPolicies  map[authtypes.PrincipalType]*container.SyncMap[string, *container.SyncSet[string]]
 
 	// principalResources
-	principalResources map[authtypes.PrincipalType]*utils.SyncMap[string, *PrincipalResourceContainer]
+	principalResources map[authtypes.PrincipalType]*container.SyncMap[string, *PrincipalResourceContainer]
 
 	singleFlight *singleflight.Group
 }
@@ -77,18 +78,18 @@ func (sc *policyCache) Clear() error {
 }
 
 func (sc *policyCache) initContainers() {
-	sc.rules = utils.NewSyncMap[string, *PolicyDetailCache]()
-	sc.allowPolicies = map[authtypes.PrincipalType]*utils.SyncMap[string, *utils.SyncSet[string]]{
-		authtypes.PrincipalUser:  utils.NewSyncMap[string, *utils.SyncSet[string]](),
-		authtypes.PrincipalGroup: utils.NewSyncMap[string, *utils.SyncSet[string]](),
+	sc.rules = container.NewSyncMap[string, *PolicyDetailCache]()
+	sc.allowPolicies = map[authtypes.PrincipalType]*container.SyncMap[string, *container.SyncSet[string]]{
+		authtypes.PrincipalUser:  container.NewSyncMap[string, *container.SyncSet[string]](),
+		authtypes.PrincipalGroup: container.NewSyncMap[string, *container.SyncSet[string]](),
 	}
-	sc.denyPolicies = map[authtypes.PrincipalType]*utils.SyncMap[string, *utils.SyncSet[string]]{
-		authtypes.PrincipalUser:  utils.NewSyncMap[string, *utils.SyncSet[string]](),
-		authtypes.PrincipalGroup: utils.NewSyncMap[string, *utils.SyncSet[string]](),
+	sc.denyPolicies = map[authtypes.PrincipalType]*container.SyncMap[string, *container.SyncSet[string]]{
+		authtypes.PrincipalUser:  container.NewSyncMap[string, *container.SyncSet[string]](),
+		authtypes.PrincipalGroup: container.NewSyncMap[string, *container.SyncSet[string]](),
 	}
-	sc.principalResources = map[authtypes.PrincipalType]*utils.SyncMap[string, *PrincipalResourceContainer]{
-		authtypes.PrincipalUser:  utils.NewSyncMap[string, *PrincipalResourceContainer](),
-		authtypes.PrincipalGroup: utils.NewSyncMap[string, *PrincipalResourceContainer](),
+	sc.principalResources = map[authtypes.PrincipalType]*container.SyncMap[string, *PrincipalResourceContainer]{
+		authtypes.PrincipalUser:  container.NewSyncMap[string, *PrincipalResourceContainer](),
+		authtypes.PrincipalGroup: container.NewSyncMap[string, *PrincipalResourceContainer](),
 	}
 }
 
@@ -198,8 +199,8 @@ func (sc *policyCache) writePrincipalLink(principal authtypes.Principal, rule *P
 	}
 	values, ok := linkContainers.Load(principal.PrincipalID)
 	if !ok && !del {
-		linkContainers.ComputeIfAbsent(principal.PrincipalID, func(k string) *utils.SyncSet[string] {
-			return utils.NewSyncSet[string]()
+		linkContainers.ComputeIfAbsent(principal.PrincipalID, func(k string) *container.SyncSet[string] {
+			return container.NewSyncSet[string]()
 		})
 	}
 	if del {
@@ -253,7 +254,7 @@ func (sc *policyCache) writePrincipalLink(principal authtypes.Principal, rule *P
 }
 
 func (sc *policyCache) GetPrincipalPolicies(effect string, p authtypes.Principal) []*authtypes.StrategyDetail {
-	var ruleIds *utils.SyncSet[string]
+	var ruleIds *container.SyncSet[string]
 	var exist bool
 	switch effect {
 	case "allow":
@@ -264,7 +265,7 @@ func (sc *policyCache) GetPrincipalPolicies(effect string, p authtypes.Principal
 		allowRuleIds, allowExist := sc.allowPolicies[p.PrincipalType].Load(p.PrincipalID)
 		denyRuleIds, denyExist := sc.denyPolicies[p.PrincipalType].Load(p.PrincipalID)
 		if allowRuleIds == nil {
-			allowRuleIds = utils.NewSyncSet[string]()
+			allowRuleIds = container.NewSyncSet[string]()
 		}
 		allowRuleIds.AddAll(denyRuleIds)
 
@@ -506,12 +507,12 @@ func NewPolicyDetailCache(d *authtypes.StrategyDetail) *PolicyDetailCache {
 		}
 	}
 
-	resources := map[apisecurity.ResourceType]*utils.SyncSet[string]{}
+	resources := map[apisecurity.ResourceType]*container.SyncSet[string]{}
 	for index := range d.Resources {
 		resource := d.Resources[index]
 		resType := apisecurity.ResourceType(resource.ResType)
 		if _, ok := resources[resType]; !ok {
-			resources[resType] = utils.NewSyncSet[string]()
+			resources[resType] = container.NewSyncSet[string]()
 		}
 		resources[resType].Add(resource.ResID)
 	}
@@ -529,5 +530,5 @@ type PolicyDetailCache struct {
 	*authtypes.StrategyDetail
 	UserPrincipal  map[string]authtypes.Principal
 	GroupPrincipal map[string]authtypes.Principal
-	ResourceDict   map[apisecurity.ResourceType]*utils.SyncSet[string]
+	ResourceDict   map[apisecurity.ResourceType]*container.SyncSet[string]
 }

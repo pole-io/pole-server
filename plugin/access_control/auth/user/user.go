@@ -35,6 +35,7 @@ import (
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
@@ -62,7 +63,7 @@ func (svr *Server) CreateUsers(ctx context.Context, req []*apisecurity.User) *ap
 // CreateUser 创建用户
 func (svr *Server) CreateUser(ctx context.Context, req *apisecurity.User) *apiservice.Response {
 	ownerID := utils.ParseOwnerID(ctx)
-	req.Owner = utils.NewStringValue(ownerID)
+	req.Owner = protobuf.NewStringValue(ownerID)
 
 	if checkErrResp := checkCreateUser(ctx, req); checkErrResp != nil {
 		return checkErrResp
@@ -136,8 +137,8 @@ func (svr *Server) createUser(ctx context.Context, req *apisecurity.User) *apise
 	svr.RecordHistory(userRecordEntry(ctx, req, data, types.OCreate))
 
 	// 去除 owner 信息
-	req.Owner = utils.NewStringValue("")
-	req.Id = utils.NewStringValue(data.ID)
+	req.Owner = protobuf.NewStringValue("")
+	req.Id = protobuf.NewStringValue(data.ID)
 	return api.NewUserResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -307,8 +308,8 @@ func (svr *Server) GetUsers(ctx context.Context, filters map[string]string) *api
 	}
 
 	resp := api.NewAuthBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Amount = utils.NewUInt32Value(total)
-	resp.Size = utils.NewUInt32Value(uint32(len(users)))
+	resp.Amount = protobuf.NewUInt32Value(total)
+	resp.Size = protobuf.NewUInt32Value(uint32(len(users)))
 	resp.Users = enhancedUsers2Api(users, user2Api)
 	return resp
 }
@@ -340,10 +341,10 @@ func (svr *Server) GetUserToken(ctx context.Context, req *apisecurity.User) *api
 	}
 
 	out := &apisecurity.User{
-		Id:          utils.NewStringValue(user.ID),
-		Name:        utils.NewStringValue(user.Name),
-		AuthToken:   utils.NewStringValue(user.Token),
-		TokenEnable: utils.NewBoolValue(user.TokenEnable),
+		Id:          protobuf.NewStringValue(user.ID),
+		Name:        protobuf.NewStringValue(user.Name),
+		AuthToken:   protobuf.NewStringValue(user.Token),
+		TokenEnable: protobuf.NewBoolValue(user.TokenEnable),
 	}
 
 	return api.NewUserResponse(apimodel.Code_ExecuteSuccess, out)
@@ -409,7 +410,7 @@ func (svr *Server) ResetUserToken(ctx context.Context, req *apisecurity.User) *a
 	log.Info("[Auth][User] reset user token", utils.RequestID(ctx), zap.String("id", req.GetId().GetValue()))
 	svr.RecordHistory(userRecordEntry(ctx, req, user, types.OUpdateToken))
 
-	req.AuthToken = utils.NewStringValue(user.Token)
+	req.AuthToken = protobuf.NewStringValue(user.Token)
 
 	return api.NewUserResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -538,15 +539,15 @@ func user2Api(user *authtypes.User) *apisecurity.User {
 
 	// note: 不包括token，token比较特殊
 	out := &apisecurity.User{
-		Id:          utils.NewStringValue(user.ID),
-		Name:        utils.NewStringValue(user.Name),
-		Source:      utils.NewStringValue(user.Source),
-		Owner:       utils.NewStringValue(user.Owner),
-		TokenEnable: utils.NewBoolValue(user.TokenEnable),
-		Comment:     utils.NewStringValue(user.Comment),
-		Ctime:       utils.NewStringValue(commontime.Time2String(user.CreateTime)),
-		Mtime:       utils.NewStringValue(commontime.Time2String(user.ModifyTime)),
-		UserType:    utils.NewStringValue(authtypes.UserRoleNames[user.Type]),
+		Id:          protobuf.NewStringValue(user.ID),
+		Name:        protobuf.NewStringValue(user.Name),
+		Source:      protobuf.NewStringValue(user.Source),
+		Owner:       protobuf.NewStringValue(user.Owner),
+		TokenEnable: protobuf.NewBoolValue(user.TokenEnable),
+		Comment:     protobuf.NewStringValue(user.Comment),
+		Ctime:       protobuf.NewStringValue(commontime.Time2String(user.CreateTime)),
+		Mtime:       protobuf.NewStringValue(commontime.Time2String(user.ModifyTime)),
+		UserType:    protobuf.NewStringValue(authtypes.UserRoleNames[user.Type]),
 	}
 
 	return out

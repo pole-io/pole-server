@@ -27,9 +27,9 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // 测试discover instances
@@ -110,7 +110,7 @@ func TestDiscoverCircuitBreaker(t *testing.T) {
 	t.Run("熔断规则测试", func(t *testing.T) {
 		rules, resp := createCircuitBreakerRules(discoverSuit, 5)
 		defer cleanCircuitBreakerRules(discoverSuit, resp)
-		service := &apiservice.Service{Name: utils.NewStringValue("testDestService"), Namespace: utils.NewStringValue("test")}
+		service := &apiservice.Service{Name: protobuf.NewStringValue("testDestService"), Namespace: protobuf.NewStringValue("test")}
 		t.Run("正常获取熔断规则", func(t *testing.T) {
 			_ = discoverSuit.DiscoverServer().Cache().(*cache.CacheManager).TestUpdate()
 			out := discoverSuit.DiscoverServer().GetCircuitBreakerWithCache(discoverSuit.DefaultCtx, service)
@@ -139,7 +139,7 @@ func TestDiscoverCircuitBreaker2(t *testing.T) {
 	t.Run("熔断规则异常测试", func(t *testing.T) {
 		_, resp := createCircuitBreakerRules(discoverSuit, 1)
 		defer cleanCircuitBreakerRules(discoverSuit, resp)
-		service := &apiservice.Service{Name: utils.NewStringValue("testDestService"), Namespace: utils.NewStringValue("default")}
+		service := &apiservice.Service{Name: protobuf.NewStringValue("testDestService"), Namespace: protobuf.NewStringValue("default")}
 		t.Run("熔断规则不存在", func(t *testing.T) {
 			_ = discoverSuit.DiscoverServer().Cache().(*cache.CacheManager).TestUpdate()
 			out := discoverSuit.DiscoverServer().GetCircuitBreakerWithCache(discoverSuit.DefaultCtx, service)
@@ -308,8 +308,8 @@ func TestDiscoverRateLimits2(t *testing.T) {
 		t.Run("服务不存在", func(t *testing.T) {
 			_ = discoverSuit.DiscoverServer().Cache().(*cache.CacheManager).TestUpdate()
 			out := discoverSuit.DiscoverServer().GetRateLimitWithCache(discoverSuit.DefaultCtx, &apiservice.Service{
-				Name:      utils.NewStringValue("not_exist_service"),
-				Namespace: utils.NewStringValue("not_exist_namespace"),
+				Name:      protobuf.NewStringValue("not_exist_service"),
+				Namespace: protobuf.NewStringValue("not_exist_namespace"),
 			})
 			assert.True(t, respSuccess(out))
 			t.Logf("pass: out is %+v", out)

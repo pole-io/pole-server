@@ -17,41 +17,13 @@
 
 package utils
 
-import "strings"
+import (
+	"strings"
+
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+)
 
 const (
-	// ReleaseTypeNormal 发布类型，全量发布
-	ReleaseTypeNormal = "normal"
-	// ReleaseTypeGray 灰度发布
-	ReleaseTypeGray = "betaing"
-	// ReleaseTypeCancelGray 取消灰度发布
-	ReleaseTypeCancelGray = "cancel-gray"
-	// ReleaseTypeDelete 发布类型，删除配置发布
-	ReleaseTypeDelete = "delete"
-	// ReleaseTypeRollback 发布类型 回滚
-	ReleaseTypeRollback = "rollback"
-	// ReleaseTypeClean 发布类型，清空配置发布
-	ReleaseTypeClean = "clean"
-
-	// ReleaseStatusSuccess 发布成功状态
-	ReleaseStatusSuccess = "success"
-	// ReleaseStatusFail 发布失败状态
-	ReleaseStatusFail = "failure"
-	// ReleaseStatusToRelease 待发布状态
-	ReleaseStatusToRelease = "to-be-released"
-
-	// 文件格式
-	FileFormatText       = "text"
-	FileFormatYaml       = "yaml"
-	FileFormatXml        = "xml"
-	FileFormatJson       = "json"
-	FileFormatHtml       = "html"
-	FileFormatProperties = "properties"
-
-	FileIdSeparator = "+"
-
-	// MaxRequestBodySize 导入配置文件请求体最大 4M
-	MaxRequestBodySize = 4 * 1024 * 1024
 	// ConfigFileFormKey 配置文件表单键
 	ConfigFileFormKey = "config"
 	// ConfigFileMetaFileName 配置文件元数据文件名
@@ -64,11 +36,11 @@ const (
 
 // GenFileId 生成文件 Id
 func GenFileId(namespace, group, fileName string) string {
-	return namespace + FileIdSeparator + group + FileIdSeparator + fileName
+	return namespace + conftypes.FileIdSeparator + group + conftypes.FileIdSeparator + fileName
 }
 
 // ParseFileId 解析文件 Id
 func ParseFileId(fileId string) (namespace, group, fileName string) {
-	fileInfo := strings.Split(fileId, FileIdSeparator)
+	fileInfo := strings.Split(fileId, conftypes.FileIdSeparator)
 	return fileInfo[0], fileInfo[1], fileInfo[2]
 }

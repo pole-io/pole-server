@@ -40,9 +40,11 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/i18n"
 )
 
@@ -131,7 +133,7 @@ func (h *Handler) ParseHeaderContext() context.Context {
 // ParseFile 解析上传的配置文件
 func (h *Handler) ParseFile() ([]*apiconfig.ConfigFile, error) {
 	requestID := h.Request.HeaderParameter("Request-Id")
-	h.Request.Request.Body = http.MaxBytesReader(h.Response, h.Request.Request.Body, utils.MaxRequestBodySize)
+	h.Request.Request.Body = http.MaxBytesReader(h.Response, h.Request.Request.Body, valid.MaxRequestBodySize)
 
 	file, fileHeader, err := h.Request.Request.FormFile(utils.ConfigFileFormKey)
 	if err != nil {
@@ -233,24 +235,24 @@ func getConfigFilesFromZIP(data []byte) ([]*apiconfig.ConfigFile, error) {
 		// 解析文件扩展名
 		format := path.Ext(file.Name)
 		if format == "" {
-			format = utils.FileFormatText
+			format = conftypes.FileFormatText
 		} else {
 			format = format[1:]
 		}
 		cf := &apiconfig.ConfigFile{
-			Group:   utils.NewStringValue(group),
-			Name:    utils.NewStringValue(name),
-			Content: utils.NewStringValue(string(content)),
-			Format:  utils.NewStringValue(format),
+			Group:   protobuf.NewStringValue(group),
+			Name:    protobuf.NewStringValue(name),
+			Content: protobuf.NewStringValue(string(content)),
+			Format:  protobuf.NewStringValue(format),
 		}
 		if meta, ok := metas[file.Name]; ok {
 			if meta.Comment != "" {
-				cf.Comment = utils.NewStringValue(meta.Comment)
+				cf.Comment = protobuf.NewStringValue(meta.Comment)
 			}
 			for k, v := range meta.Tags {
 				cf.Tags = append(cf.Tags, &apiconfig.ConfigFileTag{
-					Key:   utils.NewStringValue(k),
-					Value: utils.NewStringValue(v),
+					Key:   protobuf.NewStringValue(k),
+					Value: protobuf.NewStringValue(v),
 				})
 			}
 		}

@@ -20,6 +20,7 @@ package metrics
 import (
 	"github.com/prometheus/client_golang/prometheus"
 
+	metrictypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -28,7 +29,7 @@ func registerDiscoveryMetrics() {
 		Name: "client_total",
 		Help: "polaris client instance total number",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
 	})
 
@@ -36,65 +37,65 @@ func registerDiscoveryMetrics() {
 		Name: "service_count",
 		Help: "service total number",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
-	}, []string{LabelNamespace})
+	}, []string{metrictypes.LabelNamespace})
 
 	serviceOnlineCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "service_online_count",
 		Help: "total number of service status is online",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
-	}, []string{LabelNamespace})
+	}, []string{metrictypes.LabelNamespace})
 
 	serviceAbnormalCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "service_abnormal_count",
 		Help: "total number of service status is abnormal",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
-	}, []string{LabelNamespace})
+	}, []string{metrictypes.LabelNamespace})
 
 	serviceOfflineCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "service_offline_count",
 		Help: "total number of service status is offline",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
-	}, []string{LabelNamespace})
+	}, []string{metrictypes.LabelNamespace})
 
 	instanceCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "instance_count",
 		Help: "instance total number",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
-	}, []string{LabelNamespace, LabelService})
+	}, []string{metrictypes.LabelNamespace, metrictypes.LabelService})
 
 	instanceOnlineCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "instance_online_count",
 		Help: "total number of instance status is health",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
-	}, []string{LabelNamespace, LabelService})
+	}, []string{metrictypes.LabelNamespace, metrictypes.LabelService})
 
 	instanceAbnormalCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "instance_abnormal_count",
 		Help: "total number of instance status is unhealth",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
-	}, []string{LabelNamespace, LabelService})
+	}, []string{metrictypes.LabelNamespace, metrictypes.LabelService})
 
 	instanceIsolateCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "instance_isolate_count",
 		Help: "total number of instance status is isolate",
 		ConstLabels: map[string]string{
-			LabelServerNode: utils.LocalHost,
+			metrictypes.LabelServerNode: utils.LocalHost,
 		},
-	}, []string{LabelNamespace, LabelService})
+	}, []string{metrictypes.LabelNamespace, metrictypes.LabelService})
 
 	_ = GetRegistry().Register(serviceCount)
 	_ = GetRegistry().Register(serviceOnlineCount)

@@ -32,6 +32,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 )
 
@@ -105,7 +106,7 @@ func (h *Handler) ProcessZip(consumer func(f *zip.File, data []byte)) error {
 	req := h.Request
 	rsp := h.Response
 
-	req.Request.Body = http.MaxBytesReader(rsp, req.Request.Body, utils.MaxRequestBodySize)
+	req.Request.Body = http.MaxBytesReader(rsp, req.Request.Body, valid.MaxRequestBodySize)
 
 	file, _, err := req.Request.FormFile(utils.ConfigFileFormKey)
 	if err != nil {

@@ -32,6 +32,7 @@ import (
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
@@ -218,17 +219,17 @@ func (s *Server) GetServiceWithCache(ctx context.Context, req *apiservice.Servic
 	ret := make([]*apiservice.Service, 0, len(services))
 	for _, svc := range services {
 		ret = append(ret, &apiservice.Service{
-			Namespace: utils.NewStringValue(svc.Namespace),
-			Name:      utils.NewStringValue(svc.Name),
+			Namespace: protobuf.NewStringValue(svc.Namespace),
+			Name:      protobuf.NewStringValue(svc.Name),
 			Metadata:  svc.Meta,
 		})
 	}
 
 	resp.Services = ret
 	resp.Service = &apiservice.Service{
-		Namespace: utils.NewStringValue(req.GetNamespace().GetValue()),
-		Name:      utils.NewStringValue(req.GetName().GetValue()),
-		Revision:  utils.NewStringValue(revision),
+		Namespace: protobuf.NewStringValue(req.GetNamespace().GetValue()),
+		Name:      protobuf.NewStringValue(req.GetName().GetValue()),
+		Revision:  protobuf.NewStringValue(revision),
 	}
 
 	return resp
@@ -245,7 +246,7 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	// 消费服务为了兼容，可以不带namespace，server端使用默认的namespace
 	if nsName == "" {
 		nsName = DefaultNamespace
-		req.Namespace = utils.NewStringValue(nsName)
+		req.Namespace = protobuf.NewStringValue(nsName)
 	}
 	if !s.commonCheckDiscoverRequest(req, resp) {
 		return resp
@@ -277,9 +278,9 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 
 	for _, svc := range visibleServices {
 		specSvc := &apiservice.Service{
-			Id:        utils.NewStringValue(svc.ID),
-			Name:      utils.NewStringValue(svc.Name),
-			Namespace: utils.NewStringValue(svc.Namespace),
+			Id:        protobuf.NewStringValue(svc.ID),
+			Name:      protobuf.NewStringValue(svc.Name),
+			Namespace: protobuf.NewStringValue(svc.Namespace),
 		}
 		ret := s.caches.Instance().DiscoverServiceInstances(specSvc.GetId().GetValue(), filter.GetOnlyHealthyInstance())
 		// 如果是空实例，则直接跳过，不处理实例列表以及 revision 信息
@@ -306,7 +307,7 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	// 这里需要把服务信息改为用户请求的服务名以及命名空间
 	resp.Service.Name = req.GetName()
 	resp.Service.Namespace = req.GetNamespace()
-	resp.Service.Revision = utils.NewStringValue(aggregateRevision)
+	resp.Service.Revision = protobuf.NewStringValue(aggregateRevision)
 	// 塞入源服务信息数据
 	resp.AliasFor = service2Api(aliasFor)
 	// 填充instance数据
@@ -361,8 +362,8 @@ func (s *Server) GetRoutingConfigWithCache(ctx context.Context, req *apiservice.
 	resp.Service.Revision = out.GetRevision()
 	resp.Routing = out
 	resp.AliasFor = &apiservice.Service{
-		Name:      utils.NewStringValue(aliasFor.Name),
-		Namespace: utils.NewStringValue(aliasFor.Namespace),
+		Name:      protobuf.NewStringValue(aliasFor.Name),
+		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
 	}
 	return resp
 }
@@ -383,7 +384,7 @@ func (s *Server) GetRateLimitWithCache(ctx context.Context, req *apiservice.Serv
 		return api.NewDiscoverRateLimitResponse(apimodel.Code_DataNoChange, req)
 	}
 	resp.RateLimit = &apitraffic.RateLimit{
-		Revision: utils.NewStringValue(revision),
+		Revision: protobuf.NewStringValue(revision),
 		Rules:    []*apitraffic.Rule{},
 	}
 	for i := range rules {
@@ -396,14 +397,14 @@ func (s *Server) GetRateLimitWithCache(ctx context.Context, req *apiservice.Serv
 
 	// 塞入源服务信息数据
 	resp.AliasFor = &apiservice.Service{
-		Namespace: utils.NewStringValue(aliasFor.Namespace),
-		Name:      utils.NewStringValue(aliasFor.Name),
+		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
+		Name:      protobuf.NewStringValue(aliasFor.Name),
 	}
 	// 服务名和request保持一致
 	resp.Service = &apiservice.Service{
 		Name:      req.GetName(),
 		Namespace: req.GetNamespace(),
-		Revision:  utils.NewStringValue(revision),
+		Revision:  protobuf.NewStringValue(revision),
 	}
 	return resp
 }
@@ -424,10 +425,10 @@ func (s *Server) GetFaultDetectWithCache(ctx context.Context, req *apiservice.Se
 	// 数据不一致，发生了改变
 	var err error
 	resp.AliasFor = &apiservice.Service{
-		Name:      utils.NewStringValue(aliasFor.Name),
-		Namespace: utils.NewStringValue(aliasFor.Namespace),
+		Name:      protobuf.NewStringValue(aliasFor.Name),
+		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
 	}
-	resp.Service.Revision = utils.NewStringValue(out.Revision)
+	resp.Service.Revision = protobuf.NewStringValue(out.Revision)
 	resp.FaultDetector, err = faultDetectRule2ClientAPI(out)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
@@ -454,10 +455,10 @@ func (s *Server) GetCircuitBreakerWithCache(ctx context.Context, req *apiservice
 	// 数据不一致，发生了改变
 	var err error
 	resp.AliasFor = &apiservice.Service{
-		Name:      utils.NewStringValue(aliasFor.Name),
-		Namespace: utils.NewStringValue(aliasFor.Namespace),
+		Name:      protobuf.NewStringValue(aliasFor.Name),
+		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
 	}
-	resp.Service.Revision = utils.NewStringValue(out.Revision)
+	resp.Service.Revision = protobuf.NewStringValue(out.Revision)
 	resp.CircuitBreaker, err = circuitBreaker2ClientAPI(out, req.GetName().GetValue(), req.GetNamespace().GetValue())
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
@@ -520,10 +521,10 @@ func (s *Server) GetLaneRuleWithCache(ctx context.Context, req *apiservice.Servi
 	}
 
 	resp.AliasFor = &apiservice.Service{
-		Name:      utils.NewStringValue(aliasFor.Name),
-		Namespace: utils.NewStringValue(aliasFor.Namespace),
+		Name:      protobuf.NewStringValue(aliasFor.Name),
+		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
 	}
-	resp.Service.Revision = utils.NewStringValue(revision)
+	resp.Service.Revision = protobuf.NewStringValue(revision)
 	resp.Lanes = make([]*apitraffic.LaneGroup, 0, len(out))
 	for i := range out {
 		resp.Lanes = append(resp.Lanes, out[i].Proto)
@@ -555,8 +556,8 @@ func (s *Server) GetRouterRuleWithCache(ctx context.Context, req *apiservice.Ser
 	resp.Service.Revision = out.GetRevision()
 	resp.CustomRouteRules = out.Rules
 	resp.AliasFor = &apiservice.Service{
-		Name:      utils.NewStringValue(aliasFor.Name),
-		Namespace: utils.NewStringValue(aliasFor.Namespace),
+		Name:      protobuf.NewStringValue(aliasFor.Name),
+		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
 	}
 	return resp
 }
@@ -636,27 +637,27 @@ func (s *Server) getServiceCache(name string, namespace string) *svctypes.Servic
 
 func (s *Server) commonCheckDiscoverRequest(req *apiservice.Service, resp *apiservice.DiscoverResponse) bool {
 	if s.caches == nil {
-		resp.Code = utils.NewUInt32Value(uint32(apimodel.Code_ClientAPINotOpen))
-		resp.Info = utils.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
+		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_ClientAPINotOpen))
+		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
 		resp.Service = req
 		return false
 	}
 	if req == nil {
-		resp.Code = utils.NewUInt32Value(uint32(apimodel.Code_EmptyRequest))
-		resp.Info = utils.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
+		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_EmptyRequest))
+		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
 		resp.Service = req
 		return false
 	}
 
 	if req.GetName().GetValue() == "" {
-		resp.Code = utils.NewUInt32Value(uint32(apimodel.Code_InvalidServiceName))
-		resp.Info = utils.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
+		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_InvalidServiceName))
+		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
 		resp.Service = req
 		return false
 	}
 	if req.GetNamespace().GetValue() == "" {
-		resp.Code = utils.NewUInt32Value(uint32(apimodel.Code_InvalidNamespaceName))
-		resp.Info = utils.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
+		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_InvalidNamespaceName))
+		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
 		resp.Service = req
 		return false
 	}

@@ -34,6 +34,7 @@ import (
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -43,13 +44,13 @@ type serviceCache struct {
 
 	storage store.Store
 	// service_id -> service
-	ids *utils.SyncMap[string, *svctypes.Service]
+	ids *container.SyncMap[string, *svctypes.Service]
 	// namespace -> [serviceName -> service]
-	names *utils.SyncMap[string, *utils.SyncMap[string, *svctypes.Service]]
+	names *container.SyncMap[string, *container.SyncMap[string, *svctypes.Service]]
 	// 兼容Cl5，sid -> name
-	cl5Sid2Name *utils.SyncMap[string, string]
+	cl5Sid2Name *container.SyncMap[string, string]
 	// 兼容Cl5，name -> service
-	cl5Names        *utils.SyncMap[string, *svctypes.Service]
+	cl5Names        *container.SyncMap[string, *svctypes.Service]
 	alias           *serviceAliasBucket
 	serviceList     *serviceNamespaceBucket
 	disableBusiness bool
@@ -59,10 +60,10 @@ type serviceCache struct {
 
 	plock sync.RWMutex
 	// service-id -> struct{}{}
-	pendingServices *utils.SyncMap[string, struct{}]
+	pendingServices *container.SyncMap[string, struct{}]
 	countLock       sync.Mutex
 	// namespace -> model.NamespaceServiceCount
-	namespaceServiceCnt *utils.SyncMap[string, *svctypes.NamespaceServiceCount]
+	namespaceServiceCnt *container.SyncMap[string, *svctypes.NamespaceServiceCount]
 
 	lastMtimeLogged  int64
 	lastCheckAllTime int64
@@ -72,9 +73,9 @@ type serviceCache struct {
 	cancel context.CancelFunc
 
 	// exportNamespace 某个命名空间下的所有服务的可见性
-	exportNamespace *utils.SyncMap[string, *utils.SyncSet[string]]
+	exportNamespace *container.SyncMap[string, *container.SyncSet[string]]
 	// exportServices 某个服务对部分命名空间全部可见 exportNamespace -> svcName -> svctypes.Service
-	exportServices *utils.SyncMap[string, *utils.SyncMap[string, *svctypes.Service]]
+	exportServices *container.SyncMap[string, *container.SyncMap[string, *svctypes.Service]]
 
 	subCtx *eventhub.SubscribtionContext
 }
@@ -93,14 +94,14 @@ func NewServiceCache(storage store.Store, cacheMgr types.CacheManager) types.Ser
 func (sc *serviceCache) Initialize(opt map[string]interface{}) error {
 	sc.instCache = sc.BaseCache.CacheMgr.GetCacher(types.CacheInstance).(*instanceCache)
 	sc.singleFlight = new(singleflight.Group)
-	sc.ids = utils.NewSyncMap[string, *svctypes.Service]()
-	sc.names = utils.NewSyncMap[string, *utils.SyncMap[string, *svctypes.Service]]()
-	sc.cl5Sid2Name = utils.NewSyncMap[string, string]()
-	sc.cl5Names = utils.NewSyncMap[string, *svctypes.Service]()
-	sc.pendingServices = utils.NewSyncMap[string, struct{}]()
-	sc.namespaceServiceCnt = utils.NewSyncMap[string, *svctypes.NamespaceServiceCount]()
-	sc.exportNamespace = utils.NewSyncMap[string, *utils.SyncSet[string]]()
-	sc.exportServices = utils.NewSyncMap[string, *utils.SyncMap[string, *svctypes.Service]]()
+	sc.ids = container.NewSyncMap[string, *svctypes.Service]()
+	sc.names = container.NewSyncMap[string, *container.SyncMap[string, *svctypes.Service]]()
+	sc.cl5Sid2Name = container.NewSyncMap[string, string]()
+	sc.cl5Names = container.NewSyncMap[string, *svctypes.Service]()
+	sc.pendingServices = container.NewSyncMap[string, struct{}]()
+	sc.namespaceServiceCnt = container.NewSyncMap[string, *svctypes.NamespaceServiceCount]()
+	sc.exportNamespace = container.NewSyncMap[string, *container.SyncSet[string]]()
+	sc.exportServices = container.NewSyncMap[string, *container.SyncMap[string, *svctypes.Service]]()
 	ctx, cancel := context.WithCancel(context.Background())
 	sc.cancel = cancel
 	sc.revisionWorker = newRevisionWorker(sc, sc.instCache.(*instanceCache), opt)
@@ -193,16 +194,16 @@ func (sc *serviceCache) realUpdate() (map[string]time.Time, int64, error) {
 // clear 清理内部缓存数据
 func (sc *serviceCache) Clear() error {
 	sc.BaseCache.Clear()
-	sc.ids = utils.NewSyncMap[string, *svctypes.Service]()
-	sc.names = utils.NewSyncMap[string, *utils.SyncMap[string, *svctypes.Service]]()
-	sc.cl5Sid2Name = utils.NewSyncMap[string, string]()
-	sc.cl5Names = utils.NewSyncMap[string, *svctypes.Service]()
-	sc.pendingServices = utils.NewSyncMap[string, struct{}]()
-	sc.namespaceServiceCnt = utils.NewSyncMap[string, *svctypes.NamespaceServiceCount]()
+	sc.ids = container.NewSyncMap[string, *svctypes.Service]()
+	sc.names = container.NewSyncMap[string, *container.SyncMap[string, *svctypes.Service]]()
+	sc.cl5Sid2Name = container.NewSyncMap[string, string]()
+	sc.cl5Names = container.NewSyncMap[string, *svctypes.Service]()
+	sc.pendingServices = container.NewSyncMap[string, struct{}]()
+	sc.namespaceServiceCnt = container.NewSyncMap[string, *svctypes.NamespaceServiceCount]()
 	sc.alias = newServiceAliasBucket()
 	sc.serviceList = newServiceNamespaceBucket()
-	sc.exportNamespace = utils.NewSyncMap[string, *utils.SyncSet[string]]()
-	sc.exportServices = utils.NewSyncMap[string, *utils.SyncMap[string, *svctypes.Service]]()
+	sc.exportNamespace = container.NewSyncMap[string, *container.SyncSet[string]]()
+	sc.exportServices = container.NewSyncMap[string, *container.SyncMap[string, *svctypes.Service]]()
 	return nil
 }
 
@@ -481,7 +482,7 @@ func (sc *serviceCache) setServices(services map[string]*svctypes.Service) (map[
 
 		spaces, ok := sc.names.Load(spaceName)
 		if !ok {
-			spaces = utils.NewSyncMap[string, *svctypes.Service]()
+			spaces = container.NewSyncMap[string, *svctypes.Service]()
 			sc.names.Store(spaceName, spaces)
 		}
 		spaces.Store(service.Name, service)
@@ -633,7 +634,7 @@ func (sc *serviceCache) updateCl5SidAndNames(service *svctypes.Service) {
 func (sc *serviceCache) GetVisibleServicesInOtherNamespace(ctx context.Context, svcName, namespace string) []*svctypes.Service {
 	ret := make(map[string]*svctypes.Service)
 	// 根据服务级别的可见性进行查询, 先查询精确匹配
-	sc.exportServices.ReadRange(func(exportToNs string, services *utils.SyncMap[string, *svctypes.Service]) {
+	sc.exportServices.ReadRange(func(exportToNs string, services *container.SyncMap[string, *svctypes.Service]) {
 		if exportToNs != namespace && exportToNs != types.AllMatched {
 			return
 		}
@@ -645,7 +646,7 @@ func (sc *serviceCache) GetVisibleServicesInOtherNamespace(ctx context.Context, 
 	})
 
 	// 根据命名空间级别的可见性进行查询, 先看精确的
-	sc.exportNamespace.ReadRange(func(exportNs string, viewerNs *utils.SyncSet[string]) {
+	sc.exportNamespace.ReadRange(func(exportNs string, viewerNs *container.SyncSet[string]) {
 		exactMatch := viewerNs.Contains(namespace)
 		allMatch := viewerNs.Contains(types.AllMatched)
 		if !exactMatch && !allMatch {
@@ -716,7 +717,7 @@ func (sc *serviceCache) postProcessServiceExports(services map[string]*svctypes.
 		if !svc.Valid {
 			// 服务被删除了，把所有的可见性都取消
 			// delete export services cache
-			sc.exportServices.ReadRange(func(key string, val *utils.SyncMap[string, *svctypes.Service]) {
+			sc.exportServices.ReadRange(func(key string, val *container.SyncMap[string, *svctypes.Service]) {
 				val.Delete(svc.ID)
 			})
 			continue
@@ -732,8 +733,8 @@ func (sc *serviceCache) postProcessServiceExports(services map[string]*svctypes.
 		}
 
 		for exportNs := range svc.ExportTo {
-			services, _ := sc.exportServices.ComputeIfAbsent(exportNs, func(k string) *utils.SyncMap[string, *svctypes.Service] {
-				return utils.NewSyncMap[string, *svctypes.Service]()
+			services, _ := sc.exportServices.ComputeIfAbsent(exportNs, func(k string) *container.SyncMap[string, *svctypes.Service] {
+				return container.NewSyncMap[string, *svctypes.Service]()
 			})
 			services.Store(svc.ID, svc)
 		}
@@ -753,7 +754,7 @@ func (sc *serviceCache) handleNamespaceChange(ctx context.Context, args interfac
 			sc.exportNamespace.Delete(event.Item.Name)
 			return nil
 		}
-		viewers := utils.NewSyncSet[string]()
+		viewers := container.NewSyncSet[string]()
 		sc.exportNamespace.Store(event.Item.Name, viewers)
 		for viewerNs := range exportTo {
 			viewers.Add(viewerNs)

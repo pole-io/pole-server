@@ -25,7 +25,7 @@ import (
 
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 )
 
 var (
@@ -47,7 +47,7 @@ var (
 type CacheManager struct {
 	storage  store.Store
 	caches   []cachetypes.Cache
-	needLoad *utils.SyncSet[string]
+	needLoad *container.SyncSet[string]
 }
 
 // Initialize 缓存对象初始化

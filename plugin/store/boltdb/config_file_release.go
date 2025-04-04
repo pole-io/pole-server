@@ -177,7 +177,7 @@ func (cfr *configFileReleaseStore) GetConfigFileActiveReleaseTx(tx store.Tx,
 			if !active {
 				return false
 			}
-			if relType, _ := m[FileReleaseFieldType].(string); relType != conftypes.ReleaseTypeFull {
+			if relType, _ := m[FileReleaseFieldType].(string); relType != conftypes.ReleaseTypeNormal {
 				return false
 			}
 			saveNs, _ := m[FileReleaseFieldNamespace].(string)

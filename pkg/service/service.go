@@ -32,6 +32,7 @@ import (
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -112,7 +113,7 @@ func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *ap
 		return api.NewServiceResponse(storeapi.StoreCode2APICode(err), req)
 	}
 	if service != nil {
-		req.Id = utils.NewStringValue(service.ID)
+		req.Id = protobuf.NewStringValue(service.ID)
 		return api.NewServiceResponse(apimodel.Code_ExistedResource, req)
 	}
 
@@ -129,7 +130,7 @@ func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *ap
 				return api.NewServiceResponse(storeapi.StoreCode2APICode(err), req)
 			}
 			if service != nil {
-				req.Id = utils.NewStringValue(service.ID)
+				req.Id = protobuf.NewStringValue(service.ID)
 				return api.NewServiceResponse(apimodel.Code_ExistedResource, req)
 			}
 		}
@@ -141,10 +142,10 @@ func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *ap
 	s.RecordHistory(ctx, serviceRecordEntry(ctx, req, data, types.OCreate))
 
 	out := &apiservice.Service{
-		Id:        utils.NewStringValue(data.ID),
+		Id:        protobuf.NewStringValue(data.ID),
 		Name:      req.GetName(),
 		Namespace: req.GetNamespace(),
-		Token:     utils.NewStringValue(data.Token),
+		Token:     protobuf.NewStringValue(data.Token),
 	}
 	return api.NewServiceResponse(apimodel.Code_ExecuteSuccess, out)
 }
@@ -272,7 +273,7 @@ func (s *Server) UpdateServiceToken(ctx context.Context, req *apiservice.Service
 	out := &apiservice.Service{
 		Name:      req.GetName(),
 		Namespace: req.GetNamespace(),
-		Token:     utils.NewStringValue(service.Token),
+		Token:     protobuf.NewStringValue(service.Token),
 	}
 	return api.NewServiceResponse(apimodel.Code_ExecuteSuccess, out)
 }
@@ -293,17 +294,17 @@ func (s *Server) GetAllServices(ctx context.Context, query map[string]string) *a
 	for i := range svcs {
 		count := s.Cache().Instance().GetInstancesCountByServiceID(svcs[i].ID)
 		ret = append(ret, &apiservice.Service{
-			Namespace:            utils.NewStringValue(svcs[i].Namespace),
-			Name:                 utils.NewStringValue(svcs[i].Name),
-			TotalInstanceCount:   utils.NewUInt32Value(count.TotalInstanceCount),
-			HealthyInstanceCount: utils.NewUInt32Value(count.HealthyInstanceCount),
+			Namespace:            protobuf.NewStringValue(svcs[i].Namespace),
+			Name:                 protobuf.NewStringValue(svcs[i].Name),
+			TotalInstanceCount:   protobuf.NewUInt32Value(count.TotalInstanceCount),
+			HealthyInstanceCount: protobuf.NewUInt32Value(count.HealthyInstanceCount),
 			Metadata:             svcs[i].Meta,
 		})
 	}
 
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Amount = utils.NewUInt32Value(uint32(len(ret)))
-	resp.Size = utils.NewUInt32Value(uint32(len(ret)))
+	resp.Amount = protobuf.NewUInt32Value(uint32(len(ret)))
+	resp.Size = protobuf.NewUInt32Value(uint32(len(ret)))
 	resp.Services = ret
 	return resp
 }
@@ -370,8 +371,8 @@ func (s *Server) GetServices(ctx context.Context, query map[string]string) *apis
 	}
 
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Amount = utils.NewUInt32Value(total)
-	resp.Size = utils.NewUInt32Value(uint32(len(services)))
+	resp.Amount = protobuf.NewUInt32Value(total)
+	resp.Size = protobuf.NewUInt32Value(uint32(len(services)))
 	resp.Services = enhancedServices2Api(services, service2Api)
 	return resp
 }
@@ -429,7 +430,7 @@ func (s *Server) GetServicesCount(ctx context.Context) *apiservice.BatchQueryRes
 	}
 
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Amount = utils.NewUInt32Value(count)
+	out.Amount = protobuf.NewUInt32Value(count)
 	out.Services = make([]*apiservice.Service, 0)
 	return out
 }
@@ -447,7 +448,7 @@ func (s *Server) GetServiceToken(ctx context.Context, req *apiservice.Service) *
 	out.Service = &apiservice.Service{
 		Name:      req.GetName(),
 		Namespace: req.GetNamespace(),
-		Token:     utils.NewStringValue(token),
+		Token:     protobuf.NewStringValue(token),
 	}
 	return out
 }
@@ -461,8 +462,8 @@ func (s *Server) GetServiceOwner(ctx context.Context, req []*apiservice.Service)
 	}
 
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Amount = utils.NewUInt32Value(uint32(len(services)))
-	resp.Size = utils.NewUInt32Value(uint32(len(services)))
+	resp.Amount = protobuf.NewUInt32Value(uint32(len(services)))
+	resp.Size = protobuf.NewUInt32Value(uint32(len(services)))
 	resp.Services = services2Api(services, serviceOwner2Api)
 	return resp
 }
@@ -470,7 +471,7 @@ func (s *Server) GetServiceOwner(ctx context.Context, req []*apiservice.Service)
 // createNamespaceIfAbsent Automatically create namespaces
 func (s *Server) createNamespaceIfAbsent(ctx context.Context, svc *apiservice.Service) (string, *apiservice.Response) {
 	val, errResp := s.Namespace().CreateNamespaceIfAbsent(ctx, &apimodel.Namespace{
-		Name:   utils.NewStringValue(svc.GetNamespace().GetValue()),
+		Name:   protobuf.NewStringValue(svc.GetNamespace().GetValue()),
 		Owners: svc.Owners,
 	})
 	return val, errResp
@@ -647,8 +648,8 @@ func (s *Server) isServiceExistedResource(ctx context.Context, service *svctypes
 		return nil
 	}
 	out := &apiservice.Service{
-		Name:      utils.NewStringValue(service.Name),
-		Namespace: utils.NewStringValue(service.Namespace),
+		Name:      protobuf.NewStringValue(service.Name),
+		Namespace: protobuf.NewStringValue(service.Namespace),
 	}
 	total, err := s.getInstancesCountWithService(service.Name, service.Namespace)
 	if err != nil {
@@ -721,25 +722,25 @@ func service2Api(service *svctypes.Service) *apiservice.Service {
 
 	// note: 不包括token，token比较特殊
 	out := &apiservice.Service{
-		Id:         utils.NewStringValue(service.ID),
-		Name:       utils.NewStringValue(service.Name),
-		Namespace:  utils.NewStringValue(service.Namespace),
+		Id:         protobuf.NewStringValue(service.ID),
+		Name:       protobuf.NewStringValue(service.Name),
+		Namespace:  protobuf.NewStringValue(service.Namespace),
 		Metadata:   service.Meta,
-		Ports:      utils.NewStringValue(service.Ports),
-		Business:   utils.NewStringValue(service.Business),
-		Department: utils.NewStringValue(service.Department),
-		CmdbMod1:   utils.NewStringValue(service.CmdbMod1),
-		CmdbMod2:   utils.NewStringValue(service.CmdbMod2),
-		CmdbMod3:   utils.NewStringValue(service.CmdbMod3),
-		Comment:    utils.NewStringValue(service.Comment),
-		Owners:     utils.NewStringValue(service.Owner),
-		Revision:   utils.NewStringValue(service.Revision),
-		PlatformId: utils.NewStringValue(service.PlatformID),
-		Ctime:      utils.NewStringValue(commontime.Time2String(service.CreateTime)),
-		Mtime:      utils.NewStringValue(commontime.Time2String(service.ModifyTime)),
+		Ports:      protobuf.NewStringValue(service.Ports),
+		Business:   protobuf.NewStringValue(service.Business),
+		Department: protobuf.NewStringValue(service.Department),
+		CmdbMod1:   protobuf.NewStringValue(service.CmdbMod1),
+		CmdbMod2:   protobuf.NewStringValue(service.CmdbMod2),
+		CmdbMod3:   protobuf.NewStringValue(service.CmdbMod3),
+		Comment:    protobuf.NewStringValue(service.Comment),
+		Owners:     protobuf.NewStringValue(service.Owner),
+		Revision:   protobuf.NewStringValue(service.Revision),
+		PlatformId: protobuf.NewStringValue(service.PlatformID),
+		Ctime:      protobuf.NewStringValue(commontime.Time2String(service.CreateTime)),
+		Mtime:      protobuf.NewStringValue(commontime.Time2String(service.ModifyTime)),
 		ExportTo:   service.ListExportTo(),
-		Editable:   utils.NewBoolValue(true),
-		Deleteable: utils.NewBoolValue(true),
+		Editable:   protobuf.NewBoolValue(true),
+		Deleteable: protobuf.NewBoolValue(true),
 	}
 
 	return out
@@ -752,9 +753,9 @@ func serviceOwner2Api(service *svctypes.Service) *apiservice.Service {
 		return nil
 	}
 	out := &apiservice.Service{
-		Name:      utils.NewStringValue(service.Name),
-		Namespace: utils.NewStringValue(service.Namespace),
-		Owners:    utils.NewStringValue(service.Owner),
+		Name:      protobuf.NewStringValue(service.Name),
+		Namespace: protobuf.NewStringValue(service.Namespace),
+		Owners:    protobuf.NewStringValue(service.Owner),
 	}
 	return out
 }

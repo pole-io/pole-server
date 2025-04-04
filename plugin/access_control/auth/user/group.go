@@ -32,6 +32,7 @@ import (
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
@@ -47,7 +48,7 @@ type (
 // CreateGroup create a group
 func (svr *Server) CreateGroup(ctx context.Context, req *apisecurity.UserGroup) *apiservice.Response {
 	ownerID := utils.ParseOwnerID(ctx)
-	req.Owner = utils.NewStringValue(ownerID)
+	req.Owner = protobuf.NewStringValue(ownerID)
 	if rsp := svr.preCheckGroupRelation(req.GetRelation()); rsp != nil {
 		return rsp
 	}
@@ -99,7 +100,7 @@ func (svr *Server) CreateGroup(ctx context.Context, req *apisecurity.UserGroup) 
 	log.Info("create group", zap.String("name", req.Name.GetValue()), utils.RequestID(ctx))
 	svr.RecordHistory(userGroupRecordEntry(ctx, req, data.UserGroup, types.OCreate))
 
-	req.Id = utils.NewStringValue(data.ID)
+	req.Id = protobuf.NewStringValue(data.ID)
 	return api.NewGroupResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -212,17 +213,17 @@ func (svr *Server) GetGroups(ctx context.Context, filters map[string]string) *ap
 	}
 
 	resp := api.NewAuthBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Amount = utils.NewUInt32Value(total)
-	resp.Size = utils.NewUInt32Value(uint32(len(groups)))
+	resp.Amount = protobuf.NewUInt32Value(total)
+	resp.Size = protobuf.NewUInt32Value(uint32(len(groups)))
 	resp.UserGroups = enhancedGroups2Api(groups, userGroup2Api)
 
 	for index := range resp.UserGroups {
 		group := resp.UserGroups[index]
 		cacheVal := svr.cacheMgr.User().GetGroup(group.Id.Value)
 		if cacheVal == nil {
-			group.UserCount = utils.NewUInt32Value(0)
+			group.UserCount = protobuf.NewUInt32Value(0)
 		} else {
-			group.UserCount = utils.NewUInt32Value(uint32(len(cacheVal.UserIds)))
+			group.UserCount = protobuf.NewUInt32Value(uint32(len(cacheVal.UserIds)))
 		}
 	}
 	return resp
@@ -251,8 +252,8 @@ func (svr *Server) GetGroupToken(ctx context.Context, req *apisecurity.UserGroup
 		return api.NewGroupResponse(apimodel.Code_NotFoundUserGroup, req)
 	}
 
-	req.AuthToken = utils.NewStringValue(group.Token)
-	req.TokenEnable = utils.NewBoolValue(group.TokenEnable)
+	req.AuthToken = protobuf.NewStringValue(group.Token)
+	req.TokenEnable = protobuf.NewBoolValue(group.TokenEnable)
 
 	return api.NewGroupResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -324,7 +325,7 @@ func (svr *Server) ResetGroupToken(ctx context.Context, req *apisecurity.UserGro
 		utils.RequestID(ctx))
 	svr.RecordHistory(userGroupRecordEntry(ctx, req, group.UserGroup, types.OUpdate))
 
-	req.AuthToken = utils.NewStringValue(newToken)
+	req.AuthToken = protobuf.NewStringValue(newToken)
 
 	return api.NewGroupResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -463,13 +464,13 @@ func userGroup2Api(group *authtypes.UserGroup) *apisecurity.UserGroup {
 
 	// note: 不包括token，token比较特殊
 	out := &apisecurity.UserGroup{
-		Id:          utils.NewStringValue(group.ID),
-		Name:        utils.NewStringValue(group.Name),
-		Owner:       utils.NewStringValue(group.Owner),
-		TokenEnable: utils.NewBoolValue(group.TokenEnable),
-		Comment:     utils.NewStringValue(group.Comment),
-		Ctime:       utils.NewStringValue(commontime.Time2String(group.CreateTime)),
-		Mtime:       utils.NewStringValue(commontime.Time2String(group.ModifyTime)),
+		Id:          protobuf.NewStringValue(group.ID),
+		Name:        protobuf.NewStringValue(group.Name),
+		Owner:       protobuf.NewStringValue(group.Owner),
+		TokenEnable: protobuf.NewBoolValue(group.TokenEnable),
+		Comment:     protobuf.NewStringValue(group.Comment),
+		Ctime:       protobuf.NewStringValue(commontime.Time2String(group.CreateTime)),
+		Mtime:       protobuf.NewStringValue(commontime.Time2String(group.ModifyTime)),
 	}
 
 	return out
@@ -485,29 +486,29 @@ func (svr *Server) userGroupDetail2Api(group *authtypes.UserGroupDetail) *apisec
 	for id := range group.UserIds {
 		user := svr.cacheMgr.User().GetUserByID(id)
 		users = append(users, &apisecurity.User{
-			Id:          utils.NewStringValue(user.ID),
-			Name:        utils.NewStringValue(user.Name),
-			Source:      utils.NewStringValue(user.Source),
-			Comment:     utils.NewStringValue(user.Comment),
-			TokenEnable: utils.NewBoolValue(user.TokenEnable),
-			Ctime:       utils.NewStringValue(commontime.Time2String(user.CreateTime)),
-			Mtime:       utils.NewStringValue(commontime.Time2String(user.ModifyTime)),
+			Id:          protobuf.NewStringValue(user.ID),
+			Name:        protobuf.NewStringValue(user.Name),
+			Source:      protobuf.NewStringValue(user.Source),
+			Comment:     protobuf.NewStringValue(user.Comment),
+			TokenEnable: protobuf.NewBoolValue(user.TokenEnable),
+			Ctime:       protobuf.NewStringValue(commontime.Time2String(user.CreateTime)),
+			Mtime:       protobuf.NewStringValue(commontime.Time2String(user.ModifyTime)),
 		})
 	}
 
 	// note: 不包括token，token比较特殊
 	out := &apisecurity.UserGroup{
-		Id:          utils.NewStringValue(group.ID),
-		Name:        utils.NewStringValue(group.Name),
-		Owner:       utils.NewStringValue(group.Owner),
-		TokenEnable: utils.NewBoolValue(group.TokenEnable),
-		Comment:     utils.NewStringValue(group.Comment),
-		Ctime:       utils.NewStringValue(commontime.Time2String(group.CreateTime)),
-		Mtime:       utils.NewStringValue(commontime.Time2String(group.ModifyTime)),
+		Id:          protobuf.NewStringValue(group.ID),
+		Name:        protobuf.NewStringValue(group.Name),
+		Owner:       protobuf.NewStringValue(group.Owner),
+		TokenEnable: protobuf.NewBoolValue(group.TokenEnable),
+		Comment:     protobuf.NewStringValue(group.Comment),
+		Ctime:       protobuf.NewStringValue(commontime.Time2String(group.CreateTime)),
+		Mtime:       protobuf.NewStringValue(commontime.Time2String(group.ModifyTime)),
 		Relation: &apisecurity.UserGroupRelation{
 			Users: users,
 		},
-		UserCount: utils.NewUInt32Value(uint32(len(users))),
+		UserCount: protobuf.NewUInt32Value(uint32(len(users))),
 	}
 
 	return out

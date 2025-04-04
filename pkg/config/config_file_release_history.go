@@ -26,6 +26,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -77,7 +78,7 @@ func (s *Server) GetConfigFileReleaseHistories(ctx context.Context,
 
 	if len(saveDatas) == 0 {
 		out := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-		out.Total = utils.NewUInt32Value(0)
+		out.Total = protobuf.NewUInt32Value(0)
 		return out
 	}
 
@@ -91,7 +92,7 @@ func (s *Server) GetConfigFileReleaseHistories(ctx context.Context,
 		histories = append(histories, history)
 	}
 	out := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Total = utils.NewUInt32Value(count)
+	out.Total = protobuf.NewUInt32Value(count)
 	out.ConfigFileReleaseHistories = histories
 	return out
 }

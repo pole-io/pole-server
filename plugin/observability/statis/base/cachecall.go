@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
+	metricstypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 )
 
@@ -58,7 +58,7 @@ func NewCacheStatics(statis *CacheCallStatis) *CacheStatics {
 	}
 }
 
-func (c *CacheStatics) Add(ac metrics.CallMetric) {
+func (c *CacheStatics) Add(ac metricstypes.CallMetric) {
 	index := fmt.Sprintf("%v", ac.Protocol)
 	item, exist := c.statis[index]
 	if !exist {
@@ -113,13 +113,13 @@ func (c *CacheStatics) log() {
 
 // CacheCallStatis 接口调用统计
 type CacheCallStatis struct {
-	cacheCall    chan metrics.CallMetric
+	cacheCall    chan metricstypes.CallMetric
 	cacheStatics *CacheStatics
 }
 
 func NewCacheCallStatis(ctx context.Context) (*CacheCallStatis, error) {
 	value := &CacheCallStatis{
-		cacheCall: make(chan metrics.CallMetric, 1024),
+		cacheCall: make(chan metricstypes.CallMetric, 1024),
 	}
 	value.cacheStatics = NewCacheStatics(value)
 
@@ -138,7 +138,7 @@ func NewCacheCallStatis(ctx context.Context) (*CacheCallStatis, error) {
 }
 
 // add 添加接口调用数据
-func (a *CacheCallStatis) Add(ac metrics.CallMetric) {
+func (a *CacheCallStatis) Add(ac metricstypes.CallMetric) {
 	select {
 	case a.cacheCall <- ac:
 	}

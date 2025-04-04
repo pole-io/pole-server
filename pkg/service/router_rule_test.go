@@ -29,7 +29,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
@@ -141,8 +141,8 @@ func TestDeleteRoutingConfigV2(t *testing.T) {
 		// 删除之后，数据不见
 		_ = discoverSuit.CacheMgr().TestUpdate()
 		out := discoverSuit.DiscoverServer().GetRoutingConfigWithCache(discoverSuit.DefaultCtx, &apiservice.Service{
-			Name:      utils.NewStringValue(serviceName),
-			Namespace: utils.NewStringValue(namespaceName),
+			Name:      protobuf.NewStringValue(serviceName),
+			Namespace: protobuf.NewStringValue(namespaceName),
 		})
 
 		noExist := out.GetRouting() == nil ||

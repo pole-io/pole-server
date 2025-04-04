@@ -26,7 +26,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 )
 
 /**
@@ -36,10 +36,10 @@ func CreateRateLimits(services []*apiservice.Service) []*apitraffic.Rule {
 	var rateLimits []*apitraffic.Rule
 	for index := 0; index < 2; index++ {
 		rateLimit := &apitraffic.Rule{
-			Name:      utils.NewStringValue(fmt.Sprintf("rlimit-%d", index)),
+			Name:      protobuf.NewStringValue(fmt.Sprintf("rlimit-%d", index)),
 			Service:   services[index].GetName(),
 			Namespace: services[index].GetNamespace(),
-			Priority:  utils.NewUInt32Value(uint32(index)),
+			Priority:  protobuf.NewUInt32Value(uint32(index)),
 			Resource:  apitraffic.Rule_CONCURRENCY,
 			Type:      apitraffic.Rule_LOCAL,
 			Arguments: []*apitraffic.MatchArgument{{
@@ -47,34 +47,34 @@ func CreateRateLimits(services []*apiservice.Service) []*apitraffic.Rule {
 				Key:  fmt.Sprintf("name-%d", index),
 				Value: &apimodel.MatchString{
 					Type:  apimodel.MatchString_REGEX,
-					Value: utils.NewStringValue(fmt.Sprintf("value-%d", index)),
+					Value: protobuf.NewStringValue(fmt.Sprintf("value-%d", index)),
 				},
 			}, {Type: apitraffic.MatchArgument_CUSTOM,
 				Key: fmt.Sprintf("name-%d", index+1),
 				Value: &apimodel.MatchString{
 					Type:  apimodel.MatchString_EXACT,
-					Value: utils.NewStringValue(fmt.Sprintf("value-%d", index+1)),
+					Value: protobuf.NewStringValue(fmt.Sprintf("value-%d", index+1)),
 				}}},
 			Amounts: []*apitraffic.Amount{
 				{
-					MaxAmount: utils.NewUInt32Value(uint32(index)),
+					MaxAmount: protobuf.NewUInt32Value(uint32(index)),
 					ValidDuration: &duration.Duration{
 						Seconds: int64(index),
 						Nanos:   int32(index),
 					},
 				},
 			},
-			Action:  utils.NewStringValue("REJECT"),
-			Disable: utils.NewBoolValue(true),
+			Action:  protobuf.NewStringValue("REJECT"),
+			Disable: protobuf.NewBoolValue(true),
 			Adjuster: &apitraffic.AmountAdjuster{
 				Climb: &apitraffic.ClimbConfig{
-					Enable: utils.NewBoolValue(true),
+					Enable: protobuf.NewBoolValue(true),
 					Metric: &apitraffic.ClimbConfig_MetricConfig{
 						Window: &duration.Duration{
 							Seconds: int64(index),
 							Nanos:   int32(index),
 						},
-						Precision: utils.NewUInt32Value(uint32(index)),
+						Precision: protobuf.NewUInt32Value(uint32(index)),
 						ReportInterval: &duration.Duration{
 							Seconds: int64(index),
 							Nanos:   int32(index),
@@ -82,7 +82,7 @@ func CreateRateLimits(services []*apiservice.Service) []*apitraffic.Rule {
 					},
 				},
 			},
-			RegexCombine: utils.NewBoolValue(true),
+			RegexCombine: protobuf.NewBoolValue(true),
 			AmountMode:   apitraffic.Rule_SHARE_EQUALLY,
 			Failover:     apitraffic.Rule_FAILOVER_PASS,
 		}
@@ -102,7 +102,7 @@ func UpdateRateLimits(rateLimits []*apitraffic.Rule) {
 				Key:  "key1",
 				Value: &apimodel.MatchString{
 					Type:  apimodel.MatchString_REGEX,
-					Value: utils.NewStringValue("value-1"),
+					Value: protobuf.NewStringValue("value-1"),
 				},
 			},
 		}

@@ -30,7 +30,6 @@ import (
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -393,7 +392,7 @@ func (svr *Server) GetGroups(ctx context.Context, query map[string]string) *apis
 			return true
 		}
 		// 兼容老版本的策略查询逻辑
-		if compatible, _ := ctx.Value(model.ContextKeyCompatible{}).(bool); compatible {
+		if compatible, _ := ctx.Value(utils.ContextKeyCompatible{}).(bool); compatible {
 			_, exist := u.UserIds[utils.ParseUserID(ctx)]
 			return exist
 		}

@@ -31,6 +31,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/store"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -207,15 +208,15 @@ func (s *Server) updateConfigFileAttribute(saveData, updateData *conftypes.Confi
 func (s *Server) prepareCreateConfigFile(ctx context.Context,
 	configFile *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
 
-	configFile.CreateBy = utils.NewStringValue(utils.ParseUserName(ctx))
-	configFile.ModifyBy = utils.NewStringValue(utils.ParseUserName(ctx))
+	configFile.CreateBy = protobuf.NewStringValue(utils.ParseUserName(ctx))
+	configFile.ModifyBy = protobuf.NewStringValue(utils.ParseUserName(ctx))
 
 	// 如果配置文件组不存在则自动创建
 	createGroupRsp := s.createConfigFileGroupIfAbsent(ctx, &apiconfig.ConfigFileGroup{
 		Namespace: configFile.Namespace,
 		Name:      configFile.Group,
 		CreateBy:  configFile.CreateBy,
-		Comment:   utils.NewStringValue("auto created"),
+		Comment:   protobuf.NewStringValue("auto created"),
 	})
 
 	if createGroupRsp.Code.GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
@@ -282,9 +283,9 @@ func (s *Server) DeleteConfigFile(ctx context.Context, req *apiconfig.ConfigFile
 		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	s.RecordHistory(ctx, configFileRecordEntry(ctx, &apiconfig.ConfigFile{
-		Namespace: utils.NewStringValue(namespace),
-		Group:     utils.NewStringValue(group),
-		Name:      utils.NewStringValue(fileName),
+		Namespace: protobuf.NewStringValue(namespace),
+		Group:     protobuf.NewStringValue(group),
+		Name:      protobuf.NewStringValue(fileName),
 	}, types.ODelete))
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
@@ -326,7 +327,7 @@ func (s *Server) SearchConfigFile(ctx context.Context, searchFilters map[string]
 
 	if len(files) == 0 {
 		out := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-		out.Total = utils.NewUInt32Value(count)
+		out.Total = protobuf.NewUInt32Value(count)
 		return out
 	}
 
@@ -343,7 +344,7 @@ func (s *Server) SearchConfigFile(ctx context.Context, searchFilters map[string]
 		ret = append(ret, conftypes.ToConfigFileAPI(file))
 	}
 	out := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Total = utils.NewUInt32Value(count)
+	out.Total = protobuf.NewUInt32Value(count)
 	out.ConfigFiles = ret
 	return out
 }
@@ -520,7 +521,7 @@ func (s *Server) GetAllConfigEncryptAlgorithms(ctx context.Context) *apiconfig.C
 	}
 	var algorithms []*wrapperspb.StringValue
 	for _, name := range s.cryptoManager.GetCryptoAlgoNames() {
-		algorithms = append(algorithms, utils.NewStringValue(name))
+		algorithms = append(algorithms, protobuf.NewStringValue(name))
 	}
 	return api.NewConfigEncryptAlgorithmResponse(apimodel.Code_ExecuteSuccess, algorithms)
 }

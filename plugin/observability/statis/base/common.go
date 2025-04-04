@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pole-io/pole-server/pkg/common/metrics"
+	metricstypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 )
 
 const (
@@ -31,7 +31,7 @@ const (
 	MaxAddDuration     = 800 * time.Millisecond
 )
 
-type MetricsHandler func(mt metrics.CallMetricType, start time.Time, staticsSlice []*APICallStatisItem)
+type MetricsHandler func(mt metricstypes.CallMetricType, start time.Time, staticsSlice []*APICallStatisItem)
 
 // MetricData metric 结构体
 type MetricData struct {
@@ -73,9 +73,9 @@ var (
 			Help:       "time consumed per interface call",
 			MetricType: TypeForGaugeVec,
 			LabelNames: []string{
-				metrics.LabelApi,
-				metrics.LabelProtocol,
-				metrics.LabelErrCode,
+				metricstypes.LabelApi,
+				metricstypes.LabelProtocol,
+				metricstypes.LabelErrCode,
 			},
 		},
 		{
@@ -83,9 +83,9 @@ var (
 			Help:       "total number of client request in current interval",
 			MetricType: TypeForGaugeVec,
 			LabelNames: []string{
-				metrics.LabelApi,
-				metrics.LabelProtocol,
-				metrics.LabelErrCode,
+				metricstypes.LabelApi,
+				metricstypes.LabelProtocol,
+				metricstypes.LabelErrCode,
 			},
 		},
 		{
@@ -93,9 +93,9 @@ var (
 			Help:       "max latency of client requests",
 			MetricType: TypeForGaugeVec,
 			LabelNames: []string{
-				metrics.LabelApi,
-				metrics.LabelProtocol,
-				metrics.LabelErrCode,
+				metricstypes.LabelApi,
+				metricstypes.LabelProtocol,
+				metricstypes.LabelErrCode,
 			},
 		},
 		{
@@ -103,9 +103,9 @@ var (
 			Help:       "min latency of client requests",
 			MetricType: TypeForGaugeVec,
 			LabelNames: []string{
-				metrics.LabelApi,
-				metrics.LabelProtocol,
-				metrics.LabelErrCode,
+				metricstypes.LabelApi,
+				metricstypes.LabelProtocol,
+				metricstypes.LabelErrCode,
 			},
 		},
 		{
@@ -113,9 +113,9 @@ var (
 			Help:       "average latency of client requests",
 			MetricType: TypeForGaugeVec,
 			LabelNames: []string{
-				metrics.LabelApi,
-				metrics.LabelProtocol,
-				metrics.LabelErrCode,
+				metricstypes.LabelApi,
+				metricstypes.LabelProtocol,
+				metricstypes.LabelErrCode,
 			},
 		},
 	}
@@ -124,8 +124,8 @@ var (
 // BuildMetricLabels build metric label from APICall or APICallStatisItem
 func BuildMetricLabels(item *APICallStatisItem) map[string]string {
 	return map[string]string{
-		metrics.LabelErrCode:  fmt.Sprintf("%d", item.Code),
-		metrics.LabelApi:      item.API,
-		metrics.LabelProtocol: item.Protocol,
+		metricstypes.LabelErrCode:  fmt.Sprintf("%d", item.Code),
+		metricstypes.LabelApi:      item.API,
+		metricstypes.LabelProtocol: item.Protocol,
 	}
 }

@@ -18,6 +18,7 @@
 package prometheus
 
 import (
+	metricstypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 )
 
@@ -28,15 +29,15 @@ func newConfigMetricHandle() *configMetricHandle {
 type configMetricHandle struct {
 }
 
-func (h *configMetricHandle) handle(ms []metrics.ConfigMetrics) {
+func (h *configMetricHandle) handle(ms []metricstypes.ConfigMetrics) {
 	for i := range ms {
 		m := ms[i]
 		switch m.Type {
-		case metrics.ConfigGroupMetric:
+		case metricstypes.ConfigGroupMetric:
 			metrics.GetConfigGroupTotal().With(m.Labels).Set(float64(m.Total))
-		case metrics.FileMetric:
+		case metricstypes.FileMetric:
 			metrics.GetConfigFileTotal().With(m.Labels).Set(float64(m.Total))
-		case metrics.ReleaseFileMetric:
+		case metricstypes.ReleaseFileMetric:
 			metrics.GetReleaseConfigFileTotal().With(m.Labels).Set(float64(m.Total))
 		}
 	}

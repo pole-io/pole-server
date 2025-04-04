@@ -30,7 +30,6 @@ import (
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -173,7 +172,7 @@ func (svr *Server) GetStrategies(ctx context.Context, query map[string]string) *
 			return true
 		}
 		// 兼容老版本的策略查询逻辑
-		if compatible, _ := ctx.Value(model.ContextKeyCompatible{}).(bool); compatible {
+		if compatible, _ := ctx.Value(utils.ContextKeyCompatible{}).(bool); compatible {
 			for i := range sd.Principals {
 				if sd.Principals[i].PrincipalID == utils.ParseUserID(ctx) {
 					return true

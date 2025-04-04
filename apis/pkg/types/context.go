@@ -1,5 +1,5 @@
 /**
- * Tencent is pleased to support the open source community by making Polaris available.
+ * Tencent is pleased to support the open source community by making Pole available.
  *
  * Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
  *
@@ -22,8 +22,17 @@ type (
 )
 
 const (
+	// PoleCode Pole code
+	PoleCode = "X-Pole-Code"
+	// PoleMessage Pole message
+	PoleMessage = "X-Pole-Message"
+	// PoleRequestID request_id
+	PoleRequestID = "Request-Id"
+)
+
+const (
 	// HeaderAuthTokenKey auth token key
-	HeaderAuthTokenKey string = "X-Polaris-Token"
+	HeaderAuthTokenKey string = "X-Pole-Token"
 	// HeaderIsOwnerKey is owner key
 	HeaderIsOwnerKey string = "X-Is-Owner"
 	// HeaderUserIDKey user id key
@@ -31,7 +40,7 @@ const (
 	// HeaderOwnerIDKey owner id key
 	HeaderOwnerIDKey string = "X-Owner-ID"
 	// HeaderUserRoleKey user role key
-	HeaderUserRoleKey string = "X-Polaris-User-Role"
+	HeaderUserRoleKey string = "X-Pole-User-Role"
 	// HeaderRequestId request-id
 	HeaderRequestId string = "request-id"
 	// HeaderUserAgent user agent
@@ -48,7 +57,7 @@ const (
 	// ContextUserRoleIDKey user role key
 	ContextUserRoleIDKey = StringContext(HeaderUserRoleKey)
 	// ContextAuthContextKey auth context key
-	ContextAuthContextKey = StringContext("X-Polaris-AuthContext")
+	ContextAuthContextKey = StringContext("X-Pole-AuthContext")
 	// ContextUserNameKey users name key
 	ContextUserNameKey = StringContext("X-User-Name")
 	// ContextClientAddress client address key
@@ -59,7 +68,7 @@ const (
 	ContextGrpcHeader = StringContext("grpc-header")
 	// ContextIsFromClient is from client
 	ContextIsFromClient = StringContext("from-client")
-	// ContextIsFromSystem is from polaris system
+	// ContextIsFromSystem is from Pole system
 	ContextIsFromSystem = StringContext("from-system")
 	// ContextOperator operator info
 	ContextOperator = StringContext("operator")
@@ -67,8 +76,8 @@ const (
 	ContextRequestHeaders = StringContext("request-headers")
 	// ContextRequestHeaderKey request header key
 	ContextRequestId = StringContext(HeaderRequestId)
-	// ContextPolarisToken polaris token
-	ContextPolarisToken = StringContext("polaris-token")
+	// ContextPoleToken Pole token
+	ContextPoleToken = StringContext("Pole-token")
 	// ContextClientIP client ip
 	ContextClientIP = StringContext("client-ip")
 	// ContextUserAgent user agent

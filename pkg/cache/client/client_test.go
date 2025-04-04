@@ -30,6 +30,7 @@ import (
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/store/mock"
 )
@@ -55,15 +56,15 @@ func mockClients(cnt int) map[string]*types.Client {
 		id := utils.NewUUID()
 
 		ret[id] = types.NewClient(&apiservice.Client{
-			Host:    utils.NewStringValue(fmt.Sprintf("127.0.0.%d", i+1)),
+			Host:    protobuf.NewStringValue(fmt.Sprintf("127.0.0.%d", i+1)),
 			Type:    0,
-			Version: utils.NewStringValue("v1.0.0"),
+			Version: protobuf.NewStringValue("v1.0.0"),
 			Location: &apimodel.Location{
-				Region: utils.NewStringValue("region"),
-				Zone:   utils.NewStringValue("zone"),
-				Campus: utils.NewStringValue("campus"),
+				Region: protobuf.NewStringValue("region"),
+				Zone:   protobuf.NewStringValue("zone"),
+				Campus: protobuf.NewStringValue("campus"),
 			},
-			Id:   utils.NewStringValue(id),
+			Id:   protobuf.NewStringValue(id),
 			Stat: []*apiservice.StatInfo{},
 		})
 

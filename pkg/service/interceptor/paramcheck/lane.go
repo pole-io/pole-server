@@ -130,7 +130,7 @@ func checkBatchLaneGroupRules(req []*apitraffic.LaneGroup) *apiservice.BatchWrit
 }
 
 func checkLaneGroupParam(req *apitraffic.LaneGroup, update bool) *apiservice.Response {
-	if len(req.GetName()) >= utils.MaxRuleName {
+	if len(req.GetName()) >= valid.MaxRuleName {
 		return api.NewResponseWithMsg(apimodel.Code_InvalidParameter, "lane_group name size must be <= 64")
 	}
 	if err := valid.CheckResourceName(wrapperspb.String(req.GetName())); err != nil {
@@ -144,7 +144,7 @@ func checkLaneGroupParam(req *apitraffic.LaneGroup, update bool) *apiservice.Res
 		if err := valid.CheckResourceName(wrapperspb.String(rule.GetName())); err != nil {
 			return api.NewResponseWithMsg(apimodel.Code_InvalidParameter, err.Error())
 		}
-		if len(rule.GetName()) >= utils.MaxRuleName {
+		if len(rule.GetName()) >= valid.MaxRuleName {
 			return api.NewResponseWithMsg(apimodel.Code_InvalidParameter, "lane_rule name size must be <= 64")
 		}
 	}

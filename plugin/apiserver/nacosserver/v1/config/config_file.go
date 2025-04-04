@@ -36,7 +36,6 @@ import (
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commonmodel "github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
@@ -233,7 +232,7 @@ func (n *ConfigServer) BuildTimeoutWatchCtx(ctx context.Context, watchTimeOut ti
 			finishChan:       make(chan *config_manage.ConfigClientResponse),
 			watchConfigFiles: map[string]*config_manage.ClientConfigFileInfo{},
 			betaMatcher: func(clientLabels map[string]string, event *conftypes.SimpleConfigFileRelease) bool {
-				return n.cacheSvr.Gray().HitGrayRule(commonmodel.GetGrayConfigRealseKey(event), clientLabels)
+				return n.cacheSvr.Gray().HitGrayRule(utils.GetGrayConfigRealseKey(event), clientLabels)
 			},
 		}
 		return watchCtx

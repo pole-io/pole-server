@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	nacosmodel "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 	nacospb "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2/pb"
 )
@@ -30,12 +30,12 @@ import (
 type (
 	// InFlights
 	InFlights struct {
-		inFlights *utils.SyncMap[string, *ClientInFlights]
+		inFlights *container.SyncMap[string, *ClientInFlights]
 	}
 
 	// ClientInFlights
 	ClientInFlights struct {
-		inFlights *utils.SyncMap[string, *InFlight]
+		inFlights *container.SyncMap[string, *InFlight]
 	}
 
 	// InFlight
@@ -54,7 +54,7 @@ func (i *InFlight) IsExpire(now time.Time) bool {
 }
 
 func NewInFlights(ctx context.Context) *InFlights {
-	inFlights := &InFlights{inFlights: utils.NewSyncMap[string, *ClientInFlights]()}
+	inFlights := &InFlights{inFlights: container.NewSyncMap[string, *ClientInFlights]()}
 	go inFlights.notifyOutDateInFlight(ctx)
 	return inFlights
 }
@@ -89,7 +89,7 @@ func (i *InFlights) AddInFlight(inflight *InFlight) error {
 	connID := inflight.ConnID
 	clientInFlights, _ := i.inFlights.ComputeIfAbsent(connID, func(k string) *ClientInFlights {
 		return &ClientInFlights{
-			inFlights: utils.NewSyncMap[string, *InFlight](),
+			inFlights: container.NewSyncMap[string, *InFlight](),
 		}
 	})
 

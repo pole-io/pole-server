@@ -27,8 +27,8 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
@@ -57,7 +57,7 @@ func (s *Server) SearchConfigFile(ctx context.Context,
 	offset, limit, err := valid.ParseOffsetAndLimit(filter)
 	if err != nil {
 		out := api.NewConfigBatchQueryResponse(apimodel.Code_BadRequest)
-		out.Info = utils.NewStringValue(err.Error())
+		out.Info = protobuf.NewStringValue(err.Error())
 		return out
 	}
 	searchFilters := map[string]string{

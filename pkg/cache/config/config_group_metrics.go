@@ -21,11 +21,11 @@ import (
 	"github.com/pole-io/pole-server/apis/observability/statis"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 )
 
 func (fc *configGroupCache) reportMetricsInfo() {
-	fc.name2groups.Range(func(ns string, val *utils.SyncMap[string, *conftypes.ConfigFileGroup]) {
+	fc.name2groups.Range(func(ns string, val *container.SyncMap[string, *conftypes.ConfigFileGroup]) {
 		count := val.Len()
 		reportValue := metrics.ConfigMetrics{
 			Type:    metrics.ConfigGroupMetric,

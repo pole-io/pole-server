@@ -27,8 +27,8 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
@@ -216,7 +216,7 @@ func (h *HTTPServer) GetUserToken(req *restful.Request, rsp *restful.Response) {
 	queryParams := httpcommon.ParseQueryParams(req)
 
 	user := &apisecurity.User{
-		Id: utils.NewStringValue(queryParams["id"]),
+		Id: protobuf.NewStringValue(queryParams["id"]),
 	}
 
 	handler.WriteHeaderAndProto(h.userMgn.GetUserToken(handler.ParseHeaderContext(), user))
@@ -344,7 +344,7 @@ func (h *HTTPServer) GetGroup(req *restful.Request, rsp *restful.Response) {
 	ctx := handler.ParseHeaderContext()
 
 	group := &apisecurity.UserGroup{
-		Id: utils.NewStringValue(queryParams["id"]),
+		Id: protobuf.NewStringValue(queryParams["id"]),
 	}
 
 	handler.WriteHeaderAndProto(h.userMgn.GetGroup(ctx, group))
@@ -361,7 +361,7 @@ func (h *HTTPServer) GetGroupToken(req *restful.Request, rsp *restful.Response) 
 	ctx := handler.ParseHeaderContext()
 
 	group := &apisecurity.UserGroup{
-		Id: utils.NewStringValue(queryParams["id"]),
+		Id: protobuf.NewStringValue(queryParams["id"]),
 	}
 
 	handler.WriteHeaderAndProto(h.userMgn.GetGroupToken(ctx, group))
@@ -489,7 +489,7 @@ func (h *HTTPServer) GetStrategy(req *restful.Request, rsp *restful.Response) {
 	ctx := handler.ParseHeaderContext()
 
 	strategy := &apisecurity.AuthStrategy{
-		Id: utils.NewStringValue(queryParams["id"]),
+		Id: protobuf.NewStringValue(queryParams["id"]),
 	}
 
 	handler.WriteHeaderAndProto(h.strategyMgn.GetStrategy(ctx, strategy))

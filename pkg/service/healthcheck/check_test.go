@@ -28,6 +28,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
@@ -48,10 +49,10 @@ func Test_serialSetInsDbStatus(t *testing.T) {
 
 	t.Run("prepare_instance", func(t *testing.T) {
 		resp := testSuit.DiscoverServer().RegisterInstance(testSuit.DefaultCtx, &service_manage.Instance{
-			Service:   utils.NewStringValue(mockService),
-			Namespace: utils.NewStringValue(mockNamespace),
-			Host:      utils.NewStringValue(mockHost),
-			Port:      utils.NewUInt32Value(uint32(mockPort)),
+			Service:   protobuf.NewStringValue(mockService),
+			Namespace: protobuf.NewStringValue(mockNamespace),
+			Host:      protobuf.NewStringValue(mockHost),
+			Port:      protobuf.NewUInt32Value(uint32(mockPort)),
 		})
 
 		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), resp.GetCode().GetValue(), resp.GetInfo().GetValue())
@@ -77,12 +78,12 @@ func Test_serialSetInsDbStatus(t *testing.T) {
 		}
 
 		respCode := healthcheck.SerialSetInsDbStatus(mockSvr, &service_manage.Instance{
-			Id:        utils.NewStringValue(instanceId),
-			Service:   utils.NewStringValue(mockService),
-			Namespace: utils.NewStringValue(mockNamespace),
-			Host:      utils.NewStringValue(mockHost),
-			Port:      utils.NewUInt32Value(uint32(mockPort)),
-			Healthy:   utils.NewBoolValue(true),
+			Id:        protobuf.NewStringValue(instanceId),
+			Service:   protobuf.NewStringValue(mockService),
+			Namespace: protobuf.NewStringValue(mockNamespace),
+			Host:      protobuf.NewStringValue(mockHost),
+			Port:      protobuf.NewUInt32Value(uint32(mockPort)),
+			Healthy:   protobuf.NewBoolValue(true),
 		}, health, time.Now().Unix())
 
 		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), uint32(respCode), fmt.Sprintf("%d", respCode))

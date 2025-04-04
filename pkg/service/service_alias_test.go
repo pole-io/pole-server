@@ -33,8 +33,8 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 const defaultAliasNs = "Production"
@@ -44,10 +44,10 @@ func (d *DiscoverTestSuit) createCommonAlias(service *apiservice.Service, alias 
 	req := &apiservice.ServiceAlias{
 		Service:        service.Name,
 		Namespace:      service.Namespace,
-		Alias:          utils.NewStringValue(alias),
-		AliasNamespace: utils.NewStringValue(aliasNamespace),
+		Alias:          protobuf.NewStringValue(alias),
+		AliasNamespace: protobuf.NewStringValue(aliasNamespace),
 		Type:           typ,
-		Owners:         utils.NewStringValue("polaris"),
+		Owners:         protobuf.NewStringValue("polaris"),
 	}
 	return d.DiscoverServer().CreateServiceAlias(d.DefaultCtx, req)
 }
@@ -113,14 +113,14 @@ func TestCreateServiceAlias(t *testing.T) {
 			AliasNamespace: serviceResp.Namespace,
 			Type:           apiservice.AliasType_CL5SID,
 		}
-		ctx := context.WithValue(discoverSuit.DefaultCtx, types.ContextPolarisToken,
+		ctx := context.WithValue(discoverSuit.DefaultCtx, types.ContextPoleToken,
 			serviceResp.GetToken().GetValue())
 		resp := discoverSuit.DiscoverServer().CreateServiceAlias(ctx, req)
 		assert.True(t, api.IsSuccess(resp), resp.GetInfo().GetValue())
 		discoverSuit.cleanServiceName(resp.Alias.Alias.Value, serviceResp.GetNamespace().GetValue())
 
 		// 带上系统token，也可以成功
-		ctx = context.WithValue(discoverSuit.DefaultCtx, types.ContextPolarisToken,
+		ctx = context.WithValue(discoverSuit.DefaultCtx, types.ContextPoleToken,
 			"polaris@12345678")
 		resp = discoverSuit.DiscoverServer().CreateServiceAlias(ctx, req)
 		assert.True(t, api.IsSuccess(resp), resp.GetInfo().GetValue())
@@ -230,17 +230,17 @@ func TestExceptCreateAlias(t *testing.T) {
 			noService, "x1.x2.x3", serviceResp.GetNamespace().GetValue(), apiservice.AliasType_DEFAULT)
 		assert.False(t, respSuccess(resp), resp.GetInfo().GetValue())
 
-		noService.Name = utils.NewStringValue("123")
+		noService.Name = protobuf.NewStringValue("123")
 		resp = discoverSuit.createCommonAlias(
 			noService, "x1.x2.x3", serviceResp.GetNamespace().GetValue(), apiservice.AliasType_DEFAULT)
 		assert.False(t, respSuccess(resp), resp.GetInfo().GetValue())
 
-		noService.Namespace = utils.NewStringValue("456")
+		noService.Namespace = protobuf.NewStringValue("456")
 		resp = discoverSuit.createCommonAlias(
 			noService, "x1.x2.x3", serviceResp.GetNamespace().GetValue(), apiservice.AliasType_DEFAULT)
 		assert.False(t, respSuccess(resp), resp.GetInfo().GetValue())
 
-		noService.Token = utils.NewStringValue("567")
+		noService.Token = protobuf.NewStringValue("567")
 		resp = discoverSuit.createCommonAlias(noService, "", serviceResp.GetNamespace().GetValue(), apiservice.AliasType_DEFAULT)
 		assert.False(t, respSuccess(resp), resp.GetInfo().GetValue())
 		t.Logf("return code: %d", resp.Code.Value)
@@ -248,9 +248,9 @@ func TestExceptCreateAlias(t *testing.T) {
 
 	t.Run("不存在的源服务，报错", func(t *testing.T) {
 		noService := &apiservice.Service{
-			Name:      utils.NewStringValue("my.service.2020.02.19"),
-			Namespace: utils.NewStringValue("123123"),
-			Token:     utils.NewStringValue("aaa"),
+			Name:      protobuf.NewStringValue("my.service.2020.02.19"),
+			Namespace: protobuf.NewStringValue("123123"),
+			Token:     protobuf.NewStringValue("aaa"),
 		}
 		resp := discoverSuit.createCommonAlias(noService, "x1.x2.x3", noService.Namespace.GetValue(), apiservice.AliasType_DEFAULT)
 		assert.False(t, respSuccess(resp), resp.GetInfo().GetValue())
@@ -280,7 +280,7 @@ func TestExceptCreateAlias(t *testing.T) {
 
 		resp = discoverSuit.createCommonAlias(
 			&apiservice.Service{
-				Name:      utils.NewStringValue("x1.x2.x3.x4"),
+				Name:      protobuf.NewStringValue("x1.x2.x3.x4"),
 				Namespace: serviceResp.GetNamespace(),
 			}, "x1.x2.x3.x5", serviceResp.GetNamespace().GetValue(), apiservice.AliasType_DEFAULT)
 		assert.False(t, respSuccess(resp), resp.GetInfo().GetValue())
@@ -292,7 +292,7 @@ func TestExceptCreateAlias(t *testing.T) {
 		service := &apiservice.Service{
 			Name:      serviceResp.Name,
 			Namespace: serviceResp.Namespace,
-			Token:     utils.NewStringValue("123123123"),
+			Token:     protobuf.NewStringValue("123123123"),
 		}
 
 		oldCtx := discoverSuit.DefaultCtx
@@ -343,7 +343,7 @@ func TestUpdateServiceAlias(t *testing.T) {
 			Namespace:      resp.GetAlias().GetNamespace(),
 			Alias:          resp.GetAlias().GetAlias(),
 			AliasNamespace: resp.GetAlias().GetNamespace(),
-			Owners:         utils.NewStringValue("alias-owner-new"),
+			Owners:         protobuf.NewStringValue("alias-owner-new"),
 			ServiceToken:   resp.GetAlias().GetServiceToken(),
 		}
 
@@ -429,7 +429,7 @@ func TestUpdateServiceAlias(t *testing.T) {
 
 		// 修改service token
 		req := resp.GetAlias()
-		req.ServiceToken = utils.NewStringValue("")
+		req.ServiceToken = protobuf.NewStringValue("")
 
 		repeatedResp := discoverSuit.DiscoverServer().UpdateServiceAlias(context.Background(), req)
 
@@ -470,7 +470,7 @@ func TestDeleteServiceAlias(t *testing.T) {
 
 		defer discoverSuit.cleanServiceName(resp.Alias.Alias.Value, serviceResp.Namespace.Value)
 
-		ctx := context.WithValue(discoverSuit.DefaultCtx, types.ContextPolarisToken,
+		ctx := context.WithValue(discoverSuit.DefaultCtx, types.ContextPoleToken,
 			"polaris@12345678")
 		batchResp := discoverSuit.DiscoverServer().DeleteServiceAliases(ctx, []*apiservice.ServiceAlias{resp.Alias})
 		assert.True(t, api.IsSuccess(batchResp), batchResp.GetInfo().GetValue())
@@ -499,8 +499,8 @@ func TestServiceAliasRelated(t *testing.T) {
 			Service:      resp.Alias.Alias,
 			Namespace:    serviceResp.Namespace,
 			ServiceToken: serviceResp.Token,
-			Host:         utils.NewStringValue("1.12.123.132"),
-			Port:         utils.NewUInt32Value(8080),
+			Host:         protobuf.NewStringValue("1.12.123.132"),
+			Port:         protobuf.NewUInt32Value(8080),
 		}
 		instanceResp := discoverSuit.DiscoverServer().CreateInstances(discoverSuit.DefaultCtx, []*apiservice.Instance{instance})
 		assert.False(t, api.IsSuccess(instanceResp), instanceResp.GetInfo().GetValue())
@@ -617,18 +617,18 @@ func TestCheckServiceAliasFieldLen(t *testing.T) {
 	defer discoverSuit.Destroy()
 
 	serviceAlias := &apiservice.ServiceAlias{
-		Service:        utils.NewStringValue("test-123"),
-		Namespace:      utils.NewStringValue("Production"),
-		Alias:          utils.NewStringValue("0"),
-		AliasNamespace: utils.NewStringValue("Production"),
+		Service:        protobuf.NewStringValue("test-123"),
+		Namespace:      protobuf.NewStringValue("Production"),
+		Alias:          protobuf.NewStringValue("0"),
+		AliasNamespace: protobuf.NewStringValue("Production"),
 		Type:           apiservice.AliasType_DEFAULT,
-		Owners:         utils.NewStringValue("alias-owner"),
-		Comment:        utils.NewStringValue("comment"),
+		Owners:         protobuf.NewStringValue("alias-owner"),
+		Comment:        protobuf.NewStringValue("comment"),
 	}
 	t.Run("服务名超长", func(t *testing.T) {
 		str := genSpecialStr(129)
 		oldService := serviceAlias.Service
-		serviceAlias.Service = utils.NewStringValue(str)
+		serviceAlias.Service = protobuf.NewStringValue(str)
 		resp := discoverSuit.DiscoverServer().CreateServiceAlias(discoverSuit.DefaultCtx, serviceAlias)
 		serviceAlias.Service = oldService
 		if resp.Code.Value != api.InvalidServiceName {
@@ -638,7 +638,7 @@ func TestCheckServiceAliasFieldLen(t *testing.T) {
 	t.Run("命名空间超长", func(t *testing.T) {
 		str := genSpecialStr(129)
 		oldNamespace := serviceAlias.Namespace
-		serviceAlias.Namespace = utils.NewStringValue(str)
+		serviceAlias.Namespace = protobuf.NewStringValue(str)
 		resp := discoverSuit.DiscoverServer().CreateServiceAlias(discoverSuit.DefaultCtx, serviceAlias)
 		serviceAlias.Namespace = oldNamespace
 		if resp.Code.Value != api.InvalidNamespaceName {
@@ -648,7 +648,7 @@ func TestCheckServiceAliasFieldLen(t *testing.T) {
 	t.Run("别名超长", func(t *testing.T) {
 		str := genSpecialStr(129)
 		oldAlias := serviceAlias.Alias
-		serviceAlias.Alias = utils.NewStringValue(str)
+		serviceAlias.Alias = protobuf.NewStringValue(str)
 		resp := discoverSuit.DiscoverServer().CreateServiceAlias(discoverSuit.DefaultCtx, serviceAlias)
 		serviceAlias.Alias = oldAlias
 		if resp.Code.Value != api.InvalidServiceAlias {
@@ -658,7 +658,7 @@ func TestCheckServiceAliasFieldLen(t *testing.T) {
 	t.Run("服务别名comment超长", func(t *testing.T) {
 		str := genSpecialStr(1025)
 		oldComment := serviceAlias.Comment
-		serviceAlias.Comment = utils.NewStringValue(str)
+		serviceAlias.Comment = protobuf.NewStringValue(str)
 		resp := discoverSuit.DiscoverServer().CreateServiceAlias(discoverSuit.DefaultCtx, serviceAlias)
 		serviceAlias.Comment = oldComment
 		if resp.Code.Value != api.InvalidServiceAliasComment {
@@ -668,7 +668,7 @@ func TestCheckServiceAliasFieldLen(t *testing.T) {
 	// t.Run("服务owner超长", func(t *testing.T) {
 	// 	str := genSpecialStr(1025)
 	// 	oldOwner := serviceAlias.Owners
-	// 	serviceAlias.Owners = utils.NewStringValue(str)
+	// 	serviceAlias.Owners = protobuf.NewStringValue(str)
 	// 	resp := discoverSuit.DiscoverServer().CreateServiceAlias(discoverSuit.DefaultCtx, serviceAlias)
 	// 	serviceAlias.Owners = oldOwner
 	// 	if resp.Code.Value != api.InvalidServiceAliasOwners {

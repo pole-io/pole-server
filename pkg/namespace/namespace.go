@@ -29,9 +29,9 @@ import (
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
@@ -44,7 +44,7 @@ func (s *Server) allowAutoCreate() bool {
 }
 
 func AllowAutoCreate(ctx context.Context) context.Context {
-	ctx = context.WithValue(ctx, model.ContextKeyAutoCreateNamespace{}, true)
+	ctx = context.WithValue(ctx, utils.ContextKeyAutoCreateNamespace{}, true)
 	return ctx
 }
 
@@ -74,7 +74,7 @@ func (s *Server) CreateNamespaceIfAbsent(ctx context.Context, req *apimodel.Name
 		return name, nil
 	}
 	if val == "" && !s.allowAutoCreate() {
-		ctxVal := ctx.Value(model.ContextKeyAutoCreateNamespace{})
+		ctxVal := ctx.Value(utils.ContextKeyAutoCreateNamespace{})
 		if ctxVal == nil || ctxVal.(bool) != true {
 			return "", api.NewResponse(apimodel.Code_NotFoundNamespace)
 		}
@@ -125,7 +125,7 @@ func (s *Server) CreateNamespace(ctx context.Context, req *apimodel.Namespace) *
 	log.Info("create namespace", utils.RequestID(ctx), zap.String("name", namespaceName))
 	out := &apimodel.Namespace{
 		Name:  req.GetName(),
-		Token: utils.NewStringValue(data.Token),
+		Token: protobuf.NewStringValue(data.Token),
 	}
 
 	s.RecordHistory(namespaceRecordEntry(ctx, req, types.OCreate))
@@ -307,7 +307,7 @@ func (s *Server) UpdateNamespaceToken(ctx context.Context, req *apimodel.Namespa
 
 	out := &apimodel.Namespace{
 		Name:  req.GetName(),
-		Token: utils.NewStringValue(token),
+		Token: protobuf.NewStringValue(token),
 	}
 
 	return api.NewNamespaceResponse(apimodel.Code_ExecuteSuccess, out)
@@ -330,24 +330,24 @@ func (s *Server) GetNamespaces(ctx context.Context, query map[string][]string) *
 	}
 
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Amount = utils.NewUInt32Value(amount)
-	out.Size = utils.NewUInt32Value(uint32(len(namespaces)))
+	out.Amount = protobuf.NewUInt32Value(amount)
+	out.Size = protobuf.NewUInt32Value(uint32(len(namespaces)))
 	var totalServiceCount, totalInstanceCount, totalHealthInstanceCount uint32
 	for _, namespace := range namespaces {
 		nsCntInfo := s.caches.Service().GetNamespaceCntInfo(namespace.Name)
 		api.AddNamespace(out, &apimodel.Namespace{
-			Id:                       utils.NewStringValue(namespace.Name),
-			Name:                     utils.NewStringValue(namespace.Name),
-			Comment:                  utils.NewStringValue(namespace.Comment),
-			Owners:                   utils.NewStringValue(namespace.Owner),
-			Ctime:                    utils.NewStringValue(commontime.Time2String(namespace.CreateTime)),
-			Mtime:                    utils.NewStringValue(commontime.Time2String(namespace.ModifyTime)),
-			TotalServiceCount:        utils.NewUInt32Value(nsCntInfo.ServiceCount),
-			TotalInstanceCount:       utils.NewUInt32Value(nsCntInfo.InstanceCnt.TotalInstanceCount),
-			TotalHealthInstanceCount: utils.NewUInt32Value(nsCntInfo.InstanceCnt.HealthyInstanceCount),
+			Id:                       protobuf.NewStringValue(namespace.Name),
+			Name:                     protobuf.NewStringValue(namespace.Name),
+			Comment:                  protobuf.NewStringValue(namespace.Comment),
+			Owners:                   protobuf.NewStringValue(namespace.Owner),
+			Ctime:                    protobuf.NewStringValue(commontime.Time2String(namespace.CreateTime)),
+			Mtime:                    protobuf.NewStringValue(commontime.Time2String(namespace.ModifyTime)),
+			TotalServiceCount:        protobuf.NewUInt32Value(nsCntInfo.ServiceCount),
+			TotalInstanceCount:       protobuf.NewUInt32Value(nsCntInfo.InstanceCnt.TotalInstanceCount),
+			TotalHealthInstanceCount: protobuf.NewUInt32Value(nsCntInfo.InstanceCnt.HealthyInstanceCount),
 			ServiceExportTo:          namespace.ListServiceExportTo(),
-			Editable:                 utils.NewBoolValue(true),
-			Deleteable:               utils.NewBoolValue(true),
+			Editable:                 protobuf.NewBoolValue(true),
+			Deleteable:               protobuf.NewBoolValue(true),
 			Metadata:                 namespace.Metadata,
 		})
 		totalServiceCount += nsCntInfo.ServiceCount
@@ -377,7 +377,7 @@ func (s *Server) GetNamespaceToken(ctx context.Context, req *apimodel.Namespace)
 	// 构造返回数据
 	out := &apimodel.Namespace{
 		Name:  req.GetName(),
-		Token: utils.NewStringValue(namespace.Token),
+		Token: protobuf.NewStringValue(namespace.Token),
 	}
 	return api.NewNamespaceResponse(apimodel.Code_ExecuteSuccess, out)
 }

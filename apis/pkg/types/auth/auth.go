@@ -30,6 +30,7 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/utils"
 )
 
@@ -569,7 +570,7 @@ func (r *Role) ToSpec() *apisecurity.Role {
 		users := make([]*apisecurity.User, 0, len(r.Users))
 		for i := range r.Users {
 			users = append(users, &apisecurity.User{
-				Id: utils.NewStringValue(r.Users[i].PrincipalID),
+				Id: protobuf.NewStringValue(r.Users[i].PrincipalID),
 			})
 		}
 		d.Users = users
@@ -579,7 +580,7 @@ func (r *Role) ToSpec() *apisecurity.Role {
 		groups := make([]*apisecurity.UserGroup, 0, len(d.UserGroups))
 		for i := range r.UserGroups {
 			groups = append(groups, &apisecurity.UserGroup{
-				Id: utils.NewStringValue(r.UserGroups[i].PrincipalID),
+				Id: protobuf.NewStringValue(r.UserGroups[i].PrincipalID),
 			})
 		}
 		d.UserGroups = groups

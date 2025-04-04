@@ -32,6 +32,7 @@ import (
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -174,8 +175,8 @@ func (svr *Server) GetRoles(ctx context.Context, filters map[string]string) *api
 	}
 
 	rsp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	rsp.Amount = utils.NewUInt32Value(total)
-	rsp.Size = utils.NewUInt32Value(uint32(len(ret)))
+	rsp.Amount = protobuf.NewUInt32Value(total)
+	rsp.Size = protobuf.NewUInt32Value(uint32(len(ret)))
 
 	for i := range ret {
 		if err := api.AddAnyDataIntoBatchQuery(rsp, ret[i].ToSpec()); err != nil {

@@ -28,6 +28,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
@@ -104,10 +105,10 @@ func (n *DiscoverServer) handleBeat(ctx context.Context, namespace, svcName stri
 	}
 
 	resp := n.healthSvr.Report(ctx, &apiservice.Instance{
-		Service:   utils.NewStringValue(model.ReplaceNacosService(svcName)),
-		Namespace: utils.NewStringValue(namespace),
-		Host:      utils.NewStringValue(clientBeat.Ip),
-		Port:      utils.NewUInt32Value(uint32(clientBeat.Port)),
+		Service:   protobuf.NewStringValue(model.ReplaceNacosService(svcName)),
+		Namespace: protobuf.NewStringValue(namespace),
+		Host:      protobuf.NewStringValue(clientBeat.Ip),
+		Port:      protobuf.NewUInt32Value(uint32(clientBeat.Port)),
 	})
 	rspCode := apimodel.Code(resp.GetCode().GetValue())
 

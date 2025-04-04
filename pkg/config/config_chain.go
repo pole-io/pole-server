@@ -30,7 +30,6 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/model"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -280,24 +279,24 @@ func (chain *ReleaseConfigFileChain) AfterGetFile(ctx context.Context,
 	// 首先检测灰度版本
 	if grayFile := chain.svr.fileCache.GetActiveGrayRelease(namespace, group, name); grayFile != nil {
 		if grayFile.Content == file.OriginContent {
-			file.Status = utils.ReleaseTypeGray
+			file.Status = conftypes.ReleaseTypeGray
 			file.ReleaseBy = grayFile.ModifyBy
 			file.ReleaseTime = grayFile.ModifyTime
 		} else {
-			file.Status = utils.ReleaseStatusToRelease
+			file.Status = conftypes.ReleaseStatusToRelease
 		}
 	} else if fullFile := chain.svr.fileCache.GetActiveRelease(namespace, group, name); fullFile != nil {
 		// 如果最后一次发布的内容和当前文件内容一致，则展示最后一次发布状态。否则说明文件有修改，待发布
 		if fullFile.Content == file.OriginContent {
-			file.Status = utils.ReleaseTypeNormal
+			file.Status = conftypes.ReleaseTypeNormal
 			file.ReleaseBy = fullFile.ModifyBy
 			file.ReleaseTime = fullFile.ModifyTime
 		} else {
-			file.Status = utils.ReleaseStatusToRelease
+			file.Status = conftypes.ReleaseStatusToRelease
 		}
 	} else {
 		// 如果从来没有发布过，也是待发布状态
-		file.Status = utils.ReleaseStatusToRelease
+		file.Status = conftypes.ReleaseStatusToRelease
 	}
 	return file, nil
 }
@@ -313,7 +312,7 @@ func (chain *ReleaseConfigFileChain) AfterGetFileRelease(ctx context.Context,
 	ret *conftypes.ConfigFileRelease) (*conftypes.ConfigFileRelease, error) {
 
 	if ret.ReleaseType == conftypes.ReleaseTypeGray {
-		rule := chain.svr.caches.Gray().GetGrayRule(model.GetGrayConfigRealseKey(ret.SimpleConfigFileRelease))
+		rule := chain.svr.caches.Gray().GetGrayRule(utils.GetGrayConfigRealseKey(ret.SimpleConfigFileRelease))
 		if rule == nil {
 			return nil, fmt.Errorf("gray rule not found")
 		}

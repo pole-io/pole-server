@@ -33,6 +33,7 @@ import (
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	storeapi "github.com/pole-io/pole-server/apis/store"
@@ -88,7 +89,7 @@ func (s *Server) CreateRateLimit(ctx context.Context, req *apitraffic.Rule) *api
 	log.Info(msg, utils.RequestID(ctx))
 
 	s.RecordHistory(ctx, rateLimitRecordEntry(ctx, req, data, types.OCreate))
-	req.Id = utils.NewStringValue(data.ID)
+	req.Id = protobuf.NewStringValue(data.ID)
 	return api.NewRateLimitResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -221,8 +222,8 @@ func (s *Server) GetRateLimits(ctx context.Context, query map[string]string) *ap
 	}
 
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Amount = utils.NewUInt32Value(total)
-	out.Size = utils.NewUInt32Value(uint32(len(extendRateLimits)))
+	out.Amount = protobuf.NewUInt32Value(total)
+	out.Size = protobuf.NewUInt32Value(uint32(len(extendRateLimits)))
 	out.RateLimits = make([]*apitraffic.Rule, 0, len(extendRateLimits))
 	for _, item := range extendRateLimits {
 		limit, err := rateLimit2Console(item)
@@ -351,30 +352,30 @@ func rateLimit2Console(rateLimit *rules.RateLimit) (*apitraffic.Rule, error) {
 		}
 	}
 	rule := &apitraffic.Rule{}
-	rule.Id = utils.NewStringValue(rateLimit.ID)
-	rule.Name = utils.NewStringValue(rateLimit.Name)
-	rule.Priority = utils.NewUInt32Value(rateLimit.Priority)
-	rule.Ctime = utils.NewStringValue(commontime.Time2String(rateLimit.CreateTime))
-	rule.Mtime = utils.NewStringValue(commontime.Time2String(rateLimit.ModifyTime))
-	rule.Disable = utils.NewBoolValue(rateLimit.Disable)
+	rule.Id = protobuf.NewStringValue(rateLimit.ID)
+	rule.Name = protobuf.NewStringValue(rateLimit.Name)
+	rule.Priority = protobuf.NewUInt32Value(rateLimit.Priority)
+	rule.Ctime = protobuf.NewStringValue(commontime.Time2String(rateLimit.CreateTime))
+	rule.Mtime = protobuf.NewStringValue(commontime.Time2String(rateLimit.ModifyTime))
+	rule.Disable = protobuf.NewBoolValue(rateLimit.Disable)
 	rule.Metadata = rateLimit.Metadata
 	if rateLimit.EnableTime.Year() > 2000 {
-		rule.Etime = utils.NewStringValue(commontime.Time2String(rateLimit.EnableTime))
+		rule.Etime = protobuf.NewStringValue(commontime.Time2String(rateLimit.EnableTime))
 	} else {
-		rule.Etime = utils.NewStringValue("")
+		rule.Etime = protobuf.NewStringValue("")
 	}
-	rule.Revision = utils.NewStringValue(rateLimit.Revision)
+	rule.Revision = protobuf.NewStringValue(rateLimit.Revision)
 	if nil != rateLimit.Proto {
 		copyRateLimitProto(rateLimit, rule)
 	} else {
-		rule.Method = &apimodel.MatchString{Value: utils.NewStringValue(rateLimit.Method)}
+		rule.Method = &apimodel.MatchString{Value: protobuf.NewStringValue(rateLimit.Method)}
 	}
 	return rule, nil
 }
 
 func populateDefaultRuleValue(rule *apitraffic.Rule) {
 	if rule.GetAction().GetValue() == "" {
-		rule.Action = utils.NewStringValue(defaultRuleAction)
+		rule.Action = protobuf.NewStringValue(defaultRuleAction)
 	}
 }
 
@@ -405,13 +406,13 @@ func rateLimit2Client(
 	}
 
 	rule := &apitraffic.Rule{}
-	rule.Id = utils.NewStringValue(rateLimit.ID)
-	rule.Name = utils.NewStringValue(rateLimit.Name)
-	rule.Service = utils.NewStringValue(service)
-	rule.Namespace = utils.NewStringValue(namespace)
-	rule.Priority = utils.NewUInt32Value(rateLimit.Priority)
-	rule.Revision = utils.NewStringValue(rateLimit.Revision)
-	rule.Disable = utils.NewBoolValue(rateLimit.Disable)
+	rule.Id = protobuf.NewStringValue(rateLimit.ID)
+	rule.Name = protobuf.NewStringValue(rateLimit.Name)
+	rule.Service = protobuf.NewStringValue(service)
+	rule.Namespace = protobuf.NewStringValue(namespace)
+	rule.Priority = protobuf.NewUInt32Value(rateLimit.Priority)
+	rule.Revision = protobuf.NewStringValue(rateLimit.Revision)
+	rule.Disable = protobuf.NewBoolValue(rateLimit.Disable)
 	rule.Metadata = rateLimit.Metadata
 	copyRateLimitProto(rateLimit, rule)
 	return rule, nil

@@ -28,6 +28,7 @@ import (
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -51,7 +52,7 @@ func (svr *Server) CreateServices(
 	if len(ownerID) > 0 {
 		for index := range reqs {
 			req := reqs[index]
-			req.Owners = utils.NewStringValue(ownerID)
+			req.Owners = protobuf.NewStringValue(ownerID)
 		}
 	}
 
@@ -236,14 +237,14 @@ func (svr *Server) GetServices(
 		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateServices})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-			item.Editable = utils.NewBoolValue(false)
+			item.Editable = protobuf.NewBoolValue(false)
 		}
 
 		// 检查 delete 操作权限
 		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteServices})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-			item.Deleteable = utils.NewBoolValue(false)
+			item.Deleteable = protobuf.NewBoolValue(false)
 		}
 	}
 	return resp

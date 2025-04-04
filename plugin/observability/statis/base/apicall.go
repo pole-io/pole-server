@@ -24,8 +24,8 @@ import (
 	"sync"
 	"time"
 
+	metricstypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 )
 
 // APICall 接口调用
@@ -36,7 +36,7 @@ type APICall struct {
 	Duration         int64
 	Protocol         string
 	TrafficDirection string
-	Component        metrics.CallMetricType
+	Component        metricstypes.CallMetricType
 }
 
 // APICallStatisItem 接口调用统计条目
@@ -54,14 +54,14 @@ type APICallStatisItem struct {
 
 // ComponentStatics statics components
 type ComponentStatics struct {
-	t       metrics.CallMetricType
+	t       metricstypes.CallMetricType
 	acc     chan *APICall
 	mutex   sync.Mutex
 	statis  map[string]*APICallStatisItem
 	handler MetricsHandler
 }
 
-func NewComponentStatics(ctx context.Context, t metrics.CallMetricType, handler MetricsHandler) *ComponentStatics {
+func NewComponentStatics(ctx context.Context, t metricstypes.CallMetricType, handler MetricsHandler) *ComponentStatics {
 	c := &ComponentStatics{
 		t:       t,
 		acc:     make(chan *APICall, 1024),

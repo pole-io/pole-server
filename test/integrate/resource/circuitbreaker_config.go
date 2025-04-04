@@ -27,7 +27,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 )
 
 const (
@@ -42,28 +42,28 @@ func CreateCircuitBreakers(namespace *apimodel.Namespace) []*apifault.CircuitBre
 	var circuitBreakers []*apifault.CircuitBreaker
 	for index := 0; index < 2; index++ {
 		circuitBreaker := &apifault.CircuitBreaker{
-			Name:       utils.NewStringValue(fmt.Sprintf(circuitBreakerName, index)),
+			Name:       protobuf.NewStringValue(fmt.Sprintf(circuitBreakerName, index)),
 			Namespace:  namespace.GetName(),
-			Business:   utils.NewStringValue("test"),
-			Department: utils.NewStringValue("test"),
-			Owners:     utils.NewStringValue("test"),
-			Comment:    utils.NewStringValue("test"),
+			Business:   protobuf.NewStringValue("test"),
+			Department: protobuf.NewStringValue("test"),
+			Owners:     protobuf.NewStringValue("test"),
+			Comment:    protobuf.NewStringValue("test"),
 		}
 		ruleNum := 2
 		// 填充source规则
 		sources := make([]*apifault.SourceMatcher, 0, ruleNum)
 		for i := 0; i < ruleNum; i++ {
 			source := &apifault.SourceMatcher{
-				Service:   utils.NewStringValue(fmt.Sprintf("service-test-%d", i)),
-				Namespace: utils.NewStringValue(fmt.Sprintf("namespace-test-%d", i)),
+				Service:   protobuf.NewStringValue(fmt.Sprintf("service-test-%d", i)),
+				Namespace: protobuf.NewStringValue(fmt.Sprintf("namespace-test-%d", i)),
 				Labels: map[string]*apimodel.MatchString{
 					fmt.Sprintf("name-%d", i): {
 						Type:  apimodel.MatchString_EXACT,
-						Value: utils.NewStringValue(fmt.Sprintf("value-%d", i)),
+						Value: protobuf.NewStringValue(fmt.Sprintf("value-%d", i)),
 					},
 					fmt.Sprintf("name-%d", i+1): {
 						Type:  apimodel.MatchString_REGEX,
-						Value: utils.NewStringValue(fmt.Sprintf("value-%d", i+1)),
+						Value: protobuf.NewStringValue(fmt.Sprintf("value-%d", i+1)),
 					},
 				},
 			}
@@ -74,16 +74,16 @@ func CreateCircuitBreakers(namespace *apimodel.Namespace) []*apifault.CircuitBre
 		destinations := make([]*apifault.DestinationSet, 0, ruleNum)
 		for i := 0; i < ruleNum; i++ {
 			destination := &apifault.DestinationSet{
-				Service:   utils.NewStringValue(fmt.Sprintf("service-test-%d", i)),
-				Namespace: utils.NewStringValue(fmt.Sprintf("namespace-test-%d", i)),
+				Service:   protobuf.NewStringValue(fmt.Sprintf("service-test-%d", i)),
+				Namespace: protobuf.NewStringValue(fmt.Sprintf("namespace-test-%d", i)),
 				Metadata: map[string]*apimodel.MatchString{
 					fmt.Sprintf("name-%d", i): {
 						Type:  apimodel.MatchString_EXACT,
-						Value: utils.NewStringValue(fmt.Sprintf("value-%d", i)),
+						Value: protobuf.NewStringValue(fmt.Sprintf("value-%d", i)),
 					},
 					fmt.Sprintf("name-%d", i+1): {
 						Type:  apimodel.MatchString_REGEX,
-						Value: utils.NewStringValue(fmt.Sprintf("value-%d", i+1)),
+						Value: protobuf.NewStringValue(fmt.Sprintf("value-%d", i+1)),
 					},
 				},
 				Resource: 0,
@@ -92,7 +92,7 @@ func CreateCircuitBreakers(namespace *apimodel.Namespace) []*apifault.CircuitBre
 				MetricWindow: &duration.Duration{
 					Seconds: int64(i),
 				},
-				MetricPrecision: utils.NewUInt32Value(uint32(i)),
+				MetricPrecision: protobuf.NewUInt32Value(uint32(i)),
 				UpdateInterval: &duration.Duration{
 					Seconds: int64(i),
 				},
@@ -167,7 +167,7 @@ func CreateCircuitBreakerVersions(circuitBreakers []*apifault.CircuitBreaker) []
 			Name:      item.GetName(),
 			Namespace: item.GetNamespace(),
 			Token:     item.GetToken(),
-			Version:   utils.NewStringValue(fmt.Sprintf("test-version-%d", index)),
+			Version:   protobuf.NewStringValue(fmt.Sprintf("test-version-%d", index)),
 		}
 		newCircuitBreakers = append(newCircuitBreakers, newCircuitBreaker)
 	}

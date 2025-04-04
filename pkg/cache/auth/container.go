@@ -21,20 +21,21 @@ import (
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // PrincipalResourceContainer principal 资源容器
 type PrincipalResourceContainer struct {
-	denyResources  *utils.SyncMap[apisecurity.ResourceType, *utils.RefSyncSet[string, string]]
-	allowResources *utils.SyncMap[apisecurity.ResourceType, *utils.RefSyncSet[string, string]]
+	denyResources  *container.SyncMap[apisecurity.ResourceType, *container.RefSyncSet[string, string]]
+	allowResources *container.SyncMap[apisecurity.ResourceType, *container.RefSyncSet[string, string]]
 }
 
 // NewPrincipalResourceContainer 创建 PrincipalResourceContainer 对象
 func NewPrincipalResourceContainer() *PrincipalResourceContainer {
 	return &PrincipalResourceContainer{
-		allowResources: utils.NewSyncMap[apisecurity.ResourceType, *utils.RefSyncSet[string, string]](),
-		denyResources:  utils.NewSyncMap[apisecurity.ResourceType, *utils.RefSyncSet[string, string]](),
+		allowResources: container.NewSyncMap[apisecurity.ResourceType, *container.RefSyncSet[string, string]](),
+		denyResources:  container.NewSyncMap[apisecurity.ResourceType, *container.RefSyncSet[string, string]](),
 	}
 }
 
@@ -80,30 +81,30 @@ func (p *PrincipalResourceContainer) DelResource(a apisecurity.AuthAction, r aut
 }
 
 func (p *PrincipalResourceContainer) saveResource(
-	container *utils.SyncMap[apisecurity.ResourceType, *utils.RefSyncSet[string, string]], res authtypes.StrategyResource) {
+	resContainer *container.SyncMap[apisecurity.ResourceType, *container.RefSyncSet[string, string]], res authtypes.StrategyResource) {
 
 	resType := apisecurity.ResourceType(res.ResType)
-	container.ComputeIfAbsent(resType, func(k apisecurity.ResourceType) *utils.RefSyncSet[string, string] {
-		return utils.NewRefSyncSet[string, string]()
+	resContainer.ComputeIfAbsent(resType, func(k apisecurity.ResourceType) *container.RefSyncSet[string, string] {
+		return container.NewRefSyncSet[string, string]()
 	})
 
-	ids, _ := container.Load(resType)
-	ids.Add(utils.Reference[string, string]{
+	ids, _ := resContainer.Load(resType)
+	ids.Add(container.Reference[string, string]{
 		Key:        res.ResID,
 		Referencer: res.StrategyID,
 	})
 }
 
 func (p *PrincipalResourceContainer) delResource(
-	container *utils.SyncMap[apisecurity.ResourceType, *utils.RefSyncSet[string, string]], res authtypes.StrategyResource) {
+	resContainer *container.SyncMap[apisecurity.ResourceType, *container.RefSyncSet[string, string]], res authtypes.StrategyResource) {
 
 	resType := apisecurity.ResourceType(res.ResType)
-	container.ComputeIfAbsent(resType, func(k apisecurity.ResourceType) *utils.RefSyncSet[string, string] {
-		return utils.NewRefSyncSet[string, string]()
+	resContainer.ComputeIfAbsent(resType, func(k apisecurity.ResourceType) *container.RefSyncSet[string, string] {
+		return container.NewRefSyncSet[string, string]()
 	})
 
-	ids, _ := container.Load(resType)
-	ids.Remove(utils.Reference[string, string]{
+	ids, _ := resContainer.Load(resType)
+	ids.Remove(container.Reference[string, string]{
 		Key:        res.ResID,
 		Referencer: res.StrategyID,
 	})

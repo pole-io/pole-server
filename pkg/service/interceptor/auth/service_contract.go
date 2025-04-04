@@ -24,8 +24,8 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // CreateServiceContracts .
@@ -34,8 +34,8 @@ func (svr *Server) CreateServiceContracts(ctx context.Context,
 	services := make([]*apiservice.Service, 0, len(req))
 	for i := range req {
 		services = append(services, &apiservice.Service{
-			Namespace: utils.NewStringValue(req[i].Namespace),
-			Name:      utils.NewStringValue(req[i].Service),
+			Namespace: protobuf.NewStringValue(req[i].Namespace),
+			Name:      protobuf.NewStringValue(req[i].Service),
 		})
 	}
 
@@ -82,8 +82,8 @@ func (svr *Server) DeleteServiceContracts(ctx context.Context,
 	services := make([]*apiservice.Service, 0, len(req))
 	for i := range req {
 		services = append(services, &apiservice.Service{
-			Namespace: utils.NewStringValue(req[i].Namespace),
-			Name:      utils.NewStringValue(req[i].Service),
+			Namespace: protobuf.NewStringValue(req[i].Namespace),
+			Name:      protobuf.NewStringValue(req[i].Service),
 		})
 	}
 
@@ -102,8 +102,8 @@ func (svr *Server) CreateServiceContractInterfaces(ctx context.Context, contract
 	source apiservice.InterfaceDescriptor_Source) *apiservice.Response {
 	authCtx := svr.collectServiceAuthContext(ctx, []*apiservice.Service{
 		{
-			Namespace: utils.NewStringValue(contract.Namespace),
-			Name:      utils.NewStringValue(contract.Service),
+			Namespace: protobuf.NewStringValue(contract.Namespace),
+			Name:      protobuf.NewStringValue(contract.Service),
 		},
 	}, authcommon.Modify, authcommon.CreateServiceContractInterfaces)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -120,8 +120,8 @@ func (svr *Server) AppendServiceContractInterfaces(ctx context.Context,
 	contract *apiservice.ServiceContract, source apiservice.InterfaceDescriptor_Source) *apiservice.Response {
 	authCtx := svr.collectServiceAuthContext(ctx, []*apiservice.Service{
 		{
-			Namespace: utils.NewStringValue(contract.Namespace),
-			Name:      utils.NewStringValue(contract.Service),
+			Namespace: protobuf.NewStringValue(contract.Namespace),
+			Name:      protobuf.NewStringValue(contract.Service),
 		},
 	}, authcommon.Modify, authcommon.AppendServiceContractInterfaces)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -138,8 +138,8 @@ func (svr *Server) DeleteServiceContractInterfaces(ctx context.Context,
 	contract *apiservice.ServiceContract) *apiservice.Response {
 	authCtx := svr.collectServiceAuthContext(ctx, []*apiservice.Service{
 		{
-			Namespace: utils.NewStringValue(contract.Namespace),
-			Name:      utils.NewStringValue(contract.Service),
+			Namespace: protobuf.NewStringValue(contract.Namespace),
+			Name:      protobuf.NewStringValue(contract.Service),
 		},
 	}, authcommon.Modify, authcommon.DeleteServiceContractInterfaces)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {

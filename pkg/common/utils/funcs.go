@@ -19,15 +19,24 @@ package utils
 
 import (
 	"context"
+	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"io"
+	"reflect"
 	"strings"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
 var emptyVal = struct{}{}
@@ -35,6 +44,10 @@ var emptyVal = struct{}{}
 // Int2bool 整数转换为bool值
 func Int2bool(entry int) bool {
 	return entry != 0
+}
+
+func BoolPtr(v bool) *bool {
+	return &v
 }
 
 // StatusBoolToInt 状态bool转int
@@ -274,6 +287,123 @@ func ConvertGRPCContext(ctx context.Context) context.Context {
 	return ctx
 }
 
-func BoolPtr(v bool) *bool {
-	return &v
+// CalculateInstanceID 计算实例ID
+func CalculateInstanceID(namespace string, service string, vpcID string, host string, port uint32) (string, error) {
+	h := sha1.New()
+	var str string
+	// 兼容带有vpcID的instance
+	if vpcID == "" {
+		str = fmt.Sprintf("%s##%s##%s##%d", namespace, service, host, port)
+	} else {
+		str = fmt.Sprintf("%s##%s##%s##%s##%d", namespace, service, vpcID, host, port)
+	}
+
+	if _, err := io.WriteString(h, str); err != nil {
+		return "", err
+	}
+
+	out := hex.EncodeToString(h.Sum(nil))
+	return out, nil
+}
+
+// CalculateRuleID 计算规则ID
+func CalculateRuleID(name, namespace string) string {
+	return name + "." + namespace
+}
+
+// ConvertStringValuesToSlice 转换StringValues为字符串切片
+func ConvertStringValuesToSlice(vals []*wrapperspb.StringValue) []string {
+	ret := make([]string, 0, 4)
+
+	for index := range vals {
+		id := vals[index]
+		if strings.TrimSpace(id.GetValue()) == "" {
+			continue
+		}
+		ret = append(ret, id.GetValue())
+	}
+
+	return ret
+}
+
+// BuildSha1Digest 构建SHA1摘要
+func BuildSha1Digest(value string) (string, error) {
+	if len(value) == 0 {
+		return "", nil
+	}
+	h := sha1.New()
+	if _, err := io.WriteString(h, value); err != nil {
+		return "", err
+	}
+	out := hex.EncodeToString(h.Sum(nil))
+	return out, nil
+}
+
+func CheckContractInterfaceTetrad(contractId string, source apiservice.InterfaceDescriptor_Source,
+	req *apiservice.InterfaceDescriptor) (string, *apiservice.Response) {
+	if contractId == "" {
+		return "", api.NewResponseWithMsg(apimodel.Code_BadRequest, "invalid service_contract id")
+	}
+	if req.GetId() != "" {
+		return req.GetId(), nil
+	}
+	if req.GetPath() == "" {
+		return "", api.NewResponseWithMsg(apimodel.Code_BadRequest, "invalid service_contract interface path")
+	}
+	h := sha1.New()
+	str := fmt.Sprintf("%s##%s##%s##%s##%d", contractId, req.GetMethod(), req.GetPath(), req.GetName(), source)
+
+	if _, err := io.WriteString(h, str); err != nil {
+		return "", api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
+	}
+	out := hex.EncodeToString(h.Sum(nil))
+	return out, nil
+}
+
+func CalculateContractID(namespace, service, name, protocol, version string) (string, error) {
+	h := sha1.New()
+	str := fmt.Sprintf("%s##%s##%s##%s##%s", namespace, service, name, protocol, version)
+
+	if _, err := io.WriteString(h, str); err != nil {
+		return "", err
+	}
+
+	out := hex.EncodeToString(h.Sum(nil))
+	return out, nil
+}
+
+// ConvertMetadataToStringValue 将Metadata转换为可序列化字符串
+func ConvertMetadataToStringValue(metadata map[string]string) (string, error) {
+	if metadata == nil {
+		return "", nil
+	}
+	v, err := json.Marshal(metadata)
+	if err != nil {
+		return "", err
+	}
+	return string(v), nil
+}
+
+// ConvertStringValueToMetadata 将字符串反序列为metadata
+func ConvertStringValueToMetadata(str string) (map[string]string, error) {
+	if str == "" {
+		return nil, nil
+	}
+	v := make(map[string]string)
+	err := json.Unmarshal([]byte(str), &v)
+	if err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+// NeedUpdateMetadata 判断是否出现了metadata的变更
+func NeedUpdateMetadata(metadata map[string]string, inMetadata map[string]string) bool {
+	if inMetadata == nil {
+		return false
+	}
+	if len(metadata) != len(inMetadata) {
+		return true
+	}
+	return !reflect.DeepEqual(metadata, inMetadata)
 }

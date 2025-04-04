@@ -28,6 +28,7 @@ import (
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -42,18 +43,18 @@ func NewRoleCache(storage store.Store, cacheMgr cacheapi.CacheManager) cacheapi.
 type roleCache struct {
 	*cachebase.BaseCache
 	// roles
-	roles *utils.SyncMap[string, *authtypes.Role]
+	roles *container.SyncMap[string, *authtypes.Role]
 	// principalRoles
-	principalRoles map[authtypes.PrincipalType]*utils.SyncMap[string, *utils.SyncSet[string]]
+	principalRoles map[authtypes.PrincipalType]*container.SyncMap[string, *container.SyncSet[string]]
 	singleFlight   *singleflight.Group
 }
 
 // Initialize implements api.RoleCache.
 func (r *roleCache) Initialize(c map[string]interface{}) error {
-	r.roles = utils.NewSyncMap[string, *authtypes.Role]()
-	r.principalRoles = map[authtypes.PrincipalType]*utils.SyncMap[string, *utils.SyncSet[string]]{
-		authtypes.PrincipalUser:  utils.NewSyncMap[string, *utils.SyncSet[string]](),
-		authtypes.PrincipalGroup: utils.NewSyncMap[string, *utils.SyncSet[string]](),
+	r.roles = container.NewSyncMap[string, *authtypes.Role]()
+	r.principalRoles = map[authtypes.PrincipalType]*container.SyncMap[string, *container.SyncSet[string]]{
+		authtypes.PrincipalUser:  container.NewSyncMap[string, *container.SyncSet[string]](),
+		authtypes.PrincipalGroup: container.NewSyncMap[string, *container.SyncSet[string]](),
 	}
 	return nil
 }
@@ -66,10 +67,10 @@ func (r *roleCache) Name() string {
 // Clear implements api.RoleCache.
 // Subtle: this method shadows the method (*BaseCache).Clear of roleCache.BaseCache.
 func (r *roleCache) Clear() error {
-	r.roles = utils.NewSyncMap[string, *authtypes.Role]()
-	r.principalRoles = map[authtypes.PrincipalType]*utils.SyncMap[string, *utils.SyncSet[string]]{
-		authtypes.PrincipalUser:  utils.NewSyncMap[string, *utils.SyncSet[string]](),
-		authtypes.PrincipalGroup: utils.NewSyncMap[string, *utils.SyncSet[string]](),
+	r.roles = container.NewSyncMap[string, *authtypes.Role]()
+	r.principalRoles = map[authtypes.PrincipalType]*container.SyncMap[string, *container.SyncSet[string]]{
+		authtypes.PrincipalUser:  container.NewSyncMap[string, *container.SyncSet[string]](),
+		authtypes.PrincipalGroup: container.NewSyncMap[string, *container.SyncSet[string]](),
 	}
 	return nil
 }
@@ -132,7 +133,7 @@ func (r *roleCache) setRoles(roles []*authtypes.Role) (time.Time, int, int, int)
 func (r *roleCache) cleanEmptyPrincipalRoles() {
 	// 清理掉 principal 没有关联任何 role 的容器
 	for pt := range r.principalRoles {
-		r.principalRoles[pt].Range(func(key string, val *utils.SyncSet[string]) {
+		r.principalRoles[pt].Range(func(key string, val *container.SyncSet[string]) {
 			if val.Len() == 0 {
 				r.principalRoles[pt].Delete(key)
 			}
@@ -149,16 +150,16 @@ func (r *roleCache) dealPrincipalRoles(role *authtypes.Role, isDel bool) {
 		users := role.Users
 		for i := range users {
 			container, _ := r.principalRoles[authtypes.PrincipalUser].ComputeIfAbsent(users[i].PrincipalID,
-				func(k string) *utils.SyncSet[string] {
-					return utils.NewSyncSet[string]()
+				func(k string) *container.SyncSet[string] {
+					return container.NewSyncSet[string]()
 				})
 			container.Remove(role.ID)
 		}
 		groups := role.UserGroups
 		for i := range groups {
 			container, _ := r.principalRoles[authtypes.PrincipalGroup].ComputeIfAbsent(groups[i].PrincipalID,
-				func(k string) *utils.SyncSet[string] {
-					return utils.NewSyncSet[string]()
+				func(k string) *container.SyncSet[string] {
+					return container.NewSyncSet[string]()
 				})
 			container.Remove(role.ID)
 		}
@@ -167,16 +168,16 @@ func (r *roleCache) dealPrincipalRoles(role *authtypes.Role, isDel bool) {
 	users := role.Users
 	for i := range users {
 		container, _ := r.principalRoles[authtypes.PrincipalUser].ComputeIfAbsent(users[i].PrincipalID,
-			func(k string) *utils.SyncSet[string] {
-				return utils.NewSyncSet[string]()
+			func(k string) *container.SyncSet[string] {
+				return container.NewSyncSet[string]()
 			})
 		container.Add(role.ID)
 	}
 	groups := role.UserGroups
 	for i := range groups {
 		container, _ := r.principalRoles[authtypes.PrincipalGroup].ComputeIfAbsent(groups[i].PrincipalID,
-			func(k string) *utils.SyncSet[string] {
-				return utils.NewSyncSet[string]()
+			func(k string) *container.SyncSet[string] {
+				return container.NewSyncSet[string]()
 			})
 		container.Add(role.ID)
 	}
