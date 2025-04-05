@@ -36,13 +36,13 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 var (
@@ -725,10 +725,10 @@ func (s *Server) fillLastHeartbeatTime(instances []*apiservice.Instance) {
 	if !ok {
 		return
 	}
-	req := &plugin.BatchQueryRequest{Requests: make([]*plugin.QueryRequest, 0, len(instances))}
+	req := &healthcheck.BatchQueryRequest{Requests: make([]*healthcheck.QueryRequest, 0, len(instances))}
 	for i := range instances {
 		item := instances[i]
-		req.Requests = append(req.Requests, &plugin.QueryRequest{
+		req.Requests = append(req.Requests, &healthcheck.QueryRequest{
 			InstanceId: item.GetId().GetValue(),
 		})
 	}

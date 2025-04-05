@@ -20,7 +20,7 @@ SET
 SET
     time_zone = "+00:00";
 
-USE `polaris_server`;
+USE `pole_server`;
 
 -- Create a default master account, password is Polarismesh @ 2021
 INSERT INTO
@@ -40,13 +40,13 @@ INSERT INTO
 VALUES
     (
         '65e4789a6d5b49669adf1e9e8387549c',
-        'polaris',
+        'pole',
         '$2a$10$3izWuZtE5SBdAtSZci.gs.iZ2pAn9I8hEqYrC6gwJp1dyjqQnrrum',
-        'Polaris',
+        'pole',
         'nu/0WRA4EqSR1FagrjRj0fZwPXuGlMpX+zCuWu4uMqy8xr1vRjisSbA25aAC3mtU8MeeRsKhQiDAynUR09I=',
         1,
         20,
-        'default polaris admin account',
+        'default pole admin account',
         '12345678910',
         '12345678910',
         ''
@@ -70,7 +70,7 @@ INSERT INTO
 VALUES
     (
         'fbca9bfa04ae4ead86e1ecf5811e32a9',
-        '(用户) polaris的默认策略',
+        '(用户) pole 的默认策略',
         'READ_WRITE',
         '65e4789a6d5b49669adf1e9e8387549c',
         'default admin',

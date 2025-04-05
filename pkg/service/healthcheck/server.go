@@ -30,12 +30,12 @@ import (
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	"github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/service/batch"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 var (
@@ -48,8 +48,8 @@ var (
 type Server struct {
 	hcOpt          *Config
 	storage        store.Store
-	defaultChecker plugin.HealthChecker
-	checkers       map[int32]plugin.HealthChecker
+	defaultChecker healthcheck.HealthChecker
+	checkers       map[int32]healthcheck.HealthChecker
 	cacheProvider  *CacheProvider
 	timeAdjuster   *TimeAdjuster
 	dispatcher     *Dispatcher
@@ -233,7 +233,7 @@ func (s *Server) GetLastHeartbeat(req *apiservice.Instance) *apiservice.Response
 	if !ok {
 		return api.NewInstanceResponse(apimodel.Code_HeartbeatTypeNotFound, req)
 	}
-	queryResp, err := checker.Query(context.Background(), &plugin.QueryRequest{
+	queryResp, err := checker.Query(context.Background(), &healthcheck.QueryRequest{
 		InstanceId: insCache.ID(),
 		Host:       insCache.Host(),
 		Port:       insCache.Port(),
@@ -255,7 +255,7 @@ func (s *Server) GetLastHeartbeat(req *apiservice.Instance) *apiservice.Response
 }
 
 // Checkers get all health checker, for test only
-func (s *Server) Checkers() map[int32]plugin.HealthChecker {
+func (s *Server) Checkers() map[int32]healthcheck.HealthChecker {
 	return s.checkers
 }
 

@@ -157,9 +157,9 @@ function prepare_cluster_env() {
     # 设置严格模式
     mysql -h127.0.0.1 -P3306 -u${MYSQL_DB_USER} -p"${MYSQL_DB_PWD}" -e "set sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'"
     # 清空数据
-    mysql -h127.0.0.1 -P3306 -u${MYSQL_DB_USER} -p"${MYSQL_DB_PWD}" -e "DROP DATABASE IF EXISTS polaris_server"
+    mysql -h127.0.0.1 -P3306 -u${MYSQL_DB_USER} -p"${MYSQL_DB_PWD}" -e "DROP DATABASE IF EXISTS pole_server"
     # 初始化 polaris 数据库
-    mysql -h127.0.0.1 -P3306 -u${MYSQL_DB_USER} -p"${MYSQL_DB_PWD}" <store/mysql/scripts/polaris_server.sql
+    mysql -h127.0.0.1 -P3306 -u${MYSQL_DB_USER} -p"${MYSQL_DB_PWD}" <store/mysql/scripts/pole_server.sql
     # 临时放开 DB 的最大连接数
     mysql -h127.0.0.1 -P3306 -u${MYSQL_DB_USER} -p"${MYSQL_DB_PWD}" -e "set GLOBAL max_connections = 3000;"
 }

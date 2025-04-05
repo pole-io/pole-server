@@ -32,6 +32,7 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/apiserver"
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
@@ -54,7 +55,6 @@ import (
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 var (
@@ -105,7 +105,7 @@ func Start(configFilePath string) {
 	eventhub.InitEventHub()
 
 	// 设置插件配置
-	plugin.SetPluginConfig(&cfg.Plugin)
+	apis.SetPluginConfig(&cfg.Plugin)
 
 	// 初始化存储层
 	storeapi.SetStoreConfig(&cfg.Store)
@@ -233,7 +233,7 @@ func StartDiscoverComponents(ctx context.Context, cfg *boot_config.Config, s sto
 	if err != nil {
 		return err
 	}
-	healthBatchConfig, err := batch.ParseBatchConfig(cfg.HealthChecks.Batch)
+	healthBatchConfig, err := batch.ParseBatchConfig(cfg.Naming.HealthChecks.Batch)
 	if err != nil {
 		return err
 	}
@@ -253,17 +253,17 @@ func StartDiscoverComponents(ctx context.Context, cfg *boot_config.Config, s sto
 	}
 	bc.Start(ctx)
 
-	if len(cfg.HealthChecks.LocalHost) == 0 {
-		cfg.HealthChecks.LocalHost = utils.LocalHost // 补充healthCheck的配置
+	if len(cfg.Naming.HealthChecks.LocalHost) == 0 {
+		cfg.Naming.HealthChecks.LocalHost = utils.LocalHost // 补充healthCheck的配置
 	}
-	if err = healthcheck.Initialize(ctx, &cfg.HealthChecks, bc); err != nil {
+	if err = healthcheck.Initialize(ctx, &cfg.Naming.HealthChecks, bc); err != nil {
 		return err
 	}
 	healthCheckServer, err := healthcheck.GetServer()
 	if err != nil {
 		return err
 	}
-	if cfg.HealthChecks.IsOpen() {
+	if cfg.Naming.HealthChecks.IsOpen() {
 		healthCheckServer.SetServiceCache(cacheMgn.Service())
 		healthCheckServer.SetInstanceCache(cacheMgn.Instance())
 	}

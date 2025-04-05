@@ -78,7 +78,7 @@ func registerSysMetrics() {
 		Name: "redis_alive_status",
 		Help: "polaris redis alive status",
 		ConstLabels: map[string]string{
-			"polaris_server_instance": utils.LocalHost,
+			"pole_server_instance": utils.LocalHost,
 		},
 	})
 
@@ -86,7 +86,7 @@ func registerSysMetrics() {
 		Name: "cache_update_cost",
 		Help: "cache update cost per resource cache",
 		ConstLabels: map[string]string{
-			"polaris_server_instance": utils.LocalHost,
+			"pole_server_instance": utils.LocalHost,
 		},
 	}, []string{labelCacheType, labelCacheUpdateCount})
 
@@ -94,7 +94,7 @@ func registerSysMetrics() {
 		Name: "batch_job_unfinish",
 		Help: "count unfinish batch job",
 		ConstLabels: map[string]string{
-			"polaris_server_instance": utils.LocalHost,
+			"pole_server_instance": utils.LocalHost,
 		},
 	}, []string{
 		labelBatchJobLabel,

@@ -17,13 +17,13 @@ $ErrorActionPreference = "Stop"
 
 function runPolarisServer() {
     Write-Output "run polaris server ... "
-    $polaris_server_num = (Get-Process | findstr "pole-server" | Measure-Object -Line).Lines
-    if ($polaris_server_num -gt 0) {
+    $pole_server_num = (Get-Process | findstr "pole-server" | Measure-Object -Line).Lines
+    if ($pole_server_num -gt 0) {
         Write-Output "pole-server is running, skip"
         return
     }
-    $polaris_server_dirname = (Get-ChildItem -Directory "pole-server-release*")[0].Name
-    Push-Location $polaris_server_dirname
+    $pole_server_dirname = (Get-ChildItem -Directory "pole-server-release*")[0].Name
+    Push-Location $pole_server_dirname
     Start-Process -FilePath ".\\pole-server.exe" -ArgumentList ('start') -WindowStyle Hidden
     Write-Output "run polaris server success"
     Pop-Location

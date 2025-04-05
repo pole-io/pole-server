@@ -21,11 +21,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/service/batch"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // Server health checks the main server
@@ -61,9 +61,9 @@ func withChecker() serverOption {
 			return fmt.Errorf("[healthcheck]no checker config")
 		}
 
-		svr.checkers = make(map[int32]plugin.HealthChecker, len(hcOpt.Checkers))
+		svr.checkers = make(map[int32]healthcheck.HealthChecker, len(hcOpt.Checkers))
 		for _, entry := range hcOpt.Checkers {
-			checker := plugin.GetHealthChecker(entry.Name, &entry)
+			checker := healthcheck.GetHealthChecker(entry.Name, &entry)
 			if checker == nil {
 				return fmt.Errorf("[healthcheck]unknown healthchecker %s", entry.Name)
 			}

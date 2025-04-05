@@ -25,9 +25,9 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 const (
@@ -41,7 +41,7 @@ var (
 
 // init 自注册到插件列表
 func init() {
-	plugin.RegisterPlugin(PluginName, &Memory{})
+	apis.RegisterPlugin(PluginName, &Memory{})
 }
 
 // Memory 定义MemoryCMDB类
@@ -57,7 +57,7 @@ func (m *Memory) Name() string {
 }
 
 // Initialize 初始化函数
-func (m *Memory) Initialize(c *plugin.ConfigEntry) error {
+func (m *Memory) Initialize(c *apis.ConfigEntry) error {
 	url, _ := c.Option["url"].(string)
 	token, _ := c.Option["token"].(string)
 	interval, _ := c.Option["interval"].(string)
@@ -79,6 +79,10 @@ func (m *Memory) Initialize(c *plugin.ConfigEntry) error {
 
 	go m.doFetch(ctx, tick)
 	return nil
+}
+
+func (m *Memory) Type() apis.PluginType {
+	return apis.PluginTypeCMDB
 }
 
 // GetLocation 实现CMDB插件接口

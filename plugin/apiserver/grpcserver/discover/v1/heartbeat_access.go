@@ -23,8 +23,8 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // Heartbeat 上报心跳
@@ -62,7 +62,7 @@ func (g *DiscoverServer) BatchGetHeartbeat(ctx context.Context,
 	keys := req.GetInstanceIds()
 	records := make([]*apiservice.HeartbeatRecord, 0, len(keys))
 	for i := range keys {
-		resp, err := checker.Query(ctx, &plugin.QueryRequest{
+		resp, err := checker.Query(ctx, &healthcheck.QueryRequest{
 			InstanceId: keys[i],
 		})
 		if err != nil {

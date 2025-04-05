@@ -20,13 +20,13 @@ package ip
 import (
 	"errors"
 
-	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/apis"
 )
 
 const PluginName = "whitelist"
 
 func init() {
-	plugin.RegisterPlugin(PluginName, &ipWhitelist{})
+	apis.RegisterPlugin(PluginName, &ipWhitelist{})
 }
 
 type ipWhitelist struct {
@@ -39,7 +39,7 @@ func (i *ipWhitelist) Name() string {
 }
 
 // Initialize 初始化IP白名单插件
-func (i *ipWhitelist) Initialize(conf *plugin.ConfigEntry) error {
+func (i *ipWhitelist) Initialize(conf *apis.ConfigEntry) error {
 	i.ips = make(map[string]bool)
 	ips, ok := conf.Option["ip"].([]interface{})
 	if !ok {
@@ -49,6 +49,10 @@ func (i *ipWhitelist) Initialize(conf *plugin.ConfigEntry) error {
 		i.ips[ip.(string)] = true
 	}
 	return nil
+}
+
+func (i *ipWhitelist) Type() apis.PluginType {
+	return apis.PluginTypeWhitelist
 }
 
 // Destroy 销毁插件

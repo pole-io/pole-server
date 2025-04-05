@@ -23,7 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/apis"
 )
 
 func Test_ipWhitelist_Name(t *testing.T) {
@@ -47,7 +47,7 @@ func Test_ipWhitelist_Name(t *testing.T) {
 
 func Test_ipWhitelist_Initialize(t *testing.T) {
 	type args struct {
-		conf *plugin.ConfigEntry
+		conf *apis.ConfigEntry
 	}
 	tests := []struct {
 		name    string
@@ -58,7 +58,7 @@ func Test_ipWhitelist_Initialize(t *testing.T) {
 		{
 			name: "initialize success",
 			args: args{
-				conf: &plugin.ConfigEntry{
+				conf: &apis.ConfigEntry{
 					Name: "whitelist",
 					Option: map[string]interface{}{
 						"ip": []interface{}{
@@ -77,7 +77,7 @@ func Test_ipWhitelist_Initialize(t *testing.T) {
 		{
 			name: "initialize fail",
 			args: args{
-				conf: &plugin.ConfigEntry{
+				conf: &apis.ConfigEntry{
 					Name: "whitelist",
 					Option: map[string]interface{}{
 						"ip": "127.0.0.1",

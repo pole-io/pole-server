@@ -162,33 +162,13 @@ func genWhereSQLAndArgs(str string, filter, metaFilter map[string]string, order 
 	baseStr := str
 	var args []interface{}
 	filterStr, filterArgs := genFilterSQL(filter)
-	var conjunction string = " where "
 	if filterStr != "" {
 		baseStr += " where " + filterStr
-		conjunction = " and "
 	}
 	args = append(args, filterArgs...)
-	var metaStr string
-	var metaArgs []interface{}
-	if len(metaFilter) > 0 {
-		metaStr, metaArgs = genInstanceMetadataArgs(metaFilter)
-		args = append(args, metaArgs...)
-		baseStr += conjunction + metaStr
-	}
 	page := &Page{offset, limit}
 	opStr, opArgs := genOrderAndPage(order, page)
-
 	return baseStr + opStr, append(args, opArgs...)
-}
-
-func genInstanceMetadataArgs(metaFilter map[string]string) (string, []interface{}) {
-	str := `instance.id in (select id from instance_metadata where mkey = ? and mvalue = ?)`
-	args := make([]interface{}, 0, 2)
-	for k, v := range metaFilter {
-		args = append(args, k)
-		args = append(args, v)
-	}
-	return str, args
 }
 
 // genServiceAliasWhereSQLAndArgs 生成service alias查询数据的where语句和对应参数

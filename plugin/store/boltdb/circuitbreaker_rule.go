@@ -31,7 +31,7 @@ import (
 
 const (
 	// rule 相关信息以及映射
-	tblCircuitBreakerRule string = "circuitbreaker_rule_v2"
+	tblCircuitBreakerRule string = "circuitbreaker_rule"
 )
 
 const (
@@ -49,12 +49,11 @@ const (
 	tblCircuitBreaker string = "circuitbreaker_rule"
 
 	// relation 相关信息以及映射信息
-	tblCircuitBreakerRelation string = "circuitbreaker_rule_relation"
-	VersionForMaster          string = "master"
-	CBFieldNameValid          string = "Valid"
-	CBFieldNameVersion        string = "Version"
-	CBFieldNameID             string = "ID"
-	CBFieldNameModifyTime     string = "ModifyTime"
+	VersionForMaster      string = "master"
+	CBFieldNameValid      string = "Valid"
+	CBFieldNameVersion    string = "Version"
+	CBFieldNameID         string = "ID"
+	CBFieldNameModifyTime string = "ModifyTime"
 
 	CBRFieldNameServiceID   string = "ServiceID"
 	CBRFieldNameRuleID      string = "RuleID"

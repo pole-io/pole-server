@@ -9,7 +9,7 @@ global:
 polaris:
   image:
     repository: chuntaojun/pole-server
-    tag: ##POLARIS_SERVER_VERSION##
+    tag: ##pole_server_VERSION##
     pullPolicy: Always
   limit:
     cpu: "500m"
@@ -40,7 +40,7 @@ polaris:
   storage:
     db:
       address: localhost:3306
-      name: polaris_server
+      name: pole_server
       user: root
       password: polaris@123456
 

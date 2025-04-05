@@ -85,6 +85,9 @@ const (
 	PluginTypeCrypto
 	// PluginTypeStore 存储插件
 	PluginTypeStore
+
+	//
+	PluginTypeHealthCheck
 )
 
 // Config 插件配置

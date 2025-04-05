@@ -25,7 +25,7 @@ import (
 	"encoding/base64"
 	"errors"
 
-	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/apis"
 )
 
 const (
@@ -34,7 +34,7 @@ const (
 )
 
 func init() {
-	plugin.RegisterPlugin(PluginName, &AESCrypto{})
+	apis.RegisterPlugin(PluginName, &AESCrypto{})
 }
 
 // AESCrypto AES crypto
@@ -51,8 +51,12 @@ func (h *AESCrypto) Destroy() error {
 	return nil
 }
 
+func (h *AESCrypto) Type() apis.PluginType {
+	return apis.PluginTypeCrypto
+}
+
 // Initialize 插件初始化
-func (h *AESCrypto) Initialize(c *plugin.ConfigEntry) error {
+func (h *AESCrypto) Initialize(c *apis.ConfigEntry) error {
 	return nil
 }
 

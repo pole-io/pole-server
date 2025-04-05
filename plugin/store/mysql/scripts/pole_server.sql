@@ -21,13 +21,13 @@ SET
     time_zone = "+00:00";
 
 --
--- Database: `polaris_server`
+-- Database: `pole_server`
 --
-CREATE DATABASE IF NOT EXISTS `polaris_server` DEFAULT CHARACTER
+CREATE DATABASE IF NOT EXISTS `pole_server` DEFAULT CHARACTER
 SET
     utf8mb4 COLLATE utf8mb4_bin;
 
-USE `polaris_server`;
+USE `pole_server`;
 
 -- --------------------------------------------------------
 --
@@ -77,10 +77,10 @@ CREATE TABLE
 
 -- --------------------------------------------------------
 --
--- Table structure `instance_metadata`
+-- Table structure `instance_manual_metadata`, 记录非 SDK 主动上报的实例标签数据信息
 --
 CREATE TABLE
-    `instance_metadata` (
+    `instance_manual_metadata` (
         `id` VARCHAR(128) NOT NULL COMMENT 'Instance ID',
         `mkey` VARCHAR(128) NOT NULL COMMENT 'instance label of Key',
         `mvalue` VARCHAR(4096) NOT NULL COMMENT 'instance label Value',
@@ -88,7 +88,6 @@ CREATE TABLE
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
         PRIMARY KEY (`id`, `mkey`),
         KEY `mkey` (`mkey`)
-        /* CONSTRAINT `instance_metadata_ibfk_1` FOREIGN KEY (`id`) REFERENCES `instance` (`id`) ON DELETE CASCADE ON UPDATE CASCADE */
     ) ENGINE = InnoDB;
 
 -- --------------------------------------------------------
@@ -144,23 +143,6 @@ VALUES
 
 -- --------------------------------------------------------
 --
--- Table structure `routing_config`
---
-CREATE TABLE
-    `routing_config` (
-        `id` VARCHAR(32) NOT NULL COMMENT 'Routing configuration ID',
-        `in_bounds` TEXT COMMENT 'Service is routing rules',
-        `out_bounds` TEXT COMMENT 'Service main routing rules',
-        `revision` VARCHAR(40) NOT NULL COMMENT 'Routing rule version',
-        `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means that it has been logically deleted',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
-        PRIMARY KEY (`id`),
-        KEY `mtime` (`mtime`)
-    ) ENGINE = InnoDB;
-
--- --------------------------------------------------------
---
 -- Table structure `ratelimit_config`
 --
 CREATE TABLE
@@ -182,20 +164,6 @@ CREATE TABLE
         PRIMARY KEY (`id`),
         KEY `mtime` (`mtime`),
         KEY `service_id` (`service_id`)
-    ) ENGINE = InnoDB;
-
--- --------------------------------------------------------
---
--- Table structure `ratelimit_revision`
---
-CREATE TABLE
-    `ratelimit_revision` (
-        `service_id` VARCHAR(32) NOT NULL COMMENT 'Service ID',
-        `last_revision` VARCHAR(40) NOT NULL COMMENT 'The latest limited limiting rule version of the corresponding service',
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
-        PRIMARY KEY (`service_id`),
-        KEY `service_id` (`service_id`),
-        KEY `mtime` (`mtime`)
     ) ENGINE = InnoDB;
 
 -- --------------------------------------------------------
@@ -253,7 +221,7 @@ INSERT INTO
 VALUES
     (
         'fbca9bfa04ae4ead86e1ecf5811e32a9',
-        'polaris.checker',
+        'pole.checker',
         'Polaris',
         'polaris checker service',
         'polaris',
@@ -298,117 +266,6 @@ CREATE TABLE
 
 -- --------------------------------------------------------
 --
--- Table structure `circuitbreaker_rule`
---
-CREATE TABLE
-    `circuitbreaker_rule` (
-        `id` VARCHAR(97) NOT NULL COMMENT 'Melting rule ID',
-        `version` VARCHAR(32) NOT NULL DEFAULT 'master' COMMENT 'Melting rule version, default is MASTR',
-        `name` VARCHAR(128) NOT NULL COMMENT 'Melting rule name',
-        `namespace` VARCHAR(64) NOT NULL COMMENT 'Melting rule belongs to name space',
-        `business` VARCHAR(64) DEFAULT NULL COMMENT 'Business information of fuse regular',
-        `department` VARCHAR(1024) DEFAULT NULL COMMENT 'Department information to which the fuse regular belongs',
-        `comment` VARCHAR(1024) DEFAULT NULL COMMENT 'Description of the fuse rule',
-        `inbounds` TEXT NOT NULL COMMENT 'Service-tuned fuse rule',
-        `outbounds` TEXT NOT NULL COMMENT 'Service Motoring Fuse Rule',
-        `token` VARCHAR(32) NOT NULL COMMENT 'Token, which is fucking, mainly for writing operation check',
-        `owner` VARCHAR(1024) NOT NULL COMMENT 'Melting rule Owner information',
-        `revision` VARCHAR(32) NOT NULL COMMENT 'Melt rule version information',
-        `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means that it has been logically deleted',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
-        `metadata` TEXT COMMENT 'circuit_breaker rule metadata',
-        PRIMARY KEY (`id`, `version`),
-        UNIQUE KEY `name` (`name`, `namespace`, `version`),
-        KEY `mtime` (`mtime`)
-    ) ENGINE = InnoDB;
-
--- --------------------------------------------------------
---
--- Table structure `circuitbreaker_rule_relation`
---
-CREATE TABLE
-    `circuitbreaker_rule_relation` (
-        `service_id` VARCHAR(32) NOT NULL COMMENT 'Service ID',
-        `rule_id` VARCHAR(97) NOT NULL COMMENT 'Melting rule ID',
-        `rule_version` VARCHAR(32) NOT NULL COMMENT 'Melting rule version',
-        `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means that it has been logically deleted',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
-        PRIMARY KEY (`service_id`),
-        KEY `mtime` (`mtime`),
-        KEY `rule_id` (`rule_id`)
-        /* CONSTRAINT `circuitbreaker_rule_relation_ibfk_1` FOREIGN KEY (`service_id`) REFERENCES `service` (`id`) ON DELETE CASCADE ON UPDATE CASCADE */
-    ) ENGINE = InnoDB;
-
--- --------------------------------------------------------
---
--- Table structure `t_ip_config`
---
-CREATE TABLE
-    `t_ip_config` (
-        `Fip` INT (10) UNSIGNED NOT NULL COMMENT 'Machine IP',
-        `FareaId` INT (10) UNSIGNED NOT NULL COMMENT 'Area number',
-        `FcityId` INT (10) UNSIGNED NOT NULL COMMENT 'City number',
-        `FidcId` INT (10) UNSIGNED NOT NULL COMMENT 'IDC number',
-        `Fflag` TINYINT (4) DEFAULT '0',
-        `Fstamp` DATETIME NOT NULL,
-        `Fflow` INT (10) UNSIGNED NOT NULL,
-        PRIMARY KEY (`Fip`),
-        KEY `idx_Fflow` (`Fflow`)
-    ) ENGINE = InnoDB;
-
--- --------------------------------------------------------
---
--- Table structure `t_policy`
---
-CREATE TABLE
-    `t_policy` (
-        `FmodId` INT (10) UNSIGNED NOT NULL,
-        `Fdiv` INT (10) UNSIGNED NOT NULL,
-        `Fmod` INT (10) UNSIGNED NOT NULL,
-        `Fflag` TINYINT (4) DEFAULT '0',
-        `Fstamp` DATETIME NOT NULL,
-        `Fflow` INT (10) UNSIGNED NOT NULL,
-        PRIMARY KEY (`FmodId`)
-    ) ENGINE = InnoDB;
-
--- --------------------------------------------------------
---
--- Table structure `t_route`
---
-CREATE TABLE
-    `t_route` (
-        `Fip` INT (10) UNSIGNED NOT NULL,
-        `FmodId` INT (10) UNSIGNED NOT NULL,
-        `FcmdId` INT (10) UNSIGNED NOT NULL,
-        `FsetId` VARCHAR(32) NOT NULL,
-        `Fflag` TINYINT (4) DEFAULT '0',
-        `Fstamp` DATETIME NOT NULL,
-        `Fflow` INT (10) UNSIGNED NOT NULL,
-        PRIMARY KEY (`Fip`, `FmodId`, `FcmdId`),
-        KEY `Fflow` (`Fflow`),
-        KEY `idx1` (`FmodId`, `FcmdId`, `FsetId`)
-    ) ENGINE = InnoDB;
-
--- --------------------------------------------------------
---
--- Table structure `t_section`
---
-CREATE TABLE
-    `t_section` (
-        `FmodId` INT (10) UNSIGNED NOT NULL,
-        `Ffrom` INT (10) UNSIGNED NOT NULL,
-        `Fto` INT (10) UNSIGNED NOT NULL,
-        `Fxid` INT (10) UNSIGNED NOT NULL,
-        `Fflag` TINYINT (4) DEFAULT '0',
-        `Fstamp` DATETIME NOT NULL,
-        `Fflow` INT (10) UNSIGNED NOT NULL,
-        PRIMARY KEY (`FmodId`, `Ffrom`, `Fto`)
-    ) ENGINE = InnoDB;
-
--- --------------------------------------------------------
---
 -- Table structure `start_lock`
 --
 CREATE TABLE
@@ -430,32 +287,11 @@ VALUES
 
 -- --------------------------------------------------------
 --
--- Table structure `cl5_module`
---
-CREATE TABLE
-    `cl5_module` (
-        `module_id` INT (11) NOT NULL COMMENT 'Module ID',
-        `interface_id` INT (11) NOT NULL COMMENT 'Interface ID',
-        `range_num` INT (11) NOT NULL,
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
-        PRIMARY KEY (`module_id`)
-    ) ENGINE = InnoDB COMMENT = 'To generate SID';
-
---
--- Data in the conveyor `cl5_module`
---
-INSERT INTO
-    cl5_module (module_id, interface_id, range_num)
-VALUES
-    (3000001, 1, 0);
-
--- --------------------------------------------------------
---
 -- Table structure `config_file`
 --
 CREATE TABLE
     `config_file` (
-        `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+        `id` VARCHAR(32) NOT NULL COMMENT 'config file id',
         `namespace` VARCHAR(64) NOT NULL COMMENT '所属的namespace',
         `group` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '所属的文件组',
         `name` VARCHAR(128) NOT NULL COMMENT '配置文件名',
@@ -477,7 +313,7 @@ CREATE TABLE
 --
 CREATE TABLE
     `config_file_group` (
-        `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+        `id` VARCHAR(32) NOT NULL COMMENT 'config file group id',
         `name` VARCHAR(128) NOT NULL COMMENT '配置文件分组名',
         `namespace` VARCHAR(64) NOT NULL COMMENT '所属的namespace',
         `comment` VARCHAR(512) DEFAULT NULL COMMENT '备注信息',
@@ -500,7 +336,7 @@ CREATE TABLE
 --
 CREATE TABLE
     `config_file_release` (
-        `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+        `id` VARCHAR(32) NOT NULL COMMENT 'config file release id',
         `name` VARCHAR(128) DEFAULT NULL COMMENT '发布标题',
         `namespace` VARCHAR(64) NOT NULL COMMENT '所属的namespace',
         `group` VARCHAR(128) NOT NULL COMMENT '所属的文件组',
@@ -530,7 +366,7 @@ CREATE TABLE
 --
 CREATE TABLE
     `config_file_release_history` (
-        `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+        `id` VARCHAR(32) NOT NULL COMMENT 'config file release history id',
         `name` VARCHAR(64) DEFAULT '' COMMENT '发布名称',
         `namespace` VARCHAR(64) NOT NULL COMMENT '所属的namespace',
         `group` VARCHAR(128) NOT NULL COMMENT '所属的文件组',
@@ -553,26 +389,21 @@ CREATE TABLE
         KEY `idx_file` (`namespace`, `group`, `file_name`)
     ) ENGINE = InnoDB AUTO_INCREMENT = 1 COMMENT = '配置文件发布历史表';
 
--- --------------------------------------------------------
---
--- Table structure `config_file_tag`
---
+/* 配置模板 */
 CREATE TABLE
-    `config_file_tag` (
-        `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
-        `key` VARCHAR(128) NOT NULL COMMENT 'tag 的键',
-        `Value` VARCHAR(128) NOT NULL COMMENT 'tag 的值',
-        `namespace` VARCHAR(64) NOT NULL COMMENT '所属的namespace',
-        `group` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '所属的文件组',
-        `file_name` VARCHAR(128) NOT NULL COMMENT '配置文件名',
+    `config_file_template` (
+        `id` BIGINT (10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+        `name` VARCHAR(128) COLLATE utf8_bin NOT NULL COMMENT '配置文件模板名称',
+        `content` LONGTEXT COLLATE utf8_bin NOT NULL COMMENT '配置文件模板内容',
+        `format` VARCHAR(16) COLLATE utf8_bin DEFAULT 'text' COMMENT '模板文件格式',
+        `comment` VARCHAR(512) COLLATE utf8_bin DEFAULT NULL COMMENT '模板描述信息',
         `create_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-        `create_by` VARCHAR(32) DEFAULT NULL COMMENT '创建人',
+        `create_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '创建人',
         `modify_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
-        `modify_by` VARCHAR(32) DEFAULT NULL COMMENT '最后更新人',
+        `modify_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '最后更新人',
         PRIMARY KEY (`id`),
-        UNIQUE KEY `uk_tag` (`key`, `Value`, `namespace`, `group`, `file_name`),
-        KEY `idx_file` (`namespace`, `group`, `file_name`)
-    ) ENGINE = InnoDB COMMENT = '配置文件标签表';
+        UNIQUE KEY `uk_name` (`name`)
+    ) ENGINE = InnoDB AUTO_INCREMENT = 1 DEFAULT CHARSET = utf8 COLLATE = utf8_bin COMMENT = '配置文件模板表';
 
 CREATE TABLE
     `user` (
@@ -712,7 +543,6 @@ CREATE TABLE
         PRIMARY KEY (`strategy_id`, `function`)
     ) ENGINE = InnoDB;
 
--- v1.8.0, support client info storage
 CREATE TABLE
     `client` (
         `id` VARCHAR(128) NOT NULL COMMENT 'client id',
@@ -739,67 +569,8 @@ CREATE TABLE
         PRIMARY KEY (`client_id`, `target`, `port`)
     ) ENGINE = InnoDB;
 
--- v1.9.0
 CREATE TABLE
-    `config_file_template` (
-        `id` BIGINT (10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
-        `name` VARCHAR(128) COLLATE utf8_bin NOT NULL COMMENT '配置文件模板名称',
-        `content` LONGTEXT COLLATE utf8_bin NOT NULL COMMENT '配置文件模板内容',
-        `format` VARCHAR(16) COLLATE utf8_bin DEFAULT 'text' COMMENT '模板文件格式',
-        `comment` VARCHAR(512) COLLATE utf8_bin DEFAULT NULL COMMENT '模板描述信息',
-        `create_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-        `create_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '创建人',
-        `modify_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
-        `modify_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '最后更新人',
-        PRIMARY KEY (`id`),
-        UNIQUE KEY `uk_name` (`name`)
-    ) ENGINE = InnoDB AUTO_INCREMENT = 1 DEFAULT CHARSET = utf8 COLLATE = utf8_bin COMMENT = '配置文件模板表';
-
-INSERT INTO
-    `config_file_template` (
-        `name`,
-        `content`,
-        `format`,
-        `comment`,
-        `create_time`,
-        `create_by`,
-        `modify_time`,
-        `modify_by`
-    )
-VALUES
-    (
-        'spring-cloud-gateway-braining',
-        '{
-        "rules":[
-            {
-                "conditions":[
-                    {
-                        "key":"${http.query.uid}",
-                        "values":["10000"],
-                        "operation":"EQUALS"
-                    }
-                ],
-                "labels":[
-                    {
-                        "key":"env",
-                        "value":"green"
-                    }
-                ]
-            }
-        ]
-    }',
-        'json',
-        'Spring Cloud Gateway  染色规则',
-        NOW(),
-        'polaris',
-        NOW(),
-        'polaris'
-    );
-
--- v1.12.0
-/* 自定义路由 v2 版本 */
-CREATE TABLE
-    `routing_config_v2` (
+    `router_rule` (
         `id` VARCHAR(128) NOT NULL,
         `name` VARCHAR(64) NOT NULL DEFAULT '',
         `namespace` VARCHAR(64) NOT NULL DEFAULT '',
@@ -819,7 +590,6 @@ CREATE TABLE
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
 
-/* leader 选举 */
 CREATE TABLE
     `leader_election` (
         `elect_key` VARCHAR(128) NOT NULL,
@@ -831,10 +601,8 @@ CREATE TABLE
         KEY `version` (`version`)
     ) ENGINE = innodb;
 
--- v1.14.0
-/* 熔断规则 */
 CREATE TABLE
-    `circuitbreaker_rule_v2` (
+    `circuitbreaker_rule` (
         `id` VARCHAR(128) NOT NULL,
         `name` VARCHAR(64) NOT NULL,
         `namespace` VARCHAR(64) NOT NULL DEFAULT '',

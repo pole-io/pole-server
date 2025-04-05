@@ -43,12 +43,12 @@ func TestInstanceCheck(t *testing.T) {
 	instanceId2 := "inst_222"
 
 	discoverSuit.addInstance(t, &apiservice.Instance{
-		Service:   wrapperspb.String("polaris.checker"),
+		Service:   wrapperspb.String("pole.checker"),
 		Namespace: wrapperspb.String("Polaris"),
 		Host:      wrapperspb.String("127.0.0.1"),
 		Port:      wrapperspb.UInt32(8091),
 		Protocol:  wrapperspb.String("grpc"),
-		Metadata:  map[string]string{"polaris_service": "polaris.checker"},
+		Metadata:  map[string]string{"polaris_service": "pole.checker"},
 	})
 	instanceIds := map[string]bool{instanceId1: true, instanceId2: true}
 	for id := range instanceIds {
@@ -106,12 +106,12 @@ func TestInstanceImmediatelyCheck(t *testing.T) {
 	instanceId2 := "inst_444"
 
 	discoverSuit.addInstance(t, &apiservice.Instance{
-		Service:   wrapperspb.String("polaris.checker"),
+		Service:   wrapperspb.String("pole.checker"),
 		Namespace: wrapperspb.String("Polaris"),
 		Host:      wrapperspb.String("127.0.0.1"),
 		Port:      wrapperspb.UInt32(8091),
 		Protocol:  wrapperspb.String("grpc"),
-		Metadata:  map[string]string{"polaris_service": "polaris.checker"},
+		Metadata:  map[string]string{"polaris_service": "pole.checker"},
 	})
 	instanceIds := map[string]bool{instanceId1: true, instanceId2: true}
 	for id := range instanceIds {
@@ -146,12 +146,12 @@ func TestInstanceCheckSuspended(t *testing.T) {
 	instanceId2 := "inst_666"
 
 	discoverSuit.addInstance(t, &apiservice.Instance{
-		Service:   wrapperspb.String("polaris.checker"),
+		Service:   wrapperspb.String("pole.checker"),
 		Namespace: wrapperspb.String("Polaris"),
 		Host:      wrapperspb.String("127.0.0.1"),
 		Port:      wrapperspb.UInt32(8091),
 		Protocol:  wrapperspb.String("grpc"),
-		Metadata:  map[string]string{"polaris_service": "polaris.checker"},
+		Metadata:  map[string]string{"polaris_service": "pole.checker"},
 	})
 	instanceIds := map[string]bool{instanceId1: true, instanceId2: true}
 	for id := range instanceIds {
@@ -166,23 +166,23 @@ func TestInstanceCheckSuspended(t *testing.T) {
 	}
 	time.Sleep(5 * time.Second)
 	discoverSuit.addInstance(t, &apiservice.Instance{
-		Service:   wrapperspb.String("polaris.checker"),
+		Service:   wrapperspb.String("pole.checker"),
 		Namespace: wrapperspb.String("Polaris"),
 		Host:      wrapperspb.String("127.0.0.1"),
 		Port:      wrapperspb.UInt32(8091),
 		Protocol:  wrapperspb.String("grpc"),
 		Isolate:   wrapperspb.Bool(true),
-		Metadata:  map[string]string{"polaris_service": "polaris.checker"},
+		Metadata:  map[string]string{"polaris_service": "pole.checker"},
 	})
 	time.Sleep(5 * time.Second)
 	discoverSuit.addInstance(t, &apiservice.Instance{
-		Service:   wrapperspb.String("polaris.checker"),
+		Service:   wrapperspb.String("pole.checker"),
 		Namespace: wrapperspb.String("Polaris"),
 		Host:      wrapperspb.String("127.0.0.1"),
 		Port:      wrapperspb.UInt32(8091),
 		Protocol:  wrapperspb.String("grpc"),
 		Isolate:   wrapperspb.Bool(false),
-		Metadata:  map[string]string{"polaris_service": "polaris.checker"},
+		Metadata:  map[string]string{"polaris_service": "pole.checker"},
 	})
 	time.Sleep(5 * time.Second)
 	checkers := discoverSuit.HealthCheckServer().Checkers()
@@ -209,7 +209,7 @@ func TestSelfInstanceCheck(t *testing.T) {
 	for instanceId := range instanceIds {
 		discoverSuit.addInstance(t, &apiservice.Instance{
 			Id:                wrapperspb.String(instanceId),
-			Service:           wrapperspb.String("polaris.checker"),
+			Service:           wrapperspb.String("pole.checker"),
 			Namespace:         wrapperspb.String("Polaris"),
 			Host:              wrapperspb.String(instanceId),
 			Port:              wrapperspb.UInt32(8091),
@@ -221,7 +221,7 @@ func TestSelfInstanceCheck(t *testing.T) {
 					Ttl: &wrapperspb.UInt32Value{Value: uint32(hbInterval)},
 				},
 			},
-			Metadata: map[string]string{"polaris_service": "polaris.checker"},
+			Metadata: map[string]string{"polaris_service": "pole.checker"},
 		})
 	}
 
@@ -276,7 +276,7 @@ func TestSelfInstanceImmediatelyCheck(t *testing.T) {
 	hbInterval := 1
 	discoverSuit.addInstance(t, &apiservice.Instance{
 		Id:                wrapperspb.String(instanceId1),
-		Service:           wrapperspb.String("polaris.checker"),
+		Service:           wrapperspb.String("pole.checker"),
 		Namespace:         wrapperspb.String("Polaris"),
 		Host:              wrapperspb.String(instanceId1),
 		Port:              wrapperspb.UInt32(8091),
@@ -288,18 +288,18 @@ func TestSelfInstanceImmediatelyCheck(t *testing.T) {
 				Ttl: &wrapperspb.UInt32Value{Value: uint32(hbInterval)},
 			},
 		},
-		Metadata: map[string]string{"polaris_service": "polaris.checker"},
+		Metadata: map[string]string{"polaris_service": "pole.checker"},
 	})
 
 	discoverSuit.addInstance(t, &apiservice.Instance{
 		Id:                wrapperspb.String(instanceId2),
-		Service:           wrapperspb.String("polaris.checker"),
+		Service:           wrapperspb.String("pole.checker"),
 		Namespace:         wrapperspb.String("Polaris"),
 		Host:              wrapperspb.String(instanceId2),
 		Port:              wrapperspb.UInt32(8091),
 		Protocol:          wrapperspb.String("grpc"),
 		EnableHealthCheck: wrapperspb.Bool(false),
-		Metadata:          map[string]string{"polaris_service": "polaris.checker"},
+		Metadata:          map[string]string{"polaris_service": "pole.checker"},
 	})
 
 	time.Sleep(10 * time.Second)

@@ -33,7 +33,7 @@ You need to modify `values.yaml`, set `global.mode` to `cluster`, and set the ad
 of `polaris.storage.db` and `polaris.storaate.redis`. Make sure your mysql has been initialized with the command below.
 
 ```shell
-mysql -u $db_user -p $db_pwd -h $db_host < store/sqldb/polaris_server.sql
+mysql -u $db_user -p $db_pwd -h $db_host < store/sqldb/pole_server.sql
 ```
 
 Once set up, install the chart with the following command.

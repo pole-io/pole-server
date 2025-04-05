@@ -23,11 +23,11 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/pole-io/pole-server/apis"
 	metricstypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 	"github.com/pole-io/pole-server/plugin/observability/statis/base"
 )
 
@@ -37,7 +37,7 @@ const (
 
 func init() {
 	s := &StatisWorker{}
-	plugin.RegisterPlugin(s.Name(), s)
+	apis.RegisterPlugin(s.Name(), s)
 }
 
 // PrometheusStatis is a struct for prometheus statistics
@@ -55,7 +55,7 @@ func (s *StatisWorker) Name() string {
 }
 
 // Initialize 初始化统计插件
-func (s *StatisWorker) Initialize(conf *plugin.ConfigEntry) error {
+func (s *StatisWorker) Initialize(conf *apis.ConfigEntry) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	s.metricVecCaches = make(map[string]*prometheus.GaugeVec)
@@ -80,6 +80,10 @@ func (s *StatisWorker) Initialize(conf *plugin.ConfigEntry) error {
 
 	go s.Run(ctx, time.Duration(interval)*time.Second)
 	return nil
+}
+
+func (s *StatisWorker) Type() apis.PluginType {
+	return apis.PluginTypeStatis
 }
 
 // Destroy 销毁统计插件

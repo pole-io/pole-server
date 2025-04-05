@@ -218,14 +218,14 @@ func (u *userStore) GetSubCount(user *authcommon.User) (uint32, error) {
 // GetUser get user by user id
 func (u *userStore) GetUser(id string) (*authcommon.User, error) {
 	var tokenEnable, userType int
-	getSql := `
+	getSQL := `
 		 SELECT u.id, u.name, u.password, u.owner, u.comment, u.source, u.token, u.token_enable, 
 		 	u.user_type, u.mobile, u.email
 		 FROM user u
 		 WHERE u.flag = 0 AND u.id = ? 
 	  `
 	var (
-		row  = u.master.QueryRow(getSql, id)
+		row  = u.master.QueryRow(getSQL, id)
 		user = new(authcommon.User)
 	)
 
@@ -248,7 +248,7 @@ func (u *userStore) GetUser(id string) (*authcommon.User, error) {
 }
 
 // GetUserByName 根据用户名、owner 获取用户
-func (u *userStore) GetUserByName(name, ownerId string) (*authcommon.User, error) {
+func (u *userStore) GetUserByName(name, ownerID string) (*authcommon.User, error) {
 	getSql := `
 		 SELECT u.id, u.name, u.password, u.owner, u.comment, u.source, u.token, u.token_enable, 
 		 	u.user_type, u.mobile, u.email
@@ -259,7 +259,7 @@ func (u *userStore) GetUserByName(name, ownerId string) (*authcommon.User, error
 	  `
 
 	var (
-		row                   = u.master.QueryRow(getSql, name, ownerId)
+		row                   = u.master.QueryRow(getSql, name, ownerID)
 		user                  = new(authcommon.User)
 		tokenEnable, userType int
 	)
@@ -334,7 +334,7 @@ func (u *userStore) GetUserByIds(ids []string) ([]*authcommon.User, error) {
 // GetMoreUsers Get user information, mainly for cache
 func (u *userStore) GetMoreUsers(mtime time.Time, firstUpdate bool) ([]*authcommon.User, error) {
 	args := make([]interface{}, 0)
-	querySql := `
+	querySQL := `
 	  SELECT u.id, u.name, u.password, u.owner, u.comment, u.source
 		  , u.token, u.token_enable, user_type, UNIX_TIMESTAMP(u.ctime)
 		  , UNIX_TIMESTAMP(u.mtime), u.flag, u.mobile, u.email
@@ -342,11 +342,11 @@ func (u *userStore) GetMoreUsers(mtime time.Time, firstUpdate bool) ([]*authcomm
 	  `
 
 	if !firstUpdate {
-		querySql += " WHERE u.mtime >= FROM_UNIXTIME(?) "
+		querySQL += " WHERE u.mtime >= FROM_UNIXTIME(?) "
 		args = append(args, timeToTimestamp(mtime))
 	}
 
-	users, err := u.collectUsers(u.master.Query, querySql, args)
+	users, err := u.collectUsers(u.master.Query, querySQL, args)
 	if err != nil {
 		return nil, err
 	}

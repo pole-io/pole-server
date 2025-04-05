@@ -18,10 +18,10 @@
 package logger
 
 import (
+	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	commonLog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // 把操作记录记录到日志文件中
@@ -34,7 +34,7 @@ var log = commonLog.RegisterScope(PluginName, "", 0)
 
 // init 初始化注册函数
 func init() {
-	plugin.RegisterPlugin(PluginName, &HistoryLogger{})
+	apis.RegisterPlugin(PluginName, &HistoryLogger{})
 }
 
 // HistoryLogger 历史记录logger
@@ -52,8 +52,12 @@ func (h *HistoryLogger) Destroy() error {
 }
 
 // Initialize 插件初始化
-func (h *HistoryLogger) Initialize(c *plugin.ConfigEntry) error {
+func (h *HistoryLogger) Initialize(c *apis.ConfigEntry) error {
 	return nil
+}
+
+func (h *HistoryLogger) Type() apis.PluginType {
+	return apis.PluginTypeHistory
 }
 
 // Record 记录操作记录到日志中

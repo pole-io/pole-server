@@ -78,7 +78,7 @@ jobs:
         env:
           MYSQL_DB_USER: root
           MYSQL_DB_PWD: root
-          MYSQL_DATABASE: polaris_server
+          MYSQL_DATABASE: pole_server
         run: |
           mysql -e 'CREATE DATABASE ${{ env.MYSQL_DATABASE }};' -u${{ env.MYSQL_DB_USER }} -p${{ env.MYSQL_DB_PWD }}
           mysql -e "ALTER USER '${{ env.MYSQL_DB_USER }}'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root';"  -u${{ env.MYSQL_DB_USER }} -p${{ env.MYSQL_DB_PWD }}

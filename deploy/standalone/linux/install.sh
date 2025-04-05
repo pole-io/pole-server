@@ -93,27 +93,27 @@ echo "pushgateway_server_port=${pushgateway_port}"
 
 function installPolarisServer() {
   echo -e "install polaris server ... "
-  local polaris_server_num=$(ps -ef | grep pole-server | grep -v grep | wc -l)
-  if [ ${polaris_server_num} -ge 1 ]; then
+  local pole_server_num=$(ps -ef | grep pole-server | grep -v grep | wc -l)
+  if [ ${pole_server_num} -ge 1 ]; then
     echo -e "pole-server is running, exit"
     return -1
   fi
 
-  local polaris_server_pkg_num=$(find . -name "pole-server-release*.zip" | wc -l)
-  if [ ${polaris_server_pkg_num} != 1 ]; then
+  local pole_server_pkg_num=$(find . -name "pole-server-release*.zip" | wc -l)
+  if [ ${pole_server_pkg_num} != 1 ]; then
     echo -e "number of polaris server package not equals to 1, exit"
     exit -1
   fi
 
-  local target_polaris_server_pkg=$(find . -name "pole-server-release*.zip")
-  local polaris_server_dirname=$(basename ${target_polaris_server_pkg} .zip)
-  if [ ! -e ${polaris_server_dirname} ]; then
-    unzip ${target_polaris_server_pkg} >/dev/null
+  local target_pole_server_pkg=$(find . -name "pole-server-release*.zip")
+  local pole_server_dirname=$(basename ${target_pole_server_pkg} .zip)
+  if [ ! -e ${pole_server_dirname} ]; then
+    unzip ${target_pole_server_pkg} >/dev/null
   else
-    echo -e "${target_polaris_server_pkg} has been decompressed, skip."
+    echo -e "${target_pole_server_pkg} has been decompressed, skip."
   fi
 
-  pushd ${polaris_server_dirname}
+  pushd ${pole_server_dirname}
 
   # 备份 pole-server.yaml
   cp conf/pole-server.yaml conf/pole-server.yaml.bak

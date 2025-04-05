@@ -48,12 +48,12 @@ func TestClientCheck(t *testing.T) {
 	clientId2 := "222"
 
 	discoverSuit.addInstance(t, &apiservice.Instance{
-		Service:   wrapperspb.String("polaris.checker"),
+		Service:   wrapperspb.String("pole.checker"),
 		Namespace: wrapperspb.String("Polaris"),
 		Host:      wrapperspb.String("127.0.0.1"),
 		Port:      wrapperspb.UInt32(8091),
 		Protocol:  wrapperspb.String("grpc"),
-		Metadata:  map[string]string{"polaris_service": "polaris.checker"},
+		Metadata:  map[string]string{"polaris_service": "pole.checker"},
 	})
 	time.Sleep(20 * time.Second)
 	clientIds := map[string]bool{clientId1: true, clientId2: true}

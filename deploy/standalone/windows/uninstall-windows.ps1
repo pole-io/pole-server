@@ -25,12 +25,12 @@ function uninstallPolarisServer {
             Start-Sleep -Seconds 2
         }
     }
-    $target_polaris_server_pkg = (Get-ChildItem "pole-server-release*.zip")[0].Name
-    $polaris_server_dirname = ([io.fileinfo]$target_polaris_server_pkg).basename
-    $exists = (Test-Path ".\\$polaris_server_dirname")
+    $target_pole_server_pkg = (Get-ChildItem "pole-server-release*.zip")[0].Name
+    $pole_server_dirname = ([io.fileinfo]$target_pole_server_pkg).basename
+    $exists = (Test-Path ".\\$pole_server_dirname")
     if ($exists) {
-        Write-Output "start to remove $polaris_server_dirname"
-        Remove-Item ".\\${polaris_server_dirname}" -Recurse
+        Write-Output "start to remove $pole_server_dirname"
+        Remove-Item ".\\${pole_server_dirname}" -Recurse
     }
     Write-Output "uninstall polaris server success"
 }

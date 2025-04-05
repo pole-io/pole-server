@@ -28,11 +28,11 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/plugin"
 	testsuit "github.com/pole-io/pole-server/test/suit"
 )
 
@@ -62,9 +62,9 @@ func Test_serialSetInsDbStatus(t *testing.T) {
 	testFunc := func(t *testing.T, health bool, predicate func(t *testing.T, saveIns *svctypes.Instance)) {
 		mockSvr, err := healthcheck.NewHealthServer(context.TODO(), &healthcheck.Config{
 			Open: utils.BoolPtr(true),
-			Checkers: []plugin.ConfigEntry{
+			Checkers: []apis.ConfigEntry{
 				{
-					Name: "heartbeatMemory",
+					Name: "heartbeat",
 				},
 			},
 		}, healthcheck.WithStore(testSuit.Storage))

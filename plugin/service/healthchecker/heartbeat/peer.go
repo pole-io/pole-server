@@ -72,7 +72,7 @@ type Peer interface {
 	// Initialize .
 	Initialize(conf Config)
 	// Serve .
-	Serve(ctx context.Context, checker *PeerToPeerHealthChecker, listenIP string, listenPort uint32) error
+	Serve(ctx context.Context, checker *HeartBeatHealthChecker, listenIP string, listenPort uint32) error
 	// Close .
 	Close() error
 	// Host .
@@ -96,7 +96,7 @@ func (p *LocalPeer) Initialize(conf Config) {
 	p.Cache = newLocalBeatRecordCache(conf.SoltNum, commonhash.Fnv32)
 }
 
-func (p *LocalPeer) Serve(ctx context.Context, checker *PeerToPeerHealthChecker,
+func (p *LocalPeer) Serve(ctx context.Context, checker *HeartBeatHealthChecker,
 	listenIP string, listenPort uint32) error {
 	log.Info("[HealthCheck][Leader] local peer serve")
 	return nil
@@ -152,7 +152,7 @@ func (p *RemotePeer) Initialize(conf Config) {
 	p.conf = conf
 }
 
-func (p *RemotePeer) Serve(ctx context.Context, checker *PeerToPeerHealthChecker,
+func (p *RemotePeer) Serve(ctx context.Context, checker *HeartBeatHealthChecker,
 	listenIP string, listenPort uint32) error {
 	subCtx, cancel := context.WithCancel(ctx)
 	_ = subCtx

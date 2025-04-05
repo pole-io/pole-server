@@ -31,6 +31,7 @@ import (
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
+	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 )
 
 const (
@@ -75,6 +76,8 @@ type Config struct {
 	AutoCreate   *bool                  `yaml:"autoCreate"`
 	Batch        map[string]interface{} `yaml:"batch"`
 	Interceptors []string               `yaml:"-"`
+	// HealthChecks 健康检查相关配置
+	HealthChecks healthcheck.Config `yaml:"healthcheck"`
 }
 
 // Initialize 初始化

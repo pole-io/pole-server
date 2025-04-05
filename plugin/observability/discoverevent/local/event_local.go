@@ -24,11 +24,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pole-io/pole-server/apis"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 const (
@@ -40,7 +40,7 @@ var log = commonlog.RegisterScope(PluginName, "", 0)
 
 func init() {
 	d := &discoverEventLocal{}
-	plugin.RegisterPlugin(d.Name(), d)
+	apis.RegisterPlugin(d.Name(), d)
 }
 
 type eventBufferHolder struct {
@@ -113,7 +113,7 @@ func (el *discoverEventLocal) Name() string {
 // Initialize 根据配置文件进行初始化插件 discoverEventLocal
 // @param conf 配置文件内容
 // @return error 初始化失败，返回 error 信息
-func (el *discoverEventLocal) Initialize(conf *plugin.ConfigEntry) error {
+func (el *discoverEventLocal) Initialize(conf *apis.ConfigEntry) error {
 	contentBytes, err := json.Marshal(conf.Option)
 	if err != nil {
 		return err
@@ -141,6 +141,10 @@ func (el *discoverEventLocal) Initialize(conf *plugin.ConfigEntry) error {
 
 	el.cancel = cancel
 	return nil
+}
+
+func (el *discoverEventLocal) Type() apis.PluginType {
+	return apis.PluginTypeDiscoverEvent
 }
 
 // Destroy 执行插件销毁

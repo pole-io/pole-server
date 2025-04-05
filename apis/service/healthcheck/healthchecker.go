@@ -15,13 +15,14 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package plugin
+package healthcheck
 
 import (
 	"context"
 	"fmt"
 	"sync"
 
+	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 )
 
@@ -99,9 +100,9 @@ var (
 
 // HealthChecker health checker plugin interface
 type HealthChecker interface {
-	Plugin
+	apis.Plugin
 	// Type for health check plugin, only one same type plugin is allowed
-	Type() HealthCheckType
+	CheckType() HealthCheckType
 	// Report process heartbeat info report
 	Report(ctx context.Context, request *ReportRequest) error
 	// Check process the instance check
@@ -121,17 +122,17 @@ type HealthChecker interface {
 }
 
 // GetHealthChecker get the health checker by name
-func GetHealthChecker(name string, cfg *ConfigEntry) HealthChecker {
-	plugin, exist := pluginSet[name]
+func GetHealthChecker(name string, cfg *apis.ConfigEntry) HealthChecker {
+	item, exist := apis.GetPlugin(apis.PluginTypeHealthCheck, name)
 	if !exist {
 		return nil
 	}
 
 	healthCheckOnce.Do(func() {
-		if err := plugin.Initialize(cfg); err != nil {
+		if err := item.Initialize(cfg); err != nil {
 			panic(fmt.Errorf("HealthChecker plugin init err: %s", err.Error()))
 		}
 	})
 
-	return plugin.(HealthChecker)
+	return item.(HealthChecker)
 }

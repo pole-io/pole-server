@@ -17,17 +17,17 @@
 
 function uninstallPolarisServer() {
   echo -e "uninstall polaris server ... "
-  local polaris_server_dirname=$(find . -name "pole-server-release*" -type d | awk 'NR==1{print}')
-  if [ ! -e ${polaris_server_dirname} ]; then
-    echo -e "${polaris_server_dirname} not exists, skip"
+  local pole_server_dirname=$(find . -name "pole-server-release*" -type d | awk 'NR==1{print}')
+  if [ ! -e ${pole_server_dirname} ]; then
+    echo -e "${pole_server_dirname} not exists, skip"
     return
   fi
-  pushd ${polaris_server_dirname}
+  pushd ${pole_server_dirname}
   echo -e "start to execute pole-server uninstall script"
   /bin/bash ./tool/stop.sh
   popd
-  echo -e "start to remove ${polaris_server_dirname}"
-  rm -rf ${polaris_server_dirname}
+  echo -e "start to remove ${pole_server_dirname}"
+  rm -rf ${pole_server_dirname}
   echo -e "uninstall polaris server success"
 }
 

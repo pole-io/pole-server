@@ -21,9 +21,9 @@ bootstrap:
     # Configuration center related logs
     config:
       # Log file location
-      rotateOutputPath: logs/runtime/polaris-config.log
+      rotateOutputPath: log/runtime/polaris-config.log
       # Special records of error log files at ERROR level
-      errorRotateOutputPath: logs/runtime/polaris-config-error.log
+      errorRotateOutputPath: log/runtime/polaris-config-error.log
       # The maximum size of a single log file, 100 default, the unit is MB
       rotationMaxSize: 100
       # How many log files are saved, default 30
@@ -38,8 +38,8 @@ bootstrap:
       # onlyContent: false
     # Resource Auth, User Management Log
     auth:
-      rotateOutputPath: logs/runtime/polaris-auth.log
-      errorRotateOutputPath: logs/runtime/polaris-auth-error.log
+      rotateOutputPath: log/runtime/polaris-auth.log
+      errorRotateOutputPath: log/runtime/polaris-auth-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
@@ -47,8 +47,8 @@ bootstrap:
       compress: true
     # Storage layer log
     store:
-      rotateOutputPath: logs/runtime/polaris-store.log
-      errorRotateOutputPath: logs/runtime/polaris-store-error.log
+      rotateOutputPath: log/runtime/polaris-store.log
+      errorRotateOutputPath: log/runtime/polaris-store-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
@@ -56,8 +56,8 @@ bootstrap:
       compress: true
     # Server cache log log
     cache:
-      rotateOutputPath: logs/runtime/polaris-cache.log
-      errorRotateOutputPath: logs/runtime/polaris-cache-error.log
+      rotateOutputPath: log/runtime/polaris-cache.log
+      errorRotateOutputPath: log/runtime/polaris-cache-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
@@ -65,8 +65,8 @@ bootstrap:
       compress: true
     # Service discovery and governance rules related logs
     naming:
-      rotateOutputPath: logs/runtime/polaris-naming.log
-      errorRotateOutputPath: logs/runtime/polaris-naming-error.log
+      rotateOutputPath: log/runtime/polaris-naming.log
+      errorRotateOutputPath: log/runtime/polaris-naming-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
@@ -74,8 +74,8 @@ bootstrap:
       compress: true
     # Service discovery institutional health check log
     healthcheck:
-      rotateOutputPath: logs/runtime/polaris-healthcheck.log
-      errorRotateOutputPath: logs/runtime/polaris-healthcheck-error.log
+      rotateOutputPath: log/runtime/polaris-healthcheck.log
+      errorRotateOutputPath: log/runtime/polaris-healthcheck-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
@@ -83,8 +83,8 @@ bootstrap:
       compress: true
     # XDS protocol layer plug -in log
     xdsv3:
-      rotateOutputPath: logs/runtime/polaris-xdsv3.log
-      errorRotateOutputPath: logs/runtime/polaris-xdsv3-error.log
+      rotateOutputPath: log/runtime/polaris-xdsv3.log
+      errorRotateOutputPath: log/runtime/polaris-xdsv3-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
@@ -92,8 +92,8 @@ bootstrap:
       compress: true
     # Eureka protocol layer plugin log
     eureka:
-      rotateOutputPath: logs/runtime/polaris-eureka.log
-      errorRotateOutputPath: logs/runtime/polaris-eureka-error.log
+      rotateOutputPath: log/runtime/polaris-eureka.log
+      errorRotateOutputPath: log/runtime/polaris-eureka-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
@@ -101,8 +101,8 @@ bootstrap:
       compress: true
     # Nacos protocol layer plug -in log
     nacos-apiserver:
-      rotateOutputPath: logs/runtime/nacos-apiserver.log
-      errorRotateOutputPath: logs/runtime/nacos-apiserver-error.log
+      rotateOutputPath: log/runtime/nacos-apiserver.log
+      errorRotateOutputPath: log/runtime/nacos-apiserver-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
@@ -110,16 +110,16 @@ bootstrap:
       compress: true
     # APISERVER common log, record inbound request and outbound response
     apiserver:
-      rotateOutputPath: logs/runtime/polaris-apiserver.log
-      errorRotateOutputPath: logs/runtime/polaris-apiserver-error.log
+      rotateOutputPath: log/runtime/polaris-apiserver.log
+      errorRotateOutputPath: log/runtime/polaris-apiserver-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
       outputLevel: info
       compress: true
     default:
-      rotateOutputPath: logs/runtime/polaris-default.log
-      errorRotateOutputPath: logs/runtime/polaris-default-error.log
+      rotateOutputPath: log/runtime/polaris-default.log
+      errorRotateOutputPath: log/runtime/polaris-default-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
@@ -127,16 +127,16 @@ bootstrap:
       compress: true
     # server plugin logs
     token-bucket:
-      rotateOutputPath: logs/runtime/polaris-ratelimit.log
-      errorRotateOutputPath: logs/runtime/polaris-ratelimit-error.log
+      rotateOutputPath: log/runtime/polaris-ratelimit.log
+      errorRotateOutputPath: log/runtime/polaris-ratelimit-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
       outputLevel: info
       compress: true
     discoverstat:
-      rotateOutputPath: logs/statis/polaris-discoverstat.log
-      errorRotateOutputPath: logs/statis/polaris-discoverstat-error.log
+      rotateOutputPath: log/statis/polaris-discoverstat.log
+      errorRotateOutputPath: log/statis/polaris-discoverstat-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
@@ -144,16 +144,16 @@ bootstrap:
       compress: true
       onlyContent: true
     local:
-      rotateOutputPath: logs/statis/polaris-statis.log
-      errorRotateOutputPath: logs/statis/polaris-statis-error.log
+      rotateOutputPath: log/statis/polaris-statis.log
+      errorRotateOutputPath: log/statis/polaris-statis-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
       outputLevel: info
       compress: true
     HistoryLogger:
-      rotateOutputPath: logs/operation/polaris-history.log
-      errorRotateOutputPath: logs/operation/polaris-history-error.log
+      rotateOutputPath: log/operation/polaris-history.log
+      errorRotateOutputPath: log/operation/polaris-history-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 10
       rotationMaxAge: 7
@@ -161,16 +161,16 @@ bootstrap:
       outputLevel: info
       onlyContent: true
     discoverEventLocal:
-      rotateOutputPath: logs/event/polaris-discoverevent.log
-      errorRotateOutputPath: logs/event/polaris-discoverevent-error.log
+      rotateOutputPath: log/event/polaris-discoverevent.log
+      errorRotateOutputPath: log/event/polaris-discoverevent-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
       outputLevel: info
       onlyContent: true
     cmdb:
-      rotateOutputPath: logs/runtime/polaris-cmdb.log
-      errorRotateOutputPath: logs/runtime/polaris-cmdb-error.log
+      rotateOutputPath: log/runtime/polaris-cmdb.log
+      errorRotateOutputPath: log/runtime/polaris-cmdb-error.log
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
@@ -178,7 +178,7 @@ bootstrap:
       compress: true
   # Start the server in order
   startInOrder:
-    # Start the pole-server in order, mainly to avoid data synchronization logic when the server starts the DB to pull the DB out of high load
+    # Start the sergo-server in order, mainly to avoid data synchronization logic when the server starts the DB to pull the DB out of high load
     open: true
     # The name of the start lock
     key: sz
@@ -458,7 +458,7 @@ store:
   #     maxIdleConns: 50
   #     connMaxLifetime: 300 # Unit second
   #     txIsolationLevel: 2 #LevelReadCommitted
-# pole-server plugin settings
+# sergo-server plugin settings
 plugin:
   crypto:
     entries:

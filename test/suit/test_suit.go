@@ -35,6 +35,7 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
+	"github.com/pole-io/pole-server/apis"
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -52,7 +53,6 @@ import (
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/plugin"
 	"github.com/pole-io/pole-server/plugin/access_control/auth"
 	storeplugin "github.com/pole-io/pole-server/plugin/store"
 	"github.com/pole-io/pole-server/plugin/store/boltdb"
@@ -67,17 +67,14 @@ func init() {
 }
 
 const (
-	tblNameNamespace          = "namespace"
-	tblNameInstance           = "instance"
-	tblNameService            = "service"
-	tblNameRouting            = "routing"
-	tblRateLimitConfig        = "ratelimit_config"
-	tblRateLimitRevision      = "ratelimit_revision"
-	tblCircuitBreaker         = "circuitbreaker_rule"
-	tblCircuitBreakerRelation = "circuitbreaker_rule_relation"
-	tblNameL5                 = "l5"
-	tblNameRoutingV2          = "routing_config_v2"
-	tblClient                 = "client"
+	tblNameNamespace   = "namespace"
+	tblNameInstance    = "instance"
+	tblNameService     = "service"
+	tblNameRouting     = "routing"
+	tblRateLimitConfig = "ratelimit_config"
+	tblCircuitBreaker  = "circuitbreaker_rule"
+	tblNameRouterRule  = "router_rule"
+	tblClient          = "client"
 )
 
 var (
@@ -109,7 +106,7 @@ type TestConfig struct {
 	Store               storeapi.Config    `yaml:"store"`
 	DisableAuth         bool
 	Auth                authapi.Config `yaml:"auth"`
-	Plugin              plugin.Config  `yaml:"plugin"`
+	Plugin              apis.Config    `yaml:"plugin"`
 	ReplaceStore        storeapi.Store
 	ServiceCacheEntries []cacheapi.ConfigEntry
 }
@@ -302,7 +299,7 @@ func (d *DiscoverTestSuit) initialize(opts ...options) error {
 		d.Storage = s
 	}
 
-	plugin.SetPluginConfig(&d.cfg.Plugin)
+	apis.SetPluginConfig(&d.cfg.Plugin)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -786,7 +783,7 @@ func (d *DiscoverTestSuit) CleanCommonRoutingConfig(service string, namespace st
 			if _, err := dbTx.Exec(str, service, namespace); err != nil {
 				panic(err)
 			}
-			str = "delete from routing_config_v2"
+			str = "delete from router_rulev2"
 			// fmt.Printf("%s %s %s\n", str, service, namespace)
 			if _, err := dbTx.Exec(str); err != nil {
 				panic(err)
@@ -823,7 +820,7 @@ func (d *DiscoverTestSuit) CleanCommonRoutingConfig(service string, namespace st
 				}
 			}
 
-			if err := dbTx.DeleteBucket([]byte(tblNameRoutingV2)); err != nil {
+			if err := dbTx.DeleteBucket([]byte(tblNameRouterRule)); err != nil {
 				if !errors.Is(err, bolt.ErrBucketNotFound) {
 					rollbackBoltTx(dbTx)
 					panic(err)
@@ -845,7 +842,7 @@ func (d *DiscoverTestSuit) TruncateCommonRoutingConfigV2() {
 			dbTx := tx.GetDelegateTx().(*sqldb.BaseTx)
 			defer rollbackDbTx(dbTx)
 
-			str := "delete from routing_config_v2"
+			str := "delete from router_rulev2"
 			if _, err := dbTx.Exec(str); err != nil {
 				panic(err)
 			}
@@ -863,7 +860,7 @@ func (d *DiscoverTestSuit) TruncateCommonRoutingConfigV2() {
 			dbTx := tx.GetDelegateTx().(*bolt.Tx)
 			defer rollbackBoltTx(dbTx)
 
-			if err := dbTx.DeleteBucket([]byte(tblNameRoutingV2)); err != nil {
+			if err := dbTx.DeleteBucket([]byte(tblNameRouterRule)); err != nil {
 				if !errors.Is(err, bolt.ErrBucketNotFound) {
 					rollbackBoltTx(dbTx)
 					panic(err)
@@ -888,7 +885,7 @@ func (d *DiscoverTestSuit) CleanCommonRoutingConfigV2(rules []*apitraffic.RouteR
 			dbTx := tx.GetDelegateTx().(*sqldb.BaseTx)
 			defer rollbackDbTx(dbTx)
 
-			str := "delete from routing_config_v2 where id in (%s)"
+			str := "delete from router_rulev2 where id in (%s)"
 
 			places := []string{}
 			args := []interface{}{}
@@ -917,7 +914,7 @@ func (d *DiscoverTestSuit) CleanCommonRoutingConfigV2(rules []*apitraffic.RouteR
 			defer rollbackBoltTx(dbTx)
 
 			for i := range rules {
-				if err := dbTx.Bucket([]byte(tblNameRoutingV2)).DeleteBucket([]byte(rules[i].Id)); err != nil {
+				if err := dbTx.Bucket([]byte(tblNameRouterRule)).DeleteBucket([]byte(rules[i].Id)); err != nil {
 					if !errors.Is(err, bolt.ErrBucketNotFound) {
 						rollbackBoltTx(dbTx)
 						panic(err)

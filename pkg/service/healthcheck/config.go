@@ -20,8 +20,8 @@ package healthcheck
 import (
 	"time"
 
+	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // Config 健康检查配置
@@ -34,7 +34,7 @@ type Config struct {
 	MaxCheckInterval    time.Duration          `yaml:"maxCheckInterval"`
 	ClientCheckInterval time.Duration          `yaml:"clientCheckInterval"`
 	ClientCheckTtl      time.Duration          `yaml:"clientCheckTtl"`
-	Checkers            []plugin.ConfigEntry   `yaml:"checkers"`
+	Checkers            []apis.ConfigEntry     `yaml:"checkers"`
 	Batch               map[string]interface{} `yaml:"batch"`
 }
 
@@ -59,7 +59,7 @@ func (c *Config) SetDefault() {
 		c.Open = utils.BoolPtr(true)
 	}
 	if len(c.Service) == 0 {
-		c.Service = "polaris.checker"
+		c.Service = "pole.checker"
 	}
 	if c.SlotNum == 0 {
 		c.SlotNum = defaultSlotNum

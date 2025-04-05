@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	ElectionKeySelfServiceChecker = "polaris.checker"
+	ElectionKeySelfServiceChecker = "pole.checker"
 	ElectionKeyMaintainJob        = "MaintainJob"
 )
 

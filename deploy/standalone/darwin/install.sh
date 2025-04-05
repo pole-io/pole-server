@@ -103,28 +103,28 @@ echo "pushgateway_server_port=${pushgateway_port}"
 
 function installPolarisServer() {
   echo -e "install polaris server ... "
-  local polaris_server_num=$(ps -ef | grep pole-server | grep -v grep | wc -l)
-  if [ $polaris_server_num -ge 1 ]; then
+  local pole_server_num=$(ps -ef | grep pole-server | grep -v grep | wc -l)
+  if [ $pole_server_num -ge 1 ]; then
     echo -e "pole-server is running, skip."
     return
   fi
 
-  local polaris_server_tarnum=$(find . -name "pole-server-release*.zip" | wc -l)
-  if [ $polaris_server_tarnum != 1 ]; then
+  local pole_server_tarnum=$(find . -name "pole-server-release*.zip" | wc -l)
+  if [ $pole_server_tarnum != 1 ]; then
     echo -e "number of polaris server tar not equal 1, exit."
     exit -1
   fi
 
-  local polaris_server_tarname=$(find . -name "pole-server-release*.zip")
-  local polaris_server_dirname=$(basename ${polaris_server_tarname} .zip)
-  if [ ! -e $polaris_server_dirname ]; then
-    unzip $polaris_server_tarname >/dev/null
+  local pole_server_tarname=$(find . -name "pole-server-release*.zip")
+  local pole_server_dirname=$(basename ${pole_server_tarname} .zip)
+  if [ ! -e $pole_server_dirname ]; then
+    unzip $pole_server_tarname >/dev/null
   else
     echo -e "pole-server-release.tar.gz has been decompressed, skip."
   fi
 
-  cd ${polaris_server_dirname} || (
-    echo "no such directory ${polaris_server_dirname}"
+  cd ${pole_server_dirname} || (
+    echo "no such directory ${pole_server_dirname}"
     exit -1
   )
 

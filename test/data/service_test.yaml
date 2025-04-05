@@ -190,7 +190,7 @@ bootstrap:
     enable_register: true
     isolated: false
     services:
-      - name: polaris.checker
+      - name: pole.checker
         protocols:
           - service-grpc
 # 核心逻辑的配置
@@ -250,7 +250,7 @@ config:
 # 健康检查的配置
 healthcheck:
   open: true
-  service: polaris.checker
+  service: pole.checker
   slotNum: 30
   minCheckInterval: 1s
   maxCheckInterval: 30s

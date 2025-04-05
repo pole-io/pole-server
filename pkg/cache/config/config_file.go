@@ -87,8 +87,8 @@ func (fc *fileCache) Initialize(opt map[string]interface{}) error {
 	fc.activeReleaseRevisions = container.NewSyncMap[string, *container.SyncMap[string, string]]()
 	fc.singleGroup = &singleflight.Group{}
 	fc.metricsReleaseCount = container.NewSyncMap[string, *container.SyncMap[string, uint64]]()
-	fc.preMetricsFiles = commonatomic.NewAtomicValue[map[string]map[string]struct{}](map[string]map[string]struct{}{})
-	fc.lastReportTime = commonatomic.NewAtomicValue[time.Time](time.Time{})
+	fc.preMetricsFiles = commonatomic.NewAtomicValue(map[string]map[string]struct{}{})
+	fc.lastReportTime = commonatomic.NewAtomicValue(time.Time{})
 	valueCache, err := openBoltCache(opt)
 	if err != nil {
 		return err

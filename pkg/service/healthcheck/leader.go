@@ -24,8 +24,8 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // LeaderChangeEventHandler process the event when server act as leader
@@ -114,8 +114,8 @@ func (handler *LeaderChangeEventHandler) doCheckSelfServiceInstance(cachedInstan
 		return
 	}
 
-	request := &plugin.CheckRequest{
-		QueryRequest: plugin.QueryRequest{
+	request := &healthcheck.CheckRequest{
+		QueryRequest: healthcheck.QueryRequest{
 			InstanceId: cachedInstance.ID(),
 			Host:       cachedInstance.Host(),
 			Port:       cachedInstance.Port(),

@@ -27,16 +27,22 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	"github.com/pole-io/pole-server/apis/store"
 	commonhash "github.com/pole-io/pole-server/pkg/common/hash"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
+)
+
+var (
+	_ healthcheck.HealthChecker = (*HeartBeatHealthChecker)(nil)
 )
 
 const (
 	// PluginName plugin name
-	PluginName = "heartbeatp2p"
+	PluginName = "heartbeat"
 	// Servers key to manage hb servers
 	Servers = "servers"
 	// CountSep separator to divide server and count
@@ -70,20 +76,20 @@ var (
 )
 
 func init() {
-	d := &PeerToPeerHealthChecker{}
-	plugin.RegisterPlugin(d.Name(), d)
+	d := &HeartBeatHealthChecker{}
+	apis.RegisterPlugin(d.Name(), d)
 }
 
-// PeerToPeerHealthChecker 对等节点心跳健康检查
-// 1. PeerToPeerHealthChecker 获取当前 polaris.checker 服务下的所有节点
+// HeartBeatHealthChecker 对等节点心跳健康检查
+// 1. HeartBeatHealthChecker 获取当前 pole.checker 服务下的所有节点
 // 2. peer 之间建立 gRPC 长连接
-// 3. PeerToPeerHealthChecker 在处理 Report/Query/Check/Delete 先判断自己处理的心跳节点是否应该由自己负责
+// 3. HeartBeatHealthChecker 在处理 Report/Query/Check/Delete 先判断自己处理的心跳节点是否应该由自己负责
 //   - 责任节点
 //     a. 心跳数据的读写直接写本地 map 内存
 //   - 非责任节点
 //     a. 心跳写请求通过 gRPC 长连接直接发给对应责任节点
 //     b. 心跳读请求通过 gRPC 长连接直接发给对应责任节点，责任节点返回心跳时间戳信息
-type PeerToPeerHealthChecker struct {
+type HeartBeatHealthChecker struct {
 	initialize int32
 	// refreshPeerTimeSec last peer list start refresh occur timestamp
 	refreshPeerTimeSec int64
@@ -104,12 +110,12 @@ type PeerToPeerHealthChecker struct {
 }
 
 // Name
-func (c *PeerToPeerHealthChecker) Name() string {
+func (c *HeartBeatHealthChecker) Name() string {
 	return PluginName
 }
 
 // Initialize
-func (c *PeerToPeerHealthChecker) Initialize(configEntry *plugin.ConfigEntry) error {
+func (c *HeartBeatHealthChecker) Initialize(configEntry *apis.ConfigEntry) error {
 	soltNum, _ := configEntry.Option["soltNum"].(int)
 	if soltNum == 0 {
 		soltNum = int(DefaultSoltNum)
@@ -119,8 +125,12 @@ func (c *PeerToPeerHealthChecker) Initialize(configEntry *plugin.ConfigEntry) er
 	return nil
 }
 
+func (c *HeartBeatHealthChecker) Type() apis.PluginType {
+	return apis.PluginTypeHealthCheck
+}
+
 // Destroy
-func (c *PeerToPeerHealthChecker) Destroy() error {
+func (c *HeartBeatHealthChecker) Destroy() error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	for _, peer := range c.peers {
@@ -132,7 +142,7 @@ func (c *PeerToPeerHealthChecker) Destroy() error {
 }
 
 // SetCheckerPeers
-func (c *PeerToPeerHealthChecker) SetCheckerPeers(checkerPeers []plugin.CheckerPeer) {
+func (c *HeartBeatHealthChecker) SetCheckerPeers(checkerPeers []healthcheck.CheckerPeer) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -145,8 +155,8 @@ func (c *PeerToPeerHealthChecker) SetCheckerPeers(checkerPeers []plugin.CheckerP
 	log.Info("[HealthCheck][P2P] end checker peers change", zap.Any("peers", c.peers))
 }
 
-func (c *PeerToPeerHealthChecker) refreshPeers(checkerPeers []plugin.CheckerPeer) {
-	tmp := map[string]plugin.CheckerPeer{}
+func (c *HeartBeatHealthChecker) refreshPeers(checkerPeers []healthcheck.CheckerPeer) {
+	tmp := map[string]healthcheck.CheckerPeer{}
 	for i := range checkerPeers {
 		peer := checkerPeers[i]
 		tmp[peer.ID] = peer
@@ -176,7 +186,7 @@ func (c *PeerToPeerHealthChecker) refreshPeers(checkerPeers []plugin.CheckerPeer
 	}
 }
 
-func (c *PeerToPeerHealthChecker) calculateContinuum() {
+func (c *HeartBeatHealthChecker) calculateContinuum() {
 	// 重新计算 hash
 	bucket := map[commonhash.Bucket]bool{}
 	for i := range c.peers {
@@ -190,12 +200,12 @@ func (c *PeerToPeerHealthChecker) calculateContinuum() {
 }
 
 // Type for health check plugin, only one same type plugin is allowed
-func (c *PeerToPeerHealthChecker) Type() plugin.HealthCheckType {
-	return plugin.HealthCheckerHeartbeat
+func (c *HeartBeatHealthChecker) CheckType() healthcheck.HealthCheckType {
+	return healthcheck.HealthCheckerHeartbeat
 }
 
 // Report process heartbeat info report
-func (c *PeerToPeerHealthChecker) Report(request *plugin.ReportRequest) error {
+func (c *HeartBeatHealthChecker) Report(ctx context.Context, request *healthcheck.ReportRequest) error {
 	if !c.isInitialize() {
 		return nil
 	}
@@ -220,13 +230,13 @@ func (c *PeerToPeerHealthChecker) Report(request *plugin.ReportRequest) error {
 
 // Check process the instance check
 // 大部分情况下，Check 的检查都是在本节点进行处理，只有出现 Refresh 节点时才可能存在将 CheckRequest 请求转发相应的对等节点
-func (c *PeerToPeerHealthChecker) Check(request *plugin.CheckRequest) (*plugin.CheckResponse, error) {
-	queryResp, err := c.Query(&request.QueryRequest)
+func (c *HeartBeatHealthChecker) Check(request *healthcheck.CheckRequest) (*healthcheck.CheckResponse, error) {
+	queryResp, err := c.Query(context.Background(), &request.QueryRequest)
 	if err != nil {
 		return nil, err
 	}
 	lastHeartbeatTime := queryResp.LastHeartbeatSec
-	checkResp := &plugin.CheckResponse{
+	checkResp := &healthcheck.CheckResponse{
 		LastHeartbeatTimeSec: lastHeartbeatTime,
 	}
 	curTimeSec := request.CurTimeSec()
@@ -261,10 +271,26 @@ func (c *PeerToPeerHealthChecker) Check(request *plugin.CheckRequest) (*plugin.C
 	return checkResp, nil
 }
 
+// BatchQuery process the batch query
+func (c *HeartBeatHealthChecker) BatchQuery(ctx context.Context, req *healthcheck.BatchQueryRequest) (*healthcheck.BatchQueryResponse, error) {
+	bResp := &healthcheck.BatchQueryResponse{
+		Responses: make([]*healthcheck.QueryResponse, 0, len(req.Requests)),
+	}
+
+	for i := range req.Requests {
+		resp, err := c.Query(ctx, req.Requests[i])
+		if err != nil {
+			return nil, err
+		}
+		bResp.Responses = append(bResp.Responses, resp)
+	}
+	return bResp, nil
+}
+
 // Query queries the heartbeat time
-func (c *PeerToPeerHealthChecker) Query(request *plugin.QueryRequest) (*plugin.QueryResponse, error) {
+func (c *HeartBeatHealthChecker) Query(ctx context.Context, request *healthcheck.QueryRequest) (*healthcheck.QueryResponse, error) {
 	if !c.isInitialize() {
-		return &plugin.QueryResponse{
+		return &healthcheck.QueryResponse{
 			LastHeartbeatSec: 0,
 		}, nil
 	}
@@ -280,12 +306,14 @@ func (c *PeerToPeerHealthChecker) Query(request *plugin.QueryRequest) (*plugin.Q
 	}
 	record, ok := ret[key]
 	if !ok {
-		return &plugin.QueryResponse{
+		return &healthcheck.QueryResponse{
 			LastHeartbeatSec: 0,
 		}, nil
 	}
-	log.Debugf("[HealthCheck][P2P] query hb record, instanceId %s, record %+v", request.InstanceId, record)
-	return &plugin.QueryResponse{
+	if log.DebugEnabled() {
+		log.Debugf("[HealthCheck][heartbeat] query hb record, instanceId %s, record %+v", request.InstanceId, record)
+	}
+	return &healthcheck.QueryResponse{
 		Server:           responsible.Host(),
 		LastHeartbeatSec: record.Record.CurTimeSec,
 		Count:            record.Record.Count,
@@ -294,19 +322,19 @@ func (c *PeerToPeerHealthChecker) Query(request *plugin.QueryRequest) (*plugin.Q
 }
 
 // AddToCheck add the instances to check procedure
-// NOTE: not support in PeerToPeerHealthChecker
-func (c *PeerToPeerHealthChecker) AddToCheck(request *plugin.AddCheckRequest) error {
+// NOTE: not support in HeartBeatHealthChecker
+func (c *HeartBeatHealthChecker) AddToCheck(request *healthcheck.AddCheckRequest) error {
 	return nil
 }
 
 // RemoveFromCheck removes the instances from check procedure
-// NOTE: not support in PeerToPeerHealthChecker
-func (c *PeerToPeerHealthChecker) RemoveFromCheck(request *plugin.AddCheckRequest) error {
+// NOTE: not support in HeartBeatHealthChecker
+func (c *HeartBeatHealthChecker) RemoveFromCheck(request *healthcheck.AddCheckRequest) error {
 	return nil
 }
 
 // Delete delete record by key
-func (c *PeerToPeerHealthChecker) Delete(key string) error {
+func (c *HeartBeatHealthChecker) Delete(ctx context.Context, key string) error {
 	responsible, ok := c.findResponsiblePeer(key)
 	if !ok {
 		return fmt.Errorf("delete key:%s not found responsible peer", key)
@@ -316,18 +344,18 @@ func (c *PeerToPeerHealthChecker) Delete(key string) error {
 }
 
 // Suspend checker for an entire expired interval
-func (c *PeerToPeerHealthChecker) Suspend() {
+func (c *HeartBeatHealthChecker) Suspend() {
 	curTimeMilli := commontime.CurrentMillisecond() / 1000
 	log.Infof("[Health Check][P2P] suspend checker, start time %d", curTimeMilli)
 	atomic.StoreInt64(&c.suspendTimeSec, curTimeMilli)
 }
 
 // SuspendTimeSec get suspend time in seconds
-func (c *PeerToPeerHealthChecker) SuspendTimeSec() int64 {
+func (c *HeartBeatHealthChecker) SuspendTimeSec() int64 {
 	return atomic.LoadInt64(&c.suspendTimeSec)
 }
 
-func (c *PeerToPeerHealthChecker) findResponsiblePeer(key string) (Peer, bool) {
+func (c *HeartBeatHealthChecker) findResponsiblePeer(key string) (Peer, bool) {
 	index := c.hash.Hash(commonhash.HashString(key))
 	c.lock.RLock()
 	defer c.lock.RUnlock()
@@ -335,7 +363,7 @@ func (c *PeerToPeerHealthChecker) findResponsiblePeer(key string) (Peer, bool) {
 	return responsible, ok
 }
 
-func (c *PeerToPeerHealthChecker) skipCheck(key string, expireDurationSec int64) bool {
+func (c *HeartBeatHealthChecker) skipCheck(key string, expireDurationSec int64) bool {
 	// 如果没有初始化，则忽略检查
 	if !c.isInitialize() {
 		return true
@@ -374,14 +402,18 @@ func (c *PeerToPeerHealthChecker) skipCheck(key string, expireDurationSec int64)
 	return false
 }
 
-func (c *PeerToPeerHealthChecker) getEndRefreshPeerTimeSec() int64 {
+func (c *HeartBeatHealthChecker) getEndRefreshPeerTimeSec() int64 {
 	return atomic.LoadInt64(&c.endRefreshPeerTimeSec)
 }
 
-func (c *PeerToPeerHealthChecker) getRefreshPeerTimeSec() int64 {
+func (c *HeartBeatHealthChecker) getRefreshPeerTimeSec() int64 {
 	return atomic.LoadInt64(&c.refreshPeerTimeSec)
 }
 
-func (c *PeerToPeerHealthChecker) isInitialize() bool {
+func (c *HeartBeatHealthChecker) isInitialize() bool {
 	return atomic.LoadInt32(&c.initialize) == 1
+}
+
+func (c *HeartBeatHealthChecker) DebugHandlers() []types.DebugHandler {
+	return []types.DebugHandler{}
 }

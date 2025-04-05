@@ -24,7 +24,7 @@ __debug_bin
 .codecc
 *.log
 
+test/output
+
 style_tool/
 goimports-reviser
-
-data

@@ -32,7 +32,7 @@ $ helm install ${release_name} . --set global.mode=standalone
 mysql 已经使用下面的命令初始化了。
 
 ```shell
-mysql -u $db_user -p $db_pwd -h $db_host < store/sqldb/polaris_server.sql
+mysql -u $db_user -p $db_pwd -h $db_host < store/sqldb/pole_server.sql
 ```
 
 设置好后，使用下面的命令安装 chart：

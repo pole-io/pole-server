@@ -36,27 +36,27 @@ const (
 )
 
 const (
-	insertCircuitBreakerRuleSql = `insert into circuitbreaker_rule_v2(
+	insertCircuitBreakerRuleSql = `insert into circuitbreaker_rule(
 			id, name, namespace, enable, revision, description, level, src_service, src_namespace, 
 			dst_service, dst_namespace, dst_method, config, ctime, mtime, etime)
 			values(?,?,?,?,?,?,?,?,?,?,?,?,?, sysdate(),sysdate(), %s)`
-	updateCircuitBreakerRuleSql = `update circuitbreaker_rule_v2 set name = ?, namespace=?, enable = ?, revision= ?,
+	updateCircuitBreakerRuleSql = `update circuitbreaker_rule set name = ?, namespace=?, enable = ?, revision= ?,
 			description = ?, level = ?, src_service = ?, src_namespace = ?,
             dst_service = ?, dst_namespace = ?, dst_method = ?,
 			config = ?, mtime = sysdate(), etime=%s where id = ?`
-	deleteCircuitBreakerRuleSql = `update circuitbreaker_rule_v2 set flag = 1, mtime = sysdate() where id = ?`
-	enableCircuitBreakerRuleSql = `update circuitbreaker_rule_v2 set enable = ?, revision = ?, mtime = sysdate(), 
+	deleteCircuitBreakerRuleSql = `update circuitbreaker_rule set flag = 1, mtime = sysdate() where id = ?`
+	enableCircuitBreakerRuleSql = `update circuitbreaker_rule set enable = ?, revision = ?, mtime = sysdate(), 
 			etime=%s where id = ?`
-	countCircuitBreakerRuleSql     = `select count(*) from circuitbreaker_rule_v2 where flag = 0`
+	countCircuitBreakerRuleSql     = `select count(*) from circuitbreaker_rule where flag = 0`
 	queryCircuitBreakerRuleFullSql = `select id, name, namespace, enable, revision, description, level, src_service, 
 			src_namespace, dst_service, dst_namespace, dst_method, config, unix_timestamp(ctime), unix_timestamp(mtime), 
-			unix_timestamp(etime) from circuitbreaker_rule_v2 where flag = 0`
+			unix_timestamp(etime) from circuitbreaker_rule where flag = 0`
 	queryCircuitBreakerRuleBriefSql = `select id, name, namespace, enable, revision, level, src_service, src_namespace, 
 			dst_service, dst_namespace, dst_method, unix_timestamp(ctime), unix_timestamp(mtime), unix_timestamp(etime)
-			from circuitbreaker_rule_v2 where flag = 0`
+			from circuitbreaker_rule where flag = 0`
 	queryCircuitBreakerRuleCacheSql = `select id, name, namespace, enable, revision, description, level, src_service, 
 			src_namespace, dst_service, dst_namespace, dst_method, config, flag, unix_timestamp(ctime), 
-			unix_timestamp(mtime), unix_timestamp(etime) from circuitbreaker_rule_v2 where mtime > FROM_UNIXTIME(?)`
+			unix_timestamp(mtime), unix_timestamp(etime) from circuitbreaker_rule where mtime > FROM_UNIXTIME(?)`
 )
 
 const (

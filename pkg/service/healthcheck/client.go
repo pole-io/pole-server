@@ -24,8 +24,8 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 const clientPrefix = "c_"
@@ -42,8 +42,8 @@ func (s *Server) doReportByClient(ctx context.Context, client *apiservice.Client
 	if !ok {
 		return api.NewClientResponse(apimodel.Code_HeartbeatTypeNotFound, client)
 	}
-	request := &plugin.ReportRequest{
-		QueryRequest: plugin.QueryRequest{
+	request := &healthcheck.ReportRequest{
+		QueryRequest: healthcheck.QueryRequest{
 			InstanceId: toClientId(client.GetId().GetValue()),
 			Host:       client.GetHost().GetValue(),
 		},

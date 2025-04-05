@@ -25,9 +25,9 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/valid"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // checkHeartbeatInstance 检查心跳实例请求参数
@@ -53,7 +53,7 @@ func (s *Server) checkInstanceExists(ctx context.Context, id string) (int64, *sv
 	if ins != nil {
 		return -1, ins, apimodel.Code_ExecuteSuccess
 	}
-	resp, err := s.defaultChecker.Query(ctx, &plugin.QueryRequest{
+	resp, err := s.defaultChecker.Query(ctx, &healthcheck.QueryRequest{
 		InstanceId: id,
 	})
 	if nil != err {
@@ -67,7 +67,7 @@ func (s *Server) checkInstanceExists(ctx context.Context, id string) (int64, *sv
 	return resp.Count, nil, apimodel.Code_ExecuteSuccess
 }
 
-func (s *Server) getHealthChecker(id string) plugin.HealthChecker {
+func (s *Server) getHealthChecker(id string) healthcheck.HealthChecker {
 	insCache := s.cacheProvider.GetInstance(id)
 	if insCache == nil {
 		insCache = s.cacheProvider.GetSelfServiceInstance(id)
@@ -90,8 +90,8 @@ func (s *Server) doReport(ctx context.Context, instance *apiservice.Instance) *a
 	if errRsp != nil {
 		return errRsp
 	}
-	request := &plugin.ReportRequest{
-		QueryRequest: plugin.QueryRequest{
+	request := &healthcheck.ReportRequest{
+		QueryRequest: healthcheck.QueryRequest{
 			InstanceId: id,
 			Host:       instance.GetHost().GetValue(),
 			Port:       instance.GetPort().GetValue(),
@@ -114,8 +114,8 @@ func (s *Server) doReports(ctx context.Context, beats []*apiservice.InstanceHear
 	}
 	for i := range beats {
 		beat := beats[i]
-		request := &plugin.ReportRequest{
-			QueryRequest: plugin.QueryRequest{
+		request := &healthcheck.ReportRequest{
+			QueryRequest: healthcheck.QueryRequest{
 				InstanceId: beat.InstanceId,
 				Host:       beat.Host,
 				Port:       beat.Port,
@@ -137,7 +137,7 @@ func (s *Server) doReports(ctx context.Context, beats []*apiservice.InstanceHear
 	return api.NewResponse(apimodel.Code_ExecuteSuccess)
 }
 
-func (s *Server) baseReport(ctx context.Context, id string, reportReq *plugin.ReportRequest) (apimodel.Code, error) {
+func (s *Server) baseReport(ctx context.Context, id string, reportReq *healthcheck.ReportRequest) (apimodel.Code, error) {
 	count, ins, code := s.checkInstanceExists(ctx, id)
 	checker := s.getHealthChecker(id)
 	reportReq.Count = count + 1

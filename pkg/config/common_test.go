@@ -25,6 +25,7 @@ import (
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
+	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
@@ -33,7 +34,6 @@ import (
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/config"
 	"github.com/pole-io/pole-server/pkg/namespace"
-	"github.com/pole-io/pole-server/plugin"
 	testsuit "github.com/pole-io/pole-server/test/suit"
 )
 
@@ -48,7 +48,7 @@ type TestConfig struct {
 	Config    config.Config    `yaml:"config"`
 	Store     store.Config     `yaml:"store"`
 	Auth      auth.Config      `yaml:"auth"`
-	Plugin    plugin.Config    `yaml:"plugin"`
+	Plugin    apis.Config      `yaml:"plugin"`
 }
 
 type ConfigCenterTest struct {

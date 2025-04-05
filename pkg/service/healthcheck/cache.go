@@ -25,11 +25,11 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/hash"
 	commonhash "github.com/pole-io/pole-server/pkg/common/hash"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 var DefaultShardSize uint32
@@ -132,12 +132,12 @@ func (c *CacheProvider) OnCreated(value interface{}) {
 	}
 }
 
-func (c *CacheProvider) getHealthChecker(hcType apiservice.HealthCheck_HealthCheckType) (plugin.HealthChecker, bool) {
+func (c *CacheProvider) getHealthChecker(hcType apiservice.HealthCheck_HealthCheckType) (healthcheck.HealthChecker, bool) {
 	checker, ok := c.svr.checkers[int32(hcType)]
 	return checker, ok
 }
 
-func (c *CacheProvider) isHealthCheckEnable(instance *apiservice.Instance) (bool, plugin.HealthChecker) {
+func (c *CacheProvider) isHealthCheckEnable(instance *apiservice.Instance) (bool, healthcheck.HealthChecker) {
 	if !instance.GetEnableHealthCheck().GetValue() || instance.GetHealthCheck() == nil {
 		return false, nil
 	}
@@ -373,7 +373,7 @@ type ItemWithChecker interface {
 	// GetClient 获取上报客户端信息
 	GetClient() *types.Client
 	// GetChecker 获取对应的 checker 对象
-	GetChecker() plugin.HealthChecker
+	GetChecker() healthcheck.HealthChecker
 	// GetHashValue 获取 hashvalue 信息
 	GetHashValue() uint
 }
@@ -381,7 +381,7 @@ type ItemWithChecker interface {
 // InstanceWithChecker instance and checker combine
 type InstanceWithChecker struct {
 	instance  *svctypes.Instance
-	checker   plugin.HealthChecker
+	checker   healthcheck.HealthChecker
 	hashValue uint
 }
 
@@ -396,7 +396,7 @@ func (ic *InstanceWithChecker) GetClient() *types.Client {
 }
 
 // GetChecker 获取对应的 checker 对象
-func (ic *InstanceWithChecker) GetChecker() plugin.HealthChecker {
+func (ic *InstanceWithChecker) GetChecker() healthcheck.HealthChecker {
 	return ic.checker
 }
 
@@ -405,7 +405,7 @@ func (ic *InstanceWithChecker) GetHashValue() uint {
 	return ic.hashValue
 }
 
-func newInstanceWithChecker(instance *svctypes.Instance, checker plugin.HealthChecker) *InstanceWithChecker {
+func newInstanceWithChecker(instance *svctypes.Instance, checker healthcheck.HealthChecker) *InstanceWithChecker {
 	return &InstanceWithChecker{
 		instance:  instance,
 		checker:   checker,
@@ -416,7 +416,7 @@ func newInstanceWithChecker(instance *svctypes.Instance, checker plugin.HealthCh
 // ClientWithChecker instance and checker combine
 type ClientWithChecker struct {
 	client    *types.Client
-	checker   plugin.HealthChecker
+	checker   healthcheck.HealthChecker
 	hashValue uint
 }
 
@@ -431,7 +431,7 @@ func (ic *ClientWithChecker) GetClient() *types.Client {
 }
 
 // GetChecker 获取对应的 checker 对象
-func (ic *ClientWithChecker) GetChecker() plugin.HealthChecker {
+func (ic *ClientWithChecker) GetChecker() healthcheck.HealthChecker {
 	return ic.checker
 }
 
@@ -440,7 +440,7 @@ func (ic *ClientWithChecker) GetHashValue() uint {
 	return ic.hashValue
 }
 
-func newClientWithChecker(client *types.Client, checker plugin.HealthChecker) *ClientWithChecker {
+func newClientWithChecker(client *types.Client, checker healthcheck.HealthChecker) *ClientWithChecker {
 	return &ClientWithChecker{
 		client:    client,
 		checker:   checker,

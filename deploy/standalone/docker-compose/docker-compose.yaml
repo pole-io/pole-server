@@ -27,7 +27,7 @@ services:
   pole-server:
     container_name: pole-server
     hostname: pole-server
-    image: polarismesh/pole-server:##POLARIS_SERVER_VERSION##
+    image: polarismesh/pole-server:##pole_server_VERSION##
     restart: always
     volumes:
       - ./server/pole-server.yaml:/root/conf/pole-server.yaml
@@ -101,7 +101,7 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - LANG=zh_CN.utf8
-      - MYSQL_DATABASE=polaris_server
+      - MYSQL_DATABASE=pole_server
       - MYSQL_USER=default
       - MYSQL_PASSWORD=secret
       - MYSQL_ROOT_PASSWORD=polaris

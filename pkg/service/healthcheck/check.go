@@ -29,13 +29,13 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	"github.com/pole-io/pole-server/apis/store"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/syncs/srand"
 	"github.com/pole-io/pole-server/pkg/common/syncs/timewheel"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 const (
@@ -63,7 +63,7 @@ type CheckScheduler struct {
 type AdoptEvent struct {
 	InstanceId string
 	Add        bool
-	Checker    plugin.HealthChecker
+	Checker    healthcheck.HealthChecker
 }
 
 type clientItemValue struct {
@@ -79,7 +79,7 @@ type itemValue struct {
 	scheduled         uint32
 	ttlDurationSec    uint32
 	expireDurationSec uint32
-	checker           plugin.HealthChecker
+	checker           healthcheck.HealthChecker
 }
 
 type ResourceHealthCheckHandler struct {
@@ -336,15 +336,15 @@ func (c *CheckScheduler) checkCallbackClient(clientId string) *clientItemValue {
 	}
 	clientValue.mutex.Lock()
 	defer clientValue.mutex.Unlock()
-	var checkResp *plugin.CheckResponse
+	var checkResp *healthcheck.CheckResponse
 	var err error
 	cachedClient := c.svr.cacheProvider.GetClient(clientId)
 	if cachedClient == nil {
 		log.Infof("[Health Check][Check]client %s has been deleted", clientValue.id)
 		return clientValue
 	}
-	request := &plugin.CheckRequest{
-		QueryRequest: plugin.QueryRequest{
+	request := &healthcheck.CheckRequest{
+		QueryRequest: healthcheck.QueryRequest{
 			InstanceId: toClientId(clientValue.id),
 			Host:       clientValue.host,
 			Port:       clientValue.port,
@@ -386,7 +386,7 @@ func (c *CheckScheduler) checkCallbackInstance(value interface{}) {
 	defer instanceValue.mutex.Unlock()
 
 	var (
-		checkResp *plugin.CheckResponse
+		checkResp *healthcheck.CheckResponse
 		err       error
 	)
 	defer func() {
@@ -402,8 +402,8 @@ func (c *CheckScheduler) checkCallbackInstance(value interface{}) {
 		log.Infof("[Health Check][Check]instance %s has been deleted", instanceValue.id)
 		return
 	}
-	request := &plugin.CheckRequest{
-		QueryRequest: plugin.QueryRequest{
+	request := &healthcheck.CheckRequest{
+		QueryRequest: healthcheck.QueryRequest{
 			InstanceId: instanceValue.id,
 			Host:       instanceValue.host,
 			Port:       instanceValue.port,

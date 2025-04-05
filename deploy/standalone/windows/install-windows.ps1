@@ -17,24 +17,24 @@ $ErrorActionPreference = "Stop"
 
 function installPolarisServer() {
     Write-Output "install polaris server ... "
-    $polaris_server_num = (Get-Process | findstr "pole-server" | Measure-Object -Line).Lines
-    if ($polaris_server_num -gt 0) {
+    $pole_server_num = (Get-Process | findstr "pole-server" | Measure-Object -Line).Lines
+    if ($pole_server_num -gt 0) {
         Write-Output "pole-server is running, skip"
         return
     }
-    $polaris_server_pkg_num = (Get-ChildItem "pole-server-release*.zip" | Measure-Object -Line).Lines
-    if ($polaris_server_pkg_num -ne 1) {
+    $pole_server_pkg_num = (Get-ChildItem "pole-server-release*.zip" | Measure-Object -Line).Lines
+    if ($pole_server_pkg_num -ne 1) {
         Write-Output "number of polaris server package not equals to 1, exit"
         exit -1
     }
-    $target_polaris_server_pkg = (Get-ChildItem "pole-server-release*.zip")[0].Name
-    $polaris_server_dirname = ([io.fileinfo]$target_polaris_server_pkg).basename
-    if (Test-Path $polaris_server_dirname) {
-        Write-Output "$polaris_server_dirname has exists, now remove it"
-        Remove-Item $polaris_server_dirname -Recurse
+    $target_pole_server_pkg = (Get-ChildItem "pole-server-release*.zip")[0].Name
+    $pole_server_dirname = ([io.fileinfo]$target_pole_server_pkg).basename
+    if (Test-Path $pole_server_dirname) {
+        Write-Output "$pole_server_dirname has exists, now remove it"
+        Remove-Item $pole_server_dirname -Recurse
     }
-    Expand-Archive -Path $target_polaris_server_pkg -DestinationPath .
-    Push-Location $polaris_server_dirname
+    Expand-Archive -Path $target_pole_server_pkg -DestinationPath .
+    Push-Location $pole_server_dirname
     sed "conf/pole-server.yaml" "listenPort: 8761" "listenPort: ${eureka_port}"
     sed "conf/pole-server.yaml" "listenPort: 15010" "listenPort: ${xdsv3_port}"
     sed "conf/pole-server.yaml" "listenPort: 8091" "listenPort: ${service_grpc_port}"

@@ -35,7 +35,7 @@ func defaultBootstrap() Bootstrap {
 			Isolated:       false,
 			Services: []*Service{
 				{
-					Name:      "polaris.checker",
+					Name:      "pole.checker",
 					Namespace: "Polaris",
 					Protocols: []string{
 						"service-grpc",

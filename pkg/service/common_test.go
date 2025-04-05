@@ -46,17 +46,15 @@ import (
 )
 
 const (
-	tblNameNamespace          = "namespace"
-	tblNameInstance           = "instance"
-	tblNameService            = "service"
-	tblNameRouting            = "routing"
-	tblRateLimitConfig        = "ratelimit_config"
-	tblRateLimitRevision      = "ratelimit_revision"
-	tblCircuitBreaker         = "circuitbreaker_rule"
-	tblCircuitBreakerRelation = "circuitbreaker_rule_relation"
-	tblNameL5                 = "l5"
-	tblNameRoutingV2          = "routing_config_v2"
-	tblClient                 = "client"
+	tblNameNamespace   = "namespace"
+	tblNameInstance    = "instance"
+	tblNameService     = "service"
+	tblNameRouting     = "routing"
+	tblRateLimitConfig = "ratelimit_config"
+	tblCircuitBreaker  = "circuitbreaker_rule"
+	tblNameL5          = "l5"
+	tblNameRouterRule  = "router_rule"
+	tblClient          = "client"
 )
 
 type DiscoverTestSuit struct {

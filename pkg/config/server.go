@@ -60,9 +60,10 @@ func RegisterServerProxy(name string, factor ServerProxyFactory) error {
 
 // Config 配置中心模块启动参数
 type Config struct {
-	Open             bool     `yaml:"open"`
-	ContentMaxLength int64    `yaml:"contentMaxLength"`
-	Interceptors     []string `yaml:"-"`
+	Open             bool                              `yaml:"open"`
+	ContentMaxLength int64                             `yaml:"contentMaxLength"`
+	Interceptors     []string                          `yaml:"-"`
+	Caches           map[string]map[string]interface{} `yaml:"caches"`
 }
 
 // Server 配置中心核心服务

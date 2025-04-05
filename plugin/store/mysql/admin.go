@@ -462,12 +462,6 @@ func (m *adminStore) BatchCleanDeletedInstances(timeout time.Duration, batchSize
 		}
 		inSql := strings.Join(placeholders, ",")
 
-		cleanMetaStr := fmt.Sprintf("delete from instance_metadata where id in (%s)", inSql)
-		if _, err := tx.Exec(cleanMetaStr, waitDelIds...); err != nil {
-			log.Errorf("[Store][database] batch clean soft deleted instances(%d), err: %s", batchSize, err.Error())
-			return store.Error(err)
-		}
-
 		cleanCheckStr := fmt.Sprintf("delete from health_check where id in (%s)", inSql)
 		if _, err = tx.Exec(cleanCheckStr, waitDelIds...); err != nil {
 			log.Errorf("[Store][database] batch clean soft deleted instances(%d), err: %s", batchSize, err.Error())

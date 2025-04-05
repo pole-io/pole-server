@@ -83,12 +83,12 @@ func (r *routerRuleStore) CreateRoutingConfigTx(tx store.Tx, conf *rules.RouterC
 
 func (r *routerRuleStore) createRoutingConfigTx(tx *BaseTx, conf *rules.RouterConfig) error {
 	// 删除无效的数据
-	if _, err := tx.Exec("DELETE FROM routing_config_ WHERE id = ? AND flag = 1", conf.ID); err != nil {
+	if _, err := tx.Exec("DELETE FROM router_rule WHERE id = ? AND flag = 1", conf.ID); err != nil {
 		log.Errorf("[Store][database] create routing (%+v) err: %s", conf, err.Error())
 		return store.Error(err)
 	}
 
-	insertSQL := "INSERT INTO routing_config_(id, namespace, name, policy, config, enable, " +
+	insertSQL := "INSERT INTO router_rule(id, namespace, name, policy, config, enable, " +
 		" priority, revision, description, ctime, mtime, etime) VALUES (?,?,?,?,?,?,?,?,?,sysdate(),sysdate(),%s)"
 
 	var enable int
@@ -153,7 +153,7 @@ func (r *routerRuleStore) updateRoutingConfigTx(tx *BaseTx, conf *rules.RouterCo
 		return store.NewStatusError(store.EmptyParamsErr, "missing some params")
 	}
 
-	str := "update routing_config_ set name = ?, policy = ?, config = ?, revision = ?, priority = ?, " +
+	str := "update router_rule set name = ?, policy = ?, config = ?, revision = ?, priority = ?, " +
 		" description = ?, mtime = sysdate() where id = ?"
 	if _, err := tx.Exec(str, conf.Name, conf.Policy, conf.Config, conf.Revision, conf.Priority, conf.Description,
 		conf.ID); err != nil {
@@ -182,7 +182,7 @@ func (r *routerRuleStore) EnableRouting(conf *rules.RouterConfig) error {
 			etimeStr = emptyEnableTime
 		}
 		str := fmt.Sprintf(
-			`update routing_config_ set enable = ?, revision = ?, mtime = sysdate(), etime=%s where id = ?`, etimeStr)
+			`update router_rule set enable = ?, revision = ?, mtime = sysdate(), etime=%s where id = ?`, etimeStr)
 		if _, err := r.master.Exec(str, enable, conf.Revision, conf.ID); err != nil {
 			log.Errorf("[Store][database] update outing config (%+v), sql %s, err: %s", conf, str, err)
 			return err
@@ -202,7 +202,7 @@ func (r *routerRuleStore) DeleteRoutingConfig(ruleID string) error {
 		return store.NewStatusError(store.EmptyParamsErr, "missing service id")
 	}
 
-	str := `update routing_config_ set flag = 1, mtime = sysdate() where id = ?`
+	str := `update router_rule set flag = 1, mtime = sysdate() where id = ?`
 	if _, err := r.master.Exec(str, ruleID); err != nil {
 		log.Errorf("[Store][database] delete routing config (%s) err: %s", ruleID, err.Error())
 		return store.Error(err)
@@ -216,7 +216,7 @@ func (r *routerRuleStore) GetRoutingConfigsForCache(
 	mtime time.Time, firstUpdate bool) ([]*rules.RouterConfig, error) {
 	str := `select id, name, policy, config, enable, revision, flag, priority, description,
 	unix_timestamp(ctime), unix_timestamp(mtime), unix_timestamp(etime)  
-	from routing_config_ where mtime > FROM_UNIXTIME(?) `
+	from router_rule where mtime > FROM_UNIXTIME(?) `
 
 	if firstUpdate {
 		str += " and flag != 1"
@@ -263,7 +263,7 @@ func (r *routerRuleStore) getRoutingConfigWithIDTx(tx *BaseTx, ruleID string) (*
 
 	str := `select id, name, policy, config, enable, revision, flag, priority, description,
 	unix_timestamp(ctime), unix_timestamp(mtime), unix_timestamp(etime)
-	from routing_config_ 
+	from router_rule 
 	where id = ? and flag = 0`
 	rows, err := tx.Query(str, ruleID)
 	if err != nil {

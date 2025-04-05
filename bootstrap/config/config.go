@@ -25,6 +25,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/apiserver"
 	storeapi "github.com/pole-io/pole-server/apis/store"
@@ -34,23 +35,20 @@ import (
 	"github.com/pole-io/pole-server/pkg/config"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
-	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/plugin"
 )
 
 // Config 配置
 type Config struct {
-	Bootstrap    Bootstrap          `yaml:"bootstrap"`
-	APIServers   []apiserver.Config `yaml:"apiservers"`
-	Cache        cache.Config       `yaml:"cache"`
-	Namespace    namespace.Config   `yaml:"namespace"`
-	Naming       service.Config     `yaml:"naming"`
-	Config       config.Config      `yaml:"config"`
-	HealthChecks healthcheck.Config `yaml:"healthcheck"`
-	Maintain     admin.Config       `yaml:"maintain"`
-	Store        storeapi.Config    `yaml:"store"`
-	Auth         auth.Config        `yaml:"auth"`
-	Plugin       plugin.Config      `yaml:"plugin"`
+	Bootstrap  Bootstrap          `yaml:"bootstrap"`
+	APIServers []apiserver.Config `yaml:"apiservers"`
+	Cache      cache.Config       `yaml:"cache"`
+	Namespace  namespace.Config   `yaml:"namespace"`
+	Naming     service.Config     `yaml:"naming"`
+	Config     config.Config      `yaml:"config"`
+	Maintain   admin.Config       `yaml:"maintain"`
+	Store      storeapi.Config    `yaml:"store"`
+	Auth       auth.Config        `yaml:"auth"`
+	Plugin     apis.Config        `yaml:"plugin"`
 }
 
 // Bootstrap 启动引导配置

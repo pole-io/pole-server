@@ -36,7 +36,7 @@ var (
 )
 
 const (
-	tblNameRouting = "routing_config_"
+	tblNameRouting = "router_rule"
 
 	routingFieldID          = "ID"
 	routingFieldName        = "Name"

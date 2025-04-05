@@ -24,7 +24,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 
-	"github.com/pole-io/pole-server/plugin"
+	"github.com/pole-io/pole-server/apis"
 )
 
 const (
@@ -33,7 +33,7 @@ const (
 )
 
 func init() {
-	plugin.RegisterPlugin(PluginName, &RSACrypto{})
+	apis.RegisterPlugin(PluginName, &RSACrypto{})
 }
 
 // AESCrypto AES crypto
@@ -51,8 +51,12 @@ func (h *RSACrypto) Destroy() error {
 }
 
 // Initialize 插件初始化
-func (h *RSACrypto) Initialize(c *plugin.ConfigEntry) error {
+func (h *RSACrypto) Initialize(c *apis.ConfigEntry) error {
 	return nil
+}
+
+func (h *RSACrypto) Type() apis.PluginType {
+	return apis.PluginTypeCrypto
 }
 
 // GenerateKey generate key

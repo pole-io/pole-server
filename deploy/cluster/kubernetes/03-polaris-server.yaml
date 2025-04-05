@@ -56,7 +56,7 @@ spec:
         app: polaris
     spec:
       containers:
-      - image: polarismesh/pole-server:##POLARIS_SERVER_VERSION##
+      - image: polarismesh/pole-server:##pole_server_VERSION##
         imagePullPolicy: Always
         name: pole-server
         resources:

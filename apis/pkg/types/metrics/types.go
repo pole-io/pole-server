@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	LabelServerNode       = "polaris_server_instance"
+	LabelServerNode       = "pole_server_instance"
 	LabelNamespace        = "namespace"
 	LabelService          = "service"
 	LabelGroup            = "group"

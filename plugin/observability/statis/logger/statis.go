@@ -24,10 +24,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pole-io/pole-server/apis"
 	metricstypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
-	"github.com/pole-io/pole-server/plugin"
 	"github.com/pole-io/pole-server/plugin/observability/statis/base"
 )
 
@@ -38,7 +38,7 @@ const (
 // init 注册统计插件
 func init() {
 	s := &StatisWorker{}
-	plugin.RegisterPlugin(s.Name(), s)
+	apis.RegisterPlugin(s.Name(), s)
 }
 
 // StatisWorker 本地统计插件
@@ -53,7 +53,7 @@ func (s *StatisWorker) Name() string {
 }
 
 // Initialize 初始化统计插件
-func (s *StatisWorker) Initialize(conf *plugin.ConfigEntry) error {
+func (s *StatisWorker) Initialize(conf *apis.ConfigEntry) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	baseWorker, err := base.NewBaseWorker(ctx, s.metricsHandle)
 	if err != nil {
@@ -72,6 +72,10 @@ func (s *StatisWorker) Initialize(conf *plugin.ConfigEntry) error {
 
 	go s.Run(ctx, time.Duration(interval)*time.Second)
 	return nil
+}
+
+func (s *StatisWorker) Type() apis.PluginType {
+	return apis.PluginTypeStatis
 }
 
 // Destroy 销毁统计插件

@@ -15,7 +15,7 @@ if [ ${INNER_GOOS} == "kubernetes" ]; then
     cd ${workdir}
     cd release/cluster
 
-    sed -i "s/##POLARIS_SERVER_VERSION##/${INNER_SERVER_VERSION}/g" kubernetes/03-pole-server.yaml
+    sed -i "s/##pole_server_VERSION##/${INNER_SERVER_VERSION}/g" kubernetes/03-pole-server.yaml
     sed -i "s/##POLARIS_CONSOLE_VERSION##/${INNER_CONSOLE_VERSION}/g" kubernetes/03-pole-server.yaml
     sed -i "s/##POLARIS_PROMETHEUS_VERSION##/${INNER_SERVER_VERSION}/g" kubernetes/05-prometheus.yaml
     sed -i "s/##POLARIS_LIMITER_VERSION##/${INNER_LIMITER_VERSION}/g" kubernetes/07-polaris-limiter.yaml
@@ -37,7 +37,7 @@ if [ ${INNER_GOOS} == "kubernetes" ]; then
 
     cp -rf ../../store/mysql/scripts/* docker-compose/mysql/
 
-    sed -i "s/##POLARIS_SERVER_VERSION##/${INNER_SERVER_VERSION}/g" docker-compose/docker-compose.yaml
+    sed -i "s/##pole_server_VERSION##/${INNER_SERVER_VERSION}/g" docker-compose/docker-compose.yaml
     sed -i "s/##POLARIS_CONSOLE_VERSION##/${INNER_CONSOLE_VERSION}/g" docker-compose/docker-compose.yaml
     sed -i "s/##POLARIS_PROMETHEUS_VERSION##/${INNER_SERVER_VERSION}/g" docker-compose/docker-compose.yaml
     sed -i "s/##POLARIS_LIMITER_VERSION##/${INNER_LIMITER_VERSION}/g" docker-compose/docker-compose.yaml
@@ -57,7 +57,7 @@ if [ ${INNER_GOOS} == "kubernetes" ]; then
     cd ${workdir}
     cd release/cluster
 
-    sed -i "s/##POLARIS_SERVER_VERSION##/${INNER_SERVER_VERSION}/g" helm/values.yaml
+    sed -i "s/##pole_server_VERSION##/${INNER_SERVER_VERSION}/g" helm/values.yaml
     sed -i "s/##POLARIS_CONSOLE_VERSION##/${INNER_CONSOLE_VERSION}/g" helm/values.yaml
     sed -i "s/##POLARIS_PROMETHEUS_VERSION##/${INNER_SERVER_VERSION}/g" helm/values.yaml
     sed -i "s/##POLARIS_LIMITER_VERSION##/${INNER_LIMITER_VERSION}/g" helm/values.yaml

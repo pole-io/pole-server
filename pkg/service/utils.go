@@ -87,7 +87,7 @@ const (
 	// ratelimit表
 	MaxDbRateLimitName = MaxRuleName
 
-	// MaxDbRoutingName routing_config_v2 表
+	// MaxDbRoutingName router_rulev2 表
 	MaxDbRoutingName = MaxRuleName
 
 	// ContextDiscoverParam key for discover parameters in context
