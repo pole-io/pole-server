@@ -62,7 +62,7 @@ func (s *Server) HasMainUser(ctx context.Context) *apiservice.Response {
 // InitMainUser 初始化主用户
 func (s *Server) InitMainUser(_ context.Context, user *apisecurity.User) *apiservice.Response {
 	if user.GetSource().GetValue() == "" {
-		user.Source = protobuf.NewStringValue("Polaris")
+		user.Source = protobuf.NewStringValue("pole-io")
 	}
 	ctx := context.WithValue(context.Background(), authapi.ContextKeyInitMainUser, true)
 	rsp := s.userSvr.CreateUsers(ctx, []*apisecurity.User{

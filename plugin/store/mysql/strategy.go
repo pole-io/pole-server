@@ -277,7 +277,7 @@ func (s *strategyStore) addPolicyPrincipals(tx *BaseTx, id string, principals []
 		return nil
 	}
 
-	savePrincipalSql := "INSERT IGNORE INTO auth_principal(strategy_id, principal_id, principal_role, IFNULL(extend_info, '')) VALUES "
+	savePrincipalSql := "INSERT IGNORE INTO auth_principal(strategy_id, principal_id, principal_role, extend_info) VALUES "
 	values := make([]string, 0)
 	args := make([]interface{}, 0)
 

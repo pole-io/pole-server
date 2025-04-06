@@ -276,13 +276,13 @@ func ConvertGRPCContext(ctx context.Context) context.Context {
 	}
 
 	ctx = context.Background()
-	ctx = context.WithValue(ctx, types.ContextGrpcHeader, meta)
-	ctx = context.WithValue(ctx, types.ContextRequestHeaders, meta)
-	ctx = context.WithValue(ctx, types.ContextRequestId, requestID)
-	ctx = context.WithValue(ctx, types.ContextClientIP, clientIP)
-	ctx = context.WithValue(ctx, types.ContextClientAddress, address)
-	ctx = context.WithValue(ctx, types.ContextUserAgent, userAgent)
-	ctx = context.WithValue(ctx, types.ContextAuthTokenKey, token)
+	ctx = types.AppendRequestHeader(ctx, meta)
+	ctx = types.AppendContextValue(ctx, types.ContextGrpcHeader, meta)
+	ctx = types.AppendContextValue(ctx, types.ContextRequestId, requestID)
+	ctx = types.AppendContextValue(ctx, types.ContextClientIP, clientIP)
+	ctx = types.AppendContextValue(ctx, types.ContextClientAddress, address)
+	ctx = types.AppendContextValue(ctx, types.ContextUserAgent, userAgent)
+	ctx = types.AppendContextValue(ctx, types.ContextAuthTokenKey, token)
 
 	return ctx
 }

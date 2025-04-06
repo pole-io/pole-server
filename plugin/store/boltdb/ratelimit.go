@@ -41,7 +41,7 @@ var (
 
 const (
 	// rule 相关信息以及映射
-	tblRateLimitConfig       string = "ratelimit_config"
+	tblRateLimitConfig       string = "ratelimit_rule"
 	RateLimitFieldID         string = "ID"
 	RateLimitFieldServiceID  string = "ServiceID"
 	RateLimitFieldClusterID  string = "ClusterID"
@@ -240,7 +240,7 @@ func (r *rateLimitStore) createRateLimit(limit *rules.RateLimit) error {
 	}
 	limit.Valid = true
 	return handler.Execute(true, func(tx *bolt.Tx) error {
-		// create ratelimit_config
+		// create ratelimit_rule
 		if err := saveValue(tx, tblRateLimitConfig, limit.ID, limit); err != nil {
 			log.Errorf("[Store][RateLimit] create rate_limit(%s, %s), %+v, err: %s",
 				limit.ID, limit.ServiceID, limit, err.Error())
@@ -267,7 +267,7 @@ func (r *rateLimitStore) enableRateLimit(limit *rules.RateLimit) error {
 		} else {
 			properties[RateLimitFieldEnableTime] = time.Now()
 		}
-		// create ratelimit_config
+		// create ratelimit_rule
 		if err := updateValue(tx, tblRateLimitConfig, limit.ID, properties); err != nil {
 			log.Errorf("[Store][RateLimit] update rate_limit(%s, %s) err: %s",
 				limit.ID, limit.ServiceID, err.Error())
@@ -300,7 +300,7 @@ func (r *rateLimitStore) updateRateLimit(limit *rules.RateLimit) error {
 		} else {
 			properties[RateLimitFieldEnableTime] = time.Now()
 		}
-		// create ratelimit_config
+		// create ratelimit_rule
 		if err := updateValue(tx, tblRateLimitConfig, limit.ID, properties); err != nil {
 			log.Errorf("[Store][RateLimit] update rate_limit(%s, %s) err: %s",
 				limit.ID, limit.ServiceID, err.Error())

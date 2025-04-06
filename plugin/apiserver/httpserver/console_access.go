@@ -18,9 +18,16 @@
 package httpserver
 
 import (
-	"github.com/emicklei/go-restful/v3"
+	"net/http"
 
+	"github.com/emicklei/go-restful/v3"
+	"github.com/golang/protobuf/proto"
+
+	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+
+	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
+	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
 
 const (
@@ -29,7 +36,10 @@ const (
 )
 
 // GetCoreConsoleAccessServer 增加配置中心模块之后，namespace 作为两个模块的公共模块需要独立， restful path 以 /core 开头
-func (h *HTTPServer) GetCoreV1ConsoleAccessServer(ws *restful.WebService, include []string) error {
+func (h *HTTPServer) GetCoreV1ConsoleAccessServer(include []string) *restful.WebService {
+	ws := new(restful.WebService)
+	ws.Path("/core/v1").Consumes(restful.MIME_JSON).Produces(restful.MIME_JSON)
+
 	consoleAccess := []string{defaultAccess}
 
 	if len(include) == 0 {
@@ -53,23 +63,105 @@ func (h *HTTPServer) GetCoreV1ConsoleAccessServer(ws *restful.WebService, includ
 			h.addCoreDefaultAccess(ws)
 		}
 	}
-	return nil
+	return ws
 }
 
 func (h *HTTPServer) addCoreDefaultReadAccess(ws *restful.WebService) {
-	ws.Route(ws.GET("/namespaces").To(h.discoverV1.GetNamespaces).Operation("CoreGetNamespaces"))
-	ws.Route(ws.GET("/namespaces/token").To(h.discoverV1.GetNamespaceToken).Operation("CoreGetNamespaceToken"))
+	ws.Route(docs.EnrichGetNamespacesApiDocsOld(ws.GET("/namespaces").To(h.GetNamespaces)))
 }
 
 func (h *HTTPServer) addCoreDefaultAccess(ws *restful.WebService) {
-	ws.Route(docs.EnrichCreateNamespacesApiDocs(ws.POST("/namespaces").To(h.discoverV1.CreateNamespaces).
-		Operation("CoreCreateNamespaces")))
-	ws.Route(docs.EnrichDeleteNamespacesApiDocs(ws.POST("/namespaces/delete").To(h.discoverV1.DeleteNamespaces).
-		Operation("CoreDeleteNamespaces")))
-	ws.Route(docs.EnrichUpdateNamespacesApiDocs(ws.PUT("/namespaces").To(h.discoverV1.UpdateNamespaces).
-		Operation("CoreUpdateNamespaces")))
-	ws.Route(docs.EnrichGetNamespacesApiDocs(ws.GET("/namespaces").To(h.discoverV1.GetNamespaces).
-		Operation("CoreGetNamespaces")))
-	ws.Route(ws.GET("/namespaces/token").To(h.discoverV1.GetNamespaceToken).Operation("CoreGetNamespaceToken"))
-	ws.Route(ws.PUT("/namespaces/token").To(h.discoverV1.UpdateNamespaceToken).Operation("CoreUpdateNamespaceToken"))
+	ws.Route(docs.EnrichCreateNamespacesApiDocsOld(ws.POST("/namespaces").To(h.CreateNamespaces)))
+	ws.Route(docs.EnrichDeleteNamespacesApiDocsOld(ws.POST("/namespaces/delete").To(h.DeleteNamespaces)))
+	ws.Route(docs.EnrichUpdateNamespacesApiDocsOld(ws.PUT("/namespaces").To(h.UpdateNamespaces)))
+	ws.Route(docs.EnrichGetNamespacesApiDocsOld(ws.GET("/namespaces").To(h.GetNamespaces)))
+
+	//
+	ws.Route(ws.GET("/clients").To(h.GetReportClients))
+}
+
+// CreateNamespaces 创建命名空间
+func (h *HTTPServer) CreateNamespaces(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+
+	var namespaces NamespaceArr
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apimodel.Namespace{}
+		namespaces = append(namespaces, msg)
+		return msg
+	})
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+
+	handler.WriteHeaderAndProto(h.namespaceServer.CreateNamespaces(ctx, namespaces))
+}
+
+// DeleteNamespaces 删除命名空间
+func (h *HTTPServer) DeleteNamespaces(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+
+	var namespaces NamespaceArr
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apimodel.Namespace{}
+		namespaces = append(namespaces, msg)
+		return msg
+	})
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+
+	ret := h.namespaceServer.DeleteNamespaces(ctx, namespaces)
+	if code := api.CalcCode(ret); code != http.StatusOK {
+		handler.WriteHeaderAndProto(ret)
+		return
+	}
+
+	handler.WriteHeaderAndProto(ret)
+}
+
+// UpdateNamespaces 修改命名空间
+func (h *HTTPServer) UpdateNamespaces(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+
+	var namespaces NamespaceArr
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apimodel.Namespace{}
+		namespaces = append(namespaces, msg)
+		return msg
+	})
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+
+	ret := h.namespaceServer.UpdateNamespaces(ctx, namespaces)
+	if code := api.CalcCode(ret); code != http.StatusOK {
+		handler.WriteHeaderAndProto(ret)
+		return
+	}
+
+	handler.WriteHeaderAndProto(ret)
+}
+
+// GetNamespaces 查询命名空间
+func (h *HTTPServer) GetNamespaces(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+
+	ret := h.namespaceServer.GetNamespaces(handler.ParseHeaderContext(), req.Request.URL.Query())
+	handler.WriteHeaderAndProto(ret)
 }

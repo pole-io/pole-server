@@ -32,11 +32,11 @@ import (
 )
 
 const (
-	PluginName        = "discoverEventLocal"
+	PluginName        = "local"
 	defaultBufferSize = 1024
 )
 
-var log = commonlog.RegisterScope(PluginName, "", 0)
+var log = commonlog.RegisterScope(PluginName+"event", "", 0)
 
 func init() {
 	d := &discoverEventLocal{}

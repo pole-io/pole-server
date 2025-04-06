@@ -25,11 +25,6 @@ import (
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
 
-func (h *HTTPServer) GetClientServer(ws *restful.WebService) error {
-	ws.Route(ws.GET("/clients").To(h.GetReportClients))
-	return nil
-}
-
 func (h *HTTPServer) GetReportClients(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
@@ -44,11 +39,11 @@ func (h *HTTPServer) GetReportClients(req *restful.Request, rsp *restful.Respons
 }
 
 // GetPrometheusDiscoveryServer 注册用于prometheus服务发现的接口
-func (h *HTTPServer) GetPrometheusDiscoveryServer(include []string) (*restful.WebService, error) {
+func (h *HTTPServer) GetPrometheusDiscoveryServer(include []string) *restful.WebService {
 	ws := new(restful.WebService)
 	ws.Path("/prometheus/v1").Consumes(restful.MIME_JSON).Produces(restful.MIME_JSON)
 	h.addPrometheusDefaultAccess(ws)
-	return ws, nil
+	return ws
 }
 
 func (h *HTTPServer) addPrometheusDefaultAccess(ws *restful.WebService) {

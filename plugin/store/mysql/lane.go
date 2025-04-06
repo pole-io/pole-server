@@ -25,7 +25,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	ruletypes "github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -36,7 +36,7 @@ type laneStore struct {
 }
 
 // AddLaneGroup 添加泳道组
-func (l *laneStore) AddLaneGroup(tx store.Tx, item *rules.LaneGroup) error {
+func (l *laneStore) AddLaneGroup(tx store.Tx, item *ruletypes.LaneGroup) error {
 	if err := l.cleanSoftDeletedRules(); err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ VALUES (?, ?, ?, ?, ?, 0, sysdate(), sysdate())
 }
 
 // UpdateLaneGroup 更新泳道组
-func (l *laneStore) UpdateLaneGroup(tx store.Tx, item *rules.LaneGroup) error {
+func (l *laneStore) UpdateLaneGroup(tx store.Tx, item *ruletypes.LaneGroup) error {
 	if err := l.cleanSoftDeletedRules(); err != nil {
 		return err
 	}
@@ -93,18 +93,18 @@ func (l *laneStore) UpdateLaneGroup(tx store.Tx, item *rules.LaneGroup) error {
 }
 
 // GetLaneGroup 查询泳道组
-func (l *laneStore) GetLaneGroup(name string) (*rules.LaneGroup, error) {
+func (l *laneStore) GetLaneGroup(name string) (*ruletypes.LaneGroup, error) {
 	querySql := `
 SELECT id, name, rule, description, revision, flag, UNIX_TIMESTAMP(ctime), UNIX_TIMESTAMP(mtime) FROM lane_group WHERE flag = 0 AND name = ?
 `
-	result := make([]*rules.LaneGroup, 0, 1)
+	result := make([]*ruletypes.LaneGroup, 0, 1)
 	err := l.master.processWithTransaction("GetLaneGroup", func(tx *BaseTx) error {
 		rows, err := tx.Query(querySql, name)
 		if err != nil {
 			log.Error("[Store][Lane] select one lane group", zap.String("querySql", querySql), zap.Error(err))
 			return err
 		}
-		if err := transferLaneGroups(rows, func(group *rules.LaneGroup) {
+		if err := transferLaneGroups(rows, func(group *ruletypes.LaneGroup) {
 			result = append(result, group)
 		}); err != nil {
 			log.Error("[Store][Lane] transfer one lane group row", zap.Error(err))
@@ -122,18 +122,18 @@ SELECT id, name, rule, description, revision, flag, UNIX_TIMESTAMP(ctime), UNIX_
 }
 
 // GetLaneGroupByID .
-func (l *laneStore) GetLaneGroupByID(id string) (*rules.LaneGroup, error) {
+func (l *laneStore) GetLaneGroupByID(id string) (*ruletypes.LaneGroup, error) {
 	querySql := `
 SELECT id, name, rule, description, revision, flag, UNIX_TIMESTAMP(ctime), UNIX_TIMESTAMP(mtime) FROM lane_group WHERE flag = 0 AND id = ?
 `
-	result := make([]*rules.LaneGroup, 0, 1)
+	result := make([]*ruletypes.LaneGroup, 0, 1)
 	err := l.master.processWithTransaction("GetLaneGroupByID", func(tx *BaseTx) error {
 		rows, err := tx.Query(querySql, id)
 		if err != nil {
 			log.Error("[Store][Lane] select one lane group", zap.String("querySql", querySql), zap.Error(err))
 			return err
 		}
-		if err := transferLaneGroups(rows, func(group *rules.LaneGroup) {
+		if err := transferLaneGroups(rows, func(group *ruletypes.LaneGroup) {
 			result = append(result, group)
 		}); err != nil {
 			log.Error("[Store][Lane] transfer one lane group row", zap.Error(err))
@@ -150,7 +150,7 @@ SELECT id, name, rule, description, revision, flag, UNIX_TIMESTAMP(ctime), UNIX_
 	return result[0], nil
 }
 
-func (l *laneStore) LockLaneGroup(tx store.Tx, name string) (*rules.LaneGroup, error) {
+func (l *laneStore) LockLaneGroup(tx store.Tx, name string) (*ruletypes.LaneGroup, error) {
 	querySql := `
 SELECT id, name, rule, description, revision
 	, flag, UNIX_TIMESTAMP(ctime), UNIX_TIMESTAMP(mtime)
@@ -160,14 +160,14 @@ WHERE flag = 0
 FOR UPDATE
 `
 	dbTx := tx.GetDelegateTx().(*BaseTx)
-	result := make([]*rules.LaneGroup, 0, 1)
+	result := make([]*ruletypes.LaneGroup, 0, 1)
 	rows, err := dbTx.Query(querySql, name)
 	if err != nil {
 		log.Error("[Store][Lane] select one lane group", zap.String("querySql", querySql), zap.String("name", name),
 			zap.Error(err))
 		return nil, err
 	}
-	if err := transferLaneGroups(rows, func(group *rules.LaneGroup) {
+	if err := transferLaneGroups(rows, func(group *ruletypes.LaneGroup) {
 		result = append(result, group)
 	}); err != nil {
 		log.Error("[Store][Lane] transfer one lane group row", zap.String("name", name), zap.Error(err))
@@ -188,7 +188,7 @@ FOR UPDATE
 }
 
 // GetLaneGroups 查询泳道组
-func (l *laneStore) GetLaneGroups(filter map[string]string, offset, limit uint32) (uint32, []*rules.LaneGroup, error) {
+func (l *laneStore) GetLaneGroups(filter map[string]string, offset, limit uint32) (uint32, []*ruletypes.LaneGroup, error) {
 	countSql := `
 SELECT COUNT(*) FROM lane_group WHERE flag = 0 
 `
@@ -220,7 +220,7 @@ SELECT id, name, rule, description, revision, flag, UNIX_TIMESTAMP(ctime), UNIX_
 	querySql += fmt.Sprintf(" ORDER BY %s %s LIMIT ?, ? ", filter["order_field"], filter["order_type"])
 
 	var count int64
-	var result []*rules.LaneGroup
+	var result []*ruletypes.LaneGroup
 
 	err := l.master.processWithTransaction("GetLaneGroups", func(tx *BaseTx) error {
 		row := tx.QueryRow(countSql, args...)
@@ -236,7 +236,7 @@ SELECT id, name, rule, description, revision, flag, UNIX_TIMESTAMP(ctime), UNIX_
 			log.Error("[Store][Lane] select lane group", zap.String("querySql", querySql), zap.Error(err))
 			return err
 		}
-		if err := transferLaneGroups(rows, func(group *rules.LaneGroup) {
+		if err := transferLaneGroups(rows, func(group *ruletypes.LaneGroup) {
 			result = append(result, group)
 		}); err != nil {
 			log.Error("[Store][Lane] transfer lane group row", zap.Error(err))
@@ -289,9 +289,9 @@ func (l *laneStore) DeleteLaneGroup(id string) error {
 }
 
 // getLaneRulesByGroup .
-func (l *laneStore) getLaneRulesByGroup(tx *BaseTx, names []string) (map[string]map[string]*rules.LaneRule, error) {
+func (l *laneStore) getLaneRulesByGroup(tx *BaseTx, names []string) (map[string]map[string]*ruletypes.LaneRule, error) {
 	if len(names) == 0 {
-		return map[string]map[string]*rules.LaneRule{}, nil
+		return map[string]map[string]*ruletypes.LaneRule{}, nil
 	}
 
 	querySql := `
@@ -305,10 +305,10 @@ UNIX_TIMESTAMP(etime), UNIX_TIMESTAMP(mtime) FROM lane_rule WHERE flag = 0 AND g
 		log.Error("[Store][Lane] fetch lane group all lane_rules", zap.String("sql", querySql), zap.Error(err))
 		return nil, store.Error(err)
 	}
-	result := make(map[string]map[string]*rules.LaneRule, len(names))
-	if err := transferLaneRules(rows, func(rule *rules.LaneRule) {
+	result := make(map[string]map[string]*ruletypes.LaneRule, len(names))
+	if err := transferLaneRules(rows, func(rule *ruletypes.LaneRule) {
 		if _, ok := result[rule.LaneGroup]; !ok {
-			result[rule.LaneGroup] = make(map[string]*rules.LaneRule, 32)
+			result[rule.LaneGroup] = make(map[string]*ruletypes.LaneRule, 32)
 		}
 		result[rule.LaneGroup][rule.ID] = rule
 	}); err != nil {
@@ -318,8 +318,8 @@ UNIX_TIMESTAMP(etime), UNIX_TIMESTAMP(mtime) FROM lane_rule WHERE flag = 0 AND g
 }
 
 // upsertLaneRules 添加通道规则
-func (l *laneStore) upsertLaneRules(tx *BaseTx, group *rules.LaneGroup, items map[string]*rules.LaneRule) error {
-	// 先清理到不再 rules.Lane[] 中的泳道规则
+func (l *laneStore) upsertLaneRules(tx *BaseTx, group *ruletypes.LaneGroup, items map[string]*ruletypes.LaneRule) error {
+	// 先清理到不再 ruletypes.Lane[] 中的泳道规则
 	if len(items) > 0 {
 		// 如果 items.size > 0，只清理不再 items 里面的泳道规则
 		args := make([]interface{}, 0, len(items))
@@ -404,7 +404,7 @@ UPDATE lane_rule SET rule = ?, revision = ?, priority = ?, description = ?, enab
 }
 
 // GetMoreLaneGroups 获取泳道规则列表到缓存层
-func (l *laneStore) GetMoreLaneGroups(mtime time.Time, firstUpdate bool) (map[string]*rules.LaneGroup, error) {
+func (l *laneStore) GetMoreLaneGroups(mtime time.Time, firstUpdate bool) (map[string]*ruletypes.LaneGroup, error) {
 	if firstUpdate {
 		mtime = time.Unix(0, 1)
 	}
@@ -435,8 +435,8 @@ FROM
 WHERE
   lg.mtime >= FROM_UNIXTIME(?)
 `
-	deltaGroups := map[string]*rules.LaneGroup{}
-	var deltaRules []*rules.LaneRule
+	deltaGroups := map[string]*ruletypes.LaneGroup{}
+	var deltaRules []*ruletypes.LaneRule
 
 	err := l.slave.processWithTransaction("GetMoreLaneGroups", func(tx *BaseTx) error {
 		rows, err := tx.Query(deltaGroupSql, mtime)
@@ -444,8 +444,8 @@ WHERE
 			log.Error("[Store][Lane] delta lane group", zap.String("querySql", deltaGroupSql), zap.Error(err))
 			return err
 		}
-		if err := transferLaneGroups(rows, func(group *rules.LaneGroup) {
-			group.LaneRules = make(map[string]*rules.LaneRule)
+		if err := transferLaneGroups(rows, func(group *ruletypes.LaneGroup) {
+			group.LaneRules = make(map[string]*ruletypes.LaneRule)
 			deltaGroups[group.Name] = group
 		}); err != nil {
 			log.Error("[Store][Lane] transfer lane group row", zap.Error(err))
@@ -458,7 +458,7 @@ WHERE
 				log.Error("[Store][Lane] delta lane rule", zap.String("querySql", deltaRuleSql), zap.Error(err))
 				return err
 			}
-			if err := transferLaneRules(rows, func(rule *rules.LaneRule) {
+			if err := transferLaneRules(rows, func(rule *ruletypes.LaneRule) {
 				deltaRules = append(deltaRules, rule)
 			}); err != nil {
 				log.Error("[Store][Lane] transfer lane rule row", zap.Error(err))
@@ -506,7 +506,7 @@ func (l *laneStore) cleanSoftDeletedRules() error {
 	return store.Error(err)
 }
 
-func transferLaneGroups(rows *sql.Rows, op func(group *rules.LaneGroup)) error {
+func transferLaneGroups(rows *sql.Rows, op func(group *ruletypes.LaneGroup)) error {
 	if rows == nil {
 		return nil
 	}
@@ -515,7 +515,7 @@ func transferLaneGroups(rows *sql.Rows, op func(group *rules.LaneGroup)) error {
 	}()
 
 	for rows.Next() {
-		item := &rules.LaneGroup{}
+		item := &ruletypes.LaneGroup{}
 		var ctime, mtime int64
 		var flag int
 
@@ -530,7 +530,7 @@ func transferLaneGroups(rows *sql.Rows, op func(group *rules.LaneGroup)) error {
 	return nil
 }
 
-func transferLaneRules(rows *sql.Rows, op func(rule *rules.LaneRule)) error {
+func transferLaneRules(rows *sql.Rows, op func(rule *ruletypes.LaneRule)) error {
 	if rows == nil {
 		return nil
 	}
@@ -539,7 +539,7 @@ func transferLaneRules(rows *sql.Rows, op func(rule *rules.LaneRule)) error {
 	}()
 
 	for rows.Next() {
-		item := &rules.LaneRule{}
+		item := &ruletypes.LaneRule{}
 		var ctime, etime, mtime int64
 		var flag, enable int
 

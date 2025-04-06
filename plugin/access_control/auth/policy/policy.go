@@ -50,8 +50,18 @@ type (
 	StrategyDetail2Api func(ctx context.Context, user *authtypes.StrategyDetail) *apisecurity.AuthStrategy
 )
 
-// CreateStrategy 创建鉴权策略
-func (svr *Server) CreateStrategy(ctx context.Context, req *apisecurity.AuthStrategy) *apiservice.Response {
+// CreatePolicies 创建鉴权策略
+func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
+	resp := api.NewAuthBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+
+	for index := range reqs {
+		ret := svr.CreatePolicy(ctx, reqs[index])
+		api.Collect(resp, ret)
+	}
+	return resp
+}
+
+func (svr *Server) CreatePolicy(ctx context.Context, req *apisecurity.AuthStrategy) *apiservice.Response {
 	req.Owner = protobuf.NewStringValue(utils.ParseOwnerID(ctx))
 	req.Resources = svr.normalizeResource(req.Resources)
 
@@ -82,24 +92,24 @@ func (svr *Server) CreateStrategy(ctx context.Context, req *apisecurity.AuthStra
 	return api.NewAuthStrategyResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
-// UpdateStrategies 批量修改鉴权
-func (svr *Server) UpdateStrategies(
+// UpdatePolicies 批量修改鉴权
+func (svr *Server) UpdatePolicies(
 	ctx context.Context, reqs []*apisecurity.ModifyAuthStrategy) *apiservice.BatchWriteResponse {
 	resp := api.NewAuthBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 
 	for index := range reqs {
-		ret := svr.UpdateStrategy(ctx, reqs[index])
+		ret := svr.UpdatePolicy(ctx, reqs[index])
 		api.Collect(resp, ret)
 	}
 
 	return resp
 }
 
-// UpdateStrategy 实现鉴权策略的变更
+// UpdatePolicy 实现鉴权策略的变更
 // Case 1. 修改的是默认鉴权策略的话，只能修改资源，不能添加、删除用户 or 用户组
 // Case 2. 鉴权策略只能被自己的 owner 对应的用户修改
 // Case 3. 主账户的默认策略不得修改
-func (svr *Server) UpdateStrategy(ctx context.Context, req *apisecurity.ModifyAuthStrategy) *apiservice.Response {
+func (svr *Server) UpdatePolicy(ctx context.Context, req *apisecurity.ModifyAuthStrategy) *apiservice.Response {
 	strategy, err := svr.storage.GetStrategyDetail(req.GetId().GetValue())
 	if err != nil {
 		log.Error("[Auth][Strategy] get strategy from store", utils.RequestID(ctx),
@@ -129,12 +139,12 @@ func (svr *Server) UpdateStrategy(ctx context.Context, req *apisecurity.ModifyAu
 	return api.NewModifyAuthStrategyResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
-// DeleteStrategies 批量删除鉴权策略
-func (svr *Server) DeleteStrategies(
+// DeletePolicies 批量删除鉴权策略
+func (svr *Server) DeletePolicies(
 	ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
 	resp := api.NewAuthBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for index := range reqs {
-		ret := svr.DeleteStrategy(ctx, reqs[index])
+		ret := svr.DeletePolicy(ctx, reqs[index])
 		api.Collect(resp, ret)
 	}
 
@@ -144,7 +154,7 @@ func (svr *Server) DeleteStrategies(
 // DeleteStrategy 删除鉴权策略
 // Case 1. 只有该策略的 owner 账户可以删除策略
 // Case 2. 默认策略不能被删除，默认策略只能随着账户的删除而被清理
-func (svr *Server) DeleteStrategy(ctx context.Context, req *apisecurity.AuthStrategy) *apiservice.Response {
+func (svr *Server) DeletePolicy(ctx context.Context, req *apisecurity.AuthStrategy) *apiservice.Response {
 	strategy, err := svr.storage.GetStrategyDetail(req.GetId().GetValue())
 	if err != nil {
 		log.Error("[Auth][Strategy] get strategy from store", utils.RequestID(ctx),
@@ -178,7 +188,7 @@ func (svr *Server) DeleteStrategy(ctx context.Context, req *apisecurity.AuthStra
 	return api.NewAuthStrategyResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
-// GetStrategies 批量查询鉴权策略
+// GetPolicies 批量查询鉴权策略
 // Case 1. 如果是以资源视角来查询鉴权策略，那么就会忽略自动根据账户类型进行数据查看的限制
 //
 //	eg. 比如当前子账户A想要查看资源R的相关的策略，那么不在会自动注入 principal_id 以及 principal_type 的查询条件
@@ -190,7 +200,7 @@ func (svr *Server) DeleteStrategy(ctx context.Context, req *apisecurity.AuthStra
 //		a. 如果当前是超级管理账户，则按照传入的 query 进行查询即可
 //		b. 如果当前是主账户，则自动注入 owner 字段，即只能查看策略的 owner 是自己的策略
 //		c. 如果当前是子账户，则自动注入 principal_id 以及 principal_type 字段，即稚嫩查询与自己有关的策略
-func (svr *Server) GetStrategies(ctx context.Context, filters map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetPolicies(ctx context.Context, filters map[string]string) *apiservice.BatchQueryResponse {
 	filters = ParseStrategySearchArgs(ctx, filters)
 	offset, limit, _ := valid.ParseOffsetAndLimit(filters)
 
@@ -261,11 +271,11 @@ func ParseStrategySearchArgs(ctx context.Context, searchFilters map[string]strin
 	return searchFilters
 }
 
-// GetStrategy 根据策略ID获取详细的鉴权策略
+// GetPolicy 根据策略ID获取详细的鉴权策略
 // Case 1 如果当前操作者是该策略 principal 中的一员，则可以查看
 // Case 2 如果当前操作者是该策略的 owner，则可以查看
 // Case 3 如果当前操作者是admin角色，直接查看
-func (svr *Server) GetStrategy(ctx context.Context, req *apisecurity.AuthStrategy) *apiservice.Response {
+func (svr *Server) GetPolicy(ctx context.Context, req *apisecurity.AuthStrategy) *apiservice.Response {
 	userId := utils.ParseUserID(ctx)
 	isOwner := utils.ParseIsOwner(ctx)
 

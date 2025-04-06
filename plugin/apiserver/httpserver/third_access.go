@@ -23,7 +23,6 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 	"github.com/go-openapi/spec"
-	restfulspec "github.com/polarismesh/go-restful-openapi/v2"
 
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 )
@@ -73,19 +72,6 @@ func (h *HTTPServer) enablePrometheusAccess(wsContainer *restful.Container) {
 	log.Infof("open http access for prometheus")
 
 	wsContainer.Handle("/metrics", metrics.GetHttpHandler())
-}
-
-func (h *HTTPServer) enableSwaggerAPI(wsContainer *restful.Container) {
-	log.Infof("[HTTPServer] open http access for swagger API")
-	config := restfulspec.Config{
-		WebServices:                   wsContainer.RegisteredWebServices(), // you control what services are visible
-		APIPath:                       "/apidocs.json",
-		PostBuildSwaggerObjectHandler: enrichSwaggerObject,
-	}
-
-	if h.enableSwagger {
-		wsContainer.Add(restfulspec.NewOpenAPIService(config))
-	}
 }
 
 func enrichSwaggerObject(swo *spec.Swagger) {

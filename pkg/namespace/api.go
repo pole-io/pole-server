@@ -34,12 +34,8 @@ type NamespaceOperateServer interface {
 	DeleteNamespaces(ctx context.Context, req []*apimodel.Namespace) *apiservice.BatchWriteResponse
 	// UpdateNamespaces Batch update naming space
 	UpdateNamespaces(ctx context.Context, req []*apimodel.Namespace) *apiservice.BatchWriteResponse
-	// UpdateNamespaceToken Update token with namespace
-	UpdateNamespaceToken(ctx context.Context, req *apimodel.Namespace) *apiservice.Response
 	// GetNamespaces Get a list of namespaces
 	GetNamespaces(ctx context.Context, query map[string][]string) *apiservice.BatchQueryResponse
-	// GetNamespaceToken Get the token with namespace
-	GetNamespaceToken(ctx context.Context, req *apimodel.Namespace) *apiservice.Response
 	// CreateNamespaceIfAbsent Create a single name space
 	CreateNamespaceIfAbsent(ctx context.Context, req *apimodel.Namespace) (string, *apiservice.Response)
 }

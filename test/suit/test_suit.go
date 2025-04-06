@@ -71,7 +71,7 @@ const (
 	tblNameInstance    = "instance"
 	tblNameService     = "service"
 	tblNameRouting     = "routing"
-	tblRateLimitConfig = "ratelimit_config"
+	tblRateLimitConfig = "ratelimit_rule"
 	tblCircuitBreaker  = "circuitbreaker_rule"
 	tblNameRouterRule  = "router_rule"
 	tblClient          = "client"
@@ -941,7 +941,7 @@ func (d *DiscoverTestSuit) CleanRateLimit(id string) {
 
 			defer rollbackDbTx(dbTx)
 
-			str := `delete from ratelimit_config where id = ?`
+			str := `delete from ratelimit_rule where id = ?`
 			if _, err := dbTx.Exec(str, id); err != nil {
 				panic(err)
 			}

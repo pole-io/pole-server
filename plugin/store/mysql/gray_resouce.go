@@ -36,9 +36,9 @@ func (g *grayStore) CreateGrayResourceTx(tx store.Tx, data *rules.GrayResource) 
 		return ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
-	s := "INSERT INTO gray_resource(name, match_rule, create_time, create_by , modify_time, modify_by) " +
+	s := "INSERT INTO gray_resource(name, match_rule, ctime, create_by , mtime, modify_by) " +
 		" VALUES (?, ?, sysdate(), ? , sysdate(), ?) ON DUPLICATE KEY UPDATE " +
-		"match_rule = ?, create_time=sysdate(), create_by=? , modify_time=sysdate(), modify_by=?"
+		"match_rule = ?, ctime=sysdate(), create_by=? , mtime=sysdate(), modify_by=?"
 
 	args := []interface{}{
 		data.Name, data.MatchRule,
@@ -56,7 +56,7 @@ func (g *grayStore) CleanGrayResource(tx store.Tx, data *rules.GrayResource) err
 		return ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
-	s := "UPDATE gray_resource SET flag = 1, modify_time = sysdate() WHERE name = ?"
+	s := "UPDATE gray_resource SET flag = 1, mtime = sysdate() WHERE name = ?"
 
 	args := []interface{}{data.Name}
 	if _, err := dbTx.Exec(s, args...); err != nil {
@@ -73,8 +73,8 @@ func (g *grayStore) GetMoreGrayResouces(firstUpdate bool,
 		modifyTime = time.Time{}
 	}
 
-	s := "SELECT name,  match_rule,  UNIX_TIMESTAMP(create_time), IFNULL(create_by, ''),  " +
-		" UNIX_TIMESTAMP(modify_time), IFNULL(modify_by, ''), flag FROM gray_resource WHERE modify_time > FROM_UNIXTIME(?)"
+	s := "SELECT name,  match_rule,  UNIX_TIMESTAMP(ctime), IFNULL(create_by, ''),  " +
+		" UNIX_TIMESTAMP(mtime), IFNULL(modify_by, ''), flag FROM gray_resource WHERE mtime > FROM_UNIXTIME(?)"
 	if firstUpdate {
 		s += " AND flag = 0 "
 	}

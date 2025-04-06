@@ -62,7 +62,7 @@ func (cfr *configFileReleaseStore) CreateConfigFileReleaseTx(tx store.Tx, data *
 	}
 
 	s := "INSERT INTO config_file_release(name, namespace, `group`, file_name, content , comment, md5, " +
-		" version, create_time, create_by , modify_time, modify_by, active, tags, description, release_type) " +
+		" version, ctime, create_by , mtime, modify_by, active, tags, description, release_type) " +
 		" VALUES (?, ?, ?, ?, ? , ?, ?, ?, sysdate(), ? , sysdate(), ?, 1, ?, ?, ?)"
 
 	args = []interface{}{
@@ -124,7 +124,7 @@ func (cfr *configFileReleaseStore) DeleteConfigFileReleaseTx(tx store.Tx, data *
 	}
 
 	dbTx := tx.GetDelegateTx().(*BaseTx)
-	s := "update config_file_release set flag = 1, modify_time = sysdate() " +
+	s := "update config_file_release set flag = 1, mtime = sysdate() " +
 		" where namespace = ? and `group` = ? and file_name = ? and name = ?"
 	_, err := dbTx.Exec(s, data.Namespace, data.Group, data.FileName, data.Name)
 	if err != nil {
@@ -141,7 +141,7 @@ func (cfr *configFileReleaseStore) CleanConfigFileReleasesTx(tx store.Tx,
 	}
 
 	dbTx := tx.GetDelegateTx().(*BaseTx)
-	s := "UPDATE config_file_release SET flag = 1, modify_time = sysdate() WHERE namespace = ? " +
+	s := "UPDATE config_file_release SET flag = 1, mtime = sysdate() WHERE namespace = ? " +
 		" AND `group` = ? AND file_name = ?"
 	_, err := dbTx.Exec(s, namespace, group, fileName)
 	if err != nil {
@@ -152,7 +152,7 @@ func (cfr *configFileReleaseStore) CleanConfigFileReleasesTx(tx store.Tx,
 
 // CleanDeletedConfigFileRelease 清理配置发布历史
 func (cfr *configFileReleaseStore) CleanDeletedConfigFileRelease(endTime time.Time, limit uint64) error {
-	delSql := "DELETE FROM config_file_release WHERE modify_time < ? AND flag = 1 LIMIT ?"
+	delSql := "DELETE FROM config_file_release WHERE mtime < ? AND flag = 1 LIMIT ?"
 	_, err := cfr.master.Exec(delSql, endTime, limit)
 	return err
 }
@@ -247,7 +247,7 @@ func (cfr *configFileReleaseStore) ActiveConfigFileReleaseTx(tx store.Tx, releas
 	args := []interface{}{maxVersion + 1, release.ReleaseType, release.Namespace, release.Group,
 		release.FileName, release.Name}
 	//	update 指定的 release 记录，设置其 active、version 以及 mtime
-	updateSql := "UPDATE config_file_release SET active = 1, version = ?, modify_time = sysdate(), release_type = ? " +
+	updateSql := "UPDATE config_file_release SET active = 1, version = ?, mtime = sysdate(), release_type = ? " +
 		" WHERE namespace = ? AND `group` = ? AND file_name = ? AND name = ?"
 	if _, err := dbTx.Exec(updateSql, args...); err != nil {
 		return store.Error(err)
@@ -263,7 +263,7 @@ func (cfr *configFileReleaseStore) InactiveConfigFileReleaseTx(tx store.Tx, rele
 
 	args := []interface{}{release.Namespace, release.Group, release.FileName, release.Name, release.ReleaseType}
 	//	取消对应发布版本的 active 状态
-	if _, err := dbTx.Exec("UPDATE config_file_release SET active = 0, modify_time = sysdate() "+
+	if _, err := dbTx.Exec("UPDATE config_file_release SET active = 0, mtime = sysdate() "+
 		" WHERE namespace = ? AND `group` = ? AND file_name = ? AND name = ? AND release_type = ?", args...); err != nil {
 		return store.Error(err)
 	}
@@ -278,7 +278,7 @@ func (cfr *configFileReleaseStore) inactiveConfigFileRelease(tx *BaseTx,
 
 	args := []interface{}{release.Namespace, release.Group, release.FileName, release.ReleaseType}
 	//	先取消所有 active == true 的记录
-	if _, err := tx.Exec("UPDATE config_file_release SET active = 0, modify_time = sysdate() "+
+	if _, err := tx.Exec("UPDATE config_file_release SET active = 0, mtime = sysdate() "+
 		" WHERE namespace = ? AND `group` = ? AND file_name = ? AND active = 1 AND release_type = ?", args...); err != nil {
 		return 0, err
 	}
@@ -309,7 +309,7 @@ func (cfr *configFileReleaseStore) GetMoreReleaseFile(firstUpdate bool,
 		modifyTime = time.Time{}
 	}
 
-	s := cfr.baseQuerySql() + " WHERE modify_time > FROM_UNIXTIME(?) ORDER BY version DESC"
+	s := cfr.baseQuerySql() + " WHERE mtime > FROM_UNIXTIME(?) ORDER BY version DESC"
 	rows, err := cfr.slave.Query(s, timeToTimestamp(modifyTime))
 	if err != nil {
 		return nil, err
@@ -339,7 +339,7 @@ func (cfr *configFileReleaseStore) CountConfigReleases(namespace, group string, 
 
 func (cfr *configFileReleaseStore) baseQuerySql() string {
 	return "SELECT id, name, namespace, `group`, file_name, content, IFNULL(comment, ''), " +
-		" md5, version, UNIX_TIMESTAMP(create_time), IFNULL(create_by, ''), UNIX_TIMESTAMP(modify_time), " +
+		" md5, version, UNIX_TIMESTAMP(ctime), IFNULL(create_by, ''), UNIX_TIMESTAMP(mtime), " +
 		" IFNULL(modify_by, ''), flag, IFNULL(tags, ''), active, IFNULL(description, ''), IFNULL(release_type, '') FROM config_file_release "
 }
 

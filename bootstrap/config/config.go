@@ -88,7 +88,7 @@ const (
 	// DefaultPolarisName default polaris name
 	DefaultPolarisName = "pole-server"
 	// DefaultPolarisNamespace default namespace
-	DefaultPolarisNamespace = "Polaris"
+	DefaultPolarisNamespace = "pole-system"
 	// DefaultFilePath default file path
 	DefaultFilePath = "pole-server.yaml"
 	// DefaultHeartbeatInterval default interval second for heartbeat

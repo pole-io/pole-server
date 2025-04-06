@@ -143,7 +143,7 @@ func assembleConfigFileRelease(configFile *apiconfig.ConfigFile) *apiconfig.Conf
 		Namespace: configFile.Namespace,
 		Group:     configFile.Group,
 		FileName:  configFile.Name,
-		CreateBy:  protobuf.NewStringValue("polaris"),
+		CreateBy:  protobuf.NewStringValue("pole"),
 	}
 }
 

@@ -21,24 +21,20 @@ import (
 	"github.com/emicklei/go-restful/v3"
 
 	"github.com/pole-io/pole-server/apis/apiserver"
-	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 )
 
 type HTTPServerV1 struct {
-	namespaceServer   namespace.NamespaceOperateServer
 	namingServer      service.DiscoverServer
 	healthCheckServer *healthcheck.Server
 }
 
 func NewV1Server(
-	namespaceServer namespace.NamespaceOperateServer,
 	namingServer service.DiscoverServer,
 	healthCheckServer *healthcheck.Server) *HTTPServerV1 {
 	return &HTTPServerV1{
-		namespaceServer:   namespaceServer,
 		namingServer:      namingServer,
 		healthCheckServer: healthCheckServer,
 	}
@@ -54,7 +50,7 @@ const (
 )
 
 // GetConsoleAccessServer 注册管理端接口
-func (h *HTTPServerV1) GetConsoleAccessServer(include []string) (*restful.WebService, error) {
+func (h *HTTPServerV1) GetConsoleAccessServer(include []string) *restful.WebService {
 	consoleAccess := []string{defaultAccess}
 
 	ws := new(restful.WebService)
@@ -98,13 +94,12 @@ func (h *HTTPServerV1) GetConsoleAccessServer(include []string) (*restful.WebSer
 			h.addRateLimitRuleAccess(ws)
 		}
 	}
-	return ws, nil
+	return ws
 }
 
 // addDefaultReadAccess 增加默认读接口
 func (h *HTTPServerV1) addDefaultReadAccess(ws *restful.WebService) {
 	// 管理端接口：只包含读接口
-	ws.Route(docs.EnrichGetNamespacesApiDocs(ws.GET("/namespaces").To(h.GetNamespaces)))
 	ws.Route(docs.EnrichGetServicesApiDocs(ws.GET("/services").To(h.GetServices)))
 	ws.Route(docs.EnrichGetServicesCountApiDocs(ws.GET("/services/count").To(h.GetServicesCount)))
 	ws.Route(docs.EnrichGetServiceAliasesApiDocs(ws.GET("/service/aliases").To(h.GetServiceAliases)))
@@ -134,14 +129,6 @@ func (h *HTTPServerV1) addDefaultAccess(ws *restful.WebService) {
 
 // addServiceAccess .
 func (h *HTTPServerV1) addServiceAccess(ws *restful.WebService) {
-	ws.Route(docs.EnrichCreateNamespacesApiDocsOld(ws.POST("/namespaces").To(h.CreateNamespaces)))
-	ws.Route(docs.EnrichDeleteNamespacesApiDocsOld(ws.POST("/namespaces/delete").To(h.DeleteNamespaces)))
-	ws.Route(docs.EnrichUpdateNamespacesApiDocsOld(ws.PUT("/namespaces").To(h.UpdateNamespaces)))
-	ws.Route(docs.EnrichGetNamespacesApiDocsOld(ws.GET("/namespaces").To(h.GetNamespaces)))
-	ws.Route(docs.EnrichGetNamespaceTokenApiDocsOld(ws.GET("/namespace/token").To(h.GetNamespaceToken)))
-	ws.Route(docs.EnrichUpdateNamespaceTokenApiDocsOld(
-		ws.PUT("/namespace/token").To(h.UpdateNamespaceToken)))
-
 	ws.Route(docs.EnrichCreateServicesApiDocs(ws.POST("/services").To(h.CreateServices)))
 	ws.Route(docs.EnrichDeleteServicesApiDocs(ws.POST("/services/delete").To(h.DeleteServices)))
 	ws.Route(docs.EnrichUpdateServicesApiDocs(ws.PUT("/services").To(h.UpdateServices)))
@@ -233,7 +220,7 @@ func (h *HTTPServerV1) addCircuitBreakerRuleAccess(ws *restful.WebService) {
 }
 
 // GetClientAccessServer get client access server
-func (h *HTTPServerV1) GetClientAccessServer(ws *restful.WebService, include []string) error {
+func (h *HTTPServerV1) GetClientAccessServer(ws *restful.WebService, include []string) {
 	clientAccess := []string{apiserver.DiscoverAccess, apiserver.RegisterAccess, apiserver.HealthcheckAccess}
 
 	// 如果为空，则开启全部接口
@@ -252,7 +239,6 @@ func (h *HTTPServerV1) GetClientAccessServer(ws *restful.WebService, include []s
 			h.addHealthCheckAccess(ws)
 		}
 	}
-	return nil
 }
 
 // addDiscoverAccess 增加服务发现接口

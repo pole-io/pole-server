@@ -160,20 +160,6 @@ func (svr *Server) UpdateNamespaces(
 	return resp
 }
 
-// UpdateNamespaceToken 更新命名空间的token信息，需要先走权限检查
-func (svr *Server) UpdateNamespaceToken(ctx context.Context, req *apimodel.Namespace) *apiservice.Response {
-	authCtx := svr.collectNamespaceAuthContext(
-		ctx, []*apimodel.Namespace{req}, authtypes.Modify, authtypes.UpdateNamespaceToken)
-	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authtypes.ConvertToErrCode(err))
-	}
-
-	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-
-	return svr.nextSvr.UpdateNamespaceToken(ctx, req)
-}
-
 // GetNamespaces 获取命名空间列表信息，暂时不走权限检查
 func (svr *Server) GetNamespaces(
 	ctx context.Context, query map[string][]string) *apiservice.BatchQueryResponse {
@@ -222,20 +208,6 @@ func (svr *Server) GetNamespaces(
 		}
 	}
 	return resp
-}
-
-// GetNamespaceToken 获取命名空间的token信息，暂时不走权限检查
-func (svr *Server) GetNamespaceToken(ctx context.Context, req *apimodel.Namespace) *apiservice.Response {
-	authCtx := svr.collectNamespaceAuthContext(
-		ctx, []*apimodel.Namespace{req}, authtypes.Read, authtypes.DescribeNamespaceToken)
-	_, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx)
-	if err != nil {
-		return api.NewResponse(authtypes.ConvertToErrCode(err))
-	}
-
-	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.GetNamespaceToken(ctx, req)
 }
 
 // collectNamespaceAuthContext 对于命名空间的处理，收集所有的与鉴权的相关信息

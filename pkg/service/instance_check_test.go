@@ -44,7 +44,7 @@ func TestInstanceCheck(t *testing.T) {
 
 	discoverSuit.addInstance(t, &apiservice.Instance{
 		Service:   wrapperspb.String("pole.checker"),
-		Namespace: wrapperspb.String("Polaris"),
+		Namespace: wrapperspb.String("pole-system"),
 		Host:      wrapperspb.String("127.0.0.1"),
 		Port:      wrapperspb.UInt32(8091),
 		Protocol:  wrapperspb.String("grpc"),
@@ -107,7 +107,7 @@ func TestInstanceImmediatelyCheck(t *testing.T) {
 
 	discoverSuit.addInstance(t, &apiservice.Instance{
 		Service:   wrapperspb.String("pole.checker"),
-		Namespace: wrapperspb.String("Polaris"),
+		Namespace: wrapperspb.String("pole-system"),
 		Host:      wrapperspb.String("127.0.0.1"),
 		Port:      wrapperspb.UInt32(8091),
 		Protocol:  wrapperspb.String("grpc"),
@@ -147,7 +147,7 @@ func TestInstanceCheckSuspended(t *testing.T) {
 
 	discoverSuit.addInstance(t, &apiservice.Instance{
 		Service:   wrapperspb.String("pole.checker"),
-		Namespace: wrapperspb.String("Polaris"),
+		Namespace: wrapperspb.String("pole-system"),
 		Host:      wrapperspb.String("127.0.0.1"),
 		Port:      wrapperspb.UInt32(8091),
 		Protocol:  wrapperspb.String("grpc"),
@@ -210,7 +210,7 @@ func TestSelfInstanceCheck(t *testing.T) {
 		discoverSuit.addInstance(t, &apiservice.Instance{
 			Id:                wrapperspb.String(instanceId),
 			Service:           wrapperspb.String("pole.checker"),
-			Namespace:         wrapperspb.String("Polaris"),
+			Namespace:         wrapperspb.String("pole-system"),
 			Host:              wrapperspb.String(instanceId),
 			Port:              wrapperspb.UInt32(8091),
 			Protocol:          wrapperspb.String("grpc"),

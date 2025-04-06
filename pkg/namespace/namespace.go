@@ -124,10 +124,8 @@ func (s *Server) CreateNamespace(ctx context.Context, req *apimodel.Namespace) *
 
 	log.Info("create namespace", utils.RequestID(ctx), zap.String("name", namespaceName))
 	out := &apimodel.Namespace{
-		Name:  req.GetName(),
-		Token: protobuf.NewStringValue(data.Token),
+		Name: req.GetName(),
 	}
-
 	s.RecordHistory(namespaceRecordEntry(ctx, req, types.OCreate))
 	return api.NewNamespaceResponse(apimodel.Code_ExecuteSuccess, out)
 }

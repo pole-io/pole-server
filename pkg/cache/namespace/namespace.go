@@ -288,6 +288,9 @@ func (c *namespaceCache) toPage(total int, items []*types.Namespace,
 	if args.Limit == 0 {
 		return total, items
 	}
+	if args.Offset > total {
+		return total, []*types.Namespace{}
+	}
 	endIdx := args.Offset + args.Limit
 	if endIdx > total {
 		endIdx = total

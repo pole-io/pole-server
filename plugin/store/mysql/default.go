@@ -28,7 +28,7 @@ import (
 
 const (
 	// SystemNamespace system namespace
-	SystemNamespace = "Polaris"
+	SystemNamespace = "pole-system"
 	// STORENAME database storage name
 	STORENAME = "defaultStore"
 	// DefaultConnMaxLifetime default maximum connection lifetime

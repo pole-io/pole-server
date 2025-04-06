@@ -31,7 +31,7 @@ bootstrap:
       # The maximum preservation days of a single log file, default 7
       rotationMaxAge: 7
       # Log output level，debug/info/warn/error
-      outputLevel: info
+      outputLevel: debug
       # Open the log file compression
       compress: true
       # onlyContent just print log content, not print log timestamp
@@ -43,8 +43,12 @@ bootstrap:
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
-      outputLevel: info
+      outputLevel: debug
       compress: true
+      outputPaths:
+      - stdout
+      errorOutputPaths:
+      - stderr
     # Storage layer log
     store:
       rotateOutputPath: test/output/logs/runtime/pole-store.log
@@ -52,7 +56,7 @@ bootstrap:
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
-      outputLevel: info
+      outputLevel: debug
       compress: true
     # Server cache log log
     cache:
@@ -61,7 +65,7 @@ bootstrap:
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
-      outputLevel: info
+      outputLevel: error
       compress: true
     # Service discovery and governance rules related logs
     naming:
@@ -70,7 +74,7 @@ bootstrap:
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
-      outputLevel: info
+      outputLevel: debug
       compress: true
     # Service discovery institutional health check log
     healthcheck:
@@ -79,7 +83,7 @@ bootstrap:
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
-      outputLevel: info
+      outputLevel: debug
       compress: true
     # XDS protocol layer plug -in log
     xdsv3:
@@ -97,7 +101,7 @@ bootstrap:
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
-      outputLevel: info
+      outputLevel: debug
       compress: true
     # Nacos protocol layer plug -in log
     nacos-apiserver:
@@ -106,7 +110,7 @@ bootstrap:
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
-      outputLevel: info
+      outputLevel: debug
       compress: true
     # APISERVER common log, record inbound request and outbound response
     apiserver:
@@ -115,8 +119,12 @@ bootstrap:
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
-      outputLevel: info
+      outputLevel: debug
       compress: true
+      outputPaths:
+      - stdout
+      errorOutputPaths:
+      - stderr
     default:
       rotateOutputPath: test/output/logs/runtime/pole-default.log
       errorRotateOutputPath: test/output/logs/runtime/pole-default-error.log
@@ -125,6 +133,10 @@ bootstrap:
       rotationMaxAge: 7
       outputLevel: info
       compress: true
+      outputPaths:
+      - stdout
+      errorOutputPaths:
+      - stderr
     # server plugin logs
     token-bucket:
       rotateOutputPath: test/output/logs/runtime/pole-ratelimit.log
@@ -132,7 +144,7 @@ bootstrap:
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
-      outputLevel: info
+      outputLevel: debug
       compress: true
     discoverstat:
       rotateOutputPath: test/output/logs/statis/pole-discoverstat.log
@@ -140,7 +152,7 @@ bootstrap:
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
-      outputLevel: info
+      outputLevel: debug
       compress: true
       onlyContent: true
     local:
@@ -149,7 +161,7 @@ bootstrap:
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
-      outputLevel: info
+      outputLevel: debug
       compress: true
     HistoryLogger:
       rotateOutputPath: test/output/logs/operation/pole-history.log
@@ -158,7 +170,7 @@ bootstrap:
       rotationMaxBackups: 10
       rotationMaxAge: 7
       rotationMaxDurationForHour: 24
-      outputLevel: info
+      outputLevel: debug
       onlyContent: true
     discoverEventLocal:
       rotateOutputPath: test/output/logs/event/pole-discoverevent.log
@@ -166,7 +178,7 @@ bootstrap:
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
-      outputLevel: info
+      outputLevel: debug
       onlyContent: true
     cmdb:
       rotateOutputPath: test/output/logs/runtime/pole-cmdb.log
@@ -174,7 +186,7 @@ bootstrap:
       rotationMaxSize: 100
       rotationMaxBackups: 30
       rotationMaxAge: 7
-      outputLevel: info
+      outputLevel: debug
       compress: true
   # Start the server in order
   startInOrder:
@@ -262,6 +274,11 @@ apiservers:
       # admin OpenAPI interface
       admin:
         enable: true
+      # aimcp OpenAPI interface
+      aimcp:
+        enable: true
+        # OpenAPI group that needs to be exposed
+        include: [default]
       # Console OpenAPI interface
       console:
         enable: true
@@ -339,9 +356,9 @@ auth:
     name: defaultStrategy
     option:
       # Console auth switch, default true
-      consoleOpen: true
+      consoleOpen: false
       # Console Strict Model, default true
-      consoleStrict: true
+      consoleStrict: false
       # Customer auth switch, default false
       clientOpen: false
       # Customer Strict Model, default close
@@ -358,6 +375,10 @@ cache:
 naming:
   # Whether to allow automatic creation of service
   autoCreate: true
+  # 
+  caches:
+    serviceContract:
+      cachePath: test/output/cache/service_contract
   # Batch controller
   batch:
     register:
@@ -411,8 +432,8 @@ config:
   open: true
   # Maximum number of number of file characters
   contentMaxLength: 20000
-  cache:
-    config_file:
+  caches:
+    configFile:
       cachePath: test/output/cache/config_file
 # Maintain configuration
 maintain:
@@ -464,7 +485,7 @@ plugin:
       - name: HistoryLogger
   discoverEvent:
     entries:
-      - name: discoverEventLocal
+      - name: local
   statis:
     entries:
       - name: local

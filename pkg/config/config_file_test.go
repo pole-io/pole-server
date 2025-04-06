@@ -49,7 +49,7 @@ var (
 	testGroup     = "testGroup"
 	testFile      = "testFile"
 	testContent   = "testContent"
-	operator      = "polaris"
+	operator      = "pole"
 	size          = 7
 )
 

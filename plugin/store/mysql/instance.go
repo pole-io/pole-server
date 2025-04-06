@@ -466,20 +466,31 @@ func (ins *instanceStore) getExpandInstancesCount(filter, metaFilter map[string]
 // 对于首次拉取，firstUpdate=true，只会拉取flag!=1的数据
 func (ins *instanceStore) GetMoreInstances(tx store.Tx, mtime time.Time, firstUpdate, needMeta bool,
 	serviceID []string) (map[string]*svctypes.Instance, error) {
-
 	dbTx, _ := tx.GetDelegateTx().(*BaseTx)
-	if needMeta {
-		instances, err := ins.getMoreInstancesMainWithMeta(dbTx, mtime, firstUpdate, serviceID)
-		if err != nil {
-			return nil, err
-		}
-		return instances, nil
+	fetchSql := genCompleteInstanceSelectSQL()
+	args := make([]interface{}, 0, len(serviceID)+1)
+
+	// 首次拉取
+	if firstUpdate {
+		fetchSql += " where instance.flag = 0"
+	} else {
+		fetchSql += " where instance.mtime >= FROM_UNIXTIME(?)"
+		args = append(args, timeToTimestamp(mtime))
 	}
-	instances, err := ins.getMoreInstancesMain(dbTx, mtime, firstUpdate, serviceID)
+
+	if len(serviceID) > 0 {
+		fetchSql += " and service_id in (" + PlaceholdersN(len(serviceID)) + ")"
+	}
+	for _, id := range serviceID {
+		args = append(args, id)
+	}
+
+	rows, err := dbTx.Query(fetchSql, args...)
 	if err != nil {
+		log.Errorf("[Store][database] get more instance query err: %s", err.Error())
 		return nil, err
 	}
-	return instances, nil
+	return fetchInstanceWithMetaRows(rows)
 }
 
 // SetInstanceHealthStatus 设置实例健康状态
@@ -654,42 +665,6 @@ func (ins *instanceStore) getInstance(instanceID string) (*svctypes.Instance, er
 	return out[0], nil
 }
 
-// getMoreInstancesMainWithMeta 获取增量instance+healthcheck+meta内容
-// @note ro库有多个实例，且主库到ro库各实例的同步时间不一致。为避免获取不到meta，需要采用一条sql语句获取全部数据
-func (ins *instanceStore) getMoreInstancesMainWithMeta(tx *BaseTx, mtime time.Time, firstUpdate bool, serviceID []string) (
-	map[string]*svctypes.Instance, error) {
-	// 首次拉取
-	if firstUpdate {
-		// 获取全量服务实例
-		instances, err := ins.getMoreInstancesMain(tx, mtime, firstUpdate, serviceID)
-		if err != nil {
-			log.Errorf("[Store][database] get more instance main err: %s", err.Error())
-			return nil, err
-		}
-		return instances, nil
-	}
-
-	// 非首次拉取
-	str := genCompleteInstanceSelectSQL() + " where instance.mtime >= FROM_UNIXTIME(?)"
-	args := make([]interface{}, 0, len(serviceID)+1)
-	args = append(args, timeToTimestamp(mtime))
-
-	if len(serviceID) > 0 {
-		str += " and service_id in (" + PlaceholdersN(len(serviceID))
-		str += ")"
-	}
-	for _, id := range serviceID {
-		args = append(args, id)
-	}
-
-	rows, err := ins.slave.Query(str, args...)
-	if err != nil {
-		log.Errorf("[Store][database] get more instance query err: %s", err.Error())
-		return nil, err
-	}
-	return fetchInstanceWithMetaRows(rows)
-}
-
 // fetchInstanceWithMetaRows 获取instance main+health_check rows里面的数据
 func fetchInstanceWithMetaRows(rows *sql.Rows) (map[string]*svctypes.Instance, error) {
 	if rows == nil {
@@ -699,7 +674,7 @@ func fetchInstanceWithMetaRows(rows *sql.Rows) (map[string]*svctypes.Instance, e
 
 	out := make(map[string]*svctypes.Instance)
 	var item svctypes.InstanceStore
-	var id, metadata string
+	var metadataStr string
 	progress := 0
 	for rows.Next() {
 		progress++
@@ -709,8 +684,7 @@ func fetchInstanceWithMetaRows(rows *sql.Rows) (map[string]*svctypes.Instance, e
 		if err := rows.Scan(&item.ID, &item.ServiceID, &item.VpcID, &item.Host, &item.Port, &item.Protocol,
 			&item.Version, &item.HealthStatus, &item.Isolate, &item.Weight, &item.EnableHealthCheck,
 			&item.LogicSet, &item.Region, &item.Zone, &item.Campus, &item.Priority, &item.Revision,
-			&item.Flag, &item.CheckType, &item.TTL, &id, &metadata,
-			&item.CreateTime, &item.ModifyTime); err != nil {
+			&item.Flag, &item.CheckType, &item.TTL, &item.CreateTime, &item.ModifyTime, &metadataStr); err != nil {
 			log.Errorf("[Store][database] fetch instance+meta rows err: %s", err.Error())
 			return nil, err
 		}
@@ -718,7 +692,7 @@ func fetchInstanceWithMetaRows(rows *sql.Rows) (map[string]*svctypes.Instance, e
 		out[item.ID] = svctypes.Store2Instance(&item)
 		// 实例存在meta
 		out[item.ID].Proto.Metadata = make(map[string]string)
-		_ = json.Unmarshal([]byte(metadata), &out[item.ID].Proto.Metadata)
+		_ = json.Unmarshal([]byte(metadataStr), &out[item.ID].Proto.Metadata)
 	}
 	if err := rows.Err(); err != nil {
 		log.Errorf("[Store][database] fetch instance+metadata rows next err: %s", err.Error())
@@ -1030,7 +1004,7 @@ func genExpandInstanceSelectSQL(needForceIndex bool) string {
 					 health_status, isolate, weight, enable_health_check, IFNULL(logic_set, ""), IFNULL(cmdb_region, ""), 
 					 IFNULL(cmdb_zone, ""), IFNULL(cmdb_idc, ""), priority, instance.revision, instance.flag, 
 					 IFNULL(health_check.type, -1), IFNULL(health_check.ttl, 0), service.name, service.namespace, 
-					 UNIX_TIMESTAMP(instance.ctime), UNIX_TIMESTAMP(instance.mtime) 
+					 UNIX_TIMESTAMP(instance.ctime), UNIX_TIMESTAMP(instance.mtime), IFNULL(instance.metadata, "{}") 
 					 from (service inner join instance `
 	if needForceIndex {
 		str += `force index(service_id, host) `

@@ -33,7 +33,7 @@ import (
 const (
 
 	// SystemNamespace system namespace
-	SystemNamespace = "Polaris"
+	SystemNamespace = "pole-system"
 	// STORENAME database storage name
 	STORENAME = "boltdbStore"
 	// DefaultConnMaxLifetime default maximum connection lifetime
@@ -134,8 +134,8 @@ func (m *boltStore) Initialize(c *store.Config) error {
 }
 
 const (
-	namespacePolaris = "Polaris"
-	ownerToInit      = "polaris"
+	namespacePolaris = "pole-system"
+	ownerToInit      = "pole"
 )
 
 var (

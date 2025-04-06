@@ -637,14 +637,14 @@ func createResponse(ctx context.Context, request *cachev3.Request, resources map
 	// on separate streams since requests do not share their response versions.
 	if len(request.ResourceNames) != 0 {
 		set := nameSet(request.ResourceNames)
-		for name, resource := range resources {
+		for name, res := range resources {
 			if set[name] {
-				filtered = append(filtered, types.ResourceWithTTL{Resource: resource})
+				filtered = append(filtered, types.ResourceWithTTL{Resource: res})
 			}
 		}
 	} else {
-		for _, resource := range resources {
-			filtered = append(filtered, types.ResourceWithTTL{Resource: resource})
+		for _, res := range resources {
+			filtered = append(filtered, types.ResourceWithTTL{Resource: res})
 		}
 	}
 

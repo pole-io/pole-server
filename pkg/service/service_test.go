@@ -200,7 +200,7 @@ func TestCreateService(t *testing.T) {
 
 		svc := &apiservice.Service{
 			Name:      protobuf.NewStringValue("999"),
-			Namespace: protobuf.NewStringValue("Polaris"),
+			Namespace: protobuf.NewStringValue("pole"),
 			Owners:    protobuf.NewStringValue("my"),
 		}
 		svc.Metadata = make(map[string]string)

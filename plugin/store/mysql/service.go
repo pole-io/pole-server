@@ -391,7 +391,7 @@ func (ss *serviceStore) GetServicesCount() (uint32, error) {
 	return queryEntryCount(ss.master, countStr, nil)
 }
 
-// GetMoreServices 根据modify_time获取增量数据
+// GetMoreServices 根据mtime获取增量数据
 func (ss *serviceStore) GetMoreServices(mtime time.Time, firstUpdate, disableBusiness, needMeta bool) (
 	map[string]*svctypes.Service, error) {
 	if needMeta {

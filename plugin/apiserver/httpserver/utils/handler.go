@@ -104,11 +104,11 @@ func (h *Handler) Parse(message proto.Message) (context.Context, error) {
 func (h *Handler) ParseHeaderContext() context.Context {
 	requestID := h.Request.HeaderParameter("Request-Id")
 	token := h.Request.HeaderParameter("Polaris-Token")
-	authToken := h.Request.HeaderParameter(types.HeaderAuthTokenKey)
+	authToken := h.Request.HeaderParameter(types.HeaderAuthorizationKey)
 
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, types.StringContext("request-id"), requestID)
-	ctx = context.WithValue(ctx, types.ContextRequestHeaders, h.Request.Request.Header)
+	ctx = types.AppendRequestHeader(ctx, h.Request.Request.Header)
 	ctx = context.WithValue(ctx, types.ContextClientAddress, h.Request.Request.RemoteAddr)
 	if token != "" {
 		ctx = context.WithValue(ctx, types.StringContext("polaris-token"), token)
@@ -375,8 +375,27 @@ func ParseJsonBody(req *restful.Request, value interface{}) error {
 	return nil
 }
 
+func MarshalPBJson(pb proto.Message) (string, error) {
+	m := jsonpb.Marshaler{Indent: " ", EmitDefaults: false}
+	// Marshal the message to JSON
+	jsonStr, err := m.MarshalToString(pb)
+	if err != nil {
+		return "", err
+	}
+	return jsonStr, nil
+}
+
+func MarshalPBJsonToMap(pb proto.Message) map[string]interface{} {
+	m := jsonpb.Marshaler{Indent: " ", EmitDefaults: false}
+	// Marshal the message to JSON
+	jsonStr, _ := m.MarshalToString(pb)
+	r := make(map[string]interface{})
+	_ = json.Unmarshal([]byte(jsonStr), &r)
+	return r
+}
+
 func newJsonpbMarshaler() jsonpb.Marshaler {
-	return jsonpb.Marshaler{Indent: " ", EmitDefaults: true}
+	return jsonpb.Marshaler{Indent: " ", EmitDefaults: false}
 }
 
 func (h *Handler) handleResponse(obj api.ResponseMessage) error {
@@ -428,6 +447,22 @@ func InitProtoCache(option map[string]interface{}, cacheTypes []string, discover
 		protoCache = cache
 		convert = discoverCacheConvert
 	}
+}
+
+func UnmarshalArray[T proto.Message](decoder *json.Decoder, m func() T) ([]T, error) {
+	// read open bracket
+	if _, err := decoder.Token(); err != nil {
+		return nil, err
+	}
+	var messages []T
+	for decoder.More() {
+		protoMessage := m()
+		if err := UnmarshalNext(decoder, protoMessage); err != nil {
+			return nil, err
+		}
+		messages = append(messages, protoMessage)
+	}
+	return messages, nil
 }
 
 func UnmarshalNext(j *json.Decoder, m proto.Message) error {

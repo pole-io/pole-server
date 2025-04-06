@@ -128,20 +128,6 @@ func (s *Server) GetServiceInstanceRevision(serviceID string, instances []*svcty
 	return data, nil
 }
 
-// 封装一下cmdb的GetLocation
-func (s *Server) getLocation(host string) *svctypes.Location {
-	if s.cmdb == nil {
-		return nil
-	}
-
-	location, err := s.cmdb.GetLocation(host)
-	if err != nil {
-		log.Errorf("[Server] get location(%s) err: %s", host, err.Error())
-		return nil
-	}
-	return location
-}
-
 func AllowAutoCreate(ctx context.Context) context.Context {
 	ctx = context.WithValue(ctx, utils.ContextKeyAutoCreateService{}, true)
 	return ctx

@@ -76,6 +76,7 @@ require (
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/mark3labs/mcp-go v0.18.0
 	github.com/polarismesh/specification v1.5.5-alpha.1
 )
 
@@ -83,6 +84,7 @@ require (
 	cel.dev/expr v0.15.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
+	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 )
 
 require (

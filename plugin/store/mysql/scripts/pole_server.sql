@@ -123,10 +123,10 @@ INSERT INTO
     )
 VALUES
     (
-        'Polaris',
-        'pole-server',
+        'pole-system',
+        'system namespace only for pole.io server',
         '2d1bfe5d12e04d54b8ee69e62494c7fd',
-        'polaris',
+        'pole',
         0,
         '2019-09-06 07:55:07',
         '2019-09-06 07:55:07'
@@ -135,7 +135,7 @@ VALUES
         'default',
         'Default Environment',
         'e2e473081d3d4306b52264e49f7ce227',
-        'polaris',
+        'pole',
         0,
         '2021-07-27 19:37:37',
         '2021-07-27 19:37:37'
@@ -143,10 +143,10 @@ VALUES
 
 -- --------------------------------------------------------
 --
--- Table structure `ratelimit_config`
+-- Table structure `ratelimit_rule`
 --
 CREATE TABLE
-    `ratelimit_config` (
+    `ratelimit_rule` (
         `id` VARCHAR(32) NOT NULL COMMENT 'ratelimit rule ID',
         `name` VARCHAR(64) NOT NULL COMMENT 'ratelimt rule name',
         `disable` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'ratelimit disable',
@@ -222,12 +222,12 @@ VALUES
     (
         'fbca9bfa04ae4ead86e1ecf5811e32a9',
         'pole.checker',
-        'Polaris',
-        'polaris checker service',
-        'polaris',
+        'pole-system',
+        'pole checker service',
+        'pole.io',
         '7d19c46de327408d8709ee7392b7700b',
         '301b1e9f0bbd47a6b697e26e99dfe012',
-        'polaris',
+        'pole',
         0,
         '2021-09-06 07:55:07',
         '2021-09-06 07:55:09'
@@ -299,10 +299,10 @@ CREATE TABLE
         `format` VARCHAR(16) DEFAULT 'text' COMMENT '文件格式，枚举值',
         `comment` VARCHAR(512) DEFAULT NULL COMMENT '备注信息',
         `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '软删除标记位',
-        `create_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
         `create_by` VARCHAR(32) DEFAULT NULL COMMENT '创建人',
-        `modify_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
         `modify_by` VARCHAR(32) DEFAULT NULL COMMENT '最后更新人',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
         UNIQUE KEY `uk_file` (`namespace`, `group`, `name`)
     ) ENGINE = InnoDB AUTO_INCREMENT = 1 COMMENT = '配置文件表';
@@ -318,10 +318,10 @@ CREATE TABLE
         `namespace` VARCHAR(64) NOT NULL COMMENT '所属的namespace',
         `comment` VARCHAR(512) DEFAULT NULL COMMENT '备注信息',
         `owner` VARCHAR(1024) DEFAULT NULL COMMENT '负责人',
-        `create_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
         `create_by` VARCHAR(32) DEFAULT NULL COMMENT '创建人',
-        `modify_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
         `modify_by` VARCHAR(32) DEFAULT NULL COMMENT '最后更新人',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         `business` VARCHAR(64) DEFAULT NULL COMMENT 'Service business information',
         `department` VARCHAR(1024) DEFAULT NULL COMMENT 'Service department information',
         `metadata` TEXT COMMENT '配置分组标签',
@@ -347,17 +347,17 @@ CREATE TABLE
         `md5` VARCHAR(128) NOT NULL COMMENT 'content的md5值',
         `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
         `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否被删除',
-        `create_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
         `create_by` VARCHAR(32) DEFAULT NULL COMMENT '创建人',
-        `modify_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
         `modify_by` VARCHAR(32) DEFAULT NULL COMMENT '最后更新人',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         `tags` TEXT COMMENT '文件标签',
         `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
         `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
         `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '文件类型：""：全量 gray：灰度',
         PRIMARY KEY (`id`),
         UNIQUE KEY `uk_file` (`namespace`, `group`, `file_name`, `name`),
-        KEY `idx_modify_time` (`modify_time`)
+        KEY `idx_mtime` (`mtime`)
     ) ENGINE = InnoDB AUTO_INCREMENT = 1 COMMENT = '配置文件发布表';
 
 -- --------------------------------------------------------
@@ -377,10 +377,10 @@ CREATE TABLE
         `md5` VARCHAR(128) NOT NULL COMMENT 'content的md5值',
         `type` VARCHAR(32) NOT NULL COMMENT '发布类型，例如全量发布、灰度发布',
         `status` VARCHAR(16) NOT NULL DEFAULT 'success' COMMENT '发布状态，success表示成功，fail 表示失败',
-        `create_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
         `create_by` VARCHAR(32) DEFAULT NULL COMMENT '创建人',
-        `modify_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
         `modify_by` VARCHAR(32) DEFAULT NULL COMMENT '最后更新人',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         `tags` TEXT COMMENT '文件标签',
         `version` BIGINT (11) COMMENT '版本号，每次发布自增1',
         `reason` VARCHAR(3000) DEFAULT '' COMMENT '原因',
@@ -397,10 +397,10 @@ CREATE TABLE
         `content` LONGTEXT COLLATE utf8_bin NOT NULL COMMENT '配置文件模板内容',
         `format` VARCHAR(16) COLLATE utf8_bin DEFAULT 'text' COMMENT '模板文件格式',
         `comment` VARCHAR(512) COLLATE utf8_bin DEFAULT NULL COMMENT '模板描述信息',
-        `create_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
         `create_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '创建人',
-        `modify_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
         `modify_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '最后更新人',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
         PRIMARY KEY (`id`),
         UNIQUE KEY `uk_name` (`name`)
     ) ENGINE = InnoDB AUTO_INCREMENT = 1 DEFAULT CHARSET = utf8 COLLATE = utf8_bin COMMENT = '配置文件模板表';
@@ -704,9 +704,9 @@ CREATE TABLE
     `gray_resource` (
         `name` VARCHAR(128) NOT NULL COMMENT '灰度资源',
         `match_rule` TEXT NOT NULL COMMENT '配置规则',
-        `create_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
         `create_by` VARCHAR(32) DEFAULT "" COMMENT '创建人',
-        `modify_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
         `modify_by` VARCHAR(32) DEFAULT "" COMMENT '最后更新人',
         `flag` TINYINT (4) DEFAULT 0 COMMENT '逻辑删除标志位, 0 位有效, 1 为逻辑删除',
         PRIMARY KEY (`name`)

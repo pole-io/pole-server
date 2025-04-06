@@ -34,8 +34,11 @@ import (
 )
 
 // GetAuthServer 运维接口
-func (h *HTTPServer) GetAuthServer(ws *restful.WebService) error {
-	ws.Route(docs.EnrichAuthStatusApiDocs(ws.GET("/auth/status").To(h.AuthStatus)))
+func (h *HTTPServer) GetAuthServer() *restful.WebService {
+	ws := new(restful.WebService)
+	ws.Path("/auth/v1").Consumes(restful.MIME_JSON).Produces(restful.MIME_JSON)
+
+	ws.Route(docs.EnrichAuthStatusApiDocs(ws.GET("/status").To(h.AuthStatus)))
 	// 用户
 	ws.Route(docs.EnrichLoginApiDocs(ws.POST("/user/login").To(h.Login)))
 	ws.Route(docs.EnrichGetUsersApiDocs(ws.GET("/users").To(h.GetUsers)))
@@ -58,20 +61,19 @@ func (h *HTTPServer) GetAuthServer(ws *restful.WebService) error {
 	ws.Route(docs.EnrichResetGroupTokenApiDocs(ws.PUT("/usergroup/token/refresh").To(h.ResetGroupToken)))
 
 	// 鉴权策略
-	ws.Route(docs.EnrichCreateStrategyApiDocs(ws.POST("/auth/strategy").To(h.CreateStrategy)))
-	ws.Route(docs.EnrichGetStrategyApiDocs(ws.GET("/auth/strategy/detail").To(h.GetStrategy)))
-	ws.Route(docs.EnrichUpdateStrategiesApiDocs(ws.PUT("/auth/strategies").To(h.UpdateStrategies)))
-	ws.Route(docs.EnrichDeleteStrategiesApiDocs(ws.POST("/auth/strategies/delete").To(h.DeleteStrategies)))
-	ws.Route(docs.EnrichGetStrategiesApiDocs(ws.GET("/auth/strategies").To(h.GetStrategies)))
-	ws.Route(docs.EnrichGetPrincipalResourcesApiDocs(ws.GET("/auth/principal/resources").To(h.GetPrincipalResources)))
+	ws.Route(docs.EnrichGetStrategyApiDocs(ws.GET("/policy/detail").To(h.GetStrategy)))
+	ws.Route(docs.EnrichCreateStrategyApiDocs(ws.POST("/policies").To(h.CreatePolicies)))
+	ws.Route(docs.EnrichUpdateStrategiesApiDocs(ws.PUT("/policies").To(h.UpdateStrategies)))
+	ws.Route(docs.EnrichDeleteStrategiesApiDocs(ws.POST("/policies/delete").To(h.DeleteStrategies)))
+	ws.Route(docs.EnrichGetStrategiesApiDocs(ws.GET("/policies").To(h.GetStrategies)))
+	ws.Route(docs.EnrichGetPrincipalResourcesApiDocs(ws.GET("/principal/resources").To(h.GetPrincipalResources)))
 
 	// 角色
 	ws.Route(docs.EnrichGetRolesApiDocs(ws.GET("/roles").To(h.GetRoles)))
 	ws.Route(docs.EnrichCreateRolesApiDocs(ws.POST("/roles").To(h.CreateRoles)))
 	ws.Route(docs.EnrichDeleteRolesApiDocs(ws.POST("/roles/delete").To(h.DeleteRoles)))
 	ws.Route(docs.EnrichUpdateRolesApiDocs(ws.PUT("/roles").To(h.UpdateRoles)))
-
-	return nil
+	return ws
 }
 
 // AuthStatus auth status
@@ -403,22 +405,26 @@ func (h *HTTPServer) ResetGroupToken(req *restful.Request, rsp *restful.Response
 	handler.WriteHeaderAndProto(h.userMgn.ResetGroupToken(ctx, group))
 }
 
-// CreateStrategy 创建鉴权策略
-func (h *HTTPServer) CreateStrategy(req *restful.Request, rsp *restful.Response) {
+// CreatePolicies 创建鉴权策略
+func (h *HTTPServer) CreatePolicies(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,
 	}
 
-	strategy := &apisecurity.AuthStrategy{}
+	var policies []*apisecurity.AuthStrategy
 
-	ctx, err := handler.Parse(strategy)
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apisecurity.AuthStrategy{}
+		policies = append(policies, msg)
+		return msg
+	})
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewAuthResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
 
-	handler.WriteHeaderAndProto(h.strategyMgn.CreateStrategy(ctx, strategy))
+	handler.WriteHeaderAndProto(h.strategyMgn.CreatePolicies(ctx, policies))
 }
 
 // UpdateStrategies 更新鉴权策略
@@ -440,7 +446,7 @@ func (h *HTTPServer) UpdateStrategies(req *restful.Request, rsp *restful.Respons
 		return
 	}
 
-	handler.WriteHeaderAndProto(h.strategyMgn.UpdateStrategies(ctx, strategies))
+	handler.WriteHeaderAndProto(h.strategyMgn.UpdatePolicies(ctx, strategies))
 }
 
 // DeleteStrategies 批量删除鉴权策略
@@ -462,7 +468,7 @@ func (h *HTTPServer) DeleteStrategies(req *restful.Request, rsp *restful.Respons
 		return
 	}
 
-	handler.WriteHeaderAndProto(h.strategyMgn.DeleteStrategies(ctx, strategies))
+	handler.WriteHeaderAndProto(h.strategyMgn.DeletePolicies(ctx, strategies))
 }
 
 // GetStrategies 批量获取鉴权策略
@@ -475,7 +481,7 @@ func (h *HTTPServer) GetStrategies(req *restful.Request, rsp *restful.Response) 
 	queryParams := httpcommon.ParseQueryParams(req)
 	ctx := handler.ParseHeaderContext()
 
-	handler.WriteHeaderAndProto(h.strategyMgn.GetStrategies(ctx, queryParams))
+	handler.WriteHeaderAndProto(h.strategyMgn.GetPolicies(ctx, queryParams))
 }
 
 // GetStrategy 获取鉴权策略详细
@@ -492,7 +498,7 @@ func (h *HTTPServer) GetStrategy(req *restful.Request, rsp *restful.Response) {
 		Id: protobuf.NewStringValue(queryParams["id"]),
 	}
 
-	handler.WriteHeaderAndProto(h.strategyMgn.GetStrategy(ctx, strategy))
+	handler.WriteHeaderAndProto(h.strategyMgn.GetPolicy(ctx, strategy))
 }
 
 // GetPrincipalResources 获取鉴权策略详细

@@ -112,11 +112,25 @@ func WithStorage(storage store.Store) InitOption {
 func WithCacheManager(cacheOpt *cache.Config, c cacheapi.CacheManager, entries ...cacheapi.ConfigEntry) InitOption {
 	return func(s *Server) {
 		log.Infof("[Naming][Server] cache is open, can access the client api function")
+
+		openentries := []cacheapi.ConfigEntry{}
 		if len(entries) != 0 {
-			_ = c.OpenResourceCache(entries...)
+			openentries = append(openentries, entries...)
 		} else {
-			_ = c.OpenResourceCache(namingCacheEntries...)
-			_ = c.OpenResourceCache(governanceCacheEntries...)
+			openentries = append(openentries, namingCacheEntries...)
+			openentries = append(openentries, governanceCacheEntries...)
+		}
+
+		for i := range openentries {
+			if _, ok := s.config.Caches[openentries[i].Name]; !ok {
+				continue
+			}
+			openentries[i].Option = s.config.Caches[openentries[i].Name]
+		}
+
+		if err := c.OpenResourceCache(openentries...); err != nil {
+			log.Errorf("[Naming][Server] open cache error: %v", err)
+			return
 		}
 		s.caches = c
 	}

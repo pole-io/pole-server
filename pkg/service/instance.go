@@ -985,7 +985,7 @@ func (s *Server) createServiceIfAbsent(
 		Owners: func() *wrapperspb.StringValue {
 			owner := utils.ParseOwnerID(ctx)
 			if owner == "" {
-				return protobuf.NewStringValue("Polaris")
+				return protobuf.NewStringValue("pole")
 			}
 			return protobuf.NewStringValue(owner)
 		}(),

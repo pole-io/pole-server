@@ -67,8 +67,8 @@ func (svr *Server) Name() string {
 	return svr.nextSvr.Name()
 }
 
-// CreateStrategy 创建策略
-func (svr *Server) CreateStrategy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apiservice.Response {
+// CreatePolicies 创建策略
+func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
 	authCtx := authcommon.NewAcquireContext(
 		authcommon.WithRequestContext(ctx),
 		authcommon.WithOperation(authcommon.Create),
@@ -77,14 +77,14 @@ func (svr *Server) CreateStrategy(ctx context.Context, strategy *apisecurity.Aut
 	)
 
 	if _, err := svr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		resp := api.NewResponseWithMsg(authcommon.ConvertToErrCode(err), err.Error())
+		resp := api.NewBatchWriteResponseWithMsg(authcommon.ConvertToErrCode(err), err.Error())
 		return resp
 	}
-	return svr.nextSvr.CreateStrategy(authCtx.GetRequestContext(), strategy)
+	return svr.nextSvr.CreatePolicies(authCtx.GetRequestContext(), reqs)
 }
 
-// UpdateStrategies 批量更新策略
-func (svr *Server) UpdateStrategies(ctx context.Context, reqs []*apisecurity.ModifyAuthStrategy) *apiservice.BatchWriteResponse {
+// UpdatePolicies 批量更新策略
+func (svr *Server) UpdatePolicies(ctx context.Context, reqs []*apisecurity.ModifyAuthStrategy) *apiservice.BatchWriteResponse {
 	resources := make([]authcommon.ResourceEntry, 0, len(reqs))
 	for i := range reqs {
 		entry := authcommon.ResourceEntry{
@@ -111,11 +111,11 @@ func (svr *Server) UpdateStrategies(ctx context.Context, reqs []*apisecurity.Mod
 		resp := api.NewBatchWriteResponseWithMsg(authcommon.ConvertToErrCode(err), err.Error())
 		return resp
 	}
-	return svr.nextSvr.UpdateStrategies(authCtx.GetRequestContext(), reqs)
+	return svr.nextSvr.UpdatePolicies(authCtx.GetRequestContext(), reqs)
 }
 
-// DeleteStrategies 删除策略
-func (svr *Server) DeleteStrategies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
+// DeletePolicies 删除策略
+func (svr *Server) DeletePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
 	resources := make([]authcommon.ResourceEntry, 0, len(reqs))
 	for i := range reqs {
 		entry := authcommon.ResourceEntry{
@@ -142,13 +142,13 @@ func (svr *Server) DeleteStrategies(ctx context.Context, reqs []*apisecurity.Aut
 		resp := api.NewBatchWriteResponseWithMsg(authcommon.ConvertToErrCode(err), err.Error())
 		return resp
 	}
-	return svr.nextSvr.DeleteStrategies(authCtx.GetRequestContext(), reqs)
+	return svr.nextSvr.DeletePolicies(authCtx.GetRequestContext(), reqs)
 }
 
 // GetStrategies 获取资源列表
 // support 1. 支持按照 principal-id + principal-role 进行查询
 // support 2. 支持普通的鉴权策略查询
-func (svr *Server) GetStrategies(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetPolicies(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
 	authCtx := authcommon.NewAcquireContext(
 		authcommon.WithRequestContext(ctx),
 		authcommon.WithOperation(authcommon.Read),
@@ -183,11 +183,11 @@ func (svr *Server) GetStrategies(ctx context.Context, query map[string]string) *
 	})
 
 	authCtx.SetRequestContext(ctx)
-	return svr.nextSvr.GetStrategies(ctx, query)
+	return svr.nextSvr.GetPolicies(ctx, query)
 }
 
-// GetStrategy 获取策略详细
-func (svr *Server) GetStrategy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apiservice.Response {
+// GetPolicy 获取策略详细
+func (svr *Server) GetPolicy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apiservice.Response {
 	entry := authcommon.ResourceEntry{
 		Type: apisecurity.ResourceType_PolicyRules,
 		ID:   strategy.GetId().GetValue(),
@@ -211,7 +211,7 @@ func (svr *Server) GetStrategy(ctx context.Context, strategy *apisecurity.AuthSt
 	if _, err := checker.CheckConsolePermission(authCtx); err != nil {
 		return api.NewResponseWithMsg(authcommon.ConvertToErrCode(err), err.Error())
 	}
-	return svr.nextSvr.GetStrategy(authCtx.GetRequestContext(), strategy)
+	return svr.nextSvr.GetPolicy(authCtx.GetRequestContext(), strategy)
 }
 
 // GetPrincipalResources 获取某个 principal 的所有可操作资源列表

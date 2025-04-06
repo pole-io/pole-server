@@ -57,7 +57,7 @@ func (u *userStore) GetMainUser() (*authcommon.User, error) {
 		 SELECT u.id, u.name, u.password, u.owner, u.comment, u.source, u.token, u.token_enable, 
 		 	u.user_type, u.mobile, u.email
 		 FROM user u
-		 WHERE u.flag = 0 AND u.type = ? 
+		 WHERE u.flag = 0 AND u.user_type = ? 
 	  `
 	row := u.master.QueryRow(getSql, authcommon.OwnerUserRole)
 

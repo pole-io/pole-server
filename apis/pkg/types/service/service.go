@@ -49,6 +49,7 @@ type Service struct {
 
 func (s *Service) ToSpec() *apiservice.Service {
 	return &apiservice.Service{
+		Id:         wrapperspb.String(s.ID),
 		Name:       wrapperspb.String(s.Name),
 		Namespace:  wrapperspb.String(s.Namespace),
 		Metadata:   s.CopyMeta(),
@@ -64,8 +65,9 @@ func (s *Service) ToSpec() *apiservice.Service {
 		Ctime:      wrapperspb.String(utils.Time2String(s.CreateTime)),
 		Mtime:      wrapperspb.String(utils.Time2String(s.ModifyTime)),
 		Revision:   wrapperspb.String(s.Revision),
-		Id:         wrapperspb.String(s.ID),
 		ExportTo:   s.ListExportTo(),
+		Editable:   wrapperspb.Bool(true),
+		Deleteable: wrapperspb.Bool(true),
 	}
 }
 

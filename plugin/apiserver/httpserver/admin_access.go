@@ -348,12 +348,12 @@ func (h *HTTPServer) GetServerFunctions(req *restful.Request, rsp *restful.Respo
 }
 
 func initContext(req *restful.Request) context.Context {
+	authHeaders := []string{types.HeaderAuthorizationKey, "X-Polaris-Token"}
 	ctx := context.Background()
-
-	authToken := req.HeaderParameter(types.HeaderAuthTokenKey)
-	if authToken != "" {
-		ctx = context.WithValue(ctx, types.ContextAuthTokenKey, authToken)
+	for _, header := range authHeaders {
+		if v := req.HeaderParameter(header); v != "" {
+			ctx = context.WithValue(ctx, types.ContextAuthTokenKey, v)
+		}
 	}
-
 	return ctx
 }

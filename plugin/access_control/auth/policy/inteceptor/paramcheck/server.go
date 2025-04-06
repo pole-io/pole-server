@@ -87,15 +87,19 @@ func (svr *Server) Name() string {
 }
 
 // CreateStrategy 创建策略
-func (svr *Server) CreateStrategy(ctx context.Context, req *apisecurity.AuthStrategy) *apiservice.Response {
-	if err := svr.checkCreateStrategy(req); err != nil {
-		return err
+func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
+	for i := range reqs {
+		rsp := svr.checkCreateStrategy(reqs[i])
+		if rsp != nil {
+			log.Error("[Auth][Strategy] check create strategy", utils.RequestID(ctx), zap.String("msg", rsp.GetInfo().GetValue()))
+			return api.NewBatchWriteResponseWithMsg(apimodel.Code(rsp.GetCode().GetValue()), rsp.GetInfo().GetValue())
+		}
 	}
-	return svr.nextSvr.CreateStrategy(ctx, req)
+	return svr.nextSvr.CreatePolicies(ctx, reqs)
 }
 
 // UpdateStrategies 批量更新策略
-func (svr *Server) UpdateStrategies(ctx context.Context, reqs []*apisecurity.ModifyAuthStrategy) *apiservice.BatchWriteResponse {
+func (svr *Server) UpdatePolicies(ctx context.Context, reqs []*apisecurity.ModifyAuthStrategy) *apiservice.BatchWriteResponse {
 	batchResp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range reqs {
 		var rsp *apiservice.Response
@@ -111,18 +115,18 @@ func (svr *Server) UpdateStrategies(ctx context.Context, reqs []*apisecurity.Mod
 		}
 		api.Collect(batchResp, rsp)
 	}
-	return svr.nextSvr.UpdateStrategies(ctx, reqs)
+	return svr.nextSvr.UpdatePolicies(ctx, reqs)
 }
 
 // DeleteStrategies 删除策略
-func (svr *Server) DeleteStrategies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
-	return svr.nextSvr.DeleteStrategies(ctx, reqs)
+func (svr *Server) DeletePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
+	return svr.nextSvr.DeletePolicies(ctx, reqs)
 }
 
-// GetStrategies 获取资源列表
+// GetPolicies 获取资源列表
 // support 1. 支持按照 principal-id + principal-role 进行查询
 // support 2. 支持普通的鉴权策略查询
-func (svr *Server) GetStrategies(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetPolicies(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
 	log.Debug("[Auth][Strategy] origin get strategies query params", utils.RequestID(ctx), zap.Any("query", query))
 
 	searchFilters := make(map[string]string, len(query))
@@ -141,12 +145,12 @@ func (svr *Server) GetStrategies(ctx context.Context, query map[string]string) *
 	}
 	searchFilters["offset"] = strconv.FormatUint(uint64(offset), 10)
 	searchFilters["limit"] = strconv.FormatUint(uint64(limit), 10)
-	return svr.nextSvr.GetStrategies(ctx, query)
+	return svr.nextSvr.GetPolicies(ctx, query)
 }
 
-// GetStrategy 获取策略详细
-func (svr *Server) GetStrategy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apiservice.Response {
-	return svr.nextSvr.GetStrategy(ctx, strategy)
+// GetPolicy 获取策略详细
+func (svr *Server) GetPolicy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apiservice.Response {
+	return svr.nextSvr.GetPolicy(ctx, strategy)
 }
 
 // GetPrincipalResources 获取某个 principal 的所有可操作资源列表

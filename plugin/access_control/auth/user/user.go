@@ -427,17 +427,28 @@ func (svr *Server) CheckCredential(authCtx *authtypes.AcquireContext) error {
 	}
 
 	checkErr := func() error {
-		//
-		authToken := utils.ParseAuthToken(authCtx.GetRequestContext())
+		if authCtx.GetRequestContext() == nil {
+			return authtypes.ErrorTokenInvalid
+		}
+
+		authHeaders := []string{types.HeaderAuthorizationKey, "X-Polaris-Token"}
+		headers := types.GetRequestHeader(authCtx.GetRequestContext())
+		var authToken string
+		for _, k := range authHeaders {
+			if v := headers[k]; len(v) > 0 {
+				authToken = v[0]
+				break
+			}
+		}
 		operator, err := svr.decodeToken(authToken)
 		if err != nil {
-			log.Error("[Auth][Checker] decode token", utils.RequestID(authCtx.GetRequestContext()), zap.Error(err))
+			log.Error("[Auth][Checker] decode token", utils.RequestID(authCtx.GetRequestContext()), zap.String("token", authToken), zap.Error(err))
 			return authtypes.ErrorTokenInvalid
 		}
 
 		ownerId, isOwner, err := svr.checkToken(&operator)
 		if err != nil {
-			log.Error("[Auth][Checker] check token", utils.RequestID(authCtx.GetRequestContext()), zap.Error(err))
+			log.Error("[Auth][Checker] check token", utils.RequestID(authCtx.GetRequestContext()), zap.String("token", authToken), zap.Error(err))
 			return err
 		}
 

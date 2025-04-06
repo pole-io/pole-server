@@ -78,8 +78,8 @@ func TestCreateToken(t *testing.T) {
 }
 
 func TestDecodeToken(t *testing.T) {
-	token := "o+Ad+6m9X2WOxxNrC1hgOhyiZ1L/ZHuvU6iqYRpyQAFRXHgIIH2ghUHTcaFsekUL1dT3IvDyap4R2WcSAL8="
-	v, err := defaultuser.DecryptMessage([]byte("polaris@1ce410a2101348e9"), token)
+	token := "NH8IvrzAR+mkM6zOKPOMzrL9mGT5Ilb1pjckQcAiTGg58i+WebArKBx88PyabkZyZoRcrJvSGGaOYXfRU2A="
+	v, err := defaultuser.DecryptMessage([]byte("pole@@1234567890"), token)
 	if err != nil {
 		t.Fatal(err)
 	}

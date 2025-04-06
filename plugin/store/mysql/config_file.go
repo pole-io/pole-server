@@ -91,8 +91,8 @@ func (cf *configFileStore) CreateConfigFileTx(tx store.Tx, file *conftypes.Confi
 	}
 
 	createSql := "INSERT INTO config_file( " +
-		" name, namespace, `group`, content, comment, format, create_time, " +
-		"create_by, modify_time, modify_by) " +
+		" name, namespace, `group`, content, comment, format, ctime, " +
+		"create_by, mtime, modify_by) " +
 		" VALUES " +
 		"(?, ?, ?, ?, ?, ?, sysdate(), ?, sysdate(), ?)"
 	if _, err := dbTx.Exec(createSql, file.Name, file.Namespace, file.Group,
@@ -116,7 +116,7 @@ func (cf *configFileStore) batchAddTags(tx *BaseTx, file *conftypes.ConfigFile) 
 
 	// 添加配置标签
 	insertSql := "INSERT INTO config_file_tag(" +
-		" `key`, `value`, namespace, `group`, file_name, create_time, create_by, modify_time, modify_by) " +
+		" `key`, `value`, namespace, `group`, file_name, ctime, create_by, mtime, modify_by) " +
 		" VALUES "
 	valuesSql := []string{}
 	args := []interface{}{}
@@ -217,7 +217,7 @@ func (cf *configFileStore) UpdateConfigFileTx(tx store.Tx, file *conftypes.Confi
 		return ErrTxIsNil
 	}
 
-	updateSql := "UPDATE config_file SET content = ?, comment = ?, format = ?, modify_time = sysdate(), " +
+	updateSql := "UPDATE config_file SET content = ?, comment = ?, format = ?, mtime = sysdate(), " +
 		" modify_by = ? WHERE namespace = ? AND `group` = ? AND name = ?"
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	_, err := dbTx.Exec(updateSql, file.Content, file.Comment, file.Format,
@@ -347,7 +347,7 @@ func (cf *configFileStore) CountConfigFileEachGroup() (map[string]map[string]int
 
 func (cf *configFileStore) baseSelectConfigFileSql() string {
 	return "SELECT id, name, namespace, `group`, content, IFNULL(comment, ''), format, " +
-		" UNIX_TIMESTAMP(create_time), IFNULL(create_by, ''), UNIX_TIMESTAMP(modify_time), " +
+		" UNIX_TIMESTAMP(ctime), IFNULL(create_by, ''), UNIX_TIMESTAMP(mtime), " +
 		" IFNULL(modify_by, '') FROM config_file "
 }
 

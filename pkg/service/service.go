@@ -36,7 +36,6 @@ import (
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
 )
@@ -715,34 +714,11 @@ func (s *Server) checkServiceAuthority(ctx context.Context, req *apiservice.Serv
 }
 
 // service2Api svctypes.Service 转为 api.Service
-func service2Api(service *svctypes.Service) *apiservice.Service {
-	if service == nil {
+func service2Api(data *svctypes.Service) *apiservice.Service {
+	if data == nil {
 		return nil
 	}
-
-	// note: 不包括token，token比较特殊
-	out := &apiservice.Service{
-		Id:         protobuf.NewStringValue(service.ID),
-		Name:       protobuf.NewStringValue(service.Name),
-		Namespace:  protobuf.NewStringValue(service.Namespace),
-		Metadata:   service.Meta,
-		Ports:      protobuf.NewStringValue(service.Ports),
-		Business:   protobuf.NewStringValue(service.Business),
-		Department: protobuf.NewStringValue(service.Department),
-		CmdbMod1:   protobuf.NewStringValue(service.CmdbMod1),
-		CmdbMod2:   protobuf.NewStringValue(service.CmdbMod2),
-		CmdbMod3:   protobuf.NewStringValue(service.CmdbMod3),
-		Comment:    protobuf.NewStringValue(service.Comment),
-		Owners:     protobuf.NewStringValue(service.Owner),
-		Revision:   protobuf.NewStringValue(service.Revision),
-		PlatformId: protobuf.NewStringValue(service.PlatformID),
-		Ctime:      protobuf.NewStringValue(commontime.Time2String(service.CreateTime)),
-		Mtime:      protobuf.NewStringValue(commontime.Time2String(service.ModifyTime)),
-		ExportTo:   service.ListExportTo(),
-		Editable:   protobuf.NewBoolValue(true),
-		Deleteable: protobuf.NewBoolValue(true),
-	}
-
+	out := data.ToSpec()
 	return out
 }
 

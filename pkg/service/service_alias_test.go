@@ -47,7 +47,7 @@ func (d *DiscoverTestSuit) createCommonAlias(service *apiservice.Service, alias 
 		Alias:          protobuf.NewStringValue(alias),
 		AliasNamespace: protobuf.NewStringValue(aliasNamespace),
 		Type:           typ,
-		Owners:         protobuf.NewStringValue("polaris"),
+		Owners:         protobuf.NewStringValue("pole"),
 	}
 	return d.DiscoverServer().CreateServiceAlias(d.DefaultCtx, req)
 }

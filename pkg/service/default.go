@@ -43,7 +43,7 @@ const (
 
 const (
 	// SystemNamespace polaris system namespace
-	SystemNamespace = "Polaris"
+	SystemNamespace = "pole-system"
 	// DefaultNamespace default namespace
 	DefaultNamespace = "default"
 	// ProductionNamespace default namespace
@@ -78,6 +78,8 @@ type Config struct {
 	Interceptors []string               `yaml:"-"`
 	// HealthChecks 健康检查相关配置
 	HealthChecks healthcheck.Config `yaml:"healthcheck"`
+	// Caches 缓存配置
+	Caches map[string]map[string]interface{} `yaml:"caches"`
 }
 
 // Initialize 初始化

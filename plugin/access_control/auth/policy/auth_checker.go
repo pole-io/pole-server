@@ -243,8 +243,8 @@ func (d *DefaultAuthChecker) listAllPrincipals(p authtypes.Principal) []authtype
 
 // IsCredible 检查是否是可信的请求
 func (d *DefaultAuthChecker) IsCredible(authCtx *authtypes.AcquireContext) bool {
-	reqHeaders, ok := authCtx.GetRequestContext().Value(types.ContextRequestHeaders).(map[string][]string)
-	if !ok || len(d.conf.CredibleHeaders) == 0 {
+	reqHeaders := types.GetRequestHeader(authCtx.GetRequestContext())
+	if len(d.conf.CredibleHeaders) == 0 {
 		return false
 	}
 	matched := true

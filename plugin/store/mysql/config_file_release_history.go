@@ -39,7 +39,7 @@ func (rh *configFileReleaseHistoryStore) CreateConfigFileReleaseHistory(
 
 	s := "INSERT INTO config_file_release_history(" +
 		" name, namespace, `group`, file_name, content, comment, md5, type, status, format, tags, " +
-		"create_time, create_by, modify_time, modify_by, version, reason, description) " +
+		"ctime, create_by, mtime, modify_by, version, reason, description) " +
 		" VALUES " +
 		"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), ?, sysdate(), ?, ?, ?, ?)"
 	_, err := rh.master.Exec(s, history.Name, history.Namespace,
@@ -104,15 +104,15 @@ func (rh *configFileReleaseHistoryStore) QueryConfigFileReleaseHistories(filter 
 
 // CleanConfigFileReleaseHistory 清理配置发布历史
 func (rh *configFileReleaseHistoryStore) CleanConfigFileReleaseHistory(endTime time.Time, limit uint64) error {
-	delSql := "DELETE FROM config_file_release_history WHERE create_time < ? LIMIT ?"
+	delSql := "DELETE FROM config_file_release_history WHERE ctime < ? LIMIT ?"
 	_, err := rh.master.Exec(delSql, endTime, limit)
 	return err
 }
 
 func (rh *configFileReleaseHistoryStore) genSelectSql() string {
 	return "SELECT id, name, namespace, `group`, file_name, content, IFNULL(comment, ''), " +
-		" md5, format, tags, type, status, UNIX_TIMESTAMP(create_time), IFNULL(create_by, ''), " +
-		" UNIX_TIMESTAMP(modify_time), IFNULL(modify_by, ''), IFNULL(reason, ''), " +
+		" md5, format, tags, type, status, UNIX_TIMESTAMP(ctime), IFNULL(create_by, ''), " +
+		" UNIX_TIMESTAMP(mtime), IFNULL(modify_by, ''), IFNULL(reason, ''), " +
 		" IFNULL(description, ''), IFNULL(version, 0) FROM config_file_release_history "
 }
 

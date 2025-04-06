@@ -63,18 +63,18 @@ type StrategyServer interface {
 
 // PolicyOperator 策略管理
 type PolicyOperator interface {
-	// CreateStrategy 创建策略
-	CreateStrategy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apiservice.Response
-	// UpdateStrategies 批量更新策略
-	UpdateStrategies(ctx context.Context, reqs []*apisecurity.ModifyAuthStrategy) *apiservice.BatchWriteResponse
-	// DeleteStrategies 删除策略
-	DeleteStrategies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse
-	// GetStrategies 获取资源列表
+	// CreatePolicies 创建策略
+	CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse
+	// UpdatePolicies 批量更新策略
+	UpdatePolicies(ctx context.Context, reqs []*apisecurity.ModifyAuthStrategy) *apiservice.BatchWriteResponse
+	// DeletePolicies 删除策略
+	DeletePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse
+	// GetPolicies 获取资源列表
 	// support 1. 支持按照 principal-id + principal-role 进行查询
 	// support 2. 支持普通的鉴权策略查询
-	GetStrategies(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
-	// GetStrategy 获取策略详细
-	GetStrategy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apiservice.Response
+	GetPolicies(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	// GetPolicy 获取策略详细
+	GetPolicy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apiservice.Response
 	// GetPrincipalResources 获取某个 principal 的所有可操作资源列表
 	GetPrincipalResources(ctx context.Context, query map[string]string) *apiservice.Response
 }

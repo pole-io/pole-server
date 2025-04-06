@@ -50,7 +50,7 @@ const (
 	tblNameInstance    = "instance"
 	tblNameService     = "service"
 	tblNameRouting     = "routing"
-	tblRateLimitConfig = "ratelimit_config"
+	tblRateLimitConfig = "ratelimit_rule"
 	tblCircuitBreaker  = "circuitbreaker_rule"
 	tblNameL5          = "l5"
 	tblNameRouterRule  = "router_rule"

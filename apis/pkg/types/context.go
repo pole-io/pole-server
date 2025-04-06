@@ -17,6 +17,8 @@
 
 package types
 
+import "context"
+
 type (
 	StringContext string
 )
@@ -31,8 +33,8 @@ const (
 )
 
 const (
-	// HeaderAuthTokenKey auth token key
-	HeaderAuthTokenKey string = "X-Pole-Token"
+	// HeaderAuthorizationKey auth token key
+	HeaderAuthorizationKey string = "Authorization"
 	// HeaderIsOwnerKey is owner key
 	HeaderIsOwnerKey string = "X-Is-Owner"
 	// HeaderUserIDKey user id key
@@ -47,7 +49,7 @@ const (
 	HeaderUserAgent string = "user-agent"
 
 	// ContextAuthTokenKey auth token key
-	ContextAuthTokenKey = StringContext(HeaderAuthTokenKey)
+	ContextAuthTokenKey = StringContext(HeaderAuthorizationKey)
 	// ContextIsOwnerKey is owner key
 	ContextIsOwnerKey = StringContext(HeaderIsOwnerKey)
 	// ContextUserIDKey user id key
@@ -85,3 +87,18 @@ const (
 	// ContextKeyConditions key conditions
 	ContextKeyConditions = StringContext("key-conditions")
 )
+
+func AppendRequestHeader(ctx context.Context, headers map[string][]string) context.Context {
+	return context.WithValue(ctx, ContextRequestHeaders, headers)
+}
+
+func GetRequestHeader(ctx context.Context) map[string][]string {
+	if headers, ok := ctx.Value(ContextRequestHeaders).(map[string][]string); ok {
+		return headers
+	}
+	return map[string][]string{}
+}
+
+func AppendContextValue(ctx context.Context, key, value any) context.Context {
+	return context.WithValue(ctx, key, value)
+}

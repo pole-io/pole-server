@@ -413,7 +413,7 @@ func (c *circuitBreakerStore) EnableCircuitBreakerRule(cbRule *rules.CircuitBrea
 		} else {
 			properties[CommonFieldEnableTime] = time.Unix(0, 0)
 		}
-		// create ratelimit_config
+		// create ratelimit_rule
 		if err := updateValue(tx, tblCircuitBreakerRule, cbRule.ID, properties); err != nil {
 			log.Errorf("[Store][RateLimit] update circuitbreaker rule(%s) err: %s",
 				cbRule.ID, err.Error())

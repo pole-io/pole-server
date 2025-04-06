@@ -92,7 +92,7 @@ const (
 	DefaultDuration                = 90
 	DefaultUnhealthyExpireInterval = 180
 
-	DefaultOwner        = "polaris"
+	DefaultOwner        = "pole"
 	DefaultSSLPort      = 443
 	DefaultInsecurePort = 8080
 

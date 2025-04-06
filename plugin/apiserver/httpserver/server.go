@@ -52,8 +52,9 @@ import (
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
+	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/aimcp"
 	confighttp "github.com/pole-io/pole-server/plugin/apiserver/httpserver/config"
-	v1 "github.com/pole-io/pole-server/plugin/apiserver/httpserver/discover/v1"
+	discoveryv1 "github.com/pole-io/pole-server/plugin/apiserver/httpserver/discover/v1"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
 
@@ -93,8 +94,9 @@ type HTTPServer struct {
 	statis            statis.Statis
 	whitelist         whitelist.Whitelist
 
-	discoverV1 v1.HTTPServerV1
-	configSvr  confighttp.HTTPServer
+	discoverV1 *discoveryv1.HTTPServerV1
+	configSvr  *confighttp.HTTPServer
+	aimcpSvr   *aimcp.HTTPServer
 
 	userMgn     authapi.UserServer
 	strategyMgn authapi.StrategyServer
@@ -233,16 +235,18 @@ func (h *HTTPServer) Run(errCh chan error) {
 	}
 	h.statis = statis.GetStatis()
 
-	// 初始化配置中心模块
-	h.configServer, err = config.GetServer()
+	h.discoverV1 = discoveryv1.NewV1Server(h.namingServer, h.healthCheckServer)
+	h.configSvr, err = confighttp.NewServer(h.maintainServer, h.namespaceServer)
 	if err != nil {
-		log.Errorf("set config server to http server error. %v", err)
 		errCh <- err
 		return
 	}
-
-	h.discoverV1 = *v1.NewV1Server(h.namespaceServer, h.namingServer, h.healthCheckServer)
-	h.configSvr = *confighttp.NewServer(h.maintainServer, h.namespaceServer, h.configServer)
+	aimcpSvr, err := aimcp.NewServer(h.maintainServer, h.namespaceServer)
+	if err != nil {
+		errCh <- err
+		return
+	}
+	h.aimcpSvr = aimcpSvr
 
 	// 初始化http server
 	address := fmt.Sprintf("%v:%v", h.listenIP, h.listenPort)
@@ -379,51 +383,24 @@ func (h *HTTPServer) createRestfulContainer() (*restful.Container, error) {
 				wsContainer.Add(h.GetIndexServer())
 				wsContainer.Add(h.GetAdminAccessServer())
 			}
+		case "aimcp":
+			if apiConfig.Enable {
+				wsContainer.Add(h.aimcpSvr.GetMCPAccessServer(apiConfig.Include))
+			}
 		case "console":
 			if apiConfig.Enable {
-				namingServiceV1, err := h.discoverV1.GetConsoleAccessServer(apiConfig.Include)
-				if err != nil {
-					return nil, err
-				}
-				wsContainer.Add(namingServiceV1)
-
-				configService, err := h.configSvr.GetConsoleAccessServer(apiConfig.Include)
-				if err != nil {
-					return nil, err
-				}
-				wsContainer.Add(configService)
-
-				ws := new(restful.WebService)
-				ws.Path("/core/v1").Consumes(restful.MIME_JSON).Produces(restful.MIME_JSON)
-				if err := h.GetClientServer(ws); err != nil {
-					return nil, err
-				}
-				if err := h.GetCoreV1ConsoleAccessServer(ws, apiConfig.Include); err != nil {
-					return nil, err
-				}
-				if err := h.GetAuthServer(ws); err != nil {
-					return nil, err
-				}
-
-				prometheusSvc, err := h.GetPrometheusDiscoveryServer(apiConfig.Include)
-				if err != nil {
-					return nil, err
-				}
-				wsContainer.Add(prometheusSvc)
-
-				wsContainer.Add(ws)
+				wsContainer.Add(h.discoverV1.GetConsoleAccessServer(apiConfig.Include))
+				wsContainer.Add(h.configSvr.GetConsoleAccessServer(apiConfig.Include))
+				wsContainer.Add(h.GetCoreV1ConsoleAccessServer(apiConfig.Include))
+				wsContainer.Add(h.GetAuthServer())
+				wsContainer.Add(h.GetPrometheusDiscoveryServer(apiConfig.Include))
 			}
 		case "client":
 			if apiConfig.Enable {
 				ws := new(restful.WebService)
 				ws.Path("/v1").Consumes(restful.MIME_JSON).Produces(restful.MIME_JSON)
-
-				if err := h.discoverV1.GetClientAccessServer(ws, apiConfig.Include); err != nil {
-					return nil, err
-				}
-				if err := h.configSvr.GetClientAccessServer(ws, apiConfig.Include); err != nil {
-					return nil, err
-				}
+				h.discoverV1.GetClientAccessServer(ws, apiConfig.Include)
+				h.configSvr.GetClientAccessServer(ws, apiConfig.Include)
 				wsContainer.Add(ws)
 			}
 		default:
@@ -432,7 +409,6 @@ func (h *HTTPServer) createRestfulContainer() (*restful.Container, error) {
 	}
 
 	h.enablePprofAccess(wsContainer)
-	h.enableSwaggerAPI(wsContainer)
 	// 收集插件的 endpoint 数据
 	h.enablePluginDebugAccess(wsContainer)
 	h.enablePrometheusAccess(wsContainer)

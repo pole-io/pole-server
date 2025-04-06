@@ -266,7 +266,7 @@ func (h *NacosV1Server) preprocess(req *restful.Request, rsp *restful.Response) 
 	// 处理 jwt
 	accessToken := req.QueryParameter("accessToken")
 	if accessToken != "" {
-		req.Request.Header.Set(types.HeaderAuthTokenKey, accessToken)
+		req.Request.Header.Set(types.HeaderAuthorizationKey, accessToken)
 	}
 
 	return nil

@@ -150,9 +150,9 @@ type maintainJob interface {
 }
 
 func getMasterAccountToken(storage store.Store) (string, error) {
-	mainUser := os.Getenv("POLARIS_MAIN_USER")
+	mainUser := os.Getenv("POLE_MAIN_USER")
 	if mainUser == "" {
-		mainUser = "polaris"
+		mainUser = "pole"
 	}
 	user, err := storage.GetUserByName(mainUser, "")
 	if err != nil {

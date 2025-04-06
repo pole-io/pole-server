@@ -49,7 +49,7 @@ func TestClientCheck(t *testing.T) {
 
 	discoverSuit.addInstance(t, &apiservice.Instance{
 		Service:   wrapperspb.String("pole.checker"),
-		Namespace: wrapperspb.String("Polaris"),
+		Namespace: wrapperspb.String("pole-system"),
 		Host:      wrapperspb.String("127.0.0.1"),
 		Port:      wrapperspb.UInt32(8091),
 		Protocol:  wrapperspb.String("grpc"),

@@ -103,34 +103,41 @@ func Initialize(ctx context.Context, config Config, s store.Store, cacheMgr cach
 	return nil
 }
 
-func doInitialize(ctx context.Context, svcConf Config, s store.Store, cacheMgr cacheapi.CacheManager,
+func doInitialize(ctx context.Context, opt Config, s store.Store, cacheMgr cacheapi.CacheManager,
 	namespaceOperator namespace.NamespaceOperateServer) (ConfigCenterServer, *Server, error) {
 	var proxySvr ConfigCenterServer
 	originSvr := &Server{}
 
-	if !svcConf.Open {
+	if !opt.Open {
 		originSvr.initialized = true
 		return nil, nil, nil
+	}
+
+	for i := range configCacheEntries {
+		if _, ok := opt.Caches[configCacheEntries[i].Name]; !ok {
+			continue
+		}
+		configCacheEntries[i].Option = opt.Caches[configCacheEntries[i].Name]
 	}
 
 	if err := cacheMgr.OpenResourceCache(configCacheEntries...); err != nil {
 		return nil, nil, err
 	}
-	err := originSvr.initialize(ctx, svcConf, s, namespaceOperator, cacheMgr)
+	err := originSvr.initialize(ctx, opt, s, namespaceOperator, cacheMgr)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	proxySvr = originSvr
 	// 需要返回包装代理的 DiscoverServer
-	order := svcConf.Interceptors
+	order := opt.Interceptors
 	for i := range order {
 		factory, exist := serverProxyFactories[order[i]]
 		if !exist {
 			return nil, nil, fmt.Errorf("name(%s) not exist in serverProxyFactories", order[i])
 		}
 
-		tmpSvr, err := factory(cacheMgr, s, proxySvr, svcConf)
+		tmpSvr, err := factory(cacheMgr, s, proxySvr, opt)
 		if err != nil {
 			return nil, nil, err
 		}

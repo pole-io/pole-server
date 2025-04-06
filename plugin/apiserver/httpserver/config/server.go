@@ -37,13 +37,18 @@ type HTTPServer struct {
 // NewServer 创建配置中心的 HttpServer
 func NewServer(
 	maintainServer admin.AdminOperateServer,
-	namespaceServer namespace.NamespaceOperateServer,
-	configServer config.ConfigCenterServer) *HTTPServer {
+	namespaceServer namespace.NamespaceOperateServer) (*HTTPServer, error) {
+	// 初始化配置中心模块
+	configServer, err := config.GetServer()
+	if err != nil {
+		log.Errorf("set config server to http server error. %v", err)
+		return nil, err
+	}
 	return &HTTPServer{
 		maintainServer:  maintainServer,
 		namespaceServer: namespaceServer,
 		configServer:    configServer,
-	}
+	}, nil
 }
 
 const (
@@ -53,7 +58,7 @@ const (
 )
 
 // GetConfigAccessServer 获取配置中心接口
-func (h *HTTPServer) GetConsoleAccessServer(include []string) (*restful.WebService, error) {
+func (h *HTTPServer) GetConsoleAccessServer(include []string) *restful.WebService {
 	consoleAccess := []string{defaultAccess}
 
 	ws := new(restful.WebService)
@@ -67,16 +72,12 @@ func (h *HTTPServer) GetConsoleAccessServer(include []string) (*restful.WebServi
 		switch item {
 		case defaultReadAccess:
 			h.addDefaultReadAccess(ws)
-			// 仅为了兼容老的客户端发现路径
-			h.addDiscover(ws)
 		case configConsoleAccess, defaultAccess:
-			// 仅为了兼容老的客户端发现路径
-			h.addDiscover(ws)
 			h.addDefaultAccess(ws)
 		}
 	}
 
-	return ws, nil
+	return ws
 }
 
 func (h *HTTPServer) addDefaultReadAccess(ws *restful.WebService) {
@@ -132,7 +133,7 @@ func (h *HTTPServer) addDefaultAccess(ws *restful.WebService) {
 }
 
 // GetClientAccessServer 获取配置中心接口
-func (h *HTTPServer) GetClientAccessServer(ws *restful.WebService, include []string) error {
+func (h *HTTPServer) GetClientAccessServer(ws *restful.WebService, include []string) {
 	clientAccess := []string{apiserver.DiscoverAccess, apiserver.CreateFileAccess}
 
 	if len(include) == 0 {
@@ -141,14 +142,10 @@ func (h *HTTPServer) GetClientAccessServer(ws *restful.WebService, include []str
 
 	for _, item := range include {
 		switch item {
-		case apiserver.CreateFileAccess:
-			h.addCreateFile(ws)
 		case apiserver.DiscoverAccess:
 			h.addDiscover(ws)
 		}
 	}
-
-	return nil
 }
 
 func (h *HTTPServer) addDiscover(ws *restful.WebService) {
@@ -156,7 +153,4 @@ func (h *HTTPServer) addDiscover(ws *restful.WebService) {
 	ws.Route(docs.EnrichGetConfigFileForClientApiDocs(ws.GET("/GetConfigFile").To(h.ClientGetConfigFile)))
 	ws.Route(docs.EnrichWatchConfigFileForClientApiDocs(ws.POST("/WatchConfigFile").To(h.ClientWatchConfigFile)))
 	ws.Route(docs.EnrichGetConfigFileMetadataList(ws.POST("/GetConfigFileMetadataList").To(h.GetConfigFileMetadataList)))
-}
-
-func (h *HTTPServer) addCreateFile(ws *restful.WebService) {
 }

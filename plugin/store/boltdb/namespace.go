@@ -42,7 +42,7 @@ type namespaceStore struct {
 
 const (
 	defaultNamespace = "default"
-	polarisNamespace = "Polaris"
+	polarisNamespace = "pole-system"
 )
 
 var (
@@ -69,7 +69,7 @@ func (n *namespaceStore) InitData() error {
 				Name:       namespace,
 				Comment:    namespaceToComment[namespace],
 				Token:      namespaceToToken[namespace],
-				Owner:      "polaris",
+				Owner:      "pole",
 				Valid:      true,
 				CreateTime: time.Now(),
 				ModifyTime: time.Now(),
