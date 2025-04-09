@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package service_test
+package goverrule_test
 
 import (
 	"context"
@@ -87,14 +87,14 @@ func createFaultDetectRules(discoverSuit *DiscoverTestSuit, count int) ([]*apifa
 		fbRule := buildFaultDetectRule(i)
 		fdRules = append(fdRules, fbRule)
 	}
-	resp := discoverSuit.DiscoverServer().CreateFaultDetectRules(discoverSuit.DefaultCtx, fdRules)
+	resp := discoverSuit.GoverRuleServer().CreateFaultDetectRules(discoverSuit.DefaultCtx, fdRules)
 	return fdRules, resp
 }
 
 func cleanFaultDetectRules(discoverSuit *DiscoverTestSuit, response *apiservice.BatchWriteResponse) {
 	fdRules := parseResponseToFaultDetectRules(response)
 	if len(fdRules) > 0 {
-		discoverSuit.DiscoverServer().DeleteFaultDetectRules(discoverSuit.DefaultCtx, fdRules)
+		discoverSuit.GoverRuleServer().DeleteFaultDetectRules(discoverSuit.DefaultCtx, fdRules)
 	}
 }
 
@@ -142,7 +142,7 @@ func TestCreateFaultDetectRule(t *testing.T) {
 		defer cleanFaultDetectRules(discoverSuit, resp)
 		checkFaultDetectRuleResponse(t, fdRules, resp)
 
-		if resp := discoverSuit.DiscoverServer().CreateFaultDetectRules(discoverSuit.DefaultCtx, fdRules); !respSuccess(resp) {
+		if resp := discoverSuit.GoverRuleServer().CreateFaultDetectRules(discoverSuit.DefaultCtx, fdRules); !respSuccess(resp) {
 			t.Logf("pass: %s", resp.GetInfo().GetValue())
 		} else {
 			t.Fatal("error, duplicate rule can not be passed")
@@ -160,7 +160,7 @@ func TestCreateFaultDetectRule(t *testing.T) {
 
 	t.Run("创建探测规则时，没有传递规则名，返回错误", func(t *testing.T) {
 		fdRule := buildUnnamedFaultDetectRule()
-		if resp := discoverSuit.DiscoverServer().CreateFaultDetectRules(discoverSuit.DefaultCtx, []*apifault.FaultDetectRule{fdRule}); !respSuccess(resp) {
+		if resp := discoverSuit.GoverRuleServer().CreateFaultDetectRules(discoverSuit.DefaultCtx, []*apifault.FaultDetectRule{fdRule}); !respSuccess(resp) {
 			t.Logf("pass: %s", resp.GetInfo().GetValue())
 		} else {
 			t.Fatal("error, unnamed rule can not be passed")
@@ -175,7 +175,7 @@ func TestCreateFaultDetectRule(t *testing.T) {
 				defer wg.Done()
 				fdRule := buildFaultDetectRule(index)
 				fdRules := []*apifault.FaultDetectRule{fdRule}
-				resp := discoverSuit.DiscoverServer().CreateFaultDetectRules(discoverSuit.DefaultCtx, fdRules)
+				resp := discoverSuit.GoverRuleServer().CreateFaultDetectRules(discoverSuit.DefaultCtx, fdRules)
 				cleanFaultDetectRules(discoverSuit, resp)
 			}(i)
 		}
@@ -187,7 +187,7 @@ func TestCreateFaultDetectRule(t *testing.T) {
 		defer cleanFaultDetectRules(discoverSuit, resp)
 		checkFaultDetectRuleResponse(t, fdRules, resp)
 		time.Sleep(5 * time.Second)
-		discoverResp := discoverSuit.DiscoverServer().GetFaultDetectWithCache(context.Background(), &apiservice.Service{
+		discoverResp := discoverSuit.GoverRuleServer().GetFaultDetectWithCache(context.Background(), &apiservice.Service{
 			Name:      &wrappers.StringValue{Value: "testDestService"},
 			Namespace: &wrappers.StringValue{Value: "test"},
 		})
@@ -214,10 +214,10 @@ func TestModifyFaultDetectRule(t *testing.T) {
 			fdRules[i].Description = "update faultdetect rule info"
 		}
 
-		resp = discoverSuit.DiscoverServer().UpdateFaultDetectRules(discoverSuit.DefaultCtx, fdRules)
+		resp = discoverSuit.GoverRuleServer().UpdateFaultDetectRules(discoverSuit.DefaultCtx, fdRules)
 		assert.Equal(t, apimodel.Code_ExecuteSuccess, apimodel.Code(resp.GetCode().GetValue()))
 
-		qresp := discoverSuit.DiscoverServer().GetFaultDetectRules(discoverSuit.DefaultCtx, map[string]string{})
+		qresp := discoverSuit.GoverRuleServer().GetFaultDetectRules(discoverSuit.DefaultCtx, map[string]string{})
 		assertions := assert.New(t)
 		for _, resp := range qresp.Data {
 			msg := &apifault.FaultDetectRule{}

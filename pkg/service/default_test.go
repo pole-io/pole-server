@@ -70,7 +70,7 @@ func Test_Initialize(t *testing.T) {
 
 func Test_Server(t *testing.T) {
 	t.Run("cache_entries", func(t *testing.T) {
-		ret := GetAllCaches()
+		ret := GetRegisterCaches()
 		assert.True(t, len(ret) > 0)
 	})
 

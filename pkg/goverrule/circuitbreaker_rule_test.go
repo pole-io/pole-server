@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package service_test
+package goverrule_test
 
 import (
 	"fmt"
@@ -33,12 +33,13 @@ import (
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/valid"
+	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
 func buildUnnamedCircuitBreakerRule() *apifault.CircuitBreakerRule {
 	return &apifault.CircuitBreakerRule{
-		Namespace:   service.DefaultNamespace,
+		Namespace:   namespace.DefaultNamespace,
 		Enable:      true,
 		Description: "comment me",
 		Level:       apifault.Level_GROUP,
@@ -125,12 +126,12 @@ func createCircuitBreakerRules(discoverSuit *DiscoverTestSuit, count int) ([]*ap
 		cbRule := buildCircuitBreakerRule(i)
 		cbRules = append(cbRules, cbRule)
 	}
-	resp := discoverSuit.DiscoverServer().CreateCircuitBreakerRules(discoverSuit.DefaultCtx, cbRules)
+	resp := discoverSuit.GoverRuleServer().CreateCircuitBreakerRules(discoverSuit.DefaultCtx, cbRules)
 	return cbRules, resp
 }
 
 func queryCircuitBreakerRules(discoverSuit *DiscoverTestSuit, query map[string]string) *apiservice.BatchQueryResponse {
-	return discoverSuit.DiscoverServer().GetCircuitBreakerRules(discoverSuit.DefaultCtx, query)
+	return discoverSuit.GoverRuleServer().GetCircuitBreakerRules(discoverSuit.DefaultCtx, query)
 }
 
 func cleanCircuitBreakerRules(discoverSuit *DiscoverTestSuit, response *apiservice.BatchWriteResponse) {
@@ -138,7 +139,7 @@ func cleanCircuitBreakerRules(discoverSuit *DiscoverTestSuit, response *apiservi
 	if len(cbRules) == 0 {
 		return
 	}
-	discoverSuit.DiscoverServer().DeleteCircuitBreakerRules(discoverSuit.DefaultCtx, cbRules)
+	discoverSuit.GoverRuleServer().DeleteCircuitBreakerRules(discoverSuit.DefaultCtx, cbRules)
 }
 
 func checkCircuitBreakerRuleResponse(t *testing.T, requests []*apifault.CircuitBreakerRule, response *apiservice.BatchWriteResponse) {
@@ -176,7 +177,7 @@ func TestCreateCircuitBreakerRule(t *testing.T) {
 
 	t.Run("abnormal_scene", func(t *testing.T) {
 		t.Run("empty_request", func(t *testing.T) {
-			resp := discoverSuit.DiscoverServer().CreateCircuitBreakerRules(discoverSuit.DefaultCtx, []*apifault.CircuitBreakerRule{})
+			resp := discoverSuit.GoverRuleServer().CreateCircuitBreakerRules(discoverSuit.DefaultCtx, []*apifault.CircuitBreakerRule{})
 			assert.False(t, api.IsSuccess(resp), resp.GetInfo().GetValue())
 			assert.Equal(t, uint32(apimodel.Code_EmptyRequest), resp.GetCode().GetValue())
 		})
@@ -188,7 +189,7 @@ func TestCreateCircuitBreakerRule(t *testing.T) {
 					Id: "123123",
 				})
 			}
-			resp := discoverSuit.DiscoverServer().CreateCircuitBreakerRules(discoverSuit.DefaultCtx, requests)
+			resp := discoverSuit.GoverRuleServer().CreateCircuitBreakerRules(discoverSuit.DefaultCtx, requests)
 			assert.False(t, api.IsSuccess(resp), resp.GetInfo().GetValue())
 			assert.Equal(t, uint32(apimodel.Code_BatchSizeOverLimit), resp.GetCode().GetValue(), resp.GetInfo().GetValue())
 		})
@@ -208,7 +209,7 @@ func TestCreateCircuitBreakerRule(t *testing.T) {
 		defer cleanCircuitBreakerRules(discoverSuit, firstResp)
 		checkCircuitBreakerRuleResponse(t, cbRules, firstResp)
 
-		if resp := discoverSuit.DiscoverServer().CreateCircuitBreakerRules(discoverSuit.DefaultCtx, cbRules); !respSuccess(resp) {
+		if resp := discoverSuit.GoverRuleServer().CreateCircuitBreakerRules(discoverSuit.DefaultCtx, cbRules); !respSuccess(resp) {
 			t.Logf("pass: %s", resp.GetInfo().GetValue())
 		} else {
 			t.Fatal("error, duplicate rule can not be passed")
@@ -225,7 +226,7 @@ func TestCreateCircuitBreakerRule(t *testing.T) {
 
 	t.Run("创建熔断规则时，没有传递规则名，返回错误", func(t *testing.T) {
 		cbRule := buildUnnamedCircuitBreakerRule()
-		if resp := discoverSuit.DiscoverServer().CreateCircuitBreakerRules(discoverSuit.DefaultCtx, []*apifault.CircuitBreakerRule{cbRule}); !respSuccess(resp) {
+		if resp := discoverSuit.GoverRuleServer().CreateCircuitBreakerRules(discoverSuit.DefaultCtx, []*apifault.CircuitBreakerRule{cbRule}); !respSuccess(resp) {
 			t.Logf("pass: %s", resp.GetInfo().GetValue())
 		} else {
 			t.Fatal("error, unnamed rule can not be passed")
@@ -240,7 +241,7 @@ func TestCreateCircuitBreakerRule(t *testing.T) {
 				defer wg.Done()
 				cbRule := buildCircuitBreakerRule(index)
 				cbRules := []*apifault.CircuitBreakerRule{cbRule}
-				resp := discoverSuit.DiscoverServer().CreateCircuitBreakerRules(discoverSuit.DefaultCtx, cbRules)
+				resp := discoverSuit.GoverRuleServer().CreateCircuitBreakerRules(discoverSuit.DefaultCtx, cbRules)
 				cleanCircuitBreakerRules(discoverSuit, resp)
 			}(i)
 		}
@@ -251,17 +252,17 @@ func TestCreateCircuitBreakerRule(t *testing.T) {
 		cbRules, firstResp := createCircuitBreakerRules(discoverSuit, 5)
 		defer cleanCircuitBreakerRules(discoverSuit, firstResp)
 		checkCircuitBreakerRuleResponse(t, cbRules, firstResp)
-		batchResp := discoverSuit.DiscoverServer().GetCircuitBreakerRules(
+		batchResp := discoverSuit.GoverRuleServer().GetCircuitBreakerRules(
 			discoverSuit.DefaultCtx, map[string]string{"name": "test-circuitbreaker-rule"})
 		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), batchResp.GetCode().GetValue())
 		anyValues := batchResp.GetData()
 		assert.Equal(t, len(cbRules), len(anyValues))
-		batchResp = discoverSuit.DiscoverServer().GetCircuitBreakerRules(
+		batchResp = discoverSuit.GoverRuleServer().GetCircuitBreakerRules(
 			discoverSuit.DefaultCtx, map[string]string{"name": "test-circuitbreaker-rule", "srcNamespace": "test1"})
 		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), batchResp.GetCode().GetValue())
 		anyValues = batchResp.GetData()
 		assert.Equal(t, 0, len(anyValues))
-		batchResp = discoverSuit.DiscoverServer().GetCircuitBreakerRules(
+		batchResp = discoverSuit.GoverRuleServer().GetCircuitBreakerRules(
 			discoverSuit.DefaultCtx, map[string]string{"name": "test-circuitbreaker-rule", "dstService": "test1"})
 		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), batchResp.GetCode().GetValue())
 		anyValues = batchResp.GetData()
@@ -285,7 +286,7 @@ func TestEnableCircuitBreakerRule(t *testing.T) {
 
 		testRule := cbRules[0]
 		testRule.Enable = false
-		resp = discoverSuit.DiscoverServer().EnableCircuitBreakerRules(discoverSuit.DefaultCtx, []*apifault.CircuitBreakerRule{testRule})
+		resp = discoverSuit.GoverRuleServer().EnableCircuitBreakerRules(discoverSuit.DefaultCtx, []*apifault.CircuitBreakerRule{testRule})
 		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), resp.GetCode().GetValue())
 		qResp = queryCircuitBreakerRules(discoverSuit, map[string]string{"id": testRule.Id})
 		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), qResp.GetCode().GetValue())
@@ -316,7 +317,7 @@ func TestUpdateCircuitBreakerRule(t *testing.T) {
 		mockDescr := "update circuitbreaker rule info"
 		testRule := cbRules[0]
 		testRule.Description = mockDescr
-		resp = discoverSuit.DiscoverServer().UpdateCircuitBreakerRules(discoverSuit.DefaultCtx, []*apifault.CircuitBreakerRule{testRule})
+		resp = discoverSuit.GoverRuleServer().UpdateCircuitBreakerRules(discoverSuit.DefaultCtx, []*apifault.CircuitBreakerRule{testRule})
 		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), resp.GetCode().GetValue(), resp.GetInfo().GetValue())
 		qResp = queryCircuitBreakerRules(discoverSuit, map[string]string{"id": testRule.Id})
 		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), qResp.GetCode().GetValue())

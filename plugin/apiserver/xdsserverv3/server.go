@@ -49,6 +49,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
 	commonatomic "github.com/pole-io/pole-server/pkg/common/syncs/atomic"
+	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	xdscache "github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/cache"
@@ -68,6 +69,7 @@ type XDSServer struct {
 	restart         bool
 	exitCh          chan struct{}
 	namingServer    service.DiscoverServer
+	ruleServer      goverrule.GoverRuleServer
 	healthSvr       *healthcheck.Server
 	cache           *xdscache.ResourceCache
 	versionNum      *atomic.Uint64
@@ -105,6 +107,11 @@ func (x *XDSServer) Initialize(ctx context.Context, option map[string]interface{
 		return err
 	}
 	x.healthSvr, err = healthcheck.GetServer()
+	if err != nil {
+		log.Errorf("%v", err)
+		return err
+	}
+	x.ruleServer, err = goverrule.GetServer()
 	if err != nil {
 		log.Errorf("%v", err)
 		return err
@@ -410,7 +417,7 @@ func (x *XDSServer) getRegistryInfoWithCache(ctx context.Context,
 			svc.Ports = ports
 
 			// 获取ratelimit配置
-			ratelimitResp := x.namingServer.GetRateLimitWithCache(ctx, s)
+			ratelimitResp := x.ruleServer.GetRateLimitWithCache(ctx, s)
 			if ratelimitResp.GetCode().Value != api.ExecuteSuccess {
 				log.Errorf("[XDSV3] error sync ratelimit for %s, info : %s", svc.Name,
 					ratelimitResp.Info.GetValue())
@@ -421,7 +428,7 @@ func (x *XDSServer) getRegistryInfoWithCache(ctx context.Context,
 				svc.RateLimit = ratelimitResp.RateLimit
 			}
 			// 获取circuitBreaker配置
-			circuitBreakerResp := x.namingServer.GetCircuitBreakerWithCache(ctx, s)
+			circuitBreakerResp := x.ruleServer.GetCircuitBreakerWithCache(ctx, s)
 			if circuitBreakerResp.GetCode().Value != api.ExecuteSuccess {
 				log.Errorf("[XDSV3] error sync circuitBreaker for %s, info : %s",
 					svc.Name, circuitBreakerResp.Info.GetValue())
@@ -433,7 +440,7 @@ func (x *XDSServer) getRegistryInfoWithCache(ctx context.Context,
 			}
 
 			// 获取faultDetect配置
-			faultDetectResp := x.namingServer.GetFaultDetectWithCache(ctx, s)
+			faultDetectResp := x.ruleServer.GetFaultDetectWithCache(ctx, s)
 			if faultDetectResp.GetCode().Value != api.ExecuteSuccess {
 				log.Errorf("[XDSV3] error sync faultDetect for %s, info : %s",
 					svc.Name, faultDetectResp.Info.GetValue())

@@ -108,42 +108,6 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	return s.nextSvr.ServiceInstancesCache(ctx, filter, req)
 }
 
-// GetRoutingConfigWithCache User Client Get Service Routing Configuration Information
-func (s *Server) GetRoutingConfigWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := service.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_ROUTING)
-	if !s.commonCheckDiscoverRequest(req, resp) {
-		return resp
-	}
-	return s.nextSvr.GetRoutingConfigWithCache(ctx, req)
-}
-
-// GetRateLimitWithCache User Client Get Service Limit Configuration Information
-func (s *Server) GetRateLimitWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := service.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_RATE_LIMIT)
-	if !s.commonCheckDiscoverRequest(req, resp) {
-		return resp
-	}
-	return s.nextSvr.GetRateLimitWithCache(ctx, req)
-}
-
-// GetCircuitBreakerWithCache Fuse configuration information for obtaining services for clients
-func (s *Server) GetCircuitBreakerWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := service.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_CIRCUIT_BREAKER)
-	if !s.commonCheckDiscoverRequest(req, resp) {
-		return resp
-	}
-	return s.nextSvr.GetCircuitBreakerWithCache(ctx, req)
-}
-
-// GetFaultDetectWithCache User Client Get FaultDetect Rule Information
-func (s *Server) GetFaultDetectWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := service.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_FAULT_DETECTOR)
-	if !s.commonCheckDiscoverRequest(req, resp) {
-		return resp
-	}
-	return s.nextSvr.GetFaultDetectWithCache(ctx, req)
-}
-
 // GetServiceContractWithCache User Client Get ServiceContract Rule Information
 func (s *Server) GetServiceContractWithCache(ctx context.Context, req *apiservice.ServiceContract) *apiservice.Response {
 	resp := api.NewResponse(apimodel.Code_ExecuteSuccess)
@@ -152,24 +116,6 @@ func (s *Server) GetServiceContractWithCache(ctx context.Context, req *apiservic
 	}
 
 	return s.nextSvr.GetServiceContractWithCache(ctx, req)
-}
-
-// GetLaneRuleWithCache fetch lane rule by client
-func (s *Server) GetLaneRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := service.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_LANE)
-	if !s.commonCheckDiscoverRequest(req, resp) {
-		return resp
-	}
-	return s.nextSvr.GetLaneRuleWithCache(ctx, req)
-}
-
-// GetRouterRuleWithCache .
-func (s *Server) GetRouterRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := service.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_CUSTOM_ROUTE_RULE)
-	if !s.commonCheckDiscoverRequest(req, resp) {
-		return resp
-	}
-	return s.nextSvr.GetRouterRuleWithCache(ctx, req)
 }
 
 // UpdateInstance update one instance by client

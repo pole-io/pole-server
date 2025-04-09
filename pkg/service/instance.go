@@ -33,6 +33,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
@@ -912,14 +913,11 @@ func (s *Server) getInstance(service *apiservice.Service, instance *apiservice.I
 
 // 获取cmdb
 func (s *Server) packCmdb(instance *apiservice.Instance) {
-	if s.cmdb == nil {
-		return
-	}
 	if instance == nil || !isEmptyLocation(instance.GetLocation()) {
 		return
 	}
 
-	location, err := s.cmdb.GetLocation(instance.GetHost().GetValue())
+	location, err := cmdb.GetCMDB().GetLocation(instance.GetHost().GetValue())
 	if err != nil {
 		log.Error("[Instance] pack cmdb info fail",
 			zap.String("namespace", instance.GetNamespace().GetValue()),

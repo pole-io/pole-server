@@ -48,6 +48,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
+	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	ns "github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
@@ -123,6 +124,8 @@ type DiscoverTestSuit struct {
 	configOriginSvr     config.ConfigCenterServer
 	server              service.DiscoverServer
 	originSvr           service.DiscoverServer
+	ruleSvr             goverrule.GoverRuleServer
+	originRuleSvr       goverrule.GoverRuleServer
 	healthCheckServer   *healthcheck.Server
 	cacheMgr            *cache.CacheManager
 	userMgn             authapi.UserServer
@@ -160,6 +163,14 @@ func (d *DiscoverTestSuit) DiscoverServer() service.DiscoverServer {
 
 func (d *DiscoverTestSuit) OriginDiscoverServer() service.DiscoverServer {
 	return d.originSvr
+}
+
+func (d *DiscoverTestSuit) GoverRuleServer() goverrule.GoverRuleServer {
+	return d.ruleSvr
+}
+
+func (d *DiscoverTestSuit) OriginGoverRuleServer() goverrule.GoverRuleServer {
+	return d.originRuleSvr
 }
 
 func (d *DiscoverTestSuit) ConfigServer() config.ConfigCenterServer {

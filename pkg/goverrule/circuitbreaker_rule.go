@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package service
+package goverrule
 
 import (
 	"context"
@@ -39,6 +39,7 @@ import (
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
+	"github.com/pole-io/pole-server/pkg/namespace"
 )
 
 // CreateCircuitBreakerRules Create a CircuitBreaker rule
@@ -307,7 +308,7 @@ func api2CircuitBreakerRule(req *apifault.CircuitBreakerRule) (*rules.CircuitBre
 		Revision:     utils.NewUUID(),
 	}
 	if out.Namespace == "" {
-		out.Namespace = DefaultNamespace
+		out.Namespace = namespace.DefaultNamespace
 	}
 	return out, nil
 }

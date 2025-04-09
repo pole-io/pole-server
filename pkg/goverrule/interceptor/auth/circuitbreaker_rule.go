@@ -15,15 +15,18 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package service_auth
+package goverrule_auth
 
 import (
 	"context"
 
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
+
+	apifault "github.com/polarismesh/specification/source/go/api/v1/fault_tolerance"
 	"github.com/polarismesh/specification/source/go/api/v1/security"
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -32,10 +35,10 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
-// CreateRateLimits creates rate limits for a namespace.
-func (svr *Server) CreateRateLimits(
-	ctx context.Context, reqs []*apitraffic.Rule) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectRateLimitAuthContext(ctx, reqs, authtypes.Create, authtypes.CreateRateLimitRules)
+func (svr *Server) CreateCircuitBreakerRules(
+	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectCircuitBreakerRuleV2(ctx, request, authtypes.Create,
+		authtypes.CreateCircuitBreakerRules)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
@@ -43,118 +46,121 @@ func (svr *Server) CreateRateLimits(
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-
-	rsp := svr.nextSvr.CreateRateLimits(ctx, reqs)
+	rsp := svr.nextSvr.CreateCircuitBreakerRules(ctx, request)
 	for index := range rsp.Responses {
-		_ = svr.afterRuleResource(ctx, types.RRateLimit, authtypes.ResourceEntry{
-			ID:   rsp.Responses[index].GetRateLimit().GetId().GetValue(),
-			Type: security.ResourceType_RateLimitRules,
+		item := rsp.GetResponses()[index].GetData()
+		rule := &apifault.CircuitBreakerRule{}
+		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
+		_ = svr.afterRuleResource(ctx, types.RRouting, authtypes.ResourceEntry{
+			ID:   rule.Id,
+			Type: security.ResourceType_CircuitBreakerRules,
 		}, false)
 	}
 	return rsp
 }
 
-// DeleteRateLimits deletes rate limits for a namespace.
-func (svr *Server) DeleteRateLimits(
-	ctx context.Context, reqs []*apitraffic.Rule) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectRateLimitAuthContext(ctx, reqs, authtypes.Delete, authtypes.DeleteRateLimitRules)
-
+func (svr *Server) DeleteCircuitBreakerRules(
+	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectCircuitBreakerRuleV2(ctx, request, authtypes.Delete,
+		authtypes.DeleteCircuitBreakerRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-
-	rsp := svr.nextSvr.DeleteRateLimits(ctx, reqs)
+	rsp := svr.nextSvr.DeleteCircuitBreakerRules(ctx, request)
 	for index := range rsp.Responses {
-		_ = svr.afterRuleResource(ctx, types.RRateLimit, authtypes.ResourceEntry{
-			ID:   rsp.Responses[index].GetRateLimit().GetId().GetValue(),
-			Type: security.ResourceType_RateLimitRules,
+		item := rsp.GetResponses()[index].GetData()
+		rule := &apifault.CircuitBreakerRule{}
+		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
+		_ = svr.afterRuleResource(ctx, types.RRouting, authtypes.ResourceEntry{
+			ID:   rule.Id,
+			Type: security.ResourceType_CircuitBreakerRules,
 		}, true)
 	}
 	return rsp
 }
 
-// UpdateRateLimits updates rate limits for a namespace.
-func (svr *Server) UpdateRateLimits(
-	ctx context.Context, reqs []*apitraffic.Rule) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectRateLimitAuthContext(ctx, reqs, authtypes.Modify, authtypes.UpdateRateLimitRules)
-
+func (svr *Server) EnableCircuitBreakerRules(
+	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectCircuitBreakerRuleV2(ctx, request, authtypes.Modify,
+		authtypes.EnableCircuitBreakerRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-
-	return svr.nextSvr.UpdateRateLimits(ctx, reqs)
+	return svr.nextSvr.EnableCircuitBreakerRules(ctx, request)
 }
 
-// EnableRateLimits 启用限流规则
-func (svr *Server) EnableRateLimits(
-	ctx context.Context, reqs []*apitraffic.Rule) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectRateLimitAuthContext(ctx, reqs, authtypes.Read, authtypes.EnableRateLimitRules)
-
+func (svr *Server) UpdateCircuitBreakerRules(
+	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectCircuitBreakerRuleV2(ctx, request, authtypes.Modify,
+		authtypes.UpdateCircuitBreakerRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-
-	return svr.nextSvr.EnableRateLimits(ctx, reqs)
+	return svr.nextSvr.UpdateCircuitBreakerRules(ctx, request)
 }
 
-// GetRateLimits gets rate limits for a namespace.
-func (svr *Server) GetRateLimits(
+func (svr *Server) GetCircuitBreakerRules(
 	ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
-	authCtx := svr.collectRateLimitAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeRateLimitRules)
-
+	authCtx := svr.collectCircuitBreakerRuleV2(ctx, nil, authtypes.Read,
+		authtypes.DescribeCircuitBreakerRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewAuthBatchQueryResponse(authtypes.ConvertToErrCode(err))
+		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
-	ctx = cacheapi.AppendRatelimitRulePredicate(ctx, func(ctx context.Context, cbr *rules.RateLimit) bool {
-		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
-			Type:     security.ResourceType_RateLimitRules,
-			ID:       cbr.ID,
-			Metadata: cbr.Proto.Metadata,
+	ctx = cacheapi.AppendCircuitBreakerRulePredicate(ctx,
+		func(ctx context.Context, cbr *rules.CircuitBreakerRule) bool {
+			return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
+				Type:     security.ResourceType_CircuitBreakerRules,
+				ID:       cbr.ID,
+				Metadata: cbr.Proto.Metadata,
+			})
 		})
-	})
 	authCtx.SetRequestContext(ctx)
 
-	resp := svr.nextSvr.GetRateLimits(ctx, query)
+	resp := svr.nextSvr.GetCircuitBreakerRules(ctx, query)
 
-	for index := range resp.RateLimits {
-		item := resp.RateLimits[index]
+	for index := range resp.Data {
+		item := &apifault.CircuitBreakerRule{}
+		_ = anypb.UnmarshalTo(resp.Data[index], item, proto.UnmarshalOptions{})
 		authCtx.SetAccessResources(map[security.ResourceType][]authtypes.ResourceEntry{
-			security.ResourceType_RateLimitRules: {
+			security.ResourceType_CircuitBreakerRules: {
 				{
-					Type:     apisecurity.ResourceType_RateLimitRules,
-					ID:       item.GetId().GetValue(),
+					Type:     apisecurity.ResourceType_CircuitBreakerRules,
+					ID:       item.GetId(),
 					Metadata: item.Metadata,
 				},
 			},
 		})
 
 		// 检查 write 操作权限
-		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateRateLimitRules, authtypes.EnableRateLimitRules})
+		authCtx.SetMethod([]authtypes.ServerFunctionName{
+			authtypes.UpdateCircuitBreakerRules,
+			authtypes.EnableCircuitBreakerRules,
+		})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 			item.Editable = false
 		}
 
 		// 检查 delete 操作权限
-		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteRateLimitRules})
+		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteCircuitBreakerRules})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 			item.Deleteable = false
 		}
+		_ = anypb.MarshalFrom(resp.Data[index], item, proto.MarshalOptions{})
 	}
-
 	return resp
 }

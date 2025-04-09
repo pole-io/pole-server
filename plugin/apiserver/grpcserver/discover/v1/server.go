@@ -18,12 +18,14 @@
 package v1
 
 import (
+	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 )
 
 type DiscoverServer struct {
 	namingServer      service.DiscoverServer
+	ruleServer        goverrule.GoverRuleServer
 	healthCheckServer *healthcheck.Server
 	enterRateLimit    func(ip string, method string) uint32
 	allowAccess       func(method string) bool

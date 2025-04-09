@@ -26,6 +26,17 @@ import (
 	"github.com/pole-io/pole-server/pkg/cache"
 )
 
+const (
+	// SystemNamespace polaris system namespace
+	SystemNamespace = "pole-system"
+	// DefaultNamespace default namespace
+	DefaultNamespace = "default"
+	// ProductionNamespace default namespace
+	ProductionNamespace = "Production"
+	// DefaultTLL default ttl
+	DefaultTLL = 5
+)
+
 var _ NamespaceOperateServer = (*Server)(nil)
 
 type Server struct {

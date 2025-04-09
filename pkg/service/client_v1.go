@@ -19,8 +19,6 @@ package service
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
@@ -28,14 +26,12 @@ import (
 
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
-	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -86,14 +82,12 @@ func (s *Server) ReportClient(ctx context.Context, req *apiservice.Client) *apis
 	// 客户端信息不写入到DB中
 	host := req.GetHost().GetValue()
 	// 从CMDB查询地理位置信息
-	if s.cmdb != nil {
-		location, err := s.cmdb.GetLocation(host)
-		if err != nil {
-			log.Errora(utils.RequestID(ctx), zap.Error(err))
-		}
-		if location != nil {
-			req.Location = location.Proto
-		}
+	location, err := cmdb.GetCMDB().GetLocation(host)
+	if err != nil {
+		log.Errora(utils.RequestID(ctx), zap.Error(err))
+	}
+	if location != nil {
+		req.Location = location.Proto
 	}
 
 	// save the client with unique id into store
@@ -105,68 +99,6 @@ func (s *Server) ReportClient(ctx context.Context, req *apiservice.Client) *apis
 		Location: req.Location,
 	}
 	return api.NewClientResponse(apimodel.Code_ExecuteSuccess, out)
-}
-
-// GetPrometheusTargets Used for client acquisition service information
-func (s *Server) GetPrometheusTargets(ctx context.Context,
-	query map[string]string) *types.PrometheusDiscoveryResponse {
-	if s.caches == nil {
-		return &types.PrometheusDiscoveryResponse{
-			Code:     api.NotFoundInstance,
-			Response: make([]types.PrometheusTarget, 0),
-		}
-	}
-
-	targets := make([]types.PrometheusTarget, 0, 8)
-	expectSchema := map[string]struct{}{
-		"http":  {},
-		"https": {},
-	}
-
-	s.Cache().Client().IteratorClients(func(key string, value *types.Client) bool {
-		for i := range value.Proto().Stat {
-			stat := value.Proto().Stat[i]
-			if stat.Target.GetValue() != types.StatReportPrometheus {
-				continue
-			}
-			_, ok := expectSchema[strings.ToLower(stat.Protocol.GetValue())]
-			if !ok {
-				continue
-			}
-
-			target := types.PrometheusTarget{
-				Targets: []string{fmt.Sprintf("%s:%d", value.Proto().Host.GetValue(), stat.Port.GetValue())},
-				Labels: map[string]string{
-					"__metrics_path__":         stat.Path.GetValue(),
-					"__scheme__":               stat.Protocol.GetValue(),
-					"__meta_polaris_client_id": value.Proto().Id.GetValue(),
-				},
-			}
-			targets = append(targets, target)
-		}
-
-		return true
-	})
-
-	// 加入pole-server集群自身
-	checkers := s.healthServer.ListCheckerServer()
-	for i := range checkers {
-		checker := checkers[i]
-		target := types.PrometheusTarget{
-			Targets: []string{fmt.Sprintf("%s:%d", checker.Host(), metrics.GetMetricsPort())},
-			Labels: map[string]string{
-				"__metrics_path__":         "/metrics",
-				"__scheme__":               "http",
-				"__meta_polaris_client_id": checker.ID(),
-			},
-		}
-		targets = append(targets, target)
-	}
-
-	return &types.PrometheusDiscoveryResponse{
-		Code:     api.ExecuteSuccess,
-		Response: targets,
-	}
 }
 
 // GetServiceWithCache 查询服务列表
@@ -368,105 +300,6 @@ func (s *Server) GetRoutingConfigWithCache(ctx context.Context, req *apiservice.
 	return resp
 }
 
-// GetRateLimitWithCache 获取缓存中的限流规则信息
-func (s *Server) GetRateLimitWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_RATE_LIMIT)
-	aliasFor := s.findServiceAlias(req)
-
-	rules, revision := s.caches.RateLimit().GetRateLimitRules(svctypes.ServiceKey{
-		Namespace: aliasFor.Namespace,
-		Name:      aliasFor.Name,
-	})
-	if len(rules) == 0 || revision == "" {
-		return resp
-	}
-	if req.GetRevision().GetValue() == revision {
-		return api.NewDiscoverRateLimitResponse(apimodel.Code_DataNoChange, req)
-	}
-	resp.RateLimit = &apitraffic.RateLimit{
-		Revision: protobuf.NewStringValue(revision),
-		Rules:    []*apitraffic.Rule{},
-	}
-	for i := range rules {
-		rateLimit, err := rateLimit2Client(req.GetName().GetValue(), req.GetNamespace().GetValue(), rules[i])
-		if rateLimit == nil || err != nil {
-			continue
-		}
-		resp.RateLimit.Rules = append(resp.RateLimit.Rules, rateLimit)
-	}
-
-	// 塞入源服务信息数据
-	resp.AliasFor = &apiservice.Service{
-		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
-		Name:      protobuf.NewStringValue(aliasFor.Name),
-	}
-	// 服务名和request保持一致
-	resp.Service = &apiservice.Service{
-		Name:      req.GetName(),
-		Namespace: req.GetNamespace(),
-		Revision:  protobuf.NewStringValue(revision),
-	}
-	return resp
-}
-
-func (s *Server) GetFaultDetectWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_FAULT_DETECTOR)
-	aliasFor := s.findServiceAlias(req)
-
-	out := s.caches.FaultDetector().GetFaultDetectConfig(aliasFor.Name, aliasFor.Namespace)
-	if out == nil || out.Revision == "" {
-		return resp
-	}
-
-	if req.GetRevision().GetValue() == out.Revision {
-		return api.NewDiscoverFaultDetectorResponse(apimodel.Code_DataNoChange, req)
-	}
-
-	// 数据不一致，发生了改变
-	var err error
-	resp.AliasFor = &apiservice.Service{
-		Name:      protobuf.NewStringValue(aliasFor.Name),
-		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
-	}
-	resp.Service.Revision = protobuf.NewStringValue(out.Revision)
-	resp.FaultDetector, err = faultDetectRule2ClientAPI(out)
-	if err != nil {
-		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewDiscoverFaultDetectorResponse(apimodel.Code_ExecuteException, req)
-	}
-	return resp
-}
-
-// GetCircuitBreakerWithCache 获取缓存中的熔断规则信息
-func (s *Server) GetCircuitBreakerWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_CIRCUIT_BREAKER)
-	// 获取源服务
-	aliasFor := s.findServiceAlias(req)
-	out := s.caches.CircuitBreaker().GetCircuitBreakerConfig(aliasFor.Name, aliasFor.Namespace)
-	if out == nil || out.Revision == "" {
-		return resp
-	}
-
-	// 获取熔断规则数据，并对比revision
-	if len(req.GetRevision().GetValue()) > 0 && req.GetRevision().GetValue() == out.Revision {
-		return api.NewDiscoverCircuitBreakerResponse(apimodel.Code_DataNoChange, req)
-	}
-
-	// 数据不一致，发生了改变
-	var err error
-	resp.AliasFor = &apiservice.Service{
-		Name:      protobuf.NewStringValue(aliasFor.Name),
-		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
-	}
-	resp.Service.Revision = protobuf.NewStringValue(out.Revision)
-	resp.CircuitBreaker, err = circuitBreaker2ClientAPI(out, req.GetName().GetValue(), req.GetNamespace().GetValue())
-	if err != nil {
-		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewDiscoverCircuitBreakerResponse(apimodel.Code_ExecuteException, req)
-	}
-	return resp
-}
-
 // GetServiceContractWithCache User Client Get ServiceContract Rule Information
 func (s *Server) GetServiceContractWithCache(ctx context.Context,
 	req *apiservice.ServiceContract) *apiservice.Response {
@@ -502,63 +335,6 @@ func (s *Server) GetServiceContractWithCache(ctx context.Context,
 
 	resp.Service.Revision = wrapperspb.String(out.Revision)
 	resp.ServiceContract = out.ToSpec()
-	return resp
-}
-
-// GetLaneRuleWithCache fetch lane rule by client
-func (s *Server) GetLaneRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_LANE)
-	// 获取源服务
-	aliasFor := s.findServiceAlias(req)
-	out, revision := s.caches.LaneRule().GetLaneRules(aliasFor)
-	if out == nil || revision == "" {
-		return resp
-	}
-
-	// 获取泳道规则数据，并对比revision
-	if len(req.GetRevision().GetValue()) > 0 && req.GetRevision().GetValue() == revision {
-		return api.NewDiscoverLaneResponse(apimodel.Code_DataNoChange, req)
-	}
-
-	resp.AliasFor = &apiservice.Service{
-		Name:      protobuf.NewStringValue(aliasFor.Name),
-		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
-	}
-	resp.Service.Revision = protobuf.NewStringValue(revision)
-	resp.Lanes = make([]*apitraffic.LaneGroup, 0, len(out))
-	for i := range out {
-		resp.Lanes = append(resp.Lanes, out[i].Proto)
-	}
-	return resp
-}
-
-// GetRouterRuleWithCache fetch lane rules by client
-func (s *Server) GetRouterRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_CUSTOM_ROUTE_RULE)
-	aliasFor := s.findServiceAlias(req)
-
-	out, err := s.caches.RoutingConfig().GetRouterConfigV2(aliasFor.ID, aliasFor.Name, aliasFor.Namespace)
-	if err != nil {
-		log.Error("[Server][Service][Routing] discover routing", utils.RequestID(ctx), zap.Error(err))
-		return api.NewDiscoverRoutingResponse(apimodel.Code_ExecuteException, req)
-	}
-	if out == nil {
-		return resp
-	}
-
-	// 获取路由数据，并对比revision
-	if out.GetRevision().GetValue() == req.GetRevision().GetValue() {
-		return api.NewDiscoverRoutingResponse(apimodel.Code_DataNoChange, req)
-	}
-
-	// 数据不一致，发生了改变
-	// 数据格式转换，service只需要返回二元组与routing的revision
-	resp.Service.Revision = out.GetRevision()
-	resp.CustomRouteRules = out.Rules
-	resp.AliasFor = &apiservice.Service{
-		Name:      protobuf.NewStringValue(aliasFor.Name),
-		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
-	}
 	return resp
 }
 

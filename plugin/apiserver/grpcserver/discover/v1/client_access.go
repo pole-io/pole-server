@@ -165,22 +165,22 @@ func (g *DiscoverServer) handleDiscoverRequest(ctx context.Context, in *apiservi
 		out = g.namingServer.ServiceInstancesCache(ctx, &apiservice.DiscoverFilter{}, in.Service)
 	case apiservice.DiscoverRequest_ROUTING:
 		action = metrics.ActionDiscoverRouterRule
-		out = g.namingServer.GetRoutingConfigWithCache(ctx, in.Service)
+		out = g.ruleServer.GetRoutingConfigWithCache(ctx, in.Service)
 	case apiservice.DiscoverRequest_CUSTOM_ROUTE_RULE:
 		action = metrics.ActionDiscoverRouterRule
-		out = g.namingServer.GetRoutingConfigWithCache(ctx, in.Service)
+		out = g.ruleServer.GetRoutingConfigWithCache(ctx, in.Service)
 	case apiservice.DiscoverRequest_RATE_LIMIT:
 		action = metrics.ActionDiscoverRateLimit
-		out = g.namingServer.GetRateLimitWithCache(ctx, in.Service)
+		out = g.ruleServer.GetRateLimitWithCache(ctx, in.Service)
 	case apiservice.DiscoverRequest_CIRCUIT_BREAKER:
 		action = metrics.ActionDiscoverCircuitBreaker
-		out = g.namingServer.GetCircuitBreakerWithCache(ctx, in.Service)
+		out = g.ruleServer.GetCircuitBreakerWithCache(ctx, in.Service)
 	case apiservice.DiscoverRequest_SERVICES:
 		action = metrics.ActionDiscoverServices
 		out = g.namingServer.GetServiceWithCache(ctx, in.Service)
 	case apiservice.DiscoverRequest_FAULT_DETECTOR:
 		action = metrics.ActionDiscoverFaultDetect
-		out = g.namingServer.GetFaultDetectWithCache(ctx, in.Service)
+		out = g.ruleServer.GetFaultDetectWithCache(ctx, in.Service)
 	default:
 		out = api.NewDiscoverRoutingResponse(apimodel.Code_InvalidDiscoverResource, in.Service)
 	}

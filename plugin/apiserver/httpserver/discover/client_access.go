@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package v1
+package discover
 
 import (
 	"context"
@@ -31,11 +31,29 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
 
+// addDiscoverAccess 增加服务发现接口
+func (h *HTTPServer) addDiscoverAccess(ws *restful.WebService) {
+	ws.Route(docs.EnrichReportClientApiDocs(ws.POST("/ReportClient").To(h.ReportClient)))
+	ws.Route(docs.EnrichDiscoverApiDocs(ws.POST("/Discover").To(h.Discover)))
+}
+
+// addRegisterAccess 增加注册/反注册接口
+func (h *HTTPServer) addRegisterAccess(ws *restful.WebService) {
+	ws.Route(docs.EnrichRegisterInstanceApiDocs(ws.POST("/RegisterInstance").To(h.RegisterInstance)))
+	ws.Route(docs.EnrichDeregisterInstanceApiDocs(ws.POST("/DeregisterInstance").To(h.DeregisterInstance)))
+}
+
+// addHealthCheckAccess 增加健康检查接口
+func (h *HTTPServer) addHealthCheckAccess(ws *restful.WebService) {
+	ws.Route(docs.EnrichHeartbeatApiDocs(ws.POST("/Heartbeat").To(h.Heartbeat)))
+}
+
 // ReportClient 客户端上报信息
-func (h *HTTPServerV1) ReportClient(req *restful.Request, rsp *restful.Response) {
+func (h *HTTPServer) ReportClient(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,
@@ -51,7 +69,7 @@ func (h *HTTPServerV1) ReportClient(req *restful.Request, rsp *restful.Response)
 }
 
 // RegisterInstance 注册服务实例
-func (h *HTTPServerV1) RegisterInstance(req *restful.Request, rsp *restful.Response) {
+func (h *HTTPServer) RegisterInstance(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,
@@ -72,7 +90,7 @@ func (h *HTTPServerV1) RegisterInstance(req *restful.Request, rsp *restful.Respo
 }
 
 // DeregisterInstance 反注册服务实例
-func (h *HTTPServerV1) DeregisterInstance(req *restful.Request, rsp *restful.Response) {
+func (h *HTTPServer) DeregisterInstance(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,
@@ -92,7 +110,7 @@ func (h *HTTPServerV1) DeregisterInstance(req *restful.Request, rsp *restful.Res
 }
 
 // Discover 统一发现接口
-func (h *HTTPServerV1) Discover(req *restful.Request, rsp *restful.Response) {
+func (h *HTTPServer) Discover(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,
@@ -127,19 +145,19 @@ func (h *HTTPServerV1) Discover(req *restful.Request, rsp *restful.Response) {
 		ret = h.namingServer.ServiceInstancesCache(ctx, discoverRequest.Filter, discoverRequest.Service)
 	case apiservice.DiscoverRequest_ROUTING:
 		action = metrics.ActionDiscoverRouterRule
-		ret = h.namingServer.GetRoutingConfigWithCache(ctx, discoverRequest.Service)
+		ret = h.ruleServer.GetRoutingConfigWithCache(ctx, discoverRequest.Service)
 	case apiservice.DiscoverRequest_RATE_LIMIT:
 		action = metrics.ActionDiscoverRateLimit
-		ret = h.namingServer.GetRateLimitWithCache(ctx, discoverRequest.Service)
+		ret = h.ruleServer.GetRateLimitWithCache(ctx, discoverRequest.Service)
 	case apiservice.DiscoverRequest_CIRCUIT_BREAKER:
 		action = metrics.ActionDiscoverCircuitBreaker
-		ret = h.namingServer.GetCircuitBreakerWithCache(ctx, discoverRequest.Service)
+		ret = h.ruleServer.GetCircuitBreakerWithCache(ctx, discoverRequest.Service)
 	case apiservice.DiscoverRequest_SERVICES:
 		action = metrics.ActionDiscoverServices
 		ret = h.namingServer.GetServiceWithCache(ctx, discoverRequest.Service)
 	case apiservice.DiscoverRequest_FAULT_DETECTOR:
 		action = metrics.ActionDiscoverFaultDetect
-		ret = h.namingServer.GetFaultDetectWithCache(ctx, discoverRequest.Service)
+		ret = h.ruleServer.GetFaultDetectWithCache(ctx, discoverRequest.Service)
 	default:
 		ret = api.NewDiscoverRoutingResponse(apimodel.Code_InvalidDiscoverResource, discoverRequest.Service)
 	}
@@ -148,7 +166,7 @@ func (h *HTTPServerV1) Discover(req *restful.Request, rsp *restful.Response) {
 }
 
 // Heartbeat 服务实例心跳
-func (h *HTTPServerV1) Heartbeat(req *restful.Request, rsp *restful.Response) {
+func (h *HTTPServer) Heartbeat(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,

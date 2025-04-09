@@ -33,6 +33,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/cache"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/config"
+	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
 )
@@ -44,6 +45,7 @@ type Config struct {
 	Cache      cache.Config       `yaml:"cache"`
 	Namespace  namespace.Config   `yaml:"namespace"`
 	Naming     service.Config     `yaml:"naming"`
+	GoverRule  goverrule.Config   `yaml:"goverrule"`
 	Config     config.Config      `yaml:"config"`
 	Maintain   admin.Config       `yaml:"maintain"`
 	Store      storeapi.Config    `yaml:"store"`

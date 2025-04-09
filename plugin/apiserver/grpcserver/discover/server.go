@@ -30,6 +30,7 @@ import (
 	"github.com/pole-io/pole-server/apis/apiserver"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	"github.com/pole-io/pole-server/plugin/apiserver/grpcserver"
@@ -54,6 +55,7 @@ var (
 type GRPCServer struct {
 	grpcserver.BaseGrpcServer
 	namingServer      service.DiscoverServer
+	ruleServer        goverrule.GoverRuleServer
 	healthCheckServer *healthcheck.Server
 	openAPI           map[string]apiserver.APIConfig
 
@@ -86,6 +88,11 @@ func (g *GRPCServer) Initialize(ctx context.Context, option map[string]interface
 	}
 
 	if g.healthCheckServer, err = healthcheck.GetServer(); err != nil {
+		namingLog.Errorf("%v", err)
+		return err
+	}
+
+	if g.ruleServer, err = goverrule.GetServer(); err != nil {
 		namingLog.Errorf("%v", err)
 		return err
 	}

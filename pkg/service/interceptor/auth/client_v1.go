@@ -132,66 +132,6 @@ func (svr *Server) ServiceInstancesCache(
 	return svr.nextSvr.ServiceInstancesCache(ctx, filter, req)
 }
 
-// GetRoutingConfigWithCache is the interface for getting routing config with cache
-func (svr *Server) GetRoutingConfigWithCache(
-	ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-
-	authCtx := svr.collectServiceAuthContext(
-		ctx, []*apiservice.Service{req}, authtypes.Read, authtypes.DiscoverRouterRule)
-	if _, err := svr.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
-		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
-	}
-	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-
-	return svr.nextSvr.GetRoutingConfigWithCache(ctx, req)
-}
-
-// GetRateLimitWithCache is the interface for getting rate limit with cache
-func (svr *Server) GetRateLimitWithCache(
-	ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-
-	authCtx := svr.collectServiceAuthContext(
-		ctx, []*apiservice.Service{req}, authtypes.Read, authtypes.DiscoverRateLimitRule)
-	if _, err := svr.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
-		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
-	}
-	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-
-	return svr.nextSvr.GetRateLimitWithCache(ctx, req)
-}
-
-// GetCircuitBreakerWithCache is the interface for getting a circuit breaker with cache
-func (svr *Server) GetCircuitBreakerWithCache(
-	ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-
-	authCtx := svr.collectServiceAuthContext(
-		ctx, []*apiservice.Service{req}, authtypes.Read, authtypes.DiscoverCircuitBreakerRule)
-	if _, err := svr.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
-		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
-	}
-	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-
-	return svr.nextSvr.GetCircuitBreakerWithCache(ctx, req)
-}
-
-// GetFaultDetectWithCache 获取主动探测规则列表
-func (svr *Server) GetFaultDetectWithCache(
-	ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-
-	authCtx := svr.collectServiceAuthContext(
-		ctx, []*apiservice.Service{req}, authtypes.Read, authtypes.DiscoverFaultDetectRule)
-	if _, err := svr.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
-		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
-	}
-	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-
-	return svr.nextSvr.GetFaultDetectWithCache(ctx, req)
-}
-
 // UpdateInstance update single instance
 func (svr *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
 	authCtx := svr.collectClientInstanceAuthContext(
@@ -223,30 +163,4 @@ func (svr *Server) GetServiceContractWithCache(ctx context.Context,
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.GetServiceContractWithCache(ctx, req)
-}
-
-// GetLaneRuleWithCache fetch lane rules by client
-func (svr *Server) GetLaneRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	authCtx := svr.collectServiceAuthContext(
-		ctx, []*apiservice.Service{req}, authtypes.Read, authtypes.DiscoverLaneRule)
-	if _, err := svr.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
-		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
-	}
-	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-
-	return svr.nextSvr.GetLaneRuleWithCache(ctx, req)
-}
-
-// GetRouterRuleWithCache .
-func (svr *Server) GetRouterRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	authCtx := svr.collectServiceAuthContext(
-		ctx, []*apiservice.Service{req}, authtypes.Read, authtypes.DiscoverRouterRule)
-	if _, err := svr.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
-		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
-	}
-	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-
-	return svr.nextSvr.GetRouterRuleWithCache(ctx, req)
 }

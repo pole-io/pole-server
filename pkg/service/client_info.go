@@ -19,7 +19,9 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"sort"
+	"strings"
 
 	"go.uber.org/zap"
 
@@ -30,6 +32,7 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
+	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
 )
@@ -43,6 +46,68 @@ var (
 		"version": {},
 	}
 )
+
+// GetPrometheusTargets Used for client acquisition service information
+func (s *Server) GetPrometheusTargets(ctx context.Context,
+	query map[string]string) *types.PrometheusDiscoveryResponse {
+	if s.caches == nil {
+		return &types.PrometheusDiscoveryResponse{
+			Code:     api.NotFoundInstance,
+			Response: make([]types.PrometheusTarget, 0),
+		}
+	}
+
+	targets := make([]types.PrometheusTarget, 0, 8)
+	expectSchema := map[string]struct{}{
+		"http":  {},
+		"https": {},
+	}
+
+	s.Cache().Client().IteratorClients(func(key string, value *types.Client) bool {
+		for i := range value.Proto().Stat {
+			stat := value.Proto().Stat[i]
+			if stat.Target.GetValue() != types.StatReportPrometheus {
+				continue
+			}
+			_, ok := expectSchema[strings.ToLower(stat.Protocol.GetValue())]
+			if !ok {
+				continue
+			}
+
+			target := types.PrometheusTarget{
+				Targets: []string{fmt.Sprintf("%s:%d", value.Proto().Host.GetValue(), stat.Port.GetValue())},
+				Labels: map[string]string{
+					"__metrics_path__":         stat.Path.GetValue(),
+					"__scheme__":               stat.Protocol.GetValue(),
+					"__meta_polaris_client_id": value.Proto().Id.GetValue(),
+				},
+			}
+			targets = append(targets, target)
+		}
+
+		return true
+	})
+
+	// 加入pole-server集群自身
+	checkers := s.healthServer.ListCheckerServer()
+	for i := range checkers {
+		checker := checkers[i]
+		target := types.PrometheusTarget{
+			Targets: []string{fmt.Sprintf("%s:%d", checker.Host(), metrics.GetMetricsPort())},
+			Labels: map[string]string{
+				"__metrics_path__":         "/metrics",
+				"__scheme__":               "http",
+				"__meta_polaris_client_id": checker.ID(),
+			},
+		}
+		targets = append(targets, target)
+	}
+
+	return &types.PrometheusDiscoveryResponse{
+		Code:     api.ExecuteSuccess,
+		Response: targets,
+	}
+}
 
 func (s *Server) checkAndStoreClient(ctx context.Context, req *apiservice.Client) *apiservice.Response {
 	clientId := req.GetId().GetValue()

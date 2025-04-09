@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package service
+package goverrule
 
 import (
 	"context"
@@ -40,6 +40,7 @@ import (
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
+	"github.com/pole-io/pole-server/pkg/namespace"
 )
 
 // CreateFaultDetectRules Create a FaultDetect rule
@@ -245,7 +246,7 @@ func api2FaultDetectRule(req *apifault.FaultDetectRule) (*rules.FaultDetectRule,
 		Metadata:     req.Metadata,
 	}
 	if out.Namespace == "" {
-		out.Namespace = DefaultNamespace
+		out.Namespace = namespace.DefaultNamespace
 	}
 	return out, nil
 }

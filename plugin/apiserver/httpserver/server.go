@@ -49,12 +49,13 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/secure"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
+	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/aimcp"
 	confighttp "github.com/pole-io/pole-server/plugin/apiserver/httpserver/config"
-	discoveryv1 "github.com/pole-io/pole-server/plugin/apiserver/httpserver/discover/v1"
+	discovery "github.com/pole-io/pole-server/plugin/apiserver/httpserver/discover"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
 
@@ -88,13 +89,14 @@ type HTTPServer struct {
 	maintainServer    admin.AdminOperateServer
 	namespaceServer   namespace.NamespaceOperateServer
 	namingServer      service.DiscoverServer
+	ruleServer        goverrule.GoverRuleServer
 	configServer      config.ConfigCenterServer
 	healthCheckServer *healthcheck.Server
 	rateLimit         ratelimit.Ratelimit
 	statis            statis.Statis
 	whitelist         whitelist.Whitelist
 
-	discoverV1 *discoveryv1.HTTPServerV1
+	discoverV1 *discovery.HTTPServer
 	configSvr  *confighttp.HTTPServer
 	aimcpSvr   *aimcp.HTTPServer
 
@@ -210,6 +212,13 @@ func (h *HTTPServer) Run(errCh chan error) {
 		return
 	}
 
+	h.ruleServer, err = goverrule.GetServer()
+	if err != nil {
+		log.Error("", zap.Error(err))
+		errCh <- err
+		return
+	}
+
 	userMgn, err := authapi.GetUserServer()
 	if err != nil {
 		log.Errorf("%v", err)
@@ -235,7 +244,7 @@ func (h *HTTPServer) Run(errCh chan error) {
 	}
 	h.statis = statis.GetStatis()
 
-	h.discoverV1 = discoveryv1.NewV1Server(h.namingServer, h.healthCheckServer)
+	h.discoverV1 = discovery.NewServer(h.namingServer, h.ruleServer, h.healthCheckServer)
 	h.configSvr, err = confighttp.NewServer(h.maintainServer, h.namespaceServer)
 	if err != nil {
 		errCh <- err

@@ -15,27 +15,31 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package v1
+package discover
 
 import (
 	"github.com/emicklei/go-restful/v3"
 
 	"github.com/pole-io/pole-server/apis/apiserver"
+	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 )
 
-type HTTPServerV1 struct {
+type HTTPServer struct {
 	namingServer      service.DiscoverServer
+	ruleServer        goverrule.GoverRuleServer
 	healthCheckServer *healthcheck.Server
 }
 
-func NewV1Server(
+func NewServer(
 	namingServer service.DiscoverServer,
-	healthCheckServer *healthcheck.Server) *HTTPServerV1 {
-	return &HTTPServerV1{
+	ruleServer goverrule.GoverRuleServer,
+	healthCheckServer *healthcheck.Server) *HTTPServer {
+	return &HTTPServer{
 		namingServer:      namingServer,
+		ruleServer:        ruleServer,
 		healthCheckServer: healthCheckServer,
 	}
 }
@@ -50,7 +54,7 @@ const (
 )
 
 // GetConsoleAccessServer 注册管理端接口
-func (h *HTTPServerV1) GetConsoleAccessServer(include []string) *restful.WebService {
+func (h *HTTPServer) GetConsoleAccessServer(include []string) *restful.WebService {
 	consoleAccess := []string{defaultAccess}
 
 	ws := new(restful.WebService)
@@ -98,7 +102,7 @@ func (h *HTTPServerV1) GetConsoleAccessServer(include []string) *restful.WebServ
 }
 
 // addDefaultReadAccess 增加默认读接口
-func (h *HTTPServerV1) addDefaultReadAccess(ws *restful.WebService) {
+func (h *HTTPServer) addDefaultReadAccess(ws *restful.WebService) {
 	// 管理端接口：只包含读接口
 	ws.Route(docs.EnrichGetServicesApiDocs(ws.GET("/services").To(h.GetServices)))
 	ws.Route(docs.EnrichGetServicesCountApiDocs(ws.GET("/services/count").To(h.GetServicesCount)))
@@ -118,17 +122,18 @@ func (h *HTTPServerV1) addDefaultReadAccess(ws *restful.WebService) {
 }
 
 // addDefaultAccess 增加默认接口
-func (h *HTTPServerV1) addDefaultAccess(ws *restful.WebService) {
+func (h *HTTPServer) addDefaultAccess(ws *restful.WebService) {
 	// 管理端接口：增删改查请求全部操作存储层
 	h.addServiceAccess(ws)
 	h.addRoutingRuleAccess(ws)
 	h.addLaneRuleAccess(ws)
 	h.addRateLimitRuleAccess(ws)
 	h.addCircuitBreakerRuleAccess(ws)
+	h.addFaultDetectRuleAccess(ws)
 }
 
 // addServiceAccess .
-func (h *HTTPServerV1) addServiceAccess(ws *restful.WebService) {
+func (h *HTTPServer) addServiceAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichCreateServicesApiDocs(ws.POST("/services").To(h.CreateServices)))
 	ws.Route(docs.EnrichDeleteServicesApiDocs(ws.POST("/services/delete").To(h.DeleteServices)))
 	ws.Route(docs.EnrichUpdateServicesApiDocs(ws.PUT("/services").To(h.UpdateServices)))
@@ -173,54 +178,8 @@ func (h *HTTPServerV1) addServiceAccess(ws *restful.WebService) {
 	ws.Route(ws.POST("/service/owner").To(h.GetServiceOwner))
 }
 
-// addRoutingRuleAccess 增加默认接口
-func (h *HTTPServerV1) addRoutingRuleAccess(ws *restful.WebService) {
-	ws.Route(docs.EnrichCreateRouterRuleApiDocs(ws.POST("/routings").To(h.CreateRoutings)))
-	ws.Route(docs.EnrichDeleteRouterRuleApiDocs(ws.POST("/routings/delete").To(h.DeleteRoutings)))
-	ws.Route(docs.EnrichUpdateRouterRuleApiDocs(ws.PUT("/routings").To(h.UpdateRoutings)))
-	ws.Route(docs.EnrichGetRouterRuleApiDocs(ws.GET("/routings").To(h.GetRoutings)))
-	ws.Route(docs.EnrichEnableRouterRuleApiDocs(ws.PUT("/routings/enable").To(h.EnableRoutings)))
-}
-
-// addLaneRuleAccess 泳道规则
-func (h *HTTPServerV1) addLaneRuleAccess(ws *restful.WebService) {
-	ws.Route(ws.POST("/lane/groups").To(h.CreateLaneGroups))
-	ws.Route(ws.POST("/lane/groups/delete").To(h.DeleteLaneGroups))
-	ws.Route(ws.PUT("/lane/groups").To(h.UpdateLaneGroups))
-	ws.Route(ws.GET("/lane/groups").To(h.GetLaneGroups))
-}
-
-func (h *HTTPServerV1) addRateLimitRuleAccess(ws *restful.WebService) {
-	ws.Route(docs.EnrichCreateRateLimitsApiDocs(ws.POST("/ratelimits").To(h.CreateRateLimits)))
-	ws.Route(docs.EnrichDeleteRateLimitsApiDocs(ws.POST("/ratelimits/delete").To(h.DeleteRateLimits)))
-	ws.Route(docs.EnrichUpdateRateLimitsApiDocs(ws.PUT("/ratelimits").To(h.UpdateRateLimits)))
-	ws.Route(docs.EnrichGetRateLimitsApiDocs(ws.GET("/ratelimits").To(h.GetRateLimits)))
-	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.PUT("/ratelimits/enable").To(h.EnableRateLimits)))
-}
-
-func (h *HTTPServerV1) addCircuitBreakerRuleAccess(ws *restful.WebService) {
-	ws.Route(docs.EnrichGetCircuitBreakerRulesApiDocs(
-		ws.GET("/circuitbreaker/rules").To(h.GetCircuitBreakerRules)))
-	ws.Route(docs.EnrichCreateCircuitBreakerRulesApiDocs(
-		ws.POST("/circuitbreaker/rules").To(h.CreateCircuitBreakerRules)))
-	ws.Route(docs.EnrichUpdateCircuitBreakerRulesApiDocs(
-		ws.PUT("/circuitbreaker/rules").To(h.UpdateCircuitBreakerRules)))
-	ws.Route(docs.EnrichDeleteCircuitBreakerRulesApiDocs(
-		ws.POST("/circuitbreaker/rules/delete").To(h.DeleteCircuitBreakerRules)))
-	ws.Route(docs.EnrichEnableCircuitBreakerRulesApiDocs(
-		ws.PUT("/circuitbreaker/rules/enable").To(h.EnableCircuitBreakerRules)))
-	ws.Route(docs.EnrichGetFaultDetectRulesApiDocs(
-		ws.GET("/faultdetectors").To(h.GetFaultDetectRules)))
-	ws.Route(docs.EnrichCreateFaultDetectRulesApiDocs(
-		ws.POST("/faultdetectors").To(h.CreateFaultDetectRules)))
-	ws.Route(docs.EnrichUpdateFaultDetectRulesApiDocs(
-		ws.PUT("/faultdetectors").To(h.UpdateFaultDetectRules)))
-	ws.Route(docs.EnrichDeleteFaultDetectRulesApiDocs(
-		ws.POST("/faultdetectors/delete").To(h.DeleteFaultDetectRules)))
-}
-
 // GetClientAccessServer get client access server
-func (h *HTTPServerV1) GetClientAccessServer(ws *restful.WebService, include []string) {
+func (h *HTTPServer) GetClientAccessServer(ws *restful.WebService, include []string) {
 	clientAccess := []string{apiserver.DiscoverAccess, apiserver.RegisterAccess, apiserver.HealthcheckAccess}
 
 	// 如果为空，则开启全部接口
@@ -239,21 +198,4 @@ func (h *HTTPServerV1) GetClientAccessServer(ws *restful.WebService, include []s
 			h.addHealthCheckAccess(ws)
 		}
 	}
-}
-
-// addDiscoverAccess 增加服务发现接口
-func (h *HTTPServerV1) addDiscoverAccess(ws *restful.WebService) {
-	ws.Route(docs.EnrichReportClientApiDocs(ws.POST("/ReportClient").To(h.ReportClient)))
-	ws.Route(docs.EnrichDiscoverApiDocs(ws.POST("/Discover").To(h.Discover)))
-}
-
-// addRegisterAccess 增加注册/反注册接口
-func (h *HTTPServerV1) addRegisterAccess(ws *restful.WebService) {
-	ws.Route(docs.EnrichRegisterInstanceApiDocs(ws.POST("/RegisterInstance").To(h.RegisterInstance)))
-	ws.Route(docs.EnrichDeregisterInstanceApiDocs(ws.POST("/DeregisterInstance").To(h.DeregisterInstance)))
-}
-
-// addHealthCheckAccess 增加健康检查接口
-func (h *HTTPServerV1) addHealthCheckAccess(ws *restful.WebService) {
-	ws.Route(docs.EnrichHeartbeatApiDocs(ws.POST("/Heartbeat").To(h.Heartbeat)))
 }

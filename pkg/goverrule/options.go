@@ -15,15 +15,13 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package service
+package goverrule
 
 import (
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	"github.com/pole-io/pole-server/pkg/namespace"
-	"github.com/pole-io/pole-server/pkg/service/batch"
-	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 )
 
 /*
@@ -33,34 +31,28 @@ import (
    - name: client # Load Client-SDK instance data
 */
 
-func GetRegisterCaches() []cacheapi.ConfigEntry {
+func GetCaches() []cacheapi.ConfigEntry {
 	ret := []cacheapi.ConfigEntry{}
-	// ret = append(ret, l5CacheEntry)
-	ret = append(ret, namingCacheEntries...)
+	ret = append(ret, governanceCacheEntries...)
 	return ret
 }
 
 var (
-	namingCacheEntries = []cacheapi.ConfigEntry{
+	governanceCacheEntries = []cacheapi.ConfigEntry{
 		{
-			Name: cacheapi.ServiceName,
-			Option: map[string]interface{}{
-				"disableBusiness": false,
-				"needMeta":        true,
-			},
+			Name: cacheapi.RoutingConfigName,
 		},
 		{
-			Name: cacheapi.InstanceName,
-			Option: map[string]interface{}{
-				"disableBusiness": false,
-				"needMeta":        true,
-			},
+			Name: cacheapi.RateLimitConfigName,
 		},
 		{
-			Name: cacheapi.ServiceContractName,
+			Name: cacheapi.CircuitBreakerName,
 		},
 		{
-			Name: cacheapi.ClientName,
+			Name: cacheapi.FaultDetectRuleName,
+		},
+		{
+			Name: cacheapi.LaneRuleName,
 		},
 	}
 )
@@ -73,12 +65,6 @@ func WithNamespaceSvr(svr namespace.NamespaceOperateServer) InitOption {
 	}
 }
 
-func WithHealthCheckSvr(svr *healthcheck.Server) InitOption {
-	return func(s *Server) {
-		s.healthServer = svr
-	}
-}
-
 func WithStorage(storage store.Store) InitOption {
 	return func(s *Server) {
 		s.storage = storage
@@ -87,13 +73,13 @@ func WithStorage(storage store.Store) InitOption {
 
 func WithCacheManager(cacheOpt *cache.Config, c cacheapi.CacheManager, entries ...cacheapi.ConfigEntry) InitOption {
 	return func(s *Server) {
-		log.Infof("[Naming][Server] cache is open, can access the client api function")
+		log.Infof("[GoverRule][Server] cache is open, can access the client api function")
 
 		openentries := []cacheapi.ConfigEntry{}
 		if len(entries) != 0 {
 			openentries = append(openentries, entries...)
 		} else {
-			openentries = append(openentries, namingCacheEntries...)
+			openentries = append(openentries, governanceCacheEntries...)
 		}
 
 		for i := range openentries {
@@ -104,15 +90,9 @@ func WithCacheManager(cacheOpt *cache.Config, c cacheapi.CacheManager, entries .
 		}
 
 		if err := c.OpenResourceCache(openentries...); err != nil {
-			log.Errorf("[Naming][Server] open cache error: %v", err)
+			log.Errorf("[GoverRule][Server] open cache error: %v", err)
 			return
 		}
 		s.caches = c
-	}
-}
-
-func WithBatchController(c *batch.Controller) InitOption {
-	return func(s *Server) {
-		s.bc = c
 	}
 }

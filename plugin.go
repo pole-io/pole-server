@@ -26,6 +26,7 @@ import (
 	_ "github.com/pole-io/pole-server/pkg/cache/namespace"
 	_ "github.com/pole-io/pole-server/pkg/cache/service"
 	_ "github.com/pole-io/pole-server/pkg/config/interceptor"
+	_ "github.com/pole-io/pole-server/pkg/goverrule/interceptor"
 	_ "github.com/pole-io/pole-server/pkg/namespace/interceptor"
 	_ "github.com/pole-io/pole-server/pkg/service/interceptor"
 	_ "github.com/pole-io/pole-server/plugin/access_control/auth/policy"

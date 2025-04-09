@@ -65,7 +65,7 @@ func TestInitialize(ctx context.Context, namingOpt *Config, cacheOpt *cache.Conf
 	if len(cacheEntries) != 0 {
 		entrites = cacheEntries
 	} else {
-		entrites = GetAllCaches()
+		entrites = GetRegisterCaches()
 	}
 
 	actualSvr, proxySvr, err := InitServer(ctx, namingOpt,

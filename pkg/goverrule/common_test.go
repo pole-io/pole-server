@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package service_test
+package goverrule_test
 
 import (
 	"encoding/json"
@@ -25,7 +25,9 @@ import (
 	"testing"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/duration"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	bolt "go.etcd.io/bbolt"
 
 	apifault "github.com/polarismesh/specification/source/go/api/v1/fault_tolerance"
@@ -37,7 +39,6 @@ import (
 	_ "github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	sqldb "github.com/pole-io/pole-server/plugin/store/mysql"
 	testsuit "github.com/pole-io/pole-server/test/suit"
@@ -65,52 +66,6 @@ func (d *DiscoverTestSuit) cleanServiceName(name string, namespace string) {
 	d.GetTestDataClean().CleanService(name, namespace)
 }
 
-// 从数据库彻底删除实例
-func (d *DiscoverTestSuit) cleanInstance(instanceID string) {
-	d.GetTestDataClean().CleanInstance(instanceID)
-}
-
-// 增加一个服务
-func (d *DiscoverTestSuit) createCommonService(t *testing.T, id int) (*apiservice.Service, *apiservice.Service) {
-	serviceReq := genMainService(id)
-	for i := 0; i < 10; i++ {
-		k := fmt.Sprintf("key-%d-%d", id, i)
-		v := fmt.Sprintf("value-%d-%d", id, i)
-		serviceReq.Metadata[k] = v
-	}
-
-	d.cleanServiceName(serviceReq.GetName().GetValue(), serviceReq.GetNamespace().GetValue())
-
-	resp := d.DiscoverServer().CreateServices(d.DefaultCtx, []*apiservice.Service{serviceReq})
-	if !respSuccess(resp) {
-		t.Fatalf("error: %s", resp.GetInfo().GetValue())
-	}
-
-	return serviceReq, resp.Responses[0].GetService()
-}
-
-func (d *DiscoverTestSuit) HeartBeat(t *testing.T, service *apiservice.Service, instanceID string) {
-	req := &apiservice.Instance{
-		ServiceToken: protobuf.NewStringValue(service.GetToken().GetValue()),
-		Id:           protobuf.NewStringValue(instanceID),
-	}
-
-	resp := d.HealthCheckServer().Report(d.DefaultCtx, req)
-	if !respSuccess(resp) {
-		t.Fatalf("error: %s", resp.GetInfo().GetValue())
-	}
-}
-
-func (d *DiscoverTestSuit) GetLastHeartBeat(t *testing.T, service *apiservice.Service,
-	instanceID string) *apiservice.Response {
-	req := &apiservice.Instance{
-		ServiceToken: protobuf.NewStringValue(service.GetToken().GetValue()),
-		Id:           protobuf.NewStringValue(instanceID),
-	}
-
-	return d.HealthCheckServer().GetLastHeartbeat(req)
-}
-
 // 生成服务的主要数据
 func genMainService(id int) *apiservice.Service {
 	return &apiservice.Service{
@@ -125,172 +80,6 @@ func genMainService(id int) *apiservice.Service {
 		CmdbMod3:   protobuf.NewStringValue(fmt.Sprintf("cmdb-mod2-%d", id)),
 		Comment:    protobuf.NewStringValue(fmt.Sprintf("service-comment-%d", id)),
 		Owners:     protobuf.NewStringValue(fmt.Sprintf("service-owner-%d", id)),
-	}
-}
-
-// removeCommonService
-func (d *DiscoverTestSuit) removeCommonServices(t *testing.T, req []*apiservice.Service) {
-	if resp := d.DiscoverServer().DeleteServices(d.DefaultCtx, req); !respSuccess(resp) {
-		t.Fatalf("error: %s", resp.GetInfo().GetValue())
-	}
-}
-
-// removeCommonService
-func (d *DiscoverTestSuit) removeCommonServiceAliases(t *testing.T, req []*apiservice.ServiceAlias) {
-	if resp := d.DiscoverServer().DeleteServiceAliases(d.DefaultCtx, req); !respSuccess(resp) {
-		t.Fatalf("error: %s", resp.GetInfo().GetValue())
-	}
-}
-
-// 新增一个实例ById
-func (d *DiscoverTestSuit) createCommonInstanceById(t *testing.T, svc *apiservice.Service, count int, instanceID string) (
-	*apiservice.Instance, *apiservice.Instance) {
-	instanceReq := &apiservice.Instance{
-		ServiceToken: protobuf.NewStringValue(svc.GetToken().GetValue()),
-		Service:      protobuf.NewStringValue(svc.GetName().GetValue()),
-		Namespace:    protobuf.NewStringValue(svc.GetNamespace().GetValue()),
-		VpcId:        protobuf.NewStringValue(fmt.Sprintf("vpcid-%d", count)),
-		Host:         protobuf.NewStringValue(fmt.Sprintf("9.9.9.%d", count)),
-		Port:         protobuf.NewUInt32Value(8000 + uint32(count)),
-		Protocol:     protobuf.NewStringValue(fmt.Sprintf("protocol-%d", count)),
-		Version:      protobuf.NewStringValue(fmt.Sprintf("version-%d", count)),
-		Priority:     protobuf.NewUInt32Value(1 + uint32(count)%10),
-		Weight:       protobuf.NewUInt32Value(1 + uint32(count)%1000),
-		HealthCheck: &apiservice.HealthCheck{
-			Type: apiservice.HealthCheck_HEARTBEAT,
-			Heartbeat: &apiservice.HeartbeatHealthCheck{
-				Ttl: protobuf.NewUInt32Value(3),
-			},
-		},
-		Healthy:  protobuf.NewBoolValue(false), // 默认是非健康，因为打开了healthCheck
-		Isolate:  protobuf.NewBoolValue(false),
-		LogicSet: protobuf.NewStringValue(fmt.Sprintf("logic-set-%d", count)),
-		Metadata: map[string]string{
-			"internal-personal-xxx":        fmt.Sprintf("internal-personal-xxx_%d", count),
-			"2my-meta":                     fmt.Sprintf("my-meta-%d", count),
-			"my-meta-a1":                   "1111",
-			"smy-xmeta-h2":                 "2222",
-			"my-1meta-o3":                  "2222",
-			"my-2meta-4c":                  "2222",
-			"my-3meta-d5":                  "2222",
-			"dmy-meta-6p":                  "2222",
-			"1my-pmeta-d7":                 "2222",
-			"my-dmeta-8c":                  "2222",
-			"my-xmeta-9p":                  "2222",
-			"other-meta-x":                 "xxx",
-			"other-meta-1":                 "xx11",
-			"amy-instance":                 "my-instance",
-			"very-long-key-data-xxxxxxxxx": "Y",
-			"very-long-key-data-uuuuuuuuu": "P",
-		},
-	}
-	if len(instanceID) > 0 {
-		instanceReq.Id = protobuf.NewStringValue(instanceID)
-	}
-
-	resp := d.DiscoverServer().CreateInstances(d.DefaultCtx, []*apiservice.Instance{instanceReq})
-	if respSuccess(resp) {
-		return instanceReq, resp.Responses[0].GetInstance()
-	}
-
-	if resp.GetCode().GetValue() != api.ExistedResource {
-		t.Fatalf("error: %s", resp.GetInfo().GetValue())
-	}
-
-	if len(instanceID) == 0 {
-		instanceID, _ = utils.CalculateInstanceID(
-			instanceReq.GetNamespace().GetValue(), instanceReq.GetService().GetValue(),
-			instanceReq.GetVpcId().GetValue(), instanceReq.GetHost().GetValue(), instanceReq.GetPort().GetValue())
-	}
-	// repeated
-	d.cleanInstance(instanceID)
-	t.Logf("repeatd create instance(%s)", instanceID)
-	resp = d.DiscoverServer().CreateInstances(d.DefaultCtx, []*apiservice.Instance{instanceReq})
-	if !respSuccess(resp) {
-		t.Fatalf("error: %s", resp.GetInfo().GetValue())
-	}
-
-	return instanceReq, resp.Responses[0].GetInstance()
-}
-
-// 新增一个实例
-func (d *DiscoverTestSuit) createCommonInstance(t *testing.T, svc *apiservice.Service, count int) (
-	*apiservice.Instance, *apiservice.Instance) {
-	return d.createCommonInstanceById(t, svc, count, "")
-}
-
-// 指定 IP 和端口为一个服务创建实例
-func (d *DiscoverTestSuit) addHostPortInstance(t *testing.T, service *apiservice.Service, host string, port uint32) (
-	*apiservice.Instance, *apiservice.Instance) {
-	instanceReq := &apiservice.Instance{
-		ServiceToken: protobuf.NewStringValue(service.GetToken().GetValue()),
-		Service:      protobuf.NewStringValue(service.GetName().GetValue()),
-		Namespace:    protobuf.NewStringValue(service.GetNamespace().GetValue()),
-		Host:         protobuf.NewStringValue(host),
-		Port:         protobuf.NewUInt32Value(port),
-		Healthy:      protobuf.NewBoolValue(true),
-		Isolate:      protobuf.NewBoolValue(false),
-	}
-	resp := d.DiscoverServer().CreateInstances(d.DefaultCtx, []*apiservice.Instance{instanceReq})
-	if respSuccess(resp) {
-		return instanceReq, resp.Responses[0].GetInstance()
-	}
-
-	if resp.GetCode().GetValue() != api.ExistedResource {
-		t.Fatalf("error: %s", resp.GetInfo().GetValue())
-	}
-	return instanceReq, resp.Responses[0].GetInstance()
-}
-
-// 添加一个实例
-func (d *DiscoverTestSuit) addInstance(t *testing.T, ins *apiservice.Instance) (
-	*apiservice.Instance, *apiservice.Instance) {
-	resp := d.DiscoverServer().CreateInstances(d.DefaultCtx, []*apiservice.Instance{ins})
-	if !respSuccess(resp) {
-		if resp.GetCode().GetValue() == api.ExistedResource {
-			id, _ := utils.CalculateInstanceID(ins.GetNamespace().GetValue(), ins.GetService().GetValue(),
-				ins.GetHost().GetValue(), ins.GetHost().GetValue(), ins.GetPort().GetValue())
-			d.cleanInstance(id)
-		}
-	} else {
-		return ins, resp.Responses[0].GetInstance()
-	}
-
-	resp = d.DiscoverServer().CreateInstances(d.DefaultCtx, []*apiservice.Instance{ins})
-	if !respSuccess(resp) {
-		t.Fatalf("error: %s", resp.GetInfo().GetValue())
-	}
-
-	return ins, resp.Responses[0].GetInstance()
-}
-
-// 删除一个实例
-func (d *DiscoverTestSuit) removeCommonInstance(t *testing.T, service *apiservice.Service, instanceID string) {
-	req := &apiservice.Instance{
-		ServiceToken: protobuf.NewStringValue(service.GetToken().GetValue()),
-		Id:           protobuf.NewStringValue(instanceID),
-	}
-
-	resp := d.DiscoverServer().DeleteInstances(d.DefaultCtx, []*apiservice.Instance{req})
-	if !respSuccess(resp) {
-		t.Fatalf("error: %s", resp.GetInfo().GetValue())
-	}
-
-}
-
-// 通过四元组或者五元组删除实例
-func (d *DiscoverTestSuit) removeInstanceWithAttrs(
-	t *testing.T, service *apiservice.Service, instance *apiservice.Instance) {
-	req := &apiservice.Instance{
-		ServiceToken: protobuf.NewStringValue(service.GetToken().GetValue()),
-		Service:      protobuf.NewStringValue(service.GetName().GetValue()),
-		Namespace:    protobuf.NewStringValue(service.GetNamespace().GetValue()),
-		VpcId:        protobuf.NewStringValue(instance.GetVpcId().GetValue()),
-		Host:         protobuf.NewStringValue(instance.GetHost().GetValue()),
-		Port:         protobuf.NewUInt32Value(instance.GetPort().GetValue()),
-	}
-	if resp := d.DiscoverServer().DeleteInstances(d.DefaultCtx, []*apiservice.Instance{req}); !respSuccess(resp) {
-		t.Fatalf("error: %s", resp.GetInfo().GetValue())
 	}
 }
 
@@ -333,6 +122,49 @@ func mockRoutingV1(serviceName, serviceNamespace string, inCount int) *apitraffi
 	}
 
 	return conf
+}
+
+// 创建一个路由配置
+func (d *DiscoverTestSuit) createCommonRoutingConfigV2(t *testing.T, cnt int32) []*apitraffic.RouteRule {
+	rules := testsuit.MockRoutingV2(t, cnt)
+
+	return d.createCommonRoutingConfigV2WithReq(t, rules)
+}
+
+// 创建一个路由配置
+func (d *DiscoverTestSuit) createCommonRoutingConfigV2WithReq(
+	t *testing.T, rules []*apitraffic.RouteRule) []*apitraffic.RouteRule {
+	resp := d.GoverRuleServer().CreateRoutingConfigs(d.DefaultCtx, rules)
+	if !respSuccess(resp) {
+		t.Fatalf("error: %+v", resp)
+	}
+
+	if len(rules) != len(resp.GetResponses()) {
+		t.Fatal("error: create v2 routings not equal resp")
+	}
+
+	ret := []*apitraffic.RouteRule{}
+	for i := range resp.GetResponses() {
+		item := resp.GetResponses()[i]
+		msg := &apitraffic.RouteRule{}
+
+		if err := ptypes.UnmarshalAny(item.GetData(), msg); err != nil {
+			t.Fatal(err)
+			return nil
+		}
+
+		ret = append(ret, msg)
+	}
+
+	return ret
+}
+
+// 删除一个路由配置
+func (d *DiscoverTestSuit) deleteCommonRoutingConfigV2(t *testing.T, req *apitraffic.RouteRule) {
+	resp := d.GoverRuleServer().DeleteRoutingConfigs(d.DefaultCtx, []*apitraffic.RouteRule{req})
+	if !respSuccess(resp) {
+		t.Fatalf("%s", resp.GetInfo())
+	}
 }
 
 // 彻底删除一个路由配置
@@ -501,6 +333,75 @@ func serviceCheck(t *testing.T, expect *apiservice.Service, actual *apiservice.S
 		if actualValue != value {
 			t.Fatalf("error")
 		}
+	}
+}
+
+// 创建限流规则
+func (d *DiscoverTestSuit) createCommonRateLimit(
+	t *testing.T, service *apiservice.Service, index int) (*apitraffic.Rule, *apitraffic.Rule) {
+	// 先不考虑Cluster
+	rateLimit := &apitraffic.Rule{
+		Name:      &wrappers.StringValue{Value: fmt.Sprintf("rule_name_%d", index)},
+		Service:   service.GetName(),
+		Namespace: service.GetNamespace(),
+		Priority:  protobuf.NewUInt32Value(uint32(index)),
+		Resource:  apitraffic.Rule_QPS,
+		Type:      apitraffic.Rule_GLOBAL,
+		Arguments: []*apitraffic.MatchArgument{
+			{
+				Type: apitraffic.MatchArgument_CUSTOM,
+				Key:  fmt.Sprintf("name-%d", index),
+				Value: &apimodel.MatchString{
+					Type:  apimodel.MatchString_EXACT,
+					Value: protobuf.NewStringValue(fmt.Sprintf("value-%d", index)),
+				},
+			},
+			{
+				Type: apitraffic.MatchArgument_CUSTOM,
+				Key:  fmt.Sprintf("name-%d", index+1),
+				Value: &apimodel.MatchString{
+					Type:  apimodel.MatchString_EXACT,
+					Value: protobuf.NewStringValue(fmt.Sprintf("value-%d", index+1)),
+				},
+			},
+		},
+		Amounts: []*apitraffic.Amount{
+			{
+				MaxAmount: protobuf.NewUInt32Value(uint32(10 * index)),
+				ValidDuration: &duration.Duration{
+					Seconds: int64(index),
+					Nanos:   int32(index),
+				},
+			},
+		},
+		Action:  protobuf.NewStringValue(fmt.Sprintf("behavior-%d", index)),
+		Disable: protobuf.NewBoolValue(false),
+		Report: &apitraffic.Report{
+			Interval: &duration.Duration{
+				Seconds: int64(index),
+			},
+			AmountPercent: protobuf.NewUInt32Value(uint32(index)),
+		},
+	}
+
+	resp := d.GoverRuleServer().CreateRateLimits(d.DefaultCtx, []*apitraffic.Rule{rateLimit})
+	if !respSuccess(resp) {
+		t.Fatalf("error: %+v", resp)
+	}
+	return rateLimit, resp.Responses[0].GetRateLimit()
+}
+
+// 删除限流规则
+func (d *DiscoverTestSuit) deleteRateLimit(t *testing.T, rateLimit *apitraffic.Rule) {
+	if resp := d.GoverRuleServer().DeleteRateLimits(d.DefaultCtx, []*apitraffic.Rule{rateLimit}); !respSuccess(resp) {
+		t.Fatalf("%s", resp.GetInfo().GetValue())
+	}
+}
+
+// 更新单个限流规则
+func (d *DiscoverTestSuit) updateRateLimit(t *testing.T, rateLimit *apitraffic.Rule) {
+	if resp := d.GoverRuleServer().UpdateRateLimits(d.DefaultCtx, []*apitraffic.Rule{rateLimit}); !respSuccess(resp) {
+		t.Fatalf("%s", resp.GetInfo().GetValue())
 	}
 }
 

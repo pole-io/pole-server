@@ -19,17 +19,18 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"golang.org/x/sync/singleflight"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
-	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/observability/history"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	cacheservice "github.com/pole-io/pole-server/pkg/cache/service"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service/batch"
@@ -38,25 +39,26 @@ import (
 
 // Server 对接API层的server层，用以处理业务逻辑
 type Server struct {
+	// config 配置
 	config Config
-
+	// store 数据存储
 	storage store.Store
-
+	// namespaceSvr 命名空间相关的操作
 	namespaceSvr namespace.NamespaceOperateServer
-
+	// caches 缓存
 	caches cacheapi.CacheManager
-	bc     *batch.Controller
-
+	// bc 批量写执行器
+	bc *batch.Controller
+	// healthCheckServer 健康检查服务
 	healthServer *healthcheck.Server
-
-	cmdb    cmdb.CMDB
-	history history.History
-
+	// createServiceSingle 确保服务创建的并发控制
 	createServiceSingle *singleflight.Group
-	subCtxs             []*eventhub.SubscribtionContext
-
+	// subCtxs eventhub 的 subscriber 的控制
+	subCtxs []*eventhub.SubscribtionContext
 	// instanceChains 实例信息变化回调
 	instanceChains []InstanceChain
+	// emptyPushProtectSvs 开启了推空保护的服务数据
+	emptyPushProtectSvs *container.SyncMap[string, *time.Timer]
 }
 
 func (s *Server) allowAutoCreate() bool {
@@ -87,10 +89,6 @@ func (s *Server) Namespace() namespace.NamespaceOperateServer {
 
 // RecordHistory server对外提供history插件的简单封装
 func (s *Server) RecordHistory(ctx context.Context, entry *types.RecordEntry) {
-	// 如果插件没有初始化，那么不记录history
-	if s.history == nil {
-		return
-	}
 	// 如果数据为空，则不需要打印了
 	if entry == nil {
 		return
@@ -101,7 +99,7 @@ func (s *Server) RecordHistory(ctx context.Context, entry *types.RecordEntry) {
 		return
 	}
 	// 调用插件记录history
-	s.history.Record(entry)
+	history.GetHistory().Record(entry)
 }
 
 // AddInstanceChain not thread safe

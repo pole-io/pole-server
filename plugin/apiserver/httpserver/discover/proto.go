@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package v1
+package discover
 
 import (
 	"github.com/golang/protobuf/proto"

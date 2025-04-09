@@ -51,6 +51,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/version"
 	config_center "github.com/pole-io/pole-server/pkg/config"
+	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/batch"
@@ -194,8 +195,13 @@ func StartComponents(ctx context.Context, cfg *boot_config.Config) error {
 		return err
 	}
 
-	// 初始化服务发现模块相关功能
+	// 初始化注册发现模块相关功能
 	if err := StartDiscoverComponents(ctx, cfg, s, cacheMgn); err != nil {
+		return err
+	}
+
+	// 初始化治理规则模块相关功能
+	if err := StartGoverRuleComponents(ctx, cfg, s, cacheMgn); err != nil {
 		return err
 	}
 
@@ -291,6 +297,33 @@ func StartDiscoverComponents(ctx context.Context, cfg *boot_config.Config, s sto
 		return err
 	}
 
+	return nil
+}
+
+// StartGoverRuleComponents
+func StartGoverRuleComponents(ctx context.Context, cfg *boot_config.Config, s storeapi.Store,
+	cacheMgn *cache.CacheManager) error {
+	// 批量控制器
+	namespaceSvr, err := namespace.GetServer()
+	if err != nil {
+		return err
+	}
+
+	opts := []goverrule.InitOption{
+		goverrule.WithStorage(s),
+		goverrule.WithCacheManager(&cfg.Cache, cacheMgn),
+		goverrule.WithNamespaceSvr(namespaceSvr),
+	}
+
+	cfg.GoverRule.Interceptors = goverrule.GetChainOrder()
+	// 初始化治理规则模块
+	if err = goverrule.Initialize(ctx, &cfg.GoverRule, opts...); err != nil {
+		return err
+	}
+
+	if _, err = goverrule.GetServer(); err != nil {
+		return err
+	}
 	return nil
 }
 
