@@ -56,11 +56,12 @@ type Response struct {
 
 // IPInfo ip info
 type IPInfo struct {
-	IP     string       `json:"ip"`
-	Type   IPType       `json:"type"`
-	Region LocationInfo `json:"region"`
-	Zone   LocationInfo `json:"zone"`
-	Campus LocationInfo `json:"campus"`
+	IP     string            `json:"ip"`
+	Type   IPType            `json:"type"`
+	Region LocationInfo      `json:"region"`
+	Zone   LocationInfo      `json:"zone"`
+	Campus LocationInfo      `json:"campus"`
+	Labels map[string]string `json:"labels"`
 }
 
 // IP ip info
@@ -105,6 +106,7 @@ func NewIP(info IPInfo) (IP, error) {
 		ZoneID:   uint32(zoneId),
 		CampusID: uint32(campusId),
 		Valid:    false,
+		Labels:   info.Labels,
 	}
 
 	return ip, nil

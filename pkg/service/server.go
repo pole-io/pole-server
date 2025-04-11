@@ -58,7 +58,7 @@ type Server struct {
 	// instanceChains 实例信息变化回调
 	instanceChains []InstanceChain
 	// emptyPushProtectSvs 开启了推空保护的服务数据
-	emptyPushProtectSvs *container.SyncMap[string, *time.Timer]
+	emptyPushProtectSvs *container.SyncMap[string, time.Time]
 }
 
 func (s *Server) allowAutoCreate() bool {

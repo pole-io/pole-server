@@ -20,9 +20,9 @@ package event
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/pole-io/pole-server/apis"
-	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
 var (
@@ -30,11 +30,22 @@ var (
 	_discoverChannel  DiscoverChannel
 )
 
+type DiscoverEvent interface {
+	// 资源 ID
+	ID() string
+	// 事件类型
+	Event() string
+	// 资源信息
+	Resource() string
+	// 发生时间
+	HappenTime() time.Time
+}
+
 // DiscoverChannel is used to receive discover events from the agent
 type DiscoverChannel interface {
 	apis.Plugin
 	// PublishEvent Release a service event
-	PublishEvent(event svctypes.InstanceEvent)
+	PublishEvent(event DiscoverEvent)
 }
 
 // GetDiscoverEvent Get service discovery event plug -in
@@ -108,7 +119,7 @@ func (c *compositeDiscoverChannel) Destroy() error {
 }
 
 // PublishEvent Release a service event
-func (c *compositeDiscoverChannel) PublishEvent(event svctypes.InstanceEvent) {
+func (c *compositeDiscoverChannel) PublishEvent(event DiscoverEvent) {
 	for i := range c.chain {
 		c.chain[i].PublishEvent(event)
 	}

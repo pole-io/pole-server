@@ -283,20 +283,12 @@ func (s *ServiceData) loadInstances(svcIns *svctypes.ServiceInstances) {
 	if svcIns == nil {
 		return
 	}
-	var (
-		finalInstances = map[string]*nacosmodel.Instance{}
-	)
-
-	instances := svcIns.GetInstances(false)
-	healthCount := 0
-	for i := range instances {
+	finalInstances := make(map[string]*nacosmodel.Instance, 64)
+	svcIns.GetInstances(false, func(insData *svctypes.Instance) {
 		ins := &nacosmodel.Instance{}
-		ins.FromSpecInstance(instances[i])
+		ins.FromSpecInstance(insData)
 		finalInstances[ins.Id] = ins
-		if ins.Healthy {
-			healthCount++
-		}
-	}
+	})
 
 	s.lock.Lock()
 	defer s.lock.Unlock()

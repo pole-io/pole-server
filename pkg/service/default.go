@@ -26,7 +26,6 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/pole-io/pole-server/apis/observability/event"
-	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
@@ -146,9 +145,8 @@ type PluginInstanceEventHandler struct {
 	subscriber event.DiscoverChannel
 }
 
-func (p *PluginInstanceEventHandler) OnEvent(ctx context.Context, any2 any) error {
-	e := any2.(svctypes.InstanceEvent)
-	p.subscriber.PublishEvent(e)
+func (p *PluginInstanceEventHandler) OnEvent(ctx context.Context, a any) error {
+	p.subscriber.PublishEvent(a.(event.DiscoverEvent))
 	return nil
 }
 

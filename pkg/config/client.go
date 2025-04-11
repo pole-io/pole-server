@@ -28,6 +28,7 @@ import (
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
+	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/crypto"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
@@ -77,16 +78,41 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context,
 	return api.NewConfigClientResponse(apimodel.Code_ExecuteSuccess, configFile)
 }
 
+// formatClientRequest 自动填充客户端的相关标签数据
 func formatClientRequest(ctx context.Context, client *apiconfig.ClientConfigFileInfo) *apiconfig.ClientConfigFileInfo {
-	if len(client.Tags) > 0 {
-		return client
-	}
-	client.Tags = []*apiconfig.ConfigFileTag{
+	clientIP := utils.ParseClientIP(ctx)
+	newTags := []*apiconfig.ConfigFileTag{
 		{
 			Key:   wrapperspb.String(types.ClientLabel_IP),
-			Value: wrapperspb.String(utils.ParseClientIP(ctx)),
+			Value: wrapperspb.String(clientIP),
 		},
 	}
+	loc, err := cmdb.GetCMDB().GetLocation(clientIP)
+	if err == nil && loc != nil {
+		newTags = append(newTags, &apiconfig.ConfigFileTag{
+			Key:   wrapperspb.String(types.ClientLabel_Region),
+			Value: wrapperspb.String(loc.Proto.GetRegion().GetValue()),
+		})
+		newTags = append(newTags, &apiconfig.ConfigFileTag{
+			Key:   wrapperspb.String(types.ClientLabel_Zone),
+			Value: wrapperspb.String(loc.Proto.GetZone().GetValue()),
+		})
+		newTags = append(newTags, &apiconfig.ConfigFileTag{
+			Key:   wrapperspb.String(types.ClientLabel_Campus),
+			Value: wrapperspb.String(loc.Proto.GetCampus().GetValue()),
+		})
+		for k, v := range loc.Labels {
+			newTags = append(newTags, &apiconfig.ConfigFileTag{
+				Key:   wrapperspb.String(k),
+				Value: wrapperspb.String(v),
+			})
+		}
+	}
+
+	if len(client.Tags) == 0 {
+		client.Tags = []*apiconfig.ConfigFileTag{}
+	}
+	client.Tags = append(newTags, client.Tags...)
 	return client
 }
 

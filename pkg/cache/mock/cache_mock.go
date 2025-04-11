@@ -1127,17 +1127,15 @@ func (mr *MockInstanceCacheMockRecorder) Close() *gomock.Call {
 }
 
 // DiscoverServiceInstances mocks base method.
-func (m *MockInstanceCache) DiscoverServiceInstances(serviceID string, onlyHealthy bool) []*service.Instance {
+func (m *MockInstanceCache) DiscoverServiceInstances(serviceID string, onlyHealthy bool, consumer func(*service.Instance)) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DiscoverServiceInstances", serviceID, onlyHealthy)
-	ret0, _ := ret[0].([]*service.Instance)
-	return ret0
+	m.ctrl.Call(m, "DiscoverServiceInstances", serviceID, onlyHealthy, consumer)
 }
 
 // DiscoverServiceInstances indicates an expected call of DiscoverServiceInstances.
-func (mr *MockInstanceCacheMockRecorder) DiscoverServiceInstances(serviceID, onlyHealthy interface{}) *gomock.Call {
+func (mr *MockInstanceCacheMockRecorder) DiscoverServiceInstances(serviceID, onlyHealthy, consumer interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DiscoverServiceInstances", reflect.TypeOf((*MockInstanceCache)(nil).DiscoverServiceInstances), serviceID, onlyHealthy)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DiscoverServiceInstances", reflect.TypeOf((*MockInstanceCache)(nil).DiscoverServiceInstances), serviceID, onlyHealthy, consumer)
 }
 
 // GetInstance mocks base method.

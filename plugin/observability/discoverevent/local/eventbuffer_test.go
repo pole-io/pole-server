@@ -31,9 +31,9 @@ func TestEventBufferTest(t *testing.T) {
 	bufferHolder := newEventBufferHolder(20)
 
 	expectCnt := int64(0)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		now := time.Now()
-		bufferHolder.Put(svctypes.InstanceEvent{
+		bufferHolder.Put(&svctypes.InstanceEvent{
 			CreateTime: now,
 		})
 
@@ -44,7 +44,11 @@ func TestEventBufferTest(t *testing.T) {
 
 	for bufferHolder.HasNext() {
 		event := bufferHolder.Next()
-		actualCnt += event.CreateTime.Unix()
+		switch event.(type) {
+		case *svctypes.InstanceEvent:
+			item := event.(*svctypes.InstanceEvent)
+			actualCnt += item.CreateTime.Unix()
+		}
 	}
 
 	assert.Equal(t, expectCnt, actualCnt, "cnt must be equla")
@@ -54,7 +58,7 @@ func TestEventBufferTest(t *testing.T) {
 	expectCnt = int64(0)
 	for i := 20; i < 40; i++ {
 		now := time.Now()
-		bufferHolder.Put(svctypes.InstanceEvent{
+		bufferHolder.Put(&svctypes.InstanceEvent{
 			CreateTime: now,
 		})
 
@@ -65,7 +69,11 @@ func TestEventBufferTest(t *testing.T) {
 
 	for bufferHolder.HasNext() {
 		event := bufferHolder.Next()
-		actualCnt += event.CreateTime.Unix()
+		switch event.(type) {
+		case *svctypes.InstanceEvent:
+			item := event.(*svctypes.InstanceEvent)
+			actualCnt += item.CreateTime.Unix()
+		}
 	}
 
 	assert.Equal(t, expectCnt, actualCnt, "cnt must be equla")

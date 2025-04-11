@@ -114,7 +114,7 @@ func (s *Server) CreateInstance(ctx context.Context, req *apiservice.Instance) *
 		Service:    svc.Name,
 		Instance:   instanceProto,
 		EType:      svctypes.EventInstanceOnline,
-		CreateTime: time.Time{},
+		CreateTime: time.Now(),
 	}
 	event.InjectMetadata(ctx)
 	s.sendDiscoverEvent(*event)
@@ -261,7 +261,7 @@ func (s *Server) serialDeleteInstance(
 		Service:    service.Name,
 		Instance:   instance.Proto,
 		EType:      svctypes.EventInstanceOffline,
-		CreateTime: time.Time{},
+		CreateTime: time.Now(),
 	}
 	event.InjectMetadata(ctx)
 	s.sendDiscoverEvent(*event)
@@ -298,7 +298,7 @@ func (s *Server) asyncDeleteInstance(
 		Service:    service.Name,
 		Instance:   instance.Proto,
 		EType:      svctypes.EventInstanceOffline,
-		CreateTime: time.Time{},
+		CreateTime: time.Now(),
 	}
 	event.InjectMetadata(ctx)
 	s.sendDiscoverEvent(*event)
@@ -345,7 +345,7 @@ func (s *Server) DeleteInstanceByHost(ctx context.Context, req *apiservice.Insta
 			Service:    service.Name,
 			Instance:   instance.Proto,
 			EType:      svctypes.EventInstanceOffline,
-			CreateTime: time.Time{},
+			CreateTime: time.Now(),
 		})
 	}
 	return api.NewInstanceResponse(apimodel.Code_ExecuteSuccess, req)
@@ -391,7 +391,7 @@ func (s *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance) *
 			Service:    service.Name,
 			Instance:   instance.Proto,
 			EType:      eventType,
-			CreateTime: time.Time{},
+			CreateTime: time.Now(),
 		}
 		event.InjectMetadata(ctx)
 		s.sendDiscoverEvent(*event)
@@ -474,7 +474,7 @@ func (s *Server) UpdateInstanceIsolate(ctx context.Context, req *apiservice.Inst
 				Service:    req.Service.GetValue(),
 				Instance:   instance.Proto,
 				EType:      eventType,
-				CreateTime: time.Time{},
+				CreateTime: time.Now(),
 			})
 		}
 		instance.Proto.Isolate = protobuf.NewBoolValue(req.GetIsolate().GetValue())

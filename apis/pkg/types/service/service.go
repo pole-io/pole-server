@@ -83,9 +83,18 @@ func (s *Service) ProtectThreshold() float32 {
 	if len(s.Meta) == 0 {
 		return 0
 	}
-	val := s.Meta[MetadataServiceProtectThreshold]
+	val := s.Meta[MetadataServiceProtectHealthThreshold]
 	threshold, _ := strconv.ParseFloat(val, 32)
 	return float32(threshold)
+}
+
+func (s *Service) ProtectEmptyPush() (time.Duration, bool) {
+	if len(s.Meta) == 0 {
+		return 0, false
+	}
+	val := s.Meta[MetadataServiceProtectEmptyPush]
+	dur, err := time.ParseDuration(val)
+	return dur, err == nil 
 }
 
 func (s *Service) ListExportTo() []*wrappers.StringValue {

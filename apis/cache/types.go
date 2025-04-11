@@ -314,7 +314,7 @@ type (
 		// QueryInstances query instance for OSS
 		QueryInstances(filter, metaFilter map[string]string, offset, limit uint32) (uint32, []*svctypes.Instance, error)
 		// DiscoverServiceInstances 服务发现获取实例
-		DiscoverServiceInstances(serviceID string, onlyHealthy bool) []*svctypes.Instance
+		DiscoverServiceInstances(serviceID string, onlyHealthy bool, consumer func(*svctypes.Instance))
 		// RemoveService
 		RemoveService(serviceID string)
 	}

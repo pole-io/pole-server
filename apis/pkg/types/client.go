@@ -142,6 +142,12 @@ const (
 	ClientLabel_Language = "CLIENT_LANGUAGE"
 	// ClientLabel_Host 客户端主机名
 	ClientLabel_Host = "CLIENT_HOST"
+	// ClientLabel_Region 客户端所在区域
+	ClientLabel_Region = "CLIENT_REGION"
+	// ClientLabel_Zone 客户端所在可用区
+	ClientLabel_Zone = "CLIENT_ZONE"
+	// ClientLabel_Campus 客户端所在园区
+	ClientLabel_Campus = "CLIENT_CAMPUS"
 )
 
 func int64Time2String(t int64) string {

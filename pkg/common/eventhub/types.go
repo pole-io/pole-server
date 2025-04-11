@@ -27,6 +27,8 @@ import (
 const (
 	// InstanceEventTopic discover event
 	InstanceEventTopic = "instance_event"
+	// ServiceEventTopic service event
+	ServiceEventTopic = "service_event"
 	// LeaderChangeEventTopic leader change
 	LeaderChangeEventTopic = "leader_change_event"
 	// ConfigFilePublishTopic config file release publish

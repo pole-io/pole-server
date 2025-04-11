@@ -65,11 +65,12 @@ type NamespaceServiceCount struct {
 }
 
 const (
-	MetadataInstanceLastHeartbeatTime   = "internal-lastheartbeat"
-	MetadataServiceProtectThreshold     = "internal-service-protectthreshold"
-	MetadataRegisterFrom                = "internal-register-from"
-	MetadataInternalMetaHealthCheckPath = "internal-healthcheck_path"
-	MetadataInternalMetaTraceSampling   = "internal-trace_sampling"
+	MetadataInstanceLastHeartbeatTime     = "internal-lastheartbeat"
+	MetadataServiceProtectHealthThreshold = "internal-service-protect-healththreshold"
+	MetadataServiceProtectEmptyPush       = "internal-service-protect-emptypush"
+	MetadataRegisterFrom                  = "internal-register-from"
+	MetadataInternalMetaHealthCheckPath   = "internal-healthcheck_path"
+	MetadataInternalMetaTraceSampling     = "internal-trace_sampling"
 )
 
 // Instance 组合了api的Instance对象
@@ -422,7 +423,10 @@ func CreateInstanceModel(serviceID string, req *apiservice.Instance) *Instance {
 }
 
 // InstanceEventType 探测事件类型
-type InstanceEventType string
+type (
+	InstanceEventType string
+	ServiceEventType  string
+)
 
 const (
 	// EventDiscoverNone empty discover event
@@ -447,8 +451,54 @@ const (
 	EventClientOffline InstanceEventType = "ClientOffline"
 )
 
+const (
+	// EventServiceCloseEmptyPushProtect 服务实例推空保护开启
+	EventServiceOpenEmptyPushProtect ServiceEventType = "ServiceOpenEmptyPushProtect"
+	// EventServiceCloseEmptyPushProtect 服务实例推空保护关闭
+	EventServiceCloseEmptyPushProtect ServiceEventType = "ServiceCloseEmptyPushProtect"
+	// EventServiceExpireEmptyPushProtect 服务实例推空保护开关过期
+	EventServiceExpireEmptyPushProtect ServiceEventType = "ServiceExpireEmptyPushProtect"
+)
+
 // CtxEventKeyMetadata 用于将metadata从Context中传入并取出
 const CtxEventKeyMetadata = "ctx_event_metadata"
+
+// ServiceEvent 服务事件
+type ServiceEvent struct {
+	Id         string
+	Namespace  string
+	Service    string
+	EType      ServiceEventType
+	CreateTime time.Time
+	MetaData   map[string]string
+}
+
+// 资源 ID
+func (i *ServiceEvent) ID() string {
+	return i.Id
+}
+
+// 事件类型
+func (i *ServiceEvent) Event() string {
+	return string(i.EType)
+}
+
+// 资源信息
+func (i *ServiceEvent) Resource() string {
+	return fmt.Sprintf("%s/%s", i.Namespace, i.Service)
+}
+
+// 发生时间
+func (i *ServiceEvent) HappenTime() time.Time {
+	return i.CreateTime
+}
+
+func (i *ServiceEvent) String() string {
+	if nil == i {
+		return "nil"
+	}
+	return fmt.Sprintf("ServiceEvent(id=%s, namespace=%s, service=%s, type=%v)", i.Id, i.Namespace, i.Service, i.EType)
+}
 
 // InstanceEvent 服务实例事件
 type InstanceEvent struct {
@@ -460,6 +510,27 @@ type InstanceEvent struct {
 	EType      InstanceEventType
 	CreateTime time.Time
 	MetaData   map[string]string
+}
+
+// 资源 ID
+func (i *InstanceEvent) ID() string {
+	return i.Id
+}
+
+// 事件类型
+func (i *InstanceEvent) Event() string {
+	return string(i.EType)
+}
+
+// 资源信息
+func (i *InstanceEvent) Resource() string {
+	hostPortStr := fmt.Sprintf("%s:%d", i.Instance.GetHost().GetValue(), i.Instance.GetPort().GetValue())
+	return fmt.Sprintf("%s/%s/%s", i.Namespace, i.Service, hostPortStr)
+}
+
+// 发生时间
+func (i *InstanceEvent) HappenTime() time.Time {
+	return i.CreateTime
 }
 
 // InjectMetadata 从context中获取metadata并注入到事件对象
@@ -486,19 +557,28 @@ type ClientEvent struct {
 }
 
 type ServiceInstances struct {
-	lock               sync.RWMutex
-	instances          map[string]*Instance
-	healthyInstances   map[string]*Instance
-	unhealthyInstances map[string]*Instance
-	protectInstances   map[string]*Instance
-	protectThreshold   float32
+	lock sync.RWMutex
+	// instances 全部实例
+	instances map[string]*Instance
+	// healthyInstances 健康的实例
+	healthyInstances map[string]struct{}
+	// unhealthyInstances 不健康的实例
+	unhealthyInstances map[string]struct{}
+	// protectInstances 被健康实例阈值保护而修改状态的实例
+	protectInstances map[string]*Instance
+	// protectThreshold 健康实例保护阈值
+	protectThreshold float32
+	// emptyPushProtectThreshold 推空保护时间
+	emptyPushProtectThreshold time.Time
+	// openEmptyProtect 开启实例推空保护
+	openEmptyPushProtect bool
 }
 
 func NewServiceInstances(protectThreshold float32) *ServiceInstances {
 	return &ServiceInstances{
 		instances:          make(map[string]*Instance, 128),
-		healthyInstances:   make(map[string]*Instance, 128),
-		unhealthyInstances: make(map[string]*Instance, 128),
+		healthyInstances:   make(map[string]struct{}, 128),
+		unhealthyInstances: make(map[string]struct{}, 128),
 		protectInstances:   make(map[string]*Instance, 128),
 	}
 }
@@ -523,9 +603,9 @@ func (si *ServiceInstances) UpsertInstance(ins *Instance) {
 
 	si.instances[ins.ID()] = ins
 	if ins.Healthy() {
-		si.healthyInstances[ins.ID()] = ins
+		si.healthyInstances[ins.ID()] = struct{}{}
 	} else {
-		si.unhealthyInstances[ins.ID()] = ins
+		si.unhealthyInstances[ins.ID()] = struct{}{}
 	}
 }
 
@@ -548,29 +628,27 @@ func (si *ServiceInstances) Range(iterator func(id string, ins *Instance)) {
 	}
 }
 
-func (si *ServiceInstances) GetInstances(onlyHealthy bool) []*Instance {
+func (si *ServiceInstances) GetInstances(onlyHealthy bool, consumer func(*Instance)) {
 	si.lock.RLock()
 	defer si.lock.RUnlock()
 
-	ret := make([]*Instance, 0, len(si.healthyInstances)+len(si.protectInstances))
 	if !onlyHealthy {
 		for k, v := range si.instances {
 			protectIns, ok := si.protectInstances[k]
 			if ok {
-				ret = append(ret, protectIns)
+				consumer(protectIns)
 			} else {
-				ret = append(ret, v)
+				consumer(v)
 			}
 		}
 	} else {
-		for _, v := range si.healthyInstances {
-			ret = append(ret, v)
+		for k := range si.healthyInstances {
+			consumer(si.instances[k])
 		}
 		for _, v := range si.protectInstances {
-			ret = append(ret, v)
+			consumer(v)
 		}
 	}
-	return ret
 }
 
 func (si *ServiceInstances) ReachHealthyProtect() bool {
@@ -593,9 +671,8 @@ func (si *ServiceInstances) RunHealthyProtect() {
 		return
 	}
 	instanceLastBeatTimes := map[string]int64{}
-	instances := si.unhealthyInstances
-	for i := range instances {
-		ins := instances[i]
+	for i := range si.unhealthyInstances {
+		ins := si.instances[i]
 		metadata := ins.Metadata()
 		if len(metadata) == 0 {
 			continue
@@ -613,8 +690,8 @@ func (si *ServiceInstances) RunHealthyProtect() {
 	if lastBeat == -1 {
 		return
 	}
-	for i := range instances {
-		ins := instances[i]
+	for i := range si.unhealthyInstances {
+		ins := si.instances[i]
 		beatTime, ok := instanceLastBeatTimes[ins.ID()]
 		if !ok {
 			continue

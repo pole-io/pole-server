@@ -25,7 +25,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/service"
+	"github.com/pole-io/pole-server/pkg/goverrule"
 )
 
 var (
@@ -40,7 +40,7 @@ var (
 
 // GetRoutingConfigWithCache User Client Get Service Routing Configuration Information
 func (s *Server) GetRoutingConfigWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := service.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_ROUTING)
+	resp := goverrule.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_ROUTING)
 	if !s.commonCheckDiscoverRequest(req, resp) {
 		return resp
 	}
@@ -49,7 +49,7 @@ func (s *Server) GetRoutingConfigWithCache(ctx context.Context, req *apiservice.
 
 // GetRateLimitWithCache User Client Get Service Limit Configuration Information
 func (s *Server) GetRateLimitWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := service.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_RATE_LIMIT)
+	resp := goverrule.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_RATE_LIMIT)
 	if !s.commonCheckDiscoverRequest(req, resp) {
 		return resp
 	}
@@ -58,7 +58,7 @@ func (s *Server) GetRateLimitWithCache(ctx context.Context, req *apiservice.Serv
 
 // GetCircuitBreakerWithCache Fuse configuration information for obtaining services for clients
 func (s *Server) GetCircuitBreakerWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := service.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_CIRCUIT_BREAKER)
+	resp := goverrule.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_CIRCUIT_BREAKER)
 	if !s.commonCheckDiscoverRequest(req, resp) {
 		return resp
 	}
@@ -67,7 +67,7 @@ func (s *Server) GetCircuitBreakerWithCache(ctx context.Context, req *apiservice
 
 // GetFaultDetectWithCache User Client Get FaultDetect Rule Information
 func (s *Server) GetFaultDetectWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := service.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_FAULT_DETECTOR)
+	resp := goverrule.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_FAULT_DETECTOR)
 	if !s.commonCheckDiscoverRequest(req, resp) {
 		return resp
 	}
@@ -76,7 +76,7 @@ func (s *Server) GetFaultDetectWithCache(ctx context.Context, req *apiservice.Se
 
 // GetLaneRuleWithCache fetch lane rule by client
 func (s *Server) GetLaneRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := service.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_LANE)
+	resp := goverrule.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_LANE)
 	if !s.commonCheckDiscoverRequest(req, resp) {
 		return resp
 	}
@@ -85,7 +85,7 @@ func (s *Server) GetLaneRuleWithCache(ctx context.Context, req *apiservice.Servi
 
 // GetRouterRuleWithCache .
 func (s *Server) GetRouterRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := service.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_CUSTOM_ROUTE_RULE)
+	resp := goverrule.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_CUSTOM_ROUTE_RULE)
 	if !s.commonCheckDiscoverRequest(req, resp) {
 		return resp
 	}

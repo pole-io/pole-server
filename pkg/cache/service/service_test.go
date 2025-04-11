@@ -409,7 +409,7 @@ func TestServiceCache_GetServicesByFilter(t *testing.T) {
 		mockStore.EXPECT().GetInstancesCountTx(gomock.Any()).Return(uint32(len(instances)), nil).AnyTimes()
 		mockStore.EXPECT().GetMoreServices(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(services, nil).AnyTimes()
 		mockStore.EXPECT().GetMoreInstances(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(instances, nil).AnyTimes()
-		ic.setInstances(instances)
+		ic.setInstances(ic.ids.Load(), ic.services.Load(), instances)
 
 		hostToService := make(map[string]string)
 		for svc, instances := range svcInstances {
@@ -465,7 +465,7 @@ func TestServiceCache_NamespaceCount(t *testing.T) {
 			expectNsCount[svc.Namespace] += len(instances)
 		}
 
-		ic.setInstances(instances)
+		ic.setInstances(ic.ids.Load(), ic.services.Load(), instances)
 		time.Sleep(time.Duration(5 * time.Second))
 		sc.setServices(services)
 		time.Sleep(time.Duration(5 * time.Second))

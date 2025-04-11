@@ -465,7 +465,6 @@ func ToTagMap(tags []*config_manage.ConfigFileTag) map[string]string {
 	for i := range tags {
 		kvs[tags[i].GetKey().GetValue()] = tags[i].GetValue().GetValue()
 	}
-
 	return kvs
 }
 

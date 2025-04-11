@@ -28,6 +28,7 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/observability/event"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
@@ -43,15 +44,19 @@ func Test_discoverEventLocal_Run(t *testing.T) {
 			wait.Done()
 			et := eb.Next()
 			t.Logf("%v", et)
-			_, ok := subscribeEvents[et.EType]
-			assert.True(t, ok)
+			switch et.(type) {
+			case *svctypes.InstanceEvent:
+				item := et.(*svctypes.InstanceEvent)
+				_, ok := subscribeEvents[string(item.EType)]
+				assert.True(t, ok)
+			}
 		}
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	l := &discoverEventLocal{
-		eventCh: make(chan svctypes.InstanceEvent, 32),
+		eventCh: make(chan event.DiscoverEvent, 32),
 		bufferPool: sync.Pool{
 			New: func() interface{} { return newEventBufferHolder(defaultBufferSize) },
 		},
@@ -69,7 +74,7 @@ func Test_discoverEventLocal_Run(t *testing.T) {
 	go l.Run(ctx)
 
 	for i := 0; i < totalCnt; i++ {
-		l.PublishEvent(svctypes.InstanceEvent{
+		l.PublishEvent(&svctypes.InstanceEvent{
 			Id:        "123456",
 			Namespace: "DemoNamespace",
 			Service:   "DemoService",
@@ -81,7 +86,7 @@ func Test_discoverEventLocal_Run(t *testing.T) {
 			CreateTime: time.Time{},
 		})
 
-		l.PublishEvent(svctypes.InstanceEvent{
+		l.PublishEvent(&svctypes.InstanceEvent{
 			Id:        "111111",
 			Namespace: "DemoNamespace",
 			Service:   "DemoService",
@@ -93,7 +98,7 @@ func Test_discoverEventLocal_Run(t *testing.T) {
 			CreateTime: time.Time{},
 		})
 
-		l.PublishEvent(svctypes.InstanceEvent{
+		l.PublishEvent(&svctypes.InstanceEvent{
 			Id:        "111111",
 			Namespace: "DemoNamespace",
 			Service:   "DemoService",

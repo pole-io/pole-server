@@ -19,6 +19,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
@@ -32,6 +33,7 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
+	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -175,15 +177,6 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	svcName := req.GetName().GetValue()
 	nsName := req.GetNamespace().GetValue()
 
-	// 消费服务为了兼容，可以不带namespace，server端使用默认的namespace
-	if nsName == "" {
-		nsName = DefaultNamespace
-		req.Namespace = protobuf.NewStringValue(nsName)
-	}
-	if !s.commonCheckDiscoverRequest(req, resp) {
-		return resp
-	}
-
 	// 数据源都来自Cache，这里拿到的service，已经是源服务
 	aliasFor, visibleServices := s.findVisibleServices(ctx, svcName, nsName, req)
 	if len(visibleServices) == 0 {
@@ -193,7 +186,6 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	}
 
 	revisions := make([]string, 0, len(visibleServices)+1)
-	finalInstances := make(map[string]*apiservice.Instance, 128)
 	for _, svc := range visibleServices {
 		revision := s.caches.Service().GetRevisionWorker().GetServiceInstanceRevision(svc.ID)
 		revisions = append(revisions, revision)
@@ -208,25 +200,68 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 		return api.NewDiscoverInstanceResponse(apimodel.Code_DataNoChange, req)
 	}
 
+	finalInstances := make([]*apiservice.Instance, 0, 128)
+	openEmptyProtectCnt := 0
 	for _, svc := range visibleServices {
 		specSvc := &apiservice.Service{
 			Id:        protobuf.NewStringValue(svc.ID),
 			Name:      protobuf.NewStringValue(svc.Name),
 			Namespace: protobuf.NewStringValue(svc.Namespace),
 		}
-		ret := s.caches.Instance().DiscoverServiceInstances(specSvc.GetId().GetValue(), filter.GetOnlyHealthyInstance())
-		// 如果是空实例，则直接跳过，不处理实例列表以及 revision 信息
-		if len(ret) == 0 {
+		if stoper, ok := s.emptyPushProtectSvs.Load(svcName + "@" + nsName); ok {
+			// 如果在保护时间范围内
+			if stoper.After(time.Now()) {
+				openEmptyProtectCnt++
+			}
 			continue
+		}
+
+		matchInsCnt := 0
+		s.caches.Instance().DiscoverServiceInstances(specSvc.GetId().GetValue(), filter.GetOnlyHealthyInstance(), func(insData *svctypes.Instance) {
+			matchInsCnt++
+			// 注意：这里的 value 是 cache 的，不修改 cache 的数据，通过 getInstance，浅拷贝一份数据
+			copyIns := s.getInstance(specSvc, insData.Proto)
+			finalInstances = append(finalInstances, copyIns)
+		})
+		// 如果是空实例，则直接跳过，不处理实例列表以及 revision 信息
+		if matchInsCnt == 0 {
+			// 判断服务是否开启了推空保护，如果开启了，此时添加一个占位
+			if dur, ok := svc.ProtectEmptyPush(); ok {
+				s.emptyPushProtectSvs.ComputeIfAbsent(svcName+"@"+nsName, func(k string) time.Time {
+					eventhub.Publish(eventhub.ServiceEventTopic, &svctypes.ServiceEvent{
+						EType:      svctypes.EventServiceOpenEmptyPushProtect,
+						Id:         specSvc.GetId().GetValue(),
+						Namespace:  specSvc.GetNamespace().GetValue(),
+						Service:    specSvc.GetName().GetValue(),
+						CreateTime: time.Now(),
+					})
+					return time.Now().Add(dur)
+				})
+				openEmptyProtectCnt++
+			}
+			continue
+		} else {
+			// 如果有实例，则需要清除掉推空保护
+			if _, ok := s.emptyPushProtectSvs.Delete(svcName + "@" + nsName); ok {
+				eventhub.Publish(eventhub.ServiceEventTopic, &svctypes.ServiceEvent{
+					EType:      svctypes.EventServiceCloseEmptyPushProtect,
+					Id:         specSvc.GetId().GetValue(),
+					Namespace:  specSvc.GetNamespace().GetValue(),
+					Service:    specSvc.GetName().GetValue(),
+					CreateTime: time.Now(),
+				})
+			}
 		}
 		revision := s.caches.Service().GetRevisionWorker().GetServiceInstanceRevision(svc.ID)
 		revisions = append(revisions, revision)
+	}
 
-		for i := range ret {
-			copyIns := s.getInstance(specSvc, ret[i].Proto)
-			// 注意：这里的value是cache的，不修改cache的数据，通过getInstance，浅拷贝一份数据
-			finalInstances[copyIns.GetId().GetValue()] = copyIns
-		}
+	// 所有服务都触发了推空保护
+	if openEmptyProtectCnt == len(visibleServices) {
+		// 当前存在推空保护，返回给客户端 DataNoChange 变化
+		rsp := api.NewDiscoverInstanceResponse(apimodel.Code_DataNoChange, req)
+		rsp.Info = protobuf.NewStringValue("trigger empty push protect")
+		return rsp
 	}
 
 	if aliasFor == nil {
@@ -243,61 +278,27 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	// 塞入源服务信息数据
 	resp.AliasFor = service2Api(aliasFor)
 	// 填充instance数据
-	resp.Instances = make([]*apiservice.Instance, 0, len(finalInstances))
-	for i := range finalInstances {
-		// 注意：这里的value是cache的，不修改cache的数据，通过getInstance，浅拷贝一份数据
-		resp.Instances = append(resp.Instances, finalInstances[i])
-	}
+	resp.Instances = finalInstances
 	return resp
 }
 
-func (s *Server) findVisibleServices(ctx context.Context, serviceName, namespaceName string,
+func (s *Server) findVisibleServices(ctx context.Context, svcName, nsName string,
 	req *apiservice.Service) (*svctypes.Service, []*svctypes.Service) {
 	visibleServices := make([]*svctypes.Service, 0, 4)
 	// 数据源都来自Cache，这里拿到的service，已经是源服务
-	aliasFor := s.getServiceCache(serviceName, namespaceName)
+	aliasFor := s.getServiceCache(svcName, nsName)
 	if aliasFor != nil {
 		// 获取到实际的服务，则将查询的服务名替换成实际的服务名和命名空间
-		serviceName = aliasFor.Name
-		namespaceName = aliasFor.Namespace
+		svcName = aliasFor.Name
+		nsName = aliasFor.Namespace
 		// 先把自己放进去
 		visibleServices = append(visibleServices, aliasFor)
 	}
-	ret := s.caches.Service().GetVisibleServicesInOtherNamespace(ctx, serviceName, namespaceName)
+	ret := s.caches.Service().GetVisibleServicesInOtherNamespace(ctx, svcName, nsName)
 	if len(ret) > 0 {
 		visibleServices = append(visibleServices, ret...)
 	}
 	return aliasFor, visibleServices
-}
-
-// GetRoutingConfigWithCache 获取缓存中的路由配置信息
-func (s *Server) GetRoutingConfigWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_ROUTING)
-	aliasFor := s.findServiceAlias(req)
-
-	out, err := s.caches.RoutingConfig().GetRouterConfig(aliasFor.ID, aliasFor.Name, aliasFor.Namespace)
-	if err != nil {
-		log.Error("[Server][Service][Routing] discover routing", utils.RequestID(ctx), zap.Error(err))
-		return api.NewDiscoverRoutingResponse(apimodel.Code_ExecuteException, req)
-	}
-	if out == nil {
-		return resp
-	}
-
-	// 获取路由数据，并对比revision
-	if out.GetRevision().GetValue() == req.GetRevision().GetValue() {
-		return api.NewDiscoverRoutingResponse(apimodel.Code_DataNoChange, req)
-	}
-
-	// 数据不一致，发生了改变
-	// 数据格式转换，service只需要返回二元组与routing的revision
-	resp.Service.Revision = out.GetRevision()
-	resp.Routing = out
-	resp.AliasFor = &apiservice.Service{
-		Name:      protobuf.NewStringValue(aliasFor.Name),
-		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
-	}
-	return resp
 }
 
 // GetServiceContractWithCache User Client Get ServiceContract Rule Information
@@ -368,29 +369,7 @@ func createCommonDiscoverResponse(req *apiservice.Service,
 	}
 }
 
-// 根据ServiceID获取instances
-func (s *Server) getInstancesCache(service *svctypes.Service) []*svctypes.Instance {
-	id := s.getSourceServiceID(service)
-	// TODO refer_filter还要处理一下
-	return s.caches.Instance().GetInstancesByServiceID(id)
-}
-
-// 获取顶级服务ID
-// 没有顶级ID，则返回自身
-func (s *Server) getSourceServiceID(service *svctypes.Service) string {
-	if service == nil || service.ID == "" {
-		return ""
-	}
-	// 找到parent服务，最多两级，因此不用递归查找
-	if service.IsAlias() {
-		return service.Reference
-	}
-
-	return service.ID
-}
-
-// 根据服务名获取服务缓存数据
-// 注意，如果是服务别名查询，这里会返回别名的源服务，不会返回别名
+// getServiceCache 根据服务名获取服务缓存数据, 注意，如果是服务别名查询，这里会返回别名的源服务，不会返回别名
 func (s *Server) getServiceCache(name string, namespace string) *svctypes.Service {
 	sc := s.caches.Service()
 	service := sc.GetServiceByName(name, namespace)
@@ -409,34 +388,4 @@ func (s *Server) getServiceCache(name string, namespace string) *svctypes.Servic
 		service.Meta = make(map[string]string)
 	}
 	return service
-}
-
-func (s *Server) commonCheckDiscoverRequest(req *apiservice.Service, resp *apiservice.DiscoverResponse) bool {
-	if s.caches == nil {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_ClientAPINotOpen))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
-		resp.Service = req
-		return false
-	}
-	if req == nil {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_EmptyRequest))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
-		resp.Service = req
-		return false
-	}
-
-	if req.GetName().GetValue() == "" {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_InvalidServiceName))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
-		resp.Service = req
-		return false
-	}
-	if req.GetNamespace().GetValue() == "" {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_InvalidNamespaceName))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
-		resp.Service = req
-		return false
-	}
-
-	return true
 }

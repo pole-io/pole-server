@@ -242,7 +242,7 @@ func (c *Checker) realCheck() {
 		if !exist && isHealth {
 			// 如果实例对应的连接ID不存在，设置为不健康
 			turnUnhealth[instanceID] = struct{}{}
-			event.GetDiscoverEvent().PublishEvent(svctypes.InstanceEvent{
+			event.GetDiscoverEvent().PublishEvent(&svctypes.InstanceEvent{
 				Id:        instanceID,
 				Namespace: instance.GetNamespace().GetValue(),
 				Service:   instance.GetService().GetValue(),
@@ -253,7 +253,7 @@ func (c *Checker) realCheck() {
 		}
 		if !isHealth && exist {
 			turnHealth[instanceID] = struct{}{}
-			event.GetDiscoverEvent().PublishEvent(svctypes.InstanceEvent{
+			event.GetDiscoverEvent().PublishEvent(&svctypes.InstanceEvent{
 				Id:        instanceID,
 				SvcId:     instance.GetService().GetValue(),
 				Namespace: instance.GetNamespace().GetValue(),

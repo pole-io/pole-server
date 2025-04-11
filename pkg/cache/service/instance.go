@@ -34,6 +34,7 @@ import (
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
+	"github.com/pole-io/pole-server/pkg/common/syncs/atomic"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 )
 
@@ -50,9 +51,9 @@ type instanceCache struct {
 	storage         store.Store
 	lastMtimeLogged int64
 	// instanceid -> instance
-	ids *container.SyncMap[string, *svctypes.Instance]
+	ids *atomic.AtomicValue[*container.SyncMap[string, *svctypes.Instance]]
 	// service id -> [instanceid ->instance]
-	services *container.SyncMap[string, *svctypes.ServiceInstances]
+	services *atomic.AtomicValue[*container.SyncMap[string, *svctypes.ServiceInstances]]
 	// service id -> [instanceCount]
 	instanceCounts   *container.SyncMap[string, *svctypes.InstanceCount]
 	instancePorts    *instancePorts
@@ -77,8 +78,8 @@ func NewInstanceCache(storage store.Store, cacheMgr cacheapi.CacheManager) cache
 // Initialize 初始化函数
 func (ic *instanceCache) Initialize(opt map[string]interface{}) error {
 	ic.svcCache = ic.BaseCache.CacheMgr.GetCacher(cacheapi.CacheService).(*serviceCache)
-	ic.ids = container.NewSyncMap[string, *svctypes.Instance]()
-	ic.services = container.NewSyncMap[string, *svctypes.ServiceInstances]()
+	ic.ids = atomic.NewAtomicValue(container.NewSyncMap[string, *svctypes.Instance]())
+	ic.services = atomic.NewAtomicValue(container.NewSyncMap[string, *svctypes.ServiceInstances]())
 	ic.instanceCounts = container.NewSyncMap[string, *svctypes.InstanceCount]()
 	ic.instancePorts = newInstancePorts()
 	if opt == nil {
@@ -134,12 +135,12 @@ func (ic *instanceCache) checkAll(tx store.Tx) {
 		log.Errorf("[Cache][Instance] get instance count from storage err: %s", err.Error())
 		return
 	}
-	if int64(ic.ids.Len()) == int64(count) {
+	if int64(ic.ids.Load().Len()) == int64(count) {
 		return
 	}
 	log.Infof(
 		"[Cache][Instance] instance count not match, expect %d, actual %d, fallback to load all",
-		count, ic.ids.Len())
+		count, ic.ids.Load().Len())
 	ic.ResetLastMtime(ic.Name())
 	ic.ResetLastFetchTime()
 }
@@ -181,7 +182,17 @@ func (ic *instanceCache) realUpdate() (map[string]time.Time, int64, error) {
 func (ic *instanceCache) handleUpdate(start time.Time, tx store.Tx) ([]*eventhub.CacheInstanceEvent,
 	map[string]time.Time, int64, error) {
 
+	ids := ic.ids.Load()
+	svcInsContainer := ic.services.Load()
+	if ic.IsFirstUpdate() {
+		ids = container.NewSyncMap[string, *svctypes.Instance]()
+		svcInsContainer = container.NewSyncMap[string, *svctypes.ServiceInstances]()
+	}
+
 	defer func() {
+		ic.ids.Store(ids)
+		ic.services.Store(svcInsContainer)
+
 		ic.lastMtimeLogged = cachebase.LogLastMtime(ic.lastMtimeLogged, ic.LastMtime().Unix(), "Instance")
 		ic.checkAll(tx)
 	}()
@@ -194,7 +205,7 @@ func (ic *instanceCache) handleUpdate(start time.Time, tx store.Tx) ([]*eventhub
 		return nil, nil, -1, err
 	}
 
-	events, lastMtimes, update, del := ic.setInstances(instances)
+	events, lastMtimes, update, del := ic.setInstances(ids, svcInsContainer, instances)
 	log.Info("[Cache][Instance] get more instances",
 		zap.Int("pull-from-store", len(instances)), zap.Int("update", update), zap.Int("delete", del),
 		zap.Time("last", ic.LastMtime()), zap.Duration("used", time.Since(start)))
@@ -204,8 +215,8 @@ func (ic *instanceCache) handleUpdate(start time.Time, tx store.Tx) ([]*eventhub
 // Clear 清理内部缓存数据
 func (ic *instanceCache) Clear() error {
 	ic.BaseCache.Clear()
-	ic.ids = container.NewSyncMap[string, *svctypes.Instance]()
-	ic.services = container.NewSyncMap[string, *svctypes.ServiceInstances]()
+	ic.ids = atomic.NewAtomicValue(container.NewSyncMap[string, *svctypes.Instance]())
+	ic.services = atomic.NewAtomicValue(container.NewSyncMap[string, *svctypes.ServiceInstances]())
 	ic.instanceCounts = container.NewSyncMap[string, *svctypes.InstanceCount]()
 	ic.instancePorts.reset()
 	return nil
@@ -226,9 +237,10 @@ func (ic *instanceCache) getSystemServices() ([]*svctypes.Service, error) {
 	return services, nil
 }
 
-// setInstances 保存instance到内存中
-// 返回：更新个数，删除个数
-func (ic *instanceCache) setInstances(ins map[string]*svctypes.Instance) ([]*eventhub.CacheInstanceEvent,
+// setInstances 保存instance到内存中, 返回：更新个数，删除个数
+func (ic *instanceCache) setInstances(ids *container.SyncMap[string, *svctypes.Instance], svcInsContainer *container.SyncMap[string, *svctypes.ServiceInstances],
+	ins map[string]*svctypes.Instance) ([]*eventhub.CacheInstanceEvent,
+
 	map[string]time.Time, int, int) {
 
 	if len(ins) == 0 {
@@ -243,14 +255,14 @@ func (ic *instanceCache) setInstances(ins map[string]*svctypes.Instance) ([]*eve
 	update := 0
 	del := 0
 	affect := make(map[string]bool)
-	progress := 0
-	curInsCnt := ic.ids.Len()
+	curInsCnt := ids.Len()
 
+	// 处理 insert、update 状态的实例
 	for _, item := range ins {
-		if _, ok := ic.services.Load(item.ServiceID); !ok {
-			ic.services.Store(item.ServiceID, svctypes.NewServiceInstances(0))
+		if _, ok := svcInsContainer.Load(item.ServiceID); !ok {
+			svcInsContainer.Store(item.ServiceID, svctypes.NewServiceInstances(0))
 		}
-		serviceInstances, _ := ic.services.Load(item.ServiceID)
+		serviceInstances, _ := svcInsContainer.Load(item.ServiceID)
 		svc := ic.BaseCache.CacheMgr.GetCacher(cacheapi.CacheService).(cacheapi.ServiceCache).GetServiceByID(item.ServiceID)
 		if svc != nil {
 			// 填充实例的服务名称数据信息
@@ -258,48 +270,35 @@ func (ic *instanceCache) setInstances(ins map[string]*svctypes.Instance) ([]*eve
 			item.Proto.Service = protobuf.NewStringValue(svc.Name)
 			serviceInstances.UpdateProtectThreshold(svc.ProtectThreshold())
 		}
-
-		progress++
-		if progress%50000 == 0 {
-			log.Infof("[Cache][Instance] set instances progress: %d / %d", progress, len(ins))
-		}
 		modifyTime := item.ModifyTime.Unix()
 		if lastMtime < modifyTime {
 			lastMtime = modifyTime
 		}
 		affect[item.ServiceID] = true
-		oldInstance, itemExist := ic.ids.Load(item.ID())
-		// 匿名实例 或切换了service的实例需要清理缓存
+		oldInstance, itemExist := ids.Load(item.ID())
+		// 匿名实例 或切换了 service 的实例需要清理缓存
 		if itemExist {
 			if oldInstance.ServiceID != item.ServiceID {
+				_, _ = ids.Delete(item.ID())
 				deleteInstances[item.ID()] = item.Revision()
 				del++
-				ic.ids.Delete(item.ID())
 				events = append(events, &eventhub.CacheInstanceEvent{
 					Instance:  oldInstance,
 					EventType: eventhub.EventDeleted,
 				})
 				affect[oldInstance.ServiceID] = true
-				if val, ok := ic.services.Load(oldInstance.ServiceID); ok {
+				if val, ok := svcInsContainer.Load(oldInstance.ServiceID); ok {
 					val.RemoveInstance(oldInstance)
 				}
 			}
 		}
-		// 待删除的instance
-		if !item.Valid {
-			deleteInstances[item.ID()] = item.Revision()
-			del++
-			ic.ids.Delete(item.ID())
-			if itemExist {
-				events = append(events, &eventhub.CacheInstanceEvent{
-					Instance:  item,
-					EventType: eventhub.EventDeleted,
-				})
-			}
 
-			serviceInstances.RemoveInstance(item)
+		if !item.Valid {
+			del++
+			deleteInstances[item.ID()] = item.Revision()
 			continue
 		}
+
 		// 有修改或者新增的数据
 		update++
 		// 缓存的instance map增加一个version和protocol字段
@@ -309,14 +308,15 @@ func (ic *instanceCache) setInstances(ins map[string]*svctypes.Instance) ([]*eve
 
 		item = fillInternalLabels(item)
 
-		ic.ids.Store(item.ID(), item)
+		ids.Store(item.ID(), item)
 		if !itemExist {
 			addInstances[item.ID()] = item.Revision()
 			events = append(events, &eventhub.CacheInstanceEvent{
 				Instance:  item,
 				EventType: eventhub.EventCreated,
 			})
-		} else {
+		} else if item.Revision() == oldInstance.Revision() {
+			// 实例版本发送变化，不执行本次处理
 			updateInstances[item.ID()] = item.Revision()
 			events = append(events, &eventhub.CacheInstanceEvent{
 				Instance:  item,
@@ -327,9 +327,30 @@ func (ic *instanceCache) setInstances(ins map[string]*svctypes.Instance) ([]*eve
 		ic.instancePorts.appendPort(item.ServiceID, item.Protocol(), item.Port())
 	}
 
-	if ic.ids.Len() != curInsCnt {
-		log.Infof("[Cache][Instance] instance count update from %d to %d",
-			ic.ids.Len(), curInsCnt)
+	// 处理删除状态的实例
+	for insId := range deleteInstances {
+		item := ins[insId]
+		serviceInstances, _ := svcInsContainer.Load(item.ServiceID)
+
+		affect[item.ServiceID] = true
+		_, itemExist := ids.Load(item.ID())
+		// 待删除的instance
+		if !item.Valid {
+			ids.Delete(item.ID())
+			if itemExist {
+				events = append(events, &eventhub.CacheInstanceEvent{
+					Instance:  item,
+					EventType: eventhub.EventDeleted,
+				})
+			}
+
+			serviceInstances.RemoveInstance(item)
+			continue
+		}
+	}
+
+	if ids.Len() != curInsCnt {
+		log.Infof("[Cache][Instance] instance count update from %d to %d", ids.Len(), curInsCnt)
 	}
 
 	log.Info("[Cache][Instance] instances change info", zap.Any("add", addInstances),
@@ -373,7 +394,7 @@ func (ic *instanceCache) postProcessUpdatedServices(affect map[string]bool) {
 
 func (ic *instanceCache) runHealthyProtect(affect map[string]bool) {
 	for serviceID := range affect {
-		if serviceInstances, ok := ic.services.Load(serviceID); ok {
+		if serviceInstances, ok := ic.services.Load().Load(serviceID); ok {
 			serviceInstances.RunHealthyProtect()
 		}
 	}
@@ -382,7 +403,7 @@ func (ic *instanceCache) runHealthyProtect(affect map[string]bool) {
 func (ic *instanceCache) computeInstanceCount(affect map[string]bool) {
 	for serviceID := range affect {
 		// 构建服务数量统计
-		serviceInstances, ok := ic.services.Load(serviceID)
+		serviceInstances, ok := ic.services.Load().Load(serviceID)
 		if !ok {
 			ic.instanceCounts.Delete(serviceID)
 			continue
@@ -423,7 +444,7 @@ func (ic *instanceCache) GetInstance(instanceID string) *svctypes.Instance {
 		return nil
 	}
 
-	value, ok := ic.ids.Load(instanceID)
+	value, ok := ic.ids.Load().Load(instanceID)
 	if !ok {
 		return nil
 	}
@@ -437,7 +458,7 @@ func (ic *instanceCache) GetInstances(serviceID string) *svctypes.ServiceInstanc
 		return nil
 	}
 
-	value, ok := ic.services.Load(serviceID)
+	value, ok := ic.services.Load().Load(serviceID)
 	if !ok {
 		return nil
 	}
@@ -450,7 +471,7 @@ func (ic *instanceCache) GetInstancesByServiceID(serviceID string) []*svctypes.I
 		return nil
 	}
 
-	value, ok := ic.services.Load(serviceID)
+	value, ok := ic.services.Load().Load(serviceID)
 	if !ok {
 		return nil
 	}
@@ -477,17 +498,16 @@ func (ic *instanceCache) GetInstancesCountByServiceID(serviceID string) svctypes
 }
 
 // DiscoverServiceInstances 服务发现获取实例
-func (ic *instanceCache) DiscoverServiceInstances(serviceID string, onlyHealthy bool) []*svctypes.Instance {
-	svcInstances, ok := ic.services.Load(serviceID)
-	if !ok {
-		return []*svctypes.Instance{}
+func (ic *instanceCache) DiscoverServiceInstances(serviceID string, onlyHealthy bool, consumer func(*svctypes.Instance)) {
+	svcInstances, ok := ic.services.Load().Load(serviceID)
+	if ok {
+		svcInstances.GetInstances(onlyHealthy, consumer)
 	}
-	return svcInstances.GetInstances(onlyHealthy)
 }
 
 // IteratorInstances 迭代所有的instance的函数
 func (ic *instanceCache) IteratorInstances(iterProc cacheapi.InstanceIterProc) error {
-	return iteratorInstancesProc(ic.ids, iterProc)
+	return iteratorInstancesProc(ic.services.Load(), iterProc)
 }
 
 // IteratorInstancesWithService 根据服务ID进行迭代回调
@@ -495,7 +515,7 @@ func (ic *instanceCache) IteratorInstancesWithService(serviceID string, iterProc
 	if serviceID == "" {
 		return nil
 	}
-	value, ok := ic.services.Load(serviceID)
+	value, ok := ic.services.Load().Load(serviceID)
 	if !ok {
 		return nil
 	}
@@ -507,7 +527,7 @@ func (ic *instanceCache) IteratorInstancesWithService(serviceID string, iterProc
 
 // GetInstancesCount 获取实例的个数
 func (ic *instanceCache) GetInstancesCount() int {
-	return ic.ids.Len()
+	return ic.ids.Load().Len()
 }
 
 // GetInstanceLabels 获取某个服务下实例的所有标签信息集合
@@ -516,7 +536,7 @@ func (ic *instanceCache) GetInstanceLabels(serviceID string) *apiservice.Instanc
 		return &apiservice.InstanceLabels{}
 	}
 
-	value, ok := ic.services.Load(serviceID)
+	value, ok := ic.services.Load().Load(serviceID)
 	if !ok {
 		return &apiservice.InstanceLabels{}
 	}
@@ -557,11 +577,11 @@ func (ic *instanceCache) GetServicePorts(serviceID string) []*svctypes.ServicePo
 // RemoveService .
 func (ic *instanceCache) RemoveService(serviceID string) {
 	ic.instancePorts.removeService(serviceID)
-	ic.services.Delete(serviceID)
+	ic.services.Load().Delete(serviceID)
 }
 
 // iteratorInstancesProc 迭代指定的instance数据，id->instance
-func iteratorInstancesProc(data *container.SyncMap[string, *svctypes.Instance], iterProc cacheapi.InstanceIterProc) error {
+func iteratorInstancesProc(data *container.SyncMap[string, *svctypes.ServiceInstances], iterProc cacheapi.InstanceIterProc) error {
 	var err error
 	proc := func(k string, v *svctypes.Instance) {
 		if _, err = iterProc(k, v); err != nil {
@@ -569,7 +589,9 @@ func iteratorInstancesProc(data *container.SyncMap[string, *svctypes.Instance], 
 		}
 	}
 
-	data.Range(proc)
+	data.Range(func(key string, val *svctypes.ServiceInstances) {
+		val.Range(proc)
+	})
 	return err
 }
 

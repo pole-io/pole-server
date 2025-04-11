@@ -20,15 +20,15 @@ package local
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/apis/observability/event"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"go.uber.org/zap"
 )
 
 const (
@@ -47,7 +47,7 @@ type eventBufferHolder struct {
 	writeCursor int
 	readCursor  int
 	size        int
-	buffer      []svctypes.InstanceEvent
+	buffer      []event.DiscoverEvent
 }
 
 func newEventBufferHolder(cap int) *eventBufferHolder {
@@ -55,7 +55,7 @@ func newEventBufferHolder(cap int) *eventBufferHolder {
 		writeCursor: 0,
 		readCursor:  0,
 		size:        0,
-		buffer:      make([]svctypes.InstanceEvent, cap),
+		buffer:      make([]event.DiscoverEvent, cap),
 	}
 }
 
@@ -67,7 +67,7 @@ func (holder *eventBufferHolder) Reset() {
 }
 
 // Put 放入一个 model.DiscoverEvent
-func (holder *eventBufferHolder) Put(event svctypes.InstanceEvent) {
+func (holder *eventBufferHolder) Put(event event.DiscoverEvent) {
 	holder.buffer[holder.writeCursor] = event
 	holder.size++
 	holder.writeCursor++
@@ -82,7 +82,7 @@ func (holder *eventBufferHolder) HasNext() bool {
 //
 //	@return model.DiscoverEvent 元素
 //	@return bool 是否还有下一个元素可以继续读取
-func (holder *eventBufferHolder) Next() svctypes.InstanceEvent {
+func (holder *eventBufferHolder) Next() event.DiscoverEvent {
 	event := holder.buffer[holder.readCursor]
 	holder.readCursor++
 
@@ -95,7 +95,7 @@ func (holder *eventBufferHolder) Size() int {
 }
 
 type discoverEventLocal struct {
-	eventCh        chan svctypes.InstanceEvent
+	eventCh        chan event.DiscoverEvent
 	bufferPool     sync.Pool
 	curEventBuffer *eventBufferHolder
 	cursor         int
@@ -127,7 +127,7 @@ func (el *discoverEventLocal) Initialize(conf *apis.ConfigEntry) error {
 		return err
 	}
 
-	el.eventCh = make(chan svctypes.InstanceEvent, config.QueueSize)
+	el.eventCh = make(chan event.DiscoverEvent, config.QueueSize)
 	el.eventHandler = el.writeToFile
 	el.bufferPool = sync.Pool{
 		New: func() interface{} {
@@ -156,7 +156,7 @@ func (el *discoverEventLocal) Destroy() error {
 }
 
 // PublishEvent 发布一个服务事件
-func (el *discoverEventLocal) PublishEvent(event svctypes.InstanceEvent) {
+func (el *discoverEventLocal) PublishEvent(event event.DiscoverEvent) {
 	select {
 	case el.eventCh <- event:
 		return
@@ -166,13 +166,13 @@ func (el *discoverEventLocal) PublishEvent(event svctypes.InstanceEvent) {
 }
 
 var (
-	subscribeEvents = map[svctypes.InstanceEventType]struct{}{
-		svctypes.EventInstanceCloseIsolate: {},
-		svctypes.EventInstanceOpenIsolate:  {},
-		svctypes.EventInstanceOffline:      {},
-		svctypes.EventInstanceOnline:       {},
-		svctypes.EventInstanceTurnHealth:   {},
-		svctypes.EventInstanceTurnUnHealth: {},
+	subscribeEvents = map[string]struct{}{
+		string(svctypes.EventInstanceCloseIsolate): {},
+		string(svctypes.EventInstanceOpenIsolate):  {},
+		string(svctypes.EventInstanceOffline):      {},
+		string(svctypes.EventInstanceOnline):       {},
+		string(svctypes.EventInstanceTurnHealth):   {},
+		string(svctypes.EventInstanceTurnUnHealth): {},
 	}
 )
 
@@ -185,12 +185,10 @@ func (el *discoverEventLocal) Run(ctx context.Context) {
 	for {
 		select {
 		case event := <-el.eventCh:
-			if _, ok := subscribeEvents[event.EType]; !ok {
+			if _, ok := subscribeEvents[event.Event()]; !ok {
 				break
 			}
 
-			// 确保事件是顺序的
-			event.CreateTime = time.Now()
 			el.curEventBuffer.Put(event)
 
 			// 触发持久化到 log 阈值
@@ -223,16 +221,10 @@ func (el *discoverEventLocal) writeToFile(eventHolder *eventBufferHolder) {
 
 	for eventHolder.HasNext() {
 		event := eventHolder.Next()
-		log.Info(fmt.Sprintf(
-			"%s|%s|%s|%s|%s|%s|%d|%s|%s",
-			event.Id,
-			event.Namespace,
-			event.Service,
-			event.EType,
-			event.Instance.GetId().GetValue(),
-			event.Instance.GetHost().GetValue(),
-			event.Instance.GetPort().GetValue(),
-			commontime.Time2String(event.CreateTime),
-			utils.LocalHost))
+		log.Info("",
+			zap.String("id", event.ID()),
+			zap.String("resource", event.Resource()),
+			zap.String("happen_time", event.HappenTime().Format(time.DateTime)),
+			zap.String("server", utils.LocalHost))
 	}
 }
