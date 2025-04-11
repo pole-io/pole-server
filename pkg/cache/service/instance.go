@@ -185,6 +185,9 @@ func (ic *instanceCache) handleUpdate(start time.Time, tx store.Tx) ([]*eventhub
 	ids := ic.ids.Load()
 	svcInsContainer := ic.services.Load()
 	if ic.IsFirstUpdate() {
+		// 如果是首次，或者是由于 checkAll 引起的重新加载全量数据时，这里我们需要用一个全新的 map 去存储数据
+		// 问题 case: 原有缓存中的一些实例在 checkAll 阶段由于被存储层物理删除导致 storage.GetMoreInstances 获取不到软删除状态
+		// 导致缓存无法准备的移出这些已经被物理删除的实例信息，对于客户端就会看到yi
 		ids = container.NewSyncMap[string, *svctypes.Instance]()
 		svcInsContainer = container.NewSyncMap[string, *svctypes.ServiceInstances]()
 	}
