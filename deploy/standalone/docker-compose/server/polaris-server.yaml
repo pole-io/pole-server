@@ -310,7 +310,6 @@ store:
       maxOpenConns: 300
       maxIdleConns: 50
       connMaxLifetime: 300 # 单位秒
-      txIsolationLevel: 2 #LevelReadCommitted
 # 插件配置
 plugin:
   history:

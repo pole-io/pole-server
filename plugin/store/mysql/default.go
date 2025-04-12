@@ -18,6 +18,7 @@
 package sqldb
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -182,10 +183,6 @@ func parseStoreConfig(opts interface{}) (*dbConfig, error) {
 	if connMaxLifetime, _ := obj["connMaxLifetime"].(int); connMaxLifetime > 0 {
 		c.connMaxLifetime = connMaxLifetime
 	}
-
-	if isolationLevel, _ := obj["txIsolationLevel"].(int); isolationLevel > 0 {
-		c.txIsolationLevel = isolationLevel
-	}
 	return c, nil
 }
 
@@ -240,7 +237,10 @@ func (s *stableStore) StartReadTx() (store.Tx, error) {
 	// 每次创建事务前，还是需要ping一下
 	_ = s.slave.Ping()
 
-	tx, err := s.slave.Begin()
+	// 由于是 Read，为了确保 Read 过程中的可重复读，这里主动设置为 RR 级别
+	tx, err := s.slave.BeginTx(&sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -469,7 +469,6 @@ store:
       maxOpenConns: 300
       maxIdleConns: 50
       connMaxLifetime: 300 # Unit second
-      txIsolationLevel: 2 #LevelReadCommitted
 # sergo-server plugin settings
 plugin:
   crypto:

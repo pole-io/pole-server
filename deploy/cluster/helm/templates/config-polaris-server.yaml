@@ -364,7 +364,6 @@ data:
           maxOpenConns: -1
           maxIdleConns: -1
           connMaxLifetime: 300 # 单位秒
-          txIsolationLevel: 2 #LevelReadCommitted
     {{- end }}
     {{- else }}
     # 单机文件存储插件

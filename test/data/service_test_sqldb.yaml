@@ -314,7 +314,6 @@ store:
       maxOpenConns: -1
       maxIdleConns: -1
       connMaxLifetime: 300 # 单位秒
-      txIsolationLevel: 2 #LevelReadCommitted
 # 插件配置
 plugin:
   crypto:

@@ -41,24 +41,21 @@ type BaseDB struct {
 
 // dbConfig store的配置
 type dbConfig struct {
-	dbType           string
-	dbUser           string
-	dbPwd            string
-	dbAddr           string
-	dbName           string
-	maxOpenConns     int
-	maxIdleConns     int
-	connMaxLifetime  int
-	txIsolationLevel int
+	dbType          string
+	dbUser          string
+	dbPwd           string
+	dbAddr          string
+	dbName          string
+	maxOpenConns    int
+	maxIdleConns    int
+	connMaxLifetime int
 }
 
 // NewBaseDB 新建一个BaseDB
 func NewBaseDB(cfg *dbConfig) (*BaseDB, error) {
 	baseDb := &BaseDB{cfg: cfg}
-	if cfg.txIsolationLevel > 0 {
-		baseDb.isolationLevel = sql.IsolationLevel(cfg.txIsolationLevel)
-		log.Infof("[Store][database] use isolation level: %s", baseDb.isolationLevel.String())
-	}
+	baseDb.isolationLevel = sql.IsolationLevel(sql.LevelReadCommitted)
+	log.Infof("[Store][database] use isolation level: %s", baseDb.isolationLevel.String())
 
 	if err := baseDb.openDatabase(); err != nil {
 		return nil, err
@@ -166,6 +163,23 @@ func (b *BaseDB) Begin() (*BaseTx, error) {
 
 	Retry("begin", func() error {
 		tx, err = b.DB.BeginTx(context.Background(), option)
+		return err
+	})
+
+	return &BaseTx{Tx: tx}, err
+}
+
+// Begin 重写db.Begin
+func (b *BaseDB) BeginTx(opt *sql.TxOptions) (*BaseTx, error) {
+	var (
+		tx    *sql.Tx
+		err   error
+		start = time.Now()
+	)
+
+	defer reportCallMetrics("Begin", start, err)
+	Retry("begin", func() error {
+		tx, err = b.DB.BeginTx(context.Background(), opt)
 		return err
 	})
 
