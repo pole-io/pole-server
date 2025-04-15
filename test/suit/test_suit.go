@@ -30,7 +30,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	bolt "go.etcd.io/bbolt"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"

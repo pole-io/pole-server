@@ -14,7 +14,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/json-iterator/go v1.1.12
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/nicksnyder/go-i18n/v2 v2.2.0
@@ -34,7 +34,6 @@ require (
 	golang.org/x/time v0.1.1-0.20221020023724-80b9fac54d29
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.1
-	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
@@ -87,6 +86,7 @@ require (
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/prometheus/prometheus v1.8.2-0.20200727090838-6f296594a852 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
 require (
@@ -97,5 +97,3 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20240528184218-531527333157 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
 )
-
-replace gopkg.in/yaml.v2 => gopkg.in/yaml.v2 v2.2.2

@@ -125,7 +125,7 @@ func TestConfigFileGroupCRUD(t *testing.T) {
 		rsp := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, assembleConfigFile())
 		assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 
-		rsp2 := testSuit.ConfigServer().SearchConfigFile(testSuit.DefaultCtx, map[string]string{
+		rsp2 := testSuit.ConfigServer().SearchConfigFiles(testSuit.DefaultCtx, map[string]string{
 			"namespace": testNamespace,
 			"group":     testGroup,
 			"offset":    "0",
@@ -152,7 +152,7 @@ func TestConfigFileGroupCRUD(t *testing.T) {
 			rsp = testSuit.ConfigServer().DeleteConfigFileGroup(testSuit.DefaultCtx, testNamespace, testGroup)
 			assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue(), rsp.GetInfo().GetValue())
 
-			rsp2 := testSuit.ConfigServer().SearchConfigFile(testSuit.DefaultCtx, map[string]string{
+			rsp2 := testSuit.ConfigServer().SearchConfigFiles(testSuit.DefaultCtx, map[string]string{
 				"namespace": testNamespace,
 				"group":     testGroup,
 				"offset":    "0",

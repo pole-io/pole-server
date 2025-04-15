@@ -315,8 +315,8 @@ func (s *Server) GetConfigFileRichInfo(ctx context.Context, req *apiconfig.Confi
 	return api.NewConfigFileResponse(apimodel.Code_ExecuteSuccess, ret)
 }
 
-// SearchConfigFile 查询配置文件
-func (s *Server) SearchConfigFile(ctx context.Context, searchFilters map[string]string) *apiconfig.ConfigBatchQueryResponse {
+// SearchConfigFiles 查询配置文件
+func (s *Server) SearchConfigFiles(ctx context.Context, searchFilters map[string]string) *apiconfig.ConfigBatchQueryResponse {
 	offset, limit, _ := valid.ParseOffsetAndLimit(searchFilters)
 	count, files, err := s.storage.QueryConfigFiles(searchFilters, offset, limit)
 	if err != nil {

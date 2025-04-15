@@ -169,7 +169,7 @@ func TestConfigFileCRUD(t *testing.T) {
 		}
 
 		// 第一页
-		rsp2 := testSuit.ConfigServer().SearchConfigFile(testSuit.DefaultCtx, map[string]string{
+		rsp2 := testSuit.ConfigServer().SearchConfigFiles(testSuit.DefaultCtx, map[string]string{
 			"namespace": testNamespace,
 			"group":     group,
 			"offset":    "0",
@@ -180,7 +180,7 @@ func TestConfigFileCRUD(t *testing.T) {
 		assert.Equal(t, 3, len(rsp2.ConfigFiles))
 
 		// 最后一页
-		rsp3 := testSuit.ConfigServer().SearchConfigFile(testSuit.DefaultCtx, map[string]string{
+		rsp3 := testSuit.ConfigServer().SearchConfigFiles(testSuit.DefaultCtx, map[string]string{
 			"namespace": testNamespace,
 			"group":     group,
 			"offset":    "6",
@@ -191,7 +191,7 @@ func TestConfigFileCRUD(t *testing.T) {
 		assert.Equal(t, 1, len(rsp3.ConfigFiles))
 
 		// group为空
-		rsp4 := testSuit.ConfigServer().SearchConfigFile(testSuit.DefaultCtx, map[string]string{
+		rsp4 := testSuit.ConfigServer().SearchConfigFiles(testSuit.DefaultCtx, map[string]string{
 			"namespace": testNamespace,
 			"group":     "",
 			"offset":    "0",
@@ -202,7 +202,7 @@ func TestConfigFileCRUD(t *testing.T) {
 		assert.Equal(t, 3, len(rsp4.ConfigFiles))
 
 		// group 模糊搜索
-		rsp5 := testSuit.ConfigServer().SearchConfigFile(testSuit.DefaultCtx, map[string]string{
+		rsp5 := testSuit.ConfigServer().SearchConfigFiles(testSuit.DefaultCtx, map[string]string{
 			"namespace": testNamespace,
 			"group":     "group1*",
 			"offset":    "0",
@@ -221,7 +221,7 @@ func TestConfigFileCRUD(t *testing.T) {
 		}
 
 		// 第一页
-		rsp2 := testSuit.ConfigServer().SearchConfigFile(testSuit.DefaultCtx, map[string]string{
+		rsp2 := testSuit.ConfigServer().SearchConfigFiles(testSuit.DefaultCtx, map[string]string{
 			"namespace": testNamespace,
 			"group":     group,
 			"offset":    "0",
@@ -232,7 +232,7 @@ func TestConfigFileCRUD(t *testing.T) {
 		assert.Equal(t, 3, len(rsp2.ConfigFiles))
 
 		// 最后一页
-		rsp3 := testSuit.ConfigServer().SearchConfigFile(testSuit.DefaultCtx, map[string]string{
+		rsp3 := testSuit.ConfigServer().SearchConfigFiles(testSuit.DefaultCtx, map[string]string{
 			"namespace": testNamespace,
 			"group":     group,
 			"offset":    "6",
@@ -251,7 +251,7 @@ func TestConfigFileCRUD(t *testing.T) {
 		}
 
 		// 第一页
-		rsp2 := testSuit.ConfigServer().SearchConfigFile(testSuit.DefaultCtx, map[string]string{
+		rsp2 := testSuit.ConfigServer().SearchConfigFiles(testSuit.DefaultCtx, map[string]string{
 			"namespace": testNamespace,
 			"name":      file,
 			"offset":    "0",
@@ -262,7 +262,7 @@ func TestConfigFileCRUD(t *testing.T) {
 		assert.Equal(t, 3, len(rsp2.ConfigFiles))
 
 		// 最后一页
-		rsp3 := testSuit.ConfigServer().SearchConfigFile(testSuit.DefaultCtx, map[string]string{
+		rsp3 := testSuit.ConfigServer().SearchConfigFiles(testSuit.DefaultCtx, map[string]string{
 			"namespace": testNamespace,
 			"name":      file,
 			"offset":    "6",
@@ -273,7 +273,7 @@ func TestConfigFileCRUD(t *testing.T) {
 		assert.Equal(t, 1, len(rsp3.ConfigFiles))
 
 		// group,name都为空
-		rsp4 := testSuit.ConfigServer().SearchConfigFile(testSuit.DefaultCtx, map[string]string{
+		rsp4 := testSuit.ConfigServer().SearchConfigFiles(testSuit.DefaultCtx, map[string]string{
 			"namespace": testNamespace,
 			"offset":    "0",
 			"limit":     "3",
@@ -283,7 +283,7 @@ func TestConfigFileCRUD(t *testing.T) {
 		assert.Equal(t, 3, len(rsp4.ConfigFiles))
 
 		// fileName 模糊搜索
-		rsp5 := testSuit.ConfigServer().SearchConfigFile(testSuit.DefaultCtx, map[string]string{
+		rsp5 := testSuit.ConfigServer().SearchConfigFiles(testSuit.DefaultCtx, map[string]string{
 			"namespace": testNamespace,
 			"name":      "file1*",
 			"offset":    "0",
@@ -297,7 +297,7 @@ func TestConfigFileCRUD(t *testing.T) {
 	t.Run("step7-search-by-tag", func(t *testing.T) {
 		t.Skip()
 		// 按 tag k1=v1 搜索
-		rsp := testSuit.ConfigServer().SearchConfigFile(testSuit.DefaultCtx, map[string]string{
+		rsp := testSuit.ConfigServer().SearchConfigFiles(testSuit.DefaultCtx, map[string]string{
 			"namespace": testNamespace,
 			"tags":      "k1,v1",
 			"offset":    "0",

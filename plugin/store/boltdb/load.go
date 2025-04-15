@@ -25,7 +25,7 @@ import (
 
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"

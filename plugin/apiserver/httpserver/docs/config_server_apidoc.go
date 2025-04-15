@@ -265,6 +265,14 @@ func EnrichCreateConfigFileTemplateApiDocs(r *restful.RouteBuilder) *restful.Rou
 		Returns(0, "", BaseResponse{})
 }
 
+func EnrichUpdateConfigFileTemplateApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {
+	return r.
+		Doc("更新配置模板").
+		Metadata(restfulspec.KeyOpenAPITags, configConsoleApiTags).
+		Reads(config_manage.ConfigFileTemplate{}).
+		Returns(0, "", BaseResponse{})
+}
+
 func EnrichConfigDiscoverApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {
 	return r.
 		Doc("配置数据发现").

@@ -23,7 +23,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/access_control/auth"

@@ -58,10 +58,10 @@ func TestConfigFileTemplateCRUD(t *testing.T) {
 
 	template1 := assembleConfigFileTemplate(templateName1)
 	t.Run("first-create", func(t *testing.T) {
-		createRsp := testSuit.ConfigServer().CreateConfigFileTemplate(testSuit.DefaultCtx, template1)
+		createRsp := testSuit.ConfigServer().CreateConfigFileTemplates(testSuit.DefaultCtx, []*apiconfig.ConfigFileTemplate{template1})
 		assert.Equal(t, api.ExecuteSuccess, createRsp.Code.GetValue())
 		//repeat create
-		createRsp = testSuit.ConfigServer().CreateConfigFileTemplate(testSuit.DefaultCtx, template1)
+		createRsp = testSuit.ConfigServer().CreateConfigFileTemplates(testSuit.DefaultCtx, []*apiconfig.ConfigFileTemplate{template1})
 		assert.Equal(t, api.ExistedResource, createRsp.Code.GetValue(), createRsp.GetInfo().GetValue())
 	})
 
@@ -76,7 +76,7 @@ func TestConfigFileTemplateCRUD(t *testing.T) {
 
 	template2 := assembleConfigFileTemplate(templateName2)
 	t.Run("second-create", func(t *testing.T) {
-		createRsp := testSuit.ConfigServer().CreateConfigFileTemplate(testSuit.DefaultCtx, template2)
+		createRsp := testSuit.ConfigServer().CreateConfigFileTemplates(testSuit.DefaultCtx, []*apiconfig.ConfigFileTemplate{template2})
 		assert.Equal(t, api.ExecuteSuccess, createRsp.Code.GetValue())
 	})
 
@@ -108,8 +108,10 @@ func TestServer_CreateConfigFileTemplateParam(t *testing.T) {
 	)
 
 	t.Run("invalid_tpl_name", func(t *testing.T) {
-		rsp := testSuit.ConfigServer().CreateConfigFileTemplate(testSuit.DefaultCtx, &apiconfig.ConfigFileTemplate{
-			Content: wrapperspb.String(mockContent),
+		rsp := testSuit.ConfigServer().CreateConfigFileTemplates(testSuit.DefaultCtx, []*apiconfig.ConfigFileTemplate{
+			{
+				Content: wrapperspb.String(mockContent),
+			},
 		})
 		assert.Equal(t, uint32(apimodel.Code_InvalidConfigFileTemplateName), rsp.Code.GetValue())
 	})
@@ -122,17 +124,21 @@ func TestServer_CreateConfigFileTemplateParam(t *testing.T) {
 			}
 			mockContentL += mockContentL
 		}
-		rsp := testSuit.ConfigServer().CreateConfigFileTemplate(testSuit.DefaultCtx, &apiconfig.ConfigFileTemplate{
-			Name:    wrapperspb.String(mockTemplName),
-			Content: wrapperspb.String(mockContentL),
+		rsp := testSuit.ConfigServer().CreateConfigFileTemplates(testSuit.DefaultCtx, []*apiconfig.ConfigFileTemplate{
+			{
+				Name:    wrapperspb.String(mockTemplName),
+				Content: wrapperspb.String(mockContentL),
+			},
 		})
 		assert.Equal(t, uint32(apimodel.Code_InvalidConfigFileContentLength), rsp.Code.GetValue(), rsp.GetInfo().GetValue())
 	})
 
 	t.Run("no_content", func(t *testing.T) {
-		rsp := testSuit.ConfigServer().CreateConfigFileTemplate(testSuit.DefaultCtx, &apiconfig.ConfigFileTemplate{
-			Name:    wrapperspb.String(mockTemplName),
-			Content: wrapperspb.String(""),
+		rsp := testSuit.ConfigServer().CreateConfigFileTemplates(testSuit.DefaultCtx, []*apiconfig.ConfigFileTemplate{
+			{
+				Name:    wrapperspb.String(mockTemplName),
+				Content: wrapperspb.String(""),
+			},
 		})
 		assert.Equal(t, uint32(apimodel.Code_BadRequest), rsp.Code.GetValue())
 	})

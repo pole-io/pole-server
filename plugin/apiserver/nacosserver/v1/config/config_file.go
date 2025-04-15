@@ -26,7 +26,7 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"

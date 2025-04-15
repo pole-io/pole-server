@@ -345,6 +345,7 @@ func (b *BaseGrpcServer) postprocess(stream *VirtualStream, m interface{}) {
 			code = int(polarisCode)
 		}
 	} else {
+		polarisCode = uint32(stream.Code)
 		code = stream.Code
 		// 打印回复
 		if code != int(codes.OK) {
@@ -376,7 +377,7 @@ func (b *BaseGrpcServer) postprocess(stream *VirtualStream, m interface{}) {
 		Type:     metrics.ServerCallMetric,
 		API:      stream.Method,
 		Protocol: "gRPC",
-		Code:     int(stream.Code),
+		Code:     int(polarisCode),
 		Duration: diff,
 	})
 }

@@ -138,14 +138,13 @@ func (ic *instanceCache) checkAll(tx store.Tx) {
 	if int64(ic.ids.Load().Len()) == int64(count) {
 		return
 	}
+	// TODO 对账发生数据不一致，需要上报监控指标
 	log.Infof(
 		"[Cache][Instance] instance count not match, expect %d, actual %d, fallback to load all",
 		count, ic.ids.Load().Len())
 	ic.ResetLastMtime(ic.Name())
 	ic.ResetLastFetchTime()
 }
-
-const maxLoadTimeDuration = 1 * time.Second
 
 func (ic *instanceCache) realUpdate() (map[string]time.Time, int64, error) {
 	// 拉取diff前的所有数据
@@ -168,6 +167,7 @@ func (ic *instanceCache) realUpdate() (map[string]time.Time, int64, error) {
 		}
 	}()
 
+	// 为了确保在拉取数据时，数据是可重复读的，以及对账时数据的一致性，因此这里需要创建一个读快照，至于实现交由底层存储层负责处理
 	if err := tx.CreateReadView(); err != nil {
 		log.Error("[Cache][Instance] create storage snapshot read view", zap.Error(err))
 		return nil, -1, err

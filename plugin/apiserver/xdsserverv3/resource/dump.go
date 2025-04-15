@@ -25,7 +25,7 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	res "github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"google.golang.org/protobuf/encoding/protojson"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func DumpSnapShotJSON(snapshot cache.ResourceSnapshot) []byte {

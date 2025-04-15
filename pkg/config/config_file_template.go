@@ -32,10 +32,22 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
+// CreateConfigFileTemplates create config file template
+func (s *Server) CreateConfigFileTemplates(
+	ctx context.Context, reqs []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
+	for _, req := range reqs {
+		rsp := s.CreateConfigFileTemplate(ctx, req)
+		if api.IsSuccess(rsp) {
+			return rsp
+		}
+	}
+	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
+}
+
 // CreateConfigFileTemplate create config file template
 func (s *Server) CreateConfigFileTemplate(
-	ctx context.Context, template *apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
-	name := template.GetName().GetValue()
+	ctx context.Context, req *apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
+	name := req.GetName().GetValue()
 
 	saveData, err := s.storage.GetConfigFileTemplate(name)
 	if err != nil {
@@ -47,15 +59,27 @@ func (s *Server) CreateConfigFileTemplate(
 		return api.NewConfigResponse(apimodel.Code_ExistedResource)
 	}
 
-	saveData = conftypes.ToConfigFileTemplateStore(template)
 	userName := utils.ParseUserName(ctx)
-	template.CreateBy = protobuf.NewStringValue(userName)
-	template.ModifyBy = protobuf.NewStringValue(userName)
+	req.CreateBy = protobuf.NewStringValue(userName)
+	req.ModifyBy = protobuf.NewStringValue(userName)
+	saveData = conftypes.ToConfigFileTemplateStore(req)
 	if _, err := s.storage.CreateConfigFileTemplate(saveData); err != nil {
 		log.Error("[Config][Service] create config file template error.", utils.RequestID(ctx), zap.Error(err))
 		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
+	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
+}
+
+// UpdateConfigFileTemplates create config file template
+func (s *Server) UpdateConfigFileTemplates(
+	ctx context.Context, reqs []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
+	for _, req := range reqs {
+		rsp := s.CreateConfigFileTemplate(ctx, req)
+		if api.IsSuccess(rsp) {
+			return rsp
+		}
+	}
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
 

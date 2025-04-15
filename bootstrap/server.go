@@ -28,7 +28,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 

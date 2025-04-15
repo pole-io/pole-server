@@ -50,8 +50,8 @@ func (s *Server) GetConfigFileRichInfo(ctx context.Context,
 	return s.nextServer.GetConfigFileRichInfo(ctx, req)
 }
 
-// SearchConfigFile 查询配置文件
-func (s *Server) SearchConfigFile(ctx context.Context,
+// SearchConfigFiles 查询配置文件
+func (s *Server) SearchConfigFiles(ctx context.Context,
 	filter map[string]string) *apiconfig.ConfigBatchQueryResponse {
 
 	offset, limit, err := valid.ParseOffsetAndLimit(filter)
@@ -73,7 +73,7 @@ func (s *Server) SearchConfigFile(ctx context.Context,
 			searchFilters[k] = v
 		}
 	}
-	return s.nextServer.SearchConfigFile(ctx, searchFilters)
+	return s.nextServer.SearchConfigFiles(ctx, searchFilters)
 }
 
 // UpdateConfigFile 更新配置文件

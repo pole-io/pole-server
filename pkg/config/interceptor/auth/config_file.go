@@ -56,8 +56,8 @@ func (s *Server) GetConfigFileRichInfo(ctx context.Context,
 	return s.nextServer.GetConfigFileRichInfo(ctx, req)
 }
 
-// SearchConfigFile 查询配置文件
-func (s *Server) SearchConfigFile(ctx context.Context,
+// SearchConfigFiles 查询配置文件
+func (s *Server) SearchConfigFiles(ctx context.Context,
 	filter map[string]string) *apiconfig.ConfigBatchQueryResponse {
 
 	authCtx := s.collectConfigFileAuthContext(ctx, nil, auth.Read, auth.DescribeConfigFiles)
@@ -67,7 +67,7 @@ func (s *Server) SearchConfigFile(ctx context.Context,
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
-	return s.nextServer.SearchConfigFile(ctx, filter)
+	return s.nextServer.SearchConfigFiles(ctx, filter)
 }
 
 // UpdateConfigFile 更新配置文件

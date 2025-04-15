@@ -143,15 +143,15 @@ func (h *HTTPServer) GetConfigFile(req *restful.Request, rsp *restful.Response) 
 	handler.WriteHeaderAndProto(response)
 }
 
-// SearchConfigFile 按照 group 和 name 模糊搜索配置文件，按照 tag 搜索，多个tag之间或的关系
-func (h *HTTPServer) SearchConfigFile(req *restful.Request, rsp *restful.Response) {
+// SearchConfigFiles 按照 group 和 name 模糊搜索配置文件，按照 tag 搜索，多个tag之间或的关系
+func (h *HTTPServer) SearchConfigFiles(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,
 	}
 
 	filters := httpcommon.ParseQueryParams(req)
-	response := h.configServer.SearchConfigFile(handler.ParseHeaderContext(), filters)
+	response := h.configServer.SearchConfigFiles(handler.ParseHeaderContext(), filters)
 
 	handler.WriteHeaderAndProto(response)
 }
@@ -175,29 +175,8 @@ func (h *HTTPServer) UpdateConfigFile(req *restful.Request, rsp *restful.Respons
 	handler.WriteHeaderAndProto(h.configServer.UpdateConfigFile(ctx, configFile))
 }
 
-// DeleteConfigFile 删除单个配置文件，删除配置文件也会删除配置文件发布内容，客户端将获取不到配置文件
-func (h *HTTPServer) DeleteConfigFile(req *restful.Request, rsp *restful.Response) {
-	handler := &httpcommon.Handler{
-		Request:  req,
-		Response: rsp,
-	}
-
-	namespace := handler.Request.QueryParameter("namespace")
-	group := handler.Request.QueryParameter("group")
-	name := handler.Request.QueryParameter("name")
-
-	fileReq := &apiconfig.ConfigFile{
-		Namespace: protobuf.NewStringValue(namespace),
-		Group:     protobuf.NewStringValue(group),
-		Name:      protobuf.NewStringValue(name),
-	}
-
-	response := h.configServer.DeleteConfigFile(handler.ParseHeaderContext(), fileReq)
-	handler.WriteHeaderAndProto(response)
-}
-
-// BatchDeleteConfigFile 批量删除配置文件
-func (h *HTTPServer) BatchDeleteConfigFile(req *restful.Request, rsp *restful.Response) {
+// DeleteConfigFiles 批量删除配置文件
+func (h *HTTPServer) DeleteConfigFiles(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,
@@ -411,40 +390,6 @@ func (h *HTTPServer) GetConfigFileReleaseHistory(req *restful.Request, rsp *rest
 	response := h.configServer.GetConfigFileReleaseHistories(handler.ParseHeaderContext(), filters)
 
 	handler.WriteHeaderAndProto(response)
-}
-
-// GetAllConfigFileTemplates get all config file template
-func (h *HTTPServer) GetAllConfigFileTemplates(req *restful.Request, rsp *restful.Response) {
-	handler := &httpcommon.Handler{
-		Request:  req,
-		Response: rsp,
-	}
-
-	response := h.configServer.GetAllConfigFileTemplates(handler.ParseHeaderContext())
-
-	handler.WriteHeaderAndProto(response)
-}
-
-// CreateConfigFileTemplate create config file template
-func (h *HTTPServer) CreateConfigFileTemplate(req *restful.Request, rsp *restful.Response) {
-	handler := &httpcommon.Handler{
-		Request:  req,
-		Response: rsp,
-	}
-
-	configFileTemplate := &apiconfig.ConfigFileTemplate{}
-	ctx, err := handler.Parse(configFileTemplate)
-	requestId := ctx.Value(types.StringContext("request-id"))
-
-	if err != nil {
-		configLog.Error("[Config][HttpServer] parse config file template from request error.",
-			zap.String("requestId", requestId.(string)),
-			zap.String("error", err.Error()))
-		handler.WriteHeaderAndProto(api.NewConfigFileTemplateResponseWithMessage(apimodel.Code_ParseException, err.Error()))
-		return
-	}
-
-	handler.WriteHeaderAndProto(h.configServer.CreateConfigFileTemplate(ctx, configFileTemplate))
 }
 
 // GetAllConfigEncryptAlgorithm get all config encrypt algorithm

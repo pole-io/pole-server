@@ -53,17 +53,30 @@ func (s *Server) GetConfigFileTemplate(ctx context.Context, name string) *apicon
 	return s.nextServer.GetConfigFileTemplate(ctx, name)
 }
 
-// CreateConfigFileTemplate create config file template
-func (s *Server) CreateConfigFileTemplate(ctx context.Context,
-	template *apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
+// CreateConfigFileTemplates create config file template
+func (s *Server) CreateConfigFileTemplates(ctx context.Context,
+	reqs []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
 
-	authCtx := s.collectConfigFileTemplateAuthContext(ctx,
-		[]*apiconfig.ConfigFileTemplate{template}, auth.Create, auth.CreateConfigFileTemplate)
+	authCtx := s.collectConfigFileTemplateAuthContext(ctx, reqs, auth.Create, auth.CreateConfigFileTemplate)
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewConfigResponseWithInfo(auth.ConvertToErrCode(err), err.Error())
 	}
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	return s.nextServer.CreateConfigFileTemplate(ctx, template)
+	return s.nextServer.CreateConfigFileTemplates(ctx, reqs)
+}
+
+// UpdateConfigFileTemplates create config file template
+func (s *Server) UpdateConfigFileTemplates(ctx context.Context,
+	reqs []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
+
+	authCtx := s.collectConfigFileTemplateAuthContext(ctx, reqs, auth.Create, auth.CreateConfigFileTemplate)
+	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewConfigResponseWithInfo(auth.ConvertToErrCode(err), err.Error())
+	}
+
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+	return s.nextServer.UpdateConfigFileTemplates(ctx, reqs)
 }

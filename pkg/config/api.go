@@ -53,8 +53,8 @@ type ConfigFileOperate interface {
 	CreateConfigFile(ctx context.Context, configFile *apiconfig.ConfigFile) *apiconfig.ConfigResponse
 	// GetConfigFileRichInfo 获取单个配置文件基础信息，包含发布状态等信息
 	GetConfigFileRichInfo(ctx context.Context, req *apiconfig.ConfigFile) *apiconfig.ConfigResponse
-	// SearchConfigFile 按 group 和 name 模糊搜索配置文件
-	SearchConfigFile(ctx context.Context, filter map[string]string) *apiconfig.ConfigBatchQueryResponse
+	// SearchConfigFiles 按 group 和 name 模糊搜索配置文件
+	SearchConfigFiles(ctx context.Context, filter map[string]string) *apiconfig.ConfigBatchQueryResponse
 	// UpdateConfigFile 更新配置文件
 	UpdateConfigFile(ctx context.Context, configFile *apiconfig.ConfigFile) *apiconfig.ConfigResponse
 	// DeleteConfigFile 删除配置文件
@@ -124,8 +124,10 @@ type ConfigFileClientOperate interface {
 type ConfigFileTemplateOperate interface {
 	// GetAllConfigFileTemplates get all config file templates
 	GetAllConfigFileTemplates(ctx context.Context) *apiconfig.ConfigBatchQueryResponse
-	// CreateConfigFileTemplate create config file template
-	CreateConfigFileTemplate(ctx context.Context, template *apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse
+	// CreateConfigFileTemplates create config file template
+	CreateConfigFileTemplates(ctx context.Context, template []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse
+	// UpdateConfigFileTemplates create config file template
+	UpdateConfigFileTemplates(ctx context.Context, template []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse
 	// GetConfigFileTemplate get config file template
 	GetConfigFileTemplate(ctx context.Context, name string) *apiconfig.ConfigResponse
 }

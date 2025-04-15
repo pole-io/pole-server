@@ -39,12 +39,31 @@ func (s *Server) GetConfigFileTemplate(ctx context.Context, name string) *apicon
 }
 
 // CreateConfigFileTemplate create config file template
-func (s *Server) CreateConfigFileTemplate(ctx context.Context,
-	template *apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
-	if checkRsp := s.checkConfigFileTemplateParam(template); checkRsp != nil {
-		return checkRsp
+func (s *Server) CreateConfigFileTemplates(ctx context.Context,
+	reqs []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
+	if len(reqs) == 0 {
+		return api.NewConfigResponse(apimodel.Code_BadRequest)
 	}
-	return s.nextServer.CreateConfigFileTemplate(ctx, template)
+	for _, t := range reqs {
+		if checkRsp := s.checkConfigFileTemplateParam(t); checkRsp != nil {
+			return checkRsp
+		}
+	}
+	return s.nextServer.CreateConfigFileTemplates(ctx, reqs)
+}
+
+// UpdateConfigFileTemplates create config file template
+func (s *Server) UpdateConfigFileTemplates(ctx context.Context,
+	reqs []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
+	if len(reqs) == 0 {
+		return api.NewConfigResponse(apimodel.Code_BadRequest)
+	}
+	for _, t := range reqs {
+		if checkRsp := s.checkConfigFileTemplateParam(t); checkRsp != nil {
+			return checkRsp
+		}
+	}
+	return s.nextServer.UpdateConfigFileTemplates(ctx, reqs)
 }
 
 func (s *Server) checkConfigFileTemplateParam(template *apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
