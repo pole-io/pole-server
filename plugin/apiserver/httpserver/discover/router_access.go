@@ -21,7 +21,9 @@ func (h *HTTPServer) addRoutingRuleAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichDeleteRouterRuleApiDocs(ws.POST("/routings/delete").To(h.DeleteRoutings)))
 	ws.Route(docs.EnrichUpdateRouterRuleApiDocs(ws.PUT("/routings").To(h.UpdateRoutings)))
 	ws.Route(docs.EnrichGetRouterRuleApiDocs(ws.GET("/routings").To(h.GetRoutings)))
-	ws.Route(docs.EnrichEnableRouterRuleApiDocs(ws.PUT("/routings/enable").To(h.EnableRoutings)))
+	ws.Route(docs.EnrichEnableRouterRuleApiDocs(ws.POST("/routings/publish").To(h.PublishRouterRules)))
+	ws.Route(docs.EnrichEnableRouterRuleApiDocs(ws.PUT("/routings/rollback").To(h.RollbackRouterRules)))
+	ws.Route(docs.EnrichEnableRouterRuleApiDocs(ws.PUT("/routings/stopbeta").To(h.RollbackRouterRules)))
 }
 
 const (
@@ -61,7 +63,7 @@ func (h *HTTPServer) CreateRoutings(req *restful.Request, rsp *restful.Response)
 		return
 	}
 
-	ret := h.ruleServer.CreateRoutingConfigs(ctx, routings)
+	ret := h.ruleServer.CreateRouterRules(ctx, routings)
 	handler.WriteHeaderAndProto(ret)
 }
 
@@ -87,7 +89,7 @@ func (h *HTTPServer) DeleteRoutings(req *restful.Request, rsp *restful.Response)
 		return
 	}
 
-	ret := h.ruleServer.DeleteRoutingConfigs(ctx, routings)
+	ret := h.ruleServer.DeleteRouterRules(ctx, routings)
 	handler.WriteHeaderAndProto(ret)
 }
 
@@ -112,9 +114,7 @@ func (h *HTTPServer) UpdateRoutings(req *restful.Request, rsp *restful.Response)
 		handler.WriteHeaderAndProto(apiv1.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-
-	ret := h.ruleServer.UpdateRoutingConfigs(ctx, routings)
-	handler.WriteHeaderAndProto(ret)
+	handler.WriteHeaderAndProto(h.ruleServer.UpdateRouterRules(ctx, routings))
 }
 
 // GetRoutings 查询规则路由
@@ -125,12 +125,11 @@ func (h *HTTPServer) GetRoutings(req *restful.Request, rsp *restful.Response) {
 	}
 
 	queryParams := httpcommon.ParseQueryParams(req)
-	ret := h.ruleServer.QueryRoutingConfigs(handler.ParseHeaderContext(), queryParams)
-	handler.WriteHeaderAndProto(ret)
+	handler.WriteHeaderAndProto(h.ruleServer.QueryRouterRules(handler.ParseHeaderContext(), queryParams))
 }
 
-// EnableRoutings 启用规则路由
-func (h *HTTPServer) EnableRoutings(req *restful.Request, rsp *restful.Response) {
+// PublishRouterRules 启用规则路由
+func (h *HTTPServer) PublishRouterRules(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,
@@ -150,7 +149,53 @@ func (h *HTTPServer) EnableRoutings(req *restful.Request, rsp *restful.Response)
 		handler.WriteHeaderAndProto(apiv1.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
+	handler.WriteHeaderAndProto(h.ruleServer.PublishRouterRules(ctx, routings))
+}
 
-	ret := h.ruleServer.EnableRoutings(ctx, routings)
-	handler.WriteHeaderAndProto(ret)
+// RollbackRouterRules 启用规则路由
+func (h *HTTPServer) RollbackRouterRules(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+	requestText, err := h.replaceV2TypeUrl(req)
+	if err != nil {
+		handler.WriteHeaderAndProto(apiv1.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+	var routings RouterArr
+	ctx, err := handler.ParseArrayByText(func() proto.Message {
+		msg := &apitraffic.RouteRule{}
+		routings = append(routings, msg)
+		return msg
+	}, requestText)
+	if err != nil {
+		handler.WriteHeaderAndProto(apiv1.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+	handler.WriteHeaderAndProto(h.ruleServer.RollbackRouterRules(ctx, routings))
+}
+
+// StopbetaRouterRules 启用规则路由
+func (h *HTTPServer) StopbetaRouterRules(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+	requestText, err := h.replaceV2TypeUrl(req)
+	if err != nil {
+		handler.WriteHeaderAndProto(apiv1.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+	var routings RouterArr
+	ctx, err := handler.ParseArrayByText(func() proto.Message {
+		msg := &apitraffic.RouteRule{}
+		routings = append(routings, msg)
+		return msg
+	}, requestText)
+	if err != nil {
+		handler.WriteHeaderAndProto(apiv1.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+	handler.WriteHeaderAndProto(h.ruleServer.StopbetaRouterRules(ctx, routings))
 }

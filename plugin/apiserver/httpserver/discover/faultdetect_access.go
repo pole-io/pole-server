@@ -1,8 +1,6 @@
 package discover
 
 import (
-	"net/http"
-
 	"github.com/emicklei/go-restful/v3"
 	"github.com/golang/protobuf/proto"
 
@@ -15,14 +13,13 @@ import (
 )
 
 func (h *HTTPServer) addFaultDetectRuleAccess(ws *restful.WebService) {
-	ws.Route(docs.EnrichGetFaultDetectRulesApiDocs(
-		ws.GET("/faultdetectors").To(h.GetFaultDetectRules)))
-	ws.Route(docs.EnrichCreateFaultDetectRulesApiDocs(
-		ws.POST("/faultdetectors").To(h.CreateFaultDetectRules)))
-	ws.Route(docs.EnrichUpdateFaultDetectRulesApiDocs(
-		ws.PUT("/faultdetectors").To(h.UpdateFaultDetectRules)))
-	ws.Route(docs.EnrichDeleteFaultDetectRulesApiDocs(
-		ws.POST("/faultdetectors/delete").To(h.DeleteFaultDetectRules)))
+	ws.Route(docs.EnrichGetFaultDetectRulesApiDocs(ws.GET("/faultdetectors").To(h.GetFaultDetectRules)))
+	ws.Route(docs.EnrichCreateFaultDetectRulesApiDocs(ws.POST("/faultdetectors").To(h.CreateFaultDetectRules)))
+	ws.Route(docs.EnrichUpdateFaultDetectRulesApiDocs(ws.PUT("/faultdetectors").To(h.UpdateFaultDetectRules)))
+	ws.Route(docs.EnrichDeleteFaultDetectRulesApiDocs(ws.POST("/faultdetectors/delete").To(h.DeleteFaultDetectRules)))
+	ws.Route(docs.EnrichEnableCircuitBreakerRulesApiDocs(ws.POST("/faultdetectors/rules/publish").To(h.PublishFaultDetectRules)))
+	ws.Route(docs.EnrichEnableCircuitBreakerRulesApiDocs(ws.PUT("/faultdetectors/rules/rollback").To(h.RollbackFaultDetectRules)))
+	ws.Route(docs.EnrichEnableCircuitBreakerRulesApiDocs(ws.PUT("/faultdetectors/rules/stopbeta").To(h.StopbetaFaultDetectRules)))
 }
 
 // CreateFaultDetectRules create the fault detect rues
@@ -42,7 +39,6 @@ func (h *HTTPServer) CreateFaultDetectRules(req *restful.Request, rsp *restful.R
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-
 	handler.WriteHeaderAndProto(h.ruleServer.CreateFaultDetectRules(ctx, faultDetectRules))
 }
 
@@ -63,13 +59,7 @@ func (h *HTTPServer) DeleteFaultDetectRules(req *restful.Request, rsp *restful.R
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-
-	ret := h.ruleServer.DeleteFaultDetectRules(ctx, faultDetectRules)
-	if code := api.CalcCode(ret); code != http.StatusOK {
-		handler.WriteHeaderAndProto(ret)
-		return
-	}
-	handler.WriteHeaderAndProto(ret)
+	handler.WriteHeaderAndProto(h.ruleServer.DeleteFaultDetectRules(ctx, faultDetectRules))
 }
 
 // UpdateFaultDetectRules update the fault detect rues
@@ -89,14 +79,7 @@ func (h *HTTPServer) UpdateFaultDetectRules(req *restful.Request, rsp *restful.R
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-
-	ret := h.ruleServer.UpdateFaultDetectRules(ctx, faultDetectRules)
-	if code := api.CalcCode(ret); code != http.StatusOK {
-		handler.WriteHeaderAndProto(ret)
-		return
-	}
-
-	handler.WriteHeaderAndProto(ret)
+	handler.WriteHeaderAndProto(h.ruleServer.UpdateFaultDetectRules(ctx, faultDetectRules))
 }
 
 // GetFaultDetectRules query the fault detect rues
@@ -109,4 +92,64 @@ func (h *HTTPServer) GetFaultDetectRules(req *restful.Request, rsp *restful.Resp
 	queryParams := httpcommon.ParseQueryParams(req)
 	ret := h.ruleServer.GetFaultDetectRules(handler.ParseHeaderContext(), queryParams)
 	handler.WriteHeaderAndProto(ret)
+}
+
+// PublishFaultDetectRules update the fault detect rues
+func (h *HTTPServer) PublishFaultDetectRules(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+
+	var faultDetectRules FaultDetectRuleAttr
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apifault.FaultDetectRule{}
+		faultDetectRules = append(faultDetectRules, msg)
+		return msg
+	})
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+	handler.WriteHeaderAndProto(h.ruleServer.PublishFaultDetectRules(ctx, faultDetectRules))
+}
+
+// RollbackFaultDetectRules update the fault detect rues
+func (h *HTTPServer) RollbackFaultDetectRules(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+
+	var faultDetectRules FaultDetectRuleAttr
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apifault.FaultDetectRule{}
+		faultDetectRules = append(faultDetectRules, msg)
+		return msg
+	})
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+	handler.WriteHeaderAndProto(h.ruleServer.RollbackFaultDetectRules(ctx, faultDetectRules))
+}
+
+// StopbetaFaultDetectRules update the fault detect rues
+func (h *HTTPServer) StopbetaFaultDetectRules(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+
+	var faultDetectRules FaultDetectRuleAttr
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apifault.FaultDetectRule{}
+		faultDetectRules = append(faultDetectRules, msg)
+		return msg
+	})
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+	handler.WriteHeaderAndProto(h.ruleServer.StopbetaFaultDetectRules(ctx, faultDetectRules))
 }

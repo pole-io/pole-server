@@ -145,6 +145,79 @@ func (svr *Server) UpdateFaultDetectRules(ctx context.Context,
 	return svr.nextSvr.UpdateFaultDetectRules(ctx, request)
 }
 
+// PublishFaultDetectRules implements service.DiscoverServer.
+func (svr *Server) PublishFaultDetectRules(ctx context.Context,
+	request []*fault_tolerance.FaultDetectRule) *service_manage.BatchWriteResponse {
+	if checkErr := checkBatchFaultDetectRules(request); checkErr != nil {
+		return checkErr
+	}
+
+	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, cbRule := range request {
+		if resp := checkFaultDetectRuleParams(cbRule, false, true); resp != nil {
+			api.Collect(batchRsp, resp)
+			continue
+		}
+		if resp := svr.checkFaultDetectRuleExists(ctx, cbRule.GetId()); resp != nil {
+			api.Collect(batchRsp, resp)
+			continue
+		}
+	}
+
+	if !api.IsSuccess(batchRsp) {
+		return batchRsp
+	}
+
+	return svr.nextSvr.PublishFaultDetectRules(ctx, request)
+}
+
+// RollbackFaultDetectRules implements service.DiscoverServer.
+func (svr *Server) RollbackFaultDetectRules(ctx context.Context,
+	request []*fault_tolerance.FaultDetectRule) *service_manage.BatchWriteResponse {
+	if checkErr := checkBatchFaultDetectRules(request); checkErr != nil {
+		return checkErr
+	}
+
+	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, cbRule := range request {
+		if resp := checkFaultDetectRuleParams(cbRule, false, true); resp != nil {
+			api.Collect(batchRsp, resp)
+			continue
+		}
+		if resp := svr.checkFaultDetectRuleExists(ctx, cbRule.GetId()); resp != nil {
+			api.Collect(batchRsp, resp)
+			continue
+		}
+	}
+	if !api.IsSuccess(batchRsp) {
+		return batchRsp
+	}
+	return svr.nextSvr.RollbackFaultDetectRules(ctx, request)
+}
+
+// StopbetaFaultDetectRules implements service.DiscoverServer.
+func (svr *Server) StopbetaFaultDetectRules(ctx context.Context,
+	request []*fault_tolerance.FaultDetectRule) *service_manage.BatchWriteResponse {
+	if checkErr := checkBatchFaultDetectRules(request); checkErr != nil {
+		return checkErr
+	}
+	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, cbRule := range request {
+		if resp := checkFaultDetectRuleParams(cbRule, false, true); resp != nil {
+			api.Collect(batchRsp, resp)
+			continue
+		}
+		if resp := svr.checkFaultDetectRuleExists(ctx, cbRule.GetId()); resp != nil {
+			api.Collect(batchRsp, resp)
+			continue
+		}
+	}
+	if !api.IsSuccess(batchRsp) {
+		return batchRsp
+	}
+	return svr.nextSvr.StopbetaFaultDetectRules(ctx, request)
+}
+
 func (svr *Server) checkFaultDetectRuleExists(ctx context.Context, id string) *apiservice.Response {
 	exists, err := svr.storage.HasFaultDetectRule(id)
 	if err != nil {

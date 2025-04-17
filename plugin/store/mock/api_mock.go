@@ -42,6 +42,20 @@ func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 	return m.recorder
 }
 
+// ActiveCircuitBreakerRule mocks base method.
+func (m *MockStore) ActiveCircuitBreakerRule(tx store.Tx, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ActiveCircuitBreakerRule", tx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ActiveCircuitBreakerRule indicates an expected call of ActiveCircuitBreakerRule.
+func (mr *MockStoreMockRecorder) ActiveCircuitBreakerRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveCircuitBreakerRule", reflect.TypeOf((*MockStore)(nil).ActiveCircuitBreakerRule), tx, name)
+}
+
 // ActiveConfigFileReleaseTx mocks base method.
 func (m *MockStore) ActiveConfigFileReleaseTx(tx store.Tx, release *config.ConfigFileRelease) error {
 	m.ctrl.T.Helper()
@@ -54,6 +68,62 @@ func (m *MockStore) ActiveConfigFileReleaseTx(tx store.Tx, release *config.Confi
 func (mr *MockStoreMockRecorder) ActiveConfigFileReleaseTx(tx, release interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveConfigFileReleaseTx", reflect.TypeOf((*MockStore)(nil).ActiveConfigFileReleaseTx), tx, release)
+}
+
+// ActiveFaultDetectRule mocks base method.
+func (m *MockStore) ActiveFaultDetectRule(tx store.Tx, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ActiveFaultDetectRule", tx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ActiveFaultDetectRule indicates an expected call of ActiveFaultDetectRule.
+func (mr *MockStoreMockRecorder) ActiveFaultDetectRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveFaultDetectRule", reflect.TypeOf((*MockStore)(nil).ActiveFaultDetectRule), tx, name)
+}
+
+// ActiveLaneGroup mocks base method.
+func (m *MockStore) ActiveLaneGroup(tx store.Tx, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ActiveLaneGroup", tx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ActiveLaneGroup indicates an expected call of ActiveLaneGroup.
+func (mr *MockStoreMockRecorder) ActiveLaneGroup(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveLaneGroup", reflect.TypeOf((*MockStore)(nil).ActiveLaneGroup), tx, name)
+}
+
+// ActiveRateLimitRule mocks base method.
+func (m *MockStore) ActiveRateLimitRule(tx store.Tx, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ActiveRateLimitRule", tx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ActiveRateLimitRule indicates an expected call of ActiveRateLimitRule.
+func (mr *MockStoreMockRecorder) ActiveRateLimitRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveRateLimitRule", reflect.TypeOf((*MockStore)(nil).ActiveRateLimitRule), tx, name)
+}
+
+// ActiveRouterRule mocks base method.
+func (m *MockStore) ActiveRouterRule(tx store.Tx, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ActiveRouterRule", tx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ActiveRouterRule indicates an expected call of ActiveRouterRule.
+func (mr *MockStoreMockRecorder) ActiveRouterRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveRouterRule", reflect.TypeOf((*MockStore)(nil).ActiveRouterRule), tx, name)
 }
 
 // AddGroup mocks base method.
@@ -614,21 +684,6 @@ func (mr *MockStoreMockRecorder) CreateConfigFileReleaseTx(tx, fileRelease inter
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateConfigFileReleaseTx", reflect.TypeOf((*MockStore)(nil).CreateConfigFileReleaseTx), tx, fileRelease)
 }
 
-// CreateConfigFileTemplate mocks base method.
-func (m *MockStore) CreateConfigFileTemplate(template *config.ConfigFileTemplate) (*config.ConfigFileTemplate, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateConfigFileTemplate", template)
-	ret0, _ := ret[0].(*config.ConfigFileTemplate)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateConfigFileTemplate indicates an expected call of CreateConfigFileTemplate.
-func (mr *MockStoreMockRecorder) CreateConfigFileTemplate(template interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateConfigFileTemplate", reflect.TypeOf((*MockStore)(nil).CreateConfigFileTemplate), template)
-}
-
 // CreateConfigFileTx mocks base method.
 func (m *MockStore) CreateConfigFileTx(tx store.Tx, file *config.ConfigFile) error {
 	m.ctrl.T.Helper()
@@ -1034,6 +1089,81 @@ func (m *MockStore) EnableRouting(conf *rules.RouterConfig) error {
 func (mr *MockStoreMockRecorder) EnableRouting(conf interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnableRouting", reflect.TypeOf((*MockStore)(nil).EnableRouting), conf)
+}
+
+// GetActiveCircuitBreakerRule mocks base method.
+func (m *MockStore) GetActiveCircuitBreakerRule(tx store.Tx, name string) (*rules.CircuitBreakerRule, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetActiveCircuitBreakerRule", tx, name)
+	ret0, _ := ret[0].(*rules.CircuitBreakerRule)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetActiveCircuitBreakerRule indicates an expected call of GetActiveCircuitBreakerRule.
+func (mr *MockStoreMockRecorder) GetActiveCircuitBreakerRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveCircuitBreakerRule", reflect.TypeOf((*MockStore)(nil).GetActiveCircuitBreakerRule), tx, name)
+}
+
+// GetActiveFaultDetectRule mocks base method.
+func (m *MockStore) GetActiveFaultDetectRule(tx store.Tx, name string) (*rules.FaultDetectRule, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetActiveFaultDetectRule", tx, name)
+	ret0, _ := ret[0].(*rules.FaultDetectRule)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetActiveFaultDetectRule indicates an expected call of GetActiveFaultDetectRule.
+func (mr *MockStoreMockRecorder) GetActiveFaultDetectRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveFaultDetectRule", reflect.TypeOf((*MockStore)(nil).GetActiveFaultDetectRule), tx, name)
+}
+
+// GetActiveLaneGroup mocks base method.
+func (m *MockStore) GetActiveLaneGroup(tx store.Tx, name string) (*rules.LaneGroup, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetActiveLaneGroup", tx, name)
+	ret0, _ := ret[0].(*rules.LaneGroup)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetActiveLaneGroup indicates an expected call of GetActiveLaneGroup.
+func (mr *MockStoreMockRecorder) GetActiveLaneGroup(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveLaneGroup", reflect.TypeOf((*MockStore)(nil).GetActiveLaneGroup), tx, name)
+}
+
+// GetActiveRateLimitRule mocks base method.
+func (m *MockStore) GetActiveRateLimitRule(tx store.Tx, name string) (*rules.RateLimit, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetActiveRateLimitRule", tx, name)
+	ret0, _ := ret[0].(*rules.RateLimit)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetActiveRateLimitRule indicates an expected call of GetActiveRateLimitRule.
+func (mr *MockStoreMockRecorder) GetActiveRateLimitRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveRateLimitRule", reflect.TypeOf((*MockStore)(nil).GetActiveRateLimitRule), tx, name)
+}
+
+// GetActiveRouterRule mocks base method.
+func (m *MockStore) GetActiveRouterRule(tx store.Tx, name string) (*rules.RouterConfig, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetActiveRouterRule", tx, name)
+	ret0, _ := ret[0].(*rules.RouterConfig)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetActiveRouterRule indicates an expected call of GetActiveRouterRule.
+func (mr *MockStoreMockRecorder) GetActiveRouterRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveRouterRule", reflect.TypeOf((*MockStore)(nil).GetActiveRouterRule), tx, name)
 }
 
 // GetCircuitBreakerRules mocks base method.
@@ -2156,6 +2286,20 @@ func (mr *MockStoreMockRecorder) HasFaultDetectRuleByNameExcludeId(name, namespa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasFaultDetectRuleByNameExcludeId", reflect.TypeOf((*MockStore)(nil).HasFaultDetectRuleByNameExcludeId), name, namespace, id)
 }
 
+// InactiveCircuitBreakerRule mocks base method.
+func (m *MockStore) InactiveCircuitBreakerRule(tx store.Tx, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InactiveCircuitBreakerRule", tx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InactiveCircuitBreakerRule indicates an expected call of InactiveCircuitBreakerRule.
+func (mr *MockStoreMockRecorder) InactiveCircuitBreakerRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InactiveCircuitBreakerRule", reflect.TypeOf((*MockStore)(nil).InactiveCircuitBreakerRule), tx, name)
+}
+
 // InactiveConfigFileReleaseTx mocks base method.
 func (m *MockStore) InactiveConfigFileReleaseTx(tx store.Tx, release *config.ConfigFileRelease) error {
 	m.ctrl.T.Helper()
@@ -2168,6 +2312,62 @@ func (m *MockStore) InactiveConfigFileReleaseTx(tx store.Tx, release *config.Con
 func (mr *MockStoreMockRecorder) InactiveConfigFileReleaseTx(tx, release interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InactiveConfigFileReleaseTx", reflect.TypeOf((*MockStore)(nil).InactiveConfigFileReleaseTx), tx, release)
+}
+
+// InactiveFaultDetectRule mocks base method.
+func (m *MockStore) InactiveFaultDetectRule(tx store.Tx, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InactiveFaultDetectRule", tx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InactiveFaultDetectRule indicates an expected call of InactiveFaultDetectRule.
+func (mr *MockStoreMockRecorder) InactiveFaultDetectRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InactiveFaultDetectRule", reflect.TypeOf((*MockStore)(nil).InactiveFaultDetectRule), tx, name)
+}
+
+// InactiveLaneGroup mocks base method.
+func (m *MockStore) InactiveLaneGroup(tx store.Tx, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InactiveLaneGroup", tx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InactiveLaneGroup indicates an expected call of InactiveLaneGroup.
+func (mr *MockStoreMockRecorder) InactiveLaneGroup(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InactiveLaneGroup", reflect.TypeOf((*MockStore)(nil).InactiveLaneGroup), tx, name)
+}
+
+// InactiveRateLimitRule mocks base method.
+func (m *MockStore) InactiveRateLimitRule(tx store.Tx, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InactiveRateLimitRule", tx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InactiveRateLimitRule indicates an expected call of InactiveRateLimitRule.
+func (mr *MockStoreMockRecorder) InactiveRateLimitRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InactiveRateLimitRule", reflect.TypeOf((*MockStore)(nil).InactiveRateLimitRule), tx, name)
+}
+
+// InactiveRouterRule mocks base method.
+func (m *MockStore) InactiveRouterRule(tx store.Tx, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InactiveRouterRule", tx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InactiveRouterRule indicates an expected call of InactiveRouterRule.
+func (mr *MockStoreMockRecorder) InactiveRouterRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InactiveRouterRule", reflect.TypeOf((*MockStore)(nil).InactiveRouterRule), tx, name)
 }
 
 // Initialize mocks base method.
@@ -2214,18 +2414,33 @@ func (mr *MockStoreMockRecorder) ListLeaderElections() *gomock.Call {
 }
 
 // ListVersions mocks base method.
-func (m *MockStore) ListVersions(ctx context.Context, svc, namespace string) ([]*service.ServiceContract, error) {
+func (m *MockStore) ListVersions(ctx context.Context, svcName, nsName string) ([]*service.ServiceContract, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListVersions", ctx, svc, namespace)
+	ret := m.ctrl.Call(m, "ListVersions", ctx, svcName, nsName)
 	ret0, _ := ret[0].([]*service.ServiceContract)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListVersions indicates an expected call of ListVersions.
-func (mr *MockStoreMockRecorder) ListVersions(ctx, service, namespace interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListVersions(ctx, svcName, nsName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListVersions", reflect.TypeOf((*MockStore)(nil).ListVersions), ctx, service, namespace)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListVersions", reflect.TypeOf((*MockStore)(nil).ListVersions), ctx, svcName, nsName)
+}
+
+// LockCircuitBreakerRule mocks base method.
+func (m *MockStore) LockCircuitBreakerRule(tx store.Tx, name string) (*rules.CircuitBreakerRule, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockCircuitBreakerRule", tx, name)
+	ret0, _ := ret[0].(*rules.CircuitBreakerRule)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockCircuitBreakerRule indicates an expected call of LockCircuitBreakerRule.
+func (mr *MockStoreMockRecorder) LockCircuitBreakerRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockCircuitBreakerRule", reflect.TypeOf((*MockStore)(nil).LockCircuitBreakerRule), tx, name)
 }
 
 // LockConfigFile mocks base method.
@@ -2243,6 +2458,21 @@ func (mr *MockStoreMockRecorder) LockConfigFile(tx, file interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockConfigFile", reflect.TypeOf((*MockStore)(nil).LockConfigFile), tx, file)
 }
 
+// LockFaultDetectRule mocks base method.
+func (m *MockStore) LockFaultDetectRule(tx store.Tx, name string) (*rules.FaultDetectRule, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockFaultDetectRule", tx, name)
+	ret0, _ := ret[0].(*rules.FaultDetectRule)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockFaultDetectRule indicates an expected call of LockFaultDetectRule.
+func (mr *MockStoreMockRecorder) LockFaultDetectRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockFaultDetectRule", reflect.TypeOf((*MockStore)(nil).LockFaultDetectRule), tx, name)
+}
+
 // LockLaneGroup mocks base method.
 func (m *MockStore) LockLaneGroup(tx store.Tx, name string) (*rules.LaneGroup, error) {
 	m.ctrl.T.Helper()
@@ -2256,6 +2486,36 @@ func (m *MockStore) LockLaneGroup(tx store.Tx, name string) (*rules.LaneGroup, e
 func (mr *MockStoreMockRecorder) LockLaneGroup(tx, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockLaneGroup", reflect.TypeOf((*MockStore)(nil).LockLaneGroup), tx, name)
+}
+
+// LockRateLimitRule mocks base method.
+func (m *MockStore) LockRateLimitRule(tx store.Tx, name string) (*rules.RateLimit, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockRateLimitRule", tx, name)
+	ret0, _ := ret[0].(*rules.RateLimit)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockRateLimitRule indicates an expected call of LockRateLimitRule.
+func (mr *MockStoreMockRecorder) LockRateLimitRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockRateLimitRule", reflect.TypeOf((*MockStore)(nil).LockRateLimitRule), tx, name)
+}
+
+// LockRouterRule mocks base method.
+func (m *MockStore) LockRouterRule(tx store.Tx, name string) (*rules.RouterConfig, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockRouterRule", tx, name)
+	ret0, _ := ret[0].(*rules.RouterConfig)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockRouterRule indicates an expected call of LockRouterRule.
+func (mr *MockStoreMockRecorder) LockRouterRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockRouterRule", reflect.TypeOf((*MockStore)(nil).LockRouterRule), tx, name)
 }
 
 // LooseAddStrategyResources mocks base method.
@@ -2284,6 +2544,76 @@ func (m *MockStore) Name() string {
 func (mr *MockStoreMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockStore)(nil).Name))
+}
+
+// PublishCircuitBreakerRule mocks base method.
+func (m *MockStore) PublishCircuitBreakerRule(tx store.Tx, rule *rules.CircuitBreakerRule) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PublishCircuitBreakerRule", tx, rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PublishCircuitBreakerRule indicates an expected call of PublishCircuitBreakerRule.
+func (mr *MockStoreMockRecorder) PublishCircuitBreakerRule(tx, rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublishCircuitBreakerRule", reflect.TypeOf((*MockStore)(nil).PublishCircuitBreakerRule), tx, rule)
+}
+
+// PublishFaultDetectRule mocks base method.
+func (m *MockStore) PublishFaultDetectRule(tx store.Tx, rule *rules.FaultDetectRule) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PublishFaultDetectRule", tx, rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PublishFaultDetectRule indicates an expected call of PublishFaultDetectRule.
+func (mr *MockStoreMockRecorder) PublishFaultDetectRule(tx, rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublishFaultDetectRule", reflect.TypeOf((*MockStore)(nil).PublishFaultDetectRule), tx, rule)
+}
+
+// PublishLaneGroup mocks base method.
+func (m *MockStore) PublishLaneGroup(tx store.Tx, rule *rules.LaneGroup) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PublishLaneGroup", tx, rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PublishLaneGroup indicates an expected call of PublishLaneGroup.
+func (mr *MockStoreMockRecorder) PublishLaneGroup(tx, rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublishLaneGroup", reflect.TypeOf((*MockStore)(nil).PublishLaneGroup), tx, rule)
+}
+
+// PublishRateLimitRule mocks base method.
+func (m *MockStore) PublishRateLimitRule(tx store.Tx, rule *rules.RateLimit) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PublishRateLimitRule", tx, rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PublishRateLimitRule indicates an expected call of PublishRateLimitRule.
+func (mr *MockStoreMockRecorder) PublishRateLimitRule(tx, rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublishRateLimitRule", reflect.TypeOf((*MockStore)(nil).PublishRateLimitRule), tx, rule)
+}
+
+// PublishRouterRule mocks base method.
+func (m *MockStore) PublishRouterRule(tx store.Tx, rule *rules.RouterConfig) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PublishRouterRule", tx, rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PublishRouterRule indicates an expected call of PublishRouterRule.
+func (mr *MockStoreMockRecorder) PublishRouterRule(tx, rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublishRouterRule", reflect.TypeOf((*MockStore)(nil).PublishRouterRule), tx, rule)
 }
 
 // QueryAllConfigFileTemplates mocks base method.
@@ -2359,6 +2689,21 @@ func (m *MockStore) RemoveStrategyResources(resources []auth.StrategyResource) e
 func (mr *MockStoreMockRecorder) RemoveStrategyResources(resources interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveStrategyResources", reflect.TypeOf((*MockStore)(nil).RemoveStrategyResources), resources)
+}
+
+// SaveConfigFileTemplate mocks base method.
+func (m *MockStore) SaveConfigFileTemplate(template *config.ConfigFileTemplate) (*config.ConfigFileTemplate, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveConfigFileTemplate", template)
+	ret0, _ := ret[0].(*config.ConfigFileTemplate)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SaveConfigFileTemplate indicates an expected call of SaveConfigFileTemplate.
+func (mr *MockStoreMockRecorder) SaveConfigFileTemplate(template interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveConfigFileTemplate", reflect.TypeOf((*MockStore)(nil).SaveConfigFileTemplate), template)
 }
 
 // SetInstanceHealthStatus mocks base method.

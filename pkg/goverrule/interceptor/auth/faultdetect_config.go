@@ -93,6 +93,44 @@ func (svr *Server) UpdateFaultDetectRules(
 	return svr.nextSvr.UpdateFaultDetectRules(ctx, request)
 }
 
+func (svr *Server) PublishFaultDetectRules(
+	ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
+
+	authCtx := svr.collectFaultDetectAuthContext(ctx, request, authtypes.Modify, authtypes.UpdateFaultDetectRules)
+	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+	return svr.nextSvr.PublishFaultDetectRules(ctx, request)
+}
+
+// RollbackFaultDetectRules rolls back the fault detect rules
+func (svr *Server) RollbackFaultDetectRules(
+	ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
+
+	authCtx := svr.collectFaultDetectAuthContext(ctx, request, authtypes.Modify, authtypes.RollbackFaultDetectRules)
+	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+	return svr.nextSvr.RollbackFaultDetectRules(ctx, request)
+}
+
+// StopbetaFaultDetectRules implements FaultDetectRuleOperateServer.
+func (svr *Server) StopbetaFaultDetectRules(
+	ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
+
+	authCtx := svr.collectFaultDetectAuthContext(ctx, request, authtypes.Modify, authtypes.StopbetaFaultDetectRules)
+	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+	return svr.nextSvr.StopbetaFaultDetectRules(ctx, request)
+}
+
 func (svr *Server) GetFaultDetectRules(
 	ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
 	authCtx := svr.collectFaultDetectAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeFaultDetectRules)

@@ -27,8 +27,8 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
-// GetRoutingConfigWithCache is the interface for getting routing config with cache
-func (svr *Server) GetRoutingConfigWithCache(
+// GetOldRouterRuleWithCache is the interface for getting routing config with cache
+func (svr *Server) GetOldRouterRuleWithCache(
 	ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
 
 	authCtx := svr.collectServiceAuthContext(
@@ -39,7 +39,7 @@ func (svr *Server) GetRoutingConfigWithCache(
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
-	return svr.nextSvr.GetRoutingConfigWithCache(ctx, req)
+	return svr.nextSvr.GetOldRouterRuleWithCache(ctx, req)
 }
 
 // GetRateLimitWithCache is the interface for getting rate limit with cache

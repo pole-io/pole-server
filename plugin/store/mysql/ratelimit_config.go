@@ -370,6 +370,31 @@ func (rls *rateLimitStore) getBriefRateLimits(
 	return out, nil
 }
 
+// ActiveRateLimitRule implements store.RateLimitStore.
+func (rls *rateLimitStore) ActiveRateLimitRule(tx store.Tx, name string) error {
+	panic("unimplemented")
+}
+
+// GetActiveRateLimitRule implements store.RateLimitStore.
+func (rls *rateLimitStore) GetActiveRateLimitRule(tx store.Tx, name string) (*rules.RateLimit, error) {
+	panic("unimplemented")
+}
+
+// InactiveRateLimitRule implements store.RateLimitStore.
+func (rls *rateLimitStore) InactiveRateLimitRule(tx store.Tx, name string) error {
+	panic("unimplemented")
+}
+
+// LockRateLimitRule implements store.RateLimitStore.
+func (rls *rateLimitStore) LockRateLimitRule(tx store.Tx, name string) (*rules.RateLimit, error) {
+	panic("unimplemented")
+}
+
+// PublishRateLimitRule implements store.RateLimitStore.
+func (rls *rateLimitStore) PublishRateLimitRule(tx store.Tx, rule *rules.RateLimit) error {
+	panic("unimplemented")
+}
+
 // fetchBriefRateLimitRows fetch the brief ratelimit list
 func fetchBriefRateLimitRows(rows *sql.Rows) ([]*rules.ExtendRateLimit, error) {
 	defer rows.Close()

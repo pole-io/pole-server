@@ -7,7 +7,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/wrappers"
 
+	"github.com/polarismesh/specification/source/go/api/v1/fault_tolerance"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	"github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/cmdb"
@@ -45,6 +47,81 @@ type Server struct {
 	subCtxs []*eventhub.SubscribtionContext
 	// emptyPushProtectSvs 开启了推空保护的服务数据
 	emptyPushProtectSvs *container.SyncMap[string, *time.Timer]
+}
+
+// StopbetaCircuitBreakerRules implements GoverRuleServer.
+func (s *Server) StopbetaCircuitBreakerRules(ctx context.Context, request []*fault_tolerance.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+	panic("unimplemented")
+}
+
+// StopbetaFaultDetectRules implements GoverRuleServer.
+func (s *Server) StopbetaFaultDetectRules(ctx context.Context, request []*fault_tolerance.FaultDetectRule) *apiservice.BatchWriteResponse {
+	panic("unimplemented")
+}
+
+// StopbetaLaneGroups implements GoverRuleServer.
+func (s *Server) StopbetaLaneGroups(ctx context.Context, req []*traffic_manage.LaneGroup) *apiservice.BatchWriteResponse {
+	panic("unimplemented")
+}
+
+// StopbetaRateLimits implements GoverRuleServer.
+func (s *Server) StopbetaRateLimits(ctx context.Context, request []*traffic_manage.Rule) *apiservice.BatchWriteResponse {
+	panic("unimplemented")
+}
+
+// StopbetaRouterRules implements GoverRuleServer.
+func (s *Server) StopbetaRouterRules(ctx context.Context, req []*traffic_manage.RouteRule) *apiservice.BatchWriteResponse {
+	panic("unimplemented")
+}
+
+// PublishCircuitBreakerRules implements GoverRuleServer.
+func (s *Server) PublishCircuitBreakerRules(ctx context.Context, request []*fault_tolerance.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+	panic("unimplemented")
+}
+
+// PublishFaultDetectRules implements GoverRuleServer.
+func (s *Server) PublishFaultDetectRules(ctx context.Context, request []*fault_tolerance.FaultDetectRule) *apiservice.BatchWriteResponse {
+	panic("unimplemented")
+}
+
+// PublishLaneGroups implements GoverRuleServer.
+func (s *Server) PublishLaneGroups(ctx context.Context, req []*traffic_manage.LaneGroup) *apiservice.BatchWriteResponse {
+	panic("unimplemented")
+}
+
+// PublishRateLimits implements GoverRuleServer.
+func (s *Server) PublishRateLimits(ctx context.Context, request []*traffic_manage.Rule) *apiservice.BatchWriteResponse {
+	panic("unimplemented")
+}
+
+// PublishRouterRules implements GoverRuleServer.
+func (s *Server) PublishRouterRules(ctx context.Context, req []*traffic_manage.RouteRule) *apiservice.BatchWriteResponse {
+	panic("unimplemented")
+}
+
+// RollbackCircuitBreakerRules implements GoverRuleServer.
+func (s *Server) RollbackCircuitBreakerRules(ctx context.Context, request []*fault_tolerance.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+	panic("unimplemented")
+}
+
+// RollbackFaultDetectRules implements GoverRuleServer.
+func (s *Server) RollbackFaultDetectRules(ctx context.Context, request []*fault_tolerance.FaultDetectRule) *apiservice.BatchWriteResponse {
+	panic("unimplemented")
+}
+
+// RollbackLaneGroups implements GoverRuleServer.
+func (s *Server) RollbackLaneGroups(ctx context.Context, req []*traffic_manage.LaneGroup) *apiservice.BatchWriteResponse {
+	panic("unimplemented")
+}
+
+// RollbackRateLimits implements GoverRuleServer.
+func (s *Server) RollbackRateLimits(ctx context.Context, request []*traffic_manage.Rule) *apiservice.BatchWriteResponse {
+	panic("unimplemented")
+}
+
+// RollbackRouterRules implements GoverRuleServer.
+func (s *Server) RollbackRouterRules(ctx context.Context, req []*traffic_manage.RouteRule) *apiservice.BatchWriteResponse {
+	panic("unimplemented")
 }
 
 func (s *Server) Store() store.Store {

@@ -152,6 +152,9 @@ const (
 	UpdateRouteRules   ServerFunctionName = "UpdateRouteRules"
 	EnableRouteRules   ServerFunctionName = "EnableRouteRules"
 	DescribeRouteRules ServerFunctionName = "DescribeRouteRules"
+	PublishRouteRules  ServerFunctionName = "PublishRouteRules"
+	RollbackRouteRules ServerFunctionName = "RollbackRouteRules"
+	StopbetaRouteRules ServerFunctionName = "StopbetaRouteRules"
 )
 
 // 限流
@@ -161,6 +164,9 @@ const (
 	UpdateRateLimitRules   ServerFunctionName = "UpdateRateLimitRules"
 	EnableRateLimitRules   ServerFunctionName = "EnableRateLimitRules"
 	DescribeRateLimitRules ServerFunctionName = "DescribeRateLimitRules"
+	PublishRateLimitRules  ServerFunctionName = "PublishRateLimitRules"
+	RollbackRateLimitRules ServerFunctionName = "RollbackRateLimitRules"
+	StopbetaRateLimitRules ServerFunctionName = "StopbetaRateLimitRules"
 )
 
 // 熔断
@@ -170,6 +176,9 @@ const (
 	EnableCircuitBreakerRules   ServerFunctionName = "EnableCircuitBreakerRules"
 	UpdateCircuitBreakerRules   ServerFunctionName = "UpdateCircuitBreakerRules"
 	DescribeCircuitBreakerRules ServerFunctionName = "DescribeCircuitBreakerRules"
+	PublishCircuitBreakerRules  ServerFunctionName = "PublishCircuitBreakerRules"
+	RollbackCircuitBreakerRules ServerFunctionName = "RollbackCircuitBreakerRules"
+	StopbetaCircuitBreakerRules ServerFunctionName = "StopbetaCircuitBreakerRules"
 )
 
 // 主动探测
@@ -179,6 +188,9 @@ const (
 	EnableFaultDetectRules   ServerFunctionName = "EnableFaultDetectRules"
 	UpdateFaultDetectRules   ServerFunctionName = "UpdateFaultDetectRules"
 	DescribeFaultDetectRules ServerFunctionName = "DescribeFaultDetectRules"
+	PublishFaultDetectRules  ServerFunctionName = "PublishFaultDetectRules"
+	RollbackFaultDetectRules ServerFunctionName = "RollbackFaultDetectRules"
+	StopbetaFaultDetectRules ServerFunctionName = "StopbetaFaultDetectRules"
 )
 
 // 全链路灰度
@@ -188,6 +200,9 @@ const (
 	EnableLaneGroups   ServerFunctionName = "EnableLaneGroups"
 	UpdateLaneGroups   ServerFunctionName = "UpdateLaneGroups"
 	DescribeLaneGroups ServerFunctionName = "DescribeLaneGroups"
+	PublishLaneGroups  ServerFunctionName = "PublishLaneGroups"
+	RollbackLaneGroups ServerFunctionName = "RollbackLaneGroups"
+	StopbetaLaneGroups ServerFunctionName = "StopbetaLaneGroups"
 )
 
 // 用户/用户组

@@ -91,10 +91,10 @@ func (svr *Server) UpdateRateLimits(
 	return svr.nextSvr.UpdateRateLimits(ctx, reqs)
 }
 
-// EnableRateLimits 启用限流规则
-func (svr *Server) EnableRateLimits(
+// PublishRateLimits 发布限流规则
+func (svr *Server) PublishRateLimits(
 	ctx context.Context, reqs []*apitraffic.Rule) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectRateLimitAuthContext(ctx, reqs, authtypes.Read, authtypes.EnableRateLimitRules)
+	authCtx := svr.collectRateLimitAuthContext(ctx, reqs, authtypes.Read, authtypes.PublishRateLimitRules)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
@@ -103,7 +103,37 @@ func (svr *Server) EnableRateLimits(
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
-	return svr.nextSvr.EnableRateLimits(ctx, reqs)
+	return svr.nextSvr.PublishRateLimits(ctx, reqs)
+}
+
+// RollbackRateLimits 回滚限流规则
+func (svr *Server) RollbackRateLimits(
+	ctx context.Context, reqs []*apitraffic.Rule) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectRateLimitAuthContext(ctx, reqs, authtypes.Read, authtypes.RollbackRateLimitRules)
+
+	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
+	}
+
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+
+	return svr.nextSvr.RollbackRateLimits(ctx, reqs)
+}
+
+// StopbetaRateLimits 停用限流规则
+func (svr *Server) StopbetaRateLimits(
+	ctx context.Context, reqs []*apitraffic.Rule) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectRateLimitAuthContext(ctx, reqs, authtypes.Read, authtypes.StopbetaRateLimitRules)
+
+	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
+	}
+
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+
+	return svr.nextSvr.StopbetaRateLimits(ctx, reqs)
 }
 
 // GetRateLimits gets rate limits for a namespace.

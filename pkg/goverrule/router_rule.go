@@ -42,19 +42,19 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
-// CreateRoutingConfigs Create a routing configuration
-func (s *Server) CreateRoutingConfigs(
+// CreateRouterRules Create a routing configuration
+func (s *Server) CreateRouterRules(
 	ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 	resp := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range req {
-		apiv1.Collect(resp, s.createRoutingConfig(ctx, entry))
+		apiv1.Collect(resp, s.createRouterRule(ctx, entry))
 	}
 
 	return apiv1.FormatBatchWriteResponse(resp)
 }
 
-// createRoutingConfig Create a routing configuration
-func (s *Server) createRoutingConfig(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
+// createRouterRule Create a routing configuration
+func (s *Server) createRouterRule(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
 	conf, err := Api2RoutingConfig(req)
 	if err != nil {
 		log.Error("[Routing][] parse routing config  from request for create",
@@ -73,20 +73,20 @@ func (s *Server) createRoutingConfig(ctx context.Context, req *apitraffic.RouteR
 	return apiv1.NewRouterResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
-// DeleteRoutingConfigs Batch delete routing configuration
-func (s *Server) DeleteRoutingConfigs(
+// DeleteRouterRules Batch delete routing configuration
+func (s *Server) DeleteRouterRules(
 	ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 	out := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range req {
-		resp := s.deleteRoutingConfig(ctx, entry)
+		resp := s.deleteRouterRule(ctx, entry)
 		apiv1.Collect(out, resp)
 	}
 
 	return apiv1.FormatBatchWriteResponse(out)
 }
 
-// DeleteRoutingConfig Delete a routing configuration
-func (s *Server) deleteRoutingConfig(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
+// deleteRouterRule Delete a routing configuration
+func (s *Server) deleteRouterRule(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
 	if err := s.storage.DeleteRoutingConfig(req.Id); err != nil {
 		log.Error("[Routing][] delete routing config  store layer",
 			utils.RequestID(ctx), zap.Error(err))
@@ -100,20 +100,20 @@ func (s *Server) deleteRoutingConfig(ctx context.Context, req *apitraffic.RouteR
 	return apiv1.NewRouterResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
-// UpdateRoutingConfigs Batch update routing configuration
-func (s *Server) UpdateRoutingConfigs(
+// UpdateRouterRules Batch update routing configuration
+func (s *Server) UpdateRouterRules(
 	ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 	out := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range req {
-		resp := s.updateRoutingConfig(ctx, entry)
+		resp := s.updateRouterRule(ctx, entry)
 		apiv1.Collect(out, resp)
 	}
 
 	return apiv1.FormatBatchWriteResponse(out)
 }
 
-// updateRoutingConfig Update a single routing configuration
-func (s *Server) updateRoutingConfig(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
+// updateRouterRule Update a single routing configuration
+func (s *Server) updateRouterRule(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
 	// Check whether the routing configuration exists
 	conf, err := s.storage.GetRoutingConfigWithID(req.Id)
 	if err != nil {
@@ -143,8 +143,8 @@ func (s *Server) updateRoutingConfig(ctx context.Context, req *apitraffic.RouteR
 	return apiv1.NewResponse(apimodel.Code_ExecuteSuccess)
 }
 
-// QueryRoutingConfigs The interface of the query configuration to the OSS
-func (s *Server) QueryRoutingConfigs(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+// QueryRouterRules The interface of the query configuration to the OSS
+func (s *Server) QueryRouterRules(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
 	args, presp := parseRoutingArgs(query, ctx)
 	if presp != nil {
 		return apiv1.NewBatchQueryResponse(apimodel.Code(presp.GetCode().GetValue()))
@@ -176,17 +176,17 @@ func (s *Server) GetAllRouterRules(ctx context.Context) *apiservice.BatchQueryRe
 }
 
 // EnableRoutings batch enable routing rules
-func (s *Server) EnableRoutings(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
+func (s *Server) EnableRouterRules(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 	out := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range req {
-		resp := s.enableRoutings(ctx, entry)
+		resp := s.enableRouterRules(ctx, entry)
 		apiv1.Collect(out, resp)
 	}
 
 	return apiv1.FormatBatchWriteResponse(out)
 }
 
-func (s *Server) enableRoutings(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
+func (s *Server) enableRouterRules(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
 	conf, err := s.storage.GetRoutingConfigWithID(req.Id)
 	if err != nil {
 		log.Error("[Routing][] get routing config  store layer",

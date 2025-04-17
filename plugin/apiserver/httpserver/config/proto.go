@@ -21,21 +21,8 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 )
-
-// NamespaceArr 命名空间数组定义
-type NamespaceArr []*apimodel.Namespace
-
-// Reset 重置初始化
-func (m *NamespaceArr) Reset() { *m = NamespaceArr{} }
-
-// String return string
-func (m *NamespaceArr) String() string { return proto.CompactTextString(m) }
-
-// ProtoMessage return proto message
-func (*NamespaceArr) ProtoMessage() {}
 
 // ConfigReleaseArr 发布规则数组定义
 type ConfigReleaseArr []*apiservice.ConfigRelease
@@ -48,18 +35,6 @@ func (m *ConfigReleaseArr) String() string { return proto.CompactTextString(m) }
 
 // ProtoMessage return proto message
 func (*ConfigReleaseArr) ProtoMessage() {}
-
-// ServiceAliasArr 服务实例数组定义
-type ServiceAliasArr []*apiservice.ServiceAlias
-
-// Reset reset initialization
-func (m *ServiceAliasArr) Reset() { *m = ServiceAliasArr{} }
-
-// String return string
-func (m *ServiceAliasArr) String() string { return proto.CompactTextString(m) }
-
-// ProtoMessage proto message
-func (*ServiceAliasArr) ProtoMessage() {}
 
 // ConfigFileArr 配置文件数组定义
 type ConfigFileArr []*apiconfig.ConfigFile

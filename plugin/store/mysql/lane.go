@@ -30,6 +30,8 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
+var _ store.LaneStore = (*laneStore)(nil)
+
 type laneStore struct {
 	master *BaseDB
 	slave  *BaseDB
@@ -493,6 +495,26 @@ func (l *laneStore) GetLaneRuleMaxPriority() (int32, error) {
 		return tx.Commit()
 	})
 	return maxPriority, store.Error(err)
+}
+
+// ActiveLaneGroup implements store.LaneStore.
+func (l *laneStore) ActiveLaneGroup(tx store.Tx, name string) error {
+	panic("unimplemented")
+}
+
+// GetActiveLaneGroup implements store.LaneStore.
+func (l *laneStore) GetActiveLaneGroup(tx store.Tx, name string) (*ruletypes.LaneGroup, error) {
+	panic("unimplemented")
+}
+
+// InactiveLaneGroup implements store.LaneStore.
+func (l *laneStore) InactiveLaneGroup(tx store.Tx, name string) error {
+	panic("unimplemented")
+}
+
+// PublishLaneGroup implements store.LaneStore.
+func (l *laneStore) PublishLaneGroup(tx store.Tx, rule *ruletypes.LaneGroup) error {
+	panic("unimplemented")
 }
 
 // cleanSoftDeletedRules .

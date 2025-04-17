@@ -283,6 +283,31 @@ func (r *routerRuleStore) getRoutingConfigWithIDTx(tx *BaseTx, ruleID string) (*
 	return out[0], nil
 }
 
+// ActiveRouterRule implements store.RouterRuleConfigStore.
+func (r *routerRuleStore) ActiveRouterRule(tx store.Tx, name string) error {
+	panic("unimplemented")
+}
+
+// GetActiveRouterRule implements store.RouterRuleConfigStore.
+func (r *routerRuleStore) GetActiveRouterRule(tx store.Tx, name string) (*rules.RouterConfig, error) {
+	panic("unimplemented")
+}
+
+// InactiveRouterRule implements store.RouterRuleConfigStore.
+func (r *routerRuleStore) InactiveRouterRule(tx store.Tx, name string) error {
+	panic("unimplemented")
+}
+
+// LockRouterRule implements store.RouterRuleConfigStore.
+func (r *routerRuleStore) LockRouterRule(tx store.Tx, name string) (*rules.RouterConfig, error) {
+	panic("unimplemented")
+}
+
+// PublishRouterRule implements store.RouterRuleConfigStore.
+func (r *routerRuleStore) PublishRouterRule(tx store.Tx, rule *rules.RouterConfig) error {
+	panic("unimplemented")
+}
+
 // fetchRoutingConfigRows Read the data of the database and release ROWS
 func fetchRoutingConfigRows(rows *sql.Rows) ([]*rules.RouterConfig, error) {
 	defer rows.Close()

@@ -23,6 +23,5 @@ import (
 
 var (
 	log       = commonlog.GetScopeOrDefaultByName(commonlog.APIServerLoggerName)
-	namingLog = commonlog.GetScopeOrDefaultByName(commonlog.NamingLoggerName)
 	configLog = commonlog.GetScopeOrDefaultByName(commonlog.ConfigLoggerName)
 )

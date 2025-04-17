@@ -88,6 +88,30 @@ func (svr *Server) DeleteLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 	return svr.nextSvr.DeleteLaneGroups(ctx, reqs)
 }
 
+// PublishLaneGroups 批量删除泳道组
+func (svr *Server) PublishLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
+	if err := checkBatchLaneGroupRules(reqs); err != nil {
+		return err
+	}
+	return svr.nextSvr.PublishLaneGroups(ctx, reqs)
+}
+
+// RollbackLaneGroups 批量删除泳道组
+func (svr *Server) RollbackLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
+	if err := checkBatchLaneGroupRules(reqs); err != nil {
+		return err
+	}
+	return svr.nextSvr.RollbackLaneGroups(ctx, reqs)
+}
+
+// StopbetaLaneGroups 批量删除泳道组
+func (svr *Server) StopbetaLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
+	if err := checkBatchLaneGroupRules(reqs); err != nil {
+		return err
+	}
+	return svr.nextSvr.StopbetaLaneGroups(ctx, reqs)
+}
+
 // GetLaneGroups 查询泳道组列表
 func (svr *Server) GetLaneGroups(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse {
 	offset, limit, err := valid.ParseOffsetAndLimit(filter)

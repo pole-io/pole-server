@@ -128,6 +128,42 @@ type InstanceStore interface {
 	BatchRemoveInstanceMetadata(requests []*InstanceMetadataRequest) error
 }
 
+// ClientStore store interface for client info
+type ClientStore interface {
+	// BatchAddClients insert the client info
+	BatchAddClients(clients []*types.Client) error
+	// BatchDeleteClients delete the client info
+	BatchDeleteClients(ids []string) error
+	// GetMoreClients 根据mtime获取增量clients，返回所有store的变更信息
+	// 此方法用于 cache 增量更新，需要注意 mtime 应为数据库时间戳
+	GetMoreClients(mtime time.Time, firstUpdate bool) (map[string]*types.Client, error)
+}
+
+type ServiceContractStore interface {
+	// CreateServiceContract 创建服务契约
+	CreateServiceContract(contract *svctypes.ServiceContract) error
+	// UpdateServiceContract 更新服务契约
+	UpdateServiceContract(contract *svctypes.ServiceContract) error
+	// DeleteServiceContract 删除服务契约
+	DeleteServiceContract(contract *svctypes.ServiceContract) error
+	// GetServiceContract 查询服务契约数据
+	GetServiceContract(id string) (data *svctypes.EnrichServiceContract, err error)
+	// GetServiceContracts 查询服务契约公共属性列表
+	GetServiceContracts(ctx context.Context, filter map[string]string, offset, limit uint32) (uint32, []*svctypes.EnrichServiceContract, error)
+	// AddServiceContractInterfaces 创建服务契约API接口
+	AddServiceContractInterfaces(contract *svctypes.EnrichServiceContract) error
+	// AppendServiceContractInterfaces 追加服务契约API接口
+	AppendServiceContractInterfaces(contract *svctypes.EnrichServiceContract) error
+	// DeleteServiceContractInterfaces 批量删除服务契约API接口
+	DeleteServiceContractInterfaces(contract *svctypes.EnrichServiceContract) error
+	// GetInterfaceDescriptors 查询服务接口列表
+	GetInterfaceDescriptors(ctx context.Context, filter map[string]string, offset, limit uint32) (uint32, []*svctypes.InterfaceDescriptor, error)
+	// ListVersions .
+	ListVersions(ctx context.Context, svcName, nsName string) ([]*svctypes.ServiceContract, error)
+	// GetMoreServiceContracts 查询服务契约公共属性列表
+	GetMoreServiceContracts(firstUpdate bool, mtime time.Time) ([]*svctypes.EnrichServiceContract, error)
+}
+
 // RateLimitStore 限流规则的存储接口
 type RateLimitStore interface {
 	// CreateRateLimit 新增限流规则
@@ -145,6 +181,16 @@ type RateLimitStore interface {
 	// GetRateLimitsForCache 根据修改时间拉取增量限流规则及最新版本号
 	// 此方法用于 cache 增量更新，需要注意 mtime 应为数据库时间戳
 	GetRateLimitsForCache(mtime time.Time, firstUpdate bool) ([]*rules.RateLimit, error)
+	// LockRateLimitRule 锁住一个限流规则
+	LockRateLimitRule(tx Tx, name string) (*rules.RateLimit, error)
+	// GetActiveRateLimitRule 获取处于使用状态的限流规则
+	GetActiveRateLimitRule(tx Tx, name string) (*rules.RateLimit, error)
+	// ActiveRateLimitRule 设置某个限流规则发布为使用状态
+	ActiveRateLimitRule(tx Tx, name string) error
+	// InactiveRateLimitRule 设置某个限流规则的发布为不使用状态
+	InactiveRateLimitRule(tx Tx, name string) error
+	// PublishRateLimitRule 发布限流规则
+	PublishRateLimitRule(tx Tx, rule *rules.RateLimit) error
 }
 
 // CircuitBreakerStore 熔断规则的存储接口
@@ -168,17 +214,16 @@ type CircuitBreakerStore interface {
 	GetCircuitBreakerRulesForCache(mtime time.Time, firstUpdate bool) ([]*rules.CircuitBreakerRule, error)
 	// EnableCircuitBreakerRule enable specific circuitbreaker rule
 	EnableCircuitBreakerRule(cbRule *rules.CircuitBreakerRule) error
-}
-
-// ClientStore store interface for client info
-type ClientStore interface {
-	// BatchAddClients insert the client info
-	BatchAddClients(clients []*types.Client) error
-	// BatchDeleteClients delete the client info
-	BatchDeleteClients(ids []string) error
-	// GetMoreClients 根据mtime获取增量clients，返回所有store的变更信息
-	// 此方法用于 cache 增量更新，需要注意 mtime 应为数据库时间戳
-	GetMoreClients(mtime time.Time, firstUpdate bool) (map[string]*types.Client, error)
+	// LockCircuitBreakerRule 锁住一个熔断规则
+	LockCircuitBreakerRule(tx Tx, name string) (*rules.CircuitBreakerRule, error)
+	// GetActiveCircuitBreakerRule 获取处于使用状态的熔断规则
+	GetActiveCircuitBreakerRule(tx Tx, name string) (*rules.CircuitBreakerRule, error)
+	// ActiveCircuitBreakerRule 设置某个熔断规则发布为使用状态
+	ActiveCircuitBreakerRule(tx Tx, name string) error
+	// InactiveCircuitBreakerRule 设置某个熔断规则的发布为不使用状态
+	InactiveCircuitBreakerRule(tx Tx, name string) error
+	// PublishCircuitBreakerRule 发布熔断规则规则
+	PublishCircuitBreakerRule(tx Tx, rule *rules.CircuitBreakerRule) error
 }
 
 // RouterRuleConfigStore 路由配置表的存储接口
@@ -202,6 +247,16 @@ type RouterRuleConfigStore interface {
 	GetRoutingConfigWithID(id string) (*rules.RouterConfig, error)
 	// GetRoutingConfigWithIDTx 根据服务ID拉取路由配置
 	GetRoutingConfigWithIDTx(tx Tx, id string) (*rules.RouterConfig, error)
+	// LockRouterRule 锁住一个路由规则
+	LockRouterRule(tx Tx, name string) (*rules.RouterConfig, error)
+	// GetActiveRouterRule 获取处于使用状态的路由规则
+	GetActiveRouterRule(tx Tx, name string) (*rules.RouterConfig, error)
+	// ActiveRouterRule 设置某个路由规则发布为使用状态
+	ActiveRouterRule(tx Tx, name string) error
+	// InactiveRouterRule 设置某个路由规则的发布为不使用状态
+	InactiveRouterRule(tx Tx, name string) error
+	// PublishRouterRule 发布路由规则规则
+	PublishRouterRule(tx Tx, rule *rules.RouterConfig) error
 }
 
 // FaultDetectRuleStore store api for the fault detector config
@@ -222,31 +277,16 @@ type FaultDetectRuleStore interface {
 	GetFaultDetectRules(filter map[string]string, offset uint32, limit uint32) (uint32, []*rules.FaultDetectRule, error)
 	// GetFaultDetectRulesForCache get increment fault detect rules
 	GetFaultDetectRulesForCache(mtime time.Time, firstUpdate bool) ([]*rules.FaultDetectRule, error)
-}
-
-type ServiceContractStore interface {
-	// CreateServiceContract 创建服务契约
-	CreateServiceContract(contract *svctypes.ServiceContract) error
-	// UpdateServiceContract 更新服务契约
-	UpdateServiceContract(contract *svctypes.ServiceContract) error
-	// DeleteServiceContract 删除服务契约
-	DeleteServiceContract(contract *svctypes.ServiceContract) error
-	// GetServiceContract 查询服务契约数据
-	GetServiceContract(id string) (data *svctypes.EnrichServiceContract, err error)
-	// GetServiceContracts 查询服务契约公共属性列表
-	GetServiceContracts(ctx context.Context, filter map[string]string, offset, limit uint32) (uint32, []*svctypes.EnrichServiceContract, error)
-	// AddServiceContractInterfaces 创建服务契约API接口
-	AddServiceContractInterfaces(contract *svctypes.EnrichServiceContract) error
-	// AppendServiceContractInterfaces 追加服务契约API接口
-	AppendServiceContractInterfaces(contract *svctypes.EnrichServiceContract) error
-	// DeleteServiceContractInterfaces 批量删除服务契约API接口
-	DeleteServiceContractInterfaces(contract *svctypes.EnrichServiceContract) error
-	// GetInterfaceDescriptors 查询服务接口列表
-	GetInterfaceDescriptors(ctx context.Context, filter map[string]string, offset, limit uint32) (uint32, []*svctypes.InterfaceDescriptor, error)
-	// ListVersions .
-	ListVersions(ctx context.Context, service, namespace string) ([]*svctypes.ServiceContract, error)
-	// GetMoreServiceContracts 查询服务契约公共属性列表
-	GetMoreServiceContracts(firstUpdate bool, mtime time.Time) ([]*svctypes.EnrichServiceContract, error)
+	// LockFaultDetectRule 锁住一个探测规则
+	LockFaultDetectRule(tx Tx, name string) (*rules.FaultDetectRule, error)
+	// GetActiveFaultDetectRule 获取处于使用状态的探测规则
+	GetActiveFaultDetectRule(tx Tx, name string) (*rules.FaultDetectRule, error)
+	// ActiveFaultDetectRule 设置某个探测规则发布为使用状态
+	ActiveFaultDetectRule(tx Tx, name string) error
+	// InactiveFaultDetectRule 设置某个探测规则的发布为不使用状态
+	InactiveFaultDetectRule(tx Tx, name string) error
+	// PublishFaultDetectRule 发布探测规则规则
+	PublishFaultDetectRule(tx Tx, rule *rules.FaultDetectRule) error
 }
 
 // LaneStore 泳道资源存储操作
@@ -261,12 +301,20 @@ type LaneStore interface {
 	GetLaneGroupByID(id string) (*rules.LaneGroup, error)
 	// GetLaneGroups 查询泳道组
 	GetLaneGroups(filter map[string]string, offset, limit uint32) (uint32, []*rules.LaneGroup, error)
-	// LockLaneGroup 锁住一个泳道分组
-	LockLaneGroup(tx Tx, name string) (*rules.LaneGroup, error)
 	// GetMoreLaneGroups 获取泳道规则列表到缓存层
 	GetMoreLaneGroups(mtime time.Time, firstUpdate bool) (map[string]*rules.LaneGroup, error)
 	// DeleteLaneGroup 删除泳道组
 	DeleteLaneGroup(id string) error
 	// GetLaneRuleMaxPriority 获取泳道规则中当前最大的泳道规则优先级信息
 	GetLaneRuleMaxPriority() (int32, error)
+	// LockLaneGroup 锁住一个泳道分组
+	LockLaneGroup(tx Tx, name string) (*rules.LaneGroup, error)
+	// GetActiveLaneGroup 获取处于使用状态的泳道组
+	GetActiveLaneGroup(tx Tx, name string) (*rules.LaneGroup, error)
+	// ActiveLaneGroup 设置某个泳道组发布为使用状态
+	ActiveLaneGroup(tx Tx, name string) error
+	// InactiveLaneGroup 设置某个泳道组的发布为不使用状态
+	InactiveLaneGroup(tx Tx, name string) error
+	// PublishLaneGroup 发布泳道组规则
+	PublishLaneGroup(tx Tx, rule *rules.LaneGroup) error
 }

@@ -99,23 +99,6 @@ func (svr *Server) DeleteCircuitBreakerRules(ctx context.Context,
 	return svr.nextSvr.DeleteCircuitBreakerRules(ctx, reqs)
 }
 
-// EnableCircuitBreakerRules implements service.DiscoverServer.
-func (svr *Server) EnableCircuitBreakerRules(ctx context.Context,
-	reqs []*fault_tolerance.CircuitBreakerRule) *service_manage.BatchWriteResponse {
-	if err := checkBatchCircuitBreakerRules(reqs); err != nil {
-		return err
-	}
-	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
-	for i := range reqs {
-		rsp := checkCircuitBreakerRuleParams(reqs[i], true, false)
-		api.Collect(batchRsp, rsp)
-	}
-	if !api.IsSuccess(batchRsp) {
-		return batchRsp
-	}
-	return svr.nextSvr.EnableCircuitBreakerRules(ctx, reqs)
-}
-
 // CreateCircuitBreakerRules implements service.DiscoverServer.
 func (svr *Server) CreateCircuitBreakerRules(ctx context.Context,
 	reqs []*fault_tolerance.CircuitBreakerRule) *service_manage.BatchWriteResponse {
@@ -149,6 +132,57 @@ func (svr *Server) UpdateCircuitBreakerRules(ctx context.Context,
 		return batchRsp
 	}
 	return svr.nextSvr.UpdateCircuitBreakerRules(ctx, reqs)
+}
+
+// PublishCircuitBreakerRules implements service.DiscoverServer.
+func (svr *Server) PublishCircuitBreakerRules(ctx context.Context,
+	reqs []*fault_tolerance.CircuitBreakerRule) *service_manage.BatchWriteResponse {
+	if err := checkBatchCircuitBreakerRules(reqs); err != nil {
+		return err
+	}
+	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for i := range reqs {
+		rsp := checkCircuitBreakerRuleParams(reqs[i], true, true)
+		api.Collect(batchRsp, rsp)
+	}
+	if !api.IsSuccess(batchRsp) {
+		return batchRsp
+	}
+	return svr.nextSvr.PublishCircuitBreakerRules(ctx, reqs)
+}
+
+// RollbackCircuitBreakerRules implements service.DiscoverServer.
+func (svr *Server) RollbackCircuitBreakerRules(ctx context.Context,
+	reqs []*fault_tolerance.CircuitBreakerRule) *service_manage.BatchWriteResponse {
+	if err := checkBatchCircuitBreakerRules(reqs); err != nil {
+		return err
+	}
+	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for i := range reqs {
+		rsp := checkCircuitBreakerRuleParams(reqs[i], true, true)
+		api.Collect(batchRsp, rsp)
+	}
+	if !api.IsSuccess(batchRsp) {
+		return batchRsp
+	}
+	return svr.nextSvr.RollbackCircuitBreakerRules(ctx, reqs)
+}
+
+// StopbetaCircuitBreakerRules implements service.DiscoverServer.
+func (svr *Server) StopbetaCircuitBreakerRules(ctx context.Context,
+	reqs []*fault_tolerance.CircuitBreakerRule) *service_manage.BatchWriteResponse {
+	if err := checkBatchCircuitBreakerRules(reqs); err != nil {
+		return err
+	}
+	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for i := range reqs {
+		rsp := checkCircuitBreakerRuleParams(reqs[i], true, true)
+		api.Collect(batchRsp, rsp)
+	}
+	if !api.IsSuccess(batchRsp) {
+		return batchRsp
+	}
+	return svr.nextSvr.StopbetaCircuitBreakerRules(ctx, reqs)
 }
 
 func checkBatchCircuitBreakerRules(req []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {

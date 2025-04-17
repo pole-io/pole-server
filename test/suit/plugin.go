@@ -30,6 +30,5 @@ import (
 	_ "github.com/pole-io/pole-server/plugin/observability/statis/logger"
 	_ "github.com/pole-io/pole-server/plugin/observability/statis/prometheus"
 	_ "github.com/pole-io/pole-server/plugin/service/healthchecker/heartbeat"
-	_ "github.com/pole-io/pole-server/plugin/store/boltdb"
 	_ "github.com/pole-io/pole-server/plugin/store/mysql"
 )

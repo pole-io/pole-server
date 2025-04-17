@@ -63,7 +63,7 @@ func (s *Server) CreateConfigFileTemplate(
 	req.CreateBy = protobuf.NewStringValue(userName)
 	req.ModifyBy = protobuf.NewStringValue(userName)
 	saveData = conftypes.ToConfigFileTemplateStore(req)
-	if _, err := s.storage.CreateConfigFileTemplate(saveData); err != nil {
+	if _, err := s.storage.SaveConfigFileTemplate(saveData); err != nil {
 		log.Error("[Config][Service] create config file template error.", utils.RequestID(ctx), zap.Error(err))
 		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
@@ -75,11 +75,38 @@ func (s *Server) CreateConfigFileTemplate(
 func (s *Server) UpdateConfigFileTemplates(
 	ctx context.Context, reqs []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
 	for _, req := range reqs {
-		rsp := s.CreateConfigFileTemplate(ctx, req)
+		rsp := s.UpdateConfigFileTemplate(ctx, req)
 		if api.IsSuccess(rsp) {
 			return rsp
 		}
 	}
+	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
+}
+
+// UpdateConfigFileTemplate create config file template
+func (s *Server) UpdateConfigFileTemplate(
+	ctx context.Context, req *apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
+	name := req.GetName().GetValue()
+
+	saveData, err := s.storage.GetConfigFileTemplate(name)
+	if err != nil {
+		log.Error("[Config][Service] get config file template error.",
+			utils.RequestID(ctx), zap.String("name", name), zap.Error(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+	}
+	if saveData == nil {
+		return api.NewConfigResponse(apimodel.Code_NotFoundResource)
+	}
+
+	userName := utils.ParseUserName(ctx)
+	req.CreateBy = protobuf.NewStringValue(saveData.CreateBy)
+	req.ModifyBy = protobuf.NewStringValue(userName)
+	saveData = conftypes.ToConfigFileTemplateStore(req)
+	if _, err := s.storage.SaveConfigFileTemplate(saveData); err != nil {
+		log.Error("[Config][Service] update config file template error.", utils.RequestID(ctx), zap.Error(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+	}
+
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
 

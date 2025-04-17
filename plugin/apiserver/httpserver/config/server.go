@@ -82,54 +82,25 @@ func (h *HTTPServer) GetConsoleAccessServer(include []string) *restful.WebServic
 
 func (h *HTTPServer) addDefaultReadAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichQueryConfigFileGroupsApiDocs(ws.GET("/groups").To(h.QueryConfigFileGroups)))
-	ws.Route(docs.EnrichGetConfigFileApiDocs(ws.GET("/files").To(h.GetConfigFile)))
-	ws.Route(docs.EnrichQueryConfigFilesByGroupApiDocs(ws.GET("/files/by-group").To(h.SearchConfigFiles)))
 	ws.Route(docs.EnrichSearchConfigFileApiDocs(ws.GET("/files/search").To(h.SearchConfigFiles)))
+	ws.Route(docs.EnrichGetConfigFileApiDocs(ws.GET("/file").To(h.GetConfigFile)))
 	ws.Route(docs.EnrichGetAllConfigEncryptAlgorithms(ws.GET("/files/encryptalgorithm").
 		To(h.GetAllConfigEncryptAlgorithms)))
 	ws.Route(docs.EnrichGetConfigFileReleaseApiDocs(ws.GET("/files/release").To(h.GetConfigFileRelease)))
-	ws.Route(docs.EnrichGetConfigFileReleaseHistoryApiDocs(ws.GET("/files/releasehistory").
+	ws.Route(docs.EnrichGetConfigFileReleaseHistoryApiDocs(ws.GET("/files/release/history").
 		To(h.GetConfigFileReleaseHistory)))
 	ws.Route(docs.EnrichGetAllConfigFileTemplatesApiDocs(ws.GET("/templates").To(h.GetAllConfigFileTemplates)))
 }
 
 func (h *HTTPServer) addDefaultAccess(ws *restful.WebService) {
 	// 配置文件组
-	ws.Route(docs.EnrichCreateConfigFileGroupApiDocs(ws.POST("/groups").To(h.CreateConfigFileGroup)))
-	ws.Route(docs.EnrichUpdateConfigFileGroupApiDocs(ws.PUT("/groups").To(h.UpdateConfigFileGroup)))
-	ws.Route(docs.EnrichDeleteConfigFileGroupApiDocs(ws.DELETE("/groups").To(h.DeleteConfigFileGroup)))
-	ws.Route(docs.EnrichQueryConfigFileGroupsApiDocs(ws.GET("/groups").To(h.QueryConfigFileGroups)))
-
+	h.addGroupRuleAccess(ws)
 	// 配置文件
-	ws.Route(docs.EnrichCreateConfigFileApiDocs(ws.POST("/files").To(h.CreateConfigFile)))
-	ws.Route(docs.EnrichGetConfigFileApiDocs(ws.GET("/files").To(h.GetConfigFile)))
-	ws.Route(docs.EnrichQueryConfigFilesByGroupApiDocs(ws.GET("/files/by-group").To(h.SearchConfigFiles)))
-	ws.Route(docs.EnrichSearchConfigFileApiDocs(ws.GET("/files/search").To(h.SearchConfigFiles)))
-	ws.Route(docs.EnrichUpdateConfigFileApiDocs(ws.PUT("/files").To(h.UpdateConfigFile)))
-	ws.Route(docs.EnrichDeleteConfigFileApiDocs(ws.DELETE("/files").To(h.DeleteConfigFiles)))
-	ws.Route(docs.EnrichExportConfigFileApiDocs(ws.POST("/files/export").To(h.ExportConfigFile)))
-	ws.Route(docs.EnrichImportConfigFileApiDocs(ws.POST("/files/import").To(h.ImportConfigFile)))
-	ws.Route(docs.EnrichGetAllConfigEncryptAlgorithms(ws.GET("/files/encryptalgorithm").
-		To(h.GetAllConfigEncryptAlgorithms)))
-
+	h.addFilesAccess(ws)
 	// 配置文件发布
-	ws.Route(docs.EnrichPublishConfigFileApiDocs(ws.POST("/files/release").To(h.PublishConfigFile)))
-	ws.Route(docs.EnrichGetConfigFileReleaseApiDocs(ws.PUT("/files/releases/rollback").To(h.RollbackConfigFileReleases)))
-	ws.Route(docs.EnrichGetConfigFileReleaseApiDocs(ws.GET("/files/release").To(h.GetConfigFileRelease)))
-	ws.Route(docs.EnrichGetConfigFileReleaseApiDocs(ws.GET("/files/releases").To(h.GetConfigFileReleases)))
-	ws.Route(docs.EnrichGetConfigFileReleaseApiDocs(ws.POST("/files/releases/delete").To(h.DeleteConfigFileReleases)))
-	ws.Route(docs.EnrichGetConfigFileReleaseApiDocs(ws.GET("/files/release/versions").To(h.GetConfigFileReleaseVersions)))
-	ws.Route(docs.EnrichUpsertAndReleaseConfigFileApiDocs(ws.POST("/files/createandpub").To(h.UpsertAndReleaseConfigFile)))
-	ws.Route(docs.EnrichStopBetaReleaseConfigFileApiDocs(ws.POST("/files/releases/stopbeta").To(h.StopGrayConfigFileReleases)))
-
-	// 配置文件发布历史
-	ws.Route(docs.EnrichGetConfigFileReleaseHistoryApiDocs(ws.GET("/files/releases/history").
-		To(h.GetConfigFileReleaseHistory)))
-
-	// config file template
-	ws.Route(docs.EnrichGetAllConfigFileTemplatesApiDocs(ws.GET("/templates").To(h.GetAllConfigFileTemplates)))
-	ws.Route(docs.EnrichCreateConfigFileTemplateApiDocs(ws.POST("/templates").To(h.CreateConfigFileTemplates)))
-	ws.Route(docs.EnrichUpdateConfigFileTemplateApiDocs(ws.PUT("/templates").To(h.UpdateConfigFileTemplate)))
+	h.addReleasesRuleAccess(ws)
+	// 配置文件模板
+	h.addTemplateRuleAccess(ws)
 }
 
 // GetClientAccessServer 获取配置中心接口
@@ -146,11 +117,4 @@ func (h *HTTPServer) GetClientAccessServer(ws *restful.WebService, include []str
 			h.addDiscover(ws)
 		}
 	}
-}
-
-func (h *HTTPServer) addDiscover(ws *restful.WebService) {
-	ws.Route(docs.EnrichConfigDiscoverApiDocs(ws.POST("/ConfigDiscover").To(h.Discover)))
-	ws.Route(docs.EnrichGetConfigFileForClientApiDocs(ws.GET("/GetConfigFile").To(h.ClientGetConfigFile)))
-	ws.Route(docs.EnrichWatchConfigFileForClientApiDocs(ws.POST("/WatchConfigFile").To(h.ClientWatchConfigFile)))
-	ws.Route(docs.EnrichGetConfigFileMetadataList(ws.POST("/GetConfigFileMetadataList").To(h.GetConfigFileMetadataList)))
 }

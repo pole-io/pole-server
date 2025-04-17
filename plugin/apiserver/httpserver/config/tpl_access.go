@@ -10,8 +10,16 @@ import (
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
+
+// addTemplateRuleAccess 增加默认接口
+func (h *HTTPServer) addTemplateRuleAccess(ws *restful.WebService) {
+	ws.Route(docs.EnrichCreateConfigFileTemplateApiDocs(ws.POST("/templates").To(h.CreateConfigFileTemplates)))
+	ws.Route(docs.EnrichUpdateConfigFileTemplateApiDocs(ws.PUT("/templates").To(h.UpdateConfigFileTemplate)))
+	ws.Route(docs.EnrichGetAllConfigFileTemplatesApiDocs(ws.GET("/templates").To(h.GetAllConfigFileTemplates)))
+}
 
 // GetAllConfigFileTemplates get all config file template
 func (h *HTTPServer) GetAllConfigFileTemplates(req *restful.Request, rsp *restful.Response) {

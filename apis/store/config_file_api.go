@@ -112,8 +112,8 @@ type ConfigFileReleaseHistoryStore interface {
 type ConfigFileTemplateStore interface {
 	// QueryAllConfigFileTemplates query all config file templates
 	QueryAllConfigFileTemplates() ([]*conftypes.ConfigFileTemplate, error)
-	// CreateConfigFileTemplate create config file template
-	CreateConfigFileTemplate(template *conftypes.ConfigFileTemplate) (*conftypes.ConfigFileTemplate, error)
+	// SaveConfigFileTemplate create config file template
+	SaveConfigFileTemplate(template *conftypes.ConfigFileTemplate) (*conftypes.ConfigFileTemplate, error)
 	// GetConfigFileTemplate get config file template by name
 	GetConfigFileTemplate(name string) (*conftypes.ConfigFileTemplate, error)
 }

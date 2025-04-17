@@ -141,30 +141,6 @@ VALUES
         '2021-07-27 19:37:37'
     );
 
--- --------------------------------------------------------
---
--- Table structure `ratelimit_rule`
---
-CREATE TABLE
-    `ratelimit_rule` (
-        `id` VARCHAR(32) NOT NULL COMMENT 'ratelimit rule ID',
-        `name` VARCHAR(64) NOT NULL COMMENT 'ratelimt rule name',
-        `disable` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'ratelimit disable',
-        `service_id` VARCHAR(32) NOT NULL COMMENT 'Service ID',
-        `method` VARCHAR(512) NOT NULL COMMENT 'ratelimit method',
-        `labels` TEXT NOT NULL COMMENT 'Conductive flow for a specific label',
-        `priority` SMALLINT (6) NOT NULL DEFAULT '0' COMMENT 'ratelimit rule priority',
-        `rule` TEXT NOT NULL COMMENT 'Current limiting rules',
-        `revision` VARCHAR(32) NOT NULL COMMENT 'Limiting version',
-        `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means that it has been logically deleted',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
-        `etime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'RateLimit rule enable time',
-        `metadata` TEXT COMMENT 'ratelimit rule metadata',
-        PRIMARY KEY (`id`),
-        KEY `mtime` (`mtime`),
-        KEY `service_id` (`service_id`)
-    ) ENGINE = InnoDB;
 
 -- --------------------------------------------------------
 --
@@ -285,10 +261,18 @@ INSERT INTO
 VALUES
     (1, 'sz', 'aaa', '2019-12-05 08:35:49');
 
--- --------------------------------------------------------
---
--- Table structure `config_file`
---
+CREATE TABLE
+    `leader_election` (
+        `elect_key` VARCHAR(128) NOT NULL,
+        `version` BIGINT NOT NULL DEFAULT 0,
+        `leader` VARCHAR(128) NOT NULL,
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`elect_key`),
+        KEY `version` (`version`)
+    ) ENGINE = innodb;
+
+/* 配置文件 */
 CREATE TABLE
     `config_file` (
         `id` VARCHAR(32) NOT NULL COMMENT 'config file id',
@@ -307,10 +291,7 @@ CREATE TABLE
         UNIQUE KEY `uk_file` (`namespace`, `group`, `name`)
     ) ENGINE = InnoDB AUTO_INCREMENT = 1 COMMENT = '配置文件表';
 
--- --------------------------------------------------------
---
--- Table structure `config_file_group`
---
+/* 配置分组 */
 CREATE TABLE
     `config_file_group` (
         `id` VARCHAR(32) NOT NULL COMMENT 'config file group id',
@@ -330,10 +311,7 @@ CREATE TABLE
         UNIQUE KEY `uk_name` (`namespace`, `name`)
     ) ENGINE = InnoDB AUTO_INCREMENT = 1 COMMENT = '配置文件组表';
 
--- --------------------------------------------------------
---
--- Table structure `config_file_release`
---
+/* 配置发布 */
 CREATE TABLE
     `config_file_release` (
         `id` VARCHAR(32) NOT NULL COMMENT 'config file release id',
@@ -360,10 +338,8 @@ CREATE TABLE
         KEY `idx_mtime` (`mtime`)
     ) ENGINE = InnoDB AUTO_INCREMENT = 1 COMMENT = '配置文件发布表';
 
--- --------------------------------------------------------
---
--- Table structure `config_file_release_history`
---
+
+/* 配置发布历史 */
 CREATE TABLE
     `config_file_release_history` (
         `id` VARCHAR(32) NOT NULL COMMENT 'config file release history id',
@@ -569,6 +545,7 @@ CREATE TABLE
         PRIMARY KEY (`client_id`, `target`, `port`)
     ) ENGINE = InnoDB;
 
+/* 自定义路由 */
 CREATE TABLE
     `router_rule` (
         `id` VARCHAR(128) NOT NULL,
@@ -590,17 +567,82 @@ CREATE TABLE
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
 
+
+/* 自定义路由发布表 */
 CREATE TABLE
-    `leader_election` (
-        `elect_key` VARCHAR(128) NOT NULL,
-        `version` BIGINT NOT NULL DEFAULT 0,
-        `leader` VARCHAR(128) NOT NULL,
+    `router_rul_release` (
+        `id` VARCHAR(128) NOT NULL,
+        `name` VARCHAR(64) NOT NULL DEFAULT '',
+        `namespace` VARCHAR(64) NOT NULL DEFAULT '',
+        `policy` VARCHAR(64) NOT NULL,
+        `config` TEXT,
+        `enable` INT NOT NULL DEFAULT 0,
+        `revision` VARCHAR(40) NOT NULL,
+        `description` VARCHAR(500) NOT NULL DEFAULT '',
+        `priority` SMALLINT (6) NOT NULL DEFAULT '0' COMMENT 'ratelimit rule priority',
+        `flag` TINYINT (4) NOT NULL DEFAULT '0',
         `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        PRIMARY KEY (`elect_key`),
-        KEY `version` (`version`)
+        `etime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `extend_info` VARCHAR(1024) DEFAULT '',
+        `metadata` TEXT COMMENT 'route rule metadata',
+        `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
+        `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
+        `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
+        `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
+        PRIMARY KEY (`id`),
+        KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
 
+/* 限流规则 */
+CREATE TABLE
+    `ratelimit_rule` (
+        `id` VARCHAR(32) NOT NULL COMMENT 'ratelimit rule ID',
+        `name` VARCHAR(64) NOT NULL COMMENT 'ratelimt rule name',
+        `disable` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'ratelimit disable',
+        `service_id` VARCHAR(32) NOT NULL COMMENT 'Service ID',
+        `method` VARCHAR(512) NOT NULL COMMENT 'ratelimit method',
+        `labels` TEXT NOT NULL COMMENT 'Conductive flow for a specific label',
+        `priority` SMALLINT (6) NOT NULL DEFAULT '0' COMMENT 'ratelimit rule priority',
+        `rule` TEXT NOT NULL COMMENT 'Current limiting rules',
+        `revision` VARCHAR(32) NOT NULL COMMENT 'Limiting version',
+        `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means that it has been logically deleted',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
+        `etime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'RateLimit rule enable time',
+        `metadata` TEXT COMMENT 'ratelimit rule metadata',
+        PRIMARY KEY (`id`),
+        KEY `mtime` (`mtime`),
+        KEY `service_id` (`service_id`)
+    ) ENGINE = InnoDB;
+
+/* 限流规则发布表 */
+CREATE TABLE
+    `ratelimit_rule_release` (
+        `id` VARCHAR(32) NOT NULL COMMENT 'ratelimit rule ID',
+        `name` VARCHAR(64) NOT NULL COMMENT 'ratelimt rule name',
+        `disable` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'ratelimit disable',
+        `service_id` VARCHAR(32) NOT NULL COMMENT 'Service ID',
+        `method` VARCHAR(512) NOT NULL COMMENT 'ratelimit method',
+        `labels` TEXT NOT NULL COMMENT 'Conductive flow for a specific label',
+        `priority` SMALLINT (6) NOT NULL DEFAULT '0' COMMENT 'ratelimit rule priority',
+        `rule` TEXT NOT NULL COMMENT 'Current limiting rules',
+        `revision` VARCHAR(32) NOT NULL COMMENT 'Limiting version',
+        `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means that it has been logically deleted',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
+        `etime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'RateLimit rule enable time',
+        `metadata` TEXT COMMENT 'ratelimit rule metadata',
+        `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
+        `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
+        `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
+        `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
+        PRIMARY KEY (`id`),
+        KEY `mtime` (`mtime`),
+        KEY `service_id` (`service_id`)
+    ) ENGINE = InnoDB;
+
+/* 熔断规则 */
 CREATE TABLE
     `circuitbreaker_rule` (
         `id` VARCHAR(128) NOT NULL,
@@ -626,6 +668,36 @@ CREATE TABLE
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
 
+/* 熔断规则发布表 */
+CREATE TABLE
+    `circuitbreaker_rule_release` (
+        `id` VARCHAR(128) NOT NULL,
+        `name` VARCHAR(64) NOT NULL,
+        `namespace` VARCHAR(64) NOT NULL DEFAULT '',
+        `enable` INT NOT NULL DEFAULT 0,
+        `revision` VARCHAR(40) NOT NULL,
+        `description` VARCHAR(1024) NOT NULL DEFAULT '',
+        `level` INT NOT NULL,
+        `src_service` VARCHAR(128) NOT NULL,
+        `src_namespace` VARCHAR(64) NOT NULL,
+        `dst_service` VARCHAR(128) NOT NULL,
+        `dst_namespace` VARCHAR(64) NOT NULL,
+        `dst_method` VARCHAR(128) NOT NULL,
+        `config` TEXT,
+        `flag` TINYINT (4) NOT NULL DEFAULT '0',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        `etime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `metadata` TEXT COMMENT 'circuit_breaker rule metadata',
+        `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
+        `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
+        `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
+        `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
+        PRIMARY KEY (`id`),
+        KEY `name` (`name`),
+        KEY `mtime` (`mtime`)
+    ) ENGINE = innodb;
+
 /* 主动探测 */
 CREATE TABLE
     `fault_detect_rule` (
@@ -646,6 +718,87 @@ CREATE TABLE
         KEY `name` (`name`),
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
+
+/* 主动探测规则发布表 */
+CREATE TABLE
+    `fault_detect_rule_release` (
+        `id` VARCHAR(128) NOT NULL,
+        `name` VARCHAR(64) NOT NULL,
+        `namespace` VARCHAR(64) NOT NULL DEFAULT 'default',
+        `revision` VARCHAR(40) NOT NULL,
+        `description` VARCHAR(1024) NOT NULL DEFAULT '',
+        `dst_service` VARCHAR(128) NOT NULL,
+        `dst_namespace` VARCHAR(64) NOT NULL,
+        `dst_method` VARCHAR(128) NOT NULL,
+        `config` TEXT,
+        `flag` TINYINT (4) NOT NULL DEFAULT '0',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        `metadata` TEXT COMMENT 'faultdetect rule metadata',
+        `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
+        `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
+        `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
+        `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
+        PRIMARY KEY (`id`),
+        KEY `name` (`name`),
+        KEY `mtime` (`mtime`)
+    ) ENGINE = innodb;
+
+
+/* 泳道组规则 */
+CREATE TABLE
+    `lane_group` (
+        `id` varchar(128) not null comment '泳道分组 ID',
+        `name` varchar(64) not null comment '泳道分组名称',
+        `rule` text not null comment '规则的 json 字符串',
+        `description` varchar(3000) comment '规则描述',
+        `revision` VARCHAR(40) NOT NULL comment '规则摘要',
+        `flag` tinyint default 0 comment '软删除标识位',
+        `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        `metadata` TEXT COMMENT 'lane rule metadata',
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `name` (`name`)
+    ) ENGINE = InnoDB;
+
+/* 泳道规则 */
+CREATE TABLE
+    `lane_rule` (
+        `id` varchar(128) not null comment '规则 id',
+        `name` varchar(64) not null comment '规则名称',
+        `group_name` varchar(64) not null comment '泳道分组名称',
+        `rule` text not null comment '规则的 json 字符串',
+        `revision` VARCHAR(40) NOT NULL comment '规则摘要',
+        `description` varchar(3000) comment '规则描述',
+        `enable` tinyint comment '是否启用',
+        `flag` tinyint default 0 comment '软删除标识位',
+        `priority` bigint NOT NULL DEFAULT 0 comment '泳道规则优先级',
+        `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `etime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `name` (`group_name`, `name`)
+    ) ENGINE = InnoDB;
+
+/* 泳道组规则发布表 */
+CREATE TABLE
+    `lane_group_release` (
+        `id` varchar(128) not null comment '泳道分组 ID',
+        `name` varchar(64) not null comment '泳道分组名称',
+        `rule` text not null comment '规则的 json 字符串',
+        `description` varchar(3000) comment '规则描述',
+        `revision` VARCHAR(40) NOT NULL comment '规则摘要',
+        `flag` tinyint default 0 comment '软删除标识位',
+        `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        `metadata` TEXT COMMENT 'lane rule metadata',
+        `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
+        `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
+        `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
+        `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `name` (`name`)
+    ) ENGINE = InnoDB;
 
 /* 服务契约表 */
 CREATE TABLE
@@ -711,42 +864,6 @@ CREATE TABLE
         `flag` TINYINT (4) DEFAULT 0 COMMENT '逻辑删除标志位, 0 位有效, 1 为逻辑删除',
         PRIMARY KEY (`name`)
     ) ENGINE = InnoDB COMMENT = '灰度资源表';
-
-/* 泳道组规则 */
-CREATE TABLE
-    `lane_group` (
-        `id` varchar(128) not null comment '泳道分组 ID',
-        `name` varchar(64) not null comment '泳道分组名称',
-        `rule` text not null comment '规则的 json 字符串',
-        `description` varchar(3000) comment '规则描述',
-        `revision` VARCHAR(40) NOT NULL comment '规则摘要',
-        `flag` tinyint default 0 comment '软删除标识位',
-        `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        `metadata` TEXT COMMENT 'lane rule metadata',
-        PRIMARY KEY (`id`),
-        UNIQUE KEY `name` (`name`)
-    ) ENGINE = InnoDB;
-
-/* 泳道规则 */
-CREATE TABLE
-    `lane_rule` (
-        `id` varchar(128) not null comment '规则 id',
-        `name` varchar(64) not null comment '规则名称',
-        `group_name` varchar(64) not null comment '泳道分组名称',
-        `rule` text not null comment '规则的 json 字符串',
-        `revision` VARCHAR(40) NOT NULL comment '规则摘要',
-        `description` varchar(3000) comment '规则描述',
-        `enable` tinyint comment '是否启用',
-        `flag` tinyint default 0 comment '软删除标识位',
-        `priority` bigint NOT NULL DEFAULT 0 comment '泳道规则优先级',
-        `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `etime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        PRIMARY KEY (`id`),
-        UNIQUE KEY `name` (`group_name`, `name`)
-    ) ENGINE = InnoDB;
-
 
 /* 服务端动态配置相关持久化记录信息 */
 CREATE TABLE

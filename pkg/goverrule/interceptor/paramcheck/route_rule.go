@@ -53,8 +53,8 @@ var (
 	}
 )
 
-// CreateRoutingConfigsV2 implements service.DiscoverServer.
-func (svr *Server) CreateRoutingConfigs(ctx context.Context,
+// CreateRouterRules implements service.DiscoverServer.
+func (svr *Server) CreateRouterRules(ctx context.Context,
 	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
 	if err := checkBatchRoutingConfigV2(req); err != nil {
 		return err
@@ -68,29 +68,11 @@ func (svr *Server) CreateRoutingConfigs(ctx context.Context,
 	if !apiv1.IsSuccess(batchRsp) {
 		return batchRsp
 	}
-	return svr.nextSvr.CreateRoutingConfigs(ctx, req)
+	return svr.nextSvr.CreateRouterRules(ctx, req)
 }
 
-// EnableRoutings implements service.DiscoverServer.
-func (svr *Server) EnableRoutings(ctx context.Context,
-	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
-	if err := checkBatchRoutingConfigV2(req); err != nil {
-		return err
-	}
-	batchRsp := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
-	for _, item := range req {
-		if resp := checkRoutingConfigIDV2(item); resp != nil {
-			apiv1.Collect(batchRsp, resp)
-		}
-	}
-	if !apiv1.IsSuccess(batchRsp) {
-		return batchRsp
-	}
-	return svr.nextSvr.EnableRoutings(ctx, req)
-}
-
-// UpdateRoutingConfigsV2 implements service.DiscoverServer.
-func (svr *Server) UpdateRoutingConfigs(ctx context.Context,
+// UpdateRouterRules implements service.DiscoverServer.
+func (svr *Server) UpdateRouterRules(ctx context.Context,
 	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
 	if err := checkBatchRoutingConfigV2(req); err != nil {
 		return err
@@ -104,11 +86,11 @@ func (svr *Server) UpdateRoutingConfigs(ctx context.Context,
 	if !apiv1.IsSuccess(batchRsp) {
 		return batchRsp
 	}
-	return svr.nextSvr.UpdateRoutingConfigs(ctx, req)
+	return svr.nextSvr.UpdateRouterRules(ctx, req)
 }
 
-// QueryRoutingConfigsV2 implements service.DiscoverServer.
-func (svr *Server) QueryRoutingConfigs(ctx context.Context,
+// QueryRouterRules implements service.DiscoverServer.
+func (svr *Server) QueryRouterRules(ctx context.Context,
 	query map[string]string) *service_manage.BatchQueryResponse {
 
 	offset, limit, err := valid.ParseOffsetAndLimit(query)
@@ -127,11 +109,11 @@ func (svr *Server) QueryRoutingConfigs(ctx context.Context,
 	filter["offset"] = strconv.FormatUint(uint64(offset), 10)
 	filter["limit"] = strconv.FormatUint(uint64(limit), 10)
 
-	return svr.nextSvr.QueryRoutingConfigs(ctx, filter)
+	return svr.nextSvr.QueryRouterRules(ctx, filter)
 }
 
-// DeleteRoutingConfigsV2 implements service.DiscoverServer.
-func (svr *Server) DeleteRoutingConfigs(ctx context.Context,
+// DeleteRouterRules implements service.DiscoverServer.
+func (svr *Server) DeleteRouterRules(ctx context.Context,
 	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
 	if err := checkBatchRoutingConfigV2(req); err != nil {
 		return err
@@ -145,7 +127,61 @@ func (svr *Server) DeleteRoutingConfigs(ctx context.Context,
 	if !apiv1.IsSuccess(batchRsp) {
 		return batchRsp
 	}
-	return svr.nextSvr.DeleteRoutingConfigs(ctx, req)
+	return svr.nextSvr.DeleteRouterRules(ctx, req)
+}
+
+// PublishRouterRules implements service.DiscoverServer.
+func (svr *Server) PublishRouterRules(ctx context.Context,
+	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
+	if err := checkBatchRoutingConfigV2(req); err != nil {
+		return err
+	}
+	batchRsp := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, item := range req {
+		if resp := checkRoutingConfigIDV2(item); resp != nil {
+			apiv1.Collect(batchRsp, resp)
+		}
+	}
+	if !apiv1.IsSuccess(batchRsp) {
+		return batchRsp
+	}
+	return svr.nextSvr.PublishRouterRules(ctx, req)
+}
+
+// RollbackRouterRules implements service.DiscoverServer.
+func (svr *Server) RollbackRouterRules(ctx context.Context,
+	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
+	if err := checkBatchRoutingConfigV2(req); err != nil {
+		return err
+	}
+	batchRsp := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, item := range req {
+		if resp := checkRoutingConfigIDV2(item); resp != nil {
+			apiv1.Collect(batchRsp, resp)
+		}
+	}
+	if !apiv1.IsSuccess(batchRsp) {
+		return batchRsp
+	}
+	return svr.nextSvr.RollbackRouterRules(ctx, req)
+}
+
+// StopbetaRouterRules implements service.DiscoverServer.
+func (svr *Server) StopbetaRouterRules(ctx context.Context,
+	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
+	if err := checkBatchRoutingConfigV2(req); err != nil {
+		return err
+	}
+	batchRsp := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, item := range req {
+		if resp := checkRoutingConfigIDV2(item); resp != nil {
+			apiv1.Collect(batchRsp, resp)
+		}
+	}
+	if !apiv1.IsSuccess(batchRsp) {
+		return batchRsp
+	}
+	return svr.nextSvr.StopbetaRouterRules(ctx, req)
 }
 
 // checkBatchRoutingConfig Check batch request

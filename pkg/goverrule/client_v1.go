@@ -33,8 +33,8 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
-// GetRoutingConfigWithCache 获取缓存中的路由配置信息
-func (s *Server) GetRoutingConfigWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+// GetOldRouterRuleWithCache 获取缓存中的路由配置信息
+func (s *Server) GetOldRouterRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
 	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_ROUTING)
 	aliasFor := s.findServiceAlias(req)
 
@@ -249,20 +249,6 @@ func createCommonDiscoverResponse(req *apiservice.Service,
 	}
 }
 
-// 获取顶级服务ID
-// 没有顶级ID，则返回自身
-func (s *Server) getSourceServiceID(service *svctypes.Service) string {
-	if service == nil || service.ID == "" {
-		return ""
-	}
-	// 找到parent服务，最多两级，因此不用递归查找
-	if service.IsAlias() {
-		return service.Reference
-	}
-
-	return service.ID
-}
-
 // 根据服务名获取服务缓存数据
 // 注意，如果是服务别名查询，这里会返回别名的源服务，不会返回别名
 func (s *Server) getServiceCache(name string, namespace string) *svctypes.Service {
@@ -283,34 +269,4 @@ func (s *Server) getServiceCache(name string, namespace string) *svctypes.Servic
 		service.Meta = make(map[string]string)
 	}
 	return service
-}
-
-func (s *Server) commonCheckDiscoverRequest(req *apiservice.Service, resp *apiservice.DiscoverResponse) bool {
-	if s.caches == nil {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_ClientAPINotOpen))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
-		resp.Service = req
-		return false
-	}
-	if req == nil {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_EmptyRequest))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
-		resp.Service = req
-		return false
-	}
-
-	if req.GetName().GetValue() == "" {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_InvalidServiceName))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
-		resp.Service = req
-		return false
-	}
-	if req.GetNamespace().GetValue() == "" {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_InvalidNamespaceName))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
-		resp.Service = req
-		return false
-	}
-
-	return true
 }

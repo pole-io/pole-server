@@ -134,7 +134,7 @@ func (d *DiscoverTestSuit) createCommonRoutingConfigV2(t *testing.T, cnt int32) 
 // 创建一个路由配置
 func (d *DiscoverTestSuit) createCommonRoutingConfigV2WithReq(
 	t *testing.T, rules []*apitraffic.RouteRule) []*apitraffic.RouteRule {
-	resp := d.GoverRuleServer().CreateRoutingConfigs(d.DefaultCtx, rules)
+	resp := d.GoverRuleServer().CreateRouterRules(d.DefaultCtx, rules)
 	if !respSuccess(resp) {
 		t.Fatalf("error: %+v", resp)
 	}
@@ -161,7 +161,7 @@ func (d *DiscoverTestSuit) createCommonRoutingConfigV2WithReq(
 
 // 删除一个路由配置
 func (d *DiscoverTestSuit) deleteCommonRoutingConfigV2(t *testing.T, req *apitraffic.RouteRule) {
-	resp := d.GoverRuleServer().DeleteRoutingConfigs(d.DefaultCtx, []*apitraffic.RouteRule{req})
+	resp := d.GoverRuleServer().DeleteRouterRules(d.DefaultCtx, []*apitraffic.RouteRule{req})
 	if !respSuccess(resp) {
 		t.Fatalf("%s", resp.GetInfo())
 	}

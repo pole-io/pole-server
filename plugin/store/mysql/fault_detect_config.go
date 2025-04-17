@@ -211,6 +211,31 @@ func (f *faultDetectRuleStore) GetFaultDetectRulesForCache(
 	return fdRules, nil
 }
 
+// ActiveFaultDetectRule implements store.FaultDetectRuleStore.
+func (f *faultDetectRuleStore) ActiveFaultDetectRule(tx store.Tx, name string) error {
+	panic("unimplemented")
+}
+
+// GetActiveFaultDetectRule implements store.FaultDetectRuleStore.
+func (f *faultDetectRuleStore) GetActiveFaultDetectRule(tx store.Tx, name string) (*rules.FaultDetectRule, error) {
+	panic("unimplemented")
+}
+
+// InactiveFaultDetectRule implements store.FaultDetectRuleStore.
+func (f *faultDetectRuleStore) InactiveFaultDetectRule(tx store.Tx, name string) error {
+	panic("unimplemented")
+}
+
+// LockFaultDetectRule implements store.FaultDetectRuleStore.
+func (f *faultDetectRuleStore) LockFaultDetectRule(tx store.Tx, name string) (*rules.FaultDetectRule, error) {
+	panic("unimplemented")
+}
+
+// PublishFaultDetectRule implements store.FaultDetectRuleStore.
+func (f *faultDetectRuleStore) PublishFaultDetectRule(tx store.Tx, rule *rules.FaultDetectRule) error {
+	panic("unimplemented")
+}
+
 func fetchFaultDetectRulesRows(rows *sql.Rows) ([]*rules.FaultDetectRule, error) {
 	defer rows.Close()
 	var out []*rules.FaultDetectRule

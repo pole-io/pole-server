@@ -89,6 +89,39 @@ func (svr *Server) DeleteLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 	return rsp
 }
 
+// PublishLaneGroups 批量发布泳道组规则
+func (svr *Server) PublishLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectLaneRuleAuthContext(ctx, reqs, authtypes.Modify, authtypes.UpdateLaneGroups)
+	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+	return svr.nextSvr.PublishLaneGroups(ctx, reqs)
+}
+
+// RollbackLaneGroups 批量回滚泳道组规则
+func (svr *Server) RollbackLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectLaneRuleAuthContext(ctx, reqs, authtypes.Modify, authtypes.RollbackLaneGroups)
+	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+	return svr.nextSvr.RollbackLaneGroups(ctx, reqs)
+}
+
+// StopbetaLaneGroups 批量回滚泳道组规则
+func (svr *Server) StopbetaLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectLaneRuleAuthContext(ctx, reqs, authtypes.Modify, authtypes.StopbetaLaneGroups)
+	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+	return svr.nextSvr.StopbetaLaneGroups(ctx, reqs)
+}
+
 // GetLaneGroups 查询泳道组列表
 func (svr *Server) GetLaneGroups(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse {
 	authCtx := svr.collectFaultDetectAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeFaultDetectRules)

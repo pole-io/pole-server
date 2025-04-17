@@ -30,8 +30,8 @@ type configFileTemplateStore struct {
 	slave  *BaseDB
 }
 
-// CreateConfigFileTemplate create config file template
-func (cf *configFileTemplateStore) CreateConfigFileTemplate(
+// SaveConfigFileTemplate create config file template
+func (cf *configFileTemplateStore) SaveConfigFileTemplate(
 	template *conftypes.ConfigFileTemplate) (*conftypes.ConfigFileTemplate, error) {
 	createSql := `
 	INSERT INTO config_file_template (name, content, comment, format, ctime

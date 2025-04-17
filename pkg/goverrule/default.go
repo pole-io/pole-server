@@ -10,6 +10,10 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 )
 
+var (
+	_ GoverRuleServer = (*Server)(nil)
+)
+
 type ServerProxyFactory func(pre GoverRuleServer, s store.Store) (GoverRuleServer, error)
 
 var (

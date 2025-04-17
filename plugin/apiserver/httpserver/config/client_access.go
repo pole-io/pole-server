@@ -32,8 +32,16 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
+
+func (h *HTTPServer) addDiscover(ws *restful.WebService) {
+	ws.Route(docs.EnrichConfigDiscoverApiDocs(ws.POST("/ConfigDiscover").To(h.Discover)))
+	ws.Route(docs.EnrichGetConfigFileForClientApiDocs(ws.GET("/GetConfigFile").To(h.ClientGetConfigFile)))
+	ws.Route(docs.EnrichWatchConfigFileForClientApiDocs(ws.POST("/WatchConfigFile").To(h.ClientWatchConfigFile)))
+	ws.Route(docs.EnrichGetConfigFileMetadataList(ws.POST("/GetConfigFileMetadataList").To(h.GetConfigFileMetadataList)))
+}
 
 func (h *HTTPServer) ClientGetConfigFile(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{

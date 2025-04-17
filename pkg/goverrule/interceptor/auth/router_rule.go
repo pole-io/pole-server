@@ -35,8 +35,8 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
-// CreateRoutingConfigsV2 批量创建路由配置
-func (svr *Server) CreateRoutingConfigs(ctx context.Context,
+// CreateRouterRules 批量创建路由配置
+func (svr *Server) CreateRouterRules(ctx context.Context,
 	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 
 	// TODO not support RouteRuleV2 resource auth, so we set op is read
@@ -46,7 +46,7 @@ func (svr *Server) CreateRoutingConfigs(ctx context.Context,
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	resp := svr.nextSvr.CreateRoutingConfigs(ctx, req)
+	resp := svr.nextSvr.CreateRouterRules(ctx, req)
 
 	for index := range resp.Responses {
 		item := resp.GetResponses()[index].GetData()
@@ -60,8 +60,8 @@ func (svr *Server) CreateRoutingConfigs(ctx context.Context,
 	return resp
 }
 
-// DeleteRoutingConfigs 批量删除路由配置
-func (svr *Server) DeleteRoutingConfigs(ctx context.Context,
+// DeleteRouterRules 批量删除路由配置
+func (svr *Server) DeleteRouterRules(ctx context.Context,
 	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 
 	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Delete, authtypes.DeleteRouteRules)
@@ -70,7 +70,7 @@ func (svr *Server) DeleteRoutingConfigs(ctx context.Context,
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	resp := svr.nextSvr.DeleteRoutingConfigs(ctx, req)
+	resp := svr.nextSvr.DeleteRouterRules(ctx, req)
 
 	for index := range resp.Responses {
 		item := resp.GetResponses()[index].GetData()
@@ -84,8 +84,8 @@ func (svr *Server) DeleteRoutingConfigs(ctx context.Context,
 	return resp
 }
 
-// UpdateRoutingConfigsV2 批量更新路由配置
-func (svr *Server) UpdateRoutingConfigs(ctx context.Context,
+// UpdateRouterRules 批量更新路由配置
+func (svr *Server) UpdateRouterRules(ctx context.Context,
 	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 
 	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Modify, authtypes.UpdateRouteRules)
@@ -94,24 +94,50 @@ func (svr *Server) UpdateRoutingConfigs(ctx context.Context,
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.UpdateRoutingConfigs(ctx, req)
+	return svr.nextSvr.UpdateRouterRules(ctx, req)
 }
 
-// EnableRoutings batch enable routing rules
-func (svr *Server) EnableRoutings(ctx context.Context,
+// PublishRouterRules batch enable routing rules
+func (svr *Server) PublishRouterRules(ctx context.Context,
 	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
 
-	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Modify, authtypes.EnableRouteRules)
+	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Modify, authtypes.PublishRouteRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.EnableRoutings(ctx, req)
+	return svr.nextSvr.PublishRouterRules(ctx, req)
 }
 
-// QueryRoutingConfigsV2 提供给OSS的查询路由配置的接口
-func (svr *Server) QueryRoutingConfigs(ctx context.Context,
+// RollbackRouterRules batch enable routing rules
+func (svr *Server) RollbackRouterRules(ctx context.Context,
+	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
+
+	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Modify, authtypes.RollbackRouteRules)
+	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+	return svr.nextSvr.RollbackRouterRules(ctx, req)
+}
+
+// StopbetaRouterRules batch enable routing rules
+func (svr *Server) StopbetaRouterRules(ctx context.Context,
+	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
+
+	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Modify, authtypes.StopbetaRouteRules)
+	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+	return svr.nextSvr.StopbetaRouterRules(ctx, req)
+}
+
+// QueryRouterRules 提供给OSS的查询路由配置的接口
+func (svr *Server) QueryRouterRules(ctx context.Context,
 	query map[string]string) *apiservice.BatchQueryResponse {
 	authCtx := svr.collectRouteRuleV2AuthContext(ctx, nil, authtypes.Read, authtypes.DescribeRouteRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -129,7 +155,7 @@ func (svr *Server) QueryRoutingConfigs(ctx context.Context,
 	})
 	authCtx.SetRequestContext(ctx)
 
-	resp := svr.nextSvr.QueryRoutingConfigs(ctx, query)
+	resp := svr.nextSvr.QueryRouterRules(ctx, query)
 	for index := range resp.Data {
 		item := &apitraffic.RouteRule{}
 		_ = anypb.UnmarshalTo(resp.Data[index], item, proto.UnmarshalOptions{})

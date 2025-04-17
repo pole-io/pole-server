@@ -56,7 +56,6 @@ import (
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	"github.com/pole-io/pole-server/plugin/access_control/auth"
 	storeplugin "github.com/pole-io/pole-server/plugin/store"
-	"github.com/pole-io/pole-server/plugin/store/boltdb"
 	sqldb "github.com/pole-io/pole-server/plugin/store/mysql"
 	testdata "github.com/pole-io/pole-server/test/data"
 )
@@ -450,25 +449,6 @@ func (d *DiscoverTestSuit) CleanReportClient() {
 
 			commitDbTx(dbTx)
 		}()
-	} else if d.Storage.Name() == boltdb.STORENAME {
-		func() {
-			tx, err := d.Storage.StartTx()
-			if err != nil {
-				panic(err)
-			}
-
-			dbTx := tx.GetDelegateTx().(*bolt.Tx)
-			defer rollbackBoltTx(dbTx)
-
-			if err := dbTx.DeleteBucket([]byte(tblClient)); err != nil {
-				if !errors.Is(err, bolt.ErrBucketNotFound) {
-					rollbackBoltTx(dbTx)
-					panic(err)
-				}
-			}
-
-			commitBoltTx(dbTx)
-		}()
 	}
 }
 
@@ -521,23 +501,6 @@ func (d *DiscoverTestSuit) CleanNamespace(name string) {
 
 			commitDbTx(dbTx)
 		}()
-	} else if d.Storage.Name() == boltdb.STORENAME {
-		func() {
-			tx, err := d.Storage.StartTx()
-			if err != nil {
-				panic(err)
-			}
-
-			dbTx := tx.GetDelegateTx().(*bolt.Tx)
-			if err := dbTx.Bucket([]byte(tblNameNamespace)).DeleteBucket([]byte(name)); err != nil {
-				if !errors.Is(err, bolt.ErrBucketNotFound) {
-					rollbackBoltTx(dbTx)
-					panic(err)
-				}
-			}
-
-			commitBoltTx(dbTx)
-		}()
 	}
 }
 
@@ -571,25 +534,6 @@ func (d *DiscoverTestSuit) CleanAllService() {
 			}
 
 			commitDbTx(dbTx)
-		}()
-	} else if d.Storage.Name() == boltdb.STORENAME {
-		func() {
-			tx, err := d.Storage.StartTx()
-			if err != nil {
-				panic(err)
-			}
-
-			dbTx := tx.GetDelegateTx().(*bolt.Tx)
-			defer rollbackBoltTx(dbTx)
-
-			if err := dbTx.DeleteBucket([]byte(tblNameService)); err != nil {
-				if !errors.Is(err, bolt.ErrBucketNotFound) {
-					rollbackBoltTx(dbTx)
-					panic(err)
-				}
-			}
-
-			commitBoltTx(dbTx)
 		}()
 	}
 }
@@ -636,33 +580,6 @@ func (d *DiscoverTestSuit) CleanService(name, namespace string) {
 
 			commitDbTx(dbTx)
 		}()
-	} else if d.Storage.Name() == boltdb.STORENAME {
-		func() {
-			svc, err := d.Storage.GetService(name, namespace)
-			if err != nil {
-				panic(err)
-			}
-			if svc == nil {
-				return
-			}
-
-			tx, err := d.Storage.StartTx()
-			if err != nil {
-				panic(err)
-			}
-
-			dbTx := tx.GetDelegateTx().(*bolt.Tx)
-			defer rollbackBoltTx(dbTx)
-
-			if err := dbTx.Bucket([]byte(tblNameService)).DeleteBucket([]byte(svc.ID)); err != nil {
-				if !errors.Is(err, bolt.ErrBucketNotFound) {
-					rollbackBoltTx(dbTx)
-					panic(err)
-				}
-			}
-
-			commitBoltTx(dbTx)
-		}()
 	}
 }
 
@@ -695,36 +612,6 @@ func (d *DiscoverTestSuit) CleanServices(services []*apiservice.Service) {
 
 			commitDbTx(dbTx)
 		}()
-	} else if d.Storage.Name() == boltdb.STORENAME {
-		func() {
-			ids := make([]string, 0, len(services))
-
-			for _, service := range services {
-				svc, err := d.Storage.GetService(service.GetName().GetValue(), service.GetNamespace().GetValue())
-				if err != nil {
-					panic(err)
-				}
-
-				ids = append(ids, svc.ID)
-			}
-
-			tx, err := d.Storage.StartTx()
-			if err != nil {
-				panic(err)
-			}
-
-			dbTx := tx.GetDelegateTx().(*bolt.Tx)
-
-			for i := range ids {
-				if err := dbTx.Bucket([]byte(tblNameService)).DeleteBucket([]byte(ids[i])); err != nil {
-					if !errors.Is(err, bolt.ErrBucketNotFound) {
-						rollbackBoltTx(dbTx)
-						panic(err)
-					}
-				}
-			}
-			commitBoltTx(dbTx)
-		}()
 	}
 
 }
@@ -754,23 +641,6 @@ func (d *DiscoverTestSuit) CleanInstance(instanceID string) {
 			}
 
 			commitDbTx(dbTx)
-		}()
-	} else if d.Storage.Name() == boltdb.STORENAME {
-		func() {
-			tx, err := d.Storage.StartTx()
-			if err != nil {
-				panic(err)
-			}
-
-			dbTx := tx.GetDelegateTx().(*bolt.Tx)
-
-			if err := dbTx.Bucket([]byte(tblNameInstance)).DeleteBucket([]byte(instanceID)); err != nil {
-				if !errors.Is(err, bolt.ErrBucketNotFound) {
-					rollbackBoltTx(dbTx)
-					panic(err)
-				}
-			}
-			commitBoltTx(dbTx)
 		}()
 	}
 }
@@ -802,43 +672,6 @@ func (d *DiscoverTestSuit) CleanCommonRoutingConfig(service string, namespace st
 
 			commitDbTx(dbTx)
 		}()
-	} else if d.Storage.Name() == boltdb.STORENAME {
-		func() {
-			svc, err := d.Storage.GetService(service, namespace)
-			if err != nil {
-				panic(err)
-			}
-
-			if svc == nil {
-				return
-			}
-
-			tx, err := d.Storage.StartTx()
-			if err != nil {
-				panic(err)
-			}
-
-			dbTx := tx.GetDelegateTx().(*bolt.Tx)
-			defer rollbackBoltTx(dbTx)
-
-			v1Bucket := dbTx.Bucket([]byte(tblNameRouting))
-			if v1Bucket != nil {
-				if err := v1Bucket.DeleteBucket([]byte(svc.ID)); err != nil {
-					if !errors.Is(err, bolt.ErrBucketNotFound) {
-						rollbackBoltTx(dbTx)
-						panic(err)
-					}
-				}
-			}
-
-			if err := dbTx.DeleteBucket([]byte(tblNameRouterRule)); err != nil {
-				if !errors.Is(err, bolt.ErrBucketNotFound) {
-					rollbackBoltTx(dbTx)
-					panic(err)
-				}
-			}
-			commitBoltTx(dbTx)
-		}()
 	}
 }
 
@@ -859,26 +692,6 @@ func (d *DiscoverTestSuit) TruncateCommonRoutingConfigV2() {
 			}
 
 			commitDbTx(dbTx)
-		}()
-	} else if d.Storage.Name() == boltdb.STORENAME {
-		func() {
-
-			tx, err := d.Storage.StartTx()
-			if err != nil {
-				panic(err)
-			}
-
-			dbTx := tx.GetDelegateTx().(*bolt.Tx)
-			defer rollbackBoltTx(dbTx)
-
-			if err := dbTx.DeleteBucket([]byte(tblNameRouterRule)); err != nil {
-				if !errors.Is(err, bolt.ErrBucketNotFound) {
-					rollbackBoltTx(dbTx)
-					panic(err)
-				}
-			}
-
-			commitBoltTx(dbTx)
 		}()
 	}
 }
@@ -913,28 +726,6 @@ func (d *DiscoverTestSuit) CleanCommonRoutingConfigV2(rules []*apitraffic.RouteR
 
 			commitDbTx(dbTx)
 		}()
-	} else if d.Storage.Name() == boltdb.STORENAME {
-		func() {
-
-			tx, err := d.Storage.StartTx()
-			if err != nil {
-				panic(err)
-			}
-
-			dbTx := tx.GetDelegateTx().(*bolt.Tx)
-			defer rollbackBoltTx(dbTx)
-
-			for i := range rules {
-				if err := dbTx.Bucket([]byte(tblNameRouterRule)).DeleteBucket([]byte(rules[i].Id)); err != nil {
-					if !errors.Is(err, bolt.ErrBucketNotFound) {
-						rollbackBoltTx(dbTx)
-						panic(err)
-					}
-				}
-			}
-
-			commitBoltTx(dbTx)
-		}()
 	}
 }
 
@@ -958,23 +749,6 @@ func (d *DiscoverTestSuit) CleanRateLimit(id string) {
 			}
 
 			commitDbTx(dbTx)
-		}()
-	} else if d.Storage.Name() == boltdb.STORENAME {
-		func() {
-			tx, err := d.Storage.StartTx()
-			if err != nil {
-				panic(err)
-			}
-
-			dbTx := tx.GetDelegateTx().(*bolt.Tx)
-
-			if err := dbTx.Bucket([]byte(tblRateLimitConfig)).DeleteBucket([]byte(id)); err != nil {
-				if !errors.Is(err, bolt.ErrBucketNotFound) {
-					rollbackBoltTx(dbTx)
-					panic(err)
-				}
-			}
-			commitBoltTx(dbTx)
 		}()
 	}
 }
@@ -1005,24 +779,6 @@ func (d *DiscoverTestSuit) CleanCircuitBreaker(id, version string) {
 
 			commitDbTx(dbTx)
 		}()
-	} else if d.Storage.Name() == boltdb.STORENAME {
-		func() {
-			tx, err := d.Storage.StartTx()
-			if err != nil {
-				panic(err)
-			}
-
-			dbTx := tx.GetDelegateTx().(*bolt.Tx)
-
-			if err := dbTx.Bucket(
-				[]byte(tblCircuitBreaker)).DeleteBucket([]byte(buildCircuitBreakerKey(id, version))); err != nil {
-				if !errors.Is(err, bolt.ErrBucketNotFound) {
-					panic(err)
-				}
-			}
-
-			commitBoltTx(dbTx)
-		}()
 	}
 }
 
@@ -1032,29 +788,6 @@ func (d *DiscoverTestSuit) CleanCircuitBreakerRelation(name, namespace, ruleID, 
 
 // 彻底删除熔断规则发布记录
 func (d *DiscoverTestSuit) CleanServiceContract() error {
-	if d.Storage.Name() == boltdb.STORENAME {
-		proxyTx, err := d.Storage.StartTx()
-		if err != nil {
-			return err
-		}
-
-		tx := proxyTx.GetDelegateTx().(*bolt.Tx)
-
-		bucketName := []string{
-			"service_contract",
-		}
-
-		defer tx.Rollback()
-
-		for i := range bucketName {
-			if err := tx.DeleteBucket([]byte(bucketName[i])); err != nil {
-				if !errors.Is(err, bolt.ErrBucketNotFound) {
-					return err
-				}
-			}
-		}
-		return tx.Commit()
-	}
 	if d.Storage.Name() == sqldb.STORENAME {
 		proxyTx, err := d.Storage.StartTx()
 		if err != nil {
@@ -1078,40 +811,6 @@ func (d *DiscoverTestSuit) CleanServiceContract() error {
 }
 
 func (d *DiscoverTestSuit) ClearTestDataWhenUseRDS() error {
-	if d.Storage.Name() == boltdb.STORENAME {
-		proxyTx, err := d.Storage.StartTx()
-		if err != nil {
-			return err
-		}
-
-		tx := proxyTx.GetDelegateTx().(*bolt.Tx)
-
-		bucketName := []string{
-			"ConfigFileGroup",
-			"ConfigFileGroupID",
-			"ConfigFile",
-			"ConfigFileID",
-			"ConfigFileReleaseHistory",
-			"ConfigFileReleaseHistoryID",
-			"ConfigFileRelease",
-			"ConfigFileReleaseID",
-			"ConfigFileTag",
-			"ConfigFileTagID",
-			"namespace",
-			"service_contract",
-		}
-
-		defer tx.Rollback()
-
-		for i := range bucketName {
-			if err := tx.DeleteBucket([]byte(bucketName[i])); err != nil {
-				if !errors.Is(err, bolt.ErrBucketNotFound) {
-					return err
-				}
-			}
-		}
-		return tx.Commit()
-	}
 	if d.Storage.Name() == sqldb.STORENAME {
 		proxyTx, err := d.Storage.StartTx()
 		if err != nil {

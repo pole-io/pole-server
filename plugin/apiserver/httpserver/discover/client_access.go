@@ -145,7 +145,10 @@ func (h *HTTPServer) Discover(req *restful.Request, rsp *restful.Response) {
 		ret = h.namingServer.ServiceInstancesCache(ctx, discoverRequest.Filter, discoverRequest.Service)
 	case apiservice.DiscoverRequest_ROUTING:
 		action = metrics.ActionDiscoverRouterRule
-		ret = h.ruleServer.GetRoutingConfigWithCache(ctx, discoverRequest.Service)
+		ret = h.ruleServer.GetOldRouterRuleWithCache(ctx, discoverRequest.Service)
+	case apiservice.DiscoverRequest_CUSTOM_ROUTE_RULE:
+		action = metrics.ActionDiscoverRouterRule
+		ret = h.ruleServer.GetRouterRuleWithCache(ctx, discoverRequest.Service)
 	case apiservice.DiscoverRequest_RATE_LIMIT:
 		action = metrics.ActionDiscoverRateLimit
 		ret = h.ruleServer.GetRateLimitWithCache(ctx, discoverRequest.Service)

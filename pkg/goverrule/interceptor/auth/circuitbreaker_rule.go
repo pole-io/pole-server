@@ -82,7 +82,7 @@ func (svr *Server) DeleteCircuitBreakerRules(
 	return rsp
 }
 
-func (svr *Server) EnableCircuitBreakerRules(
+func (svr *Server) PublishCircuitBreakerRules(
 	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
 	authCtx := svr.collectCircuitBreakerRuleV2(ctx, request, authtypes.Modify,
 		authtypes.EnableCircuitBreakerRules)
@@ -92,7 +92,33 @@ func (svr *Server) EnableCircuitBreakerRules(
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.EnableCircuitBreakerRules(ctx, request)
+	return svr.nextSvr.PublishCircuitBreakerRules(ctx, request)
+}
+
+func (svr *Server) RollbackCircuitBreakerRules(
+	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectCircuitBreakerRuleV2(ctx, request, authtypes.Modify,
+		authtypes.RollbackCircuitBreakerRules)
+	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
+	}
+
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+	return svr.nextSvr.RollbackCircuitBreakerRules(ctx, request)
+}
+
+func (svr *Server) StopbetaCircuitBreakerRules(
+	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectCircuitBreakerRuleV2(ctx, request, authtypes.Modify,
+		authtypes.StopbetaCircuitBreakerRules)
+	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
+	}
+
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+	return svr.nextSvr.StopbetaCircuitBreakerRules(ctx, request)
 }
 
 func (svr *Server) UpdateCircuitBreakerRules(

@@ -19,7 +19,9 @@ func (h *HTTPServer) addRateLimitRuleAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichDeleteRateLimitsApiDocs(ws.POST("/ratelimits/delete").To(h.DeleteRateLimits)))
 	ws.Route(docs.EnrichUpdateRateLimitsApiDocs(ws.PUT("/ratelimits").To(h.UpdateRateLimits)))
 	ws.Route(docs.EnrichGetRateLimitsApiDocs(ws.GET("/ratelimits").To(h.GetRateLimits)))
-	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.PUT("/ratelimits/enable").To(h.EnableRateLimits)))
+	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.POST("/ratelimits/publish").To(h.PublishRateLimits)))
+	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.PUT("/ratelimits/rollback").To(h.RollbackRateLimits)))
+	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.PUT("/ratelimits/stopbeta").To(h.StopbetaRateLimits)))
 }
 
 // CreateRateLimits 创建限流规则
@@ -69,31 +71,6 @@ func (h *HTTPServer) DeleteRateLimits(req *restful.Request, rsp *restful.Respons
 	handler.WriteHeaderAndProto(ret)
 }
 
-// EnableRateLimits 激活限流规则
-func (h *HTTPServer) EnableRateLimits(req *restful.Request, rsp *restful.Response) {
-	handler := &httpcommon.Handler{
-		Request:  req,
-		Response: rsp,
-	}
-	var rateLimits RateLimitArr
-	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apitraffic.Rule{}
-		rateLimits = append(rateLimits, msg)
-		return msg
-	})
-	if err != nil {
-		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
-		return
-	}
-	ret := h.ruleServer.EnableRateLimits(ctx, rateLimits)
-	if code := api.CalcCode(ret); code != http.StatusOK {
-		handler.WriteHeaderAndProto(ret)
-		return
-	}
-
-	handler.WriteHeaderAndProto(ret)
-}
-
 // UpdateRateLimits 修改限流规则
 func (h *HTTPServer) UpdateRateLimits(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
@@ -131,4 +108,61 @@ func (h *HTTPServer) GetRateLimits(req *restful.Request, rsp *restful.Response) 
 	queryParams := httpcommon.ParseQueryParams(req)
 	ret := h.ruleServer.GetRateLimits(handler.ParseHeaderContext(), queryParams)
 	handler.WriteHeaderAndProto(ret)
+}
+
+// PublishRateLimits 激活限流规则
+func (h *HTTPServer) PublishRateLimits(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+	var rateLimits RateLimitArr
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apitraffic.Rule{}
+		rateLimits = append(rateLimits, msg)
+		return msg
+	})
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+	handler.WriteHeaderAndProto(h.ruleServer.PublishRateLimits(ctx, rateLimits))
+}
+
+// RollbackRateLimits 激活限流规则
+func (h *HTTPServer) RollbackRateLimits(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+	var rateLimits RateLimitArr
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apitraffic.Rule{}
+		rateLimits = append(rateLimits, msg)
+		return msg
+	})
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+	handler.WriteHeaderAndProto(h.ruleServer.RollbackRateLimits(ctx, rateLimits))
+}
+
+// StopbetaRateLimits 激活限流规则
+func (h *HTTPServer) StopbetaRateLimits(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+	var rateLimits RateLimitArr
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apitraffic.Rule{}
+		rateLimits = append(rateLimits, msg)
+		return msg
+	})
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+	handler.WriteHeaderAndProto(h.ruleServer.RollbackRateLimits(ctx, rateLimits))
 }

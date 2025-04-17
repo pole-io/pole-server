@@ -38,13 +38,13 @@ var (
 	}
 )
 
-// GetRoutingConfigWithCache User Client Get Service Routing Configuration Information
-func (s *Server) GetRoutingConfigWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+// GetOldRouterRuleWithCache User Client Get Service Routing Configuration Information
+func (s *Server) GetOldRouterRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
 	resp := goverrule.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_ROUTING)
 	if !s.commonCheckDiscoverRequest(req, resp) {
 		return resp
 	}
-	return s.nextSvr.GetRoutingConfigWithCache(ctx, req)
+	return s.nextSvr.GetOldRouterRuleWithCache(ctx, req)
 }
 
 // GetRateLimitWithCache User Client Get Service Limit Configuration Information
