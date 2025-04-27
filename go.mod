@@ -1,6 +1,7 @@
 module github.com/pole-io/pole-server
 
 go 1.23
+toolchain go1.24.1
 
 require (
 	github.com/BurntSushi/toml v1.2.0
@@ -27,10 +28,10 @@ require (
 	go.uber.org/atomic v1.10.0
 	go.uber.org/automaxprocs v1.4.0
 	go.uber.org/zap v1.23.0
-	golang.org/x/crypto v0.23.0
-	golang.org/x/net v0.25.0
-	golang.org/x/sync v0.7.0
-	golang.org/x/text v0.15.0
+	golang.org/x/crypto v0.36.0
+	golang.org/x/net v0.38.0
+	golang.org/x/sync v0.12.0
+	golang.org/x/text v0.23.0
 	golang.org/x/time v0.1.1-0.20221020023724-80b9fac54d29
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.1
@@ -68,7 +69,7 @@ require (
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1
 )
