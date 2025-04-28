@@ -83,10 +83,8 @@ require (
 
 require (
 	cel.dev/expr v0.15.0 // indirect
-	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
-	github.com/prometheus/prometheus v1.8.2-0.20200727090838-6f296594a852 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
@@ -94,7 +92,7 @@ require (
 require (
 	github.com/dlclark/regexp2 v1.10.0
 	github.com/golang/snappy v1.0.0
-	github.com/grafana/loki v1.6.1
+	github.com/grafana/loki v6.7.8+incompatible
 	go.etcd.io/bbolt v1.3.7
 	google.golang.org/genproto/googleapis/api v0.0.0-20240528184218-531527333157 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
