@@ -65,12 +65,11 @@ func (svr *Server) decodeToken(t string) (authapi.OperatorInfo, error) {
 type TokenPrincipal interface {
 	GetToken() string
 	Disable() bool
-	OwnerID() string
 	SelfID() string
 }
 
 // checkToken 对 token 进行检查，如果 token 是一个空，直接返回默认值，但是不返回错误
-// return {owner-id} {is-owner} {error}
+// return {self-id} {is-owner} {error}
 func (svr *Server) checkToken(tokenInfo *authapi.OperatorInfo) (string, bool, error) {
 	if authapi.IsEmptyOperator(*tokenInfo) {
 		return "", false, nil
@@ -84,11 +83,7 @@ func (svr *Server) checkToken(tokenInfo *authapi.OperatorInfo) (string, bool, er
 		return "", false, authcommon.ErrorTokenNotExist
 	}
 	tokenInfo.Disable = principal.Disable()
-	if principal.OwnerID() == "" {
-		return principal.SelfID(), true, nil
-	}
-
-	return principal.OwnerID(), false, nil
+	return principal.SelfID(), true, nil
 }
 
 func (svr *Server) getTokenPrincipal(tokenInfo *authapi.OperatorInfo) (TokenPrincipal, error) {

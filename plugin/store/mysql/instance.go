@@ -701,45 +701,6 @@ func fetchInstanceWithMetaRows(rows *sql.Rows) (map[string]*svctypes.Instance, e
 	return out, nil
 }
 
-// getMoreInstancesMain 获取增量instances 主表内容，health_check内容
-func (ins *instanceStore) getMoreInstancesMain(tx *BaseTx, mtime time.Time, firstUpdate bool,
-	serviceID []string) (map[string]*svctypes.Instance, error) {
-
-	str := genInstanceSelectSQL() + " where instance.mtime >= FROM_UNIXTIME(?)"
-	args := make([]interface{}, 0, len(serviceID)+1)
-	args = append(args, timeToTimestamp(mtime))
-
-	if firstUpdate {
-		str += " and flag != 1"
-	}
-
-	if len(serviceID) > 0 {
-		str += " and service_id in (" + PlaceholdersN(len(serviceID))
-		str += ")"
-	}
-	for _, id := range serviceID {
-		args = append(args, id)
-	}
-
-	rows, err := tx.Query(str, args...)
-	if err != nil {
-		log.Errorf("[Store][database] get more instance query err: %s", err.Error())
-		return nil, err
-	}
-
-	out := make(map[string]*svctypes.Instance)
-	err = callFetchInstanceRows(rows, func(entry *svctypes.InstanceStore) (b bool, e error) {
-		out[entry.ID] = svctypes.Store2Instance(entry)
-		return true, nil
-	})
-	if err != nil {
-		log.Errorf("[Store][database] call fetch instance rows err: %s", err.Error())
-		return nil, err
-	}
-
-	return out, nil
-}
-
 // addMainInstance 往instance主表中增加数据
 func addMainInstance(tx *BaseTx, instance *svctypes.Instance) error {
 	// #lizard forgives
@@ -757,7 +718,7 @@ func addMainInstance(tx *BaseTx, instance *svctypes.Instance) error {
 // batchAddMainInstances 批量增加main instance数据
 func batchAddMainInstances(tx *BaseTx, instances []*svctypes.Instance) error {
 	str := `replace into instance(id, service_id, vpc_id, host, port, protocol, version, health_status, isolate,
-		 weight, enable_health_check, logic_set, cmdb_region, cmdb_zone, cmdb_idc, priority, revision, ctime, mtime) 
+		 weight, enable_health_check, logic_set, cmdb_region, cmdb_zone, cmdb_idc, priority, metadata, revision, ctime, mtime) 
 		 values`
 	first := true
 	args := make([]interface{}, 0)
@@ -765,14 +726,14 @@ func batchAddMainInstances(tx *BaseTx, instances []*svctypes.Instance) error {
 		if !first {
 			str += ","
 		}
-		str += "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())"
+		str += "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())"
 		first = false
 		args = append(args, entry.ID(), entry.ServiceID, entry.VpcID(), entry.Host(), entry.Port())
 		args = append(args, entry.Protocol(), entry.Version(), entry.Healthy(), entry.Isolate(),
 			entry.Weight())
 		args = append(args, entry.EnableHealthCheck(), entry.LogicSet(),
 			entry.Location().GetRegion().GetValue(), entry.Location().GetZone().GetValue(),
-			entry.Location().GetCampus().GetValue(), entry.Priority(), entry.Revision())
+			entry.Location().GetCampus().GetValue(), entry.Priority(), utils.MustJson(entry.Proto.GetMetadata()), entry.Revision())
 	}
 	_, err := tx.Exec(str, args...)
 	return err
@@ -834,12 +795,12 @@ func updateInstanceCheck(tx *BaseTx, instance *svctypes.Instance) error {
 func updateInstanceMain(tx *BaseTx, instance *svctypes.Instance) error {
 	str := `update instance set protocol = ?,
 	 version = ?, health_status = ?, isolate = ?, weight = ?, enable_health_check = ?, logic_set = ?,
-	 cmdb_region = ?, cmdb_zone = ?, cmdb_idc = ?, priority = ?, revision = ?, mtime = sysdate() where id = ?`
+	 cmdb_region = ?, cmdb_zone = ?, cmdb_idc = ?, priority = ?, metadata = ?, revision = ?, mtime = sysdate() where id = ?`
 
 	_, err := tx.Exec(str, instance.Protocol(), instance.Version(), instance.Healthy(), instance.Isolate(),
 		instance.Weight(), instance.EnableHealthCheck(), instance.LogicSet(),
 		instance.Location().GetRegion().GetValue(), instance.Location().GetZone().GetValue(),
-		instance.Location().GetCampus().GetValue(), instance.Priority(),
+		instance.Location().GetCampus().GetValue(), instance.Priority(), utils.MustJson(instance.Proto.GetMetadata()),
 		instance.Revision(), instance.ID())
 
 	return err
@@ -873,21 +834,23 @@ func callFetchInstanceRows(rows *sql.Rows, callback func(entry *svctypes.Instanc
 		return nil
 	}
 	defer rows.Close()
-	var item svctypes.InstanceStore
 	progress := 0
 	for rows.Next() {
 		progress++
 		if progress%100000 == 0 {
 			log.Infof("[Store][database] instance fetch rows progress: %d", progress)
 		}
-		err := rows.Scan(&item.ID, &item.ServiceID, &item.VpcID, &item.Host, &item.Port, &item.Protocol,
+		var item svctypes.InstanceStore
+		var labels string
+		if err := rows.Scan(&item.ID, &item.ServiceID, &item.VpcID, &item.Host, &item.Port, &item.Protocol,
 			&item.Version, &item.HealthStatus, &item.Isolate, &item.Weight, &item.EnableHealthCheck,
 			&item.LogicSet, &item.Region, &item.Zone, &item.Campus, &item.Priority, &item.Revision,
-			&item.Flag, &item.CheckType, &item.TTL, &item.CreateTime, &item.ModifyTime)
-		if err != nil {
+			&item.Flag, &item.CheckType, &item.TTL, &item.CreateTime, &item.ModifyTime, &labels); err != nil {
 			log.Errorf("[Store][database] fetch instance rows err: %s", err.Error())
 			return err
 		}
+		item.Meta = make(map[string]string)
+		_ = json.Unmarshal([]byte(labels), &item.Meta)
 		ok, err := callback(&item)
 		if err != nil {
 			return err
@@ -940,40 +903,6 @@ func fetchExpandInstanceRows(rows *sql.Rows) ([]*svctypes.Instance, error) {
 	}
 
 	return out, nil
-}
-
-// fetchInstanceMetaRows 解析获取instance metadata
-func fetchInstanceMetaRows(instances map[string]*svctypes.Instance, rows *sql.Rows) error {
-	if rows == nil {
-		return nil
-	}
-	defer rows.Close()
-	var id, key, value string
-	progress := 0
-	for rows.Next() {
-		progress++
-		if progress%500000 == 0 {
-			log.Infof("[Store][database] fetch instance meta progress: %d", progress)
-		}
-		if err := rows.Scan(&id, &key, &value); err != nil {
-			log.Errorf("[Store][database] fetch instance metadata rows scan err: %s", err.Error())
-			return err
-		}
-		// 不在目标列表，不存储
-		if _, ok := instances[id]; !ok {
-			continue
-		}
-		if instances[id].Proto.Metadata == nil {
-			instances[id].Proto.Metadata = make(map[string]string)
-		}
-		instances[id].Proto.Metadata[key] = value
-	}
-	if err := rows.Err(); err != nil {
-		log.Errorf("[Store][database] fetch instance metadata rows next err: %s", err.Error())
-		return err
-	}
-
-	return nil
 }
 
 // genInstanceSelectSQL 生成instance的select sql语句

@@ -154,7 +154,7 @@ func getMasterAccountToken(storage store.Store) (string, error) {
 	if mainUser == "" {
 		mainUser = "pole"
 	}
-	user, err := storage.GetUserByName(mainUser, "")
+	user, err := storage.GetUserByName(mainUser)
 	if err != nil {
 		return "", err
 	}

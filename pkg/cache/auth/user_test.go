@@ -64,7 +64,6 @@ func genModelUsers(total int) []*authtypes.User {
 				ID:       fmt.Sprintf("owner-user-%d", i),
 				Name:     fmt.Sprintf("owner-user-%d", i),
 				Password: fmt.Sprintf("owner-user-%d", i),
-				Owner:    "",
 				Source:   "pole-io",
 				Type:     authtypes.OwnerUserRole,
 				Token:    fmt.Sprintf("owner-user-%d", i),
@@ -78,7 +77,6 @@ func genModelUsers(total int) []*authtypes.User {
 			ID:       fmt.Sprintf("sub-user-%d", i),
 			Name:     fmt.Sprintf("sub-user-%d", i),
 			Password: fmt.Sprintf("sub-user-%d", i),
-			Owner:    owner.ID,
 			Source:   "pole-io",
 			Type:     authtypes.SubAccountUserRole,
 			Token:    fmt.Sprintf("sub-user-%d", i),
@@ -99,7 +97,6 @@ func genModelUserGroups(users []*authtypes.User) []*authtypes.UserGroupDetail {
 			UserGroup: &authtypes.UserGroup{
 				ID:          utils.NewUUID(),
 				Name:        fmt.Sprintf("group-%d", i),
-				Owner:       users[0].ID,
 				Token:       users[i].Token,
 				TokenEnable: true,
 				Valid:       true,
@@ -127,7 +124,7 @@ func TestUserCache_UpdateNormal(t *testing.T) {
 	admin := &authtypes.User{
 		ID:    "admin-polaris",
 		Name:  "admin-polaris",
-		Type:  authtypes.AdminUserRole,
+		Type:  authtypes.OwnerUserRole,
 		Valid: true,
 	}
 
@@ -159,7 +156,7 @@ func TestUserCache_UpdateNormal(t *testing.T) {
 		assert.NotNil(t, u)
 		assert.Equal(t, u, users[1])
 
-		u = uc.GetUserByName(users[1].Name, users[0].Name)
+		u = uc.GetUserByName(users[1].Name)
 		assert.NotNil(t, u)
 		assert.Equal(t, u, users[1])
 
@@ -235,7 +232,7 @@ func TestUserCache_UpdateNormal(t *testing.T) {
 				assert.NotNil(t, u)
 				assert.Equal(t, u, users[i])
 
-				u = uc.GetUserByName(users[i].Name, users[0].Name)
+				u = uc.GetUserByName(users[i].Name)
 				assert.NotNil(t, u)
 				assert.Equal(t, u, users[i])
 
@@ -249,7 +246,7 @@ func TestUserCache_UpdateNormal(t *testing.T) {
 			} else {
 				assert.Nil(t, u)
 
-				u = uc.GetUserByName(users[i].Name, users[0].Name)
+				u = uc.GetUserByName(users[i].Name)
 				assert.Nil(t, u)
 
 				g := uc.GetGroup(groups[i].ID)

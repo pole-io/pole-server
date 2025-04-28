@@ -536,7 +536,7 @@ func setInsDbStatus(svr *Server, instance *svctypes.Instance, healthStatus bool,
 	// 这里为了避免多次发送重复的事件，对实例原本的health 状态以及 healthStatus 状态进行对比，不一致才
 	// 发布服务实例变更事件
 	if instance.Healthy() != healthStatus {
-		event := svctypes.InstanceEvent{
+		event := &svctypes.InstanceEvent{
 			Id:        id,
 			Namespace: instance.Namespace(),
 			Service:   instance.Service(),

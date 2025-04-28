@@ -64,25 +64,6 @@ func (h *HTTPServer) DeleteCircuitBreakerRules(req *restful.Request, rsp *restfu
 	handler.WriteHeaderAndProto(h.ruleServer.DeleteCircuitBreakerRules(ctx, circuitBreakerRules))
 }
 
-// EnableCircuitBreakerRules enable the circuitbreaker rues
-func (h *HTTPServer) EnableCircuitBreakerRules(req *restful.Request, rsp *restful.Response) {
-	handler := &httpcommon.Handler{
-		Request:  req,
-		Response: rsp,
-	}
-	var circuitBreakerRules CircuitBreakerRuleAttr
-	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apifault.CircuitBreakerRule{}
-		circuitBreakerRules = append(circuitBreakerRules, msg)
-		return msg
-	})
-	if err != nil {
-		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
-		return
-	}
-	handler.WriteHeaderAndProto(h.ruleServer.EnableCircuitBreakerRules(ctx, circuitBreakerRules))
-}
-
 // UpdateCircuitBreakerRules update the circuitbreaker rues
 func (h *HTTPServer) UpdateCircuitBreakerRules(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{

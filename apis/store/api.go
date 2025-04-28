@@ -61,8 +61,6 @@ type NamespaceStore interface {
 	AddNamespace(namespace *types.Namespace) error
 	// UpdateNamespace Update namespace
 	UpdateNamespace(namespace *types.Namespace) error
-	// UpdateNamespaceToken Update namespace token
-	UpdateNamespaceToken(name string, token string) error
 	// GetNamespace Get the details of the namespace according to Name
 	GetNamespace(name string) (*types.Namespace, error)
 	// GetNamespaces Query Namespace from the database

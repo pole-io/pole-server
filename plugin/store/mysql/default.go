@@ -150,7 +150,7 @@ func parseDatabaseConf(opt map[string]interface{}) (*dbConfig, *dbConfig, error)
 
 // parseStoreConfig 解析store的配置
 func parseStoreConfig(opts interface{}) (*dbConfig, error) {
-	obj, _ := opts.(map[interface{}]interface{})
+	obj, _ := opts.(map[string]interface{})
 
 	needCheckFields := map[string]string{"dbType": "", "dbUser": "", "dbPwd": "", "dbAddr": "", "dbName": ""}
 

@@ -207,7 +207,7 @@ func (s *Server) ListCheckerServer() []*svctypes.Instance {
 }
 
 // publishInstanceEvent 发布服务事件
-func (s *Server) publishInstanceEvent(serviceID string, event svctypes.InstanceEvent) {
+func (s *Server) publishInstanceEvent(serviceID string, event *svctypes.InstanceEvent) {
 	event.SvcId = serviceID
 	if event.Instance != nil {
 		// event.Instance = proto.Clone(event.Instance).(*apiservice.Instance)

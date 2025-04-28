@@ -99,14 +99,14 @@ func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthS
 }
 
 // UpdateStrategies 批量更新策略
-func (svr *Server) UpdatePolicies(ctx context.Context, reqs []*apisecurity.ModifyAuthStrategy) *apiservice.BatchWriteResponse {
+func (svr *Server) UpdatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
 	batchResp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range reqs {
 		var rsp *apiservice.Response
 		strategy, err := svr.storage.GetStrategyDetail(reqs[i].GetId().GetValue())
 		if err != nil {
 			log.Error("[Auth][Strategy] get strategy from store", utils.RequestID(ctx), zap.Error(err))
-			rsp = api.NewModifyAuthStrategyResponse(storeapi.StoreCode2APICode(err), reqs[i])
+			rsp = api.NewAuthStrategyResponse(storeapi.StoreCode2APICode(err), reqs[i])
 		}
 		if strategy == nil {
 			continue
@@ -212,14 +212,12 @@ func (svr *Server) checkCreateStrategy(req *apisecurity.AuthStrategy) *apiservic
 // checkUpdateStrategy 检查更新鉴权策略的请求
 // Case 1. 修改的是默认鉴权策略的话，只能修改资源，不能添加用户 or 用户组
 // Case 2. 鉴权策略只能被自己的 owner 对应的用户修改
-func (svr *Server) checkUpdateStrategy(ctx context.Context, req *apisecurity.ModifyAuthStrategy,
+func (svr *Server) checkUpdateStrategy(ctx context.Context, req *apisecurity.AuthStrategy,
 	saved *authtypes.StrategyDetail) *apiservice.Response {
 	if saved.Default {
-		if len(req.AddPrincipals.Users) != 0 ||
-			len(req.AddPrincipals.Groups) != 0 ||
-			len(req.RemovePrincipals.Groups) != 0 ||
-			len(req.RemovePrincipals.Users) != 0 {
-			return api.NewModifyAuthStrategyResponse(apimodel.Code_NotAllowModifyDefaultStrategyPrincipal, req)
+		if len(req.GetPrincipals().GetUsers()) != 0 ||
+			len(req.GetPrincipals().GetGroups()) != 0 {
+			return api.NewAuthStrategyResponse(apimodel.Code_NotAllowModifyDefaultStrategyPrincipal, req)
 		}
 
 		// 主账户的默认策略禁止编辑
@@ -231,17 +229,15 @@ func (svr *Server) checkUpdateStrategy(ctx context.Context, req *apisecurity.Mod
 	}
 
 	// 检查用户是否存在
-	if err := svr.checkUserExist(convertPrincipalsToUsers(req.GetAddPrincipals())); err != nil {
-		return api.NewModifyAuthStrategyResponse(apimodel.Code_NotFoundUser, req)
+	if err := svr.checkUserExist(convertPrincipalsToUsers(req.GetPrincipals())); err != nil {
+		return api.NewAuthStrategyResponse(apimodel.Code_NotFoundUser, req)
 	}
-
-	// 检查用户组是否存
-	if err := svr.checkGroupExist(convertPrincipalsToGroups(req.GetAddPrincipals())); err != nil {
-		return api.NewModifyAuthStrategyResponse(apimodel.Code_NotFoundUserGroup, req)
+	// 检查用户组是否存在
+	if err := svr.checkGroupExist(convertPrincipalsToGroups(req.GetPrincipals())); err != nil {
+		return api.NewAuthStrategyResponse(apimodel.Code_NotFoundUserGroup, req)
 	}
-
 	// 检查资源是否存在
-	if errResp := svr.checkResourceExist(req.GetAddResources()); errResp != nil {
+	if errResp := svr.checkResourceExist(req.GetResources()); errResp != nil {
 		return errResp
 	}
 	return nil

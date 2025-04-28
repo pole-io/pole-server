@@ -359,13 +359,11 @@ func Test_EurekaWrite(t *testing.T) {
 			assert.Equal(t, apimodel.Code_ExecuteSuccess, apimodel.Code(rsp.GetCode().GetValue()))
 
 			// 在获取一次
-			_, saveInss, err := discoverSuit.Storage.GetExpandInstances(map[string]string{
-				"id": mockIns.InstanceId,
-			}, map[string]string{}, 0, 10)
+			saveIns, err := discoverSuit.Storage.GetInstance(mockIns.InstanceId)
 			assert.NoError(t, err)
-			assert.Equal(t, 1, len(saveInss))
-			assert.True(t, saveInss[0].Isolate())
-			assert.Equal(t, StatusOutOfService, saveInss[0].Proto.Metadata[InternalMetadataStatus])
+			assert.NotNil(t, saveIns)
+			assert.True(t, saveIns.Isolate())
+			assert.Equal(t, StatusOutOfService, saveIns.Proto.Metadata[InternalMetadataStatus])
 		})
 	})
 }

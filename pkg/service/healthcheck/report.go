@@ -149,7 +149,7 @@ func (s *Server) baseReport(ctx context.Context, id string, reportReq *healthche
 			EType:    svctypes.EventInstanceSendHeartbeat,
 		}
 		event.InjectMetadata(ctx)
-		s.publishInstanceEvent(ins.ServiceID, *event)
+		s.publishInstanceEvent(ins.ServiceID, event)
 	}
 	return code, err
 }

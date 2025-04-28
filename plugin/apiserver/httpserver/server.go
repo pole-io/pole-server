@@ -54,6 +54,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/aimcp"
+	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/auth"
 	confighttp "github.com/pole-io/pole-server/plugin/apiserver/httpserver/config"
 	discovery "github.com/pole-io/pole-server/plugin/apiserver/httpserver/discover"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
@@ -96,12 +97,10 @@ type HTTPServer struct {
 	statis            statis.Statis
 	whitelist         whitelist.Whitelist
 
-	discoverV1 *discovery.HTTPServer
-	configSvr  *confighttp.HTTPServer
-	aimcpSvr   *aimcp.HTTPServer
-
-	userMgn     authapi.UserServer
-	strategyMgn authapi.StrategyServer
+	discoverSvr *discovery.HTTPServer
+	configSvr   *confighttp.HTTPServer
+	aimcpSvr    *aimcp.HTTPServer
+	authSvr     *auth.HTTPServer
 
 	// apiserverSlots
 	apiserverSlots map[string]apiserver.Apiserver
@@ -219,22 +218,21 @@ func (h *HTTPServer) Run(errCh chan error) {
 		return
 	}
 
-	userMgn, err := authapi.GetUserServer()
+	userSvr, err := authapi.GetUserServer()
 	if err != nil {
 		log.Errorf("%v", err)
 		errCh <- err
 		return
 	}
 
-	strategyMgn, err := authapi.GetStrategyServer()
+	policySvr, err := authapi.GetStrategyServer()
 	if err != nil {
 		log.Errorf("%v", err)
 		errCh <- err
 		return
 	}
 
-	h.userMgn = userMgn
-	h.strategyMgn = strategyMgn
+	h.authSvr = auth.NewServer(userSvr, policySvr)
 
 	h.healthCheckServer, err = healthcheck.GetServer()
 	if err != nil {
@@ -244,12 +242,13 @@ func (h *HTTPServer) Run(errCh chan error) {
 	}
 	h.statis = statis.GetStatis()
 
-	h.discoverV1 = discovery.NewServer(h.namingServer, h.ruleServer, h.healthCheckServer)
+	h.discoverSvr = discovery.NewServer(h.namingServer, h.ruleServer, h.healthCheckServer)
 	h.configSvr, err = confighttp.NewServer(h.maintainServer, h.namespaceServer)
 	if err != nil {
 		errCh <- err
 		return
 	}
+
 	aimcpSvr, err := aimcp.NewServer(h.maintainServer, h.namespaceServer)
 	if err != nil {
 		errCh <- err
@@ -398,17 +397,17 @@ func (h *HTTPServer) createRestfulContainer() (*restful.Container, error) {
 			}
 		case "console":
 			if apiConfig.Enable {
-				wsContainer.Add(h.discoverV1.GetConsoleAccessServer(apiConfig.Include))
+				wsContainer.Add(h.discoverSvr.GetConsoleAccessServer(apiConfig.Include))
 				wsContainer.Add(h.configSvr.GetConsoleAccessServer(apiConfig.Include))
 				wsContainer.Add(h.GetCoreV1ConsoleAccessServer(apiConfig.Include))
-				wsContainer.Add(h.GetAuthServer())
+				wsContainer.Add(h.authSvr.GetAuthServer())
 				wsContainer.Add(h.GetPrometheusDiscoveryServer(apiConfig.Include))
 			}
 		case "client":
 			if apiConfig.Enable {
 				ws := new(restful.WebService)
 				ws.Path("/v1").Consumes(restful.MIME_JSON).Produces(restful.MIME_JSON)
-				h.discoverV1.GetClientAccessServer(ws, apiConfig.Include)
+				h.discoverSvr.GetClientAccessServer(ws, apiConfig.Include)
 				h.configSvr.GetClientAccessServer(ws, apiConfig.Include)
 				wsContainer.Add(ws)
 			}

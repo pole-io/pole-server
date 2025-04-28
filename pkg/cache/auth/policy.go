@@ -364,7 +364,6 @@ func (sc *policyCache) Query(ctx context.Context, args cacheapi.PolicySearchArgs
 
 	searchId, hasId := args.Filters["id"]
 	searchName, hasName := args.Filters["name"]
-	searchOwner, hasOwner := args.Filters["owner"]
 	searchDefault, hasDefault := args.Filters["default"]
 	searchResType, hasResType := args.Filters["res_type"]
 	searchResID := args.Filters["res_id"]
@@ -382,19 +381,14 @@ func (sc *policyCache) Query(ctx context.Context, args cacheapi.PolicySearchArgs
 		if hasName && !utils.IsWildMatch(val.Name, searchName) {
 			return
 		}
-		if hasOwner && searchOwner != val.Owner {
-			if !hasPrincipalId {
+		if searchPrincipalType == strconv.Itoa(int(authtypes.PrincipalUser)) {
+			if _, ok := val.UserPrincipal[searchPrincipalId]; !ok {
 				return
 			}
-			if searchPrincipalType == strconv.Itoa(int(authtypes.PrincipalUser)) {
-				if _, ok := val.UserPrincipal[searchPrincipalId]; !ok {
-					return
-				}
-			}
-			if searchPrincipalType == strconv.Itoa(int(authtypes.PrincipalGroup)) {
-				if _, ok := val.GroupPrincipal[searchPrincipalId]; !ok {
-					return
-				}
+		}
+		if searchPrincipalType == strconv.Itoa(int(authtypes.PrincipalGroup)) {
+			if _, ok := val.GroupPrincipal[searchPrincipalId]; !ok {
+				return
 			}
 		}
 		if hasDefault && searchDefault != strconv.FormatBool(val.Default) {

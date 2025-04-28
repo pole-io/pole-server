@@ -63,13 +63,13 @@ func (u *groupStore) AddGroup(tx store.Tx, group *authcommon.UserGroupDetail) er
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 
 	// 先清理无效数据
-	if err := cleanInValidGroup(dbTx, group.Name, group.Owner); err != nil {
+	if err := cleanInValidGroup(dbTx, group.Name); err != nil {
 		return store.Error(err)
 	}
 
 	addSql := `
-	  INSERT INTO user_group (id, name, owner, token, token_enable, comment, flag, ctime, mtime)
-	  VALUES (?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())
+	  INSERT INTO user_group (id, name, token, token_enable, comment, flag, ctime, mtime, owner)
+	  VALUES (?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate(), '')
 	  `
 
 	tokenEnable := 1
@@ -80,7 +80,6 @@ func (u *groupStore) AddGroup(tx store.Tx, group *authcommon.UserGroupDetail) er
 	if _, err := dbTx.Exec(addSql, []interface{}{
 		group.ID,
 		group.Name,
-		group.Owner,
 		group.Token,
 		tokenEnable,
 		group.Comment,
@@ -98,7 +97,7 @@ func (u *groupStore) AddGroup(tx store.Tx, group *authcommon.UserGroupDetail) er
 }
 
 // UpdateGroup 更新用户组
-func (u *groupStore) UpdateGroup(group *authcommon.ModifyUserGroup) error {
+func (u *groupStore) UpdateGroup(group *authcommon.UserGroupDetail) error {
 	if group.ID == "" {
 		return store.NewStatusError(store.EmptyParamsErr, fmt.Sprintf(
 			"update usergroup missing some params, groupId is %s", group.ID))
@@ -111,7 +110,7 @@ func (u *groupStore) UpdateGroup(group *authcommon.ModifyUserGroup) error {
 	return store.Error(err)
 }
 
-func (u *groupStore) updateGroup(group *authcommon.ModifyUserGroup) error {
+func (u *groupStore) updateGroup(group *authcommon.UserGroupDetail) error {
 	tx, err := u.master.Begin()
 	if err != nil {
 		return err
@@ -124,17 +123,15 @@ func (u *groupStore) updateGroup(group *authcommon.ModifyUserGroup) error {
 		tokenEnable = 0
 	}
 
-	// 更新用户-用户组关联数据
-	if len(group.AddUserIds) != 0 {
-		if err = u.addGroupRelation(tx, group.ID, group.AddUserIds); err != nil {
-			log.Errorf("[Store][Group] add usergroup relation err: %s", err.Error())
-			return err
-		}
+	if err = u.removeGroupRelation(tx, group.ID); err != nil {
+		log.Errorf("[Store][Group] remove usergroup relation err: %s", err.Error())
+		return err
 	}
 
-	if len(group.RemoveUserIds) != 0 {
-		if err = u.removeGroupRelation(tx, group.ID, group.RemoveUserIds); err != nil {
-			log.Errorf("[Store][Group] remove usergroup relation err: %s", err.Error())
+	// 更新用户-用户组关联数据
+	if len(group.UserIds) != 0 {
+		if err = u.addGroupRelation(tx, group.ID, group.ToUserIdSlice()); err != nil {
+			log.Errorf("[Store][Group] add usergroup relation err: %s", err.Error())
 			return err
 		}
 	}
@@ -206,9 +203,10 @@ func (u *groupStore) GetGroup(groupId string) (*authcommon.UserGroupDetail, erro
 	var (
 		ctime, mtime int64
 		tokenEnable  int
+		owner        string
 	)
 
-	if err := row.Scan(&group.ID, &group.Name, &group.Owner, &group.Comment, &group.Token, &tokenEnable,
+	if err := row.Scan(&group.ID, &group.Name, &owner, &group.Comment, &group.Token, &tokenEnable,
 		&ctime, &mtime); err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -231,13 +229,14 @@ func (u *groupStore) GetGroup(groupId string) (*authcommon.UserGroupDetail, erro
 }
 
 // GetGroupByName 根据 owner、name 获取用户组
-func (u *groupStore) GetGroupByName(name, owner string) (*authcommon.UserGroup, error) {
-	if name == "" || owner == "" {
+func (u *groupStore) GetGroupByName(name string) (*authcommon.UserGroup, error) {
+	if name == "" {
 		return nil, store.NewStatusError(store.EmptyParamsErr, fmt.Sprintf(
-			"get usergroup missing some params, name=%s, owner=%s", name, owner))
+			"get usergroup missing some params, name=%s", name))
 	}
 
 	var ctime, mtime int64
+	var owner string
 
 	getSql := `
 	  SELECT ug.id, ug.name, ug.owner, ug.comment, ug.token
@@ -251,7 +250,7 @@ func (u *groupStore) GetGroupByName(name, owner string) (*authcommon.UserGroup, 
 
 	group := new(authcommon.UserGroup)
 
-	if err := row.Scan(&group.ID, &group.Name, &group.Owner, &group.Comment, &group.Token, &ctime, &mtime); err != nil {
+	if err := row.Scan(&group.ID, &group.Name, &owner, &group.Comment, &group.Token, &ctime, &mtime); err != nil {
 		switch err {
 		case sql.ErrNoRows:
 			return nil, nil
@@ -339,25 +338,15 @@ func (u *groupStore) addGroupRelation(tx *BaseTx, groupId string, userIds []stri
 	return nil
 }
 
-func (u *groupStore) removeGroupRelation(tx *BaseTx, groupId string, userIds []string) error {
-	if groupId == "" {
+func (u *groupStore) removeGroupRelation(tx *BaseTx, gid string) error {
+	if gid == "" {
 		return store.NewStatusError(store.EmptyParamsErr, fmt.Sprintf(
-			"delete user relation missing some params, groupid is %s", groupId))
+			"delete user relation missing some params, groupid is %s", gid))
 	}
-	if len(userIds) > valid.MaxBatchSize {
-		return store.NewStatusError(store.InvalidUserIDSlice, fmt.Sprintf(
-			"user id slice is invalid, len=%d", len(userIds)))
+	addSql := "DELETE FROM user_group_relation WHERE group_id = ?"
+	if _, err := tx.Exec(addSql, gid); err != nil {
+		return err
 	}
-
-	for i := range userIds {
-		uid := userIds[i]
-		addSql := "DELETE FROM user_group_relation WHERE group_id = ? AND user_id = ?"
-		args := []interface{}{groupId, uid}
-		if _, err := tx.Exec(addSql, args...); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -386,8 +375,9 @@ func (u *groupStore) getGroupLinkUserIds(groupId string) (map[string]struct{}, e
 func fetchRown2UserGroup(rows *sql.Rows) (*authcommon.UserGroup, error) {
 	var ctime, mtime int64
 	var flag, tokenEnable int
+	var owner string
 	group := new(authcommon.UserGroup)
-	if err := rows.Scan(&group.ID, &group.Name, &group.Owner, &group.Comment, &group.Token, &tokenEnable,
+	if err := rows.Scan(&group.ID, &group.Name, &owner, &group.Comment, &group.Token, &tokenEnable,
 		&ctime, &mtime, &flag); err != nil {
 		return nil, err
 	}
@@ -401,7 +391,7 @@ func fetchRown2UserGroup(rows *sql.Rows) (*authcommon.UserGroup, error) {
 }
 
 // cleanInValidUserGroup 清理无效的用户组数据
-func cleanInValidGroup(tx *BaseTx, name, owner string) error {
+func cleanInValidGroup(tx *BaseTx, name string) error {
 	log.Infof("[Store][User] clean usergroup(%s)", name)
 
 	str := "delete from user_group where name = ? and flag = 1"

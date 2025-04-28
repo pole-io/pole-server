@@ -21,7 +21,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -36,25 +35,25 @@ type namespaceStore struct {
 }
 
 // AddNamespace 添加命名空间
-func (ns *namespaceStore) AddNamespace(namespace *types.Namespace) error {
-	if namespace.Name == "" {
+func (ns *namespaceStore) AddNamespace(data *types.Namespace) error {
+	if data.Name == "" {
 		return errors.New("store add namespace name is empty")
 	}
 	return RetryTransaction("addNamespace", func() error {
 		return ns.master.processWithTransaction("addNamespace", func(tx *BaseTx) error {
 			// 先删除无效数据，再添加新数据
-			if err := cleanNamespace(tx, namespace.Name); err != nil {
+			if err := cleanNamespace(tx, data.Name); err != nil {
 				return err
 			}
 
 			str := `
 			INSERT INTO namespace (name, comment, token, owner, ctime
-				, mtime, service_export_to)
+				, mtime, service_export_to, metadata)
 			VALUES (?, ?, ?, ?, sysdate()
 				, sysdate(), ?)
 			`
-			args := []interface{}{namespace.Name, namespace.Comment, namespace.Token, namespace.Owner,
-				utils.MustJson(namespace.ServiceExportTo)}
+			args := []interface{}{data.Name, data.Comment, data.Token, data.Owner,
+				utils.MustJson(data.ServiceExportTo), utils.MustJson(data.Metadata)}
 			if _, err := tx.Exec(str, args...); err != nil {
 				return store.Error(err)
 			}
@@ -70,38 +69,15 @@ func (ns *namespaceStore) AddNamespace(namespace *types.Namespace) error {
 }
 
 // UpdateNamespace 更新命名空间，目前只更新owner
-func (ns *namespaceStore) UpdateNamespace(namespace *types.Namespace) error {
-	if namespace.Name == "" {
+func (ns *namespaceStore) UpdateNamespace(data *types.Namespace) error {
+	if data.Name == "" {
 		return errors.New("store update namespace name is empty")
 	}
 	return RetryTransaction("updateNamespace", func() error {
 		return ns.master.processWithTransaction("updateNamespace", func(tx *BaseTx) error {
-			str := "update namespace set owner = ?, comment = ?, service_export_to = ?, mtime = sysdate() where name = ?"
-			args := []interface{}{namespace.Owner, namespace.Comment, utils.MustJson(namespace.ServiceExportTo), namespace.Name}
+			str := "update namespace set owner = ?, comment = ?, service_export_to = ?, mtime = sysdate(), metadata = ? where name = ?"
+			args := []interface{}{data.Owner, data.Comment, utils.MustJson(data.ServiceExportTo), utils.MustJson(data.Metadata), data.Name}
 			if _, err := tx.Exec(str, args...); err != nil {
-				return store.Error(err)
-			}
-
-			if err := tx.Commit(); err != nil {
-				log.Errorf("[Store][database] batch delete instance commit tx err: %s", err.Error())
-				return err
-			}
-
-			return nil
-		})
-	})
-}
-
-// UpdateNamespaceToken 更新命名空间token
-func (ns *namespaceStore) UpdateNamespaceToken(name string, token string) error {
-	if name == "" || token == "" {
-		return fmt.Errorf(
-			"store update namespace token some param are empty, name is %s, token is %s", name, token)
-	}
-	return RetryTransaction("updateNamespaceToken", func() error {
-		return ns.master.processWithTransaction("updateNamespaceToken", func(tx *BaseTx) error {
-			str := "update namespace set token = ?, mtime = sysdate() where name = ?"
-			if _, err := tx.Exec(str, token, name); err != nil {
 				return store.Error(err)
 			}
 
@@ -255,6 +231,7 @@ func genNamespaceSelectSQL() string {
 	, owner, flag, UNIX_TIMESTAMP(ctime)
 	, UNIX_TIMESTAMP(mtime)
 	, IFNULL(service_export_to, '{}')
+	, IFNULL(metadata, '{}')
 FROM namespace
 	`
 	return str
@@ -270,19 +247,13 @@ func namespaceFetchRows(rows *sql.Rows) ([]*types.Namespace, error) {
 	var out []*types.Namespace
 	var ctime, mtime int64
 	var flag int
-	var serviceExportTo string
+	var serviceExportTo, metadata string
 
 	for rows.Next() {
 		space := &types.Namespace{}
 		err := rows.Scan(
-			&space.Name,
-			&space.Comment,
-			&space.Token,
-			&space.Owner,
-			&flag,
-			&ctime,
-			&mtime,
-			&serviceExportTo,
+			&space.Name, &space.Comment, &space.Token, &space.Owner, &flag, &ctime,
+			&mtime, &serviceExportTo, &metadata,
 		)
 		if err != nil {
 			log.Errorf("[Store][database] fetch namespace rows scan err: %s", err.Error())
@@ -293,6 +264,8 @@ func namespaceFetchRows(rows *sql.Rows) ([]*types.Namespace, error) {
 		space.ModifyTime = time.Unix(mtime, 0)
 		space.ServiceExportTo = map[string]struct{}{}
 		_ = json.Unmarshal([]byte(serviceExportTo), &space.ServiceExportTo)
+		space.Metadata = map[string]string{}
+		_ = json.Unmarshal([]byte(metadata), &space.Metadata)
 		space.Valid = true
 		if flag == 1 {
 			space.Valid = false

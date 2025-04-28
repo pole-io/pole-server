@@ -53,20 +53,19 @@ type strategyStore struct {
 }
 
 func (s *strategyStore) AddStrategy(tx store.Tx, strategy *authcommon.StrategyDetail) error {
-	if strategy.ID == "" || strategy.Name == "" || strategy.Owner == "" {
+	if strategy.ID == "" || strategy.Name == "" {
 		return store.NewStatusError(store.EmptyParamsErr, fmt.Sprintf(
-			"add auth_strategy missing some params, id is %s, name is %s, owner is %s",
-			strategy.ID, strategy.Name, strategy.Owner))
+			"add auth_strategy missing some params, id is %s, name is %s",
+			strategy.ID, strategy.Name))
 	}
 
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 
 	// 先清理无效数据
-	log.Info("[Store][Strategy] clean invalid auth_strategy", zap.String("name", strategy.Name),
-		zap.String("owner", strategy.Owner))
+	log.Info("[Store][Strategy] clean invalid auth_strategy", zap.String("name", strategy.Name))
 
-	str := "delete from auth_strategy where name = ? and owner = ? and flag = 1"
-	if _, err := dbTx.Exec(str, strategy.Name, strategy.Owner); err != nil {
+	str := "delete from auth_strategy where name = ? and flag = 1"
+	if _, err := dbTx.Exec(str, strategy.Name); err != nil {
 		log.Errorf("[Store][Strategy] clean invalid auth_strategy(%s) err: %s", strategy.Name, err.Error())
 		return err
 	}
@@ -94,11 +93,11 @@ func (s *strategyStore) AddStrategy(tx store.Tx, strategy *authcommon.StrategyDe
 	}
 
 	// 保存策略主信息
-	saveMainSql := "INSERT INTO auth_strategy(`id`, `name`, `action`, `owner`, `comment`, `flag`, " +
-		" `default`, `revision`, `source`, `metadata`) VALUES (?,?,?,?,?,?,?,?,?,?)"
+	saveMainSql := "INSERT INTO auth_strategy(`id`, `name`, `action`, `comment`, `flag`, " +
+		" `default`, `revision`, `source`, `metadata`, `owner`) VALUES (?,?,?,?,?,?,?,?,?,'')"
 	if _, err := dbTx.Exec(saveMainSql,
 		[]interface{}{
-			strategy.ID, strategy.Name, strategy.Action, strategy.Owner, strategy.Comment,
+			strategy.ID, strategy.Name, strategy.Action, strategy.Comment,
 			0, isDefault, strategy.Revision, strategy.Source, utils.MustJson(strategy.Metadata)}...,
 	); err != nil {
 		log.Error("[Store][Strategy] add auth_strategy main info", zap.Error(err))
@@ -108,7 +107,7 @@ func (s *strategyStore) AddStrategy(tx store.Tx, strategy *authcommon.StrategyDe
 }
 
 // UpdateStrategy 更新鉴权规则
-func (s *strategyStore) UpdateStrategy(strategy *authcommon.ModifyStrategyDetail) error {
+func (s *strategyStore) UpdateStrategy(strategy *authcommon.StrategyDetail) error {
 	if strategy.ID == "" {
 		return store.NewStatusError(store.EmptyParamsErr, fmt.Sprintf(
 			"update auth_strategy missing some params, id is %s", strategy.ID))
@@ -120,7 +119,7 @@ func (s *strategyStore) UpdateStrategy(strategy *authcommon.ModifyStrategyDetail
 	return store.Error(err)
 }
 
-func (s *strategyStore) updateStrategy(strategy *authcommon.ModifyStrategyDetail) error {
+func (s *strategyStore) updateStrategy(rule *authcommon.StrategyDetail) error {
 	tx, err := s.master.Begin()
 	if err != nil {
 		return err
@@ -128,37 +127,27 @@ func (s *strategyStore) updateStrategy(strategy *authcommon.ModifyStrategyDetail
 	defer func() { _ = tx.Rollback() }()
 
 	// 调整 principal 信息
-	if err = s.addPolicyPrincipals(tx, strategy.ID, strategy.AddPrincipals); err != nil {
-		log.Errorf("[Store][Strategy] add strategy principal err: %s", err.Error())
+	// 先清理掉原先的所有关联子数据信息
+	if err = s.cleanOldPolicyInfo(tx, rule.ID); err != nil {
+		log.Error("[Store][Strategy] clean old strategy principal", zap.String("id", rule.ID), zap.Error(err))
 		return err
 	}
-	if err = s.deletePolicyPrincipals(tx, strategy.ID, strategy.RemovePrincipals); err != nil {
-		log.Errorf("[Store][Strategy] remove strategy principal err: %s", err.Error())
-		return err
-	}
-
 	// 调整鉴权资源信息
-	if err = s.addPolicyResources(tx, strategy.ID, strategy.AddResources); err != nil {
+	if err = s.addPolicyResources(tx, rule.ID, rule.Resources); err != nil {
 		log.Errorf("[Store][Strategy] add strategy resource err: %s", err.Error())
 		return err
 	}
-	if err = s.deletePolicyResources(tx, strategy.ID, strategy.RemoveResources); err != nil {
-		log.Errorf("[Store][Strategy] remove strategy resource err: %s", err.Error())
-		return err
-	}
-
-	if err = s.savePolicyFunctions(tx, strategy.ID, strategy.CalleeMethods); err != nil {
+	if err = s.savePolicyFunctions(tx, rule.ID, rule.CalleeMethods); err != nil {
 		log.Error("[Store][Strategy] save auth_strategy functions", zap.Error(err))
 		return err
 	}
-	if err = s.savePolicyConditions(tx, strategy.ID, strategy.Conditions); err != nil {
+	if err = s.savePolicyConditions(tx, rule.ID, rule.Conditions); err != nil {
 		log.Error("[Store][Strategy] save auth_strategy conditions", zap.Error(err))
 		return err
 	}
-
 	// 保存策略主信息
 	saveMainSql := "UPDATE auth_strategy SET action = ?, comment = ?, mtime = sysdate() WHERE id = ?"
-	if _, err = tx.Exec(saveMainSql, []interface{}{strategy.Action, strategy.Comment, strategy.ID}...); err != nil {
+	if _, err = tx.Exec(saveMainSql, []interface{}{rule.Action, rule.Comment, rule.ID}...); err != nil {
 		log.Error("[Store][Strategy] update strategy main info", zap.Error(err))
 		return err
 	}
@@ -296,24 +285,8 @@ func (s *strategyStore) addPolicyPrincipals(tx *BaseTx, id string, principals []
 	return err
 }
 
-// deletePolicyPrincipals
-func (s *strategyStore) deletePolicyPrincipals(tx *BaseTx, id string,
-	principals []authcommon.Principal) error {
-	if len(principals) == 0 {
-		return nil
-	}
-
-	savePrincipalSql := "DELETE FROM auth_principal WHERE strategy_id = ? AND principal_id = ? " +
-		" AND principal_role = ?"
-	for i := range principals {
-		principal := principals[i]
-		if _, err := tx.Exec(savePrincipalSql, []interface{}{
-			id, principal.PrincipalID, principal.PrincipalType,
-		}...); err != nil {
-			return err
-		}
-	}
-
+// cleanOldPolicyInfo
+func (s *strategyStore) cleanOldPolicyInfo(tx *BaseTx, id string) error {
 	return nil
 }
 
@@ -501,9 +474,10 @@ func (s *strategyStore) getStrategyDetail(row *sql.Row) (*authcommon.StrategyDet
 	var (
 		ctime, mtime    int64
 		isDefault, flag int16
+		owner           string
 	)
 	ret := new(authcommon.StrategyDetail)
-	if err := row.Scan(&ret.ID, &ret.Name, &ret.Action, &ret.Owner, &isDefault, &ret.Comment,
+	if err := row.Scan(&ret.ID, &ret.Name, &ret.Action, &owner, &isDefault, &ret.Comment,
 		&ret.Revision, &flag, &ctime, &mtime); err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -741,12 +715,13 @@ func fetchRown2StrategyDetail(rows *sql.Rows) (*authcommon.StrategyDetail, error
 	var (
 		ctime, mtime    int64
 		isDefault, flag int16
+		owner           string
 	)
 	ret := &authcommon.StrategyDetail{
 		Resources: make([]authcommon.StrategyResource, 0),
 	}
 
-	if err := rows.Scan(&ret.ID, &ret.Name, &ret.Action, &ret.Owner, &ret.Comment, &isDefault, &ret.Revision, &flag,
+	if err := rows.Scan(&ret.ID, &ret.Name, &ret.Action, &owner, &ret.Comment, &isDefault, &ret.Revision, &flag,
 		&ctime, &mtime); err != nil {
 		return nil, store.Error(err)
 	}

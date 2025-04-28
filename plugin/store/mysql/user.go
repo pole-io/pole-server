@@ -19,6 +19,7 @@ package sqldb
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -26,6 +27,7 @@ import (
 
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
+	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 var (
@@ -61,8 +63,9 @@ func (u *userStore) GetMainUser() (*authcommon.User, error) {
 	  `
 	row := u.master.QueryRow(getSql, authcommon.OwnerUserRole)
 
+	var owner string
 	user := &authcommon.User{}
-	if err := row.Scan(&user.ID, &user.Name, &user.Password, &user.Owner, &user.Comment, &user.Source,
+	if err := row.Scan(&user.ID, &user.Name, &user.Password, &owner, &user.Comment, &user.Source,
 		&user.Token, &tokenEnable, &userType, &user.Mobile, &user.Email); err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -89,7 +92,7 @@ func (u *userStore) AddUser(tx store.Tx, user *authcommon.User) error {
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 
 	// 先清理无效数据
-	if err := u.cleanInValidUser(dbTx, user.Name, user.Owner); err != nil {
+	if err := u.cleanInValidUser(dbTx, user.Name); err != nil {
 		return err
 	}
 
@@ -98,15 +101,14 @@ func (u *userStore) AddUser(tx store.Tx, user *authcommon.User) error {
 }
 
 func (u *userStore) addUser(tx *BaseTx, user *authcommon.User) error {
-	addSql := "INSERT INTO user(`id`, `name`, `password`, `owner`, `source`, `token`, " +
+	addSql := "INSERT INTO user(`id`, `name`, `password`, `source`, `token`, " +
 		" `comment`, `flag`, `user_type`, " +
-		" `ctime`, `mtime`, `mobile`, `email`) VALUES (?,?,?,?,?,?,?,?,?,sysdate(),sysdate(),?,?)"
+		" `ctime`, `mtime`, `mobile`, `email`, `owner`) VALUES (?,?,?,?,?,?,?,?,sysdate(),sysdate(),?,?, '')"
 
 	_, err := tx.Exec(addSql, []interface{}{
 		user.ID,
 		user.Name,
 		user.Password,
-		user.Owner,
 		user.Source,
 		user.Token,
 		user.Comment,
@@ -151,7 +153,7 @@ func (u *userStore) updateUser(user *authcommon.User) error {
 	}
 
 	modifySql := "UPDATE user SET password = ?, token = ?, comment = ?, token_enable = ?, mobile = ?, email = ?, " +
-		" mtime = sysdate() WHERE id = ? AND flag = 0"
+		" mtime = sysdate(), metadata = ? WHERE id = ? AND flag = 0"
 
 	_, err = tx.Exec(modifySql, []interface{}{
 		user.Password,
@@ -160,6 +162,7 @@ func (u *userStore) updateUser(user *authcommon.User) error {
 		tokenEnable,
 		user.Mobile,
 		user.Email,
+		utils.MustJson(user.Metadata),
 		user.ID,
 	}...)
 
@@ -209,7 +212,7 @@ func (u *userStore) GetSubCount(user *authcommon.User) (uint32, error) {
 	)
 
 	if err != nil {
-		log.Error("[Store][User] count sub-account", zap.String("owner", user.Owner), zap.Error(err))
+		log.Error("[Store][User] count sub-account", zap.Error(err))
 	}
 
 	return count, err
@@ -225,11 +228,12 @@ func (u *userStore) GetUser(id string) (*authcommon.User, error) {
 		 WHERE u.flag = 0 AND u.id = ? 
 	  `
 	var (
-		row  = u.master.QueryRow(getSQL, id)
-		user = new(authcommon.User)
+		row   = u.master.QueryRow(getSQL, id)
+		user  = new(authcommon.User)
+		owner string
 	)
 
-	if err := row.Scan(&user.ID, &user.Name, &user.Password, &user.Owner, &user.Comment, &user.Source,
+	if err := row.Scan(&user.ID, &user.Name, &user.Password, &owner, &user.Comment, &user.Source,
 		&user.Token, &tokenEnable, &userType, &user.Mobile, &user.Email); err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -248,23 +252,23 @@ func (u *userStore) GetUser(id string) (*authcommon.User, error) {
 }
 
 // GetUserByName 根据用户名、owner 获取用户
-func (u *userStore) GetUserByName(name, ownerID string) (*authcommon.User, error) {
+func (u *userStore) GetUserByName(name string) (*authcommon.User, error) {
 	getSql := `
 		 SELECT u.id, u.name, u.password, u.owner, u.comment, u.source, u.token, u.token_enable, 
 		 	u.user_type, u.mobile, u.email
 		 FROM user u
 		 WHERE u.flag = 0
-			  AND u.name = ?
-			  AND u.owner = ? 
+			  AND u.name = ? 
 	  `
 
 	var (
-		row                   = u.master.QueryRow(getSql, name, ownerID)
+		row                   = u.master.QueryRow(getSql, name)
 		user                  = new(authcommon.User)
 		tokenEnable, userType int
+		owner                 string
 	)
 
-	if err := row.Scan(&user.ID, &user.Name, &user.Password, &user.Owner, &user.Comment, &user.Source,
+	if err := row.Scan(&user.ID, &user.Name, &user.Password, &owner, &user.Comment, &user.Source,
 		&user.Token, &tokenEnable, &userType, &user.Mobile, &user.Email); err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -337,7 +341,7 @@ func (u *userStore) GetMoreUsers(mtime time.Time, firstUpdate bool) ([]*authcomm
 	querySQL := `
 	  SELECT u.id, u.name, u.password, u.owner, u.comment, u.source
 		  , u.token, u.token_enable, user_type, UNIX_TIMESTAMP(u.ctime)
-		  , UNIX_TIMESTAMP(u.mtime), u.flag, u.mobile, u.email
+		  , UNIX_TIMESTAMP(u.mtime), u.flag, u.mobile, u.email, IFNULL(u.metadata, '')
 	  FROM user u 
 	  `
 
@@ -381,13 +385,14 @@ func fetchRown2User(rows *sql.Rows) (*authcommon.User, error) {
 	var (
 		ctime, mtime                int64
 		flag, tokenEnable, userType int
+		owner                       string
 		user                        = new(authcommon.User)
-		err                         = rows.Scan(&user.ID, &user.Name, &user.Password, &user.Owner,
-			&user.Comment, &user.Source, &user.Token, &tokenEnable, &userType, &ctime, &mtime,
-			&flag, &user.Mobile, &user.Email)
+		metadata                    string
 	)
 
-	if err != nil {
+	if err := rows.Scan(&user.ID, &user.Name, &user.Password, &owner,
+		&user.Comment, &user.Source, &user.Token, &tokenEnable, &userType, &ctime, &mtime,
+		&flag, &user.Mobile, &user.Email, &metadata); err != nil {
 		return nil, err
 	}
 
@@ -396,18 +401,18 @@ func fetchRown2User(rows *sql.Rows) (*authcommon.User, error) {
 	user.CreateTime = time.Unix(ctime, 0)
 	user.ModifyTime = time.Unix(mtime, 0)
 	user.Type = authcommon.UserRoleType(userType)
-
-	// pole-server后续不在保存用户的 mobile 以及 email 信息，这里针对原来保存的数据也不进行对外展示，强制屏蔽数据
 	user.Mobile = ""
 	user.Email = ""
+	user.Metadata = map[string]string{}
+	_ = json.Unmarshal([]byte(metadata), &user.Metadata)
 
 	return user, nil
 }
 
-func (u *userStore) cleanInValidUser(tx *BaseTx, name, owner string) error {
-	log.Infof("[Store][User] clean user, name=(%s), owner=(%s)", name, owner)
-	str := "delete from user where name = ? and owner = ? and flag = 1"
-	if _, err := tx.Exec(str, name, owner); err != nil {
+func (u *userStore) cleanInValidUser(tx *BaseTx, name string) error {
+	log.Infof("[Store][User] clean user, name=(%s)", name)
+	str := "delete from user where name = ? and flag = 1"
+	if _, err := tx.Exec(str, name); err != nil {
 		log.Errorf("[Store][User] clean user(%s) err: %s", name, err.Error())
 		return err
 	}

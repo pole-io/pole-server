@@ -20,7 +20,9 @@ package policy
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -65,7 +67,7 @@ func (svr *Server) CreatePolicy(ctx context.Context, req *apisecurity.AuthStrate
 	req.Owner = protobuf.NewStringValue(utils.ParseOwnerID(ctx))
 	req.Resources = svr.normalizeResource(req.Resources)
 
-	data := svr.createAuthStrategyModel(req)
+	saveData := authtypes.ParsePolicyRule(req)
 
 	tx, err := svr.storage.StartTx()
 	if err != nil {
@@ -76,7 +78,7 @@ func (svr *Server) CreatePolicy(ctx context.Context, req *apisecurity.AuthStrate
 		_ = tx.Rollback()
 	}()
 
-	if err := svr.storage.AddStrategy(tx, data); err != nil {
+	if err := svr.storage.AddStrategy(tx, saveData); err != nil {
 		log.Error("[Auth][Strategy] create strategy into store", utils.RequestID(ctx),
 			zap.Error(err))
 		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
@@ -87,14 +89,14 @@ func (svr *Server) CreatePolicy(ctx context.Context, req *apisecurity.AuthStrate
 	}
 
 	log.Info("[Auth][Strategy] create strategy", utils.RequestID(ctx), zap.String("name", req.Name.GetValue()))
-	svr.RecordHistory(authStrategyRecordEntry(ctx, req, data, types.OCreate))
+	svr.RecordHistory(authStrategyRecordEntry(ctx, req, saveData, types.OCreate))
 
 	return api.NewAuthStrategyResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
 // UpdatePolicies 批量修改鉴权
 func (svr *Server) UpdatePolicies(
-	ctx context.Context, reqs []*apisecurity.ModifyAuthStrategy) *apiservice.BatchWriteResponse {
+	ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
 	resp := api.NewAuthBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 
 	for index := range reqs {
@@ -109,21 +111,21 @@ func (svr *Server) UpdatePolicies(
 // Case 1. 修改的是默认鉴权策略的话，只能修改资源，不能添加、删除用户 or 用户组
 // Case 2. 鉴权策略只能被自己的 owner 对应的用户修改
 // Case 3. 主账户的默认策略不得修改
-func (svr *Server) UpdatePolicy(ctx context.Context, req *apisecurity.ModifyAuthStrategy) *apiservice.Response {
-	strategy, err := svr.storage.GetStrategyDetail(req.GetId().GetValue())
+func (svr *Server) UpdatePolicy(ctx context.Context, req *apisecurity.AuthStrategy) *apiservice.Response {
+	saveData, err := svr.storage.GetStrategyDetail(req.GetId().GetValue())
 	if err != nil {
 		log.Error("[Auth][Strategy] get strategy from store", utils.RequestID(ctx),
 			zap.Error(err))
-		return api.NewModifyAuthStrategyResponse(storeapi.StoreCode2APICode(err), req)
+		return api.NewAuthStrategyResponse(storeapi.StoreCode2APICode(err), req)
 	}
-	if strategy == nil {
-		return api.NewModifyAuthStrategyResponse(apimodel.Code_NotFoundAuthStrategyRule, req)
+	if saveData == nil {
+		return api.NewAuthStrategyResponse(apimodel.Code_NotFoundAuthStrategyRule, req)
 	}
 
-	req.AddResources = svr.normalizeResource(req.AddResources)
-	data, needUpdate := svr.updateAuthStrategyAttribute(ctx, req, strategy)
+	updateData := authtypes.ParsePolicyRule(req)
+	data, needUpdate := svr.updateAuthPolicyAttribute(ctx, saveData, updateData)
 	if !needUpdate {
-		return api.NewModifyAuthStrategyResponse(apimodel.Code_NoNeedUpdate, req)
+		return api.NewAuthStrategyResponse(apimodel.Code_NoNeedUpdate, req)
 	}
 
 	if err := svr.storage.UpdateStrategy(data); err != nil {
@@ -133,10 +135,10 @@ func (svr *Server) UpdatePolicy(ctx context.Context, req *apisecurity.ModifyAuth
 	}
 
 	log.Info("[Auth][Strategy] update strategy into store", utils.RequestID(ctx),
-		zap.String("name", strategy.Name))
-	svr.RecordHistory(authModifyStrategyRecordEntry(ctx, req, data, types.OUpdate))
+		zap.String("name", saveData.Name))
+	svr.RecordHistory(authModifyStrategyRecordEntry(ctx, req, saveData, types.OUpdate))
 
-	return api.NewModifyAuthStrategyResponse(apimodel.Code_ExecuteSuccess, req)
+	return api.NewAuthStrategyResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
 // DeletePolicies 批量删除鉴权策略
@@ -171,10 +173,6 @@ func (svr *Server) DeletePolicy(ctx context.Context, req *apisecurity.AuthStrate
 		return api.NewAuthStrategyResponseWithMsg(apimodel.Code_BadRequest, "default strategy can't delete", req)
 	}
 
-	if strategy.Owner != utils.ParseUserID(ctx) {
-		return api.NewAuthStrategyResponse(apimodel.Code_NotAllowedAccess, req)
-	}
-
 	if err := svr.storage.DeleteStrategy(req.GetId().GetValue()); err != nil {
 		log.Error("[Auth][Strategy] delete strategy from store",
 			utils.RequestID(ctx), zap.Error(err))
@@ -206,12 +204,6 @@ func (svr *Server) GetPolicies(ctx context.Context, filters map[string]string) *
 
 	// 透传兼容模式信息数据
 	ctx = context.WithValue(ctx, utils.ContextKeyCompatible{}, svr.options.Compatible)
-
-	// 这里需要框定大体的数据查询范围
-	if authtypes.ParseUserRole(ctx) != authtypes.AdminUserRole {
-		filters["owner"] = utils.ParseOwnerID(ctx)
-	}
-
 	total, strategies, err := svr.cacheMgr.AuthStrategy().Query(ctx, cachetypes.PolicySearchArgs{
 		Filters: filters,
 		Offset:  offset,
@@ -293,12 +285,7 @@ func (svr *Server) GetPolicy(ctx context.Context, req *apisecurity.AuthStrategy)
 		return api.NewAuthStrategyResponse(apimodel.Code_NotFoundAuthStrategyRule, req)
 	}
 
-	var canView bool
-	if isOwner {
-		// 是否是本鉴权策略的 owner 账户, 或者是否是超级管理员, 是的话则快速跳过下面的检查
-		canView = (ret.Owner == userId) || authtypes.ParseUserRole(ctx) == authtypes.AdminUserRole
-	}
-
+	var canView bool = false
 	// 判断是否在该策略所属的成员列表中，如果自己在某个用户组，而该用户组又在这个策略的成员中，则也是可以查看的
 	if !canView {
 		curUser := &apisecurity.User{
@@ -417,7 +404,6 @@ func (svr *Server) authStrategy2Api(ctx context.Context, s *authtypes.StrategyDe
 	out := &apisecurity.AuthStrategy{
 		Id:              protobuf.NewStringValue(s.ID),
 		Name:            protobuf.NewStringValue(s.Name),
-		Owner:           protobuf.NewStringValue(s.Owner),
 		Comment:         protobuf.NewStringValue(s.Comment),
 		Ctime:           protobuf.NewStringValue(commontime.Time2String(s.CreateTime)),
 		Mtime:           protobuf.NewStringValue(commontime.Time2String(s.ModifyTime)),
@@ -449,7 +435,6 @@ func (svr *Server) authStrategyFull2Api(ctx context.Context, data *authtypes.Str
 	out := &apisecurity.AuthStrategy{
 		Id:              protobuf.NewStringValue(data.ID),
 		Name:            protobuf.NewStringValue(data.Name),
-		Owner:           protobuf.NewStringValue(data.Owner),
 		Comment:         protobuf.NewStringValue(data.Comment),
 		Ctime:           protobuf.NewStringValue(commontime.Time2String(data.CreateTime)),
 		Mtime:           protobuf.NewStringValue(commontime.Time2String(data.ModifyTime)),
@@ -464,209 +449,56 @@ func (svr *Server) authStrategyFull2Api(ctx context.Context, data *authtypes.Str
 	return out
 }
 
-// createAuthStrategyModel 创建鉴权策略的存储模型
-func (svr *Server) createAuthStrategyModel(strategy *apisecurity.AuthStrategy) *authtypes.StrategyDetail {
-	ret := &authtypes.StrategyDetail{}
-	ret.FromSpec(strategy)
-
-	// 收集涉及的资源信息
-	resEntry := make([]authtypes.StrategyResource, 0, 20)
-	for resType, ptrGetter := range resourceFieldPointerGetters {
-		slicePtr := ptrGetter(strategy.Resources)
-		if slicePtr.Elem().IsNil() {
-			continue
-		}
-		resEntry = append(resEntry, svr.collectResourceEntry(ret.ID, resType, slicePtr.Elem(), false)...)
-	}
-
-	// 收集涉及的 principal 信息
-	principals := make([]authtypes.Principal, 0, 20)
-	principals = append(principals, collectPrincipalEntry(ret.ID, authtypes.PrincipalUser,
-		strategy.GetPrincipals().GetUsers())...)
-	principals = append(principals, collectPrincipalEntry(ret.ID, authtypes.PrincipalGroup,
-		strategy.GetPrincipals().GetGroups())...)
-	principals = append(principals, collectPrincipalEntry(ret.ID, authtypes.PrincipalRole,
-		strategy.GetPrincipals().GetRoles())...)
-
-	ret.Resources = resEntry
-	ret.Principals = principals
-
-	return ret
-}
-
-// updateAuthStrategyAttribute 更新计算鉴权策略的属性
-func (svr *Server) updateAuthStrategyAttribute(ctx context.Context, strategy *apisecurity.ModifyAuthStrategy,
-	saved *authtypes.StrategyDetail) (*authtypes.ModifyStrategyDetail, bool) {
-	var needUpdate bool
-	ret := &authtypes.ModifyStrategyDetail{
-		ID:            strategy.Id.GetValue(),
-		Name:          saved.Name,
-		Action:        saved.Action,
-		Comment:       saved.Comment,
-		ModifyTime:    time.Now(),
-		CalleeMethods: saved.CalleeMethods,
-		Conditions:    saved.Conditions,
-		Metadata:      saved.Metadata,
-	}
-
-	// 只有 owner 可以修改的属性
-	if utils.ParseIsOwner(ctx) {
-		if strategy.GetComment() != nil && strategy.GetComment().GetValue() != saved.Comment {
-			needUpdate = true
-			ret.Comment = strategy.GetComment().GetValue()
-		}
-
-		if strategy.GetName().GetValue() != "" && strategy.GetName().GetValue() != saved.Name {
-			needUpdate = true
-			ret.Name = strategy.GetName().GetValue()
-		}
-	}
-
-	if svr.computeResourceChange(ret, strategy) {
-		needUpdate = true
-	}
-	if computePrincipalChange(ret, strategy) {
-		needUpdate = true
-	}
-	if strategy.Functions != nil {
-		needUpdate = true
-		ret.CalleeMethods = strategy.Functions
-	}
-	if strategy.Metadata != nil {
-		needUpdate = true
-		ret.Metadata = strategy.Metadata
-	}
-	if strategy.Action != saved.GetAction() {
-		needUpdate = true
-		ret.Action = strategy.GetAction().String()
-	}
-	if strategy.ResourceLabels != nil {
-		needUpdate = true
-		ret.Conditions = func() []authtypes.Condition {
-			conditions := make([]authtypes.Condition, 0, len(strategy.GetResourceLabels()))
-			for index := range strategy.GetResourceLabels() {
-				conditions = append(conditions, authtypes.Condition{
-					Key:         strategy.GetResourceLabels()[index].GetKey(),
-					Value:       strategy.GetResourceLabels()[index].GetValue(),
-					CompareFunc: strategy.GetResourceLabels()[index].GetCompareType(),
-				})
-			}
-			return conditions
-		}()
-	}
-
-	return ret, needUpdate
-}
-
-// computeResourceChange 计算资源的变化情况，判断是否涉及变更
-func (svr *Server) computeResourceChange(
-	modify *authtypes.ModifyStrategyDetail, strategy *apisecurity.ModifyAuthStrategy) bool {
+// updateAuthPolicyAttribute 更新计算鉴权策略的属性
+func (svr *Server) updateAuthPolicyAttribute(ctx context.Context, saved, update *authtypes.StrategyDetail) (*authtypes.StrategyDetail, bool) {
 	var needUpdate bool
 
-	// 收集涉及的资源信息
-	addResEntry := make([]authtypes.StrategyResource, 0)
-	for resType, ptrGetter := range resourceFieldPointerGetters {
-		slicePtr := ptrGetter(strategy.AddResources)
-		if slicePtr.Elem().IsNil() {
-			continue
-		}
-		addResEntry = append(addResEntry, svr.collectResourceEntry(modify.ID, resType, slicePtr.Elem(), false)...)
-	}
-
-	if len(addResEntry) != 0 {
+	if saved.Comment != update.Comment {
+		saved.Comment = update.Comment
 		needUpdate = true
-		modify.AddResources = addResEntry
 	}
 
-	removeResEntry := make([]authtypes.StrategyResource, 0)
-	for resType, ptrGetter := range resourceFieldPointerGetters {
-		slicePtr := ptrGetter(strategy.RemoveResources)
-		if slicePtr.Elem().IsNil() {
-			continue
-		}
-		removeResEntry = append(removeResEntry, svr.collectResourceEntry(modify.ID, resType, slicePtr.Elem(), true)...)
-	}
-
-	if len(removeResEntry) != 0 {
+	if saved.Action != update.Action {
+		saved.Action = update.Action
 		needUpdate = true
-		modify.RemoveResources = removeResEntry
 	}
 
-	return needUpdate
-}
-
-// computePrincipalChange 计算 principal 的变化情况，判断是否涉及变更
-func computePrincipalChange(modify *authtypes.ModifyStrategyDetail, strategy *apisecurity.ModifyAuthStrategy) bool {
-	var needUpdate bool
-	addPrincipals := make([]authtypes.Principal, 0)
-	addPrincipals = append(addPrincipals, collectPrincipalEntry(modify.ID, authtypes.PrincipalUser,
-		strategy.GetAddPrincipals().GetUsers())...)
-	addPrincipals = append(addPrincipals, collectPrincipalEntry(modify.ID, authtypes.PrincipalGroup,
-		strategy.GetAddPrincipals().GetGroups())...)
-	addPrincipals = append(addPrincipals, collectPrincipalEntry(modify.ID, authtypes.PrincipalRole,
-		strategy.GetAddPrincipals().GetRoles())...)
-
-	if len(addPrincipals) != 0 {
+	if !maps.Equal(saved.Metadata, update.Metadata) {
+		saved.Metadata = update.Metadata
 		needUpdate = true
-		modify.AddPrincipals = addPrincipals
 	}
 
-	removePrincipals := make([]authtypes.Principal, 0)
-	removePrincipals = append(removePrincipals, collectPrincipalEntry(modify.ID, authtypes.PrincipalUser,
-		strategy.GetRemovePrincipals().GetUsers())...)
-	removePrincipals = append(removePrincipals, collectPrincipalEntry(modify.ID, authtypes.PrincipalGroup,
-		strategy.GetRemovePrincipals().GetGroups())...)
-	removePrincipals = append(removePrincipals, collectPrincipalEntry(modify.ID, authtypes.PrincipalRole,
-		strategy.GetRemovePrincipals().GetRoles())...)
-
-	if len(removePrincipals) != 0 {
+	if !slices.Equal(saved.CalleeMethods, update.CalleeMethods) {
+		saved.CalleeMethods = update.CalleeMethods
 		needUpdate = true
-		modify.RemovePrincipals = removePrincipals
 	}
 
-	return needUpdate
+	if !slices.EqualFunc(saved.Principals, update.Principals, func(e1, e2 authtypes.Principal) bool {
+		return e1.PrincipalID == e2.PrincipalID && e1.PrincipalType == e2.PrincipalType
+	}) {
+		saved.Principals = update.Principals
+		needUpdate = true
+	}
+
+	if !slices.EqualFunc(saved.Resources, update.Resources, func(e1, e2 authtypes.StrategyResource) bool {
+		return e1.StrategyID == e2.StrategyID && e1.ResType == e2.ResType && e1.ResID == e2.ResID
+	}) {
+		saved.Resources = update.Resources
+		needUpdate = true
+	}
+
+	if !slices.EqualFunc(saved.Conditions, update.Conditions, func(e1, e2 authtypes.Condition) bool {
+		return e1.Key == e2.Key && e1.Value == e2.Value && e1.CompareFunc == e2.CompareFunc
+	}) {
+		saved.Conditions = update.Conditions
+		needUpdate = true
+	}
+
+	return saved, needUpdate
 }
 
 type pbStringValue interface {
 	GetValue() string
-}
-
-// collectResEntry 将资源ID转换为对应的 []authtypes.StrategyResource 数组
-func (svr *Server) collectResourceEntry(ruleId string, resType apisecurity.ResourceType,
-	res reflect.Value, delete bool) []authtypes.StrategyResource {
-	if res.Kind() != reflect.Slice || res.Len() == 0 {
-		return []authtypes.StrategyResource{}
-	}
-
-	resEntries := make([]authtypes.StrategyResource, 0, res.Len())
-	for i := 0; i < res.Len(); i++ {
-		item := res.Index(i).Elem()
-		resId := item.FieldByName("Id").Interface().(pbStringValue)
-		resName := item.FieldByName("Name").Interface().(pbStringValue)
-		// 如果是添加的动作，那么需要进行归一化处理
-		if !delete {
-			// 归一化处理
-			if resId.GetValue() == "*" || resName.GetValue() == "*" {
-				return []authtypes.StrategyResource{
-					{
-						StrategyID: ruleId,
-						ResType:    int32(resType),
-						ResID:      "*",
-					},
-				}
-			}
-		}
-
-		entry := authtypes.StrategyResource{
-			StrategyID: ruleId,
-			ResType:    int32(resType),
-			ResID:      resId.GetValue(),
-		}
-
-		resEntries = append(resEntries, entry)
-	}
-
-	return resEntries
 }
 
 // normalizeResource 对于资源进行归一化处理, 如果出现 * 的话，则该资源访问策略就是 *
@@ -812,24 +644,6 @@ func resourceDeduplication(resources []authtypes.StrategyResource) []authtypes.S
 	return ret
 }
 
-// collectPrincipalEntry 将 Principal 转换为对应的 []authtypes.Principal 数组
-func collectPrincipalEntry(ruleID string, uType authtypes.PrincipalType, res []*apisecurity.Principal) []authtypes.Principal {
-	principals := make([]authtypes.Principal, 0, len(res)+1)
-	if len(res) == 0 {
-		return principals
-	}
-
-	for index := range res {
-		principals = append(principals, authtypes.Principal{
-			StrategyID:    ruleID,
-			PrincipalID:   res[index].GetId().GetValue(),
-			PrincipalType: uType,
-		})
-	}
-
-	return principals
-}
-
 // authStrategyRecordEntry 转换为鉴权策略的记录结构体
 func authStrategyRecordEntry(ctx context.Context, req *apisecurity.AuthStrategy, md *authtypes.StrategyDetail,
 	operationType types.OperationType) *types.RecordEntry {
@@ -851,7 +665,7 @@ func authStrategyRecordEntry(ctx context.Context, req *apisecurity.AuthStrategy,
 
 // authModifyStrategyRecordEntry
 func authModifyStrategyRecordEntry(
-	ctx context.Context, req *apisecurity.ModifyAuthStrategy, md *authtypes.ModifyStrategyDetail,
+	ctx context.Context, req *apisecurity.AuthStrategy, md *authtypes.StrategyDetail,
 	operationType types.OperationType) *types.RecordEntry {
 
 	marshaler := jsonpb.Marshaler{}
@@ -870,95 +684,8 @@ func authModifyStrategyRecordEntry(
 }
 
 var (
-	resourceFieldNames = map[string]apisecurity.ResourceType{
-		"namespaces":           apisecurity.ResourceType_Namespaces,
-		"service":              apisecurity.ResourceType_Services,
-		"config_groups":        apisecurity.ResourceType_ConfigGroups,
-		"route_rules":          apisecurity.ResourceType_RouteRules,
-		"ratelimit_rules":      apisecurity.ResourceType_RateLimitRules,
-		"circuitbreaker_rules": apisecurity.ResourceType_CircuitBreakerRules,
-		"faultdetect_rules":    apisecurity.ResourceType_FaultDetectRules,
-		"lane_rules":           apisecurity.ResourceType_LaneRules,
-		"users":                apisecurity.ResourceType_Users,
-		"user_groups":          apisecurity.ResourceType_UserGroups,
-		"roles":                apisecurity.ResourceType_Roles,
-		"auth_policies":        apisecurity.ResourceType_PolicyRules,
-	}
-
-	resourceFieldPointerGetters = map[apisecurity.ResourceType]func(*apisecurity.StrategyResources) reflect.Value{
-		apisecurity.ResourceType_Namespaces: func(as *apisecurity.StrategyResources) reflect.Value {
-			if as.GetNamespaces() == nil {
-				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
-			}
-			return reflect.ValueOf(&as.Namespaces)
-		},
-		apisecurity.ResourceType_Services: func(as *apisecurity.StrategyResources) reflect.Value {
-			if as.GetServices() == nil {
-				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
-			}
-			return reflect.ValueOf(&as.Services)
-		},
-		apisecurity.ResourceType_ConfigGroups: func(as *apisecurity.StrategyResources) reflect.Value {
-			if as.GetConfigGroups() == nil {
-				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
-			}
-			return reflect.ValueOf(&as.ConfigGroups)
-		},
-		apisecurity.ResourceType_RouteRules: func(as *apisecurity.StrategyResources) reflect.Value {
-			if as.GetRouteRules() == nil {
-				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
-			}
-			return reflect.ValueOf(&as.RouteRules)
-		},
-		apisecurity.ResourceType_RateLimitRules: func(as *apisecurity.StrategyResources) reflect.Value {
-			if as.GetRatelimitRules() == nil {
-				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
-			}
-			return reflect.ValueOf(&as.RatelimitRules)
-		},
-		apisecurity.ResourceType_CircuitBreakerRules: func(as *apisecurity.StrategyResources) reflect.Value {
-			if as.GetCircuitbreakerRules() == nil {
-				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
-			}
-			return reflect.ValueOf(&as.CircuitbreakerRules)
-		},
-		apisecurity.ResourceType_FaultDetectRules: func(as *apisecurity.StrategyResources) reflect.Value {
-			if as.GetFaultdetectRules() == nil {
-				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
-			}
-			return reflect.ValueOf(&as.FaultdetectRules)
-		},
-		apisecurity.ResourceType_LaneRules: func(as *apisecurity.StrategyResources) reflect.Value {
-			if as.GetLaneRules() == nil {
-				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
-			}
-			return reflect.ValueOf(&as.LaneRules)
-		},
-		apisecurity.ResourceType_Users: func(as *apisecurity.StrategyResources) reflect.Value {
-			if as.GetUsers() == nil {
-				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
-			}
-			return reflect.ValueOf(&as.Users)
-		},
-		apisecurity.ResourceType_UserGroups: func(as *apisecurity.StrategyResources) reflect.Value {
-			if as.GetUserGroups() == nil {
-				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
-			}
-			return reflect.ValueOf(&as.UserGroups)
-		},
-		apisecurity.ResourceType_Roles: func(as *apisecurity.StrategyResources) reflect.Value {
-			if as.GetRoles() == nil {
-				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
-			}
-			return reflect.ValueOf(&as.Roles)
-		},
-		apisecurity.ResourceType_PolicyRules: func(as *apisecurity.StrategyResources) reflect.Value {
-			if as.GetAuthPolicies() == nil {
-				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
-			}
-			return reflect.ValueOf(&as.AuthPolicies)
-		},
-	}
+	resourceFieldNames          = authtypes.ResourceFieldNames
+	resourceFieldPointerGetters = authtypes.ResourceFieldPointerGetters
 
 	resourceConvert = map[apisecurity.ResourceType]func(context.Context,
 		*Server, authtypes.StrategyResource) *apisecurity.StrategyResourceEntry{

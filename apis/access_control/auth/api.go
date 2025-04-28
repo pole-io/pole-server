@@ -66,7 +66,7 @@ type PolicyOperator interface {
 	// CreatePolicies 创建策略
 	CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse
 	// UpdatePolicies 批量更新策略
-	UpdatePolicies(ctx context.Context, reqs []*apisecurity.ModifyAuthStrategy) *apiservice.BatchWriteResponse
+	UpdatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse
 	// DeletePolicies 删除策略
 	DeletePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse
 	// GetPolicies 获取资源列表
@@ -112,8 +112,8 @@ type UserServer interface {
 type UserOperator interface {
 	// CreateUsers 批量创建用户
 	CreateUsers(ctx context.Context, users []*apisecurity.User) *apiservice.BatchWriteResponse
-	// UpdateUser 更新用户信息
-	UpdateUser(ctx context.Context, user *apisecurity.User) *apiservice.Response
+	// UpdateUsers 更新用户信息
+	UpdateUsers(ctx context.Context, user []*apisecurity.User) *apiservice.BatchWriteResponse
 	// UpdateUserPassword 更新用户密码
 	UpdateUserPassword(ctx context.Context, req *apisecurity.ModifyUserPassword) *apiservice.Response
 	// DeleteUsers 批量删除用户
@@ -132,7 +132,7 @@ type GroupOperator interface {
 	// CreateGroup 创建用户组
 	CreateGroup(ctx context.Context, group *apisecurity.UserGroup) *apiservice.Response
 	// UpdateGroups 更新用户组
-	UpdateGroups(ctx context.Context, groups []*apisecurity.ModifyUserGroup) *apiservice.BatchWriteResponse
+	UpdateGroups(ctx context.Context, groups []*apisecurity.UserGroup) *apiservice.BatchWriteResponse
 	// DeleteGroups 批量删除用户组
 	DeleteGroups(ctx context.Context, group []*apisecurity.UserGroup) *apiservice.BatchWriteResponse
 	// GetGroups 查询用户组列表（不带用户详细信息）

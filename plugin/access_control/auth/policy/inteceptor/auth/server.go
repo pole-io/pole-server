@@ -84,7 +84,7 @@ func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthS
 }
 
 // UpdatePolicies 批量更新策略
-func (svr *Server) UpdatePolicies(ctx context.Context, reqs []*apisecurity.ModifyAuthStrategy) *apiservice.BatchWriteResponse {
+func (svr *Server) UpdatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
 	resources := make([]authcommon.ResourceEntry, 0, len(reqs))
 	for i := range reqs {
 		entry := authcommon.ResourceEntry{

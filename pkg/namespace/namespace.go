@@ -281,36 +281,6 @@ func (s *Server) updateNamespaceAttribute(req *apimodel.Namespace, namespace *ty
 	namespace.ServiceExportTo = exportTo
 }
 
-// UpdateNamespaceToken 更新命名空间token
-func (s *Server) UpdateNamespaceToken(ctx context.Context, req *apimodel.Namespace) *apiservice.Response {
-	if resp := checkReviseNamespace(ctx, req); resp != nil {
-		return resp
-	}
-	namespace, resp := s.checkNamespaceAuthority(ctx, req)
-	if resp != nil {
-		return resp
-	}
-
-	// 生成token
-	token := utils.NewUUID()
-
-	// 存储层操作
-	if err := s.storage.UpdateNamespaceToken(namespace.Name, token); err != nil {
-		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewNamespaceResponse(storeapi.StoreCode2APICode(err), req)
-	}
-
-	log.Info("update namespace token", zap.String("name", namespace.Name), utils.RequestID(ctx))
-	s.RecordHistory(namespaceRecordEntry(ctx, req, types.OUpdateToken))
-
-	out := &apimodel.Namespace{
-		Name:  req.GetName(),
-		Token: protobuf.NewStringValue(token),
-	}
-
-	return api.NewNamespaceResponse(apimodel.Code_ExecuteSuccess, out)
-}
-
 // GetNamespaces 查询命名空间
 func (s *Server) GetNamespaces(ctx context.Context, query map[string][]string) *apiservice.BatchQueryResponse {
 	filter, offset, limit, checkError := checkGetNamespace(query)
@@ -358,26 +328,6 @@ func (s *Server) GetNamespaces(ctx context.Context, query map[string][]string) *
 		TotalHealthInstanceCount: totalHealthInstanceCount,
 	})
 	return out
-}
-
-// GetNamespaceToken 获取命名空间的token
-func (s *Server) GetNamespaceToken(ctx context.Context, req *apimodel.Namespace) *apiservice.Response {
-	if resp := checkReviseNamespace(ctx, req); resp != nil {
-		return resp
-	}
-
-	namespace, resp := s.checkNamespaceAuthority(ctx, req)
-	if resp != nil {
-		return resp
-	}
-
-	// s.RecordHistory(namespaceRecordEntry(ctx, req, model.OGetToken))
-	// 构造返回数据
-	out := &apimodel.Namespace{
-		Name:  req.GetName(),
-		Token: protobuf.NewStringValue(namespace.Token),
-	}
-	return api.NewNamespaceResponse(apimodel.Code_ExecuteSuccess, out)
 }
 
 // 根据命名空间查询服务总数
@@ -493,20 +443,6 @@ func checkGetNamespace(query map[string][]string) (map[string][]string, int, int
 	}
 
 	return filter, offset, limit, nil
-}
-
-// 返回命名空间请求的token
-// 默认先从req中获取，不存在，则使用header的
-func parseNamespaceToken(ctx context.Context, req *apimodel.Namespace) string {
-	if reqToken := req.GetToken().GetValue(); reqToken != "" {
-		return reqToken
-	}
-
-	if headerToken := utils.ParseToken(ctx); headerToken != "" {
-		return headerToken
-	}
-
-	return ""
 }
 
 // 生成命名空间的记录entry

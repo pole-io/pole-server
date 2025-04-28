@@ -49,7 +49,7 @@ type UserStore interface {
 	// GetUser Obtain user
 	GetUser(id string) (*authtypes.User, error)
 	// GetUserByName Get a unique user according to Name + Owner
-	GetUserByName(name, ownerId string) (*authtypes.User, error)
+	GetUserByName(name string) (*authtypes.User, error)
 	// GetUserByIDS Get users according to USER IDS batch
 	GetUserByIds(ids []string) ([]*authtypes.User, error)
 	// GetMoreUsers Used to refresh user cache
@@ -62,13 +62,13 @@ type GroupStore interface {
 	// AddGroup Add a user group
 	AddGroup(tx Tx, group *authtypes.UserGroupDetail) error
 	// UpdateGroup Update user group
-	UpdateGroup(group *authtypes.ModifyUserGroup) error
+	UpdateGroup(group *authtypes.UserGroupDetail) error
 	// DeleteGroup Delete user group
 	DeleteGroup(tx Tx, group *authtypes.UserGroupDetail) error
 	// GetGroup Get user group details
 	GetGroup(id string) (*authtypes.UserGroupDetail, error)
 	// GetGroupByName Get user groups according to Name and Owner
-	GetGroupByName(name, owner string) (*authtypes.UserGroup, error)
+	GetGroupByName(name string) (*authtypes.UserGroup, error)
 	// GetMoreGroups Refresh of getting user groups for cache
 	// 此方法用于 cache 增量更新，需要注意 mtime 应为数据库时间戳
 	GetMoreGroups(mtime time.Time, firstUpdate bool) ([]*authtypes.UserGroupDetail, error)
@@ -79,7 +79,7 @@ type StrategyStore interface {
 	// AddStrategy Create authentication strategy
 	AddStrategy(tx Tx, strategy *authtypes.StrategyDetail) error
 	// UpdateStrategy Update authentication strategy
-	UpdateStrategy(strategy *authtypes.ModifyStrategyDetail) error
+	UpdateStrategy(strategy *authtypes.StrategyDetail) error
 	// DeleteStrategy Delete authentication strategy
 	DeleteStrategy(id string) error
 	// CleanPrincipalPolicies Clean all the policies associated with the principal

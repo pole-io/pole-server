@@ -19,7 +19,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"sort"
 	"sync/atomic"
@@ -129,34 +128,17 @@ func (uc *userCache) setUserAndGroups(users []*authtypes.User,
 	groups []*authtypes.UserGroupDetail) (map[string]time.Time, userRefreshResult) {
 	ret := userRefreshResult{}
 
-	ownerSupplier := func(user *authtypes.User) *authtypes.User {
-		if user.Type == authtypes.SubAccountUserRole {
-			owner, _ := uc.users.Load(user.Owner)
-			return owner
-		}
-		return user
-	}
-
 	lastMimes := map[string]time.Time{}
 
 	// 更新 users 缓存
 	// step 1. 先更新 owner 用户
-	uc.handlerUserCacheUpdate(lastMimes, &ret, users, func(user *authtypes.User) bool {
-		return user.Type == authtypes.OwnerUserRole
-	}, ownerSupplier)
-
-	// step 2. 更新非 owner 用户
-	uc.handlerUserCacheUpdate(lastMimes, &ret, users, func(user *authtypes.User) bool {
-		return user.Type == authtypes.SubAccountUserRole
-	}, ownerSupplier)
-
+	uc.handlerUserCacheUpdate(lastMimes, &ret, users)
 	uc.handlerGroupCacheUpdate(lastMimes, &ret, groups)
 	return lastMimes, ret
 }
 
 // handlerUserCacheUpdate 处理用户信息更新
-func (uc *userCache) handlerUserCacheUpdate(lastMimes map[string]time.Time, ret *userRefreshResult, users []*authtypes.User,
-	filter func(user *authtypes.User) bool, ownerSupplier func(user *authtypes.User) *authtypes.User) {
+func (uc *userCache) handlerUserCacheUpdate(lastMimes map[string]time.Time, ret *userRefreshResult, users []*authtypes.User) {
 
 	lastUserMtime := uc.LastMtime("users").Unix()
 
@@ -165,24 +147,18 @@ func (uc *userCache) handlerUserCacheUpdate(lastMimes map[string]time.Time, ret 
 
 		lastUserMtime = int64(math.Max(float64(lastUserMtime), float64(user.ModifyTime.Unix())))
 
-		if user.Type == authtypes.AdminUserRole {
+		if user.Type == authtypes.OwnerUserRole {
 			uc.adminUser.Store(user)
 			uc.users.Store(user.ID, user)
-			uc.name2Users.Store(fmt.Sprintf(NameLinkOwnerTemp, user.Name, user.Name), user)
+			uc.name2Users.Store(user.Name, user)
 			continue
 		}
-
-		if !filter(user) {
-			continue
-		}
-
-		owner := ownerSupplier(user)
 		if !user.Valid {
 			// 删除 user-id -> user 的缓存
 			// 删除 username + ownername -> user 的缓存
 			// 删除 user-id -> group-ids 的缓存
 			uc.users.Delete(user.ID)
-			uc.name2Users.Delete(fmt.Sprintf(NameLinkOwnerTemp, owner.Name, user.Name))
+			uc.name2Users.Delete(user.Name)
 			// uc.user2Groups.Delete(user.ID)
 			ret.userDel++
 		} else {
@@ -192,7 +168,7 @@ func (uc *userCache) handlerUserCacheUpdate(lastMimes map[string]time.Time, ret 
 				ret.userAdd++
 			}
 			uc.users.Store(user.ID, user)
-			uc.name2Users.Store(fmt.Sprintf(NameLinkOwnerTemp, owner.Name, user.Name), user)
+			uc.name2Users.Store(user.Name, user)
 		}
 	}
 
@@ -287,8 +263,7 @@ func (uc *userCache) IsOwner(id string) bool {
 	if !ok {
 		return false
 	}
-	ut := val.Type
-	return ut == authtypes.AdminUserRole || ut == authtypes.OwnerUserRole
+	return val.Type == authtypes.OwnerUserRole
 }
 
 func (uc *userCache) IsUserInGroup(userId, groupId string) bool {
@@ -314,8 +289,8 @@ func (uc *userCache) GetUserByID(id string) *authtypes.User {
 }
 
 // GetUserByName 通过用户 name 以及 owner 获取用户缓存对象
-func (uc *userCache) GetUserByName(name, ownerName string) *authtypes.User {
-	val, ok := uc.name2Users.Load(fmt.Sprintf(NameLinkOwnerTemp, ownerName, name))
+func (uc *userCache) GetUserByName(name string) *authtypes.User {
+	val, ok := uc.name2Users.Load(name)
 
 	if !ok {
 		return nil
@@ -353,7 +328,6 @@ func (uc *userCache) GetUserLinkGroupIds(userId string) []string {
 func (uc *userCache) QueryUsers(ctx context.Context, args cacheapi.UserSearchArgs) (uint32, []*authtypes.User, error) {
 	searchId, hasId := args.Filters["id"]
 	searchName, hasName := args.Filters["name"]
-	searchOwner, hasOwner := args.Filters["owner"]
 	searchSource, hasSource := args.Filters["source"]
 	searchGroupId, hasGroup := args.Filters["group_id"]
 
@@ -372,14 +346,7 @@ func (uc *userCache) QueryUsers(ctx context.Context, args cacheapi.UserSearchArg
 
 	result := make([]*authtypes.User, 0, 32)
 	uc.users.Range(func(key string, val *authtypes.User) {
-		// 超级账户不做展示
-		if authtypes.UserRoleType(val.Type) == authtypes.AdminUserRole {
-			return
-		}
 		if hasId && searchId != key {
-			return
-		}
-		if hasOwner && (val.Owner != searchOwner && val.ID != searchOwner) {
 			return
 		}
 		if hasName && !utils.IsWildMatch(val.Name, searchName) {
@@ -423,7 +390,6 @@ func (uc *userCache) QueryUserGroups(ctx context.Context, args cacheapi.UserGrou
 
 	searchId, hasId := args.Filters["id"]
 	searchName, hasName := args.Filters["name"]
-	searchOwner, hasOwner := args.Filters["owner"]
 	searchSource, hasSource := args.Filters["source"]
 
 	predicates := cacheapi.LoadUserGroupPredicates(ctx)
@@ -443,9 +409,6 @@ func (uc *userCache) QueryUserGroups(ctx context.Context, args cacheapi.UserGrou
 	uc.groups.Range(func(key string, val *authtypes.UserGroupDetail) {
 		// 超级账户不做展示
 		if hasId && searchId != key {
-			return
-		}
-		if hasOwner && val.Owner != searchOwner {
 			return
 		}
 		if hasName && !utils.IsWildMatch(val.Name, searchName) {

@@ -1426,18 +1426,18 @@ func (mr *MockStoreMockRecorder) GetGroup(id interface{}) *gomock.Call {
 }
 
 // GetGroupByName mocks base method.
-func (m *MockStore) GetGroupByName(name, owner string) (*auth.UserGroup, error) {
+func (m *MockStore) GetGroupByName(name string) (*auth.UserGroup, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetGroupByName", name, owner)
+	ret := m.ctrl.Call(m, "GetGroupByName", name)
 	ret0, _ := ret[0].(*auth.UserGroup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetGroupByName indicates an expected call of GetGroupByName.
-func (mr *MockStoreMockRecorder) GetGroupByName(name, owner interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetGroupByName(name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGroupByName", reflect.TypeOf((*MockStore)(nil).GetGroupByName), name, owner)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGroupByName", reflect.TypeOf((*MockStore)(nil).GetGroupByName), name)
 }
 
 // GetInstance mocks base method.
@@ -2182,18 +2182,18 @@ func (mr *MockStoreMockRecorder) GetUserByIds(ids interface{}) *gomock.Call {
 }
 
 // GetUserByName mocks base method.
-func (m *MockStore) GetUserByName(name, ownerId string) (*auth.User, error) {
+func (m *MockStore) GetUserByName(name string) (*auth.User, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserByName", name, ownerId)
+	ret := m.ctrl.Call(m, "GetUserByName", name)
 	ret0, _ := ret[0].(*auth.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetUserByName indicates an expected call of GetUserByName.
-func (mr *MockStoreMockRecorder) GetUserByName(name, ownerId interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetUserByName(name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByName", reflect.TypeOf((*MockStore)(nil).GetUserByName), name, ownerId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByName", reflect.TypeOf((*MockStore)(nil).GetUserByName), name)
 }
 
 // HasCircuitBreakerRule mocks base method.
@@ -2821,7 +2821,7 @@ func (mr *MockStoreMockRecorder) UpdateFaultDetectRule(conf interface{}) *gomock
 }
 
 // UpdateGroup mocks base method.
-func (m *MockStore) UpdateGroup(group *auth.ModifyUserGroup) error {
+func (m *MockStore) UpdateGroup(group *auth.UserGroupDetail) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateGroup", group)
 	ret0, _ := ret[0].(error)
@@ -2874,20 +2874,6 @@ func (m *MockStore) UpdateNamespace(namespace *types.Namespace) error {
 func (mr *MockStoreMockRecorder) UpdateNamespace(namespace interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateNamespace", reflect.TypeOf((*MockStore)(nil).UpdateNamespace), namespace)
-}
-
-// UpdateNamespaceToken mocks base method.
-func (m *MockStore) UpdateNamespaceToken(name, token string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateNamespaceToken", name, token)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateNamespaceToken indicates an expected call of UpdateNamespaceToken.
-func (mr *MockStoreMockRecorder) UpdateNamespaceToken(name, token interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateNamespaceToken", reflect.TypeOf((*MockStore)(nil).UpdateNamespaceToken), name, token)
 }
 
 // UpdateRateLimit mocks base method.
@@ -3003,7 +2989,7 @@ func (mr *MockStoreMockRecorder) UpdateServiceToken(serviceID, token, revision i
 }
 
 // UpdateStrategy mocks base method.
-func (m *MockStore) UpdateStrategy(strategy *auth.ModifyStrategyDetail) error {
+func (m *MockStore) UpdateStrategy(strategy *auth.StrategyDetail) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateStrategy", strategy)
 	ret0, _ := ret[0].(error)
@@ -3125,20 +3111,6 @@ func (m *MockNamespaceStore) UpdateNamespace(namespace *types.Namespace) error {
 func (mr *MockNamespaceStoreMockRecorder) UpdateNamespace(namespace interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateNamespace", reflect.TypeOf((*MockNamespaceStore)(nil).UpdateNamespace), namespace)
-}
-
-// UpdateNamespaceToken mocks base method.
-func (m *MockNamespaceStore) UpdateNamespaceToken(name, token string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateNamespaceToken", name, token)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateNamespaceToken indicates an expected call of UpdateNamespaceToken.
-func (mr *MockNamespaceStoreMockRecorder) UpdateNamespaceToken(name, token interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateNamespaceToken", reflect.TypeOf((*MockNamespaceStore)(nil).UpdateNamespaceToken), name, token)
 }
 
 // MockGrayStore is a mock of GrayStore interface.

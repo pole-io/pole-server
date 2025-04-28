@@ -185,14 +185,12 @@ type UserRoleType int
 
 const (
 	UnknownUserRole    UserRoleType = -1
-	AdminUserRole      UserRoleType = 0
 	OwnerUserRole      UserRoleType = 20
 	SubAccountUserRole UserRoleType = 50
 )
 
 var (
 	UserRoleNames = map[UserRoleType]string{
-		AdminUserRole:      "admin",
 		OwnerUserRole:      "main",
 		SubAccountUserRole: "sub",
 	}
@@ -211,7 +209,6 @@ type User struct {
 	ID          string
 	Name        string
 	Password    string
-	Owner       string
 	Source      string
 	Mobile      string
 	Email       string
@@ -233,10 +230,6 @@ func (u *User) Disable() bool {
 	return !u.TokenEnable
 }
 
-func (u *User) OwnerID() string {
-	return u.Owner
-}
-
 func (u *User) SelfID() string {
 	return u.ID
 }
@@ -249,7 +242,6 @@ func (u *User) ToSpec() *apisecurity.User {
 		Id:          wrapperspb.String(u.ID),
 		Name:        wrapperspb.String(u.Name),
 		Password:    wrapperspb.String(u.Password),
-		Owner:       wrapperspb.String(u.Owner),
 		Source:      wrapperspb.String(u.Source),
 		AuthToken:   wrapperspb.String(u.Token),
 		TokenEnable: wrapperspb.Bool(u.TokenEnable),
@@ -293,7 +285,6 @@ func (ugd *UserGroupDetail) ToSpec() *apisecurity.UserGroup {
 	return &apisecurity.UserGroup{
 		Id:          wrapperspb.String(ugd.ID),
 		Name:        wrapperspb.String(ugd.Name),
-		Owner:       wrapperspb.String(ugd.Owner),
 		AuthToken:   wrapperspb.String(ugd.Token),
 		TokenEnable: wrapperspb.Bool(ugd.TokenEnable),
 		Comment:     wrapperspb.String(ugd.Comment),
@@ -311,7 +302,6 @@ func (ugd *UserGroupDetail) ToSpec() *apisecurity.UserGroup {
 type UserGroup struct {
 	ID          string
 	Name        string
-	Owner       string
 	Token       string
 	TokenEnable bool
 	Metadata    map[string]string
@@ -330,10 +320,6 @@ func (u *UserGroup) Disable() bool {
 	return !u.TokenEnable
 }
 
-func (u *UserGroup) OwnerID() string {
-	return u.Owner
-}
-
 func (u *UserGroup) SelfID() string {
 	return u.ID
 }
@@ -341,7 +327,6 @@ func (u *UserGroup) SelfID() string {
 // ModifyUserGroup 用户组修改
 type ModifyUserGroup struct {
 	ID            string
-	Owner         string
 	Token         string
 	TokenEnable   bool
 	Comment       string
@@ -372,7 +357,6 @@ type StrategyDetail struct {
 	Action  string
 	Comment string
 	Default bool
-	Owner   string
 	// 来源
 	Source string
 	// CalleeMethods 允许访问的服务端接口
@@ -397,13 +381,18 @@ func (s *StrategyDetail) GetAction() apisecurity.AuthAction {
 	return apisecurity.AuthAction_DENY
 }
 
+func ParsePolicyRule(req *apisecurity.AuthStrategy) *StrategyDetail {
+	s := &StrategyDetail{}
+	s.FromSpec(req)
+	return s
+}
+
 func (s *StrategyDetail) FromSpec(req *apisecurity.AuthStrategy) {
 	s.ID = utils.NewUUID()
 	s.Name = req.Name.GetValue()
 	s.Action = req.GetAction().String()
 	s.Comment = req.Comment.GetValue()
 	s.Default = false
-	s.Owner = req.Owner.GetValue()
 	s.Valid = true
 	s.Source = req.GetSource().GetValue()
 	s.Revision = utils.NewUUID()
@@ -420,6 +409,27 @@ func (s *StrategyDetail) FromSpec(req *apisecurity.AuthStrategy) {
 		})
 	}
 
+	// 收集涉及的资源信息
+	resEntry := make([]StrategyResource, 0, 20)
+	for resType, ptrGetter := range resourceFieldPointerGetters {
+		slicePtr := ptrGetter(req.Resources)
+		if slicePtr.Elem().IsNil() {
+			continue
+		}
+		resEntry = append(resEntry, collectResourceEntry(s.ID, resType, slicePtr.Elem(), false)...)
+	}
+
+	// 收集涉及的 principal 信息
+	principals := make([]Principal, 0, 20)
+	principals = append(principals, collectPrincipalEntry(s.ID, PrincipalUser,
+		req.GetPrincipals().GetUsers())...)
+	principals = append(principals, collectPrincipalEntry(s.ID, PrincipalGroup,
+		req.GetPrincipals().GetGroups())...)
+	principals = append(principals, collectPrincipalEntry(s.ID, PrincipalRole,
+		req.GetPrincipals().GetRoles())...)
+
+	s.Resources = resEntry
+	s.Principals = principals
 }
 
 func (s *StrategyDetail) IsMatchAction(a string) bool {

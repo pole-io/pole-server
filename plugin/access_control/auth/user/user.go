@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
@@ -65,10 +66,6 @@ func (svr *Server) CreateUser(ctx context.Context, req *apisecurity.User) *apise
 	ownerID := utils.ParseOwnerID(ctx)
 	req.Owner = protobuf.NewStringValue(ownerID)
 
-	if checkErrResp := checkCreateUser(ctx, req); checkErrResp != nil {
-		return checkErrResp
-	}
-
 	if ownerID != "" {
 		owner, err := svr.storage.GetUser(ownerID)
 		if err != nil {
@@ -84,7 +81,7 @@ func (svr *Server) CreateUser(ctx context.Context, req *apisecurity.User) *apise
 	}
 
 	// 只有通过 owner + username 才能唯一确定一个用户
-	user, err := svr.storage.GetUserByName(req.Name.GetValue(), ownerID)
+	user, err := svr.storage.GetUserByName(req.Name.GetValue())
 	if err != nil {
 		log.Error("[Auth][User] get user by name and owner", utils.RequestID(ctx),
 			zap.Error(err), zap.String("owner", ownerID), zap.String("name", req.GetName().GetValue()))
@@ -98,7 +95,7 @@ func (svr *Server) CreateUser(ctx context.Context, req *apisecurity.User) *apise
 }
 
 func (svr *Server) createUser(ctx context.Context, req *apisecurity.User) *apiservice.Response {
-	data, err := svr.createUserModel(req, authtypes.ParseUserRole(ctx))
+	data, err := svr.createUserModel(req, authtypes.SubAccountUserRole)
 	if err != nil {
 		log.Error("[Auth][User] create user model", utils.RequestID(ctx), zap.Error(err))
 		return api.NewAuthResponse(apimodel.Code_ExecuteException)
@@ -121,7 +118,7 @@ func (svr *Server) createUser(ctx context.Context, req *apisecurity.User) *apise
 	if err := svr.policySvr.PolicyHelper().CreatePrincipalPolicy(ctx, tx, authtypes.Principal{
 		PrincipalID:   data.ID,
 		PrincipalType: authtypes.PrincipalUser,
-		Owner:         data.Owner,
+		Owner:         "",
 		Name:          data.Name,
 	}); err != nil {
 		log.Error("[Auth][User] add user default policy rule", utils.RequestID(ctx), zap.Error(err))
@@ -142,12 +139,20 @@ func (svr *Server) createUser(ctx context.Context, req *apisecurity.User) *apise
 	return api.NewUserResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
-// UpdateUser 更新用户信息，仅能修改 comment 以及账户密码
-func (svr *Server) UpdateUser(ctx context.Context, req *apisecurity.User) *apiservice.Response {
-	if checkErrResp := checkUpdateUser(req); checkErrResp != nil {
-		return checkErrResp
+// UpdateUsers 更新用户信息，仅能修改 comment 以及账户密码
+func (svr *Server) UpdateUsers(ctx context.Context, reqs []*apisecurity.User) *apiservice.BatchWriteResponse {
+	batchResp := api.NewAuthBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+
+	for i := range reqs {
+		resp := svr.UpdateUser(ctx, reqs[i])
+		api.Collect(batchResp, resp)
 	}
 
+	return batchResp
+}
+
+// UpdateUser 更新用户信息，仅能修改 comment 以及账户密码
+func (svr *Server) UpdateUser(ctx context.Context, req *apisecurity.User) *apiservice.Response {
 	user, err := svr.storage.GetUser(req.Id.GetValue())
 	if err != nil {
 		log.Error("[Auth][User] get user", utils.RequestID(ctx), zap.String("user-id", req.GetId().GetValue()), zap.Error(err))
@@ -190,8 +195,7 @@ func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.Modi
 		return api.NewAuthResponse(apimodel.Code_NotFoundUser)
 	}
 
-	ignoreOrigin := authtypes.ParseUserRole(ctx) == authtypes.AdminUserRole ||
-		authtypes.ParseUserRole(ctx) == authtypes.OwnerUserRole
+	ignoreOrigin := authtypes.ParseUserRole(ctx) == authtypes.OwnerUserRole
 	data, needUpdate, err := updateUserPasswordAttribute(ignoreOrigin, user, req)
 	if err != nil {
 		log.Error("[Auth][User] compute user update attribute", zap.Error(err),
@@ -276,7 +280,6 @@ func (svr *Server) DeleteUser(ctx context.Context, req *apisecurity.User) *apise
 	if err := svr.policySvr.PolicyHelper().CleanPrincipal(ctx, tx, authtypes.Principal{
 		PrincipalID:   user.ID,
 		PrincipalType: authtypes.PrincipalUser,
-		Owner:         user.Owner,
 	}); err != nil {
 		log.Error("[Auth][User] delete user from policy server", utils.RequestID(ctx), zap.Error(err))
 		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
@@ -320,18 +323,7 @@ func (svr *Server) GetUserToken(ctx context.Context, req *apisecurity.User) *api
 	if req.GetId().GetValue() != "" {
 		user = svr.cacheMgr.User().GetUserByID(req.GetId().GetValue())
 	} else if req.GetName().GetValue() != "" {
-		ownerName := req.GetOwner().GetValue()
-		ownerID := utils.ParseOwnerID(ctx)
-		if ownerName == "" {
-			owner := svr.cacheMgr.User().GetUserByID(ownerID)
-			if owner == nil {
-				log.Error("[Auth][User] get user's owner not found",
-					zap.String("name", req.GetName().GetValue()), zap.String("owner", ownerID))
-				return api.NewAuthResponse(apimodel.Code_NotFoundUser)
-			}
-			ownerName = owner.Name
-		}
-		user = svr.cacheMgr.User().GetUserByName(req.GetName().GetValue(), ownerName)
+		user = svr.cacheMgr.User().GetUserByName(req.GetName().GetValue())
 	} else {
 		return api.NewAuthResponse(apimodel.Code_InvalidParameter)
 	}
@@ -352,10 +344,6 @@ func (svr *Server) GetUserToken(ctx context.Context, req *apisecurity.User) *api
 
 // EnableUserToken 更新用户 token
 func (svr *Server) EnableUserToken(ctx context.Context, req *apisecurity.User) *apiservice.Response {
-	if checkErrResp := checkUpdateUser(req); checkErrResp != nil {
-		return checkErrResp
-	}
-
 	user, err := svr.storage.GetUser(req.GetId().GetValue())
 	if err != nil {
 		log.Error("[Auth][User] get user from store", utils.RequestID(ctx), zap.Error(err))
@@ -381,10 +369,6 @@ func (svr *Server) EnableUserToken(ctx context.Context, req *apisecurity.User) *
 
 // ResetUserToken 重置用户 token
 func (svr *Server) ResetUserToken(ctx context.Context, req *apisecurity.User) *apiservice.Response {
-	if checkErrResp := checkUpdateUser(req); checkErrResp != nil {
-		return checkErrResp
-	}
-
 	user, err := svr.storage.GetUser(req.Id.GetValue())
 	if err != nil {
 		log.Error("[Auth][User] get user from store", utils.RequestID(ctx), zap.Error(err))
@@ -553,12 +537,12 @@ func user2Api(user *authtypes.User) *apisecurity.User {
 		Id:          protobuf.NewStringValue(user.ID),
 		Name:        protobuf.NewStringValue(user.Name),
 		Source:      protobuf.NewStringValue(user.Source),
-		Owner:       protobuf.NewStringValue(user.Owner),
 		TokenEnable: protobuf.NewBoolValue(user.TokenEnable),
 		Comment:     protobuf.NewStringValue(user.Comment),
 		Ctime:       protobuf.NewStringValue(commontime.Time2String(user.CreateTime)),
 		Mtime:       protobuf.NewStringValue(commontime.Time2String(user.ModifyTime)),
 		UserType:    protobuf.NewStringValue(authtypes.UserRoleNames[user.Type]),
+		Metadata:    user.Metadata,
 	}
 
 	return out
@@ -583,52 +567,6 @@ func userRecordEntry(ctx context.Context, req *apisecurity.User, md *authtypes.U
 	return entry
 }
 
-// checkCreateUser 检查创建用户的请求
-func checkCreateUser(ctx context.Context, req *apisecurity.User) *apiservice.Response {
-	if req == nil {
-		return api.NewUserResponse(apimodel.Code_EmptyRequest, req)
-	}
-
-	if err := CheckName(req.Name); err != nil {
-		return api.NewUserResponse(apimodel.Code_InvalidUserName, req)
-	}
-
-	if err := CheckPassword(req.Password); err != nil {
-		return api.NewUserResponse(apimodel.Code_InvalidUserPassword, req)
-	}
-
-	if !authapi.IsInitMainUser(ctx) {
-		if err := CheckOwner(req.Owner); err != nil {
-			return api.NewUserResponse(apimodel.Code_InvalidUserOwners, req)
-		}
-		// 如果创建的目标账户类型是非子账户，则 ownerId 需要设置为 “”
-		if convertCreateUserRole(authtypes.ParseUserRole(ctx)) != authtypes.SubAccountUserRole {
-			log.Error("[auth][user] can't create user which role is not sub-account", utils.RequestID(ctx))
-			return api.NewUserResponse(apimodel.Code_OperationRoleForbidden, req)
-		}
-	}
-	return nil
-}
-
-// checkUpdateUser 检查用户更新请求
-func checkUpdateUser(req *apisecurity.User) *apiservice.Response {
-	if req == nil {
-		return api.NewUserResponse(apimodel.Code_EmptyRequest, req)
-	}
-
-	// 如果本次请求需要修改密码的话
-	if req.GetPassword() != nil {
-		if err := CheckPassword(req.Password); err != nil {
-			return api.NewUserResponseWithMsg(apimodel.Code_InvalidUserPassword, err.Error(), req)
-		}
-	}
-
-	if req.GetId() == nil || req.GetId().GetValue() == "" {
-		return api.NewUserResponse(apimodel.Code_BadRequest, req)
-	}
-	return nil
-}
-
 // updateUserAttribute 更新用户属性
 func updateUserAttribute(old *authtypes.User, newUser *apisecurity.User) (*authtypes.User, bool, error) {
 	var needUpdate = true
@@ -636,6 +574,11 @@ func updateUserAttribute(old *authtypes.User, newUser *apisecurity.User) (*autht
 	if newUser.Comment != nil && old.Comment != newUser.Comment.GetValue() {
 		old.Comment = newUser.Comment.GetValue()
 		needUpdate = true
+	}
+	if !maps.Equal(old.Metadata, newUser.Metadata) {
+		old.Metadata = newUser.Metadata
+		needUpdate = true
+
 	}
 	return old, needUpdate, nil
 }
@@ -687,19 +630,13 @@ func (svr *Server) createUserModel(req *apisecurity.User, role authtypes.UserRol
 		ID:          id,
 		Name:        req.GetName().GetValue(),
 		Password:    string(pwd),
-		Owner:       req.GetOwner().GetValue(),
 		Source:      req.GetSource().GetValue(),
 		Valid:       true,
-		Type:        convertCreateUserRole(role),
+		Type:        role,
 		Comment:     req.GetComment().GetValue(),
 		CreateTime:  time.Now(),
 		ModifyTime:  time.Now(),
 		TokenEnable: true,
-	}
-
-	// 如果不是子账户的话，owner 就是自己
-	if user.Type != authtypes.SubAccountUserRole {
-		user.Owner = ""
 	}
 
 	newToken, err := createUserToken(user.ID, svr.authOpt.Salt)
@@ -710,17 +647,4 @@ func (svr *Server) createUserModel(req *apisecurity.User, role authtypes.UserRol
 	user.Token = newToken
 
 	return user, nil
-}
-
-// convertCreateUserRole 转换为创建的目标用户的用户角色类型
-func convertCreateUserRole(role authtypes.UserRoleType) authtypes.UserRoleType {
-	if role == authtypes.AdminUserRole {
-		return authtypes.OwnerUserRole
-	}
-
-	if role == authtypes.OwnerUserRole {
-		return authtypes.SubAccountUserRole
-	}
-
-	return authtypes.SubAccountUserRole
 }

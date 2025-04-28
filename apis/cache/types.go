@@ -608,7 +608,7 @@ type (
 		// GetUserByID
 		GetUserByID(id string) *authtypes.User
 		// GetUserByName
-		GetUserByName(name, ownerName string) *authtypes.User
+		GetUserByName(name string) *authtypes.User
 		// GetUserGroup
 		GetGroup(id string) *authtypes.UserGroupDetail
 		// IsUserInGroup 判断 userid 是否在对应的 group 中

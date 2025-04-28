@@ -100,17 +100,38 @@ func (svr *Server) GetUserHelper() authapi.UserHelper {
 }
 
 // CreateUsers 批量创建用户
-func (svr *Server) CreateUsers(ctx context.Context, users []*apisecurity.User) *apiservice.BatchWriteResponse {
-	return svr.nextSvr.CreateUsers(ctx, users)
+func (svr *Server) CreateUsers(ctx context.Context, reqs []*apisecurity.User) *apiservice.BatchWriteResponse {
+	rsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, req := range reqs {
+		if checkErrResp := checkCreateUser(ctx, req); checkErrResp != nil {
+			api.Collect(rsp, checkErrResp)
+		}
+	}
+	if !api.IsSuccess(rsp) {
+		return rsp
+	}
+
+	return svr.nextSvr.CreateUsers(ctx, reqs)
 }
 
-// UpdateUser 更新用户信息
-func (svr *Server) UpdateUser(ctx context.Context, user *apisecurity.User) *apiservice.Response {
-	return svr.nextSvr.UpdateUser(ctx, user)
+// UpdateUsers 更新用户信息
+func (svr *Server) UpdateUsers(ctx context.Context, reqs []*apisecurity.User) *apiservice.BatchWriteResponse {
+	rsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, req := range reqs {
+		if checkErrResp := checkUpdateUser(req); checkErrResp != nil {
+			api.Collect(rsp, checkErrResp)
+		}
+	}
+	if !api.IsSuccess(rsp) {
+		return rsp
+	}
+
+	return svr.nextSvr.UpdateUsers(ctx, reqs)
 }
 
 // UpdateUserPassword 更新用户密码
 func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.ModifyUserPassword) *apiservice.Response {
+	
 	return svr.nextSvr.UpdateUserPassword(ctx, req)
 }
 
@@ -146,8 +167,11 @@ func (svr *Server) GetUsers(ctx context.Context, query map[string]string) *apise
 }
 
 // GetUserToken 获取用户的 token
-func (svr *Server) GetUserToken(ctx context.Context, user *apisecurity.User) *apiservice.Response {
-	return svr.nextSvr.GetUserToken(ctx, user)
+func (svr *Server) GetUserToken(ctx context.Context, req *apisecurity.User) *apiservice.Response {
+	if rsp := checkUpdateUser(req); rsp != nil {
+		return rsp
+	}
+	return svr.nextSvr.GetUserToken(ctx, req)
 }
 
 // EnableUserToken 禁止用户的token使用
@@ -157,17 +181,18 @@ func (svr *Server) EnableUserToken(ctx context.Context, user *apisecurity.User) 
 	if saveUser == nil {
 		return api.NewResponse(apimodel.Code_NotFoundUser)
 	}
-	if authtypes.ParseUserRole(ctx) != authtypes.AdminUserRole {
-		if saveUser.GetUserType().GetValue() != strconv.Itoa(int(authtypes.SubAccountUserRole)) {
-			return api.NewUserResponseWithMsg(apimodel.Code_NotAllowedAccess, "only disable sub-account token", user)
-		}
+	if saveUser.GetUserType().GetValue() != strconv.Itoa(int(authtypes.SubAccountUserRole)) {
+		return api.NewUserResponseWithMsg(apimodel.Code_NotAllowedAccess, "only disable sub-account token", user)
 	}
 	return svr.nextSvr.EnableUserToken(ctx, user)
 }
 
 // ResetUserToken 重置用户的token
-func (svr *Server) ResetUserToken(ctx context.Context, user *apisecurity.User) *apiservice.Response {
-	return svr.nextSvr.ResetUserToken(ctx, user)
+func (svr *Server) ResetUserToken(ctx context.Context, req *apisecurity.User) *apiservice.Response {
+	if rsp := checkUpdateUser(req); rsp != nil {
+		return rsp
+	}
+	return svr.nextSvr.ResetUserToken(ctx, req)
 }
 
 // CreateGroup 创建用户组
@@ -176,7 +201,7 @@ func (svr *Server) CreateGroup(ctx context.Context, group *apisecurity.UserGroup
 }
 
 // UpdateGroups 更新用户组
-func (svr *Server) UpdateGroups(ctx context.Context, groups []*apisecurity.ModifyUserGroup) *apiservice.BatchWriteResponse {
+func (svr *Server) UpdateGroups(ctx context.Context, groups []*apisecurity.UserGroup) *apiservice.BatchWriteResponse {
 	return svr.nextSvr.UpdateGroups(ctx, groups)
 }
 
@@ -227,4 +252,32 @@ func (svr *Server) EnableGroupToken(ctx context.Context, group *apisecurity.User
 // ResetGroupToken 重置用户组的 token
 func (svr *Server) ResetGroupToken(ctx context.Context, group *apisecurity.UserGroup) *apiservice.Response {
 	return svr.nextSvr.ResetGroupToken(ctx, group)
+}
+
+// checkCreateUser 检查创建用户的请求
+func checkCreateUser(ctx context.Context, req *apisecurity.User) *apiservice.Response {
+	if req == nil {
+		return api.NewUserResponse(apimodel.Code_EmptyRequest, req)
+	}
+
+	if err := CheckName(req.Name); err != nil {
+		return api.NewUserResponse(apimodel.Code_InvalidUserName, req)
+	}
+
+	if err := CheckPassword(req.Password); err != nil {
+		return api.NewUserResponse(apimodel.Code_InvalidUserPassword, req)
+	}
+	return nil
+}
+
+// checkUpdateUser 检查用户更新请求
+func checkUpdateUser(req *apisecurity.User) *apiservice.Response {
+	if req == nil {
+		return api.NewUserResponse(apimodel.Code_EmptyRequest, req)
+	}
+
+	if req.GetId() == nil || req.GetId().GetValue() == "" {
+		return api.NewUserResponse(apimodel.Code_BadRequest, req)
+	}
+	return nil
 }

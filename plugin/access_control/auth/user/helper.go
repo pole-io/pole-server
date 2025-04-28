@@ -24,8 +24,6 @@ import (
 	"go.uber.org/zap"
 
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
-
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 var (
@@ -91,11 +89,7 @@ func (helper *DefaultUserHelper) GetUser(ctx context.Context, user *apisecurity.
 	if user.GetName().GetValue() == "" {
 		return cacheMgr.User().GetUserByID(user.GetId().GetValue()).ToSpec()
 	}
-	owner := cacheMgr.User().GetUserByID(utils.ParseUserID(ctx))
-	if owner == nil {
-		return nil
-	}
-	return cacheMgr.User().GetUserByName(user.GetName().GetValue(), owner.Name).ToSpec()
+	return cacheMgr.User().GetUserByName(user.GetName().GetValue()).ToSpec()
 }
 
 func (helper *DefaultUserHelper) GetUserByID(ctx context.Context, id string) *apisecurity.User {

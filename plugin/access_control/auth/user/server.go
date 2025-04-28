@@ -136,11 +136,7 @@ func (svr *Server) parseOptions(options *authapi.Config) error {
 // Login 登录动作
 func (svr *Server) Login(req *apisecurity.LoginRequest) *apiservice.Response {
 	username := req.GetName().GetValue()
-	ownerName := req.GetOwner().GetValue()
-	if ownerName == "" {
-		ownerName = username
-	}
-	user := svr.cacheMgr.User().GetUserByName(username, ownerName)
+	user := svr.cacheMgr.User().GetUserByName(username)
 	if user == nil {
 		return api.NewAuthResponse(apimodel.Code_NotFoundUser)
 	}
@@ -155,11 +151,10 @@ func (svr *Server) Login(req *apisecurity.LoginRequest) *apiservice.Response {
 	}
 
 	return api.NewLoginResponse(apimodel.Code_ExecuteSuccess, &apisecurity.LoginResponse{
-		UserId:  protobuf.NewStringValue(user.ID),
-		OwnerId: protobuf.NewStringValue(user.Owner),
-		Token:   protobuf.NewStringValue(user.Token),
-		Name:    protobuf.NewStringValue(user.Name),
-		Role:    protobuf.NewStringValue(authtypes.UserRoleNames[user.Type]),
+		UserId: protobuf.NewStringValue(user.ID),
+		Token:  protobuf.NewStringValue(user.Token),
+		Name:   protobuf.NewStringValue(user.Name),
+		Role:   protobuf.NewStringValue(authtypes.UserRoleNames[user.Type]),
 	})
 }
 

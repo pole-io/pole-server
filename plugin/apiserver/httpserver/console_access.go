@@ -18,8 +18,6 @@
 package httpserver
 
 import (
-	"net/http"
-
 	"github.com/emicklei/go-restful/v3"
 	"github.com/golang/protobuf/proto"
 
@@ -119,13 +117,7 @@ func (h *HTTPServer) DeleteNamespaces(req *restful.Request, rsp *restful.Respons
 		return
 	}
 
-	ret := h.namespaceServer.DeleteNamespaces(ctx, namespaces)
-	if code := api.CalcCode(ret); code != http.StatusOK {
-		handler.WriteHeaderAndProto(ret)
-		return
-	}
-
-	handler.WriteHeaderAndProto(ret)
+	handler.WriteHeaderAndProto(h.namespaceServer.DeleteNamespaces(ctx, namespaces))
 }
 
 // UpdateNamespaces 修改命名空间
@@ -146,13 +138,7 @@ func (h *HTTPServer) UpdateNamespaces(req *restful.Request, rsp *restful.Respons
 		return
 	}
 
-	ret := h.namespaceServer.UpdateNamespaces(ctx, namespaces)
-	if code := api.CalcCode(ret); code != http.StatusOK {
-		handler.WriteHeaderAndProto(ret)
-		return
-	}
-
-	handler.WriteHeaderAndProto(ret)
+	handler.WriteHeaderAndProto(h.namespaceServer.UpdateNamespaces(ctx, namespaces))
 }
 
 // GetNamespaces 查询命名空间

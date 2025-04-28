@@ -15,7 +15,7 @@ coverage*
 *.swp
 *.code-workspace
 
-__debug_bin
+__debug_bin*
 
 .vscode
 *.bolt

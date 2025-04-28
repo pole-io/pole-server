@@ -19,7 +19,6 @@ package auth
 
 import (
 	"context"
-	"strconv"
 
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
@@ -86,12 +85,28 @@ func (svr *Server) CreateUsers(ctx context.Context, users []*apisecurity.User) *
 	return svr.nextSvr.CreateUsers(authCtx.GetRequestContext(), users)
 }
 
-// UpdateUser 更新用户信息
-func (svr *Server) UpdateUser(ctx context.Context, user *apisecurity.User) *apiservice.Response {
+// UpdateUsers 更新用户信息
+func (svr *Server) UpdateUsers(ctx context.Context, reqs []*apisecurity.User) *apiservice.BatchWriteResponse {
+	rsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+
 	helper := svr.nextSvr.GetUserHelper()
-	saveUser := helper.GetUserByID(ctx, user.GetId().GetValue())
-	if saveUser == nil {
-		return api.NewResponse(apimodel.Code_NotFoundUser)
+	resources := make([]authtypes.ResourceEntry, 0, len(reqs))
+	for _, req := range reqs {
+		saveUser := helper.GetUserByID(ctx, req.GetId().GetValue())
+		if saveUser == nil {
+			api.Collect(rsp, api.NewUserResponse(apimodel.Code_NotFoundUser, req))
+			continue
+		}
+
+		resources = append(resources, authtypes.ResourceEntry{
+			ID:       req.GetId().GetValue(),
+			Type:     apisecurity.ResourceType_Users,
+			Metadata: saveUser.Metadata,
+		})
+	}
+
+	if !api.IsSuccess(rsp) {
+		return rsp
 	}
 
 	authCtx := authtypes.NewAcquireContext(
@@ -100,20 +115,14 @@ func (svr *Server) UpdateUser(ctx context.Context, user *apisecurity.User) *apis
 		authtypes.WithModule(authtypes.AuthModule),
 		authtypes.WithMethod(authtypes.UpdateUser),
 		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
-			apisecurity.ResourceType_Users: {
-				authtypes.ResourceEntry{
-					ID:       user.GetId().GetValue(),
-					Type:     apisecurity.ResourceType_Users,
-					Metadata: saveUser.Metadata,
-				},
-			},
+			apisecurity.ResourceType_Users: resources,
 		}),
 	)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authtypes.ConvertToErrCode(err))
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
-	return svr.nextSvr.UpdateUser(authCtx.GetRequestContext(), user)
+	return svr.nextSvr.UpdateUsers(authCtx.GetRequestContext(), reqs)
 }
 
 // UpdateUserPassword 更新用户密码
@@ -188,13 +197,6 @@ func (svr *Server) GetUsers(ctx context.Context, query map[string]string) *apise
 		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
-	query["hide_admin"] = strconv.FormatBool(true)
-	// 如果不是超级管理员，查看数据有限制
-	if authtypes.ParseUserRole(ctx) != authtypes.AdminUserRole {
-		// 设置 owner 参数，只能查看对应 owner 下的用户
-		query["owner"] = utils.ParseOwnerID(ctx)
-	}
-
 	ctx = cachetypes.AppendUserPredicate(ctx, func(ctx context.Context, u *authtypes.User) bool {
 		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
 			Type:     apisecurity.ResourceType_Users,
@@ -309,7 +311,7 @@ func (svr *Server) CreateGroup(ctx context.Context, group *apisecurity.UserGroup
 }
 
 // UpdateGroups 更新用户组
-func (svr *Server) UpdateGroups(ctx context.Context, groups []*apisecurity.ModifyUserGroup) *apiservice.BatchWriteResponse {
+func (svr *Server) UpdateGroups(ctx context.Context, groups []*apisecurity.UserGroup) *apiservice.BatchWriteResponse {
 	helper := svr.nextSvr.GetUserHelper()
 	resources := make([]authtypes.ResourceEntry, 0, len(groups))
 	for i := range groups {

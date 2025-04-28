@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 	"time"
@@ -117,7 +118,7 @@ func (s *Server) CreateInstance(ctx context.Context, req *apiservice.Instance) *
 		CreateTime: time.Now(),
 	}
 	event.InjectMetadata(ctx)
-	s.sendDiscoverEvent(*event)
+	s.sendDiscoverEvent(event)
 	s.RecordHistory(ctx, instanceRecordEntry(ctx, req, svc, data, types.OCreate))
 	out := &apiservice.Instance{
 		Id:        ins.GetId(),
@@ -264,7 +265,7 @@ func (s *Server) serialDeleteInstance(
 		CreateTime: time.Now(),
 	}
 	event.InjectMetadata(ctx)
-	s.sendDiscoverEvent(*event)
+	s.sendDiscoverEvent(event)
 
 	return api.NewInstanceResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -301,7 +302,7 @@ func (s *Server) asyncDeleteInstance(
 		CreateTime: time.Now(),
 	}
 	event.InjectMetadata(ctx)
-	s.sendDiscoverEvent(*event)
+	s.sendDiscoverEvent(event)
 
 	return api.NewInstanceResponse(apimodel.Code_ExecuteSuccess, req)
 }
@@ -339,7 +340,7 @@ func (s *Server) DeleteInstanceByHost(ctx context.Context, req *apiservice.Insta
 			instance.ID(), service.Namespace, service.Name, instance.Host(), instance.Port())
 		log.Info(msg, utils.RequestID(ctx))
 		s.RecordHistory(ctx, instanceRecordEntry(ctx, req, service, instance, types.ODelete))
-		s.sendDiscoverEvent(svctypes.InstanceEvent{
+		s.sendDiscoverEvent(&svctypes.InstanceEvent{
 			Id:         instance.ID(),
 			Namespace:  service.Namespace,
 			Service:    service.Name,
@@ -394,7 +395,7 @@ func (s *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance) *
 			CreateTime: time.Now(),
 		}
 		event.InjectMetadata(ctx)
-		s.sendDiscoverEvent(*event)
+		s.sendDiscoverEvent(event)
 	}
 
 	for i := range s.instanceChains {
@@ -468,7 +469,7 @@ func (s *Server) UpdateInstanceIsolate(ctx context.Context, req *apiservice.Inst
 			if req.Isolate.GetValue() {
 				eventType = svctypes.EventInstanceOpenIsolate
 			}
-			s.sendDiscoverEvent(svctypes.InstanceEvent{
+			s.sendDiscoverEvent(&svctypes.InstanceEvent{
 				Id:         instance.ID(),
 				Namespace:  req.Namespace.GetValue(),
 				Service:    req.Service.GetValue(),
@@ -521,7 +522,7 @@ func (s *Server) updateInstanceAttribute(
 	needUpdate := false
 	insProto := instance.Proto
 	var updateEvents = make(map[svctypes.InstanceEventType]bool)
-	if ok := utils.IsNotEqualMap(req.GetMetadata(), instance.Metadata()); ok {
+	if !maps.Equal(req.GetMetadata(), instance.Metadata()) {
 		insProto.Metadata = req.GetMetadata()
 		needUpdate = true
 		updateEvents[svctypes.EventInstanceUpdate] = true
@@ -937,7 +938,7 @@ func isEmptyLocation(loc *apimodel.Location) bool {
 		loc.GetCampus().GetValue() == "")
 }
 
-func (s *Server) sendDiscoverEvent(event svctypes.InstanceEvent) {
+func (s *Server) sendDiscoverEvent(event *svctypes.InstanceEvent) {
 	if event.Instance != nil {
 		// In order not to cause `panic` in cause multi-corporate data op, do deep copy
 		// event.Instance = proto.Clone(event.Instance).(*apiservice.Instance)
