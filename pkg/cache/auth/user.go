@@ -435,13 +435,12 @@ func (uc *userCache) listUserGroupsPage(groups []*authtypes.UserGroupDetail,
 	if args.Limit == 0 {
 		return total, nil
 	}
-	start := args.Limit * args.Offset
-	end := args.Limit * (args.Offset + 1)
-	if start > total {
+	if args.Offset >= total || args.Limit == 0 {
 		return total, nil
 	}
-	if end > total {
-		end = total
+	endIdx := args.Offset + args.Limit
+	if endIdx > total {
+		endIdx = total
 	}
-	return total, groups[start:end]
+	return total, groups[args.Offset:endIdx]
 }

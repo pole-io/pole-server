@@ -22,6 +22,7 @@ import (
 	golog "log"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
+	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	policy_auth "github.com/pole-io/pole-server/plugin/access_control/auth/policy/inteceptor/auth"
 	"github.com/pole-io/pole-server/plugin/access_control/auth/policy/inteceptor/paramcheck"
 )
@@ -87,3 +88,14 @@ func GetChainOrder() []string {
 		"paramcheck",
 	}
 }
+
+var (
+	_cacheEntries = []cachetypes.ConfigEntry{
+		{
+			Name: cachetypes.StrategyRuleName,
+		},
+		{
+			Name: cachetypes.RolesName,
+		},
+	}
+)

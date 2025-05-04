@@ -120,22 +120,16 @@ func (svr *Server) GetAllServices(ctx context.Context,
 	return svr.nextSvr.GetAllServices(ctx, query)
 }
 
-// GetServiceOwner implements service.DiscoverServer.
-func (svr *Server) GetServiceOwner(ctx context.Context,
-	req []*service_manage.Service) *service_manage.BatchQueryResponse {
-	if err := checkBatchReadService(req); err != nil {
-		return err
+// GetServiceOwner 获取服务的 owner
+func (svr *Server) GetServiceSubscribers(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+	// 判断offset和limit是否为int，并从filters清除offset/limit参数
+	offset, limit, err := valid.ParseOffsetAndLimit(query)
+	if err != nil {
+		return api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}
-	return svr.nextSvr.GetServiceOwner(ctx, req)
-}
-
-// GetServiceToken implements service.DiscoverServer.
-func (svr *Server) GetServiceToken(ctx context.Context, req *service_manage.Service) *service_manage.Response {
-	// 校验参数合法性
-	if resp := checkReviseService(req); resp != nil {
-		return resp
-	}
-	return svr.nextSvr.GetServiceToken(ctx, req)
+	query["offset"] = strconv.FormatUint(uint64(offset), 10)
+	query["limit"] = strconv.FormatUint(uint64(limit), 10)
+	return svr.nextSvr.GetServiceSubscribers(ctx, query)
 }
 
 // GetServices implements service.DiscoverServer.
@@ -190,15 +184,6 @@ func (svr *Server) GetServices(ctx context.Context, query map[string]string) *se
 // GetServicesCount implements service.DiscoverServer.
 func (svr *Server) GetServicesCount(ctx context.Context) *service_manage.BatchQueryResponse {
 	return svr.nextSvr.GetServicesCount(ctx)
-}
-
-// UpdateServiceToken implements service.DiscoverServer.
-func (svr *Server) UpdateServiceToken(ctx context.Context, req *service_manage.Service) *service_manage.Response {
-	// 校验参数合法性
-	if resp := checkReviseService(req); resp != nil {
-		return resp
-	}
-	return svr.nextSvr.UpdateServiceToken(ctx, req)
 }
 
 // checkBatchService检查批量请求

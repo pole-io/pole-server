@@ -296,6 +296,10 @@ func (cfr *configFileReleaseStore) selectMaxVersion(tx *BaseTx, release *conftyp
 		" `group` = ? AND file_name = ?", args[:3]...)
 	var maxVersion uint64
 	if err := row.Scan(&maxVersion); err != nil {
+		if err == sql.ErrNoRows {
+			// 没有记录，返回 0
+			return 0, nil
+		}
 		return 0, err
 	}
 	return maxVersion, nil

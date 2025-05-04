@@ -25,9 +25,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/valid"
 	"github.com/pole-io/pole-server/pkg/config"
@@ -42,19 +44,19 @@ func Test_CheckCreateFileGroupParam(t *testing.T) {
 	testSuit := newConfigCenterTestSuit(t)
 
 	t.Run("invalid_nil_param", func(t *testing.T) {
-		rsp := testSuit.ConfigServer().CreateConfigFileGroup(testSuit.DefaultCtx, nil)
+		rsp := testSuit.ConfigServer().CreateConfigFileGroups(testSuit.DefaultCtx, nil)
 		assert.Equal(t, uint32(apimodel.Code_InvalidParameter), rsp.Code.GetValue())
 	})
 	t.Run("invalid_name", func(t *testing.T) {
 		mockGroup := assembleConfigFileGroup()
 		mockGroup.Name = wrapperspb.String("")
-		rsp := testSuit.ConfigServer().CreateConfigFileGroup(testSuit.DefaultCtx, mockGroup)
+		rsp := testSuit.ConfigServer().CreateConfigFileGroups(testSuit.DefaultCtx, []*apiconfig.ConfigFileGroup{mockGroup})
 		assert.Equal(t, uint32(apimodel.Code_InvalidConfigFileGroupName), rsp.Code.GetValue())
 	})
 	t.Run("invalid_namespace", func(t *testing.T) {
 		mockGroup := assembleConfigFileGroup()
 		mockGroup.Namespace = wrapperspb.String("")
-		rsp := testSuit.ConfigServer().CreateConfigFileGroup(testSuit.DefaultCtx, mockGroup)
+		rsp := testSuit.ConfigServer().CreateConfigFileGroups(testSuit.DefaultCtx, []*apiconfig.ConfigFileGroup{mockGroup})
 		assert.Equal(t, uint32(apimodel.Code_InvalidNamespaceName), rsp.Code.GetValue())
 	})
 	t.Run("invalid_metadata_len", func(t *testing.T) {
@@ -63,7 +65,7 @@ func Test_CheckCreateFileGroupParam(t *testing.T) {
 		for i := 0; i < valid.MaxMetadataLength+10; i++ {
 			mockGroup.Metadata[fmt.Sprintf("Key_%d", i)] = fmt.Sprintf("Value_%d", i)
 		}
-		rsp := testSuit.ConfigServer().CreateConfigFileGroup(testSuit.DefaultCtx, mockGroup)
+		rsp := testSuit.ConfigServer().CreateConfigFileGroups(testSuit.DefaultCtx, []*apiconfig.ConfigFileGroup{mockGroup})
 		assert.Equal(t, uint32(apimodel.Code_InvalidMetadata), rsp.Code.GetValue())
 	})
 }
@@ -87,23 +89,23 @@ func TestConfigFileGroupCRUD(t *testing.T) {
 	// 创建 group
 	t.Run("step2-create", func(t *testing.T) {
 		t.Run("normal", func(t *testing.T) {
-			rsp := testSuit.ConfigServer().CreateConfigFileGroup(testSuit.DefaultCtx, assembleConfigFileGroup())
+			rsp := testSuit.ConfigServer().CreateConfigFileGroups(testSuit.DefaultCtx, []*apiconfig.ConfigFileGroup{assembleConfigFileGroup()})
 			assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 
-			rsp2 := testSuit.ConfigServer().CreateConfigFileGroup(testSuit.DefaultCtx, assembleConfigFileGroup())
+			rsp2 := testSuit.ConfigServer().CreateConfigFileGroups(testSuit.DefaultCtx, []*apiconfig.ConfigFileGroup{assembleConfigFileGroup()})
 			assert.Equal(t, uint32(api.ExistedResource), rsp2.Code.GetValue())
 		})
 	})
 
 	t.Run("step2-update", func(t *testing.T) {
 		t.Run("no_change", func(t *testing.T) {
-			rsp := testSuit.ConfigServer().UpdateConfigFileGroup(testSuit.DefaultCtx, assembleConfigFileGroup())
+			rsp := testSuit.ConfigServer().CreateConfigFileGroups(testSuit.DefaultCtx, []*apiconfig.ConfigFileGroup{assembleConfigFileGroup()})
 			assert.Equal(t, api.NoNeedUpdate, rsp.Code.GetValue(), rsp.GetInfo().GetValue())
 		})
 		t.Run("change", func(t *testing.T) {
 			mockGroup := assembleConfigFileGroup()
 			mockGroup.Comment = wrapperspb.String("v string changed")
-			rsp := testSuit.ConfigServer().UpdateConfigFileGroup(testSuit.DefaultCtx, mockGroup)
+			rsp := testSuit.ConfigServer().CreateConfigFileGroups(testSuit.DefaultCtx, []*apiconfig.ConfigFileGroup{mockGroup})
 			assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 		})
 	})
@@ -122,7 +124,7 @@ func TestConfigFileGroupCRUD(t *testing.T) {
 
 	// 创建配置文件
 	t.Run("create-config-files", func(t *testing.T) {
-		rsp := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, assembleConfigFile())
+		rsp := testSuit.ConfigServer().CreateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{assembleConfigFile()})
 		assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 
 		rsp2 := testSuit.ConfigServer().SearchConfigFiles(testSuit.DefaultCtx, map[string]string{
@@ -138,19 +140,34 @@ func TestConfigFileGroupCRUD(t *testing.T) {
 	// 删除 group
 	t.Run("step4-delete", func(t *testing.T) {
 		t.Run("delete-noexist", func(t *testing.T) {
-			rsp := testSuit.ConfigServer().DeleteConfigFileGroup(testSuit.DefaultCtx, testNamespace, "testGroup_noExist")
+			rsp := testSuit.ConfigServer().DeleteConfigFileGroups(testSuit.DefaultCtx, []*apiconfig.ConfigFileGroup{
+				{
+					Namespace: protobuf.NewStringValue(testNamespace),
+					Name:      protobuf.NewStringValue("testGroup_noExist"),
+				},
+			})
 			assert.Equal(t, uint32(apimodel.Code_NotFoundResource), rsp.Code.GetValue(), rsp.GetInfo().GetValue())
 		})
 		t.Run("exist-subresources", func(t *testing.T) {
-			rsp := testSuit.ConfigServer().DeleteConfigFileGroup(testSuit.DefaultCtx, testNamespace, testGroup)
+			rsp := testSuit.ConfigServer().DeleteConfigFileGroups(testSuit.DefaultCtx, []*apiconfig.ConfigFileGroup{
+				{
+					Namespace: protobuf.NewStringValue(testNamespace),
+					Name:      protobuf.NewStringValue(testGroup),
+				},
+			})
 			assert.Equal(t, uint32(apimodel.Code_ExistedResource), rsp.Code.GetValue(), rsp.GetInfo().GetValue())
 		})
 		t.Run("normal", func(t *testing.T) {
-			rsp := testSuit.ConfigServer().DeleteConfigFile(testSuit.DefaultCtx, assembleConfigFile())
+			rsp := testSuit.ConfigServer().DeleteConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{assembleConfigFile()})
 			assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue(), rsp.GetInfo().GetValue())
 
-			rsp = testSuit.ConfigServer().DeleteConfigFileGroup(testSuit.DefaultCtx, testNamespace, testGroup)
-			assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue(), rsp.GetInfo().GetValue())
+			brsp := testSuit.ConfigServer().DeleteConfigFileGroups(testSuit.DefaultCtx, []*apiconfig.ConfigFileGroup{
+				{
+					Namespace: protobuf.NewStringValue(testNamespace),
+					Name:      protobuf.NewStringValue(testGroup),
+				},
+			})
+			assert.Equal(t, api.ExecuteSuccess, brsp.Code.GetValue(), brsp.GetInfo().GetValue())
 
 			rsp2 := testSuit.ConfigServer().SearchConfigFiles(testSuit.DefaultCtx, map[string]string{
 				"namespace": testNamespace,
@@ -178,11 +195,15 @@ func TestConfigFileGroupCRUD(t *testing.T) {
 	// 创建 7个随机 group 和一个固定的 group
 	t.Run("step6-create", func(t *testing.T) {
 		for i := 0; i < int(randomGroupSize); i++ {
-			rsp := testSuit.ConfigServer().CreateConfigFileGroup(testSuit.DefaultCtx, assembleRandomConfigFileGroup())
+			rsp := testSuit.ConfigServer().CreateConfigFileGroups(testSuit.DefaultCtx, []*apiconfig.ConfigFileGroup{
+				assembleRandomConfigFileGroup(),
+			})
 			assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 		}
 
-		rsp2 := testSuit.ConfigServer().CreateConfigFileGroup(testSuit.DefaultCtx, assembleConfigFileGroup())
+		rsp2 := testSuit.ConfigServer().CreateConfigFileGroups(testSuit.DefaultCtx, []*apiconfig.ConfigFileGroup{
+			assembleConfigFileGroup(),
+		})
 		assert.Equal(t, api.ExecuteSuccess, rsp2.Code.GetValue(), rsp2.GetInfo().GetValue())
 	})
 

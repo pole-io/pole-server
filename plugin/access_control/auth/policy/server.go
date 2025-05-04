@@ -100,9 +100,7 @@ func (svr *Server) Initialize(options *authapi.Config, storage store.Store, cach
 		return err
 	}
 
-	_ = cacheMgr.OpenResourceCache(cachetypes.ConfigEntry{
-		Name: cachetypes.StrategyRuleName,
-	})
+	_ = cacheMgr.OpenResourceCache(_cacheEntries...)
 
 	checker := &DefaultAuthChecker{
 		policyMgr: svr,

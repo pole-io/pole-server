@@ -19,6 +19,7 @@ package auth
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"go.uber.org/zap"
@@ -200,15 +201,15 @@ func (r *roleCache) Query(ctx context.Context, args cacheapi.RoleSearchArgs) (ui
 	predicates := cacheapi.LoadAuthRolePredicates(ctx)
 
 	r.roles.Range(func(key string, val *authtypes.Role) {
-		if hasId && key != searchId {
+		if hasId && searchId != "" && key != searchId {
 			return
 		}
-		if hasName {
+		if hasName && searchName != "" {
 			if !utils.IsWildMatch(val.Name, searchName) {
 				return
 			}
 		}
-		if hasSource {
+		if hasSource && searchSource != "" {
 			if !utils.IsWildMatch(val.Source, searchSource) {
 				return
 			}
@@ -218,7 +219,12 @@ func (r *roleCache) Query(ctx context.Context, args cacheapi.RoleSearchArgs) (ui
 				return
 			}
 		}
+		total++
 		roles = append(roles, val)
+	})
+
+	sort.Slice(roles, func(i int, j int) bool {
+		return roles[i].ModifyTime.After(roles[j].ModifyTime)
 	})
 
 	total, roles = r.toPage(total, roles, args)
@@ -229,15 +235,14 @@ func (r *roleCache) toPage(total uint32, roles []*authtypes.Role, args cacheapi.
 	if args.Limit == 0 {
 		return total, roles
 	}
-	start := args.Limit * args.Offset
-	end := args.Limit * (args.Offset + 1)
-	if start > total {
+	if args.Offset >= total || args.Limit == 0 {
 		return total, nil
 	}
-	if end > total {
-		end = total
+	endIdx := args.Offset + args.Limit
+	if endIdx > total {
+		endIdx = total
 	}
-	return total, roles[start:end]
+	return total, roles[args.Offset:endIdx]
 }
 
 // GetPrincipalRoles implements api.RoleCache.

@@ -38,12 +38,6 @@ func (h *HTTPServer) addPolicyRuleAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichGetStrategiesApiDocs(ws.GET("/policies").To(h.GetPolicies)))
 	ws.Route(docs.EnrichGetStrategyApiDocs(ws.GET("/policy/detail").To(h.GetPolicy)))
 	ws.Route(docs.EnrichGetPrincipalResourcesApiDocs(ws.GET("/principal/resources").To(h.GetPrincipalResources)))
-
-	// 角色
-	ws.Route(docs.EnrichGetRolesApiDocs(ws.GET("/roles").To(h.GetRoles)))
-	ws.Route(docs.EnrichCreateRolesApiDocs(ws.POST("/roles").To(h.CreateRoles)))
-	ws.Route(docs.EnrichDeleteRolesApiDocs(ws.POST("/roles/delete").To(h.DeleteRoles)))
-	ws.Route(docs.EnrichUpdateRolesApiDocs(ws.PUT("/roles").To(h.UpdateRoles)))
 }
 
 // CreatePolicies 创建鉴权策略

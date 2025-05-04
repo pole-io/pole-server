@@ -130,25 +130,6 @@ func (svr *Server) UpdateServices(
 	return nRsp
 }
 
-// UpdateServiceToken 更新服务的 token
-func (svr *Server) UpdateServiceToken(
-	ctx context.Context, req *apiservice.Service) *apiservice.Response {
-	authCtx := svr.collectServiceAuthContext(
-		ctx, []*apiservice.Service{req}, authtypes.Modify, authtypes.UpdateServiceToken)
-
-	accessRes := authCtx.GetAccessResources()
-	delete(accessRes, apisecurity.ResourceType_Namespaces)
-	authCtx.SetAccessResources(accessRes)
-
-	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authtypes.ConvertToErrCode(err))
-	}
-
-	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.UpdateServiceToken(ctx, req)
-}
-
 func (svr *Server) GetAllServices(ctx context.Context,
 	query map[string]string) *apiservice.BatchQueryResponse {
 	authCtx := svr.collectServiceAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeAllServices)
@@ -263,24 +244,9 @@ func (svr *Server) GetServicesCount(ctx context.Context) *apiservice.BatchQueryR
 	return svr.nextSvr.GetServicesCount(ctx)
 }
 
-// GetServiceToken 获取服务的 token
-func (svr *Server) GetServiceToken(ctx context.Context, req *apiservice.Service) *apiservice.Response {
-	authCtx := svr.collectServiceAuthContext(ctx, []*apiservice.Service{req}, authtypes.Read,
-		authtypes.DescribeServiceToken)
-
-	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authtypes.ConvertToErrCode(err))
-	}
-
-	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.GetServiceToken(ctx, req)
-}
-
 // GetServiceOwner 获取服务的 owner
-func (svr *Server) GetServiceOwner(
-	ctx context.Context, req []*apiservice.Service) *apiservice.BatchQueryResponse {
-	authCtx := svr.collectServiceAuthContext(ctx, req, authtypes.Read, authtypes.DescribeServiceOwner)
+func (svr *Server) GetServiceSubscribers(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+	authCtx := svr.collectServiceAuthContext(ctx, []*apiservice.Service{}, authtypes.Read, authtypes.DescribeServiceOwner)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
@@ -289,5 +255,5 @@ func (svr *Server) GetServiceOwner(
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
-	return svr.nextSvr.GetServiceOwner(ctx, req)
+	return svr.nextSvr.GetServiceSubscribers(ctx, query)
 }

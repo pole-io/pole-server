@@ -21,8 +21,8 @@ func (h *HTTPServer) addReleasesRuleAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichGetConfigFileReleaseApiDocs(ws.GET("/files/releases").To(h.GetConfigFileReleases)))
 	ws.Route(docs.EnrichGetConfigFileReleaseApiDocs(ws.POST("/files/releases/delete").To(h.DeleteConfigFileReleases)))
 	ws.Route(docs.EnrichGetConfigFileReleaseApiDocs(ws.GET("/files/release/versions").To(h.GetConfigFileReleaseVersions)))
-	ws.Route(docs.EnrichUpsertAndReleaseConfigFileApiDocs(ws.POST("/files/createandpub").To(h.UpsertAndReleaseConfigFile)))
 	ws.Route(docs.EnrichPublishConfigFileApiDocs(ws.POST("/files/release").To(h.PublishConfigFile)))
+	ws.Route(docs.EnrichUpsertAndReleaseConfigFileApiDocs(ws.POST("/files/createandpub").To(h.UpsertAndReleaseConfigFile)))
 	ws.Route(docs.EnrichGetConfigFileReleaseApiDocs(ws.PUT("/files/releases/rollback").To(h.RollbackConfigFileReleases)))
 	ws.Route(docs.EnrichStopBetaReleaseConfigFileApiDocs(ws.POST("/files/releases/stopbeta").To(h.StopGrayConfigFileReleases)))
 }
@@ -62,9 +62,8 @@ func (h *HTTPServer) RollbackConfigFileReleases(req *restful.Request, rsp *restf
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	response := h.configServer.RollbackConfigFileReleases(ctx, releases)
 
-	handler.WriteHeaderAndProto(response)
+	handler.WriteHeaderAndProto(h.configServer.RollbackConfigFileReleases(ctx, releases))
 }
 
 // DeleteConfigFileReleases
@@ -85,8 +84,7 @@ func (h *HTTPServer) DeleteConfigFileReleases(req *restful.Request, rsp *restful
 		return
 	}
 
-	response := h.configServer.DeleteConfigFileReleases(ctx, releases)
-	handler.WriteHeaderAndProto(response)
+	handler.WriteHeaderAndProto(h.configServer.DeleteConfigFileReleases(ctx, releases))
 }
 
 // GetConfigFileReleaseVersions 获取配置文件最后一次发布内容
@@ -97,9 +95,9 @@ func (h *HTTPServer) GetConfigFileReleaseVersions(req *restful.Request, rsp *res
 	}
 
 	queryParams := httpcommon.ParseQueryParams(req)
-	response := h.configServer.GetConfigFileReleaseVersions(handler.ParseHeaderContext(), queryParams)
+	ctx := handler.ParseHeaderContext()
 
-	handler.WriteHeaderAndProto(response)
+	handler.WriteHeaderAndProto(h.configServer.GetConfigFileReleaseVersions(ctx, queryParams))
 }
 
 // GetConfigFileReleases 获取配置文件最后一次发布内容
@@ -110,9 +108,9 @@ func (h *HTTPServer) GetConfigFileReleases(req *restful.Request, rsp *restful.Re
 	}
 
 	queryParams := httpcommon.ParseQueryParams(req)
-	response := h.configServer.GetConfigFileReleases(handler.ParseHeaderContext(), queryParams)
+	ctx := handler.ParseHeaderContext()
 
-	handler.WriteHeaderAndProto(response)
+	handler.WriteHeaderAndProto(h.configServer.GetConfigFileReleases(ctx, queryParams))
 }
 
 // GetConfigFileRelease 获取配置文件最后一次发布内容
@@ -138,8 +136,7 @@ func (h *HTTPServer) GetConfigFileRelease(req *restful.Request, rsp *restful.Res
 		Name:      protobuf.NewStringValue(name),
 	}
 
-	response := h.configServer.GetConfigFileRelease(handler.ParseHeaderContext(), fileReq)
-	handler.WriteHeaderAndProto(response)
+	handler.WriteHeaderAndProto(h.configServer.GetConfigFileRelease(handler.ParseHeaderContext(), fileReq))
 }
 
 // GetConfigFileReleaseHistory 获取配置文件发布历史，按照发布时间倒序排序
@@ -150,9 +147,9 @@ func (h *HTTPServer) GetConfigFileReleaseHistory(req *restful.Request, rsp *rest
 	}
 
 	filters := httpcommon.ParseQueryParams(req)
-	response := h.configServer.GetConfigFileReleaseHistories(handler.ParseHeaderContext(), filters)
+	ctx := handler.ParseHeaderContext()
 
-	handler.WriteHeaderAndProto(response)
+	handler.WriteHeaderAndProto(h.configServer.GetConfigFileReleaseHistories(ctx, filters))
 }
 
 // GetAllConfigEncryptAlgorithm get all config encrypt algorithm
@@ -161,11 +158,7 @@ func (h *HTTPServer) GetAllConfigEncryptAlgorithms(req *restful.Request, rsp *re
 		Request:  req,
 		Response: rsp,
 	}
-	response := h.configServer.GetAllConfigEncryptAlgorithms(handler.ParseHeaderContext())
-	configLog.Info("response",
-		zap.Uint32("code", response.GetCode().GetValue()),
-	)
-	handler.WriteHeaderAndProto(response)
+	handler.WriteHeaderAndProto(h.configServer.GetAllConfigEncryptAlgorithms(handler.ParseHeaderContext()))
 }
 
 // UpsertAndReleaseConfigFile
@@ -205,6 +198,5 @@ func (h *HTTPServer) StopGrayConfigFileReleases(req *restful.Request, rsp *restf
 		return
 	}
 
-	response := h.configServer.StopGrayConfigFileReleases(ctx, releases)
-	handler.WriteHeaderAndProto(response)
+	handler.WriteHeaderAndProto(h.configServer.StopGrayConfigFileReleases(ctx, releases))
 }

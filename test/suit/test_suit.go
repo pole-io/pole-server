@@ -837,10 +837,6 @@ func (d *DiscoverTestSuit) ClearTestDataWhenUseRDS() error {
 		if err != nil {
 			return err
 		}
-		_, err = tx.Exec("delete from config_file_tag where namespace = ? ", testNamespace)
-		if err != nil {
-			return err
-		}
 		_, err = tx.Exec("delete from namespace where name = ? ", testNamespace)
 		if err != nil {
 			return err

@@ -28,18 +28,43 @@ import (
 )
 
 // CreateConfigFile 创建配置文件
-func (s *Server) CreateConfigFile(ctx context.Context,
-	configFile *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
-	authCtx := s.collectConfigFileAuthContext(
-		ctx, []*apiconfig.ConfigFile{configFile}, auth.Create, auth.CreateConfigFile)
+func (s *Server) CreateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse {
+	authCtx := s.collectConfigFileAuthContext(ctx, reqs, auth.Create, auth.CreateConfigFile)
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewConfigResponse(auth.ConvertToErrCode(err))
+		return api.NewConfigBatchWriteResponse(auth.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
-	return s.nextServer.CreateConfigFile(ctx, configFile)
+	return s.nextServer.CreateConfigFiles(ctx, reqs)
+}
+
+// UpdateConfigFile 更新配置文件
+func (s *Server) UpdateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse {
+	authCtx := s.collectConfigFileAuthContext(ctx, reqs, auth.Modify, auth.UpdateConfigFile)
+	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewConfigBatchWriteResponse(auth.ConvertToErrCode(err))
+	}
+
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+
+	return s.nextServer.UpdateConfigFiles(ctx, reqs)
+}
+
+// DeleteConfigFile 删除配置文件，删除配置文件同时会通知客户端 Not_Found
+func (s *Server) DeleteConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse {
+
+	authCtx := s.collectConfigFileAuthContext(ctx, reqs, auth.Delete, auth.DeleteConfigFile)
+	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewConfigBatchWriteResponse(auth.ConvertToErrCode(err))
+	}
+
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+
+	return s.nextServer.DeleteConfigFiles(ctx, reqs)
 }
 
 // GetConfigFileRichInfo 获取单个配置文件基础信息，包含发布状态等信息
@@ -68,52 +93,6 @@ func (s *Server) SearchConfigFiles(ctx context.Context,
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return s.nextServer.SearchConfigFiles(ctx, filter)
-}
-
-// UpdateConfigFile 更新配置文件
-func (s *Server) UpdateConfigFile(
-	ctx context.Context, configFile *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
-	authCtx := s.collectConfigFileAuthContext(
-		ctx, []*apiconfig.ConfigFile{configFile}, auth.Modify, auth.UpdateConfigFile)
-	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewConfigResponse(auth.ConvertToErrCode(err))
-	}
-
-	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-
-	return s.nextServer.UpdateConfigFile(ctx, configFile)
-}
-
-// DeleteConfigFile 删除配置文件，删除配置文件同时会通知客户端 Not_Found
-func (s *Server) DeleteConfigFile(ctx context.Context,
-	req *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
-
-	authCtx := s.collectConfigFileAuthContext(ctx,
-		[]*apiconfig.ConfigFile{req}, auth.Delete, auth.DeleteConfigFile)
-	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewConfigResponse(auth.ConvertToErrCode(err))
-	}
-
-	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-
-	return s.nextServer.DeleteConfigFile(ctx, req)
-}
-
-// BatchDeleteConfigFile 批量删除配置文件
-func (s *Server) BatchDeleteConfigFile(ctx context.Context,
-	req []*apiconfig.ConfigFile) *apiconfig.ConfigResponse {
-
-	authCtx := s.collectConfigFileAuthContext(ctx, req, auth.Delete, auth.BatchDeleteConfigFiles)
-	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewConfigResponse(auth.ConvertToErrCode(err))
-	}
-
-	ctx = authCtx.GetRequestContext()
-	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-
-	return s.nextServer.BatchDeleteConfigFile(ctx, req)
 }
 
 func (s *Server) ExportConfigFile(ctx context.Context,

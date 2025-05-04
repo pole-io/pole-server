@@ -30,12 +30,20 @@ import (
 )
 
 // CreateConfigFileGroup 创建配置文件组
-func (s *Server) CreateConfigFileGroup(ctx context.Context,
-	req *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse {
-	if checkError := checkConfigFileGroupParams(req); checkError != nil {
-		return checkError
+func (s *Server) CreateConfigFileGroups(ctx context.Context,
+	reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse {
+
+	bRsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, req := range reqs {
+		if rsp := checkConfigFileGroupParams(req); rsp != nil {
+			api.ConfigCollect(bRsp, rsp)
+			continue
+		}
 	}
-	return s.nextServer.CreateConfigFileGroup(ctx, req)
+	if !api.IsSuccess(bRsp) {
+		return bRsp
+	}
+	return s.nextServer.CreateConfigFileGroups(ctx, reqs)
 }
 
 // QueryConfigFileGroups 查询配置文件组
@@ -63,24 +71,35 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 }
 
 // DeleteConfigFileGroup 删除配置文件组
-func (s *Server) DeleteConfigFileGroup(
-	ctx context.Context, namespace, name string) *apiconfig.ConfigResponse {
-	if err := valid.CheckResourceName(protobuf.NewStringValue(namespace)); err != nil {
-		return api.NewConfigResponse(apimodel.Code_InvalidNamespaceName)
+func (s *Server) DeleteConfigFileGroups(
+	ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse {
+	bRsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, req := range reqs {
+		if rsp := checkConfigFileGroupParams(req); rsp != nil {
+			api.ConfigCollect(bRsp, rsp)
+			continue
+		}
 	}
-	if err := valid.CheckResourceName(protobuf.NewStringValue(name)); err != nil {
-		return api.NewConfigResponse(apimodel.Code_InvalidConfigFileGroupName)
+	if !api.IsSuccess(bRsp) {
+		return bRsp
 	}
-	return s.nextServer.DeleteConfigFileGroup(ctx, namespace, name)
+	return s.nextServer.DeleteConfigFileGroups(ctx, reqs)
 }
 
-// UpdateConfigFileGroup 更新配置文件组
-func (s *Server) UpdateConfigFileGroup(ctx context.Context,
-	req *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse {
-	if checkError := checkConfigFileGroupParams(req); checkError != nil {
-		return checkError
+// UpdateConfigFileGroups 更新配置文件组
+func (s *Server) UpdateConfigFileGroups(ctx context.Context,
+	reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse {
+	bRsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, req := range reqs {
+		if rsp := checkConfigFileGroupParams(req); rsp != nil {
+			api.ConfigCollect(bRsp, rsp)
+			continue
+		}
 	}
-	return s.nextServer.UpdateConfigFileGroup(ctx, req)
+	if !api.IsSuccess(bRsp) {
+		return bRsp
+	}
+	return s.nextServer.UpdateConfigFileGroups(ctx, reqs)
 }
 
 func checkConfigFileGroupParams(configFileGroup *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse {

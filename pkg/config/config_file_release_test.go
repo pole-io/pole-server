@@ -554,17 +554,19 @@ func Test_GrayConfigFileRelease(t *testing.T) {
 	})
 
 	t.Run("02-gray_publish", func(t *testing.T) {
-		resp := testSuit.ConfigServer().UpdateConfigFile(testSuit.DefaultCtx, &config_manage.ConfigFile{
-			Namespace: protobuf.NewStringValue(mockNamespace),
-			Group:     protobuf.NewStringValue(mockGroup),
-			Name:      protobuf.NewStringValue(mockFileName),
-			Content:   protobuf.NewStringValue(mockNewContent),
+		bresp := testSuit.ConfigServer().UpdateConfigFiles(testSuit.DefaultCtx, []*config_manage.ConfigFile{
+			&config_manage.ConfigFile{
+				Namespace: protobuf.NewStringValue(mockNamespace),
+				Group:     protobuf.NewStringValue(mockGroup),
+				Name:      protobuf.NewStringValue(mockFileName),
+				Content:   protobuf.NewStringValue(mockNewContent),
+			},
 		})
 		// 正常更新配置文件
-		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), resp.GetCode().GetValue(), resp.GetInfo().GetValue())
+		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), bresp.GetCode().GetValue(), bresp.GetInfo().GetValue())
 
 		// 发布灰度配置
-		resp = testSuit.ConfigServer().PublishConfigFile(testSuit.DefaultCtx, &config_manage.ConfigFileRelease{
+		resp := testSuit.ConfigServer().PublishConfigFile(testSuit.DefaultCtx, &config_manage.ConfigFileRelease{
 			Namespace:   protobuf.NewStringValue(mockNamespace),
 			Group:       protobuf.NewStringValue(mockGroup),
 			FileName:    protobuf.NewStringValue(mockFileName),

@@ -530,12 +530,19 @@ func ParseUserRole(ctx context.Context) UserRoleType {
 	return role
 }
 
+const (
+	// RoleTypeSystem 系统角色
+	RoleTypeSystem int = 1
+	// RoleTypeCustom 自定义角色
+	RoleTypeCustom int = 2
+)
+
 type Role struct {
 	ID         string
 	Name       string
 	Owner      string
 	Source     string
-	Type       string
+	Type       int
 	Metadata   map[string]string
 	Valid      bool
 	Comment    string
@@ -546,10 +553,13 @@ type Role struct {
 }
 
 func (r *Role) FromSpec(d *apisecurity.Role) {
+	r.ID = d.Id
 	r.Name = d.Name
 	r.Owner = d.Owner
 	r.Source = d.Source
 	r.Metadata = d.Metadata
+	r.Type = RoleTypeCustom
+	r.Comment = d.Comment
 
 	if len(d.Users) != 0 {
 		users := make([]Principal, 0, len(d.Users))
@@ -571,10 +581,15 @@ func (r *Role) FromSpec(d *apisecurity.Role) {
 func (r *Role) ToSpec() *apisecurity.Role {
 	d := &apisecurity.Role{}
 
+	d.Id = r.ID
 	d.Name = r.Name
 	d.Owner = r.Owner
 	d.Source = r.Source
 	d.Metadata = r.Metadata
+	d.Comment = r.Comment
+	d.DefaultRole = r.Type == RoleTypeSystem
+	d.Ctime = utils.Time2String(r.CreateTime)
+	d.Mtime = utils.Time2String(r.ModifyTime)
 
 	if len(r.Users) != 0 {
 		users := make([]*apisecurity.User, 0, len(r.Users))

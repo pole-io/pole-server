@@ -78,11 +78,11 @@ func TestConfigFileCRUD(t *testing.T) {
 
 	t.Run("step2-create", func(t *testing.T) {
 		configFile := assembleConfigFile()
-		rsp := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, configFile)
+		rsp := testSuit.ConfigServer().CreateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{configFile})
 		assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 
 		// 重复创建
-		rsp2 := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, configFile)
+		rsp2 := testSuit.ConfigServer().CreateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{configFile})
 		assert.Equal(t, uint32(api.ExistedResource), rsp2.Code.GetValue())
 
 		// 创建完之后再查询
@@ -116,9 +116,9 @@ func TestConfigFileCRUD(t *testing.T) {
 		configFile.Content = protobuf.NewStringValue(newContent)
 		configFile.ModifyBy = protobuf.NewStringValue(modifyBy)
 
-		rsp2 := testSuit.ConfigServer().UpdateConfigFile(testSuit.DefaultCtx, configFile)
+		rsp2 := testSuit.ConfigServer().UpdateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{configFile})
 		assert.Equal(t, api.ExecuteSuccess, rsp2.Code.GetValue())
-		assert.Equal(t, newContent, rsp2.ConfigFile.Content.GetValue())
+		assert.Equal(t, newContent, rsp2.Responses[0].ConfigFile.Content.GetValue())
 
 		// 更新完之后再查询
 		rsp3 := testSuit.ConfigServer().GetConfigFileRichInfo(testSuit.DefaultCtx, &apiconfig.ConfigFile{
@@ -144,11 +144,11 @@ func TestConfigFileCRUD(t *testing.T) {
 		rsp := testSuit.ConfigServer().PublishConfigFile(testSuit.DefaultCtx, configFileRelease)
 		assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 
-		rsp2 := testSuit.ConfigServer().DeleteConfigFile(testSuit.DefaultCtx, &apiconfig.ConfigFile{
+		rsp2 := testSuit.ConfigServer().DeleteConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{&apiconfig.ConfigFile{
 			Namespace: protobuf.NewStringValue(testNamespace),
 			Group:     protobuf.NewStringValue(testGroup),
 			Name:      protobuf.NewStringValue(testFile),
-		})
+		}})
 		assert.Equal(t, api.ExecuteSuccess, rsp2.Code.GetValue())
 
 		// 删除后，查询不到
@@ -158,13 +158,15 @@ func TestConfigFileCRUD(t *testing.T) {
 			Name:      protobuf.NewStringValue(testFile),
 		})
 		assert.Equal(t, uint32(api.NotFoundResource), rsp3.Code.GetValue())
-		assert.Nil(t, rsp2.ConfigFile)
+		assert.Nil(t, rsp3.ConfigFile)
 	})
 
 	t.Run("step5-search-by-group", func(t *testing.T) {
 		group := "group11"
 		for i := 0; i < size; i++ {
-			rsp := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, assembleConfigFileWithFixedGroupAndRandomFileName(group))
+			rsp := testSuit.ConfigServer().CreateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{
+				assembleConfigFileWithFixedGroupAndRandomFileName(group),
+			})
 			assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 		}
 
@@ -216,7 +218,9 @@ func TestConfigFileCRUD(t *testing.T) {
 	t.Run("step5-find-by-group", func(t *testing.T) {
 		group := "group12"
 		for i := 0; i < size; i++ {
-			rsp := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, assembleConfigFileWithFixedGroupAndRandomFileName(group))
+			rsp := testSuit.ConfigServer().CreateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{
+				assembleConfigFileWithFixedGroupAndRandomFileName(group),
+			})
 			assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 		}
 
@@ -246,7 +250,9 @@ func TestConfigFileCRUD(t *testing.T) {
 	t.Run("step6-search-by-file", func(t *testing.T) {
 		file := "file1.txt"
 		for i := 0; i < size; i++ {
-			rsp := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, assembleConfigFileWithRandomGroupAndFixedFileName(file))
+			rsp := testSuit.ConfigServer().CreateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{
+				assembleConfigFileWithRandomGroupAndFixedFileName(file),
+			})
 			assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 		}
 
@@ -315,7 +321,7 @@ func TestConfigFileCRUD(t *testing.T) {
 			for j := 0; j < 3; j++ {
 				name := fmt.Sprintf("file_%d", j)
 				configFile := assembleConfigFileWithNamespaceAndGroupAndName(namespace, group, name)
-				rsp := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, configFile)
+				rsp := testSuit.ConfigServer().CreateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{configFile})
 				assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 			}
 		}
@@ -394,7 +400,7 @@ func TestConfigFileCRUD(t *testing.T) {
 		for j := 0; j < 3; j++ {
 			name := fmt.Sprintf("file_%d", j)
 			configFile := assembleConfigFileWithNamespaceAndGroupAndName(namespace, group, name)
-			rsp := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, configFile)
+			rsp := testSuit.ConfigServer().CreateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{configFile})
 			assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 		}
 
@@ -421,7 +427,7 @@ func TestConfigFileCRUD(t *testing.T) {
 		for j := 0; j < 3; j++ {
 			name := fmt.Sprintf("file_%d", j)
 			configFile := assembleConfigFileWithNamespaceAndGroupAndName(namespace, group, name)
-			rsp := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, configFile)
+			rsp := testSuit.ConfigServer().CreateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{configFile})
 			assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 		}
 
@@ -446,11 +452,11 @@ func TestConfigFileCRUD(t *testing.T) {
 		configFile := assembleConfigFile()
 		configFile.Encrypted = protobuf.NewBoolValue(true)
 		configFile.EncryptAlgo = protobuf.NewStringValue("AES")
-		rsp := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, configFile)
+		rsp := testSuit.ConfigServer().CreateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{configFile})
 		assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue(), rsp.GetInfo().GetValue())
 
 		// 重复创建
-		rsp2 := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, configFile)
+		rsp2 := testSuit.ConfigServer().CreateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{configFile})
 		assert.Equal(t, uint32(api.ExistedResource), rsp2.Code.GetValue(), rsp2.GetInfo().GetValue())
 
 		// 创建完之后再查询
@@ -483,7 +489,7 @@ func TestPublishConfigFile(t *testing.T) {
 	})
 
 	configFile := assembleConfigFile()
-	rsp := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, configFile)
+	rsp := testSuit.ConfigServer().CreateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{configFile})
 	assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 
 	configFileRelease := assembleConfigFileRelease(configFile)
@@ -515,7 +521,7 @@ func TestPublishConfigFile(t *testing.T) {
 	configFile.Content = protobuf.NewStringValue(secondReleaseContent)
 	configFile.Format = protobuf.NewStringValue(secondReleaseFormat)
 
-	rsp6 := testSuit.ConfigServer().UpdateConfigFile(testSuit.DefaultCtx, configFile)
+	rsp6 := testSuit.ConfigServer().UpdateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{configFile})
 	assert.Equal(t, api.ExecuteSuccess, rsp6.Code.GetValue())
 
 	configFileRelease.Name = protobuf.NewStringValue("")
@@ -749,7 +755,7 @@ func Test_CreateConfigFile(t *testing.T) {
 		})
 
 		configFile := assembleEncryptConfigFile()
-		got := testSuit.ConfigServer().CreateConfigFile(testSuit.DefaultCtx, configFile)
+		got := testSuit.ConfigServer().CreateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{configFile})
 		assert.Equal(t, apimodel.Code_EncryptConfigFileException, apimodel.Code(got.GetCode().GetValue()))
 	})
 }

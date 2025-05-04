@@ -89,6 +89,7 @@ func (h *HTTPServer) GetConsoleAccessServer(include []string) *restful.WebServic
 			h.addDefaultAccess(ws)
 		case serviceAccess:
 			h.addServiceAccess(ws)
+			h.addInstanceAccess(ws)
 		case circuitBreakerAccess:
 			h.addCircuitBreakerRuleAccess(ws)
 		case routingAccess:
@@ -125,57 +126,12 @@ func (h *HTTPServer) addDefaultReadAccess(ws *restful.WebService) {
 func (h *HTTPServer) addDefaultAccess(ws *restful.WebService) {
 	// 管理端接口：增删改查请求全部操作存储层
 	h.addServiceAccess(ws)
+	h.addInstanceAccess(ws)
 	h.addRoutingRuleAccess(ws)
 	h.addLaneRuleAccess(ws)
 	h.addRateLimitRuleAccess(ws)
 	h.addCircuitBreakerRuleAccess(ws)
 	h.addFaultDetectRuleAccess(ws)
-}
-
-// addServiceAccess .
-func (h *HTTPServer) addServiceAccess(ws *restful.WebService) {
-	ws.Route(docs.EnrichCreateServicesApiDocs(ws.POST("/services").To(h.CreateServices)))
-	ws.Route(docs.EnrichDeleteServicesApiDocs(ws.POST("/services/delete").To(h.DeleteServices)))
-	ws.Route(docs.EnrichUpdateServicesApiDocs(ws.PUT("/services").To(h.UpdateServices)))
-	ws.Route(docs.EnrichGetServicesApiDocs(ws.GET("/services").To(h.GetServices)))
-	ws.Route(docs.EnrichGetAllServicesApiDocs(ws.GET("/services/all").To(h.GetAllServices)))
-	ws.Route(docs.EnrichGetServicesCountApiDocs(ws.GET("/services/count").To(h.GetServicesCount)))
-	ws.Route(docs.EnrichGetServiceTokenApiDocs(ws.GET("/service/token").To(h.GetServiceToken)))
-	ws.Route(docs.EnrichUpdateServiceTokenApiDocs(ws.PUT("/service/token").To(h.UpdateServiceToken)))
-	ws.Route(docs.EnrichCreateServiceAliasApiDocs(ws.POST("/service/alias").To(h.CreateServiceAlias)))
-	ws.Route(docs.EnrichUpdateServiceAliasApiDocs(ws.PUT("/service/alias").To(h.UpdateServiceAlias)))
-	ws.Route(docs.EnrichGetServiceAliasesApiDocs(ws.GET("/service/aliases").To(h.GetServiceAliases)))
-	ws.Route(docs.EnrichDeleteServiceAliasesApiDocs(
-		ws.POST("/service/aliases/delete").To(h.DeleteServiceAliases)))
-
-	ws.Route(docs.EnrichCreateInstancesApiDocs(ws.POST("/instances").To(h.CreateInstances)))
-	ws.Route(docs.EnrichDeleteInstancesApiDocs(ws.POST("/instances/delete").To(h.DeleteInstances)))
-	ws.Route(docs.EnrichDeleteInstancesByHostApiDocs(
-		ws.POST("/instances/delete/host").To(h.DeleteInstancesByHost)))
-	ws.Route(docs.EnrichUpdateInstancesApiDocs(ws.PUT("/instances").To(h.UpdateInstances)))
-	ws.Route(docs.EnrichUpdateInstancesIsolateApiDocs(
-		ws.PUT("/instances/isolate/host").To(h.UpdateInstancesIsolate)))
-	ws.Route(docs.EnrichGetInstancesApiDocs(ws.GET("/instances").To(h.GetInstances)))
-	ws.Route(docs.EnrichGetInstancesCountApiDocs(ws.GET("/instances/count").To(h.GetInstancesCount)))
-	ws.Route(docs.EnrichGetInstanceLabelsApiDocs(ws.GET("/instances/labels").To(h.GetInstanceLabels)))
-
-	// 服务契约相关
-	ws.Route(docs.EnrichCreateServiceContractsApiDocs(
-		ws.POST("/service/contracts").To(h.CreateServiceContract)))
-	ws.Route(docs.EnrichGetServiceContractsApiDocs(
-		ws.GET("/service/contracts").To(h.GetServiceContracts)))
-	ws.Route(docs.EnrichDeleteServiceContractsApiDocs(
-		ws.POST("/service/contracts/delete").To(h.DeleteServiceContracts)))
-	ws.Route(docs.EnrichGetServiceContractsApiDocs(
-		ws.GET("/service/contract/versions").To(h.GetServiceContractVersions)))
-	ws.Route(docs.EnrichAddServiceContractInterfacesApiDocs(
-		ws.POST("/service/contract/methods").To(h.CreateServiceContractInterfaces)))
-	ws.Route(docs.EnrichAppendServiceContractInterfacesApiDocs(
-		ws.PUT("/service/contract/methods/append").To(h.AppendServiceContractInterfaces)))
-	ws.Route(docs.EnrichDeleteServiceContractsApiDocs(
-		ws.POST("/service/contract/methods/delete").To(h.DeleteServiceContractInterfaces)))
-
-	ws.Route(ws.POST("/service/owner").To(h.GetServiceOwner))
 }
 
 // GetClientAccessServer get client access server

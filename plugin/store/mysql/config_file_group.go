@@ -35,7 +35,7 @@ type configFileGroupStore struct {
 // CreateConfigFileGroup 创建配置文件组
 func (fg *configFileGroupStore) CreateConfigFileGroup(
 	fileGroup *conftypes.ConfigFileGroup) (*conftypes.ConfigFileGroup, error) {
-	err := fg.master.processWithTransaction("", func(tx *BaseTx) error {
+	err := fg.master.processWithTransaction("create_config_group", func(tx *BaseTx) error {
 		if _, err := tx.Exec("DELETE FROM config_file_group WHERE flag = 1 AND namespace = ? AND name = ?",
 			fileGroup.Namespace, fileGroup.Name); err != nil {
 			return store.Error(err)

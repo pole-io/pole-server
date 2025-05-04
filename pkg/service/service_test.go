@@ -346,56 +346,6 @@ func TestDeleteService2(t *testing.T) {
 	})
 }
 
-// 测试批量获取服务负责人
-func TestGetServiceOwner(t *testing.T) {
-
-	discoverSuit := &DiscoverTestSuit{}
-	if err := discoverSuit.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	defer discoverSuit.Destroy()
-
-	t.Run("服务个数为0，返回错误", func(t *testing.T) {
-		var reqs []*apiservice.Service
-		if resp := discoverSuit.DiscoverServer().GetServiceOwner(discoverSuit.DefaultCtx, reqs); !respSuccess(resp) {
-			t.Logf("pass: %s", resp.GetInfo().GetValue())
-		} else {
-			t.Fatalf("error: %s", resp.GetInfo().GetValue())
-		}
-	})
-
-	t.Run("服务个数超过100，返回错误", func(t *testing.T) {
-		reqs := make([]*apiservice.Service, 0, 101)
-		for i := 0; i < 101; i++ {
-			req := &apiservice.Service{
-				Namespace: protobuf.NewStringValue("Test"),
-				Name:      protobuf.NewStringValue("test"),
-			}
-			reqs = append(reqs, req)
-		}
-		if resp := discoverSuit.DiscoverServer().GetServiceOwner(discoverSuit.DefaultCtx, reqs); !respSuccess(resp) {
-			t.Logf("pass: %s", resp.GetInfo().GetValue())
-		} else {
-			t.Fatalf("error: %s", resp.GetInfo().GetValue())
-		}
-	})
-
-	t.Run("查询100个超长服务名的服务负责人，数据库不会报错", func(t *testing.T) {
-		reqs := make([]*apiservice.Service, 0, 100)
-		for i := 0; i < 100; i++ {
-			req := &apiservice.Service{
-				Namespace: protobuf.NewStringValue("Development"),
-				Name:      protobuf.NewStringValue(genSpecialStr(128)),
-			}
-			reqs = append(reqs, req)
-		}
-		if resp := discoverSuit.DiscoverServer().GetServiceOwner(discoverSuit.DefaultCtx, reqs); !respSuccess(resp) {
-			t.Fatalf("error: %s", resp.GetInfo().GetValue())
-		}
-		t.Log("pass")
-	})
-}
-
 // 测试获取服务函数
 func TestGetService(t *testing.T) {
 
@@ -1102,78 +1052,6 @@ func TestNoNeedUpdateService(t *testing.T) {
 		r.Owners = protobuf.NewStringValue("new-Owners-1")
 		if resp := discoverSuit.DiscoverServer().UpdateServices(discoverSuit.DefaultCtx, []*apiservice.Service{&r}); resp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
 			t.Fatalf("error: %+v", resp)
-		}
-	})
-}
-
-// 测试serviceToken相关的操作
-func TestServiceToken(t *testing.T) {
-
-	discoverSuit := &DiscoverTestSuit{}
-	if err := discoverSuit.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	defer discoverSuit.Destroy()
-
-	_, serviceResp := discoverSuit.createCommonService(t, 200)
-	defer discoverSuit.cleanServiceName(serviceResp.GetName().GetValue(), serviceResp.GetNamespace().GetValue())
-	t.Run("可以正常获取serviceToken", func(t *testing.T) {
-		req := &apiservice.Service{
-			Name:      serviceResp.GetName(),
-			Namespace: serviceResp.GetNamespace(),
-			Token:     serviceResp.GetToken(),
-		}
-
-		resp := discoverSuit.DiscoverServer().GetServiceToken(discoverSuit.DefaultCtx, req)
-		if !respSuccess(resp) {
-			t.Fatalf("error: %s", resp.GetInfo().GetValue())
-		}
-		if resp.GetService().GetToken().GetValue() != serviceResp.GetToken().GetValue() {
-			t.Fatalf("error")
-		}
-	})
-
-	t.Run("获取别名的token，返回源服务的token", func(t *testing.T) {
-		aliasResp := discoverSuit.createCommonAlias(serviceResp, fmt.Sprintf("get.token.xxx-%s", utils.NewUUID()[:8]), defaultAliasNs, apiservice.AliasType_DEFAULT)
-		defer discoverSuit.cleanServiceName(aliasResp.Alias.Alias.Value, serviceResp.Namespace.Value)
-		t.Logf("%+v", aliasResp)
-
-		req := &apiservice.Service{
-			Name:      aliasResp.Alias.Alias,
-			Namespace: aliasResp.Alias.AliasNamespace,
-			Token:     serviceResp.GetToken(),
-		}
-		t.Logf("%+v", req)
-		if resp := discoverSuit.DiscoverServer().GetServiceToken(discoverSuit.DefaultCtx, req); !respSuccess(resp) {
-			t.Fatalf("error: %s", resp.GetInfo().GetValue())
-		} else if resp.GetService().GetToken().GetValue() != serviceResp.GetToken().GetValue() {
-			t.Fatalf("error")
-		}
-	})
-
-	t.Run("可以正常更新serviceToken", func(t *testing.T) {
-		resp := discoverSuit.DiscoverServer().UpdateServiceToken(discoverSuit.DefaultCtx, serviceResp)
-		if !respSuccess(resp) {
-			t.Fatalf("error :%s", resp.GetInfo().GetValue())
-		}
-		if resp.GetService().GetToken().GetValue() == serviceResp.GetToken().GetValue() {
-			t.Fatalf("error: %s %s", resp.GetService().GetToken().GetValue(),
-				serviceResp.GetToken().GetValue())
-		}
-		serviceResp.Token.Value = resp.Service.Token.Value // set token
-	})
-
-	t.Run("alias不允许更新token", func(t *testing.T) {
-		aliasResp := discoverSuit.createCommonAlias(serviceResp, "update.token.xxx", defaultAliasNs, apiservice.AliasType_DEFAULT)
-		defer discoverSuit.cleanServiceName(aliasResp.Alias.Alias.Value, serviceResp.Namespace.Value)
-
-		req := &apiservice.Service{
-			Name:      aliasResp.Alias.Alias,
-			Namespace: serviceResp.Namespace,
-			Token:     serviceResp.Token,
-		}
-		if resp := discoverSuit.DiscoverServer().UpdateServiceToken(discoverSuit.DefaultCtx, req); respSuccess(resp) {
-			t.Fatalf("error")
 		}
 	})
 }

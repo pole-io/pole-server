@@ -33,12 +33,40 @@ import (
 )
 
 // CreateConfigFile 创建配置文件
-func (s *Server) CreateConfigFile(ctx context.Context,
-	configFile *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
-	if checkRsp := s.checkConfigFileParams(configFile); checkRsp != nil {
-		return api.NewConfigFileResponse(apimodel.Code(checkRsp.Code.GetValue()), configFile)
+func (s *Server) CreateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse {
+	brsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for i := range reqs {
+		if rsp := s.checkConfigFileParams(reqs[i]); rsp != nil {
+			api.ConfigCollect(brsp, rsp)
+		}
 	}
-	return s.nextServer.CreateConfigFile(ctx, configFile)
+
+	if !api.IsSuccess(brsp) {
+		return brsp
+	}
+
+	return s.nextServer.CreateConfigFiles(ctx, reqs)
+}
+
+// UpdateConfigFile 更新配置文件
+func (s *Server) UpdateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse {
+	brsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for i := range reqs {
+		if rsp := s.checkConfigFileParams(reqs[i]); rsp != nil {
+			api.ConfigCollect(brsp, rsp)
+		}
+	}
+
+	if !api.IsSuccess(brsp) {
+		return brsp
+	}
+	return s.nextServer.UpdateConfigFiles(ctx, reqs)
+}
+
+// DeleteConfigFile 删除配置文件，删除配置文件同时会通知客户端 Not_Found
+func (s *Server) DeleteConfigFiles(ctx context.Context,
+	reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse {
+	return s.nextServer.DeleteConfigFiles(ctx, reqs)
 }
 
 // GetConfigFileRichInfo 获取单个配置文件基础信息，包含发布状态等信息
@@ -74,29 +102,6 @@ func (s *Server) SearchConfigFiles(ctx context.Context,
 		}
 	}
 	return s.nextServer.SearchConfigFiles(ctx, searchFilters)
-}
-
-// UpdateConfigFile 更新配置文件
-func (s *Server) UpdateConfigFile(
-	ctx context.Context, configFile *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
-	if checkRsp := s.checkConfigFileParams(configFile); checkRsp != nil {
-		return api.NewConfigFileResponse(apimodel.Code(checkRsp.Code.GetValue()), configFile)
-	}
-	return s.nextServer.UpdateConfigFile(ctx, configFile)
-}
-
-// DeleteConfigFile 删除配置文件，删除配置文件同时会通知客户端 Not_Found
-func (s *Server) DeleteConfigFile(ctx context.Context,
-	req *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
-
-	return s.nextServer.DeleteConfigFile(ctx, req)
-}
-
-// BatchDeleteConfigFile 批量删除配置文件
-func (s *Server) BatchDeleteConfigFile(ctx context.Context,
-	req []*apiconfig.ConfigFile) *apiconfig.ConfigResponse {
-
-	return s.nextServer.BatchDeleteConfigFile(ctx, req)
 }
 
 func (s *Server) ExportConfigFile(ctx context.Context,

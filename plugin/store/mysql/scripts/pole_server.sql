@@ -275,7 +275,7 @@ CREATE TABLE
 /* 配置文件 */
 CREATE TABLE
     `config_file` (
-        `id` VARCHAR(32) NOT NULL COMMENT 'config file id',
+       `id` BIGINT (10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
         `namespace` VARCHAR(64) NOT NULL COMMENT '所属的namespace',
         `group` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '所属的文件组',
         `name` VARCHAR(128) NOT NULL COMMENT '配置文件名',
@@ -285,6 +285,7 @@ CREATE TABLE
         `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '软删除标记位',
         `create_by` VARCHAR(32) DEFAULT NULL COMMENT '创建人',
         `modify_by` VARCHAR(32) DEFAULT NULL COMMENT '最后更新人',
+        `metadata` TEXT COMMENT '配置文件标签',
         `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
@@ -294,7 +295,7 @@ CREATE TABLE
 /* 配置分组 */
 CREATE TABLE
     `config_file_group` (
-        `id` VARCHAR(32) NOT NULL COMMENT 'config file group id',
+        `id` BIGINT (10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
         `name` VARCHAR(128) NOT NULL COMMENT '配置文件分组名',
         `namespace` VARCHAR(64) NOT NULL COMMENT '所属的namespace',
         `comment` VARCHAR(512) DEFAULT NULL COMMENT '备注信息',
@@ -314,7 +315,7 @@ CREATE TABLE
 /* 配置发布 */
 CREATE TABLE
     `config_file_release` (
-        `id` VARCHAR(32) NOT NULL COMMENT 'config file release id',
+        `id` BIGINT (10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
         `name` VARCHAR(128) DEFAULT NULL COMMENT '发布标题',
         `namespace` VARCHAR(64) NOT NULL COMMENT '所属的namespace',
         `group` VARCHAR(128) NOT NULL COMMENT '所属的文件组',
@@ -342,7 +343,7 @@ CREATE TABLE
 /* 配置发布历史 */
 CREATE TABLE
     `config_file_release_history` (
-        `id` VARCHAR(32) NOT NULL COMMENT 'config file release history id',
+        `id` BIGINT (10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
         `name` VARCHAR(64) DEFAULT '' COMMENT '发布名称',
         `namespace` VARCHAR(64) NOT NULL COMMENT '所属的namespace',
         `group` VARCHAR(128) NOT NULL COMMENT '所属的文件组',

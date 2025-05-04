@@ -38,18 +38,28 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
+// CreateConfigFileGroups 批量创建配置文件组
+func (s *Server) CreateConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse {
+	bRsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, req := range reqs {
+		rsp := s.CreateConfigFileGroup(ctx, req)
+		api.ConfigCollect(bRsp, rsp)
+	}
+	return bRsp
+}
+
 // CreateConfigFileGroup 创建配置文件组
 func (s *Server) CreateConfigFileGroup(ctx context.Context, req *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse {
 	namespace := req.Namespace.GetValue()
 	groupName := req.Name.GetValue()
 
 	// 如果 namespace 不存在则自动创建
-	if _, errResp := s.namespaceOperator.CreateNamespaceIfAbsent(ctx, &apimodel.Namespace{
+	if _, rsp := s.namespaceOperator.CreateNamespaceIfAbsent(ctx, &apimodel.Namespace{
 		Name: req.GetNamespace(),
-	}); errResp != nil {
+	}); !api.IsSuccess(rsp) {
 		log.Error("[Config][Group] create namespace failed.", utils.RequestID(ctx),
-			utils.ZapNamespace(namespace), utils.ZapGroup(groupName), zap.String("err", errResp.String()))
-		return api.NewConfigResponse(apimodel.Code(errResp.Code.GetValue()))
+			utils.ZapNamespace(namespace), utils.ZapGroup(groupName), zap.String("err", rsp.String()))
+		return api.NewConfigResponse(apimodel.Code(rsp.Code.GetValue()))
 	}
 
 	fileGroup, err := s.storage.GetConfigFileGroup(namespace, groupName)
@@ -83,6 +93,16 @@ func (s *Server) CreateConfigFileGroup(ctx context.Context, req *apiconfig.Confi
 		Namespace: protobuf.NewStringValue(saveData.Namespace),
 		Name:      protobuf.NewStringValue(saveData.Name),
 	})
+}
+
+// UpdateConfigFileGroups 批量更新配置文件组
+func (s *Server) UpdateConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse {
+	bRsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, req := range reqs {
+		rsp := s.UpdateConfigFileGroup(ctx, req)
+		api.ConfigCollect(bRsp, rsp)
+	}
+	return bRsp
 }
 
 // UpdateConfigFileGroup 更新配置文件组
@@ -161,6 +181,16 @@ func (s *Server) createConfigFileGroupIfAbsent(ctx context.Context,
 		return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 	}
 	return s.CreateConfigFileGroup(ctx, configFileGroup)
+}
+
+// DeleteConfigFileGroups 批量删除配置文件组
+func (s *Server) DeleteConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse {
+	bRsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, req := range reqs {
+		rsp := s.DeleteConfigFileGroup(ctx, req.Namespace.GetValue(), req.Name.GetValue())
+		api.ConfigCollect(bRsp, rsp)
+	}
+	return bRsp
 }
 
 // DeleteConfigFileGroup 删除配置文件组

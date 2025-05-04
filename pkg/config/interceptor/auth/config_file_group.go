@@ -21,8 +21,6 @@ import (
 	"context"
 	"strconv"
 
-	"go.uber.org/zap"
-
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	"github.com/polarismesh/specification/source/go/api/v1/security"
@@ -34,73 +32,81 @@ import (
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
-// CreateConfigFileGroup 创建配置文件组
-func (s *Server) CreateConfigFileGroup(ctx context.Context,
-	configFileGroup *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse {
-	authCtx := s.collectConfigGroupAuthContext(ctx, []*apiconfig.ConfigFileGroup{configFileGroup},
-		authtypes.Create, authtypes.CreateConfigFileGroup)
+// CreateConfigFileGroups 创建配置文件组
+func (s *Server) CreateConfigFileGroups(ctx context.Context,
+	reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse {
+	authCtx := s.collectConfigGroupAuthContext(ctx, reqs, authtypes.Create, authtypes.CreateConfigFileGroup)
 
 	// 验证 token 信息
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewConfigResponse(authtypes.ConvertToErrCode(err))
+		return api.NewConfigBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
-	resp := s.nextServer.CreateConfigFileGroup(ctx, configFileGroup)
-	if err := s.afterConfigGroupResource(ctx, resp.GetConfigFileGroup(), false); err != nil {
-		log.Error("[Config][Group] create config_file_group after resource",
-			utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(apimodel.Code_ExecuteException)
+	resp := s.nextServer.CreateConfigFileGroups(ctx, reqs)
+
+	nRsp := api.NewConfigBatchWriteResponse(apimodel.Code(resp.Code.Value))
+	for index := range resp.Responses {
+		item := resp.Responses[index].ConfigFileGroup
+		if err := s.afterConfigGroupResource(ctx, item, false); err != nil {
+			api.ConfigCollect(nRsp, api.NewConfigResponseWithInfo(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.ConfigCollect(nRsp, resp.Responses[index])
+		}
 	}
 	return resp
 }
 
-// UpdateConfigFileGroup 更新配置文件组
-func (s *Server) UpdateConfigFileGroup(ctx context.Context,
-	configFileGroup *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse {
-	authCtx := s.collectConfigGroupAuthContext(ctx, []*apiconfig.ConfigFileGroup{configFileGroup},
-		authtypes.Modify, authtypes.UpdateConfigFileGroup)
+// UpdateConfigFileGroups 更新配置文件组
+func (s *Server) UpdateConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse {
+	authCtx := s.collectConfigGroupAuthContext(ctx, reqs, authtypes.Modify, authtypes.UpdateConfigFileGroup)
 
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewConfigResponse(authtypes.ConvertToErrCode(err))
+		return api.NewConfigBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	resp := s.nextServer.UpdateConfigFileGroup(ctx, configFileGroup)
-	if err := s.afterConfigGroupResource(ctx, resp.GetConfigFileGroup(), false); err != nil {
-		log.Error("[Config][Group] update config_file_group after resource",
-			utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(apimodel.Code_ExecuteException)
+	resp := s.nextServer.UpdateConfigFileGroups(ctx, reqs)
+
+	nRsp := api.NewConfigBatchWriteResponse(apimodel.Code(resp.Code.Value))
+	for index := range resp.Responses {
+		item := resp.Responses[index].ConfigFileGroup
+		if err := s.afterConfigGroupResource(ctx, item, false); err != nil {
+			api.ConfigCollect(nRsp, api.NewConfigResponseWithInfo(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.ConfigCollect(nRsp, resp.Responses[index])
+		}
 	}
-	return resp
+	return nRsp
 }
 
-// DeleteConfigFileGroup 删除配置文件组
-func (s *Server) DeleteConfigFileGroup(
-	ctx context.Context, namespace, name string) *apiconfig.ConfigResponse {
-	authCtx := s.collectConfigGroupAuthContext(ctx, []*apiconfig.ConfigFileGroup{{Name: protobuf.NewStringValue(name),
-		Namespace: protobuf.NewStringValue(namespace)}}, authtypes.Delete, authtypes.DeleteConfigFileGroup)
+// DeleteConfigFileGroups 删除配置文件组
+func (s *Server) DeleteConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse {
+	authCtx := s.collectConfigGroupAuthContext(ctx, reqs, authtypes.Delete, authtypes.DeleteConfigFileGroup)
 
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewConfigResponse(authtypes.ConvertToErrCode(err))
+		return api.NewConfigBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
-	resp := s.nextServer.DeleteConfigFileGroup(ctx, namespace, name)
-	if err := s.afterConfigGroupResource(ctx, resp.GetConfigFileGroup(), true); err != nil {
-		log.Error("[Config][Group] delete config_file_group after resource",
-			utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(apimodel.Code_ExecuteException)
+	resp := s.nextServer.DeleteConfigFileGroups(ctx, reqs)
+	nRsp := api.NewConfigBatchWriteResponse(apimodel.Code(resp.Code.Value))
+	for index := range resp.Responses {
+		item := resp.Responses[index].ConfigFileGroup
+		if err := s.afterConfigGroupResource(ctx, item, false); err != nil {
+			api.ConfigCollect(nRsp, api.NewConfigResponseWithInfo(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.ConfigCollect(nRsp, resp.Responses[index])
+		}
 	}
-	return resp
+	return nRsp
 }
 
 // QueryConfigFileGroups 查询配置文件组

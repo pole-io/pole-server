@@ -36,28 +36,32 @@ import (
 )
 
 func (h *HTTPServer) addFilesAccess(ws *restful.WebService) {
-	ws.Route(docs.EnrichCreateConfigFileApiDocs(ws.POST("/files").To(h.CreateConfigFile)))
+	ws.Route(docs.EnrichCreateConfigFileApiDocs(ws.POST("/files").To(h.CreateConfigFiles)))
+	ws.Route(docs.EnrichUpdateConfigFileApiDocs(ws.PUT("/files").To(h.UpdateConfigFiles)))
+	ws.Route(docs.EnrichDeleteConfigFileApiDocs(ws.POST("/files/delete").To(h.DeleteConfigFiles)))
+	ws.Route(docs.EnrichGetConfigFileApiDocs(ws.GET("/files/detail").To(h.GetConfigFile)))
 	ws.Route(docs.EnrichSearchConfigFileApiDocs(ws.GET("/files/search").To(h.SearchConfigFiles)))
-	ws.Route(docs.EnrichGetConfigFileApiDocs(ws.GET("/file").To(h.GetConfigFile)))
-	ws.Route(docs.EnrichUpdateConfigFileApiDocs(ws.PUT("/files").To(h.UpdateConfigFile)))
-	ws.Route(docs.EnrichDeleteConfigFileApiDocs(ws.DELETE("/files").To(h.DeleteConfigFiles)))
 	ws.Route(docs.EnrichExportConfigFileApiDocs(ws.POST("/files/export").To(h.ExportConfigFile)))
 	ws.Route(docs.EnrichImportConfigFileApiDocs(ws.POST("/files/import").To(h.ImportConfigFile)))
-	ws.Route(docs.EnrichGetAllConfigEncryptAlgorithms(ws.GET("/files/encryptalgorithm").
+	ws.Route(docs.EnrichGetAllConfigEncryptAlgorithms(ws.GET("/files/encrypt/algorithms").
 		To(h.GetAllConfigEncryptAlgorithms)))
 	ws.Route(docs.EnrichGetConfigFileReleaseHistoryApiDocs(ws.GET("/files/op/history").
 		To(h.GetConfigFileReleaseHistory)))
 }
 
 // CreateConfigFile 创建配置文件
-func (h *HTTPServer) CreateConfigFile(req *restful.Request, rsp *restful.Response) {
+func (h *HTTPServer) CreateConfigFiles(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,
 	}
 
-	configFile := &apiconfig.ConfigFile{}
-	ctx, err := handler.Parse(configFile)
+	var files []*apiconfig.ConfigFile
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apiconfig.ConfigFile{}
+		files = append(files, msg)
+		return msg
+	})
 	if err != nil {
 		configLog.Error("[Config][HttpServer] parse config file from request error.",
 			utils.RequestID(ctx), zap.Error(err))
@@ -65,7 +69,7 @@ func (h *HTTPServer) CreateConfigFile(req *restful.Request, rsp *restful.Respons
 		return
 	}
 
-	handler.WriteHeaderAndProto(h.configServer.CreateConfigFile(ctx, configFile))
+	handler.WriteHeaderAndProto(h.configServer.CreateConfigFiles(ctx, files))
 }
 
 // GetConfigFile 获取单个配置文件
@@ -103,14 +107,18 @@ func (h *HTTPServer) SearchConfigFiles(req *restful.Request, rsp *restful.Respon
 }
 
 // UpdateConfigFile 更新配置文件
-func (h *HTTPServer) UpdateConfigFile(req *restful.Request, rsp *restful.Response) {
+func (h *HTTPServer) UpdateConfigFiles(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,
 	}
 
-	configFile := &apiconfig.ConfigFile{}
-	ctx, err := handler.Parse(configFile)
+	var files []*apiconfig.ConfigFile
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apiconfig.ConfigFile{}
+		files = append(files, msg)
+		return msg
+	})
 	if err != nil {
 		configLog.Error("[Config][HttpServer] parse config file from request error.",
 			utils.RequestID(ctx), zap.Error(err))
@@ -118,7 +126,7 @@ func (h *HTTPServer) UpdateConfigFile(req *restful.Request, rsp *restful.Respons
 		return
 	}
 
-	handler.WriteHeaderAndProto(h.configServer.UpdateConfigFile(ctx, configFile))
+	handler.WriteHeaderAndProto(h.configServer.UpdateConfigFiles(ctx, files))
 }
 
 // DeleteConfigFiles 批量删除配置文件
@@ -128,10 +136,10 @@ func (h *HTTPServer) DeleteConfigFiles(req *restful.Request, rsp *restful.Respon
 		Response: rsp,
 	}
 
-	var configFiles ConfigFileArr
+	var files []*apiconfig.ConfigFile
 	ctx, err := handler.ParseArray(func() proto.Message {
 		msg := &apiconfig.ConfigFile{}
-		configFiles = append(configFiles, msg)
+		files = append(files, msg)
 		return msg
 	})
 	if err != nil {
@@ -139,8 +147,7 @@ func (h *HTTPServer) DeleteConfigFiles(req *restful.Request, rsp *restful.Respon
 		return
 	}
 
-	response := h.configServer.BatchDeleteConfigFile(ctx, configFiles)
-	handler.WriteHeaderAndProto(response)
+	handler.WriteHeaderAndProto(h.configServer.DeleteConfigFiles(ctx, files))
 }
 
 // ExportConfigFile 导出配置文件

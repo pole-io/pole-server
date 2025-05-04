@@ -469,11 +469,14 @@ func (s *Server) GetServiceOwner(ctx context.Context, req []*apiservice.Service)
 
 // createNamespaceIfAbsent Automatically create namespaces
 func (s *Server) createNamespaceIfAbsent(ctx context.Context, svc *apiservice.Service) (string, *apiservice.Response) {
-	val, errResp := s.Namespace().CreateNamespaceIfAbsent(ctx, &apimodel.Namespace{
+	val, rsp := s.Namespace().CreateNamespaceIfAbsent(ctx, &apimodel.Namespace{
 		Name:   protobuf.NewStringValue(svc.GetNamespace().GetValue()),
 		Owners: svc.Owners,
 	})
-	return val, errResp
+	if !api.IsSuccess(rsp) {
+		return "", rsp
+	}
+	return val, nil
 }
 
 // createServiceModel 创建存储层服务模型

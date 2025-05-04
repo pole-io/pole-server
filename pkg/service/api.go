@@ -53,18 +53,14 @@ type ServiceOperateServer interface {
 	DeleteServices(ctx context.Context, req []*apiservice.Service) *apiservice.BatchWriteResponse
 	// UpdateServices Batch update service
 	UpdateServices(ctx context.Context, req []*apiservice.Service) *apiservice.BatchWriteResponse
-	// UpdateServiceToken Update service token
-	UpdateServiceToken(ctx context.Context, req *apiservice.Service) *apiservice.Response
 	// GetServices Get a list of service
 	GetServices(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
 	// GetAllServices Get all service list
 	GetAllServices(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
 	// GetServicesCount Total number of services
 	GetServicesCount(ctx context.Context) *apiservice.BatchQueryResponse
-	// GetServiceToken Get service token
-	GetServiceToken(ctx context.Context, req *apiservice.Service) *apiservice.Response
-	// GetServiceOwner Owner for obtaining service
-	GetServiceOwner(ctx context.Context, req []*apiservice.Service) *apiservice.BatchQueryResponse
+	// GetServiceSubscribers Owner for obtaining service
+	GetServiceSubscribers(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
 }
 
 // ServiceAliasOperateServer Service alias related operations

@@ -37,30 +37,28 @@ const (
 
 // ConfigFileGroupOperate 配置文件组接口
 type ConfigFileGroupOperate interface {
-	// CreateConfigFileGroup 创建配置文件组
-	CreateConfigFileGroup(ctx context.Context, configFileGroup *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse
+	// CreateConfigFileGroups 创建配置文件组
+	CreateConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse
+	// UpdateConfigFileGroups 更新配置文件组
+	UpdateConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse
+	// DeleteConfigFileGroups 删除配置文件组
+	DeleteConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse
 	// QueryConfigFileGroups 查询配置文件组
 	QueryConfigFileGroups(ctx context.Context, filter map[string]string) *apiconfig.ConfigBatchQueryResponse
-	// DeleteConfigFileGroup 删除配置文件组
-	DeleteConfigFileGroup(ctx context.Context, namespace, name string) *apiconfig.ConfigResponse
-	// UpdateConfigFileGroup 更新配置文件组
-	UpdateConfigFileGroup(ctx context.Context, configFileGroup *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse
 }
 
 // ConfigFileOperate 配置文件接口
 type ConfigFileOperate interface {
-	// CreateConfigFile 创建配置文件
-	CreateConfigFile(ctx context.Context, configFile *apiconfig.ConfigFile) *apiconfig.ConfigResponse
+	// CreateConfigFiles 创建配置文件
+	CreateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse
+	// UpdateConfigFile 更新配置文件
+	UpdateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse
+	// DeleteConfigFiles 批量删除配置文件
+	DeleteConfigFiles(ctx context.Context, req []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse
 	// GetConfigFileRichInfo 获取单个配置文件基础信息，包含发布状态等信息
 	GetConfigFileRichInfo(ctx context.Context, req *apiconfig.ConfigFile) *apiconfig.ConfigResponse
 	// SearchConfigFiles 按 group 和 name 模糊搜索配置文件
 	SearchConfigFiles(ctx context.Context, filter map[string]string) *apiconfig.ConfigBatchQueryResponse
-	// UpdateConfigFile 更新配置文件
-	UpdateConfigFile(ctx context.Context, configFile *apiconfig.ConfigFile) *apiconfig.ConfigResponse
-	// DeleteConfigFile 删除配置文件
-	DeleteConfigFile(ctx context.Context, req *apiconfig.ConfigFile) *apiconfig.ConfigResponse
-	// BatchDeleteConfigFile 批量删除配置文件
-	BatchDeleteConfigFile(ctx context.Context, req []*apiconfig.ConfigFile) *apiconfig.ConfigResponse
 	// ExportConfigFile 导出配置文件
 	ExportConfigFile(ctx context.Context,
 		configFileExport *apiconfig.ConfigFileExportRequest) *apiconfig.ConfigExportResponse

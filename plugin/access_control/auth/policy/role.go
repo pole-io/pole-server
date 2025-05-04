@@ -20,6 +20,8 @@ package policy
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
@@ -55,6 +57,7 @@ func (svr *Server) CreateRole(ctx context.Context, req *apisecurity.Role) *apise
 
 	saveData := &authtypes.Role{}
 	saveData.FromSpec(req)
+	saveData.ID = utils.NewUUID()
 
 	if err := svr.storage.AddRole(saveData); err != nil {
 		log.Error("[Auth][Role] create role into store", utils.RequestID(ctx),
@@ -62,6 +65,7 @@ func (svr *Server) CreateRole(ctx context.Context, req *apisecurity.Role) *apise
 		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 
+	// TODO : 记录操作日志
 	return api.NewResponse(apimodel.Code_ExecuteSuccess)
 }
 
@@ -92,10 +96,38 @@ func (svr *Server) UpdateRole(ctx context.Context, req *apisecurity.Role) *apise
 		return api.NewAuthResponse(apimodel.Code_NotFoundResource)
 	}
 
-	newData.Name = saveData.Name
-	newData.Owner = saveData.Owner
+	if needUpdate := func() bool {
+		needUpdate := false
+		if saveData.Comment != newData.Comment {
+			saveData.Comment = newData.Comment
+			needUpdate = true
+		}
+		if saveData.Source != newData.Source {
+			saveData.Source = newData.Source
+			needUpdate = true
+		}
+		if !slices.EqualFunc(saveData.Users, newData.Users, func(e1, e2 authtypes.Principal) bool {
+			return e1.PrincipalID == e2.PrincipalID && e1.PrincipalType == e2.PrincipalType
+		}) {
+			saveData.Users = newData.Users
+			needUpdate = true
+		}
+		if !slices.EqualFunc(saveData.UserGroups, newData.UserGroups, func(e1, e2 authtypes.Principal) bool {
+			return e1.PrincipalID == e2.PrincipalID && e1.PrincipalType == e2.PrincipalType
+		}) {
+			saveData.UserGroups = newData.UserGroups
+			needUpdate = true
+		}
+		if !maps.Equal(saveData.Metadata, newData.Metadata) {
+			saveData.Metadata = newData.Metadata
+			needUpdate = true
+		}
+		return needUpdate
+	}(); !needUpdate {
+		return api.NewResponse(apimodel.Code_NoNeedUpdate)
+	}
 
-	if err := svr.storage.AddRole(newData); err != nil {
+	if err := svr.storage.UpdateRole(saveData); err != nil {
 		log.Error("[Auth][Role] update role into store", utils.RequestID(ctx),
 			zap.Error(err))
 		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))

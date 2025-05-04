@@ -27,8 +27,22 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
+	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
+
+func (h *HTTPServer) addInstanceAccess(ws *restful.WebService) {
+	ws.Route(docs.EnrichCreateInstancesApiDocs(ws.POST("/instances").To(h.CreateInstances)))
+	ws.Route(docs.EnrichDeleteInstancesApiDocs(ws.POST("/instances/delete").To(h.DeleteInstances)))
+	ws.Route(docs.EnrichDeleteInstancesByHostApiDocs(
+		ws.POST("/instances/delete/host").To(h.DeleteInstancesByHost)))
+	ws.Route(docs.EnrichUpdateInstancesApiDocs(ws.PUT("/instances").To(h.UpdateInstances)))
+	ws.Route(docs.EnrichUpdateInstancesIsolateApiDocs(
+		ws.PUT("/instances/isolate/host").To(h.UpdateInstancesIsolate)))
+	ws.Route(docs.EnrichGetInstancesApiDocs(ws.GET("/instances").To(h.GetInstances)))
+	ws.Route(docs.EnrichGetInstancesCountApiDocs(ws.GET("/instances/count").To(h.GetInstancesCount)))
+	ws.Route(docs.EnrichGetInstanceLabelsApiDocs(ws.GET("/instances/labels").To(h.GetInstanceLabels)))
+}
 
 // CreateInstances 创建服务实例
 func (h *HTTPServer) CreateInstances(req *restful.Request, rsp *restful.Response) {

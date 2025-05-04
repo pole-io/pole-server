@@ -18,7 +18,6 @@
 package discover
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/emicklei/go-restful/v3"
@@ -27,11 +26,34 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
+	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
+
+// addServiceAccess .
+func (h *HTTPServer) addServiceAccess(ws *restful.WebService) {
+	ws.Route(docs.EnrichCreateServicesApiDocs(ws.POST("/services").To(h.CreateServices)))
+	ws.Route(docs.EnrichDeleteServicesApiDocs(ws.POST("/services/delete").To(h.DeleteServices)))
+	ws.Route(docs.EnrichUpdateServicesApiDocs(ws.PUT("/services").To(h.UpdateServices)))
+	ws.Route(docs.EnrichGetServicesApiDocs(ws.GET("/services").To(h.GetServices)))
+	ws.Route(docs.EnrichGetAllServicesApiDocs(ws.GET("/services/all").To(h.GetAllServices)))
+	ws.Route(docs.EnrichGetServicesCountApiDocs(ws.GET("/services/count").To(h.GetServicesCount)))
+	ws.Route(docs.EnrichCreateServiceAliasApiDocs(ws.POST("/service/alias").To(h.CreateServiceAlias)))
+	ws.Route(docs.EnrichUpdateServiceAliasApiDocs(ws.PUT("/service/alias").To(h.UpdateServiceAlias)))
+	ws.Route(docs.EnrichGetServiceAliasesApiDocs(ws.GET("/service/aliases").To(h.GetServiceAliases)))
+	ws.Route(docs.EnrichDeleteServiceAliasesApiDocs(ws.POST("/service/aliases/delete").To(h.DeleteServiceAliases)))
+	ws.Route(docs.EnrichDeleteServiceAliasesApiDocs(ws.GET("/service/subscribers").To(h.GetServiceSubscribers)))
+
+	// 服务契约相关
+	ws.Route(docs.EnrichCreateServiceContractsApiDocs(ws.POST("/service/contracts").To(h.CreateServiceContract)))
+	ws.Route(docs.EnrichGetServiceContractsApiDocs(ws.GET("/service/contracts").To(h.GetServiceContracts)))
+	ws.Route(docs.EnrichDeleteServiceContractsApiDocs(ws.POST("/service/contracts/delete").To(h.DeleteServiceContracts)))
+	ws.Route(docs.EnrichGetServiceContractsApiDocs(ws.GET("/service/contract/versions").To(h.GetServiceContractVersions)))
+	ws.Route(docs.EnrichAddServiceContractInterfacesApiDocs(ws.POST("/service/contract/methods").To(h.CreateServiceContractInterfaces)))
+	ws.Route(docs.EnrichAppendServiceContractInterfacesApiDocs(ws.PUT("/service/contract/methods/append").To(h.AppendServiceContractInterfaces)))
+	ws.Route(docs.EnrichDeleteServiceContractsApiDocs(ws.POST("/service/contract/methods/delete").To(h.DeleteServiceContractInterfaces)))
+}
 
 // CreateServices 创建服务
 func (h *HTTPServer) CreateServices(req *restful.Request, rsp *restful.Response) {
@@ -143,43 +165,6 @@ func (h *HTTPServer) GetServicesCount(req *restful.Request, rsp *restful.Respons
 	handler.WriteHeaderAndProto(ret)
 }
 
-// GetServiceToken 获取服务token
-func (h *HTTPServer) GetServiceToken(req *restful.Request, rsp *restful.Response) {
-	handler := &httpcommon.Handler{
-		Request:  req,
-		Response: rsp,
-	}
-	token := req.HeaderParameter("Polaris-Token")
-	ctx := context.WithValue(context.Background(), types.StringContext("polaris-token"), token)
-
-	queryParams := httpcommon.ParseQueryParams(req)
-	service := &apiservice.Service{
-		Name:      protobuf.NewStringValue(queryParams["name"]),
-		Namespace: protobuf.NewStringValue(queryParams["namespace"]),
-		Token:     protobuf.NewStringValue(queryParams["token"]),
-	}
-
-	ret := h.namingServer.GetServiceToken(ctx, service)
-	handler.WriteHeaderAndProto(ret)
-}
-
-// UpdateServiceToken 更新服务token
-func (h *HTTPServer) UpdateServiceToken(req *restful.Request, rsp *restful.Response) {
-	handler := &httpcommon.Handler{
-		Request:  req,
-		Response: rsp,
-	}
-
-	var service apiservice.Service
-	ctx, err := handler.Parse(&service)
-	if err != nil {
-		handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_ParseException, err.Error()))
-		return
-	}
-
-	handler.WriteHeaderAndProto(h.namingServer.UpdateServiceToken(ctx, &service))
-}
-
 // CreateServiceAlias service alias
 func (h *HTTPServer) CreateServiceAlias(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
@@ -258,23 +243,14 @@ func (h *HTTPServer) GetServiceAliases(req *restful.Request, rsp *restful.Respon
 	handler.WriteHeaderAndProto(ret)
 }
 
-// GetServiceOwner 根据服务获取服务负责人
-func (h *HTTPServer) GetServiceOwner(req *restful.Request, rsp *restful.Response) {
+// GetServiceSubscribers 获取服务订阅者
+func (h *HTTPServer) GetServiceSubscribers(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,
 	}
 
-	var services ServiceArr
-	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apiservice.Service{}
-		services = append(services, msg)
-		return msg
-	})
-	if err != nil {
-		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
-		return
-	}
-
-	handler.WriteHeaderAndProto(h.namingServer.GetServiceOwner(ctx, services))
+	ctx := handler.ParseHeaderContext()
+	queryParams := httpcommon.ParseQueryParams(req)
+	handler.WriteHeaderAndProto(h.namingServer.GetServiceSubscribers(ctx, queryParams))
 }

@@ -39,6 +39,15 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
+func (s *Server) CreateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse {
+	bRsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for i := range reqs {
+		rsp := s.CreateConfigFile(ctx, reqs[i])
+		api.ConfigCollect(bRsp, rsp)
+	}
+	return bRsp
+}
+
 // CreateConfigFile 创建配置文件
 func (s *Server) CreateConfigFile(ctx context.Context, req *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
 	savaData := conftypes.ToConfigFileStore(req)
@@ -110,6 +119,15 @@ func (s *Server) _handleCreateConfigFile(ctx context.Context, tx store.Tx,
 }
 
 // UpdateConfigFile 更新配置文件
+func (s *Server) UpdateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse {
+	bRsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for i := range reqs {
+		rsp := s.UpdateConfigFile(ctx, reqs[i])
+		api.ConfigCollect(bRsp, rsp)
+	}
+	return bRsp
+}
+
 func (s *Server) UpdateConfigFile(ctx context.Context, req *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
 	tx, err := s.storage.StartTx()
 	if err != nil {
@@ -225,18 +243,17 @@ func (s *Server) prepareCreateConfigFile(ctx context.Context,
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
 
-// BatchDeleteConfigFile 批量删除配置文件
-func (s *Server) BatchDeleteConfigFile(ctx context.Context, req []*apiconfig.ConfigFile) *apiconfig.ConfigResponse {
+// DeleteConfigFiles 批量删除配置文件
+func (s *Server) DeleteConfigFiles(ctx context.Context, req []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse {
 	if len(req) == 0 {
-		api.NewConfigFileResponse(apimodel.Code_ExecuteSuccess, nil)
+		return api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	}
+	bRsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, configFile := range req {
 		rsp := s.DeleteConfigFile(ctx, configFile)
-		if rsp.Code.GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
-			return rsp
-		}
+		api.ConfigCollect(bRsp, rsp)
 	}
-	return api.NewConfigFileResponse(apimodel.Code_ExecuteSuccess, nil)
+	return bRsp
 }
 
 // DeleteConfigFile 删除配置文件，删除配置文件同时会通知客户端 Not_Found

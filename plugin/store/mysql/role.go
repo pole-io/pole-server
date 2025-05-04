@@ -18,7 +18,9 @@
 package sqldb
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"go.uber.org/zap"
@@ -35,11 +37,11 @@ type roleStore struct {
 
 // AddRole Add a role
 func (s *roleStore) AddRole(role *authcommon.Role) error {
-	if role.ID == "" || role.Name == "" {
-		return store.NewStatusError(store.EmptyParamsErr, "role id or name is empty")
+	if role.Name == "" {
+		return store.NewStatusError(store.EmptyParamsErr, "role name is empty")
 	}
 	err := s.master.processWithTransaction("add_role", func(tx *BaseTx) error {
-		if _, err := tx.Exec("DELETE FROM auth_role WHERE id = ? AND flag = 1", role.ID); err != nil {
+		if _, err := tx.Exec("DELETE FROM auth_role WHERE name = ? AND flag = 1", role.Name); err != nil {
 			log.Error("[store][role] delete invalid role", zap.String("name", role.Name), zap.Error(err))
 			return err
 		}
@@ -59,18 +61,23 @@ VALUES (?, ?, ?, ?, ?
 			log.Error("[store][role] save role principal info", zap.String("name", role.Name), zap.Error(err))
 			return err
 		}
+
+		if err := tx.Commit(); err != nil {
+			log.Error("[store][role] create role do commit transaction", zap.String("name", role.Name), zap.Error(err))
+			return err
+		}
 		return nil
 	})
 	return store.Error(err)
 }
 
 func (s *roleStore) savePrincipals(tx *BaseTx, role *authcommon.Role) error {
-	if _, err := tx.Exec("DELETE FROM auth_role_principal WHERE id = ?", role.ID); err != nil {
+	if _, err := tx.Exec("DELETE FROM auth_role_principal WHERE role_id = ?", role.ID); err != nil {
 		log.Error("[store][role] clean role principal info", zap.String("name", role.Name), zap.Error(err))
 		return err
 	}
 
-	insertTpl := "INSERT INTO auth_role_principal(role_id, principal_id, principal_role, IFNULL(extend_info, '')) VALUES (?, ?, ?)"
+	insertTpl := "INSERT INTO auth_role_principal(role_id, principal_id, principal_role, extend_info) VALUES (?, ?, ?, ?)"
 
 	for i := range role.Users {
 		args := []interface{}{role.ID, role.Users[i].PrincipalID, authcommon.PrincipalUser, utils.MustJson(role.Users[i].Extend)}
@@ -108,6 +115,11 @@ WHERE id = ?
 			log.Error("[store][role] save role principal info", zap.String("name", role.Name), zap.Error(err))
 			return err
 		}
+
+		if err := tx.Commit(); err != nil {
+			log.Error("[store][role] update role do commit transaction", zap.String("name", role.Name), zap.Error(err))
+			return err
+		}
 		return nil
 	})
 	return store.Error(err)
@@ -119,7 +131,7 @@ func (s *roleStore) DeleteRole(tx store.Tx, role *authcommon.Role) error {
 		return store.NewStatusError(store.EmptyParamsErr, "role id is empty")
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
-	if _, err := dbTx.Exec("UPDATE auth_role SET flag = 1 WHERE id = ?", role.ID); err != nil {
+	if _, err := dbTx.Exec("UPDATE auth_role SET flag = 1, mtime = sysdate() WHERE id = ?", role.ID); err != nil {
 		log.Error("[store][role] delete role", zap.String("name", role.Name), zap.Error(err))
 		return store.Error(err)
 	}
@@ -188,6 +200,9 @@ func (s *roleStore) GetRole(id string) (*authcommon.Role, error) {
 
 	if err := row.Scan(&ret.ID, &ret.Name, &ret.Owner, &ret.Source, &ret.Type, &ret.Comment,
 		&flag, &metadata, &ctime, &mtime); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		log.Error("[store][role] fetch one record role info", zap.Error(err))
 		return nil, store.Error(err)
 	}
@@ -197,7 +212,7 @@ func (s *roleStore) GetRole(id string) (*authcommon.Role, error) {
 	ret.Valid = flag == 0
 	_ = json.Unmarshal([]byte(metadata), &ret.Metadata)
 
-	if err := s.fetchRolePrincipals(tx, ret); err != nil {
+	if err := s.fetchRolePrincipals(ret); err != nil {
 		return nil, store.Error(err)
 	}
 	return ret, nil
@@ -256,7 +271,7 @@ func (s *roleStore) GetMoreRoles(firstUpdate bool, mtime time.Time) ([]*authcomm
 		ret.Valid = flag == 0
 		_ = json.Unmarshal([]byte(metadata), &ret.Metadata)
 
-		if err := s.fetchRolePrincipals(tx, ret); err != nil {
+		if err := s.fetchRolePrincipals(ret); err != nil {
 			return nil, store.Error(err)
 		}
 
@@ -266,9 +281,13 @@ func (s *roleStore) GetMoreRoles(firstUpdate bool, mtime time.Time) ([]*authcomm
 	return roles, nil
 }
 
-func (s *roleStore) fetchRolePrincipals(tx *BaseTx, role *authcommon.Role) error {
+func (s *roleStore) fetchRolePrincipals(role *authcommon.Role) error {
+	tx, err := s.slave.Begin()
+	if err != nil {
+		return store.Error(err)
+	}
 	rows, err := tx.Query("SELECT role_id, principal_id, principal_role, IFNULL(extend_info, '') FROM "+
-		" auth_role_principal WHERE rold_id = ?", role.ID)
+		" auth_role_principal WHERE role_id = ?", role.ID)
 	if err != nil {
 		log.Error("[store][role] fetch role principals", zap.String("name", role.Name), zap.Error(err))
 		return store.Error(err)
