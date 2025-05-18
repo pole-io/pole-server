@@ -39,7 +39,7 @@ const (
 	// PolarisMessage polaris message
 	PolarisMessage = "X-Polaris-Message"
 	// PolarisRequestID request_id
-	PolarisRequestID = "Request-Id"
+	PolarisRequestID = "X-Request-Id"
 )
 
 var (
@@ -79,7 +79,7 @@ func ValueLocalhost(ctx context.Context) string {
 	return value
 }
 
-// ParseRequestID 从ctx中获取Request-ID
+// ParseRequestID 从ctx中获取X-Request-Id
 func ParseRequestID(ctx context.Context) string {
 	if ctx == nil {
 		return ""

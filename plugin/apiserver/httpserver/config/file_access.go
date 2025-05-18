@@ -43,13 +43,13 @@ func (h *HTTPServer) addFilesAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichSearchConfigFileApiDocs(ws.GET("/files/search").To(h.SearchConfigFiles)))
 	ws.Route(docs.EnrichExportConfigFileApiDocs(ws.POST("/files/export").To(h.ExportConfigFile)))
 	ws.Route(docs.EnrichImportConfigFileApiDocs(ws.POST("/files/import").To(h.ImportConfigFile)))
-	ws.Route(docs.EnrichGetAllConfigEncryptAlgorithms(ws.GET("/files/encrypt/algorithms").
-		To(h.GetAllConfigEncryptAlgorithms)))
-	ws.Route(docs.EnrichGetConfigFileReleaseHistoryApiDocs(ws.GET("/files/op/history").
-		To(h.GetConfigFileReleaseHistory)))
+	ws.Route(docs.EnrichGetAllConfigEncryptAlgorithms(ws.GET("/files/encrypt/algorithms").To(h.GetAllConfigEncryptAlgorithms)))
+	ws.Route(docs.EnrichGetConfigFileReleaseHistoryApiDocs(ws.GET("/files/op/history").To(h.GetConfigFileReleaseHistory)))
+	ws.Route(docs.EnrichImportConfigFileApiDocs(ws.GET("/files/subscribers").To(h.GetFileSubscribers)))
+	ws.Route(docs.EnrichImportConfigFileApiDocs(ws.GET("/files/client/subscription").To(h.GetFileSubscribers)))
 }
 
-// CreateConfigFile 创建配置文件
+// CreateConfigFiles 创建配置文件
 func (h *HTTPServer) CreateConfigFiles(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
@@ -89,8 +89,7 @@ func (h *HTTPServer) GetConfigFile(req *restful.Request, rsp *restful.Response) 
 		Name:      protobuf.NewStringValue(name),
 	}
 
-	response := h.configServer.GetConfigFileRichInfo(handler.ParseHeaderContext(), fileReq)
-	handler.WriteHeaderAndProto(response)
+	handler.WriteHeaderAndProto(h.configServer.GetConfigFileRichInfo(handler.ParseHeaderContext(), fileReq))
 }
 
 // SearchConfigFiles 按照 group 和 name 模糊搜索配置文件，按照 tag 搜索，多个tag之间或的关系
@@ -106,7 +105,7 @@ func (h *HTTPServer) SearchConfigFiles(req *restful.Request, rsp *restful.Respon
 	handler.WriteHeaderAndProto(response)
 }
 
-// UpdateConfigFile 更新配置文件
+// UpdateConfigFiles 更新配置文件
 func (h *HTTPServer) UpdateConfigFiles(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
@@ -215,4 +214,29 @@ func (h *HTTPServer) ImportConfigFile(req *restful.Request, rsp *restful.Respons
 
 	response := h.configServer.ImportConfigFile(ctx, configFiles, conflictHandling)
 	handler.WriteHeaderAndProto(response)
+}
+
+// GetFileSubscribers 获取配置文件订阅者
+func (h *HTTPServer) GetFileSubscribers(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+
+	filters := httpcommon.ParseQueryParams(req)
+	response := h.configServer.GetConfigSubscribers(handler.ParseHeaderContext(), filters)
+
+	handler.WriteHeaderAndData(response)
+}
+
+// GetClientSubscription 客户端视角查询所有的订阅信息
+func (h *HTTPServer) GetClientSubscription(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+
+	filters := httpcommon.ParseQueryParams(req)
+	response := h.configServer.GetClientSubscribers(handler.ParseHeaderContext(), filters)
+	handler.WriteHeaderAndData(response)
 }

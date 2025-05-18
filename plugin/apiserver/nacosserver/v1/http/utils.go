@@ -70,7 +70,7 @@ type Handler struct {
 
 func (h *Handler) postParseMessage(requestID string) (context.Context, error) {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, types.StringContext("request-id"), requestID)
+	ctx = context.WithValue(ctx, types.StringContext(types.HeaderRequestId), requestID)
 
 	var operator string
 	addrSlice := strings.Split(h.Request.Request.RemoteAddr, ":")
@@ -84,13 +84,13 @@ func (h *Handler) postParseMessage(requestID string) (context.Context, error) {
 
 // ParseHeaderContext 将http请求header中携带的用户信息提取出来
 func (h *Handler) ParseHeaderContext() context.Context {
-	requestID := h.Request.HeaderParameter("Request-Id")
+	requestID := h.Request.HeaderParameter(types.HeaderRequestId)
 
 	ctx := context.Background()
 	if requestID == "" {
 		requestID = utils.NewUUID()
 	}
-	ctx = context.WithValue(ctx, types.StringContext("request-id"), requestID)
+	ctx = context.WithValue(ctx, types.StringContext(types.HeaderRequestId), requestID)
 
 	var operator string
 	addrSlice := strings.Split(h.Request.Request.RemoteAddr, ":")

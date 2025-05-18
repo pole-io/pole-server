@@ -131,7 +131,7 @@ func (svr *Server) UpdateUsers(ctx context.Context, reqs []*apisecurity.User) *a
 
 // UpdateUserPassword 更新用户密码
 func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.ModifyUserPassword) *apiservice.Response {
-	
+
 	return svr.nextSvr.UpdateUserPassword(ctx, req)
 }
 
@@ -196,8 +196,8 @@ func (svr *Server) ResetUserToken(ctx context.Context, req *apisecurity.User) *a
 }
 
 // CreateGroup 创建用户组
-func (svr *Server) CreateGroup(ctx context.Context, group *apisecurity.UserGroup) *apiservice.Response {
-	return svr.nextSvr.CreateGroup(ctx, group)
+func (svr *Server) CreateGroups(ctx context.Context, reqs []*apisecurity.UserGroup) *apiservice.BatchWriteResponse {
+	return svr.nextSvr.CreateGroups(ctx, reqs)
 }
 
 // UpdateGroups 更新用户组

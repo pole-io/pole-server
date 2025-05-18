@@ -211,7 +211,22 @@ func (svr *Server) GetRoles(ctx context.Context, filters map[string]string) *api
 	rsp.Size = protobuf.NewUInt32Value(uint32(len(ret)))
 
 	for i := range ret {
-		if err := api.AddAnyDataIntoBatchQuery(rsp, ret[i].ToSpec()); err != nil {
+		specVal := ret[i].ToSpec()
+		// 填充用户、用户组名称
+		for j := range specVal.Users {
+			user := svr.cacheMgr.User().GetUserByID(specVal.Users[j].Id.Value)
+			if user != nil {
+				specVal.Users[j].Name = protobuf.NewStringValue(user.Name)
+			}
+		}
+		for j := range specVal.UserGroups {
+			group := svr.cacheMgr.User().GetGroup(specVal.UserGroups[j].Id.Value)
+			if group != nil {
+				specVal.UserGroups[j].Name = protobuf.NewStringValue(group.Name)
+			}
+		}
+
+		if err := api.AddAnyDataIntoBatchQuery(rsp, specVal); err != nil {
 			log.Error("[Auth][Role] add role to query list", utils.RequestID(ctx), zap.Error(err))
 			return api.NewBatchQueryResponse(apimodel.Code_ExecuteException)
 		}

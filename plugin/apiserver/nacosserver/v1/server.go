@@ -197,7 +197,7 @@ func (h *NacosV1Server) createRestfulContainer() (*restful.Container, error) {
 	// 增加CORS TODO
 	cors := restful.CrossOriginResourceSharing{
 		// ExposeHeaders:  []string{"X-My-Header"},
-		AllowedHeaders: []string{"Content-Type", "Accept", "Request-Id"},
+		AllowedHeaders: []string{"Content-Type", "Accept", types.HeaderRequestId},
 		AllowedMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch},
 		CookiesAllowed: false,
 		Container:      wsContainer}
@@ -298,7 +298,7 @@ func (h *NacosV1Server) postProcess(req *restful.Request, rsp *restful.Response)
 		nacoslog.Info("nacos http server handling time > 1s",
 			zap.String("client-address", req.Request.RemoteAddr),
 			zap.String("user-agent", req.HeaderParameter("User-Agent")),
-			utils.ZapRequestID(req.HeaderParameter("Request-Id")),
+			utils.ZapRequestID(req.HeaderParameter(types.HeaderRequestId)),
 			zap.String("method", req.Request.Method),
 			zap.String("url", req.Request.URL.String()),
 			zap.Duration("handling-time", diff),
@@ -323,7 +323,7 @@ func (h *NacosV1Server) enterAuth(req *restful.Request, rsp *restful.Response) e
 		return nil
 	}
 
-	rid := req.HeaderParameter("Request-Id")
+	rid := req.HeaderParameter(types.HeaderRequestId)
 
 	address := req.Request.RemoteAddr
 	segments := strings.Split(address, ":")
@@ -349,7 +349,7 @@ func (h *NacosV1Server) enterRateLimit(req *restful.Request, rsp *restful.Respon
 		return nil
 	}
 
-	rid := req.HeaderParameter("Request-Id")
+	rid := req.HeaderParameter(types.HeaderRequestId)
 	// IP级限流
 	// 先获取当前请求的address
 	address := req.Request.RemoteAddr

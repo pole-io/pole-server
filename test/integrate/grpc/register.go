@@ -20,12 +20,14 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc/metadata"
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -33,7 +35,7 @@ import (
 func (c *Client) RegisterInstance(instance *apiservice.Instance) error {
 	fmt.Printf("\nregister instance\n")
 
-	md := metadata.Pairs("request-id", utils.NewUUID())
+	md := metadata.Pairs(strings.ToLower(types.HeaderRequestId), utils.NewUUID())
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
@@ -54,7 +56,7 @@ func (c *Client) RegisterInstance(instance *apiservice.Instance) error {
 func (c *Client) DeregisterInstance(instance *apiservice.Instance) error {
 	fmt.Printf("\nderegister instance\n")
 
-	md := metadata.Pairs("request-id", utils.NewUUID())
+	md := metadata.Pairs(strings.ToLower(types.HeaderRequestId), utils.NewUUID())
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)

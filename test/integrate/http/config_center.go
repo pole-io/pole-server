@@ -30,6 +30,7 @@ import (
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
@@ -338,7 +339,7 @@ func (c *Client) ImportConfigFile(namespace, group, conflictHandling string) (*a
 		return nil, err
 	}
 	request.Header.Add("Content-Type", mw.FormDataContentType())
-	request.Header.Add("Request-Id", "test")
+	request.Header.Add(types.HeaderRequestId, "test")
 	request.Header.Add("X-Polaris-Token",
 		"nu/0WRA4EqSR1FagrjRj0fZwPXuGlMpX+zCuWu4uMqy8xr1vRjisSbA25aAC3mtU8MeeRsKhQiDAynUR09I=")
 

@@ -248,7 +248,7 @@ func ConvertGRPCContext(ctx context.Context) context.Context {
 
 	meta, exist := metadata.FromIncomingContext(ctx)
 	if exist {
-		ids := meta["request-id"]
+		ids := meta[strings.ToLower(types.HeaderRequestId)]
 		if len(ids) > 0 {
 			requestID = ids[0]
 		}

@@ -19,11 +19,13 @@ package sqldb
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
+	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
 )
 
@@ -68,8 +70,8 @@ func (u *groupStore) AddGroup(tx store.Tx, group *authcommon.UserGroupDetail) er
 	}
 
 	addSql := `
-	  INSERT INTO user_group (id, name, token, token_enable, comment, flag, ctime, mtime, owner)
-	  VALUES (?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate(), '')
+	  INSERT INTO user_group (id, name, token, token_enable, comment, flag, ctime, mtime, owner, metadata)
+	  VALUES (?, ?, ?, ?, ?, ?, sysdate(), sysdate(), '', ?)
 	  `
 
 	tokenEnable := 1
@@ -84,6 +86,7 @@ func (u *groupStore) AddGroup(tx store.Tx, group *authcommon.UserGroupDetail) er
 		tokenEnable,
 		group.Comment,
 		0,
+		utils.MustJson(group.Metadata),
 	}...); err != nil {
 		log.Errorf("[Store][Group] add usergroup err: %s", err.Error())
 		return err
@@ -136,12 +139,13 @@ func (u *groupStore) updateGroup(group *authcommon.UserGroupDetail) error {
 		}
 	}
 
-	modifySql := "UPDATE user_group SET token = ?, comment = ?, token_enable = ?, mtime = sysdate() " +
+	modifySql := "UPDATE user_group SET token = ?, comment = ?, token_enable = ?, metadata = ?, mtime = sysdate() " +
 		" WHERE id = ? AND flag = 0"
 	if _, err = tx.Exec(modifySql, []interface{}{
 		group.Token,
 		group.Comment,
 		tokenEnable,
+		utils.MustJson(group.Metadata),
 		group.ID,
 	}...); err != nil {
 		log.Errorf("[Store][Group] update usergroup main err: %s", err.Error())
@@ -190,7 +194,7 @@ func (u *groupStore) GetGroup(groupId string) (*authcommon.UserGroupDetail, erro
 
 	getSql := `
 	  SELECT ug.id, ug.name, ug.owner, ug.comment, ug.token, ug.token_enable
-		  , UNIX_TIMESTAMP(ug.ctime), UNIX_TIMESTAMP(ug.mtime)
+		  , UNIX_TIMESTAMP(ug.ctime), UNIX_TIMESTAMP(ug.mtime), IFNULL(ug.metadata, '{}')
 	  FROM user_group ug
 	  WHERE ug.flag = 0
 		  AND ug.id = ? 
@@ -201,13 +205,13 @@ func (u *groupStore) GetGroup(groupId string) (*authcommon.UserGroupDetail, erro
 		UserGroup: &authcommon.UserGroup{},
 	}
 	var (
-		ctime, mtime int64
-		tokenEnable  int
-		owner        string
+		ctime, mtime   int64
+		tokenEnable    int
+		owner, metastr string
 	)
 
 	if err := row.Scan(&group.ID, &group.Name, &owner, &group.Comment, &group.Token, &tokenEnable,
-		&ctime, &mtime); err != nil {
+		&ctime, &mtime, &metastr); err != nil {
 		switch err {
 		case sql.ErrNoRows:
 			return nil, nil
@@ -220,6 +224,8 @@ func (u *groupStore) GetGroup(groupId string) (*authcommon.UserGroupDetail, erro
 		return nil, store.Error(err)
 	}
 
+	group.Metadata = map[string]string{}
+	_ = json.Unmarshal([]byte(metastr), &group.Metadata)
 	group.UserIds = uids
 	group.TokenEnable = tokenEnable == 1
 	group.CreateTime = time.Unix(ctime, 0)

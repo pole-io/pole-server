@@ -25,7 +25,6 @@ import (
 
 func defaultBootstrap() Bootstrap {
 	return Bootstrap{
-		Logger: defaultLoggerOptions(),
 		StartInOrder: map[string]interface{}{
 			"open": true,
 			"key":  "sz",

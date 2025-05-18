@@ -48,14 +48,19 @@ func (h *HTTPServer) CreateGroups(req *restful.Request, rsp *restful.Response) {
 		Response: rsp,
 	}
 
-	group := &apisecurity.UserGroup{}
-	ctx, err := handler.Parse(group)
+	var groups UserGroupArr
+
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apisecurity.UserGroup{}
+		groups = append(groups, msg)
+		return msg
+	})
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
 
-	handler.WriteHeaderAndProto(h.userSvr.CreateGroup(ctx, group))
+	handler.WriteHeaderAndProto(h.userSvr.CreateGroups(ctx, groups))
 }
 
 // UpdateGroups 更新用户组

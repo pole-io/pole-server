@@ -245,6 +245,9 @@ func (h *DiscoverServer) HandleClientConnect(ctx context.Context, client *remote
 }
 
 func (h *DiscoverServer) HandleClientDisConnect(ctx context.Context, client *remote.Client) {
+	if client == nil {
+		return
+	}
 	nacoslog.Info("[NACOS-CORE][PushCenter] remove WatchClient", zap.String("id", client.ID))
 	grpcPushSvr := h.pushCenter.(*GrpcPushCenter)
 	grpcPushSvr.RemoveClientIf(func(s string, wc *core.WatchClient) bool {

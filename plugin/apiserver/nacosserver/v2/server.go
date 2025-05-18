@@ -398,7 +398,7 @@ func (h *NacosV2Server) ConvertContext(ctx context.Context) context.Context {
 	)
 	meta, exist := metadata.FromIncomingContext(ctx)
 	if exist {
-		ids := meta["request-id"]
+		ids := meta[strings.ToLower(types.HeaderRequestId)]
 		if len(ids) > 0 {
 			requestID = ids[0]
 		}
@@ -432,7 +432,7 @@ func (h *NacosV2Server) ConvertContext(ctx context.Context) context.Context {
 
 	ctx = context.Background()
 	ctx = context.WithValue(ctx, types.ContextGrpcHeader, meta)
-	ctx = context.WithValue(ctx, types.StringContext("request-id"), requestID)
+	ctx = context.WithValue(ctx, types.ContextRequestId, requestID)
 	ctx = context.WithValue(ctx, types.ContextClientAddress, address)
 	ctx = context.WithValue(ctx, types.StringContext("user-agent"), userAgent)
 	ctx = context.WithValue(ctx, remote.ClientIPKey, clientIP)

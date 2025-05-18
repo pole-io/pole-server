@@ -130,7 +130,7 @@ type UserOperator interface {
 
 type GroupOperator interface {
 	// CreateGroup 创建用户组
-	CreateGroup(ctx context.Context, group *apisecurity.UserGroup) *apiservice.Response
+	CreateGroups(ctx context.Context, reqs []*apisecurity.UserGroup) *apiservice.BatchWriteResponse
 	// UpdateGroups 更新用户组
 	UpdateGroups(ctx context.Context, groups []*apisecurity.UserGroup) *apiservice.BatchWriteResponse
 	// DeleteGroups 批量删除用户组

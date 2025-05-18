@@ -36,7 +36,7 @@ func (h *HTTPServer) addPolicyRuleAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichUpdateStrategiesApiDocs(ws.PUT("/policies").To(h.UpdatePolicies)))
 	ws.Route(docs.EnrichDeleteStrategiesApiDocs(ws.POST("/policies/delete").To(h.DeletePolicies)))
 	ws.Route(docs.EnrichGetStrategiesApiDocs(ws.GET("/policies").To(h.GetPolicies)))
-	ws.Route(docs.EnrichGetStrategyApiDocs(ws.GET("/policy/detail").To(h.GetPolicy)))
+	ws.Route(docs.EnrichGetStrategyApiDocs(ws.GET("/policies/detail").To(h.GetPolicy)))
 	ws.Route(docs.EnrichGetPrincipalResourcesApiDocs(ws.GET("/principal/resources").To(h.GetPrincipalResources)))
 }
 

@@ -40,6 +40,7 @@ import (
 	"github.com/pole-io/pole-server/apis/access_control/whitelist"
 	"github.com/pole-io/pole-server/apis/apiserver"
 	"github.com/pole-io/pole-server/apis/observability/statis"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	"github.com/pole-io/pole-server/pkg/admin"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -373,7 +374,7 @@ func (h *HTTPServer) createRestfulContainer() (*restful.Container, error) {
 	// 增加CORS TODO
 	cors := restful.CrossOriginResourceSharing{
 		// ExposeHeaders:  []string{"X-My-Header"},
-		AllowedHeaders: []string{"Content-Type", "Accept", "Request-Id"},
+		AllowedHeaders: []string{"Content-Type", "Accept", types.HeaderRequestId},
 		AllowedMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut},
 		CookiesAllowed: false,
 		Container:      wsContainer}
@@ -491,7 +492,7 @@ func (h *HTTPServer) preprocess(req *restful.Request, rsp *restful.Response) err
 	req.SetAttribute("start-time", time.Now())
 
 	// 处理请求ID
-	requestID := req.HeaderParameter("Request-Id")
+	requestID := req.HeaderParameter(types.HeaderRequestId)
 	if requestID == "" {
 		// TODO: 设置请求ID
 	}
@@ -558,7 +559,7 @@ func (h *HTTPServer) postProcess(req *restful.Request, rsp *restful.Response) {
 		scope.Info("handling time > 1s",
 			zap.String("client-address", req.Request.RemoteAddr),
 			zap.String("user-agent", req.HeaderParameter("User-Agent")),
-			utils.ZapRequestID(req.HeaderParameter("Request-Id")),
+			utils.ZapRequestID(req.HeaderParameter(types.HeaderRequestId)),
 			zap.String("method", req.Request.Method),
 			zap.String("url", req.Request.URL.String()),
 			zap.Duration("handling-time", diff),
@@ -583,7 +584,7 @@ func (h *HTTPServer) enterAuth(req *restful.Request, rsp *restful.Response) erro
 		return nil
 	}
 
-	rid := req.HeaderParameter("Request-Id")
+	rid := req.HeaderParameter(types.HeaderRequestId)
 
 	address := req.Request.RemoteAddr
 	segments := strings.Split(address, ":")
@@ -607,7 +608,7 @@ func (h *HTTPServer) enterRateLimit(req *restful.Request, rsp *restful.Response)
 		return nil
 	}
 
-	rid := req.HeaderParameter("Request-Id")
+	rid := req.HeaderParameter(types.HeaderRequestId)
 	// IP级限流
 	// 先获取当前请求的address
 	address := req.Request.RemoteAddr

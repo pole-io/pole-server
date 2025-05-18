@@ -78,7 +78,7 @@ func TestCreateToken(t *testing.T) {
 }
 
 func TestDecodeToken(t *testing.T) {
-	token := "NH8IvrzAR+mkM6zOKPOMzrL9mGT5Ilb1pjckQcAiTGg58i+WebArKBx88PyabkZyZoRcrJvSGGaOYXfRU2A="
+	token := "rPO6H6XA3oon8QbsJnVotzGoPJ2WU7ZsL19jmSEgPKD9diXpH8cTT/Pt9O2OoqLe26B3Uzs8YjKYhMZAHWc="
 	v, err := defaultuser.DecryptMessage([]byte("pole@@1234567890"), token)
 	if err != nil {
 		t.Fatal(err)

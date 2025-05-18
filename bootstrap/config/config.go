@@ -20,7 +20,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -31,7 +30,6 @@ import (
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/admin"
 	"github.com/pole-io/pole-server/pkg/cache"
-	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/config"
 	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/namespace"
@@ -55,7 +53,7 @@ type Config struct {
 
 // Bootstrap 启动引导配置
 type Bootstrap struct {
-	Logger         map[string]*log.Options
+	Logger         string                 `yaml:"logger"`
 	StartInOrder   map[string]interface{} `yaml:"startInOrder"`
 	PolarisService PolarisService         `yaml:"polaris_service"`
 }
@@ -107,19 +105,10 @@ func Load(filePath string) (*Config, error) {
 
 	fmt.Printf("[INFO] load config from %v\n", filePath)
 
-	file, err := os.Open(filePath)
+	buf, err := os.ReadFile(filePath)
 	if err != nil {
-		fmt.Printf("[ERROR] %v\n", err)
-		return nil, err
-	}
-	defer func() {
-		_ = file.Close()
-	}()
-	buf, err := ioutil.ReadFile(filePath)
-	if nil != err {
 		return nil, fmt.Errorf("read file %s error", filePath)
 	}
-
 	conf := &Config{
 		Bootstrap: defaultBootstrap(),
 		Maintain:  *admin.DefaultConfig(),

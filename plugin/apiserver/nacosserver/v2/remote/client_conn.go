@@ -204,7 +204,7 @@ func (h *ConnectionManager) RegisterConnection(ctx context.Context, payload *nac
 
 	client, ok := h.clients[connID]
 	if !ok {
-		return errors.New("Connection register fail, Not Found target client")
+		return errors.New("connection register fail, not found target client")
 	}
 
 	client.ConnMeta = connMeta
@@ -214,13 +214,14 @@ func (h *ConnectionManager) RegisterConnection(ctx context.Context, payload *nac
 func (h *ConnectionManager) UnRegisterConnection(connID string) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
-	_ = eventhub.Publish(ClientConnectionEvent, &ConnectionEvent{
-		EventType: EventClientDisConnected,
-		ConnID:    connID,
-		Client:    h.clients[connID],
-	})
 	client, ok := h.clients[connID]
 	if ok {
+		_ = eventhub.Publish(ClientConnectionEvent, &ConnectionEvent{
+			EventType: EventClientDisConnected,
+			ConnID:    connID,
+			Client:    client,
+		})
+
 		delete(h.clients, connID)
 		delete(h.connections, client.Addr.String())
 
@@ -274,8 +275,7 @@ func (h *ConnectionManager) TagConn(ctx context.Context, connInfo *stats.ConnTag
 	defer h.lock.Unlock()
 
 	clientAddr := connInfo.RemoteAddr.(*net.TCPAddr)
-	client, ok := h.connections[clientAddr.String()]
-	if !ok {
+	if _, ok := h.connections[clientAddr.String()]; !ok {
 		connId := fmt.Sprintf("%d_%s_%d_%s", commontime.CurrentMillisecond(), clientAddr.IP, clientAddr.Port,
 			utils.LocalHost)
 		client := &Client{
@@ -289,7 +289,7 @@ func (h *ConnectionManager) TagConn(ctx context.Context, connInfo *stats.ConnTag
 		h.connections[clientAddr.String()] = client
 	}
 
-	client = h.connections[clientAddr.String()]
+	client := h.connections[clientAddr.String()]
 	return context.WithValue(ctx, ConnIDKey, client.ID)
 }
 

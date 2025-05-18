@@ -145,7 +145,7 @@ func (g *ConfigGRPCServer) Discover(svr apiconfig.PolarisConfigGRPC_DiscoverServ
 	ctx := utils.ConvertGRPCContext(svr.Context())
 	clientIP, _ := ctx.Value(types.StringContext("client-ip")).(string)
 	clientAddress, _ := ctx.Value(types.StringContext("client-address")).(string)
-	requestID, _ := ctx.Value(types.StringContext("request-id")).(string)
+	requestID, _ := ctx.Value(types.ContextRequestId).(string)
 	userAgent, _ := ctx.Value(types.StringContext("user-agent")).(string)
 	method, _ := grpc.MethodFromServerStream(svr)
 

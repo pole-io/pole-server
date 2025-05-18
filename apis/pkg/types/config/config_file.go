@@ -134,6 +134,11 @@ type ConfigFileReleaseKey struct {
 	Group       string
 	FileName    string
 	ReleaseType ReleaseType
+	Version     uint64
+}
+
+func (c ConfigFileReleaseKey) GetReleaseName() string {
+	return c.Name
 }
 
 func (c ConfigFileReleaseKey) ToFileKey() *ConfigFileKey {
@@ -549,6 +554,8 @@ type Subscriber struct {
 	ID string `json:"id"`
 	// 客户端 Host 信息
 	Host string `json:"host"`
+	// 文件发布名称
+	ReleaseName string `json:"release_name"`
 	// 客户端版本
 	Version string `json:"version"`
 	// 客户端类型
@@ -564,7 +571,7 @@ type ConfigSubscribers struct {
 }
 
 type VersionClient struct {
-	Versoin     uint64        `json:"versoin"`
+	Version     uint64        `json:"version"`
 	Subscribers []*Subscriber `json:"subscribers"`
 }
 
@@ -576,6 +583,7 @@ type FileReleaseSubscribeInfo struct {
 	FileName    string      `json:"file_name"`
 	ReleaseType ReleaseType `json:"release_type"`
 	Version     uint64      `json:"version"`
+	ReleaseName string      `json:"release_name"`
 }
 
 // ClientSubscriber 以客户端视角的监听数据

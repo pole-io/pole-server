@@ -55,7 +55,7 @@ func (h *HTTPServer) index(_ *restful.Request, rsp *restful.Response) {
 // GetAdminAccessServer 运维接口
 func (h *HTTPServer) GetAdminAccessServer() *restful.WebService {
 	ws := new(restful.WebService)
-	ws.Path("/maintain/v1").Consumes(restful.MIME_JSON).Produces(restful.MIME_JSON)
+	ws.Path("/admin/v1").Consumes(restful.MIME_JSON).Produces(restful.MIME_JSON)
 
 	ws.Route(docs.EnrichGetServerConnectionsApiDocs(ws.GET("/apiserver/conn").To(h.GetServerConnections)))
 	ws.Route(docs.EnrichGetServerConnStatsApiDocs(ws.GET("/apiserver/conn/stats").To(h.GetServerConnStats)))

@@ -74,7 +74,7 @@ func (h *Handler) ParseArrayByText(createMessage func() proto.Message, text stri
 }
 
 func (h *Handler) parseArray(createMessage func() proto.Message, jsonDecoder *json.Decoder) (context.Context, error) {
-	requestID := h.Request.HeaderParameter("Request-Id")
+	requestID := h.Request.HeaderParameter(types.HeaderRequestId)
 	// read open bracket
 	if _, err := jsonDecoder.Token(); err != nil {
 		accesslog.Error(err.Error(), utils.ZapRequestID(requestID))
@@ -92,7 +92,7 @@ func (h *Handler) parseArray(createMessage func() proto.Message, jsonDecoder *js
 
 // Parse 解析请求
 func (h *Handler) Parse(message proto.Message) (context.Context, error) {
-	requestID := h.Request.HeaderParameter("Request-Id")
+	requestID := h.Request.HeaderParameter(types.HeaderRequestId)
 	if err := Unmarshal(h.Request.Request.Body, message); err != nil {
 		accesslog.Error(err.Error(), utils.ZapRequestID(requestID))
 		return nil, err
@@ -102,12 +102,12 @@ func (h *Handler) Parse(message proto.Message) (context.Context, error) {
 
 // ParseHeaderContext 将http请求header中携带的用户信息提取出来
 func (h *Handler) ParseHeaderContext() context.Context {
-	requestID := h.Request.HeaderParameter("Request-Id")
+	requestID := h.Request.HeaderParameter(types.HeaderRequestId)
 	token := h.Request.HeaderParameter("Polaris-Token")
 	authToken := h.Request.HeaderParameter(types.HeaderAuthorizationKey)
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, types.StringContext("request-id"), requestID)
+	ctx = context.WithValue(ctx, types.StringContext(types.HeaderRequestId), requestID)
 	ctx = types.AppendRequestHeader(ctx, h.Request.Request.Header)
 	ctx = context.WithValue(ctx, types.ContextClientAddress, h.Request.Request.RemoteAddr)
 	if token != "" {
@@ -132,7 +132,7 @@ func (h *Handler) ParseHeaderContext() context.Context {
 
 // ParseFile 解析上传的配置文件
 func (h *Handler) ParseFile() ([]*apiconfig.ConfigFile, error) {
-	requestID := h.Request.HeaderParameter("Request-Id")
+	requestID := h.Request.HeaderParameter(types.HeaderRequestId)
 	h.Request.Request.Body = http.MaxBytesReader(h.Response, h.Request.Request.Body, valid.MaxRequestBodySize)
 
 	file, fileHeader, err := h.Request.Request.FormFile(utils.ConfigFileFormKey)
@@ -271,7 +271,7 @@ func (h *Handler) WriteHeader(polarisCode uint32, httpStatus int) {
 		h.Response.AddHeader(utils.PolarisCode, fmt.Sprintf("%d", polarisCode))
 		h.Response.AddHeader(utils.PolarisMessage, api.Code2Info(polarisCode))
 	}
-	h.Response.AddHeader("Request-Id", requestID)
+	h.Response.AddHeader(types.HeaderRequestId, requestID)
 	h.Response.WriteHeader(httpStatus)
 }
 
@@ -473,4 +473,23 @@ func UnmarshalNext(j *json.Decoder, m proto.Message) error {
 func Unmarshal(j io.Reader, m proto.Message) error {
 	var jsonpbMarshaler = jsonpb.Unmarshaler{AllowUnknownFields: true}
 	return jsonpbMarshaler.Unmarshal(j, m)
+}
+
+// WriteHeaderAndProto 返回Code和Proto
+func (h *Handler) WriteHeaderAndData(obj *types.CommonResponse) {
+	requestID := h.Request.HeaderParameter(utils.PolarisRequestID)
+	status := api.CalcCodeCommon(obj)
+
+	if status != http.StatusOK {
+		accesslog.Error(h.Request.Request.RequestURI+" "+fmt.Sprintf("%d", status), utils.ZapRequestID(requestID))
+	}
+	if code := obj.Code; code != api.ExecuteSuccess {
+		h.Response.AddHeader(utils.PolarisCode, fmt.Sprintf("%d", code))
+		h.Response.AddHeader(utils.PolarisMessage, api.Code2Info(code))
+	}
+	h.Response.AddHeader(utils.PolarisRequestID, requestID)
+
+	if err := h.Response.WriteHeaderAndJson(status, obj, restful.MIME_JSON); err != nil {
+		accesslog.Error(err.Error(), utils.ZapRequestID(requestID))
+	}
 }

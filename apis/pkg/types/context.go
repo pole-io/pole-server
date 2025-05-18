@@ -43,8 +43,8 @@ const (
 	HeaderOwnerIDKey string = "X-Owner-ID"
 	// HeaderUserRoleKey user role key
 	HeaderUserRoleKey string = "X-Pole-User-Role"
-	// HeaderRequestId request-id
-	HeaderRequestId string = "request-id"
+	// HeaderRequestId X-Request-Id
+	HeaderRequestId string = "X-Request-Id"
 	// HeaderUserAgent user agent
 	HeaderUserAgent string = "user-agent"
 

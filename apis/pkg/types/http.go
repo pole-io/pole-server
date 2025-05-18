@@ -20,7 +20,7 @@ package types
 import (
 	"net/http"
 
-	api "github.com/pole-io/pole-server/pkg/common/api/v1"
+	"github.com/golang/protobuf/ptypes/wrappers"
 )
 
 type DebugHandlerGroup struct {
@@ -40,9 +40,16 @@ type CommonResponse struct {
 	Data interface{} `json:"data"`
 }
 
+func (m *CommonResponse) GetCode() *wrappers.UInt32Value {
+	return &wrappers.UInt32Value{Value: m.Code}
+}
+
+func (m *CommonResponse) GetInfo() *wrappers.StringValue {
+	return &wrappers.StringValue{Value: m.Info}
+}
+
 func NewCommonResponse(code uint32) *CommonResponse {
 	return &CommonResponse{
 		Code: code,
-		Info: api.Code2Info(code),
 	}
 }

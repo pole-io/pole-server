@@ -83,7 +83,7 @@ func Start(configFilePath string) {
 	_, _ = fmt.Println(string(c))
 
 	// 初始化日志打印
-	err = log.Configure(cfg.Bootstrap.Logger)
+	err = log.ConfigureFile(cfg.Bootstrap.Logger)
 	if err != nil {
 		fmt.Printf("[ERROR] configure logger fail: %v\n", err)
 		return
@@ -476,7 +476,7 @@ func FinishBootstrapOrder(tx storeapi.Transaction) error {
 func genContext() context.Context {
 	ctx := context.Background()
 	reqCtx := context.WithValue(context.Background(), types.ContextAuthTokenKey, "")
-	ctx = context.WithValue(ctx, types.StringContext("request-id"), fmt.Sprintf("self-%d", time.Now().Nanosecond()))
+	ctx = context.WithValue(ctx, types.ContextRequestId, fmt.Sprintf("self-%d", time.Now().Nanosecond()))
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey,
 		authtypes.NewAcquireContext(
 			authtypes.WithOperation(authtypes.Read),

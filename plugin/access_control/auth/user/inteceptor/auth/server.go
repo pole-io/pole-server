@@ -296,7 +296,7 @@ func (svr *Server) ResetUserToken(ctx context.Context, user *apisecurity.User) *
 }
 
 // CreateGroup 创建用户组
-func (svr *Server) CreateGroup(ctx context.Context, group *apisecurity.UserGroup) *apiservice.Response {
+func (svr *Server) CreateGroups(ctx context.Context, reqs []*apisecurity.UserGroup) *apiservice.BatchWriteResponse {
 	authCtx := authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
 		authtypes.WithOperation(authtypes.Create),
@@ -305,9 +305,9 @@ func (svr *Server) CreateGroup(ctx context.Context, group *apisecurity.UserGroup
 	)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-		return api.NewResponse(authtypes.ConvertToErrCode(err))
+		return api.NewAuthBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
-	return svr.nextSvr.CreateGroup(authCtx.GetRequestContext(), group)
+	return svr.nextSvr.CreateGroups(authCtx.GetRequestContext(), reqs)
 }
 
 // UpdateGroups 更新用户组

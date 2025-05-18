@@ -27,6 +27,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 )
 
@@ -98,7 +99,7 @@ func newVirtualStream(ctx context.Context, initOptions ...initVirtualStream) *Vi
 			userAgent = agents[0]
 		}
 
-		ids := meta["request-id"]
+		ids := meta[strings.ToLower(types.HeaderRequestId)]
 		if len(ids) > 0 {
 			requestID = ids[0]
 		}

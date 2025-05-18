@@ -75,7 +75,7 @@ mkdir -p ${folder_name}
 cp ${bin_name} ${folder_name}
 mkdir -p ${folder_name}/${sqldb_res}
 cp -r ${sqldb_res}/scripts/* ${folder_name}/${sqldb_res}
-cp -r release/tool ${folder_name}/
-cp -r release/conf ${folder_name}/
+cp -r ./deploy/tool ${folder_name}/
+cp -r ./deploy/conf ${folder_name}/
 zip -r "${pkg_name}" ${folder_name}
 md5sum ${pkg_name} >"${pkg_name}.md5sum"

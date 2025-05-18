@@ -33,8 +33,12 @@ import (
 )
 
 const (
-	TickTime  = 2
-	LeaseTime = 10
+	// 调整心跳频率，从2秒一次改为10秒一次
+	TickTime = 10
+	// 增加租约时长，避免频繁切换
+	LeaseTime = 30
+	// 心跳失败容错次数
+	HeartbeatMaxFailures = 3
 )
 
 // adminStore implement adminStore interface
@@ -79,6 +83,7 @@ func (l *leaderElectionStore) CreateLeaderElection(key string) error {
 		mainStr := "insert ignore into leader_election (elect_key, leader) values (?, ?)"
 		if _, err := tx.Exec(mainStr, key, ""); err != nil {
 			log.Errorf("[Store][database] create leader election (%s), err: %s", key, err.Error())
+			return store.Error(err)
 		}
 
 		if err := tx.Commit(); err != nil {
@@ -197,141 +202,15 @@ func checkLeaderValid(mtime int64) bool {
 
 // leaderElectionStateMachine
 type leaderElectionStateMachine struct {
-	electKey         string
-	leStore          LeaderElectionStore
-	leaderFlag       int32
-	version          int64
-	ctx              context.Context
-	cancel           context.CancelFunc
-	releaseSignal    int32
-	releaseTickLimit int32
-	leader           string
+	electKey      string
+	leaderFlag    int32
+	cancel        context.CancelFunc
+	releaseSignal int32
 }
 
 // isLeader
 func isLeader(flag int32) bool {
 	return flag > 0
-}
-
-// mainLoop
-func (le *leaderElectionStateMachine) mainLoop() {
-	le.changeToFollower("")
-	log.Infof("[Store][database] leader election started (%s)", le.electKey)
-	ticker := time.NewTicker(TickTime * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			le.tick()
-		case <-le.ctx.Done():
-			log.Infof("[Store][database] leader election stopped (%s)", le.electKey)
-			le.changeToFollower("")
-			return
-		}
-	}
-}
-
-// tick
-func (le *leaderElectionStateMachine) tick() {
-	if le.checkReleaseTickLimit() {
-		log.Infof("[Store][database] abandon leader election in this tick (%s)", le.electKey)
-		return
-	}
-	shouldRelease := le.checkAndClearReleaseSignal()
-	if le.isLeader() {
-		if shouldRelease {
-			log.Infof("[Store][database] release leader election (%s)", le.electKey)
-			le.changeToFollower("")
-			le.setReleaseTickLimit()
-			return
-		}
-		success, err := le.heartbeat()
-		if err == nil && success {
-			return
-		}
-		if err != nil {
-			log.Errorf("[Store][database] leader heartbeat err (%v), change to follower state (%s)", err, le.electKey)
-		}
-		if !success && err == nil {
-			log.Infof("[Store][database] leader heartbeat abort, change to follower state (%s)", le.electKey)
-		}
-	}
-	leader, dead, err := le.checkLeaderDead()
-	if err != nil {
-		log.Errorf("[Store][database] check leader dead err (%s), stay follower state (%s)",
-			err.Error(), le.electKey)
-		return
-	}
-	if !dead {
-		// 自己之前是 leader，并且租期还没过，调整自己为 leader
-		if leader == utils.LocalHost {
-			le.changeToLeader()
-		}
-		// leader 信息出现变化，发布leader信息变化通知
-		if le.leader != leader {
-			le.changeToFollower(leader)
-		}
-		return
-	}
-	success, err := le.elect()
-	if err != nil {
-		log.Errorf("[Store][database] elect leader err (%s), stay follower state (%s)", err.Error(), le.electKey)
-		return
-	}
-	if success {
-		le.changeToLeader()
-	}
-}
-
-func (le *leaderElectionStateMachine) publishLeaderChangeEvent() {
-	_ = eventhub.Publish(eventhub.LeaderChangeEventTopic, store.LeaderChangeEvent{
-		Key:        le.electKey,
-		Leader:     le.isLeader(),
-		LeaderHost: le.leader,
-	})
-}
-
-// changeToLeader
-func (le *leaderElectionStateMachine) changeToLeader() {
-	log.Infof("[Store][database] change from follower to leader (%s)", le.electKey)
-	atomic.StoreInt32(&le.leaderFlag, 1)
-	le.leader = utils.LocalHost
-	le.publishLeaderChangeEvent()
-}
-
-// changeToFollower
-func (le *leaderElectionStateMachine) changeToFollower(leader string) {
-	log.Infof("[Store][database] change from leader(%s) to follower (%s)", leader, le.electKey)
-	atomic.StoreInt32(&le.leaderFlag, 0)
-	le.leader = leader
-	le.publishLeaderChangeEvent()
-}
-
-// checkLeaderDead
-func (le *leaderElectionStateMachine) checkLeaderDead() (string, bool, error) {
-	return le.leStore.CheckMtimeExpired(le.electKey, LeaseTime)
-}
-
-// elect
-func (le *leaderElectionStateMachine) elect() (bool, error) {
-	curVersion, err := le.leStore.GetVersion(le.electKey)
-	if err != nil {
-		return false, err
-	}
-	le.version = curVersion + 1
-	return le.leStore.CompareAndSwapVersion(le.electKey, curVersion, le.version, utils.LocalHost)
-}
-
-// heartbeat
-func (le *leaderElectionStateMachine) heartbeat() (bool, error) {
-	curVersion := le.version
-	le.version = curVersion + 1
-	return le.leStore.CompareAndSwapVersion(le.electKey, curVersion, le.version, utils.LocalHost)
-}
-
-// isLeader
-func (le *leaderElectionStateMachine) isLeader() bool {
-	return isLeader(le.leaderFlag)
 }
 
 // isLeaderAtomic
@@ -343,60 +222,26 @@ func (le *leaderElectionStateMachine) setReleaseSignal() {
 	atomic.StoreInt32(&le.releaseSignal, 1)
 }
 
-func (le *leaderElectionStateMachine) checkAndClearReleaseSignal() bool {
-	return atomic.CompareAndSwapInt32(&le.releaseSignal, 1, 0)
-}
-
-func (le *leaderElectionStateMachine) checkReleaseTickLimit() bool {
-	if le.releaseTickLimit > 0 {
-		le.releaseTickLimit = le.releaseTickLimit - 1
-		return true
-	}
-	return false
-}
-
-func (le *leaderElectionStateMachine) setReleaseTickLimit() {
-	le.releaseTickLimit = LeaseTime / TickTime * 3
-}
-
-// StartLeaderElection start the election procedure
-func (m *adminStore) StartLeaderElection(key string) error {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	_, ok := m.leMap[key]
-	if ok {
-		return nil
-	}
-
-	ctx, cancel := context.WithCancel(context.TODO())
-	le := &leaderElectionStateMachine{
-		electKey:         key,
-		leStore:          m.leStore,
-		leaderFlag:       0,
-		version:          0,
-		ctx:              ctx,
-		cancel:           cancel,
-		releaseSignal:    0,
-		releaseTickLimit: 0,
-	}
-	err := le.leStore.CreateLeaderElection(key)
-	if err != nil {
-		return store.Error(err)
-	}
-
-	m.leMap[key] = le
-	go le.mainLoop()
-	return nil
-}
-
 // StopLeaderElections stop the election procedure
 func (m *adminStore) StopLeaderElections() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
+
+	var wg sync.WaitGroup
 	for k, le := range m.leMap {
-		le.cancel()
+		wg.Add(1)
+		go func(key string, election *leaderElectionStateMachine) {
+			defer wg.Done()
+			// 调用cancel让goroutine正常退出
+			election.cancel()
+			log.Infof("[Store][database] stopped leader election for key (%s)", key)
+		}(k, le)
 		delete(m.leMap, k)
 	}
+
+	// 等待所有goroutine优雅退出
+	wg.Wait()
+	log.Info("[Store][database] all leader elections stopped")
 }
 
 // IsLeader check leader
@@ -624,8 +469,22 @@ func (m *adminStore) BatchCleanDeletedServices(timeout time.Duration, batchSize 
 func (m *adminStore) BatchCleanDeletedRules(rule string, timeout time.Duration, batchSize uint32) (uint32, error) {
 	log.Infof("[Store][database] batch clean soft deleted %s(%d)", rule, batchSize)
 	var rows int64
+
+	// 验证表名，防止SQL注入
+	validTables := map[string]bool{
+		"routing_config":        true,
+		"ratelimit_config":      true,
+		"circuitbreaker_config": true,
+		"faultdetect_config":    true,
+	}
+
+	if !validTables[rule] {
+		log.Errorf("[Store][database] invalid table name: %s", rule)
+		return 0, fmt.Errorf("invalid table name: %s", rule)
+	}
+
 	err := m.master.processWithTransaction("batchCleanDeleted"+rule, func(tx *BaseTx) error {
-		mainStr := "delete from " + rule + " where flag = 1 and mtime <= FROM_UNIXTIME(UNIX_TIMESTAMP(SYSDATE()) - ?)  limit ?"
+		mainStr := "delete from " + rule + " where flag = 1 and mtime <= FROM_UNIXTIME(UNIX_TIMESTAMP(SYSDATE()) - ?) limit ?"
 		result, err := tx.Exec(mainStr, int32(timeout.Seconds()), batchSize)
 		if err != nil {
 			log.Errorf("[Store][database] batch clean soft deleted %s(%d), err: %s", rule, batchSize, err.Error())
@@ -742,4 +601,348 @@ func (m *adminStore) BatchCleanDeletedServiceContracts(timeout time.Duration, ba
 		return nil
 	})
 	return uint32(affectRows), err
+}
+
+// CachedLeaderElection 带缓存的领导选举实现
+type CachedLeaderElection struct {
+	electKey         string
+	leStore          LeaderElectionStore
+	leaderFlag       int32
+	version          int64
+	ctx              context.Context
+	cancel           context.CancelFunc
+	releaseSignal    int32
+	releaseTickLimit int32
+	leader           string
+	mutex            sync.RWMutex
+
+	// 缓存相关
+	lastHeartbeatTime time.Time     // 上次心跳时间
+	heartbeatFailures int32         // 心跳失败次数计数
+	cacheExpireTime   time.Duration // 缓存过期时间
+}
+
+// NewCachedLeaderElection 创建带缓存的领导选举实例
+func NewCachedLeaderElection(key string, leStore LeaderElectionStore) *CachedLeaderElection {
+	ctx, cancel := context.WithCancel(context.TODO())
+	return &CachedLeaderElection{
+		electKey:          key,
+		leStore:           leStore,
+		leaderFlag:        0,
+		version:           0,
+		ctx:               ctx,
+		cancel:            cancel,
+		releaseSignal:     0,
+		releaseTickLimit:  0,
+		lastHeartbeatTime: time.Time{},
+		heartbeatFailures: 0,
+		cacheExpireTime:   time.Duration(LeaseTime/2) * time.Second,
+	}
+}
+
+// mainLoop 带缓存的领导选举主循环
+func (cle *CachedLeaderElection) mainLoop() {
+	cle.changeToFollower("")
+	log.Infof("[Store][database] cached leader election started (%s)", cle.electKey)
+	ticker := time.NewTicker(TickTime * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			cle.tick()
+		case <-cle.ctx.Done():
+			log.Infof("[Store][database] cached leader election stopped (%s)", cle.electKey)
+			cle.changeToFollower("")
+			return
+		}
+	}
+}
+
+// tick 带缓存的心跳检查
+func (cle *CachedLeaderElection) tick() {
+	if cle.checkReleaseTickLimit() {
+		log.Infof("[Store][database] abandon leader election in this tick (%s)", cle.electKey)
+		return
+	}
+	shouldRelease := cle.checkAndClearReleaseSignal()
+
+	cle.mutex.RLock()
+	isLeader := cle.isLeader()
+	cle.mutex.RUnlock()
+
+	// 如果是leader，处理leader相关逻辑
+	if isLeader {
+		if shouldRelease {
+			log.Infof("[Store][database] release leader election (%s)", cle.electKey)
+			cle.changeToFollower("")
+			cle.setReleaseTickLimit()
+			return
+		}
+
+		// 检查是否需要执行心跳
+		now := time.Now()
+		cle.mutex.RLock()
+		timeSinceLastHeartbeat := now.Sub(cle.lastHeartbeatTime)
+		cle.mutex.RUnlock()
+
+		// 如果距离上次心跳时间未超过缓存过期时间的一半，直接返回
+		// 这样可以大幅减少数据库心跳频率
+		if timeSinceLastHeartbeat < cle.cacheExpireTime/2 {
+			return
+		}
+
+		// 执行心跳
+		success, err := cle.heartbeat()
+		if err == nil && success {
+			cle.mutex.Lock()
+			cle.lastHeartbeatTime = now
+			cle.heartbeatFailures = 0
+			cle.mutex.Unlock()
+			return
+		}
+
+		// 心跳失败
+		cle.mutex.Lock()
+		cle.heartbeatFailures++
+		failures := cle.heartbeatFailures
+		cle.mutex.Unlock()
+
+		// 只有连续失败超过阈值才放弃leader身份
+		if failures > HeartbeatMaxFailures {
+			if err != nil {
+				log.Errorf("[Store][database] leader heartbeat err (%v), change to follower state (%s)",
+					err, cle.electKey)
+			} else {
+				log.Infof("[Store][database] leader heartbeat abort, change to follower state (%s)",
+					cle.electKey)
+			}
+			cle.changeToFollower("")
+		} else {
+			log.Warnf("[Store][database] leader heartbeat failed (attempt %d/%d) for (%s)",
+				failures, HeartbeatMaxFailures, cle.electKey)
+		}
+		return
+	}
+
+	// 如果不是leader，检查当前leader是否存活
+	leader, dead, err := cle.checkLeaderDead()
+	if err != nil {
+		log.Errorf("[Store][database] check leader dead err (%s), stay follower state (%s)",
+			err.Error(), cle.electKey)
+		return
+	}
+
+	if !dead {
+		// 有活跃的leader
+		if leader == utils.LocalHost {
+			cle.changeToLeader()
+			cle.mutex.Lock()
+			cle.lastHeartbeatTime = time.Now()
+			cle.mutex.Unlock()
+		} else if leader != cle.leader {
+			cle.changeToFollower(leader)
+		}
+		return
+	}
+
+	// 没有活跃的leader，尝试竞选
+	success, err := cle.elect()
+	if err != nil {
+		log.Errorf("[Store][database] elect leader err (%s), stay follower state (%s)",
+			err.Error(), cle.electKey)
+		return
+	}
+
+	if success {
+		cle.changeToLeader()
+		cle.mutex.Lock()
+		cle.lastHeartbeatTime = time.Now()
+		cle.mutex.Unlock()
+	}
+}
+
+// isLeader
+func (cle *CachedLeaderElection) isLeader() bool {
+	return isLeader(cle.leaderFlag)
+}
+
+// checkReleaseTickLimit
+func (cle *CachedLeaderElection) checkReleaseTickLimit() bool {
+	if cle.releaseTickLimit > 0 {
+		cle.releaseTickLimit = cle.releaseTickLimit - 1
+		return true
+	}
+	return false
+}
+
+// checkAndClearReleaseSignal
+func (cle *CachedLeaderElection) checkAndClearReleaseSignal() bool {
+	return atomic.CompareAndSwapInt32(&cle.releaseSignal, 1, 0)
+}
+
+// setReleaseSignal
+func (cle *CachedLeaderElection) setReleaseSignal() {
+	atomic.StoreInt32(&cle.releaseSignal, 1)
+}
+
+// setReleaseTickLimit
+func (cle *CachedLeaderElection) setReleaseTickLimit() {
+	cle.releaseTickLimit = LeaseTime / TickTime * 3
+}
+
+// elect 竞选leader
+func (cle *CachedLeaderElection) elect() (bool, error) {
+	curVersion, err := cle.leStore.GetVersion(cle.electKey)
+	if err != nil {
+		return false, err
+	}
+	cle.version = curVersion + 1
+	return cle.leStore.CompareAndSwapVersion(cle.electKey, curVersion, cle.version, utils.LocalHost)
+}
+
+// heartbeat 发送心跳
+func (cle *CachedLeaderElection) heartbeat() (bool, error) {
+	curVersion := cle.version
+	cle.version = curVersion + 1
+	return cle.leStore.CompareAndSwapVersion(cle.electKey, curVersion, cle.version, utils.LocalHost)
+}
+
+// checkLeaderDead 检查当前leader是否已经失效
+func (cle *CachedLeaderElection) checkLeaderDead() (string, bool, error) {
+	return cle.leStore.CheckMtimeExpired(cle.electKey, LeaseTime)
+}
+
+// changeToLeader 转变为leader角色
+func (cle *CachedLeaderElection) changeToLeader() {
+	log.Infof("[Store][database] cached election: change from follower to leader (%s)", cle.electKey)
+	atomic.StoreInt32(&cle.leaderFlag, 1)
+	cle.leader = utils.LocalHost
+	cle.publishLeaderChangeEvent()
+}
+
+// changeToFollower 转变为follower角色
+func (cle *CachedLeaderElection) changeToFollower(leader string) {
+	log.Infof("[Store][database] cached election: change from leader(%s) to follower for election key (%s)",
+		cle.leader, cle.electKey)
+	atomic.StoreInt32(&cle.leaderFlag, 0)
+	cle.leader = leader
+	cle.publishLeaderChangeEvent()
+}
+
+// publishLeaderChangeEvent 发布leader变更事件
+func (cle *CachedLeaderElection) publishLeaderChangeEvent() {
+	_ = eventhub.Publish(eventhub.LeaderChangeEventTopic, store.LeaderChangeEvent{
+		Key:        cle.electKey,
+		Leader:     cle.isLeader(),
+		LeaderHost: cle.leader,
+	})
+}
+
+// StartLeaderElection 启动带缓存的领导选举
+func (m *adminStore) StartLeaderElection(key string) error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	_, ok := m.leMap[key]
+	if ok {
+		return nil
+	}
+
+	// 创建带缓存的领导选举实例
+	cle := NewCachedLeaderElection(key, m.leStore)
+
+	// 先创建选举记录
+	err := m.leStore.CreateLeaderElection(key)
+	if err != nil {
+		return store.Error(err)
+	}
+
+	// 启动选举循环
+	go cle.mainLoop()
+
+	// 保存到选举映射中
+	m.leMap[key] = &leaderElectionStateMachine{
+		electKey: key,
+		cancel:   cle.cancel,
+	}
+
+	log.Infof("[Store][database] started cached leader election for key (%s)", key)
+	return nil
+}
+
+// BatchCleanWithChunks 使用分块处理方式进行批量清理，减少MySQL压力
+func (m *adminStore) BatchCleanWithChunks(tableName string, timeout time.Duration, batchSize uint32, chunkSize uint32) (uint32, error) {
+	if chunkSize == 0 {
+		chunkSize = 100 // 默认每次处理100条记录
+	}
+
+	if chunkSize > batchSize {
+		chunkSize = batchSize
+	}
+
+	log.Infof("[Store][database] batch clean with chunks for %s (batch:%d, chunk:%d)",
+		tableName, batchSize, chunkSize)
+
+	// 验证表名
+	validTables := map[string]bool{
+		"instance":              true,
+		"service":               true,
+		"client":                true,
+		"config_file":           true,
+		"service_contract":      true,
+		"routing_config":        true,
+		"ratelimit_config":      true,
+		"circuitbreaker_config": true,
+		"faultdetect_config":    true,
+	}
+
+	if !validTables[tableName] {
+		return 0, fmt.Errorf("invalid table name: %s", tableName)
+	}
+
+	var totalCleaned uint32
+	var remainingToClean uint32 = batchSize
+
+	for remainingToClean > 0 {
+		currentChunkSize := chunkSize
+		if remainingToClean < chunkSize {
+			currentChunkSize = remainingToClean
+		}
+
+		// 根据表名调用相应的清理方法
+		var cleanedCount uint32
+		var err error
+
+		switch tableName {
+		case "instance":
+			cleanedCount, err = m.BatchCleanDeletedInstances(timeout, currentChunkSize)
+		case "service":
+			cleanedCount, err = m.BatchCleanDeletedServices(timeout, currentChunkSize)
+		case "client":
+			cleanedCount, err = m.BatchCleanDeletedClients(timeout, currentChunkSize)
+		case "config_file":
+			cleanedCount, err = m.BatchCleanDeletedConfigFiles(timeout, currentChunkSize)
+		case "service_contract":
+			cleanedCount, err = m.BatchCleanDeletedServiceContracts(timeout, currentChunkSize)
+		case "routing_config", "ratelimit_config", "circuitbreaker_config", "faultdetect_config":
+			cleanedCount, err = m.BatchCleanDeletedRules(tableName, timeout, currentChunkSize)
+		}
+
+		if err != nil {
+			log.Errorf("[Store][database] batch clean with chunks for %s error: %v", tableName, err)
+			return totalCleaned, err
+		}
+
+		totalCleaned += cleanedCount
+		remainingToClean -= currentChunkSize
+
+		// 如果本次没有清理到任何记录，说明已经没有符合条件的记录了，退出循环
+		if cleanedCount == 0 {
+			break
+		}
+
+		// 让出CPU执行权，避免长时间占用数据库连接
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	return totalCleaned, nil
 }

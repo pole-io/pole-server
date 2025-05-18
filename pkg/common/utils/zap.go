@@ -3,17 +3,18 @@ package utils
 import (
 	"context"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"go.uber.org/zap"
 )
 
-// ZapRequestID 生成Request-ID的日志描述
+// ZapRequestID 生成X-Request-Id的日志描述
 func ZapRequestID(id string) zap.Field {
-	return zap.String("request-id", id)
+	return zap.String(types.PoleRequestID, id)
 }
 
-// RequestID 从ctx中获取Request-ID
+// RequestID 从ctx中获取X-Request-Id
 func RequestID(ctx context.Context) zap.Field {
-	return zap.String("request-id", ParseRequestID(ctx))
+	return zap.String(types.PoleRequestID, ParseRequestID(ctx))
 }
 
 // ZapPlatformID 生成Platform-ID的日志描述

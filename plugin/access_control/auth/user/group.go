@@ -46,6 +46,16 @@ type (
 	UserGroup2Api func(user *authtypes.UserGroup) *apisecurity.UserGroup
 )
 
+// CreateGroups 批量创建用户组
+func (svr *Server) CreateGroups(ctx context.Context, reqs []*apisecurity.UserGroup) *apiservice.BatchWriteResponse {
+	resp := api.NewAuthBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for index := range reqs {
+		ret := svr.CreateGroup(ctx, reqs[index])
+		api.Collect(resp, ret)
+	}
+	return resp
+}
+
 // CreateGroup create a group
 func (svr *Server) CreateGroup(ctx context.Context, req *apisecurity.UserGroup) *apiservice.Response {
 	ownerID := utils.ParseOwnerID(ctx)
@@ -440,6 +450,7 @@ func (svr *Server) createGroupModel(req *apisecurity.UserGroup) (group *authtype
 			Comment:     req.GetComment().GetValue(),
 			CreateTime:  time.Now(),
 			ModifyTime:  time.Now(),
+			Metadata:    req.GetMetadata(),
 		},
 		UserIds: ids,
 	}
@@ -500,6 +511,7 @@ func (svr *Server) userGroupDetail2Api(group *authtypes.UserGroupDetail) *apisec
 		Relation: &apisecurity.UserGroupRelation{
 			Users: users,
 		},
+		Metadata:  group.Metadata,
 		UserCount: protobuf.NewUInt32Value(uint32(len(users))),
 	}
 

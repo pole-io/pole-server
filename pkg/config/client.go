@@ -331,12 +331,14 @@ func (s *Server) PublishConfigFileFromClient(ctx context.Context,
 func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]string) *types.CommonResponse {
 	namespace := filter["namespace"]
 	group := filter["group"]
-	fileName := filter["file_name"]
+	filename := filter["file_name"]
 
-	key := utils.GenFileId(namespace, group, fileName)
+	key := utils.GenFileId(namespace, group, filename)
 	clientIds, _ := s.watchCenter.watchers.Load(key)
 	if clientIds == nil {
-		return types.NewCommonResponse(uint32(apimodel.Code_NotFoundResource))
+		rsp := types.NewCommonResponse(uint32(apimodel.Code_ExecuteSuccess))
+		rsp.Data = &conftypes.ConfigSubscribers{}
+		return rsp
 	}
 
 	versionClients := map[uint64][]*conftypes.Subscriber{}
@@ -349,11 +351,14 @@ func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]str
 		if _, ok := versionClients[curVer]; !ok {
 			versionClients[curVer] = []*conftypes.Subscriber{}
 		}
-
-		watchCtx.ClientLabels()
-
 		versionClients[curVer] = append(versionClients[curVer], &conftypes.Subscriber{
-			ID:         watchCtx.ClientID(),
+			ID: watchCtx.ClientID(),
+			ReleaseName: s.fileCache.GetRelease(conftypes.ConfigFileReleaseKey{
+				Namespace: namespace,
+				Group:     group,
+				Name:      filename,
+				Version:   uint64(curVer),
+			}).Name,
 			Host:       watchCtx.ClientLabels()[types.ClientLabel_Host],
 			Version:    watchCtx.ClientLabels()[types.ClientLabel_Version],
 			ClientType: watchCtx.ClientLabels()[types.ClientLabel_Language],
@@ -365,13 +370,13 @@ func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]str
 		Key: conftypes.ConfigFileKey{
 			Namespace: namespace,
 			Group:     group,
-			Name:      fileName,
+			Name:      filename,
 		},
 		VersionClients: func() []*conftypes.VersionClient {
 			ret := make([]*conftypes.VersionClient, 0, len(versionClients))
 			for ver, clients := range versionClients {
 				ret = append(ret, &conftypes.VersionClient{
-					Versoin:     ver,
+					Version:     ver,
 					Subscribers: clients,
 				})
 			}
@@ -422,6 +427,12 @@ func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]str
 				return conftypes.ReleaseTypeNormal
 			}(),
 			Version: curVer,
+			ReleaseName: s.fileCache.GetRelease(conftypes.ConfigFileReleaseKey{
+				Namespace: ns,
+				Group:     group,
+				Name:      filename,
+				Version:   uint64(curVer),
+			}).Name,
 		})
 	}
 

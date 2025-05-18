@@ -35,6 +35,7 @@ import (
 	"google.golang.org/grpc/grpclog"
 
 	"github.com/pole-io/pole-server/pkg/common/syncs/timewheel"
+	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
 // none is used to disable logging output as well as to disable stack tracing.
@@ -279,6 +280,20 @@ func logRotationSyncCallback(tw *timewheel.TimeWheel, rotationMaxDurationForHour
 		}
 		logRotationSyncCallback(tw, rotationMaxDurationForHour, log)
 	})
+}
+
+// ConfigureFile .
+// You typically call this once at process startup.
+// Configure Once this call returns, the logging system is ready to accept data.
+func ConfigureFile(f string) error {
+	optionsMap := map[string]*Options{}
+	v, err := utils.LoadYAML(f, &optionsMap)
+	if err != nil {
+		return fmt.Errorf("parse file %s error: %w", f, err)
+	}
+
+	optionsMap = *v
+	return Configure(optionsMap)
 }
 
 // Configure .

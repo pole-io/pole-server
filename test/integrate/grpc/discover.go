@@ -21,12 +21,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc/metadata"
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -34,7 +36,7 @@ import (
 func (c *Client) Discover(drt apiservice.DiscoverRequest_DiscoverRequestType, service *apiservice.Service, hook func(resp *apiservice.DiscoverResponse)) error {
 	fmt.Printf("\ndiscover\n")
 
-	md := metadata.Pairs("request-id", utils.NewUUID())
+	md := metadata.Pairs(strings.ToLower(types.HeaderRequestId), utils.NewUUID())
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
@@ -76,7 +78,7 @@ func (c *Client) Discover(drt apiservice.DiscoverRequest_DiscoverRequestType, se
 func (c *Client) DiscoverRequest(request *apiservice.DiscoverRequest) (*apiservice.DiscoverResponse, error) {
 	fmt.Printf("\ndiscover\n")
 
-	md := metadata.Pairs("request-id", utils.NewUUID())
+	md := metadata.Pairs(strings.ToLower(types.HeaderRequestId), utils.NewUUID())
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 
 	ctx, cancel := context.WithTimeout(ctx, time.Second)

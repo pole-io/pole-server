@@ -1,0 +1,159 @@
+# Log scope name
+# Configuration center related logs
+config:
+  # Log file location
+  rotateOutputPath: logs/runtime/polaris-config.log
+  # Special records of error log files at ERROR level
+  errorRotateOutputPath: logs/runtime/polaris-config-error.log
+  # The maximum size of a single log file, 100 default, the unit is MB
+  rotationMaxSize: 100
+  # How many log files are saved, default 30
+  rotationMaxBackups: 30
+  # The maximum preservation days of a single log file, default 7
+  rotationMaxAge: 7
+  # Log output level，debug/info/warn/error
+  outputLevel: info
+  # Open the log file compression
+  compress: true
+  # onlyContent just print log content, not print log timestamp
+  # onlyContent: false
+# Resource Auth, User Management Log
+auth:
+  rotateOutputPath: logs/runtime/polaris-auth.log
+  errorRotateOutputPath: logs/runtime/polaris-auth-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true
+# Storage layer log
+store:
+  rotateOutputPath: logs/runtime/polaris-store.log
+  errorRotateOutputPath: logs/runtime/polaris-store-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true
+# Server cache log log
+cache:
+  rotateOutputPath: logs/runtime/polaris-cache.log
+  errorRotateOutputPath: logs/runtime/polaris-cache-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true
+# Service discovery and governance rules related logs
+naming:
+  rotateOutputPath: logs/runtime/polaris-naming.log
+  errorRotateOutputPath: logs/runtime/polaris-naming-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true
+# Service discovery institutional health check log
+healthcheck:
+  rotateOutputPath: logs/runtime/polaris-healthcheck.log
+  errorRotateOutputPath: logs/runtime/polaris-healthcheck-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true
+# XDS protocol layer plug -in log
+xdsv3:
+  rotateOutputPath: logs/runtime/polaris-xdsv3.log
+  errorRotateOutputPath: logs/runtime/polaris-xdsv3-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true
+# Eureka protocol layer plugin log
+eureka:
+  rotateOutputPath: logs/runtime/polaris-eureka.log
+  errorRotateOutputPath: logs/runtime/polaris-eureka-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true
+# Nacos protocol layer plug -in log
+nacos-apiserver:
+  rotateOutputPath: logs/runtime/nacos-apiserver.log
+  errorRotateOutputPath: logs/runtime/nacos-apiserver-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true
+# APISERVER common log, record inbound request and outbound response
+apiserver:
+  rotateOutputPath: logs/runtime/polaris-apiserver.log
+  errorRotateOutputPath: logs/runtime/polaris-apiserver-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true
+default:
+  rotateOutputPath: logs/runtime/polaris-default.log
+  errorRotateOutputPath: logs/runtime/polaris-default-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true
+# server plugin logs
+token-bucket:
+  rotateOutputPath: logs/runtime/polaris-ratelimit.log
+  errorRotateOutputPath: logs/runtime/polaris-ratelimit-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true
+discoverstat:
+  rotateOutputPath: logs/statis/polaris-discoverstat.log
+  errorRotateOutputPath: logs/statis/polaris-discoverstat-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true
+  onlyContent: true
+local:
+  rotateOutputPath: logs/statis/polaris-statis.log
+  errorRotateOutputPath: logs/statis/polaris-statis-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true
+HistoryLogger:
+  rotateOutputPath: logs/operation/polaris-history.log
+  errorRotateOutputPath: logs/operation/polaris-history-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 10
+  rotationMaxAge: 7
+  rotationMaxDurationForHour: 24
+  outputLevel: info
+  onlyContent: true
+discoverEventLocal:
+  rotateOutputPath: logs/event/polaris-discoverevent.log
+  errorRotateOutputPath: logs/event/polaris-discoverevent-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  onlyContent: true
+cmdb:
+  rotateOutputPath: logs/runtime/polaris-cmdb.log
+  errorRotateOutputPath: logs/runtime/polaris-cmdb-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true

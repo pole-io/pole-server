@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -219,13 +218,11 @@ func (svr *Server) GetPolicies(ctx context.Context, filters map[string]string) *
 	resp.Amount = protobuf.NewUInt32Value(total)
 	resp.Size = protobuf.NewUInt32Value(uint32(len(strategies)))
 
-	if strings.Compare(filters["show_detail"], "true") == 0 {
-		log.Info("[Auth][Strategy] fill strategy detail", utils.RequestID(ctx))
-		resp.AuthStrategies = enhancedAuthStrategy2Api(ctx, strategies, svr.authStrategyFull2Api)
-	} else {
+	if strings.Compare(filters["berif"], "true") == 0 {
 		resp.AuthStrategies = enhancedAuthStrategy2Api(ctx, strategies, svr.authStrategy2Api)
+	} else {
+		resp.AuthStrategies = enhancedAuthStrategy2Api(ctx, strategies, svr.authStrategyFull2Api)
 	}
-
 	return resp
 }
 
@@ -285,7 +282,7 @@ func (svr *Server) GetPolicy(ctx context.Context, req *apisecurity.AuthStrategy)
 		return api.NewAuthStrategyResponse(apimodel.Code_NotFoundAuthStrategyRule, req)
 	}
 
-	var canView bool = false
+	var canView bool = isOwner
 	// 判断是否在该策略所属的成员列表中，如果自己在某个用户组，而该用户组又在这个策略的成员中，则也是可以查看的
 	if !canView {
 		curUser := &apisecurity.User{
@@ -420,28 +417,17 @@ func (svr *Server) authStrategyFull2Api(ctx context.Context, data *authtypes.Str
 		return nil
 	}
 
-	users := make([]*wrappers.StringValue, 0, len(data.Principals))
-	groups := make([]*wrappers.StringValue, 0, len(data.Principals))
-	for index := range data.Principals {
-		principal := data.Principals[index]
-		if principal.PrincipalType == authtypes.PrincipalUser {
-			users = append(users, protobuf.NewStringValue(principal.PrincipalID))
-		} else {
-			groups = append(groups, protobuf.NewStringValue(principal.PrincipalID))
-		}
-	}
-
 	// note: 不包括token，token比较特殊
 	out := &apisecurity.AuthStrategy{
 		Id:              protobuf.NewStringValue(data.ID),
 		Name:            protobuf.NewStringValue(data.Name),
 		Comment:         protobuf.NewStringValue(data.Comment),
-		Ctime:           protobuf.NewStringValue(commontime.Time2String(data.CreateTime)),
-		Mtime:           protobuf.NewStringValue(commontime.Time2String(data.ModifyTime)),
 		Action:          apisecurity.AuthAction(apisecurity.AuthAction_value[data.Action]),
 		DefaultStrategy: protobuf.NewBoolValue(data.Default),
 		Functions:       data.CalleeMethods,
 		Metadata:        data.Metadata,
+		Ctime:           protobuf.NewStringValue(commontime.Time2String(data.CreateTime)),
+		Mtime:           protobuf.NewStringValue(commontime.Time2String(data.ModifyTime)),
 	}
 
 	svr.enrichPrincipalInfo(out, data)

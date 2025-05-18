@@ -342,6 +342,7 @@ func (s *Server) GetConfigFileReleaseVersions(ctx context.Context,
 		FileName:   searchFilters["file_name"],
 		OnlyActive: false,
 		NoPage:     true,
+		IncludeGray: true,
 	}
 	return s.handleDescribeConfigFileReleases(ctx, args)
 }
@@ -368,9 +369,7 @@ func (s *Server) GetConfigFileReleases(ctx context.Context,
 	return s.handleDescribeConfigFileReleases(ctx, args)
 }
 
-func (s *Server) handleDescribeConfigFileReleases(ctx context.Context,
-	args cacheapi.ConfigReleaseArgs) *apiconfig.ConfigBatchQueryResponse {
-
+func (s *Server) handleDescribeConfigFileReleases(ctx context.Context, args cacheapi.ConfigReleaseArgs) *apiconfig.ConfigBatchQueryResponse {
 	total, simpleReleases, err := s.fileCache.QueryReleases(&args)
 	if err != nil {
 		return api.NewConfigBatchQueryResponseWithInfo(apimodel.Code_ExecuteException, err.Error())

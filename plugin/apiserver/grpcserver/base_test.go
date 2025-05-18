@@ -75,7 +75,7 @@ func TestConvertContext(t *testing.T) {
 			args: args{
 				ctx: mockGrpcContext(map[string]string{
 					"internal-key-1": "internal-value-1",
-					"request-id":     "request-id",
+					"x-request-id":   "x-request-id",
 					"user-agent":     "user-agent",
 				}),
 			},
@@ -84,7 +84,7 @@ func TestConvertContext(t *testing.T) {
 
 				testVal := map[string]string{
 					"internal-key-1": "internal-value-1",
-					"request-id":     "request-id",
+					"x-request-id":   "x-request-id",
 					"user-agent":     "user-agent",
 				}
 				for k := range testVal {
