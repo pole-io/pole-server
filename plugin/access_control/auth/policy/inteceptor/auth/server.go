@@ -30,6 +30,7 @@ import (
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
+	v1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -222,13 +223,40 @@ func (svr *Server) GetPrincipalResources(ctx context.Context, query map[string]s
 		authcommon.WithModule(authcommon.AuthModule),
 		authcommon.WithMethod(authcommon.DescribePrincipalResources),
 	)
-
 	checker := svr.GetAuthChecker()
-
 	if _, err := checker.CheckConsolePermission(authCtx); err != nil {
 		return api.NewResponseWithMsg(authcommon.ConvertToErrCode(err), err.Error())
 	}
 	return svr.nextSvr.GetPrincipalResources(authCtx.GetRequestContext(), query)
+}
+
+func (svr *Server) GetResourcePrincipals(ctx context.Context, query map[string]string) *apiservice.Response {
+	authCtx := authcommon.NewAcquireContext(
+		authcommon.WithRequestContext(ctx),
+		authcommon.WithOperation(authcommon.Read),
+		authcommon.WithModule(authcommon.AuthModule),
+		authcommon.WithMethod(authcommon.DescribePrincipalResources),
+	)
+	checker := svr.GetAuthChecker()
+	if _, err := checker.CheckConsolePermission(authCtx); err != nil {
+		return api.NewResponseWithMsg(authcommon.ConvertToErrCode(err), err.Error())
+	}
+	return svr.nextSvr.GetResourcePrincipals(ctx, query)
+}
+
+// AuthorizeResources 授权资源
+func (svr *Server) AuthorizeResources(ctx context.Context, reqs []*v1.AuthorizeResources) *apiservice.Response {
+	authCtx := authcommon.NewAcquireContext(
+		authcommon.WithRequestContext(ctx),
+		authcommon.WithOperation(authcommon.Modify),
+		authcommon.WithModule(authcommon.AuthModule),
+		authcommon.WithMethod(authcommon.AuthorizeResources),
+	)
+	checker := svr.GetAuthChecker()
+	if _, err := checker.CheckConsolePermission(authCtx); err != nil {
+		return api.NewResponseWithMsg(authcommon.ConvertToErrCode(err), err.Error())
+	}
+	return svr.nextSvr.AuthorizeResources(ctx, reqs)
 }
 
 // GetAuthChecker 获取鉴权检查器

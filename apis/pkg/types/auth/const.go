@@ -237,6 +237,7 @@ const (
 	DescribeAuthPolicies       ServerFunctionName = "DescribeAuthPolicies"
 	DescribeAuthPolicyDetail   ServerFunctionName = "DescribeAuthPolicyDetail"
 	DescribePrincipalResources ServerFunctionName = "DescribePrincipalResources"
+	AuthorizeResources         ServerFunctionName = "AuthorizeResources"
 
 	// 角色
 	CreateAuthRoles        ServerFunctionName = "CreateAuthRoles"

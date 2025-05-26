@@ -72,7 +72,7 @@ func mainUserPrincipalPolicy(p authtypes.Principal) *authtypes.StrategyDetail {
 	for _, v := range apisecurity.ResourceType_value {
 		resources = append(resources, authtypes.StrategyResource{
 			StrategyID: ruleId,
-			ResType:    v,
+			ResType:    apisecurity.ResourceType(v),
 			ResID:      "*",
 		})
 	}
@@ -102,7 +102,7 @@ func defaultReadWritePolicy(p authtypes.Principal) *authtypes.StrategyDetail {
 	for _, v := range apisecurity.ResourceType_value {
 		resources = append(resources, authtypes.StrategyResource{
 			StrategyID: ruleId,
-			ResType:    v,
+			ResType:    apisecurity.ResourceType(v),
 			ResID:      "*",
 		})
 	}
@@ -134,7 +134,7 @@ func defaultReadOnlyPolicy(p authtypes.Principal) *authtypes.StrategyDetail {
 	for _, v := range apisecurity.ResourceType_value {
 		resources = append(resources, authtypes.StrategyResource{
 			StrategyID: ruleId,
-			ResType:    v,
+			ResType:    apisecurity.ResourceType(v),
 			ResID:      "*",
 		})
 	}
@@ -178,7 +178,7 @@ func defaultPrincipalPolicy(p authtypes.Principal) *authtypes.StrategyDetail {
 	if p.PrincipalType == authtypes.PrincipalUser {
 		resources = append(resources, authtypes.StrategyResource{
 			StrategyID: ruleId,
-			ResType:    int32(apisecurity.ResourceType_Users),
+			ResType:    apisecurity.ResourceType_Users,
 			ResID:      p.PrincipalID,
 		})
 		calleeMethods = []string{

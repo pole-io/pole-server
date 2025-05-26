@@ -29,6 +29,7 @@ import (
 	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -100,7 +101,7 @@ func Test_serialSetInsDbStatus(t *testing.T) {
 	t.Run("turn_unhealth", func(t *testing.T) {
 		testFunc(t, false, func(t *testing.T, saveIns *svctypes.Instance) {
 			metadata := saveIns.Proto.GetMetadata()
-			_, exist := metadata[svctypes.MetadataInstanceLastHeartbeatTime]
+			_, exist := metadata[types.MetadataInstanceLastHeartbeatTime]
 			assert.True(t, exist, "internal-lastheartbeat must exist : %s", utils.MustJson(metadata))
 		})
 	})
@@ -108,7 +109,7 @@ func Test_serialSetInsDbStatus(t *testing.T) {
 	t.Run("turn_health", func(t *testing.T) {
 		testFunc(t, true, func(t *testing.T, saveIns *svctypes.Instance) {
 			metadata := saveIns.Proto.GetMetadata()
-			_, exist := metadata[svctypes.MetadataInstanceLastHeartbeatTime]
+			_, exist := metadata[types.MetadataInstanceLastHeartbeatTime]
 			assert.False(t, exist, "internal-lastheartbeat must not exist : %s", utils.MustJson(metadata))
 		})
 	})

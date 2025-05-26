@@ -28,6 +28,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	"github.com/pole-io/pole-server/apis/store"
@@ -599,7 +600,7 @@ func serialSetInsDbStatus(svr *Server, ins *apiservice.Instance, healthStatus bo
 			{
 				InstanceID: id,
 				Revision:   utils.NewUUID(),
-				Keys:       []string{svctypes.MetadataInstanceLastHeartbeatTime},
+				Keys:       []string{types.MetadataInstanceLastHeartbeatTime},
 			},
 		}); err != nil {
 			log.Errorf("[Batch] batch healthy check instances remove metadata err: %s", err.Error())
@@ -611,7 +612,7 @@ func serialSetInsDbStatus(svr *Server, ins *apiservice.Instance, healthStatus bo
 				InstanceID: id,
 				Revision:   utils.NewUUID(),
 				Metadata: map[string]string{
-					svctypes.MetadataInstanceLastHeartbeatTime: strconv.FormatInt(lastBeatTime, 10),
+					types.MetadataInstanceLastHeartbeatTime: strconv.FormatInt(lastBeatTime, 10),
 				},
 			},
 		}); err != nil {

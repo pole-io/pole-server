@@ -26,6 +26,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/polarismesh/specification/source/go/api/v1/security"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -303,7 +304,7 @@ func (s *strategyStore) addPolicyResources(tx *BaseTx, id string, resources []au
 	for i := range resources {
 		resource := resources[i]
 		values = append(values, "(?,?,?)")
-		args = append(args, resource.StrategyID, resource.ResType, resource.ResID)
+		args = append(args, id, resource.ResType.String(), resource.ResID)
 	}
 
 	if len(values) == 0 {
@@ -329,7 +330,7 @@ func (s *strategyStore) deletePolicyResources(tx *BaseTx, id string,
 		resource := resources[i]
 		saveResSql := "DELETE FROM auth_strategy_resource WHERE strategy_id = ? AND res_id = ? AND res_type = ?"
 		if _, err := tx.Exec(
-			saveResSql, []interface{}{resource.StrategyID, resource.ResID, resource.ResType}...,
+			saveResSql, []interface{}{resource.StrategyID, resource.ResID, resource.ResType.String()}...,
 		); err != nil {
 			return err
 		}
@@ -351,7 +352,7 @@ func (s *strategyStore) LooseAddStrategyResources(resources []authcommon.Strateg
 
 		saveResSql := "REPLACE INTO auth_strategy_resource(strategy_id, res_type, res_id) VALUES (?,?,?)"
 		args := make([]interface{}, 0)
-		args = append(args, resource.StrategyID, resource.ResType, resource.ResID)
+		args = append(args, resource.StrategyID, resource.ResType.String(), resource.ResID)
 
 		if _, err = tx.Exec(saveResSql, args...); err != nil {
 			err = store.Error(err)
@@ -500,7 +501,17 @@ func (s *strategyStore) getStrategyDetail(row *sql.Row) (*authcommon.StrategyDet
 	if err != nil {
 		return nil, store.Error(err)
 	}
+	conditions, err := s.getStrategyConditions(s.slave.Query, ret.ID)
+	if err != nil {
+		return nil, store.Error(err)
+	}
+	functions, err := s.getStrategyFunctions(s.slave.Query, ret.ID)
+	if err != nil {
+		return nil, store.Error(err)
+	}
 
+	ret.CalleeMethods = functions
+	ret.Conditions = conditions
 	ret.Resources = resArr
 	ret.Principals = principals
 	return ret, nil
@@ -591,9 +602,11 @@ func (s *strategyStore) GetStrategyResources(principalId string,
 
 	for rows.Next() {
 		res := new(authcommon.StrategyResource)
-		if err := rows.Scan(&res.ResID, &res.ResType); err != nil {
+		var ts string
+		if err := rows.Scan(&res.ResID, &ts); err != nil {
 			return nil, store.Error(err)
 		}
+		res.ResType = security.ResourceType(security.ResourceType_value[ts])
 		resArr = append(resArr, *res)
 	}
 
@@ -701,10 +714,12 @@ func (s *strategyStore) getStrategyResources(queryHander QueryHandler, id string
 	resArr := make([]authcommon.StrategyResource, 0)
 
 	for rows.Next() {
+		var ts string
 		res := new(authcommon.StrategyResource)
-		if err := rows.Scan(&res.ResID, &res.ResType); err != nil {
+		if err := rows.Scan(&res.ResID, &ts); err != nil {
 			return nil, store.Error(err)
 		}
+		res.ResType = security.ResourceType(security.ResourceType_value[ts])
 		resArr = append(resArr, *res)
 	}
 

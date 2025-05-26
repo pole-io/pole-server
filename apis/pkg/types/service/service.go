@@ -9,7 +9,9 @@ import (
 
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/utils"
+	"maps"
 )
 
 type ServicePort struct {
@@ -73,9 +75,7 @@ func (s *Service) ToSpec() *apiservice.Service {
 
 func (s *Service) CopyMeta() map[string]string {
 	ret := make(map[string]string)
-	for k, v := range s.Meta {
-		ret[k] = v
-	}
+	maps.Copy(ret, s.Meta)
 	return ret
 }
 
@@ -83,7 +83,7 @@ func (s *Service) ProtectThreshold() float32 {
 	if len(s.Meta) == 0 {
 		return 0
 	}
-	val := s.Meta[MetadataServiceProtectHealthThreshold]
+	val := s.Meta[types.MetadataServiceProtectHealthThreshold]
 	threshold, _ := strconv.ParseFloat(val, 32)
 	return float32(threshold)
 }
@@ -92,9 +92,9 @@ func (s *Service) ProtectEmptyPush() (time.Duration, bool) {
 	if len(s.Meta) == 0 {
 		return 0, false
 	}
-	val := s.Meta[MetadataServiceProtectEmptyPush]
+	val := s.Meta[types.MetadataServiceProtectEmptyPush]
 	dur, err := time.ParseDuration(val)
-	return dur, err == nil 
+	return dur, err == nil
 }
 
 func (s *Service) ListExportTo() []*wrappers.StringValue {

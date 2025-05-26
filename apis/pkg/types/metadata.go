@@ -25,11 +25,12 @@ const (
 	MetaKeyBuildRevision = "build-revision"
 )
 
+// 配置文件标签
 const (
-	// MetaKeyConfigFileUseEncrypted 配置加密开关标识，value 为 boolean
-	MetaKeyConfigFileUseEncrypted = "internal-encrypted"
 	// MetaKeyConfigFileDataKey 加密密钥 tag key
 	MetaKeyConfigFileDataKey = "internal-datakey"
+	// MetaKeyConfigFileUseEncrypted 配置加密开关标识，value 为 boolean
+	MetaKeyConfigFileUseEncrypted = "internal-encrypted"
 	// MetaKeyConfigFileEncryptAlgo 加密算法 tag key
 	MetaKeyConfigFileEncryptAlgo = "internal-encryptalgo"
 	// MetaKeyConfigFileSyncToKubernetes 配置同步到 kubernetes
@@ -41,4 +42,14 @@ const (
 	MetaKeyConfigFileSyncSourceClusterKey = "internal-sync-sourcecluster"
 	// MetaKey3RdPlatform 第三方平台标签
 	MetaKey3RdPlatform = "internal-3rd-platform"
+)
+
+// 服务实例标签
+const (
+	MetadataInstanceLastHeartbeatTime     = "internal-lastheartbeat"
+	MetadataServiceProtectHealthThreshold = "internal-service-protect-healththreshold"
+	MetadataServiceProtectEmptyPush       = "internal-service-protect-emptypush"
+	MetadataRegisterFrom                  = "internal-register-from"
+	MetadataInternalMetaHealthCheckPath   = "internal-healthcheck_path"
+	MetadataInternalMetaTraceSampling     = "internal-trace_sampling"
 )

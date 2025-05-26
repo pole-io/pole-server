@@ -339,9 +339,9 @@ func (s *Server) GetConfigFileReleaseVersions(ctx context.Context,
 			Namespace: searchFilters["namespace"],
 			Group:     searchFilters["group"],
 		},
-		FileName:   searchFilters["file_name"],
-		OnlyActive: false,
-		NoPage:     true,
+		FileName:    searchFilters["file_name"],
+		OnlyActive:  false,
+		NoPage:      true,
 		IncludeGray: true,
 	}
 	return s.handleDescribeConfigFileReleases(ctx, args)
@@ -377,6 +377,16 @@ func (s *Server) handleDescribeConfigFileReleases(ctx context.Context, args cach
 	ret := make([]*apiconfig.ConfigFileRelease, 0, len(simpleReleases))
 	for i := range simpleReleases {
 		item := simpleReleases[i]
+		tmp, err := s.chains.AfterGetFileRelease(ctx, &conftypes.ConfigFileRelease{
+			SimpleConfigFileRelease: simpleReleases[i],
+		})
+		if err != nil {
+			log.Error("[Config][File] get config file release run chain.", utils.RequestID(ctx),
+				zap.String("namespace", item.Namespace), zap.String("group", item.Group),
+				zap.String("fileName", item.FileName), zap.Error(err))
+			return api.NewConfigBatchQueryResponseWithInfo(apimodel.Code_ExecuteException, err.Error())
+		}
+		item = tmp.SimpleConfigFileRelease
 		viewData := &apiconfig.ConfigFileRelease{
 			Id:                 protobuf.NewUInt64Value(item.Id),
 			Name:               protobuf.NewStringValue(item.Name),

@@ -61,6 +61,16 @@ type Handler struct {
 	Response *restful.Response
 }
 
+// Parse 解析请求
+func (h *Handler) BindJSON(v interface{}) (context.Context, error) {
+	requestID := h.Request.HeaderParameter(types.HeaderRequestId)
+	if err := h.Request.ReadEntity(v); err != nil {
+		accesslog.Error(err.Error(), utils.ZapRequestID(requestID))
+		return nil, err
+	}
+	return h.ParseHeaderContext(), nil
+}
+
 // ParseArray 解析PB数组对象
 func (h *Handler) ParseArray(createMessage func() proto.Message) (context.Context, error) {
 	jsonDecoder := json.NewDecoder(h.Request.Request.Body)

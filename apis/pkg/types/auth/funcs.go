@@ -144,7 +144,7 @@ func collectResourceEntry(ruleId string, resType apisecurity.ResourceType,
 				return []StrategyResource{
 					{
 						StrategyID: ruleId,
-						ResType:    int32(resType),
+						ResType:    resType,
 						ResID:      "*",
 					},
 				}
@@ -153,7 +153,7 @@ func collectResourceEntry(ruleId string, resType apisecurity.ResourceType,
 
 		entry := StrategyResource{
 			StrategyID: ruleId,
-			ResType:    int32(resType),
+			ResType:    resType,
 			ResID:      resId.GetValue(),
 		}
 

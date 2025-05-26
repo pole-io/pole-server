@@ -38,7 +38,6 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
-	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -2504,8 +2503,8 @@ func Test_HealthCheckInstanceMetadata(t *testing.T) {
 		discoverSuit.DiscoverServer().Cache().(*cache.CacheManager).TestUpdate()
 		ins1Cache := discoverSuit.DiscoverServer().Cache().Instance().GetInstance(ins1.GetId().GetValue())
 		assert.NotNil(t, ins1Cache, "ins1Cache is nil")
-		val, ok := ins1Cache.Metadata()[svctypes.MetadataInstanceLastHeartbeatTime]
-		assert.Truef(t, ok, "%s not exist", svctypes.MetadataInstanceLastHeartbeatTime)
+		val, ok := ins1Cache.Metadata()[types.MetadataInstanceLastHeartbeatTime]
+		assert.Truef(t, ok, "%s not exist", types.MetadataInstanceLastHeartbeatTime)
 		assert.Equal(t, fmt.Sprintf("%d", lastBeatTime), val)
 	})
 
@@ -2518,8 +2517,8 @@ func Test_HealthCheckInstanceMetadata(t *testing.T) {
 		discoverSuit.DiscoverServer().Cache().(*cache.CacheManager).TestUpdate()
 		ins1Cache := discoverSuit.DiscoverServer().Cache().Instance().GetInstance(ins1.GetId().GetValue())
 		assert.NotNil(t, ins1Cache, "ins1Cache is nil")
-		_, ok := ins1Cache.Metadata()[svctypes.MetadataInstanceLastHeartbeatTime]
-		assert.Falsef(t, ok, "%s exist", svctypes.MetadataInstanceLastHeartbeatTime)
+		_, ok := ins1Cache.Metadata()[types.MetadataInstanceLastHeartbeatTime]
+		assert.Falsef(t, ok, "%s exist", types.MetadataInstanceLastHeartbeatTime)
 	})
 }
 

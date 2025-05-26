@@ -33,6 +33,7 @@ import (
 	"github.com/pole-io/pole-server/apis/store"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
+	v1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
@@ -52,6 +53,7 @@ var (
 		"res_type":       true,
 		"default":        true,
 		"show_detail":    true,
+		"action":         true,
 	}
 )
 
@@ -107,11 +109,12 @@ func (svr *Server) UpdatePolicies(ctx context.Context, reqs []*apisecurity.AuthS
 		if err != nil {
 			log.Error("[Auth][Strategy] get strategy from store", utils.RequestID(ctx), zap.Error(err))
 			rsp = api.NewAuthStrategyResponse(storeapi.StoreCode2APICode(err), reqs[i])
-		}
-		if strategy == nil {
-			continue
 		} else {
-			rsp = svr.checkUpdateStrategy(ctx, reqs[i], strategy)
+			if strategy == nil {
+				continue
+			} else {
+				rsp = svr.checkUpdateStrategy(ctx, reqs[i], strategy)
+			}
 		}
 		api.Collect(batchResp, rsp)
 	}
@@ -135,6 +138,10 @@ func (svr *Server) GetPolicies(ctx context.Context, query map[string]string) *ap
 			log.Errorf("[Auth][Strategy] get strategies attribute(%s) it not allowed", key)
 			return api.NewAuthBatchQueryResponseWithMsg(apimodel.Code_InvalidParameter, key+" is not allowed")
 		}
+		// 过滤掉空值
+		if value == "" {
+			continue
+		}
 		searchFilters[key] = value
 	}
 
@@ -145,7 +152,7 @@ func (svr *Server) GetPolicies(ctx context.Context, query map[string]string) *ap
 	}
 	searchFilters["offset"] = strconv.FormatUint(uint64(offset), 10)
 	searchFilters["limit"] = strconv.FormatUint(uint64(limit), 10)
-	return svr.nextSvr.GetPolicies(ctx, query)
+	return svr.nextSvr.GetPolicies(ctx, searchFilters)
 }
 
 // GetPolicy 获取策略详细
@@ -156,6 +163,32 @@ func (svr *Server) GetPolicy(ctx context.Context, strategy *apisecurity.AuthStra
 // GetPrincipalResources 获取某个 principal 的所有可操作资源列表
 func (svr *Server) GetPrincipalResources(ctx context.Context, query map[string]string) *apiservice.Response {
 	return svr.nextSvr.GetPrincipalResources(ctx, query)
+}
+
+func (svr *Server) GetResourcePrincipals(ctx context.Context, query map[string]string) *apiservice.Response {
+	if len(query) == 0 {
+		return api.NewResponse(apimodel.Code_EmptyRequest)
+	}
+	log.Debug("[Auth][Strategy] origin get resource principals query params", utils.RequestID(ctx), zap.Any("query", query))
+
+	searchFilters := make(map[string]string, len(query))
+	for key, value := range query {
+		if _, ok := StrategyFilterAttributes[key]; !ok {
+			log.Errorf("[Auth][Strategy] get resource principals attribute(%s) it not allowed", key)
+			return api.NewResponseWithMsg(apimodel.Code_InvalidParameter, key+" is not allowed")
+		}
+		// 过滤掉空值
+		if value == "" {
+			continue
+		}
+		searchFilters[key] = value
+	}
+	return svr.nextSvr.GetResourcePrincipals(ctx, searchFilters)
+}
+
+// AuthorizeResources 授权资源
+func (svr *Server) AuthorizeResources(ctx context.Context, reqs []*v1.AuthorizeResources) *apiservice.Response {
+	return svr.nextSvr.AuthorizeResources(ctx, reqs)
 }
 
 // GetAuthChecker 获取鉴权检查器

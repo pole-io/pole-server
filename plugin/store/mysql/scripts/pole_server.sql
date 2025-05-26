@@ -465,7 +465,7 @@ CREATE TABLE
 CREATE TABLE
     `auth_strategy_resource` (
         `strategy_id` VARCHAR(128) NOT NULL COMMENT 'Strategy ID',
-        `res_type` INT NOT NULL COMMENT 'Resource Type, Namespaces = 0, Service = 1, configgroups = 2',
+        `res_type` VARCHAR(128) NOT NULL COMMENT 'Resource Type, Namespaces = 0, Service = 1, configgroups = 2',
         `res_id` VARCHAR(128) NOT NULL COMMENT 'Resource ID',
         `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',

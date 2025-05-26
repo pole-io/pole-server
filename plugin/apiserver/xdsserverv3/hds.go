@@ -287,12 +287,12 @@ func convertInstances(client *resource.XDSClient, registerFrom string) map[svcty
 					Type: service_manage.HealthCheck_HEARTBEAT,
 				}
 				instance.Metadata = make(map[string]string)
-				instance.Metadata[svctypes.MetadataRegisterFrom] = registerFrom
+				instance.Metadata[types.MetadataRegisterFrom] = registerFrom
 				if len(svc.HealthCheckPath) > 0 {
-					instance.Metadata[svctypes.MetadataInternalMetaHealthCheckPath] = svc.HealthCheckPath
+					instance.Metadata[types.MetadataInternalMetaHealthCheckPath] = svc.HealthCheckPath
 				}
 				if svc.TracingSampling > 0 {
-					instance.Metadata[svctypes.MetadataInternalMetaTraceSampling] = strconv.Itoa(int(svc.TracingSampling))
+					instance.Metadata[types.MetadataInternalMetaTraceSampling] = strconv.Itoa(int(svc.TracingSampling))
 				}
 				metadata := client.Metadata
 				if len(metadata) > 0 {

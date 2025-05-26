@@ -489,12 +489,12 @@ type Strategy struct {
 // StrategyResource 策略资源
 type StrategyResource struct {
 	StrategyID string
-	ResType    int32
+	ResType    apisecurity.ResourceType
 	ResID      string
 }
 
 func (s StrategyResource) Key() string {
-	return strconv.Itoa(int(s.ResType)) + "/" + s.ResID
+	return s.ResType.String() + "/" + s.ResID
 }
 
 // Principal 策略相关人

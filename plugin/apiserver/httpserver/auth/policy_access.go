@@ -26,6 +26,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
+	v1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
@@ -38,6 +39,8 @@ func (h *HTTPServer) addPolicyRuleAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichGetStrategiesApiDocs(ws.GET("/policies").To(h.GetPolicies)))
 	ws.Route(docs.EnrichGetStrategyApiDocs(ws.GET("/policies/detail").To(h.GetPolicy)))
 	ws.Route(docs.EnrichGetPrincipalResourcesApiDocs(ws.GET("/principal/resources").To(h.GetPrincipalResources)))
+	ws.Route(docs.EnrichGetPrincipalResourcesApiDocs(ws.GET("/resources/principals").To(h.GetResourcePrincipals)))
+	ws.Route(docs.EnrichGetPrincipalResourcesApiDocs(ws.POST("/resources/authorize").To(h.AuthorizeResources)))
 }
 
 // CreatePolicies 创建鉴权策略
@@ -147,4 +150,34 @@ func (h *HTTPServer) GetPrincipalResources(req *restful.Request, rsp *restful.Re
 	ctx := handler.ParseHeaderContext()
 
 	handler.WriteHeaderAndProto(h.policySvr.GetPrincipalResources(ctx, queryParams))
+}
+
+// GetResourcePrincipals 获取鉴权策略详细
+func (h *HTTPServer) GetResourcePrincipals(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+
+	queryParams := httpcommon.ParseQueryParams(req)
+	ctx := handler.ParseHeaderContext()
+
+	handler.WriteHeaderAndProto(h.policySvr.GetResourcePrincipals(ctx, queryParams))
+}
+
+// AuthorizeResources 资源授权
+func (h *HTTPServer) AuthorizeResources(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+
+	items := []*v1.AuthorizeResources{}
+	ctx, err := handler.BindJSON(&items)
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewAuthResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+
+	handler.WriteHeaderAndProto(h.policySvr.AuthorizeResources(ctx, items))
 }

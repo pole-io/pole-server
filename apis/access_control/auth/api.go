@@ -27,6 +27,7 @@ import (
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
+	v1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
 // AuthChecker 权限管理通用接口定义
@@ -69,14 +70,16 @@ type PolicyOperator interface {
 	UpdatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse
 	// DeletePolicies 删除策略
 	DeletePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse
-	// GetPolicies 获取资源列表
-	// support 1. 支持按照 principal-id + principal-role 进行查询
-	// support 2. 支持普通的鉴权策略查询
+	// GetPolicies 获取资源列表, 支持按照 principal-id + principal-role 进行查询; 支持普通的鉴权策略查询
 	GetPolicies(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
 	// GetPolicy 获取策略详细
 	GetPolicy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apiservice.Response
 	// GetPrincipalResources 获取某个 principal 的所有可操作资源列表
 	GetPrincipalResources(ctx context.Context, query map[string]string) *apiservice.Response
+	// // GetResourcePrincipals 获取某个 资源下的授权人员
+	GetResourcePrincipals(ctx context.Context, query map[string]string) *apiservice.Response
+	// AuthorizeResources 授权资源
+	AuthorizeResources(ctx context.Context, reqs []*v1.AuthorizeResources) *apiservice.Response
 }
 
 // RoleOperator 角色管理
@@ -194,6 +197,7 @@ type OperatorInfo struct {
 	Anonymous bool
 }
 
+// NewAnonymousOperatorInfo 创建一个匿名操作用户信息
 func NewAnonymousOperatorInfo() OperatorInfo {
 	return OperatorInfo{
 		Origin:     "",

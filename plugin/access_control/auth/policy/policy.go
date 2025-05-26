@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"math"
 	"reflect"
 	"slices"
 	"strconv"
@@ -41,6 +42,7 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
+	v1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/valid"
@@ -379,6 +381,65 @@ func (svr *Server) GetPrincipalResources(ctx context.Context, query map[string]s
 	})
 
 	return api.NewStrategyResourcesResponse(apimodel.Code_ExecuteSuccess, tmp.Resources)
+}
+
+// GetResourcePrincipals 获取资源的所有关联成员
+func (svr *Server) GetResourcePrincipals(ctx context.Context, query map[string]string) *apiservice.Response {
+	resId := query["res_id"]
+	resType := query["res_type"]
+	action := query["action"]
+
+	total, ret, err := svr.cacheMgr.AuthStrategy().Query(ctx, cachetypes.PolicySearchArgs{
+		Filters: map[string]string{
+			"res_id":   resId,
+			"res_type": resType,
+		},
+		Offset: 0,
+		Limit:  math.MaxUint32,
+	})
+	if err != nil {
+		log.Error("[Auth][Strategy] get resource principals from store", utils.RequestID(ctx),
+			zap.Error(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
+	}
+	if total == 0 {
+		return api.NewResponse(apimodel.Code_ExecuteSuccess)
+	}
+
+	principals := &apisecurity.Principals{}
+	for i := range ret {
+		for j := range ret[i].Principals {
+			// 禁止策略不算在内
+			if action != "" && ret[i].Action != action {
+				continue
+			}
+			item := ret[i].Principals[j]
+			switch item.PrincipalType {
+			case authtypes.PrincipalUser:
+				principals.Users = append(principals.Users, &apisecurity.Principal{
+					Id:   wrapperspb.String(item.PrincipalID),
+					Name: wrapperspb.String(item.Name),
+				})
+			case authtypes.PrincipalGroup:
+				principals.Groups = append(principals.Groups, &apisecurity.Principal{
+					Id:   wrapperspb.String(item.PrincipalID),
+					Name: wrapperspb.String(item.Name),
+				})
+			case authtypes.PrincipalRole:
+				principals.Roles = append(principals.Roles, &apisecurity.Principal{
+					Id:   wrapperspb.String(item.PrincipalID),
+					Name: wrapperspb.String(item.Name),
+				})
+			}
+		}
+	}
+	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, principals)
+}
+
+// AuthorizeResources 授权资源
+func (svr *Server) AuthorizeResources(ctx context.Context, reqs []*v1.AuthorizeResources) *apiservice.Response {
+	// TODO
+	return api.NewAuthResponse(apimodel.Code_ExecuteSuccess)
 }
 
 // enhancedAuthStrategy2Api

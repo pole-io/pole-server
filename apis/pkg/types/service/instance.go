@@ -30,6 +30,7 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/utils"
 )
@@ -63,15 +64,6 @@ type NamespaceServiceCount struct {
 	// InstanceCnt 实例健康数/实例总数
 	InstanceCnt *InstanceCount
 }
-
-const (
-	MetadataInstanceLastHeartbeatTime     = "internal-lastheartbeat"
-	MetadataServiceProtectHealthThreshold = "internal-service-protect-healththreshold"
-	MetadataServiceProtectEmptyPush       = "internal-service-protect-emptypush"
-	MetadataRegisterFrom                  = "internal-register-from"
-	MetadataInternalMetaHealthCheckPath   = "internal-healthcheck_path"
-	MetadataInternalMetaTraceSampling     = "internal-trace_sampling"
-)
 
 // Instance 组合了api的Instance对象
 type Instance struct {
@@ -677,7 +669,7 @@ func (si *ServiceInstances) RunHealthyProtect() {
 		if len(metadata) == 0 {
 			continue
 		}
-		val, ok := metadata[MetadataInstanceLastHeartbeatTime]
+		val, ok := metadata[types.MetadataInstanceLastHeartbeatTime]
 		if !ok {
 			continue
 		}

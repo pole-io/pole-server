@@ -326,7 +326,7 @@ func (svr *Server) changePrincipalPolicies(id, ownerId string, uType authtypes.P
 			id := rIds[i]
 			strategyResource = append(strategyResource, authtypes.StrategyResource{
 				StrategyID: strategyId,
-				ResType:    int32(rType),
+				ResType:    rType,
 				ResID:      id.ID,
 			})
 		}

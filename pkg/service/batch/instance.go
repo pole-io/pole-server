@@ -29,6 +29,7 @@ import (
 
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 
+	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	storeapi "github.com/pole-io/pole-server/apis/store"
@@ -355,14 +356,14 @@ func (ctrl *InstanceCtrl) heartbeatHandler(futures []*InstanceFuture) error {
 				removeMetaReqs = append(removeMetaReqs, &store.InstanceMetadataRequest{
 					InstanceID: id,
 					Revision:   revision,
-					Keys:       []string{svctypes.MetadataInstanceLastHeartbeatTime},
+					Keys:       []string{types.MetadataInstanceLastHeartbeatTime},
 				})
 			} else {
 				appendMetaReqs = append(appendMetaReqs, &store.InstanceMetadataRequest{
 					InstanceID: id,
 					Revision:   revision,
 					Metadata: map[string]string{
-						svctypes.MetadataInstanceLastHeartbeatTime: strconv.FormatInt(values[id], 10),
+						types.MetadataInstanceLastHeartbeatTime: strconv.FormatInt(values[id], 10),
 					},
 				})
 			}

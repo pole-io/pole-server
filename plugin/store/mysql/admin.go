@@ -45,7 +45,7 @@ const (
 type adminStore struct {
 	master  *BaseDB
 	leStore LeaderElectionStore
-	leMap   map[string]*leaderElectionStateMachine
+	leMap   map[string]*CachedLeaderElection
 	mutex   sync.Mutex
 }
 
@@ -53,7 +53,7 @@ func newAdminStore(master *BaseDB) *adminStore {
 	return &adminStore{
 		master:  master,
 		leStore: &leaderElectionStore{master: master},
-		leMap:   make(map[string]*leaderElectionStateMachine),
+		leMap:   make(map[string]*CachedLeaderElection),
 	}
 }
 
@@ -200,26 +200,9 @@ func checkLeaderValid(mtime int64) bool {
 	return delta <= LeaseTime
 }
 
-// leaderElectionStateMachine
-type leaderElectionStateMachine struct {
-	electKey      string
-	leaderFlag    int32
-	cancel        context.CancelFunc
-	releaseSignal int32
-}
-
 // isLeader
 func isLeader(flag int32) bool {
 	return flag > 0
-}
-
-// isLeaderAtomic
-func (le *leaderElectionStateMachine) isLeaderAtomic() bool {
-	return isLeader(atomic.LoadInt32(&le.leaderFlag))
-}
-
-func (le *leaderElectionStateMachine) setReleaseSignal() {
-	atomic.StoreInt32(&le.releaseSignal, 1)
 }
 
 // StopLeaderElections stop the election procedure
@@ -230,7 +213,7 @@ func (m *adminStore) StopLeaderElections() {
 	var wg sync.WaitGroup
 	for k, le := range m.leMap {
 		wg.Add(1)
-		go func(key string, election *leaderElectionStateMachine) {
+		go func(key string, election *CachedLeaderElection) {
 			defer wg.Done()
 			// 调用cancel让goroutine正常退出
 			election.cancel()
@@ -252,7 +235,7 @@ func (m *adminStore) IsLeader(key string) bool {
 	if !ok {
 		return false
 	}
-	return le.isLeaderAtomic()
+	return le.isLeader()
 }
 
 // ListLeaderElections list election records
@@ -754,16 +737,17 @@ func (cle *CachedLeaderElection) tick() {
 	}
 
 	if success {
-		cle.changeToLeader()
 		cle.mutex.Lock()
 		cle.lastHeartbeatTime = time.Now()
 		cle.mutex.Unlock()
+		cle.changeToLeader()
 	}
 }
 
 // isLeader
 func (cle *CachedLeaderElection) isLeader() bool {
-	return isLeader(cle.leaderFlag)
+	// isLeader
+	return cle.leaderFlag > 0
 }
 
 // checkReleaseTickLimit
@@ -860,10 +844,7 @@ func (m *adminStore) StartLeaderElection(key string) error {
 	go cle.mainLoop()
 
 	// 保存到选举映射中
-	m.leMap[key] = &leaderElectionStateMachine{
-		electKey: key,
-		cancel:   cle.cancel,
-	}
+	m.leMap[key] = cle
 
 	log.Infof("[Store][database] started cached leader election for key (%s)", key)
 	return nil
