@@ -75,14 +75,14 @@ const (
 
 // RecordEntry Operation records
 type RecordEntry struct {
-	ResourceType  Resource
-	ResourceName  string
-	Namespace     string
-	Operator      string
-	OperationType OperationType
-	Detail        string
-	Server        string
-	HappenTime    time.Time
+	ResourceType  Resource      `json:"resource_type"`
+	ResourceName  string        `json:"resource_name"`
+	Namespace     string        `json:"namespace"`
+	Operator      string        `json:"operator"`
+	OperationType OperationType `json:"operation_type"`
+	Detail        string        `json:"detail"`
+	Server        string        `json:"server"` // Server name, used to distinguish the server that generated the record
+	HappenTime    time.Time     `json:"happen_time"`
 }
 
 func (r *RecordEntry) String() string {

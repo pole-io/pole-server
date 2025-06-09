@@ -249,13 +249,13 @@ func (h *NacosV1Server) process(req *restful.Request, rsp *restful.Response, cha
 func (h *NacosV1Server) preprocess(req *restful.Request, rsp *restful.Response) error {
 	// 设置开始时间
 	req.SetAttribute("start-time", time.Now())
-	requestURL := req.Request.URL.String()
+
 	// 打印请求
 	nacoslog.Info("receive request",
 		zap.String("client-address", req.Request.RemoteAddr),
 		zap.String("user-agent", req.HeaderParameter("User-Agent")),
 		zap.String("method", req.Request.Method),
-		zap.String("url", requestURL),
+		zap.String("url", req.Request.URL.String()),
 	)
 
 	// 限流
@@ -309,37 +309,11 @@ func (h *NacosV1Server) postProcess(req *restful.Request, rsp *restful.Response)
 		statis.GetStatis().ReportCallMetrics(metrics.CallMetric{
 			Type:     metrics.ServerCallMetric,
 			API:      method,
-			Protocol: "HTTP",
+			Protocol: "NACOS-HTTP",
 			Code:     int(code),
 			Duration: diff,
 		})
 	}
-}
-
-// enterAuth 访问鉴权
-func (h *NacosV1Server) enterAuth(req *restful.Request, rsp *restful.Response) error {
-	// 判断白名单插件是否开启
-	if h.whitelist == nil {
-		return nil
-	}
-
-	rid := req.HeaderParameter(types.HeaderRequestId)
-
-	address := req.Request.RemoteAddr
-	segments := strings.Split(address, ":")
-	if len(segments) != 2 {
-		return nil
-	}
-	if !h.whitelist.Contain(segments[0]) {
-		log.Error("nacos http server http access is not allowed",
-			zap.String("client", address),
-			utils.ZapRequestID(rid))
-		nacoshttp.WrirteNacosErrorResponse(&model.NacosApiError{
-			DetailErrCode: int32(apimodel.Code_NotAllowedAccess),
-		}, rsp)
-		return errors.New("nacos http server http access is not allowed")
-	}
-	return nil
 }
 
 // enterRateLimit 访问限制

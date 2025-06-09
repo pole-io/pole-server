@@ -124,7 +124,7 @@ func (s *stableStore) Initialize(conf *store.Config) error {
 }
 
 // parseDatabaseConf return slave, master, error
-func parseDatabaseConf(opt map[string]interface{}) (*dbConfig, *dbConfig, error) {
+func parseDatabaseConf(opt map[string]any) (*dbConfig, *dbConfig, error) {
 	// 必填
 	masterEnter, ok := opt["master"]
 	if !ok || masterEnter == nil {
@@ -149,11 +149,9 @@ func parseDatabaseConf(opt map[string]interface{}) (*dbConfig, *dbConfig, error)
 }
 
 // parseStoreConfig 解析store的配置
-func parseStoreConfig(opts interface{}) (*dbConfig, error) {
-	obj, _ := opts.(map[string]interface{})
-
+func parseStoreConfig(opts any) (*dbConfig, error) {
+	obj, _ := opts.(map[any]any)
 	needCheckFields := map[string]string{"dbType": "", "dbUser": "", "dbPwd": "", "dbAddr": "", "dbName": ""}
-
 	for key := range needCheckFields {
 		val, ok := obj[key]
 		if !ok {

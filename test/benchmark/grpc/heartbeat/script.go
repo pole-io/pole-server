@@ -32,8 +32,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -64,12 +62,6 @@ var (
 	CheckInterval, _ = time.ParseDuration(os.Getenv("CHECK_INTERVAL"))
 	// PodIP 实例注册 IP
 	PodIP = os.Getenv("POD_IP")
-	// metricsRegistry .
-	metricsRegistry = prometheus.NewRegistry()
-	// heartbeatCount 客户端心跳上报次数
-	heartbeatCount = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "client_beat_count",
-	})
 )
 
 const (
@@ -131,7 +123,6 @@ func setDefault() {
 }
 
 func setMetrics() {
-	_ = metricsRegistry.Register(heartbeatCount)
 }
 
 func main() {
@@ -154,8 +145,6 @@ func main() {
 		panic("unknown run mode, please export RUN_MODE=verify or RUN_MODE=benchmark or RUN_MODE=all")
 	}
 	go func() {
-		_ = http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", metricsPort),
-			promhttp.HandlerFor(metricsRegistry, promhttp.HandlerOpts{EnableOpenMetrics: true}))
 	}()
 	mainLoop()
 }
@@ -261,7 +250,6 @@ func runBenchmarkMode() {
 			defer ticker.Stop()
 
 			for range ticker.C {
-				heartbeatCount.Inc()
 				resp, err := client.Heartbeat(context.Background(), instance)
 				if err != nil {
 					log.Printf("[ERROR] instance(%s) beat fail error: %s", instance.GetId().GetValue(), err.Error())

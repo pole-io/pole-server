@@ -1,6 +1,3 @@
-//go:build tools
-// +build tools
-
 /**
  * Tencent is pleased to support the open source community by making Polaris available.
  *
@@ -18,12 +15,22 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package tools
+package metrics
 
-import (
-	_ "github.com/client9/misspell/cmd/misspell"
-	_ "github.com/golang/protobuf/protoc-gen-go"
-	_ "golang.org/x/lint/golint"
-	_ "golang.org/x/tools/cmd/goimports"
-	_ "honnef.co/go/tools/cmd/staticcheck"
+var (
+	metricsPort int32
 )
+
+func SetMetricsPort(port int32) {
+	metricsPort = port
+}
+
+func GetMetricsPort() int32 {
+	return metricsPort
+}
+
+// InitMetrics 初始化 metrics 的所有指标
+func InitMetrics() {
+	registerSysMetrics()
+	registerClientMetrics()
+}

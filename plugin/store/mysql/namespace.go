@@ -50,7 +50,7 @@ func (ns *namespaceStore) AddNamespace(data *types.Namespace) error {
 			INSERT INTO namespace (name, comment, token, owner, ctime
 				, mtime, service_export_to, metadata)
 			VALUES (?, ?, ?, ?, sysdate()
-				, sysdate(), ?)
+				, sysdate(), ?, ?)
 			`
 			args := []interface{}{data.Name, data.Comment, data.Token, data.Owner,
 				utils.MustJson(data.ServiceExportTo), utils.MustJson(data.Metadata)}
@@ -62,7 +62,6 @@ func (ns *namespaceStore) AddNamespace(data *types.Namespace) error {
 				log.Errorf("[Store][database] batch delete instance commit tx err: %s", err.Error())
 				return err
 			}
-
 			return nil
 		})
 	})

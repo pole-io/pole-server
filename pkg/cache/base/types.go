@@ -24,7 +24,7 @@ import (
 
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
+	"github.com/pole-io/pole-server/pkg/common/otel/metrics"
 )
 
 // BaseCache 对于 Cache 中的一些 func 做统一实现，避免重复逻辑

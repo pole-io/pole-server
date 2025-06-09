@@ -47,7 +47,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
+	"github.com/pole-io/pole-server/pkg/common/otel/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/version"
 	config_center "github.com/pole-io/pole-server/pkg/config"
@@ -83,9 +83,14 @@ func Start(configFilePath string) {
 	_, _ = fmt.Println(string(c))
 
 	// 初始化日志打印
-	err = log.ConfigureFile(cfg.Bootstrap.Logger)
-	if err != nil {
+	if err = log.ConfigureFile(cfg.Bootstrap.Logger); err != nil {
 		fmt.Printf("[ERROR] configure logger fail: %v\n", err)
+		return
+	}
+
+	apientries, err := boot_config.LoadAPIEntries(cfg.APIServers)
+	if err != nil {
+		fmt.Printf("[ERROR] load api entries fail: %v\n", err)
 		return
 	}
 
@@ -100,7 +105,7 @@ func Start(configFilePath string) {
 		return
 	}
 	// 设置默认端口信息数据
-	acquireLocalPort(ctx, cfg.APIServers)
+	acquireLocalPort(ctx, apientries)
 
 	metrics.InitMetrics()
 	eventhub.InitEventHub()
@@ -131,13 +136,13 @@ func Start(configFilePath string) {
 		return
 	}
 	errCh := make(chan error, len(cfg.APIServers))
-	servers, err := StartServers(ctx, cfg, errCh)
+	servers, err := StartServers(ctx, apientries, errCh)
 	if err != nil {
 		fmt.Printf("[ERROR] start servers fail: %v\n", err)
 		return
 	}
 
-	if err := polarisServiceRegister(&cfg.Bootstrap.PolarisService, cfg.APIServers); err != nil {
+	if err := polarisServiceRegister(&cfg.Bootstrap.PolarisService, apientries); err != nil {
 		fmt.Printf("[ERROR] register polaris service fail: %v\n", err)
 		return
 	}
@@ -347,13 +352,13 @@ func StartConfigCenterComponents(ctx context.Context, cfg *boot_config.Config, s
 }
 
 // StartServers 启动server
-func StartServers(ctx context.Context, cfg *boot_config.Config, errCh chan error) (
+func StartServers(ctx context.Context, apientries []apiserver.Config, errCh chan error) (
 	[]apiserver.Apiserver, error) {
 	// 启动API服务器
 	var servers []apiserver.Apiserver
 
 	// 等待所有ApiServer都监听完成
-	for _, protocol := range cfg.APIServers {
+	for _, protocol := range apientries {
 		slot, exist := apiserver.Slots[protocol.Name]
 		if !exist {
 			log.Warn("[ERROR] apiserver slot not exists", zap.String("name", protocol.Name))

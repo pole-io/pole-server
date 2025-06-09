@@ -245,7 +245,7 @@ func getConfigFilesFromZIP(data []byte) ([]*apiconfig.ConfigFile, error) {
 		// 解析文件扩展名
 		format := path.Ext(file.Name)
 		if format == "" {
-			format = conftypes.FileFormatText
+			format = string(conftypes.FileFormatText)
 		} else {
 			format = format[1:]
 		}

@@ -28,7 +28,7 @@ import (
 	"github.com/pole-io/pole-server/apis/observability/statis"
 	metrictypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
+	"github.com/pole-io/pole-server/pkg/common/otel/metrics"
 )
 
 // InstanceFuture 创建实例的异步结构体

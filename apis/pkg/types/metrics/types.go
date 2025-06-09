@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -102,7 +104,7 @@ type DiscoveryMetric struct {
 	Offline  int64
 	Online   int64
 	Isolate  int64
-	Labels   map[string]string
+	Labels   []attribute.KeyValue
 }
 
 func ResourceOfConfigFileList(group string) string {
@@ -159,5 +161,5 @@ type ConfigMetrics struct {
 	Type    ConfigMetricType
 	Total   int64
 	Release int64
-	Labels  map[string]string
+	Labels  []attribute.KeyValue
 }

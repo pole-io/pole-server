@@ -169,7 +169,7 @@ func (c *ConfigPublishRequest) ToSpec() *config_manage.ConfigFilePublishInfo {
 		FileName:  wrapperspb.String(c.DataId),
 		Content:   wrapperspb.String(c.Content),
 		Tags:      make([]*config_manage.ConfigFileTag, 0, len(c.AdditionMap)),
-		Format:    protobuf.NewStringValue(conftypes.FileFormatText),
+		Format:    protobuf.NewStringValue(string(conftypes.FileFormatText)),
 	}
 	if val, ok := c.AdditionMap["type"]; ok {
 		ret.Format = protobuf.NewStringValue(val)

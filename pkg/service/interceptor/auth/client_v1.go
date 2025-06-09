@@ -86,13 +86,6 @@ func (svr *Server) ReportServiceContract(ctx context.Context, req *apiservice.Se
 	return svr.nextSvr.ReportServiceContract(ctx, req)
 }
 
-// GetPrometheusTargets Used for client acquisition service information
-func (svr *Server) GetPrometheusTargets(ctx context.Context,
-	query map[string]string) *types.PrometheusDiscoveryResponse {
-
-	return svr.nextSvr.GetPrometheusTargets(ctx, query)
-}
-
 // GetServiceWithCache is the interface for getting service with cache
 func (svr *Server) GetServiceWithCache(
 	ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {

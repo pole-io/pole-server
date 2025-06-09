@@ -35,7 +35,6 @@ import (
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/batch"
@@ -187,10 +186,6 @@ func TestServer_GetReportClient(t *testing.T) {
 		wait.Wait()
 		_ = discoverSuit.DiscoverServer().Cache().(*cache.CacheManager).TestUpdate()
 		t.Log("finish sleep to wait cache refresh")
-
-		resp := discoverSuit.DiscoverServer().GetPrometheusTargets(context.Background(), map[string]string{})
-		t.Logf("get report clients result: %#v", resp)
-		assert.Equal(t, apiv1.ExecuteSuccess, resp.Code)
 	})
 }
 

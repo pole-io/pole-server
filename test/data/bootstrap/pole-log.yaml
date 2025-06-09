@@ -84,6 +84,15 @@ eureka:
   rotationMaxAge: 7
   outputLevel: debug
   compress: true
+# Apollo protocol layer plugin log
+apollo-apiserver:
+  rotateOutputPath: ./test/output/logs/runtime/apollo-apiserver.log
+  errorRotateOutputPath: ./test/output/logs/runtime/apollo-apiserver-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  compress: true
 # Nacos protocol layer plug -in log
 nacos-apiserver:
   rotateOutputPath: ./test/output/logs/runtime/nacos-apiserver.log
@@ -153,9 +162,26 @@ HistoryLogger:
   rotationMaxDurationForHour: 24
   outputLevel: debug
   onlyContent: true
-discoverEventLocal:
+HistoryDB:
+  rotateOutputPath: ./test/output/logs/operation/pole-history-db.log
+  errorRotateOutputPath: ./test/output/logs/operation/pole-history-db-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 10
+  rotationMaxAge: 7
+  rotationMaxDurationForHour: 24
+  outputLevel: debug
+  onlyContent: true
+EventLogger:
   rotateOutputPath: ./test/output/logs/event/pole-discoverevent.log
   errorRotateOutputPath: ./test/output/logs/event/pole-discoverevent-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  onlyContent: true
+EventDB:
+  rotateOutputPath: ./test/output/logs/event/pole-discoverevent-db.log
+  errorRotateOutputPath: ./test/output/logs/event/pole-discoverevent-db-error.log
   rotationMaxSize: 100
   rotationMaxBackups: 30
   rotationMaxAge: 7

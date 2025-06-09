@@ -12,7 +12,9 @@
   - [ ] 支持 MCP Registry API，更好的管理 MCP 服务
 - 注册发现
 
-  - [ ] 兼容 consul、apollo、sofa 协议接入
+  - [ ] consul 协议接入
+  - [x] apollo 协议接入
+  - [ ] sofa 协议接入
   - [ ] 更好的服务注册发现性能以及内存控制
   - [ ] 支持服务实例的主动探测
   - [ ] 支持服务订阅者查询

@@ -199,8 +199,8 @@ func (svr *Server) AfterResourceOperation(afterCtx *authtypes.AcquireContext) er
 		return nil
 	}
 
-	// 如果 token 信息为空，则代表当前创建的资源，任何人都可以进行操作，不做资源的后置逻辑处理
-	if authapi.IsEmptyOperator(tokenInfo) {
+	// 如果 token 信息为空，或者为管理员创建的资源，任何人都可以进行操作，不做资源的后置逻辑处理
+	if tokenInfo.OwnerID == "" || authapi.IsEmptyOperator(tokenInfo) {
 		return nil
 	}
 
@@ -261,8 +261,7 @@ func (svr *Server) handleChangeUserPolicy(userIds []string, afterCtx *authtypes.
 		if ownerId == "" {
 			ownerId = user.GetId().GetValue()
 		}
-		if err := svr.changePrincipalPolicies(userId, ownerId, authtypes.PrincipalUser,
-			afterCtx, isRemove); err != nil {
+		if err := svr.changePrincipalPolicies(userId, ownerId, authtypes.PrincipalUser, afterCtx, isRemove); err != nil {
 			return err
 		}
 	}
@@ -280,8 +279,7 @@ func (svr *Server) handleChangeUserGroupPolicy(groupIds []string, afterCtx *auth
 			return errors.New("not found target group")
 		}
 		ownerId := group.GetOwner().GetValue()
-		if err := svr.changePrincipalPolicies(groupId, ownerId, authtypes.PrincipalGroup,
-			afterCtx, isRemove); err != nil {
+		if err := svr.changePrincipalPolicies(groupId, ownerId, authtypes.PrincipalGroup, afterCtx, isRemove); err != nil {
 			return err
 		}
 	}
@@ -296,8 +294,7 @@ func (svr *Server) changePrincipalPolicies(id, ownerId string, uType authtypes.P
 	// Get the default policy rules
 	strategy, err := svr.storage.GetDefaultStrategyDetailByPrincipal(id, uType)
 	if err != nil {
-		log.Error("[Auth][Server] get default strategy",
-			zap.String("owner", ownerId), zap.String("id", id), zap.Error(err))
+		log.Error("[Auth][Server] get default strategy", zap.String("owner", ownerId), zap.String("id", id), zap.Error(err))
 		return err
 	}
 	if strategy == nil {

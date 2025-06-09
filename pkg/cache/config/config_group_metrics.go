@@ -18,6 +18,8 @@
 package config
 
 import (
+	"go.opentelemetry.io/otel/attribute"
+
 	"github.com/pole-io/pole-server/apis/observability/statis"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
@@ -31,8 +33,8 @@ func (fc *configGroupCache) reportMetricsInfo() {
 			Type:    metrics.ConfigGroupMetric,
 			Total:   int64(count),
 			Release: 0,
-			Labels: map[string]string{
-				metrics.LabelNamespace: ns,
+			Labels: []attribute.KeyValue{
+				attribute.String(metrics.LabelNamespace, ns),
 			},
 		}
 		statis.GetStatis().ReportConfigMetrics(reportValue)

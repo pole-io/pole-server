@@ -30,7 +30,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
+	"github.com/pole-io/pole-server/pkg/common/otel/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	smock "github.com/pole-io/pole-server/plugin/store/mock"
 )

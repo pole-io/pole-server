@@ -20,12 +20,11 @@ package config
 import (
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
 	metrictypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 )
 
@@ -54,7 +53,7 @@ func (fc *fileCache) reportMetricsInfo() {
 			tmpGroup[ns][group] = struct{}{}
 		}
 	}
-	_, _ = cleanExpireConfigFileMetricLabel(fc.preMetricsFiles.Load(), tmpGroup)
+	// _, _ = cleanExpireConfigFileMetricLabel(fc.preMetricsFiles.Load(), tmpGroup)
 	fc.preMetricsFiles.Store(tmpGroup)
 
 	for ns, groups := range configFiles {
@@ -62,9 +61,9 @@ func (fc *fileCache) reportMetricsInfo() {
 			metricValues = append(metricValues, metrictypes.ConfigMetrics{
 				Type:  metrictypes.FileMetric,
 				Total: total,
-				Labels: map[string]string{
-					metrictypes.LabelNamespace: ns,
-					metrictypes.LabelGroup:     group,
+				Labels: []attribute.KeyValue{
+					attribute.String(metrictypes.LabelNamespace, ns),
+					attribute.String(metrictypes.LabelGroup, group),
 				},
 			})
 		}
@@ -75,9 +74,9 @@ func (fc *fileCache) reportMetricsInfo() {
 			metricValues = append(metricValues, metrictypes.ConfigMetrics{
 				Type:  metrictypes.ReleaseFileMetric,
 				Total: int64(count),
-				Labels: map[string]string{
-					metrictypes.LabelNamespace: namespace,
-					metrictypes.LabelGroup:     groupName,
+				Labels: []attribute.KeyValue{
+					attribute.String(metrictypes.LabelNamespace, namespace),
+					attribute.String(metrictypes.LabelGroup, groupName),
 				},
 			})
 		})
@@ -86,51 +85,51 @@ func (fc *fileCache) reportMetricsInfo() {
 	statis.GetStatis().ReportConfigMetrics(metricValues...)
 }
 
-func cleanExpireConfigFileMetricLabel(pre, curr map[string]map[string]struct{}) (map[string]struct{}, map[string]map[string]struct{}) {
-	if len(pre) == 0 {
-		return map[string]struct{}{}, map[string]map[string]struct{}{}
-	}
+// func cleanExpireConfigFileMetricLabel(pre, curr map[string]map[string]struct{}) (map[string]struct{}, map[string]map[string]struct{}) {
+// 	if len(pre) == 0 {
+// 		return map[string]struct{}{}, map[string]map[string]struct{}{}
+// 	}
 
-	var (
-		removeNs     = map[string]struct{}{}
-		removeGroups = map[string]map[string]struct{}{}
-	)
+// 	var (
+// 		removeNs     = map[string]struct{}{}
+// 		removeGroups = map[string]map[string]struct{}{}
+// 	)
 
-	for ns, groups := range pre {
-		if _, ok := curr[ns]; !ok {
-			removeNs[ns] = struct{}{}
-		}
-		if _, ok := removeGroups[ns]; !ok {
-			removeGroups[ns] = map[string]struct{}{}
-		}
-		for group := range groups {
-			if _, ok := curr[ns][group]; !ok {
-				removeGroups[ns][group] = struct{}{}
-			}
-		}
-	}
+// 	for ns, groups := range pre {
+// 		if _, ok := curr[ns]; !ok {
+// 			removeNs[ns] = struct{}{}
+// 		}
+// 		if _, ok := removeGroups[ns]; !ok {
+// 			removeGroups[ns] = map[string]struct{}{}
+// 		}
+// 		for group := range groups {
+// 			if _, ok := curr[ns][group]; !ok {
+// 				removeGroups[ns][group] = struct{}{}
+// 			}
+// 		}
+// 	}
 
-	for ns := range removeNs {
-		metrics.GetConfigGroupTotal().Delete(prometheus.Labels{
-			metrictypes.LabelNamespace: ns,
-		})
-	}
+// 	for ns := range removeNs {
+// 		metrics.GetConfigGroupTotal().Delete(prometheus.Labels{
+// 			metrictypes.LabelNamespace: ns,
+// 		})
+// 	}
 
-	for ns, groups := range removeGroups {
-		for group := range groups {
-			metrics.GetConfigFileTotal().Delete(prometheus.Labels{
-				metrictypes.LabelNamespace: ns,
-				metrictypes.LabelGroup:     group,
-			})
-			metrics.GetReleaseConfigFileTotal().Delete(prometheus.Labels{
-				metrictypes.LabelNamespace: ns,
-				metrictypes.LabelGroup:     group,
-			})
-			metrics.GetConfigFileTotal().Delete(prometheus.Labels{
-				metrictypes.LabelNamespace: ns,
-				metrictypes.LabelGroup:     group,
-			})
-		}
-	}
-	return removeNs, removeGroups
-}
+// 	for ns, groups := range removeGroups {
+// 		for group := range groups {
+// 			metrics.GetConfigFileTotal().Delete(prometheus.Labels{
+// 				metrictypes.LabelNamespace: ns,
+// 				metrictypes.LabelGroup:     group,
+// 			})
+// 			metrics.GetReleaseConfigFileTotal().Delete(prometheus.Labels{
+// 				metrictypes.LabelNamespace: ns,
+// 				metrictypes.LabelGroup:     group,
+// 			})
+// 			metrics.GetConfigFileTotal().Delete(prometheus.Labels{
+// 				metrictypes.LabelNamespace: ns,
+// 				metrictypes.LabelGroup:     group,
+// 			})
+// 		}
+// 	}
+// 	return removeNs, removeGroups
+// }

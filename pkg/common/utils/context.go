@@ -35,9 +35,9 @@ type (
 
 const (
 	// PolarisCode polaris code
-	PolarisCode = "X-Polaris-Code"
+	PolarisCode = "X-Pole-Code"
 	// PolarisMessage polaris message
-	PolarisMessage = "X-Polaris-Message"
+	PolarisMessage = "X-Pole-Message"
 	// PolarisRequestID request_id
 	PolarisRequestID = "X-Request-Id"
 )

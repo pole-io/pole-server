@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package local
+package logger
 
 import "errors"
 

@@ -26,10 +26,11 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/uuid"
-	"github.com/pole-io/pole-server/apis/pkg/types"
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+
+	"github.com/pole-io/pole-server/apis/pkg/types"
 )
 
 // NewClient 创建HTTP客户端

@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package local
+package logger
 
 import (
 	"context"
@@ -60,7 +60,6 @@ func Test_discoverEventLocal_Run(t *testing.T) {
 		bufferPool: sync.Pool{
 			New: func() interface{} { return newEventBufferHolder(defaultBufferSize) },
 		},
-		cursor:       0,
 		syncLock:     sync.Mutex{},
 		eventHandler: testFn,
 		cancel:       cancel,

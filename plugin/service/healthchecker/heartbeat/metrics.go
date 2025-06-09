@@ -18,15 +18,13 @@
 package heartbeat
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
+	otelmetric "go.opentelemetry.io/otel/metric"
 
-	metricstypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
-	"github.com/pole-io/pole-server/pkg/common/metrics"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/otel"
 )
 
 var (
-	beatRecordCost *prometheus.HistogramVec
+	beatRecordCost otelmetric.Float64Histogram
 )
 
 const (
@@ -35,14 +33,10 @@ const (
 )
 
 func registerMetrics() {
-	beatRecordCost = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name: "p2p_checker_heartbeat_op",
-		Help: "desc p2p_checker heartbeat operation time cost",
-		ConstLabels: map[string]string{
-			metricstypes.LabelServerNode: utils.LocalHost,
-		},
-		Buckets: []float64{5, 10, 15, 20, 30, 50, 100, 500, 1000, 5000},
-	}, []string{labelAction, labelCode})
-
-	_ = metrics.GetRegistry().Register(beatRecordCost)
+	var err error
+	beatRecordCost, err = otel.Meter().Float64Histogram("p2p_checker_heartbeat_op",
+		otelmetric.WithExplicitBucketBoundaries([]float64{5, 10, 15, 20, 30, 50, 100, 500, 1000, 5000}...))
+	if err != nil {
+		panic("register heartbeat record cost metric failed: " + err.Error())
+	}
 }

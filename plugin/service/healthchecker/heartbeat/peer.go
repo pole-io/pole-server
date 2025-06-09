@@ -26,6 +26,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -203,11 +205,10 @@ func (p *RemotePeer) GetFunc(req *apiservice.GetHeartbeatsRequest) (*apiservice.
 	start := time.Now()
 	code := "0"
 	defer func() {
-		observer := beatRecordCost.With(map[string]string{
-			labelAction: "GET",
-			labelCode:   code,
-		})
-		observer.Observe(float64(time.Since(start).Milliseconds()))
+		beatRecordCost.Record(context.Background(), float64(time.Since(start).Milliseconds()), metric.WithAttributes(
+			attribute.String(labelAction, "GET"),
+			attribute.String(labelCode, code),
+		))
 	}()
 	client, err := p.choseOneClient()
 	if err != nil {
@@ -232,11 +233,10 @@ func (p *RemotePeer) PutFunc(req *apiservice.HeartbeatsRequest) error {
 	start := time.Now()
 	code := "0"
 	defer func() {
-		observer := beatRecordCost.With(map[string]string{
-			labelAction: "PUT",
-			labelCode:   code,
-		})
-		observer.Observe(float64(time.Since(start).Milliseconds()))
+		beatRecordCost.Record(context.Background(), float64(time.Since(start).Milliseconds()), metric.WithAttributes(
+			attribute.String(labelAction, "PUT"),
+			attribute.String(labelCode, code),
+		))
 	}()
 	client, err := p.choseOneSender()
 	if err != nil {
@@ -258,11 +258,10 @@ func (p *RemotePeer) DelFunc(req *apiservice.DelHeartbeatsRequest) error {
 	start := time.Now()
 	code := "0"
 	defer func() {
-		observer := beatRecordCost.With(map[string]string{
-			labelAction: "DEL",
-			labelCode:   code,
-		})
-		observer.Observe(float64(time.Since(start).Milliseconds()))
+		beatRecordCost.Record(context.Background(), float64(time.Since(start).Milliseconds()), metric.WithAttributes(
+			attribute.String(labelAction, "DEL"),
+			attribute.String(labelCode, code),
+		))
 	}()
 	client, err := p.choseOneClient()
 	if err != nil {

@@ -18,43 +18,22 @@
 package metrics
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
-)
-
-var (
-	clientInstanceTotal   prometheus.Gauge
-	serviceCount          *prometheus.GaugeVec
-	serviceOnlineCount    *prometheus.GaugeVec
-	serviceAbnormalCount  *prometheus.GaugeVec
-	serviceOfflineCount   *prometheus.GaugeVec
-	instanceCount         *prometheus.GaugeVec
-	instanceOnlineCount   *prometheus.GaugeVec
-	instanceAbnormalCount *prometheus.GaugeVec
-	instanceIsolateCount  *prometheus.GaugeVec
-)
-
-var (
-	configGroupTotal       *prometheus.GaugeVec
-	configFileTotal        *prometheus.GaugeVec
-	releaseConfigFileTotal *prometheus.GaugeVec
+	otelmetric "go.opentelemetry.io/otel/metric"
 )
 
 // instance astbc registry metrics
 var (
 	// instanceAsyncRegisCost 实例异步注册任务耗费时间
-	instanceAsyncRegisCost prometheus.Histogram
+	instanceAsyncRegisCost otelmetric.Float64Histogram
 	// instanceRegisTaskExpire 实例异步注册任务超时无效事件
-	instanceRegisTaskExpire prometheus.Counter
-	redisReadFailure        prometheus.Gauge
-	redisWriteFailure       prometheus.Gauge
-	redisAliveStatus        prometheus.Gauge
+	instanceRegisTaskExpire otelmetric.Int64Counter
 	// discoveryConnTotal 服务发现客户端链接数量
-	discoveryConnTotal prometheus.Gauge
+	discoveryConnTotal otelmetric.Int64Gauge
 	// configurationConnTotal 配置中心客户端链接数量
-	configurationConnTotal prometheus.Gauge
+	configurationConnTotal otelmetric.Int64Gauge
 	// sdkClientTotal 客户端链接数量
-	sdkClientTotal  prometheus.Gauge
-	cacheUpdateCost *prometheus.HistogramVec
+	sdkClientTotal  otelmetric.Int64Gauge
+	cacheUpdateCost otelmetric.Float64Histogram
 	// batchJobUnFinishJobs .
-	batchJobUnFinishJobs *prometheus.GaugeVec
+	batchJobUnFinishJobs otelmetric.Int64Gauge
 )

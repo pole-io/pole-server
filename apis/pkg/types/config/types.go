@@ -19,6 +19,18 @@ package config
 
 import "strings"
 
+type FileFormat string
+
+const (
+	// 文件格式
+	FileFormatText       FileFormat = "text"
+	FileFormatYaml       FileFormat = "yaml"
+	FileFormatXml        FileFormat = "xml"
+	FileFormatJson       FileFormat = "json"
+	FileFormatHtml       FileFormat = "html"
+	FileFormatProperties FileFormat = "properties"
+)
+
 const (
 	// ReleaseTypeNormal 发布类型，全量发布
 	ReleaseTypeNormal = "normal"
@@ -39,14 +51,6 @@ const (
 	ReleaseStatusFail = "failure"
 	// ReleaseStatusToRelease 待发布状态
 	ReleaseStatusToRelease = "to-be-released"
-
-	// 文件格式
-	FileFormatText       = "text"
-	FileFormatYaml       = "yaml"
-	FileFormatXml        = "xml"
-	FileFormatJson       = "json"
-	FileFormatHtml       = "html"
-	FileFormatProperties = "properties"
 
 	FileIdSeparator = "+"
 

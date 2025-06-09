@@ -3,8 +3,9 @@ package utils
 import (
 	"context"
 
-	"github.com/pole-io/pole-server/apis/pkg/types"
 	"go.uber.org/zap"
+
+	"github.com/pole-io/pole-server/apis/pkg/types"
 )
 
 // ZapRequestID 生成X-Request-Id的日志描述

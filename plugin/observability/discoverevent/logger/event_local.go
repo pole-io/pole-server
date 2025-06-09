@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package local
+package logger
 
 import (
 	"context"
@@ -23,20 +23,21 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/observability/event"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"go.uber.org/zap"
 )
 
 const (
-	PluginName        = "local"
+	PluginName        = "EventLogger"
 	defaultBufferSize = 1024
 )
 
-var log = commonlog.RegisterScope(PluginName+"event", "", 0)
+var log = commonlog.RegisterScope(PluginName, "", 0)
 
 func init() {
 	d := &discoverEventLocal{}
@@ -98,7 +99,6 @@ type discoverEventLocal struct {
 	eventCh        chan event.DiscoverEvent
 	bufferPool     sync.Pool
 	curEventBuffer *eventBufferHolder
-	cursor         int
 	syncLock       sync.Mutex
 	eventHandler   func(eventHolder *eventBufferHolder)
 	cancel         context.CancelFunc

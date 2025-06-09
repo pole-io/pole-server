@@ -23,9 +23,7 @@ SET
 --
 -- Database: `pole_server`
 --
-CREATE DATABASE IF NOT EXISTS `pole_server` DEFAULT CHARACTER
-SET
-    utf8mb4 COLLATE utf8mb4_bin;
+CREATE DATABASE IF NOT EXISTS `pole_server` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 
 USE `pole_server`;
 

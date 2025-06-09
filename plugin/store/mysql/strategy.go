@@ -27,6 +27,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/polarismesh/specification/source/go/api/v1/security"
+
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -419,7 +420,7 @@ func (s *strategyStore) GetStrategyDetail(id string) (*authcommon.StrategyDetail
 			"get auth_strategy missing some params, id is %s", id))
 	}
 
-	querySql := "SELECT ag.id, ag.name, ag.action, ag.owner, ag.default, ag.comment, ag.revision, ag.flag, " +
+	querySql := "SELECT ag.id, ag.name, ag.action, ag.owner, ag.comment, ag.default, ag.revision, ag.flag, " +
 		" UNIX_TIMESTAMP(ag.ctime), UNIX_TIMESTAMP(ag.mtime) FROM auth_strategy AS ag WHERE ag.flag = 0 AND ag.id = ?"
 
 	row := s.master.QueryRow(querySql, id)
@@ -437,8 +438,8 @@ func (s *strategyStore) GetDefaultStrategyDetailByPrincipal(principalId string,
 	}
 
 	querySql := `
-	 SELECT ag.id, ag.name, ag.action, ag.owner, ag.default
-		 , ag.comment, ag.revision, ag.flag, UNIX_TIMESTAMP(ag.ctime)
+	 SELECT ag.id, ag.name, ag.action, ag.owner, ag.comment
+		 , ag.default, ag.revision, ag.flag, UNIX_TIMESTAMP(ag.ctime)
 		 , UNIX_TIMESTAMP(ag.mtime)
 	 FROM auth_strategy ag
 	 WHERE ag.flag = 0
@@ -478,7 +479,7 @@ func (s *strategyStore) getStrategyDetail(row *sql.Row) (*authcommon.StrategyDet
 		owner           string
 	)
 	ret := new(authcommon.StrategyDetail)
-	if err := row.Scan(&ret.ID, &ret.Name, &ret.Action, &owner, &isDefault, &ret.Comment,
+	if err := row.Scan(&ret.ID, &ret.Name, &ret.Action, &owner, &ret.Comment, &isDefault,
 		&ret.Revision, &flag, &ctime, &mtime); err != nil {
 		switch err {
 		case sql.ErrNoRows:

@@ -23,6 +23,7 @@ import (
 	"net"
 	"net/http"
 	"runtime"
+	"sync/atomic"
 	"time"
 
 	"go.uber.org/zap"
@@ -40,6 +41,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	connlimit "github.com/pole-io/pole-server/pkg/common/conn/limit"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
+	commonmetrics "github.com/pole-io/pole-server/pkg/common/otel/metrics"
 	"github.com/pole-io/pole-server/pkg/common/secure"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -437,32 +439,37 @@ func (b *BaseGrpcServer) AllowAccess(method string) bool {
 	return ok
 }
 
-// type connCounterHook struct {
-// 	bz authcommon.BzModule
-// }
+type connCounterHook struct {
+	bz authcommon.BzModule
+	c  atomic.Int64
+}
 
-// func (h *connCounterHook) OnAccept(conn net.Conn) {
-// 	if h.bz == authcommon.DiscoverModule {
-// 		metrics.AddDiscoveryClientConn()
-// 	}
-// 	if h.bz == authcommon.ConfigModule {
-// 		metrics.AddConfigurationClientConn()
-// 	}
-// 	metrics.AddSDKClientConn()
-// }
+func (h *connCounterHook) OnAccept(conn net.Conn) {
+	_ = h.c.Add(1)
 
-// func (h *connCounterHook) OnRelease(conn net.Conn) {
-// 	if h.bz == authcommon.DiscoverModule {
-// 		metrics.RemoveDiscoveryClientConn()
-// 	}
-// 	if h.bz == authcommon.ConfigModule {
-// 		metrics.RemoveConfigurationClientConn()
-// 	}
-// 	metrics.RemoveSDKClientConn()
-// }
+	if h.bz == authcommon.DiscoverModule {
+		commonmetrics.ReportDiscoveryClientConn(h.c.Load())
+	}
+	if h.bz == authcommon.ConfigModule {
+		commonmetrics.ReportConfigurationClientConn(h.c.Load())
+	}
+	commonmetrics.ReportSDKClientConn(h.c.Load())
+}
 
-// func (h *connCounterHook) OnClose() {
-// 	metrics.ResetDiscoveryClientConn()
-// 	metrics.ResetConfigurationClientConn()
-// 	metrics.ResetSDKClientConn()
-// }
+func (h *connCounterHook) OnRelease(conn net.Conn) {
+	_ = h.c.Add(-1)
+
+	if h.bz == authcommon.DiscoverModule {
+		commonmetrics.ReportDiscoveryClientConn(h.c.Load())
+	}
+	if h.bz == authcommon.ConfigModule {
+		commonmetrics.ReportConfigurationClientConn(h.c.Load())
+	}
+	commonmetrics.ReportSDKClientConn(h.c.Load())
+}
+
+func (h *connCounterHook) OnClose() {
+	commonmetrics.ResetDiscoveryClientConn()
+	commonmetrics.ResetConfigurationClientConn()
+	commonmetrics.ResetSDKClientConn()
+}

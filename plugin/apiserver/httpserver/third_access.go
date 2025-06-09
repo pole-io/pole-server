@@ -22,9 +22,6 @@ import (
 	"net/http/pprof"
 
 	"github.com/emicklei/go-restful/v3"
-	"github.com/go-openapi/spec"
-
-	"github.com/pole-io/pole-server/pkg/common/metrics"
 )
 
 // enablePprofAccess 开启pprof接口
@@ -65,59 +62,4 @@ func (h *HTTPServer) enablePprofAccess(wsContainer *restful.Container) {
 			w.WriteHeader(http.StatusOK)
 		}
 	}))
-}
-
-// enablePrometheusAccess 开启 Prometheus 接口
-func (h *HTTPServer) enablePrometheusAccess(wsContainer *restful.Container) {
-	log.Infof("open http access for prometheus")
-
-	wsContainer.Handle("/metrics", metrics.GetHttpHandler())
-}
-
-func enrichSwaggerObject(swo *spec.Swagger) {
-	swo.Tags = []spec.Tag{
-		{TagProps: spec.TagProps{
-			Name:        "Client",
-			Description: "客户端接口"}},
-		{TagProps: spec.TagProps{
-			Name:        "ConfigConsole",
-			Description: "配置管理"}},
-		{TagProps: spec.TagProps{
-			Name:        "CircuitBreakers",
-			Description: "熔断规则管理"}},
-		{TagProps: spec.TagProps{
-			Name:        "Instances",
-			Description: "实例管理"}},
-		{TagProps: spec.TagProps{
-			Name:        "Maintain",
-			Description: "运维接口"}},
-		{TagProps: spec.TagProps{
-			Name:        "Namespaces",
-			Description: "命名空间管理"}},
-		{TagProps: spec.TagProps{
-			Name:        "RoutingRules",
-			Description: "路由规则管理"}},
-		{TagProps: spec.TagProps{
-			Name:        "RateLimits",
-			Description: "限流规则管理"}},
-		{TagProps: spec.TagProps{
-			Name:        "Services",
-			Description: "服务管理"}},
-		{TagProps: spec.TagProps{
-			Name:        "AuthRule",
-			Description: "鉴权规则管理"}},
-		{TagProps: spec.TagProps{
-			Name:        "Users",
-			Description: "用户/用户组管理"}},
-	}
-
-	swo.SecurityDefinitions = map[string]*spec.SecurityScheme{
-		"api_key": spec.APIKeyAuth("X-Polaris-Token", "header"),
-	}
-
-	var securitySetting []map[string][]string
-	apiKey := make(map[string][]string, 0)
-	apiKey["api_key"] = []string{}
-	securitySetting = append(securitySetting, apiKey)
-	swo.Security = securitySetting
 }

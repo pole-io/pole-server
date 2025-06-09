@@ -519,7 +519,7 @@ func TestPublishConfigFile(t *testing.T) {
 	secondReleaseContent := "k3=v3"
 	secondReleaseFormat := conftypes.FileFormatHtml
 	configFile.Content = protobuf.NewStringValue(secondReleaseContent)
-	configFile.Format = protobuf.NewStringValue(secondReleaseFormat)
+	configFile.Format = protobuf.NewStringValue(string(secondReleaseFormat))
 
 	rsp6 := testSuit.ConfigServer().UpdateConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{configFile})
 	assert.Equal(t, api.ExecuteSuccess, rsp6.Code.GetValue())

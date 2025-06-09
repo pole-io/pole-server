@@ -20,9 +20,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"os"
-
-	"gopkg.in/yaml.v3"
 
 	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/access_control/auth"
@@ -30,6 +27,7 @@ import (
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/admin"
 	"github.com/pole-io/pole-server/pkg/cache"
+	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
 	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/namespace"
@@ -38,17 +36,17 @@ import (
 
 // Config 配置
 type Config struct {
-	Bootstrap  Bootstrap          `yaml:"bootstrap"`
-	APIServers []apiserver.Config `yaml:"apiservers"`
-	Cache      cache.Config       `yaml:"cache"`
-	Namespace  namespace.Config   `yaml:"namespace"`
-	Naming     service.Config     `yaml:"naming"`
-	GoverRule  goverrule.Config   `yaml:"goverrule"`
-	Config     config.Config      `yaml:"config"`
-	Maintain   admin.Config       `yaml:"maintain"`
-	Store      storeapi.Config    `yaml:"store"`
-	Auth       auth.Config        `yaml:"auth"`
-	Plugin     apis.Config        `yaml:"plugin"`
+	Bootstrap  Bootstrap        `yaml:"bootstrap"`
+	APIServers string           `yaml:"apiservers"`
+	Cache      cache.Config     `yaml:"cache"`
+	Namespace  namespace.Config `yaml:"namespace"`
+	Naming     service.Config   `yaml:"naming"`
+	GoverRule  goverrule.Config `yaml:"goverrule"`
+	Config     config.Config    `yaml:"config"`
+	Maintain   admin.Config     `yaml:"maintain"`
+	Store      storeapi.Config  `yaml:"store"`
+	Auth       auth.Config      `yaml:"auth"`
+	Plugin     apis.Config      `yaml:"plugin"`
 }
 
 // Bootstrap 启动引导配置
@@ -104,31 +102,25 @@ func Load(filePath string) (*Config, error) {
 	}
 
 	fmt.Printf("[INFO] load config from %v\n", filePath)
-
-	buf, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("read file %s error", filePath)
-	}
 	conf := &Config{
 		Bootstrap: defaultBootstrap(),
 		Maintain:  *admin.DefaultConfig(),
 	}
-	if err = parseYamlContent(string(buf), conf); err != nil {
+	if _, err := utils.LoadYAML(filePath, conf); err != nil {
 		fmt.Printf("[ERROR] %v\n", err)
 		return nil, err
 	}
-
 	return conf, nil
 }
 
-func parseYamlContent(content string, conf *Config) error {
-	if err := yaml.Unmarshal([]byte(replaceEnv(content)), conf); nil != err {
-		return fmt.Errorf("parse yaml %s error:%w", content, err)
+func LoadAPIEntries(f string) ([]apiserver.Config, error) {
+	if f == "" {
+		return nil, fmt.Errorf("invalid api server config file path")
 	}
-	return nil
-}
 
-// replaceEnv replace holder by env list
-func replaceEnv(configContent string) string {
-	return os.ExpandEnv(configContent)
+	ret := make([]apiserver.Config, 0)
+	if _, err := utils.LoadYAML(f, &ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
 }

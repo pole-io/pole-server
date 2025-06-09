@@ -101,7 +101,7 @@ func assembleConfigFile() *apiconfig.ConfigFile {
 		Namespace: protobuf.NewStringValue(testNamespace),
 		Group:     protobuf.NewStringValue(testGroup),
 		Name:      protobuf.NewStringValue(testFile),
-		Format:    protobuf.NewStringValue(conftypes.FileFormatText),
+		Format:    protobuf.NewStringValue(string(conftypes.FileFormatText)),
 		Content:   protobuf.NewStringValue("k1=v1,k2=v2"),
 		Tags:      []*apiconfig.ConfigFileTag{tag1, tag2, tag3},
 		CreateBy:  protobuf.NewStringValue(operator),

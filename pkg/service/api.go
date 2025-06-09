@@ -23,7 +23,6 @@ import (
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
-	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
@@ -103,8 +102,6 @@ type ClientServer interface {
 	DeregisterInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response
 	// ReportClient Client gets geographic location information
 	ReportClient(ctx context.Context, req *apiservice.Client) *apiservice.Response
-	// GetPrometheusTargets Used to obtain the ReportClient information and serve as the SD result of Prometheus
-	GetPrometheusTargets(ctx context.Context, query map[string]string) *types.PrometheusDiscoveryResponse
 	// GetServiceWithCache Used for client acquisition service information
 	GetServiceWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse
 	// ServiceInstancesCache Used for client acquisition service instance information

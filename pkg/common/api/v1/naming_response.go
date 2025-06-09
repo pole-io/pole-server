@@ -20,7 +20,6 @@ package v1
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/wrappers"
-	"github.com/pole-io/pole-server/apis/pkg/types"
 	"google.golang.org/protobuf/types/known/anypb"
 
 	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
@@ -28,6 +27,8 @@ import (
 	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
 	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
+
+	"github.com/pole-io/pole-server/apis/pkg/types"
 )
 
 type Rsp interface {
@@ -75,8 +76,8 @@ func IsSuccessCommon(rsp *types.CommonResponse) bool {
  * @brief 获取返回码前三位
  * @note 返回码前三位和HTTP返回码定义一致
  */
-func CalcCodeCommon(rm *types.CommonResponse) int {
-	return int(rm.Code / 1000)
+func CalcCodeCommon(rm Rsp) int {
+	return int(rm.GetCode().GetValue() / 1000)
 }
 
 // IsSuccess .

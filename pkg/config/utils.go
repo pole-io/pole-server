@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"path"
 	"regexp"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
@@ -49,6 +50,19 @@ func CheckFileName(name *wrappers.StringValue) error {
 		return errors.New(utils.EmptyErrString)
 	}
 	return nil
+}
+
+// ResolveFileType 解析文件类型
+func ResolveFileType(name string) string {
+	p := strings.LastIndex(name, ".")
+	if p < 0 || p == len(name)-1 {
+		return "txt"
+	}
+	ext := name[p+1:]
+	if ext == "yaml" || ext == "yml" {
+		return "yaml"
+	}
+	return ext
 }
 
 // CalMd5 计算md5值

@@ -402,7 +402,6 @@ func (h *HTTPServer) createRestfulContainer() (*restful.Container, error) {
 				wsContainer.Add(h.configSvr.GetConsoleAccessServer(apiConfig.Include))
 				wsContainer.Add(h.GetCoreV1ConsoleAccessServer(apiConfig.Include))
 				wsContainer.Add(h.authSvr.GetAuthServer())
-				wsContainer.Add(h.GetPrometheusDiscoveryServer(apiConfig.Include))
 			}
 		case "client":
 			if apiConfig.Enable {
@@ -420,7 +419,6 @@ func (h *HTTPServer) createRestfulContainer() (*restful.Container, error) {
 	h.enablePprofAccess(wsContainer)
 	// 收集插件的 endpoint 数据
 	h.enablePluginDebugAccess(wsContainer)
-	h.enablePrometheusAccess(wsContainer)
 	return wsContainer, nil
 }
 
