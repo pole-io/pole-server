@@ -17,7 +17,7 @@
 
 package v1
 
-import apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+import apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 // pole-server错误码
 // 六位构成，前面三位参照HTTP Status的标准

@@ -25,7 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"

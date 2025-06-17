@@ -33,8 +33,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
@@ -2497,7 +2497,7 @@ func Test_HealthCheckInstanceMetadata(t *testing.T) {
 	t.Run("toUnhealth", func(t *testing.T) {
 		lastBeatTime := time.Now().Unix()
 		future := discoverSuit.BatchController().AsyncHeartbeat(ins1, false, lastBeatTime)
-		err := future.Wait()
+		_, err := future.Done()
 		assert.NoError(t, err)
 
 		discoverSuit.DiscoverServer().Cache().(*cache.CacheManager).TestUpdate()
@@ -2511,7 +2511,7 @@ func Test_HealthCheckInstanceMetadata(t *testing.T) {
 	t.Run("toHealth", func(t *testing.T) {
 		lastBeatTime := time.Now().Unix()
 		future := discoverSuit.BatchController().AsyncHeartbeat(ins1, true, lastBeatTime)
-		err := future.Wait()
+		_, err := future.Done()
 		assert.NoError(t, err)
 
 		discoverSuit.DiscoverServer().Cache().(*cache.CacheManager).TestUpdate()

@@ -1,7 +1,7 @@
 package service
 
 import (
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 )
 
 // Location cmdb信息，对应内存结构体

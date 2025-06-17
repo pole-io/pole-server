@@ -30,7 +30,7 @@ import (
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/access_control/auth"
@@ -257,12 +257,11 @@ func StartDiscoverComponents(ctx context.Context, cfg *boot_config.Config, s sto
 		Heartbeat:        healthBatchConfig.Heartbeat,
 	}
 
-	bc, err := batch.NewBatchCtrlWithConfig(s, cacheMgn, batchConfig)
+	bc, err := batch.NewBatchCtrlWithConfig(ctx, s, cacheMgn, batchConfig)
 	if err != nil {
 		log.Errorf("new batch ctrl with config err: %s", err.Error())
 		return err
 	}
-	bc.Start(ctx)
 
 	if len(cfg.Naming.HealthChecks.LocalHost) == 0 {
 		cfg.Naming.HealthChecks.LocalHost = utils.LocalHost // 补充healthCheck的配置

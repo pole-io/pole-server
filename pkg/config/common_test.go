@@ -23,7 +23,7 @@ import (
 
 	"github.com/google/uuid"
 
-	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
+	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 
 	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/access_control/auth"

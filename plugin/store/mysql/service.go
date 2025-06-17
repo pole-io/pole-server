@@ -21,7 +21,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
@@ -75,12 +74,6 @@ func (ss *serviceStore) addService(s *svctypes.Service) error {
 		return err
 	}
 
-	// 填充owner_service_map表
-	if err := addOwnerServiceMap(tx, s.Name, s.Namespace, s.Owner); err != nil {
-		log.Errorf("[Store][database] add owner_service_map table err: %s", err.Error())
-		return err
-	}
-
 	if err := tx.Commit(); err != nil {
 		log.Errorf("[Store][database] add service tx commit err: %s", err.Error())
 		return err
@@ -113,16 +106,12 @@ func (ss *serviceStore) deleteService(id, serviceName, namespaceName string) err
 		return err
 	}
 
-	// 删除负责人、服务映射表对应记录
-	if err := deleteOwnerServiceMap(tx, serviceName, namespaceName); err != nil {
-		log.Errorf("[Store][database] delete owner_service_map(%s) err : %s", id, err.Error())
-		return err
-	}
-
 	if err := deleteServiceMetadata(tx, serviceName, namespaceName); err != nil {
 		log.Errorf("[Store][database] delete service_metadata(%s) err : %s", id, err.Error())
 		return err
 	}
+
+	// TODO 需要清理服务订阅信息数据
 
 	if err := tx.Commit(); err != nil {
 		log.Errorf("[Store][database] add service tx commit err: %s", err.Error())
@@ -179,7 +168,7 @@ func (ss *serviceStore) UpdateServiceAlias(alias *svctypes.Service, needUpdateOw
 }
 
 // updateServiceAlias update service alias
-func (ss *serviceStore) updateServiceAlias(alias *svctypes.Service, needUpdateOwner bool) error {
+func (ss *serviceStore) updateServiceAlias(alias *svctypes.Service, _ bool) error {
 	tx, err := ss.master.Begin()
 	if err != nil {
 		log.Errorf("[Store][database] update service alias tx begin err: %s", err.Error())
@@ -204,14 +193,6 @@ func (ss *serviceStore) updateServiceAlias(alias *svctypes.Service, needUpdateOw
 		return err
 	}
 
-	// 更新owner_service_map表
-	if needUpdateOwner {
-		if err := updateOwnerServiceMap(tx, alias.Name, alias.Namespace, alias.Owner); err != nil {
-			log.Errorf("[Store][database] update owner_service_map table err: %s", err.Error())
-			return err
-		}
-	}
-
 	if err := tx.Commit(); err != nil {
 		log.Errorf("[Store][database] update service alias tx commit err: %s", err.Error())
 		return err
@@ -221,6 +202,65 @@ func (ss *serviceStore) updateServiceAlias(alias *svctypes.Service, needUpdateOw
 		if store.Code(err) == store.AffectedRowsNotMatch {
 			return store.NewStatusError(store.NotFoundService, "not found service")
 		}
+	}
+	return nil
+}
+
+// AddServiceSubscibes 批量添加服务订阅信息
+func (ss *serviceStore) AddServiceSubscibes(data []*svctypes.ServiceSubscriber) error {
+	tx, err := ss.master.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	insertStmt := `insert into service_subscribe_graph (id, caller_name, caller_namespace, callee_name, callee_namespace) values (?, ?, ?, ?, ?)`
+	for _, sub := range data {
+		if sub.Caller == nil || len(sub.Callee) == 0 {
+			continue
+		}
+		for _, callee := range sub.Callee {
+			id, err := utils.BuildSha1Digest(sub.Caller.Name + sub.Caller.Namespace + callee.Name + callee.Namespace)
+			if err != nil {
+				log.Errorf("[Store][ServiceSubscribe] add subscribe build id err: %s", err.Error())
+				return store.NewStatusError(store.Unknown, "build subscribe id failed")
+			}
+			if _, err := tx.Exec(insertStmt, id, sub.Caller.Name, sub.Caller.Namespace, callee.Name, callee.Namespace); err != nil {
+				log.Errorf("[Store][ServiceSubscribe] add subscribe err: %s", err.Error())
+				return err
+			}
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		log.Errorf("[Store][ServiceSubscribe] add subscribe commit err: %s", err.Error())
+		return err
+	}
+	return nil
+}
+
+// DelServiceSubscibes 批量删除服务订阅信息
+func (ss *serviceStore) DelServiceSubscibes(data []*svctypes.ServiceSubscriber) error {
+	tx, err := ss.master.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	deleteStmt := `delete from service_subscribe_graph where caller_name = ? and caller_namespace = ? and callee_name = ? and callee_namespace = ?`
+	for _, sub := range data {
+		if sub.Caller == nil || len(sub.Callee) == 0 {
+			continue
+		}
+		for _, callee := range sub.Callee {
+			if _, err := tx.Exec(deleteStmt, sub.Caller.Name, sub.Caller.Namespace, callee.Name, callee.Namespace); err != nil {
+				log.Errorf("[Store][ServiceSubscribe] del subscribe err: %s", err.Error())
+				return err
+			}
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		log.Errorf("[Store][ServiceSubscribe] del subscribe commit err: %s", err.Error())
+		return err
 	}
 	return nil
 }
@@ -264,7 +304,7 @@ func (ss *serviceStore) UpdateService(service *svctypes.Service, needUpdateOwner
 }
 
 // updateService update service
-func (ss *serviceStore) updateService(service *svctypes.Service, needUpdateOwner bool) error {
+func (ss *serviceStore) updateService(service *svctypes.Service, _ bool) error {
 	tx, err := ss.master.Begin()
 	if err != nil {
 		log.Errorf("[Store][database] update service tx begin err: %s", err.Error())
@@ -284,14 +324,6 @@ func (ss *serviceStore) updateService(service *svctypes.Service, needUpdateOwner
 	if err := updateServiceMeta(tx, service.ID, service.Meta); err != nil {
 		log.Errorf("[Store][database] update service meta table err: %s", err.Error())
 		return err
-	}
-
-	// 更新owner_service_map表
-	if needUpdateOwner {
-		if err := updateOwnerServiceMap(tx, service.Name, service.Namespace, service.Owner); err != nil {
-			log.Errorf("[Store][database] update owner_service_map table err: %s", err.Error())
-			return err
-		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -408,6 +440,54 @@ func (ss *serviceStore) GetMoreServices(mtime time.Time, firstUpdate, disableBus
 		return nil, err
 	}
 	return services, nil
+}
+
+// GetMoreServiceSubscibes 获取服务订阅视图
+func (ss *serviceStore) GetMoreServiceSubscibes(mtime time.Time, firstUpdate bool) (map[string]*svctypes.ServiceSubscriber, error) {
+	// 构造 SQL 查询
+	var (
+		rows *sql.Rows
+		err  error
+	)
+	if firstUpdate {
+		rows, err = ss.slave.Query(`select caller_name, caller_namespace, callee_name, callee_namespace from service_subscribe_graph`)
+	} else {
+		rows, err = ss.slave.Query(`select caller_name, caller_namespace, callee_name, callee_namespace from service_subscribe_graph where mtime >= FROM_UNIXTIME(?)`, mtime.Unix())
+	}
+	if err != nil {
+		log.Errorf("[Store][ServiceSubscribe] query subscribe graph err: %s", err.Error())
+		return nil, err
+	}
+	defer rows.Close()
+
+	// 聚合结果
+	subMap := make(map[string]*svctypes.ServiceSubscriber)
+	for rows.Next() {
+		var callerName, callerNamespace, calleeName, calleeNamespace string
+		if err := rows.Scan(&callerName, &callerNamespace, &calleeName, &calleeNamespace); err != nil {
+			log.Errorf("[Store][ServiceSubscribe] scan subscribe graph err: %s", err.Error())
+			return nil, err
+		}
+		callerKey := callerNamespace + "::" + callerName
+		if _, ok := subMap[callerKey]; !ok {
+			subMap[callerKey] = &svctypes.ServiceSubscriber{
+				Caller: &svctypes.ServiceKey{
+					Namespace: callerNamespace,
+					Name:      callerName,
+				},
+				Callee: []*svctypes.ServiceKey{},
+			}
+		}
+		subMap[callerKey].Callee = append(subMap[callerKey].Callee, &svctypes.ServiceKey{
+			Namespace: calleeNamespace,
+			Name:      calleeName,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		log.Errorf("[Store][ServiceSubscribe] rows err: %s", err.Error())
+		return nil, err
+	}
+	return subMap, nil
 }
 
 // GetSystemServices 获取系统服务
@@ -1141,106 +1221,11 @@ func filterMetadata(metas map[string]string) (string, []interface{}) {
 	return str, args
 }
 
-// GetServicesBatch 查询多个服务的id
-func (ss *serviceStore) GetServicesBatch(services []*svctypes.Service) ([]*svctypes.Service, error) {
-	if len(services) == 0 {
-		return nil, nil
-	}
-	str := `select id, name, namespace,owner from service where flag = 0 and (name, namespace) in (`
-	args := make([]interface{}, 0, len(services)*2)
-	for key, value := range services {
-		str += "(" + PlaceholdersN(2) + ")"
-		if key != len(services)-1 {
-			str += ","
-		}
-		args = append(args, value.Name)
-		args = append(args, value.Namespace)
-	}
-	str += `)`
-
-	rows, err := ss.master.Query(str, args...)
-	if err != nil {
-		log.Errorf("[Store][database] query services batch err: %s", err.Error())
-		return nil, err
-	}
-
-	res := make([]*svctypes.Service, 0, len(services))
-	var namespace, name, id, owner string
-	for rows.Next() {
-		err := rows.Scan(&id, &name, &namespace, &owner)
-		if err != nil {
-			log.Errorf("[Store][database] fetch services batch scan err: %s", err.Error())
-			return nil, err
-		}
-		res = append(res, &svctypes.Service{
-			ID:        id,
-			Name:      name,
-			Namespace: namespace,
-			Owner:     owner,
-		})
-	}
-	if err := rows.Err(); err != nil {
-		log.Errorf("[Store][database] fetch services batch next err: %s", err.Error())
-		return nil, err
-	}
-	return res, nil
-}
-
-// addOwnerServiceMap 填充owner_service_map表
-func addOwnerServiceMap(tx *BaseTx, service, namespace, owner string) error {
-	addSql := "insert into owner_service_map(id,owner,service,namespace) values"
-
-	// 根据; ,进行分割
-	owners := strings.FieldsFunc(owner, func(r rune) bool {
-		return r == ';' || r == ','
-	})
-	args := make([]interface{}, 0)
-
-	if len(owners) >= 1 {
-		for i := 0; i < len(owners); i++ {
-			addSql += "(?,?,?,?),"
-			args = append(args, utils.NewUUID(), owners[i], service, namespace)
-		}
-		if len(args) != 0 {
-			addSql = strings.TrimSuffix(addSql, ",")
-			if _, err := tx.Exec(addSql, args...); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-// deleteOwnerServiceMap 删除owner_service_map表中对应记录
-func deleteOwnerServiceMap(tx *BaseTx, service, namespace string) error {
-	log.Infof("[Store][database] delete service(%s) namespace(%s)", service, namespace)
-	delSql := "delete from owner_service_map where service=? and namespace=?"
-	if _, err := tx.Exec(delSql, service, namespace); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // deleteServiceMetadata 删除 service_metadata 中的残留数据
 func deleteServiceMetadata(tx *BaseTx, service, namespace string) error {
 	log.Infof("[Store][database] delete service(%s) namespace(%s)", service, namespace)
 	delSql := "delete from service_metadata where id IN (select id from service where name = ? and namespace = ?)"
 	if _, err := tx.Exec(delSql, service, namespace); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// updateOwnerServiceMap owner_service_map表，先删除，后填充
-func updateOwnerServiceMap(tx *BaseTx, service, namespace, owner string) error {
-	// 删除
-	if err := deleteOwnerServiceMap(tx, service, namespace); err != nil {
-		return err
-	}
-	// 填充
-	if err := addOwnerServiceMap(tx, service, namespace, owner); err != nil {
 		return err
 	}
 

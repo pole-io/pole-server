@@ -24,14 +24,14 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
+	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/pkg/common/valid"
+	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
 
 var (

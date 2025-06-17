@@ -27,7 +27,7 @@ import (
 	"github.com/pole-io/pole-server/apis"
 	metricstypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
-	commontime "github.com/pole-io/pole-server/pkg/common/time"
+	commontime "github.com/pole-io/pole-server/pkg/common/utils/time"
 	"github.com/pole-io/pole-server/plugin/observability/statis/base"
 )
 

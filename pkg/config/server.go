@@ -22,7 +22,7 @@ import (
 	"errors"
 	"fmt"
 
-	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
+	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/crypto"

@@ -7,8 +7,8 @@ import (
 	"github.com/emicklei/go-restful/v3"
 	"github.com/golang/protobuf/proto"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
@@ -21,9 +21,10 @@ func (h *HTTPServer) addRoutingRuleAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichDeleteRouterRuleApiDocs(ws.POST("/routings/delete").To(h.DeleteRoutings)))
 	ws.Route(docs.EnrichUpdateRouterRuleApiDocs(ws.PUT("/routings").To(h.UpdateRoutings)))
 	ws.Route(docs.EnrichGetRouterRuleApiDocs(ws.GET("/routings").To(h.GetRoutings)))
+	ws.Route(docs.EnrichEnableRouterRuleApiDocs(ws.GET("/routings/releases").To(h.GetPublishRouterRules)))
 	ws.Route(docs.EnrichEnableRouterRuleApiDocs(ws.POST("/routings/publish").To(h.PublishRouterRules)))
 	ws.Route(docs.EnrichEnableRouterRuleApiDocs(ws.PUT("/routings/rollback").To(h.RollbackRouterRules)))
-	ws.Route(docs.EnrichEnableRouterRuleApiDocs(ws.PUT("/routings/stopbeta").To(h.RollbackRouterRules)))
+	ws.Route(docs.EnrichEnableRouterRuleApiDocs(ws.PUT("/routings/stopbeta").To(h.StopbetaRouterRules)))
 }
 
 const (
@@ -128,6 +129,16 @@ func (h *HTTPServer) GetRoutings(req *restful.Request, rsp *restful.Response) {
 	handler.WriteHeaderAndProto(h.ruleServer.QueryRouterRules(handler.ParseHeaderContext(), queryParams))
 }
 
+// GetPublishRouterRules 获取已发布的规则路由
+func (h *HTTPServer) GetPublishRouterRules(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+	filter := httpcommon.ParseQueryParams(req)
+	handler.WriteHeaderAndProto(h.ruleServer.QueryRouterRules(handler.ParseHeaderContext(), filter))
+}
+
 // PublishRouterRules 启用规则路由
 func (h *HTTPServer) PublishRouterRules(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
@@ -152,7 +163,7 @@ func (h *HTTPServer) PublishRouterRules(req *restful.Request, rsp *restful.Respo
 	handler.WriteHeaderAndProto(h.ruleServer.PublishRouterRules(ctx, routings))
 }
 
-// RollbackRouterRules 启用规则路由
+// RollbackRouterRules 回滚规则路由
 func (h *HTTPServer) RollbackRouterRules(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
@@ -176,7 +187,7 @@ func (h *HTTPServer) RollbackRouterRules(req *restful.Request, rsp *restful.Resp
 	handler.WriteHeaderAndProto(h.ruleServer.RollbackRouterRules(ctx, routings))
 }
 
-// StopbetaRouterRules 启用规则路由
+// StopbetaRouterRules 取消灰度
 func (h *HTTPServer) StopbetaRouterRules(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,

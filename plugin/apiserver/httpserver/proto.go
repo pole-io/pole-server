@@ -20,10 +20,10 @@ package httpserver
 import (
 	"github.com/golang/protobuf/proto"
 
-	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 )
 
 // NamespaceArr 命名空间数组定义

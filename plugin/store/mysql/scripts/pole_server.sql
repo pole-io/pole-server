@@ -223,6 +223,23 @@ CREATE TABLE
         /* CONSTRAINT `service_metadata_ibfk_1` FOREIGN KEY (`id`) REFERENCES `service` (`id`) ON DELETE CASCADE ON UPDATE CASCADE */
     ) ENGINE = InnoDB;
 
+--
+-- Table structure `service_subscribe_graph`
+--
+CREATE TABLE
+    `service_subscribe_graph` (
+        `id` VARCHAR(32) NOT NULL COMMENT 'Service ID',
+        `caller_name` VARCHAR(128) NOT NULL COMMENT 'Service name, only under the namespace',
+        `caller_namespace` VARCHAR(64) NOT NULL COMMENT 'Namespace belongs to the service',
+        `callee_name` VARCHAR(128) NOT NULL COMMENT 'Service name, only under the namespace',
+        `callee_namespace` VARCHAR(64) NOT NULL COMMENT 'Namespace belongs to the service',
+        PRIMARY KEY (`id`),
+        KEY `caller_name` (`caller_name`),
+        KEY `caller_namespace` (`caller_namespace`),
+        KEY `callee_name` (`callee_name`),
+        KEY `callee_namespace` (`callee_namespace`)
+    ) ENGINE = InnoDB;
+
 -- --------------------------------------------------------
 --
 -- Table structure `owner_service_map`Quickly query all services under an Owner

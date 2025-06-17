@@ -21,7 +21,7 @@ import (
 	"github.com/emicklei/go-restful/v3"
 	restfulspec "github.com/polarismesh/go-restful-openapi/v2"
 
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 )
 
 var (

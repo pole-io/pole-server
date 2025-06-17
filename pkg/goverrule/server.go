@@ -7,9 +7,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/wrappers"
 
-	"github.com/polarismesh/specification/source/go/api/v1/fault_tolerance"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
+	"github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
+	"github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/cmdb"

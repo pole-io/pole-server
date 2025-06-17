@@ -23,15 +23,15 @@ import (
 
 	"go.uber.org/zap"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/pkg/common/valid"
+	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
 
 var (
@@ -55,7 +55,7 @@ func (s *Server) checkAndStoreClient(ctx context.Context, req *apiservice.Client
 		needStore = !ClientEquals(client.Proto(), req)
 	}
 	if needStore {
-		client, resp = s.createClient(ctx, req)
+		resp = s.createClient(ctx, req)
 	}
 
 	if resp != nil {
@@ -72,9 +72,9 @@ func (s *Server) checkAndStoreClient(ctx context.Context, req *apiservice.Client
 	return resp
 }
 
-func (s *Server) createClient(ctx context.Context, req *apiservice.Client) (*types.Client, *apiservice.Response) {
+func (s *Server) createClient(ctx context.Context, req *apiservice.Client) *apiservice.Response {
 	if namingServer.bc == nil || !namingServer.bc.ClientRegisterOpen() {
-		return nil, nil
+		return nil
 	}
 	return s.asyncCreateClient(ctx, req) // 批量异步
 }
@@ -83,17 +83,19 @@ func (s *Server) createClient(ctx context.Context, req *apiservice.Client) (*typ
 // 底层函数会合并create请求，增加并发创建的吞吐
 // req 原始请求
 // ins 包含了req数据与instanceID，serviceToken
-func (s *Server) asyncCreateClient(ctx context.Context, req *apiservice.Client) (*types.Client, *apiservice.Response) {
+func (s *Server) asyncCreateClient(ctx context.Context, req *apiservice.Client) *apiservice.Response {
 	future := s.bc.AsyncRegisterClient(req)
-	if err := future.Wait(); err != nil {
+	rsp, err := future.Done()
+	if err != nil {
+		rCode := rsp.(apimodel.Code)
 		log.Error("[Server][ReportClient] async create client", zap.Error(err), utils.RequestID(ctx))
-		if future.Code() == apimodel.Code_ExistedResource {
+		if rCode == apimodel.Code_ExistedResource {
 			req.Id = protobuf.NewStringValue(req.GetId().GetValue())
 		}
-		return nil, api.NewClientResponse(apimodel.Code(future.Code()), req)
+		return api.NewClientResponse(apimodel.Code(rCode), req)
 	}
 
-	return future.Client(), nil
+	return nil
 }
 
 // GetReportClients create one instance

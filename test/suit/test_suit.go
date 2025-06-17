@@ -32,8 +32,8 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"gopkg.in/yaml.v3"
 
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
+	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	"github.com/pole-io/pole-server/apis"
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
@@ -360,12 +360,11 @@ func (d *DiscoverTestSuit) initialize(opts ...options) error {
 		Heartbeat:        healthBatchConfig.Heartbeat,
 	}
 
-	bc, err := batch.NewBatchCtrlWithConfig(d.Storage, cacheMgn, batchConfig)
+	bc, err := batch.NewBatchCtrlWithConfig(ctx, d.Storage, cacheMgn, batchConfig)
 	if err != nil {
 		log.Errorf("new batch ctrl with config err: %s", err.Error())
 		panic(err)
 	}
-	bc.Start(ctx)
 	d.bc = bc
 
 	if len(d.cfg.HealthChecks.LocalHost) == 0 {

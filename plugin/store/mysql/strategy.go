@@ -26,7 +26,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/polarismesh/specification/source/go/api/v1/security"
+	"github.com/pole-io/specification/source/go/api/v1/security"
 
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/apis/store"

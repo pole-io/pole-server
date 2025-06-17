@@ -26,8 +26,8 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 
-	apifault "github.com/polarismesh/specification/source/go/api/v1/fault_tolerance"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )

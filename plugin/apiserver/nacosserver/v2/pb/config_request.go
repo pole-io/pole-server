@@ -19,7 +19,7 @@ package nacos_grpc_service
 import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/polarismesh/specification/source/go/api/v1/config_manage"
+	"github.com/pole-io/specification/source/go/api/v1/config_manage"
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"

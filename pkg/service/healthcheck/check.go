@@ -25,8 +25,8 @@ import (
 
 	"go.uber.org/zap"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
@@ -563,7 +563,8 @@ func setInsDbStatus(svr *Server, instance *svctypes.Instance, healthStatus bool,
 // ins 包含了req数据与instanceID，serviceToken
 func asyncDeleteClient(svr *Server, client *apiservice.Client) apimodel.Code {
 	future := svr.bc.AsyncDeregisterClient(client)
-	if err := future.Wait(); err != nil {
+	rsp, err := future.Done()
+	if err != nil {
 		log.Error("[Health Check][Check] async delete client", zap.String("client-id", client.GetId().GetValue()),
 			zap.Error(err))
 	}
@@ -571,7 +572,7 @@ func asyncDeleteClient(svr *Server, client *apiservice.Client) apimodel.Code {
 		EType: svctypes.EventClientOffline,
 		Id:    client.GetId().GetValue(),
 	})
-	return future.Code()
+	return rsp.(apimodel.Code)
 }
 
 // asyncSetInsDbStatus 异步新建实例
@@ -580,10 +581,11 @@ func asyncDeleteClient(svr *Server, client *apiservice.Client) apimodel.Code {
 // ins 包含了req数据与instanceID，serviceToken
 func asyncSetInsDbStatus(svr *Server, ins *apiservice.Instance, healthStatus bool, lastBeatTime int64) apimodel.Code {
 	future := svr.bc.AsyncHeartbeat(ins, healthStatus, lastBeatTime)
-	if err := future.Wait(); err != nil {
+	rsp, err := future.Done()
+	if err != nil {
 		log.Error(err.Error())
 	}
-	return future.Code()
+	return rsp.(apimodel.Code)
 }
 
 // serialSetInsDbStatus 同步串行创建实例

@@ -92,6 +92,11 @@ type HealthCheckType int32
 
 const (
 	HealthCheckerHeartbeat HealthCheckType = iota + 1
+	HealthCheckerDetectTCP
+	HealthCheckerDetectUDP
+	HealthCheckerDetectHTTP
+	HealthCheckerDetectGRPC
+	HealthCheckerDetectMYSQL
 )
 
 var (

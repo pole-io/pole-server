@@ -27,7 +27,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/pkg/common/log"
-	commontime "github.com/pole-io/pole-server/pkg/common/time"
+	commontime "github.com/pole-io/pole-server/pkg/common/utils/time"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/core"
 )
 

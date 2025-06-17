@@ -26,7 +26,7 @@ import (
 	"github.com/emicklei/go-restful/v3"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	"github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )

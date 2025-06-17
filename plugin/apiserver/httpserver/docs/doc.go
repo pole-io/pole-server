@@ -20,7 +20,7 @@ package docs
 import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
+	"github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 )
 
 type BaseResponse struct {

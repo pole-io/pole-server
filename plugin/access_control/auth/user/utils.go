@@ -25,7 +25,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/pkg/common/valid"
+	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
 
 var (

@@ -21,10 +21,10 @@ import (
 	"context"
 	"time"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
+	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"

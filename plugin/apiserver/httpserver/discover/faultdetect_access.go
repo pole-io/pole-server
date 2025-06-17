@@ -4,8 +4,8 @@ import (
 	"github.com/emicklei/go-restful/v3"
 	"github.com/golang/protobuf/proto"
 
-	apifault "github.com/polarismesh/specification/source/go/api/v1/fault_tolerance"
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
@@ -17,6 +17,7 @@ func (h *HTTPServer) addFaultDetectRuleAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichCreateFaultDetectRulesApiDocs(ws.POST("/faultdetectors").To(h.CreateFaultDetectRules)))
 	ws.Route(docs.EnrichUpdateFaultDetectRulesApiDocs(ws.PUT("/faultdetectors").To(h.UpdateFaultDetectRules)))
 	ws.Route(docs.EnrichDeleteFaultDetectRulesApiDocs(ws.POST("/faultdetectors/delete").To(h.DeleteFaultDetectRules)))
+	ws.Route(docs.EnrichEnableCircuitBreakerRulesApiDocs(ws.POST("/faultdetectors/rules/releases").To(h.GetPublishFaultDetectRules)))
 	ws.Route(docs.EnrichEnableCircuitBreakerRulesApiDocs(ws.POST("/faultdetectors/rules/publish").To(h.PublishFaultDetectRules)))
 	ws.Route(docs.EnrichEnableCircuitBreakerRulesApiDocs(ws.PUT("/faultdetectors/rules/rollback").To(h.RollbackFaultDetectRules)))
 	ws.Route(docs.EnrichEnableCircuitBreakerRulesApiDocs(ws.PUT("/faultdetectors/rules/stopbeta").To(h.StopbetaFaultDetectRules)))
@@ -84,6 +85,18 @@ func (h *HTTPServer) UpdateFaultDetectRules(req *restful.Request, rsp *restful.R
 
 // GetFaultDetectRules query the fault detect rues
 func (h *HTTPServer) GetFaultDetectRules(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+
+	queryParams := httpcommon.ParseQueryParams(req)
+	ret := h.ruleServer.GetFaultDetectRules(handler.ParseHeaderContext(), queryParams)
+	handler.WriteHeaderAndProto(ret)
+}
+
+// GetPublishFaultDetectRules 查询已发布的主动探测规则
+func (h *HTTPServer) GetPublishFaultDetectRules(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,

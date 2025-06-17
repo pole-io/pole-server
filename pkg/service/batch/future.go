@@ -22,8 +22,8 @@ import (
 
 	"go.uber.org/zap"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
 	metrictypes "github.com/pole-io/pole-server/apis/pkg/types/metrics"
@@ -105,23 +105,6 @@ func (future *InstanceFuture) CanDrop() bool {
 // Code 获取code
 func (future *InstanceFuture) Code() apimodel.Code {
 	return future.code
-}
-
-// sendReply 批量答复futures
-func sendReply(futures interface{}, code apimodel.Code, result error) {
-	cur := time.Now()
-	switch futureType := futures.(type) {
-	case []*InstanceFuture:
-		for _, entry := range futureType {
-			entry.Reply(cur, code, result)
-		}
-	case map[string]*InstanceFuture:
-		for _, entry := range futureType {
-			entry.Reply(cur, code, result)
-		}
-	default:
-		log.Errorf("[Controller] not found reply futures type: %T", futures)
-	}
 }
 
 func reportRegisInstanceCost(begin, cur time.Time, code apimodel.Code) {

@@ -224,6 +224,20 @@ func (mr *MockStoreMockRecorder) AddServiceContractInterfaces(contract interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddServiceContractInterfaces", reflect.TypeOf((*MockStore)(nil).AddServiceContractInterfaces), contract)
 }
 
+// AddServiceSubscibes mocks base method.
+func (m *MockStore) AddServiceSubscibes(arg0 []*service.ServiceSubscriber) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddServiceSubscibes", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddServiceSubscibes indicates an expected call of AddServiceSubscibes.
+func (mr *MockStoreMockRecorder) AddServiceSubscibes(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddServiceSubscibes", reflect.TypeOf((*MockStore)(nil).AddServiceSubscibes), arg0)
+}
+
 // AddStrategy mocks base method.
 func (m *MockStore) AddStrategy(tx store.Tx, strategy *auth.StrategyDetail) error {
 	m.ctrl.T.Helper()
@@ -795,6 +809,20 @@ func (m *MockStore) CreateTransaction() (store.Transaction, error) {
 func (mr *MockStoreMockRecorder) CreateTransaction() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTransaction", reflect.TypeOf((*MockStore)(nil).CreateTransaction))
+}
+
+// DelServiceSubscibes mocks base method.
+func (m *MockStore) DelServiceSubscibes(arg0 []*service.ServiceSubscriber) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DelServiceSubscibes", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DelServiceSubscibes indicates an expected call of DelServiceSubscibes.
+func (mr *MockStoreMockRecorder) DelServiceSubscibes(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DelServiceSubscibes", reflect.TypeOf((*MockStore)(nil).DelServiceSubscibes), arg0)
 }
 
 // DeleteCircuitBreakerRule mocks base method.
@@ -1757,6 +1785,21 @@ func (mr *MockStoreMockRecorder) GetMoreServiceContracts(firstUpdate, mtime inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoreServiceContracts", reflect.TypeOf((*MockStore)(nil).GetMoreServiceContracts), firstUpdate, mtime)
 }
 
+// GetMoreServiceSubscibes mocks base method.
+func (m *MockStore) GetMoreServiceSubscibes(mtime time.Time, firstUpdate bool) (map[string]*service.ServiceSubscriber, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMoreServiceSubscibes", mtime, firstUpdate)
+	ret0, _ := ret[0].(map[string]*service.ServiceSubscriber)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMoreServiceSubscibes indicates an expected call of GetMoreServiceSubscibes.
+func (mr *MockStoreMockRecorder) GetMoreServiceSubscibes(mtime, firstUpdate interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoreServiceSubscibes", reflect.TypeOf((*MockStore)(nil).GetMoreServiceSubscibes), mtime, firstUpdate)
+}
+
 // GetMoreServices mocks base method.
 func (m *MockStore) GetMoreServices(mtime time.Time, firstUpdate, disableBusiness, needMeta bool) (map[string]*service.Service, error) {
 	m.ctrl.T.Helper()
@@ -2014,21 +2057,6 @@ func (m *MockStore) GetServices(serviceFilters, serviceMetas map[string]string, 
 func (mr *MockStoreMockRecorder) GetServices(serviceFilters, serviceMetas, instanceFilters, offset, limit interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServices", reflect.TypeOf((*MockStore)(nil).GetServices), serviceFilters, serviceMetas, instanceFilters, offset, limit)
-}
-
-// GetServicesBatch mocks base method.
-func (m *MockStore) GetServicesBatch(services []*service.Service) ([]*service.Service, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetServicesBatch", services)
-	ret0, _ := ret[0].([]*service.Service)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetServicesBatch indicates an expected call of GetServicesBatch.
-func (mr *MockStoreMockRecorder) GetServicesBatch(services interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServicesBatch", reflect.TypeOf((*MockStore)(nil).GetServicesBatch), services)
 }
 
 // GetServicesCount mocks base method.

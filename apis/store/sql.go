@@ -18,7 +18,7 @@
 package store
 
 import (
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 )
 
 // InstanceArgs 用于通过服务实例查询服务的参数

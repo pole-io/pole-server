@@ -32,7 +32,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/pkg/common/valid"
+	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 )
 

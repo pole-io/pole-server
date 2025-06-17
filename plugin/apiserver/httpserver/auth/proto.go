@@ -20,7 +20,7 @@ package auth
 import (
 	"github.com/golang/protobuf/proto"
 
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 )
 
 // UserArr 命名空间数组定义

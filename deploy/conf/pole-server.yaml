@@ -72,28 +72,6 @@ namespace:
   # Whether to allow automatic creation of naming space
   autoCreate: true
 naming:
-  # Batch controller
-  batch:
-    register:
-      open: true
-      # Task queue cache
-      queueSize: 10240
-      # The maximum waiting time for the number of mission is not full, and the time is directly forced to launch the BATCH operation
-      waitTime: 32ms
-      # Number of BATCH
-      maxBatchCount: 128
-      # Number of workers in the batch task
-      concurrency: 128
-      # Whether to turn on the discarding expiration task is only used for the batch controller of the register type
-      dropExpireTask: true
-      # The maximum validity period of the task is that the task is not executed when the validity period exceeds the validity period.
-      taskLife: 30s
-    deregister:
-      open: true
-      queueSize: 10240
-      waitTime: 32ms
-      maxBatchCount: 128
-      concurrency: 128
   # Whether to allow automatic creation of service
   autoCreate: true
 # Configuration of health check
@@ -120,19 +98,13 @@ healthcheck:
   # Health check plugin list, currently supports heartBeatMemory/heartBeatredis/heartBeatLeader.
   # since the three belong to the same type of health check plugin, only one can be enabled to use one
   checkers:
-    - name: heartbeatMemory
-    # - name: heartbeatLeader  # Heartbeat examination plugin based on the Leader-Follower mechanism
-    #   option:
-    #     # Heartbeat Record MAP number of shards
-    #     soltNum: 128
-    #     # The number of GRPC connections used to process heartbeat forward request processing between leader and follower,
-    #     # default value is runtime.GOMAXPROCS(0)
-    #     streamNum: 128
+    - name: heartbeat
 # Configuration center module start configuration
 config:
   # Whether to start the configuration module
   open: true
   # Maximum number of number of file characters
+  # Deprecated: This configuration has been deprecated.
   contentMaxLength: 20000
 # Cache configuration
 cache:

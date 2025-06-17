@@ -18,7 +18,7 @@
 package auth
 
 import (
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"

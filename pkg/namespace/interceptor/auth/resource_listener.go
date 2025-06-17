@@ -20,8 +20,8 @@ package auth
 import (
 	"context"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"

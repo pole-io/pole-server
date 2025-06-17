@@ -27,7 +27,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"

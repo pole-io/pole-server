@@ -23,11 +23,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	commonhash "github.com/pole-io/pole-server/pkg/common/hash"
+	commonhash "github.com/pole-io/pole-server/pkg/common/utils/hash"
 )
 
 const (

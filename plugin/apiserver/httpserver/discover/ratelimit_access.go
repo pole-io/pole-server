@@ -6,8 +6,8 @@ import (
 	"github.com/emicklei/go-restful/v3"
 	"github.com/golang/protobuf/proto"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
@@ -19,6 +19,7 @@ func (h *HTTPServer) addRateLimitRuleAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichDeleteRateLimitsApiDocs(ws.POST("/ratelimits/delete").To(h.DeleteRateLimits)))
 	ws.Route(docs.EnrichUpdateRateLimitsApiDocs(ws.PUT("/ratelimits").To(h.UpdateRateLimits)))
 	ws.Route(docs.EnrichGetRateLimitsApiDocs(ws.GET("/ratelimits").To(h.GetRateLimits)))
+	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.POST("/ratelimits/releases").To(h.GetPublishRateLimits)))
 	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.POST("/ratelimits/publish").To(h.PublishRateLimits)))
 	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.PUT("/ratelimits/rollback").To(h.RollbackRateLimits)))
 	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.PUT("/ratelimits/stopbeta").To(h.StopbetaRateLimits)))
@@ -100,6 +101,18 @@ func (h *HTTPServer) UpdateRateLimits(req *restful.Request, rsp *restful.Respons
 
 // GetRateLimits 查询限流规则
 func (h *HTTPServer) GetRateLimits(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+
+	queryParams := httpcommon.ParseQueryParams(req)
+	ret := h.ruleServer.GetRateLimits(handler.ParseHeaderContext(), queryParams)
+	handler.WriteHeaderAndProto(ret)
+}
+
+// GetPublishRateLimits 查询已发布限流规则
+func (h *HTTPServer) GetPublishRateLimits(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,

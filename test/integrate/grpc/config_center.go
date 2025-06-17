@@ -20,7 +20,7 @@ package grpc
 import (
 	"context"
 
-	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
+	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 )
 
 func (c *Client) GetConfigFile(ctx context.Context, in *apiconfig.ClientConfigFileInfo) (*apiconfig.ConfigClientResponse, error) {

@@ -21,35 +21,36 @@ import (
 	"context"
 	"strconv"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	"github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
-	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	"github.com/pole-io/specification/source/go/api/v1/service_manage"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
+	"github.com/pole-io/specification/source/go/api/v1/traffic_manage"
+	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/valid"
+	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
 
 var (
 	// RoutingConfigV2FilterAttrs router config filter attrs
-	RoutingConfigV2FilterAttrs = map[string]bool{
-		"id":                    true,
-		"name":                  true,
-		"service":               true,
-		"namespace":             true,
-		"source_service":        true,
-		"destination_service":   true,
-		"source_namespace":      true,
-		"destination_namespace": true,
-		"enable":                true,
-		"offset":                true,
-		"limit":                 true,
-		"order_field":           true,
-		"order_type":            true,
+	RoutingConfigV2FilterAttrs = map[string]struct{}{
+		"id":                    {},
+		"name":                  {},
+		"service":               {},
+		"namespace":             {},
+		"source_service":        {},
+		"destination_service":   {},
+		"source_namespace":      {},
+		"destination_namespace": {},
+		"enable":                {},
+		"offset":                {},
+		"limit":                 {},
+		"order_field":           {},
+		"order_type":            {},
+		"route_type":            {},
 	}
 )
 
@@ -297,6 +298,5 @@ func checkRoutingPolicyV2(req *apitraffic.RouteRule) *apiservice.Response {
 			req.RoutingConfig.TypeUrl = rules.NearbyRoutingTypeUrl
 		}
 	}
-
 	return nil
 }

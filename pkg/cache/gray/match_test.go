@@ -23,7 +23,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 )
 
 func TestMatch(t *testing.T) {

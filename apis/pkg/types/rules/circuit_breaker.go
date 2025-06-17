@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	apifault "github.com/polarismesh/specification/source/go/api/v1/fault_tolerance"
+	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 
 	"github.com/pole-io/pole-server/apis/pkg/types/service"
 )

@@ -22,8 +22,8 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"

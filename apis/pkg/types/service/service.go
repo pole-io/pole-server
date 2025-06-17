@@ -8,7 +8,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/utils"
@@ -158,4 +158,9 @@ func (s *ServiceAlias) ListExportTo() []*wrappers.StringValue {
 		ret = append(ret, &wrappers.StringValue{Value: i})
 	}
 	return ret
+}
+
+type ServiceSubscriber struct {
+	Caller *ServiceKey
+	Callee []*ServiceKey
 }

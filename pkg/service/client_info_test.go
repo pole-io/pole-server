@@ -26,9 +26,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	"github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	"github.com/pole-io/specification/source/go/api/v1/service_manage"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
@@ -113,7 +113,7 @@ func TestServer_ReportClient(t *testing.T) {
 			}()
 
 			mockStore := mock.NewMockStore(ctrl)
-			mockBc, err := batch.NewBatchCtrlWithConfig(mockStore, discoverSuit.CacheMgr(), &batch.Config{
+			mockBc, err := batch.NewBatchCtrlWithConfig(ctx, mockStore, discoverSuit.CacheMgr(), &batch.Config{
 				ClientRegister: &batch.CtrlConfig{
 					Open:          true,
 					QueueSize:     1,
@@ -123,7 +123,6 @@ func TestServer_ReportClient(t *testing.T) {
 				},
 			})
 			assert.NoError(t, err)
-			mockBc.Start(ctx)
 
 			svr.TestSetStore(mockStore)
 			svr.MockBatchController(mockBc)

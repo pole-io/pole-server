@@ -9,8 +9,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	security "github.com/polarismesh/specification/source/go/api/v1/security"
-	service_manage "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	security "github.com/pole-io/specification/source/go/api/v1/security"
+	service_manage "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	auth "github.com/pole-io/pole-server/apis/access_control/auth"
 	cache "github.com/pole-io/pole-server/apis/cache"
 	auth0 "github.com/pole-io/pole-server/apis/pkg/types/auth"

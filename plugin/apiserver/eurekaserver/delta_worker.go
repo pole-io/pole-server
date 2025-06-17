@@ -25,7 +25,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	commontime "github.com/pole-io/pole-server/pkg/common/time"
+	commontime "github.com/pole-io/pole-server/pkg/common/utils/time"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 )

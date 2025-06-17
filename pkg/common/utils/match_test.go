@@ -23,7 +23,7 @@ import (
 	regexp "github.com/dlclark/regexp2"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 )
 
 func TestMatchString(t *testing.T) {

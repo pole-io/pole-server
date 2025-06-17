@@ -25,8 +25,8 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/cmdb"
@@ -183,6 +183,9 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 		log.Infof("[Server][Service][Instance] not found name(%s) namespace(%s) service",
 			svcName, nsName)
 		return api.NewDiscoverInstanceResponse(apimodel.Code_NotFoundResource, req)
+	}
+	if filter.Caller.Service != "" && filter.Caller.Namespace != "" {
+		s.recordSvcSubscriberGraph(aliasFor, filter)
 	}
 
 	revisions := make([]string, 0, len(visibleServices)+1)
@@ -388,4 +391,19 @@ func (s *Server) getServiceCache(name string, namespace string) *svctypes.Servic
 		service.Meta = make(map[string]string)
 	}
 	return service
+}
+
+func (s *Server) recordSvcSubscriberGraph(req *svctypes.Service, filter *apiservice.DiscoverFilter) {
+	s.bc.AsyncRecordServiceSubscriberGraph(&svctypes.ServiceSubscriber{
+		Caller: &svctypes.ServiceKey{
+			Name:      filter.Caller.Service,
+			Namespace: filter.Caller.Namespace,
+		},
+		Callee: []*svctypes.ServiceKey{
+			{
+				Name:      req.Name,
+				Namespace: req.Namespace,
+			},
+		},
+	})
 }

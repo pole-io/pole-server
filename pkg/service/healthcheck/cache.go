@@ -21,15 +21,14 @@ import (
 	"context"
 	"runtime"
 
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	"github.com/pole-io/pole-server/pkg/common/hash"
-	commonhash "github.com/pole-io/pole-server/pkg/common/hash"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
+	commonhash "github.com/pole-io/pole-server/pkg/common/utils/hash"
 )
 
 var DefaultShardSize uint32
@@ -60,9 +59,9 @@ func newCacheProvider(selfService string, svr *Server) *CacheProvider {
 	return &CacheProvider{
 		svr:                  svr,
 		selfService:          selfService,
-		selfServiceInstances: container.NewSegmentMap[string, ItemWithChecker](1, hash.Fnv32),
-		healthCheckInstances: container.NewSegmentMap[string, ItemWithChecker](int(DefaultShardSize), hash.Fnv32),
-		healthCheckClients:   container.NewSegmentMap[string, ItemWithChecker](int(DefaultShardSize), hash.Fnv32),
+		selfServiceInstances: container.NewSegmentMap[string, ItemWithChecker](1, commonhash.Fnv32),
+		healthCheckInstances: container.NewSegmentMap[string, ItemWithChecker](int(DefaultShardSize), commonhash.Fnv32),
+		healthCheckClients:   container.NewSegmentMap[string, ItemWithChecker](int(DefaultShardSize), commonhash.Fnv32),
 	}
 }
 

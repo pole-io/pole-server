@@ -80,8 +80,12 @@ type ServiceStore interface {
 	GetServiceAliases(filter map[string]string, offset uint32, limit uint32) (uint32, []*svctypes.ServiceAlias, error)
 	// GetSystemServices 获取系统服务
 	GetSystemServices() ([]*svctypes.Service, error)
-	// GetServicesBatch 批量获取服务id、负责人等信息
-	GetServicesBatch(services []*svctypes.Service) ([]*svctypes.Service, error)
+	// AddServiceSubscibe 添加服务订阅关系
+	AddServiceSubscibes([]*svctypes.ServiceSubscriber) error
+	// DelServiceSubscibe 删除添加服务订阅关系
+	DelServiceSubscibes([]*svctypes.ServiceSubscriber) error
+	// GetServiceSubscibes 获取服务订阅关系
+	GetMoreServiceSubscibes(mtime time.Time, firstUpdate bool) (map[string]*svctypes.ServiceSubscriber, error)
 }
 
 // InstanceStore 实例存储接口

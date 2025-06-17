@@ -25,7 +25,7 @@ import (
 	"strconv"
 	"strings"
 
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 )
 
 // PortWrapper 端口包装类

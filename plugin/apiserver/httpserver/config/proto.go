@@ -20,8 +20,8 @@ package config
 import (
 	"github.com/golang/protobuf/proto"
 
-	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 )
 
 // ConfigReleaseArr 发布规则数组定义

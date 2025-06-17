@@ -31,8 +31,8 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -42,9 +42,9 @@ import (
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
-	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/pkg/common/valid"
+	commontime "github.com/pole-io/pole-server/pkg/common/utils/time"
+	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
 
 var (
@@ -164,11 +164,12 @@ func (s *Server) asyncCreateInstance(
 	allowAsyncRegis, _ := ctx.Value(types.ContextOpenAsyncRegis).(bool)
 	future := s.bc.AsyncCreateInstance(svcId, ins, !allowAsyncRegis)
 
-	if err := future.Wait(); err != nil {
-		if future.Code() == apimodel.Code_ExistedResource {
+	rsp, err := future.Done()
+	if err != nil {
+		if rsp.(apimodel.Code) == apimodel.Code_ExistedResource {
 			req.Id = protobuf.NewStringValue(ins.GetId().GetValue())
 		}
-		return nil, api.NewInstanceResponse(future.Code(), req)
+		return nil, api.NewInstanceResponse(rsp.(apimodel.Code), req)
 	}
 
 	return svctypes.CreateInstanceModel(svcId, req), nil
@@ -277,15 +278,16 @@ func (s *Server) asyncDeleteInstance(
 	start := time.Now()
 	allowAsyncRegis, _ := ctx.Value(types.ContextOpenAsyncRegis).(bool)
 	future := s.bc.AsyncDeleteInstance(ins, !allowAsyncRegis)
-	if err := future.Wait(); err != nil {
+	rsp, err := future.Done()
+	if err != nil {
 		// 如果发现不存在资源，意味着实例已经被删除，直接返回成功
-		if future.Code() == apimodel.Code_NotFoundResource {
+		if rsp.(apimodel.Code) == apimodel.Code_NotFoundResource {
 			return api.NewInstanceResponse(apimodel.Code_ExecuteSuccess, req)
 		}
 		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewInstanceResponse(future.Code(), req)
+		return api.NewInstanceResponse(rsp.(apimodel.Code), req)
 	}
-	instance := future.Instance()
+	instance := future.Detach("instance_val").(*svctypes.Instance)
 
 	// 打印本地日志与操作记录
 	msg := fmt.Sprintf("delete instance: id=%v, namespace=%v, service=%v, host=%v, port=%v",

@@ -39,7 +39,7 @@ import (
 	"golang.org/x/sync/singleflight"
 	"google.golang.org/grpc"
 
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/apiserver"
 	"github.com/pole-io/pole-server/apis/pkg/types"

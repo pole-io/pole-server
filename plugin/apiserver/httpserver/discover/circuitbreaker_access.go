@@ -6,8 +6,8 @@ import (
 	"github.com/emicklei/go-restful/v3"
 	"github.com/golang/protobuf/proto"
 
-	apifault "github.com/polarismesh/specification/source/go/api/v1/fault_tolerance"
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
+	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
@@ -19,6 +19,7 @@ func (h *HTTPServer) addCircuitBreakerRuleAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichCreateCircuitBreakerRulesApiDocs(ws.POST("/circuitbreaker/rules").To(h.CreateCircuitBreakerRules)))
 	ws.Route(docs.EnrichUpdateCircuitBreakerRulesApiDocs(ws.PUT("/circuitbreaker/rules").To(h.UpdateCircuitBreakerRules)))
 	ws.Route(docs.EnrichDeleteCircuitBreakerRulesApiDocs(ws.POST("/circuitbreaker/rules/delete").To(h.DeleteCircuitBreakerRules)))
+	ws.Route(docs.EnrichEnableCircuitBreakerRulesApiDocs(ws.POST("/circuitbreaker/rules/releases").To(h.GetPublishCircuitBreakerRules)))
 	ws.Route(docs.EnrichEnableCircuitBreakerRulesApiDocs(ws.POST("/circuitbreaker/rules/publish").To(h.PublishCircuitBreakerRules)))
 	ws.Route(docs.EnrichEnableCircuitBreakerRulesApiDocs(ws.PUT("/circuitbreaker/rules/rollback").To(h.RollbackCircuitBreakerRules)))
 	ws.Route(docs.EnrichEnableCircuitBreakerRulesApiDocs(ws.PUT("/circuitbreaker/rules/stopbeta").To(h.StopbetaCircuitBreakerRules)))
@@ -86,6 +87,18 @@ func (h *HTTPServer) UpdateCircuitBreakerRules(req *restful.Request, rsp *restfu
 
 // GetCircuitBreakerRules query the circuitbreaker rues
 func (h *HTTPServer) GetCircuitBreakerRules(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+
+	queryParams := httpcommon.ParseQueryParams(req)
+	ret := h.ruleServer.GetCircuitBreakerRules(handler.ParseHeaderContext(), queryParams)
+	handler.WriteHeaderAndProto(ret)
+}
+
+// GetPublishCircuitBreakerRules 查询已发布的熔断规则
+func (h *HTTPServer) GetPublishCircuitBreakerRules(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,

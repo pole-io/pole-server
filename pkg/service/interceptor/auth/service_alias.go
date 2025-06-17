@@ -20,9 +20,9 @@ package service_auth
 import (
 	"context"
 
-	"github.com/polarismesh/specification/source/go/api/v1/security"
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	"github.com/pole-io/specification/source/go/api/v1/security"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"

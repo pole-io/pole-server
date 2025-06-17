@@ -23,7 +23,7 @@ import (
 
 	"go.uber.org/zap"
 
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 )
 
 var (

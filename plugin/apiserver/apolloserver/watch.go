@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/polarismesh/specification/source/go/api/v1/config_manage"
-	apiconfig "github.com/polarismesh/specification/source/go/api/v1/config_manage"
+	"github.com/pole-io/specification/source/go/api/v1/config_manage"
+	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"

@@ -4,8 +4,8 @@ import (
 	"github.com/emicklei/go-restful/v3"
 	"github.com/golang/protobuf/proto"
 
-	apimodel "github.com/polarismesh/specification/source/go/api/v1/model"
-	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
@@ -17,9 +17,10 @@ func (h *HTTPServer) addLaneRuleAccess(ws *restful.WebService) {
 	ws.Route(ws.POST("/lane/groups/delete").To(h.DeleteLaneGroups))
 	ws.Route(ws.PUT("/lane/groups").To(h.UpdateLaneGroups))
 	ws.Route(ws.GET("/lane/groups").To(h.GetLaneGroups))
+	ws.Route(ws.POST("/lane/groups/releases").To(h.GetPublishLaneGroups))
 	ws.Route(ws.POST("/lane/groups/publish").To(h.PublishLaneGroups))
 	ws.Route(ws.PUT("/lane/groups/rollback").To(h.RollbackLaneGroups))
-	ws.Route(ws.PUT("/lane/groups/stopbeta").To(h.RollbackLaneGroups))
+	ws.Route(ws.PUT("/lane/groups/stopbeta").To(h.StopbetaLaneGroups))
 }
 
 // CreateLaneGroups 批量创建泳道组
@@ -87,6 +88,18 @@ func (h *HTTPServer) DeleteLaneGroups(req *restful.Request, rsp *restful.Respons
 
 // GetLaneGroups 批量删除泳道组
 func (h *HTTPServer) GetLaneGroups(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+	queryParams := httpcommon.ParseQueryParams(req)
+	ctx := handler.ParseHeaderContext()
+	ret := h.ruleServer.GetLaneGroups(ctx, queryParams)
+	handler.WriteHeaderAndProto(ret)
+}
+
+// GetPublishLaneGroups 查询已发布的泳道规则
+func (h *HTTPServer) GetPublishLaneGroups(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{
 		Request:  req,
 		Response: rsp,

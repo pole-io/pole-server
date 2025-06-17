@@ -23,7 +23,7 @@ import (
 
 	"go.uber.org/zap"
 
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 )

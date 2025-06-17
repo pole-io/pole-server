@@ -31,9 +31,9 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	"github.com/pole-io/pole-server/apis/store"
-	commonhash "github.com/pole-io/pole-server/pkg/common/hash"
-	commontime "github.com/pole-io/pole-server/pkg/common/time"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	commonhash "github.com/pole-io/pole-server/pkg/common/utils/hash"
+	commontime "github.com/pole-io/pole-server/pkg/common/utils/time"
 )
 
 var (

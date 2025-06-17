@@ -27,7 +27,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	"github.com/pole-io/pole-server/pkg/common/valid"
+	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 	"github.com/pole-io/pole-server/plugin/access_control/auth/policy"
 )
 

@@ -20,7 +20,7 @@ package auth
 import (
 	"context"
 
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 )
 
 type acquireContextOption func(authCtx *AcquireContext)

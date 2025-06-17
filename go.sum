@@ -296,8 +296,12 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/polarismesh/go-restful-openapi/v2 v2.0.0-20220928152401-083908d10219 h1:XnFyNUWnciM6zgXaz6tm+Egs35rhoD0KGMmKh4gCdi0=
 github.com/polarismesh/go-restful-openapi/v2 v2.0.0-20220928152401-083908d10219/go.mod h1:4WhwBysTom9Eoy0hQ4W69I0FmO+T0EpjEW9/5sgHoUk=
-github.com/polarismesh/specification v1.5.5-alpha.1 h1:lGLaj+I6iD25F0FuQnR83sR+1SJ8KqykS0vCnGx2ZAQ=
-github.com/polarismesh/specification v1.5.5-alpha.1/go.mod h1:rDvMMtl5qebPmqiBLNa5Ps0XtwkP31ZLirbH4kXA0YU=
+github.com/pole-io/specification v0.0.0-20250610064232-92b9d633d670 h1:ayAU/6Q6eLrJQIfdlEqwOUiiz2xyayg3QjyJWR1sJwo=
+github.com/pole-io/specification v0.0.0-20250610064232-92b9d633d670/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
+github.com/pole-io/specification v0.0.0-20250616084352-eb48089481b4 h1:IwCwV/dJcyv7h/pJpTF/w3BYwtiuXw3lKKmTadHH4/U=
+github.com/pole-io/specification v0.0.0-20250616084352-eb48089481b4/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
+github.com/pole-io/specification v1.5.5-alpha.1 h1:lGLaj+I6iD25F0FuQnR83sR+1SJ8KqykS0vCnGx2ZAQ=
+github.com/pole-io/specification v1.5.5-alpha.1/go.mod h1:rDvMMtl5qebPmqiBLNa5Ps0XtwkP31ZLirbH4kXA0YU=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=

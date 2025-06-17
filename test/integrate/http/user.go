@@ -18,7 +18,7 @@
 package http
 
 import (
-	apisecurity "github.com/polarismesh/specification/source/go/api/v1/security"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 )
 
 func Login(username, password string) (*apisecurity.LoginResponse, error) {

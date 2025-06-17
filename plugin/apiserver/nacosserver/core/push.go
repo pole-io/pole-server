@@ -31,7 +31,7 @@ import (
 
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
-	commontime "github.com/pole-io/pole-server/pkg/common/time"
+	commontime "github.com/pole-io/pole-server/pkg/common/utils/time"
 	nacosmodel "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 )
 

@@ -26,7 +26,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
@@ -42,6 +42,10 @@ func init() {
 // TestNewBatchCtrlWithConfig 测试New
 func TestNewBatchCtrlWithConfig(t *testing.T) {
 	t.Run("正常新建", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		t.Cleanup(func() {
+			cancel()
+		})
 		ctrlConfig := &CtrlConfig{
 			Open:          true,
 			QueueSize:     1024,
@@ -53,14 +57,19 @@ func TestNewBatchCtrlWithConfig(t *testing.T) {
 			Register:   ctrlConfig,
 			Deregister: ctrlConfig,
 		}
-		bc, err := NewBatchCtrlWithConfig(nil, nil, config)
+		bc, err := NewBatchCtrlWithConfig(ctx, nil, nil, config)
 		assert.Nil(t, err)
 		assert.NotNil(t, bc)
 		assert.NotNil(t, bc.register)
 		assert.NotNil(t, bc.deregister)
 	})
 	t.Run("可以关闭register和deregister的batch操作", func(t *testing.T) {
-		bc, err := NewBatchCtrlWithConfig(nil, nil, nil)
+		ctx, cancel := context.WithCancel(context.Background())
+		t.Cleanup(func() {
+			cancel()
+		})
+
+		bc, err := NewBatchCtrlWithConfig(ctx, nil, nil, nil)
 		assert.Nil(t, err)
 		assert.Nil(t, bc)
 
@@ -68,7 +77,7 @@ func TestNewBatchCtrlWithConfig(t *testing.T) {
 			Register:   &CtrlConfig{Open: false},
 			Deregister: &CtrlConfig{Open: false},
 		}
-		bc, err = NewBatchCtrlWithConfig(nil, nil, config)
+		bc, err = NewBatchCtrlWithConfig(ctx, nil, nil, config)
 		assert.Nil(t, err)
 		assert.NotNil(t, bc)
 		assert.Nil(t, bc.register)
@@ -88,12 +97,11 @@ func newCreateInstanceController(t *testing.T) (*gomock.Controller, *Controller,
 			Concurrency:   4,
 		},
 	}
-	bc, err := NewBatchCtrlWithConfig(storage, nil, config)
+	ctx, cancel := context.WithCancel(context.Background())
+	bc, err := NewBatchCtrlWithConfig(ctx, storage, nil, config)
 	if bc == nil || err != nil {
 		t.Fatalf("error: %+v", err)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	bc.Start(ctx)
 	return ctl, bc, storage, cancel
 }
 
@@ -108,7 +116,7 @@ func sendAsyncCreateInstance(bc *Controller, cnt int32) error {
 				Id:           protobuf.NewStringValue(fmt.Sprintf("%d", index)),
 				ServiceToken: protobuf.NewStringValue(fmt.Sprintf("%d", index)),
 			}, true)
-			if err := future.Wait(); err != nil {
+			if _, err := future.Done(); err != nil {
 				fmt.Printf("%+v\n", err)
 				ch <- err
 			}
@@ -155,14 +163,5 @@ func TestSendReply(t *testing.T) {
 	})
 	t.Run("其他类型不通过", func(t *testing.T) {
 		sendReply("test string", 1, nil)
-	})
-	t.Run("可以正常获取类型", func(t *testing.T) {
-		SendClientReply(make([]*ClientFuture, 0, 10), 1, nil)
-	})
-	t.Run("可以正常获取类型2", func(t *testing.T) {
-		SendClientReply(make(map[string]*ClientFuture, 10), 1, nil)
-	})
-	t.Run("其他类型不通过", func(t *testing.T) {
-		SendClientReply("test string", 1, nil)
 	})
 }

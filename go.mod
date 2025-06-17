@@ -72,7 +72,6 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/envoyproxy/go-control-plane/envoy v1.32.4
 	github.com/mark3labs/mcp-go v0.18.0
-	github.com/polarismesh/specification v1.5.5-alpha.1
 	go.opentelemetry.io/otel v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.36.0
@@ -91,6 +90,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
+	github.com/pole-io/specification v0.0.0-20250616084352-eb48089481b4 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel/trace v1.36.0 // indirect

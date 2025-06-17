@@ -3,9 +3,9 @@ package goverrule
 import (
 	"context"
 
-	apifault "github.com/polarismesh/specification/source/go/api/v1/fault_tolerance"
-	apiservice "github.com/polarismesh/specification/source/go/api/v1/service_manage"
-	apitraffic "github.com/polarismesh/specification/source/go/api/v1/traffic_manage"
+	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
+	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 )
