@@ -28,7 +28,7 @@ import (
 )
 
 // QueryRateLimitRules
-func (rlc *rateLimitCache) QueryRateLimitRules(ctx context.Context, args cacheapi.RateLimitRuleArgs) (uint32, []*rules.RateLimit, error) {
+func (rlc *rateLimitCache) QueryRateLimitRules(ctx context.Context, args *cacheapi.RateLimitRuleArgs) (uint32, []*rules.RateLimit, error) {
 	if err := rlc.Update(); err != nil {
 		return 0, nil, err
 	}
@@ -37,6 +37,7 @@ func (rlc *rateLimitCache) QueryRateLimitRules(ctx context.Context, args cacheap
 
 	hasService := len(args.Service) != 0
 	hasNamespace := len(args.Namespace) != 0
+	limitType := args.Filter["limit_type"]
 
 	res := make([]*rules.RateLimit, 0, 8)
 	process := func(rule *rules.RateLimit) {
@@ -52,6 +53,11 @@ func (rlc *rateLimitCache) QueryRateLimitRules(ctx context.Context, args cacheap
 		if args.Name != "" {
 			name, _ := utils.ParseWildName(args.Name)
 			if !strings.Contains(rule.Name, name) {
+				return
+			}
+		}
+		if limitType != "" {
+			if rule.Proto.GetType().String() != limitType {
 				return
 			}
 		}
@@ -73,8 +79,7 @@ func (rlc *rateLimitCache) QueryRateLimitRules(ctx context.Context, args cacheap
 	return amount, routings, nil
 }
 
-func (rlc *rateLimitCache) sortBeforeTrim(rules []*rules.RateLimit,
-	args cacheapi.RateLimitRuleArgs) (uint32, []*rules.RateLimit) {
+func (rlc *rateLimitCache) sortBeforeTrim(rules []*rules.RateLimit, args *cacheapi.RateLimitRuleArgs) (uint32, []*rules.RateLimit) {
 	amount := uint32(len(rules))
 	if args.Offset >= amount || args.Limit == 0 {
 		return amount, nil

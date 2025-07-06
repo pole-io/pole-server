@@ -19,6 +19,8 @@ package sqldb
 
 import (
 	"database/sql"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -68,7 +70,7 @@ VALUES (?, ?, ?, ?, ?, 0, sysdate(), sysdate())
 			zap.String("name", item.Name), zap.Error(err))
 		return store.Error(err)
 	}
-	return l.upsertLaneRules(dbTx, item, item.LaneRules)
+	return nil
 }
 
 // UpdateLaneGroup 更新泳道组
@@ -91,7 +93,7 @@ func (l *laneStore) UpdateLaneGroup(tx store.Tx, item *ruletypes.LaneGroup) erro
 			zap.String("name", item.Name), zap.Error(err))
 		return store.Error(err)
 	}
-	return l.upsertLaneRules(dbTx, item, item.LaneRules)
+	return nil
 }
 
 // GetLaneGroup 查询泳道组
@@ -198,7 +200,7 @@ SELECT COUNT(*) FROM lane_group WHERE flag = 0
 SELECT id, name, rule, description, revision, flag, UNIX_TIMESTAMP(ctime), UNIX_TIMESTAMP(mtime) FROM lane_group WHERE flag = 0
 `
 	conditions := []string{}
-	args := []interface{}{}
+	args := []any{}
 	for k, v := range filter {
 		switch k {
 		case "name":
@@ -270,7 +272,7 @@ SELECT id, name, rule, description, revision, flag, UNIX_TIMESTAMP(ctime), UNIX_
 // DeleteLaneGroup 删除泳道组
 func (l *laneStore) DeleteLaneGroup(id string) error {
 	err := l.master.processWithTransaction("DeleteLaneGroup", func(tx *BaseTx) error {
-		args := []interface{}{
+		args := []any{
 			id,
 		}
 
@@ -317,92 +319,6 @@ UNIX_TIMESTAMP(etime), UNIX_TIMESTAMP(mtime) FROM lane_rule WHERE flag = 0 AND g
 		return nil, store.Error(err)
 	}
 	return result, nil
-}
-
-// upsertLaneRules 添加通道规则
-func (l *laneStore) upsertLaneRules(tx *BaseTx, group *ruletypes.LaneGroup, items map[string]*ruletypes.LaneRule) error {
-	// 先清理到不再 ruletypes.Lane[] 中的泳道规则
-	if len(items) > 0 {
-		// 如果 items.size > 0，只清理不再 items 里面的泳道规则
-		args := make([]interface{}, 0, len(items))
-		args = append(args, group.Name)
-		for i := range items {
-			args = append(args, items[i].Name)
-		}
-
-		cleanSql := fmt.Sprintf("UPDATE lane_rule SET flag = 1 WHERE group_name = ? AND name NOT IN (%s)", placeholders(len(items)))
-		if _, err := tx.Exec(cleanSql, args...); err != nil {
-			log.Error("[Store][Lane] clean invalid lane rule", zap.String("sql", cleanSql), zap.Any("args", args), zap.Error(err))
-			return store.Error(err)
-		}
-	} else {
-		// 如果 items.size == 0, 则直接清空所有的泳道规则
-		if _, err := tx.Exec("UPDATE lane_rule SET flag = 1 WHERE group_name = ?", group.Name); err != nil {
-			log.Error("[Store][Lane] clean invalid lane rule", zap.String("group", group.Name), zap.Error(err))
-			return store.Error(err)
-		}
-	}
-
-	for i := range items {
-		item := items[i]
-		var args []interface{}
-
-		var upsertSql string
-		if item.IsAdd() {
-			args = []interface{}{
-				item.ID,
-				item.Name,
-				item.LaneGroup,
-				item.Rule,
-				item.Revision,
-				item.Priority,
-				item.Description,
-				item.Enable,
-			}
-			addSql := `
-INSERT INTO lane_rule (id, name, group_name, rule, revision, priority, description, enable, flag
-	, ctime, etime, mtime)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0
-	, sysdate(), %s, sysdate())
-`
-			etimeStr := "sysdate()"
-			if !item.Enable {
-				etimeStr = emptyEnableTime
-			}
-			upsertSql = fmt.Sprintf(addSql, etimeStr)
-		} else {
-			args = []interface{}{
-				item.Rule,
-				item.Revision,
-				item.Priority,
-				item.Description,
-				item.Enable,
-				item.ID,
-			}
-			if item.IsChangeEnable() {
-				addSql := `
-UPDATE lane_rule SET rule = ?, revision = ?, priority = ?, description = ?, enable = ?
-	, etime = %s, mtime = sysdate() WHERE id = ?
-`
-				etimeStr := "sysdate()"
-				if !item.Enable {
-					etimeStr = emptyEnableTime
-				}
-				upsertSql = fmt.Sprintf(addSql, etimeStr)
-			} else {
-				upsertSql = `
-UPDATE lane_rule SET rule = ?, revision = ?, priority = ?, description = ?, enable = ?
-	, mtime = sysdate() WHERE id = ?
-`
-			}
-		}
-		if _, err := tx.Exec(upsertSql, args...); err != nil {
-			log.Error("[Store][Lane] add lane rule", zap.String("id", item.ID), zap.String("sql", upsertSql),
-				zap.String("group", item.LaneGroup), zap.String("name", item.Name), zap.Error(err))
-			return store.Error(err)
-		}
-	}
-	return nil
 }
 
 // GetMoreLaneGroups 获取泳道规则列表到缓存层
@@ -498,23 +414,298 @@ func (l *laneStore) GetLaneRuleMaxPriority() (int32, error) {
 }
 
 // ActiveLaneGroup implements store.LaneStore.
-func (l *laneStore) ActiveLaneGroup(tx store.Tx, name string) error {
-	panic("unimplemented")
+func (l *laneStore) ActiveLaneGroup(tx store.Tx, release *ruletypes.LaneGroupRelease) error {
+	if tx == nil {
+		return errors.New("tx is nil")
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+	// 1. 先将同名同类型的所有发布置为 inactive
+	if _, err := dbTx.Exec("UPDATE lane_group_release SET active = 0, mtime = sysdate() WHERE name = ? AND release_type = ? AND active = 1", release.ReleaseName, release.ReleaseType); err != nil {
+		return err
+	}
+	// 2. 获取当前最大版本号
+	row := dbTx.QueryRow("SELECT IFNULL(MAX(version), 0) FROM lane_group_release WHERE name = ? AND release_type = ?", release.ReleaseName, release.ReleaseType)
+	var maxVersion uint64
+	if err := row.Scan(&maxVersion); err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	// 3. 设置目标规则 active=1, version=maxVersion+1, mtime=sysdate()
+	_, err := dbTx.Exec("UPDATE lane_group_release SET active=1, version=?, mtime=sysdate() WHERE id=?", maxVersion+1, release.Id)
+	return err
 }
 
 // GetActiveLaneGroup implements store.LaneStore.
-func (l *laneStore) GetActiveLaneGroup(tx store.Tx, name string) (*ruletypes.LaneGroup, error) {
-	panic("unimplemented")
+func (l *laneStore) GetActiveLaneGroup(tx store.Tx, release *ruletypes.LaneGroupRelease) (*ruletypes.LaneGroupRelease, error) {
+	if tx == nil {
+		return nil, errors.New("tx is nil")
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+	querySql := `SELECT id, name, rule_name, rule, version, active, description, release_type FROM lane_group_release WHERE name = ? AND release_type = ? AND active = 1 LIMIT 1`
+	row := dbTx.QueryRow(querySql, release.ReleaseName, release.ReleaseType)
+	var (
+		id, name, ruleName, ruleStr, description, releaseType string
+		version                                               uint64
+		active                                                int
+	)
+	err := row.Scan(&id, &name, &ruleName, &ruleStr, &version, &active, &description, &releaseType)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var ruleObj ruletypes.LaneGroup
+	if err := json.Unmarshal([]byte(ruleStr), &ruleObj); err != nil {
+		return nil, err
+	}
+	return &ruletypes.LaneGroupRelease{
+		RuleRelease: ruletypes.RuleRelease{
+			Id:          id,
+			ReleaseName: name,
+			Description: description,
+			ReleaseType: releaseType,
+			Active:      active == 1,
+			Version:     version,
+			Valid:       true,
+		},
+		Rule: &ruleObj,
+	}, nil
 }
 
 // InactiveLaneGroup implements store.LaneStore.
-func (l *laneStore) InactiveLaneGroup(tx store.Tx, name string) error {
-	panic("unimplemented")
+func (l *laneStore) InactiveLaneGroup(tx store.Tx, release *ruletypes.LaneGroupRelease) error {
+	if tx == nil {
+		return errors.New("tx is nil")
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+	_, err := dbTx.Exec("UPDATE lane_group_release SET active = 0, mtime = sysdate() WHERE name = ? AND release_type = ? AND active = 1", release.ReleaseName, release.ReleaseType)
+	return err
 }
 
 // PublishLaneGroup implements store.LaneStore.
-func (l *laneStore) PublishLaneGroup(tx store.Tx, rule *ruletypes.LaneGroup) error {
-	panic("unimplemented")
+func (l *laneStore) PublishLaneGroup(tx store.Tx, rule *ruletypes.LaneGroupRelease) error {
+	if rule.ReleaseName == "" || rule.ReleaseType == "" {
+		return errors.New("[store][mysql][lane] publish lane group missing some params")
+	}
+	if tx == nil {
+		return errors.New("tx is nil")
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+	// 1. 先将同名同类型的所有发布置为 inactive
+	if _, err := dbTx.Exec("UPDATE lane_group_release SET active = 0, mtime = sysdate() WHERE name = ? AND release_type = ? AND active = 1", rule.ReleaseName, rule.ReleaseType); err != nil {
+		return err
+	}
+	// 2. 获取当前最大版本号
+	row := dbTx.QueryRow("SELECT IFNULL(MAX(version), 0) FROM lane_group_release WHERE name = ? AND release_type = ?", rule.ReleaseName, rule.ReleaseType)
+	var maxVersion uint64
+	if err := row.Scan(&maxVersion); err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	ruleJson, err := json.Marshal(rule.Rule)
+	if err != nil {
+		return err
+	}
+	// 3. 插入新发布并激活
+	insertSql := `INSERT INTO lane_group_release (
+		id, name, rule_name, rule, version, active, description, release_type, ctime, mtime
+	) VALUES (?, ?, ?, ?, ?, 1, ?, ?, sysdate(), sysdate())`
+	_, err = dbTx.Exec(insertSql,
+		rule.Id,
+		rule.ReleaseName,
+		"", // rule_name 暂未使用
+		string(ruleJson),
+		maxVersion+1,
+		rule.Description,
+		rule.ReleaseType,
+	)
+	return err
+}
+
+// GetMoreLaneGroupReleases implements store.LaneStore.
+func (l *laneStore) GetMoreLaneGroupReleases(firstUpdate bool, mtime time.Time) ([]*ruletypes.LaneGroupRelease, error) {
+	str := `SELECT id, name, rule_name, rule, version, active, description, release_type, mtime FROM lane_group_release WHERE mtime > FROM_UNIXTIME(?)`
+	if firstUpdate {
+		str += " AND active = 1"
+	}
+	rows, err := l.slave.Query(str, timeToTimestamp(mtime))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*ruletypes.LaneGroupRelease
+	for rows.Next() {
+		var (
+			id, name, ruleName, ruleStr, description, releaseType string
+			version                                               uint64
+			active                                                int
+			mtime                                                 time.Time
+		)
+		err := rows.Scan(&id, &name, &ruleName, &ruleStr, &version, &active, &description, &releaseType, &mtime)
+		if err != nil {
+			return nil, err
+		}
+		var ruleObj ruletypes.LaneGroup
+		if err := json.Unmarshal([]byte(ruleStr), &ruleObj); err != nil {
+			return nil, err
+		}
+		release := &ruletypes.LaneGroupRelease{
+			RuleRelease: ruletypes.RuleRelease{
+				Id:          id,
+				ReleaseName: name,
+				Description: description,
+				ReleaseType: releaseType,
+				Active:      active == 1,
+				Version:     version,
+				Valid:       true,
+			},
+			Rule: &ruleObj,
+		}
+		out = append(out, release)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// GetLaneRule 查询泳道规则
+func (l *laneStore) GetLaneRule(id string) (*ruletypes.LaneRule, error) {
+	querySql := `SELECT id, name, group_name, rule, revision, priority, description, enable
+	, flag, UNIX_TIMESTAMP(ctime), UNIX_TIMESTAMP(etime), UNIX_TIMESTAMP(mtime)
+FROM lane_rule
+WHERE flag = 0 AND id = ?`
+	var item ruletypes.LaneRule
+	err := l.master.processWithTransaction("GetLaneRule", func(tx *BaseTx) error {
+		row := tx.QueryRow(querySql, id)
+		var ctime, etime, mtime int64
+		var flag int
+		if err := row.Scan(&item.ID, &item.Name, &item.LaneGroup, &item.Rule, &item.Revision,
+			&item.Priority, &item.Description, &item.Enable, &flag, &ctime, &etime, &mtime); err != nil {
+			log.Error("[Store][Lane] select one lane rule", zap.String("querySql", querySql), zap.Error(err))
+			return err
+		}
+		item.Valid = flag == 0
+		item.CreateTime = time.Unix(ctime, 0)
+		item.EnableTime = time.Unix(etime, 0)
+		item.ModifyTime = time.Unix(mtime, 0)
+		return tx.Commit()
+	})
+	if err != nil {
+		return nil, store.Error(err)
+	}
+	if item.ID == "" {
+		return nil, nil
+	}
+	return &item, nil
+}
+
+// AddLaneRules 添加泳道规则
+func (l *laneStore) AddLaneRules(tx store.Tx, rules []*ruletypes.LaneRule) error {
+	if len(rules) == 0 {
+		return nil
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+
+	for i := range rules {
+		item := rules[i]
+		var args []interface{}
+
+		var upsertSql string
+		args = []interface{}{
+			item.ID,
+			item.Name,
+			item.LaneGroup,
+			item.Rule,
+			item.Revision,
+			item.Priority,
+			item.Description,
+			item.Enable,
+		}
+		addSql := `
+INSERT INTO lane_rule (id, name, group_name, rule, revision, priority, description, enable, flag
+	, ctime, etime, mtime)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0
+	, sysdate(), %s, sysdate())
+`
+		etimeStr := "sysdate()"
+		if !item.Enable {
+			etimeStr = emptyEnableTime
+		}
+		upsertSql = fmt.Sprintf(addSql, etimeStr)
+		if _, err := dbTx.Exec(upsertSql, args...); err != nil {
+			log.Error("[Store][Lane] add lane rule", zap.String("id", item.ID), zap.String("sql", upsertSql),
+				zap.String("group", item.LaneGroup), zap.String("name", item.Name), zap.Error(err))
+			return store.Error(err)
+		}
+	}
+	return nil
+}
+
+// UpdateLaneRules 更新泳道规则
+func (l *laneStore) UpdateLaneRules(tx store.Tx, rules []*ruletypes.LaneRule) error {
+	if len(rules) == 0 {
+		return nil
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+
+	for i := range rules {
+		item := rules[i]
+		var args []interface{}
+
+		var upsertSql string
+		args = []interface{}{
+			item.Rule,
+			item.Revision,
+			item.Priority,
+			item.Description,
+			item.Enable,
+			item.ID,
+		}
+		if item.IsChangeEnable() {
+			addSql := `
+UPDATE lane_rule SET rule = ?, revision = ?, priority = ?, description = ?, enable = ?
+	, etime = %s, mtime = sysdate() WHERE id = ?
+`
+			etimeStr := "sysdate()"
+			if !item.Enable {
+				etimeStr = emptyEnableTime
+			}
+			upsertSql = fmt.Sprintf(addSql, etimeStr)
+		} else {
+			upsertSql = `
+UPDATE lane_rule SET rule = ?, revision = ?, priority = ?, description = ?, enable = ?
+	, mtime = sysdate() WHERE id = ?
+`
+		}
+		if _, err := dbTx.Exec(upsertSql, args...); err != nil {
+			log.Error("[Store][Lane] add lane rule", zap.String("id", item.ID), zap.String("sql", upsertSql),
+				zap.String("group", item.LaneGroup), zap.String("name", item.Name), zap.Error(err))
+			return store.Error(err)
+		}
+	}
+	return nil
+}
+
+// DeleteLaneRules 删除泳道规则
+func (l *laneStore) DeleteLaneRules(tx store.Tx, group string, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+
+	// 如果 items.size > 0，只清理不再 items 里面的泳道规则
+	args := make([]interface{}, 0, len(ids))
+	args = append(args, group)
+	for i := range ids {
+		args = append(args, ids[i])
+	}
+
+	cleanSql := fmt.Sprintf("UPDATE lane_rule SET flag = 1 WHERE group_name = ? AND name NOT IN (%s)", placeholders(len(ids)))
+	if _, err := dbTx.Exec(cleanSql, args...); err != nil {
+		log.Error("[Store][Lane] clean invalid lane rule", zap.String("sql", cleanSql), zap.Any("args", args), zap.Error(err))
+		return store.Error(err)
+	}
+	return nil
 }
 
 // cleanSoftDeletedRules .

@@ -275,7 +275,7 @@ func (svr *Server) queryServiceResource(
 	}
 
 	names := container.NewSet[string]()
-	svcSet := container.NewMap[string, *svctypes.Service]()
+	svcSet := map[string]*svctypes.Service{}
 
 	for index := range req {
 		svcName := req[index].GetName().GetValue()
@@ -283,7 +283,7 @@ func (svr *Server) queryServiceResource(
 		names.Add(svcNamespace)
 		svc := svr.Cache().Service().GetServiceByName(svcName, svcNamespace)
 		if svc != nil {
-			svcSet.Store(svc.ID, svc)
+			svcSet[svc.ID] = svc
 		}
 	}
 
@@ -302,7 +302,7 @@ func (svr *Server) queryServiceAliasResource(
 	}
 
 	names := container.NewSet[string]()
-	svcSet := container.NewMap[string, *svctypes.Service]()
+	svcSet := map[string]*svctypes.Service{}
 
 	for index := range req {
 		refSvcName := req[index].GetService().GetValue()
@@ -311,7 +311,7 @@ func (svr *Server) queryServiceAliasResource(
 		names.Add(svcNamespace)
 		refSvc := svr.Cache().Service().GetServiceByName(refSvcName, refSvcNamespace)
 		if refSvc != nil {
-			svcSet.Store(refSvc.ID, refSvc)
+			svcSet[refSvc.ID] = refSvc
 		}
 	}
 
@@ -331,7 +331,7 @@ func (svr *Server) queryInstanceResource(
 	}
 
 	names := container.NewSet[string]()
-	svcSet := container.NewMap[string, *svctypes.Service]()
+	svcSet := map[string]*svctypes.Service{}
 
 	for index := range req {
 		svcName := req[index].GetService().GetValue()
@@ -340,7 +340,7 @@ func (svr *Server) queryInstanceResource(
 		if svcNamespace != "" && svcName != "" {
 			svc := svr.Cache().Service().GetServiceByName(svcName, svcNamespace)
 			if svc != nil {
-				svcSet.Store(svc.ID, svc)
+				svcSet[svc.ID] = svc
 			} else {
 				names.Add(svcNamespace)
 			}
@@ -349,7 +349,7 @@ func (svr *Server) queryInstanceResource(
 			if ins != nil {
 				svc := svr.Cache().Service().GetServiceByID(ins.ServiceID)
 				if svc != nil {
-					svcSet.Store(svc.ID, svc)
+					svcSet[svc.ID] = svc
 				} else {
 					names.Add(svcNamespace)
 				}
@@ -372,14 +372,14 @@ func (svr *Server) queryRouteRuleResource(
 	}
 
 	names := container.NewSet[string]()
-	svcSet := container.NewMap[string, *svctypes.Service]()
+	svcSet := map[string]*svctypes.Service{}
 
 	for index := range req {
 		svcName := req[index].GetService().GetValue()
 		svcNamespace := req[index].GetNamespace().GetValue()
 		svc := svr.Cache().Service().GetServiceByName(svcName, svcNamespace)
 		if svc != nil {
-			svcSet.Store(svc.ID, svc)
+			svcSet[svc.ID] = svc
 		}
 	}
 
@@ -398,14 +398,14 @@ func (svr *Server) queryRateLimitConfigResource(
 	}
 
 	names := container.NewSet[string]()
-	svcSet := container.NewMap[string, *svctypes.Service]()
+	svcSet := map[string]*svctypes.Service{}
 
 	for index := range req {
 		svcName := req[index].GetService().GetValue()
 		svcNamespace := req[index].GetNamespace().GetValue()
 		svc := svr.Cache().Service().GetServiceByName(svcName, svcNamespace)
 		if svc != nil {
-			svcSet.Store(svc.ID, svc)
+			svcSet[svc.ID] = svc
 		}
 	}
 
@@ -418,7 +418,7 @@ func (svr *Server) queryRateLimitConfigResource(
 
 // convertToDiscoverResourceEntryMaps 通用方法，进行转换为期望的、服务相关的 ResourceEntry
 func (svr *Server) convertToDiscoverResourceEntryMaps(nsSet *container.Set[string],
-	svcSet *container.Map[string, *svctypes.Service]) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
+	svcSet map[string]*svctypes.Service) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
 	var (
 		param = nsSet.ToSlice()
 		nsArr = svr.Cache().Namespace().GetNamespacesByName(param)
@@ -434,15 +434,15 @@ func (svr *Server) convertToDiscoverResourceEntryMaps(nsSet *container.Set[strin
 		})
 	}
 
-	svcRet := make([]authtypes.ResourceEntry, 0, svcSet.Len())
-	svcSet.Range(func(key string, svc *svctypes.Service) {
+	svcRet := make([]authtypes.ResourceEntry, 0, len(svcSet))
+	for _, svc := range svcSet {
 		svcRet = append(svcRet, authtypes.ResourceEntry{
 			Type:     apisecurity.ResourceType_Services,
 			ID:       svc.ID,
 			Owner:    svc.Owner,
 			Metadata: svc.Meta,
 		})
-	})
+	}
 
 	return map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 		apisecurity.ResourceType_Namespaces: nsRet,

@@ -467,7 +467,7 @@ type (
 		// GetRateLimitRules 根据serviceID获取限流数据
 		GetRateLimitRules(serviceKey svctypes.ServiceKey) ([]*rules.RateLimit, string)
 		// QueryRateLimitRules
-		QueryRateLimitRules(context.Context, RateLimitRuleArgs) (uint32, []*rules.RateLimit, error)
+		QueryRateLimitRules(context.Context, *RateLimitRuleArgs) (uint32, []*rules.RateLimit, error)
 		// GetRateLimitsCount 获取限流规则总数
 		GetRateLimitsCount() int
 		// GetRule 获取规则 ID 获取限流规则

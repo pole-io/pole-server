@@ -256,7 +256,7 @@ func ConvertGRPCContext(ctx context.Context) context.Context {
 		if len(agents) > 0 {
 			userAgent = agents[0]
 		}
-		if tokens := meta["x-polaris-token"]; len(tokens) > 0 {
+		if tokens := meta[strings.ToLower(types.HeaderAuthorizationKey)]; len(tokens) > 0 {
 			token = tokens[0]
 		}
 	} else {

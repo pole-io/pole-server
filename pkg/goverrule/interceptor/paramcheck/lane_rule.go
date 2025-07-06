@@ -89,26 +89,17 @@ func (svr *Server) DeleteLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 }
 
 // PublishLaneGroups 批量删除泳道组
-func (svr *Server) PublishLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
-	if err := checkBatchLaneGroupRules(reqs); err != nil {
-		return err
-	}
+func (svr *Server) PublishLaneGroups(ctx context.Context, reqs []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
 	return svr.nextSvr.PublishLaneGroups(ctx, reqs)
 }
 
 // RollbackLaneGroups 批量删除泳道组
-func (svr *Server) RollbackLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
-	if err := checkBatchLaneGroupRules(reqs); err != nil {
-		return err
-	}
+func (svr *Server) RollbackLaneGroups(ctx context.Context, reqs []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
 	return svr.nextSvr.RollbackLaneGroups(ctx, reqs)
 }
 
 // StopbetaLaneGroups 批量删除泳道组
-func (svr *Server) StopbetaLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
-	if err := checkBatchLaneGroupRules(reqs); err != nil {
-		return err
-	}
+func (svr *Server) StopbetaLaneGroups(ctx context.Context, reqs []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
 	return svr.nextSvr.StopbetaLaneGroups(ctx, reqs)
 }
 
@@ -140,6 +131,84 @@ func (svr *Server) GetLaneGroups(ctx context.Context, filter map[string]string) 
 	filter["limit"] = strconv.FormatUint(uint64(limit), 10)
 
 	return svr.nextSvr.GetLaneGroups(ctx, filter)
+}
+
+// CreateLaneRules 批量创建泳道规则
+func (svr *Server) CreateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse {
+	if len(req) == 0 {
+		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
+	}
+
+	if len(req) > valid.MaxBatchSize {
+		return api.NewBatchWriteResponse(apimodel.Code_BatchSizeOverLimit)
+	}
+
+	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for i := range req {
+		if len(req[i].GetName()) >= valid.MaxRuleName {
+			api.Collect(batchRsp, api.NewResponseWithMsg(apimodel.Code_InvalidParameter, "lane_rule name size must be <= 64"))
+			continue
+		}
+		if err := valid.CheckResourceName(wrapperspb.String(req[i].GetName())); err != nil {
+			api.Collect(batchRsp, api.NewResponseWithMsg(apimodel.Code_InvalidParameter, err.Error()))
+			continue
+		}
+		if len(req[i].GetGroupName()) == 0 {
+			api.Collect(batchRsp, api.NewResponseWithMsg(apimodel.Code_InvalidParameter, "lane_rule group name is required"))
+			continue
+		}
+	}
+
+	if !api.IsSuccess(batchRsp) {
+		return batchRsp
+	}
+	return svr.nextSvr.CreateLaneRules(ctx, req)
+}
+
+// UpdateLaneRules 批量更新泳道规则
+func (svr *Server) UpdateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse {
+	if len(req) == 0 {
+		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
+	}
+
+	if len(req) > valid.MaxBatchSize {
+		return api.NewBatchWriteResponse(apimodel.Code_BatchSizeOverLimit)
+	}
+	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for i := range req {
+		if len(req[i].GetGroupName()) == 0 {
+			api.Collect(batchRsp, api.NewResponseWithMsg(apimodel.Code_InvalidParameter, "lane_rule group name is required"))
+			continue
+		}
+	}
+
+	if !api.IsSuccess(batchRsp) {
+		return batchRsp
+	}
+
+	return svr.nextSvr.UpdateLaneRules(ctx, req)
+}
+
+// DeleteLaneRules 批量删除泳道规则
+func (svr *Server) DeleteLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse {
+	if len(req) == 0 {
+		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
+	}
+	if len(req) > valid.MaxBatchSize {
+		return api.NewBatchWriteResponse(apimodel.Code_BatchSizeOverLimit)
+	}
+	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for i := range req {
+		if len(req[i].GetGroupName()) == 0 {
+			api.Collect(batchRsp, api.NewResponseWithMsg(apimodel.Code_InvalidParameter, "lane_rule group name is required"))
+			continue
+		}
+	}
+
+	if !api.IsSuccess(batchRsp) {
+		return batchRsp
+	}
+	return svr.nextSvr.DeleteLaneRules(ctx, req)
 }
 
 func checkBatchLaneGroupRules(req []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {

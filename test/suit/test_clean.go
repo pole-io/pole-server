@@ -47,8 +47,6 @@ type TestDataClean interface {
 	CleanRateLimit(id string)
 	// CleanCircuitBreaker
 	CleanCircuitBreaker(id, version string)
-	// CleanCircuitBreakerRelation
-	CleanCircuitBreakerRelation(name, namespace, ruleID, ruleVersion string)
 	// ClearTestDataWhenUseRDS
 	ClearTestDataWhenUseRDS() error
 	// CleanServiceContract

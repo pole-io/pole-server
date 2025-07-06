@@ -24,6 +24,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/security"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
@@ -83,8 +84,8 @@ func (svr *Server) DeleteCircuitBreakerRules(
 }
 
 func (svr *Server) PublishCircuitBreakerRules(
-	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectCircuitBreakerRuleV2(ctx, request, authtypes.Modify,
+	ctx context.Context, request []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectRuleReleases(ctx, request, authtypes.Modify,
 		authtypes.EnableCircuitBreakerRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
@@ -96,8 +97,8 @@ func (svr *Server) PublishCircuitBreakerRules(
 }
 
 func (svr *Server) RollbackCircuitBreakerRules(
-	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectCircuitBreakerRuleV2(ctx, request, authtypes.Modify,
+	ctx context.Context, request []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectRuleReleases(ctx, request, authtypes.Modify,
 		authtypes.RollbackCircuitBreakerRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
@@ -109,8 +110,8 @@ func (svr *Server) RollbackCircuitBreakerRules(
 }
 
 func (svr *Server) StopbetaCircuitBreakerRules(
-	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectCircuitBreakerRuleV2(ctx, request, authtypes.Modify,
+	ctx context.Context, request []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectRuleReleases(ctx, request, authtypes.Modify,
 		authtypes.StopbetaCircuitBreakerRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
@@ -160,6 +161,8 @@ func (svr *Server) GetCircuitBreakerRules(
 	for index := range resp.Data {
 		item := &apifault.CircuitBreakerRule{}
 		_ = anypb.UnmarshalTo(resp.Data[index], item, proto.UnmarshalOptions{})
+		item.Editable = true
+		item.Deleteable = true
 		authCtx.SetAccessResources(map[security.ResourceType][]authtypes.ResourceEntry{
 			security.ResourceType_CircuitBreakerRules: {
 				{

@@ -174,7 +174,7 @@ func ParseToken(ctx context.Context) string {
 
 // ParseOperator 从ctx中获取operator
 func ParseOperator(ctx context.Context) string {
-	defaultOperator := "Pole"
+	defaultOperator := "system"
 	if ctx == nil {
 		return defaultOperator
 	}

@@ -63,9 +63,9 @@ var (
 )
 
 func init() {
-	ruleAny, _ := ptypes.MarshalAny(&apitraffic.RuleRoutingConfig{})
-	metaAny, _ := ptypes.MarshalAny(&apitraffic.MetadataRoutingConfig{})
-	nearbyAny, _ := ptypes.MarshalAny(&apitraffic.NearbyRoutingConfig{})
+	ruleAny, _ := anypb.New(&apitraffic.RuleRoutingConfig{})
+	metaAny, _ := anypb.New(&apitraffic.MetadataRoutingConfig{})
+	nearbyAny, _ := anypb.New(&apitraffic.NearbyRoutingConfig{})
 
 	RuleRoutingTypeUrl = ruleAny.GetTypeUrl()
 	MetaRoutingTypeUrl = metaAny.GetTypeUrl()

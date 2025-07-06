@@ -61,6 +61,7 @@ func (r *RateLimit) CopyNoProto() *RateLimit {
 		CreateTime: r.CreateTime,
 		ModifyTime: r.ModifyTime,
 		EnableTime: r.EnableTime,
+		Metadata:   r.Metadata,
 	}
 }
 

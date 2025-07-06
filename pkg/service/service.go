@@ -615,19 +615,6 @@ func (s *Server) getRoutingCountWithService(id string) (uint32, error) {
 	return 1, nil
 }
 
-// getRateLimitingCountWithService 获取服务下限流规则总数
-func (s *Server) getRateLimitingCountWithService(name string, namespace string) (uint32, error) {
-	filter := map[string]string{
-		"service":   name,
-		"namespace": namespace,
-	}
-	total, _, err := s.storage.GetExtendRateLimits(filter, 0, 1)
-	if err != nil {
-		return 0, err
-	}
-	return total, nil
-}
-
 // isServiceExistedResource 检查服务下的资源存在情况，在删除服务的时候需要用到
 func (s *Server) isServiceExistedResource(ctx context.Context, service *svctypes.Service) *apiservice.Response {
 	// 服务别名，不需要判断

@@ -526,12 +526,6 @@ func (d *DiscoverTestSuit) CleanAllService() {
 				rollbackDbTx(dbTx)
 				panic(err)
 			}
-
-			if _, err := dbTx.Exec("delete from owner_service_map"); err != nil {
-				rollbackDbTx(dbTx)
-				panic(err)
-			}
-
 			commitDbTx(dbTx)
 		}()
 	}
@@ -570,13 +564,6 @@ func (d *DiscoverTestSuit) CleanService(name, namespace string) {
 				rollbackDbTx(dbTx)
 				panic(err)
 			}
-
-			if _, err := dbTx.Exec(
-				"delete from owner_service_map where service=? and namespace=?", name, namespace); err != nil {
-				rollbackDbTx(dbTx)
-				panic(err)
-			}
-
 			commitDbTx(dbTx)
 		}()
 	}
@@ -597,18 +584,12 @@ func (d *DiscoverTestSuit) CleanServices(services []*apiservice.Service) {
 			defer rollbackDbTx(dbTx)
 
 			str := "delete from service where name = ? and namespace = ?"
-			cleanOwnerSql := "delete from owner_service_map where service=? and namespace=?"
 			for _, service := range services {
 				if _, err := dbTx.Exec(
 					str, service.GetName().GetValue(), service.GetNamespace().GetValue()); err != nil {
 					panic(err)
 				}
-				if _, err := dbTx.Exec(
-					cleanOwnerSql, service.GetName().GetValue(), service.GetNamespace().GetValue()); err != nil {
-					panic(err)
-				}
 			}
-
 			commitDbTx(dbTx)
 		}()
 	}
@@ -779,10 +760,6 @@ func (d *DiscoverTestSuit) CleanCircuitBreaker(id, version string) {
 			commitDbTx(dbTx)
 		}()
 	}
-}
-
-// 彻底删除熔断规则发布记录
-func (d *DiscoverTestSuit) CleanCircuitBreakerRelation(name, namespace, ruleID, ruleVersion string) {
 }
 
 // 彻底删除熔断规则发布记录

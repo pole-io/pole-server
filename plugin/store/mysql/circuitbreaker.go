@@ -477,27 +477,27 @@ func (c *circuitBreakerStore) enableCircuitBreakerRule(cbRule *rules.CircuitBrea
 	})
 }
 
-// ActiveCircuitBreakerRule implements store.CircuitBreakerStore.
-func (c *circuitBreakerStore) ActiveCircuitBreakerRule(tx store.Tx, name string) error {
-	panic("unimplemented")
-}
-
-// GetActiveCircuitBreakerRule implements store.CircuitBreakerStore.
-func (c *circuitBreakerStore) GetActiveCircuitBreakerRule(tx store.Tx, name string) (*rules.CircuitBreakerRule, error) {
-	panic("unimplemented")
-}
-
-// InactiveCircuitBreakerRule implements store.CircuitBreakerStore.
-func (c *circuitBreakerStore) InactiveCircuitBreakerRule(tx store.Tx, name string) error {
-	panic("unimplemented")
-}
-
 // LockCircuitBreakerRule implements store.CircuitBreakerStore.
 func (c *circuitBreakerStore) LockCircuitBreakerRule(tx store.Tx, name string) (*rules.CircuitBreakerRule, error) {
 	panic("unimplemented")
 }
 
+// ActiveCircuitBreakerRule implements store.CircuitBreakerStore.
+func (c *circuitBreakerStore) ActiveCircuitBreakerRule(tx store.Tx, release *rules.CircuitBreakerRelease) error {
+	panic("unimplemented")
+}
+
+// GetActiveCircuitBreakerRule implements store.CircuitBreakerStore.
+func (c *circuitBreakerStore) GetActiveCircuitBreakerRule(tx store.Tx, release *rules.CircuitBreakerRelease) (*rules.CircuitBreakerRelease, error) {
+	panic("unimplemented")
+}
+
+// InactiveCircuitBreakerRule implements store.CircuitBreakerStore.
+func (c *circuitBreakerStore) InactiveCircuitBreakerRule(tx store.Tx, release *rules.CircuitBreakerRelease) error {
+	panic("unimplemented")
+}
+
 // PublishCircuitBreakerRule implements store.CircuitBreakerStore.
-func (c *circuitBreakerStore) PublishCircuitBreakerRule(tx store.Tx, rule *rules.CircuitBreakerRule) error {
+func (c *circuitBreakerStore) PublishCircuitBreakerRule(tx store.Tx, rule *rules.CircuitBreakerRelease) error {
 	panic("unimplemented")
 }

@@ -23,6 +23,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/security"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
@@ -38,7 +39,7 @@ import (
 // CreateLaneGroups 批量创建泳道组
 func (svr *Server) CreateLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
 
-	authCtx := svr.collectLaneRuleAuthContext(ctx, reqs, authtypes.Create, authtypes.CreateLaneGroups)
+	authCtx := svr.collectLaneGroupAuthContext(ctx, reqs, authtypes.Create, authtypes.CreateLaneGroups)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
@@ -59,7 +60,7 @@ func (svr *Server) CreateLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 
 // UpdateLaneGroups 批量更新泳道组
 func (svr *Server) UpdateLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectLaneRuleAuthContext(ctx, reqs, authtypes.Modify, authtypes.UpdateLaneGroups)
+	authCtx := svr.collectLaneGroupAuthContext(ctx, reqs, authtypes.Modify, authtypes.UpdateLaneGroups)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
@@ -70,7 +71,7 @@ func (svr *Server) UpdateLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 
 // DeleteLaneGroups 批量删除泳道组
 func (svr *Server) DeleteLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectLaneRuleAuthContext(ctx, reqs, authtypes.Delete, authtypes.DeleteLaneGroups)
+	authCtx := svr.collectLaneGroupAuthContext(ctx, reqs, authtypes.Delete, authtypes.DeleteLaneGroups)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
@@ -90,8 +91,8 @@ func (svr *Server) DeleteLaneGroups(ctx context.Context, reqs []*apitraffic.Lane
 }
 
 // PublishLaneGroups 批量发布泳道组规则
-func (svr *Server) PublishLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectLaneRuleAuthContext(ctx, reqs, authtypes.Modify, authtypes.UpdateLaneGroups)
+func (svr *Server) PublishLaneGroups(ctx context.Context, reqs []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectRuleReleases(ctx, reqs, authtypes.Modify, authtypes.UpdateLaneGroups)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
@@ -101,8 +102,8 @@ func (svr *Server) PublishLaneGroups(ctx context.Context, reqs []*apitraffic.Lan
 }
 
 // RollbackLaneGroups 批量回滚泳道组规则
-func (svr *Server) RollbackLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectLaneRuleAuthContext(ctx, reqs, authtypes.Modify, authtypes.RollbackLaneGroups)
+func (svr *Server) RollbackLaneGroups(ctx context.Context, reqs []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectRuleReleases(ctx, reqs, authtypes.Modify, authtypes.RollbackLaneGroups)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
@@ -112,8 +113,8 @@ func (svr *Server) RollbackLaneGroups(ctx context.Context, reqs []*apitraffic.La
 }
 
 // StopbetaLaneGroups 批量回滚泳道组规则
-func (svr *Server) StopbetaLaneGroups(ctx context.Context, reqs []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
-	authCtx := svr.collectLaneRuleAuthContext(ctx, reqs, authtypes.Modify, authtypes.StopbetaLaneGroups)
+func (svr *Server) StopbetaLaneGroups(ctx context.Context, reqs []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectRuleReleases(ctx, reqs, authtypes.Modify, authtypes.StopbetaLaneGroups)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
@@ -124,7 +125,7 @@ func (svr *Server) StopbetaLaneGroups(ctx context.Context, reqs []*apitraffic.La
 
 // GetLaneGroups 查询泳道组列表
 func (svr *Server) GetLaneGroups(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse {
-	authCtx := svr.collectFaultDetectAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeFaultDetectRules)
+	authCtx := svr.collectRuleReleases(ctx, nil, authtypes.Read, authtypes.DescribeLaneGroups)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
@@ -145,6 +146,8 @@ func (svr *Server) GetLaneGroups(ctx context.Context, filter map[string]string) 
 	for index := range resp.Data {
 		item := &apitraffic.LaneGroup{}
 		_ = anypb.UnmarshalTo(resp.Data[index], item, proto.UnmarshalOptions{})
+		item.Editable = true
+		item.Deleteable = true
 		authCtx.SetAccessResources(map[security.ResourceType][]authtypes.ResourceEntry{
 			security.ResourceType_LaneRules: {
 				{
@@ -173,13 +176,73 @@ func (svr *Server) GetLaneGroups(ctx context.Context, filter map[string]string) 
 	return resp
 }
 
-// collectLaneRuleAuthContext 收集全链路灰度规则
-func (svr *Server) collectLaneRuleAuthContext(ctx context.Context, req []*apitraffic.LaneGroup,
+// CreateLaneRules 批量创建泳道规则
+func (svr *Server) CreateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectLaneRuleAuthContext(ctx, req, authtypes.Create, authtypes.CreateLaneRules)
+	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+	return svr.nextSvr.CreateLaneRules(ctx, req)
+}
+
+// UpdateLaneRules 批量更新泳道规则
+func (svr *Server) UpdateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectLaneRuleAuthContext(ctx, req, authtypes.Modify, authtypes.UpdateLaneRules)
+	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+	return svr.nextSvr.UpdateLaneRules(ctx, req)
+}
+
+// DeleteLaneRules 批量删除泳道规则
+func (svr *Server) DeleteLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse {
+	authCtx := svr.collectLaneRuleAuthContext(ctx, req, authtypes.Delete, authtypes.DeleteLaneRules)
+	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+	return svr.nextSvr.DeleteLaneRules(ctx, req)
+}
+
+// collectLaneGroupAuthContext 收集全链路灰度规则
+func (svr *Server) collectLaneGroupAuthContext(ctx context.Context, req []*apitraffic.LaneGroup,
 	op authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
 
 	resources := make([]authtypes.ResourceEntry, 0, len(req))
 	for i := range req {
 		saveRule := svr.Cache().LaneRule().GetRule(req[i].GetId())
+		if saveRule != nil {
+			resources = append(resources, authtypes.ResourceEntry{
+				Type:     apisecurity.ResourceType_LaneRules,
+				ID:       saveRule.ID,
+				Metadata: saveRule.Labels,
+			})
+		}
+	}
+
+	return authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(op),
+		authtypes.WithModule(authtypes.DiscoverModule),
+		authtypes.WithMethod(methodName),
+		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
+			apisecurity.ResourceType_LaneRules: resources,
+		}),
+	)
+}
+
+// collectLaneRuleAuthContext 收集全链路灰度规则
+func (svr *Server) collectLaneRuleAuthContext(ctx context.Context, req []*apitraffic.LaneRule,
+	op authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
+
+	resources := make([]authtypes.ResourceEntry, 0, len(req))
+	for i := range req {
+		saveRule := svr.Cache().LaneRule().GetRule(req[i].GetGroupName())
 		if saveRule != nil {
 			resources = append(resources, authtypes.ResourceEntry{
 				Type:     apisecurity.ResourceType_LaneRules,

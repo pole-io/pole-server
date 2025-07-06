@@ -144,22 +144,15 @@ func (s *Server) handlePublishConfigFile(ctx context.Context, tx store.Tx,
 	}
 	// 重新激活
 	if saveRelease != nil {
-		log.Debug("[Config][Release] re-active config file release.",
+		// 不允许重复发布同一个版本
+		return fileRelease, api.NewConfigResponse(apimodel.Code_ExistReleasedConfig)
+	}
+
+	if err = s.storage.CreateConfigFileReleaseTx(tx, fileRelease); err != nil {
+		log.Error("[Config][Release] publish config file when create release.",
 			utils.RequestID(ctx), utils.ZapNamespace(namespace), utils.ZapGroup(group),
-			utils.ZapFileName(fileName), utils.ZapReleaseName(fileRelease.Name))
-		if err := s.storage.ActiveConfigFileReleaseTx(tx, fileRelease); err != nil {
-			log.Error("[Config][Release] re-active config file release error.",
-				utils.RequestID(ctx), utils.ZapNamespace(namespace), utils.ZapGroup(group),
-				utils.ZapFileName(fileName), zap.Error(err))
-			return fileRelease, api.NewConfigFileResponse(storeapi.StoreCode2APICode(err), nil)
-		}
-	} else {
-		if err = s.storage.CreateConfigFileReleaseTx(tx, fileRelease); err != nil {
-			log.Error("[Config][Release] publish config file when create release.",
-				utils.RequestID(ctx), utils.ZapNamespace(namespace), utils.ZapGroup(group),
-				utils.ZapFileName(fileName), zap.Error(err))
-			return fileRelease, api.NewConfigResponse(storeapi.StoreCode2APICode(err))
-		}
+			utils.ZapFileName(fileName), zap.Error(err))
+		return fileRelease, api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	if req.GetReleaseType().GetValue() == conftypes.ReleaseTypeGray {
 		clientLabels := req.GetBetaLabels()

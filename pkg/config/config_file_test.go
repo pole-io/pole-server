@@ -144,7 +144,7 @@ func TestConfigFileCRUD(t *testing.T) {
 		rsp := testSuit.ConfigServer().PublishConfigFile(testSuit.DefaultCtx, configFileRelease)
 		assert.Equal(t, api.ExecuteSuccess, rsp.Code.GetValue())
 
-		rsp2 := testSuit.ConfigServer().DeleteConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{&apiconfig.ConfigFile{
+		rsp2 := testSuit.ConfigServer().DeleteConfigFiles(testSuit.DefaultCtx, []*apiconfig.ConfigFile{{
 			Namespace: protobuf.NewStringValue(testNamespace),
 			Group:     protobuf.NewStringValue(testGroup),
 			Name:      protobuf.NewStringValue(testFile),

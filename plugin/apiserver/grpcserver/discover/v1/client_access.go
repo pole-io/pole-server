@@ -130,8 +130,7 @@ func (g *DiscoverServer) Discover(server apiservice.PolarisGRPC_DiscoverServer) 
 			continue
 		}
 
-		out := g.handleDiscoverRequest(ctx, in)
-		if err = server.Send(out); err != nil {
+		if err = server.Send(g.handleDiscoverRequest(ctx, in)); err != nil {
 			return err
 		}
 	}

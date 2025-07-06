@@ -406,7 +406,7 @@ func Test_QueryRateLimitRules(t *testing.T) {
 	}
 
 	t.Run("根据ID进行查询", func(t *testing.T) {
-		total, ret, err := rlc.QueryRateLimitRules(context.TODO(), cacheapi.RateLimitRuleArgs{
+		total, ret, err := rlc.QueryRateLimitRules(context.TODO(), &cacheapi.RateLimitRuleArgs{
 			ID:     rateLimits[0].ID,
 			Offset: 0,
 			Limit:  100,
@@ -419,7 +419,7 @@ func Test_QueryRateLimitRules(t *testing.T) {
 	})
 
 	t.Run("根据Name进行查询", func(t *testing.T) {
-		total, ret, err := rlc.QueryRateLimitRules(context.TODO(), cacheapi.RateLimitRuleArgs{
+		total, ret, err := rlc.QueryRateLimitRules(context.TODO(), &cacheapi.RateLimitRuleArgs{
 			Name:   rateLimits[0].Name,
 			Offset: 0,
 			Limit:  100,
@@ -432,7 +432,7 @@ func Test_QueryRateLimitRules(t *testing.T) {
 	})
 
 	t.Run("根据Namespace&Service进行查询", func(t *testing.T) {
-		total, ret, err := rlc.QueryRateLimitRules(context.TODO(), cacheapi.RateLimitRuleArgs{
+		total, ret, err := rlc.QueryRateLimitRules(context.TODO(), &cacheapi.RateLimitRuleArgs{
 			Service:   "service-0",
 			Namespace: "default",
 			Offset:    0,
@@ -449,7 +449,7 @@ func Test_QueryRateLimitRules(t *testing.T) {
 	})
 
 	t.Run("根据分页进行查询", func(t *testing.T) {
-		total, ret, err := rlc.QueryRateLimitRules(context.TODO(), cacheapi.RateLimitRuleArgs{
+		total, ret, err := rlc.QueryRateLimitRules(context.TODO(), &cacheapi.RateLimitRuleArgs{
 			Offset: 10,
 			Limit:  5,
 		})
@@ -458,7 +458,7 @@ func Test_QueryRateLimitRules(t *testing.T) {
 		assert.Equal(t, int64(total), int64(len(rateLimits)))
 		assert.Equal(t, int64(5), int64(len(ret)))
 
-		total, ret, err = rlc.QueryRateLimitRules(context.TODO(), cacheapi.RateLimitRuleArgs{
+		total, ret, err = rlc.QueryRateLimitRules(context.TODO(), &cacheapi.RateLimitRuleArgs{
 			Offset: 100,
 			Limit:  5,
 		})
@@ -470,7 +470,7 @@ func Test_QueryRateLimitRules(t *testing.T) {
 
 	t.Run("根据Disable进行查询", func(t *testing.T) {
 		disable := true
-		total, ret, err := rlc.QueryRateLimitRules(context.TODO(), cacheapi.RateLimitRuleArgs{
+		total, ret, err := rlc.QueryRateLimitRules(context.TODO(), &cacheapi.RateLimitRuleArgs{
 			Disable: &disable,
 			Offset:  0,
 			Limit:   100,
@@ -481,7 +481,7 @@ func Test_QueryRateLimitRules(t *testing.T) {
 		assert.Equal(t, int64(0), int64(len(ret)))
 
 		disable = false
-		total, ret, err = rlc.QueryRateLimitRules(context.TODO(), cacheapi.RateLimitRuleArgs{
+		total, ret, err = rlc.QueryRateLimitRules(context.TODO(), &cacheapi.RateLimitRuleArgs{
 			Disable: &disable,
 			Offset:  0,
 			Limit:   100,

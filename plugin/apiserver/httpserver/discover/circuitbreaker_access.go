@@ -115,17 +115,17 @@ func (h *HTTPServer) PublishCircuitBreakerRules(req *restful.Request, rsp *restf
 		Request:  req,
 		Response: rsp,
 	}
-	var circuitBreakerRules CircuitBreakerRuleAttr
+	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apifault.CircuitBreakerRule{}
-		circuitBreakerRules = append(circuitBreakerRules, msg)
+		msg := &apimodel.RuleRelease{}
+		rules = append(rules, msg)
 		return msg
 	})
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	ret := h.ruleServer.PublishCircuitBreakerRules(ctx, circuitBreakerRules)
+	ret := h.ruleServer.PublishCircuitBreakerRules(ctx, rules)
 	if code := api.CalcCode(ret); code != http.StatusOK {
 		handler.WriteHeaderAndProto(ret)
 		return
@@ -140,17 +140,17 @@ func (h *HTTPServer) RollbackCircuitBreakerRules(req *restful.Request, rsp *rest
 		Request:  req,
 		Response: rsp,
 	}
-	var circuitBreakerRules CircuitBreakerRuleAttr
+	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apifault.CircuitBreakerRule{}
-		circuitBreakerRules = append(circuitBreakerRules, msg)
+		msg := &apimodel.RuleRelease{}
+		rules = append(rules, msg)
 		return msg
 	})
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	handler.WriteHeaderAndProto(h.ruleServer.RollbackCircuitBreakerRules(ctx, circuitBreakerRules))
+	handler.WriteHeaderAndProto(h.ruleServer.RollbackCircuitBreakerRules(ctx, rules))
 }
 
 // StopbetaCircuitBreakerRules enable the circuitbreaker rues
@@ -159,15 +159,15 @@ func (h *HTTPServer) StopbetaCircuitBreakerRules(req *restful.Request, rsp *rest
 		Request:  req,
 		Response: rsp,
 	}
-	var circuitBreakerRules CircuitBreakerRuleAttr
+	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apifault.CircuitBreakerRule{}
-		circuitBreakerRules = append(circuitBreakerRules, msg)
+		msg := &apimodel.RuleRelease{}
+		rules = append(rules, msg)
 		return msg
 	})
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	handler.WriteHeaderAndProto(h.ruleServer.StopbetaCircuitBreakerRules(ctx, circuitBreakerRules))
+	handler.WriteHeaderAndProto(h.ruleServer.StopbetaCircuitBreakerRules(ctx, rules))
 }

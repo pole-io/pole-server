@@ -132,56 +132,17 @@ func (svr *Server) DeleteRouterRules(ctx context.Context,
 }
 
 // PublishRouterRules implements service.DiscoverServer.
-func (svr *Server) PublishRouterRules(ctx context.Context,
-	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
-	if err := checkBatchRoutingConfigV2(req); err != nil {
-		return err
-	}
-	batchRsp := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
-	for _, item := range req {
-		if resp := checkRoutingConfigIDV2(item); resp != nil {
-			apiv1.Collect(batchRsp, resp)
-		}
-	}
-	if !apiv1.IsSuccess(batchRsp) {
-		return batchRsp
-	}
+func (svr *Server) PublishRouterRules(ctx context.Context, req []*apimodel.RuleRelease) *service_manage.BatchWriteResponse {
 	return svr.nextSvr.PublishRouterRules(ctx, req)
 }
 
 // RollbackRouterRules implements service.DiscoverServer.
-func (svr *Server) RollbackRouterRules(ctx context.Context,
-	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
-	if err := checkBatchRoutingConfigV2(req); err != nil {
-		return err
-	}
-	batchRsp := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
-	for _, item := range req {
-		if resp := checkRoutingConfigIDV2(item); resp != nil {
-			apiv1.Collect(batchRsp, resp)
-		}
-	}
-	if !apiv1.IsSuccess(batchRsp) {
-		return batchRsp
-	}
+func (svr *Server) RollbackRouterRules(ctx context.Context, req []*apimodel.RuleRelease) *service_manage.BatchWriteResponse {
 	return svr.nextSvr.RollbackRouterRules(ctx, req)
 }
 
 // StopbetaRouterRules implements service.DiscoverServer.
-func (svr *Server) StopbetaRouterRules(ctx context.Context,
-	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
-	if err := checkBatchRoutingConfigV2(req); err != nil {
-		return err
-	}
-	batchRsp := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
-	for _, item := range req {
-		if resp := checkRoutingConfigIDV2(item); resp != nil {
-			apiv1.Collect(batchRsp, resp)
-		}
-	}
-	if !apiv1.IsSuccess(batchRsp) {
-		return batchRsp
-	}
+func (svr *Server) StopbetaRouterRules(ctx context.Context, req []*apimodel.RuleRelease) *service_manage.BatchWriteResponse {
 	return svr.nextSvr.StopbetaRouterRules(ctx, req)
 }
 

@@ -43,22 +43,6 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
 
-var (
-	// RateLimitFilters rate limit filters
-	RateLimitFilters = map[string]bool{
-		"id":        true,
-		"name":      true,
-		"service":   true,
-		"namespace": true,
-		"brief":     true,
-		"method":    true,
-		"labels":    true,
-		"disable":   true,
-		"offset":    true,
-		"limit":     true,
-	}
-)
-
 // CreateRateLimits 批量创建限流规则
 func (s *Server) CreateRateLimits(ctx context.Context, request []*apitraffic.Rule) *apiservice.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
@@ -72,7 +56,7 @@ func (s *Server) CreateRateLimits(ctx context.Context, request []*apitraffic.Rul
 // CreateRateLimit 创建限流规则
 func (s *Server) CreateRateLimit(ctx context.Context, req *apitraffic.Rule) *apiservice.Response {
 	// 构造底层数据结构
-	data, err := api2RateLimit(req, nil)
+	data, err := api2RateLimit(req)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
 		return api.NewRateLimitResponse(apimodel.Code_ParseRateLimitException, req)
@@ -188,7 +172,7 @@ func (s *Server) UpdateRateLimit(ctx context.Context, req *apitraffic.Rule) *api
 	}
 
 	// 构造底层数据结构
-	rateLimit, err := api2RateLimit(req, data)
+	rateLimit, err := api2RateLimit(req)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
 		return api.NewRateLimitResponse(apimodel.Code_ParseRateLimitException, req)
@@ -215,7 +199,7 @@ func (s *Server) GetRateLimits(ctx context.Context, query map[string]string) *ap
 		return errResp
 	}
 
-	total, extendRateLimits, err := s.Cache().RateLimit().QueryRateLimitRules(ctx, *args)
+	total, extendRateLimits, err := s.Cache().RateLimit().QueryRateLimitRules(ctx, args)
 	if err != nil {
 		log.Error("get rate limits store", zap.Error(err), utils.RequestID(ctx))
 		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
@@ -243,17 +227,8 @@ func (s *Server) GetAllRateLimits(ctx context.Context) *apiservice.BatchQueryRes
 }
 
 func parseRateLimitArgs(query map[string]string) (*cacheapi.RateLimitRuleArgs, *apiservice.BatchQueryResponse) {
-	for key := range query {
-		if _, ok := RateLimitFilters[key]; !ok {
-			log.Errorf("params %s is not allowed in querying rate limits", key)
-			return nil, api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
-		}
-	}
 	// 处理offset和limit
-	offset, limit, err := valid.ParseOffsetAndLimit(query)
-	if err != nil {
-		return nil, api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
-	}
+	offset, limit, _ := valid.ParseOffsetAndLimit(query)
 
 	args := &cacheapi.RateLimitRuleArgs{
 		Filter:     query,
@@ -308,7 +283,7 @@ const (
 )
 
 // api2RateLimit 把API参数转化为内部数据结构
-func api2RateLimit(req *apitraffic.Rule, old *rules.RateLimit) (*rules.RateLimit, error) {
+func api2RateLimit(req *apitraffic.Rule) (*rules.RateLimit, error) {
 	rule, err := marshalRateLimitRules(req)
 	if err != nil {
 		return nil, err
@@ -364,6 +339,7 @@ func rateLimit2Console(rateLimit *rules.RateLimit) (*apitraffic.Rule, error) {
 	} else {
 		rule.Etime = protobuf.NewStringValue("")
 	}
+	rule.Metadata = rateLimit.Metadata
 	rule.Revision = protobuf.NewStringValue(rateLimit.Revision)
 	if nil != rateLimit.Proto {
 		copyRateLimitProto(rateLimit, rule)
@@ -395,6 +371,8 @@ func copyRateLimitProto(rateLimit *rules.RateLimit, rule *apitraffic.Rule) {
 	rule.AmountMode = rateLimit.Proto.AmountMode
 	rule.Adjuster = rateLimit.Proto.Adjuster
 	rule.MaxQueueDelay = rateLimit.Proto.MaxQueueDelay
+	rule.Resource = rateLimit.Proto.Resource
+	rule.CustomResponse = rateLimit.Proto.CustomResponse
 	populateDefaultRuleValue(rule)
 }
 

@@ -145,22 +145,18 @@ func (h *HTTPServer) PublishRouterRules(req *restful.Request, rsp *restful.Respo
 		Request:  req,
 		Response: rsp,
 	}
-	requestText, err := h.replaceV2TypeUrl(req)
-	if err != nil {
-		handler.WriteHeaderAndProto(apiv1.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
-		return
-	}
-	var routings RouterArr
-	ctx, err := handler.ParseArrayByText(func() proto.Message {
-		msg := &apitraffic.RouteRule{}
-		routings = append(routings, msg)
+
+	rules := make([]*apimodel.RuleRelease, 0, 4)
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apimodel.RuleRelease{}
+		rules = append(rules, msg)
 		return msg
-	}, requestText)
+	})
 	if err != nil {
 		handler.WriteHeaderAndProto(apiv1.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	handler.WriteHeaderAndProto(h.ruleServer.PublishRouterRules(ctx, routings))
+	handler.WriteHeaderAndProto(h.ruleServer.PublishRouterRules(ctx, rules))
 }
 
 // RollbackRouterRules 回滚规则路由
@@ -169,22 +165,18 @@ func (h *HTTPServer) RollbackRouterRules(req *restful.Request, rsp *restful.Resp
 		Request:  req,
 		Response: rsp,
 	}
-	requestText, err := h.replaceV2TypeUrl(req)
-	if err != nil {
-		handler.WriteHeaderAndProto(apiv1.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
-		return
-	}
-	var routings RouterArr
-	ctx, err := handler.ParseArrayByText(func() proto.Message {
-		msg := &apitraffic.RouteRule{}
-		routings = append(routings, msg)
+
+	rules := make([]*apimodel.RuleRelease, 0, 4)
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apimodel.RuleRelease{}
+		rules = append(rules, msg)
 		return msg
-	}, requestText)
+	})
 	if err != nil {
 		handler.WriteHeaderAndProto(apiv1.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	handler.WriteHeaderAndProto(h.ruleServer.RollbackRouterRules(ctx, routings))
+	handler.WriteHeaderAndProto(h.ruleServer.RollbackRouterRules(ctx, rules))
 }
 
 // StopbetaRouterRules 取消灰度
@@ -193,20 +185,16 @@ func (h *HTTPServer) StopbetaRouterRules(req *restful.Request, rsp *restful.Resp
 		Request:  req,
 		Response: rsp,
 	}
-	requestText, err := h.replaceV2TypeUrl(req)
-	if err != nil {
-		handler.WriteHeaderAndProto(apiv1.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
-		return
-	}
-	var routings RouterArr
-	ctx, err := handler.ParseArrayByText(func() proto.Message {
-		msg := &apitraffic.RouteRule{}
-		routings = append(routings, msg)
+
+	rules := make([]*apimodel.RuleRelease, 0, 4)
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apimodel.RuleRelease{}
+		rules = append(rules, msg)
 		return msg
-	}, requestText)
+	})
 	if err != nil {
 		handler.WriteHeaderAndProto(apiv1.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	handler.WriteHeaderAndProto(h.ruleServer.StopbetaRouterRules(ctx, routings))
+	handler.WriteHeaderAndProto(h.ruleServer.StopbetaRouterRules(ctx, rules))
 }

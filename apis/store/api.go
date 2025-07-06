@@ -41,10 +41,12 @@ type Store interface {
 	StartReadTx() (Tx, error)
 	// NamespaceStore Service namespace interface
 	NamespaceStore
-	// NamingModuleStore Service Registration Discovery Module Storage Interface
-	NamingModuleStore
+	// DiscoverStore Service Registration Discovery Module Storage Interface
+	DiscoverStore
 	// ConfigFileModuleStore Configure the central module storage interface
 	ConfigFileModuleStore
+	// GovernanceStore Governance Rule center module storage interface
+	GovernanceStore
 	// ClientStore Client the central module storage interface
 	ClientStore
 	// AdminStore Maintain inteface

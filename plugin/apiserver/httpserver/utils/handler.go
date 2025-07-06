@@ -405,7 +405,7 @@ func MarshalPBJsonToMap(pb proto.Message) map[string]interface{} {
 }
 
 func newJsonpbMarshaler() jsonpb.Marshaler {
-	return jsonpb.Marshaler{Indent: " ", EmitDefaults: false}
+	return jsonpb.Marshaler{Indent: " ", EmitDefaults: true}
 }
 
 func (h *Handler) handleResponse(obj api.ResponseMessage) error {

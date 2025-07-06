@@ -278,6 +278,7 @@ func marshalCircuitBreakerRuleV2(req *apifault.CircuitBreakerRule) (string, erro
 		RecoverCondition:   req.RecoverCondition,
 		FaultDetectConfig:  req.FaultDetectConfig,
 		FallbackConfig:     req.FallbackConfig,
+		BlockConfigs:       req.BlockConfigs,
 	}
 	rule, err := json.Marshal(r)
 	if err != nil {

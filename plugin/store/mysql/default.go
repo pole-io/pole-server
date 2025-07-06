@@ -151,7 +151,7 @@ func parseDatabaseConf(opt map[string]any) (*dbConfig, *dbConfig, error) {
 // parseStoreConfig 解析store的配置
 func parseStoreConfig(opts any) (*dbConfig, error) {
 	obj, _ := opts.(map[any]any)
-	needCheckFields := map[string]string{"dbType": "", "dbUser": "", "dbPwd": "", "dbAddr": "", "dbName": ""}
+	needCheckFields := map[string]string{"dbType": "", "dns": ""}
 	for key := range needCheckFields {
 		val, ok := obj[key]
 		if !ok {
@@ -166,10 +166,7 @@ func parseStoreConfig(opts any) (*dbConfig, error) {
 
 	c := &dbConfig{
 		dbType: needCheckFields["dbType"],
-		dbUser: needCheckFields["dbUser"],
-		dbPwd:  needCheckFields["dbPwd"],
-		dbAddr: needCheckFields["dbAddr"],
-		dbName: needCheckFields["dbName"],
+		dns:    needCheckFields["dns"],
 	}
 	if maxOpenConns, _ := obj["maxOpenConns"].(int); maxOpenConns > 0 {
 		c.maxOpenConns = maxOpenConns

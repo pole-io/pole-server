@@ -21,6 +21,9 @@ func (h *HTTPServer) addLaneRuleAccess(ws *restful.WebService) {
 	ws.Route(ws.POST("/lane/groups/publish").To(h.PublishLaneGroups))
 	ws.Route(ws.PUT("/lane/groups/rollback").To(h.RollbackLaneGroups))
 	ws.Route(ws.PUT("/lane/groups/stopbeta").To(h.StopbetaLaneGroups))
+	ws.Route(ws.POST("/lane/groups/rules").To(h.CreateLaneRules))
+	ws.Route(ws.PUT("/lane/groups/rules").To(h.UpdateLaneRules))
+	ws.Route(ws.POST("/lane/groups/rules/delete").To(h.DeleteLaneRules))
 }
 
 // CreateLaneGroups 批量创建泳道组
@@ -116,17 +119,17 @@ func (h *HTTPServer) PublishLaneGroups(req *restful.Request, rsp *restful.Respon
 		Request:  req,
 		Response: rsp,
 	}
-	groups := make([]*apitraffic.LaneGroup, 0)
+	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apitraffic.LaneGroup{}
-		groups = append(groups, msg)
+		msg := &apimodel.RuleRelease{}
+		rules = append(rules, msg)
 		return msg
 	})
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	handler.WriteHeaderAndProto(h.ruleServer.PublishLaneGroups(ctx, groups))
+	handler.WriteHeaderAndProto(h.ruleServer.PublishLaneGroups(ctx, rules))
 }
 
 // RollbackLaneGroups 批量更新泳道组
@@ -135,17 +138,17 @@ func (h *HTTPServer) RollbackLaneGroups(req *restful.Request, rsp *restful.Respo
 		Request:  req,
 		Response: rsp,
 	}
-	groups := make([]*apitraffic.LaneGroup, 0)
+	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apitraffic.LaneGroup{}
-		groups = append(groups, msg)
+		msg := &apimodel.RuleRelease{}
+		rules = append(rules, msg)
 		return msg
 	})
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	handler.WriteHeaderAndProto(h.ruleServer.RollbackLaneGroups(ctx, groups))
+	handler.WriteHeaderAndProto(h.ruleServer.RollbackLaneGroups(ctx, rules))
 }
 
 // StopbetaLaneGroups 批量更新泳道组
@@ -154,15 +157,72 @@ func (h *HTTPServer) StopbetaLaneGroups(req *restful.Request, rsp *restful.Respo
 		Request:  req,
 		Response: rsp,
 	}
-	groups := make([]*apitraffic.LaneGroup, 0)
+	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apitraffic.LaneGroup{}
-		groups = append(groups, msg)
+		msg := &apimodel.RuleRelease{}
+		rules = append(rules, msg)
 		return msg
 	})
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	handler.WriteHeaderAndProto(h.ruleServer.StopbetaLaneGroups(ctx, groups))
+	handler.WriteHeaderAndProto(h.ruleServer.StopbetaLaneGroups(ctx, rules))
+}
+
+func (h *HTTPServer) CreateLaneRules(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+	rules := make([]*apitraffic.LaneRule, 0)
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apitraffic.LaneRule{}
+		rules = append(rules, msg)
+		return msg
+	})
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+
+	handler.WriteHeaderAndProto(h.ruleServer.CreateLaneRules(ctx, rules))
+}
+
+func (h *HTTPServer) UpdateLaneRules(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+	rules := make([]*apitraffic.LaneRule, 0)
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apitraffic.LaneRule{}
+		rules = append(rules, msg)
+		return msg
+	})
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+
+	handler.WriteHeaderAndProto(h.ruleServer.UpdateLaneRules(ctx, rules))
+}
+
+func (h *HTTPServer) DeleteLaneRules(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+	rules := make([]*apitraffic.LaneRule, 0)
+	ctx, err := handler.ParseArray(func() proto.Message {
+		msg := &apitraffic.LaneRule{}
+		rules = append(rules, msg)
+		return msg
+	})
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+
+	handler.WriteHeaderAndProto(h.ruleServer.DeleteLaneRules(ctx, rules))
 }

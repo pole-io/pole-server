@@ -136,52 +136,19 @@ func (svr *Server) UpdateCircuitBreakerRules(ctx context.Context,
 
 // PublishCircuitBreakerRules implements service.DiscoverServer.
 func (svr *Server) PublishCircuitBreakerRules(ctx context.Context,
-	reqs []*fault_tolerance.CircuitBreakerRule) *service_manage.BatchWriteResponse {
-	if err := checkBatchCircuitBreakerRules(reqs); err != nil {
-		return err
-	}
-	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
-	for i := range reqs {
-		rsp := checkCircuitBreakerRuleParams(reqs[i], true, true)
-		api.Collect(batchRsp, rsp)
-	}
-	if !api.IsSuccess(batchRsp) {
-		return batchRsp
-	}
+	reqs []*apimodel.RuleRelease) *service_manage.BatchWriteResponse {
 	return svr.nextSvr.PublishCircuitBreakerRules(ctx, reqs)
 }
 
 // RollbackCircuitBreakerRules implements service.DiscoverServer.
 func (svr *Server) RollbackCircuitBreakerRules(ctx context.Context,
-	reqs []*fault_tolerance.CircuitBreakerRule) *service_manage.BatchWriteResponse {
-	if err := checkBatchCircuitBreakerRules(reqs); err != nil {
-		return err
-	}
-	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
-	for i := range reqs {
-		rsp := checkCircuitBreakerRuleParams(reqs[i], true, true)
-		api.Collect(batchRsp, rsp)
-	}
-	if !api.IsSuccess(batchRsp) {
-		return batchRsp
-	}
+	reqs []*apimodel.RuleRelease) *service_manage.BatchWriteResponse {
 	return svr.nextSvr.RollbackCircuitBreakerRules(ctx, reqs)
 }
 
 // StopbetaCircuitBreakerRules implements service.DiscoverServer.
 func (svr *Server) StopbetaCircuitBreakerRules(ctx context.Context,
-	reqs []*fault_tolerance.CircuitBreakerRule) *service_manage.BatchWriteResponse {
-	if err := checkBatchCircuitBreakerRules(reqs); err != nil {
-		return err
-	}
-	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
-	for i := range reqs {
-		rsp := checkCircuitBreakerRuleParams(reqs[i], true, true)
-		api.Collect(batchRsp, rsp)
-	}
-	if !api.IsSuccess(batchRsp) {
-		return batchRsp
-	}
+	reqs []*apimodel.RuleRelease) *service_manage.BatchWriteResponse {
 	return svr.nextSvr.StopbetaCircuitBreakerRules(ctx, reqs)
 }
 

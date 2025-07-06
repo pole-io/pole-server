@@ -98,12 +98,12 @@ func faultDetectRuleRecordEntry(ctx context.Context, req *apifault.FaultDetectRu
 func (s *Server) createFaultDetectRule(ctx context.Context, request *apifault.FaultDetectRule) *apiservice.Response {
 	data, err := api2FaultDetectRule(request)
 	if err != nil {
-		log.Error(err.Error(), utils.RequestID(ctx))
+		log.Error("[faultdetect] parse fault detect rule error", utils.RequestID(ctx), zap.Error(err))
 		return api.NewResponse(apimodel.Code_ParseException)
 	}
 	exists, err := s.storage.HasFaultDetectRuleByName(data.Name, data.Namespace)
 	if err != nil {
-		log.Error(err.Error(), utils.RequestID(ctx))
+		log.Error("[faultdetect] check fault detect rule exists error", utils.RequestID(ctx), zap.Error(err))
 		return api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 	if exists {
@@ -113,11 +113,11 @@ func (s *Server) createFaultDetectRule(ctx context.Context, request *apifault.Fa
 
 	// 存储层操作
 	if err := s.storage.CreateFaultDetectRule(data); err != nil {
-		log.Error(err.Error(), utils.RequestID(ctx))
+		log.Error("[faultdetect] create fault detect rule error", utils.RequestID(ctx), zap.Error(err))
 		return api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 
-	msg := fmt.Sprintf("create fault detect rule: id=%v, name=%v, namespace=%v",
+	msg := fmt.Sprintf("[faultdetect] create fault detect rule: id=%v, name=%v, namespace=%v",
 		data.ID, request.GetName(), request.GetNamespace())
 	log.Info(msg, utils.RequestID(ctx))
 
@@ -131,24 +131,24 @@ func (s *Server) updateFaultDetectRule(ctx context.Context, request *apifault.Fa
 	fdRuleId := &apifault.FaultDetectRule{Id: request.GetId()}
 	fdRule, err := api2FaultDetectRule(request)
 	if err != nil {
-		log.Error(err.Error(), utils.RequestID(ctx))
+		log.Error("[faultdetect] parse fault detect rule error", utils.RequestID(ctx), zap.Error(err))
 		return api.NewAnyDataResponse(apimodel.Code_ParseException, fdRuleId)
 	}
 	fdRule.ID = request.GetId()
 	exists, err := s.storage.HasFaultDetectRuleByNameExcludeId(fdRule.Name, fdRule.Namespace, fdRule.ID)
 	if err != nil {
-		log.Error(err.Error(), utils.RequestID(ctx))
+		log.Error("[faultdetect] check fault detect rule exists error", utils.RequestID(ctx), zap.Error(err))
 		return api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 	if exists {
 		return api.NewAnyDataResponse(apimodel.Code_FaultDetectRuleExisted, fdRuleId)
 	}
 	if err := s.storage.UpdateFaultDetectRule(fdRule); err != nil {
-		log.Error(err.Error(), utils.RequestID(ctx))
+		log.Error("[faultdetect] update fault detect rule error", utils.RequestID(ctx), zap.Error(err))
 		return storeError2AnyResponse(err, fdRuleId)
 	}
 
-	msg := fmt.Sprintf("update fault detect rule: id=%v, name=%v, namespace=%v",
+	msg := fmt.Sprintf("[faultdetect] update fault detect rule: id=%v, name=%v, namespace=%v",
 		request.GetId(), request.GetName(), request.GetNamespace())
 	log.Info(msg, utils.RequestID(ctx))
 
@@ -164,7 +164,7 @@ func (s *Server) deleteFaultDetectRule(ctx context.Context, request *apifault.Fa
 		log.Error(err.Error(), utils.RequestID(ctx))
 		return api.NewAnyDataResponse(apimodel.Code_ParseException, cbRuleId)
 	}
-	msg := fmt.Sprintf("delete fault detect rule: id=%v, name=%v, namespace=%v",
+	msg := fmt.Sprintf("[faultdetect] delete fault detect rule: id=%v, name=%v, namespace=%v",
 		request.GetId(), request.GetName(), request.GetNamespace())
 	log.Info(msg, utils.RequestID(ctx))
 
@@ -181,7 +181,7 @@ func (s *Server) GetFaultDetectRules(ctx context.Context, query map[string]strin
 		Limit:  limit,
 	})
 	if err != nil {
-		log.Errorf("get fault detect rules store err: %s", err.Error())
+		log.Errorf("[faultdetect] get fault detect rules store err: %s", err.Error())
 		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
@@ -190,14 +190,14 @@ func (s *Server) GetFaultDetectRules(ctx context.Context, query map[string]strin
 	for _, cbRule := range cbRules {
 		cbRuleProto, err := faultDetectRule2api(cbRule)
 		if nil != err {
-			log.Error("marshal circuitbreaker rule fail", utils.RequestID(ctx), zap.Error(err))
+			log.Error("[faultdetect] marshal circuitbreaker rule fail", utils.RequestID(ctx), zap.Error(err))
 			continue
 		}
 		if nil == cbRuleProto {
 			continue
 		}
 		if err = api.AddAnyDataIntoBatchQuery(out, cbRuleProto); nil != err {
-			log.Error("add circuitbreaker rule as any data fail", utils.RequestID(ctx), zap.Error(err))
+			log.Error("[faultdetect] add circuitbreaker rule as any data fail", utils.RequestID(ctx), zap.Error(err))
 			continue
 		}
 	}

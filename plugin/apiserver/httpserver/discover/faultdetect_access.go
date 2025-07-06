@@ -114,17 +114,17 @@ func (h *HTTPServer) PublishFaultDetectRules(req *restful.Request, rsp *restful.
 		Response: rsp,
 	}
 
-	var faultDetectRules FaultDetectRuleAttr
+	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apifault.FaultDetectRule{}
-		faultDetectRules = append(faultDetectRules, msg)
+		msg := &apimodel.RuleRelease{}
+		rules = append(rules, msg)
 		return msg
 	})
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	handler.WriteHeaderAndProto(h.ruleServer.PublishFaultDetectRules(ctx, faultDetectRules))
+	handler.WriteHeaderAndProto(h.ruleServer.PublishFaultDetectRules(ctx, rules))
 }
 
 // RollbackFaultDetectRules update the fault detect rues
@@ -134,17 +134,17 @@ func (h *HTTPServer) RollbackFaultDetectRules(req *restful.Request, rsp *restful
 		Response: rsp,
 	}
 
-	var faultDetectRules FaultDetectRuleAttr
+	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apifault.FaultDetectRule{}
-		faultDetectRules = append(faultDetectRules, msg)
+		msg := &apimodel.RuleRelease{}
+		rules = append(rules, msg)
 		return msg
 	})
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	handler.WriteHeaderAndProto(h.ruleServer.RollbackFaultDetectRules(ctx, faultDetectRules))
+	handler.WriteHeaderAndProto(h.ruleServer.RollbackFaultDetectRules(ctx, rules))
 }
 
 // StopbetaFaultDetectRules update the fault detect rues
@@ -154,15 +154,15 @@ func (h *HTTPServer) StopbetaFaultDetectRules(req *restful.Request, rsp *restful
 		Response: rsp,
 	}
 
-	var faultDetectRules FaultDetectRuleAttr
+	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apifault.FaultDetectRule{}
-		faultDetectRules = append(faultDetectRules, msg)
+		msg := &apimodel.RuleRelease{}
+		rules = append(rules, msg)
 		return msg
 	})
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	handler.WriteHeaderAndProto(h.ruleServer.StopbetaFaultDetectRules(ctx, faultDetectRules))
+	handler.WriteHeaderAndProto(h.ruleServer.StopbetaFaultDetectRules(ctx, rules))
 }

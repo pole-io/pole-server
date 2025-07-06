@@ -134,23 +134,15 @@ maintain:
         timeout: 1h
 # Storage configuration
 store:
-  # # Standalone file storage plugin
-  name: boltdbStore
-  option:
-    path: ./polaris.bolt
-    loadFile: ./conf/bolt-data.yaml
   # Database storage plugin
-  # name: defaultStore
-  # option:
-  #   master:
-  #     dbType: mysql
-  #     dbName: pole_server
-  #     dbUser: ${MYSQL_USER} ##DB_USER##
-  #     dbPwd: ${MYSQL_PWD} ##DB_PWD##
-  #     dbAddr: ${MYSQL_HOST} ##DB_ADDR##
-  #     maxOpenConns: 300
-  #     maxIdleConns: 50
-  #     connMaxLifetime: 300 # Unit second
+  name: defaultStore
+  option:
+    master:
+      dbType: mysql
+      dns: "${MYSQL_USER}:${MYSQL_PWD}@tcp(${MYSQL_HOST})/pole_server?loc=Local" ##DB_DNS##
+      maxOpenConns: 300
+      maxIdleConns: 50
+      connMaxLifetime: 300 # Unit second
 # pole-server plugin settings
 plugin:
   crypto:

@@ -47,7 +47,9 @@ func NewBoolValue(value bool) *wrappers.BoolValue {
 
 // MarshalToJsonString marshal json message to string
 func MarshalToJsonString(message proto.Message) (string, error) {
-	marshaler := jsonpb.Marshaler{}
+	marshaler := jsonpb.Marshaler{
+		EmitDefaults: true,
+	}
 	return marshaler.MarshalToString(message)
 }
 

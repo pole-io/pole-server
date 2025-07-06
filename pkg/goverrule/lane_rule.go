@@ -231,11 +231,152 @@ func (s *Server) GetLaneGroups(ctx context.Context, filter map[string]string) *a
 	return rsp
 }
 
-// GetAllLaneGroups Query all router_rule rules
-func (s *Server) GetAllLaneGroups(ctx context.Context) *apiservice.BatchQueryResponse {
-	return nil
+// CreateLaneRules 批量创建泳道规则
+func (s *Server) CreateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse {
+	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for i := range req {
+		resp := s.CreateLaneRule(ctx, req[i])
+		api.Collect(responses, resp)
+	}
+	return api.FormatBatchWriteResponse(responses)
 }
 
+// CreateLaneRule 创建泳道规则
+func (s *Server) CreateLaneRule(ctx context.Context, req *apitraffic.LaneRule) *apiservice.Response {
+	tx, err := s.storage.StartTx()
+	if err != nil {
+		log.Error("[Service][Lane] open store transaction fail", utils.RequestID(ctx), zap.Error(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	group, err := s.storage.LockLaneGroup(tx, req.GetGroupName())
+	if err != nil {
+		log.Error("[Service][Lane] lock one lane_group", utils.RequestID(ctx),
+			zap.String("name", req.GetGroupName()), zap.Error(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
+	}
+	if group == nil {
+		return api.NewResponse(apimodel.Code_NotFoundResource)
+	}
+	// TODO 后续需要调整为动态规则拉取判断
+	if len(group.LaneRules) > 10 {
+		// 泳道组规则数量超过限制
+		log.Error("[Service][Lane] create lane_group over limit", utils.RequestID(ctx), zap.String("name", req.GetGroupName()))
+		return api.NewResponse(apimodel.Code_BatchSizeOverLimit)
+	}
+
+	saveData := &rules.LaneRule{}
+	if err := saveData.FromSpec(req); err != nil {
+		log.Error("[Service][Lane] create lane_group transfer spec to model", utils.RequestID(ctx), zap.Error(err))
+		return api.NewResponse(apimodel.Code_ExecuteException)
+	}
+	saveData.ID = utils.DefaultString(req.GetId(), utils.NewUUID())
+	saveData.Revision = utils.DefaultString(req.GetRevision(), utils.NewUUID())
+
+	if err := s.storage.AddLaneRules(tx, []*rules.LaneRule{saveData}); err != nil {
+		log.Error("[Service][Lane] save lane_group", utils.RequestID(ctx), zap.String("name", saveData.Name), zap.Error(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
+	}
+	req.Id = saveData.ID
+
+	if err := tx.Commit(); err != nil {
+		log.Error("[Service][Lane] commit store transaction fail", utils.RequestID(ctx), zap.Error(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
+	}
+
+	s.RecordHistory(ctx, laneRuleRecordEntry(ctx, req, saveData, types.OCreate))
+	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, req)
+}
+
+// UpdateLaneRules 批量更新泳道组
+func (s *Server) UpdateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse {
+	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for i := range req {
+		resp := s.UpdateLaneRule(ctx, req[i])
+		api.Collect(responses, resp)
+	}
+	return api.FormatBatchWriteResponse(responses)
+}
+
+// UpdateLaneRule 更新泳道组
+func (s *Server) UpdateLaneRule(ctx context.Context, req *apitraffic.LaneRule) *apiservice.Response {
+	tx, err := s.storage.StartTx()
+	if err != nil {
+		log.Error("[Service][Lane] open store transaction fail", utils.RequestID(ctx), zap.Error(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	group, err := s.storage.LockLaneGroup(tx, req.GetGroupName())
+	if err != nil {
+		log.Error("[Service][Lane] lock one lane_group", utils.RequestID(ctx),
+			zap.String("name", req.GetGroupName()), zap.Error(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
+	}
+	if group == nil {
+		log.Error("[Service][Lane] lock one lane_group not found", utils.RequestID(ctx),
+			zap.String("name", req.GetGroupName()))
+		return api.NewResponse(apimodel.Code_NotFoundResource)
+	}
+	saveData := &rules.LaneRule{}
+	if err := saveData.FromSpec(req); err != nil {
+		log.Error("[Service][Lane] create lane_group transfer spec to model", utils.RequestID(ctx), zap.Error(err))
+		return api.NewResponse(apimodel.Code_ExecuteException)
+	}
+
+	saveData.Revision = utils.DefaultString(req.GetRevision(), utils.NewUUID())
+	if err := s.storage.UpdateLaneRules(tx, []*rules.LaneRule{saveData}); err != nil {
+		log.Error("[Service][Lane] update lane_group", utils.RequestID(ctx), zap.String("name", saveData.Name), zap.Error(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
+	}
+	req.Id = saveData.ID
+
+	if err := tx.Commit(); err != nil {
+		log.Error("[Service][Lane] commit store transaction fail", utils.RequestID(ctx), zap.Error(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
+	}
+
+	s.RecordHistory(ctx, laneRuleRecordEntry(ctx, req, saveData, types.OUpdate))
+	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, req)
+}
+
+// DeleteLaneRules 批量删除泳道规则
+func (s *Server) DeleteLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse {
+	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for i := range req {
+		resp := s.DeleteLaneRule(ctx, req[i])
+		api.Collect(responses, resp)
+	}
+	return api.FormatBatchWriteResponse(responses)
+}
+
+// DeleteLaneRule 删除泳道规则
+func (s *Server) DeleteLaneRule(ctx context.Context, req *apitraffic.LaneRule) *apiservice.Response {
+	saveData, err := s.storage.GetLaneRule(req.GetId())
+	if err != nil {
+		log.Error("[Server][LaneGroup] get target lane_group when delete", zap.String("id", req.GetId()),
+			zap.String("name", req.GetName()), utils.RequestID(ctx), zap.Error(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
+	}
+	if saveData == nil {
+		log.Info("[Server][LaneGroup] delete target lane_group but not found", zap.String("id", req.GetId()),
+			zap.String("name", req.GetName()), utils.RequestID(ctx))
+		return api.NewResponse(apimodel.Code_ExecuteSuccess)
+	}
+
+	saveData.Revision = utils.DefaultString(req.GetRevision(), utils.NewUUID())
+	if err := s.storage.DeleteLaneGroup(saveData.ID); err != nil {
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
+	}
+	req.Id = saveData.ID
+	s.RecordHistory(ctx, laneRuleRecordEntry(ctx, req, saveData, types.ODelete))
+	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, req)
+}
 func updateLaneGroupAttribute(req *apitraffic.LaneGroup, saveData *rules.LaneGroup) (bool, error) {
 	updateData := &rules.LaneGroup{}
 	if err := updateData.FromSpec(req); err != nil {
@@ -243,29 +384,6 @@ func updateLaneGroupAttribute(req *apitraffic.LaneGroup, saveData *rules.LaneGro
 	}
 
 	saveData.Description = updateData.Description
-	saveData.Rule = updateData.Rule
-
-	for ruleId := range updateData.LaneRules {
-		// 默认所有规则 enable 状态都出现了变更
-		updateData.LaneRules[ruleId].SetChangeEnable(true)
-		updateData.LaneRules[ruleId].SetAddFlag(false)
-	}
-
-	for ruleId := range updateData.LaneRules {
-		newRule := updateData.LaneRules[ruleId]
-		oldRule, ok := saveData.LaneRules[ruleId]
-		if !ok {
-			// 在原来的规则当中不存在，认为是新增的
-			newRule.SetAddFlag(true)
-			continue
-		}
-		newRule.Revision = utils.DefaultString(newRule.Revision, utils.NewUUID())
-		// 如果 Enable 字段比较发现没有变化，则设置为 nil
-		if oldRule.Enable == newRule.Enable {
-			newRule.SetChangeEnable(false)
-		}
-	}
-	saveData.LaneRules = updateData.LaneRules
 	return true, nil
 }
 
@@ -278,6 +396,24 @@ func laneGroupRecordEntry(ctx context.Context, req *apitraffic.LaneGroup, md *ru
 
 	entry := &types.RecordEntry{
 		ResourceType:  types.RLaneGroup,
+		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
+		OperationType: operationType,
+		Operator:      utils.ParseOperator(ctx),
+		Detail:        detail,
+		HappenTime:    time.Now(),
+	}
+	return entry
+}
+
+// laneRuleRecordEntry 转换为鉴权策略的记录结构体
+func laneRuleRecordEntry(ctx context.Context, req *apitraffic.LaneRule, md *rules.LaneRule,
+	operationType types.OperationType) *types.RecordEntry {
+
+	marshaler := jsonpb.Marshaler{}
+	detail, _ := marshaler.MarshalToString(req)
+
+	entry := &types.RecordEntry{
+		ResourceType:  types.RLaneRule,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
 		OperationType: operationType,
 		Operator:      utils.ParseOperator(ctx),

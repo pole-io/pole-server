@@ -203,6 +203,9 @@ const (
 	PublishLaneGroups  ServerFunctionName = "PublishLaneGroups"
 	RollbackLaneGroups ServerFunctionName = "RollbackLaneGroups"
 	StopbetaLaneGroups ServerFunctionName = "StopbetaLaneGroups"
+	CreateLaneRules   ServerFunctionName = "CreateLaneRules"
+	UpdateLaneRules   ServerFunctionName = "UpdateLaneRules"
+	DeleteLaneRules   ServerFunctionName = "DeleteLaneRules"
 )
 
 // 用户/用户组

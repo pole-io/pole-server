@@ -397,30 +397,6 @@ func (b *RouteRuleContainer) saveV2(conf *rules.ExtendRouterConfig) {
 
 }
 
-// saveV1 保存 v1 级别的路由规则
-func (b *RouteRuleContainer) saveV1(v1rule *rules.RoutingConfig, v2rules []*rules.ExtendRouterConfig) {
-	for i := range v2rules {
-		b.saveV2(v2rules[i])
-	}
-
-	b.lock.Lock()
-	defer b.lock.Unlock()
-
-	b.v1rules[v1rule.ID] = v2rules
-
-	for i := range v2rules {
-		item := v2rules[i]
-		b.v1rulesToOld[item.ID] = v1rule.ID
-	}
-}
-
-func (b *RouteRuleContainer) convertV2Size() uint32 {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
-
-	return uint32(len(b.v1rulesToOld))
-}
-
 func (b *RouteRuleContainer) deleteV2(id string) {
 	rule, exist := b.rules.Load(id)
 	b.rules.Delete(id)
@@ -445,35 +421,12 @@ func (b *RouteRuleContainer) deleteV2(id string) {
 	}
 }
 
-// deleteV1 删除 v1 的路由规则
-func (b *RouteRuleContainer) deleteV1(serviceId string) {
-	b.lock.Lock()
-	defer b.lock.Unlock()
-
-	items, ok := b.v1rules[serviceId]
-	if !ok {
-		delete(b.v1rules, serviceId)
-		return
-	}
-
-	for i := range items {
-		delete(b.v1rulesToOld, items[i].ID)
-		b.deleteV2(items[i].ID)
-	}
-	delete(b.v1rules, serviceId)
-}
-
 // size Number of routing-v2 cache rules
 func (b *RouteRuleContainer) size() int {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 
-	cnt := b.rules.Len()
-	for k := range b.v1rules {
-		cnt += len(b.v1rules[k])
-	}
-
-	return cnt
+	return b.rules.Len()
 }
 
 func (b *RouteRuleContainer) SearchCustomRules(svcName, namespace string) []*rules.ExtendRouterConfig {
@@ -504,12 +457,6 @@ func (b *RouteRuleContainer) foreach(proc cacheapi.RouterRuleIterProc) {
 	b.rules.Range(func(key string, val *rules.ExtendRouterConfig) {
 		proc(key, val)
 	})
-
-	for _, rules := range b.v1rules {
-		for i := range rules {
-			proc(rules[i].ID, rules[i])
-		}
-	}
 }
 
 func (b *RouteRuleContainer) reload() {

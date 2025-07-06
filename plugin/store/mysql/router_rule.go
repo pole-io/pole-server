@@ -19,6 +19,7 @@ package sqldb
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -283,29 +284,186 @@ func (r *routerRuleStore) getRoutingConfigWithIDTx(tx *BaseTx, ruleID string) (*
 	return out[0], nil
 }
 
+// LockRouterRule implements store.RouterRuleConfigStore.
+func (r *routerRuleStore) LockRouterRule(tx store.Tx, name string) (*rules.RouterConfig, error) {
+	if tx == nil {
+		return nil, ErrTxIsNil
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+
+	str := `select id, name, policy, config, enable, revision, flag, priority, description,
+	unix_timestamp(ctime), unix_timestamp(mtime), unix_timestamp(etime)
+	from router_rule 
+	where name = ? or id = ? and flag = 0 for update`
+	rows, err := dbTx.Query(str, name, name)
+	if err != nil {
+		log.Errorf("[Store][database] query routing  with id(%s) err: %s", name, err.Error())
+		return nil, err
+	}
+
+	out, err := fetchRoutingConfigRows(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(out) == 0 {
+		return nil, nil
+	}
+	return out[0], nil
+}
+
 // ActiveRouterRule implements store.RouterRuleConfigStore.
-func (r *routerRuleStore) ActiveRouterRule(tx store.Tx, name string) error {
-	panic("unimplemented")
+func (r *routerRuleStore) ActiveRouterRule(tx store.Tx, release *rules.CustomRouteRelease) error {
+	if tx == nil {
+		return errors.New("tx is nil")
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+	// 1. 先将同名同类型的所有发布置为 inactive
+	if _, err := dbTx.Exec("UPDATE router_rul_release SET active = 0, mtime = sysdate() WHERE name = ? AND release_type = ? AND active = 1", release.ReleaseName, release.ReleaseType); err != nil {
+		return err
+	}
+	// 2. 获取当前最大版本号
+	row := dbTx.QueryRow("SELECT IFNULL(MAX(version), 0) FROM router_rul_release WHERE name = ? AND release_type = ?", release.ReleaseName, release.ReleaseType)
+	var maxVersion uint64
+	if err := row.Scan(&maxVersion); err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	// 3. 设置目标规则 active=1, version=maxVersion+1, mtime=sysdate()
+	_, err := dbTx.Exec("UPDATE router_rul_release SET active=1, version=?, mtime=sysdate() WHERE id=?", maxVersion+1, release.Id)
+	return err
 }
 
 // GetActiveRouterRule implements store.RouterRuleConfigStore.
-func (r *routerRuleStore) GetActiveRouterRule(tx store.Tx, name string) (*rules.RouterConfig, error) {
-	panic("unimplemented")
+func (r *routerRuleStore) GetActiveRouterRule(tx store.Tx, release *rules.CustomRouteRelease) (*rules.CustomRouteRelease, error) {
+	if tx == nil {
+		return nil, errors.New("tx is nil")
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+	querySql := `SELECT id, name, description, release_type, rule, version, active FROM router_rul_release WHERE name = ? AND release_type = ? AND active = 1 LIMIT 1`
+	row := dbTx.QueryRow(querySql, release.ReleaseName, release.ReleaseType)
+	var (
+		id, name, description, releaseType, ruleStr string
+		version                                     uint64
+		active                                      int
+	)
+	err := row.Scan(&id, &name, &description, &releaseType, &ruleStr, &version, &active)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var ruleObj rules.RouterConfig
+	if err := json.Unmarshal([]byte(ruleStr), &ruleObj); err != nil {
+		return nil, err
+	}
+	return &rules.CustomRouteRelease{
+		RuleRelease: rules.RuleRelease{
+			Id:          id,
+			ReleaseName: name,
+			Description: description,
+			ReleaseType: releaseType,
+			Active:      active == 1,
+			Version:     version,
+			Valid:       true,
+		},
+		Rule: &ruleObj,
+	}, nil
 }
 
 // InactiveRouterRule implements store.RouterRuleConfigStore.
-func (r *routerRuleStore) InactiveRouterRule(tx store.Tx, name string) error {
-	panic("unimplemented")
-}
-
-// LockRouterRule implements store.RouterRuleConfigStore.
-func (r *routerRuleStore) LockRouterRule(tx store.Tx, name string) (*rules.RouterConfig, error) {
-	panic("unimplemented")
+func (r *routerRuleStore) InactiveRouterRule(tx store.Tx, release *rules.CustomRouteRelease) error {
+	if tx == nil {
+		return errors.New("tx is nil")
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+	_, err := dbTx.Exec("UPDATE router_rul_release SET active = 0, mtime = sysdate() WHERE name = ? AND release_type = ? AND active = 1", release.ReleaseName, release.ReleaseType)
+	return err
 }
 
 // PublishRouterRule implements store.RouterRuleConfigStore.
-func (r *routerRuleStore) PublishRouterRule(tx store.Tx, rule *rules.RouterConfig) error {
-	panic("unimplemented")
+func (r *routerRuleStore) PublishRouterRule(tx store.Tx, rule *rules.CustomRouteRelease) error {
+	if rule.ReleaseName == "" || rule.ReleaseType == "" {
+		return errors.New("[store][mysql][router] publish router rule missing some params")
+	}
+	if tx == nil {
+		return errors.New("tx is nil")
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+	// 1. 先将同名同类型的所有发布置为 inactive
+	if _, err := dbTx.Exec("UPDATE router_rul_release SET active = 0, mtime = sysdate() WHERE name = ? AND release_type = ? AND active = 1", rule.ReleaseName, rule.ReleaseType); err != nil {
+		return err
+	}
+	// 2. 获取当前最大版本号
+	row := dbTx.QueryRow("SELECT IFNULL(MAX(version), 0) FROM router_rul_release WHERE name = ? AND release_type = ?", rule.ReleaseName, rule.ReleaseType)
+	var maxVersion uint64
+	if err := row.Scan(&maxVersion); err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	ruleJson, err := json.Marshal(rule.Rule)
+	if err != nil {
+		return err
+	}
+	// 3. 插入新发布并激活
+	insertSql := `INSERT INTO router_rul_release (
+		id, name, description, release_type, rule, version, active, ctime, mtime
+	) VALUES (?, ?, ?, ?, ?, ?, 1, sysdate(), sysdate())`
+	_, err = dbTx.Exec(insertSql,
+		rule.Id,
+		rule.ReleaseName,
+		rule.Description,
+		rule.ReleaseType,
+		string(ruleJson),
+		maxVersion+1,
+	)
+	return err
+}
+
+// GetMoreRouterRuleReleases implements store.RouterRuleConfigStore.
+func (r *routerRuleStore) GetMoreRouterRuleReleases(firstUpdate bool, mtime time.Time) ([]*rules.CustomRouteRelease, error) {
+	str := `SELECT id, name, description, release_type, rule, version, active, mtime FROM router_rul_release WHERE mtime > FROM_UNIXTIME(?)`
+	if firstUpdate {
+		str += " AND active = 1"
+	}
+	rows, err := r.slave.Query(str, timeToTimestamp(mtime))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*rules.CustomRouteRelease
+	for rows.Next() {
+		var (
+			id, name, description, releaseType, ruleStr string
+			version                                     uint64
+			active                                      int
+			mtime                                       time.Time
+		)
+		err := rows.Scan(&id, &name, &description, &releaseType, &ruleStr, &version, &active, &mtime)
+		if err != nil {
+			return nil, err
+		}
+		var ruleObj rules.RouterConfig
+		if err := json.Unmarshal([]byte(ruleStr), &ruleObj); err != nil {
+			return nil, err
+		}
+		release := &rules.CustomRouteRelease{
+			RuleRelease: rules.RuleRelease{
+				Id:          id,
+				ReleaseName: name,
+				Description: description,
+				ReleaseType: releaseType,
+				Active:      active == 1,
+				Version:     version,
+				Valid:       true,
+			},
+			Rule: &ruleObj,
+		}
+		out = append(out, release)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // fetchRoutingConfigRows Read the data of the database and release ROWS

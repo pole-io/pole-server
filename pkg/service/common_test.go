@@ -672,11 +672,6 @@ func (d *DiscoverTestSuit) cleanCircuitBreaker(id, version string) {
 	d.GetTestDataClean().CleanCircuitBreaker(id, version)
 }
 
-// 彻底删除熔断规则发布记录
-func (d *DiscoverTestSuit) cleanCircuitBreakerRelation(name, namespace, ruleID, ruleVersion string) {
-	d.GetTestDataClean().CleanCircuitBreakerRelation(name, namespace, ruleID, ruleVersion)
-}
-
 func (d *DiscoverTestSuit) cleanReportClient() {
 	d.GetTestDataClean().CleanReportClient()
 }

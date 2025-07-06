@@ -4,6 +4,7 @@ import (
 	"context"
 
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
@@ -39,11 +40,11 @@ type CircuitBreakerOperateServer interface {
 	// GetCircuitBreakerRules Query CircuitBreaker rules
 	GetCircuitBreakerRules(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
 	// PublishCircuitBreakerRules Publish the CircuitBreaker rule 发布多个熔断规则
-	PublishCircuitBreakerRules(ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse
+	PublishCircuitBreakerRules(ctx context.Context, request []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
 	// RollbackCircuitBreakerRules Rollback the CircuitBreaker rule
-	RollbackCircuitBreakerRules(ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse
+	RollbackCircuitBreakerRules(ctx context.Context, request []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
 	// StopbetaCircuitBreakerRules Rollback the CircuitBreaker rule
-	StopbetaCircuitBreakerRules(ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse
+	StopbetaCircuitBreakerRules(ctx context.Context, request []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
 }
 
 // RateLimitOperateServer Lamflow rule related operation
@@ -57,11 +58,11 @@ type RateLimitOperateServer interface {
 	// GetRateLimits Query RateLimit rules
 	GetRateLimits(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
 	// PublishRateLimits 发布多个限流规则
-	PublishRateLimits(ctx context.Context, request []*apitraffic.Rule) *apiservice.BatchWriteResponse
+	PublishRateLimits(ctx context.Context, request []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
 	// RollbackRateLimits Rollback the RateLimit rule
-	RollbackRateLimits(ctx context.Context, request []*apitraffic.Rule) *apiservice.BatchWriteResponse
+	RollbackRateLimits(ctx context.Context, request []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
 	// StopbetaRateLimits Rollback the RateLimit rule
-	StopbetaRateLimits(ctx context.Context, request []*apitraffic.Rule) *apiservice.BatchWriteResponse
+	StopbetaRateLimits(ctx context.Context, request []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
 }
 
 // RouterRuleOperateServer Routing rules related operations
@@ -75,11 +76,11 @@ type RouterRuleOperateServer interface {
 	// QueryRouterRules Inquiry route configuration to OSS
 	QueryRouterRules(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
 	// PublishRouterRules 发布多个路由规则
-	PublishRouterRules(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse
+	PublishRouterRules(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
 	// RollbackRouterRules Rollback the routing rule
-	RollbackRouterRules(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse
+	RollbackRouterRules(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
 	// StopbetaRouterRules Rollback the routing rule
-	StopbetaRouterRules(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse
+	StopbetaRouterRules(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
 }
 
 // FaultDetectRuleOperateServer Fault detect rules related operations
@@ -93,11 +94,11 @@ type FaultDetectRuleOperateServer interface {
 	// GetFaultDetectRules get the fault detect rule by request
 	GetFaultDetectRules(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
 	// PublishFaultDetectRules 发布多个故障检测规则
-	PublishFaultDetectRules(ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse
+	PublishFaultDetectRules(ctx context.Context, request []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
 	// RollbackFaultDetectRules Rollback the fault detect rule
-	RollbackFaultDetectRules(ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse
+	RollbackFaultDetectRules(ctx context.Context, request []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
 	// StopbetaFaultDetectRules Rollback the fault detect rule
-	StopbetaFaultDetectRules(ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse
+	StopbetaFaultDetectRules(ctx context.Context, request []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
 }
 
 // LaneOperateServer lane operations
@@ -111,11 +112,17 @@ type LaneOperateServer interface {
 	// GetLaneGroups 查询泳道组列表
 	GetLaneGroups(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse
 	// PublishLaneGroups 发布多个泳道组
-	PublishLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse
+	PublishLaneGroups(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
 	// RollbackLaneGroups 回滚泳道组
-	RollbackLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse
+	RollbackLaneGroups(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
 	// StopbetaLaneGroups 回滚泳道组
-	StopbetaLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse
+	StopbetaLaneGroups(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
+	// CreateLaneRules 批量创建泳道规则
+	CreateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse
+	// UpdateLaneRules 批量更新泳道规则
+	UpdateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse
+	// DeleteLaneRules 批量删除泳道规则
+	DeleteLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse
 }
 
 // ClientServer Client related operation  Client operation interface definition

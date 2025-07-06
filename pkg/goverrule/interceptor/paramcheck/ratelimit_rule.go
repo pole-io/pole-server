@@ -19,6 +19,7 @@ package paramcheck
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -35,6 +36,23 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
 
+var (
+	// RateLimitFilters rate limit filters
+	RateLimitFilters = map[string]struct{}{
+		"id":         {},
+		"name":       {},
+		"service":    {},
+		"namespace":  {},
+		"brief":      {},
+		"method":     {},
+		"labels":     {},
+		"disable":    {},
+		"offset":     {},
+		"limit":      {},
+		"limit_type": {},
+	}
+)
+
 // CreateRateLimits implements service.DiscoverServer.
 func (svr *Server) CreateRateLimits(ctx context.Context,
 	reqs []*traffic_manage.Rule) *service_manage.BatchWriteResponse {
@@ -44,7 +62,6 @@ func (svr *Server) CreateRateLimits(ctx context.Context,
 
 	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range reqs {
-		// 参数校验
 		// 参数校验
 		if resp := checkRateLimitParams(reqs[i]); resp != nil {
 			api.Collect(batchRsp, resp)
@@ -82,6 +99,20 @@ func (svr *Server) DeleteRateLimits(ctx context.Context, reqs []*traffic_manage.
 // GetRateLimits implements service.DiscoverServer.
 func (svr *Server) GetRateLimits(ctx context.Context,
 	query map[string]string) *service_manage.BatchQueryResponse {
+	for key := range query {
+		if _, ok := RateLimitFilters[key]; !ok {
+			log.Errorf("params %s is not allowed in querying rate limits", key)
+			return api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
+		}
+	}
+	// 处理offset和limit
+	offset, limit, err := valid.ParseOffsetAndLimit(query)
+	if err != nil {
+		return api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
+	}
+	query["offset"] = strconv.Itoa(int(offset))
+	query["limit"] = strconv.Itoa(int(limit))
+
 	return svr.nextSvr.GetRateLimits(ctx, query)
 }
 
@@ -114,86 +145,17 @@ func (svr *Server) UpdateRateLimits(ctx context.Context, reqs []*traffic_manage.
 }
 
 // PublishRateLimits implements service.DiscoverServer.
-func (svr *Server) PublishRateLimits(ctx context.Context, reqs []*traffic_manage.Rule) *service_manage.BatchWriteResponse {
-	if err := checkBatchRateLimits(reqs); err != nil {
-		return err
-	}
-	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
-	for i := range reqs {
-		// 参数校验
-		if resp := checkRevisedRateLimitParams(reqs[i]); resp != nil {
-			api.Collect(batchRsp, resp)
-			continue
-		}
-		if resp := checkRateLimitRuleParams(ctx, reqs[i]); resp != nil {
-			api.Collect(batchRsp, resp)
-			continue
-		}
-		if resp := checkRateLimitParamsDbLen(reqs[i]); resp != nil {
-			api.Collect(batchRsp, resp)
-			continue
-		}
-	}
-	if !api.IsSuccess(batchRsp) {
-		return batchRsp
-	}
-
+func (svr *Server) PublishRateLimits(ctx context.Context, reqs []*apimodel.RuleRelease) *service_manage.BatchWriteResponse {
 	return svr.nextSvr.PublishRateLimits(ctx, reqs)
 }
 
 // RollbackRateLimits implements service.DiscoverServer.
-func (svr *Server) RollbackRateLimits(ctx context.Context, reqs []*traffic_manage.Rule) *service_manage.BatchWriteResponse {
-	if err := checkBatchRateLimits(reqs); err != nil {
-		return err
-	}
-	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
-	for i := range reqs {
-		// 参数校验
-		if resp := checkRevisedRateLimitParams(reqs[i]); resp != nil {
-			api.Collect(batchRsp, resp)
-			continue
-		}
-		if resp := checkRateLimitRuleParams(ctx, reqs[i]); resp != nil {
-			api.Collect(batchRsp, resp)
-			continue
-		}
-		if resp := checkRateLimitParamsDbLen(reqs[i]); resp != nil {
-			api.Collect(batchRsp, resp)
-			continue
-		}
-	}
-	if !api.IsSuccess(batchRsp) {
-		return batchRsp
-	}
-
+func (svr *Server) RollbackRateLimits(ctx context.Context, reqs []*apimodel.RuleRelease) *service_manage.BatchWriteResponse {
 	return svr.nextSvr.RollbackRateLimits(ctx, reqs)
 }
 
 // StopbetaRateLimits implements service.DiscoverServer.
-func (svr *Server) StopbetaRateLimits(ctx context.Context, reqs []*traffic_manage.Rule) *service_manage.BatchWriteResponse {
-	if err := checkBatchRateLimits(reqs); err != nil {
-		return err
-	}
-	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
-	for i := range reqs {
-		// 参数校验
-		if resp := checkRevisedRateLimitParams(reqs[i]); resp != nil {
-			api.Collect(batchRsp, resp)
-			continue
-		}
-		if resp := checkRateLimitRuleParams(ctx, reqs[i]); resp != nil {
-			api.Collect(batchRsp, resp)
-			continue
-		}
-		if resp := checkRateLimitParamsDbLen(reqs[i]); resp != nil {
-			api.Collect(batchRsp, resp)
-			continue
-		}
-	}
-	if !api.IsSuccess(batchRsp) {
-		return batchRsp
-	}
-
+func (svr *Server) StopbetaRateLimits(ctx context.Context, reqs []*apimodel.RuleRelease) *service_manage.BatchWriteResponse {
 	return svr.nextSvr.StopbetaRateLimits(ctx, reqs)
 }
 
@@ -215,11 +177,8 @@ func checkRateLimitParams(req *apitraffic.Rule) *apiservice.Response {
 	if req == nil {
 		return api.NewRateLimitResponse(apimodel.Code_EmptyRequest, req)
 	}
-	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
-		return api.NewRateLimitResponse(apimodel.Code_InvalidNamespaceName, req)
-	}
-	if err := valid.CheckResourceName(req.GetService()); err != nil {
-		return api.NewRateLimitResponse(apimodel.Code_InvalidServiceName, req)
+	if err := valid.CheckResourceName(req.GetName()); err != nil {
+		return api.NewRateLimitResponse(apimodel.Code_InvalidRateLimitName, req)
 	}
 	if resp := checkRateLimitParamsDbLen(req); nil != resp {
 		return resp

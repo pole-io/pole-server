@@ -409,7 +409,7 @@ func (lc *LaneCache) Query(ctx context.Context, args *types.LaneGroupArgs) (uint
 	if !ok {
 		sortFunc = laneGroupSort["mtime"]
 	}
-	asc := "asc" == strings.ToLower(args.Filter["order_type"])
+	asc := strings.ToLower(args.Filter["order_type"]) == "asc"
 	sort.Slice(results, func(i, j int) bool {
 		return sortFunc(asc, results[i], results[j])
 	})
@@ -433,5 +433,8 @@ func (lc *LaneCache) toPage(total uint32, items []*rules.LaneGroupProto,
 // GetRule implements api.LaneCache.
 func (lc *LaneCache) GetRule(id string) *rules.LaneGroup {
 	rule, _ := lc.rules.Load(id)
+	if rule == nil {
+		return nil
+	}
 	return rule.LaneGroup
 }

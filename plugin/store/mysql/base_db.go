@@ -20,7 +20,6 @@ package sqldb
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strings"
 	"time"
 
@@ -42,10 +41,7 @@ type BaseDB struct {
 // dbConfig store的配置
 type dbConfig struct {
 	dbType          string
-	dbUser          string
-	dbPwd           string
-	dbAddr          string
-	dbName          string
+	dns             string
 	maxOpenConns    int
 	maxIdleConns    int
 	connMaxLifetime int
@@ -67,9 +63,7 @@ func NewBaseDB(cfg *dbConfig) (*BaseDB, error) {
 // openDatabase 与数据库进行连接
 func (b *BaseDB) openDatabase() error {
 	c := b.cfg
-	dns := fmt.Sprintf("%s:%s@tcp(%s)/%s", c.dbUser, c.dbPwd, c.dbAddr, c.dbName)
-
-	db, err := sql.Open(c.dbType, dns)
+	db, err := sql.Open(c.dbType, c.dns)
 	if err != nil {
 		log.Errorf("[Store][database] sql open err: %s", err.Error())
 		return err

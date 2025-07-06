@@ -121,11 +121,7 @@ func genServiceFilterSQL(filter map[string]string) (string, []interface{}) {
 		}
 		firstIndex = false
 
-		if key == OwnerAttribute {
-			str += " (service.name, service.namespace) in (select service,namespace from owner_service_map where owner=?)"
-		} else if key == "alias."+OwnerAttribute {
-			str += " (alias.name, alias.namespace) in (select service,namespace from owner_service_map where owner=?)"
-		} else if key == "business" {
+		if key == "business" {
 			str += fmt.Sprintf(" %s like ?", key)
 			value = "%" + value + "%"
 		} else if key == "name" && utils.IsPrefixWildName(value) {

@@ -129,17 +129,17 @@ func (h *HTTPServer) PublishRateLimits(req *restful.Request, rsp *restful.Respon
 		Request:  req,
 		Response: rsp,
 	}
-	var rateLimits RateLimitArr
+	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apitraffic.Rule{}
-		rateLimits = append(rateLimits, msg)
+		msg := &apimodel.RuleRelease{}
+		rules = append(rules, msg)
 		return msg
 	})
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	handler.WriteHeaderAndProto(h.ruleServer.PublishRateLimits(ctx, rateLimits))
+	handler.WriteHeaderAndProto(h.ruleServer.PublishRateLimits(ctx, rules))
 }
 
 // RollbackRateLimits 激活限流规则
@@ -148,17 +148,17 @@ func (h *HTTPServer) RollbackRateLimits(req *restful.Request, rsp *restful.Respo
 		Request:  req,
 		Response: rsp,
 	}
-	var rateLimits RateLimitArr
+	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apitraffic.Rule{}
-		rateLimits = append(rateLimits, msg)
+		msg := &apimodel.RuleRelease{}
+		rules = append(rules, msg)
 		return msg
 	})
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	handler.WriteHeaderAndProto(h.ruleServer.RollbackRateLimits(ctx, rateLimits))
+	handler.WriteHeaderAndProto(h.ruleServer.RollbackRateLimits(ctx, rules))
 }
 
 // StopbetaRateLimits 激活限流规则
@@ -167,15 +167,15 @@ func (h *HTTPServer) StopbetaRateLimits(req *restful.Request, rsp *restful.Respo
 		Request:  req,
 		Response: rsp,
 	}
-	var rateLimits RateLimitArr
+	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apitraffic.Rule{}
-		rateLimits = append(rateLimits, msg)
+		msg := &apimodel.RuleRelease{}
+		rules = append(rules, msg)
 		return msg
 	})
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	handler.WriteHeaderAndProto(h.ruleServer.RollbackRateLimits(ctx, rateLimits))
+	handler.WriteHeaderAndProto(h.ruleServer.RollbackRateLimits(ctx, rules))
 }

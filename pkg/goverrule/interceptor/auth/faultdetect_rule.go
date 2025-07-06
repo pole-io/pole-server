@@ -23,11 +23,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/security"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
-	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -36,136 +36,131 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
-// CreateRouterRules 批量创建路由配置
-func (svr *Server) CreateRouterRules(ctx context.Context,
-	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
+func (svr *Server) CreateFaultDetectRules(
+	ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
 
-	// TODO not support RouteRuleV2 resource auth, so we set op is read
-	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Create, authtypes.CreateRouteRules)
+	authCtx := svr.collectFaultDetectAuthContext(ctx, request, authtypes.Create, authtypes.CreateFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	resp := svr.nextSvr.CreateRouterRules(ctx, req)
+
+	resp := svr.nextSvr.CreateFaultDetectRules(ctx, request)
 
 	for index := range resp.Responses {
 		item := resp.GetResponses()[index].GetData()
-		rule := &apitraffic.RouteRule{}
+		rule := &apifault.FaultDetectRule{}
 		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
-		_ = svr.afterRuleResource(ctx, types.RRouting, authtypes.ResourceEntry{
+		_ = svr.afterRuleResource(ctx, types.RFaultDetectRule, authtypes.ResourceEntry{
 			ID:   rule.Id,
-			Type: security.ResourceType_RouteRules,
+			Type: security.ResourceType_FaultDetectRules,
 		}, false)
 	}
 	return resp
 }
 
-// DeleteRouterRules 批量删除路由配置
-func (svr *Server) DeleteRouterRules(ctx context.Context,
-	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
+func (svr *Server) DeleteFaultDetectRules(
+	ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
 
-	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Delete, authtypes.DeleteRouteRules)
+	authCtx := svr.collectFaultDetectAuthContext(ctx, request, authtypes.Delete, authtypes.DeleteFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	resp := svr.nextSvr.DeleteRouterRules(ctx, req)
-
+	resp := svr.nextSvr.DeleteFaultDetectRules(ctx, request)
 	for index := range resp.Responses {
 		item := resp.GetResponses()[index].GetData()
-		rule := &apitraffic.RouteRule{}
+		rule := &apifault.FaultDetectRule{}
 		_ = anypb.UnmarshalTo(item, rule, proto.UnmarshalOptions{})
-		_ = svr.afterRuleResource(ctx, types.RRouting, authtypes.ResourceEntry{
+		_ = svr.afterRuleResource(ctx, types.RFaultDetectRule, authtypes.ResourceEntry{
 			ID:   rule.Id,
-			Type: security.ResourceType_RouteRules,
+			Type: security.ResourceType_FaultDetectRules,
 		}, true)
 	}
 	return resp
 }
 
-// UpdateRouterRules 批量更新路由配置
-func (svr *Server) UpdateRouterRules(ctx context.Context,
-	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
+func (svr *Server) UpdateFaultDetectRules(
+	ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
 
-	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Modify, authtypes.UpdateRouteRules)
+	authCtx := svr.collectFaultDetectAuthContext(ctx, request, authtypes.Modify, authtypes.UpdateFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.UpdateRouterRules(ctx, req)
+	return svr.nextSvr.UpdateFaultDetectRules(ctx, request)
 }
 
-// PublishRouterRules batch enable routing rules
-func (svr *Server) PublishRouterRules(ctx context.Context,
-	req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
+func (svr *Server) PublishFaultDetectRules(
+	ctx context.Context, request []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
 
-	authCtx := svr.collectRuleReleases(ctx, req, authtypes.Modify, authtypes.PublishRouteRules)
+	authCtx := svr.collectRuleReleases(ctx, request, authtypes.Modify, authtypes.UpdateFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.PublishRouterRules(ctx, req)
+	return svr.nextSvr.PublishFaultDetectRules(ctx, request)
 }
 
-// RollbackRouterRules batch enable routing rules
-func (svr *Server) RollbackRouterRules(ctx context.Context,
-	req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
+// RollbackFaultDetectRules rolls back the fault detect rules
+func (svr *Server) RollbackFaultDetectRules(
+	ctx context.Context, request []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
 
-	authCtx := svr.collectRuleReleases(ctx, req, authtypes.Modify, authtypes.RollbackRouteRules)
+	authCtx := svr.collectRuleReleases(ctx, request, authtypes.Modify, authtypes.RollbackFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.RollbackRouterRules(ctx, req)
+	return svr.nextSvr.RollbackFaultDetectRules(ctx, request)
 }
 
-// StopbetaRouterRules batch enable routing rules
-func (svr *Server) StopbetaRouterRules(ctx context.Context,
-	req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
+// StopbetaFaultDetectRules implements FaultDetectRuleOperateServer.
+func (svr *Server) StopbetaFaultDetectRules(
+	ctx context.Context, request []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
 
-	authCtx := svr.collectRuleReleases(ctx, req, authtypes.Modify, authtypes.StopbetaRouteRules)
+	authCtx := svr.collectRuleReleases(ctx, request, authtypes.Modify, authtypes.StopbetaFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.StopbetaRouterRules(ctx, req)
+	return svr.nextSvr.StopbetaFaultDetectRules(ctx, request)
 }
 
-// QueryRouterRules 提供给OSS的查询路由配置的接口
-func (svr *Server) QueryRouterRules(ctx context.Context,
-	query map[string]string) *apiservice.BatchQueryResponse {
-	authCtx := svr.collectRouteRuleV2AuthContext(ctx, nil, authtypes.Read, authtypes.DescribeRouteRules)
+func (svr *Server) GetFaultDetectRules(
+	ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+	authCtx := svr.collectFaultDetectAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
-	ctx = cacheapi.AppendRouterRulePredicate(ctx, func(ctx context.Context, cbr *rules.ExtendRouterConfig) bool {
+	ctx = cacheapi.AppendFaultDetectRulePredicate(ctx, func(ctx context.Context, cbr *rules.FaultDetectRule) bool {
 		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
-			Type:     security.ResourceType_RouteRules,
+			Type:     security.ResourceType_FaultDetectRules,
 			ID:       cbr.ID,
-			Metadata: cbr.Metadata,
+			Metadata: cbr.Proto.GetMetadata(),
 		})
 	})
 	authCtx.SetRequestContext(ctx)
 
-	resp := svr.nextSvr.QueryRouterRules(ctx, query)
+	resp := svr.nextSvr.GetFaultDetectRules(ctx, query)
+
 	for index := range resp.Data {
-		item := &apitraffic.RouteRule{}
+		item := &apifault.FaultDetectRule{}
 		_ = anypb.UnmarshalTo(resp.Data[index], item, proto.UnmarshalOptions{})
 		item.Editable = true
 		item.Deleteable = true
 		authCtx.SetAccessResources(map[security.ResourceType][]authtypes.ResourceEntry{
-			security.ResourceType_RouteRules: {
+			security.ResourceType_FaultDetectRules: {
 				{
-					Type:     apisecurity.ResourceType_RouteRules,
+					Type:     apisecurity.ResourceType_FaultDetectRules,
 					ID:       item.GetId(),
 					Metadata: item.Metadata,
 				},
@@ -173,14 +168,14 @@ func (svr *Server) QueryRouterRules(ctx context.Context,
 		})
 
 		// 检查 write 操作权限
-		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateRouteRules, authtypes.EnableRouteRules})
+		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateFaultDetectRules, authtypes.EnableFaultDetectRules})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 			item.Editable = false
 		}
 
 		// 检查 delete 操作权限
-		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteRouteRules})
+		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteFaultDetectRules})
 		// 如果检查不通过，设置 editable 为 false
 		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 			item.Deleteable = false

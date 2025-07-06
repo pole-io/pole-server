@@ -133,16 +133,6 @@ func (s *ServiceWithFaultDetectRules) Clear() {
 	s.Revision = ""
 }
 
-// CircuitBreakerRelation 熔断规则绑定关系
-type CircuitBreakerRelation struct {
-	ServiceID   string
-	RuleID      string
-	RuleVersion string
-	Valid       bool
-	CreateTime  time.Time
-	ModifyTime  time.Time
-}
-
 // CircuitBreakerDetail 返回给控制台的熔断规则及服务数据
 type CircuitBreakerDetail struct {
 	Total               uint32

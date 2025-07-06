@@ -27,6 +27,7 @@ CREATE DATABASE IF NOT EXISTS `pole_server` DEFAULT CHARACTER SET utf8mb4 COLLAT
 
 USE `pole_server`;
 
+/* 服务实例 */
 -- --------------------------------------------------------
 --
 -- Table structure `instance`
@@ -60,6 +61,7 @@ CREATE TABLE
         KEY `host` (`host`)
     ) ENGINE = InnoDB;
 
+/* 健康检查类型 */
 -- --------------------------------------------------------
 --
 -- Table structure `health_check`
@@ -70,7 +72,6 @@ CREATE TABLE
         `type` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Instance health check type',
         `ttl` INT (11) NOT NULL COMMENT 'TTL time jumping',
         PRIMARY KEY (`id`)
-        /* CONSTRAINT `health_check_ibfk_1` FOREIGN KEY (`id`) REFERENCES `instance` (`id`) ON DELETE CASCADE ON UPDATE CASCADE */
     ) ENGINE = InnoDB;
 
 -- --------------------------------------------------------
@@ -88,6 +89,7 @@ CREATE TABLE
         KEY `mkey` (`mkey`)
     ) ENGINE = InnoDB;
 
+/* 命名空间 */
 -- --------------------------------------------------------
 --
 -- Table structure `namespace`
@@ -139,7 +141,7 @@ VALUES
         '2021-07-27 19:37:37'
     );
 
-
+/* 服务信息 */
 -- --------------------------------------------------------
 --
 -- Table structure `service`
@@ -207,6 +209,7 @@ VALUES
         '2021-09-06 07:55:09'
     );
 
+/* 服务元数据 */
 -- --------------------------------------------------------
 --
 -- Table structure `service_metadata`
@@ -220,9 +223,9 @@ CREATE TABLE
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
         PRIMARY KEY (`id`, `mkey`),
         KEY `mkey` (`mkey`)
-        /* CONSTRAINT `service_metadata_ibfk_1` FOREIGN KEY (`id`) REFERENCES `service` (`id`) ON DELETE CASCADE ON UPDATE CASCADE */
     ) ENGINE = InnoDB;
 
+/* 服务订阅关系 */
 --
 -- Table structure `service_subscribe_graph`
 --
@@ -240,21 +243,8 @@ CREATE TABLE
         KEY `callee_namespace` (`callee_namespace`)
     ) ENGINE = InnoDB;
 
--- --------------------------------------------------------
---
--- Table structure `owner_service_map`Quickly query all services under an Owner
---
-CREATE TABLE
-    `owner_service_map` (
-        `id` VARCHAR(32) NOT NULL COMMENT '',
-        `owner` VARCHAR(32) NOT NULL COMMENT 'Service Owner',
-        `service` VARCHAR(128) NOT NULL COMMENT 'service name',
-        `namespace` VARCHAR(64) NOT NULL COMMENT 'namespace name',
-        PRIMARY KEY (`id`),
-        KEY `owner` (`owner`),
-        KEY `name` (`service`, `namespace`)
-    ) ENGINE = InnoDB;
 
+/* 启动锁 */
 -- --------------------------------------------------------
 --
 -- Table structure `start_lock`
@@ -397,6 +387,7 @@ CREATE TABLE
         UNIQUE KEY `uk_name` (`name`)
     ) ENGINE = InnoDB AUTO_INCREMENT = 1 DEFAULT CHARSET = utf8 COLLATE = utf8_bin COMMENT = '配置文件模板表';
 
+/* 用户 */
 CREATE TABLE
     `user` (
         `id` VARCHAR(128) NOT NULL COMMENT 'User ID',
@@ -420,6 +411,7 @@ CREATE TABLE
         KEY `mtime` (`mtime`)
     ) ENGINE = InnoDB;
 
+/* 用户组 */
 CREATE TABLE
     `user_group` (
         `id` VARCHAR(128) NOT NULL COMMENT 'User group ID',
@@ -438,6 +430,7 @@ CREATE TABLE
         KEY `mtime` (`mtime`)
     ) ENGINE = InnoDB;
 
+/* 用户组成员 */
 CREATE TABLE
     `user_group_relation` (
         `user_id` VARCHAR(128) NOT NULL COMMENT 'User ID',
@@ -448,6 +441,7 @@ CREATE TABLE
         KEY `mtime` (`mtime`)
     ) ENGINE = InnoDB;
 
+/* 鉴权策略 */
 CREATE TABLE
     `auth_strategy` (
         `id` VARCHAR(128) NOT NULL COMMENT 'Strategy ID',
@@ -468,6 +462,7 @@ CREATE TABLE
         KEY `mtime` (`mtime`)
     ) ENGINE = InnoDB;
 
+/* 策略成员 */
 CREATE TABLE
     `auth_principal` (
         `strategy_id` VARCHAR(128) NOT NULL COMMENT 'Strategy ID',
@@ -477,6 +472,7 @@ CREATE TABLE
         PRIMARY KEY (`strategy_id`, `principal_id`, `principal_role`)
     ) ENGINE = InnoDB;
 
+/* 策略包含资源 */
 CREATE TABLE
     `auth_strategy_resource` (
         `strategy_id` VARCHAR(128) NOT NULL COMMENT 'Strategy ID',
@@ -589,23 +585,22 @@ CREATE TABLE
     `router_rul_release` (
         `id` VARCHAR(128) NOT NULL,
         `name` VARCHAR(64) NOT NULL DEFAULT '',
+        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'router rule name',
         `namespace` VARCHAR(64) NOT NULL DEFAULT '',
         `policy` VARCHAR(64) NOT NULL,
         `config` TEXT,
-        `enable` INT NOT NULL DEFAULT 0,
+        
         `revision` VARCHAR(40) NOT NULL,
         `description` VARCHAR(500) NOT NULL DEFAULT '',
         `priority` SMALLINT (6) NOT NULL DEFAULT '0' COMMENT 'ratelimit rule priority',
         `flag` TINYINT (4) NOT NULL DEFAULT '0',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        `etime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `extend_info` VARCHAR(1024) DEFAULT '',
         `metadata` TEXT COMMENT 'route rule metadata',
         `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
         `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
         `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
         `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
@@ -636,23 +631,16 @@ CREATE TABLE
 CREATE TABLE
     `ratelimit_rule_release` (
         `id` VARCHAR(32) NOT NULL COMMENT 'ratelimit rule ID',
-        `name` VARCHAR(64) NOT NULL COMMENT 'ratelimt rule name',
-        `disable` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'ratelimit disable',
-        `service_id` VARCHAR(32) NOT NULL COMMENT 'Service ID',
-        `method` VARCHAR(512) NOT NULL COMMENT 'ratelimit method',
-        `labels` TEXT NOT NULL COMMENT 'Conductive flow for a specific label',
-        `priority` SMALLINT (6) NOT NULL DEFAULT '0' COMMENT 'ratelimit rule priority',
+        `name` VARCHAR(64) NOT NULL COMMENT 'release name',
+        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'ratelimt rule name',
         `rule` TEXT NOT NULL COMMENT 'Current limiting rules',
-        `revision` VARCHAR(32) NOT NULL COMMENT 'Limiting version',
         `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means that it has been logically deleted',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
-        `etime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'RateLimit rule enable time',
-        `metadata` TEXT COMMENT 'ratelimit rule metadata',
         `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
         `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
         `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
         `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
         PRIMARY KEY (`id`),
         KEY `mtime` (`mtime`),
         KEY `service_id` (`service_id`)
@@ -689,26 +677,15 @@ CREATE TABLE
     `circuitbreaker_rule_release` (
         `id` VARCHAR(128) NOT NULL,
         `name` VARCHAR(64) NOT NULL,
-        `namespace` VARCHAR(64) NOT NULL DEFAULT '',
-        `enable` INT NOT NULL DEFAULT 0,
-        `revision` VARCHAR(40) NOT NULL,
-        `description` VARCHAR(1024) NOT NULL DEFAULT '',
-        `level` INT NOT NULL,
-        `src_service` VARCHAR(128) NOT NULL,
-        `src_namespace` VARCHAR(64) NOT NULL,
-        `dst_service` VARCHAR(128) NOT NULL,
-        `dst_namespace` VARCHAR(64) NOT NULL,
-        `dst_method` VARCHAR(128) NOT NULL,
-        `config` TEXT,
+        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'ratelimt rule name',
+        `rule` TEXT NOT NULL COMMENT 'Current limiting rules',
         `flag` TINYINT (4) NOT NULL DEFAULT '0',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        `etime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `metadata` TEXT COMMENT 'circuit_breaker rule metadata',
         `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
         `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
         `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
         `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
         KEY `name` (`name`),
         KEY `mtime` (`mtime`)
@@ -740,21 +717,15 @@ CREATE TABLE
     `fault_detect_rule_release` (
         `id` VARCHAR(128) NOT NULL,
         `name` VARCHAR(64) NOT NULL,
-        `namespace` VARCHAR(64) NOT NULL DEFAULT 'default',
-        `revision` VARCHAR(40) NOT NULL,
-        `description` VARCHAR(1024) NOT NULL DEFAULT '',
-        `dst_service` VARCHAR(128) NOT NULL,
-        `dst_namespace` VARCHAR(64) NOT NULL,
-        `dst_method` VARCHAR(128) NOT NULL,
-        `config` TEXT,
+        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'ratelimt rule name',
+        `rule` TEXT NOT NULL COMMENT 'Current limiting rules',
         `flag` TINYINT (4) NOT NULL DEFAULT '0',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        `metadata` TEXT COMMENT 'faultdetect rule metadata',
         `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
         `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
         `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
         `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
         KEY `name` (`name`),
         KEY `mtime` (`mtime`)
@@ -801,17 +772,15 @@ CREATE TABLE
     `lane_group_release` (
         `id` varchar(128) not null comment '泳道分组 ID',
         `name` varchar(64) not null comment '泳道分组名称',
+        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'ratelimt rule name',
         `rule` text not null comment '规则的 json 字符串',
-        `description` varchar(3000) comment '规则描述',
-        `revision` VARCHAR(40) NOT NULL comment '规则摘要',
         `flag` tinyint default 0 comment '软删除标识位',
-        `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        `metadata` TEXT COMMENT 'lane rule metadata',
         `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
         `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
         `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
         `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
+        `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
         UNIQUE KEY `name` (`name`)
     ) ENGINE = InnoDB;
@@ -893,3 +862,46 @@ CREATE TABLE
         PRIMARY KEY (`id`),
         UNIQUE KEY `name` (`name`)
     ) ENGINE = InnoDB;
+
+/* MCP Server */
+CREATE TABLE
+    `mcp_server` (
+        `id` VARCHAR(32) NOT NULL COMMENT 'mcp-server id',
+        `name` VARCHAR(128) NOT NULL COMMENT 'mcp-server name, only under the namespace',
+        `namespace` VARCHAR(64) NOT NULL COMMENT 'Namespace belongs to the mcp-server',
+        `ports` TEXT DEFAULT NULL COMMENT 'mcp-server will have a list of all port information of the external exposure (single process exposing multiple protocols)',
+        `business` VARCHAR(64) DEFAULT NULL COMMENT 'mcp-server business information',
+        `department` VARCHAR(1024) DEFAULT NULL COMMENT 'mcp-server department information',
+        `description` VARCHAR(1024) DEFAULT NULL COMMENT 'Description information',
+        `revision` VARCHAR(32) NOT NULL COMMENT 'mcp-server version information',
+        `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means that it has been logically deleted',
+        `reference` VARCHAR(32) DEFAULT NULL COMMENT 'mcp-server what is the actual service name that the service is actually pointed out?',
+        `protocol` VARCHAR(32) NOT NULL DEFAULT 'http' COMMENT 'mcp-server protocol, such as stdout/sse/streamable',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
+        `export_to` TEXT COMMENT 'service export to some namespace',
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `name` (`name`, `namespace`),
+        KEY `namespace` (`namespace`),
+        KEY `mtime` (`mtime`),
+        KEY `reference` (`reference`),
+) ENGINE = InnoDB;
+
+/* MCP TOOl */
+CREATE TABLE
+    `mcp_server_tools` (
+        `id` VARCHAR(32) NOT NULL COMMENT 'mcp-server id',
+        `mcp_server_id` VARCHAR(32) NOT NULL COMMENT 'mcp-server id',
+        `name` VARCHAR(128) NOT NULL COMMENT 'mcp-server name, only under the namespace',
+        `description` VARCHAR(1024) DEFAULT NULL COMMENT 'Description information',
+        `input_schema` TEXT COMMENT 'Input schema information, such as json schema',
+        `output_schema` TEXT COMMENT 'Output schema information, such as json schema',
+        `annotations` TEXT COMMENT 'Annotations information, such as json schema annotations',
+        `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means that it has been logically deleted',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `name` (`name`, `mcp_server_id`),
+        KEY `mcp_server_id` (`mcp_server_id`),
+        KEY `mtime` (`mtime`),
+) ENGINE = InnoDB;
