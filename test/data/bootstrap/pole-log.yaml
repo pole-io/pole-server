@@ -1,0 +1,197 @@
+# Log scope name
+# Configuration center related logs
+config:
+  # Log file location
+  rotateOutputPath: ./test/output/logs/runtime/pole-config.log
+  # Special records of error log files at ERROR level
+  errorRotateOutputPath: ./test/output/logs/runtime/pole-config-error.log
+  # The maximum size of a single log file, 100 default, the unit is MB
+  rotationMaxSize: 100
+  # How many log files are saved, default 30
+  rotationMaxBackups: 30
+  # The maximum preservation days of a single log file, default 7
+  rotationMaxAge: 7
+  # Log output level，debug/info/warn/error
+  outputLevel: debug
+  # Open the log file compression
+  compress: true
+  # onlyContent just print log content, not print log timestamp
+  # onlyContent: false
+# Resource Auth, User Management Log
+auth:
+  rotateOutputPath: ./test/output/logs/runtime/pole-auth.log
+  errorRotateOutputPath: ./test/output/logs/runtime/pole-auth-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  compress: true
+  outputPaths:
+  - stdout
+  errorOutputPaths:
+  - stderr
+# Storage layer log
+store:
+  rotateOutputPath: ./test/output/logs/runtime/pole-store.log
+  errorRotateOutputPath: ./test/output/logs/runtime/pole-store-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  compress: true
+# Server cache log log
+cache:
+  rotateOutputPath: ./test/output/logs/runtime/pole-cache.log
+  errorRotateOutputPath: ./test/output/logs/runtime/pole-cache-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: error
+  compress: true
+# Service discovery and governance rules related logs
+naming:
+  rotateOutputPath: ./test/output/logs/runtime/pole-naming.log
+  errorRotateOutputPath: ./test/output/logs/runtime/pole-naming-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  compress: true
+# Service discovery institutional health check log
+healthcheck:
+  rotateOutputPath: ./test/output/logs/runtime/pole-healthcheck.log
+  errorRotateOutputPath: ./test/output/logs/runtime/pole-healthcheck-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  compress: true
+# XDS protocol layer plug -in log
+xdsv3:
+  rotateOutputPath: ./test/output/logs/runtime/pole-xdsv3.log
+  errorRotateOutputPath: ./test/output/logs/runtime/pole-xdsv3-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true
+# Eureka protocol layer plugin log
+eureka:
+  rotateOutputPath: ./test/output/logs/runtime/pole-eureka.log
+  errorRotateOutputPath: ./test/output/logs/runtime/pole-eureka-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  compress: true
+# Apollo protocol layer plugin log
+apollo-apiserver:
+  rotateOutputPath: ./test/output/logs/runtime/apollo-apiserver.log
+  errorRotateOutputPath: ./test/output/logs/runtime/apollo-apiserver-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  compress: true
+# Nacos protocol layer plug -in log
+nacos-apiserver:
+  rotateOutputPath: ./test/output/logs/runtime/nacos-apiserver.log
+  errorRotateOutputPath: ./test/output/logs/runtime/nacos-apiserver-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  compress: true
+# APISERVER common log, record inbound request and outbound response
+apiserver:
+  rotateOutputPath: ./test/output/logs/runtime/pole-apiserver.log
+  errorRotateOutputPath: ./test/output/logs/runtime/pole-apiserver-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  compress: true
+  outputPaths:
+  - stdout
+  errorOutputPaths:
+  - stderr
+default:
+  rotateOutputPath: ./test/output/logs/runtime/pole-default.log
+  errorRotateOutputPath: ./test/output/logs/runtime/pole-default-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true
+  outputPaths:
+  - stdout
+  errorOutputPaths:
+  - stderr
+# server plugin logs
+token-bucket:
+  rotateOutputPath: ./test/output/logs/runtime/pole-ratelimit.log
+  errorRotateOutputPath: ./test/output/logs/runtime/pole-ratelimit-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  compress: true
+discoverstat:
+  rotateOutputPath: ./test/output/logs/statis/pole-discoverstat.log
+  errorRotateOutputPath: ./test/output/logs/statis/pole-discoverstat-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  compress: true
+  onlyContent: true
+local:
+  rotateOutputPath: ./test/output/logs/statis/pole-statis.log
+  errorRotateOutputPath: ./test/output/logs/statis/pole-statis-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  compress: true
+HistoryLogger:
+  rotateOutputPath: ./test/output/logs/operation/pole-history.log
+  errorRotateOutputPath: ./test/output/logs/operation/pole-history-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 10
+  rotationMaxAge: 7
+  rotationMaxDurationForHour: 24
+  outputLevel: debug
+  onlyContent: true
+HistoryDB:
+  rotateOutputPath: ./test/output/logs/operation/pole-history-db.log
+  errorRotateOutputPath: ./test/output/logs/operation/pole-history-db-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 10
+  rotationMaxAge: 7
+  rotationMaxDurationForHour: 24
+  outputLevel: debug
+  onlyContent: true
+EventLogger:
+  rotateOutputPath: ./test/output/logs/event/pole-discoverevent.log
+  errorRotateOutputPath: ./test/output/logs/event/pole-discoverevent-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  onlyContent: true
+EventDB:
+  rotateOutputPath: ./test/output/logs/event/pole-discoverevent-db.log
+  errorRotateOutputPath: ./test/output/logs/event/pole-discoverevent-db-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  onlyContent: true
+cmdb:
+  rotateOutputPath: ./test/output/logs/runtime/pole-cmdb.log
+  errorRotateOutputPath: ./test/output/logs/runtime/pole-cmdb-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: debug
+  compress: true

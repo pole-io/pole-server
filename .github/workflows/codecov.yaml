@@ -1,0 +1,117 @@
+# Tencent is pleased to support the open source community by making Polaris available.
+#
+# Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
+#
+# Licensed under the BSD 3-Clause License (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# https://opensource.org/licenses/BSD-3-Clause
+#
+# Unless required by applicable law or agreed to in writing, software distributed
+# under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+# CONDITIONS OF ANY KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations under the License.
+
+name: Codecov
+
+on:
+  push:
+    branches:
+      - main
+      - release*
+  pull_request:
+    branches:
+      - main
+      - release*
+
+permissions:
+  contents: write
+
+# Always force the use of Go modules
+env:
+  GO111MODULE: on
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      # Label used to access the service container
+      redis:
+        # Docker Hub image
+        image: redis
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps port 6379 on service container to the host
+          - 6379:6379
+    steps:
+      # Setup the environment.
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21.5"
+      # Checkout latest code
+      - name: Checkout repo
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+
+      - uses: shogo82148/actions-setup-mysql@v1
+        with:
+          mysql-version: "5.7"
+          auto-start: true
+          my-cnf: |
+            innodb_log_file_size=256MB
+            innodb_buffer_pool_size=512MB
+            max_allowed_packet=16MB
+            max_connections=50
+            local_infile=1
+          root-password: root
+
+
+      - name: Initialize database
+        env:
+          MYSQL_DB_USER: root
+          MYSQL_DB_PWD: root
+          MYSQL_DATABASE: pole_server
+        run: |
+          mysql -e 'CREATE DATABASE ${{ env.MYSQL_DATABASE }};' -u${{ env.MYSQL_DB_USER }} -p${{ env.MYSQL_DB_PWD }}
+          mysql -e "ALTER USER '${{ env.MYSQL_DB_USER }}'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root';"  -u${{ env.MYSQL_DB_USER }} -p${{ env.MYSQL_DB_PWD }}
+
+      # Execute vert check
+      # - name: Vert check
+      #   run: bash vert.sh -install && bash vert.sh
+
+      - name: Standalone Test
+        env:
+          MYSQL_DB_USER: root
+          MYSQL_DB_PWD: root
+          RUN_MODE: STANDALONE
+        run: |
+          # bash coverage.sh
+          export MYSQL_DB_USER=${{ env.MYSQL_DB_USER }}
+          export MYSQL_DB_PWD=${{ env.MYSQL_DB_PWD }}
+          bash test/codecov.sh
+
+      - name: Cluster Test
+        env:
+          MYSQL_DB_USER: root
+          MYSQL_DB_PWD: root
+          REDIS_ADDR: 127.0.0.1:6379
+          REDIS_PWD: ""
+          RUN_MODE: CLUSTER
+        run: |
+          # bash coverage.sh
+          export MYSQL_DB_USER=${{ env.MYSQL_DB_USER }}
+          export MYSQL_DB_PWD=${{ env.MYSQL_DB_PWD }}
+          bash test/codecov.sh
+
+      - name: Upload Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

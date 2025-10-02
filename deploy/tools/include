@@ -1,0 +1,105 @@
+# Tencent is pleased to support the open source community by making Polaris available.
+#
+# Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
+#
+# Licensed under the BSD 3-Clause License (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# https://opensource.org/licenses/BSD-3-Clause
+#
+# Unless required by applicable law or agreed to in writing, software distributed
+# under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+# CONDITIONS OF ANY KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations under the License.
+
+server_name="polaris-server"
+cmdline="./polaris-server start"
+mac_os=$(uname -a | grep -E "Darwin|darwin" | wc -l)
+
+function log_date() {
+    echo $(date "+%Y-%m-%dT%H:%M:%S")
+}
+
+function log_error() {
+    echo -e "\033[31m\033[01m$(log_date)\terror\t$1 \033[0m"
+}
+
+function log_info() {
+    echo -e "\033[32m\033[01m$(log_date)\tinfo\t$1 \033[0m"
+}
+
+function del_file() {
+    log_info "del file for $server_name"
+
+    rm -rf ./log
+    rm -rf ./statis
+    rm -rf ./discover-statis
+}
+
+function start() {
+    log_info "start $server_name"
+
+    if [ ! -d "./log" ]; then
+        mkdir ./log
+    fi
+
+    if [ ! -d "./statis" ]; then
+        mkdir ./statis
+    fi
+    set +e
+    ulimit -n 409600
+    ulimit -c unlimited
+    set -e
+    chmod +x $server_name
+    nohup $cmdline >>/dev/null 2>&1 &
+}
+
+function stop() {
+    pids=$(ps -ef | grep -w "$cmdline" | grep -v "grep" | awk '{print $2}')
+    array=($pids)
+    for pid in ${array[@]}; do
+        log_info "stop $server_name: pid=$pid"
+
+        kill -15 $pid
+    done
+}
+
+function add_cron() {
+    if [[ "${mac_os}" != "0" ]]; then
+        log_info "mac os not support crontab, skip add cron"
+        return
+    fi
+    set +e
+    item="bash $workdir/tool/check.sh >>$workdir/log/check.log 2>&1"
+    exist=$(crontab -l | grep "$item" | grep -v "#" | wc -l)
+    if [ "$exist" == "0" ]; then
+        log_info "add cron for $server_name"
+
+        cron=$(mktemp)
+        crontab -l >$cron
+        echo "*/1 * * * * $item" >>$cron
+        crontab $cron
+        rm -f $cron
+    fi
+    set -e
+}
+
+function del_cron() {
+    if [[ "${mac_os}" != "0" ]]; then
+        log_info "mac os not support crontab, skip del cron"
+        return
+    fi
+    set +e
+    item="bash $workdir/tool/check.sh >>$workdir/log/check.log 2>&1"
+    exist=$(crontab -l | grep "$item" | grep -v "#" | wc -l)
+    if [ "$exist" != "0" ]; then
+        log_info "del cron for $server_name"
+
+        cron=$(mktemp)
+        crontab -l | grep -v "$item" >$cron
+        crontab $cron
+        rm -f $cron
+    fi
+    set -e
+}
