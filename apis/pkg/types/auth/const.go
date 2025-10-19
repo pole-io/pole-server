@@ -44,6 +44,7 @@ const (
 	DiscoverFaultDetectRule    ServerFunctionName = "DiscoverFaultDetectRule"
 	DiscoverServiceContract    ServerFunctionName = "DiscoverServiceContract"
 	DiscoverLaneRule           ServerFunctionName = "DiscoverLaneRule"
+	DiscoverLosslessRule      ServerFunctionName = "DiscoverLosslessRule"
 
 	// 配置接口
 	DiscoverConfigFile      ServerFunctionName = "DiscoverConfigFile"
@@ -216,6 +217,20 @@ const (
 	StopbetaLaneGroups        ServerFunctionName = "StopbetaLaneGroups"
 	DescribeLaneGroupReleases ServerFunctionName = "DescribeLaneGroupReleases"
 	DeleteLaneGroupReleases   ServerFunctionName = "DeleteLaneGroupReleases"
+)
+
+const (
+	// 无损规则
+	CreateLosslessRules      ServerFunctionName = "CreateLosslessRules"
+	DeleteLosslessRules      ServerFunctionName = "DeleteLosslessRules"
+	UpdateLosslessRules      ServerFunctionName = "UpdateLosslessRules"
+	DescribeLosslessRules    ServerFunctionName = "DescribeLosslessRules"
+
+	PublishLosslessRules     ServerFunctionName = "PublishLosslessRules"
+	RollbackLosslessRules    ServerFunctionName = "RollbackLosslessRules"
+	StopbetaLosslessRules    ServerFunctionName = "StopbetaLosslessRules"
+	DescribeLosslessReleases ServerFunctionName = "DescribeLosslessReleases"
+	DeleteLosslessReleases   ServerFunctionName = "DeleteLosslessReleases"
 )
 
 // 用户/用户组

@@ -28,12 +28,12 @@ import (
 )
 
 // Heartbeat 上报心跳
-func (g *DiscoverServer) Heartbeat(ctx context.Context, in *apiservice.Instance) (*apiservice.Response, error) {
+func (g *DiscoverGRPCServer) Heartbeat(ctx context.Context, in *apiservice.Instance) (*apiservice.Response, error) {
 	return g.healthCheckServer.Report(utils.ConvertGRPCContext(ctx), in), nil
 }
 
 // BatchHeartbeat 批量上报心跳
-func (g *DiscoverServer) BatchHeartbeat(svr apiservice.PolarisHeartbeatGRPC_BatchHeartbeatServer) error {
+func (g *DiscoverGRPCServer) BatchHeartbeat(svr apiservice.PolarisHeartbeatGRPC_BatchHeartbeatServer) error {
 	ctx := utils.ConvertGRPCContext(svr.Context())
 
 	for {
@@ -53,7 +53,7 @@ func (g *DiscoverServer) BatchHeartbeat(svr apiservice.PolarisHeartbeatGRPC_Batc
 }
 
 // BatchGetHeartbeat 批量获取心跳记录
-func (g *DiscoverServer) BatchGetHeartbeat(ctx context.Context,
+func (g *DiscoverGRPCServer) BatchGetHeartbeat(ctx context.Context,
 	req *apiservice.GetHeartbeatsRequest) (*apiservice.GetHeartbeatsResponse, error) {
 	checker, ok := g.healthCheckServer.Checkers()[int32(apiservice.HealthCheck_HEARTBEAT)]
 	if !ok {
@@ -81,7 +81,7 @@ func (g *DiscoverServer) BatchGetHeartbeat(ctx context.Context,
 }
 
 // BatchDelHeartbeat 批量删除心跳记录
-func (g *DiscoverServer) BatchDelHeartbeat(ctx context.Context,
+func (g *DiscoverGRPCServer) BatchDelHeartbeat(ctx context.Context,
 	req *apiservice.DelHeartbeatsRequest) (*apiservice.DelHeartbeatsResponse, error) {
 	checker, ok := g.healthCheckServer.Checkers()[int32(apiservice.HealthCheck_HEARTBEAT)]
 	if !ok {

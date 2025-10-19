@@ -18,8 +18,10 @@
 package rules
 
 import (
+	"context"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,6 +29,7 @@ import (
 
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
@@ -37,21 +40,20 @@ import (
 	commonatomic "github.com/pole-io/pole-server/pkg/common/syncs/atomic"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	matchs "github.com/pole-io/pole-server/pkg/common/utils/match"
 )
 
 type (
 	// RouteRuleCache Routing rules cache
 	RouteRuleCache struct {
 		*cachebase.BaseCache
-
+		// serviceCache 服务缓存
 		serviceCache cachetypes.ServiceCache
-		storage      store.Store
-
+		// ids 路由规则保存
 		ids *container.SyncMap[string, *rules.RouterConfig]
-
 		// container 这里保存的是已经发布的规则
 		container *RouteRuleContainer
-
+		// lastMtime 最新的规则更新时间
 		lastMtime time.Time
 	}
 )
@@ -60,13 +62,13 @@ type (
 func NewRouteRuleCache(s store.Store, cacheMgr cachetypes.CacheManager) cachetypes.RouterRuleCache {
 	return &RouteRuleCache{
 		BaseCache: cachebase.NewBaseCache(s, cacheMgr),
-		storage:   s,
 	}
 }
 
 // initialize The function of implementing the cache interface
-func (rc *RouteRuleCache) Initialize(_ map[string]interface{}) error {
+func (rc *RouteRuleCache) Initialize(_ map[string]any) error {
 	rc.lastMtime = time.Unix(0, 0)
+	rc.ids = container.NewSyncMap[string, *rules.RouterConfig]()
 	rc.container = newRouteRuleContainer()
 	rc.serviceCache = rc.BaseCache.CacheMgr.GetCacher(cachetypes.CacheService).(cachetypes.ServiceCache)
 	return nil
@@ -75,7 +77,7 @@ func (rc *RouteRuleCache) Initialize(_ map[string]interface{}) error {
 // Update The function of implementing the cache interface
 func (rc *RouteRuleCache) Update() error {
 	// Multiple thread competition, only one thread is updated
-	_, err, _ := rc.GetSingle().Do(rc.Name(), func() (interface{}, error) {
+	_, err, _ := rc.GetSingle().Do(rc.Name(), func() (any, error) {
 		return nil, rc.DoCacheUpdate(rc.Name(), rc.realUpdate)
 	})
 	return err
@@ -83,24 +85,33 @@ func (rc *RouteRuleCache) Update() error {
 
 // update The function of implementing the cache interface
 func (rc *RouteRuleCache) realUpdate() (map[string]time.Time, int64, error) {
-	lastMtimes := map[string]time.Time{}
+	allLastMtimes := map[string]time.Time{}
 
-	rules, err := rc.storage.GetMoreRouterRule(rc.LastFetchTime(), rc.IsFirstUpdate())
+	rules, err := rc.Store().GetMoreRouterRule(rc.LastFetchTime(), rc.IsFirstUpdate())
 	if err != nil {
 		log.Errorf("[cache][router] console cache get from store err: %s", err.Error())
 		return nil, -1, err
 	}
-	rc.setRouterRuleConsole(lastMtimes, rules)
+	lastMtime, upsert, del := rc.setRouterRuleConsole(rules)
+	log.Info("[cache][router] console cache update",
+		zap.Int("pull-from-store", len(rules)), zap.Int("upsert", upsert), zap.Int("delete", del),
+		zap.Time("last", lastMtime))
+	allLastMtimes[rc.Name()+"_console"] = lastMtime
 
-	releases, err := rc.storage.GetMoreRouterRuleReleases(rc.IsFirstUpdate(), rc.LastFetchTime())
+	releases, err := rc.Store().GetMoreRouterRuleReleases(rc.IsFirstUpdate(), rc.LastFetchTime())
 	if err != nil {
 		log.Errorf("[cache][router] release cache get from store err: %s", err.Error())
 		return nil, -1, err
 	}
 
-	rc.setRouterRuleClient(lastMtimes, releases)
+	lastMtime, upsert, del = rc.setRouterRuleClient(releases)
+	log.Info("[cache][router] release cache update",
+		zap.Int("pull-from-store", len(releases)), zap.Int("upsert", upsert), zap.Int("delete", del),
+		zap.Time("last", lastMtime))
+	allLastMtimes[rc.Name()+"_release"] = lastMtime
+
 	rc.container.reload()
-	return lastMtimes, int64(len(releases)), err
+	return allLastMtimes, int64(len(releases)), err
 }
 
 // Clear The function of implementing the cache interface
@@ -237,49 +248,60 @@ func (rc *RouteRuleCache) GetRule(id string) *rules.RouterConfig {
 }
 
 // setRouterRuleConsole 用于控制台列表查询缓存
-func (rc *RouteRuleCache) setRouterRuleConsole(lastMtimes map[string]time.Time, cs []*rules.RouterConfig) {
+func (rc *RouteRuleCache) setRouterRuleConsole(cs []*rules.RouterConfig) (time.Time, int, int) {
 	if len(cs) == 0 {
-		return
+		return time.Time{}, 0, 0
 	}
 
-	lastMtimeV2 := rc.LastMtime(rc.Name() + "_client").Unix()
+	upsert := 0
+	del := 0
+
+	lastMtime := rc.LastMtime(rc.Name() + "_client").Unix()
 	for _, entry := range cs {
 		if entry.ID == "" {
 			continue
 		}
-		if entry.ModifyTime.Unix() > lastMtimeV2 {
-			lastMtimeV2 = entry.ModifyTime.Unix()
+		if entry.ModifyTime.Unix() > lastMtime {
+			lastMtime = entry.ModifyTime.Unix()
 		}
 		if !entry.Valid {
+			del++
 			rc.container.deleteV2(entry.ID)
 			continue
 		}
+		upsert++
 		rc.ids.Store(entry.ID, entry)
 	}
-	lastMtimes[rc.Name()+"_console"] = time.Unix(lastMtimeV2, 0)
+	return time.Unix(lastMtime, 0), upsert, del
 }
 
 // setRouterRuleClient 用于客户端规则查询缓存
-func (rc *RouteRuleCache) setRouterRuleClient(lastMtimes map[string]time.Time, cs []*rules.RouterRuleRelease) {
+func (rc *RouteRuleCache) setRouterRuleClient(cs []*rules.RouterRuleRelease) (time.Time, int, int) {
 	if len(cs) == 0 {
-		return
+		return time.Time{}, 0, 0
 	}
 
-	lastMtimeV2 := rc.LastMtime(rc.Name() + "_client").Unix()
+	upsert := 0
+	del := 0
+
+	lastMtime := rc.LastMtime(rc.Name() + "_client").Unix()
 	for _, entry := range cs {
 		if entry.Key() == "" {
 			continue
 		}
-		if entry.Mtime.Unix() > lastMtimeV2 {
-			lastMtimeV2 = entry.Mtime.Unix()
+		if entry.Mtime.Unix() > lastMtime {
+			lastMtime = entry.Mtime.Unix()
 		}
 		if !entry.Valid {
+			del++
 			rc.container.deleteV2(entry.Key())
 			continue
 		}
+		upsert++
 		rc.container.saveV2(entry)
 	}
-	lastMtimes[rc.Name()+"_client"] = time.Unix(lastMtimeV2, 0)
+
+	return time.Unix(lastMtime, 0), upsert, del
 }
 
 // ServiceWithRouterRules 与服务绑定的路由规则数据
@@ -738,4 +760,206 @@ func (b *RouteRuleContainer) reloadNearby(val svctypes.ServiceKey) {
 	}
 	// 处理 all wildcard
 	b.nearbyContainers.allWildcardRules.reload()
+}
+
+func queryRoutingRuleV2ByService(rule *rules.ExtendRouterConfig, sourceNamespace, sourceService,
+	destNamespace, destService string, both bool) bool {
+	var (
+		sourceFind bool
+		destFind   bool
+	)
+
+	hasSourceSvc := len(sourceService) != 0
+	hasSourceNamespace := len(sourceNamespace) != 0
+	hasDestSvc := len(destService) != 0
+	hasDestNamespace := len(destNamespace) != 0
+
+	sourceService, isWildSourceSvc := matchs.ParseWildName(sourceService)
+	sourceNamespace, isWildSourceNamespace := matchs.ParseWildName(sourceNamespace)
+	destService, isWildDestSvc := matchs.ParseWildName(destService)
+	destNamespace, isWildDestNamespace := matchs.ParseWildName(destNamespace)
+
+	for i := range rule.RuleRouting.RuleRouting.Rules {
+		subRule := rule.RuleRouting.RuleRouting.Rules[i]
+		sources := subRule.GetSources()
+		if hasSourceNamespace || hasSourceSvc {
+			for i := range sources {
+				item := sources[i]
+				if hasSourceSvc {
+					if isWildSourceSvc {
+						if !strings.Contains(item.Service, sourceService) {
+							continue
+						}
+					} else if item.Service != sourceService {
+						continue
+					}
+				}
+				if hasSourceNamespace {
+					if isWildSourceNamespace {
+						if !strings.Contains(item.Namespace, sourceNamespace) {
+							continue
+						}
+					} else if item.Namespace != sourceNamespace {
+						continue
+					}
+				}
+				sourceFind = true
+				break
+			}
+		}
+
+		destinations := subRule.GetDestinations()
+		if hasDestNamespace || hasDestSvc {
+			for i := range destinations {
+				item := destinations[i]
+				if hasDestSvc {
+					if isWildDestSvc && !strings.Contains(item.Service, destService) {
+						continue
+					}
+					if item.Service != destService {
+						continue
+					}
+				}
+				if hasDestNamespace {
+					if isWildDestNamespace && !strings.Contains(item.Namespace, destNamespace) {
+						continue
+					}
+					if item.Namespace != destNamespace {
+						continue
+					}
+				}
+				destFind = true
+				break
+			}
+		}
+
+		if both {
+			if sourceFind && destFind {
+				return true
+			}
+		} else if sourceFind || destFind {
+			return true
+		}
+	}
+	return false
+}
+
+// QueryRouterRules Query Route Configuration List
+func (rc *RouteRuleCache) QueryRouterRules(ctx context.Context, args *cacheapi.RoutingArgs) (uint32, []*rules.ExtendRouterConfig, error) {
+	if err := rc.Update(); err != nil {
+		return 0, nil, err
+	}
+	hasSvcQuery := len(args.Service) != 0 || len(args.Namespace) != 0
+	hasSourceQuery := len(args.SourceService) != 0 || len(args.SourceNamespace) != 0
+	hasDestQuery := len(args.DestinationService) != 0 || len(args.DestinationNamespace) != 0
+	needBoth := hasSourceQuery && hasDestQuery
+
+	res := make([]*rules.ExtendRouterConfig, 0, 8)
+
+	var process = func(_ string, routeRule *rules.ExtendRouterConfig) {
+		if args.ID != "" && args.ID != routeRule.ID {
+			return
+		}
+
+		if routeRule.GetRoutingPolicy() == apitraffic.RoutingPolicy_RulePolicy {
+			if args.Namespace != "" {
+				if args.SourceNamespace == "" {
+					args.SourceNamespace = args.Namespace
+				}
+				if args.DestinationNamespace == "" {
+					args.DestinationNamespace = args.Namespace
+				}
+			}
+			if args.Service != "" {
+				if args.SourceService == "" {
+					args.SourceService = args.Service
+				}
+				if args.DestinationService == "" {
+					args.DestinationService = args.Service
+				}
+			}
+			if hasSvcQuery || hasSourceQuery || hasDestQuery {
+				if !queryRoutingRuleV2ByService(routeRule,
+					args.SourceNamespace, args.SourceService,
+					args.DestinationNamespace, args.DestinationService,
+					needBoth) {
+					return
+				}
+			}
+		}
+
+		if args.Name != "" {
+			name, isWild := matchs.ParseWildName(args.Name)
+			if isWild {
+				if !strings.Contains(routeRule.Name, name) {
+					return
+				}
+			} else if args.Name != routeRule.Name {
+				return
+			}
+		}
+
+		if args.Enable != nil && *args.Enable != routeRule.Enable {
+			return
+		}
+
+		res = append(res, routeRule)
+	}
+
+	predicates := cacheapi.LoadRouterRulePredicates(ctx)
+
+	rc.IteratorRouterRule(func(key string, value *rules.RouterConfig) {
+		for i := range predicates {
+			if !predicates[i](ctx, value) {
+				return
+			}
+		}
+		pdata, _ := value.ToExpendRoutingConfig()
+		process(key, pdata)
+	})
+
+	amount, routings := rc.sortBeforeTrim(res, args)
+	return amount, routings, nil
+}
+
+func (rc *RouteRuleCache) sortBeforeTrim(routings []*rules.ExtendRouterConfig,
+	args *cacheapi.RoutingArgs) (uint32, []*rules.ExtendRouterConfig) {
+	amount := uint32(len(routings))
+	if args.Offset >= amount || args.Limit == 0 {
+		return amount, nil
+	}
+	sort.Slice(routings, func(i, j int) bool {
+		asc := strings.ToLower(args.OrderType) == "asc" || args.OrderType == ""
+		if strings.ToLower(args.OrderField) == "priority" {
+			return orderByRoutingPriority(routings[i], routings[j], asc)
+		}
+		return orderByRoutingModifyTime(routings[i], routings[j], asc)
+	})
+	endIdx := args.Offset + args.Limit
+	if endIdx > amount {
+		endIdx = amount
+	}
+	return amount, routings[args.Offset:endIdx]
+}
+
+func orderByRoutingPriority(a, b *rules.ExtendRouterConfig, asc bool) bool {
+	if a.Priority < b.Priority {
+		return asc
+	}
+	if a.Priority > b.Priority {
+		// false && asc always false
+		return false
+	}
+	return strings.Compare(a.ID, b.ID) < 0 && asc
+}
+
+func orderByRoutingModifyTime(a, b *rules.ExtendRouterConfig, asc bool) bool {
+	if a.ModifyTime.After(b.ModifyTime) {
+		return asc
+	}
+	if a.ModifyTime.Before(b.ModifyTime) {
+		// false && asc always false
+		return false
+	}
+	return strings.Compare(a.ID, b.ID) < 0 && asc
 }

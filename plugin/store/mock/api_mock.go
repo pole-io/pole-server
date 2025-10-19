@@ -98,6 +98,20 @@ func (mr *MockStoreMockRecorder) ActiveLaneGroup(tx, release interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveLaneGroup", reflect.TypeOf((*MockStore)(nil).ActiveLaneGroup), tx, release)
 }
 
+// ActiveLosslessRule mocks base method.
+func (m *MockStore) ActiveLosslessRule(tx store.Tx, release *rules.LosslessRuleRelease) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ActiveLosslessRule", tx, release)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ActiveLosslessRule indicates an expected call of ActiveLosslessRule.
+func (mr *MockStoreMockRecorder) ActiveLosslessRule(tx, release interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveLosslessRule", reflect.TypeOf((*MockStore)(nil).ActiveLosslessRule), tx, release)
+}
+
 // ActiveRateLimitRule mocks base method.
 func (m *MockStore) ActiveRateLimitRule(tx store.Tx, release *rules.RateLimitRelease) error {
 	m.ctrl.T.Helper()
@@ -754,6 +768,20 @@ func (mr *MockStoreMockRecorder) CreateGrayResourceTx(tx, data interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateGrayResourceTx", reflect.TypeOf((*MockStore)(nil).CreateGrayResourceTx), tx, data)
 }
 
+// CreateLossLessRule mocks base method.
+func (m *MockStore) CreateLossLessRule(rule *rules.LosslessRule) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateLossLessRule", rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateLossLessRule indicates an expected call of CreateLossLessRule.
+func (mr *MockStoreMockRecorder) CreateLossLessRule(rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateLossLessRule", reflect.TypeOf((*MockStore)(nil).CreateLossLessRule), rule)
+}
+
 // CreateRateLimit mocks base method.
 func (m *MockStore) CreateRateLimit(limiting *rules.RateLimit) error {
 	m.ctrl.T.Helper()
@@ -839,6 +867,20 @@ func (mr *MockStoreMockRecorder) DelServiceSubscibes(arg0 interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DelServiceSubscibes", reflect.TypeOf((*MockStore)(nil).DelServiceSubscibes), arg0)
 }
 
+// DeleteCircuitBreakerReleases mocks base method.
+func (m *MockStore) DeleteCircuitBreakerReleases(tx store.Tx, rule *rules.CircuitBreakerRelease) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteCircuitBreakerReleases", tx, rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteCircuitBreakerReleases indicates an expected call of DeleteCircuitBreakerReleases.
+func (mr *MockStoreMockRecorder) DeleteCircuitBreakerReleases(tx, rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCircuitBreakerReleases", reflect.TypeOf((*MockStore)(nil).DeleteCircuitBreakerReleases), tx, rule)
+}
+
 // DeleteCircuitBreakerRule mocks base method.
 func (m *MockStore) DeleteCircuitBreakerRule(id string) error {
 	m.ctrl.T.Helper()
@@ -893,6 +935,20 @@ func (m *MockStore) DeleteConfigFileTx(tx store.Tx, namespace, group, name strin
 func (mr *MockStoreMockRecorder) DeleteConfigFileTx(tx, namespace, group, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteConfigFileTx", reflect.TypeOf((*MockStore)(nil).DeleteConfigFileTx), tx, namespace, group, name)
+}
+
+// DeleteFaultDetectReleases mocks base method.
+func (m *MockStore) DeleteFaultDetectReleases(tx store.Tx, rule *rules.FaultDetectRelease) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteFaultDetectReleases", tx, rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteFaultDetectReleases indicates an expected call of DeleteFaultDetectReleases.
+func (mr *MockStoreMockRecorder) DeleteFaultDetectReleases(tx, rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteFaultDetectReleases", reflect.TypeOf((*MockStore)(nil).DeleteFaultDetectReleases), tx, rule)
 }
 
 // DeleteFaultDetectRule mocks base method.
@@ -951,6 +1007,20 @@ func (mr *MockStoreMockRecorder) DeleteLaneGroup(id interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLaneGroup", reflect.TypeOf((*MockStore)(nil).DeleteLaneGroup), id)
 }
 
+// DeleteLaneGroupReleases mocks base method.
+func (m *MockStore) DeleteLaneGroupReleases(tx store.Tx, rule *rules.LaneGroupRelease) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteLaneGroupReleases", tx, rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteLaneGroupReleases indicates an expected call of DeleteLaneGroupReleases.
+func (mr *MockStoreMockRecorder) DeleteLaneGroupReleases(tx, rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLaneGroupReleases", reflect.TypeOf((*MockStore)(nil).DeleteLaneGroupReleases), tx, rule)
+}
+
 // DeleteLaneRules mocks base method.
 func (m *MockStore) DeleteLaneRules(tx store.Tx, group string, ids []string) error {
 	m.ctrl.T.Helper()
@@ -963,6 +1033,34 @@ func (m *MockStore) DeleteLaneRules(tx store.Tx, group string, ids []string) err
 func (mr *MockStoreMockRecorder) DeleteLaneRules(tx, group, ids interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLaneRules", reflect.TypeOf((*MockStore)(nil).DeleteLaneRules), tx, group, ids)
+}
+
+// DeleteLossLessRule mocks base method.
+func (m *MockStore) DeleteLossLessRule(rule *rules.LosslessRule) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteLossLessRule", rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteLossLessRule indicates an expected call of DeleteLossLessRule.
+func (mr *MockStoreMockRecorder) DeleteLossLessRule(rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLossLessRule", reflect.TypeOf((*MockStore)(nil).DeleteLossLessRule), rule)
+}
+
+// DeleteLosslessReleases mocks base method.
+func (m *MockStore) DeleteLosslessReleases(tx store.Tx, rule *rules.LosslessRuleRelease) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteLosslessReleases", tx, rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteLosslessReleases indicates an expected call of DeleteLosslessReleases.
+func (mr *MockStoreMockRecorder) DeleteLosslessReleases(tx, rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLosslessReleases", reflect.TypeOf((*MockStore)(nil).DeleteLosslessReleases), tx, rule)
 }
 
 // DeleteRateLimit mocks base method.
@@ -979,6 +1077,20 @@ func (mr *MockStoreMockRecorder) DeleteRateLimit(limiting interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRateLimit", reflect.TypeOf((*MockStore)(nil).DeleteRateLimit), limiting)
 }
 
+// DeleteRateLimitReleases mocks base method.
+func (m *MockStore) DeleteRateLimitReleases(tx store.Tx, rule *rules.RateLimitRelease) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteRateLimitReleases", tx, rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteRateLimitReleases indicates an expected call of DeleteRateLimitReleases.
+func (mr *MockStoreMockRecorder) DeleteRateLimitReleases(tx, rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRateLimitReleases", reflect.TypeOf((*MockStore)(nil).DeleteRateLimitReleases), tx, rule)
+}
+
 // DeleteRole mocks base method.
 func (m *MockStore) DeleteRole(tx store.Tx, role *auth.Role) error {
 	m.ctrl.T.Helper()
@@ -991,6 +1103,20 @@ func (m *MockStore) DeleteRole(tx store.Tx, role *auth.Role) error {
 func (mr *MockStoreMockRecorder) DeleteRole(tx, role interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRole", reflect.TypeOf((*MockStore)(nil).DeleteRole), tx, role)
+}
+
+// DeleteRouterRuleReleases mocks base method.
+func (m *MockStore) DeleteRouterRuleReleases(tx store.Tx, rule *rules.RouterRuleRelease) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteRouterRuleReleases", tx, rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteRouterRuleReleases indicates an expected call of DeleteRouterRuleReleases.
+func (mr *MockStoreMockRecorder) DeleteRouterRuleReleases(tx, rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRouterRuleReleases", reflect.TypeOf((*MockStore)(nil).DeleteRouterRuleReleases), tx, rule)
 }
 
 // DeleteRoutingConfig mocks base method.
@@ -1176,6 +1302,21 @@ func (m *MockStore) GetActiveLaneGroup(tx store.Tx, release *rules.LaneGroupRele
 func (mr *MockStoreMockRecorder) GetActiveLaneGroup(tx, release interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveLaneGroup", reflect.TypeOf((*MockStore)(nil).GetActiveLaneGroup), tx, release)
+}
+
+// GetActiveLosslessRule mocks base method.
+func (m *MockStore) GetActiveLosslessRule(tx store.Tx, release *rules.LosslessRuleRelease) (*rules.LosslessRuleRelease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetActiveLosslessRule", tx, release)
+	ret0, _ := ret[0].(*rules.LosslessRuleRelease)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetActiveLosslessRule indicates an expected call of GetActiveLosslessRule.
+func (mr *MockStoreMockRecorder) GetActiveLosslessRule(tx, release interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveLosslessRule", reflect.TypeOf((*MockStore)(nil).GetActiveLosslessRule), tx, release)
 }
 
 // GetActiveRateLimitRule mocks base method.
@@ -1666,6 +1807,22 @@ func (mr *MockStoreMockRecorder) GetLaneRule(id interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLaneRule", reflect.TypeOf((*MockStore)(nil).GetLaneRule), id)
 }
 
+// GetLosslessRuleVersions mocks base method.
+func (m *MockStore) GetLosslessRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLosslessRuleVersions", ctx, filter, offset, limit)
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].([]*rules.RuleRelease)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetLosslessRuleVersions indicates an expected call of GetLosslessRuleVersions.
+func (mr *MockStoreMockRecorder) GetLosslessRuleVersions(ctx, filter, offset, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLosslessRuleVersions", reflect.TypeOf((*MockStore)(nil).GetLosslessRuleVersions), ctx, filter, offset, limit)
+}
+
 // GetMainUser mocks base method.
 func (m *MockStore) GetMainUser() (*auth.User, error) {
 	m.ctrl.T.Helper()
@@ -1844,6 +2001,36 @@ func (m *MockStore) GetMoreLaneGroups(mtime time.Time, firstUpdate bool) (map[st
 func (mr *MockStoreMockRecorder) GetMoreLaneGroups(mtime, firstUpdate interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoreLaneGroups", reflect.TypeOf((*MockStore)(nil).GetMoreLaneGroups), mtime, firstUpdate)
+}
+
+// GetMoreLosslessReleases mocks base method.
+func (m *MockStore) GetMoreLosslessReleases(mtime time.Time, firstUpdate bool) ([]*rules.LosslessRuleRelease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMoreLosslessReleases", mtime, firstUpdate)
+	ret0, _ := ret[0].([]*rules.LosslessRuleRelease)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMoreLosslessReleases indicates an expected call of GetMoreLosslessReleases.
+func (mr *MockStoreMockRecorder) GetMoreLosslessReleases(mtime, firstUpdate interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoreLosslessReleases", reflect.TypeOf((*MockStore)(nil).GetMoreLosslessReleases), mtime, firstUpdate)
+}
+
+// GetMoreLosslessRules mocks base method.
+func (m *MockStore) GetMoreLosslessRules(mtime time.Time, firstUpdate bool) ([]*rules.LosslessRule, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMoreLosslessRules", mtime, firstUpdate)
+	ret0, _ := ret[0].([]*rules.LosslessRule)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMoreLosslessRules indicates an expected call of GetMoreLosslessRules.
+func (mr *MockStoreMockRecorder) GetMoreLosslessRules(mtime, firstUpdate interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoreLosslessRules", reflect.TypeOf((*MockStore)(nil).GetMoreLosslessRules), mtime, firstUpdate)
 }
 
 // GetMoreNamespaces mocks base method.
@@ -2057,6 +2244,21 @@ func (mr *MockStoreMockRecorder) GetNamespaces(filter, offset, limit interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNamespaces", reflect.TypeOf((*MockStore)(nil).GetNamespaces), filter, offset, limit)
 }
 
+// GetOneLosslessRule mocks base method.
+func (m *MockStore) GetOneLosslessRule(id string) (*rules.LosslessRule, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOneLosslessRule", id)
+	ret0, _ := ret[0].(*rules.LosslessRule)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOneLosslessRule indicates an expected call of GetOneLosslessRule.
+func (mr *MockStoreMockRecorder) GetOneLosslessRule(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOneLosslessRule", reflect.TypeOf((*MockStore)(nil).GetOneLosslessRule), id)
+}
+
 // GetRateLimitRuleVersions mocks base method.
 func (m *MockStore) GetRateLimitRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error) {
 	m.ctrl.T.Helper()
@@ -2131,6 +2333,21 @@ func (m *MockStore) GetReleaseLaneGroupRule(tx store.Tx, release *rules.RuleRele
 func (mr *MockStoreMockRecorder) GetReleaseLaneGroupRule(tx, release interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReleaseLaneGroupRule", reflect.TypeOf((*MockStore)(nil).GetReleaseLaneGroupRule), tx, release)
+}
+
+// GetReleaseLosslessRule mocks base method.
+func (m *MockStore) GetReleaseLosslessRule(tx store.Tx, release *rules.RuleRelease) (*rules.LosslessRuleRelease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetReleaseLosslessRule", tx, release)
+	ret0, _ := ret[0].(*rules.LosslessRuleRelease)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetReleaseLosslessRule indicates an expected call of GetReleaseLosslessRule.
+func (mr *MockStoreMockRecorder) GetReleaseLosslessRule(tx, release interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReleaseLosslessRule", reflect.TypeOf((*MockStore)(nil).GetReleaseLosslessRule), tx, release)
 }
 
 // GetReleaseRateLimitRule mocks base method.
@@ -2628,6 +2845,20 @@ func (mr *MockStoreMockRecorder) InactiveLaneGroup(tx, release interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InactiveLaneGroup", reflect.TypeOf((*MockStore)(nil).InactiveLaneGroup), tx, release)
 }
 
+// InactiveLosslessRule mocks base method.
+func (m *MockStore) InactiveLosslessRule(tx store.Tx, release *rules.LosslessRuleRelease) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InactiveLosslessRule", tx, release)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InactiveLosslessRule indicates an expected call of InactiveLosslessRule.
+func (mr *MockStoreMockRecorder) InactiveLosslessRule(tx, release interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InactiveLosslessRule", reflect.TypeOf((*MockStore)(nil).InactiveLosslessRule), tx, release)
+}
+
 // InactiveRateLimitRule mocks base method.
 func (m *MockStore) InactiveRateLimitRule(tx store.Tx, release *rules.RateLimitRelease) error {
 	m.ctrl.T.Helper()
@@ -2774,6 +3005,21 @@ func (mr *MockStoreMockRecorder) LockLaneGroup(tx, name interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockLaneGroup", reflect.TypeOf((*MockStore)(nil).LockLaneGroup), tx, name)
 }
 
+// LockLosslessRule mocks base method.
+func (m *MockStore) LockLosslessRule(tx store.Tx, name string) (*rules.LosslessRule, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockLosslessRule", tx, name)
+	ret0, _ := ret[0].(*rules.LosslessRule)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockLosslessRule indicates an expected call of LockLosslessRule.
+func (mr *MockStoreMockRecorder) LockLosslessRule(tx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockLosslessRule", reflect.TypeOf((*MockStore)(nil).LockLosslessRule), tx, name)
+}
+
 // LockRateLimitRule mocks base method.
 func (m *MockStore) LockRateLimitRule(tx store.Tx, name string) (*rules.RateLimit, error) {
 	m.ctrl.T.Helper()
@@ -2872,6 +3118,20 @@ func (m *MockStore) PublishLaneGroup(tx store.Tx, rule *rules.LaneGroupRelease) 
 func (mr *MockStoreMockRecorder) PublishLaneGroup(tx, rule interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublishLaneGroup", reflect.TypeOf((*MockStore)(nil).PublishLaneGroup), tx, rule)
+}
+
+// PublishLosslessRules mocks base method.
+func (m *MockStore) PublishLosslessRules(tx store.Tx, rule *rules.LosslessRuleRelease) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PublishLosslessRules", tx, rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PublishLosslessRules indicates an expected call of PublishLosslessRules.
+func (mr *MockStoreMockRecorder) PublishLosslessRules(tx, rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublishLosslessRules", reflect.TypeOf((*MockStore)(nil).PublishLosslessRules), tx, rule)
 }
 
 // PublishRateLimitRule mocks base method.
@@ -3160,6 +3420,20 @@ func (m *MockStore) UpdateLaneRules(tx store.Tx, rules []*rules.LaneRule) error 
 func (mr *MockStoreMockRecorder) UpdateLaneRules(tx, rules interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateLaneRules", reflect.TypeOf((*MockStore)(nil).UpdateLaneRules), tx, rules)
+}
+
+// UpdateLossLessRule mocks base method.
+func (m *MockStore) UpdateLossLessRule(rule *rules.LosslessRule) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateLossLessRule", rule)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateLossLessRule indicates an expected call of UpdateLossLessRule.
+func (mr *MockStoreMockRecorder) UpdateLossLessRule(rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateLossLessRule", reflect.TypeOf((*MockStore)(nil).UpdateLossLessRule), rule)
 }
 
 // UpdateNamespace mocks base method.

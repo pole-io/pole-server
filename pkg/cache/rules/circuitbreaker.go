@@ -46,7 +46,7 @@ type circuitBreakerCache struct {
 	storage store.Store
 	// rules 用于 console 控制台查询
 	rules *container.SyncMap[string, *rules.CircuitBreakerRule]
-
+	// --------- 以下缓存均用于客户端数据查询 --------- //
 	// increment cache
 	ids *container.SyncMap[string, *rules.CircuitBreakerRelease]
 	// key1: namespace, key2: service
@@ -61,20 +61,21 @@ type circuitBreakerCache struct {
 // NewCircuitBreakerCache 返回一个操作CircuitBreakerCache的对象
 func NewCircuitBreakerCache(s store.Store, cacheMgr types.CacheManager) types.CircuitBreakerCache {
 	return &circuitBreakerCache{
-		BaseCache:       cachebase.NewBaseCache(s, cacheMgr),
-		storage:         s,
-		rules:           container.NewSyncMap[string, *rules.CircuitBreakerRule](),
-		circuitBreakers: make(map[string]map[string]*rules.ServiceWithCircuitBreakerRules),
-		nsWildcardRules: make(map[string]*rules.ServiceWithCircuitBreakerRules),
-		allWildcardRules: rules.NewServiceWithCircuitBreakerRules(svctypes.ServiceKey{
-			Namespace: types.AllMatched,
-			Name:      types.AllMatched,
-		}),
+		BaseCache: cachebase.NewBaseCache(s, cacheMgr),
+		storage:   s,
 	}
 }
 
 // Initialize 实现Cache接口的函数
 func (c *circuitBreakerCache) Initialize(_ map[string]interface{}) error {
+	c.ids = container.NewSyncMap[string, *rules.CircuitBreakerRelease]()
+	c.rules = container.NewSyncMap[string, *rules.CircuitBreakerRule]()
+	c.circuitBreakers = make(map[string]map[string]*rules.ServiceWithCircuitBreakerRules)
+	c.nsWildcardRules = make(map[string]*rules.ServiceWithCircuitBreakerRules)
+	c.allWildcardRules = rules.NewServiceWithCircuitBreakerRules(svctypes.ServiceKey{
+		Namespace: types.AllMatched,
+		Name:      types.AllMatched,
+	})
 	return nil
 }
 
@@ -96,7 +97,7 @@ func (c *circuitBreakerCache) realUpdate() (map[string]time.Time, int64, error) 
 		return nil, -1, err
 	}
 	lastMtime, upsert, del := c.setCircuitBreakerConsole(cbRules)
-	log.Info("[cache][circuit_breaker] console get more rules",
+	log.Info("[cache][circuit_breaker] console cache update",
 		zap.Int("pull-from-store", len(cbRules)), zap.Int("upsert", upsert), zap.Int("delete", del),
 		zap.Time("last", lastMtime))
 	lastMtimes[c.Name()+"_console"] = lastMtime
@@ -107,8 +108,8 @@ func (c *circuitBreakerCache) realUpdate() (map[string]time.Time, int64, error) 
 		return nil, -1, err
 	}
 	lastMtime, upsert, del = c.setCircuitBreakerClient(releases)
-	log.Info("[cache][circuit_breaker] client get more rules",
-		zap.Int("pull-from-store", len(cbRules)), zap.Int("upsert", upsert), zap.Int("delete", del),
+	log.Info("[cache][circuit_breaker] client cache update",
+		zap.Int("pull-from-store", len(releases)), zap.Int("upsert", upsert), zap.Int("delete", del),
 		zap.Time("last", c.LastMtime(c.Name())))
 	lastMtimes[c.Name()+"_client"] = lastMtime
 

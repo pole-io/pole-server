@@ -17,7 +17,13 @@
 
 package base
 
-import "time"
+import (
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+)
 
 const mtimeLogIntervalSec = 120
 
@@ -62,4 +68,30 @@ func (e *ExpireEntry[T]) Get() T {
 
 func (e *ExpireEntry[T]) IsExpire() bool {
 	return time.Since(e.lastAccess) > e.maxAlive
+}
+
+func SortBeforeTrim[T rules.IRule](rules []T, order string, offset, limit uint32) (uint32, []T) {
+	amount := uint32(len(rules))
+	if offset >= amount || limit == 0 {
+		return amount, nil
+	}
+	sort.Slice(rules, func(i, j int) bool {
+		asc := strings.ToLower(order) == "asc" || order == ""
+		return OrderByMtime(rules[i], rules[j], asc)
+	})
+	endIdx := offset + limit
+	if endIdx > amount {
+		endIdx = amount
+	}
+	return amount, rules[offset:endIdx]
+}
+
+func OrderByMtime(a, b rules.IRule, asc bool) bool {
+	if a.GetMtime().After(b.GetMtime()) {
+		return asc
+	}
+	if a.GetMtime().Before(b.GetMtime()) {
+		return false
+	}
+	return strings.Compare(a.GetId(), b.GetId()) < 0 && asc
 }

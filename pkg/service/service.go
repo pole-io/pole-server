@@ -417,7 +417,6 @@ func parseServiceArgs(filter map[string]string, metaFilter map[string]string,
 			res.EmptyCondition = true
 		}
 	}
-	log.Infof("[Server][Service][Query] service query args: %+v", res)
 	return res
 }
 

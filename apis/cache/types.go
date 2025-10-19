@@ -49,6 +49,8 @@ const (
 	RoutingConfigName = "routingConfig"
 	// LaneRuleName lane rule config name
 	LaneRuleName = "laneRule"
+	// LossLessRuleName lossless rule config name
+	LossLessRuleName = "lossLessRule"
 	// RateLimitConfigName rate limit config name
 	RateLimitConfigName = "rateLimitConfig"
 	// CircuitBreakerName circuit breaker config name
@@ -82,6 +84,8 @@ const (
 	CacheInstance
 	CacheRoutingConfig
 	CacheRateLimit
+	CacheLaneRule
+	CacheLossLess
 	CacheCircuitBreaker
 	CacheUser
 	CacheAuthStrategy
@@ -92,7 +96,6 @@ const (
 	CacheConfigGroup
 	CacheServiceContract
 	CacheGray
-	CacheLaneRule
 	CacheRole
 
 	CacheLast
@@ -142,6 +145,8 @@ type CacheManager interface {
 	CircuitBreaker() CircuitBreakerCache
 	// FaultDetector 获取探测规则缓存信息
 	FaultDetector() FaultDetectCache
+	// Lossless 获取无损规则缓存
+	Lossless() LosslessCache
 	// ServiceContract 获取服务契约缓存
 	ServiceContract() ServiceContractCache
 	// LaneRule 泳道规则
@@ -498,6 +503,27 @@ type (
 		GetCircuitBreakerConfig(svcName string, namespace string) *rules.ServiceWithCircuitBreakerRules
 		// GetRule 获取规则 ID 获取熔断规则
 		GetRule(id string) *rules.CircuitBreakerRule
+	}
+)
+
+type (
+	LosslessPredicate func(context.Context, *rules.LosslessRule) bool
+	LosslessArgs      struct {
+		// Filter extend filter params
+		Filter map[string]string
+		// Offset
+		Offset uint32
+		// Limit
+		Limit uint32
+	}
+	LosslessCache interface {
+		Cache
+		// Query .
+		Query(context.Context, *LosslessArgs) (uint32, []*rules.LosslessRule, error)
+		// GetLosslessConfig 根据ServiceID获取无损配置
+		GetLosslessConfig(svcName string, namespace string) *rules.LosslessRule
+		// GetRule 获取规则 ID 获取无损规则
+		GetRule(id string) *rules.LosslessRule
 	}
 )
 

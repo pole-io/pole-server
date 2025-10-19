@@ -732,7 +732,6 @@ func authModifyStrategyRecordEntry(
 }
 
 var (
-	resourceFieldNames          = authtypes.ResourceFieldNames
 	resourceFieldPointerGetters = authtypes.ResourceFieldPointerGetters
 
 	resourceConvert = map[apisecurity.ResourceType]func(context.Context,
@@ -810,6 +809,21 @@ var (
 				Name:      protobuf.NewStringValue(user.Name),
 			}
 		},
+		apisecurity.ResourceType_LosslessRules: func(ctx context.Context, svr *Server,
+			item authtypes.StrategyResource) *apisecurity.StrategyResourceEntry {
+			user := svr.cacheMgr.Lossless().GetRule(item.ResID)
+			if user == nil {
+				log.Warn("[Auth][Strategy] not found lossless_rule in fill-info",
+					zap.String("id", item.StrategyID), zap.String("res-id", item.ResID), utils.RequestID(ctx))
+				return nil
+			}
+			return &apisecurity.StrategyResourceEntry{
+				Id:        protobuf.NewStringValue(item.ResID),
+				Namespace: protobuf.NewStringValue(user.Namespace),
+				Name:      protobuf.NewStringValue(user.Service),
+			}
+		},
+		// 流量控制类资源
 		apisecurity.ResourceType_RateLimitRules: func(ctx context.Context, svr *Server,
 			item authtypes.StrategyResource) *apisecurity.StrategyResourceEntry {
 			user := svr.cacheMgr.RateLimit().GetRule(item.ResID)

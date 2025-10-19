@@ -90,12 +90,6 @@ func NewUUID() string {
 	return hex.EncodeToString(uuidBytes[:])
 }
 
-// NewUUID 返回一个随机的UUID
-func NewRoutingV2UUID() string {
-	uuidBytes := uuid.New()
-	return hex.EncodeToString(uuidBytes[:])
-}
-
 // NewRevision .
 func NewRevision() string {
 	uuidBytes := uuid.New()

@@ -13,6 +13,7 @@ import (
 
 var (
 	_allowRuleReleasesFilters = map[string]struct{}{
+		"id":        {},
 		"resource":  {},
 		"rule_id":   {},
 		"rule_name": {},

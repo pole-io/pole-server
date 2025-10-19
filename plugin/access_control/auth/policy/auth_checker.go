@@ -155,8 +155,10 @@ func (d *DefaultAuthChecker) CheckPermission(authCtx *authtypes.AcquireContext) 
 	if err := d.userSvr.CheckCredential(authCtx); err != nil {
 		return false, err
 	}
-	log.Info("[Auth][Checker] check permission args", utils.RequestID(authCtx.GetRequestContext()),
-		zap.Any("method", authCtx.GetMethods()), zap.Any("resources", authCtx.GetAccessResources()))
+	if log.DebugEnabled() {
+		log.Debug("[Auth][Checker] check permission args", utils.RequestID(authCtx.GetRequestContext()),
+			zap.Any("method", authCtx.GetMethods()), zap.Any("resources", authCtx.GetAccessResources()))
+	}
 
 	if pass, _ := d.doCheckPermission(authCtx); pass {
 		return true, nil

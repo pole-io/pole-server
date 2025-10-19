@@ -92,6 +92,15 @@ func (s *Server) GetRouterRuleWithCache(ctx context.Context, req *apiservice.Ser
 	return s.nextSvr.GetRouterRuleWithCache(ctx, req)
 }
 
+// GetLosslessRuleWithCache .
+func (s *Server) GetLosslessRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+	resp := goverrule.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_LOSSLESS)
+	if !s.commonCheckDiscoverRequest(req, resp) {
+		return resp
+	}
+	return s.nextSvr.GetLosslessRuleWithCache(ctx, req)
+}
+
 func (s *Server) commonCheckDiscoverRequest(req *apiservice.Service, resp *apiservice.DiscoverResponse) bool {
 	if s.nextSvr.Cache() == nil {
 		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_ClientAPINotOpen))

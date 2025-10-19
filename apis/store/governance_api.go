@@ -40,6 +40,8 @@ type GovernanceStore interface {
 	ServiceContractStore
 	// LaneStore 泳道规则存储操作接口
 	LaneStore
+	// LosslessRuleStore 无损规则存储操作接口
+	LosslessRuleStore
 }
 
 // RateLimitStore 限流规则的存储接口
@@ -73,6 +75,8 @@ type RateLimitStore interface {
 	PublishRateLimitRule(tx Tx, rule *rules.RateLimitRelease) error
 	// 获取已发布的限流规则
 	GetMoreRateLimitReleases(mtime time.Time, firstUpdate bool) ([]*rules.RateLimitRelease, error)
+	// DeleteRateLimitReleases 删除限流规则发布版本
+	DeleteRateLimitReleases(tx Tx, rule *rules.RateLimitRelease) error
 }
 
 // CircuitBreakerStore 熔断规则的存储接口
@@ -112,6 +116,8 @@ type CircuitBreakerStore interface {
 	PublishCircuitBreakerRule(tx Tx, rule *rules.CircuitBreakerRelease) error
 	// GetMoreCircuitBreakerReleases 获取更多熔断规则发布信息
 	GetMoreCircuitBreakerReleases(mtime time.Time, firstUpdate bool) ([]*rules.CircuitBreakerRelease, error)
+	// DeleteCircuitBreakerReleases 删除熔断规则发布版本
+	DeleteCircuitBreakerReleases(tx Tx, rule *rules.CircuitBreakerRelease) error
 }
 
 // RouterRuleConfigStore 路由配置表的存储接口
@@ -152,6 +158,8 @@ type RouterRuleConfigStore interface {
 	PublishRouterRule(tx Tx, rule *rules.RouterRuleRelease) error
 	// GetMoreRouterRuleReleases 获取更多路由规则发布信息
 	GetMoreRouterRuleReleases(firstUpdate bool, mtime time.Time) ([]*rules.RouterRuleRelease, error)
+	// DeleteRouterRuleReleases 删除路由规则发布版本
+	DeleteRouterRuleReleases(tx Tx, rule *rules.RouterRuleRelease) error
 }
 
 // FaultDetectRuleStore store api for the fault detector config
@@ -191,6 +199,8 @@ type FaultDetectRuleStore interface {
 	PublishFaultDetectRule(tx Tx, rule *rules.FaultDetectRelease) error
 	// GetMoreFaultDetectReleases 获取更多探测规则发布信息
 	GetMoreFaultDetectReleases(mtime time.Time, firstUpdate bool) ([]*rules.FaultDetectRelease, error)
+	// DeleteFaultDetectReleases 删除探测规则发布版本
+	DeleteFaultDetectReleases(tx Tx, rule *rules.FaultDetectRelease) error
 }
 
 // LaneStore 泳道资源存储操作
@@ -234,4 +244,39 @@ type LaneStore interface {
 	PublishLaneGroup(tx Tx, rule *rules.LaneGroupRelease) error
 	// GetMoreLaneGroupReleases 获取更多泳道组发布信息
 	GetMoreLaneGroupReleases(firstUpdate bool, mtime time.Time) ([]*rules.LaneGroupRelease, error)
+	// DeleteLaneGroupReleases 删除泳道组发布版本
+	DeleteLaneGroupReleases(tx Tx, rule *rules.LaneGroupRelease) error
+}
+
+// LosslessRuleStore 无损规则的存储接口
+type LosslessRuleStore interface {
+	// CreateLossLessRule 创建无损规则
+	CreateLossLessRule(rule *rules.LosslessRule) error
+	// UpdateLossLessRule 更新无损规则
+	UpdateLossLessRule(rule *rules.LosslessRule) error
+	// DeleteLossLessRule 删除无损规则
+	DeleteLossLessRule(rule *rules.LosslessRule) error
+	// GetLossLessRuleWithID 根据无损ID拉取无损规则
+	GetOneLosslessRule(id string) (*rules.LosslessRule, error)
+	// GetMoreLosslessRules 根据修改时间拉取增量无损规则及最新版本号, 此方法用于 cache 增量更新，需要注意 mtime 应为数据库时间戳
+	GetMoreLosslessRules(mtime time.Time, firstUpdate bool) ([]*rules.LosslessRule, error)
+	// LockLosslessRule 锁住一个无损规则
+	LockLosslessRule(tx Tx, name string) (*rules.LosslessRule, error)
+
+	// 关于规则发布
+	GetLosslessRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error)
+	// GetActiveLosslessRule 获取处于使用状态的无损规则
+	GetActiveLosslessRule(tx Tx, release *rules.LosslessRuleRelease) (*rules.LosslessRuleRelease, error)
+	// GetReleaseLosslessRule 获取已发布的无损规则
+	GetReleaseLosslessRule(tx Tx, release *rules.RuleRelease) (*rules.LosslessRuleRelease, error)
+	// ActiveLosslessRule 设置某个无损规则发布为使用状态
+	ActiveLosslessRule(tx Tx, release *rules.LosslessRuleRelease) error
+	// InactiveLosslessRule 设置某个无损规则的发布为不使用状态
+	InactiveLosslessRule(tx Tx, release *rules.LosslessRuleRelease) error
+	// PublishLosslessRule 发布无损规则
+	PublishLosslessRules(tx Tx, rule *rules.LosslessRuleRelease) error
+	// 获取已发布的无损规则
+	GetMoreLosslessReleases(mtime time.Time, firstUpdate bool) ([]*rules.LosslessRuleRelease, error)
+	// DeleteLosslessReleases 删除无损规则发布版本
+	DeleteLosslessReleases(tx Tx, rule *rules.LosslessRuleRelease) error
 }

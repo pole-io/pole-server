@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/hex"
+	"reflect"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,4 +42,16 @@ func DefaultString(v, d string) string {
 		return d
 	}
 	return v
+}
+
+func IsNil(v any) bool {
+	if v == nil {
+		return true
+	}
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Ptr, reflect.Interface, reflect.Slice, reflect.Map, reflect.Func, reflect.Chan:
+		return rv.IsNil()
+	}
+	return false
 }

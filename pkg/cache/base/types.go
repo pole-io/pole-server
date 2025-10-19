@@ -48,6 +48,7 @@ type BaseCache struct {
 func NewBaseCache(s store.Store, cacheMgr cachetypes.CacheManager) *BaseCache {
 	c := &BaseCache{
 		s:        s,
+		single:   &singleflight.Group{},
 		CacheMgr: cacheMgr,
 	}
 

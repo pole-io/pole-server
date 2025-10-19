@@ -21,7 +21,6 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
-	"maps"
 	"sort"
 	"strconv"
 	"strings"
@@ -46,7 +45,7 @@ type faultDetectCache struct {
 	storage store.Store
 	// rules 用于 console 查询
 	rules *container.SyncMap[string, *rules.FaultDetectRule]
-
+	// --------- 以下缓存均用于客户端数据查询 --------- //
 	// increment cache
 	ids *container.SyncMap[string, *rules.FaultDetectRelease]
 	// fetched service cache
@@ -89,12 +88,19 @@ func (f *faultDetectCache) Update() error {
 
 // update 实现Cache接口的函数
 func (f *faultDetectCache) realUpdate() (map[string]time.Time, int64, error) {
+	allLastTimes := map[string]time.Time{}
+
 	fdRules, err := f.storage.GetMoreFaultDetects(f.LastFetchTime(), f.IsFirstUpdate())
 	if err != nil {
 		log.Errorf("[cache][fault_detect] console cache update err:%s", err.Error())
 		return nil, -1, err
 	}
-	clastMtimes := f.setFaultDetectConsole(fdRules)
+
+	lastMtime, upsert, del := f.setFaultDetectConsole(fdRules)
+	log.Info("[cache][fault_detect] console cache update",
+		zap.Int("pull-from-store", len(fdRules)), zap.Int("upsert", upsert), zap.Int("delete", del),
+		zap.Time("last", lastMtime))
+	allLastTimes[f.Name()+"_console"] = lastMtime
 
 	releases, err := f.storage.GetMoreFaultDetectReleases(f.LastFetchTime(), f.IsFirstUpdate())
 	if err != nil {
@@ -102,10 +108,13 @@ func (f *faultDetectCache) realUpdate() (map[string]time.Time, int64, error) {
 		return nil, -1, err
 	}
 
-	plastMtimes := f.setFaultDetectClient(releases)
+	lastMtime, upsert, del = f.setFaultDetectClient(releases)
+	log.Info("[cache][fault_detect] client cache update",
+		zap.Int("pull-from-store", len(fdRules)), zap.Int("upsert", upsert), zap.Int("delete", del),
+		zap.Time("last", lastMtime))
+	allLastTimes[f.Name()+"_client"] = lastMtime
 
-	maps.Copy(plastMtimes, clastMtimes)
-	return plastMtimes, int64(len(fdRules) + len(releases)), nil
+	return allLastTimes, int64(len(fdRules) + len(releases)), nil
 }
 
 // clear 实现Cache接口的函数
@@ -299,11 +308,13 @@ func getServicesInvolveByFaultDetectRule(fdRule *rules.FaultDetectRelease) map[s
 }
 
 // setFaultDetectConsole 更新store的数据到cache中
-func (f *faultDetectCache) setFaultDetectConsole(fdRules []*rules.FaultDetectRule) map[string]time.Time {
+func (f *faultDetectCache) setFaultDetectConsole(fdRules []*rules.FaultDetectRule) (time.Time, int, int) {
 	if len(fdRules) == 0 {
-		return nil
+		return time.Time{}, 0, 0
 	}
 
+	upsert := 0
+	del := 0
 	lastMtime := f.LastMtime(f.Name()).Unix()
 
 	for _, fdRule := range fdRules {
@@ -311,22 +322,24 @@ func (f *faultDetectCache) setFaultDetectConsole(fdRules []*rules.FaultDetectRul
 			lastMtime = fdRule.ModifyTime.Unix()
 		}
 		if !fdRule.Valid {
+			del++
 			f.rules.Delete(fdRule.ID)
 			continue
 		}
 		f.rules.Store(fdRule.ID, fdRule)
+		upsert++
 	}
-	return map[string]time.Time{
-		f.Name(): time.Unix(lastMtime, 0),
-	}
+	return time.Unix(lastMtime, 0), upsert, del
 }
 
 // setFaultDetectClient 更新store的数据到cache中
-func (f *faultDetectCache) setFaultDetectClient(fdRules []*rules.FaultDetectRelease) map[string]time.Time {
+func (f *faultDetectCache) setFaultDetectClient(fdRules []*rules.FaultDetectRelease) (time.Time, int, int) {
 	if len(fdRules) == 0 {
-		return nil
+		return time.Time{}, 0, 0
 	}
 
+	upsert := 0
+	del := 0
 	lastMtime := f.LastMtime(f.Name()).Unix()
 
 	for _, fdRule := range fdRules {
@@ -348,17 +361,17 @@ func (f *faultDetectCache) setFaultDetectClient(fdRules []*rules.FaultDetectRele
 		}
 		svcKeys := getServicesInvolveByFaultDetectRule(fdRule)
 		if !fdRule.Valid {
+			del++
 			f.ids.Delete(fdRule.Key())
 			f.deleteFaultDetectRuleFromServiceCache(fdRule.Key(), svcKeys)
 			continue
 		}
 		f.ids.Store(fdRule.Key(), fdRule)
 		f.storeFaultDetectRuleToServiceCache(fdRule, svcKeys)
+		upsert++
 	}
 
-	return map[string]time.Time{
-		f.Name(): time.Unix(lastMtime, 0),
-	}
+	return time.Unix(lastMtime, 0), upsert, del
 }
 
 var (

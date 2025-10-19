@@ -24,6 +24,8 @@ func (svr *Server) PublishGovernanceRules(ctx context.Context, req []*apimodel.R
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.PublishRouteRules)
 	case apimodel.RuleRelease_RateLimitRules:
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.PublishRateLimitRules)
+	case apimodel.RuleRelease_LosslessRules:
+		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.PublishLosslessRules)
 	default:
 		return api.NewBatchWriteResponse(apimodel.Code_InvalidParameter)
 	}
@@ -57,6 +59,8 @@ func (svr *Server) GetRuleReleases(ctx context.Context, filter map[string]string
 		ctx, bRsp = svr.checkGovernanceRules(ctx, reqs, authtypes.Read, authtypes.DescribeRouteReleases)
 	case apimodel.RuleRelease_RateLimitRules:
 		ctx, bRsp = svr.checkGovernanceRules(ctx, reqs, authtypes.Read, authtypes.DescribeRateLimitReleases)
+	case apimodel.RuleRelease_LosslessRules:
+		ctx, bRsp = svr.checkGovernanceRules(ctx, reqs, authtypes.Read, authtypes.DescribeLosslessReleases)
 	default:
 		return api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}
@@ -81,6 +85,8 @@ func (svr *Server) DeleteGovernanceRules(ctx context.Context, req []*apimodel.Ru
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Delete, authtypes.DeleteRouteReleases)
 	case apimodel.RuleRelease_RateLimitRules:
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Delete, authtypes.DeleteRateLimitReleases)
+	case apimodel.RuleRelease_LosslessRules:
+		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Delete, authtypes.DeleteLosslessReleases)
 	default:
 		return api.NewBatchWriteResponse(apimodel.Code_InvalidParameter)
 	}
@@ -105,6 +111,8 @@ func (svr *Server) RollbackGovernanceRules(ctx context.Context, req []*apimodel.
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.RollbackRouteRules)
 	case apimodel.RuleRelease_RateLimitRules:
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.RollbackRateLimitRules)
+	case apimodel.RuleRelease_LosslessRules:
+		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.RollbackLosslessRules)
 	default:
 		return api.NewBatchWriteResponse(apimodel.Code_InvalidParameter)
 	}
@@ -129,6 +137,8 @@ func (svr *Server) StopbetaGovernanceRules(ctx context.Context, req []*apimodel.
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.StopbetaRouteRules)
 	case apimodel.RuleRelease_RateLimitRules:
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.StopbetaRateLimitRules)
+	case apimodel.RuleRelease_LosslessRules:
+		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.StopbetaLosslessRules)
 	default:
 		return api.NewBatchWriteResponse(apimodel.Code_InvalidParameter)
 	}

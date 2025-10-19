@@ -30,6 +30,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
+	"github.com/pole-io/specification/source/go/api/v1/model"
 )
 
 var _ store.RouterRuleConfigStore = (*routerRuleStore)(nil)
@@ -77,7 +78,7 @@ func (r *routerRuleStore) CreateRoutingConfig(conf *rules.RouterConfig) error {
 
 func (r *routerRuleStore) CreateRoutingConfigTx(tx store.Tx, conf *rules.RouterConfig) error {
 	if tx == nil {
-		return errors.New("tx is nil")
+		return ErrTxIsNil
 	}
 
 	dbTx := tx.GetDelegateTx().(*BaseTx)
@@ -139,7 +140,7 @@ func (r *routerRuleStore) UpdateRoutingConfig(conf *rules.RouterConfig) error {
 
 func (r *routerRuleStore) UpdateRoutingConfigTx(tx store.Tx, conf *rules.RouterConfig) error {
 	if tx == nil {
-		return errors.New("tx is nil")
+		return ErrTxIsNil
 	}
 
 	dbTx := tx.GetDelegateTx().(*BaseTx)
@@ -332,19 +333,22 @@ func (r *routerRuleStore) GetRouterRuleVersions(ctx context.Context, filter map[
 }
 
 // LockRouterRule implements store.RouterRuleConfigStore.
-func (r *routerRuleStore) LockRouterRule(tx store.Tx, name string) (*rules.RouterConfig, error) {
+func (r *routerRuleStore) LockRouterRule(tx store.Tx, keyword string) (*rules.RouterConfig, error) {
 	if tx == nil {
 		return nil, ErrTxIsNil
+	}
+	if keyword == "" {
+		return nil, ErrorMissingParams
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 
 	str := `select id, name, policy, config, enable, revision, flag, priority, description,
 	unix_timestamp(ctime), unix_timestamp(mtime), unix_timestamp(etime)
 	from router_rule 
-	where name = ? or id = ? and flag = 0 for update`
-	rows, err := dbTx.Query(str, name, name)
+	where (name = ? or id = ?) and flag = 0 for update`
+	rows, err := dbTx.Query(str, keyword, keyword)
 	if err != nil {
-		log.Errorf("[Store][database] query routing  with id(%s) err: %s", name, err.Error())
+		log.Errorf("[Store][database] query routing  with keyword(%s) err: %s", keyword, err.Error())
 		return nil, err
 	}
 
@@ -362,7 +366,7 @@ func (r *routerRuleStore) LockRouterRule(tx store.Tx, name string) (*rules.Route
 // ActiveRouterRule implements store.RouterRuleConfigStore.
 func (r *routerRuleStore) ActiveRouterRule(tx store.Tx, release *rules.RouterRuleRelease) error {
 	if tx == nil {
-		return errors.New("tx is nil")
+		return ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	maxVersion, err := r.inactiveRouterRuleRelease(dbTx, release)
@@ -378,17 +382,17 @@ func (r *routerRuleStore) ActiveRouterRule(tx store.Tx, release *rules.RouterRul
 // GetReleaseRouterRule 获取已发布的路由规则
 func (r *routerRuleStore) GetReleaseRouterRule(tx store.Tx, release *rules.RuleRelease) (*rules.RouterRuleRelease, error) {
 	if tx == nil {
-		return nil, errors.New("tx is nil")
+		return nil, ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	querySql := `SELECT id, name, rule_id, rule_name, rule, version, active, description, release_type
 	FROM router_rule_release
 	WHERE name = ?
-		AND rule_name = ?
+		AND rule_id = ?
 		AND release_type = ?
 		AND flag = 0
 	LIMIT 1`
-	row := dbTx.QueryRow(querySql, release.ReleaseName, release.RuleName, release.ReleaseType)
+	row := dbTx.QueryRow(querySql, release.ReleaseName, release.RuleId, release.ReleaseType)
 	var (
 		id, name, ruleId, ruleName, ruleStr, description, releaseType string
 		version                                                       uint64
@@ -425,7 +429,7 @@ func (r *routerRuleStore) GetReleaseRouterRule(tx store.Tx, release *rules.RuleR
 // GetActiveRouterRule implements store.RouterRuleConfigStore.
 func (r *routerRuleStore) GetActiveRouterRule(tx store.Tx, release *rules.RouterRuleRelease) (*rules.RouterRuleRelease, error) {
 	if tx == nil {
-		return nil, errors.New("tx is nil")
+		return nil, ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	querySql := `SELECT id, name, rule_name, rule, version
@@ -486,7 +490,7 @@ LIMIT 1`
 // InactiveRouterRule implements store.RouterRuleConfigStore.
 func (r *routerRuleStore) InactiveRouterRule(tx store.Tx, release *rules.RouterRuleRelease) error {
 	if tx == nil {
-		return errors.New("tx is nil")
+		return ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	_, err := dbTx.Exec("UPDATE router_rule_release SET active = 0, mtime = sysdate() WHERE name = ? AND rule_name = ? AND active = 1",
@@ -500,7 +504,7 @@ func (r *routerRuleStore) PublishRouterRule(tx store.Tx, rule *rules.RouterRuleR
 		return errors.New("[store][mysql][router] publish router rule missing some params")
 	}
 	if tx == nil {
-		return errors.New("tx is nil")
+		return ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	maxVersion, err := r.inactiveRouterRuleRelease(dbTx, rule)
@@ -574,7 +578,7 @@ func (r *routerRuleStore) GetMoreRouterRuleReleases(firstUpdate bool, mtime time
 			id, name, description, releaseType, ruleStr string
 			version                                     uint64
 			active                                      int
-			mtime                                       time.Time
+			mtime                                       int64
 		)
 		err := rows.Scan(&id, &name, &description, &releaseType, &ruleStr, &version, &active, &mtime)
 		if err != nil {
@@ -590,10 +594,12 @@ func (r *routerRuleStore) GetMoreRouterRuleReleases(firstUpdate bool, mtime time
 				Id:          id,
 				ReleaseName: name,
 				Description: description,
+				Resource:    model.RuleRelease_RouteRules,
 				ReleaseType: rules.ReleaseType(releaseType),
 				Active:      active == 1,
 				Version:     version,
 				Valid:       true,
+				Mtime:       time.Unix(mtime, 0),
 			},
 			Rule: pdata,
 		}
@@ -603,6 +609,16 @@ func (r *routerRuleStore) GetMoreRouterRuleReleases(firstUpdate bool, mtime time
 		return nil, err
 	}
 	return out, nil
+}
+
+func (r *routerRuleStore) DeleteRouterRuleReleases(tx store.Tx, rule *rules.RouterRuleRelease) error {
+	if tx == nil {
+		return ErrTxIsNil
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+	deleteSql := `UPDATE router_rule_release SET flag = 1, mtime = sysdate() WHERE id = ?`
+	_, err := dbTx.Exec(deleteSql, rule.Id)
+	return store.Error(err)
 }
 
 // fetchRoutingConfigRows Read the data of the database and release ROWS

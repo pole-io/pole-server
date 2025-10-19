@@ -57,6 +57,7 @@ type stableStore struct {
 	*faultDetectRuleStore
 	*serviceContractStore
 	*laneStore
+	*losslessStore
 
 	// 配置中心 stores
 	*configFileGroupStore
@@ -254,6 +255,7 @@ func (s *stableStore) newStore() {
 	s.faultDetectRuleStore = &faultDetectRuleStore{master: s.master, slave: s.slave}
 	s.serviceContractStore = &serviceContractStore{master: s.master, slave: s.slave}
 	s.laneStore = &laneStore{master: s.master, slave: s.slave}
+	s.losslessStore = &losslessStore{master: s.master, slave: s.slave}
 
 	s.configFileGroupStore = &configFileGroupStore{master: s.master, slave: s.slave}
 	s.configFileStore = &configFileStore{master: s.master, slave: s.slave}

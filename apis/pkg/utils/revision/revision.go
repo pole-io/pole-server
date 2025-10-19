@@ -6,7 +6,15 @@ import (
 	"encoding/hex"
 	"hash"
 	"strconv"
+
+	"github.com/google/uuid"
 )
+
+// NewRevision .
+func NewRevision() string {
+	uuidBytes := uuid.New()
+	return hex.EncodeToString(uuidBytes[:])
+}
 
 func ComputeRevisionBySlice(h hash.Hash, slice []string) (string, error) {
 	for _, revision := range slice {

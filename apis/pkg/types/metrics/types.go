@@ -127,6 +127,7 @@ const (
 	ActionDiscoverCircuitBreaker  = "DISCOVER_CIRCUIT_BREAKER"
 	ActionDiscoverFaultDetect     = "DISCOVER_FAULT_DETECT"
 	ActionDiscoverServiceContract = "DISCOVER_SERVICE_CONTRACT"
+	ActionDiscoverLosslessRule    = "DISCOVER_LOSSLESS_RULE"
 )
 
 type ClientDiscoverMetric struct {

@@ -26,10 +26,8 @@ import (
 )
 
 const (
-
 	// OwnerAttribute
 	OwnerAttribute string = "owner"
-
 	// And
 	And string = " and"
 )

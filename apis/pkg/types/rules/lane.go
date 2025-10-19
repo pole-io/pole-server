@@ -56,6 +56,14 @@ type LaneGroup struct {
 	Metadata  map[string]string
 }
 
+func (r *LaneGroup) GetId() string {
+	return r.ID
+}
+
+func (r *LaneGroup) GetMtime() time.Time {
+	return r.ModifyTime
+}
+
 func (l *LaneGroup) FromSpec(item *apitraffic.LaneGroup) error {
 	l.ID = item.GetId()
 	l.Name = item.GetName()

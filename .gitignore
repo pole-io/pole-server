@@ -17,7 +17,6 @@ coverage*
 
 __debug_bin*
 
-.vscode
 *.bolt
 *.bolt.lock
 /vendor

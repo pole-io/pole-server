@@ -18,9 +18,13 @@
 package rules
 
 import (
+	"context"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
@@ -28,6 +32,8 @@ import (
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
+	matchs "github.com/pole-io/pole-server/pkg/common/utils/match"
+	"go.uber.org/zap"
 )
 
 // rateLimitCache的实现
@@ -41,8 +47,7 @@ type rateLimitCache struct {
 
 	// 用于控制台查询列表
 	ids *container.SyncMap[string, *rules.RateLimit]
-
-	// 用于客户端查询规则缓存
+	// --------- 以下缓存均用于客户端数据查询 --------- //
 	// increment cache
 	rules *container.SyncMap[string, *rules.RateLimitRelease]
 	// fetched service cache
@@ -87,29 +92,31 @@ func (rlc *rateLimitCache) Update() error {
 }
 
 func (rlc *rateLimitCache) realUpdate() (map[string]time.Time, int64, error) {
+	allLastMtimes := map[string]time.Time{}
+
 	rateLimits, err := rlc.storage.GetMoreRateLimits(rlc.LastFetchTime(), rlc.IsFirstUpdate())
 	if err != nil {
 		log.Errorf("[cache][rate_limit] console cache update err: %s", err.Error())
 		return nil, -1, err
 	}
-	clastMtimes := rlc.setRateLimitConsole(rateLimits)
+	lastTime, upsert, del := rlc.setRateLimitConsole(rateLimits)
+	log.Info("[cache][rate_limit] console cache update",
+		zap.Int("pull-from-store", len(rateLimits)), zap.Int("upsert", upsert), zap.Int("delete", del),
+		zap.Time("last", lastTime))
+	allLastMtimes[rlc.Name()+"_console"] = lastTime
 
 	releases, err := rlc.storage.GetMoreRateLimitReleases(rlc.LastFetchTime(), rlc.IsFirstUpdate())
 	if err != nil {
 		log.Errorf("[cache][rate_limit] client cache update err: %s", err.Error())
 		return nil, -1, err
 	}
-	plastMtimes := rlc.setRateLimitClient(releases)
+	lastTime, upsert, del = rlc.setRateLimitClient(releases)
+	log.Info("[cache][rate_limit] client cache update",
+		zap.Int("pull-from-store", len(releases)), zap.Int("upsert", upsert), zap.Int("delete", del),
+		zap.Time("last", lastTime))
+	allLastMtimes[rlc.Name()] = lastTime
 
-	lastMtimes := map[string]time.Time{}
-	if !clastMtimes.IsZero() {
-		lastMtimes[rlc.Name()+"_console"] = clastMtimes
-	}
-	if !plastMtimes.IsZero() {
-		lastMtimes[rlc.Name()] = plastMtimes
-	}
-
-	return lastMtimes, int64(len(rateLimits) + len(releases)), nil
+	return allLastMtimes, int64(len(rateLimits) + len(releases)), nil
 }
 
 // Name 获取资源名称
@@ -136,38 +143,50 @@ func (rlc *rateLimitCache) toProto(item *rules.RateLimit) {
 	namespace := item.Proto.GetNamespace().GetValue()
 	name := item.Proto.GetService().GetValue()
 	if namespace == "" || name == "" {
-		rlc.fixRuleServiceInfo(item)
+		rlc.fixOneRuleServiceInfo(item)
 	}
 }
 
 // setRateLimitConsole 更新限流规则到缓存中
-func (rlc *rateLimitCache) setRateLimitConsole(rateLimits []*rules.RateLimit) time.Time {
+func (rlc *rateLimitCache) setRateLimitConsole(rateLimits []*rules.RateLimit) (time.Time, int, int) {
 	if len(rateLimits) == 0 {
-		return time.Time{}
+		return time.Time{}, 0, 0
 	}
+
+	upsert := 0
+	del := 0
+
 	lastMtime := rlc.LastMtime(rlc.Name() + "_console").Unix()
 	for _, item := range rateLimits {
+		rlc.toProto(item)
 		if item.ModifyTime.Unix() > lastMtime {
 			lastMtime = item.ModifyTime.Unix()
 		}
 
 		// 待删除的rateLimit
 		if !item.Valid {
+			del++
 			rlc.ids.Delete(item.ID)
 			continue
 		}
+		upsert++
 		rlc.ids.Store(item.ID, item)
 	}
 
-	return time.Unix(lastMtime, 0)
+	return time.Unix(lastMtime, 0), upsert, del
 }
 
 // setRateLimitClient 更新限流规则到缓存中
-func (rlc *rateLimitCache) setRateLimitClient(rateLimits []*rules.RateLimitRelease) time.Time {
+func (rlc *rateLimitCache) setRateLimitClient(rateLimits []*rules.RateLimitRelease) (time.Time, int, int) {
 	if len(rateLimits) == 0 {
-		return time.Time{}
+		return time.Time{}, 0, 0
 	}
-	rlc.fixRulesServiceInfo()
+
+	upsert := 0
+	del := 0
+
+	reloads := map[string]*rules.ServiceWithRateLimits{}
+
 	lastMtime := rlc.LastMtime(rlc.Name()).Unix()
 	for _, item := range rateLimits {
 		rlc.toProto(item.Rule)
@@ -175,16 +194,37 @@ func (rlc *rateLimitCache) setRateLimitClient(rateLimits []*rules.RateLimitRelea
 			lastMtime = item.Mtime.Unix()
 		}
 
+		nsName, svcName := item.Rule.Proto.GetNamespace().GetValue(), item.Rule.Proto.GetService().GetValue()
+		rlc.svcSpecificRules.ComputeIfAbsent(nsName, func(k string) *container.SyncMap[string, *rules.ServiceWithRateLimits] {
+			return container.NewSyncMap[string, *rules.ServiceWithRateLimits]()
+		})
+		svcLimits, _ := rlc.svcSpecificRules.MustLoad(nsName).ComputeIfAbsent(svcName, func(k string) *rules.ServiceWithRateLimits {
+			return rules.NewServiceWithRateLimits(svctypes.ServiceKey{
+				Namespace: nsName,
+				Name:      svcName,
+			})
+		})
+		reloads[nsName+"-"+svcName] = svcLimits
+
 		// 待删除的rateLimit
 		if !item.Valid {
-			rlc.rules.Delete(item.Key())
-			rlc.deleteWaitFixRule(item)
+			del++
+			svcLimits.DelRule(item.Id)
 			continue
 		}
-		rlc.rules.Store(item.Key(), item)
+		upsert++
+		if item.Active {
+			svcLimits.AddRule(item)
+		} else {
+			svcLimits.DelRule(item.Id)
+		}
 	}
 
-	return time.Unix(lastMtime, 0)
+	for _, svcLimits := range reloads {
+		svcLimits.Reload()
+	}
+
+	return time.Unix(lastMtime, 0), upsert, del
 }
 
 // IteratorRateLimit 根据serviceID进行迭代回调
@@ -218,39 +258,7 @@ func (rlc *rateLimitCache) GetRateLimitsCount() int {
 	return rlc.ids.Len()
 }
 
-func (rlc *rateLimitCache) deleteWaitFixRule(rule *rules.RateLimitRelease) {
-	rlc.lock.Lock()
-	defer rlc.lock.Unlock()
-	delete(rlc.waitFixRules, rule.Key())
-}
-
-func (rlc *rateLimitCache) fixRulesServiceInfo() {
-	rlc.lock.Lock()
-	defer rlc.lock.Unlock()
-	for id := range rlc.waitFixRules {
-		rule, ok := rlc.rules.Load(id)
-		if !ok {
-			delete(rlc.waitFixRules, id)
-			continue
-		}
-		svcId := rule.Rule.ServiceID
-		svc := rlc.svcCache.GetServiceByID(svcId)
-		if svc == nil {
-			svc2, err := rlc.storage.GetServiceByID(svcId)
-			if err != nil {
-				continue
-			}
-			svc = svc2
-		}
-		if svc != nil {
-			rule.Rule.Proto.Namespace = protobuf.NewStringValue(svc.Namespace)
-			rule.Rule.Proto.Name = protobuf.NewStringValue(svc.Name)
-			delete(rlc.waitFixRules, rule.Key())
-		}
-	}
-}
-
-func (rlc *rateLimitCache) fixRuleServiceInfo(rateLimit *rules.RateLimit) {
+func (rlc *rateLimitCache) fixOneRuleServiceInfo(rateLimit *rules.RateLimit) {
 	rlc.lock.Lock()
 	defer rlc.lock.Unlock()
 	svcId := rateLimit.ServiceID
@@ -309,4 +317,96 @@ func (rlc *rateLimitCache) checkServiceSpecificCache(
 		}
 	}
 	return nil
+}
+
+// QueryRateLimitRules
+func (rlc *rateLimitCache) QueryRateLimitRules(ctx context.Context, args *cacheapi.RateLimitRuleArgs) (uint32, []*rules.RateLimit, error) {
+	if err := rlc.Update(); err != nil {
+		return 0, nil, err
+	}
+
+	predicates := cacheapi.LoadRatelimitRulePredicates(ctx)
+
+	hasService := len(args.Service) != 0
+	hasNamespace := len(args.Namespace) != 0
+	limitType := args.Filter["limit_type"]
+
+	res := make([]*rules.RateLimit, 0, 8)
+	process := func(rule *rules.RateLimit) {
+		if hasService && args.Service != rule.Proto.GetService().GetValue() {
+			return
+		}
+		if hasNamespace && args.Namespace != rule.Proto.GetNamespace().GetValue() {
+			return
+		}
+		if args.ID != "" && args.ID != rule.ID {
+			return
+		}
+		if args.Name != "" {
+			name, _ := matchs.ParseWildName(args.Name)
+			if !strings.Contains(rule.Name, name) {
+				return
+			}
+		}
+		if limitType != "" {
+			if rule.Proto.GetType().String() != limitType {
+				return
+			}
+		}
+
+		if args.Disable != nil && *args.Disable != rule.Disable {
+			return
+		}
+
+		for i := range predicates {
+			if !predicates[i](ctx, rule) {
+				return
+			}
+		}
+
+		res = append(res, rule)
+	}
+	rlc.IteratorRateLimit(process)
+	amount, routings := rlc.sortBeforeTrim(res, args)
+	return amount, routings, nil
+}
+
+func (rlc *rateLimitCache) sortBeforeTrim(rules []*rules.RateLimit, args *cacheapi.RateLimitRuleArgs) (uint32, []*rules.RateLimit) {
+	amount := uint32(len(rules))
+	if args.Offset >= amount || args.Limit == 0 {
+		return amount, nil
+	}
+	sort.Slice(rules, func(i, j int) bool {
+		asc := strings.ToLower(args.OrderType) == "asc" || args.OrderType == ""
+		if strings.ToLower(args.OrderField) == "priority" {
+			return orderByRateLimitPriority(rules[i], rules[j], asc)
+		}
+		return orderByRateLimitModifyTime(rules[i], rules[j], asc)
+	})
+	endIdx := args.Offset + args.Limit
+	if endIdx > amount {
+		endIdx = amount
+	}
+	return amount, rules[args.Offset:endIdx]
+}
+
+func orderByRateLimitPriority(a, b *rules.RateLimit, asc bool) bool {
+	if a.Priority < b.Priority {
+		return asc
+	}
+	if a.Priority > b.Priority {
+		// false && asc always false
+		return false
+	}
+	return strings.Compare(a.ID, b.ID) < 0 && asc
+}
+
+func orderByRateLimitModifyTime(a, b *rules.RateLimit, asc bool) bool {
+	if a.ModifyTime.After(b.ModifyTime) {
+		return asc
+	}
+	if a.ModifyTime.Before(b.ModifyTime) {
+		return false
+	}
+	return strings.Compare(a.ID, b.ID) < 0 && asc
 }

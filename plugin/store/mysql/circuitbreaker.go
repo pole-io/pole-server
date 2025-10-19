@@ -29,6 +29,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
+	"github.com/pole-io/specification/source/go/api/v1/model"
 )
 
 const (
@@ -476,9 +477,12 @@ FOR UPDATE`
 }
 
 // LockCircuitBreakerRule implements store.CircuitBreakerStore.
-func (c *circuitBreakerStore) LockCircuitBreakerRule(tx store.Tx, name string) (*rules.CircuitBreakerRule, error) {
+func (c *circuitBreakerStore) LockCircuitBreakerRule(tx store.Tx, keyword string) (*rules.CircuitBreakerRule, error) {
 	if tx == nil {
-		return nil, errors.New("tx is nil")
+		return nil, ErrTxIsNil
+	}
+	if keyword == "" {
+		return nil, ErrorMissingParams
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	querySql := `SELECT id, name, namespace, enable, revision
@@ -486,10 +490,10 @@ func (c *circuitBreakerStore) LockCircuitBreakerRule(tx store.Tx, name string) (
 	, dst_namespace, dst_method, config, unix_timestamp(ctime)
 	, unix_timestamp(mtime), unix_timestamp(etime)
 FROM circuitbreaker_rule
-WHERE name = ?
+WHERE (id = ? OR name = ?)
 	AND flag = 0
 FOR UPDATE`
-	row := dbTx.QueryRow(querySql, name)
+	row := dbTx.QueryRow(querySql, keyword)
 	var cbRule rules.CircuitBreakerRule
 	var ctime, mtime, etime int64
 	err := row.Scan(&cbRule.ID, &cbRule.Name, &cbRule.Namespace, &cbRule.Enable, &cbRule.Revision,
@@ -511,7 +515,7 @@ FOR UPDATE`
 // ActiveCircuitBreakerRule implements store.CircuitBreakerStore.
 func (c *circuitBreakerStore) ActiveCircuitBreakerRule(tx store.Tx, release *rules.CircuitBreakerRelease) error {
 	if tx == nil {
-		return errors.New("tx is nil")
+		return ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	maxVersion, err := c.inactiveCircuitBreakerRelease(dbTx, release)
@@ -539,9 +543,9 @@ func (c *circuitBreakerStore) GetCircuitBreakerRuleVersions(ctx context.Context,
 		return 0, nil, nil
 	}
 
-	querySql := `SELECT id, name, rule_id, rule_name, flag, active, version, description, release_type, ctime, mtime
+	querySql := `SELECT id, name, rule_id, rule_name, flag, active, version, description, release_type, unix_timestamp(ctime), unix_timestamp(mtime)
 	FROM circuitbreaker_rule_release
-	WHERE rule_id = ?
+	WHERE rule_name = ?
 		AND flag = 0 ORDER BY version DESC LIMIT ?, ?`
 	rows, err := c.slave.Query(querySql, filter["rule_name"], offset, limit)
 	if err != nil {
@@ -566,6 +570,7 @@ func (c *circuitBreakerStore) GetCircuitBreakerRuleVersions(ctx context.Context,
 		item.Valid = flag == 0
 		item.Ctime = time.Unix(ctime, 0)
 		item.Mtime = time.Unix(mtime, 0)
+		item.Resource = model.RuleRelease_CircuitBreakerRules
 		releases = append(releases, item)
 	}
 
@@ -575,18 +580,18 @@ func (c *circuitBreakerStore) GetCircuitBreakerRuleVersions(ctx context.Context,
 // GetReleaseCircuitBreakerRule 获取处于使用状态的熔断规则
 func (c *circuitBreakerStore) GetReleaseCircuitBreakerRule(tx store.Tx, req *rules.RuleRelease) (*rules.CircuitBreakerRelease, error) {
 	if tx == nil {
-		return nil, errors.New("tx is nil")
+		return nil, ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	querySql := `SELECT id, name, rule_name, rule, version
 	, active, description, release_type
 FROM circuitbreaker_rule_release
 WHERE name = ?
-	AND rule_name = ?
+	AND rule_id = ?
 	AND release_type = ?
 	AND flag = 0
 LIMIT 1`
-	row := dbTx.QueryRow(querySql, req.ReleaseName, req.RuleName, req.ReleaseType)
+	row := dbTx.QueryRow(querySql, req.ReleaseName, req.RuleId, req.ReleaseType)
 	var (
 		id, name, ruleName, ruleStr, description, releaseType string
 		version                                               uint64
@@ -620,7 +625,7 @@ LIMIT 1`
 // GetActiveCircuitBreakerRule implements store.CircuitBreakerStore.
 func (c *circuitBreakerStore) GetActiveCircuitBreakerRule(tx store.Tx, release *rules.CircuitBreakerRelease) (*rules.CircuitBreakerRelease, error) {
 	if tx == nil {
-		return nil, errors.New("tx is nil")
+		return nil, ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	querySql := `SELECT id, name, rule_name, rule, version
@@ -681,7 +686,7 @@ LIMIT 1`
 // InactiveCircuitBreakerRule implements store.CircuitBreakerStore.
 func (c *circuitBreakerStore) InactiveCircuitBreakerRule(tx store.Tx, release *rules.CircuitBreakerRelease) error {
 	if tx == nil {
-		return errors.New("tx is nil")
+		return ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	args := []any{release.RuleName, release.ReleaseName, release.ReleaseType}
@@ -734,7 +739,7 @@ func (c *circuitBreakerStore) PublishCircuitBreakerRule(tx store.Tx, release *ru
 		)
 	}
 	if tx == nil {
-		return errors.New("tx is nil")
+		return ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	maxVersion, err := c.inactiveCircuitBreakerRelease(dbTx, release)
@@ -748,13 +753,14 @@ func (c *circuitBreakerStore) PublishCircuitBreakerRule(tx store.Tx, release *ru
 	}
 	// 3. 插入新发布并激活
 	insertSql := `INSERT INTO circuitbreaker_rule_release (
-		id, name, rule_name, rule, version, active, description, release_type, ctime, mtime
-	) VALUES (?, ?, ?, ?, ?, 1, ?, ?, sysdate(), sysdate())`
+		id, name, rule_id, rule_name, rule, version, active, description, release_type, ctime, mtime
+	) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, sysdate(), sysdate())`
 	_, err = dbTx.Exec(
 		insertSql,
 		release.Id,
 		release.ReleaseName,
-		"", // rule_name 暂未使用
+		release.RuleId,
+		release.RuleName,
 		string(ruleJson),
 		maxVersion+1,
 		release.Description,
@@ -805,4 +811,15 @@ func (c *circuitBreakerStore) GetMoreCircuitBreakerReleases(mtime time.Time, fir
 		return nil, err
 	}
 	return releases, nil
+}
+
+// DeleteCircuitBreakerReleases implements store.CircuitBreakerStore.
+func (c *circuitBreakerStore) DeleteCircuitBreakerReleases(tx store.Tx, release *rules.CircuitBreakerRelease) error {
+	if tx == nil {
+		return ErrTxIsNil
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+
+	_, err := dbTx.Exec(`UPDATE circuitbreaker_rule_release SET flag = 1, mtime = sysdate() WHERE rule_id = ?`, release.RuleId)
+	return store.Error(err)
 }

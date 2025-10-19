@@ -152,6 +152,7 @@ func (h *HTTPServer) RollbackCircuitBreakerRules(req *restful.Request, rsp *rest
 	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
 		msg := &apimodel.RuleRelease{}
+		msg.Resource = apimodel.RuleRelease_CircuitBreakerRules
 		rules = append(rules, msg)
 		return msg
 	})
@@ -171,6 +172,7 @@ func (h *HTTPServer) StopbetaCircuitBreakerRules(req *restful.Request, rsp *rest
 	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
 		msg := &apimodel.RuleRelease{}
+		msg.Resource = apimodel.RuleRelease_CircuitBreakerRules
 		rules = append(rules, msg)
 		return msg
 	})
@@ -190,6 +192,7 @@ func (h *HTTPServer) DeleteCircuitBreakerReleases(req *restful.Request, rsp *res
 	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
 		msg := &apimodel.RuleRelease{}
+		msg.Resource = apimodel.RuleRelease_CircuitBreakerRules
 		rules = append(rules, msg)
 		return msg
 	})

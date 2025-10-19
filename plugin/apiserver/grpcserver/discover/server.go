@@ -24,12 +24,14 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
+	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/apiserver"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pkg/config"
 	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
@@ -54,12 +56,14 @@ var (
 // GRPCServer GRPC API服务器
 type GRPCServer struct {
 	grpcserver.BaseGrpcServer
+	configServer      config.ConfigCenterServer
 	namingServer      service.DiscoverServer
 	ruleServer        goverrule.GoverRuleServer
 	healthCheckServer *healthcheck.Server
 	openAPI           map[string]apiserver.APIConfig
 
-	v1server *v1.DiscoverServer
+	dsvr *v1.DiscoverGRPCServer
+	csvr *v1.ConfigGRPCServer
 }
 
 // GetPort 获取端口
@@ -96,12 +100,21 @@ func (g *GRPCServer) Initialize(ctx context.Context, option map[string]interface
 		namingLog.Errorf("%v", err)
 		return err
 	}
+	if g.configServer, err = config.GetServer(); err != nil {
+		namingLog.Errorf("%v", err)
+		return err
+	}
 
-	g.v1server = v1.NewDiscoverServer(
-		v1.WithAllowAccess(g.allowAccess),
-		v1.WithEnterRateLimit(g.enterRateLimit),
+	g.dsvr = v1.NewDiscoverGRPCServer(
+		v1.WithDAllowAccess(g.allowAccess),
+		v1.WithDEnterRateLimit(g.enterRateLimit),
 		v1.WithHealthCheckerServer(g.healthCheckServer),
+		v1.WithGoverRuleServer(g.ruleServer),
 		v1.WithNamingServer(g.namingServer),
+	)
+	g.csvr = v1.NewConfigGRPCServer(
+		v1.WithCAllowAccess(g.allowAccess),
+		v1.WithCEnterRateLimit(g.enterRateLimit),
 	)
 	return nil
 }
@@ -114,9 +127,10 @@ func (g *GRPCServer) Run(errCh chan error) {
 			case "client":
 				if config.Enable {
 					// 注册 v1 版本的 spec discover server
-					apiservice.RegisterPolarisGRPCServer(server, g.v1server)
-					apiservice.RegisterPolarisHeartbeatGRPCServer(server, g.v1server)
-					apiservice.RegisterPolarisServiceContractGRPCServer(server, g.v1server)
+					apiservice.RegisterPolarisGRPCServer(server, g.dsvr)
+					apiservice.RegisterPolarisHeartbeatGRPCServer(server, g.dsvr)
+					apiservice.RegisterPolarisServiceContractGRPCServer(server, g.dsvr)
+					apiconfig.RegisterPolarisConfigGRPCServer(server, g.csvr)
 					openMethod, getErr := utils.GetDiscoverClientOpenMethod(config.Include, g.GetProtocol())
 					if getErr != nil {
 						return getErr

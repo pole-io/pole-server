@@ -43,15 +43,6 @@ func (svr *Server) DeleteServiceAliases(ctx context.Context,
 	if checkError := checkBatchAlias(req); checkError != nil {
 		return checkError
 	}
-
-	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
-	for i := range req {
-		rsp := checkDeleteServiceAliasReq(ctx, req[i])
-		api.Collect(batchRsp, rsp)
-	}
-	if !api.IsSuccess(batchRsp) {
-		return batchRsp
-	}
 	return svr.nextSvr.DeleteServiceAliases(ctx, req)
 }
 

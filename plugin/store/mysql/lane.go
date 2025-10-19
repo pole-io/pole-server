@@ -32,6 +32,7 @@ import (
 	ruletypes "github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
 	matchs "github.com/pole-io/pole-server/pkg/common/utils/match"
+	"github.com/pole-io/specification/source/go/api/v1/model"
 )
 
 var _ store.LaneStore = (*laneStore)(nil)
@@ -156,39 +157,46 @@ SELECT id, name, rule, description, revision, flag, UNIX_TIMESTAMP(ctime), UNIX_
 	return result[0], nil
 }
 
-func (l *laneStore) LockLaneGroup(tx store.Tx, name string) (*ruletypes.LaneGroup, error) {
+func (l *laneStore) LockLaneGroup(tx store.Tx, keyword string) (*ruletypes.LaneGroup, error) {
+	if tx == nil {
+		return nil, ErrTxIsNil
+	}
+	if keyword == "" {
+		return nil, ErrorMissingParams
+	}
 	querySql := `
 SELECT id, name, rule, description, revision
 	, flag, UNIX_TIMESTAMP(ctime), UNIX_TIMESTAMP(mtime)
 FROM lane_group
 WHERE flag = 0
-	AND name = ?
+	AND (name = ? OR id = ?)
 FOR UPDATE
 `
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	result := make([]*ruletypes.LaneGroup, 0, 1)
-	rows, err := dbTx.Query(querySql, name)
+	rows, err := dbTx.Query(querySql, keyword, keyword)
 	if err != nil {
-		log.Error("[Store][Lane] select one lane group", zap.String("querySql", querySql), zap.String("name", name),
+		log.Error("[Store][Lane] select one lane group", zap.String("querySql", querySql), zap.String("keyword", keyword),
 			zap.Error(err))
 		return nil, err
 	}
 	if err := transferLaneGroups(rows, func(group *ruletypes.LaneGroup) {
 		result = append(result, group)
 	}); err != nil {
-		log.Error("[Store][Lane] transfer one lane group row", zap.String("name", name), zap.Error(err))
+		log.Error("[Store][Lane] transfer one lane group row", zap.String("keyword", keyword), zap.Error(err))
 		return nil, store.Error(err)
 	}
 	if len(result) == 0 {
 		return nil, nil
 	}
-	rules, err := l.getLaneRulesByGroup(dbTx, []string{name})
+	names := []string{result[0].Name}
+	rules, err := l.getLaneRulesByGroup(dbTx, names)
 	if err != nil {
-		log.Error("[Store][Lane] load lane_group all lane_rule", zap.String("name", name), zap.Error(err))
+		log.Error("[Store][Lane] load lane_group all lane_rule", zap.Strings("name", names), zap.Error(err))
 		return nil, store.Error(err)
 	}
 	if len(rules) != 0 {
-		result[0].LaneRules = rules[name]
+		result[0].LaneRules = rules[keyword]
 	}
 	return result[0], nil
 }
@@ -404,7 +412,7 @@ WHERE
 // ActiveLaneGroup implements store.LaneStore.
 func (l *laneStore) ActiveLaneGroup(tx store.Tx, release *ruletypes.LaneGroupRelease) error {
 	if tx == nil {
-		return errors.New("tx is nil")
+		return ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	maxVersion, err := l.inactiveLaneGroupRelease(dbTx, release)
@@ -421,8 +429,8 @@ WHERE rule_name = ?
 
 // GetLaneGroupVersions .
 func (l *laneStore) GetLaneGroupVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error) {
-	countSql := `SELECT COUNT(*) FROM lane_group_release WHERE rule_name = ? AND flag = 0`
-	row := l.slave.QueryRow(countSql, filter["rule_name"])
+	countSql := `SELECT COUNT(*) FROM lane_group_release WHERE rule_id = ? AND flag = 0`
+	row := l.slave.QueryRow(countSql, filter["rule_id"])
 	var count uint64
 	if err := row.Scan(&count); err != nil {
 		log.Errorf("[store][mysql][lane] query lane_group rule versions count err: %s", err.Error())
@@ -432,11 +440,11 @@ func (l *laneStore) GetLaneGroupVersions(ctx context.Context, filter map[string]
 		return 0, nil, nil
 	}
 
-	querySql := `SELECT id, name, rule_id, rule_name, flag, active, version, description, release_type, ctime, mtime
+	querySql := `SELECT id, name, rule_id, rule_name, flag, active, version, description, release_type, unix_timestamp(ctime), unix_timestamp(mtime)
 	FROM lane_group_release
 	WHERE rule_id = ?
 		AND flag = 0 ORDER BY version DESC LIMIT ?, ?`
-	rows, err := l.slave.Query(querySql, filter["rule_name"], offset, limit)
+	rows, err := l.slave.Query(querySql, filter["rule_id"], offset, limit)
 	if err != nil {
 		log.Errorf("[store][mysql][lane] query lane_group rule versions err: %s", err.Error())
 		return 0, nil, store.Error(err)
@@ -459,6 +467,7 @@ func (l *laneStore) GetLaneGroupVersions(ctx context.Context, filter map[string]
 		item.Valid = flag == 0
 		item.Ctime = time.Unix(ctime, 0)
 		item.Mtime = time.Unix(mtime, 0)
+		item.Resource = model.RuleRelease_LaneRules
 		releases = append(releases, item)
 	}
 
@@ -467,27 +476,25 @@ func (l *laneStore) GetLaneGroupVersions(ctx context.Context, filter map[string]
 
 func (l *laneStore) GetReleaseLaneGroupRule(tx store.Tx, release *rules.RuleRelease) (*rules.LaneGroupRelease, error) {
 	if tx == nil {
-		return nil, errors.New("tx is nil")
+		return nil, ErrTxIsNil
 	}
 	dbTx, ok := tx.GetDelegateTx().(*BaseTx)
 	if !ok || dbTx == nil {
 		return nil, errors.New("invalid tx delegate")
 	}
-	querySql := `SELECT id, name, rule_name, rule, version
+	querySql := `SELECT id, name, rule_id, rule_name, rule, version
 	, active, description, release_type
 FROM lane_group_release
-WHERE rule_name = ?
-	AND name = ?
-	AND release_type = ?
+WHERE (id = ? OR (rule_id = ? AND name = ? AND release_type = ?))
 	AND flag = 0
 LIMIT 1`
-	row := dbTx.QueryRow(querySql, release.RuleName, release.ReleaseName, release.ReleaseType)
+	row := dbTx.QueryRow(querySql, release.Id, release.RuleId, release.ReleaseName, release.ReleaseType)
 	var (
-		id, name, ruleName, ruleStr, description, releaseType string
-		version                                               uint64
-		active                                                int
+		ruleRelease = &rules.RuleRelease{}
+		ruleStr     string
+		active      int
 	)
-	err := row.Scan(&id, &name, &ruleName, &ruleStr, &version, &active, &description, &releaseType)
+	err := row.Scan(&ruleRelease.Id, &ruleRelease.ReleaseName, &ruleRelease.RuleId, &ruleRelease.RuleName, &ruleStr, &ruleRelease.Version, &active, &ruleRelease.Description, &ruleRelease.ReleaseType)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -498,25 +505,19 @@ LIMIT 1`
 	if err := json.Unmarshal([]byte(ruleStr), ruleObj); err != nil {
 		return nil, store.Error(err)
 	}
+	ruleRelease.Active = active == 1
+	ruleRelease.Valid = true
 	proto, _ := ruleObj.ToProto()
 	return &ruletypes.LaneGroupRelease{
-		RuleRelease: ruletypes.RuleRelease{
-			Id:          id,
-			ReleaseName: name,
-			Description: description,
-			ReleaseType: rules.ReleaseType(releaseType),
-			Active:      active == 1,
-			Version:     version,
-			Valid:       true,
-		},
-		Rule: proto,
+		RuleRelease: *ruleRelease,
+		Rule:        proto,
 	}, nil
 }
 
 // GetActiveLaneGroup implements store.LaneStore.
 func (l *laneStore) GetActiveLaneGroup(tx store.Tx, release *ruletypes.LaneGroupRelease) (*ruletypes.LaneGroupRelease, error) {
 	if tx == nil {
-		return nil, errors.New("tx is nil")
+		return nil, ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	querySql := `SELECT id, name, rule_name, rule, version
@@ -577,7 +578,7 @@ LIMIT 1`
 // InactiveLaneGroup implements store.LaneStore.
 func (l *laneStore) InactiveLaneGroup(tx store.Tx, release *ruletypes.LaneGroupRelease) error {
 	if tx == nil {
-		return errors.New("tx is nil")
+		return ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	execSql := `UPDATE lane_group_release
@@ -610,7 +611,7 @@ func (l *laneStore) selectMaxVersion(tx *BaseTx, release *rules.LaneGroupRelease
 		return 0, ErrTxIsNil
 	}
 
-	args := []any{release.Rule.Name}
+	args := []any{release.RuleName}
 	var maxVersion uint64
 	//	查询当前 release 的最大版本号
 	if err := tx.QueryRow("SELECT IFNULL(MAX(version), 0) FROM lane_group_release WHERE rule_name = ?",
@@ -626,7 +627,7 @@ func (l *laneStore) PublishLaneGroup(tx store.Tx, rule *ruletypes.LaneGroupRelea
 		return errors.New("[store][mysql][lane] publish lane group missing some params")
 	}
 	if tx == nil {
-		return errors.New("tx is nil")
+		return ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	maxVersion, err := l.inactiveLaneGroupRelease(dbTx, rule)
@@ -639,14 +640,15 @@ func (l *laneStore) PublishLaneGroup(tx store.Tx, rule *ruletypes.LaneGroupRelea
 		return store.Error(err)
 	}
 	// 3. 插入新发布并激活
-	insertSql := `INSERT INTO lane_group_release (id, name, rule_name, rule, version
+	insertSql := `INSERT INTO lane_group_release (id, name, rule_id, rule_name, rule, version
 	, active, description, release_type, ctime, mtime)
-VALUES (?, ?, ?, ?, ?
+VALUES (?, ?, ?, ?, ?, ?
 	, 1, ?, ?, sysdate(), sysdate())`
 	_, err = dbTx.Exec(insertSql,
 		rule.Id,
 		rule.ReleaseName,
-		"", // rule_name 暂未使用
+		rule.Rule.ID,
+		rule.Rule.Name,
 		string(ruleJson),
 		maxVersion+1,
 		rule.Description,
@@ -847,6 +849,16 @@ func (l *laneStore) DeleteLaneRules(tx store.Tx, group string, ids []string) err
 		return store.Error(err)
 	}
 	return nil
+}
+
+func (l *laneStore) DeleteLaneGroupReleases(tx store.Tx, rule *rules.LaneGroupRelease) error {
+	if tx == nil {
+		return ErrTxIsNil
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+	deleteSql := `UPDATE lane_group_release SET flag = 1, mtime = sysdate() WHERE id = ?`
+	_, err := dbTx.Exec(deleteSql, rule.Id)
+	return store.Error(err)
 }
 
 // cleanSoftDeletedRules .

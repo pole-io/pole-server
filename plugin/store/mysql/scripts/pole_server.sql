@@ -576,6 +576,7 @@ CREATE TABLE
         `extend_info` VARCHAR(1024) DEFAULT '',
         `metadata` TEXT COMMENT 'route rule metadata',
         PRIMARY KEY (`id`),
+        UNIQUE KEY `uk_rule_name` (`name`),
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
 
@@ -598,6 +599,7 @@ CREATE TABLE
         `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
+        UNIQUE KEY `uk_rule_id_name_version` (`rule_id`, `rule_name`, `version`),
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
 
@@ -640,7 +642,7 @@ CREATE TABLE
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
         PRIMARY KEY (`id`),
         KEY `mtime` (`mtime`),
-        KEY `service_id` (`service_id`)
+        KEY `rule_name` (`rule_name`)
     ) ENGINE = InnoDB;
 
 /* 熔断规则 */
@@ -730,6 +732,45 @@ CREATE TABLE
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
 
+/* 无损发布规则 */
+CREATE TABLE
+    `lossless_rule` (
+        `id` VARCHAR(128) NOT NULL,
+        `namespace` VARCHAR(64) NOT NULL DEFAULT 'default',
+        `service` VARCHAR(64) NOT NULL,
+        `revision` VARCHAR(40) NOT NULL,
+        `description` VARCHAR(1024) NOT NULL DEFAULT '',
+        `config` TEXT,
+        `flag` TINYINT (4) NOT NULL DEFAULT '0',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        `metadata` TEXT COMMENT 'lossless rule metadata',
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `idx_namespace_service` (`namespace`, `service`),
+        KEY `mtime` (`mtime`)
+    ) ENGINE = innodb;
+
+/* 主无损发布规则发布表 */
+CREATE TABLE
+    `lossless_rule_release` (
+        `id` VARCHAR(128) NOT NULL,
+        `name` VARCHAR(64) NOT NULL,
+        `rule_id` VARCHAR(128) NOT NULL COMMENT 'router rule ID',
+        `namespace` VARCHAR(64) NOT NULL DEFAULT 'default',
+        `service` VARCHAR(64) NOT NULL,
+        `rule` TEXT NOT NULL COMMENT 'Current limiting rules',
+        `flag` TINYINT (4) NOT NULL DEFAULT '0',
+        `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
+        `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
+        `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
+        `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `name` (`name`),
+        KEY `idx_namespace_service` (`namespace`, `service`),
+        KEY `mtime` (`mtime`)
+    ) ENGINE = innodb;
 
 /* 泳道组规则 */
 CREATE TABLE

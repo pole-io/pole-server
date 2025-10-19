@@ -107,6 +107,14 @@ func (r *RateLimit) CopyNoProto() *RateLimit {
 	}
 }
 
+func (r *RateLimit) GetId() string {
+	return r.ID
+}
+
+func (r *RateLimit) GetMtime() time.Time {
+	return r.ModifyTime
+}
+
 func (r *RateLimit) ToSpec() error {
 	r.Proto = &apitraffic.Rule{}
 	if len(r.Rule) == 0 {

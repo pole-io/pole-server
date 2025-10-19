@@ -84,14 +84,6 @@ func (svr *Server) DeleteServices(ctx context.Context,
 	if checkError := checkBatchService(req); checkError != nil {
 		return checkError
 	}
-	batchRsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
-	for i := range req {
-		rsp := checkReviseService(req[i])
-		api.Collect(batchRsp, rsp)
-	}
-	if !api.IsSuccess(batchRsp) {
-		return batchRsp
-	}
 	return svr.nextSvr.DeleteServices(ctx, req)
 }
 

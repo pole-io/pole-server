@@ -52,7 +52,6 @@ type LaneCache struct {
 	// 这里的缓存用于列表页面查询
 	// groups id -> *rules.LaneGroupProto
 	rules *container.SyncMap[string, *rules.LaneGroup]
-
 	// 这里的缓存用于客户端规则发布查询, 因为每个规则只会有一个发布状态
 	// {rule-name + release_type} => *rules.LaneGroupRelease
 	ids *container.SyncMap[string, *rules.LaneGroupRelease]
@@ -65,7 +64,6 @@ type LaneCache struct {
 // Initialize .
 func (lc *LaneCache) Initialize(c map[string]interface{}) error {
 	lc.rules = container.NewSyncMap[string, *rules.LaneGroup]()
-
 	lc.ids = container.NewSyncMap[string, *rules.LaneGroupRelease]()
 	lc.serviceRules = container.NewSyncMap[string, *container.SyncMap[string, *container.SyncMap[string, *rules.LaneGroupRelease]]]()
 	lc.revisions = container.NewSyncMap[string, *container.SyncMap[string, string]]()
@@ -107,13 +105,13 @@ func (lc *LaneCache) realUpdate() (map[string]time.Time, int64, error) {
 		return nil, -1, err
 	}
 
-	cmtime, addCnt, updateCnt, delCnt := lc.setLaneRules(rules)
-	log.Info("[cache][lane] get more lane rules",
+	cmtime, addCnt, updateCnt, delCnt := lc.setLaneRulesConsole(rules)
+	log.Info("[cache][lane] console cache update",
 		zap.Int("pull-from-store", len(rules)), zap.Int("add", addCnt), zap.Int("update", updateCnt),
 		zap.Int("delete", delCnt), zap.Time("last", lc.LastMtime()), zap.Duration("used", time.Since(start)))
 
-	pmtime, addCnt, updateCnt, delCnt := lc.setReleaseLaneRules(releases)
-	log.Info("[cache][lane] get more lane releases",
+	pmtime, addCnt, updateCnt, delCnt := lc.setLaneRulesClient(releases)
+	log.Info("[cache][lane] client cache update",
 		zap.Int("pull-from-store", len(releases)), zap.Int("add", addCnt), zap.Int("update", updateCnt),
 		zap.Int("delete", delCnt), zap.Time("last", lc.LastMtime()), zap.Duration("used", time.Since(start)))
 
@@ -123,7 +121,7 @@ func (lc *LaneCache) realUpdate() (map[string]time.Time, int64, error) {
 	}, int64(len(rules)), err
 }
 
-func (lc *LaneCache) setLaneRules(items map[string]*rules.LaneGroup) (time.Time, int, int, int) {
+func (lc *LaneCache) setLaneRulesConsole(items map[string]*rules.LaneGroup) (time.Time, int, int, int) {
 	lastMtime := lc.LastMtime().Unix()
 	add := 0
 	update := 0
@@ -149,7 +147,7 @@ func (lc *LaneCache) setLaneRules(items map[string]*rules.LaneGroup) (time.Time,
 	return time.Unix(lastMtime, 0), add, update, del
 }
 
-func (lc *LaneCache) setReleaseLaneRules(items []*rules.LaneGroupRelease) (time.Time, int, int, int) {
+func (lc *LaneCache) setLaneRulesClient(items []*rules.LaneGroupRelease) (time.Time, int, int, int) {
 	lastMtime := lc.LastMtime().Unix()
 	add := 0
 	update := 0

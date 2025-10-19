@@ -265,7 +265,6 @@ func parseRoutingArgs(filter map[string]string, ctx context.Context) (*cacheapi.
 			log.Error("[Service][Routing][Query] search with routing enable", zap.Error(err))
 		}
 	}
-	log.Infof("[Service][Routing][Query] routing query args: %+v", res)
 	return res, nil
 }
 

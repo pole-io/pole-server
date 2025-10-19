@@ -40,7 +40,7 @@ var (
 	testConfigCacheEntries = []cacheapi.ConfigEntry{
 		{
 			Name: "configFile",
-			Option: map[string]interface{}{
+			Option: map[string]any{
 				"cachePath": filepath.Join(os.TempDir(), "/polaris/cache/", utils.NewUUID()),
 			},
 		},

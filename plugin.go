@@ -35,7 +35,6 @@ import (
 	_ "github.com/pole-io/pole-server/plugin/access_control/whitelist/ip"
 	_ "github.com/pole-io/pole-server/plugin/apiserver/apolloserver"
 	_ "github.com/pole-io/pole-server/plugin/apiserver/eurekaserver"
-	_ "github.com/pole-io/pole-server/plugin/apiserver/grpcserver/config"
 	_ "github.com/pole-io/pole-server/plugin/apiserver/grpcserver/discover"
 	_ "github.com/pole-io/pole-server/plugin/apiserver/httpserver"
 	_ "github.com/pole-io/pole-server/plugin/apiserver/nacosserver"

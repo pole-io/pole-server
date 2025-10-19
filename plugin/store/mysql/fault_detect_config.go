@@ -28,6 +28,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
+	"github.com/pole-io/specification/source/go/api/v1/model"
 )
 
 var _ store.FaultDetectRuleStore = (*faultDetectRuleStore)(nil)
@@ -232,14 +233,17 @@ func (f *faultDetectRuleStore) GetFaultDetectRule(id string) (*rules.FaultDetect
 }
 
 // LockFaultDetectRule implements store.FaultDetectRuleStore.
-func (f *faultDetectRuleStore) LockFaultDetectRule(tx store.Tx, name string) (*rules.FaultDetectRule, error) {
+func (f *faultDetectRuleStore) LockFaultDetectRule(tx store.Tx, keyword string) (*rules.FaultDetectRule, error) {
 	if tx == nil {
-		return nil, errors.New("tx is nil")
+		return nil, ErrTxIsNil
+	}
+	if keyword == "" {
+		return nil, ErrorMissingParams
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	querySql := `SELECT id, name, namespace, revision, description, dst_service, dst_namespace, dst_method,
-	 config, unix_timestamp(ctime), unix_timestamp(mtime) FROM fault_detect_rule WHERE name = ? AND flag = 0 FOR UPDATE`
-	row := dbTx.QueryRow(querySql, name)
+	 config, unix_timestamp(ctime), unix_timestamp(mtime) FROM fault_detect_rule WHERE (id = ? OR name = ?) AND flag = 0 FOR UPDATE`
+	row := dbTx.QueryRow(querySql, keyword, keyword)
 	var fdRule rules.FaultDetectRule
 	var ctime, mtime int64
 	err := row.Scan(&fdRule.ID, &fdRule.Name, &fdRule.Namespace, &fdRule.Revision, &fdRule.Description,
@@ -259,7 +263,7 @@ func (f *faultDetectRuleStore) LockFaultDetectRule(tx store.Tx, name string) (*r
 // ActiveFaultDetectRule implements store.FaultDetectRuleStore.
 func (f *faultDetectRuleStore) ActiveFaultDetectRule(tx store.Tx, release *rules.FaultDetectRelease) error {
 	if tx == nil {
-		return errors.New("tx is nil")
+		return ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	maxVersion, err := f.inactiveFaultDetectRelease(dbTx, release)
@@ -287,7 +291,7 @@ func (f *faultDetectRuleStore) GetFaultDetectRuleVersions(ctx context.Context, f
 		return 0, nil, nil
 	}
 
-	querySql := `SELECT id, name, rule_id, rule_name, flag, active, version, description, release_type, ctime, mtime
+	querySql := `SELECT id, name, rule_id, rule_name, flag, active, version, description, release_type, unix_timestamp(ctime), unix_timestamp(mtime)
 	FROM fault_detect_rule_release
 	WHERE rule_id = ?
 		AND flag = 0 ORDER BY version DESC LIMIT ?, ?`
@@ -314,6 +318,7 @@ func (f *faultDetectRuleStore) GetFaultDetectRuleVersions(ctx context.Context, f
 		item.Valid = flag == 0
 		item.Ctime = time.Unix(ctime, 0)
 		item.Mtime = time.Unix(mtime, 0)
+		item.Resource = model.RuleRelease_FaultDetectRules
 		releases = append(releases, item)
 	}
 
@@ -322,17 +327,17 @@ func (f *faultDetectRuleStore) GetFaultDetectRuleVersions(ctx context.Context, f
 
 func (f *faultDetectRuleStore) GetReleaseFaultDetectRule(tx store.Tx, release *rules.RuleRelease) (*rules.FaultDetectRelease, error) {
 	if tx == nil {
-		return nil, errors.New("tx is nil")
+		return nil, ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	querySql := `SELECT id, name, rule_name, rule, version, active, description, release_type
 	FROM fault_detect_rule_release
 	WHERE name = ?
-		AND rule_name = ?
+		AND rule_id = ?
 		AND release_type = ?
 		AND flag = 0
 	LIMIT 1`
-	row := dbTx.QueryRow(querySql, release.ReleaseName, release.RuleName, release.ReleaseType)
+	row := dbTx.QueryRow(querySql, release.ReleaseName, release.RuleId, release.ReleaseType)
 	var (
 		id, name, ruleName, ruleStr, description, releaseType string
 		version                                               uint64
@@ -366,7 +371,7 @@ func (f *faultDetectRuleStore) GetReleaseFaultDetectRule(tx store.Tx, release *r
 // GetActiveFaultDetectRule implements store.FaultDetectRuleStore.
 func (f *faultDetectRuleStore) GetActiveFaultDetectRule(tx store.Tx, release *rules.FaultDetectRelease) (*rules.FaultDetectRelease, error) {
 	if tx == nil {
-		return nil, errors.New("tx is nil")
+		return nil, ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	querySql := `SELECT id, name, rule_name, rule, version
@@ -426,7 +431,7 @@ LIMIT 1`
 // InactiveFaultDetectRule implements store.FaultDetectRuleStore.
 func (f *faultDetectRuleStore) InactiveFaultDetectRule(tx store.Tx, release *rules.FaultDetectRelease) error {
 	if tx == nil {
-		return errors.New("tx is nil")
+		return ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	_, err := dbTx.Exec(`UPDATE fault_detect_rule_release
@@ -472,7 +477,7 @@ func (f *faultDetectRuleStore) PublishFaultDetectRule(tx store.Tx, rule *rules.F
 		return errors.New("[store][mysql][faultdetect] publish fault detect rule missing some params")
 	}
 	if tx == nil {
-		return errors.New("tx is nil")
+		return ErrTxIsNil
 	}
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	maxVersion, err := f.inactiveFaultDetectRelease(dbTx, rule)
@@ -545,6 +550,16 @@ func (f *faultDetectRuleStore) GetMoreFaultDetectReleases(mtime time.Time, first
 		return nil, err
 	}
 	return out, nil
+}
+
+// DeleteFaultDetectReleases implements store.FaultDetectRuleStore.
+func (f *faultDetectRuleStore) DeleteFaultDetectReleases(tx store.Tx, release *rules.FaultDetectRelease) error {
+	if tx == nil {
+		return ErrTxIsNil
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+	_, err := dbTx.Exec(`UPDATE fault_detect_rule_release SET flag = 1, mtime = sysdate() WHERE id = ?`, release.Id)
+	return store.Error(err)
 }
 
 func fetchFaultDetectRulesRows(rows *sql.Rows) ([]*rules.FaultDetectRule, error) {

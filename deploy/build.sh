@@ -67,7 +67,7 @@ export CGO_ENABLED=0
 
 build_date=$(date "+%Y%m%d.%H%M%S")
 package="github.com/pole-io/pole-server/pkg/common/version"
-sqldb_res="store/mysql"
+sqldb_res="plugin/store/mysql"
 GOARCH=${GOARCH} GOOS=${GOOS} go build -o ${bin_name} -ldflags="-X ${package}.Version=${version} -X ${package}.BuildDate=${build_date}"
 
 # 打包
@@ -75,7 +75,7 @@ mkdir -p ${folder_name}
 cp ${bin_name} ${folder_name}
 mkdir -p ${folder_name}/${sqldb_res}
 cp -r ${sqldb_res}/scripts/* ${folder_name}/${sqldb_res}
-cp -r ./deploy/tool ${folder_name}/
+cp -r ./deploy/tools ${folder_name}/
 cp -r ./deploy/conf ${folder_name}/
 zip -r "${pkg_name}" ${folder_name}
 md5sum ${pkg_name} >"${pkg_name}.md5sum"

@@ -219,6 +219,30 @@ func (s *Server) GetRouterRuleWithCache(ctx context.Context, req *apiservice.Ser
 	return resp
 }
 
+// GetLosslessRuleWithCache fetch service list by client
+func (s *Server) GetLosslessRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_LOSSLESS)
+	aliasFor := s.findServiceAlias(req)
+
+	out := s.caches.Lossless().GetLosslessConfig(aliasFor.Namespace, aliasFor.Name)
+	if out == nil || out.Revision == "" {
+		return resp
+	}
+
+	// 获取无损规则数据，并对比revision
+	if len(req.GetRevision().GetValue()) > 0 && req.GetRevision().GetValue() == out.Revision {
+		return api.NewDiscoverLosslessResponse(apimodel.Code_DataNoChange, req)
+	}
+
+	resp.AliasFor = &apiservice.Service{
+		Name:      protobuf.NewStringValue(aliasFor.Name),
+		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
+	}
+	resp.Service.Revision = protobuf.NewStringValue(out.Revision)
+	resp.LosslessRules = []*apitraffic.LosslessRule{out.ToSpec()}
+	return resp
+}
+
 func (s *Server) findServiceAlias(req *apiservice.Service) *svctypes.Service {
 	// 获取源服务
 	aliasFor := s.getServiceCache(req.GetName().GetValue(), req.GetNamespace().GetValue())

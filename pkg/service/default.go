@@ -22,12 +22,14 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"golang.org/x/sync/singleflight"
 
 	"github.com/pole-io/pole-server/apis/observability/event"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 )
 
@@ -113,6 +115,7 @@ func InitServer(ctx context.Context, namingOpt *Config, opts ...InitOption) (*Se
 	actualSvr.instanceChains = make([]InstanceChain, 0, 4)
 	actualSvr.createServiceSingle = &singleflight.Group{}
 	actualSvr.subCtxs = make([]*eventhub.SubscribtionContext, 0, 4)
+	actualSvr.emptyPushProtectSvs = container.NewSyncMap[string, time.Time]()
 
 	for i := range opts {
 		opts[i](actualSvr)

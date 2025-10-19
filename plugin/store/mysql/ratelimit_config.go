@@ -29,6 +29,7 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/specification/source/go/api/v1/model"
 	"go.uber.org/zap"
 )
 
@@ -340,8 +341,9 @@ func (rls *rateLimitStore) GetMoreRateLimitReleases(mtime time.Time,
 	firstUpdate bool) ([]*rules.RateLimitRelease, error) {
 	str := `select id, name, rule_name, rule, flag, active, version, description, release_type,
 			unix_timestamp(ctime), unix_timestamp(mtime) from ratelimit_rule_release 
-			where mtime > FROM_UNIXTIME(?)`
+			where mtime >= FROM_UNIXTIME(?)`
 	if firstUpdate {
+		mtime = time.Time{}
 		str += " and flag != 1"
 	}
 	rows, err := rls.slave.Query(str, timeToTimestamp(mtime))
@@ -362,7 +364,7 @@ func (rls *rateLimitStore) GetMoreRateLimitReleases(mtime time.Time,
 			flag, active int
 			ruleStr      string
 		)
-		err := rows.Scan(&item.Id, &item.ReleaseName, &ruleStr, &flag, &active, &item.Description,
+		err := rows.Scan(&item.Id, &item.ReleaseName, &item.RuleName, &ruleStr, &flag, &active, &item.Version, &item.Description,
 			&item.ReleaseType, &ctime, &mtime)
 		if err != nil {
 			log.Errorf("[store][mysql][ratelimit] fetch rate limit cache scan err: %s", err.Error())
@@ -393,18 +395,20 @@ const (
 )
 
 // LockRateLimitRule implements store.RateLimitStore.
-func (rls *rateLimitStore) LockRateLimitRule(tx store.Tx, name string) (*rules.RateLimit, error) {
-	if name == "" {
-		log.Errorf("[store][mysql][ratelimit] get rate limit missing some params")
-		return nil, errors.New("get rate limit missing some params")
+func (rls *rateLimitStore) LockRateLimitRule(tx store.Tx, keyword string) (*rules.RateLimit, error) {
+	if tx == nil {
+		return nil, ErrTxIsNil
+	}
+	if keyword == "" {
+		return nil, ErrorMissingParams
 	}
 
 	str := `select id, name, disable, service_id, method, labels, priority, rule, revision, flag,
 			unix_timestamp(ctime), unix_timestamp(mtime), unix_timestamp(etime), IFNULL(metadata, '{}')
-			from ratelimit_rule where name = ? and flag = 0 for update`
-	rows, err := rls.master.Query(str, name)
+			from ratelimit_rule where (id = ? OR name = ?) and flag = 0 for update`
+	rows, err := rls.master.Query(str, keyword, keyword)
 	if err != nil {
-		log.Errorf("[store][mysql][ratelimit] query rate limit with name(%s) err: %s", name, err.Error())
+		log.Errorf("[store][mysql][ratelimit] query rate limit with keyword(%s) err: %s", keyword, err.Error())
 		return nil, err
 	}
 	out, err := fetchRateLimitRows(rows)
@@ -430,9 +434,9 @@ func (rls *rateLimitStore) GetRateLimitRuleVersions(ctx context.Context, filter 
 		return 0, nil, nil
 	}
 
-	querySql := `SELECT id, name, rule_id, rule_name, flag, active, version, description, release_type, ctime, mtime
+	querySql := `SELECT id, name, rule_id, rule_name, flag, active, version, description, release_type, unix_timestamp(ctime), unix_timestamp(mtime)
 	FROM ratelimit_rule_release
-	WHERE rule_id = ?
+	WHERE rule_name = ?
 		AND flag = 0 ORDER BY version DESC LIMIT ?, ?`
 	rows, err := rls.slave.Query(querySql, filter["rule_name"], offset, limit)
 	if err != nil {
@@ -457,6 +461,7 @@ func (rls *rateLimitStore) GetRateLimitRuleVersions(ctx context.Context, filter 
 		item.Valid = flag == 0
 		item.Ctime = time.Unix(ctime, 0)
 		item.Mtime = time.Unix(mtime, 0)
+		item.Resource = model.RuleRelease_RateLimitRules
 		releases = append(releases, item)
 	}
 
@@ -472,11 +477,11 @@ func (rls *rateLimitStore) GetReleaseRateLimitRule(tx store.Tx, release *rules.R
 	querySql := `SELECT id, name, rule_name, rule, flag, active, version, description, release_type
 	FROM ratelimit_rule_release
 	WHERE name = ?
-		AND rule_name = ?
+		AND rule_id = ?
 		AND release_type = ?
 		AND flag = 0
 	LIMIT 1`
-	row := dbTx.QueryRow(querySql, release.ReleaseName, release.RuleName, release.ReleaseType)
+	row := dbTx.QueryRow(querySql, release.ReleaseName, release.RuleId, release.ReleaseType)
 	var (
 		id, name, ruleName, ruleStr, description, releaseType string
 		flag, active                                          int
@@ -670,13 +675,23 @@ func (rls *rateLimitStore) PublishRateLimitRule(tx store.Tx, release *rules.Rate
 
 	// 3. 插入新发布并激活
 	str := `replace into ratelimit_rule_release(
-			id, name, rule_name, rule, flag, version, active, description, release_type, ctime, mtime)
-			values(?,?,?,?,?,?,?,?,?,sysdate(),sysdate())`
-	if _, err := dbTx.Exec(str, rule.ID, release.ReleaseName, rule.Name, ruleJson, 0, maxVersion+1,
-		release.Description, release.ReleaseType, utils.MustJson(rule.Metadata)); err != nil {
+			id, name, rule_id, rule_name, rule, flag, version, active, description, release_type, ctime, mtime)
+			values(?,?,?,?,?,0,?,1,?,?,sysdate(),sysdate())`
+	if _, err := dbTx.Exec(str, release.Id, release.ReleaseName, rule.ID, rule.Name, ruleJson, maxVersion+1,
+		release.Description, release.ReleaseType); err != nil {
 		log.Error("[store][mysql][ratelimit] create rate_limit release", zap.String("rule-id", rule.ID),
 			zap.String("release-name", release.ReleaseName), zap.Error(err))
 		return store.Error(err)
 	}
 	return nil
+}
+
+func (rls *rateLimitStore) DeleteRateLimitReleases(tx store.Tx, rule *rules.RateLimitRelease) error {
+	if tx == nil {
+		return ErrTxIsNil
+	}
+	dbTx := tx.GetDelegateTx().(*BaseTx)
+	deleteSql := `UPDATE ratelimit_rule_release SET flag = 1, mtime = sysdate() WHERE id = ?`
+	_, err := dbTx.Exec(deleteSql, rule.Id)
+	return store.Error(err)
 }

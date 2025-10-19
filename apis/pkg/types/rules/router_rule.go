@@ -85,6 +85,14 @@ type RoutingConfig struct {
 	ModifyTime time.Time
 }
 
+func (r *RoutingConfig) GetId() string {
+	return r.ID
+}
+
+func (r *RoutingConfig) GetMtime() time.Time {
+	return r.ModifyTime
+}
+
 // ExtendRouterConfig 路由信息的扩展
 type ExtendRouterConfig struct {
 	*RouterConfig
@@ -184,6 +192,14 @@ type RouterConfig struct {
 	EnableTime time.Time `json:"etime"`
 	// Metadata.
 	Metadata map[string]string `json:"metadata"`
+}
+
+func (r *RouterConfig) GetId() string {
+	return r.ID
+}
+
+func (r *RouterConfig) GetMtime() time.Time {
+	return r.ModifyTime
 }
 
 // GetRoutingPolicy Query routing rules type

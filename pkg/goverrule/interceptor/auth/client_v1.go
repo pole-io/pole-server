@@ -112,3 +112,15 @@ func (svr *Server) GetRouterRuleWithCache(ctx context.Context, req *apiservice.S
 
 	return svr.nextSvr.GetRouterRuleWithCache(ctx, req)
 }
+
+func (svr *Server) GetLosslessRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+	authCtx := svr.collectServiceAuthContext(
+		ctx, []*apiservice.Service{req}, authtypes.Read, authtypes.DiscoverLosslessRule)
+	if _, err := svr.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
+		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+
+	return svr.nextSvr.GetLosslessRuleWithCache(ctx, req)
+}

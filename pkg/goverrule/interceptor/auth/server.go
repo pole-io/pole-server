@@ -178,6 +178,39 @@ func (svr *Server) collectRateLimitAuthContext(ctx context.Context, req []*apitr
 	)
 }
 
+// collectRateLimitAuthContext 对于服务限流规则的处理，收集所有的与鉴权的相关信息
+//
+//	@receiver svr Server
+//	@param ctx 请求上下文 ctx
+//	@param req 实际请求对象
+//	@param resourceOp 该接口的数据操作类型
+//	@return *authtypes.AcquireContext 返回鉴权上下文
+func (svr *Server) collectLosslessAuthContext(ctx context.Context, req []*apitraffic.LosslessRule,
+	resourceOp authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
+
+	resources := make([]authtypes.ResourceEntry, 0, len(req))
+	for i := range req {
+		saveRule := svr.Cache().Lossless().GetRule(req[i].GetId())
+		if saveRule != nil {
+			resources = append(resources, authtypes.ResourceEntry{
+				Type:     apisecurity.ResourceType_RouteRules,
+				ID:       saveRule.ID,
+				Metadata: saveRule.Proto.Metadata,
+			})
+		}
+	}
+
+	return authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithOperation(resourceOp),
+		authtypes.WithModule(authtypes.DiscoverModule),
+		authtypes.WithMethod(methodName),
+		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
+			apisecurity.ResourceType_RateLimitRules: resources,
+		}),
+	)
+}
+
 // collectRouteRuleV2AuthContext 收集路由v2规则
 func (svr *Server) collectRouteRuleV2AuthContext(ctx context.Context, req []*apitraffic.RouteRule,
 	resourceOp authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
@@ -262,7 +295,7 @@ func (svr *Server) collectFaultDetectAuthContext(ctx context.Context, req []*api
 	)
 }
 
-// collectRuleReleases 收集熔断v2规则
+// collectRuleReleases 收集规则发布的资源
 func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.RuleRelease,
 	op authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
 
@@ -272,6 +305,7 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 		apisecurity.ResourceType_FaultDetectRules:    {},
 		apisecurity.ResourceType_RouteRules:          {},
 		apisecurity.ResourceType_RateLimitRules:      {},
+		apisecurity.ResourceType_LosslessRules:       {},
 	}
 
 	for i := range req {
@@ -317,6 +351,15 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 			if saveRule != nil {
 				resources[apisecurity.ResourceType_RateLimitRules] = append(resources[apisecurity.ResourceType_RateLimitRules], authtypes.ResourceEntry{
 					Type:     apisecurity.ResourceType_RateLimitRules,
+					ID:       saveRule.ID,
+					Metadata: saveRule.Metadata,
+				})
+			}
+		case apimodel.RuleRelease_LosslessRules:
+			saveRule := svr.Cache().Lossless().GetRule(req[i].GetId())
+			if saveRule != nil {
+				resources[apisecurity.ResourceType_LosslessRules] = append(resources[apisecurity.ResourceType_LosslessRules], authtypes.ResourceEntry{
+					Type:     apisecurity.ResourceType_LosslessRules,
 					ID:       saveRule.ID,
 					Metadata: saveRule.Metadata,
 				})

@@ -21,6 +21,7 @@ var (
 		"circuitbreaker_rules": apisecurity.ResourceType_CircuitBreakerRules,
 		"faultdetect_rules":    apisecurity.ResourceType_FaultDetectRules,
 		"lane_rules":           apisecurity.ResourceType_LaneRules,
+		"lossless_rules":       apisecurity.ResourceType_LosslessRules,
 		"users":                apisecurity.ResourceType_Users,
 		"user_groups":          apisecurity.ResourceType_UserGroups,
 		"roles":                apisecurity.ResourceType_Roles,
@@ -58,6 +59,12 @@ var (
 			}
 			return reflect.ValueOf(&as.RatelimitRules)
 		},
+		// apisecurity.ResourceType_LosslessRules: func(as *apisecurity.StrategyResources) reflect.Value {
+		// 	if as.GetLosslessRules() == nil {
+		// 		return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
+		// 	}
+		// 	return reflect.ValueOf(&as.LosslessRules)
+		// },
 		apisecurity.ResourceType_CircuitBreakerRules: func(as *apisecurity.StrategyResources) reflect.Value {
 			if as.GetCircuitbreakerRules() == nil {
 				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})

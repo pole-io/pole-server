@@ -22,8 +22,8 @@ func (h *HTTPServer) addRateLimitRuleAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichGetRateLimitsApiDocs(ws.GET("/ratelimits").To(h.GetRateLimits)))
 	ws.Route(docs.EnrichGetRateLimitsApiDocs(ws.GET("/ratelimits/detail").To(h.GetOneRateLimitRule)))
 	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.GET("/ratelimits/releases").To(h.GetPublishRateLimits)))
-	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.POST("/ratelimits/releases").To(h.DeleteRateLimitReleases)))
-	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.POST("/ratelimits/releases/delete").To(h.PublishRateLimits)))
+	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.POST("/ratelimits/releases").To(h.PublishRateLimits)))
+	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.POST("/ratelimits/releases/delete").To(h.DeleteRateLimitReleases)))
 	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.PUT("/ratelimits/releases/rollback").To(h.RollbackRateLimits)))
 	ws.Route(docs.EnrichEnableRateLimitsApiDocs(ws.PUT("/ratelimits/releases/stopbeta").To(h.StopbetaRateLimits)))
 }
@@ -169,6 +169,7 @@ func (h *HTTPServer) RollbackRateLimits(req *restful.Request, rsp *restful.Respo
 	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
 		msg := &apimodel.RuleRelease{}
+		msg.Resource = apimodel.RuleRelease_RateLimitRules
 		rules = append(rules, msg)
 		return msg
 	})
@@ -188,6 +189,7 @@ func (h *HTTPServer) StopbetaRateLimits(req *restful.Request, rsp *restful.Respo
 	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
 		msg := &apimodel.RuleRelease{}
+		msg.Resource = apimodel.RuleRelease_RateLimitRules
 		rules = append(rules, msg)
 		return msg
 	})
@@ -207,6 +209,7 @@ func (h *HTTPServer) DeleteRateLimitReleases(req *restful.Request, rsp *restful.
 	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
 		msg := &apimodel.RuleRelease{}
+		msg.Resource = apimodel.RuleRelease_RateLimitRules
 		rules = append(rules, msg)
 		return msg
 	})

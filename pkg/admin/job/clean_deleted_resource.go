@@ -258,7 +258,7 @@ func cleanDeletedRules(rule string, timeout time.Duration, job *cleanDeletedReso
 	for {
 		count, err := job.storage.BatchCleanDeletedRules(rule, timeout, batchSize)
 		if err != nil {
-			log.Errorf("[Maintain][Job][CleanDeletedRules] batch clean deleted rules, err: %v", err)
+			// log.Errorf("[Maintain][Job][CleanDeletedRules] batch clean deleted rules, err: %v", err)
 			break
 		}
 		log.Infof("[Maintain][Job][CleanDeletedRules] clean deleted rules count %d", count)

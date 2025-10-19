@@ -30,10 +30,6 @@ import (
 
 var _ store.ConfigFileReleaseStore = (*configFileReleaseStore)(nil)
 
-var (
-	ErrTxIsNil = errors.New("tx is nil")
-)
-
 type configFileReleaseStore struct {
 	master *BaseDB
 	slave  *BaseDB

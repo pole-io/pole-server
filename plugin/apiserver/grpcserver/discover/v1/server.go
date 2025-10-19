@@ -18,12 +18,45 @@
 package v1
 
 import (
+	"github.com/pole-io/pole-server/pkg/config"
 	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 )
 
-type DiscoverServer struct {
+type DOption func(s *DiscoverGRPCServer)
+
+func WithNamingServer(svr service.DiscoverServer) DOption {
+	return func(s *DiscoverGRPCServer) {
+		s.namingServer = svr
+	}
+}
+
+func WithHealthCheckerServer(svr *healthcheck.Server) DOption {
+	return func(s *DiscoverGRPCServer) {
+		s.healthCheckServer = svr
+	}
+}
+
+func WithGoverRuleServer(svr goverrule.GoverRuleServer) DOption {
+	return func(s *DiscoverGRPCServer) {
+		s.ruleServer = svr
+	}
+}
+
+func WithDEnterRateLimit(f func(ip string, method string) uint32) DOption {
+	return func(s *DiscoverGRPCServer) {
+		s.enterRateLimit = f
+	}
+}
+
+func WithDAllowAccess(f func(method string) bool) DOption {
+	return func(s *DiscoverGRPCServer) {
+		s.allowAccess = f
+	}
+}
+
+type DiscoverGRPCServer struct {
 	namingServer      service.DiscoverServer
 	ruleServer        goverrule.GoverRuleServer
 	healthCheckServer *healthcheck.Server
@@ -31,8 +64,8 @@ type DiscoverServer struct {
 	allowAccess       func(method string) bool
 }
 
-func NewDiscoverServer(options ...Option) *DiscoverServer {
-	s := &DiscoverServer{}
+func NewDiscoverGRPCServer(options ...DOption) *DiscoverGRPCServer {
+	s := &DiscoverGRPCServer{}
 
 	for i := range options {
 		options[i](s)
@@ -41,28 +74,32 @@ func NewDiscoverServer(options ...Option) *DiscoverServer {
 	return s
 }
 
-type Option func(s *DiscoverServer)
+type COption func(s *ConfigGRPCServer)
 
-func WithNamingServer(svr service.DiscoverServer) Option {
-	return func(s *DiscoverServer) {
-		s.namingServer = svr
-	}
-}
-
-func WithHealthCheckerServer(svr *healthcheck.Server) Option {
-	return func(s *DiscoverServer) {
-		s.healthCheckServer = svr
-	}
-}
-
-func WithEnterRateLimit(f func(ip string, method string) uint32) Option {
-	return func(s *DiscoverServer) {
+func WithCEnterRateLimit(f func(ip string, method string) uint32) COption {
+	return func(s *ConfigGRPCServer) {
 		s.enterRateLimit = f
 	}
 }
 
-func WithAllowAccess(f func(method string) bool) Option {
-	return func(s *DiscoverServer) {
+func WithCAllowAccess(f func(method string) bool) COption {
+	return func(s *ConfigGRPCServer) {
 		s.allowAccess = f
 	}
+}
+
+type ConfigGRPCServer struct {
+	configServer   config.ConfigCenterServer
+	enterRateLimit func(ip string, method string) uint32
+	allowAccess    func(method string) bool
+}
+
+func NewConfigGRPCServer(options ...COption) *ConfigGRPCServer {
+	s := &ConfigGRPCServer{}
+
+	for i := range options {
+		options[i](s)
+	}
+
+	return s
 }

@@ -153,6 +153,7 @@ func (h *HTTPServer) RollbackFaultDetectRules(req *restful.Request, rsp *restful
 	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
 		msg := &apimodel.RuleRelease{}
+		msg.Resource = apimodel.RuleRelease_FaultDetectRules
 		rules = append(rules, msg)
 		return msg
 	})
@@ -173,6 +174,7 @@ func (h *HTTPServer) StopbetaFaultDetectRules(req *restful.Request, rsp *restful
 	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
 		msg := &apimodel.RuleRelease{}
+		msg.Resource = apimodel.RuleRelease_FaultDetectRules
 		rules = append(rules, msg)
 		return msg
 	})
@@ -193,6 +195,7 @@ func (h *HTTPServer) DeleteFaultDetectReleases(req *restful.Request, rsp *restfu
 	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
 		msg := &apimodel.RuleRelease{}
+		msg.Resource = apimodel.RuleRelease_FaultDetectRules
 		rules = append(rules, msg)
 		return msg
 	})

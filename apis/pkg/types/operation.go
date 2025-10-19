@@ -71,6 +71,7 @@ const (
 	RServiceContract    Resource = "ServiceContract"
 	RLaneGroup          Resource = "LaneGroup"
 	RLaneRule           Resource = "LaneRule"
+	RLosslessRule       Resource = "LosslessRule"
 )
 
 // RecordEntry Operation records

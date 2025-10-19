@@ -30,7 +30,7 @@ import (
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/config"
 	"github.com/pole-io/pole-server/test/integrate/http"
 	"github.com/pole-io/pole-server/test/integrate/resource"
 )
@@ -92,7 +92,7 @@ func TestConfigCenter_ConfigFile(t *testing.T) {
 
 	t.Run("配置中心-导入配置文件", func(t *testing.T) {
 		namespace := ns[1].Name.Value
-		conflictHandling := utils.ConfigFileImportConflictSkip
+		conflictHandling := config.ConfigFileImportConflictSkip
 		resp, err := client.ImportConfigFile(namespace, "", conflictHandling)
 		if err != nil {
 			t.Fatal(err)

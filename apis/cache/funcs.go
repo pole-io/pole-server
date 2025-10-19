@@ -31,6 +31,7 @@ type (
 	circuitbreakerRulePredicateCtxKey struct{}
 	faultdetectRulePredicateCtxKey    struct{}
 	laneRulePredicateCtxKey           struct{}
+	losslessRulePredicateCtxKey       struct{}
 	configGroupPredicateCtxKey        struct{}
 	userPredicateCtxKey               struct{}
 	userGroupPredicateCtxKey          struct{}
@@ -122,6 +123,28 @@ func LoadRatelimitRulePredicates(ctx context.Context) []RateLimitRulePredicate {
 	val := ctx.Value(ratelimitRulePredicateCtxKey{})
 	if val != nil {
 		predicates, _ = val.([]RateLimitRulePredicate)
+	}
+	return predicates
+}
+
+func AppendLosslessRulePredicate(ctx context.Context, p LosslessPredicate) context.Context {
+	var predicates []LosslessPredicate
+
+	val := ctx.Value(losslessRulePredicateCtxKey{})
+	if val != nil {
+		predicates, _ = val.([]LosslessPredicate)
+	}
+
+	predicates = append(predicates, p)
+	return context.WithValue(ctx, losslessRulePredicateCtxKey{}, predicates)
+}
+
+func LoadLosslessRulePredicates(ctx context.Context) []LosslessPredicate {
+	var predicates []LosslessPredicate
+
+	val := ctx.Value(ratelimitRulePredicateCtxKey{})
+	if val != nil {
+		predicates, _ = val.([]LosslessPredicate)
 	}
 	return predicates
 }

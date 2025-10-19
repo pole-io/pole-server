@@ -23,6 +23,8 @@ type GoverRuleServer interface {
 	FaultDetectRuleOperateServer
 	// LaneOperateServer lane rule operation interface definition
 	LaneOperateServer
+	// LossLessOperateServer lossless rule operation interface definition
+	LossLessOperateServer
 	// ClientServer Client operation interface definition
 	ClientServer
 	// GovernanceRuleReleaseServer Governance rule operation interface definition
@@ -107,6 +109,20 @@ type LaneOperateServer interface {
 	GetOneLaneGroup(ctx context.Context, req *apitraffic.LaneGroup) *apiservice.Response
 }
 
+// LossLessOperateServer lane operations
+type LossLessOperateServer interface {
+	// CreateLossLessRules 批量创建无损规则
+	CreateLossLessRules(ctx context.Context, req []*apitraffic.LosslessRule) *apiservice.BatchWriteResponse
+	// UpdateLossLessRules 批量更新无损规则
+	UpdateLossLessRules(ctx context.Context, req []*apitraffic.LosslessRule) *apiservice.BatchWriteResponse
+	// DeleteLossLessRules 批量删除无损规则
+	DeleteLossLessRules(ctx context.Context, req []*apitraffic.LosslessRule) *apiservice.BatchWriteResponse
+	// GetLossLessRules 查询无损规则列表
+	GetLossLessRules(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse
+	// GetOneLossLessRule 查询单个无损规则
+	GetOneLossLessRule(ctx context.Context, req *apitraffic.LosslessRule) *apiservice.Response
+}
+
 // ClientServer Client related operation  Client operation interface definition
 type ClientServer interface {
 	// GetOldRouterRuleWithCache User Client Get Service Routing Configuration Information
@@ -121,6 +137,8 @@ type ClientServer interface {
 	GetLaneRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse
 	// GetRouterRuleWithCache fetch lane rules by client
 	GetRouterRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse
+	// GetServiceWithCache fetch service list by client
+	GetLosslessRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse
 }
 
 type RuleReleaseServer interface {

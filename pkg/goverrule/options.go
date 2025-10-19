@@ -54,6 +54,9 @@ var (
 		{
 			Name: cacheapi.LaneRuleName,
 		},
+		{
+			Name: cacheapi.LossLessRuleName,
+		},
 	}
 )
 

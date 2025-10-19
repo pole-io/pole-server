@@ -188,6 +188,7 @@ func (h *HTTPServer) RollbackRouterRules(req *restful.Request, rsp *restful.Resp
 	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
 		msg := &apimodel.RuleRelease{}
+		msg.Resource = apimodel.RuleRelease_RouteRules
 		rules = append(rules, msg)
 		return msg
 	})

@@ -18,13 +18,14 @@
 package discover
 
 import (
+	"slices"
+
 	"github.com/emicklei/go-restful/v3"
 
 	"github.com/pole-io/pole-server/apis/apiserver"
 	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 )
 
 type HTTPServer struct {
@@ -45,12 +46,12 @@ func NewServer(
 }
 
 const (
-	defaultReadAccess    string = "default-read"
 	defaultAccess        string = "default"
 	serviceAccess        string = "service"
 	circuitBreakerAccess string = "circuitbreaker"
 	routingAccess        string = "router"
 	rateLimitAccess      string = "ratelimit"
+	lossLessAccess       string = "lossless"
 )
 
 // GetConsoleAccessServer 注册管理端接口
@@ -67,24 +68,12 @@ func (h *HTTPServer) GetConsoleAccessServer(include []string) *restful.WebServic
 	}
 	oldInclude := include
 
-	for _, item := range oldInclude {
-		if item == defaultReadAccess {
-			include = []string{defaultReadAccess}
-			break
-		}
-	}
-
-	for _, item := range oldInclude {
-		if item == defaultAccess {
-			include = consoleAccess
-			break
-		}
+	if slices.Contains(oldInclude, defaultAccess) {
+		include = consoleAccess
 	}
 
 	for _, item := range include {
 		switch item {
-		case defaultReadAccess:
-			h.addDefaultReadAccess(ws)
 		case defaultAccess:
 			h.addDefaultAccess(ws)
 		case serviceAccess:
@@ -92,6 +81,8 @@ func (h *HTTPServer) GetConsoleAccessServer(include []string) *restful.WebServic
 			h.addInstanceAccess(ws)
 		case circuitBreakerAccess:
 			h.addCircuitBreakerRuleAccess(ws)
+		case lossLessAccess:
+			h.addLossLessRuleAccess(ws)
 		case routingAccess:
 			h.addRoutingRuleAccess(ws)
 			h.addLaneRuleAccess(ws)
@@ -100,26 +91,6 @@ func (h *HTTPServer) GetConsoleAccessServer(include []string) *restful.WebServic
 		}
 	}
 	return ws
-}
-
-// addDefaultReadAccess 增加默认读接口
-func (h *HTTPServer) addDefaultReadAccess(ws *restful.WebService) {
-	// 管理端接口：只包含读接口
-	ws.Route(docs.EnrichGetServicesApiDocs(ws.GET("/services").To(h.GetServices)))
-	ws.Route(docs.EnrichGetServicesCountApiDocs(ws.GET("/services/count").To(h.GetServicesCount)))
-	ws.Route(docs.EnrichGetServiceAliasesApiDocs(ws.GET("/service/aliases").To(h.GetServiceAliases)))
-
-	ws.Route(docs.EnrichGetInstancesApiDocs(ws.GET("/instances").To(h.GetInstances)))
-	ws.Route(docs.EnrichGetInstancesCountApiDocs(ws.GET("/instances/count").To(h.GetInstancesCount)))
-	ws.Route(docs.EnrichGetRateLimitsApiDocs(ws.GET("/ratelimits").To(h.GetRateLimits)))
-	ws.Route(docs.EnrichGetCircuitBreakerRulesApiDocs(
-		ws.GET("/circuitbreaker/rules").To(h.GetCircuitBreakerRules)))
-	ws.Route(docs.EnrichGetFaultDetectRulesApiDocs(ws.GET("/faultdetectors").To(h.GetFaultDetectRules)))
-	ws.Route(docs.EnrichGetServiceContractsApiDocs(
-		ws.GET("/service/contracts").To(h.GetServiceContracts)))
-	ws.Route(docs.EnrichGetServiceContractsApiDocs(
-		ws.GET("/service/contract/versions").To(h.GetServiceContractVersions)))
-	ws.Route(ws.GET("/routings").To(h.GetRoutings))
 }
 
 // addDefaultAccess 增加默认接口
@@ -132,6 +103,7 @@ func (h *HTTPServer) addDefaultAccess(ws *restful.WebService) {
 	h.addRateLimitRuleAccess(ws)
 	h.addCircuitBreakerRuleAccess(ws)
 	h.addFaultDetectRuleAccess(ws)
+	h.addLossLessRuleAccess(ws)
 }
 
 // GetClientAccessServer get client access server

@@ -82,6 +82,9 @@ func CalcCodeCommon(rm Rsp) int {
 
 // IsSuccess .
 func IsSuccess(rsp ResponseMessage) bool {
+	if rsp == nil {
+		return true
+	}
 	return rsp.GetCode().GetValue() == uint32(apimodel.Code_ExecuteSuccess)
 }
 
@@ -343,6 +346,16 @@ func NewDiscoverRoutingResponse(code apimodel.Code, service *apiservice.Service)
 		Code:    &wrappers.UInt32Value{Value: uint32(code)},
 		Info:    &wrappers.StringValue{Value: code2info[uint32(code)]},
 		Type:    apiservice.DiscoverResponse_ROUTING,
+		Service: service,
+	}
+}
+
+// NewDiscoverLosslessResponse create the response with data with any type
+func NewDiscoverLosslessResponse(code apimodel.Code, service *apiservice.Service) *apiservice.DiscoverResponse {
+	return &apiservice.DiscoverResponse{
+		Code:    &wrappers.UInt32Value{Value: uint32(code)},
+		Info:    &wrappers.StringValue{Value: code2info[uint32(code)]},
+		Type:    apiservice.DiscoverResponse_LOSSLESS,
 		Service: service,
 	}
 }

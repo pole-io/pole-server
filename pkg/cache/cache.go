@@ -216,6 +216,10 @@ func (nc *CacheManager) LaneRule() cachetypes.LaneCache {
 	return nc.caches[cachetypes.CacheLaneRule].(cachetypes.LaneCache)
 }
 
+func (nc *CacheManager) Lossless() cachetypes.LosslessCache {
+	return nc.caches[cachetypes.CacheLossLess].(cachetypes.LosslessCache)
+}
+
 // User Get user information cache information
 func (nc *CacheManager) User() cachetypes.UserCache {
 	return nc.caches[cachetypes.CacheUser].(cachetypes.UserCache)

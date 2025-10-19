@@ -185,8 +185,10 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 			svcName, nsName)
 		return api.NewDiscoverInstanceResponse(apimodel.Code_NotFoundResource, req)
 	}
-	if filter.Caller.Service != "" && filter.Caller.Namespace != "" {
-		s.recordSvcSubscriberGraph(aliasFor, filter)
+	if filter != nil && filter.Caller != nil {
+		if filter.Caller.Service != "" && filter.Caller.Namespace != "" {
+			s.recordSvcSubscriberGraph(aliasFor, filter)
+		}
 	}
 
 	revisions := make([]string, 0, len(visibleServices)+1)

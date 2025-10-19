@@ -307,6 +307,20 @@ func (mr *MockCacheManagerMockRecorder) LaneRule() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LaneRule", reflect.TypeOf((*MockCacheManager)(nil).LaneRule))
 }
 
+// Lossless mocks base method.
+func (m *MockCacheManager) Lossless() cache.LosslessCache {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Lossless")
+	ret0, _ := ret[0].(cache.LosslessCache)
+	return ret0
+}
+
+// Lossless indicates an expected call of Lossless.
+func (mr *MockCacheManagerMockRecorder) Lossless() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Lossless", reflect.TypeOf((*MockCacheManager)(nil).Lossless))
+}
+
 // Namespace mocks base method.
 func (m *MockCacheManager) Namespace() cache.NamespaceCache {
 	m.ctrl.T.Helper()
@@ -1691,6 +1705,20 @@ func (mr *MockRouterRuleCacheMockRecorder) GetOldRouterRule(id, service, namespa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOldRouterRule", reflect.TypeOf((*MockRouterRuleCache)(nil).GetOldRouterRule), id, service, namespace)
 }
 
+// GetRouterCount mocks base method.
+func (m *MockRouterRuleCache) GetRouterCount() int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRouterCount")
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// GetRouterCount indicates an expected call of GetRouterCount.
+func (mr *MockRouterRuleCacheMockRecorder) GetRouterCount() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRouterCount", reflect.TypeOf((*MockRouterRuleCache)(nil).GetRouterCount))
+}
+
 // GetRouterRule mocks base method.
 func (m *MockRouterRuleCache) GetRouterRule(id, service, namespace string) (*traffic_manage.Routing, error) {
 	m.ctrl.T.Helper()
@@ -1706,25 +1734,11 @@ func (mr *MockRouterRuleCacheMockRecorder) GetRouterRule(id, service, namespace 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRouterRule", reflect.TypeOf((*MockRouterRuleCache)(nil).GetRouterRule), id, service, namespace)
 }
 
-// GetRouterCount mocks base method.
-func (m *MockRouterRuleCache) GetRouterCount() int {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRouterCount")
-	ret0, _ := ret[0].(int)
-	return ret0
-}
-
-// GetRouterCount indicates an expected call of GetRouterCount.
-func (mr *MockRouterRuleCacheMockRecorder) GetRouterCount() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRouterCount", reflect.TypeOf((*MockRouterRuleCache)(nil).GetRouterCount))
-}
-
 // GetRule mocks base method.
-func (m *MockRouterRuleCache) GetRule(id string) *rules.ExtendRouterConfig {
+func (m *MockRouterRuleCache) GetRule(id string) *rules.RouterConfig {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRule", id)
-	ret0, _ := ret[0].(*rules.ExtendRouterConfig)
+	ret0, _ := ret[0].(*rules.RouterConfig)
 	return ret0
 }
 
@@ -1953,7 +1967,7 @@ func (mr *MockRateLimitCacheMockRecorder) Name() *gomock.Call {
 }
 
 // QueryRateLimitRules mocks base method.
-func (m *MockRateLimitCache) QueryRateLimitRules(arg0 context.Context, arg1 cache.RateLimitRuleArgs) (uint32, []*rules.RateLimit, error) {
+func (m *MockRateLimitCache) QueryRateLimitRules(arg0 context.Context, arg1 *cache.RateLimitRuleArgs) (uint32, []*rules.RateLimit, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryRateLimitRules", arg0, arg1)
 	ret0, _ := ret[0].(uint32)
@@ -2117,6 +2131,143 @@ func (m *MockCircuitBreakerCache) Update() error {
 func (mr *MockCircuitBreakerCacheMockRecorder) Update() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockCircuitBreakerCache)(nil).Update))
+}
+
+// MockLosslessCache is a mock of LosslessCache interface.
+type MockLosslessCache struct {
+	ctrl     *gomock.Controller
+	recorder *MockLosslessCacheMockRecorder
+}
+
+// MockLosslessCacheMockRecorder is the mock recorder for MockLosslessCache.
+type MockLosslessCacheMockRecorder struct {
+	mock *MockLosslessCache
+}
+
+// NewMockLosslessCache creates a new mock instance.
+func NewMockLosslessCache(ctrl *gomock.Controller) *MockLosslessCache {
+	mock := &MockLosslessCache{ctrl: ctrl}
+	mock.recorder = &MockLosslessCacheMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockLosslessCache) EXPECT() *MockLosslessCacheMockRecorder {
+	return m.recorder
+}
+
+// Clear mocks base method.
+func (m *MockLosslessCache) Clear() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Clear")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Clear indicates an expected call of Clear.
+func (mr *MockLosslessCacheMockRecorder) Clear() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clear", reflect.TypeOf((*MockLosslessCache)(nil).Clear))
+}
+
+// Close mocks base method.
+func (m *MockLosslessCache) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockLosslessCacheMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockLosslessCache)(nil).Close))
+}
+
+// GetLosslessConfig mocks base method.
+func (m *MockLosslessCache) GetLosslessConfig(svcName, namespace string) *rules.LosslessRule {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLosslessConfig", svcName, namespace)
+	ret0, _ := ret[0].(*rules.LosslessRule)
+	return ret0
+}
+
+// GetLosslessConfig indicates an expected call of GetLosslessConfig.
+func (mr *MockLosslessCacheMockRecorder) GetLosslessConfig(svcName, namespace interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLosslessConfig", reflect.TypeOf((*MockLosslessCache)(nil).GetLosslessConfig), svcName, namespace)
+}
+
+// GetRule mocks base method.
+func (m *MockLosslessCache) GetRule(id string) *rules.LosslessRule {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRule", id)
+	ret0, _ := ret[0].(*rules.LosslessRule)
+	return ret0
+}
+
+// GetRule indicates an expected call of GetRule.
+func (mr *MockLosslessCacheMockRecorder) GetRule(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRule", reflect.TypeOf((*MockLosslessCache)(nil).GetRule), id)
+}
+
+// Initialize mocks base method.
+func (m *MockLosslessCache) Initialize(c map[string]interface{}) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Initialize", c)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Initialize indicates an expected call of Initialize.
+func (mr *MockLosslessCacheMockRecorder) Initialize(c interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Initialize", reflect.TypeOf((*MockLosslessCache)(nil).Initialize), c)
+}
+
+// Name mocks base method.
+func (m *MockLosslessCache) Name() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Name")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Name indicates an expected call of Name.
+func (mr *MockLosslessCacheMockRecorder) Name() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockLosslessCache)(nil).Name))
+}
+
+// Query mocks base method.
+func (m *MockLosslessCache) Query(arg0 context.Context, arg1 *cache.LosslessArgs) (uint32, []*rules.LosslessRule, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Query", arg0, arg1)
+	ret0, _ := ret[0].(uint32)
+	ret1, _ := ret[1].([]*rules.LosslessRule)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// Query indicates an expected call of Query.
+func (mr *MockLosslessCacheMockRecorder) Query(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockLosslessCache)(nil).Query), arg0, arg1)
+}
+
+// Update mocks base method.
+func (m *MockLosslessCache) Update() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockLosslessCacheMockRecorder) Update() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockLosslessCache)(nil).Update))
 }
 
 // MockConfigGroupCache is a mock of ConfigGroupCache interface.
@@ -2531,17 +2682,17 @@ func (mr *MockUserCacheMockRecorder) GetUserByID(id interface{}) *gomock.Call {
 }
 
 // GetUserByName mocks base method.
-func (m *MockUserCache) GetUserByName(name, ownerName string) *auth.User {
+func (m *MockUserCache) GetUserByName(name string) *auth.User {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserByName", name, ownerName)
+	ret := m.ctrl.Call(m, "GetUserByName", name)
 	ret0, _ := ret[0].(*auth.User)
 	return ret0
 }
 
 // GetUserByName indicates an expected call of GetUserByName.
-func (mr *MockUserCacheMockRecorder) GetUserByName(name, ownerName interface{}) *gomock.Call {
+func (mr *MockUserCacheMockRecorder) GetUserByName(name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByName", reflect.TypeOf((*MockUserCache)(nil).GetUserByName), name, ownerName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByName", reflect.TypeOf((*MockUserCache)(nil).GetUserByName), name)
 }
 
 // GetUserLinkGroupIds mocks base method.

@@ -34,6 +34,14 @@ type CircuitBreaker struct {
 	ModifyTime time.Time
 }
 
+func (r *CircuitBreaker) GetId() string {
+	return r.ID
+}
+
+func (r *CircuitBreaker) GetMtime() time.Time {
+	return r.ModifyTime
+}
+
 // ServiceWithCircuitBreaker 与服务关系绑定的熔断规则
 type ServiceWithCircuitBreaker struct {
 	ServiceID      string
@@ -162,6 +170,14 @@ type CircuitBreakerRule struct {
 	EnableTime   time.Time
 }
 
+func (r *CircuitBreakerRule) GetId() string {
+	return r.ID
+}
+
+func (r *CircuitBreakerRule) GetMtime() time.Time {
+	return r.ModifyTime
+}
+
 func (c *CircuitBreakerRule) IsServiceChange(other *CircuitBreakerRule) bool {
 	srcSvcEqual := c.SrcService == other.SrcService && c.SrcNamespace == other.SrcNamespace
 	dstSvcEqual := c.DstService == other.DstService && c.DstNamespace == other.DstNamespace
@@ -225,6 +241,14 @@ type FaultDetectRule struct {
 	CreateTime   time.Time
 	ModifyTime   time.Time
 	Proto        *apifault.FaultDetectRule
+}
+
+func (r *FaultDetectRule) GetId() string {
+	return r.ID
+}
+
+func (r *FaultDetectRule) GetMtime() time.Time {
+	return r.ModifyTime
 }
 
 func (c *FaultDetectRule) IsServiceChange(other *FaultDetectRule) bool {

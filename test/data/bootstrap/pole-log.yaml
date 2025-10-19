@@ -12,7 +12,7 @@ config:
   # The maximum preservation days of a single log file, default 7
   rotationMaxAge: 7
   # Log output level，debug/info/warn/error
-  outputLevel: debug
+  outputLevel: info
   # Open the log file compression
   compress: true
   # onlyContent just print log content, not print log timestamp
@@ -24,7 +24,7 @@ auth:
   rotationMaxSize: 100
   rotationMaxBackups: 30
   rotationMaxAge: 7
-  outputLevel: debug
+  outputLevel: info
   compress: true
   outputPaths:
   - stdout
@@ -37,7 +37,7 @@ store:
   rotationMaxSize: 100
   rotationMaxBackups: 30
   rotationMaxAge: 7
-  outputLevel: debug
+  outputLevel: info
   compress: true
 # Server cache log log
 cache:
@@ -55,7 +55,7 @@ naming:
   rotationMaxSize: 100
   rotationMaxBackups: 30
   rotationMaxAge: 7
-  outputLevel: debug
+  outputLevel: info
   compress: true
 # Service discovery institutional health check log
 healthcheck:
@@ -64,7 +64,7 @@ healthcheck:
   rotationMaxSize: 100
   rotationMaxBackups: 30
   rotationMaxAge: 7
-  outputLevel: debug
+  outputLevel: info
   compress: true
 # XDS protocol layer plug -in log
 xdsv3:
@@ -82,7 +82,7 @@ eureka:
   rotationMaxSize: 100
   rotationMaxBackups: 30
   rotationMaxAge: 7
-  outputLevel: debug
+  outputLevel: info
   compress: true
 # Apollo protocol layer plugin log
 apollo-apiserver:
@@ -91,7 +91,7 @@ apollo-apiserver:
   rotationMaxSize: 100
   rotationMaxBackups: 30
   rotationMaxAge: 7
-  outputLevel: debug
+  outputLevel: info
   compress: true
 # Nacos protocol layer plug -in log
 nacos-apiserver:
@@ -100,7 +100,7 @@ nacos-apiserver:
   rotationMaxSize: 100
   rotationMaxBackups: 30
   rotationMaxAge: 7
-  outputLevel: debug
+  outputLevel: info
   compress: true
 # APISERVER common log, record inbound request and outbound response
 apiserver:
@@ -109,12 +109,8 @@ apiserver:
   rotationMaxSize: 100
   rotationMaxBackups: 30
   rotationMaxAge: 7
-  outputLevel: debug
+  outputLevel: info
   compress: true
-  outputPaths:
-  - stdout
-  errorOutputPaths:
-  - stderr
 default:
   rotateOutputPath: ./test/output/logs/runtime/pole-default.log
   errorRotateOutputPath: ./test/output/logs/runtime/pole-default-error.log
@@ -134,7 +130,7 @@ token-bucket:
   rotationMaxSize: 100
   rotationMaxBackups: 30
   rotationMaxAge: 7
-  outputLevel: debug
+  outputLevel: info
   compress: true
 discoverstat:
   rotateOutputPath: ./test/output/logs/statis/pole-discoverstat.log
@@ -142,7 +138,7 @@ discoverstat:
   rotationMaxSize: 100
   rotationMaxBackups: 30
   rotationMaxAge: 7
-  outputLevel: debug
+  outputLevel: info
   compress: true
   onlyContent: true
 local:
@@ -151,7 +147,7 @@ local:
   rotationMaxSize: 100
   rotationMaxBackups: 30
   rotationMaxAge: 7
-  outputLevel: debug
+  outputLevel: info
   compress: true
 HistoryLogger:
   rotateOutputPath: ./test/output/logs/operation/pole-history.log
@@ -160,7 +156,7 @@ HistoryLogger:
   rotationMaxBackups: 10
   rotationMaxAge: 7
   rotationMaxDurationForHour: 24
-  outputLevel: debug
+  outputLevel: info
   onlyContent: true
 HistoryDB:
   rotateOutputPath: ./test/output/logs/operation/pole-history-db.log
@@ -169,7 +165,7 @@ HistoryDB:
   rotationMaxBackups: 10
   rotationMaxAge: 7
   rotationMaxDurationForHour: 24
-  outputLevel: debug
+  outputLevel: info
   onlyContent: true
 EventLogger:
   rotateOutputPath: ./test/output/logs/event/pole-discoverevent.log
@@ -177,7 +173,7 @@ EventLogger:
   rotationMaxSize: 100
   rotationMaxBackups: 30
   rotationMaxAge: 7
-  outputLevel: debug
+  outputLevel: info
   onlyContent: true
 EventDB:
   rotateOutputPath: ./test/output/logs/event/pole-discoverevent-db.log
@@ -185,7 +181,7 @@ EventDB:
   rotationMaxSize: 100
   rotationMaxBackups: 30
   rotationMaxAge: 7
-  outputLevel: debug
+  outputLevel: info
   onlyContent: true
 cmdb:
   rotateOutputPath: ./test/output/logs/runtime/pole-cmdb.log
@@ -193,5 +189,5 @@ cmdb:
   rotationMaxSize: 100
   rotationMaxBackups: 30
   rotationMaxAge: 7
-  outputLevel: debug
+  outputLevel: info
   compress: true

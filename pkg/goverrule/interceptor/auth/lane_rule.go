@@ -139,7 +139,7 @@ func (svr *Server) GetOneLaneGroup(ctx context.Context, req *apitraffic.LaneGrou
 
 // GetLaneGroups 查询泳道组列表
 func (svr *Server) GetLaneGroups(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse {
-	authCtx := svr.collectRuleReleases(ctx, nil, authtypes.Read, authtypes.DescribeLaneGroups)
+	authCtx := svr.collectLaneGroupAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeLaneGroups)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
 	}

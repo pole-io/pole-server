@@ -157,3 +157,15 @@ func (m *FaultDetectRuleAttr) String() string { return proto.CompactTextString(m
 
 // ProtoMessage return proto message
 func (*FaultDetectRuleAttr) ProtoMessage() {}
+
+// FaultDetectRuleAttr fault detect rule array define
+type LosslessRuleAttr []*apitraffic.LosslessRule
+
+// Reset reset initialization
+func (m *LosslessRuleAttr) Reset() { *m = LosslessRuleAttr{} }
+
+// String return string
+func (m *LosslessRuleAttr) String() string { return proto.CompactTextString(m) }
+
+// ProtoMessage return proto message
+func (*LosslessRuleAttr) ProtoMessage() {}

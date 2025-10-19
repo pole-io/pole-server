@@ -150,7 +150,7 @@ func (svr *Server) GetRateLimits(
 		return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
 			Type:     security.ResourceType_RateLimitRules,
 			ID:       cbr.ID,
-			Metadata: cbr.Proto.Metadata,
+			Metadata: cbr.Metadata,
 		})
 	})
 	authCtx.SetRequestContext(ctx)

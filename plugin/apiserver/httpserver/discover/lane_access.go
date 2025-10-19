@@ -159,6 +159,7 @@ func (h *HTTPServer) DeleteLaneGroupReleases(req *restful.Request, rsp *restful.
 	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
 		msg := &apimodel.RuleRelease{}
+		msg.Resource = apimodel.RuleRelease_LaneRules
 		rules = append(rules, msg)
 		return msg
 	})
@@ -178,6 +179,7 @@ func (h *HTTPServer) RollbackLaneGroups(req *restful.Request, rsp *restful.Respo
 	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
 		msg := &apimodel.RuleRelease{}
+		msg.Resource = apimodel.RuleRelease_LaneRules
 		rules = append(rules, msg)
 		return msg
 	})
@@ -197,6 +199,7 @@ func (h *HTTPServer) StopbetaLaneGroups(req *restful.Request, rsp *restful.Respo
 	rules := make([]*apimodel.RuleRelease, 0, 4)
 	ctx, err := handler.ParseArray(func() proto.Message {
 		msg := &apimodel.RuleRelease{}
+		msg.Resource = apimodel.RuleRelease_LaneRules
 		rules = append(rules, msg)
 		return msg
 	})
