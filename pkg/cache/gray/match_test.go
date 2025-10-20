@@ -20,7 +20,6 @@ package gray
 import (
 	"testing"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -33,7 +32,7 @@ func TestMatch(t *testing.T) {
 			Key: "ip",
 			Value: &apimodel.MatchString{
 				Type:  apimodel.MatchString_EXACT,
-				Value: &wrappers.StringValue{Value: "127.0.0.1"},
+				Value: "127.0.0.1",
 			},
 		},
 	}
@@ -49,7 +48,7 @@ func TestMatch(t *testing.T) {
 			Key: "ip",
 			Value: &apimodel.MatchString{
 				Type:  apimodel.MatchString_IN,
-				Value: &wrappers.StringValue{Value: "127.0.0.1,196.10.10.1"},
+				Value: "127.0.0.1,196.10.10.1",
 			},
 		},
 	}

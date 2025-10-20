@@ -25,7 +25,6 @@ import (
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
@@ -37,7 +36,7 @@ import (
 
 // CreateRouterRules 批量创建路由配置
 func (svr *Server) CreateRouterRules(ctx context.Context,
-	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
+	req []*apitraffic.RouteRule) *apimodel.BatchWriteResponse {
 
 	// TODO not support RouteRuleV2 resource auth, so we set op is read
 	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Create, authtypes.CreateRouteRules)
@@ -62,7 +61,7 @@ func (svr *Server) CreateRouterRules(ctx context.Context,
 
 // DeleteRouterRules 批量删除路由配置
 func (svr *Server) DeleteRouterRules(ctx context.Context,
-	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
+	req []*apitraffic.RouteRule) *apimodel.BatchWriteResponse {
 
 	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Delete, authtypes.DeleteRouteRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -86,7 +85,7 @@ func (svr *Server) DeleteRouterRules(ctx context.Context,
 
 // UpdateRouterRules 批量更新路由配置
 func (svr *Server) UpdateRouterRules(ctx context.Context,
-	req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
+	req []*apitraffic.RouteRule) *apimodel.BatchWriteResponse {
 
 	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Modify, authtypes.UpdateRouteRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -97,7 +96,7 @@ func (svr *Server) UpdateRouterRules(ctx context.Context,
 	return svr.nextSvr.UpdateRouterRules(ctx, req)
 }
 
-func (svr *Server) GetOneRouterRule(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
+func (svr *Server) GetOneRouterRule(ctx context.Context, req *apitraffic.RouteRule) *apimodel.Response {
 	authCtx := svr.collectRouteRuleV2AuthContext(ctx, []*apitraffic.RouteRule{req}, authtypes.Read, authtypes.DescribeRouteRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewResponse(authtypes.ConvertToErrCode(err))
@@ -137,7 +136,7 @@ func (svr *Server) GetOneRouterRule(ctx context.Context, req *apitraffic.RouteRu
 
 // QueryRouterRules 提供给OSS的查询路由配置的接口
 func (svr *Server) QueryRouterRules(ctx context.Context,
-	query map[string]string) *apiservice.BatchQueryResponse {
+	query map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := svr.collectRouteRuleV2AuthContext(ctx, nil, authtypes.Read, authtypes.DescribeRouteRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))

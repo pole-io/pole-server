@@ -25,7 +25,6 @@ import (
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
@@ -134,7 +133,7 @@ func (svr *Server) parseOptions(options *authapi.Config) error {
 }
 
 // Login 登录动作
-func (svr *Server) Login(req *apisecurity.LoginRequest) *apiservice.Response {
+func (svr *Server) Login(req *apisecurity.LoginRequest) *apimodel.Response {
 	username := req.GetName().GetValue()
 	user := svr.cacheMgr.User().GetUserByName(username)
 	if user == nil {

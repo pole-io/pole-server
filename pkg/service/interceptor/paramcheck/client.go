@@ -41,7 +41,7 @@ var (
 )
 
 // RegisterInstance create one instance by client
-func (s *Server) RegisterInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (s *Server) RegisterInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	// 参数检查
 	if err := checkMetadata(req.GetMetadata()); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidMetadata, req)
@@ -55,7 +55,7 @@ func (s *Server) RegisterInstance(ctx context.Context, req *apiservice.Instance)
 }
 
 // DeregisterInstance delete onr instance by client
-func (s *Server) DeregisterInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (s *Server) DeregisterInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	instanceID, resp := checkReviseInstance(req)
 	if resp != nil {
 		return resp
@@ -65,7 +65,7 @@ func (s *Server) DeregisterInstance(ctx context.Context, req *apiservice.Instanc
 }
 
 // ReportClient Client gets geographic location information
-func (s *Server) ReportClient(ctx context.Context, req *apiservice.Client) *apiservice.Response {
+func (s *Server) ReportClient(ctx context.Context, req *apiservice.Client) *apimodel.Response {
 	if s.nextSvr.Cache() == nil {
 		return api.NewResponse(apimodel.Code_ClientAPINotOpen)
 	}
@@ -102,7 +102,7 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 }
 
 // GetServiceContractWithCache User Client Get ServiceContract Rule Information
-func (s *Server) GetServiceContractWithCache(ctx context.Context, req *apiservice.ServiceContract) *apiservice.Response {
+func (s *Server) GetServiceContractWithCache(ctx context.Context, req *apiservice.ServiceContract) *apimodel.Response {
 	resp := api.NewResponse(apimodel.Code_ExecuteSuccess)
 	if !s.serviceContractCheckDiscoverRequest(req, resp) {
 		return resp
@@ -112,7 +112,7 @@ func (s *Server) GetServiceContractWithCache(ctx context.Context, req *apiservic
 }
 
 // UpdateInstance update one instance by client
-func (s *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (s *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	// 参数检查
 	if err := checkMetadata(req.GetMetadata()); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidMetadata, req)
@@ -126,7 +126,7 @@ func (s *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance) *
 }
 
 // ReportServiceContract client report service_contract
-func (s *Server) ReportServiceContract(ctx context.Context, req *apiservice.ServiceContract) *apiservice.Response {
+func (s *Server) ReportServiceContract(ctx context.Context, req *apiservice.ServiceContract) *apimodel.Response {
 	return s.nextSvr.ReportServiceContract(ctx, req)
 }
 
@@ -160,7 +160,7 @@ func (s *Server) commonCheckDiscoverRequest(req *apiservice.Service, resp *apise
 	return true
 }
 
-func (s *Server) serviceContractCheckDiscoverRequest(req *apiservice.ServiceContract, resp *apiservice.Response) bool {
+func (s *Server) serviceContractCheckDiscoverRequest(req *apiservice.ServiceContract, resp *apimodel.Response) bool {
 	svc := &apiservice.Service{
 		Name:      wrapperspb.String(req.GetService()),
 		Namespace: wrapperspb.String(req.GetNamespace()),

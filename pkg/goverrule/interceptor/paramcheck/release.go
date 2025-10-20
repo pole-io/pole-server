@@ -8,7 +8,6 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 )
 
 var (
@@ -23,7 +22,7 @@ var (
 )
 
 // PublishLaneGroups 发布多个治理规则
-func (svr *Server) PublishGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
+func (svr *Server) PublishGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
 	if len(req) == 0 {
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
@@ -34,7 +33,7 @@ func (svr *Server) PublishGovernanceRules(ctx context.Context, req []*apimodel.R
 	return svr.nextSvr.PublishGovernanceRules(ctx, req)
 }
 
-func (svr *Server) GetRuleReleases(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetRuleReleases(ctx context.Context, filter map[string]string) *apimodel.BatchQueryResponse {
 	newFilters := make(map[string]string)
 	for key := range filter {
 		if _, ok := _allowRuleReleasesFilters[key]; !ok {
@@ -65,7 +64,7 @@ func (svr *Server) GetRuleReleases(ctx context.Context, filter map[string]string
 }
 
 // DeleteLaneGroups 删除多个治理规则已发布版本
-func (svr *Server) DeleteGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
+func (svr *Server) DeleteGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
 	if len(req) == 0 {
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
@@ -77,7 +76,7 @@ func (svr *Server) DeleteGovernanceRules(ctx context.Context, req []*apimodel.Ru
 }
 
 // RollbackLaneGroups 回滚多个治理规则到目标版本
-func (svr *Server) RollbackGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
+func (svr *Server) RollbackGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
 	if len(req) == 0 {
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
@@ -89,7 +88,7 @@ func (svr *Server) RollbackGovernanceRules(ctx context.Context, req []*apimodel.
 }
 
 // StopbetaLaneGroups 停止多个治理规则灰度发布版本
-func (svr *Server) StopbetaGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
+func (svr *Server) StopbetaGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
 	if len(req) == 0 {
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}

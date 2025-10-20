@@ -25,7 +25,6 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/pkg/utils"
 )
@@ -165,9 +164,9 @@ func (c ConfigFileReleaseKey) ReleaseKey() string {
 }
 
 // BuildKeyForClientConfigFileInfo 必须保证和 ConfigFileReleaseKey.FileKey 是一样的生成规则
-func BuildKeyForClientConfigFileInfo(info *config_manage.ClientConfigFileInfo) string {
-	key := info.GetNamespace().GetValue() + "@" +
-		info.GetGroup().GetValue() + "@" + info.GetFileName().GetValue()
+func BuildKeyForClientConfigFileInfo(info *config_manage.ConfigFileRelease) string {
+	key := info.GetNamespace() + "@" +
+		info.GetGroup() + "@" + info.GetFileName()
 	return key
 }
 
@@ -210,14 +209,14 @@ func (s *SimpleConfigFileRelease) IsEncrypted() bool {
 	return s.GetEncryptDataKey() != ""
 }
 
-func (s *SimpleConfigFileRelease) ToSpecNotifyClientRequest() *config_manage.ClientConfigFileInfo {
-	return &config_manage.ClientConfigFileInfo{
-		Namespace: protobuf.NewStringValue(s.Namespace),
-		Group:     protobuf.NewStringValue(s.Group),
-		FileName:  protobuf.NewStringValue(s.FileName),
-		Name:      protobuf.NewStringValue(s.Name),
-		Md5:       protobuf.NewStringValue(s.Md5),
-		Version:   protobuf.NewUInt64Value(s.Version),
+func (s *SimpleConfigFileRelease) ToSpecNotifyClientRequest() *config_manage.ConfigFileRelease {
+	return &config_manage.ConfigFileRelease{
+		Namespace: s.Namespace,
+		Group:     s.Group,
+		FileName:  s.FileName,
+		Name:      s.Name,
+		Md5:       s.Md5,
+		Version:   s.Version,
 	}
 }
 
@@ -286,38 +285,20 @@ type ConfigFileTemplate struct {
 }
 
 func ToConfigFileStore(file *config_manage.ConfigFile) *ConfigFile {
-	var comment string
-	if file.Comment != nil {
-		comment = file.Comment.Value
-	}
-	var createBy string
-	if file.CreateBy != nil {
-		createBy = file.CreateBy.Value
-	}
-	var content string
-	if file.Content != nil {
-		content = file.Content.Value
-	}
-	var format string
-	if file.Format != nil {
-		format = file.Format.Value
-	}
-
-	metadata := ToTagMap(file.GetTags())
-	if file.GetEncryptAlgo().GetValue() != "" {
-		metadata[types.MetaKeyConfigFileEncryptAlgo] = file.GetEncryptAlgo().GetValue()
+	metadata := file.GetTags()
+	if file.GetEncryptAlgo() != "" {
+		metadata[types.MetaKeyConfigFileEncryptAlgo] = file.GetEncryptAlgo()
 	}
 
 	return &ConfigFile{
-		Name:        file.Name.GetValue(),
-		Namespace:   file.Namespace.GetValue(),
-		Group:       file.Group.GetValue(),
-		Content:     content,
-		Comment:     comment,
-		Format:      format,
-		CreateBy:    createBy,
-		Encrypt:     file.GetEncrypted().GetValue(),
-		EncryptAlgo: file.GetEncryptAlgo().GetValue(),
+		Name:        file.Name,
+		Namespace:   file.Namespace,
+		Group:       file.Group,
+		Content:     file.Content,
+		Comment:     file.Comment,
+		Format:      file.Format,
+		Encrypt:     file.GetEncrypted(),
+		EncryptAlgo: file.GetEncryptAlgo(),
 		Metadata:    metadata,
 	}
 }
@@ -327,23 +308,20 @@ func ToConfigFileAPI(file *ConfigFile) *config_manage.ConfigFile {
 		return nil
 	}
 	return &config_manage.ConfigFile{
-		Id:          protobuf.NewUInt64Value(file.Id),
-		Name:        protobuf.NewStringValue(file.Name),
-		Namespace:   protobuf.NewStringValue(file.Namespace),
-		Group:       protobuf.NewStringValue(file.Group),
-		Content:     protobuf.NewStringValue(file.Content),
-		Comment:     protobuf.NewStringValue(file.Comment),
-		Format:      protobuf.NewStringValue(file.Format),
-		Status:      protobuf.NewStringValue(file.Status),
-		Tags:        FromTagMap(file.Metadata),
-		Encrypted:   protobuf.NewBoolValue(file.IsEncrypted()),
-		EncryptAlgo: protobuf.NewStringValue(file.GetEncryptAlgo()),
-		CreateBy:    protobuf.NewStringValue(file.CreateBy),
-		ModifyBy:    protobuf.NewStringValue(file.ModifyBy),
-		ReleaseBy:   protobuf.NewStringValue(file.ReleaseBy),
-		CreateTime:  protobuf.NewStringValue(utils.Time2String(file.CreateTime)),
-		ModifyTime:  protobuf.NewStringValue(utils.Time2String(file.ModifyTime)),
-		ReleaseTime: protobuf.NewStringValue(utils.Time2String(file.ReleaseTime)),
+		Id:          file.Id,
+		Name:        file.Name,
+		Namespace:   file.Namespace,
+		Group:       file.Group,
+		Content:     file.Content,
+		Comment:     file.Comment,
+		Format:      file.Format,
+		Status:      file.Status,
+		Tags:        file.Metadata,
+		EncryptAlgo: file.GetEncryptAlgo(),
+		Encrypted:   file.IsEncrypted(),
+		Ctime:       utils.Time2String(file.CreateTime),
+		Mtime:       utils.Time2String(file.ModifyTime),
+		Rtime:       utils.Time2String(file.ReleaseTime),
 	}
 }
 
@@ -354,24 +332,22 @@ func ToConfiogFileReleaseApi(release *ConfigFileRelease) *config_manage.ConfigFi
 	}
 
 	return &config_manage.ConfigFileRelease{
-		Id:                 protobuf.NewUInt64Value(release.Id),
-		Name:               protobuf.NewStringValue(release.Name),
-		Namespace:          protobuf.NewStringValue(release.Namespace),
-		Group:              protobuf.NewStringValue(release.Group),
-		FileName:           protobuf.NewStringValue(release.FileName),
-		Format:             protobuf.NewStringValue(release.Format),
-		Content:            protobuf.NewStringValue(release.Content),
-		Comment:            protobuf.NewStringValue(release.Comment),
-		Md5:                protobuf.NewStringValue(release.Md5),
-		Version:            protobuf.NewUInt64Value(release.Version),
-		CreateBy:           protobuf.NewStringValue(release.CreateBy),
-		CreateTime:         protobuf.NewStringValue(utils.Time2String(release.CreateTime)),
-		ModifyBy:           protobuf.NewStringValue(release.ModifyBy),
-		ModifyTime:         protobuf.NewStringValue(utils.Time2String(release.ModifyTime)),
-		ReleaseDescription: protobuf.NewStringValue(release.ReleaseDescription),
-		Tags:               FromTagMap(release.Metadata),
-		Active:             protobuf.NewBoolValue(release.Active),
-		ReleaseType:        protobuf.NewStringValue(string(release.ReleaseType)),
+		Id:                 release.Id,
+		Name:               release.Name,
+		Namespace:          release.Namespace,
+		Group:              release.Group,
+		FileName:           release.FileName,
+		Format:             release.Format,
+		Content:            release.Content,
+		Comment:            release.Comment,
+		Md5:                release.Md5,
+		Version:            release.Version,
+		Ctime:              utils.Time2String(release.CreateTime),
+		Mtime:              utils.Time2String(release.ModifyTime),
+		ReleaseDescription: release.ReleaseDescription,
+		Labels:             release.Metadata,
+		Active:             release.Active,
+		ReleaseType:        string(release.ReleaseType),
 		BetaLabels:         release.BetaLabels,
 	}
 }
@@ -381,50 +357,22 @@ func ToConfigFileReleaseStore(release *config_manage.ConfigFileRelease) *ConfigF
 	if release == nil {
 		return nil
 	}
-	var comment string
-	if release.Comment != nil {
-		comment = release.Comment.Value
-	}
-	var content string
-	if release.Content != nil {
-		content = release.Content.Value
-	}
-	var md5 string
-	if release.Md5 != nil {
-		md5 = release.Md5.Value
-	}
-	var version uint64
-	if release.Version != nil {
-		version = release.Version.Value
-	}
-	var createBy string
-	if release.CreateBy != nil {
-		createBy = release.CreateBy.Value
-	}
-	var modifyBy string
-	if release.ModifyBy != nil {
-		createBy = release.ModifyBy.Value
-	}
-	var id uint64
-	if release.Id != nil {
-		id = release.Id.Value
-	}
 
 	return &ConfigFileRelease{
 		SimpleConfigFileRelease: &SimpleConfigFileRelease{
 			ConfigFileReleaseKey: &ConfigFileReleaseKey{
-				Id:        id,
-				Namespace: release.Namespace.GetValue(),
-				Group:     release.Group.GetValue(),
-				FileName:  release.FileName.GetValue(),
+				Id:        release.Id,
+				Namespace: release.Namespace,
+				Group:     release.Group,
+				FileName:  release.FileName,
 			},
-			Comment:  comment,
-			Md5:      md5,
-			Version:  version,
-			CreateBy: createBy,
-			ModifyBy: modifyBy,
+			Comment:  release.Comment,
+			Md5:      release.Md5,
+			Version:  release.Version,
+			CreateBy: release.CreateBy,
+			ModifyBy: release.ModifyBy,
 		},
-		Content: content,
+		Content: release.Content,
 	}
 }
 
@@ -433,51 +381,25 @@ func ToReleaseHistoryAPI(releaseHistory *ConfigFileReleaseHistory) *config_manag
 		return nil
 	}
 	return &config_manage.ConfigFileReleaseHistory{
-		Id:                 protobuf.NewUInt64Value(releaseHistory.Id),
-		Name:               protobuf.NewStringValue(releaseHistory.Name),
-		Namespace:          protobuf.NewStringValue(releaseHistory.Namespace),
-		Group:              protobuf.NewStringValue(releaseHistory.Group),
-		FileName:           protobuf.NewStringValue(releaseHistory.FileName),
-		Content:            protobuf.NewStringValue(releaseHistory.Content),
-		Comment:            protobuf.NewStringValue(releaseHistory.Comment),
-		Format:             protobuf.NewStringValue(releaseHistory.Format),
-		Tags:               FromTagMap(releaseHistory.Metadata),
-		Md5:                protobuf.NewStringValue(releaseHistory.Md5),
-		Type:               protobuf.NewStringValue(releaseHistory.Type),
-		Status:             protobuf.NewStringValue(releaseHistory.Status),
-		CreateBy:           protobuf.NewStringValue(releaseHistory.CreateBy),
-		CreateTime:         protobuf.NewStringValue(utils.Time2String(releaseHistory.CreateTime)),
-		ModifyBy:           protobuf.NewStringValue(releaseHistory.ModifyBy),
-		ModifyTime:         protobuf.NewStringValue(utils.Time2String(releaseHistory.ModifyTime)),
-		ReleaseDescription: protobuf.NewStringValue(releaseHistory.ReleaseDescription),
-		Reason:             protobuf.NewStringValue(releaseHistory.Reason),
+		Id:                 releaseHistory.Id,
+		Name:               releaseHistory.Name,
+		Namespace:          releaseHistory.Namespace,
+		Group:              releaseHistory.Group,
+		FileName:           releaseHistory.FileName,
+		Content:            releaseHistory.Content,
+		Comment:            releaseHistory.Comment,
+		Format:             releaseHistory.Format,
+		Md5:                releaseHistory.Md5,
+		Type:               releaseHistory.Type,
+		Status:             releaseHistory.Status,
+		CreateBy:           releaseHistory.CreateBy,
+		Ctime:              utils.Time2String(releaseHistory.CreateTime),
+		ModifyBy:           releaseHistory.ModifyBy,
+		Mtime:              utils.Time2String(releaseHistory.ModifyTime),
+		ReleaseDescription: releaseHistory.ReleaseDescription,
+		Reason:             releaseHistory.Reason,
+		Labels:             releaseHistory.Metadata,
 	}
-}
-
-type kv struct {
-	Key   string
-	Value string
-}
-
-// FromTagJson 从 Tags Json 字符串里反序列化出 Tags
-func FromTagMap(kvs map[string]string) []*config_manage.ConfigFileTag {
-	tags := make([]*config_manage.ConfigFileTag, 0, len(kvs))
-	for k, v := range kvs {
-		tags = append(tags, &config_manage.ConfigFileTag{
-			Key:   protobuf.NewStringValue(k),
-			Value: protobuf.NewStringValue(v),
-		})
-	}
-
-	return tags
-}
-
-func ToTagMap(tags []*config_manage.ConfigFileTag) map[string]string {
-	kvs := map[string]string{}
-	for i := range tags {
-		kvs[tags[i].GetKey().GetValue()] = tags[i].GetValue().GetValue()
-	}
-	return kvs
 }
 
 func ToConfigGroupAPI(group *ConfigFileGroup) *config_manage.ConfigFileGroup {
@@ -485,74 +407,54 @@ func ToConfigGroupAPI(group *ConfigFileGroup) *config_manage.ConfigFileGroup {
 		return nil
 	}
 	return &config_manage.ConfigFileGroup{
-		Id:         protobuf.NewUInt64Value(group.Id),
-		Name:       protobuf.NewStringValue(group.Name),
-		Namespace:  protobuf.NewStringValue(group.Namespace),
-		Comment:    protobuf.NewStringValue(group.Comment),
-		Owner:      protobuf.NewStringValue(group.Owner),
-		CreateBy:   protobuf.NewStringValue(group.CreateBy),
-		ModifyBy:   protobuf.NewStringValue(group.ModifyBy),
-		CreateTime: protobuf.NewStringValue(utils.Time2String(group.CreateTime)),
-		ModifyTime: protobuf.NewStringValue(utils.Time2String(group.ModifyTime)),
-		Business:   protobuf.NewStringValue(group.Business),
-		Department: protobuf.NewStringValue(group.Department),
+		Id:         group.Id,
+		Name:       group.Name,
+		Namespace:  group.Namespace,
+		Comment:    group.Comment,
+		Ctime:      utils.Time2String(group.CreateTime),
+		Mtime:      utils.Time2String(group.ModifyTime),
+		Business:   group.Business,
+		Department: group.Department,
 		Metadata:   group.Metadata,
-		Editable:   protobuf.NewBoolValue(true),
-		Deleteable: protobuf.NewBoolValue(true),
+		Editable:   true,
+		Deleteable: true,
 	}
 }
 
 func ToConfigGroupStore(group *config_manage.ConfigFileGroup) *ConfigFileGroup {
-	var comment string
-	if group.Comment != nil {
-		comment = group.Comment.Value
-	}
-	var createBy string
-	if group.CreateBy != nil {
-		createBy = group.CreateBy.Value
-	}
-	var groupOwner string
-	if group.Owner != nil && group.Owner.GetValue() != "" {
-		groupOwner = group.Owner.GetValue()
-	} else {
-		groupOwner = createBy
-	}
 	return &ConfigFileGroup{
-		Name:       group.GetName().GetValue(),
-		Namespace:  group.GetNamespace().GetValue(),
-		Comment:    comment,
-		CreateBy:   createBy,
+		Name:       group.GetName(),
+		Namespace:  group.GetNamespace(),
+		Comment:    group.Comment,
 		Valid:      true,
-		Owner:      groupOwner,
-		Business:   group.GetBusiness().GetValue(),
-		Department: group.GetDepartment().GetValue(),
+		Business:   group.GetBusiness(),
+		Department: group.GetDepartment(),
 		Metadata:   group.GetMetadata(),
 	}
 }
 
 func ToConfigFileTemplateAPI(template *ConfigFileTemplate) *config_manage.ConfigFileTemplate {
 	return &config_manage.ConfigFileTemplate{
-		Id:         protobuf.NewUInt64Value(template.Id),
-		Name:       protobuf.NewStringValue(template.Name),
-		Content:    protobuf.NewStringValue(template.Content),
-		Comment:    protobuf.NewStringValue(template.Comment),
-		Format:     protobuf.NewStringValue(template.Format),
-		CreateBy:   protobuf.NewStringValue(template.CreateBy),
-		CreateTime: protobuf.NewStringValue(utils.Time2String(template.CreateTime)),
-		ModifyBy:   protobuf.NewStringValue(template.ModifyBy),
-		ModifyTime: protobuf.NewStringValue(utils.Time2String(template.ModifyTime)),
+		Id:       template.Id,
+		Name:     template.Name,
+		Content:  template.Content,
+		Comment:  template.Comment,
+		Format:   template.Format,
+		CreateBy: template.CreateBy,
+		Ctime:    utils.Time2String(template.CreateTime),
+		Mtime:    utils.Time2String(template.ModifyTime),
 	}
 }
 
 func ToConfigFileTemplateStore(template *config_manage.ConfigFileTemplate) *ConfigFileTemplate {
 	return &ConfigFileTemplate{
-		Id:       template.Id.GetValue(),
-		Name:     template.Name.GetValue(),
-		Content:  template.Content.GetValue(),
-		Comment:  template.Comment.GetValue(),
-		Format:   template.Format.GetValue(),
-		CreateBy: template.CreateBy.GetValue(),
-		ModifyBy: template.ModifyBy.GetValue(),
+		Id:       template.Id,
+		Name:     template.Name,
+		Content:  template.Content,
+		Comment:  template.Comment,
+		Format:   template.Format,
+		CreateBy: template.CreateBy,
+		ModifyBy: template.ModifyBy,
 	}
 }
 

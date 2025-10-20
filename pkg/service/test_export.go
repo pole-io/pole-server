@@ -82,7 +82,7 @@ func TestInitialize(ctx context.Context, namingOpt *Config, cacheOpt *cache.Conf
 // TestSerialCreateInstance .
 func (s *Server) TestSerialCreateInstance(
 	ctx context.Context, svcId string, req *apiservice.Instance, ins *apiservice.Instance) (
-	*svctypes.Instance, *apiservice.Response) {
+	*svctypes.Instance, *apimodel.Response) {
 	return s.serialCreateInstance(ctx, svcId, req, ins)
 }
 

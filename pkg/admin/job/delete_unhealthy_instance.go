@@ -24,7 +24,6 @@ import (
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/service"
@@ -81,7 +80,7 @@ func (job *deleteUnHealthyInstanceJob) execute() {
 
 		var req []*apiservice.Instance
 		for _, id := range instanceIds {
-			req = append(req, &apiservice.Instance{Id: protobuf.NewStringValue(id)})
+			req = append(req, &apiservice.Instance{Id: id})
 		}
 
 		ctx, err := buildContext(job.storage)

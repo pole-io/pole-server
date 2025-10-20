@@ -49,12 +49,12 @@ var (
 )
 
 // ReportClient 客户端上报
-func (g *DiscoverGRPCServer) ReportClient(ctx context.Context, in *apiservice.Client) (*apiservice.Response, error) {
+func (g *DiscoverGRPCServer) ReportClient(ctx context.Context, in *apiservice.Client) (*apimodel.Response, error) {
 	return g.namingServer.ReportClient(utils.ConvertGRPCContext(ctx), in), nil
 }
 
 // RegisterInstance 注册服务实例
-func (g *DiscoverGRPCServer) RegisterInstance(ctx context.Context, in *apiservice.Instance) (*apiservice.Response, error) {
+func (g *DiscoverGRPCServer) RegisterInstance(ctx context.Context, in *apiservice.Instance) (*apimodel.Response, error) {
 	// 需要记录操作来源，提高效率，只针对特殊接口添加operator
 	rCtx := utils.ConvertGRPCContext(ctx)
 	rCtx = context.WithValue(rCtx, types.StringContext("operator"), ParseGrpcOperator(ctx))
@@ -76,7 +76,7 @@ func (g *DiscoverGRPCServer) RegisterInstance(ctx context.Context, in *apiservic
 
 // DeregisterInstance 反注册服务实例
 func (g *DiscoverGRPCServer) DeregisterInstance(
-	ctx context.Context, in *apiservice.Instance) (*apiservice.Response, error) {
+	ctx context.Context, in *apiservice.Instance) (*apimodel.Response, error) {
 	// 需要记录操作来源，提高效率，只针对特殊接口添加operator
 	rCtx := utils.ConvertGRPCContext(ctx)
 	rCtx = context.WithValue(rCtx, types.StringContext("operator"), ParseGrpcOperator(ctx))
@@ -194,7 +194,7 @@ func (g *DiscoverGRPCServer) handleDiscoverRequest(ctx context.Context, in *apis
 	return out
 }
 
-func (g *DiscoverGRPCServer) ReportServiceContract(ctx context.Context, in *apiservice.ServiceContract) (*apiservice.Response, error) {
+func (g *DiscoverGRPCServer) ReportServiceContract(ctx context.Context, in *apiservice.ServiceContract) (*apimodel.Response, error) {
 	// 需要记录操作来源，提高效率，只针对特殊接口添加operator
 	rCtx := utils.ConvertGRPCContext(ctx)
 	rCtx = context.WithValue(rCtx, types.StringContext("operator"), ParseGrpcOperator(ctx))
@@ -204,7 +204,7 @@ func (g *DiscoverGRPCServer) ReportServiceContract(ctx context.Context, in *apis
 }
 
 // 查询服务契约
-func (g *DiscoverGRPCServer) GetServiceContract(ctx context.Context, req *apiservice.ServiceContract) (*apiservice.Response, error) {
+func (g *DiscoverGRPCServer) GetServiceContract(ctx context.Context, req *apiservice.ServiceContract) (*apimodel.Response, error) {
 	// 需要记录操作来源，提高效率，只针对特殊接口添加operator
 	rCtx := utils.ConvertGRPCContext(ctx)
 	rCtx = context.WithValue(rCtx, types.StringContext("operator"), ParseGrpcOperator(ctx))

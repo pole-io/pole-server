@@ -787,7 +787,7 @@ func TestListInstances(t *testing.T) {
 
 // 测试list实例列表
 func TestListInstances1(t *testing.T) {
-	checkAmountAndSize := func(t *testing.T, resp *apiservice.BatchQueryResponse, expect int, size int) {
+	checkAmountAndSize := func(t *testing.T, resp *apimodel.BatchQueryResponse, expect int, size int) {
 		if !respSuccess(resp) {
 			t.Fatalf("error: %s", resp.GetInfo().GetValue())
 		}
@@ -998,7 +998,7 @@ func TestListInstances1(t *testing.T) {
 
 // 测试list实例列表
 func TestListInstances2(t *testing.T) {
-	checkAmountAndSize := func(t *testing.T, resp *apiservice.BatchQueryResponse, expect int, size int) {
+	checkAmountAndSize := func(t *testing.T, resp *apimodel.BatchQueryResponse, expect int, size int) {
 		if !respSuccess(resp) {
 			t.Fatalf("error: %s", resp.GetInfo().GetValue())
 		}
@@ -1753,7 +1753,7 @@ func TestBatchDeleteInstances(t *testing.T) {
 
 	_, service := discoverSuit.createCommonService(t, 234)
 	defer discoverSuit.cleanServiceName(service.GetName().GetValue(), service.GetNamespace().GetValue())
-	createInstances := func(t *testing.T) ([]*apiservice.Instance, *apiservice.BatchWriteResponse) {
+	createInstances := func(t *testing.T) ([]*apiservice.Instance, *apimodel.BatchWriteResponse) {
 		var instances []*apiservice.Instance
 		for j := 0; j < 100; j++ {
 			instances = append(instances, &apiservice.Instance{

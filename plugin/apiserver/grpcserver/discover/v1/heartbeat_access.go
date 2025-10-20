@@ -28,7 +28,7 @@ import (
 )
 
 // Heartbeat 上报心跳
-func (g *DiscoverGRPCServer) Heartbeat(ctx context.Context, in *apiservice.Instance) (*apiservice.Response, error) {
+func (g *DiscoverGRPCServer) Heartbeat(ctx context.Context, in *apiservice.Instance) (*apimodel.Response, error) {
 	return g.healthCheckServer.Report(utils.ConvertGRPCContext(ctx), in), nil
 }
 

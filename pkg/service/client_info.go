@@ -44,11 +44,11 @@ var (
 	}
 )
 
-func (s *Server) checkAndStoreClient(ctx context.Context, req *apiservice.Client) *apiservice.Response {
+func (s *Server) checkAndStoreClient(ctx context.Context, req *apiservice.Client) *apimodel.Response {
 	clientId := req.GetId().GetValue()
 	var needStore bool
 	client := s.caches.Client().GetClient(clientId)
-	var resp *apiservice.Response
+	var resp *apimodel.Response
 	if nil == client {
 		needStore = true
 	} else {
@@ -72,7 +72,7 @@ func (s *Server) checkAndStoreClient(ctx context.Context, req *apiservice.Client
 	return resp
 }
 
-func (s *Server) createClient(ctx context.Context, req *apiservice.Client) *apiservice.Response {
+func (s *Server) createClient(ctx context.Context, req *apiservice.Client) *apimodel.Response {
 	if namingServer.bc == nil || !namingServer.bc.ClientRegisterOpen() {
 		return nil
 	}
@@ -83,7 +83,7 @@ func (s *Server) createClient(ctx context.Context, req *apiservice.Client) *apis
 // 底层函数会合并create请求，增加并发创建的吞吐
 // req 原始请求
 // ins 包含了req数据与instanceID，serviceToken
-func (s *Server) asyncCreateClient(ctx context.Context, req *apiservice.Client) *apiservice.Response {
+func (s *Server) asyncCreateClient(ctx context.Context, req *apiservice.Client) *apimodel.Response {
 	future := s.bc.AsyncRegisterClient(req)
 	rsp, err := future.Done()
 	if err != nil {
@@ -99,7 +99,7 @@ func (s *Server) asyncCreateClient(ctx context.Context, req *apiservice.Client) 
 }
 
 // GetReportClients create one instance
-func (s *Server) GetReportClients(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (s *Server) GetReportClients(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	searchFilters := make(map[string]string)
 	var (
 		offset, limit uint32

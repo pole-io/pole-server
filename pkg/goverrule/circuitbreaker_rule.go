@@ -29,7 +29,6 @@ import (
 
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
@@ -43,7 +42,7 @@ import (
 
 // CreateCircuitBreakerRules Create a CircuitBreaker rule
 func (s *Server) CreateCircuitBreakerRules(
-	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+	ctx context.Context, request []*apifault.CircuitBreakerRule) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, cbRule := range request {
 		response := s.createCircuitBreakerRule(ctx, cbRule)
@@ -54,7 +53,7 @@ func (s *Server) CreateCircuitBreakerRules(
 
 // CreateCircuitBreakerRule Create a CircuitBreaker rule
 func (s *Server) createCircuitBreakerRule(
-	ctx context.Context, request *apifault.CircuitBreakerRule) *apiservice.Response {
+	ctx context.Context, request *apifault.CircuitBreakerRule) *apimodel.Response {
 	// 构造底层数据结构
 	data, err := api2CircuitBreakerRule(request)
 	if err != nil {
@@ -88,7 +87,7 @@ func (s *Server) createCircuitBreakerRule(
 
 // DeleteCircuitBreakerRules Delete current CircuitBreaker rules
 func (s *Server) DeleteCircuitBreakerRules(
-	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+	ctx context.Context, request []*apifault.CircuitBreakerRule) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range request {
 		resp := s.deleteCircuitBreakerRule(ctx, entry)
@@ -99,7 +98,7 @@ func (s *Server) DeleteCircuitBreakerRules(
 
 // deleteCircuitBreakerRule delete current CircuitBreaker rule
 func (s *Server) deleteCircuitBreakerRule(
-	ctx context.Context, request *apifault.CircuitBreakerRule) *apiservice.Response {
+	ctx context.Context, request *apifault.CircuitBreakerRule) *apimodel.Response {
 	resp := s.checkCircuitBreakerRuleExists(ctx, request.GetId())
 	if resp != nil {
 		if resp.GetCode().GetValue() == uint32(apimodel.Code_NotFoundCircuitBreaker) {
@@ -125,7 +124,7 @@ func (s *Server) deleteCircuitBreakerRule(
 
 // UpdateCircuitBreakerRules Modify the CircuitBreaker rule
 func (s *Server) UpdateCircuitBreakerRules(
-	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+	ctx context.Context, request []*apifault.CircuitBreakerRule) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range request {
 		response := s.updateCircuitBreakerRule(ctx, entry)
@@ -135,7 +134,7 @@ func (s *Server) UpdateCircuitBreakerRules(
 }
 
 func (s *Server) updateCircuitBreakerRule(
-	ctx context.Context, request *apifault.CircuitBreakerRule) *apiservice.Response {
+	ctx context.Context, request *apifault.CircuitBreakerRule) *apimodel.Response {
 	resp := s.checkCircuitBreakerRuleExists(ctx, request.GetId())
 	if resp != nil {
 		return resp
@@ -168,7 +167,7 @@ func (s *Server) updateCircuitBreakerRule(
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, cbRuleId)
 }
 
-func (s *Server) checkCircuitBreakerRuleExists(ctx context.Context, id string) *apiservice.Response {
+func (s *Server) checkCircuitBreakerRuleExists(ctx context.Context, id string) *apimodel.Response {
 	exists, err := s.storage.HasCircuitBreakerRule(id)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
@@ -181,7 +180,7 @@ func (s *Server) checkCircuitBreakerRuleExists(ctx context.Context, id string) *
 }
 
 // GetCircuitBreakerRules Query CircuitBreaker rules
-func (s *Server) GetCircuitBreakerRules(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (s *Server) GetCircuitBreakerRules(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	offset, limit, _ := valid.ParseOffsetAndLimit(query)
 	total, cbRules, err := s.storage.GetCircuitBreakerRules(query, offset, limit)
 	if err != nil {
@@ -210,7 +209,7 @@ func (s *Server) GetCircuitBreakerRules(ctx context.Context, query map[string]st
 }
 
 // GetOneCircuitBreakerRule Query all router_rule rules
-func (s *Server) GetOneCircuitBreakerRule(ctx context.Context, req *apifault.CircuitBreakerRule) *apiservice.Response {
+func (s *Server) GetOneCircuitBreakerRule(ctx context.Context, req *apifault.CircuitBreakerRule) *apimodel.Response {
 	saveData, err := s.storage.GetCircuitBreakerRule(req.GetId())
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))

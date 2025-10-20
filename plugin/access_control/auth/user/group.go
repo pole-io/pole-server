@@ -28,7 +28,6 @@ import (
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -47,7 +46,7 @@ type (
 )
 
 // CreateGroups 批量创建用户组
-func (svr *Server) CreateGroups(ctx context.Context, reqs []*apisecurity.UserGroup) *apiservice.BatchWriteResponse {
+func (svr *Server) CreateGroups(ctx context.Context, reqs []*apisecurity.UserGroup) *apimodel.BatchWriteResponse {
 	resp := api.NewAuthBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for index := range reqs {
 		ret := svr.CreateGroup(ctx, reqs[index])
@@ -57,7 +56,7 @@ func (svr *Server) CreateGroups(ctx context.Context, reqs []*apisecurity.UserGro
 }
 
 // CreateGroup create a group
-func (svr *Server) CreateGroup(ctx context.Context, req *apisecurity.UserGroup) *apiservice.Response {
+func (svr *Server) CreateGroup(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response {
 	ownerID := utils.ParseOwnerID(ctx)
 	req.Owner = protobuf.NewStringValue(ownerID)
 	if rsp := svr.preCheckGroupRelation(req.GetRelation()); rsp != nil {
@@ -116,7 +115,7 @@ func (svr *Server) CreateGroup(ctx context.Context, req *apisecurity.UserGroup) 
 
 // UpdateGroups 批量修改用户组
 func (svr *Server) UpdateGroups(
-	ctx context.Context, groups []*apisecurity.UserGroup) *apiservice.BatchWriteResponse {
+	ctx context.Context, groups []*apisecurity.UserGroup) *apimodel.BatchWriteResponse {
 	resp := api.NewAuthBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for index := range groups {
 		ret := svr.UpdateGroup(ctx, groups[index])
@@ -126,7 +125,7 @@ func (svr *Server) UpdateGroups(
 }
 
 // UpdateGroup 更新用户组
-func (svr *Server) UpdateGroup(ctx context.Context, req *apisecurity.UserGroup) *apiservice.Response {
+func (svr *Server) UpdateGroup(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response {
 	if checkErrResp := svr.checkUpdateGroup(ctx, req); checkErrResp != nil {
 		return checkErrResp
 	}
@@ -161,7 +160,7 @@ func (svr *Server) UpdateGroup(ctx context.Context, req *apisecurity.UserGroup) 
 }
 
 // DeleteGroups 批量删除用户组
-func (svr *Server) DeleteGroups(ctx context.Context, reqs []*apisecurity.UserGroup) *apiservice.BatchWriteResponse {
+func (svr *Server) DeleteGroups(ctx context.Context, reqs []*apisecurity.UserGroup) *apimodel.BatchWriteResponse {
 	resp := api.NewAuthBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for index := range reqs {
 		ret := svr.DeleteGroup(ctx, reqs[index])
@@ -172,7 +171,7 @@ func (svr *Server) DeleteGroups(ctx context.Context, reqs []*apisecurity.UserGro
 }
 
 // DeleteGroup 删除用户组
-func (svr *Server) DeleteGroup(ctx context.Context, req *apisecurity.UserGroup) *apiservice.Response {
+func (svr *Server) DeleteGroup(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response {
 	group, err := svr.storage.GetGroup(req.GetId().GetValue())
 	if err != nil {
 		log.Error("get group from store", utils.RequestID(ctx), zap.Error(err))
@@ -214,7 +213,7 @@ func (svr *Server) DeleteGroup(ctx context.Context, req *apisecurity.UserGroup) 
 }
 
 // GetGroups 查看用户组
-func (svr *Server) GetGroups(ctx context.Context, filters map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetGroups(ctx context.Context, filters map[string]string) *apimodel.BatchQueryResponse {
 	offset, limit, _ := valid.ParseOffsetAndLimit(filters)
 	total, groups, err := svr.cacheMgr.User().QueryUserGroups(ctx, cachetypes.UserGroupSearchArgs{
 		Filters: filters,
@@ -245,7 +244,7 @@ func (svr *Server) GetGroups(ctx context.Context, filters map[string]string) *ap
 }
 
 // GetGroup 查看对应用户组下的用户信息
-func (svr *Server) GetGroup(ctx context.Context, req *apisecurity.UserGroup) *apiservice.Response {
+func (svr *Server) GetGroup(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response {
 	if req.GetId().GetValue() == "" {
 		return api.NewAuthResponse(apimodel.Code_InvalidUserGroupID)
 	}
@@ -257,7 +256,7 @@ func (svr *Server) GetGroup(ctx context.Context, req *apisecurity.UserGroup) *ap
 }
 
 // GetGroupToken 查看用户组的token
-func (svr *Server) GetGroupToken(ctx context.Context, req *apisecurity.UserGroup) *apiservice.Response {
+func (svr *Server) GetGroupToken(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response {
 	if req.GetId().GetValue() == "" {
 		return api.NewAuthResponse(apimodel.Code_InvalidUserGroupID)
 	}
@@ -274,7 +273,7 @@ func (svr *Server) GetGroupToken(ctx context.Context, req *apisecurity.UserGroup
 }
 
 // EnableGroupToken 调整用户组 token 的使用状态 (禁用｜开启)
-func (svr *Server) EnableGroupToken(ctx context.Context, req *apisecurity.UserGroup) *apiservice.Response {
+func (svr *Server) EnableGroupToken(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response {
 	group, errResp := svr.getGroupFromDB(req.Id.GetValue())
 	if errResp != nil {
 		return errResp
@@ -304,7 +303,7 @@ func (svr *Server) EnableGroupToken(ctx context.Context, req *apisecurity.UserGr
 }
 
 // ResetGroupToken 刷新用户组的token
-func (svr *Server) ResetGroupToken(ctx context.Context, req *apisecurity.UserGroup) *apiservice.Response {
+func (svr *Server) ResetGroupToken(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response {
 	var (
 		group, errResp = svr.getGroupFromDB(req.Id.GetValue())
 	)
@@ -344,7 +343,7 @@ func (svr *Server) ResetGroupToken(ctx context.Context, req *apisecurity.UserGro
 }
 
 // getGroupFromDB 获取用户组
-func (svr *Server) getGroupFromDB(id string) (*authtypes.UserGroupDetail, *apiservice.Response) {
+func (svr *Server) getGroupFromDB(id string) (*authtypes.UserGroupDetail, *apimodel.Response) {
 	group, err := svr.storage.GetGroup(id)
 	if err != nil {
 		log.Error("get group from store", zap.Error(err))
@@ -357,7 +356,7 @@ func (svr *Server) getGroupFromDB(id string) (*authtypes.UserGroupDetail, *apise
 }
 
 // preCheckGroupRelation 检查用户-用户组关联关系中，对应的用户信息是否存在，即不能添加一个不存在的用户到用户组
-func (svr *Server) preCheckGroupRelation(req *apisecurity.UserGroupRelation) *apiservice.Response {
+func (svr *Server) preCheckGroupRelation(req *apisecurity.UserGroupRelation) *apimodel.Response {
 	// 检查该关系中所有的用户是否存在
 	uIDs := make([]string, len(req.GetUsers()))
 	for i := range req.GetUsers() {
@@ -376,7 +375,7 @@ func (svr *Server) preCheckGroupRelation(req *apisecurity.UserGroupRelation) *ap
 }
 
 // checkUpdateGroup 检查用户组的更新请求
-func (svr *Server) checkUpdateGroup(ctx context.Context, req *apisecurity.UserGroup) *apiservice.Response {
+func (svr *Server) checkUpdateGroup(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response {
 	if req == nil {
 		return api.NewGroupResponse(apimodel.Code_EmptyRequest, req)
 	}

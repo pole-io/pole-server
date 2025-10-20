@@ -31,13 +31,11 @@ import (
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	revisionapi "github.com/pole-io/pole-server/apis/pkg/utils/revision"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
-	commonatomic "github.com/pole-io/pole-server/pkg/common/syncs/atomic"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	matchs "github.com/pole-io/pole-server/pkg/common/utils/match"
@@ -135,21 +133,21 @@ func (rc *RouteRuleCache) ListRouterRule(service, namespace string) []*rules.Ext
 }
 
 // GetRouterRule Obtain routing configuration based on serviceid
-func (rc *RouteRuleCache) GetRouterRule(id, service, namespace string) (*apitraffic.Routing, error) {
+func (rc *RouteRuleCache) GetRouterRule(id, service, namespace string) ([]*apitraffic.RouteRule, string, error) {
 	if id == "" && service == "" && namespace == "" {
-		return nil, nil
+		return nil, "", nil
 	}
 
 	routerRules := rc.container.SearchCustomRules(service, namespace)
 	revisions := make([]string, 0, len(routerRules))
-	rulesV2 := make([]*apitraffic.RouteRule, 0, len(routerRules))
+	rules := make([]*apitraffic.RouteRule, 0, len(routerRules))
 	for i := range routerRules {
 		item := routerRules[i]
 		entry, err := item.ToApi()
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
-		rulesV2 = append(rulesV2, entry)
+		rules = append(rules, entry)
 		revisions = append(revisions, entry.GetRevision())
 	}
 	revision, err := revisionapi.CompositeComputeRevision(revisions)
@@ -158,42 +156,7 @@ func (rc *RouteRuleCache) GetRouterRule(id, service, namespace string) (*apitraf
 		revision = utils.NewRevision()
 	}
 
-	resp := &apitraffic.Routing{
-		Namespace: protobuf.NewStringValue(namespace),
-		Service:   protobuf.NewStringValue(service),
-		Rules:     rulesV2,
-		Revision:  protobuf.NewStringValue(revision),
-	}
-	return resp, nil
-}
-
-// GetOldRouterRule Obtain routing configuration based on serviceid
-func (rc *RouteRuleCache) GetOldRouterRule(id, svcName, namespace string) (*apitraffic.Routing, error) {
-	if id == "" && svcName == "" && namespace == "" {
-		return nil, nil
-	}
-
-	key := svctypes.ServiceKey{Namespace: namespace, Name: svcName}
-
-	revisions := []string{}
-	inRule, inRevision := rc.container.customContainers[rules.TrafficDirection_INBOUND].SearchCustomRuleV1(key)
-	revisions = append(revisions, inRevision...)
-	outRule, outRevision := rc.container.customContainers[rules.TrafficDirection_OUTBOUND].SearchCustomRuleV1(key)
-	revisions = append(revisions, outRevision...)
-
-	revision, err := revisionapi.CompositeComputeRevision(revisions)
-	if err != nil {
-		log.Warn("[Cache][Routing] v2=>v1 compute revisions fail, use fake revision", zap.Error(err))
-		revision = utils.NewRevision()
-	}
-
-	return &apitraffic.Routing{
-		Namespace: protobuf.NewStringValue(namespace),
-		Service:   protobuf.NewStringValue(svcName),
-		Inbounds:  inRule.Inbounds,
-		Outbounds: outRule.Outbounds,
-		Revision:  protobuf.NewStringValue(revision),
-	}, nil
+	return rules, revision, nil
 }
 
 // GetNearbyRouteRule 根据服务名查询就近路由数据
@@ -313,8 +276,6 @@ type ServiceWithRouterRules struct {
 	sortKeys []string
 	rules    map[string]*rules.RouterRuleRelease
 	revision string
-
-	customv1RuleRef *commonatomic.AtomicValue[*apitraffic.Routing]
 }
 
 func NewServiceWithRouterRules(svcKey svctypes.ServiceKey, direction rules.TrafficDirection) *ServiceWithRouterRules {
@@ -327,13 +288,6 @@ func NewServiceWithRouterRules(svcKey svctypes.ServiceKey, direction rules.Traff
 
 // AddRouterRule 添加路由规则，注意，这里只会保留处于 Enable 状态的路由规则
 func (s *ServiceWithRouterRules) AddRouterRule(rule *rules.RouterRuleRelease) {
-	if rule.Rule.GetRoutingPolicy() == apitraffic.RoutingPolicy_RulePolicy {
-		s.customv1RuleRef = commonatomic.NewAtomicValue[*apitraffic.Routing](&apitraffic.Routing{
-			Inbounds:  []*apitraffic.Route{},
-			Outbounds: []*apitraffic.Route{},
-		})
-	}
-
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	if !rule.Active {
@@ -368,13 +322,6 @@ func (s *ServiceWithRouterRules) CountRouterRules() int {
 	return len(s.rules)
 }
 
-func (s *ServiceWithRouterRules) GetRouteRuleV1() *apitraffic.Routing {
-	if !s.customv1RuleRef.HasValue() {
-		return nil
-	}
-	return s.customv1RuleRef.Load()
-}
-
 func (s *ServiceWithRouterRules) Clear() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -388,7 +335,6 @@ func (s *ServiceWithRouterRules) reload() {
 
 	s.reloadRuleOrder()
 	s.reloadRevision()
-	s.reloadV1Rules()
 }
 
 func (s *ServiceWithRouterRules) reloadRuleOrder() {
@@ -415,40 +361,6 @@ func (s *ServiceWithRouterRules) reloadRevision() {
 		revisioins = append(revisioins, strconv.Itoa(int(s.rules[s.sortKeys[i]].Version)))
 	}
 	s.revision, _ = revisionapi.CompositeComputeRevision(revisioins)
-}
-
-func (s *ServiceWithRouterRules) reloadV1Rules() {
-	if !s.customv1RuleRef.HasValue() {
-		return
-	}
-
-	routerrules := make([]*rules.RouterRuleRelease, 0, 32)
-	for i := range s.sortKeys {
-		rule, ok := s.rules[s.sortKeys[i]]
-		if !ok {
-			continue
-		}
-		routerrules = append(routerrules, rule)
-	}
-
-	routes := make([]*apitraffic.Route, 0, 32)
-
-	for i := range routerrules {
-		if routerrules[i].Rule.Policy != apitraffic.RoutingPolicy_RulePolicy.String() {
-			continue
-		}
-		routes = append(routes, rules.BuildRoutes(routerrules[i].Rule, s.direction)...)
-	}
-
-	customv1Rules := &apitraffic.Routing{}
-	switch s.direction {
-	case rules.TrafficDirection_INBOUND:
-		customv1Rules.Inbounds = routes
-	case rules.TrafficDirection_OUTBOUND:
-		customv1Rules.Outbounds = routes
-	}
-
-	s.customv1RuleRef.Store(customv1Rules)
 }
 
 func newClientRouteRuleContainer(direction rules.TrafficDirection) *ClientRouteRuleContainer {
@@ -501,52 +413,6 @@ func (c *ClientRouteRuleContainer) SearchRouteRuleV2(svc svctypes.ServiceKey) []
 		return ret[i].Priority < ret[j].Priority
 	})
 	return ret
-}
-
-// SearchCustomRuleV1 针对 v1 客户端拉取路由规则
-func (c *ClientRouteRuleContainer) SearchCustomRuleV1(svc svctypes.ServiceKey) (*apitraffic.Routing, []string) {
-	ret := &apitraffic.Routing{
-		Inbounds:  make([]*apitraffic.Route, 0, 8),
-		Outbounds: make([]*apitraffic.Route, 0, 8),
-	}
-	exactRule, existExactRule := c.exactRules.Load(svc.Domain())
-	nsWildcardRule, existNsWildcardRule := c.nsWildcardRules.Load(svc.Namespace)
-
-	revisions := make([]string, 0, 2)
-
-	switch c.direction {
-	case rules.TrafficDirection_INBOUND:
-		if existExactRule {
-			ret.Inbounds = append(ret.Inbounds, exactRule.GetRouteRuleV1().GetInbounds()...)
-		}
-		if existNsWildcardRule {
-			ret.Inbounds = append(ret.Inbounds, nsWildcardRule.GetRouteRuleV1().GetInbounds()...)
-		}
-	default:
-		if existExactRule {
-			ret.Outbounds = append(ret.Outbounds, exactRule.GetRouteRuleV1().GetOutbounds()...)
-			revisions = append(revisions, exactRule.revision)
-		}
-		if existNsWildcardRule {
-			ret.Outbounds = append(ret.Outbounds, nsWildcardRule.GetRouteRuleV1().GetOutbounds()...)
-		}
-	}
-	if existExactRule {
-		revisions = append(revisions, exactRule.revision)
-	}
-	if existNsWildcardRule {
-		revisions = append(revisions, nsWildcardRule.revision)
-	}
-
-	// 最终在做一次排序
-	sort.Slice(ret.Inbounds, func(i, j int) bool {
-		return rules.CompareRoutingV1(ret.Inbounds[i], ret.Inbounds[j])
-	})
-	sort.Slice(ret.Outbounds, func(i, j int) bool {
-		return rules.CompareRoutingV1(ret.Outbounds[i], ret.Outbounds[j])
-	})
-
-	return ret, revisions
 }
 
 func (c *ClientRouteRuleContainer) SaveRule(svcKey svctypes.ServiceKey, item *rules.RouterRuleRelease) {
@@ -648,11 +514,11 @@ func (b *RouteRuleContainer) saveV2(conf *rules.RouterRuleRelease) {
 		container.SaveRule(svcKey, conf)
 	}
 
-	switch conf.Rule.GetRoutingPolicy() {
-	case apitraffic.RoutingPolicy_RulePolicy:
+	switch conf.Rule.GetRoutePolicy() {
+	case apitraffic.RoutePolicy_RulePolicy:
 		handler(b.customContainers[rules.TrafficDirection_OUTBOUND], conf.Rule.RuleRouting.Caller)
 		handler(b.customContainers[rules.TrafficDirection_INBOUND], conf.Rule.RuleRouting.Callee)
-	case apitraffic.RoutingPolicy_NearbyPolicy:
+	case apitraffic.RoutePolicy_NearbyPolicy:
 		handler(b.nearbyContainers, svctypes.ServiceKey{
 			Namespace: conf.Rule.NearbyRouting.Namespace,
 			Name:      conf.Rule.NearbyRouting.Service,
@@ -673,11 +539,11 @@ func (b *RouteRuleContainer) deleteV2(id string) {
 		container.RemoveRule(svcKey, id)
 	}
 
-	switch rule.Rule.GetRoutingPolicy() {
-	case apitraffic.RoutingPolicy_RulePolicy:
+	switch rule.Rule.GetRoutePolicy() {
+	case apitraffic.RoutePolicy_RulePolicy:
 		handler(b.customContainers[rules.TrafficDirection_OUTBOUND], rule.Rule.RuleRouting.Caller)
 		handler(b.customContainers[rules.TrafficDirection_INBOUND], rule.Rule.RuleRouting.Callee)
-	case apitraffic.RoutingPolicy_NearbyPolicy:
+	case apitraffic.RoutePolicy_NearbyPolicy:
 		handler(b.nearbyContainers, svctypes.ServiceKey{
 			Namespace: rule.Rule.NearbyRouting.Namespace,
 			Name:      rule.Rule.NearbyRouting.Service,
@@ -779,67 +645,53 @@ func queryRoutingRuleV2ByService(rule *rules.ExtendRouterConfig, sourceNamespace
 	destService, isWildDestSvc := matchs.ParseWildName(destService)
 	destNamespace, isWildDestNamespace := matchs.ParseWildName(destNamespace)
 
-	for i := range rule.RuleRouting.RuleRouting.Rules {
-		subRule := rule.RuleRouting.RuleRouting.Rules[i]
-		sources := subRule.GetSources()
-		if hasSourceNamespace || hasSourceSvc {
-			for i := range sources {
-				item := sources[i]
-				if hasSourceSvc {
-					if isWildSourceSvc {
-						if !strings.Contains(item.Service, sourceService) {
-							continue
-						}
-					} else if item.Service != sourceService {
-						continue
-					}
+	customRule := rule.RuleRouting.RuleRouting
+	if hasSourceNamespace || hasSourceSvc {
+		if hasSourceSvc {
+			if isWildSourceSvc {
+				if !strings.Contains(customRule.GetCaller().Service, sourceService) {
+					return false
 				}
-				if hasSourceNamespace {
-					if isWildSourceNamespace {
-						if !strings.Contains(item.Namespace, sourceNamespace) {
-							continue
-						}
-					} else if item.Namespace != sourceNamespace {
-						continue
-					}
-				}
-				sourceFind = true
-				break
+			} else if customRule.GetCaller().Service != sourceService {
+				return false
 			}
 		}
-
-		destinations := subRule.GetDestinations()
-		if hasDestNamespace || hasDestSvc {
-			for i := range destinations {
-				item := destinations[i]
-				if hasDestSvc {
-					if isWildDestSvc && !strings.Contains(item.Service, destService) {
-						continue
-					}
-					if item.Service != destService {
-						continue
-					}
+		if hasSourceNamespace {
+			if isWildSourceNamespace {
+				if !strings.Contains(customRule.GetCaller().Namespace, sourceNamespace) {
+					return false
 				}
-				if hasDestNamespace {
-					if isWildDestNamespace && !strings.Contains(item.Namespace, destNamespace) {
-						continue
-					}
-					if item.Namespace != destNamespace {
-						continue
-					}
-				}
-				destFind = true
-				break
+			} else if customRule.GetCaller().Namespace != sourceNamespace {
+				return false
 			}
 		}
+	}
 
-		if both {
-			if sourceFind && destFind {
-				return true
+	if hasDestNamespace || hasDestSvc {
+		if hasDestSvc {
+			if isWildDestSvc && !strings.Contains(customRule.GetCallee().Service, destService) {
+				return false
 			}
-		} else if sourceFind || destFind {
+			if customRule.GetCallee().Service != destService {
+				return false
+			}
+		}
+		if hasDestNamespace {
+			if isWildDestNamespace && !strings.Contains(customRule.GetCallee().Namespace, destNamespace) {
+				return false
+			}
+			if customRule.GetCallee().Namespace != destNamespace {
+				return false
+			}
+		}
+	}
+
+	if both {
+		if sourceFind && destFind {
 			return true
 		}
+	} else if sourceFind || destFind {
+		return true
 	}
 	return false
 }
@@ -861,7 +713,7 @@ func (rc *RouteRuleCache) QueryRouterRules(ctx context.Context, args *cacheapi.R
 			return
 		}
 
-		if routeRule.GetRoutingPolicy() == apitraffic.RoutingPolicy_RulePolicy {
+		if routeRule.GetRoutePolicy() == apitraffic.RoutePolicy_NearbyPolicy {
 			if args.Namespace != "" {
 				if args.SourceNamespace == "" {
 					args.SourceNamespace = args.Namespace

@@ -151,7 +151,7 @@ func (c *clientCache) setClients(clients map[string]*types.Client) (map[string]t
 			lastMtime = modifyTime
 		}
 
-		id := client.Proto().GetId().GetValue()
+		id := client.Proto().GetId()
 		_, itemExist := c.getClient(id)
 		// 待删除的instance
 		if !client.Valid() {
@@ -237,16 +237,16 @@ func (c *clientCache) GetClientsByFilter(filters map[string]string, offset, limi
 		id, hasId           = filters["id"]
 	)
 	c.IteratorClients(func(_ string, value *types.Client) bool {
-		if hasHost && value.Proto().GetHost().GetValue() != host {
+		if hasHost && value.Proto().GetHost() != host {
 			return true
 		}
 		if hasType && value.Proto().GetType().String() != clientType {
 			return true
 		}
-		if hasVer && value.Proto().GetVersion().GetValue() != version {
+		if hasVer && value.Proto().GetVersion() != version {
 			return true
 		}
-		if hasId && value.Proto().GetId().GetValue() != id {
+		if hasId && value.Proto().GetId() != id {
 			return true
 		}
 

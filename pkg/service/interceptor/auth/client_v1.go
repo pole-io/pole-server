@@ -33,7 +33,7 @@ import (
 )
 
 // RegisterInstance create one instance
-func (svr *Server) RegisterInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (svr *Server) RegisterInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	authCtx := svr.collectClientInstanceAuthContext(
 		ctx, []*apiservice.Instance{req}, authtypes.Create, authtypes.RegisterInstance)
 
@@ -50,7 +50,7 @@ func (svr *Server) RegisterInstance(ctx context.Context, req *apiservice.Instanc
 }
 
 // DeregisterInstance delete onr instance
-func (svr *Server) DeregisterInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (svr *Server) DeregisterInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	authCtx := svr.collectClientInstanceAuthContext(
 		ctx, []*apiservice.Instance{req}, authtypes.Create, authtypes.DeregisterInstance)
 
@@ -65,12 +65,12 @@ func (svr *Server) DeregisterInstance(ctx context.Context, req *apiservice.Insta
 }
 
 // ReportClient is the interface for reporting client authability
-func (svr *Server) ReportClient(ctx context.Context, req *apiservice.Client) *apiservice.Response {
+func (svr *Server) ReportClient(ctx context.Context, req *apiservice.Client) *apimodel.Response {
 	return svr.nextSvr.ReportClient(ctx, req)
 }
 
 // ReportServiceContract .
-func (svr *Server) ReportServiceContract(ctx context.Context, req *apiservice.ServiceContract) *apiservice.Response {
+func (svr *Server) ReportServiceContract(ctx context.Context, req *apiservice.ServiceContract) *apimodel.Response {
 	authCtx := svr.collectServiceAuthContext(
 		ctx, []*apiservice.Service{{
 			Name:      wrapperspb.String(req.GetService()),
@@ -126,7 +126,7 @@ func (svr *Server) ServiceInstancesCache(
 }
 
 // UpdateInstance update single instance
-func (svr *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (svr *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	authCtx := svr.collectClientInstanceAuthContext(
 		ctx, []*apiservice.Instance{req}, authtypes.Modify, authtypes.UpdateInstance)
 
@@ -142,7 +142,7 @@ func (svr *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance)
 
 // GetServiceContractWithCache User Client Get ServiceContract Rule Information
 func (svr *Server) GetServiceContractWithCache(ctx context.Context,
-	req *apiservice.ServiceContract) *apiservice.Response {
+	req *apiservice.ServiceContract) *apimodel.Response {
 	authCtx := svr.collectServiceAuthContext(ctx, []*apiservice.Service{{
 		Namespace: wrapperspb.String(req.Namespace),
 		Name:      wrapperspb.String(req.Service),

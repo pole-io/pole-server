@@ -165,39 +165,39 @@ func (ic *instanceCache) QueryInstances(filter, metaFilter map[string]string,
 		if args.SvcNs != nil && !matchs.IsWildMatch(svc.Namespace, *args.SvcNs) {
 			return true, nil
 		}
-		if args.InstanceID != nil && !matchs.IsWildMatch(value.Proto.GetId().GetValue(), *args.InstanceID) {
+		if args.InstanceID != nil && !matchs.IsWildMatch(value.Proto.GetId(), *args.InstanceID) {
 			return true, nil
 		}
 		if len(args.Hosts) != 0 {
-			if _, ok := args.Hosts[value.Proto.GetHost().GetValue()]; !ok {
+			if _, ok := args.Hosts[value.Proto.GetHost()]; !ok {
 				return true, nil
 			}
 		}
-		if args.Port != nil && value.Proto.GetPort().GetValue() != *args.Port {
+		if args.Port != nil && value.Proto.GetPort() != *args.Port {
 			return true, nil
 		}
-		if args.Isolate != nil && value.Proto.GetIsolate().GetValue() != *args.Isolate {
+		if args.Isolate != nil && value.Proto.GetIsolate() != *args.Isolate {
 			return true, nil
 		}
-		if args.HealthStatus != nil && value.Proto.GetHealthy().GetValue() != *args.HealthStatus {
+		if args.HealthStatus != nil && value.Proto.GetHealthy() != *args.HealthStatus {
 			return true, nil
 		}
-		if args.Weight != nil && value.Proto.GetWeight().GetValue() != *args.Weight {
+		if args.Weight != nil && value.Proto.GetWeight() != *args.Weight {
 			return true, nil
 		}
-		if args.Region != nil && value.Proto.GetLocation().GetRegion().GetValue() != *args.Region {
+		if args.Region != nil && value.Proto.GetLocation().GetRegion() != *args.Region {
 			return true, nil
 		}
-		if args.Zone != nil && value.Proto.GetLocation().GetZone().GetValue() != *args.Zone {
+		if args.Zone != nil && value.Proto.GetLocation().GetZone() != *args.Zone {
 			return true, nil
 		}
-		if args.Campus != nil && value.Proto.GetLocation().GetCampus().GetValue() != *args.Campus {
+		if args.Campus != nil && value.Proto.GetLocation().GetCampus() != *args.Campus {
 			return true, nil
 		}
-		if args.Protocol != nil && value.Proto.GetProtocol().GetValue() != *args.Protocol {
+		if args.Protocol != nil && value.Proto.GetProtocol() != *args.Protocol {
 			return true, nil
 		}
-		if args.Version != nil && value.Proto.GetVersion().GetValue() != *args.Version {
+		if args.Version != nil && value.Proto.GetVersion() != *args.Version {
 			return true, nil
 		}
 		if len(metaFilter) > 0 {

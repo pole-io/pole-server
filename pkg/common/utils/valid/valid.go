@@ -352,7 +352,7 @@ func CheckDbMetaDataFieldLen(metaData map[string]string) error {
 }
 
 // CheckInstanceTetrad 根据服务实例四元组计算ID
-func CheckInstanceTetrad(req *apiservice.Instance) (string, *apiservice.Response) {
+func CheckInstanceTetrad(req *apiservice.Instance) (string, *apimodel.Response) {
 	if err := CheckResourceName(req.GetService()); err != nil {
 		return "", api.NewInstanceResponse(apimodel.Code_InvalidServiceName, req)
 	}
@@ -387,7 +387,7 @@ func CheckInstanceTetrad(req *apiservice.Instance) (string, *apiservice.Response
 }
 
 // CheckContractTetrad 根据服务实例四元组计算ID
-func CheckContractTetrad(req *apiservice.ServiceContract) (string, *apiservice.Response) {
+func CheckContractTetrad(req *apiservice.ServiceContract) (string, *apimodel.Response) {
 	str := fmt.Sprintf("%s##%s##%s##%s##%s", req.GetNamespace(), req.GetService(), req.GetName(),
 		req.GetProtocol(), req.GetVersion())
 

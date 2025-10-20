@@ -30,7 +30,6 @@ import (
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
@@ -50,7 +49,7 @@ type (
 )
 
 // CreateUsers 批量创建用户
-func (svr *Server) CreateUsers(ctx context.Context, req []*apisecurity.User) *apiservice.BatchWriteResponse {
+func (svr *Server) CreateUsers(ctx context.Context, req []*apisecurity.User) *apimodel.BatchWriteResponse {
 	batchResp := api.NewAuthBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 
 	for i := range req {
@@ -62,7 +61,7 @@ func (svr *Server) CreateUsers(ctx context.Context, req []*apisecurity.User) *ap
 }
 
 // CreateUser 创建用户
-func (svr *Server) CreateUser(ctx context.Context, req *apisecurity.User) *apiservice.Response {
+func (svr *Server) CreateUser(ctx context.Context, req *apisecurity.User) *apimodel.Response {
 	ownerID := utils.ParseOwnerID(ctx)
 	req.Owner = protobuf.NewStringValue(ownerID)
 
@@ -94,7 +93,7 @@ func (svr *Server) CreateUser(ctx context.Context, req *apisecurity.User) *apise
 	return svr.createUser(ctx, req)
 }
 
-func (svr *Server) createUser(ctx context.Context, req *apisecurity.User) *apiservice.Response {
+func (svr *Server) createUser(ctx context.Context, req *apisecurity.User) *apimodel.Response {
 	data, err := svr.createUserModel(req, authtypes.SubAccountUserRole)
 	if err != nil {
 		log.Error("[Auth][User] create user model", utils.RequestID(ctx), zap.Error(err))
@@ -140,7 +139,7 @@ func (svr *Server) createUser(ctx context.Context, req *apisecurity.User) *apise
 }
 
 // UpdateUsers 更新用户信息，仅能修改 comment 以及账户密码
-func (svr *Server) UpdateUsers(ctx context.Context, reqs []*apisecurity.User) *apiservice.BatchWriteResponse {
+func (svr *Server) UpdateUsers(ctx context.Context, reqs []*apisecurity.User) *apimodel.BatchWriteResponse {
 	batchResp := api.NewAuthBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 
 	for i := range reqs {
@@ -152,7 +151,7 @@ func (svr *Server) UpdateUsers(ctx context.Context, reqs []*apisecurity.User) *a
 }
 
 // UpdateUser 更新用户信息，仅能修改 comment 以及账户密码
-func (svr *Server) UpdateUser(ctx context.Context, req *apisecurity.User) *apiservice.Response {
+func (svr *Server) UpdateUser(ctx context.Context, req *apisecurity.User) *apimodel.Response {
 	user, err := svr.storage.GetUser(req.Id.GetValue())
 	if err != nil {
 		log.Error("[Auth][User] get user", utils.RequestID(ctx), zap.String("user-id", req.GetId().GetValue()), zap.Error(err))
@@ -184,7 +183,7 @@ func (svr *Server) UpdateUser(ctx context.Context, req *apisecurity.User) *apise
 }
 
 // UpdateUserPassword 更新用户密码信息
-func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.ModifyUserPassword) *apiservice.Response {
+func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.ModifyUserPassword) *apimodel.Response {
 	user, err := svr.storage.GetUser(req.Id.GetValue())
 	if err != nil {
 		log.Error("[Auth][User] get user", utils.RequestID(ctx),
@@ -221,7 +220,7 @@ func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.Modi
 }
 
 // DeleteUsers 批量删除用户
-func (svr *Server) DeleteUsers(ctx context.Context, reqs []*apisecurity.User) *apiservice.BatchWriteResponse {
+func (svr *Server) DeleteUsers(ctx context.Context, reqs []*apisecurity.User) *apimodel.BatchWriteResponse {
 	resp := api.NewAuthBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 
 	for index := range reqs {
@@ -237,7 +236,7 @@ func (svr *Server) DeleteUsers(ctx context.Context, reqs []*apisecurity.User) *a
 // Case 2. 删除主账户，如果主账户下还存在子账户，必须先删除子账户，才能删除主账户
 // Case 3. 主账户角色下，只能删除自己创建的子账户
 // Case 4. 超级账户角色下，可以删除任意账户
-func (svr *Server) DeleteUser(ctx context.Context, req *apisecurity.User) *apiservice.Response {
+func (svr *Server) DeleteUser(ctx context.Context, req *apisecurity.User) *apimodel.Response {
 	user, err := svr.storage.GetUser(req.Id.GetValue())
 	if err != nil {
 		log.Error("[Auth][User] get user from store", utils.RequestID(ctx), zap.Error(err))
@@ -296,7 +295,7 @@ func (svr *Server) DeleteUser(ctx context.Context, req *apisecurity.User) *apise
 }
 
 // GetUsers 查询用户列表
-func (svr *Server) GetUsers(ctx context.Context, filters map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetUsers(ctx context.Context, filters map[string]string) *apimodel.BatchQueryResponse {
 	offset, limit, _ := valid.ParseOffsetAndLimit(filters)
 
 	total, users, err := svr.cacheMgr.User().QueryUsers(ctx, cachetypes.UserSearchArgs{
@@ -318,7 +317,7 @@ func (svr *Server) GetUsers(ctx context.Context, filters map[string]string) *api
 }
 
 // GetUserToken 获取用户 token
-func (svr *Server) GetUserToken(ctx context.Context, req *apisecurity.User) *apiservice.Response {
+func (svr *Server) GetUserToken(ctx context.Context, req *apisecurity.User) *apimodel.Response {
 	var user *authtypes.User
 	if req.GetId().GetValue() != "" {
 		user = svr.cacheMgr.User().GetUserByID(req.GetId().GetValue())
@@ -343,7 +342,7 @@ func (svr *Server) GetUserToken(ctx context.Context, req *apisecurity.User) *api
 }
 
 // EnableUserToken 更新用户 token
-func (svr *Server) EnableUserToken(ctx context.Context, req *apisecurity.User) *apiservice.Response {
+func (svr *Server) EnableUserToken(ctx context.Context, req *apisecurity.User) *apimodel.Response {
 	user, err := svr.storage.GetUser(req.GetId().GetValue())
 	if err != nil {
 		log.Error("[Auth][User] get user from store", utils.RequestID(ctx), zap.Error(err))
@@ -368,7 +367,7 @@ func (svr *Server) EnableUserToken(ctx context.Context, req *apisecurity.User) *
 }
 
 // ResetUserToken 重置用户 token
-func (svr *Server) ResetUserToken(ctx context.Context, req *apisecurity.User) *apiservice.Response {
+func (svr *Server) ResetUserToken(ctx context.Context, req *apisecurity.User) *apimodel.Response {
 	user, err := svr.storage.GetUser(req.Id.GetValue())
 	if err != nil {
 		log.Error("[Auth][User] get user from store", utils.RequestID(ctx), zap.Error(err))

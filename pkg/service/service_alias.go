@@ -52,7 +52,7 @@ var (
 )
 
 // CreateServiceAlias 创建服务别名
-func (s *Server) CreateServiceAlias(ctx context.Context, req *apiservice.ServiceAlias) *apiservice.Response {
+func (s *Server) CreateServiceAlias(ctx context.Context, req *apiservice.ServiceAlias) *apimodel.Response {
 	tx, err := s.storage.CreateTransaction()
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
@@ -106,7 +106,7 @@ func (s *Server) CreateServiceAlias(ctx context.Context, req *apiservice.Service
 }
 
 func (s *Server) checkPointServiceAlias(ctx context.Context,
-	tx store.Transaction, req *apiservice.ServiceAlias) (*svctypes.Service, *apiservice.Response, bool) {
+	tx store.Transaction, req *apiservice.ServiceAlias) (*svctypes.Service, *apimodel.Response, bool) {
 	// 检查指向服务是否存在以及是否为别名
 	service, err := tx.LockService(req.GetService().GetValue(), req.GetNamespace().GetValue())
 	if err != nil {
@@ -127,7 +127,7 @@ func (s *Server) checkPointServiceAlias(ctx context.Context,
 //
 //	需要带上源服务name，namespace，token
 //	另外一种删除别名的方式，是直接调用删除服务的接口，也是可行的
-func (s *Server) DeleteServiceAlias(ctx context.Context, req *apiservice.ServiceAlias) *apiservice.Response {
+func (s *Server) DeleteServiceAlias(ctx context.Context, req *apiservice.ServiceAlias) *apimodel.Response {
 	rid := utils.ParseRequestID(ctx)
 	alias, err := s.storage.GetService(req.GetAlias().GetValue(),
 		req.GetAliasNamespace().GetValue())
@@ -155,7 +155,7 @@ func (s *Server) DeleteServiceAlias(ctx context.Context, req *apiservice.Service
 
 // DeleteServiceAliases 删除服务别名列表
 func (s *Server) DeleteServiceAliases(
-	ctx context.Context, req []*apiservice.ServiceAlias) *apiservice.BatchWriteResponse {
+	ctx context.Context, req []*apiservice.ServiceAlias) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, alias := range req {
 		response := s.DeleteServiceAlias(ctx, alias)
@@ -166,7 +166,7 @@ func (s *Server) DeleteServiceAliases(
 }
 
 // UpdateServiceAlias 修改服务别名
-func (s *Server) UpdateServiceAlias(ctx context.Context, req *apiservice.ServiceAlias) *apiservice.Response {
+func (s *Server) UpdateServiceAlias(ctx context.Context, req *apiservice.ServiceAlias) *apimodel.Response {
 	// 检查服务别名是否存在
 	alias, err := s.storage.GetService(req.GetAlias().GetValue(), req.GetAliasNamespace().GetValue())
 	if err != nil {
@@ -219,7 +219,7 @@ func (s *Server) UpdateServiceAlias(ctx context.Context, req *apiservice.Service
 }
 
 // GetServiceAliases 查找服务别名
-func (s *Server) GetServiceAliases(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (s *Server) GetServiceAliases(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	// 先处理offset和limit
 	offset, limit, err := valid.ParseOffsetAndLimit(query)
 	if err != nil {
@@ -268,7 +268,7 @@ func (s *Server) GetServiceAliases(ctx context.Context, query map[string]string)
 
 // updateServiceAliasAttribute 修改服务别名属性
 func (s *Server) updateServiceAliasAttribute(req *apiservice.ServiceAlias, alias *svctypes.Service, serviceID string) (
-	*apiservice.Response, bool, bool) {
+	*apimodel.Response, bool, bool) {
 	var (
 		needUpdate      bool
 		needUpdateOwner bool
@@ -305,7 +305,7 @@ func (s *Server) updateServiceAliasAttribute(req *apiservice.ServiceAlias, alias
 
 // createServiceAliasModel 构建存储结构
 func (s *Server) createServiceAliasModel(req *apiservice.ServiceAlias, svcId string) (
-	*svctypes.Service, *apiservice.Response) {
+	*svctypes.Service, *apimodel.Response) {
 	out := &svctypes.Service{
 		ID:        utils.NewUUID(),
 		Name:      req.GetAlias().GetValue(),
@@ -320,7 +320,7 @@ func (s *Server) createServiceAliasModel(req *apiservice.ServiceAlias, svcId str
 }
 
 // wrapperServiceAliasResponse wrapper service alias error
-func wrapperServiceAliasResponse(alias *apiservice.ServiceAlias, err error) *apiservice.Response {
+func wrapperServiceAliasResponse(alias *apiservice.ServiceAlias, err error) *apimodel.Response {
 	if err == nil {
 		return nil
 	}

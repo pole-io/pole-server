@@ -34,7 +34,7 @@ func toClientId(instanceId string) string {
 	return clientPrefix + instanceId
 }
 
-func (s *Server) doReportByClient(ctx context.Context, client *apiservice.Client) *apiservice.Response {
+func (s *Server) doReportByClient(ctx context.Context, client *apiservice.Client) *apimodel.Response {
 	if len(s.checkers) == 0 {
 		return api.NewResponse(apimodel.Code_HealthCheckNotOpen)
 	}

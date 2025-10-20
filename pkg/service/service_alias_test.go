@@ -40,7 +40,7 @@ import (
 const defaultAliasNs = "Production"
 
 // 创建一个服务别名
-func (d *DiscoverTestSuit) createCommonAlias(service *apiservice.Service, alias string, aliasNamespace string, typ apiservice.AliasType) *apiservice.Response {
+func (d *DiscoverTestSuit) createCommonAlias(service *apiservice.Service, alias string, aliasNamespace string, typ apiservice.AliasType) *apimodel.Response {
 	req := &apiservice.ServiceAlias{
 		Service:        service.Name,
 		Namespace:      service.Namespace,
@@ -54,7 +54,7 @@ func (d *DiscoverTestSuit) createCommonAlias(service *apiservice.Service, alias 
 
 // 创建别名，并检查
 func (d *DiscoverTestSuit) createCommonAliasCheck(
-	t *testing.T, service *apiservice.Service, alias string, aliasNamespace string, typ apiservice.AliasType) *apiservice.Response {
+	t *testing.T, service *apiservice.Service, alias string, aliasNamespace string, typ apiservice.AliasType) *apimodel.Response {
 	resp := d.createCommonAlias(service, alias, aliasNamespace, typ)
 	if !respSuccess(resp) {
 		t.Fatalf("error : %s", resp.GetInfo().GetValue())
@@ -165,8 +165,8 @@ func TestConcurrencyCreateSid(t *testing.T) {
 	t.Run("并发创建sid别名，sid不会重复", func(t *testing.T) {
 		c := 20
 		var wg sync.WaitGroup
-		resultCh := make(chan *apiservice.Response, 1)
-		results := make([]*apiservice.Response, 0, 200)
+		resultCh := make(chan *apimodel.Response, 1)
+		results := make([]*apimodel.Response, 0, 200)
 		shutdown := make(chan struct{})
 
 		go func() {
@@ -543,7 +543,7 @@ func TestGetServiceAliases(t *testing.T) {
 		discoverSuit.Destroy()
 	})
 
-	var aliases []*apiservice.Response
+	var aliases []*apimodel.Response
 	count := 5
 	for i := 0; i < count; i++ {
 		resp := discoverSuit.createCommonAlias(serviceResp, "", serviceResp.GetNamespace().GetValue(), apiservice.AliasType_CL5SID)

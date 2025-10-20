@@ -6,7 +6,6 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/security"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -18,7 +17,7 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
-func (s *Server) CreateLossLessRules(ctx context.Context, reqs []*apitraffic.LosslessRule) *apiservice.BatchWriteResponse {
+func (s *Server) CreateLossLessRules(ctx context.Context, reqs []*apitraffic.LosslessRule) *apimodel.BatchWriteResponse {
 	authCtx := s.collectLosslessAuthContext(ctx, reqs, authtypes.Create, authtypes.CreateLosslessRules)
 
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -41,7 +40,7 @@ func (s *Server) CreateLossLessRules(ctx context.Context, reqs []*apitraffic.Los
 	return rsp
 }
 
-func (s *Server) DeleteLossLessRules(ctx context.Context, reqs []*apitraffic.LosslessRule) *apiservice.BatchWriteResponse {
+func (s *Server) DeleteLossLessRules(ctx context.Context, reqs []*apitraffic.LosslessRule) *apimodel.BatchWriteResponse {
 	authCtx := s.collectLosslessAuthContext(ctx, reqs, authtypes.Delete, authtypes.DeleteLosslessRules)
 
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -64,7 +63,7 @@ func (s *Server) DeleteLossLessRules(ctx context.Context, reqs []*apitraffic.Los
 	return rsp
 }
 
-func (s *Server) UpdateLossLessRules(ctx context.Context, reqs []*apitraffic.LosslessRule) *apiservice.BatchWriteResponse {
+func (s *Server) UpdateLossLessRules(ctx context.Context, reqs []*apitraffic.LosslessRule) *apimodel.BatchWriteResponse {
 	authCtx := s.collectLosslessAuthContext(ctx, reqs, authtypes.Create, authtypes.UpdateLosslessRules)
 
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -76,7 +75,7 @@ func (s *Server) UpdateLossLessRules(ctx context.Context, reqs []*apitraffic.Los
 	return s.nextSvr.UpdateLossLessRules(ctx, reqs)
 }
 
-func (s *Server) GetLossLessRules(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse {
+func (s *Server) GetLossLessRules(ctx context.Context, filter map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := s.collectLosslessAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeLosslessRules)
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))
@@ -128,7 +127,7 @@ func (s *Server) GetLossLessRules(ctx context.Context, filter map[string]string)
 	return resp
 }
 
-func (s *Server) GetOneLossLessRule(ctx context.Context, req *apitraffic.LosslessRule) *apiservice.Response {
+func (s *Server) GetOneLossLessRule(ctx context.Context, req *apitraffic.LosslessRule) *apimodel.Response {
 	authCtx := s.collectLosslessAuthContext(ctx, []*apitraffic.LosslessRule{req}, authtypes.Read, authtypes.DescribeLosslessRules)
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewResponse(authtypes.ConvertToErrCode(err))

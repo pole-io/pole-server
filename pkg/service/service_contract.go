@@ -73,7 +73,7 @@ var (
 )
 
 func (s *Server) CreateServiceContracts(ctx context.Context,
-	req []*apiservice.ServiceContract) *apiservice.BatchWriteResponse {
+	req []*apiservice.ServiceContract) *apimodel.BatchWriteResponse {
 
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range req {
@@ -83,7 +83,7 @@ func (s *Server) CreateServiceContracts(ctx context.Context,
 	return api.FormatBatchWriteResponse(responses)
 }
 
-func (s *Server) CreateServiceContract(ctx context.Context, contract *apiservice.ServiceContract) *apiservice.Response {
+func (s *Server) CreateServiceContract(ctx context.Context, contract *apiservice.ServiceContract) *apimodel.Response {
 	if errRsp := checkBaseServiceContract(contract); errRsp != nil {
 		return errRsp
 	}
@@ -166,7 +166,7 @@ func (s *Server) CreateServiceContract(ctx context.Context, contract *apiservice
 	return api.NewServiceContractResponse(apimodel.Code_ExecuteSuccess, &apiservice.ServiceContract{Id: contractId})
 }
 
-func (s *Server) GetServiceContracts(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (s *Server) GetServiceContracts(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	out.Amount = protobuf.NewUInt32Value(0)
@@ -272,7 +272,7 @@ func (s *Server) GetServiceContracts(ctx context.Context, query map[string]strin
 
 // DeleteServiceContracts 删除服务契约（包含详情）
 func (s *Server) DeleteServiceContracts(ctx context.Context,
-	req []*apiservice.ServiceContract) *apiservice.BatchWriteResponse {
+	req []*apiservice.ServiceContract) *apimodel.BatchWriteResponse {
 
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range req {
@@ -284,7 +284,7 @@ func (s *Server) DeleteServiceContracts(ctx context.Context,
 
 // DeleteServiceContract 删除服务契约（包含详情）
 func (s *Server) DeleteServiceContract(ctx context.Context,
-	contract *apiservice.ServiceContract) *apiservice.Response {
+	contract *apiservice.ServiceContract) *apimodel.Response {
 
 	if contract.Id == "" {
 		id, errRsp := valid.CheckContractTetrad(contract)
@@ -322,7 +322,7 @@ func (s *Server) DeleteServiceContract(ctx context.Context,
 	return api.NewServiceContractResponse(apimodel.Code_ExecuteSuccess, &apiservice.ServiceContract{Id: contract.Id})
 }
 
-func (s *Server) GetServiceContractVersions(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse {
+func (s *Server) GetServiceContractVersions(ctx context.Context, filter map[string]string) *apimodel.BatchQueryResponse {
 	serviceName := filter["service"]
 	namespace := filter["namespace"]
 	if namespace == "" {
@@ -364,7 +364,7 @@ func (s *Server) GetServiceContractVersions(ctx context.Context, filter map[stri
 
 // CreateServiceContractInterfaces 添加服务契约详情
 func (s *Server) CreateServiceContractInterfaces(ctx context.Context,
-	contract *apiservice.ServiceContract, source apiservice.InterfaceDescriptor_Source) *apiservice.Response {
+	contract *apiservice.ServiceContract, source apiservice.InterfaceDescriptor_Source) *apimodel.Response {
 
 	if errRsp := checkOperationServiceContractInterface(contract); errRsp != nil {
 		return errRsp
@@ -457,7 +457,7 @@ func (s *Server) CreateServiceContractInterfaces(ctx context.Context,
 
 // AppendServiceContractInterfaces 追加服务契约详情
 func (s *Server) AppendServiceContractInterfaces(ctx context.Context,
-	contract *apiservice.ServiceContract, source apiservice.InterfaceDescriptor_Source) *apiservice.Response {
+	contract *apiservice.ServiceContract, source apiservice.InterfaceDescriptor_Source) *apimodel.Response {
 
 	if errRsp := checkOperationServiceContractInterface(contract); errRsp != nil {
 		return errRsp
@@ -519,7 +519,7 @@ func (s *Server) AppendServiceContractInterfaces(ctx context.Context,
 
 // DeleteServiceContractInterfaces 删除服务契约详情
 func (s *Server) DeleteServiceContractInterfaces(ctx context.Context,
-	contract *apiservice.ServiceContract) *apiservice.Response {
+	contract *apiservice.ServiceContract) *apimodel.Response {
 
 	if errRsp := checkOperationServiceContractInterface(contract); errRsp != nil {
 		return errRsp
@@ -570,7 +570,7 @@ const (
 	briefSearch = "brief"
 )
 
-func (s *Server) GetServiceInterfaces(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse {
+func (s *Server) GetServiceInterfaces(ctx context.Context, filter map[string]string) *apimodel.BatchQueryResponse {
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	out.Amount = protobuf.NewUInt32Value(0)
 	out.Size = protobuf.NewUInt32Value(0)
@@ -625,7 +625,7 @@ func (s *Server) GetServiceInterfaces(ctx context.Context, filter map[string]str
 	return out
 }
 
-func checkOperationServiceContractInterface(contract *apiservice.ServiceContract) *apiservice.Response {
+func checkOperationServiceContractInterface(contract *apiservice.ServiceContract) *apimodel.Response {
 	if contract.Id != "" {
 		return nil
 	}
@@ -657,7 +657,7 @@ func serviceContractRecordEntry(ctx context.Context, req *apiservice.ServiceCont
 	return entry
 }
 
-func checkBaseServiceContract(req *apiservice.ServiceContract) *apiservice.Response {
+func checkBaseServiceContract(req *apiservice.ServiceContract) *apimodel.Response {
 	if err := valid.CheckResourceName(protobuf.NewStringValue(req.GetNamespace())); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
 	}

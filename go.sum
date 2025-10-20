@@ -310,6 +310,16 @@ github.com/pole-io/specification v0.0.0-20251012160710-7f540320b352 h1:QrxOUUdbU
 github.com/pole-io/specification v0.0.0-20251012160710-7f540320b352/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
 github.com/pole-io/specification v0.0.0-20251018062147-5917df52378b h1:ey+9g0uMKC4R5cQEMs3fJZwPOFvz6ZsVvNtW5+UJGPE=
 github.com/pole-io/specification v0.0.0-20251018062147-5917df52378b/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
+github.com/pole-io/specification v0.0.0-20251019135355-1be5fed4df63 h1:YqIgZALfaq0j73XlA6aaawG916D8USMUqBOMy3/OYI8=
+github.com/pole-io/specification v0.0.0-20251019135355-1be5fed4df63/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
+github.com/pole-io/specification v0.0.0-20251019140351-49439f8f4742 h1:5etsG5M/+wjndKrGAaM+3fegYNp8zZoPj7ukEwMJjMc=
+github.com/pole-io/specification v0.0.0-20251019140351-49439f8f4742/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
+github.com/pole-io/specification v0.0.0-20251019141705-4c9c968e65f6 h1:6W/mvyYBe/3UTraOXZlxYMw6Sv9EQ+wpor2Q2pCC5sc=
+github.com/pole-io/specification v0.0.0-20251019141705-4c9c968e65f6/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
+github.com/pole-io/specification v0.0.0-20251019142733-b80824589184 h1:IacgpPp00qh17h37vpzq57BMdH0fcSdVMJ969MzWnWs=
+github.com/pole-io/specification v0.0.0-20251019142733-b80824589184/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
+github.com/pole-io/specification v0.0.0-20251019143752-8b1e30e08df1 h1:KL1H2PeWi9TjlOG6WOQ8pzbHGeQCNNYqqqZaKR3mxvA=
+github.com/pole-io/specification v0.0.0-20251019143752-8b1e30e08df1/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=

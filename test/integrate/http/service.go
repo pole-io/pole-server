@@ -58,7 +58,7 @@ func JSONFromServices(services []*apiservice.Service) (*bytes.Buffer, error) {
 /**
  * @brief 创建服务
  */
-func (c *Client) CreateServices(services []*apiservice.Service) (*apiservice.BatchWriteResponse, error) {
+func (c *Client) CreateServices(services []*apiservice.Service) (*apimodel.BatchWriteResponse, error) {
 	fmt.Printf("\ncreate services\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/services", c.Address, c.Version)
@@ -213,9 +213,9 @@ func (c *Client) GetServices(services []*apiservice.Service) error {
 /**
  * @brief 检查创建服务的回复
  */
-func checkCreateServicesResponse(ret *apiservice.BatchWriteResponse, services []*apiservice.Service) (
+func checkCreateServicesResponse(ret *apimodel.BatchWriteResponse, services []*apiservice.Service) (
 	// #lizard forgives
-	*apiservice.BatchWriteResponse, error) {
+	*apimodel.BatchWriteResponse, error) {
 	if ret.GetCode() == nil || ret.GetCode().GetValue() != api.ExecuteSuccess {
 		return nil, errors.New("invalid batch code")
 	}

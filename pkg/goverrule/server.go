@@ -7,8 +7,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/wrappers"
 
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
-
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/observability/history"
@@ -19,6 +17,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/namespace"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 )
 
 // Config 核心逻辑层配置
@@ -77,7 +76,7 @@ func (s *Server) RecordHistory(ctx context.Context, entry *types.RecordEntry) {
 }
 
 // storeError2AnyResponse store code
-func storeError2AnyResponse(err error, msg proto.Message) *apiservice.Response {
+func storeError2AnyResponse(err error, msg proto.Message) *apimodel.Response {
 	if err == nil {
 		return nil
 	}

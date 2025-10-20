@@ -18,7 +18,6 @@
 package rules
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -30,7 +29,6 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/pkg/utils"
 )
@@ -63,7 +61,7 @@ var (
 )
 
 func init() {
-	ruleAny, _ := anypb.New(&apitraffic.RuleRoutingConfig{})
+	ruleAny, _ := anypb.New(&apitraffic.CustomRoute{})
 	metaAny, _ := anypb.New(&apitraffic.MetadataRoutingConfig{})
 	nearbyAny, _ := anypb.New(&apitraffic.NearbyRoutingConfig{})
 
@@ -113,13 +111,13 @@ func (r *ExtendRouterConfig) ToApi() (*apitraffic.RouteRule, error) {
 		err      error
 	)
 
-	switch r.GetRoutingPolicy() {
-	case apitraffic.RoutingPolicy_NearbyPolicy:
+	switch r.GetRoutePolicy() {
+	case apitraffic.RoutePolicy_NearbyPolicy:
 		anyValue, err = ptypes.MarshalAny(r.NearbyRouting)
 		if err != nil {
 			return nil, err
 		}
-	case apitraffic.RoutingPolicy_MetadataPolicy:
+	case apitraffic.RoutePolicy_MetadataPolicy:
 		anyValue, err = ptypes.MarshalAny(r.MetadataRouting)
 		if err != nil {
 			return nil, err
@@ -136,7 +134,7 @@ func (r *ExtendRouterConfig) ToApi() (*apitraffic.RouteRule, error) {
 		Name:          r.Name,
 		Namespace:     r.Namespace,
 		Enable:        r.Enable,
-		RoutingPolicy: r.GetRoutingPolicy(),
+		RoutePolicy:   r.GetRoutePolicy(),
 		RoutingConfig: anyValue,
 		Revision:      r.Revision,
 		Ctime:         utils.Time2String(r.CreateTime),
@@ -159,7 +157,7 @@ type RuleRoutingConfigWrapper struct {
 	Caller service.ServiceKey
 	Callee service.ServiceKey
 	// RuleRouting 规则路由配置
-	RuleRouting *apitraffic.RuleRoutingConfig
+	RuleRouting *apitraffic.CustomRoute
 }
 
 // RouterConfig Routing rules
@@ -202,15 +200,15 @@ func (r *RouterConfig) GetMtime() time.Time {
 	return r.ModifyTime
 }
 
-// GetRoutingPolicy Query routing rules type
-func (r *RouterConfig) GetRoutingPolicy() apitraffic.RoutingPolicy {
-	v, ok := apitraffic.RoutingPolicy_value[r.Policy]
+// GetRoutePolicy Query routing rules type
+func (r *RouterConfig) GetRoutePolicy() apitraffic.RoutePolicy {
+	v, ok := apitraffic.RoutePolicy_value[r.Policy]
 
 	if !ok {
-		return apitraffic.RoutingPolicy(-1)
+		return apitraffic.RoutePolicy(-1)
 	}
 
-	return apitraffic.RoutingPolicy(v)
+	return apitraffic.RoutePolicy(v)
 }
 
 // ToExpendRoutingConfig Converted to an expansion object, serialize the corresponding PB Struct in advance
@@ -223,24 +221,24 @@ func (r *RouterConfig) ToExpendRoutingConfig() (*ExtendRouterConfig, error) {
 	if len(configText) == 0 {
 		return ret, nil
 	}
-	policy := r.GetRoutingPolicy()
+	policy := r.GetRoutePolicy()
 	var err error
 	if strings.HasPrefix(configText, "{") {
 		// process with json
 		switch policy {
-		case apitraffic.RoutingPolicy_RulePolicy:
-			rule := &apitraffic.RuleRoutingConfig{}
+		case apitraffic.RoutePolicy_RulePolicy:
+			rule := &apitraffic.CustomRoute{}
 			if err = utils.UnmarshalFromJsonString(rule, configText); nil != err {
 				return nil, err
 			}
 			ret.RuleRouting = parseSubRouteRule(rule)
-		case apitraffic.RoutingPolicy_MetadataPolicy:
+		case apitraffic.RoutePolicy_MetadataPolicy:
 			rule := &apitraffic.MetadataRoutingConfig{}
 			if err = utils.UnmarshalFromJsonString(rule, configText); nil != err {
 				return nil, err
 			}
 			ret.MetadataRouting = rule
-		case apitraffic.RoutingPolicy_NearbyPolicy:
+		case apitraffic.RoutePolicy_NearbyPolicy:
 			rule := &apitraffic.NearbyRoutingConfig{}
 			if err = utils.UnmarshalFromJsonString(rule, configText); nil != err {
 				return nil, err
@@ -257,11 +255,11 @@ func (r *RouterConfig) ToExpendRoutingConfig() (*ExtendRouterConfig, error) {
 }
 
 func (r *RouterConfig) parseBinaryAnyMessage(
-	policy apitraffic.RoutingPolicy, ret *ExtendRouterConfig) error {
+	policy apitraffic.RoutePolicy, ret *ExtendRouterConfig) error {
 	// parse v1 binary
 	switch policy {
-	case apitraffic.RoutingPolicy_RulePolicy:
-		rule := &apitraffic.RuleRoutingConfig{}
+	case apitraffic.RoutePolicy_RulePolicy:
+		rule := &apitraffic.CustomRoute{}
 		anyMsg := &anypb.Any{
 			TypeUrl: RuleRoutingTypeUrl,
 			Value:   []byte(r.Config),
@@ -270,7 +268,7 @@ func (r *RouterConfig) parseBinaryAnyMessage(
 			return err
 		}
 		ret.RuleRouting = parseSubRouteRule(rule)
-	case apitraffic.RoutingPolicy_MetadataPolicy:
+	case apitraffic.RoutePolicy_MetadataPolicy:
 		rule := &apitraffic.MetadataRoutingConfig{}
 		anyMsg := &anypb.Any{
 			TypeUrl: MetaRoutingTypeUrl,
@@ -280,7 +278,7 @@ func (r *RouterConfig) parseBinaryAnyMessage(
 			return err
 		}
 		ret.MetadataRouting = rule
-	case apitraffic.RoutingPolicy_NearbyPolicy:
+	case apitraffic.RoutePolicy_NearbyPolicy:
 		rule := &apitraffic.NearbyRoutingConfig{}
 		anyMsg := &anypb.Any{
 			TypeUrl: NearbyRoutingTypeUrl,
@@ -296,7 +294,7 @@ func (r *RouterConfig) parseBinaryAnyMessage(
 
 // ParseRouteRuleFromAPI Convert an internal object from the API object
 func (r *RouterConfig) ParseRouteRuleFromAPI(routing *apitraffic.RouteRule) error {
-	ruleMessage, err := ParseRouteRuleAnyToMessage(routing.RoutingPolicy, routing.RoutingConfig)
+	ruleMessage, err := ParseRouteRuleAnyToMessage(routing.RoutePolicy, routing.RoutingConfig)
 	if nil != err {
 		return err
 	}
@@ -309,7 +307,7 @@ func (r *RouterConfig) ParseRouteRuleFromAPI(routing *apitraffic.RouteRule) erro
 	r.Name = routing.Name
 	r.Namespace = routing.Namespace
 	r.Enable = routing.Enable
-	r.Policy = routing.GetRoutingPolicy().String()
+	r.Policy = routing.GetRoutePolicy().String()
 	r.Priority = routing.Priority
 	r.Description = routing.Description
 	r.Metadata = routing.Metadata
@@ -328,22 +326,22 @@ func unmarshalToAny(anyMessage *anypb.Any, message proto.Message) error {
 }
 
 // ParseRouteRuleAnyToMessage convert the any routing proto to message object
-func ParseRouteRuleAnyToMessage(policy apitraffic.RoutingPolicy, anyMessage *anypb.Any) (proto.Message, error) {
+func ParseRouteRuleAnyToMessage(policy apitraffic.RoutePolicy, anyMessage *anypb.Any) (proto.Message, error) {
 	var rule proto.Message
 	switch policy {
-	case apitraffic.RoutingPolicy_RulePolicy:
-		rule = &apitraffic.RuleRoutingConfig{}
+	case apitraffic.RoutePolicy_RulePolicy:
+		rule = &apitraffic.CustomRoute{}
 		if err := unmarshalToAny(anyMessage, rule); err != nil {
 			return nil, err
 		}
-		ruleRouting := rule.(*apitraffic.RuleRoutingConfig)
+		ruleRouting := rule.(*apitraffic.CustomRoute)
 		parseSubRouteRule(ruleRouting)
-	case apitraffic.RoutingPolicy_MetadataPolicy:
+	case apitraffic.RoutePolicy_MetadataPolicy:
 		rule = &apitraffic.MetadataRoutingConfig{}
 		if err := unmarshalToAny(anyMessage, rule); err != nil {
 			return nil, err
 		}
-	case apitraffic.RoutingPolicy_NearbyPolicy:
+	case apitraffic.RoutePolicy_NearbyPolicy:
 		rule = &apitraffic.NearbyRoutingConfig{}
 		if err := unmarshalToAny(anyMessage, rule); err != nil {
 			return nil, err
@@ -352,51 +350,9 @@ func ParseRouteRuleAnyToMessage(policy apitraffic.RoutingPolicy, anyMessage *any
 	return rule, nil
 }
 
-func parseSubRouteRule(ruleRouting *apitraffic.RuleRoutingConfig) *RuleRoutingConfigWrapper {
-	if len(ruleRouting.Rules) == 0 {
-		subRule := &apitraffic.SubRuleRouting{
-			Name:         "",
-			Sources:      ruleRouting.GetSources(),
-			Destinations: ruleRouting.GetDestinations(),
-		}
-		ruleRouting.Rules = []*apitraffic.SubRuleRouting{
-			subRule,
-		}
-	} else {
-		for i := range ruleRouting.Rules {
-			subRule := ruleRouting.Rules[i]
-			if len(subRule.Sources) == 0 {
-				subRule.Sources = ruleRouting.GetSources()
-			}
-			if len(subRule.Destinations) == 0 {
-				subRule.Destinations = ruleRouting.GetDestinations()
-			}
-		}
-		// Abandon the value of the old field
-		ruleRouting.Destinations = nil
-		ruleRouting.Sources = nil
-	}
-
+func parseSubRouteRule(ruleRouting *apitraffic.CustomRoute) *RuleRoutingConfigWrapper {
 	wrapper := &RuleRoutingConfigWrapper{
 		RuleRouting: ruleRouting,
-	}
-
-	for i := range ruleRouting.Rules {
-		item := ruleRouting.Rules[i]
-		if len(item.Sources) != 0 {
-			source := item.Sources[0]
-			wrapper.Caller = service.ServiceKey{
-				Namespace: source.Namespace,
-				Name:      source.Service,
-			}
-		}
-		if len(item.Destinations) != 0 {
-			destination := item.Destinations[0]
-			wrapper.Callee = service.ServiceKey{
-				Namespace: destination.Namespace,
-				Name:      destination.Service,
-			}
-		}
 	}
 	return wrapper
 }
@@ -476,149 +432,4 @@ func CompareRoutingV2(a, b *ExtendRouterConfig) bool {
 	}
 	// 如果优先级相同，则比较规则 ID
 	return a.ID < b.ID
-}
-
-// CompareRoutingV1 Compare the priority of two routing.
-func CompareRoutingV1(a, b *apitraffic.Route) bool {
-	ap := a.ExtendInfo[V2RuleIDPriority]
-	bp := b.ExtendInfo[V2RuleIDPriority]
-	return ap < bp
-}
-
-func BuildRoutes(item *ExtendRouterConfig, direction TrafficDirection) []*apitraffic.Route {
-	switch direction {
-	case TrafficDirection_INBOUND:
-		return BuildInBoundsRoute(item)
-	default:
-		return BuildOutBoundsRoutes(item)
-	}
-}
-
-// BuildInBoundsRoute Convert the routing rules of V2 to the inbounds in the routing rule of V1
-func BuildInBoundsRoute(item *ExtendRouterConfig) []*apitraffic.Route {
-	if item.GetRoutingPolicy() != apitraffic.RoutingPolicy_RulePolicy {
-		return []*apitraffic.Route{}
-	}
-
-	routes := make([]*apitraffic.Route, 0, 8)
-
-	specRules := item.RuleRouting.RuleRouting.Rules
-
-	for i := range specRules {
-		subRule := specRules[i]
-		destinations := specRules[i].Destinations
-		v1destinations := make([]*apitraffic.Destination, 0, len(destinations))
-		for i := range destinations {
-			name := fmt.Sprintf("%s.%s.%s", item.Name, subRule.Name, destinations[i].Name)
-			entry := &apitraffic.Destination{
-				Name:      protobuf.NewStringValue(name),
-				Service:   protobuf.NewStringValue(item.RuleRouting.Callee.Name),
-				Namespace: protobuf.NewStringValue(item.RuleRouting.Callee.Namespace),
-				Priority:  protobuf.NewUInt32Value(destinations[i].GetPriority()),
-				Weight:    protobuf.NewUInt32Value(destinations[i].GetWeight()),
-				Transfer:  protobuf.NewStringValue(destinations[i].GetTransfer()),
-				Isolate:   protobuf.NewBoolValue(destinations[i].GetIsolate()),
-			}
-
-			v1labels := make(map[string]*apimodel.MatchString)
-			v2labels := destinations[i].GetLabels()
-			for index := range v2labels {
-				v1labels[index] = &apimodel.MatchString{
-					Type:      v2labels[index].GetType(),
-					Value:     v2labels[index].GetValue(),
-					ValueType: v2labels[index].GetValueType(),
-				}
-			}
-
-			entry.Metadata = v1labels
-			v1destinations = append(v1destinations, entry)
-		}
-
-		sources := specRules[i].Sources
-		v1sources := make([]*apitraffic.Source, 0, len(sources))
-		for i := range sources {
-			entry := &apitraffic.Source{
-				Service:   protobuf.NewStringValue(sources[i].Service),
-				Namespace: protobuf.NewStringValue(sources[i].Namespace),
-			}
-
-			entry.Metadata = RoutingArguments2Labels(sources[i].GetArguments())
-			v1sources = append(v1sources, entry)
-		}
-
-		routes = append(routes, &apitraffic.Route{
-			Sources:      v1sources,
-			Destinations: v1destinations,
-			ExtendInfo: map[string]string{
-				V2RuleIDKey:      item.ID,
-				V2RuleIDPriority: fmt.Sprintf("%04d", item.Priority),
-			},
-		})
-	}
-
-	return routes
-}
-
-// BuildOutBoundsRoutes According to the routing rules of the V2 version, it is adapted to the
-// outbounds in the routing rule of V1 version
-func BuildOutBoundsRoutes(item *ExtendRouterConfig) []*apitraffic.Route {
-	if item.GetRoutingPolicy() != apitraffic.RoutingPolicy_RulePolicy {
-		return []*apitraffic.Route{}
-	}
-
-	routes := make([]*apitraffic.Route, 0, 8)
-
-	specRules := item.RuleRouting.RuleRouting.Rules
-
-	for i := range specRules {
-		subRule := specRules[i]
-		sources := specRules[i].Sources
-		v1sources := make([]*apitraffic.Source, 0, len(sources))
-		for i := range sources {
-			entry := &apitraffic.Source{
-				Service:   protobuf.NewStringValue(item.RuleRouting.Caller.Name),
-				Namespace: protobuf.NewStringValue(item.RuleRouting.Caller.Namespace),
-			}
-			entry.Metadata = RoutingArguments2Labels(sources[i].GetArguments())
-			v1sources = append(v1sources, entry)
-		}
-
-		destinations := specRules[i].Destinations
-		v1destinations := make([]*apitraffic.Destination, 0, len(destinations))
-		for i := range destinations {
-			name := fmt.Sprintf("%s.%s.%s", item.Name, subRule.Name, destinations[i].Name)
-			entry := &apitraffic.Destination{
-				Name:      protobuf.NewStringValue(name),
-				Service:   protobuf.NewStringValue(destinations[i].Service),
-				Namespace: protobuf.NewStringValue(destinations[i].Namespace),
-				Priority:  protobuf.NewUInt32Value(destinations[i].GetPriority()),
-				Weight:    protobuf.NewUInt32Value(destinations[i].GetWeight()),
-				Transfer:  protobuf.NewStringValue(destinations[i].GetTransfer()),
-				Isolate:   protobuf.NewBoolValue(destinations[i].GetIsolate()),
-			}
-
-			v1labels := make(map[string]*apimodel.MatchString)
-			v2labels := destinations[i].GetLabels()
-			for index := range v2labels {
-				v1labels[index] = &apimodel.MatchString{
-					Type:      v2labels[index].GetType(),
-					Value:     v2labels[index].GetValue(),
-					ValueType: v2labels[index].GetValueType(),
-				}
-			}
-
-			entry.Metadata = v1labels
-			v1destinations = append(v1destinations, entry)
-		}
-
-		routes = append(routes, &apitraffic.Route{
-			Sources:      v1sources,
-			Destinations: v1destinations,
-			ExtendInfo: map[string]string{
-				V2RuleIDKey: item.ID,
-			},
-		})
-	}
-
-	return routes
 }

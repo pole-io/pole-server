@@ -21,21 +21,20 @@ import (
 	"context"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 )
 
 // NamespaceOperateServer Namespace related operation
 type NamespaceOperateServer interface {
 	// CreateNamespace Create a single name space
-	CreateNamespace(ctx context.Context, req *apimodel.Namespace) *apiservice.Response
+	CreateNamespace(ctx context.Context, req *apimodel.Namespace) *apimodel.Response
 	// CreateNamespaces Batch creation namespace
-	CreateNamespaces(ctx context.Context, req []*apimodel.Namespace) *apiservice.BatchWriteResponse
+	CreateNamespaces(ctx context.Context, req []*apimodel.Namespace) *apimodel.BatchWriteResponse
 	// DeleteNamespaces Batch delete namespace
-	DeleteNamespaces(ctx context.Context, req []*apimodel.Namespace) *apiservice.BatchWriteResponse
+	DeleteNamespaces(ctx context.Context, req []*apimodel.Namespace) *apimodel.BatchWriteResponse
 	// UpdateNamespaces Batch update naming space
-	UpdateNamespaces(ctx context.Context, req []*apimodel.Namespace) *apiservice.BatchWriteResponse
+	UpdateNamespaces(ctx context.Context, req []*apimodel.Namespace) *apimodel.BatchWriteResponse
 	// GetNamespaces Get a list of namespaces
-	GetNamespaces(ctx context.Context, query map[string][]string) *apiservice.BatchQueryResponse
+	GetNamespaces(ctx context.Context, query map[string][]string) *apimodel.BatchQueryResponse
 	// CreateNamespaceIfAbsent Create a single name space
-	CreateNamespaceIfAbsent(ctx context.Context, req *apimodel.Namespace) (string, *apiservice.Response)
+	CreateNamespaceIfAbsent(ctx context.Context, req *apimodel.Namespace) (string, *apimodel.Response)
 }

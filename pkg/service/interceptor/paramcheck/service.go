@@ -114,7 +114,7 @@ func (svr *Server) GetAllServices(ctx context.Context,
 }
 
 // GetServiceOwner 获取服务的 owner
-func (svr *Server) GetServiceSubscribers(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetServiceSubscribers(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	// 判断offset和limit是否为int，并从filters清除offset/limit参数
 	offset, limit, err := valid.ParseOffsetAndLimit(query)
 	if err != nil {
@@ -180,7 +180,7 @@ func (svr *Server) GetServicesCount(ctx context.Context) *service_manage.BatchQu
 }
 
 // checkBatchService检查批量请求
-func checkBatchService(req []*apiservice.Service) *apiservice.BatchWriteResponse {
+func checkBatchService(req []*apiservice.Service) *apimodel.BatchWriteResponse {
 	if len(req) == 0 {
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
@@ -193,7 +193,7 @@ func checkBatchService(req []*apiservice.Service) *apiservice.BatchWriteResponse
 }
 
 // checkBatchReadService 检查批量读请求
-func checkBatchReadService(req []*apiservice.Service) *apiservice.BatchQueryResponse {
+func checkBatchReadService(req []*apiservice.Service) *apimodel.BatchQueryResponse {
 	if len(req) == 0 {
 		return api.NewBatchQueryResponse(apimodel.Code_EmptyRequest)
 	}
@@ -206,7 +206,7 @@ func checkBatchReadService(req []*apiservice.Service) *apiservice.BatchQueryResp
 }
 
 // checkCreateService 检查创建服务请求参数
-func checkCreateService(req *apiservice.Service) *apiservice.Response {
+func checkCreateService(req *apiservice.Service) *apimodel.Response {
 	if req == nil {
 		return api.NewServiceResponse(apimodel.Code_EmptyRequest, req)
 	}
@@ -233,7 +233,7 @@ func checkCreateService(req *apiservice.Service) *apiservice.Response {
 }
 
 // checkReviseService 检查删除/修改/服务token的服务请求参数
-func checkReviseService(req *apiservice.Service) *apiservice.Response {
+func checkReviseService(req *apiservice.Service) *apimodel.Response {
 	if req == nil {
 		return api.NewServiceResponse(apimodel.Code_EmptyRequest, req)
 	}
@@ -256,7 +256,7 @@ func checkReviseService(req *apiservice.Service) *apiservice.Response {
 }
 
 // CheckDbServiceFieldLen 检查DB中service表对应的入参字段合法性
-func CheckDbServiceFieldLen(req *apiservice.Service) (*apiservice.Response, bool) {
+func CheckDbServiceFieldLen(req *apiservice.Service) (*apimodel.Response, bool) {
 	if err := valid.CheckDbStrFieldLen(req.GetName(), valid.MaxNameLength); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidServiceName, req), true
 	}

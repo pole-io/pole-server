@@ -26,7 +26,6 @@ import (
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/service_manage"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	"github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
@@ -116,7 +115,7 @@ func (svr *Server) GetRateLimits(ctx context.Context,
 	return svr.nextSvr.GetRateLimits(ctx, query)
 }
 
-func (svr *Server) GetOneRateLimitRule(ctx context.Context, req *traffic_manage.Rule) *apiservice.Response {
+func (svr *Server) GetOneRateLimitRule(ctx context.Context, req *traffic_manage.Rule) *apimodel.Response {
 	return svr.nextSvr.GetOneRateLimitRule(ctx, req)
 }
 
@@ -149,7 +148,7 @@ func (svr *Server) UpdateRateLimits(ctx context.Context, reqs []*traffic_manage.
 }
 
 // checkBatchRateLimits 检查批量请求的限流规则
-func checkBatchRateLimits(req []*apitraffic.Rule) *apiservice.BatchWriteResponse {
+func checkBatchRateLimits(req []*apitraffic.Rule) *apimodel.BatchWriteResponse {
 	if len(req) == 0 {
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
@@ -162,7 +161,7 @@ func checkBatchRateLimits(req []*apitraffic.Rule) *apiservice.BatchWriteResponse
 }
 
 // checkRateLimitParams 检查限流规则基础参数
-func checkRateLimitParams(req *apitraffic.Rule) *apiservice.Response {
+func checkRateLimitParams(req *apitraffic.Rule) *apimodel.Response {
 	if req == nil {
 		return api.NewRateLimitResponse(apimodel.Code_EmptyRequest, req)
 	}
@@ -176,7 +175,7 @@ func checkRateLimitParams(req *apitraffic.Rule) *apiservice.Response {
 }
 
 // checkRateLimitParams 检查限流规则基础参数
-func checkRateLimitParamsDbLen(req *apitraffic.Rule) *apiservice.Response {
+func checkRateLimitParamsDbLen(req *apitraffic.Rule) *apimodel.Response {
 	if err := valid.CheckDbStrFieldLen(req.GetService(), valid.MaxDbServiceNameLength); err != nil {
 		return api.NewRateLimitResponse(apimodel.Code_InvalidServiceName, req)
 	}
@@ -190,7 +189,7 @@ func checkRateLimitParamsDbLen(req *apitraffic.Rule) *apiservice.Response {
 }
 
 // checkRateLimitRuleParams 检查限流规则其他参数
-func checkRateLimitRuleParams(ctx context.Context, req *apitraffic.Rule) *apiservice.Response {
+func checkRateLimitRuleParams(ctx context.Context, req *apitraffic.Rule) *apimodel.Response {
 	// 检查amounts是否有重复周期
 	amounts := req.GetAmounts()
 	durations := make(map[time.Duration]bool)
@@ -210,7 +209,7 @@ func checkRateLimitRuleParams(ctx context.Context, req *apitraffic.Rule) *apiser
 }
 
 // checkRevisedRateLimitParams 检查修改/删除限流规则基础参数
-func checkRevisedRateLimitParams(req *apitraffic.Rule) *apiservice.Response {
+func checkRevisedRateLimitParams(req *apitraffic.Rule) *apimodel.Response {
 	if req == nil {
 		return api.NewRateLimitResponse(apimodel.Code_EmptyRequest, req)
 	}

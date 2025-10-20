@@ -47,95 +47,95 @@ type DiscoverServer interface {
 // ServiceOperateServer Service related operations
 type ServiceOperateServer interface {
 	// CreateServices Batch creation service
-	CreateServices(ctx context.Context, req []*apiservice.Service) *apiservice.BatchWriteResponse
+	CreateServices(ctx context.Context, req []*apiservice.Service) *apimodel.BatchWriteResponse
 	// DeleteServices Batch delete service
-	DeleteServices(ctx context.Context, req []*apiservice.Service) *apiservice.BatchWriteResponse
+	DeleteServices(ctx context.Context, req []*apiservice.Service) *apimodel.BatchWriteResponse
 	// UpdateServices Batch update service
-	UpdateServices(ctx context.Context, req []*apiservice.Service) *apiservice.BatchWriteResponse
+	UpdateServices(ctx context.Context, req []*apiservice.Service) *apimodel.BatchWriteResponse
 	// GetServices Get a list of service
-	GetServices(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	GetServices(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 	// GetAllServices Get all service list
-	GetAllServices(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	GetAllServices(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 	// GetServicesCount Total number of services
-	GetServicesCount(ctx context.Context) *apiservice.BatchQueryResponse
+	GetServicesCount(ctx context.Context) *apimodel.BatchQueryResponse
 	// GetServiceSubscribers Owner for obtaining service
-	GetServiceSubscribers(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	GetServiceSubscribers(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 }
 
 // ServiceAliasOperateServer Service alias related operations
 type ServiceAliasOperateServer interface {
 	// CreateServiceAlias Create a service alias
-	CreateServiceAlias(ctx context.Context, req *apiservice.ServiceAlias) *apiservice.Response
+	CreateServiceAlias(ctx context.Context, req *apiservice.ServiceAlias) *apimodel.Response
 	// DeleteServiceAliases Batch delete service alias
-	DeleteServiceAliases(ctx context.Context, req []*apiservice.ServiceAlias) *apiservice.BatchWriteResponse
+	DeleteServiceAliases(ctx context.Context, req []*apiservice.ServiceAlias) *apimodel.BatchWriteResponse
 	// UpdateServiceAlias Update service alias
-	UpdateServiceAlias(ctx context.Context, req *apiservice.ServiceAlias) *apiservice.Response
+	UpdateServiceAlias(ctx context.Context, req *apiservice.ServiceAlias) *apimodel.Response
 	// GetServiceAliases Get a list of service alias
-	GetServiceAliases(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	GetServiceAliases(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 }
 
 // InstanceOperateServer Example related operations
 type InstanceOperateServer interface {
 	// CreateInstances Batch creation instance
-	CreateInstances(ctx context.Context, reqs []*apiservice.Instance) *apiservice.BatchWriteResponse
+	CreateInstances(ctx context.Context, reqs []*apiservice.Instance) *apimodel.BatchWriteResponse
 	// DeleteInstances Batch delete instance
-	DeleteInstances(ctx context.Context, req []*apiservice.Instance) *apiservice.BatchWriteResponse
+	DeleteInstances(ctx context.Context, req []*apiservice.Instance) *apimodel.BatchWriteResponse
 	// DeleteInstancesByHost Delete instance according to HOST information batch
-	DeleteInstancesByHost(ctx context.Context, req []*apiservice.Instance) *apiservice.BatchWriteResponse
+	DeleteInstancesByHost(ctx context.Context, req []*apiservice.Instance) *apimodel.BatchWriteResponse
 	// UpdateInstances Batch update instance
-	UpdateInstances(ctx context.Context, req []*apiservice.Instance) *apiservice.BatchWriteResponse
+	UpdateInstances(ctx context.Context, req []*apiservice.Instance) *apimodel.BatchWriteResponse
 	// UpdateInstancesIsolate Batch update instance isolation state
-	UpdateInstancesIsolate(ctx context.Context, req []*apiservice.Instance) *apiservice.BatchWriteResponse
+	UpdateInstancesIsolate(ctx context.Context, req []*apiservice.Instance) *apimodel.BatchWriteResponse
 	// GetInstances Get an instance list
-	GetInstances(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	GetInstances(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 	// GetInstancesCount Get an instance quantity
-	GetInstancesCount(ctx context.Context) *apiservice.BatchQueryResponse
+	GetInstancesCount(ctx context.Context) *apimodel.BatchQueryResponse
 	// GetInstanceLabels Get an instance tag under a service
-	GetInstanceLabels(ctx context.Context, query map[string]string) *apiservice.Response
+	GetInstanceLabels(ctx context.Context, query map[string]string) *apimodel.Response
 }
 
 // ClientServer Client related operation  Client operation interface definition
 type ClientServer interface {
 	// RegisterInstance create one instance by client
-	RegisterInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response
+	RegisterInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response
 	// DeregisterInstance delete onr instance by client
-	DeregisterInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response
+	DeregisterInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response
 	// ReportClient Client gets geographic location information
-	ReportClient(ctx context.Context, req *apiservice.Client) *apiservice.Response
+	ReportClient(ctx context.Context, req *apiservice.Client) *apimodel.Response
 	// GetServiceWithCache Used for client acquisition service information
 	GetServiceWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse
 	// ServiceInstancesCache Used for client acquisition service instance information
 	ServiceInstancesCache(ctx context.Context, filter *apiservice.DiscoverFilter, req *apiservice.Service) *apiservice.DiscoverResponse
 	// GetServiceContractWithCache User Client Get ServiceContract Rule Information
-	GetServiceContractWithCache(ctx context.Context, req *apiservice.ServiceContract) *apiservice.Response
+	GetServiceContractWithCache(ctx context.Context, req *apiservice.ServiceContract) *apimodel.Response
 	// UpdateInstance update one instance by client
-	UpdateInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response
+	UpdateInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response
 	// ReportServiceContract client report service_contract
-	ReportServiceContract(ctx context.Context, req *apiservice.ServiceContract) *apiservice.Response
+	ReportServiceContract(ctx context.Context, req *apiservice.ServiceContract) *apimodel.Response
 }
 
 // ReportClientOperateServer Report information operation interface on the client
 type ReportClientOperateServer interface {
 	// GetReportClients Query the client information reported
-	GetReportClients(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	GetReportClients(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 }
 
 // ServiceContractOperateServer service contract operations
 type ServiceContractOperateServer interface {
 	// CreateServiceContracts .
-	CreateServiceContracts(ctx context.Context, req []*apiservice.ServiceContract) *apiservice.BatchWriteResponse
+	CreateServiceContracts(ctx context.Context, req []*apiservice.ServiceContract) *apimodel.BatchWriteResponse
 	// DeleteServiceContracts .
-	DeleteServiceContracts(ctx context.Context, req []*apiservice.ServiceContract) *apiservice.BatchWriteResponse
+	DeleteServiceContracts(ctx context.Context, req []*apiservice.ServiceContract) *apimodel.BatchWriteResponse
 	// GetServiceContracts .
-	GetServiceContracts(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	GetServiceContracts(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 	// CreateServiceContractInterfaces .
 	CreateServiceContractInterfaces(ctx context.Context, contract *apiservice.ServiceContract,
-		source apiservice.InterfaceDescriptor_Source) *apiservice.Response
+		source apiservice.InterfaceDescriptor_Source) *apimodel.Response
 	// AppendServiceContractInterfaces .
 	AppendServiceContractInterfaces(ctx context.Context, contract *apiservice.ServiceContract,
-		source apiservice.InterfaceDescriptor_Source) *apiservice.Response
+		source apiservice.InterfaceDescriptor_Source) *apimodel.Response
 	// DeleteServiceContractInterfaces .
-	DeleteServiceContractInterfaces(ctx context.Context, contract *apiservice.ServiceContract) *apiservice.Response
+	DeleteServiceContractInterfaces(ctx context.Context, contract *apiservice.ServiceContract) *apimodel.Response
 	// GetServiceContractVersions .
-	GetServiceContractVersions(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse
+	GetServiceContractVersions(ctx context.Context, filter map[string]string) *apimodel.BatchQueryResponse
 }

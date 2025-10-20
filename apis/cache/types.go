@@ -416,10 +416,8 @@ type (
 	RouterRuleCache interface {
 		Cache
 		// ----- 这里查询的数据结果均来自已发布的路由规则 ----- //
-		// GetOldRouterRule Obtain routing configuration based on serviceid
-		GetOldRouterRule(id, service, namespace string) (*apitraffic.Routing, error)
-		// GetOldRouterRule Obtain routing configuration based on serviceid
-		GetRouterRule(id, service, namespace string) (*apitraffic.Routing, error)
+		// GetRouterRule Obtain routing configuration based on serviceid
+		GetRouterRule(id, service, namespace string) ([]*apitraffic.RouteRule, string, error)
 		// GetNearbyRouteRule 根据服务名查询就近路由数据
 		GetNearbyRouteRule(service, namespace string) ([]*apitraffic.RouteRule, string, error)
 		// ListRouterRule list all router rule

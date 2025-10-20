@@ -78,7 +78,7 @@ var (
 )
 
 // CreateServices 批量创建服务
-func (s *Server) CreateServices(ctx context.Context, req []*apiservice.Service) *apiservice.BatchWriteResponse {
+func (s *Server) CreateServices(ctx context.Context, req []*apiservice.Service) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, service := range req {
 		response := s.CreateService(ctx, service)
@@ -89,7 +89,7 @@ func (s *Server) CreateServices(ctx context.Context, req []*apiservice.Service) 
 }
 
 // CreateService 创建单个服务
-func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *apiservice.Response {
+func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *apimodel.Response {
 	if _, errResp := s.createNamespaceIfAbsent(ctx, req); errResp != nil {
 		return errResp
 	}
@@ -152,7 +152,7 @@ func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *ap
 }
 
 // DeleteServices 批量删除服务
-func (s *Server) DeleteServices(ctx context.Context, req []*apiservice.Service) *apiservice.BatchWriteResponse {
+func (s *Server) DeleteServices(ctx context.Context, req []*apiservice.Service) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, service := range req {
 		response := s.DeleteService(ctx, service)
@@ -166,7 +166,7 @@ func (s *Server) DeleteServices(ctx context.Context, req []*apiservice.Service) 
 //
 //	删除操作需要对服务进行加锁操作，
 //	防止有与服务关联的实例或者配置有新增的操作
-func (s *Server) DeleteService(ctx context.Context, req *apiservice.Service) *apiservice.Response {
+func (s *Server) DeleteService(ctx context.Context, req *apiservice.Service) *apimodel.Response {
 	namespaceName := req.GetNamespace().GetValue()
 	serviceName := req.GetName().GetValue()
 
@@ -197,7 +197,7 @@ func (s *Server) DeleteService(ctx context.Context, req *apiservice.Service) *ap
 }
 
 // UpdateServices 批量修改服务
-func (s *Server) UpdateServices(ctx context.Context, req []*apiservice.Service) *apiservice.BatchWriteResponse {
+func (s *Server) UpdateServices(ctx context.Context, req []*apiservice.Service) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, service := range req {
 		response := s.UpdateService(ctx, service)
@@ -208,7 +208,7 @@ func (s *Server) UpdateServices(ctx context.Context, req []*apiservice.Service) 
 }
 
 // UpdateService 修改单个服务
-func (s *Server) UpdateService(ctx context.Context, req *apiservice.Service) *apiservice.Response {
+func (s *Server) UpdateService(ctx context.Context, req *apiservice.Service) *apimodel.Response {
 	// 鉴权
 	service, _, resp := s.checkServiceAuthority(ctx, req)
 	if resp != nil {
@@ -247,7 +247,7 @@ func (s *Server) UpdateService(ctx context.Context, req *apiservice.Service) *ap
 }
 
 // UpdateServiceToken 更新服务token
-func (s *Server) UpdateServiceToken(ctx context.Context, req *apiservice.Service) *apiservice.Response {
+func (s *Server) UpdateServiceToken(ctx context.Context, req *apiservice.Service) *apimodel.Response {
 	// 鉴权
 	service, _, resp := s.checkServiceAuthority(ctx, req)
 	if resp != nil {
@@ -280,7 +280,7 @@ func (s *Server) UpdateServiceToken(ctx context.Context, req *apiservice.Service
 }
 
 // GetAllServices query all service list by namespace
-func (s *Server) GetAllServices(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (s *Server) GetAllServices(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	var (
 		svcs []*svctypes.Service
 	)
@@ -311,7 +311,7 @@ func (s *Server) GetAllServices(ctx context.Context, query map[string]string) *a
 }
 
 // GetServices 查询服务 注意：不包括别名
-func (s *Server) GetServices(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (s *Server) GetServices(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	serviceFilters := make(map[string]string)
 	instanceFilters := make(map[string]string)
 	var (
@@ -421,7 +421,7 @@ func parseServiceArgs(filter map[string]string, metaFilter map[string]string,
 }
 
 // GetServicesCount 查询服务总数
-func (s *Server) GetServicesCount(ctx context.Context) *apiservice.BatchQueryResponse {
+func (s *Server) GetServicesCount(ctx context.Context) *apimodel.BatchQueryResponse {
 	count, err := s.storage.GetServicesCount()
 	if err != nil {
 		log.Errorf("[Server][Service][Count] get service count storage err: %s", err.Error())
@@ -435,7 +435,7 @@ func (s *Server) GetServicesCount(ctx context.Context) *apiservice.BatchQueryRes
 }
 
 // GetServiceToken 查询Service的token
-func (s *Server) GetServiceToken(ctx context.Context, req *apiservice.Service) *apiservice.Response {
+func (s *Server) GetServiceToken(ctx context.Context, req *apiservice.Service) *apimodel.Response {
 	// 鉴权
 	_, token, resp := s.checkServiceAuthority(ctx, req)
 	if resp != nil {
@@ -453,7 +453,7 @@ func (s *Server) GetServiceToken(ctx context.Context, req *apiservice.Service) *
 }
 
 // createNamespaceIfAbsent Automatically create namespaces
-func (s *Server) createNamespaceIfAbsent(ctx context.Context, svc *apiservice.Service) (string, *apiservice.Response) {
+func (s *Server) createNamespaceIfAbsent(ctx context.Context, svc *apiservice.Service) (string, *apimodel.Response) {
 	val, rsp := s.Namespace().CreateNamespaceIfAbsent(ctx, &apimodel.Namespace{
 		Name:   protobuf.NewStringValue(svc.GetNamespace().GetValue()),
 		Owners: svc.Owners,
@@ -488,7 +488,7 @@ func (s *Server) createServiceModel(req *apiservice.Service) *svctypes.Service {
 
 // updateServiceAttribute 修改服务属性
 func (s *Server) updateServiceAttribute(
-	req *apiservice.Service, service *svctypes.Service) (*apiservice.Response, bool, bool) {
+	req *apiservice.Service, service *svctypes.Service) (*apimodel.Response, bool, bool) {
 	var (
 		needUpdate      = false
 		needNewRevision = false
@@ -616,7 +616,7 @@ func (s *Server) getRoutingCountWithService(id string) (uint32, error) {
 }
 
 // isServiceExistedResource 检查服务下的资源存在情况，在删除服务的时候需要用到
-func (s *Server) isServiceExistedResource(ctx context.Context, service *svctypes.Service) *apiservice.Response {
+func (s *Server) isServiceExistedResource(ctx context.Context, service *svctypes.Service) *apimodel.Response {
 	// 服务别名，不需要判断
 	if service.IsAlias() {
 		return nil
@@ -659,7 +659,7 @@ func (s *Server) isServiceExistedResource(ctx context.Context, service *svctypes
 // checkServiceAuthority 对服务进行鉴权，并且返回svctypes.Service
 // return service, token, response
 func (s *Server) checkServiceAuthority(ctx context.Context, req *apiservice.Service) (*svctypes.Service,
-	string, *apiservice.Response) {
+	string, *apimodel.Response) {
 	namespaceName := req.GetNamespace().GetValue()
 	serviceName := req.GetName().GetValue()
 
@@ -805,7 +805,7 @@ func serviceMetaNeedUpdate(req *apiservice.Service, service *svctypes.Service) b
 }
 
 // wrapperServiceStoreResponse wrapper service error
-func wrapperServiceStoreResponse(service *apiservice.Service, err error) *apiservice.Response {
+func wrapperServiceStoreResponse(service *apiservice.Service, err error) *apimodel.Response {
 	if err == nil {
 		return nil
 	}

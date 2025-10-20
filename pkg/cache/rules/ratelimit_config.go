@@ -26,7 +26,6 @@ import (
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
@@ -140,8 +139,8 @@ func (rlc *rateLimitCache) Clear() error {
 
 func (rlc *rateLimitCache) toProto(item *rules.RateLimit) {
 	item.ToSpec()
-	namespace := item.Proto.GetNamespace().GetValue()
-	name := item.Proto.GetService().GetValue()
+	namespace := item.Proto.GetNamespace()
+	name := item.Proto.GetService()
 	if namespace == "" || name == "" {
 		rlc.fixOneRuleServiceInfo(item)
 	}
@@ -194,7 +193,7 @@ func (rlc *rateLimitCache) setRateLimitClient(rateLimits []*rules.RateLimitRelea
 			lastMtime = item.Mtime.Unix()
 		}
 
-		nsName, svcName := item.Rule.Proto.GetNamespace().GetValue(), item.Rule.Proto.GetService().GetValue()
+		nsName, svcName := item.Rule.Proto.GetNamespace(), item.Rule.Proto.GetService()
 		rlc.svcSpecificRules.ComputeIfAbsent(nsName, func(k string) *container.SyncMap[string, *rules.ServiceWithRateLimits] {
 			return container.NewSyncMap[string, *rules.ServiceWithRateLimits]()
 		})
@@ -278,8 +277,8 @@ func (rlc *rateLimitCache) fixOneRuleServiceInfo(rateLimit *rules.RateLimit) {
 	}
 
 	if svc != nil {
-		rateLimit.Proto.Namespace = protobuf.NewStringValue(svc.Namespace)
-		rateLimit.Proto.Name = protobuf.NewStringValue(svc.Name)
+		rateLimit.Proto.Namespace = svc.Namespace
+		rateLimit.Proto.Service = svc.Name
 	}
 	delete(rlc.waitFixRules, rateLimit.ID)
 }
@@ -333,10 +332,10 @@ func (rlc *rateLimitCache) QueryRateLimitRules(ctx context.Context, args *cachea
 
 	res := make([]*rules.RateLimit, 0, 8)
 	process := func(rule *rules.RateLimit) {
-		if hasService && args.Service != rule.Proto.GetService().GetValue() {
+		if hasService && args.Service != rule.Proto.GetService() {
 			return
 		}
-		if hasNamespace && args.Namespace != rule.Proto.GetNamespace().GetValue() {
+		if hasNamespace && args.Namespace != rule.Proto.GetNamespace() {
 			return
 		}
 		if args.ID != "" && args.ID != rule.ID {

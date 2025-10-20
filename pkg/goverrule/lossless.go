@@ -19,11 +19,10 @@ import (
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 )
 
-func (s *Server) CreateLossLessRules(ctx context.Context, request []*apitraffic.LosslessRule) *apiservice.BatchWriteResponse {
+func (s *Server) CreateLossLessRules(ctx context.Context, request []*apitraffic.LosslessRule) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, rule := range request {
 		response := s.CreateLossLessRule(ctx, rule)
@@ -32,7 +31,7 @@ func (s *Server) CreateLossLessRules(ctx context.Context, request []*apitraffic.
 	return api.FormatBatchWriteResponse(responses)
 }
 
-func (s *Server) CreateLossLessRule(ctx context.Context, req *apitraffic.LosslessRule) *apiservice.Response {
+func (s *Server) CreateLossLessRule(ctx context.Context, req *apitraffic.LosslessRule) *apimodel.Response {
 	// 检查规则是否存在
 
 	data := &rules.LosslessRule{}
@@ -47,7 +46,7 @@ func (s *Server) CreateLossLessRule(ctx context.Context, req *apitraffic.Lossles
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, data.ToSpec())
 }
 
-func (s *Server) DeleteLossLessRules(ctx context.Context, request []*apitraffic.LosslessRule) *apiservice.BatchWriteResponse {
+func (s *Server) DeleteLossLessRules(ctx context.Context, request []*apitraffic.LosslessRule) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, rule := range request {
 		response := s.DeleteLossLessRule(ctx, rule)
@@ -56,7 +55,7 @@ func (s *Server) DeleteLossLessRules(ctx context.Context, request []*apitraffic.
 	return api.FormatBatchWriteResponse(responses)
 }
 
-func (s *Server) DeleteLossLessRule(ctx context.Context, req *apitraffic.LosslessRule) *apiservice.Response {
+func (s *Server) DeleteLossLessRule(ctx context.Context, req *apitraffic.LosslessRule) *apimodel.Response {
 	// 检查是否存在
 	old, err := s.storage.GetOneLosslessRule(req.GetId())
 	if err != nil {
@@ -76,7 +75,7 @@ func (s *Server) DeleteLossLessRule(ctx context.Context, req *apitraffic.Lossles
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
-func (s *Server) UpdateLossLessRules(ctx context.Context, request []*apitraffic.LosslessRule) *apiservice.BatchWriteResponse {
+func (s *Server) UpdateLossLessRules(ctx context.Context, request []*apitraffic.LosslessRule) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, rule := range request {
 		response := s.UpdateLossLessRule(ctx, rule)
@@ -85,7 +84,7 @@ func (s *Server) UpdateLossLessRules(ctx context.Context, request []*apitraffic.
 	return api.FormatBatchWriteResponse(responses)
 }
 
-func (s *Server) UpdateLossLessRule(ctx context.Context, req *apitraffic.LosslessRule) *apiservice.Response {
+func (s *Server) UpdateLossLessRule(ctx context.Context, req *apitraffic.LosslessRule) *apimodel.Response {
 	old, err := s.storage.GetOneLosslessRule(req.GetId())
 	if err != nil {
 		log.Error("[lossless] get for update error", zap.Error(err), utils.RequestID(ctx))
@@ -109,7 +108,7 @@ func (s *Server) UpdateLossLessRule(ctx context.Context, req *apitraffic.Lossles
 	return api.NewResponse(apimodel.Code_ExecuteSuccess)
 }
 
-func (s *Server) GetLossLessRules(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (s *Server) GetLossLessRules(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	// 参数解析
 	offset, limit, _ := valid.ParseOffsetAndLimit(query)
 	total, list, err := s.caches.Lossless().Query(ctx, &cachetypes.LosslessArgs{
@@ -130,7 +129,7 @@ func (s *Server) GetLossLessRules(ctx context.Context, query map[string]string) 
 	return resp
 }
 
-func (s *Server) GetOneLossLessRule(ctx context.Context, req *apitraffic.LosslessRule) *apiservice.Response {
+func (s *Server) GetOneLossLessRule(ctx context.Context, req *apitraffic.LosslessRule) *apimodel.Response {
 	rule, err := s.storage.GetOneLosslessRule(req.GetId())
 	if err != nil {
 		log.Error("[lossless] get one error", zap.Error(err), utils.RequestID(ctx))
@@ -141,7 +140,7 @@ func (s *Server) GetOneLossLessRule(ctx context.Context, req *apitraffic.Lossles
 }
 
 // wrapperLosslessStoreResponse 封装存储层错误
-func wrapperLosslessStoreResponse(rule *apitraffic.LosslessRule, err error) *apiservice.Response {
+func wrapperLosslessStoreResponse(rule *apitraffic.LosslessRule, err error) *apimodel.Response {
 	if err == nil {
 		return nil
 	}

@@ -23,7 +23,6 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
@@ -69,7 +68,7 @@ func (svr *Server) Name() string {
 }
 
 // CreatePolicies 创建策略
-func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
+func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apimodel.BatchWriteResponse {
 	authCtx := authcommon.NewAcquireContext(
 		authcommon.WithRequestContext(ctx),
 		authcommon.WithOperation(authcommon.Create),
@@ -85,7 +84,7 @@ func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthS
 }
 
 // UpdatePolicies 批量更新策略
-func (svr *Server) UpdatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
+func (svr *Server) UpdatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apimodel.BatchWriteResponse {
 	resources := make([]authcommon.ResourceEntry, 0, len(reqs))
 	for i := range reqs {
 		entry := authcommon.ResourceEntry{
@@ -116,7 +115,7 @@ func (svr *Server) UpdatePolicies(ctx context.Context, reqs []*apisecurity.AuthS
 }
 
 // DeletePolicies 删除策略
-func (svr *Server) DeletePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
+func (svr *Server) DeletePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apimodel.BatchWriteResponse {
 	resources := make([]authcommon.ResourceEntry, 0, len(reqs))
 	for i := range reqs {
 		entry := authcommon.ResourceEntry{
@@ -149,7 +148,7 @@ func (svr *Server) DeletePolicies(ctx context.Context, reqs []*apisecurity.AuthS
 // GetStrategies 获取资源列表
 // support 1. 支持按照 principal-id + principal-role 进行查询
 // support 2. 支持普通的鉴权策略查询
-func (svr *Server) GetPolicies(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetPolicies(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := authcommon.NewAcquireContext(
 		authcommon.WithRequestContext(ctx),
 		authcommon.WithOperation(authcommon.Read),
@@ -188,7 +187,7 @@ func (svr *Server) GetPolicies(ctx context.Context, query map[string]string) *ap
 }
 
 // GetPolicy 获取策略详细
-func (svr *Server) GetPolicy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apiservice.Response {
+func (svr *Server) GetPolicy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apimodel.Response {
 	entry := authcommon.ResourceEntry{
 		Type: apisecurity.ResourceType_PolicyRules,
 		ID:   strategy.GetId().GetValue(),
@@ -216,7 +215,7 @@ func (svr *Server) GetPolicy(ctx context.Context, strategy *apisecurity.AuthStra
 }
 
 // GetPrincipalResources 获取某个 principal 的所有可操作资源列表
-func (svr *Server) GetPrincipalResources(ctx context.Context, query map[string]string) *apiservice.Response {
+func (svr *Server) GetPrincipalResources(ctx context.Context, query map[string]string) *apimodel.Response {
 	authCtx := authcommon.NewAcquireContext(
 		authcommon.WithRequestContext(ctx),
 		authcommon.WithOperation(authcommon.Read),
@@ -230,7 +229,7 @@ func (svr *Server) GetPrincipalResources(ctx context.Context, query map[string]s
 	return svr.nextSvr.GetPrincipalResources(authCtx.GetRequestContext(), query)
 }
 
-func (svr *Server) GetResourcePrincipals(ctx context.Context, query map[string]string) *apiservice.Response {
+func (svr *Server) GetResourcePrincipals(ctx context.Context, query map[string]string) *apimodel.Response {
 	authCtx := authcommon.NewAcquireContext(
 		authcommon.WithRequestContext(ctx),
 		authcommon.WithOperation(authcommon.Read),
@@ -245,7 +244,7 @@ func (svr *Server) GetResourcePrincipals(ctx context.Context, query map[string]s
 }
 
 // AuthorizeResources 授权资源
-func (svr *Server) AuthorizeResources(ctx context.Context, reqs []*v1.AuthorizeResources) *apiservice.Response {
+func (svr *Server) AuthorizeResources(ctx context.Context, reqs []*v1.AuthorizeResources) *apimodel.Response {
 	authCtx := authcommon.NewAcquireContext(
 		authcommon.WithRequestContext(ctx),
 		authcommon.WithOperation(authcommon.Modify),
@@ -270,7 +269,7 @@ func (svr *Server) AfterResourceOperation(afterCtx *authcommon.AcquireContext) e
 }
 
 // CreateRoles 批量创建角色
-func (svr *Server) CreateRoles(ctx context.Context, reqs []*apisecurity.Role) *apiservice.BatchWriteResponse {
+func (svr *Server) CreateRoles(ctx context.Context, reqs []*apisecurity.Role) *apimodel.BatchWriteResponse {
 	authCtx := authcommon.NewAcquireContext(
 		authcommon.WithRequestContext(ctx),
 		authcommon.WithOperation(authcommon.Create),
@@ -286,7 +285,7 @@ func (svr *Server) CreateRoles(ctx context.Context, reqs []*apisecurity.Role) *a
 }
 
 // UpdateRoles 批量更新角色
-func (svr *Server) UpdateRoles(ctx context.Context, reqs []*apisecurity.Role) *apiservice.BatchWriteResponse {
+func (svr *Server) UpdateRoles(ctx context.Context, reqs []*apisecurity.Role) *apimodel.BatchWriteResponse {
 	resources := make([]authcommon.ResourceEntry, 0, len(reqs))
 	for i := range reqs {
 		entry := authcommon.ResourceEntry{
@@ -317,7 +316,7 @@ func (svr *Server) UpdateRoles(ctx context.Context, reqs []*apisecurity.Role) *a
 }
 
 // DeleteRoles 批量删除角色
-func (svr *Server) DeleteRoles(ctx context.Context, reqs []*apisecurity.Role) *apiservice.BatchWriteResponse {
+func (svr *Server) DeleteRoles(ctx context.Context, reqs []*apisecurity.Role) *apimodel.BatchWriteResponse {
 	resources := make([]authcommon.ResourceEntry, 0, len(reqs))
 	for i := range reqs {
 		entry := authcommon.ResourceEntry{
@@ -348,7 +347,7 @@ func (svr *Server) DeleteRoles(ctx context.Context, reqs []*apisecurity.Role) *a
 }
 
 // GetRoles 查询角色列表
-func (svr *Server) GetRoles(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetRoles(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := authcommon.NewAcquireContext(
 		authcommon.WithRequestContext(ctx),
 		authcommon.WithOperation(authcommon.Read),

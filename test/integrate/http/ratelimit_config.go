@@ -27,7 +27,6 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/ptypes/wrappers"
 
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -59,7 +58,7 @@ func JSONFromRateLimits(rateLimits []*apitraffic.Rule) (*bytes.Buffer, error) {
 /**
  * @brief 创建限流规则
  */
-func (c *Client) CreateRateLimits(rateLimits []*apitraffic.Rule) (*apiservice.BatchWriteResponse, error) {
+func (c *Client) CreateRateLimits(rateLimits []*apitraffic.Rule) (*apimodel.BatchWriteResponse, error) {
 	fmt.Printf("\ncreate rate limits\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/ratelimits", c.Address, c.Version)
@@ -251,8 +250,8 @@ func (c *Client) GetRateLimits(rateLimits []*apitraffic.Rule) error {
 /**
  * @brief 检查创建限流规则的回复
  */
-func checkCreateRateLimitsResponse(ret *apiservice.BatchWriteResponse, rateLimits []*apitraffic.Rule) (
-	*apiservice.BatchWriteResponse, error) {
+func checkCreateRateLimitsResponse(ret *apimodel.BatchWriteResponse, rateLimits []*apitraffic.Rule) (
+	*apimodel.BatchWriteResponse, error) {
 	switch {
 	case ret.GetCode().GetValue() != api.ExecuteSuccess:
 		return nil, errors.New("invalid batch code")

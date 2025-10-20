@@ -25,13 +25,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
-
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/utils"
 )
 
@@ -83,7 +80,7 @@ func (i *Instance) ID() string {
 	if i.Proto == nil {
 		return ""
 	}
-	return i.Proto.GetId().GetValue()
+	return i.Proto.GetId()
 }
 
 // Service get service
@@ -91,7 +88,7 @@ func (i *Instance) Service() string {
 	if i.Proto == nil {
 		return ""
 	}
-	return i.Proto.GetService().GetValue()
+	return i.Proto.GetService()
 }
 
 // Namespace get namespace
@@ -99,15 +96,7 @@ func (i *Instance) Namespace() string {
 	if i.Proto == nil {
 		return ""
 	}
-	return i.Proto.GetNamespace().GetValue()
-}
-
-// VpcID get vpcid
-func (i *Instance) VpcID() string {
-	if i.Proto == nil {
-		return ""
-	}
-	return i.Proto.GetVpcId().GetValue()
+	return i.Proto.GetNamespace()
 }
 
 // Host get host
@@ -115,7 +104,7 @@ func (i *Instance) Host() string {
 	if i.Proto == nil {
 		return ""
 	}
-	return i.Proto.GetHost().GetValue()
+	return i.Proto.GetHost()
 }
 
 // Port get port
@@ -123,7 +112,7 @@ func (i *Instance) Port() uint32 {
 	if i.Proto == nil {
 		return 0
 	}
-	return i.Proto.GetPort().GetValue()
+	return i.Proto.GetPort()
 }
 
 // Protocol get protocol
@@ -131,7 +120,7 @@ func (i *Instance) Protocol() string {
 	if i.Proto == nil {
 		return ""
 	}
-	return i.Proto.GetProtocol().GetValue()
+	return i.Proto.GetProtocol()
 }
 
 // Version get version
@@ -139,7 +128,7 @@ func (i *Instance) Version() string {
 	if i.Proto == nil {
 		return ""
 	}
-	return i.Proto.GetVersion().GetValue()
+	return i.Proto.GetVersion()
 }
 
 // Priority gets priority
@@ -147,7 +136,7 @@ func (i *Instance) Priority() uint32 {
 	if i.Proto == nil {
 		return 0
 	}
-	return i.Proto.GetPriority().GetValue()
+	return i.Proto.GetPriority()
 }
 
 // Weight get weight
@@ -155,7 +144,7 @@ func (i *Instance) Weight() uint32 {
 	if i.Proto == nil {
 		return 0
 	}
-	return i.Proto.GetWeight().GetValue()
+	return i.Proto.GetWeight()
 }
 
 // EnableHealthCheck get enables health check
@@ -163,7 +152,7 @@ func (i *Instance) EnableHealthCheck() bool {
 	if i.Proto == nil {
 		return false
 	}
-	return i.Proto.GetEnableHealthCheck().GetValue()
+	return i.Proto.GetEnableHealthCheck()
 }
 
 // HealthCheck get health check
@@ -179,7 +168,7 @@ func (i *Instance) Healthy() bool {
 	if i.Proto == nil {
 		return false
 	}
-	return i.Proto.GetHealthy().GetValue()
+	return i.Proto.GetHealthy()
 }
 
 // Isolate get isolate
@@ -187,7 +176,7 @@ func (i *Instance) Isolate() bool {
 	if i.Proto == nil {
 		return false
 	}
-	return i.Proto.GetIsolate().GetValue()
+	return i.Proto.GetIsolate()
 }
 
 // Location gets location
@@ -206,20 +195,12 @@ func (i *Instance) Metadata() map[string]string {
 	return i.Proto.GetMetadata()
 }
 
-// LogicSet get logic set
-func (i *Instance) LogicSet() string {
-	if i.Proto == nil {
-		return ""
-	}
-	return i.Proto.GetLogicSet().GetValue()
-}
-
 // Ctime get ctime
 func (i *Instance) Ctime() string {
 	if i.Proto == nil {
 		return ""
 	}
-	return i.Proto.GetCtime().GetValue()
+	return i.Proto.GetCtime()
 }
 
 // Mtime get mtime
@@ -227,7 +208,7 @@ func (i *Instance) Mtime() string {
 	if i.Proto == nil {
 		return ""
 	}
-	return i.Proto.GetMtime().GetValue()
+	return i.Proto.GetMtime()
 }
 
 // Revision get revision
@@ -235,15 +216,7 @@ func (i *Instance) Revision() string {
 	if i.Proto == nil {
 		return ""
 	}
-	return i.Proto.GetRevision().GetValue()
-}
-
-// ServiceToken get service token
-func (i *Instance) ServiceToken() string {
-	if i.Proto == nil {
-		return ""
-	}
-	return i.Proto.GetServiceToken().GetValue()
+	return i.Proto.GetRevision()
 }
 
 // MallocProto malloc proto if proto is null
@@ -293,27 +266,25 @@ type ExpandInstanceStore struct {
 func Store2Instance(is *InstanceStore) *Instance {
 	ins := &Instance{
 		Proto: &apiservice.Instance{
-			Id:                &wrappers.StringValue{Value: is.ID},
-			VpcId:             &wrappers.StringValue{Value: is.VpcID},
-			Host:              &wrappers.StringValue{Value: is.Host},
-			Port:              &wrappers.UInt32Value{Value: is.Port},
-			Protocol:          &wrappers.StringValue{Value: is.Protocol},
-			Version:           &wrappers.StringValue{Value: is.Version},
-			Priority:          &wrappers.UInt32Value{Value: is.Priority},
-			Weight:            &wrappers.UInt32Value{Value: is.Weight},
-			EnableHealthCheck: &wrappers.BoolValue{Value: utils.Int2bool(is.EnableHealthCheck)},
-			Healthy:           &wrappers.BoolValue{Value: utils.Int2bool(is.HealthStatus)},
+			Id:                is.ID,
+			Host:              is.Host,
+			Port:              is.Port,
+			Protocol:          is.Protocol,
+			Version:           is.Version,
+			Priority:          is.Priority,
+			Weight:            is.Weight,
+			EnableHealthCheck: utils.Int2bool(is.EnableHealthCheck),
+			Healthy:           utils.Int2bool(is.HealthStatus),
 			Location: &apimodel.Location{
-				Region: &wrappers.StringValue{Value: is.Region},
-				Zone:   &wrappers.StringValue{Value: is.Zone},
-				Campus: &wrappers.StringValue{Value: is.Campus},
+				Region: is.Region,
+				Zone:   is.Zone,
+				Campus: is.Campus,
 			},
-			Isolate:  &wrappers.BoolValue{Value: utils.Int2bool(is.Isolate)},
+			Isolate:  utils.Int2bool(is.Isolate),
 			Metadata: is.Meta,
-			LogicSet: &wrappers.StringValue{Value: is.LogicSet},
-			Ctime:    &wrappers.StringValue{Value: utils.Int64Time2String(is.CreateTime)},
-			Mtime:    &wrappers.StringValue{Value: utils.Int64Time2String(is.ModifyTime)},
-			Revision: &wrappers.StringValue{Value: is.Revision},
+			Ctime:    utils.Int64Time2String(is.CreateTime),
+			Mtime:    utils.Int64Time2String(is.ModifyTime),
+			Revision: is.Revision,
 		},
 		ServiceID:  is.ServiceID,
 		Valid:      flag2valid(is.Flag),
@@ -324,16 +295,16 @@ func Store2Instance(is *InstanceStore) *Instance {
 		ins.Proto.HealthCheck = &apiservice.HealthCheck{
 			Type: apiservice.HealthCheck_HealthCheckType(is.CheckType),
 			Heartbeat: &apiservice.HeartbeatHealthCheck{
-				Ttl: &wrappers.UInt32Value{Value: is.TTL},
+				Ttl: is.TTL,
 			},
 		}
 	}
 	// 如果location不为空，那么填充一下location
 	if is.Region != "" {
 		ins.Proto.Location = &apimodel.Location{
-			Region: &wrappers.StringValue{Value: is.Region},
-			Zone:   &wrappers.StringValue{Value: is.Zone},
-			Campus: &wrappers.StringValue{Value: is.Campus},
+			Region: is.Region,
+			Zone:   is.Zone,
+			Campus: is.Campus,
 		}
 	}
 
@@ -343,33 +314,18 @@ func Store2Instance(is *InstanceStore) *Instance {
 // ExpandStore2Instance 扩展store转换
 func ExpandStore2Instance(es *ExpandInstanceStore) *Instance {
 	out := Store2Instance(es.ServiceInstance)
-	out.Proto.Service = &wrappers.StringValue{Value: es.ServiceName}
-	out.Proto.Namespace = &wrappers.StringValue{Value: es.Namespace}
-	if es.ServiceToken != "" {
-		out.Proto.ServiceToken = &wrappers.StringValue{Value: es.ServiceToken}
-	}
+	out.Proto.Service = es.ServiceName
+	out.Proto.Namespace = es.Namespace
 	out.ServicePlatformID = es.ServicePlatformID
 	return out
 }
 
 // CreateInstanceModel 创建存储层服务实例模型
 func CreateInstanceModel(serviceID string, req *apiservice.Instance) *Instance {
-	// 默认为健康的
-	healthy := true
-	if req.GetHealthy() != nil {
-		healthy = req.GetHealthy().GetValue()
-	}
-
-	// 默认为不隔离的
-	isolate := false
-	if req.GetIsolate() != nil {
-		isolate = req.GetIsolate().GetValue()
-	}
-
 	// 权重默认是100
 	var weight uint32 = 100
-	if req.GetWeight() != nil {
-		weight = req.GetWeight().GetValue()
+	if req.GetWeight() != 0 {
+		weight = req.GetWeight()
 	}
 
 	instance := &Instance{
@@ -378,35 +334,31 @@ func CreateInstanceModel(serviceID string, req *apiservice.Instance) *Instance {
 
 	protoIns := &apiservice.Instance{
 		Id:       req.GetId(),
-		Host:     protobuf.NewStringValue(strings.TrimSpace(req.GetHost().GetValue())),
-		VpcId:    req.GetVpcId(),
+		Host:     strings.TrimSpace(req.GetHost()),
 		Port:     req.GetPort(),
 		Protocol: req.GetProtocol(),
 		Version:  req.GetVersion(),
 		Priority: req.GetPriority(),
-		Weight:   protobuf.NewUInt32Value(weight),
-		Healthy:  protobuf.NewBoolValue(healthy),
-		Isolate:  protobuf.NewBoolValue(isolate),
+		Weight:   weight,
+		Healthy:  req.GetHealthy(),
+		Isolate:  req.GetIsolate(),
 		Location: req.Location,
 		Metadata: req.Metadata,
-		LogicSet: req.GetLogicSet(),
-		Revision: protobuf.NewStringValue(utils.NewUUID()), // 更新版本号
+		Revision: utils.NewUUID(), // 更新版本号
 	}
 
 	// health Check，healthCheck不能为空，且没有显示把enable_health_check置为false
 	// 如果create的时候，打开了healthCheck，那么实例模式是unhealthy，必须要一次心跳才会healthy
-	if req.GetHealthCheck().GetHeartbeat() != nil &&
-		(req.GetEnableHealthCheck() == nil || req.GetEnableHealthCheck().GetValue()) {
-		protoIns.EnableHealthCheck = protobuf.NewBoolValue(true)
+	if req.GetHealthCheck().GetHeartbeat() != nil && req.GetEnableHealthCheck() {
+		protoIns.EnableHealthCheck = true
 		protoIns.HealthCheck = req.HealthCheck
 		protoIns.HealthCheck.Type = apiservice.HealthCheck_HEARTBEAT
 		// ttl range: (0, 60]
-		ttl := protoIns.GetHealthCheck().GetHeartbeat().GetTtl().GetValue()
+		ttl := protoIns.GetHealthCheck().GetHeartbeat().GetTtl()
 		if ttl == 0 || ttl > 60 {
-			if protoIns.HealthCheck.Heartbeat.Ttl == nil {
-				protoIns.HealthCheck.Heartbeat.Ttl = protobuf.NewUInt32Value(5)
+			if protoIns.HealthCheck.Heartbeat.Ttl == 0 {
+				protoIns.HealthCheck.Heartbeat.Ttl = uint32(5)
 			}
-			protoIns.HealthCheck.Heartbeat.Ttl.Value = 5
 		}
 	}
 
@@ -516,7 +468,7 @@ func (i *InstanceEvent) Event() string {
 
 // 资源信息
 func (i *InstanceEvent) Resource() string {
-	hostPortStr := fmt.Sprintf("%s:%d", i.Instance.GetHost().GetValue(), i.Instance.GetPort().GetValue())
+	hostPortStr := fmt.Sprintf("%s:%d", i.Instance.GetHost(), i.Instance.GetPort())
 	return fmt.Sprintf("%s/%s/%s", i.Namespace, i.Service, hostPortStr)
 }
 
@@ -538,9 +490,9 @@ func (i *InstanceEvent) String() string {
 	if nil == i {
 		return "nil"
 	}
-	hostPortStr := fmt.Sprintf("%s:%d", i.Instance.GetHost().GetValue(), i.Instance.GetPort().GetValue())
+	hostPortStr := fmt.Sprintf("%s:%d", i.Instance.GetHost(), i.Instance.GetPort())
 	return fmt.Sprintf("InstanceEvent(id=%s, namespace=%s, svcId=%s, service=%s, type=%v, instance=%s, healthy=%v)",
-		i.Id, i.Namespace, i.SvcId, i.Service, i.EType, hostPortStr, i.Instance.GetHealthy().GetValue())
+		i.Id, i.Namespace, i.SvcId, i.Service, i.EType, hostPortStr, i.Instance.GetHealthy())
 }
 
 type ClientEvent struct {
@@ -688,7 +640,7 @@ func (si *ServiceInstances) RunHealthyProtect() {
 		if !ok {
 			continue
 		}
-		needProtect := needZeroProtect(lastBeat, beatTime, int64(ins.HealthCheck().GetHeartbeat().GetTtl().GetValue()))
+		needProtect := needZeroProtect(lastBeat, beatTime, int64(ins.HealthCheck().GetHeartbeat().GetTtl()))
 		if !needProtect {
 			continue
 		}

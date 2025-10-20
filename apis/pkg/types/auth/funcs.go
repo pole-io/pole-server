@@ -124,7 +124,7 @@ func collectPrincipalEntry(ruleID string, uType PrincipalType, res []*apisecurit
 	for index := range res {
 		principals = append(principals, Principal{
 			StrategyID:    ruleID,
-			PrincipalID:   res[index].GetId().GetValue(),
+			PrincipalID:   res[index].GetId(),
 			PrincipalType: uType,
 		})
 	}

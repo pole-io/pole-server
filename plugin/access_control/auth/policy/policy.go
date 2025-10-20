@@ -34,7 +34,6 @@ import (
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -55,7 +54,7 @@ type (
 )
 
 // CreatePolicies 创建鉴权策略
-func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
+func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apimodel.BatchWriteResponse {
 	resp := api.NewAuthBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 
 	for index := range reqs {
@@ -65,7 +64,7 @@ func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthS
 	return resp
 }
 
-func (svr *Server) CreatePolicy(ctx context.Context, req *apisecurity.AuthStrategy) *apiservice.Response {
+func (svr *Server) CreatePolicy(ctx context.Context, req *apisecurity.AuthStrategy) *apimodel.Response {
 	req.Owner = protobuf.NewStringValue(utils.ParseOwnerID(ctx))
 	req.Resources = svr.normalizeResource(req.Resources)
 
@@ -98,7 +97,7 @@ func (svr *Server) CreatePolicy(ctx context.Context, req *apisecurity.AuthStrate
 
 // UpdatePolicies 批量修改鉴权
 func (svr *Server) UpdatePolicies(
-	ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
+	ctx context.Context, reqs []*apisecurity.AuthStrategy) *apimodel.BatchWriteResponse {
 	resp := api.NewAuthBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 
 	for index := range reqs {
@@ -113,7 +112,7 @@ func (svr *Server) UpdatePolicies(
 // Case 1. 修改的是默认鉴权策略的话，只能修改资源，不能添加、删除用户 or 用户组
 // Case 2. 鉴权策略只能被自己的 owner 对应的用户修改
 // Case 3. 主账户的默认策略不得修改
-func (svr *Server) UpdatePolicy(ctx context.Context, req *apisecurity.AuthStrategy) *apiservice.Response {
+func (svr *Server) UpdatePolicy(ctx context.Context, req *apisecurity.AuthStrategy) *apimodel.Response {
 	saveData, err := svr.storage.GetStrategyDetail(req.GetId().GetValue())
 	if err != nil {
 		log.Error("[Auth][Strategy] get strategy from store", utils.RequestID(ctx),
@@ -145,7 +144,7 @@ func (svr *Server) UpdatePolicy(ctx context.Context, req *apisecurity.AuthStrate
 
 // DeletePolicies 批量删除鉴权策略
 func (svr *Server) DeletePolicies(
-	ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
+	ctx context.Context, reqs []*apisecurity.AuthStrategy) *apimodel.BatchWriteResponse {
 	resp := api.NewAuthBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for index := range reqs {
 		ret := svr.DeletePolicy(ctx, reqs[index])
@@ -158,7 +157,7 @@ func (svr *Server) DeletePolicies(
 // DeleteStrategy 删除鉴权策略
 // Case 1. 只有该策略的 owner 账户可以删除策略
 // Case 2. 默认策略不能被删除，默认策略只能随着账户的删除而被清理
-func (svr *Server) DeletePolicy(ctx context.Context, req *apisecurity.AuthStrategy) *apiservice.Response {
+func (svr *Server) DeletePolicy(ctx context.Context, req *apisecurity.AuthStrategy) *apimodel.Response {
 	strategy, err := svr.storage.GetStrategyDetail(req.GetId().GetValue())
 	if err != nil {
 		log.Error("[Auth][Strategy] get strategy from store", utils.RequestID(ctx),
@@ -200,7 +199,7 @@ func (svr *Server) DeletePolicy(ctx context.Context, req *apisecurity.AuthStrate
 //		a. 如果当前是超级管理账户，则按照传入的 query 进行查询即可
 //		b. 如果当前是主账户，则自动注入 owner 字段，即只能查看策略的 owner 是自己的策略
 //		c. 如果当前是子账户，则自动注入 principal_id 以及 principal_type 字段，即稚嫩查询与自己有关的策略
-func (svr *Server) GetPolicies(ctx context.Context, filters map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetPolicies(ctx context.Context, filters map[string]string) *apimodel.BatchQueryResponse {
 	filters = ParseStrategySearchArgs(ctx, filters)
 	offset, limit, _ := valid.ParseOffsetAndLimit(filters)
 
@@ -267,7 +266,7 @@ func ParseStrategySearchArgs(ctx context.Context, searchFilters map[string]strin
 // Case 1 如果当前操作者是该策略 principal 中的一员，则可以查看
 // Case 2 如果当前操作者是该策略的 owner，则可以查看
 // Case 3 如果当前操作者是admin角色，直接查看
-func (svr *Server) GetPolicy(ctx context.Context, req *apisecurity.AuthStrategy) *apiservice.Response {
+func (svr *Server) GetPolicy(ctx context.Context, req *apisecurity.AuthStrategy) *apimodel.Response {
 	userId := utils.ParseUserID(ctx)
 	isOwner := utils.ParseIsOwner(ctx)
 
@@ -321,7 +320,7 @@ func (svr *Server) GetPolicy(ctx context.Context, req *apisecurity.AuthStrategy)
 }
 
 // GetPrincipalResources 获取某个principal可以获取到的所有资源ID数据信息
-func (svr *Server) GetPrincipalResources(ctx context.Context, query map[string]string) *apiservice.Response {
+func (svr *Server) GetPrincipalResources(ctx context.Context, query map[string]string) *apimodel.Response {
 	if len(query) == 0 {
 		return api.NewAuthResponse(apimodel.Code_EmptyRequest)
 	}
@@ -385,7 +384,7 @@ func (svr *Server) GetPrincipalResources(ctx context.Context, query map[string]s
 }
 
 // GetResourcePrincipals 获取资源的所有关联成员
-func (svr *Server) GetResourcePrincipals(ctx context.Context, query map[string]string) *apiservice.Response {
+func (svr *Server) GetResourcePrincipals(ctx context.Context, query map[string]string) *apimodel.Response {
 	resId := query["res_id"]
 	resType := query["res_type"]
 	action := query["action"]
@@ -438,7 +437,7 @@ func (svr *Server) GetResourcePrincipals(ctx context.Context, query map[string]s
 }
 
 // AuthorizeResources 授权资源
-func (svr *Server) AuthorizeResources(ctx context.Context, reqs []*v1.AuthorizeResources) *apiservice.Response {
+func (svr *Server) AuthorizeResources(ctx context.Context, reqs []*v1.AuthorizeResources) *apimodel.Response {
 	// TODO
 	return api.NewAuthResponse(apimodel.Code_ExecuteSuccess)
 }

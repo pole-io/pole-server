@@ -25,7 +25,6 @@ import (
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/service_manage"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -96,7 +95,7 @@ func (svr *Server) GetFaultDetectRules(ctx context.Context,
 	return svr.nextSvr.GetFaultDetectRules(ctx, query)
 }
 
-func (svr *Server) GetOneFaultDetectRule(ctx context.Context, req *fault_tolerance.FaultDetectRule) *apiservice.Response {
+func (svr *Server) GetOneFaultDetectRule(ctx context.Context, req *fault_tolerance.FaultDetectRule) *apimodel.Response {
 	return svr.nextSvr.GetOneFaultDetectRule(ctx, req)
 }
 
@@ -149,7 +148,7 @@ func (svr *Server) UpdateFaultDetectRules(ctx context.Context,
 	return svr.nextSvr.UpdateFaultDetectRules(ctx, request)
 }
 
-func (svr *Server) checkFaultDetectRuleExists(ctx context.Context, id string) *apiservice.Response {
+func (svr *Server) checkFaultDetectRuleExists(ctx context.Context, id string) *apimodel.Response {
 	exists, err := svr.storage.HasFaultDetectRule(id)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
@@ -161,7 +160,7 @@ func (svr *Server) checkFaultDetectRuleExists(ctx context.Context, id string) *a
 	return nil
 }
 
-func checkBatchFaultDetectRules(req []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
+func checkBatchFaultDetectRules(req []*apifault.FaultDetectRule) *apimodel.BatchWriteResponse {
 	if len(req) == 0 {
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
@@ -174,7 +173,7 @@ func checkBatchFaultDetectRules(req []*apifault.FaultDetectRule) *apiservice.Bat
 }
 
 func checkFaultDetectRuleParams(
-	req *apifault.FaultDetectRule, idRequired bool, nameRequired bool) *apiservice.Response {
+	req *apifault.FaultDetectRule, idRequired bool, nameRequired bool) *apimodel.Response {
 	if req == nil {
 		return api.NewResponse(apimodel.Code_EmptyRequest)
 	}
@@ -190,7 +189,7 @@ func checkFaultDetectRuleParams(
 	return nil
 }
 
-func checkFaultDetectRuleParamsDbLen(req *apifault.FaultDetectRule) *apiservice.Response {
+func checkFaultDetectRuleParamsDbLen(req *apifault.FaultDetectRule) *apimodel.Response {
 	if err := valid.CheckDbRawStrFieldLen(req.GetTargetService().GetService(), valid.MaxDbServiceNameLength); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidServiceName)
 	}

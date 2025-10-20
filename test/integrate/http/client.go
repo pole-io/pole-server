@@ -103,7 +103,7 @@ func (c *Client) CompleteURL(url string, params map[string][]interface{}) string
 }
 
 // GetBatchWriteResponse 获取BatchWriteResponse
-func GetBatchWriteResponse(response *http.Response) (*apiservice.BatchWriteResponse, error) {
+func GetBatchWriteResponse(response *http.Response) (*apimodel.BatchWriteResponse, error) {
 	// 打印回复
 	fmt.Printf("http code: %v\n", response.StatusCode)
 
@@ -210,7 +210,7 @@ func GetConfigBatchWriteResponse(response *http.Response) (*apiconfig.ConfigBatc
 }
 
 // GetBatchQueryResponse 获取BatchQueryResponse
-func GetBatchQueryResponse(response *http.Response) (*apiservice.BatchQueryResponse, error) {
+func GetBatchQueryResponse(response *http.Response) (*apimodel.BatchQueryResponse, error) {
 	// 打印回复
 	fmt.Printf("http code: %v\n", response.StatusCode)
 
@@ -237,7 +237,7 @@ func GetBatchQueryResponse(response *http.Response) (*apiservice.BatchQueryRespo
 }
 
 // GetSimpleResponse 获取SimpleResponse
-func GetSimpleResponse(response *http.Response) (*apiservice.Response, error) {
+func GetSimpleResponse(response *http.Response) (*apimodel.Response, error) {
 	// 打印回复
 	fmt.Printf("http code: %v\n", response.StatusCode)
 

@@ -26,7 +26,6 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
@@ -54,7 +53,7 @@ func JSONFromNamespaces(namespaces []*apimodel.Namespace) (*bytes.Buffer, error)
 }
 
 // CreateNamespaces 创建命名空间
-func (c *Client) CreateNamespaces(namespaces []*apimodel.Namespace) (*apiservice.BatchWriteResponse, error) {
+func (c *Client) CreateNamespaces(namespaces []*apimodel.Namespace) (*apimodel.BatchWriteResponse, error) {
 	fmt.Printf("\ncreate namespaces\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/namespaces", c.Address, c.Version)
@@ -112,7 +111,7 @@ func (c *Client) DeleteNamespaces(namespaces []*apimodel.Namespace) error {
 }
 
 // DeleteNamespaces 删除命名空间
-func (c *Client) DeleteNamespacesGetResp(namespaces []*apimodel.Namespace) (*apiservice.BatchWriteResponse, error) {
+func (c *Client) DeleteNamespacesGetResp(namespaces []*apimodel.Namespace) (*apimodel.BatchWriteResponse, error) {
 	fmt.Printf("\ndelete namespaces\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/namespaces/delete", c.Address, c.Version)
@@ -230,8 +229,8 @@ func (c *Client) GetNamespaces(namespaces []*apimodel.Namespace) ([]*apimodel.Na
 /**
  * @brief 检查创建命名空间的回复
  */
-func checkCreateNamespacesResponse(ret *apiservice.BatchWriteResponse, namespaces []*apimodel.Namespace) (
-	*apiservice.BatchWriteResponse, error) {
+func checkCreateNamespacesResponse(ret *apimodel.BatchWriteResponse, namespaces []*apimodel.Namespace) (
+	*apimodel.BatchWriteResponse, error) {
 	if ret.GetCode() == nil || ret.GetCode().GetValue() != api.ExecuteSuccess {
 		return nil, errors.New("invalid batch code")
 	}

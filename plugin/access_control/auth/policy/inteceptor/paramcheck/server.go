@@ -25,7 +25,6 @@ import (
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
@@ -89,7 +88,7 @@ func (svr *Server) Name() string {
 }
 
 // CreateStrategy 创建策略
-func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
+func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apimodel.BatchWriteResponse {
 	for i := range reqs {
 		rsp := svr.checkCreateStrategy(reqs[i])
 		if rsp != nil {
@@ -101,10 +100,10 @@ func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthS
 }
 
 // UpdateStrategies 批量更新策略
-func (svr *Server) UpdatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
+func (svr *Server) UpdatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apimodel.BatchWriteResponse {
 	batchResp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range reqs {
-		var rsp *apiservice.Response
+		var rsp *apimodel.Response
 		strategy, err := svr.storage.GetStrategyDetail(reqs[i].GetId().GetValue())
 		if err != nil {
 			log.Error("[Auth][Strategy] get strategy from store", utils.RequestID(ctx), zap.Error(err))
@@ -122,14 +121,14 @@ func (svr *Server) UpdatePolicies(ctx context.Context, reqs []*apisecurity.AuthS
 }
 
 // DeleteStrategies 删除策略
-func (svr *Server) DeletePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse {
+func (svr *Server) DeletePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apimodel.BatchWriteResponse {
 	return svr.nextSvr.DeletePolicies(ctx, reqs)
 }
 
 // GetPolicies 获取资源列表
 // support 1. 支持按照 principal-id + principal-role 进行查询
 // support 2. 支持普通的鉴权策略查询
-func (svr *Server) GetPolicies(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetPolicies(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	log.Debug("[Auth][Strategy] origin get strategies query params", utils.RequestID(ctx), zap.Any("query", query))
 
 	searchFilters := make(map[string]string, len(query))
@@ -156,16 +155,16 @@ func (svr *Server) GetPolicies(ctx context.Context, query map[string]string) *ap
 }
 
 // GetPolicy 获取策略详细
-func (svr *Server) GetPolicy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apiservice.Response {
+func (svr *Server) GetPolicy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apimodel.Response {
 	return svr.nextSvr.GetPolicy(ctx, strategy)
 }
 
 // GetPrincipalResources 获取某个 principal 的所有可操作资源列表
-func (svr *Server) GetPrincipalResources(ctx context.Context, query map[string]string) *apiservice.Response {
+func (svr *Server) GetPrincipalResources(ctx context.Context, query map[string]string) *apimodel.Response {
 	return svr.nextSvr.GetPrincipalResources(ctx, query)
 }
 
-func (svr *Server) GetResourcePrincipals(ctx context.Context, query map[string]string) *apiservice.Response {
+func (svr *Server) GetResourcePrincipals(ctx context.Context, query map[string]string) *apimodel.Response {
 	if len(query) == 0 {
 		return api.NewResponse(apimodel.Code_EmptyRequest)
 	}
@@ -187,7 +186,7 @@ func (svr *Server) GetResourcePrincipals(ctx context.Context, query map[string]s
 }
 
 // AuthorizeResources 授权资源
-func (svr *Server) AuthorizeResources(ctx context.Context, reqs []*v1.AuthorizeResources) *apiservice.Response {
+func (svr *Server) AuthorizeResources(ctx context.Context, reqs []*v1.AuthorizeResources) *apimodel.Response {
 	return svr.nextSvr.AuthorizeResources(ctx, reqs)
 }
 
@@ -202,27 +201,27 @@ func (svr *Server) AfterResourceOperation(afterCtx *authtypes.AcquireContext) er
 }
 
 // CreateRoles 批量创建角色
-func (svr *Server) CreateRoles(ctx context.Context, reqs []*apisecurity.Role) *apiservice.BatchWriteResponse {
+func (svr *Server) CreateRoles(ctx context.Context, reqs []*apisecurity.Role) *apimodel.BatchWriteResponse {
 	return svr.nextSvr.CreateRoles(ctx, reqs)
 }
 
 // UpdateRoles 批量更新角色
-func (svr *Server) UpdateRoles(ctx context.Context, reqs []*apisecurity.Role) *apiservice.BatchWriteResponse {
+func (svr *Server) UpdateRoles(ctx context.Context, reqs []*apisecurity.Role) *apimodel.BatchWriteResponse {
 	return svr.nextSvr.UpdateRoles(ctx, reqs)
 }
 
 // DeleteRoles 批量删除角色
-func (svr *Server) DeleteRoles(ctx context.Context, reqs []*apisecurity.Role) *apiservice.BatchWriteResponse {
+func (svr *Server) DeleteRoles(ctx context.Context, reqs []*apisecurity.Role) *apimodel.BatchWriteResponse {
 	return svr.nextSvr.DeleteRoles(ctx, reqs)
 }
 
 // GetRoles 查询角色列表
-func (svr *Server) GetRoles(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetRoles(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	return svr.nextSvr.GetRoles(ctx, query)
 }
 
 // checkCreateStrategy 检查创建鉴权策略的请求
-func (svr *Server) checkCreateStrategy(req *apisecurity.AuthStrategy) *apiservice.Response {
+func (svr *Server) checkCreateStrategy(req *apisecurity.AuthStrategy) *apimodel.Response {
 	// 检查名称信息
 	if err := CheckName(req.GetName()); err != nil {
 		return api.NewAuthStrategyResponse(apimodel.Code_InvalidUserName, req)
@@ -246,7 +245,7 @@ func (svr *Server) checkCreateStrategy(req *apisecurity.AuthStrategy) *apiservic
 // Case 1. 修改的是默认鉴权策略的话，只能修改资源，不能添加用户 or 用户组
 // Case 2. 鉴权策略只能被自己的 owner 对应的用户修改
 func (svr *Server) checkUpdateStrategy(ctx context.Context, req *apisecurity.AuthStrategy,
-	saved *authtypes.StrategyDetail) *apiservice.Response {
+	saved *authtypes.StrategyDetail) *apimodel.Response {
 	if saved.Default {
 		if len(req.GetPrincipals().GetUsers()) != 0 ||
 			len(req.GetPrincipals().GetGroups()) != 0 {
@@ -293,7 +292,7 @@ func (svr *Server) checkGroupExist(groups []*apisecurity.UserGroup) error {
 }
 
 // checkResourceExist 检查资源是否存在
-func (svr *Server) checkResourceExist(resources *apisecurity.StrategyResources) *apiservice.Response {
+func (svr *Server) checkResourceExist(resources *apisecurity.StrategyResources) *apimodel.Response {
 	namespaces := resources.GetNamespaces()
 
 	nsCache := svr.cacheMgr.Namespace()

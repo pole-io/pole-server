@@ -56,7 +56,7 @@ func JSONFromInstances(instances []*apiservice.Instance) (*bytes.Buffer, error) 
 /**
  * @brief 创建实例
  */
-func (c *Client) CreateInstances(instances []*apiservice.Instance) (*apiservice.BatchWriteResponse, error) {
+func (c *Client) CreateInstances(instances []*apiservice.Instance) (*apimodel.BatchWriteResponse, error) {
 	fmt.Printf("\ncreate instances\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/instances", c.Address, c.Version)
@@ -212,8 +212,8 @@ func (c *Client) GetInstances(instances []*apiservice.Instance) error {
 /**
  * @brief 检查创建实例的回复
  */
-func checkCreateInstancesResponse(ret *apiservice.BatchWriteResponse, instances []*apiservice.Instance) (
-	*apiservice.BatchWriteResponse, error) {
+func checkCreateInstancesResponse(ret *apimodel.BatchWriteResponse, instances []*apiservice.Instance) (
+	*apimodel.BatchWriteResponse, error) {
 
 	switch {
 	case ret.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess):
@@ -230,7 +230,7 @@ func checkCreateInstancesResponse(ret *apiservice.BatchWriteResponse, instances 
 /**
  * @brief 检查创建实例每个实例的信息
  */
-func checkInstancesResponseEntry(ret *apiservice.BatchWriteResponse, instances []*apiservice.Instance) error {
+func checkInstancesResponseEntry(ret *apimodel.BatchWriteResponse, instances []*apiservice.Instance) error {
 	items := ret.GetResponses()
 	for index, item := range items {
 		instance := item.GetInstance()

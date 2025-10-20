@@ -28,7 +28,6 @@ import (
 	"go.uber.org/zap"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
@@ -45,7 +44,7 @@ import (
 )
 
 // CreateRateLimits 批量创建限流规则
-func (s *Server) CreateRateLimits(ctx context.Context, request []*apitraffic.Rule) *apiservice.BatchWriteResponse {
+func (s *Server) CreateRateLimits(ctx context.Context, request []*apitraffic.Rule) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, rateLimit := range request {
 		response := s.CreateRateLimit(ctx, rateLimit)
@@ -55,7 +54,7 @@ func (s *Server) CreateRateLimits(ctx context.Context, request []*apitraffic.Rul
 }
 
 // CreateRateLimit 创建限流规则
-func (s *Server) CreateRateLimit(ctx context.Context, req *apitraffic.Rule) *apiservice.Response {
+func (s *Server) CreateRateLimit(ctx context.Context, req *apitraffic.Rule) *apimodel.Response {
 	// 构造底层数据结构
 	data, err := api2RateLimit(req)
 	if err != nil {
@@ -79,7 +78,7 @@ func (s *Server) CreateRateLimit(ctx context.Context, req *apitraffic.Rule) *api
 }
 
 // DeleteRateLimits 批量删除限流规则
-func (s *Server) DeleteRateLimits(ctx context.Context, request []*apitraffic.Rule) *apiservice.BatchWriteResponse {
+func (s *Server) DeleteRateLimits(ctx context.Context, request []*apitraffic.Rule) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range request {
 		resp := s.DeleteRateLimit(ctx, entry)
@@ -89,7 +88,7 @@ func (s *Server) DeleteRateLimits(ctx context.Context, request []*apitraffic.Rul
 }
 
 // DeleteRateLimit 删除单个限流规则
-func (s *Server) DeleteRateLimit(ctx context.Context, req *apitraffic.Rule) *apiservice.Response {
+func (s *Server) DeleteRateLimit(ctx context.Context, req *apitraffic.Rule) *apimodel.Response {
 	// 检查限流规则是否存在
 	rateLimit, resp := s.checkRateLimitExisted(ctx, req.GetId().GetValue(), req)
 	if resp != nil {
@@ -117,7 +116,7 @@ func (s *Server) DeleteRateLimit(ctx context.Context, req *apitraffic.Rule) *api
 	return api.NewRateLimitResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
-func (s *Server) EnableRateLimits(ctx context.Context, request []*apitraffic.Rule) *apiservice.BatchWriteResponse {
+func (s *Server) EnableRateLimits(ctx context.Context, request []*apitraffic.Rule) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range request {
 		response := s.EnableRateLimit(ctx, entry)
@@ -127,7 +126,7 @@ func (s *Server) EnableRateLimits(ctx context.Context, request []*apitraffic.Rul
 }
 
 // EnableRateLimit 启用限流规则
-func (s *Server) EnableRateLimit(ctx context.Context, req *apitraffic.Rule) *apiservice.Response {
+func (s *Server) EnableRateLimit(ctx context.Context, req *apitraffic.Rule) *apimodel.Response {
 	// 检查限流规则是否存在
 	data, resp := s.checkRateLimitExisted(ctx, req.GetId().GetValue(), req)
 	if resp != nil {
@@ -155,7 +154,7 @@ func (s *Server) EnableRateLimit(ctx context.Context, req *apitraffic.Rule) *api
 }
 
 // UpdateRateLimits 批量更新限流规则
-func (s *Server) UpdateRateLimits(ctx context.Context, request []*apitraffic.Rule) *apiservice.BatchWriteResponse {
+func (s *Server) UpdateRateLimits(ctx context.Context, request []*apitraffic.Rule) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range request {
 		response := s.UpdateRateLimit(ctx, entry)
@@ -165,7 +164,7 @@ func (s *Server) UpdateRateLimits(ctx context.Context, request []*apitraffic.Rul
 }
 
 // UpdateRateLimit 更新限流规则
-func (s *Server) UpdateRateLimit(ctx context.Context, req *apitraffic.Rule) *apiservice.Response {
+func (s *Server) UpdateRateLimit(ctx context.Context, req *apitraffic.Rule) *apimodel.Response {
 	// 检查限流规则是否存在
 	data, resp := s.checkRateLimitExisted(ctx, req.GetId().GetValue(), req)
 	if resp != nil {
@@ -193,7 +192,7 @@ func (s *Server) UpdateRateLimit(ctx context.Context, req *apitraffic.Rule) *api
 }
 
 // GetRateLimits 查询限流规则
-func (s *Server) GetRateLimits(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (s *Server) GetRateLimits(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	// 处理offset和limit
 	args, errResp := parseRateLimitArgs(query)
 	if errResp != nil {
@@ -223,7 +222,7 @@ func (s *Server) GetRateLimits(ctx context.Context, query map[string]string) *ap
 }
 
 // GetOneRateLimitRule Query all router_rule rules
-func (s *Server) GetOneRateLimitRule(ctx context.Context, req *apitraffic.Rule) *apiservice.Response {
+func (s *Server) GetOneRateLimitRule(ctx context.Context, req *apitraffic.Rule) *apimodel.Response {
 	// Check whether the routing configuration exists
 	saveData, err := s.storage.GetRateLimitWithID(req.GetId().GetValue())
 	if err != nil {
@@ -243,7 +242,7 @@ func (s *Server) GetOneRateLimitRule(ctx context.Context, req *apitraffic.Rule) 
 	return apiv1.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, view)
 }
 
-func parseRateLimitArgs(query map[string]string) (*cacheapi.RateLimitRuleArgs, *apiservice.BatchQueryResponse) {
+func parseRateLimitArgs(query map[string]string) (*cacheapi.RateLimitRuleArgs, *apimodel.BatchQueryResponse) {
 	// 处理offset和limit
 	offset, limit, _ := valid.ParseOffsetAndLimit(query)
 
@@ -268,7 +267,7 @@ func parseRateLimitArgs(query map[string]string) (*cacheapi.RateLimitRuleArgs, *
 
 // checkRateLimitValid 检查限流规则是否允许修改/删除
 func (s *Server) checkRateLimitValid(ctx context.Context, serviceID string, req *apitraffic.Rule) (
-	*svctypes.Service, *apiservice.Response) {
+	*svctypes.Service, *apimodel.Response) {
 	requestID := utils.ParseRequestID(ctx)
 
 	service, err := s.storage.GetServiceByID(serviceID)
@@ -282,7 +281,7 @@ func (s *Server) checkRateLimitValid(ctx context.Context, serviceID string, req 
 
 // checkRateLimitExisted 检查限流规则是否存在
 func (s *Server) checkRateLimitExisted(ctx context.Context, id string,
-	req *apitraffic.Rule) (*rules.RateLimit, *apiservice.Response) {
+	req *apitraffic.Rule) (*rules.RateLimit, *apimodel.Response) {
 
 	rateLimit, err := s.storage.GetRateLimitWithID(id)
 	if err != nil {
@@ -461,7 +460,7 @@ func rateLimitRecordEntry(ctx context.Context, req *apitraffic.Rule, md *rules.R
 }
 
 // wrapperRateLimitStoreResponse 封装路由存储层错误
-func wrapperRateLimitStoreResponse(rule *apitraffic.Rule, err error) *apiservice.Response {
+func wrapperRateLimitStoreResponse(rule *apitraffic.Rule, err error) *apimodel.Response {
 	if err == nil {
 		return nil
 	}

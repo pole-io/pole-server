@@ -25,8 +25,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/wrappers"
 
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
-
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
 	storeapi "github.com/pole-io/pole-server/apis/store"
@@ -98,7 +96,7 @@ const (
 )
 
 // storeError2AnyResponse store code
-func storeError2AnyResponse(err error, msg proto.Message) *apiservice.Response {
+func storeError2AnyResponse(err error, msg proto.Message) *apimodel.Response {
 	if err == nil {
 		return nil
 	}

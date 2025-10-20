@@ -29,7 +29,6 @@ import (
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
@@ -269,8 +268,8 @@ func (ic *instanceCache) setInstances(ids *container.SyncMap[string, *svctypes.I
 		svc := ic.BaseCache.CacheMgr.GetCacher(cacheapi.CacheService).(cacheapi.ServiceCache).GetServiceByID(item.ServiceID)
 		if svc != nil {
 			// 填充实例的服务名称数据信息
-			item.Proto.Namespace = protobuf.NewStringValue(svc.Namespace)
-			item.Proto.Service = protobuf.NewStringValue(svc.Name)
+			item.Proto.Namespace = svc.Namespace
+			item.Proto.Service = svc.Name
 			serviceInstances.UpdateProtectThreshold(svc.ProtectThreshold())
 		}
 		modifyTime := item.ModifyTime.Unix()
@@ -375,9 +374,9 @@ func fillInternalLabels(item *svctypes.Instance) *svctypes.Instance {
 	}
 
 	if item.Location() != nil {
-		item.Proto.Metadata["region"] = item.Location().GetRegion().GetValue()
-		item.Proto.Metadata["zone"] = item.Location().GetZone().GetValue()
-		item.Proto.Metadata["campus"] = item.Location().GetCampus().GetValue()
+		item.Proto.Metadata["region"] = item.Location().GetRegion()
+		item.Proto.Metadata["zone"] = item.Location().GetZone()
+		item.Proto.Metadata["campus"] = item.Location().GetCampus()
 	}
 	return item
 }
@@ -424,7 +423,7 @@ func (ic *instanceCache) computeInstanceCount(affect map[string]bool) {
 				count.HealthyInstanceCount++
 				count.VersionCounts[instance.Version()].HealthyInstanceCount++
 			}
-			if instance.Proto.GetIsolate().GetValue() {
+			if instance.Proto.GetIsolate() {
 				count.IsolateInstanceCount++
 				count.VersionCounts[instance.Version()].IsolateInstanceCount++
 			}
@@ -438,7 +437,7 @@ func (ic *instanceCache) computeInstanceCount(affect map[string]bool) {
 }
 
 func isInstanceHealthy(instance *svctypes.Instance) bool {
-	return instance.Proto.GetHealthy().GetValue() && !instance.Proto.GetIsolate().GetValue()
+	return instance.Proto.GetHealthy() && !instance.Proto.GetIsolate()
 }
 
 // GetInstance 根据实例ID获取实例数据

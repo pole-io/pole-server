@@ -262,7 +262,7 @@ func BuildSha1Digest(value string) (string, error) {
 }
 
 func CheckContractInterfaceTetrad(contractId string, source apiservice.InterfaceDescriptor_Source,
-	req *apiservice.InterfaceDescriptor) (string, *apiservice.Response) {
+	req *apiservice.InterfaceDescriptor) (string, *apimodel.Response) {
 	if contractId == "" {
 		return "", api.NewResponseWithMsg(apimodel.Code_BadRequest, "invalid service_contract id")
 	}

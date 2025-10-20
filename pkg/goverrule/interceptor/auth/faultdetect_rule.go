@@ -27,7 +27,6 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/security"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -37,7 +36,7 @@ import (
 )
 
 func (svr *Server) CreateFaultDetectRules(
-	ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
+	ctx context.Context, request []*apifault.FaultDetectRule) *apimodel.BatchWriteResponse {
 
 	authCtx := svr.collectFaultDetectAuthContext(ctx, request, authtypes.Create, authtypes.CreateFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -61,7 +60,7 @@ func (svr *Server) CreateFaultDetectRules(
 }
 
 func (svr *Server) DeleteFaultDetectRules(
-	ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
+	ctx context.Context, request []*apifault.FaultDetectRule) *apimodel.BatchWriteResponse {
 
 	authCtx := svr.collectFaultDetectAuthContext(ctx, request, authtypes.Delete, authtypes.DeleteFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -83,7 +82,7 @@ func (svr *Server) DeleteFaultDetectRules(
 }
 
 func (svr *Server) UpdateFaultDetectRules(
-	ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
+	ctx context.Context, request []*apifault.FaultDetectRule) *apimodel.BatchWriteResponse {
 
 	authCtx := svr.collectFaultDetectAuthContext(ctx, request, authtypes.Modify, authtypes.UpdateFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -94,7 +93,7 @@ func (svr *Server) UpdateFaultDetectRules(
 	return svr.nextSvr.UpdateFaultDetectRules(ctx, request)
 }
 
-func (svr *Server) GetOneFaultDetectRule(ctx context.Context, req *apifault.FaultDetectRule) *apiservice.Response {
+func (svr *Server) GetOneFaultDetectRule(ctx context.Context, req *apifault.FaultDetectRule) *apimodel.Response {
 	authCtx := svr.collectFaultDetectAuthContext(ctx, []*apifault.FaultDetectRule{req}, authtypes.Read, authtypes.DescribeFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewResponse(authtypes.ConvertToErrCode(err))
@@ -133,7 +132,7 @@ func (svr *Server) GetOneFaultDetectRule(ctx context.Context, req *apifault.Faul
 }
 
 func (svr *Server) GetFaultDetectRules(
-	ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+	ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := svr.collectFaultDetectAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeFaultDetectRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchQueryResponse(authtypes.ConvertToErrCode(err))

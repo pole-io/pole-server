@@ -61,7 +61,7 @@ func (svr *Server) GetServiceAliases(ctx context.Context,
 	return svr.nextSvr.GetServiceAliases(ctx, query)
 }
 
-func checkBatchAlias(req []*apiservice.ServiceAlias) *apiservice.BatchWriteResponse {
+func checkBatchAlias(req []*apiservice.ServiceAlias) *apimodel.BatchWriteResponse {
 	if len(req) == 0 {
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
@@ -74,7 +74,7 @@ func checkBatchAlias(req []*apiservice.ServiceAlias) *apiservice.BatchWriteRespo
 }
 
 // checkCreateServiceAliasReq 检查别名请求
-func checkCreateServiceAliasReq(ctx context.Context, req *apiservice.ServiceAlias) *apiservice.Response {
+func checkCreateServiceAliasReq(ctx context.Context, req *apiservice.ServiceAlias) *apimodel.Response {
 	response, done := preCheckAlias(req)
 	if done {
 		return response
@@ -88,7 +88,7 @@ func checkCreateServiceAliasReq(ctx context.Context, req *apiservice.ServiceAlia
 }
 
 // checkReviseServiceAliasReq 检查删除、修改别名请求
-func checkReviseServiceAliasReq(ctx context.Context, req *apiservice.ServiceAlias) *apiservice.Response {
+func checkReviseServiceAliasReq(ctx context.Context, req *apiservice.ServiceAlias) *apimodel.Response {
 	resp := checkDeleteServiceAliasReq(ctx, req)
 	if resp != nil {
 		return resp
@@ -106,7 +106,7 @@ func checkReviseServiceAliasReq(ctx context.Context, req *apiservice.ServiceAlia
 }
 
 // checkDeleteServiceAliasReq 检查删除、修改别名请求
-func checkDeleteServiceAliasReq(ctx context.Context, req *apiservice.ServiceAlias) *apiservice.Response {
+func checkDeleteServiceAliasReq(ctx context.Context, req *apiservice.ServiceAlias) *apimodel.Response {
 	if req == nil {
 		return api.NewServiceAliasResponse(apimodel.Code_EmptyRequest, req)
 	}
@@ -130,7 +130,7 @@ func checkDeleteServiceAliasReq(ctx context.Context, req *apiservice.ServiceAlia
 	return nil
 }
 
-func preCheckAlias(req *apiservice.ServiceAlias) (*apiservice.Response, bool) {
+func preCheckAlias(req *apiservice.ServiceAlias) (*apimodel.Response, bool) {
 	if req == nil {
 		return api.NewServiceAliasResponse(apimodel.Code_EmptyRequest, req), true
 	}
@@ -157,7 +157,7 @@ func preCheckAlias(req *apiservice.ServiceAlias) (*apiservice.Response, bool) {
 }
 
 // CheckDbServiceAliasFieldLen 检查DB中service表对应的入参字段合法性
-func CheckDbServiceAliasFieldLen(req *apiservice.ServiceAlias) (*apiservice.Response, bool) {
+func CheckDbServiceAliasFieldLen(req *apiservice.ServiceAlias) (*apimodel.Response, bool) {
 	if err := valid.CheckDbStrFieldLen(req.GetService(), valid.MaxNameLength); err != nil {
 		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceName, req), true
 	}

@@ -29,7 +29,6 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
@@ -42,7 +41,7 @@ import (
 )
 
 // CreateLaneGroups 批量创建泳道组
-func (s *Server) CreateLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
+func (s *Server) CreateLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range req {
 		resp := s.CreateLaneGroup(ctx, req[i])
@@ -52,7 +51,7 @@ func (s *Server) CreateLaneGroups(ctx context.Context, req []*apitraffic.LaneGro
 }
 
 // CreateLaneGroup 创建泳道组
-func (s *Server) CreateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup) *apiservice.Response {
+func (s *Server) CreateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup) *apimodel.Response {
 	tx, err := s.storage.StartTx()
 	if err != nil {
 		log.Error("[Service][Lane] open store transaction fail", utils.RequestID(ctx), zap.Error(err))
@@ -101,7 +100,7 @@ func (s *Server) CreateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 }
 
 // UpdateLaneGroups 批量更新泳道组
-func (s *Server) UpdateLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
+func (s *Server) UpdateLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range req {
 		resp := s.UpdateLaneGroup(ctx, req[i])
@@ -111,7 +110,7 @@ func (s *Server) UpdateLaneGroups(ctx context.Context, req []*apitraffic.LaneGro
 }
 
 // UpdateLaneGroup 更新泳道组
-func (s *Server) UpdateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup) *apiservice.Response {
+func (s *Server) UpdateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup) *apimodel.Response {
 	tx, err := s.storage.StartTx()
 	if err != nil {
 		log.Error("[Service][Lane] open store transaction fail", utils.RequestID(ctx), zap.Error(err))
@@ -159,7 +158,7 @@ func (s *Server) UpdateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 }
 
 // DeleteLaneGroups 批量删除泳道组
-func (s *Server) DeleteLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse {
+func (s *Server) DeleteLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range req {
 		resp := s.DeleteLaneGroup(ctx, req[i])
@@ -169,7 +168,7 @@ func (s *Server) DeleteLaneGroups(ctx context.Context, req []*apitraffic.LaneGro
 }
 
 // DeleteLaneGroup 删除泳道组
-func (s *Server) DeleteLaneGroup(ctx context.Context, req *apitraffic.LaneGroup) *apiservice.Response {
+func (s *Server) DeleteLaneGroup(ctx context.Context, req *apitraffic.LaneGroup) *apimodel.Response {
 	var saveData *rules.LaneGroup
 	var err error
 	if req.GetId() != "" {
@@ -198,7 +197,7 @@ func (s *Server) DeleteLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 }
 
 // GetLaneGroups 查询泳道组列表
-func (s *Server) GetLaneGroups(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse {
+func (s *Server) GetLaneGroups(ctx context.Context, filter map[string]string) *apimodel.BatchQueryResponse {
 	offset, limit, _ := valid.ParseOffsetAndLimit(filter)
 	total, ret, err := s.caches.LaneRule().Query(ctx, &cacheapi.LaneGroupArgs{
 		Filter: filter,
@@ -232,7 +231,7 @@ func (s *Server) GetLaneGroups(ctx context.Context, filter map[string]string) *a
 }
 
 // GetOneLaneGroup 查询单个泳道组
-func (s *Server) GetOneLaneGroup(ctx context.Context, req *apitraffic.LaneGroup) *apiservice.Response {
+func (s *Server) GetOneLaneGroup(ctx context.Context, req *apitraffic.LaneGroup) *apimodel.Response {
 	saveData, err := s.storage.GetLaneGroupByID(req.GetId())
 	if err != nil {
 		log.Error("[goverrule][lanegroup] get one lane_group from store", utils.RequestID(ctx), zap.Error(err))
@@ -252,7 +251,7 @@ func (s *Server) GetOneLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 }
 
 // CreateLaneRules 批量创建泳道规则
-func (s *Server) CreateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse {
+func (s *Server) CreateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range req {
 		resp := s.CreateLaneRule(ctx, req[i])
@@ -262,7 +261,7 @@ func (s *Server) CreateLaneRules(ctx context.Context, req []*apitraffic.LaneRule
 }
 
 // CreateLaneRule 创建泳道规则
-func (s *Server) CreateLaneRule(ctx context.Context, req *apitraffic.LaneRule) *apiservice.Response {
+func (s *Server) CreateLaneRule(ctx context.Context, req *apitraffic.LaneRule) *apimodel.Response {
 	tx, err := s.storage.StartTx()
 	if err != nil {
 		log.Error("[Service][Lane] open store transaction fail", utils.RequestID(ctx), zap.Error(err))
@@ -311,7 +310,7 @@ func (s *Server) CreateLaneRule(ctx context.Context, req *apitraffic.LaneRule) *
 }
 
 // UpdateLaneRules 批量更新泳道组
-func (s *Server) UpdateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse {
+func (s *Server) UpdateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range req {
 		resp := s.UpdateLaneRule(ctx, req[i])
@@ -321,7 +320,7 @@ func (s *Server) UpdateLaneRules(ctx context.Context, req []*apitraffic.LaneRule
 }
 
 // UpdateLaneRule 更新泳道组
-func (s *Server) UpdateLaneRule(ctx context.Context, req *apitraffic.LaneRule) *apiservice.Response {
+func (s *Server) UpdateLaneRule(ctx context.Context, req *apitraffic.LaneRule) *apimodel.Response {
 	tx, err := s.storage.StartTx()
 	if err != nil {
 		log.Error("[Service][Lane] open store transaction fail", utils.RequestID(ctx), zap.Error(err))
@@ -365,7 +364,7 @@ func (s *Server) UpdateLaneRule(ctx context.Context, req *apitraffic.LaneRule) *
 }
 
 // DeleteLaneRules 批量删除泳道规则
-func (s *Server) DeleteLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse {
+func (s *Server) DeleteLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range req {
 		resp := s.DeleteLaneRule(ctx, req[i])
@@ -375,7 +374,7 @@ func (s *Server) DeleteLaneRules(ctx context.Context, req []*apitraffic.LaneRule
 }
 
 // DeleteLaneRule 删除泳道规则
-func (s *Server) DeleteLaneRule(ctx context.Context, req *apitraffic.LaneRule) *apiservice.Response {
+func (s *Server) DeleteLaneRule(ctx context.Context, req *apitraffic.LaneRule) *apimodel.Response {
 	saveData, err := s.storage.GetLaneRule(req.GetId())
 	if err != nil {
 		log.Error("[Server][LaneGroup] get target lane_group when delete", zap.String("id", req.GetId()),

@@ -24,13 +24,10 @@ import (
 	"strconv"
 	"time"
 
-	"google.golang.org/protobuf/types/known/wrapperspb"
-
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/utils"
 )
 
@@ -239,14 +236,14 @@ func (u *User) ToSpec() *apisecurity.User {
 		return nil
 	}
 	return &apisecurity.User{
-		Id:          wrapperspb.String(u.ID),
-		Name:        wrapperspb.String(u.Name),
-		Password:    wrapperspb.String(u.Password),
-		Source:      wrapperspb.String(u.Source),
-		AuthToken:   wrapperspb.String(u.Token),
-		TokenEnable: wrapperspb.Bool(u.TokenEnable),
-		Comment:     wrapperspb.String(u.Comment),
-		UserType:    wrapperspb.String(fmt.Sprintf("%d", u.Type)),
+		Id:          u.ID,
+		Name:        u.Name,
+		Password:    u.Password,
+		Source:      u.Source,
+		AuthToken:   u.Token,
+		TokenEnable: u.TokenEnable,
+		Comment:     u.Comment,
+		UserType:    fmt.Sprintf("%d", u.Type),
 	}
 }
 
@@ -271,7 +268,7 @@ func (ugd *UserGroupDetail) ListSpecUser() []*apisecurity.User {
 	users := make([]*apisecurity.User, 0, len(ugd.UserIds))
 	for i := range ugd.UserIds {
 		users = append(users, &apisecurity.User{
-			Id: wrapperspb.String(i),
+			Id: i,
 		})
 	}
 	return users
@@ -283,18 +280,18 @@ func (ugd *UserGroupDetail) ToSpec() *apisecurity.UserGroup {
 		return nil
 	}
 	return &apisecurity.UserGroup{
-		Id:          wrapperspb.String(ugd.ID),
-		Name:        wrapperspb.String(ugd.Name),
-		AuthToken:   wrapperspb.String(ugd.Token),
-		TokenEnable: wrapperspb.Bool(ugd.TokenEnable),
-		Comment:     wrapperspb.String(ugd.Comment),
-		Ctime:       wrapperspb.String(utils.Time2String(ugd.CreateTime)),
-		Mtime:       wrapperspb.String(utils.Time2String(ugd.ModifyTime)),
+		Id:          ugd.ID,
+		Name:        ugd.Name,
+		AuthToken:   ugd.Token,
+		TokenEnable: ugd.TokenEnable,
+		Comment:     ugd.Comment,
+		Ctime:       utils.Time2String(ugd.CreateTime),
+		Mtime:       utils.Time2String(ugd.ModifyTime),
 		Relation: &apisecurity.UserGroupRelation{
-			GroupId: wrapperspb.String(ugd.ID),
+			GroupId: ugd.ID,
 			Users:   ugd.ListSpecUser(),
 		},
-		UserCount: wrapperspb.UInt32(uint32(len(ugd.UserIds))),
+		UserCount: uint32(len(ugd.UserIds)),
 	}
 }
 
@@ -389,12 +386,12 @@ func ParsePolicyRule(req *apisecurity.AuthStrategy) *StrategyDetail {
 
 func (s *StrategyDetail) FromSpec(req *apisecurity.AuthStrategy) {
 	s.ID = utils.NewUUID()
-	s.Name = req.Name.GetValue()
+	s.Name = req.Name
 	s.Action = req.GetAction().String()
-	s.Comment = req.Comment.GetValue()
+	s.Comment = req.Comment
 	s.Default = false
 	s.Valid = true
-	s.Source = req.GetSource().GetValue()
+	s.Source = req.Source
 	s.Revision = utils.NewUUID()
 	s.CreateTime = time.Now()
 	s.ModifyTime = time.Now()
@@ -564,7 +561,7 @@ func (r *Role) FromSpec(d *apisecurity.Role) {
 	if len(d.Users) != 0 {
 		users := make([]Principal, 0, len(d.Users))
 		for i := range d.Users {
-			users = append(users, Principal{PrincipalID: d.Users[i].GetId().GetValue()})
+			users = append(users, Principal{PrincipalID: d.Users[i].Id})
 		}
 		r.Users = users
 	}
@@ -572,7 +569,7 @@ func (r *Role) FromSpec(d *apisecurity.Role) {
 	if len(d.UserGroups) != 0 {
 		groups := make([]Principal, 0, len(d.UserGroups))
 		for i := range d.UserGroups {
-			groups = append(groups, Principal{PrincipalID: d.UserGroups[i].GetId().GetValue()})
+			groups = append(groups, Principal{PrincipalID: d.UserGroups[i].Id})
 		}
 		r.UserGroups = groups
 	}
@@ -595,17 +592,17 @@ func (r *Role) ToSpec() *apisecurity.Role {
 		users := make([]*apisecurity.User, 0, len(r.Users))
 		for i := range r.Users {
 			users = append(users, &apisecurity.User{
-				Id: protobuf.NewStringValue(r.Users[i].PrincipalID),
+				Id: r.Users[i].PrincipalID,
 			})
 		}
 		d.Users = users
 	}
 
-	if len(d.UserGroups) != 0 {
-		groups := make([]*apisecurity.UserGroup, 0, len(d.UserGroups))
+	if len(r.UserGroups) != 0 {
+		groups := make([]*apisecurity.UserGroup, 0, len(r.UserGroups))
 		for i := range r.UserGroups {
 			groups = append(groups, &apisecurity.UserGroup{
-				Id: protobuf.NewStringValue(r.UserGroups[i].PrincipalID),
+				Id: r.UserGroups[i].PrincipalID,
 			})
 		}
 		d.UserGroups = groups

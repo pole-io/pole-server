@@ -663,7 +663,7 @@ func TestGetServices5(t *testing.T) {
 	}
 	defer discoverSuit.Destroy()
 
-	getServiceCheck := func(resp *apiservice.BatchQueryResponse, amount, size uint32) {
+	getServiceCheck := func(resp *apimodel.BatchQueryResponse, amount, size uint32) {
 		t.Logf("gocheck resp: %v", resp)
 		convey.So(respSuccess(resp), convey.ShouldEqual, true)
 		convey.So(resp.GetAmount().GetValue(), convey.ShouldEqual, amount)

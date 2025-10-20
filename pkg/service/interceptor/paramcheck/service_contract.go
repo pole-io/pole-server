@@ -96,7 +96,7 @@ func (svr *Server) DeleteServiceContractInterfaces(ctx context.Context,
 	return svr.nextSvr.DeleteServiceContractInterfaces(ctx, contract)
 }
 
-func checkBaseServiceContract(req *apiservice.ServiceContract) *apiservice.Response {
+func checkBaseServiceContract(req *apiservice.ServiceContract) *apimodel.Response {
 	if err := valid.CheckResourceName(protobuf.NewStringValue(req.GetNamespace())); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
 	}
@@ -109,7 +109,7 @@ func checkBaseServiceContract(req *apiservice.ServiceContract) *apiservice.Respo
 	return nil
 }
 
-func checkOperationServiceContractInterface(contract *apiservice.ServiceContract) *apiservice.Response {
+func checkOperationServiceContractInterface(contract *apiservice.ServiceContract) *apimodel.Response {
 	if contract.Id != "" {
 		return nil
 	}
@@ -124,7 +124,7 @@ func checkOperationServiceContractInterface(contract *apiservice.ServiceContract
 	return nil
 }
 
-func checkBatchContractRules(req []*service_manage.ServiceContract) *apiservice.BatchWriteResponse {
+func checkBatchContractRules(req []*service_manage.ServiceContract) *apimodel.BatchWriteResponse {
 	if len(req) == 0 {
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}

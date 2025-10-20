@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
@@ -34,7 +33,6 @@ import (
 	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/pkg/types/admin"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -45,7 +43,7 @@ import (
 )
 
 // HasMainUser 判断是否存在主用户
-func (s *Server) HasMainUser(ctx context.Context) *apiservice.Response {
+func (s *Server) HasMainUser(ctx context.Context) *apimodel.Response {
 	mainUser, err := s.storage.GetMainUser()
 	if err != nil {
 		log.Error("check hash main user", zap.Error(err), utils.RequestID(ctx))
@@ -55,14 +53,14 @@ func (s *Server) HasMainUser(ctx context.Context) *apiservice.Response {
 		return api.NewResponse(apimodel.Code_NotFoundResource)
 	}
 	ret := mainUser.ToSpec()
-	ret.AuthToken = wrapperspb.String("")
+	ret.AuthToken = ""
 	return api.NewUserResponse(apimodel.Code_ExecuteSuccess, ret)
 }
 
 // InitMainUser 初始化主用户
-func (s *Server) InitMainUser(_ context.Context, user *apisecurity.User) *apiservice.Response {
-	if user.GetSource().GetValue() == "" {
-		user.Source = protobuf.NewStringValue("pole-io")
+func (s *Server) InitMainUser(_ context.Context, user *apisecurity.User) *apimodel.Response {
+	if user.GetSource() == "" {
+		user.Source = "pole-io"
 	}
 	ctx := context.WithValue(context.Background(), authapi.ContextKeyInitMainUser, true)
 	rsp := s.userSvr.CreateUsers(ctx, []*apisecurity.User{
@@ -174,15 +172,12 @@ func (s *Server) FreeOSMemory(_ context.Context) error {
 	return nil
 }
 
-func (s *Server) CleanInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
-	getInstanceID := func() (string, *apiservice.Response) {
-		if req.GetId() != nil {
-			if req.GetId().GetValue() == "" {
-				return "", api.NewInstanceResponse(apimodel.Code_InvalidInstanceID, req)
-			}
-			return req.GetId().GetValue(), nil
+func (s *Server) CleanInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
+	getInstanceID := func() (string, *apimodel.Response) {
+		if req.GetId() == "" {
+			return valid.CheckInstanceTetrad(req)
 		}
-		return valid.CheckInstanceTetrad(req)
+		return req.GetId(), nil
 	}
 
 	instanceID, resp := getInstanceID()
@@ -203,7 +198,7 @@ func (s *Server) BatchCleanInstances(ctx context.Context, batchSize uint32) (uin
 	return s.storage.BatchCleanDeletedInstances(10*time.Minute, batchSize)
 }
 
-func (s *Server) GetLastHeartbeat(_ context.Context, req *apiservice.Instance) *apiservice.Response {
+func (s *Server) GetLastHeartbeat(_ context.Context, req *apiservice.Instance) *apimodel.Response {
 	return s.healthCheckServer.GetLastHeartbeat(req)
 }
 
@@ -242,9 +237,9 @@ func (svr *Server) GetCMDBInfo(ctx context.Context) ([]svctypes.LocationView, er
 	_ = cmdb.Range(func(host string, location *svctypes.Location) (bool, error) {
 		ret = append(ret, svctypes.LocationView{
 			IP:       host,
-			Region:   location.Proto.GetRegion().GetValue(),
-			Zone:     location.Proto.GetZone().GetValue(),
-			Campus:   location.Proto.GetCampus().GetValue(),
+			Region:   location.Proto.GetRegion(),
+			Zone:     location.Proto.GetZone(),
+			Campus:   location.Proto.GetCampus(),
 			RegionID: location.RegionID,
 			ZoneID:   location.ZoneID,
 			CampusID: location.CampusID,

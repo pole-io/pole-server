@@ -7,12 +7,11 @@ import (
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 )
 
 // PublishLaneGroups 发布多个治理规则
-func (svr *Server) PublishGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
-	var rsp *apiservice.BatchWriteResponse
+func (svr *Server) PublishGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+	var rsp *apimodel.BatchWriteResponse
 	switch req[0].GetResource() {
 	case apimodel.RuleRelease_LaneRules:
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.PublishLaneGroups)
@@ -36,7 +35,7 @@ func (svr *Server) PublishGovernanceRules(ctx context.Context, req []*apimodel.R
 	return svr.nextSvr.PublishGovernanceRules(ctx, req)
 }
 
-func (svr *Server) GetRuleReleases(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetRuleReleases(ctx context.Context, filter map[string]string) *apimodel.BatchQueryResponse {
 	ruleId := filter["rule_id"]
 	resource := apimodel.RuleRelease_RuleType(apimodel.RuleRelease_RuleType_value[filter["resource"]])
 
@@ -47,7 +46,7 @@ func (svr *Server) GetRuleReleases(ctx context.Context, filter map[string]string
 		},
 	}
 
-	var bRsp *apiservice.BatchWriteResponse
+	var bRsp *apimodel.BatchWriteResponse
 	switch resource {
 	case apimodel.RuleRelease_LaneRules:
 		ctx, bRsp = svr.checkGovernanceRules(ctx, reqs, authtypes.Read, authtypes.DescribeLaneGroupReleases)
@@ -72,8 +71,8 @@ func (svr *Server) GetRuleReleases(ctx context.Context, filter map[string]string
 }
 
 // DeleteLaneGroups 删除多个治理规则已发布版本
-func (svr *Server) DeleteGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
-	var rsp *apiservice.BatchWriteResponse
+func (svr *Server) DeleteGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+	var rsp *apimodel.BatchWriteResponse
 	switch req[0].GetResource() {
 	case apimodel.RuleRelease_LaneRules:
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Delete, authtypes.DeleteLaneGroupReleases)
@@ -98,8 +97,8 @@ func (svr *Server) DeleteGovernanceRules(ctx context.Context, req []*apimodel.Ru
 }
 
 // RollbackLaneGroups 回滚多个治理规则到目标版本
-func (svr *Server) RollbackGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
-	var rsp *apiservice.BatchWriteResponse
+func (svr *Server) RollbackGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+	var rsp *apimodel.BatchWriteResponse
 	switch req[0].GetResource() {
 	case apimodel.RuleRelease_LaneRules:
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.RollbackLaneGroups)
@@ -124,8 +123,8 @@ func (svr *Server) RollbackGovernanceRules(ctx context.Context, req []*apimodel.
 }
 
 // StopbetaLaneGroups 停止多个治理规则灰度发布版本
-func (svr *Server) StopbetaGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse {
-	var rsp *apiservice.BatchWriteResponse
+func (svr *Server) StopbetaGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+	var rsp *apimodel.BatchWriteResponse
 	switch req[0].GetResource() {
 	case apimodel.RuleRelease_LaneRules:
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.StopbetaLaneGroups)
@@ -153,7 +152,7 @@ func (svr *Server) checkGovernanceRules(
 	ctx context.Context,
 	request []*apimodel.RuleRelease,
 	op authtypes.ResourceOperation,
-	fname authtypes.ServerFunctionName) (context.Context, *apiservice.BatchWriteResponse) {
+	fname authtypes.ServerFunctionName) (context.Context, *apimodel.BatchWriteResponse) {
 	authCtx := svr.collectRuleReleases(ctx, request, op, fname)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return nil, api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))

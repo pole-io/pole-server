@@ -24,7 +24,6 @@ import (
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
@@ -154,8 +153,8 @@ func convertDeleteServiceRequest(infos []*svctypes.Service) []*apiservice.Servic
 	var entries = make([]*apiservice.Service, len(infos))
 	for i, info := range infos {
 		entries[i] = &apiservice.Service{
-			Namespace: protobuf.NewStringValue(info.Namespace),
-			Name:      protobuf.NewStringValue(info.Name),
+			Namespace: info.Namespace,
+			Name:      info.Name,
 		}
 	}
 	return entries

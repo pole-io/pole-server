@@ -30,7 +30,6 @@ import (
 	"go.uber.org/zap"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
@@ -44,7 +43,7 @@ import (
 
 // CreateRouterRules Create a routing configuration
 func (s *Server) CreateRouterRules(
-	ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
+	ctx context.Context, req []*apitraffic.RouteRule) *apimodel.BatchWriteResponse {
 	resp := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range req {
 		apiv1.Collect(resp, s.createRouterRule(ctx, entry))
@@ -54,7 +53,7 @@ func (s *Server) CreateRouterRules(
 }
 
 // createRouterRule Create a routing configuration
-func (s *Server) createRouterRule(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
+func (s *Server) createRouterRule(ctx context.Context, req *apitraffic.RouteRule) *apimodel.Response {
 	conf, err := Api2RoutingConfig(req)
 	if err != nil {
 		log.Error("[Routing][] parse routing config  from request for create",
@@ -75,7 +74,7 @@ func (s *Server) createRouterRule(ctx context.Context, req *apitraffic.RouteRule
 
 // DeleteRouterRules Batch delete routing configuration
 func (s *Server) DeleteRouterRules(
-	ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
+	ctx context.Context, req []*apitraffic.RouteRule) *apimodel.BatchWriteResponse {
 	out := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range req {
 		resp := s.deleteRouterRule(ctx, entry)
@@ -86,7 +85,7 @@ func (s *Server) DeleteRouterRules(
 }
 
 // deleteRouterRule Delete a routing configuration
-func (s *Server) deleteRouterRule(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
+func (s *Server) deleteRouterRule(ctx context.Context, req *apitraffic.RouteRule) *apimodel.Response {
 	if err := s.storage.DeleteRoutingConfig(req.Id); err != nil {
 		log.Error("[Routing][] delete routing config  store layer",
 			utils.RequestID(ctx), zap.Error(err))
@@ -102,7 +101,7 @@ func (s *Server) deleteRouterRule(ctx context.Context, req *apitraffic.RouteRule
 
 // UpdateRouterRules Batch update routing configuration
 func (s *Server) UpdateRouterRules(
-	ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
+	ctx context.Context, req []*apitraffic.RouteRule) *apimodel.BatchWriteResponse {
 	out := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range req {
 		resp := s.updateRouterRule(ctx, entry)
@@ -113,7 +112,7 @@ func (s *Server) UpdateRouterRules(
 }
 
 // updateRouterRule Update a single routing configuration
-func (s *Server) updateRouterRule(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
+func (s *Server) updateRouterRule(ctx context.Context, req *apitraffic.RouteRule) *apimodel.Response {
 	// Check whether the routing configuration exists
 	conf, err := s.storage.GetRoutingConfigWithID(req.Id)
 	if err != nil {
@@ -144,7 +143,7 @@ func (s *Server) updateRouterRule(ctx context.Context, req *apitraffic.RouteRule
 }
 
 // QueryRouterRules The interface of the query configuration to the OSS
-func (s *Server) QueryRouterRules(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (s *Server) QueryRouterRules(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	args, presp := parseRoutingArgs(query, ctx)
 	if presp != nil {
 		return apiv1.NewBatchQueryResponse(apimodel.Code(presp.GetCode().GetValue()))
@@ -171,7 +170,7 @@ func (s *Server) QueryRouterRules(ctx context.Context, query map[string]string) 
 }
 
 // GetOneRouterRule Query all router_rule rules
-func (s *Server) GetOneRouterRule(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
+func (s *Server) GetOneRouterRule(ctx context.Context, req *apitraffic.RouteRule) *apimodel.Response {
 	// Check whether the routing configuration exists
 	saveData, err := s.storage.GetRoutingConfigWithID(req.Id)
 	if err != nil {
@@ -199,7 +198,7 @@ func (s *Server) GetOneRouterRule(ctx context.Context, req *apitraffic.RouteRule
 }
 
 // EnableRoutings batch enable routing rules
-func (s *Server) EnableRouterRules(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
+func (s *Server) EnableRouterRules(ctx context.Context, req []*apitraffic.RouteRule) *apimodel.BatchWriteResponse {
 	out := apiv1.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, entry := range req {
 		resp := s.enableRouterRules(ctx, entry)
@@ -209,7 +208,7 @@ func (s *Server) EnableRouterRules(ctx context.Context, req []*apitraffic.RouteR
 	return apiv1.FormatBatchWriteResponse(out)
 }
 
-func (s *Server) enableRouterRules(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response {
+func (s *Server) enableRouterRules(ctx context.Context, req *apitraffic.RouteRule) *apimodel.Response {
 	conf, err := s.storage.GetRoutingConfigWithID(req.Id)
 	if err != nil {
 		log.Error("[Routing][] get routing config  store layer",
@@ -234,7 +233,7 @@ func (s *Server) enableRouterRules(ctx context.Context, req *apitraffic.RouteRul
 }
 
 // parseServiceArgs The query conditions of the analysis service
-func parseRoutingArgs(filter map[string]string, ctx context.Context) (*cacheapi.RoutingArgs, *apiservice.Response) {
+func parseRoutingArgs(filter map[string]string, ctx context.Context) (*cacheapi.RoutingArgs, *apimodel.Response) {
 	offset, limit, _ := valid.ParseOffsetAndLimit(filter)
 	res := &cacheapi.RoutingArgs{
 		Filter:     filter,

@@ -129,7 +129,7 @@ func (sc *serviceCache) matchInstances(instances []*svctypes.Instance, instanceF
 			hosts[host] = true
 		}
 		for _, instance := range instances {
-			if _, ok := hosts[instance.Proto.GetHost().GetValue()]; ok {
+			if _, ok := hosts[instance.Proto.GetHost()]; ok {
 				matchedHost = true
 				break
 			}
@@ -166,7 +166,7 @@ func (sc *serviceCache) matchInstances(instances []*svctypes.Instance, instanceF
 			ports[port] = true
 		}
 		for _, instance := range instances {
-			if _, ok := ports[instance.Proto.GetPort().GetValue()]; ok {
+			if _, ok := ports[instance.Proto.GetPort()]; ok {
 				matchedPort = true
 				break
 			}

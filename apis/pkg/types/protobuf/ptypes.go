@@ -23,7 +23,13 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"google.golang.org/protobuf/types/known/anypb"
 )
+
+func MarshalAny(msg proto.Message) *anypb.Any {
+	ret, _ := anypb.New(msg)
+	return ret
+}
 
 // NewStringValue returns a new StringValue with the given value.
 func NewStringValue(value string) *wrappers.StringValue {

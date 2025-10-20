@@ -29,7 +29,6 @@ import (
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -42,7 +41,7 @@ import (
 )
 
 // CreateRoles 批量创建角色
-func (svr *Server) CreateRoles(ctx context.Context, reqs []*apisecurity.Role) *apiservice.BatchWriteResponse {
+func (svr *Server) CreateRoles(ctx context.Context, reqs []*apisecurity.Role) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range reqs {
 		rsp := svr.CreateRole(ctx, reqs[i])
@@ -52,7 +51,7 @@ func (svr *Server) CreateRoles(ctx context.Context, reqs []*apisecurity.Role) *a
 }
 
 // CreateRole 创建角色
-func (svr *Server) CreateRole(ctx context.Context, req *apisecurity.Role) *apiservice.Response {
+func (svr *Server) CreateRole(ctx context.Context, req *apisecurity.Role) *apimodel.Response {
 	req.Owner = utils.ParseOwnerID(ctx)
 
 	saveData := &authtypes.Role{}
@@ -70,7 +69,7 @@ func (svr *Server) CreateRole(ctx context.Context, req *apisecurity.Role) *apise
 }
 
 // UpdateRoles 批量更新角色
-func (svr *Server) UpdateRoles(ctx context.Context, reqs []*apisecurity.Role) *apiservice.BatchWriteResponse {
+func (svr *Server) UpdateRoles(ctx context.Context, reqs []*apisecurity.Role) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range reqs {
 		rsp := svr.UpdateRole(ctx, reqs[i])
@@ -80,7 +79,7 @@ func (svr *Server) UpdateRoles(ctx context.Context, reqs []*apisecurity.Role) *a
 }
 
 // UpdateRole 批量更新角色
-func (svr *Server) UpdateRole(ctx context.Context, req *apisecurity.Role) *apiservice.Response {
+func (svr *Server) UpdateRole(ctx context.Context, req *apisecurity.Role) *apimodel.Response {
 	newData := &authtypes.Role{}
 	newData.FromSpec(req)
 
@@ -137,7 +136,7 @@ func (svr *Server) UpdateRole(ctx context.Context, req *apisecurity.Role) *apise
 }
 
 // DeleteRoles 批量删除角色
-func (svr *Server) DeleteRoles(ctx context.Context, reqs []*apisecurity.Role) *apiservice.BatchWriteResponse {
+func (svr *Server) DeleteRoles(ctx context.Context, reqs []*apisecurity.Role) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range reqs {
 		rsp := svr.DeleteRole(ctx, reqs[i])
@@ -147,7 +146,7 @@ func (svr *Server) DeleteRoles(ctx context.Context, reqs []*apisecurity.Role) *a
 }
 
 // DeleteRole 批量删除角色
-func (svr *Server) DeleteRole(ctx context.Context, req *apisecurity.Role) *apiservice.Response {
+func (svr *Server) DeleteRole(ctx context.Context, req *apisecurity.Role) *apimodel.Response {
 	newData := &authtypes.Role{}
 	newData.FromSpec(req)
 
@@ -193,7 +192,7 @@ func (svr *Server) DeleteRole(ctx context.Context, req *apisecurity.Role) *apise
 }
 
 // GetRoles 查询角色列表
-func (svr *Server) GetRoles(ctx context.Context, filters map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetRoles(ctx context.Context, filters map[string]string) *apimodel.BatchQueryResponse {
 	offset, limit, _ := valid.ParseOffsetAndLimit(filters)
 
 	total, ret, err := svr.cacheMgr.Role().Query(ctx, cachetypes.RoleSearchArgs{

@@ -36,91 +36,91 @@ type GoverRuleServer interface {
 // CircuitBreakerOperateServer Melting rule related treatment
 type CircuitBreakerOperateServer interface {
 	// CreateCircuitBreakerRules Create a CircuitBreaker rule
-	CreateCircuitBreakerRules(ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse
+	CreateCircuitBreakerRules(ctx context.Context, request []*apifault.CircuitBreakerRule) *apimodel.BatchWriteResponse
 	// DeleteCircuitBreakerRules Delete current CircuitBreaker rules
-	DeleteCircuitBreakerRules(ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse
+	DeleteCircuitBreakerRules(ctx context.Context, request []*apifault.CircuitBreakerRule) *apimodel.BatchWriteResponse
 	// UpdateCircuitBreakerRules Modify the CircuitBreaker rule
-	UpdateCircuitBreakerRules(ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse
+	UpdateCircuitBreakerRules(ctx context.Context, request []*apifault.CircuitBreakerRule) *apimodel.BatchWriteResponse
 	// GetCircuitBreakerRules Query CircuitBreaker rules
-	GetCircuitBreakerRules(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	GetCircuitBreakerRules(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 	// GetOneCircuitBreakerRule Query a single CircuitBreaker rule
-	GetOneCircuitBreakerRule(ctx context.Context, req *apifault.CircuitBreakerRule) *apiservice.Response
+	GetOneCircuitBreakerRule(ctx context.Context, req *apifault.CircuitBreakerRule) *apimodel.Response
 }
 
 // RateLimitOperateServer Lamflow rule related operation
 type RateLimitOperateServer interface {
 	// CreateRateLimits Create a RateLimit rule
-	CreateRateLimits(ctx context.Context, request []*apitraffic.Rule) *apiservice.BatchWriteResponse
+	CreateRateLimits(ctx context.Context, request []*apitraffic.Rule) *apimodel.BatchWriteResponse
 	// DeleteRateLimits Delete current RateLimit rules
-	DeleteRateLimits(ctx context.Context, request []*apitraffic.Rule) *apiservice.BatchWriteResponse
+	DeleteRateLimits(ctx context.Context, request []*apitraffic.Rule) *apimodel.BatchWriteResponse
 	// UpdateRateLimits Modify the RateLimit rule
-	UpdateRateLimits(ctx context.Context, request []*apitraffic.Rule) *apiservice.BatchWriteResponse
+	UpdateRateLimits(ctx context.Context, request []*apitraffic.Rule) *apimodel.BatchWriteResponse
 	// GetRateLimits Query RateLimit rules
-	GetRateLimits(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	GetRateLimits(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 	// GetOneRateLimitRule Query a single RateLimit rule
-	GetOneRateLimitRule(ctx context.Context, req *apitraffic.Rule) *apiservice.Response
+	GetOneRateLimitRule(ctx context.Context, req *apitraffic.Rule) *apimodel.Response
 }
 
 // RouterRuleOperateServer Routing rules related operations
 type RouterRuleOperateServer interface {
 	// CreateRouterRules Batch creation routing configuration
-	CreateRouterRules(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse
+	CreateRouterRules(ctx context.Context, req []*apitraffic.RouteRule) *apimodel.BatchWriteResponse
 	// DeleteRouterRules Batch delete routing configuration
-	DeleteRouterRules(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse
+	DeleteRouterRules(ctx context.Context, req []*apitraffic.RouteRule) *apimodel.BatchWriteResponse
 	// UpdateRouterRules Batch update routing configuration
-	UpdateRouterRules(ctx context.Context, req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse
+	UpdateRouterRules(ctx context.Context, req []*apitraffic.RouteRule) *apimodel.BatchWriteResponse
 	// QueryRouterRules Inquiry route configuration to OSS
-	QueryRouterRules(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	QueryRouterRules(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 	// GetOneRouterRule Query a single routing rule
-	GetOneRouterRule(ctx context.Context, req *apitraffic.RouteRule) *apiservice.Response
+	GetOneRouterRule(ctx context.Context, req *apitraffic.RouteRule) *apimodel.Response
 }
 
 // FaultDetectRuleOperateServer Fault detect rules related operations
 type FaultDetectRuleOperateServer interface {
 	// CreateFaultDetectRules create the fault detect rule by request
-	CreateFaultDetectRules(ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse
+	CreateFaultDetectRules(ctx context.Context, request []*apifault.FaultDetectRule) *apimodel.BatchWriteResponse
 	// DeleteFaultDetectRules delete the fault detect rule by request
-	DeleteFaultDetectRules(ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse
+	DeleteFaultDetectRules(ctx context.Context, request []*apifault.FaultDetectRule) *apimodel.BatchWriteResponse
 	// UpdateFaultDetectRules update the fault detect rule by request
-	UpdateFaultDetectRules(ctx context.Context, request []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse
+	UpdateFaultDetectRules(ctx context.Context, request []*apifault.FaultDetectRule) *apimodel.BatchWriteResponse
 	// GetFaultDetectRules get the fault detect rule by request
-	GetFaultDetectRules(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	GetFaultDetectRules(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 	// GetOneFaultDetectRule get one fault detect rule by request
-	GetOneFaultDetectRule(ctx context.Context, req *apifault.FaultDetectRule) *apiservice.Response
+	GetOneFaultDetectRule(ctx context.Context, req *apifault.FaultDetectRule) *apimodel.Response
 }
 
 // LaneOperateServer lane operations
 type LaneOperateServer interface {
 	// CreateLaneGroups 批量创建泳道组
-	CreateLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse
+	CreateLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apimodel.BatchWriteResponse
 	// UpdateLaneGroups 批量更新泳道组
-	UpdateLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse
+	UpdateLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apimodel.BatchWriteResponse
 	// DeleteLaneGroups 批量删除泳道组
-	DeleteLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apiservice.BatchWriteResponse
+	DeleteLaneGroups(ctx context.Context, req []*apitraffic.LaneGroup) *apimodel.BatchWriteResponse
 	// GetLaneGroups 查询泳道组列表
-	GetLaneGroups(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse
+	GetLaneGroups(ctx context.Context, filter map[string]string) *apimodel.BatchQueryResponse
 	// CreateLaneRules 批量创建泳道规则
-	CreateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse
+	CreateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apimodel.BatchWriteResponse
 	// UpdateLaneRules 批量更新泳道规则
-	UpdateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse
+	UpdateLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apimodel.BatchWriteResponse
 	// DeleteLaneRules 批量删除泳道规则
-	DeleteLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apiservice.BatchWriteResponse
+	DeleteLaneRules(ctx context.Context, req []*apitraffic.LaneRule) *apimodel.BatchWriteResponse
 	// GetOneLaneGroup 查询单个泳道组
-	GetOneLaneGroup(ctx context.Context, req *apitraffic.LaneGroup) *apiservice.Response
+	GetOneLaneGroup(ctx context.Context, req *apitraffic.LaneGroup) *apimodel.Response
 }
 
 // LossLessOperateServer lane operations
 type LossLessOperateServer interface {
 	// CreateLossLessRules 批量创建无损规则
-	CreateLossLessRules(ctx context.Context, req []*apitraffic.LosslessRule) *apiservice.BatchWriteResponse
+	CreateLossLessRules(ctx context.Context, req []*apitraffic.LosslessRule) *apimodel.BatchWriteResponse
 	// UpdateLossLessRules 批量更新无损规则
-	UpdateLossLessRules(ctx context.Context, req []*apitraffic.LosslessRule) *apiservice.BatchWriteResponse
+	UpdateLossLessRules(ctx context.Context, req []*apitraffic.LosslessRule) *apimodel.BatchWriteResponse
 	// DeleteLossLessRules 批量删除无损规则
-	DeleteLossLessRules(ctx context.Context, req []*apitraffic.LosslessRule) *apiservice.BatchWriteResponse
+	DeleteLossLessRules(ctx context.Context, req []*apitraffic.LosslessRule) *apimodel.BatchWriteResponse
 	// GetLossLessRules 查询无损规则列表
-	GetLossLessRules(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse
+	GetLossLessRules(ctx context.Context, filter map[string]string) *apimodel.BatchQueryResponse
 	// GetOneLossLessRule 查询单个无损规则
-	GetOneLossLessRule(ctx context.Context, req *apitraffic.LosslessRule) *apiservice.Response
+	GetOneLossLessRule(ctx context.Context, req *apitraffic.LosslessRule) *apimodel.Response
 }
 
 // ClientServer Client related operation  Client operation interface definition
@@ -143,13 +143,13 @@ type ClientServer interface {
 
 type RuleReleaseServer interface {
 	// GetRuleReleases 获取已发布的规则
-	GetRuleReleases(ctx context.Context, filter map[string]string) *apiservice.BatchQueryResponse
+	GetRuleReleases(ctx context.Context, filter map[string]string) *apimodel.BatchQueryResponse
 	// PublishLaneGroups 发布多个治理规则
-	PublishGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
+	PublishGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse
 	// DeleteLaneGroups 删除多个治理规则已发布版本
-	DeleteGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
+	DeleteGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse
 	// RollbackLaneGroups 回滚多个治理规则到目标版本
-	RollbackGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
+	RollbackGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse
 	// StopbetaLaneGroups 停止多个治理规则灰度发布版本
-	StopbetaGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apiservice.BatchWriteResponse
+	StopbetaGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse
 }

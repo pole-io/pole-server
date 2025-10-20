@@ -19,141 +19,142 @@ package v1
 
 import (
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"google.golang.org/protobuf/types/known/anypb"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 )
 
 // NewAuthResponse 创建回复消息
-func NewAuthResponse(code apimodel.Code) *apiservice.Response {
-	return &apiservice.Response{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
+func NewAuthResponse(code apimodel.Code) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
 	}
 }
 
 // NewAuthResponseWithMsg 创建回复消息
-func NewAuthResponseWithMsg(code apimodel.Code, msg string) *apiservice.Response {
-	return &apiservice.Response{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)] + ":" + msg},
+func NewAuthResponseWithMsg(code apimodel.Code, msg string) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: code2info[uint32(code)] + ":" + msg,
 	}
 }
 
 // NewAuthBatchWriteResponse 创建批量回复
-func NewAuthBatchWriteResponse(code apimodel.Code) *apiservice.BatchWriteResponse {
-	return &apiservice.BatchWriteResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Size: &wrappers.UInt32Value{Value: 0},
+func NewAuthBatchWriteResponse(code apimodel.Code) *apimodel.BatchWriteResponse {
+	return &apimodel.BatchWriteResponse{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
+		Size: 0,
 	}
 }
 
 // NewAuthBatchQueryResponse 创建批量查询回复
-func NewAuthBatchQueryResponse(code apimodel.Code) *apiservice.BatchQueryResponse {
-	return &apiservice.BatchQueryResponse{
-		Code:   &wrappers.UInt32Value{Value: uint32(code)},
-		Info:   &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Amount: &wrappers.UInt32Value{Value: 0},
-		Size:   &wrappers.UInt32Value{Value: 0},
+func NewAuthBatchQueryResponse(code apimodel.Code) *apimodel.BatchQueryResponse {
+	return &apimodel.BatchQueryResponse{
+		Code:   uint32(code),
+		Info:   code2info[uint32(code)],
+		Amount: 0,
+		Size:   0,
 	}
 }
 
 // NewAuthBatchQueryResponseWithMsg 创建带详细信息的批量查询回复
-func NewAuthBatchQueryResponseWithMsg(code apimodel.Code, msg string) *apiservice.BatchQueryResponse {
+func NewAuthBatchQueryResponseWithMsg(code apimodel.Code, msg string) *apimodel.BatchQueryResponse {
 	resp := NewAuthBatchQueryResponse(code)
-	resp.Info.Value += ": " + msg
+	resp.Info += ": " + msg
 	return resp
 }
 
 // NewUserResponse 创建回复带用户信息
-func NewUserResponse(code apimodel.Code, user *apisecurity.User) *apiservice.Response {
-	return &apiservice.Response{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
-		User: user,
+func NewUserResponse(code apimodel.Code, user *apisecurity.User) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
+		Data: anypb.New(user),
 	}
 }
 
 // NewUserResponse 创建回复带用户信息
-func NewUserResponseWithMsg(code apimodel.Code, info string, user *apisecurity.User) *apiservice.Response {
-	return &apiservice.Response{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
+func NewUserResponseWithMsg(code apimodel.Code, info string, user *apisecurity.User) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
 		Info: &wrappers.StringValue{Value: info},
 		User: user,
 	}
 }
 
 // NewGroupResponse 创建回复带用户组信息
-func NewGroupResponse(code apimodel.Code, user *apisecurity.UserGroup) *apiservice.Response {
-	return &apiservice.Response{
-		Code:      &wrappers.UInt32Value{Value: uint32(code)},
-		Info:      &wrappers.StringValue{Value: code2info[uint32(code)]},
+func NewGroupResponse(code apimodel.Code, user *apisecurity.UserGroup) *apimodel.Response {
+	return &apimodel.Response{
+		Code:      uint32(code),
+		Info:      code2info[uint32(code)],
 		UserGroup: user,
 	}
 }
 
 // NewModifyGroupResponse 创建修改用户组的响应信息
-func NewModifyGroupResponse(code apimodel.Code, group *apisecurity.ModifyUserGroup) *apiservice.Response {
-	return &apiservice.Response{
-		Code:            &wrappers.UInt32Value{Value: uint32(code)},
-		Info:            &wrappers.StringValue{Value: code2info[uint32(code)]},
+func NewModifyGroupResponse(code apimodel.Code, group *apisecurity.ModifyUserGroup) *apimodel.Response {
+	return &apimodel.Response{
+		Code:            uint32(code),
+		Info:            code2info[uint32(code)],
 		ModifyUserGroup: group,
 	}
 }
 
 // NewGroupRelationResponse 创建用户组关联关系的响应体
-func NewGroupRelationResponse(code apimodel.Code, relation *apisecurity.UserGroupRelation) *apiservice.Response {
-	return &apiservice.Response{
-		Code:     &wrappers.UInt32Value{Value: uint32(code)},
-		Info:     &wrappers.StringValue{Value: code2info[uint32(code)]},
+func NewGroupRelationResponse(code apimodel.Code, relation *apisecurity.UserGroupRelation) *apimodel.Response {
+	return &apimodel.Response{
+		Code:     uint32(code),
+		Info:     code2info[uint32(code)],
 		Relation: relation,
 	}
 }
 
 // NewAuthStrategyResponse 创建鉴权策略响应体
-func NewAuthStrategyResponse(code apimodel.Code, req *apisecurity.AuthStrategy) *apiservice.Response {
-	return &apiservice.Response{
-		Code:         &wrappers.UInt32Value{Value: uint32(code)},
-		Info:         &wrappers.StringValue{Value: code2info[uint32(code)]},
+func NewAuthStrategyResponse(code apimodel.Code, req *apisecurity.AuthStrategy) *apimodel.Response {
+	return &apimodel.Response{
+		Code:         uint32(code),
+		Info:         code2info[uint32(code)],
 		AuthStrategy: req,
 	}
 }
 
 // NewAuthStrategyResponseWithMsg 创建鉴权策略响应体并自定义Info
 func NewAuthStrategyResponseWithMsg(
-	code apimodel.Code, msg string, req *apisecurity.AuthStrategy) *apiservice.Response {
-	return &apiservice.Response{
-		Code:         &wrappers.UInt32Value{Value: uint32(code)},
+	code apimodel.Code, msg string, req *apisecurity.AuthStrategy) *apimodel.Response {
+	return &apimodel.Response{
+		Code:         uint32(code),
 		Info:         &wrappers.StringValue{Value: msg},
 		AuthStrategy: req,
 	}
 }
 
 // NewModifyAuthStrategyResponse 创建修改鉴权策略响应体
-func NewModifyAuthStrategyResponse(code apimodel.Code, req *apisecurity.ModifyAuthStrategy) *apiservice.Response {
-	return &apiservice.Response{
-		Code:               &wrappers.UInt32Value{Value: uint32(code)},
-		Info:               &wrappers.StringValue{Value: code2info[uint32(code)]},
+func NewModifyAuthStrategyResponse(code apimodel.Code, req *apisecurity.ModifyAuthStrategy) *apimodel.Response {
+	return &apimodel.Response{
+		Code:               uint32(code),
+		Info:               code2info[uint32(code)],
 		ModifyAuthStrategy: req,
 	}
 }
 
 // NewStrategyResourcesResponse 创建修改鉴权策略响应体
-func NewStrategyResourcesResponse(code apimodel.Code, ret *apisecurity.StrategyResources) *apiservice.Response {
-	return &apiservice.Response{
-		Code:      &wrappers.UInt32Value{Value: uint32(code)},
-		Info:      &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Resources: ret,
+func NewStrategyResourcesResponse(code apimodel.Code, ret *apisecurity.StrategyResources) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
+		Data: protobuf.MarshalAny(ret),
 	}
 }
 
 // NewLoginResponse 创建登录响应体
-func NewLoginResponse(code apimodel.Code, loginResponse *apisecurity.LoginResponse) *apiservice.Response {
-	return &apiservice.Response{
-		Code:          &wrappers.UInt32Value{Value: uint32(code)},
-		Info:          &wrappers.StringValue{Value: code2info[uint32(code)]},
-		LoginResponse: loginResponse,
+func NewLoginResponse(code apimodel.Code, loginResponse *apisecurity.LoginResponse) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
+		Data: protobuf.MarshalAny(loginResponse),
 	}
 }

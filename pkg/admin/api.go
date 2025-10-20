@@ -22,6 +22,7 @@ import (
 
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types/admin"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
@@ -39,11 +40,11 @@ type AdminOperateServer interface {
 	// FreeOSMemory Free system memory
 	FreeOSMemory(ctx context.Context) error
 	// CleanInstance Clean deleted instance
-	CleanInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response
+	CleanInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response
 	// BatchCleanInstances Batch clean deleted instances
 	BatchCleanInstances(ctx context.Context, batchSize uint32) (uint32, error)
 	// GetLastHeartbeat Get last heartbeat
-	GetLastHeartbeat(ctx context.Context, req *apiservice.Instance) *apiservice.Response
+	GetLastHeartbeat(ctx context.Context, req *apiservice.Instance) *apimodel.Response
 	// GetLogOutputLevel Get log output level
 	GetLogOutputLevel(ctx context.Context) ([]admin.ScopeLevel, error)
 	// SetLogOutputLevel Set log output level by scope
@@ -55,9 +56,9 @@ type AdminOperateServer interface {
 	// GetCMDBInfo get cmdb info
 	GetCMDBInfo(ctx context.Context) ([]svctypes.LocationView, error)
 	// HasMainUser .
-	HasMainUser(ctx context.Context) *apiservice.Response
+	HasMainUser(ctx context.Context) *apimodel.Response
 	// InitMainUser .
-	InitMainUser(ctx context.Context, user *apisecurity.User) *apiservice.Response
+	InitMainUser(ctx context.Context, user *apisecurity.User) *apimodel.Response
 	// GetServerFunctions Get server functions
 	GetServerFunctions(ctx context.Context) []authcommon.ServerFunctionGroup
 }

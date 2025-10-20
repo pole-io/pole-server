@@ -31,7 +31,7 @@ import (
 
 // CreateInstances create instances
 func (svr *Server) CreateInstances(ctx context.Context,
-	reqs []*apiservice.Instance) *apiservice.BatchWriteResponse {
+	reqs []*apiservice.Instance) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectInstanceAuthContext(ctx, reqs, authtypes.Create, authtypes.CreateInstances)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -49,7 +49,7 @@ func (svr *Server) CreateInstances(ctx context.Context,
 
 // DeleteInstances delete instances
 func (svr *Server) DeleteInstances(ctx context.Context,
-	reqs []*apiservice.Instance) *apiservice.BatchWriteResponse {
+	reqs []*apiservice.Instance) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectInstanceAuthContext(ctx, reqs, authtypes.Delete, authtypes.DeleteInstances)
 
 	_, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx)
@@ -68,7 +68,7 @@ func (svr *Server) DeleteInstances(ctx context.Context,
 
 // DeleteInstancesByHost 根据 host 信息进行数据删除
 func (svr *Server) DeleteInstancesByHost(ctx context.Context,
-	reqs []*apiservice.Instance) *apiservice.BatchWriteResponse {
+	reqs []*apiservice.Instance) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectInstanceAuthContext(ctx, reqs, authtypes.Delete, authtypes.DeleteInstancesByHost)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -87,7 +87,7 @@ func (svr *Server) DeleteInstancesByHost(ctx context.Context,
 
 // UpdateInstances update instances
 func (svr *Server) UpdateInstances(ctx context.Context,
-	reqs []*apiservice.Instance) *apiservice.BatchWriteResponse {
+	reqs []*apiservice.Instance) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectInstanceAuthContext(ctx, reqs, authtypes.Modify, authtypes.UpdateInstances)
 
 	_, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx)
@@ -103,7 +103,7 @@ func (svr *Server) UpdateInstances(ctx context.Context,
 
 // UpdateInstancesIsolate update instances
 func (svr *Server) UpdateInstancesIsolate(ctx context.Context,
-	reqs []*apiservice.Instance) *apiservice.BatchWriteResponse {
+	reqs []*apiservice.Instance) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectInstanceAuthContext(ctx, reqs, authtypes.Modify, authtypes.UpdateInstancesIsolate)
 
 	_, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx)
@@ -119,7 +119,7 @@ func (svr *Server) UpdateInstancesIsolate(ctx context.Context,
 
 // GetInstances get instances
 func (svr *Server) GetInstances(ctx context.Context,
-	query map[string]string) *apiservice.BatchQueryResponse {
+	query map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := svr.collectInstanceAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeInstances)
 	_, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx)
 	if err != nil {
@@ -133,7 +133,7 @@ func (svr *Server) GetInstances(ctx context.Context,
 }
 
 // GetInstancesCount get instances to count
-func (svr *Server) GetInstancesCount(ctx context.Context) *apiservice.BatchQueryResponse {
+func (svr *Server) GetInstancesCount(ctx context.Context) *apimodel.BatchQueryResponse {
 	authCtx := svr.collectInstanceAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeInstancesCount)
 	_, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx)
 	if err != nil {
@@ -147,7 +147,7 @@ func (svr *Server) GetInstancesCount(ctx context.Context) *apiservice.BatchQuery
 
 // GetInstanceLabels 获取某个服务下的实例标签集合
 func (svr *Server) GetInstanceLabels(ctx context.Context,
-	query map[string]string) *apiservice.Response {
+	query map[string]string) *apimodel.Response {
 
 	var (
 		serviceId string

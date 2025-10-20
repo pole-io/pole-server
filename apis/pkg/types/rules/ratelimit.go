@@ -23,7 +23,6 @@ import (
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	revisionapi "github.com/pole-io/pole-server/apis/pkg/utils/revision"
@@ -69,7 +68,7 @@ func (s *ServiceWithRateLimits) Reload() {
 
 // RateLimit 限流规则
 type RateLimit struct {
-	Proto     *apitraffic.Rule
+	Proto     *apitraffic.RateLimit
 	ID        string
 	ServiceID string
 	Name      string
@@ -116,7 +115,7 @@ func (r *RateLimit) GetMtime() time.Time {
 }
 
 func (r *RateLimit) ToSpec() error {
-	r.Proto = &apitraffic.Rule{}
+	r.Proto = &apitraffic.RateLimit{}
 	if len(r.Rule) == 0 {
 		return nil
 	}
@@ -124,27 +123,8 @@ func (r *RateLimit) ToSpec() error {
 	if err := json.Unmarshal([]byte(r.Rule), r.Proto); err != nil {
 		return err
 	}
-	r.Proto.Disable = wrapperspb.Bool(r.Disable)
-	return r.AdaptArgumentsAndLabels()
-}
-
-// Labels2Arguments 适配老的标签到新的参数列表
-func (r *RateLimit) Labels2Arguments() (map[string]*apimodel.MatchString, error) {
-	if len(r.Proto.Arguments) == 0 && len(r.Labels) > 0 {
-		var labels = make(map[string]*apimodel.MatchString)
-		if err := json.Unmarshal([]byte(r.Labels), &labels); err != nil {
-			return nil, err
-		}
-		for key, value := range labels {
-			r.Proto.Arguments = append(r.Proto.Arguments, &apitraffic.MatchArgument{
-				Type:  apitraffic.MatchArgument_CUSTOM,
-				Key:   key,
-				Value: value,
-			})
-		}
-		return labels, nil
-	}
-	return nil, nil
+	r.Proto.Disable = r.Disable
+	return nil
 }
 
 const (
@@ -186,35 +166,6 @@ func BuildArgumentKey(argumentType apitraffic.MatchArgument_Type, key string) st
 	default:
 		return key
 	}
-}
-
-// AdaptArgumentsAndLabels 对存量标签进行兼容，同时将argument适配成标签
-func (r *RateLimit) AdaptArgumentsAndLabels() error {
-	// 新的限流规则，需要适配老的SDK使用场景
-	labels := Arguments2Labels(r.Proto.GetArguments())
-	if len(labels) > 0 {
-		r.Proto.Labels = labels
-	} else {
-		var err error
-		// 存量限流规则，需要适配成新的规则
-		labels, err = r.Labels2Arguments()
-		if nil != err {
-			return err
-		}
-		r.Proto.Labels = labels
-	}
-	return nil
-}
-
-// AdaptLabels 对存量标签进行兼容，对存量labels进行清空
-func (r *RateLimit) AdaptLabels() error {
-	// 存量限流规则，需要适配成新的规则
-	_, err := r.Labels2Arguments()
-	if nil != err {
-		return err
-	}
-	r.Proto.Labels = nil
-	return nil
 }
 
 // ExtendRateLimit 包含服务信息的限流规则

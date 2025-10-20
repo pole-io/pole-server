@@ -23,7 +23,6 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/security"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -37,7 +36,7 @@ import (
 
 // CreateRateLimits creates rate limits for a namespace.
 func (svr *Server) CreateRateLimits(
-	ctx context.Context, reqs []*apitraffic.Rule) *apiservice.BatchWriteResponse {
+	ctx context.Context, reqs []*apitraffic.Rule) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectRateLimitAuthContext(ctx, reqs, authtypes.Create, authtypes.CreateRateLimitRules)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -59,7 +58,7 @@ func (svr *Server) CreateRateLimits(
 
 // DeleteRateLimits deletes rate limits for a namespace.
 func (svr *Server) DeleteRateLimits(
-	ctx context.Context, reqs []*apitraffic.Rule) *apiservice.BatchWriteResponse {
+	ctx context.Context, reqs []*apitraffic.Rule) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectRateLimitAuthContext(ctx, reqs, authtypes.Delete, authtypes.DeleteRateLimitRules)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -81,7 +80,7 @@ func (svr *Server) DeleteRateLimits(
 
 // UpdateRateLimits updates rate limits for a namespace.
 func (svr *Server) UpdateRateLimits(
-	ctx context.Context, reqs []*apitraffic.Rule) *apiservice.BatchWriteResponse {
+	ctx context.Context, reqs []*apitraffic.Rule) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectRateLimitAuthContext(ctx, reqs, authtypes.Modify, authtypes.UpdateRateLimitRules)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -94,7 +93,7 @@ func (svr *Server) UpdateRateLimits(
 	return svr.nextSvr.UpdateRateLimits(ctx, reqs)
 }
 
-func (svr *Server) GetOneRateLimitRule(ctx context.Context, req *apitraffic.Rule) *apiservice.Response {
+func (svr *Server) GetOneRateLimitRule(ctx context.Context, req *apitraffic.Rule) *apimodel.Response {
 	authCtx := svr.collectRateLimitAuthContext(ctx, []*apitraffic.Rule{req}, authtypes.Read, authtypes.DescribeRateLimitRules)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -136,7 +135,7 @@ func (svr *Server) GetOneRateLimitRule(ctx context.Context, req *apitraffic.Rule
 
 // GetRateLimits gets rate limits for a namespace.
 func (svr *Server) GetRateLimits(
-	ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+	ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := svr.collectRateLimitAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeRateLimitRules)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {

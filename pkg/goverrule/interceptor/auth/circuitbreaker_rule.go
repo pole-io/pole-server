@@ -27,7 +27,6 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/security"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -37,7 +36,7 @@ import (
 )
 
 func (svr *Server) CreateCircuitBreakerRules(
-	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+	ctx context.Context, request []*apifault.CircuitBreakerRule) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectCircuitBreakerRuleV2(ctx, request, authtypes.Create,
 		authtypes.CreateCircuitBreakerRules)
 
@@ -61,7 +60,7 @@ func (svr *Server) CreateCircuitBreakerRules(
 }
 
 func (svr *Server) DeleteCircuitBreakerRules(
-	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+	ctx context.Context, request []*apifault.CircuitBreakerRule) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectCircuitBreakerRuleV2(ctx, request, authtypes.Delete,
 		authtypes.DeleteCircuitBreakerRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -84,7 +83,7 @@ func (svr *Server) DeleteCircuitBreakerRules(
 }
 
 func (svr *Server) UpdateCircuitBreakerRules(
-	ctx context.Context, request []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+	ctx context.Context, request []*apifault.CircuitBreakerRule) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectCircuitBreakerRuleV2(ctx, request, authtypes.Modify,
 		authtypes.UpdateCircuitBreakerRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -97,7 +96,7 @@ func (svr *Server) UpdateCircuitBreakerRules(
 }
 
 func (svr *Server) GetOneCircuitBreakerRule(
-	ctx context.Context, req *apifault.CircuitBreakerRule) *apiservice.Response {
+	ctx context.Context, req *apifault.CircuitBreakerRule) *apimodel.Response {
 	authCtx := svr.collectCircuitBreakerRuleV2(ctx, nil, authtypes.Read,
 		authtypes.DescribeCircuitBreakerRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -136,7 +135,7 @@ func (svr *Server) GetOneCircuitBreakerRule(
 }
 
 func (svr *Server) GetCircuitBreakerRules(
-	ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+	ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := svr.collectCircuitBreakerRuleV2(ctx, nil, authtypes.Read,
 		authtypes.DescribeCircuitBreakerRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {

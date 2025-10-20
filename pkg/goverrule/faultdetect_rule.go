@@ -28,7 +28,6 @@ import (
 
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -43,7 +42,7 @@ import (
 
 // CreateFaultDetectRules Create a FaultDetect rule
 func (s *Server) CreateFaultDetectRules(
-	ctx context.Context, reqs []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
+	ctx context.Context, reqs []*apifault.FaultDetectRule) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, cbRule := range reqs {
 		response := s.createFaultDetectRule(ctx, cbRule)
@@ -54,7 +53,7 @@ func (s *Server) CreateFaultDetectRules(
 
 // DeleteFaultDetectRules Delete current Fault Detect rules
 func (s *Server) DeleteFaultDetectRules(
-	ctx context.Context, reqs []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
+	ctx context.Context, reqs []*apifault.FaultDetectRule) *apimodel.BatchWriteResponse {
 
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, cbRule := range reqs {
@@ -66,7 +65,7 @@ func (s *Server) DeleteFaultDetectRules(
 
 // UpdateFaultDetectRules Modify the FaultDetect rule
 func (s *Server) UpdateFaultDetectRules(
-	ctx context.Context, reqs []*apifault.FaultDetectRule) *apiservice.BatchWriteResponse {
+	ctx context.Context, reqs []*apifault.FaultDetectRule) *apimodel.BatchWriteResponse {
 
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, cbRule := range reqs {
@@ -93,7 +92,7 @@ func faultDetectRuleRecordEntry(ctx context.Context, req *apifault.FaultDetectRu
 }
 
 // createFaultDetectRule Create a FaultDetect rule
-func (s *Server) createFaultDetectRule(ctx context.Context, request *apifault.FaultDetectRule) *apiservice.Response {
+func (s *Server) createFaultDetectRule(ctx context.Context, request *apifault.FaultDetectRule) *apimodel.Response {
 	data, err := api2FaultDetectRule(request)
 	if err != nil {
 		log.Error("[faultdetect] parse fault detect rule error", utils.RequestID(ctx), zap.Error(err))
@@ -105,7 +104,7 @@ func (s *Server) createFaultDetectRule(ctx context.Context, request *apifault.Fa
 		return api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 	if exists {
-		return api.NewResponse(apimodel.Code_FaultDetectRuleExisted)
+		return api.NewResponse(apimodel.Code_ExistedResource)
 	}
 	data.ID = utils.NewUUID()
 
@@ -125,7 +124,7 @@ func (s *Server) createFaultDetectRule(ctx context.Context, request *apifault.Fa
 }
 
 // updateFaultDetectRule Update a FaultDetect rule
-func (s *Server) updateFaultDetectRule(ctx context.Context, request *apifault.FaultDetectRule) *apiservice.Response {
+func (s *Server) updateFaultDetectRule(ctx context.Context, request *apifault.FaultDetectRule) *apimodel.Response {
 	fdRuleId := &apifault.FaultDetectRule{Id: request.GetId()}
 	fdRule, err := api2FaultDetectRule(request)
 	if err != nil {
@@ -139,7 +138,7 @@ func (s *Server) updateFaultDetectRule(ctx context.Context, request *apifault.Fa
 		return api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 	if exists {
-		return api.NewAnyDataResponse(apimodel.Code_FaultDetectRuleExisted, fdRuleId)
+		return api.NewAnyDataResponse(apimodel.Code_ExistedResource, fdRuleId)
 	}
 	if err := s.storage.UpdateFaultDetectRule(fdRule); err != nil {
 		log.Error("[faultdetect] update fault detect rule error", utils.RequestID(ctx), zap.Error(err))
@@ -155,7 +154,7 @@ func (s *Server) updateFaultDetectRule(ctx context.Context, request *apifault.Fa
 }
 
 // deleteFaultDetectRule Delete a FaultDetect rule
-func (s *Server) deleteFaultDetectRule(ctx context.Context, request *apifault.FaultDetectRule) *apiservice.Response {
+func (s *Server) deleteFaultDetectRule(ctx context.Context, request *apifault.FaultDetectRule) *apimodel.Response {
 	cbRuleId := &apifault.FaultDetectRule{Id: request.GetId()}
 	err := s.storage.DeleteFaultDetectRule(request.GetId())
 	if err != nil {
@@ -171,7 +170,7 @@ func (s *Server) deleteFaultDetectRule(ctx context.Context, request *apifault.Fa
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, cbRuleId)
 }
 
-func (s *Server) GetFaultDetectRules(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (s *Server) GetFaultDetectRules(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	offset, limit, _ := valid.ParseOffsetAndLimit(query)
 	total, cbRules, err := s.caches.FaultDetector().Query(ctx, &cacheapi.FaultDetectArgs{
 		Filter: query,
@@ -203,7 +202,7 @@ func (s *Server) GetFaultDetectRules(ctx context.Context, query map[string]strin
 }
 
 // GetOneFaultDetectRule 查询单个故障检测规则
-func (s *Server) GetOneFaultDetectRule(ctx context.Context, req *apifault.FaultDetectRule) *apiservice.Response {
+func (s *Server) GetOneFaultDetectRule(ctx context.Context, req *apifault.FaultDetectRule) *apimodel.Response {
 	saveData, err := s.storage.GetFaultDetectRule(req.GetId())
 	if err != nil {
 		log.Error("[Server][FaultDetect][Query] get fault_detect_rule from store", utils.RequestID(ctx), zap.Error(err))
@@ -254,7 +253,7 @@ func api2FaultDetectRule(req *apifault.FaultDetectRule) (*rules.FaultDetectRule,
 		Description:  req.GetDescription(),
 		DstService:   req.GetTargetService().GetService(),
 		DstNamespace: req.GetTargetService().GetNamespace(),
-		DstMethod:    req.GetTargetService().GetMethod().GetValue().GetValue(),
+		DstMethod:    req.GetTargetService().GetMethod().GetValue(),
 		Rule:         rule,
 		Revision:     utils.NewUUID(),
 		Metadata:     req.Metadata,

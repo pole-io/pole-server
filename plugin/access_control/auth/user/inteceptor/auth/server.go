@@ -22,7 +22,6 @@ import (
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
@@ -56,7 +55,7 @@ func (svr *Server) Name() string {
 }
 
 // Login 登录动作
-func (svr *Server) Login(req *apisecurity.LoginRequest) *apiservice.Response {
+func (svr *Server) Login(req *apisecurity.LoginRequest) *apimodel.Response {
 	return svr.nextSvr.Login(req)
 }
 
@@ -71,7 +70,7 @@ func (svr *Server) GetUserHelper() authapi.UserHelper {
 }
 
 // CreateUsers 批量创建用户
-func (svr *Server) CreateUsers(ctx context.Context, users []*apisecurity.User) *apiservice.BatchWriteResponse {
+func (svr *Server) CreateUsers(ctx context.Context, users []*apisecurity.User) *apimodel.BatchWriteResponse {
 	authCtx := authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
 		authtypes.WithOperation(authtypes.Create),
@@ -86,7 +85,7 @@ func (svr *Server) CreateUsers(ctx context.Context, users []*apisecurity.User) *
 }
 
 // UpdateUsers 更新用户信息
-func (svr *Server) UpdateUsers(ctx context.Context, reqs []*apisecurity.User) *apiservice.BatchWriteResponse {
+func (svr *Server) UpdateUsers(ctx context.Context, reqs []*apisecurity.User) *apimodel.BatchWriteResponse {
 	rsp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 
 	helper := svr.nextSvr.GetUserHelper()
@@ -126,7 +125,7 @@ func (svr *Server) UpdateUsers(ctx context.Context, reqs []*apisecurity.User) *a
 }
 
 // UpdateUserPassword 更新用户密码
-func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.ModifyUserPassword) *apiservice.Response {
+func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.ModifyUserPassword) *apimodel.Response {
 	helper := svr.nextSvr.GetUserHelper()
 	saveUser := helper.GetUserByID(ctx, req.GetId().GetValue())
 	if saveUser == nil {
@@ -156,7 +155,7 @@ func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.Modi
 }
 
 // DeleteUsers 批量删除用户
-func (svr *Server) DeleteUsers(ctx context.Context, users []*apisecurity.User) *apiservice.BatchWriteResponse {
+func (svr *Server) DeleteUsers(ctx context.Context, users []*apisecurity.User) *apimodel.BatchWriteResponse {
 	helper := svr.nextSvr.GetUserHelper()
 	resources := make([]authtypes.ResourceEntry, 0, len(users))
 	for i := range users {
@@ -186,7 +185,7 @@ func (svr *Server) DeleteUsers(ctx context.Context, users []*apisecurity.User) *
 }
 
 // GetUsers 查询用户列表
-func (svr *Server) GetUsers(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetUsers(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
 		authtypes.WithOperation(authtypes.Read),
@@ -209,7 +208,7 @@ func (svr *Server) GetUsers(ctx context.Context, query map[string]string) *apise
 }
 
 // GetUserToken 获取用户的 token
-func (svr *Server) GetUserToken(ctx context.Context, user *apisecurity.User) *apiservice.Response {
+func (svr *Server) GetUserToken(ctx context.Context, user *apisecurity.User) *apimodel.Response {
 	helper := svr.nextSvr.GetUserHelper()
 	saveUser := helper.GetUserByID(ctx, user.GetId().GetValue())
 	if saveUser == nil {
@@ -238,7 +237,7 @@ func (svr *Server) GetUserToken(ctx context.Context, user *apisecurity.User) *ap
 }
 
 // UpdateUserToken 禁止用户的token使用
-func (svr *Server) EnableUserToken(ctx context.Context, user *apisecurity.User) *apiservice.Response {
+func (svr *Server) EnableUserToken(ctx context.Context, user *apisecurity.User) *apimodel.Response {
 	helper := svr.nextSvr.GetUserHelper()
 	saveUser := helper.GetUserByID(ctx, user.GetId().GetValue())
 	if saveUser == nil {
@@ -267,7 +266,7 @@ func (svr *Server) EnableUserToken(ctx context.Context, user *apisecurity.User) 
 }
 
 // ResetUserToken 重置用户的token
-func (svr *Server) ResetUserToken(ctx context.Context, user *apisecurity.User) *apiservice.Response {
+func (svr *Server) ResetUserToken(ctx context.Context, user *apisecurity.User) *apimodel.Response {
 	helper := svr.nextSvr.GetUserHelper()
 	saveUser := helper.GetUserByID(ctx, user.GetId().GetValue())
 	if saveUser == nil {
@@ -296,7 +295,7 @@ func (svr *Server) ResetUserToken(ctx context.Context, user *apisecurity.User) *
 }
 
 // CreateGroup 创建用户组
-func (svr *Server) CreateGroups(ctx context.Context, reqs []*apisecurity.UserGroup) *apiservice.BatchWriteResponse {
+func (svr *Server) CreateGroups(ctx context.Context, reqs []*apisecurity.UserGroup) *apimodel.BatchWriteResponse {
 	authCtx := authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
 		authtypes.WithOperation(authtypes.Create),
@@ -311,7 +310,7 @@ func (svr *Server) CreateGroups(ctx context.Context, reqs []*apisecurity.UserGro
 }
 
 // UpdateGroups 更新用户组
-func (svr *Server) UpdateGroups(ctx context.Context, groups []*apisecurity.UserGroup) *apiservice.BatchWriteResponse {
+func (svr *Server) UpdateGroups(ctx context.Context, groups []*apisecurity.UserGroup) *apimodel.BatchWriteResponse {
 	helper := svr.nextSvr.GetUserHelper()
 	resources := make([]authtypes.ResourceEntry, 0, len(groups))
 	for i := range groups {
@@ -343,7 +342,7 @@ func (svr *Server) UpdateGroups(ctx context.Context, groups []*apisecurity.UserG
 }
 
 // DeleteGroups 批量删除用户组
-func (svr *Server) DeleteGroups(ctx context.Context, groups []*apisecurity.UserGroup) *apiservice.BatchWriteResponse {
+func (svr *Server) DeleteGroups(ctx context.Context, groups []*apisecurity.UserGroup) *apimodel.BatchWriteResponse {
 	helper := svr.nextSvr.GetUserHelper()
 	resources := make([]authtypes.ResourceEntry, 0, len(groups))
 	for i := range groups {
@@ -373,7 +372,7 @@ func (svr *Server) DeleteGroups(ctx context.Context, groups []*apisecurity.UserG
 }
 
 // GetGroups 查询用户组列表（不带用户详细信息）
-func (svr *Server) GetGroups(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetGroups(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
 		authtypes.WithOperation(authtypes.Read),
@@ -405,7 +404,7 @@ func (svr *Server) GetGroups(ctx context.Context, query map[string]string) *apis
 }
 
 // GetGroup 根据用户组信息，查询该用户组下的用户相信
-func (svr *Server) GetGroup(ctx context.Context, req *apisecurity.UserGroup) *apiservice.Response {
+func (svr *Server) GetGroup(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response {
 	helper := svr.nextSvr.GetUserHelper()
 	saveGroup := helper.GetGroup(ctx, req)
 	if saveGroup == nil {
@@ -434,7 +433,7 @@ func (svr *Server) GetGroup(ctx context.Context, req *apisecurity.UserGroup) *ap
 }
 
 // GetGroupToken 获取用户组的 token
-func (svr *Server) GetGroupToken(ctx context.Context, group *apisecurity.UserGroup) *apiservice.Response {
+func (svr *Server) GetGroupToken(ctx context.Context, group *apisecurity.UserGroup) *apimodel.Response {
 	helper := svr.nextSvr.GetUserHelper()
 	saveGroup := helper.GetGroup(ctx, group)
 	if saveGroup == nil {
@@ -463,7 +462,7 @@ func (svr *Server) GetGroupToken(ctx context.Context, group *apisecurity.UserGro
 }
 
 // EnableGroupToken 取消用户组的 token 使用
-func (svr *Server) EnableGroupToken(ctx context.Context, group *apisecurity.UserGroup) *apiservice.Response {
+func (svr *Server) EnableGroupToken(ctx context.Context, group *apisecurity.UserGroup) *apimodel.Response {
 	helper := svr.nextSvr.GetUserHelper()
 	saveGroup := helper.GetGroup(ctx, group)
 	if saveGroup == nil {
@@ -492,7 +491,7 @@ func (svr *Server) EnableGroupToken(ctx context.Context, group *apisecurity.User
 }
 
 // ResetGroupToken 重置用户组的 token
-func (svr *Server) ResetGroupToken(ctx context.Context, group *apisecurity.UserGroup) *apiservice.Response {
+func (svr *Server) ResetGroupToken(ctx context.Context, group *apisecurity.UserGroup) *apimodel.Response {
 	helper := svr.nextSvr.GetUserHelper()
 	saveGroup := helper.GetGroup(ctx, group)
 	if saveGroup == nil {

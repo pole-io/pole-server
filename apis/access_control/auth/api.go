@@ -21,8 +21,8 @@ import (
 	"context"
 	"fmt"
 
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
@@ -65,33 +65,33 @@ type StrategyServer interface {
 // PolicyOperator 策略管理
 type PolicyOperator interface {
 	// CreatePolicies 创建策略
-	CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse
+	CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apimodel.BatchWriteResponse
 	// UpdatePolicies 批量更新策略
-	UpdatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse
+	UpdatePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apimodel.BatchWriteResponse
 	// DeletePolicies 删除策略
-	DeletePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apiservice.BatchWriteResponse
+	DeletePolicies(ctx context.Context, reqs []*apisecurity.AuthStrategy) *apimodel.BatchWriteResponse
 	// GetPolicies 获取资源列表, 支持按照 principal-id + principal-role 进行查询; 支持普通的鉴权策略查询
-	GetPolicies(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	GetPolicies(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 	// GetPolicy 获取策略详细
-	GetPolicy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apiservice.Response
+	GetPolicy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apimodel.Response
 	// GetPrincipalResources 获取某个 principal 的所有可操作资源列表
-	GetPrincipalResources(ctx context.Context, query map[string]string) *apiservice.Response
+	GetPrincipalResources(ctx context.Context, query map[string]string) *apimodel.Response
 	// // GetResourcePrincipals 获取某个 资源下的授权人员
-	GetResourcePrincipals(ctx context.Context, query map[string]string) *apiservice.Response
+	GetResourcePrincipals(ctx context.Context, query map[string]string) *apimodel.Response
 	// AuthorizeResources 授权资源
-	AuthorizeResources(ctx context.Context, reqs []*v1.AuthorizeResources) *apiservice.Response
+	AuthorizeResources(ctx context.Context, reqs []*v1.AuthorizeResources) *apimodel.Response
 }
 
 // RoleOperator 角色管理
 type RoleOperator interface {
 	// CreateRoles 批量创建角色
-	CreateRoles(ctx context.Context, reqs []*apisecurity.Role) *apiservice.BatchWriteResponse
+	CreateRoles(ctx context.Context, reqs []*apisecurity.Role) *apimodel.BatchWriteResponse
 	// UpdateRoles 批量更新角色
-	UpdateRoles(ctx context.Context, reqs []*apisecurity.Role) *apiservice.BatchWriteResponse
+	UpdateRoles(ctx context.Context, reqs []*apisecurity.Role) *apimodel.BatchWriteResponse
 	// DeleteRoles 批量删除角色
-	DeleteRoles(ctx context.Context, reqs []*apisecurity.Role) *apiservice.BatchWriteResponse
+	DeleteRoles(ctx context.Context, reqs []*apisecurity.Role) *apimodel.BatchWriteResponse
 	// GetRoles 查询角色列表
-	GetRoles(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	GetRoles(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 }
 
 // UserServer 用户数据管理 server
@@ -101,7 +101,7 @@ type UserServer interface {
 	// Name 用户数据管理server名称
 	Name() string
 	// Login 登录动作
-	Login(req *apisecurity.LoginRequest) *apiservice.Response
+	Login(req *apisecurity.LoginRequest) *apimodel.Response
 	// CheckCredential 检查当前操作用户凭证
 	CheckCredential(authCtx *authtypes.AcquireContext) error
 	// UserOperator
@@ -114,40 +114,40 @@ type UserServer interface {
 
 type UserOperator interface {
 	// CreateUsers 批量创建用户
-	CreateUsers(ctx context.Context, users []*apisecurity.User) *apiservice.BatchWriteResponse
+	CreateUsers(ctx context.Context, users []*apisecurity.User) *apimodel.BatchWriteResponse
 	// UpdateUsers 更新用户信息
-	UpdateUsers(ctx context.Context, user []*apisecurity.User) *apiservice.BatchWriteResponse
+	UpdateUsers(ctx context.Context, user []*apisecurity.User) *apimodel.BatchWriteResponse
 	// UpdateUserPassword 更新用户密码
-	UpdateUserPassword(ctx context.Context, req *apisecurity.ModifyUserPassword) *apiservice.Response
+	UpdateUserPassword(ctx context.Context, req *apisecurity.ModifyUserPassword) *apimodel.Response
 	// DeleteUsers 批量删除用户
-	DeleteUsers(ctx context.Context, users []*apisecurity.User) *apiservice.BatchWriteResponse
+	DeleteUsers(ctx context.Context, users []*apisecurity.User) *apimodel.BatchWriteResponse
 	// GetUsers 查询用户列表
-	GetUsers(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	GetUsers(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 	// GetUserToken 获取用户的 token
-	GetUserToken(ctx context.Context, user *apisecurity.User) *apiservice.Response
+	GetUserToken(ctx context.Context, user *apisecurity.User) *apimodel.Response
 	// EnableUserToken 禁止用户的token使用
-	EnableUserToken(ctx context.Context, user *apisecurity.User) *apiservice.Response
+	EnableUserToken(ctx context.Context, user *apisecurity.User) *apimodel.Response
 	// ResetUserToken 重置用户的token
-	ResetUserToken(ctx context.Context, user *apisecurity.User) *apiservice.Response
+	ResetUserToken(ctx context.Context, user *apisecurity.User) *apimodel.Response
 }
 
 type GroupOperator interface {
 	// CreateGroup 创建用户组
-	CreateGroups(ctx context.Context, reqs []*apisecurity.UserGroup) *apiservice.BatchWriteResponse
+	CreateGroups(ctx context.Context, reqs []*apisecurity.UserGroup) *apimodel.BatchWriteResponse
 	// UpdateGroups 更新用户组
-	UpdateGroups(ctx context.Context, groups []*apisecurity.UserGroup) *apiservice.BatchWriteResponse
+	UpdateGroups(ctx context.Context, groups []*apisecurity.UserGroup) *apimodel.BatchWriteResponse
 	// DeleteGroups 批量删除用户组
-	DeleteGroups(ctx context.Context, group []*apisecurity.UserGroup) *apiservice.BatchWriteResponse
+	DeleteGroups(ctx context.Context, group []*apisecurity.UserGroup) *apimodel.BatchWriteResponse
 	// GetGroups 查询用户组列表（不带用户详细信息）
-	GetGroups(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse
+	GetGroups(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 	// GetGroup 根据用户组信息，查询该用户组下的用户相信
-	GetGroup(ctx context.Context, req *apisecurity.UserGroup) *apiservice.Response
+	GetGroup(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response
 	// GetGroupToken 获取用户组的 token
-	GetGroupToken(ctx context.Context, group *apisecurity.UserGroup) *apiservice.Response
+	GetGroupToken(ctx context.Context, group *apisecurity.UserGroup) *apimodel.Response
 	// EnableGroupToken 取消用户组的 token 使用
-	EnableGroupToken(ctx context.Context, group *apisecurity.UserGroup) *apiservice.Response
+	EnableGroupToken(ctx context.Context, group *apisecurity.UserGroup) *apimodel.Response
 	// ResetGroupToken 重置用户组的 token
-	ResetGroupToken(ctx context.Context, group *apisecurity.UserGroup) *apiservice.Response
+	ResetGroupToken(ctx context.Context, group *apisecurity.UserGroup) *apimodel.Response
 }
 
 type UserHelper interface {

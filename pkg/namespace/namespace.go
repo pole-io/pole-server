@@ -25,7 +25,6 @@ import (
 	"go.uber.org/zap"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -49,7 +48,7 @@ func AllowAutoCreate(ctx context.Context) context.Context {
 }
 
 // CreateNamespaces 批量创建命名空间
-func (s *Server) CreateNamespaces(ctx context.Context, req []*apimodel.Namespace) *apiservice.BatchWriteResponse {
+func (s *Server) CreateNamespaces(ctx context.Context, req []*apimodel.Namespace) *apimodel.BatchWriteResponse {
 	if checkError := checkBatchNamespace(req); checkError != nil {
 		return checkError
 	}
@@ -64,7 +63,7 @@ func (s *Server) CreateNamespaces(ctx context.Context, req []*apimodel.Namespace
 }
 
 // CreateNamespaceIfAbsent 创建命名空间，如果不存在
-func (s *Server) CreateNamespaceIfAbsent(ctx context.Context, req *apimodel.Namespace) (string, *apiservice.Response) {
+func (s *Server) CreateNamespaceIfAbsent(ctx context.Context, req *apimodel.Namespace) (string, *apimodel.Response) {
 	if resp := checkCreateNamespace(req); resp != nil {
 		return "", resp
 	}
@@ -86,7 +85,7 @@ func (s *Server) CreateNamespaceIfAbsent(ctx context.Context, req *apimodel.Name
 		return "", api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
 	}
 	var (
-		resp = ret.(*apiservice.Response)
+		resp = ret.(*apimodel.Response)
 		code = resp.GetCode().GetValue()
 	)
 	if code == uint32(apimodel.Code_ExecuteSuccess) || code == uint32(apimodel.Code_ExistedResource) {
@@ -96,7 +95,7 @@ func (s *Server) CreateNamespaceIfAbsent(ctx context.Context, req *apimodel.Name
 }
 
 // CreateNamespace 创建单个命名空间
-func (s *Server) CreateNamespace(ctx context.Context, req *apimodel.Namespace) *apiservice.Response {
+func (s *Server) CreateNamespace(ctx context.Context, req *apimodel.Namespace) *apimodel.Response {
 	// 参数检查
 	if checkError := checkCreateNamespace(req); checkError != nil {
 		return checkError
@@ -146,7 +145,7 @@ func (s *Server) createNamespaceModel(req *apimodel.Namespace) *types.Namespace 
 }
 
 // DeleteNamespaces 批量删除命名空间
-func (s *Server) DeleteNamespaces(ctx context.Context, req []*apimodel.Namespace) *apiservice.BatchWriteResponse {
+func (s *Server) DeleteNamespaces(ctx context.Context, req []*apimodel.Namespace) *apimodel.BatchWriteResponse {
 	if checkError := checkBatchNamespace(req); checkError != nil {
 		return checkError
 	}
@@ -161,7 +160,7 @@ func (s *Server) DeleteNamespaces(ctx context.Context, req []*apimodel.Namespace
 }
 
 // DeleteNamespace 删除单个命名空间
-func (s *Server) DeleteNamespace(ctx context.Context, req *apimodel.Namespace) *apiservice.Response {
+func (s *Server) DeleteNamespace(ctx context.Context, req *apimodel.Namespace) *apimodel.Response {
 	// 参数检查
 	if checkError := checkReviseNamespace(ctx, req); checkError != nil {
 		return checkError
@@ -220,7 +219,7 @@ func (s *Server) DeleteNamespace(ctx context.Context, req *apimodel.Namespace) *
 }
 
 // UpdateNamespaces 批量修改命名空间
-func (s *Server) UpdateNamespaces(ctx context.Context, req []*apimodel.Namespace) *apiservice.BatchWriteResponse {
+func (s *Server) UpdateNamespaces(ctx context.Context, req []*apimodel.Namespace) *apimodel.BatchWriteResponse {
 	if checkError := checkBatchNamespace(req); checkError != nil {
 		return checkError
 	}
@@ -235,7 +234,7 @@ func (s *Server) UpdateNamespaces(ctx context.Context, req []*apimodel.Namespace
 }
 
 // UpdateNamespace 修改单个命名空间
-func (s *Server) UpdateNamespace(ctx context.Context, req *apimodel.Namespace) *apiservice.Response {
+func (s *Server) UpdateNamespace(ctx context.Context, req *apimodel.Namespace) *apimodel.Response {
 	// 参数检查
 	if resp := checkReviseNamespace(ctx, req); resp != nil {
 		return resp
@@ -282,7 +281,7 @@ func (s *Server) updateNamespaceAttribute(req *apimodel.Namespace, namespace *ty
 }
 
 // GetNamespaces 查询命名空间
-func (s *Server) GetNamespaces(ctx context.Context, query map[string][]string) *apiservice.BatchQueryResponse {
+func (s *Server) GetNamespaces(ctx context.Context, query map[string][]string) *apimodel.BatchQueryResponse {
 	filter, offset, limit, checkError := checkGetNamespace(query)
 	if checkError != nil {
 		return checkError
@@ -366,7 +365,7 @@ func (s *Server) loadNamespace(name string) (string, error) {
 
 // 检查namespace的权限，并且返回namespace
 func (s *Server) checkNamespaceAuthority(
-	ctx context.Context, req *apimodel.Namespace) (*types.Namespace, *apiservice.Response) {
+	ctx context.Context, req *apimodel.Namespace) (*types.Namespace, *apimodel.Response) {
 	namespaceName := req.GetName().GetValue()
 	// namespaceToken := parseNamespaceToken(ctx, req)
 
@@ -383,7 +382,7 @@ func (s *Server) checkNamespaceAuthority(
 }
 
 // 检查批量请求
-func checkBatchNamespace(req []*apimodel.Namespace) *apiservice.BatchWriteResponse {
+func checkBatchNamespace(req []*apimodel.Namespace) *apimodel.BatchWriteResponse {
 	if len(req) == 0 {
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
@@ -396,7 +395,7 @@ func checkBatchNamespace(req []*apimodel.Namespace) *apiservice.BatchWriteRespon
 }
 
 // 检查创建命名空间请求参数
-func checkCreateNamespace(req *apimodel.Namespace) *apiservice.Response {
+func checkCreateNamespace(req *apimodel.Namespace) *apimodel.Response {
 	if req == nil {
 		return api.NewNamespaceResponse(apimodel.Code_EmptyRequest, req)
 	}
@@ -409,7 +408,7 @@ func checkCreateNamespace(req *apimodel.Namespace) *apiservice.Response {
 }
 
 // 检查删除/修改命名空间请求参数
-func checkReviseNamespace(ctx context.Context, req *apimodel.Namespace) *apiservice.Response {
+func checkReviseNamespace(ctx context.Context, req *apimodel.Namespace) *apimodel.Response {
 	if req == nil {
 		return api.NewNamespaceResponse(apimodel.Code_EmptyRequest, req)
 	}
@@ -421,7 +420,7 @@ func checkReviseNamespace(ctx context.Context, req *apimodel.Namespace) *apiserv
 }
 
 // 检查查询命名空间请求参数
-func checkGetNamespace(query map[string][]string) (map[string][]string, int, int, *apiservice.BatchQueryResponse) {
+func checkGetNamespace(query map[string][]string) (map[string][]string, int, int, *apimodel.BatchQueryResponse) {
 	filter := make(map[string][]string)
 
 	if value := query["name"]; len(value) > 0 {

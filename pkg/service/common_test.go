@@ -102,7 +102,7 @@ func (d *DiscoverTestSuit) HeartBeat(t *testing.T, service *apiservice.Service, 
 }
 
 func (d *DiscoverTestSuit) GetLastHeartBeat(t *testing.T, service *apiservice.Service,
-	instanceID string) *apiservice.Response {
+	instanceID string) *apimodel.Response {
 	req := &apiservice.Instance{
 		ServiceToken: protobuf.NewStringValue(service.GetToken().GetValue()),
 		Id:           protobuf.NewStringValue(instanceID),

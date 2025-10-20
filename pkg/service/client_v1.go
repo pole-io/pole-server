@@ -39,17 +39,17 @@ import (
 )
 
 // RegisterInstance create one instance
-func (s *Server) RegisterInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (s *Server) RegisterInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	return s.CreateInstance(ctx, req)
 }
 
 // DeregisterInstance delete one instance
-func (s *Server) DeregisterInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (s *Server) DeregisterInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	return s.DeleteInstance(ctx, req)
 }
 
 // ReportServiceContract report client service interface info
-func (s *Server) ReportServiceContract(ctx context.Context, req *apiservice.ServiceContract) *apiservice.Response {
+func (s *Server) ReportServiceContract(ctx context.Context, req *apiservice.ServiceContract) *apimodel.Response {
 	cacheData := s.caches.ServiceContract().Get(ctx, &svctypes.ServiceContract{
 		Namespace: req.GetNamespace(),
 		Service:   req.GetService(),
@@ -69,7 +69,7 @@ func (s *Server) ReportServiceContract(ctx context.Context, req *apiservice.Serv
 	return rsp
 }
 
-func isSuccessReportContract(rsp *apiservice.Response) bool {
+func isSuccessReportContract(rsp *apimodel.Response) bool {
 	code := rsp.GetCode().GetValue()
 	if code == uint32(apimodel.Code_ExecuteSuccess) {
 		return true
@@ -81,7 +81,7 @@ func isSuccessReportContract(rsp *apiservice.Response) bool {
 }
 
 // ReportClient 客户端上报信息
-func (s *Server) ReportClient(ctx context.Context, req *apiservice.Client) *apiservice.Response {
+func (s *Server) ReportClient(ctx context.Context, req *apiservice.Client) *apimodel.Response {
 	// 客户端信息不写入到DB中
 	host := req.GetHost().GetValue()
 	// 从CMDB查询地理位置信息
@@ -309,7 +309,7 @@ func (s *Server) findVisibleServices(ctx context.Context, svcName, nsName string
 
 // GetServiceContractWithCache User Client Get ServiceContract Rule Information
 func (s *Server) GetServiceContractWithCache(ctx context.Context,
-	req *apiservice.ServiceContract) *apiservice.Response {
+	req *apiservice.ServiceContract) *apimodel.Response {
 	resp := api.NewResponse(apimodel.Code_ExecuteSuccess)
 	// 服务名和request保持一致
 	resp.Service = &apiservice.Service{

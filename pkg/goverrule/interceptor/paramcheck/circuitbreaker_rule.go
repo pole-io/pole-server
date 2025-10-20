@@ -25,7 +25,6 @@ import (
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/service_manage"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
@@ -82,7 +81,7 @@ func (svr *Server) GetCircuitBreakerRules(ctx context.Context,
 	return svr.nextSvr.GetCircuitBreakerRules(ctx, searchFilter)
 }
 
-func (svr *Server) GetOneCircuitBreakerRule(ctx context.Context, req *fault_tolerance.CircuitBreakerRule) *apiservice.Response {
+func (svr *Server) GetOneCircuitBreakerRule(ctx context.Context, req *fault_tolerance.CircuitBreakerRule) *apimodel.Response {
 	return svr.nextSvr.GetOneCircuitBreakerRule(ctx, req)
 }
 
@@ -138,7 +137,7 @@ func (svr *Server) UpdateCircuitBreakerRules(ctx context.Context,
 	return svr.nextSvr.UpdateCircuitBreakerRules(ctx, reqs)
 }
 
-func checkBatchCircuitBreakerRules(req []*apifault.CircuitBreakerRule) *apiservice.BatchWriteResponse {
+func checkBatchCircuitBreakerRules(req []*apifault.CircuitBreakerRule) *apimodel.BatchWriteResponse {
 	if len(req) == 0 {
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
@@ -150,7 +149,7 @@ func checkBatchCircuitBreakerRules(req []*apifault.CircuitBreakerRule) *apiservi
 }
 
 func checkCircuitBreakerRuleParams(
-	req *apifault.CircuitBreakerRule, idRequired bool, nameRequired bool) *apiservice.Response {
+	req *apifault.CircuitBreakerRule, idRequired bool, nameRequired bool) *apimodel.Response {
 	if req == nil {
 		return api.NewResponse(apimodel.Code_EmptyRequest)
 	}
@@ -166,7 +165,7 @@ func checkCircuitBreakerRuleParams(
 	return nil
 }
 
-func checkCircuitBreakerRuleParamsDbLen(req *apifault.CircuitBreakerRule) *apiservice.Response {
+func checkCircuitBreakerRuleParamsDbLen(req *apifault.CircuitBreakerRule) *apimodel.Response {
 	if err := valid.CheckDbRawStrFieldLen(
 		req.RuleMatcher.GetSource().GetService(), valid.MaxDbServiceNameLength); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidServiceName)

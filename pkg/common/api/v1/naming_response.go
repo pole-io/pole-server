@@ -91,7 +91,7 @@ func IsSuccess(rsp ResponseMessage) bool {
 /**
  * @brief BatchWriteResponse添加Response
  */
-func Collect(batchWriteResponse *apiservice.BatchWriteResponse, response *apiservice.Response) {
+func Collect(batchWriteResponse *apimodel.BatchWriteResponse, response *apimodel.Response) {
 	// 非200的code，都归为异常
 	if CalcCode(response) != 200 {
 		if response.GetCode().GetValue() >= batchWriteResponse.GetCode().GetValue() {
@@ -107,7 +107,7 @@ func Collect(batchWriteResponse *apiservice.BatchWriteResponse, response *apiser
 /**
  * @brief BatchWriteResponse添加Response
  */
-func QueryCollect(resp *apiservice.BatchQueryResponse, response *apiservice.Response) {
+func QueryCollect(resp *apimodel.BatchQueryResponse, response *apimodel.Response) {
 	// 非200的code，都归为异常
 	if CalcCode(response) != 200 {
 		if response.GetCode().GetValue() >= resp.GetCode().GetValue() {
@@ -118,17 +118,17 @@ func QueryCollect(resp *apiservice.BatchQueryResponse, response *apiservice.Resp
 }
 
 // AddNamespace BatchQueryResponse添加命名空间
-func AddNamespace(b *apiservice.BatchQueryResponse, namespace *apimodel.Namespace) {
+func AddNamespace(b *apimodel.BatchQueryResponse, namespace *apimodel.Namespace) {
 	b.Namespaces = append(b.Namespaces, namespace)
 }
 
 // AddNamespaceSummary 添加汇总信息
-func AddNamespaceSummary(b *apiservice.BatchQueryResponse, summary *apimodel.Summary) {
+func AddNamespaceSummary(b *apimodel.BatchQueryResponse, summary *apimodel.Summary) {
 	b.Summary = summary
 }
 
 // NewResponse 创建回复
-func NewResponse(code apimodel.Code) *apiservice.Response {
+func NewResponse(code apimodel.Code) *apimodel.Response {
 	return &apiservice.Response{
 		Code: &wrappers.UInt32Value{Value: uint32(code)},
 		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
@@ -136,7 +136,7 @@ func NewResponse(code apimodel.Code) *apiservice.Response {
 }
 
 // NewResponseWithMsg 带上具体的错误信息
-func NewResponseWithMsg(code apimodel.Code, msg string) *apiservice.Response {
+func NewResponseWithMsg(code apimodel.Code, msg string) *apimodel.Response {
 	resp := NewResponse(code)
 	resp.Info.Value += ": " + msg
 	return resp
@@ -145,7 +145,7 @@ func NewResponseWithMsg(code apimodel.Code, msg string) *apiservice.Response {
 /**
  * @brief 创建回复带客户端信息
  */
-func NewClientResponse(code apimodel.Code, client *apiservice.Client) *apiservice.Response {
+func NewClientResponse(code apimodel.Code, client *apiservice.Client) *apimodel.Response {
 	return &apiservice.Response{
 		Code:   &wrappers.UInt32Value{Value: uint32(code)},
 		Info:   &wrappers.StringValue{Value: code2info[uint32(code)]},
@@ -156,7 +156,7 @@ func NewClientResponse(code apimodel.Code, client *apiservice.Client) *apiservic
 /**
  * @brief 创建回复带命名空间信息
  */
-func NewNamespaceResponse(code apimodel.Code, namespace *apimodel.Namespace) *apiservice.Response {
+func NewNamespaceResponse(code apimodel.Code, namespace *apimodel.Namespace) *apimodel.Response {
 	return &apiservice.Response{
 		Code:      &wrappers.UInt32Value{Value: uint32(code)},
 		Info:      &wrappers.StringValue{Value: code2info[uint32(code)]},
@@ -167,7 +167,7 @@ func NewNamespaceResponse(code apimodel.Code, namespace *apimodel.Namespace) *ap
 /**
  * @brief 创建回复带服务信息
  */
-func NewServiceResponse(code apimodel.Code, service *apiservice.Service) *apiservice.Response {
+func NewServiceResponse(code apimodel.Code, service *apiservice.Service) *apimodel.Response {
 	return &apiservice.Response{
 		Code:    &wrappers.UInt32Value{Value: uint32(code)},
 		Info:    &wrappers.StringValue{Value: code2info[uint32(code)]},
@@ -176,7 +176,7 @@ func NewServiceResponse(code apimodel.Code, service *apiservice.Service) *apiser
 }
 
 // 创建带别名信息的答复
-func NewServiceAliasResponse(code apimodel.Code, alias *apiservice.ServiceAlias) *apiservice.Response {
+func NewServiceAliasResponse(code apimodel.Code, alias *apiservice.ServiceAlias) *apimodel.Response {
 	resp := NewResponse(code)
 	resp.Alias = alias
 	return resp
@@ -185,7 +185,7 @@ func NewServiceAliasResponse(code apimodel.Code, alias *apiservice.ServiceAlias)
 /**
  * @brief 创建回复带服务实例信息
  */
-func NewInstanceResponse(code apimodel.Code, instance *apiservice.Instance) *apiservice.Response {
+func NewInstanceResponse(code apimodel.Code, instance *apiservice.Instance) *apimodel.Response {
 	return &apiservice.Response{
 		Code:     &wrappers.UInt32Value{Value: uint32(code)},
 		Info:     &wrappers.StringValue{Value: code2info[uint32(code)]},
@@ -194,7 +194,7 @@ func NewInstanceResponse(code apimodel.Code, instance *apiservice.Instance) *api
 }
 
 // 创建带自定义error的服务实例response
-func NewInstanceRespWithError(code apimodel.Code, err error, instance *apiservice.Instance) *apiservice.Response {
+func NewInstanceRespWithError(code apimodel.Code, err error, instance *apiservice.Instance) *apimodel.Response {
 	resp := NewInstanceResponse(code, instance)
 	resp.Info.Value += " : " + err.Error()
 
@@ -204,7 +204,7 @@ func NewInstanceRespWithError(code apimodel.Code, err error, instance *apiservic
 /**
  * @brief 创建回复带服务路由信息
  */
-func NewRoutingResponse(code apimodel.Code, routing *apitraffic.Routing) *apiservice.Response {
+func NewRoutingResponse(code apimodel.Code, routing *apitraffic.Routing) *apimodel.Response {
 	return &apiservice.Response{
 		Code:    &wrappers.UInt32Value{Value: uint32(code)},
 		Info:    &wrappers.StringValue{Value: code2info[uint32(code)]},
@@ -213,7 +213,7 @@ func NewRoutingResponse(code apimodel.Code, routing *apitraffic.Routing) *apiser
 }
 
 // NewServiceContractResponse create the response with data with any type
-func NewServiceContractResponse(code apimodel.Code, contract *apiservice.ServiceContract) *apiservice.Response {
+func NewServiceContractResponse(code apimodel.Code, contract *apiservice.ServiceContract) *apimodel.Response {
 	return &apiservice.Response{
 		Code:            &wrappers.UInt32Value{Value: uint32(code)},
 		Info:            &wrappers.StringValue{Value: code2info[uint32(code)]},
@@ -222,7 +222,7 @@ func NewServiceContractResponse(code apimodel.Code, contract *apiservice.Service
 }
 
 // NewAnyDataResponse create the response with data with any type
-func NewAnyDataResponse(code apimodel.Code, msg proto.Message) *apiservice.Response {
+func NewAnyDataResponse(code apimodel.Code, msg proto.Message) *apimodel.Response {
 	ret, err := anypb.New(proto.MessageV2(msg))
 	if err != nil {
 		return NewResponse(code)
@@ -235,12 +235,12 @@ func NewAnyDataResponse(code apimodel.Code, msg proto.Message) *apiservice.Respo
 }
 
 // NewRouterResponse 创建带新版本路由的返回
-func NewRouterResponse(code apimodel.Code, router *apitraffic.RouteRule) *apiservice.Response {
+func NewRouterResponse(code apimodel.Code, router *apitraffic.RouteRule) *apimodel.Response {
 	return NewAnyDataResponse(code, router)
 }
 
 // NewRateLimitResponse 创建回复带限流规则信息
-func NewRateLimitResponse(code apimodel.Code, rule *apitraffic.Rule) *apiservice.Response {
+func NewRateLimitResponse(code apimodel.Code, rule *apitraffic.Rule) *apimodel.Response {
 	return &apiservice.Response{
 		Code:      &wrappers.UInt32Value{Value: uint32(code)},
 		Info:      &wrappers.StringValue{Value: code2info[uint32(code)]},
@@ -251,7 +251,7 @@ func NewRateLimitResponse(code apimodel.Code, rule *apitraffic.Rule) *apiservice
 /**
  * @brief 创建回复带熔断规则信息
  */
-func NewCircuitBreakerResponse(code apimodel.Code, circuitBreaker *apifault.CircuitBreaker) *apiservice.Response {
+func NewCircuitBreakerResponse(code apimodel.Code, circuitBreaker *apifault.CircuitBreaker) *apimodel.Response {
 	return &apiservice.Response{
 		Code:           &wrappers.UInt32Value{Value: uint32(code)},
 		Info:           &wrappers.StringValue{Value: code2info[uint32(code)]},
@@ -262,7 +262,7 @@ func NewCircuitBreakerResponse(code apimodel.Code, circuitBreaker *apifault.Circ
 /**
  * @brief 创建批量回复
  */
-func NewBatchWriteResponse(code apimodel.Code) *apiservice.BatchWriteResponse {
+func NewBatchWriteResponse(code apimodel.Code) *apimodel.BatchWriteResponse {
 	return &apiservice.BatchWriteResponse{
 		Code: &wrappers.UInt32Value{Value: uint32(code)},
 		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
@@ -273,14 +273,14 @@ func NewBatchWriteResponse(code apimodel.Code) *apiservice.BatchWriteResponse {
 /**
  * @brief 创建带详细信息的批量回复
  */
-func NewBatchWriteResponseWithMsg(code apimodel.Code, msg string) *apiservice.BatchWriteResponse {
+func NewBatchWriteResponseWithMsg(code apimodel.Code, msg string) *apimodel.BatchWriteResponse {
 	resp := NewBatchWriteResponse(code)
 	resp.Info.Value += ": " + msg
 	return resp
 }
 
 // NewBatchQueryResponse create the batch query responses
-func NewBatchQueryResponse(code apimodel.Code) *apiservice.BatchQueryResponse {
+func NewBatchQueryResponse(code apimodel.Code) *apimodel.BatchQueryResponse {
 	return &apiservice.BatchQueryResponse{
 		Code:   &wrappers.UInt32Value{Value: uint32(code)},
 		Info:   &wrappers.StringValue{Value: code2info[uint32(code)]},
@@ -290,14 +290,14 @@ func NewBatchQueryResponse(code apimodel.Code) *apiservice.BatchQueryResponse {
 }
 
 // NewBatchQueryResponseWithMsg create the batch query responses with message
-func NewBatchQueryResponseWithMsg(code apimodel.Code, msg string) *apiservice.BatchQueryResponse {
+func NewBatchQueryResponseWithMsg(code apimodel.Code, msg string) *apimodel.BatchQueryResponse {
 	resp := NewBatchQueryResponse(code)
 	resp.Info.Value += ": " + msg
 	return resp
 }
 
 // AddAnyDataIntoBatchQuery add message as any data array
-func AddAnyDataIntoBatchQuery(resp *apiservice.BatchQueryResponse, message proto.Message) error {
+func AddAnyDataIntoBatchQuery(resp *apimodel.BatchQueryResponse, message proto.Message) error {
 	ret, err := anypb.New(proto.MessageV2(message))
 	if err != nil {
 		return err
@@ -418,7 +418,7 @@ func NewConfigDiscoverResponse(code apimodel.Code) *apiconfig.ConfigDiscoverResp
 // batch操作
 // 如果所有子错误码一致，那么使用子错误码
 // 如果包含任意一个5xx，那么返回500
-func FormatBatchWriteResponse(response *apiservice.BatchWriteResponse) *apiservice.BatchWriteResponse {
+func FormatBatchWriteResponse(response *apimodel.BatchWriteResponse) *apimodel.BatchWriteResponse {
 	var code uint32
 	for _, resp := range response.Responses {
 		if code == 0 {

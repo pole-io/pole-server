@@ -145,17 +145,17 @@ func (s *Server) SelfService() string {
 }
 
 // Report heartbeat request
-func (s *Server) Report(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (s *Server) Report(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	return s.doReport(ctx, req)
 }
 
 // Reports batch report heartbeat request
-func (s *Server) Reports(ctx context.Context, req []*apiservice.InstanceHeartbeat) *apiservice.Response {
+func (s *Server) Reports(ctx context.Context, req []*apiservice.InstanceHeartbeat) *apimodel.Response {
 	return s.doReports(ctx, req)
 }
 
 // ReportByClient report heartbeat request by client
-func (s *Server) ReportByClient(ctx context.Context, req *apiservice.Client) *apiservice.Response {
+func (s *Server) ReportByClient(ctx context.Context, req *apiservice.Client) *apimodel.Response {
 	return s.doReportByClient(ctx, req)
 }
 
@@ -216,7 +216,7 @@ func (s *Server) publishInstanceEvent(serviceID string, event *svctypes.Instance
 }
 
 // GetLastHeartbeat 获取上一次心跳的时间
-func (s *Server) GetLastHeartbeat(req *apiservice.Instance) *apiservice.Response {
+func (s *Server) GetLastHeartbeat(req *apiservice.Instance) *apimodel.Response {
 	if len(s.checkers) == 0 {
 		return api.NewResponse(apimodel.Code_HealthCheckNotOpen)
 	}

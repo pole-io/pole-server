@@ -35,7 +35,7 @@ import (
 
 // CreateServiceAlias creates a service alias
 func (svr *Server) CreateServiceAlias(
-	ctx context.Context, req *apiservice.ServiceAlias) *apiservice.Response {
+	ctx context.Context, req *apiservice.ServiceAlias) *apimodel.Response {
 	authCtx := svr.collectServiceAliasAuthContext(
 		ctx, []*apiservice.ServiceAlias{req}, authtypes.Create, authtypes.CreateServiceAlias)
 
@@ -57,7 +57,7 @@ func (svr *Server) CreateServiceAlias(
 
 // DeleteServiceAliases deletes service aliases
 func (svr *Server) DeleteServiceAliases(ctx context.Context,
-	reqs []*apiservice.ServiceAlias) *apiservice.BatchWriteResponse {
+	reqs []*apiservice.ServiceAlias) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectServiceAliasAuthContext(ctx, reqs, authtypes.Delete, authtypes.DeleteServiceAliases)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -72,7 +72,7 @@ func (svr *Server) DeleteServiceAliases(ctx context.Context,
 
 // UpdateServiceAlias updates service alias
 func (svr *Server) UpdateServiceAlias(
-	ctx context.Context, req *apiservice.ServiceAlias) *apiservice.Response {
+	ctx context.Context, req *apiservice.ServiceAlias) *apimodel.Response {
 	authCtx := svr.collectServiceAliasAuthContext(
 		ctx, []*apiservice.ServiceAlias{req}, authtypes.Modify, authtypes.UpdateServiceAlias)
 
@@ -88,7 +88,7 @@ func (svr *Server) UpdateServiceAlias(
 
 // GetServiceAliases gets service aliases
 func (svr *Server) GetServiceAliases(ctx context.Context,
-	query map[string]string) *apiservice.BatchQueryResponse {
+	query map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := svr.collectServiceAliasAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeServiceAliases)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {

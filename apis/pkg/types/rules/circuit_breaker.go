@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
@@ -203,7 +202,7 @@ func (c *CircuitBreakerRule) ToSpec() (*apifault.CircuitBreakerRule, error) {
 			Destination: &apifault.RuleMatcher_DestinationService{
 				Service:   c.DstService,
 				Namespace: c.DstNamespace,
-				Method:    &apimodel.MatchString{Value: &wrappers.StringValue{Value: c.DstMethod}},
+				Method:    &apimodel.MatchString{Value: c.DstMethod},
 			},
 		}
 	}
@@ -270,7 +269,7 @@ func (c *FaultDetectRule) ToSpec() (*apifault.FaultDetectRule, error) {
 		specData.TargetService = &apifault.FaultDetectRule_DestinationService{
 			Service:   c.DstService,
 			Namespace: c.DstNamespace,
-			Method:    &apimodel.MatchString{Value: &wrappers.StringValue{Value: c.DstMethod}},
+			Method:    &apimodel.MatchString{Value: c.DstMethod},
 		}
 	}
 	specData.Id = c.ID

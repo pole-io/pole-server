@@ -54,7 +54,7 @@ func TestI18n(t *testing.T) {
 	}
 }
 
-func reqCreateIllegalNamespace(lang string) (*apiservice.BatchWriteResponse, error) {
+func reqCreateIllegalNamespace(lang string) (*apimodel.BatchWriteResponse, error) {
 	c := http.NewClient(httpserverAddress, httpserverVersion)
 	url := fmt.Sprintf("http://%v/naming/%v/namespaces?lang=%s", c.Address, c.Version, lang)
 	body, err := http.JSONFromNamespaces([]*apimodel.Namespace{{

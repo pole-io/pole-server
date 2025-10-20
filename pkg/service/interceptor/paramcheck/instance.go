@@ -259,7 +259,7 @@ func (svr *Server) UpdateInstancesIsolate(ctx context.Context, reqs []*service_m
 /*
  * @brief 检查批量请求
  */
-func checkBatchInstance(req []*apiservice.Instance) *apiservice.BatchWriteResponse {
+func checkBatchInstance(req []*apiservice.Instance) *apimodel.BatchWriteResponse {
 	if len(req) == 0 {
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
@@ -274,7 +274,7 @@ func checkBatchInstance(req []*apiservice.Instance) *apiservice.BatchWriteRespon
 /*
  * @brief 检查创建服务实例请求参数
  */
-func checkCreateInstance(req *apiservice.Instance) (string, *apiservice.Response) {
+func checkCreateInstance(req *apiservice.Instance) (string, *apimodel.Response) {
 	if req == nil {
 		return "", api.NewInstanceResponse(apimodel.Code_EmptyRequest, req)
 	}
@@ -295,7 +295,7 @@ func checkCreateInstance(req *apiservice.Instance) (string, *apiservice.Response
 /*
  * @brief 检查删除/修改服务实例请求参数
  */
-func checkReviseInstance(req *apiservice.Instance) (string, *apiservice.Response) {
+func checkReviseInstance(req *apiservice.Instance) (string, *apimodel.Response) {
 	if req == nil {
 		return "", api.NewInstanceResponse(apimodel.Code_EmptyRequest, req)
 	}
@@ -317,7 +317,7 @@ func checkReviseInstance(req *apiservice.Instance) (string, *apiservice.Response
 }
 
 // CheckDbInstanceFieldLen 检查DB中service表对应的入参字段合法性
-func CheckDbInstanceFieldLen(req *apiservice.Instance) (*apiservice.Response, bool) {
+func CheckDbInstanceFieldLen(req *apiservice.Instance) (*apimodel.Response, bool) {
 	if err := valid.CheckDbStrFieldLen(req.GetService(), valid.MaxNameLength); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidServiceName, req), true
 	}
@@ -361,7 +361,7 @@ func (s *Server) allowInstanceAccess(instanceID string) bool {
 /**
  * @brief 根据ip隔离和删除服务实例的参数检查
  */
-func checkInstanceByHost(req *apiservice.Instance) *apiservice.Response {
+func checkInstanceByHost(req *apiservice.Instance) *apimodel.Response {
 	if req == nil {
 		return api.NewInstanceResponse(apimodel.Code_EmptyRequest, req)
 	}

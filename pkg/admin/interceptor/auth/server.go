@@ -22,6 +22,7 @@ import (
 
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -62,11 +63,11 @@ func (svr *Server) collectMaintainAuthContext(ctx context.Context, resourceOp au
 	)
 }
 
-func (s *Server) HasMainUser(ctx context.Context) *apiservice.Response {
+func (s *Server) HasMainUser(ctx context.Context) *apimodel.Response {
 	return s.nextSvr.HasMainUser(ctx)
 }
 
-func (s *Server) InitMainUser(ctx context.Context, user *apisecurity.User) *apiservice.Response {
+func (s *Server) InitMainUser(ctx context.Context, user *apisecurity.User) *apimodel.Response {
 	return s.nextSvr.InitMainUser(ctx, user)
 }
 
@@ -118,7 +119,7 @@ func (svr *Server) FreeOSMemory(ctx context.Context) error {
 	return svr.nextSvr.FreeOSMemory(ctx)
 }
 
-func (svr *Server) CleanInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (svr *Server) CleanInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	authCtx := svr.collectMaintainAuthContext(ctx, authcommon.Delete, authcommon.CleanInstance)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewResponse(authcommon.ConvertToErrCode(err))
@@ -139,7 +140,7 @@ func (svr *Server) BatchCleanInstances(ctx context.Context, batchSize uint32) (u
 	return svr.nextSvr.BatchCleanInstances(ctx, batchSize)
 }
 
-func (svr *Server) GetLastHeartbeat(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (svr *Server) GetLastHeartbeat(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	authCtx := svr.collectMaintainAuthContext(ctx, authcommon.Read, authcommon.DescribeInstanceLastHeartbeat)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewResponse(authcommon.ConvertToErrCode(err))

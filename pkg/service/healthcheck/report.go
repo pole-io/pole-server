@@ -33,7 +33,7 @@ import (
 // checkHeartbeatInstance 检查心跳实例请求参数
 // 检查是否存在token，以及 id或者四元组
 // 注意：心跳上报只允许从client上报，因此token只会存在req中
-func checkHeartbeatInstance(req *apiservice.Instance) (string, *apiservice.Response) {
+func checkHeartbeatInstance(req *apiservice.Instance) (string, *apimodel.Response) {
 	if req == nil {
 		return "", api.NewInstanceResponse(apimodel.Code_EmptyRequest, req)
 	}
@@ -82,7 +82,7 @@ func (s *Server) getHealthChecker(id string) healthcheck.HealthChecker {
 	return checker
 }
 
-func (s *Server) doReport(ctx context.Context, instance *apiservice.Instance) *apiservice.Response {
+func (s *Server) doReport(ctx context.Context, instance *apiservice.Instance) *apimodel.Response {
 	if !s.hcOpt.IsOpen() || len(s.checkers) == 0 {
 		return api.NewResponse(apimodel.Code_HealthCheckNotOpen)
 	}
@@ -108,7 +108,7 @@ func (s *Server) doReport(ctx context.Context, instance *apiservice.Instance) *a
 	return api.NewInstanceResponse(code, instance)
 }
 
-func (s *Server) doReports(ctx context.Context, beats []*apiservice.InstanceHeartbeat) *apiservice.Response {
+func (s *Server) doReports(ctx context.Context, beats []*apiservice.InstanceHeartbeat) *apimodel.Response {
 	if !s.hcOpt.IsOpen() || len(s.checkers) == 0 {
 		return api.NewResponse(apimodel.Code_HealthCheckNotOpen)
 	}

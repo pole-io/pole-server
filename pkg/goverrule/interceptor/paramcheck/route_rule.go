@@ -23,7 +23,6 @@ import (
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/service_manage"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	"github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
@@ -113,7 +112,7 @@ func (svr *Server) QueryRouterRules(ctx context.Context,
 	return svr.nextSvr.QueryRouterRules(ctx, filter)
 }
 
-func (svr *Server) GetOneRouterRule(ctx context.Context, req *traffic_manage.RouteRule) *apiservice.Response {
+func (svr *Server) GetOneRouterRule(ctx context.Context, req *traffic_manage.RouteRule) *apimodel.Response {
 	return svr.nextSvr.GetOneRouterRule(ctx, req)
 }
 
@@ -136,7 +135,7 @@ func (svr *Server) DeleteRouterRules(ctx context.Context,
 }
 
 // checkBatchRoutingConfig Check batch request
-func checkBatchRoutingConfigV2(req []*apitraffic.RouteRule) *apiservice.BatchWriteResponse {
+func checkBatchRoutingConfigV2(req []*apitraffic.RouteRule) *apimodel.BatchWriteResponse {
 	if len(req) == 0 {
 		return apiv1.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
@@ -147,7 +146,7 @@ func checkBatchRoutingConfigV2(req []*apitraffic.RouteRule) *apiservice.BatchWri
 }
 
 // checkRoutingConfig Check the validity of the basic parameter of the routing configuration
-func checkRoutingConfigV2(req *apitraffic.RouteRule) *apiservice.Response {
+func checkRoutingConfigV2(req *apitraffic.RouteRule) *apimodel.Response {
 	if req == nil {
 		return apiv1.NewRouterResponse(apimodel.Code_EmptyRequest, req)
 	}
@@ -164,7 +163,7 @@ func checkRoutingConfigV2(req *apitraffic.RouteRule) *apiservice.Response {
 }
 
 // checkUpdateRoutingConfigV2 Check the validity of the basic parameter of the routing configuration
-func checkUpdateRoutingConfigV2(req *apitraffic.RouteRule) *apiservice.Response {
+func checkUpdateRoutingConfigV2(req *apitraffic.RouteRule) *apimodel.Response {
 	if resp := checkRoutingConfigIDV2(req); resp != nil {
 		return resp
 	}
@@ -180,7 +179,7 @@ func checkUpdateRoutingConfigV2(req *apitraffic.RouteRule) *apiservice.Response 
 	return nil
 }
 
-func checkRoutingNameAndNamespace(req *apitraffic.RouteRule) *apiservice.Response {
+func checkRoutingNameAndNamespace(req *apitraffic.RouteRule) *apimodel.Response {
 	if err := valid.CheckDbStrFieldLen(protobuf.NewStringValue(req.GetName()), valid.MaxRuleName); err != nil {
 		return apiv1.NewRouterResponse(apimodel.Code_InvalidRoutingName, req)
 	}
@@ -191,7 +190,7 @@ func checkRoutingNameAndNamespace(req *apitraffic.RouteRule) *apiservice.Respons
 	return nil
 }
 
-func checkRoutingConfigIDV2(req *apitraffic.RouteRule) *apiservice.Response {
+func checkRoutingConfigIDV2(req *apitraffic.RouteRule) *apimodel.Response {
 	if req == nil {
 		return apiv1.NewRouterResponse(apimodel.Code_EmptyRequest, req)
 	}
@@ -201,7 +200,7 @@ func checkRoutingConfigIDV2(req *apitraffic.RouteRule) *apiservice.Response {
 	return nil
 }
 
-func checkRoutingConfigPriorityV2(req *apitraffic.RouteRule) *apiservice.Response {
+func checkRoutingConfigPriorityV2(req *apitraffic.RouteRule) *apimodel.Response {
 	if req == nil {
 		return apiv1.NewRouterResponse(apimodel.Code_EmptyRequest, req)
 	}
@@ -211,7 +210,7 @@ func checkRoutingConfigPriorityV2(req *apitraffic.RouteRule) *apiservice.Respons
 	return nil
 }
 
-func checkRoutingPolicyV2(req *apitraffic.RouteRule) *apiservice.Response {
+func checkRoutingPolicyV2(req *apitraffic.RouteRule) *apimodel.Response {
 	if req == nil {
 		return apiv1.NewRouterResponse(apimodel.Code_EmptyRequest, req)
 	}

@@ -36,7 +36,7 @@ import (
 
 // CreateServices 批量创建服务
 func (svr *Server) CreateServices(
-	ctx context.Context, reqs []*apiservice.Service) *apiservice.BatchWriteResponse {
+	ctx context.Context, reqs []*apiservice.Service) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectServiceAuthContext(ctx, reqs, authtypes.Create, authtypes.CreateServices)
 
 	_, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx)
@@ -72,7 +72,7 @@ func (svr *Server) CreateServices(
 
 // DeleteServices 批量删除服务
 func (svr *Server) DeleteServices(
-	ctx context.Context, reqs []*apiservice.Service) *apiservice.BatchWriteResponse {
+	ctx context.Context, reqs []*apiservice.Service) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectServiceAuthContext(ctx, reqs, authtypes.Delete, authtypes.DeleteServices)
 
 	accessRes := authCtx.GetAccessResources()
@@ -101,7 +101,7 @@ func (svr *Server) DeleteServices(
 
 // UpdateServices 对于服务修改来说，只针对服务本身，而不需要检查命名空间
 func (svr *Server) UpdateServices(
-	ctx context.Context, reqs []*apiservice.Service) *apiservice.BatchWriteResponse {
+	ctx context.Context, reqs []*apiservice.Service) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectServiceAuthContext(ctx, reqs, authtypes.Modify, authtypes.UpdateServices)
 
 	accessRes := authCtx.GetAccessResources()
@@ -131,7 +131,7 @@ func (svr *Server) UpdateServices(
 }
 
 func (svr *Server) GetAllServices(ctx context.Context,
-	query map[string]string) *apiservice.BatchQueryResponse {
+	query map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := svr.collectServiceAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeAllServices)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -168,7 +168,7 @@ func (svr *Server) GetAllServices(ctx context.Context,
 
 // GetServices 批量获取服务
 func (svr *Server) GetServices(
-	ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+	ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := svr.collectServiceAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeServices)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -232,7 +232,7 @@ func (svr *Server) GetServices(
 }
 
 // GetServicesCount 批量获取服务数量
-func (svr *Server) GetServicesCount(ctx context.Context) *apiservice.BatchQueryResponse {
+func (svr *Server) GetServicesCount(ctx context.Context) *apimodel.BatchQueryResponse {
 	authCtx := svr.collectServiceAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeServicesCount)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -245,7 +245,7 @@ func (svr *Server) GetServicesCount(ctx context.Context) *apiservice.BatchQueryR
 }
 
 // GetServiceOwner 获取服务的 owner
-func (svr *Server) GetServiceSubscribers(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (svr *Server) GetServiceSubscribers(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := svr.collectServiceAuthContext(ctx, []*apiservice.Service{}, authtypes.Read, authtypes.DescribeServiceOwner)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {

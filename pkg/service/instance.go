@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -84,12 +83,12 @@ var (
 )
 
 // CreateInstances 批量创建服务实例
-func (s *Server) CreateInstances(ctx context.Context, reqs []*apiservice.Instance) *apiservice.BatchWriteResponse {
+func (s *Server) CreateInstances(ctx context.Context, reqs []*apiservice.Instance) *apimodel.BatchWriteResponse {
 	return batchOperateInstances(ctx, reqs, s.CreateInstance)
 }
 
 // CreateInstance create a single service instance
-func (s *Server) CreateInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (s *Server) CreateInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	start := time.Now()
 
 	// Prevent pollution api.Instance struct, copy and fill token
@@ -101,16 +100,16 @@ func (s *Server) CreateInstance(ctx context.Context, req *apiservice.Instance) *
 	}
 
 	msg := fmt.Sprintf("create instance: id=%v, namespace=%v, service=%v, host=%v, port=%v",
-		ins.GetId().GetValue(), req.GetNamespace().GetValue(), req.GetService().GetValue(),
-		req.GetHost().GetValue(), req.GetPort().GetValue())
+		ins.GetId(), req.GetNamespace(), req.GetService(),
+		req.GetHost(), req.GetPort())
 	log.Info(msg, utils.RequestID(ctx), zap.Duration("cost", time.Since(start)))
 	svc := &svctypes.Service{
-		Name:      req.GetService().GetValue(),
-		Namespace: req.GetNamespace().GetValue(),
+		Name:      req.GetService(),
+		Namespace: req.GetNamespace(),
 	}
 	instanceProto := data.Proto
 	event := &svctypes.InstanceEvent{
-		Id:         req.GetId().GetValue(),
+		Id:         req.GetId(),
 		Namespace:  svc.Namespace,
 		Service:    svc.Name,
 		Instance:   instanceProto,
@@ -122,9 +121,8 @@ func (s *Server) CreateInstance(ctx context.Context, req *apiservice.Instance) *
 	s.RecordHistory(ctx, instanceRecordEntry(ctx, req, svc, data, types.OCreate))
 	out := &apiservice.Instance{
 		Id:        ins.GetId(),
-		Service:   &wrappers.StringValue{Value: svc.Name},
-		Namespace: &wrappers.StringValue{Value: svc.Namespace},
-		VpcId:     instanceProto.GetVpcId(),
+		Service:   svc.Name,
+		Namespace: svc.Namespace,
 		Host:      instanceProto.GetHost(),
 		Port:      instanceProto.GetPort(),
 	}
@@ -133,7 +131,7 @@ func (s *Server) CreateInstance(ctx context.Context, req *apiservice.Instance) *
 
 // createInstance store operate
 func (s *Server) createInstance(ctx context.Context, req *apiservice.Instance, ins *apiservice.Instance) (
-	*svctypes.Instance, *apiservice.Response) {
+	*svctypes.Instance, *apimodel.Response) {
 	// create service if absent
 	svcId, errResp := s.createWrapServiceIfAbsent(ctx, req)
 	if errResp != nil {
@@ -160,14 +158,14 @@ func (s *Server) createInstance(ctx context.Context, req *apiservice.Instance, i
 // ins 包含了req数据与instanceID，serviceToken
 func (s *Server) asyncCreateInstance(
 	ctx context.Context, svcId string, req *apiservice.Instance, ins *apiservice.Instance) (
-	*svctypes.Instance, *apiservice.Response) {
+	*svctypes.Instance, *apimodel.Response) {
 	allowAsyncRegis, _ := ctx.Value(types.ContextOpenAsyncRegis).(bool)
 	future := s.bc.AsyncCreateInstance(svcId, ins, !allowAsyncRegis)
 
 	rsp, err := future.Done()
 	if err != nil {
 		if rsp.(apimodel.Code) == apimodel.Code_ExistedResource {
-			req.Id = protobuf.NewStringValue(ins.GetId().GetValue())
+			req.Id = ins.GetId()
 		}
 		return nil, api.NewInstanceResponse(rsp.(apimodel.Code), req)
 	}
@@ -180,9 +178,9 @@ func (s *Server) asyncCreateInstance(
 // ins包括了req的内容，并且填充了instanceID与serviceToken
 func (s *Server) serialCreateInstance(
 	ctx context.Context, svcId string, req *apiservice.Instance, ins *apiservice.Instance) (
-	*svctypes.Instance, *apiservice.Response) {
+	*svctypes.Instance, *apimodel.Response) {
 
-	instance, err := s.storage.GetInstance(ins.GetId().GetValue())
+	instance, err := s.storage.GetInstance(ins.GetId())
 	if err != nil {
 		log.Error("[Instance] get instance from store",
 			utils.RequestID(ctx), zap.Error(err))
@@ -203,12 +201,12 @@ func (s *Server) serialCreateInstance(
 }
 
 // DeleteInstances 批量删除服务实例
-func (s *Server) DeleteInstances(ctx context.Context, req []*apiservice.Instance) *apiservice.BatchWriteResponse {
+func (s *Server) DeleteInstances(ctx context.Context, req []*apiservice.Instance) *apimodel.BatchWriteResponse {
 	return batchOperateInstances(ctx, req, s.DeleteInstance)
 }
 
 // DeleteInstance 删除单个服务实例
-func (s *Server) DeleteInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (s *Server) DeleteInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	ins := *req // 防止污染外部的req
 	ins.ServiceToken = protobuf.NewStringValue(parseInstanceReqToken(ctx, req))
 	return s.deleteInstance(ctx, req, &ins)
@@ -218,7 +216,7 @@ func (s *Server) DeleteInstance(ctx context.Context, req *apiservice.Instance) *
 // req 原始请求
 // ins 填充了instanceID与serviceToken
 func (s *Server) deleteInstance(
-	ctx context.Context, req *apiservice.Instance, ins *apiservice.Instance) *apiservice.Response {
+	ctx context.Context, req *apiservice.Instance, ins *apiservice.Instance) *apimodel.Response {
 	if s.bc == nil || !s.bc.DeleteInstanceOpen() {
 		return s.serialDeleteInstance(ctx, req, ins)
 	}
@@ -229,10 +227,10 @@ func (s *Server) deleteInstance(
 // 串行删除实例
 // 返回实例所属的服务和resp
 func (s *Server) serialDeleteInstance(
-	ctx context.Context, req *apiservice.Instance, ins *apiservice.Instance) *apiservice.Response {
+	ctx context.Context, req *apiservice.Instance, ins *apiservice.Instance) *apimodel.Response {
 	start := time.Now()
 	// 检查服务实例是否存在
-	instance, err := s.storage.GetInstance(ins.GetId().GetValue())
+	instance, err := s.storage.GetInstance(ins.GetId())
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
 		return api.NewInstanceResponse(storeapi.StoreCode2APICode(err), req)
@@ -274,7 +272,7 @@ func (s *Server) serialDeleteInstance(
 // 异步删除实例
 // 返回实例所属的服务和resp
 func (s *Server) asyncDeleteInstance(
-	ctx context.Context, req *apiservice.Instance, ins *apiservice.Instance) *apiservice.Response {
+	ctx context.Context, req *apiservice.Instance, ins *apiservice.Instance) *apimodel.Response {
 	start := time.Now()
 	allowAsyncRegis, _ := ctx.Value(types.ContextOpenAsyncRegis).(bool)
 	future := s.bc.AsyncDeleteInstance(ins, !allowAsyncRegis)
@@ -311,12 +309,12 @@ func (s *Server) asyncDeleteInstance(
 
 // DeleteInstancesByHost 根据host批量删除服务实例
 func (s *Server) DeleteInstancesByHost(
-	ctx context.Context, req []*apiservice.Instance) *apiservice.BatchWriteResponse {
+	ctx context.Context, req []*apiservice.Instance) *apimodel.BatchWriteResponse {
 	return batchOperateInstances(ctx, req, s.DeleteInstanceByHost)
 }
 
 // DeleteInstanceByHost 根据host删除服务实例
-func (s *Server) DeleteInstanceByHost(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (s *Server) DeleteInstanceByHost(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	// 获取实例
 	instances, service, err := s.getInstancesMainByService(ctx, req)
 	if err != nil {
@@ -355,12 +353,12 @@ func (s *Server) DeleteInstanceByHost(ctx context.Context, req *apiservice.Insta
 }
 
 // UpdateInstances 批量修改服务实例
-func (s *Server) UpdateInstances(ctx context.Context, req []*apiservice.Instance) *apiservice.BatchWriteResponse {
+func (s *Server) UpdateInstances(ctx context.Context, req []*apiservice.Instance) *apimodel.BatchWriteResponse {
 	return batchOperateInstances(ctx, req, s.UpdateInstance)
 }
 
 // UpdateInstance 修改单个服务实例
-func (s *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (s *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	service, instance, preErr := s.execInstancePreStep(ctx, req)
 	if preErr != nil {
 		return preErr
@@ -410,13 +408,13 @@ func (s *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance) *
 // UpdateInstancesIsolate 批量修改服务实例隔离状态
 // @note 必填参数为service+namespace+host
 func (s *Server) UpdateInstancesIsolate(
-	ctx context.Context, req []*apiservice.Instance) *apiservice.BatchWriteResponse {
+	ctx context.Context, req []*apiservice.Instance) *apimodel.BatchWriteResponse {
 	return batchOperateInstances(ctx, req, s.UpdateInstanceIsolate)
 }
 
 // UpdateInstanceIsolate 修改服务实例隔离状态
 // @note 必填参数为service+namespace+ip
-func (s *Server) UpdateInstanceIsolate(ctx context.Context, req *apiservice.Instance) *apiservice.Response {
+func (s *Server) UpdateInstanceIsolate(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	if req.GetIsolate() == nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidInstanceIsolate, req)
 	}
@@ -433,7 +431,7 @@ func (s *Server) UpdateInstanceIsolate(ctx context.Context, req *apiservice.Inst
 	// 判断是否需要更新
 	needUpdate := false
 	for _, instance := range instances {
-		if req.Isolate != nil && instance.Isolate() != req.GetIsolate().GetValue() {
+		if req.Isolate != nil && instance.Isolate() != req.GetIsolate() {
 			needUpdate = true
 			break
 		}
@@ -443,7 +441,7 @@ func (s *Server) UpdateInstanceIsolate(ctx context.Context, req *apiservice.Inst
 	}
 
 	isolate := 0
-	if req.GetIsolate().GetValue() {
+	if req.GetIsolate() {
 		isolate = 1
 	}
 
@@ -466,21 +464,21 @@ func (s *Server) UpdateInstanceIsolate(ctx context.Context, req *apiservice.Inst
 		s.RecordHistory(ctx, instanceRecordEntry(ctx, req, service, instance, types.OUpdateIsolate))
 
 		// 比对下更新前后的 isolate 状态
-		if req.Isolate != nil && instance.Isolate() != req.Isolate.GetValue() {
+		if req.Isolate != nil && instance.Isolate() != req.Isolate {
 			eventType := svctypes.EventInstanceCloseIsolate
-			if req.Isolate.GetValue() {
+			if req.Isolate {
 				eventType = svctypes.EventInstanceOpenIsolate
 			}
 			s.sendDiscoverEvent(&svctypes.InstanceEvent{
 				Id:         instance.ID(),
-				Namespace:  req.Namespace.GetValue(),
-				Service:    req.Service.GetValue(),
+				Namespace:  req.Namespace,
+				Service:    req.Service,
 				Instance:   instance.Proto,
 				EType:      eventType,
 				CreateTime: time.Now(),
 			})
 		}
-		instance.Proto.Isolate = protobuf.NewBoolValue(req.GetIsolate().GetValue())
+		instance.Proto.Isolate = protobuf.NewBoolValue(req.GetIsolate())
 	}
 	for i := range s.instanceChains {
 		s.instanceChains[i].AfterUpdate(ctx, instances...)
@@ -493,10 +491,10 @@ func (s *Server) UpdateInstanceIsolate(ctx context.Context, req *apiservice.Inst
  * @brief 根据服务和host获取服务实例
  */
 func (s *Server) getInstancesMainByService(ctx context.Context, req *apiservice.Instance) (
-	[]*svctypes.Instance, *svctypes.Service, *apiservice.Response) {
+	[]*svctypes.Instance, *svctypes.Service, *apimodel.Response) {
 	// 检查服务
 	// 这里获取的是源服务的token。如果是别名,service=nil
-	service, err := s.storage.GetSourceServiceToken(req.GetService().GetValue(), req.GetNamespace().GetValue())
+	service, err := s.storage.GetSourceServiceToken(req.GetService(), req.GetNamespace())
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
 		return nil, nil, api.NewInstanceResponse(storeapi.StoreCode2APICode(err), req)
@@ -506,7 +504,7 @@ func (s *Server) getInstancesMainByService(ctx context.Context, req *apiservice.
 	}
 
 	// 获取服务实例
-	instances, err := s.storage.GetInstancesMainByService(service.ID, req.GetHost().GetValue())
+	instances, err := s.storage.GetInstancesMainByService(service.ID, req.GetHost())
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
 		return nil, nil, api.NewInstanceResponse(storeapi.StoreCode2APICode(err), req)
@@ -536,51 +534,51 @@ func (s *Server) updateInstanceAttribute(
 		updateEvents[svctypes.EventInstanceUpdate] = true
 	}
 
-	if req.GetProtocol() != nil && req.GetProtocol().GetValue() != instance.Protocol() {
+	if req.GetProtocol() != nil && req.GetProtocol() != instance.Protocol() {
 		insProto.Protocol = req.GetProtocol()
 		needUpdate = true
 		updateEvents[svctypes.EventInstanceUpdate] = true
 	}
 
-	if req.GetVersion() != nil && req.GetVersion().GetValue() != instance.Version() {
+	if req.GetVersion() != nil && req.GetVersion() != instance.Version() {
 		insProto.Version = req.GetVersion()
 		needUpdate = true
 		updateEvents[svctypes.EventInstanceUpdate] = true
 	}
 
-	if req.GetPriority() != nil && req.GetPriority().GetValue() != instance.Priority() {
+	if req.GetPriority() != nil && req.GetPriority() != instance.Priority() {
 		insProto.Priority = req.GetPriority()
 		needUpdate = true
 		updateEvents[svctypes.EventInstanceUpdate] = true
 	}
 
-	if req.GetWeight() != nil && req.GetWeight().GetValue() != instance.Weight() {
+	if req.GetWeight() != nil && req.GetWeight() != instance.Weight() {
 		insProto.Weight = req.GetWeight()
 		needUpdate = true
 		updateEvents[svctypes.EventInstanceUpdate] = true
 	}
 
-	if req.GetHealthy() != nil && req.GetHealthy().GetValue() != instance.Healthy() {
+	if req.GetHealthy() != nil && req.GetHealthy() != instance.Healthy() {
 		insProto.Healthy = req.GetHealthy()
 		needUpdate = true
-		if req.Healthy.GetValue() {
+		if req.Healthy {
 			updateEvents[svctypes.EventInstanceTurnHealth] = true
 		} else {
 			updateEvents[svctypes.EventInstanceTurnUnHealth] = true
 		}
 	}
 
-	if req.GetIsolate() != nil && req.GetIsolate().GetValue() != instance.Isolate() {
+	if req.GetIsolate() != nil && req.GetIsolate() != instance.Isolate() {
 		insProto.Isolate = req.GetIsolate()
 		needUpdate = true
-		if req.Isolate.GetValue() {
+		if req.Isolate {
 			updateEvents[svctypes.EventInstanceOpenIsolate] = true
 		} else {
 			updateEvents[svctypes.EventInstanceCloseIsolate] = true
 		}
 	}
 
-	if req.GetLogicSet() != nil && req.GetLogicSet().GetValue() != instance.LogicSet() {
+	if req.GetLogicSet() != nil && req.GetLogicSet() != instance.LogicSet() {
 		insProto.LogicSet = req.GetLogicSet()
 		needUpdate = true
 		updateEvents[svctypes.EventInstanceUpdate] = true
@@ -604,13 +602,13 @@ func instanceLocationNeedUpdate(req *apimodel.Location, old *apimodel.Location) 
 	if req == nil {
 		return false
 	}
-	if req.GetRegion().GetValue() != old.GetRegion().GetValue() {
+	if req.GetRegion() != old.GetRegion() {
 		return true
 	}
-	if req.GetZone().GetValue() != old.GetZone().GetValue() {
+	if req.GetZone() != old.GetZone() {
 		return true
 	}
-	if req.GetCampus().GetValue() != old.GetCampus().GetValue() {
+	if req.GetCampus() != old.GetCampus() {
 		return true
 	}
 
@@ -623,7 +621,7 @@ func updateHealthCheck(req *apiservice.Instance, instance *svctypes.Instance) bo
 	insProto := instance.Proto
 	// health Check，healthCheck不能为空，且没有把enable_health_check置为false
 	if req.GetHealthCheck().GetHeartbeat() != nil &&
-		(req.GetEnableHealthCheck() == nil || req.GetEnableHealthCheck().GetValue()) {
+		(req.GetEnableHealthCheck() == nil || req.GetEnableHealthCheck()) {
 		// 如果数据库中实例原有是不打开健康检查，
 		// 那么一旦打开，status需置为false，等待一次心跳成功才能变成true
 		if !instance.EnableHealthCheck() {
@@ -633,11 +631,11 @@ func updateHealthCheck(req *apiservice.Instance, instance *svctypes.Instance) bo
 			needUpdate = true
 		}
 
-		ttl := req.GetHealthCheck().GetHeartbeat().GetTtl().GetValue()
+		ttl := req.GetHealthCheck().GetHeartbeat().GetTtl()
 		if ttl == 0 || ttl > 60 {
 			ttl = DefaultTLL
 		}
-		if ttl != instance.HealthCheck().GetHeartbeat().GetTtl().GetValue() {
+		if ttl != instance.HealthCheck().GetHeartbeat().GetTtl() {
 			// ttl有变更
 			needUpdate = true
 		}
@@ -654,8 +652,8 @@ func updateHealthCheck(req *apiservice.Instance, instance *svctypes.Instance) bo
 	}
 
 	// update的时候，修改了enableHealthCheck的值
-	if req.GetEnableHealthCheck() != nil && !req.GetEnableHealthCheck().GetValue() {
-		if req.GetEnableHealthCheck().GetValue() != instance.EnableHealthCheck() {
+	if req.GetEnableHealthCheck() != nil && !req.GetEnableHealthCheck() {
+		if req.GetEnableHealthCheck() != instance.EnableHealthCheck() {
 			needUpdate = true
 		}
 		if insProto.GetHealthCheck() != nil {
@@ -670,7 +668,7 @@ func updateHealthCheck(req *apiservice.Instance, instance *svctypes.Instance) bo
 }
 
 // GetInstances 查询服务实例
-func (s *Server) GetInstances(ctx context.Context, query map[string]string) *apiservice.BatchQueryResponse {
+func (s *Server) GetInstances(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	showLastHeartbeat := query["show_last_heartbeat"] == "true"
 	delete(query, "show_last_heartbeat")
 	showServiceRevision := query["show_service_revision"] == "true"
@@ -715,7 +713,7 @@ func (s *Server) GetInstances(ctx context.Context, query map[string]string) *api
 		out.Services = make([]*apiservice.Service, 0, len(svcInfos))
 		for i := range svcInfos {
 			svc := svcInfos[i].ToSpec()
-			revision := s.caches.Service().GetRevisionWorker().GetServiceInstanceRevision(svc.GetId().GetValue())
+			revision := s.caches.Service().GetRevisionWorker().GetServiceInstanceRevision(svc.GetId())
 			svc.Revision = wrapperspb.String(revision)
 			out.Services = append(out.Services, svc)
 		}
@@ -733,7 +731,7 @@ func (s *Server) fillLastHeartbeatTime(instances []*apiservice.Instance) {
 	for i := range instances {
 		item := instances[i]
 		req.Requests = append(req.Requests, &healthcheck.QueryRequest{
-			InstanceId: item.GetId().GetValue(),
+			InstanceId: item.GetId(),
 		})
 	}
 	rsp, err := checker.BatchQuery(context.Background(), req)
@@ -801,7 +799,7 @@ func copyOSSInstance(instance *apiservice.Instance) *apiservice.Instance {
 }
 
 // GetInstanceLabels 获取实例标签列表
-func (s *Server) GetInstanceLabels(ctx context.Context, query map[string]string) *apiservice.Response {
+func (s *Server) GetInstanceLabels(ctx context.Context, query map[string]string) *apimodel.Response {
 	var (
 		serviceId string
 		namespace = DefaultNamespace
@@ -835,7 +833,7 @@ func (s *Server) GetInstanceLabels(ctx context.Context, query map[string]string)
 }
 
 // GetInstancesCount 查询总的服务实例，不带过滤条件的
-func (s *Server) GetInstancesCount(ctx context.Context) *apiservice.BatchQueryResponse {
+func (s *Server) GetInstancesCount(ctx context.Context) *apimodel.BatchQueryResponse {
 	count, err := s.storage.GetInstancesCount()
 	if err != nil {
 		log.Errorf("[Server][Instance][Count] storage get err: %s", err.Error())
@@ -850,11 +848,11 @@ func (s *Server) GetInstancesCount(ctx context.Context) *apiservice.BatchQueryRe
 
 // update/delete instance前置条件
 func (s *Server) execInstancePreStep(ctx context.Context, req *apiservice.Instance) (
-	*svctypes.Service, *svctypes.Instance, *apiservice.Response) {
+	*svctypes.Service, *svctypes.Instance, *apimodel.Response) {
 	// 检查服务实例是否存在
-	instance, err := s.storage.GetInstance(req.GetId().GetValue())
+	instance, err := s.storage.GetInstance(req.GetId())
 	if err != nil {
-		log.Error("[Instance] get instance from store", utils.RequestID(ctx), utils.ZapInstanceID(req.GetId().GetValue()),
+		log.Error("[Instance] get instance from store", utils.RequestID(ctx), utils.ZapInstanceID(req.GetId()),
 			zap.Error(err))
 		return nil, nil, api.NewInstanceResponse(storeapi.StoreCode2APICode(err), req)
 	}
@@ -872,7 +870,7 @@ func (s *Server) execInstancePreStep(ctx context.Context, req *apiservice.Instan
 
 // 实例鉴权
 func (s *Server) instanceAuth(ctx context.Context, req *apiservice.Instance, serviceID string) (
-	*svctypes.Service, *apiservice.Response) {
+	*svctypes.Service, *apimodel.Response) {
 	svc, err := s.storage.GetServiceByID(serviceID)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
@@ -920,13 +918,13 @@ func (s *Server) packCmdb(instance *apiservice.Instance) {
 		return
 	}
 
-	location, err := cmdb.GetCMDB().GetLocation(instance.GetHost().GetValue())
+	location, err := cmdb.GetCMDB().GetLocation(instance.GetHost())
 	if err != nil {
 		log.Error("[Instance] pack cmdb info fail",
-			zap.String("namespace", instance.GetNamespace().GetValue()),
-			zap.String("service", instance.GetService().GetValue()),
-			zap.String("host", instance.GetHost().GetValue()),
-			zap.Uint32("port", instance.GetPort().GetValue()))
+			zap.String("namespace", instance.GetNamespace()),
+			zap.String("service", instance.GetService()),
+			zap.String("host", instance.GetHost()),
+			zap.Uint32("port", instance.GetPort()))
 		return
 	}
 	if location != nil {
@@ -935,9 +933,9 @@ func (s *Server) packCmdb(instance *apiservice.Instance) {
 }
 
 func isEmptyLocation(loc *apimodel.Location) bool {
-	return loc == nil || (loc.GetRegion().GetValue() == "" &&
-		loc.GetZone().GetValue() == "" &&
-		loc.GetCampus().GetValue() == "")
+	return loc == nil || (loc.GetRegion() == "" &&
+		loc.GetZone() == "" &&
+		loc.GetCampus() == "")
 }
 
 func (s *Server) sendDiscoverEvent(event *svctypes.InstanceEvent) {
@@ -950,9 +948,9 @@ func (s *Server) sendDiscoverEvent(event *svctypes.InstanceEvent) {
 
 type wrapSvcName interface {
 	// GetService 获取服务名
-	GetService() *wrappers.StringValue
+	GetService() string
 	// GetNamespace 获取命名空间
-	GetNamespace() *wrappers.StringValue
+	GetNamespace() string
 }
 
 type rawSvcName interface {
@@ -963,12 +961,12 @@ type rawSvcName interface {
 }
 
 // createWrapServiceIfAbsent 如果服务不存在，则进行创建，并返回服务的ID信息
-func (s *Server) createWrapServiceIfAbsent(ctx context.Context, instance wrapSvcName) (string, *apiservice.Response) {
-	return s.createServiceIfAbsent(ctx, instance.GetNamespace().GetValue(), instance.GetService().GetValue())
+func (s *Server) createWrapServiceIfAbsent(ctx context.Context, instance wrapSvcName) (string, *apimodel.Response) {
+	return s.createServiceIfAbsent(ctx, instance.GetNamespace(), instance.GetService())
 }
 
 func (s *Server) createServiceIfAbsent(
-	ctx context.Context, namespace string, svcName string) (string, *apiservice.Response) {
+	ctx context.Context, namespace string, svcName string) (string, *apimodel.Response) {
 	svc, errResp := s.loadService(namespace, svcName)
 	if errResp != nil {
 		return "", errResp
@@ -999,16 +997,16 @@ func (s *Server) createServiceIfAbsent(
 	if err != nil {
 		return "", api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
 	}
-	resp := ret.(*apiservice.Response)
-	retCode := apimodel.Code(resp.GetCode().GetValue())
+	resp := ret.(*apimodel.Response)
+	retCode := apimodel.Code(resp.GetCode())
 	if retCode != apimodel.Code_ExecuteSuccess && retCode != apimodel.Code_ExistedResource {
 		return "", resp
 	}
-	svcId := resp.GetService().GetId().GetValue()
+	svcId := resp.GetService().GetId()
 	return svcId, nil
 }
 
-func (s *Server) loadService(namespace string, svcName string) (*svctypes.Service, *apiservice.Response) {
+func (s *Server) loadService(namespace string, svcName string) (*svctypes.Service, *apimodel.Response) {
 	svc := s.caches.Service().GetServiceByName(svcName, namespace)
 	if svc != nil {
 		if svc.IsAlias() {
@@ -1051,7 +1049,7 @@ func (s *Server) loadServiceByID(svcID string) (*svctypes.Service, error) {
 
 // 获取instance请求的token信息
 func parseInstanceReqToken(ctx context.Context, req *apiservice.Instance) string {
-	if reqToken := req.GetServiceToken().GetValue(); reqToken != "" {
+	if reqToken := req.GetServiceToken(); reqToken != "" {
 		return reqToken
 	}
 
@@ -1059,7 +1057,7 @@ func parseInstanceReqToken(ctx context.Context, req *apiservice.Instance) string
 }
 
 // 实例查询前置处理
-func preGetInstances(query map[string]string) (map[string]string, map[string]string, *apiservice.BatchQueryResponse) {
+func preGetInstances(query map[string]string) (map[string]string, map[string]string, *apimodel.BatchQueryResponse) {
 	var metaFilter map[string]string
 	metaKey, metaKeyAvail := query["keys"]
 	if metaKeyAvail {
@@ -1093,12 +1091,12 @@ func preGetInstances(query map[string]string) (map[string]string, map[string]str
 
 // 批量操作实例
 func batchOperateInstances(ctx context.Context, reqs []*apiservice.Instance,
-	handler func(ctx context.Context, req *apiservice.Instance) *apiservice.Response) *apiservice.BatchWriteResponse {
+	handler func(ctx context.Context, req *apiservice.Instance) *apimodel.Response) *apimodel.BatchWriteResponse {
 	responses := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 
-	chs := make([]chan *apiservice.Response, 0, len(reqs))
+	chs := make([]chan *apimodel.Response, 0, len(reqs))
 	for i, instance := range reqs {
-		chs = append(chs, make(chan *apiservice.Response))
+		chs = append(chs, make(chan *apimodel.Response))
 		go func(index int, ins *apiservice.Instance) {
 			chs[index] <- handler(ctx, ins)
 		}(i, instance)
@@ -1113,7 +1111,7 @@ func batchOperateInstances(ctx context.Context, reqs []*apiservice.Instance,
 }
 
 // wrapper instance store response
-func wrapperInstanceStoreResponse(instance *apiservice.Instance, err error) *apiservice.Response {
+func wrapperInstanceStoreResponse(instance *apiservice.Instance, err error) *apimodel.Response {
 	if err == nil {
 		return nil
 	}
