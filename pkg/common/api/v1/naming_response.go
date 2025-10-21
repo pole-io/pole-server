@@ -19,7 +19,6 @@ package v1
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"google.golang.org/protobuf/types/known/anypb"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
@@ -29,11 +28,12 @@ import (
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 )
 
 type Rsp interface {
-	GetCode() *wrappers.UInt32Value
-	GetInfo() *wrappers.StringValue
+	GetCode() uint32
+	GetInfo() string
 }
 
 /**
@@ -41,8 +41,8 @@ type Rsp interface {
  */
 type ResponseMessage interface {
 	proto.Message
-	GetCode() *wrappers.UInt32Value
-	GetInfo() *wrappers.StringValue
+	GetCode() uint32
+	GetInfo() string
 }
 
 type ResponseMessageV2 interface {
@@ -56,7 +56,7 @@ type ResponseMessageV2 interface {
  * @note 返回码前三位和HTTP返回码定义一致
  */
 func CalcCode(rm ResponseMessage) int {
-	return int(rm.GetCode().GetValue() / 1000)
+	return int(rm.GetCode() / 1000)
 }
 
 /**
@@ -77,7 +77,7 @@ func IsSuccessCommon(rsp *types.CommonResponse) bool {
  * @note 返回码前三位和HTTP返回码定义一致
  */
 func CalcCodeCommon(rm Rsp) int {
-	return int(rm.GetCode().GetValue() / 1000)
+	return int(rm.GetCode() / 1000)
 }
 
 // IsSuccess .
@@ -85,7 +85,7 @@ func IsSuccess(rsp ResponseMessage) bool {
 	if rsp == nil {
 		return true
 	}
-	return rsp.GetCode().GetValue() == uint32(apimodel.Code_ExecuteSuccess)
+	return rsp.GetCode() == uint32(apimodel.Code_ExecuteSuccess)
 }
 
 /**
@@ -94,13 +94,13 @@ func IsSuccess(rsp ResponseMessage) bool {
 func Collect(batchWriteResponse *apimodel.BatchWriteResponse, response *apimodel.Response) {
 	// 非200的code，都归为异常
 	if CalcCode(response) != 200 {
-		if response.GetCode().GetValue() >= batchWriteResponse.GetCode().GetValue() {
-			batchWriteResponse.Code.Value = response.GetCode().GetValue()
-			batchWriteResponse.Info.Value = code2info[batchWriteResponse.GetCode().GetValue()]
+		if response.GetCode() >= batchWriteResponse.GetCode() {
+			batchWriteResponse.Code = response.GetCode()
+			batchWriteResponse.Info = code2info[batchWriteResponse.GetCode()]
 		}
 	}
 
-	batchWriteResponse.Size.Value++
+	batchWriteResponse.Size++
 	batchWriteResponse.Responses = append(batchWriteResponse.Responses, response)
 }
 
@@ -110,9 +110,9 @@ func Collect(batchWriteResponse *apimodel.BatchWriteResponse, response *apimodel
 func QueryCollect(resp *apimodel.BatchQueryResponse, response *apimodel.Response) {
 	// 非200的code，都归为异常
 	if CalcCode(response) != 200 {
-		if response.GetCode().GetValue() >= resp.GetCode().GetValue() {
-			resp.Code.Value = response.GetCode().GetValue()
-			resp.Info.Value = code2info[resp.GetCode().GetValue()]
+		if response.GetCode() >= resp.GetCode() {
+			resp.Code = response.GetCode()
+			resp.Info = code2info[resp.GetCode()]
 		}
 	}
 }
@@ -129,16 +129,16 @@ func AddNamespaceSummary(b *apimodel.BatchQueryResponse, summary *apimodel.Summa
 
 // NewResponse 创建回复
 func NewResponse(code apimodel.Code) *apimodel.Response {
-	return &apiservice.Response{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
 	}
 }
 
 // NewResponseWithMsg 带上具体的错误信息
 func NewResponseWithMsg(code apimodel.Code, msg string) *apimodel.Response {
 	resp := NewResponse(code)
-	resp.Info.Value += ": " + msg
+	resp.Info += ": " + msg
 	return resp
 }
 
@@ -146,10 +146,10 @@ func NewResponseWithMsg(code apimodel.Code, msg string) *apimodel.Response {
  * @brief 创建回复带客户端信息
  */
 func NewClientResponse(code apimodel.Code, client *apiservice.Client) *apimodel.Response {
-	return &apiservice.Response{
-		Code:   &wrappers.UInt32Value{Value: uint32(code)},
-		Info:   &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Client: client,
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
+		Data: protobuf.MarshalAny(client),
 	}
 }
 
@@ -157,10 +157,10 @@ func NewClientResponse(code apimodel.Code, client *apiservice.Client) *apimodel.
  * @brief 创建回复带命名空间信息
  */
 func NewNamespaceResponse(code apimodel.Code, namespace *apimodel.Namespace) *apimodel.Response {
-	return &apiservice.Response{
-		Code:      &wrappers.UInt32Value{Value: uint32(code)},
-		Info:      &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Namespace: namespace,
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
+		Data: protobuf.MarshalAny(namespace),
 	}
 }
 
@@ -168,17 +168,17 @@ func NewNamespaceResponse(code apimodel.Code, namespace *apimodel.Namespace) *ap
  * @brief 创建回复带服务信息
  */
 func NewServiceResponse(code apimodel.Code, service *apiservice.Service) *apimodel.Response {
-	return &apiservice.Response{
-		Code:    &wrappers.UInt32Value{Value: uint32(code)},
-		Info:    &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Service: service,
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
+		Data: protobuf.MarshalAny(service),
 	}
 }
 
 // 创建带别名信息的答复
 func NewServiceAliasResponse(code apimodel.Code, alias *apiservice.ServiceAlias) *apimodel.Response {
 	resp := NewResponse(code)
-	resp.Alias = alias
+	resp.Data = protobuf.MarshalAny(alias)
 	return resp
 }
 
@@ -186,38 +186,27 @@ func NewServiceAliasResponse(code apimodel.Code, alias *apiservice.ServiceAlias)
  * @brief 创建回复带服务实例信息
  */
 func NewInstanceResponse(code apimodel.Code, instance *apiservice.Instance) *apimodel.Response {
-	return &apiservice.Response{
-		Code:     &wrappers.UInt32Value{Value: uint32(code)},
-		Info:     &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Instance: instance,
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
+		Data: protobuf.MarshalAny(instance),
 	}
 }
 
 // 创建带自定义error的服务实例response
 func NewInstanceRespWithError(code apimodel.Code, err error, instance *apiservice.Instance) *apimodel.Response {
 	resp := NewInstanceResponse(code, instance)
-	resp.Info.Value += " : " + err.Error()
+	resp.Info += " : " + err.Error()
 
 	return resp
 }
 
-/**
- * @brief 创建回复带服务路由信息
- */
-func NewRoutingResponse(code apimodel.Code, routing *apitraffic.Routing) *apimodel.Response {
-	return &apiservice.Response{
-		Code:    &wrappers.UInt32Value{Value: uint32(code)},
-		Info:    &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Routing: routing,
-	}
-}
-
 // NewServiceContractResponse create the response with data with any type
 func NewServiceContractResponse(code apimodel.Code, contract *apiservice.ServiceContract) *apimodel.Response {
-	return &apiservice.Response{
-		Code:            &wrappers.UInt32Value{Value: uint32(code)},
-		Info:            &wrappers.StringValue{Value: code2info[uint32(code)]},
-		ServiceContract: contract,
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
+		Data: protobuf.MarshalAny(contract),
 	}
 }
 
@@ -227,9 +216,9 @@ func NewAnyDataResponse(code apimodel.Code, msg proto.Message) *apimodel.Respons
 	if err != nil {
 		return NewResponse(code)
 	}
-	return &apiservice.Response{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
 		Data: ret,
 	}
 }
@@ -240,22 +229,22 @@ func NewRouterResponse(code apimodel.Code, router *apitraffic.RouteRule) *apimod
 }
 
 // NewRateLimitResponse 创建回复带限流规则信息
-func NewRateLimitResponse(code apimodel.Code, rule *apitraffic.Rule) *apimodel.Response {
-	return &apiservice.Response{
-		Code:      &wrappers.UInt32Value{Value: uint32(code)},
-		Info:      &wrappers.StringValue{Value: code2info[uint32(code)]},
-		RateLimit: rule,
+func NewRateLimitResponse(code apimodel.Code, rule *apitraffic.RateLimit) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
+		Data: protobuf.MarshalAny(rule),
 	}
 }
 
 /**
  * @brief 创建回复带熔断规则信息
  */
-func NewCircuitBreakerResponse(code apimodel.Code, circuitBreaker *apifault.CircuitBreaker) *apimodel.Response {
-	return &apiservice.Response{
-		Code:           &wrappers.UInt32Value{Value: uint32(code)},
-		Info:           &wrappers.StringValue{Value: code2info[uint32(code)]},
-		CircuitBreaker: circuitBreaker,
+func NewCircuitBreakerResponse(code apimodel.Code, circuitBreaker *apifault.CircuitBreakerRule) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
+		Data: protobuf.MarshalAny(circuitBreaker),
 	}
 }
 
@@ -263,10 +252,10 @@ func NewCircuitBreakerResponse(code apimodel.Code, circuitBreaker *apifault.Circ
  * @brief 创建批量回复
  */
 func NewBatchWriteResponse(code apimodel.Code) *apimodel.BatchWriteResponse {
-	return &apiservice.BatchWriteResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Size: &wrappers.UInt32Value{Value: 0},
+	return &apimodel.BatchWriteResponse{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
+		Size: 0,
 	}
 }
 
@@ -275,24 +264,24 @@ func NewBatchWriteResponse(code apimodel.Code) *apimodel.BatchWriteResponse {
  */
 func NewBatchWriteResponseWithMsg(code apimodel.Code, msg string) *apimodel.BatchWriteResponse {
 	resp := NewBatchWriteResponse(code)
-	resp.Info.Value += ": " + msg
+	resp.Info += ": " + msg
 	return resp
 }
 
 // NewBatchQueryResponse create the batch query responses
 func NewBatchQueryResponse(code apimodel.Code) *apimodel.BatchQueryResponse {
-	return &apiservice.BatchQueryResponse{
-		Code:   &wrappers.UInt32Value{Value: uint32(code)},
-		Info:   &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Amount: &wrappers.UInt32Value{Value: 0},
-		Size:   &wrappers.UInt32Value{Value: 0},
+	return &apimodel.BatchQueryResponse{
+		Code:   uint32(code),
+		Info:   code2info[uint32(code)],
+		Amount: 0,
+		Size:   0,
 	}
 }
 
 // NewBatchQueryResponseWithMsg create the batch query responses with message
 func NewBatchQueryResponseWithMsg(code apimodel.Code, msg string) *apimodel.BatchQueryResponse {
 	resp := NewBatchQueryResponse(code)
-	resp.Info.Value += ": " + msg
+	resp.Info += ": " + msg
 	return resp
 }
 
@@ -309,8 +298,8 @@ func AddAnyDataIntoBatchQuery(resp *apimodel.BatchQueryResponse, message proto.M
 // 创建一个空白的discoverResponse
 func NewDiscoverResponse(code apimodel.Code) *apiservice.DiscoverResponse {
 	return &apiservice.DiscoverResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
 	}
 }
 
@@ -319,8 +308,8 @@ func NewDiscoverResponse(code apimodel.Code) *apiservice.DiscoverResponse {
  */
 func NewDiscoverServiceResponse(code apimodel.Code, service *apiservice.Service) *apiservice.DiscoverResponse {
 	return &apiservice.DiscoverResponse{
-		Code:    &wrappers.UInt32Value{Value: uint32(code)},
-		Info:    &wrappers.StringValue{Value: code2info[uint32(code)]},
+		Code:    uint32(code),
+		Info:    code2info[uint32(code)],
 		Type:    apiservice.DiscoverResponse_SERVICES,
 		Service: service,
 	}
@@ -331,8 +320,8 @@ func NewDiscoverServiceResponse(code apimodel.Code, service *apiservice.Service)
  */
 func NewDiscoverInstanceResponse(code apimodel.Code, service *apiservice.Service) *apiservice.DiscoverResponse {
 	return &apiservice.DiscoverResponse{
-		Code:    &wrappers.UInt32Value{Value: uint32(code)},
-		Info:    &wrappers.StringValue{Value: code2info[uint32(code)]},
+		Code:    uint32(code),
+		Info:    code2info[uint32(code)],
 		Type:    apiservice.DiscoverResponse_INSTANCE,
 		Service: service,
 	}
@@ -343,8 +332,8 @@ func NewDiscoverInstanceResponse(code apimodel.Code, service *apiservice.Service
  */
 func NewDiscoverRoutingResponse(code apimodel.Code, service *apiservice.Service) *apiservice.DiscoverResponse {
 	return &apiservice.DiscoverResponse{
-		Code:    &wrappers.UInt32Value{Value: uint32(code)},
-		Info:    &wrappers.StringValue{Value: code2info[uint32(code)]},
+		Code:    uint32(code),
+		Info:    code2info[uint32(code)],
 		Type:    apiservice.DiscoverResponse_ROUTING,
 		Service: service,
 	}
@@ -353,8 +342,8 @@ func NewDiscoverRoutingResponse(code apimodel.Code, service *apiservice.Service)
 // NewDiscoverLosslessResponse create the response with data with any type
 func NewDiscoverLosslessResponse(code apimodel.Code, service *apiservice.Service) *apiservice.DiscoverResponse {
 	return &apiservice.DiscoverResponse{
-		Code:    &wrappers.UInt32Value{Value: uint32(code)},
-		Info:    &wrappers.StringValue{Value: code2info[uint32(code)]},
+		Code:    uint32(code),
+		Info:    code2info[uint32(code)],
 		Type:    apiservice.DiscoverResponse_LOSSLESS,
 		Service: service,
 	}
@@ -365,8 +354,8 @@ func NewDiscoverLosslessResponse(code apimodel.Code, service *apiservice.Service
  */
 func NewDiscoverRateLimitResponse(code apimodel.Code, service *apiservice.Service) *apiservice.DiscoverResponse {
 	return &apiservice.DiscoverResponse{
-		Code:    &wrappers.UInt32Value{Value: uint32(code)},
-		Info:    &wrappers.StringValue{Value: code2info[uint32(code)]},
+		Code:    uint32(code),
+		Info:    code2info[uint32(code)],
 		Type:    apiservice.DiscoverResponse_RATE_LIMIT,
 		Service: service,
 	}
@@ -377,8 +366,8 @@ func NewDiscoverRateLimitResponse(code apimodel.Code, service *apiservice.Servic
  */
 func NewDiscoverCircuitBreakerResponse(code apimodel.Code, service *apiservice.Service) *apiservice.DiscoverResponse {
 	return &apiservice.DiscoverResponse{
-		Code:    &wrappers.UInt32Value{Value: uint32(code)},
-		Info:    &wrappers.StringValue{Value: code2info[uint32(code)]},
+		Code:    uint32(code),
+		Info:    code2info[uint32(code)],
 		Type:    apiservice.DiscoverResponse_CIRCUIT_BREAKER,
 		Service: service,
 	}
@@ -387,8 +376,8 @@ func NewDiscoverCircuitBreakerResponse(code apimodel.Code, service *apiservice.S
 // NewDiscoverLaneResponse .
 func NewDiscoverLaneResponse(code apimodel.Code, service *apiservice.Service) *apiservice.DiscoverResponse {
 	return &apiservice.DiscoverResponse{
-		Code:    &wrappers.UInt32Value{Value: uint32(code)},
-		Info:    &wrappers.StringValue{Value: code2info[uint32(code)]},
+		Code:    uint32(code),
+		Info:    code2info[uint32(code)],
 		Type:    apiservice.DiscoverResponse_LANE,
 		Service: service,
 	}
@@ -399,8 +388,8 @@ func NewDiscoverLaneResponse(code apimodel.Code, service *apiservice.Service) *a
  */
 func NewDiscoverFaultDetectorResponse(code apimodel.Code, service *apiservice.Service) *apiservice.DiscoverResponse {
 	return &apiservice.DiscoverResponse{
-		Code:    &wrappers.UInt32Value{Value: uint32(code)},
-		Info:    &wrappers.StringValue{Value: code2info[uint32(code)]},
+		Code:    uint32(code),
+		Info:    code2info[uint32(code)],
 		Type:    apiservice.DiscoverResponse_FAULT_DETECTOR,
 		Service: service,
 	}
@@ -422,10 +411,10 @@ func FormatBatchWriteResponse(response *apimodel.BatchWriteResponse) *apimodel.B
 	var code uint32
 	for _, resp := range response.Responses {
 		if code == 0 {
-			code = resp.GetCode().GetValue()
+			code = resp.GetCode()
 			continue
 		}
-		if code == resp.GetCode().GetValue() {
+		if code == resp.GetCode() {
 			continue
 		}
 		// 发现不一样
@@ -434,8 +423,8 @@ func FormatBatchWriteResponse(response *apimodel.BatchWriteResponse) *apimodel.B
 	}
 	// code不等于0，意味着所有的resp都是一样的错误码，则合并为同一个错误码
 	if code != 0 {
-		response.Code.Value = code
-		response.Info.Value = code2info[code]
+		response.Code = code
+		response.Info = code2info[code]
 		return response
 	}
 
@@ -447,8 +436,8 @@ func FormatBatchWriteResponse(response *apimodel.BatchWriteResponse) *apimodel.B
 	for _, resp := range response.Responses {
 		httpStatus := CalcCode(resp)
 		if httpStatus >= 500 {
-			response.Code.Value = ExecuteException
-			response.Info.Value = code2info[response.Code.Value]
+			response.Code = ExecuteException
+			response.Info = code2info[response.Code]
 			return response
 		} else if httpStatus >= 400 {
 			hasBadRequest = true
@@ -456,8 +445,8 @@ func FormatBatchWriteResponse(response *apimodel.BatchWriteResponse) *apimodel.B
 	}
 
 	if hasBadRequest {
-		response.Code.Value = BadRequest
-		response.Info.Value = code2info[response.Code.Value]
+		response.Code = BadRequest
+		response.Info = code2info[response.Code]
 	}
 	return response
 }

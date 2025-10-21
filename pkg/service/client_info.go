@@ -22,6 +22,7 @@ import (
 	"sort"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
@@ -34,6 +35,8 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
 
+type Client2Api func(client *types.Client) *apiservice.Client
+
 var (
 	clientFilterAttributes = map[string]struct{}{
 		"type":    {},
@@ -45,7 +48,7 @@ var (
 )
 
 func (s *Server) checkAndStoreClient(ctx context.Context, req *apiservice.Client) *apimodel.Response {
-	clientId := req.GetId().GetValue()
+	clientId := req.GetId()
 	var needStore bool
 	client := s.caches.Client().GetClient(clientId)
 	var resp *apimodel.Response
@@ -59,13 +62,13 @@ func (s *Server) checkAndStoreClient(ctx context.Context, req *apiservice.Client
 	}
 
 	if resp != nil {
-		if resp.GetCode().GetValue() != api.ExistedResource {
+		if resp.GetCode() != api.ExistedResource {
 			return resp
 		}
 	}
 
 	resp = s.HealthServer().ReportByClient(context.Background(), req)
-	respCode := apimodel.Code(resp.GetCode().GetValue())
+	respCode := apimodel.Code(resp.GetCode())
 	if respCode == apimodel.Code_HealthCheckNotOpen || respCode == apimodel.Code_HeartbeatTypeNotFound {
 		return api.NewResponse(apimodel.Code_ExecuteSuccess)
 	}
@@ -90,7 +93,7 @@ func (s *Server) asyncCreateClient(ctx context.Context, req *apiservice.Client) 
 		rCode := rsp.(apimodel.Code)
 		log.Error("[Server][ReportClient] async create client", zap.Error(err), utils.RequestID(ctx))
 		if rCode == apimodel.Code_ExistedResource {
-			req.Id = protobuf.NewStringValue(req.GetId().GetValue())
+			req.Id = req.GetId()
 		}
 		return api.NewClientResponse(apimodel.Code(rCode), req)
 	}
@@ -131,20 +134,18 @@ func (s *Server) GetReportClients(ctx context.Context, query map[string]string) 
 	}
 
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Amount = protobuf.NewUInt32Value(total)
-	resp.Size = protobuf.NewUInt32Value(uint32(len(services)))
-	resp.Clients = enhancedClients2Api(clients, client2Api)
+	resp.Amount = total
+	resp.Size = uint32(len(services))
+	resp.Data = enhancedClients2Api(clients, client2Api)
 	return resp
 }
 
-type Client2Api func(client *types.Client) *apiservice.Client
-
 // client 数组转为[]*api.Client
-func enhancedClients2Api(clients []*types.Client, handler Client2Api) []*apiservice.Client {
-	out := make([]*apiservice.Client, 0, len(clients))
+func enhancedClients2Api(clients []*types.Client, handler Client2Api) []*anypb.Any {
+	out := make([]*anypb.Any, 0, len(clients))
 	for _, entry := range clients {
 		outUser := handler(entry)
-		out = append(out, outUser)
+		out = append(out, protobuf.MarshalAny(outUser))
 	}
 	return out
 }
@@ -159,25 +160,25 @@ func client2Api(client *types.Client) *apiservice.Client {
 }
 
 func ClientEquals(client1 *apiservice.Client, client2 *apiservice.Client) bool {
-	if client1.GetId().GetValue() != client2.GetId().GetValue() {
+	if client1.GetId() != client2.GetId() {
 		return false
 	}
-	if client1.GetHost().GetValue() != client2.GetHost().GetValue() {
+	if client1.GetHost() != client2.GetHost() {
 		return false
 	}
-	if client1.GetVersion().GetValue() != client2.GetVersion().GetValue() {
+	if client1.GetVersion() != client2.GetVersion() {
 		return false
 	}
 	if client1.GetType() != client2.GetType() {
 		return false
 	}
-	if client1.GetLocation().GetRegion().GetValue() != client2.GetLocation().GetRegion().GetValue() {
+	if client1.GetLocation().GetRegion() != client2.GetLocation().GetRegion() {
 		return false
 	}
-	if client1.GetLocation().GetZone().GetValue() != client2.GetLocation().GetZone().GetValue() {
+	if client1.GetLocation().GetZone() != client2.GetLocation().GetZone() {
 		return false
 	}
-	if client1.GetLocation().GetCampus().GetValue() != client2.GetLocation().GetCampus().GetValue() {
+	if client1.GetLocation().GetCampus() != client2.GetLocation().GetCampus() {
 		return false
 	}
 	if len(client1.Stat) != len(client2.Stat) {
@@ -186,16 +187,16 @@ func ClientEquals(client1 *apiservice.Client, client2 *apiservice.Client) bool {
 
 	sortStat := func(stat []*apiservice.StatInfo) {
 		sort.Slice(stat, func(i, j int) bool {
-			if client1.Stat[i].GetTarget().GetValue() != client1.Stat[j].GetTarget().GetValue() {
-				return client1.Stat[i].GetTarget().GetValue() < client1.Stat[j].GetTarget().GetValue()
+			if client1.Stat[i].GetTarget() != client1.Stat[j].GetTarget() {
+				return client1.Stat[i].GetTarget() < client1.Stat[j].GetTarget()
 			}
-			if client1.Stat[i].GetPort().GetValue() != client1.Stat[j].GetPort().GetValue() {
-				return client1.Stat[i].GetPort().GetValue() < client1.Stat[j].GetPort().GetValue()
+			if client1.Stat[i].GetPort() != client1.Stat[j].GetPort() {
+				return client1.Stat[i].GetPort() < client1.Stat[j].GetPort()
 			}
-			if client1.Stat[i].GetPath().GetValue() != client1.Stat[j].GetPath().GetValue() {
-				return client1.Stat[i].GetPath().GetValue() < client1.Stat[j].GetPath().GetValue()
+			if client1.Stat[i].GetPath() != client1.Stat[j].GetPath() {
+				return client1.Stat[i].GetPath() < client1.Stat[j].GetPath()
 			}
-			return client1.Stat[i].GetProtocol().GetValue() < client1.Stat[j].GetProtocol().GetValue()
+			return client1.Stat[i].GetProtocol() < client1.Stat[j].GetProtocol()
 		})
 	}
 
@@ -204,16 +205,16 @@ func ClientEquals(client1 *apiservice.Client, client2 *apiservice.Client) bool {
 	sortStat(client2.Stat)
 
 	for i := 0; i < len(client1.Stat); i++ {
-		if client1.Stat[i].GetTarget().GetValue() != client2.Stat[i].GetTarget().GetValue() {
+		if client1.Stat[i].GetTarget() != client2.Stat[i].GetTarget() {
 			return false
 		}
-		if client1.Stat[i].GetPort().GetValue() != client2.Stat[i].GetPort().GetValue() {
+		if client1.Stat[i].GetPort() != client2.Stat[i].GetPort() {
 			return false
 		}
-		if client1.Stat[i].GetPath().GetValue() != client2.Stat[i].GetPath().GetValue() {
+		if client1.Stat[i].GetPath() != client2.Stat[i].GetPath() {
 			return false
 		}
-		if client1.Stat[i].GetProtocol().GetValue() != client2.Stat[i].GetProtocol().GetValue() {
+		if client1.Stat[i].GetProtocol() != client2.Stat[i].GetProtocol() {
 			return false
 		}
 	}

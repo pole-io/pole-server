@@ -21,9 +21,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
@@ -70,7 +68,7 @@ func (s *Server) ReportServiceContract(ctx context.Context, req *apiservice.Serv
 }
 
 func isSuccessReportContract(rsp *apimodel.Response) bool {
-	code := rsp.GetCode().GetValue()
+	code := rsp.GetCode()
 	if code == uint32(apimodel.Code_ExecuteSuccess) {
 		return true
 	}
@@ -83,7 +81,7 @@ func isSuccessReportContract(rsp *apimodel.Response) bool {
 // ReportClient 客户端上报信息
 func (s *Server) ReportClient(ctx context.Context, req *apiservice.Client) *apimodel.Response {
 	// 客户端信息不写入到DB中
-	host := req.GetHost().GetValue()
+	host := req.GetHost()
 	// 从CMDB查询地理位置信息
 	location, err := cmdb.GetCMDB().GetLocation(host)
 	if err != nil {
@@ -94,7 +92,7 @@ func (s *Server) ReportClient(ctx context.Context, req *apiservice.Client) *apim
 	}
 
 	// save the client with unique id into store
-	if len(req.GetId().GetValue()) > 0 {
+	if len(req.GetId()) > 0 {
 		return s.checkAndStoreClient(ctx, req)
 	}
 	out := &apiservice.Client{
@@ -119,10 +117,10 @@ func (s *Server) GetServiceWithCache(ctx context.Context, req *apiservice.Servic
 		services []*svctypes.Service
 	)
 
-	if req.GetNamespace().GetValue() != "" {
-		revision, services = s.Cache().Service().ListServices(ctx, req.GetNamespace().GetValue())
+	if req.GetNamespace() != "" {
+		revision, services = s.Cache().Service().ListServices(ctx, req.GetNamespace())
 		// 需要加上服务可见性处理
-		visibleSvcs := s.caches.Service().GetVisibleServicesInOtherNamespace(ctx, matchs.MatchAll, req.GetNamespace().GetValue())
+		visibleSvcs := s.caches.Service().GetVisibleServicesInOtherNamespace(ctx, matchs.MatchAll, req.GetNamespace())
 		revisions := make([]string, 0, len(visibleSvcs)+1)
 		revisions = append(revisions, revision)
 		for i := range visibleSvcs {
@@ -132,7 +130,7 @@ func (s *Server) GetServiceWithCache(ctx context.Context, req *apiservice.Servic
 		// 需要重新计算 revison
 		if rever, err := revisionapi.CompositeComputeRevision(revisions); err != nil {
 			log.Error("[Server][Discover] list services compute multi revision",
-				zap.String("namespace", req.GetNamespace().GetValue()), zap.Error(err))
+				zap.String("namespace", req.GetNamespace()), zap.Error(err))
 			return api.NewDiscoverInstanceResponse(apimodel.Code_ExecuteException, req)
 		} else {
 			revision = rever
@@ -147,24 +145,24 @@ func (s *Server) GetServiceWithCache(ctx context.Context, req *apiservice.Servic
 
 	log.Debug("[Service][Discover] list services", zap.Int("size", len(services)),
 		zap.String("revision", revision))
-	if revision == req.GetRevision().GetValue() {
+	if revision == req.GetRevision() {
 		return api.NewDiscoverServiceResponse(apimodel.Code_DataNoChange, req)
 	}
 
 	ret := make([]*apiservice.Service, 0, len(services))
 	for _, svc := range services {
 		ret = append(ret, &apiservice.Service{
-			Namespace: protobuf.NewStringValue(svc.Namespace),
-			Name:      protobuf.NewStringValue(svc.Name),
+			Namespace: svc.Namespace,
+			Name:      svc.Name,
 			Metadata:  svc.Meta,
 		})
 	}
 
 	resp.Services = ret
 	resp.Service = &apiservice.Service{
-		Namespace: protobuf.NewStringValue(req.GetNamespace().GetValue()),
-		Name:      protobuf.NewStringValue(req.GetName().GetValue()),
-		Revision:  protobuf.NewStringValue(revision),
+		Namespace: req.GetNamespace(),
+		Name:      req.GetName(),
+		Revision:  revision,
 	}
 
 	return resp
@@ -175,8 +173,8 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	req *apiservice.Service) *apiservice.DiscoverResponse {
 
 	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_INSTANCE)
-	svcName := req.GetName().GetValue()
-	nsName := req.GetNamespace().GetValue()
+	svcName := req.GetName()
+	nsName := req.GetNamespace()
 
 	// 数据源都来自Cache，这里拿到的service，已经是源服务
 	aliasFor, visibleServices := s.findVisibleServices(ctx, svcName, nsName, req)
@@ -202,7 +200,7 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 			svcName, nsName, err.Error())
 		return api.NewDiscoverInstanceResponse(apimodel.Code_ExecuteException, req)
 	}
-	if aggregateRevision == req.GetRevision().GetValue() {
+	if aggregateRevision == req.GetRevision() {
 		return api.NewDiscoverInstanceResponse(apimodel.Code_DataNoChange, req)
 	}
 
@@ -210,9 +208,9 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	openEmptyProtectCnt := 0
 	for _, svc := range visibleServices {
 		specSvc := &apiservice.Service{
-			Id:        protobuf.NewStringValue(svc.ID),
-			Name:      protobuf.NewStringValue(svc.Name),
-			Namespace: protobuf.NewStringValue(svc.Namespace),
+			Id:        svc.ID,
+			Name:      svc.Name,
+			Namespace: svc.Namespace,
 		}
 		if stoper, ok := s.emptyPushProtectSvs.Load(svcName + "@" + nsName); ok {
 			// 如果在保护时间范围内
@@ -223,7 +221,7 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 		}
 
 		matchInsCnt := 0
-		s.caches.Instance().DiscoverServiceInstances(specSvc.GetId().GetValue(), filter.GetOnlyHealthyInstance(), func(insData *svctypes.Instance) {
+		s.caches.Instance().DiscoverServiceInstances(specSvc.GetId(), filter.GetOnlyHealthyInstance(), func(insData *svctypes.Instance) {
 			matchInsCnt++
 			// 注意：这里的 value 是 cache 的，不修改 cache 的数据，通过 getInstance，浅拷贝一份数据
 			copyIns := s.getInstance(specSvc, insData.Proto)
@@ -236,9 +234,9 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 				s.emptyPushProtectSvs.ComputeIfAbsent(svcName+"@"+nsName, func(k string) time.Time {
 					eventhub.Publish(eventhub.ServiceEventTopic, &svctypes.ServiceEvent{
 						EType:      svctypes.EventServiceOpenEmptyPushProtect,
-						Id:         specSvc.GetId().GetValue(),
-						Namespace:  specSvc.GetNamespace().GetValue(),
-						Service:    specSvc.GetName().GetValue(),
+						Id:         specSvc.GetId(),
+						Namespace:  specSvc.GetNamespace(),
+						Service:    specSvc.GetName(),
 						CreateTime: time.Now(),
 					})
 					return time.Now().Add(dur)
@@ -251,9 +249,9 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 			if _, ok := s.emptyPushProtectSvs.Delete(svcName + "@" + nsName); ok {
 				eventhub.Publish(eventhub.ServiceEventTopic, &svctypes.ServiceEvent{
 					EType:      svctypes.EventServiceCloseEmptyPushProtect,
-					Id:         specSvc.GetId().GetValue(),
-					Namespace:  specSvc.GetNamespace().GetValue(),
-					Service:    specSvc.GetName().GetValue(),
+					Id:         specSvc.GetId(),
+					Namespace:  specSvc.GetNamespace(),
+					Service:    specSvc.GetName(),
 					CreateTime: time.Now(),
 				})
 			}
@@ -266,7 +264,7 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	if openEmptyProtectCnt == len(visibleServices) {
 		// 当前存在推空保护，返回给客户端 DataNoChange 变化
 		rsp := api.NewDiscoverInstanceResponse(apimodel.Code_DataNoChange, req)
-		rsp.Info = protobuf.NewStringValue("trigger empty push protect")
+		rsp.Info = "trigger empty push protect"
 		return rsp
 	}
 
@@ -280,7 +278,7 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	// 这里需要把服务信息改为用户请求的服务名以及命名空间
 	resp.Service.Name = req.GetName()
 	resp.Service.Namespace = req.GetNamespace()
-	resp.Service.Revision = protobuf.NewStringValue(aggregateRevision)
+	resp.Service.Revision = aggregateRevision
 	// 塞入源服务信息数据
 	resp.AliasFor = service2Api(aliasFor)
 	// 填充instance数据
@@ -312,13 +310,13 @@ func (s *Server) GetServiceContractWithCache(ctx context.Context,
 	req *apiservice.ServiceContract) *apimodel.Response {
 	resp := api.NewResponse(apimodel.Code_ExecuteSuccess)
 	// 服务名和request保持一致
-	resp.Service = &apiservice.Service{
-		Name:      wrapperspb.String(req.GetService()),
-		Namespace: wrapperspb.String(req.GetNamespace()),
+	rspSvc := &apiservice.Service{
+		Name:      req.GetService(),
+		Namespace: req.GetNamespace(),
 	}
 
 	// 获取源服务
-	aliasFor := s.findServiceAlias(resp.Service)
+	aliasFor := s.findServiceAlias(rspSvc)
 
 	out := s.caches.ServiceContract().Get(ctx, &svctypes.ServiceContract{
 		Namespace: aliasFor.Namespace,
@@ -328,30 +326,31 @@ func (s *Server) GetServiceContractWithCache(ctx context.Context,
 		Protocol:  req.Protocol,
 	})
 	if out == nil {
-		resp.Code = wrapperspb.UInt32(uint32(apimodel.Code_NotFoundResource))
-		resp.Info = wrapperspb.String(api.Code2Info(uint32(apimodel.Code_NotFoundResource)))
+		resp.Data = protobuf.MarshalAny(rspSvc)
+		resp.Code = uint32(apimodel.Code_NotFoundResource)
+		resp.Info = api.Code2Info(uint32(apimodel.Code_NotFoundResource))
 		return resp
 	}
 
 	// 获取熔断规则数据，并对比revision
 	if len(req.GetRevision()) > 0 && req.GetRevision() == out.Revision {
-		resp.Code = wrapperspb.UInt32(uint32(apimodel.Code_DataNoChange))
-		resp.Info = wrapperspb.String(api.Code2Info(uint32(apimodel.Code_DataNoChange)))
+		resp.Code = uint32(apimodel.Code_DataNoChange)
+		resp.Info = api.Code2Info(uint32(apimodel.Code_DataNoChange))
 		return resp
 	}
 
-	resp.Service.Revision = wrapperspb.String(out.Revision)
-	resp.ServiceContract = out.ToSpec()
+	rspSvc.Revision = out.Revision
+	resp.Data = protobuf.MarshalAny(out.ToSpec())
 	return resp
 }
 
 func (s *Server) findServiceAlias(req *apiservice.Service) *svctypes.Service {
 	// 获取源服务
-	aliasFor := s.getServiceCache(req.GetName().GetValue(), req.GetNamespace().GetValue())
+	aliasFor := s.getServiceCache(req.GetName(), req.GetNamespace())
 	if aliasFor == nil {
 		aliasFor = &svctypes.Service{
-			Namespace: req.GetNamespace().GetValue(),
-			Name:      req.GetName().GetValue(),
+			Namespace: req.GetNamespace(),
+			Name:      req.GetName(),
 		}
 	}
 	return aliasFor
@@ -365,8 +364,8 @@ func CreateCommonDiscoverResponse(req *apiservice.Service,
 func createCommonDiscoverResponse(req *apiservice.Service,
 	dT apiservice.DiscoverResponse_DiscoverResponseType) *apiservice.DiscoverResponse {
 	return &apiservice.DiscoverResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(apimodel.Code_ExecuteSuccess)},
-		Info: &wrappers.StringValue{Value: api.Code2Info(uint32(apimodel.Code_ExecuteSuccess))},
+		Code: uint32(apimodel.Code_ExecuteSuccess),
+		Info: api.Code2Info(uint32(apimodel.Code_ExecuteSuccess)),
 		Type: dT,
 		Service: &apiservice.Service{
 			Name:      req.GetName(),

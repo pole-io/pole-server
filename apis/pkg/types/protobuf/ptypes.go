@@ -27,7 +27,7 @@ import (
 )
 
 func MarshalAny(msg proto.Message) *anypb.Any {
-	ret, _ := anypb.New(msg)
+	ret, _ := anypb.New(proto.MessageV2(msg))
 	return ret
 }
 

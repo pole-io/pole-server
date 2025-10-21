@@ -21,6 +21,7 @@ import (
 	"context"
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
