@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
@@ -51,25 +50,24 @@ type Service struct {
 
 func (s *Service) ToSpec() *apiservice.Service {
 	return &apiservice.Service{
-		Id:         wrapperspb.String(s.ID),
-		Name:       wrapperspb.String(s.Name),
-		Namespace:  wrapperspb.String(s.Namespace),
+		Id:         string(s.ID),
+		Name:       string(s.Name),
+		Namespace:  string(s.Namespace),
 		Metadata:   s.CopyMeta(),
-		Ports:      wrapperspb.String(s.Ports),
-		Business:   wrapperspb.String(s.Business),
-		Department: wrapperspb.String(s.Department),
-		CmdbMod1:   wrapperspb.String(s.CmdbMod1),
-		CmdbMod2:   wrapperspb.String(s.CmdbMod2),
-		CmdbMod3:   wrapperspb.String(s.CmdbMod3),
-		Comment:    wrapperspb.String(s.Comment),
-		Owners:     wrapperspb.String(s.Owner),
-		Token:      wrapperspb.String(s.Token),
-		Ctime:      wrapperspb.String(utils.Time2String(s.CreateTime)),
-		Mtime:      wrapperspb.String(utils.Time2String(s.ModifyTime)),
-		Revision:   wrapperspb.String(s.Revision),
-		ExportTo:   s.ListExportTo(),
-		Editable:   wrapperspb.Bool(true),
-		Deleteable: wrapperspb.Bool(true),
+		Ports:      string(s.Ports),
+		Business:   string(s.Business),
+		Department: string(s.Department),
+		CmdbMod1:   string(s.CmdbMod1),
+		CmdbMod2:   string(s.CmdbMod2),
+		CmdbMod3:   string(s.CmdbMod3),
+		Comment:    string(s.Comment),
+		Owners:     string(s.Owner),
+		Token:      string(s.Token),
+		Ctime:      string(utils.Time2String(s.CreateTime)),
+		Mtime:      string(utils.Time2String(s.ModifyTime)),
+		Revision:   string(s.Revision),
+		Editable:   true,
+		Deleteable: true,
 	}
 }
 

@@ -3,8 +3,6 @@ package types
 import (
 	"errors"
 	"time"
-
-	"github.com/golang/protobuf/ptypes/wrappers"
 )
 
 var (
@@ -14,10 +12,12 @@ var (
 	ErrorNoService error = errors.New("no such service")
 )
 
-func ExportToMap(exportTo []*wrappers.StringValue) map[string]struct{} {
+// 注释：ExportToMap函数改动 - 参数类型从[]*wrapperspb.StringValue改为[]string，功能保持不变
+func ExportToMap(exportTo []string) map[string]struct{} {
 	ret := make(map[string]struct{})
 	for _, v := range exportTo {
-		ret[v.Value] = struct{}{}
+		// 注释：字段访问简化 - 直接使用string值而非通过.Value访问wrapper
+		ret[v] = struct{}{}
 	}
 	return ret
 }
@@ -37,10 +37,12 @@ type Namespace struct {
 	Metadata map[string]string
 }
 
-func (n *Namespace) ListServiceExportTo() []*wrappers.StringValue {
-	ret := make([]*wrappers.StringValue, 0, len(n.ServiceExportTo))
+// 注释：ListServiceExportTo方法改动 - 返回类型从[]*wrapperspb.StringValue改为[]string，简化类型系统
+func (n *Namespace) ListServiceExportTo() []string {
+	ret := make([]string, 0, len(n.ServiceExportTo))
 	for i := range n.ServiceExportTo {
-		ret = append(ret, &wrappers.StringValue{Value: i})
+		// 注释：导出列表构建改动 - 直接添加string值而非创建wrapper对象
+		ret = append(ret, i)
 	}
 	return ret
 }

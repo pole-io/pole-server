@@ -39,10 +39,6 @@ var storeCodeAPICodeMap = map[StatusCode]apimodel.Code{
 	EmptyParamsErr:             apimodel.Code_InvalidParameter,
 	OutOfRangeErr:              apimodel.Code_InvalidParameter,
 	DataConflictErr:            apimodel.Code_DataConflict,
-	NotFoundNamespace:          apimodel.Code_NotFoundNamespace,
-	NotFoundService:            apimodel.Code_NotFoundService,
-	NotFoundMasterConfig:       apimodel.Code_NotFoundMasterConfig,
-	NotFoundTagConfigOrService: apimodel.Code_NotFoundTagConfigOrService,
 	ExistReleasedConfig:        apimodel.Code_ExistReleasedConfig,
 	DuplicateEntryErr:          apimodel.Code_ExistedResource,
 }

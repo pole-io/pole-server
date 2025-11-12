@@ -20,8 +20,6 @@ package types
 import (
 	"time"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
-
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 )
@@ -81,17 +79,17 @@ type ClientStatStore struct {
 func Store2Client(is *ClientStore) *Client {
 	ins := &Client{
 		proto: &apiservice.Client{
-			Id:      &wrappers.StringValue{Value: is.ID},
-			Host:    &wrappers.StringValue{Value: is.Host},
-			Version: &wrappers.StringValue{Value: is.Version},
+			Id:      string(is.ID),
+			Host:    string(is.Host),
+			Version: string(is.Version),
 			Type:    apiservice.Client_ClientType(apiservice.Client_ClientType_value[is.Type]),
 			Location: &apimodel.Location{
-				Campus: &wrappers.StringValue{Value: is.Campus},
-				Zone:   &wrappers.StringValue{Value: is.Zone},
-				Region: &wrappers.StringValue{Value: is.Region},
+				Campus: string(is.Campus),
+				Zone:   string(is.Zone),
+				Region: string(is.Region),
 			},
-			Ctime: &wrappers.StringValue{Value: int64Time2String(is.CreateTime)},
-			Mtime: &wrappers.StringValue{Value: int64Time2String(is.ModifyTime)},
+			Ctime: int64Time2String(is.CreateTime),
+			Mtime: int64Time2String(is.ModifyTime),
 		},
 		valid:      is.Flag == 0,
 		modifyTime: time.Unix(is.ModifyTime, 0),
@@ -109,10 +107,10 @@ func Store2ClientStat(clientStatStore *ClientStatStore) *apiservice.StatInfo {
 		return nil
 	}
 	statInfo := &apiservice.StatInfo{}
-	statInfo.Path = &wrappers.StringValue{Value: clientStatStore.Path}
-	statInfo.Protocol = &wrappers.StringValue{Value: clientStatStore.Protocol}
-	statInfo.Port = &wrappers.UInt32Value{Value: clientStatStore.Port}
-	statInfo.Target = &wrappers.StringValue{Value: clientStatStore.Target}
+	statInfo.Path = string(clientStatStore.Path)
+	statInfo.Protocol = string(clientStatStore.Protocol)
+	statInfo.Port = uint32(clientStatStore.Port)
+	statInfo.Target = string(clientStatStore.Target)
 	return statInfo
 }
 
