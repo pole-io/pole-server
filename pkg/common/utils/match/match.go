@@ -112,7 +112,7 @@ func IsMatchAll(v string) bool {
 }
 
 func MatchString(srcMetaValue string, matchValule *apimodel.MatchString, regexToPattern func(string) *regexp.Regexp) bool {
-	rawMetaValue := matchValule.GetValue().GetValue()
+	rawMetaValue := matchValule.GetValue()
 	if IsMatchAll(rawMetaValue) {
 		return true
 	}

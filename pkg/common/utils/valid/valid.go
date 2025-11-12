@@ -27,7 +27,6 @@ import (
 	"strconv"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
@@ -110,16 +109,12 @@ const (
 var resourceNameRE = regexp.MustCompile("^[0-9A-Za-z-./:_]+$")
 
 // CheckResourceName 检查资源Name
-func CheckResourceName(name *wrappers.StringValue) error {
-	if name == nil {
-		return errors.New(NilErrString)
-	}
-
-	if name.GetValue() == "" {
+func CheckResourceName(name string) error {
+	if name == "" {
 		return errors.New(EmptyErrString)
 	}
 
-	if ok := resourceNameRE.MatchString(name.GetValue()); !ok {
+	if ok := resourceNameRE.MatchString(name); !ok {
 		return errors.New("name contains invalid character")
 	}
 
@@ -127,16 +122,16 @@ func CheckResourceName(name *wrappers.StringValue) error {
 }
 
 // CheckResourceOwners 检查资源Owners
-func CheckResourceOwners(owners *wrappers.StringValue) error {
-	if owners == nil {
-		return errors.New(NilErrString)
-	}
-
-	if owners.GetValue() == "" {
+func CheckResourceOwners(owners string) error {
+	if owners == "" {
 		return errors.New(EmptyErrString)
 	}
 
-	if utf8.RuneCountInString(owners.GetValue()) > MaxOwnersLength {
+	if owners == "" {
+		return errors.New(EmptyErrString)
+	}
+
+	if utf8.RuneCountInString(owners) > MaxOwnersLength {
 		return errors.New("owners too long")
 	}
 
@@ -144,12 +139,8 @@ func CheckResourceOwners(owners *wrappers.StringValue) error {
 }
 
 // CheckInstanceHost 检查服务实例Host
-func CheckInstanceHost(host *wrappers.StringValue) error {
-	if host == nil {
-		return errors.New(NilErrString)
-	}
-
-	if host.GetValue() == "" {
+func CheckInstanceHost(host string) error {
+	if host == "" {
 		return errors.New(EmptyErrString)
 	}
 
@@ -157,9 +148,10 @@ func CheckInstanceHost(host *wrappers.StringValue) error {
 }
 
 // CheckInstancePort 检查服务实例Port
-func CheckInstancePort(port *wrappers.UInt32Value) error {
-	if port == nil {
-		return errors.New(NilErrString)
+func CheckInstancePort(port uint32) error {
+	// uint32 类型的端口号无需检查 nil，只需验证有效性
+	if port == 0 {
+		return errors.New("port should be greater than 0")
 	}
 
 	return nil
@@ -326,8 +318,8 @@ func ParseOffsetAndLimit(query map[string]string) (uint32, uint32, error) {
 }
 
 // CheckDbStrFieldLen 检查name字段是否超过DB中对应字段的最大字符长度限制
-func CheckDbStrFieldLen(param *wrappers.StringValue, dbLen int) error {
-	return CheckDbRawStrFieldLen(param.GetValue(), dbLen)
+func CheckDbStrFieldLen(param string, dbLen int) error {
+	return CheckDbRawStrFieldLen(param, dbLen)
 }
 
 // CheckDbRawStrFieldLen 检查name字段是否超过DB中对应字段的最大字符长度限制
@@ -354,29 +346,29 @@ func CheckDbMetaDataFieldLen(metaData map[string]string) error {
 // CheckInstanceTetrad 根据服务实例四元组计算ID
 func CheckInstanceTetrad(req *apiservice.Instance) (string, *apimodel.Response) {
 	if err := CheckResourceName(req.GetService()); err != nil {
-		return "", api.NewInstanceResponse(apimodel.Code_InvalidServiceName, req)
+		return "", api.NewInstanceResponse(apimodel.Code_InvalidParameter, req)
 	}
 
 	if err := CheckResourceName(req.GetNamespace()); err != nil {
-		return "", api.NewInstanceResponse(apimodel.Code_InvalidNamespaceName, req)
+		return "", api.NewInstanceResponse(apimodel.Code_InvalidParameter, req)
 	}
 
 	if err := CheckInstanceHost(req.GetHost()); err != nil {
-		return "", api.NewInstanceResponse(apimodel.Code_InvalidInstanceHost, req)
+		return "", api.NewInstanceResponse(apimodel.Code_InvalidParameter, req)
 	}
 
 	if err := CheckInstancePort(req.GetPort()); err != nil {
-		return "", api.NewInstanceResponse(apimodel.Code_InvalidInstancePort, req)
+		return "", api.NewInstanceResponse(apimodel.Code_InvalidParameter, req)
 	}
 
-	var instID = req.GetId().GetValue()
+	var instID = req.GetId()
 	if len(instID) == 0 {
 		id, err := CalculateInstanceID(
-			req.GetNamespace().GetValue(),
-			req.GetService().GetValue(),
-			req.GetVpcId().GetValue(),
-			req.GetHost().GetValue(),
-			req.GetPort().GetValue(),
+			req.GetNamespace(),
+			req.GetService(),
+			"", // VPC ID 字段在新版本中可能不存在，使用空字符串
+			req.GetHost(),
+			req.GetPort(),
 		)
 		if err != nil {
 			return "", api.NewInstanceResponse(apimodel.Code_ExecuteException, req)

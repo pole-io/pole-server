@@ -1691,12 +1691,11 @@ func (mr *MockRouterRuleCacheMockRecorder) GetNearbyRouteRule(service, namespace
 }
 
 // GetOldRouterRule mocks base method.
-func (m *MockRouterRuleCache) GetOldRouterRule(id, service, namespace string) (*traffic_manage.Routing, error) {
+func (m *MockRouterRuleCache) GetOldRouterRule(id, service, namespace string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOldRouterRule", id, service, namespace)
-	ret0, _ := ret[0].(*traffic_manage.Routing)
 	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	return ret1
 }
 
 // GetOldRouterRule indicates an expected call of GetOldRouterRule.
@@ -1720,12 +1719,11 @@ func (mr *MockRouterRuleCacheMockRecorder) GetRouterCount() *gomock.Call {
 }
 
 // GetRouterRule mocks base method.
-func (m *MockRouterRuleCache) GetRouterRule(id, service, namespace string) (*traffic_manage.Routing, error) {
+func (m *MockRouterRuleCache) GetRouterRule(id, service, namespace string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRouterRule", id, service, namespace)
-	ret0, _ := ret[0].(*traffic_manage.Routing)
 	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	return ret1
 }
 
 // GetRouterRule indicates an expected call of GetRouterRule.
