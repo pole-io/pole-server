@@ -79,14 +79,14 @@ type ClientStatStore struct {
 func Store2Client(is *ClientStore) *Client {
 	ins := &Client{
 		proto: &apiservice.Client{
-			Id:      string(is.ID),
-			Host:    string(is.Host),
-			Version: string(is.Version),
+			Id:      is.ID,
+			Host:    is.Host,
+			Version: is.Version,
 			Type:    apiservice.Client_ClientType(apiservice.Client_ClientType_value[is.Type]),
 			Location: &apimodel.Location{
-				Campus: string(is.Campus),
-				Zone:   string(is.Zone),
-				Region: string(is.Region),
+				Campus: is.Campus,
+				Zone:   is.Zone,
+				Region: is.Region,
 			},
 			Ctime: int64Time2String(is.CreateTime),
 			Mtime: int64Time2String(is.ModifyTime),
@@ -107,10 +107,10 @@ func Store2ClientStat(clientStatStore *ClientStatStore) *apiservice.StatInfo {
 		return nil
 	}
 	statInfo := &apiservice.StatInfo{}
-	statInfo.Path = string(clientStatStore.Path)
-	statInfo.Protocol = string(clientStatStore.Protocol)
-	statInfo.Port = uint32(clientStatStore.Port)
-	statInfo.Target = string(clientStatStore.Target)
+	statInfo.Path = clientStatStore.Path
+	statInfo.Protocol = clientStatStore.Protocol
+	statInfo.Port = clientStatStore.Port
+	statInfo.Target = clientStatStore.Target
 	return statInfo
 }
 
