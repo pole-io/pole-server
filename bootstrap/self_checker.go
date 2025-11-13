@@ -50,7 +50,7 @@ func NewSelfHeathChecker(instances []*apiservice.Instance, interval int) (*SelfH
 	}
 	for _, instance := range instances {
 		log.Infof("scheduled check for instance %s:%d",
-			instance.GetHost().GetValue(), instance.GetPort().GetValue())
+			instance.GetHost(), instance.GetPort())
 	}
 	return &SelfHeathChecker{
 		instances:   instances,
@@ -77,23 +77,23 @@ func (s *SelfHeathChecker) Start() {
 			for _, instance := range s.instances {
 				rsp := s.hcServer.Report(context.Background(), instance)
 
-				switch rsp.GetCode().GetValue() {
+				switch rsp.GetCode() {
 				case api.ExecuteSuccess:
 					continue
 				case api.NotFoundResource:
 					// 这里可能实例被错误摘除了，这里重新触发一次重注册流程，确保核心流程不受影响
-					log.Infof("[Bootstrap] heartbeat not founf instance for %s:%d, code is %d, try re-register",
-						instance.GetHost().GetValue(), instance.GetPort().GetValue(), rsp.GetCode().GetValue())
+					log.Infof("[Bootstrap] heartbeat not found instance for %s:%d, code is %d, try re-register",
+						instance.GetHost(), instance.GetPort(), rsp.GetCode())
 					resp := s.discoverSvr.CreateInstances(genContext(), []*apiservice.Instance{instance})
-					if resp.GetCode().GetValue() != api.ExecuteSuccess {
+					if resp.GetCode() != api.ExecuteSuccess {
 						log.Errorf("[Bootstrap] re-register fail for %s:%d, code is %d, info %s",
-							instance.GetHost().GetValue(), instance.GetPort().GetValue(),
-							resp.GetCode().GetValue(), resp.GetInfo().GetValue())
+							instance.GetHost(), instance.GetPort(),
+							resp.GetCode(), resp.GetInfo())
 					}
 				default:
 					log.Errorf("[Bootstrap] heartbeat fail for %s:%d, code is %d, info %s",
-						instance.GetHost().GetValue(), instance.GetPort().GetValue(),
-						rsp.GetCode().GetValue(), rsp.GetInfo().GetValue())
+						instance.GetHost(), instance.GetPort(),
+						rsp.GetCode(), rsp.GetInfo())
 				}
 			}
 		}

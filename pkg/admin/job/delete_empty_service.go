@@ -140,7 +140,7 @@ func (job *deleteEmptyServiceJob) deleteEmptyServices() error {
 		resp := job.namingServer.DeleteServices(ctx, convertDeleteServiceRequest(emptyServices[i:j]))
 		if api.CalcCode(resp) != 200 {
 			log.Errorf("[Maintain][Job][DeleteEmptyAutoCreatedService] delete services err, code: %d, info: %s",
-				resp.Code.GetValue(), resp.Info.GetValue())
+				resp.Code, resp.Info)
 		}
 	}
 

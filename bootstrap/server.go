@@ -26,7 +26,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 
@@ -38,7 +37,6 @@ import (
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	boot_config "github.com/pole-io/pole-server/bootstrap/config"
@@ -625,18 +623,18 @@ func selfRegister(
 	metadata[types.MetaKeyPolarisService] = name
 
 	req := &apiservice.Instance{
-		Service:           protobuf.NewStringValue(name),
-		Namespace:         protobuf.NewStringValue(polarisNamespace),
-		Host:              protobuf.NewStringValue(host),
-		Port:              protobuf.NewUInt32Value(port),
-		Protocol:          protobuf.NewStringValue(protocol),
-		Version:           protobuf.NewStringValue(version.Get()),
-		EnableHealthCheck: protobuf.NewBoolValue(true),
-		Isolate:           protobuf.NewBoolValue(isolated),
+		Service:           name,
+		Namespace:         polarisNamespace,
+		Host:              host,
+		Port:              port,
+		Protocol:          protocol,
+		Version:           version.Get(),
+		EnableHealthCheck: true,
+		Isolate:           isolated,
 		HealthCheck: &apiservice.HealthCheck{
 			Type: apiservice.HealthCheck_HEARTBEAT,
 			Heartbeat: &apiservice.HeartbeatHealthCheck{
-				Ttl: &wrappers.UInt32Value{Value: uint32(hbInterval)},
+				Ttl: uint32(hbInterval),
 			},
 		},
 		Metadata: metadata,
@@ -645,13 +643,13 @@ func selfRegister(
 	resp := server.RegisterInstance(genContext(), req)
 	if api.CalcCode(resp) != 200 {
 		// 如果self之前注册过，那么可以忽略
-		if resp.GetCode().GetValue() != api.ExistedResource {
-			return fmt.Errorf("%s", resp.GetInfo().GetValue())
+		if resp.GetCode() != api.ExistedResource {
+			return fmt.Errorf("%s", resp.GetInfo())
 		}
 
 		resp = server.UpdateInstance(genContext(), req)
 		if api.CalcCode(resp) != 200 {
-			return fmt.Errorf("%s", resp.GetInfo().GetValue())
+			return fmt.Errorf("%s", resp.GetInfo())
 		}
 	}
 	SelfServiceInstance = append(SelfServiceInstance, req)
@@ -670,7 +668,7 @@ func SelfDeregister() {
 		log.Infof("Deregister the instance(%+v)", req)
 		if resp := namingServer.DeleteInstance(genContext(), req); api.CalcCode(resp) != 200 {
 			// 遇到失败，继续反注册其他的实例
-			log.Errorf("Deregister instance error: %s", resp.GetInfo().GetValue())
+			log.Errorf("Deregister instance error: %s", resp.GetInfo())
 		}
 	}
 	// wait the async event handler to finish

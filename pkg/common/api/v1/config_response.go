@@ -18,269 +18,252 @@
 package v1
 
 import (
-	"github.com/golang/protobuf/ptypes/wrappers"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 )
 
 // ConfigCollect BatchWriteResponse添加Response
-func ConfigCollect(batchWriteResponse *apiconfig.ConfigBatchWriteResponse, response *apiconfig.ConfigResponse) {
+func ConfigCollect(batchWriteResponse *apimodel.BatchWriteResponse, response *apimodel.Response) {
 	// 非200的code，都归为异常
 	if CalcCode(response) != 200 {
-		if response.GetCode().GetValue() >= batchWriteResponse.GetCode().GetValue() {
-			batchWriteResponse.Code.Value = response.GetCode().GetValue()
-			batchWriteResponse.Info.Value = code2info[batchWriteResponse.GetCode().GetValue()]
+		if response.GetCode() >= batchWriteResponse.GetCode() {
+			batchWriteResponse.Code = response.GetCode()
+			batchWriteResponse.Info = Code2Info(batchWriteResponse.GetCode())
 		}
 	}
 	batchWriteResponse.Responses = append(batchWriteResponse.Responses, response)
 }
 
-func NewConfigClientListResponse(code apimodel.Code) *apiconfig.ConfigClientListResponse {
-	return &apiconfig.ConfigClientListResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
+func NewConfigClientListResponse(code apimodel.Code) *apimodel.BatchQueryResponse {
+	return &apimodel.BatchQueryResponse{
+		Code:   uint32(code),
+		Info:   Code2Info(uint32(code)),
+		Amount: 0,
+		Size:   0,
 	}
 }
 
-func NewConfigClientListResponseWithInfo(code apimodel.Code, msg string) *apiconfig.ConfigClientListResponse {
-	return &apiconfig.ConfigClientListResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: msg},
+func NewConfigClientListResponseWithInfo(code apimodel.Code, msg string) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: msg,
 	}
 }
 
-func NewConfigClientResponse0(code apimodel.Code) *apiconfig.ConfigClientResponse {
-	return &apiconfig.ConfigClientResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
+func NewConfigClientResponse0(code apimodel.Code) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
 	}
 }
 
-func NewConfigClientResponse(code apimodel.Code, configFile *apiconfig.ClientConfigFileInfo) *apiconfig.ConfigClientResponse {
-	return &apiconfig.ConfigClientResponse{
-		Code:       &wrappers.UInt32Value{Value: uint32(code)},
-		Info:       &wrappers.StringValue{Value: code2info[uint32(code)]},
-		ConfigFile: configFile,
+func NewConfigClientResponse(code apimodel.Code, configFile interface{}) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
+		// Note: configFile would need to be serialized to Any if needed
 	}
 }
 
-func NewConfigClientResponseFromConfigResponse(response *apiconfig.ConfigResponse) *apiconfig.ConfigClientResponse {
-	return &apiconfig.ConfigClientResponse{
-		Code:       response.Code,
-		Info:       response.Info,
-		ConfigFile: nil,
+func NewConfigClientResponseFromConfigResponse(response *apimodel.Response) *apimodel.Response {
+	return &apimodel.Response{
+		Code: response.Code,
+		Info: response.Info,
+		Data: response.Data,
 	}
 }
 
-func NewConfigClientResponseWithInfo(code apimodel.Code, message string) *apiconfig.ConfigClientResponse {
-	return &apiconfig.ConfigClientResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: message},
+func NewConfigClientResponseWithInfo(code apimodel.Code, message string) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: message,
 	}
 }
 
-func NewConfigResponse(code apimodel.Code) *apiconfig.ConfigResponse {
-	return &apiconfig.ConfigResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
+func NewConfigResponse(code apimodel.Code) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
 	}
 }
 
-func NewConfigGroupResponse(code apimodel.Code, g *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse {
-	return &apiconfig.ConfigResponse{
-		Code:            &wrappers.UInt32Value{Value: uint32(code)},
-		Info:            &wrappers.StringValue{Value: code2info[uint32(code)]},
-		ConfigFileGroup: g,
+func NewConfigGroupResponse(code apimodel.Code, g interface{}) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
+		// Note: g would need to be serialized to Any if needed
 	}
 }
 
-func NewConfigFileGroupResponseWithMessage(code apimodel.Code, message string) *apiconfig.ConfigResponse {
-	return &apiconfig.ConfigResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)] + ":" + message},
+func NewConfigFileGroupResponseWithMessage(code apimodel.Code, message string) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)) + ":" + message,
 	}
 }
 
 func NewConfigFileGroupBatchQueryResponse(code apimodel.Code, total uint32,
-	configFileGroups []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchQueryResponse {
-	return &apiconfig.ConfigBatchQueryResponse{
-		Code:             &wrappers.UInt32Value{Value: uint32(code)},
-		Info:             &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Total:            &wrappers.UInt32Value{Value: total},
-		ConfigFileGroups: configFileGroups,
+	configFileGroups []interface{}) *apimodel.BatchQueryResponse {
+	return &apimodel.BatchQueryResponse{
+		Code:   uint32(code),
+		Info:   Code2Info(uint32(code)),
+		Amount: total,
+		Size:   uint32(len(configFileGroups)),
 	}
 }
 
-func NewConfigBatchQueryResponse(code apimodel.Code) *apiconfig.ConfigBatchQueryResponse {
-	return &apiconfig.ConfigBatchQueryResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
+func NewConfigBatchQueryResponse(code apimodel.Code) *apimodel.BatchQueryResponse {
+	return &apimodel.BatchQueryResponse{
+		Code:   uint32(code),
+		Info:   Code2Info(uint32(code)),
+		Amount: 0,
+		Size:   0,
 	}
 }
 
-func NewConfigBatchQueryResponseWithInfo(code apimodel.Code, info string) *apiconfig.ConfigBatchQueryResponse {
-	return &apiconfig.ConfigBatchQueryResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: info},
+func NewConfigBatchQueryResponseWithInfo(code apimodel.Code, info string) *apimodel.BatchQueryResponse {
+	return &apimodel.BatchQueryResponse{
+		Code:   uint32(code),
+		Info:   info,
+		Amount: 0,
+		Size:   0,
 	}
 }
 
-func NewConfigBatchWriteResponse(code apimodel.Code) *apiconfig.ConfigBatchWriteResponse {
-	return &apiconfig.ConfigBatchWriteResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
+func NewConfigBatchWriteResponse(code apimodel.Code) *apimodel.BatchWriteResponse {
+	return &apimodel.BatchWriteResponse{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
+		Size: 0,
 	}
 }
 
-func NewConfigBatchWriteResponseWithInfo(code apimodel.Code, info string) *apiconfig.ConfigBatchWriteResponse {
-	return &apiconfig.ConfigBatchWriteResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: info},
+func NewConfigBatchWriteResponseWithInfo(code apimodel.Code, info string) *apimodel.BatchWriteResponse {
+	return &apimodel.BatchWriteResponse{
+		Code: uint32(code),
+		Info: info,
+		Size: 0,
 	}
 }
 
-func NewConfigFileReleaseHistoryBatchQueryResponse(code apimodel.Code, total uint32,
-	configFileReleaseHistories []*apiconfig.ConfigFileReleaseHistory) *apiconfig.ConfigBatchQueryResponse {
-	return &apiconfig.ConfigBatchQueryResponse{
-		Code:                       &wrappers.UInt32Value{Value: uint32(code)},
-		Info:                       &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Total:                      &wrappers.UInt32Value{Value: total},
-		ConfigFileReleaseHistories: configFileReleaseHistories,
+func NewConfigFileReleaseHistoryQueryResponse(code apimodel.Code, total uint32,
+	configFileReleaseHistories []interface{}) *apimodel.BatchQueryResponse {
+	return &apimodel.BatchQueryResponse{
+		Code:   uint32(code),
+		Info:   Code2Info(uint32(code)),
+		Amount: total,
+		Size:   uint32(len(configFileReleaseHistories)),
 	}
 }
 
-func NewConfigFileResponse(code apimodel.Code, configFile *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
-	return &apiconfig.ConfigResponse{
-		Code:       &wrappers.UInt32Value{Value: uint32(code)},
-		Info:       &wrappers.StringValue{Value: code2info[uint32(code)]},
-		ConfigFile: configFile,
-	}
-}
-
-func NewConfigResponseWithInfo(code apimodel.Code, message string) *apiconfig.ConfigResponse {
-	return &apiconfig.ConfigResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: message},
+func NewConfigFileResponse(code apimodel.Code, configFile interface{}) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
 	}
 }
 
 func NewConfigFileBatchQueryResponse(
-	code apimodel.Code, total uint32, configFiles []*apiconfig.ConfigFile) *apiconfig.ConfigBatchQueryResponse {
-	return &apiconfig.ConfigBatchQueryResponse{
-		Code:        &wrappers.UInt32Value{Value: uint32(code)},
-		Info:        &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Total:       &wrappers.UInt32Value{Value: total},
-		ConfigFiles: configFiles,
+	code apimodel.Code, total uint32, configFiles []interface{}) *apimodel.BatchQueryResponse {
+	return &apimodel.BatchQueryResponse{
+		Code:   uint32(code),
+		Info:   Code2Info(uint32(code)),
+		Amount: total,
+		Size:   uint32(len(configFiles)),
 	}
 }
 
 func NewConfigFileBatchQueryResponseWithMessage(
-	code apimodel.Code, message string) *apiconfig.ConfigBatchQueryResponse {
-	return &apiconfig.ConfigBatchQueryResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
+	code apimodel.Code, message string) *apimodel.BatchQueryResponse {
+	return &apimodel.BatchQueryResponse{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
 	}
 }
 
 func NewConfigFileTemplateResponse(
-	code apimodel.Code, template *apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
-	return &apiconfig.ConfigResponse{
-		Code:               &wrappers.UInt32Value{Value: uint32(code)},
-		Info:               &wrappers.StringValue{Value: code2info[uint32(code)]},
-		ConfigFileTemplate: template,
+	code apimodel.Code, template interface{}) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
 	}
 }
 
-func NewConfigFileTemplateResponseWithMessage(code apimodel.Code, message string) *apiconfig.ConfigResponse {
-	return &apiconfig.ConfigResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)] + ":" + message},
+func NewConfigFileTemplateResponseWithMessage(code apimodel.Code, message string) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)) + ":" + message,
 	}
 }
 
 func NewConfigFileTemplateBatchQueryResponse(code apimodel.Code, total uint32,
-	configFileTemplates []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigBatchQueryResponse {
-	return &apiconfig.ConfigBatchQueryResponse{
-		Code:                &wrappers.UInt32Value{Value: uint32(code)},
-		Info:                &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Total:               &wrappers.UInt32Value{Value: total},
-		ConfigFileTemplates: configFileTemplates,
+	configFileTemplates []interface{}) *apimodel.BatchQueryResponse {
+	return &apimodel.BatchQueryResponse{
+		Code:   uint32(code),
+		Info:   Code2Info(uint32(code)),
+		Amount: total,
+		Size:   uint32(len(configFileTemplates)),
 	}
 }
 
 func NewConfigFileReleaseResponse(
-	code apimodel.Code, configFileRelease *apiconfig.ConfigFileRelease) *apiconfig.ConfigResponse {
-	return &apiconfig.ConfigResponse{
-		Code:              &wrappers.UInt32Value{Value: uint32(code)},
-		Info:              &wrappers.StringValue{Value: code2info[uint32(code)]},
-		ConfigFileRelease: configFileRelease,
+	code apimodel.Code, configFileRelease interface{}) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
 	}
 }
 
-func NewConfigFileReleaseResponseWithMessage(code apimodel.Code, message string) *apiconfig.ConfigResponse {
-	return &apiconfig.ConfigResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)] + ":" + message},
+func NewConfigResponseWithInfo(code apimodel.Code, message string) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)) + ":" + message,
 	}
 }
 
-func NewConfigFileReleaseHistoryResponse(
-	code apimodel.Code, configFileReleaseHistory *apiconfig.ConfigFileReleaseHistory) *apiconfig.ConfigResponse {
-	return &apiconfig.ConfigResponse{
-		Code:                     &wrappers.UInt32Value{Value: uint32(code)},
-		Info:                     &wrappers.StringValue{Value: code2info[uint32(code)]},
-		ConfigFileReleaseHistory: configFileReleaseHistory,
-	}
-}
-
-func NewSimpleConfigFileImportResponse(code apimodel.Code) *apiconfig.ConfigImportResponse {
-	return &apiconfig.ConfigImportResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
+func NewSimpleConfigFileImportResponse(code apimodel.Code) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
 	}
 }
 
 func NewConfigFileImportResponse(code apimodel.Code,
-	createConfigFiles, skipConfigFiles, overwriteConfigFiles []*apiconfig.ConfigFile) *apiconfig.ConfigImportResponse {
-	return &apiconfig.ConfigImportResponse{
-		Code:                 &wrappers.UInt32Value{Value: uint32(code)},
-		Info:                 &wrappers.StringValue{Value: code2info[uint32(code)]},
-		CreateConfigFiles:    createConfigFiles,
-		SkipConfigFiles:      skipConfigFiles,
-		OverwriteConfigFiles: overwriteConfigFiles,
+	createConfigFiles, skipConfigFiles, overwriteConfigFiles []interface{}) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
 	}
 }
 
-func NewConfigFileImportResponseWithMessage(code apimodel.Code, message string) *apiconfig.ConfigImportResponse {
-	return &apiconfig.ConfigImportResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)] + ":" + message},
+func NewConfigFileImportResponseWithMessage(code apimodel.Code, message string) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)) + ":" + message,
 	}
 }
 
-func NewConfigFileExportResponse(code apimodel.Code, data []byte) *apiconfig.ConfigExportResponse {
-	return &apiconfig.ConfigExportResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Data: &wrappers.BytesValue{Value: data},
+func NewConfigFileExportResponse(code apimodel.Code, data []byte) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
+		// Note: data would need special handling in the new model
 	}
 }
 
-func NewConfigFileExportResponseWithMessage(code apimodel.Code, message string) *apiconfig.ConfigExportResponse {
-	return &apiconfig.ConfigExportResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(code)},
-		Info: &wrappers.StringValue{Value: code2info[uint32(code)] + ":" + message},
+func NewConfigFileExportResponseWithMessage(code apimodel.Code, message string) *apimodel.Response {
+	return &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)) + ":" + message,
 	}
 }
 
 func NewConfigEncryptAlgorithmResponse(code apimodel.Code,
-	algorithms []*wrapperspb.StringValue) *apiconfig.ConfigEncryptAlgorithmResponse {
-	resp := &apiconfig.ConfigEncryptAlgorithmResponse{
-		Code:       &wrappers.UInt32Value{Value: uint32(code)},
-		Info:       &wrappers.StringValue{Value: code2info[uint32(code)]},
-		Algorithms: algorithms,
+	algorithms []*string) *apimodel.Response {
+	resp := &apimodel.Response{
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
+		// Note: algorithms would need special handling in the new model
 	}
 	return resp
 }

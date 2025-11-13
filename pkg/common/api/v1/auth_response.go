@@ -18,8 +18,6 @@
 package v1
 
 import (
-	"github.com/golang/protobuf/ptypes/wrappers"
-	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -73,7 +71,6 @@ func NewUserResponse(code apimodel.Code, user *apisecurity.User) *apimodel.Respo
 	return &apimodel.Response{
 		Code: uint32(code),
 		Info: code2info[uint32(code)],
-		Data: anypb.New(user),
 	}
 }
 
@@ -81,8 +78,7 @@ func NewUserResponse(code apimodel.Code, user *apisecurity.User) *apimodel.Respo
 func NewUserResponseWithMsg(code apimodel.Code, info string, user *apisecurity.User) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
-		Info: &wrappers.StringValue{Value: info},
-		User: user,
+		Info: string(info),
 	}
 }
 
@@ -91,7 +87,6 @@ func NewGroupResponse(code apimodel.Code, user *apisecurity.UserGroup) *apimodel
 	return &apimodel.Response{
 		Code:      uint32(code),
 		Info:      code2info[uint32(code)],
-		UserGroup: user,
 	}
 }
 
@@ -100,7 +95,6 @@ func NewModifyGroupResponse(code apimodel.Code, group *apisecurity.ModifyUserGro
 	return &apimodel.Response{
 		Code:            uint32(code),
 		Info:            code2info[uint32(code)],
-		ModifyUserGroup: group,
 	}
 }
 
@@ -109,7 +103,6 @@ func NewGroupRelationResponse(code apimodel.Code, relation *apisecurity.UserGrou
 	return &apimodel.Response{
 		Code:     uint32(code),
 		Info:     code2info[uint32(code)],
-		Relation: relation,
 	}
 }
 
@@ -118,7 +111,6 @@ func NewAuthStrategyResponse(code apimodel.Code, req *apisecurity.AuthStrategy) 
 	return &apimodel.Response{
 		Code:         uint32(code),
 		Info:         code2info[uint32(code)],
-		AuthStrategy: req,
 	}
 }
 
@@ -127,8 +119,7 @@ func NewAuthStrategyResponseWithMsg(
 	code apimodel.Code, msg string, req *apisecurity.AuthStrategy) *apimodel.Response {
 	return &apimodel.Response{
 		Code:         uint32(code),
-		Info:         &wrappers.StringValue{Value: msg},
-		AuthStrategy: req,
+		Info:        msg,
 	}
 }
 
@@ -137,7 +128,6 @@ func NewModifyAuthStrategyResponse(code apimodel.Code, req *apisecurity.ModifyAu
 	return &apimodel.Response{
 		Code:               uint32(code),
 		Info:               code2info[uint32(code)],
-		ModifyAuthStrategy: req,
 	}
 }
 

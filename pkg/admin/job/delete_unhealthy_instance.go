@@ -94,7 +94,7 @@ func (job *deleteUnHealthyInstanceJob) execute() {
 				len(instanceIds), instanceIds)
 		} else {
 			log.Errorf("[Maintain][Job][DeleteUnHealthyInstance] delete instance list: %v, err: %d %s",
-				instanceIds, resp.Code.GetValue(), resp.Info.GetValue())
+				instanceIds, resp.Code, resp.Info)
 			break
 		}
 		count += len(instanceIds)

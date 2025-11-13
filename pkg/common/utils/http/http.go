@@ -11,7 +11,6 @@ import (
 	restful "github.com/emicklei/go-restful/v3"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -156,7 +155,7 @@ func Unmarshal(j io.Reader, m proto.Message) error {
 }
 
 type commRsp interface {
-	GetCode() *wrappers.UInt32Value
+	GetCode() *uint32
 }
 
 // WriteHeaderAndProto 返回Code和Proto
@@ -167,7 +166,7 @@ func (h *Handler) WriteHeaderAndData(obj api.Rsp) {
 	if status != http.StatusOK {
 		accesslog.Error(h.Request.Request.RequestURI+" "+fmt.Sprintf("%d", status), utils.ZapRequestID(requestID))
 	}
-	if code := obj.GetCode().GetValue(); code != api.ExecuteSuccess {
+	if code := obj.GetCode(); code != api.ExecuteSuccess {
 		h.Response.AddHeader(utils.PolarisCode, fmt.Sprintf("%d", code))
 		h.Response.AddHeader(utils.PolarisMessage, api.Code2Info(code))
 	}
