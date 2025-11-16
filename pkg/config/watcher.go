@@ -29,8 +29,6 @@ import (
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
-	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 )
@@ -41,16 +39,17 @@ const (
 )
 
 var (
-	notModifiedResponse = &apiconfig.ConfigClientResponse{
-		Code:       protobuf.NewUInt32Value(uint32(apimodel.Code_DataNoChange)),
-		ConfigFile: nil,
+	notModifiedResponse = &apiconfig.ConfigDiscoverResponse{
+		Code: uint32(apimodel.Code_DataNoChange),
+		Info: apimodel.Code_DataNoChange.String(),
+		Type: apiconfig.ConfigDiscoverResponse_UNKNOWN,
 	}
 )
 
 type (
 	BetaReleaseMatcher func(clientLabels map[string]string, event *conftypes.SimpleConfigFileRelease) bool
 
-	FileReleaseCallback func(clientId string, rsp *apiconfig.ConfigClientResponse) bool
+	FileReleaseCallback func(clientId string, rsp *apiconfig.ConfigDiscoverResponse) bool
 
 	WatchContextFactory func(clientId string, matcher BetaReleaseMatcher) WatchContext
 
@@ -60,19 +59,19 @@ type (
 		// ClientLabels 客户端的标识，用于灰度发布要做标签的匹配判断
 		ClientLabels() map[string]string
 		// AppendInterest 客户端增加订阅列表
-		AppendInterest(item *apiconfig.ClientConfigFileInfo)
+		AppendInterest(item *apiconfig.ConfigFile)
 		// RemoveInterest 客户端删除订阅列表
-		RemoveInterest(item *apiconfig.ClientConfigFileInfo)
+		RemoveInterest(item *apiconfig.ConfigFile)
 		// ShouldNotify 判断是不是需要通知客户端某个配置变动了
 		ShouldNotify(event *conftypes.SimpleConfigFileRelease) bool
 		// Reply 真正的通知逻辑
-		Reply(rsp *apiconfig.ConfigClientResponse)
+		Reply(rsp *apiconfig.ConfigDiscoverResponse)
 		// Close .
 		Close() error
 		// ShouldExpire 是不是存在有效时间
 		ShouldExpire(now time.Time) bool
 		// ListWatchFiles 列举出当前订阅的所有配置文件
-		ListWatchFiles() []*apiconfig.ClientConfigFileInfo
+		ListWatchFiles() []*apiconfig.ConfigFile
 		// CurWatchVersion 获取当前订阅的配置文件的版本
 		CurWatchVersion(k string) uint64
 		// IsOnce 是不是只能被通知一次
@@ -86,8 +85,8 @@ type LongPollWatchContext struct {
 	labels           map[string]string
 	once             sync.Once
 	finishTime       time.Time
-	finishChan       chan *apiconfig.ConfigClientResponse
-	watchConfigFiles map[string]*apiconfig.ClientConfigFileInfo
+	finishChan       chan *apiconfig.ConfigDiscoverResponse
+	watchConfigFiles map[string]*apiconfig.ConfigFile
 	betaMatcher      BetaReleaseMatcher
 }
 
@@ -100,11 +99,11 @@ func (c *LongPollWatchContext) IsOnce() bool {
 	return true
 }
 
-func (c *LongPollWatchContext) GetNotifieResult() *apiconfig.ConfigClientResponse {
+func (c *LongPollWatchContext) GetNotifieResult() *apiconfig.ConfigDiscoverResponse {
 	return <-c.finishChan
 }
 
-func (c *LongPollWatchContext) GetNotifieResultWithTime(timeout time.Duration) (*apiconfig.ConfigClientResponse, error) {
+func (c *LongPollWatchContext) GetNotifieResultWithTime(timeout time.Duration) (*apiconfig.ConfigDiscoverResponse, error) {
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 	select {
@@ -137,14 +136,14 @@ func (c *LongPollWatchContext) ShouldNotify(event *conftypes.SimpleConfigFileRel
 	if !ok {
 		return false
 	}
-	return watchFile.GetVersion().GetValue() < event.Version
+	return watchFile.GetId() < event.Version
 }
 
-func (c *LongPollWatchContext) ListWatchFiles() []*apiconfig.ClientConfigFileInfo {
+func (c *LongPollWatchContext) ListWatchFiles() []*apiconfig.ConfigFile {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
-	ret := make([]*apiconfig.ClientConfigFileInfo, 0, len(c.watchConfigFiles))
+	ret := make([]*apiconfig.ConfigFile, 0, len(c.watchConfigFiles))
 	for _, v := range c.watchConfigFiles {
 		ret = append(ret, v)
 	}
@@ -155,24 +154,24 @@ func (c *LongPollWatchContext) CurWatchVersion(k string) uint64 {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
-	return c.watchConfigFiles[k].GetVersion().GetValue()
+	return c.watchConfigFiles[k].GetId()
 }
 
 // AppendInterest .
-func (c *LongPollWatchContext) AppendInterest(item *apiconfig.ClientConfigFileInfo) {
+func (c *LongPollWatchContext) AppendInterest(item *apiconfig.ConfigFile) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	key := conftypes.BuildKeyForClientConfigFileInfo(item)
+	key := GenFileId(item.GetNamespace(), item.GetGroup(), item.GetName())
 	c.watchConfigFiles[key] = item
 }
 
 // RemoveInterest .
-func (c *LongPollWatchContext) RemoveInterest(item *apiconfig.ClientConfigFileInfo) {
+func (c *LongPollWatchContext) RemoveInterest(item *apiconfig.ConfigFile) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	key := conftypes.BuildKeyForClientConfigFileInfo(item)
+	key := GenFileId(item.GetNamespace(), item.GetGroup(), item.GetName())
 	delete(c.watchConfigFiles, key)
 }
 
@@ -181,7 +180,7 @@ func (c *LongPollWatchContext) Close() error {
 	return nil
 }
 
-func (c *LongPollWatchContext) Reply(rsp *apiconfig.ConfigClientResponse) {
+func (c *LongPollWatchContext) Reply(rsp *apiconfig.ConfigDiscoverResponse) {
 	c.once.Do(func() {
 		c.finishChan <- rsp
 		close(c.finishChan)
@@ -239,23 +238,26 @@ func (wc *watchCenter) OnEvent(ctx context.Context, arg any) error {
 	return nil
 }
 
-func (wc *watchCenter) CheckQuickResponseClient(watchCtx WatchContext) *apiconfig.ConfigClientResponse {
-	buildRet := func(release *conftypes.ConfigFileRelease) *apiconfig.ConfigClientResponse {
-		ret := &apiconfig.ClientConfigFileInfo{
-			Namespace: protobuf.NewStringValue(release.Namespace),
-			Group:     protobuf.NewStringValue(release.Group),
-			FileName:  protobuf.NewStringValue(release.FileName),
-			Version:   protobuf.NewUInt64Value(release.Version),
-			Md5:       protobuf.NewStringValue(release.Md5),
-			Name:      protobuf.NewStringValue(release.Name),
+func (wc *watchCenter) CheckQuickResponseClient(watchCtx WatchContext) *apiconfig.ConfigDiscoverResponse {
+	buildRet := func(release *conftypes.ConfigFileRelease) *apiconfig.ConfigDiscoverResponse {
+		return &apiconfig.ConfigDiscoverResponse{
+			Code: uint32(apimodel.Code_ExecuteSuccess),
+			Info: apimodel.Code_ExecuteSuccess.String(),
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+			File: &apiconfig.ConfigFileRelease{
+				Namespace: release.Namespace,
+				Group:     release.Group,
+				Name:      release.FileName,
+				Version:   release.Version,
+				Md5:       release.Md5,
+			},
 		}
-		return api.NewConfigClientResponse(apimodel.Code_ExecuteSuccess, ret)
 	}
 
 	for _, configFile := range watchCtx.ListWatchFiles() {
-		namespace := configFile.GetNamespace().GetValue()
-		group := configFile.GetGroup().GetValue()
-		fileName := configFile.GetFileName().GetValue()
+		namespace := configFile.GetNamespace()
+		group := configFile.GetGroup()
+		fileName := configFile.GetName()
 		// 从缓存中获取灰度文件
 		if len(watchCtx.ClientLabels()) > 0 {
 			if release := wc.fileCache.GetActiveGrayRelease(namespace, group, fileName); release != nil {
@@ -285,13 +287,13 @@ func (wc *watchCenter) DelWatchContext(clientId string) (WatchContext, bool) {
 
 // AddWatcher 新增订阅者
 func (wc *watchCenter) AddWatcher(clientId string,
-	watchFiles []*apiconfig.ClientConfigFileInfo, factory WatchContextFactory) WatchContext {
+	watchFiles []*apiconfig.ConfigFile, factory WatchContextFactory) WatchContext {
 	watchCtx, _ := wc.clients.ComputeIfAbsent(clientId, func(k string) WatchContext {
 		return factory(clientId, wc.MatchBetaReleaseFile)
 	})
 
 	for _, file := range watchFiles {
-		fileKey := GenFileId(file.GetNamespace().GetValue(), file.GetGroup().GetValue(), file.GetFileName().GetValue())
+		fileKey := GenFileId(file.GetNamespace(), file.GetGroup(), file.GetName())
 
 		watchCtx.AppendInterest(file)
 		clientIds, _ := wc.watchers.ComputeIfAbsent(fileKey, func(k string) *container.SyncSet[string] {
@@ -310,7 +312,7 @@ func (wc *watchCenter) RemoveAllWatcher(clientId string) {
 	}
 	_ = oldVal.Close()
 	for _, file := range oldVal.ListWatchFiles() {
-		watchFileId := GenFileId(file.Namespace.GetValue(), file.Group.GetValue(), file.FileName.GetValue())
+		watchFileId := GenFileId(file.GetNamespace(), file.GetGroup(), file.GetName())
 		watchers, ok := wc.watchers.Load(watchFileId)
 		if !ok {
 			continue
@@ -321,7 +323,7 @@ func (wc *watchCenter) RemoveAllWatcher(clientId string) {
 }
 
 // RemoveWatcher 删除订阅者
-func (wc *watchCenter) RemoveWatcher(clientId string, watchConfigFiles []*apiconfig.ClientConfigFileInfo) {
+func (wc *watchCenter) RemoveWatcher(clientId string, watchConfigFiles []*apiconfig.ConfigFile) {
 	oldVal, exist := wc.clients.Delete(clientId)
 	if exist {
 		_ = oldVal.Close()
@@ -331,7 +333,7 @@ func (wc *watchCenter) RemoveWatcher(clientId string, watchConfigFiles []*apicon
 	}
 
 	for _, file := range watchConfigFiles {
-		watchFileId := GenFileId(file.Namespace.GetValue(), file.Group.GetValue(), file.FileName.GetValue())
+		watchFileId := GenFileId(file.GetNamespace(), file.GetGroup(), file.GetName())
 		watchers, ok := wc.watchers.Load(watchFileId)
 		if !ok {
 			continue
@@ -346,8 +348,20 @@ func (wc *watchCenter) notifyToWatchers(publishConfigFile *conftypes.SimpleConfi
 	if !ok {
 		return
 	}
-	changeNotifyRequest := publishConfigFile.ToSpecNotifyClientRequest()
-	response := api.NewConfigClientResponse(apimodel.Code_ExecuteSuccess, changeNotifyRequest)
+
+	// 构建ConfigDiscoverResponse
+	response := &apiconfig.ConfigDiscoverResponse{
+		Code: uint32(apimodel.Code_ExecuteSuccess),
+		Info: apimodel.Code_ExecuteSuccess.String(),
+		Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+		File: &apiconfig.ConfigFileRelease{
+			Namespace: publishConfigFile.Namespace,
+			Group:     publishConfigFile.Group,
+			Name:      publishConfigFile.FileName,
+			Version:   publishConfigFile.Version,
+			Md5:       publishConfigFile.Md5,
+		},
+	}
 
 	notifyCnt := 0
 	clientIds.Range(func(clientId string) {

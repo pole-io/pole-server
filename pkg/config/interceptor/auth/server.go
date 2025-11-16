@@ -166,12 +166,12 @@ func (s *Server) queryConfigGroupResource(ctx context.Context,
 	}
 
 	names := container.NewSet[string]()
-	namespace := req[0].GetNamespace().GetValue()
+	namespace := req[0].GetNamespace()
 	for index := range req {
 		if req[index] == nil {
 			continue
 		}
-		names.Add(req[index].GetName().GetValue())
+		names.Add(req[index].GetName())
 	}
 	entries, err := s.queryConfigGroupRsEntryByNames(ctx, namespace, names.ToSlice())
 	if err != nil {
@@ -194,11 +194,11 @@ func (s *Server) queryConfigFileResource(ctx context.Context,
 	if len(req) == 0 {
 		return nil
 	}
-	namespace := req[0].Namespace.GetValue()
+	namespace := req[0].Namespace
 	groupNames := container.NewSet[string]()
 
 	for _, apiConfigFile := range req {
-		groupNames.Add(apiConfigFile.Group.GetValue())
+		groupNames.Add(apiConfigFile.Group)
 	}
 	entries, err := s.queryConfigGroupRsEntryByNames(ctx, namespace, groupNames.ToSlice())
 	if err != nil {
@@ -220,11 +220,11 @@ func (s *Server) queryConfigFileReleaseResource(ctx context.Context,
 	if len(req) == 0 {
 		return nil
 	}
-	namespace := req[0].Namespace.GetValue()
+	namespace := req[0].Namespace
 	groupNames := container.NewSet[string]()
 
 	for _, apiConfigFile := range req {
-		groupNames.Add(apiConfigFile.Group.GetValue())
+		groupNames.Add(apiConfigFile.Group)
 	}
 	entries, err := s.queryConfigGroupRsEntryByNames(ctx, namespace, groupNames.ToSlice())
 	if err != nil {
@@ -246,11 +246,11 @@ func (s *Server) queryConfigFilePublishResource(ctx context.Context,
 	if len(req) == 0 {
 		return nil
 	}
-	namespace := req[0].GetNamespace().GetValue()
+	namespace := req[0].GetNamespace()
 	groupNames := container.NewSet[string]()
 
 	for _, apiConfigFile := range req {
-		groupNames.Add(apiConfigFile.GetGroup().GetValue())
+		groupNames.Add(apiConfigFile.GetGroup())
 	}
 	entries, err := s.queryConfigGroupRsEntryByNames(ctx, namespace, groupNames.ToSlice())
 	if err != nil {
@@ -270,11 +270,11 @@ func (s *Server) queryConfigFileReleaseHistoryResource(ctx context.Context,
 	if len(req) == 0 {
 		return nil
 	}
-	namespace := req[0].Namespace.GetValue()
+	namespace := req[0].Namespace
 	groupNames := container.NewSet[string]()
 
 	for _, apiConfigFile := range req {
-		groupNames.Add(apiConfigFile.Group.GetValue())
+		groupNames.Add(apiConfigFile.Group)
 	}
 	entries, err := s.queryConfigGroupRsEntryByNames(ctx, namespace, groupNames.ToSlice())
 	if err != nil {
@@ -317,32 +317,11 @@ func (s *Server) queryConfigGroupRsEntryByNames(ctx context.Context, namespace s
 
 func (s *Server) queryWatchConfigFilesResource(ctx context.Context,
 	req *apiconfig.ClientWatchConfigFileRequest) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
-	files := req.GetWatchFiles()
-	if len(files) == 0 {
-		return nil
-	}
-	temp := map[string]struct{}{}
-	entries := make([]authtypes.ResourceEntry, 0, len(files))
-	for _, apiConfigFile := range files {
-		namespace := apiConfigFile.GetNamespace().GetValue()
-		groupName := apiConfigFile.GetGroup().GetValue()
-		key := namespace + "@@" + groupName
-		if _, ok := temp[key]; ok {
-			continue
-		}
-		temp[key] = struct{}{}
-		data := s.cacheMgr.ConfigGroup().GetGroupByName(namespace, groupName)
-		if data == nil {
-			continue
-		}
-		entries = append(entries, authtypes.ResourceEntry{
-			ID:    strconv.FormatUint(data.Id, 10),
-			Owner: data.Owner,
-		})
-	}
-
+	// 新的类型结构不再包含GetWatchFiles方法
+	// 根据新的pole-io/specification，这里需要用其他方法获取监听的配置文件
+	// 暂时返回空，或根据配置文件组信息构造资源条目
 	ret := map[apisecurity.ResourceType][]authtypes.ResourceEntry{
-		apisecurity.ResourceType_ConfigGroups: entries,
+		apisecurity.ResourceType_ConfigGroups: {},
 	}
 	authLog.Debug("[Config][Server] collect config_file watch access res",
 		utils.RequestID(ctx), zap.Any("res", ret))

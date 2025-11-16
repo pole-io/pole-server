@@ -21,6 +21,7 @@ import (
 	"context"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/auth"
@@ -30,7 +31,7 @@ import (
 
 // UpsertAndReleaseConfigFileFromClient 创建/更新配置文件并发布
 func (s *Server) UpsertAndReleaseConfigFileFromClient(ctx context.Context,
-	req *apiconfig.ConfigFilePublishInfo) *apiconfig.ConfigResponse {
+	req *apiconfig.ConfigFilePublishInfo) *apimodel.Response {
 	authCtx := s.collectConfigFilePublishAuthContext(ctx, []*apiconfig.ConfigFilePublishInfo{req},
 		auth.Modify, auth.PublishConfigFile)
 	if _, err := s.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
@@ -45,7 +46,7 @@ func (s *Server) UpsertAndReleaseConfigFileFromClient(ctx context.Context,
 
 // CreateConfigFileFromClient 调用config_file的方法创建配置文件
 func (s *Server) CreateConfigFileFromClient(ctx context.Context,
-	fileInfo *apiconfig.ConfigFile) *apiconfig.ConfigClientResponse {
+	fileInfo *apiconfig.ConfigFile) *apiconfig.ConfigDiscoverResponse {
 	authCtx := s.collectClientConfigFileAuthContext(ctx,
 		[]*apiconfig.ConfigFile{{
 			Namespace: fileInfo.Namespace,
@@ -53,7 +54,7 @@ func (s *Server) CreateConfigFileFromClient(ctx context.Context,
 			Group:     fileInfo.Group},
 		}, auth.Create, auth.CreateConfigFile)
 	if _, err := s.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
-		return api.NewConfigClientResponse(auth.ConvertToErrCode(err), nil)
+		return api.NewConfigDiscoverResponse(auth.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
@@ -64,11 +65,11 @@ func (s *Server) CreateConfigFileFromClient(ctx context.Context,
 
 // UpdateConfigFileFromClient 调用config_file的方法更新配置文件
 func (s *Server) UpdateConfigFileFromClient(ctx context.Context,
-	fileInfo *apiconfig.ConfigFile) *apiconfig.ConfigClientResponse {
+	fileInfo *apiconfig.ConfigFile) *apiconfig.ConfigDiscoverResponse {
 	authCtx := s.collectClientConfigFileAuthContext(ctx,
 		[]*apiconfig.ConfigFile{fileInfo}, auth.Modify, auth.UpdateConfigFile)
 	if _, err := s.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
-		return api.NewConfigClientResponse(auth.ConvertToErrCode(err), nil)
+		return api.NewConfigDiscoverResponse(auth.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
@@ -79,7 +80,7 @@ func (s *Server) UpdateConfigFileFromClient(ctx context.Context,
 
 // DeleteConfigFileFromClient 删除配置文件，删除配置文件同时会通知客户端 Not_Found
 func (s *Server) DeleteConfigFileFromClient(ctx context.Context,
-	req *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
+	req *apiconfig.ConfigFile) *apimodel.Response {
 
 	authCtx := s.collectConfigFileAuthContext(ctx,
 		[]*apiconfig.ConfigFile{req}, auth.Delete, auth.DeleteConfigFile)
@@ -95,7 +96,7 @@ func (s *Server) DeleteConfigFileFromClient(ctx context.Context,
 
 // PublishConfigFileFromClient 调用config_file_release的方法发布配置文件
 func (s *Server) PublishConfigFileFromClient(ctx context.Context,
-	fileInfo *apiconfig.ConfigFileRelease) *apiconfig.ConfigClientResponse {
+	fileInfo *apiconfig.ConfigFileRelease) *apiconfig.ConfigDiscoverResponse {
 	authCtx := s.collectClientConfigFileRelease(ctx,
 		[]*apiconfig.ConfigFileRelease{{
 			Namespace: fileInfo.Namespace,
@@ -103,7 +104,7 @@ func (s *Server) PublishConfigFileFromClient(ctx context.Context,
 			Group:     fileInfo.Group},
 		}, auth.Create, auth.PublishConfigFile)
 	if _, err := s.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
-		return api.NewConfigClientResponse(auth.ConvertToErrCode(err), nil)
+		return api.NewConfigDiscoverResponse(auth.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
@@ -114,15 +115,15 @@ func (s *Server) PublishConfigFileFromClient(ctx context.Context,
 
 // GetConfigFileWithCache 从缓存中获取配置文件，如果客户端的版本号大于服务端，则服务端重新加载缓存
 func (s *Server) GetConfigFileWithCache(ctx context.Context,
-	fileInfo *apiconfig.ClientConfigFileInfo) *apiconfig.ConfigClientResponse {
+	fileInfo *apiconfig.ConfigFile) *apiconfig.ConfigDiscoverResponse {
 	authCtx := s.collectClientConfigFileAuthContext(ctx,
 		[]*apiconfig.ConfigFile{{
 			Namespace: fileInfo.Namespace,
-			Name:      fileInfo.FileName,
+			Name:      fileInfo.Name,
 			Group:     fileInfo.Group},
 		}, auth.Read, auth.DiscoverConfigFile)
 	if _, err := s.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
-		return api.NewConfigClientResponse(auth.ConvertToErrCode(err), nil)
+		return api.NewConfigDiscoverResponse(auth.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
@@ -130,13 +131,18 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context,
 	return s.nextServer.GetConfigFileWithCache(ctx, fileInfo)
 }
 
-// WatchConfigFiles 监听配置文件变化
+// LongPullWatchFile 监听配置文件变化
 func (s *Server) LongPullWatchFile(ctx context.Context,
-	request *apiconfig.ClientWatchConfigFileRequest) (config.WatchCallback, error) {
-	authCtx := s.collectClientWatchConfigFiles(ctx, request, auth.Read, auth.WatchConfigFile)
+	request *apiconfig.ConfigFileGroupRequest) (config.WatchCallback, error) {
+	authCtx := s.collectClientConfigFileRelease(ctx, []*apiconfig.ConfigFileRelease{
+		{
+			Namespace: request.GetConfigFileGroup().GetNamespace(),
+			Group:     request.GetConfigFileGroup().GetName(),
+		},
+	}, auth.Read, auth.WatchConfigFile)
 	if _, err := s.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
-		return func() *apiconfig.ConfigClientResponse {
-			return api.NewConfigClientResponse(auth.ConvertToErrCode(err), nil)
+		return func() *apiconfig.ConfigDiscoverResponse {
+			return api.NewConfigDiscoverResponse(auth.ConvertToErrCode(err))
 		}, nil
 	}
 
@@ -148,7 +154,7 @@ func (s *Server) LongPullWatchFile(ctx context.Context,
 
 // GetConfigFileNamesWithCache 获取某个配置分组下的配置文件
 func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
-	req *apiconfig.ConfigFileGroupRequest) *apiconfig.ConfigClientListResponse {
+	req *apiconfig.ConfigFileGroupRequest) *apiconfig.ConfigDiscoverResponse {
 
 	authCtx := s.collectClientConfigFileRelease(ctx, []*apiconfig.ConfigFileRelease{
 		{
@@ -157,7 +163,7 @@ func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
 		},
 	}, auth.Read, auth.DiscoverConfigFileNames)
 	if _, err := s.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
-		out := api.NewConfigClientListResponse(auth.ConvertToErrCode(err))
+		out := api.NewConfigDiscoverResponse(auth.ConvertToErrCode(err))
 		return out
 	}
 
@@ -168,7 +174,7 @@ func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
 
 // GetConfigGroupsWithCache 获取某个命名空间下的配置分组列表
 func (s *Server) GetConfigGroupsWithCache(ctx context.Context,
-	req *apiconfig.ClientConfigFileInfo) *apiconfig.ConfigDiscoverResponse {
+	req *apiconfig.ConfigFile) *apiconfig.ConfigDiscoverResponse {
 
 	authCtx := s.collectClientConfigFileRelease(ctx, []*apiconfig.ConfigFileRelease{
 		{

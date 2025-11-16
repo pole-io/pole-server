@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
-
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
@@ -71,12 +69,8 @@ func (s *Server) checkNamespaceExisted(namespaceName string) bool {
 }
 
 // CheckFileName 校验文件名
-func CheckFileName(name *wrappers.StringValue) error {
-	if name == nil {
-		return errors.New(valid.NilErrString)
-	}
-
-	if name.GetValue() == "" {
+func CheckFileName(name string) error {
+	if name == "" {
 		return errors.New(valid.EmptyErrString)
 	}
 	return nil
@@ -91,36 +85,36 @@ func CheckContentLength(content string, max int) error {
 	return nil
 }
 
-func checkReadFileParameter(req *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
-	if req.GetNamespace().GetValue() == "" {
-		return api.NewConfigResponse(apimodel.Code_InvalidNamespaceName)
+func checkReadFileParameter(req *apiconfig.ConfigFile) *apimodel.Response {
+	if req.GetNamespace() == "" {
+		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
 	}
-	if req.GetGroup().GetValue() == "" {
-		return api.NewConfigResponse(apimodel.Code_InvalidConfigFileGroupName)
+	if req.GetGroup() == "" {
+		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
 	}
-	if req.GetName().GetValue() == "" {
-		return api.NewConfigResponse(apimodel.Code_InvalidConfigFileName)
+	if req.GetName() == "" {
+		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
 	}
 	return nil
 }
 
-func (s *Server) checkConfigFileParams(configFile *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
+func (s *Server) checkConfigFileParams(configFile *apiconfig.ConfigFile) *apimodel.Response {
 	if configFile == nil {
 		return api.NewConfigFileResponse(apimodel.Code_InvalidParameter, configFile)
 	}
 	if err := CheckFileName(configFile.Name); err != nil {
-		return api.NewConfigFileResponse(apimodel.Code_InvalidConfigFileName, configFile)
+		return api.NewConfigFileResponse(apimodel.Code_InvalidParameter, configFile)
 	}
 	if err := valid.CheckResourceName(configFile.Namespace); err != nil {
-		return api.NewConfigFileResponse(apimodel.Code_InvalidNamespaceName, configFile)
+		return api.NewConfigFileResponse(apimodel.Code_InvalidParameter, configFile)
 	}
-	if err := CheckContentLength(configFile.Content.GetValue(), int(s.cfg.ContentMaxLength)); err != nil {
-		return api.NewConfigResponseWithInfo(apimodel.Code_InvalidConfigFileContentLength, err.Error())
+	if err := CheckContentLength(configFile.Content, int(s.cfg.ContentMaxLength)); err != nil {
+		return api.NewConfigResponseWithInfo(apimodel.Code_InvalidParameter, err.Error())
 	}
 	if len(configFile.Tags) > 0 {
 		for _, tag := range configFile.Tags {
-			if tag.Key.GetValue() == "" {
-				return api.NewConfigFileResponse(apimodel.Code_InvalidConfigFileTags, configFile)
+			if tag == "" {
+				return api.NewConfigFileResponse(apimodel.Code_InvalidParameter, configFile)
 			}
 		}
 	}

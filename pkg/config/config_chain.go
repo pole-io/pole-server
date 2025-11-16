@@ -24,7 +24,6 @@ import (
 
 	"go.uber.org/zap"
 
-	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -40,11 +39,11 @@ type ConfigFileChain interface {
 	// Name
 	Name() string
 	// BeforeCreateFile
-	BeforeCreateFile(context.Context, *conftypes.ConfigFile) *apiconfig.ConfigResponse
+	BeforeCreateFile(context.Context, *conftypes.ConfigFile) *apimodel.Response
 	// AfterGetFile
 	AfterGetFile(context.Context, *conftypes.ConfigFile) (*conftypes.ConfigFile, error)
 	// BeforeUpdateFile
-	BeforeUpdateFile(context.Context, *conftypes.ConfigFile) *apiconfig.ConfigResponse
+	BeforeUpdateFile(context.Context, *conftypes.ConfigFile) *apimodel.Response
 	// AfterGetFileRelease
 	AfterGetFileRelease(context.Context, *conftypes.ConfigFileRelease) (*conftypes.ConfigFileRelease, error)
 	// AfterGetFileHistory
@@ -65,7 +64,7 @@ func (chain *CryptoConfigFileChain) Name() string {
 
 // BeforeCreateFile
 func (chain *CryptoConfigFileChain) BeforeCreateFile(ctx context.Context,
-	file *conftypes.ConfigFile) *apiconfig.ConfigResponse {
+	file *conftypes.ConfigFile) *apimodel.Response {
 	// 配置加密
 	if !file.IsEncrypted() {
 		return nil
@@ -107,7 +106,7 @@ func (chain *CryptoConfigFileChain) AfterGetFile(ctx context.Context,
 
 // BeforeUpdateFile
 func (chain *CryptoConfigFileChain) BeforeUpdateFile(ctx context.Context,
-	file *conftypes.ConfigFile) *apiconfig.ConfigResponse {
+	file *conftypes.ConfigFile) *apimodel.Response {
 
 	// 配置加密
 	encryAlgo := file.GetEncryptAlgo()
@@ -265,7 +264,7 @@ func (chain *ReleaseConfigFileChain) Name() string {
 
 // BeforeCreateFile
 func (chain *ReleaseConfigFileChain) BeforeCreateFile(ctx context.Context,
-	file *conftypes.ConfigFile) *apiconfig.ConfigResponse {
+	file *conftypes.ConfigFile) *apimodel.Response {
 	return nil
 }
 
@@ -303,7 +302,7 @@ func (chain *ReleaseConfigFileChain) AfterGetFile(ctx context.Context,
 
 // BeforeUpdateFile
 func (chain *ReleaseConfigFileChain) BeforeUpdateFile(ctx context.Context,
-	file *conftypes.ConfigFile) *apiconfig.ConfigResponse {
+	file *conftypes.ConfigFile) *apimodel.Response {
 	return nil
 }
 

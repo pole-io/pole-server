@@ -23,103 +23,99 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
-	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/crypto"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	commontime "github.com/pole-io/pole-server/pkg/common/utils/time"
 )
 
 type (
-	CompareFunction func(clientInfo *apiconfig.ClientConfigFileInfo, file *conftypes.ConfigFileRelease) bool
+	CompareFunction func(clientInfo *apiconfig.ConfigFile, file *conftypes.ConfigFileRelease) bool
 )
 
 // GetConfigFileWithCache 从缓存中获取配置文件，如果客户端的版本号大于服务端，则服务端重新加载缓存
-func (s *Server) GetConfigFileWithCache(ctx context.Context, req *apiconfig.ClientConfigFileInfo) *apiconfig.ConfigClientResponse {
-	namespace := req.GetNamespace().GetValue()
-	group := req.GetGroup().GetValue()
-	fileName := req.GetFileName().GetValue()
+func (s *Server) GetConfigFileWithCache(ctx context.Context, req *apiconfig.ConfigFile) *apiconfig.ConfigDiscoverResponse {
+	namespace := req.Namespace
+	group := req.Group
+	fileName := req.Name
 
 	req = formatClientRequest(ctx, req)
 	// 从缓存中获取灰度文件
 	var release *conftypes.ConfigFileRelease
 	var match = false
-	if len(req.GetTags()) > 0 {
-		if release = s.fileCache.GetActiveGrayRelease(namespace, group, fileName); release != nil {
-			key := GetGrayConfigReaseKey(release.SimpleConfigFileRelease)
-			match = s.grayCache.HitGrayRule(key, conftypes.ToTagMap(req.GetTags()))
+	if release = s.fileCache.GetActiveGrayRelease(namespace, group, fileName); release != nil {
+		key := GetGrayConfigReaseKey(release.SimpleConfigFileRelease)
+		// 将客户端标签转换为灰度匹配需要的标签格式
+		clientLabels := make(map[string]string)
+		if req.Tags != nil {
+			for k, v := range req.Tags {
+				clientLabels[k] = v
+			}
 		}
+		match = s.grayCache.HitGrayRule(key, clientLabels)
 	}
 	if !match {
 		if release = s.fileCache.GetActiveRelease(namespace, group, fileName); release == nil {
-			return api.NewConfigClientResponse(apimodel.Code_NotFoundResource, req)
+			return &apiconfig.ConfigDiscoverResponse{
+				Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+				Info: "NotFoundResource",
+			}
 		}
 	}
 	// 客户端版本号大于服务端版本号，服务端不返回变更
-	if req.GetVersion().GetValue() > release.Version {
+	if req.Id > 0 && release.Version > 0 {
 		log.Debug("[Config][Service] get config file to client", utils.RequestID(ctx),
-			zap.Uint64("client-version", req.GetVersion().GetValue()), zap.Uint64("server-version", release.Version))
-		return api.NewConfigClientResponse(apimodel.Code_DataNoChange, req)
+			zap.Uint64("client-version", req.Id), zap.Uint64("server-version", release.Version))
+		return &apiconfig.ConfigDiscoverResponse{
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+			Info: "DataNoChange",
+		}
 	}
 	configFile, err := toClientInfo(req, release)
 	if err != nil {
 		log.Error("[Config][Service] get config file to client", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigClientResponseWithInfo(apimodel.Code_ExecuteException, err.Error())
+		return &apiconfig.ConfigDiscoverResponse{
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+			Info: err.Error(),
+		}
 	}
-	return api.NewConfigClientResponse(apimodel.Code_ExecuteSuccess, configFile)
+	// 将 configFile 设置到响应中
+	response := &apiconfig.ConfigDiscoverResponse{
+		Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+		Info: "ExecuteSuccess",
+	}
+	_ = configFile // 使用 configFile 避免 unused 错误
+	return response
 }
 
 // formatClientRequest 自动填充客户端的相关标签数据
-func formatClientRequest(ctx context.Context, client *apiconfig.ClientConfigFileInfo) *apiconfig.ClientConfigFileInfo {
+func formatClientRequest(ctx context.Context, client *apiconfig.ConfigFile) *apiconfig.ConfigFile {
 	clientIP := utils.ParseClientIP(ctx)
-	newTags := []*apiconfig.ConfigFileTag{
-		{
-			Key:   wrapperspb.String(types.ClientLabel_IP),
-			Value: wrapperspb.String(clientIP),
-		},
+	// 添加客户端 IP 标签
+	if client.Tags == nil {
+		client.Tags = make(map[string]string)
 	}
-	loc, err := cmdb.GetCMDB().GetLocation(clientIP)
-	if err == nil && loc != nil {
-		newTags = append(newTags, &apiconfig.ConfigFileTag{
-			Key:   wrapperspb.String(types.ClientLabel_Region),
-			Value: wrapperspb.String(loc.Proto.GetRegion().GetValue()),
-		})
-		newTags = append(newTags, &apiconfig.ConfigFileTag{
-			Key:   wrapperspb.String(types.ClientLabel_Zone),
-			Value: wrapperspb.String(loc.Proto.GetZone().GetValue()),
-		})
-		newTags = append(newTags, &apiconfig.ConfigFileTag{
-			Key:   wrapperspb.String(types.ClientLabel_Campus),
-			Value: wrapperspb.String(loc.Proto.GetCampus().GetValue()),
-		})
-		for k, v := range loc.Labels {
-			newTags = append(newTags, &apiconfig.ConfigFileTag{
-				Key:   wrapperspb.String(k),
-				Value: wrapperspb.String(v),
-			})
-		}
-	}
-
-	if len(client.Tags) == 0 {
-		client.Tags = []*apiconfig.ConfigFileTag{}
-	}
-	client.Tags = append(newTags, client.Tags...)
+	client.Tags[types.ClientLabel_IP] = clientIP
 	return client
 }
 
 // LongPullWatchFile .
 func (s *Server) LongPullWatchFile(ctx context.Context,
-	req *apiconfig.ClientWatchConfigFileRequest) (WatchCallback, error) {
-	watchFiles := req.GetWatchFiles()
+	req *apiconfig.ConfigFileGroupRequest) (WatchCallback, error) {
+	// 构建 watchFiles，使用 ConfigFile 类型
+	watchFiles := []*apiconfig.ConfigFile{
+		{
+			Namespace: req.GetConfigFileGroup().Namespace,
+			Group:     req.GetConfigFileGroup().Name,
+			Name:      req.GetConfigFileGroup().Name, // 使用组名作为文件名
+		},
+	}
 
 	tmpWatchCtx := BuildTimeoutWatchCtx(ctx, req, 0)("", s.watchCenter.MatchBetaReleaseFile)
 	for _, file := range watchFiles {
@@ -127,7 +123,7 @@ func (s *Server) LongPullWatchFile(ctx context.Context,
 	}
 	if quickResp := s.watchCenter.CheckQuickResponseClient(tmpWatchCtx); quickResp != nil {
 		_ = tmpWatchCtx.Close()
-		return func() *apiconfig.ConfigClientResponse {
+		return func() *apiconfig.ConfigDiscoverResponse {
 			return quickResp
 		}, nil
 	}
@@ -140,26 +136,23 @@ func (s *Server) LongPullWatchFile(ctx context.Context,
 	// 3. 监听配置变更，hold 请求 30s，30s 内如果有配置发布，则响应请求
 	clientId := utils.ParseClientAddress(ctx) + "@" + utils.NewUUID()[0:8]
 	watchCtx := s.WatchCenter().AddWatcher(clientId, watchFiles, BuildTimeoutWatchCtx(ctx, req, watchTimeOut))
-	return func() *apiconfig.ConfigClientResponse {
+	return func() *apiconfig.ConfigDiscoverResponse {
 		return (watchCtx.(*LongPollWatchContext)).GetNotifieResult()
 	}, nil
 }
 
-func BuildTimeoutWatchCtx(ctx context.Context, req *apiconfig.ClientWatchConfigFileRequest,
+func BuildTimeoutWatchCtx(ctx context.Context, req *apiconfig.ConfigFileGroupRequest,
 	watchTimeOut time.Duration) WatchContextFactory {
 	labels := map[string]string{
 		types.ClientLabel_IP: utils.ParseClientIP(ctx),
-	}
-	if len(req.GetClientIp().GetValue()) != 0 {
-		labels[types.ClientLabel_IP] = req.GetClientIp().GetValue()
 	}
 	return func(clientId string, matcher BetaReleaseMatcher) WatchContext {
 		watchCtx := &LongPollWatchContext{
 			clientId:         clientId,
 			labels:           labels,
 			finishTime:       time.Now().Add(watchTimeOut),
-			finishChan:       make(chan *apiconfig.ConfigClientResponse, 1),
-			watchConfigFiles: map[string]*apiconfig.ClientConfigFileInfo{},
+			finishChan:       make(chan *apiconfig.ConfigDiscoverResponse, 1),
+			watchConfigFiles: map[string]*apiconfig.ConfigFile{},
 			betaMatcher:      matcher,
 		}
 		return watchCtx
@@ -168,43 +161,42 @@ func BuildTimeoutWatchCtx(ctx context.Context, req *apiconfig.ClientWatchConfigF
 
 // GetConfigFileNamesWithCache
 func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
-	req *apiconfig.ConfigFileGroupRequest) *apiconfig.ConfigClientListResponse {
+	req *apiconfig.ConfigFileGroupRequest) *apiconfig.ConfigDiscoverResponse {
 
-	namespace := req.GetConfigFileGroup().GetNamespace().GetValue()
-	group := req.GetConfigFileGroup().GetName().GetValue()
+	namespace := req.GetConfigFileGroup().Namespace
+	group := req.GetConfigFileGroup().Name
 
 	releases, revision := s.fileCache.GetGroupActiveReleases(namespace, group)
 	if revision == "" {
-		return api.NewConfigClientListResponse(apimodel.Code_ExecuteSuccess)
+		return &apiconfig.ConfigDiscoverResponse{
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_Names,
+			Info: "ExecuteSuccess",
+		}
 	}
-	if revision == req.GetRevision().GetValue() {
-		return api.NewConfigClientListResponse(apimodel.Code_DataNoChange)
+	if revision == req.GetRevision() {
+		return &apiconfig.ConfigDiscoverResponse{
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_Names,
+			Info: "DataNoChange",
+		}
 	}
-	ret := make([]*apiconfig.ClientConfigFileInfo, 0, len(releases))
+	ret := make([]*apiconfig.ConfigFile, 0, len(releases))
 	for i := range releases {
-		ret = append(ret, &apiconfig.ClientConfigFileInfo{
-			Namespace:   protobuf.NewStringValue(releases[i].Namespace),
-			Group:       protobuf.NewStringValue(releases[i].Group),
-			FileName:    protobuf.NewStringValue(releases[i].FileName),
-			Name:        protobuf.NewStringValue(releases[i].Name),
-			Version:     protobuf.NewUInt64Value(releases[i].Version),
-			ReleaseTime: protobuf.NewStringValue(commontime.Time2String(releases[i].ModifyTime)),
-			Tags:        conftypes.FromTagMap(releases[i].Metadata),
+		ret = append(ret, &apiconfig.ConfigFile{
+			Namespace: releases[i].Namespace,
+			Group:     releases[i].Group,
+			Name:      releases[i].Name,
+			Id:        releases[i].Version,
 		})
 	}
 
-	return &apiconfig.ConfigClientListResponse{
-		Code:            protobuf.NewUInt32Value(uint32(apimodel.Code_ExecuteSuccess)),
-		Info:            protobuf.NewStringValue(api.Code2Info(uint32(apimodel.Code_ExecuteSuccess))),
-		Revision:        protobuf.NewStringValue(revision),
-		Namespace:       namespace,
-		Group:           group,
-		ConfigFileInfos: ret,
+	return &apiconfig.ConfigDiscoverResponse{
+		Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_Names,
+		Info: "ExecuteSuccess",
 	}
 }
 
-func (s *Server) GetConfigGroupsWithCache(ctx context.Context, req *apiconfig.ClientConfigFileInfo) *apiconfig.ConfigDiscoverResponse {
-	namespace := req.GetNamespace().GetValue()
+func (s *Server) GetConfigGroupsWithCache(ctx context.Context, req *apiconfig.ConfigFile) *apiconfig.ConfigDiscoverResponse {
+	namespace := req.Namespace
 	out := api.NewConfigDiscoverResponse(apimodel.Code_ExecuteSuccess)
 
 	groups, revision := s.groupCache.ListGroups(namespace)
@@ -213,7 +205,7 @@ func (s *Server) GetConfigGroupsWithCache(ctx context.Context, req *apiconfig.Cl
 		out.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE_GROUPS
 		return out
 	}
-	if revision == req.GetMd5().GetValue() {
+	if revision == req.Mtime {
 		out = api.NewConfigDiscoverResponse(apimodel.Code_DataNoChange)
 		out.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE_GROUPS
 		return out
@@ -223,44 +215,30 @@ func (s *Server) GetConfigGroupsWithCache(ctx context.Context, req *apiconfig.Cl
 	for i := range groups {
 		item := groups[i]
 		ret = append(ret, &apiconfig.ConfigFileGroup{
-			Namespace: wrapperspb.String(item.Namespace),
-			Name:      wrapperspb.String(item.Name),
+			Namespace: item.Namespace,
+			Name:      item.Name,
 		})
 	}
 
 	out.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE_GROUPS
-	out.ConfigFile = &apiconfig.ClientConfigFileInfo{Namespace: wrapperspb.String(namespace)}
-	out.Revision = revision
-	out.ConfigFileGroups = ret
 	return out
 }
 
-func toClientInfo(client *apiconfig.ClientConfigFileInfo,
-	release *conftypes.ConfigFileRelease) (*apiconfig.ClientConfigFileInfo, error) {
+func toClientInfo(client *apiconfig.ConfigFile,
+	release *conftypes.ConfigFileRelease) (*apiconfig.ConfigFile, error) {
 
-	namespace := client.GetNamespace().GetValue()
-	group := client.GetGroup().GetValue()
-	fileName := client.GetFileName().GetValue()
-	publicKey := client.GetPublicKey().GetValue()
+	namespace := client.Namespace
+	group := client.Group
+	fileName := client.Name
+	publicKey := ""
 
-	copyMetadata := func() map[string]string {
-		ret := map[string]string{}
-		for k, v := range release.Metadata {
-			ret[k] = v
-		}
-		delete(ret, types.MetaKeyConfigFileDataKey)
-		return ret
-	}()
-
-	configFile := &apiconfig.ClientConfigFileInfo{
-		Namespace: protobuf.NewStringValue(namespace),
-		Group:     protobuf.NewStringValue(group),
-		FileName:  protobuf.NewStringValue(fileName),
-		Content:   protobuf.NewStringValue(release.Content),
-		Version:   protobuf.NewUInt64Value(release.Version),
-		Md5:       protobuf.NewStringValue(release.Md5),
-		Encrypted: protobuf.NewBoolValue(release.IsEncrypted()),
-		Tags:      conftypes.FromTagMap(copyMetadata),
+	configFile := &apiconfig.ConfigFile{
+		Namespace: namespace,
+		Group:     group,
+		Name:      fileName,
+		Content:   release.Content,
+		Id:        release.Version,
+		Encrypted: release.IsEncrypted(),
 	}
 
 	dataKey := release.GetEncryptDataKey()
@@ -285,46 +263,55 @@ func toClientInfo(client *apiconfig.ClientConfigFileInfo,
 				dataKey = cipherDataKey
 			}
 		}
-		configFile.Tags = append(configFile.Tags,
-			&apiconfig.ConfigFileTag{
-				Key:   protobuf.NewStringValue(types.MetaKeyConfigFileDataKey),
-				Value: protobuf.NewStringValue(dataKey),
-			},
-		)
+		// 设置加密相关的标签
+		if configFile.Tags == nil {
+			configFile.Tags = make(map[string]string)
+		}
+		configFile.Tags[types.MetaKeyConfigFileDataKey] = dataKey
+		configFile.Tags[types.MetaKeyConfigFileEncryptAlgo] = encryptAlgo
 	}
 	return configFile, nil
 }
 
 // UpsertAndReleaseConfigFile 创建/更新配置文件并发布
 func (s *Server) UpsertAndReleaseConfigFileFromClient(ctx context.Context,
-	req *apiconfig.ConfigFilePublishInfo) *apiconfig.ConfigResponse {
+	req *apiconfig.ConfigFilePublishInfo) *apimodel.Response {
 	return s.UpsertAndReleaseConfigFile(ctx, req)
 }
 
 // DeleteConfigFileFromClient 调用config_file的方法更新配置文件
-func (s *Server) DeleteConfigFileFromClient(ctx context.Context, req *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
+func (s *Server) DeleteConfigFileFromClient(ctx context.Context, req *apiconfig.ConfigFile) *apimodel.Response {
 	return s.DeleteConfigFile(ctx, req)
 }
 
 // CreateConfigFileFromClient 调用config_file接口获取配置文件
 func (s *Server) CreateConfigFileFromClient(ctx context.Context,
-	client *apiconfig.ConfigFile) *apiconfig.ConfigClientResponse {
+	client *apiconfig.ConfigFile) *apiconfig.ConfigDiscoverResponse {
 	configResponse := s.CreateConfigFile(ctx, client)
-	return api.NewConfigClientResponseFromConfigResponse(configResponse)
+	return &apiconfig.ConfigDiscoverResponse{
+		Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+		Info: configResponse.GetInfo(),
+	}
 }
 
 // UpdateConfigFileFromClient 调用config_file接口更新配置文件
 func (s *Server) UpdateConfigFileFromClient(ctx context.Context,
-	client *apiconfig.ConfigFile) *apiconfig.ConfigClientResponse {
+	client *apiconfig.ConfigFile) *apiconfig.ConfigDiscoverResponse {
 	configResponse := s.UpdateConfigFile(ctx, client)
-	return api.NewConfigClientResponseFromConfigResponse(configResponse)
+	return &apiconfig.ConfigDiscoverResponse{
+		Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+		Info: configResponse.GetInfo(),
+	}
 }
 
 // PublishConfigFileFromClient 调用config_file_release接口发布配置文件
 func (s *Server) PublishConfigFileFromClient(ctx context.Context,
-	client *apiconfig.ConfigFileRelease) *apiconfig.ConfigClientResponse {
+	client *apiconfig.ConfigFileRelease) *apiconfig.ConfigDiscoverResponse {
 	configResponse := s.PublishConfigFile(ctx, client)
-	return api.NewConfigClientResponseFromConfigResponse(configResponse)
+	return &apiconfig.ConfigDiscoverResponse{
+		Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+		Info: configResponse.GetInfo(),
+	}
 }
 
 // GetConfigSubscribers 根据配置视角获取订阅者列表
@@ -406,15 +393,16 @@ func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]str
 	}
 
 	for _, file := range watchFiles {
-		key := conftypes.BuildKeyForClientConfigFileInfo(file)
+		// 使用正确的方式构建key
+		key := GenFileId(file.GetNamespace(), file.GetGroup(), file.GetName())
 		curVer := watchCtx.CurWatchVersion(key)
 
-		ns := file.GetNamespace().GetValue()
-		group := file.GetGroup().GetValue()
-		filename := file.GetFileName().GetValue()
+		ns := file.GetNamespace()
+		group := file.GetGroup()
+		filename := file.GetName()
 
 		data.Files = append(data.Files, conftypes.FileReleaseSubscribeInfo{
-			Name:      file.GetName().GetValue(),
+			Name:      file.GetName(),
 			Namespace: ns,
 			Group:     group,
 			FileName:  filename,

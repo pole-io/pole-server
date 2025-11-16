@@ -22,7 +22,7 @@ import (
 	"errors"
 	"fmt"
 
-	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/crypto"
@@ -259,7 +259,7 @@ type ConfigChains struct {
 }
 
 // BeforeCreateFile
-func (cc *ConfigChains) BeforeCreateFile(ctx context.Context, file *conftypes.ConfigFile) *apiconfig.ConfigResponse {
+func (cc *ConfigChains) BeforeCreateFile(ctx context.Context, file *conftypes.ConfigFile) *apimodel.Response {
 	for i := range cc.chains {
 		if errResp := cc.chains[i].BeforeCreateFile(ctx, file); errResp != nil {
 			return errResp
@@ -282,7 +282,7 @@ func (cc *ConfigChains) AfterGetFile(ctx context.Context, file *conftypes.Config
 }
 
 // BeforeUpdateFile
-func (cc *ConfigChains) BeforeUpdateFile(ctx context.Context, file *conftypes.ConfigFile) *apiconfig.ConfigResponse {
+func (cc *ConfigChains) BeforeUpdateFile(ctx context.Context, file *conftypes.ConfigFile) *apimodel.Response {
 	for i := range cc.chains {
 		if errResp := cc.chains[i].BeforeUpdateFile(ctx, file); errResp != nil {
 			return errResp

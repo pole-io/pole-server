@@ -20,7 +20,7 @@ package config_auth
 import (
 	"context"
 
-	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/auth"
@@ -29,7 +29,7 @@ import (
 
 // GetConfigFileReleaseHistory 获取配置文件发布历史记录
 func (s *Server) GetConfigFileReleaseHistories(ctx context.Context,
-	filter map[string]string) *apiconfig.ConfigBatchQueryResponse {
+	filter map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := s.collectConfigFileReleaseHistoryAuthContext(ctx, nil, auth.Read, auth.DescribeConfigFileReleaseHistories)
 
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {

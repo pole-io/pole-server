@@ -29,10 +29,8 @@ import (
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/crypto"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
-	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/namespace"
 )
 
@@ -69,38 +67,53 @@ func TestInitialize(ctx context.Context, config Config, s store.Store, cacheMgn 
 	return proxySvr, mockServer, nil
 }
 
-func (s *Server) TestCheckClientConfigFile(ctx context.Context, files []*apiconfig.ClientConfigFileInfo,
-	compartor CompareFunction) (*apiconfig.ConfigClientResponse, bool) {
+func (s *Server) TestCheckClientConfigFile(ctx context.Context, files []*apiconfig.ConfigFile,
+	compartor CompareFunction) (*apiconfig.ConfigDiscoverResponse, bool) {
 	if len(files) == 0 {
-		return api.NewConfigClientResponse(apimodel.Code_InvalidWatchConfigFileFormat, nil), false
+		return &apiconfig.ConfigDiscoverResponse{
+			Code: uint32(apimodel.Code_BadRequest),
+			Info: apimodel.Code_BadRequest.String(),
+			Type: apiconfig.ConfigDiscoverResponse_UNKNOWN,
+		}, false
 	}
 	for _, configFile := range files {
-		namespace := configFile.GetNamespace().GetValue()
-		group := configFile.GetGroup().GetValue()
-		fileName := configFile.GetFileName().GetValue()
+		namespace := configFile.GetNamespace()
+		group := configFile.GetGroup()
+		fileName := configFile.GetName()
 
 		if namespace == "" || group == "" || fileName == "" {
-			return api.NewConfigClientResponseWithInfo(apimodel.Code_BadRequest,
-				"namespace & group & fileName can not be empty"), false
+			return &apiconfig.ConfigDiscoverResponse{
+				Code: uint32(apimodel.Code_BadRequest),
+				Info: "namespace & group & fileName can not be empty",
+				Type: apiconfig.ConfigDiscoverResponse_UNKNOWN,
+			}, false
 		}
 		// 从缓存中获取最新的配置文件信息
 		release := s.fileCache.GetActiveRelease(namespace, group, fileName)
 		if release != nil && compartor(configFile, release) {
-			ret := &apiconfig.ClientConfigFileInfo{
-				Namespace: protobuf.NewStringValue(namespace),
-				Group:     protobuf.NewStringValue(group),
-				FileName:  protobuf.NewStringValue(fileName),
-				Version:   protobuf.NewUInt64Value(release.Version),
-				Md5:       protobuf.NewStringValue(release.Md5),
-			}
-			return api.NewConfigClientResponse(apimodel.Code_ExecuteSuccess, ret), false
+			return &apiconfig.ConfigDiscoverResponse{
+				Code: uint32(apimodel.Code_ExecuteSuccess),
+				Info: apimodel.Code_ExecuteSuccess.String(),
+				Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+				File: &apiconfig.ConfigFileRelease{
+					Namespace: namespace,
+					Group:     group,
+					Name:      fileName,
+					Version:   release.Version,
+					Md5:       release.Md5,
+				},
+			}, false
 		}
 	}
-	return api.NewConfigClientResponse(apimodel.Code_DataNoChange, nil), true
+	return &apiconfig.ConfigDiscoverResponse{
+		Code: uint32(apimodel.Code_DataNoChange),
+		Info: apimodel.Code_DataNoChange.String(),
+		Type: apiconfig.ConfigDiscoverResponse_UNKNOWN,
+	}, true
 }
 
-func TestCompareByVersion(clientInfo *apiconfig.ClientConfigFileInfo, file *conftypes.ConfigFileRelease) bool {
-	return clientInfo.GetVersion().GetValue() < file.Version
+func TestCompareByVersion(clientInfo *apiconfig.ConfigFile, file *conftypes.ConfigFileRelease) bool {
+	return clientInfo.GetId() < file.Version
 }
 
 // TestDecryptConfigFile 解密配置文件

@@ -31,20 +31,20 @@ import (
 
 // PublishConfigFile 发布配置文件
 func (s *Server) PublishConfigFile(ctx context.Context,
-	req *apiconfig.ConfigFileRelease) *apiconfig.ConfigResponse {
+	req *apiconfig.ConfigFileRelease) *apimodel.Response {
 	if err := CheckFileName(req.GetFileName()); err != nil {
-		return api.NewConfigResponse(apimodel.Code_InvalidConfigFileName)
+		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
 	}
 	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
-		return api.NewConfigResponse(apimodel.Code_InvalidNamespaceName)
+		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
 	}
 	if err := valid.CheckResourceName(req.GetGroup()); err != nil {
-		return api.NewConfigResponse(apimodel.Code_InvalidConfigFileGroupName)
+		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
 	}
-	if !s.checkNamespaceExisted(req.GetNamespace().GetValue()) {
-		return api.NewConfigResponse(apimodel.Code_NotFoundNamespace)
+	if !s.checkNamespaceExisted(req.GetNamespace()) {
+		return api.NewConfigResponse(apimodel.Code_NotFoundResource)
 	}
-	if req.GetReleaseType().GetValue() == conftypes.ReleaseTypeGray && len(req.GetBetaLabels()) == 0 {
+	if req.GetReleaseType() == conftypes.ReleaseTypeGray && len(req.GetBetaLabels()) == 0 {
 		return api.NewConfigResponse(apimodel.Code_InvalidMatchRule)
 	}
 	return s.nextServer.PublishConfigFile(ctx, req)
@@ -52,7 +52,7 @@ func (s *Server) PublishConfigFile(ctx context.Context,
 
 // GetConfigFileRelease 获取配置文件发布内容
 func (s *Server) GetConfigFileRelease(ctx context.Context,
-	req *apiconfig.ConfigFileRelease) *apiconfig.ConfigResponse {
+	req *apiconfig.ConfigFileRelease) *apimodel.Response {
 	if errCode, errMsg := checkBaseReleaseParam(req, false); errCode != apimodel.Code_ExecuteSuccess {
 		return api.NewConfigResponseWithInfo(errCode, errMsg)
 	}
@@ -61,13 +61,13 @@ func (s *Server) GetConfigFileRelease(ctx context.Context,
 
 // DeleteConfigFileReleases implements ConfigCenterServer.
 func (s *Server) DeleteConfigFileReleases(ctx context.Context,
-	reqs []*apiconfig.ConfigFileRelease) *apiconfig.ConfigBatchWriteResponse {
+	reqs []*apiconfig.ConfigFileRelease) *apimodel.BatchWriteResponse {
 	return s.nextServer.DeleteConfigFileReleases(ctx, reqs)
 }
 
 // GetConfigFileReleaseVersions implements ConfigCenterServer.
 func (s *Server) GetConfigFileReleaseVersions(ctx context.Context,
-	filters map[string]string) *apiconfig.ConfigBatchQueryResponse {
+	filters map[string]string) *apimodel.BatchQueryResponse {
 
 	searchFilters := map[string]string{}
 	for k, v := range filters {
@@ -94,7 +94,7 @@ func (s *Server) GetConfigFileReleaseVersions(ctx context.Context,
 
 // GetConfigFileReleases implements ConfigCenterServer.
 func (s *Server) GetConfigFileReleases(ctx context.Context,
-	filters map[string]string) *apiconfig.ConfigBatchQueryResponse {
+	filters map[string]string) *apimodel.BatchQueryResponse {
 
 	offset, limit, err := valid.ParseOffsetAndLimit(filters)
 	if err != nil {
@@ -116,29 +116,29 @@ func (s *Server) GetConfigFileReleases(ctx context.Context,
 
 // RollbackConfigFileReleases implements ConfigCenterServer.
 func (s *Server) RollbackConfigFileReleases(ctx context.Context,
-	reqs []*apiconfig.ConfigFileRelease) *apiconfig.ConfigBatchWriteResponse {
+	reqs []*apiconfig.ConfigFileRelease) *apimodel.BatchWriteResponse {
 
 	return s.nextServer.RollbackConfigFileReleases(ctx, reqs)
 }
 
 // UpsertAndReleaseConfigFile .
 func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
-	req *apiconfig.ConfigFilePublishInfo) *apiconfig.ConfigResponse {
+	req *apiconfig.ConfigFilePublishInfo) *apimodel.Response {
 
 	return s.nextServer.UpsertAndReleaseConfigFile(ctx, req)
 }
 
 func (s *Server) StopGrayConfigFileReleases(ctx context.Context,
-	reqs []*apiconfig.ConfigFileRelease) *apiconfig.ConfigBatchWriteResponse {
+	reqs []*apiconfig.ConfigFileRelease) *apimodel.BatchWriteResponse {
 
 	return s.nextServer.StopGrayConfigFileReleases(ctx, reqs)
 }
 
 func checkBaseReleaseParam(req *apiconfig.ConfigFileRelease, checkRelease bool) (apimodel.Code, string) {
-	namespace := req.GetNamespace().GetValue()
-	group := req.GetGroup().GetValue()
-	fileName := req.GetFileName().GetValue()
-	releaseName := req.GetName().GetValue()
+	namespace := req.GetNamespace()
+	group := req.GetGroup()
+	fileName := req.GetFileName()
+	releaseName := req.GetName()
 	if namespace == "" {
 		return apimodel.Code_BadRequest, "invalid namespace"
 	}

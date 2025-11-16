@@ -19,7 +19,8 @@ package v1
 
 import (
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
+	anypb "google.golang.org/protobuf/types/known/anypb"
+
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 )
@@ -28,7 +29,7 @@ import (
 func NewAuthResponse(code apimodel.Code) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
-		Info: code2info[uint32(code)],
+		Info: Code2Info(uint32(code)),
 	}
 }
 
@@ -36,7 +37,7 @@ func NewAuthResponse(code apimodel.Code) *apimodel.Response {
 func NewAuthResponseWithMsg(code apimodel.Code, msg string) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
-		Info: code2info[uint32(code)] + ":" + msg,
+		Info: Code2Info(uint32(code)) + ":" + msg,
 	}
 }
 
@@ -44,7 +45,7 @@ func NewAuthResponseWithMsg(code apimodel.Code, msg string) *apimodel.Response {
 func NewAuthBatchWriteResponse(code apimodel.Code) *apimodel.BatchWriteResponse {
 	return &apimodel.BatchWriteResponse{
 		Code: uint32(code),
-		Info: code2info[uint32(code)],
+		Info: Code2Info(uint32(code)),
 		Size: 0,
 	}
 }
@@ -53,7 +54,7 @@ func NewAuthBatchWriteResponse(code apimodel.Code) *apimodel.BatchWriteResponse 
 func NewAuthBatchQueryResponse(code apimodel.Code) *apimodel.BatchQueryResponse {
 	return &apimodel.BatchQueryResponse{
 		Code:   uint32(code),
-		Info:   code2info[uint32(code)],
+		Info:   Code2Info(uint32(code)),
 		Amount: 0,
 		Size:   0,
 	}
@@ -68,33 +69,70 @@ func NewAuthBatchQueryResponseWithMsg(code apimodel.Code, msg string) *apimodel.
 
 // NewUserResponse 创建回复带用户信息
 func NewUserResponse(code apimodel.Code, user *apisecurity.User) *apimodel.Response {
+	userAny, err := anypb.New(user)
+	if err != nil {
+        // 处理序列化失败的错误（比如返回错误响应）
+        return &apimodel.Response{
+            Code: uint32(code),
+            Info: "序列化用户信息失败: " + err.Error(),
+        }
+    }
 	return &apimodel.Response{
 		Code: uint32(code),
-		Info: code2info[uint32(code)],
+		Info: Code2Info(uint32(code)),
+		Data: userAny,
 	}
 }
 
 // NewUserResponse 创建回复带用户信息
 func NewUserResponseWithMsg(code apimodel.Code, info string, user *apisecurity.User) *apimodel.Response {
+	userAny, err := anypb.New(user)
+	if err != nil {
+        // 处理序列化失败的错误（比如返回错误响应）
+        return &apimodel.Response{
+            Code: uint32(code),
+            Info: "序列化用户信息失败: " + err.Error(),
+        }
+    }
 	return &apimodel.Response{
 		Code: uint32(code),
-		Info: string(info),
+		Info: Code2Info(uint32(code)) + ":" + info,
+		Data: userAny,
 	}
 }
 
 // NewGroupResponse 创建回复带用户组信息
 func NewGroupResponse(code apimodel.Code, user *apisecurity.UserGroup) *apimodel.Response {
+	userAny, err := anypb.New(user)
+	if err != nil {
+		// 处理序列化失败的错误（比如返回错误响应）
+        return &apimodel.Response{
+            Code: uint32(code),
+            Info: "序列化用户组信息失败: " + err.Error(),
+        }
+    }
 	return &apimodel.Response{
 		Code:      uint32(code),
-		Info:      code2info[uint32(code)],
+		Info:      Code2Info(uint32(code)),
+		Data:      userAny,
 	}
 }
 
 // NewModifyGroupResponse 创建修改用户组的响应信息
 func NewModifyGroupResponse(code apimodel.Code, group *apisecurity.ModifyUserGroup) *apimodel.Response {
+	groupAny, err := anypb.New(group)
+	if err != nil {
+        // 处理序列化失败的错误（比如返回错误响应）
+        return &apimodel.Response{
+            Code: uint32(code),
+            Info: "序列化修改用户组信息失败: " + err.Error(),
+        }
+    }
 	return &apimodel.Response{
+
 		Code:            uint32(code),
-		Info:            code2info[uint32(code)],
+		Info:            Code2Info(uint32(code)),
+		Data:            groupAny,
 	}
 }
 
@@ -102,7 +140,7 @@ func NewModifyGroupResponse(code apimodel.Code, group *apisecurity.ModifyUserGro
 func NewGroupRelationResponse(code apimodel.Code, relation *apisecurity.UserGroupRelation) *apimodel.Response {
 	return &apimodel.Response{
 		Code:     uint32(code),
-		Info:     code2info[uint32(code)],
+		Info:     Code2Info(uint32(code)),
 	}
 }
 
@@ -110,16 +148,25 @@ func NewGroupRelationResponse(code apimodel.Code, relation *apisecurity.UserGrou
 func NewAuthStrategyResponse(code apimodel.Code, req *apisecurity.AuthStrategy) *apimodel.Response {
 	return &apimodel.Response{
 		Code:         uint32(code),
-		Info:         code2info[uint32(code)],
+		Info:         Code2Info(uint32(code)),
 	}
 }
 
 // NewAuthStrategyResponseWithMsg 创建鉴权策略响应体并自定义Info
 func NewAuthStrategyResponseWithMsg(
 	code apimodel.Code, msg string, req *apisecurity.AuthStrategy) *apimodel.Response {
+	reqAny, err := anypb.New(req)
+	if err != nil {
+		// 处理序列化失败的错误（比如返回错误响应）
+        return &apimodel.Response{
+            Code: uint32(code),
+            Info: "序列化鉴权策略失败: " + err.Error(),
+        }
+    }
 	return &apimodel.Response{
-		Code:         uint32(code),
+		Code:        uint32(code),
 		Info:        msg,
+		Data:        reqAny,
 	}
 }
 
@@ -127,24 +174,40 @@ func NewAuthStrategyResponseWithMsg(
 func NewModifyAuthStrategyResponse(code apimodel.Code, req *apisecurity.ModifyAuthStrategy) *apimodel.Response {
 	return &apimodel.Response{
 		Code:               uint32(code),
-		Info:               code2info[uint32(code)],
+		Info:               Code2Info(uint32(code)),
 	}
 }
 
 // NewStrategyResourcesResponse 创建修改鉴权策略响应体
 func NewStrategyResourcesResponse(code apimodel.Code, ret *apisecurity.StrategyResources) *apimodel.Response {
+	retAny, err := anypb.New(ret)
+	if err != nil {
+        // 处理序列化失败的错误（比如返回错误响应）
+        return &apimodel.Response{
+            Code: uint32(code),
+            Info: "序列化策略资源失败: " + err.Error(),
+        }
+    }
 	return &apimodel.Response{
 		Code: uint32(code),
-		Info: code2info[uint32(code)],
-		Data: protobuf.MarshalAny(ret),
+		Info: Code2Info(uint32(code)),
+		Data: retAny,
 	}
 }
 
 // NewLoginResponse 创建登录响应体
 func NewLoginResponse(code apimodel.Code, loginResponse *apisecurity.LoginResponse) *apimodel.Response {
+	loginResponseAny, err := anypb.New(loginResponse)
+	if err != nil {
+        // 处理序列化失败的错误（比如返回错误响应）
+        return &apimodel.Response{
+            Code: uint32(code),
+            Info: "序列化登录响应失败: " + err.Error(),
+        }
+    }
 	return &apimodel.Response{
 		Code: uint32(code),
-		Info: code2info[uint32(code)],
-		Data: protobuf.MarshalAny(loginResponse),
+		Info: Code2Info(uint32(code)),
+		Data: loginResponseAny,
 	}
 }

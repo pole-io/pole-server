@@ -18,7 +18,6 @@
 package v1
 
 import (
-
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 )
 
@@ -34,6 +33,7 @@ func ConfigCollect(batchWriteResponse *apimodel.BatchWriteResponse, response *ap
 	batchWriteResponse.Responses = append(batchWriteResponse.Responses, response)
 }
 
+// NewConfigClientListResponse 创建配置客户端列表响应
 func NewConfigClientListResponse(code apimodel.Code) *apimodel.BatchQueryResponse {
 	return &apimodel.BatchQueryResponse{
 		Code:   uint32(code),
@@ -43,6 +43,7 @@ func NewConfigClientListResponse(code apimodel.Code) *apimodel.BatchQueryRespons
 	}
 }
 
+// NewConfigClientListResponseWithInfo 创建带详细信息的配置客户端列表响应
 func NewConfigClientListResponseWithInfo(code apimodel.Code, msg string) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
@@ -50,6 +51,7 @@ func NewConfigClientListResponseWithInfo(code apimodel.Code, msg string) *apimod
 	}
 }
 
+// NewConfigClientResponse0 创建配置客户端响应
 func NewConfigClientResponse0(code apimodel.Code) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
@@ -57,6 +59,7 @@ func NewConfigClientResponse0(code apimodel.Code) *apimodel.Response {
 	}
 }
 
+// NewConfigClientResponse 创建带配置文件的配置客户端响应
 func NewConfigClientResponse(code apimodel.Code, configFile interface{}) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
@@ -65,6 +68,7 @@ func NewConfigClientResponse(code apimodel.Code, configFile interface{}) *apimod
 	}
 }
 
+// NewConfigClientResponseFromConfigResponse 从配置响应创建配置客户端响应
 func NewConfigClientResponseFromConfigResponse(response *apimodel.Response) *apimodel.Response {
 	return &apimodel.Response{
 		Code: response.Code,
@@ -73,6 +77,7 @@ func NewConfigClientResponseFromConfigResponse(response *apimodel.Response) *api
 	}
 }
 
+// NewConfigClientResponseWithInfo 创建带详细信息的配置客户端响应
 func NewConfigClientResponseWithInfo(code apimodel.Code, message string) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
@@ -80,6 +85,7 @@ func NewConfigClientResponseWithInfo(code apimodel.Code, message string) *apimod
 	}
 }
 
+// NewConfigResponse 创建配置响应
 func NewConfigResponse(code apimodel.Code) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
@@ -87,14 +93,17 @@ func NewConfigResponse(code apimodel.Code) *apimodel.Response {
 	}
 }
 
+// NewConfigGroupResponse 创建配置组响应
 func NewConfigGroupResponse(code apimodel.Code, g interface{}) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
 		Info: Code2Info(uint32(code)),
 		// Note: g would need to be serialized to Any if needed
+
 	}
 }
 
+// NewConfigFileGroupResponseWithMessage 创建带消息的配置文件组响应
 func NewConfigFileGroupResponseWithMessage(code apimodel.Code, message string) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
@@ -102,6 +111,7 @@ func NewConfigFileGroupResponseWithMessage(code apimodel.Code, message string) *
 	}
 }
 
+// NewConfigFileGroupBatchQueryResponse 创建配置文件组批量查询响应
 func NewConfigFileGroupBatchQueryResponse(code apimodel.Code, total uint32,
 	configFileGroups []interface{}) *apimodel.BatchQueryResponse {
 	return &apimodel.BatchQueryResponse{
@@ -112,6 +122,7 @@ func NewConfigFileGroupBatchQueryResponse(code apimodel.Code, total uint32,
 	}
 }
 
+// NewConfigBatchQueryResponse 创建配置批量查询响应
 func NewConfigBatchQueryResponse(code apimodel.Code) *apimodel.BatchQueryResponse {
 	return &apimodel.BatchQueryResponse{
 		Code:   uint32(code),
@@ -121,6 +132,7 @@ func NewConfigBatchQueryResponse(code apimodel.Code) *apimodel.BatchQueryRespons
 	}
 }
 
+// NewConfigBatchQueryResponseWithInfo 创建带详细信息的配置批量查询响应
 func NewConfigBatchQueryResponseWithInfo(code apimodel.Code, info string) *apimodel.BatchQueryResponse {
 	return &apimodel.BatchQueryResponse{
 		Code:   uint32(code),
@@ -130,6 +142,7 @@ func NewConfigBatchQueryResponseWithInfo(code apimodel.Code, info string) *apimo
 	}
 }
 
+// NewConfigBatchWriteResponse 创建配置批量写入响应
 func NewConfigBatchWriteResponse(code apimodel.Code) *apimodel.BatchWriteResponse {
 	return &apimodel.BatchWriteResponse{
 		Code: uint32(code),
@@ -138,6 +151,7 @@ func NewConfigBatchWriteResponse(code apimodel.Code) *apimodel.BatchWriteRespons
 	}
 }
 
+// NewConfigBatchWriteResponseWithInfo 创建带详细信息的配置批量写入响应
 func NewConfigBatchWriteResponseWithInfo(code apimodel.Code, info string) *apimodel.BatchWriteResponse {
 	return &apimodel.BatchWriteResponse{
 		Code: uint32(code),
@@ -146,6 +160,7 @@ func NewConfigBatchWriteResponseWithInfo(code apimodel.Code, info string) *apimo
 	}
 }
 
+// NewConfigFileReleaseHistoryQueryResponse 创建配置文件发布历史查询响应
 func NewConfigFileReleaseHistoryQueryResponse(code apimodel.Code, total uint32,
 	configFileReleaseHistories []interface{}) *apimodel.BatchQueryResponse {
 	return &apimodel.BatchQueryResponse{
@@ -156,6 +171,7 @@ func NewConfigFileReleaseHistoryQueryResponse(code apimodel.Code, total uint32,
 	}
 }
 
+// NewConfigFileResponse 创建配置文件响应
 func NewConfigFileResponse(code apimodel.Code, configFile interface{}) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
@@ -163,6 +179,7 @@ func NewConfigFileResponse(code apimodel.Code, configFile interface{}) *apimodel
 	}
 }
 
+// NewConfigFileBatchQueryResponse 创建配置文件批量查询响应
 func NewConfigFileBatchQueryResponse(
 	code apimodel.Code, total uint32, configFiles []interface{}) *apimodel.BatchQueryResponse {
 	return &apimodel.BatchQueryResponse{
@@ -173,6 +190,7 @@ func NewConfigFileBatchQueryResponse(
 	}
 }
 
+// NewConfigFileBatchQueryResponseWithMessage 创建带消息的配置文件批量查询响应
 func NewConfigFileBatchQueryResponseWithMessage(
 	code apimodel.Code, message string) *apimodel.BatchQueryResponse {
 	return &apimodel.BatchQueryResponse{
@@ -181,6 +199,7 @@ func NewConfigFileBatchQueryResponseWithMessage(
 	}
 }
 
+// NewConfigFileTemplateResponse 创建配置文件模板响应
 func NewConfigFileTemplateResponse(
 	code apimodel.Code, template interface{}) *apimodel.Response {
 	return &apimodel.Response{
@@ -189,6 +208,7 @@ func NewConfigFileTemplateResponse(
 	}
 }
 
+// NewConfigFileTemplateResponseWithMessage 创建带消息的配置文件模板响应
 func NewConfigFileTemplateResponseWithMessage(code apimodel.Code, message string) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
@@ -196,6 +216,7 @@ func NewConfigFileTemplateResponseWithMessage(code apimodel.Code, message string
 	}
 }
 
+// NewConfigFileTemplateBatchQueryResponse 创建配置文件模板批量查询响应
 func NewConfigFileTemplateBatchQueryResponse(code apimodel.Code, total uint32,
 	configFileTemplates []interface{}) *apimodel.BatchQueryResponse {
 	return &apimodel.BatchQueryResponse{
@@ -206,6 +227,7 @@ func NewConfigFileTemplateBatchQueryResponse(code apimodel.Code, total uint32,
 	}
 }
 
+// NewConfigFileReleaseResponse 创建配置文件发布响应
 func NewConfigFileReleaseResponse(
 	code apimodel.Code, configFileRelease interface{}) *apimodel.Response {
 	return &apimodel.Response{
@@ -214,6 +236,7 @@ func NewConfigFileReleaseResponse(
 	}
 }
 
+// NewConfigResponseWithInfo 创建带详细信息的配置响应
 func NewConfigResponseWithInfo(code apimodel.Code, message string) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
@@ -221,6 +244,7 @@ func NewConfigResponseWithInfo(code apimodel.Code, message string) *apimodel.Res
 	}
 }
 
+// NewSimpleConfigFileImportResponse 创建简单配置文件导入响应
 func NewSimpleConfigFileImportResponse(code apimodel.Code) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
@@ -228,6 +252,7 @@ func NewSimpleConfigFileImportResponse(code apimodel.Code) *apimodel.Response {
 	}
 }
 
+// NewConfigFileImportResponse 创建配置文件导入响应
 func NewConfigFileImportResponse(code apimodel.Code,
 	createConfigFiles, skipConfigFiles, overwriteConfigFiles []interface{}) *apimodel.Response {
 	return &apimodel.Response{
@@ -236,6 +261,7 @@ func NewConfigFileImportResponse(code apimodel.Code,
 	}
 }
 
+// NewConfigFileImportResponseWithMessage 创建带消息的配置文件导入响应
 func NewConfigFileImportResponseWithMessage(code apimodel.Code, message string) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
@@ -243,6 +269,7 @@ func NewConfigFileImportResponseWithMessage(code apimodel.Code, message string) 
 	}
 }
 
+// NewConfigFileExportResponse 创建配置文件导出响应
 func NewConfigFileExportResponse(code apimodel.Code, data []byte) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
@@ -251,6 +278,7 @@ func NewConfigFileExportResponse(code apimodel.Code, data []byte) *apimodel.Resp
 	}
 }
 
+// NewConfigFileExportResponseWithMessage 创建带消息的配置文件导出响应
 func NewConfigFileExportResponseWithMessage(code apimodel.Code, message string) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
@@ -258,6 +286,7 @@ func NewConfigFileExportResponseWithMessage(code apimodel.Code, message string) 
 	}
 }
 
+// NewConfigEncryptAlgorithmResponse 创建配置加密算法响应
 func NewConfigEncryptAlgorithmResponse(code apimodel.Code,
 	algorithms []*string) *apimodel.Response {
 	resp := &apimodel.Response{
