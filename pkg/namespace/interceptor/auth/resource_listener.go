@@ -69,17 +69,20 @@ func (svr *Server) onNamespaceResource(ctx context.Context, res *ResourceEvent) 
 	authCtx.SetAttachment(authcommon.ResourceAttachmentKey, map[apisecurity.ResourceType][]authcommon.ResourceEntry{
 		apisecurity.ResourceType_Namespaces: {
 			{
-				ID:    res.ReqNamespace.GetName().GetValue(),
+				// 注释：字段访问改动 - GetName()返回string而非wrapper类型，权限检查逻辑保持不变
+				ID:    res.ReqNamespace.GetName(),
 				Owner: utils.ParseOwnerID(ctx),
 			},
 		},
 	})
 
-	users := utils.ConvertStringValuesToSlice(res.ReqNamespace.UserIds)
-	removeUses := utils.ConvertStringValuesToSlice(res.ReqNamespace.RemoveUserIds)
-
-	groups := utils.ConvertStringValuesToSlice(res.ReqNamespace.GroupIds)
-	removeGroups := utils.ConvertStringValuesToSlice(res.ReqNamespace.RemoveGroupIds)
+	// 注释：用户和组字段移除 - 根据新的 pole-io/specification，Namespace 不再有 UseId、RemoveUserIds、GroupIds、RemoveGroupIds 字段
+	// 根据新的 pole-io/specification，Namespace 不再有 UseId、RemoveUserIds、GroupIds、RemoveGroupIds 字段
+	// 使用空切片替代这些不存在的字段
+	var users []string
+	var removeUses []string
+	var groups []string
+	var removeGroups []string
 
 	authCtx.SetAttachment(authcommon.LinkUsersKey, utils.StringSliceDeDuplication(users))
 	authCtx.SetAttachment(authcommon.RemoveLinkUsersKey, utils.StringSliceDeDuplication(removeUses))
