@@ -64,7 +64,7 @@ func (svr *Server) GetRuleReleases(ctx context.Context, filter map[string]string
 		return api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}
 	if bRsp != nil {
-		return api.NewBatchQueryResponseWithMsg(apimodel.Code(bRsp.GetCode().GetValue()), bRsp.GetInfo().GetValue())
+		return api.NewBatchQueryResponseWithMsg(apimodel.Code(bRsp.GetCode()), bRsp.GetInfo())
 	}
 
 	return svr.nextSvr.GetRuleReleases(ctx, filter)

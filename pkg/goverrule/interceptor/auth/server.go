@@ -134,7 +134,7 @@ func (svr *Server) collectClientInstanceAuthContext(ctx context.Context, req []*
 //	@param req 实际请求对象
 //	@param resourceOp 该接口的数据操作类型
 //	@return *authtypes.AcquireContext 返回鉴权上下文
-func (svr *Server) collectRouteRuleAuthContext(ctx context.Context, req []*apitraffic.Routing,
+func (svr *Server) collectRouteRuleAuthContext(ctx context.Context, req []*apitraffic.RouteRule,
 	resourceOp authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
 	return authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
@@ -152,17 +152,17 @@ func (svr *Server) collectRouteRuleAuthContext(ctx context.Context, req []*apitr
 //	@param req 实际请求对象
 //	@param resourceOp 该接口的数据操作类型
 //	@return *authtypes.AcquireContext 返回鉴权上下文
-func (svr *Server) collectRateLimitAuthContext(ctx context.Context, req []*apitraffic.Rule,
+func (svr *Server) collectRateLimitAuthContext(ctx context.Context, req []*apitraffic.RateLimit,
 	resourceOp authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
 
 	resources := make([]authtypes.ResourceEntry, 0, len(req))
 	for i := range req {
-		saveRule := svr.Cache().RateLimit().GetRule(req[i].GetId().GetValue())
+		saveRule := svr.Cache().RateLimit().GetRule(req[i].GetId())
 		if saveRule != nil {
 			resources = append(resources, authtypes.ResourceEntry{
-				Type:     apisecurity.ResourceType_RouteRules,
+				Type:     apisecurity.ResourceType_RateLimitRules,
 				ID:       saveRule.ID,
-				Metadata: saveRule.Proto.Metadata,
+				Metadata: saveRule.Metadata,
 			})
 		}
 	}
@@ -193,9 +193,9 @@ func (svr *Server) collectLosslessAuthContext(ctx context.Context, req []*apitra
 		saveRule := svr.Cache().Lossless().GetRule(req[i].GetId())
 		if saveRule != nil {
 			resources = append(resources, authtypes.ResourceEntry{
-				Type:     apisecurity.ResourceType_RouteRules,
+				Type:     apisecurity.ResourceType_LosslessRules,
 				ID:       saveRule.ID,
-				Metadata: saveRule.Proto.Metadata,
+				Metadata: saveRule.Metadata,
 			})
 		}
 	}
@@ -206,7 +206,7 @@ func (svr *Server) collectLosslessAuthContext(ctx context.Context, req []*apitra
 		authtypes.WithModule(authtypes.DiscoverModule),
 		authtypes.WithMethod(methodName),
 		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
-			apisecurity.ResourceType_RateLimitRules: resources,
+			apisecurity.ResourceType_LosslessRules: resources,
 		}),
 	)
 }
@@ -314,7 +314,7 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 			saveRule := svr.Cache().LaneRule().GetRule(req[i].GetId())
 			if saveRule != nil {
 				resources[apisecurity.ResourceType_LaneRules] = append(resources[apisecurity.ResourceType_LaneRules], authtypes.ResourceEntry{
-					Type:     apisecurity.ResourceType_CircuitBreakerRules,
+					Type:     apisecurity.ResourceType_LaneRules,
 					ID:       saveRule.ID,
 					Metadata: saveRule.Labels,
 				})
@@ -325,7 +325,7 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 				resources[apisecurity.ResourceType_CircuitBreakerRules] = append(resources[apisecurity.ResourceType_CircuitBreakerRules], authtypes.ResourceEntry{
 					Type:     apisecurity.ResourceType_CircuitBreakerRules,
 					ID:       saveRule.ID,
-					Metadata: saveRule.Proto.GetMetadata(),
+					Metadata: saveRule.Proto.Metadata,
 				})
 			}
 		case apimodel.RuleRelease_FaultDetectRules:
@@ -387,8 +387,8 @@ func (svr *Server) queryServiceResource(
 	svcSet := map[string]*svctypes.Service{}
 
 	for index := range req {
-		svcName := req[index].GetName().GetValue()
-		svcNamespace := req[index].GetNamespace().GetValue()
+		svcName := req[index].GetName()
+		svcNamespace := req[index].GetNamespace()
 		names.Add(svcNamespace)
 		svc := svr.Cache().Service().GetServiceByName(svcName, svcNamespace)
 		if svc != nil {
@@ -414,9 +414,9 @@ func (svr *Server) queryServiceAliasResource(
 	svcSet := map[string]*svctypes.Service{}
 
 	for index := range req {
-		refSvcName := req[index].GetService().GetValue()
-		refSvcNamespace := req[index].GetNamespace().GetValue()
-		svcNamespace := req[index].GetNamespace().GetValue()
+		refSvcName := req[index].GetService()
+		refSvcNamespace := req[index].GetNamespace()
+		svcNamespace := req[index].GetNamespace()
 		names.Add(svcNamespace)
 		refSvc := svr.Cache().Service().GetServiceByName(refSvcName, refSvcNamespace)
 		if refSvc != nil {
@@ -443,8 +443,8 @@ func (svr *Server) queryInstanceResource(
 	svcSet := map[string]*svctypes.Service{}
 
 	for index := range req {
-		svcName := req[index].GetService().GetValue()
-		svcNamespace := req[index].GetNamespace().GetValue()
+		svcName := req[index].GetService()
+		svcNamespace := req[index].GetNamespace()
 		item := req[index]
 		if svcNamespace != "" && svcName != "" {
 			svc := svr.Cache().Service().GetServiceByName(svcName, svcNamespace)
@@ -454,7 +454,7 @@ func (svr *Server) queryInstanceResource(
 				names.Add(svcNamespace)
 			}
 		} else {
-			ins := svr.Cache().Instance().GetInstance(item.GetId().GetValue())
+			ins := svr.Cache().Instance().GetInstance(item.GetId())
 			if ins != nil {
 				svc := svr.Cache().Service().GetServiceByID(ins.ServiceID)
 				if svc != nil {
@@ -475,7 +475,7 @@ func (svr *Server) queryInstanceResource(
 
 // queryRouteRuleResource 根据所给的 RouteRule 信息，收集对应的 ResourceEntry 列表
 func (svr *Server) queryRouteRuleResource(
-	req []*apitraffic.Routing) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
+	req []*apitraffic.RouteRule) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
 	if len(req) == 0 {
 		return make(map[apisecurity.ResourceType][]authtypes.ResourceEntry)
 	}
@@ -484,11 +484,11 @@ func (svr *Server) queryRouteRuleResource(
 	svcSet := map[string]*svctypes.Service{}
 
 	for index := range req {
-		svcName := req[index].GetService().GetValue()
-		svcNamespace := req[index].GetNamespace().GetValue()
-		svc := svr.Cache().Service().GetServiceByName(svcName, svcNamespace)
-		if svc != nil {
-			svcSet[svc.ID] = svc
+		// RouteRule 中的服务信息在 routing_config 中，根据不同类型解析
+		// 这里先使用 namespace 来收集相关资源
+		svcNamespace := req[index].GetNamespace()
+		if svcNamespace != "" {
+			names.Add(svcNamespace)
 		}
 	}
 
@@ -501,7 +501,7 @@ func (svr *Server) queryRouteRuleResource(
 
 // queryRateLimitConfigResource 根据所给的 RateLimit 信息，收集对应的 ResourceEntry 列表
 func (svr *Server) queryRateLimitConfigResource(
-	req []*apitraffic.Rule) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
+	req []*apitraffic.RateLimit) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
 	if len(req) == 0 {
 		return make(map[apisecurity.ResourceType][]authtypes.ResourceEntry)
 	}
@@ -510,8 +510,8 @@ func (svr *Server) queryRateLimitConfigResource(
 	svcSet := map[string]*svctypes.Service{}
 
 	for index := range req {
-		svcName := req[index].GetService().GetValue()
-		svcNamespace := req[index].GetNamespace().GetValue()
+		svcName := req[index].GetService()
+		svcNamespace := req[index].GetNamespace()
 		svc := svr.Cache().Service().GetServiceByName(svcName, svcNamespace)
 		if svc != nil {
 			svcSet[svc.ID] = svc

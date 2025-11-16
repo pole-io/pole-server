@@ -26,7 +26,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/anypb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
@@ -210,8 +209,8 @@ func (s *Server) GetLaneGroups(ctx context.Context, filter map[string]string) *a
 	}
 
 	rsp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	rsp.Amount = wrapperspb.UInt32(total)
-	rsp.Size = wrapperspb.UInt32(uint32(len(ret)))
+	rsp.Amount = total
+	rsp.Size = uint32(len(ret))
 	rsp.Data = make([]*anypb.Any, 0, len(ret))
 
 	for i := range ret {

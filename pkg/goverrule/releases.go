@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	apiutils "github.com/pole-io/pole-server/apis/pkg/utils"
 	"github.com/pole-io/pole-server/apis/store"
@@ -16,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// PublishLaneGroups 发布多个治理规则
+// PublishGovernanceRules 发布多个治理规则
 func (s *Server) PublishGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
 	switch req[0].GetResource() {
 	case apimodel.RuleRelease_LaneRules:
@@ -70,8 +69,8 @@ func (s *Server) GetRuleReleases(ctx context.Context, filter map[string]string) 
 	}
 
 	rsp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	rsp.Amount = protobuf.NewUInt32Value(uint32(total))
-	rsp.Size = protobuf.NewUInt32Value(uint32(len(versions)))
+	rsp.Amount = uint32(total)
+	rsp.Size = uint32(len(versions))
 	for i := range versions {
 		if err := api.AddAnyDataIntoBatchQuery(rsp, versions[i].ToSpec()); err != nil {
 			log.Error("[govertule][release][list] add data into batch query error", utils.RequestID(ctx), zap.Error(err))
@@ -81,7 +80,7 @@ func (s *Server) GetRuleReleases(ctx context.Context, filter map[string]string) 
 	return rsp
 }
 
-// DeleteLaneGroups 删除多个治理规则已发布版本
+// DeleteGovernanceRules 删除多个治理规则已发布版本
 func (s *Server) DeleteGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
 	if len(req) == 0 {
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
@@ -102,7 +101,7 @@ func (s *Server) DeleteGovernanceRules(ctx context.Context, req []*apimodel.Rule
 	}
 }
 
-// RollbackLaneGroups 回滚多个治理规则到目标版本
+// RollbackGovernanceRules 回滚多个治理规则到目标版本
 func (s *Server) RollbackGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
 	switch req[0].GetResource() {
 	case apimodel.RuleRelease_LaneRules:
@@ -120,7 +119,7 @@ func (s *Server) RollbackGovernanceRules(ctx context.Context, req []*apimodel.Ru
 	}
 }
 
-// StopbetaLaneGroups 停止多个治理规则灰度发布版本
+// StopbetaGovernanceRules 停止多个治理规则灰度发布版本
 func (s *Server) StopbetaGovernanceRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
 	switch req[0].GetResource() {
 	case apimodel.RuleRelease_LaneRules:
@@ -138,7 +137,7 @@ func (s *Server) StopbetaGovernanceRules(ctx context.Context, req []*apimodel.Ru
 	}
 }
 
-// Rulepipline 用于治理规则的并发控制
+// RuleReleasePipeline 用于治理规则的并发控制
 type RuleReleasePipeline struct {
 	lock                  func(ctx context.Context, tx store.Tx, req *apimodel.RuleRelease) (any, *apimodel.Response)
 	checkExistRelease     func(ctx context.Context, tx store.Tx, req *apimodel.RuleRelease) (bool, error)
@@ -211,8 +210,8 @@ func NewRuleReleasePipeline[
 	}
 }
 
-// executeRuleReleasePipline 执行通用的治理规则灰度发布执行
-func (s *Server) executeRuleReleasePipline(ctx context.Context, pipline *RuleReleasePipeline, requests []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+// executeRuleReleasePipeline 执行通用的治理规则灰度发布执行
+func (s *Server) executeRuleReleasePipeline(ctx context.Context, pipeline *RuleReleasePipeline, requests []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
 	handle := func(ctx context.Context, req *apimodel.RuleRelease) *apimodel.Response {
 		curData := &rules.RuleRelease{}
 		curData.FromSpec(req)
@@ -224,13 +223,13 @@ func (s *Server) executeRuleReleasePipline(ctx context.Context, pipline *RuleRel
 		defer tx.Rollback() // 最终的异常 case 的兜底
 
 		// 锁住目标规则，避免同时还有别的操作，导致发布不符合预期
-		rule, errRsp := pipline.lock(ctx, tx, req)
+		rule, errRsp := pipeline.lock(ctx, tx, req)
 		if errRsp != nil {
 			return errRsp
 		}
 
 		// 查看目标版本是否存在
-		existRes, err := pipline.checkExistRelease(ctx, tx, req)
+		existRes, err := pipeline.checkExistRelease(ctx, tx, req)
 		if err != nil {
 			return api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
 		}
@@ -240,7 +239,7 @@ func (s *Server) executeRuleReleasePipline(ctx context.Context, pipline *RuleRel
 
 		// 如果是发布正常的版本，需要检查下是否存在灰度发布的版本，存在的话，需要先结束
 		if curData.ReleaseType == rules.ReleaseTypeNormal {
-			grayRes, err := pipline.checkExistGrayRelease(ctx, tx, req)
+			grayRes, err := pipeline.checkExistGrayRelease(ctx, tx, req)
 			if err != nil {
 				return api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
 			}
@@ -249,7 +248,7 @@ func (s *Server) executeRuleReleasePipline(ctx context.Context, pipline *RuleRel
 			}
 		} else {
 			// 如果是灰度发布版本，则需要检查下是否已经存在灰度发布版本，存在的话，不能重复发布
-			grayRes, err := pipline.checkExistGrayRelease(ctx, tx, req)
+			grayRes, err := pipeline.checkExistGrayRelease(ctx, tx, req)
 			if err != nil {
 				return api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
 			}
@@ -257,15 +256,15 @@ func (s *Server) executeRuleReleasePipline(ctx context.Context, pipline *RuleRel
 				return api.NewResponse(apimodel.Code_ExistedResource)
 			}
 			// 保存灰度发布信息
-			if errRsp := SaveGrayRule(ctx, tx, s.storage, curData); err != nil {
+			if errRsp := SaveGrayRule(ctx, tx, s.storage, curData); errRsp != nil {
 				log.Error("[goverrule][release] save gray rule when publish gray rule.", utils.RequestID(ctx), zap.Any("resource", req.Resource),
-					zap.String("rule-id", curData.RuleId), zap.String("rule-name", curData.RuleName), zap.String("error", errRsp.GetInfo().GetValue()))
+					zap.String("rule-id", curData.RuleId), zap.String("rule-name", curData.RuleName), zap.String("error", errRsp.GetInfo()))
 				return errRsp
 			}
 		}
 
 		// 发布规则
-		if err := pipline.publish(ctx, tx, rule, req); err != nil {
+		if err := pipeline.publish(ctx, tx, rule, req); err != nil {
 			return api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
 		}
 		if err := tx.Commit(); err != nil {
@@ -306,7 +305,7 @@ func (s *Server) PublishCircuitBreakerRules(ctx context.Context, requests []*api
 			}
 		},
 	)
-	return s.executeRuleReleasePipline(ctx, pipeline, requests)
+	return s.executeRuleReleasePipeline(ctx, pipeline, requests)
 }
 
 // PublishFaultDetectRules implements GoverRuleServer.
@@ -331,7 +330,7 @@ func (s *Server) PublishFaultDetectRules(ctx context.Context, requests []*apimod
 			}
 		},
 	)
-	return s.executeRuleReleasePipline(ctx, pipeline, requests)
+	return s.executeRuleReleasePipeline(ctx, pipeline, requests)
 }
 
 // LaneGroup 发布示例
@@ -358,7 +357,7 @@ func (s *Server) PublishLaneGroups(ctx context.Context, requests []*apimodel.Rul
 			}
 		},
 	)
-	return s.executeRuleReleasePipline(ctx, pipeline, requests)
+	return s.executeRuleReleasePipeline(ctx, pipeline, requests)
 }
 
 func (s *Server) PublishRateLimits(ctx context.Context, requests []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
@@ -382,7 +381,7 @@ func (s *Server) PublishRateLimits(ctx context.Context, requests []*apimodel.Rul
 			}
 		},
 	)
-	return s.executeRuleReleasePipline(ctx, pipeline, requests)
+	return s.executeRuleReleasePipeline(ctx, pipeline, requests)
 }
 
 func (s *Server) PublishLosslessRules(ctx context.Context, requests []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
@@ -407,7 +406,7 @@ func (s *Server) PublishLosslessRules(ctx context.Context, requests []*apimodel.
 			}
 		},
 	)
-	return s.executeRuleReleasePipline(ctx, pipeline, requests)
+	return s.executeRuleReleasePipeline(ctx, pipeline, requests)
 }
 
 func (s *Server) PublishRouterRules(ctx context.Context, requests []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
@@ -435,7 +434,7 @@ func (s *Server) PublishRouterRules(ctx context.Context, requests []*apimodel.Ru
 			}
 		},
 	)
-	return s.executeRuleReleasePipline(ctx, pipeline, requests)
+	return s.executeRuleReleasePipeline(ctx, pipeline, requests)
 }
 
 // RuleRollbackPipeline 用于治理规则的回滚控制操作
@@ -507,7 +506,7 @@ func NewRuleRollbackPipeline(
 	}
 }
 
-func (s *Server) exectueRuleRollbackPipline(ctx context.Context, pipline *RuleRollbackPipeline, requests []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+func (s *Server) executeRuleRollbackPipeline(ctx context.Context, pipeline *RuleRollbackPipeline, requests []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
 	handle := func(ctx context.Context, req *apimodel.RuleRelease) *apimodel.Response {
 		reqData := &rules.RuleRelease{}
 		reqData.FromSpec(req)
@@ -519,7 +518,7 @@ func (s *Server) exectueRuleRollbackPipline(ctx context.Context, pipline *RuleRo
 		defer tx.Rollback() // 最终的异常 case 的兜底
 
 		// 检查目标版本是否存在
-		existRes, err := pipline.checkExistRelease(ctx, tx, req)
+		existRes, err := pipeline.checkExistRelease(ctx, tx, req)
 		if err != nil {
 			return api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
 		}
@@ -532,12 +531,12 @@ func (s *Server) exectueRuleRollbackPipline(ctx context.Context, pipline *RuleRo
 			return api.NewResponseWithMsg(apimodel.Code_BadRequest, "gray release not allow rollback")
 		}
 
-		rule, errRsp := pipline.lock(ctx, tx, existRes.ToSpec())
+		rule, errRsp := pipeline.lock(ctx, tx, existRes.ToSpec())
 		if errRsp != nil {
 			return errRsp
 		}
 
-		if errRsp := pipline.active(ctx, tx, rule, req); !api.IsSuccess(errRsp) {
+		if errRsp := pipeline.active(ctx, tx, rule, req); !api.IsSuccess(errRsp) {
 			return errRsp
 		}
 		if err := tx.Commit(); err != nil {
@@ -573,7 +572,7 @@ func (s *Server) RollbackCircuitBreakerRules(ctx context.Context, requests []*ap
 			})
 		},
 	)
-	return s.exectueRuleRollbackPipline(ctx, pipeline, requests)
+	return s.executeRuleRollbackPipeline(ctx, pipeline, requests)
 }
 
 // RollbackFaultDetectRules implements GoverRuleServer.
@@ -592,7 +591,7 @@ func (s *Server) RollbackFaultDetectRules(ctx context.Context, requests []*apimo
 			})
 		},
 	)
-	return s.exectueRuleRollbackPipline(ctx, pipeline, requests)
+	return s.executeRuleRollbackPipeline(ctx, pipeline, requests)
 }
 
 // RollbackLaneGroups implements GoverRuleServer.
@@ -610,7 +609,7 @@ func (s *Server) RollbackLaneGroups(ctx context.Context, requests []*apimodel.Ru
 			})
 		},
 	)
-	return s.exectueRuleRollbackPipline(ctx, pipeline, requests)
+	return s.executeRuleRollbackPipeline(ctx, pipeline, requests)
 }
 
 // RollbackRateLimits implements GoverRuleServer.
@@ -629,7 +628,7 @@ func (s *Server) RollbackRateLimits(ctx context.Context, requests []*apimodel.Ru
 			})
 		},
 	)
-	return s.exectueRuleRollbackPipline(ctx, pipeline, requests)
+	return s.executeRuleRollbackPipeline(ctx, pipeline, requests)
 }
 
 // RollbackRouterRules implements GoverRuleServer.
@@ -647,7 +646,7 @@ func (s *Server) RollbackRouterRules(ctx context.Context, requests []*apimodel.R
 			})
 		},
 	)
-	return s.exectueRuleRollbackPipline(ctx, pipeline, requests)
+	return s.executeRuleRollbackPipeline(ctx, pipeline, requests)
 }
 
 // RuleStopbetaPipeline 用于治理规则的停止灰度发布控制操作（停止灰度版本）
@@ -699,8 +698,8 @@ func NewRuleStopbetaPipeline[
 	}
 }
 
-// executeRuleStopbetaPipline 执行停止灰度流水线
-func (s *Server) executeRuleStopbetaPipline(ctx context.Context, pipline *RuleStopbetaPipeline, requests []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+// executeRuleStopbetaPipeline 执行停止灰度流水线
+func (s *Server) executeRuleStopbetaPipeline(ctx context.Context, pipeline *RuleStopbetaPipeline, requests []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
 	handle := func(ctx context.Context, req *apimodel.RuleRelease) *apimodel.Response {
 		reqData := &rules.RuleRelease{}
 		reqData.FromSpec(req)
@@ -712,13 +711,13 @@ func (s *Server) executeRuleStopbetaPipline(ctx context.Context, pipline *RuleSt
 		defer tx.Rollback()
 
 		// 1. 锁定规则
-		rule, errRsp := pipline.lock(ctx, tx, req)
+		rule, errRsp := pipeline.lock(ctx, tx, req)
 		if errRsp != nil {
 			return errRsp
 		}
 
 		// 2. 校验灰度版本是否存在
-		exist, err := pipline.checkExist(ctx, tx, req)
+		exist, err := pipeline.checkExist(ctx, tx, req)
 		if err != nil {
 			return api.NewResponseWithMsg(store.StoreCode2APICode(err), err.Error())
 		}
@@ -727,7 +726,7 @@ func (s *Server) executeRuleStopbetaPipline(ctx context.Context, pipline *RuleSt
 		}
 
 		// 3. 停止灰度（置为未激活）
-		if err := pipline.inactive(ctx, tx, rule, req); err != nil {
+		if err := pipeline.inactive(ctx, tx, rule, req); err != nil {
 			return api.NewResponseWithMsg(store.StoreCode2APICode(err), err.Error())
 		}
 
@@ -759,7 +758,7 @@ func (s *Server) StopbetaCircuitBreakerRules(ctx context.Context, request []*api
 			return &rules.CircuitBreakerRelease{RuleRelease: *cur, Rule: rule}
 		},
 	)
-	return s.executeRuleStopbetaPipline(ctx, pipeline, request)
+	return s.executeRuleStopbetaPipeline(ctx, pipeline, request)
 }
 
 // StopbetaFaultDetectRules implements GoverRuleServer.
@@ -774,7 +773,7 @@ func (s *Server) StopbetaFaultDetectRules(ctx context.Context, request []*apimod
 			return &rules.FaultDetectRelease{RuleRelease: *cur, Rule: rule}
 		},
 	)
-	return s.executeRuleStopbetaPipline(ctx, pipeline, request)
+	return s.executeRuleStopbetaPipeline(ctx, pipeline, request)
 }
 
 // StopbetaLaneGroups implements GoverRuleServer.
@@ -790,7 +789,7 @@ func (s *Server) StopbetaLaneGroups(ctx context.Context, req []*apimodel.RuleRel
 			return &rules.LaneGroupRelease{RuleRelease: *cur, Rule: protoVal}
 		},
 	)
-	return s.executeRuleStopbetaPipline(ctx, pipeline, req)
+	return s.executeRuleStopbetaPipeline(ctx, pipeline, req)
 }
 
 // StopbetaRateLimits implements GoverRuleServer.
@@ -805,7 +804,7 @@ func (s *Server) StopbetaRateLimits(ctx context.Context, request []*apimodel.Rul
 			return &rules.RateLimitRelease{RuleRelease: *cur, Rule: rule}
 		},
 	)
-	return s.executeRuleStopbetaPipline(ctx, pipeline, request)
+	return s.executeRuleStopbetaPipeline(ctx, pipeline, request)
 }
 
 // StopbetaRouterRules implements GoverRuleServer.
@@ -821,7 +820,7 @@ func (s *Server) StopbetaRouterRules(ctx context.Context, req []*apimodel.RuleRe
 			return &rules.RouterRuleRelease{RuleRelease: *cur, Rule: pdata}
 		},
 	)
-	return s.executeRuleStopbetaPipline(ctx, pipeline, req)
+	return s.executeRuleStopbetaPipeline(ctx, pipeline, req)
 }
 
 func (s *Server) StopbetaLosslessRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
@@ -835,7 +834,7 @@ func (s *Server) StopbetaLosslessRules(ctx context.Context, req []*apimodel.Rule
 			return &rules.LosslessRuleRelease{RuleRelease: *cur, Rule: rule}
 		},
 	)
-	return s.executeRuleStopbetaPipline(ctx, pipeline, req)
+	return s.executeRuleStopbetaPipeline(ctx, pipeline, req)
 }
 
 // RuleDeletePipeline 用于治理规则的删除发布版本控制
@@ -1023,7 +1022,7 @@ func SaveGrayRule(ctx context.Context, tx store.Tx, s store.GrayStore, rule rule
 	for i := range clientLabels {
 		data, err := marshaler.MarshalToString(clientLabels[i])
 		if err != nil {
-			log.Error("[Config][Release] marshal gary rule error.",
+			log.Error("[Config][Release] marshal gray rule error.",
 				utils.RequestID(ctx), zap.String("resource", rule.GetGrayResource()), zap.Error(err))
 			return api.NewResponseWithMsg(apimodel.Code_InvalidMatchRule, err.Error())
 		}

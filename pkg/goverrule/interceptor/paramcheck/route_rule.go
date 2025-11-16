@@ -22,11 +22,9 @@ import (
 	"strconv"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	"github.com/pole-io/specification/source/go/api/v1/service_manage"
 	"github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	apiv1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
@@ -55,7 +53,7 @@ var (
 
 // CreateRouterRules implements service.DiscoverServer.
 func (svr *Server) CreateRouterRules(ctx context.Context,
-	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
+	req []*traffic_manage.RouteRule) *apimodel.BatchWriteResponse {
 	if err := checkBatchRoutingConfigV2(req); err != nil {
 		return err
 	}
@@ -73,7 +71,7 @@ func (svr *Server) CreateRouterRules(ctx context.Context,
 
 // UpdateRouterRules implements service.DiscoverServer.
 func (svr *Server) UpdateRouterRules(ctx context.Context,
-	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
+	req []*traffic_manage.RouteRule) *apimodel.BatchWriteResponse {
 	if err := checkBatchRoutingConfigV2(req); err != nil {
 		return err
 	}
@@ -91,7 +89,7 @@ func (svr *Server) UpdateRouterRules(ctx context.Context,
 
 // QueryRouterRules implements service.DiscoverServer.
 func (svr *Server) QueryRouterRules(ctx context.Context,
-	query map[string]string) *service_manage.BatchQueryResponse {
+	query map[string]string) *apimodel.BatchQueryResponse {
 
 	offset, limit, err := valid.ParseOffsetAndLimit(query)
 	if err != nil {
@@ -118,7 +116,7 @@ func (svr *Server) GetOneRouterRule(ctx context.Context, req *traffic_manage.Rou
 
 // DeleteRouterRules implements service.DiscoverServer.
 func (svr *Server) DeleteRouterRules(ctx context.Context,
-	req []*traffic_manage.RouteRule) *service_manage.BatchWriteResponse {
+	req []*traffic_manage.RouteRule) *apimodel.BatchWriteResponse {
 	if err := checkBatchRoutingConfigV2(req); err != nil {
 		return err
 	}
@@ -180,12 +178,12 @@ func checkUpdateRoutingConfigV2(req *apitraffic.RouteRule) *apimodel.Response {
 }
 
 func checkRoutingNameAndNamespace(req *apitraffic.RouteRule) *apimodel.Response {
-	if err := valid.CheckDbStrFieldLen(protobuf.NewStringValue(req.GetName()), valid.MaxRuleName); err != nil {
-		return apiv1.NewRouterResponse(apimodel.Code_InvalidRoutingName, req)
+	if err := valid.CheckDbStrFieldLen(string(req.GetName()), valid.MaxRuleName); err != nil {
+		return apiv1.NewRouterResponse(apimodel.Code_InvalidParameter, req)
 	}
-	if err := valid.CheckDbStrFieldLen(protobuf.NewStringValue(req.GetNamespace()),
+	if err := valid.CheckDbStrFieldLen(string(req.GetNamespace()),
 		valid.MaxDbServiceNamespaceLength); err != nil {
-		return apiv1.NewRouterResponse(apimodel.Code_InvalidNamespaceName, req)
+		return apiv1.NewRouterResponse(apimodel.Code_InvalidParameter, req)
 	}
 	return nil
 }
@@ -195,7 +193,7 @@ func checkRoutingConfigIDV2(req *apitraffic.RouteRule) *apimodel.Response {
 		return apiv1.NewRouterResponse(apimodel.Code_EmptyRequest, req)
 	}
 	if req.Id == "" {
-		return apiv1.NewResponse(apimodel.Code_InvalidRoutingID)
+		return apiv1.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	return nil
 }
@@ -205,7 +203,7 @@ func checkRoutingConfigPriorityV2(req *apitraffic.RouteRule) *apimodel.Response 
 		return apiv1.NewRouterResponse(apimodel.Code_EmptyRequest, req)
 	}
 	if req.Priority > 10 {
-		return apiv1.NewResponse(apimodel.Code_InvalidRoutingPriority)
+		return apiv1.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	return nil
 }
@@ -214,18 +212,18 @@ func checkRoutingPolicyV2(req *apitraffic.RouteRule) *apimodel.Response {
 	if req == nil {
 		return apiv1.NewRouterResponse(apimodel.Code_EmptyRequest, req)
 	}
-	if req.GetRoutingPolicy() != apitraffic.RoutingPolicy_RulePolicy {
-		return apiv1.NewRouterResponse(apimodel.Code_InvalidRoutingPolicy, req)
+	if req.GetRoutePolicy() != apitraffic.RoutePolicy_RulePolicy {
+		return apiv1.NewRouterResponse(apimodel.Code_InvalidParameter, req)
 	}
 	// Automatically supplement @Type attribute according to Policy
 	if req.RoutingConfig.TypeUrl == "" {
-		if req.GetRoutingPolicy() == apitraffic.RoutingPolicy_RulePolicy {
+		if req.GetRoutePolicy() == apitraffic.RoutePolicy_RulePolicy {
 			req.RoutingConfig.TypeUrl = rules.RuleRoutingTypeUrl
 		}
-		if req.GetRoutingPolicy() == apitraffic.RoutingPolicy_MetadataPolicy {
+		if req.GetRoutePolicy() == apitraffic.RoutePolicy_MetadataPolicy {
 			req.RoutingConfig.TypeUrl = rules.MetaRoutingTypeUrl
 		}
-		if req.GetRoutingPolicy() == apitraffic.RoutingPolicy_NearbyPolicy {
+		if req.GetRoutePolicy() == apitraffic.RoutePolicy_NearbyPolicy {
 			req.RoutingConfig.TypeUrl = rules.NearbyRoutingTypeUrl
 		}
 	}

@@ -24,7 +24,6 @@ import (
 	"github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	"github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -53,7 +52,7 @@ var (
 
 // DeleteFaultDetectRules implements service.DiscoverServer.
 func (svr *Server) DeleteFaultDetectRules(ctx context.Context,
-	request []*fault_tolerance.FaultDetectRule) *service_manage.BatchWriteResponse {
+	request []*fault_tolerance.FaultDetectRule) *apimodel.BatchWriteResponse {
 
 	if checkErr := checkBatchFaultDetectRules(request); checkErr != nil {
 		return checkErr
@@ -76,7 +75,7 @@ func (svr *Server) DeleteFaultDetectRules(ctx context.Context,
 
 // GetFaultDetectRules implements service.DiscoverServer.
 func (svr *Server) GetFaultDetectRules(ctx context.Context,
-	query map[string]string) *service_manage.BatchQueryResponse {
+	query map[string]string) *apimodel.BatchQueryResponse {
 
 	for key := range query {
 		if _, ok := _allowFaultDetectRuleFilters[key]; !ok {
@@ -101,7 +100,7 @@ func (svr *Server) GetOneFaultDetectRule(ctx context.Context, req *fault_toleran
 
 // CreateFaultDetectRules implements service.DiscoverServer.
 func (svr *Server) CreateFaultDetectRules(ctx context.Context,
-	request []*fault_tolerance.FaultDetectRule) *service_manage.BatchWriteResponse {
+	request []*fault_tolerance.FaultDetectRule) *apimodel.BatchWriteResponse {
 
 	if checkErr := checkBatchFaultDetectRules(request); checkErr != nil {
 		return checkErr
@@ -124,7 +123,7 @@ func (svr *Server) CreateFaultDetectRules(ctx context.Context,
 
 // UpdateFaultDetectRules implements service.DiscoverServer.
 func (svr *Server) UpdateFaultDetectRules(ctx context.Context,
-	request []*fault_tolerance.FaultDetectRule) *service_manage.BatchWriteResponse {
+	request []*fault_tolerance.FaultDetectRule) *apimodel.BatchWriteResponse {
 	if checkErr := checkBatchFaultDetectRules(request); checkErr != nil {
 		return checkErr
 	}
@@ -181,30 +180,30 @@ func checkFaultDetectRuleParams(
 		return resp
 	}
 	if nameRequired && len(req.GetName()) == 0 {
-		return api.NewResponse(apimodel.Code_InvalidCircuitBreakerName)
+		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	if idRequired && len(req.GetId()) == 0 {
-		return api.NewResponse(apimodel.Code_InvalidCircuitBreakerID)
+		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	return nil
 }
 
 func checkFaultDetectRuleParamsDbLen(req *apifault.FaultDetectRule) *apimodel.Response {
 	if err := valid.CheckDbRawStrFieldLen(req.GetTargetService().GetService(), valid.MaxDbServiceNameLength); err != nil {
-		return api.NewResponse(apimodel.Code_InvalidServiceName)
+		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	if err := valid.CheckDbRawStrFieldLen(
 		req.GetTargetService().GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
-		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
+		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	if err := valid.CheckDbRawStrFieldLen(req.GetName(), valid.MaxRuleName); err != nil {
-		return api.NewResponse(apimodel.Code_InvalidRateLimitName)
+		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	if err := valid.CheckDbRawStrFieldLen(req.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
-		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
+		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	if err := valid.CheckDbRawStrFieldLen(req.GetDescription(), valid.MaxMetadataLength); err != nil {
-		return api.NewResponse(apimodel.Code_InvalidServiceComment)
+		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	return nil
 }

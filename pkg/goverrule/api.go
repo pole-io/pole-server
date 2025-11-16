@@ -50,15 +50,16 @@ type CircuitBreakerOperateServer interface {
 // RateLimitOperateServer Lamflow rule related operation
 type RateLimitOperateServer interface {
 	// CreateRateLimits Create a RateLimit rule
-	CreateRateLimits(ctx context.Context, request []*apitraffic.Rule) *apimodel.BatchWriteResponse
+	// 注释：接口参数类型改动 - 参数从 []*apitraffic.Rule 改为 []*apitraffic.RateLimit，业务逻辑保持不变
+	CreateRateLimits(ctx context.Context, request []*apitraffic.RateLimit) *apimodel.BatchWriteResponse
 	// DeleteRateLimits Delete current RateLimit rules
-	DeleteRateLimits(ctx context.Context, request []*apitraffic.Rule) *apimodel.BatchWriteResponse
+	DeleteRateLimits(ctx context.Context, request []*apitraffic.RateLimit) *apimodel.BatchWriteResponse
 	// UpdateRateLimits Modify the RateLimit rule
-	UpdateRateLimits(ctx context.Context, request []*apitraffic.Rule) *apimodel.BatchWriteResponse
+	UpdateRateLimits(ctx context.Context, request []*apitraffic.RateLimit) *apimodel.BatchWriteResponse
 	// GetRateLimits Query RateLimit rules
 	GetRateLimits(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 	// GetOneRateLimitRule Query a single RateLimit rule
-	GetOneRateLimitRule(ctx context.Context, req *apitraffic.Rule) *apimodel.Response
+	GetOneRateLimitRule(ctx context.Context, req *apitraffic.RateLimit) *apimodel.Response
 }
 
 // RouterRuleOperateServer Routing rules related operations

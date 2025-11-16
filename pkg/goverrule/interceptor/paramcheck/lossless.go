@@ -3,6 +3,7 @@ package paramcheck
 import (
 	"context"
 
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 )
 

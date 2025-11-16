@@ -22,7 +22,6 @@ import (
 	"strconv"
 
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
@@ -137,7 +136,7 @@ func (svr *Server) CreateLaneRules(ctx context.Context, req []*apitraffic.LaneRu
 			api.Collect(batchRsp, api.NewResponseWithMsg(apimodel.Code_InvalidParameter, "lane_rule name size must be <= 64"))
 			continue
 		}
-		if err := valid.CheckResourceName(wrapperspb.String(req[i].GetName())); err != nil {
+		if err := valid.CheckResourceName(string(req[i].GetName())); err != nil {
 			api.Collect(batchRsp, api.NewResponseWithMsg(apimodel.Code_InvalidParameter, err.Error()))
 			continue
 		}
@@ -214,7 +213,7 @@ func checkLaneGroupParam(req *apitraffic.LaneGroup, update bool) *apimodel.Respo
 	if len(req.GetName()) >= valid.MaxRuleName {
 		return api.NewResponseWithMsg(apimodel.Code_InvalidParameter, "lane_group name size must be <= 64")
 	}
-	if err := valid.CheckResourceName(wrapperspb.String(req.GetName())); err != nil {
+	if err := valid.CheckResourceName(string(req.GetName())); err != nil {
 		return api.NewResponseWithMsg(apimodel.Code_InvalidParameter, err.Error())
 	}
 	if len(req.Rules) > valid.MaxBatchSize {
@@ -222,7 +221,7 @@ func checkLaneGroupParam(req *apitraffic.LaneGroup, update bool) *apimodel.Respo
 	}
 	for i := range req.Rules {
 		rule := req.Rules[i]
-		if err := valid.CheckResourceName(wrapperspb.String(rule.GetName())); err != nil {
+		if err := valid.CheckResourceName(string(rule.GetName())); err != nil {
 			return api.NewResponseWithMsg(apimodel.Code_InvalidParameter, err.Error())
 		}
 		if len(rule.GetName()) >= valid.MaxRuleName {

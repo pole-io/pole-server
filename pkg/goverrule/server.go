@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/cmdb"
@@ -84,6 +83,6 @@ func storeError2AnyResponse(err error, msg proto.Message) *apimodel.Response {
 		return api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 	resp := api.NewAnyDataResponse(storeapi.StoreCode2APICode(err), msg)
-	resp.Info = &wrappers.StringValue{Value: err.Error()}
+	resp.Info = err.Error()
 	return resp
 }

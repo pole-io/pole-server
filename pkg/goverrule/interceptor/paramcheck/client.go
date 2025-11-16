@@ -23,7 +23,6 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/goverrule"
 )
@@ -103,27 +102,27 @@ func (s *Server) GetLosslessRuleWithCache(ctx context.Context, req *apiservice.S
 
 func (s *Server) commonCheckDiscoverRequest(req *apiservice.Service, resp *apiservice.DiscoverResponse) bool {
 	if s.nextSvr.Cache() == nil {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_ClientAPINotOpen))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
+		resp.Code = uint32(apimodel.Code_ClientAPINotOpen)
+		resp.Info = api.Code2Info(resp.Code)
 		resp.Service = req
 		return false
 	}
 	if req == nil {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_EmptyRequest))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
+		resp.Code = uint32(apimodel.Code_EmptyRequest)
+		resp.Info = api.Code2Info(resp.Code)
 		resp.Service = req
 		return false
 	}
 
-	if req.GetName().GetValue() == "" {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_InvalidServiceName))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
+	if req.GetName() == "" {
+		resp.Code = uint32(apimodel.Code_InvalidParameter)
+		resp.Info = api.Code2Info(resp.Code)
 		resp.Service = req
 		return false
 	}
-	if req.GetNamespace().GetValue() == "" {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_InvalidNamespaceName))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
+	if req.GetNamespace() == "" {
+		resp.Code = uint32(apimodel.Code_InvalidParameter)
+		resp.Info = api.Code2Info(resp.Code)
 		resp.Service = req
 		return false
 	}

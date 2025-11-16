@@ -11,7 +11,6 @@ import (
 
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/pkg/utils/revision"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -95,10 +94,6 @@ func (s *Server) UpdateLossLessRule(ctx context.Context, req *apitraffic.Lossles
 	}
 	data := &rules.LosslessRule{}
 	data.FromSpec(req)
-	if err != nil {
-		log.Error("[lossless] api2LosslessRule error", zap.Error(err), utils.RequestID(ctx))
-		return wrapperLosslessStoreResponse(req, err)
-	}
 	data.Revision = revision.NewRevision()
 	if err := s.storage.UpdateLossLessRule(data); err != nil {
 		log.Error("[lossless] update error", zap.Error(err), utils.RequestID(ctx))
@@ -121,8 +116,8 @@ func (s *Server) GetLossLessRules(ctx context.Context, query map[string]string) 
 		return api.NewBatchQueryResponse(apimodel.Code_ExecuteException)
 	}
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Size = protobuf.NewUInt32Value(uint32(len(list)))
-	resp.Amount = protobuf.NewUInt32Value(total)
+	resp.Size = uint32(len(list))
+	resp.Amount = total
 	for i := range list {
 		api.AddAnyDataIntoBatchQuery(resp, list[i].ToSpec())
 	}
