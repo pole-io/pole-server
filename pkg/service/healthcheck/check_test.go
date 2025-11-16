@@ -30,7 +30,6 @@ import (
 
 	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
@@ -50,14 +49,14 @@ func Test_serialSetInsDbStatus(t *testing.T) {
 
 	t.Run("prepare_instance", func(t *testing.T) {
 		resp := testSuit.DiscoverServer().RegisterInstance(testSuit.DefaultCtx, &service_manage.Instance{
-			Service:   protobuf.NewStringValue(mockService),
-			Namespace: protobuf.NewStringValue(mockNamespace),
-			Host:      protobuf.NewStringValue(mockHost),
-			Port:      protobuf.NewUInt32Value(uint32(mockPort)),
+			Service:   string(mockService),
+			Namespace: string(mockNamespace),
+			Host:      string(mockHost),
+			Port:      uint32(mockPort),
 		})
 
-		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), resp.GetCode().GetValue(), resp.GetInfo().GetValue())
-		t.Logf("instacne-id: %s", resp.GetInstance().GetId().GetValue())
+		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), resp.GetCode(), resp.GetInfo())
+		t.Logf("instacne-id: %s", resp)
 	})
 
 	testFunc := func(t *testing.T, health bool, predicate func(t *testing.T, saveIns *svctypes.Instance)) {
@@ -79,12 +78,12 @@ func Test_serialSetInsDbStatus(t *testing.T) {
 		}
 
 		respCode := healthcheck.SerialSetInsDbStatus(mockSvr, &service_manage.Instance{
-			Id:        protobuf.NewStringValue(instanceId),
-			Service:   protobuf.NewStringValue(mockService),
-			Namespace: protobuf.NewStringValue(mockNamespace),
-			Host:      protobuf.NewStringValue(mockHost),
-			Port:      protobuf.NewUInt32Value(uint32(mockPort)),
-			Healthy:   protobuf.NewBoolValue(true),
+			Id:        string(instanceId),
+			Service:   string(mockService),
+			Namespace: string(mockNamespace),
+			Host:      string(mockHost),
+			Port:      uint32(mockPort),
+			Healthy:   true,
 		}, health, time.Now().Unix())
 
 		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), uint32(respCode), fmt.Sprintf("%d", respCode))

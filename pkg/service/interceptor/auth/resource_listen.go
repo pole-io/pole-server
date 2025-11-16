@@ -99,43 +99,17 @@ func (s *Server) afterRuleResource(ctx context.Context, r types.Resource, res au
 func (s *Server) afterServiceResource(ctx context.Context, req *apiservice.Service, remove bool) error {
 	event := &ResourceEvent{
 		Resource: authtypes.ResourceEntry{
-			Type:     security.ResourceType_Services,
-			ID:       req.GetId().GetValue(),
+			Type: security.ResourceType_Services,
+			// 注释：资源ID获取改动 - GetId()返回string而非*wrapperspb.StringValue
+			ID:       req.GetId(),
 			Metadata: req.GetMetadata(),
 		},
-		AddPrincipals: func() []authtypes.Principal {
-			ret := make([]authtypes.Principal, 0, 4)
-			for i := range req.UserIds {
-				ret = append(ret, authtypes.Principal{
-					PrincipalType: authtypes.PrincipalUser,
-					PrincipalID:   req.UserIds[i].GetValue(),
-				})
-			}
-			for i := range req.GroupIds {
-				ret = append(ret, authtypes.Principal{
-					PrincipalType: authtypes.PrincipalGroup,
-					PrincipalID:   req.GroupIds[i].GetValue(),
-				})
-			}
-			return ret
-		}(),
-		DelPrincipals: func() []authtypes.Principal {
-			ret := make([]authtypes.Principal, 0, 4)
-			for i := range req.RemoveUserIds {
-				ret = append(ret, authtypes.Principal{
-					PrincipalType: authtypes.PrincipalUser,
-					PrincipalID:   req.RemoveUserIds[i].GetValue(),
-				})
-			}
-			for i := range req.RemoveGroupIds {
-				ret = append(ret, authtypes.Principal{
-					PrincipalType: authtypes.PrincipalGroup,
-					PrincipalID:   req.RemoveGroupIds[i].GetValue(),
-				})
-			}
-			return ret
-		}(),
-		IsRemove: remove,
+		// 注释：用户和组字段移除 - 根据 pole-io/specification，Service 结构体中已不存在 UserIds、GroupIds、RemoveUserIds、RemoveGroupIds 字段
+		// 根据 pole-io/specification，Service 结构体中已不存在 UserIds、GroupIds、RemoveUserIds、RemoveGroupIds 字段
+		// 这些字段在新的规范中已被移除，因此不再处理用户和组的关联
+		AddPrincipals: []authtypes.Principal{},
+		DelPrincipals: []authtypes.Principal{},
+		IsRemove:      remove,
 	}
 	return s.After(ctx, types.RService, event)
 }

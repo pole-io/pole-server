@@ -23,8 +23,7 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/wrappers"
-
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
 	storeapi "github.com/pole-io/pole-server/apis/store"
@@ -104,7 +103,7 @@ func storeError2AnyResponse(err error, msg proto.Message) *apimodel.Response {
 		return api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 	resp := api.NewAnyDataResponse(storeapi.StoreCode2APICode(err), msg)
-	resp.Info = &wrappers.StringValue{Value: err.Error()}
+	resp.Info = string(err.Error())
 	return resp
 }
 

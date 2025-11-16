@@ -142,7 +142,8 @@ func (handler *ResourceHealthCheckHandler) OnEvent(ctx context.Context, i interf
 		}
 		log.Infof("[Health Check]delete client heart beat information, id is %s", event.Id)
 		if err := checker.Delete(context.Background(), event.Id); err != nil {
-			log.Errorf("[Health Check] client id is %s, delete err is %+v", clientCache.Proto().GetId().Value, err)
+			// 注释：客户端ID访问改动 - Proto().GetId()返回string，无需.Value访问
+			log.Errorf("[Health Check] client id is %s, delete err is %+v", clientCache.Proto().GetId(), err)
 		}
 	}
 	return nil
@@ -182,7 +183,8 @@ func (c *CheckScheduler) upsertInstanceChecker(instanceWithChecker *InstanceWith
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 	instance := instanceWithChecker.instance
-	ttl := instance.HealthCheck().GetHeartbeat().GetTtl().GetValue()
+	// 注释：TTL获取改动 - GetTtl()返回uint32而非*wrapperspb.UInt32Value，去掉.GetValue()调用
+	ttl := instance.HealthCheck().GetHeartbeat().GetTtl()
 	var (
 		instValue *itemValue
 		exist     bool
@@ -224,14 +226,14 @@ func (c *CheckScheduler) putClientIfAbsent(clientWithChecker *ClientWithChecker)
 	client := clientWithChecker.client
 	var instValue *clientItemValue
 	var ok bool
-	clientId := client.Proto().GetId().GetValue()
+	clientId := client.Proto().GetId()
 	if instValue, ok = c.scheduledClients[clientId]; ok {
 		return true, instValue
 	}
 	instValue = &clientItemValue{
 		itemValue: itemValue{
 			mutex:             &sync.Mutex{},
-			host:              client.Proto().GetHost().GetValue(),
+			host:              client.Proto().GetHost(),
 			port:              0,
 			id:                clientId,
 			expireDurationSec: uint32(expireTtlCount * c.clientCheckTtlSec),
@@ -277,11 +279,11 @@ func (c *CheckScheduler) AddClient(clientWithChecker *ClientWithChecker) {
 	}
 	client := clientWithChecker.client
 	log.Infof("[Health Check][Check]add check client is %s, host is %s:%d",
-		client.Proto().GetId().GetValue(), client.Proto().GetHost(), 0)
+		client.Proto().GetId(), client.Proto().GetHost(), 0)
 }
 
 func getExpireDurationSec(instance *apiservice.Instance) uint32 {
-	ttlValue := instance.GetHealthCheck().GetHeartbeat().GetTtl().GetValue()
+	ttlValue := instance.GetHealthCheck().GetHeartbeat().GetTtl()
 	return expireTtlCount * ttlValue
 }
 
@@ -443,10 +445,10 @@ func (c *CheckScheduler) checkCallbackInstance(value interface{}) {
 // DelClient del client from check
 func (c *CheckScheduler) DelClient(clientWithChecker *ClientWithChecker) {
 	client := clientWithChecker.client
-	clientId := client.Proto().GetId().GetValue()
+	clientId := client.Proto().GetId()
 	exists := c.delClientIfPresent(clientId)
 	log.Infof("[Health Check][Check]remove check client is %s:%d, id is %s, exists is %v",
-		client.Proto().GetHost().GetValue(), 0, clientId, exists)
+		client.Proto().GetHost(), 0, clientId, exists)
 }
 
 // DelInstance del instance from check
@@ -565,12 +567,12 @@ func asyncDeleteClient(svr *Server, client *apiservice.Client) apimodel.Code {
 	future := svr.bc.AsyncDeregisterClient(client)
 	rsp, err := future.Done()
 	if err != nil {
-		log.Error("[Health Check][Check] async delete client", zap.String("client-id", client.GetId().GetValue()),
+		log.Error("[Health Check][Check] async delete client", zap.String("client-id", client.GetId()),
 			zap.Error(err))
 	}
 	_ = eventhub.Publish(eventhub.ClientEventTopic, &svctypes.ClientEvent{
 		EType: svctypes.EventClientOffline,
-		Id:    client.GetId().GetValue(),
+		Id:    client.GetId(),
 	})
 	return rsp.(apimodel.Code)
 }
@@ -592,7 +594,7 @@ func asyncSetInsDbStatus(svr *Server, ins *apiservice.Instance, healthStatus boo
 // req为原始的请求体
 // ins包括了req的内容，并且填充了instanceID与serviceToken
 func serialSetInsDbStatus(svr *Server, ins *apiservice.Instance, healthStatus bool, lastBeatTime int64) apimodel.Code {
-	id := ins.GetId().GetValue()
+	id := ins.GetId()
 	if err := svr.storage.SetInstanceHealthStatus(id, utils.StatusBoolToInt(healthStatus), utils.NewUUID()); err != nil {
 		log.Errorf("[Health Check][Check]id: %s set db status err:%s", id, err)
 		return storeapi.StoreCode2APICode(err)
