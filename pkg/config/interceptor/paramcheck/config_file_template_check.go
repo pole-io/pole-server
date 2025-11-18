@@ -70,10 +70,10 @@ func (s *Server) checkConfigFileTemplateParam(template *apiconfig.ConfigFileTemp
 	if err := CheckFileName(template.GetName()); err != nil {
 		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
 	}
-	if err := CheckContentLength(template.GetContent(), int(s.cfg.ContentMaxLength)); err != nil {
+	if err := CheckContentLength(template.Content, int(s.cfg.ContentMaxLength)); err != nil {
 		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
 	}
-	if len(template.GetContent()) == 0 {
+	if len(template.Content) == 0 {
 		return api.NewConfigFileTemplateResponseWithMessage(apimodel.Code_BadRequest, "content can not be blank.")
 	}
 	return nil

@@ -25,6 +25,7 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"go.uber.org/zap"
 
+
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
@@ -53,7 +54,7 @@ func (s *Server) CreateConfigFile(ctx context.Context, req *apiconfig.ConfigFile
 		return errResp
 	}
 
-	if rsp := s.prepareCreateConfigFile(ctx, req); rsp.Code != uint32(apimodel.Code_ExecuteSuccess) {
+	if rsp := s.prepareCreateConfigFile(ctx, req); rsp.Code!= api.ExecuteSuccess {
 		return rsp
 	}
 
@@ -222,6 +223,7 @@ func (s *Server) updateConfigFileAttribute(saveData, updateData *conftypes.Confi
 
 func (s *Server) prepareCreateConfigFile(ctx context.Context,
 	configFile *apiconfig.ConfigFile) *apimodel.Response {
+
 
 	// 如果配置文件组不存在则自动创建
 	createGroupRsp := s.createConfigFileGroupIfAbsent(ctx, &apiconfig.ConfigFileGroup{
@@ -516,11 +518,6 @@ func (s *Server) ImportConfigFile(ctx context.Context,
 		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
-	/*
-	return api.NewConfigFileImportResponse(apimodel.Code_ExecuteSuccess,
-		createConfigFiles, skipConfigFiles, overwriteConfigFiles)
-	*/
-	// 简化后
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
 
@@ -545,17 +542,17 @@ func (s *Server) getGroupAllConfigFiles(namespace, group string) ([]*conftypes.C
 	return configFiles, nil
 }
 
-
 /*
+// GetAllConfigEncryptAlgorithms 获取配置加密算法
 func (s *Server) GetAllConfigEncryptAlgorithms(ctx context.Context) *apiconfig.ConfigEncryptAlgorithmResponse {
-    if s.cryptoManager == nil {
-        return api.NewConfigEncryptAlgorithmResponse(apimodel.Code_ExecuteSuccess, nil)
-    }
-    var algorithms []*wrapperspb.StringValue
-    for _, name := range s.cryptoManager.GetCryptoAlgoNames() {
-        algorithms = append(algorithms, protobuf.NewStringValue(name))
-    }
-    return api.NewConfigEncryptAlgorithmResponse(apimodel.Code_ExecuteSuccess, algorithms)
+	if s.cryptoManager == nil {
+		return api.NewConfigEncryptAlgorithmResponse(apimodel.Code_ExecuteSuccess, nil)
+	}
+	var algorithms []*wrapperspb.StringValue
+	for _, name := range s.cryptoManager.GetCryptoAlgoNames() {
+		algorithms = append(algorithms, protobuf.NewStringValue(name))
+	}
+	return api.NewConfigEncryptAlgorithmResponse(apimodel.Code_ExecuteSuccess, algorithms)
 }
 */
 

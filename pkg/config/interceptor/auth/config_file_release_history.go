@@ -19,7 +19,7 @@ package config_auth
 
 import (
 	"context"
-
+	
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
