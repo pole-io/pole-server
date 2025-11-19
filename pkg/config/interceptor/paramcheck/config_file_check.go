@@ -21,19 +21,16 @@ import (
 	"context"
 	"strconv"
 
-	"google.golang.org/protobuf/types/known/wrapperspb"
-
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
 
 // CreateConfigFile 创建配置文件
-func (s *Server) CreateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse {
+func (s *Server) CreateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apimodel.BatchWriteResponse {
 	brsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range reqs {
 		if rsp := s.checkConfigFileParams(reqs[i]); rsp != nil {
@@ -49,7 +46,7 @@ func (s *Server) CreateConfigFiles(ctx context.Context, reqs []*apiconfig.Config
 }
 
 // UpdateConfigFile 更新配置文件
-func (s *Server) UpdateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse {
+func (s *Server) UpdateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apimodel.BatchWriteResponse {
 	brsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range reqs {
 		if rsp := s.checkConfigFileParams(reqs[i]); rsp != nil {
@@ -65,13 +62,13 @@ func (s *Server) UpdateConfigFiles(ctx context.Context, reqs []*apiconfig.Config
 
 // DeleteConfigFile 删除配置文件，删除配置文件同时会通知客户端 Not_Found
 func (s *Server) DeleteConfigFiles(ctx context.Context,
-	reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse {
+	reqs []*apiconfig.ConfigFile) *apimodel.BatchWriteResponse {
 	return s.nextServer.DeleteConfigFiles(ctx, reqs)
 }
 
 // GetConfigFileRichInfo 获取单个配置文件基础信息，包含发布状态等信息
 func (s *Server) GetConfigFileRichInfo(ctx context.Context,
-	req *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
+	req *apiconfig.ConfigFile) *apimodel.Response {
 	if errResp := checkReadFileParameter(req); errResp != nil {
 		return errResp
 	}
@@ -80,12 +77,12 @@ func (s *Server) GetConfigFileRichInfo(ctx context.Context,
 
 // SearchConfigFiles 查询配置文件
 func (s *Server) SearchConfigFiles(ctx context.Context,
-	filter map[string]string) *apiconfig.ConfigBatchQueryResponse {
+	filter map[string]string) *apimodel.BatchQueryResponse {
 
 	offset, limit, err := valid.ParseOffsetAndLimit(filter)
 	if err != nil {
 		out := api.NewConfigBatchQueryResponse(apimodel.Code_BadRequest)
-		out.Info = protobuf.NewStringValue(err.Error())
+		out.Info = err.Error()
 		return out
 	}
 	searchFilters := map[string]string{
@@ -105,23 +102,23 @@ func (s *Server) SearchConfigFiles(ctx context.Context,
 }
 
 func (s *Server) ExportConfigFile(ctx context.Context,
-	configFileExport *apiconfig.ConfigFileExportRequest) *apiconfig.ConfigExportResponse {
+	configFileExport *apiconfig.ConfigFileExportRequest) *apimodel.Response {
 
 	return s.nextServer.ExportConfigFile(ctx, configFileExport)
 }
 
 func (s *Server) ImportConfigFile(ctx context.Context,
-	configFiles []*apiconfig.ConfigFile, conflictHandling string) *apiconfig.ConfigImportResponse {
+	configFiles []*apiconfig.ConfigFile, conflictHandling string) *apimodel.Response {
 	for _, configFile := range configFiles {
 		if checkRsp := s.checkConfigFileParams(configFile); checkRsp != nil {
-			return api.NewConfigFileImportResponse(apimodel.Code(checkRsp.Code.GetValue()), nil, nil, nil)
+			return api.NewConfigFileImportResponse(apimodel.Code(checkRsp.Code), nil, nil, nil)
 		}
 	}
 	return s.nextServer.ImportConfigFile(ctx, configFiles, conflictHandling)
 }
 
 func (s *Server) GetAllConfigEncryptAlgorithms(
-	ctx context.Context) *apiconfig.ConfigEncryptAlgorithmResponse {
+	ctx context.Context) *apimodel.Response {
 	return s.nextServer.GetAllConfigEncryptAlgorithms(ctx)
 }
 
@@ -140,14 +137,14 @@ func (s *Server) GetConfigSubscribers(ctx context.Context, filter map[string]str
 	group := filter["group"]
 	fileName := filter["file_name"]
 
-	if err := CheckFileName(wrapperspb.String(fileName)); err != nil {
-		return types.NewCommonResponse(uint32(apimodel.Code_InvalidConfigFileName))
+	if err := CheckFileName(fileName); err != nil {
+		return types.NewCommonResponse(uint32(apimodel.Code_InvalidParameter))
 	}
-	if err := valid.CheckResourceName(wrapperspb.String(group)); err != nil {
-		return types.NewCommonResponse(uint32(apimodel.Code_InvalidConfigFileGroupName))
+	if err := valid.CheckResourceName(group); err != nil {
+		return types.NewCommonResponse(uint32(apimodel.Code_InvalidParameter))
 	}
-	if err := valid.CheckResourceName(wrapperspb.String(namespace)); err != nil {
-		return types.NewCommonResponse(uint32(apimodel.Code_InvalidNamespaceName))
+	if err := valid.CheckResourceName(namespace); err != nil {
+		return types.NewCommonResponse(uint32(apimodel.Code_InvalidParameter))
 	}
 
 	return s.nextServer.GetConfigSubscribers(ctx, filter)

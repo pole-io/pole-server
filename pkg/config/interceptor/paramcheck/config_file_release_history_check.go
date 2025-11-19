@@ -21,7 +21,6 @@ import (
 	"context"
 	"strconv"
 
-	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -30,7 +29,7 @@ import (
 
 // GetConfigFileReleaseHistory 获取配置文件发布历史记录
 func (s *Server) GetConfigFileReleaseHistories(ctx context.Context,
-	filter map[string]string) *apiconfig.ConfigBatchQueryResponse {
+	filter map[string]string) *apimodel.BatchQueryResponse {
 
 	offset, limit, err := valid.ParseOffsetAndLimit(filter)
 	if err != nil {

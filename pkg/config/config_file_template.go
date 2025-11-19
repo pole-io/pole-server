@@ -26,7 +26,6 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -34,7 +33,7 @@ import (
 
 // CreateConfigFileTemplates create config file template
 func (s *Server) CreateConfigFileTemplates(
-	ctx context.Context, reqs []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
+	ctx context.Context, reqs []*apiconfig.ConfigFileTemplate) *apimodel.Response {
 	for _, req := range reqs {
 		rsp := s.CreateConfigFileTemplate(ctx, req)
 		if api.IsSuccess(rsp) {
@@ -46,8 +45,8 @@ func (s *Server) CreateConfigFileTemplates(
 
 // CreateConfigFileTemplate create config file template
 func (s *Server) CreateConfigFileTemplate(
-	ctx context.Context, req *apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
-	name := req.GetName().GetValue()
+	ctx context.Context, req *apiconfig.ConfigFileTemplate) *apimodel.Response {
+	name := req.GetName()
 
 	saveData, err := s.storage.GetConfigFileTemplate(name)
 	if err != nil {
@@ -60,8 +59,8 @@ func (s *Server) CreateConfigFileTemplate(
 	}
 
 	userName := utils.ParseUserName(ctx)
-	req.CreateBy = protobuf.NewStringValue(userName)
-	req.ModifyBy = protobuf.NewStringValue(userName)
+	req.CreateBy = userName
+	req.ModifyBy = userName
 	saveData = conftypes.ToConfigFileTemplateStore(req)
 	if _, err := s.storage.SaveConfigFileTemplate(saveData); err != nil {
 		log.Error("[Config][Service] create config file template error.", utils.RequestID(ctx), zap.Error(err))
@@ -73,7 +72,7 @@ func (s *Server) CreateConfigFileTemplate(
 
 // UpdateConfigFileTemplates create config file template
 func (s *Server) UpdateConfigFileTemplates(
-	ctx context.Context, reqs []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
+	ctx context.Context, reqs []*apiconfig.ConfigFileTemplate) *apimodel.Response {
 	for _, req := range reqs {
 		rsp := s.UpdateConfigFileTemplate(ctx, req)
 		if api.IsSuccess(rsp) {
@@ -85,8 +84,8 @@ func (s *Server) UpdateConfigFileTemplates(
 
 // UpdateConfigFileTemplate create config file template
 func (s *Server) UpdateConfigFileTemplate(
-	ctx context.Context, req *apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
-	name := req.GetName().GetValue()
+	ctx context.Context, req *apiconfig.ConfigFileTemplate) *apimodel.Response {
+	name := req.GetName()
 
 	saveData, err := s.storage.GetConfigFileTemplate(name)
 	if err != nil {
@@ -99,8 +98,8 @@ func (s *Server) UpdateConfigFileTemplate(
 	}
 
 	userName := utils.ParseUserName(ctx)
-	req.CreateBy = protobuf.NewStringValue(saveData.CreateBy)
-	req.ModifyBy = protobuf.NewStringValue(userName)
+	req.CreateBy = saveData.CreateBy
+	req.ModifyBy = userName
 	saveData = conftypes.ToConfigFileTemplateStore(req)
 	if _, err := s.storage.SaveConfigFileTemplate(saveData); err != nil {
 		log.Error("[Config][Service] update config file template error.", utils.RequestID(ctx), zap.Error(err))
@@ -111,9 +110,9 @@ func (s *Server) UpdateConfigFileTemplate(
 }
 
 // GetConfigFileTemplate get config file template by name
-func (s *Server) GetConfigFileTemplate(ctx context.Context, name string) *apiconfig.ConfigResponse {
+func (s *Server) GetConfigFileTemplate(ctx context.Context, name string) *apimodel.Response {
 	if len(name) == 0 {
-		return api.NewConfigResponse(apimodel.Code_InvalidConfigFileTemplateName)
+		return api.NewConfigResponse(apimodel.Code_BadRequest)
 	}
 
 	saveData, err := s.storage.GetConfigFileTemplate(name)
@@ -125,13 +124,12 @@ func (s *Server) GetConfigFileTemplate(ctx context.Context, name string) *apicon
 	if saveData == nil {
 		return api.NewConfigResponse(apimodel.Code_NotFoundResource)
 	}
-	out := api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
-	out.ConfigFileTemplate = conftypes.ToConfigFileTemplateAPI(saveData)
-	return out
+	template := conftypes.ToConfigFileTemplateAPI(saveData)
+	return api.NewConfigFileTemplateResponse(apimodel.Code_ExecuteSuccess, template)
 }
 
 // GetAllConfigFileTemplates get all config file templates
-func (s *Server) GetAllConfigFileTemplates(ctx context.Context) *apiconfig.ConfigBatchQueryResponse {
+func (s *Server) GetAllConfigFileTemplates(ctx context.Context) *apimodel.BatchQueryResponse {
 	templates, err := s.storage.QueryAllConfigFileTemplates()
 	if err != nil {
 		log.Error("[Config][Service]query all config file templates error.", utils.RequestID(ctx), zap.Error(err))
@@ -142,6 +140,11 @@ func (s *Server) GetAllConfigFileTemplates(ctx context.Context) *apiconfig.Confi
 	for _, template := range templates {
 		apiTemplates = append(apiTemplates, conftypes.ToConfigFileTemplateAPI(template))
 	}
+	// Convert to []interface{} for the API function
+	var interfaceTemplates []interface{}
+	for _, template := range apiTemplates {
+		interfaceTemplates = append(interfaceTemplates, template)
+	}
 	return api.NewConfigFileTemplateBatchQueryResponse(apimodel.Code_ExecuteSuccess,
-		uint32(len(templates)), apiTemplates)
+		uint32(len(templates)), interfaceTemplates)
 }

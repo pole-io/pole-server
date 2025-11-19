@@ -119,7 +119,6 @@ func QueryCollect(resp *apimodel.BatchQueryResponse, response *apimodel.Response
 
 // AddNamespace BatchQueryResponse添加命名空间
 func AddNamespace(b *apimodel.BatchQueryResponse, namespace *apimodel.Namespace) {
-
 }
 
 // AddNamespaceSummary 添加汇总信息

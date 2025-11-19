@@ -26,7 +26,6 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -65,7 +64,7 @@ func (s *Server) recordReleaseHistory(ctx context.Context, fileRelease *conftype
 
 // GetConfigFileReleaseHistories 获取配置文件发布历史记录
 func (s *Server) GetConfigFileReleaseHistories(ctx context.Context,
-	searchFilter map[string]string) *apiconfig.ConfigBatchQueryResponse {
+	searchFilter map[string]string) *apimodel.BatchQueryResponse {
 
 	offset, limit, _ := valid.ParseOffsetAndLimit(searchFilter)
 
@@ -77,8 +76,7 @@ func (s *Server) GetConfigFileReleaseHistories(ctx context.Context,
 	}
 
 	if len(saveDatas) == 0 {
-		out := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-		out.Total = protobuf.NewUInt32Value(0)
+		out := api.NewConfigFileReleaseHistoryQueryResponse(apimodel.Code_ExecuteSuccess, 0, nil)
 		return out
 	}
 
@@ -91,8 +89,10 @@ func (s *Server) GetConfigFileReleaseHistories(ctx context.Context,
 		history := conftypes.ToReleaseHistoryAPI(data)
 		histories = append(histories, history)
 	}
-	out := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Total = protobuf.NewUInt32Value(count)
-	out.ConfigFileReleaseHistories = histories
+	interfaceHistories := make([]interface{}, len(histories))
+	for i, h := range histories {
+		interfaceHistories[i] = h
+	}
+	out := api.NewConfigFileReleaseHistoryQueryResponse(apimodel.Code_ExecuteSuccess, count, interfaceHistories)
 	return out
 }

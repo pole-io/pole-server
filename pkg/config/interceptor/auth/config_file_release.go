@@ -21,6 +21,7 @@ import (
 	"context"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/auth"
@@ -29,7 +30,7 @@ import (
 
 // PublishConfigFile 发布配置文件
 func (s *Server) PublishConfigFile(ctx context.Context,
-	configFileRelease *apiconfig.ConfigFileRelease) *apiconfig.ConfigResponse {
+	configFileRelease *apiconfig.ConfigFileRelease) *apimodel.Response {
 
 	authCtx := s.collectConfigFileReleaseAuthContext(ctx,
 		[]*apiconfig.ConfigFileRelease{configFileRelease}, auth.Modify, "PublishConfigFile")
@@ -46,7 +47,7 @@ func (s *Server) PublishConfigFile(ctx context.Context,
 
 // GetConfigFileRelease 获取配置文件发布内容
 func (s *Server) GetConfigFileRelease(ctx context.Context,
-	req *apiconfig.ConfigFileRelease) *apiconfig.ConfigResponse {
+	req *apiconfig.ConfigFileRelease) *apimodel.Response {
 
 	authCtx := s.collectConfigFileReleaseAuthContext(ctx,
 		[]*apiconfig.ConfigFileRelease{req}, auth.Read, auth.DescribeConfigFileRelease)
@@ -61,7 +62,7 @@ func (s *Server) GetConfigFileRelease(ctx context.Context,
 
 // DeleteConfigFileReleases implements ConfigCenterServer.
 func (s *Server) DeleteConfigFileReleases(ctx context.Context,
-	reqs []*apiconfig.ConfigFileRelease) *apiconfig.ConfigBatchWriteResponse {
+	reqs []*apiconfig.ConfigFileRelease) *apimodel.BatchWriteResponse {
 
 	authCtx := s.collectConfigFileReleaseAuthContext(ctx, reqs, auth.Delete, auth.DeleteConfigFileReleases)
 
@@ -75,7 +76,7 @@ func (s *Server) DeleteConfigFileReleases(ctx context.Context,
 
 // GetConfigFileReleaseVersions implements ConfigCenterServer.
 func (s *Server) GetConfigFileReleaseVersions(ctx context.Context,
-	filters map[string]string) *apiconfig.ConfigBatchQueryResponse {
+	filters map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := s.collectConfigFileReleaseAuthContext(ctx, nil, auth.Read, auth.DescribeConfigFileReleaseVersions)
 
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -88,7 +89,7 @@ func (s *Server) GetConfigFileReleaseVersions(ctx context.Context,
 
 // GetConfigFileReleases implements ConfigCenterServer.
 func (s *Server) GetConfigFileReleases(ctx context.Context,
-	filters map[string]string) *apiconfig.ConfigBatchQueryResponse {
+	filters map[string]string) *apimodel.BatchQueryResponse {
 
 	authCtx := s.collectConfigFileReleaseAuthContext(ctx, nil, auth.Read, auth.DescribeConfigFileReleases)
 
@@ -103,7 +104,7 @@ func (s *Server) GetConfigFileReleases(ctx context.Context,
 
 // RollbackConfigFileReleases implements ConfigCenterServer.
 func (s *Server) RollbackConfigFileReleases(ctx context.Context,
-	reqs []*apiconfig.ConfigFileRelease) *apiconfig.ConfigBatchWriteResponse {
+	reqs []*apiconfig.ConfigFileRelease) *apimodel.BatchWriteResponse {
 
 	authCtx := s.collectConfigFileReleaseAuthContext(ctx, reqs, auth.Modify, auth.RollbackConfigFileReleases)
 
@@ -117,7 +118,7 @@ func (s *Server) RollbackConfigFileReleases(ctx context.Context,
 
 // UpsertAndReleaseConfigFile .
 func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
-	req *apiconfig.ConfigFilePublishInfo) *apiconfig.ConfigResponse {
+	req *apiconfig.ConfigFilePublishInfo) *apimodel.Response {
 	authCtx := s.collectConfigFilePublishAuthContext(ctx, []*apiconfig.ConfigFilePublishInfo{req},
 		auth.Modify, auth.UpsertAndReleaseConfigFile)
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -131,7 +132,7 @@ func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
 }
 
 func (s *Server) StopGrayConfigFileReleases(ctx context.Context,
-	reqs []*apiconfig.ConfigFileRelease) *apiconfig.ConfigBatchWriteResponse {
+	reqs []*apiconfig.ConfigFileRelease) *apimodel.BatchWriteResponse {
 
 	authCtx := s.collectConfigFileReleaseAuthContext(ctx, reqs,
 		auth.Modify, auth.StopGrayConfigFileReleases)

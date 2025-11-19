@@ -27,20 +27,20 @@ import (
 )
 
 // GetAllConfigFileTemplates get all config file templates
-func (s *Server) GetAllConfigFileTemplates(ctx context.Context) *apiconfig.ConfigBatchQueryResponse {
+func (s *Server) GetAllConfigFileTemplates(ctx context.Context) *apimodel.BatchQueryResponse {
 
 	return s.nextServer.GetAllConfigFileTemplates(ctx)
 }
 
 // GetConfigFileTemplate get config file template
-func (s *Server) GetConfigFileTemplate(ctx context.Context, name string) *apiconfig.ConfigResponse {
+func (s *Server) GetConfigFileTemplate(ctx context.Context, name string) *apimodel.Response {
 
 	return s.nextServer.GetConfigFileTemplate(ctx, name)
 }
 
 // CreateConfigFileTemplate create config file template
 func (s *Server) CreateConfigFileTemplates(ctx context.Context,
-	reqs []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
+	reqs []*apiconfig.ConfigFileTemplate) *apimodel.Response {
 	if len(reqs) == 0 {
 		return api.NewConfigResponse(apimodel.Code_BadRequest)
 	}
@@ -54,7 +54,7 @@ func (s *Server) CreateConfigFileTemplates(ctx context.Context,
 
 // UpdateConfigFileTemplates create config file template
 func (s *Server) UpdateConfigFileTemplates(ctx context.Context,
-	reqs []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
+	reqs []*apiconfig.ConfigFileTemplate) *apimodel.Response {
 	if len(reqs) == 0 {
 		return api.NewConfigResponse(apimodel.Code_BadRequest)
 	}
@@ -66,14 +66,14 @@ func (s *Server) UpdateConfigFileTemplates(ctx context.Context,
 	return s.nextServer.UpdateConfigFileTemplates(ctx, reqs)
 }
 
-func (s *Server) checkConfigFileTemplateParam(template *apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
+func (s *Server) checkConfigFileTemplateParam(template *apiconfig.ConfigFileTemplate) *apimodel.Response {
 	if err := CheckFileName(template.GetName()); err != nil {
-		return api.NewConfigResponse(apimodel.Code_InvalidConfigFileTemplateName)
+		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
 	}
-	if err := CheckContentLength(template.Content.GetValue(), int(s.cfg.ContentMaxLength)); err != nil {
-		return api.NewConfigResponse(apimodel.Code_InvalidConfigFileContentLength)
+	if err := CheckContentLength(template.Content, int(s.cfg.ContentMaxLength)); err != nil {
+		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
 	}
-	if len(template.Content.GetValue()) == 0 {
+	if len(template.Content) == 0 {
 		return api.NewConfigFileTemplateResponseWithMessage(apimodel.Code_BadRequest, "content can not be blank.")
 	}
 	return nil

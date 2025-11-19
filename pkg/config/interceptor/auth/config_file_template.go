@@ -21,6 +21,7 @@ import (
 	"context"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/auth"
@@ -28,7 +29,7 @@ import (
 )
 
 // GetAllConfigFileTemplates get all config file templates
-func (s *Server) GetAllConfigFileTemplates(ctx context.Context) *apiconfig.ConfigBatchQueryResponse {
+func (s *Server) GetAllConfigFileTemplates(ctx context.Context) *apimodel.BatchQueryResponse {
 	authCtx := s.collectConfigFileTemplateAuthContext(ctx,
 		[]*apiconfig.ConfigFileTemplate{}, auth.Read, auth.DescribeAllConfigFileTemplates)
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -41,7 +42,7 @@ func (s *Server) GetAllConfigFileTemplates(ctx context.Context) *apiconfig.Confi
 }
 
 // GetConfigFileTemplate get config file template
-func (s *Server) GetConfigFileTemplate(ctx context.Context, name string) *apiconfig.ConfigResponse {
+func (s *Server) GetConfigFileTemplate(ctx context.Context, name string) *apimodel.Response {
 	authCtx := s.collectConfigFileTemplateAuthContext(ctx,
 		[]*apiconfig.ConfigFileTemplate{}, auth.Read, auth.DescribeConfigFileTemplate)
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -55,7 +56,7 @@ func (s *Server) GetConfigFileTemplate(ctx context.Context, name string) *apicon
 
 // CreateConfigFileTemplates create config file template
 func (s *Server) CreateConfigFileTemplates(ctx context.Context,
-	reqs []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
+	reqs []*apiconfig.ConfigFileTemplate) *apimodel.Response {
 
 	authCtx := s.collectConfigFileTemplateAuthContext(ctx, reqs, auth.Create, auth.CreateConfigFileTemplate)
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -69,7 +70,7 @@ func (s *Server) CreateConfigFileTemplates(ctx context.Context,
 
 // UpdateConfigFileTemplates create config file template
 func (s *Server) UpdateConfigFileTemplates(ctx context.Context,
-	reqs []*apiconfig.ConfigFileTemplate) *apiconfig.ConfigResponse {
+	reqs []*apiconfig.ConfigFileTemplate) *apimodel.Response {
 
 	authCtx := s.collectConfigFileTemplateAuthContext(ctx, reqs, auth.Create, auth.CreateConfigFileTemplate)
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {

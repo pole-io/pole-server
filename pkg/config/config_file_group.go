@@ -23,7 +23,6 @@ import (
 
 	"github.com/gogo/protobuf/jsonpb"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -31,7 +30,6 @@ import (
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -39,7 +37,7 @@ import (
 )
 
 // CreateConfigFileGroups 批量创建配置文件组
-func (s *Server) CreateConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse {
+func (s *Server) CreateConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apimodel.BatchWriteResponse {
 	bRsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, req := range reqs {
 		rsp := s.CreateConfigFileGroup(ctx, req)
@@ -49,9 +47,9 @@ func (s *Server) CreateConfigFileGroups(ctx context.Context, reqs []*apiconfig.C
 }
 
 // CreateConfigFileGroup 创建配置文件组
-func (s *Server) CreateConfigFileGroup(ctx context.Context, req *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse {
-	namespace := req.Namespace.GetValue()
-	groupName := req.Name.GetValue()
+func (s *Server) CreateConfigFileGroup(ctx context.Context, req *apiconfig.ConfigFileGroup) *apimodel.Response {
+	namespace := req.Namespace
+	groupName := req.Name
 
 	// 如果 namespace 不存在则自动创建
 	if _, rsp := s.namespaceOperator.CreateNamespaceIfAbsent(ctx, &apimodel.Namespace{
@@ -59,7 +57,7 @@ func (s *Server) CreateConfigFileGroup(ctx context.Context, req *apiconfig.Confi
 	}); !api.IsSuccess(rsp) {
 		log.Error("[Config][Group] create namespace failed.", utils.RequestID(ctx),
 			utils.ZapNamespace(namespace), utils.ZapGroup(groupName), zap.String("err", rsp.String()))
-		return api.NewConfigResponse(apimodel.Code(rsp.Code.GetValue()))
+		return api.NewConfigResponse(apimodel.Code(rsp.Code))
 	}
 
 	fileGroup, err := s.storage.GetConfigFileGroup(namespace, groupName)
@@ -86,17 +84,17 @@ func (s *Server) CreateConfigFileGroup(ctx context.Context, req *apiconfig.Confi
 		utils.ZapNamespace(namespace), utils.ZapGroup(groupName))
 
 	// 这里设置在 config-group 的 id 信息
-	req.Id = protobuf.NewUInt64Value(ret.Id)
+	req.Id = ret.Id
 	s.RecordHistory(ctx, configGroupRecordEntry(ctx, req, saveData, types.OCreate))
 	return api.NewConfigGroupResponse(apimodel.Code_ExecuteSuccess, &apiconfig.ConfigFileGroup{
-		Id:        protobuf.NewUInt64Value(saveData.Id),
-		Namespace: protobuf.NewStringValue(saveData.Namespace),
-		Name:      protobuf.NewStringValue(saveData.Name),
+		Id:        saveData.Id,
+		Namespace: saveData.Namespace,
+		Name:      saveData.Name,
 	})
 }
 
 // UpdateConfigFileGroups 批量更新配置文件组
-func (s *Server) UpdateConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse {
+func (s *Server) UpdateConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apimodel.BatchWriteResponse {
 	bRsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, req := range reqs {
 		rsp := s.UpdateConfigFileGroup(ctx, req)
@@ -106,9 +104,9 @@ func (s *Server) UpdateConfigFileGroups(ctx context.Context, reqs []*apiconfig.C
 }
 
 // UpdateConfigFileGroup 更新配置文件组
-func (s *Server) UpdateConfigFileGroup(ctx context.Context, req *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse {
-	namespace := req.Namespace.GetValue()
-	groupName := req.Name.GetValue()
+func (s *Server) UpdateConfigFileGroup(ctx context.Context, req *apiconfig.ConfigFileGroup) *apimodel.Response {
+	namespace := req.Namespace
+	groupName := req.Name
 
 	saveData, err := s.storage.GetConfigFileGroup(namespace, groupName)
 	if err != nil {
@@ -133,12 +131,12 @@ func (s *Server) UpdateConfigFileGroup(ctx context.Context, req *apiconfig.Confi
 		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
-	req.Id = protobuf.NewUInt64Value(saveData.Id)
+	req.Id = saveData.Id
 	s.RecordHistory(ctx, configGroupRecordEntry(ctx, req, updateData, types.OUpdate))
 	return api.NewConfigGroupResponse(apimodel.Code_ExecuteSuccess, &apiconfig.ConfigFileGroup{
-		Id:        protobuf.NewUInt64Value(updateData.Id),
-		Namespace: protobuf.NewStringValue(updateData.Namespace),
-		Name:      protobuf.NewStringValue(updateData.Name),
+		Id:        updateData.Id,
+		Namespace: updateData.Namespace,
+		Name:      updateData.Name,
 	})
 }
 
@@ -165,10 +163,10 @@ func (s *Server) UpdateGroupAttribute(saveData, updateData *conftypes.ConfigFile
 
 // createConfigFileGroupIfAbsent 如果不存在配置文件组，则自动创建
 func (s *Server) createConfigFileGroupIfAbsent(ctx context.Context,
-	configFileGroup *apiconfig.ConfigFileGroup) *apiconfig.ConfigResponse {
+	configFileGroup *apiconfig.ConfigFileGroup) *apimodel.Response {
 	var (
-		namespace = configFileGroup.Namespace.GetValue()
-		name      = configFileGroup.Name.GetValue()
+		namespace = configFileGroup.Namespace
+		name      = configFileGroup.Name
 	)
 
 	group, err := s.storage.GetConfigFileGroup(namespace, name)
@@ -184,17 +182,17 @@ func (s *Server) createConfigFileGroupIfAbsent(ctx context.Context,
 }
 
 // DeleteConfigFileGroups 批量删除配置文件组
-func (s *Server) DeleteConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse {
+func (s *Server) DeleteConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apimodel.BatchWriteResponse {
 	bRsp := api.NewConfigBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for _, req := range reqs {
-		rsp := s.DeleteConfigFileGroup(ctx, req.Namespace.GetValue(), req.Name.GetValue())
+		rsp := s.DeleteConfigFileGroup(ctx, req.Namespace, req.Name)
 		api.ConfigCollect(bRsp, rsp)
 	}
 	return bRsp
 }
 
 // DeleteConfigFileGroup 删除配置文件组
-func (s *Server) DeleteConfigFileGroup(ctx context.Context, namespace, name string) *apiconfig.ConfigResponse {
+func (s *Server) DeleteConfigFileGroup(ctx context.Context, namespace, name string) *apimodel.Response {
 	log.Info("[Config][Group] delete config file group. ", utils.RequestID(ctx),
 		utils.ZapNamespace(namespace), utils.ZapGroup(name))
 
@@ -218,18 +216,18 @@ func (s *Server) DeleteConfigFileGroup(ctx context.Context, namespace, name stri
 	}
 
 	s.RecordHistory(ctx, configGroupRecordEntry(ctx, &apiconfig.ConfigFileGroup{
-		Id:        protobuf.NewUInt64Value(configGroup.Id),
-		Namespace: protobuf.NewStringValue(configGroup.Namespace),
-		Name:      protobuf.NewStringValue(configGroup.Name),
+		Id:        configGroup.Id,
+		Namespace: configGroup.Namespace,
+		Name:      configGroup.Name,
 	}, configGroup, types.ODelete))
 	return api.NewConfigGroupResponse(apimodel.Code_ExecuteSuccess, &apiconfig.ConfigFileGroup{
-		Id:        protobuf.NewUInt64Value(configGroup.Id),
-		Namespace: protobuf.NewStringValue(configGroup.Namespace),
-		Name:      protobuf.NewStringValue(configGroup.Name),
+		Id:        configGroup.Id,
+		Namespace: configGroup.Namespace,
+		Name:      configGroup.Name,
 	})
 }
 
-func (s *Server) hasResourceInConfigGroup(ctx context.Context, namespace, name string) *apiconfig.ConfigResponse {
+func (s *Server) hasResourceInConfigGroup(ctx context.Context, namespace, name string) *apimodel.Response {
 	total, err := s.storage.CountConfigFiles(namespace, name)
 	if err != nil {
 		log.Error("[Config][Group] get config file group failed. ", utils.RequestID(ctx),
@@ -253,7 +251,7 @@ func (s *Server) hasResourceInConfigGroup(ctx context.Context, namespace, name s
 
 // QueryConfigFileGroups 查询配置文件组
 func (s *Server) QueryConfigFileGroups(ctx context.Context,
-	searchFilters map[string]string) *apiconfig.ConfigBatchQueryResponse {
+	searchFilters map[string]string) *apimodel.BatchQueryResponse {
 
 	offset, limit, _ := valid.ParseOffsetAndLimit(searchFilters)
 
@@ -271,7 +269,7 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 	total, ret, err := s.groupCache.Query(args)
 	if err != nil {
 		resp := api.NewConfigBatchQueryResponse(storeapi.StoreCode2APICode(err))
-		resp.Info = protobuf.NewStringValue(err.Error())
+		resp.Info = err.Error()
 		return resp
 	}
 	values := make([]*apiconfig.ConfigFileGroup, 0, len(ret))
@@ -285,16 +283,19 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 
 		// 如果包含特殊标签，也不允许修改
 		if _, ok := item.GetMetadata()[types.MetaKey3RdPlatform]; ok {
-			item.Editable = protobuf.NewBoolValue(false)
+			item.Editable = false
 		}
 
-		item.FileCount = wrapperspb.UInt64(fileCount)
+		item.FileCount = fileCount
 		values = append(values, item)
 	}
 
-	resp := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Total = protobuf.NewUInt32Value(total)
-	resp.ConfigFileGroups = values
+	interfaceValues := make([]interface{}, len(values))
+	for i, v := range values {
+		interfaceValues[i] = v
+	}
+
+	resp := api.NewConfigFileGroupBatchQueryResponse(apimodel.Code_ExecuteSuccess, total, interfaceValues)
 	return resp
 }
 
@@ -307,8 +308,8 @@ func configGroupRecordEntry(ctx context.Context, req *apiconfig.ConfigFileGroup,
 
 	entry := &types.RecordEntry{
 		ResourceType:  types.RConfigGroup,
-		ResourceName:  req.GetName().GetValue(),
-		Namespace:     req.GetNamespace().GetValue(),
+		ResourceName:  req.GetName(),
+		Namespace:     req.GetNamespace(),
 		OperationType: operationType,
 		Operator:      utils.ParseOperator(ctx),
 		Detail:        detail,

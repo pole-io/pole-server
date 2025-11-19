@@ -18,8 +18,8 @@
 package v1
 
 import (
+	anypb "google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 )
@@ -28,7 +28,7 @@ import (
 func NewAuthResponse(code apimodel.Code) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
-		Info: code2info[uint32(code)],
+		Info: Code2Info(uint32(code)),
 	}
 }
 
@@ -36,7 +36,7 @@ func NewAuthResponse(code apimodel.Code) *apimodel.Response {
 func NewAuthResponseWithMsg(code apimodel.Code, msg string) *apimodel.Response {
 	return &apimodel.Response{
 		Code: uint32(code),
-		Info: code2info[uint32(code)] + ":" + msg,
+		Info: Code2Info(uint32(code)) + ":" + msg,
 	}
 }
 
@@ -44,7 +44,7 @@ func NewAuthResponseWithMsg(code apimodel.Code, msg string) *apimodel.Response {
 func NewAuthBatchWriteResponse(code apimodel.Code) *apimodel.BatchWriteResponse {
 	return &apimodel.BatchWriteResponse{
 		Code: uint32(code),
-		Info: code2info[uint32(code)],
+		Info: Code2Info(uint32(code)),
 		Size: 0,
 	}
 }
@@ -53,7 +53,7 @@ func NewAuthBatchWriteResponse(code apimodel.Code) *apimodel.BatchWriteResponse 
 func NewAuthBatchQueryResponse(code apimodel.Code) *apimodel.BatchQueryResponse {
 	return &apimodel.BatchQueryResponse{
 		Code:   uint32(code),
-		Info:   code2info[uint32(code)],
+		Info:   Code2Info(uint32(code)),
 		Amount: 0,
 		Size:   0,
 	}
@@ -68,83 +68,131 @@ func NewAuthBatchQueryResponseWithMsg(code apimodel.Code, msg string) *apimodel.
 
 // NewUserResponse 创建回复带用户信息
 func NewUserResponse(code apimodel.Code, user *apisecurity.User) *apimodel.Response {
+	var data *anypb.Any
+	if user != nil {
+		data, _ = anypb.New(user)
+	}
 	return &apimodel.Response{
 		Code: uint32(code),
-		Info: code2info[uint32(code)],
+		Info: Code2Info(uint32(code)),
+		Data: data,
 	}
 }
 
-// NewUserResponse 创建回复带用户信息
+// NewUserResponseWithMsg 创建回复带用户信息和自定义消息
 func NewUserResponseWithMsg(code apimodel.Code, info string, user *apisecurity.User) *apimodel.Response {
+	var data *anypb.Any
+	if user != nil {
+		data, _ = anypb.New(user)
+	}
 	return &apimodel.Response{
 		Code: uint32(code),
-		Info: string(info),
+		Info: Code2Info(uint32(code)) + ":" + info,
+		Data: data,
 	}
 }
 
 // NewGroupResponse 创建回复带用户组信息
-func NewGroupResponse(code apimodel.Code, user *apisecurity.UserGroup) *apimodel.Response {
+func NewGroupResponse(code apimodel.Code, group *apisecurity.UserGroup) *apimodel.Response {
+	var data *anypb.Any
+	if group != nil {
+		data, _ = anypb.New(group)
+	}
 	return &apimodel.Response{
-		Code:      uint32(code),
-		Info:      code2info[uint32(code)],
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
+		Data: data,
 	}
 }
 
 // NewModifyGroupResponse 创建修改用户组的响应信息
 func NewModifyGroupResponse(code apimodel.Code, group *apisecurity.ModifyUserGroup) *apimodel.Response {
+	var data *anypb.Any
+	if group != nil {
+		data, _ = anypb.New(group)
+	}
 	return &apimodel.Response{
-		Code:            uint32(code),
-		Info:            code2info[uint32(code)],
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
+		Data: data,
 	}
 }
 
 // NewGroupRelationResponse 创建用户组关联关系的响应体
 func NewGroupRelationResponse(code apimodel.Code, relation *apisecurity.UserGroupRelation) *apimodel.Response {
+	var data *anypb.Any
+	if relation != nil {
+		data, _ = anypb.New(relation)
+	}
 	return &apimodel.Response{
-		Code:     uint32(code),
-		Info:     code2info[uint32(code)],
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
+		Data: data,
 	}
 }
 
 // NewAuthStrategyResponse 创建鉴权策略响应体
 func NewAuthStrategyResponse(code apimodel.Code, req *apisecurity.AuthStrategy) *apimodel.Response {
+	var data *anypb.Any
+	if req != nil {
+		data, _ = anypb.New(req)
+	}
 	return &apimodel.Response{
-		Code:         uint32(code),
-		Info:         code2info[uint32(code)],
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
+		Data: data,
 	}
 }
 
 // NewAuthStrategyResponseWithMsg 创建鉴权策略响应体并自定义Info
 func NewAuthStrategyResponseWithMsg(
 	code apimodel.Code, msg string, req *apisecurity.AuthStrategy) *apimodel.Response {
+	var data *anypb.Any
+	if req != nil {
+		data, _ = anypb.New(req)
+	}
 	return &apimodel.Response{
-		Code:         uint32(code),
-		Info:        msg,
+		Code: uint32(code),
+		Info: msg,
+		Data: data,
 	}
 }
 
 // NewModifyAuthStrategyResponse 创建修改鉴权策略响应体
 func NewModifyAuthStrategyResponse(code apimodel.Code, req *apisecurity.ModifyAuthStrategy) *apimodel.Response {
+	var data *anypb.Any
+	if req != nil {
+		data, _ = anypb.New(req)
+	}
 	return &apimodel.Response{
-		Code:               uint32(code),
-		Info:               code2info[uint32(code)],
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
+		Data: data,
 	}
 }
 
 // NewStrategyResourcesResponse 创建修改鉴权策略响应体
 func NewStrategyResourcesResponse(code apimodel.Code, ret *apisecurity.StrategyResources) *apimodel.Response {
+	var data *anypb.Any
+	if ret != nil {
+		data, _ = anypb.New(ret)
+	}
 	return &apimodel.Response{
 		Code: uint32(code),
-		Info: code2info[uint32(code)],
-		Data: protobuf.MarshalAny(ret),
+		Info: Code2Info(uint32(code)),
+		Data: data,
 	}
 }
 
 // NewLoginResponse 创建登录响应体
 func NewLoginResponse(code apimodel.Code, loginResponse *apisecurity.LoginResponse) *apimodel.Response {
+	var data *anypb.Any
+	if loginResponse != nil {
+		data, _ = anypb.New(loginResponse)
+	}
 	return &apimodel.Response{
 		Code: uint32(code),
-		Info: code2info[uint32(code)],
-		Data: protobuf.MarshalAny(loginResponse),
+		Info: Code2Info(uint32(code)),
+		Data: data,
 	}
 }

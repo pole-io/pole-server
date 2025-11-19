@@ -30,13 +30,12 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
 // CreateConfigFileGroups 创建配置文件组
 func (s *Server) CreateConfigFileGroups(ctx context.Context,
-	reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse {
+	reqs []*apiconfig.ConfigFileGroup) *apimodel.BatchWriteResponse {
 	authCtx := s.collectConfigGroupAuthContext(ctx, reqs, authtypes.Create, authtypes.CreateConfigFileGroup)
 
 	// 验证 token 信息
@@ -49,20 +48,11 @@ func (s *Server) CreateConfigFileGroups(ctx context.Context,
 
 	resp := s.nextServer.CreateConfigFileGroups(ctx, reqs)
 
-	nRsp := api.NewConfigBatchWriteResponse(apimodel.Code(resp.Code.Value))
-	for index := range resp.Responses {
-		item := resp.Responses[index].ConfigFileGroup
-		if err := s.afterConfigGroupResource(ctx, item, false); err != nil {
-			api.ConfigCollect(nRsp, api.NewConfigResponseWithInfo(apimodel.Code_ExecuteException, err.Error()))
-		} else {
-			api.ConfigCollect(nRsp, resp.Responses[index])
-		}
-	}
 	return resp
 }
 
 // UpdateConfigFileGroups 更新配置文件组
-func (s *Server) UpdateConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse {
+func (s *Server) UpdateConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apimodel.BatchWriteResponse {
 	authCtx := s.collectConfigGroupAuthContext(ctx, reqs, authtypes.Modify, authtypes.UpdateConfigFileGroup)
 
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -73,20 +63,11 @@ func (s *Server) UpdateConfigFileGroups(ctx context.Context, reqs []*apiconfig.C
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	resp := s.nextServer.UpdateConfigFileGroups(ctx, reqs)
 
-	nRsp := api.NewConfigBatchWriteResponse(apimodel.Code(resp.Code.Value))
-	for index := range resp.Responses {
-		item := resp.Responses[index].ConfigFileGroup
-		if err := s.afterConfigGroupResource(ctx, item, false); err != nil {
-			api.ConfigCollect(nRsp, api.NewConfigResponseWithInfo(apimodel.Code_ExecuteException, err.Error()))
-		} else {
-			api.ConfigCollect(nRsp, resp.Responses[index])
-		}
-	}
-	return nRsp
+	return resp
 }
 
 // DeleteConfigFileGroups 删除配置文件组
-func (s *Server) DeleteConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apiconfig.ConfigBatchWriteResponse {
+func (s *Server) DeleteConfigFileGroups(ctx context.Context, reqs []*apiconfig.ConfigFileGroup) *apimodel.BatchWriteResponse {
 	authCtx := s.collectConfigGroupAuthContext(ctx, reqs, authtypes.Delete, authtypes.DeleteConfigFileGroup)
 
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -97,21 +78,12 @@ func (s *Server) DeleteConfigFileGroups(ctx context.Context, reqs []*apiconfig.C
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	resp := s.nextServer.DeleteConfigFileGroups(ctx, reqs)
-	nRsp := api.NewConfigBatchWriteResponse(apimodel.Code(resp.Code.Value))
-	for index := range resp.Responses {
-		item := resp.Responses[index].ConfigFileGroup
-		if err := s.afterConfigGroupResource(ctx, item, false); err != nil {
-			api.ConfigCollect(nRsp, api.NewConfigResponseWithInfo(apimodel.Code_ExecuteException, err.Error()))
-		} else {
-			api.ConfigCollect(nRsp, resp.Responses[index])
-		}
-	}
-	return nRsp
+	return resp
 }
 
 // QueryConfigFileGroups 查询配置文件组
 func (s *Server) QueryConfigFileGroups(ctx context.Context,
-	filter map[string]string) *apiconfig.ConfigBatchQueryResponse {
+	filter map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := s.collectConfigGroupAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeConfigFileGroups)
 
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -144,33 +116,5 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 	authCtx.SetRequestContext(ctx)
 
 	resp := s.nextServer.QueryConfigFileGroups(ctx, filter)
-	if len(resp.ConfigFileGroups) != 0 {
-		for index := range resp.ConfigFileGroups {
-			item := resp.ConfigFileGroups[index]
-			authCtx.SetAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
-				apisecurity.ResourceType_ConfigGroups: {
-					{
-						Type:     apisecurity.ResourceType_ConfigGroups,
-						ID:       strconv.FormatUint(item.GetId().GetValue(), 10),
-						Metadata: item.Metadata,
-					},
-				},
-			})
-
-			// 检查 write 操作权限
-			authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateConfigFileGroup})
-			// 如果检查不通过，设置 editable 为 false
-			if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-				item.Editable = protobuf.NewBoolValue(false)
-			}
-
-			// 检查 delete 操作权限
-			authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteConfigFileGroup})
-			// 如果检查不通过，设置 editable 为 false
-			if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-				item.Deleteable = protobuf.NewBoolValue(false)
-			}
-		}
-	}
 	return resp
 }

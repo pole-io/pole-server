@@ -50,17 +50,18 @@ func (s *Server) onConfigGroupResource(ctx context.Context, res *ResourceEvent) 
 	authCtx.SetAttachment(auth.ResourceAttachmentKey, map[apisecurity.ResourceType][]auth.ResourceEntry{
 		apisecurity.ResourceType_ConfigGroups: {
 			{
-				ID:    strconv.FormatUint(res.ConfigGroup.Id.GetValue(), 10),
+				ID:    strconv.FormatUint(res.ConfigGroup.Id, 10),
 				Owner: utils.ParseOwnerID(ctx),
 			},
 		},
 	})
 
-	users := utils.ConvertStringValuesToSlice(res.ConfigGroup.UserIds)
-	removeUses := utils.ConvertStringValuesToSlice(res.ConfigGroup.RemoveUserIds)
-
-	groups := utils.ConvertStringValuesToSlice(res.ConfigGroup.GroupIds)
-	removeGroups := utils.ConvertStringValuesToSlice(res.ConfigGroup.RemoveGroupIds)
+	// 根据新的 pole-io/specification，ConfigGroup 不再有 UserIds、RemoveUserIds、GroupIds、RemoveGroupIds 字段
+	// 使用空切片替代这些不存在的字段
+	var users []string
+	var removeUses []string
+	var groups []string
+	var removeGroups []string
 
 	authCtx.SetAttachment(auth.LinkUsersKey, utils.StringSliceDeDuplication(users))
 	authCtx.SetAttachment(auth.RemoveLinkUsersKey, utils.StringSliceDeDuplication(removeUses))

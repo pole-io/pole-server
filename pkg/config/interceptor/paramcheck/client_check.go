@@ -31,7 +31,7 @@ import (
 
 // UpsertAndReleaseConfigFileFromClient 创建/更新配置文件并发布
 func (s *Server) UpsertAndReleaseConfigFileFromClient(ctx context.Context,
-	req *apiconfig.ConfigFilePublishInfo) *apiconfig.ConfigResponse {
+	req *apiconfig.ConfigFilePublishInfo) *apimodel.Response {
 	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
 		return api.NewConfigResponseWithInfo(apimodel.Code_BadRequest, "invalid config namespace")
 	}
@@ -46,37 +46,45 @@ func (s *Server) UpsertAndReleaseConfigFileFromClient(ctx context.Context,
 
 // CreateConfigFileFromClient 调用config_file的方法创建配置文件
 func (s *Server) CreateConfigFileFromClient(ctx context.Context,
-	req *apiconfig.ConfigFile) *apiconfig.ConfigClientResponse {
+	req *apiconfig.ConfigFile) *apiconfig.ConfigDiscoverResponse {
 	if checkRsp := s.checkConfigFileParams(req); checkRsp != nil {
-		return api.NewConfigClientResponseFromConfigResponse(checkRsp)
+		return &apiconfig.ConfigDiscoverResponse{
+			Code: checkRsp.Code,
+			Info: checkRsp.Info,
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+		}
 	}
 	return s.nextServer.CreateConfigFileFromClient(ctx, req)
 }
 
 // UpdateConfigFileFromClient 调用config_file的方法更新配置文件
 func (s *Server) UpdateConfigFileFromClient(ctx context.Context,
-	req *apiconfig.ConfigFile) *apiconfig.ConfigClientResponse {
+	req *apiconfig.ConfigFile) *apiconfig.ConfigDiscoverResponse {
 	if checkRsp := s.checkConfigFileParams(req); checkRsp != nil {
-		return api.NewConfigClientResponseFromConfigResponse(checkRsp)
+		return &apiconfig.ConfigDiscoverResponse{
+			Code: checkRsp.Code,
+			Info: checkRsp.Info,
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+		}
 	}
 	return s.nextServer.UpdateConfigFileFromClient(ctx, req)
 }
 
 // DeleteConfigFileFromClient 删除配置文件，删除配置文件同时会通知客户端 Not_Found
 func (s *Server) DeleteConfigFileFromClient(ctx context.Context,
-	req *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
+	req *apiconfig.ConfigFile) *apimodel.Response {
 
-	if req.GetNamespace().GetValue() == "" {
+	if req.GetNamespace() == "" {
 		return api.NewConfigResponseWithInfo(
 			apimodel.Code_BadRequest, "namespace is empty")
 	}
 
-	if req.GetGroup().GetValue() == "" {
+	if req.GetGroup() == "" {
 		return api.NewConfigResponseWithInfo(
 			apimodel.Code_BadRequest, "file group is empty")
 	}
 
-	if req.GetName().GetValue() == "" {
+	if req.GetName() == "" {
 		return api.NewConfigResponseWithInfo(
 			apimodel.Code_BadRequest, "filename is empty")
 	}
@@ -86,27 +94,47 @@ func (s *Server) DeleteConfigFileFromClient(ctx context.Context,
 
 // PublishConfigFileFromClient 调用config_file_release的方法发布配置文件
 func (s *Server) PublishConfigFileFromClient(ctx context.Context,
-	req *apiconfig.ConfigFileRelease) *apiconfig.ConfigClientResponse {
+	req *apiconfig.ConfigFileRelease) *apiconfig.ConfigDiscoverResponse {
 
 	if err := CheckFileName(req.GetFileName()); err != nil {
-		ret := api.NewConfigResponse(apimodel.Code_InvalidConfigFileName)
-		return api.NewConfigClientResponseFromConfigResponse(ret)
+		ret := api.NewConfigResponse(apimodel.Code_InvalidParameter)
+		return &apiconfig.ConfigDiscoverResponse{
+			Code: ret.Code,
+			Info: ret.Info,
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+		}
 	}
 	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
-		ret := api.NewConfigResponse(apimodel.Code_InvalidNamespaceName)
-		return api.NewConfigClientResponseFromConfigResponse(ret)
+		ret := api.NewConfigResponse(apimodel.Code_InvalidParameter)
+		return &apiconfig.ConfigDiscoverResponse{
+			Code: ret.Code,
+			Info: ret.Info,
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+		}
 	}
 	if err := valid.CheckResourceName(req.GetGroup()); err != nil {
-		ret := api.NewConfigResponse(apimodel.Code_InvalidConfigFileGroupName)
-		return api.NewConfigClientResponseFromConfigResponse(ret)
+		ret := api.NewConfigResponse(apimodel.Code_InvalidParameter)
+		return &apiconfig.ConfigDiscoverResponse{
+			Code: ret.Code,
+			Info: ret.Info,
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+		}
 	}
-	if !s.checkNamespaceExisted(req.GetNamespace().GetValue()) {
-		ret := api.NewConfigResponse(apimodel.Code_NotFoundNamespace)
-		return api.NewConfigClientResponseFromConfigResponse(ret)
+	if !s.checkNamespaceExisted(req.GetNamespace()) {
+		ret := api.NewConfigResponse(apimodel.Code_NotFoundResource)
+		return &apiconfig.ConfigDiscoverResponse{
+			Code: ret.Code,
+			Info: ret.Info,
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+		}
 	}
-	if req.GetReleaseType().GetValue() == conftypes.ReleaseTypeGray && len(req.GetBetaLabels()) == 0 {
+	if req.GetReleaseType() == conftypes.ReleaseTypeGray && len(req.GetBetaLabels()) == 0 {
 		ret := api.NewConfigResponse(apimodel.Code_InvalidMatchRule)
-		return api.NewConfigClientResponseFromConfigResponse(ret)
+		return &apiconfig.ConfigDiscoverResponse{
+				Code: ret.Code,
+			Info: ret.Info,
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+		}
 	}
 
 	return s.nextServer.PublishConfigFileFromClient(ctx, req)
@@ -114,59 +142,63 @@ func (s *Server) PublishConfigFileFromClient(ctx context.Context,
 
 // GetConfigFileWithCache 从缓存中获取配置文件，如果客户端的版本号大于服务端，则服务端重新加载缓存
 func (s *Server) GetConfigFileWithCache(ctx context.Context,
-	req *apiconfig.ClientConfigFileInfo) *apiconfig.ConfigClientResponse {
+	req *apiconfig.ConfigFile) *apiconfig.ConfigDiscoverResponse {
 
-	if req.GetNamespace().GetValue() == "" {
-		return api.NewConfigClientResponseWithInfo(
-			apimodel.Code_BadRequest, "namespace is empty")
+	if req.GetNamespace() == "" {
+		return &apiconfig.ConfigDiscoverResponse{
+			Code: uint32(apimodel.Code_BadRequest),
+			Info: "namespace is empty",
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+		}
 	}
 
-	if req.GetGroup().GetValue() == "" {
-		return api.NewConfigClientResponseWithInfo(
-			apimodel.Code_BadRequest, "file group is empty")
+	if req.GetGroup() == "" {
+		return &apiconfig.ConfigDiscoverResponse{
+			Code: uint32(apimodel.Code_BadRequest),
+			Info: "file group is empty",
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+		}
 	}
 
-	if req.GetFileName().GetValue() == "" {
-		return api.NewConfigClientResponseWithInfo(
-			apimodel.Code_BadRequest, "filename is empty")
+	if req.GetName() == "" {
+		return &apiconfig.ConfigDiscoverResponse{
+			Code: uint32(apimodel.Code_BadRequest),
+			Info: "filename is empty",
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+		}
 	}
-
 	return s.nextServer.GetConfigFileWithCache(ctx, req)
 }
 
-// WatchConfigFiles 监听配置文件变化
-func (s *Server) LongPullWatchFile(ctx context.Context,
-	request *apiconfig.ClientWatchConfigFileRequest) (config.WatchCallback, error) {
+// WatchConfigFiles 监听配置文件变化 (gRPC 版本) - 但目前简化跳过实现
+// func (s *Server) WatchConfigFiles(ctx context.Context,
+//	request *apiconfig.ClientWatchConfigFileRequest) (*apiconfig.ConfigClientResponse, error) {
+//	// 暂时跳过此方法的实现，因为接口不匹配
+//	return s.nextServer.WatchConfigFiles(ctx, request)
+//}
 
-	watchFiles := request.WatchFiles
-	if len(watchFiles) == 0 {
-		return func() *apiconfig.ConfigClientResponse {
-			return api.NewConfigClientResponse0(apimodel.Code_InvalidWatchConfigFileFormat)
+func (s *Server) LongPullWatchFile(ctx context.Context,
+	request *apiconfig.ConfigFileGroupRequest) (config.WatchCallback, error) {
+
+	if request.GetConfigFileGroup().GetNamespace() == "" {
+		return func() *apiconfig.ConfigDiscoverResponse {
+			return &apiconfig.ConfigDiscoverResponse{
+				Code: uint32(apimodel.Code_BadRequest),
+				Info: "namespace is empty",
+				Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+			}
 		}, nil
 	}
 
-	for _, configFile := range watchFiles {
-		namespace := configFile.GetNamespace().GetValue()
-		group := configFile.GetGroup().GetValue()
-		fileName := configFile.GetFileName().GetValue()
-		if namespace == "" {
-			return func() *apiconfig.ConfigClientResponse {
-				return api.NewConfigClientResponseWithInfo(
-					apimodel.Code_BadRequest, "namespace is empty")
-			}, nil
-		}
-		if group == "" {
-			return func() *apiconfig.ConfigClientResponse {
-				return api.NewConfigClientResponseWithInfo(
-					apimodel.Code_BadRequest, "file group is empty")
-			}, nil
-		}
-		if fileName == "" {
-			return func() *apiconfig.ConfigClientResponse {
-				return api.NewConfigClientResponseWithInfo(
-					apimodel.Code_BadRequest, "filename is empty")
-			}, nil
-		}
+
+		if request.GetConfigFileGroup().GetName() == "" {
+		return func() *apiconfig.ConfigDiscoverResponse {
+			return &apiconfig.ConfigDiscoverResponse{
+				Code: uint32(apimodel.Code_BadRequest),
+				Info: "file group is empty",
+				Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
+			}
+		}, nil
 	}
 
 	return s.nextServer.LongPullWatchFile(ctx, request)
@@ -174,25 +206,31 @@ func (s *Server) LongPullWatchFile(ctx context.Context,
 
 // GetConfigFileNamesWithCache 获取某个配置分组下的配置文件
 func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
-	req *apiconfig.ConfigFileGroupRequest) *apiconfig.ConfigClientListResponse {
+	req *apiconfig.ConfigFileGroupRequest) *apiconfig.ConfigDiscoverResponse {
 
-	if req.GetConfigFileGroup().GetNamespace().GetValue() == "" {
-		return api.NewConfigClientListResponseWithInfo(
-			apimodel.Code_BadRequest, "namespace is empty")
+	if req.GetConfigFileGroup().GetNamespace() == "" {
+		return &apiconfig.ConfigDiscoverResponse{
+			Code: uint32(apimodel.Code_BadRequest),
+			Info: "namespace is empty",
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_Names,
+		}
 	}
 
-	if req.GetConfigFileGroup().GetName().GetValue() == "" {
-		return api.NewConfigClientListResponseWithInfo(
-			apimodel.Code_BadRequest, "file group is empty")
+	if req.GetConfigFileGroup().GetName() == "" {
+		return &apiconfig.ConfigDiscoverResponse{
+			Code: uint32(apimodel.Code_BadRequest),
+			Info: "file group is empty",
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_Names,
+		}
 	}
 
 	return s.nextServer.GetConfigFileNamesWithCache(ctx, req)
 }
 
 func (s *Server) GetConfigGroupsWithCache(ctx context.Context,
-	req *apiconfig.ClientConfigFileInfo) *apiconfig.ConfigDiscoverResponse {
+	req *apiconfig.ConfigFile) *apiconfig.ConfigDiscoverResponse {
 
-	namespace := req.GetNamespace().GetValue()
+	namespace := req.GetNamespace()
 	out := api.NewConfigDiscoverResponse(apimodel.Code_ExecuteSuccess)
 	if namespace == "" {
 		out.Code = uint32(apimodel.Code_BadRequest)

@@ -21,6 +21,7 @@ import (
 	"context"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/auth"
@@ -28,7 +29,7 @@ import (
 )
 
 // CreateConfigFile 创建配置文件
-func (s *Server) CreateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse {
+func (s *Server) CreateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apimodel.BatchWriteResponse {
 	authCtx := s.collectConfigFileAuthContext(ctx, reqs, auth.Create, auth.CreateConfigFile)
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewConfigBatchWriteResponse(auth.ConvertToErrCode(err))
@@ -41,7 +42,7 @@ func (s *Server) CreateConfigFiles(ctx context.Context, reqs []*apiconfig.Config
 }
 
 // UpdateConfigFile 更新配置文件
-func (s *Server) UpdateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse {
+func (s *Server) UpdateConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apimodel.BatchWriteResponse {
 	authCtx := s.collectConfigFileAuthContext(ctx, reqs, auth.Modify, auth.UpdateConfigFile)
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewConfigBatchWriteResponse(auth.ConvertToErrCode(err))
@@ -54,7 +55,7 @@ func (s *Server) UpdateConfigFiles(ctx context.Context, reqs []*apiconfig.Config
 }
 
 // DeleteConfigFile 删除配置文件，删除配置文件同时会通知客户端 Not_Found
-func (s *Server) DeleteConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apiconfig.ConfigBatchWriteResponse {
+func (s *Server) DeleteConfigFiles(ctx context.Context, reqs []*apiconfig.ConfigFile) *apimodel.BatchWriteResponse {
 
 	authCtx := s.collectConfigFileAuthContext(ctx, reqs, auth.Delete, auth.DeleteConfigFile)
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -69,7 +70,7 @@ func (s *Server) DeleteConfigFiles(ctx context.Context, reqs []*apiconfig.Config
 
 // GetConfigFileRichInfo 获取单个配置文件基础信息，包含发布状态等信息
 func (s *Server) GetConfigFileRichInfo(ctx context.Context,
-	req *apiconfig.ConfigFile) *apiconfig.ConfigResponse {
+	req *apiconfig.ConfigFile) *apimodel.Response {
 
 	authCtx := s.collectConfigFileAuthContext(
 		ctx, []*apiconfig.ConfigFile{req}, auth.Read, auth.DescribeConfigFileRichInfo)
@@ -83,7 +84,7 @@ func (s *Server) GetConfigFileRichInfo(ctx context.Context,
 
 // SearchConfigFiles 查询配置文件
 func (s *Server) SearchConfigFiles(ctx context.Context,
-	filter map[string]string) *apiconfig.ConfigBatchQueryResponse {
+	filter map[string]string) *apimodel.BatchQueryResponse {
 
 	authCtx := s.collectConfigFileAuthContext(ctx, nil, auth.Read, auth.DescribeConfigFiles)
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -96,7 +97,7 @@ func (s *Server) SearchConfigFiles(ctx context.Context,
 }
 
 func (s *Server) ExportConfigFile(ctx context.Context,
-	configFileExport *apiconfig.ConfigFileExportRequest) *apiconfig.ConfigExportResponse {
+	configFileExport *apiconfig.ConfigFileExportRequest) *apimodel.Response {
 	var configFiles []*apiconfig.ConfigFile
 	for _, group := range configFileExport.Groups {
 		configFile := &apiconfig.ConfigFile{
@@ -116,7 +117,7 @@ func (s *Server) ExportConfigFile(ctx context.Context,
 }
 
 func (s *Server) ImportConfigFile(ctx context.Context,
-	configFiles []*apiconfig.ConfigFile, conflictHandling string) *apiconfig.ConfigImportResponse {
+	configFiles []*apiconfig.ConfigFile, conflictHandling string) *apimodel.Response {
 	authCtx := s.collectConfigFileAuthContext(ctx, configFiles, auth.Create, auth.ImportConfigFiles)
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewSimpleConfigFileImportResponse(auth.ConvertToErrCode(err))
@@ -128,7 +129,7 @@ func (s *Server) ImportConfigFile(ctx context.Context,
 }
 
 func (s *Server) GetAllConfigEncryptAlgorithms(
-	ctx context.Context) *apiconfig.ConfigEncryptAlgorithmResponse {
+	ctx context.Context) *apimodel.Response {
 	return s.nextServer.GetAllConfigEncryptAlgorithms(ctx)
 }
 
