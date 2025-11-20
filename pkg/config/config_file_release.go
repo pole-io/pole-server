@@ -478,12 +478,12 @@ func (s *Server) handleRollbackConfigFileRelease(ctx context.Context, tx store.T
 func (s *Server) CasUpsertAndReleaseConfigFile(ctx context.Context,
 	req *apiconfig.ConfigFilePublishInfo) *apimodel.Response {
 	upsertFileReq := &apiconfig.ConfigFile{
-		Name:      req.GetFileName(),
-		Namespace: req.GetNamespace(),
-		Group:     req.GetGroup(),
-		Content:   req.GetContent(),
-		Format:    req.GetFormat(),
-		Comment:   req.GetComment(),
+		Name:        req.GetFileName(),
+		Namespace:   req.GetNamespace(),
+		Group:       req.GetGroup(),
+		Content:     req.GetContent(),
+		Format:      req.GetFormat(),
+		Comment:     req.GetComment(),
 	}
 	if rsp := s.prepareCreateConfigFile(ctx, upsertFileReq); rsp.Code != api.ExecuteSuccess {
 		return rsp
@@ -566,12 +566,12 @@ func (s *Server) CasUpsertAndReleaseConfigFile(ctx context.Context,
 func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
 	req *apiconfig.ConfigFilePublishInfo) *apimodel.Response {
 	upsertFileReq := &apiconfig.ConfigFile{
-		Name:      req.GetFileName(),
-		Namespace: req.GetNamespace(),
-		Group:     req.GetGroup(),
-		Content:   req.GetContent(),
-		Format:    req.GetFormat(),
-		Comment:   req.GetComment(),
+		Name:        req.GetFileName(),
+		Namespace:   req.GetNamespace(),
+		Group:       req.GetGroup(),
+		Content:     req.GetContent(),
+		Format:      req.GetFormat(),
+		Comment:     req.GetComment(),
 	}
 	if rsp := s.prepareCreateConfigFile(ctx, upsertFileReq); rsp.Code != api.ExecuteSuccess {
 		return rsp

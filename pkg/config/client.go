@@ -71,7 +71,7 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context, req *apiconfig.Conf
 	// 客户端版本号大于服务端版本号，服务端不返回变更
 	if req.Id > 0 && release.Version > 0 {
 		log.Debug("[Config][Service] get config file to client", utils.RequestID(ctx),
-			zap.Uint64("client-version", req.Id), zap.Uint64("server-version", release.Version))
+				zap.Uint64("client-version", req.Id), zap.Uint64("server-version", release.Version))
 		return &apiconfig.ConfigDiscoverResponse{
 			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
 			Info: "DataNoChange",
@@ -96,8 +96,8 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context, req *apiconfig.Conf
 
 // formatClientRequest 自动填充客户端的相关标签数据
 func formatClientRequest(ctx context.Context, client *apiconfig.ConfigFile) *apiconfig.ConfigFile {
+	// 添加客户端IP标签
 	clientIP := utils.ParseClientIP(ctx)
-	// 添加客户端 IP 标签
 	if client.Tags == nil {
 		client.Tags = make(map[string]string)
 	}
@@ -163,8 +163,8 @@ func BuildTimeoutWatchCtx(ctx context.Context, req *apiconfig.ConfigFileGroupReq
 func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
 	req *apiconfig.ConfigFileGroupRequest) *apiconfig.ConfigDiscoverResponse {
 
-	namespace := req.GetConfigFileGroup().Namespace
-	group := req.GetConfigFileGroup().Name
+	namespace := req.GetConfigFileGroup().GetNamespace()
+	group := req.GetConfigFileGroup().GetName()
 
 	releases, revision := s.fileCache.GetGroupActiveReleases(namespace, group)
 	if revision == "" {
@@ -393,7 +393,6 @@ func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]str
 	}
 
 	for _, file := range watchFiles {
-		// 使用正确的方式构建key
 		key := GenFileId(file.GetNamespace(), file.GetGroup(), file.GetName())
 		curVer := watchCtx.CurWatchVersion(key)
 
