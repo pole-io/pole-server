@@ -141,8 +141,8 @@ func (svr *Server) queryServiceResource(
 	svcSet := map[string]*svctypes.Service{}
 
 	for index := range req {
-		svcName := req[index].GetName().GetValue()
-		svcNamespace := req[index].GetNamespace().GetValue()
+		svcName := req[index].GetName()
+		svcNamespace := req[index].GetNamespace()
 		names.Add(svcNamespace)
 		svc := svr.Cache().Service().GetServiceByName(svcName, svcNamespace)
 		if svc != nil {
@@ -168,9 +168,9 @@ func (svr *Server) queryServiceAliasResource(
 	svcSet := map[string]*svctypes.Service{}
 
 	for index := range req {
-		refSvcName := req[index].GetService().GetValue()
-		refSvcNamespace := req[index].GetNamespace().GetValue()
-		svcNamespace := req[index].GetNamespace().GetValue()
+		refSvcName := req[index].GetService()
+		refSvcNamespace := req[index].GetNamespace()
+		svcNamespace := req[index].GetNamespace()
 		names.Add(svcNamespace)
 		refSvc := svr.Cache().Service().GetServiceByName(refSvcName, refSvcNamespace)
 		if refSvc != nil {
@@ -197,8 +197,8 @@ func (svr *Server) queryInstanceResource(
 	svcSet := map[string]*svctypes.Service{}
 
 	for index := range req {
-		svcName := req[index].GetService().GetValue()
-		svcNamespace := req[index].GetNamespace().GetValue()
+		svcName := req[index].GetService()
+		svcNamespace := req[index].GetNamespace()
 		item := req[index]
 		if svcNamespace != "" && svcName != "" {
 			svc := svr.Cache().Service().GetServiceByName(svcName, svcNamespace)
@@ -208,7 +208,7 @@ func (svr *Server) queryInstanceResource(
 				names.Add(svcNamespace)
 			}
 		} else {
-			ins := svr.Cache().Instance().GetInstance(item.GetId().GetValue())
+			ins := svr.Cache().Instance().GetInstance(item.GetId())
 			if ins != nil {
 				svc := svr.Cache().Service().GetServiceByID(ins.ServiceID)
 				if svc != nil {

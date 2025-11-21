@@ -27,7 +27,6 @@ import (
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
 
 // checkHeartbeatInstance 检查心跳实例请求参数
@@ -37,13 +36,11 @@ func checkHeartbeatInstance(req *apiservice.Instance) (string, *apimodel.Respons
 	if req == nil {
 		return "", api.NewInstanceResponse(apimodel.Code_EmptyRequest, req)
 	}
-	if req.GetId() != nil {
-		if req.GetId().GetValue() == "" {
-			return "", api.NewInstanceResponse(apimodel.Code_InvalidInstanceID, req)
-		}
-		return req.GetId().GetValue(), nil
+
+	if req.GetId() == "" {
+		return "", api.NewInstanceResponse(apimodel.Code_InvalidQueryInsParameter, req)
 	}
-	return valid.CheckInstanceTetrad(req)
+	return req.GetId(), nil
 }
 
 const max404Count = 3
@@ -93,8 +90,8 @@ func (s *Server) doReport(ctx context.Context, instance *apiservice.Instance) *a
 	request := &healthcheck.ReportRequest{
 		QueryRequest: healthcheck.QueryRequest{
 			InstanceId: id,
-			Host:       instance.GetHost().GetValue(),
-			Port:       instance.GetPort().GetValue(),
+			Host:       instance.GetHost(),
+			Port:       instance.GetPort(),
 		},
 		LocalHost:  s.localHost,
 		CurTimeSec: time.Now().Unix() - s.timeAdjuster.GetDiff(),
@@ -102,7 +99,7 @@ func (s *Server) doReport(ctx context.Context, instance *apiservice.Instance) *a
 	code, err := s.baseReport(ctx, id, request)
 	if err != nil {
 		log.Errorf("[Heartbeat][Server] fail to do report for %s:%d, id is %s, err is %v",
-			instance.GetHost().GetValue(), instance.GetPort().GetValue(), id, err)
+			instance.GetHost(), instance.GetPort(), id, err)
 		return api.NewInstanceResponse(apimodel.Code_HeartbeatException, instance)
 	}
 	return api.NewInstanceResponse(code, instance)

@@ -44,8 +44,8 @@ func (s *Server) doReportByClient(ctx context.Context, client *apiservice.Client
 	}
 	request := &healthcheck.ReportRequest{
 		QueryRequest: healthcheck.QueryRequest{
-			InstanceId: toClientId(client.GetId().GetValue()),
-			Host:       client.GetHost().GetValue(),
+			InstanceId: toClientId(client.GetId()),
+			Host:       client.GetHost(),
 		},
 		LocalHost:  s.localHost,
 		CurTimeSec: time.Now().Unix() - s.timeAdjuster.GetDiff(),
@@ -53,7 +53,7 @@ func (s *Server) doReportByClient(ctx context.Context, client *apiservice.Client
 	err := checker.Report(ctx, request)
 	if err != nil {
 		log.Errorf("[Heartbeat][Server]fail to do report client for %s, id is %s, err is %v",
-			client.GetHost().GetValue(), client.GetId().GetValue(), err)
+			client.GetHost(), client.GetId(), err)
 		return api.NewClientResponse(apimodel.Code_HeartbeatException, client)
 	}
 	return api.NewClientResponse(apimodel.Code_ExecuteSuccess, client)

@@ -166,7 +166,7 @@ func (s *Server) queryConfigGroupResource(ctx context.Context,
 	}
 
 	names := container.NewSet[string]()
-	namespace := req[0].GetNamespace()
+	namespace := req[0].Namespace
 	for index := range req {
 		if req[index] == nil {
 			continue

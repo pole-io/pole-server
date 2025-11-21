@@ -20,8 +20,7 @@ package service_auth
 import (
 	"context"
 
-	"google.golang.org/protobuf/types/known/wrapperspb"
-
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/security"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
@@ -73,8 +72,8 @@ func (svr *Server) ReportClient(ctx context.Context, req *apiservice.Client) *ap
 func (svr *Server) ReportServiceContract(ctx context.Context, req *apiservice.ServiceContract) *apimodel.Response {
 	authCtx := svr.collectServiceAuthContext(
 		ctx, []*apiservice.Service{{
-			Name:      wrapperspb.String(req.GetService()),
-			Namespace: wrapperspb.String(req.GetNamespace()),
+			Name:      string(req.GetService()),
+			Namespace: string(req.GetNamespace()),
 		}}, authtypes.Create, authtypes.ReportServiceContract)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
@@ -144,8 +143,8 @@ func (svr *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance)
 func (svr *Server) GetServiceContractWithCache(ctx context.Context,
 	req *apiservice.ServiceContract) *apimodel.Response {
 	authCtx := svr.collectServiceAuthContext(ctx, []*apiservice.Service{{
-		Namespace: wrapperspb.String(req.Namespace),
-		Name:      wrapperspb.String(req.Service),
+		Namespace: string(req.Namespace),
+		Name:      string(req.Service),
 	}}, authtypes.Read, authtypes.DiscoverServiceContract)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {

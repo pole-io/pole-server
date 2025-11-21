@@ -20,12 +20,9 @@ package paramcheck
 import (
 	"context"
 
-	"google.golang.org/protobuf/types/known/wrapperspb"
-
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/service"
 )
@@ -50,7 +47,7 @@ func (s *Server) RegisterInstance(ctx context.Context, req *apiservice.Instance)
 	if rsp != nil {
 		return rsp
 	}
-	req.Id = protobuf.NewStringValue(instanceID)
+	req.Id = string(instanceID)
 	return s.nextSvr.RegisterInstance(ctx, req)
 }
 
@@ -60,7 +57,7 @@ func (s *Server) DeregisterInstance(ctx context.Context, req *apiservice.Instanc
 	if resp != nil {
 		return resp
 	}
-	req.Id = wrapperspb.String(instanceID)
+	req.Id = string(instanceID)
 	return s.nextSvr.DeregisterInstance(ctx, req)
 }
 
@@ -88,12 +85,12 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	req *apiservice.Service) *apiservice.DiscoverResponse {
 	resp := service.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_INSTANCE)
 
-	namespaceName := req.GetNamespace().GetValue()
+	namespaceName := req.GetNamespace()
 
 	// 消费服务为了兼容，可以不带namespace，server端使用默认的namespace
 	if namespaceName == "" {
 		namespaceName = service.DefaultNamespace
-		req.Namespace = protobuf.NewStringValue(namespaceName)
+		req.Namespace = namespaceName
 	}
 	if !s.commonCheckDiscoverRequest(req, resp) {
 		return resp
@@ -121,7 +118,7 @@ func (s *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance) *
 	if rsp != nil {
 		return rsp
 	}
-	req.Id = protobuf.NewStringValue(instanceID)
+	req.Id = string(instanceID)
 	return s.nextSvr.UpdateInstance(ctx, req)
 }
 
@@ -132,27 +129,30 @@ func (s *Server) ReportServiceContract(ctx context.Context, req *apiservice.Serv
 
 func (s *Server) commonCheckDiscoverRequest(req *apiservice.Service, resp *apiservice.DiscoverResponse) bool {
 	if s.nextSvr.Cache() == nil {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_ClientAPINotOpen))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
+		// 注释：错误码设置改动 - 直接赋值uint32而非*wrapperspb.UInt32Value
+		resp.Code = uint32(apimodel.Code_ClientAPINotOpen)
+		resp.Info = api.Code2Info(resp.GetCode())
 		resp.Service = req
 		return false
 	}
 	if req == nil {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_EmptyRequest))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
+		resp.Code = uint32(apimodel.Code_EmptyRequest)
+		resp.Info = api.Code2Info(resp.GetCode())
 		resp.Service = req
 		return false
 	}
 
-	if req.GetName().GetValue() == "" {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_InvalidServiceName))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
+	// 注释：服务名检查改动 - GetName()返回string而非*wrapperspb.StringValue
+	if req.GetName() == "" {
+		// resp.Code = uint32(apimodel.Code_InvalidServiceName)
+		resp.Info = api.Code2Info(resp.GetCode())
 		resp.Service = req
 		return false
 	}
-	if req.GetNamespace().GetValue() == "" {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_InvalidNamespaceName))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
+	// 注释：命名空间检查改动 - GetNamespace()返回string而非*wrapperspb.StringValue
+	if req.GetNamespace() == "" {
+		// resp.Code = uint32(apimodel.Code_InvalidNamespaceName)
+		resp.Info = api.Code2Info(resp.GetCode())
 		resp.Service = req
 		return false
 	}
@@ -161,44 +161,36 @@ func (s *Server) commonCheckDiscoverRequest(req *apiservice.Service, resp *apise
 }
 
 func (s *Server) serviceContractCheckDiscoverRequest(req *apiservice.ServiceContract, resp *apimodel.Response) bool {
-	svc := &apiservice.Service{
-		Name:      wrapperspb.String(req.GetService()),
-		Namespace: wrapperspb.String(req.GetNamespace()),
-	}
+	// svc := &apiservice.Service{
+	// 	Name:     string(req.GetService()),
+	// 	Namespace: string(req.GetNamespace()),
+	// }
 
 	if s.nextSvr.Cache() == nil {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_ClientAPINotOpen))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
-		resp.Service = svc
-		resp.ServiceContract = req
+		resp.Code = uint32(apimodel.Code_ClientAPINotOpen)
+		resp.Info = api.Code2Info(resp.GetCode())
 		return false
 	}
 	if req == nil {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_EmptyRequest))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
-		resp.Service = svc
+		resp.Code = uint32(apimodel.Code_EmptyRequest)
+		resp.Info = api.Code2Info(resp.GetCode())
 		return false
 	}
 
 	if req.GetName() == "" {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_InvalidParameter))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
-		resp.Service = svc
-		resp.ServiceContract = req
+		resp.Code = uint32(apimodel.Code_InvalidParameter)
+		resp.Info = api.Code2Info(resp.GetCode())
 		return false
 	}
 	if req.GetNamespace() == "" {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_InvalidNamespaceName))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
-		resp.Service = svc
-		resp.ServiceContract = req
+		// resp.Code = uint32(uint32(apimodel.Code_InvalidNamespaceName))
+		resp.Info = api.Code2Info(resp.GetCode())
+
 		return false
 	}
 	if req.GetProtocol() == "" {
-		resp.Code = protobuf.NewUInt32Value(uint32(apimodel.Code_InvalidParameter))
-		resp.Info = protobuf.NewStringValue(api.Code2Info(resp.GetCode().GetValue()))
-		resp.Service = svc
-		resp.ServiceContract = req
+		resp.Code = uint32(apimodel.Code_InvalidParameter)
+		resp.Info = api.Code2Info(resp.GetCode())
 		return false
 	}
 	return true

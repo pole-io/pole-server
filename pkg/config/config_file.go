@@ -53,7 +53,7 @@ func (s *Server) CreateConfigFile(ctx context.Context, req *apiconfig.ConfigFile
 		return errResp
 	}
 
-	if rsp := s.prepareCreateConfigFile(ctx, req); rsp.Code != uint32(apimodel.Code_ExecuteSuccess) {
+	if rsp := s.prepareCreateConfigFile(ctx, req); rsp.Code!= api.ExecuteSuccess {
 		return rsp
 	}
 
@@ -516,11 +516,6 @@ func (s *Server) ImportConfigFile(ctx context.Context,
 		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 
-	/*
-	return api.NewConfigFileImportResponse(apimodel.Code_ExecuteSuccess,
-		createConfigFiles, skipConfigFiles, overwriteConfigFiles)
-	*/
-	// 简化后
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
 
@@ -545,8 +540,8 @@ func (s *Server) getGroupAllConfigFiles(namespace, group string) ([]*conftypes.C
 	return configFiles, nil
 }
 
-
 /*
+// GetAllConfigEncryptAlgorithms 获取配置加密算法
 func (s *Server) GetAllConfigEncryptAlgorithms(ctx context.Context) *apiconfig.ConfigEncryptAlgorithmResponse {
     if s.cryptoManager == nil {
         return api.NewConfigEncryptAlgorithmResponse(apimodel.Code_ExecuteSuccess, nil)
@@ -556,6 +551,15 @@ func (s *Server) GetAllConfigEncryptAlgorithms(ctx context.Context) *apiconfig.C
         algorithms = append(algorithms, protobuf.NewStringValue(name))
     }
     return api.NewConfigEncryptAlgorithmResponse(apimodel.Code_ExecuteSuccess, algorithms)
+}
+*/
+
+// GetAllConfigEncryptAlgorithms 获取配置加密算法(简化过)
+func (s *Server) GetAllConfigEncryptAlgorithms(ctx context.Context) *apimodel.Response {
+	if s.cryptoManager == nil {
+		return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
+	}
+	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
 */
 

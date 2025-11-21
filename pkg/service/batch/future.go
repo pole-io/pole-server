@@ -75,7 +75,8 @@ func (future *InstanceFuture) Reply(cur time.Time, code apimodel.Code, result er
 	select {
 	case future.result <- result:
 	default:
-		log.Warnf("[Batch] instance(%s) future is not captured", future.request.GetId().GetValue())
+		// 注释：日志记录改动 - GetId()返回类型从*wrapperspb.StringValue改为string，去掉.GetValue()调用
+		log.Warnf("[Batch] instance(%s) future is not captured", future.request.GetId())
 	}
 }
 
