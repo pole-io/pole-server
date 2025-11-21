@@ -24,7 +24,6 @@ import (
 	"github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	"github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
@@ -57,7 +56,7 @@ var (
 
 // GetCircuitBreakerRules implements service.DiscoverServer.
 func (svr *Server) GetCircuitBreakerRules(ctx context.Context,
-	query map[string]string) *service_manage.BatchQueryResponse {
+	query map[string]string) *apimodel.BatchQueryResponse {
 
 	offset, limit, err := valid.ParseOffsetAndLimit(query)
 	if err != nil {
@@ -87,7 +86,7 @@ func (svr *Server) GetOneCircuitBreakerRule(ctx context.Context, req *fault_tole
 
 // DeleteCircuitBreakerRules implements service.DiscoverServer.
 func (svr *Server) DeleteCircuitBreakerRules(ctx context.Context,
-	reqs []*fault_tolerance.CircuitBreakerRule) *service_manage.BatchWriteResponse {
+	reqs []*fault_tolerance.CircuitBreakerRule) *apimodel.BatchWriteResponse {
 	if err := checkBatchCircuitBreakerRules(reqs); err != nil {
 		return err
 	}
@@ -104,7 +103,7 @@ func (svr *Server) DeleteCircuitBreakerRules(ctx context.Context,
 
 // CreateCircuitBreakerRules implements service.DiscoverServer.
 func (svr *Server) CreateCircuitBreakerRules(ctx context.Context,
-	reqs []*fault_tolerance.CircuitBreakerRule) *service_manage.BatchWriteResponse {
+	reqs []*fault_tolerance.CircuitBreakerRule) *apimodel.BatchWriteResponse {
 	if err := checkBatchCircuitBreakerRules(reqs); err != nil {
 		return err
 	}
@@ -122,7 +121,7 @@ func (svr *Server) CreateCircuitBreakerRules(ctx context.Context,
 
 // UpdateCircuitBreakerRules implements service.DiscoverServer.
 func (svr *Server) UpdateCircuitBreakerRules(ctx context.Context,
-	reqs []*fault_tolerance.CircuitBreakerRule) *service_manage.BatchWriteResponse {
+	reqs []*fault_tolerance.CircuitBreakerRule) *apimodel.BatchWriteResponse {
 	if err := checkBatchCircuitBreakerRules(reqs); err != nil {
 		return err
 	}
@@ -157,10 +156,10 @@ func checkCircuitBreakerRuleParams(
 		return resp
 	}
 	if nameRequired && len(req.GetName()) == 0 {
-		return api.NewResponse(apimodel.Code_InvalidCircuitBreakerName)
+		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	if idRequired && len(req.GetId()) == 0 {
-		return api.NewResponse(apimodel.Code_InvalidCircuitBreakerID)
+		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	return nil
 }
@@ -168,20 +167,20 @@ func checkCircuitBreakerRuleParams(
 func checkCircuitBreakerRuleParamsDbLen(req *apifault.CircuitBreakerRule) *apimodel.Response {
 	if err := valid.CheckDbRawStrFieldLen(
 		req.RuleMatcher.GetSource().GetService(), valid.MaxDbServiceNameLength); err != nil {
-		return api.NewResponse(apimodel.Code_InvalidServiceName)
+		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	if err := valid.CheckDbRawStrFieldLen(
 		req.RuleMatcher.GetSource().GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
-		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
+		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	if err := valid.CheckDbRawStrFieldLen(req.GetName(), valid.MaxRuleName); err != nil {
-		return api.NewResponse(apimodel.Code_InvalidCircuitBreakerName)
+		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	if err := valid.CheckDbRawStrFieldLen(req.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
-		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
+		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	if err := valid.CheckDbRawStrFieldLen(req.GetDescription(), valid.MaxCommentLength); err != nil {
-		return api.NewResponse(apimodel.Code_InvalidServiceComment)
+		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	return nil
 }

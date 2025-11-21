@@ -131,7 +131,7 @@ func (s *Server) PublishConfigFileFromClient(ctx context.Context,
 	if req.GetReleaseType() == conftypes.ReleaseTypeGray && len(req.GetBetaLabels()) == 0 {
 		ret := api.NewConfigResponse(apimodel.Code_InvalidMatchRule)
 		return &apiconfig.ConfigDiscoverResponse{
-				Code: ret.Code,
+			Code: ret.Code,
 			Info: ret.Info,
 			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
 		}
@@ -177,6 +177,7 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context,
 //	return s.nextServer.WatchConfigFiles(ctx, request)
 //}
 
+// LongPullWatchFile 监听配置文件变化 (HTTP 版本)
 func (s *Server) LongPullWatchFile(ctx context.Context,
 	request *apiconfig.ConfigFileGroupRequest) (config.WatchCallback, error) {
 
@@ -190,8 +191,7 @@ func (s *Server) LongPullWatchFile(ctx context.Context,
 		}, nil
 	}
 
-
-		if request.GetConfigFileGroup().GetName() == "" {
+	if request.GetConfigFileGroup().GetName() == "" {
 		return func() *apiconfig.ConfigDiscoverResponse {
 			return &apiconfig.ConfigDiscoverResponse{
 				Code: uint32(apimodel.Code_BadRequest),

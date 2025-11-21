@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
+	// 注释：移除golang/protobuf/ptypes/wrappers导入 - 不再使用wrapper类型
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
@@ -78,11 +78,12 @@ func registerInstanceHandler(s store.Store) func(futures []batchctrl.Future) {
 			param := entry.Param().(*InstanceFuture)
 			entry.Attach("isRegis", true) // 标记为注册请求
 
-			if _, ok := remains[param.request.GetId().GetValue()]; ok {
+			// 注释：实例ID获取改动 - GetId()返回类型从*wrapperspb.StringValue改为string，去掉.GetValue()调用
+			if _, ok := remains[param.request.GetId()]; ok {
 				entry.Reply(apimodel.Code_SameInstanceRequest, ErrorSameRegIsInstanceRequest)
 				continue
 			}
-			remains[param.request.GetId().GetValue()] = entry
+			remains[param.request.GetId()] = entry
 		}
 
 		// 统一判断实例是否存在，存在则需要更新部分数据
@@ -128,7 +129,8 @@ func heartbeatInstanceHandler(s store.Store) func(futures []batchctrl.Future) {
 		for _, entry := range futures {
 			param := entry.Param().(*InstanceFuture)
 			// 多个记录，只有后面的一个生效
-			id := param.request.GetId().GetValue()
+			// 注释：实例ID获取改动 - GetId()返回string而非*wrapperspb.StringValue，业务逻辑保持不变
+			id := param.request.GetId()
 			if _, ok := ids[id]; ok {
 				values := statusToIds[!param.healthy]
 				delete(values, id)
@@ -205,13 +207,13 @@ func deregisterInstanceHandler(s store.Store) func(futures []batchctrl.Future) {
 		ids := make(map[string]bool, len(futures))
 		for _, entry := range futures {
 			param := entry.Param().(*InstanceFuture)
-			if _, ok := remains[param.request.GetId().GetValue()]; ok {
+			if _, ok := remains[param.request.GetId()]; ok {
 				entry.Reply(apimodel.Code_SameInstanceRequest, ErrorSameRegIsInstanceRequest)
 				continue
 			}
 
-			remains[param.request.GetId().GetValue()] = entry
-			ids[param.request.GetId().GetValue()] = false
+			remains[param.request.GetId()] = entry
+			ids[param.request.GetId()] = false
 		}
 
 		// 统一鉴权与判断是否存在
@@ -223,11 +225,11 @@ func deregisterInstanceHandler(s store.Store) func(futures []batchctrl.Future) {
 		}
 		for _, future := range futures {
 			param := future.Param().(*InstanceFuture)
-			instance, ok := instances[param.request.GetId().GetValue()]
+			instance, ok := instances[param.request.GetId()]
 			if !ok {
 				// 不存在，意味着不需要删除了
 				future.Reply(apimodel.Code_NotFoundResource, fmt.Errorf("%s", api.Code2Info(api.NotFoundResource)))
-				delete(remains, param.request.GetId().GetValue())
+				delete(remains, param.request.GetId())
 				continue
 			}
 
@@ -243,7 +245,8 @@ func deregisterInstanceHandler(s store.Store) func(futures []batchctrl.Future) {
 		args := make([]interface{}, 0, len(remains))
 		for _, entry := range remains {
 			req := entry.Param().(*InstanceFuture)
-			args = append(args, req.request.GetId().GetValue())
+			// 注释：实例ID获取改动 - GetId()返回string，去掉.GetValue()调用，功能不变
+			args = append(args, req.request.GetId())
 		}
 		if err := s.BatchDeleteInstances(args); err != nil {
 			log.Errorf("[Batch] batch delete instances err: %s", err.Error())
@@ -265,7 +268,7 @@ func batchRestoreInstanceIsolate(s store.Store, futures map[string]batchctrl.Fut
 	ids := make(map[string]bool, len(futures))
 	for _, entry := range futures {
 		param := entry.Param().(*InstanceFuture)
-		ids[param.request.GetId().GetValue()] = false
+		ids[param.request.GetId()] = false
 	}
 	var id2Isolate map[string]bool
 	var err error
@@ -283,9 +286,8 @@ func batchRestoreInstanceIsolate(s store.Store, futures map[string]batchctrl.Fut
 		for id, isolate := range id2Isolate {
 			if future, ok := futures[id]; ok {
 				req := future.Param().(*InstanceFuture)
-				if req.request.Isolate == nil {
-					req.request.Isolate = &wrappers.BoolValue{Value: isolate}
-				}
+				// 注释：字段类型改动 - Isolate从*wrapperspb.BoolValue改为bool，直接赋值而非包装对象
+				req.request.Isolate = bool(isolate)
 			}
 		}
 	}

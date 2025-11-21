@@ -100,42 +100,12 @@ func (s *Server) afterServiceResource(ctx context.Context, req *apiservice.Servi
 	event := &ResourceEvent{
 		Resource: authtypes.ResourceEntry{
 			Type:     security.ResourceType_Services,
-			ID:       req.GetId().GetValue(),
+			ID:       req.GetId(),
 			Metadata: req.GetMetadata(),
 		},
-		AddPrincipals: func() []authtypes.Principal {
-			ret := make([]authtypes.Principal, 0, 4)
-			for i := range req.UserIds {
-				ret = append(ret, authtypes.Principal{
-					PrincipalType: authtypes.PrincipalUser,
-					PrincipalID:   req.UserIds[i].GetValue(),
-				})
-			}
-			for i := range req.GroupIds {
-				ret = append(ret, authtypes.Principal{
-					PrincipalType: authtypes.PrincipalGroup,
-					PrincipalID:   req.GroupIds[i].GetValue(),
-				})
-			}
-			return ret
-		}(),
-		DelPrincipals: func() []authtypes.Principal {
-			ret := make([]authtypes.Principal, 0, 4)
-			for i := range req.RemoveUserIds {
-				ret = append(ret, authtypes.Principal{
-					PrincipalType: authtypes.PrincipalUser,
-					PrincipalID:   req.RemoveUserIds[i].GetValue(),
-				})
-			}
-			for i := range req.RemoveGroupIds {
-				ret = append(ret, authtypes.Principal{
-					PrincipalType: authtypes.PrincipalGroup,
-					PrincipalID:   req.RemoveGroupIds[i].GetValue(),
-				})
-			}
-			return ret
-		}(),
-		IsRemove: remove,
+		AddPrincipals: []authtypes.Principal{}, // Service 本身不包含 UserIds/GroupIds 字段
+		DelPrincipals: []authtypes.Principal{}, // Service 本身不包含 RemoveUserIds/RemoveGroupIds 字段
+		IsRemove:      remove,
 	}
 	return s.After(ctx, types.RService, event)
 }

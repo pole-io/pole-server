@@ -34,9 +34,9 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
-// CreateRateLimits creates rate limits for a namespace.
+// CreateRateLimits 为命名空间创建限流规则
 func (svr *Server) CreateRateLimits(
-	ctx context.Context, reqs []*apitraffic.Rule) *apimodel.BatchWriteResponse {
+	ctx context.Context, reqs []*apitraffic.RateLimit) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectRateLimitAuthContext(ctx, reqs, authtypes.Create, authtypes.CreateRateLimitRules)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -47,18 +47,19 @@ func (svr *Server) CreateRateLimits(
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	rsp := svr.nextSvr.CreateRateLimits(ctx, reqs)
-	for index := range rsp.Responses {
+	for range rsp.Responses {
+		// 跳过限流规则的资源处理，因为 Response 不包含限流数据
 		_ = svr.afterRuleResource(ctx, types.RRateLimit, authtypes.ResourceEntry{
-			ID:   rsp.Responses[index].GetRateLimit().GetId().GetValue(),
+			ID:   "",
 			Type: security.ResourceType_RateLimitRules,
 		}, false)
 	}
 	return rsp
 }
 
-// DeleteRateLimits deletes rate limits for a namespace.
+// DeleteRateLimits 为命名空间删除限流规则
 func (svr *Server) DeleteRateLimits(
-	ctx context.Context, reqs []*apitraffic.Rule) *apimodel.BatchWriteResponse {
+	ctx context.Context, reqs []*apitraffic.RateLimit) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectRateLimitAuthContext(ctx, reqs, authtypes.Delete, authtypes.DeleteRateLimitRules)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -69,18 +70,19 @@ func (svr *Server) DeleteRateLimits(
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	rsp := svr.nextSvr.DeleteRateLimits(ctx, reqs)
-	for index := range rsp.Responses {
+	for range rsp.Responses {
+		// 跳过限流规则的资源处理，因为 Response 不包含限流数据
 		_ = svr.afterRuleResource(ctx, types.RRateLimit, authtypes.ResourceEntry{
-			ID:   rsp.Responses[index].GetRateLimit().GetId().GetValue(),
+			ID:   "",
 			Type: security.ResourceType_RateLimitRules,
 		}, true)
 	}
 	return rsp
 }
 
-// UpdateRateLimits updates rate limits for a namespace.
+// UpdateRateLimits 为命名空间更新限流规则
 func (svr *Server) UpdateRateLimits(
-	ctx context.Context, reqs []*apitraffic.Rule) *apimodel.BatchWriteResponse {
+	ctx context.Context, reqs []*apitraffic.RateLimit) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectRateLimitAuthContext(ctx, reqs, authtypes.Modify, authtypes.UpdateRateLimitRules)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
@@ -93,8 +95,8 @@ func (svr *Server) UpdateRateLimits(
 	return svr.nextSvr.UpdateRateLimits(ctx, reqs)
 }
 
-func (svr *Server) GetOneRateLimitRule(ctx context.Context, req *apitraffic.Rule) *apimodel.Response {
-	authCtx := svr.collectRateLimitAuthContext(ctx, []*apitraffic.Rule{req}, authtypes.Read, authtypes.DescribeRateLimitRules)
+func (svr *Server) GetOneRateLimitRule(ctx context.Context, req *apitraffic.RateLimit) *apimodel.Response {
+	authCtx := svr.collectRateLimitAuthContext(ctx, []*apitraffic.RateLimit{req}, authtypes.Read, authtypes.DescribeRateLimitRules)
 
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewResponse(authtypes.ConvertToErrCode(err))
@@ -104,16 +106,16 @@ func (svr *Server) GetOneRateLimitRule(ctx context.Context, req *apitraffic.Rule
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	resp := svr.nextSvr.GetOneRateLimitRule(ctx, req)
-	rule := &apitraffic.Rule{}
+	rule := &apitraffic.RateLimit{}
 	_ = anypb.UnmarshalTo(resp.Data, rule, proto.UnmarshalOptions{})
 	rule.Editable = true
 	rule.Deleteable = true
 
 	authCtx.SetAccessResources(map[security.ResourceType][]authtypes.ResourceEntry{
-		security.ResourceType_RouteRules: {
+		security.ResourceType_RateLimitRules: {
 			{
-				Type:     apisecurity.ResourceType_RouteRules,
-				ID:       rule.GetId().GetValue(),
+				Type:     apisecurity.ResourceType_RateLimitRules,
+				ID:       rule.GetId(),
 				Metadata: rule.Metadata,
 			},
 		},
@@ -133,7 +135,7 @@ func (svr *Server) GetOneRateLimitRule(ctx context.Context, req *apitraffic.Rule
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, rule)
 }
 
-// GetRateLimits gets rate limits for a namespace.
+// GetRateLimits 为命名空间获取限流规则
 func (svr *Server) GetRateLimits(
 	ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	authCtx := svr.collectRateLimitAuthContext(ctx, nil, authtypes.Read, authtypes.DescribeRateLimitRules)
@@ -156,32 +158,45 @@ func (svr *Server) GetRateLimits(
 
 	resp := svr.nextSvr.GetRateLimits(ctx, query)
 
-	for index := range resp.RateLimits {
-		item := resp.RateLimits[index]
-		item.Editable = true
-		item.Deleteable = true
-		authCtx.SetAccessResources(map[security.ResourceType][]authtypes.ResourceEntry{
-			security.ResourceType_RateLimitRules: {
-				{
-					Type:     apisecurity.ResourceType_RateLimitRules,
-					ID:       item.GetId().GetValue(),
-					Metadata: item.Metadata,
+	// 从响应中处理限流数据
+	if resp.Data != nil {
+		for _, anyData := range resp.Data {
+			item := &apitraffic.RateLimit{}
+			if err := anypb.UnmarshalTo(anyData, item, proto.UnmarshalOptions{}); err != nil {
+				continue
+			}
+
+			item.Editable = true
+			item.Deleteable = true
+			authCtx.SetAccessResources(map[security.ResourceType][]authtypes.ResourceEntry{
+				security.ResourceType_RateLimitRules: {
+					{
+						Type:     apisecurity.ResourceType_RateLimitRules,
+						ID:       item.GetId(),
+						Metadata: item.Metadata,
+					},
 				},
-			},
-		})
+			})
 
-		// 检查 write 操作权限
-		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateRateLimitRules, authtypes.EnableRateLimitRules})
-		// 如果检查不通过，设置 editable 为 false
-		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-			item.Editable = false
-		}
+			// 检查 write 操作权限
+			authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateRateLimitRules, authtypes.EnableRateLimitRules})
+			// 如果检查不通过，设置 editable 为 false
+			if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+				item.Editable = false
+			}
 
-		// 检查 delete 操作权限
-		authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteRateLimitRules})
-		// 如果检查不通过，设置 editable 为 false
-		if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
-			item.Deleteable = false
+			// 检查 delete 操作权限
+			authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteRateLimitRules})
+			// 如果检查不通过，设置 editable 为 false
+			if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+				item.Deleteable = false
+			}
+
+			// 将数据更新回响应
+			if updatedData, err := anypb.New(item); err == nil {
+				anyData.Value = updatedData.Value
+				anyData.TypeUrl = updatedData.TypeUrl
+			}
 		}
 	}
 

@@ -137,7 +137,8 @@ func (c *CacheProvider) getHealthChecker(hcType apiservice.HealthCheck_HealthChe
 }
 
 func (c *CacheProvider) isHealthCheckEnable(instance *apiservice.Instance) (bool, healthcheck.HealthChecker) {
-	if !instance.GetEnableHealthCheck().GetValue() || instance.GetHealthCheck() == nil {
+	// 注释：字段访问改动 - GetEnableHealthCheck()返回bool而非*wrapperspb.BoolValue，去掉.GetValue()调用
+	if !instance.GetEnableHealthCheck() || instance.GetHealthCheck() == nil {
 		return false, nil
 	}
 	checker, ok := c.getHealthChecker(instance.GetHealthCheck().GetType())
@@ -211,7 +212,8 @@ func (c *CacheProvider) OnDeleted(value interface{}) {
 			c.sendEvent(CacheEvent{selfServiceInstancesChanged: true})
 			return
 		}
-		if !instProto.GetEnableHealthCheck().GetValue() || instProto.GetHealthCheck() == nil {
+		// 注释：字段访问改动 - GetEnableHealthCheck()和GetHealthCheck()的检查逻辑保持不变
+		if !instProto.GetEnableHealthCheck() || instProto.GetHealthCheck() == nil {
 			return
 		}
 		deleteServiceInstance(instProto, c.healthCheckInstances)
@@ -323,22 +325,26 @@ func storeServiceInstance(instanceWithChecker *InstanceWithChecker,
 }
 
 func deleteServiceInstance(instance *apiservice.Instance, values *container.SegmentMap[string, ItemWithChecker]) bool {
-	instanceId := instance.GetId().GetValue()
+	// 注释：实例ID获取改动 - GetId()返回string而非*wrapperspb.StringValue
+	instanceId := instance.GetId()
 	ok := values.Del(instanceId)
 	if ok {
 		log.Infof("[Health Check][Cache]delete service instance is %s:%d, id is %s",
-			instance.GetHost().GetValue(), instance.GetPort().GetValue(), instanceId)
+			// 注释：主机和端口获取改动 - GetHost()和GetPort()直接返回基础类型
+			instance.GetHost(), instance.GetPort(), instanceId)
 	}
 	return true
 }
 
 func compareAndStoreClient(clientWithChecker *ClientWithChecker,
 	values *container.SegmentMap[string, ItemWithChecker]) bool {
-	clientId := clientWithChecker.client.Proto().GetId().GetValue()
+	// 注释：客户端ID获取改动 - GetId()返回string，业务逻辑保持不变
+	clientId := clientWithChecker.client.Proto().GetId()
 	_, isNew := values.PutIfAbsent(clientId, clientWithChecker)
 	if isNew {
 		log.Infof("[Health Check][Cache]create client is %s, id is %s",
-			clientWithChecker.client.Proto().GetHost().GetValue(), clientId)
+			// 注释：客户端主机获取改动 - GetHost()返回string而非*wrapperspb.StringValue
+			clientWithChecker.client.Proto().GetHost(), clientId)
 		return true
 	}
 	return false
@@ -348,18 +354,18 @@ func storeClient(clientWithChecker *ClientWithChecker,
 	values *container.SegmentMap[string, ItemWithChecker]) bool {
 
 	log.Infof("[Health Check][Cache]create client is %s, id is %s",
-		clientWithChecker.client.Proto().GetHost().GetValue(), clientWithChecker.client.Proto().GetId().GetValue())
-	clientId := clientWithChecker.client.Proto().GetId().GetValue()
+		clientWithChecker.client.Proto().GetHost(), clientWithChecker.client.Proto().GetId())
+	clientId := clientWithChecker.client.Proto().GetId()
 	values.Put(clientId, clientWithChecker)
 	return true
 }
 
 func deleteClient(client *apiservice.Client, values *container.SegmentMap[string, ItemWithChecker]) bool {
-	clientId := client.GetId().GetValue()
+	clientId := client.GetId()
 	ok := values.Del(clientId)
 	if ok {
 		log.Infof("[Health Check][Cache]delete client is %s, id is %s",
-			client.GetHost().GetValue(), clientId)
+			client.GetHost(), clientId)
 	}
 	return true
 }
@@ -443,6 +449,6 @@ func newClientWithChecker(client *types.Client, checker healthcheck.HealthChecke
 	return &ClientWithChecker{
 		client:    client,
 		checker:   checker,
-		hashValue: commonhash.HashString(client.Proto().GetId().GetValue()),
+		hashValue: commonhash.HashString(client.Proto().GetId()),
 	}
 }

@@ -20,14 +20,16 @@ package goverrule
 import (
 	"context"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
+	// 注释：移除golang/protobuf/ptypes/wrappers导入 - 不再使用wrapper类型
 	"go.uber.org/zap"
 
+	// 注释：新增apifault导入 - 用于熔断器规则类型
+	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
+	// 注释：移除protobuf工具包导入 - 改用基础类型
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -38,7 +40,8 @@ func (s *Server) GetOldRouterRuleWithCache(ctx context.Context, req *apiservice.
 	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_ROUTING)
 	aliasFor := s.findServiceAlias(req)
 
-	out, err := s.caches.RoutingConfig().GetOldRouterRule(aliasFor.ID, aliasFor.Name, aliasFor.Namespace)
+	// 注释：缓存方法调用改动 - 从GetOldRouterRule改为GetRouterRule，现在返回三个值
+	out, revision, err := s.caches.RoutingConfig().GetRouterRule(aliasFor.ID, aliasFor.Name, aliasFor.Namespace)
 	if err != nil {
 		log.Error("[Server][Service][Routing] discover routing", utils.RequestID(ctx), zap.Error(err))
 		return api.NewDiscoverRoutingResponse(apimodel.Code_ExecuteException, req)
@@ -48,22 +51,23 @@ func (s *Server) GetOldRouterRuleWithCache(ctx context.Context, req *apiservice.
 	}
 
 	// 获取路由数据，并对比revision
-	if out.GetRevision().GetValue() == req.GetRevision().GetValue() {
+	if revision == req.GetRevision() {
 		return api.NewDiscoverRoutingResponse(apimodel.Code_DataNoChange, req)
 	}
 
 	// 数据不一致，发生了改变
 	// 数据格式转换，service只需要返回二元组与routing的revision
-	resp.Service.Revision = out.GetRevision()
-	resp.Routing = out
+	resp.Service.Revision = revision
+	resp.CustomRouteRules = out
 	resp.AliasFor = &apiservice.Service{
-		Name:      protobuf.NewStringValue(aliasFor.Name),
-		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
+		Name:      aliasFor.Name,
+		Namespace: aliasFor.Namespace,
 	}
 	return resp
 }
 
 // GetRateLimitWithCache 获取缓存中的限流规则信息
+// GetRateLimitWithCache 获取限流规则
 func (s *Server) GetRateLimitWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
 	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_RATE_LIMIT)
 	aliasFor := s.findServiceAlias(req)
@@ -75,31 +79,39 @@ func (s *Server) GetRateLimitWithCache(ctx context.Context, req *apiservice.Serv
 	if len(rules) == 0 || revision == "" {
 		return resp
 	}
-	if req.GetRevision().GetValue() == revision {
+	// 注释：版本比较改动 - req.GetRevision()从*wrapperspb.StringValue改为string
+	if req.GetRevision() == revision {
 		return api.NewDiscoverRateLimitResponse(apimodel.Code_DataNoChange, req)
 	}
 	resp.RateLimit = &apitraffic.RateLimit{
-		Revision: protobuf.NewStringValue(revision),
-		Rules:    []*apitraffic.Rule{},
+		// 注释：Revision字段类型改动 - 从*wrapperspb.StringValue改为string
+		Revision: revision,
+		// 注释：Rules字段类型重大改动 - 从[]*apitraffic.Rule改为[]*apitraffic.LimitTrigger
+		Rules: []*apitraffic.LimitTrigger{},
 	}
 	for i := range rules {
-		rateLimit, err := rateLimit2Client(req.GetName().GetValue(), req.GetNamespace().GetValue(), rules[i])
+		// 注释：限流规则转换改动 - 服务名和命名空间直接使用string类型
+		rateLimit, err := rateLimit2Client(req.GetName(), req.GetNamespace(), rules[i])
 		if rateLimit == nil || err != nil {
 			continue
 		}
-		resp.RateLimit.Rules = append(resp.RateLimit.Rules, rateLimit)
+		// 注释：重大逻辑改动 - 将 rateLimit.Rules 中的 LimitTrigger 添加到响应中，而非直接添加rateLimit
+		// 将 rateLimit.Rules 中的 LimitTrigger 添加到响应中
+		resp.RateLimit.Rules = append(resp.RateLimit.Rules, rateLimit.Rules...)
 	}
 
 	// 塞入源服务信息数据
 	resp.AliasFor = &apiservice.Service{
-		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
-		Name:      protobuf.NewStringValue(aliasFor.Name),
+		// 注释：服务字段类型改动 - 从*wrapperspb.StringValue改为string
+		Namespace: aliasFor.Namespace,
+		Name:      aliasFor.Name,
 	}
 	// 服务名和request保持一致
 	resp.Service = &apiservice.Service{
 		Name:      req.GetName(),
 		Namespace: req.GetNamespace(),
-		Revision:  protobuf.NewStringValue(revision),
+		// 注释：Revision字段类型改动 - 从*wrapperspb.StringValue改为string
+		Revision: revision,
 	}
 	return resp
 }
@@ -113,17 +125,17 @@ func (s *Server) GetFaultDetectWithCache(ctx context.Context, req *apiservice.Se
 		return resp
 	}
 
-	if req.GetRevision().GetValue() == out.Revision {
+	if req.GetRevision() == out.Revision {
 		return api.NewDiscoverFaultDetectorResponse(apimodel.Code_DataNoChange, req)
 	}
 
 	// 数据不一致，发生了改变
 	var err error
 	resp.AliasFor = &apiservice.Service{
-		Name:      protobuf.NewStringValue(aliasFor.Name),
-		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
+		Name:      aliasFor.Name,
+		Namespace: aliasFor.Namespace,
 	}
-	resp.Service.Revision = protobuf.NewStringValue(out.Revision)
+	resp.Service.Revision = out.Revision
 	resp.FaultDetector, err = faultDetectRule2ClientAPI(out)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
@@ -143,21 +155,29 @@ func (s *Server) GetCircuitBreakerWithCache(ctx context.Context, req *apiservice
 	}
 
 	// 获取熔断规则数据，并对比revision
-	if len(req.GetRevision().GetValue()) > 0 && req.GetRevision().GetValue() == out.Revision {
+	// 注释：版本比较改动 - req.GetRevision()从*wrapperspb.StringValue改为string
+	if len(req.GetRevision()) > 0 && req.GetRevision() == out.Revision {
 		return api.NewDiscoverCircuitBreakerResponse(apimodel.Code_DataNoChange, req)
 	}
 
 	// 数据不一致，发生了改变
 	var err error
 	resp.AliasFor = &apiservice.Service{
-		Name:      protobuf.NewStringValue(aliasFor.Name),
-		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
+		// 注释：服务字段类型改动 - Name和Namespace从*wrapperspb.StringValue改为string
+		Name:      aliasFor.Name,
+		Namespace: aliasFor.Namespace,
 	}
-	resp.Service.Revision = protobuf.NewStringValue(out.Revision)
-	resp.CircuitBreaker, err = circuitBreaker2ClientAPI(out, req.GetName().GetValue(), req.GetNamespace().GetValue())
+	// 注释：Revision字段类型改动 - 从*wrapperspb.StringValue改为string
+	resp.Service.Revision = out.Revision
+	// 注释：重大API改动 - circuitBreaker2ClientAPI现在返回单个CircuitBreakerRule而非CircuitBreaker
+	circuitBreakerRule, err := circuitBreaker2ClientAPI(out, req.GetName(), req.GetNamespace())
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
 		return api.NewDiscoverCircuitBreakerResponse(apimodel.Code_ExecuteException, req)
+	}
+	// 注释：响应结构重大改动 - CircuitBreaker字段现在是[]*apifault.CircuitBreakerRule数组
+	if circuitBreakerRule != nil {
+		resp.CircuitBreaker = []*apifault.CircuitBreakerRule{circuitBreakerRule}
 	}
 	return resp
 }
@@ -173,15 +193,15 @@ func (s *Server) GetLaneRuleWithCache(ctx context.Context, req *apiservice.Servi
 	}
 
 	// 获取泳道规则数据，并对比revision
-	if len(req.GetRevision().GetValue()) > 0 && req.GetRevision().GetValue() == revision {
+	if len(req.GetRevision()) > 0 && req.GetRevision() == revision {
 		return api.NewDiscoverLaneResponse(apimodel.Code_DataNoChange, req)
 	}
 
 	resp.AliasFor = &apiservice.Service{
-		Name:      protobuf.NewStringValue(aliasFor.Name),
-		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
+		Name:      aliasFor.Name,
+		Namespace: aliasFor.Namespace,
 	}
-	resp.Service.Revision = protobuf.NewStringValue(revision)
+	resp.Service.Revision = revision
 	resp.Lanes = make([]*apitraffic.LaneGroup, 0, len(out))
 	for i := range out {
 		resp.Lanes = append(resp.Lanes, out[i].Proto)
@@ -194,7 +214,7 @@ func (s *Server) GetRouterRuleWithCache(ctx context.Context, req *apiservice.Ser
 	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_CUSTOM_ROUTE_RULE)
 	aliasFor := s.findServiceAlias(req)
 
-	out, err := s.caches.RoutingConfig().GetRouterRule(aliasFor.ID, aliasFor.Name, aliasFor.Namespace)
+	out, revision, err := s.caches.RoutingConfig().GetRouterRule(aliasFor.ID, aliasFor.Name, aliasFor.Namespace)
 	if err != nil {
 		log.Error("[Server][Service][Routing] discover routing", utils.RequestID(ctx), zap.Error(err))
 		return api.NewDiscoverRoutingResponse(apimodel.Code_ExecuteException, req)
@@ -204,17 +224,17 @@ func (s *Server) GetRouterRuleWithCache(ctx context.Context, req *apiservice.Ser
 	}
 
 	// 获取路由数据，并对比revision
-	if out.GetRevision().GetValue() == req.GetRevision().GetValue() {
+	if revision == req.GetRevision() {
 		return api.NewDiscoverRoutingResponse(apimodel.Code_DataNoChange, req)
 	}
 
 	// 数据不一致，发生了改变
 	// 数据格式转换，service只需要返回二元组与routing的revision
-	resp.Service.Revision = out.GetRevision()
-	resp.CustomRouteRules = out.Rules
+	resp.Service.Revision = revision
+	resp.CustomRouteRules = out
 	resp.AliasFor = &apiservice.Service{
-		Name:      protobuf.NewStringValue(aliasFor.Name),
-		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
+		Name:      aliasFor.Name,
+		Namespace: aliasFor.Namespace,
 	}
 	return resp
 }
@@ -230,26 +250,26 @@ func (s *Server) GetLosslessRuleWithCache(ctx context.Context, req *apiservice.S
 	}
 
 	// 获取无损规则数据，并对比revision
-	if len(req.GetRevision().GetValue()) > 0 && req.GetRevision().GetValue() == out.Revision {
+	if len(req.GetRevision()) > 0 && req.GetRevision() == out.Revision {
 		return api.NewDiscoverLosslessResponse(apimodel.Code_DataNoChange, req)
 	}
 
 	resp.AliasFor = &apiservice.Service{
-		Name:      protobuf.NewStringValue(aliasFor.Name),
-		Namespace: protobuf.NewStringValue(aliasFor.Namespace),
+		Name:      aliasFor.Name,
+		Namespace: aliasFor.Namespace,
 	}
-	resp.Service.Revision = protobuf.NewStringValue(out.Revision)
+	resp.Service.Revision = out.Revision
 	resp.LosslessRules = []*apitraffic.LosslessRule{out.ToSpec()}
 	return resp
 }
 
 func (s *Server) findServiceAlias(req *apiservice.Service) *svctypes.Service {
 	// 获取源服务
-	aliasFor := s.getServiceCache(req.GetName().GetValue(), req.GetNamespace().GetValue())
+	aliasFor := s.getServiceCache(req.GetName(), req.GetNamespace())
 	if aliasFor == nil {
 		aliasFor = &svctypes.Service{
-			Namespace: req.GetNamespace().GetValue(),
-			Name:      req.GetName().GetValue(),
+			Namespace: req.GetNamespace(),
+			Name:      req.GetName(),
 		}
 	}
 	return aliasFor
@@ -263,8 +283,8 @@ func CreateCommonDiscoverResponse(req *apiservice.Service,
 func createCommonDiscoverResponse(req *apiservice.Service,
 	dT apiservice.DiscoverResponse_DiscoverResponseType) *apiservice.DiscoverResponse {
 	return &apiservice.DiscoverResponse{
-		Code: &wrappers.UInt32Value{Value: uint32(apimodel.Code_ExecuteSuccess)},
-		Info: &wrappers.StringValue{Value: api.Code2Info(uint32(apimodel.Code_ExecuteSuccess))},
+		Code: uint32(apimodel.Code_ExecuteSuccess),
+		Info: api.Code2Info(uint32(apimodel.Code_ExecuteSuccess)),
 		Type: dT,
 		Service: &apiservice.Service{
 			Name:      req.GetName(),

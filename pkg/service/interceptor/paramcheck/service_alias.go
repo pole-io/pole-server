@@ -30,7 +30,7 @@ import (
 
 // CreateServiceAlias implements service.DiscoverServer.
 func (svr *Server) CreateServiceAlias(ctx context.Context,
-	req *service_manage.ServiceAlias) *service_manage.Response {
+	req *service_manage.ServiceAlias) *apimodel.Response {
 	if resp := checkCreateServiceAliasReq(ctx, req); resp != nil {
 		return resp
 	}
@@ -39,7 +39,7 @@ func (svr *Server) CreateServiceAlias(ctx context.Context,
 
 // DeleteServiceAliases implements service.DiscoverServer.
 func (svr *Server) DeleteServiceAliases(ctx context.Context,
-	req []*service_manage.ServiceAlias) *service_manage.BatchWriteResponse {
+	req []*service_manage.ServiceAlias) *apimodel.BatchWriteResponse {
 	if checkError := checkBatchAlias(req); checkError != nil {
 		return checkError
 	}
@@ -47,7 +47,7 @@ func (svr *Server) DeleteServiceAliases(ctx context.Context,
 }
 
 // UpdateServiceAlias implements service.DiscoverServer.
-func (svr *Server) UpdateServiceAlias(ctx context.Context, req *service_manage.ServiceAlias) *service_manage.Response {
+func (svr *Server) UpdateServiceAlias(ctx context.Context, req *service_manage.ServiceAlias) *apimodel.Response {
 	// 检查请求参数
 	if resp := checkReviseServiceAliasReq(ctx, req); resp != nil {
 		return resp
@@ -57,7 +57,7 @@ func (svr *Server) UpdateServiceAlias(ctx context.Context, req *service_manage.S
 
 // GetServiceAliases implements service.DiscoverServer.
 func (svr *Server) GetServiceAliases(ctx context.Context,
-	query map[string]string) *service_manage.BatchQueryResponse {
+	query map[string]string) *apimodel.BatchQueryResponse {
 	return svr.nextSvr.GetServiceAliases(ctx, query)
 }
 
@@ -95,12 +95,12 @@ func checkReviseServiceAliasReq(ctx context.Context, req *apiservice.ServiceAlia
 	}
 	// 检查服务名
 	if err := valid.CheckResourceName(req.GetService()); err != nil {
-		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceName, req)
+		return api.NewServiceAliasResponse(apimodel.Code_InvalidUserName , req)
 	}
 
 	// 检查命名空间
 	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
-		return api.NewServiceAliasResponse(apimodel.Code_InvalidNamespaceName, req)
+		return api.NewServiceAliasResponse(apimodel.Code_InvalidUserName , req)
 	}
 	return nil
 }
@@ -113,12 +113,12 @@ func checkDeleteServiceAliasReq(ctx context.Context, req *apiservice.ServiceAlia
 
 	// 检查服务别名
 	if err := valid.CheckResourceName(req.GetAlias()); err != nil {
-		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceAlias, req)
+		return api.NewServiceAliasResponse(apimodel.Code_InvalidMatchRule, req)
 	}
 
 	// 检查服务别名命名空间
 	if err := valid.CheckResourceName(req.GetAliasNamespace()); err != nil {
-		return api.NewServiceAliasResponse(apimodel.Code_InvalidNamespaceWithAlias, req)
+		return api.NewServiceAliasResponse(apimodel.Code_InvalidUserName , req)
 	}
 
 	// 检查字段长度是否大于DB中对应字段长
@@ -136,21 +136,21 @@ func preCheckAlias(req *apiservice.ServiceAlias) (*apimodel.Response, bool) {
 	}
 
 	if err := valid.CheckResourceName(req.GetService()); err != nil {
-		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceName, req), true
+		return api.NewServiceAliasResponse(apimodel.Code_InvalidUserName , req), true
 	}
 
 	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
-		return api.NewServiceAliasResponse(apimodel.Code_InvalidNamespaceName, req), true
+		return api.NewServiceAliasResponse(apimodel.Code_InvalidUserName , req), true
 	}
 
 	if err := valid.CheckResourceName(req.GetAliasNamespace()); err != nil {
-		return api.NewServiceAliasResponse(apimodel.Code_InvalidNamespaceName, req), true
+		return api.NewServiceAliasResponse(apimodel.Code_InvalidUserName , req), true
 	}
 
 	// 默认类型，需要检查alias是否为空
 	if req.GetType() == apiservice.AliasType_DEFAULT {
 		if err := valid.CheckResourceName(req.GetAlias()); err != nil {
-			return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceAlias, req), true
+			return api.NewServiceAliasResponse(apimodel.Code_InvalidUserName , req), true
 		}
 	}
 	return nil, false
@@ -159,22 +159,22 @@ func preCheckAlias(req *apiservice.ServiceAlias) (*apimodel.Response, bool) {
 // CheckDbServiceAliasFieldLen 检查DB中service表对应的入参字段合法性
 func CheckDbServiceAliasFieldLen(req *apiservice.ServiceAlias) (*apimodel.Response, bool) {
 	if err := valid.CheckDbStrFieldLen(req.GetService(), valid.MaxNameLength); err != nil {
-		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceName, req), true
+		return api.NewServiceAliasResponse(apimodel.Code_InvalidUserName , req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
-		return api.NewServiceAliasResponse(apimodel.Code_InvalidNamespaceName, req), true
+		return api.NewServiceAliasResponse(apimodel.Code_InvalidUserName , req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetAlias(), valid.MaxNameLength); err != nil {
-		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceAlias, req), true
+		return api.NewServiceAliasResponse(apimodel.Code_InvalidUserName , req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetAliasNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
-		return api.NewServiceAliasResponse(apimodel.Code_InvalidNamespaceWithAlias, req), true
+		return api.NewServiceAliasResponse(apimodel.Code_InvalidUserName, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetComment(), valid.MaxDbServiceCommentLength); err != nil {
-		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceAliasComment, req), true
+		return api.NewServiceAliasResponse(apimodel.Code_InvalidUserName  , req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetOwners(), valid.MaxDbServiceOwnerLength); err != nil {
-		return api.NewServiceAliasResponse(apimodel.Code_InvalidServiceAliasOwners, req), true
+		return api.NewServiceAliasResponse(apimodel.Code_InvalidUserOwners, req), true
 	}
 	return nil, false
 }

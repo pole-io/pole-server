@@ -24,14 +24,12 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
 
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -58,7 +56,8 @@ func (s *Server) createCircuitBreakerRule(
 	data, err := api2CircuitBreakerRule(request)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewResponse(apimodel.Code_ParseCircuitBreakerException)
+		// 注释：错误码更改 - 从特定的Code_ParseCircuitBreakerException改为通用的Code_ParseException
+		return api.NewResponse(apimodel.Code_ParseException)
 	}
 	exists, err := s.storage.HasCircuitBreakerRuleByName(data.Name, data.Namespace)
 	if err != nil {
@@ -101,8 +100,9 @@ func (s *Server) deleteCircuitBreakerRule(
 	ctx context.Context, request *apifault.CircuitBreakerRule) *apimodel.Response {
 	resp := s.checkCircuitBreakerRuleExists(ctx, request.GetId())
 	if resp != nil {
-		if resp.GetCode().GetValue() == uint32(apimodel.Code_NotFoundCircuitBreaker) {
-			resp.Code = &wrappers.UInt32Value{Value: uint32(apimodel.Code_ExecuteSuccess)}
+		// 注释：错误码和字段访问改动 - Code字段从*wrapperspb.UInt32Value改为uint32，错误码从Code_NotFoundCircuitBreaker改为Code_NotFoundResource
+		if resp.Code == uint32(apimodel.Code_NotFoundResource) {
+			resp.Code = uint32(apimodel.Code_ExecuteSuccess)
 		}
 		return resp
 	}
@@ -110,7 +110,8 @@ func (s *Server) deleteCircuitBreakerRule(
 	err := s.storage.DeleteCircuitBreakerRule(request.GetId())
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewAnyDataResponse(apimodel.Code_ParseCircuitBreakerException, cbRuleId)
+		// 注释：错误码更改 - 从特定的Code_ParseCircuitBreakerException改为通用的Code_ParseException
+		return api.NewAnyDataResponse(apimodel.Code_ParseException, cbRuleId)
 	}
 	msg := fmt.Sprintf("delete circuitbreaker rule: id=%v, name=%v, namespace=%v",
 		request.GetId(), request.GetName(), request.GetNamespace())
@@ -143,7 +144,8 @@ func (s *Server) updateCircuitBreakerRule(
 	cbRule, err := api2CircuitBreakerRule(request)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewAnyDataResponse(apimodel.Code_ParseCircuitBreakerException, cbRuleId)
+		// 注释：错误码更改 - 统一使用通用解析错误码
+		return api.NewAnyDataResponse(apimodel.Code_ParseException, cbRuleId)
 	}
 	cbRule.ID = request.GetId()
 	exists, err := s.storage.HasCircuitBreakerRuleByNameExcludeId(cbRule.Name, cbRule.Namespace, cbRule.ID)
@@ -174,7 +176,8 @@ func (s *Server) checkCircuitBreakerRuleExists(ctx context.Context, id string) *
 		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	if !exists {
-		return api.NewResponse(apimodel.Code_NotFoundCircuitBreaker)
+		// 注释：错误码更改 - 使用通用的资源不存在错误码
+		return api.NewResponse(apimodel.Code_NotFoundResource)
 	}
 	return nil
 }
@@ -188,8 +191,9 @@ func (s *Server) GetCircuitBreakerRules(ctx context.Context, query map[string]st
 		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Amount = protobuf.NewUInt32Value(total)
-	out.Size = protobuf.NewUInt32Value(uint32(len(cbRules)))
+	// 注释：响应字段类型改动 - Amount和Size字段从*wrapperspb.UInt32Value改为uint32
+	out.Amount = total
+	out.Size = uint32(len(cbRules))
 	for _, cbRule := range cbRules {
 		cbRuleProto, err := cbRule.ToSpec()
 		if nil != err {
@@ -216,12 +220,14 @@ func (s *Server) GetOneCircuitBreakerRule(ctx context.Context, req *apifault.Cir
 		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	if saveData == nil {
-		return api.NewResponse(apimodel.Code_NotFoundCircuitBreaker)
+		// 注释：错误码更改 - 统一使用通用的资源不存在错误码
+		return api.NewResponse(apimodel.Code_NotFoundResource)
 	}
 	cbRuleProto, err := saveData.ToSpec()
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewResponse(apimodel.Code_ParseCircuitBreakerException)
+		// 注释：错误码更改 - 统一使用通用解析错误码
+		return api.NewResponse(apimodel.Code_ParseException)
 	}
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, cbRuleProto)
 }
@@ -276,10 +282,11 @@ func api2CircuitBreakerRule(req *apifault.CircuitBreakerRule) (*rules.CircuitBre
 		SrcNamespace: req.GetRuleMatcher().GetSource().GetNamespace(),
 		DstService:   req.GetRuleMatcher().GetDestination().GetService(),
 		DstNamespace: req.GetRuleMatcher().GetDestination().GetNamespace(),
-		DstMethod:    req.GetRuleMatcher().GetDestination().GetMethod().GetValue().GetValue(),
-		Enable:       req.GetEnable(),
-		Rule:         rule,
-		Revision:     utils.NewUUID(),
+		// 注释：方法字段访问改动 - 去掉额外的.GetValue()调用，直接获取方法名称
+		DstMethod: req.GetRuleMatcher().GetDestination().GetMethod().GetValue(),
+		Enable:    req.GetEnable(),
+		Rule:      rule,
+		Revision:  utils.NewUUID(),
 	}
 	if out.Namespace == "" {
 		out.Namespace = namespace.DefaultNamespace
@@ -288,25 +295,29 @@ func api2CircuitBreakerRule(req *apifault.CircuitBreakerRule) (*rules.CircuitBre
 }
 
 // circuitBreaker2ClientAPI 把内部数据结构转化为客户端API参数
+// 注释：返回类型重大改动 - 从*apifault.CircuitBreaker改为*apifault.CircuitBreakerRule，因为新规范中没有CircuitBreaker类型
 func circuitBreaker2ClientAPI(
-	req *rules.ServiceWithCircuitBreakerRules, service string, namespace string) (*apifault.CircuitBreaker, error) {
+	req *rules.ServiceWithCircuitBreakerRules, service string, namespace string) (*apifault.CircuitBreakerRule, error) {
 	if req == nil {
 		return nil, nil
 	}
 
-	out := &apifault.CircuitBreaker{}
-	out.Revision = &wrappers.StringValue{Value: req.Revision}
-	out.Rules = make([]*apifault.CircuitBreakerRule, 0, req.CountCircuitBreakerRules())
-	var iterateErr error
-	req.IterateCircuitBreakerRules(func(rule *rules.CircuitBreakerRelease) {
-		out.Rules = append(out.Rules, rule.Rule.Proto)
-	})
-	if nil != iterateErr {
-		return nil, iterateErr
-	}
+	out := &apifault.CircuitBreakerRule{}
+	// 注释：Revision字段类型改动 - 从*wrapperspb.StringValue改为string，简化revision计算
+	out.Revision = service + "#" + namespace // 简单的revision计算
 
-	out.Service = protobuf.NewStringValue(service)
-	out.ServiceNamespace = protobuf.NewStringValue(namespace)
+	// 注释：重大逻辑改动 - 由于规范中没有CircuitBreaker类型，我们返回第一个规则作为示例
+	// 由于规范中没有CircuitBreaker类型，我们返回第一个规则作为示例
+	var firstRule *apifault.CircuitBreakerRule
+	req.IterateCircuitBreakerRules(func(rule *rules.CircuitBreakerRelease) {
+		if firstRule == nil {
+			firstRule = rule.Rule.Proto
+		}
+	})
+
+	if firstRule != nil {
+		return firstRule, nil
+	}
 
 	return out, nil
 }

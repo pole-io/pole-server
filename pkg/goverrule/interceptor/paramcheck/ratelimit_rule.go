@@ -25,7 +25,6 @@ import (
 	"github.com/golang/protobuf/ptypes"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	"github.com/pole-io/specification/source/go/api/v1/service_manage"
 	"github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
@@ -54,7 +53,7 @@ var (
 
 // CreateRateLimits implements service.DiscoverServer.
 func (svr *Server) CreateRateLimits(ctx context.Context,
-	reqs []*traffic_manage.Rule) *service_manage.BatchWriteResponse {
+	reqs []*apitraffic.RateLimit) *apimodel.BatchWriteResponse {
 	if err := checkBatchRateLimits(reqs); err != nil {
 		return err
 	}
@@ -79,7 +78,7 @@ func (svr *Server) CreateRateLimits(ctx context.Context,
 }
 
 // DeleteRateLimits implements service.DiscoverServer.
-func (svr *Server) DeleteRateLimits(ctx context.Context, reqs []*traffic_manage.Rule) *service_manage.BatchWriteResponse {
+func (svr *Server) DeleteRateLimits(ctx context.Context, reqs []*traffic_manage.RateLimit) *apimodel.BatchWriteResponse {
 	if err := checkBatchRateLimits(reqs); err != nil {
 		return err
 	}
@@ -97,7 +96,7 @@ func (svr *Server) DeleteRateLimits(ctx context.Context, reqs []*traffic_manage.
 
 // GetRateLimits implements service.DiscoverServer.
 func (svr *Server) GetRateLimits(ctx context.Context,
-	query map[string]string) *service_manage.BatchQueryResponse {
+	query map[string]string) *apimodel.BatchQueryResponse {
 	for key := range query {
 		if _, ok := _allowRateLimitFilters[key]; !ok {
 			log.Errorf("params %s is not allowed in querying rate limits", key)
@@ -115,12 +114,12 @@ func (svr *Server) GetRateLimits(ctx context.Context,
 	return svr.nextSvr.GetRateLimits(ctx, query)
 }
 
-func (svr *Server) GetOneRateLimitRule(ctx context.Context, req *traffic_manage.Rule) *apimodel.Response {
+func (svr *Server) GetOneRateLimitRule(ctx context.Context, req *traffic_manage.RateLimit) *apimodel.Response {
 	return svr.nextSvr.GetOneRateLimitRule(ctx, req)
 }
 
 // UpdateRateLimits implements service.DiscoverServer.
-func (svr *Server) UpdateRateLimits(ctx context.Context, reqs []*traffic_manage.Rule) *service_manage.BatchWriteResponse {
+func (svr *Server) UpdateRateLimits(ctx context.Context, reqs []*traffic_manage.RateLimit) *apimodel.BatchWriteResponse {
 	if err := checkBatchRateLimits(reqs); err != nil {
 		return err
 	}
@@ -148,7 +147,7 @@ func (svr *Server) UpdateRateLimits(ctx context.Context, reqs []*traffic_manage.
 }
 
 // checkBatchRateLimits 检查批量请求的限流规则
-func checkBatchRateLimits(req []*apitraffic.Rule) *apimodel.BatchWriteResponse {
+func checkBatchRateLimits(req []*apitraffic.RateLimit) *apimodel.BatchWriteResponse {
 	if len(req) == 0 {
 		return api.NewBatchWriteResponse(apimodel.Code_EmptyRequest)
 	}
@@ -161,12 +160,12 @@ func checkBatchRateLimits(req []*apitraffic.Rule) *apimodel.BatchWriteResponse {
 }
 
 // checkRateLimitParams 检查限流规则基础参数
-func checkRateLimitParams(req *apitraffic.Rule) *apimodel.Response {
+func checkRateLimitParams(req *apitraffic.RateLimit) *apimodel.Response {
 	if req == nil {
 		return api.NewRateLimitResponse(apimodel.Code_EmptyRequest, req)
 	}
 	if err := valid.CheckResourceName(req.GetName()); err != nil {
-		return api.NewRateLimitResponse(apimodel.Code_InvalidRateLimitName, req)
+		return api.NewRateLimitResponse(apimodel.Code_InvalidParameter, req)
 	}
 	if resp := checkRateLimitParamsDbLen(req); nil != resp {
 		return resp
@@ -175,46 +174,48 @@ func checkRateLimitParams(req *apitraffic.Rule) *apimodel.Response {
 }
 
 // checkRateLimitParams 检查限流规则基础参数
-func checkRateLimitParamsDbLen(req *apitraffic.Rule) *apimodel.Response {
+func checkRateLimitParamsDbLen(req *apitraffic.RateLimit) *apimodel.Response {
 	if err := valid.CheckDbStrFieldLen(req.GetService(), valid.MaxDbServiceNameLength); err != nil {
-		return api.NewRateLimitResponse(apimodel.Code_InvalidServiceName, req)
+		return api.NewRateLimitResponse(apimodel.Code_InvalidParameter, req)
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
-		return api.NewRateLimitResponse(apimodel.Code_InvalidNamespaceName, req)
+		return api.NewRateLimitResponse(apimodel.Code_InvalidParameter, req)
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetName(), valid.MaxDbRateLimitName); err != nil {
-		return api.NewRateLimitResponse(apimodel.Code_InvalidRateLimitName, req)
+		return api.NewRateLimitResponse(apimodel.Code_InvalidParameter, req)
 	}
 	return nil
 }
 
 // checkRateLimitRuleParams 检查限流规则其他参数
-func checkRateLimitRuleParams(ctx context.Context, req *apitraffic.Rule) *apimodel.Response {
-	// 检查amounts是否有重复周期
-	amounts := req.GetAmounts()
-	durations := make(map[time.Duration]bool)
-	for _, amount := range amounts {
-		d := amount.GetValidDuration()
-		duration, err := ptypes.Duration(d)
-		if err != nil {
-			log.Error(err.Error(), utils.RequestID(ctx))
-			return api.NewRateLimitResponse(apimodel.Code_InvalidRateLimitAmounts, req)
+func checkRateLimitRuleParams(ctx context.Context, req *apitraffic.RateLimit) *apimodel.Response {
+	// 检查rules中的amounts是否有重复周期
+	rules := req.GetRules()
+	for _, rule := range rules {
+		amounts := rule.GetAmounts()
+		durations := make(map[time.Duration]bool)
+		for _, amount := range amounts {
+			d := amount.GetValidDuration()
+			duration, err := ptypes.Duration(d)
+			if err != nil {
+				log.Error(err.Error(), utils.RequestID(ctx))
+				return api.NewRateLimitResponse(apimodel.Code_InvalidParameter, req)
+			}
+			durations[duration] = true
 		}
-		durations[duration] = true
-	}
-	if len(amounts) != len(durations) {
-		return api.NewRateLimitResponse(apimodel.Code_InvalidRateLimitAmounts, req)
+		if len(amounts) != len(durations) {
+			return api.NewRateLimitResponse(apimodel.Code_InvalidParameter, req)
+		}
 	}
 	return nil
 }
 
 // checkRevisedRateLimitParams 检查修改/删除限流规则基础参数
-func checkRevisedRateLimitParams(req *apitraffic.Rule) *apimodel.Response {
-	if req == nil {
-		return api.NewRateLimitResponse(apimodel.Code_EmptyRequest, req)
+func checkRevisedRateLimitParams(req *apitraffic.RateLimit) *apimodel.Response {
+	if len(req.GetId()) == 0 {
+		log.Error("[RateLimit] revision is empty")
+		return api.NewRateLimitResponse(apimodel.Code_InvalidParameter, req)
 	}
-	if req.GetId().GetValue() == "" {
-		return api.NewRateLimitResponse(apimodel.Code_InvalidRateLimitID, req)
-	}
+
 	return nil
 }

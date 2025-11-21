@@ -182,10 +182,10 @@ func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
 	ret := make([]*apiconfig.ConfigFile, 0, len(releases))
 	for i := range releases {
 		ret = append(ret, &apiconfig.ConfigFile{
-			Namespace:   releases[i].Namespace,
-			Group:       releases[i].Group,
-			Name:        releases[i].Name,
-			Id:     	 releases[i].Version,
+			Namespace: releases[i].Namespace,
+			Group:     releases[i].Group,
+			Name:      releases[i].Name,
+			Id:        releases[i].Version,
 		})
 	}
 

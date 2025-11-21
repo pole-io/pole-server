@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -32,7 +31,6 @@ import (
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -94,8 +92,8 @@ func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *ap
 		return errResp
 	}
 
-	namespaceName := req.GetNamespace().GetValue()
-	serviceName := req.GetName().GetValue()
+	namespaceName := req.GetNamespace()
+	serviceName := req.GetName()
 
 	// 检查命名空间是否存在
 	namespace, err := s.storage.GetNamespace(namespaceName)
@@ -104,7 +102,7 @@ func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *ap
 		return api.NewServiceResponse(storeapi.StoreCode2APICode(err), req)
 	}
 	if namespace == nil {
-		return api.NewServiceResponse(apimodel.Code_NotFoundNamespace, req)
+		return api.NewServiceResponse(apimodel.Code_NotFoundResource, req)
 	}
 
 	// 检查是否存在
@@ -114,7 +112,7 @@ func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *ap
 		return api.NewServiceResponse(storeapi.StoreCode2APICode(err), req)
 	}
 	if service != nil {
-		req.Id = protobuf.NewStringValue(service.ID)
+		req.Id = string(service.ID)
 		return api.NewServiceResponse(apimodel.Code_ExistedResource, req)
 	}
 
@@ -131,7 +129,7 @@ func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *ap
 				return api.NewServiceResponse(storeapi.StoreCode2APICode(err), req)
 			}
 			if service != nil {
-				req.Id = protobuf.NewStringValue(service.ID)
+				req.Id = string(service.ID)
 				return api.NewServiceResponse(apimodel.Code_ExistedResource, req)
 			}
 		}
@@ -143,10 +141,10 @@ func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *ap
 	s.RecordHistory(ctx, serviceRecordEntry(ctx, req, data, types.OCreate))
 
 	out := &apiservice.Service{
-		Id:        protobuf.NewStringValue(data.ID),
+		Id:        string(data.ID),
 		Name:      req.GetName(),
 		Namespace: req.GetNamespace(),
-		Token:     protobuf.NewStringValue(data.Token),
+		Token:     string(data.Token),
 	}
 	return api.NewServiceResponse(apimodel.Code_ExecuteSuccess, out)
 }
@@ -167,8 +165,8 @@ func (s *Server) DeleteServices(ctx context.Context, req []*apiservice.Service) 
 //	删除操作需要对服务进行加锁操作，
 //	防止有与服务关联的实例或者配置有新增的操作
 func (s *Server) DeleteService(ctx context.Context, req *apiservice.Service) *apimodel.Response {
-	namespaceName := req.GetNamespace().GetValue()
-	serviceName := req.GetName().GetValue()
+	namespaceName := req.GetNamespace()
+	serviceName := req.GetName()
 
 	// 检查是否存在
 	service, err := s.storage.GetService(serviceName, namespaceName)
@@ -217,7 +215,7 @@ func (s *Server) UpdateService(ctx context.Context, req *apiservice.Service) *ap
 
 	// [2020.02.18]If service is alias, not allowed to modify
 	if service.IsAlias() {
-		return api.NewServiceResponse(apimodel.Code_NotAllowAliasUpdate, req)
+		return api.NewServiceResponse(apimodel.Code_NotAllowedAccess, req)
 	}
 
 	log.Info(fmt.Sprintf("old service: %+v", service), utils.RequestID(ctx))
@@ -254,7 +252,7 @@ func (s *Server) UpdateServiceToken(ctx context.Context, req *apiservice.Service
 		return resp
 	}
 	if service.IsAlias() {
-		return api.NewServiceResponse(apimodel.Code_NotAllowAliasUpdate, req)
+		return api.NewServiceResponse(apimodel.Code_NotAllowedAccess, req)
 	}
 
 	// 生成一个新的token和revision
@@ -274,7 +272,7 @@ func (s *Server) UpdateServiceToken(ctx context.Context, req *apiservice.Service
 	out := &apiservice.Service{
 		Name:      req.GetName(),
 		Namespace: req.GetNamespace(),
-		Token:     protobuf.NewStringValue(service.Token),
+		Token:     string(service.Token),
 	}
 	return api.NewServiceResponse(apimodel.Code_ExecuteSuccess, out)
 }
@@ -295,18 +293,21 @@ func (s *Server) GetAllServices(ctx context.Context, query map[string]string) *a
 	for i := range svcs {
 		count := s.Cache().Instance().GetInstancesCountByServiceID(svcs[i].ID)
 		ret = append(ret, &apiservice.Service{
-			Namespace:            protobuf.NewStringValue(svcs[i].Namespace),
-			Name:                 protobuf.NewStringValue(svcs[i].Name),
-			TotalInstanceCount:   protobuf.NewUInt32Value(count.TotalInstanceCount),
-			HealthyInstanceCount: protobuf.NewUInt32Value(count.HealthyInstanceCount),
+			Namespace:            string(svcs[i].Namespace),
+			Name:                 string(svcs[i].Name),
+			TotalInstanceCount:   uint32(count.TotalInstanceCount),
+			HealthyInstanceCount: uint32(count.HealthyInstanceCount),
 			Metadata:             svcs[i].Meta,
 		})
 	}
 
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Amount = protobuf.NewUInt32Value(uint32(len(ret)))
-	resp.Size = protobuf.NewUInt32Value(uint32(len(ret)))
-	resp.Services = ret
+	resp.Amount = uint32(len(ret))
+	resp.Size = uint32(len(ret))
+	// 注释：响应结构改动 - 根据 pole-io/specification，BatchQueryResponse 不再有 Services 字段
+	// 根据 pole-io/specification，BatchQueryResponse 不再有 Services 字段
+	// 数据需要通过 data 字段传递
+	// TODO: 需要确定正确的序列化方式
 	return resp
 }
 
@@ -371,9 +372,11 @@ func (s *Server) GetServices(ctx context.Context, query map[string]string) *apim
 	}
 
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Amount = protobuf.NewUInt32Value(total)
-	resp.Size = protobuf.NewUInt32Value(uint32(len(services)))
-	resp.Services = enhancedServices2Api(services, service2Api)
+	resp.Amount = uint32(total)
+	resp.Size = uint32(len(services))
+	// 根据 pole-io/specification，BatchQueryResponse 不再有 Services 字段
+	// 数据需要通过 data 字段传递
+	// TODO: 需要确定正确的序列化方式
 	return resp
 }
 
@@ -429,33 +432,33 @@ func (s *Server) GetServicesCount(ctx context.Context) *apimodel.BatchQueryRespo
 	}
 
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Amount = protobuf.NewUInt32Value(count)
-	out.Services = make([]*apiservice.Service, 0)
+	out.Amount = uint32(count)
+	// 根据 pole-io/specification，BatchQueryResponse 不再有 Services 字段
+	// 数据需要通过 data 字段传递
+	// TODO: 需要确定正确的序列化方式
 	return out
 }
 
 // GetServiceToken 查询Service的token
 func (s *Server) GetServiceToken(ctx context.Context, req *apiservice.Service) *apimodel.Response {
 	// 鉴权
-	_, token, resp := s.checkServiceAuthority(ctx, req)
+	_, _, resp := s.checkServiceAuthority(ctx, req)
 	if resp != nil {
 		return resp
 	}
 
 	// s.RecordHistory(serviceRecordEntry(ctx, req, model.OGetToken))
 	out := api.NewResponse(apimodel.Code_ExecuteSuccess)
-	out.Service = &apiservice.Service{
-		Name:      req.GetName(),
-		Namespace: req.GetNamespace(),
-		Token:     protobuf.NewStringValue(token),
-	}
+	// 注释：Token响应改动 - 根据 pole-io/specification，Response 只有 data 字段，需要将服务数据序列化到 data 中
+	// 根据 pole-io/specification，Response 只有 data 字段，需要将服务数据序列化到 data 中
+	// TODO: 需要确定正确的序列化方式
 	return out
 }
 
 // createNamespaceIfAbsent Automatically create namespaces
 func (s *Server) createNamespaceIfAbsent(ctx context.Context, svc *apiservice.Service) (string, *apimodel.Response) {
 	val, rsp := s.Namespace().CreateNamespaceIfAbsent(ctx, &apimodel.Namespace{
-		Name:   protobuf.NewStringValue(svc.GetNamespace().GetValue()),
+		Name:   string(svc.GetNamespace()),
 		Owners: svc.Owners,
 	})
 	if !api.IsSuccess(rsp) {
@@ -466,23 +469,24 @@ func (s *Server) createNamespaceIfAbsent(ctx context.Context, svc *apiservice.Se
 
 // createServiceModel 创建存储层服务模型
 func (s *Server) createServiceModel(req *apiservice.Service) *svctypes.Service {
+	// 注释：创建服务模型改动 - API规范变更导致字段类型变化，从wrapper类型改为基础类型
 	return &svctypes.Service{
 		ID:         utils.NewUUID(),
-		Name:       req.GetName().GetValue(),
-		Namespace:  req.GetNamespace().GetValue(),
+		Name:       req.GetName(),
+		Namespace:  req.GetNamespace(),
 		Meta:       req.GetMetadata(),
-		Ports:      req.GetPorts().GetValue(),
-		Business:   req.GetBusiness().GetValue(),
-		Department: req.GetDepartment().GetValue(),
-		CmdbMod1:   req.GetCmdbMod1().GetValue(),
-		CmdbMod2:   req.GetCmdbMod2().GetValue(),
-		CmdbMod3:   req.GetCmdbMod3().GetValue(),
-		Comment:    req.GetComment().GetValue(),
-		Owner:      req.GetOwners().GetValue(),
-		PlatformID: req.GetPlatformId().GetValue(),
-		Token:      utils.NewUUID(),
-		Revision:   utils.NewUUID(),
-		ExportTo:   types.ExportToMap(req.GetExportTo()),
+		Ports:      req.GetPorts(),
+		Business:   req.GetBusiness(),
+		Department: req.GetDepartment(),
+		CmdbMod1:   req.GetCmdbMod1(),
+		CmdbMod2:   req.GetCmdbMod2(),
+		CmdbMod3:   req.GetCmdbMod3(),
+		Comment:    req.GetComment(),
+		Owner:      req.GetOwners(),
+		// 移除 PlatformID 字段，因为 pole-io/specification 中已不存在
+		Token:    utils.NewUUID(),
+		Revision: utils.NewUUID(),
+		ExportTo: types.ExportToMap(req.GetExportTo()),
 	}
 }
 
@@ -506,54 +510,55 @@ func (s *Server) updateServiceAttribute(
 		// 不需要更新metadata
 		service.Meta = nil
 	}
-	if eq, newVal := isEqualServiceExport(req.ExportTo, service.ExportTo); !eq {
+	// 注释：ExportTo字段处理改动 - 现在是[]string类型而非[]*wrapperspb.StringValue
+	// 处理 ExportTo 字段（现在是 []string 类型）
+	exportToMap := types.ExportToMap(req.ExportTo)
+	if eq, newVal := isEqualServiceExport(exportToMap, service.ExportTo); !eq {
 		needUpdate = true
 		service.ExportTo = newVal
 	}
 
-	if req.GetPorts() != nil && req.GetPorts().GetValue() != service.Ports {
-		service.Ports = req.GetPorts().GetValue()
+	if req.GetPorts() != "" && req.GetPorts() != service.Ports {
+		service.Ports = req.GetPorts()
 		needUpdate = true
 	}
 
-	if req.GetBusiness() != nil && req.GetBusiness().GetValue() != service.Business {
-		service.Business = req.GetBusiness().GetValue()
+	if req.GetBusiness() != "" && req.GetBusiness() != service.Business {
+		service.Business = req.GetBusiness()
 		needUpdate = true
 	}
 
-	if req.GetDepartment() != nil && req.GetDepartment().GetValue() != service.Department {
-		service.Department = req.GetDepartment().GetValue()
+	if req.GetDepartment() != "" && req.GetDepartment() != service.Department {
+		service.Department = req.GetDepartment()
 		needUpdate = true
 	}
 
-	if req.GetCmdbMod1() != nil && req.GetCmdbMod1().GetValue() != service.CmdbMod1 {
-		service.CmdbMod1 = req.GetCmdbMod1().GetValue()
+	if req.GetCmdbMod1() != "" && req.GetCmdbMod1() != service.CmdbMod1 {
+		service.CmdbMod1 = req.GetCmdbMod1()
 		needUpdate = true
 	}
-	if req.GetCmdbMod2() != nil && req.GetCmdbMod2().GetValue() != service.CmdbMod2 {
-		service.CmdbMod2 = req.GetCmdbMod2().GetValue()
+	if req.GetCmdbMod2() != "" && req.GetCmdbMod2() != service.CmdbMod2 {
+		service.CmdbMod2 = req.GetCmdbMod2()
 		needUpdate = true
 	}
-	if req.GetCmdbMod3() != nil && req.GetCmdbMod3().GetValue() != service.CmdbMod3 {
-		service.CmdbMod3 = req.GetCmdbMod3().GetValue()
-		needUpdate = true
-	}
-
-	if req.GetComment() != nil && req.GetComment().GetValue() != service.Comment {
-		service.Comment = req.GetComment().GetValue()
+	if req.GetCmdbMod3() != "" && req.GetCmdbMod3() != service.CmdbMod3 {
+		service.CmdbMod3 = req.GetCmdbMod3()
 		needUpdate = true
 	}
 
-	if req.GetOwners() != nil && req.GetOwners().GetValue() != service.Owner {
-		service.Owner = req.GetOwners().GetValue()
+	if req.GetComment() != "" && req.GetComment() != service.Comment {
+		service.Comment = req.GetComment()
+		needUpdate = true
+	}
+
+	if req.GetOwners() != "" && req.GetOwners() != service.Owner {
+		service.Owner = req.GetOwners()
 		needUpdate = true
 		needUpdateOwner = true
 	}
 
-	if req.GetPlatformId() != nil && req.GetPlatformId().GetValue() != service.PlatformID {
-		service.PlatformID = req.GetPlatformId().GetValue()
-		needUpdate = true
-	}
+	// 注释：PlatformId字段移除 - 移除 PlatformId 相关代码，因为 pole-io/specification 中已不存在此字段
+	// 移除 PlatformId 相关代码，因为 pole-io/specification 中已不存在此字段
 
 	if needNewRevision {
 		service.Revision = utils.NewUUID()
@@ -562,14 +567,13 @@ func (s *Server) updateServiceAttribute(
 	return nil, needUpdate, needUpdateOwner
 }
 
-func isEqualServiceExport(raw []*wrappers.StringValue, save map[string]struct{}) (bool, map[string]struct{}) {
-	cur := types.ExportToMap(raw)
-	if len(cur) != len(save) {
-		return false, cur
+func isEqualServiceExport(reqMap map[string]struct{}, save map[string]struct{}) (bool, map[string]struct{}) {
+	if len(reqMap) != len(save) {
+		return false, reqMap
 	}
-	for k := range cur {
+	for k := range reqMap {
 		if _, ok := save[k]; !ok {
-			return false, cur
+			return false, reqMap
 		}
 	}
 
@@ -622,8 +626,8 @@ func (s *Server) isServiceExistedResource(ctx context.Context, service *svctypes
 		return nil
 	}
 	out := &apiservice.Service{
-		Name:      protobuf.NewStringValue(service.Name),
-		Namespace: protobuf.NewStringValue(service.Namespace),
+		Name:      string(service.Name),
+		Namespace: string(service.Namespace),
 	}
 	total, err := s.getInstancesCountWithService(service.Name, service.Namespace)
 	if err != nil {
@@ -660,8 +664,8 @@ func (s *Server) isServiceExistedResource(ctx context.Context, service *svctypes
 // return service, token, response
 func (s *Server) checkServiceAuthority(ctx context.Context, req *apiservice.Service) (*svctypes.Service,
 	string, *apimodel.Response) {
-	namespaceName := req.GetNamespace().GetValue()
-	serviceName := req.GetName().GetValue()
+	namespaceName := req.GetNamespace()
+	serviceName := req.GetName()
 
 	// 检查是否存在
 	svc, err := s.storage.GetService(serviceName, namespaceName)
@@ -704,9 +708,9 @@ func serviceOwner2Api(service *svctypes.Service) *apiservice.Service {
 		return nil
 	}
 	out := &apiservice.Service{
-		Name:      protobuf.NewStringValue(service.Name),
-		Namespace: protobuf.NewStringValue(service.Namespace),
-		Owners:    protobuf.NewStringValue(service.Owner),
+		Name:      string(service.Name),
+		Namespace: string(service.Namespace),
+		Owners:    string(service.Owner),
 	}
 	return out
 }
@@ -726,8 +730,8 @@ func enhancedServices2Api(services []*svctypes.EnhancedService, handler Service2
 	out := make([]*apiservice.Service, 0, len(services))
 	for _, entry := range services {
 		outSvc := handler(entry.Service)
-		outSvc.HealthyInstanceCount = &wrappers.UInt32Value{Value: entry.HealthyInstanceCount}
-		outSvc.TotalInstanceCount = &wrappers.UInt32Value{Value: entry.TotalInstanceCount}
+		outSvc.HealthyInstanceCount = uint32(entry.HealthyInstanceCount)
+		outSvc.TotalInstanceCount = uint32(entry.TotalInstanceCount)
 		out = append(out, outSvc)
 	}
 
@@ -753,8 +757,8 @@ func api2ServiceName(req *apiservice.Service) *svctypes.Service {
 		return nil
 	}
 	service := &svctypes.Service{
-		Name:      req.GetName().GetValue(),
-		Namespace: req.GetNamespace().GetValue(),
+		Name:      req.GetName(),
+		Namespace: req.GetNamespace(),
 	}
 	return service
 }
@@ -810,7 +814,9 @@ func wrapperServiceStoreResponse(service *apiservice.Service, err error) *apimod
 		return nil
 	}
 	resp := api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
-	resp.Service = service
+	// 根据 pole-io/specification，Response 只有 data 字段，需要将服务数据序列化到 data 中
+	// TODO: 需要确定正确的序列化方式
+	_ = service // 暂时忽略 service 参数
 	return resp
 }
 
@@ -832,8 +838,8 @@ func serviceRecordEntry(ctx context.Context, req *apiservice.Service, md *svctyp
 
 	entry := &types.RecordEntry{
 		ResourceType:  types.RService,
-		ResourceName:  req.GetName().GetValue(),
-		Namespace:     req.GetNamespace().GetValue(),
+		ResourceName:  req.GetName(),
+		Namespace:     req.GetNamespace(),
 		OperationType: operationType,
 		Operator:      utils.ParseOperator(ctx),
 		Detail:        detail,

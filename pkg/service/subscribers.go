@@ -2,11 +2,10 @@ package service
 
 import (
 	"context"
-
-	"github.com/pole-io/specification/source/go/api/v1/service_manage"
+	aipmodel "github.com/pole-io/specification/source/go/api/v1/model"
 )
 
 // GetServiceSubscribers implements DiscoverServer.
-func (s *Server) GetServiceSubscribers(ctx context.Context, query map[string]string) *service_manage.BatchQueryResponse {
+func (s *Server) GetServiceSubscribers(ctx context.Context, query map[string]string) *aipmodel.BatchQueryResponse {
 	panic("unimplemented")
 }

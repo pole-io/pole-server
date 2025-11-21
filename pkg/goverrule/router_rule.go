@@ -26,7 +26,6 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -121,7 +120,7 @@ func (s *Server) updateRouterRule(ctx context.Context, req *apitraffic.RouteRule
 		return apiv1.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	if conf == nil {
-		return apiv1.NewResponse(apimodel.Code_NotFoundRouting)
+		return apiv1.NewResponse(apimodel.Code_NotFoundResource)
 	}
 
 	reqModel, err := Api2RoutingConfig(req)
@@ -146,7 +145,7 @@ func (s *Server) updateRouterRule(ctx context.Context, req *apitraffic.RouteRule
 func (s *Server) QueryRouterRules(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	args, presp := parseRoutingArgs(query, ctx)
 	if presp != nil {
-		return apiv1.NewBatchQueryResponse(apimodel.Code(presp.GetCode().GetValue()))
+		return apiv1.NewBatchQueryResponse(apimodel.Code(presp.GetCode()))
 	}
 
 	total, ret, err := s.Cache().RoutingConfig().QueryRouterRules(ctx, args)
@@ -163,8 +162,8 @@ func (s *Server) QueryRouterRules(ctx context.Context, query map[string]string) 
 	}
 
 	resp := apiv1.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Amount = &wrappers.UInt32Value{Value: total}
-	resp.Size = &wrappers.UInt32Value{Value: uint32(len(ret))}
+	resp.Amount = uint32(total)
+	resp.Size = uint32(len(ret))
 	resp.Data = routers
 	return resp
 }
@@ -179,7 +178,7 @@ func (s *Server) GetOneRouterRule(ctx context.Context, req *apitraffic.RouteRule
 		return apiv1.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	if saveData == nil {
-		return apiv1.NewResponse(apimodel.Code_NotFoundRouting)
+		return apiv1.NewResponse(apimodel.Code_NotFoundResource)
 	}
 
 	extRule, err := saveData.ToExpendRoutingConfig()
@@ -216,7 +215,7 @@ func (s *Server) enableRouterRules(ctx context.Context, req *apitraffic.RouteRul
 		return apiv1.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	if conf == nil {
-		return apiv1.NewResponse(apimodel.Code_NotFoundRouting)
+		return apiv1.NewResponse(apimodel.Code_NotFoundResource)
 	}
 
 	conf.Enable = req.GetEnable()

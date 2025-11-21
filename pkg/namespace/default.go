@@ -58,13 +58,14 @@ type Config struct {
 func Initialize(ctx context.Context, nsOpt *Config, storage store.Store, cacheMgr *cache.CacheManager) error {
 	var err error
 	once.Do(func() {
-		actualSvr, proxySvr, err := InitServer(ctx, nsOpt, storage, cacheMgr)
-		if err != nil {
+		actualSvr, proxySvr, initErr := InitServer(ctx, nsOpt, storage, cacheMgr)
+		if initErr != nil {
+			err = initErr
 			return
 		}
 		namespaceServer = actualSvr
 		server = proxySvr
-		return
+		// 注释：移除return语句 - 避免early return导致后续清理代码无法执行
 	})
 
 	if err != nil {

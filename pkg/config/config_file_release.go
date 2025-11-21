@@ -526,7 +526,7 @@ func (s *Server) CasUpsertAndReleaseConfigFile(ctx context.Context,
 			log.Error("[Config][File] cas compare config file.", utils.RequestID(ctx),
 				zap.String("namespace", req.Namespace), zap.String("group", req.Group),
 				zap.String("fileName", req.FileName),
-				zap.String("expect", req.Md5),zap.String("actual", actualMd5))
+				zap.String("expect", req.Md5), zap.String("actual", actualMd5))
 			return api.NewConfigResponse(apimodel.Code_DataConflict)
 		}
 		upsertResp = s.handleUpdateConfigFile(ctx, tx, upsertFileReq)
@@ -611,7 +611,7 @@ func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
 	} else {
 		actualMd5 := CalMd5(saveFile.Content)
 		// 只有显示设置了 md5 字段值才会进入 CAS 发布流程
-		if req.GetMd5()!= "" && req.GetMd5()!= actualMd5 {
+		if req.GetMd5() != "" && req.GetMd5() != actualMd5 {
 			log.Error("[Config][File] cas compare config file.", utils.RequestID(ctx),
 				zap.String("namespace", req.GetNamespace()), zap.String("group", req.GetGroup()),
 				zap.String("fileName", req.GetFileName()),
@@ -636,7 +636,7 @@ func (s *Server) UpsertAndReleaseConfigFile(ctx context.Context,
 		ModifyBy:           utils.ParseUserName(ctx),
 		ReleaseDescription: req.GetReleaseDescription(),
 	})
-	if releaseResp.GetCode()!= uint32(apimodel.Code_ExecuteSuccess) {
+	if releaseResp.GetCode() != uint32(apimodel.Code_ExecuteSuccess) {
 		_ = tx.Rollback()
 		return releaseResp
 	}
