@@ -118,11 +118,11 @@ func compareBuckets(src map[commonhash.Bucket]bool, dst map[commonhash.Bucket]bo
 func (d *Dispatcher) reloadSelfContinuum() bool {
 	nextBuckets := make(map[commonhash.Bucket]bool)
 	d.svr.cacheProvider.RangeSelfServiceInstances(func(instance *apiservice.Instance) {
-		if instance.GetIsolate().GetValue() || !instance.GetHealthy().GetValue() {
+		if instance.GetIsolate() || !instance.GetHealthy() {
 			return
 		}
 		nextBuckets[commonhash.Bucket{
-			Host:   instance.GetHost().GetValue(),
+			Host:   instance.GetHost(),
 			Weight: weight,
 		}] = true
 	})
@@ -151,7 +151,7 @@ func (d *Dispatcher) reloadManagedClients() {
 
 	if d.continuum != nil {
 		d.svr.cacheProvider.RangeHealthCheckClients(func(itemChecker ItemWithChecker, client *types.Client) {
-			clientId := client.Proto().GetId().GetValue()
+			clientId := client.Proto().GetId()
 			host := d.continuum.Hash(itemChecker.GetHashValue())
 			if host == d.svr.localHost {
 				nextClients[clientId] = itemChecker.(*ClientWithChecker)

@@ -48,8 +48,6 @@ func (s *Server) CreateConfigFileGroups(ctx context.Context,
 
 	resp := s.nextServer.CreateConfigFileGroups(ctx, reqs)
 
-	// 对于创建操作，这里可以处理响应结果
-	// 但由于类型结构已改变，我们简化处理逻辑
 	return resp
 }
 
@@ -65,7 +63,6 @@ func (s *Server) UpdateConfigFileGroups(ctx context.Context, reqs []*apiconfig.C
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 	resp := s.nextServer.UpdateConfigFileGroups(ctx, reqs)
 
-	// 简化处理逻辑，直接返回结果
 	return resp
 }
 
@@ -81,7 +78,6 @@ func (s *Server) DeleteConfigFileGroups(ctx context.Context, reqs []*apiconfig.C
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	resp := s.nextServer.DeleteConfigFileGroups(ctx, reqs)
-	// 简化处理逻辑，直接返回结果
 	return resp
 }
 
@@ -120,7 +116,5 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 	authCtx.SetRequestContext(ctx)
 
 	resp := s.nextServer.QueryConfigFileGroups(ctx, filter)
-	// 简化处理逻辑，新的类型结构不包含ConfigFileGroups字段
-	// 权限检查逻辑需要在其他地方处理或简化
 	return resp
 }

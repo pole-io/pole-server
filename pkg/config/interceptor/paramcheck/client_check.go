@@ -167,7 +167,6 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context,
 			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
 		}
 	}
-
 	return s.nextServer.GetConfigFileWithCache(ctx, req)
 }
 

@@ -18,7 +18,6 @@
 package v1
 
 import (
-
 	anypb "google.golang.org/protobuf/types/known/anypb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -69,145 +68,131 @@ func NewAuthBatchQueryResponseWithMsg(code apimodel.Code, msg string) *apimodel.
 
 // NewUserResponse 创建回复带用户信息
 func NewUserResponse(code apimodel.Code, user *apisecurity.User) *apimodel.Response {
-	userAny, err := anypb.New(user)
-	if err != nil {
-        // 处理序列化失败的错误（比如返回错误响应）
-        return &apimodel.Response{
-            Code: uint32(code),
-            Info: "序列化用户信息失败: " + err.Error(),
-        }
-    }
+	var data *anypb.Any
+	if user != nil {
+		data, _ = anypb.New(user)
+	}
 	return &apimodel.Response{
 		Code: uint32(code),
 		Info: Code2Info(uint32(code)),
-		Data: userAny,
+		Data: data,
 	}
 }
 
-// NewUserResponse 创建回复带用户信息
+// NewUserResponseWithMsg 创建回复带用户信息和自定义消息
 func NewUserResponseWithMsg(code apimodel.Code, info string, user *apisecurity.User) *apimodel.Response {
-	userAny, err := anypb.New(user)
-	if err != nil {
-        // 处理序列化失败的错误（比如返回错误响应）
-        return &apimodel.Response{
-            Code: uint32(code),
-            Info: "序列化用户信息失败: " + err.Error(),
-        }
-    }
+	var data *anypb.Any
+	if user != nil {
+		data, _ = anypb.New(user)
+	}
 	return &apimodel.Response{
 		Code: uint32(code),
 		Info: Code2Info(uint32(code)) + ":" + info,
-		Data: userAny,
+		Data: data,
 	}
 }
 
 // NewGroupResponse 创建回复带用户组信息
-func NewGroupResponse(code apimodel.Code, user *apisecurity.UserGroup) *apimodel.Response {
-	userAny, err := anypb.New(user)
-	if err != nil {
-		// 处理序列化失败的错误（比如返回错误响应）
-        return &apimodel.Response{
-            Code: uint32(code),
-            Info: "序列化用户组信息失败: " + err.Error(),
-        }
-    }
+func NewGroupResponse(code apimodel.Code, group *apisecurity.UserGroup) *apimodel.Response {
+	var data *anypb.Any
+	if group != nil {
+		data, _ = anypb.New(group)
+	}
 	return &apimodel.Response{
-		Code:      uint32(code),
-		Info:      Code2Info(uint32(code)),
-		Data:      userAny,
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
+		Data: data,
 	}
 }
 
 // NewModifyGroupResponse 创建修改用户组的响应信息
 func NewModifyGroupResponse(code apimodel.Code, group *apisecurity.ModifyUserGroup) *apimodel.Response {
-	groupAny, err := anypb.New(group)
-	if err != nil {
-        // 处理序列化失败的错误（比如返回错误响应）
-        return &apimodel.Response{
-            Code: uint32(code),
-            Info: "序列化修改用户组信息失败: " + err.Error(),
-        }
-    }
+	var data *anypb.Any
+	if group != nil {
+		data, _ = anypb.New(group)
+	}
 	return &apimodel.Response{
-
-		Code:            uint32(code),
-		Info:            Code2Info(uint32(code)),
-		Data:            groupAny,
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
+		Data: data,
 	}
 }
 
 // NewGroupRelationResponse 创建用户组关联关系的响应体
 func NewGroupRelationResponse(code apimodel.Code, relation *apisecurity.UserGroupRelation) *apimodel.Response {
+	var data *anypb.Any
+	if relation != nil {
+		data, _ = anypb.New(relation)
+	}
 	return &apimodel.Response{
-		Code:     uint32(code),
-		Info:     Code2Info(uint32(code)),
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
+		Data: data,
 	}
 }
 
 // NewAuthStrategyResponse 创建鉴权策略响应体
 func NewAuthStrategyResponse(code apimodel.Code, req *apisecurity.AuthStrategy) *apimodel.Response {
+	var data *anypb.Any
+	if req != nil {
+		data, _ = anypb.New(req)
+	}
 	return &apimodel.Response{
-		Code:         uint32(code),
-		Info:         Code2Info(uint32(code)),
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
+		Data: data,
 	}
 }
 
 // NewAuthStrategyResponseWithMsg 创建鉴权策略响应体并自定义Info
 func NewAuthStrategyResponseWithMsg(
 	code apimodel.Code, msg string, req *apisecurity.AuthStrategy) *apimodel.Response {
-	reqAny, err := anypb.New(req)
-	if err != nil {
-		// 处理序列化失败的错误（比如返回错误响应）
-        return &apimodel.Response{
-            Code: uint32(code),
-            Info: "序列化鉴权策略失败: " + err.Error(),
-        }
-    }
+	var data *anypb.Any
+	if req != nil {
+		data, _ = anypb.New(req)
+	}
 	return &apimodel.Response{
-		Code:        uint32(code),
-		Info:        msg,
-		Data:        reqAny,
+		Code: uint32(code),
+		Info: msg,
+		Data: data,
 	}
 }
 
 // NewModifyAuthStrategyResponse 创建修改鉴权策略响应体
 func NewModifyAuthStrategyResponse(code apimodel.Code, req *apisecurity.ModifyAuthStrategy) *apimodel.Response {
+	var data *anypb.Any
+	if req != nil {
+		data, _ = anypb.New(req)
+	}
 	return &apimodel.Response{
-		Code:               uint32(code),
-		Info:               Code2Info(uint32(code)),
+		Code: uint32(code),
+		Info: Code2Info(uint32(code)),
+		Data: data,
 	}
 }
 
 // NewStrategyResourcesResponse 创建修改鉴权策略响应体
 func NewStrategyResourcesResponse(code apimodel.Code, ret *apisecurity.StrategyResources) *apimodel.Response {
-	retAny, err := anypb.New(ret)
-	if err != nil {
-        // 处理序列化失败的错误（比如返回错误响应）
-        return &apimodel.Response{
-            Code: uint32(code),
-            Info: "序列化策略资源失败: " + err.Error(),
-        }
-    }
+	var data *anypb.Any
+	if ret != nil {
+		data, _ = anypb.New(ret)
+	}
 	return &apimodel.Response{
 		Code: uint32(code),
 		Info: Code2Info(uint32(code)),
-		Data: retAny,
+		Data: data,
 	}
 }
 
 // NewLoginResponse 创建登录响应体
 func NewLoginResponse(code apimodel.Code, loginResponse *apisecurity.LoginResponse) *apimodel.Response {
-	loginResponseAny, err := anypb.New(loginResponse)
-	if err != nil {
-        // 处理序列化失败的错误（比如返回错误响应）
-        return &apimodel.Response{
-            Code: uint32(code),
-            Info: "序列化登录响应失败: " + err.Error(),
-        }
-    }
+	var data *anypb.Any
+	if loginResponse != nil {
+		data, _ = anypb.New(loginResponse)
+	}
 	return &apimodel.Response{
 		Code: uint32(code),
 		Info: Code2Info(uint32(code)),
-		Data: loginResponseAny,
+		Data: data,
 	}
 }

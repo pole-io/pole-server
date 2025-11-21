@@ -82,7 +82,8 @@ func deregisterClientHandler(s store.Store) func(futures []batchctrl.Future) {
 		// 调用batch接口，创建实例
 		clients := make([]string, 0, len(futures))
 		for _, entry := range futures {
-			id := entry.Param().(*service_manage.Client).GetId().GetValue()
+			// 注释：方法调用改动 - GetId()返回类型从*wrapperspb.StringValue改为string，去掉.GetValue()调用
+			id := entry.Param().(*service_manage.Client).GetId()
 			clients = append(clients, id)
 		}
 		if err := s.BatchDeleteClients(clients); err != nil {

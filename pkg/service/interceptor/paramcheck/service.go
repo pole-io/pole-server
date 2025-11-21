@@ -63,7 +63,7 @@ var (
 
 // CreateServices implements service.DiscoverServer.
 func (svr *Server) CreateServices(ctx context.Context,
-	req []*service_manage.Service) *service_manage.BatchWriteResponse {
+	req []*service_manage.Service) *apimodel.BatchWriteResponse {
 	if checkError := checkBatchService(req); checkError != nil {
 		return checkError
 	}
@@ -80,7 +80,7 @@ func (svr *Server) CreateServices(ctx context.Context,
 
 // DeleteServices implements service.DiscoverServer.
 func (svr *Server) DeleteServices(ctx context.Context,
-	req []*service_manage.Service) *service_manage.BatchWriteResponse {
+	req []*service_manage.Service) *apimodel.BatchWriteResponse {
 	if checkError := checkBatchService(req); checkError != nil {
 		return checkError
 	}
@@ -88,7 +88,7 @@ func (svr *Server) DeleteServices(ctx context.Context,
 }
 
 // UpdateServices implements service.DiscoverServer.
-func (svr *Server) UpdateServices(ctx context.Context, req []*service_manage.Service) *service_manage.BatchWriteResponse {
+func (svr *Server) UpdateServices(ctx context.Context, req []*service_manage.Service) *apimodel.BatchWriteResponse {
 	if checkError := checkBatchService(req); checkError != nil {
 		return checkError
 	}
@@ -109,7 +109,7 @@ func (svr *Server) UpdateServices(ctx context.Context, req []*service_manage.Ser
 
 // GetAllServices implements service.DiscoverServer.
 func (svr *Server) GetAllServices(ctx context.Context,
-	query map[string]string) *service_manage.BatchQueryResponse {
+	query map[string]string) *apimodel.BatchQueryResponse {
 	return svr.nextSvr.GetAllServices(ctx, query)
 }
 
@@ -126,7 +126,7 @@ func (svr *Server) GetServiceSubscribers(ctx context.Context, query map[string]s
 }
 
 // GetServices implements service.DiscoverServer.
-func (svr *Server) GetServices(ctx context.Context, query map[string]string) *service_manage.BatchQueryResponse {
+func (svr *Server) GetServices(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	var (
 		inputInstMetaKeys, inputInstMetaValues string
 	)
@@ -175,7 +175,7 @@ func (svr *Server) GetServices(ctx context.Context, query map[string]string) *se
 }
 
 // GetServicesCount implements service.DiscoverServer.
-func (svr *Server) GetServicesCount(ctx context.Context) *service_manage.BatchQueryResponse {
+func (svr *Server) GetServicesCount(ctx context.Context) *apimodel.BatchQueryResponse {
 	return svr.nextSvr.GetServicesCount(ctx)
 }
 
@@ -212,11 +212,11 @@ func checkCreateService(req *apiservice.Service) *apimodel.Response {
 	}
 
 	if err := valid.CheckResourceName(req.GetName()); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidServiceName, req)
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req)
 	}
 
 	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidNamespaceName, req)
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req)
 	}
 
 	if err := checkMetadata(req.GetMetadata()); err != nil {
@@ -239,11 +239,11 @@ func checkReviseService(req *apiservice.Service) *apimodel.Response {
 	}
 
 	if err := valid.CheckResourceName(req.GetName()); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidServiceName, req)
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req)
 	}
 
 	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidNamespaceName, req)
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req)
 	}
 
 	// 检查字段长度是否大于DB中对应字段长
@@ -258,40 +258,40 @@ func checkReviseService(req *apiservice.Service) *apimodel.Response {
 // CheckDbServiceFieldLen 检查DB中service表对应的入参字段合法性
 func CheckDbServiceFieldLen(req *apiservice.Service) (*apimodel.Response, bool) {
 	if err := valid.CheckDbStrFieldLen(req.GetName(), valid.MaxNameLength); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidServiceName, req), true
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidNamespaceName, req), true
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req), true
 	}
 	if err := valid.CheckDbMetaDataFieldLen(req.GetMetadata()); err != nil {
 		return api.NewServiceResponse(apimodel.Code_InvalidMetadata, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetPorts(), valid.MaxDbServicePortsLength); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidServicePorts, req), true
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetBusiness(), valid.MaxDbServiceBusinessLength); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidServiceBusiness, req), true
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetDepartment(), valid.MaxDbServiceDeptLength); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidServiceDepartment, req), true
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetCmdbMod1(), valid.MaxDbServiceCMDBLength); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidServiceCMDB, req), true
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetCmdbMod2(), valid.MaxDbServiceCMDBLength); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidServiceCMDB, req), true
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetCmdbMod3(), valid.MaxDbServiceCMDBLength); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidServiceCMDB, req), true
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetComment(), valid.MaxDbServiceCommentLength); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidServiceComment, req), true
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetOwners(), valid.MaxDbServiceOwnerLength); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidServiceOwners, req), true
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetToken(), valid.MaxDbServiceToken); err != nil {
-		return api.NewServiceResponse(apimodel.Code_InvalidServiceToken, req), true
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req), true
 	}
 	return nil, false
 }

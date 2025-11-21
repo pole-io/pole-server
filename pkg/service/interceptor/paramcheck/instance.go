@@ -23,9 +23,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
-	"google.golang.org/protobuf/types/known/wrapperspb"
-
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
@@ -65,7 +62,7 @@ var (
 
 // CreateInstances implements service.DiscoverServer.
 func (svr *Server) CreateInstances(ctx context.Context,
-	reqs []*service_manage.Instance) *service_manage.BatchWriteResponse {
+	reqs []*service_manage.Instance) *apimodel.BatchWriteResponse {
 	if checkError := checkBatchInstance(reqs); checkError != nil {
 		return checkError
 	}
@@ -84,7 +81,7 @@ func (svr *Server) CreateInstances(ctx context.Context,
 			api.Collect(batchRsp, api.NewInstanceResponse(apimodel.Code_InstanceTooManyRequests, req))
 			continue
 		}
-		req.Id = wrapperspb.String(instanceID)
+		req.Id = string(instanceID)
 		reqs[i] = req
 	}
 	if !api.IsSuccess(batchRsp) {
@@ -96,7 +93,7 @@ func (svr *Server) CreateInstances(ctx context.Context,
 
 // DeleteInstances implements service.DiscoverServer.
 func (svr *Server) DeleteInstances(ctx context.Context,
-	reqs []*service_manage.Instance) *service_manage.BatchWriteResponse {
+	reqs []*service_manage.Instance) *apimodel.BatchWriteResponse {
 	if checkError := checkBatchInstance(reqs); checkError != nil {
 		return checkError
 	}
@@ -114,7 +111,7 @@ func (svr *Server) DeleteInstances(ctx context.Context,
 			api.Collect(batchRsp, api.NewInstanceResponse(apimodel.Code_InstanceTooManyRequests, req))
 			continue
 		}
-		req.Id = wrapperspb.String(instanceID)
+		req.Id = string(instanceID)
 		reqs[i] = req
 	}
 	if !api.IsSuccess(batchRsp) {
@@ -125,7 +122,7 @@ func (svr *Server) DeleteInstances(ctx context.Context,
 
 // DeleteInstancesByHost implements service.DiscoverServer.
 func (svr *Server) DeleteInstancesByHost(ctx context.Context,
-	reqs []*service_manage.Instance) *service_manage.BatchWriteResponse {
+	reqs []*service_manage.Instance) *apimodel.BatchWriteResponse {
 	if checkError := checkBatchInstance(reqs); checkError != nil {
 		return checkError
 	}
@@ -146,13 +143,13 @@ func (svr *Server) DeleteInstancesByHost(ctx context.Context,
 
 // GetInstanceLabels implements service.DiscoverServer.
 func (svr *Server) GetInstanceLabels(ctx context.Context,
-	query map[string]string) *service_manage.Response {
+	query map[string]string) *apimodel.Response {
 	return svr.nextSvr.GetInstanceLabels(ctx, query)
 }
 
 // GetInstances implements service.DiscoverServer.
 func (svr *Server) GetInstances(ctx context.Context,
-	query map[string]string) *service_manage.BatchQueryResponse {
+	query map[string]string) *apimodel.BatchQueryResponse {
 
 	// 不允许全量查询服务实例
 	if len(query) == 0 {
@@ -211,12 +208,12 @@ func (svr *Server) GetInstances(ctx context.Context,
 }
 
 // GetInstancesCount implements service.DiscoverServer.
-func (svr *Server) GetInstancesCount(ctx context.Context) *service_manage.BatchQueryResponse {
+func (svr *Server) GetInstancesCount(ctx context.Context) *apimodel.BatchQueryResponse {
 	return svr.nextSvr.GetInstancesCount(ctx)
 }
 
 // UpdateInstances implements service.DiscoverServer.
-func (svr *Server) UpdateInstances(ctx context.Context, reqs []*service_manage.Instance) *service_manage.BatchWriteResponse {
+func (svr *Server) UpdateInstances(ctx context.Context, reqs []*service_manage.Instance) *apimodel.BatchWriteResponse {
 	if checkError := checkBatchInstance(reqs); checkError != nil {
 		return checkError
 	}
@@ -232,7 +229,7 @@ func (svr *Server) UpdateInstances(ctx context.Context, reqs []*service_manage.I
 			api.Collect(batchRsp, checkError)
 			continue
 		}
-		reqs[i].Id = wrapperspb.String(instanceID)
+		reqs[i].Id = string(instanceID)
 	}
 	if !api.IsSuccess(batchRsp) {
 		return batchRsp
@@ -241,7 +238,7 @@ func (svr *Server) UpdateInstances(ctx context.Context, reqs []*service_manage.I
 }
 
 // UpdateInstancesIsolate implements service.DiscoverServer.
-func (svr *Server) UpdateInstancesIsolate(ctx context.Context, reqs []*service_manage.Instance) *service_manage.BatchWriteResponse {
+func (svr *Server) UpdateInstancesIsolate(ctx context.Context, reqs []*service_manage.Instance) *apimodel.BatchWriteResponse {
 	if checkError := checkBatchInstance(reqs); checkError != nil {
 		return checkError
 	}
@@ -300,11 +297,8 @@ func checkReviseInstance(req *apiservice.Instance) (string, *apimodel.Response) 
 		return "", api.NewInstanceResponse(apimodel.Code_EmptyRequest, req)
 	}
 
-	if req.GetId() != nil {
-		if req.GetId().GetValue() == "" {
-			return "", api.NewInstanceResponse(apimodel.Code_InvalidInstanceID, req)
-		}
-		return req.GetId().GetValue(), nil
+	if req.GetId() == "" {
+		return "", api.NewInstanceResponse(apimodel.Code_InvalidQueryInsParameter, req)
 	}
 
 	// 检查字段长度是否大于DB中对应字段长
@@ -313,37 +307,34 @@ func checkReviseInstance(req *apiservice.Instance) (string, *apimodel.Response) 
 		return "", err
 	}
 
-	return valid.CheckInstanceTetrad(req)
+	return req.GetId(), nil
 }
 
 // CheckDbInstanceFieldLen 检查DB中service表对应的入参字段合法性
 func CheckDbInstanceFieldLen(req *apiservice.Instance) (*apimodel.Response, bool) {
 	if err := valid.CheckDbStrFieldLen(req.GetService(), valid.MaxNameLength); err != nil {
-		return api.NewInstanceResponse(apimodel.Code_InvalidServiceName, req), true
+		return api.NewInstanceResponse(apimodel.Code_InvalidUserName, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
-		return api.NewInstanceResponse(apimodel.Code_InvalidNamespaceName, req), true
+		return api.NewInstanceResponse(apimodel.Code_InvalidUserName, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetHost(), valid.MaxDbInsHostLength); err != nil {
-		return api.NewInstanceResponse(apimodel.Code_InvalidInstanceHost, req), true
+		return api.NewInstanceResponse(apimodel.Code_InvalidQueryInsParameter, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetProtocol(), valid.MaxDbInsProtocolLength); err != nil {
-		return api.NewInstanceResponse(apimodel.Code_InvalidInstanceProtocol, req), true
+		return api.NewInstanceResponse(apimodel.Code_InvalidQueryInsParameter, req), true
 	}
 	if err := valid.CheckDbStrFieldLen(req.GetVersion(), valid.MaxDbInsVersionLength); err != nil {
-		return api.NewInstanceResponse(apimodel.Code_InvalidInstanceVersion, req), true
-	}
-	if err := valid.CheckDbStrFieldLen(req.GetLogicSet(), valid.MaxDbInsLogicSetLength); err != nil {
-		return api.NewInstanceResponse(apimodel.Code_InvalidInstanceLogicSet, req), true
+		return api.NewInstanceResponse(apimodel.Code_InvalidQueryInsParameter, req), true
 	}
 	if err := valid.CheckDbMetaDataFieldLen(req.GetMetadata()); err != nil {
 		return api.NewInstanceResponse(apimodel.Code_InvalidMetadata, req), true
 	}
-	if req.GetPort().GetValue() > 65535 {
-		return api.NewInstanceResponse(apimodel.Code_InvalidInstancePort, req), true
+	if req.GetPort() > 65535 {
+		return api.NewInstanceResponse(apimodel.Code_InvalidQueryInsParameter, req), true
 	}
 
-	if req.GetWeight().GetValue() > 65535 {
+	if req.GetWeight() > 65535 {
 		return api.NewInstanceResponse(apimodel.Code_InvalidParameter, req), true
 	}
 	return nil, false
@@ -366,24 +357,20 @@ func checkInstanceByHost(req *apiservice.Instance) *apimodel.Response {
 		return api.NewInstanceResponse(apimodel.Code_EmptyRequest, req)
 	}
 	if err := valid.CheckResourceName(req.GetService()); err != nil {
-		return api.NewInstanceResponse(apimodel.Code_InvalidServiceName, req)
+		return api.NewInstanceResponse(apimodel.Code_InvalidUserName, req)
 	}
 	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
-		return api.NewInstanceResponse(apimodel.Code_InvalidNamespaceName, req)
+		return api.NewInstanceResponse(apimodel.Code_InvalidUserName, req)
 	}
 	if err := checkInstanceHost(req.GetHost()); err != nil {
-		return api.NewInstanceResponse(apimodel.Code_InvalidInstanceHost, req)
+		return api.NewInstanceResponse(apimodel.Code_InvalidQueryInsParameter, req)
 	}
 	return nil
 }
 
 // checkInstanceHost 检查服务实例Host
-func checkInstanceHost(host *wrappers.StringValue) error {
-	if host == nil {
-		return errors.New(valid.NilErrString)
-	}
-
-	if host.GetValue() == "" {
+func checkInstanceHost(host string) error {
+	if host == "" {
 		return errors.New(valid.EmptyErrString)
 	}
 

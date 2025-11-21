@@ -28,7 +28,6 @@ import (
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	"github.com/pole-io/pole-server/apis/store"
@@ -224,7 +223,7 @@ func (s *Server) GetLastHeartbeat(req *apiservice.Instance) *apimodel.Response {
 	if errRsp != nil {
 		return errRsp
 	}
-	req.Id = protobuf.NewStringValue(id)
+	req.Id = string(id)
 	insCache := s.cacheProvider.GetInstance(id)
 	if insCache == nil {
 		return api.NewInstanceResponse(apimodel.Code_NotFoundResource, req)
@@ -245,7 +244,6 @@ func (s *Server) GetLastHeartbeat(req *apiservice.Instance) *apimodel.Response {
 	req.Namespace = insCache.Proto.GetNamespace()
 	req.Host = insCache.Proto.GetHost()
 	req.Port = insCache.Proto.Port
-	req.VpcId = insCache.Proto.GetVpcId()
 	req.HealthCheck = insCache.Proto.GetHealthCheck()
 	req.Metadata = make(map[string]string, 3)
 	req.Metadata["last-heartbeat-timestamp"] = strconv.Itoa(int(queryResp.LastHeartbeatSec))

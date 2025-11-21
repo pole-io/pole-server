@@ -23,15 +23,13 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
-
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
 
 // CreateServiceContracts implements service.DiscoverServer.
 func (svr *Server) CreateServiceContracts(ctx context.Context,
-	req []*service_manage.ServiceContract) *service_manage.BatchWriteResponse {
+	req []*service_manage.ServiceContract) *apimodel.BatchWriteResponse {
 	if rsp := checkBatchContractRules(req); rsp != nil {
 		return rsp
 	}
@@ -49,7 +47,7 @@ func (svr *Server) CreateServiceContracts(ctx context.Context,
 
 // DeleteServiceContracts implements service.DiscoverServer.
 func (svr *Server) DeleteServiceContracts(ctx context.Context,
-	req []*service_manage.ServiceContract) *service_manage.BatchWriteResponse {
+	req []*service_manage.ServiceContract) *apimodel.BatchWriteResponse {
 	if rsp := checkBatchContractRules(req); rsp != nil {
 		return rsp
 	}
@@ -58,19 +56,19 @@ func (svr *Server) DeleteServiceContracts(ctx context.Context,
 
 // GetServiceContractVersions implements service.DiscoverServer.
 func (svr *Server) GetServiceContractVersions(ctx context.Context,
-	filter map[string]string) *service_manage.BatchQueryResponse {
+	filter map[string]string) *apimodel.BatchQueryResponse {
 	return svr.nextSvr.GetServiceContractVersions(ctx, filter)
 }
 
 // GetServiceContracts implements service.DiscoverServer.
 func (svr *Server) GetServiceContracts(ctx context.Context,
-	query map[string]string) *service_manage.BatchQueryResponse {
+	query map[string]string) *apimodel.BatchQueryResponse {
 	return svr.nextSvr.GetServiceContracts(ctx, query)
 }
 
 // CreateServiceContractInterfaces implements service.DiscoverServer.
 func (svr *Server) CreateServiceContractInterfaces(ctx context.Context,
-	contract *service_manage.ServiceContract, source service_manage.InterfaceDescriptor_Source) *service_manage.Response {
+	contract *service_manage.ServiceContract, source service_manage.InterfaceDescriptor_Source) *apimodel.Response {
 	if errRsp := checkOperationServiceContractInterface(contract); errRsp != nil {
 		return errRsp
 	}
@@ -80,7 +78,7 @@ func (svr *Server) CreateServiceContractInterfaces(ctx context.Context,
 // AppendServiceContractInterfaces implements service.DiscoverServer.
 func (svr *Server) AppendServiceContractInterfaces(ctx context.Context,
 	contract *service_manage.ServiceContract,
-	source service_manage.InterfaceDescriptor_Source) *service_manage.Response {
+	source service_manage.InterfaceDescriptor_Source) *apimodel.Response {
 	if errRsp := checkOperationServiceContractInterface(contract); errRsp != nil {
 		return errRsp
 	}
@@ -89,7 +87,7 @@ func (svr *Server) AppendServiceContractInterfaces(ctx context.Context,
 
 // DeleteServiceContractInterfaces implements service.DiscoverServer.
 func (svr *Server) DeleteServiceContractInterfaces(ctx context.Context,
-	contract *service_manage.ServiceContract) *service_manage.Response {
+	contract *service_manage.ServiceContract) *apimodel.Response {
 	if errRsp := checkOperationServiceContractInterface(contract); errRsp != nil {
 		return errRsp
 	}
@@ -97,8 +95,8 @@ func (svr *Server) DeleteServiceContractInterfaces(ctx context.Context,
 }
 
 func checkBaseServiceContract(req *apiservice.ServiceContract) *apimodel.Response {
-	if err := valid.CheckResourceName(protobuf.NewStringValue(req.GetNamespace())); err != nil {
-		return api.NewResponse(apimodel.Code_InvalidNamespaceName)
+	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
+		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	if req.GetName() == "" {
 		return api.NewResponseWithMsg(apimodel.Code_BadRequest, "invalid service_contract name")

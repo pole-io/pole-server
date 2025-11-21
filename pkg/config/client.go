@@ -96,8 +96,8 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context, req *apiconfig.Conf
 
 // formatClientRequest 自动填充客户端的相关标签数据
 func formatClientRequest(ctx context.Context, client *apiconfig.ConfigFile) *apiconfig.ConfigFile {
+	// 添加客户端IP标签
 	clientIP := utils.ParseClientIP(ctx)
-	// 添加客户端 IP 标签
 	if client.Tags == nil {
 		client.Tags = make(map[string]string)
 	}
@@ -163,8 +163,8 @@ func BuildTimeoutWatchCtx(ctx context.Context, req *apiconfig.ConfigFileGroupReq
 func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
 	req *apiconfig.ConfigFileGroupRequest) *apiconfig.ConfigDiscoverResponse {
 
-	namespace := req.GetConfigFileGroup().Namespace
-	group := req.GetConfigFileGroup().Name
+	namespace := req.GetConfigFileGroup().GetNamespace()
+	group := req.GetConfigFileGroup().GetName()
 
 	releases, revision := s.fileCache.GetGroupActiveReleases(namespace, group)
 	if revision == "" {
@@ -393,7 +393,6 @@ func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]str
 	}
 
 	for _, file := range watchFiles {
-		// 使用正确的方式构建key
 		key := GenFileId(file.GetNamespace(), file.GetGroup(), file.GetName())
 		curVer := watchCtx.CurWatchVersion(key)
 

@@ -312,7 +312,7 @@ func (wc *watchCenter) RemoveAllWatcher(clientId string) {
 	}
 	_ = oldVal.Close()
 	for _, file := range oldVal.ListWatchFiles() {
-		watchFileId := GenFileId(file.GetNamespace(), file.GetGroup(), file.GetName())
+		watchFileId := GenFileId(file.Namespace, file.Group, file.Name)
 		watchers, ok := wc.watchers.Load(watchFileId)
 		if !ok {
 			continue
@@ -333,7 +333,7 @@ func (wc *watchCenter) RemoveWatcher(clientId string, watchConfigFiles []*apicon
 	}
 
 	for _, file := range watchConfigFiles {
-		watchFileId := GenFileId(file.GetNamespace(), file.GetGroup(), file.GetName())
+		watchFileId := GenFileId(file.Namespace, file.Group, file.GetName())
 		watchers, ok := wc.watchers.Load(watchFileId)
 		if !ok {
 			continue
@@ -348,7 +348,6 @@ func (wc *watchCenter) notifyToWatchers(publishConfigFile *conftypes.SimpleConfi
 	if !ok {
 		return
 	}
-
 	// 构建ConfigDiscoverResponse
 	response := &apiconfig.ConfigDiscoverResponse{
 		Code: uint32(apimodel.Code_ExecuteSuccess),

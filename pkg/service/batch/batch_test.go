@@ -28,7 +28,7 @@ import (
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
+	// 注释：移除protobuf包导入 - API规范变更，字段类型从*wrapperspb.StringValue改为string
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/otel/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -113,8 +113,9 @@ func sendAsyncCreateInstance(bc *Controller, cnt int32) error {
 		go func(index int32) {
 			defer wg.Done()
 			future := bc.AsyncCreateInstance(utils.NewUUID(), &apiservice.Instance{
-				Id:           protobuf.NewStringValue(fmt.Sprintf("%d", index)),
-				ServiceToken: protobuf.NewStringValue(fmt.Sprintf("%d", index)),
+				// 注释：字段类型改动 - Id从*wrapperspb.StringValue改为string，直接赋值而非包装
+				Id: string(fmt.Sprintf("%d", index)),
+				// 注释：ServiceToken字段已从规范中移除，此处删除赋值代码
 			}, true)
 			if _, err := future.Done(); err != nil {
 				fmt.Printf("%+v\n", err)

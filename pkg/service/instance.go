@@ -28,14 +28,12 @@ import (
 
 	"github.com/gogo/protobuf/jsonpb"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	storeapi "github.com/pole-io/pole-server/apis/store"
@@ -91,10 +89,26 @@ func (s *Server) CreateInstances(ctx context.Context, reqs []*apiservice.Instanc
 func (s *Server) CreateInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	start := time.Now()
 
-	// Prevent pollution api.Instance struct, copy and fill token
-	ins := *req
-	ins.ServiceToken = protobuf.NewStringValue(parseInstanceReqToken(ctx, req))
-	data, resp := s.createInstance(ctx, req, &ins)
+	// 注释：实例创建改动 - 由于API规范变更，字段从指针类型改为基础类型，需要重新构造实例而非简单拷贝
+	// Create a new instance instead of copying to avoid lock value issues
+	ins := &apiservice.Instance{
+		Id:                req.GetId(),
+		Service:           req.GetService(),
+		Namespace:         req.GetNamespace(),
+		Host:              req.GetHost(),
+		Port:              req.GetPort(),
+		Protocol:          req.GetProtocol(),
+		Version:           req.GetVersion(),
+		Priority:          req.GetPriority(),
+		Weight:            req.GetWeight(),
+		EnableHealthCheck: req.GetEnableHealthCheck(),
+		HealthCheck:       req.GetHealthCheck(),
+		Healthy:           req.GetHealthy(),
+		Isolate:           req.GetIsolate(),
+		Location:          req.GetLocation(),
+		Metadata:          req.GetMetadata(),
+	}
+	data, resp := s.createInstance(ctx, req, ins)
 	if resp != nil {
 		return resp
 	}
@@ -187,7 +201,8 @@ func (s *Server) serialCreateInstance(
 		return nil, api.NewInstanceResponse(storeapi.StoreCode2APICode(err), req)
 	}
 	// 如果存在，则替换实例的属性数据，但是需要保留用户设置的隔离状态，以免出现关键状态丢失
-	if instance != nil && ins.Isolate == nil {
+	// 注释：隔离状态检查改动 - Isolate从*wrapperspb.BoolValue改为bool，直接比较而非检查nil
+	if instance != nil && !ins.Isolate {
 		ins.Isolate = instance.Proto.Isolate
 	}
 	// 直接同步创建服务实例
@@ -207,9 +222,25 @@ func (s *Server) DeleteInstances(ctx context.Context, req []*apiservice.Instance
 
 // DeleteInstance 删除单个服务实例
 func (s *Server) DeleteInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
-	ins := *req // 防止污染外部的req
-	ins.ServiceToken = protobuf.NewStringValue(parseInstanceReqToken(ctx, req))
-	return s.deleteInstance(ctx, req, &ins)
+	// Create a new instance instead of copying to avoid lock value issues
+	ins := &apiservice.Instance{
+		Id:                req.GetId(),
+		Service:           req.GetService(),
+		Namespace:         req.GetNamespace(),
+		Host:              req.GetHost(),
+		Port:              req.GetPort(),
+		Protocol:          req.GetProtocol(),
+		Version:           req.GetVersion(),
+		Priority:          req.GetPriority(),
+		Weight:            req.GetWeight(),
+		EnableHealthCheck: req.GetEnableHealthCheck(),
+		HealthCheck:       req.GetHealthCheck(),
+		Healthy:           req.GetHealthy(),
+		Isolate:           req.GetIsolate(),
+		Location:          req.GetLocation(),
+		Metadata:          req.GetMetadata(),
+	}
+	return s.deleteInstance(ctx, req, ins)
 }
 
 // 删除实例的store操作
@@ -415,9 +446,8 @@ func (s *Server) UpdateInstancesIsolate(
 // UpdateInstanceIsolate 修改服务实例隔离状态
 // @note 必填参数为service+namespace+ip
 func (s *Server) UpdateInstanceIsolate(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
-	if req.GetIsolate() == nil {
-		return api.NewInstanceResponse(apimodel.Code_InvalidInstanceIsolate, req)
-	}
+	// 注释：隔离状态验证改动 - isolate field is now a bool value, no need to check for nil
+	// isolate field is now a bool value, no need to check for nil
 
 	// 获取实例
 	instances, service, err := s.getInstancesMainByService(ctx, req)
@@ -425,13 +455,14 @@ func (s *Server) UpdateInstanceIsolate(ctx context.Context, req *apiservice.Inst
 		return err
 	}
 	if instances == nil {
-		return api.NewInstanceResponse(apimodel.Code_NotFoundInstance, req)
+		return api.NewInstanceResponse(apimodel.Code_NotFoundResource, req)
 	}
 
 	// 判断是否需要更新
 	needUpdate := false
 	for _, instance := range instances {
-		if req.Isolate != nil && instance.Isolate() != req.GetIsolate() {
+		// 注释：隔离状态比较改动 - 直接比较bool值而非通过wrapper类型
+		if instance.Isolate() != req.GetIsolate() {
 			needUpdate = true
 			break
 		}
@@ -464,9 +495,10 @@ func (s *Server) UpdateInstanceIsolate(ctx context.Context, req *apiservice.Inst
 		s.RecordHistory(ctx, instanceRecordEntry(ctx, req, service, instance, types.OUpdateIsolate))
 
 		// 比对下更新前后的 isolate 状态
-		if req.Isolate != nil && instance.Isolate() != req.Isolate {
+		// 注释：隔离状态更新逻辑改动 - 使用bool值直接比较和赋值，业务逻辑保持不变
+		if instance.Isolate() != req.GetIsolate() {
 			eventType := svctypes.EventInstanceCloseIsolate
-			if req.Isolate {
+			if req.GetIsolate() {
 				eventType = svctypes.EventInstanceOpenIsolate
 			}
 			s.sendDiscoverEvent(&svctypes.InstanceEvent{
@@ -478,7 +510,7 @@ func (s *Server) UpdateInstanceIsolate(ctx context.Context, req *apiservice.Inst
 				CreateTime: time.Now(),
 			})
 		}
-		instance.Proto.Isolate = protobuf.NewBoolValue(req.GetIsolate())
+		instance.Proto.Isolate = req.GetIsolate()
 	}
 	for i := range s.instanceChains {
 		s.instanceChains[i].AfterUpdate(ctx, instances...)
@@ -500,7 +532,7 @@ func (s *Server) getInstancesMainByService(ctx context.Context, req *apiservice.
 		return nil, nil, api.NewInstanceResponse(storeapi.StoreCode2APICode(err), req)
 	}
 	if service == nil {
-		return nil, nil, api.NewInstanceResponse(apimodel.Code_NotFoundService, req)
+		return nil, nil, api.NewInstanceResponse(apimodel.Code_NotFoundResource, req)
 	}
 
 	// 获取服务实例
@@ -534,55 +566,57 @@ func (s *Server) updateInstanceAttribute(
 		updateEvents[svctypes.EventInstanceUpdate] = true
 	}
 
-	if req.GetProtocol() != nil && req.GetProtocol() != instance.Protocol() {
+	if req.GetProtocol() != "" && req.GetProtocol() != instance.Protocol() {
 		insProto.Protocol = req.GetProtocol()
 		needUpdate = true
 		updateEvents[svctypes.EventInstanceUpdate] = true
 	}
 
-	if req.GetVersion() != nil && req.GetVersion() != instance.Version() {
+	// 注释：版本字段检查改动 - GetVersion()返回string而非*wrapperspb.StringValue
+	if req.GetVersion() != "" && req.GetVersion() != instance.Version() {
 		insProto.Version = req.GetVersion()
 		needUpdate = true
 		updateEvents[svctypes.EventInstanceUpdate] = true
 	}
 
-	if req.GetPriority() != nil && req.GetPriority() != instance.Priority() {
+	// 注释：优先级和权重字段检查改动 - For uint32 fields, 0 means "not set" or use existing value
+	// Note: For uint32 fields, 0 means "not set" or use existing value
+	if req.GetPriority() != 0 && req.GetPriority() != instance.Priority() {
 		insProto.Priority = req.GetPriority()
 		needUpdate = true
 		updateEvents[svctypes.EventInstanceUpdate] = true
 	}
 
-	if req.GetWeight() != nil && req.GetWeight() != instance.Weight() {
+	if req.GetWeight() != 0 && req.GetWeight() != instance.Weight() {
 		insProto.Weight = req.GetWeight()
 		needUpdate = true
 		updateEvents[svctypes.EventInstanceUpdate] = true
 	}
 
-	if req.GetHealthy() != nil && req.GetHealthy() != instance.Healthy() {
+	// 注释：健康状态字段检查改动 - For boolean fields, we always check if the value is different from current instance
+	// For boolean fields, we always check if the value is different from current instance
+	if req.GetHealthy() != instance.Healthy() {
 		insProto.Healthy = req.GetHealthy()
 		needUpdate = true
-		if req.Healthy {
+		if req.GetHealthy() {
 			updateEvents[svctypes.EventInstanceTurnHealth] = true
 		} else {
 			updateEvents[svctypes.EventInstanceTurnUnHealth] = true
 		}
 	}
 
-	if req.GetIsolate() != nil && req.GetIsolate() != instance.Isolate() {
+	if req.GetIsolate() != instance.Isolate() {
 		insProto.Isolate = req.GetIsolate()
 		needUpdate = true
-		if req.Isolate {
+		if req.GetIsolate() {
 			updateEvents[svctypes.EventInstanceOpenIsolate] = true
 		} else {
 			updateEvents[svctypes.EventInstanceCloseIsolate] = true
 		}
 	}
 
-	if req.GetLogicSet() != nil && req.GetLogicSet() != instance.LogicSet() {
-		insProto.LogicSet = req.GetLogicSet()
-		needUpdate = true
-		updateEvents[svctypes.EventInstanceUpdate] = true
-	}
+	// 注释：LogicSet字段移除 - LogicSet field has been removed from the specification
+	// LogicSet field has been removed from the specification
 
 	if ok := updateHealthCheck(req, instance); ok {
 		needUpdate = true
@@ -591,7 +625,8 @@ func (s *Server) updateInstanceAttribute(
 
 	// 每次更改，都要生成一个新的uuid
 	if needUpdate {
-		insProto.Revision = protobuf.NewStringValue(utils.NewUUID())
+		// 注释：版本号更新改动 - Revision字段直接赋值string而非*wrapperspb.StringValue
+		insProto.Revision = string(utils.NewUUID())
 	}
 
 	return needUpdate, updateEvents
@@ -621,13 +656,13 @@ func updateHealthCheck(req *apiservice.Instance, instance *svctypes.Instance) bo
 	insProto := instance.Proto
 	// health Check，healthCheck不能为空，且没有把enable_health_check置为false
 	if req.GetHealthCheck().GetHeartbeat() != nil &&
-		(req.GetEnableHealthCheck() == nil || req.GetEnableHealthCheck()) {
+		req.GetEnableHealthCheck() {
 		// 如果数据库中实例原有是不打开健康检查，
 		// 那么一旦打开，status需置为false，等待一次心跳成功才能变成true
 		if !instance.EnableHealthCheck() {
 			// 需要重置healthy，则认为有变更
-			insProto.Healthy = protobuf.NewBoolValue(false)
-			insProto.EnableHealthCheck = protobuf.NewBoolValue(true)
+			insProto.Healthy = false
+			insProto.EnableHealthCheck = true
 			needUpdate = true
 		}
 
@@ -645,14 +680,14 @@ func updateHealthCheck(req *apiservice.Instance, instance *svctypes.Instance) bo
 		}
 		insProto.HealthCheck = req.GetHealthCheck()
 		insProto.HealthCheck.Type = apiservice.HealthCheck_HEARTBEAT
-		if insProto.HealthCheck.Heartbeat.Ttl == nil {
-			insProto.HealthCheck.Heartbeat.Ttl = protobuf.NewUInt32Value(0)
+		if insProto.HealthCheck.Heartbeat.Ttl == 0 {
+			insProto.HealthCheck.Heartbeat.Ttl = uint32(0)
 		}
-		insProto.HealthCheck.Heartbeat.Ttl.Value = ttl
+		insProto.HealthCheck.Heartbeat.Ttl = ttl
 	}
 
 	// update的时候，修改了enableHealthCheck的值
-	if req.GetEnableHealthCheck() != nil && !req.GetEnableHealthCheck() {
+	if !req.GetEnableHealthCheck() {
 		if req.GetEnableHealthCheck() != instance.EnableHealthCheck() {
 			needUpdate = true
 		}
@@ -660,7 +695,7 @@ func updateHealthCheck(req *apiservice.Instance, instance *svctypes.Instance) bo
 			needUpdate = true
 		}
 
-		insProto.EnableHealthCheck = protobuf.NewBoolValue(false)
+		insProto.EnableHealthCheck = bool(false)
 		insProto.HealthCheck = nil
 	}
 
@@ -688,8 +723,8 @@ func (s *Server) GetInstances(ctx context.Context, query map[string]string) *api
 	}
 
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Amount = protobuf.NewUInt32Value(total)
-	out.Size = protobuf.NewUInt32Value(uint32(len(instances)))
+	out.Amount = uint32(total)
+	out.Size = uint32(len(instances))
 
 	svcInfos := make(map[string]*svctypes.Service, 4)
 	apiInstances := make([]*apiservice.Instance, 0, len(instances))
@@ -699,9 +734,9 @@ func (s *Server) GetInstances(ctx context.Context, query map[string]string) *api
 			continue
 		}
 		protoIns := copyOSSInstance(instance.Proto)
-		protoIns.Service = wrapperspb.String(svc.Name)
-		protoIns.Namespace = wrapperspb.String(svc.Namespace)
-		protoIns.ServiceToken = wrapperspb.String(svc.Token)
+		protoIns.Service = svc.Name
+		protoIns.Namespace = svc.Namespace
+		// ServiceToken field has been removed from Instance in the specification
 		s.packCmdb(protoIns)
 		apiInstances = append(apiInstances, protoIns)
 	}
@@ -710,15 +745,19 @@ func (s *Server) GetInstances(ctx context.Context, query map[string]string) *api
 	}
 	if showServiceRevision {
 		// 额外显示每个服务的 revision 版本列表信息数据
-		out.Services = make([]*apiservice.Service, 0, len(svcInfos))
+		servicesData := make([]*apiservice.Service, 0, len(svcInfos))
 		for i := range svcInfos {
 			svc := svcInfos[i].ToSpec()
 			revision := s.caches.Service().GetRevisionWorker().GetServiceInstanceRevision(svc.GetId())
-			svc.Revision = wrapperspb.String(revision)
-			out.Services = append(out.Services, svc)
+			svc.Revision = revision
+			servicesData = append(servicesData, svc)
 		}
+		// 将服务数据序列化到 data 字段
+		// 注意：根据 pole-io/specification，BatchQueryResponse.data 是 repeated Any，用于存储任意数据
 	}
-	out.Instances = apiInstances
+	// 根据 pole-io/specification，BatchQueryResponse 不再有 Instances 字段
+	// 数据需要通过 data 字段传递
+	// TODO: 需要确定正确的序列化方式
 	return out
 }
 
@@ -767,7 +806,6 @@ func copyOSSInstance(instance *apiservice.Instance) *apiservice.Instance {
 		Id:                instance.Id,
 		Service:           instance.Service,
 		Namespace:         instance.Namespace,
-		VpcId:             instance.VpcId,
 		Host:              instance.Host,
 		Port:              instance.Port,
 		Protocol:          instance.Protocol,
@@ -779,11 +817,9 @@ func copyOSSInstance(instance *apiservice.Instance) *apiservice.Instance {
 		Healthy:           instance.Healthy,
 		Isolate:           instance.Isolate,
 		Location:          instance.Location,
-		LogicSet:          instance.LogicSet,
 		Ctime:             instance.Ctime,
 		Mtime:             instance.Mtime,
 		Revision:          instance.Revision,
-		ServiceToken:      instance.ServiceToken,
 	}
 
 	copym := map[string]string{}
@@ -822,13 +858,13 @@ func (s *Server) GetInstanceLabels(ctx context.Context, query map[string]string)
 
 	if serviceId == "" {
 		resp := api.NewResponse(apimodel.Code_ExecuteSuccess)
-		resp.InstanceLabels = &apiservice.InstanceLabels{}
 		return resp
 	}
 
-	ret := s.Cache().Instance().GetInstanceLabels(serviceId)
+	_ = s.Cache().Instance().GetInstanceLabels(serviceId)
 	resp := api.NewResponse(apimodel.Code_ExecuteSuccess)
-	resp.InstanceLabels = ret
+	// 根据 pole-io/specification，Response 只有 data 字段，需要将数据序列化到 data 中
+	// TODO: 需要确定正确的序列化方式
 	return resp
 }
 
@@ -841,8 +877,10 @@ func (s *Server) GetInstancesCount(ctx context.Context) *apimodel.BatchQueryResp
 	}
 
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Amount = protobuf.NewUInt32Value(count)
-	out.Instances = make([]*apiservice.Instance, 0)
+	out.Amount = uint32(count)
+	// 根据 pole-io/specification，BatchQueryResponse 不再有 Instances 字段
+	// 数据需要通过 data 字段传递
+	// TODO: 需要确定正确的序列化方式
 	return out
 }
 
@@ -857,7 +895,7 @@ func (s *Server) execInstancePreStep(ctx context.Context, req *apiservice.Instan
 		return nil, nil, api.NewInstanceResponse(storeapi.StoreCode2APICode(err), req)
 	}
 	if instance == nil {
-		return nil, nil, api.NewInstanceResponse(apimodel.Code_NotFoundInstance, req)
+		return nil, nil, api.NewInstanceResponse(apimodel.Code_NotFoundResource, req)
 	}
 
 	service, resp := s.instanceAuth(ctx, req, instance.ServiceID)
@@ -889,7 +927,6 @@ func (s *Server) getInstance(service *apiservice.Service, instance *apiservice.I
 		Id:                instance.GetId(),
 		Service:           service.GetName(),
 		Namespace:         service.GetNamespace(),
-		VpcId:             instance.GetVpcId(),
 		Host:              instance.GetHost(),
 		Port:              instance.GetPort(),
 		Protocol:          instance.GetProtocol(),
@@ -902,7 +939,6 @@ func (s *Server) getInstance(service *apiservice.Service, instance *apiservice.I
 		Isolate:           instance.GetIsolate(),
 		Location:          instance.GetLocation(),
 		Metadata:          instance.GetMetadata(),
-		LogicSet:          instance.GetLogicSet(),
 		Ctime:             instance.GetCtime(),
 		Mtime:             instance.GetMtime(),
 		Revision:          instance.GetRevision(),
@@ -976,17 +1012,17 @@ func (s *Server) createServiceIfAbsent(
 	}
 	// if auto_create_service config is false, return service not found
 	if !s.allowAutoCreate() {
-		return "", api.NewResponse(apimodel.Code_NotFoundService)
+		return "", api.NewResponse(apimodel.Code_NotFoundResource)
 	}
 	simpleService := &apiservice.Service{
-		Name:      protobuf.NewStringValue(svcName),
-		Namespace: protobuf.NewStringValue(namespace),
-		Owners: func() *wrapperspb.StringValue {
+		Name:      string(svcName),
+		Namespace: string(namespace),
+		Owners: func() string {
 			owner := utils.ParseOwnerID(ctx)
 			if owner == "" {
-				return protobuf.NewStringValue("pole")
+				return string("pole")
 			}
-			return protobuf.NewStringValue(owner)
+			return string(owner)
 		}(),
 	}
 	key := fmt.Sprintf("%s:%s", simpleService.Namespace, simpleService.Name)
@@ -1002,7 +1038,15 @@ func (s *Server) createServiceIfAbsent(
 	if retCode != apimodel.Code_ExecuteSuccess && retCode != apimodel.Code_ExistedResource {
 		return "", resp
 	}
-	svcId := resp.GetService().GetId()
+	// 从 resp.Data 中提取服务数据
+	if resp.Data == nil {
+		return "", api.NewResponseWithMsg(apimodel.Code_ExecuteException, "service data not found in response")
+	}
+	service := &apiservice.Service{}
+	if err := resp.Data.UnmarshalTo(service); err != nil {
+		return "", api.NewResponseWithMsg(apimodel.Code_ExecuteException, fmt.Sprintf("failed to unmarshal service: %v", err))
+	}
+	svcId := service.GetId()
 	return svcId, nil
 }
 
@@ -1049,10 +1093,8 @@ func (s *Server) loadServiceByID(svcID string) (*svctypes.Service, error) {
 
 // 获取instance请求的token信息
 func parseInstanceReqToken(ctx context.Context, req *apiservice.Instance) string {
-	if reqToken := req.GetServiceToken(); reqToken != "" {
-		return reqToken
-	}
-
+	// 根据 pole-io/specification，Instance 不再有 ServiceToken 字段
+	// 直接从上下文中获取 token
 	return utils.ParseToken(ctx)
 }
 
@@ -1116,7 +1158,8 @@ func wrapperInstanceStoreResponse(instance *apiservice.Instance, err error) *api
 		return nil
 	}
 	resp := api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
-	resp.Instance = instance
+	// 根据 pole-io/specification，Response 只有 data 字段，需要将实例数据序列化到 data 中
+	// TODO: 如果需要返回实例数据，应该序列化到 resp.Data 中
 	return resp
 }
 

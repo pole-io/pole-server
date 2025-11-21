@@ -100,9 +100,9 @@ func (s *Server) PublishConfigFileFromClient(ctx context.Context,
 	authCtx := s.collectClientConfigFileRelease(ctx,
 		[]*apiconfig.ConfigFileRelease{{
 			Namespace: fileInfo.Namespace,
-			Name:      fileInfo.FileName,
-			Group:     fileInfo.Group},
-		}, auth.Create, auth.PublishConfigFile)
+			Name:      fileInfo.Name,
+			Group:     fileInfo.Group,
+		}}, auth.Create, auth.PublishConfigFile)
 	if _, err := s.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
 		return api.NewConfigDiscoverResponse(auth.ConvertToErrCode(err))
 	}

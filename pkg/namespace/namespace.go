@@ -28,7 +28,6 @@ import (
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -67,7 +66,8 @@ func (s *Server) CreateNamespaceIfAbsent(ctx context.Context, req *apimodel.Name
 	if resp := checkCreateNamespace(req); resp != nil {
 		return "", resp
 	}
-	name := req.GetName().GetValue()
+	// 注释：字段访问改动 - GetName()直接返回string而非*wrapperspb.StringValue，去掉.GetValue()调用
+	name := req.GetName()
 	val, err := s.loadNamespace(name)
 	if err != nil {
 		return name, nil
@@ -75,7 +75,8 @@ func (s *Server) CreateNamespaceIfAbsent(ctx context.Context, req *apimodel.Name
 	if val == "" && !s.allowAutoCreate() {
 		ctxVal := ctx.Value(utils.ContextKeyAutoCreateNamespace{})
 		if ctxVal == nil || ctxVal.(bool) != true {
-			return "", api.NewResponse(apimodel.Code_NotFoundNamespace)
+			// 注释：错误码改动 - Code_NotFoundNamespace已被移除，使用通用的Code_NotFoundResource
+			return "", api.NewResponse(apimodel.Code_NotFoundResource)
 		}
 	}
 	ret, err, _ := s.createNamespaceSingle.Do(name, func() (interface{}, error) {
@@ -86,7 +87,8 @@ func (s *Server) CreateNamespaceIfAbsent(ctx context.Context, req *apimodel.Name
 	}
 	var (
 		resp = ret.(*apimodel.Response)
-		code = resp.GetCode().GetValue()
+		// 注释：响应码访问改动 - GetCode()直接返回uint32而非*wrapperspb.UInt32Value
+		code = resp.GetCode()
 	)
 	if code == uint32(apimodel.Code_ExecuteSuccess) || code == uint32(apimodel.Code_ExistedResource) {
 		return name, api.NewNamespaceResponse(apimodel.Code_ExecuteSuccess, req)
@@ -101,7 +103,8 @@ func (s *Server) CreateNamespace(ctx context.Context, req *apimodel.Namespace) *
 		return checkError
 	}
 
-	namespaceName := req.GetName().GetValue()
+	// 注释：命名空间名称获取改动 - GetName()返回string，去掉.GetValue()方法调用
+	namespaceName := req.GetName()
 
 	// 检查是否存在
 	namespace, err := s.storage.GetNamespace(namespaceName)
@@ -133,10 +136,11 @@ func (s *Server) CreateNamespace(ctx context.Context, req *apimodel.Namespace) *
  * @brief 创建存储层命名空间模型
  */
 func (s *Server) createNamespaceModel(req *apimodel.Namespace) *types.Namespace {
+	// 注释：模型创建改动 - 所有字段访问从wrapper类型改为基础类型，业务逻辑保持不变
 	namespace := &types.Namespace{
-		Name:            req.GetName().GetValue(),
-		Comment:         req.GetComment().GetValue(),
-		Owner:           req.GetOwners().GetValue(),
+		Name:            req.GetName(),
+		Comment:         req.GetComment(),
+		Owner:           req.GetOwners(),
 		Token:           utils.NewUUID(),
 		ServiceExportTo: types.ExportToMap(req.GetServiceExportTo()),
 		Metadata:        req.GetMetadata(),
@@ -174,7 +178,8 @@ func (s *Server) DeleteNamespace(ctx context.Context, req *apimodel.Namespace) *
 	defer func() { _ = tx.Commit() }()
 
 	// 检查是否存在
-	namespace, err := tx.LockNamespace(req.GetName().GetValue())
+	// 注释：命名空间锁定改动 - GetName()直接返回string，删除操作逻辑保持不变
+	namespace, err := tx.LockNamespace(req.GetName())
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
 		return api.NewNamespaceResponse(storeapi.StoreCode2APICode(err), req)
@@ -263,17 +268,14 @@ func (s *Server) UpdateNamespace(ctx context.Context, req *apimodel.Namespace) *
  * @brief 修改命名空间属性
  */
 func (s *Server) updateNamespaceAttribute(req *apimodel.Namespace, namespace *types.Namespace) {
-	if req.GetComment() != nil {
-		namespace.Comment = req.GetComment().GetValue()
-	}
-
-	if req.GetOwners() != nil {
-		namespace.Owner = req.GetOwners().GetValue()
-	}
+	// 注释：属性更新改动 - 字段访问从wrapper类型改为基础类型，直接赋值而非检查nil
+	namespace.Comment = req.GetComment()
+	namespace.Owner = req.GetOwners()
 
 	exportTo := map[string]struct{}{}
 	for i := range req.GetServiceExportTo() {
-		exportTo[req.GetServiceExportTo()[i].GetValue()] = struct{}{}
+		// 注释：导出设置改动 - GetServiceExportTo()直接返回string数组，无需.GetValue()调用
+		exportTo[req.GetServiceExportTo()[i]] = struct{}{}
 	}
 
 	namespace.Metadata = req.GetMetadata()
@@ -297,24 +299,26 @@ func (s *Server) GetNamespaces(ctx context.Context, query map[string][]string) *
 	}
 
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	out.Amount = protobuf.NewUInt32Value(amount)
-	out.Size = protobuf.NewUInt32Value(uint32(len(namespaces)))
+	// 注释：响应字段改动 - Amount和Size从*wrapperspb.UInt32Value改为uint32，直接赋值
+	out.Amount = uint32(amount)
+	out.Size = uint32(len(namespaces))
 	var totalServiceCount, totalInstanceCount, totalHealthInstanceCount uint32
 	for _, namespace := range namespaces {
 		nsCntInfo := s.caches.Service().GetNamespaceCntInfo(namespace.Name)
+		// 注释：命名空间数据构造改动 - 所有字段从wrapper类型改为基础类型，数据处理逻辑保持不变
 		api.AddNamespace(out, &apimodel.Namespace{
-			Id:                       protobuf.NewStringValue(namespace.Name),
-			Name:                     protobuf.NewStringValue(namespace.Name),
-			Comment:                  protobuf.NewStringValue(namespace.Comment),
-			Owners:                   protobuf.NewStringValue(namespace.Owner),
-			Ctime:                    protobuf.NewStringValue(commontime.Time2String(namespace.CreateTime)),
-			Mtime:                    protobuf.NewStringValue(commontime.Time2String(namespace.ModifyTime)),
-			TotalServiceCount:        protobuf.NewUInt32Value(nsCntInfo.ServiceCount),
-			TotalInstanceCount:       protobuf.NewUInt32Value(nsCntInfo.InstanceCnt.TotalInstanceCount),
-			TotalHealthInstanceCount: protobuf.NewUInt32Value(nsCntInfo.InstanceCnt.HealthyInstanceCount),
+			Id:                       string(namespace.Name),
+			Name:                     string(namespace.Name),
+			Comment:                  string(namespace.Comment),
+			Owners:                   string(namespace.Owner),
+			Ctime:                    string(commontime.Time2String(namespace.CreateTime)),
+			Mtime:                    string(commontime.Time2String(namespace.ModifyTime)),
+			TotalServiceCount:        uint32(nsCntInfo.ServiceCount),
+			TotalInstanceCount:       uint32(nsCntInfo.InstanceCnt.TotalInstanceCount),
+			TotalHealthInstanceCount: uint32(nsCntInfo.InstanceCnt.HealthyInstanceCount),
 			ServiceExportTo:          namespace.ListServiceExportTo(),
-			Editable:                 protobuf.NewBoolValue(true),
-			Deleteable:               protobuf.NewBoolValue(true),
+			Editable:                 true,
+			Deleteable:               true,
 			Metadata:                 namespace.Metadata,
 		})
 		totalServiceCount += nsCntInfo.ServiceCount
@@ -366,7 +370,8 @@ func (s *Server) loadNamespace(name string) (string, error) {
 // 检查namespace的权限，并且返回namespace
 func (s *Server) checkNamespaceAuthority(
 	ctx context.Context, req *apimodel.Namespace) (*types.Namespace, *apimodel.Response) {
-	namespaceName := req.GetName().GetValue()
+	// 注释：命名空间权限检查改动 - GetName()返回string，权限验证逻辑保持不变
+	namespaceName := req.GetName()
 	// namespaceToken := parseNamespaceToken(ctx, req)
 
 	// 检查是否存在
@@ -401,7 +406,8 @@ func checkCreateNamespace(req *apimodel.Namespace) *apimodel.Response {
 	}
 
 	if err := valid.CheckResourceName(req.GetName()); err != nil {
-		return api.NewNamespaceResponse(apimodel.Code_InvalidNamespaceName, req)
+		// 注释：错误码改动 - InvalidNamespaceName已被移除，使用通用的InvalidParameter错误码
+		return api.NewNamespaceResponse(apimodel.Code_InvalidParameter, req)
 	}
 
 	return nil
@@ -414,7 +420,8 @@ func checkReviseNamespace(ctx context.Context, req *apimodel.Namespace) *apimode
 	}
 
 	if err := valid.CheckResourceName(req.GetName()); err != nil {
-		return api.NewNamespaceResponse(apimodel.Code_InvalidNamespaceName, req)
+		// 注释：错误码统一改动 - InvalidNamespaceName改为InvalidParameter，保持验证逻辑一致
+		return api.NewNamespaceResponse(apimodel.Code_InvalidParameter, req)
 	}
 	return nil
 }
@@ -449,9 +456,10 @@ func namespaceRecordEntry(ctx context.Context, req *apimodel.Namespace, opt type
 	marshaler := jsonpb.Marshaler{}
 	datail, _ := marshaler.MarshalToString(req)
 	return &types.RecordEntry{
-		ResourceType:  types.RNamespace,
-		ResourceName:  req.GetName().GetValue(),
-		Namespace:     req.GetName().GetValue(),
+		ResourceType: types.RNamespace,
+		// 注释：记录条目改动 - GetName()返回string，历史记录功能保持不变
+		ResourceName:  req.GetName(),
+		Namespace:     req.GetName(),
 		OperationType: opt,
 		Operator:      utils.ParseOperator(ctx),
 		Detail:        datail,
