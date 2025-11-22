@@ -561,15 +561,6 @@ func (s *Server) GetAllConfigEncryptAlgorithms(ctx context.Context) *apimodel.Re
 	}
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
-*/
-
-// GetAllConfigEncryptAlgorithms 获取配置加密算法(简化过)
-func (s *Server) GetAllConfigEncryptAlgorithms(ctx context.Context) *apimodel.Response {
-	if s.cryptoManager == nil {
-		return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
-	}
-	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
-}
 
 // configFileRecordEntry 生成服务的记录entry
 func configFileRecordEntry(ctx context.Context, req *apiconfig.ConfigFile,

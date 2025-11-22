@@ -140,11 +140,13 @@ func (s *Server) GetAllConfigFileTemplates(ctx context.Context) *apimodel.BatchQ
 	for _, template := range templates {
 		apiTemplates = append(apiTemplates, conftypes.ToConfigFileTemplateAPI(template))
 	}
+
 	// Convert to []interface{} for the API function
 	var interfaceTemplates []interface{}
 	for _, template := range apiTemplates {
 		interfaceTemplates = append(interfaceTemplates, template)
 	}
+
 	return api.NewConfigFileTemplateBatchQueryResponse(apimodel.Code_ExecuteSuccess,
 		uint32(len(templates)), interfaceTemplates)
 }

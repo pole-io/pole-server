@@ -71,7 +71,7 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context, req *apiconfig.Conf
 	// 客户端版本号大于服务端版本号，服务端不返回变更
 	if req.Id > 0 && release.Version > 0 {
 		log.Debug("[Config][Service] get config file to client", utils.RequestID(ctx),
-				zap.Uint64("client-version", req.Id), zap.Uint64("server-version", release.Version))
+			zap.Uint64("client-version", req.Id), zap.Uint64("server-version", release.Version))
 		return &apiconfig.ConfigDiscoverResponse{
 			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
 			Info: "DataNoChange",
