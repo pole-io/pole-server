@@ -31,7 +31,6 @@ import (
 	"github.com/pole-io/pole-server/apis/observability/history"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
@@ -134,13 +133,13 @@ func (svr *Server) parseOptions(options *authapi.Config) error {
 
 // Login 登录动作
 func (svr *Server) Login(req *apisecurity.LoginRequest) *apimodel.Response {
-	username := req.GetName().GetValue()
+	username := req.GetName()
 	user := svr.cacheMgr.User().GetUserByName(username)
 	if user == nil {
 		return api.NewAuthResponse(apimodel.Code_NotFoundUser)
 	}
 
-	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.GetPassword().GetValue()))
+	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.GetPassword()))
 	if err != nil {
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			return api.NewAuthResponseWithMsg(
@@ -150,10 +149,10 @@ func (svr *Server) Login(req *apisecurity.LoginRequest) *apimodel.Response {
 	}
 
 	return api.NewLoginResponse(apimodel.Code_ExecuteSuccess, &apisecurity.LoginResponse{
-		UserId: protobuf.NewStringValue(user.ID),
-		Token:  protobuf.NewStringValue(user.Token),
-		Name:   protobuf.NewStringValue(user.Name),
-		Role:   protobuf.NewStringValue(authtypes.UserRoleNames[user.Type]),
+		UserId: user.ID,
+		Token:  user.Token,
+		Name:   user.Name,
+		Role:   authtypes.UserRoleNames[user.Type],
 	})
 }
 

@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 
@@ -251,15 +250,15 @@ func (svr *Server) handleChangeUserPolicy(userIds []string, afterCtx *authtypes.
 	for index := range utils.StringSliceDeDuplication(userIds) {
 		userId := userIds[index]
 		user := svr.userSvr.GetUserHelper().GetUser(context.TODO(), &apisecurity.User{
-			Id: wrapperspb.String(userId),
+			Id: userId,
 		})
 		if user == nil {
 			return errors.New("not found target user")
 		}
 
-		ownerId := user.GetOwner().GetValue()
+		ownerId := user.GetOwner()
 		if ownerId == "" {
-			ownerId = user.GetId().GetValue()
+			ownerId = user.GetId()
 		}
 		if err := svr.changePrincipalPolicies(userId, ownerId, authtypes.PrincipalUser, afterCtx, isRemove); err != nil {
 			return err
@@ -273,12 +272,12 @@ func (svr *Server) handleChangeUserGroupPolicy(groupIds []string, afterCtx *auth
 	for index := range utils.StringSliceDeDuplication(groupIds) {
 		groupId := groupIds[index]
 		group := svr.userSvr.GetUserHelper().GetGroup(context.TODO(), &apisecurity.UserGroup{
-			Id: wrapperspb.String(groupId),
+			Id: groupId,
 		})
 		if group == nil {
 			return errors.New("not found target group")
 		}
-		ownerId := group.GetOwner().GetValue()
+		ownerId := group.GetOwner()
 		if err := svr.changePrincipalPolicies(groupId, ownerId, authtypes.PrincipalGroup, afterCtx, isRemove); err != nil {
 			return err
 		}

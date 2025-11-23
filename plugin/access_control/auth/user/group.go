@@ -32,7 +32,6 @@ import (
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -58,13 +57,13 @@ func (svr *Server) CreateGroups(ctx context.Context, reqs []*apisecurity.UserGro
 // CreateGroup create a group
 func (svr *Server) CreateGroup(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response {
 	ownerID := utils.ParseOwnerID(ctx)
-	req.Owner = protobuf.NewStringValue(ownerID)
+	req.Owner = ownerID
 	if rsp := svr.preCheckGroupRelation(req.GetRelation()); rsp != nil {
 		return rsp
 	}
 
 	// 根据 owner + groupname 确定唯一的用户组信息
-	group, err := svr.storage.GetGroupByName(req.GetName().GetValue())
+	group, err := svr.storage.GetGroupByName(req.GetName())
 	if err != nil {
 		log.Error("get group when create", utils.RequestID(ctx), zap.Error(err))
 		return api.NewGroupResponse(storeapi.StoreCode2APICode(err), req)
@@ -106,10 +105,10 @@ func (svr *Server) CreateGroup(ctx context.Context, req *apisecurity.UserGroup) 
 		return api.NewAuthResponse(apimodel.Code_ExecuteException)
 	}
 
-	log.Info("create group", zap.String("name", req.Name.GetValue()), utils.RequestID(ctx))
+	log.Info("create group", zap.String("name", req.Name), utils.RequestID(ctx))
 	svr.RecordHistory(userGroupRecordEntry(ctx, req, data.UserGroup, types.OCreate))
 
-	req.Id = protobuf.NewStringValue(data.ID)
+	req.Id = data.ID
 	return api.NewGroupResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -130,7 +129,7 @@ func (svr *Server) UpdateGroup(ctx context.Context, req *apisecurity.UserGroup) 
 		return checkErrResp
 	}
 
-	saveData, errResp := svr.getGroupFromDB(req.Id.GetValue())
+	saveData, errResp := svr.getGroupFromDB(req.Id)
 	if errResp != nil {
 		return errResp
 	}
@@ -172,7 +171,7 @@ func (svr *Server) DeleteGroups(ctx context.Context, reqs []*apisecurity.UserGro
 
 // DeleteGroup 删除用户组
 func (svr *Server) DeleteGroup(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response {
-	group, err := svr.storage.GetGroup(req.GetId().GetValue())
+	group, err := svr.storage.GetGroup(req.GetId())
 	if err != nil {
 		log.Error("get group from store", utils.RequestID(ctx), zap.Error(err))
 		return api.NewGroupResponse(storeapi.StoreCode2APICode(err), req)
@@ -206,7 +205,7 @@ func (svr *Server) DeleteGroup(ctx context.Context, req *apisecurity.UserGroup) 
 		return api.NewAuthResponse(apimodel.Code_ExecuteException)
 	}
 
-	log.Info("delete group", utils.RequestID(ctx), zap.String("name", req.Name.GetValue()))
+	log.Info("delete group", utils.RequestID(ctx), zap.String("name", req.Name))
 	svr.RecordHistory(userGroupRecordEntry(ctx, req, group.UserGroup, types.ODelete))
 
 	return api.NewGroupResponse(apimodel.Code_ExecuteSuccess, req)
@@ -227,28 +226,17 @@ func (svr *Server) GetGroups(ctx context.Context, filters map[string]string) *ap
 	}
 
 	resp := api.NewAuthBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Amount = protobuf.NewUInt32Value(total)
-	resp.Size = protobuf.NewUInt32Value(uint32(len(groups)))
-	resp.UserGroups = enhancedGroups2Api(groups, userGroup2Api)
-
-	for index := range resp.UserGroups {
-		group := resp.UserGroups[index]
-		cacheVal := svr.cacheMgr.User().GetGroup(group.Id.Value)
-		if cacheVal == nil {
-			group.UserCount = protobuf.NewUInt32Value(0)
-		} else {
-			group.UserCount = protobuf.NewUInt32Value(uint32(len(cacheVal.UserIds)))
-		}
-	}
+	resp.Amount = total
+	resp.Size = uint32(len(groups))
 	return resp
 }
 
 // GetGroup 查看对应用户组下的用户信息
 func (svr *Server) GetGroup(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response {
-	if req.GetId().GetValue() == "" {
+	if req.GetId() == "" {
 		return api.NewAuthResponse(apimodel.Code_InvalidUserGroupID)
 	}
-	group, errResp := svr.getGroupFromDB(req.Id.Value)
+	group, errResp := svr.getGroupFromDB(req.Id)
 	if errResp != nil {
 		return errResp
 	}
@@ -257,29 +245,29 @@ func (svr *Server) GetGroup(ctx context.Context, req *apisecurity.UserGroup) *ap
 
 // GetGroupToken 查看用户组的token
 func (svr *Server) GetGroupToken(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response {
-	if req.GetId().GetValue() == "" {
+	if req.GetId() == "" {
 		return api.NewAuthResponse(apimodel.Code_InvalidUserGroupID)
 	}
 
-	group := svr.cacheMgr.User().GetGroup(req.Id.GetValue())
+	group := svr.cacheMgr.User().GetGroup(req.Id)
 	if group == nil {
 		return api.NewGroupResponse(apimodel.Code_NotFoundUserGroup, req)
 	}
 
-	req.AuthToken = protobuf.NewStringValue(group.Token)
-	req.TokenEnable = protobuf.NewBoolValue(group.TokenEnable)
+	req.AuthToken = group.Token
+	req.TokenEnable = group.TokenEnable
 
 	return api.NewGroupResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
 // EnableGroupToken 调整用户组 token 的使用状态 (禁用｜开启)
 func (svr *Server) EnableGroupToken(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response {
-	group, errResp := svr.getGroupFromDB(req.Id.GetValue())
+	group, errResp := svr.getGroupFromDB(req.Id)
 	if errResp != nil {
 		return errResp
 	}
 
-	group.TokenEnable = req.TokenEnable.GetValue()
+	group.TokenEnable = req.TokenEnable
 
 	modifyReq := &authtypes.UserGroupDetail{
 		UserGroup: &authtypes.UserGroup{
@@ -295,7 +283,7 @@ func (svr *Server) EnableGroupToken(ctx context.Context, req *apisecurity.UserGr
 		return api.NewAuthResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 
-	log.Info("update group token", zap.String("id", req.Id.GetValue()),
+	log.Info("update group token", zap.String("id", req.Id),
 		zap.Bool("enable", group.TokenEnable), utils.RequestID(ctx))
 	svr.RecordHistory(userGroupRecordEntry(ctx, req, group.UserGroup, types.OUpdateToken))
 
@@ -305,7 +293,7 @@ func (svr *Server) EnableGroupToken(ctx context.Context, req *apisecurity.UserGr
 // ResetGroupToken 刷新用户组的token
 func (svr *Server) ResetGroupToken(ctx context.Context, req *apisecurity.UserGroup) *apimodel.Response {
 	var (
-		group, errResp = svr.getGroupFromDB(req.Id.GetValue())
+		group, errResp = svr.getGroupFromDB(req.Id)
 	)
 
 	if errResp != nil {
@@ -333,12 +321,11 @@ func (svr *Server) ResetGroupToken(ctx context.Context, req *apisecurity.UserGro
 		return api.NewAuthResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	}
 
-	log.Info("reset group token", zap.String("group-id", req.Id.GetValue()),
+	log.Info("reset group token", zap.String("group-id", req.Id),
 		utils.RequestID(ctx))
 	svr.RecordHistory(userGroupRecordEntry(ctx, req, group.UserGroup, types.OUpdate))
 
-	req.AuthToken = protobuf.NewStringValue(newToken)
-
+	req.AuthToken = newToken
 	return api.NewGroupResponse(apimodel.Code_ExecuteSuccess, req)
 }
 
@@ -360,7 +347,7 @@ func (svr *Server) preCheckGroupRelation(req *apisecurity.UserGroupRelation) *ap
 	// 检查该关系中所有的用户是否存在
 	uIDs := make([]string, len(req.GetUsers()))
 	for i := range req.GetUsers() {
-		uIDs[i] = req.GetUsers()[i].GetId().GetValue()
+		uIDs[i] = req.GetUsers()[i].GetId()
 	}
 
 	uIDs = utils.StringSliceDeDuplication(uIDs)
@@ -379,7 +366,7 @@ func (svr *Server) checkUpdateGroup(ctx context.Context, req *apisecurity.UserGr
 	if req == nil {
 		return api.NewGroupResponse(apimodel.Code_EmptyRequest, req)
 	}
-	if req.Id == nil || req.Id.GetValue() == "" {
+	if req.Id == "" {
 		return api.NewGroupResponse(apimodel.Code_InvalidUserGroupID, req)
 	}
 	if rsp := svr.preCheckGroupRelation(req.GetRelation()); rsp != nil {
@@ -437,16 +424,16 @@ func enhancedGroups2Api(groups []*authtypes.UserGroupDetail, handler UserGroup2A
 func (svr *Server) createGroupModel(req *apisecurity.UserGroup) (group *authtypes.UserGroupDetail, err error) {
 	ids := make(map[string]struct{}, len(req.GetRelation().GetUsers()))
 	for index := range req.GetRelation().GetUsers() {
-		ids[req.GetRelation().GetUsers()[index].GetId().GetValue()] = struct{}{}
+		ids[req.GetRelation().GetUsers()[index].GetId()] = struct{}{}
 	}
 
 	group = &authtypes.UserGroupDetail{
 		UserGroup: &authtypes.UserGroup{
 			ID:          utils.NewUUID(),
-			Name:        req.GetName().GetValue(),
+			Name:        req.GetName(),
 			TokenEnable: true,
 			Valid:       true,
-			Comment:     req.GetComment().GetValue(),
+			Comment:     req.GetComment(),
 			CreateTime:  time.Now(),
 			ModifyTime:  time.Now(),
 			Metadata:    req.GetMetadata(),
@@ -468,12 +455,12 @@ func userGroup2Api(group *authtypes.UserGroup) *apisecurity.UserGroup {
 
 	// note: 不包括token，token比较特殊
 	out := &apisecurity.UserGroup{
-		Id:          protobuf.NewStringValue(group.ID),
-		Name:        protobuf.NewStringValue(group.Name),
-		TokenEnable: protobuf.NewBoolValue(group.TokenEnable),
-		Comment:     protobuf.NewStringValue(group.Comment),
-		Ctime:       protobuf.NewStringValue(commontime.Time2String(group.CreateTime)),
-		Mtime:       protobuf.NewStringValue(commontime.Time2String(group.ModifyTime)),
+		Id:          group.ID,
+		Name:        group.Name,
+		TokenEnable: group.TokenEnable,
+		Comment:     group.Comment,
+		Ctime:       commontime.Time2String(group.CreateTime),
+		Mtime:       commontime.Time2String(group.ModifyTime),
 	}
 
 	return out
@@ -489,29 +476,29 @@ func (svr *Server) userGroupDetail2Api(group *authtypes.UserGroupDetail) *apisec
 	for id := range group.UserIds {
 		user := svr.cacheMgr.User().GetUserByID(id)
 		users = append(users, &apisecurity.User{
-			Id:          protobuf.NewStringValue(user.ID),
-			Name:        protobuf.NewStringValue(user.Name),
-			Source:      protobuf.NewStringValue(user.Source),
-			Comment:     protobuf.NewStringValue(user.Comment),
-			TokenEnable: protobuf.NewBoolValue(user.TokenEnable),
-			Ctime:       protobuf.NewStringValue(commontime.Time2String(user.CreateTime)),
-			Mtime:       protobuf.NewStringValue(commontime.Time2String(user.ModifyTime)),
+			Id:          user.ID,
+			Name:        user.Name,
+			Source:      user.Source,
+			Comment:     user.Comment,
+			TokenEnable: user.TokenEnable,
+			Ctime:       commontime.Time2String(user.CreateTime),
+			Mtime:       commontime.Time2String(user.ModifyTime),
 		})
 	}
 
 	// note: 不包括token，token比较特殊
 	out := &apisecurity.UserGroup{
-		Id:          protobuf.NewStringValue(group.ID),
-		Name:        protobuf.NewStringValue(group.Name),
-		TokenEnable: protobuf.NewBoolValue(group.TokenEnable),
-		Comment:     protobuf.NewStringValue(group.Comment),
-		Ctime:       protobuf.NewStringValue(commontime.Time2String(group.CreateTime)),
-		Mtime:       protobuf.NewStringValue(commontime.Time2String(group.ModifyTime)),
+		Id:          group.ID,
+		Name:        group.Name,
+		TokenEnable: group.TokenEnable,
+		Comment:     group.Comment,
+		Ctime:       commontime.Time2String(group.CreateTime),
+		Mtime:       commontime.Time2String(group.ModifyTime),
 		Relation: &apisecurity.UserGroupRelation{
 			Users: users,
 		},
 		Metadata:  group.Metadata,
-		UserCount: protobuf.NewUInt32Value(uint32(len(users))),
+		UserCount: uint32(len(users)),
 	}
 
 	return out

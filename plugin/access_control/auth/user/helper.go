@@ -40,7 +40,7 @@ func (helper *DefaultUserHelper) CheckUserInGroup(ctx context.Context,
 	group *apisecurity.UserGroup, user *apisecurity.User) bool {
 
 	cacheMgr := helper.svr.cacheMgr
-	return cacheMgr.User().IsUserInGroup(user.GetId().GetValue(), group.GetId().GetValue())
+	return cacheMgr.User().IsUserInGroup(user.GetId(), group.GetId())
 }
 
 // CheckGroupsExist 批量检查用户组是否存在
@@ -48,7 +48,7 @@ func (helper *DefaultUserHelper) CheckGroupsExist(ctx context.Context, groups []
 	cacheMgr := helper.svr.cacheMgr
 	for i := range groups {
 		item := groups[i]
-		if ret := cacheMgr.User().GetGroup(item.GetId().GetValue()); ret == nil {
+		if ret := cacheMgr.User().GetGroup(item.GetId()); ret == nil {
 			return ErrGroupNotExist
 		}
 	}
@@ -60,7 +60,7 @@ func (helper *DefaultUserHelper) CheckUsersExist(ctx context.Context, users []*a
 	cacheMgr := helper.svr.cacheMgr
 	for i := range users {
 		item := users[i]
-		if ret := cacheMgr.User().GetUserByID(item.GetId().GetValue()); ret == nil {
+		if ret := cacheMgr.User().GetUserByID(item.GetId()); ret == nil {
 			return ErrUserNotExist
 		}
 	}
@@ -71,7 +71,7 @@ func (helper *DefaultUserHelper) CheckUsersExist(ctx context.Context, users []*a
 func (helper *DefaultUserHelper) GetUserOwnGroup(ctx context.Context, user *apisecurity.User) []*apisecurity.UserGroup {
 	cacheMgr := helper.svr.cacheMgr
 
-	ids := cacheMgr.User().GetUserLinkGroupIds(user.GetId().GetValue())
+	ids := cacheMgr.User().GetUserLinkGroupIds(user.GetId())
 	groups := make([]*apisecurity.UserGroup, 0, len(ids))
 	for i := range ids {
 		item := ids[i]
@@ -86,10 +86,10 @@ func (helper *DefaultUserHelper) GetUserOwnGroup(ctx context.Context, user *apis
 // GetUser 查询用户信息
 func (helper *DefaultUserHelper) GetUser(ctx context.Context, user *apisecurity.User) *apisecurity.User {
 	cacheMgr := helper.svr.cacheMgr
-	if user.GetName().GetValue() == "" {
-		return cacheMgr.User().GetUserByID(user.GetId().GetValue()).ToSpec()
+	if user.GetName() == "" {
+		return cacheMgr.User().GetUserByID(user.GetId()).ToSpec()
 	}
-	return cacheMgr.User().GetUserByName(user.GetName().GetValue()).ToSpec()
+	return cacheMgr.User().GetUserByName(user.GetName()).ToSpec()
 }
 
 func (helper *DefaultUserHelper) GetUserByID(ctx context.Context, id string) *apisecurity.User {
@@ -104,14 +104,14 @@ func (helper *DefaultUserHelper) GetUserByID(ctx context.Context, id string) *ap
 // GetGroup 查询用户组信息
 func (helper *DefaultUserHelper) GetGroup(ctx context.Context, req *apisecurity.UserGroup) *apisecurity.UserGroup {
 	cacheMgr := helper.svr.cacheMgr
-	saveVal := cacheMgr.User().GetGroup(req.GetId().GetValue())
+	saveVal := cacheMgr.User().GetGroup(req.GetId())
 	if saveVal != nil {
 		return saveVal.ToSpec()
 	}
 	// 从数据库在获取一次
-	saveVal, err := helper.svr.storage.GetGroup(req.GetId().GetValue())
+	saveVal, err := helper.svr.storage.GetGroup(req.GetId())
 	if err != nil {
-		log.Error("[Auth][UserHelper] get user_group from store", zap.String("id", req.GetId().GetValue()),
+		log.Error("[Auth][UserHelper] get user_group from store", zap.String("id", req.GetId()),
 			zap.Error(err))
 		return nil
 	}

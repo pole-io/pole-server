@@ -33,7 +33,6 @@ import (
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -206,22 +205,22 @@ func (svr *Server) GetRoles(ctx context.Context, filters map[string]string) *api
 	}
 
 	rsp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	rsp.Amount = protobuf.NewUInt32Value(total)
-	rsp.Size = protobuf.NewUInt32Value(uint32(len(ret)))
+	rsp.Amount = total
+	rsp.Size = uint32(len(ret))
 
 	for i := range ret {
 		specVal := ret[i].ToSpec()
 		// 填充用户、用户组名称
 		for j := range specVal.Users {
-			user := svr.cacheMgr.User().GetUserByID(specVal.Users[j].Id.Value)
+			user := svr.cacheMgr.User().GetUserByID(specVal.Users[j].Id)
 			if user != nil {
-				specVal.Users[j].Name = protobuf.NewStringValue(user.Name)
+				specVal.Users[j].Name = user.Name
 			}
 		}
 		for j := range specVal.UserGroups {
-			group := svr.cacheMgr.User().GetGroup(specVal.UserGroups[j].Id.Value)
+			group := svr.cacheMgr.User().GetGroup(specVal.UserGroups[j].Id)
 			if group != nil {
-				specVal.UserGroups[j].Name = protobuf.NewStringValue(group.Name)
+				specVal.UserGroups[j].Name = group.Name
 			}
 		}
 

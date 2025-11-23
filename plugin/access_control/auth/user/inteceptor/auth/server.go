@@ -91,14 +91,14 @@ func (svr *Server) UpdateUsers(ctx context.Context, reqs []*apisecurity.User) *a
 	helper := svr.nextSvr.GetUserHelper()
 	resources := make([]authtypes.ResourceEntry, 0, len(reqs))
 	for _, req := range reqs {
-		saveUser := helper.GetUserByID(ctx, req.GetId().GetValue())
+		saveUser := helper.GetUserByID(ctx, req.GetId())
 		if saveUser == nil {
 			api.Collect(rsp, api.NewUserResponse(apimodel.Code_NotFoundUser, req))
 			continue
 		}
 
 		resources = append(resources, authtypes.ResourceEntry{
-			ID:       req.GetId().GetValue(),
+			ID:       req.GetId(),
 			Type:     apisecurity.ResourceType_Users,
 			Metadata: saveUser.Metadata,
 		})
@@ -127,7 +127,7 @@ func (svr *Server) UpdateUsers(ctx context.Context, reqs []*apisecurity.User) *a
 // UpdateUserPassword 更新用户密码
 func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.ModifyUserPassword) *apimodel.Response {
 	helper := svr.nextSvr.GetUserHelper()
-	saveUser := helper.GetUserByID(ctx, req.GetId().GetValue())
+	saveUser := helper.GetUserByID(ctx, req.GetId())
 	if saveUser == nil {
 		return api.NewResponse(apimodel.Code_NotFoundUser)
 	}
@@ -140,7 +140,7 @@ func (svr *Server) UpdateUserPassword(ctx context.Context, req *apisecurity.Modi
 		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_Users: {
 				authtypes.ResourceEntry{
-					ID:       req.GetId().GetValue(),
+					ID:       req.GetId(),
 					Type:     apisecurity.ResourceType_Users,
 					Metadata: saveUser.Metadata,
 				},
@@ -159,12 +159,12 @@ func (svr *Server) DeleteUsers(ctx context.Context, users []*apisecurity.User) *
 	helper := svr.nextSvr.GetUserHelper()
 	resources := make([]authtypes.ResourceEntry, 0, len(users))
 	for i := range users {
-		saveUser := helper.GetUserByID(ctx, users[i].GetId().GetValue())
+		saveUser := helper.GetUserByID(ctx, users[i].GetId())
 		if saveUser == nil {
 			return api.NewBatchWriteResponse(apimodel.Code_NotFoundUser)
 		}
 		resources = append(resources, authtypes.ResourceEntry{
-			ID:       users[i].GetId().GetValue(),
+			ID:       users[i].GetId(),
 			Type:     apisecurity.ResourceType_Users,
 			Metadata: saveUser.Metadata,
 		})
@@ -210,7 +210,7 @@ func (svr *Server) GetUsers(ctx context.Context, query map[string]string) *apimo
 // GetUserToken 获取用户的 token
 func (svr *Server) GetUserToken(ctx context.Context, user *apisecurity.User) *apimodel.Response {
 	helper := svr.nextSvr.GetUserHelper()
-	saveUser := helper.GetUserByID(ctx, user.GetId().GetValue())
+	saveUser := helper.GetUserByID(ctx, user.GetId())
 	if saveUser == nil {
 		return api.NewResponse(apimodel.Code_NotFoundUser)
 	}
@@ -222,7 +222,7 @@ func (svr *Server) GetUserToken(ctx context.Context, user *apisecurity.User) *ap
 		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_Users: {
 				authtypes.ResourceEntry{
-					ID:       user.GetId().GetValue(),
+					ID:       user.GetId(),
 					Type:     apisecurity.ResourceType_Users,
 					Metadata: saveUser.Metadata,
 				},
@@ -239,7 +239,7 @@ func (svr *Server) GetUserToken(ctx context.Context, user *apisecurity.User) *ap
 // UpdateUserToken 禁止用户的token使用
 func (svr *Server) EnableUserToken(ctx context.Context, user *apisecurity.User) *apimodel.Response {
 	helper := svr.nextSvr.GetUserHelper()
-	saveUser := helper.GetUserByID(ctx, user.GetId().GetValue())
+	saveUser := helper.GetUserByID(ctx, user.GetId())
 	if saveUser == nil {
 		return api.NewResponse(apimodel.Code_NotFoundUser)
 	}
@@ -251,7 +251,7 @@ func (svr *Server) EnableUserToken(ctx context.Context, user *apisecurity.User) 
 		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_Users: {
 				authtypes.ResourceEntry{
-					ID:       user.GetId().GetValue(),
+					ID:       user.GetId(),
 					Type:     apisecurity.ResourceType_Users,
 					Metadata: saveUser.Metadata,
 				},
@@ -268,7 +268,7 @@ func (svr *Server) EnableUserToken(ctx context.Context, user *apisecurity.User) 
 // ResetUserToken 重置用户的token
 func (svr *Server) ResetUserToken(ctx context.Context, user *apisecurity.User) *apimodel.Response {
 	helper := svr.nextSvr.GetUserHelper()
-	saveUser := helper.GetUserByID(ctx, user.GetId().GetValue())
+	saveUser := helper.GetUserByID(ctx, user.GetId())
 	if saveUser == nil {
 		return api.NewResponse(apimodel.Code_NotFoundUser)
 	}
@@ -280,7 +280,7 @@ func (svr *Server) ResetUserToken(ctx context.Context, user *apisecurity.User) *
 		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_Users: {
 				authtypes.ResourceEntry{
-					ID:       user.GetId().GetValue(),
+					ID:       user.GetId(),
 					Type:     apisecurity.ResourceType_Users,
 					Metadata: saveUser.Metadata,
 				},
@@ -320,7 +320,7 @@ func (svr *Server) UpdateGroups(ctx context.Context, groups []*apisecurity.UserG
 		}
 		resources = append(resources, authtypes.ResourceEntry{
 			Type:     apisecurity.ResourceType_UserGroups,
-			ID:       groups[i].GetId().GetValue(),
+			ID:       groups[i].GetId(),
 			Metadata: saveGroup.Metadata,
 		})
 	}
@@ -351,7 +351,7 @@ func (svr *Server) DeleteGroups(ctx context.Context, groups []*apisecurity.UserG
 			return api.NewBatchWriteResponse(apimodel.Code_NotFoundUserGroup)
 		}
 		resources = append(resources, authtypes.ResourceEntry{
-			ID: groups[i].GetId().GetValue(),
+			ID: groups[i].GetId(),
 		})
 	}
 
@@ -419,7 +419,7 @@ func (svr *Server) GetGroup(ctx context.Context, req *apisecurity.UserGroup) *ap
 			apisecurity.ResourceType_UserGroups: {
 				authtypes.ResourceEntry{
 					Type:     apisecurity.ResourceType_UserGroups,
-					ID:       req.GetId().GetValue(),
+					ID:       req.GetId(),
 					Metadata: saveGroup.Metadata,
 				},
 			},
@@ -447,7 +447,7 @@ func (svr *Server) GetGroupToken(ctx context.Context, group *apisecurity.UserGro
 		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_UserGroups: {
 				authtypes.ResourceEntry{
-					ID:       group.GetId().GetValue(),
+					ID:       group.GetId(),
 					Type:     apisecurity.ResourceType_UserGroups,
 					Metadata: saveGroup.Metadata,
 				},
@@ -476,7 +476,7 @@ func (svr *Server) EnableGroupToken(ctx context.Context, group *apisecurity.User
 		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_UserGroups: {
 				authtypes.ResourceEntry{
-					ID:       group.GetId().GetValue(),
+					ID:       group.GetId(),
 					Type:     apisecurity.ResourceType_UserGroups,
 					Metadata: saveGroup.Metadata,
 				},
@@ -505,7 +505,7 @@ func (svr *Server) ResetGroupToken(ctx context.Context, group *apisecurity.UserG
 		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
 			apisecurity.ResourceType_UserGroups: {
 				authtypes.ResourceEntry{
-					ID:       group.GetId().GetValue(),
+					ID:       group.GetId(),
 					Type:     apisecurity.ResourceType_UserGroups,
 					Metadata: saveGroup.Metadata,
 				},
