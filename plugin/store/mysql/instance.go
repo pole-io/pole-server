@@ -286,7 +286,7 @@ func (ins *instanceStore) GetInstancesBrief(ids map[string]bool) (map[string]*sv
 	}
 
 	str := `select instance.id, host, port, name, namespace, token, IFNULL(platform_id,"") from service, instance
-		 where instance.flag = 0 and service.flag = 0 
+		 where instance.flag = 0 and service.flag = 0
 		 and service.id = instance.service_id and instance.id in (` + PlaceholdersN(len(ids)) + ")"
 	args := make([]interface{}, 0, len(ids))
 	for key := range ids {
@@ -707,10 +707,10 @@ func addMainInstance(tx *BaseTx, instance *svctypes.Instance) error {
 	str := `replace into instance(id, service_id, vpc_id, host, port, protocol, version, health_status, isolate,
 		 weight, enable_health_check, logic_set, cmdb_region, cmdb_zone, cmdb_idc, priority, metadata, revision, ctime, mtime)
 			 values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())`
-	_, err := tx.Exec(str, instance.ID(), instance.ServiceID, instance.VpcID(), instance.Host(), instance.Port(),
+	_, err := tx.Exec(str, instance.ID(), instance.ServiceID, instance, instance.Host(), instance.Port(),
 		instance.Protocol(), instance.Version(), instance.Healthy(), instance.Isolate(), instance.Weight(),
-		instance.EnableHealthCheck(), instance.LogicSet(), instance.Location().GetRegion().GetValue(),
-		instance.Location().GetZone().GetValue(), instance.Location().GetCampus().GetValue(),
+		instance.EnableHealthCheck(), instance, instance.Location().GetRegion(),
+		instance.Location().GetZone(), instance.Location().GetCampus(),
 		instance.Priority(), utils.MustJson(instance.Proto.GetMetadata()), instance.Revision())
 	return err
 }
@@ -718,7 +718,7 @@ func addMainInstance(tx *BaseTx, instance *svctypes.Instance) error {
 // batchAddMainInstances 批量增加main instance数据
 func batchAddMainInstances(tx *BaseTx, instances []*svctypes.Instance) error {
 	str := `replace into instance(id, service_id, vpc_id, host, port, protocol, version, health_status, isolate,
-		 weight, enable_health_check, logic_set, cmdb_region, cmdb_zone, cmdb_idc, priority, metadata, revision, ctime, mtime) 
+		 weight, enable_health_check, logic_set, cmdb_region, cmdb_zone, cmdb_idc, priority, metadata, revision, ctime, mtime)
 		 values`
 	first := true
 	args := make([]interface{}, 0)
@@ -728,12 +728,12 @@ func batchAddMainInstances(tx *BaseTx, instances []*svctypes.Instance) error {
 		}
 		str += "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())"
 		first = false
-		args = append(args, entry.ID(), entry.ServiceID, entry.VpcID(), entry.Host(), entry.Port())
+		args = append(args, entry.ID(), entry.ServiceID, entry, entry.Host(), entry.Port())
 		args = append(args, entry.Protocol(), entry.Version(), entry.Healthy(), entry.Isolate(),
 			entry.Weight())
-		args = append(args, entry.EnableHealthCheck(), entry.LogicSet(),
-			entry.Location().GetRegion().GetValue(), entry.Location().GetZone().GetValue(),
-			entry.Location().GetCampus().GetValue(), entry.Priority(), utils.MustJson(entry.Proto.GetMetadata()), entry.Revision())
+		args = append(args, entry.EnableHealthCheck(), entry,
+			entry.Location().GetRegion(), entry.Location().GetZone(),
+			entry.Location().GetCampus(), entry.Priority(), utils.MustJson(entry.Proto.GetMetadata()), entry.Revision())
 	}
 	_, err := tx.Exec(str, args...)
 	return err
@@ -748,7 +748,7 @@ func addInstanceCheck(tx *BaseTx, instance *svctypes.Instance) error {
 
 	str := "replace into health_check(`id`, `type`, `ttl`) values(?, ?, ?)"
 	_, err := tx.Exec(str, instance.ID(), check.GetType(),
-		check.GetHeartbeat().GetTtl().GetValue())
+		check.GetHeartbeat().GetTtl())
 	return err
 }
 
@@ -767,7 +767,7 @@ func batchAddInstanceCheck(tx *BaseTx, instances []*svctypes.Instance) error {
 		str += "(?,?,?)"
 		first = false
 		args = append(args, entry.ID(), entry.HealthCheck().GetType(),
-			entry.HealthCheck().GetHeartbeat().GetTtl().GetValue())
+			entry.HealthCheck().GetHeartbeat().GetTtl())
 	}
 	// 不存在健康检查信息，直接返回
 	if first {
@@ -787,7 +787,7 @@ func updateInstanceCheck(tx *BaseTx, instance *svctypes.Instance) error {
 
 	str := "replace into health_check(id, type, ttl) values(?, ?, ?)"
 	_, err := tx.Exec(str, instance.ID(), check.GetType(),
-		check.GetHeartbeat().GetTtl().GetValue())
+		check.GetHeartbeat().GetTtl())
 	return err
 }
 
@@ -798,9 +798,9 @@ func updateInstanceMain(tx *BaseTx, instance *svctypes.Instance) error {
 	 cmdb_region = ?, cmdb_zone = ?, cmdb_idc = ?, priority = ?, metadata = ?, revision = ?, mtime = sysdate() where id = ?`
 
 	_, err := tx.Exec(str, instance.Protocol(), instance.Version(), instance.Healthy(), instance.Isolate(),
-		instance.Weight(), instance.EnableHealthCheck(), instance.LogicSet(),
-		instance.Location().GetRegion().GetValue(), instance.Location().GetZone().GetValue(),
-		instance.Location().GetCampus().GetValue(), instance.Priority(), utils.MustJson(instance.Proto.GetMetadata()),
+		instance.Weight(), instance.EnableHealthCheck(), instance,
+		instance.Location().GetRegion(), instance.Location().GetZone(),
+		instance.Location().GetCampus(), instance.Priority(), utils.MustJson(instance.Proto.GetMetadata()),
 		instance.Revision(), instance.ID())
 
 	return err
@@ -908,10 +908,10 @@ func fetchExpandInstanceRows(rows *sql.Rows) ([]*svctypes.Instance, error) {
 // genInstanceSelectSQL 生成instance的select sql语句
 func genInstanceSelectSQL() string {
 	str := `select instance.id, service_id, IFNULL(vpc_id,""), host, port, IFNULL(protocol, ""), IFNULL(version, ""),
-			 health_status, isolate, weight, enable_health_check, IFNULL(logic_set, ""), IFNULL(cmdb_region, ""), 
-			 IFNULL(cmdb_zone, ""), IFNULL(cmdb_idc, ""), priority, revision, flag, IFNULL(health_check.type, -1), 
+			 health_status, isolate, weight, enable_health_check, IFNULL(logic_set, ""), IFNULL(cmdb_region, ""),
+			 IFNULL(cmdb_zone, ""), IFNULL(cmdb_idc, ""), priority, revision, flag, IFNULL(health_check.type, -1),
 			 IFNULL(health_check.ttl, 0), UNIX_TIMESTAMP(instance.ctime), UNIX_TIMESTAMP(instance.mtime), IFNULL(metadata, "{}")
-			 from instance left join health_check 
+			 from instance left join health_check
 			 on instance.id = health_check.id `
 	return str
 }
@@ -922,7 +922,7 @@ func genCompleteInstanceSelectSQL() string {
 		 health_status, isolate, weight, enable_health_check, IFNULL(logic_set, ""), IFNULL(cmdb_region, ""),
 		 IFNULL(cmdb_zone, ""), IFNULL(cmdb_idc, ""), priority, revision, flag, IFNULL(health_check.type, -1),
 		 IFNULL(health_check.ttl, 0), UNIX_TIMESTAMP(instance.ctime), UNIX_TIMESTAMP(instance.mtime), IFNULL(instance.metadata, "{}")
-		 from instance 
+		 from instance
 		 left join health_check on instance.id = health_check.id `
 	return str
 }
@@ -930,10 +930,10 @@ func genCompleteInstanceSelectSQL() string {
 // genExpandInstanceSelectSQL 生成expandInstance的select sql语句
 func genExpandInstanceSelectSQL(needForceIndex bool) string {
 	str := `select instance.id, service_id, IFNULL(vpc_id,""), host, port, IFNULL(protocol, ""), IFNULL(version, ""),
-					 health_status, isolate, weight, enable_health_check, IFNULL(logic_set, ""), IFNULL(cmdb_region, ""), 
-					 IFNULL(cmdb_zone, ""), IFNULL(cmdb_idc, ""), priority, instance.revision, instance.flag, 
-					 IFNULL(health_check.type, -1), IFNULL(health_check.ttl, 0), service.name, service.namespace, 
-					 UNIX_TIMESTAMP(instance.ctime), UNIX_TIMESTAMP(instance.mtime), IFNULL(instance.metadata, "{}") 
+					 health_status, isolate, weight, enable_health_check, IFNULL(logic_set, ""), IFNULL(cmdb_region, ""),
+					 IFNULL(cmdb_zone, ""), IFNULL(cmdb_idc, ""), priority, instance.revision, instance.flag,
+					 IFNULL(health_check.type, -1), IFNULL(health_check.ttl, 0), service.name, service.namespace,
+					 UNIX_TIMESTAMP(instance.ctime), UNIX_TIMESTAMP(instance.mtime), IFNULL(instance.metadata, "{}")
 					 from (service inner join instance `
 	if needForceIndex {
 		str += `force index(service_id, host) `

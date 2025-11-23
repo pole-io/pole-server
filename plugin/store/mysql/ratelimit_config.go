@@ -275,8 +275,8 @@ func fetchRateLimitRows(rows *sql.Rows) ([]*rules.RateLimit, error) {
 func (rls *rateLimitStore) GetMoreRateLimits(mtime time.Time,
 	firstUpdate bool) ([]*rules.RateLimit, error) {
 	str := `select id, name, disable, ratelimit_rule.service_id, method, labels, priority, rule, revision, flag,
-			unix_timestamp(ratelimit_rule.ctime), unix_timestamp(ratelimit_rule.mtime), 
-			unix_timestamp(ratelimit_rule.etime), IFNULL(metadata, '{}') from ratelimit_rule 
+			unix_timestamp(ratelimit_rule.ctime), unix_timestamp(ratelimit_rule.mtime),
+			unix_timestamp(ratelimit_rule.etime), IFNULL(metadata, '{}') from ratelimit_rule
 			where ratelimit_rule.mtime > FROM_UNIXTIME(?)`
 	if firstUpdate {
 		str += " and flag != 1"
@@ -340,7 +340,7 @@ func fetchRateLimitCacheRows(rows *sql.Rows) ([]*rules.RateLimit, error) {
 func (rls *rateLimitStore) GetMoreRateLimitReleases(mtime time.Time,
 	firstUpdate bool) ([]*rules.RateLimitRelease, error) {
 	str := `select id, name, rule_name, rule, flag, active, version, description, release_type,
-			unix_timestamp(ctime), unix_timestamp(mtime) from ratelimit_rule_release 
+			unix_timestamp(ctime), unix_timestamp(mtime) from ratelimit_rule_release
 			where mtime >= FROM_UNIXTIME(?)`
 	if firstUpdate {
 		mtime = time.Time{}

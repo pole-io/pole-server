@@ -21,7 +21,6 @@ import (
 	"net"
 	"strings"
 
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
@@ -92,15 +91,9 @@ func NewIP(info IPInfo) (IP, error) {
 	ip.Type = info.Type
 	ip.loc = &svctypes.Location{
 		Proto: &apimodel.Location{
-			Region: &wrapperspb.StringValue{
-				Value: info.Region.Name,
-			},
-			Zone: &wrapperspb.StringValue{
-				Value: info.Zone.Name,
-			},
-			Campus: &wrapperspb.StringValue{
-				Value: info.Campus.Name,
-			},
+			Region: string(info.Region.Name),
+			Zone: string(info.Zone.Name),
+			Campus: string(info.Campus.Name),
 		},
 		RegionID: uint32(regionId),
 		ZoneID:   uint32(zoneId),
