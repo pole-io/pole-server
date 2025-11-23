@@ -332,7 +332,7 @@ func (i *InstanceInfo) Clone(actionType string) *InstanceInfo {
 
 // Equals 判断实例是否发生变更
 func (i *InstanceInfo) Equals(another *InstanceInfo) bool {
-	return i.RealInstance.GetRevision().GetValue() == another.RealInstance.GetRevision().GetValue()
+	return i.RealInstance.GetRevision() == another.RealInstance.GetRevision()
 }
 
 // Application 服务数据

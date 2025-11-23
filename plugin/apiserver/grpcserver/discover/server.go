@@ -127,9 +127,7 @@ func (g *GRPCServer) Run(errCh chan error) {
 			case "client":
 				if config.Enable {
 					// 注册 v1 版本的 spec discover server
-					apiservice.RegisterPolarisGRPCServer(server, g.dsvr)
 					apiservice.RegisterPolarisHeartbeatGRPCServer(server, g.dsvr)
-					apiservice.RegisterPolarisServiceContractGRPCServer(server, g.dsvr)
 					apiconfig.RegisterPolarisConfigGRPCServer(server, g.csvr)
 					openMethod, getErr := utils.GetDiscoverClientOpenMethod(config.Include, g.GetProtocol())
 					if getErr != nil {
@@ -205,18 +203,18 @@ func discoverCacheConvert(m interface{}) *grpcserver.CacheObject {
 		return nil
 	}
 
-	if resp.Code.GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
+	if resp.Code != uint32(apimodel.Code_ExecuteSuccess) {
 		return nil
 	}
-	if resp.GetService().GetRevision().GetValue() == "" {
+	if resp.GetService().GetRevision() == "" {
 		return nil
 	}
 	if _, ok := cacheTypes[resp.GetType().String()]; !ok {
 		return nil
 	}
 
-	keyProto := fmt.Sprintf("%s-%s-%s", resp.GetService().GetNamespace().GetValue(),
-		resp.GetService().GetName().GetValue(), resp.GetService().GetRevision().GetValue())
+	keyProto := fmt.Sprintf("%s-%s-%s", resp.GetService().GetNamespace(),
+		resp.GetService().GetName(), resp.GetService().GetRevision())
 
 	return &grpcserver.CacheObject{
 		OriginVal: resp,

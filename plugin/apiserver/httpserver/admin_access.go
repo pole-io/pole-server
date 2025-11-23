@@ -32,7 +32,6 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/admin"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
@@ -212,14 +211,13 @@ func (h *HTTPServer) GetLastHeartbeat(req *restful.Request, rsp *restful.Respons
 	params := httpcommon.ParseQueryParams(req)
 	instance := &apiservice.Instance{}
 	if id, ok := params["id"]; ok && id != "" {
-		instance.Id = protobuf.NewStringValue(id)
+		instance.Id = id
 	} else {
-		instance.Service = protobuf.NewStringValue(params["service"])
-		instance.Namespace = protobuf.NewStringValue(params["namespace"])
-		instance.VpcId = protobuf.NewStringValue(params["vpc_id"])
-		instance.Host = protobuf.NewStringValue(params["host"])
+		instance.Service = params["service"]
+		instance.Namespace = params["namespace"]
+		instance.Host = params["host"]
 		port, _ := strconv.Atoi(params["port"])
-		instance.Port = protobuf.NewUInt32Value(uint32(port))
+		instance.Port = uint32(port)
 	}
 
 	ret := h.maintainServer.GetLastHeartbeat(ctx, instance)

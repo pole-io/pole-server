@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/emicklei/go-restful/v3"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/pole-io/specification/source/go/api/v1/service_manage"
 
@@ -50,8 +49,8 @@ func (n *NacosV1Server) FetchNacosEndpoints(req *restful.Request, rsp *restful.R
 	insResp := n.discoverOpt.OriginDiscoverSvr.ServiceInstancesCache(context.Background(), &service_manage.DiscoverFilter{
 		OnlyHealthyInstance: true,
 	}, &service_manage.Service{
-		Namespace: wrapperspb.String(serverSvcNamespace),
-		Name:      wrapperspb.String(serverSvcName),
+		Namespace: serverSvcNamespace,
+		Name:      serverSvcName,
 	})
 
 	if !api.IsSuccess(insResp) {
@@ -62,7 +61,7 @@ func (n *NacosV1Server) FetchNacosEndpoints(req *restful.Request, rsp *restful.R
 	ips := []string{}
 	for i := range insResp.GetInstances() {
 		item := insResp.GetInstances()[i]
-		ips = append(ips, fmt.Sprintf("%s:%d", item.GetHost().GetValue(), item.GetPort().GetValue()))
+		ips = append(ips, fmt.Sprintf("%s:%d", item.GetHost(), item.GetPort()))
 	}
 	if len(ips) == 0 {
 		rsp.WriteHeader(http.StatusNotFound)

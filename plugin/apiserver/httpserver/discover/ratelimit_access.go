@@ -9,7 +9,6 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
@@ -37,7 +36,7 @@ func (h *HTTPServer) CreateRateLimits(req *restful.Request, rsp *restful.Respons
 
 	var rateLimits RateLimitArr
 	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apitraffic.Rule{}
+		msg := &apitraffic.RateLimit{}
 		rateLimits = append(rateLimits, msg)
 		return msg
 	})
@@ -58,7 +57,7 @@ func (h *HTTPServer) DeleteRateLimits(req *restful.Request, rsp *restful.Respons
 
 	var rateLimits RateLimitArr
 	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apitraffic.Rule{}
+		msg := &apitraffic.RateLimit{}
 		rateLimits = append(rateLimits, msg)
 		return msg
 	})
@@ -84,7 +83,7 @@ func (h *HTTPServer) UpdateRateLimits(req *restful.Request, rsp *restful.Respons
 
 	var rateLimits RateLimitArr
 	ctx, err := handler.ParseArray(func() proto.Message {
-		msg := &apitraffic.Rule{}
+		msg := &apitraffic.RateLimit{}
 		rateLimits = append(rateLimits, msg)
 		return msg
 	})
@@ -122,8 +121,8 @@ func (h *HTTPServer) GetOneRateLimitRule(req *restful.Request, rsp *restful.Resp
 	}
 
 	queryParams := httpcommon.ParseQueryParams(req)
-	msg := &apitraffic.Rule{
-		Id: protobuf.NewStringValue(queryParams["id"]),
+	msg := &apitraffic.RateLimit{
+		Id: queryParams["id"],
 	}
 	handler.WriteHeaderAndProto(h.ruleServer.GetOneRateLimitRule(handler.ParseHeaderContext(), msg))
 }

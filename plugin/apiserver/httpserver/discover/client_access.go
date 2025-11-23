@@ -18,7 +18,6 @@
 package discover
 
 import (
-	"context"
 
 	"github.com/emicklei/go-restful/v3"
 
@@ -26,7 +25,6 @@ import (
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/observability/statis"
-	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -81,10 +79,7 @@ func (h *HTTPServer) RegisterInstance(req *restful.Request, rsp *restful.Respons
 		handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	// 客户端请求中带了 token 的，优先已请求中的为准
-	if instance.GetServiceToken().GetValue() != "" {
-		ctx = context.WithValue(ctx, types.ContextAuthTokenKey, instance.GetServiceToken().GetValue())
-	}
+
 
 	handler.WriteHeaderAndProto(h.namingServer.RegisterInstance(ctx, instance))
 }
@@ -102,10 +97,7 @@ func (h *HTTPServer) DeregisterInstance(req *restful.Request, rsp *restful.Respo
 		handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
-	// 客户端请求中带了 token 的，优先已请求中的为准
-	if instance.GetServiceToken().GetValue() != "" {
-		ctx = context.WithValue(ctx, types.ContextAuthTokenKey, instance.GetServiceToken().GetValue())
-	}
+
 	handler.WriteHeaderAndProto(h.namingServer.DeregisterInstance(ctx, instance))
 }
 
@@ -130,12 +122,12 @@ func (h *HTTPServer) Discover(req *restful.Request, rsp *restful.Response) {
 		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    action,
 			ClientIP:  utils.ParseClientAddress(ctx),
-			Namespace: discoverRequest.GetService().GetNamespace().GetValue(),
-			Resource:  discoverRequest.GetType().String() + ":" + discoverRequest.GetService().GetName().GetValue(),
+			Namespace: discoverRequest.GetService().GetNamespace(),
+			Resource:  discoverRequest.GetType().String() + ":" + discoverRequest.GetService().GetName(),
 			Timestamp: startTime,
 			CostTime:  commontime.CurrentMillisecond() - startTime,
-			Revision:  ret.GetService().GetRevision().GetValue(),
-			Success:   ret.GetCode().GetValue() > uint32(apimodel.Code_DataNoChange),
+			Revision:  ret.GetService().GetRevision(),
+			Success:   ret.GetCode() > uint32(apimodel.Code_DataNoChange),
 		})
 	}()
 

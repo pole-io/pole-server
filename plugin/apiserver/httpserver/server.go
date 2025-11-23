@@ -32,7 +32,6 @@ import (
 	"go.uber.org/zap"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	"github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
@@ -636,10 +635,10 @@ func (h *HTTPServer) enterRateLimit(req *restful.Request, rsp *restful.Response)
 
 func (h *HTTPServer) recoverFunc(i interface{}, w http.ResponseWriter) {
 	log.Errorf("panic %+v", i)
-	obj := &service_manage.Response{}
+	obj := &apimodel.Response{}
 
 	status := api.CalcCode(obj)
-	if code := obj.GetCode().GetValue(); code != api.ExecuteSuccess {
+	if code := obj.GetCode(); code != api.ExecuteSuccess {
 		w.Header().Add(utils.PolarisCode, fmt.Sprintf("%d", code))
 		w.Header().Add(utils.PolarisMessage, api.Code2Info(code))
 	}
@@ -654,17 +653,17 @@ func discoverCacheConvert(m interface{}) *httpcommon.CacheObject {
 	if !ok {
 		return nil
 	}
-	if resp.Code.GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
+	if resp.Code != uint32(apimodel.Code_ExecuteSuccess) {
 		return nil
 	}
-	if resp.GetService().GetRevision().GetValue() == "" {
+	if resp.GetService().GetRevision() == "" {
 		return nil
 	}
 	if _, ok := cacheTypes[resp.GetType().String()]; !ok {
 		return nil
 	}
-	keyProto := fmt.Sprintf("%s-%s-%s", resp.GetService().GetNamespace().GetValue(),
-		resp.GetService().GetName().GetValue(), resp.GetService().GetRevision().GetValue())
+	keyProto := fmt.Sprintf("%s-%s-%s", resp.GetService().GetNamespace(),
+		resp.GetService().GetName(), resp.GetService().GetRevision())
 
 	return &httpcommon.CacheObject{
 		OriginVal: resp,

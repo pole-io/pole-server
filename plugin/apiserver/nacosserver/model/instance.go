@@ -20,11 +20,9 @@ package model
 import (
 	"strings"
 
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
 
@@ -124,25 +122,23 @@ func (i *Instance) ToSpecInstance() *apiservice.Instance {
 		// 这里不用使用 Nacos 过来的实例 ID，因为 Nacos Client 不能保证每一笔请求都带上实例ID，并且实例 ID 的生成方式和
 		// Polaris 不相同以及实例 ID 的生成方式允许用户 SPI 扩展，因此这里统一使用 Polaris InstanceID
 		// Id:                wrapperspb.String(i.Id),
-		Service:           wrapperspb.String(i.ServiceName),
-		Host:              wrapperspb.String(i.IP),
-		Port:              wrapperspb.UInt32(uint32(i.Port)),
-		Weight:            wrapperspb.UInt32(uint32(i.Weight)),
-		EnableHealthCheck: wrapperspb.Bool(true),
+		Service:           i.ServiceName,
+		Host:              i.IP,
+		Port:              uint32(i.Port),
+		Weight:            uint32(i.Weight),
+		EnableHealthCheck: true,
 		HealthCheck: &apiservice.HealthCheck{
 			Type: apiservice.HealthCheck_HEARTBEAT,
 			Heartbeat: &apiservice.HeartbeatHealthCheck{
-				Ttl: &wrapperspb.UInt32Value{
-					Value: 5,
-				},
+				Ttl:  5,
 			},
 		},
-		Healthy:  wrapperspb.Bool(i.Healthy),
-		Isolate:  wrapperspb.Bool(!i.Enabled),
+		Healthy:  i.Healthy,
+		Isolate:  !i.Enabled,
 		Metadata: i.Metadata,
 	}
-	if len(ret.GetId().GetValue()) == 0 {
-		ret.Id = nil
+	if len(ret.GetId()) == 0 {
+		ret.Id = ""
 	}
 	if len(ret.Metadata) == 0 {
 		ret.Metadata = make(map[string]string)
@@ -167,8 +163,8 @@ func PrepareSpecInstance(namespace, service string, ins *Instance) *apiservice.I
 	pSvc := ReplaceNacosService(service)
 
 	specIns := ins.ToSpecInstance()
-	specIns.Service = protobuf.NewStringValue(pSvc)
-	specIns.Namespace = protobuf.NewStringValue(namespace)
+	specIns.Service = pSvc
+	specIns.Namespace = namespace
 
 	specIns.Metadata[InternalNacosCluster] = ins.ClusterName
 	specIns.Metadata[InternalNacosServiceName] = service

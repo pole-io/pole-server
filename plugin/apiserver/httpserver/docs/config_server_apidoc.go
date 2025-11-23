@@ -206,7 +206,7 @@ func EnrichImportConfigFileApiDocs(r *restful.RouteBuilder) *restful.RouteBuilde
 		Param(restful.MultiPartFormParameter("conflict_handling",
 			"配置文件冲突处理，跳过skip，覆盖overwrite").DataType(typeNameString).Required(true)).
 		Param(restful.MultiPartFormParameter("config", "配置文件").DataType("file").Required(true)).
-		Returns(0, "", config_manage.ConfigImportResponse{})
+		Returns(0, "", config_manage.ConfigFile{})
 }
 
 func EnrichPublishConfigFileApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {
@@ -290,7 +290,7 @@ func EnrichGetConfigFileForClientApiDocs(r *restful.RouteBuilder) *restful.Route
 		Param(restful.QueryParameter("fileName", "配置文件名").DataType(typeNameString).Required(true)).
 		Param(restful.QueryParameter("version", "配置文件客户端版本号，刚启动时设置为 0").
 			DataType(typeNameInteger).Required(true)).
-		Returns(0, "", config_manage.ConfigClientResponse{})
+		Returns(0, "", config_manage.ConfigDiscoverResponse{})
 }
 
 func EnrichWatchConfigFileForClientApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {
@@ -298,7 +298,7 @@ func EnrichWatchConfigFileForClientApiDocs(r *restful.RouteBuilder) *restful.Rou
 		Doc("监听配置").
 		Metadata(restfulspec.KeyOpenAPITags, configClientApiTags).
 		Reads(apiconfig.ClientWatchConfigFileRequest{}, "通过 Http LongPolling 机制订阅配置变更。").
-		Returns(0, "", config_manage.ConfigClientResponse{})
+		Returns(0, "", config_manage.ConfigDiscoverResponse{})
 }
 
 func EnrichGetConfigFileMetadataList(r *restful.RouteBuilder) *restful.RouteBuilder {
@@ -306,12 +306,12 @@ func EnrichGetConfigFileMetadataList(r *restful.RouteBuilder) *restful.RouteBuil
 		Doc("监听配置").
 		Metadata(restfulspec.KeyOpenAPITags, configClientApiTags).
 		Reads(apiconfig.ClientWatchConfigFileRequest{}, "通过 Http LongPolling 机制订阅配置变更。").
-		Returns(0, "", config_manage.ConfigClientResponse{})
+		Returns(0, "", config_manage.ConfigDiscoverResponse{})
 }
 
 func EnrichGetAllConfigEncryptAlgorithms(r *restful.RouteBuilder) *restful.RouteBuilder {
 	return r.
 		Doc("返回当前配置加解密的算法").
 		Metadata(restfulspec.KeyOpenAPITags, configConsoleApiTags).
-		Returns(0, "", config_manage.ConfigEncryptAlgorithmResponse{})
+		Returns(0, "", config_manage.ConfigFile{})
 }

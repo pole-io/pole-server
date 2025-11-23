@@ -24,7 +24,6 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
@@ -165,7 +164,7 @@ func (h *HTTPServer) GetUserToken(req *restful.Request, rsp *restful.Response) {
 	queryParams := httpcommon.ParseQueryParams(req)
 
 	user := &apisecurity.User{
-		Id: protobuf.NewStringValue(queryParams["id"]),
+		Id: queryParams["id"],
 	}
 
 	handler.WriteHeaderAndProto(h.userSvr.GetUserToken(handler.ParseHeaderContext(), user))

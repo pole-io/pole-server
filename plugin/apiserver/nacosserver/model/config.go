@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/emicklei/go-restful/v3"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/pole-io/specification/source/go/api/v1/config_manage"
 
@@ -48,48 +47,45 @@ type ConfigFile struct {
 	CasMd5           string `param:"casMd5"`
 	Type             string `param:"type"`
 	SrcUser          string `param:"srcUser"`
-	Labels           string `param:config_tags`
-	Description      string `param:desc`
+	Labels           string `param:"config_tags"`
+	Description      string `param:"desc"`
 	EncryptedDataKey string `param:"encryptedDataKey"`
 }
 
 func (i *ConfigFile) ToDeleteSpec() *config_manage.ConfigFile {
 	return &config_manage.ConfigFile{
-		Namespace: wrapperspb.String(ToPolarisNamespace(i.Namespace)),
-		Group:     wrapperspb.String(i.Group),
-		Name:      wrapperspb.String(i.DataId),
+		Namespace: ToPolarisNamespace(i.Namespace),
+		Group:     i.Group,
+		Name:      i.DataId,
 	}
 }
 
-func (i *ConfigFile) ToQuerySpec() *config_manage.ClientConfigFileInfo {
-	return &config_manage.ClientConfigFileInfo{
-		Namespace: wrapperspb.String(ToPolarisNamespace(i.Namespace)),
-		Group:     wrapperspb.String(i.Group),
-		FileName:  wrapperspb.String(i.DataId),
+func (i *ConfigFile) ToQuerySpec() *config_manage.ConfigFile {
+	return &config_manage.ConfigFile{
+		Namespace: ToPolarisNamespace(i.Namespace),
+		Group:     i.Group,
+		Name:  	   i.DataId,
 	}
 }
 
 func (i *ConfigFile) ToSpecConfigFile() *config_manage.ConfigFilePublishInfo {
 	specFile := &config_manage.ConfigFilePublishInfo{
-		Tags:               make([]*config_manage.ConfigFileTag, 0, 4),
-		Namespace:          wrapperspb.String(ToPolarisNamespace(i.Namespace)),
-		Group:              wrapperspb.String(i.Group),
-		FileName:           wrapperspb.String(i.DataId),
-		Content:            wrapperspb.String(i.Content),
-		Format:             wrapperspb.String(i.Type),
-		Comment:            wrapperspb.String(i.Description),
-		ReleaseDescription: wrapperspb.String(i.Description),
+		Labels:             make(map[string]string),
+		Namespace:          ToPolarisNamespace(i.Namespace),
+		Group:              i.Group,
+		FileName:           i.DataId,
+		Content:            i.Content,
+		Format:             i.Type,
+		Comment:            i.Description,
+		ReleaseDescription: i.Description,
 	}
 
 	isCipher := strings.HasPrefix(i.DataId, "cipher-") && i.DataId != "cipher-"
 	if isCipher {
-		specFile.Encrypted = wrapperspb.Bool(true)
-		specFile.EncryptAlgo = wrapperspb.String(strings.Split(i.DataId, "-")[1])
+		specFile.Encrypted = true
+		specFile.EncryptAlgo = strings.Split(i.DataId, "-")[1]
 		if i.EncryptedDataKey != "" {
-			specFile.Tags = append(specFile.Tags, &config_manage.ConfigFileTag{
-				Key:   wrapperspb.String(types.MetaKeyConfigFileDataKey),
-				Value: wrapperspb.String(i.EncryptedDataKey),
-			})
+			specFile.Labels[types.MetaKeyConfigFileDataKey] = i.EncryptedDataKey
 		}
 	}
 
@@ -116,16 +112,16 @@ type ConfigWatchContext struct {
 
 func (cw *ConfigWatchContext) ToSpecWatch() *config_manage.ClientWatchConfigFileRequest {
 	specWatch := &config_manage.ClientWatchConfigFileRequest{
-		ClientIp:   wrapperspb.String(cw.Request.Request.RemoteAddr),
-		WatchFiles: make([]*config_manage.ClientConfigFileInfo, 0, len(cw.Items)),
+		ClientIp:   cw.Request.Request.RemoteAddr,
+		Files: make([]*config_manage.ConfigFileRelease, 0, len(cw.Items)),
 	}
 	for i := range cw.Items {
 		item := cw.Items[i]
-		specWatch.WatchFiles = append(specWatch.WatchFiles, &config_manage.ClientConfigFileInfo{
-			Namespace: wrapperspb.String(ToPolarisNamespace(item.Tenant)),
-			Group:     wrapperspb.String(item.Group),
-			FileName:  wrapperspb.String(item.DataId),
-			Md5:       wrapperspb.String(item.Md5),
+		specWatch.Files = append(specWatch.Files, &config_manage.ConfigFileRelease{
+			Namespace: ToPolarisNamespace(item.Tenant),
+			Group:     item.Group,
+			FileName:  item.DataId,
+			Md5:       item.Md5,
 		})
 	}
 

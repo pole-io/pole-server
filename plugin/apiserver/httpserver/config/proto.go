@@ -25,7 +25,7 @@ import (
 )
 
 // ConfigReleaseArr 发布规则数组定义
-type ConfigReleaseArr []*apiservice.ConfigRelease
+type ConfigReleaseArr []*apiservice.Service
 
 // Reset reset initialization
 func (m *ConfigReleaseArr) Reset() { *m = ConfigReleaseArr{} }

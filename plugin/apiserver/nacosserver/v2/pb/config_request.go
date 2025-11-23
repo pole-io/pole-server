@@ -17,12 +17,9 @@
 package nacos_grpc_service
 
 import (
-	"google.golang.org/protobuf/types/known/wrapperspb"
-
 	"github.com/pole-io/specification/source/go/api/v1/config_manage"
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/apiserver/nacosserver/model"
 )
@@ -84,16 +81,16 @@ type ConfigBatchListenRequest struct {
 
 func (c *ConfigBatchListenRequest) ToSpec() *config_manage.ClientWatchConfigFileRequest {
 	specReq := &config_manage.ClientWatchConfigFileRequest{
-		WatchFiles: make([]*config_manage.ClientConfigFileInfo, 0, len(c.ConfigListenContexts)),
+		Files: make([]*config_manage.ConfigFileRelease, 0, len(c.ConfigListenContexts)),
 	}
 
 	for i := range c.ConfigListenContexts {
 		listenCtx := c.ConfigListenContexts[i]
-		specReq.WatchFiles = append(specReq.WatchFiles, &config_manage.ClientConfigFileInfo{
-			Namespace: wrapperspb.String(model.ToPolarisNamespace(listenCtx.Tenant)),
-			Group:     wrapperspb.String(listenCtx.Group),
-			FileName:  wrapperspb.String(listenCtx.DataId),
-			Md5:       wrapperspb.String(listenCtx.Md5),
+		specReq.Files = append(specReq.Files, &config_manage.ConfigFileRelease{
+			Namespace: model.ToPolarisNamespace(listenCtx.Tenant),
+			Group:     listenCtx.Group,
+			FileName:  listenCtx.DataId,
+			Md5:       listenCtx.Md5,
 		})
 	}
 
@@ -135,11 +132,11 @@ type ConfigQueryRequest struct {
 	Tag string `json:"tag"`
 }
 
-func (c *ConfigQueryRequest) ToQuerySpec() *config_manage.ClientConfigFileInfo {
-	return &config_manage.ClientConfigFileInfo{
-		Namespace: wrapperspb.String(model.ToPolarisNamespace(c.Tenant)),
-		Group:     wrapperspb.String(c.Group),
-		FileName:  wrapperspb.String(c.DataId),
+func (c *ConfigQueryRequest) ToQuerySpec() *config_manage.ConfigFile {
+	return &config_manage.ConfigFile{
+		Namespace: model.ToPolarisNamespace(c.Tenant),
+		Group:     c.Group,
+		Name:      c.DataId,
 	}
 }
 
@@ -164,22 +161,19 @@ type ConfigPublishRequest struct {
 
 func (c *ConfigPublishRequest) ToSpec() *config_manage.ConfigFilePublishInfo {
 	ret := &config_manage.ConfigFilePublishInfo{
-		Namespace: wrapperspb.String(model.ToPolarisNamespace(c.Tenant)),
-		Group:     wrapperspb.String(c.Group),
-		FileName:  wrapperspb.String(c.DataId),
-		Content:   wrapperspb.String(c.Content),
-		Tags:      make([]*config_manage.ConfigFileTag, 0, len(c.AdditionMap)),
-		Format:    protobuf.NewStringValue(string(conftypes.FileFormatText)),
+		Namespace: model.ToPolarisNamespace(c.Tenant),
+		Group:     c.Group,
+		FileName:  c.DataId,
+		Content:   c.Content,
+		Labels:    make(map[string]string, len(c.AdditionMap)),
+		Format:    string(conftypes.FileFormatText),
 	}
 	if val, ok := c.AdditionMap["type"]; ok {
-		ret.Format = protobuf.NewStringValue(val)
+		ret.Format = val
 	}
 
 	for k, v := range c.AdditionMap {
-		ret.Tags = append(ret.Tags, &config_manage.ConfigFileTag{
-			Key:   wrapperspb.String(k),
-			Value: wrapperspb.String(v),
-		})
+		ret.Labels[k] = v
 	}
 
 	return ret
@@ -206,9 +200,9 @@ type ConfigRemoveRequest struct {
 
 func (c *ConfigRemoveRequest) ToSpec() *config_manage.ConfigFile {
 	return &config_manage.ConfigFile{
-		Namespace: wrapperspb.String(model.ToPolarisNamespace(c.Tenant)),
-		Group:     wrapperspb.String(c.Group),
-		Name:      wrapperspb.String(c.DataId),
+		Namespace: model.ToPolarisNamespace(c.Tenant),
+		Group:     c.Group,
+		Name:      c.DataId,
 	}
 }
 

@@ -51,7 +51,7 @@ type RouteRule struct {
 	// Enable this router
 	Enable bool `protobuf:"varint,4,opt,name=enable,proto3" json:"enable,omitempty"`
 	// Router type
-	RoutingPolicy traffic_manage.RoutingPolicy `json:"routing_policy,omitempty"`
+	RoutingPolicy traffic_manage.RoutePolicy `json:"routing_policy,omitempty"`
 	// Routing configuration for router
 	RoutingConfig RuleRoutingConfig `protobuf:"bytes,6,opt,name=routing_config,proto3" json:"routing_config,omitempty"`
 	// revision routing version
@@ -74,7 +74,7 @@ type RouteRule struct {
 // RuleRoutingConfig routing configuration
 type RuleRoutingConfig struct {
 	// rule route chain
-	Rules []traffic_manage.SubRuleRouting `json:"rules,omitempty"`
+	Rules []traffic_manage.RouteRule `json:"rules,omitempty"`
 }
 
 type SimpleService struct {

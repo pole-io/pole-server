@@ -30,7 +30,6 @@ import (
 	healthservice "github.com/envoyproxy/go-control-plane/envoy/service/health/v3"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -42,7 +41,6 @@ import (
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/namespace"
@@ -250,9 +248,9 @@ func convertInstances(client *resource.XDSClient, registerFrom string) map[svcty
 	var local *apimodel.Location
 	if client.Node.Locality != nil {
 		local = &apimodel.Location{
-			Region: wrapperspb.String(client.Node.Locality.Region),
-			Zone:   wrapperspb.String(client.Node.Locality.Zone),
-			Campus: wrapperspb.String(client.Node.Locality.SubZone),
+			Region: client.Node.Locality.Region,
+			Zone:   client.Node.Locality.Zone,
+			Campus: client.Node.Locality.SubZone,
 		}
 	}
 
@@ -265,24 +263,24 @@ func convertInstances(client *resource.XDSClient, registerFrom string) map[svcty
 			for _, port := range ports {
 				instance := &service_manage.Instance{}
 				instance.Location = local
-				instance.Namespace = &wrappers.StringValue{Value: client.GetSelfNamespace()}
-				instance.Service = &wrappers.StringValue{Value: svc.Name}
-				instance.Host = &wrappers.StringValue{Value: client.IPAddr}
-				instance.Port = &wrappers.UInt32Value{Value: uint32(port)}
+				instance.Namespace = client.GetSelfNamespace()
+				instance.Service = svc.Name
+				instance.Host = client.IPAddr
+				instance.Port = uint32(port)
 				if len(client.Version) > 0 {
-					instance.Version = &wrappers.StringValue{Value: client.Version}
+					instance.Version = client.Version
 				}
 				if len(protocol) > 0 {
-					instance.Protocol = &wrappers.StringValue{Value: protocol}
+					instance.Protocol = protocol
 				}
-				instance.EnableHealthCheck = &wrappers.BoolValue{Value: true}
+				instance.EnableHealthCheck = true
 				ttl := svc.HealthCheckTtl
 				if ttl == 0 {
 					ttl = defaultTTl
 				}
 				instance.HealthCheck = &service_manage.HealthCheck{
 					Heartbeat: &service_manage.HeartbeatHealthCheck{
-						Ttl: &wrappers.UInt32Value{Value: uint32(ttl)},
+						Ttl:  uint32(ttl),
 					},
 					Type: service_manage.HealthCheck_HEARTBEAT,
 				}
@@ -331,7 +329,7 @@ func (x *XDSServer) registerService(ctx context.Context, client *resource.XDSCli
 	for _, instances := range svcInstances {
 		// 1. 注册实例
 		resp := x.namingServer.CreateInstances(ctx, instances)
-		code := apimodel.Code(resp.GetCode().GetValue())
+		code := apimodel.Code(resp.GetCode())
 		// 2. 注册成功，则返回
 		if code == apimodel.Code_ExecuteSuccess || code == apimodel.Code_ExistedResource {
 			continue
@@ -340,7 +338,7 @@ func (x *XDSServer) registerService(ctx context.Context, client *resource.XDSCli
 		if code == apimodel.Code_NotFoundResource {
 			// 4. 继续注册实例
 			resp = x.namingServer.CreateInstances(ctx, instances)
-			code = apimodel.Code(resp.GetCode().GetValue())
+			code = apimodel.Code(resp.GetCode())
 			if code == apimodel.Code_ExecuteSuccess || code == apimodel.Code_ExistedResource {
 				continue
 			}
@@ -383,19 +381,19 @@ func (x *XDSServer) processEndpointHealthResponse(
 				}
 
 				ins := &service_manage.Instance{
-					Namespace: protobuf.NewStringValue(client.GetSelfNamespace()),
-					Service:   protobuf.NewStringValue(client.GetSelfService()),
-					Host:      protobuf.NewStringValue(host),
-					Port:      protobuf.NewUInt32Value(port),
+					Namespace: client.GetSelfNamespace(),
+					Service:   client.GetSelfService(),
+					Host:      host,
+					Port:      port,
 				}
 
 				switch endopint.GetHealthStatus() {
 				case corev3.HealthStatus_HEALTHY:
 					resp := x.healthSvr.Report(ctx, ins)
-					code := apimodel.Code(resp.GetCode().GetValue())
+					code := apimodel.Code(resp.GetCode())
 					if code != apimodel.Code_ExecuteSuccess && code != apimodel.Code_HeartbeatExceedLimit {
 						log.Errorf("[XdsV2Server] fail to do heartbeat, namespace %s, service %s, host %s, port %d, err is %v",
-							namespaceName, serviceName, host, port, resp.GetInfo().GetValue())
+							namespaceName, serviceName, host, port, resp.GetInfo())
 						return status.Errorf(codes.InvalidArgument,
 							"fail to do heartbeat, code is %d, namespace %s, service %s, host %s, port %d",
 							code, namespaceName, serviceName, host, port)
@@ -403,9 +401,9 @@ func (x *XDSServer) processEndpointHealthResponse(
 				case corev3.HealthStatus_DRAINING:
 					// 进行反注册
 					resp := x.namingServer.DeregisterInstance(ctx, ins)
-					code := apimodel.Code(resp.GetCode().GetValue())
+					code := apimodel.Code(resp.GetCode())
 					if code != apimodel.Code_ExecuteSuccess && code != apimodel.Code_NotFoundResource {
-						log.Errorf("[XdsV2Server] fail to process endpoint health, err is %v", resp.GetInfo().GetValue())
+						log.Errorf("[XdsV2Server] fail to process endpoint health, err is %v", resp.GetInfo())
 						return status.Errorf(codes.InvalidArgument,
 							"fail to do deregister, code is %d, namespace %s, service %s, host %s, port %d",
 							code, namespaceName, serviceName, host, port)

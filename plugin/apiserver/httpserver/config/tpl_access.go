@@ -3,13 +3,11 @@ package config
 import (
 	"github.com/emicklei/go-restful/v3"
 	"github.com/golang/protobuf/proto"
-	"go.uber.org/zap"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
@@ -48,14 +46,6 @@ func (h *HTTPServer) CreateConfigFileTemplates(req *restful.Request, rsp *restfu
 	})
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewBatchWriteResponseWithMsg(apimodel.Code_ParseException, err.Error()))
-		return
-	}
-
-	if err != nil {
-		configLog.Error("[Config][HttpServer] parse config file template from request error.",
-			utils.RequestID(ctx),
-			zap.String("error", err.Error()))
-		handler.WriteHeaderAndProto(api.NewConfigFileTemplateResponseWithMessage(apimodel.Code_ParseException, err.Error()))
 		return
 	}
 

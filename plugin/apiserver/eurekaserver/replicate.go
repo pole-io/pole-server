@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/emicklei/go-restful/v3"
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
@@ -169,28 +168,28 @@ func (h *EurekaServer) dispatch(
 
 func eventToInstance(event *svctypes.InstanceEvent, appName string, curTimeMilli int64) *InstanceInfo {
 	instance := &apiservice.Instance{
-		Id:                &wrappers.StringValue{Value: event.Id},
-		Host:              &wrappers.StringValue{Value: event.Instance.GetHost().GetValue()},
-		Port:              &wrappers.UInt32Value{Value: event.Instance.GetPort().GetValue()},
-		Protocol:          &wrappers.StringValue{Value: event.Instance.GetProtocol().GetValue()},
-		Version:           &wrappers.StringValue{Value: event.Instance.GetVersion().GetValue()},
-		Priority:          &wrappers.UInt32Value{Value: event.Instance.GetPriority().GetValue()},
-		Weight:            &wrappers.UInt32Value{Value: event.Instance.GetWeight().GetValue()},
-		EnableHealthCheck: &wrappers.BoolValue{Value: event.Instance.GetEnableHealthCheck().GetValue()},
+		Id:                event.Id,
+		Host:              event.Instance.GetHost(),
+		Port:              event.Instance.GetPort(),
+		Protocol:          event.Instance.GetProtocol(),
+		Version:           event.Instance.GetVersion(),
+		Priority:          event.Instance.GetPriority(),
+		Weight:            event.Instance.GetWeight(),
+		EnableHealthCheck: event.Instance.GetEnableHealthCheck(),
 		HealthCheck:       event.Instance.GetHealthCheck(),
-		Healthy:           &wrappers.BoolValue{Value: event.Instance.GetHealthy().GetValue()},
-		Isolate:           &wrappers.BoolValue{Value: event.Instance.GetIsolate().GetValue()},
+		Healthy:           event.Instance.GetHealthy(),
+		Isolate:           event.Instance.GetIsolate(),
 		Location:          event.Instance.GetLocation(),
 		Metadata:          event.Instance.GetMetadata(),
 	}
 	if event.EType == svctypes.EventInstanceTurnHealth {
-		instance.Healthy = &wrappers.BoolValue{Value: true}
+		instance.Healthy = true
 	} else if event.EType == svctypes.EventInstanceTurnUnHealth {
-		instance.Healthy = &wrappers.BoolValue{Value: false}
+		instance.Healthy = false
 	} else if event.EType == svctypes.EventInstanceOpenIsolate {
-		instance.Isolate = &wrappers.BoolValue{Value: true}
+		instance.Isolate = true
 	} else if event.EType == svctypes.EventInstanceCloseIsolate {
-		instance.Isolate = &wrappers.BoolValue{Value: false}
+		instance.Isolate = false
 	}
 	return buildInstance(appName, instance, curTimeMilli)
 }

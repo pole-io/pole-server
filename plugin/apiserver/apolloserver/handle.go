@@ -8,13 +8,12 @@ import (
 	"path"
 	"strings"
 
-	"github.com/pole-io/specification/source/go/api/v1/config_manage"
+	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
@@ -50,35 +49,31 @@ func (a *ApolloServer) GetConfigFile(ctx context.Context, req *GetConfigFileRequ
 
 	for i := range nsArgs {
 		for _, filename := range filenames {
-			rsp := a.configSvr.GetConfigFileWithCache(ctx, &config_manage.ClientConfigFileInfo{
-				Namespace: protobuf.NewStringValue(nsArgs[i]),
-				Group:     protobuf.NewStringValue(req.AppId),
-				FileName:  protobuf.NewStringValue(filename),
-				Md5:       protobuf.NewStringValue(req.Version),
-				Tags: []*config_manage.ConfigFileTag{
-					{
-						Key:   protobuf.NewStringValue(types.ClientLabel_IP),
-						Value: protobuf.NewStringValue(req.ClientIP),
-					},
-				},
+			rsp := a.configSvr.GetConfigFileWithCache(ctx, &apiconfig.ConfigFile{
+				Namespace: nsArgs[i],
+				Group:     req.AppId,
+				Name:      filename,
 			})
 
 			if api.IsSuccess(rsp) {
-				if rsp.GetCode().GetValue() == uint32(apimodel.Code_DataNoChange) {
+				if rsp.GetCode() == uint32(apimodel.Code_DataNoChange) {
 					// 数据没变更
 					return nil, nil
 				}
 
-				cfg, err := convertToConfigurations(rsp.GetConfigFile())
+				cfg, err := convertToConfigurations(rsp.GetFile())
 				if err != nil {
 					return nil, err
 				}
+
+				file := rsp.GetFile()
+				releaseKey := fmt.Sprintf("%s-%s-%s-%d", file.Namespace, file.Group, file.FileName, file.Version)
 
 				return &GetConfigFileResponse{
 					AppId:          req.AppId,
 					Cluster:        req.Cluster,
 					NamespaceName:  req.Filename,
-					ReleaseKey:     rsp.GetConfigFile().GetMd5().GetValue(),
+					ReleaseKey:     releaseKey,
 					Configurations: cfg,
 				}, nil
 			}
@@ -89,10 +84,10 @@ func (a *ApolloServer) GetConfigFile(ctx context.Context, req *GetConfigFileRequ
 	return nil, Err_NotFoundConfig
 }
 
-func convertToConfigurations(f *config_manage.ClientConfigFileInfo) (map[string]string, error) {
+func convertToConfigurations(f *apiconfig.ConfigFileRelease) (map[string]string, error) {
 	items := map[string]string{}
-	content := f.GetContent().GetValue()
-	fext := path.Ext(f.GetFileName().GetValue())
+	content := f.GetContent()
+	fext := path.Ext(f.GetFileName())
 	switch fext {
 	case "", "properties":
 		scanner := bufio.NewScanner(strings.NewReader(content))
@@ -139,25 +134,34 @@ func (a *ApolloServer) WatchConfigFile(ctx context.Context, req *WatchConfigFile
 		return "default"
 	}()
 
-	clientSideNotifications := []*config_manage.ClientConfigFileInfo{}
+	clientSideNotifications := []*apiconfig.ConfigFile{}
+	clientWatchFiles := []*apiconfig.ConfigFileRelease{}
 	for _, item := range req.Notifications {
-		clientSideNotifications = append(clientSideNotifications, &config_manage.ClientConfigFileInfo{
-			Namespace: protobuf.NewStringValue(nsName),
-			Group:     protobuf.NewStringValue(req.AppId),
-			FileName:  protobuf.NewStringValue(item.NamespaceName),
-			Version:   protobuf.NewUInt64Value(uint64(item.NotificationId)),
-			Tags: []*config_manage.ConfigFileTag{
-				{
-					Key:   protobuf.NewStringValue(types.ClientLabel_IP),
-					Value: protobuf.NewStringValue(req.ClientIP),
-				},
+		// For AddWatcher
+		clientSideNotifications = append(clientSideNotifications, &apiconfig.ConfigFile{
+			Namespace: nsName,
+			Group:     req.AppId,
+			Name:      item.NamespaceName,
+			Tags: map[string]string{
+				types.ClientLabel_IP: req.ClientIP,
+			},
+		})
+
+		// For ClientWatchConfigFileRequest
+		clientWatchFiles = append(clientWatchFiles, &apiconfig.ConfigFileRelease{
+			Namespace: nsName,
+			Group:     req.AppId,
+			FileName:  item.NamespaceName,
+			Version:   uint64(item.NotificationId),
+			Labels: map[string]string{
+				types.ClientLabel_IP: req.ClientIP,
 			},
 		})
 	}
 
-	specReq := &config_manage.ClientWatchConfigFileRequest{
-		ClientIp:   protobuf.NewStringValue(req.ClientIP),
-		WatchFiles: clientSideNotifications,
+	specReq := &apiconfig.ClientWatchConfigFileRequest{
+		ClientIp: req.ClientIP,
+		Files:    clientWatchFiles,
 	}
 
 	if val := a.diffChangeFiles(ctx, specReq); len(val) > 0 {
@@ -171,10 +175,10 @@ func (a *ApolloServer) WatchConfigFile(ctx context.Context, req *WatchConfigFile
 	// 没有变更，加入到长轮询中
 	watchCtx := a.innerSvr.WatchCenter().AddWatcher(clientId, clientSideNotifications, a.BuildTimeoutWatchCtx(ctx, a.watchTimeOut))
 	notifyRet := (watchCtx.(*ApolloWatchContext)).GetNotifieResult()
-	notifyCode := notifyRet.GetCode().GetValue()
+	notifyCode := notifyRet.Code
 	if notifyCode != uint32(apimodel.Code_ExecuteSuccess) && notifyCode != uint32(apimodel.Code_DataNoChange) {
-		apollolog.Errorf("watch config file failed: %s, code: %d", notifyRet.GetInfo().GetValue(), notifyCode)
-		return nil, errors.New("watch config file failed: " + notifyRet.GetInfo().GetValue())
+		apollolog.Errorf("watch config file failed: %s, code: %d", notifyRet.Info, notifyCode)
+		return nil, errors.New("watch config file failed: " + notifyRet.Info)
 	}
 
 	var changeKeys []*ApolloConfigNotification
@@ -183,11 +187,20 @@ func (a *ApolloServer) WatchConfigFile(ctx context.Context, req *WatchConfigFile
 		changeKeys = a.diffChangeFiles(ctx, specReq)
 	} else {
 		// 如果收到一个事件变化，就立即通知这个文件的变化信息
-		changeKeys = []*ApolloConfigNotification{
-			{
-				NamespaceName:  notifyRet.GetConfigFile().GetFileName().GetValue(),
-				NotificationId: int64(notifyRet.GetConfigFile().GetVersion().GetValue()),
-			},
+		// 使用原始请求中的文件信息生成通知
+		changeKeys = make([]*ApolloConfigNotification, 0, len(req.Notifications))
+		for _, item := range req.Notifications {
+			// 获取当前活跃的配置文件版本
+			active := a.innerSvr.CacheManager().ConfigFile().GetActiveRelease(nsName, req.AppId, item.NamespaceName)
+			notificationId := item.NotificationId
+			if active != nil {
+				notificationId = int64(active.Version)
+			}
+
+			changeKeys = append(changeKeys, &ApolloConfigNotification{
+				NamespaceName:  item.NamespaceName,
+				NotificationId: notificationId,
+			})
 		}
 	}
 	return &WatchConfigFileResponse{Notifications: changeKeys}, nil
@@ -208,8 +221,8 @@ func (a *ApolloServer) GetConfigServers(ctx context.Context, appId, clientIp str
 	rsp := a.discoverSvr.ServiceInstancesCache(ctx, &service_manage.DiscoverFilter{
 		OnlyHealthyInstance: true,
 	}, &service_manage.Service{
-		Namespace: protobuf.NewStringValue(a.metaSvrs.Namespace),
-		Name:      protobuf.NewStringValue(a.metaSvrs.Name),
+		Namespace: a.metaSvrs.Namespace,
+		Name:      a.metaSvrs.Name,
 	})
 
 	if !api.IsSuccess(rsp) {
@@ -219,9 +232,9 @@ func (a *ApolloServer) GetConfigServers(ctx context.Context, appId, clientIp str
 	nodes := make([]*ServerNode, 0, len(rsp.GetInstances()))
 	for _, ins := range rsp.GetInstances() {
 		nodes = append(nodes, &ServerNode{
-			AppName:     ins.GetService().GetValue(),
-			InstanceId:  ins.GetId().GetValue(),
-			HomepageUrl: fmt.Sprintf("http://%s:%d/", ins.GetHost().GetValue(), ins.GetPort().GetValue()),
+			AppName:     ins.GetService(),
+			InstanceId:  ins.GetId(),
+			HomepageUrl: fmt.Sprintf("http://%s:%d/", ins.GetHost(), ins.GetPort()),
 		})
 	}
 	return nodes, nil

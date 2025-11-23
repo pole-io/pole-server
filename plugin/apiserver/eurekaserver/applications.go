@@ -185,7 +185,7 @@ func buildHashCode(version string, hashBuilder map[string]int, newApps *Applicat
 }
 
 func parseStatus(instance *apiservice.Instance) string {
-	if !instance.GetIsolate().GetValue() {
+	if !instance.GetIsolate() {
 		return StatusUp
 	}
 	status := instance.Metadata[InternalMetadataStatus]
@@ -243,8 +243,8 @@ func parsePortWrapper(info *InstanceInfo, instance *apiservice.Instance) {
 		info.Port.Port = insePort
 		info.Port.Enabled = insePortEnabled
 	} else {
-		protocol := instance.GetProtocol().GetValue()
-		port := instance.GetPort().GetValue()
+		protocol := instance.GetProtocol()
+		port := instance.GetPort()
 		if protocol == SecureProtocol {
 			info.SecurePort.Port = int(port)
 			info.SecurePort.Enabled = "true"
@@ -310,7 +310,7 @@ func buildInstance(appName string, instance *apiservice.Instance, lastModifyTime
 	}
 	instanceInfo.AppName = appName
 	// 属于eureka注册的实例
-	instanceInfo.InstanceId = instance.GetId().GetValue()
+	instanceInfo.InstanceId = instance.GetId()
 	metadata := instance.GetMetadata()
 	if metadata == nil {
 		metadata = map[string]string{}
@@ -321,7 +321,7 @@ func buildInstance(appName string, instance *apiservice.Instance, lastModifyTime
 	if hostName, ok := metadata[MetadataHostName]; ok {
 		instanceInfo.HostName = hostName
 	}
-	instanceInfo.IpAddr = instance.GetHost().GetValue()
+	instanceInfo.IpAddr = instance.GetHost()
 	instanceInfo.Status = parseStatus(instance)
 	instanceInfo.OverriddenStatus = StatusUnknown
 	parsePortWrapper(instanceInfo, instance)
@@ -367,7 +367,7 @@ func buildInstance(appName string, instance *apiservice.Instance, lastModifyTime
 		instanceInfo.VipAddress = appName
 	}
 	if instanceInfo.HostName == "" {
-		instanceInfo.HostName = instance.GetHost().GetValue()
+		instanceInfo.HostName = instance.GetHost()
 	}
 	buildLocationInfo(instanceInfo, instance)
 	instanceInfo.LastUpdatedTimestamp = strconv.Itoa(int(lastModifyTime))
@@ -402,9 +402,9 @@ func buildLocationInfo(instanceInfo *InstanceInfo, instance *apiservice.Instance
 	var zone string
 	var campus string
 	if location := instance.GetLocation(); location != nil {
-		region = location.GetRegion().GetValue()
-		zone = location.GetZone().GetValue()
-		campus = location.GetCampus().GetValue()
+		region = location.GetRegion()
+		zone = location.GetZone()
+		campus = location.GetCampus()
 	}
 	if _, ok := instanceInfo.Metadata.Meta[KeyRegion]; !ok && len(region) > 0 {
 		instanceInfo.Metadata.Meta[KeyRegion] = region
