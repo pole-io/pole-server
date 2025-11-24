@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -15,7 +14,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
-	"github.com/pole-io/specification/source/go/api/v1/service_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/access_control/ratelimit"
@@ -307,12 +306,7 @@ func (a *ApolloServer) enterRateLimit(req *restful.Request, rsp *restful.Respons
 	if ok := ratelimit.GetRatelimit().Allow(ratelimit.IPRatelimit, segments[0]); !ok {
 		apollolog.Error("ip ratelimit is not allow", zap.String("client", address),
 			utils.ZapRequestID(rid))
-		httputils.HTTPResponse(req, rsp, &ErrorResponse{
-			Timestamp: time.Now().String(),
-			Status:    http.StatusTooManyRequests,
-			Error:     strconv.Itoa(int(v1.IPRateLimit)),
-			Message:   "ip ratelimit is not allow",
-		})
+		httputils.HTTPResponse(req, rsp, v1.NewResponse(apimodel.Code_IPRateLimit))
 		return errors.New("ip ratelimit is not allow")
 	}
 
@@ -322,12 +316,7 @@ func (a *ApolloServer) enterRateLimit(req *restful.Request, rsp *restful.Respons
 	if ok := ratelimit.GetRatelimit().Allow(ratelimit.APIRatelimit, apiName); !ok {
 		apollolog.Error("api ratelimit is not allow", zap.String("client", address),
 			utils.ZapRequestID(rid), zap.String("api", apiName))
-		httputils.HTTPResponse(req, rsp, &ErrorResponse{
-			Timestamp: time.Now().String(),
-			Status:    http.StatusTooManyRequests,
-			Error:     strconv.Itoa(int(v1.APIRateLimit)),
-			Message:   "api ratelimit is not allow",
-		})
+		httputils.HTTPResponse(req, rsp, v1.NewResponse(apimodel.Code_APIRateLimit))
 		return errors.New("api ratelimit is not allow")
 	}
 
@@ -336,10 +325,10 @@ func (a *ApolloServer) enterRateLimit(req *restful.Request, rsp *restful.Respons
 
 func (a *ApolloServer) recoverFunc(i interface{}, w http.ResponseWriter) {
 	apollolog.Errorf("panic %+v", i)
-	obj := &service_manage.Response{}
+	obj := &apimodel.Response{}
 
 	status := v1.CalcCode(obj)
-	if code := obj.GetCode().GetValue(); code != v1.ExecuteSuccess {
+	if code := obj.Code; code != v1.ExecuteSuccess {
 		w.Header().Add(utils.PolarisCode, fmt.Sprintf("%d", code))
 		w.Header().Add(utils.PolarisMessage, v1.Code2Info(code))
 	}

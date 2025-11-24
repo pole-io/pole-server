@@ -221,7 +221,7 @@ func (c *Checker) realCheck() {
 			found := false
 			for i := range c.selfInstances {
 				selfIns := c.selfInstances[i]
-				if strings.HasSuffix(connID, selfIns.GetHost().GetValue()) && selfIns.GetHealthy().GetValue() {
+				if strings.HasSuffix(connID, selfIns.GetHost()) && selfIns.GetHealthy() {
 					found = true
 					break
 				}
@@ -233,14 +233,14 @@ func (c *Checker) realCheck() {
 			continue
 		}
 		_, exist := c.clientMgr.getClient(connID)
-		isHealth := instance.GetHealthy().GetValue()
+		isHealth := instance.GetHealthy()
 		if !exist && isHealth {
 			// 如果实例对应的连接ID不存在，设置为不健康
 			turnUnhealth[instanceID] = struct{}{}
 			event.GetDiscoverEvent().PublishEvent(&svctypes.InstanceEvent{
 				Id:        instanceID,
-				Namespace: instance.GetNamespace().GetValue(),
-				Service:   instance.GetService().GetValue(),
+				Namespace: instance.GetNamespace(),
+				Service:   instance.GetService(),
 				Instance:  instance,
 				EType:     svctypes.EventInstanceTurnUnHealth,
 			})
@@ -250,9 +250,9 @@ func (c *Checker) realCheck() {
 			turnHealth[instanceID] = struct{}{}
 			event.GetDiscoverEvent().PublishEvent(&svctypes.InstanceEvent{
 				Id:        instanceID,
-				SvcId:     instance.GetService().GetValue(),
-				Namespace: instance.GetNamespace().GetValue(),
-				Service:   instance.GetService().GetValue(),
+				SvcId:     instance.GetService(),
+				Namespace: instance.GetNamespace(),
+				Service:   instance.GetService(),
 				Instance:  instance,
 				EType:     svctypes.EventInstanceTurnHealth,
 			})

@@ -63,7 +63,7 @@ func (m *InstanceArr) String() string { return proto.CompactTextString(m) }
 func (*InstanceArr) ProtoMessage() {}
 
 // RoutingArr 路由规则数组定义
-type RoutingArr []*apitraffic.Routing
+type RoutingArr []*apitraffic.RouteRule
 
 // Reset reset initialization
 func (m *RoutingArr) Reset() { *m = RoutingArr{} }
@@ -75,7 +75,7 @@ func (m *RoutingArr) String() string { return proto.CompactTextString(m) }
 func (*RoutingArr) ProtoMessage() {}
 
 // RateLimitArr 限流规则数组定义
-type RateLimitArr []*apitraffic.Rule
+type RateLimitArr []*apitraffic.RateLimit
 
 // Reset reset initialization
 func (m *RateLimitArr) Reset() { *m = RateLimitArr{} }
@@ -87,7 +87,7 @@ func (m *RateLimitArr) String() string { return proto.CompactTextString(m) }
 func (*RateLimitArr) ProtoMessage() {}
 
 // CircuitBreakerArr 熔断规则数组定义
-type CircuitBreakerArr []*apifault.CircuitBreaker
+type CircuitBreakerArr []*apifault.CircuitBreakerRule
 
 // Reset reset initialization
 func (m *CircuitBreakerArr) Reset() { *m = CircuitBreakerArr{} }
@@ -99,7 +99,7 @@ func (m *CircuitBreakerArr) String() string { return proto.CompactTextString(m) 
 func (*CircuitBreakerArr) ProtoMessage() {}
 
 // ConfigReleaseArr 发布规则数组定义
-type ConfigReleaseArr []*apiservice.ConfigRelease
+type ConfigReleaseArr []*apiservice.Service
 
 // Reset reset initialization
 func (m *ConfigReleaseArr) Reset() { *m = ConfigReleaseArr{} }

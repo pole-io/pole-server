@@ -23,12 +23,10 @@ import (
 	"strconv"
 	"strings"
 
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
@@ -40,10 +38,10 @@ import (
 func (n *DiscoverServer) handleRegister(ctx context.Context, namespace, serviceName string, ins *model.Instance) error {
 	specIns := model.PrepareSpecInstance(namespace, serviceName, ins)
 	resp := n.discoverSvr.RegisterInstance(ctx, specIns)
-	if apimodel.Code(resp.GetCode().GetValue()) != apimodel.Code_ExecuteSuccess {
+	if apimodel.Code(resp.GetCode()) != apimodel.Code_ExecuteSuccess {
 		return &model.NacosError{
 			ErrCode: int32(model.ExceptionCode_ServerError),
-			ErrMsg:  resp.GetInfo().GetValue(),
+			ErrMsg:  resp.GetInfo(),
 		}
 	}
 	return nil
@@ -51,18 +49,18 @@ func (n *DiscoverServer) handleRegister(ctx context.Context, namespace, serviceN
 
 func (n *DiscoverServer) handleUpdate(ctx context.Context, namespace, serviceName string, ins *model.Instance) error {
 	specIns := model.PrepareSpecInstance(namespace, serviceName, ins)
-	if specIns.Id == nil || specIns.GetId().GetValue() == "" {
+	if  specIns.GetId() == "" {
 		insId, errRsp := valid.CheckInstanceTetrad(specIns)
 		if errRsp != nil {
 			return &model.NacosError{
 				ErrCode: int32(model.ExceptionCode_ServerError),
-				ErrMsg:  errRsp.GetInfo().GetValue(),
+				ErrMsg:  errRsp.GetInfo() ,
 			}
 		}
-		specIns.Id = wrapperspb.String(insId)
+		specIns.Id = insId
 	}
 	svr := n.discoverSvr.(*service.Server)
-	saveIns, err := svr.Store().GetInstance(specIns.GetId().GetValue())
+	saveIns, err := svr.Store().GetInstance(specIns.GetId())
 	if err != nil {
 		return &model.NacosError{
 			ErrCode: int32(model.ExceptionCode_ServerError),
@@ -71,10 +69,10 @@ func (n *DiscoverServer) handleUpdate(ctx context.Context, namespace, serviceNam
 	}
 	specIns = mergeUpdateInstanceInfo(specIns, saveIns)
 	resp := n.discoverSvr.UpdateInstance(ctx, specIns)
-	if apimodel.Code(resp.GetCode().GetValue()) != apimodel.Code_ExecuteSuccess {
+	if apimodel.Code(resp.GetCode()) != apimodel.Code_ExecuteSuccess {
 		return &model.NacosError{
 			ErrCode: int32(model.ExceptionCode_ServerError),
-			ErrMsg:  resp.GetInfo().GetValue(),
+			ErrMsg:  resp.GetInfo(),
 		}
 	}
 	return nil
@@ -83,10 +81,10 @@ func (n *DiscoverServer) handleUpdate(ctx context.Context, namespace, serviceNam
 func (n *DiscoverServer) handleDeregister(ctx context.Context, namespace, svcName string, ins *model.Instance) error {
 	specIns := model.PrepareSpecInstance(namespace, svcName, ins)
 	resp := n.discoverSvr.DeregisterInstance(ctx, specIns)
-	if apimodel.Code(resp.GetCode().GetValue()) != apimodel.Code_ExecuteSuccess {
+	if apimodel.Code(resp.GetCode()) != apimodel.Code_ExecuteSuccess {
 		return &model.NacosError{
 			ErrCode: int32(model.ExceptionCode_ServerError),
-			ErrMsg:  resp.GetInfo().GetValue(),
+			ErrMsg:  resp.GetInfo(),
 		}
 	}
 	return nil
@@ -105,12 +103,12 @@ func (n *DiscoverServer) handleBeat(ctx context.Context, namespace, svcName stri
 	}
 
 	resp := n.healthSvr.Report(ctx, &apiservice.Instance{
-		Service:   protobuf.NewStringValue(model.ReplaceNacosService(svcName)),
-		Namespace: protobuf.NewStringValue(namespace),
-		Host:      protobuf.NewStringValue(clientBeat.Ip),
-		Port:      protobuf.NewUInt32Value(uint32(clientBeat.Port)),
+		Service:   model.ReplaceNacosService(svcName),
+		Namespace: namespace,
+		Host:      clientBeat.Ip,
+		Port:      uint32(clientBeat.Port),
 	})
-	rspCode := apimodel.Code(resp.GetCode().GetValue())
+	rspCode := apimodel.Code(resp.GetCode())
 
 	if rspCode == apimodel.Code_ExecuteSuccess {
 		return map[string]interface{}{
@@ -130,7 +128,7 @@ func (n *DiscoverServer) handleBeat(ctx context.Context, namespace, svcName stri
 
 	return nil, &model.NacosError{
 		ErrCode: int32(model.ExceptionCode_ServerError),
-		ErrMsg:  resp.GetInfo().GetValue(),
+		ErrMsg:  resp.GetInfo(),
 	}
 
 }

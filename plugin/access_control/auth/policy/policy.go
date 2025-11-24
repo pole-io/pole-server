@@ -30,7 +30,6 @@ import (
 
 	"github.com/gogo/protobuf/jsonpb"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
@@ -38,7 +37,6 @@ import (
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	v1 "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -65,7 +63,7 @@ func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthS
 }
 
 func (svr *Server) CreatePolicy(ctx context.Context, req *apisecurity.AuthStrategy) *apimodel.Response {
-	req.Owner = protobuf.NewStringValue(utils.ParseOwnerID(ctx))
+	req.Owner = utils.ParseOwnerID(ctx)
 	req.Resources = svr.normalizeResource(req.Resources)
 
 	saveData := authtypes.ParsePolicyRule(req)
@@ -89,7 +87,7 @@ func (svr *Server) CreatePolicy(ctx context.Context, req *apisecurity.AuthStrate
 		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 
-	log.Info("[Auth][Strategy] create strategy", utils.RequestID(ctx), zap.String("name", req.Name.GetValue()))
+	log.Info("[Auth][Strategy] create strategy", utils.RequestID(ctx), zap.String("name", req.Name))
 	svr.RecordHistory(authStrategyRecordEntry(ctx, req, saveData, types.OCreate))
 
 	return api.NewAuthStrategyResponse(apimodel.Code_ExecuteSuccess, req)
@@ -113,7 +111,7 @@ func (svr *Server) UpdatePolicies(
 // Case 2. 鉴权策略只能被自己的 owner 对应的用户修改
 // Case 3. 主账户的默认策略不得修改
 func (svr *Server) UpdatePolicy(ctx context.Context, req *apisecurity.AuthStrategy) *apimodel.Response {
-	saveData, err := svr.storage.GetStrategyDetail(req.GetId().GetValue())
+	saveData, err := svr.storage.GetStrategyDetail(req.GetId())
 	if err != nil {
 		log.Error("[Auth][Strategy] get strategy from store", utils.RequestID(ctx),
 			zap.Error(err))
@@ -158,7 +156,7 @@ func (svr *Server) DeletePolicies(
 // Case 1. 只有该策略的 owner 账户可以删除策略
 // Case 2. 默认策略不能被删除，默认策略只能随着账户的删除而被清理
 func (svr *Server) DeletePolicy(ctx context.Context, req *apisecurity.AuthStrategy) *apimodel.Response {
-	strategy, err := svr.storage.GetStrategyDetail(req.GetId().GetValue())
+	strategy, err := svr.storage.GetStrategyDetail(req.GetId())
 	if err != nil {
 		log.Error("[Auth][Strategy] get strategy from store", utils.RequestID(ctx),
 			zap.Error(err))
@@ -174,14 +172,14 @@ func (svr *Server) DeletePolicy(ctx context.Context, req *apisecurity.AuthStrate
 		return api.NewAuthStrategyResponseWithMsg(apimodel.Code_BadRequest, "default strategy can't delete", req)
 	}
 
-	if err := svr.storage.DeleteStrategy(req.GetId().GetValue()); err != nil {
+	if err := svr.storage.DeleteStrategy(req.GetId()); err != nil {
 		log.Error("[Auth][Strategy] delete strategy from store",
 			utils.RequestID(ctx), zap.Error(err))
 		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 
 	log.Info("[Auth][Strategy] delete strategy from store", utils.RequestID(ctx),
-		zap.String("name", req.Name.GetValue()))
+		zap.String("name", req.Name))
 	svr.RecordHistory(authStrategyRecordEntry(ctx, req, strategy, types.ODelete))
 
 	return api.NewAuthStrategyResponse(apimodel.Code_ExecuteSuccess, req)
@@ -217,13 +215,22 @@ func (svr *Server) GetPolicies(ctx context.Context, filters map[string]string) *
 	}
 
 	resp := api.NewAuthBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Amount = protobuf.NewUInt32Value(total)
-	resp.Size = protobuf.NewUInt32Value(uint32(len(strategies)))
+	resp.Amount = total
+	resp.Size = uint32(len(strategies))
 
+	var authStrategies []*apisecurity.AuthStrategy
 	if strings.Compare(filters["berif"], "true") == 0 {
-		resp.AuthStrategies = enhancedAuthStrategy2Api(ctx, strategies, svr.authStrategy2Api)
+		authStrategies = enhancedAuthStrategy2Api(ctx, strategies, svr.authStrategy2Api)
 	} else {
-		resp.AuthStrategies = enhancedAuthStrategy2Api(ctx, strategies, svr.authStrategyFull2Api)
+		authStrategies = enhancedAuthStrategy2Api(ctx, strategies, svr.authStrategyFull2Api)
+	}
+
+	// 将认证策略数据添加到 resp.Data 字段
+	for _, strategy := range authStrategies {
+		if err := api.AddAnyDataIntoBatchQuery(resp, strategy); err != nil {
+			log.Error("[Auth][Strategy] add strategy to response data", utils.RequestID(ctx), zap.Error(err))
+			return api.NewAuthBatchQueryResponse(apimodel.Code_ExecuteException)
+		}
 	}
 	return resp
 }
@@ -270,11 +277,11 @@ func (svr *Server) GetPolicy(ctx context.Context, req *apisecurity.AuthStrategy)
 	userId := utils.ParseUserID(ctx)
 	isOwner := utils.ParseIsOwner(ctx)
 
-	if req.GetId().GetValue() == "" {
+	if req.GetId() == "" {
 		return api.NewAuthResponse(apimodel.Code_EmptyQueryParameter)
 	}
 
-	ret, err := svr.storage.GetStrategyDetail(req.GetId().GetValue())
+	ret, err := svr.storage.GetStrategyDetail(req.GetId())
 	if err != nil {
 		log.Error("[Auth][Strategy] get strategt from store",
 			utils.RequestID(ctx), zap.Error(err))
@@ -288,7 +295,7 @@ func (svr *Server) GetPolicy(ctx context.Context, req *apisecurity.AuthStrategy)
 	// 判断是否在该策略所属的成员列表中，如果自己在某个用户组，而该用户组又在这个策略的成员中，则也是可以查看的
 	if !canView {
 		curUser := &apisecurity.User{
-			Id: wrapperspb.String(userId),
+			Id: userId,
 		}
 		for index := range ret.Principals {
 			principal := ret.Principals[index]
@@ -298,7 +305,7 @@ func (svr *Server) GetPolicy(ctx context.Context, req *apisecurity.AuthStrategy)
 			}
 			if principal.PrincipalType == authtypes.PrincipalGroup {
 				group := &apisecurity.UserGroup{
-					Id: wrapperspb.String(principal.PrincipalID),
+					Id: principal.PrincipalID,
 				}
 				if svr.userSvr.GetUserHelper().CheckUserInGroup(ctx, group, curUser) {
 					canView = true
@@ -310,7 +317,7 @@ func (svr *Server) GetPolicy(ctx context.Context, req *apisecurity.AuthStrategy)
 
 	if !canView {
 		log.Error("[Auth][Strategy] get strategy detail denied",
-			utils.RequestID(ctx), zap.String("user", userId), zap.String("strategy", req.Id.Value),
+			utils.RequestID(ctx), zap.String("user", userId), zap.String("strategy", req.Id),
 			zap.Bool("is-owner", isOwner),
 		)
 		return api.NewAuthStrategyResponse(apimodel.Code_NotAllowedAccess, req)
@@ -350,11 +357,11 @@ func (svr *Server) GetPrincipalResources(ctx context.Context, query map[string]s
 	// 找这个用户所关联的用户组
 	if authtypes.PrincipalType(principalRole) == authtypes.PrincipalUser {
 		groups := svr.userSvr.GetUserHelper().GetUserOwnGroup(ctx, &apisecurity.User{
-			Id: wrapperspb.String(principalId),
+			Id: principalId,
 		})
 		for i := range groups {
 			item := groups[i]
-			res, err := svr.storage.GetStrategyResources(item.GetId().GetValue(), authtypes.PrincipalGroup)
+			res, err := svr.storage.GetStrategyResources(item.GetId(), authtypes.PrincipalGroup)
 			if err != nil {
 				log.Error("[Auth][Strategy] get principal link resource", utils.RequestID(ctx),
 					zap.String("principal-id", principalId), zap.Any("principal-role", principalRole), zap.Error(err))
@@ -417,18 +424,18 @@ func (svr *Server) GetResourcePrincipals(ctx context.Context, query map[string]s
 			switch item.PrincipalType {
 			case authtypes.PrincipalUser:
 				principals.Users = append(principals.Users, &apisecurity.Principal{
-					Id:   wrapperspb.String(item.PrincipalID),
-					Name: wrapperspb.String(item.Name),
+					Id:   item.PrincipalID,
+					Name: item.Name,
 				})
 			case authtypes.PrincipalGroup:
 				principals.Groups = append(principals.Groups, &apisecurity.Principal{
-					Id:   wrapperspb.String(item.PrincipalID),
-					Name: wrapperspb.String(item.Name),
+					Id:   item.PrincipalID,
+					Name: item.Name,
 				})
 			case authtypes.PrincipalRole:
 				principals.Roles = append(principals.Roles, &apisecurity.Principal{
-					Id:   wrapperspb.String(item.PrincipalID),
-					Name: wrapperspb.String(item.Name),
+					Id:   item.PrincipalID,
+					Name: item.Name,
 				})
 			}
 		}
@@ -460,13 +467,13 @@ func (svr *Server) authStrategy2Api(ctx context.Context, s *authtypes.StrategyDe
 
 	// note: 不包括token，token比较特殊
 	out := &apisecurity.AuthStrategy{
-		Id:              protobuf.NewStringValue(s.ID),
-		Name:            protobuf.NewStringValue(s.Name),
-		Comment:         protobuf.NewStringValue(s.Comment),
-		Ctime:           protobuf.NewStringValue(commontime.Time2String(s.CreateTime)),
-		Mtime:           protobuf.NewStringValue(commontime.Time2String(s.ModifyTime)),
+		Id:              s.ID,
+		Name:            s.Name,
+		Comment:         s.Comment,
+		Ctime:           commontime.Time2String(s.CreateTime),
+		Mtime:           commontime.Time2String(s.ModifyTime),
 		Action:          apisecurity.AuthAction(apisecurity.AuthAction_value[s.Action]),
-		DefaultStrategy: protobuf.NewBoolValue(s.Default),
+		DefaultStrategy: s.Default,
 	}
 
 	return out
@@ -480,15 +487,15 @@ func (svr *Server) authStrategyFull2Api(ctx context.Context, data *authtypes.Str
 
 	// note: 不包括token，token比较特殊
 	out := &apisecurity.AuthStrategy{
-		Id:              protobuf.NewStringValue(data.ID),
-		Name:            protobuf.NewStringValue(data.Name),
-		Comment:         protobuf.NewStringValue(data.Comment),
+		Id:              data.ID,
+		Name:            data.Name,
+		Comment:         data.Comment,
 		Action:          apisecurity.AuthAction(apisecurity.AuthAction_value[data.Action]),
-		DefaultStrategy: protobuf.NewBoolValue(data.Default),
+		DefaultStrategy: data.Default,
 		Functions:       data.CalleeMethods,
 		Metadata:        data.Metadata,
-		Ctime:           protobuf.NewStringValue(commontime.Time2String(data.CreateTime)),
-		Mtime:           protobuf.NewStringValue(commontime.Time2String(data.ModifyTime)),
+		Ctime:           commontime.Time2String(data.CreateTime),
+		Mtime:           commontime.Time2String(data.ModifyTime),
 	}
 
 	svr.enrichPrincipalInfo(out, data)
@@ -564,7 +571,7 @@ func (svr *Server) normalizeResource(resources *apisecurity.StrategyResources) *
 			resId := item.FieldByName("Id").Interface().(pbStringValue)
 			if resId.GetValue() == matchs.MatchAll {
 				sliceVal.Set(reflect.ValueOf([]*apisecurity.StrategyResourceEntry{{
-					Id: protobuf.NewStringValue("*"),
+					Id: "*",
 				}}))
 			}
 		}
@@ -582,27 +589,27 @@ func (svr *Server) enrichPrincipalInfo(resp *apisecurity.AuthStrategy, data *aut
 		switch principal.PrincipalType {
 		case authtypes.PrincipalUser:
 			if user := svr.userSvr.GetUserHelper().GetUser(context.TODO(), &apisecurity.User{
-				Id: wrapperspb.String(principal.PrincipalID),
+				Id: principal.PrincipalID,
 			}); user != nil {
 				users = append(users, &apisecurity.Principal{
-					Id:   protobuf.NewStringValue(user.GetId().GetValue()),
-					Name: protobuf.NewStringValue(user.GetName().GetValue()),
+					Id:   user.GetId(),
+					Name: user.GetName(),
 				})
 			}
 		case authtypes.PrincipalGroup:
 			if group := svr.userSvr.GetUserHelper().GetGroup(context.TODO(), &apisecurity.UserGroup{
-				Id: wrapperspb.String(principal.PrincipalID),
+				Id: principal.PrincipalID,
 			}); group != nil {
 				groups = append(groups, &apisecurity.Principal{
-					Id:   protobuf.NewStringValue(group.GetId().GetValue()),
-					Name: protobuf.NewStringValue(group.GetName().GetValue()),
+					Id:   group.GetId(),
+					Name: group.GetName(),
 				})
 			}
 		case authtypes.PrincipalRole:
 			if role := svr.PolicyHelper().GetRole(principal.PrincipalID); role != nil {
 				roles = append(roles, &apisecurity.Principal{
-					Id:   protobuf.NewStringValue(role.ID),
-					Name: protobuf.NewStringValue(role.Name),
+					Id:   role.ID,
+					Name: role.Name,
 				})
 			}
 		}
@@ -653,9 +660,9 @@ func (svr *Server) enrichResourceDetial(ctx context.Context, item authtypes.Stra
 		allMatch[resType] = struct{}{}
 		sliceVal.Set(reflect.ValueOf([]*apisecurity.StrategyResourceEntry{
 			{
-				Id:        protobuf.NewStringValue("*"),
-				Namespace: protobuf.NewStringValue("*"),
-				Name:      protobuf.NewStringValue("*"),
+				Id:        "*",
+				Namespace: "*",
+				Name:      "*",
 			},
 		}))
 		return
@@ -746,9 +753,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        protobuf.NewStringValue(item.ResID),
-				Namespace: protobuf.NewStringValue(user.Name),
-				Name:      protobuf.NewStringValue(user.Name),
+				Id:        item.ResID,
+				Namespace: user.Name,
+				Name:      user.Name,
 			}
 		},
 		apisecurity.ResourceType_ConfigGroups: func(ctx context.Context, svr *Server,
@@ -761,9 +768,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        protobuf.NewStringValue(item.ResID),
-				Namespace: protobuf.NewStringValue(user.Namespace),
-				Name:      protobuf.NewStringValue(user.Name),
+				Id:        item.ResID,
+				Namespace: user.Namespace,
+				Name:      user.Name,
 			}
 		},
 		apisecurity.ResourceType_Services: func(ctx context.Context, svr *Server,
@@ -775,9 +782,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        protobuf.NewStringValue(item.ResID),
-				Namespace: protobuf.NewStringValue(user.Name),
-				Name:      protobuf.NewStringValue(user.Name),
+				Id:        item.ResID,
+				Namespace: user.Name,
+				Name:      user.Name,
 			}
 		},
 		apisecurity.ResourceType_RouteRules: func(ctx context.Context, svr *Server,
@@ -789,9 +796,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        protobuf.NewStringValue(item.ResID),
-				Namespace: protobuf.NewStringValue(user.Name),
-				Name:      protobuf.NewStringValue(user.Name),
+				Id:        item.ResID,
+				Namespace: user.Name,
+				Name:      user.Name,
 			}
 		},
 		apisecurity.ResourceType_LaneRules: func(ctx context.Context, svr *Server,
@@ -803,9 +810,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        protobuf.NewStringValue(item.ResID),
-				Namespace: protobuf.NewStringValue(user.Name),
-				Name:      protobuf.NewStringValue(user.Name),
+				Id:        item.ResID,
+				Namespace: user.Name,
+				Name:      user.Name,
 			}
 		},
 		apisecurity.ResourceType_LosslessRules: func(ctx context.Context, svr *Server,
@@ -817,9 +824,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        protobuf.NewStringValue(item.ResID),
-				Namespace: protobuf.NewStringValue(user.Namespace),
-				Name:      protobuf.NewStringValue(user.Service),
+				Id:        item.ResID,
+				Namespace: user.Namespace,
+				Name:      user.Service,
 			}
 		},
 		// 流量控制类资源
@@ -832,9 +839,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        protobuf.NewStringValue(item.ResID),
-				Namespace: protobuf.NewStringValue(user.Name),
-				Name:      protobuf.NewStringValue(user.Name),
+				Id:        item.ResID,
+				Namespace: user.Name,
+				Name:      user.Name,
 			}
 		},
 		apisecurity.ResourceType_CircuitBreakerRules: func(ctx context.Context, svr *Server,
@@ -846,9 +853,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        protobuf.NewStringValue(item.ResID),
-				Namespace: protobuf.NewStringValue(user.Name),
-				Name:      protobuf.NewStringValue(user.Name),
+				Id:        item.ResID,
+				Namespace: user.Name,
+				Name:      user.Name,
 			}
 		},
 		apisecurity.ResourceType_FaultDetectRules: func(ctx context.Context, svr *Server,
@@ -860,9 +867,9 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:        protobuf.NewStringValue(item.ResID),
-				Namespace: protobuf.NewStringValue(user.Name),
-				Name:      protobuf.NewStringValue(user.Name),
+				Id:        item.ResID,
+				Namespace: user.Name,
+				Name:      user.Name,
 			}
 		},
 		// 鉴权资源
@@ -875,8 +882,8 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:   protobuf.NewStringValue(item.ResID),
-				Name: protobuf.NewStringValue(user.Name),
+				Id:   item.ResID,
+				Name: user.Name,
 			}
 		},
 		apisecurity.ResourceType_UserGroups: func(ctx context.Context, svr *Server,
@@ -888,8 +895,8 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:   protobuf.NewStringValue(item.ResID),
-				Name: protobuf.NewStringValue(user.Name),
+				Id:   item.ResID,
+				Name: user.Name,
 			}
 		},
 		apisecurity.ResourceType_Roles: func(ctx context.Context, svr *Server,
@@ -901,8 +908,8 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:   protobuf.NewStringValue(item.ResID),
-				Name: protobuf.NewStringValue(user.Name),
+				Id:   item.ResID,
+				Name: user.Name,
 			}
 		},
 		apisecurity.ResourceType_PolicyRules: func(ctx context.Context, svr *Server,
@@ -914,8 +921,8 @@ var (
 				return nil
 			}
 			return &apisecurity.StrategyResourceEntry{
-				Id:   protobuf.NewStringValue(item.ResID),
-				Name: protobuf.NewStringValue(user.Name),
+				Id:   item.ResID,
+				Name: user.Name,
 			}
 		},
 	}

@@ -176,11 +176,11 @@ func (svr *Server) GetUserToken(ctx context.Context, req *apisecurity.User) *api
 // EnableUserToken 禁止用户的token使用
 func (svr *Server) EnableUserToken(ctx context.Context, user *apisecurity.User) *apimodel.Response {
 	helper := svr.nextSvr.GetUserHelper()
-	saveUser := helper.GetUserByID(ctx, user.GetId().GetValue())
+	saveUser := helper.GetUserByID(ctx, user.GetId())
 	if saveUser == nil {
 		return api.NewResponse(apimodel.Code_NotFoundUser)
 	}
-	if saveUser.GetUserType().GetValue() != strconv.Itoa(int(authtypes.SubAccountUserRole)) {
+	if saveUser.GetUserType() != strconv.Itoa(int(authtypes.SubAccountUserRole)) {
 		return api.NewUserResponseWithMsg(apimodel.Code_NotAllowedAccess, "only disable sub-account token", user)
 	}
 	return svr.nextSvr.EnableUserToken(ctx, user)
@@ -275,7 +275,7 @@ func checkUpdateUser(req *apisecurity.User) *apimodel.Response {
 		return api.NewUserResponse(apimodel.Code_EmptyRequest, req)
 	}
 
-	if req.GetId() == nil || req.GetId().GetValue() == "" {
+	if req.GetId() == "" {
 		return api.NewUserResponse(apimodel.Code_BadRequest, req)
 	}
 	return nil

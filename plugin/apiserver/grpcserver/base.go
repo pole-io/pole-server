@@ -330,7 +330,7 @@ func (b *BaseGrpcServer) postprocess(stream *VirtualStream, m interface{}) {
 	var code int
 	var polarisCode uint32
 	if response, ok := m.(api.ResponseMessage); ok {
-		polarisCode = response.GetCode().GetValue()
+		polarisCode = response.GetCode()
 		code = api.CalcCode(response)
 
 		// 打印回复

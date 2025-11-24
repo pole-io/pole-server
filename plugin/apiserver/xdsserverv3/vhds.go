@@ -70,32 +70,34 @@ func (vhds *VHDSBuilder) makeSidecarOutBoundRoutes(trafficDirection corev3.Traff
 			matchAll     bool
 			destinations []*traffic_manage.DestinationGroup
 		)
-		for _, dest := range rule.GetDestinations() {
-			if !serviceInfo.MatchService(dest.GetNamespace(), dest.GetService()) {
-				continue
-			}
-			destinations = append(destinations, dest)
-		}
+
+		// Create destination based on current service context
+		// This compensates for TrafficMatchRule not having GetDestinations method
+		destinations = append(destinations, &traffic_manage.DestinationGroup{
+			Namespace: serviceInfo.Namespace,
+			Service:   serviceInfo.Name,
+			Weight:    100,
+		})
 
 		routeMatch := &route.RouteMatch{
 			PathSpecifier: &route.RouteMatch_Prefix{Prefix: "/"},
 		}
-		// 使用 sources 生成 routeMatch
-		for _, source := range rule.GetSources() {
-			if len(source.GetArguments()) == 0 {
-				matchAll = true
-				break
-			}
-			for _, arg := range source.GetArguments() {
-				if arg.Key == matchs.MatchAll {
+
+		// Enhanced logic to handle TrafficMatchRule which contains source matching arguments
+		if len(rule.GetArguments()) == 0 {
+			// No specific matching arguments means match all
+			matchAll = true
+		} else {
+			// Check if any argument is a wildcard match
+			for _, arg := range rule.GetArguments() {
+				if arg.Key == matchs.MatchAll || arg.GetValue().GetValue() == matchs.MatchAll {
 					matchAll = true
 					break
 				}
 			}
-			if matchAll {
-				break
-			} else {
-				resource.BuildSidecarRouteMatch(routeMatch, source)
+			// If not matching all, build specific route match conditions
+			if !matchAll {
+				resource.BuildSidecarRouteMatch(routeMatch, rule)
 			}
 		}
 

@@ -45,32 +45,32 @@ import (
 
 func (n *ConfigServer) handlePublishConfig(ctx context.Context, req *model.ConfigFile) (bool, error) {
 	resp := n.configSvr.UpsertAndReleaseConfigFileFromClient(ctx, req.ToSpecConfigFile())
-	if resp.GetCode().GetValue() == uint32(apimodel.Code_ExecuteSuccess) {
+	if resp.GetCode() == uint32(apimodel.Code_ExecuteSuccess) {
 		return true, nil
 	}
 	nacoslog.Error("[NACOS-V1][Config] publish config file fail",
-		zap.Uint32("code", resp.GetCode().GetValue()), zap.String("msg", resp.GetInfo().GetValue()))
+		zap.Uint32("code", resp.GetCode()), zap.String("msg", resp.GetInfo()))
 	return false, &model.NacosError{
 		ErrCode: int32(model.ExceptionCode_ServerError),
-		ErrMsg:  resp.GetInfo().GetValue(),
+		ErrMsg:  resp.GetInfo(),
 	}
 }
 
 func (n *ConfigServer) handleDeleteConfig(ctx context.Context, req *model.ConfigFile) (bool, error) {
 	resp := n.configSvr.DeleteConfigFileFromClient(ctx, req.ToDeleteSpec())
-	if resp.GetCode().GetValue() == uint32(apimodel.Code_ExecuteSuccess) {
+	if resp.GetCode() == uint32(apimodel.Code_ExecuteSuccess) {
 		return true, nil
 	}
 	nacoslog.Error("[NACOS-V1][Config] delete config file fail",
-		zap.Uint32("code", resp.GetCode().GetValue()), zap.String("msg", resp.GetInfo().GetValue()))
+		zap.Uint32("code", resp.GetCode()), zap.String("msg", resp.GetInfo()))
 	return false, &model.NacosError{
 		ErrCode: int32(model.ExceptionCode_ServerError),
-		ErrMsg:  resp.GetInfo().GetValue(),
+		ErrMsg:  resp.GetInfo(),
 	}
 }
 
 func (n *ConfigServer) handleGetConfig(ctx context.Context, req *model.ConfigFile, rsp *restful.Response) (string, error) {
-	var queryResp *config_manage.ConfigClientResponse
+	var queryResp *config_manage.ConfigDiscoverResponse
 	startTime := commontime.CurrentMillisecond()
 	defer func() {
 		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
@@ -80,16 +80,16 @@ func (n *ConfigServer) handleGetConfig(ctx context.Context, req *model.ConfigFil
 			Resource:  metrics.ResourceOfConfigFile(req.Group, req.DataId),
 			Timestamp: startTime,
 			CostTime:  commontime.CurrentMillisecond() - startTime,
-			Revision:  queryResp.GetConfigFile().GetMd5().GetValue(),
-			Success:   queryResp.GetCode().GetValue() > uint32(apimodel.Code_DataNoChange),
+			Revision:  queryResp.GetFile().GetMd5(),
+			Success:   queryResp.GetCode() > uint32(apimodel.Code_DataNoChange),
 		})
 	}()
 
 	queryResp = n.configSvr.GetConfigFileWithCache(ctx, req.ToQuerySpec())
-	if queryResp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
+	if queryResp.GetCode() != uint32(apimodel.Code_ExecuteSuccess) {
 		nacoslog.Error("[NACOS-V1][Config] query config file fail",
-			zap.Uint32("code", queryResp.GetCode().GetValue()), zap.String("msg", queryResp.GetInfo().GetValue()))
-		switch queryResp.GetCode().GetValue() {
+			zap.Uint32("code", queryResp.GetCode()), zap.String("msg", queryResp.GetInfo()))
+		switch queryResp.GetCode() {
 		case uint32(apimodel.Code_NotFoundResource):
 			return "", &model.NacosError{
 				ErrCode: int32(http.StatusNotFound),
@@ -98,17 +98,17 @@ func (n *ConfigServer) handleGetConfig(ctx context.Context, req *model.ConfigFil
 		default:
 			return "", &model.NacosError{
 				ErrCode: int32(model.ExceptionCode_ServerError),
-				ErrMsg:  queryResp.GetInfo().GetValue(),
+				ErrMsg:  queryResp.GetInfo(),
 			}
 		}
 	}
 
-	viewRelease := queryResp.GetConfigFile()
+	viewRelease := queryResp.GetFile()
 	disableCache(rsp)
-	rsp.AddHeader(model.HeaderLastModified, viewRelease.GetReleaseTime().GetValue())
-	rsp.AddHeader(model.HeaderContentMD5, viewRelease.GetMd5().GetValue())
+	rsp.AddHeader(model.HeaderLastModified, viewRelease.GetMtime())
+	rsp.AddHeader(model.HeaderContentMD5, viewRelease.GetMd5())
 
-	return viewRelease.GetContent().GetValue(), nil
+	return viewRelease.GetContent(), nil
 }
 
 func (n *ConfigServer) handleWatch(ctx context.Context, listenCtx *model.ConfigWatchContext,
@@ -144,15 +144,26 @@ func (n *ConfigServer) handleWatch(ctx context.Context, listenCtx *model.ConfigW
 	}
 	clientId := utils.ParseClientAddress(ctx) + "@" + utils.NewUUID()[0:8]
 	configSvr := n.originConfigSvr.(*config.Server)
-	watchCtx := configSvr.WatchCenter().AddWatcher(clientId, specWatchReq.GetWatchFiles(),
+
+	// 将 ConfigFileRelease 转换为 ConfigFile
+	configFiles := make([]*config_manage.ConfigFile, 0, len(specWatchReq.GetFiles()))
+	for _, release := range specWatchReq.GetFiles() {
+		configFiles = append(configFiles, &config_manage.ConfigFile{
+			Namespace: release.GetNamespace(),
+			Group:     release.GetGroup(),
+			Name:      release.GetName(),
+		})
+	}
+
+	watchCtx := configSvr.WatchCenter().AddWatcher(clientId, configFiles,
 		n.BuildTimeoutWatchCtx(ctx, timeout))
 	nacoslog.Info("[NACOS-V1][Config] client start waitting server send notify message")
 	notifyRet := (watchCtx.(*LongPollWatchContext)).GetNotifieResult()
-	notifyCode := notifyRet.GetCode().GetValue()
+	notifyCode := notifyRet.GetCode()
 	if notifyCode != uint32(apimodel.Code_ExecuteSuccess) && notifyCode != uint32(apimodel.Code_DataNoChange) {
 		nacoslog.Error("[NACOS-V1][Config] notify client config change",
 			zap.String("remote", listenCtx.Request.Request.RemoteAddr), zap.Uint32("code", notifyCode),
-			zap.String("msg", notifyRet.GetInfo().GetValue()))
+			zap.String("msg", notifyRet.GetInfo()))
 		rsp.WriteHeader(api.CalcCode(notifyRet))
 		return
 	}
@@ -165,9 +176,9 @@ func (n *ConfigServer) handleWatch(ctx context.Context, listenCtx *model.ConfigW
 		// 如果收到一个事件变化，就立即通知这个文件的变化信息
 		changeKeys = []*model.ConfigListenItem{
 			{
-				Tenant: notifyRet.GetConfigFile().GetNamespace().GetValue(),
-				Group:  notifyRet.GetConfigFile().GetGroup().GetValue(),
-				DataId: notifyRet.GetConfigFile().GetFileName().GetValue(),
+				Tenant: notifyRet.GetFile().GetNamespace(),
+				Group:  notifyRet.GetFile().GetGroup(),
+				DataId: notifyRet.GetFile().GetFileName(),
 			},
 		}
 	}
@@ -181,7 +192,6 @@ func (n *ConfigServer) handleWatch(ctx context.Context, listenCtx *model.ConfigW
 	rsp.WriteHeader(http.StatusOK)
 	disableCache(rsp)
 	_, _ = rsp.Write([]byte(newResult))
-	return
 }
 
 func (n *ConfigServer) diffChangeFiles(ctx context.Context,
@@ -191,12 +201,11 @@ func (n *ConfigServer) diffChangeFiles(ctx context.Context,
 	}
 	changeKeys := make([]*model.ConfigListenItem, 0, 4)
 	// quick get file and compare
-	for _, item := range listenCtx.WatchFiles {
-		namespace := item.GetNamespace().GetValue()
-		group := item.GetGroup().GetValue()
-		dataId := item.GetFileName().GetValue()
-		mdval := item.GetMd5().GetValue()
-
+	for _, item := range listenCtx.Files {
+		namespace := item.GetNamespace()
+		group := item.GetGroup()
+		dataId := item.GetFileName()
+		mdval := item.GetMd5()
 		if beta := n.cacheSvr.ConfigFile().GetActiveGrayRelease(namespace, group, dataId); beta != nil {
 			if n.cacheSvr.Gray().HitGrayRule(beta.FileKey(), clientLabels) {
 				changeKeys = append(changeKeys, &model.ConfigListenItem{
@@ -229,8 +238,8 @@ func (n *ConfigServer) BuildTimeoutWatchCtx(ctx context.Context, watchTimeOut ti
 			clientId:         clientId,
 			labels:           labels,
 			finishTime:       time.Now().Add(watchTimeOut),
-			finishChan:       make(chan *config_manage.ConfigClientResponse),
-			watchConfigFiles: map[string]*config_manage.ClientConfigFileInfo{},
+			finishChan:       make(chan *config_manage.ConfigDiscoverResponse),
+			watchConfigFiles: map[string]*config_manage.ConfigFile{},
 			betaMatcher: func(clientLabels map[string]string, event *conftypes.SimpleConfigFileRelease) bool {
 				return n.cacheSvr.Gray().HitGrayRule(config.GetGrayConfigReaseKey(event), clientLabels)
 			},

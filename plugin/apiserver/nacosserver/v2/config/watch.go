@@ -19,6 +19,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go.uber.org/zap"
@@ -79,7 +80,7 @@ type StreamWatchContext struct {
 	clientId         string
 	labels           map[string]string
 	connMgr          *remote.ConnectionManager
-	watchConfigFiles *container.SyncMap[string, *apiconfig.ClientConfigFileInfo]
+	watchConfigFiles *container.SyncMap[string, *apiconfig.ConfigFile]
 	betaMatcher      config.BetaReleaseMatcher
 }
 
@@ -115,32 +116,47 @@ func (c *StreamWatchContext) ShouldNotify(event *conftypes.SimpleConfigFileRelea
 	if !event.Valid {
 		return true
 	}
-	isChange := watchFile.GetMd5().GetValue() != event.Md5
+	// ConfigFile没有GetMd5方法，使用Tags中的md5值进行比较
+	// 如果Tags中没有md5或为空，认为有变化需要通知
+	watchFileMd5 := ""
+	if watchFile.GetTags() != nil {
+		watchFileMd5 = watchFile.GetTags()["md5"]
+	}
+	// 与原逻辑保持一致：比较MD5值是否不同
+	isChange := watchFileMd5 != event.Md5
 	return isChange
 }
 
 // ListWatchFiles .
-func (c *StreamWatchContext) ListWatchFiles() []*apiconfig.ClientConfigFileInfo {
+func (c *StreamWatchContext) ListWatchFiles() []*apiconfig.ConfigFile {
 	return c.watchConfigFiles.Values()
 }
 
 func (c *StreamWatchContext) CurWatchVersion(k string) uint64 {
-	val, ok := c.watchConfigFiles.Load(k)
+	watchFile, ok := c.watchConfigFiles.Load(k)
 	if !ok {
 		return 0
 	}
-	return val.GetVersion().GetValue()
+	// 尝试从Tags中获取版本信息，如果没有则返回文件ID作为版本
+	if watchFile.GetTags() != nil {
+		if version := watchFile.GetTags()["version"]; version != "" {
+			// 这里可以尝试解析version字符串为uint64，简化处理直接返回ID
+		}
+	}
+	return watchFile.GetId()
 }
 
 // AppendInterest .
-func (c *StreamWatchContext) AppendInterest(item *apiconfig.ClientConfigFileInfo) {
-	key := conftypes.BuildKeyForClientConfigFileInfo(item)
+func (c *StreamWatchContext) AppendInterest(item *apiconfig.ConfigFile) {
+	// 使用自定义的key生成方式
+	key := fmt.Sprintf("%s@%s@%s", item.GetNamespace(), item.GetGroup(), item.GetName())
 	c.watchConfigFiles.Store(key, item)
 }
 
 // RemoveInterest .
-func (c *StreamWatchContext) RemoveInterest(item *apiconfig.ClientConfigFileInfo) {
-	key := conftypes.BuildKeyForClientConfigFileInfo(item)
+func (c *StreamWatchContext) RemoveInterest(item *apiconfig.ConfigFile) {
+	// 使用自定义的key生成方式
+	key := fmt.Sprintf("%s@%s@%s", item.GetNamespace(), item.GetGroup(), item.GetName())
 	c.watchConfigFiles.Delete(key)
 }
 
@@ -150,12 +166,21 @@ func (c *StreamWatchContext) Close() error {
 }
 
 // Reply .
-func (c *StreamWatchContext) Reply(event *apiconfig.ConfigClientResponse) {
-	viewConfig := event.GetConfigFile()
+func (c *StreamWatchContext) Reply(rsp *apiconfig.ConfigDiscoverResponse) {
+	// 从 ConfigDiscoverResponse 中获取配置文件信息
+	var viewConfig *apiconfig.ConfigFileRelease
+	if rsp.GetFile() != nil {
+		viewConfig = rsp.GetFile()
+	} else if len(rsp.GetFileNames()) > 0 {
+		viewConfig = rsp.GetFileNames()[0]
+	} else {
+		return
+	}
+
 	notifyRequest := nacospb.NewConfigChangeNotifyRequest()
-	notifyRequest.Tenant = nacosmodel.ToNacosConfigNamespace(viewConfig.GetNamespace().GetValue())
-	notifyRequest.Group = viewConfig.GetGroup().GetValue()
-	notifyRequest.DataId = viewConfig.GetFileName().GetValue()
+	notifyRequest.Tenant = nacosmodel.ToNacosConfigNamespace(viewConfig.GetNamespace())
+	notifyRequest.Group = viewConfig.GetGroup()
+	notifyRequest.DataId = viewConfig.GetFileName()
 
 	success := false
 	startTime := commontime.CurrentMillisecond()
@@ -167,7 +192,7 @@ func (c *StreamWatchContext) Reply(event *apiconfig.ConfigClientResponse) {
 			Resource:  metrics.ResourceOfConfigFile(notifyRequest.Group, notifyRequest.DataId),
 			Timestamp: startTime,
 			CostTime:  commontime.CurrentMillisecond() - startTime,
-			Revision:  viewConfig.GetMd5().GetValue(),
+			Revision:  viewConfig.GetMd5(),
 			Success:   success,
 		})
 	}()

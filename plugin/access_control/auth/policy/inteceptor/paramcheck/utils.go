@@ -22,7 +22,6 @@ import (
 	"regexp"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
@@ -33,24 +32,21 @@ var (
 )
 
 // CheckName 名称检查
-func CheckName(name *wrappers.StringValue) error {
-	if name == nil {
-		return errors.New(valid.NilErrString)
-	}
-
-	if name.GetValue() == "" {
+func CheckName(name string) error {
+	if name == "" {
 		return errors.New(valid.EmptyErrString)
 	}
 
-	if name.GetValue() == "polariadmin" {
+
+	if name == "polariadmin" {
 		return errors.New("illegal username")
 	}
 
-	if utf8.RuneCountInString(name.GetValue()) > valid.MaxNameLength {
+	if utf8.RuneCountInString(name) > valid.MaxNameLength {
 		return errors.New("name too long")
 	}
 
-	if ok := regNameStr.MatchString(name.GetValue()); !ok {
+	if ok := regNameStr.MatchString(name); !ok {
 		return errors.New("name contains invalid character")
 	}
 

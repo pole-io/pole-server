@@ -20,7 +20,6 @@ package types
 import (
 	"net/http"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 )
 
 type DebugHandlerGroup struct {
@@ -40,12 +39,12 @@ type CommonResponse struct {
 	Data interface{} `json:"data"`
 }
 
-func (m *CommonResponse) GetCode() *wrappers.UInt32Value {
-	return &wrappers.UInt32Value{Value: m.Code}
+func (m *CommonResponse) GetCode() uint32 {
+	return m.Code
 }
 
-func (m *CommonResponse) GetInfo() *wrappers.StringValue {
-	return &wrappers.StringValue{Value: m.Info}
+func (m *CommonResponse) GetInfo() string {
+	return m.Info
 }
 
 func NewCommonResponse(code uint32) *CommonResponse {

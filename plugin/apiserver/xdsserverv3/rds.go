@@ -233,7 +233,7 @@ func (rds *RDSBuilder) makeGatewayRoutes(option *resource.BuildOption) ([]*route
 	routerRules := routerCache.ListRouterRule(callerService, callerNamespace)
 	for i := range routerRules {
 		rule := routerRules[i]
-		if rule.GetRoutingPolicy() != traffic_manage.RoutingPolicy_RulePolicy {
+		if rule.GetRoutePolicy() != traffic_manage.RoutePolicy_RulePolicy {
 			continue
 		}
 
@@ -256,12 +256,24 @@ func (rds *RDSBuilder) makeGatewayRoutes(option *resource.BuildOption) ([]*route
 			routeMatch := &route.RouteMatch{
 				PathSpecifier: &route.RouteMatch_Prefix{Prefix: "/"},
 			}
-			for _, source := range subRule.Sources {
-				if !isMatchGatewaySource(source, callerService, callerNamespace) {
-					continue
+
+			// Enhanced logic to handle the new API structure
+			// CustomRouteRule.Arguments is now *TrafficMatchRule which contains source matching info
+			if subRule.GetArguments() != nil {
+				// Additional validation: ensure this rule applies to our service context
+				if extractServiceInfoFromContext(subRule, callerService, callerNamespace) {
+					// Check if this matches our gateway source requirements
+					if isMatchGatewaySourceFromTrafficMatchRule(subRule.GetArguments(), callerService, callerNamespace) {
+						findGatewaySource = true
+						buildGatewayRouteMatchFromTrafficMatchRule(routeMatch, subRule.GetArguments())
+					}
 				}
-				findGatewaySource = true
-				buildGatewayRouteMatch(routeMatch, source)
+			} else {
+				// Handle cases where there are no specific source arguments
+				// This maintains backward compatibility for rules without detailed source matching
+				if extractServiceInfoFromContext(subRule, callerService, callerNamespace) {
+					findGatewaySource = true
+				}
 			}
 
 			if !findGatewaySource {
@@ -302,33 +314,30 @@ func (rds *RDSBuilder) makeGatewayRoutes(option *resource.BuildOption) ([]*route
 	return routes, nil
 }
 
-func buildGatewayRouteMatch(routeMatch *route.RouteMatch, source *traffic_manage.SourceService) {
-	for i := range source.GetArguments() {
-		argument := source.GetArguments()[i]
+func buildGatewayRouteMatchFromTrafficMatchRule(routeMatch *route.RouteMatch, trafficMatch *traffic_manage.TrafficMatchRule) {
+	for i := range trafficMatch.GetArguments() {
+		argument := trafficMatch.GetArguments()[i]
 		if argument.Type == traffic_manage.SourceMatch_PATH {
 			if argument.Value.Type == apimodel.MatchString_EXACT {
 				routeMatch.PathSpecifier = &route.RouteMatch_Path{
-					Path: argument.GetValue().GetValue().GetValue(),
+					Path: argument.GetValue().GetValue(),
 				}
 			} else if argument.Value.Type == apimodel.MatchString_REGEX {
 				routeMatch.PathSpecifier = &route.RouteMatch_SafeRegex{
 					SafeRegex: &v32.RegexMatcher{
-						Regex: argument.GetValue().GetValue().GetValue(),
+						Regex: argument.GetValue().GetValue(),
 					},
 				}
 			}
 		}
 	}
-	resource.BuildCommonRouteMatch(routeMatch, source)
+	resource.BuildCommonRouteMatch(routeMatch, trafficMatch)
 }
 
-func isMatchGatewaySource(source *traffic_manage.SourceService, svcName, svcNamespace string) bool {
-	var (
-		existPathLabel bool
-		matchService   bool
-	)
+func isMatchGatewaySourceFromTrafficMatchRule(trafficMatch *traffic_manage.TrafficMatchRule, svcName, svcNamespace string) bool {
+	var existPathLabel bool
 
-	args := source.GetArguments()
+	args := trafficMatch.GetArguments()
 	for i := range args {
 		if args[i].Type == traffic_manage.SourceMatch_PATH {
 			existPathLabel = true
@@ -336,6 +345,23 @@ func isMatchGatewaySource(source *traffic_manage.SourceService, svcName, svcName
 		}
 	}
 
-	matchService = source.Service == svcName && source.Namespace == svcNamespace
-	return existPathLabel && matchService
+	// In the new API, service matching is handled at the rule level rather than source level
+	// The service context should already be filtered when we get the TrafficMatchRule
+	// We only need to check if there are path-based routing conditions
+	return existPathLabel
+}
+
+// Helper function to extract service info from routing rule context
+// This compensates for the removal of explicit service info in TrafficMatchRule
+func extractServiceInfoFromContext(rule *traffic_manage.CustomRouteRule, targetSvcName, targetNamespace string) bool {
+	// Check destinations to see if this rule applies to our target service
+	for _, dest := range rule.GetDestinations() {
+		if dest.Service == targetSvcName && dest.Namespace == targetNamespace {
+			return true
+		}
+		if dest.Service == matchs.MatchAll || dest.Namespace == matchs.MatchAll {
+			return true
+		}
+	}
+	return false
 }

@@ -69,16 +69,16 @@ func CheckName(name *wrappers.StringValue) error {
 }
 
 // CheckPassword 密码检查
-func CheckPassword(password *wrappers.StringValue) error {
-	if password == nil {
+func CheckPassword(password string) error {
+	if password == "" {
 		return errors.New(valid.NilErrString)
 	}
 
-	if password.GetValue() == "" {
+	if password == "" {
 		return errors.New(valid.EmptyErrString)
 	}
 
-	if pLen := len(password.GetValue()); pLen < 6 || pLen > 17 {
+	if pLen := len(password); pLen < 6 || pLen > 17 {
 		return errors.New("password len need 6 ~ 17")
 	}
 
@@ -86,16 +86,16 @@ func CheckPassword(password *wrappers.StringValue) error {
 }
 
 // CheckOwner 检查用户的 owner 信息
-func CheckOwner(owner *wrappers.StringValue) error {
-	if owner == nil {
+func CheckOwner(owner string) error {
+	if owner == "" {
 		return errors.New(valid.NilErrString)
 	}
 
-	if owner.GetValue() == "" {
+	if owner == "" {
 		return errors.New(valid.EmptyErrString)
 	}
 
-	if utf8.RuneCountInString(owner.GetValue()) > valid.MaxOwnersLength {
+	if utf8.RuneCountInString(owner) > valid.MaxOwnersLength {
 		return errors.New("owners too long")
 	}
 

@@ -92,8 +92,8 @@ func (svr *Server) CreatePolicies(ctx context.Context, reqs []*apisecurity.AuthS
 	for i := range reqs {
 		rsp := svr.checkCreateStrategy(reqs[i])
 		if rsp != nil {
-			log.Error("[Auth][Strategy] check create strategy", utils.RequestID(ctx), zap.String("msg", rsp.GetInfo().GetValue()))
-			return api.NewBatchWriteResponseWithMsg(apimodel.Code(rsp.GetCode().GetValue()), rsp.GetInfo().GetValue())
+			log.Error("[Auth][Strategy] check create strategy", utils.RequestID(ctx), zap.String("msg", rsp.GetInfo()))
+			return api.NewBatchWriteResponseWithMsg(apimodel.Code(rsp.GetCode()), rsp.GetInfo())
 		}
 	}
 	return svr.nextSvr.CreatePolicies(ctx, reqs)
@@ -104,7 +104,7 @@ func (svr *Server) UpdatePolicies(ctx context.Context, reqs []*apisecurity.AuthS
 	batchResp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
 	for i := range reqs {
 		var rsp *apimodel.Response
-		strategy, err := svr.storage.GetStrategyDetail(reqs[i].GetId().GetValue())
+		strategy, err := svr.storage.GetStrategyDetail(reqs[i].GetId())
 		if err != nil {
 			log.Error("[Auth][Strategy] get strategy from store", utils.RequestID(ctx), zap.Error(err))
 			rsp = api.NewAuthStrategyResponse(storeapi.StoreCode2APICode(err), reqs[i])
@@ -223,7 +223,7 @@ func (svr *Server) GetRoles(ctx context.Context, query map[string]string) *apimo
 // checkCreateStrategy 检查创建鉴权策略的请求
 func (svr *Server) checkCreateStrategy(req *apisecurity.AuthStrategy) *apimodel.Response {
 	// 检查名称信息
-	if err := CheckName(req.GetName()); err != nil {
+	if err := CheckName(req.Name); err != nil {
 		return api.NewAuthStrategyResponse(apimodel.Code_InvalidUserName, req)
 	}
 	// 检查用户是否存在
@@ -298,11 +298,11 @@ func (svr *Server) checkResourceExist(resources *apisecurity.StrategyResources) 
 	nsCache := svr.cacheMgr.Namespace()
 	for index := range namespaces {
 		val := namespaces[index]
-		if val.GetId().GetValue() == "*" {
+		if val.GetId() == "*" {
 			break
 		}
-		if ns := nsCache.GetNamespace(val.GetId().GetValue()); ns == nil {
-			return api.NewAuthResponse(apimodel.Code_NotFoundNamespace)
+		if ns := nsCache.GetNamespace(val.GetId()); ns == nil {
+			return api.NewAuthResponse(apimodel.Code_NotFoundResource)
 		}
 	}
 
@@ -310,11 +310,11 @@ func (svr *Server) checkResourceExist(resources *apisecurity.StrategyResources) 
 	svcCache := svr.cacheMgr.Service()
 	for index := range services {
 		val := services[index]
-		if val.GetId().GetValue() == "*" {
+		if val.GetId() == "*" {
 			break
 		}
-		if svc := svcCache.GetServiceByID(val.GetId().GetValue()); svc == nil {
-			return api.NewAuthResponse(apimodel.Code_NotFoundService)
+		if svc := svcCache.GetServiceByID(val.GetId()); svc == nil {
+			return api.NewAuthResponse(apimodel.Code_NotFoundResource)
 		}
 	}
 

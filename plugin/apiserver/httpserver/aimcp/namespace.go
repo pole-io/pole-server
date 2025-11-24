@@ -11,7 +11,6 @@ import (
 	"go.uber.org/zap"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	"github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
@@ -52,7 +51,7 @@ func (h *HTTPServer) addToolQueryNamespaces(mcpSvr *server.MCPServer) {
 				return mcp.NewToolResultError("invalid: args is empty"), nil
 			}
 
-			var rsp *service_manage.BatchQueryResponse
+			var rsp *apimodel.BatchQueryResponse
 
 			searchName, _ := args["name"].(string)
 			searchAll, _ := args["all"].(bool)
@@ -71,12 +70,12 @@ func (h *HTTPServer) addToolQueryNamespaces(mcpSvr *server.MCPServer) {
 					}
 					subRsp := h.namespaceServer.GetNamespaces(ctx, filter)
 					if !api.IsSuccess(subRsp) {
-						return mcp.NewToolResultError(subRsp.GetInfo().GetValue()), nil
+						return mcp.NewToolResultError(subRsp.GetInfo()), nil
 					}
-					if len(subRsp.GetNamespaces()) == 0 {
+					if len(subRsp.Data) == 0 {
 						break
 					}
-					rsp.Namespaces = append(rsp.Namespaces, subRsp.GetNamespaces()...)
+					rsp.Data = append(rsp.Data, subRsp.Data...)
 					offset += limit
 				}
 			} else {
@@ -97,7 +96,7 @@ func (h *HTTPServer) addToolQueryNamespaces(mcpSvr *server.MCPServer) {
 			}
 
 			if !api.IsSuccess(rsp) {
-				return mcp.NewToolResultError(rsp.GetInfo().GetValue()), nil
+				return mcp.NewToolResultError(rsp.GetInfo()), nil
 			}
 			ret, err := httpcommon.MarshalPBJson(rsp)
 			return mcp.NewToolResultText(ret), err
@@ -133,7 +132,7 @@ func (h *HTTPServer) addToolCreateNamespaces(mcpSvr *server.MCPServer) {
 			}
 			rsp := h.namespaceServer.CreateNamespaces(ctx, reqs)
 			if !api.IsSuccess(rsp) {
-				return mcp.NewToolResultError(rsp.GetInfo().GetValue()), nil
+				return mcp.NewToolResultError(rsp.GetInfo()), nil
 			}
 
 			ret, err := httpcommon.MarshalPBJson(rsp)
@@ -166,7 +165,7 @@ func (h *HTTPServer) addToolDeleteNamespaces(mcpSvr *server.MCPServer) {
 
 			rsp := h.namespaceServer.DeleteNamespaces(ctx, namespaces)
 			if !api.IsSuccess(rsp) {
-				return mcp.NewToolResultError(rsp.GetInfo().GetValue()), nil
+				return mcp.NewToolResultError(rsp.GetInfo()), nil
 			}
 
 			ret, err := httpcommon.MarshalPBJson(rsp)
@@ -197,7 +196,7 @@ func (h *HTTPServer) addToolUpdateNamespaces(mcpSvr *server.MCPServer) {
 
 			rsp := h.namespaceServer.DeleteNamespaces(ctx, namespaces)
 			if !api.IsSuccess(rsp) {
-				return mcp.NewToolResultError(rsp.GetInfo().GetValue()), nil
+				return mcp.NewToolResultError(rsp.GetInfo()), nil
 			}
 
 			ret, err := httpcommon.MarshalPBJson(rsp)

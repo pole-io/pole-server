@@ -19,8 +19,8 @@ package v1
 
 import (
 	"context"
-	"io"
 
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/service/healthcheck"
@@ -33,23 +33,11 @@ func (g *DiscoverGRPCServer) Heartbeat(ctx context.Context, in *apiservice.Insta
 }
 
 // BatchHeartbeat 批量上报心跳
-func (g *DiscoverGRPCServer) BatchHeartbeat(svr apiservice.PolarisHeartbeatGRPC_BatchHeartbeatServer) error {
-	ctx := utils.ConvertGRPCContext(svr.Context())
+func (g *DiscoverGRPCServer) BatchHeartbeat(ctx context.Context, req *apiservice.HeartbeatsRequest) (*apiservice.HeartbeatsResponse, error) {
+	ctx = utils.ConvertGRPCContext(ctx)
 
-	for {
-		req, err := svr.Recv()
-		if err != nil {
-			if io.EOF == err {
-				return nil
-			}
-			return err
-		}
-
-		_ = g.healthCheckServer.Reports(ctx, req.GetHeartbeats())
-		if err = svr.Send(&apiservice.HeartbeatsResponse{}); err != nil {
-			return err
-		}
-	}
+	_ = g.healthCheckServer.Reports(ctx, req.GetHeartbeats())
+	return &apiservice.HeartbeatsResponse{}, nil
 }
 
 // BatchGetHeartbeat 批量获取心跳记录

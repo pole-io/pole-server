@@ -28,7 +28,6 @@ import (
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
@@ -84,9 +83,9 @@ func (h *HTTPServer) GetConfigFile(req *restful.Request, rsp *restful.Response) 
 	name := handler.Request.QueryParameter("name")
 
 	fileReq := &apiconfig.ConfigFile{
-		Namespace: protobuf.NewStringValue(namespace),
-		Group:     protobuf.NewStringValue(group),
-		Name:      protobuf.NewStringValue(name),
+		Namespace: namespace,
+		Group:     group,
+		Name:      name,
 	}
 
 	handler.WriteHeaderAndProto(h.configServer.GetConfigFileRichInfo(handler.ParseHeaderContext(), fileReq))
@@ -163,7 +162,7 @@ func (h *HTTPServer) ExportConfigFile(req *restful.Request, rsp *restful.Respons
 		return
 	}
 	response := h.configServer.ExportConfigFile(ctx, configFileExport)
-	if response.Code.Value != api.ExecuteSuccess {
+	if response.Code != api.ExecuteSuccess {
 		handler.WriteHeaderAndProto(response)
 	} else {
 		handler.WriteHeader(api.ExecuteSuccess, http.StatusOK)
@@ -195,9 +194,9 @@ func (h *HTTPServer) ImportConfigFile(req *restful.Request, rsp *restful.Respons
 	conflictHandling := handler.Request.QueryParameter("conflict_handling")
 
 	for _, file := range configFiles {
-		file.Namespace = protobuf.NewStringValue(namespace)
+		file.Namespace = namespace
 		if group != "" {
-			file.Group = protobuf.NewStringValue(group)
+			file.Group = group
 		}
 	}
 

@@ -24,6 +24,7 @@ import (
 
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
@@ -89,9 +90,9 @@ func (svr *Server) UpdatePolicies(ctx context.Context, reqs []*apisecurity.AuthS
 	for i := range reqs {
 		entry := authcommon.ResourceEntry{
 			Type: apisecurity.ResourceType_PolicyRules,
-			ID:   reqs[i].GetId().GetValue(),
+			ID:   reqs[i].GetId(),
 		}
-		if saveRule := svr.nextSvr.PolicyHelper().GetPolicyRule(reqs[i].GetId().GetValue()); saveRule != nil {
+		if saveRule := svr.nextSvr.PolicyHelper().GetPolicyRule(reqs[i].GetId()); saveRule != nil {
 			entry.Metadata = saveRule.Metadata
 		}
 		resources = append(resources, entry)
@@ -120,9 +121,9 @@ func (svr *Server) DeletePolicies(ctx context.Context, reqs []*apisecurity.AuthS
 	for i := range reqs {
 		entry := authcommon.ResourceEntry{
 			Type: apisecurity.ResourceType_PolicyRules,
-			ID:   reqs[i].GetId().GetValue(),
+			ID:   reqs[i].GetId(),
 		}
-		if saveRule := svr.nextSvr.PolicyHelper().GetPolicyRule(reqs[i].GetId().GetValue()); saveRule != nil {
+		if saveRule := svr.nextSvr.PolicyHelper().GetPolicyRule(reqs[i].GetId()); saveRule != nil {
 			entry.Metadata = saveRule.Metadata
 		}
 		resources = append(resources, entry)
@@ -190,9 +191,9 @@ func (svr *Server) GetPolicies(ctx context.Context, query map[string]string) *ap
 func (svr *Server) GetPolicy(ctx context.Context, strategy *apisecurity.AuthStrategy) *apimodel.Response {
 	entry := authcommon.ResourceEntry{
 		Type: apisecurity.ResourceType_PolicyRules,
-		ID:   strategy.GetId().GetValue(),
+		ID:   strategy.GetId(),
 	}
-	saveRule := svr.nextSvr.PolicyHelper().GetPolicyRule(strategy.GetId().GetValue())
+	saveRule := svr.nextSvr.PolicyHelper().GetPolicyRule(strategy.GetId())
 	if saveRule != nil {
 		entry.Metadata = saveRule.Metadata
 	}

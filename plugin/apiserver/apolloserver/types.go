@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/emicklei/go-restful/v3"
-	"github.com/golang/protobuf/ptypes/wrappers"
 )
 
 func newErrorResponse(req *restful.Request, err error) *ErrorResponse {
@@ -39,12 +38,12 @@ type ErrorResponse struct {
 	Path      string `json:"path"`
 }
 
-func (e *ErrorResponse) GetCode() *wrappers.UInt32Value {
-	return &wrappers.UInt32Value{Value: uint32(e.Status)}
+func (e *ErrorResponse) GetCode() uint32 {
+	return uint32(e.Status)
 }
 
-func (e *ErrorResponse) GetInfo() *wrappers.StringValue {
-	return &wrappers.StringValue{Value: e.Message}
+func (e *ErrorResponse) GetInfo() string {
+	return e.Message
 }
 
 type GetConfigFileRequest struct {

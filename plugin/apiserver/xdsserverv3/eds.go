@@ -81,9 +81,9 @@ func (eds *EDSBuilder) buildServiceEndpoint(serviceInfo *resource.ServiceInfo) [
 		if !resource.IsNormalEndpoint(instance) {
 			continue
 		}
-		region := instance.GetLocation().GetRegion().GetValue()
-		zone := instance.GetLocation().GetZone().GetValue()
-		campus := instance.GetLocation().GetCampus().GetValue()
+		region := instance.GetLocation().GetRegion()
+		zone := instance.GetLocation().GetZone()
+		campus := instance.GetLocation().GetCampus()
 		if _, ok := locality[region]; !ok {
 			locality[region] = map[string]map[string][]*endpoint.LbEndpoint{}
 		}
@@ -100,9 +100,9 @@ func (eds *EDSBuilder) buildServiceEndpoint(serviceInfo *resource.ServiceInfo) [
 						Address: &core.Address_SocketAddress{
 							SocketAddress: &core.SocketAddress{
 								Protocol: core.SocketAddress_TCP,
-								Address:  instance.Host.Value,
+								Address:  instance.Host,
 								PortSpecifier: &core.SocketAddress_PortValue{
-									PortValue: instance.Port.Value,
+									PortValue: instance.Port,
 								},
 							},
 						},
@@ -113,7 +113,7 @@ func (eds *EDSBuilder) buildServiceEndpoint(serviceInfo *resource.ServiceInfo) [
 				},
 			},
 			HealthStatus:        resource.FormatEndpointHealth(instance),
-			LoadBalancingWeight: protobuf.NewUInt32Value(instance.GetWeight().GetValue()),
+			LoadBalancingWeight: protobuf.NewUInt32Value(instance.GetWeight()),
 			Metadata:            resource.GenEndpointMetaFromPolarisIns(instance),
 		}
 		locality[region][zone][campus] = append(locality[region][zone][campus], ep)

@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -102,30 +101,27 @@ func buildBaseInstance(
 	if len(instance.SecureVipAddress) > 0 {
 		eurekaMetadata[MetadataSecureVipAddress] = instance.SecureVipAddress
 	}
-	targetInstance.Id = &wrappers.StringValue{
-		Value: checkOrBuildNewInstanceIdByNamespace(namespace, defaultNamespace,
-			appId, eurekaInstanceId, generateUniqueInstId),
-	}
+	targetInstance.Id = checkOrBuildNewInstanceIdByNamespace(namespace, defaultNamespace, appId, eurekaInstanceId, generateUniqueInstId)
 	targetInstance.Metadata = eurekaMetadata
-	targetInstance.Service = &wrappers.StringValue{Value: appId}
-	targetInstance.Namespace = &wrappers.StringValue{Value: namespace}
-	targetInstance.Host = &wrappers.StringValue{Value: instance.IpAddr}
+	targetInstance.Service = appId
+	targetInstance.Namespace = namespace
+	targetInstance.Host = instance.IpAddr
 	if instance.Metadata != nil && len(instance.Metadata.Meta) > 0 {
 		targetInstance.Location = &apimodel.Location{}
 		for k, v := range instance.Metadata.Meta {
 			strValue := ObjectToString(v)
 			switch k {
 			case KeyRegion:
-				targetInstance.Location.Region = &wrappers.StringValue{Value: strValue}
+				targetInstance.Location.Region = strValue
 			case keyZone:
-				targetInstance.Location.Zone = &wrappers.StringValue{Value: strValue}
+				targetInstance.Location.Zone = strValue
 			case keyCampus:
-				targetInstance.Location.Campus = &wrappers.StringValue{Value: strValue}
+				targetInstance.Location.Campus = strValue
 			}
 			targetInstance.Metadata[k] = strValue
 		}
 	}
-	targetInstance.Weight = &wrappers.UInt32Value{Value: 100}
+	targetInstance.Weight = 100
 	buildHealthCheck(instance, targetInstance, eurekaMetadata)
 	buildStatus(instance, targetInstance)
 	return targetInstance
@@ -148,20 +144,20 @@ func buildHealthCheck(instance *InstanceInfo, targetInstance *apiservice.Instanc
 	durationMin := math.Ceil(float64(durationInSecs) / 3)
 	ttl := uint32(math.Min(durationMin, float64(renewalIntervalInSecs)))
 
-	targetInstance.EnableHealthCheck = &wrappers.BoolValue{Value: true}
+	targetInstance.EnableHealthCheck = true
 	targetInstance.HealthCheck = &apiservice.HealthCheck{
 		Type:      apiservice.HealthCheck_HEARTBEAT,
-		Heartbeat: &apiservice.HeartbeatHealthCheck{Ttl: &wrappers.UInt32Value{Value: ttl}},
+		Heartbeat: &apiservice.HeartbeatHealthCheck{Ttl: ttl},
 	}
 }
 
 func buildStatus(instance *InstanceInfo, targetInstance *apiservice.Instance) {
 	// eureka注册的实例默认healthy为true，即使设置为false也会被心跳触发变更为true
 	// eureka实例非UP状态设置isolate为true，进行流量隔离
-	targetInstance.Healthy = &wrappers.BoolValue{Value: true}
-	targetInstance.Isolate = &wrappers.BoolValue{Value: false}
+	targetInstance.Healthy = true
+	targetInstance.Isolate = false
 	if instance.Status != StatusUp {
-		targetInstance.Isolate = &wrappers.BoolValue{Value: true}
+		targetInstance.Isolate = true
 	}
 }
 
@@ -193,8 +189,8 @@ func convertEurekaInstance(
 	targetInstance := buildBaseInstance(instance, namespace, defaultNamespace, appId, generateUniqueInstId)
 
 	// 同时打开2个端口，通过medata保存http端口
-	targetInstance.Protocol = &wrappers.StringValue{Value: InsecureProtocol}
-	targetInstance.Port = &wrappers.UInt32Value{Value: uint32(insecurePort)}
+	targetInstance.Protocol = InsecureProtocol
+	targetInstance.Port = uint32(insecurePort)
 	targetInstance.Metadata[MetadataInsecurePort] = strconv.Itoa(insecurePort)
 	targetInstance.Metadata[MetadataInsecurePortEnabled] = strconv.FormatBool(insecureEnable)
 	targetInstance.Metadata[MetadataSecurePort] = strconv.Itoa(securePort)
@@ -216,24 +212,24 @@ func (h *EurekaServer) registerInstances(
 	// 3. 注册实例
 	resp := h.namingServer.RegisterInstance(ctx, totalInstance)
 	// 4. 注册成功，则返回
-	if resp.GetCode().GetValue() == api.ExecuteSuccess || resp.GetCode().GetValue() == api.ExistedResource {
+	if resp.GetCode() == api.ExecuteSuccess || resp.GetCode() == api.ExistedResource {
 		return api.ExecuteSuccess
 	}
 	// 5. 如果报服务不存在，对服务进行注册
-	if resp.Code.Value == api.NotFoundResource {
+	if resp.Code == api.NotFoundResource {
 		svc := &apiservice.Service{}
-		svc.Namespace = &wrappers.StringValue{Value: namespace}
-		svc.Name = &wrappers.StringValue{Value: appId}
+		svc.Namespace = namespace
+		svc.Name = appId
 		svcResp := h.namingServer.CreateServices(ctx, []*apiservice.Service{svc})
-		svcCreateCode := svcResp.GetCode().GetValue()
+		svcCreateCode := svcResp.GetCode()
 		if svcCreateCode != api.ExecuteSuccess && svcCreateCode != api.ExistedResource {
 			return svcCreateCode
 		}
 		// 6. 再重试注册实例列表
 		resp = h.namingServer.RegisterInstance(ctx, totalInstance)
-		return resp.GetCode().GetValue()
+		return resp.GetCode()
 	}
-	return resp.GetCode().GetValue()
+	return resp.GetCode()
 }
 
 func (h *EurekaServer) deregisterInstance(
@@ -245,8 +241,8 @@ func (h *EurekaServer) deregisterInstance(
 		})
 	ctx = context.WithValue(ctx, types.ContextOpenAsyncRegis, true)
 	instanceId = checkOrBuildNewInstanceIdByNamespace(namespace, h.namespace, appId, instanceId, h.generateUniqueInstId)
-	resp := h.namingServer.DeregisterInstance(ctx, &apiservice.Instance{Id: &wrappers.StringValue{Value: instanceId}})
-	return resp.GetCode().GetValue()
+	resp := h.namingServer.DeregisterInstance(ctx, &apiservice.Instance{Id: instanceId})
+	return resp.GetCode()
 }
 
 func (h *EurekaServer) updateStatus(
@@ -265,7 +261,7 @@ func (h *EurekaServer) updateStatus(
 		return uint32(storeapi.StoreCode2APICode(err))
 	}
 	if saveIns == nil {
-		return uint32(apimodel.Code_NotFoundInstance)
+		return uint32(apimodel.Code_NotFoundResource)
 	}
 
 	metadata := saveIns.Metadata()
@@ -273,13 +269,13 @@ func (h *EurekaServer) updateStatus(
 	isolated := status != StatusUp
 
 	updateIns := &apiservice.Instance{
-		Id:       &wrappers.StringValue{Value: instanceId},
-		Isolate:  &wrappers.BoolValue{Value: isolated},
+		Id:       instanceId,
+		Isolate:  isolated,
 		Metadata: metadata,
 	}
 
 	resp := h.namingServer.UpdateInstance(ctx, updateIns)
-	return resp.GetCode().GetValue()
+	return resp.GetCode()
 }
 
 func (h *EurekaServer) renew(ctx context.Context, namespace string, appId string,
@@ -290,8 +286,8 @@ func (h *EurekaServer) renew(ctx context.Context, namespace string, appId string
 			MetadataInstanceId: instanceId,
 		})
 	instanceId = checkOrBuildNewInstanceIdByNamespace(namespace, h.namespace, appId, instanceId, h.generateUniqueInstId)
-	resp := h.healthCheckServer.Report(ctx, &apiservice.Instance{Id: &wrappers.StringValue{Value: instanceId}})
-	code := resp.GetCode().GetValue()
+	resp := h.healthCheckServer.Report(ctx, &apiservice.Instance{Id: instanceId})
+	code := resp.GetCode()
 
 	// 如果目标实例存在，但是没有开启心跳，对于 eureka 来说，仍然属于心跳上报成功
 	if code == api.HeartbeatOnDisabledIns {
@@ -305,6 +301,6 @@ func (h *EurekaServer) updateMetadata(
 	metadata[MetadataInstanceId] = instanceId
 	instanceId = checkOrBuildNewInstanceIdByNamespace(namespace, h.namespace, appId, instanceId, h.generateUniqueInstId)
 	resp := h.namingServer.UpdateInstance(ctx,
-		&apiservice.Instance{Id: &wrappers.StringValue{Value: instanceId}, Metadata: metadata})
-	return resp.GetCode().GetValue()
+		&apiservice.Instance{Id: instanceId, Metadata: metadata})
+	return resp.GetCode()
 }

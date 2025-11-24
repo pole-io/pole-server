@@ -8,7 +8,6 @@ import (
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
@@ -39,7 +38,7 @@ func (h *HTTPServer) PublishConfigFile(req *restful.Request, rsp *restful.Respon
 	if err != nil {
 		configLog.Error("[Config][HttpServer] parse config file release from request error.",
 			zap.String("error", err.Error()))
-		handler.WriteHeaderAndProto(api.NewConfigFileReleaseResponseWithMessage(apimodel.Code_ParseException, err.Error()))
+		handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
 	handler.WriteHeaderAndProto(h.configServer.PublishConfigFile(ctx, configFile))
@@ -130,10 +129,10 @@ func (h *HTTPServer) GetConfigFileRelease(req *restful.Request, rsp *restful.Res
 	}
 
 	fileReq := &apiconfig.ConfigFileRelease{
-		Namespace: protobuf.NewStringValue(namespace),
-		Group:     protobuf.NewStringValue(group),
-		FileName:  protobuf.NewStringValue(fileName),
-		Name:      protobuf.NewStringValue(name),
+		Namespace: namespace,
+		Group:     group,
+		FileName:  fileName,
+		Name:      name,
 	}
 
 	handler.WriteHeaderAndProto(h.configServer.GetConfigFileRelease(handler.ParseHeaderContext(), fileReq))
