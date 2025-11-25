@@ -22,7 +22,6 @@ import (
 	"regexp"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
@@ -65,11 +64,7 @@ func CheckName(name string) error {
 }
 
 // CheckPassword 密码检查
-func CheckPassword(password  string) error {
-	if password == "" {
-		return errors.New(valid.EmptyErrString)
-	}
-
+func CheckPassword(password string) error {
 	if password == "" {
 		return errors.New(valid.EmptyErrString)
 	}
@@ -82,16 +77,12 @@ func CheckPassword(password  string) error {
 }
 
 // CheckOwner 检查用户的 owner 信息
-func CheckOwner(owner *wrappers.StringValue) error {
-	if owner == nil {
-		return errors.New(valid.NilErrString)
-	}
-
-	if owner.GetValue() == "" {
+func CheckOwner(owner string) error {
+	if owner == "" {
 		return errors.New(valid.EmptyErrString)
 	}
 
-	if utf8.RuneCountInString(owner.GetValue()) > valid.MaxOwnersLength {
+	if utf8.RuneCountInString(owner) > valid.MaxOwnersLength {
 		return errors.New("owners too long")
 	}
 
