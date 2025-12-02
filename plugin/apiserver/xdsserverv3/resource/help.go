@@ -69,50 +69,56 @@ func MakeServiceGatewayDomains() []string {
 	return []string{"*"}
 }
 
-func FilterInboundRouterRule(svc *ServiceInfo) []*traffic_manage.SubRuleRouting {
-	ret := make([]*traffic_manage.SubRuleRouting, 0, 16)
-	for _, rule := range svc.Routing.GetRules() {
-		if rule.GetRoutingPolicy() != traffic_manage.RoutingPolicy_RulePolicy {
-			continue
-		}
-		routerRule := &traffic_manage.RuleRoutingConfig{}
-		if err := ptypes.UnmarshalAny(rule.RoutingConfig, routerRule); err != nil {
-			continue
-		}
+func FilterInboundRouterRule(svc *ServiceInfo) []*traffic_manage.TrafficMatchRule {
+	ret := make([]*traffic_manage.TrafficMatchRule, 0, 16)
+	// svc.Routing is a single RouteRule, not a slice
+	if svc.Routing == nil {
+		return ret
+	}
+	rule := svc.Routing
+	if rule.GetRoutePolicy() != traffic_manage.RoutePolicy_RulePolicy {
+		return ret
+	}
+	routerRule := &traffic_manage.CustomRoute{}
+	if err := ptypes.UnmarshalAny(rule.RoutingConfig, routerRule); err != nil {
+		return ret
+	}
 
-		for i, subRule := range routerRule.Rules {
-			var match bool
-			for _, dest := range subRule.GetDestinations() {
-				if svc.MatchService(dest.GetNamespace(), dest.GetService()) {
-					match = true
-					break
-				}
+	for _, subRule := range routerRule.Rules {
+		var match bool
+		for _, dest := range subRule.GetDestinations() {
+			if svc.MatchService(dest.GetNamespace(), dest.GetService()) {
+				match = true
+				break
 			}
-			if match {
-				ret = append(ret, routerRule.Rules[i])
+		}
+		if match {
+			// CustomRouteRule.Arguments is now of type *TrafficMatchRule
+			if subRule.GetArguments() != nil {
+				ret = append(ret, subRule.GetArguments())
 			}
 		}
 	}
 	return ret
 }
 
-func BuildSidecarRouteMatch(routeMatch *route.RouteMatch, source *traffic_manage.SourceService) {
+func BuildSidecarRouteMatch(routeMatch *route.RouteMatch, source *traffic_manage.TrafficMatchRule) {
 	for i := range source.GetArguments() {
 		argument := source.GetArguments()[i]
 		if argument.Type == traffic_manage.SourceMatch_PATH {
 			if argument.Value.Type == apimodel.MatchString_EXACT {
 				routeMatch.PathSpecifier = &route.RouteMatch_Path{
-					Path: argument.GetValue().GetValue().GetValue()}
+					Path: argument.GetValue().GetValue()}
 			} else if argument.Value.Type == apimodel.MatchString_REGEX {
 				routeMatch.PathSpecifier = &route.RouteMatch_SafeRegex{SafeRegex: &v32.RegexMatcher{
-					Regex: argument.GetValue().GetValue().GetValue()}}
+					Regex: argument.GetValue().GetValue()}}
 			}
 		}
 	}
 	BuildCommonRouteMatch(routeMatch, source)
 }
 
-func BuildCommonRouteMatch(routeMatch *route.RouteMatch, source *traffic_manage.SourceService) {
+func BuildCommonRouteMatch(routeMatch *route.RouteMatch, source *traffic_manage.TrafficMatchRule) {
 	for i := range source.GetArguments() {
 		argument := source.GetArguments()[i]
 		switch argument.Type {
@@ -128,7 +134,7 @@ func BuildCommonRouteMatch(routeMatch *route.RouteMatch, source *traffic_manage.
 					HeaderMatchSpecifier: &route.HeaderMatcher_StringMatch{
 						StringMatch: &v32.StringMatcher{
 							MatchPattern: &v32.StringMatcher_Exact{
-								Exact: argument.GetValue().GetValue().GetValue()}},
+								Exact: argument.GetValue().GetValue()}},
 					},
 				}
 			}
@@ -138,7 +144,7 @@ func BuildCommonRouteMatch(routeMatch *route.RouteMatch, source *traffic_manage.
 					HeaderMatchSpecifier: &route.HeaderMatcher_StringMatch{
 						StringMatch: &v32.StringMatcher{
 							MatchPattern: &v32.StringMatcher_Exact{
-								Exact: argument.GetValue().GetValue().GetValue()}},
+								Exact: argument.GetValue().GetValue()}},
 					},
 					InvertMatch: true,
 				}
@@ -151,7 +157,7 @@ func BuildCommonRouteMatch(routeMatch *route.RouteMatch, source *traffic_manage.
 							SafeRegex: &v32.RegexMatcher{
 								EngineType: &v32.RegexMatcher_GoogleRe2{
 									GoogleRe2: &v32.RegexMatcher_GoogleRE2{}},
-								Regex: argument.GetValue().GetValue().GetValue()}}},
+								Regex: argument.GetValue().GetValue()}}},
 					},
 				}
 			}
@@ -167,7 +173,7 @@ func BuildCommonRouteMatch(routeMatch *route.RouteMatch, source *traffic_manage.
 					QueryParameterMatchSpecifier: &route.QueryParameterMatcher_StringMatch{
 						StringMatch: &v32.StringMatcher{
 							MatchPattern: &v32.StringMatcher_Exact{
-								Exact: argument.GetValue().GetValue().GetValue()}},
+								Exact: argument.GetValue().GetValue()}},
 					},
 				}
 			}
@@ -179,7 +185,7 @@ func BuildCommonRouteMatch(routeMatch *route.RouteMatch, source *traffic_manage.
 							MatchPattern: &v32.StringMatcher_SafeRegex{SafeRegex: &v32.RegexMatcher{
 								EngineType: &v32.RegexMatcher_GoogleRe2{
 									GoogleRe2: &v32.RegexMatcher_GoogleRE2{}},
-								Regex: argument.GetValue().GetValue().GetValue(),
+								Regex: argument.GetValue().GetValue(),
 							}}},
 					},
 				}
@@ -205,14 +211,14 @@ func BuildWeightClustersV2(trafficDirection corev3.TrafficDirection,
 		}
 		fields := make(map[string]*_struct.Value)
 		for k, v := range destination.GetLabels() {
-			if k == matchs.MatchAll && v.GetValue().GetValue() == matchs.MatchAll {
+			if k == matchs.MatchAll && v.GetValue() == matchs.MatchAll {
 				// 重置 cluster 的匹配规则
 				fields = make(map[string]*_struct.Value)
 				break
 			}
 			fields[k] = &_struct.Value{
 				Kind: &_struct.Value_StringValue{
-					StringValue: v.Value.Value,
+					StringValue: v.Value,
 				},
 			}
 		}
@@ -281,15 +287,15 @@ func BuildRateLimitConf(prefix string) *lrl.LocalRateLimit {
 	return rateLimitConf
 }
 
-func BuildRateLimitDescriptors(rule *traffic_manage.Rule) ([]*route.RateLimit_Action,
+func BuildRateLimitDescriptors(limitTrigger *traffic_manage.LimitTrigger) ([]*route.RateLimit_Action,
 	[]*ratelimitv32.LocalRateLimitDescriptor) {
 	actions := make([]*route.RateLimit_Action, 0, 8)
 	descriptors := make([]*ratelimitv32.LocalRateLimitDescriptor, 0, 8)
 
-	entries := make([]*envoy_extensions_common_ratelimit_v3.RateLimitDescriptor_Entry, 0, len(rule.Labels))
+	entries := make([]*envoy_extensions_common_ratelimit_v3.RateLimitDescriptor_Entry, 0, 16)
 
-	methodMatchType := rule.GetMethod().GetType()
-	methodName := rule.GetMethod().GetValue().GetValue()
+	methodMatchType := limitTrigger.GetMethod().GetType()
+	methodName := limitTrigger.GetMethod().GetValue()
 	if methodName == "" {
 		methodName = "/"
 		methodMatchType = MatchString_Prefix
@@ -300,7 +306,7 @@ func BuildRateLimitDescriptors(rule *traffic_manage.Rule) ([]*route.RateLimit_Ac
 				Key: ":path",
 				Value: &apimodel.MatchString{
 					Type:      methodMatchType,
-					Value:     wrapperspb.String(methodName),
+					Value:     methodName,
 					ValueType: apimodel.MatchString_TEXT,
 				},
 			}),
@@ -310,7 +316,7 @@ func BuildRateLimitDescriptors(rule *traffic_manage.Rule) ([]*route.RateLimit_Ac
 		Key:   ":path",
 		Value: methodName,
 	})
-	arguments := rule.GetArguments()
+	arguments := limitTrigger.GetArguments()
 
 	for i := range arguments {
 		arg := arguments[i]
@@ -320,7 +326,7 @@ func BuildRateLimitDescriptors(rule *traffic_manage.Rule) ([]*route.RateLimit_Ac
 		}
 
 		descriptorKey := strings.ToLower(arg.GetType().String()) + "." + arg.Key
-		descriptorValue := arg.GetValue().GetValue().GetValue()
+		descriptorValue := arg.GetValue().GetValue()
 		switch arg.Type {
 		case apitraffic.MatchArgument_HEADER:
 			headerValueMatch := BuildRateLimitActionHeaderValueMatch(descriptorKey, descriptorValue, arg)
@@ -331,7 +337,7 @@ func BuildRateLimitDescriptors(rule *traffic_manage.Rule) ([]*route.RateLimit_Ac
 			})
 			entries = append(entries, &ratelimitv32.RateLimitDescriptor_Entry{
 				Key:   descriptorKey,
-				Value: arg.GetValue().GetValue().GetValue(),
+				Value: arg.GetValue().GetValue(),
 			})
 		case apitraffic.MatchArgument_QUERY:
 			queryParameterValueMatch := BuildRateLimitActionQueryParameterValueMatch(descriptorKey, arg)
@@ -342,7 +348,7 @@ func BuildRateLimitDescriptors(rule *traffic_manage.Rule) ([]*route.RateLimit_Ac
 			})
 			entries = append(entries, &ratelimitv32.RateLimitDescriptor_Entry{
 				Key:   descriptorKey,
-				Value: arg.GetValue().GetValue().GetValue(),
+				Value: arg.GetValue().GetValue(),
 			})
 		case apitraffic.MatchArgument_METHOD:
 			actions = append(actions, &route.RateLimit_Action{
@@ -355,11 +361,11 @@ func BuildRateLimitDescriptors(rule *traffic_manage.Rule) ([]*route.RateLimit_Ac
 			})
 			entries = append(entries, &envoy_extensions_common_ratelimit_v3.RateLimitDescriptor_Entry{
 				Key:   descriptorKey,
-				Value: arg.GetValue().GetValue().GetValue(),
+				Value: arg.GetValue().GetValue(),
 			})
 		case apitraffic.MatchArgument_CALLER_SERVICE:
 			descriptorKey := "source_cluster"
-			descriptorValue := fmt.Sprintf("%s|%s", arg.GetKey(), arg.GetValue().GetValue().GetValue())
+			descriptorValue := fmt.Sprintf("%s|%s", arg.GetKey(), arg.GetValue().GetValue())
 
 			// 如果是匹配来源服务，则 spec 中的 key 为 namespace，value 为 service
 
@@ -380,15 +386,15 @@ func BuildRateLimitDescriptors(rule *traffic_manage.Rule) ([]*route.RateLimit_Ac
 						{
 							Key: "source_service_namespace",
 							Value: &apimodel.MatchString{
-								Type:  arg.GetValue().Type,
-								Value: wrapperspb.String(arg.Key),
+								Type:  apimodel.MatchString_EXACT,
+								Value: arg.Key,
 							},
 						},
 						{
 							Key: "source_service_name",
 							Value: &apimodel.MatchString{
-								Type:  arg.GetValue().Type,
-								Value: wrapperspb.String(arg.Key),
+								Type:  apimodel.MatchString_EXACT,
+								Value: arg.Key,
 							},
 						},
 					}...),
@@ -406,16 +412,16 @@ func BuildRateLimitDescriptors(rule *traffic_manage.Rule) ([]*route.RateLimit_Ac
 			})
 			entries = append(entries, &envoy_extensions_common_ratelimit_v3.RateLimitDescriptor_Entry{
 				Key:   "remote_address",
-				Value: arg.GetValue().GetValue().GetValue(),
+				Value: arg.GetValue().GetValue(),
 			})
 		}
 	}
 
-	for _, amount := range rule.Amounts {
+	for _, amount := range limitTrigger.GetAmounts() {
 		descriptor := &envoy_extensions_common_ratelimit_v3.LocalRateLimitDescriptor{
 			TokenBucket: &envoy_type_v3.TokenBucket{
-				MaxTokens:     amount.GetMaxAmount().GetValue(),
-				TokensPerFill: wrapperspb.UInt32(amount.GetMaxAmount().GetValue()),
+				MaxTokens:     amount.GetMaxAmount(),
+				TokensPerFill: wrapperspb.UInt32(amount.GetMaxAmount()),
 				FillInterval:  amount.GetValidDuration(),
 			},
 		}
@@ -429,7 +435,7 @@ func BuildRateLimitActionQueryParameterValueMatch(key string,
 	arg *apitraffic.MatchArgument) *route.RateLimit_Action_QueryParameterValueMatch {
 	queryParameterValueMatch := &route.RateLimit_Action_QueryParameterValueMatch{
 		DescriptorKey:   key,
-		DescriptorValue: arg.GetValue().GetValue().GetValue(),
+		DescriptorValue: arg.GetValue().GetValue(),
 		ExpectMatch:     wrapperspb.Bool(true),
 		QueryParameters: []*route.QueryParameterMatcher{},
 	}
@@ -441,7 +447,7 @@ func BuildRateLimitActionQueryParameterValueMatch(key string,
 				QueryParameterMatchSpecifier: &route.QueryParameterMatcher_StringMatch{
 					StringMatch: &v32.StringMatcher{
 						MatchPattern: &v32.StringMatcher_Exact{
-							Exact: arg.GetValue().GetValue().GetValue(),
+							Exact: arg.GetValue().GetValue(),
 						},
 					},
 				},
@@ -456,7 +462,7 @@ func BuildRateLimitActionQueryParameterValueMatch(key string,
 						MatchPattern: &v32.StringMatcher_SafeRegex{
 							SafeRegex: &v32.RegexMatcher{
 								EngineType: &v32.RegexMatcher_GoogleRe2{},
-								Regex:      arg.GetValue().GetValue().GetValue(),
+								Regex:      arg.GetValue().GetValue(),
 							},
 						},
 					},
@@ -486,7 +492,7 @@ func BuildRateLimitActionHeaderValueMatch(key, value string,
 				HeaderMatchSpecifier: &route.HeaderMatcher_StringMatch{
 					StringMatch: &v32.StringMatcher{
 						MatchPattern: &v32.StringMatcher_Exact{
-							Exact: argument.GetValue().GetValue().GetValue(),
+							Exact: argument.GetValue().GetValue(),
 						},
 					},
 				},
@@ -497,7 +503,7 @@ func BuildRateLimitActionHeaderValueMatch(key, value string,
 				HeaderMatchSpecifier: &route.HeaderMatcher_SafeRegexMatch{
 					SafeRegexMatch: &v32.RegexMatcher{
 						EngineType: &v32.RegexMatcher_GoogleRe2{},
-						Regex:      argument.GetValue().GetValue().GetValue(),
+						Regex:      argument.GetValue().GetValue(),
 					},
 				},
 			})
@@ -508,7 +514,7 @@ func BuildRateLimitActionHeaderValueMatch(key, value string,
 				HeaderMatchSpecifier: &route.HeaderMatcher_StringMatch{
 					StringMatch: &v32.StringMatcher{
 						MatchPattern: &v32.StringMatcher_Prefix{
-							Prefix: argument.GetValue().GetValue().GetValue(),
+							Prefix: argument.GetValue().GetValue(),
 						},
 					},
 				},
@@ -889,26 +895,29 @@ func MakeGatewayLocalRateLimit(rateLimitCache cacheapi.RateLimitCache, pathSpeci
 	filters := make(map[string]*anypb.Any)
 	ratelimits := make([]*route.RateLimit, 0, len(conf))
 	for _, c := range conf {
-		rule := c.Proto
-		if rule == nil {
+		rateLimit := c.Proto
+		if rateLimit == nil {
 			continue
 		}
-		if rule.GetDisable().GetValue() {
+		if rateLimit.GetDisable() {
 			continue
 		}
-		if rule.GetMethod().GetValue().GetValue() != pathSpecifier {
-			continue
+		// Loop through each LimitTrigger in the RateLimit
+		for _, rule := range rateLimit.GetRules() {
+			if rule.GetMethod().GetValue() != pathSpecifier {
+				continue
+			}
+			actions, descriptors := BuildRateLimitDescriptors(rule)
+			rateLimitConf.Descriptors = descriptors
+			ratelimitRule := &route.RateLimit{Actions: actions}
+			switch rateLimit.GetType() {
+			case apitraffic.RateLimit_LOCAL:
+				ratelimitRule.Stage = wrapperspb.UInt32(LocalRateLimitStage)
+			case apitraffic.RateLimit_GLOBAL:
+				ratelimitRule.Stage = wrapperspb.UInt32(DistributedRateLimitStage)
+			}
+			ratelimits = append(ratelimits, ratelimitRule)
 		}
-		actions, descriptors := BuildRateLimitDescriptors(rule)
-		rateLimitConf.Descriptors = descriptors
-		ratelimitRule := &route.RateLimit{Actions: actions}
-		switch rule.GetType() {
-		case apitraffic.Rule_LOCAL:
-			ratelimitRule.Stage = wrapperspb.UInt32(LocalRateLimitStage)
-		case apitraffic.Rule_GLOBAL:
-			ratelimitRule.Stage = wrapperspb.UInt32(DistributedRateLimitStage)
-		}
-		ratelimits = append(ratelimits, ratelimitRule)
 	}
 	if len(ratelimits) == 0 {
 		return nil, nil, nil
@@ -928,23 +937,26 @@ func MakeSidecarLocalRateLimit(rateLimitCache cacheapi.RateLimitCache,
 	filters := make(map[string]*anypb.Any)
 	ratelimits := make([]*route.RateLimit, 0, len(conf))
 	for _, c := range conf {
-		rule := c.Proto
-		if rule == nil {
+		rateLimit := c.Proto
+		if rateLimit == nil {
 			continue
 		}
-		if rule.GetDisable().GetValue() {
+		if rateLimit.GetDisable() {
 			continue
 		}
-		actions, descriptors := BuildRateLimitDescriptors(rule)
-		rateLimitConf.Descriptors = descriptors
-		ratelimitRule := &route.RateLimit{Actions: actions}
-		switch rule.GetType() {
-		case apitraffic.Rule_LOCAL:
-			ratelimitRule.Stage = wrapperspb.UInt32(LocalRateLimitStage)
-		case apitraffic.Rule_GLOBAL:
-			ratelimitRule.Stage = wrapperspb.UInt32(DistributedRateLimitStage)
+		// Loop through each LimitTrigger in the RateLimit
+		for _, rule := range rateLimit.GetRules() {
+			actions, descriptors := BuildRateLimitDescriptors(rule)
+			rateLimitConf.Descriptors = descriptors
+			ratelimitRule := &route.RateLimit{Actions: actions}
+			switch rateLimit.GetType() {
+			case apitraffic.RateLimit_LOCAL:
+				ratelimitRule.Stage = wrapperspb.UInt32(LocalRateLimitStage)
+			case apitraffic.RateLimit_GLOBAL:
+				ratelimitRule.Stage = wrapperspb.UInt32(DistributedRateLimitStage)
+			}
+			ratelimits = append(ratelimits, ratelimitRule)
 		}
-		ratelimits = append(ratelimits, ratelimitRule)
 	}
 	filters["envoy.filters.http.local_ratelimit"] = MustNewAny(rateLimitConf)
 	return ratelimits, filters, nil
@@ -953,32 +965,31 @@ func MakeSidecarLocalRateLimit(rateLimitCache cacheapi.RateLimitCache,
 // Translate the circuit breaker configuration of Polaris into OutlierDetection
 func MakeOutlierDetection(serviceInfo *ServiceInfo) *cluster.OutlierDetection {
 	circuitBreaker := serviceInfo.CircuitBreaker
-	if circuitBreaker == nil || len(circuitBreaker.Rules) == 0 {
+	if circuitBreaker == nil || len(circuitBreaker.GetTriggerCondition()) == 0 {
 		return nil
 	}
-	var rule *apifault.CircuitBreakerRule
-	for _, item := range circuitBreaker.Rules {
-		if item.Level == apifault.Level_INSTANCE {
-			rule = item
+	var triggerCondition *apifault.TriggerCondition
+	for _, item := range circuitBreaker.GetTriggerCondition() {
+		if circuitBreaker.Level == apifault.Level_INSTANCE {
+			triggerCondition = item
 			break
 		}
 	}
 	// not config or close circuit breaker
-	if rule == nil || len(rule.TriggerCondition) == 0 || !rule.Enable {
+	if triggerCondition == nil || !circuitBreaker.Enable {
 		return nil
 	}
-	triggerCondtion := rule.TriggerCondition[0]
 	outlierDetection := &cluster.OutlierDetection{}
-	outlierDetection.Interval = durationpb.New(time.Duration(triggerCondtion.GetInterval()) * time.Second)
+	outlierDetection.Interval = durationpb.New(time.Duration(triggerCondition.GetInterval()) * time.Second)
 	outlierDetection.Consecutive_5Xx = &wrappers.UInt32Value{
-		Value: triggerCondtion.GetErrorCount()}
+		Value: triggerCondition.GetErrorCount()}
 	outlierDetection.FailurePercentageThreshold = &wrappers.UInt32Value{
-		Value: triggerCondtion.GetErrorPercent()}
+		Value: triggerCondition.GetErrorPercent()}
 	outlierDetection.FailurePercentageRequestVolume = &wrappers.UInt32Value{
-		Value: triggerCondtion.GetMinimumRequest()}
-	if rule.RecoverCondition != nil {
+		Value: triggerCondition.GetMinimumRequest()}
+	if circuitBreaker.RecoverCondition != nil {
 		outlierDetection.BaseEjectionTime =
-			durationpb.New(time.Duration(rule.GetRecoverCondition().GetSleepWindow()) * time.Second)
+			durationpb.New(time.Duration(circuitBreaker.GetRecoverCondition().GetSleepWindow()) * time.Second)
 	}
 
 	return outlierDetection
@@ -1051,9 +1062,23 @@ func MakeLbSubsetConfig(serviceInfo *ServiceInfo) *cluster.Cluster_LbSubsetConfi
 	}
 
 	var subsetSelectors []*cluster.Cluster_LbSubsetConfig_LbSubsetSelector
-	for _, rule := range rules {
+	// Since TrafficMatchRule doesn't have GetDestinations, we need to get destination info differently
+	// We'll need to go back to the original CustomRoute rules for destination information
+	if serviceInfo.Routing == nil {
+		return nil
+	}
+	rule := serviceInfo.Routing
+	if rule.GetRoutePolicy() != traffic_manage.RoutePolicy_RulePolicy {
+		return nil
+	}
+	routerRule := &traffic_manage.CustomRoute{}
+	if err := ptypes.UnmarshalAny(rule.RoutingConfig, routerRule); err != nil {
+		return nil
+	}
+
+	for _, subRule := range routerRule.Rules {
 		// 对每一个 destination 产生一个 subset
-		for _, destination := range rule.GetDestinations() {
+		for _, destination := range subRule.GetDestinations() {
 			var keys []string
 			for s := range destination.GetLabels() {
 				keys = append(keys, s)
@@ -1093,17 +1118,17 @@ func GenEndpointMetaFromPolarisIns(ins *apiservice.Instance) *core.Metadata {
 }
 
 func IsNormalEndpoint(ins *apiservice.Instance) bool {
-	if ins.GetIsolate().GetValue() {
+	if ins.GetIsolate() {
 		return false
 	}
-	if ins.GetWeight().GetValue() == 0 {
+	if ins.GetWeight() == 0 {
 		return false
 	}
 	return true
 }
 
 func FormatEndpointHealth(ins *apiservice.Instance) core.HealthStatus {
-	if ins.GetHealthy().GetValue() {
+	if ins.GetHealthy() {
 		return core.HealthStatus_HEALTHY
 	}
 	return core.HealthStatus_UNHEALTHY

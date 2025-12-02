@@ -21,11 +21,11 @@ func (a *ApolloServer) diffChangeFiles(ctx context.Context,
 	}
 	changeKeys := make([]*ApolloConfigNotification, 0, 4)
 	// quick get file and compare
-	for _, item := range listenCtx.WatchFiles {
-		namespace := item.GetNamespace().GetValue()
-		group := item.GetGroup().GetValue()
-		filename := item.GetFileName().GetValue()
-		mdval := item.GetMd5().GetValue()
+	for _, item := range listenCtx.Files {
+		namespace := item.Namespace
+		group := item.Group
+		filename := item.FileName
+		mdval := item.Md5
 
 		if beta := a.innerSvr.CacheManager().ConfigFile().GetActiveGrayRelease(namespace, group, filename); beta != nil {
 			if a.innerSvr.CacheManager().Gray().HitGrayRule(beta.FileKey(), clientLabels) {
@@ -57,8 +57,8 @@ func (a *ApolloServer) BuildTimeoutWatchCtx(ctx context.Context, watchTimeOut ti
 			clientId:         clientId,
 			labels:           labels,
 			finishTime:       time.Now().Add(watchTimeOut),
-			finishChan:       make(chan *config_manage.ConfigClientResponse),
-			watchConfigFiles: map[string]*config_manage.ClientConfigFileInfo{},
+			finishChan:       make(chan *apiconfig.ConfigDiscoverResponse),
+			watchConfigFiles: map[string]*config_manage.ConfigFile{},
 			betaMatcher: func(clientLabels map[string]string, event *conftypes.SimpleConfigFileRelease) bool {
 				return a.innerSvr.CacheManager().Gray().HitGrayRule(config.GetGrayConfigReaseKey(event), clientLabels)
 			},
@@ -73,8 +73,8 @@ type ApolloWatchContext struct {
 	labels           map[string]string
 	once             sync.Once
 	finishTime       time.Time
-	finishChan       chan *config_manage.ConfigClientResponse
-	watchConfigFiles map[string]*config_manage.ClientConfigFileInfo
+	finishChan       chan *apiconfig.ConfigDiscoverResponse
+	watchConfigFiles map[string]*config_manage.ConfigFile
 	betaMatcher      config.BetaReleaseMatcher
 }
 
@@ -89,12 +89,12 @@ func (w *ApolloWatchContext) ClientLabels() map[string]string {
 }
 
 // GetNotifieResult .
-func (w *ApolloWatchContext) GetNotifieResult() *config_manage.ConfigClientResponse {
+func (w *ApolloWatchContext) GetNotifieResult() *apiconfig.ConfigDiscoverResponse {
 	return <-w.finishChan
 }
 
 // GetNotifieResultWithTime .
-func (w *ApolloWatchContext) GetNotifieResultWithTime(timeout time.Duration) (*config_manage.ConfigClientResponse, error) {
+func (w *ApolloWatchContext) GetNotifieResultWithTime(timeout time.Duration) (*apiconfig.ConfigDiscoverResponse, error) {
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 	select {
@@ -106,26 +106,26 @@ func (w *ApolloWatchContext) GetNotifieResultWithTime(timeout time.Duration) (*c
 }
 
 // AppendInterest 客户端增加订阅列表
-func (w *ApolloWatchContext) AppendInterest(item *apiconfig.ClientConfigFileInfo) {
+func (w *ApolloWatchContext) AppendInterest(item *config_manage.ConfigFile) {
 	// 这里可以实现对订阅列表的追加逻辑
 	w.lock.Lock()
 	defer w.lock.Unlock()
 	if w.watchConfigFiles == nil {
-		w.watchConfigFiles = make(map[string]*apiconfig.ClientConfigFileInfo)
+		w.watchConfigFiles = make(map[string]*config_manage.ConfigFile)
 	}
-	key := conftypes.BuildKeyForClientConfigFileInfo(item)
+	key := item.Namespace + "@" + item.Group + "@" + item.Name
 	w.watchConfigFiles[key] = item
 }
 
 // RemoveInterest 客户端删除订阅列表
-func (w *ApolloWatchContext) RemoveInterest(item *apiconfig.ClientConfigFileInfo) {
+func (w *ApolloWatchContext) RemoveInterest(item *config_manage.ConfigFile) {
 	// 这里可以实现对订阅列表的删除逻辑
 	w.lock.Lock()
 	defer w.lock.Unlock()
 	if w.watchConfigFiles == nil {
 		return
 	}
-	key := conftypes.BuildKeyForClientConfigFileInfo(item)
+	key := item.Namespace + "@" + item.Group + "@" + item.Name
 	delete(w.watchConfigFiles, key)
 }
 
@@ -142,13 +142,13 @@ func (w *ApolloWatchContext) ShouldNotify(event *conftypes.SimpleConfigFileRelea
 	key := event.FileKey()
 	if watchFile, ok := w.watchConfigFiles[key]; ok {
 		// 如果是更新操作，检查版本号是否有变化
-		return watchFile.GetVersion().GetValue() < event.Version
+		return watchFile.Id < event.Version
 	}
 	return false
 }
 
 // Reply 真正的通知逻辑
-func (w *ApolloWatchContext) Reply(rsp *apiconfig.ConfigClientResponse) {
+func (w *ApolloWatchContext) Reply(rsp *apiconfig.ConfigDiscoverResponse) {
 	// 这里可以实现对客户端的通知逻辑
 	// 例如将 rsp 发送到客户端
 	w.once.Do(func() {
@@ -173,13 +173,13 @@ func (w *ApolloWatchContext) ShouldExpire(now time.Time) bool {
 }
 
 // ListWatchFiles 列举出当前订阅的所有配置文件
-func (w *ApolloWatchContext) ListWatchFiles() []*apiconfig.ClientConfigFileInfo {
+func (w *ApolloWatchContext) ListWatchFiles() []*config_manage.ConfigFile {
 	// 这里可以实现列举当前订阅的配置文件的逻辑
 	// 返回一个包含所有订阅文件信息的切片
 	w.lock.RLock()
 	defer w.lock.RUnlock()
 
-	ret := make([]*config_manage.ClientConfigFileInfo, 0, len(w.watchConfigFiles))
+	ret := make([]*config_manage.ConfigFile, 0, len(w.watchConfigFiles))
 	for _, v := range w.watchConfigFiles {
 		ret = append(ret, v)
 	}
@@ -193,7 +193,7 @@ func (w *ApolloWatchContext) CurWatchVersion(k string) uint64 {
 	w.lock.RLock()
 	defer w.lock.RUnlock()
 
-	return w.watchConfigFiles[k].GetVersion().GetValue()
+	return w.watchConfigFiles[k].Id
 }
 
 // IsOnce 是不是只能被通知一次

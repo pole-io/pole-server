@@ -43,7 +43,6 @@ import (
 
 	"github.com/pole-io/pole-server/apis/apiserver"
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -383,32 +382,36 @@ func (x *XDSServer) getRegistryInfoWithCache(ctx context.Context,
 	for _, v := range registryInfo {
 		for _, svc := range v {
 			s := &apiservice.Service{
-				Name:      protobuf.NewStringValue(svc.Name),
-				Namespace: protobuf.NewStringValue(svc.Namespace),
-				Revision:  protobuf.NewStringValue("-1"),
+				Name:      svc.Name,
+				Namespace: svc.Namespace,
+				Revision:  "-1",
 			}
 
 			// 获取routing配置
-			routerRule, err := x.namingServer.Cache().RoutingConfig().GetRouterRule("", svc.Name, svc.Namespace)
+			routerRules, _, err := x.namingServer.Cache().RoutingConfig().GetRouterRule("", svc.Name, svc.Namespace)
 			if err != nil {
 				log.Errorf("error sync routing for namespace(%s) service(%s), info : %s", svc.Namespace,
 					svc.Name, err.Error())
 				return fmt.Errorf("[XDSV3] error sync routing for %s", svc.Name)
 			}
 
-			svc.SvcRoutingRevision = routerRule.GetRevision().GetValue()
-			svc.Routing = routerRule
+			if len(routerRules) > 0 {
+				// Take the first routing rule
+				firstRule := routerRules[0]
+				svc.SvcRoutingRevision = firstRule.GetRevision()
+				svc.Routing = firstRule
+			}
 
 			// 获取instance配置
 			resp := x.namingServer.ServiceInstancesCache(ctx, &apiservice.DiscoverFilter{}, s)
-			if resp.GetCode().Value != api.ExecuteSuccess {
+			if resp.GetCode() != api.ExecuteSuccess {
 				log.Errorf("[XDSV3] error sync instances for namespace(%s) service(%s), info : %s",
-					svc.Namespace, svc.Name, resp.Info.GetValue())
+					svc.Namespace, svc.Name, resp.Info)
 				return fmt.Errorf("error sync instances for %s", svc.Name)
 			}
 
 			svc.AliasFor = x.namingServer.Cache().Service().GetAliasFor(svc.Name, svc.Namespace)
-			svc.SvcInsRevision = resp.Service.Revision.Value
+			svc.SvcInsRevision = resp.Service.Revision
 			svc.Instances = resp.Instances
 			ports := x.namingServer.Cache().Instance().GetServicePorts(svc.ID)
 			if svc.AliasFor != nil {
@@ -418,32 +421,34 @@ func (x *XDSServer) getRegistryInfoWithCache(ctx context.Context,
 
 			// 获取ratelimit配置
 			ratelimitResp := x.ruleServer.GetRateLimitWithCache(ctx, s)
-			if ratelimitResp.GetCode().Value != api.ExecuteSuccess {
+			if ratelimitResp.GetCode() != api.ExecuteSuccess {
 				log.Errorf("[XDSV3] error sync ratelimit for %s, info : %s", svc.Name,
-					ratelimitResp.Info.GetValue())
+					ratelimitResp.Info)
 				return fmt.Errorf("error sync ratelimit for %s", svc.Name)
 			}
 			if ratelimitResp.RateLimit != nil {
-				svc.SvcRateLimitRevision = ratelimitResp.RateLimit.Revision.Value
+				svc.SvcRateLimitRevision = ratelimitResp.RateLimit.Revision
 				svc.RateLimit = ratelimitResp.RateLimit
 			}
 			// 获取circuitBreaker配置
 			circuitBreakerResp := x.ruleServer.GetCircuitBreakerWithCache(ctx, s)
-			if circuitBreakerResp.GetCode().Value != api.ExecuteSuccess {
+			if circuitBreakerResp.GetCode() != api.ExecuteSuccess {
 				log.Errorf("[XDSV3] error sync circuitBreaker for %s, info : %s",
-					svc.Name, circuitBreakerResp.Info.GetValue())
+					svc.Name, circuitBreakerResp.Info)
 				return fmt.Errorf("error sync circuitBreaker for %s", svc.Name)
 			}
-			if circuitBreakerResp.CircuitBreaker != nil {
-				svc.CircuitBreakerRevision = circuitBreakerResp.CircuitBreaker.Revision.Value
-				svc.CircuitBreaker = circuitBreakerResp.CircuitBreaker
+			if len(circuitBreakerResp.CircuitBreaker) > 0 {
+				// Take the first circuit breaker rule
+				firstRule := circuitBreakerResp.CircuitBreaker[0]
+				svc.CircuitBreakerRevision = firstRule.Revision
+				svc.CircuitBreaker = firstRule
 			}
 
 			// 获取faultDetect配置
 			faultDetectResp := x.ruleServer.GetFaultDetectWithCache(ctx, s)
-			if faultDetectResp.GetCode().Value != api.ExecuteSuccess {
+			if faultDetectResp.GetCode() != api.ExecuteSuccess {
 				log.Errorf("[XDSV3] error sync faultDetect for %s, info : %s",
-					svc.Name, faultDetectResp.Info.GetValue())
+					svc.Name, faultDetectResp.Info)
 				return fmt.Errorf("error sync faultDetect for %s", svc.Name)
 			}
 			if faultDetectResp.FaultDetector != nil {

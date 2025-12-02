@@ -21,14 +21,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
@@ -59,11 +57,6 @@ func (g *DiscoverGRPCServer) RegisterInstance(ctx context.Context, in *apiservic
 	rCtx := utils.ConvertGRPCContext(ctx)
 	rCtx = context.WithValue(rCtx, types.StringContext("operator"), ParseGrpcOperator(ctx))
 
-	// 客户端请求中带了 token 的，优先已请求中的为准
-	if in.GetServiceToken().GetValue() != "" {
-		rCtx = context.WithValue(rCtx, types.ContextAuthTokenKey, in.GetServiceToken().GetValue())
-	}
-
 	grpcHeader := rCtx.Value(types.ContextGrpcHeader).(metadata.MD)
 
 	if _, ok := grpcHeader["async-regis"]; ok {
@@ -80,11 +73,6 @@ func (g *DiscoverGRPCServer) DeregisterInstance(
 	// 需要记录操作来源，提高效率，只针对特殊接口添加operator
 	rCtx := utils.ConvertGRPCContext(ctx)
 	rCtx = context.WithValue(rCtx, types.StringContext("operator"), ParseGrpcOperator(ctx))
-
-	// 客户端请求中带了 token 的，优先已请求中的为准
-	if in.GetServiceToken().GetValue() != "" {
-		rCtx = context.WithValue(rCtx, types.ContextAuthTokenKey, in.GetServiceToken().GetValue())
-	}
 
 	out := g.namingServer.DeregisterInstance(rCtx, in)
 	return out, nil
@@ -148,18 +136,18 @@ func (g *DiscoverGRPCServer) handleDiscoverRequest(ctx context.Context, in *apis
 		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    action,
 			ClientIP:  utils.ParseClientAddress(ctx),
-			Namespace: in.GetService().GetNamespace().GetValue(),
-			Resource:  in.GetType().String() + ":" + in.GetService().GetName().GetValue(),
+			Namespace: in.GetService().GetNamespace(),
+			Resource:  in.GetType().String() + ":" + in.GetService().GetName(),
 			Timestamp: startTime,
 			CostTime:  commontime.CurrentMillisecond() - startTime,
-			Revision:  out.GetService().GetRevision().GetValue(),
-			Success:   out.GetCode().GetValue() > uint32(apimodel.Code_DataNoChange),
+			Revision:  out.GetService().GetRevision(),
+			Success:   out.GetCode() > uint32(apimodel.Code_DataNoChange),
 		})
 	}()
 
 	// 兼容。如果请求中带了token，优先使用该token
-	if in.GetService().GetToken().GetValue() != "" {
-		ctx = context.WithValue(ctx, types.ContextAuthTokenKey, in.GetService().GetToken().GetValue())
+	if in.GetService().GetToken() != "" {
+		ctx = context.WithValue(ctx, types.ContextAuthTokenKey, in.GetService().GetToken())
 	}
 
 	switch in.Type {
@@ -228,100 +216,98 @@ func ParseGrpcOperator(ctx context.Context) string {
 
 // GetConfigFile 拉取配置
 func (g *ConfigGRPCServer) GetConfigFile(ctx context.Context,
-	req *apiconfig.ClientConfigFileInfo) (*apiconfig.ConfigClientResponse, error) {
+	req *apiconfig.ConfigFile) (*apimodel.Response, error) {
 	ctx = utils.ConvertGRPCContext(ctx)
 
 	startTime := commontime.CurrentMillisecond()
-	var ret *apiconfig.ConfigClientResponse
+	var ret *apiconfig.ConfigDiscoverResponse
 	defer func() {
 		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    metrics.ActionGetConfigFile,
 			ClientIP:  utils.ParseClientAddress(ctx),
-			Namespace: req.GetNamespace().GetValue(),
-			Resource:  metrics.ResourceOfConfigFile(req.GetGroup().GetValue(), req.GetFileName().GetValue()),
+			Namespace: req.GetNamespace(),
+			Resource:  metrics.ResourceOfConfigFile(req.GetGroup(), req.GetName()),
 			Timestamp: startTime,
 			CostTime:  commontime.CurrentMillisecond() - startTime,
-			Revision:  strconv.FormatUint(ret.GetConfigFile().GetVersion().GetValue(), 10),
-			Success:   ret.GetCode().GetValue() > uint32(apimodel.Code_DataNoChange),
+			Revision:  ret.GetRevision(),
+			Success:   ret.GetCode() > uint32(apimodel.Code_DataNoChange),
 		})
 	}()
 	ret = g.configServer.GetConfigFileWithCache(ctx, req)
-	return ret, nil
+	return &apimodel.Response{
+		Code: ret.GetCode(),
+		Info: ret.GetInfo(),
+	}, nil
 }
 
 // CreateConfigFile 创建或更新配置
 func (g *ConfigGRPCServer) CreateConfigFile(ctx context.Context,
-	configFile *apiconfig.ConfigFile) (*apiconfig.ConfigClientResponse, error) {
+	configFile *apiconfig.ConfigFile) (*apimodel.Response, error) {
 	ctx = utils.ConvertGRPCContext(ctx)
 	response := g.configServer.CreateConfigFileFromClient(ctx, configFile)
-	return response, nil
+	return &apimodel.Response{
+		Code: response.GetCode(),
+		Info: response.GetInfo(),
+	}, nil
 }
 
 // UpdateConfigFile 创建或更新配置
 func (g *ConfigGRPCServer) UpdateConfigFile(ctx context.Context,
-	configFile *apiconfig.ConfigFile) (*apiconfig.ConfigClientResponse, error) {
+	configFile *apiconfig.ConfigFile) (*apimodel.Response, error) {
 	ctx = utils.ConvertGRPCContext(ctx)
 	response := g.configServer.UpdateConfigFileFromClient(ctx, configFile)
-	return response, nil
+	return &apimodel.Response{
+		Code: response.GetCode(),
+		Info: response.GetInfo(),
+	}, nil
 }
 
 // PublishConfigFile 发布配置
 func (g *ConfigGRPCServer) PublishConfigFile(ctx context.Context,
-	configFile *apiconfig.ConfigFileRelease) (*apiconfig.ConfigClientResponse, error) {
+	configFile *apiconfig.ConfigFileRelease) (*apimodel.Response, error) {
 	ctx = utils.ConvertGRPCContext(ctx)
 	response := g.configServer.PublishConfigFileFromClient(ctx, configFile)
-	return response, nil
-}
-
-func (g *ConfigGRPCServer) UpsertAndPublishConfigFile(ctx context.Context,
-	req *apiconfig.ConfigFilePublishInfo) (*apiconfig.ConfigClientResponse, error) {
-	ctx = utils.ConvertGRPCContext(ctx)
-	response := g.configServer.UpsertAndReleaseConfigFileFromClient(ctx, req)
-	return &apiconfig.ConfigClientResponse{
-		Code: response.Code,
-		Info: response.Info,
-		ConfigFile: &apiconfig.ClientConfigFileInfo{
-			Namespace: req.Namespace,
-			Group:     req.Group,
-			FileName:  req.FileName,
-		},
+	return &apimodel.Response{
+		Code: response.GetCode(),
+		Info: response.GetInfo(),
 	}, nil
 }
 
-// WatchConfigFiles 订阅配置变更
-func (g *ConfigGRPCServer) WatchConfigFiles(ctx context.Context,
-	request *apiconfig.ClientWatchConfigFileRequest) (*apiconfig.ConfigClientResponse, error) {
+// UpsertAndPublishConfigFile 创建/更新并发布配置文件
+func (g *ConfigGRPCServer) UpsertAndPublishConfigFile(ctx context.Context,
+	req *apiconfig.ConfigFilePublishInfo) (*apimodel.Response, error) {
 	ctx = utils.ConvertGRPCContext(ctx)
-
-	// 阻塞等待响应
-	callback, err := g.configServer.LongPullWatchFile(ctx, request)
-	if err != nil {
-		return nil, err
-	}
-	return callback(), nil
+	response := g.configServer.UpsertAndReleaseConfigFileFromClient(ctx, req)
+	return &apimodel.Response{
+		Code: response.GetCode(),
+		Info: response.GetInfo(),
+	}, nil
 }
 
 func (g *ConfigGRPCServer) GetConfigFileMetadataList(ctx context.Context,
-	req *apiconfig.ConfigFileGroupRequest) (*apiconfig.ConfigClientListResponse, error) {
+	req *apiconfig.ConfigFileGroupRequest) (*apimodel.Response, error) {
 
 	startTime := commontime.CurrentMillisecond()
-	var ret *apiconfig.ConfigClientListResponse
+	var ret *apiconfig.ConfigDiscoverResponse
 	defer func() {
 		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    metrics.ActionListConfigFiles,
 			ClientIP:  utils.ParseClientAddress(ctx),
-			Namespace: req.GetConfigFileGroup().GetNamespace().GetValue(),
-			Resource:  metrics.ResourceOfConfigFileList(req.GetConfigFileGroup().GetName().GetValue()),
+			Namespace: req.GetConfigFileGroup().GetNamespace(),
+			Resource:  metrics.ResourceOfConfigFileList(req.GetConfigFileGroup().GetName()),
 			Timestamp: startTime,
 			CostTime:  commontime.CurrentMillisecond() - startTime,
-			Revision:  ret.GetRevision().GetValue(),
-			Success:   ret.GetCode().GetValue() > uint32(apimodel.Code_DataNoChange),
+			Revision:  ret.GetRevision(),
+			Success:   ret.GetCode() > uint32(apimodel.Code_DataNoChange),
 		})
 	}()
 
 	ctx = utils.ConvertGRPCContext(ctx)
 	ret = g.configServer.GetConfigFileNamesWithCache(ctx, req)
-	return ret, nil
+	return &apimodel.Response{
+		Code: ret.GetCode(),
+		Info: ret.GetInfo(),
+	}, nil
 }
 
 func (g *ConfigGRPCServer) Discover(svr apiconfig.PolarisConfigGRPC_DiscoverServer) error {
@@ -382,8 +368,8 @@ func (g *ConfigGRPCServer) handleDiscoverRequest(ctx context.Context, in *apicon
 		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    action,
 			ClientIP:  utils.ParseClientAddress(ctx),
-			Namespace: in.GetConfigFile().GetNamespace().GetValue(),
-			Resource:  metrics.ResourceOfConfigFile(in.GetConfigFile().GetGroup().GetValue(), in.GetConfigFile().GetFileName().GetValue()),
+			Namespace: in.GetFile().GetNamespace(),
+			Resource:  metrics.ResourceOfConfigFile(in.GetFile().GetGroup(), in.GetFile().GetName()),
 			Timestamp: startTime,
 			CostTime:  commontime.CurrentMillisecond() - startTime,
 			Revision:  out.GetRevision(),
@@ -394,35 +380,27 @@ func (g *ConfigGRPCServer) handleDiscoverRequest(ctx context.Context, in *apicon
 	switch in.Type {
 	case apiconfig.ConfigDiscoverRequest_CONFIG_FILE:
 		action = metrics.ActionGetConfigFile
-		version, _ := strconv.ParseUint(in.GetRevision(), 10, 64)
-		ret := g.configServer.GetConfigFileWithCache(ctx, &apiconfig.ClientConfigFileInfo{
-			Namespace: in.GetConfigFile().GetNamespace(),
-			Group:     in.GetConfigFile().GetGroup(),
-			FileName:  in.GetConfigFile().GetFileName(),
-			Version:   wrapperspb.UInt64(version),
-			PublicKey: in.GetConfigFile().GetPublicKey(),
-		})
-		out = api.NewConfigDiscoverResponse(apimodel.Code(ret.GetCode().GetValue()))
-		out.ConfigFile = ret.GetConfigFile()
+		ret := g.configServer.GetConfigFileWithCache(ctx, in.GetFile())
+		out = api.NewConfigDiscoverResponse(apimodel.Code(ret.GetCode()))
+		out.File = ret.GetFile()
 		out.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE
-		out.Revision = strconv.Itoa(int(out.GetConfigFile().GetVersion().GetValue()))
+		out.Revision = ret.GetRevision()
 	case apiconfig.ConfigDiscoverRequest_CONFIG_FILE_Names:
 		action = metrics.ActionListConfigFiles
 		ret := g.configServer.GetConfigFileNamesWithCache(ctx, &apiconfig.ConfigFileGroupRequest{
-			Revision: wrapperspb.String(in.GetRevision()),
+			Revision: in.GetRevision(),
 			ConfigFileGroup: &apiconfig.ConfigFileGroup{
-				Namespace: in.GetConfigFile().GetNamespace(),
-				Name:      in.GetConfigFile().GetGroup(),
+				Namespace: in.GetFile().GetNamespace(),
+				Name:      in.GetFile().GetGroup(),
 			},
 		})
-		out = api.NewConfigDiscoverResponse(apimodel.Code(ret.GetCode().GetValue()))
-		out.ConfigFileNames = ret.GetConfigFileInfos()
+		out = api.NewConfigDiscoverResponse(apimodel.Code(ret.GetCode()))
+		out.FileNames = ret.GetFileNames()
 		out.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE_Names
-		out.Revision = ret.GetRevision().GetValue()
+		out.Revision = ret.GetRevision()
 	case apiconfig.ConfigDiscoverRequest_CONFIG_FILE_GROUPS:
 		action = metrics.ActionListConfigGroups
-		req := in.GetConfigFile()
-		req.Md5 = wrapperspb.String(in.GetRevision())
+		req := in.GetFile()
 		out = g.configServer.GetConfigGroupsWithCache(ctx, req)
 		out.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE_GROUPS
 	default:

@@ -18,12 +18,11 @@
 package auth
 
 import (
-	"strconv"
+	"fmt"
 
 	"github.com/emicklei/go-restful/v3"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/pkg/admin"
@@ -90,14 +89,12 @@ func (h *HTTPServer) AuthStatus(req *restful.Request, rsp *restful.Response) {
 	checker := h.policySvr.GetAuthChecker()
 
 	isOpen := (checker.IsOpenClientAuth() || checker.IsOpenConsoleAuth())
-	resp := api.NewAuthResponse(apimodel.Code_ExecuteSuccess)
-	resp.OptionSwitch = &apiservice.OptionSwitch{
-		Options: map[string]string{
-			"auth":        strconv.FormatBool(isOpen),
-			"clientOpen":  strconv.FormatBool(checker.IsOpenClientAuth()),
-			"consoleOpen": strconv.FormatBool(checker.IsOpenConsoleAuth()),
-		},
-	}
+
+	// 构建包含认证状态信息的响应信息
+	statusInfo := fmt.Sprintf(`{"auth":%t,"clientOpen":%t,"consoleOpen":%t}`,
+		isOpen, checker.IsOpenClientAuth(), checker.IsOpenConsoleAuth())
+
+	resp := api.NewAuthResponseWithMsg(apimodel.Code_ExecuteSuccess, statusInfo)
 
 	handler.WriteHeaderAndProto(resp)
 }

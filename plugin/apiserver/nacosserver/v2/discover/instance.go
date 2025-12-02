@@ -22,13 +22,11 @@ import (
 	"fmt"
 
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
@@ -56,35 +54,37 @@ func (h *DiscoverServer) handleInstanceRequest(ctx context.Context, req nacospb.
 	ins.Metadata[nacosmodel.InternalNacosClientConnectionID] = remote.ValueConnID(ctx)
 
 	// Nacos2.x 显示关闭实例的健康检查能力，实例的健康状态和 Grpc Connection 绑定在一起
-	ins.EnableHealthCheck = wrapperspb.Bool(false)
+	ins.EnableHealthCheck = false
 	ins.HealthCheck = nil
 
-	var resp *service_manage.Response
+	var resp *apimodel.Response
 	var respType string
 
 	switch insReq.Type {
 	case "registerInstance":
 		respType = "registerInstance"
 		resp = h.discoverSvr.RegisterInstance(ctx, ins)
-		insID := resp.GetInstance().GetId().GetValue()
-		h.clientManager.addServiceInstance(meta.ConnectionID, svctypes.ServiceKey{
-			Namespace: ins.GetNamespace().GetValue(),
-			Name:      ins.GetService().GetValue(),
-		}, insID)
+		if resp.GetCode() == uint32(apimodel.Code_ExecuteSuccess) {
+			insID := ins.GetId()
+			h.clientManager.addServiceInstance(meta.ConnectionID, svctypes.ServiceKey{
+				Namespace: ins.GetNamespace(),
+				Name:      ins.GetService(),
+			}, insID)
+		}
 	case "deregisterInstance":
 		respType = "deregisterInstance"
 		insID, errRsp := valid.CheckInstanceTetrad(ins)
 		if errRsp != nil {
 			return nil, &nacosmodel.NacosError{
-				ErrCode: int32(errRsp.GetCode().GetValue()),
-				ErrMsg:  errRsp.GetInfo().GetValue(),
+				ErrCode: int32(errRsp.GetCode()),
+				ErrMsg:  errRsp.GetInfo(),
 			}
 		}
-		ins.Id = protobuf.NewStringValue(insID)
+		ins.Id = insID
 		resp = h.discoverSvr.DeregisterInstance(ctx, ins)
 		h.clientManager.delServiceInstance(meta.ConnectionID, svctypes.ServiceKey{
-			Namespace: ins.GetNamespace().GetValue(),
-			Name:      ins.GetService().GetValue(),
+			Namespace: ins.GetNamespace(),
+			Name:      ins.GetService(),
 		}, insID)
 	default:
 		return nil, &nacosmodel.NacosError{
@@ -97,7 +97,7 @@ func (h *DiscoverServer) handleInstanceRequest(ctx context.Context, req nacospb.
 	resultCode := int(nacosmodel.Response_Success.Code)
 	success := true
 
-	if resp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
+	if resp.GetCode() != uint32(apimodel.Code_ExecuteSuccess) {
 		success = false
 		errCode = int(nacosmodel.ErrorCode_ServerError.Code)
 		resultCode = int(nacosmodel.Response_Fail.Code)
@@ -108,7 +108,7 @@ func (h *DiscoverServer) handleInstanceRequest(ctx context.Context, req nacospb.
 			ResultCode: resultCode,
 			ErrorCode:  errCode,
 			Success:    success,
-			Message:    resp.GetInfo().GetValue(),
+			Message:    resp.GetInfo(),
 		},
 		Type: respType,
 	}, nil
@@ -128,10 +128,10 @@ func (h *DiscoverServer) handlePersistentInstanceRequest(ctx context.Context, re
 	namespace = nacosmodel.ToPolarisNamespace(namespace)
 	svcName := nacosmodel.BuildServiceName(insReq.ServiceName, insReq.GroupName)
 	ins := nacosmodel.PrepareSpecInstance(namespace, svcName, &insReq.Instance)
-	ins.EnableHealthCheck = wrapperspb.Bool(false)
+	ins.EnableHealthCheck = false
 	ins.HealthCheck = nil
 
-	var resp *service_manage.Response
+	var resp *apimodel.Response
 	var respType string
 
 	errCode := int(nacosmodel.ErrorCode_Success.Code)
@@ -147,11 +147,11 @@ func (h *DiscoverServer) handlePersistentInstanceRequest(ctx context.Context, re
 		insID, errRsp := valid.CheckInstanceTetrad(ins)
 		if errRsp != nil {
 			return nil, &nacosmodel.NacosError{
-				ErrCode: int32(errRsp.GetCode().GetValue()),
-				ErrMsg:  errRsp.GetInfo().GetValue(),
+				ErrCode: int32(errRsp.GetCode()),
+				ErrMsg:  errRsp.GetInfo(),
 			}
 		}
-		ins.Id = protobuf.NewStringValue(insID)
+		ins.Id = insID
 		resp = h.discoverSvr.DeregisterInstance(ctx, ins)
 	default:
 		return nil, &nacosmodel.NacosError{
@@ -165,7 +165,7 @@ func (h *DiscoverServer) handlePersistentInstanceRequest(ctx context.Context, re
 			ResultCode: resultCode,
 			ErrorCode:  errCode,
 			Success:    success,
-			Message:    resp.GetInfo().GetValue(),
+			Message:    resp.GetInfo(),
 		},
 		Type: respType,
 	}, nil
@@ -196,20 +196,20 @@ func (h *DiscoverServer) handleBatchInstanceRequest(ctx context.Context, req nac
 			ins := nacosmodel.PrepareSpecInstance(namespace, svcName, insReq)
 			ins.Metadata[nacosmodel.InternalNacosClientConnectionID] = remote.ValueConnID(ctx)
 			// 显示关闭实例的健康检查能力
-			ins.EnableHealthCheck = wrapperspb.Bool(false)
+			ins.EnableHealthCheck = false
 			ins.HealthCheck = nil
 			resp := h.discoverSvr.RegisterInstance(ctx, ins)
 			api.Collect(batchResp, resp)
-			if resp.GetCode().GetValue() == uint32(apimodel.Code_ExecuteSuccess) {
-				insID := resp.GetInstance().GetId().GetValue()
+			if resp.GetCode() == uint32(apimodel.Code_ExecuteSuccess) {
+				insID := ins.GetId()
 				h.clientManager.addServiceInstance(meta.ConnectionID, svctypes.ServiceKey{
-					Namespace: ins.GetNamespace().GetValue(),
-					Name:      ins.GetService().GetValue(),
+					Namespace: ins.GetNamespace(),
+					Name:      ins.GetService(),
 				}, insID)
 			} else {
 				nacoslog.Error("[NACOS-V2][Instance] batch register fail", zap.String("namespace", namespace),
-					zap.String("service", ins.GetService().GetValue()), zap.String("ip", insReq.IP),
-					zap.Int32("port", insReq.Port), zap.String("msg", resp.GetInfo().GetValue()))
+					zap.String("service", ins.GetService()), zap.String("ip", insReq.IP),
+					zap.Int32("port", insReq.Port), zap.String("msg", resp.GetInfo()))
 			}
 		}
 	default:
@@ -223,7 +223,7 @@ func (h *DiscoverServer) handleBatchInstanceRequest(ctx context.Context, req nac
 	resultCode := int(nacosmodel.Response_Success.Code)
 	success := true
 
-	if batchResp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
+	if batchResp.GetCode() != uint32(apimodel.Code_ExecuteSuccess) {
 		success = false
 		errCode = int(nacosmodel.ErrorCode_ServerError.Code)
 		resultCode = int(nacosmodel.Response_Fail.Code)
@@ -234,7 +234,7 @@ func (h *DiscoverServer) handleBatchInstanceRequest(ctx context.Context, req nac
 			ResultCode: resultCode,
 			ErrorCode:  errCode,
 			Success:    success,
-			Message:    batchResp.GetInfo().GetValue(),
+			Message:    batchResp.GetInfo(),
 		},
 		Type: "batchRegisterInstance",
 	}, nil
@@ -264,7 +264,7 @@ func (h *DiscoverServer) HandleClientDisConnect(ctx context.Context, client *rem
 		req := make([]*service_manage.Instance, 0, len(ids))
 		for i := range ids {
 			req = append(req, &service_manage.Instance{
-				Id: protobuf.NewStringValue(ids[i]),
+				Id: ids[i],
 			})
 		}
 		if len(req) == 0 {
@@ -277,9 +277,9 @@ func (h *DiscoverServer) HandleClientDisConnect(ctx context.Context, client *rem
 			Name:      svc.Name,
 		}, ids...)
 		resp := h.originDiscoverSvr.DeleteInstances(ctx, req)
-		if resp.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
+		if resp.GetCode() != uint32(apimodel.Code_ExecuteSuccess) {
 			nacoslog.Error("[NACOS-V2][Connection] deregister all instance fail", zap.String("conn-id", connClient.ConnID),
-				zap.Any("svc", svc), zap.String("msg", resp.GetInfo().GetValue()))
+				zap.Any("svc", svc), zap.String("msg", resp.GetInfo()))
 		}
 	})
 

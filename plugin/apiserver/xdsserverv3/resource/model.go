@@ -205,12 +205,12 @@ type ServiceInfo struct {
 	AliasFor               *svctypes.Service
 	Instances              []*apiservice.Instance
 	SvcInsRevision         string
-	Routing                *traffic_manage.Routing
+	Routing                *traffic_manage.RouteRule
 	SvcRoutingRevision     string
 	Ports                  []*svctypes.ServicePort
 	RateLimit              *traffic_manage.RateLimit
 	SvcRateLimitRevision   string
-	CircuitBreaker         *fault_tolerance.CircuitBreaker
+	CircuitBreaker         *fault_tolerance.CircuitBreakerRule
 	CircuitBreakerRevision string
 	FaultDetect            *fault_tolerance.FaultDetector
 	FaultDetectRevision    string

@@ -32,7 +32,6 @@ import (
 	restful "github.com/emicklei/go-restful/v3"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
@@ -40,7 +39,6 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -251,20 +249,20 @@ func getConfigFilesFromZIP(data []byte) ([]*apiconfig.ConfigFile, error) {
 			format = format[1:]
 		}
 		cf := &apiconfig.ConfigFile{
-			Group:   protobuf.NewStringValue(group),
-			Name:    protobuf.NewStringValue(name),
-			Content: protobuf.NewStringValue(string(content)),
-			Format:  protobuf.NewStringValue(format),
+			Group:   group,
+			Name:    name,
+			Content: string(content),
+			Format:  format,
 		}
 		if meta, ok := metas[file.Name]; ok {
 			if meta.Comment != "" {
-				cf.Comment = protobuf.NewStringValue(meta.Comment)
+				cf.Comment = meta.Comment
 			}
-			for k, v := range meta.Tags {
-				cf.Tags = append(cf.Tags, &apiconfig.ConfigFileTag{
-					Key:   protobuf.NewStringValue(k),
-					Value: protobuf.NewStringValue(v),
-				})
+			if len(meta.Tags) > 0 {
+				cf.Tags = make(map[string]string)
+				for k, v := range meta.Tags {
+					cf.Tags[k] = v
+				}
 			}
 		}
 		configFiles = append(configFiles, cf)
@@ -289,13 +287,13 @@ func (h *Handler) WriteHeader(polarisCode uint32, httpStatus int) {
 // WriteHeaderAndProto 返回Code和Proto
 func (h *Handler) WriteHeaderAndProto(obj api.ResponseMessage) {
 	requestID := h.Request.HeaderParameter(utils.PolarisRequestID)
-	h.Request.SetAttribute(utils.PolarisCode, obj.GetCode().GetValue())
+	h.Request.SetAttribute(utils.PolarisCode, obj.GetCode())
 	status := api.CalcCode(obj)
 
 	if status != http.StatusOK {
 		accesslog.Error(h.Request.Request.RequestURI+" "+obj.String(), utils.ZapRequestID(requestID))
 	}
-	if code := obj.GetCode().GetValue(); code != api.ExecuteSuccess {
+	if code := obj.GetCode(); code != api.ExecuteSuccess {
 		h.Response.AddHeader(utils.PolarisCode, fmt.Sprintf("%d", code))
 		h.Response.AddHeader(utils.PolarisMessage, api.Code2Info(code))
 	}
@@ -346,16 +344,16 @@ func HTTPResponse(req *restful.Request, rsp *restful.Response, code uint32) {
 func (h *Handler) i18nAction(obj api.ResponseMessage) api.ResponseMessage {
 	hMsg := h.Response.Header().Get(utils.PolarisMessage)
 	info := obj.GetInfo()
-	if hMsg != info.GetValue() {
+	if hMsg != info {
 		return obj
 	}
 	code := obj.GetCode()
 	msg, err := i18n.Translate(
-		code.GetValue(), h.Request.QueryParameter("lang"), h.Request.HeaderParameter("Accept-Language"))
+		code, h.Request.QueryParameter("lang"), h.Request.HeaderParameter("Accept-Language"))
 	if msg == "" || err != nil {
 		return obj
 	}
-	*info = wrappers.StringValue{Value: msg}
+	info = msg
 	return obj
 }
 
