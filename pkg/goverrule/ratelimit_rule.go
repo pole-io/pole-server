@@ -393,18 +393,6 @@ func copyRateLimitProto(rateLimit *rules.RateLimit, rule *apitraffic.RateLimit) 
 	rule.Disable = rateLimit.Proto.Disable
 	rule.Report = rateLimit.Proto.Report
 	rule.Cluster = rateLimit.Proto.Cluster
-	rule.CustomResponse = rateLimit.Proto.CustomResponse
-
-	// P0级别功能恢复：
-	// 这些字段已经移到 LimitTrigger (Rules) 中，无需在顶层处理
-	// - HTTP方法匹配: 现在通过 rule.Rules[].Method 实现
-	// - 参数级限流: 现在通过 rule.Rules[].Arguments 实现
-	// - 限流量配置: 现在通过 rule.Rules[].Amounts 实现
-	// - 限流动作: 现在通过 rule.Rules[].Action 实现
-	// - 队列延迟: 现在通过 rule.Rules[].MaxQueueDelay 实现
-	// - 正则组合: 现在通过 rule.Rules[].RegexCombine 实现
-	// - 故障转移: 现在通过 rule.Rules[].Failover 实现
-	// - 限流模式: 现在通过 rule.Rules[].AmountMode 实现
 
 	populateDefaultRuleValue(rule)
 }
@@ -437,21 +425,10 @@ func marshalRateLimitRules(req *apitraffic.RateLimit) (string, error) {
 		Service:        req.GetService(),
 		Namespace:      req.GetNamespace(),
 		Type:           req.GetType(),
-		Rules:          req.GetRules(), // P0功能在Rules中实现
+		Rules:          req.GetRules(), 
 		Disable:        req.GetDisable(),
 		Report:         req.GetReport(),
 		Cluster:        req.GetCluster(),
-		CustomResponse: req.GetCustomResponse(),
-
-		// P0级别功能现在通过 Rules 字段支持：
-		// - HTTP方法匹配: Rules[].Method
-		// - 参数级限流: Rules[].Arguments
-		// - 限流量配置: Rules[].Amounts
-		// - 限流动作: Rules[].Action
-		// - 队列延迟控制: Rules[].MaxQueueDelay
-		// - 正则组合: Rules[].RegexCombine
-		// - 故障转移: Rules[].Failover
-		// - 限流模式: Rules[].AmountMode
 	}
 	rule, err := json.Marshal(r)
 	if err != nil {

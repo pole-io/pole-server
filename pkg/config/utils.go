@@ -105,7 +105,7 @@ func CheckContentLength(content string, max int) error {
 }
 
 func CompressConfigFiles(files []*conftypes.ConfigFile,
-	fileID2Tags map[uint64][]*conftypes.ConfigFileTag, isExportGroup bool) (*bytes.Buffer, error) {
+	fileID2Tags map[string][]*conftypes.ConfigFileTag, isExportGroup bool) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	w := zip.NewWriter(&buf)
 	defer w.Close()

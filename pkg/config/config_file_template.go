@@ -58,9 +58,6 @@ func (s *Server) CreateConfigFileTemplate(
 		return api.NewConfigResponse(apimodel.Code_ExistedResource)
 	}
 
-	userName := utils.ParseUserName(ctx)
-	req.CreateBy = userName
-	req.ModifyBy = userName
 	saveData = conftypes.ToConfigFileTemplateStore(req)
 	if _, err := s.storage.SaveConfigFileTemplate(saveData); err != nil {
 		log.Error("[Config][Service] create config file template error.", utils.RequestID(ctx), zap.Error(err))
@@ -97,9 +94,6 @@ func (s *Server) UpdateConfigFileTemplate(
 		return api.NewConfigResponse(apimodel.Code_NotFoundResource)
 	}
 
-	userName := utils.ParseUserName(ctx)
-	req.CreateBy = saveData.CreateBy
-	req.ModifyBy = userName
 	saveData = conftypes.ToConfigFileTemplateStore(req)
 	if _, err := s.storage.SaveConfigFileTemplate(saveData); err != nil {
 		log.Error("[Config][Service] update config file template error.", utils.RequestID(ctx), zap.Error(err))

@@ -33,7 +33,7 @@ import (
 
 // ConfigFileGroup 配置文件组数据持久化对象
 type ConfigFileGroup struct {
-	Id         uint64
+	Id         string
 	Name       string
 	Namespace  string
 	Comment    string
@@ -61,7 +61,7 @@ func (c ConfigFileKey) String() string {
 
 // ConfigFile 配置文件数据持久化对象
 type ConfigFile struct {
-	Id        uint64
+	Id        string
 	Name      string
 	Namespace string
 	Group     string
@@ -126,7 +126,7 @@ type ConfigFileRelease struct {
 }
 
 type ConfigFileReleaseKey struct {
-	Id          uint64
+	Id          string
 	Name        string
 	Namespace   string
 	Group       string
@@ -222,7 +222,7 @@ func (s *SimpleConfigFileRelease) ToSpecNotifyClientRequest() *config_manage.Con
 
 // ConfigFileReleaseHistory 配置文件发布历史记录数据持久化对象
 type ConfigFileReleaseHistory struct {
-	Id                 uint64
+	Id                 string
 	Name               string
 	Namespace          string
 	Group              string
@@ -285,7 +285,7 @@ type ConfigFileTemplate struct {
 }
 
 func ToConfigFileStore(file *config_manage.ConfigFile) *ConfigFile {
-	metadata := file.GetTags()
+	metadata := file.GetLabels()
 	if file.GetEncryptAlgo() != "" {
 		metadata[types.MetaKeyConfigFileEncryptAlgo] = file.GetEncryptAlgo()
 	}
@@ -316,7 +316,7 @@ func ToConfigFileAPI(file *ConfigFile) *config_manage.ConfigFile {
 		Comment:     file.Comment,
 		Format:      file.Format,
 		Status:      file.Status,
-		Tags:        file.Metadata,
+		Labels:      file.Metadata,
 		EncryptAlgo: file.GetEncryptAlgo(),
 		Encrypted:   file.IsEncrypted(),
 		Ctime:       utils.Time2String(file.CreateTime),
@@ -440,7 +440,6 @@ func ToConfigFileTemplateAPI(template *ConfigFileTemplate) *config_manage.Config
 		Content:  template.Content,
 		Comment:  template.Comment,
 		Format:   template.Format,
-		CreateBy: template.CreateBy,
 		Ctime:    utils.Time2String(template.CreateTime),
 		Mtime:    utils.Time2String(template.ModifyTime),
 	}
@@ -453,8 +452,8 @@ func ToConfigFileTemplateStore(template *config_manage.ConfigFileTemplate) *Conf
 		Content:  template.Content,
 		Comment:  template.Comment,
 		Format:   template.Format,
-		CreateBy: template.CreateBy,
-		ModifyBy: template.ModifyBy,
+		CreateBy: template.Ctime,
+		ModifyBy: template.Mtime,
 	}
 }
 

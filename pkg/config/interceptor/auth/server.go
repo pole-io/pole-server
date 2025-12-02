@@ -19,7 +19,6 @@ package config_auth
 
 import (
 	"context"
-	"strconv"
 
 	"go.uber.org/zap"
 
@@ -80,7 +79,7 @@ func (s *Server) collectClientConfigFileAuthContext(ctx context.Context, req []*
 	)
 }
 
-func (s *Server) collectClientWatchConfigFiles(ctx context.Context, req *apiconfig.ClientWatchConfigFileRequest,
+func (s *Server) collectClientWatchConfigFiles(ctx context.Context, req *apiconfig.WatchConfigFileRequest,
 	op authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
 	return authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
@@ -308,7 +307,7 @@ func (s *Server) queryConfigGroupRsEntryByNames(ctx context.Context, namespace s
 	for index := range configFileGroups {
 		group := configFileGroups[index]
 		entries = append(entries, authtypes.ResourceEntry{
-			ID:    strconv.FormatUint(group.Id, 10),
+			ID:    group.Id,
 			Owner: group.Owner,
 		})
 	}
@@ -316,7 +315,7 @@ func (s *Server) queryConfigGroupRsEntryByNames(ctx context.Context, namespace s
 }
 
 func (s *Server) queryWatchConfigFilesResource(ctx context.Context,
-	req *apiconfig.ClientWatchConfigFileRequest) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
+	req *apiconfig.WatchConfigFileRequest) map[apisecurity.ResourceType][]authtypes.ResourceEntry {
 	// 新的类型结构不再包含GetWatchFiles方法
 	// 根据新的pole-io/specification，这里需要用其他方法获取监听的配置文件
 	// 暂时返回空，或根据配置文件组信息构造资源条目

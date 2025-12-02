@@ -111,8 +111,8 @@ func (s *Server) checkConfigFileParams(configFile *apiconfig.ConfigFile) *apimod
 	if err := CheckContentLength(configFile.Content, int(s.cfg.ContentMaxLength)); err != nil {
 		return api.NewConfigResponseWithInfo(apimodel.Code_InvalidParameter, err.Error())
 	}
-	if len(configFile.Tags) > 0 {
-		for _, tag := range configFile.Tags {
+	if len(configFile.Labels) > 0 {
+		for _, tag := range configFile.Labels {
 			if tag == "" {
 				return api.NewConfigFileResponse(apimodel.Code_InvalidParameter, configFile)
 			}

@@ -19,6 +19,7 @@ package config
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"time"
 
@@ -136,7 +137,11 @@ func (c *LongPollWatchContext) ShouldNotify(event *conftypes.SimpleConfigFileRel
 	if !ok {
 		return false
 	}
-	return watchFile.GetId() < event.Version
+	clientVersion, err := strconv.ParseUint(watchFile.GetId(), 10, 64)
+	if err != nil {
+		return false
+	}
+	return clientVersion < event.Version
 }
 
 func (c *LongPollWatchContext) ListWatchFiles() []*apiconfig.ConfigFile {
@@ -154,7 +159,11 @@ func (c *LongPollWatchContext) CurWatchVersion(k string) uint64 {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
-	return c.watchConfigFiles[k].GetId()
+	if file, ok := c.watchConfigFiles[k]; ok {
+		version, _ := strconv.ParseUint(file.GetId(), 10, 64)
+		return version
+	}
+	return 0
 }
 
 // AppendInterest .

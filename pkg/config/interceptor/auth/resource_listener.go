@@ -19,7 +19,6 @@ package config_auth
 
 import (
 	"context"
-	"strconv"
 
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 
@@ -50,7 +49,7 @@ func (s *Server) onConfigGroupResource(ctx context.Context, res *ResourceEvent) 
 	authCtx.SetAttachment(auth.ResourceAttachmentKey, map[apisecurity.ResourceType][]auth.ResourceEntry{
 		apisecurity.ResourceType_ConfigGroups: {
 			{
-				ID:    strconv.FormatUint(res.ConfigGroup.Id, 10),
+				ID:    res.ConfigGroup.Id,
 				Owner: utils.ParseOwnerID(ctx),
 			},
 		},
