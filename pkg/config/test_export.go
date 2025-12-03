@@ -20,6 +20,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"go.uber.org/zap"
 
@@ -113,7 +114,11 @@ func (s *Server) TestCheckClientConfigFile(ctx context.Context, files []*apiconf
 }
 
 func TestCompareByVersion(clientInfo *apiconfig.ConfigFile, file *conftypes.ConfigFileRelease) bool {
-	return clientInfo.GetId() < file.Version
+	clientVersion, err := strconv.ParseUint(clientInfo.GetId(), 10, 64)
+	if err != nil {
+		return false
+	}
+	return clientVersion < file.Version
 }
 
 // TestDecryptConfigFile 解密配置文件

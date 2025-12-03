@@ -39,7 +39,7 @@ type configGroupCache struct {
 	*cachebase.BaseCache
 	storage store.Store
 	// files config_file_group.id -> conftypes.ConfigFileGroup
-	groups *container.SyncMap[uint64, *conftypes.ConfigFileGroup]
+	groups *container.SyncMap[string, *conftypes.ConfigFileGroup]
 	// name2files config_file.<namespace, group> -> conftypes.ConfigFileGroup
 	name2groups *container.SyncMap[string, *container.SyncMap[string, *conftypes.ConfigFileGroup]]
 	// revisions namespace -> [revision]
@@ -59,7 +59,7 @@ func NewConfigGroupCache(storage store.Store, cacheMgr cacheapi.CacheManager) ca
 
 // Initialize
 func (fc *configGroupCache) Initialize(opt map[string]interface{}) error {
-	fc.groups = container.NewSyncMap[uint64, *conftypes.ConfigFileGroup]()
+	fc.groups = container.NewSyncMap[string, *conftypes.ConfigFileGroup]()
 	fc.name2groups = container.NewSyncMap[string, *container.SyncMap[string, *conftypes.ConfigFileGroup]]()
 	fc.singleGroup = &singleflight.Group{}
 	fc.revisions = container.NewSyncMap[string, string]()
@@ -164,7 +164,7 @@ func (fc *configGroupCache) postProcessUpdatedGroups(affect map[string]struct{})
 
 // Clear
 func (fc *configGroupCache) Clear() error {
-	fc.groups = container.NewSyncMap[uint64, *conftypes.ConfigFileGroup]()
+	fc.groups = container.NewSyncMap[string, *conftypes.ConfigFileGroup]()
 	fc.name2groups = container.NewSyncMap[string, *container.SyncMap[string, *conftypes.ConfigFileGroup]]()
 	fc.singleGroup = &singleflight.Group{}
 	fc.revisions = container.NewSyncMap[string, string]()
@@ -206,7 +206,7 @@ func (fc *configGroupCache) GetGroupByName(namespace, name string) *conftypes.Co
 }
 
 // GetGroupByID
-func (fc *configGroupCache) GetGroupByID(id uint64) *conftypes.ConfigFileGroup {
+func (fc *configGroupCache) GetGroupByID(id string) *conftypes.ConfigFileGroup {
 	val, _ := fc.groups.Load(id)
 	return val
 }

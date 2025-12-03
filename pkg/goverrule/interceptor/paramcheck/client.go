@@ -39,7 +39,7 @@ var (
 
 // GetOldRouterRuleWithCache User Client Get Service Routing Configuration Information
 func (s *Server) GetOldRouterRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := goverrule.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_ROUTING)
+	resp := goverrule.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_SERVICE_CONTRACTS)
 	if !s.commonCheckDiscoverRequest(req, resp) {
 		return resp
 	}

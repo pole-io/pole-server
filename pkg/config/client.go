@@ -20,6 +20,7 @@ package config
 import (
 	"context"
 	"encoding/base64"
+	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -53,8 +54,8 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context, req *apiconfig.Conf
 		key := GetGrayConfigReaseKey(release.SimpleConfigFileRelease)
 		// 将客户端标签转换为灰度匹配需要的标签格式
 		clientLabels := make(map[string]string)
-		if req.Tags != nil {
-			for k, v := range req.Tags {
+		if req.Labels != nil {
+			for k, v := range req.Labels {
 				clientLabels[k] = v
 			}
 		}
@@ -69,9 +70,9 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context, req *apiconfig.Conf
 		}
 	}
 	// 客户端版本号大于服务端版本号，服务端不返回变更
-	if req.Id > 0 && release.Version > 0 {
+	if req.Id > "" && release.Version > 0 {
 		log.Debug("[Config][Service] get config file to client", utils.RequestID(ctx),
-			zap.Uint64("client-version", req.Id), zap.Uint64("server-version", release.Version))
+			zap.String("client-version", req.Id), zap.Uint64("server-version", release.Version))
 		return &apiconfig.ConfigDiscoverResponse{
 			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
 			Info: "DataNoChange",
@@ -98,10 +99,10 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context, req *apiconfig.Conf
 func formatClientRequest(ctx context.Context, client *apiconfig.ConfigFile) *apiconfig.ConfigFile {
 	// 添加客户端IP标签
 	clientIP := utils.ParseClientIP(ctx)
-	if client.Tags == nil {
-		client.Tags = make(map[string]string)
+	if client.Labels == nil {
+		client.Labels = make(map[string]string)
 	}
-	client.Tags[types.ClientLabel_IP] = clientIP
+	client.Labels[types.ClientLabel_IP] = clientIP
 	return client
 }
 
@@ -169,13 +170,13 @@ func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
 	releases, revision := s.fileCache.GetGroupActiveReleases(namespace, group)
 	if revision == "" {
 		return &apiconfig.ConfigDiscoverResponse{
-			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_Names,
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_NAMES,
 			Info: "ExecuteSuccess",
 		}
 	}
 	if revision == req.GetRevision() {
 		return &apiconfig.ConfigDiscoverResponse{
-			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_Names,
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_NAMES,
 			Info: "DataNoChange",
 		}
 	}
@@ -185,12 +186,12 @@ func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
 			Namespace: releases[i].Namespace,
 			Group:     releases[i].Group,
 			Name:      releases[i].Name,
-			Id:        releases[i].Version,
+			Id:        strconv.FormatUint(releases[i].Version, 10),
 		})
 	}
 
 	return &apiconfig.ConfigDiscoverResponse{
-		Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_Names,
+		Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_NAMES,
 		Info: "ExecuteSuccess",
 	}
 }
@@ -237,7 +238,7 @@ func toClientInfo(client *apiconfig.ConfigFile,
 		Group:     group,
 		Name:      fileName,
 		Content:   release.Content,
-		Id:        release.Version,
+		Id:        strconv.FormatUint(release.Version, 10),
 		Encrypted: release.IsEncrypted(),
 	}
 
@@ -264,11 +265,11 @@ func toClientInfo(client *apiconfig.ConfigFile,
 			}
 		}
 		// 设置加密相关的标签
-		if configFile.Tags == nil {
-			configFile.Tags = make(map[string]string)
+		if configFile.Labels == nil {
+			configFile.Labels = make(map[string]string)
 		}
-		configFile.Tags[types.MetaKeyConfigFileDataKey] = dataKey
-		configFile.Tags[types.MetaKeyConfigFileEncryptAlgo] = encryptAlgo
+		configFile.Labels[types.MetaKeyConfigFileDataKey] = dataKey
+		configFile.Labels[types.MetaKeyConfigFileEncryptAlgo] = encryptAlgo
 	}
 	return configFile, nil
 }

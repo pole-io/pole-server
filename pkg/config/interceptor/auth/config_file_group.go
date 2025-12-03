@@ -19,7 +19,6 @@ package config_auth
 
 import (
 	"context"
-	"strconv"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -96,7 +95,7 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 	ctx = cacheapi.AppendConfigGroupPredicate(ctx, func(ctx context.Context, cfg *conftypes.ConfigFileGroup) bool {
 		ok := s.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
 			Type:     apisecurity.ResourceType_ConfigGroups,
-			ID:       strconv.FormatUint(cfg.Id, 10),
+			ID:       cfg.Id,
 			Metadata: cfg.Metadata,
 		})
 		if ok {

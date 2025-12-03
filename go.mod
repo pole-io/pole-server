@@ -70,7 +70,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/envoyproxy/go-control-plane/envoy v1.32.4
 	github.com/mark3labs/mcp-go v0.18.0
-	github.com/pole-io/specification v0.0.0-20251019143752-8b1e30e08df1
+	github.com/pole-io/specification v0.1.0-ALPHA.20
 	go.opentelemetry.io/otel v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.36.0

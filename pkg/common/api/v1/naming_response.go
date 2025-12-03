@@ -333,7 +333,7 @@ func NewDiscoverRoutingResponse(code apimodel.Code, service *apiservice.Service)
 	return &apiservice.DiscoverResponse{
 		Code:    uint32(code),
 		Info:    code2info[uint32(code)],
-		Type:    apiservice.DiscoverResponse_ROUTING,
+		Type:    apiservice.DiscoverResponse_SERVICE_CONTRACTS,
 		Service: service,
 	}
 }

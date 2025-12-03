@@ -212,7 +212,7 @@ func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
 		return &apiconfig.ConfigDiscoverResponse{
 			Code: uint32(apimodel.Code_BadRequest),
 			Info: "namespace is empty",
-			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_Names,
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_NAMES,
 		}
 	}
 
@@ -220,7 +220,7 @@ func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
 		return &apiconfig.ConfigDiscoverResponse{
 			Code: uint32(apimodel.Code_BadRequest),
 			Info: "file group is empty",
-			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_Names,
+			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_NAMES,
 		}
 	}
 

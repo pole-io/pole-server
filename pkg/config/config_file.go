@@ -352,16 +352,6 @@ func (s *Server) SearchConfigFiles(ctx context.Context, searchFilters map[string
 		}
 		ret = append(ret, conftypes.ToConfigFileAPI(file))
 	}
-	/*
-	简化前
-	zipData, err := CompressConfigFiles(configFiles, fileID2Tags, isExportGroup)
-	if err != nil {
-		log.Error("[Config][Servie]export config files compress to zip error.", zap.Error(err))
-		return api.NewConfigResponse(apimodel.Code_ExecuteException)
-	}
-	return api.NewConfigFileExportResponse(apimodel.Code_ExecuteSuccess, zipData)
-	*/
-	// 简化后
 	out := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	return out
 }
@@ -420,7 +410,7 @@ func (s *Server) ExportConfigFile(ctx context.Context,
 		return api.NewConfigResponse(apimodel.Code_NotFoundResource)
 	}
 	// 查询配置文件的标签
-	fileID2Tags := make(map[uint64][]*conftypes.ConfigFileTag)
+	fileID2Tags := make(map[string][]*conftypes.ConfigFileTag)
 	for _, file := range configFiles {
 		filterTags := make([]*conftypes.ConfigFileTag, 0, len(file.Metadata))
 		for tagKey, tagVal := range file.Metadata {
@@ -432,14 +422,6 @@ func (s *Server) ExportConfigFile(ctx context.Context,
 		fileID2Tags[file.Id] = filterTags
 	}
 
-	/*
-	zipData, err := CompressConfigFiles(configFiles, fileID2Tags, isExportGroup)
-	if err != nil {
-		log.Error("[Config][Servie]export config files compress to zip error.", zap.Error(err))
-		return api.NewConfigResponse(apimodel.Code_ExecuteException)
-	}
-	return api.NewConfigFileExportResponse(apimodel.Code_ExecuteSuccess, zipData)
-	*/
 	// 生成ZIP文件
 	_, err := CompressConfigFiles(configFiles, fileID2Tags, isExportGroup)
 	if err != nil {

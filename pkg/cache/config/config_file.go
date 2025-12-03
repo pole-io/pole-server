@@ -48,7 +48,7 @@ type fileCache struct {
 	*cachebase.BaseCache
 	storage store.Store
 	// releases config_release.id -> conftypes.SimpleConfigFileRelease
-	releases *container.SegmentMap[uint64, *conftypes.SimpleConfigFileRelease]
+	releases *container.SegmentMap[string, *conftypes.SimpleConfigFileRelease]
 	// name2release namespace -> group -> file_name -> []conftypes.ConfigFileRelease
 	name2release *container.SyncMap[string, *container.SyncMap[string, *container.SyncMap[string,
 		*container.SyncMap[string, *conftypes.SimpleConfigFileRelease]]]]
@@ -79,8 +79,12 @@ func NewConfigFileCache(storage store.Store, cacheMgr cacheapi.CacheManager) cac
 
 // Initialize
 func (fc *fileCache) Initialize(opt map[string]interface{}) error {
-	fc.releases = container.NewSegmentMap[uint64, *conftypes.SimpleConfigFileRelease](1, func(k uint64) int {
-		return int(k)
+	fc.releases = container.NewSegmentMap[string, *conftypes.SimpleConfigFileRelease](1, func(k string) int {
+		h := 0
+		for i := 0; i < len(k); i++ {
+			h = 31*h + int(k[i])
+		}
+		return h
 	})
 	fc.name2release = container.NewSyncMap[string, *container.SyncMap[string, *container.SyncMap[string,
 		*container.SyncMap[string, *conftypes.SimpleConfigFileRelease]]]]()
@@ -468,7 +472,7 @@ func (fc *fileCache) GetRelease(key conftypes.ConfigFileReleaseKey) *conftypes.C
 	var (
 		simple *conftypes.SimpleConfigFileRelease
 	)
-	if key.Id != 0 {
+	if key.Id != "" {
 		simple, _ = fc.releases.Get(key.Id)
 	} else {
 		nsB, ok := fc.name2release.Load(key.Namespace)

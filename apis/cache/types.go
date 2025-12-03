@@ -587,7 +587,7 @@ type (
 		// GetGroupByName
 		GetGroupByName(namespace, name string) *conftypes.ConfigFileGroup
 		// GetGroupByID
-		GetGroupByID(id uint64) *conftypes.ConfigFileGroup
+		GetGroupByID(id string) *conftypes.ConfigFileGroup
 		// ListGroups
 		ListGroups(namespace string) ([]*conftypes.ConfigFileGroup, string)
 		// Query

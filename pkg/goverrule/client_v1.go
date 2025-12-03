@@ -37,7 +37,7 @@ import (
 
 // GetOldRouterRuleWithCache 获取缓存中的路由配置信息
 func (s *Server) GetOldRouterRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
-	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_ROUTING)
+	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_SERVICE_CONTRACTS)
 	aliasFor := s.findServiceAlias(req)
 
 	// 注释：缓存方法调用改动 - 从GetOldRouterRule改为GetRouterRule，现在返回三个值
@@ -83,21 +83,14 @@ func (s *Server) GetRateLimitWithCache(ctx context.Context, req *apiservice.Serv
 	if req.GetRevision() == revision {
 		return api.NewDiscoverRateLimitResponse(apimodel.Code_DataNoChange, req)
 	}
-	resp.RateLimit = &apitraffic.RateLimit{
-		// 注释：Revision字段类型改动 - 从*wrapperspb.StringValue改为string
-		Revision: revision,
-		// 注释：Rules字段类型重大改动 - 从[]*apitraffic.Rule改为[]*apitraffic.LimitTrigger
-		Rules: []*apitraffic.LimitTrigger{},
-	}
+	resp.RateLimit = make([]*apitraffic.RateLimit, 0, len(rules))
 	for i := range rules {
-		// 注释：限流规则转换改动 - 服务名和命名空间直接使用string类型
 		rateLimit, err := rateLimit2Client(req.GetName(), req.GetNamespace(), rules[i])
 		if rateLimit == nil || err != nil {
 			continue
 		}
-		// 注释：重大逻辑改动 - 将 rateLimit.Rules 中的 LimitTrigger 添加到响应中，而非直接添加rateLimit
-		// 将 rateLimit.Rules 中的 LimitTrigger 添加到响应中
-		resp.RateLimit.Rules = append(resp.RateLimit.Rules, rateLimit.Rules...)
+		rateLimit.Revision = revision
+		resp.RateLimit = append(resp.RateLimit, rateLimit)
 	}
 
 	// 塞入源服务信息数据
