@@ -37,11 +37,11 @@ type clientStore struct {
 
 // CreateClient insert the client info
 func (cs *clientStore) CreateClient(client *types.Client) error {
-	clientID := client.Proto().GetId().GetValue()
+	clientID := client.Proto().GetId()
 	if len(clientID) == 0 {
 		log.Errorf("[Store][database] add business missing id")
 		return fmt.Errorf("add Business missing some params, id %s, name %s", clientID,
-			client.Proto().GetHost().GetValue())
+			client.Proto().GetHost())
 	}
 	err := RetryTransaction("createClient", func() error {
 		return cs.createClient(client)
@@ -101,8 +101,8 @@ func (cs *clientStore) BatchDeleteClients(ids []string) error {
 // GetMoreClients 根据mtime获取增量clients，返回所有store的变更信息
 func (cs *clientStore) GetMoreClients(mtime time.Time, firstUpdate bool) (map[string]*types.Client, error) {
 	str := `select client.id, client.host, client.type, IFNULL(client.version,""), IFNULL(client.region, ""),
-		 IFNULL(client.zone, ""), IFNULL(client.campus, ""), client.flag,  IFNULL(client_stat.target, ""), 
-		 IFNULL(client_stat.port, 0), IFNULL(client_stat.protocol, ""), IFNULL(client_stat.path, ""), 
+		 IFNULL(client.zone, ""), IFNULL(client.campus, ""), client.flag,  IFNULL(client_stat.target, ""),
+		 IFNULL(client_stat.port, 0), IFNULL(client_stat.protocol, ""), IFNULL(client_stat.path, ""),
 		 UNIX_TIMESTAMP(client.ctime), UNIX_TIMESTAMP(client.mtime)
 		 from client left join client_stat on client.id = client_stat.client_id `
 	str += " where client.mtime >= FROM_UNIXTIME(?)"
@@ -150,11 +150,11 @@ func (cs *clientStore) batchAddClients(clients []*types.Client) error {
 			builder.WriteString(",")
 		}
 		builder.WriteString("?")
-		ids = append(ids, entry.Proto().GetId().GetValue())
+		ids = append(ids, entry.Proto().GetId())
 		var statInfos []*apiservice.StatInfo
 		if len(entry.Proto().GetStat()) > 0 {
 			statInfos = append(statInfos, entry.Proto().GetStat()...)
-			client2StatInfos[entry.Proto().GetId().GetValue()] = statInfos
+			client2StatInfos[entry.Proto().GetId()] = statInfos
 		}
 	}
 	if err = batchCleanClientStats(tx, ids); nil != err {
@@ -302,7 +302,7 @@ func (cs *clientStore) createClient(client *types.Client) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 	// clean the old items before add
-	if err := deleteClient(tx, client.Proto().GetId().GetValue()); err != nil {
+	if err := deleteClient(tx, client.Proto().GetId()); err != nil {
 		return err
 	}
 	if err := addClientMain(tx, client); err != nil {
@@ -348,13 +348,13 @@ func addClientMain(tx *BaseTx, client *types.Client) error {
 	str := `insert into client(id, host, type, version, region, zone, campus, flag, ctime, mtime)
 			 values(?, ?, ?, ?, ?, ?, ?, 0, sysdate(), sysdate())`
 	_, err := tx.Exec(str,
-		client.Proto().GetId().GetValue(),
-		client.Proto().GetHost().GetValue(),
+		client.Proto().GetId(),
+		client.Proto().GetHost(),
 		client.Proto().GetType().String(),
-		client.Proto().GetVersion().GetValue(),
-		client.Proto().GetLocation().GetRegion().GetValue(),
-		client.Proto().GetLocation().GetZone().GetValue(),
-		client.Proto().GetLocation().GetCampus().GetValue(),
+		client.Proto().GetVersion(),
+		client.Proto().GetLocation().GetRegion(),
+		client.Proto().GetLocation().GetZone(),
+		client.Proto().GetLocation().GetCampus(),
 	)
 	return err
 }
@@ -371,13 +371,13 @@ func batchAddClientMain(tx *BaseTx, clients []*types.Client) error {
 		str += "(?, ?, ?, ?, ?, ?, ?, 0, sysdate(), sysdate())"
 		first = false
 
-		args = append(args, client.Proto().GetId().GetValue(),
-			client.Proto().GetHost().GetValue(),
+		args = append(args, client.Proto().GetId(),
+			client.Proto().GetHost(),
 			client.Proto().GetType().String())
-		args = append(args, client.Proto().GetVersion().GetValue(),
-			client.Proto().GetLocation().GetRegion().GetValue(),
-			client.Proto().GetLocation().GetZone().GetValue(),
-			client.Proto().GetLocation().GetCampus().GetValue())
+		args = append(args, client.Proto().GetVersion(),
+			client.Proto().GetLocation().GetRegion(),
+			client.Proto().GetLocation().GetZone(),
+			client.Proto().GetLocation().GetCampus())
 	}
 	_, err := tx.Exec(str, args...)
 	return err
@@ -400,10 +400,10 @@ func batchAddClientStat(tx *BaseTx, client2Stats map[string][]*apiservice.StatIn
 			first = false
 			args = append(args,
 				clientId,
-				entry.GetTarget().GetValue(),
-				entry.GetPort().GetValue(),
-				entry.GetProtocol().GetValue(),
-				entry.GetPath().GetValue())
+				entry.GetTarget(),
+				entry.GetPort(),
+				entry.GetProtocol(),
+				entry.GetPath())
 		}
 	}
 	_, err := tx.Exec(str, args...)
@@ -426,11 +426,11 @@ func addClientStat(tx *BaseTx, client *types.Client) error {
 		str += "(?, ?, ?, ?, ?)"
 		first = false
 		args = append(args,
-			client.Proto().GetId().GetValue(),
-			entry.GetTarget().GetValue(),
-			entry.GetPort().GetValue(),
-			entry.GetProtocol().GetValue(),
-			entry.GetPath().GetValue())
+			client.Proto().GetId(),
+			entry.GetTarget(),
+			entry.GetPort(),
+			entry.GetProtocol(),
+			entry.GetPath())
 	}
 	_, err := tx.Exec(str, args...)
 	return err
@@ -441,13 +441,13 @@ func updateClientMain(tx *BaseTx, client *types.Client) error {
 	 type = ?, version = ?, region = ?, zone = ?, campus = ?, mtime = sysdate() where id = ?`
 
 	_, err := tx.Exec(str,
-		client.Proto().GetHost().GetValue(),
+		client.Proto().GetHost(),
 		client.Proto().GetType().String(),
-		client.Proto().GetVersion().GetValue(),
-		client.Proto().GetLocation().GetRegion().GetValue(),
-		client.Proto().GetLocation().GetZone().GetValue(),
-		client.Proto().GetLocation().GetCampus().GetValue(),
-		client.Proto().GetId().GetValue(),
+		client.Proto().GetVersion(),
+		client.Proto().GetLocation().GetRegion(),
+		client.Proto().GetLocation().GetZone(),
+		client.Proto().GetLocation().GetCampus(),
+		client.Proto().GetId(),
 	)
 
 	return err
@@ -456,7 +456,7 @@ func updateClientMain(tx *BaseTx, client *types.Client) error {
 // updateClientStat 更新client的stat表
 func updateClientStat(tx *BaseTx, client *types.Client) error {
 	deleteStr := "delete from client_stat where cliend_id = ?"
-	if _, err := tx.Exec(deleteStr, client.Proto().GetId().GetValue()); err != nil {
+	if _, err := tx.Exec(deleteStr, client.Proto().GetId()); err != nil {
 		return err
 	}
 	return addClientStat(tx, client)

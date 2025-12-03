@@ -321,7 +321,7 @@ func (el *discoverEventDB) batchInsertEvents(tableName string, events []event.Di
 		if v, ok := e.(*svctypes.InstanceEvent); ok {
 			res := v.Id
 			if v.Instance != nil {
-				res = fmt.Sprintf("%s:%d", v.Instance.GetHost().GetValue(), v.Instance.GetPort().GetValue())
+				res = fmt.Sprintf("%s:%d", v.Instance.GetHost(), v.Instance.GetPort())
 			}
 			valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?)")
 			valueArgs = append(valueArgs, v.Namespace, v.Service, res, v.EType, v.CreateTime, utils.LocalHost)

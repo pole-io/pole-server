@@ -430,8 +430,8 @@ func doConnect(p *RemotePeer) error {
 }
 
 func newBeatSender(index int, conn *grpc.ClientConn, p *RemotePeer) (*beatSender, error) {
-	client := apiservice.NewPolarisHeartbeatGRPCClient(conn)
-	puter, err := client.BatchHeartbeat(context.Background(), grpc.Header(&metadata.MD{
+	client := apiservice.NewPolarisGRPCClient(conn)
+	puter, err := client.Heartbeat(context.Background(), grpc.Header(&metadata.MD{
 		sendResource: []string{utils.LocalHost},
 	}))
 	if err != nil {
@@ -452,7 +452,7 @@ type beatSender struct {
 	index  int
 	peer   *RemotePeer
 	lock   *sync.RWMutex
-	sender apiservice.PolarisHeartbeatGRPC_BatchHeartbeatClient
+	sender apiservice.PolarisGRPC_HeartbeatClient
 	cancel context.CancelFunc
 }
 
