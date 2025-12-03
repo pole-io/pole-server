@@ -311,6 +311,12 @@ func (svr *Server) GetUsers(ctx context.Context, filters map[string]string) *api
 	resp := api.NewAuthBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	resp.Amount = total
 	resp.Size = uint32(len(users))
+	for i := range users {
+		if err := api.AddAnyDataIntoBatchQuery(resp, user2Api(users[i])); err != nil {
+			log.Error("[Auth][User] add user to query list", utils.RequestID(ctx), zap.Error(err))
+			return api.NewAuthBatchQueryResponse(apimodel.Code_ExecuteException)
+		}
+	}
 	return resp
 }
 

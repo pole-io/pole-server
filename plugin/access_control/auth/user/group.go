@@ -228,6 +228,12 @@ func (svr *Server) GetGroups(ctx context.Context, filters map[string]string) *ap
 	resp := api.NewAuthBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	resp.Amount = total
 	resp.Size = uint32(len(groups))
+	for i := range groups {
+		if err := api.AddAnyDataIntoBatchQuery(resp, userGroup2Api(groups[i].UserGroup)); err != nil {
+			log.Error("[Auth][Group] add user_group to query list", utils.RequestID(ctx), zap.Error(err))
+			return api.NewAuthBatchQueryResponse(apimodel.Code_ExecuteException)
+		}
+	}
 	return resp
 }
 
