@@ -63,7 +63,7 @@ import (
 var (
 	cacheTypes = map[string]struct{}{
 		apiservice.DiscoverResponse_INSTANCE.String():        {},
-		apiservice.DiscoverResponse_ROUTING.String():         {},
+		apiservice.DiscoverResponse_SERVICE_CONTRACTS.String():         {},
 		apiservice.DiscoverResponse_RATE_LIMIT.String():      {},
 		apiservice.DiscoverResponse_CIRCUIT_BREAKER.String(): {},
 		apiservice.DiscoverResponse_FAULT_DETECTOR.String():  {},

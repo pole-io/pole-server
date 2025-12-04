@@ -297,7 +297,7 @@ func EnrichWatchConfigFileForClientApiDocs(r *restful.RouteBuilder) *restful.Rou
 	return r.
 		Doc("监听配置").
 		Metadata(restfulspec.KeyOpenAPITags, configClientApiTags).
-		Reads(apiconfig.ClientWatchConfigFileRequest{}, "通过 Http LongPolling 机制订阅配置变更。").
+		Reads(apiconfig.WatchConfigFileRequest{}, "通过 Http LongPolling 机制订阅配置变更。").
 		Returns(0, "", config_manage.ConfigDiscoverResponse{})
 }
 
@@ -305,7 +305,7 @@ func EnrichGetConfigFileMetadataList(r *restful.RouteBuilder) *restful.RouteBuil
 	return r.
 		Doc("监听配置").
 		Metadata(restfulspec.KeyOpenAPITags, configClientApiTags).
-		Reads(apiconfig.ClientWatchConfigFileRequest{}, "通过 Http LongPolling 机制订阅配置变更。").
+		Reads(apiconfig.WatchConfigFileRequest{}, "通过 Http LongPolling 机制订阅配置变更。").
 		Returns(0, "", config_manage.ConfigDiscoverResponse{})
 }
 

@@ -79,7 +79,7 @@ func (g *DiscoverGRPCServer) DeregisterInstance(
 }
 
 // Discover 统一发现接口
-func (g *DiscoverGRPCServer) Discover(server apiservice.PolarisGRPC_DiscoverServer) error {
+func (g *DiscoverGRPCServer) Discover(server apiservice.DiscoverGRPC_DiscoverServer) error {
 	ctx := utils.ConvertGRPCContext(server.Context())
 	clientIP, _ := ctx.Value(types.StringContext("client-ip")).(string)
 	clientAddress, _ := ctx.Value(types.StringContext("client-address")).(string)
@@ -154,7 +154,7 @@ func (g *DiscoverGRPCServer) handleDiscoverRequest(ctx context.Context, in *apis
 	case apiservice.DiscoverRequest_INSTANCE:
 		action = metrics.ActionDiscoverInstance
 		out = g.namingServer.ServiceInstancesCache(ctx, &apiservice.DiscoverFilter{}, in.Service)
-	case apiservice.DiscoverRequest_ROUTING:
+	case apiservice.DiscoverRequest_SERVICE_CONTRACTS:
 		action = metrics.ActionDiscoverRouterRule
 		out = g.ruleServer.GetOldRouterRuleWithCache(ctx, in.Service)
 	case apiservice.DiscoverRequest_CUSTOM_ROUTE_RULE:
@@ -310,7 +310,7 @@ func (g *ConfigGRPCServer) GetConfigFileMetadataList(ctx context.Context,
 	}, nil
 }
 
-func (g *ConfigGRPCServer) Discover(svr apiconfig.PolarisConfigGRPC_DiscoverServer) error {
+func (g *ConfigGRPCServer) Discover(svr apiconfig.ConfigGRPC_DiscoverServer) error {
 	ctx := utils.ConvertGRPCContext(svr.Context())
 	clientIP, _ := ctx.Value(types.StringContext("client-ip")).(string)
 	clientAddress, _ := ctx.Value(types.StringContext("client-address")).(string)
@@ -385,7 +385,7 @@ func (g *ConfigGRPCServer) handleDiscoverRequest(ctx context.Context, in *apicon
 		out.File = ret.GetFile()
 		out.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE
 		out.Revision = ret.GetRevision()
-	case apiconfig.ConfigDiscoverRequest_CONFIG_FILE_Names:
+	case apiconfig.ConfigDiscoverRequest_CONFIG_FILE_NAMES:
 		action = metrics.ActionListConfigFiles
 		ret := g.configServer.GetConfigFileNamesWithCache(ctx, &apiconfig.ConfigFileGroupRequest{
 			Revision: in.GetRevision(),
@@ -396,7 +396,7 @@ func (g *ConfigGRPCServer) handleDiscoverRequest(ctx context.Context, in *apicon
 		})
 		out = api.NewConfigDiscoverResponse(apimodel.Code(ret.GetCode()))
 		out.FileNames = ret.GetFileNames()
-		out.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE_Names
+		out.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE_NAMES
 		out.Revision = ret.GetRevision()
 	case apiconfig.ConfigDiscoverRequest_CONFIG_FILE_GROUPS:
 		action = metrics.ActionListConfigGroups

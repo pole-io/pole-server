@@ -2,6 +2,7 @@ package apolloserver
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"time"
 
@@ -15,7 +16,7 @@ import (
 )
 
 func (a *ApolloServer) diffChangeFiles(ctx context.Context,
-	listenCtx *config_manage.ClientWatchConfigFileRequest) []*ApolloConfigNotification {
+	listenCtx *config_manage.WatchConfigFileRequest) []*ApolloConfigNotification {
 	clientLabels := map[string]string{
 		types.ClientLabel_IP: utils.ParseClientIP(ctx),
 	}
@@ -29,9 +30,10 @@ func (a *ApolloServer) diffChangeFiles(ctx context.Context,
 
 		if beta := a.innerSvr.CacheManager().ConfigFile().GetActiveGrayRelease(namespace, group, filename); beta != nil {
 			if a.innerSvr.CacheManager().Gray().HitGrayRule(beta.FileKey(), clientLabels) {
+				notificationId, _ := strconv.ParseInt(beta.Id, 10, 64)
 				changeKeys = append(changeKeys, &ApolloConfigNotification{
 					NamespaceName:  filename,
-					NotificationId: int64(beta.Id),
+					NotificationId: notificationId,
 				})
 				continue
 			}
@@ -39,9 +41,10 @@ func (a *ApolloServer) diffChangeFiles(ctx context.Context,
 
 		active := a.innerSvr.CacheManager().ConfigFile().GetActiveRelease(namespace, group, filename)
 		if (active == nil && mdval != "") || (active != nil && active.Md5 != mdval) {
+			notificationId, _ := strconv.ParseInt(active.Id, 10, 64)
 			changeKeys = append(changeKeys, &ApolloConfigNotification{
 				NamespaceName:  filename,
-				NotificationId: int64(active.Id),
+				NotificationId: notificationId,
 			})
 		}
 	}
@@ -142,7 +145,11 @@ func (w *ApolloWatchContext) ShouldNotify(event *conftypes.SimpleConfigFileRelea
 	key := event.FileKey()
 	if watchFile, ok := w.watchConfigFiles[key]; ok {
 		// 如果是更新操作，检查版本号是否有变化
-		return watchFile.Id < event.Version
+		clientVersion, err := strconv.ParseUint(watchFile.Id, 10, 64)
+		if err != nil {
+			return false
+		}
+		return clientVersion < event.Version
 	}
 	return false
 }
@@ -193,7 +200,11 @@ func (w *ApolloWatchContext) CurWatchVersion(k string) uint64 {
 	w.lock.RLock()
 	defer w.lock.RUnlock()
 
-	return w.watchConfigFiles[k].Id
+	if file, ok := w.watchConfigFiles[k]; ok {
+		version, _ := strconv.ParseUint(file.Id, 10, 64)
+		return version
+	}
+	return 0
 }
 
 // IsOnce 是不是只能被通知一次

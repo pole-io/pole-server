@@ -204,14 +204,14 @@ func (h *ConfigServer) handleWatchConfigRequest(ctx context.Context, req nacospb
 			tags["md5"] = fileRelease.GetMd5()
 
 			configFiles[i] = &config_manage.ConfigFile{
-				Id:        fileRelease.GetConfigFileId(),
+				Id:        fileRelease.GetId(),
 				Name:      fileRelease.GetFileName(),
 				Namespace: fileRelease.GetNamespace(),
 				Group:     fileRelease.GetGroup(),
 				Content:   fileRelease.GetContent(),
 				Format:    fileRelease.GetFormat(),
 				Comment:   fileRelease.GetComment(),
-				Tags:      tags,
+				Labels:    tags,
 			}
 		}
 		watchCtx := configSvr.WatchCenter().AddWatcher(clientId, configFiles, h.BuildGrpcWatchCtx(ctx))
@@ -251,14 +251,14 @@ func (h *ConfigServer) handleWatchConfigRequest(ctx context.Context, req nacospb
 				tags["md5"] = fileRelease.GetMd5()
 
 				configFile := &config_manage.ConfigFile{
-					Id:        fileRelease.GetConfigFileId(),
+					Id:        fileRelease.GetId(),
 					Name:      fileRelease.GetFileName(),
 					Namespace: fileRelease.GetNamespace(),
 					Group:     fileRelease.GetGroup(),
 					Content:   fileRelease.GetContent(),
 					Format:    fileRelease.GetFormat(),
 					Comment:   fileRelease.GetComment(),
-					Tags:      tags,
+					Labels:      tags,
 				}
 				watchCtx.RemoveInterest(configFile)
 			}

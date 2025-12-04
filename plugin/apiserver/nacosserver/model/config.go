@@ -110,8 +110,8 @@ type ConfigWatchContext struct {
 	Items         []*ConfigListenItem
 }
 
-func (cw *ConfigWatchContext) ToSpecWatch() *config_manage.ClientWatchConfigFileRequest {
-	specWatch := &config_manage.ClientWatchConfigFileRequest{
+func (cw *ConfigWatchContext) ToSpecWatch() *config_manage.WatchConfigFileRequest {
+	specWatch := &config_manage.WatchConfigFileRequest{
 		ClientIp:   cw.Request.Request.RemoteAddr,
 		Files: make([]*config_manage.ConfigFileRelease, 0, len(cw.Items)),
 	}

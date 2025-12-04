@@ -426,9 +426,11 @@ func (x *XDSServer) getRegistryInfoWithCache(ctx context.Context,
 					ratelimitResp.Info)
 				return fmt.Errorf("error sync ratelimit for %s", svc.Name)
 			}
-			if ratelimitResp.RateLimit != nil {
-				svc.SvcRateLimitRevision = ratelimitResp.RateLimit.Revision
-				svc.RateLimit = ratelimitResp.RateLimit
+			if len(ratelimitResp.RateLimit) > 0 {
+				// Take the first rate limit rule
+				firstRule := ratelimitResp.RateLimit[0]
+				svc.SvcRateLimitRevision = firstRule.Revision
+				svc.RateLimit = firstRule
 			}
 			// 获取circuitBreaker配置
 			circuitBreakerResp := x.ruleServer.GetCircuitBreakerWithCache(ctx, s)
