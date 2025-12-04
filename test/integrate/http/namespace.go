@@ -175,7 +175,7 @@ func (c *Client) GetNamespaces(namespaces []*apimodel.Namespace) ([]*apimodel.Na
 	url := fmt.Sprintf("http://%v/naming/%v/namespaces", c.Address, c.Version)
 
 	params := map[string][]interface{}{
-		"name": {namespaces[0].GetName().GetValue(), namespaces[1].GetName().GetValue()},
+		"name": {namespaces[0].GetName(), namespaces[1].GetName()},
 	}
 
 	url = c.CompleteURL(url, params)
@@ -190,38 +190,44 @@ func (c *Client) GetNamespaces(namespaces []*apimodel.Namespace) ([]*apimodel.Na
 		return nil, err
 	}
 
-	if ret.GetCode() == nil || ret.GetCode().GetValue() != api.ExecuteSuccess {
+	if ret.GetCode() != api.ExecuteSuccess {
 		return nil, errors.New("invalid batch code")
 	}
 
 	namespacesSize := len(namespaces)
 
-	if ret.GetAmount() == nil || ret.GetAmount().GetValue() != uint32(namespacesSize) {
-		return nil, fmt.Errorf("invalid batch amount: %d %d", ret.GetAmount().GetValue(), namespacesSize)
+	if ret.GetAmount() != uint32(namespacesSize) {
+		return nil, fmt.Errorf("invalid batch amount: %d %d", ret.GetAmount(), namespacesSize)
 	}
 
-	if ret.GetSize() == nil || ret.GetSize().GetValue() != uint32(namespacesSize) {
+	if ret.GetSize() != uint32(namespacesSize) {
 		return nil, errors.New("invalid batch size")
 	}
 
 	collection := make(map[string]*apimodel.Namespace)
 	for _, namespace := range namespaces {
-		collection[namespace.GetName().GetValue()] = namespace
+		collection[namespace.GetName()] = namespace
 	}
 
-	items := ret.GetNamespaces()
-	if items == nil || len(items) != namespacesSize {
+	data := ret.GetData()
+	if data == nil || len(data) != namespacesSize {
 		return nil, errors.New("invalid batch namespaces")
 	}
 
-	for _, item := range items {
-		if correctItem, ok := collection[item.GetName().GetValue()]; ok {
-			if result := compareNamespace(correctItem, item); !result {
+	items := make([]*apimodel.Namespace, 0, len(data))
+	for _, anyData := range data {
+		var item apimodel.Namespace
+		if err := anyData.UnmarshalTo(&item); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal namespace: %v", err)
+		}
+		if correctItem, ok := collection[item.GetName()]; ok {
+			if result := compareNamespace(correctItem, &item); !result {
 				return nil, errors.New("invalid namespace")
 			}
 		} else {
 			return nil, errors.New("invalid namespace")
 		}
+		items = append(items, &item)
 	}
 	return items, nil
 }
@@ -231,12 +237,12 @@ func (c *Client) GetNamespaces(namespaces []*apimodel.Namespace) ([]*apimodel.Na
  */
 func checkCreateNamespacesResponse(ret *apimodel.BatchWriteResponse, namespaces []*apimodel.Namespace) (
 	*apimodel.BatchWriteResponse, error) {
-	if ret.GetCode() == nil || ret.GetCode().GetValue() != api.ExecuteSuccess {
+	if ret.GetCode() != api.ExecuteSuccess {
 		return nil, errors.New("invalid batch code")
 	}
 
 	namespacesSize := len(namespaces)
-	if ret.GetSize() == nil || ret.GetSize().GetValue() != uint32(namespacesSize) {
+	if ret.GetSize() != uint32(namespacesSize) {
 		return nil, errors.New("invalid batch size")
 	}
 
@@ -246,21 +252,25 @@ func checkCreateNamespacesResponse(ret *apimodel.BatchWriteResponse, namespaces 
 	}
 
 	for index, item := range items {
-		if item.GetCode() == nil || item.GetCode().GetValue() != api.ExecuteSuccess {
+		if item.GetCode() != api.ExecuteSuccess {
 			return nil, errors.New("invalid code")
 		}
 
-		namespace := item.GetNamespace()
-		if namespace == nil {
+		if item.GetData() == nil {
 			return nil, errors.New("empty namespace")
 		}
 
-		name := namespaces[index].GetName().GetValue()
-		if namespace.GetName() == nil || namespace.GetName().GetValue() != name {
+		var namespace apimodel.Namespace
+		if err := item.GetData().UnmarshalTo(&namespace); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal namespace: %v", err)
+		}
+
+		name := namespaces[index].GetName()
+		if namespace.GetName() == "" || namespace.GetName() != name {
 			return nil, errors.New("invalid namespace name")
 		}
 
-		if namespace.GetToken() == nil || namespace.GetToken().GetValue() == "" {
+		if namespace.GetToken() == "" {
 			return nil, errors.New("invalid namespace token")
 		}
 	}
@@ -271,13 +281,15 @@ func checkCreateNamespacesResponse(ret *apimodel.BatchWriteResponse, namespaces 
  * @brief 比较namespace是否相等
  */
 func compareNamespace(correctItem *apimodel.Namespace, item *apimodel.Namespace) bool {
-	correctName := correctItem.GetName().GetValue()
-	correctComment := correctItem.GetComment().GetValue()
+	correctName := correctItem.GetName()
+	correctComment := correctItem.GetComment()
+	correctOwners := correctItem.GetOwners()
 
-	name := item.GetName().GetValue()
-	comment := item.GetComment().GetValue()
+	name := item.GetName()
+	comment := item.GetComment()
+	owners := item.GetOwners()
 
-	if correctName == name && correctComment == comment {
+	if correctName == name && correctComment == comment && correctOwners == owners {
 		return true
 	}
 	return false

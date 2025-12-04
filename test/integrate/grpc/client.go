@@ -45,8 +45,8 @@ func NewClient(address string) (*Client, error) {
 	client := &Client{
 		Conn:         serviceConn,
 		ConfigConn:   configConn,
-		Worker:       apiservice.NewPolarisGRPCClient(serviceConn),
-		ConfigWorker: apiconfig.NewPolarisConfigGRPCClient(configConn),
+		Worker:       apiservice.NewDiscoverGRPCClient(serviceConn),
+		ConfigWorker: apiconfig.NewConfigGRPCClient(configConn),
 	}
 
 	return client, nil
@@ -56,8 +56,8 @@ func NewClient(address string) (*Client, error) {
 type Client struct {
 	Conn         *grpc.ClientConn
 	ConfigConn   *grpc.ClientConn
-	Worker       apiservice.PolarisGRPCClient
-	ConfigWorker apiconfig.PolarisConfigGRPCClient
+	Worker       apiservice.DiscoverGRPCClient
+	ConfigWorker apiconfig.ConfigGRPCClient
 }
 
 // Close 关闭连接

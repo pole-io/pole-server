@@ -80,7 +80,7 @@ cache:
 naming:
   # Whether to allow automatic creation of service
   autoCreate: true
-  # 
+  #
   caches:
     serviceContract:
       cachePath: test/output/cache/service_contract
@@ -182,18 +182,18 @@ plugin:
     option:
       url: ""
       interval: 60s
-  history:
-    entries:
-      - name: HistoryLogger
-      - name: HistoryDB
-        option:
-          dns: "${MYSQL_USER}:${MYSQL_PWD}@tcp(${MYSQL_HOST})/pole_observability?charset=utf8mb4&parseTime=True&loc=Local"
-  discoverEvent:
-    entries:
-      - name: EventLogger
-      - name: EventDB
-        option:
-          dns: "${MYSQL_USER}:${MYSQL_PWD}@tcp(${MYSQL_HOST})/pole_observability?charset=utf8mb4&parseTime=True&loc=Local"
+  # history:
+  #   entries:
+  #     - name: HistoryLogger
+  #     - name: HistoryDB
+  #       option:
+  #         dns: "${MYSQL_USER}:${MYSQL_PWD}@tcp(${MYSQL_HOST})/pole_server?charset=utf8mb4&parseTime=True&loc=Local"
+  # discoverEvent:
+  #   entries:
+  #     - name: EventLogger
+  #     - name: EventDB
+  #       option:
+  #         dns: "${MYSQL_USER}:${MYSQL_PWD}@tcp(${MYSQL_HOST})/pole_server?charset=utf8mb4&parseTime=True&loc=Local"
   statis:
     entries:
       - name: local

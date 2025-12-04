@@ -33,8 +33,8 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/service_manage"
 )
@@ -157,8 +157,8 @@ func runVerifyMode() {
 		req := &service_manage.DiscoverRequest{
 			Type: service_manage.DiscoverRequest_INSTANCE,
 			Service: &service_manage.Service{
-				Namespace: wrapperspb.String(Namespace),
-				Name:      wrapperspb.String(Service),
+				Namespace: Namespace,
+				Name:      Service,
 			},
 		}
 
@@ -179,15 +179,15 @@ func runVerifyMode() {
 			log.Printf("[ERROR] unmarshaler discover resp fail: %s", err.Error())
 			return
 		}
-		if discoverRsp.GetCode().GetValue() != uint32(model.Code_ExecuteSuccess) {
-			log.Printf("[ERROR] receive discover resp fail: %s", discoverRsp.GetInfo().GetValue())
+		if discoverRsp.GetCode() != uint32(model.Code_ExecuteSuccess) {
+			log.Printf("[ERROR] receive discover resp fail: %s", discoverRsp.GetInfo())
 			return
 		}
 		unHealthCount := 0
 		// 检查实例健康状态
 		instances := discoverRsp.GetInstances()
 		for i := range instances {
-			isHealth := instances[i].GetHealthy().GetValue()
+			isHealth := instances[i].GetHealthy()
 			if !isHealth {
 				unHealthCount++
 			}
@@ -199,11 +199,8 @@ func runVerifyMode() {
 		}
 	}
 
-	for {
-		select {
-		case <-ticker.C:
-			checkInstanceHealth()
-		}
+	for range ticker.C {
+		checkInstanceHealth()
 	}
 }
 
@@ -220,42 +217,79 @@ func runBenchmarkMode() {
 			panic(err)
 		}
 
-		client := service_manage.NewPolarisGRPCClient(conn)
+		client := service_manage.NewDiscoverGRPCClient(conn)
 
 		instance := &service_manage.Instance{
-			Namespace:         wrapperspb.String(Namespace),
-			Service:           wrapperspb.String(Service),
-			Host:              wrapperspb.String(PodIP),
-			Port:              wrapperspb.UInt32(uint32(int(BasePort) + i)),
-			EnableHealthCheck: wrapperspb.Bool(true),
+			Namespace:         Namespace,
+			Service:           Service,
+			Host:              PodIP,
+			Port:              uint32(int(BasePort) + i),
+			EnableHealthCheck: true,
 			HealthCheck: &service_manage.HealthCheck{
 				Type: service_manage.HealthCheck_HEARTBEAT,
 				Heartbeat: &service_manage.HeartbeatHealthCheck{
-					Ttl: wrapperspb.UInt32(uint32(BeatInterval)),
+					Ttl: uint32(BeatInterval),
 				},
 			},
 		}
+
+		// 计算实例 ID
+		instanceID, err := utils.CalculateInstanceID(Namespace, Service, "", PodIP, uint32(int(BasePort)+i))
+		if err != nil {
+			panic(fmt.Sprintf("calculate instance id failed: %v", err))
+		}
+		instance.Id = instanceID
 
 		resp, err := client.RegisterInstance(context.Background(), instance)
 		if err != nil {
 			panic(err)
 		}
-		if resp.GetCode().GetValue() != uint32(model.Code_ExecuteSuccess) {
-			panic(resp.GetInfo().GetValue())
+		if resp.GetCode() != uint32(model.Code_ExecuteSuccess) {
+			panic(resp.GetInfo())
 		}
-		log.Printf("[INFO] instance register success id: %s", resp.GetInstance().GetId().GetValue())
-		instance.Id = resp.GetInstance().GetId()
+		log.Printf("[INFO] instance register success id: %s", instance.GetId())
 		go func(instance *service_manage.Instance) {
 			ticker := time.NewTicker(time.Duration(BeatInterval) * time.Second)
 			defer ticker.Stop()
 
 			for range ticker.C {
-				resp, err := client.Heartbeat(context.Background(), instance)
-				if err != nil {
-					log.Printf("[ERROR] instance(%s) beat fail error: %s", instance.GetId().GetValue(), err.Error())
+				// 使用 HTTP API 上报心跳
+				heartbeatReq := &service_manage.Instance{
+					Id:        instance.GetId(),
+					Namespace: instance.GetNamespace(),
+					Service:   instance.GetService(),
+					Host:      instance.GetHost(),
+					Port:      instance.GetPort(),
 				}
-				if resp.GetCode().GetValue() != uint32(model.Code_ExecuteSuccess) {
-					log.Printf("[ERROR] instance(%s) beat fail info: %s", instance.GetId().GetValue(), resp.GetInfo().GetValue())
+
+				marshaler := jsonpb.Marshaler{}
+				body, err := marshaler.MarshalToString(heartbeatReq)
+				if err != nil {
+					log.Printf("[ERROR] instance(%s) marshal heartbeat request fail: %s", instance.GetId(), err.Error())
+					continue
+				}
+
+				httpResp, err := http.Post(
+					fmt.Sprintf("http://%s:%d/v1/Heartbeat", ServerAddr, HttpPort),
+					"application/json",
+					bytes.NewBufferString(body),
+				)
+				if err != nil {
+					log.Printf("[ERROR] instance(%s) beat fail error: %s", instance.GetId(), err.Error())
+					continue
+				}
+
+				data, _ := io.ReadAll(httpResp.Body)
+				_ = httpResp.Body.Close()
+
+				heartbeatResp := &model.Response{}
+				if err := jsonpb.Unmarshal(bytes.NewBuffer(data), heartbeatResp); err != nil {
+					log.Printf("[ERROR] instance(%s) unmarshal heartbeat response fail: %s", instance.GetId(), err.Error())
+					continue
+				}
+
+				if heartbeatResp.GetCode() != uint32(model.Code_ExecuteSuccess) {
+					log.Printf("[ERROR] instance(%s) beat fail info: %s", instance.GetId(), heartbeatResp.GetInfo())
 				}
 			}
 		}(instance)
@@ -274,11 +308,8 @@ func mainLoop() {
 		syscall.SIGSEGV,
 	}...)
 
-	for {
-		select {
-		case <-ch:
-			log.Printf("[INFO] catch signal, stop benchmark server")
-			return
-		}
+	for range ch {
+		log.Printf("[INFO] catch signal, stop benchmark server")
+		return
 	}
 }

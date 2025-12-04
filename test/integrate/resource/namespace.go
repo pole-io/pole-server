@@ -22,7 +22,6 @@ import (
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -39,9 +38,9 @@ func CreateNamespaces() []*apimodel.Namespace {
 		name := fmt.Sprintf(namespaceName, utils.NewUUID(), index)
 
 		namespace := &apimodel.Namespace{
-			Name:    protobuf.NewStringValue(name),
-			Comment: protobuf.NewStringValue("test"),
-			Owners:  protobuf.NewStringValue("test"),
+			Name:    name,
+			Comment: "test",
+			Owners:  "test",
 		}
 		namespaces = append(namespaces, namespace)
 	}
@@ -54,7 +53,7 @@ func CreateNamespaces() []*apimodel.Namespace {
  */
 func UpdateNamespaces(namespaces []*apimodel.Namespace) {
 	for _, namespace := range namespaces {
-		namespace.Comment = protobuf.NewStringValue("update")
-		namespace.Owners = protobuf.NewStringValue("update")
+		namespace.Comment = "update"
+		namespace.Owners = "update"
 	}
 }

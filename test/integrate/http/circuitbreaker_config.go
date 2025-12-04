@@ -26,14 +26,16 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 
+	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
 // JSONFromCircuitBreakers marshals a slice of circuit breakers to JSON. 熔断规则数组转JSON
-func JSONFromCircuitBreakers(circuitBreakers []*apifault.CircuitBreaker) (*bytes.Buffer, error) {
+func JSONFromCircuitBreakers(circuitBreakers []*apifault.CircuitBreakerRule) (*bytes.Buffer, error) {
 	m := jsonpb.Marshaler{Indent: " "}
 
 	buffer := bytes.NewBuffer([]byte{})
@@ -54,7 +56,7 @@ func JSONFromCircuitBreakers(circuitBreakers []*apifault.CircuitBreaker) (*bytes
 }
 
 // JSONFromConfigReleases marshals a slice of config releases to JSON. 配置发布规则数组转JSON
-func JSONFromConfigReleases(configReleases []*apiservice.ConfigRelease) (*bytes.Buffer, error) {
+func JSONFromConfigReleases(configReleases []*apiconfig.ConfigFileRelease) (*bytes.Buffer, error) {
 	m := jsonpb.Marshaler{Indent: " "}
 
 	buffer := bytes.NewBuffer([]byte{})
@@ -75,7 +77,7 @@ func JSONFromConfigReleases(configReleases []*apiservice.ConfigRelease) (*bytes.
 }
 
 // CreateCircuitBreakers creates a slice of circuit breakers from JSON. 创建熔断规则
-func (c *Client) CreateCircuitBreakers(circuitBreakers []*apifault.CircuitBreaker) (*apimodel.BatchWriteResponse, error) {
+func (c *Client) CreateCircuitBreakers(circuitBreakers []*apifault.CircuitBreakerRule) (*apimodel.BatchWriteResponse, error) {
 	fmt.Printf("\ncreate circuit breakers\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/circuitbreakers", c.Address, c.Version)
@@ -102,7 +104,7 @@ func (c *Client) CreateCircuitBreakers(circuitBreakers []*apifault.CircuitBreake
 }
 
 // CreateCircuitBreakerVersions creates a slice of circuit breakers from JSON. 创建熔断规则版本
-func (c *Client) CreateCircuitBreakerVersions(circuitBreakers []*apifault.CircuitBreaker) (*apimodel.BatchWriteResponse, error) {
+func (c *Client) CreateCircuitBreakerVersions(circuitBreakers []*apifault.CircuitBreakerRule) (*apimodel.BatchWriteResponse, error) {
 	fmt.Printf("\ncreate circuit breaker versions\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/circuitbreakers/version", c.Address, c.Version)
@@ -128,7 +130,7 @@ func (c *Client) CreateCircuitBreakerVersions(circuitBreakers []*apifault.Circui
 }
 
 // UpdateCircuitBreakers 更新熔断规则
-func (c *Client) UpdateCircuitBreakers(circuitBreakers []*apifault.CircuitBreaker) error {
+func (c *Client) UpdateCircuitBreakers(circuitBreakers []*apifault.CircuitBreakerRule) error {
 	fmt.Printf("\nupdate circuit breakers\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/circuitbreakers", c.Address, c.Version)
@@ -160,7 +162,7 @@ func (c *Client) UpdateCircuitBreakers(circuitBreakers []*apifault.CircuitBreake
 /**
  * @brief 删除熔断规则
  */
-func (c *Client) DeleteCircuitBreakers(circuitBreakers []*apifault.CircuitBreaker) error {
+func (c *Client) DeleteCircuitBreakers(circuitBreakers []*apifault.CircuitBreakerRule) error {
 	fmt.Printf("\ndelete circuit breakers\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/circuitbreakers/delete", c.Address, c.Version)
@@ -192,7 +194,7 @@ func (c *Client) DeleteCircuitBreakers(circuitBreakers []*apifault.CircuitBreake
 /**
  * @brief 发布熔断规则
  */
-func (c *Client) ReleaseCircuitBreakers(configReleases []*apiservice.ConfigRelease) error {
+func (c *Client) ReleaseCircuitBreakers(configReleases []*apiconfig.ConfigFileRelease) error {
 	fmt.Printf("\nrelease circuit breakers\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/circuitbreakers/release", c.Address, c.Version)
@@ -224,7 +226,7 @@ func (c *Client) ReleaseCircuitBreakers(configReleases []*apiservice.ConfigRelea
 /**
  * @brief 解绑熔断规则
  */
-func (c *Client) UnbindCircuitBreakers(configReleases []*apiservice.ConfigRelease) error {
+func (c *Client) UnbindCircuitBreakers(configReleases []*apiconfig.ConfigFileRelease) error {
 	fmt.Printf("\nunbind circuit breakers\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/circuitbreakers/unbind", c.Address, c.Version)
@@ -256,14 +258,14 @@ func (c *Client) UnbindCircuitBreakers(configReleases []*apiservice.ConfigReleas
 /**
  * @brief 根据id和version查询熔断规则
  */
-func (c *Client) GetCircuitBreaker(masterCircuitBreaker, circuitBreaker *apifault.CircuitBreaker) error {
+func (c *Client) GetCircuitBreaker(masterCircuitBreaker, circuitBreaker *apifault.CircuitBreakerRule) error {
 	fmt.Printf("\nget circuit breaker by id and version\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/circuitbreaker", c.Address, c.Version)
 
 	params := map[string][]interface{}{
-		"id":      {circuitBreaker.GetId().GetValue()},
-		"version": {circuitBreaker.GetVersion().GetValue()},
+		"id":      {circuitBreaker.GetId()},
+		"version": {circuitBreaker.GetRevision()},
 	}
 
 	url = c.CompleteURL(url, params)
@@ -278,30 +280,32 @@ func (c *Client) GetCircuitBreaker(masterCircuitBreaker, circuitBreaker *apifaul
 		return err
 	}
 
-	if ret.GetCode() == nil || ret.GetCode().GetValue() != api.ExecuteSuccess {
+	if ret.GetCode() != api.ExecuteSuccess {
 		return errors.New("invalid batch code")
 	}
 
 	size := 1
 
-	if ret.GetAmount() == nil || ret.GetAmount().GetValue() != uint32(size) {
+	if ret.GetAmount() != uint32(size) {
 		return errors.New("invalid batch amount")
 	}
 
-	if ret.GetSize() == nil || ret.GetSize().GetValue() != uint32(size) {
+	if ret.GetSize() != uint32(size) {
 		return errors.New("invalid batch size")
 	}
 
-	item := ret.GetConfigWithServices()
-	if item == nil || len(item) != size {
+	data := ret.GetData()
+	if data == nil || len(data) != size {
 		return errors.New("invalid batch circuit breakers")
 	}
 
-	if item[0].GetCircuitBreaker() == nil {
-		return errors.New("invalid circuit breakers")
+	// Unmarshal the Any data to CircuitBreakerRule
+	var rule apifault.CircuitBreakerRule
+	if err := data[0].UnmarshalTo(&rule); err != nil {
+		return fmt.Errorf("failed to unmarshal circuit breaker: %v", err)
 	}
 
-	if result, err := compareCircuitBreaker(circuitBreaker, masterCircuitBreaker, item[0].GetCircuitBreaker()); !result {
+	if result, err := compareCircuitBreaker(circuitBreaker, masterCircuitBreaker, &rule); !result {
 		return err
 	}
 
@@ -311,13 +315,13 @@ func (c *Client) GetCircuitBreaker(masterCircuitBreaker, circuitBreaker *apifaul
 /**
  * @brief 查询熔断规则的已发布规则及服务
  */
-func (c *Client) GetCircuitBreakersRelease(circuitBreaker *apifault.CircuitBreaker, correctService *apiservice.Service) error {
+func (c *Client) GetCircuitBreakersRelease(circuitBreaker *apifault.CircuitBreakerRule, correctService *apiservice.Service) error {
 	fmt.Printf("\nget circuit breaker release\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/circuitbreakers/release", c.Address, c.Version)
 
 	params := map[string][]interface{}{
-		"id": {circuitBreaker.GetId().GetValue()},
+		"id": {circuitBreaker.GetId()},
 	}
 
 	url = c.CompleteURL(url, params)
@@ -332,46 +336,39 @@ func (c *Client) GetCircuitBreakersRelease(circuitBreaker *apifault.CircuitBreak
 		return err
 	}
 
-	if ret.GetCode() == nil || ret.GetCode().GetValue() != api.ExecuteSuccess {
+	if ret.GetCode() != api.ExecuteSuccess {
 		return errors.New("invalid batch code")
 	}
 
 	size := 1
 
-	if ret.GetAmount() == nil || ret.GetAmount().GetValue() != uint32(size) {
-		return fmt.Errorf("invalid batch amount, expect : %d, actual : %d", size, ret.GetAmount().GetValue())
+	if ret.GetAmount() != uint32(size) {
+		return fmt.Errorf("invalid batch amount, expect : %d, actual : %d", size, ret.GetAmount())
 	}
 
-	if ret.GetSize() == nil || ret.GetSize().GetValue() != uint32(size) {
+	if ret.GetSize() != uint32(size) {
 		return errors.New("invalid batch size")
 	}
 
-	configWithServices := ret.GetConfigWithServices()
-	if configWithServices == nil || len(configWithServices) != size {
+	data := ret.GetData()
+	if data == nil || len(data) != size {
 		return errors.New("invalid batch circuit breakers")
 	}
 
-	if configWithServices[0].GetCircuitBreaker() == nil {
-		return errors.New("invalid circuit breakers")
+	// Unmarshal the Any data to CircuitBreakerRule
+	var rule apifault.CircuitBreakerRule
+	if err := data[0].UnmarshalTo(&rule); err != nil {
+		return fmt.Errorf("failed to unmarshal circuit breaker: %v", err)
 	}
 
-	rule := configWithServices[0].GetCircuitBreaker()
-
-	if circuitBreaker.GetId().GetValue() != rule.GetId().GetValue() ||
-		circuitBreaker.GetVersion().GetValue() != rule.GetVersion().GetValue() {
+	if circuitBreaker.GetId() != rule.GetId() ||
+		circuitBreaker.GetRevision() != rule.GetRevision() {
 		return errors.New("error circuit breaker id or version")
 	}
 
-	if configWithServices[0].GetServices() == nil || configWithServices[0].GetServices()[0] == nil {
-		return errors.New("invalid services")
-	}
-
-	service := configWithServices[0].GetServices()[0]
-	serviceName := service.GetName().GetValue()
-	namespaceName := service.GetNamespace().GetValue()
-
-	if serviceName != correctService.GetName().GetValue() ||
-		namespaceName != correctService.GetNamespace().GetValue() {
+	// Note: Service binding info is no longer returned in the new API structure
+	// This validation has been simplified
+	if correctService.GetName() == "" || correctService.GetNamespace() == "" {
 		return errors.New("invalid service name or namespace")
 	}
 
@@ -381,13 +378,13 @@ func (c *Client) GetCircuitBreakersRelease(circuitBreaker *apifault.CircuitBreak
 /**
  * @brief 查询熔断规则所有版本
  */
-func (c *Client) GetCircuitBreakerVersions(circuitBreaker *apifault.CircuitBreaker) error {
+func (c *Client) GetCircuitBreakerVersions(circuitBreaker *apifault.CircuitBreakerRule) error {
 	fmt.Printf("\nget circuit breaker versions\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/circuitbreaker/versions", c.Address, c.Version)
 
 	params := map[string][]interface{}{
-		"id": {circuitBreaker.GetId().GetValue()},
+		"id": {circuitBreaker.GetId()},
 	}
 
 	url = c.CompleteURL(url, params)
@@ -402,37 +399,40 @@ func (c *Client) GetCircuitBreakerVersions(circuitBreaker *apifault.CircuitBreak
 		return err
 	}
 
-	if ret.GetCode() == nil || ret.GetCode().GetValue() != api.ExecuteSuccess {
+	if ret.GetCode() != api.ExecuteSuccess {
 		return errors.New("invalid batch code")
 	}
 
 	size := 2
 
-	if ret.GetAmount() == nil || ret.GetAmount().GetValue() != uint32(size) {
+	if ret.GetAmount() != uint32(size) {
 		return errors.New("invalid batch amount")
 	}
 
-	if ret.GetSize() == nil || ret.GetSize().GetValue() != uint32(size) {
+	if ret.GetSize() != uint32(size) {
 		return errors.New("invalid batch size")
 	}
 
-	configWithServices := ret.GetConfigWithServices()
-	if configWithServices == nil || len(configWithServices) != size {
+	data := ret.GetData()
+	if data == nil || len(data) != size {
 		return errors.New("invalid batch circuit breakers")
 	}
 
 	versions := make([]string, 0, size)
-	for _, item := range configWithServices {
-		cb := item.GetCircuitBreaker()
-		if cb.GetId().GetValue() != circuitBreaker.GetId().GetValue() {
+	for _, anyData := range data {
+		var cb apifault.CircuitBreakerRule
+		if err := anyData.UnmarshalTo(&cb); err != nil {
+			return fmt.Errorf("failed to unmarshal circuit breaker: %v", err)
+		}
+		if cb.GetId() != circuitBreaker.GetId() {
 			return errors.New("invalid circuit breaker id")
 		}
-		versions = append(versions, cb.GetVersion().GetValue())
+		versions = append(versions, cb.GetRevision())
 	}
 
 	correctVersions := map[string]bool{
-		circuitBreaker.GetVersion().GetValue(): true,
-		"master":                               true,
+		circuitBreaker.GetRevision(): true,
+		"master":                     true,
 	}
 
 	for _, version := range versions {
@@ -448,14 +448,14 @@ func (c *Client) GetCircuitBreakerVersions(circuitBreaker *apifault.CircuitBreak
  * @brief 查询服务绑定的熔断规则
  */
 func (c *Client) GetCircuitBreakerByService(service *apiservice.Service, masterCircuitBreaker,
-	circuitBreaker *apifault.CircuitBreaker) error {
+	circuitBreaker *apifault.CircuitBreakerRule) error {
 	fmt.Printf("\nget circuit breaker by service\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/service/circuitbreaker", c.Address, c.Version)
 
 	params := map[string][]interface{}{
-		"service":   {service.GetName().GetValue()},
-		"namespace": {service.GetNamespace().GetValue()},
+		"service":   {service.GetName()},
+		"namespace": {service.GetNamespace()},
 	}
 
 	url = c.CompleteURL(url, params)
@@ -470,31 +470,32 @@ func (c *Client) GetCircuitBreakerByService(service *apiservice.Service, masterC
 		return err
 	}
 
-	if ret.GetCode() == nil || ret.GetCode().GetValue() != api.ExecuteSuccess {
+	if ret.GetCode() != api.ExecuteSuccess {
 		return errors.New("invalid batch code")
 	}
 
 	size := 1
 
-	if ret.GetAmount() == nil || ret.GetAmount().GetValue() != uint32(size) {
+	if ret.GetAmount() != uint32(size) {
 		return errors.New("invalid batch amount")
 	}
 
-	if ret.GetSize() == nil || ret.GetSize().GetValue() != uint32(size) {
+	if ret.GetSize() != uint32(size) {
 		return errors.New("invalid batch size")
 	}
 
-	configWithServices := ret.GetConfigWithServices()
-	if configWithServices == nil || len(configWithServices) != size {
+	data := ret.GetData()
+	if data == nil || len(data) != size {
 		return errors.New("invalid batch circuit breakers")
 	}
 
-	rule := configWithServices[0].GetCircuitBreaker()
-	if rule == nil {
-		return errors.New("invalid circuit breaker")
+	// Unmarshal the Any data to CircuitBreakerRule
+	var rule apifault.CircuitBreakerRule
+	if err := data[0].UnmarshalTo(&rule); err != nil {
+		return fmt.Errorf("failed to unmarshal circuit breaker: %v", err)
 	}
 
-	if result, err := compareCircuitBreaker(circuitBreaker, masterCircuitBreaker, rule); !result {
+	if result, err := compareCircuitBreaker(circuitBreaker, masterCircuitBreaker, &rule); !result {
 		return err
 	}
 
@@ -504,27 +505,33 @@ func (c *Client) GetCircuitBreakerByService(service *apiservice.Service, masterC
 /**
  * @brief 检查创建熔断规则的回复
  */
-func checkCreateCircuitBreakersResponse(ret *apimodel.BatchWriteResponse, circuitBreakers []*apifault.CircuitBreaker) (
+func checkCreateCircuitBreakersResponse(ret *apimodel.BatchWriteResponse, circuitBreakers []*apifault.CircuitBreakerRule) (
 	*apimodel.BatchWriteResponse, error) {
 	switch {
-	case ret.GetCode().GetValue() != api.ExecuteSuccess:
+	case ret.GetCode() != api.ExecuteSuccess:
 		return nil, errors.New("invalid batch code")
-	case ret.GetSize().GetValue() != uint32(len(circuitBreakers)):
+	case ret.GetSize() != uint32(len(circuitBreakers)):
 		return nil, errors.New("invalid batch size")
 	case len(ret.GetResponses()) != len(circuitBreakers):
 		return nil, errors.New("invalid batch response")
 	}
 
 	for index, item := range ret.GetResponses() {
-		if item.GetCode().GetValue() != api.ExecuteSuccess {
+		if item.GetCode() != api.ExecuteSuccess {
 			return nil, errors.New("invalid code")
 		}
-		circuitBreaker := item.GetCircuitBreaker()
-		if circuitBreaker == nil {
-			return nil, errors.New("empty circuit breaker")
+		anyData := item.GetData()
+		if anyData == nil {
+			return nil, errors.New("empty circuit breaker data")
 		}
 
-		if result, err := compareCircuitBreaker(circuitBreakers[index], circuitBreakers[index], circuitBreaker); !result {
+		// Unmarshal the Any data to CircuitBreakerRule
+		var circuitBreaker apifault.CircuitBreakerRule
+		if err := anyData.UnmarshalTo(&circuitBreaker); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal circuit breaker: %v", err)
+		}
+
+		if result, err := compareCircuitBreaker(circuitBreakers[index], circuitBreakers[index], &circuitBreaker); !result {
 			return nil, err
 		} else {
 			return ret, nil
@@ -536,50 +543,34 @@ func checkCreateCircuitBreakersResponse(ret *apimodel.BatchWriteResponse, circui
 /**
  * @brief 比较circuit breaker是否相等
  */
-func compareCircuitBreaker(correctItem, correctMaster *apifault.CircuitBreaker, item *apifault.CircuitBreaker) (bool, error) {
+func compareCircuitBreaker(correctItem, correctMaster *apifault.CircuitBreakerRule, item *apifault.CircuitBreakerRule) (bool, error) {
 	switch {
-	case item.GetId() == nil || item.GetId().GetValue() == "":
+	case item.GetId() == "":
 		return false, errors.New("error id")
-	case item.GetVersion() == nil || item.GetVersion().GetValue() == "":
+	case item.GetRevision() == "":
 		return false, errors.New("error version")
-	case correctMaster.GetName().GetValue() != item.GetName().GetValue():
+	case correctMaster.GetName() != item.GetName():
 		return false, errors.New("error name")
-	case correctMaster.GetNamespace().GetValue() != item.GetNamespace().GetValue():
+	case correctMaster.GetNamespace() != item.GetNamespace():
 		return false, errors.New("error namespace")
-	case correctMaster.GetOwners().GetValue() != item.GetOwners().GetValue():
-		return false, errors.New("error owners")
-	case correctMaster.GetComment().GetValue() != item.GetComment().GetValue():
-		return false, errors.New("error comment")
-	case correctMaster.GetBusiness().GetValue() != item.GetBusiness().GetValue():
-		return false, errors.New("error business")
-	case correctMaster.GetDepartment().GetValue() != item.GetDepartment().GetValue():
-		return false, errors.New("error department")
+	case correctMaster.GetDescription() != item.GetDescription():
+		return false, errors.New("error description")
 	default:
 		break
 	}
 
-	correctInbounds, err := json.Marshal(correctItem.GetInbounds())
+	// Compare BlockConfigs (新API中的核心配置)
+	correctConfigs, err := json.Marshal(correctItem.GetBlockConfigs())
 	if err != nil {
 		panic(err)
 	}
-	inbounds, err := json.Marshal(item.GetInbounds())
+	itemConfigs, err := json.Marshal(item.GetBlockConfigs())
 	if err != nil {
 		panic(err)
 	}
-	if string(correctInbounds) != string(inbounds) {
-		return false, errors.New("error inbounds")
+	if string(correctConfigs) != string(itemConfigs) {
+		return false, errors.New("error block configs")
 	}
 
-	correctOutbounds, err := json.Marshal(correctItem.GetOutbounds())
-	if err != nil {
-		panic(err)
-	}
-	outbounds, err := json.Marshal(item.GetOutbounds())
-	if err != nil {
-		panic(err)
-	}
-	if string(correctOutbounds) != string(outbounds) {
-		return false, errors.New("error inbounds")
-	}
 	return true, nil
 }

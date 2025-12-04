@@ -20,8 +20,6 @@ package resource
 import (
 	"fmt"
 
-	"google.golang.org/protobuf/types/known/wrapperspb"
-
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
@@ -41,15 +39,9 @@ func MockConfigGroups(ns *apimodel.Namespace) []*apiconfig.ConfigFileGroup {
 	for i := 0; i < totalGroups; i++ {
 
 		ret = append(ret, &apiconfig.ConfigFileGroup{
-			Name: &wrapperspb.StringValue{
-				Value: fmt.Sprintf(confiGroupNameTemp, utils.NewUUID(), i),
-			},
-			Namespace: &wrapperspb.StringValue{
-				Value: ns.Name.Value,
-			},
-			Comment: &wrapperspb.StringValue{
-				Value: "",
-			},
+			Name:      fmt.Sprintf(confiGroupNameTemp, utils.NewUUID(), i),
+			Namespace: ns.GetName(),
+			Comment:   "",
 		})
 
 	}
@@ -66,21 +58,13 @@ func MockConfigFiles(group *apiconfig.ConfigFileGroup) []*apiconfig.ConfigFile {
 			name = fmt.Sprintf("dir%d/", i) + name
 		}
 		ret = append(ret, &apiconfig.ConfigFile{
-			Name: &wrapperspb.StringValue{
-				Value: name,
-			},
+			Name:      name,
 			Namespace: group.Namespace,
 			Group:     group.Name,
-			Content: &wrapperspb.StringValue{
-				Value: `name: polarismesh`,
-			},
-			Format: &wrapperspb.StringValue{
-				Value: "yaml",
-			},
-			Status: &wrapperspb.StringValue{
-				Value: conftypes.ReleaseStatusToRelease,
-			},
-			Tags: []*apiconfig.ConfigFileTag{},
+			Content:   `name: polarismesh`,
+			Format:    "yaml",
+			Status:    conftypes.ReleaseStatusToRelease,
+			Labels:    map[string]string{},
 		})
 
 	}

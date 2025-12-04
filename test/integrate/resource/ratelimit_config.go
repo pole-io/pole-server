@@ -20,71 +20,64 @@ package resource
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/ptypes/duration"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
-
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 )
 
 /**
  * @brief 创建测试限流规则
  */
-func CreateRateLimits(services []*apiservice.Service) []*apitraffic.Rule {
-	var rateLimits []*apitraffic.Rule
+func CreateRateLimits(services []*apiservice.Service) []*apitraffic.RateLimit {
+	var rateLimits []*apitraffic.RateLimit
 	for index := 0; index < 2; index++ {
-		rateLimit := &apitraffic.Rule{
-			Name:      protobuf.NewStringValue(fmt.Sprintf("rlimit-%d", index)),
+		rateLimit := &apitraffic.RateLimit{
+			Name:      fmt.Sprintf("rlimit-%d", index),
 			Service:   services[index].GetName(),
 			Namespace: services[index].GetNamespace(),
-			Priority:  protobuf.NewUInt32Value(uint32(index)),
-			Resource:  apitraffic.Rule_CONCURRENCY,
-			Type:      apitraffic.Rule_LOCAL,
-			Arguments: []*apitraffic.MatchArgument{{
-				Type: apitraffic.MatchArgument_CUSTOM,
-				Key:  fmt.Sprintf("name-%d", index),
-				Value: &apimodel.MatchString{
-					Type:  apimodel.MatchString_REGEX,
-					Value: protobuf.NewStringValue(fmt.Sprintf("value-%d", index)),
-				},
-			}, {Type: apitraffic.MatchArgument_CUSTOM,
-				Key: fmt.Sprintf("name-%d", index+1),
-				Value: &apimodel.MatchString{
-					Type:  apimodel.MatchString_EXACT,
-					Value: protobuf.NewStringValue(fmt.Sprintf("value-%d", index+1)),
-				}}},
-			Amounts: []*apitraffic.Amount{
+			Priority:  uint32(index),
+			Type:      apitraffic.RateLimit_LOCAL,
+			Disable:   false,
+			Rules: []*apitraffic.LimitTrigger{
 				{
-					MaxAmount: protobuf.NewUInt32Value(uint32(index)),
-					ValidDuration: &duration.Duration{
-						Seconds: int64(index),
-						Nanos:   int32(index),
+					Name:     fmt.Sprintf("rule-%d", index),
+					Resource: apitraffic.LimitTrigger_QPS,
+					Action:   "REJECT",
+					Disable:  false,
+					Arguments: []*apitraffic.MatchArgument{
+						{
+							Type: apitraffic.MatchArgument_CUSTOM,
+							Key:  fmt.Sprintf("name-%d", index),
+							Value: &apimodel.MatchString{
+								Type:  apimodel.MatchString_REGEX,
+								Value: fmt.Sprintf("value-%d", index),
+							},
+						},
+						{
+							Type: apitraffic.MatchArgument_CUSTOM,
+							Key:  fmt.Sprintf("name-%d", index+1),
+							Value: &apimodel.MatchString{
+								Type:  apimodel.MatchString_EXACT,
+								Value: fmt.Sprintf("value-%d", index+1),
+							},
+						},
 					},
+					Amounts: []*apitraffic.Amount{
+						{
+							MaxAmount: uint32(100 + index),
+							ValidDuration: &durationpb.Duration{
+								Seconds: int64(1),
+							},
+						},
+					},
+					MaxQueueDelay: uint32(1000),
+					RegexCombine:  true,
+					AmountMode:    apitraffic.LimitTrigger_SHARE_EQUALLY,
+					Failover:      apitraffic.LimitTrigger_FAILOVER_LOCAL,
 				},
 			},
-			Action:  protobuf.NewStringValue("REJECT"),
-			Disable: protobuf.NewBoolValue(true),
-			Adjuster: &apitraffic.AmountAdjuster{
-				Climb: &apitraffic.ClimbConfig{
-					Enable: protobuf.NewBoolValue(true),
-					Metric: &apitraffic.ClimbConfig_MetricConfig{
-						Window: &duration.Duration{
-							Seconds: int64(index),
-							Nanos:   int32(index),
-						},
-						Precision: protobuf.NewUInt32Value(uint32(index)),
-						ReportInterval: &duration.Duration{
-							Seconds: int64(index),
-							Nanos:   int32(index),
-						},
-					},
-				},
-			},
-			RegexCombine: protobuf.NewBoolValue(true),
-			AmountMode:   apitraffic.Rule_SHARE_EQUALLY,
-			Failover:     apitraffic.Rule_FAILOVER_PASS,
 		}
 		rateLimits = append(rateLimits, rateLimit)
 	}
@@ -94,15 +87,23 @@ func CreateRateLimits(services []*apiservice.Service) []*apitraffic.Rule {
 /**
  * @brief 更新测试限流规则
  */
-func UpdateRateLimits(rateLimits []*apitraffic.Rule) {
-	for _, rateLimit := range rateLimits {
-		rateLimit.Arguments = []*apitraffic.MatchArgument{
+func UpdateRateLimits(rateLimits []*apitraffic.RateLimit) {
+	for index, rateLimit := range rateLimits {
+		rateLimit.Rules = []*apitraffic.LimitTrigger{
 			{
-				Type: apitraffic.MatchArgument_CUSTOM,
-				Key:  "key1",
-				Value: &apimodel.MatchString{
-					Type:  apimodel.MatchString_REGEX,
-					Value: protobuf.NewStringValue("value-1"),
+				Name:     fmt.Sprintf("updated-rule-%d", index),
+				Resource: apitraffic.LimitTrigger_CONCURRENCY,
+				Action:   "REJECT",
+				Disable:  false,
+				Arguments: []*apitraffic.MatchArgument{
+					{
+						Type: apitraffic.MatchArgument_CUSTOM,
+						Key:  "key1",
+						Value: &apimodel.MatchString{
+							Type:  apimodel.MatchString_REGEX,
+							Value: "value-1",
+						},
+					},
 				},
 			},
 		}

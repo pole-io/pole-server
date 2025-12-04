@@ -25,8 +25,8 @@ import (
 	"io"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/ptypes/wrappers"
 
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -35,7 +35,7 @@ import (
 /**
  * @brief 限流规则数组转JSON
  */
-func JSONFromRateLimits(rateLimits []*apitraffic.Rule) (*bytes.Buffer, error) {
+func JSONFromRateLimits(rateLimits []*apitraffic.RateLimit) (*bytes.Buffer, error) {
 	m := jsonpb.Marshaler{Indent: " "}
 
 	buffer := bytes.NewBuffer([]byte{})
@@ -58,7 +58,7 @@ func JSONFromRateLimits(rateLimits []*apitraffic.Rule) (*bytes.Buffer, error) {
 /**
  * @brief 创建限流规则
  */
-func (c *Client) CreateRateLimits(rateLimits []*apitraffic.Rule) (*apimodel.BatchWriteResponse, error) {
+func (c *Client) CreateRateLimits(rateLimits []*apitraffic.RateLimit) (*apimodel.BatchWriteResponse, error) {
 	fmt.Printf("\ncreate rate limits\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/ratelimits", c.Address, c.Version)
@@ -87,7 +87,7 @@ func (c *Client) CreateRateLimits(rateLimits []*apitraffic.Rule) (*apimodel.Batc
 /**
  * @brief 删除限流规则
  */
-func (c *Client) DeleteRateLimits(rateLimits []*apitraffic.Rule) error {
+func (c *Client) DeleteRateLimits(rateLimits []*apitraffic.RateLimit) error {
 	fmt.Printf("\ndelete rate limits\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/ratelimits/delete", c.Address, c.Version)
@@ -119,7 +119,7 @@ func (c *Client) DeleteRateLimits(rateLimits []*apitraffic.Rule) error {
 /**
  * @brief 更新限流规则
  */
-func (c *Client) UpdateRateLimits(rateLimits []*apitraffic.Rule) error {
+func (c *Client) UpdateRateLimits(rateLimits []*apitraffic.RateLimit) error {
 	fmt.Printf("\nupdate rate limits\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/ratelimits", c.Address, c.Version)
@@ -149,16 +149,16 @@ func (c *Client) UpdateRateLimits(rateLimits []*apitraffic.Rule) error {
 }
 
 // EnableRateLimits 启用限流规则
-func (c *Client) EnableRateLimits(rateLimits []*apitraffic.Rule) error {
+func (c *Client) EnableRateLimits(rateLimits []*apitraffic.RateLimit) error {
 	fmt.Printf("\nenable rate limits\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/ratelimits/enable", c.Address, c.Version)
 
-	rateLimitsEnable := make([]*apitraffic.Rule, 0, len(rateLimits))
+	rateLimitsEnable := make([]*apitraffic.RateLimit, 0, len(rateLimits))
 	for _, rateLimit := range rateLimits {
-		rateLimitsEnable = append(rateLimitsEnable, &apitraffic.Rule{
+		rateLimitsEnable = append(rateLimitsEnable, &apitraffic.RateLimit{
 			Id:      rateLimit.GetId(),
-			Disable: &wrappers.BoolValue{Value: true},
+			Disable: true,
 		})
 	}
 	body, err := JSONFromRateLimits(rateLimitsEnable)
@@ -188,13 +188,13 @@ func (c *Client) EnableRateLimits(rateLimits []*apitraffic.Rule) error {
 /**
  * @brief 查询限流规则
  */
-func (c *Client) GetRateLimits(rateLimits []*apitraffic.Rule) error {
+func (c *Client) GetRateLimits(rateLimits []*apitraffic.RateLimit) error {
 	fmt.Printf("\nget rate limits\n")
 
 	url := fmt.Sprintf("http://%v/naming/%v/ratelimits", c.Address, c.Version)
 
 	params := map[string][]interface{}{
-		"namespace": {rateLimits[0].GetNamespace().GetValue()},
+		"namespace": {rateLimits[0].GetNamespace()},
 	}
 
 	url = c.CompleteURL(url, params)
@@ -209,39 +209,43 @@ func (c *Client) GetRateLimits(rateLimits []*apitraffic.Rule) error {
 		return err
 	}
 
-	if ret.GetCode() == nil || ret.GetCode().GetValue() != api.ExecuteSuccess {
+	if ret.GetCode() != api.ExecuteSuccess {
 		return errors.New("invalid batch code")
 	}
 
 	rateLimitsSize := len(rateLimits)
 
-	if ret.GetAmount() == nil || ret.GetAmount().GetValue() != uint32(rateLimitsSize) {
+	if ret.GetAmount() != uint32(rateLimitsSize) {
 		return errors.New("invalid batch amount")
 	}
 
-	if ret.GetSize() == nil || ret.GetSize().GetValue() != uint32(rateLimitsSize) {
+	if ret.GetSize() != uint32(rateLimitsSize) {
 		return errors.New("invalid batch size")
 	}
 
-	collection := make(map[string]*apitraffic.Rule)
+	collection := make(map[string]*apitraffic.RateLimit)
 	for _, rateLimit := range rateLimits {
-		collection[rateLimit.GetService().GetValue()] = rateLimit
+		collection[rateLimit.GetService()] = rateLimit
 	}
 
-	items := ret.GetRateLimits()
-	if items == nil || len(items) != rateLimitsSize {
+	data := ret.GetData()
+	if data == nil || len(data) != rateLimitsSize {
 		return errors.New("invalid batch rate limits")
 	}
 
-	for _, item := range items {
-		if correctItem, ok := collection[item.GetService().GetValue()]; ok {
-			if result, err := compareRateLimit(correctItem, item); !result {
+	for _, anyData := range data {
+		var item apitraffic.RateLimit
+		if err := anyData.UnmarshalTo(&item); err != nil {
+			return fmt.Errorf("failed to unmarshal rate limit: %v", err)
+		}
+		if correctItem, ok := collection[item.GetService()]; ok {
+			if result, err := compareRateLimit(correctItem, &item); !result {
 				return fmt.Errorf("invalid rate limit. namespace is %v, service is %v, err is %s",
-					item.GetNamespace().GetValue(), item.GetService().GetValue(), err.Error())
+					item.GetNamespace(), item.GetService(), err.Error())
 			}
 		} else {
 			return fmt.Errorf("rate limit not found. namespace is %v, service is %v",
-				item.GetNamespace().GetValue(), item.GetService().GetValue())
+				item.GetNamespace(), item.GetService())
 		}
 	}
 	return nil
@@ -250,26 +254,29 @@ func (c *Client) GetRateLimits(rateLimits []*apitraffic.Rule) error {
 /**
  * @brief 检查创建限流规则的回复
  */
-func checkCreateRateLimitsResponse(ret *apimodel.BatchWriteResponse, rateLimits []*apitraffic.Rule) (
+func checkCreateRateLimitsResponse(ret *apimodel.BatchWriteResponse, rateLimits []*apitraffic.RateLimit) (
 	*apimodel.BatchWriteResponse, error) {
 	switch {
-	case ret.GetCode().GetValue() != api.ExecuteSuccess:
+	case ret.GetCode() != api.ExecuteSuccess:
 		return nil, errors.New("invalid batch code")
-	case ret.GetSize().GetValue() != uint32(len(rateLimits)):
+	case ret.GetSize() != uint32(len(rateLimits)):
 		return nil, errors.New("invalid batch size")
 	case len(ret.GetResponses()) != len(rateLimits):
 		return nil, errors.New("invalid batch response")
 	}
 
 	for index, item := range ret.GetResponses() {
-		if item.GetCode().GetValue() != api.ExecuteSuccess {
+		if item.GetCode() != api.ExecuteSuccess {
 			return nil, errors.New("invalid code")
 		}
-		rateLimit := item.GetRateLimit()
-		if rateLimit == nil {
+		if item.GetData() == nil {
 			return nil, errors.New("empty rate limit")
 		}
-		if result, err := compareRateLimit(rateLimits[index], rateLimit); !result {
+		var rateLimit apitraffic.RateLimit
+		if err := item.GetData().UnmarshalTo(&rateLimit); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal rate limit: %v", err)
+		}
+		if result, err := compareRateLimit(rateLimits[index], &rateLimit); !result {
 			return nil, err
 		}
 	}
@@ -279,57 +286,38 @@ func checkCreateRateLimitsResponse(ret *apimodel.BatchWriteResponse, rateLimits 
 /**
  * @brief 比较rate limit是否相等
  */
-func compareRateLimit(correctItem *apitraffic.Rule, item *apitraffic.Rule) (bool, error) {
+func compareRateLimit(correctItem *apitraffic.RateLimit, item *apitraffic.RateLimit) (bool, error) {
 	switch {
-	case (correctItem.GetId().GetValue()) != "" && (correctItem.GetId().GetValue() != item.GetId().GetValue()):
+	case (correctItem.GetId()) != "" && (correctItem.GetId() != item.GetId()):
 		return false, fmt.Errorf(
-			"invalid id, expect %s, actual %s", correctItem.GetId().GetValue(), item.GetId().GetValue())
-	case correctItem.GetService().GetValue() != item.GetService().GetValue():
+			"invalid id, expect %s, actual %s", correctItem.GetId(), item.GetId())
+	case correctItem.GetService() != item.GetService():
 		return false, fmt.Errorf("error service, expect %s, actual %s",
-			correctItem.GetService().GetValue(), item.GetService().GetValue())
-	case correctItem.GetNamespace().GetValue() != item.GetNamespace().GetValue():
+			correctItem.GetService(), item.GetService())
+	case correctItem.GetNamespace() != item.GetNamespace():
 		return false, fmt.Errorf("error namespace, expect %s, actual %s",
-			correctItem.GetNamespace().GetValue(), item.GetNamespace().GetValue())
-	case correctItem.GetPriority().GetValue() != item.GetPriority().GetValue():
+			correctItem.GetNamespace(), item.GetNamespace())
+	case correctItem.GetPriority() != item.GetPriority():
 		return false, fmt.Errorf("invalid priority, expect %v, actual %v",
-			correctItem.GetPriority().GetValue(), item.GetPriority().GetValue())
-	case correctItem.GetResource() != item.GetResource():
-		return false, fmt.Errorf("invalid resource, expect %v, actual %v",
-			correctItem.GetResource(), item.GetResource())
+			correctItem.GetPriority(), item.GetPriority())
 	case correctItem.GetType() != item.GetType():
 		return false, fmt.Errorf("error type, exepct %v, actual %v", correctItem.GetType(), item.GetType())
-	case correctItem.GetAction().GetValue() != item.GetAction().GetValue():
-		return false, fmt.Errorf("error action, expect %v, actual %v",
-			correctItem.GetAction().GetValue(), item.GetAction().GetValue())
-	case correctItem.GetDisable().GetValue() != item.GetDisable().GetValue():
+	case correctItem.GetDisable() != item.GetDisable():
 		return false, fmt.Errorf("error disable, expect %v, actual %v",
-			correctItem.GetDisable().GetValue(), item.GetDisable().GetValue())
-	case correctItem.GetRegexCombine().GetValue() != item.GetRegexCombine().GetValue():
-		return false, fmt.Errorf("error regex combine, expect %v, actual %v",
-			correctItem.GetRegexCombine().GetValue(), item.GetRegexCombine().GetValue())
-	case correctItem.GetAmountMode() != item.GetAmountMode():
-		return false, fmt.Errorf("error amount mode, expect %v, actual %v",
-			correctItem.GetAmountMode(), item.GetAmountMode())
-	case correctItem.GetFailover() != item.GetFailover():
-		return false, fmt.Errorf(
-			"error fail over, expect %v, actual %v", correctItem.GetFailover(), item.GetFailover())
+			correctItem.GetDisable(), item.GetDisable())
 	default:
 		break
 	}
 
-	if equal, err := checkField(correctItem.GetArguments(), item.GetArguments(), "arguments"); !equal {
+	if equal, err := checkField(correctItem.GetRules(), item.GetRules(), "rules"); !equal {
 		return equal, err
 	}
 
-	if equal, err := checkField(correctItem.GetAmounts(), item.GetAmounts(), "amounts"); !equal {
+	if equal, err := checkField(correctItem.GetReport(), item.GetReport(), "report"); !equal {
 		return equal, err
 	}
 
-	if equal, err := checkField(correctItem.GetAdjuster(), item.GetAdjuster(), "adjuster"); !equal {
-		return equal, err
-	}
-
-	return checkField(correctItem.GetName(), item.GetName(), "cluster")
+	return checkField(correctItem.GetCluster(), item.GetCluster(), "cluster")
 }
 
 /**

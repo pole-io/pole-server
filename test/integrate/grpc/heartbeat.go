@@ -41,13 +41,45 @@ func (c *Client) Heartbeat(instance *apiservice.Instance) error {
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
-	rsp, err := c.Worker.Heartbeat(ctx, instance)
+	// Heartbeat 是流式方法，需要先获取流式客户端
+	stream, err := c.Worker.Heartbeat(ctx)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		return err
+	}
+
+	// 发送心跳请求
+	req := &apiservice.HeartbeatsRequest{
+		Heartbeats: []*apiservice.InstanceHeartbeat{
+			{
+				InstanceId: instance.GetId(),
+				Service:    instance.GetService(),
+				Namespace:  instance.GetNamespace(),
+				Host:       instance.GetHost(),
+				Port:       instance.GetPort(),
+			},
+		},
+	}
+
+	if err := stream.Send(req); err != nil {
+		fmt.Printf("%v\n", err)
+		return err
+	}
+
+	// 接收响应
+	rsp, err := stream.Recv()
 	if err != nil {
 		fmt.Printf("%v\n", err)
 		return err
 	}
 
 	fmt.Printf("%v\n", rsp)
+
+	// 关闭流
+	if err := stream.CloseSend(); err != nil {
+		fmt.Printf("%v\n", err)
+		return err
+	}
 
 	return nil
 }

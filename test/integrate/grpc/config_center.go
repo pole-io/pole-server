@@ -23,11 +23,11 @@ import (
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 )
 
-func (c *Client) GetConfigFile(ctx context.Context, in *apiconfig.ClientConfigFileInfo) (*apiconfig.ConfigClientResponse, error) {
+func (c *Client) GetConfigFile(ctx context.Context, in *apiconfig.ConfigFile) (*apiconfig.ConfigDiscoverResponse, error) {
 	return nil, nil
 }
 
 // 订阅配置变更
-func (c *Client) WatchConfigFiles(ctx context.Context, in *apiconfig.ClientWatchConfigFileRequest) (*apiconfig.ConfigClientResponse, error) {
+func (c *Client) WatchConfigFiles(ctx context.Context, in *apiconfig.WatchConfigFileRequest) (*apiconfig.ConfigDiscoverResponse, error) {
 	return nil, nil
 }

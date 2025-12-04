@@ -22,7 +22,6 @@ import (
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 )
 
 const (
@@ -34,8 +33,8 @@ const (
  */
 func CreateClient(index uint32) *apiservice.Client {
 	return &apiservice.Client{
-		Host:    protobuf.NewStringValue(fmt.Sprintf(clientHost, index, index, index, index)),
+		Host:    fmt.Sprintf(clientHost, index, index, index, index),
 		Type:    apiservice.Client_SDK,
-		Version: protobuf.NewStringValue("8.8.8"),
+		Version: "8.8.8",
 	}
 }

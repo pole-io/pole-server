@@ -586,7 +586,7 @@ func (d *DiscoverTestSuit) CleanServices(services []*apiservice.Service) {
 			str := "delete from service where name = ? and namespace = ?"
 			for _, service := range services {
 				if _, err := dbTx.Exec(
-					str, service.GetName().GetValue(), service.GetNamespace().GetValue()); err != nil {
+					str, service.GetName(), service.GetNamespace()); err != nil {
 					panic(err)
 				}
 			}

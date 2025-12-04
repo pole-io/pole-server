@@ -27,8 +27,7 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/uuid"
 
-	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
-	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 )
@@ -107,7 +106,7 @@ func GetBatchWriteResponse(response *http.Response) (*apimodel.BatchWriteRespons
 	// 打印回复
 	fmt.Printf("http code: %v\n", response.StatusCode)
 
-	ret := &apiservice.BatchWriteResponse{}
+	ret := &apimodel.BatchWriteResponse{}
 	checkErr := jsonpb.Unmarshal(response.Body, ret)
 	if checkErr == nil {
 		fmt.Printf("%+v\n", ret)
@@ -118,7 +117,7 @@ func GetBatchWriteResponse(response *http.Response) (*apimodel.BatchWriteRespons
 
 	// 检查回复
 	if response.StatusCode != 200 {
-		return ret, fmt.Errorf("invalid http code : %d, ret code : %d", response.StatusCode, ret.GetCode().GetValue())
+		return ret, fmt.Errorf("invalid http code : %d, ret code : %d", response.StatusCode, ret.GetCode())
 	}
 
 	if checkErr == nil {
@@ -130,11 +129,11 @@ func GetBatchWriteResponse(response *http.Response) (*apimodel.BatchWriteRespons
 	}
 }
 
-func GetConfigResponse(response *http.Response) (*apiconfig.ConfigResponse, error) {
+func GetConfigResponse(response *http.Response) (*apimodel.Response, error) {
 	// 打印回复
 	fmt.Printf("http code: %v\n", response.StatusCode)
 
-	ret := &apiconfig.ConfigResponse{}
+	ret := &apimodel.Response{}
 	checkErr := jsonpb.Unmarshal(response.Body, ret)
 	if checkErr == nil {
 		fmt.Printf("%+v\n", ret)
@@ -156,11 +155,11 @@ func GetConfigResponse(response *http.Response) (*apiconfig.ConfigResponse, erro
 	}
 }
 
-func GetConfigQueryResponse(response *http.Response) (*apiconfig.ConfigBatchQueryResponse, error) {
+func GetConfigQueryResponse(response *http.Response) (*apimodel.BatchQueryResponse, error) {
 	// 打印回复
 	fmt.Printf("http code: %v\n", response.StatusCode)
 
-	ret := &apiconfig.ConfigBatchQueryResponse{}
+	ret := &apimodel.BatchQueryResponse{}
 	checkErr := jsonpb.Unmarshal(response.Body, ret)
 	if checkErr == nil {
 		fmt.Printf("%+v\n", ret)
@@ -183,11 +182,11 @@ func GetConfigQueryResponse(response *http.Response) (*apiconfig.ConfigBatchQuer
 }
 
 // GetConfigBatchWriteResponse 获取BatchWriteResponse
-func GetConfigBatchWriteResponse(response *http.Response) (*apiconfig.ConfigBatchWriteResponse, error) {
+func GetConfigBatchWriteResponse(response *http.Response) (*apimodel.BatchWriteResponse, error) {
 	// 打印回复
 	fmt.Printf("http code: %v\n", response.StatusCode)
 
-	ret := &apiconfig.ConfigBatchWriteResponse{}
+	ret := &apimodel.BatchWriteResponse{}
 	checkErr := jsonpb.Unmarshal(response.Body, ret)
 	if checkErr == nil {
 		fmt.Printf("%+v\n", ret)
@@ -214,7 +213,7 @@ func GetBatchQueryResponse(response *http.Response) (*apimodel.BatchQueryRespons
 	// 打印回复
 	fmt.Printf("http code: %v\n", response.StatusCode)
 
-	ret := &apiservice.BatchQueryResponse{}
+	ret := &apimodel.BatchQueryResponse{}
 	checkErr := jsonpb.Unmarshal(response.Body, ret)
 	if checkErr == nil {
 		fmt.Printf("%+v\n", ret)
@@ -241,7 +240,7 @@ func GetSimpleResponse(response *http.Response) (*apimodel.Response, error) {
 	// 打印回复
 	fmt.Printf("http code: %v\n", response.StatusCode)
 
-	ret := &apiservice.Response{}
+	ret := &apimodel.Response{}
 	checkErr := jsonpb.Unmarshal(response.Body, ret)
 	if checkErr == nil {
 		fmt.Printf("%+v\n", ret)
@@ -264,11 +263,11 @@ func GetSimpleResponse(response *http.Response) (*apimodel.Response, error) {
 }
 
 // GetConfigImportResponse 获取ConfigImportResponse
-func GetConfigImportResponse(response *http.Response) (*apiconfig.ConfigImportResponse, error) {
+func GetConfigImportResponse(response *http.Response) (*apimodel.Response, error) {
 	// 打印回复
 	fmt.Printf("http code: %v\n", response.StatusCode)
 
-	ret := &apiconfig.ConfigImportResponse{}
+	ret := &apimodel.Response{}
 	checkErr := jsonpb.Unmarshal(response.Body, ret)
 	if checkErr == nil {
 		fmt.Printf("%+v\n", ret)
@@ -290,11 +289,11 @@ func GetConfigImportResponse(response *http.Response) (*apiconfig.ConfigImportRe
 	}
 }
 
-func GetConfigEncryptAlgorithmResponse(response *http.Response) (*apiconfig.ConfigEncryptAlgorithmResponse, error) {
+func GetConfigEncryptAlgorithmResponse(response *http.Response) (*apimodel.Response, error) {
 	// 打印回复
 	fmt.Printf("http code: %v\n", response.StatusCode)
 
-	ret := &apiconfig.ConfigEncryptAlgorithmResponse{}
+	ret := &apimodel.Response{}
 	checkErr := jsonpb.Unmarshal(response.Body, ret)
 	if checkErr == nil {
 		fmt.Printf("%+v\n", ret)
