@@ -135,7 +135,7 @@ func (h *HTTPServer) Discover(req *restful.Request, rsp *restful.Response) {
 	case apiservice.DiscoverRequest_INSTANCE:
 		action = metrics.ActionDiscoverInstance
 		ret = h.namingServer.ServiceInstancesCache(ctx, discoverRequest.Filter, discoverRequest.Service)
-	case apiservice.DiscoverRequest_ROUTING:
+	case apiservice.DiscoverRequest_SERVICE_CONTRACTS:
 		action = metrics.ActionDiscoverRouterRule
 		ret = h.ruleServer.GetOldRouterRuleWithCache(ctx, discoverRequest.Service)
 	case apiservice.DiscoverRequest_CUSTOM_ROUTE_RULE:

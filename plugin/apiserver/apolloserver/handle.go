@@ -142,7 +142,7 @@ func (a *ApolloServer) WatchConfigFile(ctx context.Context, req *WatchConfigFile
 			Namespace: nsName,
 			Group:     req.AppId,
 			Name:      item.NamespaceName,
-			Tags: map[string]string{
+			Labels: map[string]string{
 				types.ClientLabel_IP: req.ClientIP,
 			},
 		})
@@ -159,7 +159,7 @@ func (a *ApolloServer) WatchConfigFile(ctx context.Context, req *WatchConfigFile
 		})
 	}
 
-	specReq := &apiconfig.ClientWatchConfigFileRequest{
+	specReq := &apiconfig.WatchConfigFileRequest{
 		ClientIp: req.ClientIP,
 		Files:    clientWatchFiles,
 	}

@@ -51,7 +51,7 @@ func (h *HTTPServer) ClientGetConfigFile(req *restful.Request, rsp *restful.Resp
 		Namespace: handler.Request.QueryParameter("namespace"),
 		Group:     handler.Request.QueryParameter("group"),
 		Name:      handler.Request.QueryParameter("fileName"),
-		Tags: func() map[string]string {
+		Labels: func() map[string]string {
 			tags := handler.Request.QueryParameters("tags")
 			ret := make(map[string]string, len(tags))
 			for i := range tags {
@@ -91,7 +91,7 @@ func (h *HTTPServer) ClientWatchConfigFile(req *restful.Request, rsp *restful.Re
 	}
 
 	// 1. 解析出客户端监听的配置文件列表
-	watchConfigFileRequest := &apiconfig.ClientWatchConfigFileRequest{}
+	watchConfigFileRequest := &apiconfig.WatchConfigFileRequest{}
 	if _, err := handler.Parse(watchConfigFileRequest); err != nil {
 		handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
@@ -186,7 +186,7 @@ func (h *HTTPServer) Discover(req *restful.Request, rsp *restful.Response) {
 		out.File = ret.GetFile()
 		out.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE
 		out.Revision = ret.GetRevision()
-	case apiconfig.ConfigDiscoverRequest_CONFIG_FILE_Names:
+	case apiconfig.ConfigDiscoverRequest_CONFIG_FILE_NAMES:
 		action = metrics.ActionListConfigFiles
 		ret := h.configServer.GetConfigFileNamesWithCache(ctx, &apiconfig.ConfigFileGroupRequest{
 			Revision: in.GetRevision(),
@@ -197,7 +197,7 @@ func (h *HTTPServer) Discover(req *restful.Request, rsp *restful.Response) {
 		})
 		out = api.NewConfigDiscoverResponse(apimodel.Code(ret.GetCode()))
 		out.FileNames = ret.GetFileNames()
-		out.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE_Names
+		out.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE_NAMES
 		out.Revision = ret.GetRevision()
 	case apiconfig.ConfigDiscoverRequest_CONFIG_FILE_GROUPS:
 		action = metrics.ActionListConfigGroups

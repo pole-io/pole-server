@@ -195,7 +195,7 @@ func (n *ConfigServer) handleWatch(ctx context.Context, listenCtx *model.ConfigW
 }
 
 func (n *ConfigServer) diffChangeFiles(ctx context.Context,
-	listenCtx *config_manage.ClientWatchConfigFileRequest) []*model.ConfigListenItem {
+	listenCtx *config_manage.WatchConfigFileRequest) []*model.ConfigListenItem {
 	clientLabels := map[string]string{
 		types.ClientLabel_IP: utils.ParseClientIP(ctx),
 	}

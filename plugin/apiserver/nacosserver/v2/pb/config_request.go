@@ -79,8 +79,8 @@ type ConfigBatchListenRequest struct {
 	ConfigListenContexts []ConfigListenContext `json:"configListenContexts"`
 }
 
-func (c *ConfigBatchListenRequest) ToSpec() *config_manage.ClientWatchConfigFileRequest {
-	specReq := &config_manage.ClientWatchConfigFileRequest{
+func (c *ConfigBatchListenRequest) ToSpec() *config_manage.WatchConfigFileRequest {
+	specReq := &config_manage.WatchConfigFileRequest{
 		Files: make([]*config_manage.ConfigFileRelease, 0, len(c.ConfigListenContexts)),
 	}
 

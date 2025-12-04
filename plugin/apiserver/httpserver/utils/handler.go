@@ -259,9 +259,9 @@ func getConfigFilesFromZIP(data []byte) ([]*apiconfig.ConfigFile, error) {
 				cf.Comment = meta.Comment
 			}
 			if len(meta.Tags) > 0 {
-				cf.Tags = make(map[string]string)
+				cf.Labels = make(map[string]string)
 				for k, v := range meta.Tags {
-					cf.Tags[k] = v
+					cf.Labels[k] = v
 				}
 			}
 		}
