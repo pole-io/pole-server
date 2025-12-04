@@ -29,6 +29,7 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -73,7 +74,7 @@ func JSONFromConfigFileRelease(file *apiconfig.ConfigFileRelease) (*bytes.Buffer
 	return buffer, nil
 }
 
-func (c *Client) CreateConfigGroup(group *apiconfig.ConfigFileGroup) (*apiconfig.ConfigResponse, error) {
+func (c *Client) CreateConfigGroup(group *apiconfig.ConfigFileGroup) (*apimodel.Response, error) {
 	fmt.Printf("\ncreate config_file_groups\n")
 
 	url := fmt.Sprintf("http://%v/config/%v/configfilegroups", c.Address, c.Version)
@@ -99,7 +100,7 @@ func (c *Client) CreateConfigGroup(group *apiconfig.ConfigFileGroup) (*apiconfig
 	return checkCreateConfigResponse(ret)
 }
 
-func (c *Client) UpdateConfigGroup(group *apiconfig.ConfigFileGroup) (*apiconfig.ConfigResponse, error) {
+func (c *Client) UpdateConfigGroup(group *apiconfig.ConfigFileGroup) (*apimodel.Response, error) {
 	fmt.Printf("\nupdate config_file_groups\n")
 
 	url := fmt.Sprintf("http://%v/config/%v/configfilegroups", c.Address, c.Version)
@@ -126,11 +127,11 @@ func (c *Client) UpdateConfigGroup(group *apiconfig.ConfigFileGroup) (*apiconfig
 }
 
 func (c *Client) QueryConfigGroup(group *apiconfig.ConfigFileGroup,
-	offset, limit int64) (*apiconfig.ConfigBatchQueryResponse, error) {
+	offset, limit int64) (*apimodel.BatchQueryResponse, error) {
 	fmt.Printf("\nquery config_file_groups\n")
 
 	url := fmt.Sprintf("http://%v/config/%v/configfilegroups?namespace=%s&group=%s&offset=%d&limit=%d",
-		c.Address, c.Version, group.Namespace.GetValue(), group.Name.GetValue(), offset, limit)
+		c.Address, c.Version, group.Namespace, group.Name, offset, limit)
 
 	body, err := JSONFromConfigGroup(group)
 	if err != nil {
@@ -153,12 +154,11 @@ func (c *Client) QueryConfigGroup(group *apiconfig.ConfigFileGroup,
 	return checkQueryConfigResponse(ret)
 }
 
-func (c *Client) DeleteConfigGroup(group *apiconfig.ConfigFileGroup) (*apiconfig.ConfigResponse, error) {
+func (c *Client) DeleteConfigGroup(group *apiconfig.ConfigFileGroup) (*apimodel.Response, error) {
 	fmt.Printf("\ndelete config_file_groups\n")
 
 	url := fmt.Sprintf("http://%v/config/%v/configfilegroups?namespace=%s&group=%s",
-		c.Address, c.Version, group.Namespace.GetValue(), group.Name.GetValue())
-
+		c.Address, c.Version, group.Namespace, group.Name)
 	body, err := JSONFromConfigGroup(group)
 	if err != nil {
 		fmt.Printf("%v\n", err)
@@ -180,7 +180,7 @@ func (c *Client) DeleteConfigGroup(group *apiconfig.ConfigFileGroup) (*apiconfig
 	return checkCreateConfigResponse(ret)
 }
 
-func (c *Client) CreateConfigFile(file *apiconfig.ConfigFile) (*apiconfig.ConfigResponse, error) {
+func (c *Client) CreateConfigFile(file *apiconfig.ConfigFile) (*apimodel.Response, error) {
 	fmt.Printf("\ncreate config_file\n")
 
 	url := fmt.Sprintf("http://%v/config/%v/configfiles", c.Address, c.Version)
@@ -206,7 +206,7 @@ func (c *Client) CreateConfigFile(file *apiconfig.ConfigFile) (*apiconfig.Config
 	return checkCreateConfigResponse(ret)
 }
 
-func (c *Client) UpdateConfigFile(file *apiconfig.ConfigFile) (*apiconfig.ConfigResponse, error) {
+func (c *Client) UpdateConfigFile(file *apiconfig.ConfigFile) (*apimodel.Response, error) {
 	fmt.Printf("\nupdate config_file\n")
 
 	url := fmt.Sprintf("http://%v/config/%v/configfiles", c.Address, c.Version)
@@ -232,11 +232,11 @@ func (c *Client) UpdateConfigFile(file *apiconfig.ConfigFile) (*apiconfig.Config
 	return checkCreateConfigResponse(ret)
 }
 
-func (c *Client) DeleteConfigFile(file *apiconfig.ConfigFile) (*apiconfig.ConfigResponse, error) {
+func (c *Client) DeleteConfigFile(file *apiconfig.ConfigFile) (*apimodel.Response, error) {
 	fmt.Printf("\ndelete config_file\n")
 
 	url := fmt.Sprintf("http://%v/config/%v/configfiles?namespace=%s&group=%s&name=%s", c.Address, c.Version,
-		file.Namespace.GetValue(), file.Group.GetValue(), file.Name.GetValue())
+		file.Namespace, file.Group, file.Name)
 
 	body, err := JSONFromConfigFile(file)
 	if err != nil {
@@ -297,7 +297,7 @@ func (c *Client) ExportConfigFile(req *apiconfig.ConfigFileExportRequest) error 
 	return nil
 }
 
-func (c *Client) ImportConfigFile(namespace, group, conflictHandling string) (*apiconfig.ConfigImportResponse, error) {
+func (c *Client) ImportConfigFile(namespace, group, conflictHandling string) (*apimodel.Response, error) {
 	fmt.Printf("\nimport config_file\n")
 
 	var buf bytes.Buffer
@@ -354,13 +354,13 @@ func (c *Client) ImportConfigFile(namespace, group, conflictHandling string) (*a
 		fmt.Printf("%v\n", err)
 		return nil, err
 	}
-	if ret.GetCode().GetValue() != api.ExecuteSuccess {
-		return nil, errors.New(ret.GetInfo().GetValue())
+	if ret.GetCode() != api.ExecuteSuccess {
+		return nil, errors.New(ret.GetInfo())
 	}
 	return ret, nil
 }
 
-func (c *Client) CreateConfigFileRelease(file *apiconfig.ConfigFileRelease) (*apiconfig.ConfigResponse, error) {
+func (c *Client) CreateConfigFileRelease(file *apiconfig.ConfigFileRelease) (*apimodel.Response, error) {
 	fmt.Printf("\ncreate config_file_release\n")
 
 	url := fmt.Sprintf("http://%v/config/%v/configfiles/release", c.Address, c.Version)
@@ -386,7 +386,7 @@ func (c *Client) CreateConfigFileRelease(file *apiconfig.ConfigFileRelease) (*ap
 	return checkCreateConfigResponse(ret)
 }
 
-func (c *Client) GetAllConfigEncryptAlgorithms() (*apiconfig.ConfigEncryptAlgorithmResponse, error) {
+func (c *Client) GetAllConfigEncryptAlgorithms() (*apimodel.Response, error) {
 	fmt.Printf("\nquery config encrypt algorithm\n")
 	url := fmt.Sprintf("http://%v/config/%v/configfiles/encryptalgorithm", c.Address, c.Version)
 	response, err := c.SendRequest("GET", url, nil)
@@ -399,29 +399,29 @@ func (c *Client) GetAllConfigEncryptAlgorithms() (*apiconfig.ConfigEncryptAlgori
 		fmt.Printf("%v\n", err)
 		return nil, err
 	}
-	if ret.GetCode().GetValue() != api.ExecuteSuccess {
-		return nil, errors.New(ret.GetInfo().GetValue())
+	if ret.GetCode() != api.ExecuteSuccess {
+		return nil, errors.New(ret.GetInfo())
 	}
 	return ret, nil
 }
 
-func checkCreateConfigResponse(ret *apiconfig.ConfigResponse) (
-	*apiconfig.ConfigResponse, error) {
+func checkCreateConfigResponse(ret *apimodel.Response) (
+	*apimodel.Response, error) {
 
 	switch {
-	case ret.GetCode().GetValue() != api.ExecuteSuccess:
-		return nil, errors.New(ret.GetInfo().GetValue())
+	case ret.GetCode() != api.ExecuteSuccess:
+		return nil, errors.New(ret.GetInfo())
 	}
 
 	return ret, nil
 }
 
-func checkQueryConfigResponse(ret *apiconfig.ConfigBatchQueryResponse) (
-	*apiconfig.ConfigBatchQueryResponse, error) {
+func checkQueryConfigResponse(ret *apimodel.BatchQueryResponse) (
+	*apimodel.BatchQueryResponse, error) {
 
 	switch {
-	case ret.GetCode().GetValue() != api.ExecuteSuccess:
-		return nil, errors.New(ret.GetInfo().GetValue())
+	case ret.GetCode() != api.ExecuteSuccess:
+		return nil, errors.New(ret.GetInfo())
 	}
 
 	return ret, nil

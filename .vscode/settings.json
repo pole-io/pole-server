@@ -2,7 +2,7 @@
     "go.testEnvVars": {
         "STORE_MODE": "sqldb",
         "MYSQL_DB_USER": "root",
-        "MYSQL_DB_PWD": "123456",
+        "MYSQL_DB_PWD": "12345678",
         "MYSQL_HOST": "127.0.0.1:3306",
         "REDIS_ADDR": "127.0.0.1:6379",
         "REDIS_PWD": "",

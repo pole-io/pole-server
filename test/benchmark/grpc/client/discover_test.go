@@ -29,7 +29,6 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/test/integrate/http"
 	"github.com/pole-io/pole-server/test/integrate/resource"
 )
@@ -48,7 +47,7 @@ func prepareCreateService() {
 	httpClient := http.NewClient(target, "v1")
 
 	svcs := resource.CreateServicesWithTotal(&apimodel.Namespace{
-		Name: protobuf.NewStringValue("mock_ns"),
+		Name: "mock_ns",
 	}, 100)
 
 	if _, err := httpClient.CreateServices(svcs); err != nil {
@@ -65,7 +64,7 @@ func prepareCreateRouterRule() {
 	_ = http.NewClient(target, "v1")
 }
 
-func prepareDiscoverClient(b *testing.B) (apiservice.PolarisGRPC_DiscoverClient, *grpc.ClientConn) {
+func prepareDiscoverClient(b *testing.B) (apiservice.DiscoverGRPC_DiscoverClient, *grpc.ClientConn) {
 	target := "127.0.0.1:8091"
 	if val := os.Getenv("BENCHMARK_SERVER_ADDRESS"); len(val) > 0 {
 		target = val
@@ -76,7 +75,7 @@ func prepareDiscoverClient(b *testing.B) (apiservice.PolarisGRPC_DiscoverClient,
 		panic(err)
 	}
 	b.Log("connection server success")
-	client := apiservice.NewPolarisGRPCClient(conn)
+	client := apiservice.NewDiscoverGRPCClient(conn)
 	discoverClient, err := client.Discover(ctx)
 	if err != nil {
 		panic(err)
@@ -105,7 +104,7 @@ func Benchmark_DiscoverServicesWithoutRevision(b *testing.B) {
 			b.Fatal(err)
 		}
 		b.StopTimer()
-		if resp.GetCode().GetValue() > 300000 {
+		if resp.GetCode() > 300000 {
 			b.Fatal(resp)
 		}
 	}

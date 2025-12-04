@@ -22,7 +22,6 @@ import (
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 )
 
 const (
@@ -40,23 +39,21 @@ func CreateInstances(service *apiservice.Service) []*apiservice.Instance {
 		instance := &apiservice.Instance{
 			Service:   service.GetName(),
 			Namespace: service.GetNamespace(),
-			Host:      protobuf.NewStringValue(host),
-			Port:      protobuf.NewUInt32Value(8),
-			Protocol:  protobuf.NewStringValue("test"),
-			Version:   protobuf.NewStringValue("8.8.8"),
-			Priority:  protobuf.NewUInt32Value(8),
-			Weight:    protobuf.NewUInt32Value(8),
+			Host:      host,
+			Port:      8,
+			Protocol:  "test",
+			Version:   "8.8.8",
+			Priority:  8,
+			Weight:    8,
 			HealthCheck: &apiservice.HealthCheck{
 				Type: apiservice.HealthCheck_HEARTBEAT,
 				Heartbeat: &apiservice.HeartbeatHealthCheck{
-					Ttl: protobuf.NewUInt32Value(8),
+					Ttl: 8,
 				},
 			},
-			Healthy:      protobuf.NewBoolValue(false),
-			Isolate:      protobuf.NewBoolValue(false),
+			Healthy:      false,
+			Isolate:      false,
 			Metadata:     map[string]string{"test": "test"},
-			LogicSet:     protobuf.NewStringValue("test"),
-			ServiceToken: service.GetToken(),
 		}
 		instances = append(instances, instance)
 	}
@@ -69,11 +66,10 @@ func CreateInstances(service *apiservice.Service) []*apiservice.Instance {
  */
 func UpdateInstances(instances []*apiservice.Instance) {
 	for _, instance := range instances {
-		instance.Protocol = protobuf.NewStringValue("update")
-		instance.Version = protobuf.NewStringValue("4.4.4")
-		instance.Priority = protobuf.NewUInt32Value(4)
-		instance.Weight = protobuf.NewUInt32Value(4)
+		instance.Protocol = "update"
+		instance.Version = "4.4.4"
+		instance.Priority = 4
+		instance.Weight = 4
 		instance.Metadata = map[string]string{"update": "update"}
-		instance.LogicSet = protobuf.NewStringValue("update")
 	}
 }

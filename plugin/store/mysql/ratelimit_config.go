@@ -384,7 +384,7 @@ func (rls *rateLimitStore) GetMoreRateLimitReleases(mtime time.Time,
 	}
 
 	if err := rows.Err(); err != nil {
-		log.Errorf("[store][mysql][ratelimit] fetch rate_limit release cache next", zap.Error(err))
+		log.Error("[store][mysql][ratelimit] fetch rate_limit release cache next", zap.Error(err))
 		return nil, err
 	}
 	return releases, nil

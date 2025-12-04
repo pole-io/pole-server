@@ -25,8 +25,6 @@ import (
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
-
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 )
 
 func MockRoutingV2(t *testing.T, cnt int32) []*apitraffic.RouteRule {
@@ -34,14 +32,7 @@ func MockRoutingV2(t *testing.T, cnt int32) []*apitraffic.RouteRule {
 	for i := int32(0); i < cnt; i++ {
 		matchString := &apimodel.MatchString{
 			Type:  apimodel.MatchString_EXACT,
-			Value: protobuf.NewStringValue(fmt.Sprintf("in-meta-value-%d", i)),
-		}
-		source := &apitraffic.SourceService{
-			Service:   fmt.Sprintf("in-source-service-%d", i),
-			Namespace: fmt.Sprintf("in-source-service-%d", i),
-			Arguments: []*apitraffic.SourceMatch{
-				{},
-			},
+			Value: fmt.Sprintf("in-meta-value-%d", i),
 		}
 		destination := &apitraffic.DestinationGroup{
 			Service:   fmt.Sprintf("in-destination-service-%d", i),
@@ -54,9 +45,23 @@ func MockRoutingV2(t *testing.T, cnt int32) []*apitraffic.RouteRule {
 			Transfer: "abcdefg",
 		}
 
-		entry := &apitraffic.RuleRoutingConfig{
-			Sources:      []*apitraffic.SourceService{source},
+		// CustomRouteRule 包含匹配规则和目标服务
+		subRule := &apitraffic.CustomRouteRule{
+			Name:         fmt.Sprintf("sub-rule-%d", i),
 			Destinations: []*apitraffic.DestinationGroup{destination},
+		}
+
+		// CustomRoute 是新的路由配置结构
+		entry := &apitraffic.CustomRoute{
+			Caller: &apitraffic.CustomRoute_ServiceKey{
+				Service:   fmt.Sprintf("in-source-service-%d", i),
+				Namespace: fmt.Sprintf("in-source-service-%d", i),
+			},
+			Callee: &apitraffic.CustomRoute_ServiceKey{
+				Service:   fmt.Sprintf("in-destination-service-%d", i),
+				Namespace: fmt.Sprintf("in-destination-service-%d", i),
+			},
+			Rules: []*apitraffic.CustomRouteRule{subRule},
 		}
 
 		any, err := ptypes.MarshalAny(entry)
@@ -69,7 +74,7 @@ func MockRoutingV2(t *testing.T, cnt int32) []*apitraffic.RouteRule {
 			Name:          fmt.Sprintf("test-routing-name-%d", i),
 			Namespace:     "",
 			Enable:        false,
-			RoutingPolicy: apitraffic.RoutingPolicy_RulePolicy,
+			RoutePolicy:   apitraffic.RoutePolicy_RulePolicy,
 			RoutingConfig: any,
 			Revision:      "",
 			Etime:         "",

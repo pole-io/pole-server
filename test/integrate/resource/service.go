@@ -23,7 +23,6 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
@@ -39,17 +38,17 @@ func CreateServices(namespace *apimodel.Namespace) []*apiservice.Service {
 		name := fmt.Sprintf(serviceName, utils.NewUUID(), index)
 
 		service := &apiservice.Service{
-			Name:       protobuf.NewStringValue(name),
+			Name:       name,
 			Namespace:  namespace.GetName(),
 			Metadata:   map[string]string{"test": "test"},
-			Ports:      protobuf.NewStringValue("8,8"),
-			Business:   protobuf.NewStringValue("test"),
-			Department: protobuf.NewStringValue("test"),
-			CmdbMod1:   protobuf.NewStringValue("test"),
-			CmdbMod2:   protobuf.NewStringValue("test"),
-			CmdbMod3:   protobuf.NewStringValue("test"),
-			Comment:    protobuf.NewStringValue("test"),
-			Owners:     protobuf.NewStringValue("test"),
+			Ports:      "8,8",
+			Business:   "test",
+			Department: "test",
+			CmdbMod1:   "test",
+			CmdbMod2:   "test",
+			CmdbMod3:   "test",
+			Comment:    "test",
+			Owners:     "test",
 		}
 		services = append(services, service)
 	}
@@ -64,17 +63,17 @@ func CreateServicesWithTotal(namespace *apimodel.Namespace, total int) []*apiser
 		name := fmt.Sprintf(serviceName, utils.NewUUID(), index)
 
 		service := &apiservice.Service{
-			Name:       protobuf.NewStringValue(name),
+			Name:       name,
 			Namespace:  namespace.GetName(),
 			Metadata:   map[string]string{"test": "test"},
-			Ports:      protobuf.NewStringValue("8,8"),
-			Business:   protobuf.NewStringValue("test"),
-			Department: protobuf.NewStringValue("test"),
-			CmdbMod1:   protobuf.NewStringValue("test"),
-			CmdbMod2:   protobuf.NewStringValue("test"),
-			CmdbMod3:   protobuf.NewStringValue("test"),
-			Comment:    protobuf.NewStringValue("test"),
-			Owners:     protobuf.NewStringValue("test"),
+			Ports:      "8,8",
+			Business:   "test",
+			Department: "test",
+			CmdbMod1:   "test",
+			CmdbMod2:   "test",
+			CmdbMod3:   "test",
+			Comment:    "test",
+			Owners:     "test",
 		}
 		services = append(services, service)
 	}
@@ -86,13 +85,13 @@ func CreateServicesWithTotal(namespace *apimodel.Namespace, total int) []*apiser
 func UpdateServices(services []*apiservice.Service) {
 	for _, service := range services {
 		service.Metadata = map[string]string{"update": "update"}
-		service.Ports = protobuf.NewStringValue("4,4")
-		service.Business = protobuf.NewStringValue("update")
-		service.Department = protobuf.NewStringValue("update")
-		service.CmdbMod1 = protobuf.NewStringValue("update")
-		service.CmdbMod2 = protobuf.NewStringValue("update")
-		service.CmdbMod3 = protobuf.NewStringValue("update")
-		service.Comment = protobuf.NewStringValue("update")
-		service.Owners = protobuf.NewStringValue("update")
+		service.Ports = "4,4"
+		service.Business = "update"
+		service.Department = "update"
+		service.CmdbMod1 = "update"
+		service.CmdbMod2 = "update"
+		service.CmdbMod3 = "update"
+		service.Comment = "update"
+		service.Owners = "update"
 	}
 }

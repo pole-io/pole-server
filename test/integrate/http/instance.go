@@ -157,8 +157,8 @@ func (c *Client) GetInstances(instances []*apiservice.Instance) error {
 	url := fmt.Sprintf("http://%v/naming/%v/instances", c.Address, c.Version)
 
 	params := map[string][]interface{}{
-		"service":   {instances[0].GetService().GetValue()},
-		"namespace": {instances[0].GetNamespace().GetValue()},
+		"service":   {instances[0].GetService()},
+		"namespace": {instances[0].GetNamespace()},
 	}
 
 	url = c.CompleteURL(url, params)
@@ -173,37 +173,41 @@ func (c *Client) GetInstances(instances []*apiservice.Instance) error {
 		return err
 	}
 
-	if ret.GetCode() == nil || ret.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess) {
+	if ret.GetCode() != uint32(apimodel.Code_ExecuteSuccess) {
 		return errors.New("invalid batch code")
 	}
 
 	instancesSize := len(instances)
 
-	if ret.GetAmount() == nil || ret.GetAmount().GetValue() != uint32(instancesSize) {
+	if ret.GetAmount() != uint32(instancesSize) {
 		return fmt.Errorf("invalid batch amount, expect %d, obtain %v", instancesSize, ret.GetAmount())
 	}
 
-	if ret.GetSize() == nil || ret.GetSize().GetValue() != uint32(instancesSize) {
+	if ret.GetSize() != uint32(instancesSize) {
 		return errors.New("invalid batch size")
 	}
 
 	collection := make(map[string]*apiservice.Instance)
 	for _, instance := range instances {
-		collection[instance.GetId().GetValue()] = instance
+		collection[instance.GetId()] = instance
 	}
 
-	items := ret.GetInstances()
-	if items == nil || len(items) != instancesSize {
+	data := ret.GetData()
+	if data == nil || len(data) != instancesSize {
 		return errors.New("invalid batch instances")
 	}
 
-	for _, item := range items {
-		if correctItem, ok := collection[item.GetId().GetValue()]; ok {
-			if result := compareInstance(correctItem, item); !result {
-				return fmt.Errorf("invalid instance %v %v", correctItem, item)
+	for _, anyData := range data {
+		var item apiservice.Instance
+		if err := anyData.UnmarshalTo(&item); err != nil {
+			return fmt.Errorf("failed to unmarshal instance: %v", err)
+		}
+		if correctItem, ok := collection[item.GetId()]; ok {
+			if result := compareInstance(correctItem, &item); !result {
+				return fmt.Errorf("invalid instance %v %v", correctItem, &item)
 			}
 		} else {
-			return fmt.Errorf("instance %v not found", item.GetId().GetValue())
+			return fmt.Errorf("instance %v not found", item.GetId())
 		}
 	}
 	return nil
@@ -216,9 +220,9 @@ func checkCreateInstancesResponse(ret *apimodel.BatchWriteResponse, instances []
 	*apimodel.BatchWriteResponse, error) {
 
 	switch {
-	case ret.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess):
+	case ret.GetCode() != uint32(apimodel.Code_ExecuteSuccess):
 		return nil, errors.New("invalid batch code")
-	case ret.GetSize().GetValue() != uint32(len(instances)):
+	case ret.GetSize() != uint32(len(instances)):
 		return nil, errors.New("invalid batch size")
 	case len(ret.GetResponses()) != len(instances):
 		return nil, errors.New("invalid batch response")
@@ -233,21 +237,28 @@ func checkCreateInstancesResponse(ret *apimodel.BatchWriteResponse, instances []
 func checkInstancesResponseEntry(ret *apimodel.BatchWriteResponse, instances []*apiservice.Instance) error {
 	items := ret.GetResponses()
 	for index, item := range items {
-		instance := item.GetInstance()
 		switch {
-		case item.GetCode().GetValue() != uint32(apimodel.Code_ExecuteSuccess):
+		case item.GetCode() != uint32(apimodel.Code_ExecuteSuccess):
 			return errors.New("invalid code")
-		case item.GetInstance() == nil:
+		case item.GetData() == nil:
 			return errors.New("empty instance")
-		case item.GetInstance().GetId().GetValue() == "":
+		}
+
+		var instance apiservice.Instance
+		if err := item.GetData().UnmarshalTo(&instance); err != nil {
+			return fmt.Errorf("failed to unmarshal instance: %v", err)
+		}
+
+		switch {
+		case instance.GetId() == "":
 			return errors.New("invalid instance id")
-		case instance.GetService().GetValue() != instances[index].GetService().GetValue():
+		case instance.GetService() != instances[index].GetService():
 			return errors.New("invalid service")
-		case instance.GetNamespace().GetValue() != instances[index].GetNamespace().GetValue():
+		case instance.GetNamespace() != instances[index].GetNamespace():
 			return errors.New("invalid namespace")
-		case instance.GetHost().GetValue() != instances[index].GetHost().GetValue():
+		case instance.GetHost() != instances[index].GetHost():
 			return errors.New("invalid host")
-		case instance.GetPort().GetValue() != instances[index].GetPort().GetValue():
+		case instance.GetPort() != instances[index].GetPort():
 			return errors.New("invalid port")
 		}
 	}
@@ -260,40 +271,38 @@ func checkInstancesResponseEntry(ret *apimodel.BatchWriteResponse, instances []*
  */
 func compareInstance(correctItem *apiservice.Instance, item *apiservice.Instance) bool {
 	// #lizard forgives
-	correctID := correctItem.GetId().GetValue()
-	correctService := correctItem.GetService().GetValue()
-	correctNamespace := correctItem.GetNamespace().GetValue()
-	correctHost := correctItem.GetHost().GetValue()
-	correctPort := correctItem.GetPort().GetValue()
-	correctProtocol := correctItem.GetProtocol().GetValue()
-	correctVersion := correctItem.GetVersion().GetValue()
-	correctPriority := correctItem.GetPriority().GetValue()
-	correctWeight := correctItem.GetWeight().GetValue()
+	correctID := correctItem.GetId()
+	correctService := correctItem.GetService()
+	correctNamespace := correctItem.GetNamespace()
+	correctHost := correctItem.GetHost()
+	correctPort := correctItem.GetPort()
+	correctProtocol := correctItem.GetProtocol()
+	correctVersion := correctItem.GetVersion()
+	correctPriority := correctItem.GetPriority()
+	correctWeight := correctItem.GetWeight()
 	correctHealthType := correctItem.GetHealthCheck().GetType()
-	correctHealthTTL := correctItem.GetHealthCheck().GetHeartbeat().GetTtl().GetValue()
-	correctHealthy := correctItem.GetHealthy().GetValue()
-	correctIsolate := correctItem.GetIsolate().GetValue()
+	correctHealthTTL := correctItem.GetHealthCheck().GetHeartbeat().GetTtl()
+	correctHealthy := correctItem.GetHealthy()
+	correctIsolate := correctItem.GetIsolate()
 	correctMeta := correctItem.GetMetadata()
-	correctLogicSet := correctItem.GetLogicSet().GetValue()
 	/*correctCmdbRegion := correctItem.GetLocation().GetRegion().GetValue()
 	  correctCmdbZone := correctItem.GetLocation().GetZone().GetValue()
 	  correctCmdbCampus := correctItem.GetLocation().GetCampus().GetValue()*/
 
-	id := item.GetId().GetValue()
-	service := item.GetService().GetValue()
-	namespace := item.GetNamespace().GetValue()
-	host := item.GetHost().GetValue()
-	port := item.GetPort().GetValue()
-	protocol := item.GetProtocol().GetValue()
-	version := item.GetVersion().GetValue()
-	priority := item.GetPriority().GetValue()
-	weight := item.GetWeight().GetValue()
+	id := item.GetId()
+	service := item.GetService()
+	namespace := item.GetNamespace()
+	host := item.GetHost()
+	port := item.GetPort()
+	protocol := item.GetProtocol()
+	version := item.GetVersion()
+	priority := item.GetPriority()
+	weight := item.GetWeight()
 	healthType := item.GetHealthCheck().GetType()
-	healthTTL := item.GetHealthCheck().GetHeartbeat().GetTtl().GetValue()
-	healthy := item.GetHealthy().GetValue()
-	isolate := item.GetIsolate().GetValue()
+	healthTTL := item.GetHealthCheck().GetHeartbeat().GetTtl()
+	healthy := item.GetHealthy()
+	isolate := item.GetIsolate()
 	meta := item.GetMetadata()
-	logicSet := item.GetLogicSet().GetValue()
 	/*cmdbRegion := item.GetLocation().GetRegion().GetValue()
 	  cmdbZone := item.GetLocation().GetZone().GetValue()
 	  cmdbCampus := item.GetLocation().GetCampus().GetValue()*/
@@ -302,7 +311,7 @@ func compareInstance(correctItem *apiservice.Instance, item *apiservice.Instance
 		correctPort == port && correctProtocol == protocol && correctVersion == version &&
 		correctPriority == priority && correctWeight == weight && correctHealthType == healthType &&
 		correctHealthTTL == healthTTL && correctHealthy == healthy && correctIsolate == isolate &&
-		reflect.DeepEqual(correctMeta, meta) && correctLogicSet == logicSet {
+		reflect.DeepEqual(correctMeta, meta) {
 		return true
 	}
 	return false

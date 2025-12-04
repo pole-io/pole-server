@@ -706,10 +706,10 @@ func addMainInstance(tx *BaseTx, instance *svctypes.Instance) error {
 	// #lizard forgives
 	str := `replace into instance(id, service_id, vpc_id, host, port, protocol, version, health_status, isolate,
 		 weight, enable_health_check, logic_set, cmdb_region, cmdb_zone, cmdb_idc, priority, metadata, revision, ctime, mtime)
-			 values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())`
-	_, err := tx.Exec(str, instance.ID(), instance.ServiceID, instance, instance.Host(), instance.Port(),
+			 values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())`
+	_, err := tx.Exec(str, instance.ID(), instance.ServiceID, "", instance.Host(), instance.Port(),
 		instance.Protocol(), instance.Version(), instance.Healthy(), instance.Isolate(), instance.Weight(),
-		instance.EnableHealthCheck(), instance, instance.Location().GetRegion(),
+		instance.EnableHealthCheck(), "", instance.Location().GetRegion(),
 		instance.Location().GetZone(), instance.Location().GetCampus(),
 		instance.Priority(), utils.MustJson(instance.Proto.GetMetadata()), instance.Revision())
 	return err
@@ -728,10 +728,10 @@ func batchAddMainInstances(tx *BaseTx, instances []*svctypes.Instance) error {
 		}
 		str += "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())"
 		first = false
-		args = append(args, entry.ID(), entry.ServiceID, entry, entry.Host(), entry.Port())
+		args = append(args, entry.ID(), entry.ServiceID, "", entry.Host(), entry.Port())
 		args = append(args, entry.Protocol(), entry.Version(), entry.Healthy(), entry.Isolate(),
 			entry.Weight())
-		args = append(args, entry.EnableHealthCheck(), entry,
+		args = append(args, entry.EnableHealthCheck(), "",
 			entry.Location().GetRegion(), entry.Location().GetZone(),
 			entry.Location().GetCampus(), entry.Priority(), utils.MustJson(entry.Proto.GetMetadata()), entry.Revision())
 	}
@@ -798,7 +798,7 @@ func updateInstanceMain(tx *BaseTx, instance *svctypes.Instance) error {
 	 cmdb_region = ?, cmdb_zone = ?, cmdb_idc = ?, priority = ?, metadata = ?, revision = ?, mtime = sysdate() where id = ?`
 
 	_, err := tx.Exec(str, instance.Protocol(), instance.Version(), instance.Healthy(), instance.Isolate(),
-		instance.Weight(), instance.EnableHealthCheck(), instance,
+		instance.Weight(), instance.EnableHealthCheck(), "",
 		instance.Location().GetRegion(), instance.Location().GetZone(),
 		instance.Location().GetCampus(), instance.Priority(), utils.MustJson(instance.Proto.GetMetadata()),
 		instance.Revision(), instance.ID())

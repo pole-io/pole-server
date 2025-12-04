@@ -27,6 +27,7 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -159,7 +160,7 @@ func (c *Client) GetServices(services []*apiservice.Service) error {
 	url := fmt.Sprintf("http://%v/naming/%v/services", c.Address, c.Version)
 
 	params := map[string][]interface{}{
-		"namespace": {services[0].GetNamespace().GetValue()},
+		"namespace": {services[0].GetNamespace()},
 	}
 	time.Sleep(2 * time.Second)
 	url = c.CompleteURL(url, params)
@@ -174,33 +175,37 @@ func (c *Client) GetServices(services []*apiservice.Service) error {
 		return err
 	}
 
-	if ret.GetCode() == nil || ret.GetCode().GetValue() != api.ExecuteSuccess {
+	if ret.GetCode() != api.ExecuteSuccess {
 		return errors.New("invalid batch code")
 	}
 
 	servicesSize := len(services)
 
-	if ret.GetAmount() == nil || ret.GetAmount().GetValue() != uint32(servicesSize) {
+	if ret.GetAmount() != uint32(servicesSize) {
 		return fmt.Errorf("invalid batch amount, expect %d, actual is %v", servicesSize, ret.GetAmount())
 	}
 
-	if ret.GetSize() == nil || ret.GetSize().GetValue() != uint32(servicesSize) {
+	if ret.GetSize() != uint32(servicesSize) {
 		return errors.New("invalid batch size")
 	}
 
 	collection := make(map[string]*apiservice.Service)
 	for _, service := range services {
-		collection[service.GetName().GetValue()] = service
+		collection[service.GetName()] = service
 	}
 
-	items := ret.GetServices()
-	if items == nil || len(items) != servicesSize {
+	data := ret.GetData()
+	if data == nil || len(data) != servicesSize {
 		return errors.New("invalid batch services")
 	}
 
-	for _, item := range items {
-		if correctItem, ok := collection[item.GetName().GetValue()]; ok {
-			if result := compareService(correctItem, item); !result {
+	for _, anyData := range data {
+		var item apiservice.Service
+		if err := anyData.UnmarshalTo(&item); err != nil {
+			return fmt.Errorf("failed to unmarshal service: %v", err)
+		}
+		if correctItem, ok := collection[item.GetName()]; ok {
+			if result := compareService(correctItem, &item); !result {
 				return errors.New("invalid service")
 			}
 		} else {
@@ -216,12 +221,12 @@ func (c *Client) GetServices(services []*apiservice.Service) error {
 func checkCreateServicesResponse(ret *apimodel.BatchWriteResponse, services []*apiservice.Service) (
 	// #lizard forgives
 	*apimodel.BatchWriteResponse, error) {
-	if ret.GetCode() == nil || ret.GetCode().GetValue() != api.ExecuteSuccess {
+	if ret.GetCode() != api.ExecuteSuccess {
 		return nil, errors.New("invalid batch code")
 	}
 
 	servicesSize := len(services)
-	if ret.GetSize() == nil || ret.GetSize().GetValue() != uint32(servicesSize) {
+	if ret.GetSize() != uint32(servicesSize) {
 		return nil, errors.New("invalid batch size")
 	}
 
@@ -231,26 +236,30 @@ func checkCreateServicesResponse(ret *apimodel.BatchWriteResponse, services []*a
 	}
 
 	for index, item := range items {
-		if item.GetCode() == nil || item.GetCode().GetValue() != api.ExecuteSuccess {
+		if item.GetCode() != api.ExecuteSuccess {
 			return nil, errors.New("invalid code")
 		}
 
-		service := item.GetService()
-		if service == nil {
+		if item.GetData() == nil {
 			return nil, errors.New("empty service")
 		}
 
-		name := services[index].GetName().GetValue()
-		if service.GetName() == nil || service.GetName().GetValue() != name {
+		var service apiservice.Service
+		if err := item.GetData().UnmarshalTo(&service); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal service: %v", err)
+		}
+
+		name := services[index].GetName()
+		if service.GetName() == "" || service.GetName() != name {
 			return nil, errors.New("invalid service name")
 		}
 
-		namespace := services[index].GetNamespace().GetValue()
-		if service.GetNamespace() == nil || service.GetNamespace().GetValue() != namespace {
+		namespace := services[index].GetNamespace()
+		if service.GetNamespace() == "" || service.GetNamespace() != namespace {
 			return nil, errors.New("invalid namespace")
 		}
 
-		if service.GetToken() == nil || service.GetToken().GetValue() == "" {
+		if service.GetToken() == "" {
 			return nil, errors.New("invalid service token")
 		}
 	}
@@ -261,27 +270,27 @@ func checkCreateServicesResponse(ret *apimodel.BatchWriteResponse, services []*a
  * @brief 比较service是否相等
  */
 func compareService(correctItem *apiservice.Service, item *apiservice.Service) bool {
-	correctName := correctItem.GetName().GetValue()
-	correctNamespace := correctItem.GetNamespace().GetValue()
+	correctName := correctItem.GetName()
+	correctNamespace := correctItem.GetNamespace()
 	correctMeta := correctItem.GetMetadata()
-	correctPorts := correctItem.GetPorts().GetValue()
-	correctBusiness := correctItem.GetBusiness().GetValue()
-	correctDepartment := correctItem.GetDepartment().GetValue()
-	correctCmdbMod1 := correctItem.GetCmdbMod1().GetValue()
-	correctCmdbMod2 := correctItem.GetCmdbMod2().GetValue()
-	correctCmdbMod3 := correctItem.GetCmdbMod3().GetValue()
-	correctComment := correctItem.GetComment().GetValue()
+	correctPorts := correctItem.GetPorts()
+	correctBusiness := correctItem.GetBusiness()
+	correctDepartment := correctItem.GetDepartment()
+	correctCmdbMod1 := correctItem.GetCmdbMod1()
+	correctCmdbMod2 := correctItem.GetCmdbMod2()
+	correctCmdbMod3 := correctItem.GetCmdbMod3()
+	correctComment := correctItem.GetComment()
 
-	name := item.GetName().GetValue()
-	namespace := item.GetNamespace().GetValue()
+	name := item.GetName()
+	namespace := item.GetNamespace()
 	meta := item.GetMetadata()
-	ports := item.GetPorts().GetValue()
-	business := item.GetBusiness().GetValue()
-	department := item.GetDepartment().GetValue()
-	cmdbMod1 := item.GetCmdbMod1().GetValue()
-	cmdbMod2 := item.GetCmdbMod2().GetValue()
-	cmdbMod3 := item.GetCmdbMod3().GetValue()
-	comment := item.GetComment().GetValue()
+	ports := item.GetPorts()
+	business := item.GetBusiness()
+	department := item.GetDepartment()
+	cmdbMod1 := item.GetCmdbMod1()
+	cmdbMod2 := item.GetCmdbMod2()
+	cmdbMod3 := item.GetCmdbMod3()
+	comment := item.GetComment()
 
 	if correctName == name && correctNamespace == namespace && reflect.DeepEqual(correctMeta, meta) &&
 		correctPorts == ports && correctBusiness == business && correctDepartment == department &&
