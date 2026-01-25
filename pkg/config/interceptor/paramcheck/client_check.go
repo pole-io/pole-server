@@ -180,27 +180,6 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context,
 // LongPullWatchFile 监听配置文件变化 (HTTP 版本)
 func (s *Server) LongPullWatchFile(ctx context.Context,
 	request *apiconfig.WatchConfigFileRequest) (config.WatchCallback, error) {
-
-	if request.GetConfigFileGroup().GetNamespace() == "" {
-		return func() *apiconfig.ConfigDiscoverResponse {
-			return &apiconfig.ConfigDiscoverResponse{
-				Code: uint32(apimodel.Code_BadRequest),
-				Info: "namespace is empty",
-				Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
-			}
-		}, nil
-	}
-
-	if request.GetConfigFileGroup().GetName() == "" {
-		return func() *apiconfig.ConfigDiscoverResponse {
-			return &apiconfig.ConfigDiscoverResponse{
-				Code: uint32(apimodel.Code_BadRequest),
-				Info: "file group is empty",
-				Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
-			}
-		}, nil
-	}
-
 	return s.nextServer.LongPullWatchFile(ctx, request)
 }
 
