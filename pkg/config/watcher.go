@@ -60,9 +60,9 @@ type (
 		// ClientLabels 客户端的标识，用于灰度发布要做标签的匹配判断
 		ClientLabels() map[string]string
 		// AppendInterest 客户端增加订阅列表
-		AppendInterest(item *apiconfig.ConfigFile)
+		AppendInterest(item *apiconfig.ConfigFileRelease)
 		// RemoveInterest 客户端删除订阅列表
-		RemoveInterest(item *apiconfig.ConfigFile)
+		RemoveInterest(item *apiconfig.ConfigFileRelease)
 		// ShouldNotify 判断是不是需要通知客户端某个配置变动了
 		ShouldNotify(event *conftypes.SimpleConfigFileRelease) bool
 		// Reply 真正的通知逻辑
@@ -72,7 +72,7 @@ type (
 		// ShouldExpire 是不是存在有效时间
 		ShouldExpire(now time.Time) bool
 		// ListWatchFiles 列举出当前订阅的所有配置文件
-		ListWatchFiles() []*apiconfig.ConfigFile
+		ListWatchFiles() []*apiconfig.ConfigFileRelease
 		// CurWatchVersion 获取当前订阅的配置文件的版本
 		CurWatchVersion(k string) uint64
 		// IsOnce 是不是只能被通知一次
@@ -87,7 +87,7 @@ type LongPollWatchContext struct {
 	once             sync.Once
 	finishTime       time.Time
 	finishChan       chan *apiconfig.ConfigDiscoverResponse
-	watchConfigFiles map[string]*apiconfig.ConfigFile
+	watchConfigFiles map[string]*apiconfig.ConfigFileRelease
 	betaMatcher      BetaReleaseMatcher
 }
 
@@ -144,11 +144,11 @@ func (c *LongPollWatchContext) ShouldNotify(event *conftypes.SimpleConfigFileRel
 	return clientVersion < event.Version
 }
 
-func (c *LongPollWatchContext) ListWatchFiles() []*apiconfig.ConfigFile {
+func (c *LongPollWatchContext) ListWatchFiles() []*apiconfig.ConfigFileRelease {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
-	ret := make([]*apiconfig.ConfigFile, 0, len(c.watchConfigFiles))
+	ret := make([]*apiconfig.ConfigFileRelease, 0, len(c.watchConfigFiles))
 	for _, v := range c.watchConfigFiles {
 		ret = append(ret, v)
 	}
@@ -167,7 +167,7 @@ func (c *LongPollWatchContext) CurWatchVersion(k string) uint64 {
 }
 
 // AppendInterest .
-func (c *LongPollWatchContext) AppendInterest(item *apiconfig.ConfigFile) {
+func (c *LongPollWatchContext) AppendInterest(item *apiconfig.ConfigFileRelease) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -176,7 +176,7 @@ func (c *LongPollWatchContext) AppendInterest(item *apiconfig.ConfigFile) {
 }
 
 // RemoveInterest .
-func (c *LongPollWatchContext) RemoveInterest(item *apiconfig.ConfigFile) {
+func (c *LongPollWatchContext) RemoveInterest(item *apiconfig.ConfigFileRelease) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -296,7 +296,7 @@ func (wc *watchCenter) DelWatchContext(clientId string) (WatchContext, bool) {
 
 // AddWatcher 新增订阅者
 func (wc *watchCenter) AddWatcher(clientId string,
-	watchFiles []*apiconfig.ConfigFile, factory WatchContextFactory) WatchContext {
+	watchFiles []*apiconfig.ConfigFileRelease, factory WatchContextFactory) WatchContext {
 	watchCtx, _ := wc.clients.ComputeIfAbsent(clientId, func(k string) WatchContext {
 		return factory(clientId, wc.MatchBetaReleaseFile)
 	})

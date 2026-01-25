@@ -133,13 +133,8 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context,
 
 // LongPullWatchFile 监听配置文件变化
 func (s *Server) LongPullWatchFile(ctx context.Context,
-	request *apiconfig.ConfigFileGroupRequest) (config.WatchCallback, error) {
-	authCtx := s.collectClientConfigFileRelease(ctx, []*apiconfig.ConfigFileRelease{
-		{
-			Namespace: request.GetConfigFileGroup().GetNamespace(),
-			Group:     request.GetConfigFileGroup().GetName(),
-		},
-	}, auth.Read, auth.WatchConfigFile)
+	request *apiconfig.WatchConfigFileRequest) (config.WatchCallback, error) {
+	authCtx := s.collectClientConfigFileRelease(ctx, request.GetFiles(), auth.Read, auth.WatchConfigFile)
 	if _, err := s.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
 		return func() *apiconfig.ConfigDiscoverResponse {
 			return api.NewConfigDiscoverResponse(auth.ConvertToErrCode(err))

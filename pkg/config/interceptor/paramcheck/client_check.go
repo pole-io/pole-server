@@ -179,7 +179,7 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context,
 
 // LongPullWatchFile 监听配置文件变化 (HTTP 版本)
 func (s *Server) LongPullWatchFile(ctx context.Context,
-	request *apiconfig.ConfigFileGroupRequest) (config.WatchCallback, error) {
+	request *apiconfig.WatchConfigFileRequest) (config.WatchCallback, error) {
 
 	if request.GetConfigFileGroup().GetNamespace() == "" {
 		return func() *apiconfig.ConfigDiscoverResponse {

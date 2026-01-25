@@ -18,7 +18,6 @@
 package discover
 
 import (
-
 	"github.com/emicklei/go-restful/v3"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -135,9 +134,6 @@ func (h *HTTPServer) Discover(req *restful.Request, rsp *restful.Response) {
 	case apiservice.DiscoverRequest_INSTANCE:
 		action = metrics.ActionDiscoverInstance
 		ret = h.namingServer.ServiceInstancesCache(ctx, discoverRequest.Filter, discoverRequest.Service)
-	case apiservice.DiscoverRequest_ROUTING:
-		action = metrics.ActionDiscoverRouterRule
-		ret = h.ruleServer.GetOldRouterRuleWithCache(ctx, discoverRequest.Service)
 	case apiservice.DiscoverRequest_CUSTOM_ROUTE_RULE:
 		action = metrics.ActionDiscoverRouterRule
 		ret = h.ruleServer.GetRouterRuleWithCache(ctx, discoverRequest.Service)

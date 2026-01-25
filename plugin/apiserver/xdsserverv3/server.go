@@ -427,8 +427,8 @@ func (x *XDSServer) getRegistryInfoWithCache(ctx context.Context,
 				return fmt.Errorf("error sync ratelimit for %s", svc.Name)
 			}
 			if ratelimitResp.RateLimit != nil {
-				svc.SvcRateLimitRevision = ratelimitResp.RateLimit.Revision
-				svc.RateLimit = ratelimitResp.RateLimit
+				svc.SvcRateLimitRevision = ratelimitResp.GetService().GetRevision()
+				svc.RateLimits = ratelimitResp.RateLimit
 			}
 			// 获取circuitBreaker配置
 			circuitBreakerResp := x.ruleServer.GetCircuitBreakerWithCache(ctx, s)

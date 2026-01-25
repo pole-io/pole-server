@@ -760,8 +760,7 @@ var (
 		},
 		apisecurity.ResourceType_ConfigGroups: func(ctx context.Context, svr *Server,
 			item authtypes.StrategyResource) *apisecurity.StrategyResourceEntry {
-			id, _ := strconv.ParseUint(item.ResID, 10, 64)
-			user := svr.cacheMgr.ConfigGroup().GetGroupByID(id)
+			user := svr.cacheMgr.ConfigGroup().GetGroupByID(item.ResID)
 			if user == nil {
 				log.Warn("[Auth][Strategy] not found config_group in fill-info",
 					zap.String("id", item.StrategyID), zap.String("res-id", item.ResID), utils.RequestID(ctx))

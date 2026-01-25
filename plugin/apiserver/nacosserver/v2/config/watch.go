@@ -80,7 +80,7 @@ type StreamWatchContext struct {
 	clientId         string
 	labels           map[string]string
 	connMgr          *remote.ConnectionManager
-	watchConfigFiles *container.SyncMap[string, *apiconfig.ConfigFile]
+	watchConfigFiles *container.SyncMap[string, *apiconfig.ConfigFileRelease]
 	betaMatcher      config.BetaReleaseMatcher
 }
 
@@ -119,8 +119,8 @@ func (c *StreamWatchContext) ShouldNotify(event *conftypes.SimpleConfigFileRelea
 	// ConfigFile没有GetMd5方法，使用Tags中的md5值进行比较
 	// 如果Tags中没有md5或为空，认为有变化需要通知
 	watchFileMd5 := ""
-	if watchFile.GetTags() != nil {
-		watchFileMd5 = watchFile.GetTags()["md5"]
+	if watchFile.GetLabels() != nil {
+		watchFileMd5 = watchFile.GetLabels()["md5"]
 	}
 	// 与原逻辑保持一致：比较MD5值是否不同
 	isChange := watchFileMd5 != event.Md5
@@ -128,7 +128,7 @@ func (c *StreamWatchContext) ShouldNotify(event *conftypes.SimpleConfigFileRelea
 }
 
 // ListWatchFiles .
-func (c *StreamWatchContext) ListWatchFiles() []*apiconfig.ConfigFile {
+func (c *StreamWatchContext) ListWatchFiles() []*apiconfig.ConfigFileRelease {
 	return c.watchConfigFiles.Values()
 }
 
@@ -137,24 +137,24 @@ func (c *StreamWatchContext) CurWatchVersion(k string) uint64 {
 	if !ok {
 		return 0
 	}
-	// 尝试从Tags中获取版本信息，如果没有则返回文件ID作为版本
-	if watchFile.GetTags() != nil {
-		if version := watchFile.GetTags()["version"]; version != "" {
+	// 尝试从Labels中获取版本信息，如果没有则返回文件ID作为版本
+	if watchFile.GetLabels() != nil {
+		if version := watchFile.GetLabels()["version"]; version != "" {
 			// 这里可以尝试解析version字符串为uint64，简化处理直接返回ID
 		}
 	}
-	return watchFile.GetId()
+	return watchFile.GetVersion()
 }
 
 // AppendInterest .
-func (c *StreamWatchContext) AppendInterest(item *apiconfig.ConfigFile) {
+func (c *StreamWatchContext) AppendInterest(item *apiconfig.ConfigFileRelease) {
 	// 使用自定义的key生成方式
 	key := fmt.Sprintf("%s@%s@%s", item.GetNamespace(), item.GetGroup(), item.GetName())
 	c.watchConfigFiles.Store(key, item)
 }
 
 // RemoveInterest .
-func (c *StreamWatchContext) RemoveInterest(item *apiconfig.ConfigFile) {
+func (c *StreamWatchContext) RemoveInterest(item *apiconfig.ConfigFileRelease) {
 	// 使用自定义的key生成方式
 	key := fmt.Sprintf("%s@%s@%s", item.GetNamespace(), item.GetGroup(), item.GetName())
 	c.watchConfigFiles.Delete(key)

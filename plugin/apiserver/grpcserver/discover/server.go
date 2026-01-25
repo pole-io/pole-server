@@ -24,7 +24,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
@@ -45,7 +44,7 @@ var (
 
 	cacheTypes = map[string]struct{}{
 		apiservice.DiscoverResponse_INSTANCE.String():        {},
-		apiservice.DiscoverResponse_ROUTING.String():         {},
+		apiservice.DiscoverResponse_CUSTOM_ROUTE_RULE.String():         {},
 		apiservice.DiscoverResponse_RATE_LIMIT.String():      {},
 		apiservice.DiscoverResponse_CIRCUIT_BREAKER.String(): {},
 		apiservice.DiscoverResponse_FAULT_DETECTOR.String():  {},
@@ -127,8 +126,6 @@ func (g *GRPCServer) Run(errCh chan error) {
 			case "client":
 				if config.Enable {
 					// 注册 v1 版本的 spec discover server
-					apiservice.RegisterPolarisHeartbeatGRPCServer(server, g.dsvr)
-					apiconfig.RegisterPolarisConfigGRPCServer(server, g.csvr)
 					openMethod, getErr := utils.GetDiscoverClientOpenMethod(config.Include, g.GetProtocol())
 					if getErr != nil {
 						return getErr

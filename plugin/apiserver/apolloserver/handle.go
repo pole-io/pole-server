@@ -134,15 +134,15 @@ func (a *ApolloServer) WatchConfigFile(ctx context.Context, req *WatchConfigFile
 		return "default"
 	}()
 
-	clientSideNotifications := []*apiconfig.ConfigFile{}
+	clientSideNotifications := []*apiconfig.ConfigFileRelease{}
 	clientWatchFiles := []*apiconfig.ConfigFileRelease{}
 	for _, item := range req.Notifications {
 		// For AddWatcher
-		clientSideNotifications = append(clientSideNotifications, &apiconfig.ConfigFile{
+		clientSideNotifications = append(clientSideNotifications, &apiconfig.ConfigFileRelease{
 			Namespace: nsName,
 			Group:     req.AppId,
 			Name:      item.NamespaceName,
-			Tags: map[string]string{
+			Labels: map[string]string{
 				types.ClientLabel_IP: req.ClientIP,
 			},
 		})
@@ -159,7 +159,7 @@ func (a *ApolloServer) WatchConfigFile(ctx context.Context, req *WatchConfigFile
 		})
 	}
 
-	specReq := &apiconfig.ClientWatchConfigFileRequest{
+	specReq := &apiconfig.WatchConfigFileRequest{
 		ClientIp: req.ClientIP,
 		Files:    clientWatchFiles,
 	}

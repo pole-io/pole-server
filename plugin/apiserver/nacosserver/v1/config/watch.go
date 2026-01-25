@@ -35,7 +35,7 @@ type LongPollWatchContext struct {
 	once             sync.Once
 	finishTime       time.Time
 	finishChan       chan *config_manage.ConfigDiscoverResponse
-	watchConfigFiles map[string]*config_manage.ConfigFile
+	watchConfigFiles map[string]*config_manage.ConfigFileRelease
 	betaMatcher      config.BetaReleaseMatcher
 }
 
@@ -95,11 +95,11 @@ func (c *LongPollWatchContext) ShouldNotify(event *conftypes.SimpleConfigFileRel
 	return isChange
 }
 
-func (c *LongPollWatchContext) ListWatchFiles() []*config_manage.ConfigFile {
+func (c *LongPollWatchContext) ListWatchFiles() []*config_manage.ConfigFileRelease {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
-	ret := make([]*config_manage.ConfigFile, 0, len(c.watchConfigFiles))
+	ret := make([]*config_manage.ConfigFileRelease, 0, len(c.watchConfigFiles))
 	for _, v := range c.watchConfigFiles {
 		ret = append(ret, v)
 	}
@@ -115,7 +115,7 @@ func (c *LongPollWatchContext) CurWatchVersion(k string) uint64 {
 }
 
 // AppendInterest .
-func (c *LongPollWatchContext) AppendInterest(item *config_manage.ConfigFile) {
+func (c *LongPollWatchContext) AppendInterest(item *config_manage.ConfigFileRelease) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -128,7 +128,7 @@ func (c *LongPollWatchContext) AppendInterest(item *config_manage.ConfigFile) {
 }
 
 // RemoveInterest .
-func (c *LongPollWatchContext) RemoveInterest(item *config_manage.ConfigFile) {
+func (c *LongPollWatchContext) RemoveInterest(item *config_manage.ConfigFileRelease) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 

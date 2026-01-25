@@ -108,15 +108,9 @@ func formatClientRequest(ctx context.Context, client *apiconfig.ConfigFile) *api
 
 // LongPullWatchFile .
 func (s *Server) LongPullWatchFile(ctx context.Context,
-	req *apiconfig.ConfigFileGroupRequest) (WatchCallback, error) {
+	req *apiconfig.WatchConfigFileRequest) (WatchCallback, error) {
 	// 构建 watchFiles，使用 ConfigFile 类型
-	watchFiles := []*apiconfig.ConfigFile{
-		{
-			Namespace: req.GetConfigFileGroup().Namespace,
-			Group:     req.GetConfigFileGroup().Name,
-			Name:      req.GetConfigFileGroup().Name, // 使用组名作为文件名
-		},
-	}
+	watchFiles := req.Files
 
 	tmpWatchCtx := BuildTimeoutWatchCtx(ctx, req, 0)("", s.watchCenter.MatchBetaReleaseFile)
 	for _, file := range watchFiles {
@@ -142,7 +136,7 @@ func (s *Server) LongPullWatchFile(ctx context.Context,
 	}, nil
 }
 
-func BuildTimeoutWatchCtx(ctx context.Context, req *apiconfig.ConfigFileGroupRequest,
+func BuildTimeoutWatchCtx(ctx context.Context, req *apiconfig.WatchConfigFileRequest,
 	watchTimeOut time.Duration) WatchContextFactory {
 	labels := map[string]string{
 		types.ClientLabel_IP: utils.ParseClientIP(ctx),
@@ -153,7 +147,7 @@ func BuildTimeoutWatchCtx(ctx context.Context, req *apiconfig.ConfigFileGroupReq
 			labels:           labels,
 			finishTime:       time.Now().Add(watchTimeOut),
 			finishChan:       make(chan *apiconfig.ConfigDiscoverResponse, 1),
-			watchConfigFiles: map[string]*apiconfig.ConfigFile{},
+			watchConfigFiles: map[string]*apiconfig.ConfigFileRelease{},
 			betaMatcher:      matcher,
 		}
 		return watchCtx

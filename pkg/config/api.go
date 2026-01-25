@@ -109,7 +109,7 @@ type ConfigFileClientOperate interface {
 	// UpsertAndReleaseConfigFile 创建/更新配置文件并发布
 	UpsertAndReleaseConfigFileFromClient(ctx context.Context, req *apiconfig.ConfigFilePublishInfo) *apimodel.Response
 	// LongPullWatchFile 客户端监听配置文件
-	LongPullWatchFile(ctx context.Context, req *apiconfig.ConfigFileGroupRequest) (WatchCallback, error)
+	LongPullWatchFile(ctx context.Context, req *apiconfig.WatchConfigFileRequest) (WatchCallback, error)
 	// GetConfigFileNamesWithCache 获取某个配置分组下的配置文件
 	GetConfigFileNamesWithCache(ctx context.Context,
 		req *apiconfig.ConfigFileGroupRequest) *apiconfig.ConfigDiscoverResponse

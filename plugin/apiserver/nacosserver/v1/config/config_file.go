@@ -146,9 +146,9 @@ func (n *ConfigServer) handleWatch(ctx context.Context, listenCtx *model.ConfigW
 	configSvr := n.originConfigSvr.(*config.Server)
 
 	// 将 ConfigFileRelease 转换为 ConfigFile
-	configFiles := make([]*config_manage.ConfigFile, 0, len(specWatchReq.GetFiles()))
+	configFiles := make([]*config_manage.ConfigFileRelease, 0, len(specWatchReq.GetFiles()))
 	for _, release := range specWatchReq.GetFiles() {
-		configFiles = append(configFiles, &config_manage.ConfigFile{
+		configFiles = append(configFiles, &config_manage.ConfigFileRelease{
 			Namespace: release.GetNamespace(),
 			Group:     release.GetGroup(),
 			Name:      release.GetName(),
@@ -195,7 +195,7 @@ func (n *ConfigServer) handleWatch(ctx context.Context, listenCtx *model.ConfigW
 }
 
 func (n *ConfigServer) diffChangeFiles(ctx context.Context,
-	listenCtx *config_manage.ClientWatchConfigFileRequest) []*model.ConfigListenItem {
+	listenCtx *config_manage.WatchConfigFileRequest) []*model.ConfigListenItem {
 	clientLabels := map[string]string{
 		types.ClientLabel_IP: utils.ParseClientIP(ctx),
 	}
@@ -239,7 +239,7 @@ func (n *ConfigServer) BuildTimeoutWatchCtx(ctx context.Context, watchTimeOut ti
 			labels:           labels,
 			finishTime:       time.Now().Add(watchTimeOut),
 			finishChan:       make(chan *config_manage.ConfigDiscoverResponse),
-			watchConfigFiles: map[string]*config_manage.ConfigFile{},
+			watchConfigFiles: map[string]*config_manage.ConfigFileRelease{},
 			betaMatcher: func(clientLabels map[string]string, event *conftypes.SimpleConfigFileRelease) bool {
 				return n.cacheSvr.Gray().HitGrayRule(config.GetGrayConfigReaseKey(event), clientLabels)
 			},

@@ -133,7 +133,7 @@ type RemotePeer struct {
 	host string
 	// Port peer listen port to provider grpc service
 	port uint32
-	//
+	// cmutex connection mutex
 	cmutex *sync.RWMutex
 	// Conn grpc connection
 	conns map[int]*grpc.ClientConn
@@ -191,10 +191,7 @@ func (p *RemotePeer) Ping() error {
 	if err != nil {
 		return err
 	}
-	_, err = client.BatchGetHeartbeat(context.Background(), &apiservice.GetHeartbeatsRequest{},
-		grpc.Header(&metadata.MD{
-			sendResource: []string{utils.LocalHost},
-		}))
+	_, err = client.BatchGetHeartbeat(context.Background(), &apiservice.GetHeartbeatsRequest{})
 	return err
 }
 
@@ -291,7 +288,7 @@ func (p *RemotePeer) Close() error {
 	return nil
 }
 
-func (p *RemotePeer) choseOneClient() (apiservice.PolarisHeartbeatGRPCClient, error) {
+func (p *RemotePeer) choseOneClient() (apiservice.PoleHeartbeatGRPCClient, error) {
 	p.cmutex.RLock()
 	defer p.cmutex.RUnlock()
 
@@ -339,8 +336,8 @@ func (p *RemotePeer) doClose() {
 	}
 }
 
-func createBeatClient(conn *grpc.ClientConn) (apiservice.PolarisHeartbeatGRPCClient, error) {
-	return apiservice.NewPolarisHeartbeatGRPCClient(conn), nil
+func createBeatClient(conn *grpc.ClientConn) (apiservice.PoleHeartbeatGRPCClient, error) {
+	return apiservice.NewPoleHeartbeatGRPCClient(conn), nil
 }
 
 func (p *RemotePeer) reconnect(i int) {
@@ -430,7 +427,7 @@ func doConnect(p *RemotePeer) error {
 }
 
 func newBeatSender(index int, conn *grpc.ClientConn, p *RemotePeer) (*beatSender, error) {
-	client := apiservice.NewPolarisGRPCClient(conn)
+	client := apiservice.NewDiscoverGRPCClient(conn)
 	puter, err := client.Heartbeat(context.Background(), grpc.Header(&metadata.MD{
 		sendResource: []string{utils.LocalHost},
 	}))
@@ -452,7 +449,7 @@ type beatSender struct {
 	index  int
 	peer   *RemotePeer
 	lock   *sync.RWMutex
-	sender apiservice.PolarisGRPC_HeartbeatClient
+	sender apiservice.DiscoverGRPC_HeartbeatClient
 	cancel context.CancelFunc
 }
 

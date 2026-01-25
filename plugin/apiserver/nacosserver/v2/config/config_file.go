@@ -197,21 +197,21 @@ func (h *ConfigServer) handleWatchConfigRequest(ctx context.Context, req nacospb
 	specReq := watchReq.ToSpec()
 	if watchReq.Listen {
 		// 转换ConfigFileRelease到ConfigFile
-		configFiles := make([]*config_manage.ConfigFile, len(specReq.GetFiles()))
+		configFiles := make([]*config_manage.ConfigFileRelease, len(specReq.GetFiles()))
 		for i, fileRelease := range specReq.GetFiles() {
 			// 将MD5信息保存在Tags中以便后续比较
 			tags := make(map[string]string)
 			tags["md5"] = fileRelease.GetMd5()
 
-			configFiles[i] = &config_manage.ConfigFile{
-				Id:        fileRelease.GetConfigFileId(),
+			configFiles[i] = &config_manage.ConfigFileRelease{
+				Id:        fileRelease.GetId(),
 				Name:      fileRelease.GetFileName(),
 				Namespace: fileRelease.GetNamespace(),
 				Group:     fileRelease.GetGroup(),
 				Content:   fileRelease.GetContent(),
 				Format:    fileRelease.GetFormat(),
 				Comment:   fileRelease.GetComment(),
-				Tags:      tags,
+				Labels:      tags,
 			}
 		}
 		watchCtx := configSvr.WatchCenter().AddWatcher(clientId, configFiles, h.BuildGrpcWatchCtx(ctx))
@@ -250,15 +250,15 @@ func (h *ConfigServer) handleWatchConfigRequest(ctx context.Context, req nacospb
 				tags := make(map[string]string)
 				tags["md5"] = fileRelease.GetMd5()
 
-				configFile := &config_manage.ConfigFile{
-					Id:        fileRelease.GetConfigFileId(),
+				configFile := &config_manage.ConfigFileRelease{
+					Id:        fileRelease.GetId(),
 					Name:      fileRelease.GetFileName(),
 					Namespace: fileRelease.GetNamespace(),
 					Group:     fileRelease.GetGroup(),
 					Content:   fileRelease.GetContent(),
 					Format:    fileRelease.GetFormat(),
 					Comment:   fileRelease.GetComment(),
-					Tags:      tags,
+					Labels:      tags,
 				}
 				watchCtx.RemoveInterest(configFile)
 			}
@@ -277,7 +277,7 @@ func (h *ConfigServer) BuildGrpcWatchCtx(ctx context.Context) config.WatchContex
 			clientId:         clientId,
 			connMgr:          h.connMgr,
 			labels:           labels,
-			watchConfigFiles: container.NewSyncMap[string, *config_manage.ConfigFile](),
+			watchConfigFiles: container.NewSyncMap[string, *config_manage.ConfigFileRelease](),
 			betaMatcher: func(clientLabels map[string]string, event *conftypes.SimpleConfigFileRelease) bool {
 				return h.cacheSvr.Gray().HitGrayRule(config.GetGrayConfigReaseKey(event), clientLabels)
 			},
