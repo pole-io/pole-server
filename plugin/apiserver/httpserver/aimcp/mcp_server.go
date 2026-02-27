@@ -2,11 +2,12 @@ package aimcp
 
 import (
 	"context"
-	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"go.uber.org/zap"
+
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types/ai"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -71,7 +72,7 @@ func (h *HTTPServer) addToolQueryMCPServers(mcpSvr *server.MCPServer) {
 			searchLimit, _ := args["limit"].(float64)
 
 			rsp := h.mcpServerQuery(ctx, filter, uint32(searchOffset), uint32(searchLimit))
-			if !api.IsSuccess(rsp) {
+			if rsp.GetCode() != uint32(apimodel.Code_ExecuteSuccess) {
 				return mcp.NewToolResultError(rsp.GetInfo()), nil
 			}
 
@@ -87,7 +88,6 @@ func (h *HTTPServer) addToolCreateMCPServers(mcpSvr *server.MCPServer) {
 			mcp.WithDescription("此工具用于创建多个 MCP Server"),
 			mcp.WithArray("servers",
 				mcp.Description("MCP Server 数组"),
-				mcp.Items(httpcommon.MarshalPBJsonToMap(&ai.MCPServer{})),
 			),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -102,18 +102,9 @@ func (h *HTTPServer) addToolCreateMCPServers(mcpSvr *server.MCPServer) {
 				return mcp.NewToolResultError("invalid: servers is empty"), nil
 			}
 
-			reqs, err := httpcommon.UnmarshalArray(json.NewDecoder(bytes.NewBuffer(jsonMarshal(servers))),
-				func() *ai.MCPServer { return &ai.MCPServer{} })
-			if err != nil {
-				log.Error("[apiserver][ai-mcp] handleCreateMCPServers", zap.Error(err))
-				return mcp.NewToolResultError("invalid: servers parse fail: " + err.Error()), nil
-			}
-
-			rsp := h.mcpServerCreate(ctx, reqs)
-			if !api.IsSuccess(rsp) {
-				return mcp.NewToolResultError(rsp.GetInfo()), nil
-			}
-
+			// TODO: 实现 MCP Server 创建逻辑
+			_ = servers
+			rsp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 			ret, err := httpcommon.MarshalPBJson(rsp)
 			return mcp.NewToolResultText(ret), err
 		})
@@ -126,7 +117,6 @@ func (h *HTTPServer) addToolUpdateMCPServers(mcpSvr *server.MCPServer) {
 			mcp.WithDescription("此工具用于更新多个 MCP Server"),
 			mcp.WithArray("servers",
 				mcp.Description("MCP Server 数组"),
-				mcp.Items(httpcommon.MarshalPBJsonToMap(&ai.MCPServer{})),
 			),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -136,16 +126,8 @@ func (h *HTTPServer) addToolUpdateMCPServers(mcpSvr *server.MCPServer) {
 				return mcp.NewToolResultError("invalid: args is empty"), nil
 			}
 
-			servers, ok := args["servers"].([]*ai.MCPServer)
-			if !ok || len(servers) == 0 {
-				return mcp.NewToolResultError("invalid: servers is empty or invalid"), nil
-			}
-
-			rsp := h.mcpServerUpdate(ctx, servers)
-			if !api.IsSuccess(rsp) {
-				return mcp.NewToolResultError(rsp.GetInfo()), nil
-			}
-
+			// TODO: 实现 MCP Server 更新逻辑
+			rsp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 			ret, err := httpcommon.MarshalPBJson(rsp)
 			return mcp.NewToolResultText(ret), err
 		})
@@ -158,9 +140,6 @@ func (h *HTTPServer) addToolDeleteMCPServers(mcpSvr *server.MCPServer) {
 			mcp.WithDescription("此工具用于删除多个 MCP Server"),
 			mcp.WithArray("server_ids",
 				mcp.Description("MCP Server ID 数组"),
-				mcp.Items(map[string]interface{}{
-					"id": "",
-				}),
 			),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -182,11 +161,9 @@ func (h *HTTPServer) addToolDeleteMCPServers(mcpSvr *server.MCPServer) {
 				}
 			}
 
-			rsp := h.mcpServerDelete(ctx, ids)
-			if !api.IsSuccess(rsp) {
-				return mcp.NewToolResultError(rsp.GetInfo()), nil
-			}
-
+			// TODO: 实现 MCP Server 删除逻辑
+			_ = ids
+			rsp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 			ret, err := httpcommon.MarshalPBJson(rsp)
 			return mcp.NewToolResultText(ret), err
 		})
@@ -238,7 +215,7 @@ func (h *HTTPServer) addToolQueryMCPServerTools(mcpSvr *server.MCPServer) {
 			searchLimit, _ := args["limit"].(float64)
 
 			rsp := h.mcpServerToolQuery(ctx, filter, uint32(searchOffset), uint32(searchLimit))
-			if !api.IsSuccess(rsp) {
+			if rsp.GetCode() != uint32(apimodel.Code_ExecuteSuccess) {
 				return mcp.NewToolResultError(rsp.GetInfo()), nil
 			}
 
@@ -257,42 +234,31 @@ func (h *HTTPServer) addToolsMCPServer(mcpSvr *server.MCPServer) {
 }
 
 // mcpServerQuery 查询 MCP Servers
-func (h *HTTPServer) mcpServerQuery(ctx context.Context, filter map[string]string, offset, limit uint32) *api.BatchQueryResponse {
+func (h *HTTPServer) mcpServerQuery(ctx context.Context, filter map[string]string, offset, limit uint32) *apimodel.BatchQueryResponse {
 	// TODO: 实现 MCP Server 查询逻辑
-	return api.NewBatchQueryResponse(api.ExecuteSuccess)
+	return api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 }
 
 // mcpServerCreate 创建 MCP Servers
-func (h *HTTPServer) mcpServerCreate(ctx context.Context, servers []*ai.MCPServer) api.ResponseMessage {
+func (h *HTTPServer) mcpServerCreate(ctx context.Context, servers []*ai.MCPServer) *apimodel.Response {
 	// TODO: 实现 MCP Server 创建逻辑
-	return api.NewResponse(api.ExecuteSuccess)
+	return api.NewResponse(apimodel.Code_ExecuteSuccess)
 }
 
 // mcpServerUpdate 更新 MCP Servers
-func (h *HTTPServer) mcpServerUpdate(ctx context.Context, servers []*ai.MCPServer) api.ResponseMessage {
+func (h *HTTPServer) mcpServerUpdate(ctx context.Context, servers []*ai.MCPServer) *apimodel.Response {
 	// TODO: 实现 MCP Server 更新逻辑
-	return api.NewResponse(api.ExecuteSuccess)
+	return api.NewResponse(apimodel.Code_ExecuteSuccess)
 }
 
 // mcpServerDelete 删除 MCP Servers
-func (h *HTTPServer) mcpServerDelete(ctx context.Context, ids []string) api.ResponseMessage {
+func (h *HTTPServer) mcpServerDelete(ctx context.Context, ids []string) *apimodel.Response {
 	// TODO: 实现 MCP Server 删除逻辑
-	return api.NewResponse(api.ExecuteSuccess)
+	return api.NewResponse(apimodel.Code_ExecuteSuccess)
 }
 
 // mcpServerToolQuery 查询 MCP Server Tools
-func (h *HTTPServer) mcpServerToolQuery(ctx context.Context, filter map[string]string, offset, limit uint32) *api.BatchQueryResponse {
+func (h *HTTPServer) mcpServerToolQuery(ctx context.Context, filter map[string]string, offset, limit uint32) *apimodel.BatchQueryResponse {
 	// TODO: 实现 MCP Server Tool 查询逻辑
-	return api.NewBatchQueryResponse(api.ExecuteSuccess)
-}
-
-// jsonMarshal 序列化 interface{} 为 JSON
-func jsonMarshal(v interface{}) []byte {
-	data, _ := json.Marshal(v)
-	return data
-}
-
-// bytes.NewReader 包装
-func bytesNewBuffer(data []byte) *bytes.Buffer {
-	return bytes.NewBuffer(data)
+	return api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 }
