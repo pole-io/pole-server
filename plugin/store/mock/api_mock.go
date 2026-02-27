@@ -2198,6 +2198,22 @@ func (mr *MockStoreMockRecorder) GetMoreStrategies(mtime, firstUpdate interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoreStrategies", reflect.TypeOf((*MockStore)(nil).GetMoreStrategies), mtime, firstUpdate)
 }
 
+// BatchGetServiceSubscribers mocks base method.
+func (m *MockStore) BatchGetServiceSubscribers(ctx context.Context, filter map[string]string, offset, limit uint32) (uint32, []*service.ServiceSubscriber, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchGetServiceSubscribers", ctx, filter, offset, limit)
+	ret0, _ := ret[0].(uint32)
+	ret1, _ := ret[1].([]*service.ServiceSubscriber)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// BatchGetServiceSubscribers indicates an expected call of BatchGetServiceSubscribers.
+func (mr *MockStoreMockRecorder) BatchGetServiceSubscribers(ctx, filter, offset, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchGetServiceSubscribers", reflect.TypeOf((*MockStore)(nil).BatchGetServiceSubscribers), ctx, filter, offset, limit)
+}
+
 // GetMoreUsers mocks base method.
 func (m *MockStore) GetMoreUsers(mtime time.Time, firstUpdate bool) ([]*auth.User, error) {
 	m.ctrl.T.Helper()

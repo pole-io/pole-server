@@ -55,6 +55,8 @@ type Store interface {
 	GrayStore
 	// AuthStore Auth storage interface
 	AuthStore
+	// AIStore AI module storage interface (MCP Server, Skill, etc.)
+	AIStore
 }
 
 // NamespaceStore Namespace storage interface

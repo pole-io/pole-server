@@ -51,4 +51,12 @@ type TestDataClean interface {
 	ClearTestDataWhenUseRDS() error
 	// CleanServiceContract
 	CleanServiceContract() error
+	// CleanCluster
+	CleanCluster(name string)
+	// CleanTopologyData
+	CleanTopologyData(serviceID string)
+	// CleanServiceSubscriber
+	CleanServiceSubscriber(serviceID string, subscriberServiceID string)
+	// CleanConfigListener
+	CleanConfigListener(fileID string, listenerID string)
 }

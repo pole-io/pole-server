@@ -258,12 +258,12 @@ func TestNamespaceArgumentParsing(t *testing.T) {
 // TestMarshalWithJSON 测试使用 JSON 序列化
 func TestMarshalWithJSON(t *testing.T) {
 	// 使用测试结构体代替外部依赖
-	type testNamespace struct {
+	type Namespace struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
 	}
 
-	ns := &testNamespace{
+	ns := &Namespace{
 		Name:        "test-ns",
 		Description: "test description",
 	}
@@ -283,12 +283,12 @@ func TestMarshalWithJSON(t *testing.T) {
 
 // TestMarshalWithJSON_Empty 测试空结构体序列化
 func TestMarshalWithJSON_Empty(t *testing.T) {
-	type testNamespace struct {
+	type Namespace struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
 	}
 
-	ns := &testNamespace{}
+	ns := &Namespace{}
 
 	jsonBytes, err := json.Marshal(ns)
 	assert.NoError(t, err)
@@ -301,12 +301,12 @@ func TestMarshalWithJSON_Empty(t *testing.T) {
 
 // TestMarshalWithJSON_Nil 测试 nil 序列化
 func TestMarshalWithJSON_Nil(t *testing.T) {
-	type testNamespaceNil struct {
+	type NamespaceNil struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
 	}
 
-	var nilNS *testNamespaceNil
+	var nilNS *NamespaceNil
 
 	// nil 指针可以序列化为 null
 	jsonBytes, err := json.Marshal(nilNS)

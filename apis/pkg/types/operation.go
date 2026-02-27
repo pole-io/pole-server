@@ -72,6 +72,8 @@ const (
 	RLaneGroup          Resource = "LaneGroup"
 	RLaneRule           Resource = "LaneRule"
 	RLosslessRule       Resource = "LosslessRule"
+	RMCPServer          Resource = "MCPServer"
+	RMCPServerTool      Resource = "MCPServerTool"
 )
 
 // RecordEntry Operation records

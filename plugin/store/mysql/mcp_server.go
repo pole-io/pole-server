@@ -500,3 +500,75 @@ func fetchMCPServerToolRow(rows *sql.Rows) (*ai.MCPServerTool, error) {
 
 	return &tool, nil
 }
+
+// QueryMCPServers 查询 MCP Servers（支持过滤和分页）
+func (m *mcpServerStore) QueryMCPServers(filter map[string]string, offset, limit uint32) (uint32, []*ai.MCPServer, error) {
+	// 构建查询条件
+	whereClause := "WHERE flag != 1"
+	args := make([]interface{}, 0)
+
+	if name, ok := filter["name"]; ok && name != "" {
+		whereClause += " AND name = ?"
+		args = append(args, name)
+	}
+
+	if namespace, ok := filter["namespace"]; ok && namespace != "" {
+		whereClause += " AND namespace = ?"
+		args = append(args, namespace)
+	}
+
+	if business, ok := filter["business"]; ok && business != "" {
+		whereClause += " AND business = ?"
+		args = append(args, business)
+	}
+
+	if department, ok := filter["department"]; ok && department != "" {
+		whereClause += " AND department = ?"
+		args = append(args, department)
+	}
+
+	if protocol, ok := filter["protocol"]; ok && protocol != "" {
+		whereClause += " AND protocol = ?"
+		args = append(args, protocol)
+	}
+
+	// 查询总数
+	countSql := "SELECT COUNT(*) FROM mcp_server " + whereClause
+	row := m.slave.QueryRow(countSql, args...)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		log.Errorf("[Store][database] query mcp server count err: %s", err.Error())
+		return 0, nil, err
+	}
+
+	// 查询列表
+	querySql := fmt.Sprintf(`SELECT id, name, namespace, ports, business, department, description,
+		revision, flag, reference, protocol, unix_timestamp(ctime), unix_timestamp(mtime), export_to
+		FROM mcp_server %s ORDER BY mtime DESC LIMIT ?, ?`, whereClause)
+
+	queryArgs := append(args, offset, limit)
+	rows, err := m.slave.Query(querySql, queryArgs...)
+	if err != nil {
+		log.Errorf("[Store][database] query mcp servers err: %s", err.Error())
+		return 0, nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var servers []*ai.MCPServer
+	for rows.Next() {
+		server, err := fetchMCPServerRow(rows)
+		if err != nil {
+			return 0, nil, err
+		}
+		if server != nil {
+			servers = append(servers, server)
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Errorf("[Store][database] query mcp servers rows err: %s", err.Error())
+		return 0, nil, err
+	}
+
+	return uint32(count), servers, nil
+}

@@ -786,6 +786,30 @@ func (d *DiscoverTestSuit) CleanServiceContract() error {
 	return nil
 }
 
+// CleanCluster 清理集群测试数据
+func (d *DiscoverTestSuit) CleanCluster(name string) {
+	log.Infof("clean cluster: %s", name)
+	// TODO: 清理集群相关数据
+}
+
+// CleanTopologyData 清理拓扑测试数据
+func (d *DiscoverTestSuit) CleanTopologyData(serviceID string) {
+	log.Infof("clean topology data for service: %s", serviceID)
+	// TODO: 清理拓扑相关数据
+}
+
+// CleanServiceSubscriber 清理服务订阅者测试数据
+func (d *DiscoverTestSuit) CleanServiceSubscriber(serviceID string, subscriberServiceID string) {
+	log.Infof("clean subscriber: %s for service: %s", subscriberServiceID, serviceID)
+	// TODO: 清理服务订阅者相关数据
+}
+
+// CleanConfigListener 清理配置监听者测试数据
+func (d *DiscoverTestSuit) CleanConfigListener(fileID string, listenerID string) {
+	log.Infof("clean config listener: %s for file: %s", listenerID, fileID)
+	// TODO: 清理配置监听者相关数据
+}
+
 func (d *DiscoverTestSuit) ClearTestDataWhenUseRDS() error {
 	if d.Storage.Name() == sqldb.STORENAME {
 		proxyTx, err := d.Storage.StartTx()
