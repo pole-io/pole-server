@@ -53,7 +53,7 @@ func NewConfigGroupCache(storage store.Store, cacheMgr cacheapi.CacheManager) ca
 	gc := &configGroupCache{
 		storage: storage,
 	}
-	gc.BaseCache = cachebase.NewBaseCacheWithRepoerMetrics(storage, cacheMgr, gc.reportMetricsInfo)
+	gc.BaseCache = cachebase.NewBaseCacheWithReporterMetrics(storage, cacheMgr, gc.reportMetricsInfo)
 	return gc
 }
 

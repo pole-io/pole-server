@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/mitchellh/mapstructure"
+	"go.uber.org/zap"
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
@@ -53,12 +54,12 @@ func (job *deleteEmptyServiceJob) init(raw map[string]interface{}) error {
 	}
 	decoder, err := mapstructure.NewDecoder(decodeConfig)
 	if err != nil {
-		log.Errorf("[Maintain][Job][DeleteEmptyServiceJob] new config decoder err: %v", err)
+		jobLog().Error("[Maintain][Job][DeleteEmptyServiceJob] new config decoder failed", zap.Error(err))
 		return err
 	}
 	err = decoder.Decode(raw)
 	if err != nil {
-		log.Errorf("[Maintain][Job][DeleteEmptyServiceJob] parse config err: %v", err)
+		jobLog().Error("[Maintain][Job][DeleteEmptyServiceJob] parse config failed", zap.Error(err))
 		return err
 	}
 	job.cfg = cfg
@@ -69,7 +70,7 @@ func (job *deleteEmptyServiceJob) init(raw map[string]interface{}) error {
 func (job *deleteEmptyServiceJob) execute() {
 	err := job.deleteEmptyServices()
 	if err != nil {
-		log.Errorf("[Maintain][Job][DeleteEmptyServiceJob] delete empty autocreated services, err: %v", err)
+		jobLog().Error("[Maintain][Job][DeleteEmptyServiceJob] delete empty autocreated services failed", zap.Error(err))
 	}
 }
 
@@ -134,18 +135,18 @@ func (job *deleteEmptyServiceJob) deleteEmptyServices() error {
 
 		ctx, err := buildContext(job.storage)
 		if err != nil {
-			log.Errorf("[Maintain][Job][DeleteUnHealthyInstance] build conetxt, err: %v", err)
+			jobLog().Error("[Maintain][Job][DeleteUnHealthyInstance] build context failed", zap.Error(err))
 			return err
 		}
 		resp := job.namingServer.DeleteServices(ctx, convertDeleteServiceRequest(emptyServices[i:j]))
 		if api.CalcCode(resp) != 200 {
-			log.Errorf("[Maintain][Job][DeleteEmptyAutoCreatedService] delete services err, code: %d, info: %s",
-				resp.Code, resp.Info)
+			jobLog().Error("[Maintain][Job][DeleteEmptyAutoCreatedService] delete services failed",
+				zap.Uint32("code", resp.Code), zap.String("info", resp.Info))
 		}
 	}
 
-	log.Infof("[Maintain][Job][DeleteEmptyAutoCreatedService] delete empty auto-created services count %d",
-		len(emptyServices))
+	jobLog().Info("[Maintain][Job][DeleteEmptyAutoCreatedService] delete empty auto-created services done",
+		zap.Int("count", len(emptyServices)))
 	return nil
 }
 

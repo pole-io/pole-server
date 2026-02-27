@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/mitchellh/mapstructure"
+	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/store"
 )
@@ -49,11 +50,11 @@ func (job *cleanConfigFileHistoryJob) init(raw map[string]interface{}) error {
 	}
 	decoder, err := mapstructure.NewDecoder(decodeConfig)
 	if err != nil {
-		log.Errorf("[Maintain][Job][cleanConfigFileHistoryJob] new config decoder err: %v", err)
+		jobLog().Error("[Maintain][Job][cleanConfigFileHistoryJob] new config decoder failed", zap.Error(err))
 		return err
 	}
 	if err = decoder.Decode(raw); err != nil {
-		log.Errorf("[Maintain][Job][cleanConfigFileHistoryJob] parse config err: %v", err)
+		jobLog().Error("[Maintain][Job][cleanConfigFileHistoryJob] parse config failed", zap.Error(err))
 		return err
 	}
 	if cfg.RetentionDays < time.Minute {
@@ -66,7 +67,7 @@ func (job *cleanConfigFileHistoryJob) init(raw map[string]interface{}) error {
 func (job *cleanConfigFileHistoryJob) execute() {
 	endTime := time.Now().Add(-1 * job.cfg.RetentionDays)
 	if err := job.storage.CleanConfigFileReleaseHistory(endTime, job.cfg.BatchSize); err != nil {
-		log.Errorf("[Maintain][Job][cleanConfigFileHistoryJob] execute err: %v", err)
+		jobLog().Error("[Maintain][Job][cleanConfigFileHistoryJob] execute failed", zap.Error(err))
 	}
 }
 

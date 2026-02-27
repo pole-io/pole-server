@@ -37,6 +37,8 @@ const (
 	HealthcheckLoggerName = "healthcheck"
 	// SystemOperationLoggerName system operation logger name, can use FindScope function to get the logger
 	SystemOperationLoggerName = "sysop"
+	// JobLoggerName job/maintain logger name, output to file only (no stdout even in debug)
+	JobLoggerName = "job"
 )
 
 func allLoggerTypes() []string {

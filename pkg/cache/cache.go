@@ -52,7 +52,7 @@ type CacheManager struct {
 
 // Initialize 缓存对象初始化
 func (nc *CacheManager) Initialize() error {
-	if config.DiffTime != 0 {
+	if config != nil && config.DiffTime != 0 {
 		DefaultTimeDiff = -1 * (config.DiffTime.Abs())
 	}
 	if DefaultTimeDiff > 0 {
@@ -174,6 +174,11 @@ func (nc *CacheManager) GetUpdateCacheInterval() time.Duration {
 // GetReportInterval 获取当前cache的更新间隔
 func (nc *CacheManager) GetReportInterval() time.Duration {
 	return ReportInterval
+}
+
+// GetTimeDiff 获取拉取 store 的时间偏移（负值），供 BaseCache.LastFetchTime 使用
+func (nc *CacheManager) GetTimeDiff() time.Duration {
+	return DefaultTimeDiff
 }
 
 // Service 获取Service缓存信息

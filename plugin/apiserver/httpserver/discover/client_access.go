@@ -36,6 +36,7 @@ import (
 func (h *HTTPServer) addDiscoverAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichReportClientApiDocs(ws.POST("/ReportClient").To(h.ReportClient)))
 	ws.Route(docs.EnrichDiscoverApiDocs(ws.POST("/Discover").To(h.Discover)))
+	ws.Route(docs.EnrichGetServiceSubscribersApiDocs(ws.GET("/subscribers").To(h.GetServiceSubscribers)))
 }
 
 // addRegisterAccess 增加注册/反注册接口

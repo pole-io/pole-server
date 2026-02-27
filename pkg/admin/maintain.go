@@ -58,11 +58,15 @@ func (s *Server) HasMainUser(ctx context.Context) *apimodel.Response {
 }
 
 // InitMainUser 初始化主用户
-func (s *Server) InitMainUser(_ context.Context, user *apisecurity.User) *apimodel.Response {
+func (s *Server) InitMainUser(ctx context.Context, user *apisecurity.User) *apimodel.Response {
 	if user.GetSource() == "" {
 		user.Source = "pole-io"
 	}
-	ctx := context.WithValue(context.Background(), authapi.ContextKeyInitMainUser, true)
+	// 设置 user type 为 owner
+	user.UserType = authtypes.UserRoleNames[authtypes.OwnerUserRole]
+	// 设置 owner 为 user name
+	user.Owner = user.GetName()
+	ctx = context.WithValue(ctx, authapi.ContextKeyInitMainUser, true)
 	rsp := s.userSvr.CreateUsers(ctx, []*apisecurity.User{
 		user,
 	})

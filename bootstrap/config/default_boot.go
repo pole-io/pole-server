@@ -69,6 +69,10 @@ func defaultLoggerOptions() map[string]*log.Options {
 			opt.OnlyContent = true
 		}),
 		"cmdb": newLogOptions("runtime", "cmdb"),
+		"job":  newLogOptions("runtime", "job", func(opt *log.Options) {
+			// 仅输出到文件，不输出到 stdout（含 debug 模式）
+			opt.OutputPaths = []string{}
+		}),
 	}
 }
 

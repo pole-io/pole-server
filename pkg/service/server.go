@@ -23,12 +23,15 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/observability/history"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	"github.com/pole-io/pole-server/apis/store"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	cacheservice "github.com/pole-io/pole-server/pkg/cache/service"
+	"github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -42,7 +45,7 @@ type Server struct {
 	// config 配置
 	config Config
 	// store 数据存储
-	storage store.Store
+	storage storeapi.Store
 	// namespaceSvr 命名空间相关的操作
 	namespaceSvr namespace.NamespaceOperateServer
 	// caches 缓存
@@ -68,7 +71,7 @@ func (s *Server) allowAutoCreate() bool {
 	return *s.config.AutoCreate
 }
 
-func (s *Server) Store() store.Store {
+func (s *Server) Store() storeapi.Store {
 	return s.storage
 }
 
@@ -130,3 +133,12 @@ func AllowAutoCreate(ctx context.Context) context.Context {
 	ctx = context.WithValue(ctx, utils.ContextKeyAutoCreateService{}, true)
 	return ctx
 }
+
+// GetServiceSubscribers 查询服务订阅者（调用方服务列表）
+
+// GetServiceSubscribers 查询服务订阅者（调用方服务列表）
+// 这是一个存根实现，用于编译通过
+func (s *Server) GetServiceSubscribers(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
+	return v1.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+}
+

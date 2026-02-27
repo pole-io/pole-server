@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/mitchellh/mapstructure"
+	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/store"
 )
@@ -125,11 +126,11 @@ func (job *cleanDeletedResourceJob) init(raw map[string]interface{}) error {
 	}
 	decoder, err := mapstructure.NewDecoder(decodeConfig)
 	if err != nil {
-		log.Errorf("[Maintain][Job][CleanDeletedClients] new config decoder err: %v", err)
+		jobLog().Error("[Maintain][Job][CleanDeletedClients] new config decoder failed", zap.Error(err))
 		return err
 	}
 	if err := decoder.Decode(raw); err != nil {
-		log.Errorf("[Maintain][Job][CleanDeletedClients] parse config err: %v", err)
+		jobLog().Error("[Maintain][Job][CleanDeletedClients] parse config failed", zap.Error(err))
 		return err
 	}
 	if cfg.Timeout < 2*time.Minute {
@@ -182,10 +183,10 @@ func cleanDeletedConfigFiles(timeout time.Duration, job *cleanDeletedResourceJob
 	for {
 		count, err := job.storage.BatchCleanDeletedConfigFiles(timeout, batchSize)
 		if err != nil {
-			log.Errorf("[Maintain][Job][CleanDeletedConfigFiles] batch clean deleted config_files, err: %v", err)
+			jobLog().Error("[Maintain][Job][CleanDeletedConfigFiles] batch clean deleted config_files failed", zap.Error(err))
 			break
 		}
-		log.Infof("[Maintain][Job][CleanDeletedConfigFiles] clean deleted config_files count %d", count)
+		jobLog().Info("[Maintain][Job][CleanDeletedConfigFiles] clean deleted config_files", zap.Uint32("count", count))
 		if count < batchSize {
 			break
 		}
@@ -197,10 +198,10 @@ func cleanDeletedServices(timeout time.Duration, job *cleanDeletedResourceJob) {
 	for {
 		count, err := job.storage.BatchCleanDeletedServices(timeout, batchSize)
 		if err != nil {
-			log.Errorf("[Maintain][Job][CleanDeletedServices] batch clean deleted service, err: %v", err)
+			jobLog().Error("[Maintain][Job][CleanDeletedServices] batch clean deleted service failed", zap.Error(err))
 			break
 		}
-		log.Infof("[Maintain][Job][CleanDeletedServices] clean deleted client count %d", count)
+		jobLog().Info("[Maintain][Job][CleanDeletedServices] clean deleted client", zap.Uint32("count", count))
 		if count < batchSize {
 			break
 		}
@@ -212,10 +213,10 @@ func cleanDeletedClients(timeout time.Duration, job *cleanDeletedResourceJob) {
 	for {
 		count, err := job.storage.BatchCleanDeletedClients(timeout, batchSize)
 		if err != nil {
-			log.Errorf("[Maintain][Job][CleanDeletedClients] batch clean deleted client, err: %v", err)
+			jobLog().Error("[Maintain][Job][CleanDeletedClients] batch clean deleted client failed", zap.Error(err))
 			break
 		}
-		log.Infof("[Maintain][Job][CleanDeletedClients] clean deleted client count %d", count)
+		jobLog().Info("[Maintain][Job][CleanDeletedClients] clean deleted client", zap.Uint32("count", count))
 		if count < batchSize {
 			break
 		}
@@ -227,11 +228,11 @@ func cleanDeletedInstances(timeout time.Duration, job *cleanDeletedResourceJob) 
 	for {
 		count, err := job.storage.BatchCleanDeletedInstances(timeout, batchSize)
 		if err != nil {
-			log.Errorf("[Maintain][Job][CleanDeletedInstances] batch clean deleted instance, err: %v", err)
+			jobLog().Error("[Maintain][Job][CleanDeletedInstances] batch clean deleted instance failed", zap.Error(err))
 			break
 		}
 
-		log.Infof("[Maintain][Job][CleanDeletedInstances] clean deleted instance count %d", count)
+		jobLog().Info("[Maintain][Job][CleanDeletedInstances] clean deleted instance", zap.Uint32("count", count))
 		if count < batchSize {
 			break
 		}
@@ -243,10 +244,10 @@ func cleanDeletedServiceContracts(timeout time.Duration, job *cleanDeletedResour
 	for {
 		count, err := job.storage.BatchCleanDeletedServiceContracts(timeout, batchSize)
 		if err != nil {
-			log.Errorf("[Maintain][Job][CleanDeletedServiceContract] batch clean deleted service_contract, err: %v", err)
+			jobLog().Error("[Maintain][Job][CleanDeletedServiceContract] batch clean deleted service_contract failed", zap.Error(err))
 			break
 		}
-		log.Infof("[Maintain][Job][CleanDeletedClients] clean deleted service_contract count %d", count)
+		jobLog().Info("[Maintain][Job][CleanDeletedClients] clean deleted service_contract", zap.Uint32("count", count))
 		if count < batchSize {
 			break
 		}
@@ -258,10 +259,9 @@ func cleanDeletedRules(rule string, timeout time.Duration, job *cleanDeletedReso
 	for {
 		count, err := job.storage.BatchCleanDeletedRules(rule, timeout, batchSize)
 		if err != nil {
-			// log.Errorf("[Maintain][Job][CleanDeletedRules] batch clean deleted rules, err: %v", err)
 			break
 		}
-		log.Infof("[Maintain][Job][CleanDeletedRules] clean deleted rules count %d", count)
+		jobLog().Info("[Maintain][Job][CleanDeletedRules] clean deleted rules", zap.Uint32("count", count))
 		if count < batchSize {
 			break
 		}

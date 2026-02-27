@@ -29,6 +29,7 @@ import (
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	storeapi "github.com/pole-io/pole-server/apis/store"
@@ -182,16 +183,19 @@ func (s *Server) checkCircuitBreakerRuleExists(ctx context.Context, id string) *
 	return nil
 }
 
-// GetCircuitBreakerRules Query CircuitBreaker rules
+// GetCircuitBreakerRules Query CircuitBreaker rules（走 cache）
 func (s *Server) GetCircuitBreakerRules(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	offset, limit, _ := valid.ParseOffsetAndLimit(query)
-	total, cbRules, err := s.storage.GetCircuitBreakerRules(query, offset, limit)
+	total, cbRules, err := s.Cache().CircuitBreaker().Query(ctx, &cacheapi.CircuitBreakerRuleArgs{
+		Filter: query,
+		Offset: offset,
+		Limit:  limit,
+	})
 	if err != nil {
-		log.Error("get circuitbreaker rules store", utils.RequestID(ctx), zap.Error(err))
+		log.Error("get circuitbreaker rules from cache", utils.RequestID(ctx), zap.Error(err))
 		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	// 注释：响应字段类型改动 - Amount和Size字段从*wrapperspb.UInt32Value改为uint32
 	out.Amount = total
 	out.Size = uint32(len(cbRules))
 	for _, cbRule := range cbRules {

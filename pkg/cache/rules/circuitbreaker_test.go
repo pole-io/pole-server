@@ -84,6 +84,8 @@ func TestCircuitBreakersUpdate(t *testing.T) {
 
 		storage.EXPECT().GetMoreCircuitBreakers(gomock.Any(), cbc.IsFirstUpdate()).
 			Return(serviceWithCircuitBreakers, nil)
+		storage.EXPECT().GetMoreCircuitBreakerReleases(gomock.Any(), cbc.IsFirstUpdate()).
+			Return(nil, nil)
 		if err := cbc.Update(); err != nil {
 			t.Fatalf("error: %s", err.Error())
 		}
@@ -100,6 +102,8 @@ func TestCircuitBreakersUpdate(t *testing.T) {
 		_ = cbc.Clear()
 
 		storage.EXPECT().GetMoreCircuitBreakers(gomock.Any(), cbc.IsFirstUpdate()).
+			Return(nil, nil)
+		storage.EXPECT().GetMoreCircuitBreakerReleases(gomock.Any(), cbc.IsFirstUpdate()).
 			Return(nil, nil)
 		if err := cbc.Update(); err != nil {
 			t.Fatalf("error: %s", err.Error())
@@ -120,6 +124,8 @@ func TestCircuitBreakersUpdate(t *testing.T) {
 		storage.EXPECT().GetUnixSecond(gomock.Any()).Return(currentTime.Unix(), nil).AnyTimes()
 		storage.EXPECT().GetMoreCircuitBreakers(gomock.Any(), cbc.IsFirstUpdate()).
 			Return(serviceWithCircuitBreakers, nil)
+		storage.EXPECT().GetMoreCircuitBreakerReleases(gomock.Any(), cbc.IsFirstUpdate()).
+			Return(nil, nil)
 		if err := cbc.Update(); err != nil {
 			t.Fatalf("error: %s", err.Error())
 		}
@@ -157,6 +163,8 @@ func TestCircuitBreakerUpdate2(t *testing.T) {
 		serviceWithCircuitBreakers := genModelCircuitBreakers(0, total)
 		storage.EXPECT().GetMoreCircuitBreakers(gomock.Any(), cbc.IsFirstUpdate()).
 			Return(serviceWithCircuitBreakers, nil)
+		storage.EXPECT().GetMoreCircuitBreakerReleases(gomock.Any(), cbc.IsFirstUpdate()).
+			Return(nil, nil)
 		if err := cbc.Update(); err != nil {
 			t.Fatalf("error: %s", err.Error())
 		}
@@ -164,6 +172,8 @@ func TestCircuitBreakerUpdate2(t *testing.T) {
 		serviceWithCircuitBreakers = genModelCircuitBreakers(10, total)
 		storage.EXPECT().GetMoreCircuitBreakers(gomock.Any(), cbc.IsFirstUpdate()).
 			Return(serviceWithCircuitBreakers, nil)
+		storage.EXPECT().GetMoreCircuitBreakerReleases(gomock.Any(), cbc.IsFirstUpdate()).
+			Return(nil, nil)
 		if err := cbc.Update(); err != nil {
 			t.Fatalf("error: %s", err.Error())
 		}
@@ -181,6 +191,8 @@ func TestCircuitBreakerUpdate2(t *testing.T) {
 		serviceWithCircuitBreakers := genModelCircuitBreakers(0, total)
 		storage.EXPECT().GetMoreCircuitBreakers(gomock.Any(), cbc.IsFirstUpdate()).
 			Return(serviceWithCircuitBreakers, nil)
+		storage.EXPECT().GetMoreCircuitBreakerReleases(gomock.Any(), cbc.IsFirstUpdate()).
+			Return(nil, nil)
 		if err := cbc.Update(); err != nil {
 			t.Fatalf("error: %s", err.Error())
 		}
@@ -191,6 +203,8 @@ func TestCircuitBreakerUpdate2(t *testing.T) {
 
 		storage.EXPECT().GetMoreCircuitBreakers(gomock.Any(), cbc.IsFirstUpdate()).
 			Return(serviceWithCircuitBreakers, nil)
+		storage.EXPECT().GetMoreCircuitBreakerReleases(gomock.Any(), cbc.IsFirstUpdate()).
+			Return(nil, nil)
 		if err := cbc.Update(); err != nil {
 			t.Fatalf("error: %s", err.Error())
 		}

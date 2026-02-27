@@ -115,8 +115,10 @@ func newCacheManager(ctx context.Context, cacheOpt *Config, storage store.Store)
 	// 灰度规则
 	mgr.RegisterCacher(cacheapi.CacheGray, cachegray.NewGrayCache(storage, mgr))
 
-	if len(mgr.caches) != int(cacheapi.CacheLast) {
-		return nil, errors.New("some Cache implement not loaded into CacheManager")
+	for i := 0; i < int(cacheapi.CacheLast); i++ {
+		if mgr.caches[i] == nil {
+			return nil, errors.New("some Cache implement not loaded into CacheManager")
+		}
 	}
 
 	if err := mgr.Initialize(); err != nil {

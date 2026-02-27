@@ -395,6 +395,7 @@ func (s *StrategyDetail) FromSpec(req *apisecurity.AuthStrategy) {
 	s.Revision = utils.NewUUID()
 	s.CreateTime = time.Now()
 	s.ModifyTime = time.Now()
+	s.Metadata = req.Metadata
 	s.CalleeMethods = req.GetFunctions()
 	s.Conditions = make([]Condition, 0, len(req.GetResourceLabels()))
 	for i := range req.GetResourceLabels() {

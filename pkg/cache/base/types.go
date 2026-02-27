@@ -56,7 +56,7 @@ func NewBaseCache(s store.Store, cacheMgr cachetypes.CacheManager) *BaseCache {
 	return c
 }
 
-func NewBaseCacheWithRepoerMetrics(s store.Store, cacheMgr cachetypes.CacheManager, reportMetrics func()) *BaseCache {
+func NewBaseCacheWithReporterMetrics(s store.Store, cacheMgr cachetypes.CacheManager, reportMetrics func()) *BaseCache {
 	c := &BaseCache{
 		s:             s,
 		CacheMgr:      cacheMgr,
@@ -108,9 +108,14 @@ func (bc *BaseCache) LastMtime(label string) time.Time {
 	return time.Unix(0, 0)
 }
 
+// LastFetchTime 由 singleflight 串行调用的 realUpdate 内使用，无跨 goroutine 并发
 func (bc *BaseCache) LastFetchTime() time.Time {
+	timeDiff := bc.timeDiff
+	if bc.CacheMgr != nil {
+		timeDiff = bc.CacheMgr.GetTimeDiff()
+	}
 	lastTime := time.Unix(bc.lastFetchTime, 0)
-	tmp := lastTime.Add(bc.timeDiff)
+	tmp := lastTime.Add(timeDiff)
 	if zeroTime.After(tmp) {
 		return lastTime
 	}
@@ -120,15 +125,15 @@ func (bc *BaseCache) LastFetchTime() time.Time {
 
 // OriginLastFetchTime only for test
 func (bc *BaseCache) OriginLastFetchTime() time.Time {
-	lastTime := time.Unix(bc.lastFetchTime, 0)
-	return lastTime
+	return time.Unix(bc.lastFetchTime, 0)
 }
 
+// IsFirstUpdate 由 singleflight 串行调用的 realUpdate 内使用，无跨 goroutine 并发
 func (bc *BaseCache) IsFirstUpdate() bool {
 	return bc.firstUpdate
 }
 
-func (bc *BaseCache) DoCacheUpdate(name string, executor func() (map[string]time.Time, int64, error)) error {
+func (bc *BaseCache) DoCacheUpdate(name string, executor func() (map[string]time.Time, int64, error)) (execErr error) {
 	if bc.IsFirstUpdate() {
 		log.Infof("[Cache][%s] begin run cache update work", name)
 	}
@@ -137,12 +142,13 @@ func (bc *BaseCache) DoCacheUpdate(name string, executor func() (map[string]time
 		curStoreTime = bc.lastFetchTime
 		log.Warnf("[Cache][%s] get store timestamp fail, skip update lastMtime, err : %v", name, err)
 	}
+	// 仅在校验无 panic 且 executor 成功时更新 lastFetchTime，避免首次拉取失败后被设为当前时间导致后续增量永远为空
 	defer func() {
-		if err := recover(); err != nil {
+		if r := recover(); r != nil {
 			var buf [4086]byte
 			n := runtime.Stack(buf[:], false)
-			log.Errorf("[Cache][%s] run cache update panic: %+v, stack\n%s\n", name, err, string(buf[:n]))
-		} else {
+			log.Errorf("[Cache][%s] run cache update panic: %+v, stack\n%s\n", name, r, string(buf[:n]))
+		} else if execErr == nil {
 			bc.lastFetchTime = curStoreTime
 		}
 	}()
@@ -150,6 +156,7 @@ func (bc *BaseCache) DoCacheUpdate(name string, executor func() (map[string]time
 	start := time.Now()
 	lastMtimes, total, err := executor()
 	if err != nil {
+		execErr = err
 		return err
 	}
 

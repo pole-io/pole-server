@@ -72,10 +72,13 @@ func (nsCache *namespaceCache) Update() error {
 }
 
 func (nsCache *namespaceCache) realUpdate() (map[string]time.Time, int64, error) {
-	var (
-		lastTime = nsCache.LastFetchTime()
-		ret, err = nsCache.storage.GetMoreNamespaces(lastTime)
-	)
+	lastTime := nsCache.LastFetchTime()
+	// cache 为空时强制从 epoch 全量拉取，避免 lastFetchTime 被误设为当前时间后一直拉不到数据
+	if nsCache.ids.Len() == 0 {
+		lastTime = time.Unix(1, 0)
+		log.Info("[Cache][Namespace] cache empty, force full load from store")
+	}
+	ret, err := nsCache.storage.GetMoreNamespaces(lastTime)
 	if err != nil {
 		log.Error("[Cache][Namespace] get storage more", zap.Error(err))
 		return nil, -1, err

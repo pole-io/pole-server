@@ -70,7 +70,7 @@ func NewInstanceCache(storage store.Store, cacheMgr cacheapi.CacheManager) cache
 		singleFlight: new(singleflight.Group),
 	}
 
-	ic.BaseCache = cachebase.NewBaseCacheWithRepoerMetrics(storage, cacheMgr, ic.reportMetricsInfo)
+	ic.BaseCache = cachebase.NewBaseCacheWithReporterMetrics(storage, cacheMgr, ic.reportMetricsInfo)
 	return ic
 }
 

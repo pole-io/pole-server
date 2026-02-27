@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/mitchellh/mapstructure"
+	"go.uber.org/zap"
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
@@ -49,12 +50,12 @@ func (job *deleteUnHealthyInstanceJob) init(raw map[string]interface{}) error {
 	}
 	decoder, err := mapstructure.NewDecoder(decodeConfig)
 	if err != nil {
-		log.Errorf("[Maintain][Job][DeleteUnHealthyInstance] new config decoder err: %v", err)
+		jobLog().Error("[Maintain][Job][DeleteUnHealthyInstance] new config decoder failed", zap.Error(err))
 		return err
 	}
 	err = decoder.Decode(raw)
 	if err != nil {
-		log.Errorf("[Maintain][Job][DeleteUnHealthyInstance] parse config err: %v", err)
+		jobLog().Error("[Maintain][Job][DeleteUnHealthyInstance] parse config failed", zap.Error(err))
 		return err
 	}
 	job.cfg = cfg
@@ -71,7 +72,7 @@ func (job *deleteUnHealthyInstanceJob) execute() {
 	for {
 		instanceIds, err := job.storage.GetUnHealthyInstances(job.cfg.InstanceDeleteTimeout, batchSize)
 		if err != nil {
-			log.Errorf("[Maintain][Job][DeleteUnHealthyInstance] get unhealthy instances, err: %v", err)
+			jobLog().Error("[Maintain][Job][DeleteUnHealthyInstance] get unhealthy instances failed", zap.Error(err))
 			break
 		}
 		if len(instanceIds) == 0 {
@@ -85,22 +86,22 @@ func (job *deleteUnHealthyInstanceJob) execute() {
 
 		ctx, err := buildContext(job.storage)
 		if err != nil {
-			log.Errorf("[Maintain][Job][DeleteUnHealthyInstance] build conetxt, err: %v", err)
+			jobLog().Error("[Maintain][Job][DeleteUnHealthyInstance] build context failed", zap.Error(err))
 			return
 		}
 		resp := job.namingServer.DeleteInstances(ctx, req)
 		if api.CalcCode(resp) == 200 {
-			log.Infof("[Maintain][Job][DeleteUnHealthyInstance] delete instance count %d, list: %v",
-				len(instanceIds), instanceIds)
+			jobLog().Info("[Maintain][Job][DeleteUnHealthyInstance] delete instances",
+				zap.Int("count", len(instanceIds)), zap.Any("ids", instanceIds))
 		} else {
-			log.Errorf("[Maintain][Job][DeleteUnHealthyInstance] delete instance list: %v, err: %d %s",
-				instanceIds, resp.Code, resp.Info)
+			jobLog().Error("[Maintain][Job][DeleteUnHealthyInstance] delete instances failed",
+				zap.Any("ids", instanceIds), zap.Uint32("code", resp.Code), zap.String("info", resp.Info))
 			break
 		}
 		count += len(instanceIds)
 	}
 
-	log.Infof("[Maintain][Job][DeleteUnHealthyInstance] delete unhealthy instance count %d", count)
+	jobLog().Info("[Maintain][Job][DeleteUnHealthyInstance] delete unhealthy instance done", zap.Int("count", count))
 
 }
 

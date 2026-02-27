@@ -130,17 +130,15 @@ func (s *Server) GetAllConfigFileTemplates(ctx context.Context) *apimodel.BatchQ
 		return api.NewConfigBatchQueryResponse(storeapi.StoreCode2APICode(err))
 	}
 
-	var apiTemplates []*apiconfig.ConfigFileTemplate
+	out := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	out.Amount = uint32(len(templates))
+	out.Size = uint32(len(templates))
 	for _, template := range templates {
-		apiTemplates = append(apiTemplates, conftypes.ToConfigFileTemplateAPI(template))
+		item := conftypes.ToConfigFileTemplateAPI(template)
+		if err := api.AddAnyDataIntoBatchQuery(out, item); err != nil {
+			log.Error("[Config][Service] add config file template to response data", utils.RequestID(ctx), zap.Error(err))
+			return api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteException)
+		}
 	}
-
-	// Convert to []interface{} for the API function
-	var interfaceTemplates []interface{}
-	for _, template := range apiTemplates {
-		interfaceTemplates = append(interfaceTemplates, template)
-	}
-
-	return api.NewConfigFileTemplateBatchQueryResponse(apimodel.Code_ExecuteSuccess,
-		uint32(len(templates)), interfaceTemplates)
+	return out
 }

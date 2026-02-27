@@ -21,7 +21,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
@@ -30,7 +33,10 @@ import (
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
-var log = commonlog.GetScopeOrDefaultByName(commonlog.DefaultLoggerName)
+// jobLog 惰性获取 job 专用 scope（OnceValue：首次调用时解析并缓存，避免包初始化时日志配置尚未加载）
+var jobLog = sync.OnceValue(func() *commonlog.Scope {
+	return commonlog.GetScopeOrDefaultByName(commonlog.JobLoggerName)
+})
 
 // MaintainJobs
 type MaintainJobs struct {
@@ -62,7 +68,7 @@ func NewMaintainJobs(namingServer service.DiscoverServer, cacheMgn *cache.CacheM
 // StartMaintainJobs
 func (mj *MaintainJobs) StartMaintianJobs(configs []JobConfig) error {
 	if err := mj.storage.StartLeaderElection(store.ElectionKeyMaintainJob); err != nil {
-		log.Errorf("[Maintain][Job] start leader election err: %v", err)
+		jobLog().Error("[Maintain][Job] start leader election failed", zap.Error(err))
 		return err
 	}
 
@@ -70,20 +76,20 @@ func (mj *MaintainJobs) StartMaintianJobs(configs []JobConfig) error {
 	mj.cancel = cancel
 	for _, cfg := range configs {
 		if !cfg.Enable {
-			log.Infof("[Maintain][Job] job (%s) not enable", cfg.Name)
+			jobLog().Info("[Maintain][Job] job not enable", zap.String("name", cfg.Name))
 			continue
 		}
 		jobName := parseJobName(cfg.Name)
 		job, ok := mj.findAdminJob(jobName)
 		if !ok {
-			log.Warnf("[Maintain][Job] job (%s) not exist", jobName)
+			jobLog().Warn("[Maintain][Job] job not exist", zap.String("job", jobName))
 			continue
 		}
 		if _, ok := mj.startedJobs[jobName]; ok {
 			return fmt.Errorf("[Maintain][Job] job (%s) duplicated", jobName)
 		}
 		if err := job.init(cfg.Option); err != nil {
-			log.Errorf("[Maintain][Job] job (%s) fail to init, err: %v", jobName, err)
+			jobLog().Error("[Maintain][Job] job fail to init", zap.String("job", jobName), zap.Error(err))
 			return fmt.Errorf("[Maintain][Job] job (%s) fail to init", jobName)
 		}
 		runAdminJob(ctx, jobName, job.interval(), job, mj.storage)
@@ -120,13 +126,13 @@ func (mj *MaintainJobs) StopMaintainJobs() {
 func runAdminJob(ctx context.Context, name string, interval time.Duration, job maintainJob, storage store.Store) {
 	safeExec := func() {
 		if !storage.IsLeader(store.ElectionKeyMaintainJob) {
-			log.Infof("[Maintain][Job][%s] I am follower", name)
+			jobLog().Info("[Maintain][Job] I am follower", zap.String("job", name))
 			job.clear()
 			return
 		}
-		log.Infof("[Maintain][Job][%s] I am leader, job start", name)
+		jobLog().Info("[Maintain][Job] I am leader, job start", zap.String("job", name))
 		job.execute()
-		log.Infof("[Maintain][Job][%s] I am leader, job end", name)
+		jobLog().Info("[Maintain][Job] I am leader, job end", zap.String("job", name))
 	}
 
 	ticker := time.NewTicker(interval)

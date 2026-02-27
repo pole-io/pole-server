@@ -21,6 +21,7 @@ import (
 	"github.com/emicklei/go-restful/v3"
 	restfulspec "github.com/polarismesh/go-restful-openapi/v2"
 
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 )
@@ -59,6 +60,24 @@ func EnrichHeartbeatApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {
 		Metadata(restfulspec.KeyOpenAPITags, registerInstanceApiTags).
 		Reads(apiservice.Instance{}).
 		Returns(0, "", service_manage.Instance{})
+}
+
+func EnrichGetServiceSubscribersApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {
+	return r.Doc("查询服务订阅者").
+		Metadata(restfulspec.KeyOpenAPITags, registerInstanceApiTags).
+		Param(restful.QueryParameter("caller_name", "调用方服务名称").
+			DataType("string").Required(false)).
+		Param(restful.QueryParameter("caller_namespace", "调用方服务命名空间").
+			DataType("string").Required(false)).
+		Param(restful.QueryParameter("callee_name", "被调用方服务名称").
+			DataType("string").Required(false)).
+		Param(restful.QueryParameter("callee_namespace", "被调用方服务命名空间").
+			DataType("string").Required(false)).
+		Param(restful.QueryParameter("offset", "查询偏移量").
+			DataType("integer").Required(false).DefaultValue("0")).
+		Param(restful.QueryParameter("limit", "查询条数").
+			DataType("integer").Required(false).DefaultValue("100")).
+		Returns(0, "", apimodel.BatchQueryResponse{})
 }
 
 func EnrichDiscoverApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {

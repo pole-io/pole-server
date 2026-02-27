@@ -118,12 +118,16 @@ func QueryCollect(resp *apimodel.BatchQueryResponse, response *apimodel.Response
 }
 
 // AddNamespace BatchQueryResponse添加命名空间
-func AddNamespace(b *apimodel.BatchQueryResponse, namespace *apimodel.Namespace) {
-}
-
-// AddNamespaceSummary 添加汇总信息
-func AddNamespaceSummary(b *apimodel.BatchQueryResponse, summary *apimodel.Summary) {
-
+func AddNamespace(b *apimodel.BatchQueryResponse, namespace *apimodel.Namespace) error {
+	if b == nil || namespace == nil {
+		return nil
+	}
+	data, err := anypb.New(proto.MessageV2(namespace))
+	if err != nil {
+		return nil
+	}
+	b.Data = append(b.Data, data)
+	return nil
 }
 
 // NewResponse 创建回复

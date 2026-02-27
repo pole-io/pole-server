@@ -61,39 +61,46 @@ func (svr *Server) CreateUsers(ctx context.Context, req []*apisecurity.User) *ap
 
 // CreateUser 创建用户
 func (svr *Server) CreateUser(ctx context.Context, req *apisecurity.User) *apimodel.Response {
-	ownerID := utils.ParseOwnerID(ctx)
-	req.Owner = ownerID
+	isInitMainUser := authapi.IsInitMainUser(ctx)
+	if !isInitMainUser {
+		ownerID := utils.ParseOwnerID(ctx)
+		req.Owner = ownerID
 
-	if ownerID != "" {
-		owner, err := svr.storage.GetUser(ownerID)
-		if err != nil {
-			log.Error("[Auth][User] get owner user", utils.RequestID(ctx), zap.Error(err), zap.String("owner", ownerID))
-			return api.NewUserResponse(storeapi.StoreCode2APICode(err), req)
-		}
+		if ownerID != "" {
+			owner, err := svr.storage.GetUser(ownerID)
+			if err != nil {
+				log.Error("[Auth][User] get owner user", utils.RequestID(ctx), zap.Error(err), zap.String("owner", ownerID))
+				return api.NewUserResponse(storeapi.StoreCode2APICode(err), req)
+			}
 
-		if owner.Name == req.Name {
-			log.Error("[Auth][User] create user name is equal owner", utils.RequestID(ctx),
-				zap.Error(err), zap.String("name", req.Name))
-			return api.NewUserResponse(apimodel.Code_UserExisted, req)
+			if owner.Name == req.Name {
+				log.Error("[Auth][User] create user name is equal owner", utils.RequestID(ctx),
+					zap.Error(err), zap.String("name", req.Name))
+				return api.NewUserResponse(apimodel.Code_UserExisted, req)
+			}
 		}
 	}
 
-	// 只有通过 owner + username 才能唯一确定一个用户
+	// 只有通过 owner + username 才能唯一确定一个用户；初始化主账户时 req.Owner 已由调用方设置为 name
 	user, err := svr.storage.GetUserByName(req.Name)
 	if err != nil {
 		log.Error("[Auth][User] get user by name and owner", utils.RequestID(ctx),
-			zap.Error(err), zap.String("owner", ownerID), zap.String("name", req.Name))
+			zap.Error(err), zap.String("owner", req.GetOwner()), zap.String("name", req.Name))
 		return api.NewUserResponse(storeapi.StoreCode2APICode(err), req)
 	}
 	if user != nil {
 		return api.NewUserResponse(apimodel.Code_UserExisted, req)
 	}
 
-	return svr.createUser(ctx, req)
+	return svr.createUser(ctx, req, isInitMainUser)
 }
 
-func (svr *Server) createUser(ctx context.Context, req *apisecurity.User) *apimodel.Response {
-	data, err := svr.createUserModel(req, authtypes.SubAccountUserRole)
+func (svr *Server) createUser(ctx context.Context, req *apisecurity.User, isInitMainUser bool) *apimodel.Response {
+	role := authtypes.SubAccountUserRole
+	if isInitMainUser {
+		role = authtypes.OwnerUserRole
+	}
+	data, err := svr.createUserModel(req, role)
 	if err != nil {
 		log.Error("[Auth][User] create user model", utils.RequestID(ctx), zap.Error(err))
 		return api.NewAuthResponse(apimodel.Code_ExecuteException)

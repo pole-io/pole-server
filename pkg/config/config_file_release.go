@@ -377,12 +377,15 @@ func (s *Server) handleDescribeConfigFileReleases(ctx context.Context, args cach
 		ret = append(ret, viewData)
 	}
 
-	interfaceRet := make([]interface{}, len(ret))
-	for i, r := range ret {
-		interfaceRet[i] = r
+	resp := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	resp.Amount = total
+	resp.Size = uint32(len(ret))
+	for i := range ret {
+		if err := api.AddAnyDataIntoBatchQuery(resp, ret[i]); err != nil {
+			log.Error("[Config][File] add config file release to response data", utils.RequestID(ctx), zap.Error(err))
+			return api.NewConfigBatchQueryResponseWithInfo(apimodel.Code_ExecuteException, err.Error())
+		}
 	}
-
-	resp := api.NewConfigFileReleaseHistoryQueryResponse(apimodel.Code_ExecuteSuccess, total, interfaceRet)
 	return resp
 }
 

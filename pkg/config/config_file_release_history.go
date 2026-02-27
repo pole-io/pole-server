@@ -89,10 +89,14 @@ func (s *Server) GetConfigFileReleaseHistories(ctx context.Context,
 		history := conftypes.ToReleaseHistoryAPI(data)
 		histories = append(histories, history)
 	}
-	interfaceHistories := make([]interface{}, len(histories))
-	for i, h := range histories {
-		interfaceHistories[i] = h
+	out := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	out.Amount = count
+	out.Size = uint32(len(histories))
+	for i := range histories {
+		if err := api.AddAnyDataIntoBatchQuery(out, histories[i]); err != nil {
+			log.Error("[Config][History] add config file release history to response data", utils.RequestID(ctx), zap.Error(err))
+			return api.NewConfigBatchQueryResponseWithInfo(apimodel.Code_ExecuteException, err.Error())
+		}
 	}
-	out := api.NewConfigFileReleaseHistoryQueryResponse(apimodel.Code_ExecuteSuccess, count, interfaceHistories)
 	return out
 }

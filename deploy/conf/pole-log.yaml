@@ -157,3 +157,12 @@ cmdb:
   rotationMaxAge: 7
   outputLevel: info
   compress: true
+# Maintain job log, file only (no stdout in debug mode)
+job:
+  rotateOutputPath: logs/runtime/polaris-job.log
+  errorRotateOutputPath: logs/runtime/polaris-job-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true

@@ -304,10 +304,12 @@ func (s *Server) GetAllServices(ctx context.Context, query map[string]string) *a
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	resp.Amount = uint32(len(ret))
 	resp.Size = uint32(len(ret))
-	// 注释：响应结构改动 - 根据 pole-io/specification，BatchQueryResponse 不再有 Services 字段
-	// 根据 pole-io/specification，BatchQueryResponse 不再有 Services 字段
-	// 数据需要通过 data 字段传递
-	// TODO: 需要确定正确的序列化方式
+	for i := range ret {
+		if err := api.AddAnyDataIntoBatchQuery(resp, ret[i]); err != nil {
+			log.Errorf("[Server][Service][GetAllServices] add service to response data: %s", err.Error())
+			return api.NewBatchQueryResponse(apimodel.Code_ExecuteException)
+		}
+	}
 	return resp
 }
 
@@ -374,9 +376,20 @@ func (s *Server) GetServices(ctx context.Context, query map[string]string) *apim
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	resp.Amount = uint32(total)
 	resp.Size = uint32(len(services))
-	// 根据 pole-io/specification，BatchQueryResponse 不再有 Services 字段
-	// 数据需要通过 data 字段传递
-	// TODO: 需要确定正确的序列化方式
+	for i := range services {
+		count := s.Cache().Instance().GetInstancesCountByServiceID(services[i].ID)
+		item := &apiservice.Service{
+			Namespace:            string(services[i].Namespace),
+			Name:                 string(services[i].Name),
+			TotalInstanceCount:   uint32(count.TotalInstanceCount),
+			HealthyInstanceCount: uint32(count.HealthyInstanceCount),
+			Metadata:             services[i].Meta,
+		}
+		if err := api.AddAnyDataIntoBatchQuery(resp, item); err != nil {
+			log.Errorf("[Server][Service][Query] add service to response data: %s", err.Error())
+			return api.NewBatchQueryResponse(apimodel.Code_ExecuteException)
+		}
+	}
 	return resp
 }
 

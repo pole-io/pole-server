@@ -453,12 +453,13 @@ func (m *adminStore) BatchCleanDeletedRules(rule string, timeout time.Duration, 
 	log.Infof("[Store][database] batch clean soft deleted %s(%d)", rule, batchSize)
 	var rows int64
 
-	// 验证表名，防止SQL注入
+	// 验证表名，防止SQL注入（与 pole_server.sql 及 clean_deleted_resource job 一致）
 	validTables := map[string]bool{
-		"routing_config":        true,
-		"ratelimit_config":      true,
-		"circuitbreaker_config": true,
-		"faultdetect_config":    true,
+		"router_rule":          true,
+		"ratelimit_rule":       true,
+		"circuitbreaker_rule":  true,
+		"fault_detect_rule":    true,
+		"lane_rule":            true,
 	}
 
 	if !validTables[rule] {
@@ -863,17 +864,18 @@ func (m *adminStore) BatchCleanWithChunks(tableName string, timeout time.Duratio
 	log.Infof("[Store][database] batch clean with chunks for %s (batch:%d, chunk:%d)",
 		tableName, batchSize, chunkSize)
 
-	// 验证表名
+	// 验证表名（与 pole_server.sql 及 clean_deleted_resource job 一致）
 	validTables := map[string]bool{
-		"instance":              true,
-		"service":               true,
-		"client":                true,
-		"config_file":           true,
-		"service_contract":      true,
-		"routing_config":        true,
-		"ratelimit_config":      true,
-		"circuitbreaker_config": true,
-		"faultdetect_config":    true,
+		"instance":             true,
+		"service":              true,
+		"client":               true,
+		"config_file":          true,
+		"service_contract":     true,
+		"router_rule":          true,
+		"ratelimit_rule":       true,
+		"circuitbreaker_rule":  true,
+		"fault_detect_rule":    true,
+		"lane_rule":            true,
 	}
 
 	if !validTables[tableName] {
@@ -904,7 +906,7 @@ func (m *adminStore) BatchCleanWithChunks(tableName string, timeout time.Duratio
 			cleanedCount, err = m.BatchCleanDeletedConfigFiles(timeout, currentChunkSize)
 		case "service_contract":
 			cleanedCount, err = m.BatchCleanDeletedServiceContracts(timeout, currentChunkSize)
-		case "routing_config", "ratelimit_config", "circuitbreaker_config", "faultdetect_config":
+		case "router_rule", "ratelimit_rule", "circuitbreaker_rule", "fault_detect_rule", "lane_rule":
 			cleanedCount, err = m.BatchCleanDeletedRules(tableName, timeout, currentChunkSize)
 		}
 

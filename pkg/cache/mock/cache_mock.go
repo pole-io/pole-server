@@ -265,6 +265,20 @@ func (mr *MockCacheManagerMockRecorder) GetUpdateCacheInterval() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUpdateCacheInterval", reflect.TypeOf((*MockCacheManager)(nil).GetUpdateCacheInterval))
 }
 
+// GetTimeDiff mocks base method.
+func (m *MockCacheManager) GetTimeDiff() time.Duration {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTimeDiff")
+	ret0, _ := ret[0].(time.Duration)
+	return ret0
+}
+
+// GetTimeDiff indicates an expected call of GetTimeDiff.
+func (mr *MockCacheManagerMockRecorder) GetTimeDiff() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTimeDiff", reflect.TypeOf((*MockCacheManager)(nil).GetTimeDiff))
+}
+
 // Gray mocks base method.
 func (m *MockCacheManager) Gray() cache.GrayCache {
 	m.ctrl.T.Helper()

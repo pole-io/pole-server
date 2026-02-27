@@ -557,41 +557,42 @@ CREATE TABLE
         PRIMARY KEY (`client_id`, `target`, `port`)
     ) ENGINE = InnoDB;
 
-/* 自定义路由 */
+-- ---------------------------------------------------------------------------
+-- 规则表 / 规则发布表 设计说明（参考 router_rule / router_rule_release）
+-- 规则表：仅保留公共列 + rule TEXT（规则内容 JSON）。特殊、自定义字段全部放入 rule 的 JSON。
+-- 发布表：仅保留公共列 + rule TEXT（发布快照 JSON）。列：id, name, rule_id, rule_name, rule, flag, version, active, description, release_type, ctime, mtime。
+-- 从旧表迁移时需将原专用列写入 rule JSON 并删除原列。
+-- ---------------------------------------------------------------------------
+
+/* 自定义路由（参考表：公共列 + rule 存整条规则 JSON，与 release 一致） */
 CREATE TABLE
     `router_rule` (
         `id` VARCHAR(128) NOT NULL,
         `name` VARCHAR(64) NOT NULL DEFAULT '',
         `namespace` VARCHAR(64) NOT NULL DEFAULT '',
-        `policy` VARCHAR(64) NOT NULL,
-        `config` TEXT,
-        `enable` INT NOT NULL DEFAULT 0,
         `revision` VARCHAR(40) NOT NULL,
         `description` VARCHAR(500) NOT NULL DEFAULT '',
-        `priority` SMALLINT (6) NOT NULL DEFAULT '0' COMMENT 'ratelimit rule priority',
         `flag` TINYINT (4) NOT NULL DEFAULT '0',
         `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         `etime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `extend_info` VARCHAR(1024) DEFAULT '',
         `metadata` TEXT COMMENT 'route rule metadata',
+        `rule` TEXT COMMENT '规则内容 JSON，含 policy/config/enable/priority 等',
         PRIMARY KEY (`id`),
         UNIQUE KEY `uk_rule_name` (`name`),
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
-
 
 /* 自定义路由发布表 */
 CREATE TABLE
     `router_rule_release` (
         `id` VARCHAR(128) NOT NULL,
         `name` VARCHAR(64) NOT NULL DEFAULT '',
-        `rule_id` VARCHAR(128) NOT NULL COMMENT 'router rule ID',
-        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'router rule name',
+        `rule_id` VARCHAR(128) NOT NULL COMMENT '规则 ID',
+        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '规则名称',
         `namespace` VARCHAR(64) NOT NULL DEFAULT '',
-        `rule` TEXT,
+        `rule` TEXT COMMENT '发布快照 JSON',
         `flag` TINYINT (4) NOT NULL DEFAULT '0',
-        `metadata` TEXT COMMENT 'route rule metadata',
         `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
         `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
         `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
@@ -603,26 +604,22 @@ CREATE TABLE
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
 
-/* 限流规则 */
+/* 限流规则（公共列 + rule JSON：disable/service_id/method/labels/priority 等） */
 CREATE TABLE
     `ratelimit_rule` (
         `id` VARCHAR(32) NOT NULL COMMENT 'ratelimit rule ID',
-        `name` VARCHAR(64) NOT NULL COMMENT 'ratelimt rule name',
-        `disable` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'ratelimit disable',
-        `service_id` VARCHAR(32) NOT NULL COMMENT 'Service ID',
-        `method` VARCHAR(512) NOT NULL COMMENT 'ratelimit method',
-        `labels` TEXT NOT NULL COMMENT 'Conductive flow for a specific label',
-        `priority` SMALLINT (6) NOT NULL DEFAULT '0' COMMENT 'ratelimit rule priority',
-        `rule` TEXT NOT NULL COMMENT 'Current limiting rules',
+        `name` VARCHAR(64) NOT NULL COMMENT 'ratelimit rule name',
+        `namespace` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'namespace',
         `revision` VARCHAR(32) NOT NULL COMMENT 'Limiting version',
+        `description` VARCHAR(512) NOT NULL DEFAULT '' COMMENT '描述',
         `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means that it has been logically deleted',
         `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
         `etime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'RateLimit rule enable time',
         `metadata` TEXT COMMENT 'ratelimit rule metadata',
+        `rule` TEXT NOT NULL COMMENT '规则内容 JSON，含 disable/service_id/method/labels/priority 及限流配置',
         PRIMARY KEY (`id`),
-        KEY `mtime` (`mtime`),
-        KEY `service_id` (`service_id`)
+        KEY `mtime` (`mtime`)
     ) ENGINE = InnoDB;
 
 /* 限流规则发布表 */
@@ -630,10 +627,10 @@ CREATE TABLE
     `ratelimit_rule_release` (
         `id` VARCHAR(32) NOT NULL COMMENT 'ratelimit rule ID',
         `name` VARCHAR(64) NOT NULL COMMENT 'release name',
-        `rule_id` VARCHAR(128) NOT NULL COMMENT 'router rule ID',
-        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'router rule name',
-        `rule` TEXT NOT NULL COMMENT 'Current limiting rules',
-        `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means that it has been logically deleted',
+        `rule_id` VARCHAR(128) NOT NULL COMMENT '规则 ID',
+        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '规则名称',
+        `rule` TEXT NOT NULL COMMENT '发布快照 JSON',
+        `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag',
         `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
         `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
         `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
@@ -645,27 +642,20 @@ CREATE TABLE
         KEY `rule_name` (`rule_name`)
     ) ENGINE = InnoDB;
 
-/* 熔断规则 */
+/* 熔断规则（公共列 + rule JSON：enable/level/src_service/dst_service/config 等） */
 CREATE TABLE
     `circuitbreaker_rule` (
         `id` VARCHAR(128) NOT NULL,
         `name` VARCHAR(64) NOT NULL,
         `namespace` VARCHAR(64) NOT NULL DEFAULT '',
-        `enable` INT NOT NULL DEFAULT 0,
         `revision` VARCHAR(40) NOT NULL,
         `description` VARCHAR(1024) NOT NULL DEFAULT '',
-        `level` INT NOT NULL,
-        `src_service` VARCHAR(128) NOT NULL,
-        `src_namespace` VARCHAR(64) NOT NULL,
-        `dst_service` VARCHAR(128) NOT NULL,
-        `dst_namespace` VARCHAR(64) NOT NULL,
-        `dst_method` VARCHAR(128) NOT NULL,
-        `config` TEXT,
         `flag` TINYINT (4) NOT NULL DEFAULT '0',
         `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         `etime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `metadata` TEXT COMMENT 'circuit_breaker rule metadata',
+        `rule` TEXT NOT NULL COMMENT '规则内容 JSON，含 enable/level/src_service/dst_service/config 等',
         PRIMARY KEY (`id`),
         KEY `name` (`name`),
         KEY `mtime` (`mtime`)
@@ -676,9 +666,9 @@ CREATE TABLE
     `circuitbreaker_rule_release` (
         `id` VARCHAR(128) NOT NULL,
         `name` VARCHAR(64) NOT NULL,
-        `rule_id` VARCHAR(128) NOT NULL COMMENT 'router rule ID',
-        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'router rule name',
-        `rule` TEXT NOT NULL COMMENT 'Current limiting rules',
+        `rule_id` VARCHAR(128) NOT NULL COMMENT '规则 ID',
+        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '规则名称',
+        `rule` TEXT NOT NULL COMMENT '发布快照 JSON',
         `flag` TINYINT (4) NOT NULL DEFAULT '0',
         `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
         `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
@@ -691,7 +681,7 @@ CREATE TABLE
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
 
-/* 主动探测 */
+/* 主动探测（公共列 + rule JSON：dst_service/dst_namespace/dst_method/config 等） */
 CREATE TABLE
     `fault_detect_rule` (
         `id` VARCHAR(128) NOT NULL,
@@ -699,14 +689,11 @@ CREATE TABLE
         `namespace` VARCHAR(64) NOT NULL DEFAULT 'default',
         `revision` VARCHAR(40) NOT NULL,
         `description` VARCHAR(1024) NOT NULL DEFAULT '',
-        `dst_service` VARCHAR(128) NOT NULL,
-        `dst_namespace` VARCHAR(64) NOT NULL,
-        `dst_method` VARCHAR(128) NOT NULL,
-        `config` TEXT,
         `flag` TINYINT (4) NOT NULL DEFAULT '0',
         `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         `metadata` TEXT COMMENT 'faultdetect rule metadata',
+        `rule` TEXT NOT NULL COMMENT '规则内容 JSON，含 dst_service/dst_namespace/dst_method/config 等',
         PRIMARY KEY (`id`),
         KEY `name` (`name`),
         KEY `mtime` (`mtime`)
@@ -717,9 +704,9 @@ CREATE TABLE
     `fault_detect_rule_release` (
         `id` VARCHAR(128) NOT NULL,
         `name` VARCHAR(64) NOT NULL,
-        `rule_id` VARCHAR(128) NOT NULL COMMENT 'router rule ID',
-        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'router rule name',
-        `rule` TEXT NOT NULL COMMENT 'Current limiting rules',
+        `rule_id` VARCHAR(128) NOT NULL COMMENT '规则 ID',
+        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '规则名称',
+        `rule` TEXT NOT NULL COMMENT '发布快照 JSON',
         `flag` TINYINT (4) NOT NULL DEFAULT '0',
         `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
         `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
@@ -732,21 +719,19 @@ CREATE TABLE
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
 
-/* 无损发布规则 */
+/* 无损发布规则（公共列 + rule JSON：service/config 等） */
 CREATE TABLE
     `lossless_rule` (
         `id` VARCHAR(128) NOT NULL,
         `namespace` VARCHAR(64) NOT NULL DEFAULT 'default',
-        `service` VARCHAR(64) NOT NULL,
         `revision` VARCHAR(40) NOT NULL,
         `description` VARCHAR(1024) NOT NULL DEFAULT '',
-        `config` TEXT,
         `flag` TINYINT (4) NOT NULL DEFAULT '0',
         `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         `metadata` TEXT COMMENT 'lossless rule metadata',
+        `rule` TEXT NOT NULL COMMENT '规则内容 JSON，含 service/config 等',
         PRIMARY KEY (`id`),
-        UNIQUE KEY `idx_namespace_service` (`namespace`, `service`),
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
 
@@ -755,10 +740,9 @@ CREATE TABLE
     `lossless_rule_release` (
         `id` VARCHAR(128) NOT NULL,
         `name` VARCHAR(64) NOT NULL,
-        `rule_id` VARCHAR(128) NOT NULL COMMENT 'router rule ID',
-        `namespace` VARCHAR(64) NOT NULL DEFAULT 'default',
-        `service` VARCHAR(64) NOT NULL,
-        `rule` TEXT NOT NULL COMMENT 'Current limiting rules',
+        `rule_id` VARCHAR(128) NOT NULL COMMENT '规则 ID',
+        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '规则名称',
+        `rule` TEXT NOT NULL COMMENT '发布快照 JSON',
         `flag` TINYINT (4) NOT NULL DEFAULT '0',
         `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
         `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
@@ -768,7 +752,6 @@ CREATE TABLE
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
         UNIQUE KEY `name` (`name`),
-        KEY `idx_namespace_service` (`namespace`, `service`),
         KEY `mtime` (`mtime`)
     ) ENGINE = innodb;
 
@@ -925,7 +908,7 @@ CREATE TABLE
         UNIQUE KEY `name` (`name`, `namespace`),
         KEY `namespace` (`namespace`),
         KEY `mtime` (`mtime`),
-        KEY `reference` (`reference`),
+        KEY `reference` (`reference`)
 ) ENGINE = InnoDB;
 
 /* MCP TOOl */
@@ -944,5 +927,5 @@ CREATE TABLE
         PRIMARY KEY (`id`),
         UNIQUE KEY `name` (`name`, `mcp_server_id`),
         KEY `mcp_server_id` (`mcp_server_id`),
-        KEY `mtime` (`mtime`),
+        KEY `mtime` (`mtime`)
 ) ENGINE = InnoDB;

@@ -1,0 +1,27 @@
+---
+description: Go 错误处理与 API 响应规范
+globs: "**/*.go"
+alwaysApply: false
+---
+
+# 错误处理与 API 响应
+
+## 业务错误码
+
+- 使用项目统一错误码：`pkg/common/api/v1` 的 `Code2Info`、以及 `apimodel.Code_*`。
+- 预定义错误用包级变量：`var ErrorNotAllowedAccess = errors.New(api.Code2Info(api.NotAllowedAccess))`。
+- 存储层错误转 API 码：`storeapi.StoreCode2APICode(err)`。
+
+## API 层返回
+
+- 返回 `*apimodel.Response` 或 `*apimodel.BatchWriteResponse`，使用：
+  - `api.NewResponse(apimodel.Code_XXX)`：仅码
+  - `api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())`：带消息
+  - `api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, data)`：成功带数据
+- 批量接口：`api.NewBatchWriteResponse` + `api.Collect(responses, response)`，最后 `api.FormatBatchWriteResponse(responses)`。
+- HTTP 层设置错误信息：`api.Code2Info(code)` 写入 `utils.PolarisMessage` header。
+
+## 错误处理原则
+
+- 不吞掉错误：记录后要么 return，要么 wrap 再抛（如 `github.com/pkg/errors`）。
+- 分支内先写错误处理，再写成功路径，保持可读性。

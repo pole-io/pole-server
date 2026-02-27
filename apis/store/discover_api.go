@@ -85,6 +85,8 @@ type ServiceStore interface {
 	DelServiceSubscibes([]*svctypes.ServiceSubscriber) error
 	// GetServiceSubscibes 获取服务订阅关系
 	GetMoreServiceSubscibes(mtime time.Time, firstUpdate bool) (map[string]*svctypes.ServiceSubscriber, error)
+	// BatchGetServiceSubscribers 批量查询服务订阅者
+	BatchGetServiceSubscribers(ctx context.Context, filter map[string]string, offset, limit uint32) (uint32, []*svctypes.ServiceSubscriber, error)
 }
 
 // InstanceStore 实例存储接口

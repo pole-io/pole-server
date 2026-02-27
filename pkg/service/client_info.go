@@ -117,10 +117,7 @@ func (s *Server) GetReportClients(ctx context.Context, query map[string]string) 
 		searchFilters[key] = value
 	}
 
-	var (
-		total   uint32
-		clients []*types.Client
-	)
+	var total uint32
 
 	offset, limit, err = valid.ParseOffsetAndLimit(searchFilters)
 	if err != nil {
@@ -136,7 +133,7 @@ func (s *Server) GetReportClients(ctx context.Context, query map[string]string) 
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	resp.Amount = total
 	resp.Size = uint32(len(services))
-	resp.Data = enhancedClients2Api(clients, client2Api)
+	resp.Data = enhancedClients2Api(services, client2Api)
 	return resp
 }
 

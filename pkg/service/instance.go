@@ -706,7 +706,6 @@ func updateHealthCheck(req *apiservice.Instance, instance *svctypes.Instance) bo
 func (s *Server) GetInstances(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	showLastHeartbeat := query["show_last_heartbeat"] == "true"
 	delete(query, "show_last_heartbeat")
-	showServiceRevision := query["show_service_revision"] == "true"
 	delete(query, "show_service_revision")
 	// 对数据先进行提前处理一下
 	filters, metaFilter, batchErr := preGetInstances(query)
@@ -726,7 +725,6 @@ func (s *Server) GetInstances(ctx context.Context, query map[string]string) *api
 	out.Amount = uint32(total)
 	out.Size = uint32(len(instances))
 
-	svcInfos := make(map[string]*svctypes.Service, 4)
 	apiInstances := make([]*apiservice.Instance, 0, len(instances))
 	for _, instance := range instances {
 		svc, _ := s.loadServiceByID(instance.ServiceID)
@@ -743,21 +741,12 @@ func (s *Server) GetInstances(ctx context.Context, query map[string]string) *api
 	if showLastHeartbeat {
 		s.fillLastHeartbeatTime(apiInstances)
 	}
-	if showServiceRevision {
-		// 额外显示每个服务的 revision 版本列表信息数据
-		servicesData := make([]*apiservice.Service, 0, len(svcInfos))
-		for i := range svcInfos {
-			svc := svcInfos[i].ToSpec()
-			revision := s.caches.Service().GetRevisionWorker().GetServiceInstanceRevision(svc.GetId())
-			svc.Revision = revision
-			servicesData = append(servicesData, svc)
+	for i := range apiInstances {
+		if err := api.AddAnyDataIntoBatchQuery(out, apiInstances[i]); err != nil {
+			log.Errorf("[Server][Instances][Query] add instance to response data: %s", err.Error())
+			return api.NewBatchQueryResponse(apimodel.Code_ExecuteException)
 		}
-		// 将服务数据序列化到 data 字段
-		// 注意：根据 pole-io/specification，BatchQueryResponse.data 是 repeated Any，用于存储任意数据
 	}
-	// 根据 pole-io/specification，BatchQueryResponse 不再有 Instances 字段
-	// 数据需要通过 data 字段传递
-	// TODO: 需要确定正确的序列化方式
 	return out
 }
 

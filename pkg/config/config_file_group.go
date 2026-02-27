@@ -290,12 +290,15 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 		values = append(values, item)
 	}
 
-	interfaceValues := make([]interface{}, len(values))
-	for i, v := range values {
-		interfaceValues[i] = v
+	resp := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	resp.Amount = total
+	resp.Size = uint32(len(values))
+	for i := range values {
+		if err := api.AddAnyDataIntoBatchQuery(resp, values[i]); err != nil {
+			log.Error("[Config][Service] add config file group to response data", utils.RequestID(ctx), zap.Error(err))
+			return api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteException)
+		}
 	}
-
-	resp := api.NewConfigFileGroupBatchQueryResponse(apimodel.Code_ExecuteSuccess, total, interfaceValues)
 	return resp
 }
 

@@ -328,21 +328,23 @@ func (s *Server) GetConfigFileRichInfo(ctx context.Context, req *apiconfig.Confi
 // SearchConfigFiles 查询配置文件
 func (s *Server) SearchConfigFiles(ctx context.Context, searchFilters map[string]string) *apimodel.BatchQueryResponse {
 	offset, limit, _ := valid.ParseOffsetAndLimit(searchFilters)
-	_, files, err := s.storage.QueryConfigFiles(searchFilters, offset, limit)
+	total, files, err := s.storage.QueryConfigFiles(searchFilters, offset, limit)
 	if err != nil {
 		log.Error("[Config][File] search config files.", utils.RequestID(ctx), zap.Error(err))
 		out := api.NewConfigBatchQueryResponse(storeapi.StoreCode2APICode(err))
 		return out
 	}
 
+	out := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	out.Amount = total
+	out.Size = uint32(len(files))
+
 	if len(files) == 0 {
-		out := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 		return out
 	}
 
 	_ = s.caches.ConfigFile().Update()
 	_ = s.caches.Gray().Update()
-	ret := make([]*apiconfig.ConfigFile, 0, len(files))
 	for _, file := range files {
 		file, err := s.chains.AfterGetFile(ctx, file)
 		if err != nil {
@@ -350,9 +352,12 @@ func (s *Server) SearchConfigFiles(ctx context.Context, searchFilters map[string
 				zap.Error(err))
 			return api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteException)
 		}
-		ret = append(ret, conftypes.ToConfigFileAPI(file))
+		item := conftypes.ToConfigFileAPI(file)
+		if err := api.AddAnyDataIntoBatchQuery(out, item); err != nil {
+			log.Error("[Config][File] add config file to response data", utils.RequestID(ctx), zap.Error(err))
+			return api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteException)
+		}
 	}
-	out := api.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	return out
 }
 

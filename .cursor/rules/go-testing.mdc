@@ -1,0 +1,26 @@
+---
+description: Go 测试规范
+globs: "**/*_test.go"
+alwaysApply: false
+---
+
+# Go 测试规范
+
+## 风格
+
+- 使用标准库 `testing`，可配合 `github.com/stretchr/testify`、`github.com/golang/mock`。
+- 表驱动或子测试二选一/组合使用；子测试用 `t.Run("用例描述", func(t *testing.T) { ... })`，用例描述可用中文（如「正常新建」「可以正常解析配置」）。
+
+## 命名
+
+- 测试函数：`TestXxx` 或 `Test_xxx`（下划线表示内部/辅助）。
+- 测试文件：`*_test.go`，包名可为 `package xxx` 或 `package xxx_test`（黑盒测试）。
+
+## 资源清理
+
+- 使用 `t.Cleanup(...)` 或 `defer` 释放资源；有 controller 时 `defer ctl.Finish()`。
+- 需要 context 时用 `context.WithCancel` 并在 cleanup 中 cancel。
+
+## Mock
+
+- 对外部依赖使用 mock 接口（如 `plugin/store/mock`），保持单测不依赖真实 DB/HTTP。

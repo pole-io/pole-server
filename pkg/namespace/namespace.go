@@ -302,11 +302,10 @@ func (s *Server) GetNamespaces(ctx context.Context, query map[string][]string) *
 	// 注释：响应字段改动 - Amount和Size从*wrapperspb.UInt32Value改为uint32，直接赋值
 	out.Amount = uint32(amount)
 	out.Size = uint32(len(namespaces))
-	var totalServiceCount, totalInstanceCount, totalHealthInstanceCount uint32
 	for _, namespace := range namespaces {
 		nsCntInfo := s.caches.Service().GetNamespaceCntInfo(namespace.Name)
 		// 注释：命名空间数据构造改动 - 所有字段从wrapper类型改为基础类型，数据处理逻辑保持不变
-		api.AddNamespace(out, &apimodel.Namespace{
+		if err := api.AddNamespace(out, &apimodel.Namespace{
 			Id:                       string(namespace.Name),
 			Name:                     string(namespace.Name),
 			Comment:                  string(namespace.Comment),
@@ -320,16 +319,11 @@ func (s *Server) GetNamespaces(ctx context.Context, query map[string][]string) *
 			Editable:                 true,
 			Deleteable:               true,
 			Metadata:                 namespace.Metadata,
-		})
-		totalServiceCount += nsCntInfo.ServiceCount
-		totalInstanceCount += nsCntInfo.InstanceCnt.TotalInstanceCount
-		totalHealthInstanceCount += nsCntInfo.InstanceCnt.HealthyInstanceCount
+		}); err != nil {
+			log.Error("add namespace to batch query response failed", zap.Error(err))
+			return api.NewBatchQueryResponse(apimodel.Code_ExecuteException)
+		}
 	}
-	api.AddNamespaceSummary(out, &apimodel.Summary{
-		TotalServiceCount:        totalServiceCount,
-		TotalInstanceCount:       totalInstanceCount,
-		TotalHealthInstanceCount: totalHealthInstanceCount,
-	})
 	return out
 }
 

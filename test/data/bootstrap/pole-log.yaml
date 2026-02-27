@@ -191,3 +191,12 @@ cmdb:
   rotationMaxAge: 7
   outputLevel: info
   compress: true
+# Maintain job log, file only (no stdout in debug mode)
+job:
+  rotateOutputPath: ./test/output/logs/runtime/pole-job.log
+  errorRotateOutputPath: ./test/output/logs/runtime/pole-job-error.log
+  rotationMaxSize: 100
+  rotationMaxBackups: 30
+  rotationMaxAge: 7
+  outputLevel: info
+  compress: true

@@ -127,6 +127,8 @@ type CacheManager interface {
 	GetUpdateCacheInterval() time.Duration
 	// GetReportInterval .
 	GetReportInterval() time.Duration
+	// GetTimeDiff 获取拉取 store 的时间偏移（负值，用于增量查询时间窗口）
+	GetTimeDiff() time.Duration
 	// GetCacher
 	GetCacher(cacheIndex CacheIndex) Cache
 	// RegisterCacher

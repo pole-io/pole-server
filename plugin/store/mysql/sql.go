@@ -179,6 +179,41 @@ func genServiceAliasWhereSQLAndArgs(str string, filter map[string]string, order 
 	return baseStr + filterStr + opStr, append(filterArgs, opArgs...)
 }
 
+// genServiceSubscriberWhereSQLAndArgs 生成service subscriber查询数据的where语句和对应参数
+func genServiceSubscriberWhereSQLAndArgs(str string, filter map[string]string, order *Order, offset uint32, limit uint32) (
+	string, []interface{}) {
+	baseStr := str
+	filterStr, filterArgs := genServiceSubscriberFilterSQL(filter)
+	if filterStr != "" {
+		baseStr += " where "
+	}
+	page := &Page{offset, limit}
+	opStr, opArgs := genOrderAndPage(order, page)
+
+	return baseStr + filterStr + opStr, append(filterArgs, opArgs...)
+}
+
+// genServiceSubscriberFilterSQL 根据service subscriber filter生成where相关的语句
+func genServiceSubscriberFilterSQL(filter map[string]string) (string, []interface{}) {
+	if len(filter) == 0 {
+		return "", nil
+	}
+
+	args := make([]interface{}, 0, len(filter))
+	var str string
+	firstIndex := true
+	for key, value := range filter {
+		if !firstIndex {
+			str += And
+		}
+		firstIndex = false
+		str += " " + key + "=?"
+		args = append(args, value)
+	}
+
+	return str, args
+}
+
 // genNamespaceWhereSQLAndArgs 生成namespace查询数据的where语句和对应参数
 func genNamespaceWhereSQLAndArgs(str string, filter map[string][]string, order *Order, offset, limit int) (
 	string, []interface{}) {

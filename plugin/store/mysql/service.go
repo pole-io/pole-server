@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/net/context"
+
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -527,6 +529,114 @@ func (ss *serviceStore) GetServiceAliases(filter map[string]string, offset uint3
 	}
 
 	return count, items, nil
+}
+
+// BatchGetServiceSubscribers 批量查询服务订阅者
+func (ss *serviceStore) BatchGetServiceSubscribers(ctx context.Context, filter map[string]string, offset, limit uint32) (uint32, []*svctypes.ServiceSubscriber, error) {
+	whereFilter := make(map[string]string)
+	callerName, hasCallerName := filter["caller_name"]
+	callerNamespace, hasCallerNamespace := filter["caller_namespace"]
+	calleeName, hasCalleeName := filter["callee_name"]
+	calleeNamespace, hasCalleeNamespace := filter["callee_namespace"]
+
+	if hasCallerName {
+		whereFilter["caller_name"] = callerName
+	}
+	if hasCallerNamespace {
+		whereFilter["caller_namespace"] = callerNamespace
+	}
+	if hasCalleeName {
+		whereFilter["callee_name"] = calleeName
+	}
+	if hasCalleeNamespace {
+		whereFilter["callee_namespace"] = calleeNamespace
+	}
+
+	count, err := ss.getServiceSubscribersCount(whereFilter)
+	if err != nil {
+		log.Errorf("[Store][database] get service subscribers count err: %s", err.Error())
+		return 0, nil, err
+	}
+
+	items, err := ss.getServiceSubscribersInfo(whereFilter, offset, limit)
+	if err != nil {
+		log.Errorf("[Store][database] get service subscribers info err: %s", err.Error())
+		return 0, nil, err
+	}
+
+	return count, items, nil
+}
+
+// getServiceSubscribersCount 获取服务订阅者数量
+func (ss *serviceStore) getServiceSubscribersCount(filter map[string]string) (uint32, error) {
+	baseStr := "select count(*) from service_subscribe_graph"
+	queryStmt, args := genServiceSubscriberWhereSQLAndArgs(baseStr, filter, nil, 0, 1)
+	rows, err := ss.slave.Query(queryStmt, args...)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	if rows.Next() {
+		var count uint32
+		if err := rows.Scan(&count); err != nil {
+			return 0, err
+		}
+		return count, nil
+	}
+	return 0, nil
+}
+
+// getServiceSubscribersInfo 获取服务订阅者详细信息
+func (ss *serviceStore) getServiceSubscribersInfo(filter map[string]string, offset uint32,
+	limit uint32) ([]*svctypes.ServiceSubscriber, error) {
+	// limit为0，则直接返回
+	if limit == 0 {
+		return make([]*svctypes.ServiceSubscriber, 0), nil
+	}
+
+	baseStr := `
+		select
+			caller_name, caller_namespace, callee_name, callee_namespace
+		from
+			service_subscribe_graph`
+
+order := &Order{"mtime", "desc"}
+	queryStmt, args := genServiceSubscriberWhereSQLAndArgs(baseStr, filter, order, offset, limit)
+	rows, err := ss.slave.Query(queryStmt, args...)
+	if err != nil {
+		log.Errorf("[Store][database] get service subscribers query err: %s", err.Error())
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var out []*svctypes.ServiceSubscriber
+	for rows.Next() {
+		var callerName, callerNamespace, calleeName, calleeNamespace string
+		err := rows.Scan(&callerName, &callerNamespace, &calleeName, &calleeNamespace)
+		if err != nil {
+			log.Errorf("[Store][database] get service subscribers scan err: %s", err.Error())
+			return nil, err
+		}
+		out = append(out, &svctypes.ServiceSubscriber{
+			Caller: &svctypes.ServiceKey{
+				Name:      callerName,
+				Namespace: callerNamespace,
+			},
+			Callee: []*svctypes.ServiceKey{
+				{
+					Name:      calleeName,
+					Namespace: calleeNamespace,
+				},
+			},
+		})
+	}
+	if err := rows.Err(); err != nil {
+		log.Errorf("[Store][database] get service subscribers rows err: %s", err.Error())
+		return nil, err
+	}
+
+	return out, nil
 }
 
 // getServiceAliasesInfo 获取服务别名的详细信息

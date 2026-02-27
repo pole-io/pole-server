@@ -23,8 +23,6 @@ import (
 	"strings"
 	"time"
 	"unicode"
-
-	"github.com/pole-io/pole-server/apis/store"
 )
 
 // QueryHandler is the interface that wraps the basic Query method.
@@ -133,24 +131,6 @@ func serviceAliasFilter2Where(filter map[string]string) map[string]string {
 	}
 
 	return out
-}
-
-// checkDataBaseAffectedRows 检查数据库处理返回的行数
-func checkDataBaseAffectedRows(result sql.Result, counts ...int64) error {
-	n, err := result.RowsAffected()
-	if err != nil {
-		log.Errorf("[Store][Database] get rows affected err: %s", err.Error())
-		return err
-	}
-
-	for _, c := range counts {
-		if n == c {
-			return nil
-		}
-	}
-
-	log.Errorf("[Store][Database] get rows affected result(%d) is not match expect(%+v)", n, counts)
-	return store.NewStatusError(store.AffectedRowsNotMatch, "affected rows not matched")
 }
 
 // timeToTimestamp 转时间戳（秒）

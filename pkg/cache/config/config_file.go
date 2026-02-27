@@ -73,7 +73,7 @@ func NewConfigFileCache(storage store.Store, cacheMgr cacheapi.CacheManager) cac
 	fc := &fileCache{
 		storage: storage,
 	}
-	fc.BaseCache = cachebase.NewBaseCacheWithRepoerMetrics(storage, cacheMgr, fc.reportMetricsInfo)
+	fc.BaseCache = cachebase.NewBaseCacheWithReporterMetrics(storage, cacheMgr, fc.reportMetricsInfo)
 	return fc
 }
 
