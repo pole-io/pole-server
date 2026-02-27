@@ -22,8 +22,6 @@ import (
 	"errors"
 	"fmt"
 
-	"go.uber.org/zap"
-
 	aiTypes "github.com/pole-io/pole-server/apis/pkg/types/ai"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/log"
