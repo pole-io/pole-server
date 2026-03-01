@@ -35,12 +35,6 @@ require (
 	google.golang.org/protobuf v1.36.6
 )
 
-require (
-	github.com/ArthurHlt/go-eureka-client v1.1.0
-	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
-	github.com/sirupsen/logrus v1.6.0 // indirect
-)
-
 // Indirect dependencies group
 require (
 	github.com/cncf/xds/go v0.0.0-20250121191232-2f005788dc42 // indirect
