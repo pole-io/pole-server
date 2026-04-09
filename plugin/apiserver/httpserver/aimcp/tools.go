@@ -1,16 +1,15 @@
 package aimcp
 
 import (
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 func marshal(pb proto.Message) (string, error) {
-	m := jsonpb.Marshaler{Indent: " ", EmitDefaults: true}
 	// Marshal the message to JSON
-	jsonStr, err := m.MarshalToString(pb)
+	data, err := protojson.MarshalOptions{Indent: " ", EmitUnpopulated: true}.Marshal(pb)
 	if err != nil {
 		return "", err
 	}
-	return jsonStr, nil
+	return string(data), nil
 }

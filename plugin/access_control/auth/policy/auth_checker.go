@@ -180,6 +180,10 @@ func (d *DefaultAuthChecker) resyncData(authCtx *authtypes.AcquireContext) error
 		log.Error("[Auth][Checker] force sync role failed", utils.RequestID(authCtx.GetRequestContext()), zap.Error(err))
 		return err
 	}
+	if err := d.cacheMgr.User().Update(); err != nil {
+		log.Error("[Auth][Checker] force sync user failed", utils.RequestID(authCtx.GetRequestContext()), zap.Error(err))
+		return err
+	}
 	return nil
 }
 
@@ -347,6 +351,61 @@ var (
 				}
 			}
 			return false
+		},
+		apisecurity.ResourceType_Namespaces: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.Namespace().GetNamespace(resource.ID)
+			return saveVal != nil
+		},
+		apisecurity.ResourceType_Services: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.Service().GetServiceByID(resource.ID)
+			return saveVal != nil
+		},
+		apisecurity.ResourceType_ConfigGroups: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.ConfigGroup().GetGroupByID(resource.ID)
+			return saveVal != nil
+		},
+		apisecurity.ResourceType_Users: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.User().GetUserByID(resource.ID)
+			return saveVal != nil
+		},
+		apisecurity.ResourceType_Roles: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.Role().GetRole(resource.ID)
+			return saveVal != nil
+		},
+		apisecurity.ResourceType_RouteRules: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.RoutingConfig().GetRule(resource.ID)
+			return saveVal != nil
+		},
+		apisecurity.ResourceType_RateLimitRules: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.RateLimit().GetRule(resource.ID)
+			return saveVal != nil
+		},
+		apisecurity.ResourceType_CircuitBreakerRules: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.CircuitBreaker().GetRule(resource.ID)
+			return saveVal != nil
+		},
+		apisecurity.ResourceType_FaultDetectRules: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.FaultDetector().GetRule(resource.ID)
+			return saveVal != nil
+		},
+		apisecurity.ResourceType_LaneRules: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.LaneRule().GetRule(resource.ID)
+			return saveVal != nil
+		},
+		apisecurity.ResourceType_LosslessRules: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.Lossless().GetRule(resource.ID)
+			return saveVal != nil
 		},
 	}
 )

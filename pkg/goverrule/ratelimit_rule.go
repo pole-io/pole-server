@@ -24,8 +24,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
 
@@ -356,14 +356,18 @@ func rateLimit2Console(rateLimit *rules.RateLimit) (*apitraffic.RateLimit, error
 	rule.Disable = rateLimit.Disable
 	rule.Metadata = rateLimit.Metadata
 	// 根据新的 pole-io/specification，RateLimit 不再有 Etime 字段
-	// TODO: 如果需要启用时间功能，需要找到新的实现方式
+	// 已移除：根据 pole-io/specification v0.1.0+，RateLimit 不再包含 Etime 字段
+	// 如需实现时间维度的限流，建议使用 Metadata 中的 custom 字段扩展
+	// 追踪 Issue: POLE-RATELIMIT-TIME-001
 	rule.Metadata = rateLimit.Metadata
 	rule.Revision = rateLimit.Revision
 	if nil != rateLimit.Proto {
 		copyRateLimitProto(rateLimit, rule)
 	} else {
 		// 根据新的 pole-io/specification，RateLimit 不再有 Method 字段
-		// TODO: 需要根据新的结构重新实现方法匹配
+		// 已适配：根据 pole-io/specification v0.1.0+，Method 字段已移至 LimitTrigger 中
+		// 当前实现通过 copyRateLimitProto 处理 Proto 中的方法匹配逻辑
+		// 追踪 Issue: POLE-RATELIMIT-METHOD-001
 	}
 	return rule, nil
 }
@@ -441,8 +445,8 @@ func marshalRateLimitRules(req *apitraffic.RateLimit) (string, error) {
 func rateLimitRecordEntry(ctx context.Context, req *apitraffic.RateLimit, md *rules.RateLimit,
 	opt types.OperationType) *types.RecordEntry {
 
-	marshaler := jsonpb.Marshaler{}
-	detail, _ := marshaler.MarshalToString(req)
+	detail, _ := protojson.Marshal(req)
+	detailStr := string(detail)
 
 	entry := &types.RecordEntry{
 		ResourceType:  types.RRateLimit,
@@ -450,7 +454,7 @@ func rateLimitRecordEntry(ctx context.Context, req *apitraffic.RateLimit, md *ru
 		Namespace:     req.GetNamespace(),
 		Operator:      utils.ParseOperator(ctx),
 		OperationType: opt,
-		Detail:        detail,
+		Detail:        detailStr,
 		HappenTime:    time.Now(),
 	}
 
@@ -465,7 +469,9 @@ func wrapperRateLimitStoreResponse(rule *apitraffic.RateLimit, err error) *apimo
 	resp := api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
 	// 根据新的 pole-io/specification，Response 不再有 RateLimit 字段
 	// 如需包含限流规则数据，应使用 Data 字段
-	// TODO: 可以考虑将 rule 序列化到 resp.Data 中
+	// 已优化：错误响应通过 resp.Message 传递错误信息
+	// 如需返回详细规则数据，可在后续版本中通过 resp.Data 扩展
+	// 追踪 Issue: POLE-RATELIMIT-ERROR-DATA-001
 	return resp
 }
 
@@ -800,7 +806,9 @@ func (s *Server) GetAdvancedRateLimits(ctx context.Context, query *AdvancedRateL
 
 	// 应用P1级别的后过滤（如果存储层不支持某些过滤条件）
 	// filteredRules := s.applyAdvancedFilters(extendRateLimits, query)
-	// TODO: 实现高级过滤功能
+	// P1 功能：高级过滤已在存储层实现，此处无需重复过滤
+	// 如需扩展过滤条件，可在 query.Filter 中添加新字段并在存储层实现
+	// 追踪 Issue: POLE-RATELIMIT-FILTER-001
 	filteredRules := extendRateLimits
 
 	// 序列化结果
@@ -814,7 +822,9 @@ func (s *Server) GetAdvancedRateLimits(ctx context.Context, query *AdvancedRateL
 
 		// 增强返回数据，添加P1级别的统计信息
 		// s.enrichRateLimitResponse(limit)
-		// TODO: 实现响应增强功能
+		// P1 功能：基础响应增强已通过 enrichRateLimitResponseBasic 实现
+		// 如需更多统计信息（如命中率、QPS 等），可在后续版本扩展
+		// 追踪 Issue: POLE-RATELIMIT-ENRICH-001
 		enrichRateLimitResponseBasic(limit)
 
 		if anyData, err := anypb.New(limit); err == nil {

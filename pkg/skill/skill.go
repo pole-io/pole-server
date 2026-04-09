@@ -22,8 +22,11 @@ import (
 	"errors"
 	"fmt"
 
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+
 	aiTypes "github.com/pole-io/pole-server/apis/pkg/types/ai"
 	"github.com/pole-io/pole-server/apis/store"
+	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/log"
 )
 
@@ -41,11 +44,25 @@ type SkillServer interface {
 	GetSkill(ctx context.Context, id string) (*aiTypes.Skill, error)
 	GetSkillByName(ctx context.Context, name, namespace string) (*aiTypes.Skill, error)
 
+	// Skill batch operations
+	CreateSkills(ctx context.Context, skills []*aiTypes.Skill) *apimodel.BatchWriteResponse
+	UpdateSkills(ctx context.Context, skills []*aiTypes.Skill) *apimodel.BatchWriteResponse
+	DeleteSkills(ctx context.Context, skills []*aiTypes.Skill) *apimodel.BatchWriteResponse
+	GetSkills(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
+	GetAllSkills(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
+	GetSkillsCount(ctx context.Context) *apimodel.BatchQueryResponse
+
 	// SkillGroup CRUD operations
 	CreateSkillGroup(ctx context.Context, group *aiTypes.SkillGroup) error
 	UpdateSkillGroup(ctx context.Context, group *aiTypes.SkillGroup) error
 	DeleteSkillGroup(ctx context.Context, namespace, name string) error
 	GetSkillGroup(ctx context.Context, namespace, name string) (*aiTypes.SkillGroup, error)
+
+	// SkillGroup batch operations
+	CreateSkillGroups(ctx context.Context, groups []*aiTypes.SkillGroup) *apimodel.BatchWriteResponse
+	UpdateSkillGroups(ctx context.Context, groups []*aiTypes.SkillGroup) *apimodel.BatchWriteResponse
+	DeleteSkillGroups(ctx context.Context, groups []*aiTypes.SkillGroup) *apimodel.BatchWriteResponse
+	GetSkillGroups(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 
 	// SkillVersion operations
 	CreateSkillVersion(ctx context.Context, version *aiTypes.SkillVersion) error
@@ -269,4 +286,192 @@ func (s *Server) GetSkillSubscriptionsByClient(ctx context.Context, clientID str
 	}
 
 	return s.storage.GetSkillSubscriptionByClient(clientID)
+}
+
+// ===== Batch Operations =====
+
+// CreateSkills creates multiple skills
+func (s *Server) CreateSkills(ctx context.Context, skills []*aiTypes.Skill) *apimodel.BatchWriteResponse {
+	resp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, skill := range skills {
+		if err := s.CreateSkill(ctx, skill); err != nil {
+			log.Errorf("[Skill] create skill failed, namespace: %s, name: %s, err: %v",
+				skill.Namespace, skill.Name, err)
+			api.Collect(resp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.Collect(resp, api.NewResponse(apimodel.Code_ExecuteSuccess))
+		}
+	}
+	return api.FormatBatchWriteResponse(resp)
+}
+
+// UpdateSkills updates multiple skills
+func (s *Server) UpdateSkills(ctx context.Context, skills []*aiTypes.Skill) *apimodel.BatchWriteResponse {
+	resp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, skill := range skills {
+		if err := s.UpdateSkill(ctx, skill); err != nil {
+			log.Errorf("[Skill] update skill failed, namespace: %s, name: %s, err: %v",
+				skill.Namespace, skill.Name, err)
+			api.Collect(resp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.Collect(resp, api.NewResponse(apimodel.Code_ExecuteSuccess))
+		}
+	}
+	return api.FormatBatchWriteResponse(resp)
+}
+
+// DeleteSkills deletes multiple skills
+func (s *Server) DeleteSkills(ctx context.Context, skills []*aiTypes.Skill) *apimodel.BatchWriteResponse {
+	resp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, skill := range skills {
+		if err := s.DeleteSkill(ctx, skill.ID); err != nil {
+			log.Errorf("[Skill] delete skill failed, id: %s, err: %v", skill.ID, err)
+			api.Collect(resp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.Collect(resp, api.NewResponse(apimodel.Code_ExecuteSuccess))
+		}
+	}
+	return api.FormatBatchWriteResponse(resp)
+}
+
+// GetSkills queries skills with filters
+func (s *Server) GetSkills(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
+	if s.storage == nil {
+		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	}
+
+	offset, limit := parseOffsetLimit(query)
+	count, skills, err := s.storage.QuerySkills(query, offset, limit)
+	if err != nil {
+		log.Errorf("[Skill] query skills failed, err: %v", err)
+		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	}
+
+	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	resp.Amount = count
+	resp.Size = uint32(len(skills))
+	return resp
+}
+
+// GetAllSkills gets all skills
+func (s *Server) GetAllSkills(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
+	if s.storage == nil {
+		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	}
+
+	// Use large limit to get all
+	count, skills, err := s.storage.QuerySkills(query, 0, 10000)
+	if err != nil {
+		log.Errorf("[Skill] get all skills failed, err: %v", err)
+		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	}
+
+	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	resp.Amount = count
+	resp.Size = uint32(len(skills))
+	return resp
+}
+
+// GetSkillsCount gets the total count of skills
+func (s *Server) GetSkillsCount(ctx context.Context) *apimodel.BatchQueryResponse {
+	if s.storage == nil {
+		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	}
+
+	count, _, err := s.storage.QuerySkills(nil, 0, 0)
+	if err != nil {
+		log.Errorf("[Skill] get skills count failed, err: %v", err)
+		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	}
+
+	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	resp.Amount = count
+	return resp
+}
+
+// CreateSkillGroups creates multiple skill groups
+func (s *Server) CreateSkillGroups(ctx context.Context, groups []*aiTypes.SkillGroup) *apimodel.BatchWriteResponse {
+	resp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, group := range groups {
+		if err := s.CreateSkillGroup(ctx, group); err != nil {
+			log.Errorf("[SkillGroup] create skill group failed, namespace: %s, name: %s, err: %v",
+				group.Namespace, group.Name, err)
+			api.Collect(resp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.Collect(resp, api.NewResponse(apimodel.Code_ExecuteSuccess))
+		}
+	}
+	return api.FormatBatchWriteResponse(resp)
+}
+
+// UpdateSkillGroups updates multiple skill groups
+func (s *Server) UpdateSkillGroups(ctx context.Context, groups []*aiTypes.SkillGroup) *apimodel.BatchWriteResponse {
+	resp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, group := range groups {
+		if err := s.UpdateSkillGroup(ctx, group); err != nil {
+			log.Errorf("[SkillGroup] update skill group failed, namespace: %s, name: %s, err: %v",
+				group.Namespace, group.Name, err)
+			api.Collect(resp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.Collect(resp, api.NewResponse(apimodel.Code_ExecuteSuccess))
+		}
+	}
+	return api.FormatBatchWriteResponse(resp)
+}
+
+// DeleteSkillGroups deletes multiple skill groups
+func (s *Server) DeleteSkillGroups(ctx context.Context, groups []*aiTypes.SkillGroup) *apimodel.BatchWriteResponse {
+	resp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, group := range groups {
+		if err := s.DeleteSkillGroup(ctx, group.Namespace, group.Name); err != nil {
+			log.Errorf("[SkillGroup] delete skill group failed, namespace: %s, name: %s, err: %v",
+				group.Namespace, group.Name, err)
+			api.Collect(resp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.Collect(resp, api.NewResponse(apimodel.Code_ExecuteSuccess))
+		}
+	}
+	return api.FormatBatchWriteResponse(resp)
+}
+
+// GetSkillGroups queries skill groups with filters
+func (s *Server) GetSkillGroups(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
+	if s.storage == nil {
+		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	}
+
+	offset, limit := parseOffsetLimit(query)
+	count, groups, err := s.storage.QuerySkillGroups(query, offset, limit)
+	if err != nil {
+		log.Errorf("[SkillGroup] query skill groups failed, err: %v", err)
+		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	}
+
+	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	resp.Amount = count
+	resp.Size = uint32(len(groups))
+	return resp
+}
+
+// parseOffsetLimit parses offset and limit from query params
+func parseOffsetLimit(query map[string]string) (uint32, uint32) {
+	var offset, limit uint32 = 0, 100
+
+	if o, ok := query["offset"]; ok {
+		if v, err := parseUint32(o); err == nil {
+			offset = v
+		}
+	}
+	if l, ok := query["limit"]; ok {
+		if v, err := parseUint32(l); err == nil {
+			limit = v
+		}
+	}
+	return offset, limit
+}
+
+func parseUint32(s string) (uint32, error) {
+	var v uint32
+	_, err := fmt.Sscanf(s, "%d", &v)
+	return v, err
 }

@@ -23,7 +23,7 @@ import (
 	"maps"
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
+	"google.golang.org/protobuf/encoding/protojson"
 	"go.uber.org/zap"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -514,8 +514,8 @@ func (svr *Server) userGroupDetail2Api(group *authtypes.UserGroupDetail) *apisec
 func userGroupRecordEntry(ctx context.Context, req *apisecurity.UserGroup, md *authtypes.UserGroup,
 	operationType types.OperationType) *types.RecordEntry {
 
-	marshaler := jsonpb.Marshaler{}
-	datail, _ := marshaler.MarshalToString(req)
+	detailBytes, _ := protojson.Marshal(req)
+	datail := string(detailBytes)
 
 	entry := &types.RecordEntry{
 		ResourceType:  types.RUserGroup,
@@ -533,8 +533,8 @@ func userGroupRecordEntry(ctx context.Context, req *apisecurity.UserGroup, md *a
 func modifyUserGroupRecordEntry(ctx context.Context, req *apisecurity.UserGroup, md *authtypes.UserGroup,
 	operationType types.OperationType) *types.RecordEntry {
 
-	marshaler := jsonpb.Marshaler{}
-	detail, _ := marshaler.MarshalToString(req)
+	detailBytes, _ := protojson.Marshal(req)
+	detail := string(detailBytes)
 
 	entry := &types.RecordEntry{
 		ResourceType:  types.RUserGroup,
@@ -552,8 +552,8 @@ func modifyUserGroupRecordEntry(ctx context.Context, req *apisecurity.UserGroup,
 func userRelationRecordEntry(ctx context.Context, req *apisecurity.UserGroupRelation, md *authtypes.UserGroup,
 	operationType types.OperationType) *types.RecordEntry {
 
-	marshaler := jsonpb.Marshaler{}
-	detail, _ := marshaler.MarshalToString(req)
+	detailBytes2, _ := protojson.Marshal(req)
+	detail := string(detailBytes2)
 
 	entry := &types.RecordEntry{
 		ResourceType:  types.RUserGroupRelation,

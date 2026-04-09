@@ -28,7 +28,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
+	"google.golang.org/protobuf/encoding/protojson"
 	"go.uber.org/zap"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -443,10 +443,169 @@ func (svr *Server) GetResourcePrincipals(ctx context.Context, query map[string]s
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, principals)
 }
 
-// AuthorizeResources 授权资源
+// AuthorizeResources 授权资源：将指定资源授权给若干 principal，即给这些 principal 的默认策略增加对应资源关联。
 func (svr *Server) AuthorizeResources(ctx context.Context, reqs []*v1.AuthorizeResources) *apimodel.Response {
-	// TODO
+	if len(reqs) == 0 {
+		return api.NewAuthResponse(apimodel.Code_EmptyRequest)
+	}
+
+	for _, req := range reqs {
+		// 1.1 请求校验：ResourceType、ResourceID、Principals 必填
+		if strings.TrimSpace(req.ResourceType) == "" {
+			return api.NewAuthResponseWithMsg(apimodel.Code_InvalidParameter, "resource_type is required")
+		}
+		if strings.TrimSpace(req.ResourceID) == "" {
+			return api.NewAuthResponseWithMsg(apimodel.Code_InvalidParameter, "resource_id is required")
+		}
+		if len(req.Principals.Users) == 0 && len(req.Principals.Groups) == 0 && len(req.Principals.Roles) == 0 {
+			return api.NewAuthResponseWithMsg(apimodel.Code_InvalidParameter, "principals is required and cannot be empty")
+		}
+
+		// 1.2 ResourceType 映射为 apisecurity.ResourceType
+		key := strings.ToLower(strings.TrimSpace(req.ResourceType))
+		num, ok := resTypeFilter[key]
+		if !ok {
+			return api.NewAuthResponseWithMsg(apimodel.Code_InvalidParameter, "invalid resource_type: "+req.ResourceType)
+		}
+		resType, ok := authtypes.SearchTypeMapping[num]
+		if !ok {
+			return api.NewAuthResponseWithMsg(apimodel.Code_InvalidParameter, "unsupported resource_type: "+req.ResourceType)
+		}
+
+		// 1.3 资源存在性校验（* 表示不校验）
+		if req.ResourceID != "*" {
+			if errResp := svr.authorizeCheckResourceExist(ctx, resType, req.ResourceID); errResp != nil {
+				return errResp
+			}
+		}
+
+		// 1.4 Principal 存在性校验
+		if errResp := svr.authorizeCheckPrincipalsExist(ctx, &req.Principals); errResp != nil {
+			return errResp
+		}
+
+		// 1.5 按 principal 写默认策略资源
+		strategyResources := make([]authtypes.StrategyResource, 0)
+		for _, p := range req.Principals.Users {
+			if p.Id == "" {
+				continue
+			}
+			strategy, err := svr.storage.GetDefaultStrategyDetailByPrincipal(p.Id, authtypes.PrincipalUser)
+			if err != nil {
+				log.Error("[Auth][Strategy] get default strategy by user", utils.RequestID(ctx), zap.String("user", p.Id), zap.Error(err))
+				return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
+			}
+			if strategy == nil {
+				return api.NewAuthResponseWithMsg(apimodel.Code_NotFoundAuthStrategyRule, "default strategy not found for user: "+p.Id)
+			}
+			strategyResources = append(strategyResources, authtypes.StrategyResource{
+				StrategyID: strategy.ID,
+				ResType:    resType,
+				ResID:      req.ResourceID,
+			})
+		}
+		for _, p := range req.Principals.Groups {
+			if p.Id == "" {
+				continue
+			}
+			strategy, err := svr.storage.GetDefaultStrategyDetailByPrincipal(p.Id, authtypes.PrincipalGroup)
+			if err != nil {
+				log.Error("[Auth][Strategy] get default strategy by group", utils.RequestID(ctx), zap.String("group", p.Id), zap.Error(err))
+				return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
+			}
+			if strategy == nil {
+				return api.NewAuthResponseWithMsg(apimodel.Code_NotFoundAuthStrategyRule, "default strategy not found for group: "+p.Id)
+			}
+			strategyResources = append(strategyResources, authtypes.StrategyResource{
+				StrategyID: strategy.ID,
+				ResType:    resType,
+				ResID:      req.ResourceID,
+			})
+		}
+		for _, p := range req.Principals.Roles {
+			if p.Id == "" {
+				continue
+			}
+			strategy, err := svr.storage.GetDefaultStrategyDetailByPrincipal(p.Id, authtypes.PrincipalRole)
+			if err != nil {
+				log.Error("[Auth][Strategy] get default strategy by role", utils.RequestID(ctx), zap.String("role", p.Id), zap.Error(err))
+				return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
+			}
+			if strategy == nil {
+				return api.NewAuthResponseWithMsg(apimodel.Code_NotFoundAuthStrategyRule, "default strategy not found for role: "+p.Id)
+			}
+			strategyResources = append(strategyResources, authtypes.StrategyResource{
+				StrategyID: strategy.ID,
+				ResType:    resType,
+				ResID:      req.ResourceID,
+			})
+		}
+		if len(strategyResources) == 0 {
+			continue
+		}
+		if err := svr.storage.LooseAddStrategyResources(strategyResources); err != nil {
+			log.Error("[Auth][Strategy] loose add strategy resources", utils.RequestID(ctx), zap.Error(err))
+			return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
+		}
+	}
+
 	return api.NewAuthResponse(apimodel.Code_ExecuteSuccess)
+}
+
+// authorizeCheckResourceExist 校验授权请求中的资源是否存在（* 由调用方跳过）
+func (svr *Server) authorizeCheckResourceExist(ctx context.Context, resType apisecurity.ResourceType, resourceID string) *apimodel.Response {
+	switch resType {
+	case apisecurity.ResourceType_Namespaces:
+		if svr.cacheMgr.Namespace().GetNamespace(resourceID) == nil {
+			return api.NewAuthResponse(apimodel.Code_NotFoundResource)
+		}
+	case apisecurity.ResourceType_Services:
+		if svr.cacheMgr.Service().GetServiceByID(resourceID) == nil {
+			return api.NewAuthResponse(apimodel.Code_NotFoundResource)
+		}
+	case apisecurity.ResourceType_ConfigGroups:
+		if svr.cacheMgr.ConfigGroup().GetGroupByID(resourceID) == nil {
+			return api.NewAuthResponse(apimodel.Code_NotFoundResource)
+		}
+	default:
+		return api.NewAuthResponseWithMsg(apimodel.Code_InvalidParameter, "resource_type not supported for authorize")
+	}
+	return nil
+}
+
+// authorizeCheckPrincipalsExist 校验授权请求中的 users/groups/roles 是否存在
+func (svr *Server) authorizeCheckPrincipalsExist(ctx context.Context, principals *v1.Principals) *apimodel.Response {
+	if principals == nil {
+		return nil
+	}
+	users := make([]*apisecurity.User, 0, len(principals.Users))
+	for _, p := range principals.Users {
+		if p.Id != "" {
+			users = append(users, &apisecurity.User{Id: p.Id})
+		}
+	}
+	if len(users) > 0 {
+		if err := svr.userSvr.GetUserHelper().CheckUsersExist(ctx, users); err != nil {
+			return api.NewAuthResponse(apimodel.Code_NotFoundUser)
+		}
+	}
+	groups := make([]*apisecurity.UserGroup, 0, len(principals.Groups))
+	for _, p := range principals.Groups {
+		if p.Id != "" {
+			groups = append(groups, &apisecurity.UserGroup{Id: p.Id})
+		}
+	}
+	if len(groups) > 0 {
+		if err := svr.userSvr.GetUserHelper().CheckGroupsExist(ctx, groups); err != nil {
+			return api.NewAuthResponse(apimodel.Code_NotFoundUserGroup)
+		}
+	}
+	for _, p := range principals.Roles {
+		if p.Id != "" && svr.PolicyHelper().GetRole(p.Id) == nil {
+			return api.NewAuthResponseWithMsg(apimodel.Code_NotFoundResource, "role not found: "+p.Id)
+		}
+	}
+	return nil
 }
 
 // enhancedAuthStrategy2Api
@@ -702,8 +861,8 @@ func resourceDeduplication(resources []authtypes.StrategyResource) []authtypes.S
 func authStrategyRecordEntry(ctx context.Context, req *apisecurity.AuthStrategy, md *authtypes.StrategyDetail,
 	operationType types.OperationType) *types.RecordEntry {
 
-	marshaler := jsonpb.Marshaler{}
-	detail, _ := marshaler.MarshalToString(req)
+	detailBytes, _ := protojson.Marshal(req)
+	detail := string(detailBytes)
 
 	entry := &types.RecordEntry{
 		ResourceType:  types.RAuthStrategy,
@@ -722,8 +881,8 @@ func authModifyStrategyRecordEntry(
 	ctx context.Context, req *apisecurity.AuthStrategy, md *authtypes.StrategyDetail,
 	operationType types.OperationType) *types.RecordEntry {
 
-	marshaler := jsonpb.Marshaler{}
-	detail, _ := marshaler.MarshalToString(req)
+	detailBytes2, _ := protojson.Marshal(req)
+	detail := string(detailBytes2)
 
 	entry := &types.RecordEntry{
 		ResourceType:  types.RAuthStrategy,

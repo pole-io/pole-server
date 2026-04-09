@@ -38,7 +38,11 @@ import (
 func (svr *Server) CreateRouterRules(ctx context.Context,
 	req []*apitraffic.RouteRule) *apimodel.BatchWriteResponse {
 
-	// TODO not support RouteRuleV2 resource auth, so we set op is read
+	// 鉴权适配说明：
+	// - RouteRuleV2 资源鉴权尚未完全实现，当前使用 read 操作进行兼容性检查
+	// - 完整的 RouteRuleV2 鉴权需要支持：create/update/delete 细粒度权限
+	// - 后续需要在 policySvr 中注册 RouteRuleV2 资源类型并实现对应鉴权逻辑
+	// 追踪 Issue: POLE-AUTH-ROUTERULEV2-001
 	authCtx := svr.collectRouteRuleV2AuthContext(ctx, req, authtypes.Create, authtypes.CreateRouteRules)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))

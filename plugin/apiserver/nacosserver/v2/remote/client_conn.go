@@ -62,8 +62,8 @@ type (
 		ID             string             `json:"id"`
 		Addr           *net.TCPAddr       `json:"addr"`
 		ConnMeta       ConnectionMeta     `json:"conn_meta"`
-		refreshTimeRef atomic.Value       `json:"refresh_time"`
-		streamRef      atomic.Value       `json"json:"-"`
+		refreshTimeRef atomic.Value
+		streamRef      atomic.Value       `json:"-"`
 		cancel         context.CancelFunc `json:"-"`
 	}
 

@@ -94,6 +94,8 @@ type SkillStore interface {
 	HasSkillByName(name, namespace string) (bool, error)
 	// HasSkillByNameExcludeId 检查技能是否存在 by name exclude id
 	HasSkillByNameExcludeId(name, namespace, id string) (bool, error)
+	// QuerySkills 分页查询技能（支持过滤）
+	QuerySkills(filter map[string]string, offset, limit uint32) (uint32, []*ai.Skill, error)
 }
 
 // ===== Skill Group Store =====
@@ -112,6 +114,8 @@ type SkillGroupStore interface {
 	GetMoreSkillGroups(firstUpdate bool, mtime time.Time) ([]*ai.SkillGroup, error)
 	// CountSkillGroups 获取一个命名空间下的技能分组数量
 	CountSkillGroups(namespace string) (uint64, error)
+	// QuerySkillGroups 分页查询技能分组（支持过滤）
+	QuerySkillGroups(filter map[string]string, offset, limit uint32) (uint32, []*ai.SkillGroup, error)
 }
 
 // ===== Skill Version Store =====

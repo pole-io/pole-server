@@ -168,6 +168,7 @@ func (s *Server) pluginInitialize() {
 	subCtx, err := eventhub.Subscribe(eventhub.InstanceEventTopic, eventHandler)
 	if err != nil {
 		log.Warnf("register DiscoverEvent into eventhub:%s %v", subscriber.Name(), err)
+		return
 	}
 	s.subCtxs = append(s.subCtxs, subCtx)
 }

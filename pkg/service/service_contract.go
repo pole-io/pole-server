@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
+	"google.golang.org/protobuf/encoding/protojson"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/anypb"
 
@@ -312,8 +312,8 @@ func (s *Server) DeleteServiceContract(ctx context.Context,
 	}
 
 	if createErr := s.storage.DeleteServiceContract(deleteData); createErr != nil {
-		log.Error("[Service][Contract] do delete from store", utils.RequestID(ctx), zap.Error(err))
-		return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
+		log.Error("[Service][Contract] do delete from store", utils.RequestID(ctx), zap.Error(createErr))
+		return api.NewServiceContractResponse(storeapi.StoreCode2APICode(createErr), nil)
 	}
 	s.RecordHistory(ctx, serviceContractRecordEntry(ctx, contract, &svctypes.EnrichServiceContract{
 		ServiceContract: deleteData,
@@ -640,8 +640,7 @@ func checkOperationServiceContractInterface(contract *apiservice.ServiceContract
 func serviceContractRecordEntry(ctx context.Context, req *apiservice.ServiceContract, data *svctypes.EnrichServiceContract,
 	operationType types.OperationType) *types.RecordEntry {
 
-	marshaler := jsonpb.Marshaler{}
-	detail, _ := marshaler.MarshalToString(req)
+	detail, _ := protojson.MarshalOptions{EmitUnpopulated: true}.Marshal(req)
 
 	entry := &types.RecordEntry{
 		ResourceType:  types.RServiceContract,
@@ -649,7 +648,7 @@ func serviceContractRecordEntry(ctx context.Context, req *apiservice.ServiceCont
 		Namespace:     req.GetNamespace(),
 		OperationType: operationType,
 		Operator:      utils.ParseOperator(ctx),
-		Detail:        detail,
+		Detail:        string(detail),
 		HappenTime:    time.Now(),
 	}
 

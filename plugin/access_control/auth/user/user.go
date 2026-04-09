@@ -24,7 +24,7 @@ import (
 	"maps"
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
+	"google.golang.org/protobuf/encoding/protojson"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 
@@ -562,15 +562,15 @@ func user2Api(user *authtypes.User) *apisecurity.User {
 func userRecordEntry(ctx context.Context, req *apisecurity.User, md *authtypes.User,
 	operationType types.OperationType) *types.RecordEntry {
 
-	marshaler := jsonpb.Marshaler{}
-	detail, _ := marshaler.MarshalToString(req)
+	detail, _ := protojson.Marshal(req)
+	detailStr := string(detail)
 
 	entry := &types.RecordEntry{
 		ResourceType:  types.RUser,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
 		OperationType: operationType,
 		Operator:      utils.ParseOperator(ctx),
-		Detail:        detail,
+		Detail:        detailStr,
 		HappenTime:    time.Now(),
 	}
 

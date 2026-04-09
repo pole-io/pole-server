@@ -76,6 +76,27 @@ func (h *Handler) ParseArray(createMessage func() proto.Message) (context.Contex
 	return h.parseArray(createMessage, jsonDecoder)
 }
 
+// ParseJSONArray 解析普通JSON数组对象（非proto.Message）
+// 用法: ParseJSONArray(func() any { return &MyStruct{} })
+func (h *Handler) ParseJSONArray(createMessage func() any) (context.Context, error) {
+	requestID := h.Request.HeaderParameter(types.HeaderRequestId)
+	jsonDecoder := json.NewDecoder(h.Request.Request.Body)
+
+	// read open bracket
+	if _, err := jsonDecoder.Token(); err != nil {
+		accesslog.Error(err.Error(), utils.ZapRequestID(requestID))
+		return nil, err
+	}
+	for jsonDecoder.More() {
+		msg := createMessage()
+		if err := jsonDecoder.Decode(msg); err != nil {
+			accesslog.Error(err.Error(), utils.ZapRequestID(requestID))
+			return nil, err
+		}
+	}
+	return h.ParseHeaderContext(), nil
+}
+
 // ParseArrayByText 通过字符串解析PB数组对象
 func (h *Handler) ParseArrayByText(createMessage func() proto.Message, text string) (context.Context, error) {
 	jsonDecoder := json.NewDecoder(bytes.NewBuffer([]byte(text)))

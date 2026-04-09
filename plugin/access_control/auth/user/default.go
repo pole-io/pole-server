@@ -22,8 +22,8 @@ import (
 	golog "log"
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
-	user_auth "github.com/pole-io/pole-server/plugin/access_control/auth/user/inteceptor/auth"
-	"github.com/pole-io/pole-server/plugin/access_control/auth/user/inteceptor/paramcheck"
+	user_auth "github.com/pole-io/pole-server/plugin/access_control/auth/user/interceptor/auth"
+	"github.com/pole-io/pole-server/plugin/access_control/auth/user/interceptor/paramcheck"
 )
 
 type ServerProxyFactory func(svr *Server, pre authapi.UserServer) (authapi.UserServer, error)
@@ -50,7 +50,7 @@ func init() {
 	_ = authapi.RegisterUserServer(nextSvr)
 }
 
-func loadInteceptors() {
+func loadInterceptors() {
 	RegisterServerProxy("auth", func(svr *Server, pre authapi.UserServer) (authapi.UserServer, error) {
 		return user_auth.NewServer(pre), nil
 	})
@@ -60,7 +60,7 @@ func loadInteceptors() {
 }
 
 func BuildServer() (*Server, authapi.UserServer, error) {
-	loadInteceptors()
+	loadInterceptors()
 	svr := &Server{}
 	var nextSvr authapi.UserServer
 	nextSvr = svr

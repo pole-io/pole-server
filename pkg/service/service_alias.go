@@ -69,7 +69,7 @@ func (s *Server) CreateServiceAlias(ctx context.Context, req *apiservice.Service
 			req.GetAliasNamespace())
 		if getErr != nil {
 			log.Error(getErr.Error(), utils.RequestID(ctx))
-			return api.NewServiceAliasResponse(storeapi.StoreCode2APICode(err), req)
+			return api.NewServiceAliasResponse(storeapi.StoreCode2APICode(getErr), req)
 		}
 		if oldAlias != nil {
 			return api.NewServiceAliasResponse(apimodel.Code_ExistedResource, req)

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -145,15 +145,15 @@ func wrapperLosslessStoreResponse(rule *apitraffic.LosslessRule, err error) *api
 
 // losslessRecordEntry 构建lossless的记录entry
 func losslessRecordEntry(ctx context.Context, req *apitraffic.LosslessRule, md *rules.LosslessRule, opt types.OperationType) *types.RecordEntry {
-	marshaler := jsonpb.Marshaler{}
-	detail, _ := marshaler.MarshalToString(req)
+	detail, _ := protojson.Marshal(req)
+	detailStr := string(detail)
 	entry := &types.RecordEntry{
 		ResourceType:  types.RLosslessRule,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Service, md.ID),
 		Namespace:     req.GetNamespace(),
 		Operator:      utils.ParseOperator(ctx),
 		OperationType: opt,
-		Detail:        detail,
+		Detail:        detailStr,
 		HappenTime:    time.Now(),
 	}
 	return entry

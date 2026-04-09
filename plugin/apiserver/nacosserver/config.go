@@ -29,8 +29,8 @@ type NacosConfig struct {
 	ListenPort       uint32            `mapstructure:"listenPort"`
 	GrpcListenPort   uint32            `mapstructure:"grpcListenPort"`
 	ConnLimit        *connlimit.Config `mapstructure:"connLimit"`
-	TLS              *secure.TLSConfig `mapstructure:tls`
-	DefaultNamespace string            `mapstructure:defaultNamespace`
+	TLS              *secure.TLSConfig `mapstructure:"tls"`
+	DefaultNamespace string            `mapstructure:"defaultNamespace"`
 	ServerService    string            `mapstructure:"serverService"`
 	ServerNamespace  string            `mapstructure:"serverNamespace"`
 }

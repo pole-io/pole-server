@@ -23,8 +23,8 @@ import (
 
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
-	policy_auth "github.com/pole-io/pole-server/plugin/access_control/auth/policy/inteceptor/auth"
-	"github.com/pole-io/pole-server/plugin/access_control/auth/policy/inteceptor/paramcheck"
+	policy_auth "github.com/pole-io/pole-server/plugin/access_control/auth/policy/interceptor/auth"
+	"github.com/pole-io/pole-server/plugin/access_control/auth/policy/interceptor/paramcheck"
 )
 
 type ServerProxyFactory func(svr *Server, pre authapi.StrategyServer) (authapi.StrategyServer, error)
@@ -51,7 +51,7 @@ func init() {
 	_ = authapi.RegisterStrategyServer(nextSvr)
 }
 
-func loadInteceptors() {
+func loadInterceptors() {
 	RegisterServerProxy("auth", func(svr *Server, pre authapi.StrategyServer) (authapi.StrategyServer, error) {
 		return policy_auth.NewServer(pre), nil
 	})
@@ -61,7 +61,7 @@ func loadInteceptors() {
 }
 
 func BuildServer() (*Server, authapi.StrategyServer, error) {
-	loadInteceptors()
+	loadInterceptors()
 	svr := &Server{}
 	var nextSvr authapi.StrategyServer
 	nextSvr = svr

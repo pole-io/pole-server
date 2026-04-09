@@ -21,8 +21,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -306,8 +306,8 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 func configGroupRecordEntry(ctx context.Context, req *apiconfig.ConfigFileGroup, md *conftypes.ConfigFileGroup,
 	operationType types.OperationType) *types.RecordEntry {
 
-	marshaler := jsonpb.Marshaler{}
-	detail, _ := marshaler.MarshalToString(req)
+	detail, _ := protojson.Marshal(req)
+	detailStr := string(detail)
 
 	entry := &types.RecordEntry{
 		ResourceType:  types.RConfigGroup,
@@ -315,7 +315,7 @@ func configGroupRecordEntry(ctx context.Context, req *apiconfig.ConfigFileGroup,
 		Namespace:     req.GetNamespace(),
 		OperationType: operationType,
 		Operator:      utils.ParseOperator(ctx),
-		Detail:        detail,
+		Detail:        detailStr,
 		HappenTime:    time.Now(),
 	}
 

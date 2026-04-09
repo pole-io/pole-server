@@ -266,6 +266,71 @@ func (s *skillStore) HasSkillByNameExcludeId(name, namespace, id string) (bool, 
 		name, namespace, id)
 }
 
+// QuerySkills queries skills with filter support and pagination
+func (s *skillStore) QuerySkills(filter map[string]string, offset, limit uint32) (uint32, []*ai.Skill, error) {
+	// Build query conditions
+	whereClause := "WHERE flag != 1"
+	args := make([]interface{}, 0)
+
+	if name, ok := filter["name"]; ok && name != "" {
+		whereClause += " AND name = ?"
+		args = append(args, name)
+	}
+	if namespace, ok := filter["namespace"]; ok && namespace != "" {
+		whereClause += " AND namespace = ?"
+		args = append(args, namespace)
+	}
+	if skillType, ok := filter["skill_type"]; ok && skillType != "" {
+		whereClause += " AND skill_type = ?"
+		args = append(args, skillType)
+	}
+	if author, ok := filter["author"]; ok && author != "" {
+		whereClause += " AND author = ?"
+		args = append(args, author)
+	}
+
+	// Query count
+	countSql := "SELECT COUNT(*) FROM skill " + whereClause
+	row := s.slave.QueryRow(countSql, args...)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		log.Errorf("[Store][database] query skills count err: %s", err.Error())
+		return 0, nil, err
+	}
+
+	// Query list
+	querySql := fmt.Sprintf(`SELECT id, name, namespace, description, input_schema, output_schema,
+		skill_type, author, business, department, metadata, flag, revision,
+		unix_timestamp(ctime), unix_timestamp(mtime)
+		FROM skill %s ORDER BY mtime DESC LIMIT ?, ?`, whereClause)
+
+	queryArgs := append(args, offset, limit)
+	rows, err := s.slave.Query(querySql, queryArgs...)
+	if err != nil {
+		log.Errorf("[Store][database] query skills err: %s", err.Error())
+		return 0, nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var skills []*ai.Skill
+	for rows.Next() {
+		skill, err := fetchSkillRow(rows)
+		if err != nil {
+			return 0, nil, err
+		}
+		if skill != nil {
+			skills = append(skills, skill)
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Errorf("[Store][database] query skills rows err: %s", err.Error())
+		return 0, nil, err
+	}
+
+	return uint32(count), skills, nil
+}
+
 func (s *skillStore) checkSkillExists(query string, args ...interface{}) (bool, error) {
 	row := s.master.QueryRow(query, args...)
 	var count int
@@ -552,6 +617,66 @@ func (s *skillGroupStore) CountSkillGroups(namespace string) (uint64, error) {
 	return count, nil
 }
 
+// QuerySkillGroups queries skill groups with filter support and pagination
+func (s *skillGroupStore) QuerySkillGroups(filter map[string]string, offset, limit uint32) (uint32, []*ai.SkillGroup, error) {
+	// Build query conditions
+	whereClause := "WHERE flag != 1"
+	args := make([]interface{}, 0)
+
+	if namespace, ok := filter["namespace"]; ok && namespace != "" {
+		whereClause += " AND namespace = ?"
+		args = append(args, namespace)
+	}
+	if name, ok := filter["name"]; ok && name != "" {
+		whereClause += " AND name = ?"
+		args = append(args, name)
+	}
+	if owner, ok := filter["owner"]; ok && owner != "" {
+		whereClause += " AND owner = ?"
+		args = append(args, owner)
+	}
+
+	// Query count
+	countSql := "SELECT COUNT(*) FROM skill_group " + whereClause
+	row := s.slave.QueryRow(countSql, args...)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		log.Errorf("[Store][database] query skill groups count err: %s", err.Error())
+		return 0, nil, err
+	}
+
+	// Query list
+	querySql := fmt.Sprintf(`SELECT id, name, namespace, comment, metadata, owner, business, department, flag, revision,
+		unix_timestamp(ctime), unix_timestamp(mtime)
+		FROM skill_group %s ORDER BY mtime DESC LIMIT ?, ?`, whereClause)
+
+	queryArgs := append(args, offset, limit)
+	rows, err := s.slave.Query(querySql, queryArgs...)
+	if err != nil {
+		log.Errorf("[Store][database] query skill groups err: %s", err.Error())
+		return 0, nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var groups []*ai.SkillGroup
+	for rows.Next() {
+		group, err := fetchSkillGroupRow(rows)
+		if err != nil {
+			return 0, nil, err
+		}
+		if group != nil {
+			groups = append(groups, group)
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Errorf("[Store][database] query skill groups rows err: %s", err.Error())
+		return 0, nil, err
+	}
+
+	return uint32(count), groups, nil
+}
+
 // ===== Helper Functions for SkillGroup =====
 
 func fetchSkillGroupRow(rows *sql.Rows) (*ai.SkillGroup, error) {
@@ -789,8 +914,67 @@ func (s *skillVersionStore) GetSkillVersionsBySkillID(skillID string) ([]*ai.Ski
 
 // QuerySkillVersions queries skill versions with pagination
 func (s *skillVersionStore) QuerySkillVersions(filter map[string]string, offset, limit uint32) (uint32, []*ai.SkillVersion, error) {
-	// TODO: Implement query with filter support
-	return 0, nil, nil
+	// Build query conditions
+	whereClause := "WHERE flag != 1"
+	args := make([]interface{}, 0)
+
+	if skillName, ok := filter["skill_name"]; ok && skillName != "" {
+		whereClause += " AND skill_name = ?"
+		args = append(args, skillName)
+	}
+	if namespace, ok := filter["namespace"]; ok && namespace != "" {
+		whereClause += " AND namespace = ?"
+		args = append(args, namespace)
+	}
+	if skillID, ok := filter["skill_id"]; ok && skillID != "" {
+		whereClause += " AND skill_id = ?"
+		args = append(args, skillID)
+	}
+	if active, ok := filter["active"]; ok && active != "" {
+		whereClause += " AND active = ?"
+		args = append(args, active == "true" || active == "1")
+	}
+
+	// Query count
+	countSql := "SELECT COUNT(*) FROM skill_version " + whereClause
+	row := s.slave.QueryRow(countSql, args...)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		log.Errorf("[Store][database] query skill versions count err: %s", err.Error())
+		return 0, nil, err
+	}
+
+	// Query list
+	querySql := fmt.Sprintf(`SELECT id, skill_id, skill_name, namespace, version, comment,
+		input_schema, output_schema, skill_type, metadata, active, flag,
+		unix_timestamp(ctime), unix_timestamp(mtime)
+		FROM skill_version %s ORDER BY mtime DESC LIMIT ?, ?`, whereClause)
+
+	queryArgs := append(args, offset, limit)
+	rows, err := s.slave.Query(querySql, queryArgs...)
+	if err != nil {
+		log.Errorf("[Store][database] query skill versions err: %s", err.Error())
+		return 0, nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var versions []*ai.SkillVersion
+	for rows.Next() {
+		version, err := fetchSkillVersionRow(rows)
+		if err != nil {
+			return 0, nil, err
+		}
+		if version != nil {
+			versions = append(versions, version)
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Errorf("[Store][database] query skill versions rows err: %s", err.Error())
+		return 0, nil, err
+	}
+
+	return uint32(count), versions, nil
 }
 
 // GetActiveSkillVersion gets the active version of a skill
@@ -1078,8 +1262,70 @@ func (s *skillSubscriptionStore) GetSkillSubscriptionsBySkill(skillName, namespa
 
 // QuerySkillSubscriptions queries skill subscriptions with pagination
 func (s *skillSubscriptionStore) QuerySkillSubscriptions(filter map[string]string, offset, limit uint32) (uint32, []*ai.SkillSubscription, error) {
-	// TODO: Implement query with filter support
-	return 0, nil, nil
+	// Build query conditions
+	whereClause := "WHERE flag != 1"
+	args := make([]interface{}, 0)
+
+	if clientID, ok := filter["client_id"]; ok && clientID != "" {
+		whereClause += " AND client_id = ?"
+		args = append(args, clientID)
+	}
+	if skillName, ok := filter["skill_name"]; ok && skillName != "" {
+		whereClause += " AND skill_name = ?"
+		args = append(args, skillName)
+	}
+	if namespace, ok := filter["namespace"]; ok && namespace != "" {
+		whereClause += " AND namespace = ?"
+		args = append(args, namespace)
+	}
+	if skillID, ok := filter["skill_id"]; ok && skillID != "" {
+		whereClause += " AND skill_id = ?"
+		args = append(args, skillID)
+	}
+	if active, ok := filter["active"]; ok && active != "" {
+		whereClause += " AND active = ?"
+		args = append(args, active == "true" || active == "1")
+	}
+
+	// Query count
+	countSql := "SELECT COUNT(*) FROM skill_subscription " + whereClause
+	row := s.slave.QueryRow(countSql, args...)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		log.Errorf("[Store][database] query skill subscriptions count err: %s", err.Error())
+		return 0, nil, err
+	}
+
+	// Query list
+	querySql := fmt.Sprintf(`SELECT id, skill_id, skill_name, namespace, client_id, client_host, client_type,
+		version, active, flag, unix_timestamp(ctime), unix_timestamp(mtime)
+		FROM skill_subscription %s ORDER BY mtime DESC LIMIT ?, ?`, whereClause)
+
+	queryArgs := append(args, offset, limit)
+	rows, err := s.slave.Query(querySql, queryArgs...)
+	if err != nil {
+		log.Errorf("[Store][database] query skill subscriptions err: %s", err.Error())
+		return 0, nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var subs []*ai.SkillSubscription
+	for rows.Next() {
+		sub, err := fetchSkillSubscriptionRow(rows)
+		if err != nil {
+			return 0, nil, err
+		}
+		if sub != nil {
+			subs = append(subs, sub)
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Errorf("[Store][database] query skill subscriptions rows err: %s", err.Error())
+		return 0, nil, err
+	}
+
+	return uint32(count), subs, nil
 }
 
 // UpdateSubscriptionVersion updates the version of a subscription

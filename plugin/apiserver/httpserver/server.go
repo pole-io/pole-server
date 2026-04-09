@@ -27,8 +27,8 @@ import (
 	"time"
 
 	restful "github.com/emicklei/go-restful/v3"
-	"github.com/gogo/protobuf/jsonpb"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/encoding/protojson"
 	"go.uber.org/zap"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -645,8 +645,8 @@ func (h *HTTPServer) recoverFunc(i interface{}, w http.ResponseWriter) {
 	}
 	w.WriteHeader(status)
 
-	m := jsonpb.Marshaler{Indent: " ", EmitDefaults: true}
-	_ = m.Marshal(w, obj)
+	data, _ := protojson.MarshalOptions{Indent: " ", EmitUnpopulated: true}.Marshal(obj)
+	_, _ = w.Write(data)
 }
 
 func discoverCacheConvert(m interface{}) *httpcommon.CacheObject {

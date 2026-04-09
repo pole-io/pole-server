@@ -24,6 +24,7 @@ import (
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/store"
+	cacheai "github.com/pole-io/pole-server/pkg/cache/ai"
 	cacheauth "github.com/pole-io/pole-server/pkg/cache/auth"
 	cacheclient "github.com/pole-io/pole-server/pkg/cache/client"
 	cacheconfig "github.com/pole-io/pole-server/pkg/cache/config"
@@ -52,6 +53,12 @@ func init() {
 	RegisterCache(cacheapi.GrayName, cacheapi.CacheGray)
 	RegisterCache(cacheapi.LaneRuleName, cacheapi.CacheLaneRule)
 	RegisterCache(cacheapi.RolesName, cacheapi.CacheRole)
+
+	// AI Native 缓存注册
+	RegisterCache(cacheapi.SkillName, cacheapi.CacheSkill)
+	RegisterCache(cacheapi.MCPServerName, cacheapi.CacheMCPServer)
+	RegisterCache(cacheapi.SkillVersionName, cacheapi.CacheSkillVersion)
+	RegisterCache(cacheapi.SkillSubscriptionName, cacheapi.CacheSkillSubscription)
 }
 
 var (
@@ -112,6 +119,12 @@ func newCacheManager(ctx context.Context, cacheOpt *Config, storage store.Store)
 	mgr.RegisterCacher(cacheapi.CacheRole, cacheauth.NewRoleCache(storage, mgr))
 	// pole-serverSDK Client
 	mgr.RegisterCacher(cacheapi.CacheClient, cacheclient.NewClientCache(storage, mgr))
+	// AI Native 缓存
+	aiCaches := cacheai.NewAICaches(storage, mgr)
+	mgr.RegisterCacher(cacheapi.CacheSkill, aiCaches[0])
+	mgr.RegisterCacher(cacheapi.CacheMCPServer, aiCaches[1])
+	mgr.RegisterCacher(cacheapi.CacheSkillVersion, aiCaches[2])
+	mgr.RegisterCacher(cacheapi.CacheSkillSubscription, aiCaches[3])
 	// 灰度规则
 	mgr.RegisterCacher(cacheapi.CacheGray, cachegray.NewGrayCache(storage, mgr))
 

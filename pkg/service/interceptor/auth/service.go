@@ -20,6 +20,9 @@ package service_auth
 import (
 	"context"
 
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
+
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/security"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
@@ -59,12 +62,18 @@ func (svr *Server) CreateServices(
 
 	nRsp := api.NewBatchWriteResponse(apimodel.Code(resp.Code))
 	for index := range resp.Responses {
-		// 根据 pole-io/specification，Response 只有 data 字段，需要从 data 中解析服务信息
-		// TODO: 需要实现正确的数据解析逻辑
-		if err := svr.afterServiceResource(ctx, nil, false); err != nil {
+		r := resp.Responses[index]
+		var svc *apiservice.Service
+		if r != nil && r.GetData() != nil {
+			svc = &apiservice.Service{}
+			if err := anypb.UnmarshalTo(r.GetData(), svc, proto.UnmarshalOptions{}); err != nil {
+				svc = nil
+			}
+		}
+		if err := svr.afterServiceResource(ctx, svc, false); err != nil {
 			api.Collect(nRsp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
 		} else {
-			api.Collect(nRsp, resp.Responses[index])
+			api.Collect(nRsp, r)
 		}
 	}
 	return nRsp
@@ -89,12 +98,18 @@ func (svr *Server) DeleteServices(
 
 	nRsp := api.NewBatchWriteResponse(apimodel.Code(resp.Code))
 	for index := range resp.Responses {
-		// 根据 pole-io/specification，Response 只有 data 字段
-		// TODO: 需要实现正确的数据解析逻辑
-		if err := svr.afterServiceResource(ctx, nil, true); err != nil {
+		r := resp.Responses[index]
+		var svc *apiservice.Service
+		if r != nil && r.GetData() != nil {
+			svc = &apiservice.Service{}
+			if err := anypb.UnmarshalTo(r.GetData(), svc, proto.UnmarshalOptions{}); err != nil {
+				svc = nil
+			}
+		}
+		if err := svr.afterServiceResource(ctx, svc, true); err != nil {
 			api.Collect(nRsp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
 		} else {
-			api.Collect(nRsp, resp.Responses[index])
+			api.Collect(nRsp, r)
 		}
 	}
 	return nRsp
@@ -120,12 +135,18 @@ func (svr *Server) UpdateServices(
 
 	nRsp := api.NewBatchWriteResponse(apimodel.Code(resp.Code))
 	for index := range resp.Responses {
-		// 根据 pole-io/specification，Response 只有 data 字段
-		// TODO: 需要实现正确的数据解析逻辑
-		if err := svr.afterServiceResource(ctx, nil, false); err != nil {
+		r := resp.Responses[index]
+		var svc *apiservice.Service
+		if r != nil && r.GetData() != nil {
+			svc = &apiservice.Service{}
+			if err := anypb.UnmarshalTo(r.GetData(), svc, proto.UnmarshalOptions{}); err != nil {
+				svc = nil
+			}
+		}
+		if err := svr.afterServiceResource(ctx, svc, false); err != nil {
 			api.Collect(nRsp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
 		} else {
-			api.Collect(nRsp, resp.Responses[index])
+			api.Collect(nRsp, r)
 		}
 	}
 
@@ -204,10 +225,46 @@ func (svr *Server) GetServices(
 	authCtx.SetRequestContext(ctx)
 
 	resp := svr.nextSvr.GetServices(ctx, query)
+	return svr.filterServicesByPermission(ctx, resp, authCtx)
+}
 
-	// 根据新的 pole-io/specification，BatchQueryResponse 不再有 Services 字段
-	// TODO: 需要基于新的数据结构实现权限检查逻辑
-	// 暂时跳过服务级别的权限检查，直接返回响应
+// filterServicesByPermission 基于 BatchQueryResponse.Data 做服务级权限过滤，仅保留有权限的服务
+func (svr *Server) filterServicesByPermission(
+	ctx context.Context, resp *apimodel.BatchQueryResponse, authCtx *authtypes.AcquireContext) *apimodel.BatchQueryResponse {
+	if resp == nil || resp.Code != uint32(apimodel.Code_ExecuteSuccess) || len(resp.Data) == 0 {
+		return resp
+	}
+	filtered := make([]*anypb.Any, 0, len(resp.Data))
+	for _, anyData := range resp.Data {
+		if anyData == nil {
+			continue
+		}
+		svc := &apiservice.Service{}
+		if err := anypb.UnmarshalTo(anyData, svc, proto.UnmarshalOptions{}); err != nil {
+			continue
+		}
+		ok := svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
+			Type:     security.ResourceType_Services,
+			ID:       svc.GetId(),
+			Metadata: svc.GetMetadata(),
+		})
+		if !ok {
+			saveNs := svr.Cache().Namespace().GetNamespace(svc.GetNamespace())
+			if saveNs == nil {
+				continue
+			}
+			ok = svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
+				Type:     security.ResourceType_Namespaces,
+				ID:       saveNs.Name,
+				Metadata: saveNs.Metadata,
+			})
+		}
+		if ok {
+			filtered = append(filtered, anyData)
+		}
+	}
+	resp.Data = filtered
+	resp.Size = uint32(len(filtered))
 	return resp
 }
 

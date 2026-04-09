@@ -265,6 +265,26 @@ func (nc *CacheManager) Role() cachetypes.RoleCache {
 	return nc.caches[cachetypes.CacheRole].(cachetypes.RoleCache)
 }
 
+// Skill get skill cache information
+func (nc *CacheManager) Skill() cachetypes.SkillCache {
+	return nc.caches[cachetypes.CacheSkill].(cachetypes.SkillCache)
+}
+
+// MCPServer get mcp server cache information
+func (nc *CacheManager) MCPServer() cachetypes.MCPServerCache {
+	return nc.caches[cachetypes.CacheMCPServer].(cachetypes.MCPServerCache)
+}
+
+// SkillVersion get skill version cache information
+func (nc *CacheManager) SkillVersion() cachetypes.SkillVersionCache {
+	return nc.caches[cachetypes.CacheSkillVersion].(cachetypes.SkillVersionCache)
+}
+
+// SkillSubscription get skill subscription cache information
+func (nc *CacheManager) SkillSubscription() cachetypes.SkillSubscriptionCache {
+	return nc.caches[cachetypes.CacheSkillSubscription].(cachetypes.SkillSubscriptionCache)
+}
+
 // GetCacher get cachetypes.Cache impl
 func (nc *CacheManager) GetCacher(cacheIndex cachetypes.CacheIndex) cachetypes.Cache {
 	return nc.caches[cacheIndex]

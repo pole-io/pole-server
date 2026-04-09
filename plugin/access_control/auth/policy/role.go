@@ -24,7 +24,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
+	"google.golang.org/protobuf/encoding/protojson"
 	"go.uber.org/zap"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -63,7 +63,7 @@ func (svr *Server) CreateRole(ctx context.Context, req *apisecurity.Role) *apimo
 		return api.NewAuthResponse(storeapi.StoreCode2APICode(err))
 	}
 
-	// TODO : 记录操作日志
+	svr.RecordHistory(recordRoleEntry(ctx, req, saveData, types.OCreate))
 	return api.NewResponse(apimodel.Code_ExecuteSuccess)
 }
 
@@ -233,8 +233,8 @@ func (svr *Server) GetRoles(ctx context.Context, filters map[string]string) *api
 }
 
 func recordRoleEntry(ctx context.Context, req *apisecurity.Role, data *authtypes.Role, op types.OperationType) *types.RecordEntry {
-	marshaler := jsonpb.Marshaler{}
-	detail, _ := marshaler.MarshalToString(req)
+	detailBytes, _ := protojson.Marshal(req)
+	detail := string(detailBytes)
 
 	entry := &types.RecordEntry{
 		ResourceType:  types.RAuthRole,

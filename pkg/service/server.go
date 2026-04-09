@@ -24,6 +24,7 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/observability/history"
@@ -31,10 +32,11 @@ import (
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	cacheservice "github.com/pole-io/pole-server/pkg/cache/service"
-	"github.com/pole-io/pole-server/pkg/common/api/v1"
+	v1 "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
@@ -135,10 +137,32 @@ func AllowAutoCreate(ctx context.Context) context.Context {
 }
 
 // GetServiceSubscribers 查询服务订阅者（调用方服务列表）
-
-// GetServiceSubscribers 查询服务订阅者（调用方服务列表）
-// 这是一个存根实现，用于编译通过
 func (s *Server) GetServiceSubscribers(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
-	return v1.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	offset, limit, err := valid.ParseOffsetAndLimit(query)
+	if err != nil {
+		return v1.NewBatchQueryResponseWithMsg(apimodel.Code_InvalidParameter, err.Error())
+	}
+	total, list, err := s.storage.BatchGetServiceSubscribers(ctx, query, offset, limit)
+	if err != nil {
+		log.Errorf("[Server][Service][Subscribers] storage err: %s", err.Error())
+		return v1.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
+	}
+	out := v1.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	out.Amount = total
+	out.Size = uint32(len(list))
+	for _, item := range list {
+		if item == nil || item.Caller == nil {
+			continue
+		}
+		svc := &apiservice.Service{
+			Name:      item.Caller.Name,
+			Namespace: item.Caller.Namespace,
+		}
+		if addErr := v1.AddAnyDataIntoBatchQuery(out, svc); addErr != nil {
+			log.Errorf("[Server][Service][Subscribers] add data err: %s", addErr.Error())
+			return v1.NewBatchQueryResponse(apimodel.Code_ExecuteException)
+		}
+	}
+	return out
 }
 

@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
+	"google.golang.org/protobuf/encoding/protojson"
 	"go.uber.org/zap"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -446,26 +446,23 @@ func (s *Server) GetServicesCount(ctx context.Context) *apimodel.BatchQueryRespo
 
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	out.Amount = uint32(count)
-	// 根据 pole-io/specification，BatchQueryResponse 不再有 Services 字段
-	// 数据需要通过 data 字段传递
-	// TODO: 需要确定正确的序列化方式
+	// 总数通过 Amount 字段返回，符合 BatchQueryResponse 约定
 	return out
 }
 
 // GetServiceToken 查询Service的token
 func (s *Server) GetServiceToken(ctx context.Context, req *apiservice.Service) *apimodel.Response {
 	// 鉴权
-	_, _, resp := s.checkServiceAuthority(ctx, req)
+	svc, _, resp := s.checkServiceAuthority(ctx, req)
 	if resp != nil {
 		return resp
 	}
-
-	// s.RecordHistory(serviceRecordEntry(ctx, req, model.OGetToken))
-	out := api.NewResponse(apimodel.Code_ExecuteSuccess)
-	// 注释：Token响应改动 - 根据 pole-io/specification，Response 只有 data 字段，需要将服务数据序列化到 data 中
-	// 根据 pole-io/specification，Response 只有 data 字段，需要将服务数据序列化到 data 中
-	// TODO: 需要确定正确的序列化方式
-	return out
+	out := &apiservice.Service{
+		Name:      req.GetName(),
+		Namespace: req.GetNamespace(),
+		Token:     string(svc.Token),
+	}
+	return api.NewServiceResponse(apimodel.Code_ExecuteSuccess, out)
 }
 
 // createNamespaceIfAbsent Automatically create namespaces
@@ -619,19 +616,6 @@ func (s *Server) getInstancesCountWithService(name string, namespace string) (ui
 	return total, nil
 }
 
-// getRoutingCountWithService 获取服务下路由配置总数
-func (s *Server) getRoutingCountWithService(id string) (uint32, error) {
-	routing, err := s.storage.GetRoutingConfigWithID(id)
-	if err != nil {
-		return 0, err
-	}
-
-	if routing == nil {
-		return 0, nil
-	}
-	return 1, nil
-}
-
 // isServiceExistedResource 检查服务下的资源存在情况，在删除服务的时候需要用到
 func (s *Server) isServiceExistedResource(ctx context.Context, service *svctypes.Service) *apimodel.Response {
 	// 服务别名，不需要判断
@@ -658,17 +642,6 @@ func (s *Server) isServiceExistedResource(ctx context.Context, service *svctypes
 	}
 	if total != 0 {
 		return api.NewServiceResponse(apimodel.Code_ServiceExistedAlias, out)
-	}
-
-	// TODO will remove until have sync router rule v1 to v2
-	total, err = s.getRoutingCountWithService(service.ID)
-	if err != nil {
-		log.Error(err.Error(), utils.RequestID(ctx))
-		return api.NewServiceResponse(storeapi.StoreCode2APICode(err), out)
-	}
-
-	if total != 0 {
-		return api.NewServiceResponse(apimodel.Code_ServiceExistedRoutings, out)
 	}
 	return nil
 }
@@ -826,10 +799,8 @@ func wrapperServiceStoreResponse(service *apiservice.Service, err error) *apimod
 	if err == nil {
 		return nil
 	}
-	resp := api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
-	// 根据 pole-io/specification，Response 只有 data 字段，需要将服务数据序列化到 data 中
-	// TODO: 需要确定正确的序列化方式
-	_ = service // 暂时忽略 service 参数
+	resp := api.NewServiceResponse(storeapi.StoreCode2APICode(err), service)
+	resp.Info += ": " + err.Error()
 	return resp
 }
 
@@ -846,8 +817,7 @@ func parseRequestToken(ctx context.Context, value string) string {
 func serviceRecordEntry(ctx context.Context, req *apiservice.Service, md *svctypes.Service,
 	operationType types.OperationType) *types.RecordEntry {
 
-	marshaler := jsonpb.Marshaler{}
-	detail, _ := marshaler.MarshalToString(req)
+	detail, _ := protojson.MarshalOptions{EmitUnpopulated: true}.Marshal(req)
 
 	entry := &types.RecordEntry{
 		ResourceType:  types.RService,
@@ -855,7 +825,7 @@ func serviceRecordEntry(ctx context.Context, req *apiservice.Service, md *svctyp
 		Namespace:     req.GetNamespace(),
 		OperationType: operationType,
 		Operator:      utils.ParseOperator(ctx),
-		Detail:        detail,
+		Detail:        string(detail),
 		HappenTime:    time.Now(),
 	}
 

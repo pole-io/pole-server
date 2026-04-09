@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -553,8 +553,8 @@ func (s *Server) GetAllConfigEncryptAlgorithms(ctx context.Context) *apimodel.Re
 func configFileRecordEntry(ctx context.Context, req *apiconfig.ConfigFile,
 	operationType types.OperationType) *types.RecordEntry {
 
-	marshaler := jsonpb.Marshaler{}
-	detail, _ := marshaler.MarshalToString(req)
+	detail, _ := protojson.Marshal(req)
+	detailStr := string(detail)
 
 	entry := &types.RecordEntry{
 		ResourceType:  types.RConfigFile,
@@ -562,7 +562,7 @@ func configFileRecordEntry(ctx context.Context, req *apiconfig.ConfigFile,
 		Namespace:     req.GetNamespace(),
 		OperationType: operationType,
 		Operator:      utils.ParseOperator(ctx),
-		Detail:        detail,
+		Detail:        detailStr,
 		HappenTime:    time.Now(),
 	}
 

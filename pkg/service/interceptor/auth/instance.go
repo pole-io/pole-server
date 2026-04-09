@@ -168,7 +168,7 @@ func (svr *Server) GetInstanceLabels(ctx context.Context,
 		serviceId = id
 	}
 
-	// TODO 如果在鉴权的时候发现资源不存在，怎么处理？
+	// 鉴权前发现资源不存在时统一返回 Code_NotFoundResource，不区分“无权限”与“资源不存在”，避免泄露资源存在性
 	svc := svr.Cache().Service().GetServiceByID(serviceId)
 	if svc == nil {
 		return api.NewResponse(apimodel.Code_NotFoundResource)

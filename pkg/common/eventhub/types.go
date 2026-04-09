@@ -19,6 +19,7 @@ package eventhub
 
 import (
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	aitypes "github.com/pole-io/pole-server/apis/pkg/types/ai"
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 )
@@ -41,6 +42,13 @@ const (
 	CacheNamespaceEventTopic = "cache_namespace_event"
 	// ClientEventTopic .
 	ClientEventTopic = "client_event"
+
+	// SkillEventTopic skill change event
+	SkillEventTopic = "skill_event"
+	// SkillVersionEventTopic skill version change event
+	SkillVersionEventTopic = "skill_version_event"
+	// SkillSubscriptionEventTopic skill subscription change event
+	SkillSubscriptionEventTopic = "skill_subscription_event"
 )
 
 // PublishConfigFileEvent 事件对象，包含类型和事件消息
@@ -74,4 +82,22 @@ type CacheNamespaceEvent struct {
 	OldItem   *types.Namespace
 	Item      *types.Namespace
 	EventType EventType
+}
+
+// SkillEvent skill change event
+type SkillEvent struct {
+	Skill     *aitypes.Skill
+	EventType EventType
+}
+
+// SkillVersionEvent skill version change event
+type SkillVersionEvent struct {
+	Version   *aitypes.SkillVersion
+	EventType EventType
+}
+
+// SkillSubscriptionEvent skill subscription change event
+type SkillSubscriptionEvent struct {
+	Subscription *aitypes.SkillSubscription
+	EventType    EventType
 }

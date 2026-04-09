@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
+	"google.golang.org/protobuf/encoding/protojson"
 	"go.uber.org/zap"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -846,15 +846,14 @@ func (s *Server) GetInstanceLabels(ctx context.Context, query map[string]string)
 	}
 
 	if serviceId == "" {
-		resp := api.NewResponse(apimodel.Code_ExecuteSuccess)
-		return resp
+		return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, &apiservice.InstanceLabels{})
 	}
 
-	_ = s.Cache().Instance().GetInstanceLabels(serviceId)
-	resp := api.NewResponse(apimodel.Code_ExecuteSuccess)
-	// 根据 pole-io/specification，Response 只有 data 字段，需要将数据序列化到 data 中
-	// TODO: 需要确定正确的序列化方式
-	return resp
+	labels := s.Cache().Instance().GetInstanceLabels(serviceId)
+	if labels == nil {
+		labels = &apiservice.InstanceLabels{}
+	}
+	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, labels)
 }
 
 // GetInstancesCount 查询总的服务实例，不带过滤条件的
@@ -867,9 +866,7 @@ func (s *Server) GetInstancesCount(ctx context.Context) *apimodel.BatchQueryResp
 
 	out := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	out.Amount = uint32(count)
-	// 根据 pole-io/specification，BatchQueryResponse 不再有 Instances 字段
-	// 数据需要通过 data 字段传递
-	// TODO: 需要确定正确的序列化方式
+	// 总数通过 Amount 字段返回，符合 BatchQueryResponse 约定
 	return out
 }
 
@@ -1146,9 +1143,8 @@ func wrapperInstanceStoreResponse(instance *apiservice.Instance, err error) *api
 	if err == nil {
 		return nil
 	}
-	resp := api.NewResponseWithMsg(storeapi.StoreCode2APICode(err), err.Error())
-	// 根据 pole-io/specification，Response 只有 data 字段，需要将实例数据序列化到 data 中
-	// TODO: 如果需要返回实例数据，应该序列化到 resp.Data 中
+	resp := api.NewInstanceResponse(storeapi.StoreCode2APICode(err), instance)
+	resp.Info += ": " + err.Error()
 	return resp
 }
 
@@ -1158,15 +1154,14 @@ func instanceRecordEntry(ctx context.Context, req *apiservice.Instance, svc *svc
 	if svc == nil || ins == nil {
 		return nil
 	}
-	marshaler := jsonpb.Marshaler{}
-	datail, _ := marshaler.MarshalToString(req)
+	datail, _ := protojson.MarshalOptions{EmitUnpopulated: true}.Marshal(req)
 	entry := &types.RecordEntry{
 		ResourceType:  types.RInstance,
 		ResourceName:  fmt.Sprintf("%s(%s:%d)", svc.Name, ins.Host(), ins.Port()),
 		Namespace:     svc.Namespace,
 		OperationType: opt,
 		Operator:      utils.ParseOperator(ctx),
-		Detail:        datail,
+		Detail:        string(datail),
 		HappenTime:    time.Now(),
 	}
 	return entry

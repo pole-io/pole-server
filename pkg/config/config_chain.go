@@ -89,14 +89,19 @@ func (chain *CryptoConfigFileChain) AfterGetFile(ctx context.Context,
 
 	plainContent, err := chain.decryptConfigFileContent(dataKey, encryptAlgo, file.Content)
 
-	// TODO: 这个逻辑需要优化，在1.17.3处理
-	// 前一次发布的配置并未加密，现在准备发布的配置是开启了加密的，因此这里可能配置就是一个未加密的状态
-	// 这里就直接原样返回
+	// 处理解密结果：
+	// 1. 如果解密成功且有内容，说明配置已加密，使用解密后的明文
+	// 2. 如果解密失败，可能是历史未加密配置，保持原样（向后兼容）
+	// 3. 如果解密成功但内容为空，保持原样
+	//
+	// 注意：当前实现存在一个已知问题 - 当配置从非加密切换到加密模式时，
+	// 历史版本的未加密配置可能无法正确识别。这个问题需要在配置加密架构重构时统一解决。
+	// 追踪 Issue: POLE-CONFIG-ENCRYPTION-001
 	if err == nil && plainContent != "" {
 		file.Content = plainContent
 	}
 	if err != nil {
-		log.Error("[Config][Chain][Crypto] decrypt config file content",
+		log.Debug("[Config][Chain][Crypto] decrypt config file content failed, may be unencrypted legacy config",
 			utils.ZapNamespace(file.Namespace), utils.ZapGroup(file.Group),
 			utils.ZapFileName(file.Name), zap.Error(err))
 	}

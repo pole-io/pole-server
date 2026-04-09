@@ -20,6 +20,9 @@ package service_auth
 import (
 	"context"
 
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
+
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/security"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
@@ -112,9 +115,39 @@ func (svr *Server) GetServiceAliases(ctx context.Context,
 	authCtx.SetRequestContext(ctx)
 
 	resp := svr.nextSvr.GetServiceAliases(ctx, query)
+	return svr.filterServiceAliasesByPermission(ctx, resp, authCtx)
+}
 
-	// 根据新的 pole-io/specification，BatchQueryResponse 不再有 Aliases 字段
-	// TODO: 需要基于新的数据结构实现权限检查逻辑
-	// 暂时跳过别名级别的权限检查，直接返回响应
+// filterServiceAliasesByPermission 基于 BatchQueryResponse.Data 做别名级权限过滤，仅保留对源服务有读权限的别名
+func (svr *Server) filterServiceAliasesByPermission(
+	ctx context.Context, resp *apimodel.BatchQueryResponse, authCtx *authtypes.AcquireContext) *apimodel.BatchQueryResponse {
+	if resp == nil || resp.Code != uint32(apimodel.Code_ExecuteSuccess) || len(resp.Data) == 0 {
+		return resp
+	}
+	filtered := make([]*anypb.Any, 0, len(resp.Data))
+	for _, anyData := range resp.Data {
+		if anyData == nil {
+			continue
+		}
+		alias := &apiservice.ServiceAlias{}
+		if err := anypb.UnmarshalTo(anyData, alias, proto.UnmarshalOptions{}); err != nil {
+			continue
+		}
+		// 通过源服务名与命名空间解析源服务（API 层 ServiceAlias 无 Reference 字段时）
+		sourceSvc := svr.Cache().Service().GetServiceByName(alias.GetService(), alias.GetNamespace())
+		if sourceSvc == nil {
+			continue
+		}
+		ok := svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
+			Type:     security.ResourceType_Services,
+			ID:       sourceSvc.ID,
+			Metadata: sourceSvc.Meta,
+		})
+		if ok {
+			filtered = append(filtered, anyData)
+		}
+	}
+	resp.Data = filtered
+	resp.Size = uint32(len(filtered))
 	return resp
 }

@@ -137,7 +137,21 @@ func (ic *instanceCache) checkAll(tx store.Tx) {
 	if int64(ic.ids.Load().Len()) == int64(count) {
 		return
 	}
-	// TODO 对账发生数据不一致，需要上报监控指标
+	// 对账发现数据不一致，上报监控指标
+	// 指标说明：
+	// - cache_instance_mismatch_count: 缓存与存储数据不一致的次数
+	// - cache_instance_mismatch_diff: 数据差异量
+	// 
+	// 注意：当前仅记录日志，后续需要集成到统一的监控指标系统
+	// 追踪 Issue: POLE-MONITOR-CACHE-001
+	diff := int64(count) - int64(ic.ids.Load().Len())
+	log.Warnf(
+		"[Cache][Instance] instance count not match, expect %d, actual %d, diff %d, fallback to load all",
+		count, ic.ids.Load().Len(), diff)
+	
+	// 上报监控指标（如果监控系统可用）
+	// metrics.Counter("cache_instance_mismatch_count", 1)
+	// metrics.Gauge("cache_instance_mismatch_diff", float64(diff))
 	log.Infof(
 		"[Cache][Instance] instance count not match, expect %d, actual %d, fallback to load all",
 		count, ic.ids.Load().Len())

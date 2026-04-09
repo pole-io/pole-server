@@ -449,9 +449,29 @@ func (f *faultDetectCache) Query(ctx context.Context, args *types.FaultDetectArg
 				if matchs.IsWildMatch(getter(val), filterValue) {
 					return
 				}
-			} else {
-				// FIXME 暂时不知道还有什么字段查询需要适配，等待自测验证
+			} else if fieldKey == "namespace" {
+				// 精确匹配命名空间
+				if filterValue != val.Namespace {
+					return
+				}
+			} else if fieldKey == "dstnamespace" {
+				// 精确匹配目标命名空间
+				if filterValue != val.DstNamespace {
+					return
+				}
+			} else if fieldKey == "valid" {
+				// 精确匹配有效性状态
+				validStr := strconv.FormatBool(val.Valid)
+				if filterValue != validStr {
+					return
+				}
+			} else if fieldKey == "revision" {
+				// 精确匹配版本号
+				if filterValue != val.Revision {
+					return
+				}
 			}
+			// 其他未知字段忽略，保持向后兼容
 		}
 		for i := range predicates {
 			if !predicates[i](ctx, val) {
