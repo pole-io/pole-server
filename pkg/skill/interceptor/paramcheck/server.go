@@ -264,3 +264,37 @@ func (svr *Server) DeleteSkillGroups(ctx context.Context, groups []*aiTypes.Skil
 func (svr *Server) GetSkillGroups(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
 	return svr.nextSvr.GetSkillGroups(ctx, query)
 }
+
+// ===== SkillVersion Batch Operations =====
+
+// CreateSkillVersions creates multiple skill versions (batch)
+func (svr *Server) CreateSkillVersions(ctx context.Context, versions []*aiTypes.SkillVersion) *apimodel.BatchWriteResponse {
+	return svr.nextSvr.CreateSkillVersions(ctx, versions)
+}
+
+// DeleteSkillVersions deletes multiple skill versions (batch)
+func (svr *Server) DeleteSkillVersions(ctx context.Context, ids []string) *apimodel.BatchWriteResponse {
+	return svr.nextSvr.DeleteSkillVersions(ctx, ids)
+}
+
+// GetSkillVersions queries skill versions with filters
+func (svr *Server) GetSkillVersions(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
+	return svr.nextSvr.GetSkillVersions(ctx, query)
+}
+
+// ===== SkillSubscription Batch Operations =====
+
+// CreateSkillSubscriptions creates multiple skill subscriptions (batch)
+func (svr *Server) CreateSkillSubscriptions(ctx context.Context, subs []*aiTypes.SkillSubscription) *apimodel.BatchWriteResponse {
+	return svr.nextSvr.CreateSkillSubscriptions(ctx, subs)
+}
+
+// DeleteSkillSubscriptions deletes multiple skill subscriptions (batch)
+func (svr *Server) DeleteSkillSubscriptions(ctx context.Context, ids []string) *apimodel.BatchWriteResponse {
+	return svr.nextSvr.DeleteSkillSubscriptions(ctx, ids)
+}
+
+// GetSkillSubscriptions queries skill subscriptions with filters
+func (svr *Server) GetSkillSubscriptions(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
+	return svr.nextSvr.GetSkillSubscriptions(ctx, query)
+}

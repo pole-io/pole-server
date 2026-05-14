@@ -156,6 +156,18 @@ type SkillVersion struct {
 // SkillVersionArr is an array of SkillVersion
 type SkillVersionArr []*SkillVersion
 
+// ToAIType converts SkillVersionArr to []*aiTypes.SkillVersion
+func (arr SkillVersionArr) ToAIType() []*aiTypes.SkillVersion {
+	if arr == nil {
+		return nil
+	}
+	result := make([]*aiTypes.SkillVersion, 0, len(arr))
+	for _, v := range arr {
+		result = append(result, v.ToAIType())
+	}
+	return result
+}
+
 // Convert SkillVersion to ai.SkillVersion
 func (v *SkillVersion) ToAIType() *aiTypes.SkillVersion {
 	if v == nil {
@@ -195,6 +207,18 @@ type SkillSubscription struct {
 
 // SkillSubscriptionArr is an array of SkillSubscription
 type SkillSubscriptionArr []*SkillSubscription
+
+// ToAIType converts SkillSubscriptionArr to []*aiTypes.SkillSubscription
+func (arr SkillSubscriptionArr) ToAIType() []*aiTypes.SkillSubscription {
+	if arr == nil {
+		return nil
+	}
+	result := make([]*aiTypes.SkillSubscription, 0, len(arr))
+	for _, s := range arr {
+		result = append(result, s.ToAIType())
+	}
+	return result
+}
 
 // Convert SkillSubscription to ai.SkillSubscription
 func (s *SkillSubscription) ToAIType() *aiTypes.SkillSubscription {

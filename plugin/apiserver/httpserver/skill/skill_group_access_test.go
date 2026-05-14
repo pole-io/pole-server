@@ -224,6 +224,56 @@ func (m *MockSkillServer) GetSkillGroupsCount(ctx context.Context) *apimodel.Bat
 	return args.Get(0).(*apimodel.BatchQueryResponse)
 }
 
+// SkillVersion batch operations
+func (m *MockSkillServer) CreateSkillVersions(ctx context.Context, versions []*ai.SkillVersion) *apimodel.BatchWriteResponse {
+	args := m.Called(ctx, versions)
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).(*apimodel.BatchWriteResponse)
+}
+
+func (m *MockSkillServer) DeleteSkillVersions(ctx context.Context, ids []string) *apimodel.BatchWriteResponse {
+	args := m.Called(ctx, ids)
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).(*apimodel.BatchWriteResponse)
+}
+
+func (m *MockSkillServer) GetSkillVersions(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
+	args := m.Called(ctx, query)
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).(*apimodel.BatchQueryResponse)
+}
+
+// SkillSubscription batch operations
+func (m *MockSkillServer) CreateSkillSubscriptions(ctx context.Context, subs []*ai.SkillSubscription) *apimodel.BatchWriteResponse {
+	args := m.Called(ctx, subs)
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).(*apimodel.BatchWriteResponse)
+}
+
+func (m *MockSkillServer) DeleteSkillSubscriptions(ctx context.Context, ids []string) *apimodel.BatchWriteResponse {
+	args := m.Called(ctx, ids)
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).(*apimodel.BatchWriteResponse)
+}
+
+func (m *MockSkillServer) GetSkillSubscriptions(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
+	args := m.Called(ctx, query)
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).(*apimodel.BatchQueryResponse)
+}
+
 // MockResponse is a mock response type
 type MockResponse struct {
 	Code uint32 `json:"code"`

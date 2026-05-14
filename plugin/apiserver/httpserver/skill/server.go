@@ -43,6 +43,8 @@ func (h *HTTPServer) GetSkillAccessServer(include []string) *restful.WebService 
 
 	h.addSkillAccess(ws)
 	h.addSkillGroupAccess(ws)
+	h.addSkillVersionAccess(ws)
+	h.addSkillSubscriptionAccess(ws)
 
 	return ws
 }
@@ -65,4 +67,20 @@ func (h *HTTPServer) addSkillGroupAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichUpdateSkillGroupsApiDocs(ws.PUT("/skill/groups").To(h.UpdateSkillGroups)))
 	ws.Route(docs.EnrichDeleteSkillGroupsApiDocs(ws.POST("/skill/groups/delete").To(h.DeleteSkillGroups)))
 	ws.Route(docs.EnrichGetSkillGroupsApiDocs(ws.GET("/skill/groups").To(h.GetSkillGroups)))
+}
+
+// addSkillVersionAccess registers SkillVersion API routes
+func (h *HTTPServer) addSkillVersionAccess(ws *restful.WebService) {
+	ws.Route(docs.EnrichCreateSkillVersionsApiDocs(ws.POST("/skill/versions").To(h.CreateSkillVersions)))
+	ws.Route(docs.EnrichDeleteSkillVersionsApiDocs(ws.POST("/skill/versions/delete").To(h.DeleteSkillVersions)))
+	ws.Route(docs.EnrichGetSkillVersionsApiDocs(ws.GET("/skill/versions").To(h.GetSkillVersions)))
+	ws.Route(docs.EnrichActivateSkillVersionApiDocs(ws.POST("/skill/versions/activate").To(h.ActivateSkillVersion)))
+}
+
+// addSkillSubscriptionAccess registers SkillSubscription API routes
+func (h *HTTPServer) addSkillSubscriptionAccess(ws *restful.WebService) {
+	ws.Route(docs.EnrichCreateSkillSubscriptionsApiDocs(ws.POST("/skill/subscriptions").To(h.CreateSkillSubscriptions)))
+	ws.Route(docs.EnrichDeleteSkillSubscriptionsApiDocs(ws.POST("/skill/subscriptions/delete").To(h.DeleteSkillSubscriptions)))
+	ws.Route(docs.EnrichGetSkillSubscriptionsApiDocs(ws.GET("/skill/subscriptions").To(h.GetSkillSubscriptions)))
+	ws.Route(docs.EnrichGetSkillSubscriptionsByClientApiDocs(ws.GET("/skill/subscriptions/clients/{client_id}").To(h.GetSkillSubscriptionsByClient)))
 }

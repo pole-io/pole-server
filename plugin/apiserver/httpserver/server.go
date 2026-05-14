@@ -41,6 +41,7 @@ import (
 	"github.com/pole-io/pole-server/apis/observability/statis"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/admin"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/conn/keepalive"
@@ -250,7 +251,14 @@ func (h *HTTPServer) Run(errCh chan error) {
 		return
 	}
 
-	aimcpSvr, err := aimcp.NewServer(h.maintainServer, h.namespaceServer)
+	storage, err := storeapi.GetStore()
+	if err != nil {
+		log.Errorf("%v", err)
+		errCh <- err
+		return
+	}
+
+	aimcpSvr, err := aimcp.NewServer(h.maintainServer, h.namespaceServer, storage)
 	if err != nil {
 		errCh <- err
 		return

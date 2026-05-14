@@ -2,6 +2,8 @@ package aimcp
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -87,7 +89,7 @@ func (h *HTTPServer) addToolCreateMCPServers(mcpSvr *server.MCPServer) {
 		mcp.NewTool("create_mcp_servers",
 			mcp.WithDescription("此工具用于创建多个 MCP Server"),
 			mcp.WithArray("servers",
-				mcp.Description("MCP Server 数组"),
+				mcp.Description("MCP Server 数组，每个元素包含 name, namespace, ports, business, department, description, protocol, export_to 等字段"),
 			),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -97,14 +99,17 @@ func (h *HTTPServer) addToolCreateMCPServers(mcpSvr *server.MCPServer) {
 				return mcp.NewToolResultError("invalid: args is empty"), nil
 			}
 
-			servers, ok := args["servers"].([]interface{})
-			if !ok || len(servers) == 0 {
+			serversRaw, ok := args["servers"]
+			if !ok {
 				return mcp.NewToolResultError("invalid: servers is empty"), nil
 			}
 
-			// TODO: 实现 MCP Server 创建逻辑
-			_ = servers
-			rsp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+			servers, err := parseMCPServers(serversRaw)
+			if err != nil || len(servers) == 0 {
+				return mcp.NewToolResultError(fmt.Sprintf("invalid: parse servers fail: %v", err)), nil
+			}
+
+			rsp := h.mcpServerCreate(ctx, servers)
 			ret, err := httpcommon.MarshalPBJson(rsp)
 			return mcp.NewToolResultText(ret), err
 		})
@@ -116,7 +121,7 @@ func (h *HTTPServer) addToolUpdateMCPServers(mcpSvr *server.MCPServer) {
 		mcp.NewTool("update_mcp_servers",
 			mcp.WithDescription("此工具用于更新多个 MCP Server"),
 			mcp.WithArray("servers",
-				mcp.Description("MCP Server 数组"),
+				mcp.Description("MCP Server 数组，每个元素包含 id, name, namespace, ports, business, department, description, protocol, export_to 等字段"),
 			),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -126,8 +131,17 @@ func (h *HTTPServer) addToolUpdateMCPServers(mcpSvr *server.MCPServer) {
 				return mcp.NewToolResultError("invalid: args is empty"), nil
 			}
 
-			// TODO: 实现 MCP Server 更新逻辑
-			rsp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+			serversRaw, ok := args["servers"]
+			if !ok {
+				return mcp.NewToolResultError("invalid: servers is empty"), nil
+			}
+
+			servers, err := parseMCPServers(serversRaw)
+			if err != nil || len(servers) == 0 {
+				return mcp.NewToolResultError(fmt.Sprintf("invalid: parse servers fail: %v", err)), nil
+			}
+
+			rsp := h.mcpServerUpdate(ctx, servers)
 			ret, err := httpcommon.MarshalPBJson(rsp)
 			return mcp.NewToolResultText(ret), err
 		})
@@ -161,9 +175,7 @@ func (h *HTTPServer) addToolDeleteMCPServers(mcpSvr *server.MCPServer) {
 				}
 			}
 
-			// TODO: 实现 MCP Server 删除逻辑
-			_ = ids
-			rsp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+			rsp := h.mcpServerDelete(ctx, ids)
 			ret, err := httpcommon.MarshalPBJson(rsp)
 			return mcp.NewToolResultText(ret), err
 		})
@@ -235,30 +247,127 @@ func (h *HTTPServer) addToolsMCPServer(mcpSvr *server.MCPServer) {
 
 // mcpServerQuery 查询 MCP Servers
 func (h *HTTPServer) mcpServerQuery(ctx context.Context, filter map[string]string, offset, limit uint32) *apimodel.BatchQueryResponse {
-	// TODO: 实现 MCP Server 查询逻辑
-	return api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	if h.storage == nil {
+		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	}
+
+	count, servers, err := h.storage.QueryMCPServers(filter, offset, limit)
+	if err != nil {
+		log.Errorf("[apiserver][ai-mcp] query mcp servers err: %s", err.Error())
+		return api.NewBatchQueryResponseWithMsg(apimodel.Code_StoreLayerException, err.Error())
+	}
+
+	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	resp.Amount = count
+	resp.Size = uint32(len(servers))
+	return resp
 }
 
 // mcpServerCreate 创建 MCP Servers
 func (h *HTTPServer) mcpServerCreate(ctx context.Context, servers []*ai.MCPServer) *apimodel.Response {
-	// TODO: 实现 MCP Server 创建逻辑
+	if h.storage == nil {
+		return api.NewResponse(apimodel.Code_StoreLayerException)
+	}
+
+	for _, s := range servers {
+		if err := h.storage.CreateMCPServer(s); err != nil {
+			log.Errorf("[apiserver][ai-mcp] create mcp server err: %s", err.Error())
+			return api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
+		}
+	}
 	return api.NewResponse(apimodel.Code_ExecuteSuccess)
 }
 
 // mcpServerUpdate 更新 MCP Servers
 func (h *HTTPServer) mcpServerUpdate(ctx context.Context, servers []*ai.MCPServer) *apimodel.Response {
-	// TODO: 实现 MCP Server 更新逻辑
+	if h.storage == nil {
+		return api.NewResponse(apimodel.Code_StoreLayerException)
+	}
+
+	for _, s := range servers {
+		if err := h.storage.UpdateMCPServer(s); err != nil {
+			log.Errorf("[apiserver][ai-mcp] update mcp server err: %s", err.Error())
+			return api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
+		}
+	}
 	return api.NewResponse(apimodel.Code_ExecuteSuccess)
 }
 
 // mcpServerDelete 删除 MCP Servers
 func (h *HTTPServer) mcpServerDelete(ctx context.Context, ids []string) *apimodel.Response {
-	// TODO: 实现 MCP Server 删除逻辑
+	if h.storage == nil {
+		return api.NewResponse(apimodel.Code_StoreLayerException)
+	}
+
+	for _, id := range ids {
+		if err := h.storage.DeleteMCPServer(id); err != nil {
+			log.Errorf("[apiserver][ai-mcp] delete mcp server err: %s", err.Error())
+			return api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
+		}
+	}
 	return api.NewResponse(apimodel.Code_ExecuteSuccess)
 }
 
 // mcpServerToolQuery 查询 MCP Server Tools
 func (h *HTTPServer) mcpServerToolQuery(ctx context.Context, filter map[string]string, offset, limit uint32) *apimodel.BatchQueryResponse {
-	// TODO: 实现 MCP Server Tool 查询逻辑
-	return api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	if h.storage == nil {
+		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	}
+
+	// Resolve server_id from server_name + server_namespace if needed
+	serverID := filter["server_id"]
+	if serverID == "" {
+		serverName := filter["server_name"]
+		serverNamespace := filter["server_namespace"]
+		if serverName != "" && serverNamespace != "" {
+			svr, err := h.storage.GetMCPServerByName(serverName, serverNamespace)
+			if err != nil {
+				return api.NewBatchQueryResponseWithMsg(apimodel.Code_StoreLayerException, err.Error())
+			}
+			if svr == nil {
+				return api.NewBatchQueryResponseWithMsg(apimodel.Code_NotFoundResource, "mcp server not found")
+			}
+			serverID = svr.ID
+		}
+	}
+
+	if serverID == "" {
+		return api.NewBatchQueryResponseWithMsg(apimodel.Code_BadRequest, "server_id or server_name+server_namespace is required")
+	}
+
+	tools, err := h.storage.GetMCPServerToolsByServerID(serverID)
+	if err != nil {
+		log.Errorf("[apiserver][ai-mcp] query mcp server tools err: %s", err.Error())
+		return api.NewBatchQueryResponseWithMsg(apimodel.Code_StoreLayerException, err.Error())
+	}
+
+	// Apply offset/limit
+	total := uint32(len(tools))
+	if offset > total {
+		offset = total
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	result := tools[offset:end]
+
+	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	resp.Amount = total
+	resp.Size = uint32(len(result))
+	return resp
+}
+
+// parseMCPServers parses MCP Server objects from MCP tool arguments
+func parseMCPServers(raw interface{}) ([]*ai.MCPServer, error) {
+	data, err := json.Marshal(raw)
+	if err != nil {
+		return nil, fmt.Errorf("marshal servers: %w", err)
+	}
+
+	var servers []*ai.MCPServer
+	if err := json.Unmarshal(data, &servers); err != nil {
+		return nil, fmt.Errorf("unmarshal servers: %w", err)
+	}
+	return servers, nil
 }

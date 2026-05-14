@@ -27,6 +27,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/admin"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/version"
@@ -52,6 +53,7 @@ type HTTPServer struct {
 	namespaceServer namespace.NamespaceOperateServer
 	configServer    config.ConfigCenterServer
 	discoverySvr    service.DiscoverServer
+	storage         store.Store
 	mcpSvr          *server.MCPServer
 	sseSvr          *server.SSEServer
 }
@@ -59,7 +61,8 @@ type HTTPServer struct {
 // NewServer 创建配置中心的 HttpServer
 func NewServer(
 	maintainServer admin.AdminOperateServer,
-	namespaceServer namespace.NamespaceOperateServer) (*HTTPServer, error) {
+	namespaceServer namespace.NamespaceOperateServer,
+	storage store.Store) (*HTTPServer, error) {
 	// 初始化配置中心模块
 	configServer, err := config.GetServer()
 	if err != nil {
@@ -105,6 +108,7 @@ func NewServer(
 		namespaceServer: namespaceServer,
 		configServer:    configServer,
 		discoverySvr:    discoverySvr,
+		storage:         storage,
 		mcpSvr:          mcpSvr,
 		sseSvr:          sseSvr,
 	}, nil
@@ -136,6 +140,7 @@ func (h *HTTPServer) GetMCPAccessServer(include []string) *restful.WebService {
 
 func (h *HTTPServer) addMcpTools() {
 	h.addToolsNamespace(h.mcpSvr)
+	h.addToolsMCPServer(h.mcpSvr)
 }
 
 func (h *HTTPServer) addDefaultAccess(ws *restful.WebService) {

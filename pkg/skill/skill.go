@@ -68,11 +68,21 @@ type SkillServer interface {
 	CreateSkillVersion(ctx context.Context, version *aiTypes.SkillVersion) error
 	ActivateSkillVersion(ctx context.Context, versionID string) error
 
+	// SkillVersion batch operations
+	CreateSkillVersions(ctx context.Context, versions []*aiTypes.SkillVersion) *apimodel.BatchWriteResponse
+	DeleteSkillVersions(ctx context.Context, ids []string) *apimodel.BatchWriteResponse
+	GetSkillVersions(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
+
 	// SkillSubscription operations
 	CreateSkillSubscription(ctx context.Context, sub *aiTypes.SkillSubscription) error
 	DeleteSkillSubscription(ctx context.Context, id string) error
 	GetSkillSubscriptionsBySkill(ctx context.Context, skillName, namespace string) ([]*aiTypes.SkillSubscription, error)
 	GetSkillSubscriptionsByClient(ctx context.Context, clientID string) ([]*aiTypes.SkillSubscription, error)
+
+	// SkillSubscription batch operations
+	CreateSkillSubscriptions(ctx context.Context, subs []*aiTypes.SkillSubscription) *apimodel.BatchWriteResponse
+	DeleteSkillSubscriptions(ctx context.Context, ids []string) *apimodel.BatchWriteResponse
+	GetSkillSubscriptions(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
 }
 
 // Server is the skill operation server
@@ -474,4 +484,104 @@ func parseUint32(s string) (uint32, error) {
 	var v uint32
 	_, err := fmt.Sscanf(s, "%d", &v)
 	return v, err
+}
+
+// ===== SkillVersion Batch Operations =====
+
+// CreateSkillVersions creates multiple skill versions
+func (s *Server) CreateSkillVersions(ctx context.Context, versions []*aiTypes.SkillVersion) *apimodel.BatchWriteResponse {
+	resp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, version := range versions {
+		if err := s.CreateSkillVersion(ctx, version); err != nil {
+			log.Errorf("[SkillVersion] create skill version failed, skill: %s, err: %v",
+				version.SkillName, err)
+			api.Collect(resp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.Collect(resp, api.NewResponse(apimodel.Code_ExecuteSuccess))
+		}
+	}
+	return api.FormatBatchWriteResponse(resp)
+}
+
+// DeleteSkillVersions deletes multiple skill versions
+func (s *Server) DeleteSkillVersions(ctx context.Context, ids []string) *apimodel.BatchWriteResponse {
+	resp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, id := range ids {
+		if err := s.storage.DeleteSkillVersion(id); err != nil {
+			log.Errorf("[SkillVersion] delete skill version failed, id: %s, err: %v", id, err)
+			api.Collect(resp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.Collect(resp, api.NewResponse(apimodel.Code_ExecuteSuccess))
+		}
+	}
+	return api.FormatBatchWriteResponse(resp)
+}
+
+// GetSkillVersions queries skill versions with filters
+func (s *Server) GetSkillVersions(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
+	if s.storage == nil {
+		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	}
+
+	offset, limit := parseOffsetLimit(query)
+	count, versions, err := s.storage.QuerySkillVersions(query, offset, limit)
+	if err != nil {
+		log.Errorf("[SkillVersion] query skill versions failed, err: %v", err)
+		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	}
+
+	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	resp.Amount = count
+	resp.Size = uint32(len(versions))
+	return resp
+}
+
+// ===== SkillSubscription Batch Operations =====
+
+// CreateSkillSubscriptions creates multiple skill subscriptions
+func (s *Server) CreateSkillSubscriptions(ctx context.Context, subs []*aiTypes.SkillSubscription) *apimodel.BatchWriteResponse {
+	resp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, sub := range subs {
+		if err := s.CreateSkillSubscription(ctx, sub); err != nil {
+			log.Errorf("[SkillSubscription] create skill subscription failed, skill: %s, client: %s, err: %v",
+				sub.SkillName, sub.ClientID, err)
+			api.Collect(resp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.Collect(resp, api.NewResponse(apimodel.Code_ExecuteSuccess))
+		}
+	}
+	return api.FormatBatchWriteResponse(resp)
+}
+
+// DeleteSkillSubscriptions deletes multiple skill subscriptions
+func (s *Server) DeleteSkillSubscriptions(ctx context.Context, ids []string) *apimodel.BatchWriteResponse {
+	resp := api.NewBatchWriteResponse(apimodel.Code_ExecuteSuccess)
+	for _, id := range ids {
+		if err := s.DeleteSkillSubscription(ctx, id); err != nil {
+			log.Errorf("[SkillSubscription] delete skill subscription failed, id: %s, err: %v", id, err)
+			api.Collect(resp, api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
+		} else {
+			api.Collect(resp, api.NewResponse(apimodel.Code_ExecuteSuccess))
+		}
+	}
+	return api.FormatBatchWriteResponse(resp)
+}
+
+// GetSkillSubscriptions queries skill subscriptions with filters
+func (s *Server) GetSkillSubscriptions(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse {
+	if s.storage == nil {
+		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	}
+
+	offset, limit := parseOffsetLimit(query)
+	count, subs, err := s.storage.QuerySkillSubscriptions(query, offset, limit)
+	if err != nil {
+		log.Errorf("[SkillSubscription] query skill subscriptions failed, err: %v", err)
+		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	}
+
+	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
+	resp.Amount = count
+	resp.Size = uint32(len(subs))
+	return resp
 }
