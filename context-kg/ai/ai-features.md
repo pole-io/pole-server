@@ -1,7 +1,7 @@
 ---
 title: AI 原生功能：MCP 与 Skill Hub
 tags: [ai, mcp, skill]
-links: [domain-components, storage, cache-layer, api-servers]
+links: [skill-hub, storage, cache-layer, api-servers]
 updated: 2026-05-14
 sources: 1
 ---
@@ -15,7 +15,7 @@ AI 原生功能使 Pole 的服务注册中心和治理能力对 AI 智能体（L
 1. **MCP Registry** — 注册和发现 MCP（模型上下文协议）服务器
 2. **Skill Hub** — 类配置中心风格的 AI 技能（函数/工具/智能体）注册中心
 
-业务域层面的 Skill Hub 实现见 [[domain-components]]，存储层接口见 [[storage]]，缓存机制见 [[cache-layer]]，HTTP API 端点见 [[api-servers]]。
+业务域层面的 Skill Hub 实现见 [[skill-hub]]，存储层接口见 [[storage]]，缓存机制见 [[cache-layer]]，HTTP API 端点见 [[api-servers]]。
 
 ---
 
@@ -215,7 +215,7 @@ Pole 内部技能存储
 
 ## 相关页面
 
-- [[domain-components]]
+- [[skill-hub]]
 - [[storage]]
 - [[cache-layer]]
 - [[api-servers]]

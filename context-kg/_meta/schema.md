@@ -16,27 +16,38 @@ sources: 0
 
 ```
 context-kg/
-├── schema.md              # 本文件：wiki 操作手册
-├── index.md               # 所有页面的内容目录（入口）
-├── log.md                 # 追加式操作日志
-├── overview.md            # 项目概览
-├── architecture.md        # 系统架构
-├── domain-components.md   # 业务领域组件
-├── api-servers.md         # API 服务端协议实现
-├── storage.md             # 存储层
-├── cache-layer.md         # 缓存层
-├── auth-system.md         # 认证与访问控制
-├── ai-features.md         # AI 原生功能（MCP + Skill Hub）
-├── common-infra.md        # 公共基础设施包
-├── configuration.md       # 配置参考
-├── patterns.md            # 关键模式与约定
-└── testing.md             # 测试结构与规范
+├── _meta/                 # 元文件目录
+│   ├── schema.md          # 本文件：wiki 操作手册
+│   ├── index.md           # 所有页面的内容目录（入口）
+│   └── log.md             # 追加式操作日志
+├── overview/              # 全局视角
+│   ├── overview.md        # 项目概览
+│   ├── architecture.md    # 系统架构
+│   ├── api-servers.md     # API 服务端协议实现
+│   └── configuration.md   # 配置参考
+├── domains/               # 业务域
+│   ├── namespace.md       # 命名空间
+│   ├── service-discovery.md # 服务发现
+│   ├── config-center.md   # 配置中心
+│   ├── governance-rules.md # 治理规则
+│   ├── skill-hub.md       # Skill Hub
+│   └── admin.md           # 管理后台
+├── infra/                 # 技术基础设施
+│   ├── storage.md         # 存储层
+│   ├── cache-layer.md     # 缓存层
+│   ├── auth-system.md     # 认证与访问控制
+│   └── common-infra.md    # 公共基础设施包
+├── ai/                    # AI 原生能力
+│   └── ai-features.md     # MCP + Skill Hub 详细设计
+└── guides/                # 开发指南
+    ├── patterns.md        # 关键模式与约定
+    └── testing.md         # 测试结构与规范
 ```
 
 **规则：**
-- `schema.md`、`index.md`、`log.md` 是元文件，不记录业务知识
+- `_meta/` 下的 `schema.md`、`index.md`、`log.md` 是元文件，不记录业务知识
 - 所有内容页面必须有 YAML frontmatter
-- 新增页面必须同时更新 `index.md` 和 `log.md`
+- 新增页面必须同时更新 `_meta/index.md` 和 `_meta/log.md`
 
 ---
 
@@ -80,11 +91,26 @@ sources: 1                  # 本次 ingest 扫描到的源码文件数（0 表�
 - 链接内容与文件名完全一致（例如 `[[ai-features]]`，不是 `[[AI特性]]`）
 - 每个页面底部必须有 `## 相关页面` section，列出所有 `[[链接]]`
 - `links` frontmatter 字段应与 `## 相关页面` 中的链接保持一致
+- Obsidian 按文件名全局解析，**无需**在链接中指定子目录路径
 
 **已定义的页面名：**
-- `overview`、`architecture`、`domain-components`、`api-servers`
-- `storage`、`cache-layer`、`auth-system`、`ai-features`
-- `common-infra`、`configuration`、`patterns`、`testing`
+
+overview 目录：
+- `overview`、`architecture`、`api-servers`、`configuration`
+
+domains 目录：
+- `namespace`、`service-discovery`、`config-center`、`governance-rules`、`skill-hub`、`admin`
+
+infra 目录：
+- `storage`、`cache-layer`、`auth-system`、`common-infra`
+
+ai 目录：
+- `ai-features`
+
+guides 目录：
+- `patterns`、`testing`
+
+_meta 目录：
 - `index`、`schema`、`log`
 
 ---
@@ -102,8 +128,8 @@ sources: 1                  # 本次 ingest 扫描到的源码文件数（0 表�
 4. 更新 frontmatter 的 `updated` 日期和 `sources` 数量
 5. 检查是否需要新增或修改 `[[链接]]`
 6. 在 `## 相关页面` 中补充新链接
-7. 如新建页面，同步更新 `index.md`
-8. 在 `log.md` 末尾追加操作记录
+7. 如新建页面，同步更新 `_meta/index.md`
+8. 在 `_meta/log.md` 末尾追加操作记录
 
 **日志格式：**
 ```
@@ -121,7 +147,7 @@ sources: 1                  # 本次 ingest 扫描到的源码文件数（0 表�
 触发时机：需要回答关于代码库的问题时。
 
 **步骤：**
-1. 从 `index.md` 定位相关页面（按分类浏览）
+1. 从 `_meta/index.md` 定位相关页面（按分类浏览）
 2. 读取目标页面的 frontmatter `links` 字段，获取关联页面列表
 3. 按需读取关联页面，构建完整上下文
 4. 优先使用页面中的 `[[链接]]` 进行跨页面导航
@@ -130,11 +156,14 @@ sources: 1                  # 本次 ingest 扫描到的源码文件数（0 表�
 - 架构问题 → [[architecture]]
 - 存储/数据库问题 → [[storage]]
 - 性能/缓存问题 → [[cache-layer]]
-- AI/MCP/Skill 问题 → [[ai-features]]、[[domain-components]]
+- AI/MCP/Skill 问题 → [[ai-features]]、[[skill-hub]]
 - 认证/权限问题 → [[auth-system]]
 - 代码模式/约定 → [[patterns]]
 - 配置/部署问题 → [[configuration]]
 - 测试问题 → [[testing]]
+- 服务发现问题 → [[service-discovery]]
+- 配置中心问题 → [[config-center]]
+- 治理规则问题 → [[governance-rules]]
 
 ---
 
@@ -145,7 +174,7 @@ sources: 1                  # 本次 ingest 扫描到的源码文件数（0 表�
 **检查项：**
 1. **frontmatter 完整性** — 所有内容页面是否都有 title/tags/links/updated/sources
 2. **链接有效性** — `links` 数组中的页面是否都存在
-3. **index 一致性** — `index.md` 中是否列出了所有页面
+3. **index 一致性** — `_meta/index.md` 中是否列出了所有页面
 4. **双向链接对称性** — 若 A 的 `links` 包含 B，建议 B 的 `## 相关页面` 也引用 A
 5. **更新日期陈旧** — `updated` 日期超过 30 天且源码有变更时需提示
 6. **孤立页面** — 无任何页面链接到的内容页面
@@ -153,33 +182,33 @@ sources: 1                  # 本次 ingest 扫描到的源码文件数（0 表�
 **输出格式：**
 ```
 lint 结果：
-✓ frontmatter 完整：12/12 页面
+✓ frontmatter 完整：17/17 页面
 ✗ 失效链接：testing.md → links: [nonexistent]
 ⚠ 陈旧页面：storage.md（上次更新 2026-04-01，超过 30 天）
-✓ index 覆盖：12/12 页面
+✓ index 覆盖：17/17 页面
 ```
 
 ---
 
-## 如何维护 index.md
+## 如何维护 _meta/index.md
 
-`index.md` 是所有页面的目录，格式为：
+`_meta/index.md` 是所有页面的目录，格式为：
 
 ```markdown
 - [[页面名]] — 一句话摘要 | 标签列表
 ```
 
 **维护规则：**
-- 新增内容页面时，必须在 `index.md` 对应分类下添加一行
-- 删除页面时，同步删除 `index.md` 中对应行
+- 新增内容页面时，必须在 `_meta/index.md` 对应分类下添加一行
+- 删除页面时，同步删除 `_meta/index.md` 中对应行
 - 一句话摘要应概括页面的核心内容，不超过 30 字
 - 标签与 frontmatter 中的 `tags` 保持一致
 
 ---
 
-## 如何维护 log.md
+## 如何维护 _meta/log.md
 
-`log.md` 是追加式日志，只增不改。
+`_meta/log.md` 是追加式日志，只增不改。
 
 **格式：**
 ```markdown
@@ -188,7 +217,7 @@ lint 结果：
 - 条目2
 ```
 
-操作类型：`ingest`（接入源码）、`lint`（健康检查）、`refactor`（结构调整）
+操作类型：`ingest`（接入源码）、`lint`（健康检查）、`refactor`（结构调整）、`restructure`（目录重组）
 
 **规则：**
 - 每次 ingest 都必须追加一条记录

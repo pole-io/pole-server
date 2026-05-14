@@ -31,6 +31,25 @@ sources: 0
 - 首次建立 wiki 结构，新建元文件：schema.md、index.md、log.md
 - 替换旧 README.md 为 index.md
 
+## [2026-05-14] restructure | wiki 目录结构重组为方案 C
+
+- 新建子目录：_meta/, overview/, domains/, infra/, ai/, guides/
+- 拆分 domain-components.md → 6 个独立域文件：
+  - domains/namespace.md
+  - domains/service-discovery.md
+  - domains/config-center.md
+  - domains/governance-rules.md
+  - domains/skill-hub.md
+  - domains/admin.md
+- 移动 12 个内容页面至对应子目录：
+  - overview/: overview.md, architecture.md, api-servers.md, configuration.md
+  - infra/: storage.md, cache-layer.md, auth-system.md, common-infra.md
+  - ai/: ai-features.md（更新 links 加入 skill-hub）
+  - guides/: patterns.md, testing.md
+- 更新 _meta/index.md 为分类视图（五大类别：overview/domains/infra/ai/guides）
+- 更新 _meta/schema.md 目录结构约定为新分层结构
+- 删除根目录下所有旧文件（domain-components.md 及已移动的 12 个页面）
+
 ## 相关页面
 
 - [[index]]

@@ -213,19 +213,37 @@ sources: 1
 
 ```
 context-kg/
-├── schema.md           # wiki 操作规范（此文档的永久版本）
-├── index.md            # 所有页面的内容目录（入口）
-├── log.md              # 追加式操作日志
-├── overview.md         # 项目概览
-├── architecture.md     # 系统架构与插件体系
-├── domain-components.md# 业务领域：命名空间、服务发现、配置中心、治理规则、Skill Hub
-├── api-servers.md      # API 服务端：HTTP/gRPC/xDS/Nacos/Apollo/Eureka
-├── storage.md          # 存储层接口与 MySQL 实现
-├── cache-layer.md      # 19 种缓存类型与增量更新机制
-├── auth-system.md      # 认证与授权体系
-├── ai-features.md      # AI 原生功能：MCP Registry 与 Skill Hub
-├── common-infra.md     # 公共基础设施：日志、EventHub、BatchController
-├── configuration.md    # YAML 配置参考
-├── patterns.md         # 代码模式与约定
-└── testing.md          # 测试体系与 Mock 用法
+├── _meta/
+│   ├── schema.md           # wiki 操作规范（此文档的永久版本）
+│   ├── index.md            # 所有页面的内容目录（入口，先读此文件）
+│   └── log.md              # 追加式操作日志
+├── overview/               # 全局视角
+│   ├── overview.md         # 项目概览、技术选型、启动流程
+│   ├── architecture.md     # 四层架构、插件体系、请求流程
+│   ├── api-servers.md      # HTTP/gRPC/xDS/Nacos/Apollo/Eureka
+│   └── configuration.md    # YAML 配置参考
+├── domains/                # 业务域（每个域独立一文件）
+│   ├── namespace.md        # 命名空间管理
+│   ├── service-discovery.md# 服务发现、健康检查、批处理
+│   ├── config-center.md    # 配置中心、灰度发布、Watch
+│   ├── governance-rules.md # 路由/限流/熔断/故障探测/泳道
+│   ├── skill-hub.md        # AI Skill Hub 业务逻辑
+│   └── admin.md            # 管理后台操作
+├── infra/                  # 技术基础设施
+│   ├── storage.md          # 存储层接口与 MySQL 实现
+│   ├── cache-layer.md      # 19 种缓存类型与增量更新机制
+│   ├── auth-system.md      # 认证与授权体系
+│   └── common-infra.md     # 日志、EventHub、BatchController
+├── ai/                     # AI 原生能力
+│   └── ai-features.md      # MCP Registry 与 Skill Hub AI 视角
+└── guides/                 # 开发指南
+    ├── patterns.md         # 代码模式与约定（11 种）
+    └── testing.md          # 测试体系与 Mock 用法
 ```
+
+**新增页面时的归类原则：**
+- 新业务功能 → `domains/`
+- 新技术组件（存储/缓存/中间件）→ `infra/`
+- AI 相关能力 → `ai/`
+- 开发规范/工具 → `guides/`
+- 架构级变化 → `overview/`
