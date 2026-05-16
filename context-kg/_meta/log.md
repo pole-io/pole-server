@@ -18,12 +18,12 @@ sources: 0
 - 生成 12 个知识页面，覆盖以下领域：
   - 概览（overview）：项目介绍、技术选型、目录结构、启动流程
   - 架构（architecture）：四层架构、插件系统、Store/Cache 接口、拦截器链
-  - 业务领域（domain-components）：命名空间、服务发现、配置中心、治理规则、管理后台、Skill Hub
+  - 业务领域（domain-components）：命名空间、服务发现、配置中心、治理规则、管理后台
   - API 服务端（api-servers）：HTTP、gRPC、xDS v3、Nacos v1/v2、Apollo、Eureka、MCP 集成
   - 存储层（storage）：接口层次、MySQL 实现、软删除、增量查询、分布式锁
-  - 缓存层（cache-layer）：19 种缓存类型、1 秒刷新循环、-5 秒安全窗口
+  - 缓存层（cache-layer）：缓存子类型、1 秒刷新循环、-5 秒安全窗口
   - 认证系统（auth-system）：UserServer、StrategyServer、拦截器链、Token 流程
-  - AI 功能（ai-features）：MCP Registry、Skill Hub、领域模型、HTTP API、缓存
+  - AI 功能（ai-features）：MCP Registry、领域模型、HTTP API、缓存
   - 公共基础设施（common-infra）：日志、EventHub、Batch Controller、OTel、同步原语
   - 配置参考（configuration）：YAML 结构、插件配置、API 服务端配置、部署目录
   - 模式与约定（patterns）：11 种关键代码模式
@@ -34,17 +34,16 @@ sources: 0
 ## [2026-05-14] restructure | wiki 目录结构重组为方案 C
 
 - 新建子目录：_meta/, overview/, domains/, infra/, ai/, guides/
-- 拆分 domain-components.md → 6 个独立域文件：
+- 拆分 domain-components.md → 5 个独立域文件：
   - domains/namespace.md
   - domains/service-discovery.md
   - domains/config-center.md
   - domains/governance-rules.md
-  - domains/skill-hub.md
   - domains/admin.md
 - 移动 12 个内容页面至对应子目录：
   - overview/: overview.md, architecture.md, api-servers.md, configuration.md
   - infra/: storage.md, cache-layer.md, auth-system.md, common-infra.md
-  - ai/: ai-features.md（更新 links 加入 skill-hub）
+  - ai/: ai-features.md
   - guides/: patterns.md, testing.md
 - 更新 _meta/index.md 为分类视图（五大类别：overview/domains/infra/ai/guides）
 - 更新 _meta/schema.md 目录结构约定为新分层结构

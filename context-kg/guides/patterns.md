@@ -38,7 +38,7 @@ import _ "github.com/pole-io/pole-server/plugin/mything"
 
 ## 2. 单例业务服务模式
 
-每个业务领域（service、config、namespace、skill）均遵循以下模式：
+每个业务领域（service、config、namespace 等）均遵循以下模式：
 
 ```go
 var (
@@ -71,16 +71,16 @@ type Server struct { storage store.Store; ... }
 
 // 认证包装器
 type AuthServer struct {
-    nextSvr  SkillServer      // 包装真实服务端或其他拦截器
+    nextSvr  ServiceServer    // 包装真实服务端或其他拦截器
     userSvr  auth.UserServer
     policySvr auth.StrategyServer
 }
 
-func (s *AuthServer) CreateSkill(ctx context.Context, skill *ai.Skill) error {
-    if err := s.checkAuth(ctx, skill.Namespace, "write:skill"); err != nil {
+func (s *AuthServer) CreateService(ctx context.Context, svc *service.Service) error {
+    if err := s.checkAuth(ctx, svc.Namespace, "write:service"); err != nil {
         return err
     }
-    return s.nextSvr.CreateSkill(ctx, skill)
+    return s.nextSvr.CreateService(ctx, svc)
 }
 ```
 
@@ -214,7 +214,7 @@ authCtx := ctx.Value(authContextKey).(*AuthContext)
 
 错误日志使用组件名称前缀：
 ```go
-log.Errorf("[Skill] create skill failed: namespace=%s name=%s err=%v", ns, name, err)
+log.Errorf("[Service] create service failed: namespace=%s name=%s err=%v", ns, name, err)
 log.Infof("[Config] publish config file: namespace=%s group=%s name=%s", ns, group, name)
 ```
 

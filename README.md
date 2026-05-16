@@ -9,7 +9,6 @@
 - AI Native
   - [X] 支持 MCP 协议，能够被 AI Agent 认知
   - [ ] 支持 MCP Registry API，更好的管理 MCP 服务
-  - [ ] 支持 Skill Hub 管理，类似配置中心，支持多个 skill 组成一个 group，底层能力复用配置中心
 
 - 注册发现
   - [x] apollo 协议接入

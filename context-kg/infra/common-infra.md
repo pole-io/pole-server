@@ -13,14 +13,14 @@ sources: 1
 ## 日志（`pkg/common/log/`）
 
 对 `go.uber.org/zap` 进行了封装，提供以下能力：
-- 每个组件有独立命名的 Logger（例如 `[Skill]`、`[Service]`、`[Config]`）
+- 每个组件有独立命名的 Logger（例如 `[Service]`、`[Config]`、`[Naming]`）
 - 通过 `lumberjack` 实现日志文件滚动
 - 从 YAML 中读取配置：日志级别、输出路径、滚动设置
 - `log.ConfigureFile(cfg)` 在 bootstrap 阶段早期调用
 
 整个代码库的日志使用模式：
 ```go
-log.Infof("[Skill] create skill, namespace: %s, name: %s", ns, name)
+log.Infof("[Service] create service, namespace: %s, name: %s", ns, name)
 log.Errorf("[Service] failed to register instance: %v", err)
 ```
 

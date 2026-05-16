@@ -85,7 +85,6 @@ pkg/service/interceptor/auth/server.go
 pkg/config/interceptor/auth/server.go
 pkg/goverrule/interceptor/auth/server.go
 pkg/namespace/interceptor/auth/server.go
-pkg/skill/interceptor/auth/server.go
 pkg/admin/interceptor/auth/server.go
 ```
 
@@ -118,7 +117,6 @@ func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *ap
 ```
 pkg/service/interceptor/paramcheck/
 pkg/config/interceptor/paramcheck/
-pkg/skill/interceptor/paramcheck/
 ```
 
 这些拦截器在请求到达业务逻辑之前，对必填字段、长度限制、格式约束等进行校验。

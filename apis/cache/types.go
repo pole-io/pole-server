@@ -75,10 +75,7 @@ const (
 	GrayName = "gray"
 
 	// AI Native 缓存名称
-	SkillName            = "skill"
-	MCPServerName        = "mcpServer"
-	SkillVersionName     = "skillVersion"
-	SkillSubscriptionName = "skillSubscription"
+	MCPServerName = "mcpServer"
 )
 
 type CacheIndex int
@@ -105,10 +102,7 @@ const (
 	CacheRole
 
 	// AI Native 缓存索引
-	CacheSkill
 	CacheMCPServer
-	CacheSkillVersion
-	CacheSkillSubscription
 
 	CacheLast
 )
@@ -181,14 +175,8 @@ type CacheManager interface {
 	Gray() GrayCache
 	// Role Get role cache information
 	Role() RoleCache
-	// Skill get skill cache information
-	Skill() SkillCache
 	// MCPServer get mcp server cache information
 	MCPServer() MCPServerCache
-	// SkillVersion get skill version cache information
-	SkillVersion() SkillVersionCache
-	// SkillSubscription get skill subscription cache information
-	SkillSubscription() SkillSubscriptionCache
 }
 
 type (

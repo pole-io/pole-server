@@ -36,11 +36,7 @@ Store (apis/store/store.go)
 │   ├── StrategyStore          — 认证策略
 │   └── RoleStore
 └── AIStore
-    ├── MCPServerStore
-    ├── SkillStore
-    ├── SkillGroupStore
-    ├── SkillVersionStore
-    └── SkillSubscriptionStore
+    └── MCPServerStore
 ```
 
 ## MySQL 实现（`plugin/store/mysql/`）
@@ -55,7 +51,7 @@ Store (apis/store/store.go)
 // 所有 Store 用于缓存同步的通用模式
 GetMoreServices(mtime time.Time, firstUpdate bool) ([]*svctypes.Service, error)
 GetMoreInstances(ctx context.Context, mtime time.Time, firstUpdate bool, ...) (map[string]*svctypes.Instance, error)
-GetMoreSkills(mtime time.Time, firstUpdate bool) ([]*ai.Skill, error)
+GetMoreMCPServers(mtime time.Time, firstUpdate bool) ([]*ai.MCPServer, error)
 // 等等
 ```
 

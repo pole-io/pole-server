@@ -16,7 +16,7 @@ sources: 1
 
 ## 缓存管理器
 
-`apis/cache/types.go` 中的 `CacheManager` 由 19 种缓存子接口组合而成：
+`apis/cache/types.go` 中的 `CacheManager` 由若干缓存子接口组合而成：
 
 | 缓存名称 | 常量 | 用途 |
 |---------|------|------|
@@ -34,10 +34,7 @@ sources: 1
 | ConfigFileCache | `ConfigFileName` | 配置文件 |
 | ConfigGroupCache | `ConfigGroupName` | 配置文件分组 |
 | GrayConfigCache | `GrayConfigName` | 灰度发布配置 |
-| SkillCache | `SkillName` | AI 技能 |
 | MCPServerCache | `MCPServerName` | MCP 服务器 |
-| SkillVersionCache | `SkillVersionName` | 技能版本 |
-| SkillSubscriptionCache | `SkillSubscriptionName` | 技能订阅 |
 | LaneRuleCache | `LaneRuleName` | 泳道规则 |
 
 ## 实现（`pkg/cache/cache.go`）
@@ -65,15 +62,15 @@ func (c *CacheManager) Run() {
 
 **每个缓存的增量更新模式：**
 ```go
-func (c *skillCache) Update() error {
+func (c *mcpServerCache) Update() error {
     // 查询数据库中自（lastMtime - 5 秒）以来被修改的记录
-    skills, err := c.storage.GetMoreSkills(c.lastMtime.Add(-5*time.Second), c.firstUpdate)
+    servers, err := c.storage.GetMoreMCPServers(c.lastMtime.Add(-5*time.Second), c.firstUpdate)
     // 应用到内存 map
-    for _, s := range skills {
+    for _, s := range servers {
         if s.Flag == 1 { // 软删除
-            delete(c.skills, s.ID)
+            delete(c.servers, s.ID)
         } else {
-            c.skills[s.ID] = s
+            c.servers[s.ID] = s
         }
     }
     // 更新 lastMtime
@@ -86,13 +83,11 @@ func (c *skillCache) Update() error {
 
 ```
 pkg/cache/ai/
-├── skill.go           # Skill 缓存（按 ID 和按 name+namespace 索引）
-├── mcp.go             # MCPServer 缓存
-├── version.go         # SkillVersion 缓存
-└── subscription.go    # SkillSubscription 缓存
+├── default.go         # NewAICaches 工厂
+└── mcp_server.go      # MCPServer 缓存
 ```
 
-每种缓存均提供基于 ID 和基于名称的两种查找方式。详细的 AI 功能说明见 [[ai-features]]。
+详细的 AI 功能说明见 [[ai-features]]。
 
 ## 其他重要缓存
 

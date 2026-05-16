@@ -76,12 +76,8 @@ type stableStore struct {
 	*strategyStore
 	*roleStore
 
-	// MCP Server and Skill stores
+	// MCP Server stores
 	*mcpServerStore
-	*skillStore
-	*skillGroupStore
-	*skillVersionStore
-	*skillSubscriptionStore
 
 	// 主数据库，可以进行读写
 	master *BaseDB
@@ -282,10 +278,6 @@ func (s *stableStore) newStore() {
 	s.roleStore = &roleStore{master: s.master, slave: s.slave}
 
 	// Initialize AI module stores
-	s.skillStore = newSkillStore(s.master, s.slave)
-	s.skillGroupStore = newSkillGroupStore(s.master, s.slave)
-	s.skillVersionStore = newSkillVersionStore(s.master, s.slave)
-	s.skillSubscriptionStore = newSkillSubscriptionStore(s.master, s.slave)
 	s.mcpServerStore = newMCPServerStore(s.master, s.slave)
 }
 

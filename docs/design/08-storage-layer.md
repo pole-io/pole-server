@@ -227,10 +227,6 @@ type AuthStore interface {
 // apis/store/ai.go
 type AIStore interface {
     MCPServerStore
-    SkillStore
-    SkillGroupStore
-    SkillVersionStore
-    SkillSubscriptionStore
 }
 
 type MCPServerStore interface {
@@ -247,15 +243,6 @@ type MCPServerStore interface {
     UpdateMCPServerTool(tool *ai.MCPServerTool) error
     DeleteMCPServerTool(id string) error
     GetMCPServerToolsByServerID(serverID string) ([]*ai.MCPServerTool, error)
-}
-
-type SkillStore interface {
-    CreateSkill(skill *ai.Skill) error
-    UpdateSkill(skill *ai.Skill) error
-    DeleteSkill(id string) error
-    GetSkill(id string) (*ai.Skill, error)
-    GetSkillByName(name, namespace string) (*ai.Skill, error)
-    GetMoreSkills(mtime time.Time, firstUpdate bool) ([]*ai.Skill, error)
 }
 ```
 

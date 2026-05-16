@@ -12,10 +12,10 @@ make build
 go test ./...
 
 # 运行单个包的测试
-go test ./pkg/skill/...
+go test ./pkg/service/...
 
 # 运行单个测试用例
-go test -run TestSkillGroup ./plugin/apiserver/httpserver/skill/
+go test -run TestCreateService ./pkg/service/
 
 # 代码格式化（import 排序 + go fmt）
 bash ./import-format.sh
@@ -41,7 +41,7 @@ export MYSQL_HOST=127.0.0.1:3306
 
 ```
 apis/          → 接口定义层（Plugin、Store、Cache、Auth、Apiserver 接口）
-pkg/           → 业务逻辑层（service、config、namespace、goverrule、skill、admin）
+pkg/           → 业务逻辑层（service、config、namespace、goverrule、admin）
 plugin/        → 插件实现层（httpserver、grpcserver、xdsserverv3、nacosserver、store/mysql、access_control）
 bootstrap/     → 启动编排层（初始化顺序、配置加载、自注册）
 ```
@@ -59,7 +59,7 @@ func init() {
 
 ### 业务服务单例模式
 
-每个业务域（service、config、skill 等）都遵循同一模式：`Initialize()` 初始化单例，`GetServer()` 获取实例，auth/paramcheck 拦截器通过包装器模式注入到调用链前。
+每个业务域（service、config、namespace 等）都遵循同一模式：`Initialize()` 初始化单例，`GetServer()` 获取实例，auth/paramcheck 拦截器通过包装器模式注入到调用链前。
 
 ### 缓存同步机制
 
@@ -72,7 +72,6 @@ func init() {
 ### AI 原生功能
 
 - **MCP Registry**：`plugin/apiserver/httpserver/aimcp/` — 将 Pole 的服务管理能力暴露为 MCP 工具
-- **Skill Hub**：`pkg/skill/` + `plugin/apiserver/httpserver/skill/` — 类配置中心的 AI 技能注册与版本管理
 
 ### 知识库
 

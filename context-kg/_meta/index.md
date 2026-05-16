@@ -27,19 +27,18 @@ sources: 0
 - [[service-discovery]] — 服务发现核心：DiscoverServer 接口、批处理、健康检查、空推保护 | domain, service, healthcheck
 - [[config-center]] — 配置中心：版本化配置文件、灰度发布、Watch 长轮询机制 | domain, config
 - [[governance-rules]] — 治理规则：路由、限流、熔断、故障探测、泳道、无损规则 | domain, governance, routing, ratelimit
-- [[skill-hub]] — Skill Hub：AI 技能注册中心、SkillServer 接口与领域模型 | domain, skill, ai
 - [[admin]] — 管理后台：AdminOperateServer 接口与跨域运维操作 | domain, admin
 
 ## 技术基础设施（infra/）
 
 - [[storage]] — 存储接口层次结构、MySQL 实现特性（软删除、增量查询、分布式锁）与 Mock Store | storage, mysql, database
-- [[cache-layer]] — 19 种缓存子类型、增量刷新循环、AI 缓存子包与按需开启机制 | cache, performance
+- [[cache-layer]] — 缓存子类型、增量刷新循环、AI 缓存子包与按需开启机制 | cache, performance
 - [[auth-system]] — 认证（Authentication）与授权（Authorization）插件接口、拦截器链与 Token 流程 | auth, security
 - [[common-infra]] — 日志、EventHub、Batch Controller、OTel 指标、同步原语与通用工具 | infra, logging, eventhub
 
 ## AI 原生能力（ai/）
 
-- [[ai-features]] — MCP Registry 与 Skill Hub 的领域模型、存储、HTTP API 与缓存设计 | ai, mcp, skill
+- [[ai-features]] — MCP Registry 领域模型、存储、HTTP API 与缓存设计 | ai, mcp
 
 ## 开发指南（guides/）
 
@@ -58,9 +57,8 @@ sources: 0
 | 服务发现与健康检查 | [[service-discovery]] |
 | 配置文件发布与 Watch | [[config-center]] |
 | 路由/限流/熔断等治理规则 | [[governance-rules]] |
-| Skill Hub 技能管理 | [[skill-hub]] |
 | 管理后台运维操作 | [[admin]] |
-| MCP / Skill Hub 如何运作 | [[ai-features]] |
+| MCP 如何运作 | [[ai-features]] |
 | 数据库表/查询是怎样的 | [[storage]] |
 | 内存缓存如何刷新 | [[cache-layer]] |
 | 认证 Token 如何校验 | [[auth-system]] |

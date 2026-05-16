@@ -10,14 +10,14 @@ sources: 1
 
 ## 项目介绍
 
-**pole-control-plane**（模块名：`github.com/pole-io/pole-server`）是一个云原生、AI 原生的服务治理控制平面。它基于 Polaris（腾讯开源的服务网格控制平面）演进而来，在其基础上扩展了 AI 原生能力（MCP 协议、Skill Hub）以及增强的治理功能。详细架构设计见 [[architecture]]，各业务域实现见 [[domain-components]]，部署配置见 [[configuration]]。
+**pole-control-plane**（模块名：`github.com/pole-io/pole-server`）是一个云原生、AI 原生的服务治理控制平面。它基于 Polaris（腾讯开源的服务网格控制平面）演进而来，在其基础上扩展了 AI 原生能力（MCP 协议）以及增强的治理功能。详细架构设计见 [[architecture]]，各业务域实现见 [[domain-components]]，部署配置见 [[configuration]]。
 
 服务端管理以下能力：
 - **服务发现** — 服务实例的注册、注销与查询
 - **配置中心** — 支持灰度发布的版本化配置文件管理
 - **治理规则** — 路由、限流、熔断、故障探测、泳道规则
 - **命名空间管理** — 多租户资源隔离
-- **AI 原生功能** — MCP 服务器注册中心、Skill Hub（函数/工具/智能体管理）
+- **AI 原生功能** — MCP 服务器注册中心
 - **多协议兼容** — 支持 Polaris gRPC、REST、Nacos、Apollo、Eureka、xDS/Envoy
 
 ## 核心技术选型
@@ -57,7 +57,6 @@ pole-control-plane/
 │   ├── namespace/           # 命名空间管理
 │   ├── goverrule/           # 治理规则
 │   ├── admin/               # 管理后台操作
-│   ├── skill/               # AI Skill Hub 逻辑
 │   ├── cache/               # 缓存管理器实现
 │   └── common/              # 公共工具（log、eventhub、batchctrl、otel、syncs）
 ├── plugin/                  # 插件实现
@@ -79,7 +78,6 @@ pole-control-plane/
 ### AI 原生
 - [x] MCP 协议支持 — AI 智能体可通过 MCP 发现服务
 - [ ] MCP Registry API — 管理 MCP 服务器
-- [ ] Skill Hub — 类配置中心风格的技能管理，支持分组
 
 ### 服务发现
 - [x] Apollo 协议兼容
@@ -104,7 +102,7 @@ main.go → cmd.Execute() → cmd/start.go → bootstrap.Start(configFile)
   6. 加载插件配置
   7. 初始化存储层（MySQL）
   8. 获取启动锁（防止集群中并行初始化）
-  9. 预热缓存（全部 19 种资源类型）
+  9. 预热缓存（所有已开启的资源类型）
  10. 初始化认证（用户服务 + 策略服务）
  11. 初始化命名空间
  12. 初始化服务发现 + 健康检查 + BatchController

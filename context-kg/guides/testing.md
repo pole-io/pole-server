@@ -22,7 +22,7 @@ test/
 └── cluster/      # 集群模式测试
 ```
 
-单元测试与源码同目录存放：`pkg/config/utils_test.go`、`plugin/apiserver/httpserver/skill/skill_group_access_test.go` 等。
+单元测试与源码同目录存放：`pkg/config/utils_test.go`、`pkg/cache/ai/mcp_server_test.go` 等。
 
 ## Mock Store
 
@@ -32,7 +32,7 @@ test/
 // 在测试中的用法
 ctrl := gomock.NewController(t)
 mockStore := mock.NewMockStore(ctrl)
-mockStore.EXPECT().CreateSkill(gomock.Any()).Return(nil)
+mockStore.EXPECT().CreateMCPServer(gomock.Any()).Return(nil)
 ```
 
 ## Mock Auth（`plugin/access_control/auth/mock/`）
@@ -52,14 +52,14 @@ mockStore.EXPECT().CreateSkill(gomock.Any()).Return(nil)
 
 ```bash
 go test ./...                          # 运行全部测试
-go test ./pkg/skill/...                # 仅运行 skill 包
-go test -run TestSkillGroup ./plugin/apiserver/httpserver/skill/
+go test ./pkg/service/...              # 仅运行 service 包
+go test -run TestCreateService ./pkg/service/
 ```
 
 ## 关键测试文件
 
 - `pkg/config/utils_test.go` — 配置工具函数测试
-- `plugin/apiserver/httpserver/skill/skill_group_access_test.go` — Skill 分组 HTTP 处理器测试
+- `pkg/cache/ai/mcp_server_test.go` — MCP Server 缓存测试
 
 ## 测试规范
 

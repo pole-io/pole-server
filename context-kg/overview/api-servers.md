@@ -35,7 +35,6 @@ type Apiserver interface {
 - 治理规则管理
 - 认证管理（用户、策略）
 - 管理后台操作
-- Skill Hub 管理
 - AI MCP 服务器管理
 - OpenAPI/Swagger 文档
 
@@ -46,13 +45,6 @@ httpserver/
 ├── discover/           # 服务发现端点
 ├── config/             # 配置中心端点
 ├── auth/               # 认证端点（用户、用户组、策略）
-├── skill/              # Skill Hub 端点
-│   ├── server.go
-│   ├── proto.go        # 请求/响应类型映射
-│   ├── skill_access.go
-│   ├── skill_group_access.go
-│   ├── skill_version_access.go
-│   └── skill_subscription_access.go
 ├── aimcp/              # AI MCP 服务器管理端点
 │   ├── server.go
 │   └── mcp_server.go
@@ -60,15 +52,6 @@ httpserver/
 ├── i18n/               # 国际化
 └── docs/               # Swagger 规范生成
 ```
-
-**Skill 端点**（`plugin/apiserver/httpserver/skill/`）：
-- `POST /skill/v1/skills` — 创建技能（支持批量）
-- `PUT /skill/v1/skills` — 更新技能（支持批量）
-- `DELETE /skill/v1/skills` — 删除技能（支持批量）
-- `GET /skill/v1/skills` — 查询技能（分页）
-- `GET /skill/v1/skills/all` — 获取全部技能
-- `GET /skill/v1/skills/count` — 获取总数
-- 分组、版本、订阅的同类端点
 
 **MCP 端点**（`plugin/apiserver/httpserver/aimcp/`）：
 - `GET /mcp/v1/servers` — 列出 MCP 服务器（支持过滤）
@@ -154,12 +137,11 @@ Netflix Eureka 协议兼容。使用 Eureka 服务发现的 Spring Cloud 应用�
 
 ## AI MCP 集成（`plugin/apiserver/httpserver/aimcp/`）
 
-将 Pole 的服务注册中心和 Skill Hub 能力暴露为 MCP 工具，供 AI 智能体（Claude、GPT 等）使用。详细说明见 [[ai-features]]。
+将 Pole 的服务注册中心能力暴露为 MCP 工具，供 AI 智能体（Claude、GPT 等）使用。详细说明见 [[ai-features]]。
 
 **已注册的 MCP 工具：**
 - `list_mcp_servers` — 查询已注册的 MCP 服务器
 - `create_mcp_servers` — 注册新的 MCP 服务器
-- 技能管理工具
 
 使用 `mark3labs/mcp-go` 库处理 MCP 协议。
 

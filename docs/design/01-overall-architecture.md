@@ -197,23 +197,6 @@ main.go
 - 支持声明 MCP Server 提供的工具
 - 支持多种传输协议（stdio、sse、websocket）
 
-### 8.2 Skill Hub
-
-基于配置中心实现 Skill Hub 功能：
-- 支持多个 Skill 组成一个 Group
-- 底层能力复用配置中心
-- 支持 AI Agent 动态发现和调用
-
-**Skill 版本管理：**
-- 每个 Skill 支持多版本并存
-- 可指定活跃版本供默认调用
-- 客户端可订阅特定版本
-
-**Skill 订阅机制：**
-- 客户端订阅 Skill 变更通知
-- 版本更新时主动推送
-- 支持订阅状态管理
-
 详细设计参见 [10-ai-native-features.md](./10-ai-native-features.md)
 
 ## 9. 高可用设计

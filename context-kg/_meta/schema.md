@@ -30,7 +30,6 @@ context-kg/
 │   ├── service-discovery.md # 服务发现
 │   ├── config-center.md   # 配置中心
 │   ├── governance-rules.md # 治理规则
-│   ├── skill-hub.md       # Skill Hub
 │   └── admin.md           # 管理后台
 ├── infra/                 # 技术基础设施
 │   ├── storage.md         # 存储层
@@ -38,7 +37,7 @@ context-kg/
 │   ├── auth-system.md     # 认证与访问控制
 │   └── common-infra.md    # 公共基础设施包
 ├── ai/                    # AI 原生能力
-│   └── ai-features.md     # MCP + Skill Hub 详细设计
+│   └── ai-features.md     # MCP Registry 详细设计
 └── guides/                # 开发指南
     ├── patterns.md        # 关键模式与约定
     └── testing.md         # 测试结构与规范
@@ -99,7 +98,7 @@ overview 目录：
 - `overview`、`architecture`、`api-servers`、`configuration`
 
 domains 目录：
-- `namespace`、`service-discovery`、`config-center`、`governance-rules`、`skill-hub`、`admin`
+- `namespace`、`service-discovery`、`config-center`、`governance-rules`、`admin`
 
 infra 目录：
 - `storage`、`cache-layer`、`auth-system`、`common-infra`
@@ -156,7 +155,7 @@ _meta 目录：
 - 架构问题 → [[architecture]]
 - 存储/数据库问题 → [[storage]]
 - 性能/缓存问题 → [[cache-layer]]
-- AI/MCP/Skill 问题 → [[ai-features]]、[[skill-hub]]
+- AI/MCP 问题 → [[ai-features]]
 - 认证/权限问题 → [[auth-system]]
 - 代码模式/约定 → [[patterns]]
 - 配置/部署问题 → [[configuration]]

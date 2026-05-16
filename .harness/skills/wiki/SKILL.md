@@ -51,7 +51,7 @@ git status --short | grep '\.go' | head -30
 
 **第二步：读取 wiki 索引，定位受影响的页面**
 
-读取 `$WIKI_DIR/index.md`，根据变更涉及的模块（pkg/skill、plugin/apiserver、apis/store 等）
+读取 `$WIKI_DIR/index.md`，根据变更涉及的模块（pkg/service、plugin/apiserver、apis/store 等）
 找出需要更新的 wiki 页面。
 
 **第三步：读取并更新受影响页面**
@@ -227,15 +227,14 @@ context-kg/
 │   ├── service-discovery.md# 服务发现、健康检查、批处理
 │   ├── config-center.md    # 配置中心、灰度发布、Watch
 │   ├── governance-rules.md # 路由/限流/熔断/故障探测/泳道
-│   ├── skill-hub.md        # AI Skill Hub 业务逻辑
 │   └── admin.md            # 管理后台操作
 ├── infra/                  # 技术基础设施
 │   ├── storage.md          # 存储层接口与 MySQL 实现
-│   ├── cache-layer.md      # 19 种缓存类型与增量更新机制
+│   ├── cache-layer.md      # 缓存子类型与增量更新机制
 │   ├── auth-system.md      # 认证与授权体系
 │   └── common-infra.md     # 日志、EventHub、BatchController
 ├── ai/                     # AI 原生能力
-│   └── ai-features.md      # MCP Registry 与 Skill Hub AI 视角
+│   └── ai-features.md      # MCP Registry AI 视角
 └── guides/                 # 开发指南
     ├── patterns.md         # 代码模式与约定（11 种）
     └── testing.md          # 测试体系与 Mock 用法

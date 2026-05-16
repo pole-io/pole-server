@@ -55,10 +55,7 @@ func init() {
 	RegisterCache(cacheapi.RolesName, cacheapi.CacheRole)
 
 	// AI Native 缓存注册
-	RegisterCache(cacheapi.SkillName, cacheapi.CacheSkill)
 	RegisterCache(cacheapi.MCPServerName, cacheapi.CacheMCPServer)
-	RegisterCache(cacheapi.SkillVersionName, cacheapi.CacheSkillVersion)
-	RegisterCache(cacheapi.SkillSubscriptionName, cacheapi.CacheSkillSubscription)
 }
 
 var (
@@ -121,10 +118,7 @@ func newCacheManager(ctx context.Context, cacheOpt *Config, storage store.Store)
 	mgr.RegisterCacher(cacheapi.CacheClient, cacheclient.NewClientCache(storage, mgr))
 	// AI Native 缓存
 	aiCaches := cacheai.NewAICaches(storage, mgr)
-	mgr.RegisterCacher(cacheapi.CacheSkill, aiCaches[0])
-	mgr.RegisterCacher(cacheapi.CacheMCPServer, aiCaches[1])
-	mgr.RegisterCacher(cacheapi.CacheSkillVersion, aiCaches[2])
-	mgr.RegisterCacher(cacheapi.CacheSkillSubscription, aiCaches[3])
+	mgr.RegisterCacher(cacheapi.CacheMCPServer, aiCaches[0])
 	// 灰度规则
 	mgr.RegisterCacher(cacheapi.CacheGray, cachegray.NewGrayCache(storage, mgr))
 

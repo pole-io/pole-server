@@ -25,9 +25,6 @@ import (
 // NewAICaches 创建所有 AI Native 缓存
 func NewAICaches(storage store.Store, cacheMgr cacheapi.CacheManager) []cacheapi.Cache {
 	return []cacheapi.Cache{
-		NewSkillCache(storage, cacheMgr),
 		NewMCPServerCache(storage, cacheMgr),
-		NewSkillVersionCache(storage, cacheMgr),
-		NewSkillSubscriptionCache(storage, cacheMgr),
 	}
 }

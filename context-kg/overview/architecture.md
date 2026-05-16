@@ -18,8 +18,7 @@ sources: 1
 │  HTTP · gRPC · xDS · Nacos · Apollo · Eureka           │
 ├─────────────────────────────────────────────────────────┤
 │  业务逻辑层 (pkg/)                                       │
-│  service · config · namespace · goverrule               │
-│  admin · skill                                          │
+│  service · config · namespace · goverrule · admin       │
 ├─────────────────────────────────────────────────────────┤
 │  缓存层 (pkg/cache/)                                    │
 │  19 种缓存类型，每秒增量更新                              │
@@ -77,17 +76,13 @@ type Store interface {
     ConfigFileStore    // 配置文件、分组、发布、历史、灰度发布
     AdminStore         // 管理操作、分布式锁
     AuthStore          // 用户、用户组、策略、角色
-    AIStore            // MCP 服务器、技能、技能组、版本、订阅
+    AIStore            // MCP 服务器、工具
     Transaction        // Begin()、Commit()、Rollback()
 }
 ```
 
 `AIStore` 子接口（位于 `apis/store/ai.go`）：
 - `MCPServerStore` — 增删改查 + 增量查询 + 工具管理
-- `SkillStore` — 增删改查 + 增量查询 + 分页
-- `SkillGroupStore` — 增删改查
-- `SkillVersionStore` — 技能快照版本管理
-- `SkillSubscriptionStore` — 客户端到技能的订阅关系
 
 ## CacheManager 接口
 
@@ -97,8 +92,7 @@ type Store interface {
 ServiceName, InstanceName, RoutingConfigName, RateLimitConfigName,
 CircuitBreakerName, FaultDetectRuleName, NamespaceName, ClientName,
 UserName, StrategyName, RoleName, ConfigFileName, ConfigGroupName,
-GrayConfigName, SkillName, MCPServerName, SkillVersionName,
-SkillSubscriptionName, LaneRuleName
+GrayConfigName, MCPServerName, LaneRuleName
 ```
 
 `pkg/cache/cache.go` 中的 `CacheManager` 实现：
@@ -116,7 +110,6 @@ pkg/service/interceptor/auth/   — 服务操作的认证链
 pkg/config/interceptor/auth/    — 配置操作的认证链
 pkg/goverrule/interceptor/auth/ — 治理操作的认证链
 pkg/namespace/interceptor/auth/ — 命名空间操作的认证链
-pkg/skill/interceptor/auth/     — 技能操作的认证链
 ```
 
 链式结构通过组件配置中的 `interceptors: ["auth"]` 进行配置。该模式采用"内层/外层"方式——外层 `Server` 包装真实实现，在委托之前先执行认证检查。
