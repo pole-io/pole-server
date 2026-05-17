@@ -23,11 +23,11 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 )
 
 // some options config

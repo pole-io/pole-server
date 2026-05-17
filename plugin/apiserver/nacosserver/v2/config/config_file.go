@@ -211,7 +211,7 @@ func (h *ConfigServer) handleWatchConfigRequest(ctx context.Context, req nacospb
 				Content:   fileRelease.GetContent(),
 				Format:    fileRelease.GetFormat(),
 				Comment:   fileRelease.GetComment(),
-				Labels:      tags,
+				Labels:    tags,
 			}
 		}
 		watchCtx := configSvr.WatchCenter().AddWatcher(clientId, configFiles, h.BuildGrpcWatchCtx(ctx))
@@ -258,7 +258,7 @@ func (h *ConfigServer) handleWatchConfigRequest(ctx context.Context, req nacospb
 					Content:   fileRelease.GetContent(),
 					Format:    fileRelease.GetFormat(),
 					Comment:   fileRelease.GetComment(),
-					Labels:      tags,
+					Labels:    tags,
 				}
 				watchCtx.RemoveInterest(configFile)
 			}

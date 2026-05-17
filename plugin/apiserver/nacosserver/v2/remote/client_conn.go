@@ -59,9 +59,9 @@ type (
 
 	// Client
 	Client struct {
-		ID             string             `json:"id"`
-		Addr           *net.TCPAddr       `json:"addr"`
-		ConnMeta       ConnectionMeta     `json:"conn_meta"`
+		ID             string         `json:"id"`
+		Addr           *net.TCPAddr   `json:"addr"`
+		ConnMeta       ConnectionMeta `json:"conn_meta"`
 		refreshTimeRef atomic.Value
 		streamRef      atomic.Value       `json:"-"`
 		cancel         context.CancelFunc `json:"-"`

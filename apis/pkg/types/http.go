@@ -19,7 +19,6 @@ package types
 
 import (
 	"net/http"
-
 )
 
 type DebugHandlerGroup struct {

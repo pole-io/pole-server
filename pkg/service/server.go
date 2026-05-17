@@ -165,4 +165,3 @@ func (s *Server) GetServiceSubscribers(ctx context.Context, query map[string]str
 	}
 	return out
 }
-

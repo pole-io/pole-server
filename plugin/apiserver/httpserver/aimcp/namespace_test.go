@@ -87,8 +87,8 @@ func TestNamespaceHandleQueryNamespaces_InvalidArgs(t *testing.T) {
 
 	// 错误类型参数
 	wrongTypeArgs := map[string]interface{}{
-		"name":   123,        // 应该是 string
-		"offset": "invalid",  // 应该是数字
+		"name":   123,         // 应该是 string
+		"offset": "invalid",   // 应该是数字
 		"limit":  []int{1, 2}, // 应该是数字
 	}
 

@@ -218,17 +218,17 @@ func (rec *RuleExistsChecker) ByNameExcludeID(query string, name, namespace, id 
 
 // OperationBuilder CRUD 操作构建器
 type OperationBuilder struct {
-	label string
-	sql   string
-	args  []interface{}
+	label  string
+	sql    string
+	args   []interface{}
 	opType string
 }
 
 // NewCreateBuilder 创建 Create 操作构建器
 func NewCreateBuilder(label, sql string) *OperationBuilder {
 	return &OperationBuilder{
-		label: label,
-		sql: sql,
+		label:  label,
+		sql:    sql,
 		opType: "create",
 	}
 }
@@ -236,8 +236,8 @@ func NewCreateBuilder(label, sql string) *OperationBuilder {
 // NewUpdateBuilder 创建 Update 操作构建器
 func NewUpdateBuilder(label, sql string) *OperationBuilder {
 	return &OperationBuilder{
-		label: label,
-		sql: sql,
+		label:  label,
+		sql:    sql,
 		opType: "update",
 	}
 }
@@ -245,8 +245,8 @@ func NewUpdateBuilder(label, sql string) *OperationBuilder {
 // NewDeleteBuilder 创建 Delete 操作构建器
 func NewDeleteBuilder(label, sql string) *OperationBuilder {
 	return &OperationBuilder{
-		label: label,
-		sql: sql,
+		label:  label,
+		sql:    sql,
 		opType: "delete",
 	}
 }

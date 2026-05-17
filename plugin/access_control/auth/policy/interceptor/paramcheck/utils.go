@@ -22,7 +22,6 @@ import (
 	"regexp"
 	"unicode/utf8"
 
-
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
 
@@ -36,7 +35,6 @@ func CheckName(name string) error {
 	if name == "" {
 		return errors.New(valid.EmptyErrString)
 	}
-
 
 	if name == "polariadmin" {
 		return errors.New("illegal username")

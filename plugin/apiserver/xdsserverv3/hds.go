@@ -280,7 +280,7 @@ func convertInstances(client *resource.XDSClient, registerFrom string) map[svcty
 				}
 				instance.HealthCheck = &service_manage.HealthCheck{
 					Heartbeat: &service_manage.HeartbeatHealthCheck{
-						Ttl:  uint32(ttl),
+						Ttl: uint32(ttl),
 					},
 					Type: service_manage.HealthCheck_HEARTBEAT,
 				}

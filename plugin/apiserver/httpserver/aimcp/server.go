@@ -26,9 +26,11 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"go.uber.org/zap"
 
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/admin"
+	"github.com/pole-io/pole-server/pkg/cache"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/version"
 	"github.com/pole-io/pole-server/pkg/config"
@@ -54,6 +56,7 @@ type HTTPServer struct {
 	configServer    config.ConfigCenterServer
 	discoverySvr    service.DiscoverServer
 	storage         store.Store
+	cacheMgr        cacheapi.CacheManager
 	mcpSvr          *server.MCPServer
 	sseSvr          *server.SSEServer
 }
@@ -73,6 +76,18 @@ func NewServer(
 	discoverySvr, err := service.GetServer()
 	if err != nil {
 		commonlog.Errorf("set discovery server to http server error. %v", err)
+		return nil, err
+	}
+
+	cacheMgr, err := cache.GetCacheManager()
+	if err != nil {
+		commonlog.Errorf("set cache manager to ai-mcp server error. %v", err)
+		return nil, err
+	}
+	if err := cacheMgr.OpenResourceCache(cacheapi.ConfigEntry{
+		Name: cacheapi.MCPServerName,
+	}); err != nil {
+		commonlog.Errorf("open mcp-server cache error. %v", err)
 		return nil, err
 	}
 
@@ -109,6 +124,7 @@ func NewServer(
 		configServer:    configServer,
 		discoverySvr:    discoverySvr,
 		storage:         storage,
+		cacheMgr:        cacheMgr,
 		mcpSvr:          mcpSvr,
 		sseSvr:          sseSvr,
 	}, nil

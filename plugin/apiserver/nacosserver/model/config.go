@@ -64,7 +64,7 @@ func (i *ConfigFile) ToQuerySpec() *config_manage.ConfigFile {
 	return &config_manage.ConfigFile{
 		Namespace: ToPolarisNamespace(i.Namespace),
 		Group:     i.Group,
-		Name:  	   i.DataId,
+		Name:      i.DataId,
 	}
 }
 
@@ -112,8 +112,8 @@ type ConfigWatchContext struct {
 
 func (cw *ConfigWatchContext) ToSpecWatch() *config_manage.WatchConfigFileRequest {
 	specWatch := &config_manage.WatchConfigFileRequest{
-		ClientIp:   cw.Request.Request.RemoteAddr,
-		Files: make([]*config_manage.ConfigFileRelease, 0, len(cw.Items)),
+		ClientIp: cw.Request.Request.RemoteAddr,
+		Files:    make([]*config_manage.ConfigFileRelease, 0, len(cw.Items)),
 	}
 	for i := range cw.Items {
 		item := cw.Items[i]

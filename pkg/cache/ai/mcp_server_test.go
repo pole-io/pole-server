@@ -22,8 +22,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/ai"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pole-io/pole-server/apis/pkg/types/ai"
+	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 )
 
 // 创建测试用的 MCP Server 数据
@@ -410,4 +412,113 @@ func serverID(i int) string {
 
 func serverName(i int) string {
 	return fmt.Sprintf("test-mcp-server-%d", i)
+}
+
+// newCacheForTest 构造一个内存态 mcpServerCache 并预灌入 servers
+func newCacheForTest(servers []*ai.MCPServer) *mcpServerCache {
+	mc := &mcpServerCache{
+		ids:            container.NewSyncMap[string, *ai.MCPServer](),
+		names:          container.NewSyncMap[string, *ai.MCPServer](),
+		namespaceIndex: container.NewSyncMap[string, []*ai.MCPServer](),
+		tools:          container.NewSyncMap[string, []*ai.MCPServerTool](),
+	}
+	for _, s := range servers {
+		mc.storeMCPServer(s)
+	}
+	return mc
+}
+
+func TestMCPServerCache_Query_NamePrefixMatch(t *testing.T) {
+	mc := newCacheForTest([]*ai.MCPServer{
+		{ID: "s1", Name: "alpha-svc", Namespace: "ns1", MTime: time.Now()},
+		{ID: "s2", Name: "alpha-other", Namespace: "ns1", MTime: time.Now()},
+		{ID: "s3", Name: "beta-svc", Namespace: "ns1", MTime: time.Now()},
+	})
+
+	total, list := mc.Query(map[string]string{"name": "alpha"}, 0, 10)
+	assert.Equal(t, uint32(2), total)
+	assert.Len(t, list, 2)
+
+	total, list = mc.Query(map[string]string{"name": "alpha-svc"}, 0, 10)
+	assert.Equal(t, uint32(1), total)
+	assert.Len(t, list, 1)
+	assert.Equal(t, "s1", list[0].ID)
+
+	total, list = mc.Query(map[string]string{"name": "zzz"}, 0, 10)
+	assert.Equal(t, uint32(0), total)
+	assert.Len(t, list, 0)
+}
+
+func TestMCPServerCache_Query_ExactFilters(t *testing.T) {
+	mc := newCacheForTest([]*ai.MCPServer{
+		{ID: "s1", Name: "a", Namespace: "ns1", Business: "b1", Department: "d1", Protocol: "http", MTime: time.Now()},
+		{ID: "s2", Name: "b", Namespace: "ns2", Business: "b1", Department: "d2", Protocol: "grpc", MTime: time.Now()},
+		{ID: "s3", Name: "c", Namespace: "ns1", Business: "b2", Department: "d1", Protocol: "http", MTime: time.Now()},
+	})
+
+	total, list := mc.Query(map[string]string{"namespace": "ns1"}, 0, 10)
+	assert.Equal(t, uint32(2), total)
+	assert.Len(t, list, 2)
+
+	total, _ = mc.Query(map[string]string{"business": "b1"}, 0, 10)
+	assert.Equal(t, uint32(2), total)
+
+	total, _ = mc.Query(map[string]string{"department": "d1"}, 0, 10)
+	assert.Equal(t, uint32(2), total)
+
+	total, _ = mc.Query(map[string]string{"protocol": "http"}, 0, 10)
+	assert.Equal(t, uint32(2), total)
+
+	total, list = mc.Query(map[string]string{"namespace": "ns1", "protocol": "http"}, 0, 10)
+	assert.Equal(t, uint32(2), total)
+	assert.Len(t, list, 2)
+
+	total, list = mc.Query(map[string]string{"namespace": "ns1", "business": "b2"}, 0, 10)
+	assert.Equal(t, uint32(1), total)
+	assert.Equal(t, "s3", list[0].ID)
+}
+
+func TestMCPServerCache_Query_Pagination(t *testing.T) {
+	base := time.Now()
+	servers := make([]*ai.MCPServer, 0, 5)
+	for i := 0; i < 5; i++ {
+		servers = append(servers, &ai.MCPServer{
+			ID:        fmt.Sprintf("s%d", i),
+			Name:      fmt.Sprintf("svc-%d", i),
+			Namespace: "ns",
+			MTime:     base.Add(time.Duration(i) * time.Second),
+		})
+	}
+	mc := newCacheForTest(servers)
+
+	total, list := mc.Query(map[string]string{}, 0, 2)
+	assert.Equal(t, uint32(5), total)
+	assert.Len(t, list, 2)
+
+	total, list = mc.Query(map[string]string{}, 2, 2)
+	assert.Equal(t, uint32(5), total)
+	assert.Len(t, list, 2)
+
+	total, list = mc.Query(map[string]string{}, 4, 2)
+	assert.Equal(t, uint32(5), total)
+	assert.Len(t, list, 1, "末页只剩一条")
+
+	total, list = mc.Query(map[string]string{}, 10, 5)
+	assert.Equal(t, uint32(5), total)
+	assert.Len(t, list, 0, "offset 越界返回空")
+}
+
+func TestMCPServerCache_Query_SortByMTimeDesc(t *testing.T) {
+	base := time.Now()
+	mc := newCacheForTest([]*ai.MCPServer{
+		{ID: "old", Name: "old", Namespace: "ns", MTime: base.Add(-2 * time.Hour)},
+		{ID: "new", Name: "new", Namespace: "ns", MTime: base},
+		{ID: "mid", Name: "mid", Namespace: "ns", MTime: base.Add(-1 * time.Hour)},
+	})
+
+	_, list := mc.Query(map[string]string{}, 0, 10)
+	assert.Len(t, list, 3)
+	assert.Equal(t, "new", list[0].ID, "MTime 最新的排在最前")
+	assert.Equal(t, "mid", list[1].ID)
+	assert.Equal(t, "old", list[2].ID)
 }

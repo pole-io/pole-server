@@ -601,7 +601,7 @@ func (ss *serviceStore) getServiceSubscribersInfo(filter map[string]string, offs
 		from
 			service_subscribe_graph`
 
-order := &Order{"mtime", "desc"}
+	order := &Order{"mtime", "desc"}
 	queryStmt, args := genServiceSubscriberWhereSQLAndArgs(baseStr, filter, order, offset, limit)
 	rows, err := ss.slave.Query(queryStmt, args...)
 	if err != nil {

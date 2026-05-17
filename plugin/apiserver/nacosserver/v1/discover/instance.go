@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 
-
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
@@ -49,12 +48,12 @@ func (n *DiscoverServer) handleRegister(ctx context.Context, namespace, serviceN
 
 func (n *DiscoverServer) handleUpdate(ctx context.Context, namespace, serviceName string, ins *model.Instance) error {
 	specIns := model.PrepareSpecInstance(namespace, serviceName, ins)
-	if  specIns.GetId() == "" {
+	if specIns.GetId() == "" {
 		insId, errRsp := valid.CheckInstanceTetrad(specIns)
 		if errRsp != nil {
 			return &model.NacosError{
 				ErrCode: int32(model.ExceptionCode_ServerError),
-				ErrMsg:  errRsp.GetInfo() ,
+				ErrMsg:  errRsp.GetInfo(),
 			}
 		}
 		specIns.Id = insId

@@ -22,9 +22,9 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 
-	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"

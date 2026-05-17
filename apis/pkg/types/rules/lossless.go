@@ -3,8 +3,9 @@ package rules
 import (
 	"time"
 
-	commontime "github.com/pole-io/pole-server/pkg/common/utils/time"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
+
+	commontime "github.com/pole-io/pole-server/pkg/common/utils/time"
 )
 
 // LosslessRule 无损规则

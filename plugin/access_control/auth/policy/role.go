@@ -24,8 +24,8 @@ import (
 	"slices"
 	"time"
 
-	"google.golang.org/protobuf/encoding/protojson"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"

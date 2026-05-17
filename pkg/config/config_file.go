@@ -53,7 +53,7 @@ func (s *Server) CreateConfigFile(ctx context.Context, req *apiconfig.ConfigFile
 		return errResp
 	}
 
-	if rsp := s.prepareCreateConfigFile(ctx, req); rsp.Code!= api.ExecuteSuccess {
+	if rsp := s.prepareCreateConfigFile(ctx, req); rsp.Code != api.ExecuteSuccess {
 		return rsp
 	}
 

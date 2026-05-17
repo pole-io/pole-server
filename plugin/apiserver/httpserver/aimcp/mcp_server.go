@@ -8,6 +8,8 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
@@ -247,19 +249,21 @@ func (h *HTTPServer) addToolsMCPServer(mcpSvr *server.MCPServer) {
 
 // mcpServerQuery 查询 MCP Servers
 func (h *HTTPServer) mcpServerQuery(ctx context.Context, filter map[string]string, offset, limit uint32) *apimodel.BatchQueryResponse {
-	if h.storage == nil {
-		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	if h.cacheMgr == nil {
+		return api.NewBatchQueryResponse(apimodel.Code_ExecuteException)
 	}
 
-	count, servers, err := h.storage.QueryMCPServers(filter, offset, limit)
-	if err != nil {
-		log.Errorf("[apiserver][ai-mcp] query mcp servers err: %s", err.Error())
-		return api.NewBatchQueryResponseWithMsg(apimodel.Code_StoreLayerException, err.Error())
-	}
+	count, servers := h.cacheMgr.MCPServer().Query(filter, offset, limit)
 
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	resp.Amount = count
 	resp.Size = uint32(len(servers))
+	for _, s := range servers {
+		if err := appendMCPServerToResp(resp, s); err != nil {
+			log.Warnf("[apiserver][ai-mcp] marshal mcp server to resp data err: %s", err.Error())
+			continue
+		}
+	}
 	return resp
 }
 
@@ -310,8 +314,8 @@ func (h *HTTPServer) mcpServerDelete(ctx context.Context, ids []string) *apimode
 
 // mcpServerToolQuery 查询 MCP Server Tools
 func (h *HTTPServer) mcpServerToolQuery(ctx context.Context, filter map[string]string, offset, limit uint32) *apimodel.BatchQueryResponse {
-	if h.storage == nil {
-		return api.NewBatchQueryResponse(apimodel.Code_StoreLayerException)
+	if h.cacheMgr == nil {
+		return api.NewBatchQueryResponse(apimodel.Code_ExecuteException)
 	}
 
 	// Resolve server_id from server_name + server_namespace if needed
@@ -320,10 +324,7 @@ func (h *HTTPServer) mcpServerToolQuery(ctx context.Context, filter map[string]s
 		serverName := filter["server_name"]
 		serverNamespace := filter["server_namespace"]
 		if serverName != "" && serverNamespace != "" {
-			svr, err := h.storage.GetMCPServerByName(serverName, serverNamespace)
-			if err != nil {
-				return api.NewBatchQueryResponseWithMsg(apimodel.Code_StoreLayerException, err.Error())
-			}
+			svr := h.cacheMgr.MCPServer().GetMCPServerByName(serverName, serverNamespace)
 			if svr == nil {
 				return api.NewBatchQueryResponseWithMsg(apimodel.Code_NotFoundResource, "mcp server not found")
 			}
@@ -335,11 +336,7 @@ func (h *HTTPServer) mcpServerToolQuery(ctx context.Context, filter map[string]s
 		return api.NewBatchQueryResponseWithMsg(apimodel.Code_BadRequest, "server_id or server_name+server_namespace is required")
 	}
 
-	tools, err := h.storage.GetMCPServerToolsByServerID(serverID)
-	if err != nil {
-		log.Errorf("[apiserver][ai-mcp] query mcp server tools err: %s", err.Error())
-		return api.NewBatchQueryResponseWithMsg(apimodel.Code_StoreLayerException, err.Error())
-	}
+	tools := h.cacheMgr.MCPServer().GetMCPServerTools(serverID)
 
 	// Apply offset/limit
 	total := uint32(len(tools))
@@ -355,7 +352,50 @@ func (h *HTTPServer) mcpServerToolQuery(ctx context.Context, filter map[string]s
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	resp.Amount = total
 	resp.Size = uint32(len(result))
+	for _, t := range result {
+		if err := appendMCPServerToolToResp(resp, t); err != nil {
+			log.Warnf("[apiserver][ai-mcp] marshal mcp server tool to resp data err: %s", err.Error())
+			continue
+		}
+	}
 	return resp
+}
+
+// appendMCPServerToResp 将 ai.MCPServer 通过 JSON → structpb.Struct → anypb.Any 路径塞进 BatchQueryResponse.Data
+func appendMCPServerToResp(resp *apimodel.BatchQueryResponse, s *ai.MCPServer) error {
+	val, err := mcpObjectToAny(s)
+	if err != nil {
+		return err
+	}
+	resp.Data = append(resp.Data, val)
+	return nil
+}
+
+// appendMCPServerToolToResp 同 appendMCPServerToResp，处理 MCPServerTool
+func appendMCPServerToolToResp(resp *apimodel.BatchQueryResponse, t *ai.MCPServerTool) error {
+	val, err := mcpObjectToAny(t)
+	if err != nil {
+		return err
+	}
+	resp.Data = append(resp.Data, val)
+	return nil
+}
+
+// mcpObjectToAny 把任意 Go 对象走 JSON 字段映射后包装成 anypb.Any（载荷为 google.protobuf.Struct）
+func mcpObjectToAny(obj interface{}) (*anypb.Any, error) {
+	raw, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	var asMap map[string]interface{}
+	if err := json.Unmarshal(raw, &asMap); err != nil {
+		return nil, err
+	}
+	st, err := structpb.NewStruct(asMap)
+	if err != nil {
+		return nil, err
+	}
+	return anypb.New(st)
 }
 
 // parseMCPServers parses MCP Server objects from MCP tool arguments

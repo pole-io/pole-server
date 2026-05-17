@@ -20,7 +20,6 @@ package model
 import (
 	"strings"
 
-
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
@@ -130,7 +129,7 @@ func (i *Instance) ToSpecInstance() *apiservice.Instance {
 		HealthCheck: &apiservice.HealthCheck{
 			Type: apiservice.HealthCheck_HEARTBEAT,
 			Heartbeat: &apiservice.HeartbeatHealthCheck{
-				Ttl:  5,
+				Ttl: 5,
 			},
 		},
 		Healthy:  i.Healthy,

@@ -208,7 +208,7 @@ type ServiceInfo struct {
 	Routing                *traffic_manage.RouteRule
 	SvcRoutingRevision     string
 	Ports                  []*svctypes.ServicePort
-	RateLimits              []*traffic_manage.RateLimit
+	RateLimits             []*traffic_manage.RateLimit
 	SvcRateLimitRevision   string
 	CircuitBreaker         *fault_tolerance.CircuitBreakerRule
 	CircuitBreakerRevision string

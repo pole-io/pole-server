@@ -28,8 +28,8 @@ import (
 
 	restful "github.com/emicklei/go-restful/v3"
 	"github.com/pkg/errors"
-	"google.golang.org/protobuf/encoding/protojson"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
@@ -63,13 +63,13 @@ import (
 
 var (
 	cacheTypes = map[string]struct{}{
-		apiservice.DiscoverResponse_INSTANCE.String():        {},
-		apiservice.DiscoverResponse_CUSTOM_ROUTE_RULE.String():     {},
-		apiservice.DiscoverResponse_NEARBY_ROUTE_RULE.String():         {},
-		apiservice.DiscoverResponse_RATE_LIMIT.String():      {},
-		apiservice.DiscoverResponse_CIRCUIT_BREAKER.String(): {},
-		apiservice.DiscoverResponse_FAULT_DETECTOR.String():  {},
-		apiservice.DiscoverResponse_SERVICES.String():        {},
+		apiservice.DiscoverResponse_INSTANCE.String():          {},
+		apiservice.DiscoverResponse_CUSTOM_ROUTE_RULE.String(): {},
+		apiservice.DiscoverResponse_NEARBY_ROUTE_RULE.String(): {},
+		apiservice.DiscoverResponse_RATE_LIMIT.String():        {},
+		apiservice.DiscoverResponse_CIRCUIT_BREAKER.String():   {},
+		apiservice.DiscoverResponse_FAULT_DETECTOR.String():    {},
+		apiservice.DiscoverResponse_SERVICES.String():          {},
 	}
 )
 

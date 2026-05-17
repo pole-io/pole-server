@@ -23,25 +23,25 @@ import apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 // 六位构成，前面三位参照HTTP Status的标准
 // 后面三位，依据内部的具体错误自定义
 const (
-	ExecuteSuccess                  = uint32(apimodel.Code_ExecuteSuccess)
-	DataNoChange                    = uint32(apimodel.Code_DataNoChange)
-	NoNeedUpdate                    = uint32(apimodel.Code_NoNeedUpdate)
-	BadRequest                      = uint32(apimodel.Code_BadRequest)
-	ParseException                  = uint32(apimodel.Code_ParseException)
-	EmptyRequest                    = uint32(apimodel.Code_EmptyRequest)
-	BatchSizeOverLimit              = uint32(apimodel.Code_BatchSizeOverLimit)
-	InvalidDiscoverResource         = uint32(apimodel.Code_InvalidDiscoverResource)
-	InvalidRequestID                = uint32(apimodel.Code_InvalidRequestID)
-	InvalidUserName                 = uint32(apimodel.Code_InvalidUserName)
-	InvalidUserToken                = uint32(apimodel.Code_InvalidUserToken)
-	InvalidParameter                = uint32(apimodel.Code_InvalidParameter)
-	EmptyQueryParameter             = uint32(apimodel.Code_EmptyQueryParameter)
-	InvalidQueryInsParameter        = uint32(apimodel.Code_InvalidQueryInsParameter)
-	HealthCheckNotOpen              = uint32(apimodel.Code_HealthCheckNotOpen)
-	HeartbeatOnDisabledIns          = uint32(apimodel.Code_HeartbeatOnDisabledIns)
-	HeartbeatExceedLimit            = uint32(apimodel.Code_HeartbeatExceedLimit)
-	HeartbeatTypeNotFound           = uint32(apimodel.Code_HeartbeatTypeNotFound)
-	InvalidMetadata                 = uint32(apimodel.Code_InvalidMetadata)
+	ExecuteSuccess           = uint32(apimodel.Code_ExecuteSuccess)
+	DataNoChange             = uint32(apimodel.Code_DataNoChange)
+	NoNeedUpdate             = uint32(apimodel.Code_NoNeedUpdate)
+	BadRequest               = uint32(apimodel.Code_BadRequest)
+	ParseException           = uint32(apimodel.Code_ParseException)
+	EmptyRequest             = uint32(apimodel.Code_EmptyRequest)
+	BatchSizeOverLimit       = uint32(apimodel.Code_BatchSizeOverLimit)
+	InvalidDiscoverResource  = uint32(apimodel.Code_InvalidDiscoverResource)
+	InvalidRequestID         = uint32(apimodel.Code_InvalidRequestID)
+	InvalidUserName          = uint32(apimodel.Code_InvalidUserName)
+	InvalidUserToken         = uint32(apimodel.Code_InvalidUserToken)
+	InvalidParameter         = uint32(apimodel.Code_InvalidParameter)
+	EmptyQueryParameter      = uint32(apimodel.Code_EmptyQueryParameter)
+	InvalidQueryInsParameter = uint32(apimodel.Code_InvalidQueryInsParameter)
+	HealthCheckNotOpen       = uint32(apimodel.Code_HealthCheckNotOpen)
+	HeartbeatOnDisabledIns   = uint32(apimodel.Code_HeartbeatOnDisabledIns)
+	HeartbeatExceedLimit     = uint32(apimodel.Code_HeartbeatExceedLimit)
+	HeartbeatTypeNotFound    = uint32(apimodel.Code_HeartbeatTypeNotFound)
+	InvalidMetadata          = uint32(apimodel.Code_InvalidMetadata)
 
 	// 网格相关错误码
 	ServicesExistedMesh  = uint32(apimodel.Code_ServicesExistedMesh)
@@ -50,9 +50,7 @@ const (
 
 	// 平台信息相关错误码
 
-
 	// flux相关错误码
-
 
 	ExistedResource                 = uint32(apimodel.Code_ExistedResource)
 	NotFoundResource                = uint32(apimodel.Code_NotFoundResource)
@@ -70,23 +68,23 @@ const (
 	ServiceExistedFluxRateLimits    = uint32(apimodel.Code_ServiceExistedFluxRateLimits)
 	NamespaceExistedConfigGroups    = uint32(apimodel.Code_NamespaceExistedConfigGroups)
 
-	ClientAPINotOpen                   = uint32(apimodel.Code_ClientAPINotOpen)
-	Unauthorized                       = uint32(apimodel.Code_Unauthorized)
-	NotAllowedAccess                   = uint32(apimodel.Code_NotAllowedAccess)
-	IPRateLimit                        = uint32(apimodel.Code_IPRateLimit)
-	APIRateLimit                       = uint32(apimodel.Code_APIRateLimit)
-	CMDBNotFindHost                    = uint32(apimodel.Code_CMDBNotFindHost)
-	DataConflict                       = uint32(apimodel.Code_DataConflict)
-	InstanceTooManyRequests            = uint32(apimodel.Code_InstanceTooManyRequests)
-	ExecuteException                   = uint32(apimodel.Code_ExecuteException)
-	StoreLayerException                = uint32(apimodel.Code_StoreLayerException)
-	CMDBPluginException                = uint32(apimodel.Code_CMDBPluginException)
-	HeartbeatException                 = uint32(apimodel.Code_HeartbeatException)
-	InstanceRegisTimeout               = uint32(apimodel.Code_InstanceRegisTimeout)
+	ClientAPINotOpen        = uint32(apimodel.Code_ClientAPINotOpen)
+	Unauthorized            = uint32(apimodel.Code_Unauthorized)
+	NotAllowedAccess        = uint32(apimodel.Code_NotAllowedAccess)
+	IPRateLimit             = uint32(apimodel.Code_IPRateLimit)
+	APIRateLimit            = uint32(apimodel.Code_APIRateLimit)
+	CMDBNotFindHost         = uint32(apimodel.Code_CMDBNotFindHost)
+	DataConflict            = uint32(apimodel.Code_DataConflict)
+	InstanceTooManyRequests = uint32(apimodel.Code_InstanceTooManyRequests)
+	ExecuteException        = uint32(apimodel.Code_ExecuteException)
+	StoreLayerException     = uint32(apimodel.Code_StoreLayerException)
+	CMDBPluginException     = uint32(apimodel.Code_CMDBPluginException)
+	HeartbeatException      = uint32(apimodel.Code_HeartbeatException)
+	InstanceRegisTimeout    = uint32(apimodel.Code_InstanceRegisTimeout)
 
 	// 配置中心模块的错误码
 
-	InvalidMatchRule               = uint32(apimodel.Code_InvalidMatchRule)
+	InvalidMatchRule = uint32(apimodel.Code_InvalidMatchRule)
 
 	// 鉴权相关错误码
 	InvalidUserOwners         = uint32(apimodel.Code_InvalidUserOwners)
@@ -121,59 +119,59 @@ const (
 // code to string
 // code的字符串描述信息
 var code2info = map[uint32]string{
-	ExecuteSuccess:                     "execute success",
-	DataNoChange:                       "discover data is no change",
-	NoNeedUpdate:                       "update data is no change, no need to update",
-	BadRequest:                         "bad request",
-	ParseException:                     "request decode failed",
-	EmptyRequest:                       "empty request",
-	BatchSizeOverLimit:                 "batch size over the limit",
-	InvalidDiscoverResource:            "invalid discover resource",
-	InvalidRequestID:                   "invalid request id",
-	InvalidUserName:                    "invalid user name",
-	InvalidUserToken:                   "invalid user token",
-	InvalidParameter:                   "invalid parameter",
-	EmptyQueryParameter:                "query instance parameter is empty",
-	InvalidQueryInsParameter:           "query instance, service or namespace or host is required",
-	HealthCheckNotOpen:                 "server not open health check",
-	HeartbeatOnDisabledIns:             "heartbeat on disabled instance",
-	HeartbeatExceedLimit:               "instance can only heartbeat 1 time per second",
-	InvalidMetadata:                    "the length of metadata is too long or metadata contains invalid characters",
-	ExistedResource:                    "existed resource",
-	SameInstanceRequest:                "the same instance request",
-	NotFoundResource:                   "not found resource",
-	ClientAPINotOpen:                   "client api is not open",
-	NamespaceExistedServices:           "some services existed in namespace",
-	ServiceExistedInstances:            "some instances existed in service",
-	ServiceExistedRoutings:             "some routings existed in service",
-	ServiceExistedRateLimits:           "some rate limits existed in service",
-	ServiceExistedCircuitBreakers:      "some circuit breakers existed in service",
-	ServiceExistedAlias:                "some aliases existed in service",
-	NamespaceExistedMeshResources:      "some mesh resources existed in namespace",
-	NamespaceExistedCircuitBreakers:    "some circuit breakers existed in namespace",
-	ExistReleasedConfig:                "exist released config",
-	Unauthorized:                       "unauthorized",
-	NotAllowedAccess:                   "access is not approved",
-	IPRateLimit:                        "server limit the ip access",
-	APIRateLimit:                       "server limit the api access",
-	CMDBNotFindHost:                    "not found the host cmdb",
-	DataConflict:                       "data is conflict, please try again",
-	InstanceTooManyRequests:            "your instance has too many requests",
-	ExecuteException:                   "execute exception",
-	StoreLayerException:                "store layer exception",
-	CMDBPluginException:                "cmdb plugin exception",
+	ExecuteSuccess:                  "execute success",
+	DataNoChange:                    "discover data is no change",
+	NoNeedUpdate:                    "update data is no change, no need to update",
+	BadRequest:                      "bad request",
+	ParseException:                  "request decode failed",
+	EmptyRequest:                    "empty request",
+	BatchSizeOverLimit:              "batch size over the limit",
+	InvalidDiscoverResource:         "invalid discover resource",
+	InvalidRequestID:                "invalid request id",
+	InvalidUserName:                 "invalid user name",
+	InvalidUserToken:                "invalid user token",
+	InvalidParameter:                "invalid parameter",
+	EmptyQueryParameter:             "query instance parameter is empty",
+	InvalidQueryInsParameter:        "query instance, service or namespace or host is required",
+	HealthCheckNotOpen:              "server not open health check",
+	HeartbeatOnDisabledIns:          "heartbeat on disabled instance",
+	HeartbeatExceedLimit:            "instance can only heartbeat 1 time per second",
+	InvalidMetadata:                 "the length of metadata is too long or metadata contains invalid characters",
+	ExistedResource:                 "existed resource",
+	SameInstanceRequest:             "the same instance request",
+	NotFoundResource:                "not found resource",
+	ClientAPINotOpen:                "client api is not open",
+	NamespaceExistedServices:        "some services existed in namespace",
+	ServiceExistedInstances:         "some instances existed in service",
+	ServiceExistedRoutings:          "some routings existed in service",
+	ServiceExistedRateLimits:        "some rate limits existed in service",
+	ServiceExistedCircuitBreakers:   "some circuit breakers existed in service",
+	ServiceExistedAlias:             "some aliases existed in service",
+	NamespaceExistedMeshResources:   "some mesh resources existed in namespace",
+	NamespaceExistedCircuitBreakers: "some circuit breakers existed in namespace",
+	ExistReleasedConfig:             "exist released config",
+	Unauthorized:                    "unauthorized",
+	NotAllowedAccess:                "access is not approved",
+	IPRateLimit:                     "server limit the ip access",
+	APIRateLimit:                    "server limit the api access",
+	CMDBNotFindHost:                 "not found the host cmdb",
+	DataConflict:                    "data is conflict, please try again",
+	InstanceTooManyRequests:         "your instance has too many requests",
+	ExecuteException:                "execute exception",
+	StoreLayerException:             "store layer exception",
+	CMDBPluginException:             "cmdb plugin exception",
 
-	HeartbeatException:                 "heartbeat execute exception",
+	HeartbeatException: "heartbeat execute exception",
 
-	ServicesExistedMesh:                "services existed mesh",
-	ResourcesExistedMesh:               "resources existed mesh",
-	ServiceSubscribedByMeshes:          "service subscribed by some mesh",
-	InvalidMeshParameter:               "invalid mesh parameter",
+	ServicesExistedMesh:       "services existed mesh",
+	ResourcesExistedMesh:      "resources existed mesh",
+	ServiceSubscribedByMeshes: "service subscribed by some mesh",
+	InvalidMeshParameter:      "invalid mesh parameter",
 
-	InstanceRegisTimeout:               "instance async regist timeout",
+	InstanceRegisTimeout: "instance async regist timeout",
 
 	// 配置中心的错误信息
-	InvalidMatchRule:              "invalid gray config beta labels",
+	InvalidMatchRule: "invalid gray config beta labels",
 
 	// 鉴权错误
 	NotFoundUser:             "not found user",
@@ -199,8 +197,6 @@ var code2info = map[uint32]string{
 
 	NotAllowModifyDefaultStrategyPrincipal: "not allow modify default strategy principal",
 	NotAllowModifyOwnerDefaultStrategy:     "not allow modify main account default strategy",
-
-
 
 	NamespaceExistedConfigGroups: "some config group existed in namespace",
 }

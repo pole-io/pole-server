@@ -11,8 +11,8 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 	"github.com/google/uuid"
-	"google.golang.org/protobuf/encoding/protojson"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 

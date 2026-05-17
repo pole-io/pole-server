@@ -435,13 +435,13 @@ func ToConfigGroupStore(group *config_manage.ConfigFileGroup) *ConfigFileGroup {
 
 func ToConfigFileTemplateAPI(template *ConfigFileTemplate) *config_manage.ConfigFileTemplate {
 	return &config_manage.ConfigFileTemplate{
-		Id:       template.Id,
-		Name:     template.Name,
-		Content:  template.Content,
-		Comment:  template.Comment,
-		Format:   template.Format,
-		Ctime:    utils.Time2String(template.CreateTime),
-		Mtime:    utils.Time2String(template.ModifyTime),
+		Id:      template.Id,
+		Name:    template.Name,
+		Content: template.Content,
+		Comment: template.Comment,
+		Format:  template.Format,
+		Ctime:   utils.Time2String(template.CreateTime),
+		Mtime:   utils.Time2String(template.ModifyTime),
 	}
 }
 

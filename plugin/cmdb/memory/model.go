@@ -21,7 +21,6 @@ import (
 	"net"
 	"strings"
 
-
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
@@ -92,7 +91,7 @@ func NewIP(info IPInfo) (IP, error) {
 	ip.loc = &svctypes.Location{
 		Proto: &apimodel.Location{
 			Region: string(info.Region.Name),
-			Zone: string(info.Zone.Name),
+			Zone:   string(info.Zone.Name),
 			Campus: string(info.Campus.Name),
 		},
 		RegionID: uint32(regionId),

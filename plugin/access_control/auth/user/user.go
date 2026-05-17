@@ -24,9 +24,9 @@ import (
 	"maps"
 	"time"
 
-	"google.golang.org/protobuf/encoding/protojson"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"

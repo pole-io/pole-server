@@ -22,7 +22,6 @@ import (
 	"regexp"
 	"unicode/utf8"
 
-
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
 

@@ -425,14 +425,14 @@ func rateLimit2Client(
 func marshalRateLimitRules(req *apitraffic.RateLimit) (string, error) {
 	// 根据新的 pole-io/specification，包含完整的Rules结构
 	r := &apitraffic.RateLimit{
-		Name:           req.GetName(),
-		Service:        req.GetService(),
-		Namespace:      req.GetNamespace(),
-		Type:           req.GetType(),
-		Rules:          req.GetRules(), 
-		Disable:        req.GetDisable(),
-		Report:         req.GetReport(),
-		Cluster:        req.GetCluster(),
+		Name:      req.GetName(),
+		Service:   req.GetService(),
+		Namespace: req.GetNamespace(),
+		Type:      req.GetType(),
+		Rules:     req.GetRules(),
+		Disable:   req.GetDisable(),
+		Report:    req.GetReport(),
+		Cluster:   req.GetCluster(),
 	}
 	rule, err := json.Marshal(r)
 	if err != nil {

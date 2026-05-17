@@ -23,7 +23,7 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types/ai"
 )
 
-// DiscoverStore Service discovery storage interface
+// AIStore AI module storage interface
 type AIStore interface {
 	MCPServerStore
 }
@@ -67,4 +67,3 @@ type MCPServerStore interface {
 	// QueryMCPServers 查询 MCP Servers（支持过滤和分页）
 	QueryMCPServers(filter map[string]string, offset, limit uint32) (uint32, []*ai.MCPServer, error)
 }
-

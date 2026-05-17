@@ -92,22 +92,22 @@ func TestClusterDataConsistency(t *testing.T) {
 		expected   testData
 	}{
 		{
-			name:      "newer_version_wins",
-			localData: testData{key: "svc1", value: "v1", version: 100},
+			name:       "newer_version_wins",
+			localData:  testData{key: "svc1", value: "v1", version: 100},
 			remoteData: testData{key: "svc1", value: "v2", version: 200},
-			expected:  testData{key: "svc1", value: "v2", version: 200},
+			expected:   testData{key: "svc1", value: "v2", version: 200},
 		},
 		{
-			name:      "older_version_ignored",
-			localData: testData{key: "svc2", value: "v2", version: 200},
+			name:       "older_version_ignored",
+			localData:  testData{key: "svc2", value: "v2", version: 200},
 			remoteData: testData{key: "svc2", value: "v1", version: 100},
-			expected:  testData{key: "svc2", value: "v2", version: 200},
+			expected:   testData{key: "svc2", value: "v2", version: 200},
 		},
 		{
-			name:      "same_version_resolve_conflict",
-			localData: testData{key: "svc3", value: "local", version: 150},
+			name:       "same_version_resolve_conflict",
+			localData:  testData{key: "svc3", value: "local", version: 150},
 			remoteData: testData{key: "svc3", value: "remote", version: 150},
-			expected:  testData{key: "svc3", value: "local", version: 150}, // local wins by default
+			expected:   testData{key: "svc3", value: "local", version: 150}, // local wins by default
 		},
 	}
 
@@ -277,7 +277,7 @@ func TestClusterSyncPerformance(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// 模拟同步时间计算
 			// 实际同步时间应该与数据量成正比
-			syncTime := int64(tc.dataSize * 10) // 简单模拟: 10us per item
+			syncTime := int64(tc.dataSize * 10)       // 简单模拟: 10us per item
 			expectedMaxMs := int64(tc.dataSize) * 100 // 100us per item as expected limit
 			assert.LessOrEqual(t, syncTime, expectedMaxMs,
 				"sync time should be within expected limit")
@@ -399,9 +399,9 @@ func TestClusterEventDelivery(t *testing.T) {
 	// 模拟事件传递
 	type EventType string
 	const (
-		EventServiceRegistered    EventType = "service_registered"
-		EventServiceDeregistered  EventType = "service_deregistered"
-		EventInstanceUpdated      EventType = "instance_updated"
+		EventServiceRegistered   EventType = "service_registered"
+		EventServiceDeregistered EventType = "service_deregistered"
+		EventInstanceUpdated     EventType = "instance_updated"
 	)
 
 	type Event struct {

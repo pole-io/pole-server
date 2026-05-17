@@ -36,11 +36,11 @@ type InstanceMetadataRequest struct {
 }
 
 var storeCodeAPICodeMap = map[StatusCode]apimodel.Code{
-	EmptyParamsErr:             apimodel.Code_InvalidParameter,
-	OutOfRangeErr:              apimodel.Code_InvalidParameter,
-	DataConflictErr:            apimodel.Code_DataConflict,
-	ExistReleasedConfig:        apimodel.Code_ExistReleasedConfig,
-	DuplicateEntryErr:          apimodel.Code_ExistedResource,
+	EmptyParamsErr:      apimodel.Code_InvalidParameter,
+	OutOfRangeErr:       apimodel.Code_InvalidParameter,
+	DataConflictErr:     apimodel.Code_DataConflict,
+	ExistReleasedConfig: apimodel.Code_ExistReleasedConfig,
+	DuplicateEntryErr:   apimodel.Code_ExistedResource,
 }
 
 // StoreCode2APICode store code to api code

@@ -36,4 +36,14 @@ type MCPServerCache interface {
 
 	// GetMCPServerTools 获取 MCP Server 的所有工具
 	GetMCPServerTools(serverID string) []*ai.MCPServerTool
+
+	// Query 按过滤条件分页查询，返回总数和当前页结果
+	// filter 支持的 key:
+	//   - name       前缀匹配（strings.HasPrefix）
+	//   - namespace  精确匹配
+	//   - business   精确匹配
+	//   - department 精确匹配
+	//   - protocol   精确匹配
+	// 排序：MTime DESC
+	Query(filter map[string]string, offset, limit uint32) (uint32, []*ai.MCPServer)
 }

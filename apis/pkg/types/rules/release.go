@@ -3,8 +3,9 @@ package rules
 import (
 	"time"
 
-	commontime "github.com/pole-io/pole-server/pkg/common/utils/time"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+
+	commontime "github.com/pole-io/pole-server/pkg/common/utils/time"
 )
 
 type RuleRelease struct {

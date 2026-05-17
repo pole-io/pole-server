@@ -80,7 +80,6 @@ func (h *HTTPServer) RegisterInstance(req *restful.Request, rsp *restful.Respons
 		return
 	}
 
-
 	handler.WriteHeaderAndProto(h.namingServer.RegisterInstance(ctx, instance))
 }
 

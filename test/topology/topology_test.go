@@ -38,14 +38,14 @@ type RelationChange struct {
 func TestCollectTopologyData(t *testing.T) {
 	// 模拟服务调用关系
 	type CallRelation struct {
-		SourceService   string
-		TargetService   string
-		CallCount       int64
-		SuccessCount    int64
-		FailCount       int64
-		AvgLatencyMs    float64
-		P99LatencyMs    float64
-		CollectTime     time.Time
+		SourceService string
+		TargetService string
+		CallCount     int64
+		SuccessCount  int64
+		FailCount     int64
+		AvgLatencyMs  float64
+		P99LatencyMs  float64
+		CollectTime   time.Time
 	}
 
 	relations := []CallRelation{
@@ -72,7 +72,7 @@ func TestQueryTopologyAPI(t *testing.T) {
 	type TopologyQuery struct {
 		ServiceID      string
 		Depth          int
-		Start time.Time
+		Start          time.Time
 		End            time.Time
 		IncludeMetrics bool
 	}
@@ -95,13 +95,13 @@ func TestQueryTopologyAPI(t *testing.T) {
 func TestServiceCallChain(t *testing.T) {
 	// 模拟调用链
 	type CallNode struct {
-		ServiceID   string
-		InstanceID  string
-		StartTime   time.Time
-		EndTime     time.Time
-		DurationMs  float64
-		Status      string // "success", "fail", "timeout"
-		Children    []CallNode
+		ServiceID  string
+		InstanceID string
+		StartTime  time.Time
+		EndTime    time.Time
+		DurationMs float64
+		Status     string // "success", "fail", "timeout"
+		Children   []CallNode
 	}
 
 	// 构建简单的调用链
@@ -161,10 +161,10 @@ func TestServiceCallChain(t *testing.T) {
 func TestTopologyDataAccuracy(t *testing.T) {
 	// 模拟拓扑数据一致性校验
 	type ServiceMetric struct {
-		ServiceID       string
-		OutgoingCalls   int64
-		IncomingCalls   int64
-		AliasFor        string // 别名服务ID（用于合并拓扑）
+		ServiceID     string
+		OutgoingCalls int64
+		IncomingCalls int64
+		AliasFor      string // 别名服务ID（用于合并拓扑）
 	}
 
 	services := map[string]*ServiceMetric{
@@ -215,7 +215,7 @@ func TestTopologyQueryPerformance(t *testing.T) {
 func TestTopologyDataCleanup(t *testing.T) {
 	// 模拟拓扑数据保留策略
 	type RetentionPolicy struct {
-		MaxDataDays   int
+		MaxDataDays    int
 		MinRetainCalls int64
 	}
 
@@ -259,17 +259,17 @@ func TestTopologyDataCleanup(t *testing.T) {
 func TestTopologyVisualization(t *testing.T) {
 	// 模拟拓扑可视化数据结构
 	type Node struct {
-		ID       string
-		Name     string
-		Type     string // "service", "instance", "database", "cache"
-		Metrics  map[string]interface{}
+		ID      string
+		Name    string
+		Type    string // "service", "instance", "database", "cache"
+		Metrics map[string]interface{}
 	}
 
 	type Edge struct {
-		Source      string
-		Target      string
-		Value       float64
-		Metadata    map[string]string
+		Source   string
+		Target   string
+		Value    float64
+		Metadata map[string]string
 	}
 
 	nodes := []Node{
@@ -300,11 +300,11 @@ func TestTopologyVisualization(t *testing.T) {
 func TestTopologyAnomalyDetection(t *testing.T) {
 	// 模拟拓扑异常检测
 	type ServiceAnomaly struct {
-		ServiceID     string
-		AnomalyType   string // "high_failure", "high_latency", "low_throughput"
-		CurrentValue  float64
-		Threshold     float64
-		DurationSecs  int
+		ServiceID    string
+		AnomalyType  string // "high_failure", "high_latency", "low_throughput"
+		CurrentValue float64
+		Threshold    float64
+		DurationSecs int
 	}
 
 	anomalies := []ServiceAnomaly{
@@ -362,10 +362,10 @@ func TestTopologyAggregation(t *testing.T) {
 func TestTopologyHistory(t *testing.T) {
 	// 模拟拓扑历史版本
 	type TopologyVersion struct {
-		Version     int64
-		TopologyID  string
-		LastUpdate  time.Time
-		ServiceCount int
+		Version       int64
+		TopologyID    string
+		LastUpdate    time.Time
+		ServiceCount  int
 		RelationCount int
 	}
 
@@ -391,9 +391,9 @@ func TestTopologyExport(t *testing.T) {
 	// 模拟拓扑数据导出格式
 	type ExportFormat string
 	const (
-		FormatJSON ExportFormat = "json"
+		FormatJSON    ExportFormat = "json"
 		FormatGraphML ExportFormat = "graphml"
-		FormatDOT ExportFormat = "dot"
+		FormatDOT     ExportFormat = "dot"
 	)
 
 	type TopologyData struct {
@@ -430,10 +430,10 @@ func TestTopologyComparison(t *testing.T) {
 	}
 
 	type RelationChange struct {
-		Source      string
-		Target      string
-		OldValue    int64
-		NewValue    int64
+		Source   string
+		Target   string
+		OldValue int64
+		NewValue int64
 	}
 
 	oldTopology := map[string][]string{
@@ -470,7 +470,7 @@ func TestTopologyComparison(t *testing.T) {
 		oldTargets := oldTopology[svc]
 		if len(oldTargets) != len(targets) {
 			changedRelations = append(changedRelations, RelationChange{
-				Source: svc,
+				Source:   svc,
 				OldValue: int64(len(oldTargets)),
 				NewValue: int64(len(targets)),
 			})

@@ -18,7 +18,11 @@
 package ai
 
 import (
+	"sort"
+	"strings"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types/ai"
@@ -26,7 +30,6 @@ import (
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
-	"golang.org/x/sync/singleflight"
 )
 
 type mcpServerCache struct {
@@ -50,13 +53,13 @@ type mcpServerCache struct {
 
 func NewMCPServerCache(storage store.Store, cacheMgr cacheapi.CacheManager) cacheapi.Cache {
 	return &mcpServerCache{
-		BaseCache:       cachebase.NewBaseCache(storage, cacheMgr),
-		storage:         storage,
-		ids:             container.NewSyncMap[string, *ai.MCPServer](),
-		names:           container.NewSyncMap[string, *ai.MCPServer](),
-		namespaceIndex:  container.NewSyncMap[string, []*ai.MCPServer](),
-		tools:           container.NewSyncMap[string, []*ai.MCPServerTool](),
-		singleFlight:    &singleflight.Group{},
+		BaseCache:      cachebase.NewBaseCache(storage, cacheMgr),
+		storage:        storage,
+		ids:            container.NewSyncMap[string, *ai.MCPServer](),
+		names:          container.NewSyncMap[string, *ai.MCPServer](),
+		namespaceIndex: container.NewSyncMap[string, []*ai.MCPServer](),
+		tools:          container.NewSyncMap[string, []*ai.MCPServerTool](),
+		singleFlight:   &singleflight.Group{},
 	}
 }
 
@@ -177,6 +180,54 @@ func (mc *mcpServerCache) GetMCPServerTools(serverID string) []*ai.MCPServerTool
 		return nil
 	}
 	return val
+}
+
+// Query 实现 MCPServerCache 接口
+// filter 支持: name(前缀匹配)、namespace/business/department/protocol(精确匹配)
+// 排序: MTime DESC
+func (mc *mcpServerCache) Query(filter map[string]string, offset, limit uint32) (uint32, []*ai.MCPServer) {
+	name := filter["name"]
+	namespace := filter["namespace"]
+	business := filter["business"]
+	department := filter["department"]
+	protocol := filter["protocol"]
+
+	matched := make([]*ai.MCPServer, 0, 16)
+	mc.ids.Range(func(_ string, s *ai.MCPServer) {
+		if s == nil {
+			return
+		}
+		if name != "" && !strings.HasPrefix(s.Name, name) {
+			return
+		}
+		if namespace != "" && s.Namespace != namespace {
+			return
+		}
+		if business != "" && s.Business != business {
+			return
+		}
+		if department != "" && s.Department != department {
+			return
+		}
+		if protocol != "" && s.Protocol != protocol {
+			return
+		}
+		matched = append(matched, s)
+	})
+
+	sort.SliceStable(matched, func(i, j int) bool {
+		return matched[i].MTime.After(matched[j].MTime)
+	})
+
+	total := uint32(len(matched))
+	if offset >= total {
+		return total, []*ai.MCPServer{}
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	return total, matched[offset:end]
 }
 
 // 辅助方法

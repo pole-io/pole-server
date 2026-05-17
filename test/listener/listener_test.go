@@ -28,14 +28,14 @@ import (
 func TestQueryConfigListeners(t *testing.T) {
 	// 模拟配置监听者数据
 	type ConfigListener struct {
-		ListenerID    string
-		FileID        string
-		FileName      string
-		GroupID       string
-		ListenerIP    string
-		LastPollTime  string
-		LastVersion   string
-		Enable        bool
+		ListenerID   string
+		FileID       string
+		FileName     string
+		GroupID      string
+		ListenerIP   string
+		LastPollTime string
+		LastVersion  string
+		Enable       bool
 	}
 
 	listeners := []ConfigListener{
@@ -57,12 +57,12 @@ func TestQueryConfigListeners(t *testing.T) {
 func TestConfigSubscriptionFilter(t *testing.T) {
 	// 模拟配置订阅关系
 	type ConfigSubscription struct {
-		ListenerID    string
-		FileID        string
-		GroupID       string
-		Namespace     string
-		Enable        bool
-		Protocol      string // "long-polling", "http"
+		ListenerID string
+		FileID     string
+		GroupID    string
+		Namespace  string
+		Enable     bool
+		Protocol   string // "long-polling", "http"
 	}
 
 	subscriptions := []ConfigSubscription{
@@ -136,12 +136,12 @@ func TestConfigReleaseNotification(t *testing.T) {
 func TestConfigListenerCountMetrics(t *testing.T) {
 	// 模拟配置监听者数量统计
 	type FileListenerCount struct {
-		FileID        string
-		GroupName     string
-		TotalListeners int
-		EnableListeners int
+		FileID           string
+		GroupName        string
+		TotalListeners   int
+		EnableListeners  int
 		DisableListeners int
-		LastPollAvgMs float64
+		LastPollAvgMs    float64
 	}
 
 	counts := []FileListenerCount{
@@ -209,13 +209,13 @@ func TestConfigListenerRelationValidation(t *testing.T) {
 func TestConfigListenerHistoryQuery(t *testing.T) {
 	// 模拟配置监听历史记录
 	type HistoryRecord struct {
-		RecordID      string
-		ListenerID    string
-		FileID        string
-		Action        string // "poll", "push", "update", "disable", "enable"
-		OldVersion    string
-		NewVersion    string
-		Timestamp     string
+		RecordID   string
+		ListenerID string
+		FileID     string
+		Action     string // "poll", "push", "update", "disable", "enable"
+		OldVersion string
+		NewVersion string
+		Timestamp  string
 	}
 
 	history := []HistoryRecord{
@@ -267,20 +267,20 @@ func TestConfigListenerQueryPerformance(t *testing.T) {
 func TestConfigListenerAggregateStats(t *testing.T) {
 	// 模拟按文件聚合的监听者统计数据
 	type AggregatedStats struct {
-		FileID         string
-		GroupName      string
-		TotalListeners int
-		EnableListeners int
+		FileID           string
+		GroupName        string
+		TotalListeners   int
+		EnableListeners  int
 		DisableListeners int
-		VersionStats   map[string]int
+		VersionStats     map[string]int
 	}
 
 	stats := []AggregatedStats{
 		{
-			FileID:         "f-1",
-			GroupName:      "default",
-			TotalListeners: 100,
-			EnableListeners: 80,
+			FileID:           "f-1",
+			GroupName:        "default",
+			TotalListeners:   100,
+			EnableListeners:  80,
 			DisableListeners: 20,
 			VersionStats: map[string]int{
 				"v1": 60,
@@ -288,10 +288,10 @@ func TestConfigListenerAggregateStats(t *testing.T) {
 			},
 		},
 		{
-			FileID:         "f-2",
-			GroupName:      "prod",
-			TotalListeners: 50,
-			EnableListeners: 50,
+			FileID:           "f-2",
+			GroupName:        "prod",
+			TotalListeners:   50,
+			EnableListeners:  50,
 			DisableListeners: 0,
 			VersionStats: map[string]int{
 				"v1": 30,
@@ -356,13 +356,13 @@ func TestConfigNotificationBatch(t *testing.T) {
 func TestConfigListenerQueryWithFilters(t *testing.T) {
 	// 模拟带过滤条件的查询
 	type ConfigListener struct {
-		ListenerID    string
-		FileID        string
-		GroupID       string
-		Namespace     string
-		Protocol      string
-		Enable        bool
-		Version       string
+		ListenerID string
+		FileID     string
+		GroupID    string
+		Namespace  string
+		Protocol   string
+		Enable     bool
+		Version    string
 	}
 
 	listeners := []ConfigListener{
@@ -443,10 +443,10 @@ func TestConfigListenerQueryPagination(t *testing.T) {
 func TestConfigListenerCacheHitRate(t *testing.T) {
 	// 模拟缓存命中率统计
 	type CacheStats struct {
-		ListenerID    string
-		HitCount      int64
-		MissCount     int64
-		CacheHitRate  float64
+		ListenerID   string
+		HitCount     int64
+		MissCount    int64
+		CacheHitRate float64
 	}
 
 	stats := []CacheStats{
@@ -468,13 +468,13 @@ func TestConfigListenerCacheHitRate(t *testing.T) {
 func TestConfigListenerDataAccuracy(t *testing.T) {
 	// 模拟监听数据一致性校验
 	type ListenerData struct {
-		ListenerID    string
-		FileID        string
-		GroupID       string
-		Namespace     string
-		LastVersion   string
-		PollCount     int64
-		PushCount     int64
+		ListenerID  string
+		FileID      string
+		GroupID     string
+		Namespace   string
+		LastVersion string
+		PollCount   int64
+		PushCount   int64
 	}
 
 	listeners := []ListenerData{

@@ -8,13 +8,13 @@ import (
 	context "context"
 	reflect "reflect"
 
-	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	gomock "github.com/golang/mock/gomock"
-	security "github.com/pole-io/specification/source/go/api/v1/security"
 	auth "github.com/pole-io/pole-server/apis/access_control/auth"
 	cache "github.com/pole-io/pole-server/apis/cache"
 	auth0 "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	store "github.com/pole-io/pole-server/apis/store"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	security "github.com/pole-io/specification/source/go/api/v1/security"
 )
 
 // MockAuthChecker is a mock of AuthChecker interface.

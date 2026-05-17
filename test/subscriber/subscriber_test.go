@@ -54,10 +54,10 @@ func TestQueryServiceSubscribers(t *testing.T) {
 func TestServiceSubscriptionFilter(t *testing.T) {
 	// 模拟订阅关系
 	type Subscription struct {
-		ServiceID      string
-		SubscriberID   string
-		Protocol       string // "grpc", "http", "thrift"
-		Enable         bool
+		ServiceID    string
+		SubscriberID string
+		Protocol     string // "grpc", "http", "thrift"
+		Enable       bool
 	}
 
 	subscriptions := []Subscription{
@@ -96,10 +96,10 @@ func TestBatchQueryServiceSubscribers(t *testing.T) {
 	}
 
 	type BatchQueryResult struct {
-		ServiceID    string
-		Subscribers  []string
-		Total        int
-		HasMore      bool
+		ServiceID   string
+		Subscribers []string
+		Total       int
+		HasMore     bool
 	}
 
 	// 模拟批量查询结果
@@ -122,10 +122,10 @@ func TestBatchQueryServiceSubscribers(t *testing.T) {
 func TestSubscriberCountMetrics(t *testing.T) {
 	// 模拟订阅者数量统计
 	type ServiceSubscriberCount struct {
-		ServiceID      string
-		SubscriberNum  int
-		EnableNum      int
-		DisableNum     int
+		ServiceID     string
+		SubscriberNum int
+		EnableNum     int
+		DisableNum    int
 	}
 
 	counts := []ServiceSubscriberCount{
@@ -157,10 +157,10 @@ func TestSubscriberCountMetrics(t *testing.T) {
 func TestSubscriberRelationValidation(t *testing.T) {
 	// 模拟订阅关系数据
 	type Relation struct {
-		ServiceID      string
-		SubscriberID   string
-		Valid          bool
-		ValidationMsg  string
+		ServiceID     string
+		SubscriberID  string
+		Valid         bool
+		ValidationMsg string
 	}
 
 	relations := []Relation{
@@ -191,12 +191,12 @@ func TestSubscriberRelationValidation(t *testing.T) {
 func TestSubscriberHistoryQuery(t *testing.T) {
 	// 模拟订阅历史记录
 	type HistoryRecord struct {
-		RecordID       string
-		ServiceID      string
-		SubscriberID   string
-		Action         string // "subscribe", "unsubscribe", "update"
-		Timestamp      string
-		Metadata       map[string]string
+		RecordID     string
+		ServiceID    string
+		SubscriberID string
+		Action       string // "subscribe", "unsubscribe", "update"
+		Timestamp    string
+		Metadata     map[string]string
 	}
 
 	history := []HistoryRecord{
@@ -248,18 +248,18 @@ func TestSubscriberQueryPerformance(t *testing.T) {
 func TestSubscriberAggregateStats(t *testing.T) {
 	// 模拟按服务聚合的订阅者统计数据
 	type AggregatedStats struct {
-		ServiceID      string
-		TotalSubs      int
-		EnableSubs     int
-		DisableSubs    int
-		ProtocolStats  map[string]int
+		ServiceID     string
+		TotalSubs     int
+		EnableSubs    int
+		DisableSubs   int
+		ProtocolStats map[string]int
 	}
 
 	stats := []AggregatedStats{
 		{
-			ServiceID: "svc-1",
-			TotalSubs: 100,
-			EnableSubs: 80,
+			ServiceID:   "svc-1",
+			TotalSubs:   100,
+			EnableSubs:  80,
 			DisableSubs: 20,
 			ProtocolStats: map[string]int{
 				"grpc": 60,
@@ -267,9 +267,9 @@ func TestSubscriberAggregateStats(t *testing.T) {
 			},
 		},
 		{
-			ServiceID: "svc-2",
-			TotalSubs: 50,
-			EnableSubs: 50,
+			ServiceID:   "svc-2",
+			TotalSubs:   50,
+			EnableSubs:  50,
 			DisableSubs: 0,
 			ProtocolStats: map[string]int{
 				"http": 50,
@@ -294,11 +294,11 @@ func TestSubscriberAggregateStats(t *testing.T) {
 func TestSubscriberQueryWithFilters(t *testing.T) {
 	// 模拟带过滤条件的查询
 	type Subscriber struct {
-		ServiceID      string
-		SubscriberID   string
-		Protocol       string
-		Enable         bool
-		Version        string
+		ServiceID    string
+		SubscriberID string
+		Protocol     string
+		Enable       bool
+		Version      string
 	}
 
 	subscribers := []Subscriber{

@@ -28,9 +28,9 @@ import (
 )
 
 const (
-	labelCreateMCPServer    = "createMCPServer"
-	labelUpdateMCPServer    = "updateMCPServer"
-	labelDeleteMCPServer    = "deleteMCPServer"
+	labelCreateMCPServer     = "createMCPServer"
+	labelUpdateMCPServer     = "updateMCPServer"
+	labelDeleteMCPServer     = "deleteMCPServer"
 	labelCreateMCPServerTool = "createMCPServerTool"
 	labelUpdateMCPServerTool = "updateMCPServerTool"
 	labelDeleteMCPServerTool = "deleteMCPServerTool"
