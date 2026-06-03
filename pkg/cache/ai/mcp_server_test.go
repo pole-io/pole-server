@@ -24,15 +24,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/ai"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
+	"github.com/pole-io/specification/source/go/api/v1/ai"
 )
 
 // 创建测试用的 MCP Server 数据
 func createTestMCPServers() []*ai.MCPServer {
 	return []*ai.MCPServer{
 		{
-			ID:          "mcp-server-1",
+			Id:          "mcp-server-1",
 			Name:        "test-mcp-server-1",
 			Namespace:   "default",
 			Ports:       "8080",
@@ -43,12 +43,12 @@ func createTestMCPServers() []*ai.MCPServer {
 			Flag:        0,
 			Reference:   "",
 			Protocol:    "http",
-			CTime:       time.Now(),
-			MTime:       time.Now(),
+			Ctime:       formatMCPTime(time.Now()),
+			Mtime:       formatMCPTime(time.Now()),
 			ExportTo:    "",
 		},
 		{
-			ID:          "mcp-server-2",
+			Id:          "mcp-server-2",
 			Name:        "test-mcp-server-2",
 			Namespace:   "ai-ns",
 			Ports:       "9090",
@@ -59,8 +59,8 @@ func createTestMCPServers() []*ai.MCPServer {
 			Flag:        0,
 			Reference:   "",
 			Protocol:    "grpc",
-			CTime:       time.Now(),
-			MTime:       time.Now(),
+			Ctime:       formatMCPTime(time.Now()),
+			Mtime:       formatMCPTime(time.Now()),
 			ExportTo:    "",
 		},
 	}
@@ -75,14 +75,14 @@ func TestMCPServerCache_InterfaceDefinition(t *testing.T) {
 
 	// 测试数据的基本属性
 	server1 := servers[0]
-	assert.Equal(t, "mcp-server-1", server1.ID)
+	assert.Equal(t, "mcp-server-1", server1.Id)
 	assert.Equal(t, "test-mcp-server-1", server1.Name)
 	assert.Equal(t, "default", server1.Namespace)
 	assert.Equal(t, "http", server1.Protocol)
 	assert.Equal(t, "8080", server1.Ports)
 
 	server2 := servers[1]
-	assert.Equal(t, "mcp-server-2", server2.ID)
+	assert.Equal(t, "mcp-server-2", server2.Id)
 	assert.Equal(t, "test-mcp-server-2", server2.Name)
 	assert.Equal(t, "ai-ns", server2.Namespace)
 	assert.Equal(t, "grpc", server2.Protocol)
@@ -97,8 +97,8 @@ func TestMCPServerCache_IndexFunctionality(t *testing.T) {
 	// 测试按 ID 索引
 	var serverByID string
 	for _, server := range servers {
-		if server.ID == "mcp-server-1" {
-			serverByID = server.ID
+		if server.Id == "mcp-server-1" {
+			serverByID = server.Id
 			break
 		}
 	}
@@ -113,7 +113,7 @@ func TestMCPServerCache_IndexFunctionality(t *testing.T) {
 		}
 	}
 	assert.NotNil(t, serverByName)
-	assert.Equal(t, "mcp-server-2", serverByName.ID)
+	assert.Equal(t, "mcp-server-2", serverByName.Id)
 
 	// 测试按命名空间索引
 	var serversInDefault []*ai.MCPServer
@@ -132,7 +132,7 @@ func TestMCPServerCache_IndexFunctionality(t *testing.T) {
 		}
 	}
 	assert.Len(t, httpServers, 1)
-	assert.Equal(t, "mcp-server-1", httpServers[0].ID)
+	assert.Equal(t, "mcp-server-1", httpServers[0].Id)
 }
 
 // TestMCPServerCache_DataValidation 测试数据验证
@@ -142,17 +142,19 @@ func TestMCPServerCache_DataValidation(t *testing.T) {
 
 	// 测试必要字段
 	for _, server := range servers {
-		assert.NotEmpty(t, server.ID, "MCP Server ID 不能为空")
+		assert.NotEmpty(t, server.Id, "MCP Server ID 不能为空")
 		assert.NotEmpty(t, server.Name, "MCP Server Name 不能为空")
 		assert.NotEmpty(t, server.Namespace, "Namespace 不能为空")
-		assert.Equal(t, int8(0), server.Flag, "有效数据的 Flag 应该是 0")
+		assert.Equal(t, uint32(0), server.Flag, "有效数据的 Flag 应该是 0")
 	}
 
 	// 测试时间戳
 	for _, server := range servers {
-		assert.False(t, server.CTime.IsZero(), "CTime 不能为零值")
-		assert.False(t, server.MTime.IsZero(), "MTime 不能为零值")
-		assert.True(t, server.MTime.After(server.CTime) || server.MTime.Equal(server.CTime),
+		ctime := parseMCPTime(server.Ctime)
+		mtime := parseMCPTime(server.Mtime)
+		assert.False(t, ctime.IsZero(), "CTime 不能为零值")
+		assert.False(t, mtime.IsZero(), "MTime 不能为零值")
+		assert.True(t, mtime.After(ctime) || mtime.Equal(ctime),
 			"MTime 应该 >= CTime")
 	}
 }
@@ -169,9 +171,9 @@ func TestMCPServerCache_ConcurrentAccess(t *testing.T) {
 		go func(id int) {
 			// 随机读取
 			if id%2 == 0 {
-				readResults <- servers[0].ID
+				readResults <- servers[0].Id
 			} else {
-				readResults <- servers[1].ID
+				readResults <- servers[1].Id
 			}
 		}(i)
 	}
@@ -195,7 +197,7 @@ func TestMCPServerCache_EdgeCases(t *testing.T) {
 
 	// 测试单个数据
 	singleServer := &ai.MCPServer{
-		ID:          "single-server",
+		Id:          "single-server",
 		Name:        "single",
 		Namespace:   "default",
 		Ports:       "8080",
@@ -206,17 +208,17 @@ func TestMCPServerCache_EdgeCases(t *testing.T) {
 		Flag:        0,
 		Reference:   "",
 		Protocol:    "http",
-		CTime:       time.Now(),
-		MTime:       time.Now(),
+		Ctime:       formatMCPTime(time.Now()),
+		Mtime:       formatMCPTime(time.Now()),
 		ExportTo:    "",
 	}
 
-	assert.Equal(t, "single-server", singleServer.ID)
+	assert.Equal(t, "single-server", singleServer.Id)
 	assert.Equal(t, "single", singleServer.Name)
 
 	// 测试已删除数据（Flag=1）
 	deletedServer := &ai.MCPServer{
-		ID:          "deleted-server",
+		Id:          "deleted-server",
 		Name:        "deleted",
 		Namespace:   "default",
 		Ports:       "8080",
@@ -227,12 +229,12 @@ func TestMCPServerCache_EdgeCases(t *testing.T) {
 		Flag:        1, // 已删除
 		Reference:   "",
 		Protocol:    "http",
-		CTime:       time.Now(),
-		MTime:       time.Now(),
+		Ctime:       formatMCPTime(time.Now()),
+		Mtime:       formatMCPTime(time.Now()),
 		ExportTo:    "",
 	}
 
-	assert.Equal(t, int8(1), deletedServer.Flag)
+	assert.Equal(t, uint32(1), deletedServer.Flag)
 }
 
 // TestMCPServerCache_Performance 测试性能相关
@@ -242,7 +244,7 @@ func TestMCPServerCache_Performance(t *testing.T) {
 	var largeServers []*ai.MCPServer
 	for i := 0; i < 500; i++ {
 		largeServers = append(largeServers, &ai.MCPServer{
-			ID:          serverID(i),
+			Id:          serverID(i),
 			Name:        serverName(i),
 			Namespace:   "default",
 			Ports:       "8080",
@@ -253,8 +255,8 @@ func TestMCPServerCache_Performance(t *testing.T) {
 			Flag:        0,
 			Reference:   "",
 			Protocol:    "http",
-			CTime:       time.Now(),
-			MTime:       time.Now(),
+			Ctime:       formatMCPTime(time.Now()),
+			Mtime:       formatMCPTime(time.Now()),
 			ExportTo:    "",
 		})
 	}
@@ -266,7 +268,7 @@ func TestMCPServerCache_Performance(t *testing.T) {
 	start := time.Now()
 	found := false
 	for _, server := range largeServers {
-		if server.ID == "mcp-server-499" {
+		if server.Id == "mcp-server-499" {
 			found = true
 			break
 		}
@@ -286,7 +288,7 @@ func TestMCPServerCache_IncrementalUpdate(t *testing.T) {
 
 	// 准备增量数据 - 添加新服务器
 	_ = append(initialServers, &ai.MCPServer{
-		ID:          "mcp-server-3",
+		Id:          "mcp-server-3",
 		Name:        "new-server",
 		Namespace:   "default",
 		Ports:       "9999",
@@ -297,14 +299,14 @@ func TestMCPServerCache_IncrementalUpdate(t *testing.T) {
 		Flag:        0,
 		Reference:   "",
 		Protocol:    "grpc",
-		CTime:       time.Now(),
-		MTime:       time.Now(),
+		Ctime:       formatMCPTime(time.Now()),
+		Mtime:       formatMCPTime(time.Now()),
 		ExportTo:    "",
 	})
 
 	// 模拟删除服务器（通过设置 Flag=1）
 	deletedServers := append(initialServers, &ai.MCPServer{
-		ID:          "mcp-server-deleted",
+		Id:          "mcp-server-deleted",
 		Name:        "to-be-deleted",
 		Namespace:   "default",
 		Ports:       "8888",
@@ -315,8 +317,8 @@ func TestMCPServerCache_IncrementalUpdate(t *testing.T) {
 		Flag:        1, // 已删除
 		Reference:   "",
 		Protocol:    "http",
-		CTime:       time.Now().Add(-time.Hour),
-		MTime:       time.Now().Add(-time.Hour),
+		Ctime:       formatMCPTime(time.Now().Add(-time.Hour)),
+		Mtime:       formatMCPTime(time.Now().Add(-time.Hour)),
 		ExportTo:    "",
 	})
 
@@ -383,7 +385,7 @@ func TestMCPServerCache_ToolAccess(t *testing.T) {
 	// 创建带工具的服务器
 	servers := []*ai.MCPServer{
 		{
-			ID:          "mcp-server-with-tools",
+			Id:          "mcp-server-with-tools",
 			Name:        "server-with-tools",
 			Namespace:   "default",
 			Ports:       "8080",
@@ -394,8 +396,8 @@ func TestMCPServerCache_ToolAccess(t *testing.T) {
 			Flag:        0,
 			Reference:   "",
 			Protocol:    "http",
-			CTime:       time.Now(),
-			MTime:       time.Now(),
+			Ctime:       formatMCPTime(time.Now()),
+			Mtime:       formatMCPTime(time.Now()),
 			ExportTo:    "",
 		},
 	}
@@ -430,52 +432,52 @@ func newCacheForTest(servers []*ai.MCPServer) *mcpServerCache {
 
 func TestMCPServerCache_Query_NamePrefixMatch(t *testing.T) {
 	mc := newCacheForTest([]*ai.MCPServer{
-		{ID: "s1", Name: "alpha-svc", Namespace: "ns1", MTime: time.Now()},
-		{ID: "s2", Name: "alpha-other", Namespace: "ns1", MTime: time.Now()},
-		{ID: "s3", Name: "beta-svc", Namespace: "ns1", MTime: time.Now()},
+		{Id: "s1", Name: "alpha-svc", Namespace: "ns1", Mtime: formatMCPTime(time.Now())},
+		{Id: "s2", Name: "alpha-other", Namespace: "ns1", Mtime: formatMCPTime(time.Now())},
+		{Id: "s3", Name: "beta-svc", Namespace: "ns1", Mtime: formatMCPTime(time.Now())},
 	})
 
-	total, list := mc.Query(map[string]string{"name": "alpha"}, 0, 10)
+	total, list := mc.Query(&ai.MCPServerQuery{Name: "alpha", Limit: 10})
 	assert.Equal(t, uint32(2), total)
 	assert.Len(t, list, 2)
 
-	total, list = mc.Query(map[string]string{"name": "alpha-svc"}, 0, 10)
+	total, list = mc.Query(&ai.MCPServerQuery{Name: "alpha-svc", Limit: 10})
 	assert.Equal(t, uint32(1), total)
 	assert.Len(t, list, 1)
-	assert.Equal(t, "s1", list[0].ID)
+	assert.Equal(t, "s1", list[0].Id)
 
-	total, list = mc.Query(map[string]string{"name": "zzz"}, 0, 10)
+	total, list = mc.Query(&ai.MCPServerQuery{Name: "zzz", Limit: 10})
 	assert.Equal(t, uint32(0), total)
 	assert.Len(t, list, 0)
 }
 
 func TestMCPServerCache_Query_ExactFilters(t *testing.T) {
 	mc := newCacheForTest([]*ai.MCPServer{
-		{ID: "s1", Name: "a", Namespace: "ns1", Business: "b1", Department: "d1", Protocol: "http", MTime: time.Now()},
-		{ID: "s2", Name: "b", Namespace: "ns2", Business: "b1", Department: "d2", Protocol: "grpc", MTime: time.Now()},
-		{ID: "s3", Name: "c", Namespace: "ns1", Business: "b2", Department: "d1", Protocol: "http", MTime: time.Now()},
+		{Id: "s1", Name: "a", Namespace: "ns1", Business: "b1", Department: "d1", Protocol: "http", Mtime: formatMCPTime(time.Now())},
+		{Id: "s2", Name: "b", Namespace: "ns2", Business: "b1", Department: "d2", Protocol: "grpc", Mtime: formatMCPTime(time.Now())},
+		{Id: "s3", Name: "c", Namespace: "ns1", Business: "b2", Department: "d1", Protocol: "http", Mtime: formatMCPTime(time.Now())},
 	})
 
-	total, list := mc.Query(map[string]string{"namespace": "ns1"}, 0, 10)
+	total, list := mc.Query(&ai.MCPServerQuery{Namespace: "ns1", Limit: 10})
 	assert.Equal(t, uint32(2), total)
 	assert.Len(t, list, 2)
 
-	total, _ = mc.Query(map[string]string{"business": "b1"}, 0, 10)
+	total, _ = mc.Query(&ai.MCPServerQuery{Business: "b1", Limit: 10})
 	assert.Equal(t, uint32(2), total)
 
-	total, _ = mc.Query(map[string]string{"department": "d1"}, 0, 10)
+	total, _ = mc.Query(&ai.MCPServerQuery{Department: "d1", Limit: 10})
 	assert.Equal(t, uint32(2), total)
 
-	total, _ = mc.Query(map[string]string{"protocol": "http"}, 0, 10)
+	total, _ = mc.Query(&ai.MCPServerQuery{Protocol: "http", Limit: 10})
 	assert.Equal(t, uint32(2), total)
 
-	total, list = mc.Query(map[string]string{"namespace": "ns1", "protocol": "http"}, 0, 10)
+	total, list = mc.Query(&ai.MCPServerQuery{Namespace: "ns1", Protocol: "http", Limit: 10})
 	assert.Equal(t, uint32(2), total)
 	assert.Len(t, list, 2)
 
-	total, list = mc.Query(map[string]string{"namespace": "ns1", "business": "b2"}, 0, 10)
+	total, list = mc.Query(&ai.MCPServerQuery{Namespace: "ns1", Business: "b2", Limit: 10})
 	assert.Equal(t, uint32(1), total)
-	assert.Equal(t, "s3", list[0].ID)
+	assert.Equal(t, "s3", list[0].Id)
 }
 
 func TestMCPServerCache_Query_Pagination(t *testing.T) {
@@ -483,27 +485,27 @@ func TestMCPServerCache_Query_Pagination(t *testing.T) {
 	servers := make([]*ai.MCPServer, 0, 5)
 	for i := 0; i < 5; i++ {
 		servers = append(servers, &ai.MCPServer{
-			ID:        fmt.Sprintf("s%d", i),
+			Id:        fmt.Sprintf("s%d", i),
 			Name:      fmt.Sprintf("svc-%d", i),
 			Namespace: "ns",
-			MTime:     base.Add(time.Duration(i) * time.Second),
+			Mtime:     formatMCPTime(base.Add(time.Duration(i) * time.Second)),
 		})
 	}
 	mc := newCacheForTest(servers)
 
-	total, list := mc.Query(map[string]string{}, 0, 2)
+	total, list := mc.Query(&ai.MCPServerQuery{Limit: 2})
 	assert.Equal(t, uint32(5), total)
 	assert.Len(t, list, 2)
 
-	total, list = mc.Query(map[string]string{}, 2, 2)
+	total, list = mc.Query(&ai.MCPServerQuery{Offset: 2, Limit: 2})
 	assert.Equal(t, uint32(5), total)
 	assert.Len(t, list, 2)
 
-	total, list = mc.Query(map[string]string{}, 4, 2)
+	total, list = mc.Query(&ai.MCPServerQuery{Offset: 4, Limit: 2})
 	assert.Equal(t, uint32(5), total)
 	assert.Len(t, list, 1, "末页只剩一条")
 
-	total, list = mc.Query(map[string]string{}, 10, 5)
+	total, list = mc.Query(&ai.MCPServerQuery{Offset: 10, Limit: 5})
 	assert.Equal(t, uint32(5), total)
 	assert.Len(t, list, 0, "offset 越界返回空")
 }
@@ -511,14 +513,14 @@ func TestMCPServerCache_Query_Pagination(t *testing.T) {
 func TestMCPServerCache_Query_SortByMTimeDesc(t *testing.T) {
 	base := time.Now()
 	mc := newCacheForTest([]*ai.MCPServer{
-		{ID: "old", Name: "old", Namespace: "ns", MTime: base.Add(-2 * time.Hour)},
-		{ID: "new", Name: "new", Namespace: "ns", MTime: base},
-		{ID: "mid", Name: "mid", Namespace: "ns", MTime: base.Add(-1 * time.Hour)},
+		{Id: "old", Name: "old", Namespace: "ns", Mtime: formatMCPTime(base.Add(-2 * time.Hour))},
+		{Id: "new", Name: "new", Namespace: "ns", Mtime: formatMCPTime(base)},
+		{Id: "mid", Name: "mid", Namespace: "ns", Mtime: formatMCPTime(base.Add(-1 * time.Hour))},
 	})
 
-	_, list := mc.Query(map[string]string{}, 0, 10)
+	_, list := mc.Query(&ai.MCPServerQuery{Limit: 10})
 	assert.Len(t, list, 3)
-	assert.Equal(t, "new", list[0].ID, "MTime 最新的排在最前")
-	assert.Equal(t, "mid", list[1].ID)
-	assert.Equal(t, "old", list[2].ID)
+	assert.Equal(t, "new", list[0].Id, "MTime 最新的排在最前")
+	assert.Equal(t, "mid", list[1].Id)
+	assert.Equal(t, "old", list[2].Id)
 }

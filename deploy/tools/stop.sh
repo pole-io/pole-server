@@ -26,7 +26,7 @@ cd $dir/..
 workdir=$(pwd)
 
 #------------------------------------------------------
-source tool/include
+source tools/include
 
 del_cron
 stop

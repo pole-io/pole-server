@@ -17,6 +17,47 @@
 bootstrap:
   # Global log
   logger: ./conf/pole-log.yaml
+  # Startup mode: all, server, console.
+  mode: all
+  # Embedded console gateway config used by mode=all or mode=console.
+  console:
+    logger:
+      RotateOutputPath: ./log/pole-console.log
+      RotationMaxSize: 500
+      RotationMaxAge: 30
+      RotationMaxBackups: 100
+      level: info
+    webServer:
+      mode: release
+      listenIP: 0.0.0.0
+      listenPort: 8080
+      jwt:
+        secretKey: polarismesh@2021
+        expired: 1800
+      coreURL: /core/v1
+      namingURL: /naming/v1
+      authURL: /auth/v1
+      configURL: /config/v1
+      monitorURL: /api/v1
+      webPath: console/web/dist/
+      mainUser: pole
+    store:
+      name: mysql
+      option:
+        master:
+          dbType: mysql
+          dbName: pole_observability
+          dbUser: ##DB_USER##
+          dbPwd: ##DB_PWD##
+          dbAddr: ##DB_ADDR##
+          maxOpenConns: 300
+          maxIdleConns: 50
+          connMaxLifetime: 300
+          txIsolationLevel: 2
+    poleServer:
+      address: 127.0.0.1:8090
+    monitorServer:
+      address: 127.0.0.1:9090
   # Start the server in order
   startInOrder:
     # Start the pole-server in order, mainly to avoid data synchronization logic when the server starts the DB to pull the DB out of high load

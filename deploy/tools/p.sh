@@ -27,7 +27,7 @@ cd $dir/..
 workdir=$(pwd)
 
 #------------------------------------------------------
-source tool/include
+source tools/include
 
 ps -ef | grep -w "$cmdline" | grep -v "grep"
 

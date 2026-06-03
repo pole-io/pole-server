@@ -1,0 +1,61 @@
+import React, {  } from 'react';
+import { Breadcrumb, Tabs } from 'tdesign-react';
+import { useNavigate } from 'react-router-dom';
+
+import { useAppDispatch } from 'modules/store';
+import InstanceTable from './InstanceTable';
+import ServiceDetail from './ServiceDetail';
+import SubscribeTable from './SubscribeTable';
+
+const { TabPanel } = Tabs;
+const { BreadcrumbItem } = Breadcrumb;
+
+export default React.memo(() => {
+    const dispatch = useAppDispatch();
+    const navigate = useNavigate()
+    const urlParams = new URLSearchParams(window.location.search);
+    const namespace = urlParams.get('namespace');
+    const serviceName = urlParams.get('service');
+
+    const [activeTab, setActiveTab] = React.useState('0');
+
+    return (
+        <>
+            <Breadcrumb maxItemWidth="200px">
+                <BreadcrumbItem onClick={() => {
+                    navigate(-1);
+                }}>
+                    {namespace}
+                </BreadcrumbItem>
+                <BreadcrumbItem>
+                    {serviceName}
+                </BreadcrumbItem>
+            </Breadcrumb>
+            <Tabs style={{ marginTop: 20 }} value={activeTab} onChange={(v) => setActiveTab(v as string)}>
+                <TabPanel value={"0"} label="服务详情">
+                    {activeTab === '0' && (
+                        <ServiceDetail
+                            namespace={namespace || ''}
+                            serviceName={serviceName || ''}
+                        />
+                    )}
+                </TabPanel>
+                <TabPanel value={"1"} label="服务实例">
+                    {activeTab === '1' && (
+                        <InstanceTable
+                            namespace={namespace || ''}
+                            serviceName={serviceName || ''}
+                        />
+                    )}
+                </TabPanel>
+                {/* <TabPanel value={"2"} label="接口定义">
+                </TabPanel> */}
+                <TabPanel value={"3"} label="服务订阅">
+                    {activeTab === '3' && (
+                        <SubscribeTable />
+                    )}
+                </TabPanel>
+            </Tabs>
+        </>
+    )
+})

@@ -35,7 +35,7 @@ cd $dir/..
 workdir=$(pwd)
 
 #------------------------------------------------------
-source tool/include
+source tools/include
 
 pids=$(ps -ef | grep -w "$cmdline" | grep -v "grep" | awk '{print $2}')
 array=($pids)

@@ -17,6 +17,16 @@
 bootstrap:
   # Global log configuration
   logger: ./test/data/bootstrap/pole-log.yaml
+  # Startup mode: all, server, console. Local backend bootstrap keeps server-only behavior.
+  mode: server
+  # Embedded console gateway config used by mode=all or mode=console.
+  # console:
+  #   webServer:
+  #     listenIP: 0.0.0.0
+  #     listenPort: 8080
+  #     webPath: console/web/dist/
+  #   poleServer:
+  #     address: 127.0.0.1:8090
   # Start the server in order
   startInOrder:
     # Start the pole-server in order, mainly to avoid data synchronization logic when the server starts the DB to pull the DB out of high load

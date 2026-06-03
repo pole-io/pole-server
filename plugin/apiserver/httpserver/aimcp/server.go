@@ -21,6 +21,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/emicklei/go-restful/v3"
 	"github.com/mark3labs/mcp-go/server"
@@ -63,6 +64,7 @@ type HTTPServer struct {
 
 // NewServer 创建配置中心的 HttpServer
 func NewServer(
+	ctx context.Context,
 	maintainServer admin.AdminOperateServer,
 	namespaceServer namespace.NamespaceOperateServer,
 	storage store.Store) (*HTTPServer, error) {
@@ -88,6 +90,10 @@ func NewServer(
 		Name: cacheapi.MCPServerName,
 	}); err != nil {
 		commonlog.Errorf("open mcp-server cache error. %v", err)
+		return nil, err
+	}
+	if err := startMCPServerCache(ctx, cacheMgr.MCPServer(), cacheMgr.GetUpdateCacheInterval()); err != nil {
+		commonlog.Errorf("start mcp-server cache error. %v", err)
 		return nil, err
 	}
 
@@ -130,6 +136,37 @@ func NewServer(
 	}, nil
 }
 
+func startMCPServerCache(ctx context.Context, mcpCache cacheapi.MCPServerCache, interval time.Duration) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if interval <= 0 {
+		interval = time.Second
+	}
+
+	if err := mcpCache.Update(); err != nil {
+		return err
+	}
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				if err := mcpCache.Update(); err != nil {
+					commonlog.Warnf("update mcp-server cache error. %v", err)
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return nil
+}
+
 // GetConfigAccessServer 获取配置中心接口
 func (h *HTTPServer) GetMCPAccessServer(include []string) *restful.WebService {
 	commonlog.Info("enable ai-mcp access server")
@@ -160,6 +197,13 @@ func (h *HTTPServer) addMcpTools() {
 }
 
 func (h *HTTPServer) addDefaultAccess(ws *restful.WebService) {
+	// MCP registry console handlers
+	ws.Route(ws.GET("/servers").To(h.ListMCPServers))
+	ws.Route(ws.POST("/servers").To(h.CreateMCPServers))
+	ws.Route(ws.PUT("/servers").To(h.UpdateMCPServers))
+	ws.Route(ws.POST("/servers/delete").To(h.DeleteMCPServers))
+	ws.Route(ws.GET("/server/tools").To(h.ListMCPServerTools))
+
 	// MCP sse handler
 	ws.Route(ws.GET(sseEp).To(func(req *restful.Request, rsp *restful.Response) {
 		h.sseSvr.ServeHTTP(rsp, req.Request)

@@ -25,11 +25,11 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
-	"github.com/pole-io/pole-server/apis/pkg/types/ai"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
+	"github.com/pole-io/specification/source/go/api/v1/ai"
 )
 
 type mcpServerCache struct {
@@ -91,11 +91,12 @@ func (mc *mcpServerCache) realUpdate() (map[string]time.Time, int64, error) {
 	del := 0
 
 	for _, server := range servers {
-		if server.MTime.After(mc.LastFetchTime()) {
+		serverMTime := parseMCPTime(server.Mtime)
+		if serverMTime.After(mc.LastFetchTime()) {
 			mc.LastFetchTime().Add(time.Nanosecond)
 		}
 
-		results[server.ID] = server.MTime
+		results[server.Id] = serverMTime
 
 		if server.Flag == 1 { // Flag=1 表示已删除
 			mc.removeMCPServer(server)
@@ -183,65 +184,84 @@ func (mc *mcpServerCache) GetMCPServerTools(serverID string) []*ai.MCPServerTool
 }
 
 // Query 实现 MCPServerCache 接口
-// filter 支持: name(前缀匹配)、namespace/business/department/protocol(精确匹配)
+// query.Name 为前缀匹配，Namespace/Business/Department/Protocol 为精确匹配
 // 排序: MTime DESC
-func (mc *mcpServerCache) Query(filter map[string]string, offset, limit uint32) (uint32, []*ai.MCPServer) {
-	name := filter["name"]
-	namespace := filter["namespace"]
-	business := filter["business"]
-	department := filter["department"]
-	protocol := filter["protocol"]
+func (mc *mcpServerCache) Query(query *ai.MCPServerQuery) (uint32, []*ai.MCPServer) {
+	if query == nil {
+		query = &ai.MCPServerQuery{}
+	}
 
 	matched := make([]*ai.MCPServer, 0, 16)
 	mc.ids.Range(func(_ string, s *ai.MCPServer) {
 		if s == nil {
 			return
 		}
-		if name != "" && !strings.HasPrefix(s.Name, name) {
+		if query.Name != "" && !strings.HasPrefix(s.Name, query.Name) {
 			return
 		}
-		if namespace != "" && s.Namespace != namespace {
+		if query.Namespace != "" && s.Namespace != query.Namespace {
 			return
 		}
-		if business != "" && s.Business != business {
+		if query.Business != "" && s.Business != query.Business {
 			return
 		}
-		if department != "" && s.Department != department {
+		if query.Department != "" && s.Department != query.Department {
 			return
 		}
-		if protocol != "" && s.Protocol != protocol {
+		if query.Protocol != "" && s.Protocol != query.Protocol {
 			return
 		}
 		matched = append(matched, s)
 	})
 
 	sort.SliceStable(matched, func(i, j int) bool {
-		return matched[i].MTime.After(matched[j].MTime)
+		return parseMCPTime(matched[i].Mtime).After(parseMCPTime(matched[j].Mtime))
 	})
 
 	total := uint32(len(matched))
-	if offset >= total {
+	if query.Offset >= total {
 		return total, []*ai.MCPServer{}
 	}
-	end := offset + limit
+	end := query.Offset + query.Limit
 	if end > total {
 		end = total
 	}
-	return total, matched[offset:end]
+	return total, matched[query.Offset:end]
 }
 
 // 辅助方法
 func mcpServerKey(server *ai.MCPServer) string {
-	return server.ID
+	return server.Id
 }
 
 func mcpServerNameKey(namespace, name string) string {
 	return namespace + "/" + name
 }
 
+const mcpTimeLayout = "2006-01-02 15:04:05"
+
+func formatMCPTime(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format(mcpTimeLayout)
+}
+
+func parseMCPTime(value string) time.Time {
+	if value == "" {
+		return time.Time{}
+	}
+	for _, layout := range []string{mcpTimeLayout, time.RFC3339Nano, time.RFC3339} {
+		if parsed, err := time.ParseInLocation(layout, value, time.Local); err == nil {
+			return parsed
+		}
+	}
+	return time.Time{}
+}
+
 func (mc *mcpServerCache) storeMCPServer(server *ai.MCPServer) {
 	// 存储 ID 索引
-	mc.ids.Store(server.ID, server)
+	mc.ids.Store(server.Id, server)
 
 	// 存储名称索引
 	key := mcpServerNameKey(server.Namespace, server.Name)
@@ -253,7 +273,7 @@ func (mc *mcpServerCache) storeMCPServer(server *ai.MCPServer) {
 
 func (mc *mcpServerCache) removeMCPServer(server *ai.MCPServer) {
 	// 删除 ID 索引
-	mc.ids.Delete(server.ID)
+	mc.ids.Delete(server.Id)
 
 	// 删除名称索引
 	key := mcpServerNameKey(server.Namespace, server.Name)
@@ -263,7 +283,7 @@ func (mc *mcpServerCache) removeMCPServer(server *ai.MCPServer) {
 	mc.removeFromNamespaceIndex(server)
 
 	// 删除关联的工具
-	mc.tools.Store(server.ID, []*ai.MCPServerTool{})
+	mc.tools.Store(server.Id, []*ai.MCPServerTool{})
 }
 
 func (mc *mcpServerCache) updateNamespaceIndex(server *ai.MCPServer) {
@@ -273,7 +293,7 @@ func (mc *mcpServerCache) updateNamespaceIndex(server *ai.MCPServer) {
 	})
 	// 先移除已存在的
 	for i, s := range servers {
-		if s.ID == server.ID {
+		if s.Id == server.Id {
 			servers = append(servers[:i], servers[i+1:]...)
 			break
 		}
@@ -290,7 +310,7 @@ func (mc *mcpServerCache) removeFromNamespaceIndex(server *ai.MCPServer) {
 	}
 	// 移除
 	for i, s := range servers {
-		if s.ID == server.ID {
+		if s.Id == server.Id {
 			servers = append(servers[:i], servers[i+1:]...)
 			break
 		}
@@ -310,7 +330,7 @@ func (mc *mcpServerCache) updateTools(tools []*ai.MCPServerTool) {
 			// 删除工具
 			mc.removeTool(tool)
 		} else {
-			toolsByServer[tool.MCPServerID] = append(toolsByServer[tool.MCPServerID], tool)
+			toolsByServer[tool.McpServerId] = append(toolsByServer[tool.McpServerId], tool)
 		}
 	}
 
@@ -321,20 +341,20 @@ func (mc *mcpServerCache) updateTools(tools []*ai.MCPServerTool) {
 }
 
 func (mc *mcpServerCache) removeTool(tool *ai.MCPServerTool) {
-	serverTools, ok := mc.tools.Load(tool.MCPServerID)
+	serverTools, ok := mc.tools.Load(tool.McpServerId)
 	if !ok {
 		return
 	}
 	// 移除
 	for i, t := range serverTools {
-		if t.ID == tool.ID {
+		if t.Id == tool.Id {
 			serverTools = append(serverTools[:i], serverTools[i+1:]...)
 			break
 		}
 	}
 	if len(serverTools) == 0 {
-		mc.tools.Store(tool.MCPServerID, []*ai.MCPServerTool{})
+		mc.tools.Store(tool.McpServerId, []*ai.MCPServerTool{})
 	} else {
-		mc.tools.Store(tool.MCPServerID, serverTools)
+		mc.tools.Store(tool.McpServerId, serverTools)
 	}
 }

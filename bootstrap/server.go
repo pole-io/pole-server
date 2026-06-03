@@ -40,6 +40,7 @@ import (
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	boot_config "github.com/pole-io/pole-server/bootstrap/config"
+	"github.com/pole-io/pole-server/console"
 	"github.com/pole-io/pole-server/pkg/admin"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
@@ -63,7 +64,7 @@ var (
 )
 
 // Start 启动
-func Start(configFilePath string) {
+func Start(configFilePath string, modeOverride ...string) {
 	// 加载配置
 	ConfigFilePath = configFilePath
 	utils.ConfDir = parseConfDir(configFilePath)
@@ -72,6 +73,16 @@ func Start(configFilePath string) {
 		fmt.Printf("[ERROR] load config fail\n")
 		return
 	}
+	override := ""
+	if len(modeOverride) > 0 {
+		override = modeOverride[0]
+	}
+	startMode, err := boot_config.ResolveStartMode(cfg.Bootstrap.Mode, override)
+	if err != nil {
+		fmt.Printf("[ERROR] resolve start mode fail: %v\n", err)
+		return
+	}
+	cfg.Bootstrap.Mode = startMode
 
 	c, err := yaml.Marshal(cfg)
 	if err != nil {
@@ -86,15 +97,28 @@ func Start(configFilePath string) {
 		return
 	}
 
+	// 初始化
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if startMode == boot_config.StartModeConsole {
+		errCh := make(chan error, 1)
+		_, err := console.Start(ctx, &cfg.Bootstrap.Console, errCh)
+		if err != nil {
+			fmt.Printf("[ERROR] start console fail: %v\n", err)
+			return
+		}
+		fmt.Println("finish starting console")
+		WaitSignal(nil, errCh)
+		fmt.Println("begin stop console")
+		return
+	}
+
 	apientries, err := boot_config.LoadAPIEntries(cfg.APIServers)
 	if err != nil {
 		fmt.Printf("[ERROR] load api entries fail: %v\n", err)
 		return
 	}
-
-	// 初始化
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	// 获取本地IP地址
 	ctx, err = acquireLocalhost(ctx, &cfg.Bootstrap.PolarisService)
@@ -133,14 +157,23 @@ func Start(configFilePath string) {
 		fmt.Printf("[ERROR] start components fail: %v\n", err)
 		return
 	}
-	errCh := make(chan error, len(cfg.APIServers))
+	errCh := make(chan error, len(apientries)+1)
 	servers, err := StartServers(ctx, apientries, errCh)
 	if err != nil {
 		fmt.Printf("[ERROR] start servers fail: %v\n", err)
 		return
 	}
+	if startMode == boot_config.StartModeAll {
+		_, err := console.Start(ctx, &cfg.Bootstrap.Console, errCh)
+		if err != nil {
+			StopServers(servers)
+			fmt.Printf("[ERROR] start console fail: %v\n", err)
+			return
+		}
+	}
 
 	if err := polarisServiceRegister(&cfg.Bootstrap.PolarisService, apientries); err != nil {
+		StopServers(servers)
 		fmt.Printf("[ERROR] register polaris service fail: %v\n", err)
 		return
 	}

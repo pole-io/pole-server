@@ -9,13 +9,12 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/anypb"
-	"google.golang.org/protobuf/types/known/structpb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/ai"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
+	"github.com/pole-io/specification/source/go/api/v1/ai"
 )
 
 // addToolQueryMCPServers 添加查询 MCP Servers 的 tool
@@ -54,28 +53,8 @@ func (h *HTTPServer) addToolQueryMCPServers(mcpSvr *server.MCPServer) {
 				return mcp.NewToolResultError("invalid: args is empty"), nil
 			}
 
-			filter := make(map[string]string)
-
-			if name, ok := args["name"].(string); ok && name != "" {
-				filter["name"] = name
-			}
-			if namespace, ok := args["namespace"].(string); ok && namespace != "" {
-				filter["namespace"] = namespace
-			}
-			if business, ok := args["business"].(string); ok && business != "" {
-				filter["business"] = business
-			}
-			if department, ok := args["department"].(string); ok && department != "" {
-				filter["department"] = department
-			}
-			if protocol, ok := args["protocol"].(string); ok && protocol != "" {
-				filter["protocol"] = protocol
-			}
-
-			searchOffset, _ := args["offset"].(float64)
-			searchLimit, _ := args["limit"].(float64)
-
-			rsp := h.mcpServerQuery(ctx, filter, uint32(searchOffset), uint32(searchLimit))
+			query := parseMCPServerQuery(args)
+			rsp := h.mcpServerQuery(ctx, query)
 			if rsp.GetCode() != uint32(apimodel.Code_ExecuteSuccess) {
 				return mcp.NewToolResultError(rsp.GetInfo()), nil
 			}
@@ -107,11 +86,11 @@ func (h *HTTPServer) addToolCreateMCPServers(mcpSvr *server.MCPServer) {
 			}
 
 			servers, err := parseMCPServers(serversRaw)
-			if err != nil || len(servers) == 0 {
+			if err != nil || len(servers.GetServers()) == 0 {
 				return mcp.NewToolResultError(fmt.Sprintf("invalid: parse servers fail: %v", err)), nil
 			}
 
-			rsp := h.mcpServerCreate(ctx, servers)
+			rsp := h.mcpServerCreate(ctx, servers.GetServers())
 			ret, err := httpcommon.MarshalPBJson(rsp)
 			return mcp.NewToolResultText(ret), err
 		})
@@ -139,11 +118,11 @@ func (h *HTTPServer) addToolUpdateMCPServers(mcpSvr *server.MCPServer) {
 			}
 
 			servers, err := parseMCPServers(serversRaw)
-			if err != nil || len(servers) == 0 {
+			if err != nil || len(servers.GetServers()) == 0 {
 				return mcp.NewToolResultError(fmt.Sprintf("invalid: parse servers fail: %v", err)), nil
 			}
 
-			rsp := h.mcpServerUpdate(ctx, servers)
+			rsp := h.mcpServerUpdate(ctx, servers.GetServers())
 			ret, err := httpcommon.MarshalPBJson(rsp)
 			return mcp.NewToolResultText(ret), err
 		})
@@ -165,19 +144,12 @@ func (h *HTTPServer) addToolDeleteMCPServers(mcpSvr *server.MCPServer) {
 				return mcp.NewToolResultError("invalid: args is empty"), nil
 			}
 
-			serverIDs, ok := args["server_ids"].([]interface{})
-			if !ok || len(serverIDs) == 0 {
+			deleteReq, err := parseMCPServerDeleteRequest(args)
+			if err != nil || len(deleteReq.GetServerIds()) == 0 {
 				return mcp.NewToolResultError("invalid: server_ids is empty"), nil
 			}
 
-			var ids []string
-			for _, v := range serverIDs {
-				if id, ok := v.(string); ok {
-					ids = append(ids, id)
-				}
-			}
-
-			rsp := h.mcpServerDelete(ctx, ids)
+			rsp := h.mcpServerDelete(ctx, deleteReq.GetServerIds())
 			ret, err := httpcommon.MarshalPBJson(rsp)
 			return mcp.NewToolResultText(ret), err
 		})
@@ -213,22 +185,8 @@ func (h *HTTPServer) addToolQueryMCPServerTools(mcpSvr *server.MCPServer) {
 				return mcp.NewToolResultError("invalid: args is empty"), nil
 			}
 
-			filter := make(map[string]string)
-
-			if serverID, ok := args["server_id"].(string); ok && serverID != "" {
-				filter["server_id"] = serverID
-			}
-			if serverName, ok := args["server_name"].(string); ok && serverName != "" {
-				filter["server_name"] = serverName
-			}
-			if serverNamespace, ok := args["server_namespace"].(string); ok && serverNamespace != "" {
-				filter["server_namespace"] = serverNamespace
-			}
-
-			searchOffset, _ := args["offset"].(float64)
-			searchLimit, _ := args["limit"].(float64)
-
-			rsp := h.mcpServerToolQuery(ctx, filter, uint32(searchOffset), uint32(searchLimit))
+			query := parseMCPServerToolQuery(args)
+			rsp := h.mcpServerToolQuery(ctx, query)
 			if rsp.GetCode() != uint32(apimodel.Code_ExecuteSuccess) {
 				return mcp.NewToolResultError(rsp.GetInfo()), nil
 			}
@@ -248,12 +206,12 @@ func (h *HTTPServer) addToolsMCPServer(mcpSvr *server.MCPServer) {
 }
 
 // mcpServerQuery 查询 MCP Servers
-func (h *HTTPServer) mcpServerQuery(ctx context.Context, filter map[string]string, offset, limit uint32) *apimodel.BatchQueryResponse {
+func (h *HTTPServer) mcpServerQuery(ctx context.Context, query *ai.MCPServerQuery) *apimodel.BatchQueryResponse {
 	if h.cacheMgr == nil {
 		return api.NewBatchQueryResponse(apimodel.Code_ExecuteException)
 	}
 
-	count, servers := h.cacheMgr.MCPServer().Query(filter, offset, limit)
+	count, servers := h.cacheMgr.MCPServer().Query(query)
 
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	resp.Amount = count
@@ -313,22 +271,25 @@ func (h *HTTPServer) mcpServerDelete(ctx context.Context, ids []string) *apimode
 }
 
 // mcpServerToolQuery 查询 MCP Server Tools
-func (h *HTTPServer) mcpServerToolQuery(ctx context.Context, filter map[string]string, offset, limit uint32) *apimodel.BatchQueryResponse {
+func (h *HTTPServer) mcpServerToolQuery(ctx context.Context, query *ai.MCPServerToolQuery) *apimodel.BatchQueryResponse {
 	if h.cacheMgr == nil {
 		return api.NewBatchQueryResponse(apimodel.Code_ExecuteException)
 	}
+	if query == nil {
+		query = &ai.MCPServerToolQuery{}
+	}
 
 	// Resolve server_id from server_name + server_namespace if needed
-	serverID := filter["server_id"]
+	serverID := query.ServerId
 	if serverID == "" {
-		serverName := filter["server_name"]
-		serverNamespace := filter["server_namespace"]
+		serverName := query.ServerName
+		serverNamespace := query.ServerNamespace
 		if serverName != "" && serverNamespace != "" {
 			svr := h.cacheMgr.MCPServer().GetMCPServerByName(serverName, serverNamespace)
 			if svr == nil {
 				return api.NewBatchQueryResponseWithMsg(apimodel.Code_NotFoundResource, "mcp server not found")
 			}
-			serverID = svr.ID
+			serverID = svr.Id
 		}
 	}
 
@@ -340,14 +301,14 @@ func (h *HTTPServer) mcpServerToolQuery(ctx context.Context, filter map[string]s
 
 	// Apply offset/limit
 	total := uint32(len(tools))
-	if offset > total {
-		offset = total
+	if query.Offset > total {
+		query.Offset = total
 	}
-	end := offset + limit
+	end := query.Offset + query.Limit
 	if end > total {
 		end = total
 	}
-	result := tools[offset:end]
+	result := tools[query.Offset:end]
 
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	resp.Amount = total
@@ -361,9 +322,9 @@ func (h *HTTPServer) mcpServerToolQuery(ctx context.Context, filter map[string]s
 	return resp
 }
 
-// appendMCPServerToResp 将 ai.MCPServer 通过 JSON → structpb.Struct → anypb.Any 路径塞进 BatchQueryResponse.Data
+// appendMCPServerToResp 将 specification MCPServer 直接包装为 Any，保留 proto 类型信息。
 func appendMCPServerToResp(resp *apimodel.BatchQueryResponse, s *ai.MCPServer) error {
-	val, err := mcpObjectToAny(s)
+	val, err := anypb.New(s)
 	if err != nil {
 		return err
 	}
@@ -371,43 +332,89 @@ func appendMCPServerToResp(resp *apimodel.BatchQueryResponse, s *ai.MCPServer) e
 	return nil
 }
 
-// appendMCPServerToolToResp 同 appendMCPServerToResp，处理 MCPServerTool
+// appendMCPServerToolToResp 同 appendMCPServerToResp，处理 MCPServerTool。
 func appendMCPServerToolToResp(resp *apimodel.BatchQueryResponse, t *ai.MCPServerTool) error {
-	val, err := mcpObjectToAny(t)
+	val, err := anypb.New(t)
 	if err != nil {
 		return err
 	}
 	resp.Data = append(resp.Data, val)
 	return nil
-}
-
-// mcpObjectToAny 把任意 Go 对象走 JSON 字段映射后包装成 anypb.Any（载荷为 google.protobuf.Struct）
-func mcpObjectToAny(obj interface{}) (*anypb.Any, error) {
-	raw, err := json.Marshal(obj)
-	if err != nil {
-		return nil, err
-	}
-	var asMap map[string]interface{}
-	if err := json.Unmarshal(raw, &asMap); err != nil {
-		return nil, err
-	}
-	st, err := structpb.NewStruct(asMap)
-	if err != nil {
-		return nil, err
-	}
-	return anypb.New(st)
 }
 
 // parseMCPServers parses MCP Server objects from MCP tool arguments
-func parseMCPServers(raw interface{}) ([]*ai.MCPServer, error) {
-	data, err := json.Marshal(raw)
+func parseMCPServers(raw interface{}) (*ai.MCPServers, error) {
+	data, err := json.Marshal(map[string]interface{}{"servers": raw})
 	if err != nil {
 		return nil, fmt.Errorf("marshal servers: %w", err)
 	}
 
-	var servers []*ai.MCPServer
+	var servers ai.MCPServers
 	if err := json.Unmarshal(data, &servers); err != nil {
 		return nil, fmt.Errorf("unmarshal servers: %w", err)
 	}
-	return servers, nil
+	return &servers, nil
+}
+
+func parseMCPServerDeleteRequest(args map[string]interface{}) (*ai.MCPServerDeleteRequest, error) {
+	data, err := json.Marshal(args)
+	if err != nil {
+		return nil, fmt.Errorf("marshal delete request: %w", err)
+	}
+
+	var req ai.MCPServerDeleteRequest
+	if err := json.Unmarshal(data, &req); err != nil {
+		return nil, fmt.Errorf("unmarshal delete request: %w", err)
+	}
+	return &req, nil
+}
+
+func parseMCPServerQuery(args map[string]interface{}) *ai.MCPServerQuery {
+	return &ai.MCPServerQuery{
+		Name:       mcpStringArg(args, "name"),
+		Namespace:  mcpStringArg(args, "namespace"),
+		Business:   mcpStringArg(args, "business"),
+		Department: mcpStringArg(args, "department"),
+		Protocol:   mcpStringArg(args, "protocol"),
+		Offset:     mcpUint32Arg(args, "offset", 0),
+		Limit:      mcpUint32Arg(args, "limit", 100),
+	}
+}
+
+func parseMCPServerToolQuery(args map[string]interface{}) *ai.MCPServerToolQuery {
+	return &ai.MCPServerToolQuery{
+		ServerId:        mcpStringArg(args, "server_id"),
+		ServerName:      mcpStringArg(args, "server_name"),
+		ServerNamespace: mcpStringArg(args, "server_namespace"),
+		Offset:          mcpUint32Arg(args, "offset", 0),
+		Limit:           mcpUint32Arg(args, "limit", 100),
+	}
+}
+
+func mcpStringArg(args map[string]interface{}, key string) string {
+	value, _ := args[key].(string)
+	return value
+}
+
+func mcpUint32Arg(args map[string]interface{}, key string, defaultValue uint32) uint32 {
+	value, ok := args[key]
+	if !ok {
+		return defaultValue
+	}
+	switch typed := value.(type) {
+	case float64:
+		if typed < 0 {
+			return defaultValue
+		}
+		return uint32(typed)
+	case int:
+		if typed < 0 {
+			return defaultValue
+		}
+		return uint32(typed)
+	case uint32:
+		return typed
+	default:
+		return defaultValue
+	}
 }

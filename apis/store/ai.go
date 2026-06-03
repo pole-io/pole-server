@@ -20,7 +20,7 @@ package store
 import (
 	"time"
 
-	"github.com/pole-io/pole-server/apis/pkg/types/ai"
+	"github.com/pole-io/specification/source/go/api/v1/ai"
 )
 
 // AIStore AI module storage interface
@@ -65,5 +65,5 @@ type MCPServerStore interface {
 	GetMCPServerTools(mtime time.Time, firstUpdate bool) ([]*ai.MCPServerTool, error)
 
 	// QueryMCPServers 查询 MCP Servers（支持过滤和分页）
-	QueryMCPServers(filter map[string]string, offset, limit uint32) (uint32, []*ai.MCPServer, error)
+	QueryMCPServers(query *ai.MCPServerQuery) (uint32, []*ai.MCPServer, error)
 }

@@ -137,7 +137,9 @@ func GetStatis() Statis {
 		if len(apis.GetPluginConfig().Statis.Entries) != 0 {
 			entries = append(entries, apis.GetPluginConfig().Statis.Entries...)
 		} else {
-			if apis.GetPluginConfig().Statis.Name == "local" {
+			if apis.GetPluginConfig().Statis.Name == "" {
+				entries = nil
+			} else if apis.GetPluginConfig().Statis.Name == "local" {
 				entries = defaultEntries
 			} else {
 				entries = append(entries, apis.ConfigEntry{

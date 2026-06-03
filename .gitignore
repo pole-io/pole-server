@@ -27,3 +27,7 @@ test/output
 
 style_tool/
 goimports-reviser
+
+console/web/node_modules
+console/web/dist
+console/node_modules

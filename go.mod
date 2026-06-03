@@ -35,12 +35,6 @@ require (
 	google.golang.org/protobuf v1.36.6
 )
 
-require (
-	github.com/ArthurHlt/go-eureka-client v1.1.0
-	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
-	github.com/sirupsen/logrus v1.6.0 // indirect
-)
-
 // Indirect dependencies group
 require (
 	github.com/cncf/xds/go v0.0.0-20250121191232-2f005788dc42 // indirect
@@ -69,8 +63,10 @@ require (
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/envoyproxy/go-control-plane/envoy v1.32.4
+	github.com/gin-gonic/gin v1.4.0
+	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/mark3labs/mcp-go v0.18.0
-	github.com/pole-io/specification v0.1.0-ALPHA.20
+	github.com/pole-io/specification v0.1.0-ALPHA.23
 	go.opentelemetry.io/otel v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.36.0
@@ -85,15 +81,18 @@ require (
 	cel.dev/expr v0.20.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/envoyproxy/go-control-plane/ratelimit v0.1.0 // indirect
+	github.com/gin-contrib/sse v0.0.0-20190301062529-5545eab6dad3 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3 // indirect
+	github.com/mattn/go-isatty v0.0.7 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
-	github.com/stretchr/objx v0.5.2 // indirect
+	github.com/ugorji/go v1.1.4 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel/trace v1.36.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.6.0 // indirect
+	gopkg.in/go-playground/validator.v8 v8.18.2 // indirect
 )
 
 require (

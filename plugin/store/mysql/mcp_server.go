@@ -20,11 +20,12 @@ package sqldb
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pole-io/pole-server/apis/pkg/types/ai"
 	"github.com/pole-io/pole-server/apis/store"
+	"github.com/pole-io/specification/source/go/api/v1/ai"
 )
 
 const (
@@ -35,6 +36,10 @@ const (
 	labelUpdateMCPServerTool = "updateMCPServerTool"
 	labelDeleteMCPServerTool = "deleteMCPServerTool"
 )
+
+func newMCPID() string {
+	return strings.ReplaceAll(uuid.New().String(), "-", "")
+}
 
 // mcpServerStore 实现 MCP Server 存储接口
 type mcpServerStore struct {
@@ -54,19 +59,19 @@ func newMCPServerStore(master, slave *BaseDB) *mcpServerStore {
 
 // CreateMCPServer 创建 MCP Server
 func (m *mcpServerStore) CreateMCPServer(server *ai.MCPServer) error {
-	if server.ID == "" || server.Name == "" || server.Namespace == "" {
+	if server.Name == "" || server.Namespace == "" {
 		return store.NewStatusError(store.EmptyParamsErr, fmt.Sprintf(
 			"create mcp server missing some params, id is %s, name is %s, namespace is %s",
-			server.ID, server.Name, server.Namespace))
+			server.Id, server.Name, server.Namespace))
 	}
 
 	// 如果没有提供 ID，生成新的 UUID
-	if server.ID == "" {
-		server.ID = uuid.New().String()
+	if server.Id == "" {
+		server.Id = newMCPID()
 	}
 	// 如果没有提供 Revision，生成新的版本号
 	if server.Revision == "" {
-		server.Revision = uuid.New().String()
+		server.Revision = newMCPID()
 	}
 
 	err := RetryTransaction(labelCreateMCPServer, func() error {
@@ -96,7 +101,7 @@ func (m *mcpServerStore) insertMCPServerMain(tx *BaseTx, server *ai.MCPServer) e
 		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate(), ?)`
 
 	_, err := tx.Exec(sql,
-		server.ID,
+		server.Id,
 		server.Name,
 		server.Namespace,
 		server.Ports,
@@ -118,7 +123,7 @@ func (m *mcpServerStore) insertMCPServerMain(tx *BaseTx, server *ai.MCPServer) e
 
 // UpdateMCPServer 更新 MCP Server
 func (m *mcpServerStore) UpdateMCPServer(server *ai.MCPServer) error {
-	if server.ID == "" {
+	if server.Id == "" {
 		return store.NewStatusError(store.EmptyParamsErr, "update mcp server missing id")
 	}
 
@@ -130,7 +135,7 @@ func (m *mcpServerStore) UpdateMCPServer(server *ai.MCPServer) error {
 
 func (m *mcpServerStore) updateMCPServer(server *ai.MCPServer) error {
 	if server.Revision == "" {
-		server.Revision = uuid.New().String()
+		server.Revision = newMCPID()
 	}
 
 	sql := `UPDATE mcp_server SET name = ?, namespace = ?, ports = ?, business = ?,
@@ -148,7 +153,7 @@ func (m *mcpServerStore) updateMCPServer(server *ai.MCPServer) error {
 		server.Reference,
 		server.Protocol,
 		server.ExportTo,
-		server.ID,
+		server.Id,
 	)
 	if err != nil {
 		log.Errorf("[Store][database] update mcp server err: %s", err.Error())
@@ -284,21 +289,21 @@ func (m *mcpServerStore) checkMCPServerExists(query string, args ...interface{})
 
 // CreateMCPServerTool 创建 MCP Server Tool
 func (m *mcpServerStore) CreateMCPServerTool(tool *ai.MCPServerTool) error {
-	if tool.MCPServerID == "" || tool.Name == "" {
+	if tool.McpServerId == "" || tool.Name == "" {
 		return store.NewStatusError(store.EmptyParamsErr, "create mcp server tool missing mcp_server_id or name")
 	}
 
 	// 如果没有提供 ID，生成新的 UUID
-	if tool.ID == "" {
-		tool.ID = uuid.New().String()
+	if tool.Id == "" {
+		tool.Id = newMCPID()
 	}
 
 	sql := `INSERT INTO mcp_server_tools(id, mcp_server_id, name, description, input_schema, output_schema, annotations, flag, ctime, mtime)
 		VALUES(?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())`
 
 	_, err := m.master.Exec(sql,
-		tool.ID,
-		tool.MCPServerID,
+		tool.Id,
+		tool.McpServerId,
 		tool.Name,
 		tool.Description,
 		tool.InputSchema,
@@ -315,7 +320,7 @@ func (m *mcpServerStore) CreateMCPServerTool(tool *ai.MCPServerTool) error {
 
 // UpdateMCPServerTool 更新 MCP Server Tool
 func (m *mcpServerStore) UpdateMCPServerTool(tool *ai.MCPServerTool) error {
-	if tool.ID == "" {
+	if tool.Id == "" {
 		return store.NewStatusError(store.EmptyParamsErr, "update mcp server tool missing id")
 	}
 
@@ -323,13 +328,13 @@ func (m *mcpServerStore) UpdateMCPServerTool(tool *ai.MCPServerTool) error {
 		input_schema = ?, output_schema = ?, annotations = ?, mtime = sysdate() WHERE id = ?`
 
 	_, err := m.master.Exec(sql,
-		tool.MCPServerID,
+		tool.McpServerId,
 		tool.Name,
 		tool.Description,
 		tool.InputSchema,
 		tool.OutputSchema,
 		tool.Annotations,
-		tool.ID,
+		tool.Id,
 	)
 	if err != nil {
 		log.Errorf("[Store][database] update mcp server tool err: %s", err.Error())
@@ -442,7 +447,7 @@ func fetchMCPServerRow(rows *sql.Rows) (*ai.MCPServer, error) {
 	var exportTo sql.NullString
 
 	err := rows.Scan(
-		&server.ID,
+		&server.Id,
 		&server.Name,
 		&server.Namespace,
 		&server.Ports,
@@ -465,8 +470,8 @@ func fetchMCPServerRow(rows *sql.Rows) (*ai.MCPServer, error) {
 		return nil, err
 	}
 
-	server.CTime = time.Unix(ctime, 0)
-	server.MTime = time.Unix(mtime, 0)
+	server.Ctime = mcpTimeFromUnix(ctime)
+	server.Mtime = mcpTimeFromUnix(mtime)
 	if exportTo.Valid {
 		server.ExportTo = exportTo.String
 	}
@@ -479,8 +484,8 @@ func fetchMCPServerToolRow(rows *sql.Rows) (*ai.MCPServerTool, error) {
 	var ctime, mtime int64
 
 	err := rows.Scan(
-		&tool.ID,
-		&tool.MCPServerID,
+		&tool.Id,
+		&tool.McpServerId,
 		&tool.Name,
 		&tool.Description,
 		&tool.InputSchema,
@@ -495,41 +500,52 @@ func fetchMCPServerToolRow(rows *sql.Rows) (*ai.MCPServerTool, error) {
 		return nil, err
 	}
 
-	tool.CTime = time.Unix(ctime, 0)
-	tool.MTime = time.Unix(mtime, 0)
+	tool.Ctime = mcpTimeFromUnix(ctime)
+	tool.Mtime = mcpTimeFromUnix(mtime)
 
 	return &tool, nil
 }
 
+func mcpTimeFromUnix(ts int64) string {
+	if ts <= 0 {
+		return ""
+	}
+	return time.Unix(ts, 0).Format("2006-01-02 15:04:05")
+}
+
 // QueryMCPServers 查询 MCP Servers（支持过滤和分页）
-func (m *mcpServerStore) QueryMCPServers(filter map[string]string, offset, limit uint32) (uint32, []*ai.MCPServer, error) {
+func (m *mcpServerStore) QueryMCPServers(query *ai.MCPServerQuery) (uint32, []*ai.MCPServer, error) {
+	if query == nil {
+		query = &ai.MCPServerQuery{}
+	}
+
 	// 构建查询条件
 	whereClause := "WHERE flag != 1"
 	args := make([]interface{}, 0)
 
-	if name, ok := filter["name"]; ok && name != "" {
+	if query.Name != "" {
 		whereClause += " AND name = ?"
-		args = append(args, name)
+		args = append(args, query.Name)
 	}
 
-	if namespace, ok := filter["namespace"]; ok && namespace != "" {
+	if query.Namespace != "" {
 		whereClause += " AND namespace = ?"
-		args = append(args, namespace)
+		args = append(args, query.Namespace)
 	}
 
-	if business, ok := filter["business"]; ok && business != "" {
+	if query.Business != "" {
 		whereClause += " AND business = ?"
-		args = append(args, business)
+		args = append(args, query.Business)
 	}
 
-	if department, ok := filter["department"]; ok && department != "" {
+	if query.Department != "" {
 		whereClause += " AND department = ?"
-		args = append(args, department)
+		args = append(args, query.Department)
 	}
 
-	if protocol, ok := filter["protocol"]; ok && protocol != "" {
+	if query.Protocol != "" {
 		whereClause += " AND protocol = ?"
-		args = append(args, protocol)
+		args = append(args, query.Protocol)
 	}
 
 	// 查询总数
@@ -546,7 +562,7 @@ func (m *mcpServerStore) QueryMCPServers(filter map[string]string, offset, limit
 		revision, flag, reference, protocol, unix_timestamp(ctime), unix_timestamp(mtime), export_to
 		FROM mcp_server %s ORDER BY mtime DESC LIMIT ?, ?`, whereClause)
 
-	queryArgs := append(args, offset, limit)
+	queryArgs := append(args, query.Offset, query.Limit)
 	rows, err := m.slave.Query(querySql, queryArgs...)
 	if err != nil {
 		log.Errorf("[Store][database] query mcp servers err: %s", err.Error())

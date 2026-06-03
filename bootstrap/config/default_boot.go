@@ -25,6 +25,7 @@ import (
 
 func defaultBootstrap() Bootstrap {
 	return Bootstrap{
+		Mode: StartModeAll,
 		StartInOrder: map[string]interface{}{
 			"open": true,
 			"key":  "sz",

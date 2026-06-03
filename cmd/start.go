@@ -25,13 +25,14 @@ import (
 
 var (
 	configFilePath = ""
+	startMode      = ""
 
 	startCmd = &cobra.Command{
 		Use:   "start",
 		Short: "start running",
 		Long:  "start running",
 		Run: func(c *cobra.Command, args []string) {
-			bootstrap.Start(configFilePath)
+			bootstrap.Start(configFilePath, startMode)
 		},
 	}
 )
@@ -39,4 +40,5 @@ var (
 // init 解析命令参数
 func init() {
 	startCmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", "conf/pole-server.yaml", "config file path")
+	startCmd.PersistentFlags().StringVar(&startMode, "mode", "", "startup mode: all, server, console")
 }

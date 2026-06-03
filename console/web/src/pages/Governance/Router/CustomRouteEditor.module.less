@@ -1,0 +1,89 @@
+.route-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.03);
+    border: 1px solid #e5e6eb;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+}
+
+.route-editor-header-block {
+    flex: 1;
+    border-radius: 8px;
+    border: 1px solid #e5e6eb;
+    box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.02);
+    padding: 10px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: box-shadow 0.2s;
+}
+
+.route-editor-header-block:hover {
+    box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.06);
+}
+
+.route-editor-header-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    margin: 0 24px;
+}
+
+.route-editor-header-title {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.route-editor-header-desc {
+    color: #8a8f99;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.sectionTitle {
+    font-weight: 600;
+    font-size: 16px;
+    margin: 32px 0 16px 0;
+}
+
+.sectionCard {
+    border-radius: 8px;
+    border: 1px solid #e5e6eb;
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.03);
+    padding: 24px 32px;
+    margin-bottom: 24px;
+    transition: box-shadow 0.2s;
+}
+
+.sectionCard:hover {
+    box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.06);
+}
+
+.matchTable {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-bottom: 16px;
+}
+
+.matchTable th,
+.matchTable td {
+    border-bottom: 1px solid #f0f0f0;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 14px;
+}
+
+.matchTable th {
+    font-weight: 500;
+    color: #4e5969;
+}
+
+.matchTable tr:last-child td {
+    border-bottom: none;
+}

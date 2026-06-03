@@ -84,6 +84,7 @@ type HTTPServer struct {
 	start           bool
 	restart         bool
 	exitCh          chan struct{}
+	ctx             context.Context
 
 	enablePprof   *atomic.Bool
 	enableSwagger bool
@@ -128,6 +129,7 @@ func (h *HTTPServer) GetProtocol() string {
 func (h *HTTPServer) Initialize(ctx context.Context, option map[string]interface{},
 	apiConf map[string]apiserver.APIConfig) error {
 	h.option = option
+	h.ctx = ctx
 	h.openAPI = apiConf
 	h.listenIP = option["listenIP"].(string)
 	h.listenPort = uint32(option["listenPort"].(int))
@@ -258,7 +260,7 @@ func (h *HTTPServer) Run(errCh chan error) {
 		return
 	}
 
-	aimcpSvr, err := aimcp.NewServer(h.maintainServer, h.namespaceServer, storage)
+	aimcpSvr, err := aimcp.NewServer(h.ctx, h.maintainServer, h.namespaceServer, storage)
 	if err != nil {
 		errCh <- err
 		return
