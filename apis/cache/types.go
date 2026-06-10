@@ -76,6 +76,7 @@ const (
 
 	// AI Native 缓存名称
 	MCPServerName = "mcpServer"
+	A2AAgentName  = "a2aAgent"
 )
 
 type CacheIndex int
@@ -103,6 +104,7 @@ const (
 
 	// AI Native 缓存索引
 	CacheMCPServer
+	CacheA2AAgent
 
 	CacheLast
 )
@@ -177,6 +179,8 @@ type CacheManager interface {
 	Role() RoleCache
 	// MCPServer get mcp server cache information
 	MCPServer() MCPServerCache
+	// A2AAgent get a2a agent cache information
+	A2AAgent() A2AAgentCache
 }
 
 type (

@@ -54,6 +54,11 @@
     # admin OpenAPI interface
     admin:
       enable: true
+    # aia2a OpenAPI interface
+    aia2a:
+      enable: false
+      # Registry-only API group; data-plane proxy is not provided by control-plane
+      include: [default]
     # Console OpenAPI interface
     console:
       enable: true

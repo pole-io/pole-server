@@ -19,6 +19,8 @@ package cache
 
 import (
 	"github.com/pole-io/specification/source/go/api/v1/ai"
+
+	aitypes "github.com/pole-io/pole-server/apis/pkg/types/ai"
 )
 
 // MCPServerCache MCP Server 缓存接口
@@ -41,4 +43,14 @@ type MCPServerCache interface {
 	// name 为前缀匹配，namespace/business/department/protocol 为精确匹配
 	// 排序：MTime DESC
 	Query(query *ai.MCPServerQuery) (uint32, []*ai.MCPServer)
+}
+
+type A2AAgentCache interface {
+	Cache
+
+	GetA2AAgentByID(id string) *aitypes.A2AAgent
+	GetA2AAgentByName(name, namespace string) *aitypes.A2AAgent
+	GetA2AAgentsByNamespace(namespace string) []*aitypes.A2AAgent
+	GetA2AAgentSkills(agentID string) []*aitypes.A2AAgentSkill
+	Query(query *aitypes.A2AAgentQuery) (uint32, []*aitypes.A2AAgent)
 }

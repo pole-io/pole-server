@@ -15,7 +15,6 @@ const ai: IRouter[] = [
         Component: lazy(() => import('pages/AI/A2A')),
         meta: {
           title: 'menu.ai.a2a',
-          hidden: true,
         },
       },
       {

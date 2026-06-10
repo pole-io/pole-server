@@ -56,6 +56,7 @@ func init() {
 
 	// AI Native 缓存注册
 	RegisterCache(cacheapi.MCPServerName, cacheapi.CacheMCPServer)
+	RegisterCache(cacheapi.A2AAgentName, cacheapi.CacheA2AAgent)
 }
 
 var (
@@ -119,6 +120,7 @@ func newCacheManager(ctx context.Context, cacheOpt *Config, storage store.Store)
 	// AI Native 缓存
 	aiCaches := cacheai.NewAICaches(storage, mgr)
 	mgr.RegisterCacher(cacheapi.CacheMCPServer, aiCaches[0])
+	mgr.RegisterCacher(cacheapi.CacheA2AAgent, aiCaches[1])
 	// 灰度规则
 	mgr.RegisterCacher(cacheapi.CacheGray, cachegray.NewGrayCache(storage, mgr))
 

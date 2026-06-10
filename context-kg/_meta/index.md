@@ -2,7 +2,7 @@
 title: 知识库内容目录
 tags: [meta, index]
 links: [schema, log]
-updated: 2026-05-14
+updated: 2026-06-10
 sources: 0
 ---
 
@@ -38,7 +38,7 @@ sources: 0
 
 ## AI 原生能力（ai/）
 
-- [[ai-features]] — MCP Registry 领域模型、存储、HTTP API 与缓存设计 | ai, mcp
+- [[ai-features]] — MCP Registry 与 A2A Agent Registry 领域模型、存储、HTTP API 与缓存设计 | ai, mcp, a2a
 
 ## 开发指南（guides/）
 
@@ -58,7 +58,7 @@ sources: 0
 | 配置文件发布与 Watch | [[config-center]] |
 | 路由/限流/熔断等治理规则 | [[governance-rules]] |
 | 管理后台运维操作 | [[admin]] |
-| MCP 如何运作 | [[ai-features]] |
+| MCP / A2A Registry 如何运作 | [[ai-features]] |
 | 数据库表/查询是怎样的 | [[storage]] |
 | 内存缓存如何刷新 | [[cache-layer]] |
 | 认证 Token 如何校验 | [[auth-system]] |

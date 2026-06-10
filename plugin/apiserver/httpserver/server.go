@@ -54,6 +54,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
+	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/aia2a"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/aimcp"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/auth"
 	confighttp "github.com/pole-io/pole-server/plugin/apiserver/httpserver/config"
@@ -103,6 +104,7 @@ type HTTPServer struct {
 	discoverSvr *discovery.HTTPServer
 	configSvr   *confighttp.HTTPServer
 	aimcpSvr    *aimcp.HTTPServer
+	aia2aSvr    *aia2a.HTTPServer
 	authSvr     *auth.HTTPServer
 
 	// apiserverSlots
@@ -266,6 +268,14 @@ func (h *HTTPServer) Run(errCh chan error) {
 		return
 	}
 	h.aimcpSvr = aimcpSvr
+	if h.isAPIEnabled("aia2a") {
+		aia2aSvr, err := aia2a.NewServer(h.ctx, storage)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		h.aia2aSvr = aia2aSvr
+	}
 
 	// 初始化http server
 	address := fmt.Sprintf("%v:%v", h.listenIP, h.listenPort)
@@ -406,6 +416,10 @@ func (h *HTTPServer) createRestfulContainer() (*restful.Container, error) {
 			if apiConfig.Enable {
 				wsContainer.Add(h.aimcpSvr.GetMCPAccessServer(apiConfig.Include))
 			}
+		case "aia2a":
+			if apiConfig.Enable {
+				wsContainer.Add(h.aia2aSvr.GetA2AAccessServer(apiConfig.Include))
+			}
 		case "console":
 			if apiConfig.Enable {
 				wsContainer.Add(h.discoverSvr.GetConsoleAccessServer(apiConfig.Include))
@@ -430,6 +444,11 @@ func (h *HTTPServer) createRestfulContainer() (*restful.Container, error) {
 	// 收集插件的 endpoint 数据
 	h.enablePluginDebugAccess(wsContainer)
 	return wsContainer, nil
+}
+
+func (h *HTTPServer) isAPIEnabled(name string) bool {
+	apiConfig, ok := h.openAPI[name]
+	return ok && apiConfig.Enable
 }
 
 // enablePluginDebugAccess .

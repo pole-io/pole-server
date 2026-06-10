@@ -78,6 +78,7 @@ type stableStore struct {
 
 	// MCP Server stores
 	*mcpServerStore
+	*a2aAgentStore
 
 	// 主数据库，可以进行读写
 	master *BaseDB
@@ -279,6 +280,7 @@ func (s *stableStore) newStore() {
 
 	// Initialize AI module stores
 	s.mcpServerStore = newMCPServerStore(s.master, s.slave)
+	s.a2aAgentStore = newA2AAgentStore(s.master, s.slave)
 }
 
 func buildEtimeStr(enable bool) string {

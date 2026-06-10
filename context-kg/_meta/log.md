@@ -49,6 +49,13 @@ sources: 0
 - 更新 _meta/schema.md 目录结构约定为新分层结构
 - 删除根目录下所有旧文件（domain-components.md 及已移动的 12 个页面）
 
+## [2026-06-10] update | A2A Agent Registry 控制面实现
+
+- 更新 `ai/ai-features.md`，补充 A2A Agent Registry 的控制面范围、领域模型、MySQL 存储、缓存和 `/ai/a2a/v1` HTTP API。
+- 明确 pole-control-plane 不实现 A2A task proxy、SSE/message 转发、push broker、task 状态机或 artifact 存储；这些属于数据面、网关或 Agent runtime。
+- 更新 `_meta/index.md` 的 AI 原生能力入口，使 MCP Registry 与 A2A Agent Registry 统一归档到 `[[ai-features]]`。
+- 补充 Console A2A 页面数据流与交互说明：页面保持 MCP Registry 风格，支持列表筛选、创建/编辑、删除、Agent Card 查看和 Skills 查看。
+
 ## 相关页面
 
 - [[index]]

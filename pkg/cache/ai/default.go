@@ -26,5 +26,6 @@ import (
 func NewAICaches(storage store.Store, cacheMgr cacheapi.CacheManager) []cacheapi.Cache {
 	return []cacheapi.Cache{
 		NewMCPServerCache(storage, cacheMgr),
+		NewA2AAgentCache(storage, cacheMgr),
 	}
 }

@@ -929,3 +929,83 @@ CREATE TABLE
         KEY `mcp_server_id` (`mcp_server_id`),
         KEY `mtime` (`mtime`)
 ) ENGINE = InnoDB;
+
+/* A2A Agent Registry */
+CREATE TABLE
+    `a2a_agent` (
+        `id` VARCHAR(32) NOT NULL COMMENT 'a2a agent id',
+        `name` VARCHAR(128) NOT NULL COMMENT 'a2a agent name, unique under namespace',
+        `namespace` VARCHAR(64) NOT NULL COMMENT 'Namespace belongs to the a2a agent',
+        `visibility` VARCHAR(32) DEFAULT NULL COMMENT 'public/private/internal visibility',
+        `description` VARCHAR(1024) DEFAULT NULL COMMENT 'Description information',
+        `version` VARCHAR(64) DEFAULT NULL COMMENT 'agent version',
+        `protocol_version` VARCHAR(32) DEFAULT NULL COMMENT 'a2a protocol version',
+        `provider_organization` VARCHAR(128) DEFAULT NULL COMMENT 'agent provider organization',
+        `provider_url` VARCHAR(512) DEFAULT NULL COMMENT 'agent provider url',
+        `documentation_url` VARCHAR(512) DEFAULT NULL COMMENT 'agent documentation url',
+        `icon_url` VARCHAR(512) DEFAULT NULL COMMENT 'agent icon url',
+        `business` VARCHAR(64) DEFAULT NULL COMMENT 'business information',
+        `department` VARCHAR(1024) DEFAULT NULL COMMENT 'department information',
+        `backend_type` VARCHAR(32) DEFAULT NULL COMMENT 'backend type, service or address',
+        `backend_service_namespace` VARCHAR(64) DEFAULT NULL COMMENT 'backend service namespace',
+        `backend_service_name` VARCHAR(128) DEFAULT NULL COMMENT 'backend service name',
+        `backend_address` VARCHAR(512) DEFAULT NULL COMMENT 'custom backend address',
+        `preferred_interface_url` VARCHAR(512) DEFAULT NULL COMMENT 'preferred a2a interface url',
+        `preferred_protocol_binding` VARCHAR(32) DEFAULT NULL COMMENT 'JSONRPC, GRPC or HTTP+JSON',
+        `preferred_protocol_version` VARCHAR(32) DEFAULT NULL COMMENT 'preferred interface protocol version',
+        `streaming` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'whether agent declares streaming capability',
+        `push_notifications` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'whether agent declares push notification capability',
+        `extended_agent_card` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'whether agent declares authenticated extended card capability',
+        `raw_card_json` MEDIUMTEXT COMMENT 'raw public agent card json',
+        `source_type` VARCHAR(32) DEFAULT NULL COMMENT 'manual/well-known/curated',
+        `source_url` VARCHAR(512) DEFAULT NULL COMMENT 'agent card source url',
+        `last_fetch_status` VARCHAR(128) DEFAULT NULL COMMENT 'last agent card fetch status',
+        `last_fetch_time` VARCHAR(64) DEFAULT NULL COMMENT 'last agent card fetch time',
+        `metadata` TEXT COMMENT 'custom metadata json',
+        `flag` TINYINT(4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means logically deleted',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `name` (`name`, `namespace`),
+        KEY `namespace` (`namespace`),
+        KEY `mtime` (`mtime`),
+        KEY `backend_service` (`backend_service_namespace`, `backend_service_name`),
+        KEY `preferred_protocol_binding` (`preferred_protocol_binding`)
+) ENGINE = InnoDB;
+
+CREATE TABLE
+    `a2a_agent_interface` (
+        `id` VARCHAR(32) NOT NULL COMMENT 'a2a agent interface id',
+        `agent_id` VARCHAR(32) NOT NULL COMMENT 'a2a agent id',
+        `url` VARCHAR(512) NOT NULL COMMENT 'a2a interface url',
+        `protocol_binding` VARCHAR(32) NOT NULL COMMENT 'JSONRPC, GRPC or HTTP+JSON',
+        `protocol_version` VARCHAR(32) NOT NULL COMMENT 'a2a protocol version',
+        `tenant` VARCHAR(128) DEFAULT NULL COMMENT 'opaque tenant routing value',
+        `flag` TINYINT(4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means logically deleted',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
+        PRIMARY KEY (`id`),
+        KEY `agent_id` (`agent_id`),
+        KEY `mtime` (`mtime`)
+) ENGINE = InnoDB;
+
+CREATE TABLE
+    `a2a_agent_skill` (
+        `id` VARCHAR(32) NOT NULL COMMENT 'a2a agent skill row id',
+        `agent_id` VARCHAR(32) NOT NULL COMMENT 'a2a agent id',
+        `skill_id` VARCHAR(128) NOT NULL COMMENT 'skill id in agent card',
+        `name` VARCHAR(128) NOT NULL COMMENT 'skill name',
+        `description` VARCHAR(1024) DEFAULT NULL COMMENT 'skill description',
+        `tags` TEXT COMMENT 'skill tag json array',
+        `examples` TEXT COMMENT 'skill examples json array',
+        `input_modes` TEXT COMMENT 'skill input modes json array',
+        `output_modes` TEXT COMMENT 'skill output modes json array',
+        `security_requirements` TEXT COMMENT 'skill security requirements json',
+        `flag` TINYINT(4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means logically deleted',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `skill_id` (`agent_id`, `skill_id`),
+        KEY `agent_id` (`agent_id`),
+        KEY `mtime` (`mtime`)
+) ENGINE = InnoDB;

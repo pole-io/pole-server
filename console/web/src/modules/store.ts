@@ -21,6 +21,7 @@ import configFileRelease from './configuration/release';
 import authPolicyRules from './auth/policy';
 import authRoles from './auth/role';
 import lossless from './governance/lossless';
+import aiA2A from './ai/a2a';
 import aiMCP from './ai/mcp';
 
 const reducer = combineReducers({
@@ -44,6 +45,7 @@ const reducer = combineReducers({
   configFileRelease,
   authPolicyRules,
   authRoles,
+  aiA2A,
   aiMCP,
 });
 

@@ -16,7 +16,7 @@
   "menu.configuration.k8s": "Kubernetes 配置",
   "menu.discovery.k8s": "Kubernetes 集群",
   "menu.ai": "AI 工具",
-  "menu.ai.a2a": "A2A 助手",
+  "menu.ai.a2a": "A2A Agent",
   "menu.ai.mcp": "MCP 服务",
   "menu.auth": "认证管理",
   "menu.auth.principals": "主体管理",

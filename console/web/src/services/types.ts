@@ -14,6 +14,8 @@ export enum BaseURL {
     LOSSLESS = '/naming/v1/lossless',
     MCP_SERVER = '/ai/mcp/v1/servers',
     MCP_SERVER_TOOL = '/ai/mcp/v1/server/tools',
+    A2A_AGENT = '/ai/a2a/v1/agents',
+    A2A_AGENT_SKILL = '/ai/a2a/v1/agent/skills',
 }
 
 
