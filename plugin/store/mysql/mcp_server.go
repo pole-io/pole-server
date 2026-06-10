@@ -41,6 +41,61 @@ func newMCPID() string {
 	return strings.ReplaceAll(uuid.New().String(), "-", "")
 }
 
+func normalizeMCPServerBackend(server *ai.MCPServer) {
+	if server == nil {
+		return
+	}
+	if server.BackendType == "" {
+		if server.BackendServiceNamespace != "" || server.BackendServiceName != "" {
+			server.BackendType = "service"
+		} else if server.BackendAddress != "" {
+			server.BackendType = "address"
+		}
+	}
+
+	switch server.BackendType {
+	case "service":
+		if server.Namespace == "" {
+			server.Namespace = server.BackendServiceNamespace
+		}
+		if server.Name == "" {
+			server.Name = server.BackendServiceName
+		}
+		if server.Reference == "" {
+			server.Reference = server.BackendServiceName
+		}
+		server.BackendAddress = ""
+	case "address":
+		server.BackendServiceNamespace = ""
+		server.BackendServiceName = ""
+	default:
+		if server.BackendServiceNamespace != "" || server.BackendServiceName != "" {
+			server.BackendType = "service"
+			normalizeMCPServerBackend(server)
+		} else if server.BackendAddress != "" {
+			server.BackendType = "address"
+			normalizeMCPServerBackend(server)
+		}
+	}
+}
+
+func validateMCPServerBackend(server *ai.MCPServer) error {
+	if server == nil {
+		return store.NewStatusError(store.EmptyParamsErr, "mcp server is empty")
+	}
+	switch server.BackendType {
+	case "service":
+		if server.BackendServiceNamespace == "" || server.BackendServiceName == "" {
+			return store.NewStatusError(store.EmptyParamsErr, "mcp server backend service missing namespace or name")
+		}
+	case "address":
+		if server.BackendAddress == "" {
+			return store.NewStatusError(store.EmptyParamsErr, "mcp server backend address is empty")
+		}
+	}
+	return nil
+}
+
 // mcpServerStore 实现 MCP Server 存储接口
 type mcpServerStore struct {
 	master *BaseDB
@@ -59,6 +114,10 @@ func newMCPServerStore(master, slave *BaseDB) *mcpServerStore {
 
 // CreateMCPServer 创建 MCP Server
 func (m *mcpServerStore) CreateMCPServer(server *ai.MCPServer) error {
+	normalizeMCPServerBackend(server)
+	if err := validateMCPServerBackend(server); err != nil {
+		return err
+	}
 	if server.Name == "" || server.Namespace == "" {
 		return store.NewStatusError(store.EmptyParamsErr, fmt.Sprintf(
 			"create mcp server missing some params, id is %s, name is %s, namespace is %s",
@@ -97,8 +156,9 @@ func (m *mcpServerStore) createMCPServer(server *ai.MCPServer) error {
 
 func (m *mcpServerStore) insertMCPServerMain(tx *BaseTx, server *ai.MCPServer) error {
 	sql := `INSERT INTO mcp_server(id, name, namespace, ports, business, department, description,
-		revision, flag, reference, protocol, ctime, mtime, export_to)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate(), ?)`
+		revision, flag, reference, protocol, ctime, mtime, export_to,
+		backend_type, backend_service_namespace, backend_service_name, backend_address)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate(), ?, ?, ?, ?, ?)`
 
 	_, err := tx.Exec(sql,
 		server.Id,
@@ -113,6 +173,10 @@ func (m *mcpServerStore) insertMCPServerMain(tx *BaseTx, server *ai.MCPServer) e
 		server.Reference,
 		server.Protocol,
 		server.ExportTo,
+		server.BackendType,
+		server.BackendServiceNamespace,
+		server.BackendServiceName,
+		server.BackendAddress,
 	)
 	if err != nil {
 		log.Errorf("[Store][database] insert mcp server err: %s", err.Error())
@@ -125,6 +189,10 @@ func (m *mcpServerStore) insertMCPServerMain(tx *BaseTx, server *ai.MCPServer) e
 func (m *mcpServerStore) UpdateMCPServer(server *ai.MCPServer) error {
 	if server.Id == "" {
 		return store.NewStatusError(store.EmptyParamsErr, "update mcp server missing id")
+	}
+	normalizeMCPServerBackend(server)
+	if err := validateMCPServerBackend(server); err != nil {
+		return err
 	}
 
 	err := RetryTransaction(labelUpdateMCPServer, func() error {
@@ -140,7 +208,8 @@ func (m *mcpServerStore) updateMCPServer(server *ai.MCPServer) error {
 
 	sql := `UPDATE mcp_server SET name = ?, namespace = ?, ports = ?, business = ?,
 		department = ?, description = ?, revision = ?, reference = ?, protocol = ?,
-		mtime = sysdate(), export_to = ? WHERE id = ?`
+		mtime = sysdate(), export_to = ?, backend_type = ?, backend_service_namespace = ?,
+		backend_service_name = ?, backend_address = ? WHERE id = ?`
 
 	_, err := m.master.Exec(sql,
 		server.Name,
@@ -153,6 +222,10 @@ func (m *mcpServerStore) updateMCPServer(server *ai.MCPServer) error {
 		server.Reference,
 		server.Protocol,
 		server.ExportTo,
+		server.BackendType,
+		server.BackendServiceNamespace,
+		server.BackendServiceName,
+		server.BackendAddress,
 		server.Id,
 	)
 	if err != nil {
@@ -191,7 +264,8 @@ func (m *mcpServerStore) GetMCPServer(id string) (*ai.MCPServer, error) {
 	}
 
 	rows, err := m.slave.Query(`SELECT id, name, namespace, ports, business, department, description,
-		revision, flag, reference, protocol, unix_timestamp(ctime), unix_timestamp(mtime), export_to
+		revision, flag, reference, protocol, unix_timestamp(ctime), unix_timestamp(mtime), export_to,
+		IFNULL(backend_type, ""), IFNULL(backend_service_namespace, ""), IFNULL(backend_service_name, ""), IFNULL(backend_address, "")
 		FROM mcp_server WHERE id = ?`, id)
 	if err != nil {
 		log.Errorf("[Store][database] get mcp server query err: %s", err.Error())
@@ -209,7 +283,8 @@ func (m *mcpServerStore) GetMCPServerByName(name, namespace string) (*ai.MCPServ
 	}
 
 	rows, err := m.slave.Query(`SELECT id, name, namespace, ports, business, department, description,
-		revision, flag, reference, protocol, unix_timestamp(ctime), unix_timestamp(mtime), export_to
+		revision, flag, reference, protocol, unix_timestamp(ctime), unix_timestamp(mtime), export_to,
+		IFNULL(backend_type, ""), IFNULL(backend_service_namespace, ""), IFNULL(backend_service_name, ""), IFNULL(backend_address, "")
 		FROM mcp_server WHERE name = ? AND namespace = ? AND flag != 1`, name, namespace)
 	if err != nil {
 		log.Errorf("[Store][database] get mcp server by name query err: %s", err.Error())
@@ -223,7 +298,8 @@ func (m *mcpServerStore) GetMCPServerByName(name, namespace string) (*ai.MCPServ
 // GetMoreMCPServers 增量获取 MCP Servers (供 cache 使用)
 func (m *mcpServerStore) GetMoreMCPServers(mtime time.Time, firstUpdate bool) ([]*ai.MCPServer, error) {
 	cacheSql := `SELECT id, name, namespace, ports, business, department, description,
-		revision, flag, reference, protocol, unix_timestamp(ctime), unix_timestamp(mtime), export_to
+		revision, flag, reference, protocol, unix_timestamp(ctime), unix_timestamp(mtime), export_to,
+		IFNULL(backend_type, ""), IFNULL(backend_service_namespace, ""), IFNULL(backend_service_name, ""), IFNULL(backend_address, "")
 		FROM mcp_server WHERE mtime > FROM_UNIXTIME(?)`
 
 	if firstUpdate {
@@ -461,6 +537,10 @@ func fetchMCPServerRow(rows *sql.Rows) (*ai.MCPServer, error) {
 		&ctime,
 		&mtime,
 		&exportTo,
+		&server.BackendType,
+		&server.BackendServiceNamespace,
+		&server.BackendServiceName,
+		&server.BackendAddress,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -547,6 +627,18 @@ func (m *mcpServerStore) QueryMCPServers(query *ai.MCPServerQuery) (uint32, []*a
 		whereClause += " AND protocol = ?"
 		args = append(args, query.Protocol)
 	}
+	if query.BackendType != "" {
+		whereClause += " AND backend_type = ?"
+		args = append(args, query.BackendType)
+	}
+	if query.BackendServiceNamespace != "" {
+		whereClause += " AND backend_service_namespace = ?"
+		args = append(args, query.BackendServiceNamespace)
+	}
+	if query.BackendServiceName != "" {
+		whereClause += " AND backend_service_name = ?"
+		args = append(args, query.BackendServiceName)
+	}
 
 	// 查询总数
 	countSql := "SELECT COUNT(*) FROM mcp_server " + whereClause
@@ -559,7 +651,8 @@ func (m *mcpServerStore) QueryMCPServers(query *ai.MCPServerQuery) (uint32, []*a
 
 	// 查询列表
 	querySql := fmt.Sprintf(`SELECT id, name, namespace, ports, business, department, description,
-		revision, flag, reference, protocol, unix_timestamp(ctime), unix_timestamp(mtime), export_to
+		revision, flag, reference, protocol, unix_timestamp(ctime), unix_timestamp(mtime), export_to,
+		IFNULL(backend_type, ""), IFNULL(backend_service_namespace, ""), IFNULL(backend_service_name, ""), IFNULL(backend_address, "")
 		FROM mcp_server %s ORDER BY mtime DESC LIMIT ?, ?`, whereClause)
 
 	queryArgs := append(args, query.Offset, query.Limit)

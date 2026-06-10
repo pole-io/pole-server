@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/pole-io/pole-server/apis/service/healthcheck"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	commonhash "github.com/pole-io/pole-server/pkg/common/utils/hash"
 )
 
 var (
@@ -53,16 +55,66 @@ var (
 	}
 )
 
+var testPeerCaches map[string]BeatRecordCache
+
+type testPeer struct {
+	id    string
+	cache BeatRecordCache
+}
+
+func (p *testPeer) Initialize(conf Config) {}
+
+func (p *testPeer) Serve(ctx context.Context, checker *HeartBeatHealthChecker, listenIP string, listenPort uint32) error {
+	return nil
+}
+
+func (p *testPeer) Close() error {
+	return nil
+}
+
+func (p *testPeer) Host() string {
+	return p.id
+}
+
+func (p *testPeer) Storage() BeatRecordCache {
+	return p.cache
+}
+
+func (p *testPeer) IsAlive() bool {
+	return true
+}
+
+func newTestPeer(id string) Peer {
+	if testPeerCaches == nil {
+		testPeerCaches = map[string]BeatRecordCache{}
+	}
+	cache, ok := testPeerCaches[id]
+	if !ok {
+		cache = newLocalBeatRecordCache(DefaultSoltNum, commonhash.Fnv32)
+		testPeerCaches[id] = cache
+	}
+	return &testPeer{
+		id:    id,
+		cache: cache,
+	}
+}
+
+func refreshTestPeers(checker *HeartBeatHealthChecker, nodes []healthcheck.CheckerPeer) {
+	checker.lock.Lock()
+	defer checker.lock.Unlock()
+
+	checker.peers = make(map[string]Peer, len(nodes))
+	for i := range nodes {
+		checker.peers[nodes[i].ID] = newTestPeer(nodes[i].ID)
+	}
+}
+
 func prepareCheckerPeers(nodes []healthcheck.CheckerPeer, oldPeers map[string]*HeartBeatHealthChecker) map[string]*HeartBeatHealthChecker {
 	log.SetOutputLevel(commonlog.DebugLevel)
 	checkers := make(map[string]*HeartBeatHealthChecker, len(nodes))
 	for i := range nodes {
 		if val, ok := oldPeers[nodes[i].ID]; ok {
-			val.refreshPeers(nodes)
-			for j := range val.peers {
-				peer := val.peers[j]
-				_ = peer
-			}
+			refreshTestPeers(val, nodes)
 			checkers[nodes[i].ID] = val
 			delete(oldPeers, nodes[i].ID)
 			continue
@@ -74,11 +126,7 @@ func prepareCheckerPeers(nodes []healthcheck.CheckerPeer, oldPeers map[string]*H
 			},
 		})
 
-		checker.refreshPeers(nodes)
-		for j := range checker.peers {
-			peer := checker.peers[j]
-			_ = peer
-		}
+		refreshTestPeers(checker, nodes)
 		checkers[nodes[i].ID] = checker
 	}
 
@@ -93,6 +141,7 @@ func prepareCheckerPeers(nodes []healthcheck.CheckerPeer, oldPeers map[string]*H
 		go func(checker *HeartBeatHealthChecker) {
 			defer wait.Done()
 			checker.calculateContinuum()
+			atomic.StoreInt32(&checker.initialize, initializedSignal)
 		}(checker)
 	}
 
@@ -102,6 +151,7 @@ func prepareCheckerPeers(nodes []healthcheck.CheckerPeer, oldPeers map[string]*H
 }
 
 func TestHeartBeatHealthChecker(t *testing.T) {
+	testPeerCaches = map[string]BeatRecordCache{}
 	checkers := prepareCheckerPeers(nodes, map[string]*HeartBeatHealthChecker{})
 	t.Cleanup(func() {
 		for i := range checkers {

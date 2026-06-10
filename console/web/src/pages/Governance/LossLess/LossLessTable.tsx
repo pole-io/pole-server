@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Table, Space, Row, Col, Tooltip, PrimaryTableProps, TableRowData, Popconfirm, Tabs, Link } from 'tdesign-react';
+import { Button, Table, Space, Row, Col, Tooltip, PrimaryTableProps, TableRowData, Popconfirm, Tabs, Link, Empty } from 'tdesign-react';
 import { CreditcardIcon, DeleteIcon, RefreshIcon } from 'tdesign-icons-react';
 
 import LossLessEditor, { } from './LossLessEditor';
@@ -14,6 +14,7 @@ import RuleTabs from '../RuleRelease/RuleTabs';
 import SubscribeTable from 'components/SubscribeTable';
 import { editorLosslessRule, listLossLessRules, listLosslessRuleVersions, removeLosslessRule, removeLosslessVersion, rollbackLosslessVersion, selectLosslessRule } from 'modules/governance/lossless';
 import { LossLessRuleView } from 'services/lossless';
+import RuleDetailDrawer from '../RuleRelease/RuleDetailDrawer';
 
 export interface ILossLessTableProps {
 
@@ -106,6 +107,7 @@ const LossLessTable: React.FC<ILossLessTableProps> = ({ }) => {
             param: {
                 limit: limit,
                 offset: (page - 1) * limit,
+                name: query,
             }
         })).then((res) => {
             if (res.meta.requestStatus === 'rejected') {
@@ -135,7 +137,7 @@ const LossLessTable: React.FC<ILossLessTableProps> = ({ }) => {
                     });
                 break;
             case 'authorize':
-                setEditor((prev) => ({ ...prev, authorizeVisible: true, mode: 'authorize' }));
+                setEditor((prev) => ({ ...prev, authorizeVisible: true, mode: 'authorize', data: { ...row } }));
                 break;
             default:
                 break;
@@ -243,68 +245,70 @@ const LossLessTable: React.FC<ILossLessTableProps> = ({ }) => {
     )
 
     return (
-        <Row gutter={16} className={style.customRoute}>
-            <Col span={4}>
+        <div className={style.ruleWorkspace}>
+            <section className={style.ruleListPane}>
                 {table}
-            </Col>
-            <Col span={7} style={{ marginLeft: 30 }}>
-                {editor.visible && (
-                    <div className={style.editorContainer}>
-                        <RuleTabs
-                            op={editor.mode}
-                            onVersionView={() => {
-                                refreshVersions(1, 10);
-                            }}
-                            view={
-                                <>
-                                    <LossLessEditor
-                                        visible={editor.visible}
-                                        op={editor.mode}
-                                        refresh={(close: boolean) => {
-                                            if (close) {
-                                                setEditor((prev) => ({ ...prev, visible: false }));
-                                            }
-                                            refreshData(1, limit);
-                                        }}
-                                    />
-                                </>
-                            }
-                            versions={{
-                                datas: versions,
-                                action: operateRelease,
-                                editable: editor.data?.editable || true,
-                                deleteable: editor.data?.deleteable || true,
-                                loading: versionLoading,
-                                pagination: {
-                                    defaultCurrent: versionPage,
-                                    defaultPageSize: versionLimit,
-                                    total: versionTotal,
-                                    showJumper: false,
-                                    onChange(pageInfo) {
-                                        refreshVersions(pageInfo.current, pageInfo.pageSize);
-                                    },
-                                },
-                                onPageChange: (page) => {
-                                    refreshVersions(page.current, page.pageSize);
-                                }
-                            }}
-                            subscribe={
-                                <>
-                                    <div style={{ marginLeft: 20, marginTop: 20 }}>
-                                        <SubscribeTable
-                                            title={`${editor.data?.namespace}/${editor.data?.service}`}
-                                            editable={editor.data?.editable || true}
-                                            deleteable={editor.data?.deleteable || true}
-                                            subscribers={subscribers || []}
-                                        />
-                                    </div>
-                                </>
-                            }
-                        />
-                    </div>
-                )}
-            </Col>
-        </Row>
+            </section>
+            <RuleDetailDrawer
+                visible={editor.visible}
+                title={editor.mode === 'create' ? '新建无损规则' : `${editor.data?.namespace || '-'}/${editor.data?.service || '-'}`}
+                subtitle="无损上下线"
+                onClose={() => setEditor((prev) => ({ ...prev, visible: false }))}
+            >
+                <RuleTabs
+                    op={editor.mode}
+                    onVersionView={() => {
+                        refreshVersions(1, 10);
+                    }}
+                    view={
+                        <>
+                            <LossLessEditor
+                                visible={editor.visible}
+                                op={editor.mode}
+                                refresh={(close: boolean) => {
+                                    if (close) {
+                                        setEditor((prev) => ({ ...prev, visible: false }));
+                                    }
+                                    refreshData(1, limit);
+                                }}
+                            />
+                        </>
+                    }
+                    versions={{
+                        datas: versions,
+                        action: operateRelease,
+                        editable: editor.data?.editable ?? true,
+                        deleteable: editor.data?.deleteable ?? true,
+                        rollbackable: false,
+                        loading: versionLoading,
+                        pagination: {
+                            defaultCurrent: versionPage,
+                            defaultPageSize: versionLimit,
+                            total: versionTotal,
+                            showJumper: false,
+                            onChange(pageInfo) {
+                                refreshVersions(pageInfo.current, pageInfo.pageSize);
+                            },
+                        },
+                        onPageChange: (page) => {
+                            refreshVersions(page.current, page.pageSize);
+                        }
+                    }}
+                    subscribe={
+                        <>
+                            <div style={{ marginLeft: 20, marginTop: 20 }}>
+                                <SubscribeTable
+                                    title={`${editor.data?.namespace}/${editor.data?.service}`}
+                                    editable={editor.data?.editable ?? true}
+                                    deleteable={editor.data?.deleteable ?? true}
+                                    subscribers={subscribers || []}
+                                />
+                            </div>
+                        </>
+                    }
+                />
+            </RuleDetailDrawer>
+        </div>
     );
 }
 

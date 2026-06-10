@@ -279,7 +279,7 @@ func (s *Server) CreateLaneRule(ctx context.Context, req *apitraffic.LaneRule) *
 	if group == nil {
 		return api.NewResponse(apimodel.Code_NotFoundResource)
 	}
-	if len(group.LaneRules) > 10 {
+	if len(group.LaneRules) >= 20 {
 		// 泳道组规则数量超过限制
 		log.Error("[Service][Lane] create lane_group over limit", utils.RequestID(ctx), zap.String("name", req.GetGroupName()))
 		return api.NewResponse(apimodel.Code_BatchSizeOverLimit)
@@ -386,8 +386,21 @@ func (s *Server) DeleteLaneRule(ctx context.Context, req *apitraffic.LaneRule) *
 		return api.NewResponse(apimodel.Code_ExecuteSuccess)
 	}
 
+	tx, err := s.storage.StartTx()
+	if err != nil {
+		log.Error("[Service][Lane] open store transaction fail", utils.RequestID(ctx), zap.Error(err))
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
 	saveData.Revision = utils.DefaultString(req.GetRevision(), utils.NewUUID())
-	if err := s.storage.DeleteLaneGroup(saveData.ID); err != nil {
+	if err := s.storage.DeleteLaneRules(tx, saveData.LaneGroup, []string{saveData.ID}); err != nil {
+		return api.NewResponse(storeapi.StoreCode2APICode(err))
+	}
+	if err := tx.Commit(); err != nil {
+		log.Error("[Service][Lane] commit store transaction fail", utils.RequestID(ctx), zap.Error(err))
 		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	req.Id = saveData.ID

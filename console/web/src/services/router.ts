@@ -102,6 +102,8 @@ export interface CustomRouteView extends CustomRoute {
 
 export interface RoutingConfig {
     '@type': string
+    caller?: RoutingSources
+    callee?: RoutingSources
     rules: RoutingRule[]
 }
 
@@ -112,8 +114,15 @@ export interface RoutingSources {
 
 export interface RoutingRule {
     name: string
-    sources: RoutingRuleSource[]
+    sources?: RoutingRuleSource[]
     destinations: RoutingRuleDestination[]
+    arguments?: RoutingRuleArguments
+}
+
+export interface RoutingRuleArguments {
+    arguments?: RoutingSourceArgument[]
+    randomPercent?: number
+    matchMode?: string
 }
 
 export interface RoutingRuleSource {
@@ -140,6 +149,78 @@ export interface RoutingSourceArgument {
         value: string
         value_type: string
     }
+}
+
+const defaultRoutingConfigType = 'type.googleapis.com/v1.RuleRoutingConfig';
+
+const routeServiceOrDefault = (service?: RoutingSources, fallback?: RoutingSources): RoutingSources => ({
+    namespace: service?.namespace || fallback?.namespace || '*',
+    service: service?.service || fallback?.service || '',
+});
+
+const routeArguments = (rule?: RoutingRule): RoutingSourceArgument[] => (
+    rule?.sources?.[0]?.arguments || rule?.arguments?.arguments || []
+);
+
+export function normalizeRoutingConfigForEditor(config?: RoutingConfig): RoutingConfig | undefined {
+    if (!config) return config;
+
+    const firstRule = config.rules?.[0];
+    const caller = routeServiceOrDefault(config.caller, firstRule?.sources?.[0]);
+    const callee = routeServiceOrDefault(config.callee, firstRule?.destinations?.[0]);
+
+    return {
+        ...config,
+        '@type': config['@type'] || defaultRoutingConfigType,
+        caller,
+        callee,
+        rules: (config.rules || []).map((rule) => {
+            const source = routeServiceOrDefault(rule.sources?.[0], caller);
+            const args = routeArguments(rule);
+            return {
+                ...rule,
+                sources: rule.sources?.length ? rule.sources : [{
+                    ...source,
+                    arguments: args,
+                }],
+                arguments: {
+                    ...(rule.arguments || {}),
+                    arguments: args,
+                    randomPercent: rule.arguments?.randomPercent || 0,
+                    matchMode: rule.arguments?.matchMode || 'AND',
+                },
+                destinations: rule.destinations || [],
+            };
+        }),
+    };
+}
+
+export function buildRoutingConfigForApi(config: RoutingConfig | undefined, caller: RoutingSources, callee: RoutingSources): RoutingConfig {
+    const normalized = normalizeRoutingConfigForEditor(config) || {
+        '@type': defaultRoutingConfigType,
+        caller,
+        callee,
+        rules: [],
+    };
+
+    return {
+        '@type': normalized['@type'] || defaultRoutingConfigType,
+        caller,
+        callee,
+        rules: (normalized.rules || []).map((rule) => {
+            const { sources: _sources, ...rest } = rule;
+            return {
+                ...rest,
+                arguments: {
+                    ...(rule.arguments || {}),
+                    arguments: routeArguments(rule),
+                    randomPercent: rule.arguments?.randomPercent || 0,
+                    matchMode: rule.arguments?.matchMode || 'AND',
+                },
+                destinations: rule.destinations || [],
+            };
+        }),
+    };
 }
 
 export interface RoutingDestination {

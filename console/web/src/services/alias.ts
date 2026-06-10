@@ -45,8 +45,11 @@ export interface DescribeServiceAliasRequest {
 export interface DescribeServiceAliasResponse {
     /** 服务别名总数量。 */
     amount: number
+    size?: number
+    /** 标准响应服务别名列表。 */
+    data?: ServiceAlias[]
     /** 服务别名列表。 */
-    aliases: ServiceAlias[]
+    aliases?: ServiceAlias[]
 }
 
 export async function describeServiceAlias(params: DescribeServiceAliasRequest) {
@@ -54,9 +57,10 @@ export async function describeServiceAlias(params: DescribeServiceAliasRequest) 
         action: `${BaseURL.ALIAS}`,
         data: params,
     })
+    const aliases = result.data ?? result.aliases ?? []
     return {
-        totalCount: result.amount,
-        content: result.aliases ? result.aliases : [],
+        totalCount: result.amount ?? aliases.length,
+        content: aliases,
     }
 }
 

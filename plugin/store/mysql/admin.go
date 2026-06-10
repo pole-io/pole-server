@@ -455,11 +455,8 @@ func (m *adminStore) BatchCleanDeletedRules(rule string, timeout time.Duration, 
 
 	// 验证表名，防止SQL注入（与 pole_server.sql 及 clean_deleted_resource job 一致）
 	validTables := map[string]bool{
-		"router_rule":         true,
-		"ratelimit_rule":      true,
-		"circuitbreaker_rule": true,
-		"fault_detect_rule":   true,
-		"lane_rule":           true,
+		"governance_rule":         true,
+		"governance_rule_release": true,
 	}
 
 	if !validTables[rule] {
@@ -866,16 +863,13 @@ func (m *adminStore) BatchCleanWithChunks(tableName string, timeout time.Duratio
 
 	// 验证表名（与 pole_server.sql 及 clean_deleted_resource job 一致）
 	validTables := map[string]bool{
-		"instance":            true,
-		"service":             true,
-		"client":              true,
-		"config_file":         true,
-		"service_contract":    true,
-		"router_rule":         true,
-		"ratelimit_rule":      true,
-		"circuitbreaker_rule": true,
-		"fault_detect_rule":   true,
-		"lane_rule":           true,
+		"instance":                true,
+		"service":                 true,
+		"client":                  true,
+		"config_file":             true,
+		"service_contract":        true,
+		"governance_rule":         true,
+		"governance_rule_release": true,
 	}
 
 	if !validTables[tableName] {
@@ -906,7 +900,7 @@ func (m *adminStore) BatchCleanWithChunks(tableName string, timeout time.Duratio
 			cleanedCount, err = m.BatchCleanDeletedConfigFiles(timeout, currentChunkSize)
 		case "service_contract":
 			cleanedCount, err = m.BatchCleanDeletedServiceContracts(timeout, currentChunkSize)
-		case "router_rule", "ratelimit_rule", "circuitbreaker_rule", "fault_detect_rule", "lane_rule":
+		case "governance_rule", "governance_rule_release":
 			cleanedCount, err = m.BatchCleanDeletedRules(tableName, timeout, currentChunkSize)
 		}
 

@@ -61,6 +61,8 @@ func NewRouter(config *bootstrap.Config) *gin.Engine {
 	DiscoveryV1Router(r, config)
 	// 配置请求
 	ConfigRouter(r, config)
+	// AI MCP 请求
+	AIMCPRouter(r, config)
 	// 指标监控接口
 	MetricsRouter(r, config)
 

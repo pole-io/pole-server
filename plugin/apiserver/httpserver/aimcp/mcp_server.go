@@ -37,6 +37,15 @@ func (h *HTTPServer) addToolQueryMCPServers(mcpSvr *server.MCPServer) {
 			mcp.WithString("protocol",
 				mcp.Description("协议类型过滤"),
 			),
+			mcp.WithString("backend_type",
+				mcp.Description("Backend 类型过滤，支持 service 或 address"),
+			),
+			mcp.WithString("backend_service_namespace",
+				mcp.Description("关联 Pole 注册服务的命名空间过滤"),
+			),
+			mcp.WithString("backend_service_name",
+				mcp.Description("关联 Pole 注册服务的服务名过滤"),
+			),
 			mcp.WithNumber("offset",
 				mcp.Description("查询的偏移量"),
 				mcp.DefaultNumber(0),
@@ -70,7 +79,7 @@ func (h *HTTPServer) addToolCreateMCPServers(mcpSvr *server.MCPServer) {
 		mcp.NewTool("create_mcp_servers",
 			mcp.WithDescription("此工具用于创建多个 MCP Server"),
 			mcp.WithArray("servers",
-				mcp.Description("MCP Server 数组，每个元素包含 name, namespace, ports, business, department, description, protocol, export_to 等字段"),
+				mcp.Description("MCP Server 数组。关联 Pole 注册服务时传 backend_type=service、backend_service_namespace、backend_service_name；自定义地址时传 backend_type=address、backend_address"),
 			),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -102,7 +111,7 @@ func (h *HTTPServer) addToolUpdateMCPServers(mcpSvr *server.MCPServer) {
 		mcp.NewTool("update_mcp_servers",
 			mcp.WithDescription("此工具用于更新多个 MCP Server"),
 			mcp.WithArray("servers",
-				mcp.Description("MCP Server 数组，每个元素包含 id, name, namespace, ports, business, department, description, protocol, export_to 等字段"),
+				mcp.Description("MCP Server 数组。关联 Pole 注册服务时传 backend_type=service、backend_service_namespace、backend_service_name；自定义地址时传 backend_type=address、backend_address"),
 			),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -371,13 +380,16 @@ func parseMCPServerDeleteRequest(args map[string]interface{}) (*ai.MCPServerDele
 
 func parseMCPServerQuery(args map[string]interface{}) *ai.MCPServerQuery {
 	return &ai.MCPServerQuery{
-		Name:       mcpStringArg(args, "name"),
-		Namespace:  mcpStringArg(args, "namespace"),
-		Business:   mcpStringArg(args, "business"),
-		Department: mcpStringArg(args, "department"),
-		Protocol:   mcpStringArg(args, "protocol"),
-		Offset:     mcpUint32Arg(args, "offset", 0),
-		Limit:      mcpUint32Arg(args, "limit", 100),
+		Name:                    mcpStringArg(args, "name"),
+		Namespace:               mcpStringArg(args, "namespace"),
+		Business:                mcpStringArg(args, "business"),
+		Department:              mcpStringArg(args, "department"),
+		Protocol:                mcpStringArg(args, "protocol"),
+		BackendType:             mcpStringArg(args, "backend_type"),
+		BackendServiceNamespace: mcpStringArg(args, "backend_service_namespace"),
+		BackendServiceName:      mcpStringArg(args, "backend_service_name"),
+		Offset:                  mcpUint32Arg(args, "offset", 0),
+		Limit:                   mcpUint32Arg(args, "limit", 100),
 	}
 }
 

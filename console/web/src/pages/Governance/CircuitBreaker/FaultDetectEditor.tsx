@@ -27,6 +27,7 @@ import {
 } from 'services/faultdetect';
 import LabelInput from 'components/LabelInput';
 import PublishForm from '../RuleRelease/PublishForm';
+import RuleStickyAction from '../RuleRelease/RuleStickyAction';
 import { PolicySourceType } from 'services/auth_policy';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import Text from 'components/Text';
@@ -613,34 +614,31 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                         offset={[-10, 200]}
                     >
                         <StickyItem
-                            label={editorState.editable ? '保存' : '编辑'}
+                            label=""
                             icon={!editorState.editable ?
-                                <Edit1Icon onClick={() => {
+                                <RuleStickyAction label="编辑" icon={<Edit1Icon />} onClick={() => {
                                     setEditorState(prev => ({ ...prev, editable: true }));
                                 }} />
                                 :
-                                <Button variant="text" shape="square" onClick={() => {
+                                <RuleStickyAction label="保存" icon={<SaveIcon />} onClick={() => {
                                     form.submit();
-                                }}>
-                                    <SaveIcon />
-                                </Button>
+                                }} />
                             }
                         />
                         {(editorState.editable) && (
-                            <StickyItem label="撤销" icon={
-                                <RollbackIcon onClick={() => {
+                            <StickyItem label="" icon={
+                                <RuleStickyAction label="撤销" icon={<RollbackIcon />} onClick={() => {
                                     if (props.op === 'create') {
                                         props.refresh(true);
                                     } else {
-                                        // 重置编辑状态为不可编辑
                                         setEditorState(prev => ({ ...prev, editable: false }));
                                     }
                                 }} />}
                             />
                         )}
                         {(!editorState.editable) && (
-                            <StickyItem label="发布" icon={
-                                <RocketIcon onClick={() => {
+                            <StickyItem label="" icon={
+                                <RuleStickyAction label="发布" icon={<RocketIcon />} onClick={() => {
                                     setEditorState(prev => ({ ...prev, publishView: true }));
                                 }} />}
                             />
@@ -658,7 +656,7 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                 <PublishForm
                     ruleId={viewRule?.id || ''}
                     ruleName={viewRule?.name || ''}
-                    resource={PolicySourceType.CircuitBreakerRules}
+                    resource={PolicySourceType.FaultDetectRules}
                     visible={editorState.publishView}
                     close={() => {
                         setEditorState(prev => ({ ...prev, publishView: false }));

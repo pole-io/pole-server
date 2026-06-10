@@ -78,6 +78,7 @@ type stableStore struct {
 
 	// MCP Server stores
 	*mcpServerStore
+	*a2aAgentStore
 
 	// 主数据库，可以进行读写
 	master *BaseDB
@@ -121,6 +122,13 @@ func (s *stableStore) Initialize(conf *store.Config) error {
 	}
 
 	log.Infof("[Store][database] connect the database successfully")
+
+	if err := ensureServiceSubscribeGraphSchema(s.master); err != nil {
+		return err
+	}
+	if err := ensureGovernanceRuleSchema(s.master); err != nil {
+		return err
+	}
 
 	s.start = true
 	s.newStore()
@@ -252,13 +260,14 @@ func (s *stableStore) newStore() {
 
 	s.serviceStore = &serviceStore{master: s.master, slave: s.slave}
 	s.instanceStore = &instanceStore{master: s.master, slave: s.slave}
-	s.routerRuleStore = &routerRuleStore{master: s.master, slave: s.slave}
-	s.rateLimitStore = &rateLimitStore{master: s.master, slave: s.slave}
-	s.circuitBreakerStore = &circuitBreakerStore{master: s.master, slave: s.slave}
-	s.faultDetectRuleStore = &faultDetectRuleStore{master: s.master, slave: s.slave}
+	governanceRepo := newGovernanceRuleRepository(s.master, s.slave)
+	s.routerRuleStore = &routerRuleStore{master: s.master, slave: s.slave, governanceRuleRepository: governanceRepo}
+	s.rateLimitStore = &rateLimitStore{master: s.master, slave: s.slave, governanceRuleRepository: governanceRepo}
+	s.circuitBreakerStore = &circuitBreakerStore{master: s.master, slave: s.slave, governanceRuleRepository: governanceRepo}
+	s.faultDetectRuleStore = &faultDetectRuleStore{master: s.master, slave: s.slave, governanceRuleRepository: governanceRepo}
 	s.serviceContractStore = &serviceContractStore{master: s.master, slave: s.slave}
-	s.laneStore = &laneStore{master: s.master, slave: s.slave}
-	s.losslessStore = &losslessStore{master: s.master, slave: s.slave}
+	s.laneStore = &laneStore{master: s.master, slave: s.slave, governanceRuleRepository: governanceRepo}
+	s.losslessStore = &losslessStore{master: s.master, slave: s.slave, governanceRuleRepository: governanceRepo}
 
 	s.configFileGroupStore = &configFileGroupStore{master: s.master, slave: s.slave}
 	s.configFileStore = &configFileStore{master: s.master, slave: s.slave}
@@ -279,6 +288,7 @@ func (s *stableStore) newStore() {
 
 	// Initialize AI module stores
 	s.mcpServerStore = newMCPServerStore(s.master, s.slave)
+	s.a2aAgentStore = newA2AAgentStore(s.master, s.slave)
 }
 
 func buildEtimeStr(enable bool) string {

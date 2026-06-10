@@ -78,11 +78,15 @@ func (rlc *rateLimitCache) Initialize(_ map[string]interface{}) error {
 		Name:      cachetypes.AllMatched,
 	})
 	rlc.svcCache = rlc.CacheMgr.GetCacher(cachetypes.CacheService).(cachetypes.ServiceCache)
+	registerGovernanceRuleWatcher(rlc.storage, rlc.CacheMgr, rlc)
 	return nil
 }
 
 // Update 实现Cache接口的update函数
 func (rlc *rateLimitCache) Update() error {
+	if ok, err := updateGovernanceRuleCache(rlc.storage); ok {
+		return err
+	}
 	// 多个线程竞争，只有一个线程进行更新
 	_, err, _ := rlc.GetSingle().Do(rlc.Name(), func() (interface{}, error) {
 		return nil, rlc.DoCacheUpdate(rlc.Name(), rlc.realUpdate)
@@ -125,6 +129,7 @@ func (rlc *rateLimitCache) Name() string {
 
 // Clear 实现Cache接口的clear函数
 func (rlc *rateLimitCache) Clear() error {
+	resetGovernanceRuleUpdateCache(rlc.storage)
 	rlc.BaseCache.Clear()
 	rlc.ids = container.NewSyncMap[string, *rules.RateLimit]()
 	rlc.rules = container.NewSyncMap[string, *rules.RateLimitRelease]()

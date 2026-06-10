@@ -793,6 +793,9 @@ func (svr *Server) enrichResourceInfo(ctx context.Context, resp *apisecurity.Aut
 		CircuitbreakerRules: make([]*apisecurity.StrategyResourceEntry, 0, 4),
 		FaultdetectRules:    make([]*apisecurity.StrategyResourceEntry, 0, 4),
 		LaneRules:           make([]*apisecurity.StrategyResourceEntry, 0, 4),
+		LosslessRules:       make([]*apisecurity.StrategyResourceEntry, 0, 4),
+		MirrorRules:         make([]*apisecurity.StrategyResourceEntry, 0, 4),
+		SecurityRules:       make([]*apisecurity.StrategyResourceEntry, 0, 4),
 		Users:               make([]*apisecurity.StrategyResourceEntry, 0, 4),
 		UserGroups:          make([]*apisecurity.StrategyResourceEntry, 0, 4),
 		Roles:               make([]*apisecurity.StrategyResourceEntry, 0, 4),
@@ -809,7 +812,15 @@ func (svr *Server) enrichResourceDetial(ctx context.Context, item authtypes.Stra
 	allMatch map[apisecurity.ResourceType]struct{}, resp *apisecurity.AuthStrategy) {
 
 	resType := apisecurity.ResourceType(item.ResType)
-	slicePtr := resourceFieldPointerGetters[resType](resp.Resources)
+	ptrGetter, ok := resourceFieldPointerGetters[resType]
+	if !ok {
+		log.Warn("[Auth][Strategy] unsupported resource type in fill-info",
+			zap.String("id", item.StrategyID), zap.String("res-id", item.ResID),
+			zap.String("res-type", resType.String()), utils.RequestID(ctx))
+		return
+	}
+
+	slicePtr := ptrGetter(resp.Resources)
 	if slicePtr.Elem().IsNil() {
 		return
 	}
@@ -827,7 +838,14 @@ func (svr *Server) enrichResourceDetial(ctx context.Context, item authtypes.Stra
 		return
 	}
 	if _, ok := allMatch[resType]; !ok {
-		if data := resourceConvert[resType](ctx, svr, item); data != nil {
+		convert, ok := resourceConvert[resType]
+		if !ok {
+			log.Warn("[Auth][Strategy] unsupported resource converter in fill-info",
+				zap.String("id", item.StrategyID), zap.String("res-id", item.ResID),
+				zap.String("res-type", resType.String()), utils.RequestID(ctx))
+			return
+		}
+		if data := convert(ctx, svr, item); data != nil {
 			// 创建一个新数组并把元素的值追加进去
 			resArr := reflect.Append(sliceVal, reflect.ValueOf(data))
 			sliceVal.Set(resArr)

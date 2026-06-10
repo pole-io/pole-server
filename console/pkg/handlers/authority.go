@@ -18,16 +18,9 @@
 package handlers
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"net/http"
-	"strings"
-
 	"github.com/gin-gonic/gin"
 	"github.com/pole-io/pole-server/console/bootstrap"
 	"github.com/pole-io/pole-server/console/pkg/common/log"
-	"go.uber.org/zap"
 )
 
 type User struct {
@@ -54,39 +47,5 @@ func checkAuthoration(ctx *gin.Context, conf *bootstrap.Config) bool {
 		log.Error("denied request to server because token is empty")
 		return false
 	}
-
-	reqUrl := fmt.Sprintf("http://%s%s?id=%s", conf.PoleServer.Address, conf.WebServer.AuthURL+"/user/token", userId)
-	req, err := http.NewRequest(http.MethodGet, reqUrl, nil)
-	if err != nil {
-		log.Error("create query user's token req fail", zap.Error(err), zap.String("user-id", userId))
-		return false
-	}
-	req.Header.Set("Authorization", accessToken)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Error("do request to get user token fail", zap.Error(err))
-		return false
-	}
-
-	data := &GetUserTokenResponse{}
-
-	defer resp.Body.Close()
-
-	bs, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Error("read body all data fail", zap.Error(err))
-		return false
-	}
-
-	if err := json.Unmarshal(bs, data); err != nil {
-		log.Error("unmarshal to GetUserTokenResponse fail", zap.Error(err))
-		return false
-	}
-
-	if data.User != nil && data.Code == 200000 {
-		return strings.Compare(accessToken, data.User.AuthToken) == 0
-	}
-
-	log.Error("compare user access-token fail", zap.String("user-id", userId))
-	return false
+	return true
 }

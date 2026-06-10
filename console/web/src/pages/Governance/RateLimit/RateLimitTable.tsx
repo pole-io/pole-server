@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Table, Space, Row, Col, Tooltip, PrimaryTableProps, TableRowData, Popconfirm, Tabs, Link } from 'tdesign-react';
+import { Button, Table, Space, Row, Col, Tooltip, PrimaryTableProps, TableRowData, Popconfirm, Tabs, Link, Empty } from 'tdesign-react';
 import { CreditcardIcon, DeleteIcon, RefreshIcon } from 'tdesign-icons-react';
 
 import RateLimitEditor, { defaultRateLimitView } from './RateLimitEditor';
@@ -22,6 +22,7 @@ import { PolicySourceType } from 'services/auth_policy';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import RuleTabs from '../RuleRelease/RuleTabs';
 import SubscribeTable from 'components/SubscribeTable';
+import RuleDetailDrawer from '../RuleRelease/RuleDetailDrawer';
 
 const { TabPanel } = Tabs;
 
@@ -54,7 +55,7 @@ const columns = (handleOpRule: (row: TableRowData, op: Op) => void, redirect: (r
     },
     {
         colKey: 'rulesCount',
-        title: '子规则数',
+        title: '规则数',
         cell: ({ row }) => (Array.isArray((row as RateLimitView).rules) ? (row as RateLimitView).rules.length : 1),
     },
     {
@@ -170,7 +171,7 @@ const RateLimitTable: React.FC<IRateLimitTableProps> = (props) => {
                     });
                 break;
             case 'authorize':
-                setEditor((prev) => ({ ...prev, authorizeVisible: true, mode: 'authorize' }));
+                setEditor((prev) => ({ ...prev, authorizeVisible: true, mode: 'authorize', data: { ...row } }));
                 break;
             default:
                 break;
@@ -278,69 +279,70 @@ const RateLimitTable: React.FC<IRateLimitTableProps> = (props) => {
     )
 
     return (
-        <Row gutter={16} className={style.customRoute}>
-            <Col span={4}>
+        <div className={style.ruleWorkspace}>
+            <section className={style.ruleListPane}>
                 {table}
-            </Col>
-            <Col span={7} style={{ marginLeft: 30 }}>
-                {editor.visible && (
-                    <div className={style.editorContainer}>
-                        <RuleTabs
-                            op={editor.mode}
-                            onVersionView={() => {
-                                refreshVersions()
-                            }}
-                            view={
-                                <>
-                                    <RateLimitEditor
-                                        limitType={props.limitType}
-                                        visible={editor.visible}
-                                        op={editor.mode}
-                                        refresh={(close: boolean) => {
-                                            if (close) {
-                                                setEditor((prev) => ({ ...prev, visible: false }));
-                                            }
-                                            refreshData(1, limit);
-                                        }}
-                                    />
-                                </>
-                            }
-                            versions={{
-                                datas: versions,
-                                action: operateRelease,
-                                editable: editor.data?.editable || true,
-                                deleteable: editor.data?.deleteable || true,
-                                loading: versionLoading,
-                                pagination: {
-                                    defaultCurrent: versionPage,
-                                    defaultPageSize: versionLimit,
-                                    total: versionTotal,
-                                    showJumper: false,
-                                    onChange(pageInfo) {
-                                        refreshVersions(pageInfo.current, pageInfo.pageSize);
-                                    },
-                                },
-                                onPageChange: (page) => {
-                                    refreshVersions(page.current, page.pageSize);
-                                }
-                            }}
-                            subscribe={
-                                <>
-                                    <div style={{ marginLeft: 20, marginTop: 20 }}>
-                                        <SubscribeTable
-                                            title={`${editor.data?.name}`}
-                                            editable={editor.data?.editable || true}
-                                            deleteable={editor.data?.deleteable || true}
-                                            subscribers={subscribers || []}
-                                        />
-                                    </div>
-                                </>
-                            }
-                        />
-                    </div>
-                )}
-            </Col>
-        </Row>
+            </section>
+            <RuleDetailDrawer
+                visible={editor.visible}
+                title={editor.mode === 'create' ? '新建限流规则' : editor.data?.name || '限流规则详情'}
+                subtitle="访问限流"
+                onClose={() => setEditor((prev) => ({ ...prev, visible: false }))}
+            >
+                <RuleTabs
+                    op={editor.mode}
+                    onVersionView={() => {
+                        refreshVersions()
+                    }}
+                    view={
+                        <>
+                            <RateLimitEditor
+                                limitType={props.limitType}
+                                visible={editor.visible}
+                                op={editor.mode}
+                                refresh={(close: boolean) => {
+                                    if (close) {
+                                        setEditor((prev) => ({ ...prev, visible: false }));
+                                    }
+                                    refreshData(1, limit);
+                                }}
+                            />
+                        </>
+                    }
+                    versions={{
+                        datas: versions,
+                        action: operateRelease,
+                        editable: editor.data?.editable ?? true,
+                        deleteable: editor.data?.deleteable ?? true,
+                        loading: versionLoading,
+                        pagination: {
+                            defaultCurrent: versionPage,
+                            defaultPageSize: versionLimit,
+                            total: versionTotal,
+                            showJumper: false,
+                            onChange(pageInfo) {
+                                refreshVersions(pageInfo.current, pageInfo.pageSize);
+                            },
+                        },
+                        onPageChange: (page) => {
+                            refreshVersions(page.current, page.pageSize);
+                        }
+                    }}
+                    subscribe={
+                        <>
+                            <div style={{ marginLeft: 20, marginTop: 20 }}>
+                                <SubscribeTable
+                                    title={`${editor.data?.name}`}
+                                    editable={editor.data?.editable ?? true}
+                                    deleteable={editor.data?.deleteable ?? true}
+                                    subscribers={subscribers || []}
+                                />
+                            </div>
+                        </>
+                    }
+                />
+            </RuleDetailDrawer>
+        </div>
     );
 };
 

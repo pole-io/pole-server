@@ -2,8 +2,47 @@
   margin-top: 15px;
 }
 
+.ruleWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.ruleListPane,
+.ruleDetailPane {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #e7ebf0;
+  border-radius: 8px;
+}
+
+.ruleListPane {
+  padding: 0 16px 16px;
+}
+
+.ruleDetailPane {
+  min-height: calc(100vh - 205px);
+}
+
+.serviceCell {
+  color: #4e5969;
+  font-size: 12px;
+  line-height: 20px;
+  margin-top: 4px;
+}
+
+.detailEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 205px);
+  color: #8b93a3;
+}
+
 .editorContainer {
   height: calc(100vh - 205px);
+  padding: 0 16px 16px;
   overflow-y: scroll;
   -ms-overflow-style: none;
   /* IE and Edge */
@@ -12,5 +51,15 @@
   &::-webkit-scrollbar {
     display: none;
     /* Chrome, Safari and Opera */
+  }
+}
+
+@media (max-width: 1180px) {
+  .ruleWorkspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ruleDetailPane {
+    min-height: auto;
   }
 }

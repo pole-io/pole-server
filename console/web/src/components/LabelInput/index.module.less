@@ -1,0 +1,72 @@
+.editor {
+  width: 100%;
+  color: #1f2329;
+}
+
+.editorHeader {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(180px, 1.2fr) 48px;
+  gap: 10px;
+  padding: 0 0 8px;
+  color: #8b93a3;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.rows {
+  display: grid;
+  gap: 8px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(180px, 1.2fr) 48px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: #f8fafc;
+  border: 1px solid #edf1f6;
+  border-radius: 8px;
+}
+
+.rowError {
+  background: #fff8f6;
+  border-color: #f5b7aa;
+}
+
+.empty,
+.emptyEditor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  color: #8b93a3;
+  background: #fbfcfe;
+  border: 1px dashed #dce3ec;
+  border-radius: 8px;
+}
+
+.emptyEditor {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  color: #8b93a3;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+@media (max-width: 720px) {
+  .editorHeader {
+    display: none;
+  }
+
+  .row {
+    grid-template-columns: 1fr;
+  }
+}

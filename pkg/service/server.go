@@ -154,14 +154,30 @@ func (s *Server) GetServiceSubscribers(ctx context.Context, query map[string]str
 		if item == nil || item.Caller == nil {
 			continue
 		}
-		svc := &apiservice.Service{
-			Name:      item.Caller.Name,
-			Namespace: item.Caller.Namespace,
-		}
-		if addErr := v1.AddAnyDataIntoBatchQuery(out, svc); addErr != nil {
+		if addErr := v1.AddAnyDataIntoBatchQuery(out, convertServiceSubscriber(item)); addErr != nil {
 			log.Errorf("[Server][Service][Subscribers] add data err: %s", addErr.Error())
 			return v1.NewBatchQueryResponse(apimodel.Code_ExecuteException)
 		}
+	}
+	return out
+}
+
+func convertServiceSubscriber(item *svctypes.ServiceSubscriber) *apiservice.ServiceSubscriber {
+	out := &apiservice.ServiceSubscriber{
+		Caller: &apiservice.ServiceKey{
+			Name:      item.Caller.Name,
+			Namespace: item.Caller.Namespace,
+		},
+		Callee: make([]*apiservice.ServiceKey, 0, len(item.Callee)),
+	}
+	for _, callee := range item.Callee {
+		if callee == nil {
+			continue
+		}
+		out.Callee = append(out.Callee, &apiservice.ServiceKey{
+			Name:      callee.Name,
+			Namespace: callee.Namespace,
+		})
 	}
 	return out
 }

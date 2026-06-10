@@ -1,6 +1,6 @@
 import React from "react";
 import { Col, Form, Input, Row, Space, Button, Select, Switch, Dialog, InputNumber, Table, FormProps, Tag, Popup, TableRowData, PrimaryTableProps, StickyTool, RadioGroup, Radio, InputAdornment, Textarea } from "tdesign-react";
-import { SendIcon, AddIcon, CloseIcon, Edit1Icon, SaveIcon, RocketIcon, RollbackIcon, RemoveIcon } from "tdesign-icons-react";
+import { SendIcon, AddIcon, ChevronDownIcon, ChevronRightIcon, CloseIcon, Edit1Icon, SaveIcon, RocketIcon, RollbackIcon, RemoveIcon } from "tdesign-icons-react";
 
 import Text from "components/Text";
 import { useAppDispatch, useAppSelector } from 'modules/store';
@@ -11,6 +11,7 @@ import { NamespaceView } from "services/namespace";
 import styles from './CircuitBreakerEditor.module.less';
 import { openErrNotification, openInfoNotification } from "utils/notifition";
 import PublishForm from "../RuleRelease/PublishForm";
+import RuleStickyAction from "../RuleRelease/RuleStickyAction";
 import { PolicySourceType } from "services/auth_policy";
 import { BlockConfig, BreakLevelMap, BreakLevelType, CircuitBreakerRule, ErrorCondition, ErrorConditionMap, ErrorConditionOptions, ErrorConditionType, FallbackConfig, FaultDetectConfig, RecoverCondition, TriggerCondition, TriggerType, TriggerTypeMap, TriggerTypeOptions } from "services/circuitbreaker";
 import { defaultBlockConfig, listOneCircuitBreaker, resetCircuitBreaker, saveCircuitBreakers, selectCircuitBreaker, updateCircuitBreakers } from "modules/governance/circuitbreaker";
@@ -114,12 +115,45 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
 
     // 创建新的 rules 对象
     const [breakerRule, setBreakerRule] = React.useState<CircuitBreakerDO>(defaultCircuitBreakerRule());
+    const [collapsedRuleIndexes, setCollapsedRuleIndexes] = React.useState<Set<number>>(() => new Set());
+
+    const toggleRuleCollapsed = (ruleIdx: number) => {
+        setCollapsedRuleIndexes(prev => {
+            const next = new Set(prev);
+            if (next.has(ruleIdx)) {
+                next.delete(ruleIdx);
+            } else {
+                next.add(ruleIdx);
+            }
+            return next;
+        });
+    };
+
+    const renderReadonlyValue = (value: React.ReactNode) => (
+        <div className={styles.readonlyValue}>{value}</div>
+    );
+
+    const renderReadonlySwitch = (enabled?: boolean) => (
+        <Tag theme={enabled ? 'success' : 'default'} variant="light">
+            {enabled ? '开启' : '关闭'}
+        </Tag>
+    );
 
     const resetCurRule = (editRule: CircuitBreakerRule) => {
         if (!editRule) {
             return;
         }
         const cloneRule = cloneDeep(editRule);
+        const sourceNamespace = cloneRule?.ruleMatcher?.source?.namespace || '*';
+        let destinationNamespace = cloneRule?.ruleMatcher?.destination?.namespace || '*';
+        let destinationService = cloneRule?.ruleMatcher?.destination?.service || '';
+        const knownNamespaces = new Set((namespaceDatas || []).map((item: NamespaceView) => item.name));
+        const swappedByOptions = knownNamespaces.has(destinationService)
+            && serviceDatas.some((item: ServiceView) => item.namespace === destinationService && item.name === destinationNamespace);
+        const swappedByNameShape = destinationService.includes('governance') && !destinationNamespace.includes('governance');
+        if ((destinationService === sourceNamespace && destinationNamespace !== sourceNamespace) || swappedByOptions || swappedByNameShape) {
+            [destinationNamespace, destinationService] = [destinationService, destinationNamespace];
+        }
         setBreakerRule({
             ...cloneRule, // Override with editRule values
             name: cloneRule?.name || '',
@@ -132,8 +166,8 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                     namespace: cloneRule?.ruleMatcher?.source?.namespace || '*'
                 },
                 destination: {
-                    service: cloneRule?.ruleMatcher?.destination?.service || '',
-                    namespace: cloneRule?.ruleMatcher?.destination?.namespace || '*',
+                    service: destinationService,
+                    namespace: destinationNamespace,
                     method: {
                         type: cloneRule?.ruleMatcher?.destination?.method?.type || MatchType.EXACT,
                         value: cloneRule?.ruleMatcher?.destination?.method?.value || ''
@@ -382,6 +416,17 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         </Space>
     )
 
+    const destinationView = React.useMemo(() => {
+        const destination = breakerRule.ruleMatcher.destination;
+        if (destination.service.includes('governance') && !destination.namespace.includes('governance')) {
+            return {
+                namespace: destination.service,
+                service: destination.namespace,
+            };
+        }
+        return destination;
+    }, [breakerRule.ruleMatcher.destination]);
+
     // 基础信息表单：第一层名称，第二层优先级与描述，第三层规则标签
     const ruleeditorState = (
         <div className={styles.sectionCard}>
@@ -605,7 +650,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                                 }}
                             />
                         ) : (
-                            <Text>{breakerRule.ruleMatcher.destination.namespace}</Text>
+                            <Text>{destinationView.namespace}</Text>
                         )}
                     </FormItem>
                     <FormItem
@@ -644,7 +689,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                                 }}
                             />
                         ) : (
-                            <Text>{breakerRule.ruleMatcher.destination.namespace}</Text>
+                            <Text>{destinationView.service}</Text>
                         )}
                     </FormItem>
                 </div>
@@ -746,17 +791,16 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
     // 匹配条件表格（单行参数填写）
     const renderMatchTable = (idx: number, rule: BlockConfig) => {
         return (
-            <div>
-                <Row align="middle" style={{ marginBottom: 8 }}>
-                    <Table
-                        rowKey="key"
-                        data={rule.error_conditions.map((item, index) => ({ ...item, key: `error-${idx}-${index}` })) || []}
-                        columns={editorState.editable ?
-                            errCondTableColumns(idx)
-                            :
-                            errCondTableColumns(idx)?.filter(col => col.colKey !== 'action')}
-                    />
-                </Row>
+            <div className={styles.compactTable}>
+                <Table
+                    rowKey="key"
+                    tableLayout="fixed"
+                    data={rule.error_conditions.map((item, index) => ({ ...item, key: `error-${idx}-${index}` })) || []}
+                    columns={editorState.editable ?
+                        errCondTableColumns(idx)
+                        :
+                        errCondTableColumns(idx)?.filter(col => col.colKey !== 'action')}
+                />
             </div>
         )
     };
@@ -899,18 +943,16 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
 
     // 路由策略分组表格（弹窗编辑标签）
     const renderGroupTable = (idx: number, rule: BlockConfig) => (
-        <div>
-            <Row align="middle" style={{ marginBottom: 8 }}>
-                <Table
-                    rowKey="key"
-                    tableLayout={'fixed'}
-                    data={rule.trigger_conditions}
-                    columns={editorState.editable ?
-                        triggerTableColumns(idx)
-                        :
-                        triggerTableColumns(idx)?.filter(col => col.colKey !== 'action')}
-                />
-            </Row>
+        <div className={styles.compactTable}>
+            <Table
+                rowKey="key"
+                tableLayout={'fixed'}
+                data={rule.trigger_conditions}
+                columns={editorState.editable ?
+                    triggerTableColumns(idx)
+                    :
+                    triggerTableColumns(idx)?.filter(col => col.colKey !== 'action')}
+            />
         </div>
     );
 
@@ -1037,64 +1079,83 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
 
     // 路由策略分组表格（弹窗编辑标签）
     const renderApiTable = (idx: number, rule: BlockConfig) => (
-        <div>
-            <Row align="middle" style={{ marginBottom: 8 }}>
-                <Table
-                    rowKey="key"
-                    tableLayout={'auto'}
-                    data={[rule.api ? rule.api : { key: `api-${idx}`, method: '', path: { type: MatchType.EXACT, value: '', value_type: MatchValueType.TEXT }, }]}
-                    columns={apiTableColumns(idx)}
-                />
-            </Row>
+        <div className={styles.compactTable}>
+            <Table
+                rowKey="key"
+                tableLayout={'fixed'}
+                data={[rule.api ? rule.api : { key: `api-${idx}`, method: '', path: { type: MatchType.EXACT, value: '', value_type: MatchValueType.TEXT }, }]}
+                columns={apiTableColumns(idx)}
+            />
         </div>
     );
 
     // 规则区块
     const renderRule = (rule: BlockConfig, idx: number) => {
+        const collapsed = collapsedRuleIndexes.has(idx);
+        const errorCount = rule.error_conditions?.length || 0;
+        const triggerCount = rule.trigger_conditions?.length || 0;
         return (
-            <div className={styles.sectionCard} key={idx} style={{ marginBottom: 24 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <span style={{ fontWeight: 600 }}>熔断策略 [{idx + 1}]</span>
-                    {editorState.editable && (
-                        <Popup trigger="hover" content="删除策略">
-                            <Button
-                                shape="circle"
-                                variant="text"
-                                onClick={() => {
-                                    const newRules = { ...breakerRule };
-                                    newRules.block_configs.splice(idx, 1);
-                                    setBreakerRule(newRules);
-                                }}>
-                                <CloseIcon />
-                            </Button>
-                        </Popup>
-                    )}
-                </div>
-                {breakerRule.level === BreakLevelType.Method && (
-                    <>
-                        <Space>
-                            接口:
-                            <div className={styles['route-editor-header-desc']}>
-                                满足以下任意应答条件的接口请求会触发熔断
+            <div className={`${styles.sectionCard} ${styles.ruleBlock}`} key={idx}>
+                <div className={styles.ruleBlockHeader}>
+                    <div className={styles.ruleHeaderMain}>
+                        <button
+                            type="button"
+                            className={styles.collapseButton}
+                            onClick={() => toggleRuleCollapsed(idx)}
+                            aria-label={collapsed ? '展开熔断策略' : '折叠熔断策略'}
+                        >
+                            {collapsed ? <ChevronRightIcon /> : <ChevronDownIcon />}
+                        </button>
+                        <div className={styles.ruleTitleGroup}>
+                            <span>熔断策略 [{idx + 1}]{rule.name ? `：${rule.name}` : ''}</span>
+                            <div className={styles.ruleSummary}>
+                                {errorCount} 个错误判断条件 / {triggerCount} 个触发条件{rule.api ? ' / 指定接口' : ''}
                             </div>
-                        </Space>
-                        {renderApiTable(idx, rule)}
-                    </>
-                )}
-                <Space>
-                    错误判断条件:
-                    <div className={styles['route-editor-header-desc']}>
-                        满足以下任意应答条件的请求会被标识为错误请求
+                        </div>
                     </div>
-                </Space>
-                {renderMatchTable(idx, rule)}
-                <Space>
-                    熔断触发条件:
-                    <div className={styles['route-editor-header-desc']}>
-                        满足以下任意条件可触发熔断
+                    <div className={styles.ruleHeaderActions}>
+                        <Tag variant="light">{BreakLevelMap[breakerRule.level as BreakLevelType] || '服务'}粒度</Tag>
+                        {editorState.editable && (
+                            <Popup trigger="hover" content="删除策略">
+                                <Button
+                                    shape="circle"
+                                    variant="text"
+                                    onClick={() => {
+                                        const newRules = { ...breakerRule };
+                                        newRules.block_configs.splice(idx, 1);
+                                        setBreakerRule(newRules);
+                                    }}>
+                                    <CloseIcon />
+                                </Button>
+                            </Popup>
+                        )}
                     </div>
-                </Space>
-                {renderGroupTable(idx, rule)}
+                </div>
+                <div className={`${styles.ruleBlockBody} ${collapsed ? styles.ruleBlockBodyCollapsed : ''}`}>
+                    {(breakerRule.level === BreakLevelType.Method || rule.api) && (
+                        <div className={styles.ruleSection}>
+                            <div className={styles.ruleSectionTitle}>接口</div>
+                            <div className={styles.ruleHelp}>
+                                满足以下接口条件的请求会进入该熔断策略判断
+                            </div>
+                            {renderApiTable(idx, rule)}
+                        </div>
+                    )}
+                    <div className={styles.ruleSection}>
+                        <div className={styles.ruleSectionTitle}>错误判断条件</div>
+                        <div className={styles.ruleHelp}>
+                            满足以下任一应答条件的请求会被标识为错误请求
+                        </div>
+                        {renderMatchTable(idx, rule)}
+                    </div>
+                    <div className={styles.ruleSection}>
+                        <div className={styles.ruleSectionTitle}>熔断触发条件</div>
+                        <div className={styles.ruleHelp}>
+                            满足以下任一统计条件即可触发熔断
+                        </div>
+                        {renderGroupTable(idx, rule)}
+                    </div>
+                </div>
             </div>
         );
     }
@@ -1111,31 +1172,35 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                 <Space>
                 </Space>
                 <FormItem label={"熔断时长"}>
-                    <div>
-                        <InputAdornment append={"秒"}>
-                            <InputNumber
-                                min={0}
-                                value={breakerRule?.recoverCondition?.sleepWindow}
-                                onChange={(val) => {
-                                    const newRules = { ...breakerRule };
-                                    newRules.recoverCondition.sleepWindow = val as number;
-                                    setBreakerRule(newRules);
-                                }} />
-                        </InputAdornment>
-                    </div>
+                    {editorState.editable ? (
+                        <div>
+                            <InputAdornment append={"秒"}>
+                                <InputNumber
+                                    min={0}
+                                    value={breakerRule?.recoverCondition?.sleepWindow}
+                                    onChange={(val) => {
+                                        const newRules = { ...breakerRule };
+                                        newRules.recoverCondition.sleepWindow = val as number;
+                                        setBreakerRule(newRules);
+                                    }} />
+                            </InputAdornment>
+                        </div>
+                    ) : renderReadonlyValue(`${breakerRule?.recoverCondition?.sleepWindow ?? '-'} 秒`)}
                 </FormItem>
                 <FormItem label={"主动探测"} help={"开启主动探测时，客户端将会根据您配置的探测规则对目标被调服务进行探测； 主动探测请求与业务调用合并判断熔断恢复（如未匹配到探测规则，则不会生效）； 未开启主动探测时，会仅根据业务调用判断熔断恢复。"}>
-                    <div>
-                        <Switch
-                            value={breakerRule?.faultDetectConfig?.enable}
-                            onChange={(checked) => {
-                                const newRules = { ...breakerRule };
-                                newRules.faultDetectConfig = {
-                                    enable: checked as boolean,
-                                }
-                                setBreakerRule(newRules);
-                            }} />
-                    </div>
+                    {editorState.editable ? (
+                        <div>
+                            <Switch
+                                value={breakerRule?.faultDetectConfig?.enable}
+                                onChange={(checked) => {
+                                    const newRules = { ...breakerRule };
+                                    newRules.faultDetectConfig = {
+                                        enable: checked as boolean,
+                                    }
+                                    setBreakerRule(newRules);
+                                }} />
+                        </div>
+                    ) : renderReadonlySwitch(breakerRule?.faultDetectConfig?.enable)}
                 </FormItem>
             </div>
         </>
@@ -1243,31 +1308,35 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                     <span style={{ fontWeight: 600 }}>熔断后降级</span>
                 </div>
                 <FormItem label={"是否开启"} help={"开启后，当熔断规则触发时，将会返回配置的响应内容"}>
-                    <div>
-                        <Switch
-                            value={breakerRule?.fallbackConfig?.enable}
-                            onChange={(checked) => {
-                                const newRules = { ...breakerRule };
-                                newRules.fallbackConfig = {
-                                    ...breakerRule.fallbackConfig,
-                                    enable: checked as boolean,
-                                }
-                                setBreakerRule(newRules);
-                            }} />
-                    </div>
+                    {editorState.editable ? (
+                        <div>
+                            <Switch
+                                value={breakerRule?.fallbackConfig?.enable}
+                                onChange={(checked) => {
+                                    const newRules = { ...breakerRule };
+                                    newRules.fallbackConfig = {
+                                        ...breakerRule.fallbackConfig,
+                                        enable: checked as boolean,
+                                    }
+                                    setBreakerRule(newRules);
+                                }} />
+                        </div>
+                    ) : renderReadonlySwitch(breakerRule?.fallbackConfig?.enable)}
                 </FormItem>
                 {breakerRule.fallbackConfig.enable && (
                     <>
                         <FormItem label={"响应码"}>
-                            <div>
-                                <InputNumber
-                                    value={breakerRule?.fallbackConfig?.response?.code}
-                                    onChange={(val) => {
-                                        const newRules = { ...breakerRule };
-                                        newRules.fallbackConfig.response.code = val as number;
-                                        setBreakerRule(newRules);
-                                    }} />
-                            </div>
+                            {editorState.editable ? (
+                                <div>
+                                    <InputNumber
+                                        value={breakerRule?.fallbackConfig?.response?.code}
+                                        onChange={(val) => {
+                                            const newRules = { ...breakerRule };
+                                            newRules.fallbackConfig.response.code = val as number;
+                                            setBreakerRule(newRules);
+                                        }} />
+                                </div>
+                            ) : renderReadonlyValue(breakerRule?.fallbackConfig?.response?.code ?? '-')}
                         </FormItem>
                         <FormItem label={"响应头"}>
                             <div>
@@ -1295,17 +1364,22 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                             </div>
                         </FormItem>
                         <FormItem label={"响应体"}>
-                            <div>
-                                <Textarea
-                                    readonly={!editorState.editable}
-                                    style={{ width: '200%' }}
-                                    value={breakerRule?.fallbackConfig?.response?.body || ''}
-                                    onChange={(value) => {
-                                        const newRules = { ...breakerRule };
-                                        newRules.fallbackConfig.response.body = value as string;
-                                        setBreakerRule(newRules);
-                                    }} />
-                            </div>
+                            {editorState.editable ? (
+                                <div>
+                                    <Textarea
+                                        style={{ width: '200%' }}
+                                        value={breakerRule?.fallbackConfig?.response?.body || ''}
+                                        onChange={(value) => {
+                                            const newRules = { ...breakerRule };
+                                            newRules.fallbackConfig.response.body = value as string;
+                                            setBreakerRule(newRules);
+                                        }} />
+                                </div>
+                            ) : (
+                                <pre className={styles.readonlyCodeBlock}>
+                                    {breakerRule?.fallbackConfig?.response?.body || '-'}
+                                </pre>
+                            )}
                         </FormItem>
                     </>
                 )}
@@ -1339,31 +1413,31 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                         offset={[-10, 200]}
                     >
                         <StickyItem
-                            label={editorState.editable ? '保存' : '编辑'}
+                            label=""
                             icon={!editorState.editable ?
-                                <Edit1Icon onClick={() => {
-                                    setEditorState({ ...editorState, editable: true });
+                                <RuleStickyAction label="编辑" icon={<Edit1Icon />} onClick={() => {
+                                    setEditorState(prev => ({ ...prev, editable: true }));
                                 }} />
                                 :
-                                <Button type="submit" variant="text" shape="square">
-                                    <SaveIcon />
-                                </Button>
+                                <RuleStickyAction label="保存" icon={<SaveIcon />} onClick={() => {
+                                    form.submit();
+                                }} />
                             }
                         />
                         {(editorState.editable) && (
-                            <StickyItem label="撤销" icon={
-                                <RollbackIcon onClick={() => {
+                            <StickyItem label="" icon={
+                                <RuleStickyAction label="撤销" icon={<RollbackIcon />} onClick={() => {
                                     if (op === 'create') {
                                         refresh(true);
                                     } else {
-                                        setEditorState({ ...editorState, editable: false });
+                                        setEditorState(prev => ({ ...prev, editable: false }));
                                     }
                                 }} />}
                             />
                         )}
                         {(!editorState.editable) && (
-                            <StickyItem label="发布" icon={
-                                <RocketIcon onClick={() => {
+                            <StickyItem label="" icon={
+                                <RuleStickyAction label="发布" icon={<RocketIcon />} onClick={() => {
                                     setEditorState(prev => ({ ...prev, publishView: true }));
                                 }} />}
                             />
@@ -1384,12 +1458,19 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
             >
                 {ruleeditorState}
                 {callinfo}
-                <div style={{ margin: '24px 0' }}>
+                <div className={styles.ruleListSection}>
+                    <div className={styles.ruleListHeader}>
+                        <span className={styles.listTitle}>熔断策略</span>
+                        <div className={styles.ruleHelp}>按错误判断条件和触发条件定义服务进入熔断的策略。</div>
+                    </div>
+                    <div className={styles.ruleList}>
                     {breakerRule.block_configs.map((rule, idx) => {
                         return renderRule(rule, idx)
                     })}
+                    </div>
                     {editorState.editable && (
                         <Button
+                            className={styles.addRuleButton}
                             variant="outline" icon={<AddIcon />}
                             onClick={() => {
                                 const newRule = { ...breakerRule }

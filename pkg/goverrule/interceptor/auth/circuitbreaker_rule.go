@@ -35,6 +35,20 @@ import (
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
+func circuitBreakerRuleMetadata(cbr *rules.CircuitBreakerRule) map[string]string {
+	if cbr == nil {
+		return nil
+	}
+	if cbr.Proto != nil {
+		return cbr.Proto.Metadata
+	}
+	specRule, err := cbr.ToSpec()
+	if err != nil || specRule == nil {
+		return nil
+	}
+	return specRule.Metadata
+}
+
 func (svr *Server) CreateCircuitBreakerRules(
 	ctx context.Context, request []*apifault.CircuitBreakerRule) *apimodel.BatchWriteResponse {
 	authCtx := svr.collectCircuitBreakerRuleV2(ctx, request, authtypes.Create,
@@ -107,8 +121,16 @@ func (svr *Server) GetOneCircuitBreakerRule(
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	resp := svr.nextSvr.GetOneCircuitBreakerRule(ctx, req)
+	if resp == nil {
+		return api.NewResponse(apimodel.Code_ExecuteException)
+	}
+	if resp.GetCode() != uint32(apimodel.Code_ExecuteSuccess) || resp.Data == nil {
+		return resp
+	}
 	rule := &apifault.CircuitBreakerRule{}
-	_ = anypb.UnmarshalTo(resp.Data, rule, proto.UnmarshalOptions{})
+	if err := anypb.UnmarshalTo(resp.Data, rule, proto.UnmarshalOptions{}); err != nil {
+		return api.NewResponse(apimodel.Code_ExecuteException)
+	}
 	rule.Editable = true
 	rule.Deleteable = true
 	authCtx.SetAccessResources(map[security.ResourceType][]authtypes.ResourceEntry{
@@ -150,7 +172,7 @@ func (svr *Server) GetCircuitBreakerRules(
 			return svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authtypes.ResourceEntry{
 				Type:     security.ResourceType_CircuitBreakerRules,
 				ID:       cbr.ID,
-				Metadata: cbr.Proto.Metadata,
+				Metadata: circuitBreakerRuleMetadata(cbr),
 			})
 		})
 	authCtx.SetRequestContext(ctx)

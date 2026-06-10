@@ -32,20 +32,11 @@ var cleanFuncMapping = map[string]func(timeout time.Duration, job *cleanDeletedR
 	"service":          cleanDeletedServices,
 	"clients":          cleanDeletedClients,
 	"service_contract": cleanDeletedServiceContracts,
-	"circuitbreaker_rule": func(timeout time.Duration, job *cleanDeletedResourceJob) {
-		cleanDeletedRules("circuitbreaker_rule", timeout, job)
+	"governance_rule": func(timeout time.Duration, job *cleanDeletedResourceJob) {
+		cleanDeletedRules("governance_rule", timeout, job)
 	},
-	"ratelimit_rule": func(timeout time.Duration, job *cleanDeletedResourceJob) {
-		cleanDeletedRules("ratelimit_rule", timeout, job)
-	},
-	"router_rule": func(timeout time.Duration, job *cleanDeletedResourceJob) {
-		cleanDeletedRules("router_rule", timeout, job)
-	},
-	"faultdetect_rule": func(timeout time.Duration, job *cleanDeletedResourceJob) {
-		cleanDeletedRules("fault_detect_rule", timeout, job)
-	},
-	"lane_rule": func(timeout time.Duration, job *cleanDeletedResourceJob) {
-		cleanDeletedRules("lane_rule", timeout, job)
+	"governance_rule_release": func(timeout time.Duration, job *cleanDeletedResourceJob) {
+		cleanDeletedRules("governance_rule_release", timeout, job)
 	},
 	"config_file_release": cleanDeletedConfigFiles,
 }
@@ -69,23 +60,11 @@ var defaultCleanDeletedResourceConfig = CleandeletedResourceConf{
 			Enable:   true,
 		},
 		{
-			Resource: "circuitbreaker_rule",
+			Resource: "governance_rule",
 			Enable:   true,
 		},
 		{
-			Resource: "ratelimit_rule",
-			Enable:   true,
-		},
-		{
-			Resource: "router_rule",
-			Enable:   true,
-		},
-		{
-			Resource: "faultdetect_rule",
-			Enable:   true,
-		},
-		{
-			Resource: "lane_rule",
+			Resource: "governance_rule_release",
 			Enable:   true,
 		},
 		{

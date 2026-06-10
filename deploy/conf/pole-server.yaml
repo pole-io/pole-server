@@ -115,31 +115,45 @@ namespace:
 naming:
   # Whether to allow automatic creation of service
   autoCreate: true
-# Configuration of health check
-healthcheck:
-  # Whether to open the health check function module
-  open: true
-  # The service of the instance of the health inspection task
-  service: pole.checker
-  # Time wheel parameters
-  slotNum: 30
-  # It is used to adjust the next execution time of instance health check tasks in the time wheel, limit the minimum inspection cycle
-  minCheckInterval: 1s
-  # It is used to adjust the next execution time of instance health inspection tasks in the time wheel, limit the maximum inspection cycle
-  maxCheckInterval: 30s
-  # Used to adjust the next execution time of SDK reporting instance health checking tasks in the time wheel
-  clientReportInterval: 120s
+  # Batch controller
   batch:
-    heartbeat:
+    register:
       open: true
       queueSize: 10240
       waitTime: 32ms
-      maxBatchCount: 32
-      concurrency: 64
-  # Health check plugin list, currently supports heartBeatMemory/heartBeatredis/heartBeatLeader.
-  # since the three belong to the same type of health check plugin, only one can be enabled to use one
-  checkers:
-    - name: heartbeat
+      maxBatchCount: 128
+      concurrency: 128
+    deregister:
+      open: true
+      queueSize: 10240
+      waitTime: 32ms
+      maxBatchCount: 128
+      concurrency: 128
+  # Configuration of health check
+  healthcheck:
+    # Whether to open the health check function module
+    open: true
+    # The service of the instance of the health inspection task
+    service: pole.checker
+    # Time wheel parameters
+    slotNum: 30
+    # It is used to adjust the next execution time of instance health check tasks in the time wheel, limit the minimum inspection cycle
+    minCheckInterval: 1s
+    # It is used to adjust the next execution time of instance health inspection tasks in the time wheel, limit the maximum inspection cycle
+    maxCheckInterval: 30s
+    # Used to adjust the next execution time of SDK reporting instance health checking tasks in the time wheel
+    clientReportInterval: 120s
+    batch:
+      heartbeat:
+        open: true
+        queueSize: 10240
+        waitTime: 32ms
+        maxBatchCount: 32
+        concurrency: 64
+    # Health check plugin list, currently supports heartBeatMemory/heartBeatredis/heartBeatLeader.
+    # since the three belong to the same type of health check plugin, only one can be enabled to use one
+    checkers:
+      - name: heartbeat
 # Configuration center module start configuration
 config:
   # Whether to start the configuration module
@@ -199,7 +213,7 @@ plugin:
       - name: HistoryLogger
   discoverEvent:
     entries:
-      - name: discoverEventLocal
+      - name: EventLogger
   statis:
     entries:
       - name: local

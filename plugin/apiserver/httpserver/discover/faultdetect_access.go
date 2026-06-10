@@ -120,7 +120,7 @@ func (h *HTTPServer) GetPublishFaultDetectRules(req *restful.Request, rsp *restf
 	filter := httpcommon.ParseQueryParams(req)
 	filter["rule_id"] = filter["id"]
 	filter["resource"] = apimodel.RuleRelease_FaultDetectRules.String()
-	handler.WriteHeaderAndProto(h.ruleServer.GetFaultDetectRules(handler.ParseHeaderContext(), filter))
+	handler.WriteHeaderAndProto(h.ruleServer.GetRuleReleases(handler.ParseHeaderContext(), filter))
 }
 
 // PublishFaultDetectRules update the fault detect rues

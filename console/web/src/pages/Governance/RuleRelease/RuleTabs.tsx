@@ -5,6 +5,7 @@ import type { PageInfo, PaginationProps, TableRowData } from 'tdesign-react';
 import { Op } from 'services/types';
 import ReleaseTable from './ReleaseTable';
 import SubscribeTable from 'components/SubscribeTable';
+import style from './RuleDetailDrawer.module.less';
 
 const { TabPanel } = Tabs;
 
@@ -16,6 +17,7 @@ export interface VersionProps {
     action: (op: Op, row: TableRowData) => void;
     editable: boolean;
     deleteable: boolean;
+    rollbackable?: boolean;
 }
 
 interface IRuleTabsProps {
@@ -33,7 +35,7 @@ const RuleTabs: React.FC<IRuleTabsProps> = (props) => {
     const [activeTab, setActiveTab] = React.useState('rule_view');
 
     return (
-        <Tabs value={activeTab} onChange={(v) => {
+        <Tabs className={style.tabs} value={activeTab} onChange={(v) => {
             switch (v) {
                 case 'rule_view':
                     props.onRulesView?.();
@@ -48,25 +50,30 @@ const RuleTabs: React.FC<IRuleTabsProps> = (props) => {
             setActiveTab(v as string)
          }}>
             <TabPanel label={"规则"} value={"rule_view"}>
-                <>{props.view}</>
+                <div className={style.viewPane}>{props.view}</div>
             </TabPanel>
             <TabPanel label='版本' value={'versions'} disabled={props.op === 'create'}>
-                {activeTab === 'versions' && (
-                    <ReleaseTable
-                        datas={props.versions.datas}
-                        action={props.versions.action}
-                        editable={props.versions.editable}
-                        deleteable={props.versions.deleteable}
-                        loading={props.versions.loading}
-                        pagination={props.versions.pagination}
-                        onPageChange={props.versions.onPageChange}
-                    />
-                )}
+                <div className={style.tablePane}>
+                    {activeTab === 'versions' && (
+                        <ReleaseTable
+                            datas={props.versions.datas}
+                            action={props.versions.action}
+                            editable={props.versions.editable}
+                            deleteable={props.versions.deleteable}
+                            rollbackable={props.versions.rollbackable}
+                            loading={props.versions.loading}
+                            pagination={props.versions.pagination}
+                            onPageChange={props.versions.onPageChange}
+                        />
+                    )}
+                </div>
             </TabPanel>
             <TabPanel label='监听' value={'listener'} disabled={props.op === 'create'}>
-                {activeTab === 'listener' && (
-                    <>{props.subscribe}</>
-                )}
+                <div className={style.tablePane}>
+                    {activeTab === 'listener' && (
+                        <>{props.subscribe}</>
+                    )}
+                </div>
             </TabPanel>
         </Tabs>
     )

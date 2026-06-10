@@ -55,9 +55,17 @@ import (
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	"github.com/pole-io/pole-server/plugin/access_control/auth"
+	_ "github.com/pole-io/pole-server/plugin/access_control/auth/policy"
+	_ "github.com/pole-io/pole-server/plugin/access_control/auth/user"
 	storeplugin "github.com/pole-io/pole-server/plugin/store"
 	sqldb "github.com/pole-io/pole-server/plugin/store/mysql"
 	testdata "github.com/pole-io/pole-server/test/data"
+
+	_ "github.com/pole-io/pole-server/pkg/config/interceptor"
+	_ "github.com/pole-io/pole-server/pkg/goverrule/interceptor"
+	_ "github.com/pole-io/pole-server/pkg/namespace/interceptor"
+	_ "github.com/pole-io/pole-server/pkg/service/interceptor"
+	_ "github.com/pole-io/pole-server/plugin/service/healthchecker/heartbeat"
 )
 
 func init() {
@@ -67,14 +75,11 @@ func init() {
 }
 
 const (
-	tblNameNamespace   = "namespace"
-	tblNameInstance    = "instance"
-	tblNameService     = "service"
-	tblNameRouting     = "routing"
-	tblRateLimitConfig = "ratelimit_rule"
-	tblCircuitBreaker  = "circuitbreaker_rule"
-	tblNameRouterRule  = "router_rule"
-	tblClient          = "client"
+	tblNameNamespace = "namespace"
+	tblNameInstance  = "instance"
+	tblNameService   = "service"
+	tblNameRouting   = "routing"
+	tblClient        = "client"
 )
 
 var (
@@ -644,9 +649,9 @@ func (d *DiscoverTestSuit) CleanCommonRoutingConfig(service string, namespace st
 			if _, err := dbTx.Exec(str, service, namespace); err != nil {
 				panic(err)
 			}
-			str = "delete from router_rulev2"
+			str = "delete from governance_rule where rule_type = ?"
 			// fmt.Printf("%s %s %s\n", str, service, namespace)
-			if _, err := dbTx.Exec(str); err != nil {
+			if _, err := dbTx.Exec(str, "route"); err != nil {
 				panic(err)
 			}
 
@@ -666,8 +671,8 @@ func (d *DiscoverTestSuit) TruncateCommonRoutingConfigV2() {
 			dbTx := tx.GetDelegateTx().(*sqldb.BaseTx)
 			defer rollbackDbTx(dbTx)
 
-			str := "delete from router_rulev2"
-			if _, err := dbTx.Exec(str); err != nil {
+			str := "delete from governance_rule where rule_type = ?"
+			if _, err := dbTx.Exec(str, "route"); err != nil {
 				panic(err)
 			}
 
@@ -689,10 +694,10 @@ func (d *DiscoverTestSuit) CleanCommonRoutingConfigV2(rules []*apitraffic.RouteR
 			dbTx := tx.GetDelegateTx().(*sqldb.BaseTx)
 			defer rollbackDbTx(dbTx)
 
-			str := "delete from router_rulev2 where id in (%s)"
+			str := "delete from governance_rule where rule_type = ? and id in (%s)"
 
 			places := []string{}
-			args := []interface{}{}
+			args := []interface{}{"route"}
 			for i := range rules {
 				places = append(places, "?")
 				args = append(args, rules[i].Id)
@@ -723,8 +728,8 @@ func (d *DiscoverTestSuit) CleanRateLimit(id string) {
 
 			defer rollbackDbTx(dbTx)
 
-			str := `delete from ratelimit_rule where id = ?`
-			if _, err := dbTx.Exec(str, id); err != nil {
+			str := `delete from governance_rule where rule_type = ? and id = ?`
+			if _, err := dbTx.Exec(str, "ratelimit", id); err != nil {
 				panic(err)
 			}
 
@@ -752,8 +757,8 @@ func (d *DiscoverTestSuit) CleanCircuitBreaker(id, version string) {
 
 			defer rollbackDbTx(dbTx)
 
-			str := `delete from circuitbreaker_rule where id = ? and version = ?`
-			if _, err := dbTx.Exec(str, id, version); err != nil {
+			str := `delete from governance_rule where rule_type = ? and id = ?`
+			if _, err := dbTx.Exec(str, "circuitbreaker", id); err != nil {
 				panic(err)
 			}
 

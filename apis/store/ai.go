@@ -21,11 +21,14 @@ import (
 	"time"
 
 	"github.com/pole-io/specification/source/go/api/v1/ai"
+
+	aitypes "github.com/pole-io/pole-server/apis/pkg/types/ai"
 )
 
 // AIStore AI module storage interface
 type AIStore interface {
 	MCPServerStore
+	A2AAgentStore
 }
 
 // ===== MCP Server Store =====
@@ -66,4 +69,18 @@ type MCPServerStore interface {
 
 	// QueryMCPServers 查询 MCP Servers（支持过滤和分页）
 	QueryMCPServers(query *ai.MCPServerQuery) (uint32, []*ai.MCPServer, error)
+}
+
+type A2AAgentStore interface {
+	CreateA2AAgent(agent *aitypes.A2AAgent) error
+	UpdateA2AAgent(agent *aitypes.A2AAgent) error
+	DeleteA2AAgent(id string) error
+	GetA2AAgent(id string) (*aitypes.A2AAgent, error)
+	GetA2AAgentByName(name, namespace string) (*aitypes.A2AAgent, error)
+	GetMoreA2AAgents(mtime time.Time, firstUpdate bool) ([]*aitypes.A2AAgent, error)
+	HasA2AAgent(id string) (bool, error)
+	HasA2AAgentByName(name, namespace string) (bool, error)
+	HasA2AAgentByNameExcludeId(name, namespace, id string) (bool, error)
+	GetA2AAgentSkills(agentID string) ([]*aitypes.A2AAgentSkill, error)
+	QueryA2AAgents(query *aitypes.A2AAgentQuery) (uint32, []*aitypes.A2AAgent, error)
 }

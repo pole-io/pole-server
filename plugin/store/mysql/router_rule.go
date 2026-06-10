@@ -19,14 +19,8 @@ package sqldb
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"strings"
 	"time"
-
-	"go.uber.org/zap"
 
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
@@ -39,6 +33,7 @@ var _ store.RouterRuleConfigStore = (*routerRuleStore)(nil)
 type routerRuleStore struct {
 	master *BaseDB
 	slave  *BaseDB
+	*governanceRuleRepository
 }
 
 // CreateRoutingConfig Add a new routing configuration
@@ -86,32 +81,18 @@ func (r *routerRuleStore) CreateRoutingConfigTx(tx store.Tx, conf *rules.RouterC
 }
 
 func (r *routerRuleStore) createRoutingConfigTx(tx *BaseTx, conf *rules.RouterConfig) error {
-	// 删除无效的数据
-	if _, err := tx.Exec("DELETE FROM router_rule WHERE id = ? AND flag = 1", conf.ID); err != nil {
-		log.Errorf("[Store][database] create routing (%+v) err: %s", conf, err.Error())
-		return store.Error(err)
-	}
-
-	insertSQL := "INSERT INTO router_rule(id, namespace, name, policy, config, enable, " +
-		" priority, revision, description, ctime, mtime, etime) VALUES (?,?,?,?,?,?,?,?,?,sysdate(),sysdate(),%s)"
-
-	var enable int
-	if conf.Enable {
-		enable = 1
-		insertSQL = fmt.Sprintf(insertSQL, "sysdate()")
-	} else {
-		enable = 0
-		insertSQL = fmt.Sprintf(insertSQL, emptyEnableTime)
-	}
-
-	log.Debug("[Store][database] create routing ", zap.String("sql", insertSQL))
-
-	if _, err := tx.Exec(insertSQL, conf.ID, conf.Namespace, conf.Name, conf.Policy,
-		conf.Config, enable, conf.Priority, conf.Revision, conf.Description); err != nil {
+	if err := r.repo().CreateRule(NewSqlDBTx(tx), routerConfigToGovernanceRuleRecord(conf)); err != nil {
 		log.Errorf("[Store][database] create routing (%+v) err: %s", conf, err.Error())
 		return store.Error(err)
 	}
 	return nil
+}
+
+func (r *routerRuleStore) repo() *governanceRuleRepository {
+	if r.governanceRuleRepository == nil {
+		r.governanceRuleRepository = newGovernanceRuleRepository(r.master, r.slave)
+	}
+	return r.governanceRuleRepository
 }
 
 // UpdateRoutingConfig Update a routing configuration
@@ -157,10 +138,7 @@ func (r *routerRuleStore) updateRoutingConfigTx(tx *BaseTx, conf *rules.RouterCo
 		return store.NewStatusError(store.EmptyParamsErr, "missing some params")
 	}
 
-	str := "update router_rule set name = ?, policy = ?, config = ?, revision = ?, priority = ?, " +
-		" description = ?, mtime = sysdate() where id = ?"
-	if _, err := tx.Exec(str, conf.Name, conf.Policy, conf.Config, conf.Revision, conf.Priority, conf.Description,
-		conf.ID); err != nil {
+	if err := r.repo().UpdateRule(NewSqlDBTx(tx), routerConfigToGovernanceRuleRecord(conf)); err != nil {
 		log.Errorf("[Store][database] update routing config (%+v) exec err: %s", conf, err.Error())
 		return store.Error(err)
 	}
@@ -174,25 +152,26 @@ func (r *routerRuleStore) EnableRouting(conf *rules.RouterConfig) error {
 	}
 
 	err := RetryTransaction("EnableRouting", func() error {
-		var (
-			enable   int
-			etimeStr string
-		)
-		if conf.Enable {
-			enable = 1
-			etimeStr = "sysdate()"
-		} else {
-			enable = 0
-			etimeStr = emptyEnableTime
-		}
-		str := fmt.Sprintf(
-			`update router_rule set enable = ?, revision = ?, mtime = sysdate(), etime=%s where id = ?`, etimeStr)
-		if _, err := r.master.Exec(str, enable, conf.Revision, conf.ID); err != nil {
-			log.Errorf("[Store][database] update outing config (%+v), sql %s, err: %s", conf, str, err)
-			return err
-		}
-
-		return nil
+		return r.master.processWithTransaction("EnableRouting", func(tx *BaseTx) error {
+			save, err := r.repo().GetRuleByID(governanceRuleTypeRoute, conf.ID)
+			if err != nil {
+				return err
+			}
+			if save == nil {
+				return nil
+			}
+			rule, err := governanceRuleRecordToRouterConfig(save)
+			if err != nil {
+				return err
+			}
+			rule.Enable = conf.Enable
+			rule.Revision = conf.Revision
+			if err := r.repo().UpdateRule(NewSqlDBTx(tx), routerConfigToGovernanceRuleRecord(rule)); err != nil {
+				log.Errorf("[Store][database] update outing config (%+v), err: %s", conf, err)
+				return err
+			}
+			return tx.Commit()
+		})
 	})
 
 	return store.Error(err)
@@ -206,49 +185,42 @@ func (r *routerRuleStore) DeleteRoutingConfig(ruleID string) error {
 		return store.NewStatusError(store.EmptyParamsErr, "missing service id")
 	}
 
-	str := `update router_rule set flag = 1, mtime = sysdate() where id = ?`
-	if _, err := r.master.Exec(str, ruleID); err != nil {
-		log.Errorf("[Store][database] delete routing config (%s) err: %s", ruleID, err.Error())
-		return store.Error(err)
-	}
+	err := r.master.processWithTransaction("DeleteRoutingConfig", func(tx *BaseTx) error {
+		if err := r.repo().DeleteRule(NewSqlDBTx(tx), governanceRuleTypeRoute, ruleID); err != nil {
+			log.Errorf("[Store][database] delete routing config (%s) err: %s", ruleID, err.Error())
+			return err
+		}
+		return tx.Commit()
+	})
 
-	return nil
+	return store.Error(err)
 }
 
 // GetMoreRouterRule Pull the incremental routing configuration information through mtime
 func (r *routerRuleStore) GetMoreRouterRule(mtime time.Time, firstUpdate bool) ([]*rules.RouterConfig, error) {
-	str := `select id, name, policy, config, enable, revision, flag, priority, description,
-	unix_timestamp(ctime), unix_timestamp(mtime), unix_timestamp(etime)  
-	from router_rule where mtime > FROM_UNIXTIME(?) `
-
-	if firstUpdate {
-		str += " and flag != 1"
-	}
-	rows, err := r.slave.Query(str, timeToTimestamp(mtime))
+	records, err := r.repo().GetMoreRulesByType(governanceRuleTypeRoute, mtime, firstUpdate)
 	if err != nil {
 		log.Errorf("[Store][database] query routing configs  with mtime err: %s", err.Error())
 		return nil, err
 	}
-	out, err := fetchRoutingConfigRows(rows)
-	if err != nil {
-		return nil, err
+	out := make([]*rules.RouterConfig, 0, len(records))
+	for i := range records {
+		item, err := governanceRuleRecordToRouterConfig(records[i])
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, item)
 	}
-
 	return out, nil
 }
 
 // GetRoutingConfigWithID Pull the routing configuration according to the rules ID
 func (r *routerRuleStore) GetRoutingConfigWithID(ruleID string) (*rules.RouterConfig, error) {
-
-	tx, err := r.master.Begin()
+	record, err := r.repo().GetRuleByID(governanceRuleTypeRoute, ruleID)
 	if err != nil {
 		return nil, err
 	}
-
-	defer func() {
-		_ = tx.Rollback()
-	}()
-	return r.getRoutingConfigWithIDTx(tx, ruleID)
+	return governanceRuleRecordToRouterConfig(record)
 }
 
 // GetRoutingConfigWithIDTx Pull the routing configuration according to the rules ID
@@ -263,73 +235,17 @@ func (r *routerRuleStore) GetRoutingConfigWithIDTx(tx store.Tx, ruleID string) (
 }
 
 func (r *routerRuleStore) getRoutingConfigWithIDTx(tx *BaseTx, ruleID string) (*rules.RouterConfig, error) {
-
-	str := `select id, name, policy, config, enable, revision, flag, priority, description,
-	unix_timestamp(ctime), unix_timestamp(mtime), unix_timestamp(etime)
-	from router_rule 
-	where id = ? and flag = 0`
-	rows, err := tx.Query(str, ruleID)
+	record, err := r.repo().GetRuleByID(governanceRuleTypeRoute, ruleID)
 	if err != nil {
 		log.Errorf("[Store][database] query routing  with id(%s) err: %s", ruleID, err.Error())
 		return nil, err
 	}
-
-	out, err := fetchRoutingConfigRows(rows)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(out) == 0 {
-		return nil, nil
-	}
-
-	return out[0], nil
+	return governanceRuleRecordToRouterConfig(record)
 }
 
 // GetRateLimitRuleVersions .
 func (r *routerRuleStore) GetRouterRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error) {
-	countSql := `SELECT COUNT(*) FROM router_rule_release WHERE rule_id = ? AND flag = 0`
-	row := r.slave.QueryRow(countSql, filter["rule_id"])
-	var count uint64
-	if err := row.Scan(&count); err != nil {
-		log.Errorf("[store][mysql][router] query router rule versions count err: %s", err.Error())
-		return 0, nil, store.Error(err)
-	}
-	if count == 0 {
-		return 0, nil, nil
-	}
-
-	querySql := `SELECT id, name, rule_id, rule_name, flag, active, version, description, release_type, unix_timestamp(ctime), unix_timestamp(mtime)
-	FROM router_rule_release
-	WHERE rule_id = ?
-		AND flag = 0 ORDER BY version DESC LIMIT ?, ?`
-	rows, err := r.slave.Query(querySql, filter["rule_id"], offset, limit)
-	if err != nil {
-		log.Errorf("[store][mysql][router] query router rule versions err: %s", err.Error())
-		return 0, nil, store.Error(err)
-	}
-
-	defer rows.Close()
-	var releases []*rules.RuleRelease
-	for rows.Next() {
-		var (
-			item         = &rules.RuleRelease{}
-			flag, active int
-			ctime, mtime int64
-		)
-		err := rows.Scan(&item.Id, &item.ReleaseName, &item.RuleId, &item.RuleName, &flag, &active, &item.Version, &item.Description, &item.ReleaseType, &ctime, &mtime)
-		if err != nil {
-			log.Errorf("[store][mysql][router] fetch router rule versions scan err: %s", err.Error())
-			return 0, nil, store.Error(err)
-		}
-		item.Active = active == 1
-		item.Valid = flag == 0
-		item.Ctime = time.Unix(ctime, 0)
-		item.Mtime = time.Unix(mtime, 0)
-		releases = append(releases, item)
-	}
-
-	return count, releases, nil
+	return r.repo().QueryReleaseVersions(ctx, governanceRuleTypeRoute, model.RuleRelease_RouteRules, filter, offset, limit)
 }
 
 // LockRouterRule implements store.RouterRuleConfigStore.
@@ -340,162 +256,40 @@ func (r *routerRuleStore) LockRouterRule(tx store.Tx, keyword string) (*rules.Ro
 	if keyword == "" {
 		return nil, ErrorMissingParams
 	}
-	dbTx := tx.GetDelegateTx().(*BaseTx)
-
-	str := `select id, name, policy, config, enable, revision, flag, priority, description,
-	unix_timestamp(ctime), unix_timestamp(mtime), unix_timestamp(etime)
-	from router_rule 
-	where (name = ? or id = ?) and flag = 0 for update`
-	rows, err := dbTx.Query(str, keyword, keyword)
+	record, err := r.repo().LockRule(tx, governanceRuleTypeRoute, keyword)
 	if err != nil {
 		log.Errorf("[Store][database] query routing  with keyword(%s) err: %s", keyword, err.Error())
 		return nil, err
 	}
-
-	out, err := fetchRoutingConfigRows(rows)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(out) == 0 {
-		return nil, nil
-	}
-	return out[0], nil
+	return governanceRuleRecordToRouterConfig(record)
 }
 
 // ActiveRouterRule implements store.RouterRuleConfigStore.
 func (r *routerRuleStore) ActiveRouterRule(tx store.Tx, release *rules.RouterRuleRelease) error {
-	if tx == nil {
-		return ErrTxIsNil
-	}
-	dbTx := tx.GetDelegateTx().(*BaseTx)
-	maxVersion, err := r.inactiveRouterRuleRelease(dbTx, release)
-	if err != nil {
-		return store.Error(err)
-	}
-
-	// 3. 设置目标规则 active=1, version=maxVersion+1, mtime=sysdate()
-	_, err = dbTx.Exec("UPDATE router_rule_release SET active=1, version=?, mtime=sysdate() WHERE id=?", maxVersion+1, release.Id)
-	return store.Error(err)
+	return r.repo().ActiveRelease(tx, routerRuleReleaseToGovernanceReleaseRecord(release))
 }
 
 // GetReleaseRouterRule 获取已发布的路由规则
 func (r *routerRuleStore) GetReleaseRouterRule(tx store.Tx, release *rules.RuleRelease) (*rules.RouterRuleRelease, error) {
-	if tx == nil {
-		return nil, ErrTxIsNil
-	}
-	dbTx := tx.GetDelegateTx().(*BaseTx)
-	querySql := `SELECT id, name, rule_id, rule_name, rule, version, active, description, release_type
-	FROM router_rule_release
-	WHERE name = ?
-		AND rule_id = ?
-		AND release_type = ?
-		AND flag = 0
-	LIMIT 1`
-	row := dbTx.QueryRow(querySql, release.ReleaseName, release.RuleId, release.ReleaseType)
-	var (
-		id, name, ruleId, ruleName, ruleStr, description, releaseType string
-		version                                                       uint64
-		active                                                        int
-	)
-	err := row.Scan(&id, &name, &ruleId, &ruleName, &ruleStr, &version, &active, &description, &releaseType)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
+	record, err := r.repo().GetRelease(tx, governanceRuleTypeRoute, release)
 	if err != nil {
-		return nil, err
+		return nil, store.Error(err)
 	}
-	ruleObj := &rules.RouterConfig{}
-	if err := json.Unmarshal([]byte(ruleStr), ruleObj); err != nil {
-		return nil, err
-	}
-	pdata, _ := ruleObj.ToExpendRoutingConfig()
-	return &rules.RouterRuleRelease{
-		RuleRelease: rules.RuleRelease{
-			Id:          id,
-			ReleaseName: name,
-			RuleId:      ruleId,
-			RuleName:    ruleName,
-			Description: description,
-			ReleaseType: rules.ReleaseType(releaseType),
-			Active:      active == 1,
-			Version:     version,
-			Valid:       true,
-		},
-		Rule: pdata,
-	}, nil
+	return governanceRuleReleaseRecordToRouterRuleRelease(record)
 }
 
 // GetActiveRouterRule implements store.RouterRuleConfigStore.
 func (r *routerRuleStore) GetActiveRouterRule(tx store.Tx, release *rules.RouterRuleRelease) (*rules.RouterRuleRelease, error) {
-	if tx == nil {
-		return nil, ErrTxIsNil
-	}
-	dbTx := tx.GetDelegateTx().(*BaseTx)
-	querySql := `SELECT id, name, rule_name, rule, version
-		, active, description, release_type
-FROM router_rule_release
-WHERE %s
-	AND active = 1
-	AND flag = 0
-ORDER by version DESC
-LIMIT 1`
-	whereHolder := []string{"1=1"}
-	args := make([]any, 0, 4)
-	if release.RuleName != "" {
-		whereHolder = append(whereHolder, "rule_name = ?")
-		args = append(args, release.RuleName)
-	}
-	if release.ReleaseName != "" {
-		whereHolder = append(whereHolder, "name = ?")
-		args = append(args, release.ReleaseName)
-	}
-	if release.ReleaseType != "" {
-		whereHolder = append(whereHolder, "release_type = ?")
-		args = append(args, release.ReleaseType)
-	}
-	querySql = fmt.Sprintf(querySql, strings.Join(whereHolder, " AND "))
-	row := dbTx.QueryRow(querySql, args...)
-	var (
-		id, name, ruleName, ruleStr, description, releaseType string
-		version                                               uint64
-		active                                                int
-	)
-	err := row.Scan(&id, &name, &ruleName, &ruleStr, &version, &active, &description, &releaseType)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
+	record, err := r.repo().GetActiveRelease(tx, routerRuleReleaseToGovernanceReleaseRecord(release))
 	if err != nil {
-		return nil, err
+		return nil, store.Error(err)
 	}
-	ruleObj := &rules.RouterConfig{}
-	if err := json.Unmarshal([]byte(ruleStr), ruleObj); err != nil {
-		return nil, err
-	}
-	pdata, _ := ruleObj.ToExpendRoutingConfig()
-	return &rules.RouterRuleRelease{
-		RuleRelease: rules.RuleRelease{
-			Id:          id,
-			ReleaseName: name,
-			Description: description,
-			ReleaseType: rules.ReleaseType(releaseType),
-			Active:      active == 1,
-			Version:     version,
-			Valid:       true,
-		},
-		Rule: pdata,
-	}, nil
+	return governanceRuleReleaseRecordToRouterRuleRelease(record)
 }
 
 // InactiveRouterRule implements store.RouterRuleConfigStore.
 func (r *routerRuleStore) InactiveRouterRule(tx store.Tx, release *rules.RouterRuleRelease) error {
-	if tx == nil {
-		return ErrTxIsNil
-	}
-	dbTx := tx.GetDelegateTx().(*BaseTx)
-	_, err := dbTx.Exec("UPDATE router_rule_release SET active = 0, mtime = sysdate() WHERE name = ? AND rule_name = ? AND active = 1",
-		release.ReleaseName, release.Rule.Name)
-	return err
+	return r.repo().InactiveRelease(tx, routerRuleReleaseToGovernanceReleaseRecord(release))
 }
 
 // PublishRouterRule implements store.RouterRuleConfigStore.
@@ -503,157 +297,28 @@ func (r *routerRuleStore) PublishRouterRule(tx store.Tx, rule *rules.RouterRuleR
 	if rule.ReleaseName == "" || rule.ReleaseType == "" {
 		return errors.New("[store][mysql][router] publish router rule missing some params")
 	}
-	if tx == nil {
-		return ErrTxIsNil
-	}
-	dbTx := tx.GetDelegateTx().(*BaseTx)
-	maxVersion, err := r.inactiveRouterRuleRelease(dbTx, rule)
-	if err != nil {
-		return store.Error(err)
-	}
-	ruleJson, err := json.Marshal(rule.Rule)
-	if err != nil {
-		return err
-	}
-	// 3. 插入新发布并激活
-	insertSql := `INSERT INTO router_rule_release (
-		id, name, rule_id, rule_name, description, release_type, rule, version, active, ctime, mtime
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, sysdate(), sysdate())`
-	_, err = dbTx.Exec(insertSql,
-		rule.Id,
-		rule.ReleaseName,
-		rule.RuleId,
-		rule.RuleName,
-		rule.Description,
-		rule.ReleaseType,
-		string(ruleJson),
-		maxVersion+1,
-	)
-	return err
-}
-
-func (r *routerRuleStore) inactiveRouterRuleRelease(tx *BaseTx, release *rules.RouterRuleRelease) (uint64, error) {
-	if tx == nil {
-		return 0, ErrTxIsNil
-	}
-
-	args := []any{release.RuleName, release.ReleaseType}
-	//	先取消所有 active == true 的记录
-	if _, err := tx.Exec("UPDATE router_rule_release SET active = 0, mtime = sysdate() "+
-		" WHERE rule_name = ? AND active = 1 AND release_type = ?", args...); err != nil {
-		return 0, err
-	}
-	return r.selectMaxVersion(tx, release)
-}
-
-func (r *routerRuleStore) selectMaxVersion(tx *BaseTx, release *rules.RouterRuleRelease) (uint64, error) {
-	if tx == nil {
-		return 0, ErrTxIsNil
-	}
-
-	args := []any{release.Rule.Name}
-	var maxVersion uint64
-	//	查询当前 release 的最大版本号
-	if err := tx.QueryRow("SELECT IFNULL(MAX(version), 0) FROM router_rule_release WHERE rule_name = ?",
-		args...).Scan(&maxVersion); err != nil {
-		return 0, err
-	}
-	return maxVersion, nil
+	return r.repo().PublishRelease(tx, routerRuleReleaseToGovernanceReleaseRecord(rule))
 }
 
 // GetMoreRouterRuleReleases implements store.RouterRuleConfigStore.
 func (r *routerRuleStore) GetMoreRouterRuleReleases(firstUpdate bool, mtime time.Time) ([]*rules.RouterRuleRelease, error) {
-	str := `SELECT id, name, description, release_type, rule, version, active, unix_timestamp(mtime) FROM router_rule_release WHERE mtime > FROM_UNIXTIME(?)`
-	if firstUpdate {
-		str += " AND active = 1"
-	}
-	rows, err := r.slave.Query(str, timeToTimestamp(mtime))
+	records, err := r.repo().GetMoreReleasesByType(governanceRuleTypeRoute, firstUpdate, mtime)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var out []*rules.RouterRuleRelease
-	for rows.Next() {
-		var (
-			id, name, description, releaseType, ruleStr string
-			version                                     uint64
-			active                                      int
-			mtime                                       int64
-		)
-		err := rows.Scan(&id, &name, &description, &releaseType, &ruleStr, &version, &active, &mtime)
+	out := make([]*rules.RouterRuleRelease, 0, len(records))
+	for i := range records {
+		release, err := governanceRuleReleaseRecordToRouterRuleRelease(records[i])
 		if err != nil {
 			return nil, err
 		}
-		ruleObj := &rules.RouterConfig{}
-		if err := json.Unmarshal([]byte(ruleStr), ruleObj); err != nil {
-			return nil, err
-		}
-		pdata, _ := ruleObj.ToExpendRoutingConfig()
-		release := &rules.RouterRuleRelease{
-			RuleRelease: rules.RuleRelease{
-				Id:          id,
-				ReleaseName: name,
-				Description: description,
-				Resource:    model.RuleRelease_RouteRules,
-				ReleaseType: rules.ReleaseType(releaseType),
-				Active:      active == 1,
-				Version:     version,
-				Valid:       true,
-				Mtime:       time.Unix(mtime, 0),
-			},
-			Rule: pdata,
-		}
 		out = append(out, release)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 	return out, nil
 }
 
 func (r *routerRuleStore) DeleteRouterRuleReleases(tx store.Tx, rule *rules.RouterRuleRelease) error {
-	if tx == nil {
-		return ErrTxIsNil
-	}
-	dbTx := tx.GetDelegateTx().(*BaseTx)
-	deleteSql := `UPDATE router_rule_release SET flag = 1, mtime = sysdate() WHERE id = ?`
-	_, err := dbTx.Exec(deleteSql, rule.Id)
-	return store.Error(err)
+	return r.repo().DeleteRelease(tx, governanceRuleTypeRoute, rule.Id)
 }
 
 // fetchRoutingConfigRows Read the data of the database and release ROWS
-func fetchRoutingConfigRows(rows *sql.Rows) ([]*rules.RouterConfig, error) {
-	defer rows.Close()
-	var out []*rules.RouterConfig
-	for rows.Next() {
-		var (
-			entry               rules.RouterConfig
-			flag, enable        int
-			ctime, mtime, etime int64
-		)
-
-		err := rows.Scan(&entry.ID, &entry.Name, &entry.Policy, &entry.Config, &enable, &entry.Revision,
-			&flag, &entry.Priority, &entry.Description, &ctime, &mtime, &etime)
-		if err != nil {
-			log.Errorf("[database][store] fetch routing config  scan err: %s", err.Error())
-			return nil, err
-		}
-
-		entry.CreateTime = time.Unix(ctime, 0)
-		entry.ModifyTime = time.Unix(mtime, 0)
-		entry.EnableTime = time.Unix(etime, 0)
-		entry.Valid = true
-		if flag == 1 {
-			entry.Valid = false
-		}
-		entry.Enable = enable == 1
-
-		out = append(out, &entry)
-	}
-	if err := rows.Err(); err != nil {
-		log.Errorf("[database][store] fetch routing config  next err: %s", err.Error())
-		return nil, err
-	}
-
-	return out, nil
-}

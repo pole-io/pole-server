@@ -1,33 +1,53 @@
-pole-server
-pole-server-*
-pole-server-release*
-pole-server-release.tar.gz
+# Build and release artifacts
+/pole-server
+/pole-server-*
+/pole-server-release*
+/pole-server-release.tar.gz
+/goimports-reviser
+/style_tool/
+/vendor/
 
-logs/
+# Runtime data and logs
+/log/
+/logs/
 /statis/
 /discover-statis/
 /discover-event/
-
-.idea
-.DS_Store
-coverage*
-
-*.swp
-*.code-workspace
-
-__debug_bin*
-
+*.log
+*.pid
 *.bolt
 *.bolt.lock
-/vendor
-.codecc
-*.log
 
-test/output
+# Test, debug, and local tool output
+/coverage/
+/coverage.*
+/coverage-*
+/test/output/
+/output/
+__debug_bin*
+*.test
 
-style_tool/
-goimports-reviser
+# Frontend dependencies and build output
+/console/node_modules/
+/console/web/node_modules/
+/console/web/dist/
+/console/web/.cache/
+/console/web/.vite/
+/console/web/coverage/
 
-console/web/node_modules
-console/web/dist
-console/node_modules
+# Local environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Editor and OS files
+/.superpowers/
+/.idea/
+.DS_Store
+*.swp
+*.swo
+*.code-workspace
+
+# Static analysis cache
+/.codecc/

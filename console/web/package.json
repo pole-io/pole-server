@@ -12,6 +12,7 @@
     "site:preview": "npm run build && cp -r dist _site",
     "preview": "vite preview --mode test",
     "test": "echo \"no test specified,work in process\"",
+    "test:response-mapping": "node scripts/verify-standard-response-mapping.mjs",
     "test:coverage": "echo \"no test specified,work in process\"",
     "lint": "eslint ./src --ext ts,tsx",
     "lint:fix": "eslint ./src --ext ts,tsx --fix",

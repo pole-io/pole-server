@@ -1,0 +1,181 @@
+.sectionCard {
+    border: 1px solid #e1e6ef;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.ruleListSection {
+    margin-bottom: 24px;
+}
+
+.ruleList {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ruleBlock {
+    padding: 16px 18px 18px;
+}
+
+.ruleBlockHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    color: #111827;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 24px;
+}
+
+.ruleHeaderMain {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 8px;
+}
+
+.ruleHeaderActions {
+    display: flex;
+    align-items: center;
+    flex: none;
+    gap: 8px;
+}
+
+.ruleTitleGroup {
+    min-width: 0;
+}
+
+.ruleSummary {
+    margin-top: 2px;
+    color: #8b95a5;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 18px;
+}
+
+.collapseButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.collapseButton:hover {
+    background: #eef3ff;
+    color: #366ef4;
+}
+
+.ruleBlockBody {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.ruleBlockBodyCollapsed {
+    display: none;
+}
+
+.ruleSection {
+    border-top: 1px solid #edf0f5;
+    padding-top: 14px;
+}
+
+.ruleSectionHeader {
+    margin-bottom: 10px;
+}
+
+.ruleSectionTitle {
+    color: #111827;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 22px;
+}
+
+.ruleHelp {
+    color: #8b95a5;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 20px;
+    margin-top: 4px;
+}
+
+.fieldRow {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+    margin-top: 12px;
+}
+
+.fieldLabel {
+    color: #4b5563;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 32px;
+}
+
+.fieldControl {
+    min-width: 0;
+}
+
+.compactTable {
+    min-width: 0;
+
+    :global(.t-table) {
+        width: 100%;
+    }
+
+    :global(.t-table__cell) {
+        white-space: normal;
+        word-break: break-word;
+    }
+}
+
+.inlineAdd {
+    margin-top: 8px;
+    padding-left: 0;
+}
+
+.inlineConfig {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+
+    :global(.t-form__item) {
+        margin-bottom: 0;
+    }
+}
+
+.inlineHint {
+    color: #8b95a5;
+    font-size: 13px;
+    line-height: 20px;
+}
+
+.addRuleButton {
+    margin-top: 12px;
+}
+
+@media (max-width: 960px) {
+    .ruleBlockHeader {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .fieldRow {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+    }
+}

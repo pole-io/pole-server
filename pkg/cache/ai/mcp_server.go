@@ -211,6 +211,15 @@ func (mc *mcpServerCache) Query(query *ai.MCPServerQuery) (uint32, []*ai.MCPServ
 		if query.Protocol != "" && s.Protocol != query.Protocol {
 			return
 		}
+		if query.BackendType != "" && s.BackendType != query.BackendType {
+			return
+		}
+		if query.BackendServiceNamespace != "" && s.BackendServiceNamespace != query.BackendServiceNamespace {
+			return
+		}
+		if query.BackendServiceName != "" && s.BackendServiceName != query.BackendServiceName {
+			return
+		}
 		matched = append(matched, s)
 	})
 

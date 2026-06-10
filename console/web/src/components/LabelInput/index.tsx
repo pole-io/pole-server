@@ -1,40 +1,55 @@
-import React, { } from 'react';
+import React from 'react';
 import { Label } from 'services/types';
-import { AddIcon, CloseIcon } from 'tdesign-icons-react';
-import { Button, Col, Form, Input, Popup, Row, Table } from 'tdesign-react';
-import type { CustomValidator, Data, FieldData, InternalFormInstance, NamePath, PrimaryTableProps, TableRowData } from 'tdesign-react';
+import { AddIcon, DeleteIcon } from 'tdesign-icons-react';
+import { Button, Form, Input, Popup, Space, Tag } from 'tdesign-react';
+import type { CustomValidator, FieldData, InternalFormInstance, NamePath } from 'tdesign-react';
 
-const { FormItem, FormList } = Form;
+import style from './index.module.less';
+
+const { FormItem } = Form;
 
 interface ILabelInputProps {
-    form: InternalFormInstance;
+    form?: InternalFormInstance;
     name: NamePath;
     label: string;
     editable?: boolean;
+    disabled?: boolean;
+    keyPlaceholder?: string;
+    valuePlaceholder?: string;
 }
 
-const LabelInput: React.FC<ILabelInputProps> = ({ form, name, label, editable }) => {
-    const [labels, setLabels] = React.useState<Label[]>([]);
+const normalizeLabels = (value: unknown): Label[] => {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+    return value.map((item) => ({
+        key: item?.key ?? '',
+        value: item?.value ?? '',
+    }));
+};
 
-    const resLabels: Label[] = Form.useWatch(name, form);
-    const [loaded, setLoaded] = React.useState(false);
+const LabelInput: React.FC<ILabelInputProps> = ({
+    form,
+    name,
+    label,
+    editable,
+    disabled,
+    keyPlaceholder = '标签键',
+    valuePlaceholder = '标签值',
+}) => {
+    const watchedLabels = Form.useWatch(name, form);
+    const [labels, setLabels] = React.useState<Label[]>(() => normalizeLabels(form?.getFieldValue(name)));
+    const canEdit = editable !== undefined ? editable : !disabled;
 
     React.useEffect(() => {
-        if (!resLabels || loaded) {
-            return;
-        }
-        setLoaded(true);
-        const initialLabels = form.getFieldValue(name) || [];
-        setLabels(initialLabels as Label[]);
-    }, [resLabels]);
+        const nextLabels = normalizeLabels(watchedLabels ?? form?.getFieldValue(name));
+        setLabels(nextLabels);
+    }, [watchedLabels, form, name]);
 
-    const labelsValidator: CustomValidator = (val) => {
-        if (!form) {
-            return { result: true, message: '' };
-        }
-        const labels = form.getFieldValue(name) as Label[];
-        const keys = labels.map(label => label.key);
-        const hasDuplicate = keys.length !== new Set(keys).size;
+    const labelsValidator: CustomValidator = () => {
+        const currentLabels = normalizeLabels(form?.getFieldValue(name) ?? labels);
+        const filledKeys = currentLabels.map((item) => item.key.trim()).filter(Boolean);
+        const hasDuplicate = filledKeys.length !== new Set(filledKeys).size;
         if (hasDuplicate) {
             return {
                 result: false,
@@ -45,127 +60,113 @@ const LabelInput: React.FC<ILabelInputProps> = ({ form, name, label, editable })
         return { result: true, message: '' };
     };
 
-    const addLabel = (callback: (fields: FieldData[]) => void) => {
-        const newLabels = [...labels];
-        newLabels.push({ key: '', value: '' });
-        setLabels(newLabels);
-        callback([{
-            name: name,
-            value: newLabels,
+    const syncLabels = (nextLabels: Label[], setFields?: (fields: FieldData[]) => void) => {
+        setLabels(nextLabels);
+        setFields?.([{
+            name,
+            value: nextLabels,
         }]);
     };
 
-
-    const delLabel = (idx: number, callback: (fields: FieldData[]) => void) => {
-        const newLabels = [...labels];
-        newLabels.splice(idx, 1);
-        setLabels(newLabels);
-        callback([{
-            name: name,
-            value: newLabels,
-        }]);
+    const addLabel = (setFields?: (fields: FieldData[]) => void) => {
+        syncLabels([...labels, { key: '', value: '' }], setFields);
     };
 
-    const updateLabel = (idx: number, args: Label, callback: (fields: FieldData[]) => void) => {
-        const newLabels = [...labels];
-        if (idx < newLabels.length) {
-            newLabels[idx] = {
-                ...newLabels[idx],
-                ...Object.fromEntries(Object.entries(args).filter(([_, value]) => value !== undefined && value !== null)),
-            };
-        } else {
-            newLabels.push(args);
+    const removeLabel = (idx: number, setFields?: (fields: FieldData[]) => void) => {
+        syncLabels(labels.filter((_, index) => index !== idx), setFields);
+    };
+
+    const updateLabel = (idx: number, field: keyof Label, value: string, setFields?: (fields: FieldData[]) => void) => {
+        const nextLabels = labels.map((item, index) => index === idx ? { ...item, [field]: value } : item);
+        syncLabels(nextLabels, setFields);
+    };
+
+    const keyCount = labels.reduce<Record<string, number>>((acc, item) => {
+        const key = item.key.trim();
+        if (key) {
+            acc[key] = (acc[key] || 0) + 1;
         }
-        setLabels(newLabels);
-        callback([{
-            name: name,
-            value: newLabels,
-        }]);
+        return acc;
+    }, {});
+
+    const renderReadOnly = () => {
+        if (!labels.length) {
+            return <div className={style.empty}>暂无标签</div>;
+        }
+        return (
+            <Space breakLine>
+                {labels.map((item, index) => (
+                    <Tag key={`${item.key}-${index}`} theme="primary" variant="light">
+                        {item.key}: {item.value}
+                    </Tag>
+                ))}
+            </Space>
+        );
     };
 
-    const labelTableColumns = (setFields: (fields: FieldData[]) => void): PrimaryTableProps['columns'] => [
-        {
-            colKey: 'key',
-            title: '参数键',
-            edit: {
-                keepEditMode: editable,
-                showEditIcon: editable,
-                component: Input,
-                abortEditOnEvent: ['onChange'],
-                props: {
-                    clearable: true,
-                },
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    updateLabel(context.rowIndex, context.newRowData as Label, setFields);
-                },
-            },
-        },
-        {
-            colKey: 'value',
-            title: '匹配值',
-            edit: {
-                keepEditMode: editable,
-                showEditIcon: editable,
-                component: Input,
-                abortEditOnEvent: ['onChange'],
-                props: {
-                    clearable: true,
-                },
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    updateLabel(context.rowIndex, context.newRowData as Label, setFields);
-                },
-            },
-        },
-        {
-            colKey: 'action',
-            title: '操作',
-            cell: ({ row, rowIndex }) => (
-                <Popup trigger="hover" content="删除参数">
-                    <Button
-                        shape="circle"
-                        variant="text"
-                        onClick={() => {
-                            delLabel(rowIndex, setFields);
-                        }}>
-                        <CloseIcon />
+    const renderEditor = (setFields?: (fields: FieldData[]) => void) => (
+        <div className={style.editor}>
+            <div className={style.editorHeader}>
+                <span>键</span>
+                <span>值</span>
+                <span>操作</span>
+            </div>
+            {labels.length === 0 ? (
+                <div className={style.emptyEditor}>
+                    <div>暂无标签</div>
+                    <Button size="small" variant="text" icon={<AddIcon />} onClick={() => addLabel(setFields)}>
+                        添加标签
                     </Button>
-                </Popup>
-
-            ),
-        }
-    ]
+                </div>
+            ) : (
+                <div className={style.rows}>
+                    {labels.map((item, index) => {
+                        const duplicated = item.key.trim() !== '' && keyCount[item.key.trim()] > 1;
+                        return (
+                            <div key={`${index}-${item.key}`} className={`${style.row} ${duplicated ? style.rowError : ''}`}>
+                                <Input
+                                    value={item.key}
+                                    clearable
+                                    placeholder={keyPlaceholder}
+                                    onChange={(value) => updateLabel(index, 'key', value, setFields)}
+                                />
+                                <Input
+                                    value={item.value}
+                                    clearable
+                                    placeholder={valuePlaceholder}
+                                    onChange={(value) => updateLabel(index, 'value', value, setFields)}
+                                />
+                                <Popup trigger="hover" content="删除标签">
+                                    <Button
+                                        shape="square"
+                                        variant="text"
+                                        onClick={() => removeLabel(index, setFields)}
+                                    >
+                                        <DeleteIcon />
+                                    </Button>
+                                </Popup>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+            <div className={style.footer}>
+                <Button size="small" variant="text" icon={<AddIcon />} onClick={() => addLabel(setFields)}>
+                    添加标签
+                </Button>
+                <span>{labels.length} 个标签</span>
+            </div>
+        </div>
+    );
 
     return (
-        <div style={{ marginTop: 20 }}>
-            <Row align="middle" style={{ marginBottom: 8 }}>
-                <FormItem>
-                    {({ getFieldValue, setFieldsValue, setFields }) => {
-                        return (
-                            <FormItem label={label} name={name} rules={[{ validator: labelsValidator }]}>
-                                <Table
-                                    rowKey="key"
-                                    data={labels || []}
-                                    columns={editable ? labelTableColumns(setFields) : labelTableColumns(setFields)?.filter(col => col.colKey !== 'action')}
-                                />
-                            </FormItem>
-                        )
-                    }}
+        <FormItem>
+            {({ setFields }) => (
+                <FormItem label={label} name={name} rules={[{ validator: labelsValidator }]}>
+                    {canEdit ? renderEditor(setFields) : renderReadOnly()}
                 </FormItem>
-                <FormItem>
-                    {({ getFieldValue, setFieldsValue, setFields }) => {
-                        return (
-                            <FormItem label=" ">
-                                <Col span={2}>
-                                    {editable && (
-                                        <Button variant="text" onClick={() => addLabel(setFields)} icon={<AddIcon />}>添加</Button>
-                                    )}
-                                </Col>
-                            </FormItem>
-                        )
-                    }}
-                </FormItem>
-            </Row>
-        </div>
+            )}
+        </FormItem>
     );
 };
 

@@ -236,11 +236,14 @@ CREATE TABLE
         `caller_namespace` VARCHAR(64) NOT NULL COMMENT 'Namespace belongs to the service',
         `callee_name` VARCHAR(128) NOT NULL COMMENT 'Service name, only under the namespace',
         `callee_namespace` VARCHAR(64) NOT NULL COMMENT 'Namespace belongs to the service',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
         PRIMARY KEY (`id`),
         KEY `caller_name` (`caller_name`),
         KEY `caller_namespace` (`caller_namespace`),
         KEY `callee_name` (`callee_name`),
-        KEY `callee_namespace` (`callee_namespace`)
+        KEY `callee_namespace` (`callee_namespace`),
+        KEY `mtime` (`mtime`)
     ) ENGINE = InnoDB;
 
 
@@ -558,256 +561,72 @@ CREATE TABLE
     ) ENGINE = InnoDB;
 
 -- ---------------------------------------------------------------------------
--- 规则表 / 规则发布表 设计说明（参考 router_rule / router_rule_release）
--- 规则表：仅保留公共列 + rule TEXT（规则内容 JSON）。特殊、自定义字段全部放入 rule 的 JSON。
--- 发布表：仅保留公共列 + rule TEXT（发布快照 JSON）。列：id, name, rule_id, rule_name, rule, flag, version, active, description, release_type, ctime, mtime。
--- 从旧表迁移时需将原专用列写入 rule JSON 并删除原列。
+-- 治理规则统一表
+-- 当前态与发布态通过 rule_type 区分路由、限流、熔断、主动探测、无损、泳道组。
 -- ---------------------------------------------------------------------------
 
-/* 自定义路由（参考表：公共列 + rule 存整条规则 JSON，与 release 一致） */
 CREATE TABLE
-    `router_rule` (
-        `id` VARCHAR(128) NOT NULL,
-        `name` VARCHAR(64) NOT NULL DEFAULT '',
-        `namespace` VARCHAR(64) NOT NULL DEFAULT '',
-        `revision` VARCHAR(40) NOT NULL,
-        `description` VARCHAR(500) NOT NULL DEFAULT '',
-        `flag` TINYINT (4) NOT NULL DEFAULT '0',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        `etime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `metadata` TEXT COMMENT 'route rule metadata',
-        `rule` TEXT COMMENT '规则内容 JSON，含 policy/config/enable/priority 等',
-        PRIMARY KEY (`id`),
-        UNIQUE KEY `uk_rule_name` (`name`),
-        KEY `mtime` (`mtime`)
-    ) ENGINE = innodb;
-
-/* 自定义路由发布表 */
-CREATE TABLE
-    `router_rule_release` (
-        `id` VARCHAR(128) NOT NULL,
-        `name` VARCHAR(64) NOT NULL DEFAULT '',
-        `rule_id` VARCHAR(128) NOT NULL COMMENT '规则 ID',
-        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '规则名称',
-        `namespace` VARCHAR(64) NOT NULL DEFAULT '',
-        `rule` TEXT COMMENT '发布快照 JSON',
-        `flag` TINYINT (4) NOT NULL DEFAULT '0',
-        `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
-        `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
-        `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
-        `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        PRIMARY KEY (`id`),
-        UNIQUE KEY `uk_rule_id_name_version` (`rule_id`, `rule_name`, `version`),
-        KEY `mtime` (`mtime`)
-    ) ENGINE = innodb;
-
-/* 限流规则（公共列 + rule JSON：disable/service_id/method/labels/priority 等） */
-CREATE TABLE
-    `ratelimit_rule` (
-        `id` VARCHAR(32) NOT NULL COMMENT 'ratelimit rule ID',
-        `name` VARCHAR(64) NOT NULL COMMENT 'ratelimit rule name',
+    `governance_rule` (
+        `id` VARCHAR(128) NOT NULL COMMENT 'rule id',
+        `rule_type` VARCHAR(64) NOT NULL COMMENT 'governance rule type',
         `namespace` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'namespace',
-        `revision` VARCHAR(32) NOT NULL COMMENT 'Limiting version',
-        `description` VARCHAR(512) NOT NULL DEFAULT '' COMMENT '描述',
-        `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means that it has been logically deleted',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
-        `etime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'RateLimit rule enable time',
-        `metadata` TEXT COMMENT 'ratelimit rule metadata',
-        `rule` TEXT NOT NULL COMMENT '规则内容 JSON，含 disable/service_id/method/labels/priority 及限流配置',
+        `name` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'rule name',
+        `service_id` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'service id',
+        `service` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'service name',
+        `method` VARCHAR(512) NOT NULL DEFAULT '' COMMENT 'method',
+        `priority` INT NOT NULL DEFAULT 0 COMMENT 'rule priority',
+        `enable` TINYINT (4) NOT NULL DEFAULT 1 COMMENT 'enable flag',
+        `disable` TINYINT (4) NOT NULL DEFAULT 0 COMMENT 'disable flag',
+        `level` VARCHAR(32) NOT NULL DEFAULT '' COMMENT 'breaker level',
+        `src_service` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'source service',
+        `src_namespace` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'source namespace',
+        `dst_service` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'destination service',
+        `dst_namespace` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'destination namespace',
+        `dst_method` VARCHAR(512) NOT NULL DEFAULT '' COMMENT 'destination method',
+        `labels` TEXT COMMENT 'labels json',
+        `policy` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'route policy',
+        `config` TEXT COMMENT 'config json',
+        `rule` MEDIUMTEXT COMMENT 'rule json',
+        `revision` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'rule revision',
+        `description` VARCHAR(1024) NOT NULL DEFAULT '' COMMENT 'description',
+        `metadata` TEXT COMMENT 'metadata json',
+        `flag` TINYINT (4) NOT NULL DEFAULT 0 COMMENT 'delete flag',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'create time',
+        `etime` TIMESTAMP NOT NULL DEFAULT '1980-01-01 00:00:01' COMMENT 'enable time',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'modify time',
         PRIMARY KEY (`id`),
-        KEY `mtime` (`mtime`)
-    ) ENGINE = InnoDB;
+        KEY `idx_rule_type_name` (`rule_type`, `name`),
+        KEY `idx_rule_type_namespace_name` (`rule_type`, `namespace`, `name`),
+        KEY `idx_rule_type_mtime` (`rule_type`, `mtime`),
+        KEY `idx_rule_type_service` (`rule_type`, `namespace`, `service`)
+    ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = 'governance rule unified table';
 
-/* 限流规则发布表 */
 CREATE TABLE
-    `ratelimit_rule_release` (
-        `id` VARCHAR(32) NOT NULL COMMENT 'ratelimit rule ID',
-        `name` VARCHAR(64) NOT NULL COMMENT 'release name',
-        `rule_id` VARCHAR(128) NOT NULL COMMENT '规则 ID',
-        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '规则名称',
-        `rule` TEXT NOT NULL COMMENT '发布快照 JSON',
-        `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag',
-        `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
-        `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
-        `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
-        `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
+    `governance_rule_release` (
+        `id` VARCHAR(128) NOT NULL COMMENT 'release id',
+        `rule_type` VARCHAR(64) NOT NULL COMMENT 'governance rule type',
+        `name` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'release name',
+        `rule_id` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'rule id',
+        `rule_name` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'rule name',
+        `namespace` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'namespace',
+        `service` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'service name',
+        `rule` MEDIUMTEXT COMMENT 'released rule json',
+        `version` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'release version',
+        `active` TINYINT (4) NOT NULL DEFAULT 0 COMMENT 'active flag',
+        `description` VARCHAR(1024) NOT NULL DEFAULT '' COMMENT 'description',
+        `release_type` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'release type',
+        `client_labels` TEXT COMMENT 'gray client labels json',
+        `metadata` TEXT COMMENT 'metadata json',
+        `flag` TINYINT (4) NOT NULL DEFAULT 0 COMMENT 'delete flag',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'create time',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'modify time',
         PRIMARY KEY (`id`),
-        KEY `mtime` (`mtime`),
-        KEY `rule_name` (`rule_name`)
-    ) ENGINE = InnoDB;
-
-/* 熔断规则（公共列 + rule JSON：enable/level/src_service/dst_service/config 等） */
-CREATE TABLE
-    `circuitbreaker_rule` (
-        `id` VARCHAR(128) NOT NULL,
-        `name` VARCHAR(64) NOT NULL,
-        `namespace` VARCHAR(64) NOT NULL DEFAULT '',
-        `revision` VARCHAR(40) NOT NULL,
-        `description` VARCHAR(1024) NOT NULL DEFAULT '',
-        `flag` TINYINT (4) NOT NULL DEFAULT '0',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        `etime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `metadata` TEXT COMMENT 'circuit_breaker rule metadata',
-        `rule` TEXT NOT NULL COMMENT '规则内容 JSON，含 enable/level/src_service/dst_service/config 等',
-        PRIMARY KEY (`id`),
-        KEY `name` (`name`),
-        KEY `mtime` (`mtime`)
-    ) ENGINE = innodb;
-
-/* 熔断规则发布表 */
-CREATE TABLE
-    `circuitbreaker_rule_release` (
-        `id` VARCHAR(128) NOT NULL,
-        `name` VARCHAR(64) NOT NULL,
-        `rule_id` VARCHAR(128) NOT NULL COMMENT '规则 ID',
-        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '规则名称',
-        `rule` TEXT NOT NULL COMMENT '发布快照 JSON',
-        `flag` TINYINT (4) NOT NULL DEFAULT '0',
-        `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
-        `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
-        `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
-        `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        PRIMARY KEY (`id`),
-        KEY `name` (`name`),
-        KEY `mtime` (`mtime`)
-    ) ENGINE = innodb;
-
-/* 主动探测（公共列 + rule JSON：dst_service/dst_namespace/dst_method/config 等） */
-CREATE TABLE
-    `fault_detect_rule` (
-        `id` VARCHAR(128) NOT NULL,
-        `name` VARCHAR(64) NOT NULL,
-        `namespace` VARCHAR(64) NOT NULL DEFAULT 'default',
-        `revision` VARCHAR(40) NOT NULL,
-        `description` VARCHAR(1024) NOT NULL DEFAULT '',
-        `flag` TINYINT (4) NOT NULL DEFAULT '0',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        `metadata` TEXT COMMENT 'faultdetect rule metadata',
-        `rule` TEXT NOT NULL COMMENT '规则内容 JSON，含 dst_service/dst_namespace/dst_method/config 等',
-        PRIMARY KEY (`id`),
-        KEY `name` (`name`),
-        KEY `mtime` (`mtime`)
-    ) ENGINE = innodb;
-
-/* 主动探测规则发布表 */
-CREATE TABLE
-    `fault_detect_rule_release` (
-        `id` VARCHAR(128) NOT NULL,
-        `name` VARCHAR(64) NOT NULL,
-        `rule_id` VARCHAR(128) NOT NULL COMMENT '规则 ID',
-        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '规则名称',
-        `rule` TEXT NOT NULL COMMENT '发布快照 JSON',
-        `flag` TINYINT (4) NOT NULL DEFAULT '0',
-        `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
-        `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
-        `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
-        `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        PRIMARY KEY (`id`),
-        KEY `name` (`name`),
-        KEY `mtime` (`mtime`)
-    ) ENGINE = innodb;
-
-/* 无损发布规则（公共列 + rule JSON：service/config 等） */
-CREATE TABLE
-    `lossless_rule` (
-        `id` VARCHAR(128) NOT NULL,
-        `namespace` VARCHAR(64) NOT NULL DEFAULT 'default',
-        `revision` VARCHAR(40) NOT NULL,
-        `description` VARCHAR(1024) NOT NULL DEFAULT '',
-        `flag` TINYINT (4) NOT NULL DEFAULT '0',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        `metadata` TEXT COMMENT 'lossless rule metadata',
-        `rule` TEXT NOT NULL COMMENT '规则内容 JSON，含 service/config 等',
-        PRIMARY KEY (`id`),
-        KEY `mtime` (`mtime`)
-    ) ENGINE = innodb;
-
-/* 主无损发布规则发布表 */
-CREATE TABLE
-    `lossless_rule_release` (
-        `id` VARCHAR(128) NOT NULL,
-        `name` VARCHAR(64) NOT NULL,
-        `rule_id` VARCHAR(128) NOT NULL COMMENT '规则 ID',
-        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '规则名称',
-        `rule` TEXT NOT NULL COMMENT '发布快照 JSON',
-        `flag` TINYINT (4) NOT NULL DEFAULT '0',
-        `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
-        `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
-        `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
-        `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
-        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        PRIMARY KEY (`id`),
-        UNIQUE KEY `name` (`name`),
-        KEY `mtime` (`mtime`)
-    ) ENGINE = innodb;
-
-/* 泳道组规则 */
-CREATE TABLE
-    `lane_group` (
-        `id` varchar(128) not null comment '泳道分组 ID',
-        `name` varchar(64) not null comment '泳道分组名称',
-        `rule` text not null comment '规则的 json 字符串',
-        `description` varchar(3000) comment '规则描述',
-        `revision` VARCHAR(40) NOT NULL comment '规则摘要',
-        `flag` tinyint default 0 comment '软删除标识位',
-        `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        `metadata` TEXT COMMENT 'lane rule metadata',
-        PRIMARY KEY (`id`),
-        UNIQUE KEY `name` (`name`)
-    ) ENGINE = InnoDB;
-
-/* 泳道规则 */
-CREATE TABLE
-    `lane_rule` (
-        `id` varchar(128) not null comment '规则 id',
-        `name` varchar(64) not null comment '规则名称',
-        `group_name` varchar(64) not null comment '泳道分组名称',
-        `rule` text not null comment '规则的 json 字符串',
-        `revision` VARCHAR(40) NOT NULL comment '规则摘要',
-        `description` varchar(3000) comment '规则描述',
-        `enable` tinyint comment '是否启用',
-        `flag` tinyint default 0 comment '软删除标识位',
-        `priority` bigint NOT NULL DEFAULT 0 comment '泳道规则优先级',
-        `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `etime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        PRIMARY KEY (`id`),
-        UNIQUE KEY `name` (`group_name`, `name`)
-    ) ENGINE = InnoDB;
-
-/* 泳道组规则发布表 */
-CREATE TABLE
-    `lane_group_release` (
-        `id` varchar(128) not null comment '泳道分组 ID',
-        `name` varchar(64) not null comment '泳道分组名称',
-        `rule_id` VARCHAR(128) NOT NULL COMMENT 'router rule ID',
-        `rule_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'router rule name',
-        `rule` text not null comment '规则的 json 字符串',
-        `flag` tinyint default 0 comment '软删除标识位',
-        `version` BIGINT (11) NOT NULL COMMENT '版本号，每次发布自增1',
-        `active` TINYINT (4) NOT NULL DEFAULT '0' COMMENT '是否处于使用中',
-        `description` VARCHAR(512) DEFAULT NULL COMMENT '发布描述',
-        `release_type` VARCHAR(25) NOT NULL DEFAULT '' COMMENT '发布类型：""：全量 gray：灰度',
-        `ctime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `mtime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        PRIMARY KEY (`id`),
-        UNIQUE KEY `name` (`name`)
-    ) ENGINE = InnoDB;
+        KEY `idx_rule_type_rule_id` (`rule_type`, `rule_id`),
+        KEY `idx_rule_type_rule_name` (`rule_type`, `rule_name`),
+        KEY `idx_rule_type_release` (`rule_type`, `rule_id`, `name`, `release_type`),
+        KEY `idx_rule_type_active` (`rule_type`, `active`, `release_type`),
+        KEY `idx_rule_type_mtime` (`rule_type`, `mtime`)
+    ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = 'governance rule release unified table';
 
 /* 服务契约表 */
 CREATE TABLE
@@ -901,6 +720,10 @@ CREATE TABLE
         `flag` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means that it has been logically deleted',
         `reference` VARCHAR(32) DEFAULT NULL COMMENT 'mcp-server what is the actual service name that the service is actually pointed out?',
         `protocol` VARCHAR(32) NOT NULL DEFAULT 'http' COMMENT 'mcp-server protocol, such as stdout/sse/streamable',
+        `backend_type` VARCHAR(32) DEFAULT NULL COMMENT 'mcp-server backend type, service or address',
+        `backend_service_namespace` VARCHAR(64) DEFAULT NULL COMMENT 'backend pole service namespace when backend_type is service',
+        `backend_service_name` VARCHAR(128) DEFAULT NULL COMMENT 'backend pole service name when backend_type is service',
+        `backend_address` TEXT DEFAULT NULL COMMENT 'backend address when backend_type is address',
         `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
         `export_to` TEXT COMMENT 'service export to some namespace',
@@ -908,7 +731,9 @@ CREATE TABLE
         UNIQUE KEY `name` (`name`, `namespace`),
         KEY `namespace` (`namespace`),
         KEY `mtime` (`mtime`),
-        KEY `reference` (`reference`)
+        KEY `reference` (`reference`),
+        KEY `backend_type` (`backend_type`),
+        KEY `backend_service` (`backend_service_namespace`, `backend_service_name`)
 ) ENGINE = InnoDB;
 
 /* MCP TOOl */
@@ -927,5 +752,85 @@ CREATE TABLE
         PRIMARY KEY (`id`),
         UNIQUE KEY `name` (`name`, `mcp_server_id`),
         KEY `mcp_server_id` (`mcp_server_id`),
+        KEY `mtime` (`mtime`)
+) ENGINE = InnoDB;
+
+/* A2A Agent Registry */
+CREATE TABLE
+    `a2a_agent` (
+        `id` VARCHAR(32) NOT NULL COMMENT 'a2a agent id',
+        `name` VARCHAR(128) NOT NULL COMMENT 'a2a agent name, unique under namespace',
+        `namespace` VARCHAR(64) NOT NULL COMMENT 'Namespace belongs to the a2a agent',
+        `visibility` VARCHAR(32) DEFAULT NULL COMMENT 'public/private/internal visibility',
+        `description` VARCHAR(1024) DEFAULT NULL COMMENT 'Description information',
+        `version` VARCHAR(64) DEFAULT NULL COMMENT 'agent version',
+        `protocol_version` VARCHAR(32) DEFAULT NULL COMMENT 'a2a protocol version',
+        `provider_organization` VARCHAR(128) DEFAULT NULL COMMENT 'agent provider organization',
+        `provider_url` VARCHAR(512) DEFAULT NULL COMMENT 'agent provider url',
+        `documentation_url` VARCHAR(512) DEFAULT NULL COMMENT 'agent documentation url',
+        `icon_url` VARCHAR(512) DEFAULT NULL COMMENT 'agent icon url',
+        `business` VARCHAR(64) DEFAULT NULL COMMENT 'business information',
+        `department` VARCHAR(1024) DEFAULT NULL COMMENT 'department information',
+        `backend_type` VARCHAR(32) DEFAULT NULL COMMENT 'backend type, service or address',
+        `backend_service_namespace` VARCHAR(64) DEFAULT NULL COMMENT 'backend service namespace',
+        `backend_service_name` VARCHAR(128) DEFAULT NULL COMMENT 'backend service name',
+        `backend_address` VARCHAR(512) DEFAULT NULL COMMENT 'custom backend address',
+        `preferred_interface_url` VARCHAR(512) DEFAULT NULL COMMENT 'preferred a2a interface url',
+        `preferred_protocol_binding` VARCHAR(32) DEFAULT NULL COMMENT 'JSONRPC, GRPC or HTTP+JSON',
+        `preferred_protocol_version` VARCHAR(32) DEFAULT NULL COMMENT 'preferred interface protocol version',
+        `streaming` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'whether agent declares streaming capability',
+        `push_notifications` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'whether agent declares push notification capability',
+        `extended_agent_card` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'whether agent declares authenticated extended card capability',
+        `raw_card_json` MEDIUMTEXT COMMENT 'raw public agent card json',
+        `source_type` VARCHAR(32) DEFAULT NULL COMMENT 'manual/well-known/curated',
+        `source_url` VARCHAR(512) DEFAULT NULL COMMENT 'agent card source url',
+        `last_fetch_status` VARCHAR(128) DEFAULT NULL COMMENT 'last agent card fetch status',
+        `last_fetch_time` VARCHAR(64) DEFAULT NULL COMMENT 'last agent card fetch time',
+        `metadata` TEXT COMMENT 'custom metadata json',
+        `flag` TINYINT(4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means logically deleted',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `name` (`name`, `namespace`),
+        KEY `namespace` (`namespace`),
+        KEY `mtime` (`mtime`),
+        KEY `backend_service` (`backend_service_namespace`, `backend_service_name`),
+        KEY `preferred_protocol_binding` (`preferred_protocol_binding`)
+) ENGINE = InnoDB;
+
+CREATE TABLE
+    `a2a_agent_interface` (
+        `id` VARCHAR(32) NOT NULL COMMENT 'a2a agent interface id',
+        `agent_id` VARCHAR(32) NOT NULL COMMENT 'a2a agent id',
+        `url` VARCHAR(512) NOT NULL COMMENT 'a2a interface url',
+        `protocol_binding` VARCHAR(32) NOT NULL COMMENT 'JSONRPC, GRPC or HTTP+JSON',
+        `protocol_version` VARCHAR(32) NOT NULL COMMENT 'a2a protocol version',
+        `tenant` VARCHAR(128) DEFAULT NULL COMMENT 'opaque tenant routing value',
+        `flag` TINYINT(4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means logically deleted',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
+        PRIMARY KEY (`id`),
+        KEY `agent_id` (`agent_id`),
+        KEY `mtime` (`mtime`)
+) ENGINE = InnoDB;
+
+CREATE TABLE
+    `a2a_agent_skill` (
+        `id` VARCHAR(32) NOT NULL COMMENT 'a2a agent skill row id',
+        `agent_id` VARCHAR(32) NOT NULL COMMENT 'a2a agent id',
+        `skill_id` VARCHAR(128) NOT NULL COMMENT 'skill id in agent card',
+        `name` VARCHAR(128) NOT NULL COMMENT 'skill name',
+        `description` VARCHAR(1024) DEFAULT NULL COMMENT 'skill description',
+        `tags` TEXT COMMENT 'skill tag json array',
+        `examples` TEXT COMMENT 'skill examples json array',
+        `input_modes` TEXT COMMENT 'skill input modes json array',
+        `output_modes` TEXT COMMENT 'skill output modes json array',
+        `security_requirements` TEXT COMMENT 'skill security requirements json',
+        `flag` TINYINT(4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means logically deleted',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `skill_id` (`agent_id`, `skill_id`),
+        KEY `agent_id` (`agent_id`),
         KEY `mtime` (`mtime`)
 ) ENGINE = InnoDB;

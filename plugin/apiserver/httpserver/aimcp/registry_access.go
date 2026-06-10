@@ -34,13 +34,16 @@ import (
 func (h *HTTPServer) ListMCPServers(req *restful.Request, rsp *restful.Response) {
 	handler := &httpcommon.Handler{Request: req, Response: rsp}
 	query := &ai.MCPServerQuery{
-		Name:       req.QueryParameter("name"),
-		Namespace:  req.QueryParameter("namespace"),
-		Business:   req.QueryParameter("business"),
-		Department: req.QueryParameter("department"),
-		Protocol:   req.QueryParameter("protocol"),
-		Offset:     uint32Query(req, "offset", 0),
-		Limit:      uint32Query(req, "limit", 100),
+		Name:                    req.QueryParameter("name"),
+		Namespace:               req.QueryParameter("namespace"),
+		Business:                req.QueryParameter("business"),
+		Department:              req.QueryParameter("department"),
+		Protocol:                req.QueryParameter("protocol"),
+		BackendType:             req.QueryParameter("backend_type"),
+		BackendServiceNamespace: req.QueryParameter("backend_service_namespace"),
+		BackendServiceName:      req.QueryParameter("backend_service_name"),
+		Offset:                  uint32Query(req, "offset", 0),
+		Limit:                   uint32Query(req, "limit", 100),
 	}
 	handler.WriteHeaderAndProto(h.mcpServerQuery(handler.ParseHeaderContext(), query))
 }

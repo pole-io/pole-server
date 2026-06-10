@@ -21,6 +21,7 @@ import MatchInput from 'components/MatchInput';
 import { MatchLogic, Op } from 'services/types';
 import { LaneMatchLogic, LaneRule } from 'services/lane';
 import { saveLaneRules, selectLaneRule, updateLaneRules } from 'modules/governance/lane_rule';
+import { selectLaneGroup } from 'modules/governance/lane_group';
 import { RoutingSourceArgument } from 'services/router';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import { cloneDeep } from 'lodash';
@@ -41,6 +42,8 @@ const LaneRuleEditor: React.FC<LaneRuleEditorProps> = ({ op, visible, onClose })
 
     const laneRuleState = useAppSelector(selectLaneRule);
     const { viewRule, editRule } = laneRuleState;
+    const laneGroupState = useAppSelector(selectLaneGroup);
+    const { editGroup } = laneGroupState;
 
     const [editable, setEditable] = React.useState<boolean>(op !== 'view');
 
@@ -65,7 +68,7 @@ const LaneRuleEditor: React.FC<LaneRuleEditorProps> = ({ op, visible, onClose })
         const trafficMatch = form.getFieldValue('trafficMatchRule') as RoutingSourceArgument[] || [];
         const data: LaneRule = {
             id: viewRule?.id || '',
-            groupName: viewRule?.groupName || '',
+            groupName: viewRule?.groupName || editGroup?.name || '',
             name: form.getFieldValue('name') as string || '',
             description: form.getFieldValue('description') as string || '',
             priority: form.getFieldValue('priority') as number || 0,
@@ -144,7 +147,7 @@ const LaneRuleEditor: React.FC<LaneRuleEditorProps> = ({ op, visible, onClose })
                                 </Row>
                                 <Row >
                                     <FormItem label="所属组" name="groupName">
-                                        <Text>{viewRule?.groupName}</Text>
+                                        <Text>{viewRule?.groupName || editGroup?.name}</Text>
                                     </FormItem>
                                 </Row>
                                 <Row >

@@ -82,8 +82,11 @@ export interface DescribeUsersRequest {
 export interface DescribeUsersResponse {
     // 总数
     amount: number
+    size?: number
+    // 标准响应用户列表
+    data?: User[]
     // 用户列表
-    users: User[]
+    users?: User[]
 }
 
 export async function describeUsers(params: DescribeUsersRequest) {
@@ -91,9 +94,10 @@ export async function describeUsers(params: DescribeUsersRequest) {
         action: '/auth/v1/users',
         data: params,
     })
+    const users = result.data ?? result.users ?? []
     return {
-        totalCount: result.amount,
-        content: result.users ? result.users : [],
+        totalCount: result.amount ?? users.length,
+        content: users,
     }
 }
 

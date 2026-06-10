@@ -18,7 +18,6 @@
 package healthcheck_test
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -28,18 +27,43 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	testsuit "github.com/pole-io/pole-server/test/suit"
 )
 
-func Test_serialSetInsDbStatus(t *testing.T) {
-	testSuit := &testsuit.DiscoverTestSuit{}
-	testSuit.Initialize()
+type serialStatusStore struct {
+	store.Store
+	t   *testing.T
+	ins *svctypes.Instance
+}
 
+func (s *serialStatusStore) SetInstanceHealthStatus(instanceID string, flag int, revision string) error {
+	assert.Equal(s.t, s.ins.ID(), instanceID)
+	return nil
+}
+
+func (s *serialStatusStore) BatchAppendInstanceMetadata(requests []*store.InstanceMetadataRequest) error {
+	assert.Len(s.t, requests, 1)
+	assert.Equal(s.t, s.ins.ID(), requests[0].InstanceID)
+	assert.Contains(s.t, requests[0].Metadata, types.MetadataInstanceLastHeartbeatTime)
+	for k, v := range requests[0].Metadata {
+		s.ins.Proto.Metadata[k] = v
+	}
+	return nil
+}
+
+func (s *serialStatusStore) BatchRemoveInstanceMetadata(requests []*store.InstanceMetadataRequest) error {
+	assert.Len(s.t, requests, 1)
+	assert.Equal(s.t, s.ins.ID(), requests[0].InstanceID)
+	assert.Equal(s.t, []string{types.MetadataInstanceLastHeartbeatTime}, requests[0].Keys)
+	delete(s.ins.Proto.Metadata, types.MetadataInstanceLastHeartbeatTime)
+	return nil
+}
+
+func Test_serialSetInsDbStatus(t *testing.T) {
 	var (
 		mockService   = "mock_service"
 		mockNamespace = "mock_namespace"
@@ -47,35 +71,23 @@ func Test_serialSetInsDbStatus(t *testing.T) {
 		mockPort      = 8080
 	)
 
-	t.Run("prepare_instance", func(t *testing.T) {
-		resp := testSuit.DiscoverServer().RegisterInstance(testSuit.DefaultCtx, &service_manage.Instance{
-			Service:   string(mockService),
-			Namespace: string(mockNamespace),
-			Host:      string(mockHost),
-			Port:      uint32(mockPort),
-		})
-
-		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), resp.GetCode(), resp.GetInfo())
-		t.Logf("instacne-id: %s", resp)
-	})
-
 	testFunc := func(t *testing.T, health bool, predicate func(t *testing.T, saveIns *svctypes.Instance)) {
-		mockSvr, err := healthcheck.NewHealthServer(context.TODO(), &healthcheck.Config{
-			Open: utils.BoolPtr(true),
-			Checkers: []apis.ConfigEntry{
-				{
-					Name: "heartbeat",
-				},
-			},
-		}, healthcheck.WithStore(testSuit.Storage))
-		if err != nil {
-			t.Fatal(err)
-		}
-
 		instanceId, err := utils.CalculateInstanceID(mockNamespace, mockService, "", mockHost, uint32(mockPort))
 		if err != nil {
 			t.Fatal(err)
 		}
+		saveIns := &svctypes.Instance{
+			Proto: &service_manage.Instance{
+				Id:        instanceId,
+				Service:   mockService,
+				Namespace: mockNamespace,
+				Host:      mockHost,
+				Port:      uint32(mockPort),
+				Metadata:  map[string]string{},
+			},
+		}
+		mockStore := &serialStatusStore{t: t, ins: saveIns}
+		mockSvr := healthcheck.TestNewServerWithStore(mockStore)
 
 		respCode := healthcheck.SerialSetInsDbStatus(mockSvr, &service_manage.Instance{
 			Id:        string(instanceId),
@@ -87,12 +99,6 @@ func Test_serialSetInsDbStatus(t *testing.T) {
 		}, health, time.Now().Unix())
 
 		assert.Equal(t, uint32(apimodel.Code_ExecuteSuccess), uint32(respCode), fmt.Sprintf("%d", respCode))
-
-		// 获取实例信息
-		saveIns, err := testSuit.Storage.GetInstance(instanceId)
-		if err != nil {
-			t.Fatal(err)
-		}
 
 		predicate(t, saveIns)
 	}

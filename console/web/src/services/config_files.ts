@@ -95,8 +95,11 @@ export interface DescribeConfigFilesRequest {
 }
 
 export interface DescribeConfigFilesResponse {
-    total: number
-    configFiles: Array<ConfigFile>
+    amount?: number
+    size?: number
+    total?: number
+    data?: Array<ConfigFile>
+    configFiles?: Array<ConfigFile>
 }
 
 export async function describeConfigFiles(params: DescribeConfigFilesRequest) {
@@ -104,9 +107,10 @@ export async function describeConfigFiles(params: DescribeConfigFilesRequest) {
         action: `${BaseURL.CONFIG_FILE}/search`,
         data: params,
     })
+    const files = res.data ?? res.configFiles ?? []
     return {
-        list: res.configFiles,
-        totalCount: res.total,
+        list: files,
+        totalCount: res.amount ?? res.total ?? files.length,
     }
 }
 

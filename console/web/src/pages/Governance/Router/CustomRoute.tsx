@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Popconfirm } from 'tdesign-react';
+import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Popconfirm, Empty } from 'tdesign-react';
 import { DeleteIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
-import { useNavigate } from 'react-router-dom';
 
 import { Op } from 'services/types';
 import { useAppDispatch, useAppSelector } from 'modules/store';
-import { CustomRouteView } from 'services/router';
+import { CustomRouteView, normalizeRoutingConfigForEditor } from 'services/router';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
 import Search from 'components/Search';
@@ -15,6 +14,7 @@ import { cleanCustomRoutePage, cleanCustomRouteVersions, editorCustomRoute, list
 import { PolicySourceType } from 'services/auth_policy';
 import RuleTabs from '../RuleRelease/RuleTabs';
 import SubscribeTable from 'components/SubscribeTable';
+import RuleDetailDrawer from '../RuleRelease/RuleDetailDrawer';
 
 interface ICustomRouteProps {
 
@@ -35,22 +35,22 @@ const columns = (handleOpRule: (row: TableRowData, op: Op) => void, redirect: (r
         title: '主调',
         width: '20px',
         ellipsis: true,
-        cell: ({ row: { routing_config } }: TableRowData) => (
-            <>
-                <div style={{ fontSize: 12, marginTop: 4 }}>命名空间: {routing_config.rules[0].sources[0].namespace || '-'}<br />服务: {routing_config.rules[0].sources[0].service || '-'}</div>
-            </>
-        ),
+        cell: ({ row: { routing_config } }: TableRowData) => {
+            const config = normalizeRoutingConfigForEditor(routing_config);
+            const source = config?.caller || config?.rules?.[0]?.sources?.[0];
+            return <div className={style.serviceCell}>命名空间: {source?.namespace || '-'}<br />服务: {source?.service || '-'}</div>;
+        },
     },
     {
         colKey: 'callee',
         title: '被调',
         width: '20px',
         ellipsis: true,
-        cell: ({ row: { routing_config } }: TableRowData) => (
-            <>
-                <div style={{ fontSize: 12, marginTop: 4 }}>命名空间: {routing_config.rules[0].destinations[0].namespace || '-'}<br />服务: {routing_config.rules[0].destinations[0].service || '-'}</div>
-            </>
-        ),
+        cell: ({ row: { routing_config } }: TableRowData) => {
+            const config = normalizeRoutingConfigForEditor(routing_config);
+            const destination = config?.callee || config?.rules?.[0]?.destinations?.[0];
+            return <div className={style.serviceCell}>命名空间: {destination?.namespace || '-'}<br />服务: {destination?.service || '-'}</div>;
+        },
     },
     {
         colKey: 'action',
@@ -92,7 +92,6 @@ const columns = (handleOpRule: (row: TableRowData, op: Op) => void, redirect: (r
 
 const CustomRoute: React.FC<ICustomRouteProps> = ({ }) => {
     const dispatch = useAppDispatch();
-    const navigate = useNavigate();
 
     const customRouteState = useAppSelector(selectCustomRoute);
     const { datas, loading, total, page, limit } = customRouteState;
@@ -247,63 +246,64 @@ const CustomRoute: React.FC<ICustomRouteProps> = ({ }) => {
     )
 
     return (
-        <Row gutter={16} className={style.customRoute}>
-            <Col span={4}>
+        <div className={style.ruleWorkspace}>
+            <section className={style.ruleListPane}>
                 {table}
-            </Col>
-            <Col span={7} style={{ marginLeft: 30 }}>
-                {editorState.visible && (
-                    <div className={style.editorContainer}>
-                        <RuleTabs
+            </section>
+            <RuleDetailDrawer
+                visible={editorState.visible}
+                title={editorState.mode === 'create' ? '新建自定义路由' : editorState.data?.name || '自定义路由详情'}
+                subtitle="自定义路由"
+                onClose={() => setEditorState(pre => ({ ...pre, visible: false }))}
+            >
+                <RuleTabs
+                    op={editorState.mode}
+                    view={<>
+                        <CustomRouteEditor
                             op={editorState.mode}
-                            view={<>
-                                <CustomRouteEditor
-                                    op={editorState.mode}
-                                    editable={editorState.data?.editable || true}
-                                    refresh={(close: boolean) => {
-                                        if (close) {
-                                            setEditorState(pre => ({ ...pre, visible: false }));
-                                        } else {
-                                            refreshTable(1, limit);
-                                        }
-                                    }} />
-                            </>}
-                            versions={{
-                                datas: versions,
-                                action: operateRelease,
-                                editable: editorState.data?.editable || true,
-                                deleteable: editorState.data?.deleteable || true,
-                                loading: versionLoading,
-                                pagination: {
-                                    defaultCurrent: versionPage,
-                                    defaultPageSize: versionLimit,
-                                    total: versionTotal,
-                                    showJumper: false,
-                                    onChange(pageInfo) {
-                                        refreshVersions(pageInfo.current, pageInfo.pageSize);
-                                    },
-                                },
-                                onPageChange: (page) => {
-                                    refreshVersions(page.current, page.pageSize);
+                            editable={editorState.data?.editable ?? true}
+                            refresh={(close: boolean) => {
+                                if (close) {
+                                    setEditorState(pre => ({ ...pre, visible: false }));
+                                } else {
+                                    refreshTable(1, limit);
                                 }
-                            }}
-                            subscribe={
-                                <>
-                                    <div style={{ marginLeft: 20, marginTop: 20 }}>
-                                        <SubscribeTable
-                                            title={`${editorState.data?.name}`}
-                                            editable={editorState.data?.editable || true}
-                                            deleteable={editorState.data?.deleteable || true}
-                                            subscribers={subscribers || []}
-                                        />
-                                    </div>
-                                </>
-                            }
-                        />
-                    </div>
-                )}
-            </Col>
-        </Row>
+                            }} />
+                    </>}
+                    versions={{
+                        datas: versions,
+                        action: operateRelease,
+                        editable: editorState.data?.editable ?? true,
+                        deleteable: editorState.data?.deleteable ?? true,
+                        loading: versionLoading,
+                        pagination: {
+                            defaultCurrent: versionPage,
+                            defaultPageSize: versionLimit,
+                            total: versionTotal,
+                            showJumper: false,
+                            onChange(pageInfo) {
+                                refreshVersions(pageInfo.current, pageInfo.pageSize);
+                            },
+                        },
+                        onPageChange: (page) => {
+                            refreshVersions(page.current, page.pageSize);
+                        }
+                    }}
+                    subscribe={
+                        <>
+                            <div style={{ marginLeft: 20, marginTop: 20 }}>
+                                <SubscribeTable
+                                    title={`${editorState.data?.name}`}
+                                    editable={editorState.data?.editable ?? true}
+                                    deleteable={editorState.data?.deleteable ?? true}
+                                    subscribers={subscribers || []}
+                                />
+                            </div>
+                        </>
+                    }
+                />
+            </RuleDetailDrawer>
+        </div>
     )
 }
 

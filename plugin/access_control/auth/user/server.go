@@ -148,12 +148,45 @@ func (svr *Server) Login(req *apisecurity.LoginRequest) *apimodel.Response {
 		return api.NewAuthResponseWithMsg(apimodel.Code_ExecuteException, authtypes.ErrorWrongUsernameOrPassword.Error())
 	}
 
+	token, resp := svr.loginToken(user)
+	if resp != nil {
+		return resp
+	}
+
 	return api.NewLoginResponse(apimodel.Code_ExecuteSuccess, &apisecurity.LoginResponse{
 		UserId: user.ID,
-		Token:  user.Token,
+		Token:  token,
 		Name:   user.Name,
 		Role:   authtypes.UserRoleNames[user.Type],
 	})
+}
+
+func (svr *Server) loginToken(user *authtypes.User) (string, *apimodel.Response) {
+	if svr.isUserTokenUsable(user.ID, user.Token) {
+		return user.Token, nil
+	}
+
+	token, err := createUserToken(user.ID, svr.authOpt.Salt)
+	if err != nil {
+		return "", api.NewAuthResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
+	}
+
+	nextUser := *user
+	nextUser.Token = token
+	if err := svr.storage.UpdateUser(&nextUser); err != nil {
+		return "", api.NewAuthResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
+	}
+	user.Token = token
+	_ = svr.cacheMgr.User().Update()
+	return token, nil
+}
+
+func (svr *Server) isUserTokenUsable(userID string, token string) bool {
+	operator, err := svr.decodeToken(token)
+	if err != nil {
+		return false
+	}
+	return operator.IsUserToken && operator.OperatorID == userID
 }
 
 // RecordHistory Server对外提供history插件的简单封装

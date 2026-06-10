@@ -96,6 +96,8 @@ func (s *Server) DeleteGovernanceRules(ctx context.Context, req []*apimodel.Rule
 		return s.DeleteRouterReleases(ctx, req)
 	case apimodel.RuleRelease_RateLimitRules:
 		return s.DeleteRateLimitReleases(ctx, req)
+	case apimodel.RuleRelease_LosslessRules:
+		return s.DeleteLosslessReleases(ctx, req)
 	default:
 		return api.NewBatchWriteResponse(apimodel.Code_InvalidParameter)
 	}
@@ -132,6 +134,8 @@ func (s *Server) StopbetaGovernanceRules(ctx context.Context, req []*apimodel.Ru
 		return s.StopbetaRouterRules(ctx, req)
 	case apimodel.RuleRelease_RateLimitRules:
 		return s.StopbetaRateLimits(ctx, req)
+	case apimodel.RuleRelease_LosslessRules:
+		return s.StopbetaLosslessRules(ctx, req)
 	default:
 		return api.NewBatchWriteResponse(apimodel.Code_InvalidParameter)
 	}

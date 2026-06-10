@@ -14,9 +14,13 @@ interface IReleaseTableProps {
     action:  (op: Op, row: TableRowData) => void;
     editable: boolean;
     deleteable: boolean;
+    rollbackable?: boolean;
 }
 
-export const ReleaseColumns = (status: { editable: boolean; deleteable: boolean }, operateRelease: (op: Op, row: TableRowData) => void): PrimaryTableProps['columns'] => [
+export const ReleaseColumns = (
+    status: { editable: boolean; deleteable: boolean; rollbackable: boolean },
+    operateRelease: (op: Op, row: TableRowData) => void,
+): PrimaryTableProps['columns'] => [
     {
         colKey: 'release_name',
         title: '名称',
@@ -53,7 +57,7 @@ export const ReleaseColumns = (status: { editable: boolean; deleteable: boolean 
         cell: ({ row }) => {
             return (
                 <Space>
-                    {row.releaseType !== 'gray' && !row.active && (
+                    {status.rollbackable && row.releaseType !== 'gray' && !row.active && (
                         <>
                             <Tooltip content={status.editable ? '回滚至此版本' : '无权限操作'}>
                                 <Popconfirm
@@ -101,7 +105,7 @@ export const ReleaseColumns = (status: { editable: boolean; deleteable: boolean 
     },
 ]
 
-const ReleaseTable: React.FC<IReleaseTableProps> = ({ datas, loading, pagination, onPageChange, action, editable, deleteable }) => {
+const ReleaseTable: React.FC<IReleaseTableProps> = ({ datas, loading, pagination, onPageChange, action, editable, deleteable, rollbackable = true }) => {
     const table = (
         <>
             <Table
@@ -109,6 +113,7 @@ const ReleaseTable: React.FC<IReleaseTableProps> = ({ datas, loading, pagination
                 columns={ReleaseColumns({
                     editable: editable,
                     deleteable: deleteable,
+                    rollbackable: rollbackable,
                 }, action)}
                 loading={loading}
                 rowKey="id"

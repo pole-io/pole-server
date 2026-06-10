@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Popconfirm, Collapse } from 'tdesign-react';
+import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Popconfirm, Collapse, Empty } from 'tdesign-react';
 import { DeleteIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
-import { useNavigate } from 'react-router-dom';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import Text from 'components/Text';
@@ -15,10 +14,11 @@ import LaneRuleTable from './LaneRuleTable';
 import { cleanLaneGroupPage, editorLaneGroup, listLaneGroups, listLaneGroupVersions, removeLaneGroups, removeLaneGroupVersion, rollbackLanGroupVersion, selectLaneGroup } from 'modules/governance/lane_group';
 import RuleTabs from '../RuleRelease/RuleTabs';
 import SubscribeTable from 'components/SubscribeTable';
+import AuthorizeInput from 'components/Authorize';
+import { PolicySourceType } from 'services/auth_policy';
+import RuleDetailDrawer from '../RuleRelease/RuleDetailDrawer';
 
 const { Panel } = Collapse;
-const { TabPanel } = Tabs;
-
 interface ILaneGroupTableProps {
 
 }
@@ -82,7 +82,6 @@ const columns = (handleOpRule: (row: TableRowData, op: Op) => void, redirect: (r
 
 const LaneGroupTable: React.FC<ILaneGroupTableProps> = ({ }) => {
     const dispatch = useAppDispatch();
-    const navigate = useNavigate();
 
     const laneGroupState = useAppSelector(selectLaneGroup);
     const { datas, total, page, limit, loading } = laneGroupState;
@@ -106,6 +105,22 @@ const LaneGroupTable: React.FC<ILaneGroupTableProps> = ({ }) => {
                 seteditor(prev => ({ ...prev, visible: true, mode: 'view', data: row }));
                 dispatch(editorLaneGroup(row as LaneGroupView));
                 // 保存当前选中行数据，供其它 Tab(如 泳道/版本/监听) 使用
+                break;
+            case 'delete':
+                dispatch(removeLaneGroups({ ids: [row.id] })).then((res) => {
+                    if (res.meta.requestStatus === 'fulfilled') {
+                        openInfoNotification("请求成功", "删除泳道组成功");
+                        if (editor.data?.id === row.id) {
+                            seteditor(prev => ({ ...prev, visible: false, data: undefined }));
+                        }
+                        refreshData(1, limit);
+                    } else {
+                        openErrNotification("请求失败", `删除泳道组失败: ${res.payload as string || '未知'}`);
+                    }
+                });
+                break;
+            case 'authorize':
+                seteditor(prev => ({ ...prev, authorizeVisible: true, data: { ...row } }));
                 break;
         }
     }
@@ -227,80 +242,92 @@ const LaneGroupTable: React.FC<ILaneGroupTableProps> = ({ }) => {
     )
 
     return (
-        <Row gutter={16} className={style.customRoute}>
-            <Col span={4}>
+        <div className={style.ruleWorkspace}>
+            <section className={style.ruleListPane}>
                 {table}
-            </Col>
-            <Col span={7} style={{ marginLeft: 30 }}>
-                {editor.visible && (
-                    <div className={style.editorContainer}>
-                        <RuleTabs
-                            op={editor.mode}
-                            onVersionView={() => {
-                                refreshVersions()
-                            }}
-                            view={
-                                <>
-                                    <Collapse borderless={true} expandMutex={true} defaultValue={['lane_group_detail']}>
-                                        <Panel
-                                            header="泳道组详细"
-                                            value={'lane_group_detail'}
-                                        >
-                                            <LaneGroupEdtor
-                                                op={editor.mode}
-                                                refresh={(close: boolean) => {
-                                                    if (close) {
-                                                        seteditor(pre => ({ ...pre, visible: false }));
-                                                    }
-                                                    refreshData(1, limit)
-                                                }}
-                                            />
-                                        </Panel>
-                                        <Panel
-                                            header="泳道列表"
-                                            value={'lane_group_rules'}
-                                            children={<LaneRuleTable groupId={editor.data?.id || ''}/>}
-                                        >
-                                        </Panel>
-                                    </Collapse>
-                                </>
-                            }
-                            versions={{
-                                datas: versions,
-                                action: operateRelease,
-                                editable: editor.data?.editable || true,
-                                deleteable: editor.data?.deleteable || true,
-                                loading: versionLoading,
-                                pagination: {
-                                    defaultCurrent: versionPage,
-                                    defaultPageSize: versionLimit,
-                                    total: versionTotal,
-                                    showJumper: false,
-                                    onChange(pageInfo) {
-                                        refreshVersions(pageInfo.current, pageInfo.pageSize);
-                                    },
-                                },
-                                onPageChange: (page) => {
-                                    refreshVersions(page.current, page.pageSize);
-                                }
-                            }}
-                            subscribe={
-                                <>
-                                    <div style={{ marginLeft: 20, marginTop: 20 }}>
-                                        <SubscribeTable
-                                            title={`${editor.data?.name}`}
-                                            editable={editor.data?.editable || true}
-                                            deleteable={editor.data?.deleteable || true}
-                                            subscribers={subscribers || []}
-                                        />
-                                    </div>
-                                </>
-                            }
-                        />
-                    </div>
+                {editor.authorizeVisible && editor.data?.id && (
+                    <AuthorizeInput
+                        resource_type={PolicySourceType.LaneRules}
+                        resource_id={editor.data.id as string}
+                        resource_name={`lane_group/${editor.data.name || editor.data.id}`}
+                        visible={editor.authorizeVisible}
+                        onClose={() => {
+                            seteditor(pre => ({ ...pre, authorizeVisible: false }));
+                        }}
+                    />
                 )}
-            </Col>
-        </Row>
+            </section>
+            <RuleDetailDrawer
+                visible={editor.visible}
+                title={editor.mode === 'create' ? '新建泳道组' : editor.data?.name || '泳道组详情'}
+                subtitle="全链路灰度"
+                onClose={() => seteditor(pre => ({ ...pre, visible: false }))}
+            >
+                <RuleTabs
+                    op={editor.mode}
+                    onVersionView={() => {
+                        refreshVersions()
+                    }}
+                    view={
+                        <>
+                            <Collapse borderless={true} expandMutex={true} defaultValue={['lane_group_detail']}>
+                                <Panel
+                                    header="泳道组详细"
+                                    value={'lane_group_detail'}
+                                >
+                                    <LaneGroupEdtor
+                                        op={editor.mode}
+                                        refresh={(close: boolean) => {
+                                            if (close) {
+                                                seteditor(pre => ({ ...pre, visible: false }));
+                                            }
+                                            refreshData(1, limit)
+                                        }}
+                                    />
+                                </Panel>
+                                <Panel
+                                    header="泳道列表"
+                                    value={'lane_group_rules'}
+                                    children={<LaneRuleTable groupId={editor.data?.id || ''} />}
+                                >
+                                </Panel>
+                            </Collapse>
+                        </>
+                    }
+                    versions={{
+                        datas: versions,
+                        action: operateRelease,
+                        editable: editor.data?.editable ?? true,
+                        deleteable: editor.data?.deleteable ?? true,
+                        loading: versionLoading,
+                        pagination: {
+                            defaultCurrent: versionPage,
+                            defaultPageSize: versionLimit,
+                            total: versionTotal,
+                            showJumper: false,
+                            onChange(pageInfo) {
+                                refreshVersions(pageInfo.current, pageInfo.pageSize);
+                            },
+                        },
+                        onPageChange: (page) => {
+                            refreshVersions(page.current, page.pageSize);
+                        }
+                    }}
+                    subscribe={
+                        <>
+                            <div style={{ marginLeft: 20, marginTop: 20 }}>
+                                <SubscribeTable
+                                    title={`${editor.data?.name}`}
+                                    editable={editor.data?.editable ?? true}
+                                    deleteable={editor.data?.deleteable ?? true}
+                                    subscribers={subscribers || []}
+                                />
+                            </div>
+                        </>
+                    }
+                />
+            </RuleDetailDrawer>
+        </div>
     )
 }
 

@@ -325,7 +325,7 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 				resources[apisecurity.ResourceType_CircuitBreakerRules] = append(resources[apisecurity.ResourceType_CircuitBreakerRules], authtypes.ResourceEntry{
 					Type:     apisecurity.ResourceType_CircuitBreakerRules,
 					ID:       saveRule.ID,
-					Metadata: saveRule.Proto.Metadata,
+					Metadata: circuitBreakerRuleMetadata(saveRule),
 				})
 			}
 		case apimodel.RuleRelease_FaultDetectRules:

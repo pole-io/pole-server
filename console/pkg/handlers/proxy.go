@@ -161,19 +161,26 @@ func ReverseProxyForLogin(PoleServer *bootstrap.PoleServer, conf *bootstrap.Conf
 				return err
 			}
 			if val, ok := loginResp["loginResponse"].(map[string]interface{}); ok {
+				if err = refreshJWTFromLoginPayload(c, val, conf); err != nil {
+					return err
+				}
 				if token := val["token"]; token != "" {
 					val["token"] = "******" // 避免前端出错,保证返回, 但隐藏现有的token
 					body, err = json.Marshal(loginResp)
 					if err != nil {
 						return err
 					}
-					if err = refreshJWT(c, val["user_id"].(string), token.(string), conf); err != nil {
-						return err
-					}
 					resp.Header["Content-Length"] = []string{fmt.Sprint(len(body))}
-					resp.Body = io.NopCloser(bytes.NewBuffer(body))
-					return nil
 				}
+				resp.Body = io.NopCloser(bytes.NewBuffer(body))
+				return nil
+			}
+			if val, ok := loginResp["data"].(map[string]interface{}); ok {
+				if err = refreshJWTFromLoginPayload(c, val, conf); err != nil {
+					return err
+				}
+				resp.Body = io.NopCloser(bytes.NewBuffer(body))
+				return nil
 			}
 			resp.Body = io.NopCloser(bytes.NewBuffer(body))
 			return nil
@@ -183,10 +190,23 @@ func ReverseProxyForLogin(PoleServer *bootstrap.PoleServer, conf *bootstrap.Conf
 	}
 }
 
+func refreshJWTFromLoginPayload(c *gin.Context, val map[string]interface{}, conf *bootstrap.Config) error {
+	token, ok := val["token"].(string)
+	if !ok || token == "" {
+		return nil
+	}
+	userID, ok := val["user_id"].(string)
+	if !ok || userID == "" {
+		return nil
+	}
+	return refreshJWT(c, userID, token, conf)
+}
+
 // ReverseProxyForServer 反向代理
 func ReverseProxyForServer(PoleServer *bootstrap.PoleServer, conf *bootstrap.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !verifyAccessPermission(c, conf) {
+		userID, token, ok := verifyAccessPermission(c, conf)
+		if !ok {
 			return
 		}
 
@@ -197,19 +217,35 @@ func ReverseProxyForServer(PoleServer *bootstrap.PoleServer, conf *bootstrap.Con
 			req.URL.Host = PoleServer.Address
 			req.Host = PoleServer.Address
 		}
-		proxy := &httputil.ReverseProxy{Director: director}
+		modifyResp := func(resp *http.Response) error {
+			if resp.StatusCode == http.StatusUnauthorized {
+				resp.Header.Add("Set-Cookie", expiredJWTCookie().String())
+				return nil
+			}
+			if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
+				cookie, err := newJWTCookie(userID, token, conf)
+				if err != nil {
+					return err
+				}
+				if cookie != nil {
+					resp.Header.Add("Set-Cookie", cookie.String())
+				}
+			}
+			return nil
+		}
+		proxy := &httputil.ReverseProxy{Director: director, ModifyResponse: modifyResp}
 		proxy.ServeHTTP(c.Writer, c.Request)
 	}
 }
 
-func verifyAccessPermission(c *gin.Context, conf *bootstrap.Config) bool {
+func verifyAccessPermission(c *gin.Context, conf *bootstrap.Config) (string, string, bool) {
 	userID, token, err := parseJWTThenSetToken(c, conf)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code": http.StatusProxyAuthRequired,
 			"info": "Proxy Authentication Required: " + err.Error(),
 		})
-		return false
+		return "", "", false
 	}
 
 	if ok := checkAuthoration(c, conf); !ok {
@@ -217,18 +253,10 @@ func verifyAccessPermission(c *gin.Context, conf *bootstrap.Config) bool {
 			"code": http.StatusProxyAuthRequired,
 			"info": "Proxy Authentication Required: access token is invalid",
 		})
-		return false
+		return "", "", false
 	}
 
-	// 只有全部校验通过之后,请求才会自动续期jwtToken
-	if err = refreshJWT(c, userID, token, conf); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code": http.StatusInternalServerError,
-			"info": "generate jwt token occurs error",
-		})
-		return false
-	}
-	return true
+	return userID, token, true
 }
 
 // ReverseProxyNoAuthForServer 反向代理
@@ -298,8 +326,17 @@ func parseJWTThenSetToken(c *gin.Context, conf *bootstrap.Config) (string, strin
 
 // refreshJWT 刷新jwtToken
 func refreshJWT(c *gin.Context, userID, token string, conf *bootstrap.Config) error {
+	cookie, err := newJWTCookie(userID, token, conf)
+	if err != nil || cookie == nil {
+		return err
+	}
+	http.SetCookie(c.Writer, cookie)
+	return nil
+}
+
+func newJWTCookie(userID, token string, conf *bootstrap.Config) (*http.Cookie, error) {
 	if userID == "" || token == "" {
-		return nil
+		return nil, nil
 	}
 	nowTime := time.Now()
 	claims := jwtClaims{
@@ -313,8 +350,23 @@ func refreshJWT(c *gin.Context, userID, token string, conf *bootstrap.Config) er
 	}
 	jwtToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(conf.WebServer.JWT.SecretKey))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	c.SetCookie("jwt", jwtToken, conf.WebServer.JWT.Expired, "/", "", false, false)
-	return nil
+	return &http.Cookie{
+		Name:     "jwt",
+		Value:    jwtToken,
+		Path:     "/",
+		MaxAge:   conf.WebServer.JWT.Expired,
+		HttpOnly: false,
+	}, nil
+}
+
+func expiredJWTCookie() *http.Cookie {
+	return &http.Cookie{
+		Name:    "jwt",
+		Value:   "",
+		Path:    "/",
+		MaxAge:  -1,
+		Expires: time.Unix(0, 0),
+	}
 }

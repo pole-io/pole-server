@@ -1,6 +1,6 @@
 import React, { } from "react";
-import { Col, Collapse, Form, Input, Row, Space, Button, Select, Switch, Dialog, InputNumber, Table, FormProps, Tag, Popup, TableRowData, PrimaryTableProps, InputAdornment, RadioGroup, Radio, Textarea, StickyTool } from "tdesign-react";
-import { AddIcon, CloseIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from "tdesign-icons-react";
+import { Col, Form, Input, Row, Space, Button, Select, Switch, Dialog, InputNumber, Table, FormProps, Tag, Popup, TableRowData, PrimaryTableProps, InputAdornment, RadioGroup, Radio, Textarea, StickyTool } from "tdesign-react";
+import { AddIcon, ChevronDownIcon, ChevronRightIcon, CloseIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from "tdesign-icons-react";
 
 import Text from "components/Text";
 import { useAppDispatch, useAppSelector } from 'modules/store';
@@ -16,10 +16,13 @@ import {
 } from 'modules/governance/ratelimit';
 import { ConcurrencyAmount, CustomResponse, defaultLimitTriggerView, LimitAction, LimitActionMap, LimitAmountsValidationUnit, LimitArgumentsConfig, LimitArgumentsType, LimitArgumentsTypeMap, LimitArgumentsTypeOptions, LimitConfigView, LimitFailover, LimitFailoverMap, LimitType, RateLimitResource, RateLimitResourceMap, RateLimitView } from "services/ratelimit";
 import PublishForm from "../RuleRelease/PublishForm";
+import RuleStickyAction from "../RuleRelease/RuleStickyAction";
 import { PolicySourceType } from "services/auth_policy";
 import { cleanNamespacePage, listAllNamespaces, selectNamespace } from "modules/namespace";
 import { cleanServicePage, listAllServices, selectService } from "modules/discovery/service";
 import cloneDeep from "lodash/cloneDeep";
+
+import styles from './RateLimitEditor.module.less';
 
 const { FormItem } = Form;
 const { StickyItem } = StickyTool;
@@ -70,6 +73,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
 
     // 大规则状态（含子规则列表）
     const [rateLimit, setRateLimit] = React.useState<RateLimitView>(defaultRateLimitView());
+    const [collapsedRuleIndexes, setCollapsedRuleIndexes] = React.useState<Set<number>>(() => new Set());
 
     const [editorState, setEditorState] = React.useState<{
         visible: boolean;
@@ -147,6 +151,18 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
     const removeRule = (ruleIdx: number) => {
         if (rateLimit.rules.length <= 1) return;
         setRateLimit(prev => ({ ...prev, rules: prev.rules.filter((_, i) => i !== ruleIdx) }));
+    };
+
+    const toggleRuleCollapsed = (ruleIdx: number) => {
+        setCollapsedRuleIndexes(prev => {
+            const next = new Set(prev);
+            if (next.has(ruleIdx)) {
+                next.delete(ruleIdx);
+            } else {
+                next.add(ruleIdx);
+            }
+            return next;
+        });
     };
 
     // 某条子规则：添加匹配条件
@@ -308,13 +324,14 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
         const trigger = rateLimit.rules[ruleIdx];
         const args = trigger.arguments || [];
         return (
-            <div>
+            <div className={styles.compactTable}>
                 <Table
                     rowKey={(row) => `arg-${ruleIdx}-${(row as LimitArgumentsConfig).type}-${(row as LimitArgumentsConfig).key}`}
+                    tableLayout="fixed"
                     data={args.map(arg => ({ ...arg, type: arg.type || LimitArgumentsType.CUSTOM }))}
                     columns={editorState.editable ? getMatchTableColumns(ruleIdx) : getMatchTableColumns(ruleIdx).filter(col => col.colKey !== 'action')}
                 />
-                {editorState.editable && <Button variant="text" onClick={() => addMatch(ruleIdx)} icon={<AddIcon />} style={{ marginTop: 8 }}>添加</Button>}
+                {editorState.editable && <Button className={styles.inlineAdd} variant="text" onClick={() => addMatch(ruleIdx)} icon={<AddIcon />}>添加</Button>}
             </div>
         );
     };
@@ -372,13 +389,13 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
             }
         ];
         const qpsTable = (
-            <div>
-                <Table rowKey="key" data={limitsWithKey} columns={editorState.editable ? columns : columns.filter(col => col.colKey !== 'action')} tableLayout="auto" />
-                {editorState.editable && <Button variant="text" onClick={() => addLimit(ruleIdx)} icon={<AddIcon />} style={{ marginTop: 8 }}>添加</Button>}
+            <div className={styles.compactTable}>
+                <Table rowKey="key" data={limitsWithKey} columns={editorState.editable ? columns : columns.filter(col => col.colKey !== 'action')} tableLayout="fixed" />
+                {editorState.editable && <Button className={styles.inlineAdd} variant="text" onClick={() => addLimit(ruleIdx)} icon={<AddIcon />}>添加</Button>}
             </div>
         );
         const concurrencyTable = (
-            <div>
+            <div className={styles.compactTable}>
                 <Table
                     rowKey="key"
                     data={limitsWithKey}
@@ -528,14 +545,14 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
     const matchCondition = (ruleIdx: number) => {
         const trigger = rateLimit.rules[ruleIdx];
         return (
-            <div style={{ marginBottom: 24, padding: 16, border: '1px solid #e0e0e0', borderRadius: 6 }}>
-                <div style={{ marginBottom: 16 }}>
-                    <Text style={{ fontWeight: 'bold' }}>匹配条件</Text>
-                    <div style={{ color: '#999', fontSize: 12, marginTop: 4 }}>满足以下匹配条件的请求将应用该子规则</div>
+            <div className={styles.ruleSection}>
+                <div className={styles.ruleSectionHeader}>
+                    <span className={styles.ruleSectionTitle}>匹配条件</span>
+                    <div className={styles.ruleHelp}>满足以下匹配条件的请求将应用该规则</div>
                 </div>
-                <Row>
-                    <Col span={2}>请求接口路径</Col>
-                    <Col span={6}>
+                <div className={styles.fieldRow}>
+                    <div className={styles.fieldLabel}>请求接口路径</div>
+                    <div className={styles.fieldControl}>
                         <InputAdornment
                             append={
                                 <Select
@@ -553,12 +570,12 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                                 onChange={(val) => updateRule(ruleIdx, { method: { ...trigger.method, value: val as string } })}
                             />
                         </InputAdornment>
-                    </Col>
-                </Row>
-                <Row style={{ marginTop: 16 }}>
-                    <Col span={2}>请求匹配规则</Col>
-                    <Col span={10}>{renderMatchTable(ruleIdx)}</Col>
-                </Row>
+                    </div>
+                </div>
+                <div className={styles.fieldRow}>
+                    <div className={styles.fieldLabel}>请求匹配规则</div>
+                    <div className={styles.fieldControl}>{renderMatchTable(ruleIdx)}</div>
+                </div>
             </div>
         );
     };
@@ -566,12 +583,12 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
     const rateLimitBlock = (ruleIdx: number) => {
         const trigger = rateLimit.rules[ruleIdx];
         return (
-            <div style={{ marginBottom: 24, padding: 16, border: '1px solid #e0e0e0', borderRadius: 6 }}>
-                <div style={{ marginBottom: 16 }}>
-                    <Text style={{ fontWeight: 'bold' }}>限流方式</Text>
-                    <div style={{ color: '#999', fontSize: 12, marginTop: 4 }}>设置以下限流条件进行流量控制</div>
+            <div className={styles.ruleSection}>
+                <div className={styles.ruleSectionHeader}>
+                    <span className={styles.ruleSectionTitle}>限流方式</span>
+                    <div className={styles.ruleHelp}>设置以下限流条件进行流量控制</div>
                 </div>
-                <Row style={{ marginTop: 16 }}>
+                <Row>
                     <Space>
                         <RadioGroup
                             theme="button"
@@ -586,18 +603,14 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                     </Space>
                 </Row>
                 {renderLimitTable(ruleIdx)}
-                <Row style={{ marginTop: 16 }}>
-                    <Col span={12}>
-                        <Space>
-                            <FormItem label="阈值计算合并">
-                                <Switch value={trigger.regex_combine} disabled={!editorState.editable} onChange={(value) => updateRule(ruleIdx, { regex_combine: value as boolean })} />
-                            </FormItem>
-                            <div style={{ color: '#999', fontSize: 12, marginTop: 4 }}>
-                                {trigger.regex_combine ? '正则匹配的请求将合并计算限流' : '正则匹配的请求将单独计算限流'}
-                            </div>
-                        </Space>
-                    </Col>
-                </Row>
+                <div className={styles.inlineConfig}>
+                    <FormItem label="阈值计算合并">
+                        <Switch value={trigger.regex_combine} disabled={!editorState.editable} onChange={(value) => updateRule(ruleIdx, { regex_combine: value as boolean })} />
+                    </FormItem>
+                    <div className={styles.inlineHint}>
+                        {trigger.regex_combine ? '正则匹配的请求将合并计算限流' : '正则匹配的请求将单独计算限流'}
+                    </div>
+                </div>
             </div>
         );
     };
@@ -609,7 +622,16 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                 <Col span={12}>
                     <FormItem label="最大排队时长(秒)">
                         <InputAdornment append="秒">
-                            <InputNumber min={1} step={1} value={trigger.max_queue_delay ?? 1} onChange={(value) => updateRule(ruleIdx, { max_queue_delay: (value as number) ?? 1 })} />
+                            <InputNumber
+                                min={1}
+                                step={1}
+                                value={trigger.max_queue_delay ?? 1}
+                                readonly={!editorState.editable}
+                                inputProps={{
+                                    borderless: !editorState.editable,
+                                }}
+                                onChange={(value) => updateRule(ruleIdx, { max_queue_delay: (value as number) ?? 1 })}
+                            />
                         </InputAdornment>
                     </FormItem>
                 </Col>
@@ -629,12 +651,12 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
             </Row>
         );
         return (
-            <div style={{ marginBottom: 24, padding: 16, border: '1px solid #e0e0e0', borderRadius: 6 }}>
-                <div style={{ marginBottom: 16 }}>
-                    <Text style={{ fontWeight: 'bold' }}>限流方案</Text>
-                    <div style={{ color: '#999', fontSize: 12, marginTop: 4 }}>满足限流触发条件后的处理方案</div>
+            <div className={styles.ruleSection}>
+                <div className={styles.ruleSectionHeader}>
+                    <span className={styles.ruleSectionTitle}>限流方案</span>
+                    <div className={styles.ruleHelp}>满足限流触发条件后的处理方案</div>
                 </div>
-                <Row style={{ marginTop: 16 }}>
+                <Row>
                     <Space>
                         <FormItem label="限流效果">
                             <RadioGroup theme="button" variant="primary-filled" value={trigger.action} readonly={!editorState.editable} onChange={(value) => updateRule(ruleIdx, { action: value as LimitAction })}>
@@ -648,7 +670,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                 </Row>
                 {renderUnirate}
                 {renderFailover}
-                <Row style={{ marginTop: 16 }}>
+                <Row>
                     <Col span={12}>
                         <FormItem label="触发限流后的响应">
                             {editorState.editable ? (
@@ -659,6 +681,67 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                         </FormItem>
                     </Col>
                 </Row>
+            </div>
+        );
+    };
+
+    const describeLimitAmount = (ruleIdx: number) => {
+        const trigger = rateLimit.rules[ruleIdx];
+        if (trigger.resource === RateLimitResource.Concurrency) {
+            return `${trigger.concurrencyAmount?.maxAmount ?? trigger.amounts?.[0]?.maxAmount ?? '-'} 并发`;
+        }
+        const firstAmount = trigger.amounts?.[0];
+        if (!firstAmount) {
+            return '未配置阈值';
+        }
+        return `${firstAmount.maxAmount} 次 / ${firstAmount.validDuration}${firstAmount.validDurationUnit}`;
+    };
+
+    const renderRateLimitRule = (ruleIdx: number) => {
+        const trigger = rateLimit.rules[ruleIdx];
+        const collapsed = collapsedRuleIndexes.has(ruleIdx);
+        const matchCount = trigger.arguments?.length || 0;
+        const amountCount = trigger.resource === RateLimitResource.QPS ? (trigger.amounts?.length || 0) : 1;
+        return (
+            <div className={`${styles.sectionCard} ${styles.ruleBlock}`} key={ruleIdx}>
+                <div className={styles.ruleBlockHeader}>
+                    <div className={styles.ruleHeaderMain}>
+                        <button
+                            type="button"
+                            className={styles.collapseButton}
+                            onClick={() => toggleRuleCollapsed(ruleIdx)}
+                            aria-label={collapsed ? '展开规则' : '折叠规则'}
+                        >
+                            {collapsed ? <ChevronRightIcon /> : <ChevronDownIcon />}
+                        </button>
+                        <div className={styles.ruleTitleGroup}>
+                            <span>规则 [{ruleIdx + 1}]</span>
+                            <div className={styles.ruleSummary}>
+                                {matchCount} 个匹配条件 / {RateLimitResourceMap[trigger.resource] || '限流'} / {amountCount} 个阈值 / {LimitActionMap[trigger.action] || trigger.action}
+                            </div>
+                        </div>
+                    </div>
+                    <div className={styles.ruleHeaderActions}>
+                        <Tag variant="light">{describeLimitAmount(ruleIdx)}</Tag>
+                        {editorState.editable && (
+                            <Popup trigger="hover" content="删除规则">
+                                <Button
+                                    shape="circle"
+                                    variant="text"
+                                    onClick={() => removeRule(ruleIdx)}
+                                    disabled={rateLimit.rules.length <= 1}
+                                >
+                                    <CloseIcon />
+                                </Button>
+                            </Popup>
+                        )}
+                    </div>
+                </div>
+                <div className={`${styles.ruleBlockBody} ${collapsed ? styles.ruleBlockBodyCollapsed : ''}`}>
+                    {matchCondition(ruleIdx)}
+                    {rateLimitBlock(ruleIdx)}
+                    {limitActionBlock(ruleIdx)}
+                </div>
             </div>
         );
     };
@@ -687,29 +770,31 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                 offset={[-10, 200]}
             >
                 <StickyItem
-                    label={editorState.editable ? '保存' : '编辑'}
+                    label=""
                     icon={!editorState.editable ?
-                        <Edit1Icon onClick={() => {
+                        <RuleStickyAction label="编辑" icon={<Edit1Icon />} onClick={() => {
                             setEditorState(prev => ({ ...prev, editable: true }));
                         }} />
                         :
-                        <Button type="submit" variant="text" shape="square">
-                            <SaveIcon />
-                        </Button>
+                        <RuleStickyAction label="保存" icon={<SaveIcon />} onClick={() => {
+                            form.submit();
+                        }} />
                     }
                 />
                 {(editorState.editable) && (
-                    <StickyItem label="撤销" icon={
-                        <RollbackIcon onClick={() => {
-                            if (op === 'create') { refresh(true); }
+                    <StickyItem label="" icon={
+                        <RuleStickyAction label="撤销" icon={<RollbackIcon />} onClick={() => {
+                            if (op === 'create') {
+                                refresh(true);
+                            }
                             resetCurRule(viewRule ?? null);
                             setEditorState(prev => ({ ...prev, editable: false }));
                         }} />}
                     />
                 )}
                 {(!editorState.editable) && (
-                    <StickyItem label="发布" icon={
-                        <RocketIcon onClick={() => {
+                    <StickyItem label="" icon={
+                        <RuleStickyAction label="发布" icon={<RocketIcon />} onClick={() => {
                             setEditorState(prev => ({ ...prev, publishView: true }));
                         }} />}
                     />
@@ -732,29 +817,12 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                     {ruleBaseInfo}
                     {serviceInfo}
                     {limitType === LimitType.GLOBAL && limitCluster}
-                    <div style={{ marginBottom: 24 }}>
-                        <div style={{ marginBottom: 16 }}>
-                            <Text style={{ fontWeight: 'bold' }}>子规则</Text>
-                            <div style={{ color: '#999', fontSize: 12, marginTop: 4 }}>一大规则下可配置多条子规则，满足任一条即触发限流</div>
+                    <div className={styles.ruleListSection}>
+                        <div className={styles.ruleList}>
+                            {rateLimit.rules.map((_, ruleIdx) => renderRateLimitRule(ruleIdx))}
                         </div>
-                        <Collapse defaultValue={rateLimit.rules.map((_, i) => i)}>
-                            {rateLimit.rules.map((_, ruleIdx) => (
-                                <Collapse.Panel key={ruleIdx} header={`子规则 ${ruleIdx + 1}`} value={ruleIdx}>
-                                    {matchCondition(ruleIdx)}
-                                    {rateLimitBlock(ruleIdx)}
-                                    {limitActionBlock(ruleIdx)}
-                                    {editorState.editable && (
-                                        <div style={{ marginTop: 16 }}>
-                                            <Button theme="danger" variant="outline" onClick={() => removeRule(ruleIdx)} disabled={rateLimit.rules.length <= 1}>
-                                                删除该子规则
-                                            </Button>
-                                        </div>
-                                    )}
-                                </Collapse.Panel>
-                            ))}
-                        </Collapse>
                         {editorState.editable && (
-                            <Button variant="dashed" icon={<AddIcon />} onClick={addRule} style={{ marginTop: 12 }}>添加子规则</Button>
+                            <Button className={styles.addRuleButton} variant="dashed" icon={<AddIcon />} onClick={addRule}>添加规则</Button>
                         )}
                     </div>
                     {renderPublishForm}

@@ -1,6 +1,7 @@
 export enum BaseURL {
     NAMESPACE = '/core/v1/namespaces',
     SERVICE = '/naming/v1/services',
+    SERVICE_SUBSCRIBER = '/naming/v1/service/subscribers',
     ALIAS = '/naming/v1/service/aliases',
     INSTANCE = '/naming/v1/instances',
     CONFIG_GROUP = '/config/v1/groups',
@@ -14,6 +15,8 @@ export enum BaseURL {
     LOSSLESS = '/naming/v1/lossless',
     MCP_SERVER = '/ai/mcp/v1/servers',
     MCP_SERVER_TOOL = '/ai/mcp/v1/server/tools',
+    A2A_AGENT = '/ai/a2a/v1/agents',
+    A2A_AGENT_SKILL = '/ai/a2a/v1/agent/skills',
 }
 
 

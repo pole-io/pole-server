@@ -38,3 +38,9 @@ func TestInitialize(ctx context.Context, hcOpt *Config, bc *batch.Controller,
 	finishInit = true
 	return testServer, testServer.run(ctx)
 }
+
+func TestNewServerWithStore(storage store.Store) *Server {
+	return &Server{
+		storage: storage,
+	}
+}

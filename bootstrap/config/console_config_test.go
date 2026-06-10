@@ -50,3 +50,36 @@ bootstrap:
 	assert.Equal(t, "console/web/dist/", cfg.Bootstrap.Console.WebServer.WebPath)
 	assert.Equal(t, "127.0.0.1:8090", cfg.Bootstrap.Console.PoleServer.Address)
 }
+
+func TestLoad_LoadsDeployDefaultAllConfig(t *testing.T) {
+	cfgPath := filepath.Join("..", "..", "deploy", "conf", "pole-server.yaml")
+
+	cfg, err := Load(cfgPath)
+
+	require.NoError(t, err)
+	assert.Equal(t, StartModeAll, cfg.Bootstrap.Mode)
+	assert.Equal(t, 8080, cfg.Bootstrap.Console.WebServer.ListenPort)
+	require.NotNil(t, cfg.Naming.Batch)
+	require.NotNil(t, cfg.Naming.Batch["register"])
+	require.NotNil(t, cfg.Naming.HealthChecks.Batch)
+	require.NotEmpty(t, cfg.Naming.HealthChecks.Checkers)
+}
+
+func TestLoadAPIEntries_LoadsDeployAIMCPAccess(t *testing.T) {
+	cfgPath := filepath.Join("..", "..", "deploy", "conf", "pole-apiserver.yaml")
+
+	entries, err := LoadAPIEntries(cfgPath)
+
+	require.NoError(t, err)
+	for _, entry := range entries {
+		if entry.Name != "api-http" {
+			continue
+		}
+		aimcpConfig, ok := entry.API["aimcp"]
+		require.True(t, ok)
+		assert.True(t, aimcpConfig.Enable)
+		assert.Contains(t, aimcpConfig.Include, "default")
+		return
+	}
+	t.Fatal("api-http entry not found")
+}

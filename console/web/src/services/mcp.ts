@@ -16,6 +16,10 @@ export interface MCPServer {
   ctime?: string;
   mtime?: string;
   export_to?: string;
+  backend_type?: string;
+  backend_service_namespace?: string;
+  backend_service_name?: string;
+  backend_address?: string;
 }
 
 export interface MCPServerTool {
@@ -39,6 +43,9 @@ export interface DescribeMCPServersRequest {
   business?: string;
   department?: string;
   protocol?: string;
+  backend_type?: string;
+  backend_service_namespace?: string;
+  backend_service_name?: string;
 }
 
 export interface DescribeMCPServersResponse {

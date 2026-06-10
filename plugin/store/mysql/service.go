@@ -216,13 +216,16 @@ func (ss *serviceStore) AddServiceSubscibes(data []*svctypes.ServiceSubscriber) 
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	insertStmt := `insert into service_subscribe_graph (id, caller_name, caller_namespace, callee_name, callee_namespace) values (?, ?, ?, ?, ?)`
+	insertStmt := `
+		insert into service_subscribe_graph (id, caller_name, caller_namespace, callee_name, callee_namespace)
+		values (?, ?, ?, ?, ?)
+		on duplicate key update mtime = current_timestamp`
 	for _, sub := range data {
 		if sub.Caller == nil || len(sub.Callee) == 0 {
 			continue
 		}
 		for _, callee := range sub.Callee {
-			id, err := utils.BuildSha1Digest(sub.Caller.Name + sub.Caller.Namespace + callee.Name + callee.Namespace)
+			id, err := buildServiceSubscriberID(sub.Caller, callee)
 			if err != nil {
 				log.Errorf("[Store][ServiceSubscribe] add subscribe build id err: %s", err.Error())
 				return store.NewStatusError(store.Unknown, "build subscribe id failed")
@@ -238,6 +241,17 @@ func (ss *serviceStore) AddServiceSubscibes(data []*svctypes.ServiceSubscriber) 
 		return err
 	}
 	return nil
+}
+
+func buildServiceSubscriberID(caller *svctypes.ServiceKey, callee *svctypes.ServiceKey) (string, error) {
+	digest, err := utils.BuildSha1Digest(fmt.Sprintf("%s/%s->%s/%s", caller.Namespace, caller.Name, callee.Namespace, callee.Name))
+	if err != nil {
+		return "", err
+	}
+	if len(digest) > 32 {
+		return digest[:32], nil
+	}
+	return digest, nil
 }
 
 // DelServiceSubscibes 批量删除服务订阅信息

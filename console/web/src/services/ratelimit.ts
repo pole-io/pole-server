@@ -8,7 +8,7 @@ export interface Lists {
 
 export enum RateLimitResource {
     QPS = 'QPS',
-    Concurrency = 'Concurrency',
+    Concurrency = 'CONCURRENCY',
 }
 
 // RateLimitRule的资源类型
@@ -247,6 +247,8 @@ export interface ConcurrencyAmount {
 }
 
 export interface CustomResponse {
+    code?: string
+    headers?: Record<string, string>
     body: string
 }
 
@@ -379,13 +381,80 @@ export interface RateLimitRuleView {
 }
 
 // 将 LimitConfig[] 转为 LimitConfigView[]
+function normalizeMatchType(type?: string | number): MatchType {
+    const map: Record<number, MatchType> = {
+        0: MatchType.EXACT,
+        1: MatchType.REGEX,
+        2: MatchType.NOT_EQUALS,
+        3: MatchType.IN,
+        4: MatchType.NOT_IN,
+        5: MatchType.RANGE,
+    };
+    if (typeof type === 'number') return map[type] || MatchType.EXACT;
+    return (type as MatchType) || MatchType.EXACT;
+}
+
+function normalizeMatchValueType(type?: string | number): MatchValueType {
+    const map: Record<number, MatchValueType> = {
+        0: MatchValueType.TEXT,
+        1: MatchValueType.PARAMETER,
+        2: MatchValueType.VARIABLE,
+    };
+    if (typeof type === 'number') return map[type] || MatchValueType.TEXT;
+    return (type as MatchValueType) || MatchValueType.TEXT;
+}
+
+function normalizeLimitType(type?: LimitType | number): LimitType {
+    if (type === 0) return LimitType.GLOBAL;
+    if (type === 1) return LimitType.LOCAL;
+    return (type as LimitType) || LimitType.LOCAL;
+}
+
+function normalizeResource(resource?: RateLimitResource | number | string): RateLimitResource {
+    if (resource === 0) return RateLimitResource.QPS;
+    if (resource === 1) return RateLimitResource.Concurrency;
+    if (resource === 'Concurrency') return RateLimitResource.Concurrency;
+    return (resource as RateLimitResource) || RateLimitResource.QPS;
+}
+
+function normalizeArgumentType(type?: LimitArgumentsType | number | string): LimitArgumentsType {
+    const map: Record<number, LimitArgumentsType> = {
+        0: LimitArgumentsType.CUSTOM,
+        1: LimitArgumentsType.METHOD,
+        2: LimitArgumentsType.HEADER,
+        3: LimitArgumentsType.QUERY,
+        4: LimitArgumentsType.CALLER_SERVICE,
+        5: LimitArgumentsType.CALLER_IP,
+    };
+    if (typeof type === 'number') return map[type] || LimitArgumentsType.CUSTOM;
+    return (type as LimitArgumentsType) || LimitArgumentsType.CUSTOM;
+}
+
+function durationToView(duration?: string | { seconds?: number | string; nanos?: number }): Pick<LimitConfigView, 'validDuration' | 'validDurationUnit'> {
+    if (duration && typeof duration === 'object') {
+        const seconds = Number(duration.seconds || 0);
+        if (seconds >= 3600 && seconds % 3600 === 0) {
+            return { validDuration: seconds / 3600, validDurationUnit: LimitAmountsValidationUnit.h };
+        }
+        if (seconds >= 60 && seconds % 60 === 0) {
+            return { validDuration: seconds / 60, validDurationUnit: LimitAmountsValidationUnit.m };
+        }
+        return { validDuration: seconds || 1, validDurationUnit: LimitAmountsValidationUnit.s };
+    }
+    const [validDuration, validDurationUnit] = (duration || '1s').split(/(\d+)/).filter(Boolean);
+    return {
+        validDuration: Number.parseInt(validDuration) || 1,
+        validDurationUnit: converToUnit(validDurationUnit),
+    };
+}
+
 function amountsToView(amounts: LimitConfig[]): LimitConfigView[] {
     if (!amounts?.length) return [{ validDuration: 1, validDurationUnit: LimitAmountsValidationUnit.s, maxAmount: 1 }];
     return amounts.map(amount => {
-        const [validDuration, validDurationUnit] = (amount.validDuration || '1s').split(/(\d+)/).filter(Boolean);
+        const duration = durationToView((amount as any).validDuration);
         return {
-            validDuration: Number.parseInt(validDuration) || 0,
-            validDurationUnit: converToUnit(validDurationUnit),
+            validDuration: duration.validDuration,
+            validDurationUnit: duration.validDurationUnit,
             maxAmount: amount.maxAmount || 0,
         };
     });
@@ -396,22 +465,22 @@ function ruleToTriggerView(item: RateLimitRule): LimitTriggerView {
     return {
         method: item.method || { value: '', type: MatchType.EXACT, value_type: MatchValueType.TEXT },
         arguments: item.arguments ? item.arguments.map(arg => ({
-            type: arg.type || LimitArgumentsType.CUSTOM,
+            type: normalizeArgumentType(arg.type),
             key: arg.key,
             value: {
-                type: arg.value?.type || MatchType.EXACT,
+                type: normalizeMatchType(arg.value?.type),
                 value: arg.value?.value || '',
-                value_type: arg.value?.value_type || MatchValueType.TEXT,
+                value_type: normalizeMatchValueType(arg.value?.value_type),
             },
         })) : [],
         amounts: amountsToView(item.amounts || []),
         action: item.action || LimitAction.REJECT,
-        resource: item.resource || RateLimitResource.QPS,
+        resource: normalizeResource(item.resource),
         concurrencyAmount: item.concurrencyAmount,
         regex_combine: item.regex_combine ?? false,
         failover: item.failover || LimitFailover.FAILOVER_LOCAL,
         max_queue_delay: item.max_queue_delay ?? 1,
-        customResponse: item.customResponse,
+        customResponse: item.customResponse ?? (item as any).custom_response,
     };
 }
 
@@ -420,22 +489,22 @@ function triggerToView(t: LimitTrigger): LimitTriggerView {
     return {
         method: t.method || { value: '', type: MatchType.EXACT, value_type: MatchValueType.TEXT },
         arguments: t.arguments ? t.arguments.map(arg => ({
-            type: arg.type || LimitArgumentsType.CUSTOM,
+            type: normalizeArgumentType(arg.type),
             key: arg.key,
             value: {
-                type: arg.value?.type || MatchType.EXACT,
+                type: normalizeMatchType(arg.value?.type),
                 value: arg.value?.value || '',
-                value_type: arg.value?.value_type || MatchValueType.TEXT,
+                value_type: normalizeMatchValueType(arg.value?.value_type),
             },
         })) : [],
         amounts: amountsToView(t.amounts || []),
         action: t.action || LimitAction.REJECT,
-        resource: t.resource || RateLimitResource.QPS,
+        resource: normalizeResource(t.resource),
         concurrencyAmount: t.concurrencyAmount,
         regex_combine: t.regex_combine ?? false,
         failover: t.failover || LimitFailover.FAILOVER_LOCAL,
-        max_queue_delay: t.max_queue_delay ?? 1,
-        customResponse: t.customResponse,
+        max_queue_delay: t.max_queue_delay ?? (t as any).maxQueueDelay ?? 1,
+        customResponse: t.customResponse ?? (t as any).custom_response,
     };
 }
 
@@ -450,7 +519,7 @@ function itemToRateLimitView(item: RateLimit | RateLimitRule): RateLimitView {
             service: r.service,
             namespace: r.namespace,
             priority: r.priority,
-            type: r.type,
+            type: normalizeLimitType(r.type),
             rules: (r.rules || []).map(triggerToView),
             revision: r.revision,
             disable: r.disable,
@@ -469,7 +538,7 @@ function itemToRateLimitView(item: RateLimit | RateLimitRule): RateLimitView {
         name: leg.name,
         service: leg.service,
         namespace: leg.namespace,
-        type: leg.type,
+        type: normalizeLimitType(leg.type),
         rules: [ruleToTriggerView(leg)],
         revision: leg.revision,
         ctime: (leg as RateLimitRuleView).ctime,
@@ -495,8 +564,10 @@ export interface DescribeLimitRulesRequest {
 }
 
 export interface DescribeLimitRulesResponse {
-    rateLimits: (RateLimit | RateLimitRule)[]
-    amount: number
+    data?: (RateLimit | RateLimitRule)[]
+    rateLimits?: (RateLimit | RateLimitRule)[]
+    amount?: number
+    size?: number
 }
 
 export async function describeLimitRules(params: DescribeLimitRulesRequest) {
@@ -504,9 +575,10 @@ export async function describeLimitRules(params: DescribeLimitRulesRequest) {
         action: `${BaseURL.RATELIMIT_RULE}`,
         data: params,
     })
+    const rateLimits = res.data ?? res.rateLimits ?? []
     return {
-        list: res.rateLimits.map(itemToRateLimitView),
-        totalCount: res.amount,
+        list: rateLimits.map(itemToRateLimitView),
+        totalCount: res.amount ?? rateLimits.length,
     }
 }
 

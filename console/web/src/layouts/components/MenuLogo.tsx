@@ -16,8 +16,11 @@ export default memo((props: IProps) => {
   };
 
   return (
-    <div className={Style.menuLogo} onClick={handleClick}>
-      {props.collapsed ? <MiniLogo /> : <FullLogo />}
+    <div
+      className={`${Style.menuLogo} ${props.collapsed ? Style.menuLogoCollapsed : Style.menuLogoExpanded}`}
+      onClick={handleClick}
+    >
+      {props.collapsed ? <MiniLogo className={Style.menuMiniLogo} /> : <FullLogo className={Style.logoFull} />}
     </div>
   );
 });

@@ -33,40 +33,49 @@ import (
 
 func TestParseMCPServerQuery_UsesSpecMessage(t *testing.T) {
 	query := parseMCPServerQuery(map[string]interface{}{
-		"name":       "order",
-		"namespace":  "default",
-		"business":   "payment",
-		"department": "infra",
-		"protocol":   "http",
-		"offset":     float64(2),
-		"limit":      float64(20),
+		"name":                      "order",
+		"namespace":                 "default",
+		"business":                  "payment",
+		"department":                "infra",
+		"protocol":                  "http",
+		"backend_type":              "service",
+		"backend_service_namespace": "default",
+		"backend_service_name":      "order-service",
+		"offset":                    float64(2),
+		"limit":                     float64(20),
 	})
 
 	assert.Equal(t, &ai.MCPServerQuery{
-		Name:       "order",
-		Namespace:  "default",
-		Business:   "payment",
-		Department: "infra",
-		Protocol:   "http",
-		Offset:     2,
-		Limit:      20,
+		Name:                    "order",
+		Namespace:               "default",
+		Business:                "payment",
+		Department:              "infra",
+		Protocol:                "http",
+		BackendType:             "service",
+		BackendServiceNamespace: "default",
+		BackendServiceName:      "order-service",
+		Offset:                  2,
+		Limit:                   20,
 	}, query)
 }
 
 func TestParseMCPServers_UsesSpecContainer(t *testing.T) {
 	servers, err := parseMCPServers([]interface{}{
 		map[string]interface{}{
-			"id":        "server-1",
-			"name":      "order",
-			"namespace": "default",
-			"protocol":  "http",
+			"id":                        "server-1",
+			"backend_type":              "service",
+			"backend_service_namespace": "default",
+			"backend_service_name":      "order",
+			"protocol":                  "http",
 		},
 	})
 
 	require.NoError(t, err)
 	require.Len(t, servers.GetServers(), 1)
 	assert.Equal(t, "server-1", servers.GetServers()[0].GetId())
-	assert.Equal(t, "order", servers.GetServers()[0].GetName())
+	assert.Equal(t, "service", servers.GetServers()[0].GetBackendType())
+	assert.Equal(t, "default", servers.GetServers()[0].GetBackendServiceNamespace())
+	assert.Equal(t, "order", servers.GetServers()[0].GetBackendServiceName())
 }
 
 func TestAppendMCPServerToResp_UsesSpecAny(t *testing.T) {

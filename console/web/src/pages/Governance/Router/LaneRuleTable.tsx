@@ -6,11 +6,22 @@ import { useAppDispatch, useAppSelector } from 'modules/store';
 import Text from 'components/Text';
 import { Op } from 'services/types';
 import { LaneRuleView } from 'services/lane';
-import { openErrNotification } from 'utils/notifition';
+import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
 import LaneRuleEditor from './LaneRuleEditor';
-import { editorLaneRule, resetLaneRule, viewLaneRule } from 'modules/governance/lane_rule';
+import { removeLaneRules, resetLaneRule, viewLaneRule } from 'modules/governance/lane_rule';
 import { listOneLaneGroup, selectLaneGroup } from 'modules/governance/lane_group';
+import { LimitArgumentsTypeMap } from 'services/ratelimit';
+
+const formatLaneMatchArguments = (row: LaneRuleView) => {
+    const args = row.trafficMatchRule?.arguments || [];
+    if (!args.length) return '-';
+    return args.map((arg) => {
+        const type = LimitArgumentsTypeMap[arg.type as keyof typeof LimitArgumentsTypeMap] || arg.type || '参数';
+        const value = arg.value?.value || '-';
+        return `${type} ${arg.key || '-'} = ${value}`;
+    }).join(' / ');
+};
 
 interface ILaneRuleTableProps {
     groupId?: string; // 可选的规则ID，用于编辑时传入
@@ -39,6 +50,12 @@ const columns = (handleOpRule: (row: TableRowData, op: Op) => void, redirect: (r
         colKey: 'lane_label',
         title: '泳道标签',
         cell: ({ row }) => <div>{row.labelKey}: {row.defaultLabelValue}</div>,
+    },
+    {
+        colKey: 'match',
+        title: '匹配条件',
+        ellipsis: true,
+        cell: ({ row }) => <Text>{formatLaneMatchArguments(row as LaneRuleView)}</Text>,
     },
     {
         colKey: 'time',
@@ -122,6 +139,20 @@ const LaneRuleTable: React.FC<ILaneRuleTableProps> = ({ groupId }) => {
                 setEditorState(prev => ({ ...prev, visible: true, mode: op }));
                 break;
             case 'delete':
+                dispatch(removeLaneRules({
+                    ids: [{
+                        id: row.id,
+                        groupName: row.groupName || editGroup?.name || '',
+                    }]
+                })).then((res) => {
+                    if (res.meta.requestStatus === 'fulfilled') {
+                        openInfoNotification("请求成功", "删除泳道规则成功");
+                        loadLaneRules(editGroup?.id || '');
+                    } else {
+                        openErrNotification("请求失败", `删除泳道规则失败: ${res.payload as string || '未知'}`);
+                    }
+                });
+                break;
         }
     }
 

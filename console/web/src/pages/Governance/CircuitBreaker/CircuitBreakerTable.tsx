@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Popconfirm } from 'tdesign-react';
+import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Popconfirm, Empty } from 'tdesign-react';
 import { DeleteIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,6 +16,7 @@ import CircuitBreakerEditor from './CircuitBreakerEditor';
 import { cleanCircuitBreakerPage, editorCircuitBreaker, listCircuitBreakers, listCircuitBreakerVersions, removeCircuitBreakerRelease, removeCircuitBreakers, rollbackCircuitBreakerRelease, selectCircuitBreaker } from 'modules/governance/circuitbreaker';
 import SubscribeTable from 'components/SubscribeTable';
 import RuleTabs from '../RuleRelease/RuleTabs';
+import RuleDetailDrawer from '../RuleRelease/RuleDetailDrawer';
 
 interface ICircuitBreakerTableProps {
 
@@ -40,9 +41,7 @@ const columns = (handleOpRule: (row: TableRowData, op: Op) => void, redirect: (r
         title: '主调',
         ellipsis: true,
         cell: ({ row: { ruleMatcher } }: TableRowData) => (
-            <>
-                <div style={{ fontSize: 12, marginTop: 4 }}>命名空间: {ruleMatcher.source.namespace || '-'}<br />服务: {ruleMatcher.source.service || '-'}</div>
-            </>
+            <div className={style.serviceCell}>命名空间: {ruleMatcher?.source?.namespace || '-'}<br />服务: {ruleMatcher?.source?.service || '-'}</div>
         ),
     },
     {
@@ -50,9 +49,7 @@ const columns = (handleOpRule: (row: TableRowData, op: Op) => void, redirect: (r
         title: '被调',
         ellipsis: true,
         cell: ({ row: { ruleMatcher } }: TableRowData) => (
-            <>
-                <div style={{ fontSize: 12, marginTop: 4 }}>命名空间: {ruleMatcher.destination.namespace || '-'}<br />服务: {ruleMatcher.destination.service || '-'}</div>
-            </>
+            <div className={style.serviceCell}>命名空间: {ruleMatcher?.destination?.namespace || '-'}<br />服务: {ruleMatcher?.destination?.service || '-'}</div>
         ),
     },
     {
@@ -123,6 +120,7 @@ const CircuitBreakerTable: React.FC<ICircuitBreakerTableProps> = ({ }) => {
                     .then((res) => {
                         if (res.meta.requestStatus === 'fulfilled') {
                             openInfoNotification("请求成功", "删除熔断降级规则成功");
+                            refreshData(1, limit);
                         } else {
                             openErrNotification("请求失败", `删除熔断降级规则失败: ${res.payload as string || '未知'}`);
                         }
@@ -264,67 +262,68 @@ const CircuitBreakerTable: React.FC<ICircuitBreakerTableProps> = ({ }) => {
     )
 
     return (
-        <Row gutter={16} className={style.CircuitBreakerTable}>
-            <Col span={4}>
+        <div className={style.ruleWorkspace}>
+            <section className={style.ruleListPane}>
                 {table}
-            </Col>
-            <Col span={7} style={{ marginLeft: 30 }}>
-                {editorState.visible && (
-                    <div className={style.editorContainer}>
-                        <RuleTabs
-                            op={editorState.mode}
-                            onVersionView={() => {
-                                refreshVersions(1, 10)
-                            }}
-                            view={
-                                <>
-                                    <CircuitBreakerEditor
-                                        op={editorState.mode}
-                                        refresh={(close: boolean) => {
-                                            if (close) {
-                                                setEditorState(pre => ({ ...pre, visible: false }));
-                                            }
-                                            refreshData(1, limit);
-                                        }}
-                                    />
-                                </>
-                            }
-                            versions={{
-                                datas: versions,
-                                action: operateRelease,
-                                editable: editorState.data?.editable || true,
-                                deleteable: editorState.data?.deleteable || true,
-                                loading: versionLoading,
-                                pagination: {
-                                    defaultCurrent: versionPage,
-                                    defaultPageSize: versionLimit,
-                                    total: versionTotal,
-                                    showJumper: false,
-                                    onChange(pageInfo) {
-                                        refreshVersions(pageInfo.current, pageInfo.pageSize);
-                                    },
-                                },
-                                onPageChange: (page) => {
-                                    refreshVersions(page.current, page.pageSize);
-                                }
-                            }}
-                            subscribe={
-                                <>
-                                    <div style={{ marginLeft: 20, marginTop: 20 }}>
-                                        <SubscribeTable
-                                            title={`${editorState.data?.name}`}
-                                            editable={editorState.data?.editable || true}
-                                            deleteable={editorState.data?.deleteable || true}
-                                            subscribers={subscribers || []}
-                                        />
-                                    </div>
-                                </>
-                            }
-                        />
-                    </div>
-                )}
-            </Col>
-        </Row>
+            </section>
+            <RuleDetailDrawer
+                visible={editorState.visible}
+                title={editorState.mode === 'create' ? '新建熔断规则' : editorState.data?.name || '熔断规则详情'}
+                subtitle="故障熔断"
+                onClose={() => setEditorState(pre => ({ ...pre, visible: false }))}
+            >
+                <RuleTabs
+                    op={editorState.mode}
+                    onVersionView={() => {
+                        refreshVersions(1, 10)
+                    }}
+                    view={
+                        <>
+                            <CircuitBreakerEditor
+                                op={editorState.mode}
+                                refresh={(close: boolean) => {
+                                    if (close) {
+                                        setEditorState(pre => ({ ...pre, visible: false }));
+                                    }
+                                    refreshData(1, limit);
+                                }}
+                            />
+                        </>
+                    }
+                    versions={{
+                        datas: versions,
+                        action: operateRelease,
+                        editable: editorState.data?.editable ?? true,
+                        deleteable: editorState.data?.deleteable ?? true,
+                        loading: versionLoading,
+                        pagination: {
+                            defaultCurrent: versionPage,
+                            defaultPageSize: versionLimit,
+                            total: versionTotal,
+                            showJumper: false,
+                            onChange(pageInfo) {
+                                refreshVersions(pageInfo.current, pageInfo.pageSize);
+                            },
+                        },
+                        onPageChange: (page) => {
+                            refreshVersions(page.current, page.pageSize);
+                        }
+                    }}
+                    subscribe={
+                        <>
+                            <div style={{ marginLeft: 20, marginTop: 20 }}>
+                                <SubscribeTable
+                                    title={`${editorState.data?.name}`}
+                                    editable={editorState.data?.editable ?? true}
+                                    deleteable={editorState.data?.deleteable ?? true}
+                                    subscribers={subscribers || []}
+                                />
+                            </div>
+                        </>
+                    }
+                />
+            </RuleDetailDrawer>
+        </div>
     )
 }
 

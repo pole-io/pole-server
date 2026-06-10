@@ -54,6 +54,16 @@
     # admin OpenAPI interface
     admin:
       enable: true
+    # aimcp OpenAPI interface
+    aimcp:
+      enable: true
+      # OpenAPI group that needs to be exposed
+      include: [default]
+    # aia2a OpenAPI interface
+    aia2a:
+      enable: false
+      # Registry-only API group; data-plane proxy is not provided by control-plane
+      include: [default]
     # Console OpenAPI interface
     console:
       enable: true

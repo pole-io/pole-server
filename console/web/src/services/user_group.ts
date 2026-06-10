@@ -90,16 +90,20 @@ export interface DescribeUserGroupsRequest {
 export interface DescribeUserGroupsResponse {
     // 总数
     amount: number
+    size?: number
+    // 标准响应用户组列表
+    data?: UserGroup[]
 
     // 用户组列表
-    userGroups: UserGroup[]
+    userGroups?: UserGroup[]
 }
 
 export async function describeUserGroups(params: DescribeUserGroupsRequest) {
     const result = await getApiRequest<DescribeUserGroupsResponse>({ action: '/auth/v1/usergroups', data: params })
+    const userGroups = result.data ?? result.userGroups ?? []
     return {
-        totalCount: result.amount,
-        content: result.userGroups ? result.userGroups : [],
+        totalCount: result.amount ?? userGroups.length,
+        content: userGroups,
     }
 }
 

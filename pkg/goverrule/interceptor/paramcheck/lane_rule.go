@@ -216,8 +216,8 @@ func checkLaneGroupParam(req *apitraffic.LaneGroup, update bool) *apimodel.Respo
 	if err := valid.CheckResourceName(string(req.GetName())); err != nil {
 		return api.NewResponseWithMsg(apimodel.Code_InvalidParameter, err.Error())
 	}
-	if len(req.Rules) > valid.MaxBatchSize {
-		return api.NewResponseWithMsg(apimodel.Code_InvalidParameter, "lane_rule size must be <= 100")
+	if len(req.Rules) > 20 {
+		return api.NewResponseWithMsg(apimodel.Code_InvalidParameter, "lane_rule size must be <= 20")
 	}
 	for i := range req.Rules {
 		rule := req.Rules[i]

@@ -1,6 +1,6 @@
 import React from "react";
 import { Col, Form, Input, Row, Space, Button, Select, Switch, Dialog, InputNumber, Table, FormProps, Tag, Popup, TableRowData, PrimaryTableProps, StickyTool } from "tdesign-react";
-import { SendIcon, AddIcon, CloseIcon, Edit1Icon, SaveIcon, RocketIcon, RollbackIcon } from "tdesign-icons-react";
+import { SendIcon, AddIcon, CloseIcon, Edit1Icon, SaveIcon, RocketIcon, RollbackIcon, DragMoveIcon, ChevronDownIcon, ChevronRightIcon } from "tdesign-icons-react";
 import cloneDeep from 'lodash/cloneDeep';
 
 import Text from "components/Text";
@@ -18,6 +18,8 @@ import {
     RoutingRuleSource,
     RoutingSourceArgument,
     RoutingValueType,
+    buildRoutingConfigForApi,
+    normalizeRoutingConfigForEditor,
 } from "services/router";
 import { Label, MatchString, MatchType, MatchTypeMap, MatchTypeOption, MatchValueType, Op } from "services/types";
 import { listOneCustomRoute, resetCustomRoute, saveCustomRoutes, selectCustomRoute, updateCustomRoutes } from "modules/governance/route";
@@ -25,6 +27,7 @@ import { listOneCustomRoute, resetCustomRoute, saveCustomRoutes, selectCustomRou
 import styles from './CustomRouteEditor.module.less';
 import { openErrNotification, openInfoNotification } from "utils/notifition";
 import PublishForm from "../RuleRelease/PublishForm";
+import RuleStickyAction from "../RuleRelease/RuleStickyAction";
 import { PolicySourceType } from "services/auth_policy";
 import { cleanNamespacePage, listAllNamespaces, selectNamespace } from "modules/namespace";
 import { cleanServicePage, listAllServices, selectService } from "modules/discovery/service";
@@ -67,9 +70,22 @@ export const defaultCustomRoute: () => CustomRouteDO = () => ({
     enable: true,
     routing_config: {
         '@type': 'type.googleapis.com/v1.RuleRoutingConfig',
+        caller: {
+            namespace: '*',
+            service: '',
+        },
+        callee: {
+            namespace: '*',
+            service: '',
+        },
         rules: [{
             name: '',
             sources: [defaultMatch()],
+            arguments: {
+                arguments: [],
+                randomPercent: 0,
+                matchMode: 'AND',
+            },
             destinations: [defaultGroup(1)],
         }]
     },
@@ -117,20 +133,29 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
 
     // 创建新的 rules 对象
     const [customRouteRule, setCustomRouteRule] = React.useState<CustomRouteDO>(defaultCustomRoute());
+    const [collapsedRuleIndexes, setCollapsedRuleIndexes] = React.useState<Set<number>>(new Set());
+    const [draggingRuleIndex, setDraggingRuleIndex] = React.useState<number | null>(null);
+    const [draggingGroupKey, setDraggingGroupKey] = React.useState<string>('');
 
     const resetCurRule = (rule: CustomRouteView | null) => {
         if (!rule) {
             return;
         }
         const cloneRule = cloneDeep(rule);
+        const routingConfig = normalizeRoutingConfigForEditor(cloneRule.routing_config);
+        const firstRule = routingConfig?.rules?.[0];
+        const caller = routingConfig?.caller;
+        const callee = routingConfig?.callee;
         setCustomRouteRule({
             ...cloneRule,
-            caller_namespace: cloneRule?.routing_config?.rules?.[0]?.sources[0]?.namespace || '*',
-            caller_service: cloneRule?.routing_config?.rules?.[0]?.sources[0]?.service || '',
-            callee_namespace: cloneRule?.routing_config?.rules?.[0]?.destinations[0]?.namespace || '*',
-            callee_service: cloneRule?.routing_config?.rules?.[0]?.destinations[0]?.service || '',
+            routing_config: routingConfig,
+            caller_namespace: caller?.namespace || firstRule?.sources?.[0]?.namespace || '*',
+            caller_service: caller?.service || firstRule?.sources?.[0]?.service || '',
+            callee_namespace: callee?.namespace || firstRule?.destinations?.[0]?.namespace || '*',
+            callee_service: callee?.service || firstRule?.destinations?.[0]?.service || '',
             metadata: Object.entries(cloneRule?.metadata || {}).map(([key, value]) => ({ key, value })),
         });
+        setCollapsedRuleIndexes(new Set());
     }
 
     const [tagEdit, setTagEdit] = React.useState<{
@@ -191,7 +216,11 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
             description: customRouteRule.description || '',
             enable: customRouteRule.enable,
             priority: customRouteRule.priority || 0,
-            routing_config: customRouteRule.routing_config,
+            routing_config: buildRoutingConfigForApi(
+                customRouteRule.routing_config,
+                { namespace: customRouteRule.caller_namespace, service: customRouteRule.caller_service },
+                { namespace: customRouteRule.callee_namespace, service: customRouteRule.callee_service },
+            ),
             routing_policy: customRouteRule.routing_policy || 'RulePolicy',
             metadata: customRouteRule.metadata?.reduce<Record<string, string>>((acc, tag) => {
                 acc[tag.key] = tag.value;
@@ -214,100 +243,182 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
         }
     }
 
-    const addMatch = (ruleIdx: number) => {
-        const curRules = customRouteRule.routing_config?.rules || [];
-        const newRules = [...curRules];
-        newRules[ruleIdx].sources[0].arguments.push(defaultMatchArgs());
+    const updateRoutingRules = (updater: (rules: RoutingRule[]) => RoutingRule[]) => {
         setCustomRouteRule((prev) => ({
             ...prev,
             routing_config: {
+                ...(prev.routing_config || {}),
                 '@type': 'type.googleapis.com/v1.RuleRoutingConfig',
-                rules: newRules,
+                rules: updater(cloneDeep(prev.routing_config?.rules || [])),
             },
         }));
+    };
+
+    const addMatch = (ruleIdx: number) => {
+        updateRoutingRules((rules) => {
+            rules[ruleIdx].sources[0].arguments.push(defaultMatchArgs());
+            return rules;
+        });
     };
 
     const updateMatchArgs = (del: boolean, ruleIdx: number, idx: number, args?: RoutingSourceArgument) => {
-        const curRules = customRouteRule.routing_config?.rules || [];
-        const newRules = [...curRules];
-        if (del) {
-            newRules[ruleIdx].sources[0].arguments.splice(idx, 1);
-        } else {
-            if (!newRules[ruleIdx].sources[0].arguments) {
-                newRules[ruleIdx].sources[0].arguments = [];
-            }
-            if (args) {
-                if (idx < newRules[ruleIdx].sources[0].arguments.length) {
-                    // 更新已有的参数
-                    newRules[ruleIdx].sources[0].arguments[idx] = {
-                        ...newRules[ruleIdx].sources[0].arguments[idx],
-                        ...Object.fromEntries(
-                            Object.entries(args).filter(([_, value]) => value !== undefined)
-                        ),
-                    };
-                } else {
-                    newRules[ruleIdx].sources[0].arguments.push(args);
+        updateRoutingRules((rules) => {
+            if (del) {
+                rules[ruleIdx].sources[0].arguments.splice(idx, 1);
+            } else {
+                if (!rules[ruleIdx].sources[0].arguments) {
+                    rules[ruleIdx].sources[0].arguments = [];
+                }
+                if (args) {
+                    if (idx < rules[ruleIdx].sources[0].arguments.length) {
+                        // 更新已有的参数
+                        rules[ruleIdx].sources[0].arguments[idx] = {
+                            ...rules[ruleIdx].sources[0].arguments[idx],
+                            ...Object.fromEntries(
+                                Object.entries(args).filter(([_, value]) => value !== undefined)
+                            ),
+                        };
+                    } else {
+                        rules[ruleIdx].sources[0].arguments.push(args);
+                    }
                 }
             }
-        }
-        setCustomRouteRule((prev) => ({
-            ...prev,
-            routing_config: {
-                '@type': 'type.googleapis.com/v1.RuleRoutingConfig',
-                rules: newRules,
-            },
-        }));
+            return rules;
+        });
     };
 
     const addGroup = (ruleIdx: number) => {
-        const curRules = customRouteRule.routing_config?.rules || [];
-        const newRules = [...curRules];
-        const newGroup = defaultGroup(newRules[ruleIdx].destinations.length + 1);
-        newRules[ruleIdx].destinations.push(newGroup);
-        setCustomRouteRule((prev) => ({
-            ...prev,
-            routing_config: {
-                '@type': 'type.googleapis.com/v1.RuleRoutingConfig',
-                rules: newRules,
-            },
-        }));
+        updateRoutingRules((rules) => {
+            const newGroup = defaultGroup(rules[ruleIdx].destinations.length + 1);
+            rules[ruleIdx].destinations.push(newGroup);
+            return rules;
+        });
     };
 
     const removeGroup = (ruleIdx: number, idx: number) => {
-        const curRules = customRouteRule.routing_config?.rules || [];
-        const newRules = [...curRules];
-        newRules[ruleIdx].destinations.splice(idx, 1);
-        setCustomRouteRule((prev) => ({
-            ...prev,
-            routing_config: {
-                '@type': 'type.googleapis.com/v1.RuleRoutingConfig',
-                rules: newRules,
-            },
-        }));
+        updateRoutingRules((rules) => {
+            rules[ruleIdx].destinations.splice(idx, 1);
+            return rules;
+        });
     };
 
     const updateGroup = (ruleIdx: number, idx: number, group: RoutingRuleDestination) => {
-        const curRules = customRouteRule.routing_config?.rules || [];
-        const newRules = [...curRules];
-        if (idx < newRules[ruleIdx].destinations.length) {
-            const existingGroup = newRules[ruleIdx].destinations[idx];
-            newRules[ruleIdx].destinations[idx] = {
-                ...existingGroup,
-                ...Object.fromEntries(
-                    Object.entries(group).filter(([_, value]) => value !== undefined)
-                ),
-            };
-        } else {
-            newRules[ruleIdx].destinations.push(group);
-        }
-        setCustomRouteRule((prev) => ({
-            ...prev,
-            routing_config: {
-                '@type': 'type.googleapis.com/v1.RuleRoutingConfig',
-                rules: newRules,
-            },
-        }));
+        updateRoutingRules((rules) => {
+            if (idx < rules[ruleIdx].destinations.length) {
+                const existingGroup = rules[ruleIdx].destinations[idx];
+                rules[ruleIdx].destinations[idx] = {
+                    ...existingGroup,
+                    ...Object.fromEntries(
+                        Object.entries(group).filter(([_, value]) => value !== undefined)
+                    ),
+                };
+            } else {
+                rules[ruleIdx].destinations.push(group);
+            }
+            return rules;
+        });
     }
+
+    const moveRule = (from: number, to: number) => {
+        if (from === to || from < 0 || to < 0) return;
+        updateRoutingRules((rules) => {
+            if (from >= rules.length || to >= rules.length) return rules;
+            const [moved] = rules.splice(from, 1);
+            rules.splice(to, 0, moved);
+            return rules;
+        });
+        setCollapsedRuleIndexes((prev) => {
+            const next = new Set<number>();
+            prev.forEach((idx) => {
+                if (idx === from) {
+                    next.add(to);
+                } else if (from < to && idx > from && idx <= to) {
+                    next.add(idx - 1);
+                } else if (from > to && idx >= to && idx < from) {
+                    next.add(idx + 1);
+                } else {
+                    next.add(idx);
+                }
+            });
+            return next;
+        });
+    };
+
+    const moveGroup = (ruleIdx: number, from: number, to: number) => {
+        if (from === to || from < 0 || to < 0) return;
+        updateRoutingRules((rules) => {
+            const destinations = rules[ruleIdx]?.destinations || [];
+            if (from >= destinations.length || to >= destinations.length) return rules;
+            const [moved] = destinations.splice(from, 1);
+            destinations.splice(to, 0, {
+                ...moved,
+                priority: to,
+            });
+            rules[ruleIdx].destinations = destinations.map((group, idx) => ({
+                ...group,
+                priority: idx,
+            }));
+            return rules;
+        });
+    };
+
+    const toggleRuleCollapsed = (ruleIdx: number) => {
+        setCollapsedRuleIndexes((prev) => {
+            const next = new Set(prev);
+            if (next.has(ruleIdx)) {
+                next.delete(ruleIdx);
+            } else {
+                next.add(ruleIdx);
+            }
+            return next;
+        });
+    };
+
+    const removeRule = (ruleIdx: number) => {
+        updateRoutingRules((rules) => rules.filter((_, i) => i !== ruleIdx));
+        setCollapsedRuleIndexes((prev) => {
+            const next = new Set<number>();
+            prev.forEach((idx) => {
+                if (idx < ruleIdx) {
+                    next.add(idx);
+                } else if (idx > ruleIdx) {
+                    next.add(idx - 1);
+                }
+            });
+            return next;
+        });
+    };
+
+    const handleRuleDragStart = (event: React.DragEvent, ruleIdx: number) => {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('application/x-route-rule-index', String(ruleIdx));
+        setDraggingRuleIndex(ruleIdx);
+    };
+
+    const handleRuleDrop = (event: React.DragEvent, ruleIdx: number) => {
+        event.preventDefault();
+        const from = Number(event.dataTransfer.getData('application/x-route-rule-index'));
+        if (!Number.isNaN(from)) {
+            moveRule(from, ruleIdx);
+        }
+        setDraggingRuleIndex(null);
+    };
+
+    const handleGroupDragStart = (event: React.DragEvent, ruleIdx: number, groupIdx: number) => {
+        const dragKey = `${ruleIdx}:${groupIdx}`;
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('application/x-route-group-index', dragKey);
+        setDraggingGroupKey(dragKey);
+    };
+
+    const handleGroupDrop = (event: React.DragEvent, ruleIdx: number, groupIdx: number) => {
+        event.preventDefault();
+        const [fromRule, fromGroup] = event.dataTransfer.getData('application/x-route-group-index').split(':').map(Number);
+        if (fromRule === ruleIdx && !Number.isNaN(fromGroup)) {
+            moveGroup(ruleIdx, fromGroup, groupIdx);
+        }
+        setDraggingGroupKey('');
+    };
 
     const destGroupOp = (op: 'labels' | 'remove', ruleIdx: number, idx: number) => {
         switch (op) {
@@ -414,220 +525,235 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
         </Dialog>
     );
 
-    // 基础信息表单：第一层名称，第二层优先级与描述，第三层规则标签
-    const ruleeditor = (
-        <div className={styles.sectionCard}>
-            {/* 第一层：规则名称 */}
-            <Row style={{ marginBottom: 16 }}>
-                <Col span={12}>
-                    <FormItem label="规则名称">
-                        {op === 'create' ? (
-                            <Input
-                                maxlength={64}
-                                value={customRouteRule.name}
-                                onChange={(value) => setCustomRouteRule(prev => ({ ...prev, name: value }))}
-                            />
-                        ) : (
-                            <Text>{customRouteRule.name}</Text>
-                        )}
-                    </FormItem>
-                </Col>
-            </Row>
-            {/* 第二层：优先级、描述 */}
-            <Row style={{ marginBottom: 16 }}>
-                <Space>
-                    <FormItem label="优先级">
-                        {editorState.editable ? (
-                            <InputNumber min={0} value={customRouteRule.priority} onChange={(value) => setCustomRouteRule(prev => ({ ...prev, priority: value as number }))} />
-                        ) : (
-                            <Text>{customRouteRule.priority}</Text>
-                        )}
-                    </FormItem>
-                    <FormItem
-                        label="描述"
-                        name="description"
-                        rules={[{ max: 255, message: '描述长度不能超过255个字符' }]}
-                    >
-                        {editorState.editable ? (
-                            <Input value={customRouteRule.description} onChange={(value) => setCustomRouteRule(prev => ({ ...prev, description: value }))} />
-                        ) : (
-                            <Text>{customRouteRule.description}</Text>
-                        )}
-                    </FormItem>
-                </Space>
-            </Row>
-            {/* 第三层：规则标签 */}
-            <Row>
-                <Col span={12}>
-                    <FormItem label='规则标签' name='labels'>
-                        <Space align="center">
-                            {Array.isArray(customRouteRule.metadata) && customRouteRule.metadata.length > 0 ? (
-                                <>
-                                    {customRouteRule.metadata.map((item: { key: string; value: string }, idx: number) => (
-                                        <Tag key={idx}>{`${item.key}: ${item.value}`}</Tag>
-                                    ))}
-                                    {editorState.editable && (
-                                        <Button
-                                            shape="circle"
-                                            variant="text"
-                                            onClick={() => setEditorState(prev => ({ ...prev, visible: true }))}
-                                        >
-                                            <Edit1Icon />
-                                        </Button>
-                                    )}
-                                </>
-                            ) : (
-                                <>
-                                    <Text>暂无标签</Text>
-                                    {editorState.editable && (
-                                        <Button
-                                            shape="circle"
-                                            variant="text"
-                                            onClick={() => setEditorState(prev => ({ ...prev, visible: true }))}
-                                        >
-                                            <Edit1Icon />
-                                        </Button>
-                                    )}
-                                </>
-                            )}
-                        </Space>
-                    </FormItem>
-                    {renderRuleLabelsDialog()}
-                </Col>
-            </Row>
+    const renderMetaTags = () => (
+        <div className={styles.tagList}>
+            {Array.isArray(customRouteRule.metadata) && customRouteRule.metadata.length > 0 ? (
+                <>
+                    {customRouteRule.metadata.map((item: { key: string; value: string }, idx: number) => (
+                        <Tag key={idx}>{`${item.key}: ${item.value}`}</Tag>
+                    ))}
+                    {editorState.editable && (
+                        <Button
+                            shape="circle"
+                            variant="text"
+                            onClick={() => setEditorState(prev => ({ ...prev, visible: true }))}
+                        >
+                            <Edit1Icon />
+                        </Button>
+                    )}
+                </>
+            ) : (
+                <>
+                    <Text className={styles.fieldValue}>暂无标签</Text>
+                    {editorState.editable && (
+                        <Button
+                            shape="circle"
+                            variant="text"
+                            onClick={() => setEditorState(prev => ({ ...prev, visible: true }))}
+                        >
+                            <Edit1Icon />
+                        </Button>
+                    )}
+                </>
+            )}
+        </div>
+    );
+
+    const ruleeditor = editorState.editable || op === 'create' ? (
+        <div className={`${styles.sectionCard} ${styles.ruleMeta}`}>
+            <div className={`${styles.metaGrid} ${styles.editMetaGrid}`}>
+                <FormItem label="规则名称" className={styles.metaName}>
+                    {op === 'create' ? (
+                        <Input
+                            maxlength={64}
+                            value={customRouteRule.name}
+                            onChange={(value) => setCustomRouteRule(prev => ({ ...prev, name: value }))}
+                        />
+                    ) : (
+                        <Text className={styles.fieldValue}>{customRouteRule.name}</Text>
+                    )}
+                </FormItem>
+                <FormItem label="优先级" className={styles.metaPriority}>
+                    {editorState.editable ? (
+                        <InputNumber min={0} value={customRouteRule.priority} onChange={(value) => setCustomRouteRule(prev => ({ ...prev, priority: value as number }))} />
+                    ) : (
+                        <Text className={styles.fieldValue}>{customRouteRule.priority}</Text>
+                    )}
+                </FormItem>
+                <FormItem
+                    label="描述"
+                    name="description"
+                    className={styles.metaDescription}
+                    rules={[{ max: 255, message: '描述长度不能超过255个字符' }]}
+                >
+                    {editorState.editable ? (
+                        <Input value={customRouteRule.description} onChange={(value) => setCustomRouteRule(prev => ({ ...prev, description: value }))} />
+                    ) : (
+                        <Text className={styles.fieldValue}>{customRouteRule.description || '-'}</Text>
+                    )}
+                </FormItem>
+                <FormItem label='规则标签' name='labels' className={styles.metaLabels}>
+                    {renderMetaTags()}
+                </FormItem>
+            </div>
+            {renderRuleLabelsDialog()}
+        </div>
+    ) : (
+        <div className={`${styles.sectionCard} ${styles.ruleMeta}`}>
+            <div className={styles.metaDefinitionGrid}>
+                <div className={`${styles.metaItem} ${styles.metaName}`}>
+                    <div className={styles.metaLabel}>规则名称</div>
+                    <div className={styles.metaValue}>{customRouteRule.name || '-'}</div>
+                </div>
+                <div className={styles.metaItem}>
+                    <div className={styles.metaLabel}>优先级</div>
+                    <div className={styles.metaValue}>{customRouteRule.priority ?? '-'}</div>
+                </div>
+                <div className={`${styles.metaItem} ${styles.metaDescription}`}>
+                    <div className={styles.metaLabel}>描述</div>
+                    <div className={styles.metaValue}>{customRouteRule.description || '-'}</div>
+                </div>
+                <div className={`${styles.metaItem} ${styles.metaLabels}`}>
+                    <div className={styles.metaLabel}>规则标签</div>
+                    {renderMetaTags()}
+                </div>
+            </div>
+            {renderRuleLabelsDialog()}
+        </div>
+    );
+
+    const renderServiceSummary = (title: string, description: string, namespace: string, service: string) => (
+        <div className={styles['route-editor-header-block']}>
+            <div className={styles.serviceSummaryHeader}>
+                <div className={styles['route-editor-header-title']}>
+                    {title}
+                </div>
+                <div className={styles['route-editor-header-desc']}>
+                    {description}
+                </div>
+            </div>
+            <div className={styles.servicePath}>
+                <span>{namespace || '-'}</span>
+                <span className={styles.serviceDivider}>/</span>
+                <strong>{service || '-'}</strong>
+            </div>
         </div>
     );
 
     // 主调/被调服务卡片
     const callinfo = (
         <div className={styles['route-editor-header']}>
-            <div className={styles['route-editor-header-block']}>
-                <div className={styles['route-editor-header-title']}>
-                    主调服务
+            {editorState.editable ? (
+                <div className={styles['route-editor-header-block']}>
+                    <div className={styles['route-editor-header-title']}>
+                        主调服务
+                    </div>
+                    <div className={styles['route-editor-header-desc']}>
+                        请求将按照匹配规则进行目标服务路由
+                    </div>
+                    <FormItem
+                        style={{ marginBottom: 0 }}
+                        label="命名空间"
+                    >
+                        <Select
+                            filterable={true}
+                            creatable={true}
+                            options={namespaceDatas.map(ns => ({
+                                label: ns.name,
+                                value: ns.name,
+                            }))}
+                            value={customRouteRule.caller_namespace}
+                            onChange={(value) => {
+                                setCustomRouteRule(prev => ({ ...prev, caller_namespace: value as string }));
+                            }}
+                        />
+                    </FormItem>
+                    <FormItem
+                        style={{ marginBottom: 0 }}
+                        label="服务名称"
+                    >
+                        <Select
+                            filterable={true}
+                            creatable={true}
+                            value={customRouteRule.caller_service}
+                            options={serviceDatas.filter(opt => {
+                                if (customRouteRule.caller_namespace === '*') {
+                                    return true; // 允许所有命名空间的服务
+                                }
+                                if (customRouteRule.callee_service === opt.name && opt.namespace === customRouteRule.callee_namespace) {
+                                    return false; // 如果服务名已选中，则不再显示
+                                }
+                                return opt.namespace === customRouteRule.caller_namespace; // 仅允许当前命名空间
+                            }).map(opt => ({
+                                label: opt.name,
+                                value: opt.name,
+                            }))}
+                            onChange={(value) => {
+                                setCustomRouteRule(prev => ({ ...prev, caller_service: value as string }));
+                            }}
+                        />
+                    </FormItem>
                 </div>
-                <div className={styles['route-editor-header-desc']}>
-                    请求将按照匹配规则进行目标服务路由
-                </div>
-                <FormItem
-                    style={{ marginBottom: 0 }}
-                    label="命名空间"
-                >
-                    {editorState.editable ? (
-                        <>
-                            <Select
-                                filterable={true}
-                                creatable={true}
-                                options={namespaceDatas.map(ns => ({
-                                    label: ns.name,
-                                    value: ns.name,
-                                }))}
-                                value={customRouteRule.caller_namespace}
-                                onChange={(value) => {
-                                    setCustomRouteRule(prev => ({ ...prev, caller_namespace: value as string }));
-                                }}
-                            />
-                        </>
-                    ) : (
-                        <Text>{customRouteRule.caller_namespace}</Text>
-                    )}
-                </FormItem>
-                <FormItem
-                    style={{ marginBottom: 0 }}
-                    label="服务名称"
-                >
-                    {editorState.editable ? (
-                        <>
-                            <Select
-                                filterable={true}
-                                creatable={true}
-                                value={customRouteRule.caller_service}
-                                options={serviceDatas.filter(opt => {
-                                    if (customRouteRule.caller_namespace === '*') {
-                                        return true; // 允许所有命名空间的服务
-                                    }
-                                    if (customRouteRule.callee_service === opt.name && opt.namespace === customRouteRule.callee_namespace) {
-                                        return false; // 如果服务名已选中，则不再显示
-                                    }
-                                    return opt.namespace === customRouteRule.caller_namespace; // 仅允许当前命名空间
-                                }).map(opt => ({
-                                    label: opt.name,
-                                    value: opt.name,
-                                }))}
-                                onChange={(value) => {
-                                    setCustomRouteRule(prev => ({ ...prev, caller_service: value as string }));
-                                }}
-                            />
-                        </>
-                    ) : (
-                        <Text>{customRouteRule.caller_service}</Text>
-                    )}
-                </FormItem>
-            </div>
+            ) : (
+                renderServiceSummary('主调服务', '请求将按照匹配规则进行目标服务路由', customRouteRule.caller_namespace, customRouteRule.caller_service)
+            )}
             <div className={styles['route-editor-header-arrow']}>
-                <SendIcon style={{ fontSize: 36, color: '#bfbfbf' }} />
+                <SendIcon style={{ fontSize: 28, color: '#b8c0cc' }} />
             </div>
-            <div className={styles['route-editor-header-block']}>
-                <div className={styles['route-editor-header-title']}>
-                    被调服务
+            {editorState.editable ? (
+                <div className={styles['route-editor-header-block']}>
+                    <div className={styles['route-editor-header-title']}>
+                        被调服务
+                    </div>
+                    <div className={styles['route-editor-header-desc']}>
+                        请求会按照规则路由到目标服务分组
+                    </div>
+                    <FormItem
+                        style={{ marginBottom: 0 }}
+                        label="命名空间"
+                    >
+                        <Select
+                            filterable={true}
+                            creatable={true}
+                            options={namespaceDatas.map(ns => ({
+                                label: ns.name,
+                                value: ns.name,
+                            }))}
+                            value={customRouteRule.callee_namespace}
+                            onChange={(value) => {
+                                setCustomRouteRule(prev => ({ ...prev, callee_namespace: value as string }));
+                            }}
+                        />
+                    </FormItem>
+                    <FormItem
+                        style={{ marginBottom: 0 }}
+                        label="服务名称"
+                    >
+                        <Select
+                            filterable={true}
+                            creatable={true}
+                            options={serviceDatas.filter(opt => {
+                                if (customRouteRule.callee_namespace === '*') {
+                                    return true; // 允许所有命名空间的服务
+                                }
+                                if (customRouteRule.caller_service === opt.name && opt.namespace === customRouteRule.caller_namespace) {
+                                    return false; // 如果服务名已选中，则不再显示
+                                }
+                                return opt.namespace === customRouteRule.callee_namespace; // 仅允许当前命名空间
+                            }).map(opt => ({
+                                label: opt.name,
+                                value: opt.name,
+                            }))}
+                            value={customRouteRule.callee_service}
+                            onChange={(value) => {
+                                setCustomRouteRule(prev => ({ ...prev, callee_service: value as string }));
+                            }}
+                        />
+                    </FormItem>
                 </div>
-                <div className={styles['route-editor-header-desc']}>
-                    请求会按照规则路由到目标服务分组
-                </div>
-                <FormItem
-                    style={{ marginBottom: 0 }}
-                    label="命名空间"
-                >
-                    {editorState.editable ? (
-                        <>
-                            <Select
-                                filterable={true}
-                                creatable={true}
-                                options={namespaceDatas.map(ns => ({
-                                    label: ns.name,
-                                    value: ns.name,
-                                }))}
-                                value={customRouteRule.callee_namespace}
-                                onChange={(value) => {
-                                    setCustomRouteRule(prev => ({ ...prev, callee_namespace: value as string }));
-                                }}
-                            />
-                        </>
-                    ) : (
-                        <Text>{customRouteRule.callee_namespace}</Text>
-                    )}
-                </FormItem>
-                <FormItem
-                    style={{ marginBottom: 0 }}
-                    label="服务名称"
-                >
-                    {editorState.editable ? (
-                        <>
-                            <Select
-                                filterable={true}
-                                creatable={true}
-                                options={serviceDatas.filter(opt => {
-                                    if (customRouteRule.callee_namespace === '*') {
-                                        return true; // 允许所有命名空间的服务
-                                    }
-                                    if (customRouteRule.caller_service === opt.name && opt.namespace === customRouteRule.caller_namespace) {
-                                        return false; // 如果服务名已选中，则不再显示
-                                    }
-                                    return opt.namespace === customRouteRule.callee_namespace; // 仅允许当前命名空间
-                                }).map(opt => ({
-                                    label: opt.name,
-                                    value: opt.name,
-                                }))}
-                                value={customRouteRule.callee_service}
-                                onChange={(value) => {
-                                    setCustomRouteRule(prev => ({ ...prev, callee_service: value as string }));
-                                }}
-                            />
-                        </>
-                    ) : (
-                        <Text>{customRouteRule.callee_service}</Text>
-                    )}
-                </FormItem>
-            </div>
+            ) : (
+                renderServiceSummary('被调服务', '请求会按照规则路由到目标服务分组', customRouteRule.callee_namespace, customRouteRule.callee_service)
+            )}
         </div>
     );
 
@@ -635,6 +761,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
         {
             colKey: 'type',
             title: '参数类型',
+            width: 178,
             edit: {
                 keepEditMode: editorState.editable,
                 showEditIcon: editorState.editable,
@@ -654,6 +781,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
         {
             colKey: 'key',
             title: '参数键',
+            width: 170,
             edit: {
                 keepEditMode: editorState.editable,
                 showEditIcon: editorState.editable,
@@ -671,6 +799,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
         {
             colKey: 'value.type',
             title: '匹配类型',
+            width: 140,
             edit: {
                 keepEditMode: editorState.editable,
                 showEditIcon: editorState.editable,
@@ -690,6 +819,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
         {
             colKey: 'value.value',
             title: '匹配值',
+            minWidth: 180,
             edit: {
                 keepEditMode: editorState.editable,
                 showEditIcon: editorState.editable,
@@ -703,10 +833,12 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                 // 校验规则，此处同 Form 表单
                 validateTrigger: 'change',
             },
+            cell: ({ row }) => <span className={styles.wrapText}>{row.value?.value || '-'}</span>
         },
         {
             colKey: 'action',
             title: '操作',
+            width: 64,
             cell: ({ row, rowIndex }) => (
                 <Popup trigger="hover" content="删除参数">
                     <Button
@@ -725,19 +857,16 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
 
     // 匹配条件表格（单行参数填写）
     const renderMatchTable = (ruleIdx: number) => (
-        <div>
-            <Row align="middle" style={{ marginBottom: 8 }}>
-                <Table
-                    rowKey="key"
-                    data={customRouteRule.routing_config?.rules[ruleIdx].sources[0]?.arguments || []}
-                    columns={editorState.editable ? trafficTableColumns(ruleIdx) : trafficTableColumns(ruleIdx)?.filter(col => col.colKey !== 'action')}
-                />
-                <Col span={2}>
-                    {editorState.editable && (
-                        <Button variant="text" onClick={() => addMatch(ruleIdx)} icon={<AddIcon />}>添加</Button>
-                    )}
-                </Col>
-            </Row>
+        <div className={styles.compactTable}>
+            <Table
+                rowKey="key"
+                tableLayout="fixed"
+                data={customRouteRule.routing_config?.rules[ruleIdx].sources[0]?.arguments || []}
+                columns={editorState.editable ? trafficTableColumns(ruleIdx) : trafficTableColumns(ruleIdx)?.filter(col => col.colKey !== 'action')}
+            />
+            {editorState.editable && (
+                <Button className={styles.inlineAdd} variant="text" onClick={() => addMatch(ruleIdx)} icon={<AddIcon />}>添加匹配条件</Button>
+            )}
         </div>
     );
 
@@ -819,9 +948,34 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
     );
 
     const destinationTableColumns = (ruleIdx: number): PrimaryTableProps['columns'] => [
+        ...(editorState.editable ? [{
+            colKey: '__drag__',
+            title: '',
+            width: 44,
+            cell: ({ rowIndex }) => {
+                const groupIdx = rowIndex as number;
+                const dragKey = `${ruleIdx}:${groupIdx}`;
+                return (
+                    <Popup trigger="hover" content="拖动调整分组顺序">
+                        <button
+                            type="button"
+                            className={`${styles.dragHandle} ${draggingGroupKey === dragKey ? styles.dragHandleActive : ''}`}
+                            draggable
+                            onDragStart={(event) => handleGroupDragStart(event, ruleIdx, groupIdx)}
+                            onDragEnd={() => setDraggingGroupKey('')}
+                            onDragOver={(event) => event.preventDefault()}
+                            onDrop={(event) => handleGroupDrop(event, ruleIdx, groupIdx)}
+                        >
+                            <DragMoveIcon />
+                        </button>
+                    </Popup>
+                );
+            },
+        }] : []),
         {
             colKey: 'name',
             title: '分组名称',
+            width: 142,
             edit: {
                 keepEditMode: editorState.editable,
                 showEditIcon: editorState.editable,
@@ -837,6 +991,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
         {
             colKey: 'isolate',
             title: '是否隔离',
+            width: 96,
             edit: {
                 keepEditMode: editorState.editable,
                 showEditIcon: editorState.editable,
@@ -854,6 +1009,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
         {
             colKey: 'weight',
             title: '权重',
+            width: 166,
             edit: {
                 keepEditMode: editorState.editable,
                 showEditIcon: editorState.editable,
@@ -862,6 +1018,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                     min: 0,
                     max: 100,
                     step: 5,
+                    className: styles.weightInput,
                 },
                 onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
                     updateGroup(ruleIdx, context.rowIndex, context.newRowData as RoutingRuleDestination);
@@ -871,21 +1028,23 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
         {
             colKey: 'labels',
             title: '实例标签',
+            minWidth: 200,
             cell: ({ row, rowIndex }) => (
-                <Space>
+                <div className={`${styles.tagList} ${styles.instanceTagList}`}>
                     {Object.entries(row.labels as Record<string, MatchString> || {}).map(([key, value]) => (
                         <Tag key={key}>
                             {`${key} ${MatchTypeMap[value.type as MatchType]} ${value.value}`}
                         </Tag>
                     ))}
-                </Space>
+                </div>
             )
         },
         {
             colKey: 'action',
             title: '操作',
+            width: 72,
             cell: ({ row, rowIndex }) => (
-                <Space>
+                <Space size={4}>
                     <Popup trigger="hover" content="编辑标签">
                         <Button
                             shape="circle"
@@ -909,61 +1068,91 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
 
     // 路由策略分组表格（弹窗编辑标签）
     const renderGroupTable = (ruleIdx: number) => (
-        <div>
-            <Row align="middle" style={{ marginBottom: 8 }}>
-                <Table
-                    rowKey="key"
-                    data={customRouteRule.routing_config?.rules[ruleIdx].destinations || []}
-                    columns={editorState.editable ? destinationTableColumns(ruleIdx) : destinationTableColumns(ruleIdx)?.filter(col => col.colKey !== 'action')}
-                />
-                <Col span={2}>
-                    {editorState.editable && (
-                        <Button
-                            variant="text"
-                            onClick={() => addGroup(ruleIdx)}
-                            icon={<AddIcon />}>
-                            添加实例分组
-                        </Button>
-                    )}
-                </Col>
-            </Row>
+        <div className={styles.compactTable}>
+            <Table
+                rowKey="key"
+                tableLayout="fixed"
+                data={customRouteRule.routing_config?.rules[ruleIdx].destinations || []}
+                columns={editorState.editable ? destinationTableColumns(ruleIdx) : destinationTableColumns(ruleIdx)?.filter(col => col.colKey !== 'action')}
+            />
+            {editorState.editable && (
+                <Button
+                    className={styles.inlineAdd}
+                    variant="text"
+                    onClick={() => addGroup(ruleIdx)}
+                    icon={<AddIcon />}>
+                    添加实例分组
+                </Button>
+            )}
             {renderTagDialog()}
         </div>
     );
 
     // 规则区块
     const renderRule = (rule: RoutingRule, ruleIdx: number) => {
+        const collapsed = collapsedRuleIndexes.has(ruleIdx);
+        const matchCount = rule.sources?.[0]?.arguments?.length || 0;
+        const groupCount = rule.destinations?.length || 0;
         return (
-            <div className={styles.sectionCard} key={ruleIdx} style={{ marginBottom: 24 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <span style={{ fontWeight: 600 }}>规则 [{ruleIdx + 1}]</span>
-                    {editorState.editable && (
-                        <Popup trigger="hover" content="删除规则">
-                            <Button
-                                shape="circle"
-                                variant="text"
-                                onClick={() =>
-                                    setCustomRouteRule((prev) => ({
-                                        ...prev,
-                                        routing_config: {
-                                            '@type': 'type.googleapis.com/v1.RuleRoutingConfig',
-                                            rules: prev.routing_config?.rules.filter((_, i) => i !== ruleIdx) || [],
-                                        },
-                                    }))
-                                }>
-                                <CloseIcon />
-                            </Button>
-                        </Popup>
-                    )}
+            <div
+                className={`${styles.sectionCard} ${styles.ruleBlock} ${draggingRuleIndex === ruleIdx ? styles.ruleBlockDragging : ''}`}
+                key={ruleIdx}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => handleRuleDrop(event, ruleIdx)}
+            >
+                <div className={styles.ruleBlockHeader}>
+                    <div className={styles.ruleHeaderMain}>
+                        {editorState.editable && (
+                            <Popup trigger="hover" content="拖动调整子规则顺序">
+                                <button
+                                    type="button"
+                                    className={`${styles.dragHandle} ${draggingRuleIndex === ruleIdx ? styles.dragHandleActive : ''}`}
+                                    draggable
+                                    onDragStart={(event) => handleRuleDragStart(event, ruleIdx)}
+                                    onDragEnd={() => setDraggingRuleIndex(null)}
+                                >
+                                    <DragMoveIcon />
+                                </button>
+                            </Popup>
+                        )}
+                        <button
+                            type="button"
+                            className={styles.collapseButton}
+                            onClick={() => toggleRuleCollapsed(ruleIdx)}
+                            aria-label={collapsed ? '展开子规则' : '折叠子规则'}
+                        >
+                            {collapsed ? <ChevronRightIcon /> : <ChevronDownIcon />}
+                        </button>
+                        <div className={styles.ruleTitleGroup}>
+                            <span>规则 [{ruleIdx + 1}]</span>
+                            <div className={styles.ruleSummary}>
+                                {matchCount} 个匹配条件 / {groupCount} 个实例分组
+                            </div>
+                        </div>
+                    </div>
+                    <div className={styles.ruleHeaderActions}>
+                        {editorState.editable && (
+                            <Popup trigger="hover" content="删除规则">
+                                <Button
+                                    shape="circle"
+                                    variant="text"
+                                    onClick={() => removeRule(ruleIdx)}>
+                                    <CloseIcon />
+                                </Button>
+                            </Popup>
+                        )}
+                    </div>
                 </div>
-                <div className={styles['route-editor-header-desc']}>
-                    来源服务的请求满足以下匹配条件
+                <div className={`${styles.ruleBlockBody} ${collapsed ? styles.ruleBlockBodyCollapsed : ''}`}>
+                    <div className={styles.ruleHelp}>
+                        来源服务的请求满足以下匹配条件
+                    </div>
+                    {renderMatchTable(ruleIdx)}
+                    <div className={styles.ruleHelp}>
+                        将转发至目标服务的以下实例分组，按优先级成组，可通过调整优先级。
+                    </div>
+                    {renderGroupTable(ruleIdx)}
                 </div>
-                {renderMatchTable(ruleIdx)}
-                <div className={styles['route-editor-header-desc']}>
-                    将转发至目标服务的以下实例分组，按优先级成组，可通过调整优先级。
-                </div>
-                {renderGroupTable(ruleIdx)}
             </div>
         );
     }
@@ -994,20 +1183,20 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                         offset={[-10, 200]}
                     >
                         <StickyItem
-                            label={editorState.editable ? '保存' : '编辑'}
+                            label=""
                             icon={!editorState.editable ?
-                                <Edit1Icon onClick={() => {
+                                <RuleStickyAction label="编辑" icon={<Edit1Icon />} onClick={() => {
                                     setEditorState(prev => ({ ...prev, editable: true }));
                                 }} />
                                 :
-                                <Button type="submit" variant="text" shape="square">
-                                    <SaveIcon />
-                                </Button>
+                                <RuleStickyAction label="保存" icon={<SaveIcon />} onClick={() => {
+                                    form.submit();
+                                }} />
                             }
                         />
                         {(editorState.editable) && (
-                            <StickyItem label="撤销" icon={
-                                <RollbackIcon onClick={() => {
+                            <StickyItem label="" icon={
+                                <RuleStickyAction label="撤销" icon={<RollbackIcon />} onClick={() => {
                                     if (op === 'create') {
                                         refresh(true);
                                     } else {
@@ -1018,8 +1207,8 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                             />
                         )}
                         {(!editorState.editable) && (
-                            <StickyItem label="发布" icon={
-                                <RocketIcon onClick={() => {
+                            <StickyItem label="" icon={
+                                <RuleStickyAction label="发布" icon={<RocketIcon />} onClick={() => {
                                     setEditorState(prev => ({ ...prev, publishView: true }));
                                 }} />}
                             />
@@ -1031,7 +1220,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
     )
 
     return (
-        <div style={{ padding: 24 }}>
+        <div className={styles.editorBody}>
             <Form
                 form={form}
                 onSubmit={onSubmit}
@@ -1040,23 +1229,20 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
             >
                 {ruleeditor}
                 {callinfo}
-                <div style={{ margin: '24px 0' }}>
+                <div className={styles.ruleList}>
                     {customRouteRule.routing_config?.rules.map((rule, idx) => renderRule(rule, idx))}
                     {editorState.editable && (
                         <Button
                             variant="outline" icon={<AddIcon />}
                             onClick={() => {
-                                setCustomRouteRule((prev) => ({
-                                    ...prev,
-                                    routing_config: {
-                                        '@type': 'type.googleapis.com/v1.RuleRoutingConfig',
-                                        rules: [...prev.routing_config?.rules || [], {
-                                            name: `规则 ${(prev.routing_config?.rules.length || 0) + 1}`,
-                                            sources: [defaultMatch()],
-                                            destinations: [defaultGroup(1)],
-                                        }]
+                                updateRoutingRules((rules) => [
+                                    ...rules,
+                                    {
+                                        name: `规则 ${rules.length + 1}`,
+                                        sources: [defaultMatch()],
+                                        destinations: [defaultGroup(1)],
                                     },
-                                }));
+                                ]);
                             }}>
                             添加规则
                         </Button>

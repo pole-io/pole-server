@@ -11,6 +11,13 @@ import { useTranslation } from 'react-i18next';
 
 const { SubMenu, MenuItem, HeadMenu } = Menu;
 
+const getSelectedMenuValue = (pathname: string) => {
+  if (pathname === '/governance' || pathname.startsWith('/governance/')) {
+    return '/governance/workbench';
+  }
+  return pathname;
+};
+
 interface IMenuProps {
   showLogo?: boolean;
   showOperation?: boolean;
@@ -112,13 +119,14 @@ export default memo((props: IMenuProps) => {
 
   const { version } = globalState;
   const bottomText = globalState.collapsed ? version : `TDesign Starter ${version}`;
+  const selectedMenuValue = getSelectedMenuValue(location.pathname);
 
   return (
     <Menu
       width='232px'
       style={{ flexShrink: 0, height: '100%' }}
       className={Style.menuPanel2}
-      value={location.pathname}
+      value={selectedMenuValue}
       theme={globalState.theme}
       collapsed={globalState.collapsed}
       logo={props.showLogo ? <MenuLogo collapsed={globalState.collapsed} /> : undefined}

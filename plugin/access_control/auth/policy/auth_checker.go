@@ -105,6 +105,9 @@ func (d *DefaultAuthChecker) ResourcePredicate(ctx *authtypes.AcquireContext, re
 	if ctx.IsFromConsole() && !d.IsOpenConsoleAuth() {
 		return true
 	}
+	if authtypes.ParseUserRole(ctx.GetRequestContext()) == authtypes.OwnerUserRole {
+		return true
+	}
 
 	p, ok := ctx.GetAttachment(authtypes.PrincipalKey)
 	if !ok {
@@ -153,7 +156,12 @@ func (d *DefaultAuthChecker) CheckConsolePermission(preCtx *authtypes.AcquireCon
 // CheckPermission 执行检查动作判断是否有权限
 func (d *DefaultAuthChecker) CheckPermission(authCtx *authtypes.AcquireContext) (bool, error) {
 	if err := d.userSvr.CheckCredential(authCtx); err != nil {
+		log.Error("[Auth][Checker] check credential failed", utils.RequestID(authCtx.GetRequestContext()),
+			zap.Error(err), zap.Any("method", authCtx.GetMethods()), zap.Any("module", authCtx.GetModule()))
 		return false, err
+	}
+	if authtypes.ParseUserRole(authCtx.GetRequestContext()) == authtypes.OwnerUserRole {
+		return true, nil
 	}
 	if log.DebugEnabled() {
 		log.Debug("[Auth][Checker] check permission args", utils.RequestID(authCtx.GetRequestContext()),
@@ -168,7 +176,12 @@ func (d *DefaultAuthChecker) CheckPermission(authCtx *authtypes.AcquireContext) 
 	if err := d.resyncData(authCtx); err != nil {
 		return false, err
 	}
-	return d.doCheckPermission(authCtx)
+	pass, err := d.doCheckPermission(authCtx)
+	if err != nil {
+		log.Error("[Auth][Checker] check permission failed", utils.RequestID(authCtx.GetRequestContext()),
+			zap.Error(err), zap.Any("method", authCtx.GetMethods()), zap.Any("module", authCtx.GetModule()))
+	}
+	return pass, err
 }
 
 func (d *DefaultAuthChecker) resyncData(authCtx *authtypes.AcquireContext) error {

@@ -133,7 +133,8 @@ export interface DescribeInstancesRequest{
 export interface DescribeInstancesResponse {
     amount: number
     size: number
-    instances: Array<InstanceView>
+    data?: Array<InstanceView>
+    instances?: Array<InstanceView>
 }
 
 export async function describeInstances(params: DescribeInstancesRequest) {
@@ -141,9 +142,10 @@ export async function describeInstances(params: DescribeInstancesRequest) {
         action: `${BaseURL.INSTANCE}`,
         data: params,
     })
+    const instances = res.data ?? res.instances ?? []
     return {
-        list: res.instances,
-        totalCount: res.amount,
+        list: instances,
+        totalCount: res.amount ?? instances.length,
     }
 }
 

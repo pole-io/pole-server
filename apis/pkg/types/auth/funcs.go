@@ -59,12 +59,24 @@ var (
 			}
 			return reflect.ValueOf(&as.RatelimitRules)
 		},
-		// apisecurity.ResourceType_LosslessRules: func(as *apisecurity.StrategyResources) reflect.Value {
-		// 	if as.GetLosslessRules() == nil {
-		// 		return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
-		// 	}
-		// 	return reflect.ValueOf(&as.LosslessRules)
-		// },
+		apisecurity.ResourceType_LosslessRules: func(as *apisecurity.StrategyResources) reflect.Value {
+			if as.GetLosslessRules() == nil {
+				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
+			}
+			return reflect.ValueOf(&as.LosslessRules)
+		},
+		apisecurity.ResourceType_MirrorRules: func(as *apisecurity.StrategyResources) reflect.Value {
+			if as.GetMirrorRules() == nil {
+				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
+			}
+			return reflect.ValueOf(&as.MirrorRules)
+		},
+		apisecurity.ResourceType_SecurityRules: func(as *apisecurity.StrategyResources) reflect.Value {
+			if as.GetSecurityRules() == nil {
+				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
+			}
+			return reflect.ValueOf(&as.SecurityRules)
+		},
 		apisecurity.ResourceType_CircuitBreakerRules: func(as *apisecurity.StrategyResources) reflect.Value {
 			if as.GetCircuitbreakerRules() == nil {
 				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})

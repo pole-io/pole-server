@@ -52,7 +52,10 @@ export default React.memo(() => {
                 </TabPanel> */}
                 <TabPanel value={"3"} label="服务订阅">
                     {activeTab === '3' && (
-                        <SubscribeTable />
+                        <SubscribeTable
+                            namespace={namespace || ''}
+                            serviceName={serviceName || ''}
+                        />
                     )}
                 </TabPanel>
             </Tabs>

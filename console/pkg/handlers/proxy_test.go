@@ -18,14 +18,17 @@
 package handlers
 
 import (
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pole-io/pole-server/console/bootstrap"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRefreshJWTAndParse(t *testing.T) {
@@ -52,4 +55,126 @@ func TestRefreshJWTAndParse(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	_, _, err = parseJWTThenSetToken(c, conf)
 	assert.Error(t, err, "token should be expire")
+}
+
+func TestReverseProxyForLoginSetsJWTFromStandardData(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/maintain/v1/mainuser/exist" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		require.Equal(t, "/auth/v1/user/login", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"code":200000,"data":{"user_id":"user1","name":"admin","token":"token1"}}`))
+	}))
+	defer backend.Close()
+
+	conf := &bootstrap.Config{}
+	conf.WebServer.JWT.Expired = 1800
+	conf.WebServer.JWT.SecretKey = "polarismesh@2021"
+	conf.WebServer.MainUser = "pole"
+	conf.PoleServer.Address = backendAddress(backend.URL)
+	NewAdminGetter(conf)
+
+	router := gin.New()
+	router.POST("/auth/v1/user/login", ReverseProxyForLogin(&conf.PoleServer, conf))
+	console := httptest.NewServer(router)
+	defer console.Close()
+
+	resp, err := http.Post(console.URL+"/auth/v1/user/login", "application/json", strings.NewReader("{}"))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.NotEmpty(t, resp.Cookies())
+	assert.Equal(t, "jwt", resp.Cookies()[0].Name)
+}
+
+func TestReverseProxyForServerRefreshesJWTAfterBackendSuccess(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/naming/v1/services", r.URL.Path)
+		assert.Equal(t, "token1", r.Header.Get("Authorization"))
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"code":200000,"data":[]}`))
+	}))
+	defer backend.Close()
+
+	conf := testProxyConfig(backend.URL)
+	router := gin.New()
+	router.GET("/naming/v1/services", ReverseProxyForServer(&conf.PoleServer, conf))
+	console := httptest.NewServer(router)
+	defer console.Close()
+
+	req, err := http.NewRequest(http.MethodGet, console.URL+"/naming/v1/services", nil)
+	require.NoError(t, err)
+	req.AddCookie(testJWTCookie(t, "user1", "token1", conf))
+	req.Header.Set("x-pole-user", "user1")
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.NotEmpty(t, resp.Cookies())
+	assert.Equal(t, "jwt", resp.Cookies()[0].Name)
+	assert.NotEmpty(t, resp.Cookies()[0].Value)
+}
+
+func TestReverseProxyForServerClearsJWTAfterBackendUnauthorized(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"code":401001,"info":"access is not approved"}`))
+	}))
+	defer backend.Close()
+
+	conf := testProxyConfig(backend.URL)
+	router := gin.New()
+	router.GET("/naming/v1/services", ReverseProxyForServer(&conf.PoleServer, conf))
+	console := httptest.NewServer(router)
+	defer console.Close()
+
+	req, err := http.NewRequest(http.MethodGet, console.URL+"/naming/v1/services", nil)
+	require.NoError(t, err)
+	req.AddCookie(testJWTCookie(t, "user1", "stale-token", conf))
+	req.Header.Set("x-pole-user", "user1")
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	require.NotEmpty(t, resp.Cookies())
+	assert.Equal(t, "jwt", resp.Cookies()[0].Name)
+	assert.Equal(t, "", resp.Cookies()[0].Value)
+	assert.LessOrEqual(t, resp.Cookies()[0].MaxAge, 0)
+}
+
+func testProxyConfig(backendURL string) *bootstrap.Config {
+	conf := &bootstrap.Config{}
+	conf.WebServer.JWT.Expired = 1800
+	conf.WebServer.JWT.SecretKey = "polarismesh@2021"
+	conf.PoleServer.Address = backendAddress(backendURL)
+	return conf
+}
+
+func testJWTCookie(t *testing.T, userID string, token string, conf *bootstrap.Config) *http.Cookie {
+	t.Helper()
+	cookie, err := newJWTCookie(userID, token, conf)
+	require.NoError(t, err)
+	require.NotNil(t, cookie)
+	return cookie
+}
+
+func backendAddress(rawURL string) string {
+	_, port, err := net.SplitHostPort(strings.TrimPrefix(rawURL, "http://"))
+	if err == nil {
+		return "127.0.0.1:" + port
+	}
+	return strings.TrimPrefix(rawURL, "http://")
 }

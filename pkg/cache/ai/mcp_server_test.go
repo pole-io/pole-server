@@ -453,9 +453,9 @@ func TestMCPServerCache_Query_NamePrefixMatch(t *testing.T) {
 
 func TestMCPServerCache_Query_ExactFilters(t *testing.T) {
 	mc := newCacheForTest([]*ai.MCPServer{
-		{Id: "s1", Name: "a", Namespace: "ns1", Business: "b1", Department: "d1", Protocol: "http", Mtime: formatMCPTime(time.Now())},
-		{Id: "s2", Name: "b", Namespace: "ns2", Business: "b1", Department: "d2", Protocol: "grpc", Mtime: formatMCPTime(time.Now())},
-		{Id: "s3", Name: "c", Namespace: "ns1", Business: "b2", Department: "d1", Protocol: "http", Mtime: formatMCPTime(time.Now())},
+		{Id: "s1", Name: "a", Namespace: "ns1", Business: "b1", Department: "d1", Protocol: "http", BackendType: "service", BackendServiceNamespace: "ns1", BackendServiceName: "a", Mtime: formatMCPTime(time.Now())},
+		{Id: "s2", Name: "b", Namespace: "ns2", Business: "b1", Department: "d2", Protocol: "grpc", BackendType: "address", BackendAddress: "http://127.0.0.1:8080/mcp", Mtime: formatMCPTime(time.Now())},
+		{Id: "s3", Name: "c", Namespace: "ns1", Business: "b2", Department: "d1", Protocol: "http", BackendType: "service", BackendServiceNamespace: "ns1", BackendServiceName: "c", Mtime: formatMCPTime(time.Now())},
 	})
 
 	total, list := mc.Query(&ai.MCPServerQuery{Namespace: "ns1", Limit: 10})
@@ -478,6 +478,18 @@ func TestMCPServerCache_Query_ExactFilters(t *testing.T) {
 	total, list = mc.Query(&ai.MCPServerQuery{Namespace: "ns1", Business: "b2", Limit: 10})
 	assert.Equal(t, uint32(1), total)
 	assert.Equal(t, "s3", list[0].Id)
+
+	total, list = mc.Query(&ai.MCPServerQuery{BackendType: "service", Limit: 10})
+	assert.Equal(t, uint32(2), total)
+	assert.Len(t, list, 2)
+
+	total, list = mc.Query(&ai.MCPServerQuery{BackendServiceNamespace: "ns1", BackendServiceName: "c", Limit: 10})
+	assert.Equal(t, uint32(1), total)
+	assert.Equal(t, "s3", list[0].Id)
+
+	total, list = mc.Query(&ai.MCPServerQuery{BackendType: "address", Limit: 10})
+	assert.Equal(t, uint32(1), total)
+	assert.Equal(t, "s2", list[0].Id)
 }
 
 func TestMCPServerCache_Query_Pagination(t *testing.T) {

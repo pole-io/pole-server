@@ -59,8 +59,30 @@ function unwrapResponse(body: unknown): unknown {
 
 export const SuccessCode = 299999
 export const TokenNotExistCode = 407
+export const NotAllowedAccessCode = 401001
+
+const clearLoginState = () => {
+  window.localStorage.removeItem(PoleTokenKey)
+  window.localStorage.removeItem(LoginUserIdKey)
+  window.localStorage.removeItem('login-name')
+  window.localStorage.removeItem('login-role')
+  window.localStorage.removeItem('login-owner-id')
+}
 
 const handleTokenNotExist = () => {
+  clearLoginState()
+  if (window.location.pathname !== '/login') {
+    window.location.replace('/login')
+  }
+}
+
+const shouldResetLogin = (error: any, action: string) => {
+  if (action === '/auth/v1/user/login') {
+    return false
+  }
+  const status = error.response?.status
+  const code = error.response?.data?.code
+  return status === 401 || status === TokenNotExistCode || code === TokenNotExistCode || code === NotAllowedAccessCode
 }
 
 export async function apiRequest<T>(options: APIRequestOption) {
@@ -78,13 +100,8 @@ export async function apiRequest<T>(options: APIRequestOption) {
         },
       })
       .catch(function (error) {
-        if (error.response.status === TokenNotExistCode) {
+        if (shouldResetLogin(error, action)) {
           handleTokenNotExist()
-        }
-        if (error.response) {
-          if (error.response?.data?.code === TokenNotExistCode) {
-            handleTokenNotExist()
-          }
         }
         if (error.response?.data) {
           throw new Error('请求失败, RequestId: ' + reqId, {cause: error.response?.data?.info})
@@ -114,13 +131,8 @@ export async function getApiRequest<T>(options: APIRequestOption) {
         },
       })
       .catch(function (error) {
-        if (error.response?.status === TokenNotExistCode) {
+        if (shouldResetLogin(error, action)) {
           handleTokenNotExist()
-        }
-        if (error.response) {
-          if (error.response?.data?.code === TokenNotExistCode) {
-            handleTokenNotExist()
-          }
         }
         if (error.response?.data) {
           throw new Error('请求失败, RequestId: ' + reqId, {cause: error.response?.data?.info})
@@ -148,13 +160,8 @@ export async function putApiRequest<T>(options: APIRequestOption) {
       })
       .catch(function (error) {
         console.log('error', error)
-        if (error.response.status === TokenNotExistCode) {
+        if (shouldResetLogin(error, action)) {
           handleTokenNotExist()
-        }
-        if (error.response) {
-          if (error.response?.data?.code === TokenNotExistCode) {
-            handleTokenNotExist()
-          }
         }
         if (error.response?.data) {
           throw new Error('请求失败, RequestId: ' + reqId, {cause: error.response?.data?.info})
@@ -183,13 +190,8 @@ export async function deleteApiRequest<T>(options: APIRequestOption) {
         },
       })
       .catch(function (error) {
-        if (error.response.status === TokenNotExistCode) {
+        if (shouldResetLogin(error, action)) {
           handleTokenNotExist()
-        }
-        if (error.response) {
-          if (error.response?.data?.code === TokenNotExistCode) {
-            handleTokenNotExist()
-          }
         }
         if (error.response?.data) {
           throw new Error('请求失败, RequestId: ' + reqId, {cause: error.response?.data?.info})

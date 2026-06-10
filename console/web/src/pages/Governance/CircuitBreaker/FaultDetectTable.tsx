@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Popconfirm } from 'tdesign-react';
+import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Popconfirm, Empty } from 'tdesign-react';
 import { DeleteIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -17,6 +17,7 @@ import FaultDetectEditor from './FaultDetectEditor';
 import { clearFaultDetect, editorFaultDetect, listFaultDetects, listFaultDetectVersions, removeFaultDetects, removeFaultDetectVersion, rollbackFaultDetectVersion, selectFaultDetect } from 'modules/governance/faultdetect';
 import RuleTabs from '../RuleRelease/RuleTabs';
 import SubscribeTable from 'components/SubscribeTable';
+import RuleDetailDrawer from '../RuleRelease/RuleDetailDrawer';
 
 interface IFaultDetectTableProps {
 
@@ -36,8 +37,8 @@ const columns = (handleOpRule: (row: TableRowData, op: Op) => void, redirect: (r
         title: '接口信息',
         cell: ({ row }) => (
             <div>
-                <div style={{ fontSize: 12, marginTop: 4 }}>协议: {row.targetService.api.protocol}</div>
-                <div style={{ fontSize: 12, marginTop: 4 }}>方法: {row.targetService.api.path.value}</div>
+                <div className={style.serviceCell}>协议: {row.targetService?.api?.protocol || '-'}</div>
+                <div className={style.serviceCell}>方法: {row.targetService?.api?.path?.value || '-'}</div>
             </div>
         ),
     },
@@ -46,9 +47,7 @@ const columns = (handleOpRule: (row: TableRowData, op: Op) => void, redirect: (r
         title: '服务',
         ellipsis: true,
         cell: ({ row }: TableRowData) => (
-            <>
-                <div style={{ fontSize: 12, marginTop: 4 }}>命名空间: {row.targetService.namespace || '-'}<br />服务: {row.targetService.service || '-'}</div>
-            </>
+            <div className={style.serviceCell}>命名空间: {row.targetService?.namespace || '-'}<br />服务: {row.targetService?.service || '-'}</div>
         ),
     },
     {
@@ -125,6 +124,7 @@ const FaultDetectTable: React.FC<IFaultDetectTableProps> = ({ }) => {
                     .then((res) => {
                         if (res.meta.requestStatus === 'fulfilled') {
                             openInfoNotification("请求成功", "删除主动探测规则成功");
+                            refreshData(1, limit);
                             setEditorState(pre => ({ ...pre, visible: false }));
                         } else {
                             openErrNotification("请求失败", `删除主动探测规则失败: ${res.payload as string}`);
@@ -266,64 +266,68 @@ const FaultDetectTable: React.FC<IFaultDetectTableProps> = ({ }) => {
     )
 
     return (
-        <Row gutter={16} className={style.FaultDetectTable}>
-            <Col span={4}>
+        <div className={style.ruleWorkspace}>
+            <section className={style.ruleListPane}>
                 {table}
-            </Col>
-            <Col span={7} style={{ marginLeft: 30 }}>
-                {editorState.visible && (
-                    <div className={style.editorContainer}>
-                        <RuleTabs
-                            op={editorState.mode}
-                            view={
-                                <>
-                                    <FaultDetectEditor
-                                        op={editorState.mode}
-                                        refresh={(close: boolean) => {
-                                            if (close) {
-                                                setEditorState(pre => ({ ...pre, mode: 'view', visible: false }));
-                                            }
-                                            refreshData(1, limit);
-                                        }}
-                                    />
-                                </>
-                            }
-                            versions={{
-                                datas: versions,
-                                action: operateRelease,
-                                editable: editorState.data?.editable || true,
-                                deleteable: editorState.data?.deleteable || true,
-                                loading: versionLoading,
-                                pagination: {
-                                    defaultCurrent: versionPage,
-                                    defaultPageSize: versionLimit,
-                                    total: versionTotal,
-                                    showJumper: false,
-                                    onChange(pageInfo) {
-                                        refreshVersions(pageInfo.current, pageInfo.pageSize);
-                                    },
-                                },
-                                onPageChange: (page) => {
-                                    refreshVersions(page.current, page.pageSize);
-                                }
-                            }}
-                            subscribe={
-                                <>
-                                    <div style={{ marginLeft: 20, marginTop: 20 }}>
-                                        <SubscribeTable
-                                            title={`${editorState.data?.name}`}
-                                            editable={editorState.data?.editable || true}
-                                            deleteable={editorState.data?.deleteable || true}
-                                            subscribers={subscribers || []}
-                                        />
-                                    </div>
-                                </>
-                            }
-                        />
-                    </div>
-                )}
-            </Col>
-        </Row>
+            </section>
+            <RuleDetailDrawer
+                visible={editorState.visible}
+                title={editorState.mode === 'create' ? '新建主动探测规则' : editorState.data?.name || '主动探测详情'}
+                subtitle="主动探测"
+                onClose={() => setEditorState(pre => ({ ...pre, visible: false }))}
+            >
+                <RuleTabs
+                    op={editorState.mode}
+                    onVersionView={() => {
+                        refreshVersions(1, 10)
+                    }}
+                    view={
+                        <>
+                            <FaultDetectEditor
+                                op={editorState.mode}
+                                refresh={(close: boolean) => {
+                                    if (close) {
+                                        setEditorState(pre => ({ ...pre, mode: 'view', visible: false }));
+                                    }
+                                    refreshData(1, limit);
+                                }}
+                            />
+                        </>
+                    }
+                    versions={{
+                        datas: versions,
+                        action: operateRelease,
+                        editable: editorState.data?.editable ?? true,
+                        deleteable: editorState.data?.deleteable ?? true,
+                        loading: versionLoading,
+                        pagination: {
+                            defaultCurrent: versionPage,
+                            defaultPageSize: versionLimit,
+                            total: versionTotal,
+                            showJumper: false,
+                            onChange(pageInfo) {
+                                refreshVersions(pageInfo.current, pageInfo.pageSize);
+                            },
+                        },
+                        onPageChange: (page) => {
+                            refreshVersions(page.current, page.pageSize);
+                        }
+                    }}
+                    subscribe={
+                        <>
+                            <div style={{ marginLeft: 20, marginTop: 20 }}>
+                                <SubscribeTable
+                                    title={`${editorState.data?.name}`}
+                                    editable={editorState.data?.editable ?? true}
+                                    deleteable={editorState.data?.deleteable ?? true}
+                                    subscribers={subscribers || []}
+                                />
+                            </div>
+                        </>
+                    }
+                />
+            </RuleDetailDrawer>
+        </div>
     )
 }
 

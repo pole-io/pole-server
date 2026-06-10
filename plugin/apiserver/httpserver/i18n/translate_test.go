@@ -18,6 +18,8 @@
 package i18n
 
 import (
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"golang.org/x/text/language"
@@ -26,8 +28,10 @@ import (
 )
 
 func init() {
-	LoadI18nMessageFile("../../../release/conf/i18n/en.toml")
-	LoadI18nMessageFile("../../../release/conf/i18n/zh.toml")
+	_, currentFile, _, _ := runtime.Caller(0)
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "../../../.."))
+	LoadI18nMessageFile(filepath.Join(repoRoot, "deploy/conf/i18n/en.toml"))
+	LoadI18nMessageFile(filepath.Join(repoRoot, "deploy/conf/i18n/zh.toml"))
 }
 
 func Test_Translate(t *testing.T) {

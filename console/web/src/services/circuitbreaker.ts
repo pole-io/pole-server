@@ -41,6 +41,120 @@ export interface CircuitBreakerRule {
     deleteable?: boolean
 }
 
+function matchType(type?: string | number): string {
+    const map: Record<number, string> = {
+        0: 'EXACT',
+        1: 'REGEX',
+        2: 'NOT_EQUALS',
+        3: 'IN',
+        4: 'NOT_IN',
+        5: 'RANGE',
+    };
+    if (typeof type === 'number') return map[type] || 'EXACT';
+    return type || 'EXACT';
+}
+
+function levelToView(level?: string | number): string {
+    const map: Record<number, BreakLevelType> = {
+        1: BreakLevelType.Service,
+        2: BreakLevelType.Method,
+        3: BreakLevelType.Group,
+        4: BreakLevelType.Instance,
+    };
+    if (typeof level === 'number') return map[level] || BreakLevelType.Service;
+    return level || BreakLevelType.Service;
+}
+
+function errorInputType(type?: string | number): ErrorConditionType {
+    const map: Record<number, ErrorConditionType> = {
+        1: ErrorConditionType.RET_CODE,
+        2: ErrorConditionType.DELAY,
+    };
+    if (typeof type === 'number') return map[type] || ErrorConditionType.RET_CODE;
+    return (type as ErrorConditionType) || ErrorConditionType.RET_CODE;
+}
+
+function triggerType(type?: string | number): TriggerType {
+    const map: Record<number, TriggerType> = {
+        1: TriggerType.ERROR_RATE,
+        2: TriggerType.CONSECUTIVE_ERROR,
+    };
+    if (typeof type === 'number') return map[type] || TriggerType.ERROR_RATE;
+    return (type as TriggerType) || TriggerType.ERROR_RATE;
+}
+
+function normalizeErrorCondition(condition: any): ErrorCondition {
+    return {
+        inputType: errorInputType(condition?.inputType ?? condition?.input_type),
+        condition: {
+            type: matchType(condition?.condition?.type),
+            value: condition?.condition?.value || '',
+        },
+    };
+}
+
+function normalizeTriggerCondition(condition: any): TriggerCondition {
+    const type = triggerType(condition?.triggerType ?? condition?.trigger_type);
+    const errorPercent = condition?.errorPercent ?? condition?.error_percent ?? 0;
+    const errorCount = condition?.errorCount ?? condition?.error_count ?? 0;
+    return {
+        triggerType: type,
+        errorCount,
+        errorPercent,
+        interval: condition?.interval ?? 0,
+        minimumRequest: condition?.minimumRequest ?? condition?.minimum_request ?? 0,
+        triggerVal: type === TriggerType.ERROR_RATE ? errorPercent : errorCount,
+    };
+}
+
+function normalizeBlockConfig(block: any): BlockConfig {
+    return {
+        name: block?.name || '',
+        api: block?.api,
+        error_conditions: (block?.error_conditions ?? block?.errorConditions ?? []).map(normalizeErrorCondition),
+        trigger_conditions: (block?.trigger_conditions ?? block?.triggerConditions ?? []).map(normalizeTriggerCondition),
+    };
+}
+
+export function normalizeCircuitBreakerRule(rule: CircuitBreakerRule | any): CircuitBreakerRule {
+    if (!rule) return rule;
+    const matcher = rule.ruleMatcher ?? rule.rule_matcher ?? {};
+    const recoverCondition = rule.recoverCondition ?? rule.recover_condition ?? {};
+    const sourceService = rule.srcService ?? rule.src_service ?? matcher?.source?.service ?? '';
+    const sourceNamespace = rule.srcNamespace ?? rule.src_namespace ?? matcher?.source?.namespace ?? '*';
+    let destinationService = rule.dstService ?? rule.dst_service ?? matcher?.destination?.service ?? '';
+    let destinationNamespace = rule.dstNamespace ?? rule.dst_namespace ?? matcher?.destination?.namespace ?? '*';
+    const ruleNamespace = rule.namespace ?? sourceNamespace;
+    if (destinationService === ruleNamespace && destinationNamespace && destinationNamespace !== ruleNamespace) {
+        [destinationNamespace, destinationService] = [destinationService, destinationNamespace];
+    }
+    return {
+        ...rule,
+        level: levelToView(rule.level),
+        ruleMatcher: {
+            source: {
+                service: sourceService,
+                namespace: sourceNamespace,
+            },
+            destination: {
+                service: destinationService,
+                namespace: destinationNamespace,
+                method: {
+                    type: matchType(matcher?.destination?.method?.type),
+                    value: (rule.dstMethod ?? rule.dst_method ?? matcher?.destination?.method?.value) || '',
+                },
+            },
+        },
+        block_configs: (rule.block_configs ?? rule.blockConfigs ?? []).map(normalizeBlockConfig),
+        recoverCondition: {
+            sleepWindow: recoverCondition.sleepWindow ?? recoverCondition.sleep_window ?? 0,
+            consecutiveSuccess: recoverCondition.consecutiveSuccess ?? 0,
+        },
+        faultDetectConfig: rule.faultDetectConfig ?? rule.fault_detect_config ?? { enable: false },
+        fallbackConfig: rule.fallbackConfig ?? rule.fallback_config ?? { enable: false, response: { code: 500, headers: [], body: '' } },
+    };
+}
+
 export interface ErrorCondition {
     inputType: string
     condition: {
@@ -197,7 +311,7 @@ export async function describeCircuitBreakers(params: DescribeCircuitBreakersReq
         data: params,
     })
     return {
-        list: res.data,
+        list: (res.data || []).map(normalizeCircuitBreakerRule),
         totalCount: res.amount,
     }
 }
@@ -208,10 +322,11 @@ export interface DescribeOneCircuitBreakerResponse {
 }
 
 export async function describeOneCircuitBreaker(id: string) {
-    return await getApiRequest<CircuitBreakerRule>({
+    const res = await getApiRequest<CircuitBreakerRule>({
         action: `${BaseURL.CIRCUIT_BREAKER}/detail`,
         data: { id },
     })
+    return normalizeCircuitBreakerRule(res);
 }
 
 export type CreateCircuitBreakerRequest = CircuitBreakerRule

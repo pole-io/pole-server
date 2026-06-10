@@ -25,10 +25,14 @@ const initialState: ServiceState = {
     editSvc: null
 };
 
-export const listOneService = createAsyncThunk(`service/list_one`, async ({id}:{id: string}, { fulfillWithValue, rejectWithValue }) => {
+export const listOneService = createAsyncThunk(
+    `service/list_one`,
+    async ({ id, namespace, name }: { id?: string, namespace?: string, name?: string }, { fulfillWithValue, rejectWithValue }) => {
     try {
         const res = await describeServices({
             id: id,
+            namespace: namespace,
+            name: name,
             limit: 1,
             offset: 0,
          });

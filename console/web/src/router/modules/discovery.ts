@@ -18,6 +18,13 @@ const discovery: IRouter[] = [
           title: 'menu.discovery.service',
         },
       },
+      {
+        path: 'gateway',
+        Component: lazy(() => import('pages/Discovery/Gateway')),
+        meta: {
+          title: 'menu.discovery.gateway',
+        },
+      },
       // {
       //   path: 'envoy',
       //   Component: lazy(() => import('pages/Discovery/Envoy')),

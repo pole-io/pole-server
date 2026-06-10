@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Popconfirm } from 'tdesign-react';
-import { DeleteIcon, EditIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
+import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Popconfirm } from 'tdesign-react';
+import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
 import { useNavigate } from 'react-router-dom';
 
 import Search from 'components/Search';
@@ -149,11 +149,12 @@ const ServiceAliasTable: React.FC<IServiceAliasProps> = ({ }) => {
         }
     }
 
-    const refreshTable = (page = 1, limit = 10) => {
+    const refreshTable = (page = 1, limit = 10, nextQuery = searchState) => {
         dispatch(listServiceAliass({
             param: {
                 offset: (page - 1) * limit,
                 limit: limit,
+                alias: nextQuery.query || undefined,
             }
         })).then((res) => {
             if (res.meta.requestStatus === 'rejected') {
@@ -173,28 +174,28 @@ const ServiceAliasTable: React.FC<IServiceAliasProps> = ({ }) => {
     {/* <!-- :defaultExpandedRowKeys="defaultExpandedRowKeys" --> */ }
     const table = (
         <>
-            <Row justify='space-between' className={style.toolBar}>
-                <Col>
-                    <Row gutter={8} align='middle'>
-                        <Col>
-                            <Button onClick={() => operateService('create')}>新建</Button>
-                        </Col>
-                    </Row>
-                </Col>
-                <Col>
-                    <Space>
-                        <Search
-                            onChange={(value: string) => {
-                                setSearchState(s => ({ ...s, query: value }));
-                                refreshTable();
-                            }}
-                        />
-                        <Tooltip content="刷新">
-                            <RefreshIcon onClick={() => refreshTable()} />
-                        </Tooltip>
-                    </Space>
-                </Col>
-            </Row>
+            <section className={style.filterBar}>
+                <div className={style.filterHint}>
+                    <strong>别名清单</strong>
+                    <span>{loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}</span>
+                </div>
+                <Space>
+                    <Search
+                        placeholder="搜索别名"
+                        onChange={(value: string) => {
+                            const nextQuery = { query: value };
+                            setSearchState(nextQuery);
+                            refreshTable(1, limit, nextQuery);
+                        }}
+                    />
+                    <Tooltip content="刷新">
+                        <Button shape="square" variant="outline" onClick={() => refreshTable(page, limit, searchState)}>
+                            <RefreshIcon />
+                        </Button>
+                    </Tooltip>
+                    <Button theme="primary" icon={<AddIcon />} onClick={() => operateService('create')}>新建</Button>
+                </Space>
+            </section>
             {editorState.visible && (
                 <AliasEditor
                     key={editorState.mode + (editorState.data?.name || 'new') + (editorState.visible ? '1' : '0')}
@@ -207,34 +208,36 @@ const ServiceAliasTable: React.FC<IServiceAliasProps> = ({ }) => {
                         refreshTable();
                     }} />
             )}
-            <Table
-                data={datas}
-                columns={columns(operateService, (service: string, namespace: string) => {
-                    navigate(`instance?namespace=${namespace}&service=${service}`);
-                })}
-                loading={loading}
-                rowKey="id"
-                size={"large"}
-                tableLayout={'auto'}
-                cellEmptyContent={'-'}
-                pagination={{
-                    current: page,
-                    pageSize: limit,
-                    total: total,
-                    showJumper: true,
-                    onChange(pageInfo) {
-                        refreshTable(pageInfo.current, pageInfo.pageSize);
-                    },
-                }}
-                onPageChange={(pageInfo) => {
-                    refreshTable(pageInfo.current, pageInfo.pageSize);
-                }}
-            />
+            <section className={style.tableSurface}>
+                <Table
+                    data={datas}
+                    columns={columns(operateService, (service: string, namespace: string) => {
+                        navigate(`instance?namespace=${namespace}&service=${service}`);
+                    })}
+                    loading={loading}
+                    rowKey="id"
+                    size={"large"}
+                    tableLayout={'auto'}
+                    cellEmptyContent={'-'}
+                    pagination={{
+                        current: page,
+                        pageSize: limit,
+                        total: total,
+                        showJumper: true,
+                        onChange(pageInfo) {
+                            refreshTable(pageInfo.current, pageInfo.pageSize, searchState);
+                        },
+                    }}
+                    onPageChange={(pageInfo) => {
+                        refreshTable(pageInfo.current, pageInfo.pageSize, searchState);
+                    }}
+                />
+            </section>
         </>
     );
 
     return (
-        <div>
+        <div className={style.workspace}>
             {table}
         </div>
     )

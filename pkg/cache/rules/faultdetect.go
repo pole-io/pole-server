@@ -76,10 +76,14 @@ func (f *faultDetectCache) Initialize(_ map[string]interface{}) error {
 		Namespace: types.AllMatched,
 		Name:      types.AllMatched,
 	})
+	registerGovernanceRuleWatcher(f.storage, f.CacheMgr, f)
 	return nil
 }
 
 func (f *faultDetectCache) Update() error {
+	if ok, err := updateGovernanceRuleCache(f.storage); ok {
+		return err
+	}
 	_, err, _ := f.GetSingle().Do(f.Name(), func() (interface{}, error) {
 		return nil, f.DoCacheUpdate(f.Name(), f.realUpdate)
 	})
@@ -119,6 +123,7 @@ func (f *faultDetectCache) realUpdate() (map[string]time.Time, int64, error) {
 
 // clear 实现Cache接口的函数
 func (f *faultDetectCache) Clear() error {
+	resetGovernanceRuleUpdateCache(f.storage)
 	f.BaseCache.Clear()
 	f.lock.Lock()
 	f.rules = container.NewSyncMap[string, *rules.FaultDetectRule]()

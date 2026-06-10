@@ -36,6 +36,7 @@ func NewLossLessCache(s store.Store, cacheMgr cachetypes.CacheManager) cachetype
 func (llc *LossLessCache) Initialize(_ map[string]any) error {
 	llc.ids = container.NewSyncMap[string, *rules.LosslessRule]()
 	llc.rules = container.NewSyncMap[string, *rules.LosslessRuleRelease]()
+	registerGovernanceRuleWatcher(llc.Store(), llc.CacheMgr, llc)
 	return nil
 }
 
@@ -44,6 +45,9 @@ func (llc *LossLessCache) LastMtime() time.Time {
 }
 
 func (llc *LossLessCache) Update() error {
+	if ok, err := updateGovernanceRuleCache(llc.Store()); ok {
+		return err
+	}
 	// 多个线程竞争，只有一个线程进行更新
 	err, _ := llc.singleUpdate()
 	return err
@@ -131,6 +135,9 @@ func (llc *LossLessCache) setRulesClient(rules []*rules.LosslessRuleRelease) (ti
 		if rule.Mtime.Unix() > lastMtime.Unix() {
 			lastMtime = rule.Mtime
 		}
+		if rule.Rule == nil {
+			continue
+		}
 
 		id := rule.ActiveKey()
 		old, exist := llc.rules.Load(id)
@@ -142,6 +149,9 @@ func (llc *LossLessCache) setRulesClient(rules []*rules.LosslessRuleRelease) (ti
 
 		// 如果规则是删除操作
 		if !rule.Valid {
+			if !exist {
+				continue
+			}
 			// 如果规则和之前的不一样，不需要处理
 			if rule.Id != old.Id {
 				continue
@@ -153,7 +163,7 @@ func (llc *LossLessCache) setRulesClient(rules []*rules.LosslessRuleRelease) (ti
 		}
 
 		if !rule.Active {
-			if rule.Id == old.Id {
+			if exist && rule.Id == old.Id {
 				if _, ok := llc.rules.Delete(id); ok {
 					del++
 				}
@@ -166,7 +176,7 @@ func (llc *LossLessCache) setRulesClient(rules []*rules.LosslessRuleRelease) (ti
 		} else {
 			add++
 		}
-		llc.rules.Store(rule.Id, rule)
+		llc.rules.Store(id, rule)
 	}
 
 	return lastMtime, add, update, del
@@ -177,6 +187,7 @@ func (llc *LossLessCache) Name() string {
 }
 
 func (llc *LossLessCache) Clear() error {
+	resetGovernanceRuleUpdateCache(llc.Store())
 	llc.ids = container.NewSyncMap[string, *rules.LosslessRule]()
 	llc.rules = container.NewSyncMap[string, *rules.LosslessRuleRelease]()
 	return nil

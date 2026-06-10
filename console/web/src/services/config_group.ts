@@ -35,8 +35,11 @@ export interface DescribeConfigFileGroupRequest {
 }
 
 export interface DescribegroupsResponse {
-    total: number
-    configFileGroups: Array<ConfigFileGroupView>
+    amount?: number
+    size?: number
+    total?: number
+    data?: Array<ConfigFileGroupView>
+    configFileGroups?: Array<ConfigFileGroupView>
 }
 
 export async function describeConfigFileGroups(params: DescribeConfigFileGroupRequest) {
@@ -44,9 +47,10 @@ export async function describeConfigFileGroups(params: DescribeConfigFileGroupRe
         action: `${BaseURL.CONFIG_GROUP}`,
         data: params,
     })
+    const groups = res.data ?? res.configFileGroups ?? []
     return {
-        list: res.configFileGroups,
-        totalCount: res.total,
+        list: groups,
+        totalCount: res.amount ?? res.total ?? groups.length,
     }
 }
 

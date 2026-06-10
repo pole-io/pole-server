@@ -25,9 +25,10 @@ import { cleanNamespacePage, listAllNamespaces, selectNamespace } from 'modules/
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import { cleanServicePage, listAllServices, selectService } from 'modules/discovery/service';
-import { listOneLossLessRule, saveLossLessRule, selectLosslessRule } from 'modules/governance/lossless';
+import { listOneLossLessRule, saveLossLessRule, selectLosslessRule, updateLosslessRule } from 'modules/governance/lossless';
 import { LossLessRuleView } from 'services/lossless';
 import PublishForm from '../RuleRelease/PublishForm';
+import RuleStickyAction from '../RuleRelease/RuleStickyAction';
 import { PolicySourceType } from 'services/auth_policy';
 import { ServiceView } from 'services/service';
 import { NamespaceView } from 'services/namespace';
@@ -122,6 +123,18 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
         publishView: boolean;
     }>({ model: 'view', visible: false, editable: op === 'create', publishView: false });
 
+    const renderReadonlySwitch = (enabled?: boolean) => (
+        <Tag theme={enabled ? 'success' : 'default'} variant="light">
+            {enabled ? '开启' : '关闭'}
+        </Tag>
+    );
+
+    const renderReadonlyValue = (value: React.ReactNode) => (
+        <Text>{value ?? '-'}</Text>
+    );
+
+    const renderSeconds = (value?: number) => renderReadonlyValue(value === undefined || value === null ? '-' : `${value} 秒`);
+
     // 初始化数据
     React.useEffect(() => {
         dispatch(listAllNamespaces()).then((res) => {
@@ -196,7 +209,8 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
         if (e.validateResult !== true) {
             return;
         }
-        dispatch(saveLossLessRule({
+        const saveAction = op === 'create' ? saveLossLessRule : updateLosslessRule;
+        dispatch(saveAction({
             param: {
                 id: losslessRule.id,
                 service: losslessRule.service,
@@ -397,72 +411,45 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
             <div style={{ marginBottom: 24, padding: 16, border: '1px solid #e0e0e0', borderRadius: 6 }}>
                 <Divider>无损上线</Divider>
                 <FormItem label="延迟注册">
-                    <div>
-                        <Switch
-                            defaultValue={losslessRule.lossless_online?.delay_register?.enable}
-                            value={losslessRule.lossless_online?.delay_register?.enable}
-                            disabled={!editor.editable}
-                            onChange={(checked) => {
-                                setLosslessRule(prev => ({
-                                    ...prev,
-                                    lossless_online: {
-                                        ...prev.lossless_online,
-                                        delay_register: {
-                                            ...prev.lossless_online.delay_register,
-                                            enable: checked as boolean,
+                    {editor.editable ? (
+                        <div>
+                            <Switch
+                                defaultValue={losslessRule.lossless_online?.delay_register?.enable}
+                                value={losslessRule.lossless_online?.delay_register?.enable}
+                                disabled={!editor.editable}
+                                onChange={(checked) => {
+                                    setLosslessRule(prev => ({
+                                        ...prev,
+                                        lossless_online: {
+                                            ...prev.lossless_online,
+                                            delay_register: {
+                                                ...prev.lossless_online.delay_register,
+                                                enable: checked as boolean,
+                                            }
                                         }
-                                    }
-                                }))
-                            }} />
-                    </div>
+                                    }))
+                                }} />
+                        </div>
+                    ) : renderReadonlySwitch(losslessRule.lossless_online?.delay_register?.enable)}
                 </FormItem>
                 {(losslessRule.lossless_online?.delay_register?.enable) && (
                     <>
                         <FormItem label="延迟注册策略">
-                            <div>
-                                <RadioGroup
-                                    theme='button'
-                                    variant='primary-filled'
-                                    options={[{
-                                        label: '时长延迟',
-                                        value: 'DELAY_BY_TIME'
-                                    }, {
-                                        label: '探测延迟',
-                                        value: 'DELAY_BY_HEALTH_CHECK'
-                                    }]}
-                                    value={losslessRule.lossless_online?.delay_register?.strategy}
-                                    defaultValue={losslessRule.lossless_online?.delay_register?.strategy}
-                                    readonly={!editor.editable}
-                                    onChange={(value) => {
-                                        setLosslessRule(prev => ({
-                                            ...prev,
-                                            lossless_online: {
-                                                ...prev.lossless_online,
-                                                delay_register: {
-                                                    ...prev.lossless_online.delay_register,
-                                                    strategy: value as string,
-                                                }
-                                            }
-                                        }))
-                                    }}
-                                />
-                            </div>
-                        </FormItem>
-                        {losslessRule.lossless_online?.delay_register?.strategy === 'DELAY_BY_TIME' && (
-                            <FormItem label="延迟注册时间(秒)" name={["lossless_online", "delay_register", "interval"]}>
+                            {editor.editable ? (
                                 <div>
-                                    <InputNumber
-                                        min={1}
-                                        max={86400}
-                                        theme='normal'
-                                        suffix="Second"
-                                        value={losslessRule.lossless_online?.delay_register?.interval}
+                                    <RadioGroup
+                                        theme='button'
+                                        variant='primary-filled'
+                                        options={[{
+                                            label: '时长延迟',
+                                            value: 'DELAY_BY_TIME'
+                                        }, {
+                                            label: '探测延迟',
+                                            value: 'DELAY_BY_HEALTH_CHECK'
+                                        }]}
+                                        value={losslessRule.lossless_online?.delay_register?.strategy}
+                                        defaultValue={losslessRule.lossless_online?.delay_register?.strategy}
                                         readonly={!editor.editable}
-                                        inputProps={
-                                            {
-                                                borderless: !editor.editable,
-                                            }
-                                        }
                                         onChange={(value) => {
                                             setLosslessRule(prev => ({
                                                 ...prev,
@@ -470,121 +457,162 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
                                                     ...prev.lossless_online,
                                                     delay_register: {
                                                         ...prev.lossless_online.delay_register,
-                                                        interval: value as number,
+                                                        strategy: value as string,
                                                     }
                                                 }
                                             }))
                                         }}
                                     />
                                 </div>
+                            ) : renderReadonlyValue(losslessRule.lossless_online?.delay_register?.strategy === 'DELAY_BY_HEALTH_CHECK' ? '探测延迟' : '时长延迟')}
+                        </FormItem>
+                        {losslessRule.lossless_online?.delay_register?.strategy === 'DELAY_BY_TIME' && (
+                            <FormItem label="延迟注册时间(秒)" name={["lossless_online", "delay_register", "interval"]}>
+                                {editor.editable ? (
+                                    <div>
+                                        <InputNumber
+                                            min={1}
+                                            max={86400}
+                                            theme='normal'
+                                            suffix="Second"
+                                            value={losslessRule.lossless_online?.delay_register?.interval}
+                                            readonly={!editor.editable}
+                                            inputProps={
+                                                {
+                                                    borderless: !editor.editable,
+                                                }
+                                            }
+                                            onChange={(value) => {
+                                                setLosslessRule(prev => ({
+                                                    ...prev,
+                                                    lossless_online: {
+                                                        ...prev.lossless_online,
+                                                        delay_register: {
+                                                            ...prev.lossless_online.delay_register,
+                                                            interval: value as number,
+                                                        }
+                                                    }
+                                                }))
+                                            }}
+                                        />
+                                    </div>
+                                ) : renderSeconds(losslessRule.lossless_online?.delay_register?.interval)}
                             </FormItem>
                         )}
                         {losslessRule.lossless_online?.delay_register?.strategy === 'DELAY_BY_HEALTH_CHECK' && (
                             <>
                                 <FormItem label="健康检查协议">
-                                    <div>
-                                        <Select
-                                            options={[
-                                                {
-                                                    label: 'HTTP',
-                                                    value: 'http'
-                                                }]}
-                                            value={losslessRule.lossless_online?.delay_register?.health_check_protocol}
-                                            readonly={!editor.editable}
-                                            inputProps={
-                                                {
-                                                    borderless: !editor.editable,
-                                                }
-                                            }
-                                            onChange={(value) => {
-                                                setLosslessRule(prev => ({
-                                                    ...prev,
-                                                    lossless_online: {
-                                                        ...prev.lossless_online,
-                                                        delay_register: {
-                                                            ...prev.lossless_online.delay_register,
-                                                            health_check_protocol: value as string,
-                                                        }
+                                    {editor.editable ? (
+                                        <div>
+                                            <Select
+                                                options={[
+                                                    {
+                                                        label: 'HTTP',
+                                                        value: 'http'
+                                                    }]}
+                                                value={losslessRule.lossless_online?.delay_register?.health_check_protocol}
+                                                readonly={!editor.editable}
+                                                inputProps={
+                                                    {
+                                                        borderless: !editor.editable,
                                                     }
-                                                }))
-                                            }}
-                                        />
-                                    </div>
+                                                }
+                                                onChange={(value) => {
+                                                    setLosslessRule(prev => ({
+                                                        ...prev,
+                                                        lossless_online: {
+                                                            ...prev.lossless_online,
+                                                            delay_register: {
+                                                                ...prev.lossless_online.delay_register,
+                                                                health_check_protocol: value as string,
+                                                            }
+                                                        }
+                                                    }))
+                                                }}
+                                            />
+                                        </div>
+                                    ) : renderReadonlyValue((losslessRule.lossless_online?.delay_register?.health_check_protocol || '-').toUpperCase())}
                                 </FormItem>
                                 <FormItem label="健康检查方法">
-                                    <div>
-                                        <Select
-                                            options={HTTPMethodOption}
-                                            value={losslessRule.lossless_online?.delay_register?.health_check_method}
-                                            readonly={!editor.editable}
-                                            inputProps={
-                                                {
-                                                    borderless: !editor.editable,
-                                                }
-                                            }
-                                            onChange={(value) => {
-                                                setLosslessRule(prev => ({
-                                                    ...prev,
-                                                    lossless_online: {
-                                                        ...prev.lossless_online,
-                                                        delay_register: {
-                                                            ...prev.lossless_online.delay_register,
-                                                            health_check_method: value as string,
-                                                        }
+                                    {editor.editable ? (
+                                        <div>
+                                            <Select
+                                                options={HTTPMethodOption}
+                                                value={losslessRule.lossless_online?.delay_register?.health_check_method}
+                                                readonly={!editor.editable}
+                                                inputProps={
+                                                    {
+                                                        borderless: !editor.editable,
                                                     }
-                                                }))
-                                            }}
-                                        />
-                                    </div>
+                                                }
+                                                onChange={(value) => {
+                                                    setLosslessRule(prev => ({
+                                                        ...prev,
+                                                        lossless_online: {
+                                                            ...prev.lossless_online,
+                                                            delay_register: {
+                                                                ...prev.lossless_online.delay_register,
+                                                                health_check_method: value as string,
+                                                            }
+                                                        }
+                                                    }))
+                                                }}
+                                            />
+                                        </div>
+                                    ) : renderReadonlyValue(losslessRule.lossless_online?.delay_register?.health_check_method || '-')}
                                 </FormItem>
                                 <FormItem label="健康检查路径">
-                                    <div>
-                                        <Input
-                                            value={losslessRule.lossless_online?.delay_register?.health_check_path}
-                                            readonly={!editor.editable}
-                                            borderless={!editor.editable}
-                                            onChange={(value) => {
-                                                setLosslessRule(prev => ({
-                                                    ...prev,
-                                                    lossless_online: {
-                                                        ...prev.lossless_online,
-                                                        delay_register: {
-                                                            ...prev.lossless_online.delay_register,
-                                                            health_check_path: value as string,
+                                    {editor.editable ? (
+                                        <div>
+                                            <Input
+                                                value={losslessRule.lossless_online?.delay_register?.health_check_path}
+                                                readonly={!editor.editable}
+                                                borderless={!editor.editable}
+                                                onChange={(value) => {
+                                                    setLosslessRule(prev => ({
+                                                        ...prev,
+                                                        lossless_online: {
+                                                            ...prev.lossless_online,
+                                                            delay_register: {
+                                                                ...prev.lossless_online.delay_register,
+                                                                health_check_path: value as string,
+                                                            }
                                                         }
-                                                    }
-                                                }))
-                                            }}
-                                        />
-                                    </div>
+                                                    }))
+                                                }}
+                                            />
+                                        </div>
+                                    ) : renderReadonlyValue(losslessRule.lossless_online?.delay_register?.health_check_path || '-')}
                                 </FormItem>
                                 <FormItem label="健康检查间隔(秒)">
-                                    <div>
-                                        <InputNumber
-                                            min={1}
-                                            max={60}
-                                            value={losslessRule.lossless_online?.delay_register?.health_check_interval}
-                                            readonly={!editor.editable}
-                                            inputProps={
-                                                {
-                                                    borderless: !editor.editable,
-                                                }
-                                            }
-                                            theme='normal'
-                                            suffix="Second"
-                                            onChange={(value) => {
-                                                setLosslessRule(prev => ({
-                                                    ...prev,
-                                                    lossless_online: {
-                                                        ...prev.lossless_online,
-                                                        delay_register: {
-                                                            ...prev.lossless_online.delay_register,
-                                                            health_check_interval: value as number,
-                                                        }
+                                    {editor.editable ? (
+                                        <div>
+                                            <InputNumber
+                                                min={1}
+                                                max={60}
+                                                value={losslessRule.lossless_online?.delay_register?.health_check_interval}
+                                                readonly={!editor.editable}
+                                                inputProps={
+                                                    {
+                                                        borderless: !editor.editable,
                                                     }
-                                                }))
-                                            }} />
-                                    </div>
+                                                }
+                                                theme='normal'
+                                                suffix="Second"
+                                                onChange={(value) => {
+                                                    setLosslessRule(prev => ({
+                                                        ...prev,
+                                                        lossless_online: {
+                                                            ...prev.lossless_online,
+                                                            delay_register: {
+                                                                ...prev.lossless_online.delay_register,
+                                                                health_check_interval: value as number,
+                                                            }
+                                                        }
+                                                    }))
+                                                }} />
+                                        </div>
+                                    ) : renderSeconds(losslessRule.lossless_online?.delay_register?.health_check_interval)}
                                 </FormItem>
                             </>
                         )}
@@ -592,93 +620,45 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
                 )}
                 <Divider>服务预热</Divider>
                 <FormItem label="预热启用" name={["lossless_online", "warmup", "enable"]}>
-                    <div>
-                        <Switch
-                            value={losslessRule.lossless_online?.warmup?.enable}
-                            defaultValue={losslessRule.lossless_online?.warmup?.enable}
-                            disabled={!editor.editable}
-                            onChange={(checked) => {
-                                setLosslessRule(prev => ({
-                                    ...prev,
-                                    lossless_online: {
-                                        ...prev.lossless_online,
-                                        warmup: {
-                                            ...prev.lossless_online.warmup,
-                                            enable: checked as boolean,
+                    {editor.editable ? (
+                        <div>
+                            <Switch
+                                value={losslessRule.lossless_online?.warmup?.enable}
+                                defaultValue={losslessRule.lossless_online?.warmup?.enable}
+                                disabled={!editor.editable}
+                                onChange={(checked) => {
+                                    setLosslessRule(prev => ({
+                                        ...prev,
+                                        lossless_online: {
+                                            ...prev.lossless_online,
+                                            warmup: {
+                                                ...prev.lossless_online.warmup,
+                                                enable: checked as boolean,
+                                            }
                                         }
-                                    }
-                                }))
-                            }}
-                        />
-                    </div>
+                                    }))
+                                }}
+                            />
+                        </div>
+                    ) : renderReadonlySwitch(losslessRule.lossless_online?.warmup?.enable)}
                 </FormItem>
                 {(losslessRule.lossless_online?.warmup?.enable) && (
                     <>
                         <FormItem label="预热时长(秒)">
-                            <div>
-                                <InputNumber
-                                    min={1}
-                                    max={86400}
-                                    theme='normal'
-                                    suffix="Second"
-                                    value={losslessRule.lossless_online?.warmup?.interval}
-                                    readonly={!editor.editable}
-                                    inputProps={
-                                        {
-                                            borderless: !editor.editable,
-                                        }
-                                    }
-                                    onChange={(value) => {
-                                        setLosslessRule(prev => ({
-                                            ...prev,
-                                            lossless_online: {
-                                                ...prev.lossless_online,
-                                                warmup: {
-                                                    ...prev.lossless_online.warmup,
-                                                    interval: value as number,
-                                                }
-                                            }
-                                        }))
-                                    }}
-                                />
-                            </div>
-                        </FormItem>
-                        <FormItem label="预热终止保护">
-                            <div>
-                                <Switch
-                                    value={losslessRule.lossless_online?.warmup?.enable_overload_protection}
-                                    defaultValue={losslessRule.lossless_online?.warmup?.enable_overload_protection}
-                                    disabled={!editor.editable}
-                                    onChange={(checked) => {
-                                        setLosslessRule(prev => ({
-                                            ...prev,
-                                            lossless_online: {
-                                                ...prev.lossless_online,
-                                                warmup: {
-                                                    ...prev.lossless_online.warmup,
-                                                    enable_overload_protection: checked as boolean,
-                                                }
-                                            }
-                                        }))
-                                    }}
-                                />
-                            </div>
-                        </FormItem>
-                        {losslessRule.lossless_online?.warmup?.enable_overload_protection && (
-                            <FormItem label="预热终止百分比">
+                            {editor.editable ? (
                                 <div>
                                     <InputNumber
-                                        min={0}
-                                        max={100}
+                                        min={1}
+                                        max={86400}
                                         theme='normal'
-                                        value={losslessRule.lossless_online?.warmup?.overload_protection_threshold}
+                                        suffix="Second"
+                                        value={losslessRule.lossless_online?.warmup?.interval}
                                         readonly={!editor.editable}
                                         inputProps={
                                             {
                                                 borderless: !editor.editable,
                                             }
                                         }
-                                        suffix="%"
                                         onChange={(value) => {
                                             setLosslessRule(prev => ({
                                                 ...prev,
@@ -686,13 +666,69 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
                                                     ...prev.lossless_online,
                                                     warmup: {
                                                         ...prev.lossless_online.warmup,
-                                                        overload_protection_threshold: value as number,
+                                                        interval: value as number,
                                                     }
                                                 }
                                             }))
                                         }}
                                     />
                                 </div>
+                            ) : renderSeconds(losslessRule.lossless_online?.warmup?.interval)}
+                        </FormItem>
+                        <FormItem label="预热终止保护">
+                            {editor.editable ? (
+                                <div>
+                                    <Switch
+                                        value={losslessRule.lossless_online?.warmup?.enable_overload_protection}
+                                        defaultValue={losslessRule.lossless_online?.warmup?.enable_overload_protection}
+                                        disabled={!editor.editable}
+                                        onChange={(checked) => {
+                                            setLosslessRule(prev => ({
+                                                ...prev,
+                                                lossless_online: {
+                                                    ...prev.lossless_online,
+                                                    warmup: {
+                                                        ...prev.lossless_online.warmup,
+                                                        enable_overload_protection: checked as boolean,
+                                                    }
+                                                }
+                                            }))
+                                        }}
+                                    />
+                                </div>
+                            ) : renderReadonlySwitch(losslessRule.lossless_online?.warmup?.enable_overload_protection)}
+                        </FormItem>
+                        {losslessRule.lossless_online?.warmup?.enable_overload_protection && (
+                            <FormItem label="预热终止百分比">
+                                {editor.editable ? (
+                                    <div>
+                                        <InputNumber
+                                            min={0}
+                                            max={100}
+                                            theme='normal'
+                                            value={losslessRule.lossless_online?.warmup?.overload_protection_threshold}
+                                            readonly={!editor.editable}
+                                            inputProps={
+                                                {
+                                                    borderless: !editor.editable,
+                                                }
+                                            }
+                                            suffix="%"
+                                            onChange={(value) => {
+                                                setLosslessRule(prev => ({
+                                                    ...prev,
+                                                    lossless_online: {
+                                                        ...prev.lossless_online,
+                                                        warmup: {
+                                                            ...prev.lossless_online.warmup,
+                                                            overload_protection_threshold: value as number,
+                                                        }
+                                                    }
+                                                }))
+                                            }}
+                                        />
+                                    </div>
+                                ) : renderReadonlyValue(`${losslessRule.lossless_online?.warmup?.overload_protection_threshold ?? '-'}%`)}
                             </FormItem>
                         )}
                         <FormItem label="预热曲线值" name={["lossless_online", "warmup", "curvature"]}>
@@ -722,48 +758,52 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
                 )}
                 <Divider>无损下线</Divider>
                 <FormItem label="无损下线启用">
-                    <div>
-                        <Switch
-                            value={losslessRule.lossless_offline?.enable}
-                            defaultValue={losslessRule.lossless_offline?.enable}
-                            disabled={!editor.editable}
-                            onChange={(checked) => {
-                                setLosslessRule(prev => ({
-                                    ...prev,
-                                    lossless_offline: {
-                                        ...prev.lossless_offline,
-                                        enable: checked as boolean,
-                                    }
-                                }))
-                            }} />
-                    </div>
-                </FormItem>
-                {(losslessRule.lossless_offline?.enable) && (
-                    <FormItem label="无损下线间隔">
+                    {editor.editable ? (
                         <div>
-                            <InputNumber
-                                min={0}
-                                max={120}
-                                theme='normal'
-                                suffix="Second"
-                                value={losslessRule.lossless_offline?.interval}
-                                readonly={!editor.editable}
-                                inputProps={
-                                    {
-                                        borderless: !editor.editable,
-                                    }
-                                }
-                                onChange={(value) => {
+                            <Switch
+                                value={losslessRule.lossless_offline?.enable}
+                                defaultValue={losslessRule.lossless_offline?.enable}
+                                disabled={!editor.editable}
+                                onChange={(checked) => {
                                     setLosslessRule(prev => ({
                                         ...prev,
                                         lossless_offline: {
                                             ...prev.lossless_offline,
-                                            interval: value as number,
+                                            enable: checked as boolean,
                                         }
                                     }))
-                                }}
-                            />
+                                }} />
                         </div>
+                    ) : renderReadonlySwitch(losslessRule.lossless_offline?.enable)}
+                </FormItem>
+                {(losslessRule.lossless_offline?.enable) && (
+                    <FormItem label="无损下线间隔">
+                        {editor.editable ? (
+                            <div>
+                                <InputNumber
+                                    min={0}
+                                    max={120}
+                                    theme='normal'
+                                    suffix="Second"
+                                    value={losslessRule.lossless_offline?.interval}
+                                    readonly={!editor.editable}
+                                    inputProps={
+                                        {
+                                            borderless: !editor.editable,
+                                        }
+                                    }
+                                    onChange={(value) => {
+                                        setLosslessRule(prev => ({
+                                            ...prev,
+                                            lossless_offline: {
+                                                ...prev.lossless_offline,
+                                                interval: value as number,
+                                            }
+                                        }))
+                                    }}
+                                />
+                            </div>
+                        ) : renderSeconds(losslessRule.lossless_offline?.interval)}
                     </FormItem>
                 )}
             </div>
@@ -771,27 +811,33 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
     );
 
     const renderStickyTool = (
-        <StickyTool style={{ zIndex: 1000 }} placement="right-bottom" offset={[-10, 200]}>
+        <StickyTool
+            style={{ zIndex: 1000 }}
+            placement="right-bottom"
+            offset={[-10, 200]}
+        >
             <StickyItem
-                label={editor.editable ? '保存' : '编辑'}
+                label=""
                 icon={!editor.editable ?
-                    <Edit1Icon onClick={() => setEditor(prev => ({ ...prev, editable: true }))} />
+                    <RuleStickyAction label="编辑" icon={<Edit1Icon />} onClick={() => {
+                        setEditor(prev => ({ ...prev, editable: true }));
+                    }} />
                     :
-                    <Button variant="text" shape="square" onClick={() => form.submit()}>
-                        <SaveIcon />
-                    </Button>
+                    <RuleStickyAction label="保存" icon={<SaveIcon />} onClick={() => {
+                        form.submit();
+                    }} />
                 }
             />
             {editor.editable && (
-                <StickyItem label="撤销" icon={
-                    <RollbackIcon onClick={() => {
+                <StickyItem label="" icon={
+                    <RuleStickyAction label="撤销" icon={<RollbackIcon />} onClick={() => {
                         setEditor(prev => ({ ...prev, editable: false }));
                     }} />
                 } />
             )}
             {!editor.editable && (
-                <StickyItem label="发布" icon={
-                    <RocketIcon onClick={() => {
+                <StickyItem label="" icon={
+                    <RuleStickyAction label="发布" icon={<RocketIcon />} onClick={() => {
                         setEditor(prev => ({ ...prev, publishView: true }));
                     }} />
                 } />

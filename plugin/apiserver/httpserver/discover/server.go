@@ -51,6 +51,7 @@ const (
 	circuitBreakerAccess string = "circuitbreaker"
 	routingAccess        string = "router"
 	rateLimitAccess      string = "ratelimit"
+	faultDetectAccess    string = "faultdetect"
 	lossLessAccess       string = "lossless"
 )
 
@@ -88,6 +89,8 @@ func (h *HTTPServer) GetConsoleAccessServer(include []string) *restful.WebServic
 			h.addLaneRuleAccess(ws)
 		case rateLimitAccess:
 			h.addRateLimitRuleAccess(ws)
+		case faultDetectAccess:
+			h.addFaultDetectRuleAccess(ws)
 		}
 	}
 	return ws

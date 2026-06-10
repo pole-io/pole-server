@@ -42,7 +42,8 @@ export interface DescribeServicesRequest {
 export interface DescribeServicesResponse {
     amount: number
     size: number
-    services: Array<ServiceView>
+    data?: Array<ServiceView>
+    services?: Array<ServiceView>
 }
 
 export async function describeServices(params: DescribeServicesRequest) {
@@ -50,22 +51,78 @@ export async function describeServices(params: DescribeServicesRequest) {
         action: `${BaseURL.SERVICE}`,
         data: params,
     })
+    const services = res.data ?? res.services ?? []
     return {
-        list: res.services.map((item) => {
+        list: services.map((item) => {
             const visibilityMode = CheckVisibilityMode(item.export_to, item.namespace)
             if (visibilityMode === 'all') item.export_to = []
             return {
                 ...item,
+                id: item.id || `${item.namespace}/${item.name}`,
                 visibility_mode: visibilityMode,
             } as ServiceView
         }),
-        totalCount: res.amount,
+        totalCount: res.amount ?? services.length,
     }
 }
 
 export async function describeAllServices(params = {}) {
     const res = await getAllList(describeServices, {})(params)
     return res.list ? res.list : []
+}
+
+export interface ServiceKey {
+    name: string
+    namespace: string
+}
+
+export interface ServiceSubscriber {
+    '@type'?: string
+    caller?: ServiceKey
+    callee?: ServiceKey[]
+}
+
+export interface ServiceSubscriberView extends ServiceSubscriber {
+    id: string
+    callerLabel: string
+    calleeLabel: string
+}
+
+export interface DescribeServiceSubscribersRequest {
+    offset: number
+    limit: number
+    caller_name?: string
+    caller_namespace?: string
+    callee_name?: string
+    callee_namespace?: string
+}
+
+export interface DescribeServiceSubscribersResponse {
+    amount: number
+    size: number
+    data?: Array<ServiceSubscriber>
+    subscribers?: Array<ServiceSubscriber>
+}
+
+export async function describeServiceSubscribers(params: DescribeServiceSubscribersRequest) {
+    const res = await getApiRequest<DescribeServiceSubscribersResponse>({
+        action: BaseURL.SERVICE_SUBSCRIBER,
+        data: params,
+    })
+    const subscribers = res.data ?? res.subscribers ?? []
+    return {
+        list: subscribers.map((item, index) => {
+            const callerLabel = item.caller ? `${item.caller.namespace}/${item.caller.name}` : '-'
+            const calleeLabel = (item.callee ?? []).map((callee) => `${callee.namespace}/${callee.name}`).join(', ')
+            return {
+                ...item,
+                id: `${callerLabel}->${calleeLabel || index}`,
+                callerLabel,
+                calleeLabel: calleeLabel || '-',
+            } as ServiceSubscriberView
+        }),
+        totalCount: res.amount ?? subscribers.length,
+    }
 }
 
 export interface ModifyServicesRequest {

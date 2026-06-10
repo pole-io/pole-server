@@ -116,11 +116,16 @@ func (c *HeartBeatHealthChecker) Name() string {
 
 // Initialize
 func (c *HeartBeatHealthChecker) Initialize(configEntry *apis.ConfigEntry) error {
-	soltNum, _ := configEntry.Option["soltNum"].(int)
-	if soltNum == 0 {
-		soltNum = int(DefaultSoltNum)
+	option := map[string]interface{}{}
+	if configEntry != nil && configEntry.Option != nil {
+		option = configEntry.Option
 	}
-	c.soltNum = int32(soltNum)
+	conf, err := unmarshal(option)
+	if err != nil {
+		return err
+	}
+	c.conf = conf
+	c.soltNum = conf.SoltNum
 	c.peers = make(map[string]Peer)
 	return nil
 }

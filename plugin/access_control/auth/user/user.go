@@ -22,6 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/http"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -425,15 +427,7 @@ func (svr *Server) CheckCredential(authCtx *authtypes.AcquireContext) error {
 			return authtypes.ErrorTokenInvalid
 		}
 
-		authHeaders := []string{types.HeaderAuthorizationKey, "X-Polaris-Token"}
-		headers := types.GetRequestHeader(authCtx.GetRequestContext())
-		var authToken string
-		for _, k := range authHeaders {
-			if v := headers[k]; len(v) > 0 {
-				authToken = v[0]
-				break
-			}
-		}
+		authToken := authTokenFromContext(authCtx.GetRequestContext())
 		operator, err := svr.decodeToken(authToken)
 		if err != nil {
 			log.Error("[Auth][Checker] decode token", utils.RequestID(authCtx.GetRequestContext()), zap.String("token", authToken), zap.Error(err))
@@ -470,6 +464,43 @@ func (svr *Server) CheckCredential(authCtx *authtypes.AcquireContext) error {
 		// 操作者信息解析失败，降级为匿名用户
 		authCtx.SetAttachment(authtypes.PrincipalKey, authtypes.NewAnonymousPrincipal())
 		authCtx.SetAttachment(authtypes.TokenDetailInfoKey, authapi.NewAnonymousOperatorInfo())
+	}
+	return nil
+}
+
+func authTokenFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	if token, _ := ctx.Value(types.ContextAuthTokenKey).(string); token != "" {
+		return token
+	}
+
+	headers := types.GetRequestHeader(ctx)
+	for _, key := range []string{types.HeaderAuthorizationKey, "X-Polaris-Token"} {
+		if values := headerValues(headers, key); len(values) > 0 {
+			return values[0]
+		}
+	}
+	return ""
+}
+
+func headerValues(headers map[string][]string, key string) []string {
+	if len(headers) == 0 || key == "" {
+		return nil
+	}
+	if values := headers[key]; len(values) > 0 {
+		return values
+	}
+	if values := headers[http.CanonicalHeaderKey(key)]; len(values) > 0 {
+		return values
+	}
+
+	target := strings.ToLower(key)
+	for name, values := range headers {
+		if strings.ToLower(name) == target && len(values) > 0 {
+			return values
+		}
 	}
 	return nil
 }

@@ -34,6 +34,7 @@ import {
 import { ServiceView } from 'services/service';
 import styles from './LaneGroupEditor.module.less';
 import PublishForm from '../RuleRelease/PublishForm';
+import RuleStickyAction from '../RuleRelease/RuleStickyAction';
 import { PolicySourceType } from 'services/auth_policy';
 import { listOneLaneGroup, resetLaneGroup, saveLaneGroups, selectLaneGroup, updateLaneGroups } from 'modules/governance/lane_group';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
@@ -589,41 +590,37 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
                 offset={[-10, 200]}
             >
                 <StickyItem
-                    label={editorState.editable ? '保存' : '编辑'}
+                    label=""
                     icon={!editorState.editable ?
-                        <Edit1Icon onClick={() => {
-                            setEditorState({ ...editorState, editable: true });
-
+                        <RuleStickyAction label="编辑" icon={<Edit1Icon />} onClick={() => {
+                            setEditorState(prev => ({ ...prev, editable: true }));
                         }} />
                         :
-                        <Button
-                            disabled={!editGroup?.editable}
-                            variant="text"
-                            shape="square"
-                            onClick={() => { form.submit(); }}
-                        >
-                            <SaveIcon />
-                        </Button>
+                        <RuleStickyAction label="保存" icon={<SaveIcon />} onClick={() => {
+                            if (editGroup?.editable) {
+                                form.submit();
+                            }
+                        }} />
                     }
                 />
                 {(editorState.editable) && (
-                    <StickyItem label="撤销" icon={
-                        <RollbackIcon onClick={() => {
+                    <StickyItem label="" icon={
+                        <RuleStickyAction label="撤销" icon={<RollbackIcon />} onClick={() => {
                             if (op === 'create') {
                                 refresh(true);
                             } else {
                                 fetchLaneGroupDetail(editGroup)
-                                setEditorState({ ...editorState, editable: false });
+                                setEditorState(prev => ({ ...prev, editable: false }));
                             }
-                        }} />}
-                    />
+                        }} />
+                    } />
                 )}
                 {(!editorState.editable) && (
-                    <StickyItem label="发布" icon={
-                        <RocketIcon onClick={() => {
+                    <StickyItem label="" icon={
+                        <RuleStickyAction label="发布" icon={<RocketIcon />} onClick={() => {
                             setEditorState(prev => ({ ...prev, publishView: true }));
-                        }} />}
-                    />
+                        }} />
+                    } />
                 )}
             </StickyTool>
         </div>

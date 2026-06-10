@@ -1,0 +1,149 @@
+.page {
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.title {
+  color: #1f2937;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.description {
+  color: #4e5969;
+  line-height: 22px;
+  margin-top: 4px;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid #e7ebf0;
+  border-radius: 6px;
+  background: #fff;
+  margin-bottom: 16px;
+}
+
+.summaryItem {
+  min-width: 0;
+  padding: 14px 16px;
+  border-right: 1px solid #e7ebf0;
+
+  &:last-child {
+    border-right: 0;
+  }
+}
+
+.summaryLabel {
+  color: #8b93a3;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.summaryValue {
+  color: #1f2937;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+  margin-top: 4px;
+}
+
+.summaryHint {
+  color: #4e5969;
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listPanel {
+  background: #fff;
+  border: 1px solid #e7ebf0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e7ebf0;
+}
+
+.panelTitle {
+  color: #1f2937;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.panelHint {
+  color: #8b93a3;
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 2px;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 180px 180px auto;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e7ebf0;
+}
+
+.ruleName {
+  min-width: 0;
+}
+
+.ruleNameText {
+  display: block;
+  font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ruleDesc {
+  color: #8b93a3;
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.target {
+  color: #4e5969;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.table {
+  :global(.t-table__body tr) {
+    cursor: pointer;
+  }
+}
+
+@media (max-width: 1180px) {
+  .summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filters {
+    grid-template-columns: 1fr 1fr;
+  }
+}

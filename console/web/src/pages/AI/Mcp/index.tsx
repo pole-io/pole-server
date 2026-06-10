@@ -1,14 +1,12 @@
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 import {
   Button,
-  Col,
   Drawer,
   Form,
   Input,
   Link,
   Popconfirm,
   PrimaryTableProps,
-  Row,
   Select,
   Space,
   Table,
@@ -17,7 +15,17 @@ import {
   Tooltip,
 } from 'tdesign-react';
 import type { FormProps, PageInfo } from 'tdesign-react';
-import { AddIcon, DeleteIcon, EditIcon, ListIcon, RefreshIcon } from 'tdesign-icons-react';
+import {
+  AddIcon,
+  DeleteIcon,
+  EditIcon,
+  InfoCircleIcon,
+  ListIcon,
+  RefreshIcon,
+  SearchIcon,
+  ServerIcon,
+  ToolsCircleIcon,
+} from 'tdesign-icons-react';
 
 import Text from 'components/Text';
 import { useAppDispatch, useAppSelector } from 'modules/store';
@@ -34,6 +42,7 @@ import {
   updateMCPServer,
 } from 'modules/ai/mcp';
 import { MCPServer, MCPServerTool } from 'services/mcp';
+import { describeServices, ServiceView } from 'services/service';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import { Op } from 'services/types';
 import style from './index.module.less';
@@ -44,57 +53,134 @@ const protocolOptions = [
   { label: 'HTTP', value: 'http' },
   { label: 'SSE', value: 'sse' },
   { label: 'Streamable HTTP', value: 'streamable-http' },
+  { label: 'STDIO', value: 'stdio' },
 ];
+
+const quickProtocolOptions = [
+  { label: '全部', value: '' },
+  ...protocolOptions,
+];
+
+const backendTypeOptions = [
+  { label: 'Pole 注册服务', value: 'service' },
+  { label: '自定义地址', value: 'address' },
+];
+
+function protocolLabel(value?: string) {
+  return protocolOptions.find((item) => item.value === value)?.label || value || '-';
+}
+
+function protocolTheme(value?: string) {
+  if (value === 'http') return 'success';
+  if (value === 'sse') return 'primary';
+  if (value === 'streamable-http') return 'warning';
+  if (value === 'stdio') return 'default';
+  return 'default';
+}
+
+function backendType(server?: MCPServer) {
+  if (server?.backend_type) return server.backend_type;
+  if (server?.backend_service_namespace || server?.backend_service_name) return 'service';
+  if (server?.backend_address) return 'address';
+  return '';
+}
+
+function backendLabel(server?: MCPServer) {
+  const type = backendType(server);
+  if (type === 'service') {
+    const namespace = server?.backend_service_namespace || server?.namespace || '-';
+    const name = server?.backend_service_name || server?.reference || server?.name || '-';
+    return `Service ${namespace}/${name}`;
+  }
+  if (type === 'address') return server?.backend_address || '-';
+  return server?.reference || '-';
+}
+
+function serviceKey(service?: Pick<ServiceView, 'namespace' | 'name'>) {
+  if (!service?.namespace || !service?.name) return '';
+  return `${service.namespace}/${service.name}`;
+}
+
+function parseServiceKey(value?: string) {
+  const [namespace, ...names] = (value || '').split('/');
+  return {
+    namespace: namespace || '',
+    name: names.join('/') || '',
+  };
+}
+
+function backendTypeLabel(value?: string) {
+  return backendTypeOptions.find((item) => item.value === value)?.label || '-';
+}
 
 const serverColumns = (
   operateServer: (op: Op | 'tools', row?: TableRowData) => void,
 ): PrimaryTableProps['columns'] => [
   {
     colKey: 'name',
-    title: '名称',
+    title: 'MCP Server',
     fixed: 'left',
     cell: ({ row }) => (
-      <Link theme="primary" onClick={() => operateServer('tools', row)}>
-        {row.name}
-      </Link>
+      <div className={style.serverCell}>
+        <div className={style.serverNameRow}>
+          <Link theme="primary" onClick={() => operateServer('tools', row)}>
+            {row.name}
+          </Link>
+          <Tag theme={protocolTheme(row.protocol) as any} variant="light">
+            {protocolLabel(row.protocol)}
+          </Tag>
+        </div>
+        <div className={style.serverMeta}>
+          <span>{row.namespace || '-'}</span>
+          <span>{backendLabel(row as MCPServer)}</span>
+        </div>
+      </div>
     ),
   },
   {
-    colKey: 'namespace',
-    title: '命名空间',
-    cell: ({ row }) => <Text>{row.namespace}</Text>,
-  },
-  {
-    colKey: 'protocol',
-    title: '协议',
-    cell: ({ row }) => <Tag variant="outline">{row.protocol || '-'}</Tag>,
-  },
-  {
-    colKey: 'ports',
-    title: '端口',
+    colKey: 'endpoint',
+    title: '接入',
     ellipsis: true,
-    cell: ({ row }) => <Text>{row.ports || '-'}</Text>,
+    cell: ({ row }) => (
+      <div className={style.compactCell}>
+        <Text>{backendType(row as MCPServer) === 'service' ? 'Pole 注册服务' : backendType(row as MCPServer) === 'address' ? '自定义地址' : '-'}</Text>
+        <span>{backendLabel(row as MCPServer)}</span>
+      </div>
+    ),
   },
   {
-    colKey: 'business',
-    title: '业务',
-    cell: ({ row }) => <Text>{row.business || '-'}</Text>,
+    colKey: 'owner',
+    title: '归属',
+    cell: ({ row }) => (
+      <div className={style.compactCell}>
+        <Text>{row.business || '-'}</Text>
+        <span>{row.department || '-'}</span>
+      </div>
+    ),
   },
   {
-    colKey: 'department',
-    title: '部门',
-    cell: ({ row }) => <Text>{row.department || '-'}</Text>,
-  },
-  {
-    colKey: 'description',
-    title: '描述',
-    ellipsis: true,
-    cell: ({ row }) => <Text>{row.description || '-'}</Text>,
+    colKey: 'visibility',
+    title: '可见范围',
+    cell: ({ row }) => {
+      const values = splitExportTo(row.export_to);
+      if (values.length === 0) return <Text>默认</Text>;
+      return (
+        <Space size={4}>
+          {values.slice(0, 2).map((item) => <Tag key={item} variant="outline">{item}</Tag>)}
+          {values.length > 2 && <Tag variant="outline">+{values.length - 2}</Tag>}
+        </Space>
+      );
+    },
   },
   {
     colKey: 'time',
-    title: '操作时间',
-    cell: ({ row }) => <Text>修改: {row.mtime || '-'}<br />创建: {row.ctime || '-'}</Text>,
+    title: '最近修改',
+    cell: ({ row }) => (
+      <div className={style.compactCell}>
+        <Text>{row.mtime || '-'}</Text>
+        <span>创建 {row.ctime || '-'}</span>
+      </div>
+    ),
   },
   {
     colKey: 'action',
@@ -130,37 +216,325 @@ const serverColumns = (
   },
 ];
 
-const toolColumns: PrimaryTableProps['columns'] = [
-  {
-    colKey: 'name',
-    title: '工具名',
-    fixed: 'left',
-    cell: ({ row }) => <Text>{row.name}</Text>,
-  },
-  {
-    colKey: 'description',
-    title: '描述',
-    ellipsis: true,
-    cell: ({ row }) => <Text>{row.description || '-'}</Text>,
-  },
-  {
-    colKey: 'input_schema',
-    title: '输入 Schema',
-    ellipsis: true,
-    cell: ({ row }) => <Text>{row.input_schema || '-'}</Text>,
-  },
-  {
-    colKey: 'output_schema',
-    title: '输出 Schema',
-    ellipsis: true,
-    cell: ({ row }) => <Text>{row.output_schema || '-'}</Text>,
-  },
-  {
-    colKey: 'time',
-    title: '操作时间',
-    cell: ({ row }) => <Text>修改: {row.mtime || '-'}<br />创建: {row.ctime || '-'}</Text>,
-  },
-];
+function safeParseJSON(value?: string) {
+  if (!value) return undefined;
+  try {
+    return JSON.parse(value);
+  } catch (_) {
+    return undefined;
+  }
+}
+
+function schemaType(schema: any): string {
+  if (!schema) return '-';
+  if (Array.isArray(schema.type)) return schema.type.join(' | ');
+  if (schema.type === 'array') return `array<${schemaType(schema.items) || 'any'}>`;
+  if (schema.type) return schema.type;
+  if (schema.enum) return 'enum';
+  if (schema.anyOf) return 'anyOf';
+  if (schema.oneOf) return 'oneOf';
+  if (schema.properties) return 'object';
+  return '-';
+}
+
+function schemaDefault(schema: any): string {
+  if (!schema || typeof schema !== 'object') return '-';
+  if (schema.default !== undefined) return JSON.stringify(schema.default);
+  if (Array.isArray(schema.enum) && schema.enum.length > 0) return schema.enum.map(String).join(' | ');
+  return '-';
+}
+
+function nestedSchema(schema: any) {
+  if (!schema || typeof schema !== 'object') return undefined;
+  if (schema.type === 'array') return schema.items;
+  return schema;
+}
+
+function hasNestedSchema(schema: any) {
+  const target = nestedSchema(schema);
+  return !!target?.properties && Object.keys(target.properties).length > 0;
+}
+
+function schemaRaw(value?: string) {
+  const parsed = safeParseJSON(value);
+  if (parsed) return JSON.stringify(parsed, null, 2);
+  return value || '-';
+}
+
+function schemaFields(value?: string) {
+  const parsed = safeParseJSON(value);
+  if (!parsed || typeof parsed !== 'object') return [];
+  const properties = parsed.properties || {};
+  const required = new Set(Array.isArray(parsed.required) ? parsed.required : []);
+  const entries = Object.entries(properties);
+  if (entries.length === 0) {
+    return [{
+      name: '(root)',
+      type: schemaType(parsed),
+      required: false,
+      description: parsed.description || '-',
+      defaultValue: schemaDefault(parsed),
+      schema: parsed,
+    }];
+  }
+  return entries.map(([name, schema]: [string, any]) => ({
+    name,
+    type: schemaType(schema),
+    required: required.has(name),
+    description: schema.description || schema.title || '-',
+    defaultValue: schemaDefault(schema),
+    schema,
+  }));
+}
+
+function exampleValue(schema: any, depth = 0): any {
+  if (!schema || depth > 3) return null;
+  if (Array.isArray(schema.enum) && schema.enum.length > 0) return schema.enum[0];
+  const type = Array.isArray(schema.type) ? schema.type[0] : schema.type;
+  if (type === 'string') return 'string';
+  if (type === 'integer' || type === 'number') return 0;
+  if (type === 'boolean') return true;
+  if (type === 'array') return [exampleValue(schema.items, depth + 1)];
+  if (type === 'object' || schema.properties) {
+    return Object.entries(schema.properties || {}).reduce<Record<string, any>>((memo, [key, child]) => {
+      memo[key] = exampleValue(child, depth + 1);
+      return memo;
+    }, {});
+  }
+  return null;
+}
+
+function schemaExample(value?: string) {
+  const parsed = safeParseJSON(value);
+  if (!parsed) return '-';
+  return JSON.stringify(exampleValue(parsed), null, 2);
+}
+
+function annotationEntries(value?: string) {
+  const parsed = safeParseJSON(value);
+  if (!parsed || typeof parsed !== 'object') return [];
+  return Object.entries(parsed).map(([key, val]) => ({ key, value: String(val) }));
+}
+
+function annotationTags(value?: string) {
+  const annotations = safeParseJSON(value);
+  if (!annotations || typeof annotations !== 'object') return [];
+  const tags: string[] = [];
+  if (annotations.title) tags.push(String(annotations.title));
+  if (annotations.readOnlyHint === true) tags.push('Read only');
+  if (annotations.destructiveHint === true) tags.push('Destructive');
+  if (annotations.destructiveHint === false) tags.push('Non destructive');
+  if (annotations.idempotentHint === true) tags.push('Idempotent');
+  if (annotations.openWorldHint === false) tags.push('Closed world');
+  return tags.slice(0, 4);
+}
+
+const SchemaSection: React.FC<{ title: string; schema?: string }> = ({ title, schema }) => {
+  const fields = schemaFields(schema);
+  const nestedFields = (field: any) => {
+    const target = nestedSchema(field.schema);
+    if (!target?.properties) return [];
+    return Object.entries(target.properties).map(([name, child]: [string, any]) => ({
+      name,
+      type: schemaType(child),
+      required: new Set(Array.isArray(target.required) ? target.required : []).has(name),
+      description: child.description || child.title || '-',
+      defaultValue: schemaDefault(child),
+    }));
+  };
+
+  return (
+    <section className={style.schemaSection}>
+      <div className={style.schemaSectionHeader}>
+        <strong>{title}</strong>
+        <span>{fields.length > 0 ? `${fields.length} 个字段` : '原始 Schema'}</span>
+      </div>
+      {fields.length > 0 ? (
+        <table className={style.schemaFieldTable}>
+          <thead>
+            <tr>
+              <th>字段</th>
+              <th>类型</th>
+              <th>约束</th>
+              <th>说明</th>
+              <th>默认/枚举</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fields.map((field) => (
+              <React.Fragment key={field.name}>
+                <tr>
+                  <td><code>{field.name}</code></td>
+                  <td>{field.type}</td>
+                  <td>
+                    <Tag size="small" theme={field.required ? 'danger' : 'default'} variant="light">
+                      {field.required ? 'required' : 'optional'}
+                    </Tag>
+                  </td>
+                  <td>{field.description}</td>
+                  <td>{field.defaultValue}</td>
+                </tr>
+                {hasNestedSchema(field.schema) && (
+                  <tr className={style.schemaNestedRow}>
+                    <td colSpan={5}>
+                      <details>
+                        <summary>展开 {field.name} 子字段</summary>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>字段</th>
+                              <th>类型</th>
+                              <th>约束</th>
+                              <th>说明</th>
+                              <th>默认/枚举</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {nestedFields(field).map((child) => (
+                              <tr key={child.name}>
+                                <td><code>{child.name}</code></td>
+                                <td>{child.type}</td>
+                                <td>
+                                  <Tag size="small" theme={child.required ? 'danger' : 'default'} variant="light">
+                                    {child.required ? 'required' : 'optional'}
+                                  </Tag>
+                                </td>
+                                <td>{child.description}</td>
+                                <td>{child.defaultValue}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </details>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <div className={style.schemaFallback}>当前 schema 不是标准 JSON Schema object，已保留原始内容。</div>
+      )}
+      <details className={style.rawSchema}>
+        <summary>查看原始 Schema</summary>
+        <pre>{schemaRaw(schema)}</pre>
+      </details>
+    </section>
+  );
+};
+
+const ToolExplorer: React.FC<{ tools: MCPServerTool[] }> = ({ tools }) => {
+  const [keyword, setKeyword] = useState('');
+  const [selectedToolKey, setSelectedToolKey] = useState('');
+  const filteredTools = useMemo(() => {
+    const text = keyword.trim().toLowerCase();
+    if (!text) return tools;
+    return tools.filter((tool) => `${tool.name} ${tool.description || ''}`.toLowerCase().includes(text));
+  }, [keyword, tools]);
+
+  useEffect(() => {
+    if (filteredTools.length === 0) return;
+    const exists = filteredTools.some((tool) => (tool.id || tool.name) === selectedToolKey);
+    if (!exists) setSelectedToolKey(filteredTools[0].id || filteredTools[0].name);
+  }, [filteredTools, selectedToolKey]);
+
+  const selectedTool = filteredTools.find((tool) => (tool.id || tool.name) === selectedToolKey) || filteredTools[0];
+  const selectedAnnotations = annotationEntries(selectedTool?.annotations);
+  const selectedTags = annotationTags(selectedTool?.annotations);
+
+  return (
+    <section className={style.toolExplorer}>
+      <aside className={style.toolCatalog}>
+        <Input
+          clearable
+          prefixIcon={<SearchIcon />}
+          placeholder="搜索工具"
+          value={keyword}
+          onChange={(value) => setKeyword(value as string)}
+        />
+        <div className={style.toolCatalogList}>
+          {filteredTools.map((tool) => {
+            const key = tool.id || tool.name;
+            const active = key === (selectedTool?.id || selectedTool?.name);
+            return (
+              <button
+                key={key}
+                className={`${style.toolCatalogItem} ${active ? style.toolCatalogItemActive : ''}`}
+                type="button"
+                onClick={() => setSelectedToolKey(key)}
+              >
+                <strong>{tool.name}</strong>
+                <span>{tool.description || '未提供工具描述'}</span>
+                <div>
+                  {annotationTags(tool.annotations).map((item) => <Tag key={item} size="small" variant="light">{item}</Tag>)}
+                </div>
+              </button>
+            );
+          })}
+          {filteredTools.length === 0 && <div className={style.toolCatalogEmpty}>没有匹配的工具</div>}
+        </div>
+      </aside>
+
+      {selectedTool && (
+        <article className={style.toolDetail}>
+          <header className={style.toolDetailHeader}>
+            <div>
+              <h4>{selectedTool.name}</h4>
+              <p>{selectedTool.description || '未提供工具描述。'}</p>
+            </div>
+            <span>{selectedTool.mtime || '-'}</span>
+          </header>
+
+          <div className={style.toolTagRow}>
+            {selectedTags.length > 0
+              ? selectedTags.map((item) => <Tag key={item} variant="light">{item}</Tag>)
+              : <Tag variant="light">No annotations</Tag>}
+          </div>
+
+          <div className={style.schemaColumns}>
+            <SchemaSection title="输入参数" schema={selectedTool.input_schema} />
+            <SchemaSection title="返回结构" schema={selectedTool.output_schema} />
+          </div>
+
+          <section className={style.exampleSection}>
+            <div className={style.schemaSectionHeader}>
+              <strong>示例</strong>
+              <span>根据 schema 自动生成</span>
+            </div>
+            <div className={style.exampleGrid}>
+              <div>
+                <span>Request</span>
+                <pre>{schemaExample(selectedTool.input_schema)}</pre>
+              </div>
+              <div>
+                <span>Response</span>
+                <pre>{schemaExample(selectedTool.output_schema)}</pre>
+              </div>
+            </div>
+          </section>
+
+          {selectedAnnotations.length > 0 && (
+            <section className={style.annotationPanel}>
+              <div className={style.schemaSectionHeader}>
+                <strong>Annotations</strong>
+                <span>{selectedAnnotations.length} 项</span>
+              </div>
+              <div className={style.annotationGrid}>
+                {selectedAnnotations.map((item) => (
+                  <div key={item.key}>
+                    <span>{item.key}</span>
+                    <strong>{item.value}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </article>
+      )}
+    </section>
+  );
+};
 
 function splitExportTo(value?: string) {
   return value ? value.split(',').map((item) => item.trim()).filter(Boolean) : [];
@@ -178,9 +552,55 @@ const MCPEditor: React.FC<{
   const [form] = Form.useForm();
   const dispatch = useAppDispatch();
   const { editServer } = useAppSelector(selectMCP);
+  const [backendMode, setBackendMode] = useState('service');
+  const [serviceLoading, setServiceLoading] = useState(false);
+  const [serviceOptions, setServiceOptions] = useState<ServiceView[]>([]);
+
+  const backendServiceOptions = useMemo(() => {
+    const options = serviceOptions.map((item) => ({
+      label: `${item.namespace}/${item.name}`,
+      value: serviceKey(item),
+    }));
+    const currentKey = serviceKey({
+      namespace: editServer?.backend_service_namespace || editServer?.namespace || '',
+      name: editServer?.backend_service_name || editServer?.reference || editServer?.name || '',
+    });
+    if (currentKey && !options.some((item) => item.value === currentKey)) {
+      options.unshift({ label: currentKey, value: currentKey });
+    }
+    return options;
+  }, [editServer, serviceOptions]);
+
+  const loadServices = async () => {
+    setServiceLoading(true);
+    try {
+      const res = await describeServices({ offset: 0, limit: 100 });
+      setServiceOptions(res.list);
+    } catch (err: any) {
+      openErrNotification('获取服务列表失败', err?.message || String(err));
+    } finally {
+      setServiceLoading(false);
+    }
+  };
+
+  const applyBackendService = (value?: string) => {
+    const selected = parseServiceKey(value);
+    form.setFieldsValue({
+      backend_service_key: value || '',
+      name: selected.name || form.getFieldValue('name'),
+      namespace: selected.namespace || form.getFieldValue('namespace'),
+      reference: selected.name || form.getFieldValue('reference'),
+    });
+  };
 
   useEffect(() => {
     if (!visible) return;
+    const currentBackendMode = backendType(editServer || undefined) || (editServer?.reference ? 'address' : 'service');
+    const currentServiceKey = serviceKey({
+      namespace: editServer?.backend_service_namespace || editServer?.namespace || '',
+      name: editServer?.backend_service_name || editServer?.reference || editServer?.name || '',
+    });
+    setBackendMode(currentBackendMode);
     form.setFieldsValue({
       name: editServer?.name || '',
       namespace: editServer?.namespace || '',
@@ -191,24 +611,35 @@ const MCPEditor: React.FC<{
       description: editServer?.description || '',
       reference: editServer?.reference || '',
       export_to: splitExportTo(editServer?.export_to),
+      backend_type: currentBackendMode,
+      backend_service_key: currentBackendMode === 'service' ? currentServiceKey : '',
+      backend_address: editServer?.backend_address || (currentBackendMode === 'address' ? editServer?.reference : ''),
     });
+    loadServices();
   }, [visible, editServer]);
 
   const onSubmit: FormProps['onSubmit'] = async (e) => {
     if (e.validateResult !== true) return;
+    const mode = (form.getFieldValue('backend_type') as string) || backendMode || 'service';
+    const selectedService = parseServiceKey(form.getFieldValue('backend_service_key') as string);
+    const backendAddress = (form.getFieldValue('backend_address') as string) || '';
 
     const data: MCPServer = {
       id: editServer?.id,
-      name: form.getFieldValue('name') as string,
-      namespace: form.getFieldValue('namespace') as string,
+      name: (form.getFieldValue('name') as string) || selectedService.name,
+      namespace: (form.getFieldValue('namespace') as string) || selectedService.namespace,
       ports: form.getFieldValue('ports') as string,
       protocol: form.getFieldValue('protocol') as string,
       business: form.getFieldValue('business') as string,
       department: form.getFieldValue('department') as string,
       description: form.getFieldValue('description') as string,
-      reference: form.getFieldValue('reference') as string,
+      reference: mode === 'service' ? selectedService.name : backendAddress,
       export_to: joinExportTo(form.getFieldValue('export_to') as string[]),
       revision: editServer?.revision,
+      backend_type: mode,
+      backend_service_namespace: mode === 'service' ? selectedService.namespace : '',
+      backend_service_name: mode === 'service' ? selectedService.name : '',
+      backend_address: mode === 'address' ? backendAddress : '',
     };
 
     const result = op === 'edit'
@@ -232,40 +663,102 @@ const MCPEditor: React.FC<{
       showOverlay={false}
       onClose={closeDrawer}
     >
-      <Form form={form} layout="vertical" onSubmit={onSubmit}>
-        <FormItem
-          label="名称"
-          name="name"
-          rules={[
-            { required: true, message: '请输入 MCP Server 名称' },
-            { pattern: /^[a-zA-Z0-9._-]+$/, message: '只允许数字、英文字母、.、-、_' },
-          ]}
-        >
-          <Input disabled={op === 'edit'} placeholder="例如 order-query" />
-        </FormItem>
-        <FormItem label="命名空间" name="namespace" rules={[{ required: true, message: '请输入命名空间' }]}>
-          <Input disabled={op === 'edit'} placeholder="例如 default" />
-        </FormItem>
-        <FormItem label="协议" name="protocol">
-          <Select options={protocolOptions} />
-        </FormItem>
-        <FormItem label="端口" name="ports">
-          <Input placeholder="例如 http:8080 或 8080" />
-        </FormItem>
-        <FormItem label="业务" name="business">
-          <Input />
-        </FormItem>
-        <FormItem label="部门" name="department">
-          <Input />
-        </FormItem>
+      <Form className={style.drawerForm} form={form} layout="vertical" onSubmit={onSubmit}>
+        <div className={style.formSection}>
+          <div className={style.formSectionTitle}>基础信息</div>
+          <div className={style.formGrid}>
+            <FormItem
+              label="名称"
+              name="name"
+              rules={[
+                ...(backendMode === 'address' ? [{ required: true, message: '请输入 MCP Server 名称' }] : []),
+                { pattern: /^[a-zA-Z0-9._-]+$/, message: '只允许数字、英文字母、.、-、_' },
+              ]}
+            >
+              <Input disabled={op === 'edit'} placeholder={backendMode === 'service' ? '默认使用关联服务名' : '例如 order-query'} />
+            </FormItem>
+            <FormItem
+              label="命名空间"
+              name="namespace"
+              rules={backendMode === 'address' ? [{ required: true, message: '请输入命名空间' }] : []}
+            >
+              <Input disabled={op === 'edit'} placeholder={backendMode === 'service' ? '默认使用服务命名空间' : '例如 default'} />
+            </FormItem>
+            <FormItem label="业务" name="business">
+              <Input />
+            </FormItem>
+            <FormItem label="部门" name="department">
+              <Input />
+            </FormItem>
+          </div>
+        </div>
+
+        <div className={style.formSection}>
+          <div className={style.formSectionTitle}>后端关联</div>
+          <div className={style.backendChoice}>
+            {backendTypeOptions.map((item) => (
+              <button
+                key={item.value}
+                className={`${style.backendChoiceItem} ${backendMode === item.value ? style.backendChoiceItemActive : ''}`}
+                type="button"
+                onClick={() => {
+                  setBackendMode(item.value);
+                  form.setFieldsValue({ backend_type: item.value });
+                }}
+              >
+                <strong>{item.label}</strong>
+                <span>{item.value === 'service' ? 'namespace/name' : 'URL'}</span>
+              </button>
+            ))}
+          </div>
+          <FormItem name="backend_type" style={{ display: 'none' }}>
+            <Input />
+          </FormItem>
+          {backendMode === 'service' ? (
+            <FormItem
+              label="关联服务"
+              name="backend_service_key"
+              rules={[{ required: true, message: '请选择关联服务' }]}
+            >
+              <Select
+                filterable
+                loading={serviceLoading}
+                options={backendServiceOptions}
+                placeholder="选择已注册服务"
+                onChange={(value) => applyBackendService(value as string)}
+              />
+            </FormItem>
+          ) : (
+            <FormItem
+              label="自定义地址"
+              name="backend_address"
+              rules={[{ required: true, message: '请输入自定义地址' }]}
+            >
+              <Input placeholder="例如 http://127.0.0.1:8080/mcp" />
+            </FormItem>
+          )}
+        </div>
+
+        <div className={style.formSection}>
+          <div className={style.formSectionTitle}>接入配置</div>
+          <div className={style.formGrid}>
+            <FormItem label="协议" name="protocol">
+              <Select options={protocolOptions} />
+            </FormItem>
+            <FormItem label="端口" name="ports">
+              <Input placeholder="例如 http:8080 或 8080" />
+            </FormItem>
+            <FormItem label="可见命名空间" name="export_to">
+              <Select creatable multiple filterable placeholder="为空表示默认可见范围" />
+            </FormItem>
+            <FormItem label="后端类型">
+              <Input disabled value={backendTypeLabel(backendMode)} />
+            </FormItem>
+          </div>
+        </div>
+
         <FormItem label="描述" name="description">
-          <Input />
-        </FormItem>
-        <FormItem label="引用地址" name="reference">
-          <Input placeholder="MCP Server 的访问地址或资源引用" />
-        </FormItem>
-        <FormItem label="可见命名空间" name="export_to">
-          <Select creatable multiple filterable placeholder="为空表示默认可见范围" />
+          <Input placeholder="补充 server 能力或维护说明" />
         </FormItem>
         <FormItem className={style.formAction}>
           <Space>
@@ -288,6 +781,12 @@ export default memo(() => {
   });
   const [editorState, setEditorState] = useState<{ visible: boolean; mode: Op }>({ visible: false, mode: 'create' });
   const [toolsState, setToolsState] = useState<{ visible: boolean; server?: MCPServer }>({ visible: false });
+  const namespaces = new Set(datas.map((item) => item.namespace).filter(Boolean));
+  const protocolCount = datas.reduce<Record<string, number>>((memo, item) => {
+    const key = item.protocol || 'unknown';
+    return { ...memo, [key]: (memo[key] || 0) + 1 };
+  }, {});
+  const serviceBackendCount = datas.filter((item) => backendType(item) === 'service').length;
 
   const refreshTable = (current = 1, pageSize = 10, nextQuery = query) => {
     dispatch(listMCPServers({
@@ -312,6 +811,34 @@ export default memo(() => {
     };
   }, []);
 
+  const refreshTools = (server?: MCPServer) => {
+    if (!server?.id) return;
+    dispatch(listMCPServerTools({
+      param: {
+        offset: 0,
+        limit: 100,
+        server_id: server.id,
+      },
+    })).then((res) => {
+      if (res.meta.requestStatus === 'rejected') {
+        openErrNotification('获取 MCP 工具失败', res.payload as string);
+      }
+    });
+  };
+
+  const closeToolsDrawer = () => {
+    dispatch(cleanMCPTools());
+    setToolsState({ visible: false });
+  };
+
+  const editCurrentServerFromTools = () => {
+    if (!toolsState.server) return;
+    const currentServer = toolsState.server;
+    closeToolsDrawer();
+    dispatch(editorMCPServer(currentServer));
+    setEditorState({ visible: true, mode: 'edit' });
+  };
+
   const operateServer = (op: Op | 'tools', row?: TableRowData) => {
     switch (op) {
       case 'create':
@@ -334,17 +861,7 @@ export default memo(() => {
         break;
       case 'tools':
         setToolsState({ visible: true, server: row as MCPServer });
-        dispatch(listMCPServerTools({
-          param: {
-            offset: 0,
-            limit: 100,
-            server_id: row?.id as string,
-          },
-        })).then((res) => {
-          if (res.meta.requestStatus === 'rejected') {
-            openErrNotification('获取 MCP 工具失败', res.payload as string);
-          }
-        });
+        refreshTools(row as MCPServer);
         break;
       default:
         break;
@@ -361,68 +878,119 @@ export default memo(() => {
     refreshTable(1, limit, nextQuery);
   };
 
-  return (
-    <div>
-      <Row justify="space-between" className={style.toolBar}>
-        <Col>
-          <Button icon={<AddIcon />} onClick={() => operateServer('create')}>新建</Button>
-        </Col>
-        <Col>
-          <Space>
-            <Input
-              className={style.filterInput}
-              clearable
-              placeholder="名称前缀"
-              value={query.name}
-              onChange={(value) => setQuery((prev) => ({ ...prev, name: value as string }))}
-            />
-            <Input
-              className={style.filterInput}
-              clearable
-              placeholder="命名空间"
-              value={query.namespace}
-              onChange={(value) => setQuery((prev) => ({ ...prev, namespace: value as string }))}
-            />
-            <Select
-              className={style.protocolFilter}
-              clearable
-              placeholder="协议"
-              options={protocolOptions}
-              value={query.protocol}
-              onChange={(value) => setQuery((prev) => ({ ...prev, protocol: value as string }))}
-            />
-            <Button variant="outline" onClick={submitFilter}>查询</Button>
-            <Button variant="text" onClick={resetFilter}>重置</Button>
-            <Tooltip content="刷新">
-              <Button shape="square" variant="text" onClick={() => refreshTable(page, limit)}>
-                <RefreshIcon />
-              </Button>
-            </Tooltip>
-          </Space>
-        </Col>
-      </Row>
+  const selectedToolServer = toolsState.server;
 
-      <Table
-        data={datas}
-        columns={serverColumns(operateServer)}
-        loading={loading}
-        rowKey="id"
-        size="large"
-        tableLayout="auto"
-        cellEmptyContent="-"
-        pagination={{
-          current: page,
-          pageSize: limit,
-          total,
-          showJumper: true,
-          onChange(pageInfo: PageInfo) {
+  return (
+    <div className={style.page}>
+      <section className={style.header}>
+        <div>
+          <div className={style.eyebrow}>AI Native / MCP Registry</div>
+          <h2>MCP 服务</h2>
+          <p>维护对外暴露的 MCP Server，并查看每个 server 同步出的工具能力。</p>
+        </div>
+        <Space>
+          <Tooltip content="刷新列表">
+            <Button shape="square" variant="outline" onClick={() => refreshTable(page, limit)}>
+              <RefreshIcon />
+            </Button>
+          </Tooltip>
+          <Button theme="primary" icon={<AddIcon />} onClick={() => operateServer('create')}>新建 MCP Server</Button>
+        </Space>
+      </section>
+
+      <section className={style.metricRail}>
+        <div className={style.metricItem}>
+          <span>Servers</span>
+          <strong>{total}</strong>
+        </div>
+        <div className={style.metricItem}>
+          <span>Namespaces</span>
+          <strong>{namespaces.size}</strong>
+        </div>
+        <div className={style.metricItem}>
+          <span>HTTP</span>
+          <strong>{protocolCount.http || 0}</strong>
+        </div>
+        <div className={style.metricItem}>
+          <span>SSE / Stream</span>
+          <strong>{(protocolCount.sse || 0) + (protocolCount['streamable-http'] || 0)}</strong>
+        </div>
+        <div className={style.metricItem}>
+          <span>Pole 服务</span>
+          <strong>{serviceBackendCount}</strong>
+        </div>
+      </section>
+
+      <section className={style.filterBar}>
+        <div className={style.protocolTabs}>
+          {quickProtocolOptions.map((item) => {
+            const active = query.protocol === item.value;
+            return (
+              <Button
+                key={item.value || 'all'}
+                size="small"
+                theme={active ? 'primary' : 'default'}
+                variant={active ? 'base' : 'outline'}
+                onClick={() => {
+                  const nextQuery = { ...query, protocol: item.value };
+                  setQuery(nextQuery);
+                  refreshTable(1, limit, nextQuery);
+                }}
+              >
+                {item.label}
+              </Button>
+            );
+          })}
+        </div>
+        <Space>
+          <Input
+            className={style.filterInput}
+            clearable
+            placeholder="名称前缀"
+            value={query.name}
+            onChange={(value) => setQuery((prev) => ({ ...prev, name: value as string }))}
+          />
+          <Input
+            className={style.filterInput}
+            clearable
+            placeholder="命名空间"
+            value={query.namespace}
+            onChange={(value) => setQuery((prev) => ({ ...prev, namespace: value as string }))}
+          />
+          <Button variant="outline" onClick={submitFilter}>查询</Button>
+          <Button variant="text" onClick={resetFilter}>重置</Button>
+        </Space>
+      </section>
+
+      <section className={style.tableSurface}>
+        <div className={style.tableHeader}>
+          <div>
+            <strong>服务列表</strong>
+            <span>{loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}</span>
+          </div>
+        </div>
+        <Table
+          data={datas}
+          columns={serverColumns(operateServer)}
+          loading={loading}
+          rowKey="id"
+          size="large"
+          tableLayout="auto"
+          cellEmptyContent="-"
+          pagination={{
+            current: page,
+            pageSize: limit,
+            total,
+            showJumper: true,
+            onChange(pageInfo: PageInfo) {
+              refreshTable(pageInfo.current, pageInfo.pageSize);
+            },
+          }}
+          onPageChange={(pageInfo) => {
             refreshTable(pageInfo.current, pageInfo.pageSize);
-          },
-        }}
-        onPageChange={(pageInfo) => {
-          refreshTable(pageInfo.current, pageInfo.pageSize);
-        }}
-      />
+          }}
+        />
+      </section>
 
       {editorState.visible && (
         <MCPEditor
@@ -438,24 +1006,91 @@ export default memo(() => {
       )}
 
       <Drawer
-        size="large"
-        header={toolsState.server ? `${toolsState.server.namespace}/${toolsState.server.name} 的工具` : 'MCP Server 工具'}
+        size="min(1180px, 92vw)"
+        header="MCP 工具"
         footer={false}
         visible={toolsState.visible}
-        onClose={() => {
-          dispatch(cleanMCPTools());
-          setToolsState({ visible: false });
-        }}
+        onClose={closeToolsDrawer}
       >
-        <Table<MCPServerTool>
-          data={tools}
-          columns={toolColumns}
-          loading={toolsLoading}
-          rowKey="id"
-          size="large"
-          tableLayout="auto"
-          cellEmptyContent="-"
-        />
+        <div className={style.toolDrawer}>
+          <section className={style.toolDrawerSummary}>
+            <div className={style.toolDrawerIcon}>
+              <ServerIcon />
+            </div>
+            <div className={style.toolDrawerMain}>
+              <div className={style.toolDrawerTitle}>
+                <h3>{selectedToolServer ? `${selectedToolServer.namespace}/${selectedToolServer.name}` : '未选择 MCP Server'}</h3>
+                <Tag theme={protocolTheme(selectedToolServer?.protocol) as any} variant="light">
+                  {protocolLabel(selectedToolServer?.protocol)}
+                </Tag>
+              </div>
+              <div className={style.toolDrawerDesc}>
+                {selectedToolServer?.description || selectedToolServer?.reference || '该 MCP Server 暂无描述。'}
+              </div>
+              <div className={style.toolMetaGrid}>
+                <div>
+                  <span>工具数</span>
+                  <strong>{toolsLoading ? '-' : tools.length}</strong>
+                </div>
+                <div>
+                  <span>接入</span>
+                  <strong>{backendTypeLabel(backendType(selectedToolServer))}</strong>
+                </div>
+                <div>
+                  <span>后端</span>
+                  <strong>{backendLabel(selectedToolServer)}</strong>
+                </div>
+                <div>
+                  <span>最近修改</span>
+                  <strong>{selectedToolServer?.mtime || '-'}</strong>
+                </div>
+              </div>
+            </div>
+            <div className={style.toolDrawerActions}>
+              <Tooltip content="刷新工具">
+                <Button shape="square" variant="outline" onClick={() => refreshTools(selectedToolServer)}>
+                  <RefreshIcon />
+                </Button>
+              </Tooltip>
+              <Tooltip content="编辑 Server">
+                <Button shape="square" variant="outline" onClick={editCurrentServerFromTools}>
+                  <EditIcon />
+                </Button>
+              </Tooltip>
+            </div>
+          </section>
+
+          {!toolsLoading && tools.length === 0 ? (
+            <section className={style.toolEmpty}>
+              <ToolsCircleIcon />
+              <h4>暂无工具同步</h4>
+              <p>当前 MCP Server 没有返回工具定义。确认服务已连通，并检查协议、引用地址和命名空间配置。</p>
+              <div className={style.toolCheckList}>
+                <div><InfoCircleIcon />后端：{backendLabel(selectedToolServer)}</div>
+                <div><InfoCircleIcon />接入协议：{protocolLabel(selectedToolServer?.protocol)}</div>
+                <div><InfoCircleIcon />Server ID：{selectedToolServer?.id || '-'}</div>
+              </div>
+              <Space>
+                <Button theme="primary" icon={<RefreshIcon />} onClick={() => refreshTools(selectedToolServer)}>
+                  刷新工具
+                </Button>
+                <Button variant="outline" icon={<EditIcon />} onClick={editCurrentServerFromTools}>
+                  编辑 Server
+                </Button>
+              </Space>
+            </section>
+          ) : (
+            <section className={style.toolTableSurface}>
+              <div className={style.tableHeader}>
+                <div>
+                  <strong>工具浏览</strong>
+                  <span>{toolsLoading ? '正在同步工具' : `当前显示 ${tools.length} 个工具`}</span>
+                </div>
+              </div>
+              <ToolExplorer tools={tools} />
+            </section>
+          )}
+        </div>
       </Drawer>
     </div>
   );

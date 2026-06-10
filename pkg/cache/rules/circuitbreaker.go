@@ -76,11 +76,15 @@ func (c *circuitBreakerCache) Initialize(_ map[string]interface{}) error {
 		Namespace: types.AllMatched,
 		Name:      types.AllMatched,
 	})
+	registerGovernanceRuleWatcher(c.storage, c.CacheMgr, c)
 	return nil
 }
 
 // Update 实现Cache接口的函数
 func (c *circuitBreakerCache) Update() error {
+	if ok, err := updateGovernanceRuleCache(c.storage); ok {
+		return err
+	}
 	// 多个线程竞争，只有一个线程进行更新
 	_, err, _ := c.GetSingle().Do(c.Name(), func() (interface{}, error) {
 		return nil, c.DoCacheUpdate(c.Name(), c.realUpdate)
@@ -118,6 +122,7 @@ func (c *circuitBreakerCache) realUpdate() (map[string]time.Time, int64, error) 
 
 // clear 实现Cache接口的函数
 func (c *circuitBreakerCache) Clear() error {
+	resetGovernanceRuleUpdateCache(c.storage)
 	c.BaseCache.Clear()
 	c.lock.Lock()
 	c.allWildcardRules.Clear()

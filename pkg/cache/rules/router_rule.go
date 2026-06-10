@@ -69,11 +69,15 @@ func (rc *RouteRuleCache) Initialize(_ map[string]any) error {
 	rc.ids = container.NewSyncMap[string, *rules.RouterConfig]()
 	rc.container = newRouteRuleContainer()
 	rc.serviceCache = rc.BaseCache.CacheMgr.GetCacher(cachetypes.CacheService).(cachetypes.ServiceCache)
+	registerGovernanceRuleWatcher(rc.Store(), rc.CacheMgr, rc)
 	return nil
 }
 
 // Update The function of implementing the cache interface
 func (rc *RouteRuleCache) Update() error {
+	if ok, err := updateGovernanceRuleCache(rc.Store()); ok {
+		return err
+	}
 	// Multiple thread competition, only one thread is updated
 	_, err, _ := rc.GetSingle().Do(rc.Name(), func() (any, error) {
 		return nil, rc.DoCacheUpdate(rc.Name(), rc.realUpdate)
@@ -114,6 +118,7 @@ func (rc *RouteRuleCache) realUpdate() (map[string]time.Time, int64, error) {
 
 // Clear The function of implementing the cache interface
 func (rc *RouteRuleCache) Clear() error {
+	resetGovernanceRuleUpdateCache(rc.Store())
 	rc.BaseCache.Clear()
 	rc.container = newRouteRuleContainer()
 	rc.lastMtime = time.Unix(0, 0)

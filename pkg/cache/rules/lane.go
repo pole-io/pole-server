@@ -67,11 +67,15 @@ func (lc *LaneCache) Initialize(c map[string]interface{}) error {
 	lc.ids = container.NewSyncMap[string, *rules.LaneGroupRelease]()
 	lc.serviceRules = container.NewSyncMap[string, *container.SyncMap[string, *container.SyncMap[string, *rules.LaneGroupRelease]]]()
 	lc.revisions = container.NewSyncMap[string, *container.SyncMap[string, string]]()
+	registerGovernanceRuleWatcher(lc.Store(), lc.CacheMgr, lc)
 	return nil
 }
 
 // Update .
 func (lc *LaneCache) Update() error {
+	if ok, err := updateGovernanceRuleCache(lc.Store()); ok {
+		return err
+	}
 	// 多个线程竞争，只有一个线程进行更新
 	err, _ := lc.singleUpdate()
 	return err
@@ -382,6 +386,7 @@ func (lc *LaneCache) LastMtime() time.Time {
 
 // Clear .
 func (lc *LaneCache) Clear() error {
+	resetGovernanceRuleUpdateCache(lc.Store())
 	lc.rules = container.NewSyncMap[string, *rules.LaneGroup]()
 
 	lc.ids = container.NewSyncMap[string, *rules.LaneGroupRelease]()

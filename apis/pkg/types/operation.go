@@ -74,6 +74,8 @@ const (
 	RLosslessRule       Resource = "LosslessRule"
 	RMCPServer          Resource = "MCPServer"
 	RMCPServerTool      Resource = "MCPServerTool"
+	RA2AAgent           Resource = "A2AAgent"
+	RA2AAgentSkill      Resource = "A2AAgentSkill"
 )
 
 // RecordEntry Operation records

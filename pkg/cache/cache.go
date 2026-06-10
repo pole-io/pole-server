@@ -270,6 +270,10 @@ func (nc *CacheManager) MCPServer() cachetypes.MCPServerCache {
 	return nc.caches[cachetypes.CacheMCPServer].(cachetypes.MCPServerCache)
 }
 
+func (nc *CacheManager) A2AAgent() cachetypes.A2AAgentCache {
+	return nc.caches[cachetypes.CacheA2AAgent].(cachetypes.A2AAgentCache)
+}
+
 // GetCacher get cachetypes.Cache impl
 func (nc *CacheManager) GetCacher(cacheIndex cachetypes.CacheIndex) cachetypes.Cache {
 	return nc.caches[cacheIndex]

@@ -150,8 +150,11 @@ export interface DescribeAuthPoliciesRequest {
 export interface DescribeAuthPoliciesResponse {
     // 总数
     amount: number
+    size?: number
+    // 标准响应策略列表
+    data?: PolicyRule[]
     // 策略列表
-    authStrategies: PolicyRule[]
+    authStrategies?: PolicyRule[]
 }
 
 export async function describeAuthPolicies(params: DescribeAuthPoliciesRequest) {
@@ -159,9 +162,10 @@ export async function describeAuthPolicies(params: DescribeAuthPoliciesRequest) 
         action: '/auth/v1/policies',
         data: params,
     })
+    const authStrategies = result.data ?? result.authStrategies ?? []
     return {
-        totalCount: result.amount,
-        content: result.authStrategies ? result.authStrategies : [],
+        totalCount: result.amount ?? authStrategies.length,
+        content: authStrategies,
     }
 }
 
