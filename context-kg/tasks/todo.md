@@ -2282,6 +2282,31 @@ CacheManager 调整：
 - 未运行 `go test ./...`，因为当前任务记录中已有三类既有失败点待修复：healthcheck 缺测试配置、i18n 缺 toml、heartbeat nil pointer。
 - 本轮只做构建级前端验证，没有启动 8080 做浏览器交互回归；独立 worktree 中此前已验证 A2A 页面基本渲染、筛选、表格和抽屉入口。
 
+## A2A Agent Registry 正式合并到 develop
+
+- [x] 确认当前 `develop` 干净并与 `origin/develop` 同步
+- [x] 将 `codex/a2a-agent-registry` 正式 merge 到 `develop`
+- [x] 自主解决与当前 develop 的冲突，保留 A2A Registry 范围和当前 develop 的治理/Console/context-kg 重组成果
+- [x] 运行 gofmt、目标 Go 测试、Go 构建、Console 构建和 diff 检查
+- [x] 提交 merge 结果并推送 develop
+- [x] 记录最终 review、验证结果和剩余风险
+
+Review：
+
+- 当前 `develop` 已是 `origin/develop` 的 `0d82f125`，工作区干净后开始 merge。
+- `codex/a2a-agent-registry` 基于较早的 develop，缺少后续治理统一、Console 优化和 context-kg 三域重组；A2A 核心代码已在当前 develop 中，差异主要是分支落后导致的无关回滚风险。
+- 使用 `git merge -s ours --no-commit codex/a2a-agent-registry` 创建正式 merge 关系，保留当前 develop 文件内容，避免把治理统一和 Console 改动倒退。
+- 本次没有实际内容冲突；策略性解决为保留当前 develop 中已经验证过的 A2A Registry 集成结果。
+
+验证：
+
+- `gofmt -w` 已针对 A2A 相关 Go 文件执行。
+- `GOPROXY=https://goproxy.cn,direct go test ./...` 通过。
+- `GOPROXY=https://goproxy.cn,direct go build -o /tmp/pole-control-plane-a2a-merge .` 通过。
+- `cd console/web && npm run build:test` 通过；仅有 Vite chunk size 与 Browserslist 数据过期提示。
+- `git diff --check` 通过。
+- `rg -n "^(<<<<<<<|=======|>>>>>>>)" .` 无输出。
+
 ## 相关页面
 
 - [[lessons]]
