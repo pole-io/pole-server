@@ -2379,3 +2379,17 @@ Review：
 - 本轮不实现 Console 页面，只补 server/API/cache/store/discover 下发链路。
 - 新规则 release 能力按当前 lossless 已有边界实现：支持 publish/list/delete release/stopbeta；rollback 主 switch 现状未支持 lossless，因此这次没有为三类新规则额外打开 rollback。
 - HTTP 管理端新增路径采用 `/traffic/security`、`/traffic/mirrors`、`/traffic/mocks`，客户端 discover 使用 spec 枚举，不依赖路径命名。
+
+# 合并流量治理规则 PR 到 develop
+
+- [x] 检查 PR #20 状态和 base/head 分支
+- [x] 确认 GitHub merge 状态
+- [x] 将 draft PR 标记为 ready
+- [x] merge PR #20 到 `develop`
+- [x] 确认 PR 已合并
+
+Review：
+
+- PR #20 base 为 `develop`，head 为 `codex/traffic-governance-rules`。
+- 合并前 GitHub `mergeStateStatus` 为 `CLEAN`，未出现冲突。
+- PR #20 已从 draft 标记为 ready，并通过 GitHub merge 合并到 `develop`。
