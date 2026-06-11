@@ -180,3 +180,24 @@ func (llc *LossLessCache) applyGovernanceRuleUpdate(
 	llc.setRulesClient(releases.LosslessRules)
 	return int64(len(updates.LosslessRules) + len(releases.LosslessRules)), nil
 }
+
+func (c *TrafficGovernanceCache) applyGovernanceRuleUpdate(
+	updates *ruletypes.GovernanceRuleUpdates, releases *ruletypes.GovernanceRuleReleaseUpdates,
+) (int64, error) {
+	switch c.name {
+	case cachetypes.TrafficSecurityRuleName:
+		c.setRulesConsole(updates.TrafficSecurityRules)
+		c.setRulesClient(releases.TrafficSecurityRules)
+		return int64(len(updates.TrafficSecurityRules) + len(releases.TrafficSecurityRules)), nil
+	case cachetypes.TrafficMirrorRuleName:
+		c.setRulesConsole(updates.TrafficMirrorRules)
+		c.setRulesClient(releases.TrafficMirrorRules)
+		return int64(len(updates.TrafficMirrorRules) + len(releases.TrafficMirrorRules)), nil
+	case cachetypes.TrafficMockRuleName:
+		c.setRulesConsole(updates.TrafficMockRules)
+		c.setRulesClient(releases.TrafficMockRules)
+		return int64(len(updates.TrafficMockRules) + len(releases.TrafficMockRules)), nil
+	default:
+		return 0, nil
+	}
+}

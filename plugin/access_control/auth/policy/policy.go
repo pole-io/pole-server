@@ -796,6 +796,7 @@ func (svr *Server) enrichResourceInfo(ctx context.Context, resp *apisecurity.Aut
 		LosslessRules:       make([]*apisecurity.StrategyResourceEntry, 0, 4),
 		MirrorRules:         make([]*apisecurity.StrategyResourceEntry, 0, 4),
 		SecurityRules:       make([]*apisecurity.StrategyResourceEntry, 0, 4),
+		MockRules:           make([]*apisecurity.StrategyResourceEntry, 0, 4),
 		Users:               make([]*apisecurity.StrategyResourceEntry, 0, 4),
 		UserGroups:          make([]*apisecurity.StrategyResourceEntry, 0, 4),
 		Roles:               make([]*apisecurity.StrategyResourceEntry, 0, 4),

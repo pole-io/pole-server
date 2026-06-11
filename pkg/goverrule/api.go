@@ -5,6 +5,7 @@ import (
 
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
@@ -25,6 +26,12 @@ type GoverRuleServer interface {
 	LaneOperateServer
 	// LossLessOperateServer lossless rule operation interface definition
 	LossLessOperateServer
+	// TrafficSecurityOperateServer traffic security rule operation interface definition
+	TrafficSecurityOperateServer
+	// TrafficMirrorOperateServer traffic mirror rule operation interface definition
+	TrafficMirrorOperateServer
+	// TrafficMockOperateServer traffic mock rule operation interface definition
+	TrafficMockOperateServer
 	// ClientServer Client operation interface definition
 	ClientServer
 	// GovernanceRuleReleaseServer Governance rule operation interface definition
@@ -124,6 +131,30 @@ type LossLessOperateServer interface {
 	GetOneLossLessRule(ctx context.Context, req *apitraffic.LosslessRule) *apimodel.Response
 }
 
+type TrafficSecurityOperateServer interface {
+	CreateTrafficSecurityRules(ctx context.Context, req []*apisecurity.TrafficSecurityRule) *apimodel.BatchWriteResponse
+	UpdateTrafficSecurityRules(ctx context.Context, req []*apisecurity.TrafficSecurityRule) *apimodel.BatchWriteResponse
+	DeleteTrafficSecurityRules(ctx context.Context, req []*apisecurity.TrafficSecurityRule) *apimodel.BatchWriteResponse
+	GetTrafficSecurityRules(ctx context.Context, filter map[string]string) *apimodel.BatchQueryResponse
+	GetOneTrafficSecurityRule(ctx context.Context, req *apisecurity.TrafficSecurityRule) *apimodel.Response
+}
+
+type TrafficMirrorOperateServer interface {
+	CreateTrafficMirrorRules(ctx context.Context, req []*apitraffic.TrafficMirror) *apimodel.BatchWriteResponse
+	UpdateTrafficMirrorRules(ctx context.Context, req []*apitraffic.TrafficMirror) *apimodel.BatchWriteResponse
+	DeleteTrafficMirrorRules(ctx context.Context, req []*apitraffic.TrafficMirror) *apimodel.BatchWriteResponse
+	GetTrafficMirrorRules(ctx context.Context, filter map[string]string) *apimodel.BatchQueryResponse
+	GetOneTrafficMirrorRule(ctx context.Context, req *apitraffic.TrafficMirror) *apimodel.Response
+}
+
+type TrafficMockOperateServer interface {
+	CreateTrafficMockRules(ctx context.Context, req []*apitraffic.TrafficMock) *apimodel.BatchWriteResponse
+	UpdateTrafficMockRules(ctx context.Context, req []*apitraffic.TrafficMock) *apimodel.BatchWriteResponse
+	DeleteTrafficMockRules(ctx context.Context, req []*apitraffic.TrafficMock) *apimodel.BatchWriteResponse
+	GetTrafficMockRules(ctx context.Context, filter map[string]string) *apimodel.BatchQueryResponse
+	GetOneTrafficMockRule(ctx context.Context, req *apitraffic.TrafficMock) *apimodel.Response
+}
+
 // ClientServer Client related operation  Client operation interface definition
 type ClientServer interface {
 	// GetOldRouterRuleWithCache User Client Get Service Routing Configuration Information
@@ -140,6 +171,12 @@ type ClientServer interface {
 	GetRouterRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse
 	// GetServiceWithCache fetch service list by client
 	GetLosslessRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse
+	// GetTrafficSecurityRuleWithCache fetch traffic security rules by client
+	GetTrafficSecurityRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse
+	// GetTrafficMirrorRuleWithCache fetch traffic mirror rules by client
+	GetTrafficMirrorRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse
+	// GetTrafficMockRuleWithCache fetch traffic mock rules by client
+	GetTrafficMockRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse
 }
 
 type RuleReleaseServer interface {

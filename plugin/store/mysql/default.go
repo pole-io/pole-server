@@ -58,6 +58,9 @@ type stableStore struct {
 	*serviceContractStore
 	*laneStore
 	*losslessStore
+	*trafficSecurityStore
+	*trafficMirrorStore
+	*trafficMockStore
 
 	// 配置中心 stores
 	*configFileGroupStore
@@ -268,6 +271,9 @@ func (s *stableStore) newStore() {
 	s.serviceContractStore = &serviceContractStore{master: s.master, slave: s.slave}
 	s.laneStore = &laneStore{master: s.master, slave: s.slave, governanceRuleRepository: governanceRepo}
 	s.losslessStore = &losslessStore{master: s.master, slave: s.slave, governanceRuleRepository: governanceRepo}
+	s.trafficSecurityStore = &trafficSecurityStore{trafficGovernanceStore{master: s.master, slave: s.slave, governanceRuleRepository: governanceRepo}}
+	s.trafficMirrorStore = &trafficMirrorStore{trafficGovernanceStore{master: s.master, slave: s.slave, governanceRuleRepository: governanceRepo}}
+	s.trafficMockStore = &trafficMockStore{trafficGovernanceStore{master: s.master, slave: s.slave, governanceRuleRepository: governanceRepo}}
 
 	s.configFileGroupStore = &configFileGroupStore{master: s.master, slave: s.slave}
 	s.configFileStore = &configFileStore{master: s.master, slave: s.slave}

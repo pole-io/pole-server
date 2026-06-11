@@ -64,13 +64,16 @@ import (
 
 var (
 	cacheTypes = map[string]struct{}{
-		apiservice.DiscoverResponse_INSTANCE.String():          {},
-		apiservice.DiscoverResponse_CUSTOM_ROUTE_RULE.String(): {},
-		apiservice.DiscoverResponse_NEARBY_ROUTE_RULE.String(): {},
-		apiservice.DiscoverResponse_RATE_LIMIT.String():        {},
-		apiservice.DiscoverResponse_CIRCUIT_BREAKER.String():   {},
-		apiservice.DiscoverResponse_FAULT_DETECTOR.String():    {},
-		apiservice.DiscoverResponse_SERVICES.String():          {},
+		apiservice.DiscoverResponse_INSTANCE.String():              {},
+		apiservice.DiscoverResponse_CUSTOM_ROUTE_RULE.String():     {},
+		apiservice.DiscoverResponse_NEARBY_ROUTE_RULE.String():     {},
+		apiservice.DiscoverResponse_RATE_LIMIT.String():            {},
+		apiservice.DiscoverResponse_CIRCUIT_BREAKER.String():       {},
+		apiservice.DiscoverResponse_FAULT_DETECTOR.String():        {},
+		apiservice.DiscoverResponse_SERVICES.String():              {},
+		apiservice.DiscoverResponse_TRAFFIC_SECURITY_RULE.String(): {},
+		apiservice.DiscoverResponse_TRAFFIC_MIRROR_RULE.String():   {},
+		apiservice.DiscoverResponse_TRAFFIC_MOCK_RULE.String():     {},
 	}
 )
 

@@ -149,6 +149,15 @@ func (h *HTTPServer) Discover(req *restful.Request, rsp *restful.Response) {
 	case apiservice.DiscoverRequest_FAULT_DETECTOR:
 		action = metrics.ActionDiscoverFaultDetect
 		ret = h.ruleServer.GetFaultDetectWithCache(ctx, discoverRequest.Service)
+	case apiservice.DiscoverRequest_TRAFFIC_SECURITY_RULE:
+		action = metrics.ActionDiscoverTrafficSecurityRule
+		ret = h.ruleServer.GetTrafficSecurityRuleWithCache(ctx, discoverRequest.Service)
+	case apiservice.DiscoverRequest_TRAFFIC_MIRROR_RULE:
+		action = metrics.ActionDiscoverTrafficMirrorRule
+		ret = h.ruleServer.GetTrafficMirrorRuleWithCache(ctx, discoverRequest.Service)
+	case apiservice.DiscoverRequest_TRAFFIC_MOCK_RULE:
+		action = metrics.ActionDiscoverTrafficMockRule
+		ret = h.ruleServer.GetTrafficMockRuleWithCache(ctx, discoverRequest.Service)
 	default:
 		ret = api.NewDiscoverRoutingResponse(apimodel.Code_InvalidDiscoverResource, discoverRequest.Service)
 	}

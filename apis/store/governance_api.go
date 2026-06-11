@@ -42,6 +42,12 @@ type GovernanceStore interface {
 	LaneStore
 	// LosslessRuleStore 无损规则存储操作接口
 	LosslessRuleStore
+	// TrafficSecurityRuleStore 调用鉴权规则存储操作接口
+	TrafficSecurityRuleStore
+	// TrafficMirrorRuleStore 流量镜像规则存储操作接口
+	TrafficMirrorRuleStore
+	// TrafficMockRuleStore 流量 Mock 规则存储操作接口
+	TrafficMockRuleStore
 }
 
 // RateLimitStore 限流规则的存储接口
@@ -279,4 +285,55 @@ type LosslessRuleStore interface {
 	GetMoreLosslessReleases(mtime time.Time, firstUpdate bool) ([]*rules.LosslessRuleRelease, error)
 	// DeleteLosslessReleases 删除无损规则发布版本
 	DeleteLosslessReleases(tx Tx, rule *rules.LosslessRuleRelease) error
+}
+
+type TrafficSecurityRuleStore interface {
+	CreateTrafficSecurityRule(rule *rules.TrafficGovernanceRule) error
+	UpdateTrafficSecurityRule(rule *rules.TrafficGovernanceRule) error
+	DeleteTrafficSecurityRule(rule *rules.TrafficGovernanceRule) error
+	GetOneTrafficSecurityRule(id string) (*rules.TrafficGovernanceRule, error)
+	GetMoreTrafficSecurityRules(mtime time.Time, firstUpdate bool) ([]*rules.TrafficGovernanceRule, error)
+	LockTrafficSecurityRule(tx Tx, name string) (*rules.TrafficGovernanceRule, error)
+	GetTrafficSecurityRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error)
+	GetActiveTrafficSecurityRule(tx Tx, release *rules.TrafficGovernanceRuleRelease) (*rules.TrafficGovernanceRuleRelease, error)
+	GetReleaseTrafficSecurityRule(tx Tx, release *rules.RuleRelease) (*rules.TrafficGovernanceRuleRelease, error)
+	ActiveTrafficSecurityRule(tx Tx, release *rules.TrafficGovernanceRuleRelease) error
+	InactiveTrafficSecurityRule(tx Tx, release *rules.TrafficGovernanceRuleRelease) error
+	PublishTrafficSecurityRules(tx Tx, rule *rules.TrafficGovernanceRuleRelease) error
+	GetMoreTrafficSecurityReleases(mtime time.Time, firstUpdate bool) ([]*rules.TrafficGovernanceRuleRelease, error)
+	DeleteTrafficSecurityReleases(tx Tx, rule *rules.TrafficGovernanceRuleRelease) error
+}
+
+type TrafficMirrorRuleStore interface {
+	CreateTrafficMirrorRule(rule *rules.TrafficGovernanceRule) error
+	UpdateTrafficMirrorRule(rule *rules.TrafficGovernanceRule) error
+	DeleteTrafficMirrorRule(rule *rules.TrafficGovernanceRule) error
+	GetOneTrafficMirrorRule(id string) (*rules.TrafficGovernanceRule, error)
+	GetMoreTrafficMirrorRules(mtime time.Time, firstUpdate bool) ([]*rules.TrafficGovernanceRule, error)
+	LockTrafficMirrorRule(tx Tx, name string) (*rules.TrafficGovernanceRule, error)
+	GetTrafficMirrorRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error)
+	GetActiveTrafficMirrorRule(tx Tx, release *rules.TrafficGovernanceRuleRelease) (*rules.TrafficGovernanceRuleRelease, error)
+	GetReleaseTrafficMirrorRule(tx Tx, release *rules.RuleRelease) (*rules.TrafficGovernanceRuleRelease, error)
+	ActiveTrafficMirrorRule(tx Tx, release *rules.TrafficGovernanceRuleRelease) error
+	InactiveTrafficMirrorRule(tx Tx, release *rules.TrafficGovernanceRuleRelease) error
+	PublishTrafficMirrorRules(tx Tx, rule *rules.TrafficGovernanceRuleRelease) error
+	GetMoreTrafficMirrorReleases(mtime time.Time, firstUpdate bool) ([]*rules.TrafficGovernanceRuleRelease, error)
+	DeleteTrafficMirrorReleases(tx Tx, rule *rules.TrafficGovernanceRuleRelease) error
+}
+
+type TrafficMockRuleStore interface {
+	CreateTrafficMockRule(rule *rules.TrafficGovernanceRule) error
+	UpdateTrafficMockRule(rule *rules.TrafficGovernanceRule) error
+	DeleteTrafficMockRule(rule *rules.TrafficGovernanceRule) error
+	GetOneTrafficMockRule(id string) (*rules.TrafficGovernanceRule, error)
+	GetMoreTrafficMockRules(mtime time.Time, firstUpdate bool) ([]*rules.TrafficGovernanceRule, error)
+	LockTrafficMockRule(tx Tx, name string) (*rules.TrafficGovernanceRule, error)
+	GetTrafficMockRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error)
+	GetActiveTrafficMockRule(tx Tx, release *rules.TrafficGovernanceRuleRelease) (*rules.TrafficGovernanceRuleRelease, error)
+	GetReleaseTrafficMockRule(tx Tx, release *rules.RuleRelease) (*rules.TrafficGovernanceRuleRelease, error)
+	ActiveTrafficMockRule(tx Tx, release *rules.TrafficGovernanceRuleRelease) error
+	InactiveTrafficMockRule(tx Tx, release *rules.TrafficGovernanceRuleRelease) error
+	PublishTrafficMockRules(tx Tx, rule *rules.TrafficGovernanceRuleRelease) error
+	GetMoreTrafficMockReleases(mtime time.Time, firstUpdate bool) ([]*rules.TrafficGovernanceRuleRelease, error)
+	DeleteTrafficMockReleases(tx Tx, rule *rules.TrafficGovernanceRuleRelease) error
 }

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 )
 
 func (s *stableStore) GetMoreGovernanceRuleUpdates(mtime time.Time, firstUpdate bool) (*rules.GovernanceRuleUpdates, error) {
@@ -56,6 +57,24 @@ func (s *stableStore) GetMoreGovernanceRuleUpdates(mtime time.Time, firstUpdate 
 				return nil, err
 			}
 			out.LosslessRules = append(out.LosslessRules, item)
+		case governanceRuleTypeTrafficSecurity:
+			item, err := governanceRuleRecordToTrafficSecurityRule(records[i])
+			if err != nil {
+				return nil, err
+			}
+			out.TrafficSecurityRules = append(out.TrafficSecurityRules, item)
+		case governanceRuleTypeTrafficMirror:
+			item, err := governanceRuleRecordToTrafficMirrorRule(records[i])
+			if err != nil {
+				return nil, err
+			}
+			out.TrafficMirrorRules = append(out.TrafficMirrorRules, item)
+		case governanceRuleTypeTrafficMock:
+			item, err := governanceRuleRecordToTrafficMockRule(records[i])
+			if err != nil {
+				return nil, err
+			}
+			out.TrafficMockRules = append(out.TrafficMockRules, item)
 		case governanceRuleTypeLaneGroup:
 			item, err := governanceRuleRecordToLaneGroup(records[i])
 			if err != nil {
@@ -108,6 +127,24 @@ func (s *stableStore) GetMoreGovernanceRuleReleaseUpdates(mtime time.Time, first
 				return nil, err
 			}
 			out.LosslessRules = append(out.LosslessRules, item)
+		case governanceRuleTypeTrafficSecurity:
+			item, err := governanceRuleReleaseRecordToTrafficGovernanceRuleRelease(records[i], apimodel.RuleRelease_TrafficSecurityRules, governanceRuleRecordToTrafficSecurityRule)
+			if err != nil {
+				return nil, err
+			}
+			out.TrafficSecurityRules = append(out.TrafficSecurityRules, item)
+		case governanceRuleTypeTrafficMirror:
+			item, err := governanceRuleReleaseRecordToTrafficGovernanceRuleRelease(records[i], apimodel.RuleRelease_TrafficMirrorRules, governanceRuleRecordToTrafficMirrorRule)
+			if err != nil {
+				return nil, err
+			}
+			out.TrafficMirrorRules = append(out.TrafficMirrorRules, item)
+		case governanceRuleTypeTrafficMock:
+			item, err := governanceRuleReleaseRecordToTrafficGovernanceRuleRelease(records[i], apimodel.RuleRelease_TrafficMockRules, governanceRuleRecordToTrafficMockRule)
+			if err != nil {
+				return nil, err
+			}
+			out.TrafficMockRules = append(out.TrafficMockRules, item)
 		case governanceRuleTypeLaneGroup:
 			item, err := governanceRuleReleaseRecordToLaneGroupRelease(records[i])
 			if err != nil {

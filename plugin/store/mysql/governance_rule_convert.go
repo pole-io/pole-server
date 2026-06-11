@@ -23,8 +23,10 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 	"github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 func routerConfigToGovernanceRuleRecord(conf *rules.RouterConfig) *governanceRuleRecord {
@@ -215,6 +217,167 @@ func governanceRuleReleaseRecordToLosslessRuleRelease(record *governanceRuleRele
 			RuleName:    record.RuleName,
 			Description: record.Description,
 			Resource:    apimodel.RuleRelease_LosslessRules,
+			ReleaseType: rules.ReleaseType(record.ReleaseType),
+			Active:      record.Active,
+			Version:     record.Version,
+			Valid:       record.Valid,
+			Ctime:       record.CreateTime,
+			Mtime:       record.ModifyTime,
+		},
+		Rule: rule,
+	}, nil
+}
+
+func trafficSecurityRuleToGovernanceRuleRecord(rule *rules.TrafficGovernanceRule) *governanceRuleRecord {
+	return trafficGovernanceRuleToGovernanceRuleRecord(rule, governanceRuleTypeTrafficSecurity)
+}
+
+func trafficMirrorRuleToGovernanceRuleRecord(rule *rules.TrafficGovernanceRule) *governanceRuleRecord {
+	return trafficGovernanceRuleToGovernanceRuleRecord(rule, governanceRuleTypeTrafficMirror)
+}
+
+func trafficMockRuleToGovernanceRuleRecord(rule *rules.TrafficGovernanceRule) *governanceRuleRecord {
+	return trafficGovernanceRuleToGovernanceRuleRecord(rule, governanceRuleTypeTrafficMock)
+}
+
+func trafficGovernanceRuleToGovernanceRuleRecord(rule *rules.TrafficGovernanceRule, ruleType governanceRuleType) *governanceRuleRecord {
+	ruleJSON := marshalTrafficGovernanceRule(rule)
+	return &governanceRuleRecord{
+		ID:          rule.ID,
+		RuleType:    ruleType,
+		Namespace:   rule.Namespace,
+		Name:        rule.Name,
+		Service:     rule.Service,
+		Priority:    int(rule.Priority),
+		Enable:      boolToInt(rule.Enable),
+		Config:      ruleJSON,
+		Rule:        ruleJSON,
+		Revision:    rule.Revision,
+		Description: rule.Description,
+		Metadata:    marshalMetadata(rule.Metadata),
+		Valid:       rule.Valid,
+	}
+}
+
+func governanceRuleRecordToTrafficSecurityRule(record *governanceRuleRecord) (*rules.TrafficGovernanceRule, error) {
+	if record == nil {
+		return nil, nil
+	}
+	spec := &apisecurity.TrafficSecurityRule{}
+	if record.Rule != "" {
+		if err := protojson.Unmarshal([]byte(record.Rule), spec); err != nil {
+			return nil, err
+		}
+	}
+	rule := rules.NewTrafficSecurityRule(spec)
+	applyTrafficGovernanceRecordFields(rule, record)
+	return rule, nil
+}
+
+func governanceRuleRecordToTrafficMirrorRule(record *governanceRuleRecord) (*rules.TrafficGovernanceRule, error) {
+	if record == nil {
+		return nil, nil
+	}
+	spec := &traffic_manage.TrafficMirror{}
+	if record.Rule != "" {
+		if err := protojson.Unmarshal([]byte(record.Rule), spec); err != nil {
+			return nil, err
+		}
+	}
+	rule := rules.NewTrafficMirrorRule(spec)
+	applyTrafficGovernanceRecordFields(rule, record)
+	return rule, nil
+}
+
+func governanceRuleRecordToTrafficMockRule(record *governanceRuleRecord) (*rules.TrafficGovernanceRule, error) {
+	if record == nil {
+		return nil, nil
+	}
+	spec := &traffic_manage.TrafficMock{}
+	if record.Rule != "" {
+		if err := protojson.Unmarshal([]byte(record.Rule), spec); err != nil {
+			return nil, err
+		}
+	}
+	rule := rules.NewTrafficMockRule(spec)
+	applyTrafficGovernanceRecordFields(rule, record)
+	return rule, nil
+}
+
+func applyTrafficGovernanceRecordFields(rule *rules.TrafficGovernanceRule, record *governanceRuleRecord) {
+	rule.ID = record.ID
+	rule.Name = record.Name
+	rule.Namespace = record.Namespace
+	rule.Service = record.Service
+	rule.Priority = uint32(record.Priority)
+	rule.Enable = record.Enable == 1
+	rule.Revision = record.Revision
+	rule.Description = record.Description
+	rule.Valid = record.Valid
+	rule.CTime = record.CreateTime
+	rule.MTime = record.ModifyTime
+	if rule.Metadata == nil {
+		rule.Metadata = map[string]string{}
+	}
+}
+
+func trafficGovernanceRuleReleaseToGovernanceReleaseRecord(
+	release *rules.TrafficGovernanceRuleRelease, ruleType governanceRuleType,
+) *governanceRuleReleaseRecord {
+	record := &governanceRuleReleaseRecord{
+		ID:           release.Id,
+		RuleType:     ruleType,
+		ReleaseName:  release.ReleaseName,
+		RuleID:       release.RuleId,
+		RuleName:     release.RuleName,
+		Description:  release.Description,
+		ReleaseType:  string(release.ReleaseType),
+		Version:      release.Version,
+		Active:       release.Active,
+		ClientLabels: marshalClientLabels(release.ClientLabels),
+		Valid:        release.Valid,
+	}
+	if release.Rule != nil {
+		record.RuleID = utilsDefaultString(record.RuleID, release.Rule.ID)
+		record.RuleName = utilsDefaultString(record.RuleName, release.Rule.Name)
+		record.Namespace = release.Rule.Namespace
+		record.Service = release.Rule.Service
+		record.Rule = marshalTrafficGovernanceRule(release.Rule)
+	}
+	return record
+}
+
+func governanceRuleReleaseRecordToTrafficGovernanceRuleRelease(
+	record *governanceRuleReleaseRecord,
+	ruleType apimodel.RuleRelease_RuleType,
+	fromRecord func(*governanceRuleRecord) (*rules.TrafficGovernanceRule, error),
+) (*rules.TrafficGovernanceRuleRelease, error) {
+	if record == nil {
+		return nil, nil
+	}
+	rule, err := fromRecord(&governanceRuleRecord{
+		ID:          record.RuleID,
+		RuleType:    record.RuleType,
+		Namespace:   record.Namespace,
+		Name:        record.RuleName,
+		Service:     record.Service,
+		Rule:        record.Rule,
+		Valid:       true,
+		CreateTime:  record.CreateTime,
+		ModifyTime:  record.ModifyTime,
+		Description: record.Description,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &rules.TrafficGovernanceRuleRelease{
+		RuleRelease: rules.RuleRelease{
+			Id:          record.ID,
+			ReleaseName: record.ReleaseName,
+			RuleId:      record.RuleID,
+			RuleName:    record.RuleName,
+			Description: record.Description,
+			Resource:    ruleType,
 			ReleaseType: rules.ReleaseType(record.ReleaseType),
 			Active:      record.Active,
 			Version:     record.Version,
@@ -531,6 +694,28 @@ func marshalLosslessRule(rule *rules.LosslessRule) string {
 		return "{}"
 	}
 	data, err := protojson.Marshal(rule.Proto)
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
+}
+
+func marshalTrafficGovernanceRule(rule *rules.TrafficGovernanceRule) string {
+	if rule == nil || rule.Proto == nil {
+		return "{}"
+	}
+	var msg proto.Message
+	switch rule.Kind {
+	case rules.TrafficGovernanceRuleKindSecurity:
+		msg = rule.ToTrafficSecuritySpec()
+	case rules.TrafficGovernanceRuleKindMirror:
+		msg = rule.ToTrafficMirrorSpec()
+	case rules.TrafficGovernanceRuleKindMock:
+		msg = rule.ToTrafficMockSpec()
+	default:
+		msg = rule.Proto
+	}
+	data, err := protojson.Marshal(msg)
 	if err != nil {
 		return "{}"
 	}

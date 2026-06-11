@@ -10,19 +10,25 @@
 package rules
 
 type GovernanceRuleUpdates struct {
-	RouterRules         []*RouterConfig
-	RateLimitRules      []*RateLimit
-	CircuitBreakerRules []*CircuitBreakerRule
-	FaultDetectRules    []*FaultDetectRule
-	LosslessRules       []*LosslessRule
-	LaneGroups          map[string]*LaneGroup
+	RouterRules          []*RouterConfig
+	RateLimitRules       []*RateLimit
+	CircuitBreakerRules  []*CircuitBreakerRule
+	FaultDetectRules     []*FaultDetectRule
+	LosslessRules        []*LosslessRule
+	TrafficSecurityRules []*TrafficGovernanceRule
+	TrafficMirrorRules   []*TrafficGovernanceRule
+	TrafficMockRules     []*TrafficGovernanceRule
+	LaneGroups           map[string]*LaneGroup
 }
 
 type GovernanceRuleReleaseUpdates struct {
-	RouterRules         []*RouterRuleRelease
-	RateLimitRules      []*RateLimitRelease
-	CircuitBreakerRules []*CircuitBreakerRelease
-	FaultDetectRules    []*FaultDetectRelease
-	LosslessRules       []*LosslessRuleRelease
-	LaneGroupRules      []*LaneGroupRelease
+	RouterRules          []*RouterRuleRelease
+	RateLimitRules       []*RateLimitRelease
+	CircuitBreakerRules  []*CircuitBreakerRelease
+	FaultDetectRules     []*FaultDetectRelease
+	LosslessRules        []*LosslessRuleRelease
+	TrafficSecurityRules []*TrafficGovernanceRuleRelease
+	TrafficMirrorRules   []*TrafficGovernanceRuleRelease
+	TrafficMockRules     []*TrafficGovernanceRuleRelease
+	LaneGroupRules       []*LaneGroupRelease
 }

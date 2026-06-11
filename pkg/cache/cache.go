@@ -225,6 +225,18 @@ func (nc *CacheManager) Lossless() cachetypes.LosslessCache {
 	return nc.caches[cachetypes.CacheLossLess].(cachetypes.LosslessCache)
 }
 
+func (nc *CacheManager) TrafficSecurity() cachetypes.TrafficGovernanceCache {
+	return nc.caches[cachetypes.CacheTrafficSecurity].(cachetypes.TrafficGovernanceCache)
+}
+
+func (nc *CacheManager) TrafficMirror() cachetypes.TrafficGovernanceCache {
+	return nc.caches[cachetypes.CacheTrafficMirror].(cachetypes.TrafficGovernanceCache)
+}
+
+func (nc *CacheManager) TrafficMock() cachetypes.TrafficGovernanceCache {
+	return nc.caches[cachetypes.CacheTrafficMock].(cachetypes.TrafficGovernanceCache)
+}
+
 // User Get user information cache information
 func (nc *CacheManager) User() cachetypes.UserCache {
 	return nc.caches[cachetypes.CacheUser].(cachetypes.UserCache)

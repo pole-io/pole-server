@@ -26,6 +26,7 @@ import (
 	// 注释：新增apifault导入 - 用于熔断器规则类型
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
@@ -253,6 +254,63 @@ func (s *Server) GetLosslessRuleWithCache(ctx context.Context, req *apiservice.S
 	}
 	resp.Service.Revision = out.Revision
 	resp.LosslessRules = []*apitraffic.LosslessRule{out.ToSpec()}
+	return resp
+}
+
+func (s *Server) GetTrafficSecurityRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_TRAFFIC_SECURITY_RULE)
+	aliasFor := s.findServiceAlias(req)
+	out, revision := s.caches.TrafficSecurity().GetRulesForService(aliasFor.Namespace, aliasFor.Name)
+	if revision == "" {
+		return resp
+	}
+	if len(req.GetRevision()) > 0 && req.GetRevision() == revision {
+		return api.NewDiscoverTrafficSecurityResponse(apimodel.Code_DataNoChange, req)
+	}
+	resp.AliasFor = &apiservice.Service{Name: aliasFor.Name, Namespace: aliasFor.Namespace}
+	resp.Service.Revision = revision
+	resp.TrafficSecurityRules = make([]*apisecurity.TrafficSecurityRule, 0, len(out))
+	for i := range out {
+		resp.TrafficSecurityRules = append(resp.TrafficSecurityRules, out[i].ToTrafficSecuritySpec())
+	}
+	return resp
+}
+
+func (s *Server) GetTrafficMirrorRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_TRAFFIC_MIRROR_RULE)
+	aliasFor := s.findServiceAlias(req)
+	out, revision := s.caches.TrafficMirror().GetRulesForService(aliasFor.Namespace, aliasFor.Name)
+	if revision == "" {
+		return resp
+	}
+	if len(req.GetRevision()) > 0 && req.GetRevision() == revision {
+		return api.NewDiscoverTrafficMirrorResponse(apimodel.Code_DataNoChange, req)
+	}
+	resp.AliasFor = &apiservice.Service{Name: aliasFor.Name, Namespace: aliasFor.Namespace}
+	resp.Service.Revision = revision
+	resp.TrafficMirrorRules = make([]*apitraffic.TrafficMirror, 0, len(out))
+	for i := range out {
+		resp.TrafficMirrorRules = append(resp.TrafficMirrorRules, out[i].ToTrafficMirrorSpec())
+	}
+	return resp
+}
+
+func (s *Server) GetTrafficMockRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_TRAFFIC_MOCK_RULE)
+	aliasFor := s.findServiceAlias(req)
+	out, revision := s.caches.TrafficMock().GetRulesForService(aliasFor.Namespace, aliasFor.Name)
+	if revision == "" {
+		return resp
+	}
+	if len(req.GetRevision()) > 0 && req.GetRevision() == revision {
+		return api.NewDiscoverTrafficMockResponse(apimodel.Code_DataNoChange, req)
+	}
+	resp.AliasFor = &apiservice.Service{Name: aliasFor.Name, Namespace: aliasFor.Namespace}
+	resp.Service.Revision = revision
+	resp.TrafficMockRules = make([]*apitraffic.TrafficMock, 0, len(out))
+	for i := range out {
+		resp.TrafficMockRules = append(resp.TrafficMockRules, out[i].ToTrafficMockSpec())
+	}
 	return resp
 }
 

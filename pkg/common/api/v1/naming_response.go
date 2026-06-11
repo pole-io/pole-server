@@ -352,6 +352,33 @@ func NewDiscoverLosslessResponse(code apimodel.Code, service *apiservice.Service
 	}
 }
 
+func NewDiscoverTrafficSecurityResponse(code apimodel.Code, service *apiservice.Service) *apiservice.DiscoverResponse {
+	return &apiservice.DiscoverResponse{
+		Code:    uint32(code),
+		Info:    code2info[uint32(code)],
+		Type:    apiservice.DiscoverResponse_TRAFFIC_SECURITY_RULE,
+		Service: service,
+	}
+}
+
+func NewDiscoverTrafficMirrorResponse(code apimodel.Code, service *apiservice.Service) *apiservice.DiscoverResponse {
+	return &apiservice.DiscoverResponse{
+		Code:    uint32(code),
+		Info:    code2info[uint32(code)],
+		Type:    apiservice.DiscoverResponse_TRAFFIC_MIRROR_RULE,
+		Service: service,
+	}
+}
+
+func NewDiscoverTrafficMockResponse(code apimodel.Code, service *apiservice.Service) *apiservice.DiscoverResponse {
+	return &apiservice.DiscoverResponse{
+		Code:    uint32(code),
+		Info:    code2info[uint32(code)],
+		Type:    apiservice.DiscoverResponse_TRAFFIC_MOCK_RULE,
+		Service: service,
+	}
+}
+
 /**
  * @brief 创建查询限流规则回复
  */
