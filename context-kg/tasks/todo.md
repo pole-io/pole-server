@@ -2340,3 +2340,42 @@ Review：
 注意：
 
 - 当前工作区在本次修复前已经存在大量 A2A、console 和 context-kg 重组相关未提交改动；本轮只围绕上述测试失败点修改，不整理无关变更。
+
+# 接入流量安全、镜像和 Mock 治理规则
+
+- [x] 合并 `pole-io/specification` PR #1
+- [x] 在 `specification` 发新 tag，并确认远端 tag 可见
+- [x] 为 `pole-control-plane` 创建隔离 worktree，避免污染当前已有改动
+- [x] 更新 `github.com/pole-io/specification` 依赖到新 tag
+- [x] 按 TDD 补齐流量安全、镜像和 Mock 规则的存储转换测试
+- [x] 实现三类规则的 store、cache watcher、业务服务和 HTTP/Discover 下发支持
+- [x] 补齐鉴权资源映射和发布版本映射
+- [x] 运行目标测试、构建和必要的接口验证
+- [x] 记录最终 review、验证结果和剩余风险
+
+当前进展：
+
+- `specification` PR #1 已合并到 `develop`，merge commit 为 `78f368d9738137754b6f0c9489358eb9bb1c5f1e`。
+- `specification` 已发布并推送 tag `v0.1.0-ALPHA.25`，`pole-control-plane` 已将 `github.com/pole-io/specification` 从 `v0.1.0-ALPHA.24` 升级到 `v0.1.0-ALPHA.25`。
+- 本轮实现放在隔离 worktree `/Users/chuntao.liao/.config/superpowers/worktrees/pole-control-plane/traffic-governance-rules`，分支 `codex/traffic-governance-rules`，避免污染主工作区已有改动。
+- 新增 `TrafficGovernanceRule` 内部包装，复用统一治理表、cache watcher、release pipeline，同时对外分别暴露 spec 中的 `TrafficSecurityRule`、`TrafficMirror`、`TrafficMock`。
+- MySQL 统一治理表新增三类 rule_type：`traffic-security`、`traffic-mirror`、`traffic-mock`；支持当前态 CRUD、增量拉取、release 查询、publish、delete release 和 stopbeta。
+- CacheManager 新增 `TrafficSecurity`、`TrafficMirror`、`TrafficMock` 三个缓存，支持 Console 当前态查询和客户端 active release 下发。
+- GoverRule 新增三类规则的 CRUD、list/detail、release 入口和客户端 discover 下发；HTTP 管理端新增 `/traffic/security`、`/traffic/mirrors`、`/traffic/mocks` 及其 `/releases` 接口。
+- HTTP/gRPC client discover 支持 spec 新枚举 `TRAFFIC_SECURITY_RULE`、`TRAFFIC_MIRROR_RULE`、`TRAFFIC_MOCK_RULE`，响应填充 `trafficSecurityRules`、`trafficMirrorRules`、`trafficMockRules`。
+- 鉴权补齐 `mirror_rules`、`security_rules`、`mock_rules` 字段映射、默认策略资源详情、资源存在性检查和 release 鉴权资源收集。
+
+验证：
+
+- 新增红灯测试覆盖三类规则的 MySQL 统一表转换 round-trip、`mock_rules` 鉴权资源字段映射和三类 discover response 构造。
+- `GOPROXY=https://goproxy.cn,direct go test -count=1 ./plugin/store/mysql ./apis/pkg/types/auth ./pkg/common/api/v1` 通过。
+- `GOPROXY=https://goproxy.cn,direct go test -count=1 ./apis/... ./pkg/cache/... ./pkg/goverrule/... ./plugin/store/mysql ./plugin/apiserver/httpserver/discover ./plugin/apiserver/grpcserver/discover/... ./plugin/access_control/auth/policy` 通过。
+- `GOPROXY=https://goproxy.cn,direct go build -o /tmp/pole-control-plane-traffic-rules .` 通过。
+- `git diff --check` 通过。
+- `GOPROXY=https://goproxy.cn,direct go test ./...` 跑到 10 分钟超时失败，唯一失败包为 `pkg/common/batchctrl`，失败用例 `TestNewBatchControllerGracefulStop`，堆栈显示 `future.Reply` 阻塞；其它包继续执行并通过。该失败与本轮流量治理规则接入无直接关系。
+
+Review：
+
+- 本轮不实现 Console 页面，只补 server/API/cache/store/discover 下发链路。
+- 新规则 release 能力按当前 lossless 已有边界实现：支持 publish/list/delete release/stopbeta；rollback 主 switch 现状未支持 lossless，因此这次没有为三类新规则额外打开 rollback。
+- HTTP 管理端新增路径采用 `/traffic/security`、`/traffic/mirrors`、`/traffic/mocks`，客户端 discover 使用 spec 枚举，不依赖路径命名。

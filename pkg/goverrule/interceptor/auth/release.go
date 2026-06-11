@@ -25,6 +25,12 @@ func (svr *Server) PublishGovernanceRules(ctx context.Context, req []*apimodel.R
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.PublishRateLimitRules)
 	case apimodel.RuleRelease_LosslessRules:
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.PublishLosslessRules)
+	case apimodel.RuleRelease_TrafficSecurityRules:
+		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.PublishTrafficSecurityRules)
+	case apimodel.RuleRelease_TrafficMirrorRules:
+		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.PublishTrafficMirrorRules)
+	case apimodel.RuleRelease_TrafficMockRules:
+		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.PublishTrafficMockRules)
 	default:
 		return api.NewBatchWriteResponse(apimodel.Code_InvalidParameter)
 	}
@@ -60,6 +66,12 @@ func (svr *Server) GetRuleReleases(ctx context.Context, filter map[string]string
 		ctx, bRsp = svr.checkGovernanceRules(ctx, reqs, authtypes.Read, authtypes.DescribeRateLimitReleases)
 	case apimodel.RuleRelease_LosslessRules:
 		ctx, bRsp = svr.checkGovernanceRules(ctx, reqs, authtypes.Read, authtypes.DescribeLosslessReleases)
+	case apimodel.RuleRelease_TrafficSecurityRules:
+		ctx, bRsp = svr.checkGovernanceRules(ctx, reqs, authtypes.Read, authtypes.DescribeTrafficSecurityReleases)
+	case apimodel.RuleRelease_TrafficMirrorRules:
+		ctx, bRsp = svr.checkGovernanceRules(ctx, reqs, authtypes.Read, authtypes.DescribeTrafficMirrorReleases)
+	case apimodel.RuleRelease_TrafficMockRules:
+		ctx, bRsp = svr.checkGovernanceRules(ctx, reqs, authtypes.Read, authtypes.DescribeTrafficMockReleases)
 	default:
 		return api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}
@@ -86,6 +98,12 @@ func (svr *Server) DeleteGovernanceRules(ctx context.Context, req []*apimodel.Ru
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Delete, authtypes.DeleteRateLimitReleases)
 	case apimodel.RuleRelease_LosslessRules:
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Delete, authtypes.DeleteLosslessReleases)
+	case apimodel.RuleRelease_TrafficSecurityRules:
+		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Delete, authtypes.DeleteTrafficSecurityReleases)
+	case apimodel.RuleRelease_TrafficMirrorRules:
+		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Delete, authtypes.DeleteTrafficMirrorReleases)
+	case apimodel.RuleRelease_TrafficMockRules:
+		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Delete, authtypes.DeleteTrafficMockReleases)
 	default:
 		return api.NewBatchWriteResponse(apimodel.Code_InvalidParameter)
 	}
@@ -138,6 +156,12 @@ func (svr *Server) StopbetaGovernanceRules(ctx context.Context, req []*apimodel.
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.StopbetaRateLimitRules)
 	case apimodel.RuleRelease_LosslessRules:
 		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.StopbetaLosslessRules)
+	case apimodel.RuleRelease_TrafficSecurityRules:
+		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.StopbetaTrafficSecurityRules)
+	case apimodel.RuleRelease_TrafficMirrorRules:
+		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.StopbetaTrafficMirrorRules)
+	case apimodel.RuleRelease_TrafficMockRules:
+		ctx, rsp = svr.checkGovernanceRules(ctx, req, authtypes.Modify, authtypes.StopbetaTrafficMockRules)
 	default:
 		return api.NewBatchWriteResponse(apimodel.Code_InvalidParameter)
 	}

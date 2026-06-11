@@ -124,3 +124,39 @@ func (svr *Server) GetLosslessRuleWithCache(ctx context.Context, req *apiservice
 
 	return svr.nextSvr.GetLosslessRuleWithCache(ctx, req)
 }
+
+func (svr *Server) GetTrafficSecurityRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+	authCtx := svr.collectServiceAuthContext(
+		ctx, []*apiservice.Service{req}, authtypes.Read, authtypes.DiscoverTrafficSecurityRule)
+	if _, err := svr.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
+		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+
+	return svr.nextSvr.GetTrafficSecurityRuleWithCache(ctx, req)
+}
+
+func (svr *Server) GetTrafficMirrorRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+	authCtx := svr.collectServiceAuthContext(
+		ctx, []*apiservice.Service{req}, authtypes.Read, authtypes.DiscoverTrafficMirrorRule)
+	if _, err := svr.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
+		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+
+	return svr.nextSvr.GetTrafficMirrorRuleWithCache(ctx, req)
+}
+
+func (svr *Server) GetTrafficMockRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+	authCtx := svr.collectServiceAuthContext(
+		ctx, []*apiservice.Service{req}, authtypes.Read, authtypes.DiscoverTrafficMockRule)
+	if _, err := svr.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
+		return api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+
+	return svr.nextSvr.GetTrafficMockRuleWithCache(ctx, req)
+}

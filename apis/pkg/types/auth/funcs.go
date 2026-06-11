@@ -22,6 +22,9 @@ var (
 		"faultdetect_rules":    apisecurity.ResourceType_FaultDetectRules,
 		"lane_rules":           apisecurity.ResourceType_LaneRules,
 		"lossless_rules":       apisecurity.ResourceType_LosslessRules,
+		"mirror_rules":         apisecurity.ResourceType_MirrorRules,
+		"security_rules":       apisecurity.ResourceType_SecurityRules,
+		"mock_rules":           apisecurity.ResourceType_MockRules,
 		"users":                apisecurity.ResourceType_Users,
 		"user_groups":          apisecurity.ResourceType_UserGroups,
 		"roles":                apisecurity.ResourceType_Roles,
@@ -76,6 +79,12 @@ var (
 				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
 			}
 			return reflect.ValueOf(&as.SecurityRules)
+		},
+		apisecurity.ResourceType_MockRules: func(as *apisecurity.StrategyResources) reflect.Value {
+			if as.GetMockRules() == nil {
+				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
+			}
+			return reflect.ValueOf(&as.MockRules)
 		},
 		apisecurity.ResourceType_CircuitBreakerRules: func(as *apisecurity.StrategyResources) reflect.Value {
 			if as.GetCircuitbreakerRules() == nil {

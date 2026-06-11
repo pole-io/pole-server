@@ -22,6 +22,7 @@ import (
 
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 )
@@ -169,3 +170,21 @@ func (m *LosslessRuleAttr) String() string { return proto.CompactTextString(m) }
 
 // ProtoMessage return proto message
 func (*LosslessRuleAttr) ProtoMessage() {}
+
+type TrafficSecurityRuleAttr []*apisecurity.TrafficSecurityRule
+
+func (m *TrafficSecurityRuleAttr) Reset()         { *m = TrafficSecurityRuleAttr{} }
+func (m *TrafficSecurityRuleAttr) String() string { return proto.CompactTextString(m) }
+func (*TrafficSecurityRuleAttr) ProtoMessage()    {}
+
+type TrafficMirrorRuleAttr []*apitraffic.TrafficMirror
+
+func (m *TrafficMirrorRuleAttr) Reset()         { *m = TrafficMirrorRuleAttr{} }
+func (m *TrafficMirrorRuleAttr) String() string { return proto.CompactTextString(m) }
+func (*TrafficMirrorRuleAttr) ProtoMessage()    {}
+
+type TrafficMockRuleAttr []*apitraffic.TrafficMock
+
+func (m *TrafficMockRuleAttr) Reset()         { *m = TrafficMockRuleAttr{} }
+func (m *TrafficMockRuleAttr) String() string { return proto.CompactTextString(m) }
+func (*TrafficMockRuleAttr) ProtoMessage()    {}

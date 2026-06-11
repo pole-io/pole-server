@@ -30,6 +30,12 @@ func (s *Server) PublishGovernanceRules(ctx context.Context, req []*apimodel.Rul
 		return s.PublishRateLimits(ctx, req)
 	case apimodel.RuleRelease_LosslessRules:
 		return s.PublishLosslessRules(ctx, req)
+	case apimodel.RuleRelease_TrafficSecurityRules:
+		return s.PublishTrafficSecurityRules(ctx, req)
+	case apimodel.RuleRelease_TrafficMirrorRules:
+		return s.PublishTrafficMirrorRules(ctx, req)
+	case apimodel.RuleRelease_TrafficMockRules:
+		return s.PublishTrafficMockRules(ctx, req)
 	default:
 		return api.NewBatchWriteResponse(apimodel.Code_InvalidParameter)
 	}
@@ -59,6 +65,12 @@ func (s *Server) GetRuleReleases(ctx context.Context, filter map[string]string) 
 		total, versions, err = s.storage.GetRateLimitRuleVersions(ctx, filter, offset, limit)
 	case apimodel.RuleRelease_LosslessRules:
 		total, versions, err = s.storage.GetLosslessRuleVersions(ctx, filter, offset, limit)
+	case apimodel.RuleRelease_TrafficSecurityRules:
+		total, versions, err = s.storage.GetTrafficSecurityRuleVersions(ctx, filter, offset, limit)
+	case apimodel.RuleRelease_TrafficMirrorRules:
+		total, versions, err = s.storage.GetTrafficMirrorRuleVersions(ctx, filter, offset, limit)
+	case apimodel.RuleRelease_TrafficMockRules:
+		total, versions, err = s.storage.GetTrafficMockRuleVersions(ctx, filter, offset, limit)
 	default:
 		return api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
 	}
@@ -98,6 +110,12 @@ func (s *Server) DeleteGovernanceRules(ctx context.Context, req []*apimodel.Rule
 		return s.DeleteRateLimitReleases(ctx, req)
 	case apimodel.RuleRelease_LosslessRules:
 		return s.DeleteLosslessReleases(ctx, req)
+	case apimodel.RuleRelease_TrafficSecurityRules:
+		return s.DeleteTrafficSecurityReleases(ctx, req)
+	case apimodel.RuleRelease_TrafficMirrorRules:
+		return s.DeleteTrafficMirrorReleases(ctx, req)
+	case apimodel.RuleRelease_TrafficMockRules:
+		return s.DeleteTrafficMockReleases(ctx, req)
 	default:
 		return api.NewBatchWriteResponse(apimodel.Code_InvalidParameter)
 	}
@@ -136,6 +154,12 @@ func (s *Server) StopbetaGovernanceRules(ctx context.Context, req []*apimodel.Ru
 		return s.StopbetaRateLimits(ctx, req)
 	case apimodel.RuleRelease_LosslessRules:
 		return s.StopbetaLosslessRules(ctx, req)
+	case apimodel.RuleRelease_TrafficSecurityRules:
+		return s.StopbetaTrafficSecurityRules(ctx, req)
+	case apimodel.RuleRelease_TrafficMirrorRules:
+		return s.StopbetaTrafficMirrorRules(ctx, req)
+	case apimodel.RuleRelease_TrafficMockRules:
+		return s.StopbetaTrafficMockRules(ctx, req)
 	default:
 		return api.NewBatchWriteResponse(apimodel.Code_InvalidParameter)
 	}
@@ -199,6 +223,8 @@ func NewRuleReleasePipeline[
 			case *rules.RateLimitRelease:
 				v.RuleRelease = *grayData
 			case *rules.LosslessRuleRelease:
+				v.RuleRelease = *grayData
+			case *rules.TrafficGovernanceRuleRelease:
 				v.RuleRelease = *grayData
 			}
 			res, err := getActiveFn(tx, grayRelease)
@@ -407,6 +433,62 @@ func (s *Server) PublishLosslessRules(ctx context.Context, requests []*apimodel.
 			return &rules.LosslessRuleRelease{
 				RuleRelease: *curData,
 				Rule:        llRule,
+			}
+		},
+	)
+	return s.executeRuleReleasePipeline(ctx, pipeline, requests)
+}
+
+func (s *Server) PublishTrafficSecurityRules(ctx context.Context, requests []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+	return s.publishTrafficGovernanceRules(ctx, requests,
+		s.storage.LockTrafficSecurityRule,
+		s.storage.GetReleaseTrafficSecurityRule,
+		s.storage.GetActiveTrafficSecurityRule,
+		s.storage.PublishTrafficSecurityRules)
+}
+
+func (s *Server) PublishTrafficMirrorRules(ctx context.Context, requests []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+	return s.publishTrafficGovernanceRules(ctx, requests,
+		s.storage.LockTrafficMirrorRule,
+		s.storage.GetReleaseTrafficMirrorRule,
+		s.storage.GetActiveTrafficMirrorRule,
+		s.storage.PublishTrafficMirrorRules)
+}
+
+func (s *Server) PublishTrafficMockRules(ctx context.Context, requests []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+	return s.publishTrafficGovernanceRules(ctx, requests,
+		s.storage.LockTrafficMockRule,
+		s.storage.GetReleaseTrafficMockRule,
+		s.storage.GetActiveTrafficMockRule,
+		s.storage.PublishTrafficMockRules)
+}
+
+func (s *Server) publishTrafficGovernanceRules(
+	ctx context.Context,
+	requests []*apimodel.RuleRelease,
+	lock func(store.Tx, string) (*rules.TrafficGovernanceRule, error),
+	getRelease func(store.Tx, *rules.RuleRelease) (*rules.TrafficGovernanceRuleRelease, error),
+	getActive func(store.Tx, *rules.TrafficGovernanceRuleRelease) (*rules.TrafficGovernanceRuleRelease, error),
+	publish func(store.Tx, *rules.TrafficGovernanceRuleRelease) error,
+) *apimodel.BatchWriteResponse {
+	pipeline := NewRuleReleasePipeline(
+		lock,
+		getRelease,
+		func(tx store.Tx, rel any) (*rules.TrafficGovernanceRuleRelease, error) {
+			return getActive(tx, rel.(*rules.TrafficGovernanceRuleRelease))
+		},
+		publish,
+		func(req *apimodel.RuleRelease, rule any) *rules.TrafficGovernanceRuleRelease {
+			curData := &rules.RuleRelease{}
+			curData.FromSpec(req)
+			curData.Id = utils.NewUUID()
+			var trafficRule *rules.TrafficGovernanceRule
+			if rule != nil {
+				trafficRule = rule.(*rules.TrafficGovernanceRule)
+			}
+			return &rules.TrafficGovernanceRuleRelease{
+				RuleRelease: *curData,
+				Rule:        trafficRule,
 			}
 		},
 	)
@@ -841,6 +923,38 @@ func (s *Server) StopbetaLosslessRules(ctx context.Context, req []*apimodel.Rule
 	return s.executeRuleStopbetaPipeline(ctx, pipeline, req)
 }
 
+func (s *Server) StopbetaTrafficSecurityRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+	return s.stopbetaTrafficGovernanceRules(ctx, req, s.storage.LockTrafficSecurityRule, s.storage.GetReleaseTrafficSecurityRule, s.storage.InactiveTrafficSecurityRule)
+}
+
+func (s *Server) StopbetaTrafficMirrorRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+	return s.stopbetaTrafficGovernanceRules(ctx, req, s.storage.LockTrafficMirrorRule, s.storage.GetReleaseTrafficMirrorRule, s.storage.InactiveTrafficMirrorRule)
+}
+
+func (s *Server) StopbetaTrafficMockRules(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+	return s.stopbetaTrafficGovernanceRules(ctx, req, s.storage.LockTrafficMockRule, s.storage.GetReleaseTrafficMockRule, s.storage.InactiveTrafficMockRule)
+}
+
+func (s *Server) stopbetaTrafficGovernanceRules(
+	ctx context.Context,
+	req []*apimodel.RuleRelease,
+	lock func(store.Tx, string) (*rules.TrafficGovernanceRule, error),
+	getRelease func(store.Tx, *rules.RuleRelease) (*rules.TrafficGovernanceRuleRelease, error),
+	inactive func(store.Tx, *rules.TrafficGovernanceRuleRelease) error,
+) *apimodel.BatchWriteResponse {
+	pipeline := NewRuleStopbetaPipeline(
+		lock,
+		getRelease,
+		inactive,
+		func(r *apimodel.RuleRelease, rule *rules.TrafficGovernanceRule) *rules.TrafficGovernanceRuleRelease {
+			cur := &rules.RuleRelease{}
+			cur.FromSpec(r)
+			return &rules.TrafficGovernanceRuleRelease{RuleRelease: *cur, Rule: rule}
+		},
+	)
+	return s.executeRuleStopbetaPipeline(ctx, pipeline, req)
+}
+
 // RuleDeletePipeline 用于治理规则的删除发布版本控制
 type RuleDeletePipeline struct {
 	// lock 锁定规则，避免并发修改
@@ -876,6 +990,8 @@ func NewRuleDeletePipeline[
 		case *rules.RateLimitRelease:
 			return v.Active
 		case *rules.LosslessRuleRelease:
+			return v.Active
+		case *rules.TrafficGovernanceRuleRelease:
 			return v.Active
 		default:
 			return false
@@ -1015,6 +1131,29 @@ func (s *Server) DeleteLosslessReleases(ctx context.Context, req []*apimodel.Rul
 		s.storage.GetReleaseLosslessRule,
 		s.storage.DeleteLosslessReleases,
 	)
+	return s.executeRuleDeletePipeline(ctx, pipeline, req)
+}
+
+func (s *Server) DeleteTrafficSecurityReleases(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+	return s.deleteTrafficGovernanceReleases(ctx, req, s.storage.LockTrafficSecurityRule, s.storage.GetReleaseTrafficSecurityRule, s.storage.DeleteTrafficSecurityReleases)
+}
+
+func (s *Server) DeleteTrafficMirrorReleases(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+	return s.deleteTrafficGovernanceReleases(ctx, req, s.storage.LockTrafficMirrorRule, s.storage.GetReleaseTrafficMirrorRule, s.storage.DeleteTrafficMirrorReleases)
+}
+
+func (s *Server) DeleteTrafficMockReleases(ctx context.Context, req []*apimodel.RuleRelease) *apimodel.BatchWriteResponse {
+	return s.deleteTrafficGovernanceReleases(ctx, req, s.storage.LockTrafficMockRule, s.storage.GetReleaseTrafficMockRule, s.storage.DeleteTrafficMockReleases)
+}
+
+func (s *Server) deleteTrafficGovernanceReleases(
+	ctx context.Context,
+	req []*apimodel.RuleRelease,
+	lock func(store.Tx, string) (*rules.TrafficGovernanceRule, error),
+	getRelease func(store.Tx, *rules.RuleRelease) (*rules.TrafficGovernanceRuleRelease, error),
+	deleteRelease func(store.Tx, *rules.TrafficGovernanceRuleRelease) error,
+) *apimodel.BatchWriteResponse {
+	pipeline := NewRuleDeletePipeline(lock, getRelease, deleteRelease)
 	return s.executeRuleDeletePipeline(ctx, pipeline, req)
 }
 

@@ -32,6 +32,7 @@ type (
 	faultdetectRulePredicateCtxKey    struct{}
 	laneRulePredicateCtxKey           struct{}
 	losslessRulePredicateCtxKey       struct{}
+	trafficGovernancePredicateCtxKey  struct{}
 	configGroupPredicateCtxKey        struct{}
 	userPredicateCtxKey               struct{}
 	userGroupPredicateCtxKey          struct{}
@@ -145,6 +146,28 @@ func LoadLosslessRulePredicates(ctx context.Context) []LosslessPredicate {
 	val := ctx.Value(ratelimitRulePredicateCtxKey{})
 	if val != nil {
 		predicates, _ = val.([]LosslessPredicate)
+	}
+	return predicates
+}
+
+func AppendTrafficGovernancePredicate(ctx context.Context, p TrafficGovernancePredicate) context.Context {
+	var predicates []TrafficGovernancePredicate
+
+	val := ctx.Value(trafficGovernancePredicateCtxKey{})
+	if val != nil {
+		predicates, _ = val.([]TrafficGovernancePredicate)
+	}
+
+	predicates = append(predicates, p)
+	return context.WithValue(ctx, trafficGovernancePredicateCtxKey{}, predicates)
+}
+
+func LoadTrafficGovernancePredicates(ctx context.Context) []TrafficGovernancePredicate {
+	var predicates []TrafficGovernancePredicate
+
+	val := ctx.Value(trafficGovernancePredicateCtxKey{})
+	if val != nil {
+		predicates, _ = val.([]TrafficGovernancePredicate)
 	}
 	return predicates
 }

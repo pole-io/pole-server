@@ -57,6 +57,15 @@ var (
 		{
 			Name: cacheapi.LossLessRuleName,
 		},
+		{
+			Name: cacheapi.TrafficSecurityRuleName,
+		},
+		{
+			Name: cacheapi.TrafficMirrorRuleName,
+		},
+		{
+			Name: cacheapi.TrafficMockRuleName,
+		},
 	}
 )
 

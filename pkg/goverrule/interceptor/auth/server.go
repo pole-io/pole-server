@@ -306,6 +306,9 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 		apisecurity.ResourceType_RouteRules:          {},
 		apisecurity.ResourceType_RateLimitRules:      {},
 		apisecurity.ResourceType_LosslessRules:       {},
+		apisecurity.ResourceType_SecurityRules:       {},
+		apisecurity.ResourceType_MirrorRules:         {},
+		apisecurity.ResourceType_MockRules:           {},
 	}
 
 	for i := range req {
@@ -360,6 +363,33 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 			if saveRule != nil {
 				resources[apisecurity.ResourceType_LosslessRules] = append(resources[apisecurity.ResourceType_LosslessRules], authtypes.ResourceEntry{
 					Type:     apisecurity.ResourceType_LosslessRules,
+					ID:       saveRule.ID,
+					Metadata: saveRule.Metadata,
+				})
+			}
+		case apimodel.RuleRelease_TrafficSecurityRules:
+			saveRule := svr.Cache().TrafficSecurity().GetRule(req[i].GetId())
+			if saveRule != nil {
+				resources[apisecurity.ResourceType_SecurityRules] = append(resources[apisecurity.ResourceType_SecurityRules], authtypes.ResourceEntry{
+					Type:     apisecurity.ResourceType_SecurityRules,
+					ID:       saveRule.ID,
+					Metadata: saveRule.Metadata,
+				})
+			}
+		case apimodel.RuleRelease_TrafficMirrorRules:
+			saveRule := svr.Cache().TrafficMirror().GetRule(req[i].GetId())
+			if saveRule != nil {
+				resources[apisecurity.ResourceType_MirrorRules] = append(resources[apisecurity.ResourceType_MirrorRules], authtypes.ResourceEntry{
+					Type:     apisecurity.ResourceType_MirrorRules,
+					ID:       saveRule.ID,
+					Metadata: saveRule.Metadata,
+				})
+			}
+		case apimodel.RuleRelease_TrafficMockRules:
+			saveRule := svr.Cache().TrafficMock().GetRule(req[i].GetId())
+			if saveRule != nil {
+				resources[apisecurity.ResourceType_MockRules] = append(resources[apisecurity.ResourceType_MockRules], authtypes.ResourceEntry{
+					Type:     apisecurity.ResourceType_MockRules,
 					ID:       saveRule.ID,
 					Metadata: saveRule.Metadata,
 				})

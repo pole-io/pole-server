@@ -22,6 +22,7 @@ func TestEnrichResourceDetailHandlesDefaultPolicyResources(t *testing.T) {
 				{StrategyID: "default-policy", ResType: apisecurity.ResourceType_LosslessRules, ResID: "*"},
 				{StrategyID: "default-policy", ResType: apisecurity.ResourceType_MirrorRules, ResID: "*"},
 				{StrategyID: "default-policy", ResType: apisecurity.ResourceType_SecurityRules, ResID: "*"},
+				{StrategyID: "default-policy", ResType: apisecurity.ResourceType_MockRules, ResID: "*"},
 			},
 		})
 	})
@@ -29,6 +30,7 @@ func TestEnrichResourceDetailHandlesDefaultPolicyResources(t *testing.T) {
 	require.Equal(t, "*", resp.Resources.GetLosslessRules()[0].GetId())
 	require.Equal(t, "*", resp.Resources.GetMirrorRules()[0].GetId())
 	require.Equal(t, "*", resp.Resources.GetSecurityRules()[0].GetId())
+	require.Equal(t, "*", resp.Resources.GetMockRules()[0].GetId())
 }
 
 func TestEnrichResourceDetailSkipsUnsupportedResourceType(t *testing.T) {

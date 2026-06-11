@@ -420,6 +420,21 @@ var (
 			saveVal := cacheSvr.Lossless().GetRule(resource.ID)
 			return saveVal != nil
 		},
+		apisecurity.ResourceType_SecurityRules: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.TrafficSecurity().GetRule(resource.ID)
+			return saveVal != nil
+		},
+		apisecurity.ResourceType_MirrorRules: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.TrafficMirror().GetRule(resource.ID)
+			return saveVal != nil
+		},
+		apisecurity.ResourceType_MockRules: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.TrafficMock().GetRule(resource.ID)
+			return saveVal != nil
+		},
 	}
 )
 

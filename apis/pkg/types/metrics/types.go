@@ -116,18 +116,21 @@ func ResourceOfConfigFile(group, name string) string {
 }
 
 const (
-	ActionGetConfigFile           = "GET_CONFIG_FILE"
-	ActionListConfigFiles         = "LIST_CONFIG_FILES"
-	ActionListConfigGroups        = "LIST_CONFIG_GROUPS"
-	ActionPublishConfigFile       = "PUBLISH_CONFIG_FILE"
-	ActionDiscoverInstance        = "DISCOVER_INSTANCE"
-	ActionDiscoverServices        = "DISCOVER_SERVICES"
-	ActionDiscoverRouterRule      = "DISCOVER_ROUTER_RULE"
-	ActionDiscoverRateLimit       = "DISCOVER_RATE_LIMIT"
-	ActionDiscoverCircuitBreaker  = "DISCOVER_CIRCUIT_BREAKER"
-	ActionDiscoverFaultDetect     = "DISCOVER_FAULT_DETECT"
-	ActionDiscoverServiceContract = "DISCOVER_SERVICE_CONTRACT"
-	ActionDiscoverLosslessRule    = "DISCOVER_LOSSLESS_RULE"
+	ActionGetConfigFile               = "GET_CONFIG_FILE"
+	ActionListConfigFiles             = "LIST_CONFIG_FILES"
+	ActionListConfigGroups            = "LIST_CONFIG_GROUPS"
+	ActionPublishConfigFile           = "PUBLISH_CONFIG_FILE"
+	ActionDiscoverInstance            = "DISCOVER_INSTANCE"
+	ActionDiscoverServices            = "DISCOVER_SERVICES"
+	ActionDiscoverRouterRule          = "DISCOVER_ROUTER_RULE"
+	ActionDiscoverRateLimit           = "DISCOVER_RATE_LIMIT"
+	ActionDiscoverCircuitBreaker      = "DISCOVER_CIRCUIT_BREAKER"
+	ActionDiscoverFaultDetect         = "DISCOVER_FAULT_DETECT"
+	ActionDiscoverServiceContract     = "DISCOVER_SERVICE_CONTRACT"
+	ActionDiscoverLosslessRule        = "DISCOVER_LOSSLESS_RULE"
+	ActionDiscoverTrafficSecurityRule = "DISCOVER_TRAFFIC_SECURITY_RULE"
+	ActionDiscoverTrafficMirrorRule   = "DISCOVER_TRAFFIC_MIRROR_RULE"
+	ActionDiscoverTrafficMockRule     = "DISCOVER_TRAFFIC_MOCK_RULE"
 )
 
 type ClientDiscoverMetric struct {

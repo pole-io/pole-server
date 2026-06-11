@@ -35,12 +35,15 @@ import (
 type governanceRuleType string
 
 const (
-	governanceRuleTypeRoute          governanceRuleType = "route"
-	governanceRuleTypeRateLimit      governanceRuleType = "ratelimit"
-	governanceRuleTypeCircuitBreaker governanceRuleType = "circuitbreaker"
-	governanceRuleTypeFaultDetect    governanceRuleType = "faultdetect"
-	governanceRuleTypeLossless       governanceRuleType = "lossless"
-	governanceRuleTypeLaneGroup      governanceRuleType = "lane-group"
+	governanceRuleTypeRoute           governanceRuleType = "route"
+	governanceRuleTypeRateLimit       governanceRuleType = "ratelimit"
+	governanceRuleTypeCircuitBreaker  governanceRuleType = "circuitbreaker"
+	governanceRuleTypeFaultDetect     governanceRuleType = "faultdetect"
+	governanceRuleTypeLossless        governanceRuleType = "lossless"
+	governanceRuleTypeLaneGroup       governanceRuleType = "lane-group"
+	governanceRuleTypeTrafficSecurity governanceRuleType = "traffic-security"
+	governanceRuleTypeTrafficMirror   governanceRuleType = "traffic-mirror"
+	governanceRuleTypeTrafficMock     governanceRuleType = "traffic-mock"
 )
 
 const insertGovernanceRuleSQL = `INSERT INTO governance_rule (

@@ -171,6 +171,15 @@ func (g *DiscoverGRPCServer) handleDiscoverRequest(ctx context.Context, in *apis
 	case apiservice.DiscoverRequest_LOSSLESS:
 		action = metrics.ActionDiscoverLosslessRule
 		out = g.ruleServer.GetLosslessRuleWithCache(ctx, in.Service)
+	case apiservice.DiscoverRequest_TRAFFIC_SECURITY_RULE:
+		action = metrics.ActionDiscoverTrafficSecurityRule
+		out = g.ruleServer.GetTrafficSecurityRuleWithCache(ctx, in.Service)
+	case apiservice.DiscoverRequest_TRAFFIC_MIRROR_RULE:
+		action = metrics.ActionDiscoverTrafficMirrorRule
+		out = g.ruleServer.GetTrafficMirrorRuleWithCache(ctx, in.Service)
+	case apiservice.DiscoverRequest_TRAFFIC_MOCK_RULE:
+		action = metrics.ActionDiscoverTrafficMockRule
+		out = g.ruleServer.GetTrafficMockRuleWithCache(ctx, in.Service)
 	default:
 		out = api.NewDiscoverRoutingResponse(apimodel.Code_InvalidDiscoverResource, in.Service)
 	}

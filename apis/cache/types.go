@@ -51,6 +51,12 @@ const (
 	LaneRuleName = "laneRule"
 	// LossLessRuleName lossless rule config name
 	LossLessRuleName = "lossLessRule"
+	// TrafficSecurityRuleName traffic security rule config name
+	TrafficSecurityRuleName = "trafficSecurityRule"
+	// TrafficMirrorRuleName traffic mirror rule config name
+	TrafficMirrorRuleName = "trafficMirrorRule"
+	// TrafficMockRuleName traffic mock rule config name
+	TrafficMockRuleName = "trafficMockRule"
 	// RateLimitConfigName rate limit config name
 	RateLimitConfigName = "rateLimitConfig"
 	// CircuitBreakerName circuit breaker config name
@@ -90,6 +96,9 @@ const (
 	CacheRateLimit
 	CacheLaneRule
 	CacheLossLess
+	CacheTrafficSecurity
+	CacheTrafficMirror
+	CacheTrafficMock
 	CacheCircuitBreaker
 	CacheUser
 	CacheAuthStrategy
@@ -157,6 +166,12 @@ type CacheManager interface {
 	FaultDetector() FaultDetectCache
 	// Lossless 获取无损规则缓存
 	Lossless() LosslessCache
+	// TrafficSecurity 获取调用鉴权规则缓存
+	TrafficSecurity() TrafficGovernanceCache
+	// TrafficMirror 获取流量镜像规则缓存
+	TrafficMirror() TrafficGovernanceCache
+	// TrafficMock 获取流量 Mock 规则缓存
+	TrafficMock() TrafficGovernanceCache
 	// ServiceContract 获取服务契约缓存
 	ServiceContract() ServiceContractCache
 	// LaneRule 泳道规则
@@ -536,6 +551,21 @@ type (
 		GetLosslessConfig(svcName string, namespace string) *rules.LosslessRule
 		// GetRule 获取规则 ID 获取无损规则
 		GetRule(id string) *rules.LosslessRule
+	}
+)
+
+type (
+	TrafficGovernancePredicate func(context.Context, *rules.TrafficGovernanceRule) bool
+	TrafficGovernanceArgs      struct {
+		Filter map[string]string
+		Offset uint32
+		Limit  uint32
+	}
+	TrafficGovernanceCache interface {
+		Cache
+		Query(context.Context, *TrafficGovernanceArgs) (uint32, []*rules.TrafficGovernanceRule, error)
+		GetRule(id string) *rules.TrafficGovernanceRule
+		GetRulesForService(namespace string, service string) ([]*rules.TrafficGovernanceRule, string)
 	}
 )
 

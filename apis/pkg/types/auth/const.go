@@ -38,13 +38,16 @@ const (
 	UpdateInstance        ServerFunctionName = "UpdateInstance"
 
 	// 服务治理接口
-	DiscoverRouterRule         ServerFunctionName = "DiscoverRouterRule"
-	DiscoverRateLimitRule      ServerFunctionName = "DiscoverRateLimitRule"
-	DiscoverCircuitBreakerRule ServerFunctionName = "DiscoverCircuitBreakerRule"
-	DiscoverFaultDetectRule    ServerFunctionName = "DiscoverFaultDetectRule"
-	DiscoverServiceContract    ServerFunctionName = "DiscoverServiceContract"
-	DiscoverLaneRule           ServerFunctionName = "DiscoverLaneRule"
-	DiscoverLosslessRule       ServerFunctionName = "DiscoverLosslessRule"
+	DiscoverRouterRule          ServerFunctionName = "DiscoverRouterRule"
+	DiscoverRateLimitRule       ServerFunctionName = "DiscoverRateLimitRule"
+	DiscoverCircuitBreakerRule  ServerFunctionName = "DiscoverCircuitBreakerRule"
+	DiscoverFaultDetectRule     ServerFunctionName = "DiscoverFaultDetectRule"
+	DiscoverServiceContract     ServerFunctionName = "DiscoverServiceContract"
+	DiscoverLaneRule            ServerFunctionName = "DiscoverLaneRule"
+	DiscoverLosslessRule        ServerFunctionName = "DiscoverLosslessRule"
+	DiscoverTrafficSecurityRule ServerFunctionName = "DiscoverTrafficSecurityRule"
+	DiscoverTrafficMirrorRule   ServerFunctionName = "DiscoverTrafficMirrorRule"
+	DiscoverTrafficMockRule     ServerFunctionName = "DiscoverTrafficMockRule"
 
 	// 配置接口
 	DiscoverConfigFile      ServerFunctionName = "DiscoverConfigFile"
@@ -231,6 +234,38 @@ const (
 	StopbetaLosslessRules    ServerFunctionName = "StopbetaLosslessRules"
 	DescribeLosslessReleases ServerFunctionName = "DescribeLosslessReleases"
 	DeleteLosslessReleases   ServerFunctionName = "DeleteLosslessReleases"
+)
+
+const (
+	CreateTrafficSecurityRules      ServerFunctionName = "CreateTrafficSecurityRules"
+	DeleteTrafficSecurityRules      ServerFunctionName = "DeleteTrafficSecurityRules"
+	UpdateTrafficSecurityRules      ServerFunctionName = "UpdateTrafficSecurityRules"
+	DescribeTrafficSecurityRules    ServerFunctionName = "DescribeTrafficSecurityRules"
+	PublishTrafficSecurityRules     ServerFunctionName = "PublishTrafficSecurityRules"
+	RollbackTrafficSecurityRules    ServerFunctionName = "RollbackTrafficSecurityRules"
+	StopbetaTrafficSecurityRules    ServerFunctionName = "StopbetaTrafficSecurityRules"
+	DescribeTrafficSecurityReleases ServerFunctionName = "DescribeTrafficSecurityReleases"
+	DeleteTrafficSecurityReleases   ServerFunctionName = "DeleteTrafficSecurityReleases"
+
+	CreateTrafficMirrorRules      ServerFunctionName = "CreateTrafficMirrorRules"
+	DeleteTrafficMirrorRules      ServerFunctionName = "DeleteTrafficMirrorRules"
+	UpdateTrafficMirrorRules      ServerFunctionName = "UpdateTrafficMirrorRules"
+	DescribeTrafficMirrorRules    ServerFunctionName = "DescribeTrafficMirrorRules"
+	PublishTrafficMirrorRules     ServerFunctionName = "PublishTrafficMirrorRules"
+	RollbackTrafficMirrorRules    ServerFunctionName = "RollbackTrafficMirrorRules"
+	StopbetaTrafficMirrorRules    ServerFunctionName = "StopbetaTrafficMirrorRules"
+	DescribeTrafficMirrorReleases ServerFunctionName = "DescribeTrafficMirrorReleases"
+	DeleteTrafficMirrorReleases   ServerFunctionName = "DeleteTrafficMirrorReleases"
+
+	CreateTrafficMockRules      ServerFunctionName = "CreateTrafficMockRules"
+	DeleteTrafficMockRules      ServerFunctionName = "DeleteTrafficMockRules"
+	UpdateTrafficMockRules      ServerFunctionName = "UpdateTrafficMockRules"
+	DescribeTrafficMockRules    ServerFunctionName = "DescribeTrafficMockRules"
+	PublishTrafficMockRules     ServerFunctionName = "PublishTrafficMockRules"
+	RollbackTrafficMockRules    ServerFunctionName = "RollbackTrafficMockRules"
+	StopbetaTrafficMockRules    ServerFunctionName = "StopbetaTrafficMockRules"
+	DescribeTrafficMockReleases ServerFunctionName = "DescribeTrafficMockReleases"
+	DeleteTrafficMockReleases   ServerFunctionName = "DeleteTrafficMockReleases"
 )
 
 // 用户/用户组

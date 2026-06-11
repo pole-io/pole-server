@@ -84,6 +84,7 @@ func (h *HTTPServer) GetConsoleAccessServer(include []string) *restful.WebServic
 			h.addCircuitBreakerRuleAccess(ws)
 		case lossLessAccess:
 			h.addLossLessRuleAccess(ws)
+			h.addTrafficGovernanceRuleAccess(ws)
 		case routingAccess:
 			h.addRoutingRuleAccess(ws)
 			h.addLaneRuleAccess(ws)
@@ -107,6 +108,7 @@ func (h *HTTPServer) addDefaultAccess(ws *restful.WebService) {
 	h.addCircuitBreakerRuleAccess(ws)
 	h.addFaultDetectRuleAccess(ws)
 	h.addLossLessRuleAccess(ws)
+	h.addTrafficGovernanceRuleAccess(ws)
 }
 
 // GetClientAccessServer get client access server

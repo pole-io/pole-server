@@ -100,6 +100,30 @@ func (s *Server) GetLosslessRuleWithCache(ctx context.Context, req *apiservice.S
 	return s.nextSvr.GetLosslessRuleWithCache(ctx, req)
 }
 
+func (s *Server) GetTrafficSecurityRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+	resp := goverrule.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_TRAFFIC_SECURITY_RULE)
+	if !s.commonCheckDiscoverRequest(req, resp) {
+		return resp
+	}
+	return s.nextSvr.GetTrafficSecurityRuleWithCache(ctx, req)
+}
+
+func (s *Server) GetTrafficMirrorRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+	resp := goverrule.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_TRAFFIC_MIRROR_RULE)
+	if !s.commonCheckDiscoverRequest(req, resp) {
+		return resp
+	}
+	return s.nextSvr.GetTrafficMirrorRuleWithCache(ctx, req)
+}
+
+func (s *Server) GetTrafficMockRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+	resp := goverrule.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_TRAFFIC_MOCK_RULE)
+	if !s.commonCheckDiscoverRequest(req, resp) {
+		return resp
+	}
+	return s.nextSvr.GetTrafficMockRuleWithCache(ctx, req)
+}
+
 func (s *Server) commonCheckDiscoverRequest(req *apiservice.Service, resp *apiservice.DiscoverResponse) bool {
 	if s.nextSvr.Cache() == nil {
 		resp.Code = uint32(apimodel.Code_ClientAPINotOpen)
