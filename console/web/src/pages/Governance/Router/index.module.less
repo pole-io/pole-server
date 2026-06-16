@@ -54,6 +54,175 @@
   }
 }
 
+.laneDetailStack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.laneRulesPanel {
+  margin: 0 24px 24px;
+  border: 1px solid #e7ebf0;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.laneRulesHeader {
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.laneRulesTitle {
+  color: #1f2937;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+}
+
+.laneRulesHint {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 4px;
+}
+
+.laneRuleTable {
+  padding: 0 20px 20px;
+  min-width: 0;
+}
+
+.toolBar {
+  display: flex;
+  justify-content: flex-start;
+  padding: 14px 0 12px;
+}
+
+.laneRuleList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.laneRuleItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: flex-start;
+  border: 1px solid #e7ebf0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: #fff;
+}
+
+.laneRuleMain {
+  min-width: 0;
+}
+
+.laneRuleIdentity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.laneRuleName {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.laneRuleDescription {
+  color: #4e5969;
+  font-size: 13px;
+  line-height: 20px;
+  margin-top: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.laneRuleMetaGrid {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(260px, 1.3fr);
+  gap: 10px 24px;
+  margin-top: 12px;
+}
+
+.laneRuleMeta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.laneRuleMetaLabel {
+  color: #8b93a3;
+  flex: none;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.laneRuleActions {
+  flex: none;
+}
+
+.laneRuleEmpty {
+  border: 1px dashed #d8dde6;
+  border-radius: 8px;
+  color: #8b93a3;
+  font-size: 13px;
+  line-height: 22px;
+  padding: 28px 16px;
+  text-align: center;
+}
+
+.timeCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timeRow {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.timeLabel {
+  background: #f2f4f8;
+  border-radius: 3px;
+  color: #8b95a5;
+  flex: none;
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 5px;
+}
+
+.timeValue {
+  color: #4e5969;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+@media (max-width: 860px) {
+  .laneRuleItem {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .laneRuleActions {
+    justify-self: flex-start;
+  }
+
+  .laneRuleMetaGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 1180px) {
   .ruleWorkspace {
     grid-template-columns: minmax(0, 1fr);

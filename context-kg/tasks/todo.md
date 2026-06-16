@@ -2,11 +2,334 @@
 title: 任务计划与 Review
 tags: [tasks, todo]
 links: [lessons]
-updated: 2026-06-10
+updated: 2026-06-16
 sources: 0
 ---
 
+# 任务计划与 Review
+
+## specification 治理规则语义收敛
+
+- [x] 检查 `../specification` 中治理规则 proto、生成脚本和当前分支状态
+- [x] 删除治理规则最外层 `namespace/service` 字段，并收敛 `metadata` 为规则标签
+- [x] 补充并确认流量镜像按接口维度配置能力
+- [x] 重新生成 specification 产物并运行校验
+- [x] 记录 review 与验证结果
+
+## specification tag 与 control-plane 引用更新
+
+- [x] 确认 specification 历史 tag 格式
+- [x] 基于 specification 当前提交创建并推送新 tag
+- [x] 更新 pole-control-plane 对 specification 的正式版本引用
+- [x] 验证 go.mod/go.sum 与构建解析
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- specification 历史最新 tag 为 `v0.1.0-ALPHA.25`，本次按同一格式发布 `v0.1.0-ALPHA.26`。
+- control-plane 当前存在本地 `replace github.com/pole-io/specification => /Users/.../specification`，正式引用更新时应删除本地路径。
+- 按 lessons 约束，本次不跑 `go mod tidy`，只更新 specification 版本并下载对应模块校验。
+
+当前进展（control-plane 引用更新）：
+
+- `../specification` 已基于 `085f056 feat(traffic): add API interface scope to MirrorSource` 创建并推送 tag `v0.1.0-ALPHA.26`。
+- `go.mod` 已将 `github.com/pole-io/specification` 从 `v0.1.0-ALPHA.25` 更新到 `v0.1.0-ALPHA.26`，并删除本地 `replace`。
+- `go.sum` 已写入 `v0.1.0-ALPHA.26` 与 `v0.1.0-ALPHA.26/go.mod` 校验和。
+- control-plane 已同步适配治理规则 spec 破坏性字段删除：路由、限流、熔断、故障探测、无损、流量鉴权/镜像/Mock 不再读写已删除的顶层 `namespace/service` 字段。
+
+验证（control-plane 引用更新）：
+
+- `git ls-remote --tags origin v0.1.0-ALPHA.26` 在 `../specification` 可查到远端 tag。
+- `go list -m github.com/pole-io/specification` 返回 `github.com/pole-io/specification v0.1.0-ALPHA.26`。
+- `go test ./pkg/goverrule/... ./pkg/cache/rules/... ./plugin/store/mysql/...` 通过。
+- `go test ./plugin/apiserver/eurekaserver ./test/suit -run TestDoesNotExist` 通过。
+- `go test ./... -run TestDoesNotExist` 通过，完成全仓 Go 编译级验证。
+- `git diff --check -- go.mod go.sum apis/pkg/types/rules pkg/goverrule pkg/cache/rules plugin/store/mysql context-kg/tasks/todo.md` 通过。
+
+Review（control-plane 引用更新）：
+
+- 本轮没有执行 `go mod tidy`，避免引入与 spec tag 更新无关的依赖整理。
+- 本轮仅推送了 `specification` 新 tag；control-plane 代码仍留在当前工作区，尚未提交或推送。
+- rate limit 新 spec 已无被治理服务顶层字段，当前 control-plane 只能保留内部 `ServiceID` 路径；后续需要按统一治理规则模型补正式 create/update 入参归属来源。
+
+当前判断：
+
+- 用户进一步纠正为：治理规则最外层对象不应保留 `namespace/service` 字段，也不要用注释解释迁移关系，避免误导使用方继续依赖顶层归属字段。
+- 用户继续纠正为：治理规则删除字段后不应保留 `reserved`，字段号可以重新从 1 开始连续整理。
+- spec 中不应通过 metadata 表达规则归属；metadata 应收敛为规则标签。
+- 流量镜像需要像 Mock 一样在来源条件里支持接口维度配置，当前 `MirrorSource.api` 已保留并完成产物同步。
+
+当前进展：
+
+- `../specification/api/v1/traffic_manage/mirror.proto`：删除 `TrafficMirror` 顶层 `namespace/service`，保留 `MirrorSource.api`。
+- `mock.proto`、`traffic_security.proto`、`ratelimit.proto`、`lossless.proto`：删除顶层 `namespace/service`。
+- `router.proto`、`circuitbreaker.proto`、`fault_detector.proto`：删除顶层 `namespace`。
+- `lane.proto`：无顶层 `namespace/service` 可删，仅将 metadata 文案收敛为泳道组标签。
+- 已删除治理规则 proto 中的 `reserved`，并将顶层规则消息字段号重新压紧。
+- 已重新生成 `source/go` 产物，并同步 `source/rust/pole-specification/proto` 与 `src/v1.rs`。
+
+验证：
+
+- `cd ../specification/source/go && bash build.sh` 通过。
+- `cd ../specification/source/rust && bash build.sh` 通过，Rust release build 成功。
+- 脚本检查 `TrafficMirror`、`TrafficMock`、`TrafficSecurityRule`、`RateLimit`、`RouteRule`、`CircuitBreakerRule`、`FaultDetectRule`、`LosslessRule` 顶层 Go struct 不再包含 `Namespace` / `Service` 字段。
+- `rg -n "reserved" api/v1/traffic_manage api/v1/fault_tolerance api/v1/security -g '*.proto'` 无治理规则 reserved 残留。
+- `git diff --check` 在 `../specification` 通过。
+- `python3 ~/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 在 control-plane 通过。
+
+Review：
+
+- 本次只收敛治理规则最外层字段和规则标签语义，不删除内部 source/destination/target/routing_config 里的服务定位字段。
+- 字段删除和重编号属于 spec 破坏性变更；本轮按用户 review 意见优先保证模型干净，不保留 reserved 和旧字段号空洞。
+- 流量镜像接口维度通过 `MirrorSource.api` 表达，与 Mock 的接口范围语义保持一致。
+
+## Context-KG Skill 整理
+
+- [x] 核对 `context-kg` schema、index 和仓库级 AGENTS 约束
+- [x] 创建本地 Codex skill，固化知识库 ingest/query/lint/restructure 流程
+- [x] 验证 skill 元数据、触发描述和基本结构
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 该能力适合沉淀为本地 Codex skill，放在 `~/.codex/skills` 下方便后续自动发现和显式调用。
+- Skill 需要保留高层流程，并要求每次以目标仓库的 `context-kg/_meta/schema.md` 为准，避免把当前仓库规则硬编码成不可迁移模板。
+- 对长期知识的落点、frontmatter、双向链接、index/log 同步和 lint 检查，应作为 skill 的核心 guardrail。
+
+当前进展：
+
+- 新增本地 skill：`~/.codex/skills/context-kg-maintainer/SKILL.md`。
+- 新增结构校验脚本：`~/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py`。
+- 修正 `agents/openai.yaml` 的默认调用 prompt，避免 shell 展开导致 `$context-kg-maintainer` 丢失。
+- 使用 lint 脚本发现并修复当前知识库部分页面 `title` 与首个 H1 不一致的问题。
+- 追加 `_meta/log.md` 的 `lint` 操作记录。
+
+验证：
+
+- `python3 ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py ~/.codex/skills/context-kg-maintainer` 通过。
+- `python3 ~/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过，当前 27 个 Markdown 页面、27 个唯一页面名，frontmatter、链接、index 基础检查通过。
+- `python3 -m py_compile ~/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py` 通过。
+- `git diff --check -- context-kg` 通过。
+
+Review：
+
+- Skill 放在用户级 `~/.codex/skills`，不把个人 Codex skill 目录纳入当前仓库提交范围。
+- Skill 内只固化通用流程和校验脚本，实际落点仍以目标仓库自己的 `AGENTS.md` 和 `context-kg/_meta/schema.md` 为准。
+- 本轮对仓库内 `context-kg` 的代码级改动仅限任务记录、操作日志和标题契约修复，没有触碰业务代码。
+
+## 一键重构建并 all 模式启动脚本
+
+## 沙箱兼容性优化
+
+- [x] 确认前台 `exec` 常驻服务对 Codex/Claude 工具调用不友好
+- [x] 增加 detached 启动模式，优先使用 `tmux`，并提供 `setsid/nohup` 兜底
+- [x] 保留默认前台模式，避免影响用户真实终端使用习惯
+- [x] 更新 `AGENTS.md` 和 lessons，说明终端/agent 两种启动方式
+- [x] 验证脚本语法、detached 启动、8080/8090 端口和页面资源
+
+当前判断：
+
+- 当前脚本最后使用 `exec ... start --mode all` 是正确的终端前台运行方式，但在 Codex/Claude 这类工具调用中会导致命令永不返回。
+- agent 环境更适合把完整构建与启动流程放进 detached `tmux` 会话；如果没有 `tmux`，再退到 `setsid/nohup`。
+- 默认行为仍应保持前台启动，避免用户在普通终端执行脚本时看不到实时日志。
+
+当前进展：
+
+- `scripts/rebuild-start-all.sh` 新增 `--detach[=auto|tmux|nohup]`、`--foreground`、`--no-stop-existing`、`--force-kill` 和 `--help`。
+- 默认不传参数仍在当前终端前台构建并 `exec` all 模式服务。
+- `--detach` 默认优先使用 `tmux`，会创建/替换 `POLE_TMUX_SESSION`（默认 `pole-control-plane`），并在子会话里执行完整构建与启动。
+- 没有 `tmux` 时可使用 `--detach=nohup` 或 `POLE_DETACH_BACKEND=nohup`，脚本会尝试 `setsid`，否则退到 `nohup`，日志写入 `POLE_LOG_PATH`。
+- 停旧进程逻辑继续使用 8080/8090 端口识别 Pole 进程，并增加 `POLE_FORCE_KILL=1` / `--force-kill` 适配进程元数据不可见的沙箱。
+
+验证：
+
+- `bash -n scripts/rebuild-start-all.sh` 通过。
+- `./scripts/rebuild-start-all.sh --help` 输出参数说明正常。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 立即返回，不阻塞当前工具调用。
+- `tmux capture-pane -pt pole-control-plane:0 -S -220` 显示 detached 子会话完成前端构建、Go 构建、配置生成，并启动到 `finish starting server`。
+- all 模式当前 PID `67682`，8080/8090 均监听正常。
+- `curl -sSI http://127.0.0.1:8080/` 返回 `HTTP/1.1 200 OK`。
+- 首页引用资源 `assets/index.b7f2ccfc.js` 与 `assets/style.0ae76e8d.css` 均返回 `HTTP/1.1 200 OK`。
+- `git diff --check -- scripts/rebuild-start-all.sh AGENTS.md context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+
+Review：
+
+- 这次保留了脚本的终端前台语义，只把 agent/sandbox 长进程问题作为显式 detached 模式处理。
+- `tmux` 是首选，因为它能让服务生命周期脱离 Codex/Claude 的单次 shell 调用；`setsid/nohup` 只是兼容性兜底。
+- `--detach` 外层只负责派生会话并返回，真正 build 和 start 仍走同一个脚本，避免维护两套启动流程。
+
+- [x] 核对现有前端构建、Go 构建和 all 模式启动配置
+- [x] 新增本地脚本，串联 console build、Go build、临时配置生成和 all 模式启动
+- [x] 在 `AGENTS.md` 补充脚本使用方式
+- [x] 执行脚本验证构建、端口监听和页面入口
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- `deploy/conf/pole-server.yaml` 含 `##DB_USER##` 等占位符，不能直接作为本地 all 模式启动配置。
+- 脚本应先生成 `/tmp/pole-server-all.yaml`，替换本地 MySQL 配置，并把 logger/apiservers/webPath 指向仓库内的真实路径。
+- 为避免端口冲突，脚本默认只清理占用 8080/8090 的旧 Pole 进程；其它进程不主动处理。
+
+当前进展：
+
+- 新增 `scripts/rebuild-start-all.sh`，默认执行 `console/web` 的 `npm run build`、构建 `/tmp/pole-control-plane`、生成 `/tmp/pole-server-all.yaml`，最后执行 `start --mode all`。
+- 脚本默认使用 `MYSQL_USER=root`、`MYSQL_PWD=123456`、`MYSQL_HOST=127.0.0.1:3306`，可通过环境变量覆盖。
+- 脚本默认清理占用 8080/8090 的旧 Pole 进程；设置 `POLE_STOP_EXISTING=0` 可跳过清理。
+- `AGENTS.md` 常用命令已补充一键构建并 all 模式启动入口。
+
+验证：
+
+- `bash -n scripts/rebuild-start-all.sh` 通过。
+- `git diff --check -- scripts/rebuild-start-all.sh AGENTS.md context-kg/tasks/todo.md` 通过。
+- 通过 `tmux new-session -d -s pole-control-plane './scripts/rebuild-start-all.sh'` 真实执行脚本，前端构建、Go 构建、配置生成和 all 模式启动均完成。
+- all 模式当前 PID `73678`，8080/8090 均监听正常。
+- `curl -sSI http://127.0.0.1:8080/` 返回 `HTTP/1.1 200 OK`。
+- 首页引用新资源 `assets/index.b7f2ccfc.js` 与 `assets/style.0ae76e8d.css`，两个静态资源均返回 `HTTP/1.1 200 OK`。
+
+Review：
+
+- 本次只新增本地开发脚本和运行文档，不改变 release 打包脚本、后端启动模式或配置 schema。
+- 脚本使用临时配置文件承接本地启动差异，避免直接改写 `deploy/conf/pole-server.yaml`。
+- 对端口占用的处理限定在 Pole 进程，避免误杀其它本地服务。
+
+# 治理工作台流量治理筛选文案收敛
+
+- [x] 根据用户截图确认筛选按钮文案应为 `鉴权 / 镜像 / Mock`
+- [x] 更新工作台类型筛选、流量治理通用类型名和独立页面 tab
+- [x] 构建前端并验证 8080 页面按钮文案
+- [x] 记录 review、验证结果和纠正经验
+
+当前判断：
+
+- 用户截图中的 `调用鉴权 / 流量镜像 / 流量 Mock` 在筛选区过长，和其它单/双字治理类型不一致。
+- 文案应收敛为 `鉴权 / 镜像 / Mock`，但底层资源类型、接口路径和 spec 语义不变。
+
+验证：
+
+- `cd console/web && npm run build` 通过，保留既有 Browserslist 过期提示和 Vite 大 chunk 警告。
+- all 模式已重启，当前进程 PID `59770`，8080/8090 均监听正常。
+- Playwright 在 `http://127.0.0.1:8080/governance/workbench` 验证筛选按钮：`hasShort=true`、`hasLongButton=false`、`matchingButtons=["鉴权","镜像","Mock"]`。
+
+Review：
+
+- 本轮只收敛工作台类型筛选、流量治理通用类型名和独立页面 tab 文案，不改 `traffic-security`、`traffic-mirror`、`traffic-mock` 等资源类型值和接口结构。
+- 样例规则描述里仍可能包含“调用鉴权样例 / 流量镜像样例 / 流量 Mock 样例”，这是规则描述文本，不属于筛选按钮文案。
+
+# 泳道组批量样例数据补充
+
+- [x] 确认当前 all 模式进程和 lane rule 创建接口可用
+- [x] 查询 `spec-check-lane-group` 当前已有泳道规则，避免重复创建
+- [x] 通过真实 API 批量创建多个泳道规则
+- [x] 刷新 8080 页面验证泳道列表滚动效果
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 用户希望查看泳道列表多条数据下的实际滚动/翻页效果，应保留数据用于页面观察。
+- 本次只追加本地样例泳道规则，不改代码和 schema，不直接写数据库。
+
+当前进展：
+
+- 通过 `POST /naming/v1/lane/groups/rules` 向 `spec-check-lane-group` 追加 12 条样例泳道：`demo-lane-canary`、`demo-lane-green`、`demo-lane-gray`、`demo-lane-beta`、`demo-lane-gold`、`demo-lane-silver`、`demo-lane-tenant-a`、`demo-lane-tenant-b`、`demo-lane-tenant-c`、`demo-lane-mobile`、`demo-lane-web`、`demo-lane-shadow`。
+- 当前 `spec-check-lane-group` 共 13 条泳道规则，包含原有 `blue-lane`。
+
+验证：
+
+- 8090 管理端查询 `spec-check-lane-group` 返回 `rule_count=13`。
+- 8080 治理工作台刷新后，泳道组列表行展示 `13 个泳道 / 2 个目标服务`。
+- 8080 进入 `spec-check-lane-group` 详情后，DOM 指标为 `itemCount=13`、`drawerCanScroll=true`、`listHeight=1628`。
+- Playwright 截图 `.playwright-cli/page-2026-06-14T13-28-22-006Z.png` 展示列表上半段，`.playwright-cli/page-2026-06-14T13-28-26-384Z.png` 展示滚动后的中后段。
+
+Review：
+
+- 本次只是本地样例数据追加，未提交代码改动。
+- 当前子泳道列表是抽屉内连续滚动，不是分页控件；多条数据已足够观察滚动效果。
+
+# 泳道组泳道列表抽屉展示优化
+
+- [x] 记录用户截图反馈，确认问题集中在泳道组详情下的泳道列表
+- [x] 定位 `LaneRuleTable` 当前宽表格、固定操作列和零值时间展示根因
+- [x] 将泳道列表改为抽屉友好的紧凑规则列表
+- [x] 构建前端并用 8080 真实页面验证泳道列表无横向滚动、操作列不挤压
+- [x] 记录 review、验证结果和纠正经验
+
+当前判断：
+
+- 截图中泳道列表处于详情抽屉内，当前实现仍使用宽表格，列总宽大于内容区，导致横向滚动条、操作列被挤窄、表头“操作”竖排。
+- 泳道规则是 LaneGroup JSON 聚合内的子对象，当前样例子规则时间为后端零值 `0001-01-01 00:00:00`，前端直接展示会制造噪音。
+- 修复应优先让抽屉里的每条泳道能快速扫描：名称、启用状态、描述、泳道标签、匹配条件和操作，不应为了普通表格列而牺牲可读性。
+
+当前进展：
+
+- `LaneRuleTable` 已从 TDesign 宽表格改为抽屉内紧凑规则列表。
+- 每条泳道现在展示：名称、启用状态、描述、泳道标签、匹配条件和右侧图标操作。
+- 后端零值时间（如 `0001-01-01`）不再展示；只有真实创建/修改时间才显示时间元信息。
+
+验证：
+
+- `cd console/web && npm run build` 通过，保留既有 Browserslist 和 Vite 大 chunk 警告。
+- 已重启 tmux session `pole-control-plane`，all 模式进程 PID `22146`，8080/8090 均监听正常。
+- Playwright CLI 使用 8080 真实页面登录 `admin/admin123`，打开 `http://127.0.0.1:8080/governance/workbench` 并进入 `spec-check-lane-group`。
+- DOM 指标验证：`oldTableCount=0`，`drawerOverflow=false`，`panelOverflow=false`，`listOverflow=false`，`itemOverflow=false`，`hasZeroTimeText=false`，`hasActionHeader=false`。
+- 视觉截图 `.playwright-cli/page-2026-06-14T10-09-58-530Z.png` 显示泳道列表为紧凑行：`blue-lane`、`启用`、描述、`lane: blue`、匹配条件和右侧编辑/删除图标均在同一抽屉宽度内。
+
+Review：
+
+- 本轮只调整泳道组详情下的子泳道列表展示，不改泳道组编辑、泳道规则保存、发布、后端接口或数据结构。
+- 根因是抽屉内复用普通表格列模型导致信息密度和宽度不匹配；改为规则列表后，扫描重点更清楚，也避免了固定操作列挤压。
+
+# AGENTS.md 最新协作规则同步
+
+- [x] 核对根目录 `AGENTS.md` 当前内容与用户提供的最新协作规则差异
+- [x] 补齐全局工作流、任务管理、提问协议和核心原则
+- [x] 补齐程序运行方式、启动模式和常用本地启动命令
+- [x] 验证 Markdown 格式与变更范围
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 当前根目录 `AGENTS.md` 已包含项目级常用命令、架构、插件、知识库和 import 格式约定。
+- 缺失的是本次用户提供的全局协作规则：默认计划模式、子代理策略、自我改进闭环、完成前验证、优雅方案检查、自主修复缺陷、任务管理约束、苏格拉底式提问协议和中文输出要求。
+- 用户追问后确认，“怎么 run 程序”原先只写了 test/data 后端启动命令，不够完整；需要补充 all/server/console 三种模式和 `--mode` 优先级。
+- 本次只同步协作说明文档，不改业务代码或知识库长期页面。
+
+验证：
+
+- `git diff --check -- AGENTS.md context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `rg -n '全局协作规则|默认进入计划模式|子代理策略|自我改进闭环|完成前必须验证|苏格拉底式提问协议|语言要求|运行模式|--mode all|--mode server|--mode console' AGENTS.md` 命中新增协作规则和运行方式关键段落。
+
+Review：
+
+- `AGENTS.md` 已补齐用户提供的最新全局协作规则，并保留原有项目级常用命令、架构、知识库和 import 格式约定。
+- `AGENTS.md` 已补充本地后端启动、完整 all 模式、server-only 和 console-only 启动命令，并说明 `test/data` 配置默认 `server`、部署配置默认 `all`、CLI `--mode` 高于 YAML。
+- `context-kg/tasks/todo.md` 在本轮开始前已有大量未提交任务记录；本轮只新增并维护顶部的 `AGENTS.md 最新协作规则同步` 小节，不整理其它历史内容。
+
 # 治理规则统一存储与缓存实现
+
+# Console Logo 品牌替换
+
+- [x] 定位当前 TDesign Starter logo 的 SVG 和使用入口
+- [x] 设计并替换展开态 / 折叠态 SVG logo
+- [x] 构建并用 8080 页面验证侧边栏展开态和折叠态
+
+当前进展：
+
+- 当前侧边栏展开态使用 `console/web/src/assets/svg/assets-logo-full.svg`，折叠态使用 `console/web/src/assets/svg/assets-t-logo.svg`。
+- 登录页头也复用 `assets-logo-full.svg`，所以替换全量 SVG 后登录页头会同步去掉 TDesign Starter 品牌。
+- 本轮采用同源双形态：展开态显示 `Pole.IO`，折叠态只显示抽象 `P` 标记，保持现有 184x32 / 32x32 尺寸，减少布局影响。
+- 用户纠正后，主品牌文案从 `Pole Console` 收敛为 `Pole.IO`，侧边栏底部版本文案也同步改为 `Pole.IO ${version}`。
+
+验证：
+
+- `npm run build` 在 `console/web` 通过，保留 Vite 既有 browserslist/chunk 体积警告。
+- all 模式已重启，当前 PID `51748`，8080 返回 HTTP 200，当前资源 hash 为 `/assets/index.339d7359.js` 和 `/assets/style.ab32ff84.css`。
+- 8080 展开态验证：logo SVG `aria-label=Pole.IO`，尺寸 `184x32`，SVG 文本为 `Pole.IO`，页面无 `Pole Console` / `TDesign Starter`。
+- 8080 折叠态验证：侧边栏宽度 `64px`，logo SVG `aria-label=Pole.IO`，尺寸 `32x32`，页面无 `Pole Console` / `TDesign Starter`。
+- `git diff --check -- console/web/src/assets/svg/assets-logo-full.svg console/web/src/assets/svg/assets-t-logo.svg console/web/src/layouts/components/Menu.tsx context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+
+Review：
+
+- 本轮只替换控制台品牌 SVG 与侧边栏底部版本文案，不改登录页其它 TDesign 模板文案，例如注册页的服务协议提示。
 
 # 按 specification 构造治理规则检查数据
 
@@ -2307,6 +2630,87 @@ Review：
 - `git diff --check` 通过。
 - `rg -n "^(<<<<<<<|=======|>>>>>>>)" .` 无输出。
 
+# 调用鉴权基础信息布局优化
+
+- [x] 按 frontend-skill 的 app UI 原则重新审视调用鉴权编辑态
+- [x] 将规则标签并入基础信息，移除独立规则标签卡片
+- [x] 将基础信息重排为身份、开关/优先级、作用范围/标签、描述的配置面板
+- [x] 构建前端并重启 all 模式
+- [x] 在 8080 验证查看态和编辑态布局、无横向溢出
+
+当前判断：
+
+- 规则标签是基础信息的一部分，不应和鉴权策略并列成为单独大卡片。
+- 编辑态不应平均铺满两列大输入框；按治理配置的扫描方式，应把规则名称、开关、优先级、作用范围、标签、描述组织成有主次的栅格。
+
+验证：
+
+- `cd console/web && npm run build` 通过，保留既有 `--localstorage-file`、Browserslist 和 Vite 大 chunk 警告。
+- 已重启 tmux session `pole-control-plane`，all 模式进程 PID `27547`，8080/8090 均监听正常。
+- 8080 首页返回新资源 `/assets/index.d0a68669.js` 和 `/assets/style.904bc764.css`，两个静态资源均返回 200。
+- 浏览器验证调用鉴权查看态：`基础信息` 内包含 `规则标签`，独立 `规则标签` section 数量为 0，抽屉无横向溢出。
+- 浏览器验证调用鉴权编辑态：第一行规则名称/启用状态/优先级，第二行命名空间/服务名称/规则标签，描述整行展示；独立 `规则标签` section 数量为 0，抽屉 `bodyOverflow=false`。
+
+Review：
+
+- 本轮只调整调用鉴权共用基础信息布局和标签归属，不改规则保存结构、发布逻辑或后端接口。
+
+# 新增流量治理规则标签文案修正
+
+- [x] 确认新增流量治理详情中 `metadata` 的产品文案应为规则标签
+- [x] 将详情区标题、空态和新增按钮从元数据改为规则标签
+- [x] 构建前端并重启 all 模式
+- [x] 在 8080 验证调用鉴权详情不再展示元数据文案
+
+当前判断：
+
+- 用户纠正“原数据是规则标签”，这里应按治理规则既有产品语言展示为规则标签。
+- 底层字段仍是 `metadata`，本轮只改用户可见文案和任务记录，不改变提交 payload。
+
+验证：
+
+- `cd console/web && npm run build` 通过，保留既有 `--localstorage-file`、Browserslist 和 Vite 大 chunk 警告。
+- 已重启 tmux session `pole-control-plane`，all 模式进程 PID `15050`，8080/8090 均监听正常。
+- 8080 首页返回新资源 `/assets/index.be413cc5.js` 和 `/assets/style.05d4f912.css`，两个静态资源均返回 200。
+- 浏览器验证调用鉴权查看态和编辑态：存在 `规则标签` / `添加规则标签`，不存在 `元数据`，保存/撤销正常，抽屉无横向溢出。
+
+Review：
+
+- 本轮只修正文案，不改底层 `metadata` 字段和保存结构。
+
+# 调用鉴权编辑态对齐限流熔断规则设计
+
+- [x] 对照限流、熔断规则块的信息架构和交互样式
+- [x] 将调用鉴权策略块改为规则块 header 摘要 + 可折叠正文
+- [x] 将调用鉴权正文拆成接口范围、鉴权结果、匹配条件分区
+- [x] 构建前端并重启 all 模式
+- [x] 在 8080 验证调用鉴权、流量镜像、流量 Mock 和 9 类巡检无回归
+
+当前判断：
+
+- 用户反馈调用鉴权的整体设计应参考限流、熔断；当前调用鉴权虽然解决了横向拥挤，但规则块仍偏普通表单堆叠。
+- 限流、熔断的成熟模式是规则块 header 展示标题、摘要和动作，正文按业务区块组织，并支持折叠，调用鉴权应复用这套交互语言。
+
+当前进展：
+
+- 调用鉴权策略块已改为和限流/熔断一致的规则块结构：左侧折叠按钮、`规则 [n]` 标题、策略摘要，右侧保留命中动作选择和删除操作。
+- 未命中默认动作从普通 `FormItem` 改成策略概览条，说明默认放通/拒绝的兜底语义。
+- 策略正文拆成 `接口范围`、`鉴权结果`、`匹配条件` 三个分区，分区内保留简短帮助文案和原有字段控件。
+
+验证：
+
+- `cd console/web && npm run build` 通过，保留既有 `--localstorage-file`、Browserslist 和 Vite 大 chunk 警告。
+- 已重启 tmux session `pole-control-plane`，all 模式进程 PID `8020`，8080/8090 均监听正常。
+- 8080 首页返回新资源 `/assets/index.a0178176.js` 和 `/assets/style.05d4f912.css`，两个静态资源均返回 200。
+- 浏览器验证调用鉴权查看态：存在 `未命中默认动作`、`规则 [1]`、策略摘要、`接口范围 / 鉴权结果 / 匹配条件` 分区，抽屉无横向溢出。
+- 浏览器验证调用鉴权编辑态：保存/撤销正常，策略块有折叠按钮，正文分区完整，抽屉 `bodyOverflow=false`、`outsideBodyCount=0`。
+- 浏览器 9 类回归巡检通过：路由、限流、熔断、探测、无损、泳道、调用鉴权、流量镜像、流量 Mock 均能进入编辑态，保存/撤销存在，抽屉正文无横向溢出。
+
+Review：
+
+- 本次只调整调用鉴权规则块的产品布局，不改变后端接口、保存 payload、发布逻辑和流量镜像/Mock 的业务字段。
+- 调用鉴权现在和限流、熔断一样以规则块为主视觉单元，避免退回普通表单堆叠。
+
 ## 相关页面
 
 - [[lessons]]
@@ -2340,6 +2744,40 @@ Review：
 注意：
 
 - 当前工作区在本次修复前已经存在大量 A2A、console 和 context-kg 重组相关未提交改动；本轮只围绕上述测试失败点修改，不整理无关变更。
+
+# specification 流量治理规则最终产品决策
+
+- [x] 确认 `../specification` 当前分支、工作区状态和 proto 结构
+- [x] 梳理最终产品决策：流量镜像、流量 Mock、调用鉴权规则命名与语义
+- [x] 在 `../specification` 独立分支修改 proto 定义
+- [x] 运行 spec 仓库可用的生成、格式化和测试校验
+- [x] 提交并尝试创建 draft PR 供 review
+- [x] 记录最终 review、验证结果和剩余风险
+
+当前进展：
+
+- `../specification` 已从干净的 `develop` 创建 `codex/traffic-security-spec` 分支。
+- 最终产品决策：删除 `BlockAllowListRule` 命名和黑白名单主模型，新增 `TrafficSecurityRule`，通过 `TrafficSecurityPolicy.action` 表示命中后 `ALLOW/DENY`，通过 `default_action` 表示未命中默认行为。
+- 新增 `TrafficMock` 一等治理规则，保留 `TrafficMirror` 并补齐根作用域、启用开关和优先级。
+- `RuleRelease.RuleType` 新增 `TrafficMockRules`；`ResourceType` / `StrategyResources` 新增 `MockRules` / `mock_rules`。
+- `DiscoverRequest` / `DiscoverResponse` 下发类型改为 `TRAFFIC_SECURITY_RULE`，并新增 `TRAFFIC_MIRROR_RULE`、`TRAFFIC_MOCK_RULE`；响应字段改为 `trafficSecurityRules`、`trafficMirrorRules`、`trafficMockRules`。
+
+验证：
+
+- `bash build.sh` 在 `../specification/source/go` 通过，已重新生成 Go protobuf。
+- `go test ./...` 在 `../specification` 通过。
+- `bash build.sh` 在 `../specification/source/rust` 通过。
+- `PROTOC=/Users/chuntao.liao/Github/pole-io/specification/source/protoc/protoc-darwin-arm64/bin/protoc cargo test --release` 在 `../specification/source/rust/pole-specification` 通过。
+- `git diff --check` 在 `../specification` 通过。
+- `rg -n "BlockAllow|block_allow|blockAllow|BLOCK_ALLOW" api/v1 source/go source/rust/pole-specification/proto source/rust/pole-specification/src -g '*.proto' -g '*.go' -g '*.rs'` 无输出。
+
+Review：
+
+- `../specification` 提交：`9d6fd34 Add traffic security and mock specs`。
+- 远端分支：`codex/traffic-security-spec`。
+- Draft PR：`https://github.com/pole-io/specification/pull/1`。
+- GitHub connector 创建 PR 时返回 `Resource not accessible by integration`，已用已登录的 `gh pr create --draft` fallback 成功创建。
+- `pole-control-plane` 当前仍有本轮之前已存在的大量未提交改动；本轮只追加了本任务记录，没有整理其它工作区改动。
 
 # 接入流量安全、镜像和 Mock 治理规则
 
@@ -2393,3 +2831,708 @@ Review：
 - PR #20 base 为 `develop`，head 为 `codex/traffic-governance-rules`。
 - 合并前 GitHub `mergeStateStatus` 为 `CLEAN`，未出现冲突。
 - PR #20 已从 draft 标记为 ready，并通过 GitHub merge 合并到 `develop`。
+
+# 同步本地 develop 到远端最新
+
+- [x] fetch `origin/develop`
+- [x] 保护本地 `context-kg/tasks/todo.md` 改动
+- [x] fast-forward 本地 `develop` 到 `be5ed67250ac94fa4c8aba13632f057ed14445d6`
+- [x] 解析 `context-kg/tasks/todo.md` 冲突，保留本地和远端任务记录
+- [x] 确认本地 `HEAD` 与 `origin/develop` 一致
+
+Review：
+
+- 本地 `develop` 已同步到 `be5ed67250ac94fa4c8aba13632f057ed14445d6`。
+- 同步过程中只冲突了 `context-kg/tasks/todo.md`；已保留本地 specification 决策记录和远端流量治理实现/PR merge 记录。
+- 其它未提交文件为同步前已有本地改动，本轮未覆盖。
+
+# 新增治理规则端到端补齐与验证
+
+- [x] 确认当前 `develop` 基线、已有未提交改动和本轮可安全修改范围
+- [x] 审计流量安全、流量镜像、流量 Mock 在后端 API、store、cache、发布和 discover 查询链路的覆盖
+- [x] 审计并补齐 Console 前端入口、API service、列表、详情、发布和监听入口
+- [x] 补齐发现的后端/前端缺口及对应测试
+- [x] 运行后端目标测试、前端构建和必要的端到端接口/页面验证
+- [x] 按要求做 completion audit，记录最终 review、验证证据和剩余风险
+
+当前进展：
+
+- 当前分支为 `develop`，`HEAD` 与 `origin/develop` 均为 `be5ed67250ac94fa4c8aba13632f057ed14445d6`。
+- 工作区在本轮开始前已有多处未提交改动；本轮会按最小影响原则只处理新增治理规则端到端支持所需文件。
+- 后端审计确认三类规则已有管理端 HTTP API、业务服务、MySQL 统一治理表转换、cache watcher、发布版本、auth 资源映射和 HTTP/gRPC discover 下发链路。
+- Console 原本只有未实现的 `Governance/Security` 占位页，缺少三类规则的 BaseURL、前端 service、列表、详情、发布入口和 Workbench 聚合。
+- 已新增 `services/traffic_governance.ts`，覆盖 security/mirror/mock 的列表、详情、创建、更新、删除、发布版本查询、发布和删除版本。
+- 已替换 `pages/Governance/Security` 为三类规则 tab 页面，支持新建、查询、查看、编辑、删除、授权、版本和监听抽屉。
+- 已将三类规则接入 `Governance/Workbench` 的统一列表和详情抽屉，新增类型筛选项。
+- 已调整 `PublishForm`，处理鉴权资源名 `SecurityRules/MirrorRules/MockRules` 与发布资源名 `TrafficSecurityRules/TrafficMirrorRules/TrafficMockRules` 的差异。
+- 已补齐调用鉴权、流量镜像、流量 Mock 在策略详情资源树中的 `security_rules`、`mirror_rules`、`mock_rules` 展示。
+- 已修复三类规则发布时首次发布没有历史版本时 `GetRelease` / `GetActiveRelease` 把 `sql.ErrNoRows` 当异常返回的问题。
+- 已修复发布态记录转换回规则对象时空 release record 字段覆盖 JSON 快照字段的问题，避免客户端 Discover 得到空 revision 或空服务范围。
+- 已修复 `pkg/common/batchctrl` 中 `future.Reply` 对无缓冲 `setsignal` 发送导致 `TestNewBatchControllerGracefulStop` 阻塞的问题。
+- 已补齐 TrafficGovernance 前端 Duration 兼容处理：流量镜像 `duration` 和流量 Mock `delay` 在提交前统一转为 proto JSON 字符串，避免后端 `request decode failed: json: cannot unmarshal object into Go value of type string`。
+
+验证：
+
+- `GOPROXY=https://goproxy.cn,direct go test -count=1 ./pkg/common/batchctrl` 通过。
+- `GOPROXY=https://goproxy.cn,direct go test -count=1 ./...` 通过，退出码 `0`。
+- `GOPROXY=https://goproxy.cn,direct go build -o /tmp/pole-control-plane-traffic-e2e .` 通过。
+- 已将 `/tmp/pole-control-plane-traffic-e2e` 替换为 `/tmp/pole-control-plane` 并重启 LaunchAgent `io.pole.control-plane.local`；当前服务以 `/tmp/pole-control-plane start -c /tmp/pole-server-all.yaml` 运行，PID `34848`。
+- `curl http://127.0.0.1:8090/auth/v1/user/login` 使用 `admin/admin123` 返回 `code=200000` 且 token 存在。
+- 运行时端到端接口验证通过：创建 `traffic/security`、`traffic/mirrors`、`traffic/mocks` 三类规则，分别发布 `TrafficSecurityRules`、`TrafficMirrorRules`、`TrafficMockRules` normal release，管理端 release 查询命中，客户端 `/v1/Discover` 分别以 `TRAFFIC_SECURITY_RULE`、`TRAFFIC_MIRROR_RULE`、`TRAFFIC_MOCK_RULE` 查询并命中对应 `traffic_security_rules`、`traffic_mirror_rules`、`traffic_mock_rules`，且 revision 非空。
+- 端到端验证样例：`ns=codex-e2e-20260612113459-41608`，security=`5b5d0776f99445188f391763822dc9c8`，mirror=`e4fdf997312a432fa7ee6479a902955b`，mock=`e550a52709dc4b689848fe0980c4acad`；验证后数据库清理结果 `remaining=0,0`，临时证据目录 `/tmp/traffic-governance-e2e-20260612113459-41608`。
+- `cd console/web && npm run test:response-mapping` 通过，输出 `standard response mapping checks passed (21 files)`。
+- `cd console/web && npm run build` 通过，构建产物包含新增 `TrafficGovernanceEditor.4008e353.js` chunk；仅有已有 `--localstorage-file`、Browserslist 数据过期和 Vite 大 chunk 警告。
+- `git diff --check --` 通过。
+
+Review：
+
+- Completion audit 覆盖了前端入口、前端 service、创建/编辑提交、发布资源映射、策略详情资源展示、后端 store/release、cache 增量、客户端 Discover 查询和真实 MySQL 运行时链路。
+- 当前三类新增规则的 release 能力与已实现治理规则保持一致：支持 normal/gray 发布、版本列表、删除版本和 stopbeta；未额外扩展 rollback 行为。
+- 本轮验证发现前端 Duration 对象形态与后端 proto JSON 解析不兼容，已在前端 service 层做提交前兼容转换，默认值也改为 `"0s"`。
+
+# 本地 all 模式新增治理规则测试数据补齐
+
+- [x] 确认当前本地 all 模式服务、数据库和已有治理样例数据状态
+- [x] 通过管理端 API 创建调用鉴权、流量镜像、流量 Mock 三类可视化样例规则
+- [x] 为三类样例规则发布 normal release
+- [x] 验证 Console 列表、管理端 release 查询、客户端 Discover 查询均可命中
+- [x] 记录样例入口、验证证据和剩余风险
+
+当前进展：
+
+- 本地服务 `8090` 登录接口返回 `code=200000`，all 模式服务可用。
+- 数据库当前已有 `route`、`ratelimit`、`circuitbreaker`、`faultdetect`、`lossless`、`lane-group` 各 1 条当前态和 release；新增的 `traffic-security`、`traffic-mirror`、`traffic-mock` 当前为 0 条。
+- 已通过管理端 API 创建并发布 3 条新增治理规则样例，均位于命名空间 `spec-governance`、服务 `spec-gateway`：
+  - 调用鉴权：`spec-check-traffic-security-20260612`
+  - 流量镜像：`spec-check-traffic-mirror-20260612`
+  - 流量 Mock：`spec-check-traffic-mock-20260612`
+
+验证：
+
+- 数据库 `governance_rule` 当前 9 类规则各 1 条：`route`、`ratelimit`、`circuitbreaker`、`faultdetect`、`lossless`、`lane-group`、`traffic-security`、`traffic-mirror`、`traffic-mock`。
+- 数据库 `governance_rule_release` 中上述 9 类 active release 各 1 条。
+- 管理端列表验证通过：
+  - `/naming/v1/traffic/security?name=spec-check-traffic-security-20260612&offset=0&limit=10` 返回 `code=200000`、`amount=1`。
+  - `/naming/v1/traffic/mirrors?name=spec-check-traffic-mirror-20260612&offset=0&limit=10` 返回 `code=200000`、`amount=1`。
+  - `/naming/v1/traffic/mocks?name=spec-check-traffic-mock-20260612&offset=0&limit=10` 返回 `code=200000`、`amount=1`。
+- 客户端 Discover 验证通过：
+  - `TRAFFIC_SECURITY_RULE` 命中 `spec-check-traffic-security-20260612`。
+  - `TRAFFIC_MIRROR_RULE` 命中 `spec-check-traffic-mirror-20260612`。
+  - `TRAFFIC_MOCK_RULE` 命中 `spec-check-traffic-mock-20260612`。
+- 造数证据目录：`/tmp/traffic-governance-seed-20260612`。
+
+Review：
+
+- 这批数据未清理，保留给本地 Console 检查；在 `http://127.0.0.1:8080/governance/security` 或统一治理工作台搜索 `spec-check-traffic` 即可看到。
+- 造数使用管理端 API 创建和发布，未直接绕过业务服务写当前态；仅在开始前按固定样例名清理旧样例，保证重复执行不会产生重复数据。
+
+# 泳道详情页信息架构优化
+
+- [x] 复核截图问题和当前泳道组详情组件结构
+- [x] 重构泳道组查看态布局，减少时间线留白并默认展示核心信息
+- [x] 将泳道列表默认展示到详情页内，避免二次展开
+- [x] 同步治理工作台和泳道独立页的详情容器
+- [x] 构建并在本地 all 模式页面验证展示效果
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 截图中的问题来自两层结构叠加：外层详情页把 `泳道组详细 / 泳道列表` 放进 Collapse，内层 `LaneGroupEdtor` 又用 vertical `Steps` 展示查看态，导致信息被拉成长流程，入口和服务区域大量留白，泳道列表默认不可见。
+- 优化方向是不改接口和数据结构，只调整 Console 信息架构：查看态使用摘要卡片 + 入口/目标服务分栏 + 元数据标签，泳道列表默认展示；编辑态保留现有表单式配置流程。
+
+当前进展：
+
+- `LaneGroupEdtor` 查看态已改为只读信息布局：顶部展示入口、网关入口、服务入口、目标服务数量，下面按泳道组信息、泳道组入口、泳道组服务分区展示。
+- 编辑态和创建态保留原 `Steps + Form` 配置流程，避免影响泳道组配置路径。
+- `LaneGroupTable` 和 `GovernanceWorkbench` 的泳道详情均去掉外层 Collapse，泳道列表默认显示在泳道组概要下方。
+- `LaneRuleTable` 外层 padding 改为样式类，适配新的默认展示容器。
+- 兼容 specification 样例中的网关入口类型 `polarismesh.cn/gateway/spring-cloud-gateway`，不再只识别字面量 `gateway`，页面可正确显示 `spec-governance/spec-gateway`。
+- 修复泳道组提交时表单字段未绑定导致保存可能丢失 `name`、`description`、`metadata` 的问题，提交改为使用当前编辑态数据。
+
+验证：
+
+- `cd console/web && npm run build` 通过。
+- 因 `/tmp/pole-control-plane` 和 `/tmp/pole-server-all.yaml` 被临时目录清理，本轮已重新构建二进制并恢复 all 模式配置；启动时发现 `pole-mysql` 容器已停止，已启动 MySQL 并重启 LaunchAgent `io.pole.control-plane.local`。
+- 当前 all 模式服务通过 `8080/8090` 健康检查；8080 加载新前端资源 `assets/index.2ea8c876.js`。
+- Playwright 打开 `http://127.0.0.1:8080/governance/`，登录后查看 `spec-check-lane-group`：摘要显示入口 `1`、网关入口 `1`、服务入口 `0`、目标服务 `2`；页面直接显示 `spec-governance/spec-gateway`、`spec-governance/spec-order`、`spec-governance/spec-payment` 和泳道列表行 `blue-lane`。
+- 页面截图保存在 `.playwright-cli/page-2026-06-12T07-26-12-488Z.png`。
+
+Review：
+
+- 本次只调整 Console 信息架构和查看态数据映射，不改后端接口、存储和样例数据。
+- 查看态避免再用配置流程式时间线承载静态信息；编辑态仍保留流程式表单，降低交互迁移风险。
+- `entry.type` 兼容逻辑基于当前 specification / 后端返回的类型字符串和 selector `@type` 双重判断，后续如果入口类型继续扩展，建议在服务层统一标准化。
+
+# 本地 all 模式 8080 前端资源 404 排查
+
+- [x] 重新确认 all 模式进程、8080 监听和根路径响应
+- [x] 排查浏览器“打不开”与 curl 根路径 200 的差异
+- [x] 定位运行中 console 返回旧 `index.html` 导致静态资源 hash 404
+- [x] 重启 all 模式，让 Gin 重新加载当前 `console/web/dist/index.html`
+- [x] 验证 8080 首页、JS/CSS 静态资源和治理规则页面可访问
+
+当前判断：
+
+- all 模式进程仍在运行，8080 根路径返回 200；问题不是端口未监听。
+- tmux 日志显示浏览器访问 `/` 后继续请求 `/assets/index.9877a31d.js` 和 `/assets/style.ab32ff84.css`，这两个资源返回 404。
+- 当前磁盘上的 `console/web/dist/index.html` 已引用新资源 `assets/index.a3134e1e.js` 和 `assets/style.7ae12346.css`。
+- 根因是 console 启动时通过 Gin `LoadHTMLGlob` 把 `index.html` 加载到内存；前端重新 build 后，运行中的 8080 仍返回旧 index，需要重启 all 模式。
+
+验证：
+
+- 已重启 tmux session `pole-control-plane`，新 all 模式进程 PID `5297`，8080 监听正常。
+- `http://127.0.0.1:8080/` 返回的新 index 引用 `/assets/index.a3134e1e.js` 和 `/assets/style.7ae12346.css`。
+- 上述 JS/CSS 静态资源均返回 200；`/governance/security` SPA fallback 返回 200。
+- 浏览器打开 `http://127.0.0.1:8080/governance/security` 可渲染调用鉴权列表，并显示样例规则 `spec-check-traffic-security-20260612`。
+- `git diff --check -- context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+
+Review：
+
+- 本次问题不是后端端口不可用，而是运行中 console 缓存了旧 `index.html`，导致浏览器继续请求已不存在的 hash 资源。
+- 后续前端 build 后验证 8080 时，必须同时检查首页 HTML 中的资源 hash 与静态资源 200，不能只用 `curl -I /` 判断页面可用。
+
+# 新增流量治理详情抽屉滚动和操作按钮修复
+
+- [x] 复现并对比新增流量治理详情与已有治理详情的滚动/操作区结构
+- [x] 将调用鉴权/流量镜像/流量 Mock 详情操作按钮改为统一 `StickyTool` 承载
+- [x] 移除内容底部 sticky 操作条，避免遮挡和滚动容器冲突
+- [x] 构建前端并重启 all 模式
+- [x] 在 8080 真实页面验证详情可滚动、编辑/发布按钮位置一致
+- [x] 记录 review 和本次纠正经验
+
+当前判断：
+
+- 新增 `TrafficGovernanceEditor` 使用内容底部 `.actionBar` 放置 `发布/编辑/保存/取消`，和已有治理详情的标题区右侧 `StickyTool + RuleStickyAction` 不一致。
+- `.actionBar` 作为内容内 sticky footer 会贴在抽屉可视区底部，截图中已经压到视口边缘，也会干扰用户对抽屉正文滚动区的操作。
+- 公共 `RuleDetailDrawer` 已经统一了 `StickyTool` 在抽屉内的布局，因此本次只需要让新增流量治理详情复用同一套操作按钮结构。
+
+当前进展：
+
+- `TrafficGovernanceEditor` 已改为使用 `StickyTool + RuleStickyAction`，查看态显示 `编辑 / 发布`，编辑态显示 `保存 / 撤销`。
+- 已移除新增流量治理详情底部 `.actionBar`，避免内容底部 sticky footer 挤占或遮挡抽屉正文。
+- 无编辑权限时仍保留编辑入口的禁用视觉，不再把整组工具条隐藏，保持和原页面可见性一致。
+
+验证：
+
+- `cd console/web && npm run build` 通过。
+- 已重启 tmux session `pole-control-plane`，8080 新 index 资源 `/assets/index.b542f2df.js` 和 `/assets/style.b1f896f7.css` 均返回 200。
+- 浏览器打开 `http://127.0.0.1:8080/governance/security` 并进入 `spec-check-traffic-security-20260612` 详情：抽屉正文 `overflowY=auto`，`scrollHeight=961` 大于 `clientHeight=700`。
+- 执行真实滚轮滚动后，抽屉正文 `scrollTop=261`，确认可以滚动。
+- 详情页已无旧的内容底部 `.actionBar`，存在公共 `.t-sticky-tool`，按钮文本为 `编辑发布`。
+
+Review：
+
+- 本次只调整新增流量治理三类规则共用的详情编辑器，不改公共 `RuleDetailDrawer` 和既有治理规则详情。
+- 操作按钮现在由公共抽屉样式统一定位，和路由、限流、熔断、无损等治理详情保持一致。
+
+# 治理工作台内部滚动优化
+
+- [x] 定位工作台页面滚动来源和表格撑高路径
+- [x] 将工作台根容器固定到当前可视区高度
+- [x] 将规则清单面板改为 flex 布局，表格内容区内部滚动
+- [x] 构建前端并重启 all 模式
+- [x] 在 8080 真实页面验证外层不滚动、规则清单内部滚动
+- [x] 记录 review 和经验
+
+当前判断：
+
+- 工作台外层 `sideContainer` 当前 `scrollHeight=1276`，说明是主布局容器在滚动。
+- `GovernanceWorkbench` 的 `.page` 未限制高度，`.listPanel` 被 TDesign 表格 10 行内容撑到 931px，进而把整个页面撑高。
+- 目标不是去掉滚动，而是固定工作台视区高度，把滚动收敛到规则清单内部的表格内容区。
+
+当前进展：
+
+- 工作台 `.page` 已改为固定可视高度的纵向 flex 容器，外层 `overflow: hidden`。
+- 规则清单 `.listPanel` 改为 flex 子项，面板头部、筛选区固定，表格区域占用剩余高度。
+- 表格 `.t-table__content` 改为内部滚动层，分页区保持在清单面板底部。
+
+验证：
+
+- `cd console/web && npm run build` 通过。
+- 已重启 tmux session `pole-control-plane`，8080 新 index 资源 `/assets/index.1ec6807c.js` 和 `/assets/style.046cab4c.css` 均返回 200。
+- 浏览器打开 `http://127.0.0.1:8080/governance/` 后，外层 `sideContainer` 的 `scrollHeight=720`、`clientHeight=720`、`scrollTop=0`，不再出现整页滚动。
+- 表格内容区 `.t-table__content` 的 `scrollHeight=659`、`clientHeight=103`、`overflowY=auto`。
+- 执行真实滚轮滚动后，外层 `sideScrollTop=0`，表格内容区 `tableContentScrollTop=420`，确认滚动落在规则清单内部。
+
+Review：
+
+- 本次只调整治理工作台布局样式，不改列表数据、筛选、分页和详情抽屉逻辑。
+- 清单头部、筛选栏和分页固定在面板内，规则行滚动在表格内容区完成，符合“内部滚动”的产品偏好。
+
+# 新增流量治理规则编辑权限标记修复
+
+- [x] 复现流量镜像详情无法编辑的问题并核对接口返回
+- [x] 横向检查调用鉴权、流量镜像、流量 Mock 的 `editable/deleteable` 标记
+- [x] 补齐新增流量治理规则查询链路的权限标记回填
+- [x] 运行 Go 测试、构建并重启 all 模式
+- [x] 验证接口和 8080 页面编辑入口恢复
+- [x] 记录 review 和经验
+
+当前判断：
+
+- 页面不能编辑不是前端按钮单独写死，而是后端列表/详情返回的 `editable=false`，前端按统一治理规则权限语义禁用了编辑入口。
+- 直接查询 8090 发现调用鉴权、流量镜像、流量 Mock 三类新增治理规则都返回 `editable=false/deleteable=false`，说明不是流量镜像单类问题。
+- 既有路由、限流、熔断、主动探测、无损、泳道的 auth interceptor 会在查询返回后按 update/delete 权限回填 `Editable/Deleteable`；新增流量治理 auth interceptor 之前只透传查询结果，proto bool 默认值为 false。
+
+当前进展：
+
+- 已在 `pkg/goverrule/interceptor/auth/traffic_governance.go` 为调用鉴权、流量镜像、流量 Mock 统一补齐列表和详情查询后的权限回填逻辑。
+
+验证：
+
+- `gofmt -w pkg/goverrule/interceptor/auth/traffic_governance.go` 已执行。
+- `git diff --check -- pkg/goverrule/interceptor/auth/traffic_governance.go context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `GOPROXY=https://goproxy.cn,direct go test -count=1 ./pkg/goverrule ./pkg/goverrule/interceptor/auth` 通过。
+- `GOPROXY=https://goproxy.cn,direct go build -o /tmp/pole-control-plane .` 通过。
+- 已重启 tmux session `pole-control-plane`，all 模式新进程 PID `40665`，8080/8090 均监听正常，8080 首页返回 200。
+- 带真实 admin token 查询 8090：`traffic/mirrors`、`traffic/security`、`traffic/mocks` 均返回 `code=200000`，样例规则 `editable=true/deleteable=true`。
+- 使用和 Console 一致的 JWT cookie 走 8080 代理查询：三类新增治理规则均返回 `editable=true/deleteable=true`。
+- 浏览器打开 `http://127.0.0.1:8080/governance/`，筛选 `流量镜像` 后打开 `spec-check-traffic-mirror-20260612`，点击 `编辑` 可进入编辑态，并出现 `保存 / 撤销`。
+- 浏览器筛选 `调用鉴权` 后打开 `spec-check-traffic-security-20260612`，详情显示 `编辑 / 发布`；点击 `编辑` 可进入编辑态，并出现 `保存 / 撤销` 和规则名称等输入控件。
+
+Review：
+
+- 本次问题根因在后端 auth interceptor 权限标记缺失，不是流量镜像前端详情单独禁用了编辑。
+- 修复范围横向覆盖调用鉴权、流量镜像、流量 Mock 三类新增治理规则，避免同类规则继续因为 proto bool 默认 false 被误判为无权限。
+- 裸 curl 现在会按读权限返回 `401001`，验证新增治理规则接口时应带登录 token 或走 8080 Console 登录态。
+
+# 新增流量治理规则结构化编辑修复
+
+- [x] 定位点击编辑后展示 JSON 文本框的根因
+- [x] 将调用鉴权、流量镜像、流量 Mock 编辑态改为结构化控件
+- [x] 将规则标签编辑从 JSON 文本框改为键值控件
+- [x] 构建前端并重启 all 模式
+- [x] 在 8080 页面验证调用鉴权和流量镜像编辑态不再出现 JSON 文本框
+- [x] 记录 review 和经验
+
+当前判断：
+
+- `TrafficGovernanceEditor` 的查看态已经按规则字段做了结构化展示，但编辑态仍直接渲染 `payloadJson` 和 `metadataJson` 两个 `Textarea`。
+- 点击 `编辑` 后用户看到的是规则数组和规则标签对象的原始 JSON 字符串，问题不在权限链路，而是新增三类规则的编辑态还停留在临时实现。
+- 修复应保持查看态与编辑态同一套信息架构：基础信息仍用表单，规则定义按策略/镜像/Mock 规则块编辑，规则标签按键值对编辑。
+
+当前进展：
+
+- 调用鉴权编辑态已改为结构化策略块：默认动作、策略动作、接口范围、拒绝效果和匹配条件均使用字段控件。
+- 流量镜像编辑态已改为结构化镜像规则块：来源、目标、镜像比例、生效时长、目标标签和匹配条件均使用字段控件。
+- 流量 Mock 编辑态已改为结构化 Mock 规则块：来源接口、Mock 比例、延迟、响应状态、响应头、匹配条件和响应体均使用字段控件；响应体保留文本框，因为它是业务响应内容本身。
+- 规则标签已从 JSON 文本框改为键值行编辑。
+
+验证：
+
+- `cd console/web && npm run build` 通过，保留既有 browserslist/chunk 体积警告。
+- 已重启 tmux session `pole-control-plane`，all 模式进程 PID `62878`，8080/8090 均监听正常。
+- 8080 首页返回 200，并引用新资源 `/assets/index.121b251e.js` 和 `/assets/style.e3f6f309.css`。
+- 浏览器打开 `http://127.0.0.1:8080/governance/`，调用鉴权 `spec-check-traffic-security-20260612` 点击编辑后显示字段控件，未出现规则数组 JSON 文本框。
+- 浏览器打开流量镜像 `spec-check-traffic-mirror-20260612` 点击编辑后显示来源、目标、比例、时长、标签和匹配条件字段控件，未出现规则数组 JSON 文本框。
+- 浏览器打开流量 Mock `spec-check-traffic-mock-20260612` 点击编辑后显示结构化字段控件，未出现规则数组 JSON 文本框；仅响应体保留文本框。
+
+Review：
+
+- 本次只调整新增流量治理三类规则共用的详情编辑器，不改变后端 spec、store 或接口结构。
+- 保存时仍组装回原 `policies/rules/metadata` 结构提交，避免引入新的协议映射层。
+- 后续新增治理规则类型时，查看态和编辑态必须同时产品化，不能先用 JSON Textarea 作为编辑态占位。
+
+# 治理规则全量交互布局巡检与优化
+
+- [x] 记录用户截图中的流量镜像编辑态布局问题
+- [x] 建立 9 类治理规则详情/编辑/发布交互检查清单
+- [x] 用 8080 真实页面逐类检查：路由、限流、熔断、探测、无损、泳道、调用鉴权、流量镜像、流量 Mock
+- [x] 修复发现的排版、溢出、控件拥挤和操作按钮不一致问题
+- [x] 构建前端并重启 all 模式
+- [x] 逐类复验关键交互并记录 review
+
+当前判断：
+
+- 用户截图显示流量镜像编辑态的匹配条件行在抽屉宽度内横向挤压，右侧输入区域被裁切；根因可能是结构化编辑控件一行承载过多字段且没有为抽屉场景设置换行/栅格边界。
+- 本次不能只修流量镜像，需要横向检查所有治理规则详情和编辑交互，尤其是多条件、多规则块、表格内控件、发布抽屉和规则标签编辑。
+
+当前进展：
+
+- 公共治理详情抽屉默认宽度已从 `min(860px, 88vw)` 调整为 `min(1080px, 92vw)`，给规则编辑态留出稳定横向空间。
+- 新增流量治理三类共用的 `TrafficGovernanceEditor` 已美化编辑布局：表单标签改为纵向、基础信息使用栅格、规则块使用更轻的分区和 header、匹配条件和目标标签改为两行栅格，避免一行塞过多控件。
+- 调用鉴权、流量镜像、流量 Mock 的编辑态仍保留统一标题区 `保存 / 撤销`，查看态保留 `编辑 / 发布`。
+- 泳道规则表格已从 `auto` 布局改为固定列宽，并约束表格内容区横向滚动，避免操作列伸出抽屉正文。
+
+验证：
+
+- `cd console/web && npm run build` 通过，保留既有 `--localstorage-file`、Browserslist 和 Vite 大 chunk 警告。
+- 已重启 tmux session `pole-control-plane`，all 模式进程 PID `98776`，8080/8090 均监听正常。
+- 8080 首页返回新资源 `/assets/index.e161a067.js` 和 `/assets/style.82fa3c00.css`，两个静态资源均返回 200。
+- 浏览器复验调用鉴权编辑态：抽屉宽度 `1080`，正文 `scrollWidth=clientWidth=1080`，保存/撤销在标题区，表单标签位于控件上方。
+- 浏览器复验流量镜像编辑态：匹配条件区不再横向裁切，正文无横向溢出。
+- 浏览器最终 9 类巡检通过：路由、限流、熔断、探测、无损、泳道、调用鉴权、流量镜像、流量 Mock 均有编辑入口，进入编辑态后有保存/撤销，抽屉正文 `bodyOverflow=false`，`outsideBodyCount=0`。
+
+Review：
+
+- 本轮只做治理详情/编辑态布局和抽屉宽度优化，不改变规则 API、提交结构、发布逻辑和样例数据。
+- 对旧 6 类规则主要通过公共抽屉宽度和泳道表格约束改善；新增 3 类流量治理规则共用编辑器做了更明显的视觉整理。
+
+# 限流窗口单位缺失修复
+
+- [x] 复现并定位限流编辑态窗口单位显示为“请选择”的根因
+- [x] 绑定窗口单位 Select 的当前行 `validDurationUnit`
+- [x] 补齐查看态窗口列的单位文本展示
+- [x] 构建前端并重启 all 模式
+- [x] 在 8080 真实页面验证限流编辑态窗口单位可见
+- [x] 记录 review 和验证结果
+
+当前判断：
+
+- `services/ratelimit.ts` 已在 `durationToView` / `amountsToView` 中把窗口时长转换为 `validDuration` 与 `validDurationUnit`，新增阈值也默认写入 `LimitAmountsValidationUnit.s`。
+- 页面截图中的“请选择”不是数据缺失，而是 `RateLimitEditor` 窗口列的 `Select` 只配置了 options 和 onChange，没有把当前行的 `validDurationUnit` 作为 value 传入。
+
+当前进展：
+
+- `RateLimitEditor` 已复用 `LimitAmountsValidationUnitOptions`，窗口单位下拉框绑定当前行 `validDurationUnit`，缺省时回退为“秒”。
+- 窗口列查看态增加单位标签展示，避免只显示纯数字。
+
+验证：
+
+- `cd console/web && npm run build` 通过，保留既有 `--localstorage-file`、Browserslist 和 Vite 大 chunk 警告。
+- 已重启 tmux session `pole-control-plane`，all 模式进程 PID `91101`，8080/8090 均监听正常。
+- 8080 首页返回新资源 `/assets/index.bf36be8b.js` 和 `/assets/style.6e97c28c.css`，两个静态资源均返回 200。
+- 浏览器打开 `http://127.0.0.1:8080/governance/`，进入 `spec-check-ratelimit` 详情后，查看态窗口列显示 `1 秒`、`5 秒`。
+- 点击 `编辑` 进入编辑态后，页面显示 `保存 / 撤销`；窗口单位控件显示 `秒`，页面 `请选择` 计数为 0。
+
+Review：
+
+- 本次根因在前端复合控件受控值缺失，不涉及后端数据转换、spec 结构或保存 payload。
+- 修复范围限定在限流编辑器窗口列：编辑态绑定单位下拉值，查看态补充单位文本。
+
+# 限流保存后回到只读态修复
+
+- [x] 复现并定位限流保存成功后仍停留编辑态的问题
+- [x] 对比泳道组、主动探测、新增流量治理等保存成功后的状态流转
+- [x] 在限流保存成功后切回 `editable=false`
+- [x] 处理表格编辑单元格缓存，确保保存后重新挂载为只读表格
+- [x] 构建前端并重启 all 模式
+- [x] 在 8080 真实页面验证保存后回到只读态
+- [x] 记录 review 和验证结果
+
+当前判断：
+
+- 限流编辑器保存成功后只调用 `refresh(false)`，没有重置本地 `editorState.editable`，因此抽屉继续显示 `保存 / 撤销` 和输入控件。
+- 同类页面中，泳道组、主动探测、新增流量治理在保存更新成功后都会显式退出编辑态；限流应保持同一交互语义。
+
+当前进展：
+
+- `RateLimitEditor` 在 `op === 'view'` 的更新保存成功后设置 `editable=false`，保留当前抽屉和更新后的本地数据展示。
+- 限流匹配条件表格和阈值表格增加 view/edit key，避免从编辑态切回只读态后 TDesign 表格继续保留输入单元格。
+
+验证：
+
+- `cd console/web && npm run build` 通过，保留既有 `--localstorage-file`、Browserslist 和 Vite 大 chunk 警告。
+- 已重启 tmux session `pole-control-plane`，all 模式进程 PID `4662`，8080/8090 均监听正常。
+- 8080 首页返回新资源 `/assets/index.5f7beb00.js` 和 `/assets/style.6e97c28c.css`。
+- 浏览器打开 `http://127.0.0.1:8080/governance/`，进入 `spec-check-ratelimit`：查看态显示 `编辑 / 发布`，无 `保存`，限流表格输入框数量为 0。
+- 点击 `编辑` 后显示 `保存 / 撤销`，限流表格输入框数量为 18。
+- 点击 `保存` 后自动回到只读态：`保存 / 撤销` 消失，`编辑 / 发布` 出现，表格输入框数量为 0；匹配条件仍显示 `x-tenant/vip`、`channel/mobile`，窗口仍显示 `1 秒`、`5 秒`。
+
+Review：
+
+- 本次根因不是接口保存失败，而是限流编辑器保存成功后只刷新列表，没有退出本地编辑态。
+- 仅切换 `editable=false` 不够，TDesign 表格可能保留编辑单元格内部状态；需要用 view/edit key 触发表格重新挂载。
+
+# 治理规则保存后统一回只读态
+
+- [x] 横向梳理 9 类治理规则保存后的状态流转
+- [x] 修复路由保存成功后未回到只读态
+- [x] 修复熔断保存成功后未回到只读态
+- [x] 修复无损保存成功后关闭详情而不是回只读态
+- [x] 给路由、熔断的编辑表格增加 view/edit 重新挂载 key
+- [x] 修复无损保存 payload 缺少无损下线 `interval_second`
+- [x] 修复泳道组编辑态服务选项为空导致保存失败
+- [x] 构建前端并重启 all 模式
+- [x] 在 8080 逐类验证保存后回只读态
+- [x] 记录 review 和验证结果
+
+当前判断：
+
+- 已具备正确行为的规则：调用鉴权、流量镜像、流量 Mock、泳道组、主动探测，以及上一轮修复后的限流。
+- 需要修复的规则：路由和熔断保存成功后只刷新列表，没有退出本地编辑态；无损保存成功后在独立页面会关闭抽屉，和“保存后回到 readonly 专题”的交互不一致。
+- TDesign `Table` 的 `keepEditMode` 在编辑态切只读态时可能保留内部编辑单元格，需要按 view/edit 状态切换 key 触发重新挂载。
+
+当前进展：
+
+- `CustomRouteEditor` 更新保存成功后设置 `editable=false`，创建成功仍关闭抽屉；匹配条件表格和目标分组表格按 view/edit 重新挂载。
+- `CircuitBreakerEditor` 非创建保存成功后设置 `editable=false`；接口范围、错误判断条件、熔断触发条件表格按 view/edit 重新挂载。
+- `LossLessEditor` 更新保存成功后设置 `editable=false` 并刷新列表，创建成功仍关闭抽屉。
+- `services/lossless.ts` 提交无损规则时补齐 `lossless_offline.interval_second`，同时按 spec 将 `health_check_interval_second` 作为 string duration 提交，避免查看态已有数据进入编辑保存后接口拒绝。
+- `LaneGroupEdtor` 改为用 `listAllServices` 返回值构造服务选项，并在提交时从 `namespace/service` 做兜底解析；泳道入口 selector 的 `@type` 放入 protobuf Any selector 内部，避免提交成后端无法解码的顶层字段。
+
+验证：
+
+- `cd console/web && npm run build` 通过，保留既有 `--localstorage-file`、Browserslist 和 Vite 大 chunk 警告。
+- 已重启 tmux session `pole-control-plane`，all 模式进程 PID `29717`，8080/8090 均监听正常。
+- 8080 首页返回新资源 `/assets/index.18c87f31.js` 和 `/assets/style.6e97c28c.css`。
+- Playwright 使用 8080 真实登录态逐类验证 9 类规则：路由、限流、熔断、探测、无损、泳道、调用鉴权、流量镜像、流量 Mock。
+- 每一类验证流程均为：筛选类型、打开规则详情、确认初始只读态无 `保存/撤销` 且有 `编辑/发布`、点击 `编辑` 后出现 `保存/撤销`、点击 `保存` 后回到只读态且没有请求错误。
+- 9 类最终结果均通过；无损和泳道在修复前分别暴露 `health_check_interval_second` 类型错误与 Any selector `@type` 位置错误，修复后单独回归和全量回归均通过。
+- `git diff --check -- console/web/src/pages/Governance/RateLimit/RateLimitEditor.tsx console/web/src/pages/Governance/Router/CustomRouteEditor.tsx console/web/src/pages/Governance/CircuitBreaker/CircuitBreakerEditor.tsx console/web/src/pages/Governance/LossLess/LossLessEditor.tsx console/web/src/services/lossless.ts console/web/src/pages/Governance/Router/LaneGroupEdtor.tsx context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+
+Review：
+
+- 本轮没有改治理规则后端语义，主要收敛前端保存后的状态流转和 spec JSON 提交形态。
+- 新增/既有 9 类治理规则现在使用同一交互契约：查看态展示 `编辑/发布`，编辑态展示 `保存/撤销`，更新保存成功后保持抽屉打开并回到只读态。
+- 无损和泳道的失败不是样式问题，而是编辑态保存 payload 与当前 spec 解码规则不一致；已通过网络请求体和响应体定位后修正。
+
+# Console API、Client 与权限接口 E2E 测试用例设计
+
+- [x] 梳理现有 Go 集成测试、MySQL CI、Console proxy 和接口测试能力
+- [x] 梳理 Console 资源读写入口：命名空间、MCP、A2A、服务、别名、实例、治理规则、用户、用户组、权限
+- [x] 梳理 Client 查询入口和缓存传播断言方式
+- [x] 梳理 `consoleOpen` / `clientOpen` 权限开关矩阵
+- [x] 新增长期测试用例设计文档
+- [x] 更新 `context-kg` index、testing、schema、log 与 lessons
+- [ ] 后续按设计实现 Console API E2E 和 Client/Auth E2E 套件
+
+当前判断：
+
+- 当前仓库已有 Go 集成测试和 MySQL CI；本设计只考虑接口维度，不纳入 `console/web` 前端测试。
+- Console 全流程验证不能只打 8090 后端接口，应经 8080 console proxy 才能证明 JWT、反代、响应解包和旧登录态行为。
+- Client 查询验证不能只查 DB 或 store/cache，应通过 8090 client API 轮询证明客户端真实可见。
+- 权限测试需要重启或覆盖配置矩阵，分别验证 `consoleOpen=false/true` 和 `clientOpen=false/true`。
+
+当前进展：
+
+- 新增 `context-kg/quality/testcases/console-client-auth-e2e-testcases.md`，按两层接口套件设计：
+  - Console API E2E：Go test 经 8080 调用 `/core/v1`、`/naming/v1`、`/auth/v1`、`/ai/*`。
+  - Client E2E：Go test 经 8090 client API 验证服务发现、治理规则发布态、缓存传播和权限。
+- 覆盖矩阵已列出命名空间、MCP、A2A、服务、别名、实例、9 类治理规则、用户、用户组、角色和权限策略的 create/list/detail/update/delete 或发布类流程。
+- Client 传播用例要求通过 Console API 完成写入，再在 10 秒内轮询 8090 client API，记录首次命中时间、轮询次数、失败诊断响应。
+- 权限用例已覆盖配置开关矩阵和 Console/Client 主体权限：只读、指定资源写、用户组继承、角色函数变更、token 禁用/刷新。
+
+Review：
+
+- 本轮是测试用例设计与知识库归档，尚未实现自动化代码。
+- 测试设计已收敛为 Console API 和 Client/Auth 两层接口套件，不覆盖前端交互自动化。
+- 治理规则按 9 类完整列出，不再只覆盖旧 6 类或新增 3 类中的某一类。
+
+# 接口维度 E2E 测试用例文档收敛
+
+- [x] 移除测试用例文档中的前端交互测试覆盖范围
+- [x] 将 Console 资源读写矩阵调整为纯接口用例
+- [x] 保留并强化 8080 Console API、8090 Client API、权限开关矩阵
+- [x] 更新 testing 索引、context-kg log 和 lessons
+- [x] 校验文档中不再残留前端页面测试设计
+
+当前判断：
+
+- 用户明确要求“不需要考虑前端测试，只考虑接口维度的测试”，因此设计文档不应再包含 `console/web/e2e/`、页面入口、抽屉、表单、保存后只读态等前端交互测试能力。
+- Console 维度仍然要走 8080 console proxy，因为这是接口链路的一部分；Client 维度仍然走 8090 client API。
+
+当前进展：
+
+- `context-kg/quality/testcases/console-client-auth-e2e-testcases.md` 已改为 Console API E2E 和 Client E2E 两层接口套件。
+- 命名空间、MCP、A2A、服务关联查询和治理规则公共用例中的前端场景已替换为接口查询、详情、过滤、发布、灰度和删除断言。
+- `context-kg/quality/automation/testing.md`、`context-kg/_meta/index.md`、`context-kg/_meta/log.md` 已同步改为接口 E2E 口径。
+- `context-kg/tasks/lessons.md` 已补充经验：接口维度测试设计不能默认加入 Console 前端交互测试能力。
+
+验证：
+
+- `rg -n "Console UI E2E|console/web/e2e|Playwright|页面入口|抽屉|保存后只读|UI 流程|UI 工具|UI 能力|UI 服务|CONSOLE-GOV-UI|三层套件" context-kg/quality/testcases/console-client-auth-e2e-testcases.md context-kg/quality/automation/testing.md context-kg/_meta/index.md context-kg/_meta/log.md || true` 仅命中 `_meta/log.md` 中历史 A2A 记录，主测试用例文档和 testing 索引无命中。
+- `git diff --check -- context-kg/quality/testcases/console-client-auth-e2e-testcases.md context-kg/quality/automation/testing.md context-kg/_meta/index.md context-kg/_meta/log.md context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- wiki 链接检查通过：`all wiki links resolve (27 files)`。
+
+Review：
+
+- 本轮只调整测试用例设计文档和知识库索引，不实现测试代码。
+- 最终测试范围为接口维度：8080 Console API 读写、8090 Client API 查询传播、Console/Client 权限策略和 `consoleOpen/clientOpen` 开关矩阵。
+
+# 接口 E2E 测试实现
+
+- [x] 恢复接口 E2E 实现范围，复核设计文档、路由和启动配置
+- [x] 新增 `test/e2e` 环境工具：testcontainers MySQL、30000+ 端口分配、临时 all 模式配置、server 子进程管理
+- [x] 新增 Console API E2E：命名空间、MCP、A2A、服务、别名、实例、9 类治理规则、用户、用户组、角色、权限策略
+- [x] 新增 Client API E2E：服务发现、实例变更、治理规则发布态和删除传播
+- [x] 新增权限接口 E2E：`consoleOpen/clientOpen` 四象限、Console 读写权限、Client 读写权限
+- [x] 确保默认 `go test ./...` 不启动 Docker，显式 `go test -tags=e2e ./test/e2e/...` 才启用
+- [x] 做静态/编译级验证并记录 Review
+
+当前判断：
+
+- 用户要求“先不要求执行”，所以本轮不强制实际拉起 Docker/MySQL 和 all 模式跑完整 E2E；但测试代码需要具备可执行形态，后续可显式运行。
+- E2E 环境必须和本地开发环境隔离：MySQL 用 testcontainers 拉起，容器端口从 `30000` 起始分配，control-plane 的 console/client 端口也从 `30000` 段分配，不能复用本地 `3306/8080/8090`。
+- 新增测试统一使用 `//go:build e2e`，并在测试目录放置无 build tag 的 `doc.go`，保证默认测试命令不会编译或运行 Docker 相关逻辑。
+
+当前进展：
+
+- 新增 `test/e2e/internal/e2e` 环境工具，使用 `testcontainers-go` 拉起 MySQL 8.0.36，分配 30000 起始端口，生成临时 all 模式配置并管理 `go run . start --mode all` 子进程。
+- 新增 `test/e2e/console_api`，覆盖命名空间、MCP、A2A、服务别名、实例、9 类治理规则、用户、用户组、角色和权限策略的接口读写与发布入口。
+- 新增 `test/e2e/client`，通过 Console API 写入服务、实例和治理规则，再通过 8090 Client Discover 轮询验证服务发现、实例变更、规则发布态和删除传播。
+- 新增 `test/e2e/auth`，覆盖 `consoleOpen/clientOpen` 四象限、用户/用户组/角色/策略/token 接口，以及只读策略对 Console 写请求和 Client Discover 请求的实际约束。
+- `go.mod/go.sum` 新增 testcontainers/docker 依赖，避免保留无关的核心依赖升级。
+
+验证：
+
+- `go test -mod=readonly -count=1 ./test/e2e/...` 通过，所有包均为 `[no test files]`，证明默认 build tag 下不会启动 Docker 或编译 E2E 运行逻辑。
+- `GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test -mod=readonly -count=1 -tags=e2e ./test/e2e/... -run TestDoesNotExist` 通过，证明 E2E 套件编译通过且未执行测试函数。
+- `GOPROXY=https://goproxy.cn,direct go test -tags=e2e ./test/e2e/... -run TestDoesNotExist` 在当前 macOS 环境失败于 `github.com/shoenig/go-m1cpu` cgo 初始化 SIGSEGV；该问题来自 testcontainers 间接依赖链，推荐显式设置 `CGO_ENABLED=0`。
+- `git diff --check -- test/e2e go.mod go.sum context-kg/tasks/todo.md` 通过。
+
+Review：
+
+- 本轮未按用户要求执行完整 E2E，因此没有拉起 Docker/MySQL 和 all 模式运行真实用例；完成的是测试代码补齐和编译级验证。
+- E2E 与本地测试隔离：默认测试命令不触发，显式 `-tags=e2e` 才进入；端口段从 30000 开始，不复用本地 8080/8090/3306。
+- 接口测试范围保持纯 HTTP/API，不包含 Playwright、浏览器、DOM、截图或前端页面交互。
+
+# 接口 E2E 测试用例文档二次收敛
+
+- [x] 复核测试用例文档中的前端、页面和 Playwright 相关残留
+- [x] 在测试用例文档中增加接口 E2E 非目标清单
+- [x] 将少量 UI 口径描述改为接口响应字段或接口断言
+- [x] 更新 testing 索引和 lessons，固化“只考虑接口维度”的边界
+- [x] 执行文档级验证
+
+当前判断：
+
+- 用户本轮要求的是测试用例文档整理，不继续扩展前端页面测试能力。
+- 8080 console proxy 仍属于接口链路验证，不等同于浏览器页面测试；文档需要明确排除 Playwright、DOM、截图、页面布局和前端路由。
+- 后续实现接口 E2E 时，应只按 HTTP/API 维度落地：8080 Console API、8090 Client API、权限策略和配置开关矩阵。
+
+当前进展：
+
+- `context-kg/quality/testcases/console-client-auth-e2e-testcases.md` 新增 `非目标` 小节，明确不使用 Playwright、浏览器驱动、DOM 查询、截图或页面可见性断言。
+- 将 A2A 来源、实例查询、规则发布状态和启动健康等描述收敛为接口字段、接口响应和接口可用性，不再使用 UI 语义。
+- `context-kg/quality/automation/testing.md` 增加说明：接口 E2E 不纳入 `console/web` 页面交互测试。
+- `context-kg/tasks/lessons.md` 更新经验，避免后续把接口 E2E 误扩成前端自动化。
+
+验证：
+
+- `git diff --check -- context-kg/quality/testcases/console-client-auth-e2e-testcases.md context-kg/quality/automation/testing.md context-kg/_meta/log.md context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `rg -n "Console UI E2E|console/web/e2e|页面入口|抽屉|保存后只读|UI 流程|UI 工具|UI 能力|UI 服务|CONSOLE-GOV-UI|三层套件|浏览器驱动.*入口|Playwright.*入口|DOM.*断言" context-kg/quality/testcases/console-client-auth-e2e-testcases.md context-kg/quality/automation/testing.md || true` 无命中。
+- `rg -n "Playwright|浏览器|DOM|截图|页面|console/web" context-kg/quality/testcases/console-client-auth-e2e-testcases.md context-kg/quality/automation/testing.md` 仅命中非目标/排除说明和 `## 相关页面` 标题。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过，27 个 Markdown 页面、27 个唯一页面名，frontmatter、链接、index 基础检查通过。
+
+Review：
+
+- 本轮只修改测试用例设计文档、testing 索引和任务/经验记录，没有新增或调整前端测试代码。
+- 最终测试边界为接口 E2E：Console API 读写、Client 查询传播、权限策略生效和 `consoleOpen/clientOpen` 开关矩阵。
+
+# 接口 E2E 测试文档边界强化
+
+- [x] 复核测试用例文档是否仍把前端页面 Playwright 当作测试能力
+- [x] 在主测试用例文档中补充接口 E2E 能力边界
+- [x] 同步更新 testing 索引和 context-kg log
+- [x] 执行文档级验证
+
+当前判断：
+
+- 用户要求只考虑接口维度，因此文档不能规划 `console/web/e2e`、Playwright 项目、浏览器脚本、DOM 断言、截图比对或页面交互流程。
+- 8080 console proxy 仍保留在测试范围内，因为它是 Console 接口链路的一部分，不是页面渲染验证。
+
+当前进展：
+
+- `context-kg/quality/testcases/console-client-auth-e2e-testcases.md` 新增“能力边界”，明确自动化入口统一为 Go test。
+- `context-kg/quality/automation/testing.md` 同步改为“不建设 Playwright、浏览器、DOM、截图或 console/web 页面交互测试能力”。
+- `context-kg/_meta/log.md` 追加本轮 refine 记录。
+
+验证：
+
+- `rg -n "Console UI E2E|console/web/e2e|页面入口|抽屉|保存后只读|UI 流程|UI 工具|UI 能力|UI 服务|CONSOLE-GOV-UI|三层套件|浏览器脚本|DOM 断言|截图比对|Playwright 项目" context-kg/quality/testcases/console-client-auth-e2e-testcases.md context-kg/quality/automation/testing.md || true` 只命中“能力边界/非目标”排除说明。
+- `rg -n "Playwright|浏览器|DOM|截图|页面|console/web" context-kg/quality/testcases/console-client-auth-e2e-testcases.md context-kg/quality/automation/testing.md || true` 只命中“不建设/不验证”表述和 `## 相关页面` 标题。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过，27 个 Markdown 页面、27 个唯一页面名，frontmatter、链接、index 基础检查通过。
+- `git diff --check -- context-kg/quality/testcases/console-client-auth-e2e-testcases.md context-kg/quality/automation/testing.md context-kg/_meta/log.md context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+
+Review：
+
+- 本轮只整理接口测试用例文档和知识库记录，没有改前端测试代码或新增 Playwright 能力。
+- 最终边界为接口 E2E：Go test 驱动 8080 Console API、8090 Client API、权限策略和 `consoleOpen/clientOpen` 配置开关矩阵。
+
+# 接口 E2E 测试覆盖补齐审计
+
+- [x] 补齐 Console API 删除后不可见断言：命名空间、MCP、A2A、服务、别名、治理规则、用户、用户组、角色、权限策略
+- [x] 补齐 Console API 服务 update/delete 生命周期
+- [x] 补齐治理规则 normal 发布、gray 发布、stopbeta、rollback 或 release delete 接口覆盖
+- [x] 补齐 Client Discover 删除传播断言
+- [x] 补齐 Client 权限 RegisterInstance 和 Heartbeat 用例
+- [x] 重新执行默认隔离、E2E 编译、diff 和 context-kg lint 验证
+
+当前判断：
+
+- 设计文档中要求的 Console 资源 create/list/detail/update/delete、不存在断言、治理规则发布态、Client 查询传播、权限开关矩阵和 Client Register/Heartbeat 权限已经在 `test/e2e` 代码中有对应测试表达。
+- 用户要求“先不要求执行”，因此本轮仍不拉起 Docker/MySQL/all 模式跑完整 E2E；完成编译级验证和默认隔离验证。
+- `testcontainers-go v0.35.0` 明确要求 `github.com/magiconair/properties v1.8.7`，因此该间接依赖升级属于 E2E 依赖链必要变更。
+
+当前进展：
+
+- `console_api`：命名空间使用临时 namespace 完整 create/update/list/delete；MCP/A2A 删除后查列表不返回；服务新增临时服务 update/delete；治理规则 9 类增加 gray release、stopbeta、支持类型 rollback、release delete 和当前态 delete 后不可见；auth 资源增加 token enable/refresh、detail、双向授权查询和 delete 后不可见。
+- `client`：实例删除后轮询 Discover 响应不再包含删除实例 host；治理规则删除后轮询 Discover 响应不再包含规则名。
+- `auth`：四象限开关新增无 token RegisterInstance/Heartbeat；授权 token 新增 RegisterInstance/Heartbeat 成功，未授权服务 RegisterInstance/Heartbeat 拒绝。
+- `internal/e2e`：新增 `HeartbeatInstance`、`GrayRuleRelease`、按字段查找和删除后不可见断言辅助函数。
+
+验证：
+
+- `go test -mod=readonly -count=1 ./test/e2e/...` 通过，所有包均为 `[no test files]`，证明默认 build tag 下不启动 Docker。
+- `GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test -mod=readonly -count=1 -tags=e2e ./test/e2e/... -run TestDoesNotExist` 通过，证明 E2E 套件编译通过且未执行测试函数。
+- `git diff --check -- test/e2e go.mod go.sum context-kg/quality/testcases/console-client-auth-e2e-testcases.md context-kg/quality/automation/testing.md context-kg/_meta/log.md context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过，27 个 Markdown 页面、27 个唯一页面名，frontmatter、链接、index 基础检查通过。
+
+Review：
+
+- 本轮继续保持接口 E2E 边界，不引入 Playwright、浏览器、DOM、截图或页面交互测试。
+- 完整 E2E 真实执行仍留给用户后续显式运行 `CGO_ENABLED=0 go test -tags=e2e ./test/e2e/... -count=1`。
+
+# 接口 E2E 测试用例文档二次整理
+
+- [x] 复核主测试用例文档和 testing 索引中的前端自动化表述
+- [x] 将具名浏览器测试栈描述收敛为“不纳入前端页面自动化能力”
+- [x] 执行文档 grep、diff 和 context-kg lint 验证
+
+当前判断：
+
+- 当前测试用例文档只应表达接口 E2E 范围：8080 Console API、8090 Client API、权限策略和配置开关矩阵。
+- 对前端页面测试只保留“非目标”级边界，不把具体浏览器测试技术写成测试能力项。
+
+当前进展：
+
+- `context-kg/quality/testcases/console-client-auth-e2e-testcases.md` 的能力边界和非目标小节已改为接口优先表述。
+- `context-kg/quality/automation/testing.md` 同步说明 E2E 只包含 HTTP/API 维度。
+
+验证：
+
+- `rg -n "Playwright|浏览器驱动|DOM|截图|console/web/e2e|Console UI E2E|页面入口|抽屉|保存后只读|UI 流程|三层套件" context-kg/quality/testcases/console-client-auth-e2e-testcases.md context-kg/quality/automation/testing.md || true` 先命中非目标清单中的“抽屉”，已继续泛化为控制台前端页面视觉与交互。
+- 重新执行上述 `rg` 命令无输出，主测试用例文档和 testing 索引不再包含具名前端测试栈或页面交互测试项。
+- `git diff --check -- context-kg/quality/testcases/console-client-auth-e2e-testcases.md context-kg/quality/automation/testing.md context-kg/tasks/todo.md context-kg/_meta/log.md` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过，27 个 Markdown 页面、27 个唯一页面名，frontmatter、链接、index 基础检查通过。
+
+Review：
+
+- 本轮只整理测试用例文档和 testing 索引，没有新增前端测试能力，也没有调整 E2E 代码。
+- 测试边界保持为接口 E2E：Go test 驱动 8080 Console API、8090 Client API、权限策略和 `consoleOpen/clientOpen` 开关矩阵。
+
+# 接口 E2E 鉴权与治理覆盖补齐
+
+- [x] 审计 Console API、Client、Auth E2E 与测试用例设计的覆盖差距
+- [x] 修正 auth policy、resource authorize、principal/resources 的接口 payload
+- [x] 补齐用户组继承、角色函数变更、Token 禁用/刷新、策略删除和策略更新传播用例
+- [x] 补齐治理规则权限类型隔离：老规则路由与新增流量治理规则均覆盖授权/未授权分支
+- [x] 将灰度发布测试边界收敛到当前接口可验证的 release/client label/stopbeta 状态
+- [x] 执行默认隔离、E2E 编译、文档 grep、diff 和 context-kg lint 验证
+
+当前判断：
+
+- `test/e2e` 现在仍通过 build tag 隔离；默认 `go test ./test/e2e/...` 不会启动 Docker 或 MySQL。
+- Console API 覆盖命名空间、MCP、A2A、服务/别名/实例、9 类治理规则和 auth 资源的接口生命周期。
+- Client API 覆盖服务实例变更传播、9 类治理规则发布后 Discover 可见、删除后 Discover 不再返回目标文本。
+- Auth E2E 覆盖 `consoleOpen/clientOpen` 四象限、Console 读写权限、Client Discover/Register/Heartbeat、用户组继承、角色函数变更、Token 失效与刷新、策略删除和策略资源更新传播。
+- 当前 HTTP Discover 接口没有稳定的客户端 label 入参，因此灰度发布用例验证 release 中 client label、gray release 和 stopbeta，不再把“指定 label 客户端可见/不可见”写成接口 E2E 的强断言。
+
+当前进展：
+
+- `test/e2e/internal/e2e/fixtures.go` 新增按真实 auth proto 结构生成 principals/resources/functions 的 helper，服务资源使用后端生成的 service id，并保留 namespace + service 组合资源。
+- `test/e2e/console_api/console_api_test.go` 增加 MCP/A2A 删除后关联查询不可见、实例删除后 host 不可见、治理规则 gray release/stopbeta/rollback/release delete 覆盖。
+- `test/e2e/client/client_api_test.go` 覆盖 9 类治理规则发布后 Discover 可见，以及删除后 Discover 不再包含规则名。
+- `test/e2e/auth/auth_api_test.go` 增加 Console/Client 权限传播、用户组/角色/Token 场景，并将治理规则权限测试扩展到 `CreateRouteRules` 与 `CreateTrafficSecurityRules`。
+- `context-kg/quality/testcases/console-client-auth-e2e-testcases.md` 保持接口 E2E 边界，并把灰度/路由/泳道的客户端 label 表述改成当前 HTTP/API 可验证的断言。
+
+验证：
+
+- `go test -mod=readonly -count=1 ./test/e2e/...` 通过，所有包均为 `[no test files]`，证明默认 build tag 下不启动 Docker。
+- `GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test -mod=readonly -count=1 -tags=e2e ./test/e2e/... -run TestDoesNotExist` 通过，证明 E2E 套件编译通过且未执行测试函数。
+
+Review：
+
+- 本轮仍按用户要求不执行完整 E2E，不拉起 testcontainers/MySQL/all 模式。
+- 本轮没有新增前端页面测试能力，不引入 Playwright、浏览器、DOM、截图或页面交互断言。

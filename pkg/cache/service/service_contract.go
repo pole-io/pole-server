@@ -65,7 +65,7 @@ func (sc *ServiceContractCache) Initialize(c map[string]interface{}) error {
 func (fc *ServiceContractCache) openBoltCache(opt map[string]interface{}) (*bbolt.DB, error) {
 	path, _ := opt["cachePath"].(string)
 	if path == "" {
-		path = "./data/cache/service_contract"
+		path = "./.pole_data/cache/service_contract"
 	}
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
 		return nil, err

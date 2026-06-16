@@ -5,20 +5,15 @@ import {
     Select,
     InputNumber,
     Switch,
-    Button,
-    Space,
-    Divider,
     StickyTool,
     FormProps,
-    Row,
-    Col,
     Tag,
-    Dialog,
-    Popup,
     RadioGroup,
 } from 'tdesign-react';
 import Text from 'components/Text';
-import { Edit1Icon, SaveIcon, RollbackIcon, RocketIcon, CloseIcon, AddIcon } from 'tdesign-icons-react';
+import { Edit1Icon, SaveIcon, RollbackIcon, RocketIcon } from 'tdesign-icons-react';
+import RuleLabelField from '../shared/RuleLabelField';
+import shared from '../shared/governance.module.less';
 import React from 'react';
 import { HTTPMethodOption, Label, Op } from 'services/types';
 import { cleanNamespacePage, listAllNamespaces, selectNamespace } from 'modules/namespace';
@@ -245,7 +240,12 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
         })).then((res) => {
             if (res.meta.requestStatus === 'fulfilled') {
                 openInfoNotification("请求成功", "保存无损规则成功");
-                refresh(true);
+                if (op === 'create') {
+                    refresh(true);
+                } else {
+                    setEditor(prev => ({ ...prev, editable: false }));
+                    refresh(false);
+                }
             } else {
                 openErrNotification("请求失败", `保存无损规则失败: ${res.payload as string || '未知'}`);
             }
@@ -253,163 +253,64 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
     };
 
 
-    // 标签弹窗渲染
-    const renderRuleLabelsDialog = () => (
-        <Dialog
-            visible={editor.visible}
-            header="编辑规则标签"
-            width={700}
-            onConfirm={() => setEditor(prev => ({ ...prev, visible: false }))}
-            onClose={() => setEditor(prev => ({ ...prev, visible: false }))}
-        >
-            <div>
-                {losslessRule.metadata?.map((tag, idx) => (
-                    <Row gutter={8} key={idx} style={{ marginBottom: 12 }} align="middle">
-                        <Col span={4}>
-                            <Input
-                                value={tag.key}
-                                placeholder="请输入标签键"
-                                onChange={v => {
-                                    const newMetadata = [...(losslessRule.metadata || [])];
-                                    newMetadata[idx] = { ...newMetadata[idx], key: v };
-                                    setLosslessRule({ ...losslessRule, metadata: newMetadata });
-                                }} />
-                        </Col>
-                        <Col span={4}>
-                            <Input
-                                value={tag.value}
-                                placeholder="请输入标签值"
-                                onChange={v => {
-                                    const newMetadata = [...(losslessRule.metadata || [])];
-                                    newMetadata[idx] = { ...newMetadata[idx], value: v };
-                                    setLosslessRule({ ...losslessRule, metadata: newMetadata });
-                                }} />
-                        </Col>
-                        <Col span={2}>
-                            <Popup trigger="hover" content="删除标签">
-                                <Button
-                                    shape="circle"
-                                    variant="text"
-                                    onClick={() => {
-                                        const newMetadata = [...(losslessRule.metadata || [])];
-                                        newMetadata.splice(idx, 1);
-                                        setLosslessRule({ ...losslessRule, metadata: newMetadata });
-                                    }}
-                                >
-                                    <CloseIcon />
-                                </Button>
-                            </Popup>
-                        </Col>
-                    </Row>
-                ))}
-                <Button variant="text" icon={<AddIcon />} onClick={() => {
-                    const newMetadata = [...(losslessRule.metadata || []), { key: '', value: '' }];
-                    setLosslessRule({ ...losslessRule, metadata: newMetadata });
-                }}>添加标签</Button>
-            </div>
-        </Dialog>
+    const losslessMetadataRecord = React.useMemo(
+        () => (losslessRule.metadata || []).reduce<Record<string, string>>((acc, cur) => {
+            if (cur.key) acc[cur.key] = cur.value;
+            return acc;
+        }, {}),
+        [losslessRule.metadata],
     );
 
-    // 基础信息卡片样式与各规则页统一（第一层标题，第二层命名空间与服务名称，第三层规则标签）
-    const baseInfoCardStyle = { marginBottom: 24, padding: '24px 32px', border: '1px solid #e5e6eb', borderRadius: 8, boxShadow: '0 2px 8px 0 rgba(0,0,0,0.03)' };
     const serviceInfo = (
-        <div style={baseInfoCardStyle}>
-            {/* 第一层：标题 */}
-            <div style={{ marginBottom: 16 }}>
-                <Text style={{ fontWeight: 'bold' }}>目标服务</Text>
-            </div>
-            {/* 第二层：命名空间、服务名称 */}
-            <Row style={{ marginBottom: 16 }}>
-                <Space>
-                    <FormItem label="命名空间">
-                        <div>
+        <div className={shared.section}>
+            <div className={shared.sectionHeader}>基础信息</div>
+            <div className={shared.sectionBody}>
+                <div className={shared.infoGrid}>
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>命名空间</div>
+                        {editor.editable ? (
                             <Select
-                                filterable={true}
-                                creatable={true}
+                                filterable creatable
                                 value={losslessRule.namespace}
-                                borderless={!editor.editable}
-                                readonly={!editor.editable}
-                                options={namespaceDatas.map((ns: NamespaceView) => ({
-                                    label: ns.name,
-                                    value: ns.name,
-                                    namespace: ns.name,
-                                }))}
-                                onChange={(value) => {
-                                    setLosslessRule(prev => ({ ...prev, namespace: value as string }));
-                                }}
+                                options={namespaceDatas.map((ns: NamespaceView) => ({ label: ns.name, value: ns.name }))}
+                                onChange={(value) => setLosslessRule(prev => ({ ...prev, namespace: value as string }))}
                             />
-                        </div>
-                    </FormItem>
-                    <FormItem label="服务名称">
-                        <div>
+                        ) : <div className={shared.fieldValue}>{losslessRule.namespace || '-'}</div>}
+                    </div>
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>服务名称</div>
+                        {editor.editable ? (
                             <Select
-                                filterable={true}
-                                creatable={true}
+                                filterable creatable
                                 value={losslessRule.service}
-                                borderless={!editor.editable}
-                                readonly={!editor.editable}
-                                options={serviceDatas.filter(opt => {
-                                    if (losslessRule.namespace === '*') {
-                                        return true;
-                                    }
-                                    return opt.namespace === losslessRule.namespace;
-                                }).map((service: ServiceView) => ({
-                                    label: service.name,
-                                    value: service.name,
-                                    namespace: service.namespace,
-                                }))}
-                                onChange={(value) => {
-                                    setLosslessRule(prev => ({ ...prev, service: value as string }));
-                                }}
+                                options={serviceDatas.filter(opt => losslessRule.namespace === '*' || opt.namespace === losslessRule.namespace).map((service: ServiceView) => ({ label: service.name, value: service.name }))}
+                                onChange={(value) => setLosslessRule(prev => ({ ...prev, service: value as string }))}
                             />
-                        </div>
-                    </FormItem>
-                </Space>
-            </Row>
-            {/* 第三层：规则标签 */}
-            <Row>
-                <FormItem label='规则标签' name='labels'>
-                    <Space align="center">
-                        {losslessRule.metadata && losslessRule.metadata.length > 0 ? (
-                            <>
-                                {losslessRule.metadata.map((tag, idx) => (
-                                    <Tag key={idx}>{`${tag.key}: ${tag.value}`}</Tag>
-                                ))}
-                                {editor.editable && (
-                                    <Button
-                                        shape="circle"
-                                        variant="text"
-                                        onClick={() => setEditor(prev => ({ ...prev, visible: true }))}
-                                    >
-                                        <Edit1Icon />
-                                    </Button>
-                                )}
-                            </>
-                        ) : (
-                            <>
-                                <Text>暂无标签</Text>
-                                {editor.editable && (
-                                    <Button
-                                        shape="circle"
-                                        variant="text"
-                                        onClick={() => setEditor(prev => ({ ...prev, visible: true }))}
-                                    >
-                                        <Edit1Icon />
-                                    </Button>
-                                )}
-                            </>
-                        )}
-                    </Space>
-                </FormItem>
-                {renderRuleLabelsDialog()}
-            </Row>
+                        ) : <div className={shared.fieldValue}>{losslessRule.service || '-'}</div>}
+                    </div>
+                    <div className={`${shared.field} ${shared.full}`}>
+                        <div className={shared.fieldLabel}>规则标签</div>
+                        <RuleLabelField
+                            metadata={losslessMetadataRecord}
+                            editable={editor.editable}
+                            onChange={(next) => setLosslessRule(prev => ({ ...prev, metadata: Object.entries(next).map(([key, value]) => ({ key, value })) }))}
+                        />
+                    </div>
+                </div>
+            </div>
         </div>
     );
 
     const renderEditForm = (
-        <>
-            <div style={{ marginBottom: 24, padding: 16, border: '1px solid #e0e0e0', borderRadius: 6 }}>
-                <Divider>无损上线</Divider>
+        <div className={shared.section}>
+            <div className={shared.sectionHeader}>无损上下线配置</div>
+            <div className={shared.sectionBody}>
+                <div className={`${shared.group} ${losslessRule.lossless_online?.delay_register?.enable ? '' : shared.groupDisabled}`}>
+                    <div className={shared.groupHead}>
+                        <span className={shared.groupTitle}><span className={shared.groupIndex}>1</span>无损上线 · 延迟注册</span>
+                        <span className={`${shared.pill} ${losslessRule.lossless_online?.delay_register?.enable ? shared.pillOk : shared.pillOff} ${shared.pillDot}`}>{losslessRule.lossless_online?.delay_register?.enable ? '启用' : '未启用'}</span>
+                    </div>
+                    <div className={shared.groupBody}>
                 <FormItem label="延迟注册">
                     {editor.editable ? (
                         <div>
@@ -618,7 +519,14 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
                         )}
                     </>
                 )}
-                <Divider>服务预热</Divider>
+                    </div>
+                </div>
+                <div className={`${shared.group} ${losslessRule.lossless_online?.warmup?.enable ? '' : shared.groupDisabled}`}>
+                    <div className={shared.groupHead}>
+                        <span className={shared.groupTitle}><span className={shared.groupIndex}>2</span>服务预热</span>
+                        <span className={`${shared.pill} ${losslessRule.lossless_online?.warmup?.enable ? shared.pillOk : shared.pillOff} ${shared.pillDot}`}>{losslessRule.lossless_online?.warmup?.enable ? '启用' : '未启用'}</span>
+                    </div>
+                    <div className={shared.groupBody}>
                 <FormItem label="预热启用" name={["lossless_online", "warmup", "enable"]}>
                     {editor.editable ? (
                         <div>
@@ -756,7 +664,14 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
                         </FormItem>
                     </>
                 )}
-                <Divider>无损下线</Divider>
+                    </div>
+                </div>
+                <div className={`${shared.group} ${losslessRule.lossless_offline?.enable ? '' : shared.groupDisabled}`}>
+                    <div className={shared.groupHead}>
+                        <span className={shared.groupTitle}><span className={shared.groupIndex}>3</span>无损下线</span>
+                        <span className={`${shared.pill} ${losslessRule.lossless_offline?.enable ? shared.pillOk : shared.pillOff} ${shared.pillDot}`}>{losslessRule.lossless_offline?.enable ? '启用' : '未启用'}</span>
+                    </div>
+                    <div className={shared.groupBody}>
                 <FormItem label="无损下线启用">
                     {editor.editable ? (
                         <div>
@@ -806,8 +721,10 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
                         ) : renderSeconds(losslessRule.lossless_offline?.interval)}
                     </FormItem>
                 )}
+                    </div>
+                </div>
             </div>
-        </>
+        </div>
     );
 
     const renderStickyTool = (

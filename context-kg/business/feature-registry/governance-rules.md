@@ -1,8 +1,8 @@
 ---
-title: 治理规则域
+title: 治理规则（`pkg/goverrule/`）
 tags: [business, feature, governance, routing, ratelimit]
 links: [namespace, architecture, storage, cache-layer, service-discovery, adr-governance-rule-unified-storage]
-updated: 2026-06-09
+updated: 2026-06-15
 sources: 1
 ---
 

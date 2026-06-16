@@ -1,0 +1,136 @@
+.laneGroupShell {
+  padding: 20px 24px 24px;
+}
+
+.laneGroupEditor {
+  :global(.t-steps--vertical) {
+    padding-left: 4px;
+  }
+}
+
+.readonlyLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.summaryStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid #e7ebf0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.summaryItem {
+  min-width: 0;
+  padding: 14px 18px;
+  border-right: 1px solid #eef1f5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  &:last-child {
+    border-right: 0;
+  }
+
+  strong {
+    color: #1f2937;
+    font-size: 22px;
+    line-height: 28px;
+    font-weight: 600;
+  }
+}
+
+.summaryLabel {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.overviewSection {
+  min-width: 0;
+  border: 1px solid #e7ebf0;
+  border-radius: 8px;
+  background: #fff;
+  padding: 18px 20px;
+}
+
+.sectionTitle {
+  color: #1f2937;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 32px;
+  row-gap: 16px;
+}
+
+.infoItem {
+  min-width: 0;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.infoLabel,
+.entryTitle {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 18px;
+  margin-bottom: 8px;
+}
+
+.infoValue {
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 22px;
+  word-break: break-word;
+}
+
+.twoColumn {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.entryBlock + .entryBlock {
+  margin-top: 18px;
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.emptyText {
+  color: #8b93a3;
+  font-size: 13px;
+  line-height: 22px;
+}
+
+@media (max-width: 960px) {
+  .summaryStrip,
+  .infoGrid,
+  .twoColumn {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .summaryItem {
+    border-right: 0;
+    border-bottom: 1px solid #eef1f5;
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+}

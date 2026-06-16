@@ -42,11 +42,11 @@ const result: IRouter[] = [
         Component: lazy(() => import('pages/Governance/CircuitBreaker')),
         meta: { title: 'menu.governance.circuitbreaker', hidden: true },
       },
-      // {
-      //   path: 'security',
-      //   Component: lazy(() => import('pages/Governance/Security')),
-      //   meta: { title: 'menu.governance.security' },
-      // }
+      {
+        path: 'security',
+        Component: lazy(() => import('pages/Governance/Security')),
+        meta: { title: 'menu.governance.security', hidden: true },
+      },
     ],
   },
 ];

@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
-import { Table, Popup, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Popconfirm } from 'tdesign-react';
-import { DeleteIcon, EditIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
+import React, { useMemo, useState } from 'react';
+import { Table, Popup, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Popconfirm, Input, Tag } from 'tdesign-react';
+import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, CreditcardIcon, SearchIcon } from 'tdesign-icons-react';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification } from 'utils/notifition';
 import Text from 'components/Text';
-import { CheckVisibilityMode, VisibilityModeMap } from 'utils/visible';
+import { CheckVisibilityMode, VisibilityMode_All, VisibilityMode_Single, VisibilityMode_Specified, VisibilityModeMap } from 'utils/visible';
 import NamespaceEditor from './NamespaceEditor';
-import Search from 'components/Search';
 import style from './index.module.less';
 import { cleanNamespacePage, editorNamespace, listNamespaces, resetNamespace, selectNamespace } from 'modules/namespace';
 import AuthorizeInput from 'components/Authorize';
@@ -15,22 +14,48 @@ import { PolicySourceType } from 'services/auth_policy';
 import { Namespace } from 'services/namespace';
 import { Op } from 'services/types';
 
+const visibilityTheme = (mode?: string) => {
+    if (mode === VisibilityMode_All) return 'success';
+    if (mode === VisibilityMode_Specified) return 'warning';
+    if (mode === VisibilityMode_Single) return 'primary';
+    return 'default';
+}
+
 const columns = (operateNamespace: (op: Op, row: TableRowData) => void): PrimaryTableProps['columns'] => [
     {
         colKey: 'name',
         title: '名称',
-        cell: ({ row }: TableRowData) => <Text>{row.name}</Text>,
+        width: 180,
+        cell: ({ row }: TableRowData) => {
+            const metadata = row.metadata || {};
+            const metadataCount = Object.keys(metadata).length;
+            return (
+                <div className={style.namespaceCell}>
+                    <div className={style.namespaceNameRow}>
+                        <Text>{row.name}</Text>
+                    </div>
+                    <div className={style.namespaceMeta}>
+                        <span>{metadataCount > 0 ? `${metadataCount} 个标签` : '无标签'}</span>
+                        <span>{row.editable === false ? '只读' : '可维护'}</span>
+                    </div>
+                </div>
+            )
+        },
         fixed: 'left',
     },
     {
         colKey: 'service_export_to',
         title: '服务可见性',
+        width: 132,
         cell: ({ row: { name, service_export_to } }: TableRowData) => {
             const visibilityMode = CheckVisibilityMode(service_export_to, name)
+            const exports = service_export_to || [];
             return (
-                <div>
+                <div className={style.visibilityCell}>
                     {visibilityMode ? (
-                        VisibilityModeMap[visibilityMode]
+                        <Tag theme={visibilityTheme(visibilityMode) as any} variant="light-outline">
+                            {VisibilityModeMap[visibilityMode]}
+                        </Tag>
                     ) : (
                         <Popup
                             trigger={'hover'}
@@ -45,7 +70,11 @@ const columns = (operateNamespace: (op: Op, row: TableRowData) => void): Primary
                                 </Text>
                             }
                         >
-                            <Text>{service_export_to ? service_export_to?.join(',') : '-'}</Text>
+                            <div className={style.tagList}>
+                                {exports.slice(0, 2).map((item: string) => <Tag key={item} variant="outline">{item}</Tag>)}
+                                {exports.length > 2 && <Tag variant="outline">+{exports.length - 2}</Tag>}
+                                {exports.length === 0 && <Text>-</Text>}
+                            </div>
                         </Popup>
                     )}
                 </div>
@@ -56,32 +85,66 @@ const columns = (operateNamespace: (op: Op, row: TableRowData) => void): Primary
     {
         colKey: 'commnet',
         title: '描述',
+        width: 205,
         ellipsis: true,
-        cell: ({ row: { comment } }: TableRowData) => (<Text>{comment || '-'}</Text>),
+        cell: ({ row: { comment } }: TableRowData) => (
+            <div className={style.descriptionCell}>
+                <Text>{comment || '-'}</Text>
+            </div>
+        ),
     },
     {
         colKey: 'totalSerivce',
         title: '服务数',
-        cell: ({ row }: TableRowData) => <Text>{row.total_service_count ?? '-'}</Text>,
+        width: 70,
+        cell: ({ row }: TableRowData) => (
+            <div className={style.numberCell}>
+                <strong>{row.total_service_count ?? 0}</strong>
+                <span>服务</span>
+            </div>
+        ),
     },
     {
         colKey: 'health/total',
-        title: '健康实例/总实例数',
-        cell: ({ row: { total_instance_count, total_health_instance_count } }: TableRowData) => (
-            <Text>{`${total_health_instance_count}/${total_instance_count}`}</Text>
-        ),
+        title: '健康/总数',
+        width: 120,
+        cell: ({ row: { total_instance_count, total_health_instance_count } }: TableRowData) => {
+            const totalInstances = total_instance_count ?? 0;
+            const healthInstances = total_health_instance_count ?? 0;
+            const percent = totalInstances > 0 ? Math.round((healthInstances / totalInstances) * 100) : 0;
+            return (
+                <div className={style.healthCell}>
+                    <div>
+                        <strong>{`${healthInstances}/${totalInstances}`}</strong>
+                        <span>{totalInstances > 0 ? `${percent}%` : '无实例'}</span>
+                    </div>
+                    <div className={style.healthTrack}>
+                        <i style={{ width: `${percent}%` }} />
+                    </div>
+                </div>
+            )
+        },
     },
     {
         colKey: 'time',
         title: '操作时间',
-        cell: ({ row: { ctime, mtime } }: TableRowData) => <Text>修改: {mtime}<br />创建: {ctime}</Text>,
+        width: 145,
+        cell: ({ row: { ctime, mtime } }: TableRowData) => (
+            <div className={style.timeCell}>
+                <span>修改：{mtime}</span>
+                <span>创建：{ctime}</span>
+            </div>
+        ),
     },
     {
         colKey: 'action',
         title: '操作',
+        width: 104,
+        align: 'center',
+        fixed: 'right',
         cell: ({ row }: TableRowData) => {
             return (
-                <Space>
+                <div className={style.actionCell}>
                     <Tooltip content={row.editable === false ? '无权限操作' : '编辑'}>
                         <Button
                             shape="square"
@@ -112,11 +175,11 @@ const columns = (operateNamespace: (op: Op, row: TableRowData) => void): Primary
                             }}
                         >
                             <Button shape="square" variant="text" disabled={row.deleteable === false}>
-                                <DeleteIcon />
-                            </Button>
-                        </Popconfirm>
-                    </Tooltip>
-                </Space>
+                            <DeleteIcon />
+                        </Button>
+                    </Popconfirm>
+                </Tooltip>
+                </div>
             )
         },
     },
@@ -127,6 +190,7 @@ export default React.memo(() => {
 
     const namespaceState = useAppSelector(selectNamespace);
     const { datas, loading, page, limit, total } = namespaceState;
+    const [query, setQuery] = useState('');
 
     // 合并编辑相关状态
     const [editorState, setEditorState] = useState<{
@@ -159,7 +223,7 @@ export default React.memo(() => {
             param: {
                 offset: (page - 1) * limit,
                 limit: limit,
-
+                name: query || undefined,
             }
         })).then((res) => {
             if (res.meta.requestStatus === 'rejected') {
@@ -177,30 +241,85 @@ export default React.memo(() => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    {/* <!-- :defaultExpandedRowKeys="defaultExpandedRowKeys" --> */ }
+    const metrics = useMemo(() => {
+        const serviceCount = datas.reduce((sum, item) => sum + (item.total_service_count || 0), 0);
+        const instanceCount = datas.reduce((sum, item) => sum + (item.total_instance_count || 0), 0);
+        const healthCount = datas.reduce((sum, item) => sum + (item.total_health_instance_count || 0), 0);
+        const visibleAllCount = datas.filter((item) => CheckVisibilityMode(item.service_export_to, item.name) === VisibilityMode_All).length;
+        const healthRate = instanceCount > 0 ? `${Math.round((healthCount / instanceCount) * 100)}%` : '-';
+        return { serviceCount, instanceCount, healthCount, visibleAllCount, healthRate };
+    }, [datas]);
+
+    const submitFilter = () => {
+        refreshTable(1, limit, query);
+    };
+
+    const resetFilter = () => {
+        setQuery('');
+        refreshTable(1, limit, '');
+    };
+
     const table = (
         <>
-            <Row justify='space-between' className={style.toolBar}>
-                <Col>
-                    <Row gutter={8} align='middle'>
-                        <Col>
-                            <Button onClick={() => operateNamespace('create')}>新建</Button>
-                        </Col>
-                    </Row>
-                </Col>
-                <Col>
-                    <Space>
-                        <Search
-                            onChange={(value: string) => {
-                                refreshTable();
-                            }}
-                        />
-                        <Tooltip content="刷新">
-                            <RefreshIcon onClick={() => refreshTable()} />
-                        </Tooltip>
-                    </Space>
-                </Col>
-            </Row>
+            <section className={style.header}>
+                <div>
+                    <div className={style.eyebrow}>Service Registry / Namespace</div>
+                    <h2>命名空间管理</h2>
+                    <p>维护服务隔离边界、可见范围和访问授权，快速确认各命名空间下的服务与实例健康状态。</p>
+                </div>
+                <Space>
+                    <Tooltip content="刷新列表">
+                        <Button shape="square" variant="outline" onClick={() => refreshTable(page, limit, query)}>
+                            <RefreshIcon />
+                        </Button>
+                    </Tooltip>
+                    <Button theme="primary" icon={<AddIcon />} onClick={() => operateNamespace('create')}>新建命名空间</Button>
+                </Space>
+            </section>
+
+            <section className={style.metricRail}>
+                <div className={style.metricItem}>
+                    <span>命名空间</span>
+                    <strong>{total}</strong>
+                </div>
+                <div className={style.metricItem}>
+                    <span>当前页服务</span>
+                    <strong>{metrics.serviceCount}</strong>
+                </div>
+                <div className={style.metricItem}>
+                    <span>健康实例</span>
+                    <strong>{metrics.healthCount}/{metrics.instanceCount}</strong>
+                </div>
+                <div className={style.metricItem}>
+                    <span>实例健康率</span>
+                    <strong>{metrics.healthRate}</strong>
+                </div>
+                <div className={style.metricItem}>
+                    <span>全局可见</span>
+                    <strong>{metrics.visibleAllCount}</strong>
+                </div>
+            </section>
+
+            <section className={style.filterBar}>
+                <div className={style.filterHint}>
+                    <strong>命名空间列表</strong>
+                    <span>{loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}</span>
+                </div>
+                <Space>
+                    <Input
+                        className={style.filterInput}
+                        clearable
+                        prefixIcon={<SearchIcon />}
+                        placeholder="名称前缀"
+                        value={query}
+                        onChange={(value) => setQuery(value as string)}
+                        onEnter={submitFilter}
+                    />
+                    <Button variant="outline" onClick={submitFilter}>查询</Button>
+                    <Button variant="text" onClick={resetFilter}>重置</Button>
+                </Space>
+            </section>
+
             {editorState.visible && (
                 <NamespaceEditor
                     key={editorState.mode + (editorState.data?.name || 'new') + (editorState.visible ? '1' : '0')}
@@ -210,7 +329,7 @@ export default React.memo(() => {
                         // 清理编辑器状态
                         dispatch(resetNamespace());
                         setEditorState(s => ({ ...s, visible: false }))
-                        refreshTable();
+                        refreshTable(page, limit, query);
                     }} />
             )}
             {editorState.authorizeVisible && (
@@ -224,32 +343,34 @@ export default React.memo(() => {
                     }}
                 />
             )}
-            <Table
-                data={datas}
-                columns={columns(operateNamespace)}
-                loading={loading}
-                rowKey="name"
-                size={"large"}
-                tableLayout={'auto'}
-                cellEmptyContent={'-'}
-                pagination={{
-                    current: page,
-                    pageSize: limit,
-                    total: total,
-                    showJumper: true,
-                    onChange(pageInfo) {
-                        refreshTable(pageInfo.current, pageInfo.pageSize);
-                    },
-                }}
-                onPageChange={(pageInfo) => {
-                    refreshTable(pageInfo.current, pageInfo.pageSize);
-                }}
-            />
+            <section className={style.tableSurface}>
+                <Table
+                    data={datas}
+                    columns={columns(operateNamespace)}
+                    loading={loading}
+                    rowKey="name"
+                    size={"large"}
+                    tableLayout={'fixed'}
+                    cellEmptyContent={'-'}
+                    pagination={{
+                        current: page,
+                        pageSize: limit,
+                        total: total,
+                        showJumper: true,
+                        onChange(pageInfo) {
+                            refreshTable(pageInfo.current, pageInfo.pageSize, query);
+                        },
+                    }}
+                    onPageChange={(pageInfo) => {
+                        refreshTable(pageInfo.current, pageInfo.pageSize, query);
+                    }}
+                />
+            </section>
         </>
     );
 
     return (
-        <div>
+        <div className={style.page}>
             {table}
         </div>
     )

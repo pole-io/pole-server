@@ -2,7 +2,6 @@ import React, { memo, useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Col,
-  Descriptions,
   Drawer,
   Form,
   Input,
@@ -29,7 +28,9 @@ import {
   FileIcon,
   ListIcon,
   RefreshIcon,
+  ServerIcon,
 } from 'tdesign-icons-react';
+import { useNavigate } from 'react-router-dom';
 
 import Text from 'components/Text';
 import {
@@ -52,19 +53,22 @@ import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
 
 const { FormItem } = Form;
-const { DescriptionsItem } = Descriptions;
 const { TabPanel } = Tabs;
 
 const protocolOptions = [
   { label: 'JSON-RPC', value: 'jsonrpc' },
-  { label: 'HTTP+JSON', value: 'http-json' },
+  { label: 'HTTP+JSON', value: 'http+json' },
   { label: 'gRPC', value: 'grpc' },
 ];
 
+const quickProtocolOptions = [
+  { label: '全部', value: '' },
+  ...protocolOptions,
+];
+
 const backendOptions = [
-  { label: 'Pole 服务', value: 'service' },
-  { label: 'URL', value: 'url' },
-  { label: '外部系统', value: 'external' },
+  { label: 'Pole 注册服务', value: 'service' },
+  { label: '自定义地址', value: 'address' },
 ];
 
 const fetchStatusOptions = [
@@ -112,6 +116,33 @@ function jsonPreview(value: unknown) {
   return JSON.stringify(value, null, 2);
 }
 
+function parseJSONValue(value: unknown): Record<string, any> | undefined {
+  if (!value) return undefined;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return typeof value === 'object' ? value as Record<string, any> : undefined;
+}
+
+function arrayValue(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item)).filter(Boolean);
+}
+
+function cardField(card: Record<string, any> | undefined, key: string, fallback = '-') {
+  const value = card?.[key];
+  return value === undefined || value === null || value === '' ? fallback : String(value);
+}
+
+function isHttpURL(value: unknown) {
+  return typeof value === 'string' && /^https?:\/\//.test(value);
+}
+
 function parseMetadata(raw?: string): Record<string, string> | undefined {
   if (!raw) return undefined;
   return raw.split('\n').reduce<Record<string, string>>((acc, line) => {
@@ -126,6 +157,73 @@ function parseMetadata(raw?: string): Record<string, string> | undefined {
 
 function stringifyMetadata(metadata?: Record<string, string>) {
   return metadata ? Object.entries(metadata).map(([key, value]) => `${key}=${value}`).join('\n') : '';
+}
+
+function protocolLabel(value?: string) {
+  return protocolOptions.find((item) => item.value === value)?.label || value || '-';
+}
+
+function protocolTheme(value?: string) {
+  if (value === 'jsonrpc') return 'primary';
+  if (value === 'http+json') return 'success';
+  if (value === 'grpc') return 'warning';
+  return 'default';
+}
+
+function backendType(agent?: A2AAgent) {
+  if (agent?.backend_type === 'url' || agent?.backend_type === 'external') return 'address';
+  if (agent?.backend_type) return agent.backend_type;
+  if (agent?.backend_service_namespace || agent?.backend_service_name) return 'service';
+  if (agent?.backend_address) return 'address';
+  return '';
+}
+
+function backendTypeLabel(value?: string) {
+  const normalized = value === 'url' || value === 'external' ? 'address' : value;
+  return backendOptions.find((item) => item.value === normalized)?.label || '-';
+}
+
+function backendLabel(agent?: A2AAgent) {
+  const type = backendType(agent);
+  if (type === 'service') {
+    return `${agent?.backend_service_namespace || agent?.namespace || '-'}/${agent?.backend_service_name || agent?.name || '-'}`;
+  }
+  if (type === 'address') return agent?.backend_address || agent?.preferred_interface_url || '-';
+  return agent?.preferred_interface_url || '-';
+}
+
+function backendServiceRef(agent?: A2AAgent) {
+  if (backendType(agent) !== 'service') return undefined;
+  const namespace = agent?.backend_service_namespace || agent?.namespace || '';
+  const name = agent?.backend_service_name || agent?.name || '';
+  if (!namespace || !name) return undefined;
+  return { namespace, name };
+}
+
+function fetchStatusTheme(value?: string) {
+  if (value === 'success') return 'success';
+  if (value === 'failed') return 'danger';
+  return 'default';
+}
+
+function fetchStatusLabel(value?: string) {
+  if (value === 'success') return '成功';
+  if (value === 'failed') return '失败';
+  return '未拉取';
+}
+
+function sourceTypeLabel(value?: string) {
+  if (value === 'manual') return '手动';
+  if (value === 'well-known') return 'Well-known';
+  if (value === 'service') return 'Pole 服务';
+  if (value === 'fetch') return '远程';
+  return value || '-';
+}
+
+function sourceTypeTheme(value?: string) {
+  if (value === 'well-known' || value === 'fetch') return 'primary';
+  if (value === 'service') return 'success';
+  return 'default';
 }
 
 function normalizeInterfaces(items: A2AAgentInterface[]) {
@@ -162,68 +260,119 @@ const capabilityTags = (agent: A2AAgent) => (
 
 const agentColumns = (
   operateAgent: (op: Op | 'skills' | 'card', row?: TableRowData) => void,
+  goBackendService: (agent?: A2AAgent) => void,
 ): PrimaryTableProps['columns'] => [
   {
     colKey: 'name',
-    title: '名称',
+    title: 'A2A Agent',
     fixed: 'left',
+    width: 360,
     cell: ({ row }) => (
-      <Link theme="primary" onClick={() => operateAgent('skills', row)}>
-        {row.name}
-      </Link>
+      <div className={style.agentCell}>
+        <div className={style.agentNameRow}>
+          <Link theme="primary" onClick={() => operateAgent('skills', row)}>
+            {row.name}
+          </Link>
+          <Tag theme={protocolTheme(row.preferred_protocol_binding) as any} variant="light">
+            {protocolLabel(row.preferred_protocol_binding)}
+          </Tag>
+          {row.visibility && <Tag variant="outline">{row.visibility}</Tag>}
+        </div>
+        <div className={style.agentMeta}>
+          <span>{row.namespace || '-'}</span>
+          <span>{row.description || row.provider_organization || '-'}</span>
+        </div>
+      </div>
     ),
   },
   {
-    colKey: 'namespace',
-    title: '命名空间',
-    cell: ({ row }) => <Text>{row.namespace}</Text>,
+    colKey: 'endpoint',
+    title: '接入',
+    ellipsis: true,
+    width: 260,
+    cell: ({ row }) => {
+      const agent = row as A2AAgent;
+      const serviceRef = backendServiceRef(agent);
+      return (
+        <div className={style.compactCell}>
+          <Text>{backendTypeLabel(backendType(agent))}</Text>
+          {serviceRef ? (
+            <Link className={style.backendLink} theme="primary" onClick={() => goBackendService(agent)}>
+              {backendLabel(agent)}
+            </Link>
+          ) : (
+            <span>{backendLabel(agent)}</span>
+          )}
+        </div>
+      );
+    },
   },
   {
-    colKey: 'version',
-    title: '版本',
-    cell: ({ row }) => <Text>{row.version || '-'}</Text>,
-  },
-  {
-    colKey: 'protocol',
-    title: '协议',
-    cell: ({ row }) => <Tag variant="outline">{row.preferred_protocol_binding || '-'}</Tag>,
+    colKey: 'owner',
+    title: '归属',
+    width: 180,
+    cell: ({ row }) => (
+      <div className={style.compactCell}>
+        <Text>{row.business || '-'}</Text>
+        <span>{row.department || row.provider_organization || '-'}</span>
+      </div>
+    ),
   },
   {
     colKey: 'capabilities',
     title: '能力',
+    width: 210,
     cell: ({ row }) => capabilityTags(row as A2AAgent),
   },
   {
     colKey: 'skills',
-    title: '技能',
-    cell: ({ row }) => <Text>{Array.isArray(row.skills) ? row.skills.length : 0}</Text>,
-  },
-  {
-    colKey: 'backend',
-    title: '后端绑定',
-    ellipsis: true,
+    title: '技能数',
+    width: 96,
     cell: ({ row }) => (
-      <Text>
-        {row.backend_type || '-'}
-        {row.backend_service_name ? ` / ${row.backend_service_namespace || 'default'}/${row.backend_service_name}` : ''}
-        {row.backend_address ? ` / ${row.backend_address}` : ''}
-      </Text>
+      <Link theme="primary" onClick={() => operateAgent('skills', row)}>
+        {Array.isArray(row.skills) ? row.skills.length : 0} 个
+      </Link>
     ),
   },
   {
     colKey: 'last_fetch_status',
-    title: '拉取状态',
-    cell: ({ row }) => <Tag variant="light-outline">{row.last_fetch_status || 'pending'}</Tag>,
+    title: '来源',
+    width: 136,
+    cell: ({ row }) => {
+      const agent = row as A2AAgent;
+      const sourceType = agent.source_type || 'manual';
+      const fetchStatus = agent.last_fetch_status || 'pending';
+      const showFetchStatus = fetchStatus !== 'success' && (sourceType !== 'manual' || fetchStatus === 'failed');
+      return (
+        <div className={style.sourceCell}>
+          <Tag theme={sourceTypeTheme(sourceType) as any} variant="light-outline">
+            {sourceTypeLabel(sourceType)}
+          </Tag>
+          {showFetchStatus && (
+            <Tag theme={fetchStatusTheme(fetchStatus) as any} variant="light">
+              {fetchStatusLabel(fetchStatus)}
+            </Tag>
+          )}
+        </div>
+      );
+    },
   },
   {
     colKey: 'time',
-    title: '操作时间',
-    cell: ({ row }) => <Text>修改: {row.mtime || '-'}<br />创建: {row.ctime || '-'}</Text>,
+    title: '最近修改',
+    width: 220,
+    cell: ({ row }) => (
+      <div className={style.compactCell}>
+        <Text>{row.mtime || '-'}</Text>
+        <span>创建 {row.ctime || '-'}</span>
+      </div>
+    ),
   },
   {
     colKey: 'action',
     title: '操作',
     fixed: 'right',
+    width: 160,
     cell: ({ row }) => (
       <Space>
         <Tooltip content="查看 Agent Card">
@@ -260,44 +409,219 @@ const agentColumns = (
   },
 ];
 
-const skillColumns: PrimaryTableProps['columns'] = [
-  {
-    colKey: 'name',
-    title: '技能名',
-    fixed: 'left',
-    cell: ({ row }) => <Text>{row.name}</Text>,
-  },
-  {
-    colKey: 'skill_id',
-    title: 'Skill ID',
-    cell: ({ row }) => <Text>{row.skill_id || '-'}</Text>,
-  },
-  {
-    colKey: 'tags',
-    title: '标签',
-    cell: ({ row }) => (
-      <Space size="small" breakLine>
-        {tagList(row.tags).map((tag) => <Tag key={tag} variant="light-outline">{tag}</Tag>)}
-      </Space>
-    ),
-  },
-  {
-    colKey: 'input_modes',
-    title: '输入',
-    cell: ({ row }) => <Text>{tagList(row.input_modes).join(', ') || '-'}</Text>,
-  },
-  {
-    colKey: 'output_modes',
-    title: '输出',
-    cell: ({ row }) => <Text>{tagList(row.output_modes).join(', ') || '-'}</Text>,
-  },
-  {
-    colKey: 'description',
-    title: '描述',
-    ellipsis: true,
-    cell: ({ row }) => <Text>{row.description || '-'}</Text>,
-  },
-];
+const AgentCardView: React.FC<{ card?: Record<string, any>; loading: boolean }> = ({ card, loading }) => {
+  if (loading) {
+    return <div className={style.cardEmpty}>Agent Card 加载中...</div>;
+  }
+
+  if (!card) {
+    return <div className={style.cardEmpty}>暂无可视化 Agent Card</div>;
+  }
+
+  const provider = card.provider && typeof card.provider === 'object' ? card.provider : {};
+  const capabilities = card.capabilities && typeof card.capabilities === 'object' ? card.capabilities : {};
+  const skills = Array.isArray(card.skills) ? card.skills : [];
+  const url = card.url || card.endpoint || '-';
+  const security = Array.isArray(card.security) ? card.security : [];
+  const providerName = provider.organization ? String(provider.organization) : '-';
+  const providerURL = provider.url ? String(provider.url) : '-';
+
+  return (
+    <div className={style.cardVisual}>
+      <section className={style.cardHero}>
+        <div>
+          <h4>{cardField(card, 'name')}</h4>
+          <p>{cardField(card, 'description')}</p>
+        </div>
+        <Space size={8}>
+          <Tag theme="primary" variant="light">A2A {cardField(card, 'protocolVersion')}</Tag>
+          {card.version && <Tag variant="outline">v{String(card.version)}</Tag>}
+        </Space>
+      </section>
+
+      <section className={style.cardInfoGrid}>
+        <div>
+          <span>访问地址</span>
+          <strong>
+            {isHttpURL(url) ? (
+              <Link href={String(url)} target="_blank">
+                {String(url)}
+              </Link>
+            ) : String(url)}
+          </strong>
+        </div>
+        <div>
+          <span>Provider</span>
+          <strong>{providerName}</strong>
+        </div>
+        <div>
+          <span>Provider URL</span>
+          <strong>
+            {isHttpURL(providerURL) ? (
+              <Link href={providerURL} target="_blank">
+                {providerURL}
+              </Link>
+            ) : providerURL}
+          </strong>
+        </div>
+        <div>
+          <span>默认输入/输出</span>
+          <strong>{arrayValue(card.defaultInputModes).join(', ') || '-'} / {arrayValue(card.defaultOutputModes).join(', ') || '-'}</strong>
+        </div>
+      </section>
+
+      <section className={style.cardSection}>
+        <div className={style.cardSectionTitle}>能力</div>
+        <Space size={8} breakLine>
+          {capabilities.streaming && <Tag theme="success" variant="light-outline">Streaming</Tag>}
+          {capabilities.pushNotifications && <Tag theme="warning" variant="light-outline">Push Notification</Tag>}
+          {capabilities.stateTransitionHistory && <Tag theme="primary" variant="light-outline">State History</Tag>}
+          {security.length > 0 && <Tag variant="outline">Security: {security.length}</Tag>}
+          {!capabilities.streaming && !capabilities.pushNotifications && !capabilities.stateTransitionHistory && security.length === 0 && <Text>-</Text>}
+        </Space>
+      </section>
+
+      <section className={style.cardSection}>
+        <div className={style.cardSectionTitle}>
+          <span>Skills</span>
+          <Tag variant="light">{skills.length}</Tag>
+        </div>
+        {skills.length > 0 ? (
+          <div className={style.cardSkillList}>
+            {skills.map((skill: any, index: number) => {
+              const tags = arrayValue(skill.tags);
+              return (
+                <div className={style.cardSkillItem} key={skill.id || skill.name || index}>
+                  <div className={style.cardSkillMain}>
+                    <div>
+                      <strong>{skill.name || skill.id || `Skill ${index + 1}`}</strong>
+                      <span>{skill.id || '-'}</span>
+                    </div>
+                    <p>{skill.description || '-'}</p>
+                  </div>
+                  <Space size={6} breakLine>
+                    {tags.slice(0, 5).map((tag) => <Tag key={tag} variant="outline">{tag}</Tag>)}
+                    {tags.length > 5 && <Tag variant="outline">+{tags.length - 5}</Tag>}
+                  </Space>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <Text>-</Text>
+        )}
+      </section>
+    </div>
+  );
+};
+
+function skillKey(skill: A2AAgentSkill, index: number) {
+  return skill.id || skill.skill_id || skill.name || `skill-${index}`;
+}
+
+const AgentSkillsView: React.FC<{ skills: A2AAgentSkill[]; loading: boolean }> = ({ skills, loading }) => {
+  const [activeKey, setActiveKey] = useState('');
+
+  useEffect(() => {
+    if (!skills.length) {
+      setActiveKey('');
+      return;
+    }
+    setActiveKey((current) => (skills.some((skill, index) => skillKey(skill, index) === current) ? current : skillKey(skills[0], 0)));
+  }, [skills]);
+
+  if (loading) {
+    return <div className={style.cardEmpty}>技能加载中...</div>;
+  }
+
+  if (!skills.length) {
+    return <div className={style.cardEmpty}>暂无技能</div>;
+  }
+
+  const activeSkill = skills.find((skill, index) => skillKey(skill, index) === activeKey) || skills[0];
+  const activeTags = tagList(activeSkill.tags);
+  const inputModes = tagList(activeSkill.input_modes);
+  const outputModes = tagList(activeSkill.output_modes);
+  const examples = tagList(activeSkill.examples);
+
+  return (
+    <div className={style.skillBrowser}>
+      <aside className={style.skillCatalog}>
+        <div className={style.skillCatalogHeader}>
+          <strong>技能目录</strong>
+          <span>{skills.length} 个技能</span>
+        </div>
+        <div className={style.skillCatalogList}>
+          {skills.map((skill, index) => {
+            const key = skillKey(skill, index);
+            const tags = tagList(skill.tags);
+            return (
+              <button
+                key={key}
+                className={key === activeKey ? style.skillCatalogItemActive : style.skillCatalogItem}
+                type="button"
+                onClick={() => setActiveKey(key)}
+              >
+                <div className={style.skillCatalogMain}>
+                  <strong>{skill.name || skill.skill_id || `Skill ${index + 1}`}</strong>
+                  <span>{skill.skill_id || '-'}</span>
+                </div>
+                <div className={style.skillCatalogTags}>
+                  {tags.slice(0, 3).map((tag) => <Tag key={tag} variant="outline">{tag}</Tag>)}
+                  {tags.length > 3 && <Tag variant="outline">+{tags.length - 3}</Tag>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </aside>
+
+      <section className={style.skillDetailPanel}>
+        <div className={style.skillDetailHeader}>
+          <div>
+            <span>Skill</span>
+            <h4>{activeSkill.name || activeSkill.skill_id || '-'}</h4>
+            <p>{activeSkill.description || '暂无描述'}</p>
+          </div>
+          {activeSkill.skill_id && <Tag theme="primary" variant="light">{activeSkill.skill_id}</Tag>}
+        </div>
+
+        <div className={style.skillDetailGrid}>
+          <div>
+            <span>标签</span>
+            <Space size={6} breakLine>
+              {activeTags.length ? activeTags.map((tag) => <Tag key={tag} variant="outline">{tag}</Tag>) : <Text>-</Text>}
+            </Space>
+          </div>
+          <div>
+            <span>输入</span>
+            <strong>{inputModes.join(', ') || '-'}</strong>
+          </div>
+          <div>
+            <span>输出</span>
+            <strong>{outputModes.join(', ') || '-'}</strong>
+          </div>
+        </div>
+
+        {examples.length > 0 && (
+          <div className={style.skillDetailSection}>
+            <strong>示例</strong>
+            <div className={style.skillExampleList}>
+              {examples.map((example) => <span key={example}>{example}</span>)}
+            </div>
+          </div>
+        )}
+
+        {activeSkill.security_requirements_json && (
+          <div className={style.skillDetailSection}>
+            <strong>安全声明</strong>
+            <pre>{activeSkill.security_requirements_json}</pre>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+};
 
 const A2AEditor: React.FC<{
   op: Op;
@@ -659,6 +983,7 @@ const A2AEditor: React.FC<{
 
 export default memo(() => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { datas, loading, page, limit, total, editAgent, skills, skillsLoading, card, cardLoading } = useAppSelector(selectA2A);
   const [query, setQuery] = useState({
     name: '',
@@ -674,8 +999,14 @@ export default memo(() => {
     visible: false,
     mode: 'skills',
   });
+  const [cardViewMode, setCardViewMode] = useState<'visual' | 'raw'>('visual');
 
   const cardText = useMemo(() => jsonPreview(card), [card]);
+  const cardObject = useMemo(() => parseJSONValue(card), [card]);
+  const namespaces = new Set(datas.map((item) => item.namespace).filter(Boolean));
+  const streamingCount = datas.filter((item) => item.streaming).length;
+  const pushCount = datas.filter((item) => item.push_notifications).length;
+  const serviceBackendCount = datas.filter((item) => backendType(item) === 'service').length;
 
   const refreshTable = (current = 1, pageSize = 10, nextQuery = query) => {
     dispatch(listA2AAgents({
@@ -738,6 +1069,7 @@ export default memo(() => {
         });
         break;
       case 'card':
+        setCardViewMode('visual');
         setDetailState({ visible: true, mode: 'card', agent });
         dispatch(getA2AAgentCard({ id: agent?.id as string })).then((res) => {
           if (res.meta.requestStatus === 'rejected') {
@@ -768,99 +1100,166 @@ export default memo(() => {
     refreshTable(1, limit, nextQuery);
   };
 
+  const refreshDetails = () => {
+    const agent = detailState.agent;
+    if (!agent?.id) return;
+    if (detailState.mode === 'skills') {
+      dispatch(listA2AAgentSkills({ param: { agent_id: agent.id } }));
+      return;
+    }
+    dispatch(getA2AAgentCard({ id: agent.id }));
+  };
+
+  const editCurrentAgentFromDetail = () => {
+    if (!detailState.agent) return;
+    const currentAgent = detailState.agent;
+    dispatch(cleanA2ADetails());
+    setDetailState({ visible: false, mode: 'skills' });
+    dispatch(editorA2AAgent(currentAgent));
+    setEditorState({ visible: true, mode: 'edit' });
+  };
+
+  const goBackendService = (agent?: A2AAgent) => {
+    const service = backendServiceRef(agent);
+    if (!service) return;
+    navigate(`/discovery/service/instance?namespace=${encodeURIComponent(service.namespace)}&service=${encodeURIComponent(service.name)}`);
+  };
+
   return (
-    <div>
-      <Row justify="space-between" className={style.toolBar}>
-        <Col>
-          <Button icon={<AddIcon />} onClick={() => operateAgent('create')}>新建</Button>
-        </Col>
-        <Col>
-          <Space breakLine>
-            <Input
-              className={style.filterInput}
-              clearable
-              placeholder="名称前缀"
-              value={query.name}
-              onChange={(value) => setQuery((prev) => ({ ...prev, name: value as string }))}
-            />
-            <Input
-              className={style.filterInput}
-              clearable
-              placeholder="命名空间"
-              value={query.namespace}
-              onChange={(value) => setQuery((prev) => ({ ...prev, namespace: value as string }))}
-            />
-            <Select
-              className={style.filterSelect}
-              clearable
-              placeholder="协议"
-              options={protocolOptions}
-              value={query.protocol_binding}
-              onChange={(value) => setQuery((prev) => ({ ...prev, protocol_binding: value as string }))}
-            />
-            <Input
-              className={style.filterInput}
-              clearable
-              placeholder="Skill Tag"
-              value={query.skill_tag}
-              onChange={(value) => setQuery((prev) => ({ ...prev, skill_tag: value as string }))}
-            />
-            <Select
-              className={style.filterSelect}
-              clearable
-              placeholder="后端类型"
-              options={backendOptions}
-              value={query.backend_type}
-              onChange={(value) => setQuery((prev) => ({ ...prev, backend_type: value as string }))}
-            />
-            <Select
-              className={style.filterSelect}
-              clearable
-              placeholder="Streaming"
-              options={capabilityFilterOptions}
-              value={query.streaming}
-              onChange={(value) => setQuery((prev) => ({ ...prev, streaming: value as string }))}
-            />
-            <Select
-              className={style.filterSelect}
-              clearable
-              placeholder="Push"
-              options={capabilityFilterOptions}
-              value={query.push_notifications}
-              onChange={(value) => setQuery((prev) => ({ ...prev, push_notifications: value as string }))}
-            />
+    <div className={style.page}>
+      <section className={style.header}>
+        <div>
+          <div className={style.eyebrow}>AI Native / A2A Agent Registry</div>
+          <h2>A2A Agent</h2>
+          <p>维护可被其它 Agent 发现的 Agent Card、访问接口、技能能力和后端绑定。</p>
+        </div>
+        <Space>
+          <Tooltip content="刷新列表">
+            <Button shape="square" variant="outline" onClick={() => refreshTable(page, limit)}>
+              <RefreshIcon />
+            </Button>
+          </Tooltip>
+          <Button theme="primary" icon={<AddIcon />} onClick={() => operateAgent('create')}>新建 A2A Agent</Button>
+        </Space>
+      </section>
+
+      <section className={style.metricRail}>
+        <div className={style.metricItem}>
+          <span>Agents</span>
+          <strong>{total}</strong>
+        </div>
+        <div className={style.metricItem}>
+          <span>Namespaces</span>
+          <strong>{namespaces.size}</strong>
+        </div>
+        <div className={style.metricItem}>
+          <span>Streaming</span>
+          <strong>{streamingCount}</strong>
+        </div>
+        <div className={style.metricItem}>
+          <span>Push</span>
+          <strong>{pushCount}</strong>
+        </div>
+        <div className={style.metricItem}>
+          <span>Pole 服务</span>
+          <strong>{serviceBackendCount}</strong>
+        </div>
+      </section>
+
+      <section className={style.filterBar}>
+        <div className={style.filterControls}>
+          <Select
+            className={style.filterSelect}
+            placeholder="协议"
+            options={quickProtocolOptions}
+            value={query.protocol_binding}
+            onChange={(value) => {
+              const nextQuery = { ...query, protocol_binding: value as string };
+              setQuery(nextQuery);
+              refreshTable(1, limit, nextQuery);
+            }}
+          />
+          <Input
+            className={style.filterInput}
+            clearable
+            placeholder="名称前缀"
+            value={query.name}
+            onChange={(value) => setQuery((prev) => ({ ...prev, name: value as string }))}
+          />
+          <Input
+            className={style.filterInput}
+            clearable
+            placeholder="命名空间"
+            value={query.namespace}
+            onChange={(value) => setQuery((prev) => ({ ...prev, namespace: value as string }))}
+          />
+          <Input
+            className={style.filterInput}
+            clearable
+            placeholder="Skill Tag"
+            value={query.skill_tag}
+            onChange={(value) => setQuery((prev) => ({ ...prev, skill_tag: value as string }))}
+          />
+          <Select
+            className={style.filterSelect}
+            clearable
+            placeholder="后端类型"
+            options={backendOptions}
+            value={query.backend_type}
+            onChange={(value) => setQuery((prev) => ({ ...prev, backend_type: value as string }))}
+          />
+          <Select
+            className={style.filterSelect}
+            clearable
+            placeholder="Streaming"
+            options={capabilityFilterOptions}
+            value={query.streaming}
+            onChange={(value) => setQuery((prev) => ({ ...prev, streaming: value as string }))}
+          />
+          <Select
+            className={style.filterSelect}
+            clearable
+            placeholder="Push"
+            options={capabilityFilterOptions}
+            value={query.push_notifications}
+            onChange={(value) => setQuery((prev) => ({ ...prev, push_notifications: value as string }))}
+          />
+          <div className={style.filterActions}>
             <Button variant="outline" onClick={submitFilter}>查询</Button>
             <Button variant="text" onClick={resetFilter}>重置</Button>
-            <Tooltip content="刷新">
-              <Button shape="square" variant="text" onClick={() => refreshTable(page, limit)}>
-                <RefreshIcon />
-              </Button>
-            </Tooltip>
-          </Space>
-        </Col>
-      </Row>
+          </div>
+        </div>
+      </section>
 
-      <Table
-        data={datas}
-        columns={agentColumns(operateAgent)}
-        loading={loading}
-        rowKey="id"
-        size="large"
-        tableLayout="auto"
-        cellEmptyContent="-"
-        pagination={{
-          current: page,
-          pageSize: limit,
-          total,
-          showJumper: true,
-          onChange(pageInfo: PageInfo) {
+      <section className={style.tableSurface}>
+        <div className={style.tableHeader}>
+          <div>
+            <strong>Agent 列表</strong>
+            <span>{loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}</span>
+          </div>
+        </div>
+        <Table
+          data={datas}
+          columns={agentColumns(operateAgent, goBackendService)}
+          loading={loading}
+          rowKey="id"
+          size="large"
+          tableLayout="auto"
+          cellEmptyContent="-"
+          pagination={{
+            current: page,
+            pageSize: limit,
+            total,
+            showJumper: true,
+            onChange(pageInfo: PageInfo) {
+              refreshTable(pageInfo.current, pageInfo.pageSize);
+            },
+          }}
+          onPageChange={(pageInfo) => {
             refreshTable(pageInfo.current, pageInfo.pageSize);
-          },
-        }}
-        onPageChange={(pageInfo) => {
-          refreshTable(pageInfo.current, pageInfo.pageSize);
-        }}
-      />
+          }}
+        />
+      </section>
 
       {editorState.visible && (
         <A2AEditor
@@ -876,41 +1275,111 @@ export default memo(() => {
       )}
 
       <Drawer
-        size="large"
-        header={detailState.agent ? `${detailState.agent.namespace}/${detailState.agent.name}` : 'A2A Agent'}
+        size="min(1180px, 92vw)"
+        header={detailState.mode === 'skills' ? 'Agent 技能' : 'Agent Card'}
         footer={false}
         visible={detailState.visible}
         onClose={() => {
           dispatch(cleanA2ADetails());
+          setCardViewMode('visual');
           setDetailState({ visible: false, mode: 'skills' });
         }}
       >
-        {detailState.mode === 'skills' ? (
-          <Table<A2AAgentSkill>
-            data={skills}
-            columns={skillColumns}
-            loading={skillsLoading}
-            rowKey="id"
-            size="large"
-            tableLayout="auto"
-            cellEmptyContent="-"
-          />
-        ) : (
-          <div>
-            <Descriptions column={2} size="small" className={style.cardMeta}>
-              <DescriptionsItem label="名称">{detailState.agent?.name}</DescriptionsItem>
-              <DescriptionsItem label="命名空间">{detailState.agent?.namespace}</DescriptionsItem>
-              <DescriptionsItem label="首选协议">{detailState.agent?.preferred_protocol_binding || '-'}</DescriptionsItem>
-              <DescriptionsItem label="首选地址">{detailState.agent?.preferred_interface_url || '-'}</DescriptionsItem>
-            </Descriptions>
-            <Textarea
-              className={style.codeText}
-              readonly
-              value={cardLoading ? '加载中...' : cardText}
-              autosize={{ minRows: 16, maxRows: 24 }}
-            />
-          </div>
-        )}
+        <div className={style.agentDrawer}>
+          <section className={style.agentDrawerSummary}>
+            <div className={style.agentDrawerIcon}>
+              <ServerIcon />
+            </div>
+            <div className={style.agentDrawerMain}>
+              <div className={style.agentDrawerTitle}>
+                <h3>{detailState.agent ? `${detailState.agent.namespace}/${detailState.agent.name}` : '未选择 A2A Agent'}</h3>
+                <Tag theme={protocolTheme(detailState.agent?.preferred_protocol_binding) as any} variant="light">
+                  {protocolLabel(detailState.agent?.preferred_protocol_binding)}
+                </Tag>
+              </div>
+              <div className={style.agentDrawerDesc}>
+                {detailState.agent?.description || detailState.agent?.provider_organization || '该 Agent 暂无描述。'}
+              </div>
+              <div className={style.agentMetaGrid}>
+                <div>
+                  <span>技能数</span>
+                  <strong>{skillsLoading ? '-' : (detailState.agent?.skills?.length || skills.length || 0)}</strong>
+                </div>
+                <div>
+                  <span>后端</span>
+                  <strong>{backendTypeLabel(backendType(detailState.agent))}</strong>
+                </div>
+                <div>
+                  <span>接入地址</span>
+                  <strong>
+                    {backendServiceRef(detailState.agent) ? (
+                      <Link theme="primary" onClick={() => goBackendService(detailState.agent)}>
+                        {backendLabel(detailState.agent)}
+                      </Link>
+                    ) : backendLabel(detailState.agent)}
+                  </strong>
+                </div>
+                <div>
+                  <span>最近修改</span>
+                  <strong>{detailState.agent?.mtime || '-'}</strong>
+                </div>
+              </div>
+            </div>
+            <div className={style.agentDrawerActions}>
+              <Tooltip content="刷新">
+                <Button shape="square" variant="outline" onClick={refreshDetails}>
+                  <RefreshIcon />
+                </Button>
+              </Tooltip>
+              <Tooltip content="编辑 Agent">
+                <Button shape="square" variant="outline" onClick={editCurrentAgentFromDetail}>
+                  <EditIcon />
+                </Button>
+              </Tooltip>
+            </div>
+          </section>
+
+          <section className={style.detailSurface}>
+            <div className={style.tableHeader}>
+              <div>
+                <strong>{detailState.mode === 'skills' ? '技能目录' : 'Agent Card'}</strong>
+                <span>{detailState.mode === 'skills' ? (skillsLoading ? '正在同步技能' : `当前显示 ${skills.length} 个技能`) : (cardViewMode === 'visual' ? '概览' : '原始 Card JSON')}</span>
+              </div>
+              {detailState.mode === 'card' && (
+                <Space className={style.cardViewSwitch} size={4}>
+                  <Button
+                    size="small"
+                    theme={cardViewMode === 'visual' ? 'primary' : 'default'}
+                    variant={cardViewMode === 'visual' ? 'base' : 'outline'}
+                    onClick={() => setCardViewMode('visual')}
+                  >
+                    概览
+                  </Button>
+                  <Button
+                    size="small"
+                    theme={cardViewMode === 'raw' ? 'primary' : 'default'}
+                    variant={cardViewMode === 'raw' ? 'base' : 'outline'}
+                    onClick={() => setCardViewMode('raw')}
+                  >
+                    原始 JSON
+                  </Button>
+                </Space>
+              )}
+            </div>
+            {detailState.mode === 'skills' ? (
+              <AgentSkillsView skills={skills} loading={skillsLoading} />
+            ) : cardViewMode === 'raw' ? (
+              <Textarea
+                className={style.codeText}
+                readonly
+                value={cardLoading ? '加载中...' : cardText}
+                autosize={{ minRows: 18, maxRows: 26 }}
+              />
+            ) : (
+              <AgentCardView card={cardObject} loading={cardLoading} />
+            )}
+          </section>
+        </div>
       </Drawer>
     </div>
   );

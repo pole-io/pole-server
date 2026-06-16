@@ -69,8 +69,8 @@ func (s *Server) CreateRateLimit(ctx context.Context, req *apitraffic.RateLimit)
 		return wrapperRateLimitStoreResponse(req, err)
 	}
 
-	msg := fmt.Sprintf("create rate limit rule: id=%v, namespace=%v, service=%v, name=%v",
-		data.ID, req.GetNamespace(), req.GetService(), req.GetName())
+	msg := fmt.Sprintf("create rate limit rule: id=%v, service_id=%v, name=%v",
+		data.ID, data.ServiceID, req.GetName())
 	log.Info(msg, utils.RequestID(ctx))
 
 	s.RecordHistory(ctx, rateLimitRecordEntry(ctx, req, data, types.OCreate))
@@ -109,8 +109,8 @@ func (s *Server) DeleteRateLimit(ctx context.Context, req *apitraffic.RateLimit)
 		return wrapperRateLimitStoreResponse(req, err)
 	}
 
-	msg := fmt.Sprintf("delete rate limit rule: id=%v, namespace=%v, service=%v, name=%v",
-		rateLimit.ID, req.GetNamespace(), req.GetService(), rateLimit.Labels)
+	msg := fmt.Sprintf("delete rate limit rule: id=%v, service_id=%v, name=%v",
+		rateLimit.ID, rateLimit.ServiceID, rateLimit.Labels)
 	log.Info(msg, utils.RequestID(ctx))
 
 	s.RecordHistory(ctx,
@@ -185,8 +185,8 @@ func (s *Server) UpdateRateLimit(ctx context.Context, req *apitraffic.RateLimit)
 		return wrapperRateLimitStoreResponse(req, err)
 	}
 
-	msg := fmt.Sprintf("update rate limit: id=%v, namespace=%v, service=%v, name=%v",
-		rateLimit.ID, req.GetNamespace(), req.GetService(), rateLimit.Name)
+	msg := fmt.Sprintf("update rate limit: id=%v, service_id=%v, name=%v",
+		rateLimit.ID, rateLimit.ServiceID, rateLimit.Name)
 	log.Info(msg, utils.RequestID(ctx))
 
 	s.RecordHistory(ctx, rateLimitRecordEntry(ctx, req, rateLimit, types.OUpdate))
@@ -390,8 +390,6 @@ func populateDefaultRuleValue(rule *apitraffic.RateLimit) {
 
 func copyRateLimitProto(rateLimit *rules.RateLimit, rule *apitraffic.RateLimit) {
 	// 根据新的 pole-io/specification，复制仍然存在的字段
-	rule.Namespace = rateLimit.Proto.Namespace
-	rule.Service = rateLimit.Proto.Service
 	rule.Type = rateLimit.Proto.Type
 	rule.Rules = rateLimit.Proto.Rules
 	rule.Disable = rateLimit.Proto.Disable
@@ -411,8 +409,6 @@ func rateLimit2Client(
 	rule := &apitraffic.RateLimit{}
 	rule.Id = rateLimit.ID
 	rule.Name = rateLimit.Name
-	rule.Service = service
-	rule.Namespace = namespace
 	rule.Priority = rateLimit.Priority
 	rule.Revision = rateLimit.Revision
 	rule.Disable = rateLimit.Disable
@@ -425,14 +421,12 @@ func rateLimit2Client(
 func marshalRateLimitRules(req *apitraffic.RateLimit) (string, error) {
 	// 根据新的 pole-io/specification，包含完整的Rules结构
 	r := &apitraffic.RateLimit{
-		Name:      req.GetName(),
-		Service:   req.GetService(),
-		Namespace: req.GetNamespace(),
-		Type:      req.GetType(),
-		Rules:     req.GetRules(),
-		Disable:   req.GetDisable(),
-		Report:    req.GetReport(),
-		Cluster:   req.GetCluster(),
+		Name:    req.GetName(),
+		Type:    req.GetType(),
+		Rules:   req.GetRules(),
+		Disable: req.GetDisable(),
+		Report:  req.GetReport(),
+		Cluster: req.GetCluster(),
 	}
 	rule, err := json.Marshal(r)
 	if err != nil {
@@ -451,7 +445,7 @@ func rateLimitRecordEntry(ctx context.Context, req *apitraffic.RateLimit, md *ru
 	entry := &types.RecordEntry{
 		ResourceType:  types.RRateLimit,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
-		Namespace:     req.GetNamespace(),
+		Namespace:     md.ServiceID,
 		Operator:      utils.ParseOperator(ctx),
 		OperationType: opt,
 		Detail:        detailStr,
@@ -483,10 +477,8 @@ func wrapperRateLimitStoreResponse(rule *apitraffic.RateLimit, err error) *apimo
 // 支持HTTP方法匹配和基础限流量配置
 func CreateSimpleRateLimit(name, service, namespace string, method string, maxAmount uint32, duration time.Duration) *apitraffic.RateLimit {
 	rule := &apitraffic.RateLimit{
-		Name:      name,
-		Service:   service,
-		Namespace: namespace,
-		Type:      apitraffic.RateLimit_GLOBAL, // 默认全局限流
+		Name: name,
+		Type: apitraffic.RateLimit_GLOBAL, // 默认全局限流
 		Rules: []*apitraffic.LimitTrigger{
 			{
 				Name: name + "_trigger",
@@ -643,15 +635,13 @@ func CreateAdvancedRateLimit(name, service, namespace string, config *AdvancedRa
 	}
 
 	rule := &apitraffic.RateLimit{
-		Name:      name,
-		Service:   service,
-		Namespace: namespace,
-		Type:      config.RateLimitType,
-		Priority:  config.Priority,
-		Rules:     []*apitraffic.LimitTrigger{trigger},
-		Disable:   config.Disable,
-		Report:    config.Report,
-		Cluster:   config.Cluster,
+		Name:     name,
+		Type:     config.RateLimitType,
+		Priority: config.Priority,
+		Rules:    []*apitraffic.LimitTrigger{trigger},
+		Disable:  config.Disable,
+		Report:   config.Report,
+		Cluster:  config.Cluster,
 	}
 
 	return rule
@@ -903,16 +893,6 @@ func ValidateRateLimitRule(rule *apitraffic.RateLimit) (bool, []string) {
 	if rule.Name == "" {
 		valid = false
 		messages = append(messages, "规则名称不能为空")
-	}
-
-	if rule.Service == "" {
-		valid = false
-		messages = append(messages, "服务名称不能为空")
-	}
-
-	if rule.Namespace == "" {
-		valid = false
-		messages = append(messages, "命名空间不能为空")
 	}
 
 	// P1级别高级验证

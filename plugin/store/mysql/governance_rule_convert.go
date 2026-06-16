@@ -305,14 +305,30 @@ func governanceRuleRecordToTrafficMockRule(record *governanceRuleRecord) (*rules
 }
 
 func applyTrafficGovernanceRecordFields(rule *rules.TrafficGovernanceRule, record *governanceRuleRecord) {
-	rule.ID = record.ID
-	rule.Name = record.Name
-	rule.Namespace = record.Namespace
-	rule.Service = record.Service
-	rule.Priority = uint32(record.Priority)
-	rule.Enable = record.Enable == 1
-	rule.Revision = record.Revision
-	rule.Description = record.Description
+	if record.ID != "" {
+		rule.ID = record.ID
+	}
+	if record.Name != "" {
+		rule.Name = record.Name
+	}
+	if record.Namespace != "" {
+		rule.Namespace = record.Namespace
+	}
+	if record.Service != "" {
+		rule.Service = record.Service
+	}
+	if record.Priority != 0 || rule.Priority == 0 {
+		rule.Priority = uint32(record.Priority)
+	}
+	if record.Enable == 1 || !rule.Enable {
+		rule.Enable = record.Enable == 1
+	}
+	if record.Revision != "" {
+		rule.Revision = record.Revision
+	}
+	if record.Description != "" {
+		rule.Description = record.Description
+	}
 	rule.Valid = record.Valid
 	rule.CTime = record.CreateTime
 	rule.MTime = record.ModifyTime

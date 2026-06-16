@@ -207,7 +207,6 @@ func (c *CircuitBreakerRule) ToSpec() (*apifault.CircuitBreakerRule, error) {
 	}
 	specData.Id = c.ID
 	specData.Name = c.Name
-	specData.Namespace = c.Namespace
 	specData.Description = c.Description
 	specData.Level = apifault.Level(c.Level)
 	specData.Enable = c.Enable
@@ -273,7 +272,6 @@ func (c *FaultDetectRule) ToSpec() (*apifault.FaultDetectRule, error) {
 	}
 	specData.Id = c.ID
 	specData.Name = c.Name
-	specData.Namespace = c.Namespace
 	specData.Description = c.Description
 	specData.Revision = c.Revision
 	specData.Ctime = commontime.Time2String(c.CreateTime)

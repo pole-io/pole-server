@@ -1,8 +1,10 @@
 import React, { } from "react";
-import { Col, Form, Input, Row, Space, Button, Select, Switch, Dialog, InputNumber, Table, FormProps, Tag, Popup, TableRowData, PrimaryTableProps, InputAdornment, RadioGroup, Radio, Textarea, StickyTool } from "tdesign-react";
-import { AddIcon, ChevronDownIcon, ChevronRightIcon, CloseIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from "tdesign-icons-react";
+import { Col, Form, Input, Row, Space, Button, Select, Switch, InputNumber, Table, FormProps, Tag, Popup, TableRowData, PrimaryTableProps, InputAdornment, RadioGroup, Radio, Textarea, StickyTool } from "tdesign-react";
+import { AddIcon, ChevronRightIcon, CloseIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from "tdesign-icons-react";
 
 import Text from "components/Text";
+import RuleLabelField from "../shared/RuleLabelField";
+import shared from "../shared/governance.module.less";
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { ServiceView } from "services/service";
 import { NamespaceView } from "services/namespace";
@@ -14,7 +16,7 @@ import {
     selectRateLimitRule,
     updateRateLimitRule,
 } from 'modules/governance/ratelimit';
-import { ConcurrencyAmount, CustomResponse, defaultLimitTriggerView, LimitAction, LimitActionMap, LimitAmountsValidationUnit, LimitArgumentsConfig, LimitArgumentsType, LimitArgumentsTypeMap, LimitArgumentsTypeOptions, LimitConfigView, LimitFailover, LimitFailoverMap, LimitType, RateLimitResource, RateLimitResourceMap, RateLimitView } from "services/ratelimit";
+import { ConcurrencyAmount, CustomResponse, defaultLimitTriggerView, LimitAction, LimitActionMap, LimitAmountsValidationUnit, LimitAmountsValidationUnitOptions, LimitArgumentsConfig, LimitArgumentsType, LimitArgumentsTypeMap, LimitArgumentsTypeOptions, LimitConfigView, LimitFailover, LimitFailoverMap, LimitType, RateLimitResource, RateLimitResourceMap, RateLimitView } from "services/ratelimit";
 import PublishForm from "../RuleRelease/PublishForm";
 import RuleStickyAction from "../RuleRelease/RuleStickyAction";
 import { PolicySourceType } from "services/auth_policy";
@@ -26,6 +28,10 @@ import styles from './RateLimitEditor.module.less';
 
 const { FormItem } = Form;
 const { StickyItem } = StickyTool;
+const limitDurationUnitMap = LimitAmountsValidationUnitOptions.reduce((acc, option) => {
+    acc[option.value] = option.label;
+    return acc;
+}, {} as Record<LimitAmountsValidationUnit, string>);
 
 // 定义默认匹配参数
 const defaultMatchArgs: () => LimitArgumentsConfig = () => ({
@@ -227,68 +233,12 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
             openErrNotification('请求错误', `${op === 'view' ? '修改' : '创建'}限流规则失败: ${res.payload as string}`);
         } else {
             openInfoNotification('请求成功', op === 'view' ? '修改限流规则成功' : '创建限流规则成功');
+            if (op === 'view') {
+                setEditorState(prev => ({ ...prev, editable: false }));
+            }
             refresh(false);
         }
     };
-
-    const metadataList = React.useMemo(() => Object.entries(rateLimit.metadata || {}).map(([key, value]) => ({ key, value })), [rateLimit.metadata]);
-
-    const renderRuleLabelsDialog = () => (
-        <Dialog
-            visible={editorState.visible}
-            header="编辑规则标签"
-            width={700}
-            onConfirm={() => setEditorState(prev => ({ ...prev, visible: false }))}
-            onClose={() => setEditorState(prev => ({ ...prev, visible: false }))}
-        >
-            <div>
-                {metadataList.map((tag, idx) => (
-                    <Row gutter={8} key={idx} style={{ marginBottom: 12 }} align="middle">
-                        <Col span={4}>
-                            <Input
-                                value={tag.key}
-                                placeholder="请输入标签键"
-                                onChange={v => {
-                                    const next = [...metadataList];
-                                    next[idx] = { ...next[idx], key: v };
-                                    setRateLimit(prev => ({ ...prev, metadata: next.reduce((acc, { key, value }) => { if (key) acc[key] = value; return acc; }, {} as Record<string, string>) }));
-                                }}
-                            />
-                        </Col>
-                        <Col span={4}>
-                            <Input
-                                value={tag.value}
-                                placeholder="请输入标签值"
-                                onChange={v => {
-                                    const next = [...metadataList];
-                                    next[idx] = { ...next[idx], value: v };
-                                    setRateLimit(prev => ({ ...prev, metadata: next.reduce((acc, { key, value }) => { if (key) acc[key] = value; return acc; }, {} as Record<string, string>) }));
-                                }}
-                            />
-                        </Col>
-                        <Col span={2}>
-                            <Popup trigger="hover" content="删除标签">
-                                <Button
-                                    shape="circle"
-                                    variant="text"
-                                    onClick={() => {
-                                        const next = metadataList.filter((_, i) => i !== idx);
-                                        setRateLimit(prev => ({ ...prev, metadata: next.reduce((acc, { key, value }) => { if (key) acc[key] = value; return acc; }, {} as Record<string, string>) }));
-                                    }}
-                                >
-                                    <CloseIcon />
-                                </Button>
-                            </Popup>
-                        </Col>
-                    </Row>
-                ))}
-                <Button variant="text" icon={<AddIcon />} onClick={() => {
-                    const next = [...metadataList, { key: '', value: '' }];
-                    setRateLimit(prev => ({ ...prev, metadata: next.reduce((acc, { key, value }) => { if (key) acc[key] = value; return acc; }, {} as Record<string, string>) }));
-                }}>添加标签</Button>
-            </div>
-        </Dialog>
-    );
 
     const getMatchTableColumns = (ruleIdx: number): PrimaryTableProps['columns'] => [
         {
@@ -326,6 +276,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
         return (
             <div className={styles.compactTable}>
                 <Table
+                    key={`match-${ruleIdx}-${editorState.editable ? 'edit' : 'view'}`}
                     rowKey={(row) => `arg-${ruleIdx}-${(row as LimitArgumentsConfig).type}-${(row as LimitArgumentsConfig).key}`}
                     tableLayout="fixed"
                     data={args.map(arg => ({ ...arg, type: arg.type || LimitArgumentsType.CUSTOM }))}
@@ -343,6 +294,10 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
             {
                 colKey: 'validDuration',
                 title: '窗口',
+                cell: ({ row }) => {
+                    const unit = row.validDurationUnit || LimitAmountsValidationUnit.s;
+                    return <Text>{`${row.validDuration ?? '-'} ${limitDurationUnitMap[unit as LimitAmountsValidationUnit] || unit}`}</Text>;
+                },
                 edit: {
                     keepEditMode: editorState.editable,
                     showEditIcon: editorState.editable,
@@ -351,7 +306,8 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                         append: (
                             <Select
                                 autoWidth
-                                options={[{ label: '秒', value: 's' }, { label: '分钟', value: 'm' }, { label: '小时', value: 'h' }]}
+                                options={LimitAmountsValidationUnitOptions}
+                                value={value.validDurationUnit || LimitAmountsValidationUnit.s}
                                 onChange={(v) => {
                                     const amountIdx = Number.parseInt(value.key.split('-')[2], 10);
                                     updateLimit(ruleIdx, amountIdx, { maxAmount: value.maxAmount, validDuration: value.validDuration, validDurationUnit: v as LimitAmountsValidationUnit });
@@ -390,13 +346,20 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
         ];
         const qpsTable = (
             <div className={styles.compactTable}>
-                <Table rowKey="key" data={limitsWithKey} columns={editorState.editable ? columns : columns.filter(col => col.colKey !== 'action')} tableLayout="fixed" />
+                <Table
+                    key={`limit-${ruleIdx}-${editorState.editable ? 'edit' : 'view'}`}
+                    rowKey="key"
+                    data={limitsWithKey}
+                    columns={editorState.editable ? columns : columns.filter(col => col.colKey !== 'action')}
+                    tableLayout="fixed"
+                />
                 {editorState.editable && <Button className={styles.inlineAdd} variant="text" onClick={() => addLimit(ruleIdx)} icon={<AddIcon />}>添加</Button>}
             </div>
         );
         const concurrencyTable = (
             <div className={styles.compactTable}>
                 <Table
+                    key={`concurrency-${ruleIdx}-${editorState.editable ? 'edit' : 'view'}`}
                     rowKey="key"
                     data={limitsWithKey}
                     columns={[
@@ -421,161 +384,99 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
         return trigger.resource === RateLimitResource.QPS ? qpsTable : concurrencyTable;
     };
 
-    // 基础信息卡片样式与各规则页统一
-    const baseInfoCardStyle = { marginBottom: 24, padding: '24px 32px', border: '1px solid #e5e6eb', borderRadius: 8, boxShadow: '0 2px 8px 0 rgba(0,0,0,0.03)' };
+    const namespaceSelectOptions = namespaceDatas.map((ns: NamespaceView) => ({ label: ns.name, value: ns.name }));
+    const serviceSelectOptions = serviceDatas
+        .filter((opt: ServiceView) => rateLimit.namespace === '*' || opt.namespace === rateLimit.namespace)
+        .map((s: ServiceView) => ({ label: s.name, value: s.name }));
+
+    // 统一基础信息区
     const ruleBaseInfo = (
-        <div style={baseInfoCardStyle}>
-            {/* 第一层：规则名称 */}
-            <Row style={{ marginBottom: 16 }}>
-                <FormItem label="规则名称">
-                    {editorState.editable ? (
-                        <Input maxlength={64} readonly={!editorState.editable} value={rateLimit.name} onChange={(value) => setRateLimit(prev => ({ ...prev, name: value }))} />
-                    ) : (
-                        <Text>{rateLimit.name}</Text>
+        <div className={shared.section}>
+            <div className={shared.sectionHeader}>基础信息</div>
+            <div className={shared.sectionBody}>
+                <div className={shared.infoGrid}>
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>规则名称</div>
+                        {editorState.editable
+                            ? <Input maxlength={64} value={rateLimit.name} onChange={(value) => setRateLimit(prev => ({ ...prev, name: value }))} />
+                            : <div className={shared.fieldValue}>{rateLimit.name || '-'}</div>}
+                    </div>
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>运行状态</div>
+                        {editorState.editable
+                            ? <Switch label={['启用', '停用']} value={!rateLimit.disable} onChange={(v) => setRateLimit(prev => ({ ...prev, disable: !(v as boolean) }))} />
+                            : <div className={shared.fieldValue}><span className={`${shared.pill} ${rateLimit.disable ? shared.pillOff : shared.pillOk} ${shared.pillDot}`}>{rateLimit.disable ? '停用' : '启用'}</span></div>}
+                    </div>
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>优先级</div>
+                        {editorState.editable
+                            ? <InputNumber min={0} value={rateLimit.priority ?? 0} onChange={(value) => setRateLimit(prev => ({ ...prev, priority: (value as number) ?? 0 }))} />
+                            : <div className={shared.fieldValue}>{rateLimit.priority ?? 0}</div>}
+                    </div>
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>命名空间</div>
+                        {editorState.editable
+                            ? <Select filterable creatable options={namespaceSelectOptions} value={rateLimit.namespace} onChange={(value) => setRateLimit(prev => ({ ...prev, namespace: value as string }))} />
+                            : <div className={shared.fieldValue}>{rateLimit.namespace || '-'}</div>}
+                    </div>
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>服务名称</div>
+                        {editorState.editable
+                            ? <Select filterable creatable options={serviceSelectOptions} value={rateLimit.service} onChange={(value) => setRateLimit(prev => ({ ...prev, service: value as string }))} />
+                            : <div className={shared.fieldValue}>{rateLimit.service || '-'}</div>}
+                    </div>
+                    {limitType === LimitType.GLOBAL && (
+                        <div className={shared.field}>
+                            <div className={shared.fieldLabel}>限流集群</div>
+                            <div className={shared.fieldValue}>{`${rateLimit.namespace || '-'} / ${rateLimit.service || '-'}`}</div>
+                        </div>
                     )}
-                </FormItem>
-            </Row>
-            {/* 第二层：优先级、停用标识 */}
-            <Row style={{ marginBottom: 16 }}>
-                <Space>
-                    <FormItem label="优先级">
-                        {editorState.editable ? (
-                            <InputNumber min={0} value={rateLimit.priority ?? 0} onChange={(value) => setRateLimit(prev => ({ ...prev, priority: (value as number) ?? 0 }))} />
-                        ) : (
-                            <Text>{rateLimit.priority ?? 0}</Text>
-                        )}
-                    </FormItem>
-                    <FormItem label="停用">
-                        {editorState.editable ? (
-                            <Switch value={rateLimit.disable} onChange={(v) => setRateLimit(prev => ({ ...prev, disable: v as boolean }))} />
-                        ) : (
-                            <Text>{rateLimit.disable ? '是' : '否'}</Text>
-                        )}
-                    </FormItem>
-                </Space>
-            </Row>
-            {/* 第三层：规则标签 */}
-            <Row>
-                <FormItem label="规则标签">
-                    {metadataList.length > 0 ? (
-                        <Space align="center">
-                            {metadataList.map((tag, idx) => (
-                                <Tag key={idx}>{`${tag.key}: ${tag.value}`}</Tag>
-                            ))}
-                            {editorState.editable && (
-                                <Button shape="circle" variant="text" onClick={() => setEditorState(prev => ({ ...prev, visible: true }))}><Edit1Icon /></Button>
-                            )}
-                        </Space>
-                    ) : (
-                        <Space align="center">
-                            <Text>暂无标签</Text>
-                            {editorState.editable && (
-                                <Button shape="circle" variant="text" onClick={() => setEditorState(prev => ({ ...prev, visible: true }))}><Edit1Icon /></Button>
-                            )}
-                        </Space>
-                    )}
-                </FormItem>
-                {renderRuleLabelsDialog()}
-            </Row>
-        </div>
-    );
-
-    const serviceInfo = (
-        <div style={{ marginBottom: 24, padding: 16, border: '1px solid #e0e0e0', borderRadius: 6 }}>
-            <div style={{ marginBottom: 16 }}><Text style={{ fontWeight: 'bold' }}>目标服务</Text></div>
-            <Row gutter={16}>
-                <Col span={6}>
-                    <FormItem label="命名空间">
-                        {editorState.editable ? (
-                            <Select
-                                filterable creatable
-                                options={namespaceDatas.map((ns: NamespaceView) => ({ label: ns.name, value: ns.name }))}
-                                value={rateLimit.namespace}
-                                onChange={(value) => setRateLimit(prev => ({ ...prev, namespace: value as string }))}
-                            />
-                        ) : (
-                            <Text>{rateLimit.namespace || '未选择命名空间'}</Text>
-                        )}
-                    </FormItem>
-                </Col>
-                <Col span={6}>
-                    <FormItem label="服务名称">
-                        {editorState.editable ? (
-                            <Select
-                                filterable creatable
-                                options={serviceDatas.filter((opt: ServiceView) => rateLimit.namespace === '*' || opt.namespace === rateLimit.namespace).map((s: ServiceView) => ({ label: s.name, value: s.name }))}
-                                value={rateLimit.service}
-                                onChange={(value) => setRateLimit(prev => ({ ...prev, service: value as string }))}
-                            />
-                        ) : (
-                            <Text>{rateLimit.service || '未选择服务'}</Text>
-                        )}
-                    </FormItem>
-                </Col>
-            </Row>
-        </div>
-    );
-
-    const limitCluster = (
-        <div style={{ marginBottom: 24, padding: 16, border: '1px solid #e0e0e0', borderRadius: 6 }}>
-            <div style={{ marginBottom: 16 }}><Text style={{ fontWeight: 'bold' }}>限流集群选择</Text></div>
-            <Row gutter={16}>
-                <Col span={6}>
-                    <FormItem label="命名空间">
-                        {editorState.editable ? (
-                            <Select filterable creatable options={namespaceDatas.map((ns: NamespaceView) => ({ label: ns.name, value: ns.name }))} value={rateLimit.namespace} onChange={(value) => setRateLimit(prev => ({ ...prev, namespace: value as string }))} />
-                        ) : (
-                            <Text>{rateLimit?.namespace || '未选择命名空间'}</Text>
-                        )}
-                    </FormItem>
-                </Col>
-                <Col span={6}>
-                    <FormItem label="服务名称" rules={[{ required: true, message: '请选择服务' }]}>
-                        {editorState.editable ? (
-                            <Select filterable creatable options={serviceDatas.filter((opt: ServiceView) => rateLimit.namespace === '*' || opt.namespace === rateLimit.namespace).map((s: ServiceView) => ({ label: s.name, value: s.name }))} value={rateLimit.service} onChange={(value) => setRateLimit(prev => ({ ...prev, service: value as string }))} />
-                        ) : (
-                            <Text>{rateLimit.service || '未选择服务'}</Text>
-                        )}
-                    </FormItem>
-                </Col>
-            </Row>
-        </div>
-    );
-
-    const matchCondition = (ruleIdx: number) => {
-        const trigger = rateLimit.rules[ruleIdx];
-        return (
-            <div className={styles.ruleSection}>
-                <div className={styles.ruleSectionHeader}>
-                    <span className={styles.ruleSectionTitle}>匹配条件</span>
-                    <div className={styles.ruleHelp}>满足以下匹配条件的请求将应用该规则</div>
-                </div>
-                <div className={styles.fieldRow}>
-                    <div className={styles.fieldLabel}>请求接口路径</div>
-                    <div className={styles.fieldControl}>
-                        <InputAdornment
-                            append={
-                                <Select
-                                    autoWidth
-                                    options={MatchTypeOption}
-                                    value={trigger.method?.type}
-                                    readonly={!editorState.editable}
-                                    onChange={(value) => updateRule(ruleIdx, { method: { ...trigger.method, type: value as MatchType } })}
-                                />
-                            }
-                        >
-                            <Input
-                                readonly={!editorState.editable}
-                                value={trigger.method?.value}
-                                onChange={(val) => updateRule(ruleIdx, { method: { ...trigger.method, value: val as string } })}
-                            />
-                        </InputAdornment>
+                    <div className={`${shared.field} ${shared.full}`}>
+                        <div className={shared.fieldLabel}>规则标签</div>
+                        <RuleLabelField
+                            metadata={rateLimit.metadata}
+                            editable={editorState.editable}
+                            onChange={(next) => setRateLimit(prev => ({ ...prev, metadata: next }))}
+                        />
                     </div>
                 </div>
-                <div className={styles.fieldRow}>
-                    <div className={styles.fieldLabel}>请求匹配规则</div>
-                    <div className={styles.fieldControl}>{renderMatchTable(ruleIdx)}</div>
+            </div>
+        </div>
+    );
+
+    const matchInterface = (ruleIdx: number) => {
+        const trigger = rateLimit.rules[ruleIdx];
+        return (
+            <div className={shared.step} data-step="1">
+                <div className={shared.stepTitle}>匹配接口<span className={shared.stepHint}>满足该接口的请求才进入限流统计</span></div>
+                <div className={shared.stepContent}>
+                    <InputAdornment
+                        append={
+                            <Select
+                                autoWidth
+                                options={MatchTypeOption}
+                                value={trigger.method?.type}
+                                readonly={!editorState.editable}
+                                onChange={(value) => updateRule(ruleIdx, { method: { ...trigger.method, type: value as MatchType } })}
+                            />
+                        }
+                    >
+                        <Input
+                            readonly={!editorState.editable}
+                            value={trigger.method?.value}
+                            onChange={(val) => updateRule(ruleIdx, { method: { ...trigger.method, value: val as string } })}
+                        />
+                    </InputAdornment>
                 </div>
+            </div>
+        );
+    };
+
+    const matchCondition = (ruleIdx: number) => {
+        return (
+            <div className={shared.step} data-step="2">
+                <div className={shared.stepTitle}>匹配条件<span className={shared.stepHint}>满足以下条件的请求将应用该规则</span></div>
+                <div className={shared.stepContent}>{renderMatchTable(ruleIdx)}</div>
             </div>
         );
     };
@@ -583,13 +484,10 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
     const rateLimitBlock = (ruleIdx: number) => {
         const trigger = rateLimit.rules[ruleIdx];
         return (
-            <div className={styles.ruleSection}>
-                <div className={styles.ruleSectionHeader}>
-                    <span className={styles.ruleSectionTitle}>限流方式</span>
-                    <div className={styles.ruleHelp}>设置以下限流条件进行流量控制</div>
-                </div>
-                <Row>
-                    <Space>
+            <div className={shared.step} data-step="3">
+                <div className={shared.stepTitle}>限流方式<span className={shared.stepHint}>设置限流指标与阈值进行流量控制</span></div>
+                <div className={shared.stepContent}>
+                    <div className={styles.resourceSwitch}>
                         <RadioGroup
                             theme="button"
                             variant="primary-filled"
@@ -600,15 +498,15 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                             <Radio.Button value={RateLimitResource.QPS}>{RateLimitResourceMap[RateLimitResource.QPS]}</Radio.Button>
                             <Radio.Button disabled={limitType === LimitType.GLOBAL} value={RateLimitResource.Concurrency}>{RateLimitResourceMap[RateLimitResource.Concurrency]}</Radio.Button>
                         </RadioGroup>
-                    </Space>
-                </Row>
-                {renderLimitTable(ruleIdx)}
-                <div className={styles.inlineConfig}>
-                    <FormItem label="阈值计算合并">
-                        <Switch value={trigger.regex_combine} disabled={!editorState.editable} onChange={(value) => updateRule(ruleIdx, { regex_combine: value as boolean })} />
-                    </FormItem>
-                    <div className={styles.inlineHint}>
-                        {trigger.regex_combine ? '正则匹配的请求将合并计算限流' : '正则匹配的请求将单独计算限流'}
+                    </div>
+                    {renderLimitTable(ruleIdx)}
+                    <div className={styles.inlineConfig}>
+                        <FormItem label="阈值计算合并">
+                            <Switch value={trigger.regex_combine} disabled={!editorState.editable} onChange={(value) => updateRule(ruleIdx, { regex_combine: value as boolean })} />
+                        </FormItem>
+                        <div className={styles.inlineHint}>
+                            {trigger.regex_combine ? '正则匹配的请求将合并计算限流' : '正则匹配的请求将单独计算限流'}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -650,37 +548,39 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                 </Space>
             </Row>
         );
+        const isReject = trigger.action !== LimitAction.UNIRATE;
         return (
-            <div className={styles.ruleSection}>
-                <div className={styles.ruleSectionHeader}>
-                    <span className={styles.ruleSectionTitle}>限流方案</span>
-                    <div className={styles.ruleHelp}>满足限流触发条件后的处理方案</div>
-                </div>
-                <Row>
-                    <Space>
-                        <FormItem label="限流效果">
-                            <RadioGroup theme="button" variant="primary-filled" value={trigger.action} readonly={!editorState.editable} onChange={(value) => updateRule(ruleIdx, { action: value as LimitAction })}>
+            <div className={shared.step} data-step="4">
+                <div className={shared.stepTitle}>限流效果<span className={shared.stepHint}>超过阈值的请求按该策略处理</span></div>
+                <div className={shared.stepContent}>
+                    {editorState.editable && (
+                        <div className={styles.resourceSwitch}>
+                            <RadioGroup theme="button" variant="primary-filled" value={trigger.action} onChange={(value) => updateRule(ruleIdx, { action: value as LimitAction })}>
                                 <Radio.Button value={LimitAction.REJECT}>{LimitActionMap[LimitAction.REJECT]}</Radio.Button>
                                 {trigger.resource === RateLimitResource.QPS && limitType === LimitType.LOCAL && (
                                     <Radio.Button value={LimitAction.UNIRATE}>{LimitActionMap[LimitAction.UNIRATE]}</Radio.Button>
                                 )}
                             </RadioGroup>
-                        </FormItem>
-                    </Space>
-                </Row>
-                {renderUnirate}
-                {renderFailover}
-                <Row>
-                    <Col span={12}>
-                        <FormItem label="触发限流后的响应">
-                            {editorState.editable ? (
-                                <Textarea value={trigger?.customResponse?.body} onChange={(v) => updateRule(ruleIdx, { customResponse: { ...trigger.customResponse, body: v } })} />
-                            ) : (
-                                <Text>{trigger?.customResponse?.body || '无自定义响应'}</Text>
-                            )}
-                        </FormItem>
-                    </Col>
-                </Row>
+                        </div>
+                    )}
+                    <div className={`${shared.verdict} ${isReject ? shared.verdictDeny : shared.verdictWarn}`}>
+                        <div className={shared.verdictIcon}>{isReject ? <CloseIcon /> : <RollbackIcon />}</div>
+                        <div>
+                            <div className={shared.verdictHead}>{LimitActionMap[trigger.action] || (isReject ? '直接拒绝' : '匀速排队')}</div>
+                            <div className={shared.verdictDesc}>{isReject ? '超过阈值的请求立即拒绝，返回下方响应' : '超额请求进入队列匀速放行，超时后拒绝'}</div>
+                        </div>
+                    </div>
+                    {renderUnirate}
+                    {renderFailover}
+                    <div className={styles.responseField}>
+                        <div className={shared.editLabel}>触发限流后的响应</div>
+                        {editorState.editable ? (
+                            <Textarea value={trigger?.customResponse?.body} onChange={(v) => updateRule(ruleIdx, { customResponse: { ...trigger.customResponse, body: v } })} />
+                        ) : (
+                            <div className={`${shared.fieldValue} ${shared.mono}`}>{trigger?.customResponse?.body || '无自定义响应'}</div>
+                        )}
+                    </div>
+                </div>
             </div>
         );
     };
@@ -703,25 +603,18 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
         const matchCount = trigger.arguments?.length || 0;
         const amountCount = trigger.resource === RateLimitResource.QPS ? (trigger.amounts?.length || 0) : 1;
         return (
-            <div className={`${styles.sectionCard} ${styles.ruleBlock}`} key={ruleIdx}>
-                <div className={styles.ruleBlockHeader}>
-                    <div className={styles.ruleHeaderMain}>
-                        <button
-                            type="button"
-                            className={styles.collapseButton}
-                            onClick={() => toggleRuleCollapsed(ruleIdx)}
-                            aria-label={collapsed ? '展开规则' : '折叠规则'}
-                        >
-                            {collapsed ? <ChevronRightIcon /> : <ChevronDownIcon />}
-                        </button>
-                        <div className={styles.ruleTitleGroup}>
-                            <span>规则 [{ruleIdx + 1}]</span>
-                            <div className={styles.ruleSummary}>
+            <div className={`${shared.policy} ${collapsed ? shared.policyCollapsed : ''}`} key={ruleIdx}>
+                <div className={shared.policyHead} onClick={() => toggleRuleCollapsed(ruleIdx)}>
+                    <div className={shared.policyHeadMain}>
+                        <span className={shared.caret}><ChevronRightIcon /></span>
+                        <div>
+                            <div className={shared.policyIndex}>规则 [{ruleIdx + 1}]</div>
+                            <div className={shared.policySummary}>
                                 {matchCount} 个匹配条件 / {RateLimitResourceMap[trigger.resource] || '限流'} / {amountCount} 个阈值 / {LimitActionMap[trigger.action] || trigger.action}
                             </div>
                         </div>
                     </div>
-                    <div className={styles.ruleHeaderActions}>
+                    <div className={shared.policyHeadActions} onClick={(e) => e.stopPropagation()}>
                         <Tag variant="light">{describeLimitAmount(ruleIdx)}</Tag>
                         {editorState.editable && (
                             <Popup trigger="hover" content="删除规则">
@@ -737,7 +630,8 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                         )}
                     </div>
                 </div>
-                <div className={`${styles.ruleBlockBody} ${collapsed ? styles.ruleBlockBodyCollapsed : ''}`}>
+                <div className={shared.policyBody}>
+                    {matchInterface(ruleIdx)}
                     {matchCondition(ruleIdx)}
                     {rateLimitBlock(ruleIdx)}
                     {limitActionBlock(ruleIdx)}
@@ -815,15 +709,19 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                     colon
                 >
                     {ruleBaseInfo}
-                    {serviceInfo}
-                    {limitType === LimitType.GLOBAL && limitCluster}
-                    <div className={styles.ruleListSection}>
-                        <div className={styles.ruleList}>
-                            {rateLimit.rules.map((_, ruleIdx) => renderRateLimitRule(ruleIdx))}
+                    <div className={shared.section}>
+                        <div className={shared.sectionHeader}>
+                            <span>限流规则</span>
+                            <span className={shared.countTag}>{rateLimit.rules.length} 条</span>
                         </div>
-                        {editorState.editable && (
-                            <Button className={styles.addRuleButton} variant="dashed" icon={<AddIcon />} onClick={addRule}>添加规则</Button>
-                        )}
+                        <div className={shared.sectionBody}>
+                            <div className={shared.ruleList}>
+                                {rateLimit.rules.map((_, ruleIdx) => renderRateLimitRule(ruleIdx))}
+                            </div>
+                            {editorState.editable && (
+                                <Button className={shared.addRuleButton} style={{ marginTop: 12 }} variant="dashed" icon={<AddIcon />} onClick={addRule}>添加规则</Button>
+                            )}
+                        </div>
                     </div>
                     {renderPublishForm}
                     {renderStickyTool}

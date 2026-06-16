@@ -144,11 +144,6 @@ func (rlc *rateLimitCache) Clear() error {
 
 func (rlc *rateLimitCache) toProto(item *rules.RateLimit) {
 	item.ToSpec()
-	namespace := item.Proto.GetNamespace()
-	name := item.Proto.GetService()
-	if namespace == "" || name == "" {
-		rlc.fixOneRuleServiceInfo(item)
-	}
 }
 
 // setRateLimitConsole 更新限流规则到缓存中
@@ -198,17 +193,17 @@ func (rlc *rateLimitCache) setRateLimitClient(rateLimits []*rules.RateLimitRelea
 			lastMtime = item.Mtime.Unix()
 		}
 
-		nsName, svcName := item.Rule.Proto.GetNamespace(), item.Rule.Proto.GetService()
-		rlc.svcSpecificRules.ComputeIfAbsent(nsName, func(k string) *container.SyncMap[string, *rules.ServiceWithRateLimits] {
+		serviceKey, ok := rlc.resolveRuleServiceKey(item.Rule)
+		if !ok {
+			continue
+		}
+		rlc.svcSpecificRules.ComputeIfAbsent(serviceKey.Namespace, func(k string) *container.SyncMap[string, *rules.ServiceWithRateLimits] {
 			return container.NewSyncMap[string, *rules.ServiceWithRateLimits]()
 		})
-		svcLimits, _ := rlc.svcSpecificRules.MustLoad(nsName).ComputeIfAbsent(svcName, func(k string) *rules.ServiceWithRateLimits {
-			return rules.NewServiceWithRateLimits(svctypes.ServiceKey{
-				Namespace: nsName,
-				Name:      svcName,
-			})
+		svcLimits, _ := rlc.svcSpecificRules.MustLoad(serviceKey.Namespace).ComputeIfAbsent(serviceKey.Name, func(k string) *rules.ServiceWithRateLimits {
+			return rules.NewServiceWithRateLimits(serviceKey)
 		})
-		reloads[nsName+"-"+svcName] = svcLimits
+		reloads[serviceKey.Namespace+"-"+serviceKey.Name] = svcLimits
 
 		// 待删除的rateLimit
 		if !item.Valid {
@@ -262,30 +257,28 @@ func (rlc *rateLimitCache) GetRateLimitsCount() int {
 	return rlc.ids.Len()
 }
 
-func (rlc *rateLimitCache) fixOneRuleServiceInfo(rateLimit *rules.RateLimit) {
+func (rlc *rateLimitCache) resolveRuleServiceKey(rateLimit *rules.RateLimit) (svctypes.ServiceKey, bool) {
 	rlc.lock.Lock()
 	defer rlc.lock.Unlock()
+	if rateLimit == nil || rateLimit.ServiceID == "" {
+		return svctypes.ServiceKey{}, false
+	}
 	svcId := rateLimit.ServiceID
 	svc := rlc.svcCache.GetServiceByID(svcId)
 	if svc == nil {
 		svc2, err := rlc.storage.GetServiceByID(svcId)
 		if err != nil {
 			rlc.waitFixRules[rateLimit.ID] = struct{}{}
-			return
+			return svctypes.ServiceKey{}, false
 		}
 		if svc2 == nil {
-			// 存储层确实不存在，直接跳过
 			delete(rlc.waitFixRules, rateLimit.ID)
-			return
+			return svctypes.ServiceKey{}, false
 		}
 		svc = svc2
 	}
-
-	if svc != nil {
-		rateLimit.Proto.Namespace = svc.Namespace
-		rateLimit.Proto.Service = svc.Name
-	}
 	delete(rlc.waitFixRules, rateLimit.ID)
+	return svctypes.ServiceKey{Namespace: svc.Namespace, Name: svc.Name}, true
 }
 
 // GetRule implements api.RateLimitCache.
@@ -337,11 +330,17 @@ func (rlc *rateLimitCache) QueryRateLimitRules(ctx context.Context, args *cachea
 
 	res := make([]*rules.RateLimit, 0, 8)
 	process := func(rule *rules.RateLimit) {
-		if hasService && args.Service != rule.Proto.GetService() {
-			return
-		}
-		if hasNamespace && args.Namespace != rule.Proto.GetNamespace() {
-			return
+		if hasService || hasNamespace {
+			serviceKey, ok := rlc.resolveRuleServiceKey(rule)
+			if !ok {
+				return
+			}
+			if hasService && args.Service != serviceKey.Name {
+				return
+			}
+			if hasNamespace && args.Namespace != serviceKey.Namespace {
+				return
+			}
 		}
 		if args.ID != "" && args.ID != rule.ID {
 			return

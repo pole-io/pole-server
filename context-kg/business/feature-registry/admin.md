@@ -1,8 +1,8 @@
 ---
-title: 管理后台域
+title: 管理后台（`pkg/admin/`）
 tags: [business, feature, admin]
 links: [architecture, auth-system]
-updated: 2026-06-09
+updated: 2026-06-15
 sources: 1
 ---
 

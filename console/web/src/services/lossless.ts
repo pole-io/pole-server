@@ -56,6 +56,7 @@ export interface WarmUp {
 export interface GracefulOffline {
     enable: boolean;
     interval: string;
+    interval_second?: number;
 }
 
 function secondToDuration(value?: string | number): string {
@@ -69,6 +70,12 @@ function secondToDuration(value?: string | number): string {
 function durationToSecond(value?: string | number): number {
     if (typeof value === 'number') return value;
     return Number.parseInt((value || '0').replace(/s$/, ''), 10) || 0;
+}
+
+function durationToString(value?: string | number): string {
+    if (value === undefined || value === null || value === '') return '0s';
+    if (typeof value === 'number') return `${value}s`;
+    return value.endsWith('s') ? value : `${value}s`;
 }
 
 export function normalizeLosslessRule(rule: LossLessRuleView | any): LossLessRuleView {
@@ -94,7 +101,7 @@ export function normalizeLosslessRule(rule: LossLessRuleView | any): LossLessRul
         },
         lossless_offline: {
             ...offline,
-            interval: secondToDuration(offline.interval),
+            interval: secondToDuration(offline.interval ?? offline.interval_second ?? offline.intervalSecond),
         },
     };
 }
@@ -116,7 +123,7 @@ function losslessRuleToApi(rule: LossLessRule | any) {
                 health_check_protocol: delay.health_check_protocol,
                 health_check_method: delay.health_check_method,
                 health_check_path: delay.health_check_path,
-                health_check_interval_second: delay.health_check_interval_second ?? durationToSecond(delay.health_check_interval),
+                health_check_interval_second: durationToString(delay.health_check_interval_second ?? delay.health_check_interval),
             },
             warmup: {
                 enable: warmup.enable,
@@ -128,6 +135,7 @@ function losslessRuleToApi(rule: LossLessRule | any) {
         },
         lossless_offline: {
             enable: offline.enable,
+            interval_second: offline.interval_second ?? durationToSecond(offline.interval),
         },
     };
 }

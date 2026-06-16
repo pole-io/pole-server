@@ -510,19 +510,7 @@ func (svr *Server) queryRouteRuleResource(
 		return make(map[apisecurity.ResourceType][]authtypes.ResourceEntry)
 	}
 
-	names := container.NewSet[string]()
-	svcSet := map[string]*svctypes.Service{}
-
-	for index := range req {
-		// RouteRule 中的服务信息在 routing_config 中，根据不同类型解析
-		// 这里先使用 namespace 来收集相关资源
-		svcNamespace := req[index].GetNamespace()
-		if svcNamespace != "" {
-			names.Add(svcNamespace)
-		}
-	}
-
-	ret := svr.convertToDiscoverResourceEntryMaps(names, svcSet)
+	ret := make(map[apisecurity.ResourceType][]authtypes.ResourceEntry)
 	if authLog.DebugEnabled() {
 		authLog.Debug("[Auth][Server] collect route-rule access res", zap.Any("res", ret))
 	}
@@ -536,19 +524,7 @@ func (svr *Server) queryRateLimitConfigResource(
 		return make(map[apisecurity.ResourceType][]authtypes.ResourceEntry)
 	}
 
-	names := container.NewSet[string]()
-	svcSet := map[string]*svctypes.Service{}
-
-	for index := range req {
-		svcName := req[index].GetService()
-		svcNamespace := req[index].GetNamespace()
-		svc := svr.Cache().Service().GetServiceByName(svcName, svcNamespace)
-		if svc != nil {
-			svcSet[svc.ID] = svc
-		}
-	}
-
-	ret := svr.convertToDiscoverResourceEntryMaps(names, svcSet)
+	ret := make(map[apisecurity.ResourceType][]authtypes.ResourceEntry)
 	if authLog.DebugEnabled() {
 		authLog.Debug("[Auth][Server] collect rate-limit access res", zap.Any("res", ret))
 	}

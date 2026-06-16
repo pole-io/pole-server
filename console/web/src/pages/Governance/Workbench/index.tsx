@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Collapse, Input, Link, Select, Space, Table, Tag } from 'tdesign-react';
+import { Button, Input, Link, Select, Space, Table, Tag } from 'tdesign-react';
 import type { PrimaryTableProps, TableRowData } from 'tdesign-react';
 import { RefreshIcon } from 'tdesign-icons-react';
 
@@ -14,6 +14,7 @@ import FaultDetectEditor from '../CircuitBreaker/FaultDetectEditor';
 import LossLessEditor from '../LossLess/LossLessEditor';
 import LaneGroupEdtor from '../Router/LaneGroupEdtor';
 import LaneRuleTable from '../Router/LaneRuleTable';
+import TrafficGovernanceEditor, { trafficRuleCount, trafficRuleSummary } from '../Security/TrafficGovernanceEditor';
 import {
     editorCustomRoute,
     listCustomRouteVersions,
@@ -61,12 +62,18 @@ import { FaultDetectRule } from 'services/faultdetect';
 import { LossLessRuleView } from 'services/lossless';
 import { LaneGroupView } from 'services/lane';
 import { Op, RuleRelease } from 'services/types';
+import {
+    deleteTrafficGovernanceRelease,
+    describeTrafficGovernanceRules,
+    describeTrafficGovernanceVersions,
+    TrafficGovernanceKind,
+    TrafficGovernanceKindLabel,
+    TrafficGovernanceRule,
+} from 'services/traffic_governance';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
 
-const { Panel } = Collapse;
-
-type RuleKind = 'route' | 'ratelimit-local' | 'ratelimit-global' | 'circuitbreaker' | 'faultdetect' | 'lossless' | 'lane';
+type RuleKind = 'route' | 'ratelimit-local' | 'ratelimit-global' | 'circuitbreaker' | 'faultdetect' | 'lossless' | 'lane' | 'traffic-security' | 'traffic-mirror' | 'traffic-mock';
 
 interface GovernanceRuleRow extends TableRowData {
     key: string;
@@ -84,6 +91,7 @@ interface GovernanceRuleRow extends TableRowData {
     deleteable?: boolean;
     raw: TableRowData;
     limitType?: LimitType;
+    trafficKind?: TrafficGovernanceKind;
 }
 
 const typeOptions = [
@@ -94,6 +102,9 @@ const typeOptions = [
     { label: '探测', value: 'faultdetect' },
     { label: '无损', value: 'lossless' },
     { label: '泳道', value: 'lane' },
+    { label: '鉴权', value: 'traffic-security' },
+    { label: '镜像', value: 'traffic-mirror' },
+    { label: 'Mock', value: 'traffic-mock' },
 ];
 
 const getActionPayload = <T,>(action: unknown): T | undefined => {
@@ -128,6 +139,9 @@ const normalizeRules = (items: {
     faultDetects: FaultDetectRule[];
     losslessRules: LossLessRuleView[];
     laneGroups: LaneGroupView[];
+    trafficSecurityRules: TrafficGovernanceRule[];
+    trafficMirrorRules: TrafficGovernanceRule[];
+    trafficMockRules: TrafficGovernanceRule[];
 }): GovernanceRuleRow[] => {
     const routeRows = items.routes.map((rule) => {
         const target = routeTarget(rule);
@@ -242,7 +256,31 @@ const normalizeRules = (items: {
         raw: rule as TableRowData,
     }));
 
-    return [...routeRows, ...rateRows, ...circuitRows, ...faultRows, ...losslessRows, ...laneRows];
+    const trafficRows = ([
+        ['traffic-security', 'security', items.trafficSecurityRules],
+        ['traffic-mirror', 'mirror', items.trafficMirrorRules],
+        ['traffic-mock', 'mock', items.trafficMockRules],
+    ] as Array<[RuleKind, TrafficGovernanceKind, TrafficGovernanceRule[]]>).flatMap(([rowKind, trafficKind, rules]) => (
+        rules.map((rule) => ({
+            key: `${rowKind}-${rule.id || rule.name}`,
+            kind: rowKind,
+            typeLabel: TrafficGovernanceKindLabel[trafficKind],
+            name: rule.name,
+            description: rule.description,
+            namespace: rule.namespace,
+            service: rule.service,
+            target: `${text(rule.namespace)}/${text(rule.service)}`,
+            condition: `${trafficRuleCount(trafficKind, rule)} 条 / ${trafficRuleSummary(trafficKind, rule)}`,
+            status: rule.enable ? '启用' : '禁用',
+            release: rule.revision ? '已发布' : '待发布',
+            editable: rule.editable,
+            deleteable: rule.deleteable,
+            raw: rule as TableRowData,
+            trafficKind,
+        }))
+    ));
+
+    return [...routeRows, ...rateRows, ...circuitRows, ...faultRows, ...losslessRows, ...laneRows, ...trafficRows];
 };
 
 const GovernanceWorkbench: React.FC = () => {
@@ -272,6 +310,9 @@ const GovernanceWorkbench: React.FC = () => {
                 faultAction,
                 losslessAction,
                 laneAction,
+                trafficSecurityAction,
+                trafficMirrorAction,
+                trafficMockAction,
             ] = await Promise.all([
                 dispatch(listCustomRoutes({ param: { offset: 0, limit: 20, route_type: 'RulePolicy', name: query } })),
                 dispatch(listRateLimitRules({ param: { offset: 0, limit: 20, name: query, limit_type: LimitType.LOCAL } })),
@@ -280,6 +321,9 @@ const GovernanceWorkbench: React.FC = () => {
                 dispatch(listFaultDetects({ param: { offset: 0, limit: 20, name: query, brief: true } })),
                 dispatch(listLossLessRules({ param: { offset: 0, limit: 20, name: query } })),
                 dispatch(listLaneGroups({ param: { offset: 0, limit: 20, name: query, brief: true } })),
+                describeTrafficGovernanceRules('security', { offset: 0, limit: 20, name: query }),
+                describeTrafficGovernanceRules('mirror', { offset: 0, limit: 20, name: query }),
+                describeTrafficGovernanceRules('mock', { offset: 0, limit: 20, name: query }),
             ]);
 
             const routePayload = getActionPayload<{ datas: CustomRouteView[] }>(routeAction);
@@ -289,6 +333,9 @@ const GovernanceWorkbench: React.FC = () => {
             const faultPayload = getActionPayload<{ datas: FaultDetectRule[] }>(faultAction);
             const losslessPayload = getActionPayload<{ datas: LossLessRuleView[] }>(losslessAction);
             const lanePayload = getActionPayload<{ datas: LaneGroupView[] }>(laneAction);
+            const trafficSecurityPayload = trafficSecurityAction as { list: TrafficGovernanceRule[] };
+            const trafficMirrorPayload = trafficMirrorAction as { list: TrafficGovernanceRule[] };
+            const trafficMockPayload = trafficMockAction as { list: TrafficGovernanceRule[] };
 
             setRules(normalizeRules({
                 routes: routePayload?.datas || [],
@@ -298,6 +345,9 @@ const GovernanceWorkbench: React.FC = () => {
                 faultDetects: faultPayload?.datas || [],
                 losslessRules: losslessPayload?.datas || [],
                 laneGroups: lanePayload?.datas || [],
+                trafficSecurityRules: trafficSecurityPayload.list || [],
+                trafficMirrorRules: trafficMirrorPayload.list || [],
+                trafficMockRules: trafficMockPayload.list || [],
             }));
         } catch (error) {
             openErrNotification('请求失败', `查询治理规则列表错误: ${(error as Error).message}`);
@@ -337,6 +387,10 @@ const GovernanceWorkbench: React.FC = () => {
             case 'lane':
                 dispatch(editorLaneGroup(rule.raw as LaneGroupView));
                 break;
+            case 'traffic-security':
+            case 'traffic-mirror':
+            case 'traffic-mock':
+                break;
         }
         setDrawerVisible(true);
     };
@@ -358,6 +412,18 @@ const GovernanceWorkbench: React.FC = () => {
                 action = await dispatch(listLosslessRuleVersions({ param: { offset: (page - 1) * limit, limit, id: selected.raw.id as string } }));
             } else if (selected.kind === 'lane') {
                 action = await dispatch(listLaneGroupVersions({ param: { offset: (page - 1) * limit, limit, id: selected.raw.id as string } }));
+            } else if (selected.trafficKind) {
+                const result = await describeTrafficGovernanceVersions(selected.trafficKind, {
+                    offset: (page - 1) * limit,
+                    limit,
+                    id: selected.raw.id as string,
+                    rule_name: selected.name,
+                });
+                setVersions(result.list);
+                setVersionTotal(result.totalCount);
+                setVersionPage(page);
+                setVersionLimit(limit);
+                return;
             }
 
             const payload = getActionPayload<{ datas?: RuleRelease[], versions?: RuleRelease[], total?: number, versionTotal?: number, page?: number, versionPage?: number, limit?: number, versionLimit?: number }>(action);
@@ -384,6 +450,8 @@ const GovernanceWorkbench: React.FC = () => {
                 await dispatch(removeLosslessVersion({ id: row.id }));
             } else if (selected.kind === 'lane') {
                 await dispatch(removeLaneGroupVersion({ ids: [row.id] }));
+            } else if (selected.trafficKind) {
+                await deleteTrafficGovernanceRelease(selected.trafficKind, row.id as string);
             }
             openInfoNotification('请求成功', '删除规则版本成功');
             refreshVersions(versionPage, versionLimit);
@@ -399,6 +467,8 @@ const GovernanceWorkbench: React.FC = () => {
                 await dispatch(rollbackLosslessVersion({ id: row.id }));
             } else if (selected.kind === 'lane') {
                 await dispatch(rollbackLanGroupVersion({ id: row.id }));
+            } else if (selected.trafficKind) {
+                return;
             }
             openInfoNotification('请求成功', '回滚规则版本成功');
             refreshVersions(versionPage, versionLimit);
@@ -468,7 +538,7 @@ const GovernanceWorkbench: React.FC = () => {
             action: operateRelease,
             editable: selected.editable ?? true,
             deleteable: selected.deleteable ?? true,
-            rollbackable: selected.kind !== 'lossless',
+            rollbackable: selected.kind !== 'lossless' && !selected.trafficKind,
             loading: versionLoading,
             pagination: {
                 current: versionPage,
@@ -509,19 +579,40 @@ const GovernanceWorkbench: React.FC = () => {
         if (selected.kind === 'lossless') {
             return <RuleTabs op="view" onVersionView={() => refreshVersions()} view={<LossLessEditor visible={drawerVisible} op="view" refresh={() => refreshData()} />} versions={commonVersions} subscribe={subscribe} />;
         }
+        if (selected.trafficKind) {
+            return (
+                <RuleTabs
+                    op="view"
+                    onVersionView={() => refreshVersions()}
+                    view={(
+                        <TrafficGovernanceEditor
+                            kind={selected.trafficKind}
+                            op="view"
+                            data={selected.raw as TrafficGovernanceRule}
+                            visible={drawerVisible}
+                            refresh={() => refreshData()}
+                        />
+                    )}
+                    versions={commonVersions}
+                    subscribe={subscribe}
+                />
+            );
+        }
         return (
             <RuleTabs
                 op="view"
                 onVersionView={() => refreshVersions()}
                 view={(
-                    <Collapse borderless expandMutex defaultValue={['lane_group_detail']}>
-                        <Panel header="泳道组详细" value="lane_group_detail">
-                            <LaneGroupEdtor op="view" refresh={() => refreshData()} />
-                        </Panel>
-                        <Panel header="泳道列表" value="lane_group_rules">
+                    <div className={style.laneDetailStack}>
+                        <LaneGroupEdtor op="view" refresh={() => refreshData()} />
+                        <section className={style.laneRulesPanel}>
+                            <div className={style.laneRulesHeader}>
+                                <div className={style.laneRulesTitle}>泳道列表</div>
+                                <div className={style.laneRulesHint}>当前泳道组内的匹配规则和泳道标签。</div>
+                            </div>
                             <LaneRuleTable groupId={selected.raw.id as string || ''} />
-                        </Panel>
-                    </Collapse>
+                        </section>
+                    </div>
                 )}
                 versions={commonVersions}
                 subscribe={subscribe}

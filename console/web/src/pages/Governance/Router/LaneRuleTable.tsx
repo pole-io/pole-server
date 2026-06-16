@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Popconfirm, Tag } from 'tdesign-react';
-import { DeleteIcon, EditIcon } from 'tdesign-icons-react';
+import { Button, Tooltip, Space, TableRowData, Popconfirm, Tag, Link } from 'tdesign-react';
+import { AddIcon, DeleteIcon, EditIcon } from 'tdesign-icons-react';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import Text from 'components/Text';
@@ -23,81 +23,31 @@ const formatLaneMatchArguments = (row: LaneRuleView) => {
     }).join(' / ');
 };
 
+const isZeroTime = (value?: string) => !value || value.startsWith('0001-01-01') || value.startsWith('1970-01-01');
+
+const renderTimeMeta = (row: LaneRuleView) => {
+    const items = [
+        { label: '修改', value: row.mtime },
+        { label: '创建', value: row.ctime },
+    ].filter((item) => !isZeroTime(item.value));
+
+    if (!items.length) return null;
+
+    return (
+        <div className={style.timeCell}>
+            {items.map((item) => (
+                <span className={style.timeRow} key={`${item.label}-${item.value}`}>
+                    <span className={style.timeLabel}>{item.label}</span>
+                    <span className={style.timeValue}>{item.value}</span>
+                </span>
+            ))}
+        </div>
+    );
+};
+
 interface ILaneRuleTableProps {
     groupId?: string; // 可选的规则ID，用于编辑时传入
 }
-
-const columns = (handleOpRule: (row: TableRowData, op: Op) => void, redirect: (row: TableRowData) => void): PrimaryTableProps['columns'] => [
-    {
-        colKey: 'name',
-        title: '名称',
-        cell: ({ row }) => <Link
-            theme="primary"
-            onClick={() => { redirect(row) }}
-        >{row.name}</Link>,
-    },
-    {
-        colKey: 'enable',
-        title: '状态',
-        cell: ({ row: { enable } }) => (<Tag theme={enable ? 'success' : 'danger'} variant="outline">{enable ? '启用' : '禁用'}</Tag>),
-    },
-    {
-        colKey: 'description',
-        title: '描述',
-        cell: ({ row: { description } }) => <Text>{description || '-'}</Text>,
-    },
-    {
-        colKey: 'lane_label',
-        title: '泳道标签',
-        cell: ({ row }) => <div>{row.labelKey}: {row.defaultLabelValue}</div>,
-    },
-    {
-        colKey: 'match',
-        title: '匹配条件',
-        ellipsis: true,
-        cell: ({ row }) => <Text>{formatLaneMatchArguments(row as LaneRuleView)}</Text>,
-    },
-    {
-        colKey: 'time',
-        title: '操作时间',
-        cell: ({ row: { ctime, mtime } }: TableRowData) => <Text>修改: {mtime}<br />创建: {ctime}</Text>,
-    },
-    {
-        colKey: 'action',
-        title: '操作',
-        cell: ({ row }) => {
-            return (
-                <Space>
-                    <Tooltip content={row.editable === false ? '无权限操作' : '编辑'}>
-                        <Button
-                            shape="square"
-                            variant="text"
-                            disabled={row.editable === false}
-                            onClick={() => handleOpRule(row, 'edit')}>
-                            <EditIcon />
-                        </Button>
-                    </Tooltip>
-                    <Tooltip content={row.deleteable === false ? '无权限操作' : '删除'}>
-                        <Popconfirm
-                            content="确认删除吗"
-                            destroyOnClose
-                            placement="top"
-                            showArrow
-                            theme="default"
-                            onConfirm={() => {
-                                handleOpRule(row, 'delete');
-                            }}
-                        >
-                            <Button shape="square" variant="text" disabled={row.deleteable === false}>
-                                <DeleteIcon />
-                            </Button>
-                        </Popconfirm>
-                    </Tooltip>
-                </Space>
-            )
-        },
-    },
-]
 
 const LaneRuleTable: React.FC<ILaneRuleTableProps> = ({ groupId }) => {
     const dispatch = useAppDispatch();
@@ -156,19 +106,83 @@ const LaneRuleTable: React.FC<ILaneRuleTableProps> = ({ groupId }) => {
         }
     }
 
+    const renderActions = (row: LaneRuleView) => (
+        <Space size={4} className={style.laneRuleActions}>
+            <Tooltip content={row.editable === false ? '无权限操作' : '编辑'}>
+                <Button
+                    shape="square"
+                    variant="text"
+                    disabled={row.editable === false}
+                    onClick={() => handleOpRule(row, 'edit')}>
+                    <EditIcon />
+                </Button>
+            </Tooltip>
+            <Tooltip content={row.deleteable === false ? '无权限操作' : '删除'}>
+                <Popconfirm
+                    content="确认删除吗"
+                    destroyOnClose
+                    placement="top"
+                    showArrow
+                    theme="default"
+                    onConfirm={() => {
+                        handleOpRule(row, 'delete');
+                    }}
+                >
+                    <Button shape="square" variant="text" disabled={row.deleteable === false}>
+                        <DeleteIcon />
+                    </Button>
+                </Popconfirm>
+            </Tooltip>
+        </Space>
+    );
+
+    const renderRule = (rule: LaneRuleView) => {
+        const matchText = formatLaneMatchArguments(rule);
+        const timeMeta = renderTimeMeta(rule);
+
+        return (
+            <div className={style.laneRuleItem} key={rule.id || rule.name}>
+                <div className={style.laneRuleMain}>
+                    <div className={style.laneRuleIdentity}>
+                        <Link theme="primary" className={style.laneRuleName} onClick={() => handleOpRule(rule, 'view')}>
+                            {rule.name || '未命名泳道'}
+                        </Link>
+                        <Tag theme={rule.enable ? 'success' : 'danger'} variant="outline">
+                            {rule.enable ? '启用' : '禁用'}
+                        </Tag>
+                    </div>
+                    <div className={style.laneRuleDescription}>{rule.description || '暂无描述'}</div>
+                    <div className={style.laneRuleMetaGrid}>
+                        <div className={style.laneRuleMeta}>
+                            <span className={style.laneRuleMetaLabel}>泳道标签</span>
+                            <Tag variant="light-outline" theme="primary">{`${rule.labelKey || 'lane'}: ${rule.defaultLabelValue || '-'}`}</Tag>
+                        </div>
+                        <div className={style.laneRuleMeta}>
+                            <span className={style.laneRuleMetaLabel}>匹配条件</span>
+                            <Text>{matchText}</Text>
+                        </div>
+                        {timeMeta && (
+                            <div className={style.laneRuleMeta}>
+                                <span className={style.laneRuleMetaLabel}>操作时间</span>
+                                {timeMeta}
+                            </div>
+                        )}
+                    </div>
+                </div>
+                {renderActions(rule)}
+            </div>
+        );
+    };
+
+    const rules = editGroup?.rules || [];
+
     const table = (
         <>
-            <Row justify='space-between' className={style.toolBar}>
-                <Col>
-                    <Row gutter={8} align='middle'>
-                        <Col>
-                            <Button onClick={(v) => {
-                                handleOpRule({}, 'create')
-                            }}>新建</Button>
-                        </Col>
-                    </Row>
-                </Col>
-            </Row>
+            <div className={style.toolBar}>
+                <Button icon={<AddIcon />} onClick={() => {
+                    handleOpRule({}, 'create')
+                }}>新建</Button>
+            </div>
             {editorState.visible && (
                 <LaneRuleEditor
                     op={editorState.mode}
@@ -180,22 +194,16 @@ const LaneRuleTable: React.FC<ILaneRuleTableProps> = ({ groupId }) => {
                     }}
                 />
             )}
-            <Table
-                data={editGroup?.rules || []}
-                columns={columns(handleOpRule, (row: TableRowData) => {
-                    handleOpRule(row, 'view');
-                })}
-                loading={loading}
-                rowKey="id"
-                size={"large"}
-                tableLayout={'auto'}
-                cellEmptyContent={'-'}
-            />
+            <div className={style.laneRuleList} aria-busy={loading}>
+                {loading && <div className={style.laneRuleEmpty}>加载中...</div>}
+                {!loading && rules.length === 0 && <div className={style.laneRuleEmpty}>暂无泳道规则</div>}
+                {!loading && rules.map(renderRule)}
+            </div>
         </>
     )
 
     return (
-        <div style={{ padding: 24 }}>
+        <div className={style.laneRuleTable}>
             {table}
         </div>
     )

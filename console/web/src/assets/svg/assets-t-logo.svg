@@ -1,32 +1,24 @@
-<svg width="32" height="32" viewBox="0 0 34 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path
-    d="M9.12044 7.71263H2.23633C2.13585 7.71378 2.03633 7.69305 1.94467 7.65191C1.85301 7.61077 1.77141 7.55016 1.70549 7.47432C1.63958 7.39848 1.59096 7.30922 1.563 7.21269C1.53504 7.11617 1.52841 7.0147 1.54357 6.91536L2.67636 0.565523C2.70466 0.411191 2.78618 0.271665 2.90673 0.171231C3.02728 0.0707973 3.17924 0.015779 3.33614 0.015625H10.4841L9.12044 7.71263Z"
-    fill="#0064FF"/>
-  <path d="M13.9471 24.0441H6.23389L9.12037 7.72266H16.8336L13.9471 24.0441Z" fill="url(#paint0_linear_19466_1001)"/>
-  <path
-    d="M12.0215 31.7536H5.69415C5.59381 31.7524 5.49489 31.7298 5.40412 31.687C5.31335 31.6442 5.2329 31.5822 5.1682 31.5055C5.1035 31.4288 5.05608 31.339 5.02918 31.2424C5.00229 31.1458 4.99656 31.0443 5.01238 30.9452L6.23811 24.043H13.9351L12.6704 31.1909C12.6447 31.3453 12.5658 31.486 12.4473 31.5884C12.3288 31.6908 12.1782 31.7485 12.0215 31.7536Z"
-    fill="#009BFF"/>
-  <path
-    d="M30.7696 7.71263H9.11963L10.4833 0.015625H31.8705C31.9712 0.0158149 32.0706 0.0379328 32.1619 0.0804511C32.2532 0.122969 32.334 0.184868 32.3989 0.261842C32.4638 0.338816 32.5112 0.429016 32.5377 0.526164C32.5642 0.623312 32.5693 0.725075 32.5525 0.82436L31.4252 7.16319C31.399 7.31756 31.3188 7.45763 31.1991 7.55835C31.0793 7.65907 30.9275 7.71384 30.7696 7.71263Z"
-    fill="url(#paint1_linear_19466_1001)"/>
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Pole.IO">
+  <path d="M5.2 7.1C5.2 4.8356 7.0356 3 9.3 3H21.95C27.4356 3 31.6 6.9135 31.6 12.15C31.6 17.3865 27.4356 21.3 21.95 21.3H16.25V29H5.2V7.1Z" fill="url(#poleMiniBase)"/>
+  <path d="M16.25 12H21.35C22.678 12 23.6 11.211 23.6 10.05C23.6 8.889 22.678 8.1 21.35 8.1H16.25V12Z" fill="#EAFBF7"/>
+  <path d="M16.25 17H21.95C24.7084 17 26.88 15.001 26.88 12.15C26.88 9.299 24.7084 7.3 21.95 7.3H16.25V17Z" fill="url(#poleMiniInner)" opacity="0.9"/>
+  <path d="M2.4 6.1C2.4 4.3879 3.7879 3 5.5 3H26.35C28.0621 3 29.45 4.3879 29.45 6.1V7.3H2.4V6.1Z" fill="url(#poleMiniCap)"/>
+  <circle cx="7.75" cy="5.78" r="1.18" fill="#EAFBF7" opacity="0.82"/>
+  <circle cx="25.02" cy="5.78" r="1.18" fill="#EAFBF7" opacity="0.82"/>
   <defs>
-    <linearGradient id="paint0_linear_19466_1001" x1="12.9079" y1="7.1276" x2="13.0685" y2="22.4827"
-                    gradientUnits="userSpaceOnUse">
-      <stop stop-color="#009BFF"/>
-      <stop offset="0.35" stop-color="#0081FE"/>
-      <stop offset="0.75" stop-color="#006AFD"/>
-      <stop offset="1" stop-color="#0062FD"/>
+    <linearGradient id="poleMiniBase" x1="5.2" y1="4.6" x2="27.4" y2="30.3" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1B7CFF"/>
+      <stop offset="0.54" stop-color="#0AA9FF"/>
+      <stop offset="1" stop-color="#00B08A"/>
     </linearGradient>
-    <linearGradient id="paint1_linear_19466_1001" x1="9.8091" y1="3.87625" x2="31.1905" y2="7.89539"
-                    gradientUnits="userSpaceOnUse">
-      <stop offset="0.03" stop-color="#E9FFFF"/>
-      <stop offset="0.17" stop-color="#C4FAC9"/>
-      <stop offset="0.33" stop-color="#A0F694"/>
-      <stop offset="0.48" stop-color="#82F269"/>
-      <stop offset="0.63" stop-color="#6AEF47"/>
-      <stop offset="0.76" stop-color="#5AED2F"/>
-      <stop offset="0.89" stop-color="#4FEB20"/>
-      <stop offset="1" stop-color="#4CEB1B"/>
+    <linearGradient id="poleMiniInner" x1="16.25" y1="7.3" x2="29.4" y2="16.15" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#21C6FF"/>
+      <stop offset="1" stop-color="#00C389"/>
+    </linearGradient>
+    <linearGradient id="poleMiniCap" x1="2.4" y1="3" x2="29.45" y2="7.3" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1B7CFF"/>
+      <stop offset="0.5" stop-color="#00A6FF"/>
+      <stop offset="1" stop-color="#59E042"/>
     </linearGradient>
   </defs>
 </svg>

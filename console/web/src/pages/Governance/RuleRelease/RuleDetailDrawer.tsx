@@ -7,11 +7,12 @@ interface RuleDetailDrawerProps {
     visible: boolean;
     title: React.ReactNode;
     subtitle?: React.ReactNode;
+    size?: string;
     onClose: () => void;
     children: React.ReactNode;
 }
 
-const RuleDetailDrawer: React.FC<RuleDetailDrawerProps> = ({ visible, title, subtitle, onClose, children }) => (
+const RuleDetailDrawer: React.FC<RuleDetailDrawerProps> = ({ visible, title, subtitle, size = 'min(1080px, 92vw)', onClose, children }) => (
     <Drawer
         attach="body"
         className={style.drawer}
@@ -28,7 +29,7 @@ const RuleDetailDrawer: React.FC<RuleDetailDrawerProps> = ({ visible, title, sub
         mode="overlay"
         placement="right"
         showOverlay
-        size="min(860px, 88vw)"
+        size={size}
         visible={visible}
         onClose={onClose}
     >

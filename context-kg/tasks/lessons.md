@@ -2,12 +2,16 @@
 title: Lessons
 tags: [tasks, lessons]
 links: [todo]
-updated: 2026-06-10
+updated: 2026-06-15
 sources: 0
 ---
 
 # Lessons
 
+- 给 Codex/Claude 这类 agent 使用的启动脚本不能只有前台 `exec` 常驻服务模式；默认可保留终端前台语义，但必须提供 `--detach` / `tmux` 优先的后台模式，避免工具调用被长进程阻塞或结束后回收服务。
+- 治理工作台筛选按钮要使用短产品名保持横向扫描一致：调用鉴权显示为 `鉴权`，流量镜像显示为 `镜像`，流量 Mock 显示为 `Mock`；不要在筛选按钮里重复“调用/流量”前缀。
+- 泳道组详情抽屉下的子泳道列表不应复用普通宽表格；抽屉内子资源列表应优先做紧凑规则行，固定展示名称、状态、描述、标签、条件和右侧图标操作，并隐藏 `0001-01-01` 这类聚合子对象零值时间。
+- 更新仓库级 `AGENTS.md` 时，除了协作流程和架构说明，也必须明确写出“怎么 run 程序”：本地后端启动、默认 all 模式、server-only、console-only、关键端口和 `--mode` 覆盖关系，不能只保留一条测试配置启动命令。
 - 当讨论 pole-control-plane 与 pole-console 的启动/部署标准化时，默认启动语义应是合并启动；参数只用于切换单独启动 `server` 或单独启动 `console`，不要把默认设计成只启动 control-plane 后再通过 `--console` 打开控制台。
 - “合并启动”在 pole-control-plane / pole-console 场景里应优先理解为代码与运行时合并进 control-plane，而不是由 control-plane 再拉起一个 pole-console 外部子进程；除非用户明确要求双进程 runner，否则不要把子进程方案当成默认实现。
 - 合并 console 后，默认产品入口端口优先给 console 使用 `8080`；如果 Apollo 协议端口与 console 冲突，应调整 Apollo 端口，不要挤占 console 默认入口。
@@ -65,6 +69,40 @@ sources: 0
 - 调整 `context-kg` 时不能只移动文档内容，还必须同步设计和更新知识库 taxonomy：业务知识放 `business/`，技术方案和 ADR 放 `technical/adr/`，模块/接口/环境/约定放 `technical/` 对应子目录，测试/缺陷/自动化知识放 `quality/`；同时更新 `_meta/schema.md`、`_meta/index.md`、`_meta/log.md` 和仓库级 AGENTS/CLAUDE 规则。
 - 设计 pole-control-plane 的 A2A 能力时必须严格限定为 A2A Agent Registry：Agent Card 注册、发现、索引、治理元数据和管理 API。A2A task proxy、SSE streaming 转发、push notification broker、task 状态机和 artifact 存储属于数据面/网关/agent runtime，不应写成 pole-control-plane 的二期能力。
 - 实现 A2A Agent Registry 时不能只落后端注册表；Console 页面、列表筛选、抽屉新建/编辑、Agent Card 查看和技能详情都属于功能完整性的一部分，需要和 MCP 页面保持同一套控制台交互语言。
+- 验证 A2A Console 页面数据时必须走 `8080/ai/a2a/v1` 代理链路；`8090/ai/a2a/v1` 有数据只能证明后端和缓存正常，不能证明 Console 已注册对应反向代理。新增 AI Native API 前缀时要同步 Console router 和 router 测试。
+- A2A、MCP、服务列表都属于同一控制台工作台体系；新增 A2A 页面不能只做裸 toolbar + table，应复用页头、指标栏、筛选栏、表格容器、摘要单元格和详情抽屉摘要区，保证用户在 AI 工具和注册发现之间切换时布局语言一致。
+- 控制台顶部筛选功能栏不要用普通 `Space` 把分段按钮、输入框和操作按钮散开；筛选项多时应放进统一工具面板，用分组标签、稳定网格和明确 action 区控制换行，否则宽屏下也会出现协议按钮孤立、查询/重置掉行的问题。
+- A2A 这类筛选维度多的列表页，不应把协议筛选做成独立 chip 分组再和高级筛选并列；应把所有筛选项纳入同一个确定性 grid，并给表格关键列设置稳定宽度和表头 nowrap，避免宽屏或中等宽度下出现意外拆字、掉行。
+- 列表列名必须对应第一视觉层级：A2A `来源` 列应优先展示 `source_type`，`last_fetch_status=success` 这类正常内部状态不应出现在列表主位置。
+- 列表正常态不要堆解释文案；A2A `来源` 列这类扫描字段应优先只展示短标签，只有失败、未拉取等需要用户注意的异常态才追加状态标签。
+- AI Native 中如果 MCP Server 或 A2A Agent 的后端绑定到 Pole 注册服务，列表和详情中的 `namespace/name` 应可点击跳转到注册发现服务详情；自定义地址保持普通文本，避免误导成内部资源。
+- A2A Agent Card、MCP tool schema 这类 JSON 契约不应默认直接铺满抽屉；默认应按领域字段做可视化渲染，原始 JSON 只作为用户主动切换的调试/排障视图。
+- A2A Agent Card 这类可视化契约详情不能只追求信息密度；默认视图应保留契约文档的阅读节奏，用标题、关键信息网格、能力分区和 Skill 卡片组织内容，避免压成生硬的 inspector。
+- 优化详情页不能只追求信息密度；A2A Agent Card 这类契约阅读页需要保留文档化节奏、主标题和卡片分组的可读性，不能压成硬边框 inspector，否则会比原设计更生硬。
+- A2A Agent 技能和 MCP Tool 一样属于能力/API 浏览场景；详情抽屉里不要默认用大表格展示少量技能，应使用目录 + 详情的能力浏览器结构，让用户直接读到描述、标签、输入输出、示例和安全声明。
+- 控制台资源列表的身份列和操作列必须优先固定可见；不要为了展示更多字段牺牲操作可达性。中间列应通过稳定列宽、单行摘要、省略和紧凑扫描单元控制，尽可能让常见桌面宽度无需横向滚动即可查看全部信息。
+- Console 品牌标识应优先展示产品品牌 `Pole.IO`；不要在主 logo 文案里追加 `Console` 这类功能后缀，除非用户明确要求区分多个产品线。
+- 本地 all/console 模式下，`console/web/dist/index.html` 是启动时由 Gin `LoadHTMLGlob` 加载的；执行 `npm run build` 后必须重启 all/console，否则 8080 可能继续返回旧 index，进而请求已不存在的 hash 资源并导致页面打不开。
+- 新增治理规则详情时，操作按钮不能另做内容底部 sticky footer；应复用 `RuleDetailDrawer` 内的 `StickyTool + RuleStickyAction`，否则按钮位置会和既有治理详情不一致，并可能影响抽屉正文滚动体验。
+- 治理工作台这类仪表盘页面不应让整个主页面随列表长度滚动；应固定页面视区高度，让清单面板内部的表格内容区滚动，保持页头、汇总、筛选和分页稳定可见。
+- 新增治理规则类型的查询接口不能只返回业务对象；auth interceptor 必须像既有路由、限流、熔断等规则一样在列表和详情响应里回填 `editable/deleteable`，否则 proto bool 默认 false 会让 Console 误判为无编辑权限。
+- 新增治理规则详情不能只把查看态做成结构化展示，编辑态也必须同步产品化；不要用规则数组或元数据 JSON Textarea 作为编辑态占位，用户点击编辑应看到和查看态同一信息架构下的字段控件。
+- 治理规则编辑态不能只做到字段结构化；还要做视觉质量验证。抽屉宽度、FormItem 标签方向、规则块层级、条件行换行、表格列宽都要用真实 8080 页面截图和布局指标检查，避免“能编辑但很丑”的临时表单感。
+- 调用鉴权这类策略型治理规则不应设计成普通表单堆叠；应参考限流、熔断的规则块模式：header 展示 `规则 [n]`、摘要和动作，正文按接口范围、鉴权结果、匹配条件分区，并支持折叠。
+- 治理规则的规则级 `metadata` 在 Console 产品文案中应优先称为“规则标签”；不要在新增规则详情里直接暴露“元数据”这种技术字段名，除非是通用资源元数据管理场景。
+- 治理规则基础信息区应承载规则标签，不要把规则级标签拆成和策略定义并列的独立大卡片；编辑态要按身份、开关/优先级、作用范围、标签、描述组织栅格，而不是平均两列铺满。
+- 治理规则 spec 的最外层规则对象不要保留 `namespace` / `service` 字段，也不要用注释解释这两个字段迁移到哪里；规则归属和作用范围应由规则内部结构表达，`metadata` / 规则标签只表示扩展标签。删除字段时也不要用 `reserved` 占位，治理规则字段号可以重新从 1 开始连续整理。
+- 治理规则 spec 不应保留仅用于 Console 展示的扩展 map 字段，例如 `FaultDetectRule.extendInfo`；展示需要应由 Console 自己从规则结构推导，删除字段号用 `reserved` 保留即可。
+- 限流窗口这类由数值输入和单位下拉组成的复合控件，单位 `Select` 必须绑定当前行的 `validDurationUnit`；不能只在 `onChange` 中写回，否则编辑态会显示占位“请选择”，让用户误以为数据缺失。
+- 治理规则详情保存更新成功后，如果抽屉不关闭，就必须自动回到 readonly 状态；不能继续保留 `保存 / 撤销` 和输入控件，否则用户会误以为保存未完成或仍处于未提交编辑中。
+- 治理规则交互修复不能只改用户截图中的单一规则类型；路由、限流、熔断、探测、无损、泳道和新增流量治理都要按同一产品行为横向检查，尤其是保存后状态、表格编辑缓存和创建/更新的抽屉关闭语义。
+- 用户指出“所有治理规则都要考虑”时，验证范围必须覆盖路由、限流、熔断、主动探测、无损、泳道、调用鉴权、流量镜像、流量 Mock；不能把某个类型通过当成整体通过。
+- 治理规则编辑器的布局必须直接复用 `shared/governance.module.less` 的既定范式（基础信息 = `infoGrid` 12 栅格 + `field`(span4)，描述/规则标签各自 `field full` 独占整行；分组内多字段用 `kv2`），不要在 Security 等新模块里另写 `formGrid/editGrid` 这套 6/2/2/4 私有列宽。否则规则标签会被挤到和命名空间同一行、子规则字段也对不齐。对齐已有模块的栅格是默认共识，不应等用户反复提醒。
+- 修“布局奇怪”这类反馈要从范式层重写（直接换成共享栅格组件/类），不要靠逐处调 padding、改单个 class 打补丁；补丁只会让两套体系并存、问题反复出现。
+- 设计 E2E 测试用例时必须先确认测试边界：如果用户明确说“只考虑接口维度”，就不要默认加入 Playwright、浏览器、DOM、截图或 Console 前端交互测试能力；此时闭环应覆盖 8080 Console API 读写、8090 Client API 查询可见性、权限策略生效和 `consoleOpen/clientOpen` 配置开关矩阵。
+- 治理规则编辑器的信息架构要按该规则类型的“操作心智”组织，不能照搬 proto 字段平铺：流量镜像应是 接口范围 → 流量匹配(来源服务也属于流量标签) → 采样比例 → 镜像目标 的四步语义，用 `shared.step` 轴呈现，与鉴权策略卡一致。这是默认共识，不应等用户反复提醒。
+- 镜像规则的 `MirrorSource` 原本没有 `API` 接口字段（Mock 有），按需对齐时直接改 `specification/api/v1/traffic_manage/mirror.proto` 追加 `API api = 4`，在 `source/go` 下 `bash build.sh` 重新生成；后端整 proto JSON 序列化（`protojson` 存 `governance_rule.rule` 列），store/service/cache 零改动即自动持久化回环。
+- 本地联调 spec proto 改动用 `replace github.com/pole-io/specification => 本地路径`（path-replace 跳过校验和，无需改 go.sum）；**严禁直接跑 `go mod tidy`**——它会顺带升级 envoy/genproto 等间接依赖，打断 xds 等无关代码编译。只手动追加 replace 行即可，正式合并前需 spec 发版并改回版本号。
 
 ## 相关页面
 

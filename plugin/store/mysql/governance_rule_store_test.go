@@ -18,6 +18,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 )
 
@@ -174,11 +175,80 @@ func TestGovernanceRuleRepositoryQueryReleaseVersionsByRuleName(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestGovernanceRuleRepositoryGetReleaseReturnsNilWhenMissing(t *testing.T) {
+	rawDB, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer rawDB.Close()
+
+	db := &BaseDB{DB: rawDB}
+	repo := newGovernanceRuleRepository(db, db)
+
+	mock.ExpectBegin()
+	tx, err := db.Begin()
+	require.NoError(t, err)
+	storeTx := NewSqlDBTx(tx)
+
+	mock.ExpectQuery(regexp.QuoteMeta(selectGovernanceRuleReleaseSQL)).
+		WithArgs(string(governanceRuleTypeTrafficSecurity), "", "rule-1", "release-1", "normal").
+		WillReturnRows(sqlmock.NewRows(governanceRuleReleaseColumnsForTest()))
+
+	got, err := repo.GetRelease(storeTx, governanceRuleTypeTrafficSecurity, &rules.RuleRelease{
+		RuleId:      "rule-1",
+		ReleaseName: "release-1",
+		ReleaseType: "normal",
+	})
+	require.NoError(t, err)
+	require.Nil(t, got)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGovernanceRuleRepositoryGetActiveReleaseReturnsNilWhenMissing(t *testing.T) {
+	rawDB, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer rawDB.Close()
+
+	db := &BaseDB{DB: rawDB}
+	repo := newGovernanceRuleRepository(db, db)
+
+	mock.ExpectBegin()
+	tx, err := db.Begin()
+	require.NoError(t, err)
+	storeTx := NewSqlDBTx(tx)
+
+	expectedSQL := `SELECT id, rule_type, name, rule_id, rule_name, namespace, service, rule,
+	version, active, description, release_type, client_labels, metadata, flag,
+	UNIX_TIMESTAMP\(ctime\), UNIX_TIMESTAMP\(mtime\)
+FROM governance_rule_release
+WHERE rule_type = \? AND rule_id = \? AND release_type = \? AND active = 1 AND flag = 0
+ORDER BY version DESC
+LIMIT 1`
+	mock.ExpectQuery(expectedSQL).
+		WithArgs(string(governanceRuleTypeTrafficSecurity), "rule-1", "gray").
+		WillReturnRows(sqlmock.NewRows(governanceRuleReleaseColumnsForTest()))
+
+	got, err := repo.GetActiveRelease(storeTx, &governanceRuleReleaseRecord{
+		RuleType:    governanceRuleTypeTrafficSecurity,
+		RuleID:      "rule-1",
+		ReleaseType: "gray",
+	})
+	require.NoError(t, err)
+	require.Nil(t, got)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func governanceRuleColumnsForTest() []string {
 	return []string{
 		"id", "rule_type", "namespace", "name", "service_id", "service", "method", "priority",
 		"enable", "disable", "level", "src_service", "src_namespace", "dst_service", "dst_namespace",
 		"dst_method", "labels", "policy", "config", "rule", "revision", "description", "metadata",
 		"flag", "ctime", "etime", "mtime",
+	}
+}
+
+func governanceRuleReleaseColumnsForTest() []string {
+	return []string{
+		"id", "rule_type", "name", "rule_id", "rule_name", "namespace", "service", "rule",
+		"version", "active", "description", "release_type", "client_labels", "metadata", "flag",
+		"ctime", "mtime",
 	}
 }

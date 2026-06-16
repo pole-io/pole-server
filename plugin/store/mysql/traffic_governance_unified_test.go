@@ -21,13 +21,11 @@ func TestTrafficGovernanceRuleRecordRoundTrip(t *testing.T) {
 		{
 			name: "security",
 			rule: rules.NewTrafficSecurityRule(&apisecurity.TrafficSecurityRule{
-				Id:        "security-1",
-				Name:      "security-rule",
-				Namespace: "default",
-				Service:   "svc-a",
-				Enable:    true,
-				Priority:  10,
-				Metadata:  map[string]string{"owner": "qa"},
+				Id:       "security-1",
+				Name:     "security-rule",
+				Enable:   true,
+				Priority: 10,
+				Metadata: map[string]string{"owner": "qa"},
 			}),
 			ruleType:   governanceRuleTypeTrafficSecurity,
 			toRecord:   trafficSecurityRuleToGovernanceRuleRecord,
@@ -36,13 +34,14 @@ func TestTrafficGovernanceRuleRecordRoundTrip(t *testing.T) {
 		{
 			name: "mirror",
 			rule: rules.NewTrafficMirrorRule(&apitraffic.TrafficMirror{
-				Id:        "mirror-1",
-				Name:      "mirror-rule",
-				Namespace: "default",
-				Service:   "svc-a",
-				Enable:    true,
-				Priority:  20,
-				Metadata:  map[string]string{"owner": "qa"},
+				Id:       "mirror-1",
+				Name:     "mirror-rule",
+				Enable:   true,
+				Priority: 20,
+				Metadata: map[string]string{"owner": "qa"},
+				Rules: []*apitraffic.MirrorRule{{
+					Source: &apitraffic.MirrorSource{Namespace: "default", Service: "svc-a"},
+				}},
 			}),
 			ruleType:   governanceRuleTypeTrafficMirror,
 			toRecord:   trafficMirrorRuleToGovernanceRuleRecord,
@@ -51,13 +50,14 @@ func TestTrafficGovernanceRuleRecordRoundTrip(t *testing.T) {
 		{
 			name: "mock",
 			rule: rules.NewTrafficMockRule(&apitraffic.TrafficMock{
-				Id:        "mock-1",
-				Name:      "mock-rule",
-				Namespace: "default",
-				Service:   "svc-a",
-				Enable:    true,
-				Priority:  30,
-				Metadata:  map[string]string{"owner": "qa"},
+				Id:       "mock-1",
+				Name:     "mock-rule",
+				Enable:   true,
+				Priority: 30,
+				Metadata: map[string]string{"owner": "qa"},
+				Rules: []*apitraffic.MockRule{{
+					Source: &apitraffic.MockSource{Namespace: "default", Service: "svc-a"},
+				}},
 			}),
 			ruleType:   governanceRuleTypeTrafficMock,
 			toRecord:   trafficMockRuleToGovernanceRuleRecord,
@@ -91,4 +91,50 @@ func TestTrafficGovernanceRuleRecordRoundTrip(t *testing.T) {
 			require.NotNil(t, got.Proto)
 		})
 	}
+}
+
+func TestTrafficGovernanceReleaseRecordKeepsRuleSnapshotFields(t *testing.T) {
+	rule := rules.NewTrafficSecurityRule(&apisecurity.TrafficSecurityRule{
+		Id:          "security-1",
+		Name:        "security-rule",
+		Description: "rule description",
+		Enable:      true,
+		Priority:    10,
+		Revision:    "rev-1",
+		Metadata:    map[string]string{"owner": "qa"},
+	})
+	rule.Namespace = "default"
+	rule.Service = "svc-a"
+	rule.Valid = true
+	release := &rules.TrafficGovernanceRuleRelease{
+		RuleRelease: rules.RuleRelease{
+			Id:          "release-1",
+			ReleaseName: "normal",
+			RuleId:      rule.ID,
+			RuleName:    rule.Name,
+			ReleaseType: rules.ReleaseTypeNormal,
+			Active:      true,
+			Valid:       true,
+		},
+		Rule: rule,
+	}
+
+	record := trafficGovernanceRuleReleaseToGovernanceReleaseRecord(release, governanceRuleTypeTrafficSecurity)
+	got, err := governanceRuleReleaseRecordToTrafficGovernanceRuleRelease(
+		record,
+		0,
+		governanceRuleRecordToTrafficSecurityRule,
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, got.Rule)
+	require.Equal(t, rule.ID, got.Rule.ID)
+	require.Equal(t, rule.Name, got.Rule.Name)
+	require.Equal(t, rule.Namespace, got.Rule.Namespace)
+	require.Equal(t, rule.Service, got.Rule.Service)
+	require.Equal(t, rule.Description, got.Rule.Description)
+	require.Equal(t, rule.Priority, got.Rule.Priority)
+	require.True(t, got.Rule.Enable)
+	require.Equal(t, rule.Revision, got.Rule.Revision)
+	require.Equal(t, rule.Metadata, got.Rule.Metadata)
 }

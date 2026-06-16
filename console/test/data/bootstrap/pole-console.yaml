@@ -1,5 +1,7 @@
 logger:
-  RotateOutputPath: ./test/output/pole-console.log
+  ErrorOutputPaths:
+    - ./test/output/logs/runtime/pole-console-error.log
+  RotateOutputPath: ./test/output/logs/runtime/pole-console.log
   RotationMaxSize: 500
   RotationMaxAge: 30
   RotationMaxBackups: 100

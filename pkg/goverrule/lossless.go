@@ -150,7 +150,7 @@ func losslessRecordEntry(ctx context.Context, req *apitraffic.LosslessRule, md *
 	entry := &types.RecordEntry{
 		ResourceType:  types.RLosslessRule,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Service, md.ID),
-		Namespace:     req.GetNamespace(),
+		Namespace:     md.Namespace,
 		Operator:      utils.ParseOperator(ctx),
 		OperationType: opt,
 		Detail:        detailStr,

@@ -62,8 +62,8 @@ const checks = [
   },
   {
     file: 'src/router/modules/governance.ts',
-    required: ["path: ''", "redirect: '/governance/lossless'"],
-    message: '治理根路径 /governance/ 必须有默认子路由，避免主区空白。',
+    required: ["path: ''", "Component: lazy(() => import('pages/Governance/Workbench'))"],
+    message: '治理根路径 /governance/ 必须有默认工作台入口，避免主区空白。',
   },
   {
     file: 'src/pages/Governance/Router/CustomRoute.tsx',
@@ -109,6 +109,11 @@ const checks = [
     file: 'src/services/lossless.ts',
     required: ['totalCount: result.amount ?? result.total ?? result.data?.length ?? 0'],
     message: '无损版本列表必须优先按标准 amount 解包，再兼容旧 total。',
+  },
+  {
+    file: 'src/services/traffic_governance.ts',
+    required: ['const keyedList = res[dataKey(kind) as keyof DescribeTrafficGovernanceResponse<T>] as T[] | undefined', 'const list = res.data ?? keyedList ?? []'],
+    message: '流量治理规则列表必须先读标准 data，再兼容按类型返回的旧字段。',
   },
 ];
 

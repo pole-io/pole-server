@@ -13,6 +13,7 @@
 /statis/
 /discover-statis/
 /discover-event/
+/.pole_data/
 *.log
 *.pid
 *.bolt
@@ -24,6 +25,9 @@
 /coverage-*
 /test/output/
 /output/
+/.playwright-cli/
+/.playwright-mcp/
+/_temp/
 __debug_bin*
 *.test
 
@@ -42,6 +46,7 @@ __debug_bin*
 !.env.*.example
 
 # Editor and OS files
+/.claude/
 /.superpowers/
 /.idea/
 .DS_Store

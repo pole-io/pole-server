@@ -199,9 +199,6 @@ func checkFaultDetectRuleParamsDbLen(req *apifault.FaultDetectRule) *apimodel.Re
 	if err := valid.CheckDbRawStrFieldLen(req.GetName(), valid.MaxRuleName); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
-	if err := valid.CheckDbRawStrFieldLen(req.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
-		return api.NewResponse(apimodel.Code_InvalidParameter)
-	}
 	if err := valid.CheckDbRawStrFieldLen(req.GetDescription(), valid.MaxMetadataLength); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}

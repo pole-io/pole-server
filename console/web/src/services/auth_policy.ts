@@ -11,6 +11,9 @@ export enum PolicySourceType {
     FaultDetectRules = "FaultDetectRules",
     LaneRules = "LaneRules",
     LossLessRules = "LosslessRules",
+    SecurityRules = "SecurityRules",
+    MirrorRules = "MirrorRules",
+    MockRules = "MockRules",
     Users = "Users",
     UserGroups = "UserGroups",
     Roles = "Roles",
@@ -75,6 +78,12 @@ export interface PolicyResources {
     faultdetect_rules?: PolicyResource[]
     // 限流规则ID列表
     ratelimit_rules?: PolicyResource[]
+    // 调用鉴权规则ID列表
+    security_rules?: PolicyResource[]
+    // 流量镜像规则ID列表
+    mirror_rules?: PolicyResource[]
+    // 流量 Mock 规则ID列表
+    mock_rules?: PolicyResource[]
     // 用户ID列表
     users?: PolicyResource[]
     // 用户组ID列表

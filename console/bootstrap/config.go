@@ -98,7 +98,9 @@ func LoadConfig(filePath string) (*Config, error) {
 
 	finalContent := os.ExpandEnv(string(content))
 
-	config := &Config{}
+	config := &Config{
+		Logger: DefaultLoggerOptions(),
+	}
 	config.WebServer.JWT.Expired = 1800 // 默认30分钟
 	config.WebServer.JWT.SecretKey = "polarismesh@2021"
 	err = yaml.NewDecoder(bytes.NewBuffer([]byte(finalContent))).Decode(config)
@@ -112,4 +114,15 @@ func LoadConfig(filePath string) (*Config, error) {
 
 func GetConfig() *Config {
 	return _globalConfig
+}
+
+func DefaultLoggerOptions() log.Options {
+	return log.Options{
+		ErrorOutputPaths:   []string{"logs/runtime/pole-console-error.log"},
+		RotateOutputPath:   "logs/runtime/pole-console.log",
+		RotationMaxSize:    500,
+		RotationMaxAge:     30,
+		RotationMaxBackups: 100,
+		Level:              "info",
+	}
 }

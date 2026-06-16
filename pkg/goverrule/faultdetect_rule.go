@@ -81,7 +81,7 @@ func faultDetectRuleRecordEntry(ctx context.Context, req *apifault.FaultDetectRu
 	entry := &types.RecordEntry{
 		ResourceType:  types.RFaultDetectRule,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
-		Namespace:     req.GetNamespace(),
+		Namespace:     md.Namespace,
 		OperationType: opt,
 		Operator:      utils.ParseOperator(ctx),
 		Detail:        detail,
@@ -114,7 +114,7 @@ func (s *Server) createFaultDetectRule(ctx context.Context, request *apifault.Fa
 	}
 
 	msg := fmt.Sprintf("[faultdetect] create fault detect rule: id=%v, name=%v, namespace=%v",
-		data.ID, request.GetName(), request.GetNamespace())
+		data.ID, request.GetName(), data.Namespace)
 	log.Info(msg, utils.RequestID(ctx))
 
 	s.RecordHistory(ctx, faultDetectRuleRecordEntry(ctx, request, data, types.OCreate))
@@ -145,7 +145,7 @@ func (s *Server) updateFaultDetectRule(ctx context.Context, request *apifault.Fa
 	}
 
 	msg := fmt.Sprintf("[faultdetect] update fault detect rule: id=%v, name=%v, namespace=%v",
-		request.GetId(), request.GetName(), request.GetNamespace())
+		request.GetId(), request.GetName(), fdRule.Namespace)
 	log.Info(msg, utils.RequestID(ctx))
 
 	s.RecordHistory(ctx, faultDetectRuleRecordEntry(ctx, request, fdRule, types.OUpdate))
@@ -161,10 +161,10 @@ func (s *Server) deleteFaultDetectRule(ctx context.Context, request *apifault.Fa
 		return api.NewAnyDataResponse(apimodel.Code_ParseException, cbRuleId)
 	}
 	msg := fmt.Sprintf("[faultdetect] delete fault detect rule: id=%v, name=%v, namespace=%v",
-		request.GetId(), request.GetName(), request.GetNamespace())
+		request.GetId(), request.GetName(), faultDetectRuleNamespace(request))
 	log.Info(msg, utils.RequestID(ctx))
 
-	cbRule := &rules.FaultDetectRule{ID: request.GetId(), Name: request.GetName(), Namespace: request.GetNamespace()}
+	cbRule := &rules.FaultDetectRule{ID: request.GetId(), Name: request.GetName(), Namespace: faultDetectRuleNamespace(request)}
 	s.RecordHistory(ctx, faultDetectRuleRecordEntry(ctx, request, cbRule, types.ODelete))
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, cbRuleId)
 }
@@ -248,7 +248,7 @@ func api2FaultDetectRule(req *apifault.FaultDetectRule) (*rules.FaultDetectRule,
 
 	out := &rules.FaultDetectRule{
 		Name:         req.GetName(),
-		Namespace:    req.GetNamespace(),
+		Namespace:    faultDetectRuleNamespace(req),
 		Description:  req.GetDescription(),
 		DstService:   req.GetTargetService().GetService(),
 		DstNamespace: req.GetTargetService().GetNamespace(),
@@ -257,10 +257,17 @@ func api2FaultDetectRule(req *apifault.FaultDetectRule) (*rules.FaultDetectRule,
 		Revision:     utils.NewUUID(),
 		Metadata:     req.Metadata,
 	}
-	if out.Namespace == "" {
-		out.Namespace = namespace.DefaultNamespace
-	}
 	return out, nil
+}
+
+func faultDetectRuleNamespace(req *apifault.FaultDetectRule) string {
+	if req == nil {
+		return namespace.DefaultNamespace
+	}
+	if namespace := req.GetTargetService().GetNamespace(); namespace != "" {
+		return namespace
+	}
+	return namespace.DefaultNamespace
 }
 
 // faultDetectRule2ClientAPI 把内部数据结构转化为客户端API参数

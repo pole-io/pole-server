@@ -35,9 +35,7 @@ func TestLosslessStoreCreateUsesGovernanceRuleRepository(t *testing.T) {
 		Description: "lossless rule",
 		Valid:       true,
 		Proto: &apitraffic.LosslessRule{
-			Id:        "lossless-1",
-			Namespace: "default",
-			Service:   "svc-a",
+			Id: "lossless-1",
 		},
 	}
 

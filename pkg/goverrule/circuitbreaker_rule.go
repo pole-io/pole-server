@@ -77,7 +77,7 @@ func (s *Server) createCircuitBreakerRule(
 	}
 
 	msg := fmt.Sprintf("create circuitBreaker rule: id=%v, name=%v, namespace=%v",
-		data.ID, request.GetName(), request.GetNamespace())
+		data.ID, request.GetName(), data.Namespace)
 	log.Info(msg, utils.RequestID(ctx))
 
 	s.RecordHistory(ctx, circuitBreakerRuleRecordEntry(ctx, request, data, types.OCreate))
@@ -115,11 +115,11 @@ func (s *Server) deleteCircuitBreakerRule(
 		return api.NewAnyDataResponse(apimodel.Code_ParseException, cbRuleId)
 	}
 	msg := fmt.Sprintf("delete circuitbreaker rule: id=%v, name=%v, namespace=%v",
-		request.GetId(), request.GetName(), request.GetNamespace())
+		request.GetId(), request.GetName(), circuitBreakerRuleNamespace(request))
 	log.Info(msg, utils.RequestID(ctx))
 
 	cbRule := &rules.CircuitBreakerRule{
-		ID: request.GetId(), Name: request.GetName(), Namespace: request.GetNamespace()}
+		ID: request.GetId(), Name: request.GetName(), Namespace: circuitBreakerRuleNamespace(request)}
 	s.RecordHistory(ctx, circuitBreakerRuleRecordEntry(ctx, request, cbRule, types.ODelete))
 	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, cbRuleId)
 }
@@ -163,7 +163,7 @@ func (s *Server) updateCircuitBreakerRule(
 	}
 
 	msg := fmt.Sprintf("update circuitbreaker rule: id=%v, name=%v, namespace=%v",
-		request.GetId(), request.GetName(), request.GetNamespace())
+		request.GetId(), request.GetName(), cbRule.Namespace)
 	log.Info(msg, utils.RequestID(ctx))
 
 	s.RecordHistory(ctx, circuitBreakerRuleRecordEntry(ctx, request, cbRule, types.OUpdate))
@@ -243,7 +243,7 @@ func circuitBreakerRuleRecordEntry(ctx context.Context, req *apifault.CircuitBre
 	entry := &types.RecordEntry{
 		ResourceType:  types.RCircuitBreakerRule,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
-		Namespace:     req.GetNamespace(),
+		Namespace:     md.Namespace,
 		OperationType: opt,
 		Operator:      utils.ParseOperator(ctx),
 		Detail:        detail,
@@ -279,7 +279,7 @@ func api2CircuitBreakerRule(req *apifault.CircuitBreakerRule) (*rules.CircuitBre
 
 	out := &rules.CircuitBreakerRule{
 		Name:         req.GetName(),
-		Namespace:    req.GetNamespace(),
+		Namespace:    circuitBreakerRuleNamespace(req),
 		Description:  req.GetDescription(),
 		Level:        int(req.GetLevel()),
 		SrcService:   req.GetRuleMatcher().GetSource().GetService(),
@@ -292,10 +292,20 @@ func api2CircuitBreakerRule(req *apifault.CircuitBreakerRule) (*rules.CircuitBre
 		Rule:      rule,
 		Revision:  utils.NewUUID(),
 	}
-	if out.Namespace == "" {
-		out.Namespace = namespace.DefaultNamespace
-	}
 	return out, nil
+}
+
+func circuitBreakerRuleNamespace(req *apifault.CircuitBreakerRule) string {
+	if req == nil {
+		return namespace.DefaultNamespace
+	}
+	if namespace := req.GetRuleMatcher().GetDestination().GetNamespace(); namespace != "" {
+		return namespace
+	}
+	if namespace := req.GetRuleMatcher().GetSource().GetNamespace(); namespace != "" {
+		return namespace
+	}
+	return namespace.DefaultNamespace
 }
 
 // circuitBreaker2ClientAPI 把内部数据结构转化为客户端API参数

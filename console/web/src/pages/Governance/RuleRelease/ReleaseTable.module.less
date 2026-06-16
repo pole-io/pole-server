@@ -1,0 +1,82 @@
+.releasePanel {
+  min-width: 0;
+}
+
+.summaryRail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 14px;
+  overflow: hidden;
+  border: 1px solid #e5e8ef;
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.summaryItem {
+  min-width: 0;
+  min-height: 64px;
+  padding: 12px 14px;
+  border-right: 1px solid #e5e8ef;
+
+  &:last-child {
+    border-right: 0;
+  }
+
+  span {
+    display: block;
+    color: #697586;
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  strong {
+    display: block;
+    margin-top: 3px;
+    overflow: hidden;
+    color: #111827;
+    font-size: 20px;
+    font-weight: 650;
+    line-height: 26px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.releaseNameCell {
+  min-width: 0;
+
+  span {
+    display: block;
+    margin-top: 4px;
+    overflow: hidden;
+    color: #697586;
+    font-size: 12px;
+    line-height: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.descriptionCell,
+.timeCell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeCell {
+  color: #364152;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+@media (max-width: 760px) {
+  .summaryRail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summaryItem:nth-child(2n) {
+    border-right: 0;
+  }
+}

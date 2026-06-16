@@ -36,8 +36,9 @@ const columns = (handleOpRule: (row: TableRowData, op: Op) => void, redirect: (r
         width: '20px',
         ellipsis: true,
         cell: ({ row: { routing_config } }: TableRowData) => {
+            const fallbackRule = routing_config?.rules?.[0];
             const config = normalizeRoutingConfigForEditor(routing_config);
-            const source = config?.caller || config?.rules?.[0]?.sources?.[0];
+            const source = config?.caller || config?.rules?.[0]?.sources?.[0] || fallbackRule?.sources?.[0];
             return <div className={style.serviceCell}>命名空间: {source?.namespace || '-'}<br />服务: {source?.service || '-'}</div>;
         },
     },
@@ -47,8 +48,9 @@ const columns = (handleOpRule: (row: TableRowData, op: Op) => void, redirect: (r
         width: '20px',
         ellipsis: true,
         cell: ({ row: { routing_config } }: TableRowData) => {
+            const fallbackRule = routing_config?.rules?.[0];
             const config = normalizeRoutingConfigForEditor(routing_config);
-            const destination = config?.callee || config?.rules?.[0]?.destinations?.[0];
+            const destination = config?.callee || config?.rules?.[0]?.destinations?.[0] || fallbackRule?.destinations?.[0];
             return <div className={style.serviceCell}>命名空间: {destination?.namespace || '-'}<br />服务: {destination?.service || '-'}</div>;
         },
     },
@@ -258,7 +260,9 @@ const CustomRoute: React.FC<ICustomRouteProps> = ({ }) => {
             >
                 <RuleTabs
                     op={editorState.mode}
-                    view={<>
+                    view={editorState.mode !== 'create' && !editorState.data ? (
+                        <Empty title="选择路由规则查看详情" />
+                    ) : (
                         <CustomRouteEditor
                             op={editorState.mode}
                             editable={editorState.data?.editable ?? true}
@@ -269,7 +273,7 @@ const CustomRoute: React.FC<ICustomRouteProps> = ({ }) => {
                                     refreshTable(1, limit);
                                 }
                             }} />
-                    </>}
+                    )}
                     versions={{
                         datas: versions,
                         action: operateRelease,

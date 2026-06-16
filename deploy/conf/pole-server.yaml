@@ -22,7 +22,9 @@ bootstrap:
   # Embedded console gateway config used by mode=all or mode=console.
   console:
     logger:
-      RotateOutputPath: ./log/pole-console.log
+      ErrorOutputPaths:
+        - ./logs/runtime/pole-console-error.log
+      RotateOutputPath: ./logs/runtime/pole-console.log
       RotationMaxSize: 500
       RotationMaxAge: 30
       RotationMaxBackups: 100

@@ -63,6 +63,8 @@ func NewRouter(config *bootstrap.Config) *gin.Engine {
 	ConfigRouter(r, config)
 	// AI MCP 请求
 	AIMCPRouter(r, config)
+	// AI A2A 请求
+	AIA2ARouter(r, config)
 	// 指标监控接口
 	MetricsRouter(r, config)
 

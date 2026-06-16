@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { Space, Button, Table, Tooltip, Descriptions, Tree } from "tdesign-react";
-import type { PrimaryTableProps, TableProps, TableRowData } from 'tdesign-react';
+import React, { useMemo } from 'react';
+import { Space, Button, Table, Tooltip, Tree, Empty, Tag } from "tdesign-react";
+import type { PrimaryTableProps, TableRowData } from 'tdesign-react';
 import { ListIcon } from 'tdesign-icons-react';
 
-import { useAppDispatch, useAppSelector } from 'modules/store';
 import Text from 'components/Text';
 import { VersionClient } from 'services/config_release';
 
@@ -21,21 +20,26 @@ const columns = (props: ISubscribeTableProps, handleViewRelease: (view: boolean,
     {
         colKey: 'id',
         title: '客户端ID',
+        width: 176,
         cell: ({ row: { id } }) => <Text>{id}</Text>,
     },
     {
         colKey: 'host',
         title: '客户端IP',
+        width: 126,
         cell: ({ row: { host } }) => <Text>{host}</Text>,
     },
     {
         colKey: 'client_type',
         title: '客户端类型',
-        cell: ({ row: { client_type } }) => <Text>{client_type}</Text>,
+        width: 112,
+        cell: ({ row: { client_type } }) => client_type ? <Tag variant="light">{client_type}</Tag> : <Text>-</Text>,
     },
     {
         colKey: 'action',
         title: '操作',
+        width: 72,
+        align: 'center',
         cell: ({ row }) => {
             return (
                 <Space>
@@ -51,63 +55,89 @@ const columns = (props: ISubscribeTableProps, handleViewRelease: (view: boolean,
 ]
 
 const SubscribeTable: React.FC<ISubscribeTableProps> = (props) => {
-    const dispatch = useAppDispatch();
-
-    const [searchState, setSearchState] = useState<{
-        versionTree: any[]
-        subscribers: TableProps['data'];
-        total: number;
-        query: string;
-        fetchError: boolean;
-        isLoading: boolean;
-    }>({ versionTree: [], subscribers: [], total: 0, query: '', fetchError: false, isLoading: false });
-
-    const renderVersionTree = (subscribers: VersionClient[]) => {
-        const versions: Record<string, boolean> = {}
-        subscribers.forEach((client) => {
-            versions[client.version.toString()] = true;
+    const versionTree = useMemo(() => {
+        const versions: Record<string, number> = {}
+        props.subscribers.forEach((client) => {
+            const version = client.version?.toString() || '-';
+            versions[version] = (versions[version] || 0) + 1;
         });
         return Object.keys(versions).map((version) => ({
-            label: version,
+            label: `版本 ${version} (${versions[version]})`,
             value: version,
             children: false,
         }));
-    }
+    }, [props.subscribers]);
+
+    const clientTypes = useMemo(() => {
+        const types = new Set(props.subscribers.map((client) => client.client_type).filter(Boolean));
+        return types.size;
+    }, [props.subscribers]);
 
     const handleViewRelease = (view: boolean, row: TableRowData) => {
 
     }
 
     const table = (
-        <>
-            <Descriptions
-                itemLayout="horizontal"
-                layout="horizontal"
-                size="small"
-                title={`${props.title}`}
-            ></Descriptions>
-            <Space>
-                <div className={style.treeContent}>
-                    <Tree data={renderVersionTree(props.subscribers)} activable hover transition />
+        <div className={style.subscribePanel}>
+            <div className={style.summaryRail}>
+                <div className={style.summaryItem}>
+                    <span>监听对象</span>
+                    <strong>{props.subscribers.length}</strong>
                 </div>
+                <div className={style.summaryItem}>
+                    <span>订阅版本</span>
+                    <strong>{versionTree.length}</strong>
+                </div>
+                <div className={style.summaryItem}>
+                    <span>客户端类型</span>
+                    <strong>{clientTypes}</strong>
+                </div>
+            </div>
+            <div className={style.content}>
+                <aside className={style.treeContent}>
+                    <div className={style.sectionTitle}>
+                        <strong>{props.title}</strong>
+                        <span>按客户端订阅版本分组</span>
+                    </div>
+                    {versionTree.length > 0 ? (
+                        <Tree data={versionTree} activable hover transition />
+                    ) : (
+                        <Empty
+                            title="暂无监听版本"
+                            description="还没有客户端订阅该规则版本。"
+                        />
+                    )}
+                </aside>
+                <div className={style.tableContent}>
+                    <div className={style.tableHeader}>
+                        <strong>客户端列表</strong>
+                        <span>{props.subscribers.length > 0 ? `当前 ${props.subscribers.length} 个客户端` : '暂无客户端订阅'}</span>
+                    </div>
                 <Table
                     data={props.subscribers}
                     columns={columns(props, handleViewRelease)}
-                    loading={searchState.isLoading}
+                    loading={false}
                     rowKey="id"
-                    size={"large"}
+                    size="medium"
                     tableLayout={'fixed'}
                     cellEmptyContent={'-'}
+                    empty={(
+                        <Empty
+                            title="暂无监听客户端"
+                            description="客户端拉取并监听该治理规则后，会在这里显示客户端 ID、IP 和类型。"
+                        />
+                    )}
                     pagination={{
                         defaultCurrent: 1,
                         defaultPageSize: 10,
-                        total: searchState.total,
+                        total: props.subscribers.length,
                         showJumper: true,
                     }}
                     selectOnRowClick={false}
                 />
-            </Space>
-        </>
+                </div>
+            </div>
+        </div>
     )
 
     return (

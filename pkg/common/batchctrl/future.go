@@ -104,7 +104,6 @@ func (f *future) Reply(result interface{}, err error) {
 	}
 	f.result = result
 	f.err = err
-	f.setsignal <- struct{}{}
 	close(f.setsignal)
 }
 

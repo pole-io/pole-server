@@ -1,8 +1,10 @@
 import React from "react";
 import { Col, Form, Input, Row, Space, Button, Select, Switch, Dialog, InputNumber, Table, FormProps, Tag, Popup, TableRowData, PrimaryTableProps, StickyTool, RadioGroup, Radio, InputAdornment, Textarea } from "tdesign-react";
-import { SendIcon, AddIcon, ChevronDownIcon, ChevronRightIcon, CloseIcon, Edit1Icon, SaveIcon, RocketIcon, RollbackIcon, RemoveIcon } from "tdesign-icons-react";
+import { AddIcon, ChevronRightIcon, CloseIcon, Edit1Icon, SaveIcon, RocketIcon, RollbackIcon, RemoveIcon } from "tdesign-icons-react";
 
 import Text from "components/Text";
+import RuleLabelField from "../shared/RuleLabelField";
+import shared from "../shared/governance.module.less";
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { API, HTTPMethodOption, InterfaceProtocolOption, Label, MatchType, MatchTypeMap, MatchTypeOption, MatchValueType, Op } from "services/types";
 import { ServiceView } from "services/service";
@@ -221,7 +223,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
     const onSubmit: FormProps['onSubmit'] = async (e) => {
         console.log('提交数据:', breakerRule);
         let res;
-        if (op === 'edit') {
+        if (op !== 'create') {
             res = await dispatch(updateCircuitBreakers({
                 param: {
                     ...breakerRule,
@@ -250,7 +252,10 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         if (res.meta.requestStatus !== 'fulfilled') {
             openErrNotification('请求错误', res?.payload as string);
         } else {
-            openInfoNotification('请求成功', op === 'edit' ? '修改熔断规则成功' : '创建熔断规则成功');
+            openInfoNotification('请求成功', op !== 'create' ? '修改熔断规则成功' : '创建熔断规则成功');
+            if (op !== 'create') {
+                setEditorState(prev => ({ ...prev, editable: false }));
+            }
             refresh(false); // 刷新列表
         }
     }
@@ -331,90 +336,13 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         setBreakerRule(newRules);
     }
 
-    // 标签弹窗渲染
-    const renderRuleLabelsDialog = () => (
-        <Dialog
-            visible={editorState.visible}
-            header="编辑规则标签"
-            width={700}
-            onConfirm={() => setEditorState(prev => ({ ...prev, visible: false }))}
-            onClose={() => setEditorState(prev => ({ ...prev, visible: false }))}
-        >
-            <div>
-                {breakerRule.metadata?.map((tag, idx) => (
-                    <Row key={idx} style={{ marginBottom: 12 }} align="middle">
-                        <Space>
-                            <Input
-                                value={tag.key}
-                                placeholder="请输入标签键"
-                                onChange={v => {
-                                    const newMetadata = [...(breakerRule.metadata || [])];
-                                    newMetadata[idx] = { ...newMetadata[idx], key: v };
-                                    setBreakerRule(prev => ({ ...prev, metadata: newMetadata }));
-                                }} />
-                            <Input
-                                value={tag.value}
-                                placeholder="请输入标签值"
-                                onChange={v => {
-                                    const newMetadata = [...(breakerRule.metadata || [])];
-                                    newMetadata[idx] = { ...newMetadata[idx], value: v };
-                                    setBreakerRule(prev => ({ ...prev, metadata: newMetadata }));
-                                }} />
-                            <Popup trigger="hover" content="删除标签">
-                                <Button
-                                    shape="circle"
-                                    variant="text"
-                                    onClick={() => {
-                                        const newMetadata = [...(breakerRule.metadata || [])];
-                                        newMetadata.splice(idx, 1);
-                                        setBreakerRule(prev => ({ ...prev, metadata: newMetadata }));
-                                    }}
-                                >
-                                    <CloseIcon />
-                                </Button>
-                            </Popup>
-                        </Space>
-                    </Row>
-                ))}
-                <Button
-                    variant="text"
-                    icon={<AddIcon />}
-                    onClick={() => {
-                        const newMetadata = [...(breakerRule.metadata || []), { key: '', value: '' }];
-                        setBreakerRule(prev => ({ ...prev, metadata: newMetadata }));
-                    }}>
-                    添加标签
-                </Button>
-            </div>
-        </Dialog>
+    const metadataRecord = React.useMemo(
+        () => (breakerRule.metadata || []).reduce<Record<string, string>>((acc, cur) => {
+            if (cur.key) acc[cur.key] = cur.value;
+            return acc;
+        }, {}),
+        [breakerRule.metadata],
     );
-
-    const breakerType = (
-        <Space>
-            <FormItem label='熔断粒度' initialData={BreakLevelType.Service}>
-                <RadioGroup
-                    theme='button'
-                    variant='primary-filled'
-                    readonly={!editorState.editable}
-                    onChange={(value) => {
-                        setBreakerRule(prev => ({ ...prev, level: value as string }));
-                    }}
-                >
-                    <Radio.Button value={BreakLevelType.Service}>
-                        {BreakLevelMap[BreakLevelType.Service]}
-                    </Radio.Button>
-                    <Radio.Button
-                        value={BreakLevelType.Instance}>
-                        {BreakLevelMap[BreakLevelType.Instance]}
-                    </Radio.Button>
-                    <Radio.Button
-                        value={BreakLevelType.Method}>
-                        {BreakLevelMap[BreakLevelType.Method]}
-                    </Radio.Button>
-                </RadioGroup>
-            </FormItem>
-        </Space>
-    )
 
     const destinationView = React.useMemo(() => {
         const destination = breakerRule.ruleMatcher.destination;
@@ -427,274 +355,94 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         return destination;
     }, [breakerRule.ruleMatcher.destination]);
 
-    // 基础信息表单：第一层名称，第二层优先级与描述，第三层规则标签
+    const breakerNamespaceOptions = namespaceDatas.map((item: NamespaceView) => ({ label: item.name, value: item.name }));
+    const breakerSourceServiceOptions = serviceDatas
+        .filter((opt: ServiceView) => breakerRule.ruleMatcher.source.namespace === '*' || opt.namespace === breakerRule.ruleMatcher.source.namespace)
+        .map((item: ServiceView) => ({ label: item.name, value: item.name, namespace: item.namespace }));
+    const breakerDestServiceOptions = serviceDatas
+        .filter((opt: ServiceView) => breakerRule.ruleMatcher.destination.namespace === '*' || opt.namespace === breakerRule.ruleMatcher.destination.namespace)
+        .map((item: ServiceView) => ({ label: item.name, value: item.name, namespace: item.namespace }));
+
+    // 统一基础信息区：名称 / 粒度 / 优先级 / 作用对象（主调→被调流向）/ 描述 / 标签
     const ruleeditorState = (
-        <div className={styles.sectionCard}>
-            {/* 第一层：规则名称 */}
-            <Row style={{ marginBottom: 16 }}>
-                <Col span={12}>
-                    <FormItem
-                        label="规则名称"
-                        name="name"
-                        showErrorMessage={editorState.editable}
-                        rules={[
-                            { required: true, message: '请输入规则名称' },
-                            { max: 64, message: '规则名称长度不能超过64个字符' }
-                        ]}
-                        requiredMark={op === 'create'}
-                    >
-                        {editorState.editable ? (
-                            <Input
-                                disabled={op === 'edit'}
-                                readonly={op === 'view'}
-                                onChange={(value) => setBreakerRule(prev => ({ ...prev, name: value }))}
-                            />
-                        ) : (
-                            <Text>{breakerRule.name}</Text>
-                        )}
-                    </FormItem>
-                </Col>
-            </Row>
-            {/* 第二层：优先级、描述 */}
-            <Row style={{ marginBottom: 16 }}>
-                <Space>
-                    <FormItem label="优先级" name="priority" initialData={0}>
-                        {editorState.editable ? (
-                            <InputNumber min={0} readonly={op === 'view'} onChange={(value) => setBreakerRule(prev => ({ ...prev, priority: value as number }))} />
-                        ) : (
-                            <Text>{breakerRule.priority}</Text>
-                        )}
-                    </FormItem>
-                    <FormItem
-                        label="描述"
-                        name="description"
-                        rules={[
-                            { max: 255, message: '描述长度不能超过255个字符' }
-                        ]}
-                    >
-                        {editorState.editable ? (
-                            <Input readonly={op === 'view'} onChange={(value) => setBreakerRule(prev => ({ ...prev, description: value }))} />
-                        ) : (
-                            <Text>{breakerRule.description}</Text>
-                        )}
-                    </FormItem>
-                </Space>
-            </Row>
-            {/* 第三层：规则标签 */}
-            <Row>
-                <Col span={12}>
-                    <FormItem label='规则标签' name='labels'>
-                        <Space align="center">
-                            {Array.isArray(breakerRule.metadata) && breakerRule.metadata.length > 0 ? (
-                                <>
-                                    {breakerRule.metadata.map((item: Label, idx: number) => (
-                                        <Tag key={idx}>{`${item.key}: ${item.value}`}</Tag>
-                                    ))}
-                                    {editorState.editable && (
-                                        <Button
-                                            shape="circle"
-                                            variant="text"
-                                            onClick={() => setBreakerRule(prev => ({ ...prev, visible: true }))}
-                                        >
-                                            <Edit1Icon />
-                                        </Button>
-                                    )}
-                                </>
-                            ) : (
-                                <>
-                                    <Text>暂无标签</Text>
-                                    {editorState.editable && (
-                                        <Button
-                                            shape="circle"
-                                            variant="text"
-                                            onClick={() => setBreakerRule(prev => ({ ...prev, visible: true }))}
-                                        >
-                                            <Edit1Icon />
-                                        </Button>
-                                    )}
-                                </>
-                            )}
-                        </Space>
-                    </FormItem>
-                    {renderRuleLabelsDialog()}
-                </Col>
-            </Row>
-            <Row>
-                <Col span={12}>
-                    {breakerType}
-                </Col>
-            </Row>
-        </div>
-    );
-
-
-    // 主调/被调服务卡片
-    const callinfo = (
-        <>
-            <div className={styles['route-editor-header']}>
-                <div className={styles['route-editor-header-block']}>
-                    <div className={styles['route-editor-header-title']}>
-                        主调服务
+        <div className={shared.section}>
+            <div className={shared.sectionHeader}>基础信息</div>
+            <div className={shared.sectionBody}>
+                <div className={shared.infoGrid}>
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>规则名称</div>
+                        {editorState.editable
+                            ? <Input value={breakerRule.name} disabled={op === 'edit'} maxlength={64} onChange={(value) => setBreakerRule(prev => ({ ...prev, name: value }))} />
+                            : <div className={shared.fieldValue}>{breakerRule.name || '-'}</div>}
                     </div>
-                    <div className={styles['route-editor-header-desc']}>
-                        请求将按照匹配规则进行目标服务路由
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>熔断粒度</div>
+                        {editorState.editable ? (
+                            <RadioGroup theme="button" variant="primary-filled" value={breakerRule.level} onChange={(value) => setBreakerRule(prev => ({ ...prev, level: value as string }))}>
+                                <Radio.Button value={BreakLevelType.Service}>{BreakLevelMap[BreakLevelType.Service]}</Radio.Button>
+                                <Radio.Button value={BreakLevelType.Instance}>{BreakLevelMap[BreakLevelType.Instance]}</Radio.Button>
+                                <Radio.Button value={BreakLevelType.Method}>{BreakLevelMap[BreakLevelType.Method]}</Radio.Button>
+                            </RadioGroup>
+                        ) : <div className={shared.fieldValue}>{BreakLevelMap[breakerRule.level as BreakLevelType] || '-'}</div>}
                     </div>
-                    <FormItem
-                        style={{ marginBottom: 0 }}
-                        label="命名空间"
-                        name="caller_namespace"
-                        initialData={"*"}
-                        showErrorMessage={editorState.editable}
-                        rules={[{ required: true, message: '请选择主调服务命名空间' }]}
-                        requiredMark={editorState.editable}
-                    >
-                        {editorState.editable ? (
-                            <Select
-                                filterable={true}
-                                creatable={true}
-                                options={namespaceDatas.map((item: NamespaceView) => ({
-                                    label: item.name,
-                                    value: item.name,
-                                }))}
-                                onChange={(value) => {
-                                    setBreakerRule(prev => ({
-                                        ...prev,
-                                        ruleMatcher: {
-                                            ...prev.ruleMatcher,
-                                            source: {
-                                                ...prev.ruleMatcher.source,
-                                                namespace: value as string,
-                                            },
-                                        },
-                                    }));
-                                }}
-                            />
-                        ) : (
-                            <Text>{breakerRule.ruleMatcher.source.namespace}</Text>
-                        )}
-                    </FormItem>
-                    <FormItem
-                        style={{ marginBottom: 0 }}
-                        label="服务名称"
-                    >
-                        {editorState.editable ? (
-                            <Select
-                                filterable={true}
-                                creatable={true}
-                                options={serviceDatas.filter(opt => {
-                                    if (breakerRule.ruleMatcher.source.namespace === '*') {
-                                        return true; // 允许所有命名空间的服务
-                                    }
-                                    return opt.namespace === breakerRule.ruleMatcher.source.namespace; // 仅允许当前命名空间
-                                }).map((item: ServiceView) => ({
-                                    label: `${item.name}`,
-                                    value: item.name,
-                                    namespace: item.namespace,
-                                }))}
-                                onChange={(value) => {
-                                    setBreakerRule(prev => ({
-                                        ...prev,
-                                        ruleMatcher: {
-                                            ...prev.ruleMatcher,
-                                            source: {
-                                                ...prev.ruleMatcher.source,
-                                                service: value as string,
-                                            },
-                                        },
-                                    }));
-                                }}
-                            />
-                        ) : (
-                            <Text>{breakerRule.ruleMatcher.source.service}</Text>
-                        )}
-                    </FormItem>
-                </div>
-                <div className={styles['route-editor-header-arrow']}>
-                    <SendIcon style={{ fontSize: 36, color: '#bfbfbf' }} />
-                </div>
-                <div className={styles['route-editor-header-block']}>
-                    <div className={styles['route-editor-header-title']}>
-                        被调服务
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>优先级</div>
+                        {editorState.editable
+                            ? <InputNumber min={0} value={breakerRule.priority} onChange={(value) => setBreakerRule(prev => ({ ...prev, priority: value as number }))} />
+                            : <div className={shared.fieldValue}>{breakerRule.priority ?? 0}</div>}
                     </div>
-                    <div className={styles['route-editor-header-desc']}>
-                        请求会按照规则路由到目标服务分组
+                    <div className={`${shared.field} ${shared.full}`}>
+                        <div className={shared.fieldLabel}>作用对象</div>
+                        {editorState.editable ? (
+                            <div className={shared.kv2}>
+                                <div>
+                                    <div className={shared.editLabel}>主调命名空间</div>
+                                    <Select filterable creatable options={breakerNamespaceOptions} value={breakerRule.ruleMatcher.source.namespace} onChange={(value) => setBreakerRule(prev => ({ ...prev, ruleMatcher: { ...prev.ruleMatcher, source: { ...prev.ruleMatcher.source, namespace: value as string } } }))} />
+                                </div>
+                                <div>
+                                    <div className={shared.editLabel}>主调服务</div>
+                                    <Select filterable creatable options={breakerSourceServiceOptions} value={breakerRule.ruleMatcher.source.service} onChange={(value) => setBreakerRule(prev => ({ ...prev, ruleMatcher: { ...prev.ruleMatcher, source: { ...prev.ruleMatcher.source, service: value as string } } }))} />
+                                </div>
+                                <div>
+                                    <div className={shared.editLabel}>被调命名空间</div>
+                                    <Select filterable creatable options={breakerNamespaceOptions} value={breakerRule.ruleMatcher.destination.namespace} onChange={(value) => setBreakerRule(prev => ({ ...prev, ruleMatcher: { ...prev.ruleMatcher, destination: { ...prev.ruleMatcher.destination, namespace: value as string } } }))} />
+                                </div>
+                                <div>
+                                    <div className={shared.editLabel}>被调服务</div>
+                                    <Select filterable creatable options={breakerDestServiceOptions} value={breakerRule.ruleMatcher.destination.service} onChange={(value) => setBreakerRule(prev => ({ ...prev, ruleMatcher: { ...prev.ruleMatcher, destination: { ...prev.ruleMatcher.destination, service: value as string } } }))} />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className={shared.flow}>
+                                <div className={shared.flowNode}>
+                                    <span className={shared.flowNodeLabel}>主调</span>
+                                    <span className={shared.flowNodeValue}>{`${breakerRule.ruleMatcher.source.namespace || '-'} / ${breakerRule.ruleMatcher.source.service || '-'}`}</span>
+                                </div>
+                                <span className={shared.flowArrow}><RocketIcon /></span>
+                                <div className={shared.flowNode}>
+                                    <span className={shared.flowNodeLabel}>被调</span>
+                                    <span className={shared.flowNodeValue}>{`${destinationView.namespace || '-'} / ${destinationView.service || '-'}`}</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    <FormItem
-                        style={{ marginBottom: 0 }}
-                        label="命名空间"
-                        name="callee_namespace"
-                        initialData={"*"}
-                        showErrorMessage={editorState.editable}
-                        rules={[{ required: true, message: '请选择被调服务命名空间' }]}
-                        requiredMark={editorState.editable}
-                    >
-                        {editorState.editable ? (
-                            <Select
-                                filterable={true}
-                                creatable={true}
-                                options={namespaceDatas.map((item: NamespaceView) => ({
-                                    label: item.name,
-                                    value: item.name,
-                                }))}
-                                onChange={(value) => {
-                                    setBreakerRule(prev => ({
-                                        ...prev,
-                                        ruleMatcher: {
-                                            ...prev.ruleMatcher,
-                                            destination: {
-                                                ...prev.ruleMatcher.destination,
-                                                namespace: value as string,
-                                            },
-                                        },
-                                    }));
-                                }}
-                            />
-                        ) : (
-                            <Text>{destinationView.namespace}</Text>
-                        )}
-                    </FormItem>
-                    <FormItem
-                        style={{ marginBottom: 0 }}
-                        label="服务名称"
-                        name="callee_service"
-                        showErrorMessage={editorState.editable}
-                        rules={[{ required: true, message: '请选择被调服务' }]}
-                        requiredMark={editorState.editable}
-                    >
-                        {editorState.editable ? (
-                            <Select
-                                filterable={true}
-                                creatable={true}
-                                options={serviceDatas.filter(opt => {
-                                    if (breakerRule.ruleMatcher.destination.namespace === '*') {
-                                        return true; // 允许所有命名空间的服务
-                                    }
-                                    return opt.namespace === breakerRule.ruleMatcher.destination.namespace; // 仅允许当前命名空间
-                                }).map((item: ServiceView) => ({
-                                    label: `${item.name}`,
-                                    value: item.name,
-                                    namespace: item.namespace,
-                                }))}
-                                onChange={(value) => {
-                                    setBreakerRule(prev => ({
-                                        ...prev,
-                                        ruleMatcher: {
-                                            ...prev.ruleMatcher,
-                                            destination: {
-                                                ...prev.ruleMatcher.destination,
-                                                service: value as string,
-                                            },
-                                        },
-                                    }));
-                                }}
-                            />
-                        ) : (
-                            <Text>{destinationView.service}</Text>
-                        )}
-                    </FormItem>
+                    <div className={`${shared.field} ${shared.full}`}>
+                        <div className={shared.fieldLabel}>描述</div>
+                        {editorState.editable
+                            ? <Input value={breakerRule.description} maxlength={255} onChange={(value) => setBreakerRule(prev => ({ ...prev, description: value }))} />
+                            : <div className={shared.fieldValue}>{breakerRule.description || '-'}</div>}
+                    </div>
+                    <div className={`${shared.field} ${shared.full}`}>
+                        <div className={shared.fieldLabel}>规则标签</div>
+                        <RuleLabelField
+                            metadata={metadataRecord}
+                            editable={editorState.editable}
+                            onChange={(next) => setBreakerRule(prev => ({ ...prev, metadata: Object.entries(next).map(([key, value]) => ({ key, value })) }))}
+                        />
+                    </div>
                 </div>
             </div>
-        </>
+        </div>
     );
 
     const errCondTableColumns = (ruleIdx: number): PrimaryTableProps['columns'] => [
@@ -793,6 +541,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         return (
             <div className={styles.compactTable}>
                 <Table
+                    key={`breaker-error-${idx}-${editorState.editable ? 'edit' : 'view'}`}
                     rowKey="key"
                     tableLayout="fixed"
                     data={rule.error_conditions.map((item, index) => ({ ...item, key: `error-${idx}-${index}` })) || []}
@@ -945,6 +694,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
     const renderGroupTable = (idx: number, rule: BlockConfig) => (
         <div className={styles.compactTable}>
             <Table
+                key={`breaker-trigger-${idx}-${editorState.editable ? 'edit' : 'view'}`}
                 rowKey="key"
                 tableLayout={'fixed'}
                 data={rule.trigger_conditions}
@@ -1081,6 +831,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
     const renderApiTable = (idx: number, rule: BlockConfig) => (
         <div className={styles.compactTable}>
             <Table
+                key={`breaker-api-${idx}-${editorState.editable ? 'edit' : 'view'}`}
                 rowKey="key"
                 tableLayout={'fixed'}
                 data={[rule.api ? rule.api : { key: `api-${idx}`, method: '', path: { type: MatchType.EXACT, value: '', value_type: MatchValueType.TEXT }, }]}
@@ -1094,26 +845,20 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         const collapsed = collapsedRuleIndexes.has(idx);
         const errorCount = rule.error_conditions?.length || 0;
         const triggerCount = rule.trigger_conditions?.length || 0;
+        const hasApiStep = breakerRule.level === BreakLevelType.Method || !!rule.api;
         return (
-            <div className={`${styles.sectionCard} ${styles.ruleBlock}`} key={idx}>
-                <div className={styles.ruleBlockHeader}>
-                    <div className={styles.ruleHeaderMain}>
-                        <button
-                            type="button"
-                            className={styles.collapseButton}
-                            onClick={() => toggleRuleCollapsed(idx)}
-                            aria-label={collapsed ? '展开熔断策略' : '折叠熔断策略'}
-                        >
-                            {collapsed ? <ChevronRightIcon /> : <ChevronDownIcon />}
-                        </button>
-                        <div className={styles.ruleTitleGroup}>
-                            <span>熔断策略 [{idx + 1}]{rule.name ? `：${rule.name}` : ''}</span>
-                            <div className={styles.ruleSummary}>
+            <div className={`${shared.policy} ${collapsed ? shared.policyCollapsed : ''}`} key={idx}>
+                <div className={shared.policyHead} onClick={() => toggleRuleCollapsed(idx)}>
+                    <div className={shared.policyHeadMain}>
+                        <span className={shared.caret}><ChevronRightIcon /></span>
+                        <div>
+                            <div className={shared.policyIndex}>熔断策略 [{idx + 1}]{rule.name ? `：${rule.name}` : ''}</div>
+                            <div className={shared.policySummary}>
                                 {errorCount} 个错误判断条件 / {triggerCount} 个触发条件{rule.api ? ' / 指定接口' : ''}
                             </div>
                         </div>
                     </div>
-                    <div className={styles.ruleHeaderActions}>
+                    <div className={shared.policyHeadActions} onClick={(e) => e.stopPropagation()}>
                         <Tag variant="light">{BreakLevelMap[breakerRule.level as BreakLevelType] || '服务'}粒度</Tag>
                         {editorState.editable && (
                             <Popup trigger="hover" content="删除策略">
@@ -1131,29 +876,20 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                         )}
                     </div>
                 </div>
-                <div className={`${styles.ruleBlockBody} ${collapsed ? styles.ruleBlockBodyCollapsed : ''}`}>
-                    {(breakerRule.level === BreakLevelType.Method || rule.api) && (
-                        <div className={styles.ruleSection}>
-                            <div className={styles.ruleSectionTitle}>接口</div>
-                            <div className={styles.ruleHelp}>
-                                满足以下接口条件的请求会进入该熔断策略判断
-                            </div>
-                            {renderApiTable(idx, rule)}
+                <div className={shared.policyBody}>
+                    {hasApiStep && (
+                        <div className={shared.step} data-step="1">
+                            <div className={shared.stepTitle}>接口范围<span className={shared.stepHint}>满足该接口条件的请求才进入熔断判断</span></div>
+                            <div className={shared.stepContent}>{renderApiTable(idx, rule)}</div>
                         </div>
                     )}
-                    <div className={styles.ruleSection}>
-                        <div className={styles.ruleSectionTitle}>错误判断条件</div>
-                        <div className={styles.ruleHelp}>
-                            满足以下任一应答条件的请求会被标识为错误请求
-                        </div>
-                        {renderMatchTable(idx, rule)}
+                    <div className={shared.step} data-step={hasApiStep ? '2' : '1'}>
+                        <div className={shared.stepTitle}>错误判断条件<span className={shared.stepHint}>满足任一应答条件的请求会被标识为错误</span></div>
+                        <div className={shared.stepContent}>{renderMatchTable(idx, rule)}</div>
                     </div>
-                    <div className={styles.ruleSection}>
-                        <div className={styles.ruleSectionTitle}>熔断触发条件</div>
-                        <div className={styles.ruleHelp}>
-                            满足以下任一统计条件即可触发熔断
-                        </div>
-                        {renderGroupTable(idx, rule)}
+                    <div className={shared.step} data-step={hasApiStep ? '3' : '2'}>
+                        <div className={shared.stepTitle}>熔断触发条件<span className={shared.stepHint}>满足任一统计条件即可触发熔断</span></div>
+                        <div className={shared.stepContent}>{renderGroupTable(idx, rule)}</div>
                     </div>
                 </div>
             </div>
@@ -1161,16 +897,12 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
     }
 
     const renderRecover = (
-        <>
-            <div className={styles.sectionCard} style={{ marginBottom: 24 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <span style={{ fontWeight: 600 }}>恢复策略</span>
-                </div>
-                <div className={styles['route-editor-header-desc']}>
+        <div className={shared.section}>
+            <div className={shared.sectionHeader}>恢复策略</div>
+            <div className={shared.sectionBody}>
+                <div className={shared.stepHint} style={{ marginBottom: 12 }}>
                     进入熔断状态后，通过设置超时探测或者主动探测规则，满足条件后即可结束熔断状态恢复业务请求，否则重新回到熔断状态
                 </div>
-                <Space>
-                </Space>
                 <FormItem label={"熔断时长"}>
                     {editorState.editable ? (
                         <div>
@@ -1203,7 +935,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                     ) : renderReadonlySwitch(breakerRule?.faultDetectConfig?.enable)}
                 </FormItem>
             </div>
-        </>
+        </div>
     );
 
     // 标签弹窗渲染
@@ -1302,11 +1034,9 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
 
 
     const fallbackRecover = (
-        <>
-            <div className={styles.sectionCard} style={{ marginBottom: 24 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <span style={{ fontWeight: 600 }}>熔断后降级</span>
-                </div>
+        <div className={shared.section}>
+            <div className={shared.sectionHeader}>熔断后降级</div>
+            <div className={shared.sectionBody}>
                 <FormItem label={"是否开启"} help={"开启后，当熔断规则触发时，将会返回配置的响应内容"}>
                     {editorState.editable ? (
                         <div>
@@ -1384,7 +1114,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                     </>
                 )}
             </div>
-        </>
+        </div>
     );
 
     const renderPublishForm = (
@@ -1457,29 +1187,29 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                 colon
             >
                 {ruleeditorState}
-                {callinfo}
-                <div className={styles.ruleListSection}>
-                    <div className={styles.ruleListHeader}>
-                        <span className={styles.listTitle}>熔断策略</span>
-                        <div className={styles.ruleHelp}>按错误判断条件和触发条件定义服务进入熔断的策略。</div>
+                <div className={shared.section}>
+                    <div className={shared.sectionHeader}>
+                        <span>熔断策略</span>
+                        <span className={shared.countTag}>{breakerRule.block_configs.length} 条</span>
                     </div>
-                    <div className={styles.ruleList}>
-                    {breakerRule.block_configs.map((rule, idx) => {
-                        return renderRule(rule, idx)
-                    })}
+                    <div className={shared.sectionBody}>
+                        <div className={shared.ruleList}>
+                            {breakerRule.block_configs.map((rule, idx) => renderRule(rule, idx))}
+                        </div>
+                        {editorState.editable && (
+                            <Button
+                                className={shared.addRuleButton}
+                                style={{ marginTop: 12 }}
+                                variant="dashed" icon={<AddIcon />}
+                                onClick={() => {
+                                    const newRule = { ...breakerRule }
+                                    newRule.block_configs.push(defaultBlockConfig(newRule.block_configs.length + 1))
+                                    setBreakerRule(newRule);
+                                }}>
+                                添加熔断策略
+                            </Button>
+                        )}
                     </div>
-                    {editorState.editable && (
-                        <Button
-                            className={styles.addRuleButton}
-                            variant="outline" icon={<AddIcon />}
-                            onClick={() => {
-                                const newRule = { ...breakerRule }
-                                newRule.block_configs.push(defaultBlockConfig(newRule.block_configs.length + 1))
-                                setBreakerRule(newRule);
-                            }}>
-                            添加熔断策略
-                        </Button>
-                    )}
                 </div>
                 {renderRecover}
                 {fallbackRecover}

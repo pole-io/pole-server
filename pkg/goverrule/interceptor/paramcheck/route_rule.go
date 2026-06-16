@@ -181,10 +181,6 @@ func checkRoutingNameAndNamespace(req *apitraffic.RouteRule) *apimodel.Response 
 	if err := valid.CheckDbStrFieldLen(string(req.GetName()), valid.MaxRuleName); err != nil {
 		return apiv1.NewRouterResponse(apimodel.Code_InvalidParameter, req)
 	}
-	if err := valid.CheckDbStrFieldLen(string(req.GetNamespace()),
-		valid.MaxDbServiceNamespaceLength); err != nil {
-		return apiv1.NewRouterResponse(apimodel.Code_InvalidParameter, req)
-	}
 	return nil
 }
 

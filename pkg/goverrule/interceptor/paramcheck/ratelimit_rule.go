@@ -175,12 +175,6 @@ func checkRateLimitParams(req *apitraffic.RateLimit) *apimodel.Response {
 
 // checkRateLimitParams 检查限流规则基础参数
 func checkRateLimitParamsDbLen(req *apitraffic.RateLimit) *apimodel.Response {
-	if err := valid.CheckDbStrFieldLen(req.GetService(), valid.MaxDbServiceNameLength); err != nil {
-		return api.NewRateLimitResponse(apimodel.Code_InvalidParameter, req)
-	}
-	if err := valid.CheckDbStrFieldLen(req.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
-		return api.NewRateLimitResponse(apimodel.Code_InvalidParameter, req)
-	}
 	if err := valid.CheckDbStrFieldLen(req.GetName(), valid.MaxDbRateLimitName); err != nil {
 		return api.NewRateLimitResponse(apimodel.Code_InvalidParameter, req)
 	}

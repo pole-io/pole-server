@@ -20,6 +20,7 @@ package config
 import (
 	"fmt"
 
+	console_bootstrap "github.com/pole-io/pole-server/console/bootstrap"
 	"github.com/pole-io/pole-server/pkg/common/log"
 )
 
@@ -42,6 +43,9 @@ func defaultBootstrap() Bootstrap {
 					},
 				},
 			},
+		},
+		Console: console_bootstrap.Config{
+			Logger: console_bootstrap.DefaultLoggerOptions(),
 		},
 	}
 }
@@ -79,8 +83,8 @@ func defaultLoggerOptions() map[string]*log.Options {
 
 func newLogOptions(dir, name string, options ...func(opt *log.Options)) *log.Options {
 	opt := &log.Options{
-		RotateOutputPath:      fmt.Sprintf("log/%s/polaris-%s.log", dir, name),
-		ErrorRotateOutputPath: fmt.Sprintf("log/%s/polaris-%s-error.log", dir, name),
+		RotateOutputPath:      fmt.Sprintf("logs/%s/polaris-%s.log", dir, name),
+		ErrorRotateOutputPath: fmt.Sprintf("logs/%s/polaris-%s-error.log", dir, name),
 		RotationMaxSize:       100,
 		RotationMaxAge:        7,
 		RotationMaxBackups:    30,

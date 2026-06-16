@@ -118,7 +118,7 @@ export default memo((props: IMenuProps) => {
   const globalState = useAppSelector(selectGlobal);
 
   const { version } = globalState;
-  const bottomText = globalState.collapsed ? version : `TDesign Starter ${version}`;
+  const bottomText = globalState.collapsed ? version : `Pole.IO ${version}`;
   const selectedMenuValue = getSelectedMenuValue(location.pathname);
 
   return (

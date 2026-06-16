@@ -200,16 +200,7 @@ func (c *TrafficGovernanceCache) Query(ctx context.Context, args *cachetypes.Tra
 
 	res := make([]*ruletypes.TrafficGovernanceRule, 0, 8)
 	c.ids.Range(func(key string, value *ruletypes.TrafficGovernanceRule) {
-		if hasRuleID && ruleID != value.ID {
-			return
-		}
-		if hasNamespace && nsName != value.Namespace {
-			return
-		}
-		if hasService && svcName != value.Service {
-			return
-		}
-		if hasName && name != value.Name {
+		if !trafficGovernanceFilterMatched(value, ruleID, hasRuleID, nsName, hasNamespace, svcName, hasService, name, hasName) {
 			return
 		}
 		for i := range predicates {
@@ -221,6 +212,35 @@ func (c *TrafficGovernanceCache) Query(ctx context.Context, args *cachetypes.Tra
 	})
 	amount, items := cachebase.SortBeforeTrim(res, args.Filter["order_type"], args.Offset, args.Limit)
 	return amount, items, nil
+}
+
+func trafficGovernanceFilterMatched(
+	rule *ruletypes.TrafficGovernanceRule,
+	ruleID string,
+	hasRuleID bool,
+	nsName string,
+	hasNamespace bool,
+	svcName string,
+	hasService bool,
+	name string,
+	hasName bool,
+) bool {
+	if rule == nil {
+		return false
+	}
+	if hasRuleID && ruleID != "" && ruleID != rule.ID {
+		return false
+	}
+	if hasNamespace && nsName != "" && nsName != rule.Namespace {
+		return false
+	}
+	if hasService && svcName != "" && svcName != rule.Service {
+		return false
+	}
+	if hasName && name != "" && name != rule.Name {
+		return false
+	}
+	return true
 }
 
 func (c *TrafficGovernanceCache) GetRule(id string) *ruletypes.TrafficGovernanceRule {

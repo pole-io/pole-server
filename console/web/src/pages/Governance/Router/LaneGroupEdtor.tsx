@@ -3,7 +3,6 @@ import {
     Form,
     Input,
     Select,
-    Button,
     Space,
     Checkbox,
     FormProps,
@@ -12,15 +11,13 @@ import {
     Transfer,
     Row,
     Tag,
-    Dialog,
-    Col,
-    Popup,
-    Collapse,
     TransferValue
 } from 'tdesign-react';
-import { AddIcon, CloseIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
+import { Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
+import RuleLabelField from '../shared/RuleLabelField';
+import shared from '../shared/governance.module.less';
 import { Label, Op } from 'services/types';
 import {
     LaneGatewaySelectorType,
@@ -42,8 +39,6 @@ import { RoutingRuleDestination } from 'services/router';
 import Text from 'components/Text';
 import { cleanServicePage, listAllServices, selectService } from 'modules/discovery/service';
 import cloneDeep from 'lodash/cloneDeep';
-import CollapsePanel from 'tdesign-react/es/collapse/CollapsePanel';
-import { set } from 'lodash';
 
 const { StepItem } = Steps;
 const { FormItem } = Form;
@@ -74,7 +69,20 @@ interface SimpleService {
     value: string,
     service: string,
     namespace: string,
+    isGateway?: boolean,
 }
+
+const isGatewayEntry = (entry: TrafficEntry) => {
+    const selectorType = (entry.selector as ServiceGatewaySelector & { '@type'?: string })?.['@type'] || '';
+    return entry.type === 'gateway' || entry.type?.includes('gateway') || selectorType.includes('ServiceGatewaySelector');
+};
+
+const isServiceEntry = (entry: TrafficEntry) => {
+    const selectorType = (entry.selector as ServiceSelector & { '@type'?: string })?.['@type'] || '';
+    return entry.type === 'service' || selectorType.includes('ServiceSelector');
+};
+
+const entryValue = (entry: TrafficEntry) => `${entry.selector.namespace || ''}/${entry.selector.service || ''}`;
 
 interface ILaneGroupEditorProps {
     op: Op;
@@ -116,51 +124,43 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
 
     // 获取服务列表
     const loadService = (services: ServiceView[]) => {
-        // Transform services into SimpleService objects once
         const simpleServices = services.map((service: ServiceView): SimpleService => ({
             label: `${service.name} (${service.namespace})`,
             value: `${service.namespace}/${service.name}`,
             service: service.name,
-            namespace: service.namespace
+            namespace: service.namespace,
+            isGateway: service.metadata?.['service_gateway'] === 'true',
         }));
 
-        // Filter services using the transformed array
-        setServiceOptions(simpleServices.filter((s) => {
-            const metadata = services.find(sv => sv.id === s.value)?.metadata;
-            return !metadata?.['service_gateway'] || metadata['service_gateway'] !== 'true';
-        }));
+        setServiceOptions(simpleServices.filter((service) => !service.isGateway));
+        setGatewayServices(simpleServices.filter((service) => service.isGateway));
 
-        setGatewayServices(simpleServices.filter((s) => {
-            const metadata = services.find(sv => sv.id === s.value)?.metadata;
-            return metadata?.['service_gateway'] === 'true';
-        }));
-
-        // Build maps in a single pass
         const serviceMap = new Map<string, SimpleService>();
-
         simpleServices.forEach(service => {
             serviceMap.set(service.value, service);
         });
-
         setSvcMap(serviceMap);
     };
 
     React.useEffect(() => {
-        // Load services on initial mount
         dispatch(listAllServices()).then((res) => {
             if (res.meta.requestStatus === 'rejected') {
                 openErrNotification('请求失败', `获取服务列表失败, ${res?.payload as string}`);
             } else {
-                loadService(serviceDatas);
+                const payload = res.payload as { datas?: ServiceView[] } | undefined;
+                loadService(payload?.datas || []);
             }
         });
 
-        // Cleanup function
         return () => {
             dispatch(cleanServicePage());
             setSvcMap(new Map());
         };
     }, []);
+
+    React.useEffect(() => {
+        loadService(serviceDatas);
+    }, [serviceDatas]);
 
     React.useEffect(() => {
         if (editGroup) {
@@ -195,15 +195,11 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
             name: cloneRule.name || '',
             description: cloneRule.description || '',
             gateway_entries: cloneRule.entries?.filter((v) => {
-                return v.type === 'gateway';
-            }).map((v) => {
-                return v.selector.namespace + '/' + v.selector.service
-            }) as string[] || [],
+                return isGatewayEntry(v);
+            }).map(entryValue).filter((v) => v !== '/') as string[] || [],
             service_entries: cloneRule.entries?.filter((v) => {
-                return v.type === 'service';
-            }).map((v) => {
-                return v.selector.namespace + '/' + v.selector.service
-            }) as string[] || [],
+                return isServiceEntry(v);
+            }).map(entryValue).filter((v) => v !== '/') as string[] || [],
             destinations: cloneRule.destinations.map((v) => {
                 return v.namespace + '/' + v.service
             }) as string[] || [],
@@ -226,40 +222,57 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
             return;
         }
 
+        const getServiceByValue = (value: string): SimpleService => {
+            const existing = svcMap.get(value);
+            if (existing) {
+                return existing;
+            }
+            const [namespace = '', service = ''] = value.split('/');
+            return {
+                label: value,
+                value,
+                namespace,
+                service,
+            };
+        };
+
         // 组装完整的泳道组数据
         const laneGroupData: LaneGroup = {
             id: editGroup?.id || '',
-            name: e.fields.name || '',
-            description: e.fields.description || '',
+            name: curRule.name || '',
+            description: curRule.description || '',
             entries: [
                 ...service_entries.map((id) => {
+                    const service = getServiceByValue(id);
                     return {
-                        '@type': LaneServiceSelectorType,
                         type: 'service',
                         selector: {
-                            namespace: svcMap.get(id)?.namespace || '',
-                            service: svcMap.get(id)?.service || '',
-                        } as ServiceSelector
+                            '@type': LaneServiceSelectorType,
+                            namespace: service.namespace,
+                            service: service.service,
+                        } as ServiceSelector & { '@type': string }
                     } as TrafficEntry
                 }),
                 ...gateway_entries.map((id) => {
+                    const service = getServiceByValue(id);
                     return {
-                        '@type': LaneGatewaySelectorType,
                         type: 'gateway',
                         selector: {
-                            namespace: svcMap.get(id)?.namespace || '',
-                            service: svcMap.get(id)?.service || '',
-                        } as ServiceGatewaySelector
+                            '@type': LaneGatewaySelectorType,
+                            namespace: service.namespace,
+                            service: service.service,
+                        } as ServiceGatewaySelector & { '@type': string }
                     } as TrafficEntry
                 })],
             destinations: destinations.map((id) => {
+                const service = getServiceByValue(id);
                 return {
                     name: id,
-                    namespace: svcMap.get(id)?.namespace || '',
-                    service: svcMap.get(id)?.service || '',
+                    namespace: service.namespace,
+                    service: service.service,
                 } as RoutingRuleDestination
             }),
-            metadata: (e.fields.metadata as Label[] || [])?.reduce((acc, item) => {
+            metadata: (curRule.metadata || [])?.reduce((acc, item) => {
                 acc[item.key] = item.value;
                 return acc;
             }, {} as Record<string, string>)
@@ -282,65 +295,109 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
     };
 
 
-    // 标签弹窗渲染
-    const renderRuleLabelsDialog = () => (
-        <Dialog
-            visible={editorState.visible}
-            header="编辑规则标签"
-            width={700}
-            onConfirm={() => setEditorState(prev => ({ ...prev, visible: false }))}
-            onClose={() => setEditorState(prev => ({ ...prev, visible: false }))}
-        >
-            <div>
-                {curRule.metadata?.map((tag, idx) => (
-                    <Row gutter={8} key={idx} style={{ marginBottom: 12 }} align="middle">
-                        <Col span={4}>
-                            <Input
-                                value={tag.key}
-                                placeholder="请输入标签键"
-                                onChange={v => {
-                                    const newMetadata = [...(curRule.metadata || [])];
-                                    newMetadata[idx] = { ...newMetadata[idx], key: v };
-                                    setCurRule({ ...curRule, metadata: newMetadata });
-                                }} />
-                        </Col>
-                        <Col span={4}>
-                            <Input
-                                value={tag.value}
-                                placeholder="请输入标签值"
-                                onChange={v => {
-                                    const newMetadata = [...(curRule.metadata || [])];
-                                    newMetadata[idx] = { ...newMetadata[idx], value: v };
-                                    setCurRule({ ...curRule, metadata: newMetadata });
-                                }} />
-                        </Col>
-                        <Col span={2}>
-                            <Popup trigger="hover" content="删除标签">
-                                <Button
-                                    shape="circle"
-                                    variant="text"
-                                    onClick={() => {
-                                        const newMetadata = [...(curRule.metadata || [])];
-                                        newMetadata.splice(idx, 1);
-                                        setCurRule({ ...curRule, metadata: newMetadata });
-                                    }}
-                                >
-                                    <CloseIcon />
-                                </Button>
-                            </Popup>
-                        </Col>
-                    </Row>
-                ))}
-                <Button variant="text" icon={<AddIcon />} onClick={() => {
-                    const newMetadata = [...(curRule?.metadata || []), { key: '', value: '' }];
-                    setCurRule({ ...curRule, metadata: newMetadata });
-                }}>添加标签</Button>
-            </div>
-        </Dialog>
+    const laneMetadataRecord = React.useMemo(
+        () => (curRule.metadata || []).reduce<Record<string, string>>((acc, cur) => {
+            if (cur.key) acc[cur.key] = cur.value;
+            return acc;
+        }, {}),
+        [curRule.metadata],
     );
+
+    const renderTagList = (items: string[], emptyText: string) => {
+        if (!items.length) {
+            return <div className={styles.emptyText}>{emptyText}</div>;
+        }
+        return (
+            <div className={styles.tagList}>
+                {items.map((item) => <Tag key={item} variant="light-outline">{item}</Tag>)}
+            </div>
+        );
+    };
+
+    const renderMetadata = () => {
+        if (!curRule.metadata?.length) {
+            return <div className={styles.emptyText}>暂无规则标签</div>;
+        }
+        return (
+            <div className={styles.tagList}>
+                {curRule.metadata.map((tag) => (
+                    <Tag key={`${tag.key}-${tag.value}`} theme="primary" variant="light-outline">{`${tag.key}: ${tag.value}`}</Tag>
+                ))}
+            </div>
+        );
+    };
+
+    const renderReadonly = () => {
+        const gatewayCount = curRule.gateway_entries.length;
+        const serviceEntryCount = curRule.service_entries.length;
+        const destinationCount = curRule.destinations.length;
+        const entryCount = gatewayCount + serviceEntryCount;
+
+        return (
+            <div className={styles.readonlyLayout}>
+                <div className={styles.summaryStrip}>
+                    <div className={styles.summaryItem}>
+                        <span className={styles.summaryLabel}>入口</span>
+                        <strong>{entryCount}</strong>
+                    </div>
+                    <div className={styles.summaryItem}>
+                        <span className={styles.summaryLabel}>网关入口</span>
+                        <strong>{gatewayCount}</strong>
+                    </div>
+                    <div className={styles.summaryItem}>
+                        <span className={styles.summaryLabel}>服务入口</span>
+                        <strong>{serviceEntryCount}</strong>
+                    </div>
+                    <div className={styles.summaryItem}>
+                        <span className={styles.summaryLabel}>目标服务</span>
+                        <strong>{destinationCount}</strong>
+                    </div>
+                </div>
+
+                <section className={styles.overviewSection}>
+                    <div className={styles.sectionTitle}><span className={shared.groupIndex}>1</span> 泳道组信息</div>
+                    <div className={styles.infoGrid}>
+                        <div className={styles.infoItem}>
+                            <div className={styles.infoLabel}>泳道组名</div>
+                            <div className={styles.infoValue}>{curRule.name || '未命名泳道组'}</div>
+                        </div>
+                        <div className={styles.infoItem}>
+                            <div className={styles.infoLabel}>描述</div>
+                            <div className={styles.infoValue}>{curRule.description || '暂无描述'}</div>
+                        </div>
+                        <div className={`${styles.infoItem} ${styles.fullWidth}`}>
+                            <div className={styles.infoLabel}>规则标签</div>
+                            {renderMetadata()}
+                        </div>
+                    </div>
+                </section>
+
+                <div className={styles.twoColumn}>
+                    <section className={styles.overviewSection}>
+                        <div className={styles.sectionTitle}><span className={shared.groupIndex}>2</span> 泳道组入口</div>
+                        <div className={styles.entryBlock}>
+                            <div className={styles.entryTitle}>微服务网关</div>
+                            {renderTagList(curRule.gateway_entries, '未配置网关入口')}
+                        </div>
+                        <div className={styles.entryBlock}>
+                            <div className={styles.entryTitle}>微服务应用</div>
+                            {renderTagList(curRule.service_entries, '未配置服务入口')}
+                        </div>
+                    </section>
+                    <section className={styles.overviewSection}>
+                        <div className={styles.sectionTitle}><span className={shared.groupIndex}>3</span> 泳道组服务</div>
+                        {renderTagList(curRule.destinations, '未配置目标服务')}
+                    </section>
+                </div>
+            </div>
+        );
+    };
 
 
     const renderEditor = () => {
+        if (!editorState.editable) {
+            return renderReadonly();
+        }
         return (
             <div className={styles.laneGroupEditor}>
                 <Form
@@ -398,39 +455,12 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
                                     {/* 第三层：规则标签 */}
                                     <Row>
                                         <FormItem label="规则标签">
-                                            <Space align="center">
-                                                {curRule.metadata && curRule.metadata.length > 0 ? (
-                                                    <>
-                                                        {curRule.metadata.map((tag, idx) => (
-                                                            <Tag key={idx}>{`${tag.key}: ${tag.value}`}</Tag>
-                                                        ))}
-                                                        {editorState.editable && (
-                                                            <Button
-                                                                shape="circle"
-                                                                variant="text"
-                                                                onClick={() => setEditorState(prev => ({ ...prev, visible: true }))}
-                                                            >
-                                                                <Edit1Icon />
-                                                            </Button>
-                                                        )}
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Text>暂无标签</Text>
-                                                        {editorState.editable && (
-                                                            <Button
-                                                                shape="circle"
-                                                                variant="text"
-                                                                onClick={() => setEditorState(prev => ({ ...prev, visible: true }))}
-                                                            >
-                                                                <Edit1Icon />
-                                                            </Button>
-                                                        )}
-                                                    </>
-                                                )}
-                                            </Space>
+                                            <RuleLabelField
+                                                metadata={laneMetadataRecord}
+                                                editable={editorState.editable}
+                                                onChange={(next) => setCurRule(prev => ({ ...prev, metadata: Object.entries(next).map(([key, value]) => ({ key, value })) }))}
+                                            />
                                         </FormItem>
-                                        {renderRuleLabelsDialog()}
                                     </Row>
                                 </Space>
                             </div>
@@ -571,7 +601,7 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
     };
 
     return (
-        <div style={{ padding: 24 }}>
+        <div className={styles.laneGroupShell}>
             {renderEditor()}
             {editorState.publishView && (
                 <PublishForm
@@ -597,7 +627,7 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
                         }} />
                         :
                         <RuleStickyAction label="保存" icon={<SaveIcon />} onClick={() => {
-                            if (editGroup?.editable) {
+                            if (op === 'create' || editGroup?.editable !== false) {
                                 form.submit();
                             }
                         }} />

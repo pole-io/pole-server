@@ -48,6 +48,18 @@ const resourceTreeData = [
         value: 'ratelimit_rules',
     },
     {
+        label: '调用鉴权规则',
+        value: 'security_rules',
+    },
+    {
+        label: '流量镜像规则',
+        value: 'mirror_rules',
+    },
+    {
+        label: '流量 Mock 规则',
+        value: 'mock_rules',
+    },
+    {
         label: '用户',
         value: 'users',
     },

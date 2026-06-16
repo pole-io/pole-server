@@ -26,6 +26,7 @@ import {
   ServerIcon,
   ToolsCircleIcon,
 } from 'tdesign-icons-react';
+import { useNavigate } from 'react-router-dom';
 
 import Text from 'components/Text';
 import { useAppDispatch, useAppSelector } from 'modules/store';
@@ -90,10 +91,18 @@ function backendLabel(server?: MCPServer) {
   if (type === 'service') {
     const namespace = server?.backend_service_namespace || server?.namespace || '-';
     const name = server?.backend_service_name || server?.reference || server?.name || '-';
-    return `Service ${namespace}/${name}`;
+    return `${namespace}/${name}`;
   }
   if (type === 'address') return server?.backend_address || '-';
   return server?.reference || '-';
+}
+
+function backendServiceRef(server?: MCPServer) {
+  if (backendType(server) !== 'service') return undefined;
+  const namespace = server?.backend_service_namespace || server?.namespace || '';
+  const name = server?.backend_service_name || server?.reference || server?.name || '';
+  if (!namespace || !name) return undefined;
+  return { namespace, name };
 }
 
 function serviceKey(service?: Pick<ServiceView, 'namespace' | 'name'>) {
@@ -115,6 +124,7 @@ function backendTypeLabel(value?: string) {
 
 const serverColumns = (
   operateServer: (op: Op | 'tools', row?: TableRowData) => void,
+  goBackendService: (server?: MCPServer) => void,
 ): PrimaryTableProps['columns'] => [
   {
     colKey: 'name',
@@ -141,12 +151,22 @@ const serverColumns = (
     colKey: 'endpoint',
     title: '接入',
     ellipsis: true,
-    cell: ({ row }) => (
-      <div className={style.compactCell}>
-        <Text>{backendType(row as MCPServer) === 'service' ? 'Pole 注册服务' : backendType(row as MCPServer) === 'address' ? '自定义地址' : '-'}</Text>
-        <span>{backendLabel(row as MCPServer)}</span>
-      </div>
-    ),
+    cell: ({ row }) => {
+      const server = row as MCPServer;
+      const serviceRef = backendServiceRef(server);
+      return (
+        <div className={style.compactCell}>
+          <Text>{backendType(server) === 'service' ? 'Pole 注册服务' : backendType(server) === 'address' ? '自定义地址' : '-'}</Text>
+          {serviceRef ? (
+            <Link className={style.backendLink} theme="primary" onClick={() => goBackendService(server)}>
+              {backendLabel(server)}
+            </Link>
+          ) : (
+            <span>{backendLabel(server)}</span>
+          )}
+        </div>
+      );
+    },
   },
   {
     colKey: 'owner',
@@ -773,6 +793,7 @@ const MCPEditor: React.FC<{
 
 export default memo(() => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { datas, loading, page, limit, total, editServer, tools, toolsLoading } = useAppSelector(selectMCP);
   const [query, setQuery] = useState({
     name: '',
@@ -837,6 +858,12 @@ export default memo(() => {
     closeToolsDrawer();
     dispatch(editorMCPServer(currentServer));
     setEditorState({ visible: true, mode: 'edit' });
+  };
+
+  const goBackendService = (server?: MCPServer) => {
+    const service = backendServiceRef(server);
+    if (!service) return;
+    navigate(`/discovery/service/instance?namespace=${encodeURIComponent(service.namespace)}&service=${encodeURIComponent(service.name)}`);
   };
 
   const operateServer = (op: Op | 'tools', row?: TableRowData) => {
@@ -971,7 +998,7 @@ export default memo(() => {
         </div>
         <Table
           data={datas}
-          columns={serverColumns(operateServer)}
+          columns={serverColumns(operateServer, goBackendService)}
           loading={loading}
           rowKey="id"
           size="large"
@@ -1038,7 +1065,13 @@ export default memo(() => {
                 </div>
                 <div>
                   <span>后端</span>
-                  <strong>{backendLabel(selectedToolServer)}</strong>
+                  <strong>
+                    {backendServiceRef(selectedToolServer) ? (
+                      <Link theme="primary" onClick={() => goBackendService(selectedToolServer)}>
+                        {backendLabel(selectedToolServer)}
+                      </Link>
+                    ) : backendLabel(selectedToolServer)}
+                  </strong>
                 </div>
                 <div>
                   <span>最近修改</span>

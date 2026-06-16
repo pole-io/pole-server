@@ -314,7 +314,7 @@ func routeRuleRecordEntry(ctx context.Context, req *apitraffic.RouteRule, md *ru
 	entry := &types.RecordEntry{
 		ResourceType:  types.RRouting,
 		ResourceName:  fmt.Sprintf("%s(%s)", md.Name, md.ID),
-		Namespace:     req.GetNamespace(),
+		Namespace:     md.Namespace,
 		OperationType: opt,
 		Operator:      utils.ParseOperator(ctx),
 		Detail:        detail,

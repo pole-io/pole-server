@@ -26,12 +26,11 @@ func (r *LosslessRule) ToSpec() *apitraffic.LosslessRule {
 	if r == nil {
 		return nil
 	}
-	out := &apitraffic.LosslessRule{}
-	proto := r.Proto
-	out = proto
+	out := r.Proto
+	if out == nil {
+		out = &apitraffic.LosslessRule{}
+	}
 	out.Id = r.ID
-	out.Namespace = r.Namespace
-	out.Service = r.Service
 	out.Metadata = r.Metadata
 	out.Revision = r.Revision
 	out.Ctime = commontime.Time2String(r.CTime)
@@ -44,8 +43,6 @@ func (r *LosslessRule) FromSpec(spec *apitraffic.LosslessRule) {
 		return
 	}
 	r.ID = spec.Id
-	r.Namespace = spec.Namespace
-	r.Service = spec.Service
 	r.Metadata = spec.Metadata
 	r.Revision = spec.Revision
 	r.Valid = true

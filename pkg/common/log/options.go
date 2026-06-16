@@ -19,6 +19,7 @@ package log
 
 import (
 	"errors"
+	"fmt"
 )
 
 const (
@@ -140,17 +141,27 @@ func DefaultOptions() map[string]*Options {
 	optionsMap := make(map[string]*Options)
 	for _, typeName := range allLoggerTypes() {
 		optionsMap[typeName] = &Options{
-			OutputPaths:        []string{defaultOutputPath},
-			ErrorOutputPaths:   []string{defaultErrorOutputPath},
-			RotationMaxSize:    defaultRotationMaxSize,
-			RotationMaxAge:     defaultRotationMaxAge,
-			RotationMaxBackups: defaultRotationMaxBackups,
-			OutputLevel:        levelToString[defaultOutputLevel],
-			StackTraceLevel:    levelToString[defaultStackTraceLevel],
-			LogGrpc:            false,
+			OutputPaths:           []string{defaultOutputPath},
+			ErrorOutputPaths:      []string{defaultErrorOutputPath},
+			RotateOutputPath:      defaultRotateOutputPath(typeName),
+			ErrorRotateOutputPath: defaultErrorRotateOutputPath(typeName),
+			RotationMaxSize:       defaultRotationMaxSize,
+			RotationMaxAge:        defaultRotationMaxAge,
+			RotationMaxBackups:    defaultRotationMaxBackups,
+			OutputLevel:           levelToString[defaultOutputLevel],
+			StackTraceLevel:       levelToString[defaultStackTraceLevel],
+			LogGrpc:               false,
 		}
 	}
 	return optionsMap
+}
+
+func defaultRotateOutputPath(typeName string) string {
+	return fmt.Sprintf("logs/runtime/polaris-%s.log", typeName)
+}
+
+func defaultErrorRotateOutputPath(typeName string) string {
+	return fmt.Sprintf("logs/runtime/polaris-%s-error.log", typeName)
 }
 
 // SetOutputLevel sets the minimum log output level for a given scope.

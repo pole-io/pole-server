@@ -1,8 +1,8 @@
 ---
-title: 命名空间域
+title: 命名空间（`pkg/namespace/`）
 tags: [business, feature, namespace]
 links: [architecture, storage, service-discovery]
-updated: 2026-06-09
+updated: 2026-06-15
 sources: 1
 ---
 

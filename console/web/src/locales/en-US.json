@@ -8,7 +8,7 @@
   "menu.governance.router": "Router Rule",
   "menu.governance.ratelimit": "Rate Limit",
   "menu.governance.circuitbreaker": "Circuit Breaker",
-  "menu.governance.security": "Security",
+  "menu.governance.security": "Traffic Governance",
   "menu.discovery": "Discovery",
   "menu.discovery.service": "Service Discovery",
   "menu.discovery.gateway": "Gateway",

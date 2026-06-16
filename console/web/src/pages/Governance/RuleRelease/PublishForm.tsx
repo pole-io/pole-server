@@ -13,6 +13,7 @@ import { releaseLaneGroups } from 'modules/governance/lane_group';
 import { releaseLosslessRule } from 'modules/governance/lossless';
 import { releaseCircuitBreaker } from 'modules/governance/circuitbreaker';
 import { releaseFaultDetect } from 'modules/governance/faultdetect';
+import { inferTrafficGovernanceKindByResource, publishTrafficGovernanceRule } from 'services/traffic_governance';
 
 import style from './PublishForm.module.less';
 
@@ -22,6 +23,7 @@ export interface IPublishFormProps {
     ruleId: string;
     ruleName: string;
     resource: PolicySourceType;
+    releaseResource?: string;
     visible: boolean;
     close: () => void;
 }
@@ -90,10 +92,11 @@ const PublishForm: React.FC<IPublishFormProps> = (props) => {
             description: form.getFieldValue("comment") as string,
             release_type: releaseType === 'normal' ? 'normal' as const : 'gray' as const,
             client_label: releaseType === 'gray' ? (form.getFieldValue("betaLabels") as MatcheLabel[] || []) : [],
-            resource: props.resource,
+            resource: props.releaseResource || props.resource,
         }
 
         let ret;
+        const trafficKind = inferTrafficGovernanceKindByResource(props.releaseResource || props.resource);
         switch (props.resource) {
             case PolicySourceType.RouteRules:
                 ret = await dispatch(releaseCustomRoutes({ param: [pubData] }));
@@ -112,6 +115,18 @@ const PublishForm: React.FC<IPublishFormProps> = (props) => {
                 break;
             case PolicySourceType.LossLessRules:
                 ret = await dispatch(releaseLosslessRule({ param: [pubData] }));
+                break;
+            case PolicySourceType.SecurityRules:
+            case PolicySourceType.MirrorRules:
+            case PolicySourceType.MockRules:
+                if (trafficKind) {
+                    try {
+                        const payload = await publishTrafficGovernanceRule(trafficKind, [pubData]);
+                        ret = { meta: { requestStatus: 'fulfilled' }, payload };
+                    } catch (error) {
+                        ret = { meta: { requestStatus: 'rejected' }, payload: (error as Error).message };
+                    }
+                }
                 break;
             default:
                 openErrNotification('获取规则发布版本记录失败', '不支持的规则类型');

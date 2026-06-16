@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Popconfirm, Collapse, Empty } from 'tdesign-react';
+import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Popconfirm, Empty } from 'tdesign-react';
 import { DeleteIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
@@ -18,7 +18,6 @@ import AuthorizeInput from 'components/Authorize';
 import { PolicySourceType } from 'services/auth_policy';
 import RuleDetailDrawer from '../RuleRelease/RuleDetailDrawer';
 
-const { Panel } = Collapse;
 interface ILaneGroupTableProps {
 
 }
@@ -269,30 +268,30 @@ const LaneGroupTable: React.FC<ILaneGroupTableProps> = ({ }) => {
                         refreshVersions()
                     }}
                     view={
-                        <>
-                            <Collapse borderless={true} expandMutex={true} defaultValue={['lane_group_detail']}>
-                                <Panel
-                                    header="泳道组详细"
-                                    value={'lane_group_detail'}
-                                >
-                                    <LaneGroupEdtor
-                                        op={editor.mode}
-                                        refresh={(close: boolean) => {
-                                            if (close) {
-                                                seteditor(pre => ({ ...pre, visible: false }));
-                                            }
-                                            refreshData(1, limit)
-                                        }}
-                                    />
-                                </Panel>
-                                <Panel
-                                    header="泳道列表"
-                                    value={'lane_group_rules'}
-                                    children={<LaneRuleTable groupId={editor.data?.id || ''} />}
-                                >
-                                </Panel>
-                            </Collapse>
-                        </>
+                        editor.mode !== 'create' && !editor.data ? (
+                            <Empty title="选择泳道组查看详情" />
+                        ) : (
+                            <div className={style.laneDetailStack}>
+                                <LaneGroupEdtor
+                                    op={editor.mode}
+                                    refresh={(close: boolean) => {
+                                        if (close) {
+                                            seteditor(pre => ({ ...pre, visible: false }));
+                                        }
+                                        refreshData(1, limit)
+                                    }}
+                                />
+                                {editor.mode !== 'create' && (
+                                    <section className={style.laneRulesPanel}>
+                                        <div className={style.laneRulesHeader}>
+                                            <div className={style.laneRulesTitle}>泳道列表</div>
+                                            <div className={style.laneRulesHint}>当前泳道组内的匹配规则和泳道标签。</div>
+                                        </div>
+                                        <LaneRuleTable groupId={editor.data?.id || ''} />
+                                    </section>
+                                )}
+                            </div>
+                        )
                     }
                     versions={{
                         datas: versions,

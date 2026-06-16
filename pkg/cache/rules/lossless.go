@@ -207,10 +207,10 @@ func (llc *LossLessCache) Query(ctx context.Context, args *cachetypes.LosslessAr
 
 	res := make([]*rules.LosslessRule, 0, 8)
 	process := func(rule *rules.LosslessRule) {
-		if hasService && svcName != rule.Proto.GetService() {
+		if hasService && svcName != rule.Service {
 			return
 		}
-		if hasNamespace && nsName != rule.Proto.GetNamespace() {
+		if hasNamespace && nsName != rule.Namespace {
 			return
 		}
 		if hasRuleId && ruleId != rule.ID {

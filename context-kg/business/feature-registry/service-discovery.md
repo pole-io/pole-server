@@ -1,8 +1,8 @@
 ---
-title: 服务发现域
+title: 服务发现（`pkg/service/`）
 tags: [business, feature, service, healthcheck]
 links: [namespace, architecture, storage, cache-layer, governance-rules]
-updated: 2026-06-09
+updated: 2026-06-15
 sources: 1
 ---
 

@@ -106,7 +106,7 @@ func (fc *fileCache) Initialize(opt map[string]interface{}) error {
 func openBoltCache(opt map[string]interface{}) (*bbolt.DB, error) {
 	path, _ := opt["cachePath"].(string)
 	if path == "" {
-		path = "./data/cache/config"
+		path = "./.pole_data/cache/config"
 	}
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
 		return nil, err

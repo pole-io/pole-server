@@ -112,6 +112,82 @@ sources: 0
   - 新增 Console A2A Agents 页面，包含列表筛选、抽屉新建/编辑、Agent Card 查看和技能详情查看。
   - 保持控制面边界，不提供 A2A task proxy、SSE 转发或 push broker。
 
+## [2026-06-15] ingest | Console API、Client 与权限接口 E2E 测试用例设计
+
+- 扫描 12 个相关测试、Console router、HTTP access、接口 service 和知识库入口。
+- 新增页面：quality/testcases/console-client-auth-e2e-testcases.md。
+- 更新页面：testing, index, schema, todo, lessons。
+- 变更摘要：
+  - 将 E2E 测试收敛为 Console API 和 Client/Auth 两层接口套件，不纳入前端交互测试能力。
+  - 设计命名空间、MCP、A2A、服务、别名、实例、9 类治理规则、用户、用户组、角色、权限策略的读写覆盖矩阵。
+  - 设计通过 Console 写入后由 8090 Client API 轮询验证服务发现和治理规则发布态的用例。
+  - 设计 `consoleOpen` / `clientOpen` 四象限配置开关和 Console/Client 权限策略生效用例。
+
+## [2026-06-15] lint | context-kg skill 与标题契约校验
+
+- 新增本地 Codex skill：`context-kg-maintainer`，用于快速更新、生成和校验 context-kg 知识库。
+- 使用 skill 自带 lint 脚本检查当前知识库。
+- 修正若干页面 frontmatter `title` 与首个 H1 不一致的问题。
+- 更新页面：index, schema, namespace, service-discovery, config-center, governance-rules, admin, todo。
+
+## [2026-06-15] refine | 接口 E2E 测试用例边界收敛
+
+- 按用户要求移除前端页面和 Playwright 测试能力口径。
+- 更新页面：console-client-auth-e2e-testcases, testing, todo, lessons。
+- 变更摘要：
+  - 在测试用例文档中明确 E2E 只验证 HTTP/API 链路。
+  - 增加非目标清单，排除 Playwright、浏览器、DOM、截图、页面布局和前端路由。
+  - 将少量 UI 口径描述改为接口字段、接口响应和接口可用性断言。
+  - 保留 8080 Console API、8090 Client API、权限策略和 `consoleOpen/clientOpen` 开关矩阵作为接口验收边界。
+
+## [2026-06-16] implement | 接口 E2E 测试套件补齐
+
+- 新增测试目录：test/e2e/internal/e2e, test/e2e/console_api, test/e2e/client, test/e2e/auth。
+- 更新页面：testing, todo。
+- 变更摘要：
+  - 新增基于 testcontainers 的 MySQL 环境、30000 起始端口分配和临时 all 模式配置。
+  - 新增 Console API 资源读写、Client Discover 传播和权限策略接口 E2E 测试代码。
+  - 使用 `//go:build e2e` 隔离 E2E，默认测试命令不启动 Docker。
+  - 记录 macOS 下 testcontainers 间接依赖 `go-m1cpu` 的 cgo 崩溃规避方式，推荐 `CGO_ENABLED=0`。
+
+## [2026-06-16] refine | 接口 E2E 测试文档边界强化
+
+- 按用户要求再次收敛测试用例文档，只保留接口维度测试能力。
+- 更新页面：console-client-auth-e2e-testcases, testing, todo。
+- 变更摘要：
+  - 新增“能力边界”说明，明确自动化入口统一为 Go test。
+  - 明确 8080 console proxy 属于接口链路验证，不等同于控制台页面测试。
+  - 明确不建设 `console/web/e2e`、Playwright、浏览器脚本、DOM 断言、截图比对或页面交互流程。
+
+## [2026-06-16] implement | 接口 E2E 测试覆盖补齐
+
+- 补齐设计文档中仍缺失的接口 E2E 覆盖点。
+- 更新页面：todo。
+- 变更摘要：
+  - Console API E2E 增加资源删除后不可见、服务 update/delete、auth 资源 delete 和治理规则 gray/stopbeta/rollback/release delete 覆盖。
+  - Client E2E 增加实例删除和治理规则删除后的 Discover 响应不包含目标资源断言。
+  - Auth E2E 增加 RegisterInstance、Heartbeat 在 `clientOpen` 开关和授权策略下的放行/拒绝用例。
+  - 继续保持接口维度，不引入前端页面或 Playwright 测试。
+
+## [2026-06-16] refine | 接口 E2E 测试用例文档二次整理
+
+- 按用户要求继续收敛测试用例文档，只保留接口维度测试能力。
+- 更新页面：console-client-auth-e2e-testcases, testing, todo。
+- 变更摘要：
+  - 将主测试用例文档中的前端自动化表述收敛为非目标边界。
+  - 保留 8080 console proxy 作为接口链路验证，不纳入控制台页面验收。
+  - 测试能力入口继续统一为 Go test。
+
+## [2026-06-16] implement | 接口 E2E 鉴权与治理覆盖补齐
+
+- 补齐权限策略、Client 鉴权传播和治理规则类型隔离的接口 E2E 表达。
+- 更新页面：console-client-auth-e2e-testcases, todo。
+- 变更摘要：
+  - Auth E2E 使用真实 policy principals/resources/functions 结构，并覆盖用户组继承、角色函数变更、Token 禁用/刷新、策略删除和策略更新传播。
+  - 治理规则权限增加老规则路由与新增流量治理规则的授权/未授权分支。
+  - 测试用例文档将灰度、路由、泳道的客户端 label 断言收敛到当前 HTTP/API 可验证的发布记录、规则内容和 Discover 发布态。
+  - 继续保持接口维度，不引入前端页面、浏览器或 Playwright 测试能力。
+
 ## 相关页面
 
 - [[index]]

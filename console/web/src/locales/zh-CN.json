@@ -8,7 +8,7 @@
   "menu.governance.router": "路由规则",
   "menu.governance.ratelimit": "限流规则",
   "menu.governance.circuitbreaker": "熔断规则",
-  "menu.governance.security": "安全管理",
+  "menu.governance.security": "流量治理",
   "menu.discovery": "注册发现",
   "menu.discovery.service": "服务实例",
   "menu.discovery.gateway": "网关",

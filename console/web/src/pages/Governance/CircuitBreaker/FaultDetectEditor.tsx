@@ -5,21 +5,16 @@ import {
     Select,
     InputNumber,
     Radio,
-    Button,
     Space,
     Textarea,
     StickyTool,
-    FormProps,
-    InputAdornment,
-    Row,
-    Col,
-    Tag,
-    Dialog,
-    Popup
+    FormProps
 } from 'tdesign-react';
-import { AddIcon, CloseIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
+import { Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
 
 import { API, HTTPMethod, HTTPMethodOption, InterfaceProtocol, InterfaceProtocolOption, Label, MatchType, MatchTypeMap, MatchTypeOption, Op } from "services/types";
+import RuleLabelField from "../shared/RuleLabelField";
+import shared from "../shared/governance.module.less";
 import {
     FaultDetectRule,
     FaultDetectProtocol,
@@ -39,6 +34,13 @@ import { cleanNamespacePage, listAllNamespaces, selectNamespace } from 'modules/
 const { FormItem } = Form;
 const { Group: RadioGroup } = Radio;
 const { StickyItem } = StickyTool;
+
+const displayText = (value?: string | number | null) => {
+    if (value === undefined || value === null || value === '') {
+        return '-';
+    }
+    return String(value);
+};
 
 
 interface FaultDetectDO {
@@ -206,135 +208,46 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
         }
     };
 
-    const metadata = Form.useWatch('metadata', form) || (editRule?.metadata as Record<string, string>) || {};
-    const [labelDialogList, setLabelDialogList] = React.useState<{ key: string; value: string }[]>([]);
-
-    React.useEffect(() => {
-        if (editorState.visible) {
-            const current = form.getFieldValue('metadata') || {};
-            setLabelDialogList(Object.entries(current).map(([key, value]) => ({ key, value })));
-        }
-    }, [editorState.visible]);
-
-    const renderRuleLabelsDialog = () => (
-        <Dialog
-            visible={editorState.visible}
-            header="编辑规则标签"
-            width={700}
-            onConfirm={() => {
-                const next: Record<string, string> = {};
-                labelDialogList.forEach(({ key, value }) => { if (key) next[key] = value; });
-                form.setFieldsValue({ metadata: next });
-                setEditorState(prev => ({ ...prev, visible: false }));
-            }}
-            onClose={() => setEditorState(prev => ({ ...prev, visible: false }))}
-        >
-            <div>
-                {labelDialogList.map((tag, idx) => (
-                    <Row gutter={8} key={idx} style={{ marginBottom: 12 }} align="middle">
-                        <Col span={4}>
-                            <Input
-                                value={tag.key}
-                                placeholder="请输入标签键"
-                                onChange={v => {
-                                    const next = [...labelDialogList];
-                                    next[idx] = { ...next[idx], key: v };
-                                    setLabelDialogList(next);
-                                }}
-                            />
-                        </Col>
-                        <Col span={4}>
-                            <Input
-                                value={tag.value}
-                                placeholder="请输入标签值"
-                                onChange={v => {
-                                    const next = [...labelDialogList];
-                                    next[idx] = { ...next[idx], value: v };
-                                    setLabelDialogList(next);
-                                }}
-                            />
-                        </Col>
-                        <Col span={2}>
-                            <Popup trigger="hover" content="删除标签">
-                                <Button shape="circle" variant="text" onClick={() => setLabelDialogList(labelDialogList.filter((_, i) => i !== idx))}>
-                                    <CloseIcon />
-                                </Button>
-                            </Popup>
-                        </Col>
-                    </Row>
-                ))}
-                <Button variant="text" icon={<AddIcon />} onClick={() => setLabelDialogList([...labelDialogList, { key: '', value: '' }])}>添加标签</Button>
-            </div>
-        </Dialog>
-    );
-
-    const baseInfoCardStyle = { marginBottom: 24, padding: '24px 32px', border: '1px solid #e5e6eb', borderRadius: 8, boxShadow: '0 2px 8px 0 rgba(0,0,0,0.03)' };
+    const metadata = (Form.useWatch('metadata', form) || (editRule?.metadata as Record<string, string>) || {}) as Record<string, string>;
 
     const ruleBaseInfo = (
-        <div style={baseInfoCardStyle}>
-            {/* 第一层：规则名称 */}
-            <Row style={{ marginBottom: 16 }}>
-                <Col span={12}>
-                    <FormItem
-                        label="规则名称"
-                        name="name"
-                        showErrorMessage={editorState.editable}
-                        rules={[
-                            { required: true, message: '请输入规则名称' },
-                            { max: 64, message: '最长64个字符' }
-                        ]}
-                    >
-                        {props.op === 'create' ? (
-                            <Input style={{ width: '300px' }} placeholder="最长64个字符" />
-                        ) : (
-                            <Text>{editRule?.name}</Text>
-                        )}
-                    </FormItem>
-                </Col>
-            </Row>
-            {/* 第二层：描述 */}
-            <Row style={{ marginBottom: 16 }}>
-                <Col span={12}>
-                    <FormItem label="描述" name="description">
-                        {editorState.editable ? (
-                            <Input style={{ width: '600px' }} placeholder="" />
-                        ) : (
-                            <Text>{editRule?.description || '-'}</Text>
-                        )}
-                    </FormItem>
-                </Col>
-            </Row>
-            {/* 第三层：规则标签 */}
-            <Row>
-                <Col span={12}>
-                    <FormItem label="规则标签" name="metadata">
-                        <Space align="center">
-                            {Object.keys(metadata).length > 0 ? (
-                                <>
-                                    {Object.entries(metadata).map(([k, v], idx) => (
-                                        <Tag key={idx}>{`${k}: ${v}`}</Tag>
-                                    ))}
-                                    {editorState.editable && (
-                                        <Button shape="circle" variant="text" onClick={() => setEditorState(prev => ({ ...prev, visible: true }))}>
-                                            <Edit1Icon />
-                                        </Button>
-                                    )}
-                                </>
-                            ) : (
-                                <>
-                                    <Text>暂无标签</Text>
-                                    {editorState.editable && (
-                                        <Button shape="circle" variant="text" onClick={() => setEditorState(prev => ({ ...prev, visible: true }))}>
-                                            <Edit1Icon />
-                                        </Button>
-                                    )}
-                                </>
-                            )}
-                        </Space>
-                    </FormItem>
-                    {renderRuleLabelsDialog()}
-                </Col>
-            </Row>
+        <div className={shared.section}>
+            <div className={shared.sectionHeader}>基础信息</div>
+            <div className={shared.sectionBody}>
+                <div className={shared.infoGrid}>
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>规则名称</div>
+                        <FormItem
+                            name="name"
+                            showErrorMessage={editorState.editable}
+                            rules={[
+                                { required: true, message: '请输入规则名称' },
+                                { max: 64, message: '最长64个字符' }
+                            ]}
+                        >
+                            {props.op === 'create'
+                                ? <Input placeholder="最长64个字符" />
+                                : <Text>{editRule?.name}</Text>}
+                        </FormItem>
+                    </div>
+                    <div className={`${shared.field} ${shared.span8}`}>
+                        <div className={shared.fieldLabel}>描述</div>
+                        <FormItem name="description">
+                            {editorState.editable
+                                ? <Input placeholder="补充规则说明" />
+                                : <Text>{editRule?.description || '-'}</Text>}
+                        </FormItem>
+                    </div>
+                    <div className={`${shared.field} ${shared.full}`}>
+                        <div className={shared.fieldLabel}>规则标签</div>
+                        <RuleLabelField
+                            metadata={metadata}
+                            editable={editorState.editable}
+                            onChange={(next) => form.setFieldsValue({ metadata: next })}
+                        />
+                    </div>
+                </div>
+            </div>
         </div>
     );
 
@@ -346,6 +259,15 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
             layout="vertical"
         >
             {ruleBaseInfo}
+
+            <div className={shared.section}>
+                <div className={shared.sectionHeader}>探测配置</div>
+                <div className={shared.sectionBody}>
+                    <div className={shared.group}>
+                        <div className={shared.groupHead}>
+                            <span className={shared.groupTitle}><span className={shared.groupIndex}>1</span>探测目标与节奏</span>
+                        </div>
+                        <div className={shared.groupBody}>
 
             {/* 命名空间 */}
             <FormItem
@@ -427,31 +349,28 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                     </Space>
 
                 ) : (
-                    <>
-                        <InputAdornment append={
-                            `${MatchTypeMap[editRule?.targetService?.api?.path?.type as MatchType || MatchType.EXACT]}`
-                        }>
-                            <Input readonly={true}
-                                value={editRule?.targetService?.api?.path?.value || '-'}
-                            />
-                        </InputAdornment>
-                    </>
+                    <Text>
+                        {`${displayText(editRule?.targetService?.api?.path?.value)} / ${MatchTypeMap[editRule?.targetService?.api?.path?.type as MatchType || MatchType.EXACT]}`}
+                    </Text>
                 )}
             </FormItem>
 
             {/* 接口协议 */}
             <FormItem label="接口协议" name={['targetService', 'api', 'protocol']} initialData={FaultDetectProtocol.HTTP}>
-                <RadioGroup
-                    theme='button'
-                    variant='primary-filled'
-                    readonly={!editorState.editable}
-                >
-                    {InterfaceProtocolOption.map(option => (
-                        <Radio.Button key={option.value} value={option.value}>
-                            {option.label}
-                        </Radio.Button>
-                    ))}
-                </RadioGroup>
+                {editorState.editable ? (
+                    <RadioGroup
+                        theme='button'
+                        variant='primary-filled'
+                    >
+                        {InterfaceProtocolOption.map(option => (
+                            <Radio.Button key={option.value} value={option.value}>
+                                {option.label}
+                            </Radio.Button>
+                        ))}
+                    </RadioGroup>
+                ) : (
+                    <Text>{displayText(editRule?.targetService?.api?.protocol)}</Text>
+                )}
             </FormItem>
 
             {/* 接口方法 */}
@@ -501,17 +420,29 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                 )}
             </FormItem>
 
+                        </div>
+                    </div>
+
+                    <div className={shared.group}>
+                        <div className={shared.groupHead}>
+                            <span className={shared.groupTitle}><span className={shared.groupIndex}>2</span>探测协议配置</span>
+                        </div>
+                        <div className={shared.groupBody}>
+
             {/* 协议选择 */}
             <FormItem label="协议" initialData={FaultDetectProtocol.HTTP} name="protocol" help={'服务实例下需要存在所选择用于探测的协议，否则无法探测无法生效'}>
-                <RadioGroup
-                    theme='button'
-                    variant='primary-filled'
-                    readonly={!editorState.editable}
-                >
-                    <Radio.Button value={FaultDetectProtocol.HTTP}>HTTP</Radio.Button>
-                    <Radio.Button value={FaultDetectProtocol.TCP}>TCP</Radio.Button>
-                    <Radio.Button value={FaultDetectProtocol.UDP}>UDP</Radio.Button>
-                </RadioGroup>
+                {editorState.editable ? (
+                    <RadioGroup
+                        theme='button'
+                        variant='primary-filled'
+                    >
+                        <Radio.Button value={FaultDetectProtocol.HTTP}>HTTP</Radio.Button>
+                        <Radio.Button value={FaultDetectProtocol.TCP}>TCP</Radio.Button>
+                        <Radio.Button value={FaultDetectProtocol.UDP}>UDP</Radio.Button>
+                    </RadioGroup>
+                ) : (
+                    <Text>{displayText(editRule?.protocol)}</Text>
+                )}
             </FormItem>
 
             <FormItem shouldUpdate={(prev, next) => prev.protocol !== next.protocol}>
@@ -545,12 +476,25 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                         case FaultDetectProtocol.UDP:
                             return (
                                 <>
-                                    <FormItem label="发送内容" name={['udpConfig', 'send']} help={'配置所需发送的二进制报文'}>
-                                        <Textarea placeholder="请输入发送内容" />
-                                    </FormItem>
-                                    <FormItem label="接收内容" name={['udpConfig', 'receive']}>
-                                        <Textarea placeholder="请输入期望接收的内容" />
-                                    </FormItem>
+                                    {editorState.editable ? (
+                                        <>
+                                            <FormItem label="发送内容" name={['udpConfig', 'send']} help={'配置所需发送的二进制报文'}>
+                                                <Textarea placeholder="请输入发送内容" />
+                                            </FormItem>
+                                            <FormItem label="接收内容" name={['udpConfig', 'receive']}>
+                                                <Textarea placeholder="请输入期望接收的内容" />
+                                            </FormItem>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FormItem label="发送内容" name={['udpConfig', 'send']} help={'配置所需发送的二进制报文'}>
+                                                <Text>{editRule?.udpConfig?.send || '-'}</Text>
+                                            </FormItem>
+                                            <FormItem label="接收内容" name={['udpConfig', 'receive']}>
+                                                <Text>{editRule?.udpConfig?.receive || '-'}</Text>
+                                            </FormItem>
+                                        </>
+                                    )}
                                 </>
                             )
                         case FaultDetectProtocol.HTTP:
@@ -601,12 +545,17 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                     }
                 }}
             </FormItem>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
         </Form>
     )
 
     const renderStickyTool = (
         <>
-            {viewRule?.editable && (
+            {viewRule?.editable !== false && editRule?.editable !== false && (
                 <div style={{ marginTop: 20 }}>
                     <StickyTool
                         style={{ zIndex: 1000 }}

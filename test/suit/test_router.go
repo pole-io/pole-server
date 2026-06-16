@@ -72,7 +72,6 @@ func MockRoutingV2(t *testing.T, cnt int32) []*apitraffic.RouteRule {
 		item := &apitraffic.RouteRule{
 			Id:            "",
 			Name:          fmt.Sprintf("test-routing-name-%d", i),
-			Namespace:     "",
 			Enable:        false,
 			RoutePolicy:   apitraffic.RoutePolicy_RulePolicy,
 			RoutingConfig: any,

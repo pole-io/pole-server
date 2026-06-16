@@ -61,8 +61,6 @@ func (r *TrafficGovernanceRule) FromTrafficSecuritySpec(spec *apisecurity.Traffi
 	}
 	r.ID = spec.Id
 	r.Name = spec.Name
-	r.Namespace = spec.Namespace
-	r.Service = spec.Service
 	r.Enable = spec.Enable
 	r.Priority = spec.Priority
 	r.Metadata = spec.Metadata
@@ -79,8 +77,7 @@ func (r *TrafficGovernanceRule) FromTrafficMirrorSpec(spec *apitraffic.TrafficMi
 	}
 	r.ID = spec.Id
 	r.Name = spec.Name
-	r.Namespace = spec.Namespace
-	r.Service = spec.Service
+	r.Namespace, r.Service = mirrorRuleServiceScope(spec)
 	r.Enable = spec.Enable
 	r.Priority = spec.Priority
 	r.Metadata = spec.Metadata
@@ -97,8 +94,7 @@ func (r *TrafficGovernanceRule) FromTrafficMockSpec(spec *apitraffic.TrafficMock
 	}
 	r.ID = spec.Id
 	r.Name = spec.Name
-	r.Namespace = spec.Namespace
-	r.Service = spec.Service
+	r.Namespace, r.Service = mockRuleServiceScope(spec)
 	r.Enable = spec.Enable
 	r.Priority = spec.Priority
 	r.Metadata = spec.Metadata
@@ -154,8 +150,6 @@ func (r *TrafficGovernanceRule) ToTrafficMockSpec() *apitraffic.TrafficMock {
 func (r *TrafficGovernanceRule) applyTrafficSecurityFields(spec *apisecurity.TrafficSecurityRule) {
 	spec.Id = r.ID
 	spec.Name = r.Name
-	spec.Namespace = r.Namespace
-	spec.Service = r.Service
 	spec.Enable = r.Enable
 	spec.Priority = r.Priority
 	spec.Metadata = r.Metadata
@@ -168,8 +162,6 @@ func (r *TrafficGovernanceRule) applyTrafficSecurityFields(spec *apisecurity.Tra
 func (r *TrafficGovernanceRule) applyTrafficMirrorFields(spec *apitraffic.TrafficMirror) {
 	spec.Id = r.ID
 	spec.Name = r.Name
-	spec.Namespace = r.Namespace
-	spec.Service = r.Service
 	spec.Enable = r.Enable
 	spec.Priority = r.Priority
 	spec.Metadata = r.Metadata
@@ -182,8 +174,6 @@ func (r *TrafficGovernanceRule) applyTrafficMirrorFields(spec *apitraffic.Traffi
 func (r *TrafficGovernanceRule) applyTrafficMockFields(spec *apitraffic.TrafficMock) {
 	spec.Id = r.ID
 	spec.Name = r.Name
-	spec.Namespace = r.Namespace
-	spec.Service = r.Service
 	spec.Enable = r.Enable
 	spec.Priority = r.Priority
 	spec.Metadata = r.Metadata
@@ -199,6 +189,30 @@ func (r *TrafficGovernanceRule) GetId() string {
 
 func (r *TrafficGovernanceRule) GetMtime() time.Time {
 	return r.MTime
+}
+
+func mirrorRuleServiceScope(spec *apitraffic.TrafficMirror) (string, string) {
+	if spec == nil {
+		return "", ""
+	}
+	for _, rule := range spec.GetRules() {
+		if source := rule.GetSource(); source != nil {
+			return source.GetNamespace(), source.GetService()
+		}
+	}
+	return "", ""
+}
+
+func mockRuleServiceScope(spec *apitraffic.TrafficMock) (string, string) {
+	if spec == nil {
+		return "", ""
+	}
+	for _, rule := range spec.GetRules() {
+		if source := rule.GetSource(); source != nil {
+			return source.GetNamespace(), source.GetService()
+		}
+	}
+	return "", ""
 }
 
 type TrafficGovernanceRuleRelease struct {

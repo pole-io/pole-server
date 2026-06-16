@@ -415,7 +415,7 @@ func (r *governanceRuleRepository) GetRelease(
 	if err != nil {
 		return nil, err
 	}
-	return scanGovernanceRuleReleaseRecord(dbTx.QueryRow(
+	record, err := scanGovernanceRuleReleaseRecord(dbTx.QueryRow(
 		selectGovernanceRuleReleaseSQL,
 		string(ruleType),
 		release.Id,
@@ -423,6 +423,13 @@ func (r *governanceRuleRepository) GetRelease(
 		release.ReleaseName,
 		release.ReleaseType,
 	))
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, store.Error(err)
+	}
+	return record, nil
 }
 
 func (r *governanceRuleRepository) GetActiveRelease(
@@ -434,7 +441,14 @@ func (r *governanceRuleRepository) GetActiveRelease(
 	}
 	where, args := buildGovernanceRuleReleaseActiveWhere(release)
 	row := dbTx.QueryRow(fmt.Sprintf(selectActiveGovernanceRuleReleaseSQL, where), args...)
-	return scanGovernanceRuleReleaseRecord(row)
+	record, err := scanGovernanceRuleReleaseRecord(row)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, store.Error(err)
+	}
+	return record, nil
 }
 
 func (r *governanceRuleRepository) GetMoreReleasesByType(

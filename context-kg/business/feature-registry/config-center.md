@@ -1,8 +1,8 @@
 ---
-title: 配置中心域
+title: 配置中心（`pkg/config/`）
 tags: [business, feature, config]
 links: [namespace, architecture, storage, cache-layer]
-updated: 2026-06-09
+updated: 2026-06-15
 sources: 1
 ---
 

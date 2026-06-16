@@ -29,3 +29,9 @@ func AIMCPRouter(r *gin.Engine, config *bootstrap.Config) {
 	v1 := r.Group("/ai/mcp/v1")
 	v1.Any("/*path", handlers.ReverseProxyForServer(&config.PoleServer, config))
 }
+
+// AIA2ARouter routes A2A agent registry requests to pole-server.
+func AIA2ARouter(r *gin.Engine, config *bootstrap.Config) {
+	v1 := r.Group("/ai/a2a/v1")
+	v1.Any("/*path", handlers.ReverseProxyForServer(&config.PoleServer, config))
+}

@@ -1,8 +1,8 @@
 ---
-title: 知识库内容目录
+title: pole-control-plane 知识库
 tags: [meta, index]
 links: [schema, log]
-updated: 2026-06-09
+updated: 2026-06-15
 sources: 0
 ---
 
@@ -70,6 +70,10 @@ sources: 0
 ### 自动化背景知识（quality/automation/）
 
 - [[testing]] — 测试目录结构、Mock Store/Auth、集成测试套件与测试规范 | quality, automation, testing, mock
+
+### 测试用例集（quality/testcases/）
+
+- [[console-client-auth-e2e-testcases]] — Console API、Client 与权限接口 E2E 覆盖矩阵 | quality, testcases, e2e, api, console, client, auth
 
 ---
 

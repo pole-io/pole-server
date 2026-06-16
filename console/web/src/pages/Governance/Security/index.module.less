@@ -1,0 +1,248 @@
+/* 列表页：与其它治理规则一致的卡片容器 + 工具栏 */
+.ruleWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.ruleListPane {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #e7ebf0;
+  border-radius: 8px;
+  padding: 0 16px 16px;
+}
+
+.toolBar {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.ruleName {
+  min-width: 0;
+}
+
+.ruleNameText {
+  display: block;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ruleDesc {
+  color: #86909c;
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 编辑器外壳：表单级排版，section/卡片排版统一走 shared/governance.module.less */
+.editor {
+  padding: 16px 20px 32px;
+
+  :global(.t-form) {
+    display: grid;
+    gap: 16px;
+  }
+
+  :global(.t-form__item) {
+    display: block;
+    margin-bottom: 0;
+    min-width: 0;
+  }
+
+  :global(.t-form__label) {
+    display: block;
+    width: auto !important;
+    padding: 0 0 6px;
+    color: #667085;
+    font-size: 12px;
+    line-height: 18px;
+    text-align: left;
+  }
+
+  :global(.t-form__controls) {
+    display: block;
+    margin-left: 0 !important;
+  }
+
+  :global(.t-form__controls-content),
+  :global(.t-input__wrap),
+  :global(.t-select),
+  :global(.t-input-number),
+  :global(.t-textarea__inner) {
+    width: 100%;
+  }
+}
+
+/* 鉴权：未命中默认动作条 */
+.securityDefaultBar {
+  align-items: center;
+  background: #fbfcfe;
+  border: 1px solid #e3e8f2;
+  border-radius: 8px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  min-height: 64px;
+  padding: 12px 16px;
+}
+
+.defaultActionField {
+  flex: 0 0 180px;
+}
+
+.ruleSectionTitle {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.ruleHelp {
+  color: #8b95a5;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+  margin-top: 4px;
+}
+
+/* 可增删的结构化行编辑器（接口范围 / 匹配条件 / 标签 / 响应头）统一为单行对齐栅格 */
+.repeatEditor {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.actionSelect {
+  width: 104px;
+}
+
+/* 匹配模式 / 命中比例 元信息行 */
+.repeatMeta {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.metaSelect {
+  flex: 0 0 120px;
+  width: 120px;
+}
+
+.metaPercent {
+  flex: 0 0 120px;
+  width: 120px;
+}
+
+.repeatMetaHint {
+  color: #8b95a5;
+  flex: none;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* 接口范围：协议 / 方法 / 匹配方式 / 值 / 值类型 —— 单行 */
+.apiEditor {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(96px, 0.9fr) minmax(96px, 0.9fr) minmax(96px, 0.9fr) minmax(160px, 1.6fr) minmax(96px, 0.9fr);
+  min-width: 0;
+}
+
+/* 匹配条件 / 标签：来源 / Key / 匹配方式 / 值 / 值类型 / 删除 —— 单行卡片 */
+.conditionRow {
+  align-items: center;
+  background: #fbfcfe;
+  border: 1px solid #e6ebf3;
+  border-radius: 6px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) minmax(96px, 0.9fr) minmax(140px, 1.5fr) minmax(96px, 0.9fr) 32px;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+/* 标签：Key / 匹配方式 / 值 / 值类型 / 删除 —— 单行卡片 */
+.labelRow {
+  align-items: center;
+  background: #fbfcfe;
+  border: 1px solid #e6ebf3;
+  border-radius: 6px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(120px, 1fr) minmax(96px, 0.9fr) minmax(140px, 1.5fr) minmax(96px, 0.9fr) 32px;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+/* 响应头：Key / Value / 删除 —— 单行 */
+.kvRow {
+  align-items: center;
+  background: #fbfcfe;
+  border: 1px solid #e6ebf3;
+  border-radius: 6px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(160px, 1fr) minmax(200px, 1.4fr) 32px;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.conditionRow > :global(.t-input__wrap),
+.conditionRow > :global(.t-select),
+.labelRow > :global(.t-input__wrap),
+.labelRow > :global(.t-select),
+.kvRow > :global(.t-input__wrap),
+.apiEditor > :global(.t-input__wrap),
+.apiEditor > :global(.t-select) {
+  min-width: 0;
+}
+
+/* 匹配条件只读展示 */
+.conditionStack {
+  display: grid;
+  gap: 8px;
+}
+
+.conditionMeta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Mock 响应体只读展示 */
+.bodyView {
+  background: #fbfcfe;
+  border: 1px solid #e3e8f2;
+  border-radius: 8px;
+  color: #1f2937;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 18px;
+  margin: 0;
+  max-height: 160px;
+  overflow: auto;
+  padding: 10px;
+  white-space: pre-wrap;
+}
+
+/* 窄屏：可增删行退化为单列堆叠，删除按钮回流到行尾 */
+@media (max-width: 900px) {
+  .apiEditor,
+  .conditionRow,
+  .labelRow,
+  .kvRow {
+    grid-template-columns: 1fr;
+  }
+}

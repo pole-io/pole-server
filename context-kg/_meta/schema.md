@@ -1,8 +1,8 @@
 ---
-title: Wiki 操作手册（Schema）
+title: Wiki 操作手册
 tags: [meta, schema, wiki]
 links: [index, log]
-updated: 2026-06-09
+updated: 2026-06-15
 sources: 0
 ---
 
@@ -128,6 +128,7 @@ sources: 1
 - `technical/conventions/`：`patterns`
 - `technical/adr/`：`adr-governance-rule-unified-storage`
 - `quality/automation/`：`testing`
+- `quality/testcases/`：`console-client-auth-e2e-testcases`
 
 ---
 

@@ -176,9 +176,6 @@ func checkCircuitBreakerRuleParamsDbLen(req *apifault.CircuitBreakerRule) *apimo
 	if err := valid.CheckDbRawStrFieldLen(req.GetName(), valid.MaxRuleName); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
-	if err := valid.CheckDbRawStrFieldLen(req.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
-		return api.NewResponse(apimodel.Code_InvalidParameter)
-	}
 	if err := valid.CheckDbRawStrFieldLen(req.GetDescription(), valid.MaxCommentLength); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
