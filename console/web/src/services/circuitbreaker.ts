@@ -7,6 +7,18 @@ export interface BlockConfig {
     api?: API
     error_conditions: ErrorCondition[]
     trigger_conditions: TriggerCondition[]
+    max_ejection_percent?: number
+    recoverCondition: RecoverCondition
+    faultDetectConfig: FaultDetectConfig
+    fallbackConfig: FallbackConfig
+}
+
+export interface CircuitBreakerPolicy {
+    block_config: Pick<BlockConfig, 'name' | 'api' | 'error_conditions' | 'trigger_conditions'>
+    max_ejection_percent?: number
+    recoverCondition: RecoverCondition
+    faultDetectConfig: FaultDetectConfig
+    fallbackConfig: FallbackConfig
 }
 
 export interface CircuitBreakerRule {
@@ -30,9 +42,6 @@ export interface CircuitBreakerRule {
         }
     }
     block_configs: BlockConfig[]
-    recoverCondition: RecoverCondition
-    faultDetectConfig: FaultDetectConfig
-    fallbackConfig: FallbackConfig
     metadata?: Record<string, string>
     ctime?: string
     mtime?: string
@@ -107,19 +116,81 @@ function normalizeTriggerCondition(condition: any): TriggerCondition {
     };
 }
 
-function normalizeBlockConfig(block: any): BlockConfig {
+const defaultRecoverCondition = (): RecoverCondition => ({
+    sleepWindow: 60,
+    consecutiveSuccess: 0,
+});
+
+const defaultFaultDetectConfig = (): FaultDetectConfig => ({
+    enable: false,
+});
+
+const defaultFallbackConfig = (): FallbackConfig => ({
+    enable: false,
+    response: { code: 500, headers: [], body: '' },
+});
+
+function normalizeRecoverCondition(condition: any): RecoverCondition {
     return {
-        name: block?.name || '',
-        api: block?.api,
-        error_conditions: (block?.error_conditions ?? block?.errorConditions ?? []).map(normalizeErrorCondition),
-        trigger_conditions: (block?.trigger_conditions ?? block?.triggerConditions ?? []).map(normalizeTriggerCondition),
+        sleepWindow: condition?.sleepWindow ?? condition?.sleep_window ?? 60,
+        consecutiveSuccess: condition?.consecutiveSuccess ?? 0,
+    };
+}
+
+function normalizeFallbackConfig(config: any): FallbackConfig {
+    const fallback = config ?? defaultFallbackConfig();
+    return {
+        enable: !!fallback.enable,
+        response: {
+            code: fallback?.response?.code ?? 500,
+            headers: fallback?.response?.headers ?? [],
+            body: fallback?.response?.body ?? '',
+        },
+    };
+}
+
+function normalizeBlockConfig(block: any, rule: any): BlockConfig {
+    const legacyRecoverCondition = rule?.recoverCondition ?? rule?.recover_condition;
+    const legacyFaultDetectConfig = rule?.faultDetectConfig ?? rule?.fault_detect_config;
+    const legacyFallbackConfig = rule?.fallbackConfig ?? rule?.fallback_config;
+    const blockConfig = block?.block_config ?? block?.blockConfig ?? block;
+    return {
+        name: blockConfig?.name || '',
+        api: blockConfig?.api,
+        error_conditions: (blockConfig?.error_conditions ?? blockConfig?.errorConditions ?? []).map(normalizeErrorCondition),
+        trigger_conditions: (blockConfig?.trigger_conditions ?? blockConfig?.triggerConditions ?? []).map(normalizeTriggerCondition),
+        max_ejection_percent: block?.max_ejection_percent ?? block?.maxEjectionPercent ?? rule?.max_ejection_percent ?? rule?.maxEjectionPercent ?? 100,
+        recoverCondition: normalizeRecoverCondition(block?.recoverCondition ?? block?.recover_condition ?? legacyRecoverCondition),
+        faultDetectConfig: block?.faultDetectConfig ?? block?.fault_detect_config ?? legacyFaultDetectConfig ?? defaultFaultDetectConfig(),
+        fallbackConfig: normalizeFallbackConfig(block?.fallbackConfig ?? block?.fallback_config ?? legacyFallbackConfig),
+    };
+}
+
+function toCircuitBreakerPolicy(block: BlockConfig): CircuitBreakerPolicy {
+    return {
+        block_config: {
+            name: block.name,
+            api: block.api,
+            error_conditions: block.error_conditions,
+            trigger_conditions: block.trigger_conditions,
+        },
+        max_ejection_percent: block.max_ejection_percent,
+        recoverCondition: block.recoverCondition,
+        faultDetectConfig: block.faultDetectConfig,
+        fallbackConfig: block.fallbackConfig,
+    };
+}
+
+function toCircuitBreakerPayload(rule: CircuitBreakerRule): Omit<CircuitBreakerRule, 'block_configs'> & { block_configs: CircuitBreakerPolicy[] } {
+    return {
+        ...rule,
+        block_configs: (rule.block_configs || []).map(toCircuitBreakerPolicy),
     };
 }
 
 export function normalizeCircuitBreakerRule(rule: CircuitBreakerRule | any): CircuitBreakerRule {
     if (!rule) return rule;
     const matcher = rule.ruleMatcher ?? rule.rule_matcher ?? {};
-    const recoverCondition = rule.recoverCondition ?? rule.recover_condition ?? {};
     const sourceService = rule.srcService ?? rule.src_service ?? matcher?.source?.service ?? '';
     const sourceNamespace = rule.srcNamespace ?? rule.src_namespace ?? matcher?.source?.namespace ?? '*';
     let destinationService = rule.dstService ?? rule.dst_service ?? matcher?.destination?.service ?? '';
@@ -145,13 +216,7 @@ export function normalizeCircuitBreakerRule(rule: CircuitBreakerRule | any): Cir
                 },
             },
         },
-        block_configs: (rule.block_configs ?? rule.blockConfigs ?? []).map(normalizeBlockConfig),
-        recoverCondition: {
-            sleepWindow: recoverCondition.sleepWindow ?? recoverCondition.sleep_window ?? 0,
-            consecutiveSuccess: recoverCondition.consecutiveSuccess ?? 0,
-        },
-        faultDetectConfig: rule.faultDetectConfig ?? rule.fault_detect_config ?? { enable: false },
-        fallbackConfig: rule.fallbackConfig ?? rule.fallback_config ?? { enable: false, response: { code: 500, headers: [], body: '' } },
+        block_configs: (rule.block_configs ?? rule.blockConfigs ?? []).map((block: any) => normalizeBlockConfig(block, rule)),
     };
 }
 
@@ -334,7 +399,7 @@ export type CreateCircuitBreakerRequest = CircuitBreakerRule
 export async function createCircuitBreaker(params: CreateCircuitBreakerRequest[]) {
     const res = await apiRequest<any>({
         action: `${BaseURL.CIRCUIT_BREAKER}`,
-        data: params,
+        data: params.map(toCircuitBreakerPayload),
     })
     return res
 }
@@ -344,7 +409,7 @@ export type ModifyCircuitBreakerRequest = CircuitBreakerRule
 export async function modifyCircuitBreaker(params: ModifyCircuitBreakerRequest[]) {
     const res = await putApiRequest<any>({
         action: `${BaseURL.CIRCUIT_BREAKER}`,
-        data: params,
+        data: params.map(toCircuitBreakerPayload),
     })
     return res
 }

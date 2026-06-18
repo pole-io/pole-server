@@ -254,14 +254,8 @@ func circuitBreakerRuleRecordEntry(ctx context.Context, req *apifault.CircuitBre
 
 func marshalCircuitBreakerRuleV2(req *apifault.CircuitBreakerRule) (string, error) {
 	r := &apifault.CircuitBreakerRule{
-		RuleMatcher:        req.RuleMatcher,
-		ErrorConditions:    req.ErrorConditions,
-		TriggerCondition:   req.TriggerCondition,
-		MaxEjectionPercent: req.MaxEjectionPercent,
-		RecoverCondition:   req.RecoverCondition,
-		FaultDetectConfig:  req.FaultDetectConfig,
-		FallbackConfig:     req.FallbackConfig,
-		BlockConfigs:       req.BlockConfigs,
+		RuleMatcher:  req.RuleMatcher,
+		BlockConfigs: req.BlockConfigs,
 	}
 	rule, err := json.Marshal(r)
 	if err != nil {

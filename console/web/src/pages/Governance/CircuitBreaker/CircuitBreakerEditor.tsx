@@ -15,7 +15,7 @@ import { openErrNotification, openInfoNotification } from "utils/notifition";
 import PublishForm from "../RuleRelease/PublishForm";
 import RuleStickyAction from "../RuleRelease/RuleStickyAction";
 import { PolicySourceType } from "services/auth_policy";
-import { BlockConfig, BreakLevelMap, BreakLevelType, CircuitBreakerRule, ErrorCondition, ErrorConditionMap, ErrorConditionOptions, ErrorConditionType, FallbackConfig, FaultDetectConfig, RecoverCondition, TriggerCondition, TriggerType, TriggerTypeMap, TriggerTypeOptions } from "services/circuitbreaker";
+import { BlockConfig, BreakLevelMap, BreakLevelType, CircuitBreakerRule, ErrorCondition, ErrorConditionMap, ErrorConditionOptions, ErrorConditionType, TriggerCondition, TriggerType, TriggerTypeMap, TriggerTypeOptions } from "services/circuitbreaker";
 import { defaultBlockConfig, listOneCircuitBreaker, resetCircuitBreaker, saveCircuitBreakers, selectCircuitBreaker, updateCircuitBreakers } from "modules/governance/circuitbreaker";
 import { cleanNamespacePage, listAllNamespaces, selectNamespace } from "modules/namespace";
 import { cleanServicePage, listAllServices, selectService } from "modules/discovery/service";
@@ -45,9 +45,6 @@ interface CircuitBreakerDO {
         }
     }
     block_configs: BlockConfig[]
-    recoverCondition: RecoverCondition
-    faultDetectConfig: FaultDetectConfig
-    fallbackConfig: FallbackConfig
     metadata: Label[]
 }
 
@@ -72,21 +69,6 @@ const defaultCircuitBreakerRule = (): CircuitBreakerDO => ({
         }
     },
     block_configs: [defaultBlockConfig(1)],
-    recoverCondition: {
-        sleepWindow: 60,
-        consecutiveSuccess: 0
-    },
-    faultDetectConfig: {
-        enable: false
-    },
-    fallbackConfig: {
-        enable: false,
-        response: {
-            code: 500,
-            headers: [],
-            body: ''
-        },
-    }
 })
 
 interface ICircuitBreakerEditorProps {
@@ -110,6 +92,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
     const [editorState, setEditorState] = React.useState<{
         visible: boolean
         headerVisible: boolean
+        headerRuleIndex?: number
         editable?: boolean
         model: Op;
         publishView: boolean;
@@ -840,6 +823,141 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         </div>
     );
 
+    const renderRecover = (idx: number, rule: BlockConfig) => (
+        <div className={shared.step} data-step="4">
+            <div className={shared.stepTitle}>恢复策略<span className={shared.stepHint}>控制该策略进入熔断后的半开恢复和主动探测</span></div>
+            <div className={shared.stepContent}>
+                <Row gutter={[16, 16]}>
+                    <Col span={4}>
+                        <FormItem label={"最大剔除比例"}>
+                            {editorState.editable ? (
+                                <InputAdornment append={"%"}>
+                                    <InputNumber
+                                        min={0}
+                                        max={100}
+                                        value={rule.max_ejection_percent}
+                                        onChange={(val) => {
+                                            const newRules = cloneDeep(breakerRule);
+                                            newRules.block_configs[idx].max_ejection_percent = val as number;
+                                            setBreakerRule(newRules);
+                                        }} />
+                                </InputAdornment>
+                            ) : renderReadonlyValue(`${rule.max_ejection_percent ?? '-'}%`)}
+                        </FormItem>
+                    </Col>
+                    <Col span={4}>
+                        <FormItem label={"熔断时长"}>
+                            {editorState.editable ? (
+                                <InputAdornment append={"秒"}>
+                                    <InputNumber
+                                        min={0}
+                                        value={rule.recoverCondition?.sleepWindow}
+                                        onChange={(val) => {
+                                            const newRules = cloneDeep(breakerRule);
+                                            newRules.block_configs[idx].recoverCondition.sleepWindow = val as number;
+                                            setBreakerRule(newRules);
+                                        }} />
+                                </InputAdornment>
+                            ) : renderReadonlyValue(`${rule.recoverCondition?.sleepWindow ?? '-'} 秒`)}
+                        </FormItem>
+                    </Col>
+                    <Col span={4}>
+                        <FormItem label={"主动探测"}>
+                            {editorState.editable ? (
+                                <Switch
+                                    value={rule.faultDetectConfig?.enable}
+                                    onChange={(checked) => {
+                                        const newRules = cloneDeep(breakerRule);
+                                        newRules.block_configs[idx].faultDetectConfig = {
+                                            enable: checked as boolean,
+                                        };
+                                        setBreakerRule(newRules);
+                                    }} />
+                            ) : renderReadonlySwitch(rule.faultDetectConfig?.enable)}
+                        </FormItem>
+                    </Col>
+                </Row>
+            </div>
+        </div>
+    );
+
+    const renderFallback = (idx: number, rule: BlockConfig) => (
+        <div className={shared.step} data-step="5">
+            <div className={shared.stepTitle}>熔断后降级<span className={shared.stepHint}>该策略触发时返回的兜底响应</span></div>
+            <div className={shared.stepContent}>
+                <FormItem label={"是否开启"}>
+                    {editorState.editable ? (
+                        <Switch
+                            value={rule.fallbackConfig?.enable}
+                            onChange={(checked) => {
+                                const newRules = cloneDeep(breakerRule);
+                                newRules.block_configs[idx].fallbackConfig = {
+                                    ...newRules.block_configs[idx].fallbackConfig,
+                                    enable: checked as boolean,
+                                };
+                                setBreakerRule(newRules);
+                            }} />
+                    ) : renderReadonlySwitch(rule.fallbackConfig?.enable)}
+                </FormItem>
+                {rule.fallbackConfig?.enable && (
+                    <>
+                        <FormItem label={"响应码"}>
+                            {editorState.editable ? (
+                                <InputNumber
+                                    value={rule.fallbackConfig?.response?.code}
+                                    onChange={(val) => {
+                                        const newRules = cloneDeep(breakerRule);
+                                        newRules.block_configs[idx].fallbackConfig.response.code = val as number;
+                                        setBreakerRule(newRules);
+                                    }} />
+                            ) : renderReadonlyValue(rule.fallbackConfig?.response?.code ?? '-')}
+                        </FormItem>
+                        <FormItem label={"响应头"}>
+                            <div>
+                                {Object.entries(rule.fallbackConfig?.response?.headers || []).length > 0 ? (
+                                    <Space>
+                                        {Object.entries(rule.fallbackConfig?.response?.headers || []).map(([key, value], headerIdx) => (
+                                            <Tag key={headerIdx}>
+                                                {`${value.key}: ${value.value}`}
+                                            </Tag>
+                                        ))}
+                                    </Space>
+                                ) : (
+                                    <Text>暂无响应头</Text>
+                                )}
+                                {editorState.editable && (
+                                    <Button
+                                        shape="circle"
+                                        variant="text"
+                                        onClick={() => setEditorState(prev => ({ ...prev, headerVisible: true, headerRuleIndex: idx }))}
+                                    >
+                                        <Edit1Icon />
+                                    </Button>
+                                )}
+                                {renderRspHeaderDialog(idx, rule)}
+                            </div>
+                        </FormItem>
+                        <FormItem label={"响应体"}>
+                            {editorState.editable ? (
+                                <Textarea
+                                    value={rule.fallbackConfig?.response?.body || ''}
+                                    onChange={(value) => {
+                                        const newRules = cloneDeep(breakerRule);
+                                        newRules.block_configs[idx].fallbackConfig.response.body = value as string;
+                                        setBreakerRule(newRules);
+                                    }} />
+                            ) : (
+                                <pre className={styles.readonlyCodeBlock}>
+                                    {rule.fallbackConfig?.response?.body || '-'}
+                                </pre>
+                            )}
+                        </FormItem>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+
     // 规则区块
     const renderRule = (rule: BlockConfig, idx: number) => {
         const collapsed = collapsedRuleIndexes.has(idx);
@@ -891,117 +1009,56 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                         <div className={shared.stepTitle}>熔断触发条件<span className={shared.stepHint}>满足任一统计条件即可触发熔断</span></div>
                         <div className={shared.stepContent}>{renderGroupTable(idx, rule)}</div>
                     </div>
+                    {renderRecover(idx, rule)}
+                    {renderFallback(idx, rule)}
                 </div>
             </div>
         );
     }
 
-    const renderRecover = (
-        <div className={shared.section}>
-            <div className={shared.sectionHeader}>恢复策略</div>
-            <div className={shared.sectionBody}>
-                <div className={shared.stepHint} style={{ marginBottom: 12 }}>
-                    进入熔断状态后，通过设置超时探测或者主动探测规则，满足条件后即可结束熔断状态恢复业务请求，否则重新回到熔断状态
-                </div>
-                <FormItem label={"熔断时长"}>
-                    {editorState.editable ? (
-                        <div>
-                            <InputAdornment append={"秒"}>
-                                <InputNumber
-                                    min={0}
-                                    value={breakerRule?.recoverCondition?.sleepWindow}
-                                    onChange={(val) => {
-                                        const newRules = { ...breakerRule };
-                                        newRules.recoverCondition.sleepWindow = val as number;
-                                        setBreakerRule(newRules);
-                                    }} />
-                            </InputAdornment>
-                        </div>
-                    ) : renderReadonlyValue(`${breakerRule?.recoverCondition?.sleepWindow ?? '-'} 秒`)}
-                </FormItem>
-                <FormItem label={"主动探测"} help={"开启主动探测时，客户端将会根据您配置的探测规则对目标被调服务进行探测； 主动探测请求与业务调用合并判断熔断恢复（如未匹配到探测规则，则不会生效）； 未开启主动探测时，会仅根据业务调用判断熔断恢复。"}>
-                    {editorState.editable ? (
-                        <div>
-                            <Switch
-                                value={breakerRule?.faultDetectConfig?.enable}
-                                onChange={(checked) => {
-                                    const newRules = { ...breakerRule };
-                                    newRules.faultDetectConfig = {
-                                        enable: checked as boolean,
-                                    }
-                                    setBreakerRule(newRules);
-                                }} />
-                        </div>
-                    ) : renderReadonlySwitch(breakerRule?.faultDetectConfig?.enable)}
-                </FormItem>
-            </div>
-        </div>
-    );
-
     // 标签弹窗渲染
-    const renderRspHeaderDialog = () => (
+    const renderRspHeaderDialog = (ruleIdx: number, rule: BlockConfig) => (
         <Dialog
-            visible={editorState.headerVisible}
+            visible={editorState.headerVisible && editorState.headerRuleIndex === ruleIdx}
             header="编辑响应头"
             width={700}
-            onConfirm={() => setEditorState(prev => ({ ...prev, headerVisible: false }))}
-            onClose={() => setEditorState(prev => ({ ...prev, headerVisible: false }))}
+            onConfirm={() => setEditorState(prev => ({ ...prev, headerVisible: false, headerRuleIndex: undefined }))}
+            onClose={() => setEditorState(prev => ({ ...prev, headerVisible: false, headerRuleIndex: undefined }))}
         >
             <div>
-                {breakerRule?.fallbackConfig?.response?.headers?.map((tag, idx) => (
+                {rule?.fallbackConfig?.response?.headers?.map((tag, idx) => (
                     <Row key={idx} style={{ marginBottom: 12 }} align="middle">
                         <Space size={8} style={{ width: '100%' }}>
                             <Input
                                 value={tag.key}
                                 placeholder="请输入标签键"
                                 onChange={v => {
-                                    const newMetadata = [...(breakerRule?.fallbackConfig?.response?.headers || [])];
-                                    newMetadata[idx] = { ...newMetadata[idx], key: v };
-                                    setBreakerRule(prev => ({
-                                        ...prev,
-                                        fallbackConfig: {
-                                            ...prev.fallbackConfig,
-                                            response: {
-                                                ...prev.fallbackConfig.response,
-                                                headers: newMetadata,
-                                            },
-                                        },
-                                    }));
+                                    const newRules = cloneDeep(breakerRule);
+                                    const headers = [...(newRules.block_configs[ruleIdx]?.fallbackConfig?.response?.headers || [])];
+                                    headers[idx] = { ...headers[idx], key: v };
+                                    newRules.block_configs[ruleIdx].fallbackConfig.response.headers = headers;
+                                    setBreakerRule(newRules);
                                 }} />
                             <Input
                                 value={tag.value}
                                 placeholder="请输入标签值"
                                 onChange={v => {
-                                    const newMetadata = [...(breakerRule?.fallbackConfig?.response?.headers || [])];
-                                    newMetadata[idx] = { ...newMetadata[idx], value: v };
-                                    setBreakerRule(prev => ({
-                                        ...prev,
-                                        fallbackConfig: {
-                                            ...prev.fallbackConfig,
-                                            response: {
-                                                ...prev.fallbackConfig.response,
-                                                headers: newMetadata,
-                                            },
-                                        },
-                                    }));
+                                    const newRules = cloneDeep(breakerRule);
+                                    const headers = [...(newRules.block_configs[ruleIdx]?.fallbackConfig?.response?.headers || [])];
+                                    headers[idx] = { ...headers[idx], value: v };
+                                    newRules.block_configs[ruleIdx].fallbackConfig.response.headers = headers;
+                                    setBreakerRule(newRules);
                                 }} />
                             <Popup trigger="hover" content="删除标签">
                                 <Button
                                     shape="circle"
                                     variant="text"
                                     onClick={() => {
-                                        const newMetadata = [...(breakerRule?.fallbackConfig?.response?.headers || [])];
-                                        newMetadata.splice(idx, 1);
-                                        setBreakerRule(prev => ({
-                                            ...prev,
-                                            fallbackConfig: {
-                                                ...prev.fallbackConfig,
-                                                response: {
-                                                    ...prev.fallbackConfig.response,
-                                                    headers: newMetadata,
-                                                },
-                                            },
-                                        }));
+                                        const newRules = cloneDeep(breakerRule);
+                                        const headers = [...(newRules.block_configs[ruleIdx]?.fallbackConfig?.response?.headers || [])];
+                                        headers.splice(idx, 1);
+                                        newRules.block_configs[ruleIdx].fallbackConfig.response.headers = headers;
+                                        setBreakerRule(newRules);
                                     }}
                                 >
                                     <CloseIcon />
@@ -1014,107 +1071,15 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                     variant="text"
                     icon={<AddIcon />}
                     onClick={() => {
-                        const newMetadata = [...(breakerRule?.fallbackConfig?.response?.headers || []), { key: '', value: '' }];
-                        setBreakerRule(prev => ({
-                            ...prev,
-                            fallbackConfig: {
-                                ...prev.fallbackConfig,
-                                response: {
-                                    ...prev.fallbackConfig.response,
-                                    headers: newMetadata,
-                                },
-                            },
-                        }));
+                        const newRules = cloneDeep(breakerRule);
+                        const headers = [...(newRules.block_configs[ruleIdx]?.fallbackConfig?.response?.headers || []), { key: '', value: '' }];
+                        newRules.block_configs[ruleIdx].fallbackConfig.response.headers = headers;
+                        setBreakerRule(newRules);
                     }}>
                     添加标签
                 </Button>
             </div>
         </Dialog>
-    );
-
-
-    const fallbackRecover = (
-        <div className={shared.section}>
-            <div className={shared.sectionHeader}>熔断后降级</div>
-            <div className={shared.sectionBody}>
-                <FormItem label={"是否开启"} help={"开启后，当熔断规则触发时，将会返回配置的响应内容"}>
-                    {editorState.editable ? (
-                        <div>
-                            <Switch
-                                value={breakerRule?.fallbackConfig?.enable}
-                                onChange={(checked) => {
-                                    const newRules = { ...breakerRule };
-                                    newRules.fallbackConfig = {
-                                        ...breakerRule.fallbackConfig,
-                                        enable: checked as boolean,
-                                    }
-                                    setBreakerRule(newRules);
-                                }} />
-                        </div>
-                    ) : renderReadonlySwitch(breakerRule?.fallbackConfig?.enable)}
-                </FormItem>
-                {breakerRule.fallbackConfig.enable && (
-                    <>
-                        <FormItem label={"响应码"}>
-                            {editorState.editable ? (
-                                <div>
-                                    <InputNumber
-                                        value={breakerRule?.fallbackConfig?.response?.code}
-                                        onChange={(val) => {
-                                            const newRules = { ...breakerRule };
-                                            newRules.fallbackConfig.response.code = val as number;
-                                            setBreakerRule(newRules);
-                                        }} />
-                                </div>
-                            ) : renderReadonlyValue(breakerRule?.fallbackConfig?.response?.code ?? '-')}
-                        </FormItem>
-                        <FormItem label={"响应头"}>
-                            <div>
-                                {Object.entries(breakerRule?.fallbackConfig?.response?.headers || []).length > 0 ? (
-                                    <Space>
-                                        {Object.entries(breakerRule?.fallbackConfig?.response?.headers || []).map(([key, value], idx) => (
-                                            <Tag key={idx}>
-                                                {`${value.key}: ${value.value}`}
-                                            </Tag>
-                                        ))}
-                                    </Space>
-                                ) : (
-                                    <Text>暂无响应头</Text>
-                                )}
-                                {editorState.editable && (
-                                    <Button
-                                        shape="circle"
-                                        variant="text"
-                                        onClick={() => setEditorState(prev => ({ ...prev, headerVisible: true }))}
-                                    >
-                                        <Edit1Icon />
-                                    </Button>
-                                )}
-                                {renderRspHeaderDialog()}
-                            </div>
-                        </FormItem>
-                        <FormItem label={"响应体"}>
-                            {editorState.editable ? (
-                                <div>
-                                    <Textarea
-                                        style={{ width: '200%' }}
-                                        value={breakerRule?.fallbackConfig?.response?.body || ''}
-                                        onChange={(value) => {
-                                            const newRules = { ...breakerRule };
-                                            newRules.fallbackConfig.response.body = value as string;
-                                            setBreakerRule(newRules);
-                                        }} />
-                                </div>
-                            ) : (
-                                <pre className={styles.readonlyCodeBlock}>
-                                    {breakerRule?.fallbackConfig?.response?.body || '-'}
-                                </pre>
-                            )}
-                        </FormItem>
-                    </>
-                )}
-            </div>
-        </div>
     );
 
     const renderPublishForm = (
@@ -1211,8 +1176,6 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                         )}
                     </div>
                 </div>
-                {renderRecover}
-                {fallbackRecover}
                 {renderPublishForm}
                 {renderStickyTool}
             </Form>

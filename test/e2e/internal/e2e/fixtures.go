@@ -424,29 +424,32 @@ func CircuitBreakerRule(namespace, name, source, destination string) map[string]
 			},
 		},
 		"block_configs": []map[string]any{{
-			"name": "payment-error-rate",
-			"api": map[string]any{
-				"protocol": "HTTP",
-				"method":   "GET",
-				"path":     MatchString("/api/v1/payments"),
+			"block_config": map[string]any{
+				"name": "payment-error-rate",
+				"api": map[string]any{
+					"protocol": "HTTP",
+					"method":   "GET",
+					"path":     MatchString("/api/v1/payments"),
+				},
+				"error_conditions": []map[string]any{{
+					"inputType": "RET_CODE",
+					"condition": map[string]any{"type": "RANGE", "value": "500-599"},
+				}},
+				"trigger_conditions": []map[string]any{{
+					"triggerType":    "ERROR_RATE",
+					"errorPercent":   50,
+					"interval":       30,
+					"minimumRequest": 10,
+				}},
 			},
-			"error_conditions": []map[string]any{{
-				"inputType": "RET_CODE",
-				"condition": map[string]any{"type": "RANGE", "value": "500-599"},
-			}},
-			"trigger_conditions": []map[string]any{{
-				"triggerType":    "ERROR_RATE",
-				"errorPercent":   50,
-				"interval":       30,
-				"minimumRequest": 10,
-			}},
+			"max_ejection_percent": 100,
+			"recoverCondition": map[string]any{
+				"sleepWindow":        30,
+				"consecutiveSuccess": 3,
+			},
+			"faultDetectConfig": map[string]any{"enable": false},
+			"fallbackConfig":    map[string]any{"enable": true, "response": map[string]any{"code": 503, "body": "fallback"}},
 		}},
-		"recoverCondition": map[string]any{
-			"sleepWindow":        30,
-			"consecutiveSuccess": 3,
-		},
-		"faultDetectConfig": map[string]any{"enable": false},
-		"fallbackConfig":    map[string]any{"enable": true, "response": map[string]any{"code": 503, "body": "fallback"}},
 	}
 }
 

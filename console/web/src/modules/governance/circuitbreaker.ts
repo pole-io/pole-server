@@ -43,6 +43,22 @@ export const defaultBlockConfig: (idx: number) => BlockConfig = (idx: number) =>
             minimumRequest: 5
         }
     ],
+    max_ejection_percent: 100,
+    recoverCondition: {
+        sleepWindow: 60,
+        consecutiveSuccess: 0
+    },
+    faultDetectConfig: {
+        enable: false
+    },
+    fallbackConfig: {
+        enable: false,
+        response: {
+            code: 500,
+            headers: [],
+            body: ''
+        },
+    }
 });
 
 const initialState: CircuitBreakerState = {

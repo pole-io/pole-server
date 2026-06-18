@@ -965,13 +965,22 @@ func MakeSidecarLocalRateLimit(rateLimitCache cacheapi.RateLimitCache,
 // Translate the circuit breaker configuration of Polaris into OutlierDetection
 func MakeOutlierDetection(serviceInfo *ServiceInfo) *cluster.OutlierDetection {
 	circuitBreaker := serviceInfo.CircuitBreaker
-	if circuitBreaker == nil || len(circuitBreaker.GetTriggerCondition()) == 0 {
+	if circuitBreaker == nil || len(circuitBreaker.GetBlockConfigs()) == 0 {
 		return nil
 	}
 	var triggerCondition *apifault.TriggerCondition
-	for _, item := range circuitBreaker.GetTriggerCondition() {
-		if circuitBreaker.Level == apifault.Level_INSTANCE {
-			triggerCondition = item
+	var policy *apifault.CircuitBreakerPolicy
+	for _, item := range circuitBreaker.GetBlockConfigs() {
+		if circuitBreaker.GetLevel() != apifault.Level_INSTANCE {
+			continue
+		}
+		blockConfig := item.GetBlockConfig()
+		for _, condition := range blockConfig.GetTriggerConditions() {
+			triggerCondition = condition
+			policy = item
+			break
+		}
+		if triggerCondition != nil {
 			break
 		}
 	}
@@ -987,9 +996,14 @@ func MakeOutlierDetection(serviceInfo *ServiceInfo) *cluster.OutlierDetection {
 		Value: triggerCondition.GetErrorPercent()}
 	outlierDetection.FailurePercentageRequestVolume = &wrappers.UInt32Value{
 		Value: triggerCondition.GetMinimumRequest()}
-	if circuitBreaker.RecoverCondition != nil {
+	if policy.GetRecoverCondition() != nil {
 		outlierDetection.BaseEjectionTime =
-			durationpb.New(time.Duration(circuitBreaker.GetRecoverCondition().GetSleepWindow()) * time.Second)
+			durationpb.New(time.Duration(policy.GetRecoverCondition().GetSleepWindow()) * time.Second)
+	}
+	if policy.GetMaxEjectionPercent() > 0 {
+		outlierDetection.MaxEjectionPercent = &wrappers.UInt32Value{
+			Value: policy.GetMaxEjectionPercent(),
+		}
 	}
 
 	return outlierDetection
