@@ -28,6 +28,13 @@ const normalizeLabels = (value: unknown): Label[] => {
     }));
 };
 
+const labelsEqual = (left: Label[], right: Label[]) => {
+    if (left.length !== right.length) {
+        return false;
+    }
+    return left.every((item, index) => item.key === right[index]?.key && item.value === right[index]?.value);
+};
+
 const LabelInput: React.FC<ILabelInputProps> = ({
     form,
     name,
@@ -40,11 +47,12 @@ const LabelInput: React.FC<ILabelInputProps> = ({
     const watchedLabels = Form.useWatch(name, form);
     const [labels, setLabels] = React.useState<Label[]>(() => normalizeLabels(form?.getFieldValue(name)));
     const canEdit = editable !== undefined ? editable : !disabled;
+    const nameKey = JSON.stringify(name);
 
     React.useEffect(() => {
         const nextLabels = normalizeLabels(watchedLabels ?? form?.getFieldValue(name));
-        setLabels(nextLabels);
-    }, [watchedLabels, form, name]);
+        setLabels(prev => labelsEqual(prev, nextLabels) ? prev : nextLabels);
+    }, [watchedLabels, form, nameKey]);
 
     const labelsValidator: CustomValidator = () => {
         const currentLabels = normalizeLabels(form?.getFieldValue(name) ?? labels);

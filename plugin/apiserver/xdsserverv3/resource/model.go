@@ -212,7 +212,7 @@ type ServiceInfo struct {
 	SvcRateLimitRevision   string
 	CircuitBreaker         *fault_tolerance.CircuitBreakerRule
 	CircuitBreakerRevision string
-	FaultDetect            *fault_tolerance.FaultDetector
+	FaultDetect            []*fault_tolerance.FaultDetectRule
 	FaultDetectRevision    string
 }
 

@@ -116,6 +116,7 @@ func InitServer(ctx context.Context, namingOpt *Config, opts ...InitOption) (*Se
 	actualSvr.createServiceSingle = &singleflight.Group{}
 	actualSvr.subCtxs = make([]*eventhub.SubscribtionContext, 0, 4)
 	actualSvr.emptyPushProtectSvs = container.NewSyncMap[string, time.Time]()
+	actualSvr.discoverResponseCache = newDiscoverResponseCache(defaultDiscoverResponseCacheSize)
 
 	for i := range opts {
 		opts[i](actualSvr)

@@ -1,10 +1,15 @@
 .editorBody {
-    padding: 16px 20px 20px;
+    height: calc(100vh - 96px);
+    min-height: 640px;
+    overflow: hidden;
+    padding: 0;
+    background: #f5f7fb;
 
     :global(.t-form) {
         display: flex;
+        height: 100%;
+        min-height: 0;
         flex-direction: column;
-        gap: 14px;
     }
 
     :global(.t-form__item) {
@@ -34,6 +39,592 @@
         color: #6b7280;
         font-weight: 500;
     }
+}
+
+.routeEditorShell {
+    display: grid;
+    grid-template-columns: minmax(760px, 1fr) clamp(360px, 28vw, 420px);
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    align-items: stretch;
+}
+
+.formPane {
+    display: flex;
+    overflow: auto;
+    min-width: 0;
+    min-height: 0;
+    flex-direction: column;
+    gap: 18px;
+    padding: 24px 28px 20px;
+}
+
+.designSection {
+    min-width: 0;
+    border: 1px solid #e5e8ef;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.designSectionHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 66px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #edf0f5;
+}
+
+.designSectionTitleWrap {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    min-width: 0;
+    gap: 10px;
+}
+
+.designSectionNumber {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: #e8f2ff;
+    color: #1677ff;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.designSectionTitle {
+    color: #111827;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 22px;
+    white-space: nowrap;
+}
+
+.designSectionDesc {
+    color: #8b95a5;
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.designSectionExtra {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.baseGrid {
+    padding: 16px;
+}
+
+.fieldBlock {
+    min-width: 0;
+}
+
+.fieldBlockWide {
+    min-width: 0;
+}
+
+.fieldLabel {
+    margin-bottom: 6px;
+    color: #6b7280;
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.fieldValue {
+    min-height: 32px;
+    color: #111827;
+    font-size: 14px;
+    line-height: 22px;
+    word-break: break-word;
+}
+
+.fieldHint {
+    margin-top: 6px;
+    color: #9aa3b2;
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.priorityInput {
+    width: 100%;
+}
+
+.statusField {
+    min-width: 92px;
+}
+
+.statusSwitchWrap {
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+}
+
+.serviceScopeHeader {
+    box-sizing: border-box;
+    min-height: 64px;
+    align-items: center;
+    cursor: pointer;
+}
+
+.serviceScopeCollapsedHeader {
+    min-height: 62px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.serviceScopeTitleWrap {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 12px;
+}
+
+.serviceScopeTitleLine {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 14px;
+}
+
+.serviceScopeHint {
+    display: inline-block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    color: #8b95a5;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 22px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.serviceScopeSummary {
+    color: #1f2937;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.caretButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid #e5e8ef;
+    border-radius: 6px;
+    background: #fff;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.caretButton svg {
+    transition: transform 0.18s ease;
+}
+
+.caretButtonOpen svg {
+    transform: rotate(90deg);
+}
+
+.serviceFlowGrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
+    gap: 12px;
+    padding: 16px;
+    align-items: stretch;
+}
+
+.serviceCard {
+    min-width: 0;
+    border: 1px solid #e7ebf2;
+    border-radius: 8px;
+    background: #fbfcff;
+    padding: 14px;
+}
+
+.serviceCaller {
+    border-left: 3px solid #1677ff;
+}
+
+.serviceCallee {
+    border-left: 3px solid #13c2c2;
+}
+
+.serviceCardHead {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 12px;
+}
+
+.serviceDot {
+    width: 10px;
+    height: 10px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: #1677ff;
+}
+
+.serviceCallee .serviceDot {
+    background: #13c2c2;
+}
+
+.serviceTitle {
+    color: #111827;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 22px;
+}
+
+.serviceSubtitle {
+    color: #8b95a5;
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.serviceFields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+}
+
+.serviceReadonly {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    color: #111827;
+    font-size: 14px;
+    line-height: 22px;
+}
+
+.ellipsisText {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.flowConnector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9aa3b2;
+}
+
+.conditionPanel,
+.groupPanel {
+    min-width: 0;
+}
+
+.conditionPanelHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.subPanelTitle {
+    color: #111827;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 22px;
+}
+
+.subPanelHint {
+    color: #8b95a5;
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.segmented {
+    display: inline-flex;
+    padding: 2px;
+    border: 1px solid #d7dde8;
+    border-radius: 7px;
+    background: #f7f9fc;
+}
+
+.segmentButton {
+    height: 26px;
+    min-width: 44px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: #4b5563;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.segmentButtonActive {
+    background: #1677ff;
+    color: #fff;
+}
+
+.segmentButton:disabled {
+    cursor: default;
+}
+
+.matchGrid,
+.groupGrid {
+    display: grid;
+    overflow: hidden;
+    border: 1px solid #e5e8ef;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.matchGrid {
+    grid-template-columns: minmax(120px, 0.9fr) minmax(140px, 1fr) minmax(130px, 0.9fr) minmax(160px, 1.2fr) 56px;
+}
+
+.groupGrid {
+    grid-template-columns: minmax(150px, 0.95fr) 76px 168px minmax(260px, 1.8fr) 56px;
+}
+
+.matchHeader,
+.groupHeader {
+    padding: 9px 10px;
+    border-bottom: 1px solid #e9edf4;
+    background: #f8fafc;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 18px;
+}
+
+.matchCell,
+.groupCell {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px 10px;
+    border-bottom: 1px solid #f0f2f6;
+    color: #111827;
+    font-size: 13px;
+    line-height: 20px;
+}
+
+.matchCell:not(:nth-last-child(-n+5)),
+.groupCell:not(:nth-last-child(-n+5)) {
+    border-bottom: 1px solid #f0f2f6;
+}
+
+.matchCell :global(.t-input__wrap),
+.matchCell :global(.t-select__wrap),
+.matchCell :global(.t-tag-input),
+.groupCell :global(.t-input__wrap),
+.groupCell :global(.t-select__wrap),
+.groupCell :global(.t-input-number) {
+    width: 100%;
+}
+
+.actionCell {
+    justify-content: center;
+}
+
+.groupCell {
+    gap: 8px;
+}
+
+.groupSwatch {
+    width: 8px;
+    height: 28px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: #13c2c2;
+}
+
+.generatedGroupName {
+    overflow: hidden;
+    color: #111827;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.groupLabelDisplay {
+    min-width: 0;
+}
+
+.groupLabelDisplay :global(.t-icon) {
+    flex: 0 0 auto;
+}
+
+.weightMeterWrap {
+    display: flex;
+    align-items: center;
+    min-width: 220px;
+    gap: 10px;
+}
+
+.weightMeter {
+    display: flex;
+    width: 140px;
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #edf1f7;
+}
+
+.weightSegment {
+    height: 100%;
+    background: linear-gradient(90deg, #1677ff, #13c2c2);
+}
+
+.weightOk,
+.weightError {
+    font-size: 12px;
+    line-height: 18px;
+    white-space: nowrap;
+}
+
+.weightOk {
+    color: #0f8f68;
+}
+
+.weightError {
+    color: #d54941;
+}
+
+.countTag {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: #e8f2ff;
+    color: #1677ff;
+    font-size: 12px;
+}
+
+.specPane {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    border-left: 1px solid #d7dde8;
+}
+
+.specCard {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    width: 100%;
+    min-height: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    background: #0b1119;
+}
+
+.specToolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 22px;
+    border-bottom: 1px solid #243044;
+    background: #101823;
+}
+
+.specTitle {
+    color: #b8c3d4;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    line-height: 22px;
+    text-transform: uppercase;
+}
+
+.specDesc {
+    color: #7f8ca3;
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.specActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.specToggle {
+    display: inline-flex;
+    padding: 2px;
+    border: 1px solid #334155;
+    border-radius: 7px;
+    background: #0b1119;
+}
+
+.specToggle button {
+    height: 24px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: #8b95a5;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.specToggleActive {
+    background: #1677ff !important;
+    color: #fff !important;
+}
+
+.specCode {
+    min-height: 0;
+    margin: 0;
+    overflow: auto;
+    padding: 18px 28px 28px;
+    background: #0b1119;
+    color: #9dccff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 13px;
+    line-height: 22px;
+    white-space: pre;
+}
+
+.specFooter {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 42px;
+    padding: 12px 22px;
+    border-top: 1px solid #243044;
+    background: #101823;
+}
+
+.previewOk,
+.previewError {
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.previewOk {
+    color: #73d13d;
+}
+
+.previewError {
+    color: #ff7875;
 }
 
 .route-editor-header {
@@ -413,6 +1004,106 @@
 }
 
 @media (max-width: 960px) {
+    .routeEditorShell {
+        grid-template-columns: 1fr;
+    }
+
+    .baseGrid :global(.t-col) {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+
+    .fieldBlockWide {
+        min-width: 0;
+    }
+
+    .serviceFlowGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .flowConnector {
+        transform: rotate(90deg);
+        min-height: 28px;
+    }
+
+    .serviceFields {
+        grid-template-columns: 1fr;
+    }
+
+    .conditionPanelHead {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .matchGrid,
+    .groupGrid {
+        display: block;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+    }
+
+    .matchHeader,
+    .groupHeader {
+        display: none;
+    }
+
+    .matchCell,
+    .groupCell {
+        min-height: 42px;
+        padding: 8px 0;
+        border-bottom: 0;
+    }
+
+    .matchCell:nth-child(5n+1)::before {
+        content: "参数类型";
+    }
+
+    .matchCell:nth-child(5n+2)::before {
+        content: "参数键";
+    }
+
+    .matchCell:nth-child(5n+3)::before {
+        content: "匹配类型";
+    }
+
+    .matchCell:nth-child(5n+4)::before {
+        content: "匹配值";
+    }
+
+    .groupCell:nth-child(5n+1)::before {
+        content: "分组名称";
+    }
+
+    .groupCell:nth-child(5n+2)::before {
+        content: "隔离";
+    }
+
+    .groupCell:nth-child(5n+3)::before {
+        content: "权重";
+    }
+
+    .groupCell:nth-child(5n+4)::before {
+        content: "标签";
+    }
+
+    .matchCell::before,
+    .groupCell::before {
+        width: 72px;
+        flex: 0 0 auto;
+        color: #6b7280;
+        font-size: 12px;
+        line-height: 18px;
+    }
+
+    .actionCell {
+        justify-content: flex-start;
+    }
+
+    .specCard {
+        position: static;
+    }
+
     .metaGrid,
     .editMetaGrid,
     .metaDefinitionGrid {

@@ -2,11 +2,15 @@ package rules
 
 import (
 	"encoding/json"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
@@ -259,8 +263,10 @@ func (c *FaultDetectRule) ToSpec() (*apifault.FaultDetectRule, error) {
 	}
 	specData := &apifault.FaultDetectRule{}
 	if len(c.Rule) > 0 {
-		if err := json.Unmarshal([]byte(c.Rule), specData); err != nil {
-			return nil, err
+		if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal([]byte(c.Rule), specData); err != nil {
+			if err = json.Unmarshal([]byte(c.Rule), specData); err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		// brief search, to display the services in list result
@@ -270,6 +276,7 @@ func (c *FaultDetectRule) ToSpec() (*apifault.FaultDetectRule, error) {
 			Method:    &apimodel.MatchString{Value: c.DstMethod},
 		}
 	}
+	normalizeFaultDetectRuleShape(specData, c.Rule)
 	specData.Id = c.ID
 	specData.Name = c.Name
 	specData.Description = c.Description
@@ -279,4 +286,111 @@ func (c *FaultDetectRule) ToSpec() (*apifault.FaultDetectRule, error) {
 	specData.Editable = true
 	specData.Deleteable = true
 	return specData, nil
+}
+
+func normalizeFaultDetectRuleShape(specData *apifault.FaultDetectRule, rawRule string) {
+	if specData == nil || rawRule == "" {
+		return
+	}
+	var legacy map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(rawRule), &legacy); err != nil {
+		return
+	}
+	if specData.GetTargetService() == nil {
+		targetService := &apifault.FaultDetectRule_DestinationService{}
+		if unmarshalFaultDetectProtoField(legacy["target_service"], targetService) {
+			specData.TargetService = targetService
+		}
+	}
+	if specData.GetTargetService() == nil {
+		specData.TargetService = legacyFaultDetectTargetFromFirstSubRule(legacy["rules"])
+	}
+	if len(specData.GetRules()) > 0 {
+		return
+	}
+	httpConfig := &apifault.HttpProtocolConfig{}
+	if !unmarshalFaultDetectProtoField(legacy["http_config"], httpConfig) {
+		httpConfig = nil
+	}
+	tcpConfig := &apifault.TcpProtocolConfig{}
+	if !unmarshalFaultDetectProtoField(legacy["tcp_config"], tcpConfig) {
+		tcpConfig = nil
+	}
+	udpConfig := &apifault.UdpProtocolConfig{}
+	if !unmarshalFaultDetectProtoField(legacy["udp_config"], udpConfig) {
+		udpConfig = nil
+	}
+	specData.Rules = []*apifault.FaultDetectSubRule{{
+		Interval:   parseFaultDetectUint32(legacy["interval"]),
+		Timeout:    parseFaultDetectUint32(legacy["timeout"]),
+		Port:       parseFaultDetectUint32(legacy["port"]),
+		Protocol:   parseFaultDetectProtocol(legacy["protocol"]),
+		HttpConfig: httpConfig,
+		TcpConfig:  tcpConfig,
+		UdpConfig:  udpConfig,
+	}}
+}
+
+func legacyFaultDetectTargetFromFirstSubRule(raw json.RawMessage) *apifault.FaultDetectRule_DestinationService {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil
+	}
+	var rules []map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &rules); err != nil || len(rules) == 0 {
+		return nil
+	}
+	targetService := &apifault.FaultDetectRule_DestinationService{}
+	if !unmarshalFaultDetectProtoField(rules[0]["target_service"], targetService) {
+		return nil
+	}
+	return targetService
+}
+
+func unmarshalFaultDetectProtoField(raw json.RawMessage, msg proto.Message) bool {
+	if len(raw) == 0 || string(raw) == "null" {
+		return false
+	}
+	if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(raw, msg); err == nil {
+		return true
+	}
+	return json.Unmarshal(raw, msg) == nil
+}
+
+func parseFaultDetectUint32(raw json.RawMessage) uint32 {
+	if len(raw) == 0 || string(raw) == "null" {
+		return 0
+	}
+	var val uint32
+	if err := json.Unmarshal(raw, &val); err == nil {
+		return val
+	}
+	var text string
+	if err := json.Unmarshal(raw, &text); err == nil {
+		if parsed, err := strconv.ParseUint(strings.TrimSpace(text), 10, 32); err == nil {
+			return uint32(parsed)
+		}
+	}
+	return 0
+}
+
+func parseFaultDetectProtocol(raw json.RawMessage) apifault.FaultDetectRule_Protocol {
+	if len(raw) == 0 || string(raw) == "null" {
+		return apifault.FaultDetectRule_UNKNOWN
+	}
+	var name string
+	if err := json.Unmarshal(raw, &name); err == nil {
+		name = strings.TrimSpace(name)
+		if val, ok := apifault.FaultDetectRule_Protocol_value[name]; ok {
+			return apifault.FaultDetectRule_Protocol(val)
+		}
+		if val, err := strconv.ParseInt(name, 10, 32); err == nil {
+			return apifault.FaultDetectRule_Protocol(val)
+		}
+		return apifault.FaultDetectRule_UNKNOWN
+	}
+	var val int32
+	if err := json.Unmarshal(raw, &val); err == nil {
+		return apifault.FaultDetectRule_Protocol(val)
+	}
+	return apifault.FaultDetectRule_UNKNOWN
 }

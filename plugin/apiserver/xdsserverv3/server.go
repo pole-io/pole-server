@@ -451,9 +451,9 @@ func (x *XDSServer) getRegistryInfoWithCache(ctx context.Context,
 					svc.Name, faultDetectResp.Info)
 				return fmt.Errorf("error sync faultDetect for %s", svc.Name)
 			}
-			if faultDetectResp.FaultDetector != nil {
-				svc.FaultDetectRevision = faultDetectResp.FaultDetector.Revision
-				svc.FaultDetect = faultDetectResp.FaultDetector
+			if len(faultDetectResp.FaultDetectRules) > 0 {
+				svc.FaultDetectRevision = faultDetectResp.GetService().GetRevision()
+				svc.FaultDetect = faultDetectResp.FaultDetectRules
 			}
 		}
 	}

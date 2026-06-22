@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Popconfirm, Empty } from 'tdesign-react';
-import { DeleteIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
+import { AddIcon, DeleteIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
 import { useNavigate } from 'react-router-dom';
 
 import { Op } from 'services/types';
@@ -13,7 +13,7 @@ import AuthorizeInput from 'components/Authorize';
 import { PolicySourceType } from 'services/auth_policy';
 import { BreakLevelMap, BreakLevelType, CircuitBreakerRule } from 'services/circuitbreaker';
 import CircuitBreakerEditor from './CircuitBreakerEditor';
-import { cleanCircuitBreakerPage, editorCircuitBreaker, listCircuitBreakers, listCircuitBreakerVersions, removeCircuitBreakerRelease, removeCircuitBreakers, rollbackCircuitBreakerRelease, selectCircuitBreaker } from 'modules/governance/circuitbreaker';
+import { cleanCircuitBreakerPage, editorCircuitBreaker, listCircuitBreakers, listCircuitBreakerVersions, removeCircuitBreakerRelease, removeCircuitBreakers, resetCircuitBreaker, rollbackCircuitBreakerRelease, selectCircuitBreaker } from 'modules/governance/circuitbreaker';
 import SubscribeTable from 'components/SubscribeTable';
 import RuleTabs from '../RuleRelease/RuleTabs';
 import RuleDetailDrawer from '../RuleRelease/RuleDetailDrawer';
@@ -114,6 +114,7 @@ const CircuitBreakerTable: React.FC<ICircuitBreakerTableProps> = ({ }) => {
                 break;
             case 'create':
                 setEditorState(pre => ({ ...pre, visible: true, mode: op }));
+                dispatch(resetCircuitBreaker());
                 return;
             case 'delete':
                 dispatch(removeCircuitBreakers({ ids: [row.id] }))
@@ -205,9 +206,9 @@ const CircuitBreakerTable: React.FC<ICircuitBreakerTableProps> = ({ }) => {
                 <Col>
                     <Row gutter={8} align='middle'>
                         <Col>
-                            <Button onClick={(v) => {
+                            <Button icon={<AddIcon />} onClick={(v) => {
                                 handleOpRule({}, 'create')
-                            }}>新建</Button>
+                            }}>新建熔断规则</Button>
                         </Col>
                     </Row>
                 </Col>
@@ -270,6 +271,7 @@ const CircuitBreakerTable: React.FC<ICircuitBreakerTableProps> = ({ }) => {
                 visible={editorState.visible}
                 title={editorState.mode === 'create' ? '新建熔断规则' : editorState.data?.name || '熔断规则详情'}
                 subtitle="故障熔断"
+                size="min(1560px, calc(100vw - 40px))"
                 onClose={() => setEditorState(pre => ({ ...pre, visible: false }))}
             >
                 <RuleTabs

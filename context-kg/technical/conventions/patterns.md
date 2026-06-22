@@ -1,14 +1,14 @@
 ---
 title: 关键模式与约定
 tags: [patterns, conventions]
-links: [architecture, storage, cache-layer, auth-system]
-updated: 2026-05-14
+links: [architecture, storage, cache-layer, auth-system, governance-rules]
+updated: 2026-06-21
 sources: 1
 ---
 
 # 关键模式与约定
 
-本文记录代码库中反复出现的 11 种关键模式。理解这些模式有助于快速读懂任意业务模块。整体架构见 [[architecture]]，存储层的具体用法见 [[storage]]，缓存层用法见 [[cache-layer]]，认证拦截器见 [[auth-system]]。
+本文记录代码库中反复出现的关键模式。理解这些模式有助于快速读懂任意业务模块。整体架构见 [[architecture]]，存储层的具体用法见 [[storage]]，缓存层用法见 [[cache-layer]]，认证拦截器见 [[auth-system]]，治理规则产品语义见 [[governance-rules]]。
 
 ## 1. 插件注册模式
 
@@ -220,9 +220,21 @@ log.Infof("[Config] publish config file: namespace=%s group=%s name=%s", ns, gro
 
 便于通过组件名称快速过滤日志。
 
+## 12. 治理规则编辑抽屉双栏交互约定
+
+路由、限流、熔断、探测等治理规则编辑抽屉共享同一类交互骨架：左侧规则编辑表单，右侧实时 Spec 预览。新增或重构治理规则编辑器时必须遵守以下约定：
+
+- 编辑器正文容器负责固定抽屉 Tab 内容区高度，不让整个页面随规则内容滚动。
+- 双栏 shell 使用 `height: 100%` 和 `overflow: hidden`，右侧 Spec 使用 `height: 100%` 跟随 shell，不单独写 `calc(100vh - N)`。
+- 左侧表单 pane 是唯一的规则编辑滚动容器，使用 `overflow: auto`。
+- 左侧 pane 若使用 `display: flex; flex-direction: column`，直接子 section 必须 `flex: 0 0 auto`，避免 section shrink 后被共享卡片的 `overflow: hidden` 裁切，导致外层没有真实滚动空间。
+- 操作按钮、StickyTool、发布弹窗等不能作为 shell 的后续 flex 子项参与正文高度分配；需要放到正文布局流之外，避免挤压左右双栏。
+- 验证不能只检查 CSS 中存在 `overflow: auto`；必须在真实 8080 页面确认 `scrollHeight > clientHeight`，并通过 wheel 或设置 `scrollTop` 证明左侧 pane 可以内部滚动，同时 `window.scrollY` 不应变化。
+
 ## 相关页面
 
 - [[architecture]]
 - [[storage]]
 - [[cache-layer]]
 - [[auth-system]]
+- [[governance-rules]]

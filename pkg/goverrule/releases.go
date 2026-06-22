@@ -323,8 +323,7 @@ func (s *Server) PublishCircuitBreakerRules(ctx context.Context, requests []*api
 		},
 		s.storage.PublishCircuitBreakerRule,
 		func(req *apimodel.RuleRelease, rule any) *rules.CircuitBreakerRelease {
-			curData := &rules.RuleRelease{}
-			curData.FromSpec(req)
+			curData := newRuleReleaseFromSpec(req)
 			var cbRule *rules.CircuitBreakerRule
 			if rule != nil {
 				cbRule = rule.(*rules.CircuitBreakerRule)
@@ -348,8 +347,7 @@ func (s *Server) PublishFaultDetectRules(ctx context.Context, requests []*apimod
 		},
 		s.storage.PublishFaultDetectRule,
 		func(req *apimodel.RuleRelease, rule any) *rules.FaultDetectRelease {
-			curData := &rules.RuleRelease{}
-			curData.FromSpec(req)
+			curData := newRuleReleaseFromSpec(req)
 			var fdRule *rules.FaultDetectRule
 			if rule != nil {
 				fdRule = rule.(*rules.FaultDetectRule)
@@ -373,9 +371,7 @@ func (s *Server) PublishLaneGroups(ctx context.Context, requests []*apimodel.Rul
 		},
 		s.storage.PublishLaneGroup,
 		func(req *apimodel.RuleRelease, rule any) *rules.LaneGroupRelease {
-			curData := &rules.RuleRelease{}
-			curData.FromSpec(req)
-			curData.Id = utils.NewUUID()
+			curData := newRuleReleaseFromSpec(req)
 			var protoVal *rules.LaneGroupProto
 			if rule != nil {
 				laneRule := rule.(*rules.LaneGroup)
@@ -399,8 +395,7 @@ func (s *Server) PublishRateLimits(ctx context.Context, requests []*apimodel.Rul
 		},
 		s.storage.PublishRateLimitRule,
 		func(req *apimodel.RuleRelease, rule any) *rules.RateLimitRelease {
-			curData := &rules.RuleRelease{}
-			curData.FromSpec(req)
+			curData := newRuleReleaseFromSpec(req)
 			var rlRule *rules.RateLimit
 			if rule != nil {
 				rlRule = rule.(*rules.RateLimit)
@@ -423,9 +418,7 @@ func (s *Server) PublishLosslessRules(ctx context.Context, requests []*apimodel.
 		},
 		s.storage.PublishLosslessRules,
 		func(req *apimodel.RuleRelease, rule any) *rules.LosslessRuleRelease {
-			curData := &rules.RuleRelease{}
-			curData.FromSpec(req)
-			curData.Id = utils.NewUUID()
+			curData := newRuleReleaseFromSpec(req)
 			var llRule *rules.LosslessRule
 			if rule != nil {
 				llRule = rule.(*rules.LosslessRule)
@@ -479,9 +472,7 @@ func (s *Server) publishTrafficGovernanceRules(
 		},
 		publish,
 		func(req *apimodel.RuleRelease, rule any) *rules.TrafficGovernanceRuleRelease {
-			curData := &rules.RuleRelease{}
-			curData.FromSpec(req)
-			curData.Id = utils.NewUUID()
+			curData := newRuleReleaseFromSpec(req)
 			var trafficRule *rules.TrafficGovernanceRule
 			if rule != nil {
 				trafficRule = rule.(*rules.TrafficGovernanceRule)
@@ -503,24 +494,34 @@ func (s *Server) PublishRouterRules(ctx context.Context, requests []*apimodel.Ru
 			return s.storage.GetActiveRouterRule(tx, rel.(*rules.RouterRuleRelease))
 		},
 		s.storage.PublishRouterRule,
-		func(req *apimodel.RuleRelease, rule any) *rules.RouterRuleRelease {
-			curData := &rules.RuleRelease{}
-			curData.FromSpec(req)
-			curData.Id = utils.NewUUID()
-			var routerRule *rules.RouterConfig
-			if rule != nil {
-				routerRule = rule.(*rules.RouterConfig)
-				curData.RuleId = routerRule.ID
-				curData.RuleName = routerRule.Name
-			}
-			pdata, _ := routerRule.ToExpendRoutingConfig()
-			return &rules.RouterRuleRelease{
-				RuleRelease: *curData,
-				Rule:        pdata,
-			}
-		},
+		buildRouterRuleRelease,
 	)
 	return s.executeRuleReleasePipeline(ctx, pipeline, requests)
+}
+
+func buildRouterRuleRelease(req *apimodel.RuleRelease, rule any) *rules.RouterRuleRelease {
+	curData := newRuleReleaseFromSpec(req)
+
+	var pdata *rules.ExtendRouterConfig
+	if rule != nil {
+		routerRule := rule.(*rules.RouterConfig)
+		curData.RuleId = routerRule.ID
+		curData.RuleName = routerRule.Name
+		pdata, _ = routerRule.ToExpendRoutingConfig()
+	}
+	return &rules.RouterRuleRelease{
+		RuleRelease: *curData,
+		Rule:        pdata,
+	}
+}
+
+func newRuleReleaseFromSpec(req *apimodel.RuleRelease) *rules.RuleRelease {
+	curData := &rules.RuleRelease{}
+	curData.FromSpec(req)
+	if curData.Id == "" {
+		curData.Id = utils.NewUUID()
+	}
+	return curData
 }
 
 // RuleRollbackPipeline 用于治理规则的回滚控制操作

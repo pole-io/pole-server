@@ -1,189 +1,317 @@
-.sectionCard {
-    border: 1px solid #e1e6ef;
-    border-radius: 8px;
-    background: #fff;
-}
+.editorBody {
+  background: #f5f7fb;
+  height: calc(100vh - 158px);
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
 
-.ruleListSection {
-    margin-bottom: 24px;
-}
-
-.ruleList {
+  :global(.t-form) {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    height: 100%;
+    min-height: 0;
+  }
+
+  :global(.t-form__item) {
+    margin-bottom: 0;
+  }
 }
 
-.ruleBlock {
-    padding: 16px 18px 18px;
+.rateLimitEditorShell {
+  align-items: stretch;
+  display: grid;
+  grid-template-columns: minmax(760px, 1fr) clamp(360px, 28vw, 420px);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.ruleBlockHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 10px;
-    color: #111827;
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 24px;
+.formPane {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  padding: 24px 28px 20px;
 }
 
-.ruleHeaderMain {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    gap: 8px;
+.formPane > section {
+  flex: 0 0 auto;
 }
 
-.ruleHeaderActions {
-    display: flex;
-    align-items: center;
-    flex: none;
-    gap: 8px;
+.fullControl {
+  width: 100%;
 }
 
-.ruleTitleGroup {
-    min-width: 0;
+.interfaceGrid,
+.conditionGrid,
+.windowGrid {
+  background: #fff;
+  border: 1px solid #e5e8ef;
+  border-radius: 8px;
+  display: grid;
+  overflow: hidden;
 }
 
-.ruleSummary {
-    margin-top: 2px;
-    color: #8b95a5;
-    font-size: 12px;
-    font-weight: 400;
-    line-height: 18px;
+.interfaceGrid {
+  grid-template-columns: 108px 108px 138px minmax(220px, 1fr) 56px;
 }
 
-.collapseButton {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: #6b7280;
-    cursor: pointer;
+.conditionGrid {
+  grid-template-columns: minmax(130px, .9fr) minmax(130px, 1fr) minmax(130px, .9fr) minmax(180px, 1.2fr) 56px;
 }
 
-.collapseButton:hover {
-    background: #eef3ff;
-    color: #366ef4;
+.windowGrid {
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) 56px;
 }
 
-.ruleBlockBody {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+.gridHeader {
+  background: #f8fafc;
+  border-bottom: 1px solid #e9edf4;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  padding: 9px 10px;
 }
 
-.ruleBlockBodyCollapsed {
-    display: none;
+.gridCell {
+  align-items: center;
+  border-bottom: 1px solid #f0f2f6;
+  color: #111827;
+  display: flex;
+  font-size: 13px;
+  line-height: 20px;
+  min-height: 44px;
+  min-width: 0;
+  padding: 8px 10px;
+
+  :global(.t-input__wrap),
+  :global(.t-select),
+  :global(.t-select__wrap),
+  :global(.t-input-number) {
+    width: 100%;
+  }
 }
 
-.ruleSection {
-    border-top: 1px solid #edf0f5;
-    padding-top: 14px;
+.actionCell {
+  justify-content: center;
 }
 
-.ruleSectionHeader {
-    margin-bottom: 10px;
+.monoInput {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
-.ruleSectionTitle {
-    color: #111827;
-    font-size: 14px;
-    font-weight: 700;
-    line-height: 22px;
+.conditionToolbar {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 10px;
 }
 
-.ruleHelp {
-    color: #8b95a5;
-    font-size: 13px;
-    font-weight: 400;
-    line-height: 20px;
-    margin-top: 4px;
+.segmented {
+  background: #f7f9fc;
+  border: 1px solid #d7dde8;
+  border-radius: 7px;
+  display: inline-flex;
+  padding: 2px;
 }
 
-.fieldRow {
-    display: grid;
-    grid-template-columns: 120px minmax(0, 1fr);
-    gap: 18px;
-    align-items: start;
-    margin-top: 12px;
+.segmentButton,
+.segmentButtonActive {
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  color: #4b5563;
+  cursor: pointer;
+  font-size: 12px;
+  height: 26px;
+  min-width: 44px;
+  padding: 0 10px;
 }
 
-.fieldLabel {
-    color: #4b5563;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 32px;
+.segmentButtonActive {
+  background: #1677ff;
+  color: #fff;
 }
 
-.fieldControl {
-    min-width: 0;
-}
-
-.compactTable {
-    min-width: 0;
-
-    :global(.t-table) {
-        width: 100%;
-    }
-
-    :global(.t-table__cell) {
-        white-space: normal;
-        word-break: break-word;
-    }
+.segmentButton:disabled {
+  cursor: default;
 }
 
 .inlineAdd {
-    margin-top: 8px;
-    padding-left: 0;
-}
-
-.inlineConfig {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 12px;
-
-    :global(.t-form__item) {
-        margin-bottom: 0;
-    }
-}
-
-.inlineHint {
-    color: #8b95a5;
-    font-size: 13px;
-    line-height: 20px;
+  margin-top: 8px;
+  padding-left: 0;
 }
 
 .resourceSwitch {
-    margin-bottom: 12px;
+  margin-bottom: 12px;
+}
+
+.singleMetricRow {
+  align-items: center;
+  background: #fbfcfe;
+  border: 1px solid #edf1f7;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 120px minmax(160px, 240px);
+  padding: 12px 14px;
+}
+
+.metricLabel {
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.inlineConfig,
+.failoverRow {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.inlineHint {
+  color: #8b95a5;
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .responseField {
-    margin-top: 14px;
+  margin-top: 14px;
 }
 
-.addRuleButton {
-    margin-top: 12px;
+.responseHeader {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
-@media (max-width: 960px) {
-    .ruleBlockHeader {
-        align-items: flex-start;
-        flex-direction: column;
-    }
+.specPane {
+  border-left: 1px solid #d7dde8;
+  display: flex;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
 
-    .fieldRow {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 6px;
-    }
+.specCard {
+  background: #0b1119;
+  border: 0;
+  border-radius: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.specToolbar {
+  align-items: flex-start;
+  background: #101823;
+  border-bottom: 1px solid #243044;
+  display: flex;
+  gap: 12px;
+  flex-direction: column;
+  padding: 14px 18px;
+}
+
+.specTitle {
+  color: #b8c3d4;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  line-height: 22px;
+}
+
+.specDesc {
+  color: #7f8ca3;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.specActions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.specToggle {
+  background: #0b1119;
+  border: 1px solid #334155;
+  border-radius: 7px;
+  display: inline-flex;
+  padding: 2px;
+}
+
+.specToggle button {
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  color: #8b95a5;
+  cursor: pointer;
+  font-size: 11px;
+  height: 24px;
+  padding: 0 8px;
+}
+
+.specToggleActive {
+  background: #1677ff !important;
+  color: #fff !important;
+}
+
+.specCode {
+  background: #0b1119;
+  color: #9dccff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 22px;
+  margin: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 22px 28px;
+  white-space: pre;
+}
+
+.specFooter {
+  background: #101823;
+  border-top: 1px solid #243044;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 42px;
+  padding: 12px 18px;
+}
+
+.previewOk,
+.previewError {
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.previewOk {
+  color: #3fd4a8;
+}
+
+.previewError {
+  color: #ff9a92;
+}
+
+@media (max-width: 1180px) {
+  .rateLimitEditorShell {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: auto;
+  }
+
+  .specPane {
+    display: none;
+  }
 }

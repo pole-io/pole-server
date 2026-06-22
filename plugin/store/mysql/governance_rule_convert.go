@@ -153,7 +153,7 @@ func governanceRuleRecordToLosslessRule(record *governanceRuleRecord) (*rules.Lo
 	}
 	rule := &rules.LosslessRule{Proto: &traffic_manage.LosslessRule{}}
 	if record.Rule != "" {
-		if err := protojson.Unmarshal([]byte(record.Rule), rule.Proto); err != nil {
+		if err := unmarshalGovernanceProtoJSON(record.Rule, rule.Proto); err != nil {
 			return nil, err
 		}
 	}
@@ -201,7 +201,7 @@ func governanceRuleReleaseRecordToLosslessRuleRelease(record *governanceRuleRele
 	}
 	rule := &rules.LosslessRule{Proto: &traffic_manage.LosslessRule{}}
 	if record.Rule != "" {
-		if err := protojson.Unmarshal([]byte(record.Rule), rule.Proto); err != nil {
+		if err := unmarshalGovernanceProtoJSON(record.Rule, rule.Proto); err != nil {
 			return nil, err
 		}
 	}
@@ -265,7 +265,7 @@ func governanceRuleRecordToTrafficSecurityRule(record *governanceRuleRecord) (*r
 	}
 	spec := &apisecurity.TrafficSecurityRule{}
 	if record.Rule != "" {
-		if err := protojson.Unmarshal([]byte(record.Rule), spec); err != nil {
+		if err := unmarshalGovernanceProtoJSON(record.Rule, spec); err != nil {
 			return nil, err
 		}
 	}
@@ -280,7 +280,7 @@ func governanceRuleRecordToTrafficMirrorRule(record *governanceRuleRecord) (*rul
 	}
 	spec := &traffic_manage.TrafficMirror{}
 	if record.Rule != "" {
-		if err := protojson.Unmarshal([]byte(record.Rule), spec); err != nil {
+		if err := unmarshalGovernanceProtoJSON(record.Rule, spec); err != nil {
 			return nil, err
 		}
 	}
@@ -295,7 +295,7 @@ func governanceRuleRecordToTrafficMockRule(record *governanceRuleRecord) (*rules
 	}
 	spec := &traffic_manage.TrafficMock{}
 	if record.Rule != "" {
-		if err := protojson.Unmarshal([]byte(record.Rule), spec); err != nil {
+		if err := unmarshalGovernanceProtoJSON(record.Rule, spec); err != nil {
 			return nil, err
 		}
 	}
@@ -714,6 +714,10 @@ func marshalLosslessRule(rule *rules.LosslessRule) string {
 		return "{}"
 	}
 	return string(data)
+}
+
+func unmarshalGovernanceProtoJSON(data string, msg proto.Message) error {
+	return protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal([]byte(data), msg)
 }
 
 func marshalTrafficGovernanceRule(rule *rules.TrafficGovernanceRule) string {

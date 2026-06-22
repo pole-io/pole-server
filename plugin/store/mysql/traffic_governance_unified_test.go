@@ -21,11 +21,12 @@ func TestTrafficGovernanceRuleRecordRoundTrip(t *testing.T) {
 		{
 			name: "security",
 			rule: rules.NewTrafficSecurityRule(&apisecurity.TrafficSecurityRule{
-				Id:       "security-1",
-				Name:     "security-rule",
-				Enable:   true,
-				Priority: 10,
-				Metadata: map[string]string{"owner": "qa"},
+				Id:            "security-1",
+				Name:          "security-rule",
+				TargetService: &apitraffic.DestinationService{Namespace: "default", Service: "svc-a"},
+				Enable:        true,
+				Priority:      10,
+				Metadata:      map[string]string{"owner": "qa"},
 			}),
 			ruleType:   governanceRuleTypeTrafficSecurity,
 			toRecord:   trafficSecurityRuleToGovernanceRuleRecord,
@@ -36,11 +37,16 @@ func TestTrafficGovernanceRuleRecordRoundTrip(t *testing.T) {
 			rule: rules.NewTrafficMirrorRule(&apitraffic.TrafficMirror{
 				Id:       "mirror-1",
 				Name:     "mirror-rule",
+				Caller:   &apitraffic.SourceService{Namespace: "*", Service: "*"},
+				Callee:   &apitraffic.DestinationService{Namespace: "default", Service: "svc-a"},
 				Enable:   true,
 				Priority: 20,
 				Metadata: map[string]string{"owner": "qa"},
 				Rules: []*apitraffic.MirrorRule{{
-					Source: &apitraffic.MirrorSource{Namespace: "default", Service: "svc-a"},
+					TrafficMatchRule: &apitraffic.TrafficMatchRule{Arguments: []*apitraffic.SourceMatch{{
+						Type: apitraffic.SourceMatch_CALLER_SERVICE,
+						Key:  "default",
+					}}},
 				}},
 			}),
 			ruleType:   governanceRuleTypeTrafficMirror,
@@ -52,11 +58,16 @@ func TestTrafficGovernanceRuleRecordRoundTrip(t *testing.T) {
 			rule: rules.NewTrafficMockRule(&apitraffic.TrafficMock{
 				Id:       "mock-1",
 				Name:     "mock-rule",
+				Caller:   &apitraffic.SourceService{Namespace: "*", Service: "*"},
+				Callee:   &apitraffic.DestinationService{Namespace: "default", Service: "svc-a"},
 				Enable:   true,
 				Priority: 30,
 				Metadata: map[string]string{"owner": "qa"},
 				Rules: []*apitraffic.MockRule{{
-					Source: &apitraffic.MockSource{Namespace: "default", Service: "svc-a"},
+					TrafficMatchRule: &apitraffic.TrafficMatchRule{Arguments: []*apitraffic.SourceMatch{{
+						Type: apitraffic.SourceMatch_CALLER_SERVICE,
+						Key:  "default",
+					}}},
 				}},
 			}),
 			ruleType:   governanceRuleTypeTrafficMock,
@@ -95,16 +106,15 @@ func TestTrafficGovernanceRuleRecordRoundTrip(t *testing.T) {
 
 func TestTrafficGovernanceReleaseRecordKeepsRuleSnapshotFields(t *testing.T) {
 	rule := rules.NewTrafficSecurityRule(&apisecurity.TrafficSecurityRule{
-		Id:          "security-1",
-		Name:        "security-rule",
-		Description: "rule description",
-		Enable:      true,
-		Priority:    10,
-		Revision:    "rev-1",
-		Metadata:    map[string]string{"owner": "qa"},
+		Id:            "security-1",
+		Name:          "security-rule",
+		Description:   "rule description",
+		TargetService: &apitraffic.DestinationService{Namespace: "default", Service: "svc-a"},
+		Enable:        true,
+		Priority:      10,
+		Revision:      "rev-1",
+		Metadata:      map[string]string{"owner": "qa"},
 	})
-	rule.Namespace = "default"
-	rule.Service = "svc-a"
 	rule.Valid = true
 	release := &rules.TrafficGovernanceRuleRelease{
 		RuleRelease: rules.RuleRelease{
@@ -137,4 +147,37 @@ func TestTrafficGovernanceReleaseRecordKeepsRuleSnapshotFields(t *testing.T) {
 	require.True(t, got.Rule.Enable)
 	require.Equal(t, rule.Revision, got.Rule.Revision)
 	require.Equal(t, rule.Metadata, got.Rule.Metadata)
+}
+
+func TestTrafficMirrorRecordIgnoresLegacySourceField(t *testing.T) {
+	record := &governanceRuleRecord{
+		ID:        "mirror-legacy",
+		RuleType:  governanceRuleTypeTrafficMirror,
+		Namespace: "default",
+		Name:      "mirror-rule",
+		Service:   "checkout",
+		Priority:  10,
+		Enable:    1,
+		Revision:  "rev-1",
+		Valid:     true,
+		Rule: `{
+			"id": "mirror-legacy",
+			"name": "mirror-rule",
+			"target_service": {"namespace": "default", "service": "checkout"},
+			"enable": true,
+			"priority": 10,
+			"rules": [{
+				"source": {"namespace": "default", "service": "caller"},
+				"mirror_percent": 50
+			}]
+		}`,
+	}
+
+	got, err := governanceRuleRecordToTrafficMirrorRule(record)
+
+	require.NoError(t, err)
+	require.Equal(t, "mirror-legacy", got.ID)
+	require.Equal(t, "default", got.Namespace)
+	require.Equal(t, "checkout", got.Service)
+	require.NotNil(t, got.Proto)
 }

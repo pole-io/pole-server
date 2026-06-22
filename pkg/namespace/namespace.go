@@ -138,12 +138,11 @@ func (s *Server) CreateNamespace(ctx context.Context, req *apimodel.Namespace) *
 func (s *Server) createNamespaceModel(req *apimodel.Namespace) *types.Namespace {
 	// 注释：模型创建改动 - 所有字段访问从wrapper类型改为基础类型，业务逻辑保持不变
 	namespace := &types.Namespace{
-		Name:            req.GetName(),
-		Comment:         req.GetComment(),
-		Owner:           req.GetOwners(),
-		Token:           utils.NewUUID(),
-		ServiceExportTo: types.ExportToMap(req.GetServiceExportTo()),
-		Metadata:        req.GetMetadata(),
+		Name:     req.GetName(),
+		Comment:  req.GetComment(),
+		Owner:    req.GetOwners(),
+		Token:    utils.NewUUID(),
+		Metadata: req.GetMetadata(),
 	}
 	return namespace
 }
@@ -272,14 +271,8 @@ func (s *Server) updateNamespaceAttribute(req *apimodel.Namespace, namespace *ty
 	namespace.Comment = req.GetComment()
 	namespace.Owner = req.GetOwners()
 
-	exportTo := map[string]struct{}{}
-	for i := range req.GetServiceExportTo() {
-		// 注释：导出设置改动 - GetServiceExportTo()直接返回string数组，无需.GetValue()调用
-		exportTo[req.GetServiceExportTo()[i]] = struct{}{}
-	}
-
 	namespace.Metadata = req.GetMetadata()
-	namespace.ServiceExportTo = exportTo
+	namespace.ServiceExportTo = nil
 }
 
 // GetNamespaces 查询命名空间
@@ -315,7 +308,6 @@ func (s *Server) GetNamespaces(ctx context.Context, query map[string][]string) *
 			TotalServiceCount:        uint32(nsCntInfo.ServiceCount),
 			TotalInstanceCount:       uint32(nsCntInfo.InstanceCnt.TotalInstanceCount),
 			TotalHealthInstanceCount: uint32(nsCntInfo.InstanceCnt.HealthyInstanceCount),
-			ServiceExportTo:          namespace.ListServiceExportTo(),
 			Editable:                 true,
 			Deleteable:               true,
 			Metadata:                 namespace.Metadata,

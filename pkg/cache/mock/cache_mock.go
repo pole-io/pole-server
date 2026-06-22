@@ -556,20 +556,6 @@ func (mr *MockNamespaceCacheMockRecorder) GetNamespacesByName(names interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNamespacesByName", reflect.TypeOf((*MockNamespaceCache)(nil).GetNamespacesByName), names)
 }
 
-// GetVisibleNamespaces mocks base method.
-func (m *MockNamespaceCache) GetVisibleNamespaces(namespace string) []*types.Namespace {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetVisibleNamespaces", namespace)
-	ret0, _ := ret[0].([]*types.Namespace)
-	return ret0
-}
-
-// GetVisibleNamespaces indicates an expected call of GetVisibleNamespaces.
-func (mr *MockNamespaceCacheMockRecorder) GetVisibleNamespaces(namespace interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVisibleNamespaces", reflect.TypeOf((*MockNamespaceCache)(nil).GetVisibleNamespaces), namespace)
-}
-
 // Initialize mocks base method.
 func (m *MockNamespaceCache) Initialize(c map[string]interface{}) error {
 	m.ctrl.T.Helper()
@@ -817,20 +803,6 @@ func (m *MockServiceCache) GetServicesCount() int {
 func (mr *MockServiceCacheMockRecorder) GetServicesCount() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServicesCount", reflect.TypeOf((*MockServiceCache)(nil).GetServicesCount))
-}
-
-// GetVisibleServicesInOtherNamespace mocks base method.
-func (m *MockServiceCache) GetVisibleServicesInOtherNamespace(ctx context.Context, name, namespace string) []*service.Service {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetVisibleServicesInOtherNamespace", ctx, name, namespace)
-	ret0, _ := ret[0].([]*service.Service)
-	return ret0
-}
-
-// GetVisibleServicesInOtherNamespace indicates an expected call of GetVisibleServicesInOtherNamespace.
-func (mr *MockServiceCacheMockRecorder) GetVisibleServicesInOtherNamespace(ctx, name, namespace interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVisibleServicesInOtherNamespace", reflect.TypeOf((*MockServiceCache)(nil).GetVisibleServicesInOtherNamespace), ctx, name, namespace)
 }
 
 // Initialize mocks base method.

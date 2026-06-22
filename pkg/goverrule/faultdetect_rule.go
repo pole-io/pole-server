@@ -223,14 +223,7 @@ func (s *Server) GetOneFaultDetectRule(ctx context.Context, req *apifault.FaultD
 
 func marshalFaultDetectRule(req *apifault.FaultDetectRule) (string, error) {
 	r := &apifault.FaultDetectRule{
-		TargetService: req.TargetService,
-		Interval:      req.Interval,
-		Timeout:       req.Timeout,
-		Port:          req.Port,
-		Protocol:      req.Protocol,
-		HttpConfig:    req.HttpConfig,
-		TcpConfig:     req.TcpConfig,
-		UdpConfig:     req.UdpConfig,
+		Rules: req.Rules,
 	}
 	rule, err := json.Marshal(r)
 	if err != nil {
@@ -245,14 +238,15 @@ func api2FaultDetectRule(req *apifault.FaultDetectRule) (*rules.FaultDetectRule,
 	if err != nil {
 		return nil, err
 	}
+	target := faultDetectRulePrimaryTarget(req)
 
 	out := &rules.FaultDetectRule{
 		Name:         req.GetName(),
 		Namespace:    faultDetectRuleNamespace(req),
 		Description:  req.GetDescription(),
-		DstService:   req.GetTargetService().GetService(),
-		DstNamespace: req.GetTargetService().GetNamespace(),
-		DstMethod:    req.GetTargetService().GetMethod().GetValue(),
+		DstService:   target.GetService(),
+		DstNamespace: target.GetNamespace(),
+		DstMethod:    target.GetMethod().GetValue(),
 		Rule:         rule,
 		Revision:     utils.NewUUID(),
 		Metadata:     req.Metadata,
@@ -264,21 +258,26 @@ func faultDetectRuleNamespace(req *apifault.FaultDetectRule) string {
 	if req == nil {
 		return namespace.DefaultNamespace
 	}
-	if namespace := req.GetTargetService().GetNamespace(); namespace != "" {
+	if namespace := faultDetectRulePrimaryTarget(req).GetNamespace(); namespace != "" {
 		return namespace
 	}
 	return namespace.DefaultNamespace
 }
 
+func faultDetectRulePrimaryTarget(req *apifault.FaultDetectRule) *apifault.FaultDetectRule_DestinationService {
+	if req == nil {
+		return nil
+	}
+	return req.GetTargetService()
+}
+
 // faultDetectRule2ClientAPI 把内部数据结构转化为客户端API参数
-func faultDetectRule2ClientAPI(req *rules.ServiceWithFaultDetectRules) (*apifault.FaultDetector, error) {
+func faultDetectRule2ClientAPI(req *rules.ServiceWithFaultDetectRules) ([]*apifault.FaultDetectRule, error) {
 	if req == nil {
 		return nil, nil
 	}
 
-	out := &apifault.FaultDetector{}
-	out.Revision = req.Revision
-	out.Rules = make([]*apifault.FaultDetectRule, 0, req.CountFaultDetectRules())
+	out := make([]*apifault.FaultDetectRule, 0, req.CountFaultDetectRules())
 	var iterateErr error
 	req.IterateFaultDetectRules(func(rule *rules.FaultDetectRelease) {
 		cbRule, err := rule.Rule.ToSpec()
@@ -286,7 +285,7 @@ func faultDetectRule2ClientAPI(req *rules.ServiceWithFaultDetectRules) (*apifaul
 			iterateErr = err
 			return
 		}
-		out.Rules = append(out.Rules, cbRule)
+		out = append(out, cbRule)
 	})
 	if nil != iterateErr {
 		return nil, iterateErr

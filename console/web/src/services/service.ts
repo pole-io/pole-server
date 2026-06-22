@@ -1,5 +1,4 @@
-import request, { apiRequest, getAllList, getApiRequest, putApiRequest } from 'utils/request';
-import { CheckVisibilityMode } from 'utils/visible';
+import { apiRequest, getAllList, getApiRequest, putApiRequest } from 'utils/request';
 import { BaseURL } from './types';
 
 export interface Service {
@@ -12,13 +11,11 @@ export interface Service {
     department: string
     business: string
     metadata: Record<string, string>
-    export_to?: string[]
 }
 
 export interface ServiceView extends Service {
     healthy_instance_count?: string
     total_instance_count?: string
-    visibility_mode?: string
     ctime: string
     mtime: string
     editable: boolean
@@ -54,12 +51,9 @@ export async function describeServices(params: DescribeServicesRequest) {
     const services = res.data ?? res.services ?? []
     return {
         list: services.map((item) => {
-            const visibilityMode = CheckVisibilityMode(item.export_to, item.namespace)
-            if (visibilityMode === 'all') item.export_to = []
             return {
                 ...item,
                 id: item.id || `${item.namespace}/${item.name}`,
-                visibility_mode: visibilityMode,
             } as ServiceView
         }),
         totalCount: res.amount ?? services.length,
@@ -132,7 +126,6 @@ export interface ModifyServicesRequest {
     business: string
     metadata: Record<string, string>
     department: string
-    export_to?: string[]
 }
 
 export async function modifyServices(params: ModifyServicesRequest[]) {
@@ -153,7 +146,6 @@ export interface CreateServicesRequest {
     metadata: Record<string, string>
     owners: string
     department: string
-    export_to?: string[]
 }
 
 export async function createService(params: CreateServicesRequest[]) {

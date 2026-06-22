@@ -72,3 +72,29 @@ func TestLosslessStoreCreateUsesGovernanceRuleRepository(t *testing.T) {
 	require.NoError(t, store.CreateLossLessRule(rule))
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestLosslessRecordIgnoresLegacyServiceField(t *testing.T) {
+	record := &governanceRuleRecord{
+		ID:          "lossless-legacy",
+		RuleType:    governanceRuleTypeLossless,
+		Namespace:   "default",
+		Name:        "checkout",
+		Service:     "checkout",
+		Revision:    "rev-1",
+		Description: "legacy lossless rule",
+		Valid:       true,
+		Rule: `{
+			"id": "lossless-legacy",
+			"service": "checkout",
+			"metadata": {"owner": "qa"}
+		}`,
+	}
+
+	got, err := governanceRuleRecordToLosslessRule(record)
+
+	require.NoError(t, err)
+	require.Equal(t, "lossless-legacy", got.ID)
+	require.Equal(t, "default", got.Namespace)
+	require.Equal(t, "checkout", got.Service)
+	require.NotNil(t, got.Proto)
+}

@@ -308,6 +308,13 @@ func getServicesInvolveByFaultDetectRule(fdRule *rules.FaultDetectRelease) map[s
 			Name:      name,
 		}] = true
 	}
+	if fdRule == nil || fdRule.Rule == nil {
+		return svcKeys
+	}
+	if specRule, err := fdRule.Rule.ToSpec(); err == nil && specRule != nil {
+		target := specRule.GetTargetService()
+		addService(target.GetService(), target.GetNamespace())
+	}
 	addService(fdRule.Rule.DstService, fdRule.Rule.DstNamespace)
 	return svcKeys
 }

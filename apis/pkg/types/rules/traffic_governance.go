@@ -61,6 +61,7 @@ func (r *TrafficGovernanceRule) FromTrafficSecuritySpec(spec *apisecurity.Traffi
 	}
 	r.ID = spec.Id
 	r.Name = spec.Name
+	r.Namespace, r.Service = trafficTargetServiceScope(spec.GetTargetService())
 	r.Enable = spec.Enable
 	r.Priority = spec.Priority
 	r.Metadata = spec.Metadata
@@ -77,7 +78,7 @@ func (r *TrafficGovernanceRule) FromTrafficMirrorSpec(spec *apitraffic.TrafficMi
 	}
 	r.ID = spec.Id
 	r.Name = spec.Name
-	r.Namespace, r.Service = mirrorRuleServiceScope(spec)
+	r.Namespace, r.Service = trafficDestinationServiceScope(spec.GetCallee())
 	r.Enable = spec.Enable
 	r.Priority = spec.Priority
 	r.Metadata = spec.Metadata
@@ -94,7 +95,7 @@ func (r *TrafficGovernanceRule) FromTrafficMockSpec(spec *apitraffic.TrafficMock
 	}
 	r.ID = spec.Id
 	r.Name = spec.Name
-	r.Namespace, r.Service = mockRuleServiceScope(spec)
+	r.Namespace, r.Service = trafficDestinationServiceScope(spec.GetCallee())
 	r.Enable = spec.Enable
 	r.Priority = spec.Priority
 	r.Metadata = spec.Metadata
@@ -155,6 +156,7 @@ func (r *TrafficGovernanceRule) applyTrafficSecurityFields(spec *apisecurity.Tra
 	spec.Metadata = r.Metadata
 	spec.Revision = r.Revision
 	spec.Description = r.Description
+	applyTrafficTargetService(&spec.TargetService, r.Namespace, r.Service)
 	spec.Ctime = commontime.Time2String(r.CTime)
 	spec.Mtime = commontime.Time2String(r.MTime)
 }
@@ -167,6 +169,8 @@ func (r *TrafficGovernanceRule) applyTrafficMirrorFields(spec *apitraffic.Traffi
 	spec.Metadata = r.Metadata
 	spec.Revision = r.Revision
 	spec.Description = r.Description
+	applyTrafficDestinationService(&spec.Callee, r.Namespace, r.Service)
+	ensureTrafficCaller(&spec.Caller)
 	spec.Ctime = commontime.Time2String(r.CTime)
 	spec.Mtime = commontime.Time2String(r.MTime)
 }
@@ -179,6 +183,8 @@ func (r *TrafficGovernanceRule) applyTrafficMockFields(spec *apitraffic.TrafficM
 	spec.Metadata = r.Metadata
 	spec.Revision = r.Revision
 	spec.Description = r.Description
+	applyTrafficDestinationService(&spec.Callee, r.Namespace, r.Service)
+	ensureTrafficCaller(&spec.Caller)
 	spec.Ctime = commontime.Time2String(r.CTime)
 	spec.Mtime = commontime.Time2String(r.MTime)
 }
@@ -191,28 +197,40 @@ func (r *TrafficGovernanceRule) GetMtime() time.Time {
 	return r.MTime
 }
 
-func mirrorRuleServiceScope(spec *apitraffic.TrafficMirror) (string, string) {
-	if spec == nil {
-		return "", ""
-	}
-	for _, rule := range spec.GetRules() {
-		if source := rule.GetSource(); source != nil {
-			return source.GetNamespace(), source.GetService()
-		}
-	}
-	return "", ""
+func trafficTargetServiceScope(target *apitraffic.DestinationService) (string, string) {
+	return trafficDestinationServiceScope(target)
 }
 
-func mockRuleServiceScope(spec *apitraffic.TrafficMock) (string, string) {
-	if spec == nil {
+func trafficDestinationServiceScope(target *apitraffic.DestinationService) (string, string) {
+	if target == nil {
 		return "", ""
 	}
-	for _, rule := range spec.GetRules() {
-		if source := rule.GetSource(); source != nil {
-			return source.GetNamespace(), source.GetService()
-		}
+	return target.GetNamespace(), target.GetService()
+}
+
+func applyTrafficTargetService(target **apitraffic.DestinationService, namespace string, service string) {
+	if namespace == "" && service == "" {
+		*target = nil
+		return
 	}
-	return "", ""
+	*target = &apitraffic.DestinationService{
+		Namespace: namespace,
+		Service:   service,
+	}
+}
+
+func applyTrafficDestinationService(target **apitraffic.DestinationService, namespace string, service string) {
+	applyTrafficTargetService(target, namespace, service)
+}
+
+func ensureTrafficCaller(caller **apitraffic.SourceService) {
+	if *caller != nil {
+		return
+	}
+	*caller = &apitraffic.SourceService{
+		Namespace: "*",
+		Service:   "*",
+	}
 }
 
 type TrafficGovernanceRuleRelease struct {

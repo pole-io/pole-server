@@ -21,6 +21,8 @@ export interface CircuitBreakerPolicy {
     fallbackConfig: FallbackConfig
 }
 
+export type CircuitBreakerBlockConfigInput = BlockConfig | CircuitBreakerPolicy
+
 export interface CircuitBreakerRule {
     id?: string
     name: string // 规则名
@@ -41,7 +43,7 @@ export interface CircuitBreakerRule {
             }
         }
     }
-    block_configs: BlockConfig[]
+    block_configs: CircuitBreakerBlockConfigInput[]
     metadata?: Record<string, string>
     ctime?: string
     mtime?: string
@@ -166,7 +168,14 @@ function normalizeBlockConfig(block: any, rule: any): BlockConfig {
     };
 }
 
-function toCircuitBreakerPolicy(block: BlockConfig): CircuitBreakerPolicy {
+function isCircuitBreakerPolicy(block: CircuitBreakerBlockConfigInput): block is CircuitBreakerPolicy {
+    return !!(block as CircuitBreakerPolicy)?.block_config;
+}
+
+function toCircuitBreakerPolicy(block: CircuitBreakerBlockConfigInput): CircuitBreakerPolicy {
+    if (isCircuitBreakerPolicy(block)) {
+        return block;
+    }
     return {
         block_config: {
             name: block.name,

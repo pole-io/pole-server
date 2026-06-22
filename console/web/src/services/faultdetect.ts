@@ -8,15 +8,24 @@ export interface FaultDetectRule {
     id?: string
     name: string
     description: string
+    priority?: number
     targetService: {
         namespace: string
         service: string
         api?: API
     }
+    rules?: FaultDetectSubRule[]
+    ctime?: string
+    mtime?: string
+    metadata?: Record<string, string>
+    editable?: boolean
+    deleteable?: boolean
+}
+
+export interface FaultDetectSubRule {
     interval: number
     timeout: number
     port: number
-    // 协议，支持HTTP, TCP, UPD
     protocol: string
     httpConfig?: {
         method: string
@@ -26,17 +35,15 @@ export interface FaultDetectRule {
     }
     tcpConfig?: {
         send: string
-        receive: string[]
+        receive: string[] | string
+        match?: string
     }
     udpConfig?: {
         send: string
-        receive: string[]
+        receive: string[] | string
+        match?: string
     }
-    ctime?: string
-    mtime?: string
-    metadata?: Record<string, string>
-    editable?: boolean
-    deleteable?: boolean
+    disable?: boolean
 }
 
 function normalizeProtocol(protocol?: string | number): string {
@@ -64,10 +71,15 @@ function normalizeMatchType(type?: string | number): string {
 
 export function normalizeFaultDetectRule(rule: FaultDetectRule | any): FaultDetectRule {
     if (!rule) return rule;
-    const targetService = rule.targetService ?? rule.target_service ?? {};
+    const rawRules = rule.rules || [];
+    const rules = rawRules.map((item: any) => normalizeFaultDetectSubRule(item));
+    const primaryRule = rules[0] || {};
+    const legacyFirstRuleTarget = rawRules[0]?.targetService ?? rawRules[0]?.target_service;
+    const targetService = rule.targetService ?? rule.target_service ?? legacyFirstRuleTarget ?? {};
     const api = targetService.api ?? {};
     return {
         ...rule,
+        rules,
         targetService: {
             namespace: targetService.namespace || '',
             service: targetService.service || '',
@@ -81,10 +93,26 @@ export function normalizeFaultDetectRule(rule: FaultDetectRule | any): FaultDete
                 },
             },
         },
+        interval: primaryRule.interval ?? rule.interval,
+        timeout: primaryRule.timeout ?? rule.timeout,
+        port: primaryRule.port ?? rule.port,
+        protocol: normalizeProtocol(primaryRule.protocol ?? rule.protocol),
+        httpConfig: primaryRule.httpConfig ?? rule.httpConfig ?? rule.http_config,
+        tcpConfig: primaryRule.tcpConfig ?? rule.tcpConfig ?? rule.tcp_config,
+        udpConfig: primaryRule.udpConfig ?? rule.udpConfig ?? rule.udp_config,
+    };
+}
+
+function normalizeFaultDetectSubRule(rule: any): FaultDetectSubRule {
+    return {
+        interval: rule.interval,
+        timeout: rule.timeout,
+        port: rule.port,
         protocol: normalizeProtocol(rule.protocol),
         httpConfig: rule.httpConfig ?? rule.http_config,
         tcpConfig: rule.tcpConfig ?? rule.tcp_config,
         udpConfig: rule.udpConfig ?? rule.udp_config,
+        disable: rule.disable,
     };
 }
 

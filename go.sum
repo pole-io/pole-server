@@ -565,6 +565,10 @@ github.com/lattice-hub/specification v0.1.0-ALPHA.27 h1:TVRgW8ZLJia3vkpzP4ynsYoI
 github.com/lattice-hub/specification v0.1.0-ALPHA.27/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
 github.com/lattice-hub/specification v0.1.0-ALPHA.28 h1:01EWme6NvKpATUkRt96Kc9dOkd8UTGHVixVbilERgtg=
 github.com/lattice-hub/specification v0.1.0-ALPHA.28/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
+github.com/lattice-hub/specification v0.1.0-ALPHA.30 h1:r7pWKHHocN9MlAiH6Ah+cUsU55NU6gUSRZoFhGkQkTQ=
+github.com/lattice-hub/specification v0.1.0-ALPHA.30/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
+github.com/lattice-hub/specification v0.1.0-ALPHA.31 h1:yX8eFq9ueohaZPmeE3mdM9aLZdbwKk83m1/+pkiYtC8=
+github.com/lattice-hub/specification v0.1.0-ALPHA.31/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
 github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 h1:6E+4a0GO5zZEnZ81pIr0yLvtUWk2if982qA3F3QD6H4=
 github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0/go.mod h1:zJYVVT2jmtg6P3p1VtQj7WsuWi/y4VnjVBn7F8KPB3I=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=

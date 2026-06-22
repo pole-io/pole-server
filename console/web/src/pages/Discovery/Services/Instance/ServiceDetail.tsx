@@ -5,7 +5,6 @@ import { ServiceIcon } from 'tdesign-icons-react';
 import Text from 'components/Text';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { listOneService, selectService } from 'modules/discovery/service';
-import { CheckVisibilityMode, VisibilityMode_Specified, VisibilityModeMap } from 'utils/visible';
 import { openErrNotification } from 'utils/notifition';
 import style from './index.module.less';
 
@@ -55,7 +54,6 @@ const ServiceDetail: React.FC<IServiceDetailProps> = ({ namespace, serviceName }
     }, [dispatch, editSvc?.id, editSvc?.name, editSvc?.namespace, namespace, serviceName])
 
     const service = viewSvc?.namespace === namespace && viewSvc?.name === serviceName ? viewSvc : null;
-    const visible = CheckVisibilityMode(service?.export_to, service?.namespace || namespace || '');
     const metadata = Object.entries(service?.metadata || {});
     const totalInstances = service?.total_instance_count || '0';
     const healthyInstances = service?.healthy_instance_count || '0';
@@ -87,7 +85,6 @@ const ServiceDetail: React.FC<IServiceDetailProps> = ({ namespace, serviceName }
                         <div className={style.detailName}>{service.name}</div>
                         <Space size={8}>
                             <Tag variant="light">{service.namespace}</Tag>
-                            <Tag theme="primary" variant="light">{VisibilityModeMap[visible]}</Tag>
                         </Space>
                     </div>
                 </div>
@@ -116,7 +113,6 @@ const ServiceDetail: React.FC<IServiceDetailProps> = ({ namespace, serviceName }
                         <DetailItem label="名称">{service.name}</DetailItem>
                         <DetailItem label="端口">{service.ports}</DetailItem>
                         <DetailItem label="Revision">{service.revision}</DetailItem>
-                        <DetailItem label="服务可见性">{VisibilityModeMap[visible]}</DetailItem>
                     </div>
                 </section>
 
@@ -130,17 +126,6 @@ const ServiceDetail: React.FC<IServiceDetailProps> = ({ namespace, serviceName }
                         <div className={style.detailLabel}>描述</div>
                         <Text>{isEmpty(service.comment) ? emptyText : service.comment}</Text>
                     </div>
-                </section>
-
-                <section className={style.detailSection}>
-                    <div className={style.detailSectionTitle}>可见范围</div>
-                    {visible === VisibilityMode_Specified ? (
-                        <Space breakLine>
-                            {(service.export_to || []).map((ns) => <Tag key={ns}>{ns}</Tag>)}
-                        </Space>
-                    ) : (
-                        <Text>{VisibilityModeMap[visible]}</Text>
-                    )}
                 </section>
 
                 <section className={style.detailSection}>

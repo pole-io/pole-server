@@ -2,7 +2,7 @@
 title: pole-control-plane 知识库
 tags: [meta, index]
 links: [schema, log]
-updated: 2026-06-15
+updated: 2026-06-21
 sources: 0
 ---
 
@@ -58,12 +58,13 @@ sources: 0
 
 ### 技术约定（technical/conventions/）
 
-- [[patterns]] — 代码库中的 11 种关键模式与约定（插件注册、单例、拦截器、缓存、软删除等） | patterns, conventions
+- [[patterns]] — 代码库中的关键模式与约定（插件注册、单例、拦截器、缓存、治理规则编辑抽屉交互等） | patterns, conventions
 
 ### 架构决策（technical/adr/）
 
 - [[adr-governance-rule-unified-storage]] — 治理规则统一存储与缓存更新决策 | adr, governance, storage, cache
 - [[adr-a2a-agent-registry]] — A2A Agent Registry 功能设计与分期 | adr, ai, a2a, mcp, registry
+- [[adr-console-oidc-identity-source]] — Console OIDC 用户来源与目录同步 | adr, auth, console, oidc, identity
 
 ## 质量保障知识域（quality/）
 

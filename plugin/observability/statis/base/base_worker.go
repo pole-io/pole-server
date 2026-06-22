@@ -59,7 +59,7 @@ func (s *BaseWorker) ReportCallMetrics(metric metricstypes.CallMetric) {
 			item.TrafficDirection = string(metric.TrafficDirection)
 		}
 		s.apiStatis.Add(item)
-	case metricstypes.ProtobufCacheCallMetric:
+	case metricstypes.ProtobufCacheCallMetric, metricstypes.DiscoverCacheCallMetric:
 		s.cacheStatis.Add(metric)
 	}
 }

@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
-
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -44,8 +42,7 @@ type Service struct {
 	Ctime        int64
 	ServicePorts []*ServicePort
 	// ExportTo 服务可见性暴露设置
-	ExportTo    map[string]struct{}
-	OldExportTo map[string]struct{}
+	ExportTo map[string]struct{}
 }
 
 func (s *Service) ToSpec() *apiservice.Service {
@@ -95,14 +92,6 @@ func (s *Service) ProtectEmptyPush() (time.Duration, bool) {
 	return dur, err == nil
 }
 
-func (s *Service) ListExportTo() []*wrappers.StringValue {
-	ret := make([]*wrappers.StringValue, 0, len(s.ExportTo))
-	for i := range s.ExportTo {
-		ret = append(ret, &wrappers.StringValue{Value: i})
-	}
-	return ret
-}
-
 // EnhancedService 服务增强数据
 type EnhancedService struct {
 	*Service
@@ -148,14 +137,6 @@ type ServiceAlias struct {
 	CreateTime     time.Time
 	ModifyTime     time.Time
 	ExportTo       map[string]struct{}
-}
-
-func (s *ServiceAlias) ListExportTo() []*wrappers.StringValue {
-	ret := make([]*wrappers.StringValue, 0, len(s.ExportTo))
-	for i := range s.ExportTo {
-		ret = append(ret, &wrappers.StringValue{Value: i})
-	}
-	return ret
 }
 
 type ServiceSubscriber struct {

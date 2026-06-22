@@ -130,7 +130,7 @@ func (s *Server) GetFaultDetectWithCache(ctx context.Context, req *apiservice.Se
 		Namespace: aliasFor.Namespace,
 	}
 	resp.Service.Revision = out.Revision
-	resp.FaultDetector, err = faultDetectRule2ClientAPI(out)
+	resp.FaultDetectRules, err = faultDetectRule2ClientAPI(out)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
 		return api.NewDiscoverFaultDetectorResponse(apimodel.Code_ExecuteException, req)

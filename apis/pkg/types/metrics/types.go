@@ -54,6 +54,8 @@ const (
 	StoreCallMetric CallMetricType = "store"
 	// ProtobufCacheCallMetric PB encode cache call/hit statistics
 	ProtobufCacheCallMetric CallMetricType = "pbCacheCall"
+	// DiscoverCacheCallMetric discovery revision/response cache call/hit statistics
+	DiscoverCacheCallMetric CallMetricType = "discoverCacheCall"
 	// XDSResourceBuildCallMetric
 	XDSResourceBuildCallMetric CallMetricType = "xds"
 )

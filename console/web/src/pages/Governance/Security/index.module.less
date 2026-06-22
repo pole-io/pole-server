@@ -82,37 +82,217 @@
   }
 }
 
-/* 鉴权：未命中默认动作条 */
-.securityDefaultBar {
-  align-items: center;
+.securityEditorShell {
+  display: grid;
+  gap: 0;
+  grid-template-columns: minmax(720px, 1fr) 400px;
+  height: calc(100vh - 190px);
+  min-height: 620px;
+  overflow: hidden;
+}
+
+.formPane {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 16px;
+}
+
+.formPane > div {
+  flex: 0 0 auto;
+}
+
+.securitySections {
+  display: grid;
+  gap: 16px;
+}
+
+.securityPartition {
   background: #fbfcfe;
-  border: 1px solid #e3e8f2;
+  border: 1px solid #e6ebf3;
   border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.partitionHead {
+  align-items: flex-start;
   display: flex;
   gap: 16px;
   justify-content: space-between;
-  margin-bottom: 14px;
-  min-height: 64px;
-  padding: 12px 16px;
 }
 
-.defaultActionField {
-  flex: 0 0 180px;
-}
-
-.ruleSectionTitle {
+.partitionTitle {
   color: #111827;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 22px;
 }
 
-.ruleHelp {
+.partitionDesc,
+.sectionHint,
+.inlineHint {
+  color: #667085;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.sectionHint {
+  margin-bottom: 10px;
+}
+
+.inlineHint {
+  margin-left: 10px;
+}
+
+.interfaceList {
+  display: grid;
+  gap: 8px;
+}
+
+.interfaceHeader,
+.interfaceRow {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(92px, .8fr) minmax(92px, .8fr) minmax(108px, .9fr) minmax(160px, 1.5fr) minmax(96px, .8fr) 32px;
+  min-width: 0;
+}
+
+.interfaceHeader {
+  color: #667085;
+  font-size: 12px;
+  line-height: 18px;
+  padding: 0 10px;
+}
+
+.interfaceRow {
+  background: #fff;
+  border: 1px solid #e6ebf3;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.interfaceRow > :global(.t-input__wrap),
+.interfaceRow > :global(.t-select) {
+  min-width: 0;
+}
+
+.serviceListTypeSelect {
+  width: 160px;
+}
+
+.specPane {
+  border-left: 1px solid #d7dde8;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.specCard {
+  background: #0b1119;
+  border: 0;
+  border-radius: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.specToolbar {
+  align-items: flex-start;
+  background: #101823;
+  border-bottom: 1px solid #243044;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 18px;
+}
+
+.specTitle {
+  color: #b8c3d4;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  line-height: 22px;
+}
+
+.specDesc {
+  color: #7f8ca3;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.specActions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.specToggle {
+  background: #0b1119;
+  border: 1px solid #334155;
+  border-radius: 7px;
+  display: inline-flex;
+  padding: 2px;
+}
+
+.specToggle button {
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
   color: #8b95a5;
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 20px;
-  margin-top: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  height: 26px;
+  min-width: 52px;
+  padding: 0 10px;
+}
+
+.specToggleActive {
+  background: #366ef4 !important;
+  color: #fff !important;
+}
+
+.specCode {
+  color: #d8dee9;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 19px;
+  margin: 0;
+  min-height: 0;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding: 16px 18px;
+  white-space: pre-wrap;
+}
+
+.specFooterOk,
+.specFooterError {
+  border-top: 1px solid #243044;
+  display: grid;
+  font-size: 12px;
+  gap: 4px;
+  line-height: 18px;
+  padding: 10px 18px;
+}
+
+.specFooterOk {
+  background: #0f1c18;
+  color: #9ee6c3;
+}
+
+.specFooterError {
+  background: #241716;
+  color: #f3aaa6;
+}
+
+.previewOk,
+.previewError {
+  display: block;
 }
 
 /* 可增删的结构化行编辑器（接口范围 / 匹配条件 / 标签 / 响应头）统一为单行对齐栅格 */
@@ -159,6 +339,18 @@
   min-width: 0;
 }
 
+.mockApiEditor {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(96px, .8fr) minmax(96px, .8fr) minmax(120px, .9fr) minmax(220px, 2fr);
+  min-width: 0;
+}
+
+.monoInput input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
 /* 匹配条件 / 标签：来源 / Key / 匹配方式 / 值 / 值类型 / 删除 —— 单行卡片 */
 .conditionRow {
   align-items: center;
@@ -168,6 +360,18 @@
   display: grid;
   gap: 8px;
   grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) minmax(96px, 0.9fr) minmax(140px, 1.5fr) minmax(96px, 0.9fr) 32px;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.mockConditionRow {
+  align-items: center;
+  background: #fbfcfe;
+  border: 1px solid #e6ebf3;
+  border-radius: 6px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(112px, .9fr) minmax(132px, 1fr) minmax(120px, .9fr) minmax(180px, 1.4fr) 32px;
   min-width: 0;
   padding: 8px 10px;
 }
@@ -200,11 +404,15 @@
 
 .conditionRow > :global(.t-input__wrap),
 .conditionRow > :global(.t-select),
+.mockConditionRow > :global(.t-input__wrap),
+.mockConditionRow > :global(.t-select),
 .labelRow > :global(.t-input__wrap),
 .labelRow > :global(.t-select),
 .kvRow > :global(.t-input__wrap),
 .apiEditor > :global(.t-input__wrap),
-.apiEditor > :global(.t-select) {
+.apiEditor > :global(.t-select),
+.mockApiEditor > :global(.t-input__wrap),
+.mockApiEditor > :global(.t-select) {
   min-width: 0;
 }
 
@@ -237,12 +445,187 @@
   white-space: pre-wrap;
 }
 
+.mockScopeHint {
+  background: #fbfcfe;
+  border: 1px solid #e6ebf3;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 14px;
+  padding: 14px;
+}
+
+.flowLine {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.flowLine span:not(.flowArrow) {
+  background: #f3f6fb;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  color: #1f2937;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 18px;
+  padding: 5px 8px;
+}
+
+.flowArrow {
+  color: #366ef4;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.mockResponsePanel {
+  background: #fbfcfe;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mockResponseSection {
+  border-bottom: 1px solid #e6ebf3;
+  padding: 14px;
+}
+
+.mockResponseSection:last-child {
+  border-bottom: 0;
+}
+
+.mockResponseTitle {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  margin-bottom: 10px;
+}
+
+.mockResponseGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 180px;
+}
+
+.mockOrderHint {
+  color: #667085;
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 8px;
+}
+
+.mockBodyHead {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.mockBodyTools {
+  display: flex;
+  gap: 8px;
+}
+
+.mockBodyTextarea {
+  width: 100%;
+}
+
+.mockBodyTextarea textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  line-height: 20px;
+  min-height: 0 !important;
+}
+
+.mockReturnPreview {
+  background: #0b1119;
+  border: 1px solid #1f2a3d;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mockReturnHead {
+  align-items: center;
+  background: #101823;
+  border-bottom: 1px solid #243044;
+  color: #b8c3d4;
+  display: flex;
+  font-size: 12px;
+  gap: 14px;
+  justify-content: space-between;
+  line-height: 18px;
+  padding: 8px 12px;
+}
+
+.mockReturnCode {
+  color: #d8dee9;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 19px;
+  margin: 0;
+  max-height: 220px;
+  overflow: auto;
+  padding: 12px;
+  white-space: pre-wrap;
+}
+
+.dialogSubTitle {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  margin-top: 2px;
+}
+
+.fullscreenBodyEditor {
+  display: grid;
+  gap: 10px;
+}
+
+.fullscreenBodyEditor textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  line-height: 20px;
+}
+
 /* 窄屏：可增删行退化为单列堆叠，删除按钮回流到行尾 */
 @media (max-width: 900px) {
-  .apiEditor,
-  .conditionRow,
-  .labelRow,
-  .kvRow {
+  .securityEditorShell {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .formPane {
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .specPane {
+    display: none;
+  }
+
+  .apiEditor,
+  .mockApiEditor,
+  .conditionRow,
+  .mockConditionRow,
+  .labelRow,
+  .kvRow,
+  .interfaceHeader,
+  .interfaceRow {
+    grid-template-columns: 1fr;
+  }
+
+  .mockScopeHint,
+  .mockResponseGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .interfaceHeader {
+    display: none;
   }
 }

@@ -34,9 +34,7 @@ import (
 	revisionapi "github.com/pole-io/pole-server/apis/pkg/utils/revision"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
-	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
-	matchs "github.com/pole-io/pole-server/pkg/common/utils/match"
 )
 
 // serviceCache Service data cache implementation class
@@ -72,13 +70,6 @@ type serviceCache struct {
 	revisionWorker *ServiceRevisionWorker
 
 	cancel context.CancelFunc
-
-	// exportNamespace 某个命名空间下的所有服务的可见性
-	exportNamespace *container.SyncMap[string, *container.SyncSet[string]]
-	// exportServices 某个服务对部分命名空间全部可见 exportNamespace -> svcName -> svctypes.Service
-	exportServices *container.SyncMap[string, *container.SyncMap[string, *svctypes.Service]]
-
-	subCtx *eventhub.SubscribtionContext
 }
 
 // NewServiceCache 返回一个serviceCache
@@ -101,18 +92,11 @@ func (sc *serviceCache) Initialize(opt map[string]interface{}) error {
 	sc.cl5Names = container.NewSyncMap[string, *svctypes.Service]()
 	sc.pendingServices = container.NewSyncMap[string, struct{}]()
 	sc.namespaceServiceCnt = container.NewSyncMap[string, *svctypes.NamespaceServiceCount]()
-	sc.exportNamespace = container.NewSyncMap[string, *container.SyncSet[string]]()
-	sc.exportServices = container.NewSyncMap[string, *container.SyncMap[string, *svctypes.Service]]()
 	ctx, cancel := context.WithCancel(context.Background())
 	sc.cancel = cancel
 	sc.revisionWorker = newRevisionWorker(sc, sc.instCache.(*instanceCache), opt)
 	// 先启动revision计算协程
 	go sc.revisionWorker.revisionWorker(ctx)
-	subCtx, err := eventhub.SubscribeWithFunc(eventhub.CacheNamespaceEventTopic, sc.handleNamespaceChange)
-	if err != nil {
-		return err
-	}
-	sc.subCtx = subCtx
 	if opt == nil {
 		return nil
 	}
@@ -125,9 +109,6 @@ func (sc *serviceCache) Initialize(opt map[string]interface{}) error {
 func (sc *serviceCache) Close() error {
 	if err := sc.BaseCache.Close(); err != nil {
 		return err
-	}
-	if sc.subCtx != nil {
-		sc.subCtx.Cancel()
 	}
 	if sc.cancel != nil {
 		sc.cancel()
@@ -203,8 +184,6 @@ func (sc *serviceCache) Clear() error {
 	sc.namespaceServiceCnt = container.NewSyncMap[string, *svctypes.NamespaceServiceCount]()
 	sc.alias = newServiceAliasBucket()
 	sc.serviceList = newServiceNamespaceBucket()
-	sc.exportNamespace = container.NewSyncMap[string, *container.SyncSet[string]]()
-	sc.exportServices = container.NewSyncMap[string, *container.SyncMap[string, *svctypes.Service]]()
 	return nil
 }
 
@@ -460,11 +439,6 @@ func (sc *serviceCache) setServices(services map[string]*svctypes.Service) (map[
 		if service.IsAlias() {
 			aliases = append(aliases, service)
 		}
-		oldVal, _ := sc.ids.Load(service.ID)
-		if oldVal != nil {
-			service.OldExportTo = oldVal.ExportTo
-		}
-
 		spaceName := service.Namespace
 		changeNs[spaceName] = struct{}{}
 		// 发现有删除操作
@@ -499,7 +473,6 @@ func (sc *serviceCache) setServices(services map[string]*svctypes.Service) (map[
 
 	sc.postProcessServiceAlias(aliases)
 	sc.postProcessUpdatedServices(changeNs)
-	sc.postProcessServiceExports(services)
 	sc.serviceList.reloadRevision()
 	return map[string]time.Time{
 		sc.Name(): time.Unix(lastMtime, 0),
@@ -629,142 +602,6 @@ func (sc *serviceCache) updateCl5SidAndNames(service *svctypes.Service) {
 	cl5Name := genCl5Name(cl5NameMeta)
 	sc.cl5Sid2Name.Store(sid, cl5Name)
 	sc.cl5Names.Store(cl5Name, service)
-}
-
-// GetVisibleServicesInOtherNamespace 查询是否存在别的命名空间下存在名称相同且可见的服务
-func (sc *serviceCache) GetVisibleServicesInOtherNamespace(ctx context.Context, svcName, namespace string) []*svctypes.Service {
-	ret := make(map[string]*svctypes.Service)
-	// 根据服务级别的可见性进行查询, 先查询精确匹配
-	sc.exportServices.ReadRange(func(exportToNs string, services *container.SyncMap[string, *svctypes.Service]) {
-		if exportToNs != namespace && exportToNs != types.AllMatched {
-			return
-		}
-		services.ReadRange(func(_ string, svc *svctypes.Service) {
-			if (svc.Name == svcName || matchs.IsMatchAll(svcName)) && svc.Namespace != namespace {
-				ret[svc.ID] = svc
-			}
-		})
-	})
-
-	// 根据命名空间级别的可见性进行查询, 先看精确的
-	sc.exportNamespace.ReadRange(func(exportNs string, viewerNs *container.SyncSet[string]) {
-		exactMatch := viewerNs.Contains(namespace)
-		allMatch := viewerNs.Contains(types.AllMatched)
-		if !exactMatch && !allMatch {
-			return
-		}
-		if matchs.IsMatchAll(svcName) {
-			// 如果是全匹配，那就看下这个命名空间下的所有服务
-			_, svcs := sc.ListServices(ctx, exportNs)
-			for i := range svcs {
-				if len(svcs[i].ExportTo) != 0 {
-					// 需要在额外判断下 svc 自己可见性设置
-					_, exactMatch := svcs[i].ExportTo[namespace]
-					_, allMatch := svcs[i].ExportTo[types.AllMatched]
-					if !exactMatch && !allMatch {
-						continue
-					}
-				}
-
-				ret[svcs[i].ID] = svcs[i]
-			}
-		} else {
-			svc := sc.GetServiceByName(svcName, exportNs)
-			if svc == nil {
-				return
-			}
-			// 可能 svc 有自己的可见性设置，此处优先级高于 namespace 的可见性设置
-			if len(svc.ExportTo) != 0 {
-				// 需要在额外判断下 svc 自己可见性设置
-				_, exactMatch := svc.ExportTo[namespace]
-				_, allMatch := svc.ExportTo[namespace]
-				if !exactMatch && !allMatch {
-					return
-				}
-			}
-
-			ret[svc.ID] = svc
-		}
-	})
-
-	existSvcs := make(map[string]struct{})
-	visibleServices := make([]*svctypes.Service, 0, len(ret))
-	for _, svc := range ret {
-		if svc.IsAlias() {
-			// 如果是别名，那就看下指向的别名是不是已经在待返回列表，存在，跳过
-			if _, ok := ret[svc.Reference]; ok {
-				continue
-			}
-			// 如果不存在，那就找真实服务信息，进行返回
-			svc = sc.GetServiceByID(svc.Reference)
-			if svc == nil {
-				continue
-			}
-		}
-		if _, ok := existSvcs[svc.ID]; ok {
-			continue
-		}
-		existSvcs[svc.ID] = struct{}{}
-		visibleServices = append(visibleServices, svc)
-	}
-
-	return visibleServices
-}
-
-func (sc *serviceCache) postProcessServiceExports(services map[string]*svctypes.Service) {
-
-	for i := range services {
-		svc := services[i]
-		if !svc.Valid {
-			// 服务被删除了，把所有的可见性都取消
-			// delete export services cache
-			sc.exportServices.ReadRange(func(key string, val *container.SyncMap[string, *svctypes.Service]) {
-				val.Delete(svc.ID)
-			})
-			continue
-		}
-		for exportNs := range svc.OldExportTo {
-			if _, ok := svc.ExportTo[exportNs]; ok {
-				continue
-			}
-			// 取消可见性
-			if services, ok := sc.exportServices.Load(exportNs); ok {
-				services.Delete(svc.ID)
-			}
-		}
-
-		for exportNs := range svc.ExportTo {
-			services, _ := sc.exportServices.ComputeIfAbsent(exportNs, func(k string) *container.SyncMap[string, *svctypes.Service] {
-				return container.NewSyncMap[string, *svctypes.Service]()
-			})
-			services.Store(svc.ID, svc)
-		}
-	}
-}
-
-func (sc *serviceCache) handleNamespaceChange(ctx context.Context, args interface{}) error {
-	event, ok := args.(*eventhub.CacheNamespaceEvent)
-	if !ok {
-		return nil
-	}
-
-	switch event.EventType {
-	case eventhub.EventUpdated, eventhub.EventCreated:
-		exportTo := event.Item.ServiceExportTo
-		if len(exportTo) == 0 {
-			sc.exportNamespace.Delete(event.Item.Name)
-			return nil
-		}
-		viewers := container.NewSyncSet[string]()
-		sc.exportNamespace.Store(event.Item.Name, viewers)
-		for viewerNs := range exportTo {
-			viewers.Add(viewerNs)
-		}
-	case eventhub.EventDeleted:
-		sc.exportNamespace.Delete(event.Item.Name)
-		sc.exportServices.Delete(event.Item.Name)
-	}
-	return nil
 }
 
 func (sc *serviceCache) notifyRevisionWorker(serviceID string, valid bool) {

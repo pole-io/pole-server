@@ -43,8 +43,6 @@
   "common.refresh": "Refresh",
   "services.name": "Service Name",
   "services.namespace": "Namespace",
-  "services.visibility": "Service Visibility",
-  "services.visibilityList": "Visible Namespace List",
   "services.department": "Department",
   "services.business": "Business",
   "services.healthTotal": "Healthy/Total Instances",

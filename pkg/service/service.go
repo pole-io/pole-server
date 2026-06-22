@@ -496,7 +496,6 @@ func (s *Server) createServiceModel(req *apiservice.Service) *svctypes.Service {
 		// 移除 PlatformID 字段，因为 pole-io/specification 中已不存在
 		Token:    utils.NewUUID(),
 		Revision: utils.NewUUID(),
-		ExportTo: types.ExportToMap(req.GetExportTo()),
 	}
 }
 
@@ -520,13 +519,7 @@ func (s *Server) updateServiceAttribute(
 		// 不需要更新metadata
 		service.Meta = nil
 	}
-	// 注释：ExportTo字段处理改动 - 现在是[]string类型而非[]*wrapperspb.StringValue
-	// 处理 ExportTo 字段（现在是 []string 类型）
-	exportToMap := types.ExportToMap(req.ExportTo)
-	if eq, newVal := isEqualServiceExport(exportToMap, service.ExportTo); !eq {
-		needUpdate = true
-		service.ExportTo = newVal
-	}
+	service.ExportTo = nil
 
 	if req.GetPorts() != "" && req.GetPorts() != service.Ports {
 		service.Ports = req.GetPorts()
@@ -575,19 +568,6 @@ func (s *Server) updateServiceAttribute(
 	}
 
 	return nil, needUpdate, needUpdateOwner
-}
-
-func isEqualServiceExport(reqMap map[string]struct{}, save map[string]struct{}) (bool, map[string]struct{}) {
-	if len(reqMap) != len(save) {
-		return false, reqMap
-	}
-	for k := range reqMap {
-		if _, ok := save[k]; !ok {
-			return false, reqMap
-		}
-	}
-
-	return true, map[string]struct{}{}
 }
 
 // getServiceAliasCountWithService 获取服务下别名的总数

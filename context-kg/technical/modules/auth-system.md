@@ -1,8 +1,8 @@
 ---
 title: 访问控制与认证系统
 tags: [auth, security]
-links: [architecture, index, patterns]
-updated: 2026-06-08
+links: [adr-console-oidc-identity-source, architecture, index, patterns]
+updated: 2026-06-22
 sources: 1
 ---
 
@@ -111,6 +111,10 @@ func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *ap
 4. `StrategyServer.CheckConsolePermission()` 评估资源策略
 5. 授权通过后，请求继续流向业务逻辑层
 
+## Console 外部用户来源
+
+Console 可以在登录入口层扩展企业 OIDC 用户来源，但该能力不进入 pole-server 核心鉴权链。OIDC 登录只用于确认外部用户身份，并将其映射或同步为 `source=oidc` 的 Pole User；后续 Console 请求仍使用 Pole token，资源权限仍由本页描述的 User/UserGroup/Role/Policy 与拦截器链判断。完整技术方案见 [[adr-console-oidc-identity-source]]。
+
 ## 参数检查拦截器
 
 与认证拦截器相邻，参数检查拦截器负责验证请求参数：
@@ -123,6 +127,7 @@ pkg/config/interceptor/paramcheck/
 
 ## 相关页面
 
+- [[adr-console-oidc-identity-source]]
 - [[architecture]]
 - [[index]]
 - [[patterns]]

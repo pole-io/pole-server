@@ -458,7 +458,7 @@ func FaultDetectRule(namespace, name, service string) map[string]any {
 		"name":        name,
 		"description": "e2e fault detect",
 		"metadata":    map[string]string{"e2e": "true"},
-		"targetService": map[string]any{
+		"target_service": map[string]any{
 			"namespace": namespace,
 			"service":   service,
 			"api": map[string]any{
@@ -467,15 +467,29 @@ func FaultDetectRule(namespace, name, service string) map[string]any {
 				"path":     MatchString("/healthz"),
 			},
 		},
-		"interval": 5,
-		"timeout":  2,
-		"port":     8080,
-		"protocol": "HTTP",
-		"httpConfig": map[string]any{
-			"method":  "GET",
-			"url":     "/healthz",
-			"headers": []map[string]any{{"key": "x-e2e", "value": "true"}},
-			"body":    "",
+		"rules": []map[string]any{
+			{
+				"interval": 5,
+				"timeout":  2,
+				"port":     8080,
+				"protocol": "HTTP",
+				"http_config": map[string]any{
+					"method":  "GET",
+					"url":     "/healthz",
+					"headers": []map[string]any{{"key": "x-e2e", "value": "true"}},
+					"body":    "",
+				},
+			},
+			{
+				"interval": 10,
+				"timeout":  3,
+				"port":     8080,
+				"protocol": "HTTP",
+				"http_config": map[string]any{
+					"method": "GET",
+					"url":    "/ready",
+				},
+			},
 		},
 	}
 }
@@ -551,14 +565,15 @@ func LaneGroup(namespace, name, entryService, targetService string) map[string]a
 
 func TrafficSecurityRule(namespace, name, service string) map[string]any {
 	return map[string]any{
-		"name":           name,
-		"namespace":      namespace,
-		"service":        service,
-		"description":    "e2e traffic security",
-		"priority":       10,
-		"enable":         true,
-		"default_action": "TRAFFIC_SECURITY_DENY",
-		"metadata":       map[string]string{"e2e": "true"},
+		"name":        name,
+		"description": "e2e traffic security",
+		"target_service": map[string]any{
+			"namespace": namespace,
+			"service":   service,
+		},
+		"priority": 10,
+		"enable":   true,
+		"metadata": map[string]string{"e2e": "true"},
 		"policies": []map[string]any{{
 			"api": map[string]any{
 				"protocol": "HTTP",
@@ -585,21 +600,20 @@ func TrafficSecurityRule(namespace, name, service string) map[string]any {
 func TrafficMirrorRule(namespace, name, sourceService, targetService string) map[string]any {
 	return map[string]any{
 		"name":        name,
-		"namespace":   namespace,
-		"service":     sourceService,
 		"description": "e2e mirror",
-		"priority":    10,
-		"enable":      true,
-		"metadata":    map[string]string{"e2e": "true"},
+		"target_service": map[string]any{
+			"namespace": namespace,
+			"service":   sourceService,
+		},
+		"priority": 10,
+		"enable":   true,
+		"metadata": map[string]string{"e2e": "true"},
 		"rules": []map[string]any{{
-			"source": map[string]any{
-				"namespace": namespace,
-				"service":   sourceService,
-				"traffic_match_rule": map[string]any{
-					"matchMode": "AND",
-					"arguments": []map[string]any{
-						MatchArg("HEADER", "x-traffic-mirror", "true"),
-					},
+			"traffic_match_rule": map[string]any{
+				"matchMode": "AND",
+				"arguments": []map[string]any{
+					MatchArg("CALLER_SERVICE", namespace, sourceService),
+					MatchArg("HEADER", "x-traffic-mirror", "true"),
 				},
 			},
 			"destination": map[string]any{
@@ -619,26 +633,25 @@ func TrafficMirrorRule(namespace, name, sourceService, targetService string) map
 func TrafficMockRule(namespace, name, service string) map[string]any {
 	return map[string]any{
 		"name":        name,
-		"namespace":   namespace,
-		"service":     service,
 		"description": "e2e mock",
-		"priority":    10,
-		"enable":      true,
-		"metadata":    map[string]string{"e2e": "true"},
+		"target_service": map[string]any{
+			"namespace": namespace,
+			"service":   service,
+		},
+		"priority": 10,
+		"enable":   true,
+		"metadata": map[string]string{"e2e": "true"},
 		"rules": []map[string]any{{
-			"source": map[string]any{
-				"namespace": namespace,
-				"service":   service,
-				"api": map[string]any{
-					"protocol": "HTTP",
-					"method":   "GET",
-					"path":     MatchString("/orders"),
-				},
-				"traffic_match_rule": map[string]any{
-					"matchMode": "AND",
-					"arguments": []map[string]any{
-						MatchArg("HEADER", "x-mock", "true"),
-					},
+			"api": map[string]any{
+				"protocol": "HTTP",
+				"method":   "GET",
+				"path":     MatchString("/orders"),
+			},
+			"traffic_match_rule": map[string]any{
+				"matchMode": "AND",
+				"arguments": []map[string]any{
+					MatchArg("CALLER_SERVICE", namespace, service),
+					MatchArg("HEADER", "x-mock", "true"),
 				},
 			},
 			"response": map[string]any{

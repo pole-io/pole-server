@@ -189,11 +189,18 @@ func checkFaultDetectRuleParams(
 }
 
 func checkFaultDetectRuleParamsDbLen(req *apifault.FaultDetectRule) *apimodel.Response {
-	if err := valid.CheckDbRawStrFieldLen(req.GetTargetService().GetService(), valid.MaxDbServiceNameLength); err != nil {
+	targetService := req.GetTargetService()
+	if targetService == nil {
+		return api.NewResponse(apimodel.Code_InvalidParameter)
+	}
+	if err := valid.CheckDbRawStrFieldLen(targetService.GetService(), valid.MaxDbServiceNameLength); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	if err := valid.CheckDbRawStrFieldLen(
-		req.GetTargetService().GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
+		targetService.GetNamespace(), valid.MaxDbServiceNamespaceLength); err != nil {
+		return api.NewResponse(apimodel.Code_InvalidParameter)
+	}
+	if len(req.GetRules()) == 0 {
 		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
 	if err := valid.CheckDbRawStrFieldLen(req.GetName(), valid.MaxRuleName); err != nil {

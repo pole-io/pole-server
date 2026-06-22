@@ -2,11 +2,1462 @@
 title: 任务计划与 Review
 tags: [tasks, todo]
 links: [lessons]
-updated: 2026-06-16
+updated: 2026-06-22
 sources: 0
 ---
 
 # 任务计划与 Review
+
+## specification 流量治理 caller -> callee 契约补齐
+
+- [x] 核对 `../specification` 当前 `TrafficMirror` / `TrafficMock` 契约和本地未提交差异
+- [x] 使用独立 worktree 从 `origin/develop` 创建干净 spec 分支，避免污染现有 `../specification` 未提交文件
+- [x] 在 spec 顶层补齐 Mirror / Mock 的 `caller` 与 `callee` 字段，并保留旧 `target_service` 兼容
+- [x] 重新生成 specification Go / Rust 产物
+- [x] 创建 specification PR
+- [x] 记录 PR、验证结果和后续 control-plane 适配事项
+
+当前判断：
+
+- 既然 Console 语义已收敛为 `Caller -> Callee`，spec 不应只通过 `target_service` + 子规则 `CALLER_SERVICE` 隐式表达。
+- 本轮 spec 采用兼容方案：新增通用 `ServiceScope`，`TrafficMirror` / `TrafficMock` 顶层新增 `caller`、`callee`；旧 `target_service` 保留并标注 deprecated，避免立即破坏旧 control-plane 与旧数据。
+- Caller 只允许两种产品态：`*/*` 表示全部服务，或具体 `namespace/service`；Callee 表达规则归属和客户端下发绑定服务。
+
+验证：
+
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/go && bash build.sh` 通过。
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/rust && bash build.sh` 通过。
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee && git diff --check` 通过。
+- specification PR 已创建：`https://github.com/lattice-hub/specification/pull/7`。
+
+Review：
+
+- spec PR 分支为 `codex/traffic-caller-callee`，commit 为 `a86d8e0 feat: add traffic caller callee scope`。
+- PR 只包含 `traffic_manage` proto 与 Go/Rust 生成产物；创建前已从独立 worktree 清掉无关 `source/rust/pole-specification/proto/service.proto` 行尾噪音，未污染当前 `../specification` 工作区的未提交改动。
+- 后续 control-plane 在 specification 发版后应优先读取/提交 `caller` 与 `callee`，旧 `target_service` 仅作为兼容兜底；当前 Console 临时兼容仍会通过 `target_service` 和 `CALLER_SERVICE` 工作。
+
+## Mock 规则 caller -> callee 范围修正
+
+- [x] 核对当前 `TrafficMock` spec、前端类型、Mock 编辑器和镜像 caller/callee 修正方式
+- [x] 将 Mock 规则的大规则层调整为主调方 → 被调方服务范围，caller 支持全部服务
+- [x] 保存时把 caller 范围兼容写入当前 `traffic_match_rule.CALLER_SERVICE`
+- [x] 补齐 Mock 实时 Spec 预览、保存校验和列表摘要
+- [x] 运行前端脚本、构建、diff 检查和真实 8080 页面验证
+- [x] 记录 review、验证结果和 lessons
+
+当前判断：
+
+- 当前 specification 的 `TrafficMock` 已有 `target_service`，该字段继续作为 callee 和规则归属；本轮不修改后端 proto、存储或缓存。
+- 用户进一步指出服务 Mock 也应和路由、镜像一样关心 caller → callee；caller 可以选择全部服务。
+- 兼容方案：前端把 caller 作为 Mock 大规则层服务范围展示和编辑；提交时如果 caller 不是全部服务，则自动写入每条 `MockRule.traffic_match_rule.arguments` 的 `CALLER_SERVICE` 条件；如果 caller 是全部服务，则移除该条件。
+
+验证：
+
+- `cd console/web && node scripts/verify-traffic-mock-editor-utils.mjs` 通过，覆盖 caller 抽取、预览隐藏 `CALLER_SERVICE`、全部服务提交移除来源服务条件、具体 caller 提交自动注入来源服务条件。
+- `cd console/web && node scripts/verify-traffic-mirror-editor-utils.mjs` 通过，确认未破坏镜像 caller/callee 逻辑。
+- 按用户进一步纠正，已补充 Mock / 镜像 caller 半状态验证：`namespace/*` 会归一为全部服务；`namespace/空服务` 会被校验拦截，不允许保存成不完整 caller。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/Security/trafficMockEditorUtils.ts console/web/src/pages/Governance/Security/TrafficGovernanceEditor.tsx console/web/scripts/verify-traffic-mock-editor-utils.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过，tmux 日志显示 `finish starting server`。
+- Playwright 登录真实 8080 工作台打开 `seed-20260616-mock`：列表摘要显示 `spec-governance/spec-order -> spec-governance/spec-order / Code OK`；查看态显示服务范围、主调方、被调方、流量方向和右侧 `MockRule.spec.scope.caller/callee` 预览。
+- Playwright 编辑态断言通过：存在 `主调命名空间`、`主调服务`、`被调命名空间`、`被调服务`，主调服务下拉包含 `全部服务`；页面文本不包含 `CALLER_SERVICE`；截图保存到 `output/playwright/traffic-mock-caller-callee-edit.png`。
+
+Review：
+
+- 本轮只改 Console 前端表达和保存前转换，不修改 specification proto、Go 后端、存储或缓存。
+- `target_service` 继续作为 callee 和规则归属；caller 作为前端大规则层范围展示，保存时兼容写入每条 Mock 子规则的来源服务匹配条件。
+- Mock 子规则继续只承载选择接口、流量匹配和 Mock 响应结果；来源服务不再作为子规则条件展示，也不会进入右侧产品态 `MockRule` 预览的 `match.conditions`。
+- Caller 只允许两种产品态：全部服务，或具体 `namespace/service`；半状态会在 helper 层归一或被校验拦截，避免 UI 与保存语义分叉。
+
+## 流量镜像规则 caller -> callee 范围修正
+
+- [x] 核对当前 `TrafficMirror` spec、前端类型、编辑器和路由 caller/callee 范式
+- [x] 将镜像规则的大规则层调整为主调方 → 被调方服务范围，caller 支持全部服务
+- [x] 保存时把 caller 范围兼容写入当前 `traffic_match_rule.CALLER_SERVICE`
+- [x] 补齐镜像实时 Spec 预览、保存校验和列表摘要
+- [x] 运行前端脚本、构建、diff 检查和真实 8080 页面验证
+- [x] 记录 review、验证结果和 lessons
+
+当前判断：
+
+- 当前 specification 的 `TrafficMirror` 已有 `target_service`，后端缓存/下发也按该服务绑定；本轮不直接修改后端 proto。
+- 用户指出的问题是镜像规则产品语义应像路由一样表达 caller → callee，caller 可以为全部服务；不应让用户在子规则流量匹配里手动选择 `CALLER_SERVICE` 来表达来源服务。
+- 兼容方案：前端把 caller 作为镜像大规则层服务范围展示和编辑；提交时如果 caller 不是全部服务，则自动写入每条 `MirrorRule.traffic_match_rule.arguments` 的 `CALLER_SERVICE` 条件；如果 caller 是全部服务，则移除该条件。
+
+验证：
+
+- `cd console/web && node scripts/verify-traffic-mirror-editor-utils.mjs` 通过，覆盖 caller 解析、全部服务移除来源服务条件、具体 caller 注入来源服务条件、预览和校验。
+- `cd console/web && npm run build:test` 通过，保留既有 Browserslist 过期和大 chunk 警告。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过，tmux 日志显示 `finish starting server`。
+- Playwright 登录真实 8080 工作台打开 `seed-20260616-mirror`：列表摘要显示 `caller -> callee / 镜像到 destination`；查看态显示服务范围、主调方、被调方、流量方向和右侧 `mirror_config.caller/callee` 预览。
+- Playwright 编辑态断言通过：存在 `主调命名空间`、`主调服务`、`被调命名空间`、`被调服务`，`全部服务` 可见；页面不再出现实现字段名 `CALLER_SERVICE` 和旧的 `命中比例`；截图保存到 `output/playwright/traffic-mirror-caller-callee-edit.png`。
+
+Review：
+
+- 本轮只改 Console 前端表达和保存前转换，不修改 specification proto、Go 后端、存储或缓存。
+- `target_service` 继续作为 callee 和规则归属；caller 作为前端大规则层范围展示，保存时兼容写入每条子规则的来源服务匹配条件。
+- 镜像子规则仍保持四步：镜像接口 → 流量匹配 → 采样 → 镜像目标；流量匹配不再暴露来源服务和命中比例，避免和服务范围、镜像比例重复。
+
+## OpenServer 观测闭环设计
+
+- [x] 核对现有日志、OTel、observability 插件和 Console 监控入口
+- [x] 确认 OpenServer 在观测链路中的定位：内置 OTLP 接收/存储，还是外部采集器转发入口
+- [x] 收敛 logs、metrics、traces 以及后续 pole-sdk 监控数据的边界
+- [ ] 提出 2-3 个架构方案，并给出推荐方案与取舍
+- [ ] 用户认可后归档技术 ADR，同步 `context-kg/_meta/index.md` 与 `context-kg/_meta/log.md`
+- [ ] 进入实现计划，列出配置、插件、协议、Console 和验证路径
+
+当前判断：
+
+- 当前仓库已有 `pkg/common/otel/`，但只实现 OTLP gRPC exporter 和本进程指标注册，尚未在启动配置中接入，也不是 receiver。
+- 当前 observability 插件包含 history、discoverEvent、statis 三类，分别服务操作历史、发现事件和统计数据；这些是 Pole 内部模型，不等同于 OTel 信号。
+- 当前 Console 监控入口仍通过 `monitorServer.address` 指向外部服务，尚未形成 OpenServer 内置观测闭环。
+- 推荐优先保持 OTel 协议边界：OpenServer 可以成为默认采集/治理入口，但 SDK 和用户侧仍应能够直接替换为标准 OTLP collector 或其它后端。
+- 用户已确认观测后端内置闭环：接收 OTLP，自己存 logs、metrics、traces，并给 lattice-hub / Console 查询治理。
+- 在 pole-control-plane 侧不需要新增独立 `openobserver` 插件类型；现有 `history`、`discoverEvent`、`statis` 都是 chain 模式，应分别新增可配置的 `otel` chain entry，启用后把内部模型转换并发送到内置观测后端。
+- OTel events 不应设计成独立第四类协议；按 OTel 语义应建模为带 `event.name` 的 LogRecord，再在 OpenObserver 查询层提供 events 视图。
+- 初步映射：`history.RecordEntry` 经 `history.entries: [{name: otel}]` 进入 audit event/log，`DiscoverEvent` 经 `discoverEvent.entries: [{name: otel}]` 进入 domain event/log，`statis` 经 `statis.entries: [{name: otel}]` 进入 metrics，真实请求链路和 SDK 调用链进入 traces。
+
+验证：
+
+- 待执行。
+
+Review：
+
+- 待补充。
+
+## 8091 客户端发现响应缓存与实例快照优化
+
+- [x] 写失败测试：同一服务同一 revision 的 full response 第二次请求不再遍历实例缓存
+- [x] 写失败测试：`ServiceInstances` 多次读取实例时复用快照并在实例变更后重建
+- [x] 为 8091 服务实例发现增加业务层 `DiscoverResponse` 缓存，key 包含 namespace、service、revision、onlyHealthy
+- [x] 为 `ServiceInstances` 增加 all/healthy 实例快照，缩短请求线程锁持有与重复 map 遍历
+- [x] 补充 revision 命中、response cache 命中/未命中指标或可观测计数
+- [x] 运行相关 Go 测试、context-kg lint 和 diff 检查
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 本轮只优化 8091 客户端服务实例发现热路径；治理规则、配置发现和 Console 查询不纳入。
+- 业务层 response 缓存只缓存成功 full response，不缓存 `DataNoChange`、推空保护或错误响应。
+- 实例快照放在 `ServiceInstances` 内部，对调用方保持 `DiscoverServiceInstances` 回调接口不变，降低改动面。
+- gRPC prepared message cache 继续保留；本轮新增的业务缓存用于减少 protobuf 编码前的实例遍历和 response 构造。
+
+验证：
+
+- RED：`go test ./pkg/service -run TestServer_ServiceInstancesCacheReusesFullResponseForSameRevision -count=1` 失败，第二次请求仍调用 `DiscoverServiceInstances`。
+- RED：`go test ./apis/pkg/types/service -run TestServiceInstancesGetInstancesDoesNotHoldLockDuringConsumer -count=1` 失败，`GetInstances` 回调期间持锁导致测试超时。
+- GREEN：`go test ./pkg/service -run 'TestServer_ServiceInstancesCache(ReusesFullResponseForSameRevision|DoesNotMergeVisibleServicesFromOtherNamespaces)' -count=1` 通过。
+- GREEN：`go test ./apis/pkg/types/service -run TestServiceInstancesGetInstancesDoesNotHoldLockDuringConsumer -count=1` 通过。
+- `go test ./pkg/service ./apis/pkg/types/service ./pkg/cache/service ./apis/pkg/types/metrics ./plugin/observability/statis/base` 通过。
+- `go test ./plugin/observability/statis/...` 通过。
+- `go test ./plugin/apiserver/grpcserver/...` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+
+Review：
+
+- `ServiceInstancesCache` 现在先记录 revision 命中；revision 未命中时再按 `INSTANCE:namespace:service:revision:onlyHealthy` 查业务层 response cache，命中后不再遍历实例缓存。
+- response cache 存取都使用 proto clone，避免共享 `DiscoverResponse` 被后续发送或调用方修改。
+- `ServiceInstances.GetInstances` 改为先取 all/healthy 快照，再在锁外执行 consumer；Upsert、Remove、健康保护重算和保护阈值变化都会失效快照。
+- 新增 `DiscoverCacheCallMetric`，通过现有 cache statis 聚合 revision 和 response cache 的 hit/miss。
+
+## Mock 规则编辑抽屉 PRD 对齐
+
+- [x] 读取 Mock 规则设计交接文档，确认只调整 Console 前端交互组织与预览映射
+- [x] 核对当前 `TrafficGovernanceEditor` 的 Mock 数据结构、保存 payload 和治理编辑器双栏范式
+- [x] 新增 Mock 编辑器工具函数，覆盖草稿归一化、右侧预览、保存校验和 Body 高度策略
+- [x] 重构 Mock 规则 Tab 为基础信息、Mock 服务、Mock 子规则和右侧实时 `MockRule` Spec 预览
+- [x] 移除 Mock 比例、数字状态码范围、Reason/message 与固定 Content-Type 主控件
+- [x] 运行前端逻辑脚本、构建、diff 检查和页面级验证
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 本轮只优化治理工作台 `Mock` 规则 Tab 的前端组织、页面预览映射和保存校验，不调整后端 schema、proto 或存储契约。
+- 附件里的 `MockRule/spec.rules[]` 是产品态预览结构；真实提交仍适配当前 `TrafficMock.rules[]` 后端契约。
+- Mock 服务信息属于大规则层，Mock 子规则只承载接口、流量匹配和 Mock 响应结果；子规则内不再展示 Mock 比例。
+- Mock 响应 Code 是字符串，只校验非空；响应 Header 是普通 Key-Value 列表，`content-type` 仅作为普通 header 影响 JSON Body 校验。
+
+当前进展：
+
+- 已读取交接文档、当前 `TrafficGovernanceEditor`、`traffic_governance` 类型、鉴权编辑器 utils 和治理编辑器共享样式。
+- 已确认现有 Mock 编辑器仍包含旧形态：Mock 比例、`status_code` 数字范围校验、`message` 响应文案和普通大 Textarea，需要按 PRD 收敛。
+- 已新增 `trafficMockEditorUtils.ts`，将 Mock 草稿归一化、提交 payload、右侧 `MockRule` 预览、校验和延迟毫秒转换从主组件拆出。
+- 已将 Mock 规则 Tab 改为基础信息、Mock 服务、Mock 子规则和右侧实时 Spec 双栏；Mock 服务只在大规则层展示。
+- Mock 子规则按选择接口、流量匹配、Mock 响应结果三段组织；Mock 响应结果使用单一响应面板，包含 Code/延迟、Header、Body 和最终返回预览。
+- 编辑态不再展示 Mock 比例、响应状态码、响应文案、Reason 或固定 Content-Type 主控件；提交时保留隐藏 `mock_percent=100` 适配当前后端契约。
+
+验证：
+
+- `cd console/web && node scripts/verify-traffic-mock-editor-utils.mjs` 通过。
+- `cd console/web && node scripts/verify-traffic-security-editor-utils.mjs` 通过，确认未破坏鉴权编辑器工具函数。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/Security/TrafficGovernanceEditor.tsx console/web/src/pages/Governance/Security/index.module.less console/web/src/pages/Governance/Security/trafficMockEditorUtils.ts console/web/src/services/traffic_governance.ts console/web/scripts/verify-traffic-mock-editor-utils.mjs context-kg/tasks/todo.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过，tmux 日志显示 `finish starting server`，8080 返回 200。
+- Playwright 登录真实 8080 后打开 Mock 规则 `seed-20260616-mock`：查看态显示 Mock 服务、Mock 子规则三段、最终返回预览和右侧 `kind: MockRule` 预览。
+- Playwright 编辑态断言通过：页面存在 `Mock 服务`、`Mock 子规则 [1]`、`全屏编辑`、`kind: MockRule`；页面文本不包含 `Mock 比例`、`响应状态码`、`响应文案`、`Reason`、`ratioPercent`、`reason`。
+- Playwright 验证普通 Body 一行高度约 32px；全屏编辑 Body 后，普通 textarea、最终返回预览和右侧 Spec 同步更新。
+- Playwright 点击 `添加 Mock 子规则` 后页面出现 `Mock 子规则 [2]`，右侧预览出现 2 个 `mock-subrule-*`。
+- Playwright 清空响应 Code 后右侧出现 `响应 Code 不能为空`，且不再显示 `校验通过，可保存并下发`。
+- 页面截图保存到 `output/playwright/traffic-mock-rule-editor.png`。
+
+Review：
+
+- 本轮只调整 Console Mock 规则编辑抽屉和前端服务类型，不修改后端 proto、存储或接口 schema。
+- 右侧 `MockRule/spec.rules[]` 是前端产品态预览，真实提交仍转换为当前 `TrafficMock.rules[]`；为了表达“命中即 Mock”，提交层固定补 `mock_percent=100`，但 UI 和预览不暴露比例。
+- 旧草稿中的 `status_code` 会在前端归一化为字符串 `response.code`；Mock UI、预览和提交响应体不再输出 `status_code`、`message` 或 `reason`。
+
+## specification 治理规则响应 Code string 化
+
+- [x] 确认治理规则中响应效果类 `code` 字段范围
+- [x] 收回误改的通用 API `model.Response` / `DiscoverResponse` / `ConfigDiscoverResponse` / `ratelimiter` 协议响应
+- [x] 修改 `../specification/api/v1/fault_tolerance/circuitbreaker.proto` 中 `FallbackResponse.code` 为 `string`
+- [x] 删除 Mock / 鉴权治理响应效果中的 `status_code`，统一只保留 `code string`
+- [x] 删除 Mock 响应效果中的 `message`，避免与 `body` 重复表达响应内容
+- [x] 重新生成 `../specification/source/go` 产物，并同步 Rust proto 副本
+- [x] 运行治理规则 code 扫描、spec Go/Rust 生成验证、control-plane 聚焦编译和 context-kg lint
+- [x] 记录 review 与验证结果
+- [x] 合并 specification PR 后创建并推送 `v0.1.0-ALPHA.30` tag
+- [x] 更新 pole-control-plane 依赖到 `github.com/pole-io/specification v0.1.0-ALPHA.30`
+
+当前判断：
+
+- 本轮以相邻 `../specification` 为协议真源，只统一治理规则里的响应效果 Code：限流 `CustomResponse.code`、流量 Mock `MockResponse.code`、调用鉴权 `TrafficSecurityRejectEffect.code`、熔断 `FallbackResponse.code` 均为 `string`。
+- 治理响应效果里不保留 `status_code`；Mock 和鉴权原有 `status_code` 已删除，`code` 收敛到 field 1。
+- Mock 响应效果里 `body` 是实际 Mock 出来的响应内容，`message` 与它语义重复；Mock 保留 `code`、`headers`、`body`，鉴权拒绝效果因为没有 `body` 仍保留 `message`。
+- `api/v1/model/response.proto`、服务发现 `DiscoverResponse`、配置发现 `ConfigDiscoverResponse`、心跳删除响应和限流器协议 `ratelimiter` 不属于治理规则响应效果，不纳入本轮。
+- 当前 `../specification/source/rust/pole-specification/proto/service.proto` 只有换行符格式差异的既有脏改动；本轮不处理该文件。
+- specification PR `https://github.com/lattice-hub/specification/pull/6` 已合并到 `develop`，merge commit 为 `e7c8eafc7a2424dc677c27e3ad09bcf8a8445d21`；`v0.1.0-ALPHA.30` tag 指向该提交。
+- pole-control-plane 已将 `go.mod` 中 `github.com/pole-io/specification` 的 `require` 与 `replace github.com/lattice-hub/specification` 同步更新到 `v0.1.0-ALPHA.30`，并补充对应 `go.sum` checksum。
+
+验证：
+
+- `cd ../specification/source/go && bash build.sh` 通过。
+- `cd ../specification/source/rust/pole-specification && PROTOC=/Users/chuntao.liao/Github/pole-io/specification/source/protoc/protoc-darwin-arm64/bin/protoc cargo build --release` 通过。
+- `cd ../specification && go test ./...` 通过。
+- 精确扫描确认治理规则响应效果：`FallbackResponse.code`、`CustomResponse.code`、`MockResponse.code`、`TrafficSecurityRejectEffect.code` 均为 `string`；这些响应效果中不再存在 `status_code`，Mock 响应效果中不再存在 `message`。
+- 使用临时 modfile 指向本地 `../specification` 运行 `go test ./pkg/common/api/v1 ./plugin/store/mysql` 通过。
+- specification tag 验证：`git -C ../specification show --no-patch --format='%H %D %s' v0.1.0-ALPHA.30` 返回 `e7c8eafc7a2424dc677c27e3ad09bcf8a8445d21 tag: v0.1.0-ALPHA.30, origin/develop, origin/HEAD standardize governance response codes`。
+- pole-control-plane 使用远端 tag 后运行 `go test ./pkg/common/api/v1 ./plugin/store/mysql` 通过。
+- 更大范围 control-plane 编译曾被当前工作区既有 `pkg/cache/namespace` 的 `undefined: matchs` 阻断，与本轮 spec 变更无关。
+
+Review：
+
+- 已收回误改的通用 API 响应码变更，`pkg/common/api/v1` 无本轮 diff。
+- 本轮 spec diff 包含熔断 `FallbackResponse.code` string 化、Mock / 鉴权响应效果删除 `status_code`、Mock 响应效果删除重复 `message` 及对应 Go/Rust 生成产物；`../specification/source/rust/pole-specification/proto/service.proto` 是既有换行符脏改动，不属于本轮。
+- 本轮 control-plane 更新只涉及 `go.mod` / `go.sum` 的 specification 版本提升，不修改业务代码。
+
+## 移除控制面跨命名空间服务发现能力
+
+- [x] 写后端失败测试：跨命名空间可见服务不再被 8091 Discover 合并返回
+- [x] 移除 `ServiceInstancesCache` / `GetServiceWithCache` 中的跨命名空间可见服务 fan-out
+- [x] 清理服务缓存接口中仅服务发现使用的跨命名空间查询能力
+- [x] 移除 Console 服务和命名空间的可见性展示、筛选、编辑入口
+- [x] 运行后端相关测试、Console 构建和 context-kg lint
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 本轮移除的是 control-plane 客户端发现路径中的跨命名空间服务可见性；该能力后续如有需要应在 pole-sidecar 数据面实现。
+- 后端存储字段和 proto 字段保留兼容历史数据，避免扩大到数据库迁移和 specification 破坏性变更；管理 API 不再写入或返回服务/命名空间可见性字段。
+- MCP Server 的 `export_to` 属于 AI registry 资源字段，不属于服务注册发现客户端路径，本轮不纳入。
+
+验证：
+
+- `go test ./pkg/service -run TestServer_ServiceInstancesCacheDoesNotMergeVisibleServicesFromOtherNamespaces -count=1` 通过。
+- `go test ./pkg/cache/service ./pkg/cache/namespace -run TestDoesNotExist` 通过。
+- `go test ./pkg/service ./pkg/cache/service ./pkg/cache/namespace` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+- `go test ./...` 已尝试运行，前半段包正常输出通过，但超过 2 分钟无新输出后手动中止；本轮以相关包测试为准。
+
+Review：
+
+- 8091 服务发现现在只按请求的 `name/namespace` 读取当前服务实例，不再查其它命名空间可见服务，也不再计算跨服务 composite revision。
+- 服务缓存和命名空间缓存不再维护跨命名空间可见性索引，相关 Cache 接口与 mock 已清理。
+- 服务和命名空间管理 API 不再使用 `export_to` / `service_export_to`，旧 DB 字段仅作为兼容字段保留。
+- Console 服务列表、服务编辑器、服务详情、命名空间列表、命名空间编辑器都移除了可见性展示与编辑入口；MCP Server 的 `export_to` 保留。
+
+## 客户端请求链路性能瓶颈分析
+
+- [x] 梳理 8090 HTTP 客户端入口的请求路径、序列化和连接模型
+- [x] 梳理 8091 gRPC 客户端入口的注册、发现、心跳路径
+- [x] 核对业务层拦截器、缓存、批处理与 MySQL 写入路径
+- [x] 识别潜在吞吐/延迟瓶颈并按风险排序
+- [x] 给出可验证的压测与观测建议
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 本轮先做代码与配置层面的性能风险分析，不修改实现。
+- 重点关注客户端高频路径：服务注册、服务发现、心跳、配置发现，以及 8090 HTTP 与 8091 gRPC 两种接入方式差异。
+
+当前进展：
+
+- 已确认 8090 `api-http` 客户端入口会先做 protobuf JSON 解析，再进入 `namingServer` / `ruleServer` 缓存读写路径，响应默认走 `jsonpb` marshal。
+- 已确认 8091 `service-grpc` 客户端入口直接走 protobuf gRPC；发现流支持 response prepared message 缓存，默认配置开启 `enableCacheProto`。
+- 已确认服务发现主路径读缓存，不直接读 MySQL；注册、反注册、心跳通过 batch controller 合并后写 MySQL。
+- 已确认缓存默认 1 秒 tick 增量刷新，因此写入成功到发现可见之间存在缓存刷新窗口。
+
+验证：
+
+- 本轮仅做静态代码与配置分析，未运行压测。
+- 已核对入口、缓存、批处理和配置文件：`plugin/apiserver/httpserver/discover/client_access.go`、`plugin/apiserver/grpcserver/discover/v1/client_access.go`、`pkg/service/client_v1.go`、`pkg/service/batch/instance.go`、`pkg/common/batchctrl/batch.go`、`pkg/cache/cache.go`、`deploy/conf/pole-server.yaml`、`deploy/conf/pole-apiserver.yaml`。
+
+Review：
+
+- 纯内网客户端链路的主要性能风险不在 HTTP/3；优先关注发现响应体大小、revision 命中率、8090 JSON 序列化、8091 protobuf 缓存命中、注册/心跳批处理等待、MySQL 批量写入和缓存刷新窗口。
+- 客户端高频发现应优先走 8091 gRPC；8090 更适合作为兼容和 Console/API 入口。
+- 如果后续要形成长期性能方案，应另建 `context-kg/technical/adr/` 或模块页，本轮不把长期设计塞进 `tasks/todo.md`。
+
+## Console OIDC 用户来源与企业目录同步方案归档
+
+- [x] 核对 context-kg schema、index、log 与既有 ADR 风格
+- [x] 明确方案边界：企业身份接入放在 Console 扩展点，不进入 pole-server 核心鉴权链
+- [x] 新增技术 ADR，沉淀 OIDC 登录、Pole User 映射、企业目录同步和验证矩阵
+- [x] 同步更新 auth-system、index、log
+- [x] 运行 context-kg lint 与 diff 检查
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 本方案只改变 Console 用户来源，不替换 pole-server 内部 token、User/UserGroup/Role/Policy 和资源授权逻辑。
+- OIDC 登录与飞书/Lark/钉钉企业目录同步应作为 Console 扩展点实现；pole-server 继续只管理 Pole User 与鉴权策略。
+- 目录同步用于解决“企业用户未登录前无法被授权选择”的问题，同步结果仍必须落成 `source=oidc` 的 Pole User。
+
+验证：
+
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- context-kg/technical/adr/adr-console-oidc-identity-source.md context-kg/technical/modules/auth-system.md context-kg/_meta/index.md context-kg/_meta/log.md context-kg/tasks/todo.md` 通过。
+
+Review：
+
+- 本轮只沉淀技术方案，不改实现代码。
+- 新 ADR 将 OIDC 登录、企业目录同步、Pole User 映射、时序图、异常处理和测试策略统一归档到 `technical/adr/`。
+- `auth-system` 只补充 Console 外部用户来源入口说明，避免把 Console 扩展能力误写成 pole-server 核心鉴权逻辑。
+
+## 鉴权规则编辑抽屉 PRD 对齐
+
+- [x] 读取鉴权规则设计交接文档，确认前端交互边界
+- [x] 核对当前 `TrafficGovernanceEditor` 的鉴权数据结构、保存 payload 和通用治理编辑器范式
+- [x] 将鉴权子规则重组为黑名单接口规则、白名单接口规则、服务级规则三段
+- [x] 补齐前端预览映射、归一化和保存校验，保持真实提交兼容当前后端契约
+- [x] 运行前端逻辑脚本、构建、diff 检查和真实 8080 页面验证
+- [x] 记录 review、验证结果和必要 lessons
+
+当前判断：
+
+- 本轮只优化治理工作台 `鉴权` 规则 Tab 的前端组织和右侧预览，不调整后端 schema、proto 或存储契约。
+- 附件里的 `AuthRule/subRules/listType/protectedInterfaces` 是产品态预览结构；真实提交仍需适配到当前 `TrafficSecurityRule` / `TrafficSecurityPolicy` 后端契约。
+- 鉴权专属区域应按黑名单接口规则 → 白名单接口规则 → 服务级规则固定排序；接口级子规则内部不再出现名单类型切换、策略名称、参数比例、命中动作、未命中默认动作、鉴权服务和凭据来源。
+
+当前进展：
+
+- 已新增鉴权编辑器工具函数，将当前后端 `TrafficSecurityRule.policies` 归一化为前端 `黑名单接口规则 / 白名单接口规则 / 服务级规则` 视图；保存时再展开回当前后端 `TrafficSecurityPolicy[]`。
+- 已将鉴权规则 Tab 重构为左侧基础信息与鉴权子规则、右侧实时 `AuthRule` Spec 预览；预览只表达产品态映射，不改变后端提交契约。
+- 已移除鉴权子规则内的名单类型切换、命中动作、未命中默认动作、策略名称、参数比例、鉴权服务和凭据来源；接口级名单语义由所在分区自动决定。
+- 已支持服务级规则最多一条、始终位于最后；服务级规则的 `protectedInterfaces` 在预览中保持为空数组。
+
+验证：
+
+- `cd console/web && node scripts/verify-traffic-security-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过，tmux 日志显示 `finish starting server`，8080 页面可访问。
+- Playwright 登录真实 8080 工作台打开 `seed-20260616-security`：查看态显示基础信息、鉴权子规则、黑名单接口规则、白名单接口规则、服务级规则和右侧实时 `AuthRule` Spec。
+- Playwright 编辑态断言通过：存在 `添加黑名单接口`、`添加白名单接口`、`添加服务级规则`，右侧预览包含 `kind: AuthRule`、`listType: ALLOW_LIST`、`protectedInterfaces`，页面文本不包含 `命中后`、`未命中`、`策略名称`、`鉴权服务`、`凭据来源`、`默认动作`。
+- Playwright 添加服务级规则后，右侧预览新增服务级 `subRule` 且 `protectedInterfaces: []`；页面截图保存到 `output/playwright/traffic-security-authrule-editor.png`。
+
+Review：
+
+- 本轮只调整 Console 鉴权规则编辑抽屉，不修改后端 proto、存储或接口 schema。
+- `AuthRule/subRules` 是前端产品态预览，提交仍转换为当前 `TrafficSecurityRule.policies`，避免把 PRD 展示结构误当后端新契约。
+- 本轮没有收到新的用户纠正，因此未新增 `context-kg/tasks/lessons.md`。
+
+## 服务预热控件与曲线 PRD 对齐修正
+
+- [x] 对照用户截图和无损规则编辑 PRD，定位服务预热区偏差
+- [x] 修复 `Second` / `%` 单位输入呈现，确保数值可读
+- [x] 修复预热曲线可视化，按 `curvature` 幂函数真实绘制
+- [x] 运行前端逻辑脚本、构建、diff 检查和页面级验证
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 截图中的“预热窗口”控件只显示 `Second`，没有稳定显示数值，不符合 PRD 的“数字输入 + Second 后缀”要求。
+- 截图中的曲线图区域为空白，不满足 PRD 要求的 `curvature` 幂函数可视化。
+- 修复范围先限定在无损规则编辑抽屉的生命周期数值控件和服务预热曲线，不扩大到后端契约。
+
+当前进展：
+
+- 已把无损规则编辑器里的生命周期秒数和百分比控件从 `InputNumber suffix` 改为现有治理编辑器范式 `InputAdornment append`，避免单位被显示成输入值。
+- 已移除无损编辑器对 `echarts-for-react` 的直接依赖，改为由 `buildWarmupCurvePoints()` 生成 SVG 曲线，确保抽屉内首次渲染即可显示曲线、坐标和点位。
+- 已补充预热窗口说明文案，与 PRD 中“该时间窗内由治理层按预热曲线逐步放量”一致。
+
+验证：
+
+- `cd console/web && node scripts/verify-lossless-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告；本次 `LossLessEditor` chunk 为 46.39 KiB，不再因曲线图拉入 ECharts 变成超大 chunk。
+- `git diff --check -- console/web/src/pages/Governance/LossLess/LossLessEditor.tsx console/web/src/pages/Governance/LossLess/index.module.less context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过并重启 all 模式，日志显示 `finish starting server`，8080 返回 200。
+- Playwright 登录真实 8080 后打开无损规则抽屉并进入编辑态：预热窗口显示数值输入 `0` + `Second`，终止百分比显示数值输入 `80` + `%`，曲线 SVG 存在并显示 0/25/50/75/100% 坐标与点位。
+- 页面截图已保存到 `.playwright-cli/page-2026-06-21T10-06-17-256Z.png`。
+
+Review：
+
+- 用户指出的问题成立：上一轮只实现了字段、文案和曲线容器，没有按真实页面检查控件呈现，导致服务预热区和 PRD 明显不一致。
+- 这次修复选择复用 TDesign `InputAdornment append`，和熔断编辑器已有单位输入范式一致；曲线改为由当前纯逻辑点位直接绘制，避免抽屉布局中的图表库 resize 时机问题。
+- 本地 seed 无损规则的 namespace/service 与秒数字段仍是旧数据问题，页面会继续按当前校验展示错误；本轮没有改后端契约或测试数据。
+
+## 无损上下线规则编辑抽屉优化
+
+- [x] 核对交接文档、当前 `LosslessRule` proto/API 与已有治理编辑器范式
+- [x] 新增 Lossless 编辑器工具函数，覆盖草稿归一化、预览 Spec、校验和曲线数据
+- [x] 重构 `LossLessEditor` 规则 Tab 为左表单 / 右实时 Spec 双栏
+- [x] 实现延迟注册、HTTP/TCP/UDP 探测配置、预热曲线图和无损下线只读默认行为
+- [x] 保持保存 payload 与当前后端契约兼容，避免提交未知字段
+- [x] 运行前端脚本、构建、diff 检查和页面级验证
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 本轮优化范围限定在治理工作台 `LosslessRule` 编辑抽屉的规则 Tab，不调整后端 proto。
+- 附件里的实时 Spec 是产品态核对视图；当前后端仍只接受既有 `lossless_online.delay_register` / `warmup` / `lossless_offline` 字段，TCP/UDP 报文匹配先作为前端配置与预览信息保留，不写入提交 payload 的未知字段。
+- 页面布局应直接复用已验证的治理编辑抽屉双栏滚动模型：左侧表单内部滚动，右侧 Spec 面板贯穿抽屉正文高度。
+
+当前进展：
+
+- 已确认当前 `LossLessEditor` 是单栏表单，探测延迟只支持 HTTP，没有右侧实时 Spec，也没有交接稿要求的曲线图和 TCP/UDP 报文匹配 UI。
+- 已新增 `losslessEditorUtils.ts` 和 `verify-lossless-editor-utils.mjs`，将草稿归一化、产品态 Spec 预览、后端提交 payload、保存校验和预热曲线点位拆成纯逻辑。
+- 已将 `LossLessEditor` 重构为左表单 / 右实时 Spec 双栏，左侧分为基础信息、治理对象、无损上线、服务预热、无损下线。
+- 已补齐探测延迟协议切换，HTTP 展示方法/路径，TCP/UDP 展示匹配方式、发送报文、响应匹配。
+- 已补齐预热曲线值 `1～5` 校验、幂函数曲线图和“值越大末段爬升越陡”的准确文案。
+- 已将无损下线收敛为启停 + 等待时长，摘流、停止新流量、等待存量请求作为只读默认行为展示。
+
+验证：
+
+- `cd console/web && node scripts/verify-lossless-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告；Lossless 编辑器因复用既有 `echarts-for-react` 曲线图仍触发大 chunk 警告。
+- `git diff --check -- console/web/src/pages/Governance/LossLess/LossLessEditor.tsx console/web/src/pages/Governance/LossLess/index.module.less console/web/src/pages/Governance/LossLess/losslessEditorUtils.ts console/web/scripts/verify-lossless-editor-utils.mjs context-kg/tasks/todo.md` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过，release bundle 重启后日志显示 `finish starting server`。
+- Playwright 登录真实 8080 工作台打开无损规则抽屉，查看态显示基础信息、治理对象、无损上线、服务预热、无损下线和右侧实时 Spec；截图保存到 `/tmp/lossless-editor-tcp.png`。
+- Playwright 编辑态切换 TCP 后，左侧出现匹配方式、发送报文、响应匹配，右侧 Spec 同步显示 `protocol: TCP`、`expectedResponse: PONG` 和 `match: 包含匹配`。
+- Playwright 布局指标：左侧 `formPane` 为 `overflow:auto`，`scrollHeight=2867`、`clientHeight=841`、设置后 `scrollTop=480`；右侧 Spec 高度 `841` 与 shell 对齐，`window.scrollY=0`。
+
+Review：
+
+- 本轮只改 Console 的无损规则编辑抽屉规则 Tab，不改变后端 proto 与保存接口。
+- 附件里的产品态 Spec 预览已完整表达 TCP/UDP payload；当前后端 `LosslessRule` proto 没有 payload 字段，因此提交 payload 保持在既有 `delay_register` / `warmup` / `lossless_offline` 字段内，避免把页面专用字段伪装成已持久化字段。
+- 当前本地 seed 无损数据缺少 namespace/service 且多个秒数字段为 0，页面会按保存校验在右侧提示；这是数据本身与当前前端校验的结果，不是本轮布局问题。
+
+## 探测 HTTP Headers 添加交互与样式对齐
+
+- [x] 复现 `添加标签` 点击无效并定位状态更新链路
+- [x] 修复 Headers 添加/编辑/删除交互
+- [x] 按 PRD 重新收敛 Headers 区块视觉密度、列宽和按钮样式
+- [x] 运行前端脚本、构建、真实 8080 页面交互验证和 diff 检查
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 这不是单纯文案问题；需要确认点击事件、表单状态、`ruleDrafts` 与 `Form` 字段之间是否互相覆盖。
+- 样式也要继续贴近 PRD：Headers 区块应像协议配置内部的小型编辑表，而不是普通后台表格或通用标签控件。
+
+当前进展：
+
+- 已在真实 8080 复现：点击 `添加标签` 命中了按钮且按钮类型为 `button`，但 DOM 仍保持 `1 个标签`。
+- 根因定位到 `normalizeHttpConfig`：每次草稿同步会过滤 `{ key: '', value: '' }`，导致新增空 header 行立即被归一化删除。
+- 已调整 HTTP 草稿归一化，保留空 header 行用于编辑态；保存前仍由既有校验拦截空 key/value。
+- 已将 Headers 输入、删除按钮、列宽和添加按钮主色按 PRD 风格重新收敛。
+- 用户指出字体大小与其它控件不统一后，已移除 Headers 输入和删除按钮的 `large` 尺寸，并将 Headers 标题、说明和列头收敛到治理抽屉常用字号。
+
+验证：
+
+- `cd console/web && node scripts/verify-faultdetect-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过，release bundle 重启后日志显示 `finish starting server`。
+- Playwright 登录真实 8080 工作台打开 `seed-20260616-faultdetect` 并进入编辑态：点击 `添加标签` 后从 1 行变 2 行，输入 `x-new/yes` 后 DOM 值更新，删除第二行后回到 1 行；添加按钮为主色，window 保持 `scrollY=0`；截图保存到 `/tmp/faultdetect-http-headers-interaction-fixed.png`。
+- Playwright 复验 Headers 字号：`H` 标识 13px，Headers 标题 14px，说明 12px，列头 12px，输入文字 14px，删除按钮 32px；截图保存到 `/tmp/faultdetect-http-headers-font-fixed.png`。
+
+Review：
+
+- 本轮修复的是探测 HTTP Headers 编辑态交互和视觉，不改变提交 payload。
+- 根因修在草稿归一化层，保留编辑态空 header 行；保存时仍通过既有校验阻止空 key/value。
+
+## 探测规则 HTTP Headers 展示修复
+
+- [x] 对比 PRD 截图与当前 `FaultDetectEditor` HTTP 配置渲染
+- [x] 将 HTTP Headers 从通用标签控件改为探测专用 Headers 区块
+- [x] 运行前端脚本、构建和真实 8080 页面验证
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 当前 HTTP Headers 复用通用 `LabelInput`，会呈现“标签”语义和通用标签编辑器布局；PRD 期望的是 HTTP 请求头专用区块：`H` 标识、Headers 标题、说明文案、键/值/操作三列表和底部计数。
+- 本轮只调整 HTTP 协议配置的展示与编辑控件，不改变 `httpConfig.headers` 数据结构和保存 payload。
+
+当前进展：
+
+- 已确认当前实现直接复用 `LabelInput` 渲染 HTTP Headers，因此会出现“标签键/标签值/添加标签/暂无标签”等通用标签语义。
+- 已在 `FaultDetectEditor` 内新增探测专用 Headers 区块：`H` 标识、Headers 标题、说明文案、键/值/操作三列、底部添加标签和计数。
+- Headers 编辑仍写回原字段 `rules[index].httpConfig.headers`，保存 payload 不变。
+
+验证：
+
+- `cd console/web && node scripts/verify-faultdetect-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过，release bundle 重启后日志显示 `finish starting server`。
+- Playwright 登录真实 8080 工作台打开 `seed-20260616-faultdetect` 并进入编辑态：HTTP Headers 区块存在，`H` 标识、标题 `Headers`、说明 `随探测请求发送的请求头`、列头 `键/值/操作`、输入值 `x-seed/true`、底部 `添加标签` 与 `1 个标签` 均符合 PRD；截图保存到 `/tmp/faultdetect-http-headers-prd.png`。
+
+Review：
+
+- 本轮只替换 HTTP Headers 展示控件，不改变 `httpConfig.headers` 数据结构和提交 payload。
+- 通用 `LabelInput` 仍保留给其它标签编辑场景；探测 HTTP Headers 改为本编辑器内的协议专用区块，避免影响其它页面。
+
+## 探测编辑器抽屉共性滚动修复
+
+- [x] 对比探测编辑器与路由/限流/熔断已验证的双栏滚动模型
+- [x] 修复探测编辑器左侧内部滚动、右侧 Spec 高度和 Form shrink 问题
+- [x] 运行前端脚本、构建、diff 检查、context-kg lint 和真实 8080 探测页面验证
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 探测编辑器也属于同一类治理规则抽屉共性问题：旧实现让 shell/spec 各自按 viewport 计算高度，左侧没有被约束成唯一滚动容器。
+- 与限流/熔断不同，探测编辑器的 `Form` 位于左侧 `formPane` 内部；修复时不仅要让 `formPane` 滚动，还要避免内部 `t-form` 和直接 section 在 column flex 中 shrink 后被裁切。
+
+当前进展：
+
+- 已确认探测编辑器仍是旧模型：`editorBody` 只有 padding，`editorShell` 使用 `min-height: calc(100vh - 184px)`，`specPane` 使用 `height/max-height: calc(100vh - 184px)` 与 `position: sticky`。
+- 已将探测编辑器收敛为共性模型：`editorBody` 固定正文高度，shell `height: 100% / overflow: hidden`，左侧 `formPane overflow: auto`，右侧 Spec `height: 100%`。
+- 已针对探测编辑器的特殊 DOM 结构处理 Form shrink：`formPane` 内部 `t-form` 固定为 `flex: 0 0 auto`，Form 直接子 section 固定为 `flex: 0 0 auto`，避免 section 被共享卡片裁切后外层没有真实滚动空间。
+
+验证：
+
+- `cd console/web && node scripts/verify-faultdetect-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过，release bundle 重启后日志显示 `finish starting server`。
+- Playwright 登录真实 8080 工作台打开 `seed-20260616-faultdetect` 并进入编辑态：左侧 `formPane.scrollHeight=1902`、`clientHeight=1242`，程序滚动后 `scrollTop=660`，滚轮后 `scrollTop=660`，window 保持 `scrollY=0`，右侧 Spec 与 editor shell 高度一致；截图保存到 `/tmp/faultdetect-left-scroll-fixed.png`。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/CircuitBreaker/FaultDetectEditor.module.less context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+
+Review：
+
+- 本轮只修探测编辑抽屉布局，不改变探测规则保存 payload 与后端契约。
+- 探测编辑器已纳入治理规则编辑抽屉共性滚动模型；后续处理同类问题时必须横向审计所有同构编辑器。
+
+## 治理规则编辑抽屉共性滚动修复
+
+- [x] 修复熔断编辑器左侧内部滚动和右侧 Spec 高度
+- [x] 将“左侧内部滚动必须验证 scrollTop”沉淀为治理规则共性约束
+- [x] 运行构建、diff 检查、context-kg lint 和真实 8080 熔断页面验证
+
+当前判断：
+
+- 熔断与限流是同类共性问题：编辑器 shell/formPane 使用 `overflow: visible`，右侧 Spec 单独按 viewport 计算高度，左侧 section 在 column flex 中可能 shrink 后被共享 section 的 `overflow:hidden` 裁掉。
+- 这个约束应作为治理规则编辑器共性规则沉淀，不应每个规则类型都等用户截图后再修。
+
+当前进展：
+
+- 已确认熔断编辑器 CSS 仍是旧模型：`editorBody` 无固定正文高度，`circuitBreakerEditorShell` 与 `formPane` 为 `overflow: visible`，`specPane` 使用 `height: calc(100vh - 184px)`。
+- 已将熔断编辑器对齐到共性模型：`editorBody` 固定正文高度，shell `height: 100% / overflow: hidden`，左侧 `formPane overflow: auto`，右侧 Spec `height: 100%`。
+- 已将 `formPane > div` 固定为 `flex: 0 0 auto`，避免共享 section shrink 后被 `overflow: hidden` 裁切。
+- 已将熔断 StickyTool 移出 Form flex 流，避免操作区作为 flex 子项挤压左右双栏高度。
+- 已将治理规则编辑抽屉双栏滚动交互写入 `context-kg/technical/conventions/patterns.md`，作为长期技术约定。
+
+验证：
+
+- `cd console/web && node scripts/verify-circuitbreaker-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `git diff --check -- console/web/src/pages/Governance/CircuitBreaker/CircuitBreakerEditor.tsx console/web/src/pages/Governance/CircuitBreaker/CircuitBreakerEditor.module.less context-kg/tasks/todo.md context-kg/tasks/lessons.md context-kg/technical/conventions/patterns.md context-kg/_meta/index.md context-kg/_meta/log.md` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过，release bundle 重启后日志显示 `finish starting server`。
+- Playwright 登录真实 8080 工作台打开 `seed-20260616-circuitbreaker` 并进入编辑态：左侧 `formPane.scrollHeight=1768`、`clientHeight=1090`，滚轮后 `scrollTop=678`，直接设置后 `scrollTop=500`，window 保持 `scrollY=0`，右侧 Spec 与 editor 高度一致；截图保存到 `/tmp/circuitbreaker-left-scroll-fixed.png`。
+
+Review：
+
+- 本轮只修熔断编辑抽屉布局和治理规则共性约定，不改变熔断保存 payload 与后端契约。
+- 治理规则编辑抽屉的双栏滚动模型已经沉淀到 `technical/conventions/patterns.md`；后续新增/调整规则编辑器应先按该约定实现和验证。
+
+## 限流编辑器抽屉布局修复
+
+- [x] 对比路由编辑器最终布局范式，定位限流编辑态双栏滚动/宽度问题
+- [x] 修复 RateLimit 编辑器 shell、左侧表单滚动和右侧 Spec 高度
+- [x] 补充任务记录与 lessons
+- [x] 运行前端构建、diff 检查、context-kg lint 和真实 8080 页面验证
+- [x] 修复并验证左侧编辑区可内部滚动
+
+当前判断：
+
+- 用户截图里的问题与路由编辑器此前踩过的问题一致：抽屉内不应让整个页面和右侧 Spec 各自按 `100vh` 计算滚动；应由编辑器 body 承担固定可用高度，左侧表单内部滚动，右侧 Spec 贯穿正文高度。
+- 本轮只修 RateLimit 编辑器布局和验证记录，不改变限流保存 payload 与后端契约。
+
+当前进展：
+
+- 已对比路由编辑器：`editorBody` 固定 `calc(100vh - 96px)`，shell `height: 100%`，左侧 `formPane overflow: auto`，右侧 Spec 跟随 shell 高度。
+- 已定位限流编辑器当前差异：shell/formPane 使用 `overflow: visible`，右侧 Spec 独立 `height: calc(100vh - 184px)`，会造成抽屉内滚动和可视高度与路由不一致。
+- 已将 RateLimit 编辑器收敛为路由同款布局：`editorBody` 固定抽屉正文高度，shell `height: 100% / overflow: hidden`，左侧 `formPane overflow: auto`，右侧 Spec `height: 100%`。
+- 用户复验指出左侧仍无法内部滚动；上一轮只验证了高度和横向溢出，没有验证真实 `scrollTop` 变化，本轮补充滚动行为级验证。
+- 已定位左侧不滚动的根因：`formPane` 是 column flex 容器，直接子 `section` 默认可 shrink；限流规则 section 被压缩后又被共享 `.section { overflow: hidden }` 裁掉，导致外层 `formPane.scrollHeight === clientHeight`。已将 `formPane > section` 固定为 `flex: 0 0 auto`，让内容真实撑高并由左侧容器滚动。
+
+验证：
+
+- `cd console/web && node scripts/verify-ratelimit-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `git diff --check -- console/web/src/pages/Governance/RateLimit/RateLimitEditor.module.less context-kg/tasks/todo.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过，release bundle 重启后日志显示 `finish starting server`。
+- Playwright 登录真实 8080 工作台打开 `seed-20260616-ratelimit` 并进入编辑态：`editorBody` / shell / Spec 高度均为 1152px，左侧 `formPane` 为 `overflow: auto`，表单和页面无横向溢出，页面无异常；截图保存到 `/tmp/ratelimit-editor-layout-fixed.png`。
+- 补充 Playwright 滚动行为验证通过：左侧 `formPane.scrollHeight=1660`、`clientHeight=1090`，滚轮后 `scrollTop=570`，直接设置后 `scrollTop=500`，window 仍为 `scrollY=0`；截图保存到 `/tmp/ratelimit-left-scroll-fixed.png`。
+
+Review：
+
+- 本轮只修限流编辑抽屉布局，不改变限流保存 payload 与后端契约。
+- 限流编辑器应和路由编辑器共享同一抽屉正文滚动范式；右侧 Spec 由 shell 高度约束，不应单独按 viewport 计算高度。
+- 布局验证不能只检查 `overflow:auto` 样式；必须确认真实 `scrollHeight > clientHeight`，并用 wheel 或设置 `scrollTop` 验证滚动容器确实可滚。
+
+## 探测规则编辑器规则 Tab 设计实现
+
+- [x] 核对附件交接文档、当前 `FaultDetectRule` proto / Console service 归一化和已有治理编辑器模式
+- [x] 新增 FaultDetect 编辑器工具函数，覆盖前端草稿归一化、实时 Spec、摘要和保存校验
+- [x] 重构 `FaultDetectEditor` 规则 Tab 为左表单 / 右实时 Spec 双栏
+- [x] 实现探测规则折叠卡、多条增删、基础调度、端口策略、HTTP 载荷和 TCP/UDP 报文匹配
+- [x] 保存前按交接规则校验，并通过 Toast 拦截首条错误
+- [x] 运行前端脚本/构建、Go 相关测试、context-kg lint、diff 检查和真实 8080 页面验证
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 本轮是 Console 规则 Tab 体验实现，不改变后端 proto；后端当前 `FaultDetectSubRule` 只有 `interval/timeout/port/protocol/http_config/tcp_config/udp_config/disable`。
+- 端口策略在真实提交中继续用 `port=0` 表达「实例协议端口」，非 0 表达「指定探测端口」；实时 Spec 按交接文档额外展示 `portMode` 便于用户核对。
+- TCP/UDP 的「匹配方式」当前无后端字段，页面可以展示与校验，实时 Spec 展示 `payload.match`；保存给后端时只提交已有的 `send/receive`，避免写入未知字段。
+- 「被探测对象」继续只包含命名空间和服务，不回退展示接口字段。
+
+当前进展：
+
+- 已读取交接文档，确认范围仅限治理工作台 FaultDetectRule 编辑抽屉「规则」Tab。
+- 已核对现有 `FaultDetectEditor`：已有基础信息、被探测对象、多规则卡片和 HTTP/TCP/UDP 条件渲染，但缺少折叠、端口策略、TCP/UDP 匹配方式、右侧实时 Spec 和业务保存校验。
+- 已核对当前 specification / generated type：`TcpProtocolConfig` 与 `UdpProtocolConfig` 不包含匹配方式字段。
+- 已将编辑器改成左侧表单 / 右侧实时 Spec，工作台和独立表格抽屉宽度统一为 `min(1560px, calc(100vw - 40px))`。
+- 已实现子规则折叠卡、多条增删、协议切换、端口来源、HTTP 载荷、TCP/UDP 报文匹配、自定义 YAML/JSON Spec 预览和复制。
+- 已修复 `LabelInput` 在 inline `name` 数组下的重复同步问题，避免编辑态触发 Maximum update depth。
+- 已对保存 payload 做归一化：`port=0` 表示实例协议端口，TCP/UDP 的前端匹配方式仅用于页面校验和 Spec 预览，不提交后端未知字段。
+
+验证：
+
+- `cd console/web && node scripts/verify-faultdetect-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `go test ./apis/pkg/types/rules ./pkg/cache/rules ./pkg/goverrule ./plugin/apiserver/xdsserverv3/... ./test/e2e/console_api ./test/e2e/client -run 'FaultDetect|faultdetect|TrafficGovernance|TestDoesNotExist' -count=1` 通过。
+- `git diff --check -- console/web/src/pages/Governance/CircuitBreaker/FaultDetectEditor.tsx console/web/src/pages/Governance/CircuitBreaker/faultDetectEditorUtils.ts console/web/src/pages/Governance/CircuitBreaker/FaultDetectEditor.module.less console/web/scripts/verify-faultdetect-editor-utils.mjs console/web/src/services/faultdetect.ts console/web/src/pages/Governance/Workbench/index.tsx console/web/src/pages/Governance/CircuitBreaker/FaultDetectTable.tsx console/web/src/components/LabelInput/index.tsx context-kg/tasks/todo.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过，release bundle 重启后日志显示 `finish starting server`。
+- Playwright 登录真实 8080 工作台打开 `seed-20260616-faultdetect`：点击编辑态 TCP 后，TCP 按钮变为 active，右侧 Spec 出现 `protocol: TCP`，页面出现「报文匹配 / 发送内容 / 接收内容」，无页面异常、无调试日志；截图保存到 `/tmp/faultdetect-protocol-switch-final.png`。
+
+Review：
+
+- 本轮聚焦 FaultDetectRule 编辑抽屉「规则」Tab，不改变后端 proto 与保存接口形状。
+- `TcpProtocolConfig` / `UdpProtocolConfig` 当前没有匹配方式字段，页面以预览字段承载设计表达，保存时仍保持真实后端契约。
+- 协议切换不能依赖整个 Redux `editRule` 对象作为详情加载 effect 依赖；否则编辑态本地草稿可能被重复拉取详情覆盖。当前只按 `editRule.id` 加载详情，避免 TCP/UDP 切换后被重置。
+
+## specification v0.1.0-ALPHA.29 发布与 control-plane 引用更新
+
+- [x] 同步 `../specification` 远端 develop，确认 FaultDetect PR 已合入
+- [x] 基于合并提交创建并推送 `v0.1.0-ALPHA.29`
+- [x] 更新 control-plane 的 `github.com/pole-io/specification` 依赖与 lattice-hub replace 到新 tag
+- [x] 下载新模块校验和，不运行 `go mod tidy`
+- [x] 运行 FaultDetect 相关 Go 验证、context-kg lint 和 diff 检查
+
+当前判断：
+
+- specification `origin/develop` 已包含 `Merge pull request #5 from lattice-hub/codex/faultdetect-discovery-rules`，合并提交为 `03fcdbb4659d03c97ebd08c9fd7f50f484f07bb5`。
+- 旧最新 tag 为 `v0.1.0-ALPHA.28`，本轮按连续版本发布 `v0.1.0-ALPHA.29`。
+- control-plane 应继续保留 module path `github.com/pole-io/specification`，通过 `replace github.com/pole-io/specification => github.com/lattice-hub/specification v0.1.0-ALPHA.29` 指向迁移后的仓库来源。
+
+当前进展：
+
+- `v0.1.0-ALPHA.29` 已创建并推送，tag 指向 `03fcdbb4659d03c97ebd08c9fd7f50f484f07bb5`。
+- `go.mod` 已从 `github.com/pole-io/specification v0.1.0-ALPHA.28` 更新为 `v0.1.0-ALPHA.29`。
+- `go.mod` 的 specification replace 已从 `github.com/lattice-hub/specification v0.1.0-ALPHA.28` 更新为 `v0.1.0-ALPHA.29`。
+- `go.sum` 已新增 `github.com/lattice-hub/specification v0.1.0-ALPHA.29` 与其 `go.mod` checksum。
+
+验证：
+
+- `git -C ../specification show --no-patch --format='%H%n%D%n%s' v0.1.0-ALPHA.29` 确认 tag 指向 FaultDetect PR #5 合并提交。
+- `git -C ../specification ls-remote --tags origin v0.1.0-ALPHA.29` 确认远端 tag 已存在。
+- `GOPRIVATE=github.com/pole-io/*,github.com/lattice-hub/* GOPROXY=direct go mod download github.com/pole-io/specification` 通过。
+- `GOPRIVATE=github.com/pole-io/*,github.com/lattice-hub/* GOPROXY=direct go list -m -json github.com/pole-io/specification` 确认 require 为 `v0.1.0-ALPHA.29`，replace 为 `github.com/lattice-hub/specification v0.1.0-ALPHA.29`。
+- `go test ./apis/pkg/types/rules ./pkg/cache/rules ./pkg/goverrule ./plugin/apiserver/xdsserverv3/... ./test/e2e/console_api ./test/e2e/client -run 'FaultDetect|faultdetect|TrafficGovernance|TestDoesNotExist' -count=1` 通过。
+
+Review：
+
+- 本轮没有运行 `go mod tidy`，避免引入无关间接依赖变化。
+- specification 本地工作区仍有此前生成脚本留下的 `source/rust/pole-specification/proto/service.proto` 换行符未提交变化；该文件与本次 tag/control-plane 引用更新无关，未纳入 control-plane 改动。
+
+## 主动探测页面结构优化
+
+- [x] 核对主动探测新协议边界：规则级 `targetService`，子规则级探测参数
+- [x] 优化详情/编辑页信息架构：基础信息、被探测对象、探测规则分层展示
+- [x] 优化探测子规则卡片摘要，避免把服务字段重复放进每条子规则
+- [x] 优化列表页列信息，分开展示被探测服务和探测参数
+- [x] 按用户纠正收敛「被探测对象」：只保留命名空间和服务，不再展示接口字段
+- [x] 运行 Console 构建、主动探测相关 Go 测试、context-kg lint 和 diff 检查
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 主动探测的服务信息属于规则级对象，不应在每条子规则中重复编辑。
+- 「被探测对象」只表示规则级被探测服务信息，不承载接口名称、接口匹配类型、接口协议或方法。
+- 子规则列表只承载探测动作参数：协议、状态、间隔、超时、端口和协议配置。
+- 页面需要从字段平铺调整为“规则身份 -> 被探测对象 -> 探测规则”的操作心智。
+
+当前进展：
+
+- 详情/编辑页独立「被探测对象」section 只编辑命名空间和服务。
+- 探测子规则卡片已去掉被探测服务字段，只保留探测参数，并在 header 显示协议、端口、间隔、超时、状态摘要。
+- 列表页已改为按被探测服务和探测参数扫描，不再展示接口信息列。
+
+验证：
+
+- `go test ./apis/pkg/types/rules ./pkg/goverrule ./pkg/cache/rules ./plugin/apiserver/xdsserverv3/... ./test/e2e/console_api ./test/e2e/client -run 'FaultDetect|faultdetect|TrafficGovernance|TestDoesNotExist' -count=1` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/CircuitBreaker/FaultDetectEditor.tsx console/web/src/pages/Governance/CircuitBreaker/FaultDetectTable.tsx console/web/src/services/faultdetect.ts context-kg/tasks/todo.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过，重启后日志显示 `finish starting server`，`curl -I http://127.0.0.1:8080/governance/workbench` 返回 200。
+- Playwright 登录真实 8080 工作台打开 `seed-20260616-faultdetect` 验证：查看态和编辑态的「被探测对象」只包含被探测命名空间、被探测服务；`接口名称`、`接口协议` 均不存在；截图保存到 `/tmp/faultdetect-target-service-only.png`。
+
+Review：
+
+- 本轮只调整主动探测列表页和编辑/详情页的信息架构，没有改变保存接口或协议模型。
+- 子规则卡片继续使用已有治理规则共享样式，不新增私有布局体系。
+
+## FaultDetect 下发协议收敛
+
+- [x] 核对 `FaultDetector` 包裹对象、`FaultDetectRule` 顶层重复字段和 control-plane 引用面
+- [x] 写入失败检查，确认旧包裹字段和重复字段仍存在
+- [x] 修改 specification proto：`DiscoverResponse` 直接返回 `repeated FaultDetectRule`，删除 `FaultDetector` 包裹和规则顶层重复探测配置字段
+- [x] 重新生成 specification Go/Rust 产物
+- [x] 适配 control-plane：客户端下发、XDS、缓存/转换、测试 fixture 使用 `FaultDetectRule.rules[]`
+- [x] 运行 spec 生成、Go 编译/重点测试、Console 构建或类型验证、context-kg lint 和 diff 检查
+- [x] 记录 review、验证结果和必要 lessons
+
+当前判断：
+
+- 用户明确要求：`DiscoverResponse` 中主动探测直接返回 `repeated FaultDetectRule`，不再需要 `FaultDetector{rules, revision}` 包裹。
+- `FaultDetectRule` 已有 `repeated FaultDetectSubRule rules`；规则级服务信息必须保留在 `FaultDetectRule.target_service`，只有 `interval`、`timeout`、`port`、`protocol`、`http_config`、`tcp_config`、`udp_config` 这类探测配置从规则顶层移入 subRule。
+- 这次是 breaking spec 收敛；当前控制面同步适配新下发协议，不再向外提交旧顶层探测字段。
+- 旧库里已经落过的单条顶层探测 JSON 仍通过 `ToSpec()` 临时迁移：服务提升到规则级 `target_service`，探测配置迁入 `rules[0]`，避免已有数据在控制台和缓存读取时变空。
+
+当前进展：
+
+- specification 已删除 `FaultDetector` wrapper；`DiscoverResponse` 的 field 22 改为 `repeated FaultDetectRule faultDetectRules`。
+- `FaultDetectRule` 顶层保留 `target_service`；已删除顶层 `interval`、`timeout`、`port`、`protocol`、`http_config`、`tcp_config`、`udp_config`，这些探测配置只保留在 `FaultDetectSubRule`。
+- 已重新生成 specification Go/Rust 产物。
+- control-plane 下发路径已从 `resp.FaultDetector.rules` 改为 `resp.FaultDetectRules`，总 revision 使用 `DiscoverResponse.service.revision`。
+- XDS health check 已遍历 `FaultDetectRule.rules[]` 生成探测配置，服务归属和缓存索引读取规则级 `target_service`。
+- 创建/更新落库只序列化规则级 `target_service` 与 `FaultDetectRule.rules[]`，不再保存旧顶层探测配置字段。
+- Console 主动探测编辑器保存时保留规则级 `targetService`，并清除展示兼容用的旧顶层探测配置字段。
+- 已新增 `FaultDetectRule.ToSpec()` 兼容测试，覆盖旧顶层 JSON 服务提升到规则级、旧顶层探测配置迁入首个 subRule，以及新 `rules[]` 优先作为源数据。
+
+验证：
+
+- `node` 协议形状检查通过：确认没有 `message FaultDetector`，`DiscoverResponse` field 22 为 `repeated FaultDetectRule faultDetectRules`，`FaultDetectRule.target_service` 位于规则级，且 subRule 不含服务字段。
+- `cd /Users/chuntao.liao/Github/pole-io/specification/source/go && bash build.sh` 通过。
+- `cd /Users/chuntao.liao/Github/pole-io/specification/source/rust && bash build.sh` 通过，Rust release 编译完成。
+- `go test ./apis/pkg/types/rules -run 'TestFaultDetectRuleToSpec' -count=1` 通过。
+- `go test ./apis/pkg/types/rules ./pkg/goverrule ./pkg/cache/rules ./plugin/apiserver/xdsserverv3/... ./test/e2e/console_api ./test/e2e/client -run 'FaultDetect|faultdetect|TrafficGovernance|TestDoesNotExist' -count=1` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- control-plane 与 specification 本轮相关文件 `git diff --check` 通过。
+
+Review：
+
+- `FaultDetector{rules, revision}` 已无必要；规则数组直接挂在 `DiscoverResponse`，聚合 revision 复用 `DiscoverResponse.service.revision`。
+- `FaultDetectRule.target_service` 是探测目标服务的唯一主模型；`FaultDetectRule.rules[]` 是探测参数的主模型。旧 subRule 中的 `target_service` 只在读取旧 JSON 的兼容转换和 Console 展示归一化中作为输入兜底存在。
+- control-plane 当前使用本地 `replace github.com/pole-io/specification => ../specification` 做联调；specification 发版后需要改回对应 tag。
+
+## 熔断规则编辑器规则 Tab 设计实现
+
+- [x] 核对现有熔断数据契约、路由/限流编辑器复用模式和已记录的治理规则 UI 经验
+- [x] 写入熔断编辑器纯逻辑失败断言，覆盖子规则分组、真实提交 payload、实时 Spec、摘要和保存校验
+- [x] 新增 `circuitBreakerEditorUtils`，让右侧实时 Spec 与保存 payload 同源
+- [x] 重构 `CircuitBreakerEditor` 规则 Tab：基础信息、服务范围、子规则折叠列表、右侧实时 Spec 双栏
+- [x] 实现子规则内多熔断策略、接口范围、错误判断条件、触发条件、恢复策略和降级响应编辑
+- [x] 运行脚本验证、Console 构建、context-kg lint、diff 检查和必要的真实页面验证
+- [x] 记录 review 和验证结果
+
+当前判断：
+
+- 当前 specification 的真实提交形状是 `CircuitBreakerRule.block_configs[]`，每项为 `CircuitBreakerPolicy{block_config, max_ejection_percent, recoverCondition, faultDetectConfig, fallbackConfig}`。
+- 交接文档里的「子规则 -> 多策略」在当前后端协议中没有独立消息承载；Console 需要用前端分组模型表达子规则，保存时展平为真实 `block_configs[]`，并把子规则级恢复/降级配置复制到该子规则下每条策略对应的 policy。
+- 右侧实时 Spec 应展示真实提交 payload，不展示未落地的 CRD 伪结构，避免 Spec 预览与保存接口分叉。
+
+当前进展：
+
+- 已确认现有 `CircuitBreakerEditor` 仍把 `block_configs` 直接渲染为一层「熔断策略」列表，尚未形成「子规则 -> 策略」层级。
+- 已确认 `services/circuitbreaker.ts` 读写边界已经支持 `CircuitBreakerPolicy.block_config` 的归一化和提交打包，但编辑器内部还缺少子规则分组模型、保存校验和实时 Spec。
+- 已新增 `verify-circuitbreaker-editor-utils.mjs` 并先复现失败：缺少 `circuitBreakerEditorUtils.ts`。
+- 已新增 `circuitBreakerEditorUtils.ts`，覆盖前端子规则 draft、真实提交 payload 展平、YAML/JSON 序列化、子规则/策略摘要和保存前校验；脚本已转绿。
+- 已重构 `CircuitBreakerEditor`：基础信息与服务范围拆分；服务范围包含主调 -> 被调调用关系和规则级熔断粒度；规则区改为「熔断子规则 -> 熔断策略」两级折叠结构。
+- 子规则内已支持添加/删除熔断策略、接口范围多行、错误判断条件多行、触发条件多行、恢复策略、主动探测开关和降级响应配置。
+- 右侧已新增实时 Spec 面板，支持 YAML/JSON 切换和复制，预览内容来自 `buildCircuitBreakerSubmitPayload` 的真实后端提交 payload。
+- 已将工作台 `circuitbreaker` 详情抽屉宽度纳入与路由/限流一致的 `min(1560px, calc(100vw - 40px))`。
+- 用户反馈后已调整：已有熔断规则进入编辑态时，熔断粒度只读展示；只有创建态可以选择熔断粒度。
+- 已把独立熔断列表页创建按钮明确为「新建熔断规则」，并在治理工作台筛选到「熔断」时提供「新建熔断规则」入口；打开创建抽屉前会清空旧熔断编辑态。
+
+验证：
+
+- `cd console/web && node scripts/verify-circuitbreaker-editor-utils.mjs` 通过，覆盖前端分组模型展平为真实 `block_configs[]`、YAML/JSON 序列化、摘要和保存前校验。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/CircuitBreaker/CircuitBreakerEditor.tsx console/web/src/pages/Governance/CircuitBreaker/CircuitBreakerEditor.module.less console/web/src/pages/Governance/CircuitBreaker/circuitBreakerEditorUtils.ts console/web/scripts/verify-circuitbreaker-editor-utils.mjs console/web/src/services/circuitbreaker.ts console/web/src/pages/Governance/Workbench/index.tsx context-kg/tasks/todo.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过并重启 all 模式，tmux 日志显示 `finish starting server`。
+- Playwright 通过同源登录接口登录 `admin/admin123` 后打开 `http://127.0.0.1:8080/governance/workbench`，进入 `seed-20260616-circuitbreaker` 抽屉验证：查看态显示基础信息、服务范围、熔断子规则和右侧实时 Spec；Spec 包含真实 `block_configs`；抽屉宽度为 1560px；截图保存到 `/tmp/circuitbreaker-editor-workbench.png`。
+- Playwright 进入编辑态验证：`添加子规则`、`添加熔断策略`、接口范围、错误判断条件、熔断触发条件、恢复策略、熔断后降级、YAML/JSON/复制控件均存在；抽屉宽度为 1560px；右侧 Spec 面板宽 379px；截图保存到 `/tmp/circuitbreaker-editor-edit-workbench.png`。
+- 后续补验：Playwright 真实 8080 页面验证通过，工作台熔断筛选态显示「新建熔断规则」；编辑已有 `seed-20260616-circuitbreaker` 时熔断粒度没有 `.t-radio-button` 切换控件；创建态显示 `服务 / 实例 / 接口` 三个粒度按钮；截图保存到 `/tmp/circuitbreaker-create-entry-and-level.png`。
+
+Review：
+
+- 当前后端协议没有独立的 `subrules[].strategies[]` 消息；Console 用前端 draft 表达设计里的两级结构，保存时展平为真实 `CircuitBreakerPolicy[]`，并把子规则级恢复、降级、最大剔除比例和主动探测开关复制到该子规则下每条策略对应的 policy。
+- 当前 `FaultDetectConfig` proto 只有 `enable`，没有探测间隔字段；本轮没有在提交 payload 中伪造 `probeIntervalSec`，避免前端展示与后端契约不一致。
+- 右侧实时 Spec 继续展示真实提交 payload，而不是交接文档示例里的 CRD 风格 `apiVersion/kind/spec` 包装。
+
+## 发布 specification v0.1.0-ALPHA.28 并更新 control-plane 引用
+
+- [x] 确认 specification PR 已合入 `develop`，并核对最新 tag 序列
+- [x] 在合并后的 specification `develop` 提交上创建并推送 `v0.1.0-ALPHA.28`
+- [x] 将 pole-control-plane 的 `github.com/pole-io/specification` 引用更新到新 tag，并恢复远端 lattice-hub replace
+- [x] 适配 XDS、Console 提交归一化和 e2e fixture 到 `CircuitBreakerPolicy`
+- [x] 运行 Go module 解析、编译级验证、Console 构建、context-kg lint 和 diff 检查
+- [x] 记录 review 和验证结果
+
+当前判断：
+
+- specification 仍声明 module path `github.com/pole-io/specification`，control-plane 需要继续保留该 module path 的 `require`。
+- 因仓库来源已迁移到 `lattice-hub/specification`，control-plane 的 `replace` 应指向 `github.com/lattice-hub/specification v0.1.0-ALPHA.28`，不能继续使用本地路径 replace。
+
+当前进展：
+
+- specification PR #4 已合入 `develop`，merge commit 为 `d677daa2c80ada2a7483c12e45c19d8ecfc24fa1`。
+- 已在该 merge commit 上创建并推送 lightweight tag `v0.1.0-ALPHA.28`。
+- control-plane `go.mod` 已更新为 `require github.com/pole-io/specification v0.1.0-ALPHA.28`，并通过 `replace github.com/pole-io/specification => github.com/lattice-hub/specification v0.1.0-ALPHA.28` 指向迁移后的仓库来源。
+- XDS outlier detection 已从 `CircuitBreakerPolicy.block_config.trigger_conditions` 读取触发条件，并从同一个 policy 读取恢复窗口和最大剔除比例。
+- Console 侧保留编辑器内部扁平模型，但在 `services/circuitbreaker.ts` 的读写边界做转换：读取时兼容 `block_config` 并展平，提交时打包为 `CircuitBreakerPolicy{block_config, ...}`。
+- e2e 熔断 fixture 已改为 `block_configs[].block_config` 嵌套结构。
+
+验证：
+
+- `git -C /Users/chuntao.liao/Github/pole-io/specification show --no-patch --format='%H%n%D%n%s' v0.1.0-ALPHA.28` 确认 tag 指向 PR #4 merge commit。
+- `GOPRIVATE=github.com/pole-io/*,github.com/lattice-hub/* GOPROXY=direct go list -m -json github.com/pole-io/specification` 确认 module 为 `v0.1.0-ALPHA.28`，replace 为 `github.com/lattice-hub/specification v0.1.0-ALPHA.28`。
+- `GOPRIVATE=github.com/pole-io/*,github.com/lattice-hub/* GOPROXY=direct go test -run '^$' -count=0 ./...` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+
+Review：
+
+- 本轮没有改源码 import 的 module path，仍保持 `github.com/pole-io/specification`，因为 specification 的 `go.mod` 仍声明该 module path。
+- 已移除本地路径 replace，避免 control-plane 继续依赖 `/Users/.../specification`。
+- Console 的 UI 状态仍保持原来的扁平可编辑结构，只在 API 边界转换到新 spec，以减少编辑器大面积重写风险。
+
+## 熔断规则策略字段下沉到 block_configs
+
+- [x] 核对 spec `CircuitBreakerRule` / `BlockConfig` 字段和 control-plane/Console 引用
+- [x] 修改 spec proto：删除顶层 deprecated 条件字段，并将 `max_ejection_percent`、`recoverCondition`、`faultDetectConfig`、`fallbackConfig` 放入 `CircuitBreakerPolicy`
+- [x] 重新生成 spec Go/Rust 输出或对应生成产物
+- [x] 适配 control-plane 熔断类型、默认值、归一化、Console 编辑器与测试数据
+- [x] 运行针对性脚本、Go 编译级验证、Console 构建和 context-kg lint
+- [x] 记录 review 和验证结果
+
+当前判断：
+
+- `level` 继续保留在规则级，不进入子规则。
+- `BlockConfig` 承载接口范围、错误判断条件和触发条件；`CircuitBreakerPolicy` 承载 `BlockConfig` 以及恢复、降级、主动探测和最大剔除比例。
+- 顶层 `error_conditions` 与 `trigger_condition` 已标记 deprecated，应从 proto 中删除；迁移后真实条件只保留在 `block_configs[]` 内。
+
+当前进展：
+
+- 已在 specification 仓库调整 `CircuitBreakerRule`：删除顶层 deprecated `error_conditions`、`trigger_condition`，不保留 `reserved`，并压实后续字段号；`level` 仍保留规则级。
+- 已新增 `CircuitBreakerPolicy`，其中包含 `BlockConfig block_config` 以及策略级 `max_ejection_percent`、`recoverCondition`、`faultDetectConfig`、`fallbackConfig`。
+- 已重新生成 specification Go 产物和 Rust 产物，Rust `source/rust/build.sh` 需从 `source/rust` 目录执行。
+- 已适配 control-plane 创建/修改熔断规则的落库对象，避免继续写入旧顶层字段。
+- 已适配 XDS outlier detection，从首个有效 `CircuitBreakerPolicy.block_config.trigger_conditions` 读取触发条件，并从同一个 policy 读取恢复窗口与最大剔除比例。
+- 已适配 Console 熔断规则模型、默认值、旧数据归一化、编辑器 UI 和 e2e fixture；恢复策略、主动探测和降级响应现在随每条 `CircuitBreakerPolicy` 配置。
+- control-plane 已在后续发布任务中切到 `v0.1.0-ALPHA.28` 远端 tag，并移除本地路径 replace。
+
+验证：
+
+- `cd /Users/chuntao.liao/Github/pole-io/specification/source/go && bash build.sh` 通过。
+- `cd /Users/chuntao.liao/Github/pole-io/specification/source/rust && bash build.sh` 通过，Rust release 编译完成。
+- `GOPRIVATE=github.com/pole-io/*,github.com/lattice-hub/* GOPROXY=direct go test -run '^$' -count=0 ./...` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 和 `git -C /Users/chuntao.liao/Github/pole-io/specification diff --check` 通过。
+
+Review：
+
+- 这次没有把 `level` 下沉，因为它决定整条熔断规则的匹配层级，和具体策略执行参数不是同一类字段。
+- 顶层字段号未使用 `reserved`，而是按治理规则当前约定压实为 `block_configs=11`、`priority=12`、`metadata=13`、`editable=14`、`deleteable=15`。
+- Console 归一化仍兼容旧顶层 `recoverCondition`、`faultDetectConfig`、`fallbackConfig` 和 `max_ejection_percent`，读取后会映射到每条 UI 策略；新建/编辑提交会打包为 `CircuitBreakerPolicy`。
+
+## specification 仓库来源迁移到 lattice-hub
+
+- [x] 核对 `github.com/pole-io/specification` 在源码、模块文件、格式化脚本和知识库中的命中范围
+- [x] 验证 `github.com/lattic-hub/specification` 与 `github.com/lattice-hub/specification` 的实际仓库状态
+- [x] 将 `github.com/pole-io/specification` 依赖通过 `replace` 指向 `github.com/lattice-hub/specification v0.1.0-ALPHA.27`
+- [x] 更新 Go module 校验和并确认替换关系可解析
+- [x] 运行编译级 Go 验证、context-kg lint 和 diff 检查
+- [x] 记录 review 和验证结果
+
+当前判断：
+
+- 用户本次说的是 spec 仓库组织迁移；实测 `lattic-hub/specification` 不存在，实际公开仓库是 `lattice-hub/specification`。
+- `lattice-hub/specification` 的 `develop` 和 `v0.1.0-ALPHA.27` 里 `go.mod` 仍声明 `module github.com/pole-io/specification`，生成的 `.pb.go` 内部 import 也仍是旧 module path。
+- 因此 control-plane 侧不能直接把 Go import 改为 `github.com/lattice-hub/specification`；直接改会导致 Go 报错：`module declares its path as: github.com/pole-io/specification but was required as: github.com/lattice-hub/specification`。
+- 当前采用可编译的过渡方案：保留源码 import 和 require 的 module path `github.com/pole-io/specification`，在 `go.mod` 中增加 `replace github.com/pole-io/specification => github.com/lattice-hub/specification v0.1.0-ALPHA.27`，让依赖来源切到新仓库。
+
+验证：
+
+- `gh repo view lattic-hub/specification --json nameWithOwner,visibility,defaultBranchRef` 失败，GitHub 无法解析该仓库。
+- `gh repo view lattice-hub/specification --json nameWithOwner,visibility,defaultBranchRef` 通过，仓库为公开仓库，默认分支 `develop`。
+- `gh api 'repos/lattice-hub/specification/contents/go.mod?ref=develop'` 与 `ref=v0.1.0-ALPHA.27` 均显示 module 仍为 `github.com/pole-io/specification`。
+- `GOPRIVATE=github.com/pole-io/*,github.com/lattice-hub/* GOPROXY=direct go test -run '^$' -count=0 ./...` 通过，覆盖全仓编译级验证。
+- `go test ./...` 曾启动并通过前半段包编译/部分测试，但长时间无输出，已中断；本轮用编译级验证确认本次 module 来源替换没有破坏 import。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+
+Review：
+
+- 本轮没有扩大修改本仓 module `github.com/pole-io/pole-server`。
+- 没有保留不可编译的 `github.com/lattice-hub/specification` import 改法；该改法需要 spec 仓库先修改自身 `go.mod` 和重新生成 Go 代码后发新 tag。
+- `go.sum` 当前记录的是替换后 `github.com/lattice-hub/specification v0.1.0-ALPHA.27` 的校验和。
+
+## 限流规则编辑器规则 Tab 设计实现
+
+- [x] 核对现有限流数据契约、路由规则编辑器复用模式和已记录的布局坑
+- [x] 写入限流编辑器纯逻辑失败断言，覆盖 Spec 生成、保存校验、集群动作锁定和摘要阈值
+- [x] 抽出 `rateLimitEditorUtils`，让右侧实时 Spec 与保存 payload 同源
+- [x] 重构 `RateLimitEditor` 规则 Tab：基础信息、作用对象、子规则折叠列表、右侧实时 Spec 双栏
+- [x] 实现匹配接口多行、匹配条件关系、限流方式、限流效果和自定义响应编辑
+- [x] 运行脚本验证、Console 构建、context-kg lint、diff 检查和真实 8080 页面验证
+- [x] 修复真实截图暴露的限流编辑器视觉裁剪：基础信息/作用对象内容被截断、右侧 Spec 工具按钮外溢
+- [x] 补充真实 8080 页面截图和布局指标验证
+- [x] 将工作台限流规则详情抽屉宽度与路由规则详情抽屉对齐
+- [x] 补充 8080 真实页面抽屉宽度验证
+- [x] 记录 review 和验证结果
+
+当前判断：
+
+- 用户提供的设计交接已经明确范围：只实现 Pole.IO 治理工作台 RateLimitRule 编辑抽屉「规则」Tab，不处理版本、审计等其它 Tab。
+- 本轮应复用路由规则编辑器的双栏抽屉、规则块、步骤轴、分段按钮和 Spec 面板模式，避免再出现表单挤压、折叠态过高、输入失焦、Spec 与保存 payload 分叉等问题。
+- 右侧实时 Spec 应优先服务保存前核对，展示当前前端真实提交的 RateLimit payload；如果需要 CRD 风格 `apiVersion/kind/spec`，应作为后续单独转换层处理。
+
+当前进展：
+
+- 已读取 `RateLimitEditor`、`services/ratelimit.ts`、路由编辑器 helper/CSS 和 `context-kg/tasks/lessons.md` 中的相关经验。
+- 已发现现有限流编辑器基础信息混入作用对象、匹配接口仅支持单字段、右侧实时 Spec 缺失、保存校验不足，需要按设计交接重排。
+- 已新增 `verify-ratelimit-editor-utils.mjs` 并先复现失败：缺少 `rateLimitEditorUtils.ts`。
+- 已新增 `rateLimitEditorUtils.ts`，覆盖真实提交 payload 生成、YAML/JSON 序列化、集群限流强制 `REJECT`、摘要/阈值文案和保存前校验。
+- 已重构 `RateLimitEditor`：基础信息与作用对象拆分，规则区改为 `规则 [n]` 折叠卡片 + 四段步骤轴，右侧新增固定实时 Spec 面板。
+- 已更新 `RateLimitEditor.module.less`，复用路由规则双栏抽屉和 Spec 面板模式，表格使用稳定 grid 列宽，避免输入控件互相挤压。
+- 用户截图复核发现上一轮视觉验收不足：基础信息与作用对象卡片内容在真实视口中被截断，右侧 Spec 顶部 YAML 控件外溢到面板边缘。
+- 已定位根因：限流编辑器内部复用固定 `100vh` 高度和多层 `overflow: hidden`，但它实际嵌在 `RuleDetailDrawer` 的 Tab 内容区内；同时 Spec 头部横排控件没有为窄列留换行空间。
+- 已将工作台 `ratelimit` 详情抽屉的 `size` 与 `route` 对齐为 `min(1560px, calc(100vw - 40px))`。
+- `cd console/web && node scripts/verify-ratelimit-editor-utils.mjs` 已转绿。
+- `cd console/web && npm run build:test` 已通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+
+验证：
+
+- `cd console/web && node scripts/verify-ratelimit-editor-utils.mjs` 通过，覆盖真实提交 payload 生成、集群限流强制 `REJECT`、YAML/JSON 序列化、摘要/阈值文案和保存前校验。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/RateLimit/RateLimitEditor.tsx console/web/src/pages/Governance/RateLimit/RateLimitEditor.module.less console/web/src/pages/Governance/RateLimit/rateLimitEditorUtils.ts console/web/scripts/verify-ratelimit-editor-utils.mjs context-kg/tasks/todo.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过并重启 all 模式，tmux 日志显示 `finish starting server`。
+- Playwright 登录 `admin/admin123` 打开 `http://127.0.0.1:8080/governance/workbench`，进入 `seed-20260616-ratelimit` 抽屉验证：查看态显示基础信息、作用对象、限流规则和右侧实时 Spec 双栏；规则块摘要为 `1 个接口 · 1 个匹配条件 · 请求数 · 快速失败`，阈值徽标为 `120 次 / 1s`。
+- Playwright 点击编辑验证：作用对象可编辑、集群限流下没有动作切换，仅显示快速失败和失败处理策略；匹配接口、匹配条件、限流窗口、阈值计算合并、自定义响应和添加规则控件均出现，右侧 Spec 保持 `action: REJECT`。
+- Playwright 将接口路径改为 `/api/v1/refunds` 后，右侧 Spec 立即同步 `value: /api/v1/refunds`，输入框保持 active；清空接口路径后，右侧 footer 显示 `规则[1] 存在空的接口路径`；随后点击撤销恢复只读态，未保存测试改动。
+- 用户反馈截图后重新验证：Playwright 真实 8080 查看态截图保存到 `/tmp/ratelimit-after-fix.png`，编辑态截图保存到 `/tmp/ratelimit-edit-after-fix.png`。
+- 查看态布局指标通过：基础信息、作用对象、限流规则三个 section 均 `clipped=false`，其中基础信息 `clientHeight=226/scrollHeight=226`，作用对象 `clientHeight=154/scrollHeight=154`；右侧 YAML/JSON/复制按钮均在 Spec 面板边界内。
+- 编辑态布局指标通过：基础信息、作用对象、限流规则三个 section 均 `clipped=false`，其中基础信息 `clientHeight=233/scrollHeight=233`，作用对象 `clientHeight=192/scrollHeight=192`；右侧 YAML/JSON/复制按钮均在 Spec 面板边界内。
+- 工作台限流抽屉宽度验证通过：1600px viewport 下，限流详情 `.t-drawer__content-wrapper` 宽度为 1560px，left 为 40px，符合与路由一致的 `min(1560px, calc(100vw - 40px))`；截图保存到 `/tmp/ratelimit-wide-drawer-fixed.png`。
+
+Review：
+
+- 本轮只改 Console 限流规则编辑器规则 Tab，不改版本、监听、发布逻辑和后端接口。
+- 右侧实时 Spec 展示的是当前前端提交对象的真实字段形状，不再按交接文档里的 `apiVersion/kind/spec` 伪 CRD 展示，避免重复 RouteRule 已踩过的 Spec 与保存接口分叉问题。
+- 当前后端 RateLimit proto 只有单个 `LimitTrigger.method: MatchString`，没有协议字段和多接口数组；因此 UI 以单行接口编辑承载当前可保存字段，协议/方法显示为当前约束下的固定辅助列，没有在提交 payload 中伪造后端不支持的 `interfaces`。
+- 子代理只读核对发现当前 `RateLimitView` 仍包含 `namespace/service`，但后端 `RateLimit` proto 顶层没有这两个字段，HTTP 解析允许 unknown fields；本轮沿用既有前端请求结构和列表展示，不在 UI 任务中扩展后端协议。若要让作用对象真正进入后端契约，需要后续修改 specification/proto、store/service/cache 和 Console 映射。
+- 当前匹配条件关系显示 `AND`，`OR` 置灰，因为真实 `LimitTrigger.arguments[]` 暂无关系字段；多接口和 OR 关系属于协议增强，不应只在前端伪实现。
+
+## RouteRule 实例标签值改为 TagInput
+
+- [x] 写入回归断言，确认「编辑实例标签」弹窗在 `包含/不包含` 时使用 `TagInput`
+- [x] 修复实例标签值编辑控件，复用逗号字符串与 TagInput 数组互转 helper
+- [x] 运行路由编辑器脚本、Console 构建、context-kg lint、diff 检查和真实 8080 页面验证
+- [x] 重启本地 all 模式服务并记录 review
+
+当前判断：
+
+- 用户截图对应的是 RouteRule 目标分组里的「编辑实例标签」弹窗；这里编辑的是 `destinations[].labels[key]` 的 `MatchString`。
+- 该字段和匹配条件值一样，`包含/不包含` 需要多值标签输入，保存给后端仍是英文逗号分割字符串。
+
+当前进展：
+
+- `verify-route-editor-utils.mjs` 已先写失败断言，扫描 `renderTagDialog` 片段要求出现 `isTagInputMatchType`、`TagInput`、`commaStringToTags` 和 `tagsToCommaString`；修复前断言失败在缺少 `isTagInputMatchType`。
+- 已把「编辑实例标签」弹窗的标签值列改为：`包含/不包含` 使用 TDesign `TagInput`，其它匹配类型继续使用普通 `Input`。
+- `cd console/web && node scripts/verify-route-editor-utils.mjs` 已转绿。
+
+验证：
+
+- `cd console/web && node scripts/verify-route-editor-utils.mjs` 通过，覆盖 `renderTagDialog` 使用 `TagInput` 和逗号互转 helper。
+- `cd console/web && npm run build:test` 通过，保留既有 Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/Router/CustomRouteEditor.tsx console/web/scripts/verify-route-editor-utils.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过并重启 all 模式，tmux 日志显示 `finish starting server`。
+- Playwright 登录 `admin/admin123` 打开 `http://127.0.0.1:8080/governance/workbench`，进入 `seed-20260616-route` 编辑态，打开目标分组「编辑实例标签」弹窗，把标签匹配类型切到 `包含` 后验证：弹窗打开、`.t-tag-input` 数量为 1、已有 `v1` 作为 tag 展示。验证后已点击取消和撤销，未保存测试改动。
+
+Review：
+
+- 根因是 RouteRule 目标分组标签弹窗仍把 `destinations[].labels[key].value` 固定渲染为普通 `Input`，漏掉了该字段同样是 `MatchString` 的事实。
+- 修复后匹配条件值和实例标签值两处 `MatchString` 编辑行为一致：`IN/NOT_IN` 用 `TagInput`，保存仍回写英文逗号分割字符串。
+
+## RouteRule 包含匹配值改为 TagInput
+
+- [x] 对比现有 `MatchInput` 公共组件，确认 `IN/NOT_IN` 用 `TagInput`，提交值通过英文逗号拼接
+- [x] 补路由编辑器 helper 断言，覆盖逗号字符串与 TagInput 数组互转
+- [x] RouteRule 匹配值在 `包含/不包含` 时改用 TDesign `TagInput`
+- [x] 运行路由编辑器脚本、Console 构建、context-kg lint、diff 检查和真实 8080 页面验证
+- [x] 重启本地 all 模式服务并记录 review
+
+当前判断：
+
+- 用户反馈的是 RouteRule 匹配条件里的 `匹配类型=包含` 场景；这里的前端编辑体验应是多值标签输入，而不是普通文本框。
+- 后端仍接收 `value.value` 的字符串，多个值用英文逗号分割，因此前端需要在展示层用数组，写回时合并成逗号字符串。
+
+当前进展：
+
+- `verify-route-editor-utils.mjs` 已先复现失败：`commaStringToTags` 尚不存在时脚本报 `TypeError: utils.commaStringToTags is not a function`。
+- 已补 `commaStringToTags` / `tagsToCommaString` / `isTagInputMatchType`，并在 RouteRule 匹配值编辑态中对 `IN` / `NOT_IN` 渲染 TDesign `TagInput`。
+- 真实页面验证时发现编辑匹配条件会把 `routing_config.@type` 退回旧 `RuleRoutingConfig`，已补回归断言并统一默认/更新路径为 `type.googleapis.com/v1.CustomRoute`。
+- `cd console/web && node scripts/verify-route-editor-utils.mjs` 已转绿。
+
+验证：
+
+- `cd console/web && node scripts/verify-route-editor-utils.mjs` 通过，覆盖逗号字符串与 TagInput 数组互转、`IN/NOT_IN` 判定、默认 `@type=type.googleapis.com/v1.CustomRoute`。
+- `cd console/web && npm run build:test` 通过，保留既有 Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/Router/routeEditorUtils.ts console/web/src/pages/Governance/Router/CustomRouteEditor.tsx console/web/src/pages/Governance/Router/CustomRouteEditor.module.less console/web/scripts/verify-route-editor-utils.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过并重启 all 模式，tmux 日志显示 `finish starting server`。
+- Playwright 登录 `admin/admin123` 打开 `http://127.0.0.1:8080/governance/workbench`，进入 `seed-20260616-route` 编辑态，把匹配类型切到 `包含` 后验证：DOM 中 `.t-tag-input` 数量为 1，包含 `vip` 标签，右侧实时 Spec 显示 `type: IN`、`value: vip`，并保持 `type.googleapis.com/v1.CustomRoute`。
+
+Review：
+
+- 根因是 RouteRule 规则表格的匹配值编辑控件没有按匹配类型分支，所有类型都走普通 `Input`；用户必须手写分隔格式，和公共 `MatchInput` 组件中 `IN/NOT_IN` 的 TagInput 模式不一致。
+- 修复后 `IN/NOT_IN` 仅在展示层使用 `TagInput` 数组，写回 `value.value` 时仍用英文逗号拼接；其它匹配类型保持原普通输入。
+- 真实页面验证过程中顺带发现规则更新路径硬编码旧 `RuleRoutingConfig`，已改为保留现有 `@type`，缺省时使用真实提交所需的 `CustomRoute`。
+
+## RouteRule 匹配参数键改为用户输入
+
+- [x] 定位参数键预置来源：默认匹配条件、参数类型切换 helper 和参数键 Select 候选
+- [x] 写入失败断言，确认参数键不应自动预置 `x-tenant`、`$method` 或 `session`
+- [x] 将参数键控件改为普通输入框，移除预置候选
+- [x] 运行路由编辑器脚本、Console 构建、context-kg lint、diff 检查和真实 8080 页面验证
+- [x] 重启本地 all 模式服务并记录 review
+
+当前判断：
+
+- 用户反馈的「这里」是 RouteRule 匹配条件里的参数键字段；当前实现把它做成 `Select creatable`，并按参数类型预置候选，例如 HEADER 自动填 `x-tenant`。
+- 这个字段应由用户自己输入，参数类型只决定参数来源类型，不应隐式生成业务参数键。
+
+当前进展：
+
+- `verify-route-editor-utils.mjs` 已先写失败断言：`getDefaultParamKey('HEADER')` 和 `getDefaultParamKey('METHOD')` 应返回空字符串，切换参数类型不应把参数键改成 `session`。
+- 已移除参数键预置候选，`CustomRouteEditor` 匹配条件参数键编辑态从 `Select creatable` 改为普通 `Input`。
+- `cd console/web && node scripts/verify-route-editor-utils.mjs` 已转绿。
+
+验证：
+
+- `cd console/web && node scripts/verify-route-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/Router/routeEditorUtils.ts console/web/src/pages/Governance/Router/CustomRouteEditor.tsx console/web/scripts/verify-route-editor-utils.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过并重启 all 模式，tmux 日志显示 `finish starting server`。
+- Playwright 登录 `admin/admin123` 打开 `http://127.0.0.1:8080/governance/workbench`，进入 `seed-20260616-route` 编辑态验证：已有参数键 `x-tenant` 渲染为普通 `Input`，不在 `.t-select` 内，placeholder 为 `请输入参数键`。
+- Playwright 点击 `添加匹配条件` 后验证：新增参数键输入框值为空，两个参数键输入框均不是 Select 包裹，也没有 readonly。
+
+Review：
+
+- 根因是参数键逻辑复用了 `PARAM_KEY_OPTIONS/getDefaultParamKey/withParamTypeDefaultKey`，导致新条件和参数类型切换都会自动写入业务参数键。
+- 修复后参数类型只负责选择来源类型；参数键完全由用户输入，保存 payload 仍按用户输入值进入 `routing_config.rules[].arguments.arguments[].key`。
+
+## RouteRule 实时 Spec 提交格式对齐
+
+- [x] 复现右侧实时 Spec 与保存接口实际 payload 不一致的问题
+- [x] 将预览数据源改为保存前实际构造的 `CustomRoute` 结构
+- [x] 更新路由编辑器 helper 验证脚本，覆盖不再输出 `apiVersion/kind/spec`
+- [x] 运行 Console 构建、context-kg lint、diff 检查和真实 8080 页面验证
+- [x] 重启本地 all 模式服务并记录 review
+
+当前判断：
+
+- 用户截图中的右侧实时 Spec 当前展示的是额外构造的 `apiVersion/kind/spec` 资源视图，但 RouteRule 编辑器保存时实际上传的是 `CustomRoute` payload：顶层为 `name/enable/priority/description/routing_policy/metadata/routing_config`。
+- 预览应服务于“保存前核对即将上传的数据”，因此应和 `onSubmit` 中的 `data: CustomRoute` 保持同源，而不是继续展示单独的伪资源格式。
+
+当前进展：
+
+- 已先改 `console/web/scripts/verify-route-editor-utils.mjs` 写入失败断言：预览对象必须包含真实提交字段，并且不应再包含 `apiVersion/kind/spec`。
+- 失败已复现：当前 `buildRouteRulePreviewSpec(baseDraft).name` 为 `undefined`，说明预览结构确实不是提交结构。
+- `routeEditorUtils` 已新增提交 payload builder，右侧实时 Spec 和 `onSubmit` 统一走 `buildRouteRuleSubmitPayload`，避免预览与实际上传数据再次分叉。
+- `cd console/web && node scripts/verify-route-editor-utils.mjs` 已转绿，断言预览包含 `name/enable/priority/routing_policy/metadata/routing_config`，且不包含 `apiVersion/kind/spec`。
+
+验证：
+
+- `cd console/web && node scripts/verify-route-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/Router/routeEditorUtils.ts console/web/src/pages/Governance/Router/CustomRouteEditor.tsx console/web/scripts/verify-route-editor-utils.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过并重启 all 模式，tmux 日志显示 `finish starting server`。
+- Playwright 登录 `admin/admin123` 打开 `http://127.0.0.1:8080/governance/workbench`，进入 `seed-20260616-route` 抽屉验证：YAML 预览包含 `name/enable/priority/routing_policy/metadata/routing_config/caller/callee`，不再包含 `apiVersion/kind/spec`。
+- Playwright 切换 JSON 预览验证：JSON 从真实提交对象开始，包含 `"routing_config"` 和 `"routing_policy"`，不包含 `"kind"`、`"spec"` 或 `apiVersion`。
+
+Review：
+
+- 根因是预览和保存各自构造数据：预览用 `buildRouteRulePreviewSpec` 造了 `apiVersion/kind/spec` 展示模型，保存用 `buildRoutingConfigForApi` 构造 `CustomRoute` 请求体。
+- 修复后右侧预览和 `onSubmit` 同源，均走 `buildRouteRuleSubmitPayload`；保存前校验仍走 `validateRouteRuleDraft`，保存接口和 Redux action 不变。
+- YAML 序列化跳过 `undefined` 字段，避免展示出 JSON 请求体不会提交的空字段。
+
+## lattice-hub 组织 README 中英文介绍
+
+- [x] 确认 `gh` 登录状态、组织 profile 仓库和当前 README 位置
+- [x] 基于组织仓库列表确认公开项目定位，避免凭空编写介绍
+- [x] 起草中英文组织介绍，覆盖定位、核心项目和参与方式
+- [x] 使用 `gh` 更新 `lattice-hub/.github` 的 `profile/README.md`
+- [x] 验证 GitHub 内容已更新，并记录 review
+
+当前判断：
+
+- `gh` 已登录为 `chuntaojun`，对 `lattice-hub/.github` 具备 `ADMIN` 权限。
+- 组织 profile 仓库为 `lattice-hub/.github`，默认分支为 `main`，README 路径为 `profile/README.md`。
+- 当前 profile README 仍是 GitHub 默认模板，可直接替换为正式中英文介绍。
+- 公开仓库显示组织围绕 Pole 服务治理生态：`pole-control-plane`、`specification`、`pole-client-rust`、`pole-sidecar` 等。
+
+当前进展：
+
+- 已在临时 clone `/tmp/lattice-hub-github-profile` 中替换 `profile/README.md`，提交为 `a645c7b docs: update organization profile readme`。
+- 已推送到 `lattice-hub/.github` 的 `main` 分支。
+
+验证：
+
+- `git diff --check -- profile/README.md` 通过。
+- `git status --short --branch` 在临时 clone 中显示 `main...origin/main` 干净。
+- `gh api 'repos/lattice-hub/.github/contents/profile/README.md?ref=main'` 验证远端 `profile/README.md` 已包含 `# Lattice Hub`、中文介绍、English 介绍和四个核心项目链接。
+
+Review：
+
+- 本轮只更新组织 profile README，没有改动 `lattice-hub` 其它仓库。
+- 文案基于当前可见仓库列表和 `pole-control-plane` 仓库描述编写，避免引入未确认的产品承诺或外部文档链接。
+- 当前 `pole-control-plane` 工作区已有大量先前未提交变更，本轮除任务记录外未触碰业务代码。
+
+## RouteRule 服务范围区 PRD 对齐
+
+- [x] 对比用户截图中的 PRD 展开态、收起态和当前实现差异
+- [x] 调整 RouteRule 编辑抽屉「服务范围」标题区，使展开态显示 `主调方 → 被调方`，收起态显示服务流向摘要
+- [x] 移除该区块标题中的说明文案和右侧独立摘要，避免标题高度和布局偏离 PRD
+- [x] 运行 Console 构建、路由编辑器脚本、context-kg lint 和真实 8080 页面验证
+- [x] 重启本地 all 模式服务并记录 review
+- [x] 修复目标分组编辑态：恢复标签编辑控件、放大权重输入列、分组名改为 `Group {index}` 自动生成
+- [x] 调整 RouteRule 基础信息编辑态首行间距，改用 TDesign `Row/Col` 控制规则名称、优先级和状态列宽
+
+当前判断：
+
+- 用户这次纠正聚焦在「服务范围」区块：当前实现把描述和服务摘要拆到左右两侧，导致展开态像大标题说明区，而 PRD 是紧凑单行标题。
+- 应保留现有左侧编辑表单无横向滚动、右侧 Spec 固定的整体布局，只调整服务范围区块的信息呈现。
+
+当前进展：
+
+- 「服务范围」区块已改为专用标题结构：展开态显示 `服务范围  主调方 → 被调方`，收起态显示 `服务范围  spec-governance/spec-gateway → spec-governance/spec-order`。
+- 展开态服务卡片文案已对齐 PRD：`主调 / 发起调用方`、`被调 / 目标服务方`。
+
+验证：
+
+- `cd console/web && node scripts/verify-route-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/Router/CustomRouteEditor.tsx console/web/src/pages/Governance/Router/CustomRouteEditor.module.less context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过并重启 all 模式，tmux 日志显示 `finish starting server`。
+- Playwright 登录 `admin/admin123` 打开 `http://127.0.0.1:8080/governance/workbench`，进入 `seed-20260616-route` 抽屉验证：展开态包含 `主调方 → 被调方`，收起态包含 `spec-governance/spec-gateway → spec-governance/spec-order`，旧说明文案不存在，页面无横向溢出。
+- Playwright 复验 RouteRule 编辑态基础信息行：前三列为 TDesign `Col span=8/2/2`，实测列宽约 `504/126/126px`，`InputNumber` 根节点宽约 `110px`，页面、抽屉和该行均无横向溢出。
+
+Review：
+
+- 本轮只调整 RouteRule 编辑器服务范围区的展示结构和文案，没有改保存、发布和 Spec 生成逻辑。
+- 右侧实时 Spec 固定列、左侧内部滚动和抽屉宽度分配保持不变，避免回退上一轮已修复的布局问题。
+- 跟进用户反馈后，服务范围收起态已改为紧凑单行：真实 8080 页面实测外层 section 高度约 64px，header 约 62px，不再保留展开态大块空白。
+- 跟进用户反馈后，目标分组编辑态恢复实例标签 chip + 编辑标签弹窗；权重列扩大并使用固定宽度 `InputNumber`；分组名称不再可手填，显示和提交统一按 `Group {index}` 自动生成。
+- 真实 8080 页面复验：编辑态目标分组无 `Group 1` 输入框，权重输入值完整显示 `100`，实例标签显示 `version / v1` chip，点击目标分组「编辑标签」可打开 `编辑实例标签` 弹窗；右侧实时 Spec 已同步显示 `group: "Group 1"`，不再保留旧 `primary`。
+- 跟进用户反馈后，基础信息首行不再使用 `1fr + 固定列` 的私有网格；改为 TDesign `Row/Col` 的 12 栅格，规则名称、优先级、状态按 `8/2/2` 分配，右侧字段间距稳定且不挤压名称输入框。
+
+## 路由规则编辑器规则 Tab 设计实现
+
+- [x] 补路由编辑器纯逻辑测试，覆盖 Spec 生成、保存校验、权重计算和参数键联动
+- [x] 抽出 `routeEditorUtils`，避免把校验和 Spec 生成逻辑堆进 JSX
+- [x] 重构 `CustomRouteEditor` 的规则 Tab：基础信息、服务范围、路由规则、右侧实时 Spec 预览
+- [x] 实现服务范围折叠摘要、长服务名 tooltip、目标分组权重条和保存前校验
+- [x] 运行 Console 构建、相关脚本验证、context-kg lint 和 diff 检查
+- [x] 记录 review 和验证结果
+
+当前判断：
+
+- 附件已经给出明确设计交接，本轮不再做需求反问；实现范围限定在路由规则编辑抽屉的「规则」Tab，不改版本、审计等 Tab。
+- 现有 `CustomRouteEditor` 已有基础表单、服务选择、规则块、匹配条件表和目标分组表；本轮应复用数据结构和保存 API，只调整规则 Tab 的信息架构和必要交互。
+- 纯逻辑优先抽到 helper，至少覆盖：kebab-case 校验、目标权重合计必须为 100、空匹配值/未命名分组拦截、实时 Spec JSON/YAML 生成、参数类型切换时默认候选键。
+
+当前进展：
+
+- `routeEditorUtils` 已抽出 Spec 生成、YAML/JSON 序列化、保存前校验、参数类型候选键和标签文本转换逻辑。
+- `CustomRouteEditor` 规则 Tab 已改为左侧基础信息、服务范围、路由规则，右侧实时 Spec 预览和底部校验/保存栏。
+- 服务范围支持折叠摘要和长文本 Tooltip；匹配条件支持 AND/OR 切换和参数键候选；目标分组支持权重条和合计状态。
+
+验证：
+
+- `cd console/web && node scripts/verify-route-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/Router/CustomRouteEditor.tsx console/web/src/pages/Governance/Router/CustomRouteEditor.module.less console/web/src/pages/Governance/Router/routeEditorUtils.ts console/web/scripts/verify-route-editor-utils.mjs context-kg/tasks/todo.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过并重启 all 模式，tmux 日志显示 `finish starting server`。
+- `curl http://127.0.0.1:8080/governance/workbench` 返回 200；浏览器登录 `admin/admin123` 后工作台正常显示 9 条治理规则。
+- Playwright 打开 RouteRule 详情抽屉，确认新布局出现基础信息、服务范围、路由规则、实时 Spec 和本地校验通过。
+
+Review：
+
+- 本轮只改 RouteRule 编辑抽屉的规则 Tab 体验，保存仍走 `buildRoutingConfigForApi` 和既有 create/update action，避免扩大接口风险。
+- 校验逻辑放在 helper 并由 Node 脚本覆盖，JSX 只负责展示和触发，后续其它治理规则编辑器可以复用同样模式。
+- 组件中仍保留旧 TDesign Table 编辑函数作为未调用路径，原因是本轮优先保证设计交付和构建稳定；后续可单独做死代码清理。
+
+## 治理规则数据库清理与测试数据重建
+
+- [x] 审计 MySQL 中治理规则相关表、旧数据和现有服务/命名空间依赖
+- [x] 备份即将清理的治理规则数据，避免误删后不可追溯
+- [x] 清理旧治理规则表数据，范围限定为 `governance_rule` / `governance_rule_release`
+- [x] 通过当前 8080/8090 API 构造新的治理规则测试数据，避免手写旧字段 JSON
+- [x] 验证治理工作台和各类治理规则列表接口均返回正常
+- [x] 记录 review 和验证结果
+
+当前判断：
+
+- 用户建议清理旧数据库信息并重新构造测试治理规则数据；本轮将只处理治理规则统一表，避免影响命名空间、服务、用户、认证策略等基础数据。
+- 当前 `governance_rule` 和 `governance_rule_release` 各 9 条，覆盖 route、ratelimit、circuitbreaker、faultdetect、lossless、lane-group、traffic-security、traffic-mirror、traffic-mock 各 1 条。
+- 现有 `spec-governance` 命名空间下已有 `spec-gateway`、`spec-checkout`、`spec-payment`、`spec-inventory`、`spec-order` 服务，可直接作为新测试数据的作用范围和目标服务。
+- 新测试数据优先通过当前 API 创建，让后端按最新 spec 生成 JSON 快照，避免直接 SQL 构造再次带入历史字段。
+- 清理前已备份 `governance_rule` / `governance_rule_release` 到 `/tmp/pole-governance-rules-20260616-225742.sql`。
+- 已在事务中清空 `governance_rule` / `governance_rule_release`，清理后两表均为 0 条。
+- 造数过程中发现并修复两个发布接口缺陷：route 正常发布检查灰度版本时 nil route 触发空响应；部分规则发布未生成 release id，导致后续类型撞空主键。
+- 已重新构造并发布 9 类治理规则测试数据：route、ratelimit、circuitbreaker、faultdetect、lossless、lane-group、traffic-security、traffic-mirror、traffic-mock 各 1 条。
+
+验证：
+
+- MySQL 验证通过：`governance_rule` 9 条、`governance_rule_release` 9 条，9 个 `rule_type` 各 1 条。
+- 8080 Console 代理验证通过：工作台默认加载涉及的 9 类治理规则列表接口均返回 `200000`；`/governance/workbench` 返回页面 HTML。
+- `go test ./pkg/goverrule ./plugin/store/mysql -run 'TestBuildRouterRuleReleaseAllowsNilRule|TestNewRuleReleaseFromSpec|TrafficGovernance|Lossless|GovernanceRule'` 通过。
+
+Review：
+
+- 直接 SQL 清理治理规则表后必须重启服务，否则运行中缓存不会感知硬删除，会出现 API 列表仍显示旧规则的现象。
+- 造数优先走 API 可以让当前 spec 生成规则 JSON 快照；lossless 当前 spec 已不承载 namespace/service，最终通过统一表索引字段补齐归属，避免把旧字段写回 `rule` JSON。
+- 发布接口修复后，各类 release 记录都有非空主键；route 发布的灰度检查路径不再因 nil 规则构造而关闭连接。
+
+## A2A Agent 列表 404 修复
+
+- [x] 使用用户提供的 RequestId 定位 8090 access log
+- [x] 复现 `GET /ai/a2a/v1/agents` 在 8080 代理和 8090 直连均返回 404
+- [x] 对比 apiserver 配置，确认 all 模式使用的 `deploy/conf/pole-apiserver.yaml` 未启用 `aia2a`
+- [x] 修复默认 apiserver 配置并重启 all 模式验证
+
+当前判断：
+
+- 用户页面报“获取 A2A Agent 失败”不是前端解包问题，也不是 MySQL 数据缺失；请求已到达 8090，但 A2A WebService 未注册，返回 `404 Page Not Found`。
+- `test/data/bootstrap/pole-apiserver.yaml` 已启用 `aia2a`，因此部分接口测试环境不会暴露这个问题；本地 all 模式使用 `deploy/conf/pole-apiserver.yaml`，该配置此前仍为 `aia2a.enable: false`。
+
+当前进展：
+
+- 已将 `deploy/conf/pole-apiserver.yaml` 的 `api-http.api.aia2a.enable` 改为 `true`。
+
+验证：
+
+- 修复前：带有效登录态访问 `http://127.0.0.1:8080/ai/a2a/v1/agents?offset=0&limit=10` 返回 `404 Page Not Found`。
+- 修复前：带有效登录态访问 `http://127.0.0.1:8090/ai/a2a/v1/agents?offset=0&limit=10` 返回 `404 Page Not Found`。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过并重启 all 模式。
+- 修复后：带有效登录态访问 `http://127.0.0.1:8080/ai/a2a/v1/agents?offset=0&limit=10` 返回 `200000`，`amount=3`。
+- 修复后：带有效登录态访问 `http://127.0.0.1:8090/ai/a2a/v1/agents?offset=0&limit=10` 返回 `200000`，`amount=3`。
+
+## 治理规则列表请求失败修复
+
+- [x] 复现 `http://127.0.0.1:8080/governance/workbench` 中治理规则列表失败，记录失败接口、响应体和 RequestId
+- [x] 结合服务日志追踪 RequestId `a305a696-3b90-4624-b00e-574cf5e29c00` 对应的后端错误
+- [x] 沿 Console service、HTTP handler、goverrule service、store/cache 数据流定位根因
+- [x] 补充能稳定覆盖根因的最小测试或等价接口验证
+- [x] 实施最小修复并运行 Go 相关测试、Console 构建或真实 8080 链路验证
+- [x] 记录 review、验证结果和必要 lessons
+
+当前判断：
+
+- 用户反馈的两个请求失败都发生在治理规则列表查询场景，不能只修改页面错误提示；需要从真实 8080 Console 代理请求和后端日志定位 5xx 根因。
+- 当前工作区已有治理规则相关未提交变更，本轮只处理列表请求失败相关改动，不回退既有变更。
+- RequestId `a305a696-3b90-4624-b00e-574cf5e29c00` 对应接口为 `/naming/v1/traffic/mirrors?offset=0&limit=20`，后端错误为 `proto: unknown field "source"`。
+- 同一启动实例中 lossless cache 还持续报 `proto: unknown field "service"`，同属治理规则旧 JSON 快照与新 spec 字段删除后的兼容解析问题。
+
+当前进展：
+
+- `plugin/store/mysql/governance_rule_convert.go` 新增统一的治理规则 proto JSON 反序列化 helper，读取 DB 快照时使用 `DiscardUnknown: true` 兼容旧字段。
+- 兼容范围覆盖 `LosslessRule`、`TrafficSecurityRule`、`TrafficMirror`、`TrafficMock` 的规则快照和发布快照读取；新写入仍按当前 spec marshal，旧字段不会被再次写回。
+- 补充 `TestTrafficMirrorRecordIgnoresLegacySourceField` 和 `TestLosslessRecordIgnoresLegacyServiceField`，先确认旧严格解析会失败，再用最小修复转绿。
+
+验证：
+
+- `go test ./plugin/store/mysql -run 'TestTrafficMirrorRecordIgnoresLegacySourceField|TestLosslessRecordIgnoresLegacyServiceField'` 通过。
+- `go test ./plugin/store/mysql -run 'TrafficGovernance|Lossless|GovernanceRule'` 通过。
+- `go test ./apis/pkg/types/rules ./pkg/cache/rules ./pkg/goverrule ./plugin/store/mysql -run 'TrafficGovernance|Lossless|FaultDetect|Circuit|RateLimit|TestDoesNotExist'` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过并重启 all 模式；脚本内已执行 Console build 和 control-plane build。
+- 8080 Console 代理验证通过：`/naming/v1/traffic/security`、`/naming/v1/traffic/mirrors`、`/naming/v1/traffic/mocks`、`/naming/v1/lossless` 均返回 `200000`。
+- 重启后 `polaris-cache.log` 不再出现新的 `unknown field "source"` / `unknown field "service"` 解析错误。
+- `python3 ~/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+
+Review：
+
+- 根因是治理规则 spec 删除/迁移字段后，数据库 `governance_rule.rule` 中仍保留旧 proto JSON 字段；列表和缓存读取用严格 `protojson.Unmarshal`，遇到旧字段直接返回 500。
+- 修复落在 store 转换层，比在 Console 或各 handler 分散兜底更优雅：所有列表、详情、缓存、发布快照读取共享同一兼容行为。
+- 本轮没有新增 lessons：用户没有提出新的行为纠正。
+
+## 主动探测多子规则支持
+
+- [x] 确认 `FaultDetectRule` 多子探测规则的 spec 契约形态
+- [x] 更新 specification proto 与 Go/Rust 生成产物
+- [x] 更新 control-plane 后端转换、服务索引、查询过滤、发布下发兼容逻辑
+- [x] 更新 Console service 类型、归一化逻辑和 `FaultDetectEditor` 多子规则编辑器
+- [x] 补充后端/前端/fixture 测试场景并运行验证
+- [x] 记录 review、验证结果和必要 lessons
+
+当前判断：
+
+- 现有 `FaultDetectRule` 是单条探测配置：顶层 `target_service/interval/timeout/port/protocol/http_config/tcp_config/udp_config`。
+- 新需求应表达为“一条主动探测治理规则包含多个子探测规则”，而不是让用户创建多条顶层治理规则；顶层继续承载规则身份、描述、标签和权限字段。
+- 后端统一治理表保存 `rule` JSON 快照，适合把多子规则作为 spec JSON 一起持久化；但服务索引和查询过滤需要从子规则集合中提取涉及服务。
+- 用户补充：鉴权、Mock、镜像也应保持“一条规则绑定一个被调服务 + 多个子规则”的模型；来源服务属于流量匹配条件，不参与规则归属。
+
+当前进展：
+
+- `FaultDetectRule` 新增 `repeated FaultDetectSubRule rules`，子规则承载探测目标、间隔、超时、端口、协议和协议配置。
+- control-plane 创建/更新主动探测规则时优先从 `rules[0].target_service` 推导内部索引；旧单条字段仍可兼容。
+- 主动探测客户端缓存按所有子规则目标服务建立 fan-out，避免多目标规则只挂到首个服务。
+- Console service 层已归一化 `rules[0]` 到旧字段，列表与详情不会因新字段空白。
+- `FaultDetectEditor` 已升级为探测子规则列表，支持一个主动探测规则内新增、删除、查看和编辑多个子探测规则；每条子规则独立维护被探测服务、接口范围、探测节奏、协议配置和启停状态。
+
+验证：
+
+- `../specification/source/go: bash build.sh` 通过。
+- `../specification/source/rust: bash build.sh` 通过。
+- `go test ./apis/pkg/types/rules ./pkg/cache/rules ./pkg/goverrule ./plugin/store/mysql ./test/e2e/internal/e2e -run 'TrafficGovernance|FaultDetect|TestDoesNotExist'` 通过。
+- `cd console/web && npm run build` 通过，保留既有 `--localstorage-file`、Browserslist 和 chunk size 警告。
+
+Review：
+
+- 本轮已完成 spec、后端索引、缓存下发、Console service 兼容和 `FaultDetectEditor` 多子规则交互；编辑器提交时会把首条子规则同步回顶层旧字段，保持旧链路兼容。
+- 为兼容已有数据，旧单条字段仍会被前端和后端归一化成一个子规则；新客户端可以统一读取 `rules[]`。
+
+## 流量治理被调服务绑定语义补全
+
+- [x] 更新 specification：TrafficSecurity / TrafficMirror / TrafficMock 顶层增加 `target_service`，子规则移除服务归属字段
+- [x] 更新 `TrafficMatchRule.SourceMatch`，支持来源服务匹配
+- [x] 重新生成 specification Go / Rust 产物
+- [x] 更新 control-plane 后端规则转换、缓存索引、store 查询字段
+- [x] 更新 Console 类型、默认值、详情展示和编辑器字段
+- [x] 更新 e2e fixture 与单元测试，运行相关验证
+- [x] 记录 review 与 lessons
+
+当前判断：
+
+- 三类流量治理都应按被调服务下发：客户端按被调服务拉取规则，数据面再用 `traffic_match_rule` 判断来源服务、请求头、路径、Cookie 等条件。
+- 旧的 `MirrorSource.namespace/service`、`MockSource.namespace/service` 容易被误解为规则归属；应改为顶层 `target_service` 作为唯一绑定服务。
+- 鉴权规则当前没有服务作用域，导致 Console 查询和客户端下发无法按被调服务索引，需要补齐。
+
+当前进展：
+
+- `TrafficSecurityRule` 新增顶层 `target_service`，后端内部 `Namespace/Service` 从该字段推导。
+- `TrafficMirror` / `TrafficMock` 新增顶层 `target_service`；`MirrorRule` / `MockRule` 移除 `source.namespace/service`，子规则只保留接口范围、流量匹配和动作配置。
+- `SourceMatch.Type` 新增 `CALLER_SERVICE`，来源服务通过 `traffic_match_rule.arguments` 表达。
+- Console 流量治理列表、详情和编辑器已改为展示/编辑“被调命名空间、被调服务”；镜像和 Mock 子规则中不再单独录入来源服务。
+
+验证：
+
+- `../specification/source/go: bash build.sh` 通过。
+- `../specification/source/rust: bash build.sh` 通过。
+- `go test ./apis/pkg/types/rules ./pkg/cache/rules ./pkg/goverrule ./plugin/store/mysql ./test/e2e/internal/e2e -run 'TrafficGovernance|FaultDetect|TestDoesNotExist'` 通过。
+- `cd console/web && npm run build` 通过，保留既有 `--localstorage-file`、Browserslist 和 chunk size 警告。
+- `rg -n "MirrorSource|MockSource|GetSource\\(|source\\?\\.|source:\\s*\\{" apis/pkg/types/rules plugin/store/mysql test/e2e/internal/e2e console/web/src/pages/Governance/Security console/web/src/services/traffic_governance.ts ../specification/api/v1/traffic_manage ../specification/source/go/api/v1/traffic_manage ../specification/source/rust/pole-specification/proto ../specification/source/rust/pole-specification/src/v1.rs` 无流量治理旧 source 结构残留。
+- `rg -n "default_action|DefaultAction|GetDefaultAction" ../specification apis pkg plugin test console/web/src` 无结果。
+
+Review：
+
+- 三类流量治理规则现在统一按被调服务建索引和下发；鉴权规则不再是无服务作用域的全局规则。
+- 来源服务不再参与规则归属，只能作为 `CALLER_SERVICE` 等匹配条件；这避免了镜像/Mock 在列表、发布和客户端缓存中被错误挂到主调服务。
+
+## specification 鉴权规则默认动作移除
+
+- [x] 删除 `TrafficSecurityRule.default_action`
+- [x] 重新生成 specification Go / Rust 产物
+- [x] 检查 control-plane 是否仍引用 `default_action`
+- [x] 运行 spec 与 control-plane 相关验证
+- [x] 记录 review 与 lessons
+
+当前判断：
+
+- 调用鉴权是按命中策略执行动作；规则本身不需要“所有策略未命中时的默认动作”字段。
+- 需要同步删除 proto、Go 生成代码、Rust proto 拷贝与 Rust 生成代码，避免跨语言产物不一致。
+
+验证：
+
+- `../specification/source/go: bash build.sh` 通过。
+- `../specification/source/rust: bash build.sh` 通过。
+- `rg -n "default_action|DefaultAction|GetDefaultAction" ../specification console/web/src test/e2e/internal/e2e pkg apis plugin` 无结果。
+- `cd console/web && npm run build` 通过，保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `go test ./pkg/goverrule/... ./pkg/cache/rules/... ./plugin/store/mysql/... ./test/e2e/internal/e2e -run TestDoesNotExist` 通过。
+- `git diff --check` 在 `../specification` 与当前仓库均通过。
+- `context_kg_lint.py ./context-kg` 通过。
+
+Review：
+
+- spec 已从 `TrafficSecurityRule` 删除未命中默认动作字段，并按当前规则连续重排后续字段号；Go/Rust 生成产物同步更新。
+- control-plane Console 不再声明、默认填充、展示或提交未命中默认动作；提交前额外剥离历史 JSON 中可能残留的旧字段，避免旧数据被再次写回。
+- e2e 治理规则 fixture 已移除该字段；经验已写入 `context-kg/tasks/lessons.md`。
+
+## control-plane spec 适配回归审查
+
+- [x] 运行全仓编译级验证与治理规则重点包测试
+- [x] 核对治理规则顶层 `namespace/service` 删除后的后端语义链路
+- [x] 横向扫描前端与接口契约是否仍依赖旧字段
+- [x] 汇总仍需修复的问题、风险和建议处理顺序
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 本轮重点不是重新确认 `go.mod` 已经升级，而是检查 spec 破坏性字段删除后，control-plane 是否存在编译未覆盖的运行时语义缺口。
+- 重点风险面包括：规则归属来源、鉴权资源收集、缓存 fan-out、DB JSON 兼容、Console 展示与创建/编辑入参。
+
+验证：
+
+- `go test ./... -run TestDoesNotExist` 通过，完成全仓 Go 编译级验证。
+- `go test ./pkg/goverrule/... ./pkg/cache/rules/... ./plugin/store/mysql/...` 通过，覆盖治理规则、缓存和 MySQL 重点包。
+- `cd console/web && npm run build` 通过，保留既有 Browserslist 过期提示、chunk size 警告和 node `--localstorage-file` 提示。
+
+Review：
+
+- 限流规则适配仍不完整：新 spec 的 `RateLimit` 顶层已无 `namespace/service`，但 Console 仍提交这两个字段，后端 `api2RateLimit` 也没有从任何内部结构或外部入参恢复 `ServiceID`；新建/更新后的限流规则无法正确绑定服务，客户端缓存按服务拉取会跳过该规则，列表/详情的服务展示和过滤也会丢失。
+- 限流鉴权资源联动存在空 ID：`CreateRateLimits` / `DeleteRateLimits` 成功后调用 `afterRuleResource` 时写入 `ID: ""`，没有使用响应或请求中的真实规则 ID。
+- TrafficSecurity 目前无法按服务索引：`TrafficSecurityRule` spec 顶层和 `TrafficSecurityPolicy` 内部没有 `namespace/service` 字段，control-plane 内部 `TrafficGovernanceRule.Namespace/Service` 对 security 为空，导致按服务过滤、`GetRulesForService` 和 active release key 无法像 mirror/mock 一样工作；如果鉴权规则也要服务级生效，需要在 spec 或 control-plane API 侧补明确的作用域来源。
+- 统一治理规则 cache fan-out 基础链路存在：`GovernanceRuleUpdateCache` 已一次拉取 `governance_rule` / `governance_rule_release` 并按 type 分发 watcher，这部分方向正确。
+- `governance_rule` / `governance_rule_release` 保留 `namespace/service/service_id` 等列属于 store 索引字段，不是 spec 顶层字段回退；关键是写入来源必须从规则内部或明确 API 上下文推导。
 
 ## specification 治理规则语义收敛
 
@@ -51,6 +1502,32 @@ Review（control-plane 引用更新）：
 - 本轮没有执行 `go mod tidy`，避免引入与 spec tag 更新无关的依赖整理。
 - 本轮仅推送了 `specification` 新 tag；control-plane 代码仍留在当前工作区，尚未提交或推送。
 - rate limit 新 spec 已无被治理服务顶层字段，当前 control-plane 只能保留内部 `ServiceID` 路径；后续需要按统一治理规则模型补正式 create/update 入参归属来源。
+
+## specification v0.1.0-ALPHA.27 发布与引用更新
+
+- [x] 合并 specification PR #3 到 `develop`
+- [x] 基于合并提交创建并推送 tag `v0.1.0-ALPHA.27`
+- [x] 更新 pole-control-plane 的 `github.com/pole-io/specification` 依赖到 `v0.1.0-ALPHA.27`
+- [x] 移除本地 `replace github.com/pole-io/specification => ../specification`
+- [x] 运行后端重点测试、Console 构建和知识库 lint
+
+当前进展：
+
+- specification PR #3 已合并，合并提交为 `9fad778208e541873b8db705de87e23433ff8314`。
+- tag `v0.1.0-ALPHA.27` 已推送到 `origin`，远端可通过 `git ls-remote --tags origin v0.1.0-ALPHA.27` 查询。
+- control-plane `go.mod` 已更新到 `github.com/pole-io/specification v0.1.0-ALPHA.27`，`go.sum` 已补充新 tag 校验和。
+- 由于 Go proxy 访问超时，本轮使用 `GOPRIVATE=github.com/pole-io/* GOPROXY=direct go mod download github.com/pole-io/specification@v0.1.0-ALPHA.27` 直接拉取校验和。
+
+验证：
+
+- `go list -m github.com/pole-io/specification` 返回 `github.com/pole-io/specification v0.1.0-ALPHA.27`。
+- `go test ./apis/pkg/types/rules ./pkg/cache/rules ./pkg/goverrule ./plugin/store/mysql ./test/e2e/internal/e2e -run 'TrafficGovernance|FaultDetect|TestDoesNotExist'` 通过。
+- `cd console/web && npm run build` 通过，保留既有 `--localstorage-file`、Browserslist 和 chunk size 警告。
+
+Review：
+
+- 本轮没有运行 `go mod tidy`，只更新 specification 直接依赖和 go.sum 校验和。
+- control-plane 仍保留本轮功能适配代码的未提交变更；本节只记录 spec tag 发布与依赖引用切换结果。
 
 当前判断：
 
@@ -2757,7 +4234,7 @@ Review：
 当前进展：
 
 - `../specification` 已从干净的 `develop` 创建 `codex/traffic-security-spec` 分支。
-- 最终产品决策：删除 `BlockAllowListRule` 命名和黑白名单主模型，新增 `TrafficSecurityRule`，通过 `TrafficSecurityPolicy.action` 表示命中后 `ALLOW/DENY`，通过 `default_action` 表示未命中默认行为。
+- 最终产品决策：删除 `BlockAllowListRule` 命名和黑白名单主模型，新增 `TrafficSecurityRule`，通过 `TrafficSecurityPolicy.action` 表示命中后 `ALLOW/DENY`；鉴权规则不再建模未命中默认动作。
 - 新增 `TrafficMock` 一等治理规则，保留 `TrafficMirror` 并补齐根作用域、启用开关和优先级。
 - `RuleRelease.RuleType` 新增 `TrafficMockRules`；`ResourceType` / `StrategyResources` 新增 `MockRules` / `mock_rules`。
 - `DiscoverRequest` / `DiscoverResponse` 下发类型改为 `TRAFFIC_SECURITY_RULE`，并新增 `TRAFFIC_MIRROR_RULE`、`TRAFFIC_MOCK_RULE`；响应字段改为 `trafficSecurityRules`、`trafficMirrorRules`、`trafficMockRules`。
@@ -3536,3 +5013,152 @@ Review：
 
 - 本轮仍按用户要求不执行完整 E2E，不拉起 testcontainers/MySQL/all 模式。
 - 本轮没有新增前端页面测试能力，不引入 Playwright、浏览器、DOM、截图或页面交互断言。
+
+# specification 流量治理 caller -> callee 最终契约收敛
+
+- [x] 明确本轮只讨论最终 spec 效果，不考虑新老 spec 兼容
+- [x] 从 `TrafficMirror` / `TrafficMock` 删除旧的 `target_service` 字段和兼容性注释
+- [x] 重新生成 Go / Rust 产物，确认生成代码中不再暴露 `TrafficMirror.target_service` 和 `TrafficMock.target_service`
+- [x] 执行 spec 构建、diff 与 context-kg lint 验证
+- [x] 提交并推送到既有 specification PR 分支
+
+当前判断：
+
+- 流量镜像和服务 Mock 的最终契约应与路由一样直接表达 `caller -> callee`。
+- `caller` 可用 `*/*` 表达全部服务；`callee` 是规则归属的被调服务。
+- 本轮不做 `target_service`、旧 `CALLER_SERVICE` 推导或任何旧 spec fallback。
+
+当前进展：
+
+- `api/v1/traffic_manage/mirror.proto` 与 `mock.proto` 已改为顶层 `caller=4`、`callee=5`、`rules=6`，后续字段顺延。
+- Go 生成产物已删除 `TargetService` 字段和 `GetTargetService()` 方法，`caller` / `callee` 使用字段号 4 / 5。
+- Rust proto 拷贝和 `source/rust/pole-specification/src/v1.rs` 已同步最终字段。
+- 已在 specification 分支 `codex/traffic-caller-callee` 追加提交 `98a0a01 feat: finalize traffic caller callee scope` 并推送。
+- PR #7 当前为 Open / Mergeable，head 为 `98a0a01`。
+
+验证：
+
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/go && bash build.sh` 通过。
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/rust && bash build.sh` 通过。
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/go && go test ./...` 通过，Go 生成包均编译成功。
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/rust/pole-specification && PROTOC=/Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/protoc/protoc-darwin-arm64/bin/protoc cargo build --release` 通过。
+- `rg -n "target_service|TargetService|GetTargetService|Deprecated: use callee|use callee instead" ...mirror/mock... || true` 无输出，证明 Mirror/Mock 范围内无兼容字段残留。
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee && git diff --check` 通过。
+- `gh pr view 7 --repo lattice-hub/specification --json url,state,mergeable,headRefName,headRefOid,title` 返回 PR Open / Mergeable，head 为 `98a0a01`。
+
+Review：
+
+- 本轮 spec PR 不再保留新老 spec 兼容字段、Deprecated 注释或 fallback 语义。
+- `target_service` 在其它治理规则类型中仍可能存在，本轮只调整流量镜像和服务 Mock。
+
+# specification 流量治理持续时间字段删除
+
+- [x] 明确 Mock 和镜像最终 spec 不需要配置持续时间
+- [x] 删除 `MirrorRule.duration` 与 `MockRule.delay`
+- [x] 移除 Mirror/Mock proto 中不再使用的 `google.protobuf.Duration` 依赖并重新生成 Go / Rust 产物
+- [x] 执行 spec 构建、diff 与 context-kg lint 验证
+- [x] 提交并推送到既有 specification PR 分支
+
+当前判断：
+
+- 流量镜像和服务 Mock 的最终配置只保留接口范围、匹配条件、目标/响应、百分比和启停状态。
+- 不保留持续时间、响应延迟或任何 `google.protobuf.Duration` 配置字段。
+- 删除字段后按最终 spec 风格压实字段号：`disable` 使用字段号 5。
+
+当前进展：
+
+- `api/v1/traffic_manage/mirror.proto` 删除 `google/protobuf/duration.proto` import 和 `MirrorRule.duration`，`disable` 改为字段号 5。
+- `api/v1/traffic_manage/mock.proto` 删除 `google/protobuf/duration.proto` import 和 `MockRule.delay`，`disable` 改为字段号 5。
+- Go 生成产物已删除 `durationpb` import、`GetDuration()`、`GetDelay()` 以及对应字段。
+- Rust proto 拷贝和 `source/rust/pole-specification/src/v1.rs` 已同步删除两个 Duration 字段。
+- 已在 specification 分支 `codex/traffic-caller-callee` 追加提交 `02c3eb1 feat: remove traffic duration fields` 并推送。
+- PR #7 当前为 Open / Mergeable，head 为 `02c3eb1`。
+
+验证：
+
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/go && bash build.sh` 通过。
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/rust && bash build.sh` 通过。
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/go && go test ./...` 通过，Go 生成包均编译成功。
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/rust/pole-specification && PROTOC=/Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/protoc/protoc-darwin-arm64/bin/protoc cargo build --release` 通过。
+- `rg -n "Duration|duration|delay|持续时间|响应延迟|google/protobuf/duration.proto|GetDuration|GetDelay" ...mirror/mock... || true` 无输出。
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee && git diff --check` 通过。
+- `gh pr view 7 --repo lattice-hub/specification --json url,state,mergeable,headRefName,headRefOid,title` 返回 PR Open / Mergeable，head 为 `02c3eb1`。
+
+Review：
+
+- 本轮将“持续时间/延迟”作为 Mock 与镜像的最终 spec 非目标删除，没有保留字段号占位。
+- `source/rust/pole-specification/proto/service.proto` 是 Rust 脚本生成噪声，已还原，避免带入无关 diff。
+
+# specification 流量治理复用服务端点类型
+
+- [x] 明确不新增 `ServiceScope` 重复类型
+- [x] 删除 `router.proto` 中新增的 `ServiceScope`
+- [x] 将 `TrafficMirror` / `TrafficMock` 的 `caller` 改为 `SourceService`，`callee` 改为 `DestinationService`
+- [x] 重新生成 Go / Rust 产物，确认无 `ServiceScope` 残留
+- [x] 执行 spec 构建、diff 与 context-kg lint 验证
+- [x] 提交并推送到既有 specification PR 分支
+
+当前判断：
+
+- 现有 `SourceService` / `DestinationService` 已能表达规则两端，没有必要新增 `ServiceScope`。
+- `caller` 使用 `SourceService`，允许 `service="*"` 且 `namespace="*"` 表达全部服务。
+- `callee` 使用 `DestinationService` 表达规则归属和下发绑定的被调服务。
+
+当前进展：
+
+- `api/v1/traffic_manage/router.proto` 已删除新增的 `ServiceScope` message。
+- `api/v1/traffic_manage/mirror.proto` 与 `mock.proto` 已改为 `SourceService caller = 4`、`DestinationService callee = 5`。
+- Go / Rust 生成产物已同步删除 `ServiceScope` 类型和引用。
+- 已在 specification 分支 `codex/traffic-caller-callee` 追加提交 `25ca7dc feat: reuse traffic service endpoints` 并推送。
+- PR #7 当前为 Open / Mergeable，head 为 `25ca7dc`。
+
+验证：
+
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/go && bash build.sh` 通过。
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/rust && bash build.sh` 通过。
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/go && go test ./...` 通过，Go 生成包均编译成功。
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/rust/pole-specification && PROTOC=/Users/chuntao.liao/Github/pole-io/specification-caller-callee/source/protoc/protoc-darwin-arm64/bin/protoc cargo build --release` 通过。
+- `rg -n "ServiceScope" api/v1/traffic_manage source/go/api/v1/traffic_manage source/rust/pole-specification/proto source/rust/pole-specification/src/v1.rs || true` 无输出。
+- `cd /Users/chuntao.liao/Github/pole-io/specification-caller-callee && git diff --check` 通过。
+- `gh pr view 7 --repo lattice-hub/specification --json url,state,mergeable,headRefName,headRefOid,title` 返回 PR Open / Mergeable，head 为 `25ca7dc`。
+
+Review：
+
+- 本轮删除了重复抽象，复用既有服务端点类型；`SourceService` / `DestinationService` 字段顺序继续遵循现有 `service=1, namespace=2`。
+- `source/rust/pole-specification/proto/service.proto` 是 Rust 脚本生成噪声，已还原，避免带入无关 diff。
+
+# specification PR 合并、tag 与 control-plane 依赖更新
+
+- [x] 核对 PR #7 状态、检查项和现有 tag 序列
+- [x] 合并 specification PR #7 到 `develop`
+- [x] 在合并后的 specification `develop` 上创建并推送新 tag
+- [x] 更新 `pole-control-plane` 对 `github.com/pole-io/specification` 的依赖到新 tag
+- [x] 执行依赖解析、编译级和 context-kg 验证
+
+当前判断：
+
+- PR #7 当前为 Open / Mergeable，base 为 `develop`，head 为 `25ca7dc`，无 status check。
+- specification 现有最新 tag 为 `v0.1.0-ALPHA.30`，本轮应递增为 `v0.1.0-ALPHA.31`。
+- `pole-control-plane` 当前 `go.mod` 依赖和 replace 都指向 `v0.1.0-ALPHA.30`，更新时只做定向版本调整，不运行 `go mod tidy`。
+
+当前进展：
+
+- PR #7 已合并到 specification `develop`，merge commit 为 `7e596e46b7be00fcc4476f50ee3c41e2969ce79a`。
+- 已在 merge commit 上创建并推送 `v0.1.0-ALPHA.31`。
+- `pole-control-plane` 的 `go.mod` 已将 `github.com/pole-io/specification` require 和 replace 都更新到 `v0.1.0-ALPHA.31`。
+- `go.sum` 已通过 `go mod download github.com/pole-io/specification` 补充 `github.com/lattice-hub/specification v0.1.0-ALPHA.31` checksum。
+- 适配了本仓流量治理转换层：TrafficSecurity 继续使用 `TargetService`；TrafficMirror / TrafficMock 使用 `Callee` 作为规则归属，并在缺省时输出 `Caller=*/*`。
+
+验证：
+
+- `gh pr merge 7 --repo lattice-hub/specification --merge` 成功；随后 `gh pr view 7 ...` 返回 `state=MERGED`，merge commit 为 `7e596e4`。
+- `git push origin v0.1.0-ALPHA.31` 成功；`git ls-remote --tags origin v0.1.0-ALPHA.31` 可查到 tag。
+- `go mod download github.com/pole-io/specification` 通过，只做定向模块下载。
+- `go test -mod=readonly -count=1 ./apis/pkg/types/rules` 通过。
+- `go test -mod=readonly -count=1 ./plugin/store/mysql -run 'TestTrafficGovernance'` 通过。
+- `go test -mod=readonly -run TestDoesNotExist ./...` 通过，全仓 Go 包编译级验证通过。
+
+Review：
+
+- 本轮没有运行 `go mod tidy`，避免无关间接依赖漂移。
+- 本仓存在大量既有工作区改动，本轮只在其基础上追加 specification 依赖升级和必要的流量治理转换层适配。

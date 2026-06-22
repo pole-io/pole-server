@@ -246,6 +246,298 @@
     border-bottom: none;
 }
 
+.editorBody {
+    background: #f5f7fb;
+    height: calc(100vh - 158px);
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+
+    :global(.t-form) {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 0;
+    }
+
+    :global(.t-form__item) {
+        margin-bottom: 0;
+    }
+}
+
+.circuitBreakerEditorShell {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: minmax(760px, 1fr) clamp(360px, 28vw, 420px);
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.formPane {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-height: 0;
+    min-width: 0;
+    overflow: auto;
+    padding: 24px 28px 20px;
+}
+
+.formPane > div {
+    flex: 0 0 auto;
+}
+
+.subRulePolicy {
+    border-color: #cfe0ff;
+}
+
+.subRuleHead {
+    background: #eef5ff;
+}
+
+.strategyPolicy {
+    background: #fbfcfe;
+    margin-bottom: 12px;
+}
+
+.strategyPolicy:last-child {
+    margin-bottom: 0;
+}
+
+.strategyList {
+    display: grid;
+    gap: 12px;
+}
+
+.interfaceGrid,
+.conditionGrid,
+.triggerGrid {
+    background: #fff;
+    border: 1px solid #e5e8ef;
+    border-radius: 8px;
+    display: grid;
+    overflow: hidden;
+}
+
+.interfaceGrid {
+    grid-template-columns: minmax(110px, .8fr) minmax(120px, .8fr) minmax(240px, 1.8fr) 64px;
+}
+
+.conditionGrid {
+    grid-template-columns: minmax(130px, .9fr) minmax(130px, .9fr) minmax(200px, 1.4fr) 64px;
+}
+
+.triggerGrid {
+    grid-template-columns: minmax(150px, 1.1fr) 64px minmax(120px, .9fr) minmax(120px, .9fr) minmax(130px, .9fr) 64px;
+}
+
+.gridHeader {
+    background: #f8fafc;
+    border-bottom: 1px solid #e9edf4;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 18px;
+    padding: 9px 10px;
+}
+
+.gridCell {
+    align-items: center;
+    border-bottom: 1px solid #f0f2f6;
+    color: #111827;
+    display: flex;
+    font-size: 13px;
+    line-height: 20px;
+    min-height: 44px;
+    min-width: 0;
+    padding: 8px 10px;
+
+    :global(.t-input__wrap),
+    :global(.t-select),
+    :global(.t-select__wrap),
+    :global(.t-input-number) {
+        width: 100%;
+    }
+}
+
+.actionCell {
+    justify-content: center;
+}
+
+.monoInput {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.recoverGrid {
+    display: grid;
+    gap: 14px 18px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fallbackGrid {
+    display: grid;
+    gap: 14px 18px;
+    grid-template-columns: minmax(120px, .45fr) minmax(260px, 1fr);
+}
+
+.fallbackBodyCell {
+    grid-column: 1 / -1;
+}
+
+.headerEditRow {
+    align-items: center;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
+    margin-bottom: 10px;
+}
+
+.inlineAdd {
+    margin-top: 10px;
+    padding-left: 0;
+}
+
+.specPane {
+    border-left: 1px solid #d7dde8;
+    display: flex;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    min-width: 0;
+}
+
+.specCard {
+    background: #0b1119;
+    border: 0;
+    border-radius: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    min-height: 0;
+    overflow: hidden;
+    width: 100%;
+}
+
+.specToolbar {
+    align-items: flex-start;
+    background: #101823;
+    border-bottom: 1px solid #243044;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 18px;
+}
+
+.specTitle {
+    color: #b8c3d4;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 22px;
+}
+
+.specDesc {
+    color: #7f8ca3;
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.specActions {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.specToggle {
+    background: #0b1119;
+    border: 1px solid #334155;
+    border-radius: 7px;
+    display: inline-flex;
+    padding: 2px;
+}
+
+.specToggle button {
+    background: transparent;
+    border: 0;
+    border-radius: 5px;
+    color: #8b95a5;
+    cursor: pointer;
+    font-size: 11px;
+    height: 24px;
+    padding: 0 8px;
+}
+
+.specToggleActive {
+    background: #1677ff !important;
+    color: #fff !important;
+}
+
+.specCode {
+    background: #0b1119;
+    color: #9dccff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 13px;
+    line-height: 22px;
+    margin: 0;
+    min-height: 0;
+    overflow: auto;
+    padding: 18px 22px 28px;
+    white-space: pre;
+}
+
+.specFooter {
+    background: #101823;
+    border-top: 1px solid #243044;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 42px;
+    padding: 12px 18px;
+}
+
+.previewOk,
+.previewError {
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.previewOk {
+    color: #3fd4a8;
+}
+
+.previewError {
+    color: #ff9a92;
+}
+
+@media (max-width: 1320px) {
+    .circuitBreakerEditorShell {
+        grid-template-columns: minmax(0, 1fr);
+        overflow: auto;
+    }
+
+    .specPane {
+        display: none;
+    }
+}
+
+@media (max-width: 1100px) {
+    .recoverGrid,
+    .fallbackGrid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .interfaceGrid,
+    .conditionGrid,
+    .triggerGrid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .gridHeader {
+        display: none;
+    }
+}
+
 @media (max-width: 960px) {
     .ruleBlockHeader {
         align-items: flex-start;

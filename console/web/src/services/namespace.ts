@@ -1,12 +1,10 @@
-import request, { apiRequest, getAllList, getApiRequest, putApiRequest } from 'utils/request';
-import { CheckVisibilityMode } from 'utils/visible';
+import { apiRequest, getAllList, getApiRequest, putApiRequest } from 'utils/request';
 import { BaseURL } from './types';
 
 export interface Namespace {
     name: string
     comment: string
     metadata: Record<string, string>
-    service_export_to?: string[]
 }
 
 export interface NamespaceView extends Namespace {
@@ -41,12 +39,7 @@ export async function describeNamespaces(params: DescribeNamespaceRequest) {
     })
 
     const list = res.data ?? res.namespaces ?? []
-    const ns = list.map((item) => {
-        return {
-            ...item,
-            visibility_mode: CheckVisibilityMode(item.service_export_to, item.name),
-        }
-    })
+    const ns = list.map((item) => ({ ...item }))
 
     return { ...res, namespaces: ns, amount: res.amount ?? ns.length, size: res.size ?? ns.length }
 }
@@ -57,18 +50,12 @@ export async function describeAllNamespaces() {
         totalKey: 'amount',
     })({})
 
-    return namespaceList.map((item) => {
-        return {
-            ...item,
-            visibility_mode: CheckVisibilityMode(item.service_export_to, item.name),
-        }
-    }) as NamespaceView[]
+    return namespaceList.map((item) => ({ ...item })) as NamespaceView[]
 }
 
 export interface CreateNamespaceRequest {
     name: string
     comment: string
-    service_export_to?: string[]
     metadata: Record<string, string>
 }
 
@@ -87,7 +74,6 @@ export async function createNamespace(params: CreateNamespaceRequest[]) {
 export interface ModifyNamespaceRequest {
     name: string
     comment?: string
-    service_export_to?: string[]
     metadata: Record<string, string>
 }
 

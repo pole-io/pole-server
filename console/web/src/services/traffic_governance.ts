@@ -55,11 +55,17 @@ export interface TrafficApiScope {
     path?: MatchString
 }
 
+export interface TrafficTargetService {
+    namespace?: string
+    service?: string
+}
+
 export interface TrafficRuleBase {
     id?: string
     name: string
-    namespace: string
-    service: string
+    namespace?: string
+    service?: string
+    target_service?: TrafficTargetService
     description?: string
     priority?: number
     enable?: boolean
@@ -73,7 +79,6 @@ export interface TrafficRuleBase {
 
 export interface TrafficSecurityRule extends TrafficRuleBase {
     policies: TrafficSecurityPolicy[]
-    default_action: TrafficSecurityAction | string
 }
 
 export interface TrafficSecurityPolicy {
@@ -92,12 +97,8 @@ export interface TrafficMirror extends TrafficRuleBase {
 }
 
 export interface MirrorRule {
-    source?: {
-        namespace?: string
-        service?: string
-        api?: TrafficApiScope
-        traffic_match_rule?: TrafficMatchRule
-    }
+    api?: TrafficApiScope
+    traffic_match_rule?: TrafficMatchRule
     destination?: {
         namespace?: string
         service?: string
@@ -113,18 +114,12 @@ export interface TrafficMock extends TrafficRuleBase {
 }
 
 export interface MockRule {
-    source?: {
-        namespace?: string
-        service?: string
-        api?: TrafficApiScope
-        traffic_match_rule?: TrafficMatchRule
-    }
+    api?: TrafficApiScope
+    traffic_match_rule?: TrafficMatchRule
     response?: {
-        status_code?: number
         headers?: Record<string, string>
         body?: string
         code?: string
-        message?: string
     }
     mock_percent?: number
     delay?: string | { seconds?: number | string; nanos?: number }
@@ -206,14 +201,71 @@ export const defaultTrafficMatchRule = (): TrafficMatchRule => ({
 
 export const defaultTrafficSecurityRule = (): TrafficSecurityRule => ({
     name: '',
-    namespace: '',
-    service: '',
+    target_service: { namespace: '', service: '' },
     description: '',
     priority: 0,
     enable: true,
-    default_action: TrafficSecurityAction.DENY,
     policies: [{
+        action: TrafficSecurityAction.DENY,
+        api: {
+            protocol: InterfaceProtocol.HTTP,
+            method: 'POST',
+            path: {
+                type: MatchType.IN,
+                value: '/admin',
+                value_type: MatchValueType.TEXT,
+            },
+        },
+        traffic_match_rule: {
+            ...defaultTrafficMatchRule(),
+            arguments: [{
+                type: 'HEADER',
+                key: 'authorization',
+                value: {
+                    type: MatchType.IN,
+                    value: 'deny-',
+                    value_type: MatchValueType.TEXT,
+                },
+            }],
+        },
+        reject_effect: {
+            status_code: 403,
+            code: 'FORBIDDEN',
+            message: 'request denied by auth rule',
+        },
+    }, {
         action: TrafficSecurityAction.ALLOW,
+        api: {
+            protocol: InterfaceProtocol.HTTP,
+            method: 'GET',
+            path: {
+                type: MatchType.IN,
+                value: '/orders',
+                value_type: MatchValueType.TEXT,
+            },
+        },
+        traffic_match_rule: {
+            ...defaultTrafficMatchRule(),
+            arguments: [{
+                type: 'HEADER',
+                key: 'x-user-type',
+                value: {
+                    type: MatchType.EXACT,
+                    value: 'internal',
+                    value_type: MatchValueType.TEXT,
+                },
+            }],
+        },
+    }],
+});
+
+export const defaultTrafficMirrorRule = (): TrafficMirror => ({
+    name: '',
+    target_service: { namespace: '', service: '' },
+    description: '',
+    priority: 0,
+    enable: true,
+    rules: [{
         api: {
             protocol: InterfaceProtocol.HTTP,
             method: 'GET',
@@ -224,31 +276,6 @@ export const defaultTrafficSecurityRule = (): TrafficSecurityRule => ({
             },
         },
         traffic_match_rule: defaultTrafficMatchRule(),
-    }],
-});
-
-export const defaultTrafficMirrorRule = (): TrafficMirror => ({
-    name: '',
-    namespace: '',
-    service: '',
-    description: '',
-    priority: 0,
-    enable: true,
-    rules: [{
-        source: {
-            namespace: '',
-            service: '',
-            api: {
-                protocol: InterfaceProtocol.HTTP,
-                method: 'GET',
-                path: {
-                    type: MatchType.EXACT,
-                    value: '/',
-                    value_type: MatchValueType.TEXT,
-                },
-            },
-            traffic_match_rule: defaultTrafficMatchRule(),
-        },
         destination: {
             namespace: '',
             service: '',
@@ -262,28 +289,23 @@ export const defaultTrafficMirrorRule = (): TrafficMirror => ({
 
 export const defaultTrafficMockRule = (): TrafficMock => ({
     name: '',
-    namespace: '',
-    service: '',
+    target_service: { namespace: '', service: '' },
     description: '',
     priority: 0,
     enable: true,
     rules: [{
-        source: {
-            namespace: '',
-            service: '',
-            api: {
-                protocol: InterfaceProtocol.HTTP,
-                method: 'GET',
-                path: {
-                    type: MatchType.EXACT,
-                    value: '/',
-                    value_type: MatchValueType.TEXT,
-                },
+        api: {
+            protocol: InterfaceProtocol.HTTP,
+            method: 'GET',
+            path: {
+                type: MatchType.EXACT,
+                value: '/',
+                value_type: MatchValueType.TEXT,
             },
-            traffic_match_rule: defaultTrafficMatchRule(),
         },
+        traffic_match_rule: defaultTrafficMatchRule(),
         response: {
-            status_code: 200,
+            code: '200',
             headers: {},
             body: '{}',
         },
@@ -324,9 +346,16 @@ const normalizeTrafficGovernanceRules = (kind: TrafficGovernanceKind, params: Tr
                     };
                 }
                 const mockRule = rule as MockRule;
+                const response = mockRule.response || {};
                 return {
                     ...mockRule,
                     delay: durationToProtoJson(mockRule.delay),
+                    mock_percent: mockRule.mock_percent ?? 100,
+                    response: {
+                        code: response.code || String((response as Record<string, unknown>).status_code || '200'),
+                        headers: response.headers || {},
+                        body: response.body || '',
+                    },
                 };
             }),
         };

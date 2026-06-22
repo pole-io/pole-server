@@ -64,6 +64,8 @@ type Server struct {
 	instanceChains []InstanceChain
 	// emptyPushProtectSvs 开启了推空保护的服务数据
 	emptyPushProtectSvs *container.SyncMap[string, time.Time]
+	// discoverResponseCache 客户端发现 full response 缓存
+	discoverResponseCache *discoverResponseCache
 }
 
 func (s *Server) allowAutoCreate() bool {

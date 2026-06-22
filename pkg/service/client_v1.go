@@ -29,11 +29,9 @@ import (
 	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	revisionapi "github.com/pole-io/pole-server/apis/pkg/utils/revision"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/utils"
-	matchs "github.com/pole-io/pole-server/pkg/common/utils/match"
 )
 
 // RegisterInstance create one instance
@@ -117,28 +115,10 @@ func (s *Server) GetServiceWithCache(ctx context.Context, req *apiservice.Servic
 		services []*svctypes.Service
 	)
 
-	if req.GetNamespace() != "" {
-		revision, services = s.Cache().Service().ListServices(ctx, req.GetNamespace())
-		// 需要加上服务可见性处理
-		visibleSvcs := s.caches.Service().GetVisibleServicesInOtherNamespace(ctx, matchs.MatchAll, req.GetNamespace())
-		revisions := make([]string, 0, len(visibleSvcs)+1)
-		revisions = append(revisions, revision)
-		for i := range visibleSvcs {
-			revisions = append(revisions, visibleSvcs[i].Revision)
-		}
-		services = append(services, visibleSvcs...)
-		// 需要重新计算 revison
-		if rever, err := revisionapi.CompositeComputeRevision(revisions); err != nil {
-			log.Error("[Server][Discover] list services compute multi revision",
-				zap.String("namespace", req.GetNamespace()), zap.Error(err))
-			return api.NewDiscoverInstanceResponse(apimodel.Code_ExecuteException, req)
-		} else {
-			revision = rever
-		}
-	} else {
-		// 这里拉的是全部服务实例列表，如果客户端可以发起这个请求，应该是不需要
-		revision, services = s.Cache().Service().ListAllServices(ctx)
+	if req.GetNamespace() == "" {
+		req.Namespace = DefaultNamespace
 	}
+	revision, services = s.Cache().Service().ListServices(ctx, req.GetNamespace())
 	if revision == "" {
 		return resp
 	}
@@ -177,8 +157,8 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 	nsName := req.GetNamespace()
 
 	// 数据源都来自Cache，这里拿到的service，已经是源服务
-	aliasFor, visibleServices := s.findVisibleServices(ctx, svcName, nsName, req)
-	if len(visibleServices) == 0 {
+	aliasFor := s.getServiceCache(svcName, nsName)
+	if aliasFor == nil {
 		log.Infof("[Server][Service][Instance] not found name(%s) namespace(%s) service",
 			svcName, nsName)
 		return api.NewDiscoverInstanceResponse(apimodel.Code_NotFoundResource, req)
@@ -189,120 +169,94 @@ func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.D
 		}
 	}
 
-	revisions := make([]string, 0, len(visibleServices)+1)
-	for _, svc := range visibleServices {
-		revision := s.caches.Service().GetRevisionWorker().GetServiceInstanceRevision(svc.ID)
-		revisions = append(revisions, revision)
-	}
-	aggregateRevision, err := revisionapi.CompositeComputeRevision(revisions)
-	if err != nil {
-		log.Errorf("[Server][Service][Instance] compute multi revision service(%s:%s) err: %s",
-			svcName, nsName, err.Error())
-		return api.NewDiscoverInstanceResponse(apimodel.Code_ExecuteException, req)
-	}
-	if aggregateRevision == req.GetRevision() {
+	revision := s.caches.Service().GetRevisionWorker().GetServiceInstanceRevision(aliasFor.ID)
+	revisionHit := revision != "" && revision == req.GetRevision()
+	reportDiscoverCacheCall("revision:INSTANCE", revisionHit)
+	if revisionHit {
 		return api.NewDiscoverInstanceResponse(apimodel.Code_DataNoChange, req)
 	}
 
-	finalInstances := make([]*apiservice.Instance, 0, 128)
-	openEmptyProtectCnt := 0
-	for _, svc := range visibleServices {
-		specSvc := &apiservice.Service{
-			Id:        svc.ID,
-			Name:      svc.Name,
-			Namespace: svc.Namespace,
-		}
-		if stoper, ok := s.emptyPushProtectSvs.Load(svcName + "@" + nsName); ok {
-			// 如果在保护时间范围内
-			if stoper.After(time.Now()) {
-				openEmptyProtectCnt++
-			}
-			continue
-		}
+	onlyHealthy := false
+	if filter != nil {
+		onlyHealthy = filter.GetOnlyHealthyInstance()
+	}
 
-		matchInsCnt := 0
-		s.caches.Instance().DiscoverServiceInstances(specSvc.GetId(), filter.GetOnlyHealthyInstance(), func(insData *svctypes.Instance) {
-			matchInsCnt++
-			// 注意：这里的 value 是 cache 的，不修改 cache 的数据，通过 getInstance，浅拷贝一份数据
-			copyIns := s.getInstance(specSvc, insData.Proto)
-			finalInstances = append(finalInstances, copyIns)
-		})
-		// 如果是空实例，则直接跳过，不处理实例列表以及 revision 信息
-		if matchInsCnt == 0 {
-			// 判断服务是否开启了推空保护，如果开启了，此时添加一个占位
-			if dur, ok := svc.ProtectEmptyPush(); ok {
-				s.emptyPushProtectSvs.ComputeIfAbsent(svcName+"@"+nsName, func(k string) time.Time {
-					eventhub.Publish(eventhub.ServiceEventTopic, &svctypes.ServiceEvent{
-						EType:      svctypes.EventServiceOpenEmptyPushProtect,
-						Id:         specSvc.GetId(),
-						Namespace:  specSvc.GetNamespace(),
-						Service:    specSvc.GetName(),
-						CreateTime: time.Now(),
-					})
-					return time.Now().Add(dur)
-				})
-				openEmptyProtectCnt++
-			}
-			continue
-		} else {
-			// 如果有实例，则需要清除掉推空保护
-			if _, ok := s.emptyPushProtectSvs.Delete(svcName + "@" + nsName); ok {
+	specSvc := &apiservice.Service{
+		Id:        aliasFor.ID,
+		Name:      aliasFor.Name,
+		Namespace: aliasFor.Namespace,
+	}
+	if stoper, ok := s.emptyPushProtectSvs.Load(svcName + "@" + nsName); ok {
+		// 如果在保护时间范围内
+		if stoper.After(time.Now()) {
+			rsp := api.NewDiscoverInstanceResponse(apimodel.Code_DataNoChange, req)
+			rsp.Info = "trigger empty push protect"
+			return rsp
+		}
+	}
+
+	var cacheKey string
+	if revision != "" {
+		cacheKey = discoverInstanceResponseCacheKey(req.GetNamespace(), req.GetName(), revision, onlyHealthy)
+		if cachedResp, ok := s.discoverResponseCache.Get(cacheKey); ok {
+			reportDiscoverCacheCall("response:INSTANCE", true)
+			return cachedResp
+		}
+		reportDiscoverCacheCall("response:INSTANCE", false)
+	}
+
+	finalInstances := make([]*apiservice.Instance, 0, 128)
+	matchInsCnt := 0
+	s.caches.Instance().DiscoverServiceInstances(specSvc.GetId(), onlyHealthy, func(insData *svctypes.Instance) {
+		matchInsCnt++
+		// 注意：这里的 value 是 cache 的，不修改 cache 的数据，通过 getInstance，浅拷贝一份数据
+		copyIns := s.getInstance(specSvc, insData.Proto)
+		finalInstances = append(finalInstances, copyIns)
+	})
+	// 如果是空实例，则直接跳过，不处理实例列表以及 revision 信息
+	if matchInsCnt == 0 {
+		// 判断服务是否开启了推空保护，如果开启了，此时添加一个占位
+		if dur, ok := aliasFor.ProtectEmptyPush(); ok {
+			s.emptyPushProtectSvs.ComputeIfAbsent(svcName+"@"+nsName, func(k string) time.Time {
 				eventhub.Publish(eventhub.ServiceEventTopic, &svctypes.ServiceEvent{
-					EType:      svctypes.EventServiceCloseEmptyPushProtect,
+					EType:      svctypes.EventServiceOpenEmptyPushProtect,
 					Id:         specSvc.GetId(),
 					Namespace:  specSvc.GetNamespace(),
 					Service:    specSvc.GetName(),
 					CreateTime: time.Now(),
 				})
-			}
+				return time.Now().Add(dur)
+			})
+			rsp := api.NewDiscoverInstanceResponse(apimodel.Code_DataNoChange, req)
+			rsp.Info = "trigger empty push protect"
+			return rsp
 		}
-		revision := s.caches.Service().GetRevisionWorker().GetServiceInstanceRevision(svc.ID)
-		revisions = append(revisions, revision)
-	}
-
-	// 所有服务都触发了推空保护
-	if openEmptyProtectCnt == len(visibleServices) {
-		// 当前存在推空保护，返回给客户端 DataNoChange 变化
-		rsp := api.NewDiscoverInstanceResponse(apimodel.Code_DataNoChange, req)
-		rsp.Info = "trigger empty push protect"
-		return rsp
-	}
-
-	if aliasFor == nil {
-		// 这里只会出现，查询的目标服务和命名空间不存在，但是可见性的服务存在
-		// 所以这里需要用入口的服务名和命名空间填充服务数据结构，以便返回最终的应答服务名和命名空间
-		aliasFor = &svctypes.Service{Name: svcName, Namespace: nsName}
+	} else {
+		// 如果有实例，则需要清除掉推空保护
+		if _, ok := s.emptyPushProtectSvs.Delete(svcName + "@" + nsName); ok {
+			eventhub.Publish(eventhub.ServiceEventTopic, &svctypes.ServiceEvent{
+				EType:      svctypes.EventServiceCloseEmptyPushProtect,
+				Id:         specSvc.GetId(),
+				Namespace:  specSvc.GetNamespace(),
+				Service:    specSvc.GetName(),
+				CreateTime: time.Now(),
+			})
+		}
 	}
 	// 填充service数据
 	resp.Service = service2Api(aliasFor)
 	// 这里需要把服务信息改为用户请求的服务名以及命名空间
 	resp.Service.Name = req.GetName()
 	resp.Service.Namespace = req.GetNamespace()
-	resp.Service.Revision = aggregateRevision
+	resp.Service.Revision = revision
 	// 塞入源服务信息数据
 	resp.AliasFor = service2Api(aliasFor)
 	// 填充instance数据
 	resp.Instances = finalInstances
+	if cacheKey != "" {
+		s.discoverResponseCache.Put(cacheKey, resp)
+	}
 	return resp
-}
-
-func (s *Server) findVisibleServices(ctx context.Context, svcName, nsName string,
-	req *apiservice.Service) (*svctypes.Service, []*svctypes.Service) {
-	visibleServices := make([]*svctypes.Service, 0, 4)
-	// 数据源都来自Cache，这里拿到的service，已经是源服务
-	aliasFor := s.getServiceCache(svcName, nsName)
-	if aliasFor != nil {
-		// 获取到实际的服务，则将查询的服务名替换成实际的服务名和命名空间
-		svcName = aliasFor.Name
-		nsName = aliasFor.Namespace
-		// 先把自己放进去
-		visibleServices = append(visibleServices, aliasFor)
-	}
-	ret := s.caches.Service().GetVisibleServicesInOtherNamespace(ctx, svcName, nsName)
-	if len(ret) > 0 {
-		visibleServices = append(visibleServices, ret...)
-	}
-	return aliasFor, visibleServices
 }
 
 // GetServiceContractWithCache User Client Get ServiceContract Rule Information

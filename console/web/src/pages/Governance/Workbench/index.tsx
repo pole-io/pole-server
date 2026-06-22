@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Input, Link, Select, Space, Table, Tag } from 'tdesign-react';
 import type { PrimaryTableProps, TableRowData } from 'tdesign-react';
-import { RefreshIcon } from 'tdesign-icons-react';
+import { AddIcon, RefreshIcon } from 'tdesign-icons-react';
 
 import { useAppDispatch } from 'modules/store';
 import RuleDetailDrawer from '../RuleRelease/RuleDetailDrawer';
@@ -32,6 +32,7 @@ import {
     listCircuitBreakerVersions,
     listCircuitBreakers,
     removeCircuitBreakerRelease,
+    resetCircuitBreaker,
     rollbackCircuitBreakerRelease,
 } from 'modules/governance/circuitbreaker';
 import {
@@ -293,6 +294,7 @@ const GovernanceWorkbench: React.FC = () => {
     const [serviceFilter, setServiceFilter] = React.useState('');
     const [selected, setSelected] = React.useState<GovernanceRuleRow | null>(null);
     const [drawerVisible, setDrawerVisible] = React.useState(false);
+    const [drawerMode, setDrawerMode] = React.useState<Op>('view');
     const [versions, setVersions] = React.useState<RuleRelease[]>([]);
     const [versionLoading, setVersionLoading] = React.useState(false);
     const [versionTotal, setVersionTotal] = React.useState(0);
@@ -363,6 +365,7 @@ const GovernanceWorkbench: React.FC = () => {
 
     const openRule = (rule: GovernanceRuleRow) => {
         setSelected(rule);
+        setDrawerMode('view');
         setVersions([]);
         setVersionTotal(0);
         setVersionPage(1);
@@ -392,6 +395,30 @@ const GovernanceWorkbench: React.FC = () => {
             case 'traffic-mock':
                 break;
         }
+        setDrawerVisible(true);
+    };
+
+    const openCreateCircuitBreaker = () => {
+        setSelected({
+            key: 'circuitbreaker-create',
+            kind: 'circuitbreaker',
+            typeLabel: '熔断',
+            name: '新建熔断规则',
+            description: '',
+            namespace: '',
+            service: '',
+            target: '-',
+            condition: '-',
+            status: '启用',
+            release: '待发布',
+            raw: { id: '' } as TableRowData,
+        });
+        setDrawerMode('create');
+        setVersions([]);
+        setVersionTotal(0);
+        setVersionPage(1);
+        setVersionLimit(10);
+        dispatch(resetCircuitBreaker());
         setDrawerVisible(true);
     };
 
@@ -571,7 +598,13 @@ const GovernanceWorkbench: React.FC = () => {
             return <RuleTabs op="view" onVersionView={() => refreshVersions()} view={<RateLimitEditor limitType={selected.limitType || LimitType.LOCAL} visible={drawerVisible} op="view" refresh={() => refreshData()} />} versions={commonVersions} subscribe={subscribe} />;
         }
         if (selected.kind === 'circuitbreaker') {
-            return <RuleTabs op="view" onVersionView={() => refreshVersions()} view={<CircuitBreakerEditor op="view" refresh={() => refreshData()} />} versions={commonVersions} subscribe={subscribe} />;
+            return <RuleTabs op={drawerMode} onVersionView={() => refreshVersions()} view={<CircuitBreakerEditor op={drawerMode} refresh={(close) => {
+                if (close) {
+                    setDrawerVisible(false);
+                    setDrawerMode('view');
+                }
+                refreshData();
+            }} />} versions={commonVersions} subscribe={subscribe} />;
         }
         if (selected.kind === 'faultdetect') {
             return <RuleTabs op="view" onVersionView={() => refreshVersions()} view={<FaultDetectEditor op="view" refresh={() => refreshData()} />} versions={commonVersions} subscribe={subscribe} />;
@@ -627,7 +660,12 @@ const GovernanceWorkbench: React.FC = () => {
                     <div className={style.title}>规则治理工作台</div>
                     <div className={style.description}>统一查看治理规则的运行状态、作用范围和发布状态。</div>
                 </div>
-                <Button theme="primary" onClick={() => refreshData(search)} prefix={<RefreshIcon />}>刷新</Button>
+                <Space>
+                    {typeFilter === 'circuitbreaker' && (
+                        <Button theme="primary" prefix={<AddIcon />} onClick={openCreateCircuitBreaker}>新建熔断规则</Button>
+                    )}
+                    <Button onClick={() => refreshData(search)} prefix={<RefreshIcon />}>刷新</Button>
+                </Space>
             </div>
             <div className={style.summary}>
                 <div className={style.summaryItem}>
@@ -722,9 +760,13 @@ const GovernanceWorkbench: React.FC = () => {
             </div>
             <RuleDetailDrawer
                 visible={drawerVisible}
-                title={selected?.name || '治理规则详情'}
+                title={drawerMode === 'create' ? '新建熔断规则' : selected?.name || '治理规则详情'}
                 subtitle={selected?.typeLabel}
-                onClose={() => setDrawerVisible(false)}
+                size={selected?.kind === 'route' || selected?.kind?.startsWith('ratelimit') || selected?.kind === 'circuitbreaker' || selected?.kind === 'faultdetect' ? 'min(1560px, calc(100vw - 40px))' : undefined}
+                onClose={() => {
+                    setDrawerVisible(false);
+                    setDrawerMode('view');
+                }}
             >
                 {renderDetail()}
             </RuleDetailDrawer>

@@ -56,14 +56,16 @@ const columns = (
         ),
     },
     {
-        colKey: 'namespace',
-        title: '命名空间',
+        colKey: 'targetNamespace',
+        title: '被调命名空间',
         width: 150,
+        cell: ({ row }) => (row as TrafficGovernanceRule).target_service?.namespace || (row as TrafficGovernanceRule).namespace || '-',
     },
     {
-        colKey: 'service',
-        title: '服务名称',
+        colKey: 'targetService',
+        title: '被调服务',
         width: 160,
+        cell: ({ row }) => (row as TrafficGovernanceRule).target_service?.service || (row as TrafficGovernanceRule).service || '-',
     },
     {
         colKey: 'ruleCount',

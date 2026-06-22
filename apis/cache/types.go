@@ -220,8 +220,6 @@ type (
 		GetNamespacesByName(names []string) []*types.Namespace
 		// GetNamespaceList list all namespace
 		GetNamespaceList() []*types.Namespace
-		// GetVisibleNamespaces list target namespace can visible other namespaces
-		GetVisibleNamespaces(namespace string) []*types.Namespace
 		// Query .
 		Query(context.Context, *NamespaceArgs) (uint32, []*types.Namespace, error)
 	}
@@ -295,10 +293,6 @@ type (
 		GetAliasFor(name string, namespace string) *svctypes.Service
 		// GetRevisionWorker .
 		GetRevisionWorker() ServiceRevisionWorker
-		// GetVisibleServicesInOtherNamespace get same service in other namespace and it's visible
-		// 如果 name == *，表示返回所有对 namespace 可见的服务
-		// 如果 name 是具体服务，表示返回对 name + namespace 设置了可见的服务
-		GetVisibleServicesInOtherNamespace(ctx context.Context, name string, namespace string) []*svctypes.Service
 	}
 
 	// ServiceRevisionWorker

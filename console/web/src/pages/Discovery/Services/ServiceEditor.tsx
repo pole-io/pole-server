@@ -1,12 +1,11 @@
-import React, {  } from 'react';
-import { Drawer, Form, Input, Select, Radio, RadioGroup, Space, Button } from "tdesign-react";
+import React from 'react';
+import { Drawer, Form, Input, Select, Space, Button } from "tdesign-react";
 import type { FormProps } from 'tdesign-react';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { NamespaceView } from 'services/namespace';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import LabelInput from 'components/LabelInput';
 import { listAllServices, saveServices, selectService, updateServices } from 'modules/discovery/service';
-import { VisibilityMode_Single, VisibilityMode_All, VisibilityMode_Specified, CheckVisibilityMode } from 'utils/visible';
 import { Op } from 'services/types';
 import { listAllNamespaces, selectNamespace } from 'modules/namespace';
 
@@ -37,9 +36,7 @@ const ServiceEditor: React.FC<IServiceEditorProps> = ({ visible, op, closeDrawer
                 comment: editSvc.comment,
                 department: editSvc.department,
                 business: editSvc.business,
-                export_to: editSvc.export_to,
                 service_labels: editSvc?.metadata ? Object.entries(editSvc?.metadata).map(([key, value]) => ({ key, value })) : [],
-                visibility_mode: CheckVisibilityMode(editSvc?.export_to, editSvc?.namespace),
             });
         }
     }, [visible, editSvc]);
@@ -76,12 +73,10 @@ const ServiceEditor: React.FC<IServiceEditorProps> = ({ visible, op, closeDrawer
             comment: form.getFieldValue('comment') as string,
             department: form.getFieldValue('department') as string,
             business: form.getFieldValue('business') as string,
-            export_to: form.getFieldValue('export_to') as string[],
             metadata: labels.reduce((acc: { [key: string]: string }, { key, value }) => {
                 acc[key] = value;
                 return acc;
             }, {}),
-            visibility_mode: form.getFieldValue('visibility_mode') as string,
             ports: '',
             owners: '',
         }
@@ -153,40 +148,6 @@ const ServiceEditor: React.FC<IServiceEditorProps> = ({ visible, op, closeDrawer
                 <Input />
             </FormItem>
             <LabelInput form={form} label='服务标签' name='service_labels' editable={true} />
-            <FormItem
-                label={'服务可见性'}
-                name={"visibility_mode"}
-                tips={'当前命名空间下的服务被允许可见的命名空间列表'}
-            >
-                <RadioGroup>
-                    <Radio value={VisibilityMode_Single}>{'仅当前命名空间'}</Radio>
-                    <Radio value={VisibilityMode_All}>{'全部命名空间（包括新增）'}</Radio>
-                    <Radio value={VisibilityMode_Specified}>{'指定命名空间'}</Radio>
-                </RadioGroup>
-            </FormItem>
-            <FormItem shouldUpdate={(prev, next) => prev.visibility_mode !== next.visibility_mode}>
-                {({ getFieldValue, setFieldsValue }) => {
-                    const ret = getFieldValue('visibility_mode') as string;
-                    if (ret !== VisibilityMode_Specified) {
-                        return <></>;
-                    }
-                    return (
-                        <FormItem
-                            label={'选择命名空间'}
-                            name={"export_to"}
-                            tips={'当前命名空间下的服务被允许可见的命名空间列表'}
-                        >
-                            <Select
-                                multiple={true}
-                                options={[{ label: '当前全部命名空间', value: '__all__', checkAll: true }, ...namespaceDatas.map((item: NamespaceView) => ({
-                                    label: item.name,
-                                    value: item.name,
-                                }))]}
-                            />
-                        </FormItem>
-                    )
-                }}
-            </FormItem>
             <FormItem style={{ marginTop: 100 }}>
                 <Space>
                     <Button type="submit" theme="primary">

@@ -1,5 +1,6 @@
 import React, { } from 'react';
 import {
+    Button,
     Form,
     Input,
     Select,
@@ -8,19 +9,34 @@ import {
     Space,
     Textarea,
     StickyTool,
-    FormProps
+    FormProps,
+    Tag,
+    Popup
 } from 'tdesign-react';
-import { Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
+import { AddIcon, ChevronRightIcon, CloseIcon, CopyIcon, DeleteIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
 
-import { API, HTTPMethod, HTTPMethodOption, InterfaceProtocol, InterfaceProtocolOption, Label, MatchType, MatchTypeMap, MatchTypeOption, Op } from "services/types";
+import { API, HTTPMethod, HTTPMethodOption, InterfaceProtocol, Label, MatchType, Op } from "services/types";
 import RuleLabelField from "../shared/RuleLabelField";
 import shared from "../shared/governance.module.less";
+import styles from './FaultDetectEditor.module.less';
 import {
     FaultDetectRule,
     FaultDetectProtocol,
-    FaultDetectHttpMethodOptions
+    FaultDetectSubRule
 } from 'services/faultdetect';
-import LabelInput from 'components/LabelInput';
+import {
+    buildFaultDetectPreviewSpec,
+    buildFaultDetectSubmitPayload,
+    describeProbePort,
+    describeProbeSummary,
+    FaultDetectSpecFormat,
+    isCustomProbePort,
+    normalizeFaultDetectRulesDraft,
+    PayloadMatchOptions,
+    receiveToText,
+    stringifyFaultDetectSpec,
+    validateFaultDetectDraft,
+} from './faultDetectEditorUtils';
 import PublishForm from '../RuleRelease/PublishForm';
 import RuleStickyAction from '../RuleRelease/RuleStickyAction';
 import { PolicySourceType } from 'services/auth_policy';
@@ -47,6 +63,8 @@ interface FaultDetectDO {
     id?: string
     name: string
     description: string
+    priority?: number
+    rules: FaultDetectSubRule[]
     targetService: {
         namespace: string
         service: string
@@ -65,37 +83,135 @@ interface FaultDetectDO {
     }
     tcpConfig?: {
         send: string
-        receive: string[]
+        receive: string[] | string
+        match?: string
     }
     udpConfig?: {
         send: string
-        receive: string[]
+        receive: string[] | string
+        match?: string
     }
-    metadata?: Label[]
+    metadata?: Record<string, string>
 }
+
+const defaultApi = (): API => ({
+    protocol: InterfaceProtocol.HTTP,
+    method: '',
+    path: {
+        type: MatchType.EXACT,
+        value: '',
+        value_type: 'TEXT'
+    }
+});
+
+const defaultTargetService = (): FaultDetectDO['targetService'] => ({
+    namespace: '',
+    service: '',
+    api: defaultApi()
+});
+
+const normalizeTargetService = (target?: any): FaultDetectDO['targetService'] => ({
+    ...defaultTargetService(),
+    ...(target || {}),
+    api: {
+        ...defaultApi(),
+        ...(target?.api || {}),
+        path: {
+            ...defaultApi().path,
+            ...(target?.api?.path || {})
+        }
+    }
+});
+
+const defaultFaultDetectSubRule = (): FaultDetectSubRule => ({
+    interval: 5,
+    timeout: 2,
+    port: 0,
+    protocol: FaultDetectProtocol.HTTP,
+    httpConfig: {
+        method: HTTPMethod.GET,
+        url: '/healthz',
+        headers: [],
+        body: ''
+    },
+    tcpConfig: {
+        send: '',
+        receive: [],
+        match: 'EXACT'
+    },
+    udpConfig: {
+        send: '',
+        receive: [],
+        match: 'EXACT'
+    },
+    disable: false
+});
 
 export const defaultFaultDetectRule: () => FaultDetectDO = () => ({
     name: '',
     description: '',
-    targetService: {
-        namespace: '',
-        service: '',
-        method: {
-            type: MatchType.EXACT,
-            value: ''
-        }
-    },
-    interval: 30,
-    timeout: 60,
-    port: 0,
-    protocol: InterfaceProtocol.HTTP,
-    httpConfig: {
-        method: HTTPMethod.GET,
-        url: '',
-        headers: [],
-        body: ''
-    }
+    priority: 0,
+    rules: [defaultFaultDetectSubRule()],
+    targetService: defaultTargetService(),
+    interval: defaultFaultDetectSubRule().interval,
+    timeout: defaultFaultDetectSubRule().timeout,
+    port: defaultFaultDetectSubRule().port,
+    protocol: defaultFaultDetectSubRule().protocol,
+    httpConfig: defaultFaultDetectSubRule().httpConfig
 });
+
+const ensureFaultDetectRules = (rule?: Partial<FaultDetectRule> | null): FaultDetectSubRule[] => {
+    const rawRules = rule?.rules || [];
+    if (rawRules.length > 0) {
+        return normalizeFaultDetectRulesDraft(rawRules);
+    }
+
+    if (rule?.targetService || rule?.protocol || rule?.httpConfig || rule?.tcpConfig || rule?.udpConfig) {
+        return normalizeFaultDetectRulesDraft([{
+            interval: rule.interval ?? 30,
+            timeout: rule.timeout ?? 60,
+            port: rule.port ?? 0,
+            protocol: rule.protocol || FaultDetectProtocol.HTTP,
+            httpConfig: {
+                ...defaultFaultDetectSubRule().httpConfig,
+                ...(rule.httpConfig || {})
+            },
+            tcpConfig: {
+                ...defaultFaultDetectSubRule().tcpConfig,
+                ...(rule.tcpConfig || {})
+            },
+            udpConfig: {
+                ...defaultFaultDetectSubRule().udpConfig,
+                ...(rule.udpConfig || {})
+            },
+            disable: false
+        }]);
+    }
+
+    return [defaultFaultDetectSubRule()];
+};
+
+const normalizeFaultDetectFormValue = (rule?: Partial<FaultDetectRule> | null): FaultDetectDO => {
+    const rules = ensureFaultDetectRules(rule);
+    const primary = rules[0];
+    const legacyPrimary = ((rule?.rules || []) as any[])[0] || {};
+    const targetService = (rule as any)?.targetService || (rule as any)?.target_service || legacyPrimary.targetService || legacyPrimary.target_service || defaultFaultDetectRule().targetService;
+    return {
+        ...(defaultFaultDetectRule()),
+        ...(rule || {}),
+        rules,
+        targetService: normalizeTargetService(targetService),
+        priority: rule?.priority ?? 0,
+        interval: primary.interval,
+        timeout: primary.timeout,
+        port: primary.port,
+        protocol: primary.protocol,
+        httpConfig: primary.httpConfig,
+        tcpConfig: primary.tcpConfig,
+        udpConfig: primary.udpConfig,
+        metadata: rule?.metadata || {}
+    };
+};
 
 interface IFaultDetectEditorProps {
     op: Op;
@@ -124,6 +240,13 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
         loading: false,
         visible: false
     });
+    const [specFormat, setSpecFormat] = React.useState<FaultDetectSpecFormat>('yaml');
+    const [collapsedRuleIndexes, setCollapsedRuleIndexes] = React.useState<Set<number>>(new Set());
+    const [formRevision, setFormRevision] = React.useState(0);
+    const [ruleDrafts, setRuleDrafts] = React.useState<FaultDetectSubRule[]>(ensureFaultDetectRules(defaultFaultDetectRule()));
+    const [protocolOverrides, setProtocolOverrides] = React.useState<Record<number, FaultDetectProtocol>>({});
+    const syncingRuleDraftsRef = React.useRef(false);
+    const editRuleId = editRule?.id || '';
 
     // 选项数据
     const namespaceState = useAppSelector(selectNamespace);
@@ -134,7 +257,11 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
 
     React.useEffect(() => {
         // 创建模式，设置默认值
-        form.setFieldsValue(defaultFaultDetectRule());
+        const initialValue = normalizeFaultDetectFormValue(defaultFaultDetectRule());
+        form.setFieldsValue(initialValue);
+        setRuleDrafts(initialValue.rules);
+        setProtocolOverrides({});
+        setFormRevision(prev => prev + 1);
         dispatch(listAllNamespaces())
             .then(res => {
                 if (res.meta.requestStatus === 'rejected') {
@@ -156,20 +283,22 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
     }, []);
 
     React.useEffect(() => {
-        if (!editRule) {
+        if (!editRuleId) {
             return;
         }
-        if (editRule.id !== '') {
-            dispatch(listOneFaultDetect({ id: editRule.id || '' })).then(res => {
-                if (res.meta.requestStatus === 'rejected') {
-                    openErrNotification('请求失败', `获取主动探测规则详情失败: ${res?.payload as string}`);
-                    return;
-                }
-                const { editRule } = res.payload as { editRule: FaultDetectRule };
-                form.setFieldsValue(editRule);
-            })
-        }
-    }, [editRule])
+        dispatch(listOneFaultDetect({ id: editRuleId })).then(res => {
+            if (res.meta.requestStatus === 'rejected') {
+                openErrNotification('请求失败', `获取主动探测规则详情失败: ${res?.payload as string}`);
+                return;
+            }
+            const { editRule } = res.payload as { editRule: FaultDetectRule };
+            const nextValue = normalizeFaultDetectFormValue(editRule);
+            form.setFieldsValue(nextValue);
+            setRuleDrafts(nextValue.rules);
+            setProtocolOverrides({});
+            setFormRevision(prev => prev + 1);
+        })
+    }, [editRuleId])
 
     // 表单提交
     const onSubmit: FormProps['onSubmit'] = async (e) => {
@@ -179,8 +308,23 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
 
         setEditorState(prev => ({ ...prev, loading: true }));
         try {
+            const fields = e.fields as FaultDetectDO;
+            const draft = normalizeFaultDetectFormValue({
+                ...(editRule || {}),
+                ...fields,
+                metadata: fields.metadata || metadata,
+                targetService: normalizeTargetService(fields.targetService),
+                rules: effectiveRuleDrafts,
+            });
+            const errors = validateFaultDetectDraft(draft);
+            if (errors.length > 0) {
+                openErrNotification('校验失败', errors[0].message);
+                setEditorState(prev => ({ ...prev, loading: false }));
+                return;
+            }
+
             const ruleData: FaultDetectRule = {
-                ...e.fields,
+                ...buildFaultDetectSubmitPayload(draft),
                 id: viewRule?.id || '',
                 editable: true,
                 deleteable: true
@@ -196,6 +340,10 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                 openErrNotification('请求错误', res?.payload as string);
             } else {
                 openInfoNotification('请求成功', props.op !== 'create' ? '修改主动探测规则成功' : '创建主动探测规则成功');
+                const nextValue = normalizeFaultDetectFormValue(ruleData);
+                form.setFieldsValue(nextValue);
+                setRuleDrafts(nextValue.rules);
+                setProtocolOverrides({});
                 if (props.op === 'create') {
                     props.refresh(false); // 刷新列表
                 } else {
@@ -205,10 +353,426 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
         } catch (error) {
             console.error('提交失败:', error);
             openErrNotification('操作失败', '提交故障检测规则失败，请检查输入或稍后重试');
+            setEditorState(prev => ({ ...prev, loading: false }));
         }
     };
 
-    const metadata = (Form.useWatch('metadata', form) || (editRule?.metadata as Record<string, string>) || {}) as Record<string, string>;
+    const formValues = React.useMemo(() => (
+        typeof form.getFieldsValue === 'function'
+            ? form.getFieldsValue(true) as Partial<FaultDetectDO>
+            : {}
+    ), [editRule, form, formRevision]);
+    const metadata = (formValues.metadata || (editRule?.metadata as Record<string, string>) || {}) as Record<string, string>;
+    const targetService = normalizeTargetService(formValues.targetService || editRule?.targetService);
+    const effectiveRuleDrafts = ruleDrafts.map((rule, index) => ({
+        ...rule,
+        protocol: protocolOverrides[index] || rule.protocol,
+    }));
+    const subRules = ensureFaultDetectRules({ rules: effectiveRuleDrafts });
+    const currentDraft = React.useMemo(() => normalizeFaultDetectFormValue({
+        ...(editRule || {}),
+        ...(formValues || {}),
+        name: formValues.name || editRule?.name || '',
+        description: formValues.description || editRule?.description || '',
+        priority: formValues.priority ?? editRule?.priority ?? 0,
+        metadata,
+        targetService,
+        rules: subRules,
+    }), [editRule, formValues, metadata, subRules, targetService]);
+    const validationErrors = React.useMemo(() => validateFaultDetectDraft(currentDraft), [currentDraft]);
+    const previewSpec = React.useMemo(() => buildFaultDetectPreviewSpec(currentDraft), [currentDraft]);
+    const specText = React.useMemo(() => stringifyFaultDetectSpec(previewSpec, specFormat), [previewSpec, specFormat]);
+
+    const syncRuleDrafts = (nextRules: FaultDetectSubRule[], writeForm = true) => {
+        const normalizedRules = normalizeFaultDetectRulesDraft(nextRules);
+        if (writeForm) {
+            syncingRuleDraftsRef.current = true;
+            form.setFieldsValue({ rules: normalizedRules });
+            window.setTimeout(() => {
+                syncingRuleDraftsRef.current = false;
+            }, 0);
+        }
+        setRuleDrafts(normalizedRules);
+        setFormRevision(prev => prev + 1);
+        return normalizedRules;
+    };
+
+    const currentFormRules = () => ensureFaultDetectRules({ rules: ruleDrafts });
+
+    const addDetectRule = () => {
+        const nextRules = syncRuleDrafts([...currentFormRules(), defaultFaultDetectSubRule()]);
+        setCollapsedRuleIndexes(prev => {
+            const next = new Set(prev);
+            next.delete(nextRules.length - 1);
+            return next;
+        });
+    };
+
+    const removeDetectRule = (index: number) => {
+        const rules = currentFormRules();
+        if (rules.length <= 1) {
+            return;
+        }
+        syncRuleDrafts(rules.filter((_, idx) => idx !== index));
+    };
+
+    const toggleRuleCollapsed = (index: number) => {
+        setCollapsedRuleIndexes(prev => {
+            const next = new Set(prev);
+            if (next.has(index)) {
+                next.delete(index);
+            } else {
+                next.add(index);
+            }
+            return next;
+        });
+    };
+
+    const patchRule = (index: number, patch: Partial<FaultDetectSubRule>) => {
+        const rules = currentFormRules();
+        syncRuleDrafts(rules.map((rule, idx) => idx === index ? { ...rule, ...patch } : rule), false);
+    };
+
+    const updateHttpHeaders = (ruleIndex: number, headers: Label[]) => {
+        const rules = currentFormRules();
+        syncRuleDrafts(rules.map((rule, idx) => {
+            if (idx !== ruleIndex) {
+                return rule;
+            }
+            return {
+                ...rule,
+                httpConfig: {
+                    method: rule.httpConfig?.method || HTTPMethod.GET,
+                    url: rule.httpConfig?.url || '/healthz',
+                    body: rule.httpConfig?.body || '',
+                    ...rule.httpConfig,
+                    headers,
+                },
+            };
+        }));
+    };
+
+    const addHttpHeader = (ruleIndex: number, headers?: Label[]) => {
+        updateHttpHeaders(ruleIndex, [...(headers || []), { key: '', value: '' }]);
+    };
+
+    const updateHttpHeader = (ruleIndex: number, headerIndex: number, field: keyof Label, value: string, headers?: Label[]) => {
+        updateHttpHeaders(ruleIndex, (headers || []).map((item, index) => (
+            index === headerIndex ? { ...item, [field]: value } : item
+        )));
+    };
+
+    const removeHttpHeader = (ruleIndex: number, headerIndex: number, headers?: Label[]) => {
+        updateHttpHeaders(ruleIndex, (headers || []).filter((_, index) => index !== headerIndex));
+    };
+
+    const readonlyField = (label: string, value: React.ReactNode, full = false) => (
+        <div className={full ? shared.full : undefined}>
+            <div className={shared.editLabel}>{label}</div>
+            <Text>{value || '-'}</Text>
+        </div>
+    );
+
+    const renderHttpHeaders = (index: number, headers?: Label[]) => {
+        const rows = Array.isArray(headers) ? headers : [];
+        return (
+            <div className={styles.httpHeadersBlock}>
+                <div className={styles.httpHeadersTitleRow}>
+                    <span className={styles.httpHeadersBadge}>H</span>
+                    <span className={styles.httpHeadersTitle}>Headers</span>
+                    <span className={styles.httpHeadersHint}>随探测请求发送的请求头</span>
+                </div>
+                <div className={styles.httpHeadersGrid}>
+                    <div className={styles.httpHeadersHead}>键</div>
+                    <div className={styles.httpHeadersHead}>值</div>
+                    <div className={styles.httpHeadersHead}>操作</div>
+                    {rows.length === 0 ? (
+                        <div className={styles.httpHeadersEmpty}>暂无标签</div>
+                    ) : rows.map((item, headerIndex) => (
+                        <React.Fragment key={headerIndex}>
+                            <div className={styles.httpHeadersCell}>
+                                {editorState.editable ? (
+                                    <Input
+                                        className={styles.monoInput}
+                                        value={item.key}
+                                        placeholder="x-seed"
+                                        onChange={(value) => updateHttpHeader(index, headerIndex, 'key', value, rows)}
+                                    />
+                                ) : (
+                                    <span className={styles.headerReadonlyText}>{displayText(item.key)}</span>
+                                )}
+                            </div>
+                            <div className={styles.httpHeadersCell}>
+                                {editorState.editable ? (
+                                    <Input
+                                        className={styles.monoInput}
+                                        value={item.value}
+                                        placeholder="true"
+                                        onChange={(value) => updateHttpHeader(index, headerIndex, 'value', value, rows)}
+                                    />
+                                ) : (
+                                    <span className={styles.headerReadonlyText}>{displayText(item.value)}</span>
+                                )}
+                            </div>
+                            <div className={`${styles.httpHeadersCell} ${styles.httpHeadersActionCell}`}>
+                                {editorState.editable ? (
+                                    <Popup trigger="hover" content="删除标签">
+                                        <Button shape="square" variant="outline" onClick={() => removeHttpHeader(index, headerIndex, rows)}>
+                                            <DeleteIcon />
+                                        </Button>
+                                    </Popup>
+                                ) : (
+                                    <span className={styles.headerReadonlyText}>-</span>
+                                )}
+                            </div>
+                        </React.Fragment>
+                    ))}
+                </div>
+                {editorState.editable && (
+                    <div className={styles.httpHeadersFooter}>
+                        <Button theme="primary" variant="text" icon={<AddIcon />} onClick={() => addHttpHeader(index, rows)}>
+                            添加标签
+                        </Button>
+                        <span>{rows.length} 个标签</span>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderProtocolPayload = (index: number, rule: FaultDetectSubRule) => {
+        const protocol = rule.protocol || FaultDetectProtocol.HTTP;
+        switch (protocol) {
+                    case FaultDetectProtocol.TCP:
+                    case FaultDetectProtocol.UDP: {
+                        const configKey = protocol === FaultDetectProtocol.TCP ? 'tcpConfig' : 'udpConfig';
+                        const config = protocol === FaultDetectProtocol.TCP ? rule.tcpConfig : rule.udpConfig;
+                        const hint = protocol === FaultDetectProtocol.TCP
+                            ? '建立连接后发送请求内容，再读取响应内容比对。'
+                            : '发送 UDP 数据报后读取返回数据报内容比对。';
+                        return editorState.editable ? (
+                            <div className={shared.kv2}>
+                                <div className={shared.full}>
+                                    <div className={shared.editLabel}>匹配方式</div>
+                                    <FormItem name={['rules', index, configKey, 'match']} style={{ marginBottom: 0 }}>
+                                        <Select options={PayloadMatchOptions} />
+                                    </FormItem>
+                                </div>
+                                <div>
+                                    <div className={shared.editLabel}>发送内容</div>
+                                    <FormItem name={['rules', index, configKey, 'send']} style={{ marginBottom: 0 }}>
+                                        <Textarea className={styles.monoTextarea} placeholder="PING\\n" />
+                                    </FormItem>
+                                </div>
+                                <div>
+                                    <div className={shared.editLabel}>接收内容</div>
+                                    <FormItem
+                                        name={['rules', index, configKey, 'receive']}
+                                        style={{ marginBottom: 0 }}
+                                    >
+                                        <Textarea className={styles.monoTextarea} placeholder="PONG" />
+                                    </FormItem>
+                                </div>
+                                <div className={shared.full}>
+                                    <div className={styles.strategyNote}>{hint}</div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className={shared.kv2}>
+                                {readonlyField('匹配方式', config?.match === 'CONTAINS' ? '包含匹配' : config?.match === 'REGEX' ? '正则匹配' : '完全匹配')}
+                                {readonlyField('发送内容', config?.send || '-')}
+                                {readonlyField('接收内容', receiveToText(config?.receive) || '-')}
+                            </div>
+                        );
+                    }
+                    case FaultDetectProtocol.HTTP:
+                    default:
+                        return editorState.editable ? (
+                            <div className={shared.kv2}>
+                                <div>
+                                    <div className={shared.editLabel}>方法</div>
+                                    <FormItem name={['rules', index, 'httpConfig', 'method']} style={{ marginBottom: 0 }}>
+                                        <Select filterable creatable options={HTTPMethodOption} />
+                                    </FormItem>
+                                </div>
+                                <div>
+                                    <div className={shared.editLabel}>URL</div>
+                                    <FormItem name={['rules', index, 'httpConfig', 'url']} style={{ marginBottom: 0 }}>
+                                        <Input className={styles.monoTextarea} placeholder="/healthz" />
+                                    </FormItem>
+                                </div>
+                                <div className={shared.full}>
+                                    {renderHttpHeaders(index, rule.httpConfig?.headers)}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className={shared.kv2}>
+                                {readonlyField('方法', rule.httpConfig?.method)}
+                                {readonlyField('URL', rule.httpConfig?.url)}
+                                <div className={shared.full}>
+                                    {renderHttpHeaders(index, rule.httpConfig?.headers)}
+                                </div>
+                            </div>
+                        );
+        }
+    };
+
+    const renderPortStrategy = (rule: FaultDetectSubRule, index: number) => {
+        const customPort = isCustomProbePort(rule);
+        return (
+            <div className={shared.step} data-step="2">
+                <div className={shared.stepTitle}>端口策略<span className={shared.stepHint}>默认按实例注册的协议端口探测，只有特殊探测端口才需要覆盖。</span></div>
+                <div className={shared.stepContent}>
+                    {editorState.editable ? (
+                        <div className={shared.kv2}>
+                            <div>
+                                <div className={shared.editLabel}>端口来源</div>
+                                <RadioGroup
+                                    theme="button"
+                                    variant="primary-filled"
+                                    value={customPort ? 'CUSTOM' : 'INSTANCE'}
+                                    onChange={(value) => {
+                                        patchRule(index, { port: value === 'CUSTOM' ? (rule.port || 8080) : 0 });
+                                    }}
+                                >
+                                    <Radio.Button value="INSTANCE">实例协议端口</Radio.Button>
+                                    <Radio.Button value="CUSTOM">指定探测端口</Radio.Button>
+                                </RadioGroup>
+                            </div>
+                            {customPort ? (
+                                <div>
+                                    <div className={shared.editLabel}>探测端口</div>
+                                    <FormItem name={['rules', index, 'port']} style={{ marginBottom: 0 }}>
+                                        <InputNumber min={1} max={65535} placeholder="8080" />
+                                    </FormItem>
+                                </div>
+                            ) : (
+                                <div className={shared.full}>
+                                    <div className={styles.strategyNote}>当前策略：实例协议端口。运行时会选择目标实例中与探测协议匹配的注册端口。</div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className={styles.strategyNote}>当前策略：{describeProbePort(rule)}</div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    const renderDetectRule = (rule: FaultDetectSubRule, index: number) => {
+        const collapsed = collapsedRuleIndexes.has(index);
+        const changeProtocol = (protocol: FaultDetectProtocol) => {
+            setProtocolOverrides(prev => ({ ...prev, [index]: protocol }));
+            if (protocol === FaultDetectProtocol.HTTP) {
+                patchRule(index, { protocol, httpConfig: { method: rule.httpConfig?.method || HTTPMethod.GET, url: rule.httpConfig?.url || '/healthz', headers: rule.httpConfig?.headers || [], body: rule.httpConfig?.body || '' } });
+            } else if (protocol === FaultDetectProtocol.TCP) {
+                patchRule(index, { protocol, tcpConfig: { send: rule.tcpConfig?.send || '', match: rule.tcpConfig?.match || 'EXACT', receive: rule.tcpConfig?.receive || [] } });
+            } else if (protocol === FaultDetectProtocol.UDP) {
+                patchRule(index, { protocol, udpConfig: { send: rule.udpConfig?.send || '', match: rule.udpConfig?.match || 'EXACT', receive: rule.udpConfig?.receive || [] } });
+            }
+        };
+        const protocolOptions = [FaultDetectProtocol.HTTP, FaultDetectProtocol.TCP, FaultDetectProtocol.UDP];
+
+        return (
+            <div className={`${shared.policy} ${collapsed ? shared.policyCollapsed : ''}`} key={index}>
+                <div className={shared.policyHead} onClick={() => toggleRuleCollapsed(index)}>
+                    <div className={shared.policyHeadMain}>
+                        <span className={shared.caret}><ChevronRightIcon /></span>
+                        <div>
+                            <div className={shared.policyIndex}>探测规则 [{index + 1}]</div>
+                            <div className={shared.policySummary}>{describeProbeSummary(rule)}</div>
+                        </div>
+                    </div>
+                    <div className={shared.policyHeadActions} onClick={(event) => event.stopPropagation()}>
+                        <Tag theme={rule.disable ? 'default' : 'success'} variant="light-outline">{rule.disable ? '禁用' : '启用'}</Tag>
+                        <Tag variant="light">{describeProbePort(rule)}</Tag>
+                        {editorState.editable && (
+                            <Popup trigger="hover" content="删除探测规则">
+                                <Button
+                                    shape="circle"
+                                    variant="text"
+                                    disabled={subRules.length <= 1}
+                                    onClick={() => removeDetectRule(index)}
+                                >
+                                    <CloseIcon />
+                                </Button>
+                            </Popup>
+                        )}
+                    </div>
+                </div>
+                <div className={shared.policyBody}>
+                    <div className={shared.step} data-step="1">
+                        <div className={shared.stepTitle}>基础调度</div>
+                        <div className={`${shared.stepContent} ${shared.kv2}`}>
+                            <div>
+                                <div className={shared.editLabel}>探测协议</div>
+                                {editorState.editable ? (
+                                    <div className={styles.segmentedControl}>
+                                        {protocolOptions.map(protocol => {
+                                            const active = (rule.protocol || FaultDetectProtocol.HTTP) === protocol;
+                                            return (
+                                                <Button
+                                                    key={protocol}
+                                                    variant="text"
+                                                    className={active ? styles.segmentedButtonActive : styles.segmentedButton}
+                                                    onClick={() => changeProtocol(protocol)}
+                                                >
+                                                    {protocol}
+                                                </Button>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <Text>{displayText(rule.protocol)}</Text>
+                                )}
+                            </div>
+                            <div>
+                                <div className={shared.editLabel}>状态</div>
+                                <FormItem name={['rules', index, 'disable']} initialData={false} style={{ marginBottom: 0 }}>
+                                    {editorState.editable ? (
+                                        <RadioGroup theme="button" variant="primary-filled">
+                                            <Radio.Button value={false}>启用</Radio.Button>
+                                            <Radio.Button value={true}>禁用</Radio.Button>
+                                        </RadioGroup>
+                                    ) : (
+                                        <Text>{rule.disable ? '禁用' : '启用'}</Text>
+                                    )}
+                                </FormItem>
+                            </div>
+                            <div>
+                                <div className={shared.editLabel}>间隔</div>
+                                <FormItem name={['rules', index, 'interval']} style={{ marginBottom: 0 }}>
+                                    {editorState.editable ? (
+                                        <Space><InputNumber min={1} placeholder="30" /><span>秒</span></Space>
+                                    ) : (
+                                        <Text>{rule.interval || 30} 秒</Text>
+                                    )}
+                                </FormItem>
+                            </div>
+                            <div>
+                                <div className={shared.editLabel}>超时</div>
+                                <FormItem name={['rules', index, 'timeout']} style={{ marginBottom: 0 }}>
+                                    {editorState.editable ? (
+                                        <Space><InputNumber min={1} placeholder="60" /><span>秒</span></Space>
+                                    ) : (
+                                        <Text>{rule.timeout || 60} 秒</Text>
+                                    )}
+                                </FormItem>
+                            </div>
+                        </div>
+                    </div>
+                    {renderPortStrategy(rule, index)}
+                    <div className={shared.step} data-step="3">
+                        <div className={shared.stepTitle}>{rule.protocol === FaultDetectProtocol.HTTP ? 'HTTP 协议载荷' : '报文匹配'}</div>
+                        <div className={shared.stepContent}>
+                            {renderProtocolPayload(index, rule)}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     const ruleBaseInfo = (
         <div className={shared.section}>
@@ -222,6 +786,7 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                             showErrorMessage={editorState.editable}
                             rules={[
                                 { required: true, message: '请输入规则名称' },
+                                { pattern: /^[a-z][a-z0-9-]*$/, message: '规则名称必须为 kebab-case' },
                                 { max: 64, message: '最长64个字符' }
                             ]}
                         >
@@ -230,7 +795,15 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                                 : <Text>{editRule?.name}</Text>}
                         </FormItem>
                     </div>
-                    <div className={`${shared.field} ${shared.span8}`}>
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>优先级</div>
+                        <FormItem name="priority">
+                            {editorState.editable
+                                ? <InputNumber min={0} placeholder="0" />
+                                : <Text>{displayText(currentDraft.priority)}</Text>}
+                        </FormItem>
+                    </div>
+                    <div className={shared.field}>
                         <div className={shared.fieldLabel}>描述</div>
                         <FormItem name="description">
                             {editorState.editable
@@ -251,303 +824,99 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
         </div>
     );
 
+    const targetInfo = (
+        <div className={shared.section}>
+            <div className={shared.sectionHeader}>
+                <span>被探测对象</span>
+                <span className={shared.countTag}>{displayText(targetService.namespace)}/{displayText(targetService.service)}</span>
+            </div>
+            <div className={shared.sectionBody}>
+                <div className={shared.infoGrid}>
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>被探测命名空间</div>
+                        <FormItem
+                            name={['targetService', 'namespace']}
+                            rules={[{ required: true, message: '请选择命名空间' }]}
+                        >
+                            {editorState.editable ? (
+                                <Select
+                                    filterable
+                                    creatable
+                                    options={namespaceDatas.map(ns => ({ label: ns.name, value: ns.name }))}
+                                    onChange={() => form.setFieldsValue({ targetService: { ...normalizeTargetService(form.getFieldValue('targetService')), service: '' } })}
+                                />
+                            ) : (
+                                <Text>{targetService.namespace === '*' ? '全部命名空间' : targetService.namespace}</Text>
+                            )}
+                        </FormItem>
+                    </div>
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>被探测服务</div>
+                        <FormItem shouldUpdate={(prev, next) => prev.targetService?.namespace !== next.targetService?.namespace}>
+                            {({ getFieldValue }) => {
+                                const selectNs = getFieldValue(['targetService', 'namespace']);
+                                return (
+                                    <FormItem
+                                        name={['targetService', 'service']}
+                                        rules={[{ required: true, message: '请选择服务' }]}
+                                    >
+                                        {editorState.editable ? (
+                                            <Select
+                                                placeholder="请选择服务"
+                                                filterable
+                                                creatable
+                                                options={serviceDatas.filter(opt => selectNs === '*' || opt.namespace === selectNs).map(service => ({
+                                                    label: service.name,
+                                                    value: service.name
+                                                }))}
+                                            />
+                                        ) : (
+                                            <Text>{targetService.service === '*' ? '全部服务' : targetService.service}</Text>
+                                        )}
+                                    </FormItem>
+                                )
+                            }}
+                        </FormItem>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     const renderEditRule = (
         <Form
             form={form}
             onSubmit={onSubmit}
+            onValuesChange={() => {
+                if (syncingRuleDraftsRef.current) {
+                    return;
+                }
+                const nextRules = form.getFieldValue('rules') as FaultDetectSubRule[] | undefined;
+                if (Array.isArray(nextRules)) {
+                    setRuleDrafts(normalizeFaultDetectRulesDraft(nextRules));
+                }
+                setFormRevision(prev => prev + 1);
+            }}
             labelWidth="120px"
             layout="vertical"
         >
             {ruleBaseInfo}
+            {targetInfo}
 
             <div className={shared.section}>
-                <div className={shared.sectionHeader}>探测配置</div>
+                <div className={shared.sectionHeader}>
+                    <span>探测规则</span>
+                    <span className={shared.countTag}>{subRules.length} 条</span>
+                </div>
                 <div className={shared.sectionBody}>
-                    <div className={shared.group}>
-                        <div className={shared.groupHead}>
-                            <span className={shared.groupTitle}><span className={shared.groupIndex}>1</span>探测目标与节奏</span>
-                        </div>
-                        <div className={shared.groupBody}>
-
-            {/* 命名空间 */}
-            <FormItem
-                label="命名空间"
-                name={['targetService', 'namespace']}
-                rules={[{ required: true, message: '请选择命名空间' }]}
-            >
-                {editorState.editable ? (
-                    <Select
-                        style={{ width: '300px' }}
-                        filterable={true}
-                        creatable={true}
-                        options={namespaceDatas.map(ns => ({
-                            label: ns.name,
-                            value: ns.name,
-                            namespace: ns.name
-                        }))}
-                    />
-                ) : (
-                    <Text>{editRule?.targetService?.namespace === '*' ? '全部命名空间' : editRule?.targetService?.namespace}</Text>
-                )}
-            </FormItem>
-
-            {/* 服务名称 */}
-            <FormItem shouldUpdate={(prev, next) => prev.targetService?.namespace !== next.targetService?.namespace}>
-                {({ getFieldValue, setFieldsValue }) => {
-                    return (
-                        <FormItem
-                            label="服务名称"
-                            name={['targetService', 'service']}
-                            rules={[{ required: true, message: '请选择服务' }]}
-                        >
-                            {editorState.editable ? (
-                                <Select
-                                    style={{ width: '300px' }}
-                                    placeholder="请选择服务"
-                                    filterable={true}
-                                    creatable={true}
-                                    options={serviceDatas.filter(opt => {
-                                        const selectNs = getFieldValue(['targetService', 'namespace']);
-                                        if (selectNs === '*') {
-                                            return true; // 允许所有命名空间的服务
-                                        }
-                                        return opt.namespace === selectNs; // 仅允许当前命名空间
-                                    }).map(service => ({
-                                        label: service.name,
-                                        value: service.name,
-                                        namespace: service.namespace
-                                    }))}
-                                />
-                            ) : (
-                                <Text>{editRule?.targetService?.service === '*' ? '全部服务' : editRule?.targetService?.service}</Text>
-                            )}
-                        </FormItem>
-                    )
-                }}
-            </FormItem>
-
-            {/* 接口名称 */}
-            <FormItem label="接口名称">
-                {editorState.editable ? (
-                    <Space direction="horizontal" style={{ width: '100%', display: 'flex' }}>
-                        <FormItem name={['targetService', 'api', 'path', 'value']} style={{ flex: 1, marginBottom: 0 }}>
-                            {editorState.editable ? (
-                                <Input placeholder="请输入接口名称" />
-                            ) : (
-                                <Text>{editRule?.targetService?.api?.path?.value || '-'}</Text>
-                            )}
-                        </FormItem>
-                        <FormItem name={['targetService', 'api', 'path', 'type']} style={{ width: 150, marginBottom: 0 }}>
-                            {editorState.editable ? (
-                                <Select
-                                    options={MatchTypeOption}
-                                />
-                            ) : (
-                                <Text>{MatchTypeMap[editRule?.targetService?.api?.path?.type as MatchType || MatchType.EXACT]}</Text>
-                            )}
-                        </FormItem>
-                    </Space>
-
-                ) : (
-                    <Text>
-                        {`${displayText(editRule?.targetService?.api?.path?.value)} / ${MatchTypeMap[editRule?.targetService?.api?.path?.type as MatchType || MatchType.EXACT]}`}
-                    </Text>
-                )}
-            </FormItem>
-
-            {/* 接口协议 */}
-            <FormItem label="接口协议" name={['targetService', 'api', 'protocol']} initialData={FaultDetectProtocol.HTTP}>
-                {editorState.editable ? (
-                    <RadioGroup
-                        theme='button'
-                        variant='primary-filled'
-                    >
-                        {InterfaceProtocolOption.map(option => (
-                            <Radio.Button key={option.value} value={option.value}>
-                                {option.label}
-                            </Radio.Button>
-                        ))}
-                    </RadioGroup>
-                ) : (
-                    <Text>{displayText(editRule?.targetService?.api?.protocol)}</Text>
-                )}
-            </FormItem>
-
-            {/* 接口方法 */}
-            <FormItem label="接口方法" name={['targetService', 'api', 'method']}>
-                {editorState.editable ? (
-                    <Select
-                        style={{ width: '300px' }}
-                        filterable={true}
-                        creatable={true}
-                        options={FaultDetectHttpMethodOptions}
-                    />
-                ) : (
-                    <Text>{editRule?.targetService?.api?.method || '-'}</Text>
-                )}
-            </FormItem>
-
-            {/* 间隔 */}
-            <FormItem label="间隔" name="interval">
-                {editorState.editable ? (
-                    <Space>
-                        <InputNumber min={1} placeholder="30" />
-                        <span>秒</span>
-                    </Space>
-                ) : (
-                    <Text>{editRule?.interval || 30} 秒</Text>
-                )}
-            </FormItem>
-
-            {/* 超时时间 */}
-            <FormItem label="超时时间" name="timeout">
-                {editorState.editable ? (
-                    <Space>
-                        <InputNumber min={1} placeholder="60" />
-                        <span>秒</span>
-                    </Space>
-                ) : (
-                    <Text>{editRule?.timeout || 60} 秒</Text>
-                )}
-            </FormItem>
-
-            {/* 端口 */}
-            <FormItem label="端口" name="port">
-                {editorState.editable ? (
-                    <InputNumber min={1} placeholder="端口号" />
-                ) : (
-                    <Text>{editRule?.port || '-'}</Text>
-                )}
-            </FormItem>
-
-                        </div>
+                    <div className={shared.ruleList}>
+                        {subRules.map((rule, index) => renderDetectRule(rule, index))}
                     </div>
-
-                    <div className={shared.group}>
-                        <div className={shared.groupHead}>
-                            <span className={shared.groupTitle}><span className={shared.groupIndex}>2</span>探测协议配置</span>
-                        </div>
-                        <div className={shared.groupBody}>
-
-            {/* 协议选择 */}
-            <FormItem label="协议" initialData={FaultDetectProtocol.HTTP} name="protocol" help={'服务实例下需要存在所选择用于探测的协议，否则无法探测无法生效'}>
-                {editorState.editable ? (
-                    <RadioGroup
-                        theme='button'
-                        variant='primary-filled'
-                    >
-                        <Radio.Button value={FaultDetectProtocol.HTTP}>HTTP</Radio.Button>
-                        <Radio.Button value={FaultDetectProtocol.TCP}>TCP</Radio.Button>
-                        <Radio.Button value={FaultDetectProtocol.UDP}>UDP</Radio.Button>
-                    </RadioGroup>
-                ) : (
-                    <Text>{displayText(editRule?.protocol)}</Text>
-                )}
-            </FormItem>
-
-            <FormItem shouldUpdate={(prev, next) => prev.protocol !== next.protocol}>
-                {({ getFieldValue, setFieldsValue }) => {
-                    const protocol = getFieldValue('protocol');
-                    switch (protocol) {
-                        case FaultDetectProtocol.TCP:
-                            return (
-                                <>
-                                    {editorState.editable ? (
-                                        <>
-                                            <FormItem label="发送内容" name={['tcpConfig', 'send']} help={'配置所需发送的二进制报文'}>
-                                                <Textarea placeholder="请输入发送内容" />
-                                            </FormItem>
-                                            <FormItem label="接收内容" name={['tcpConfig', 'receive']}>
-                                                <Textarea placeholder="请输入期望接收的内容" />
-                                            </FormItem>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <FormItem label="发送内容" name={['tcpConfig', 'send']} help={'配置所需发送的二进制报文'}>
-                                                <Text>{editRule?.tcpConfig?.send || '-'}</Text>
-                                            </FormItem>
-                                            <FormItem label="接收内容" name={['tcpConfig', 'receive']}>
-                                                <Text>{editRule?.tcpConfig?.receive || '-'}</Text>
-                                            </FormItem>
-                                        </>
-                                    )}
-                                </>
-                            )
-                        case FaultDetectProtocol.UDP:
-                            return (
-                                <>
-                                    {editorState.editable ? (
-                                        <>
-                                            <FormItem label="发送内容" name={['udpConfig', 'send']} help={'配置所需发送的二进制报文'}>
-                                                <Textarea placeholder="请输入发送内容" />
-                                            </FormItem>
-                                            <FormItem label="接收内容" name={['udpConfig', 'receive']}>
-                                                <Textarea placeholder="请输入期望接收的内容" />
-                                            </FormItem>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <FormItem label="发送内容" name={['udpConfig', 'send']} help={'配置所需发送的二进制报文'}>
-                                                <Text>{editRule?.udpConfig?.send || '-'}</Text>
-                                            </FormItem>
-                                            <FormItem label="接收内容" name={['udpConfig', 'receive']}>
-                                                <Text>{editRule?.udpConfig?.receive || '-'}</Text>
-                                            </FormItem>
-                                        </>
-                                    )}
-                                </>
-                            )
-                        case FaultDetectProtocol.HTTP:
-                            return (
-                                <>
-                                    {editorState.editable ? (
-                                        <>
-                                            <FormItem label="方法" name={['httpConfig', 'method']}>
-                                                <Select
-                                                    style={{ width: '300px' }}
-                                                    filterable={true}
-                                                    creatable={true}
-                                                    options={HTTPMethodOption}
-                                                />
-                                            </FormItem>
-                                            <FormItem label="Url" name={['httpConfig', 'url']}>
-                                                <Input placeholder="请输入Url以/开头" />
-                                            </FormItem>
-                                            <LabelInput
-                                                form={form}
-                                                name={['httpConfig', 'headers']}
-                                                label="Headers"
-                                                editable={editorState.editable}
-                                            />
-                                        </>
-                                    ) : (
-                                        <>
-                                            <FormItem label="方法" name={['httpConfig', 'method']}>
-                                                <Text>{editRule?.httpConfig?.method || '-'}</Text>
-                                            </FormItem>
-                                            <FormItem label="Url" name={['httpConfig', 'url']}>
-                                                <Text>{editRule?.httpConfig?.url || '-'}</Text>
-                                            </FormItem>
-                                            <FormItem name={['httpConfig', 'headers']}>
-                                                <LabelInput
-                                                    form={form}
-                                                    name={['httpConfig', 'headers']}
-                                                    label="Headers"
-                                                    editable={editorState.editable}
-                                                />
-                                            </FormItem>
-                                        </>
-                                    )}
-                                </>
-                            )
-                        default:
-                            return (<></>)
-                    }
-                }}
-            </FormItem>
-
-                        </div>
-                    </div>
+                    {editorState.editable && (
+                        <Button className={shared.addRuleButton} style={{ marginTop: 12 }} variant="dashed" icon={<AddIcon />} onClick={addDetectRule}>
+                            添加探测子规则
+                        </Button>
+                    )}
                 </div>
             </div>
         </Form>
@@ -598,9 +967,51 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
         </>
     )
 
+    const copySpec = () => {
+        navigator.clipboard?.writeText(specText).then(() => {
+            openInfoNotification('复制成功', '已复制当前探测规则 Spec');
+        }).catch(() => {
+            openErrNotification('复制失败', '当前浏览器不支持复制到剪贴板');
+        });
+    };
+
+    const renderSpecPreview = (
+        <aside className={styles.specPane}>
+            <div className={styles.specCard}>
+                <div className={styles.specToolbar}>
+                    <div>
+                        <div className={styles.specTitle}>实时规则 SPEC</div>
+                        <div className={styles.specDesc}>保存前核对 FaultDetectRule 规则配置</div>
+                    </div>
+                    <div className={styles.specActions}>
+                        <div className={styles.specToggle}>
+                            {(['yaml', 'json'] as FaultDetectSpecFormat[]).map(item => (
+                                <button key={item} type="button" className={specFormat === item ? styles.specToggleActive : ''} onClick={() => setSpecFormat(item)}>
+                                    {item.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
+                        <Button size="small" variant="outline" icon={<CopyIcon />} onClick={copySpec}>复制</Button>
+                    </div>
+                </div>
+                <pre className={styles.specCode}>{specText}</pre>
+                <div className={styles.specFooter}>
+                    {validationErrors.length
+                        ? validationErrors.slice(0, 3).map(item => <span key={`${item.field}-${item.message}`} className={styles.previewError}>{item.message}</span>)
+                        : <span className={styles.previewOk}>校验通过，可保存并下发</span>}
+                </div>
+            </div>
+        </aside>
+    );
+
     return (
-        <div style={{ padding: 24 }}>
-            {renderEditRule}
+        <div className={styles.editorBody}>
+            <div className={styles.editorShell}>
+                <div className={styles.formPane}>
+                    {renderEditRule}
+                </div>
+                {renderSpecPreview}
+            </div>
             {editorState.publishView && (
                 <PublishForm
                     ruleId={viewRule?.id || ''}

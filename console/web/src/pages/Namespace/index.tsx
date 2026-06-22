@@ -1,11 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { Table, Popup, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Popconfirm, Input, Tag } from 'tdesign-react';
+import { Table, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Popconfirm, Input } from 'tdesign-react';
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, CreditcardIcon, SearchIcon } from 'tdesign-icons-react';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification } from 'utils/notifition';
 import Text from 'components/Text';
-import { CheckVisibilityMode, VisibilityMode_All, VisibilityMode_Single, VisibilityMode_Specified, VisibilityModeMap } from 'utils/visible';
 import NamespaceEditor from './NamespaceEditor';
 import style from './index.module.less';
 import { cleanNamespacePage, editorNamespace, listNamespaces, resetNamespace, selectNamespace } from 'modules/namespace';
@@ -13,13 +12,6 @@ import AuthorizeInput from 'components/Authorize';
 import { PolicySourceType } from 'services/auth_policy';
 import { Namespace } from 'services/namespace';
 import { Op } from 'services/types';
-
-const visibilityTheme = (mode?: string) => {
-    if (mode === VisibilityMode_All) return 'success';
-    if (mode === VisibilityMode_Specified) return 'warning';
-    if (mode === VisibilityMode_Single) return 'primary';
-    return 'default';
-}
 
 const columns = (operateNamespace: (op: Op, row: TableRowData) => void): PrimaryTableProps['columns'] => [
     {
@@ -43,45 +35,6 @@ const columns = (operateNamespace: (op: Op, row: TableRowData) => void): Primary
         },
         fixed: 'left',
     },
-    {
-        colKey: 'service_export_to',
-        title: '服务可见性',
-        width: 132,
-        cell: ({ row: { name, service_export_to } }: TableRowData) => {
-            const visibilityMode = CheckVisibilityMode(service_export_to, name)
-            const exports = service_export_to || [];
-            return (
-                <div className={style.visibilityCell}>
-                    {visibilityMode ? (
-                        <Tag theme={visibilityTheme(visibilityMode) as any} variant="light-outline">
-                            {VisibilityModeMap[visibilityMode]}
-                        </Tag>
-                    ) : (
-                        <Popup
-                            trigger={'hover'}
-                            content={
-                                <Text>
-                                    <div>{'服务可见的命名空间列表'}</div>
-                                    {service_export_to?.map((item: string) => (
-                                        <div key={item}>
-                                            {item}
-                                        </div>
-                                    ))}
-                                </Text>
-                            }
-                        >
-                            <div className={style.tagList}>
-                                {exports.slice(0, 2).map((item: string) => <Tag key={item} variant="outline">{item}</Tag>)}
-                                {exports.length > 2 && <Tag variant="outline">+{exports.length - 2}</Tag>}
-                                {exports.length === 0 && <Text>-</Text>}
-                            </div>
-                        </Popup>
-                    )}
-                </div>
-            )
-        },
-    },
-
     {
         colKey: 'commnet',
         title: '描述',
@@ -245,9 +198,8 @@ export default React.memo(() => {
         const serviceCount = datas.reduce((sum, item) => sum + (item.total_service_count || 0), 0);
         const instanceCount = datas.reduce((sum, item) => sum + (item.total_instance_count || 0), 0);
         const healthCount = datas.reduce((sum, item) => sum + (item.total_health_instance_count || 0), 0);
-        const visibleAllCount = datas.filter((item) => CheckVisibilityMode(item.service_export_to, item.name) === VisibilityMode_All).length;
         const healthRate = instanceCount > 0 ? `${Math.round((healthCount / instanceCount) * 100)}%` : '-';
-        return { serviceCount, instanceCount, healthCount, visibleAllCount, healthRate };
+        return { serviceCount, instanceCount, healthCount, healthRate };
     }, [datas]);
 
     const submitFilter = () => {
@@ -265,7 +217,7 @@ export default React.memo(() => {
                 <div>
                     <div className={style.eyebrow}>Service Registry / Namespace</div>
                     <h2>命名空间管理</h2>
-                    <p>维护服务隔离边界、可见范围和访问授权，快速确认各命名空间下的服务与实例健康状态。</p>
+                    <p>维护服务隔离边界和访问授权，快速确认各命名空间下的服务与实例健康状态。</p>
                 </div>
                 <Space>
                     <Tooltip content="刷新列表">
@@ -293,10 +245,6 @@ export default React.memo(() => {
                 <div className={style.metricItem}>
                     <span>实例健康率</span>
                     <strong>{metrics.healthRate}</strong>
-                </div>
-                <div className={style.metricItem}>
-                    <span>全局可见</span>
-                    <strong>{metrics.visibleAllCount}</strong>
                 </div>
             </section>
 

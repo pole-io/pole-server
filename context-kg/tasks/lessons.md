@@ -1,13 +1,14 @@
 ---
 title: Lessons
 tags: [tasks, lessons]
-links: [todo]
-updated: 2026-06-15
+links: [todo, patterns]
+updated: 2026-06-22
 sources: 0
 ---
 
 # Lessons
 
+- 设计 pole-control-plane 观测闭环时，不要绕开现有 `history`、`discoverEvent`、`statis` chain 插件架构另起独立 `openobserver` 插件类型；应优先新增可配置的 `otel` chain entry，把内部观测模型转换为 OTel logs/events/metrics/traces 后发送到内置观测后端。
 - 给 Codex/Claude 这类 agent 使用的启动脚本不能只有前台 `exec` 常驻服务模式；默认可保留终端前台语义，但必须提供 `--detach` / `tmux` 优先的后台模式，避免工具调用被长进程阻塞或结束后回收服务。
 - 治理工作台筛选按钮要使用短产品名保持横向扫描一致：调用鉴权显示为 `鉴权`，流量镜像显示为 `镜像`，流量 Mock 显示为 `Mock`；不要在筛选按钮里重复“调用/流量”前缀。
 - 泳道组详情抽屉下的子泳道列表不应复用普通宽表格；抽屉内子资源列表应优先做紧凑规则行，固定展示名称、状态、描述、标签、条件和右侧图标操作，并隐藏 `0001-01-01` 这类聚合子对象零值时间。
@@ -70,6 +71,7 @@ sources: 0
 - 设计 pole-control-plane 的 A2A 能力时必须严格限定为 A2A Agent Registry：Agent Card 注册、发现、索引、治理元数据和管理 API。A2A task proxy、SSE streaming 转发、push notification broker、task 状态机和 artifact 存储属于数据面/网关/agent runtime，不应写成 pole-control-plane 的二期能力。
 - 实现 A2A Agent Registry 时不能只落后端注册表；Console 页面、列表筛选、抽屉新建/编辑、Agent Card 查看和技能详情都属于功能完整性的一部分，需要和 MCP 页面保持同一套控制台交互语言。
 - 验证 A2A Console 页面数据时必须走 `8080/ai/a2a/v1` 代理链路；`8090/ai/a2a/v1` 有数据只能证明后端和缓存正常，不能证明 Console 已注册对应反向代理。新增 AI Native API 前缀时要同步 Console router 和 router 测试。
+- 新增 AI Native API 后，测试配置和本地 all 模式发布配置必须同时启用对应 apiserver 配置；不能只改 `test/data/bootstrap/pole-apiserver.yaml`，还要同步 `deploy/conf/pole-apiserver.yaml`，否则 8080 页面会因 8090 未注册路由而返回 404。
 - A2A、MCP、服务列表都属于同一控制台工作台体系；新增 A2A 页面不能只做裸 toolbar + table，应复用页头、指标栏、筛选栏、表格容器、摘要单元格和详情抽屉摘要区，保证用户在 AI 工具和注册发现之间切换时布局语言一致。
 - 控制台顶部筛选功能栏不要用普通 `Space` 把分段按钮、输入框和操作按钮散开；筛选项多时应放进统一工具面板，用分组标签、稳定网格和明确 action 区控制换行，否则宽屏下也会出现协议按钮孤立、查询/重置掉行的问题。
 - A2A 这类筛选维度多的列表页，不应把协议筛选做成独立 chip 分组再和高级筛选并列；应把所有筛选项纳入同一个确定性 grid，并给表格关键列设置稳定宽度和表头 nowrap，避免宽屏或中等宽度下出现意外拆字、掉行。
@@ -103,7 +105,43 @@ sources: 0
 - 治理规则编辑器的信息架构要按该规则类型的“操作心智”组织，不能照搬 proto 字段平铺：流量镜像应是 接口范围 → 流量匹配(来源服务也属于流量标签) → 采样比例 → 镜像目标 的四步语义，用 `shared.step` 轴呈现，与鉴权策略卡一致。这是默认共识，不应等用户反复提醒。
 - 镜像规则的 `MirrorSource` 原本没有 `API` 接口字段（Mock 有），按需对齐时直接改 `specification/api/v1/traffic_manage/mirror.proto` 追加 `API api = 4`，在 `source/go` 下 `bash build.sh` 重新生成；后端整 proto JSON 序列化（`protojson` 存 `governance_rule.rule` 列），store/service/cache 零改动即自动持久化回环。
 - 本地联调 spec proto 改动用 `replace github.com/pole-io/specification => 本地路径`（path-replace 跳过校验和，无需改 go.sum）；**严禁直接跑 `go mod tidy`**——它会顺带升级 envoy/genproto 等间接依赖，打断 xds 等无关代码编译。只手动追加 replace 行即可，正式合并前需 spec 发版并改回版本号。
+- 调用鉴权规则只按命中策略执行动作；spec、Console、测试数据和示例 JSON 都不应保留“未命中默认动作”字段，也不要为了兼容 UI 再补回该字段。
+- 鉴权、流量镜像、流量 Mock 的规则归属统一绑定被调服务；来源服务只能放在 `TrafficMatchRule` 的 `CALLER_SERVICE` 等匹配条件中，不要再把 source namespace/service 当成规则索引或发布下发的服务归属。
+- 当治理规则的产品语义从“目标服务 + 隐式匹配条件”收敛为 `Caller -> Callee` 时，不能只改 Console 展示；必须同步核对 `../specification` 真源契约，让 proto 顶层也能表达 caller/callee，再让 control-plane 做兼容读取。
+- 流量镜像的页面心智必须像路由一样先表达 `caller -> callee`：spec 顶层用既有 `SourceService caller` 和 `DestinationService callee` 表达两端，caller 可选“全部服务”，子规则只保留接口、流量匹配、采样比例和镜像目标，不应让用户在子规则匹配条件里手动拼来源服务。
+- 服务 Mock 的页面心智也必须像路由和镜像一样先表达 `caller -> callee`：spec 顶层用既有 `SourceService caller` 和 `DestinationService callee` 表达两端，caller 支持“全部服务”；Mock 子规则只表达接口、流量匹配和响应结果，不应让来源服务藏在子规则条件里。Caller 状态只能是“全部服务”或“具体 namespace/service”，不要保留“某 namespace 下全部服务”这种半状态。
+- 按设计交接实现治理规则编辑抽屉时，必须优先还原关键布局行为：右侧实时 Spec 面板固定并贯穿抽屉正文上下，左侧具体编辑区在窗口内部独立滚动；不要退化成普通页面两栏跟随整体滚动。
+- RouteRule 编辑抽屉的宽度分配必须优先保障左侧编辑表单可读、无横向滚动和标题正常横排；右侧实时 Spec 只是辅助预览，可以固定为较窄列，不能让 Spec 挤压服务范围、规则块等主编辑区。
+- 治理编辑抽屉左侧“内部滚动”不能只看 CSS 写了 `overflow:auto`；必须验证真实 `scrollHeight > clientHeight`，并通过 wheel 或设置 `scrollTop` 确认滚动发生。若左侧是 column flex，直接子 section 需要 `flex: 0 0 auto`，否则 section 会 shrink 后被共享卡片的 `overflow:hidden` 裁掉，外层不会产生滚动。
+- 治理规则编辑抽屉双栏交互不是单个规则类型的局部样式问题；修复路由、限流、熔断这类共性行为后，必须同步沉淀到 [[patterns]] 的长期技术约定，后续新增或重构规则编辑器按该约定验收，避免用户按规则类型重复指出同一问题。
+- PRD 明确要求“数字输入 + 单位后缀”和曲线可视化时，不能只通过字段、文案或空容器判定完成；必须在真实页面确认数值和单位同时可读、曲线按算法实际绘制出来。TDesign 数字单位优先复用 `InputAdornment append`，避免 `InputNumber suffix` 在治理抽屉里把单位显示成输入值。
+- 治理规则编辑抽屉的共性布局缺陷被用户指出一次后，必须主动横向审计所有同构编辑器，包括主动探测这类文件位置复用 `CircuitBreaker/` 目录但交互独立的编辑器；不能只修当前截图或当前规则类型后就宣称同类问题已处理。
+- 协议专用配置区不能为了省事直接复用通用标签/元数据控件；例如主动探测 HTTP Headers 虽然数据结构是 `Label[]`，页面也必须按 PRD 呈现 `H` 标识、Headers 说明、键/值/操作三列表和对应底部计数，避免把业务协议配置做成泛化标签编辑器。
+- 列表型编辑器的草稿归一化不能提前过滤空行；“添加一行”通常需要先创建 `{ key: '', value: '' }` 这类空草稿，保存校验再拦截空值。如果在 normalize 阶段过滤空草稿，用户点击添加会表现为完全无效。
+- 参照 PRD 截图调整局部模块时，不能直接按截图观感放大控件；最终字号和控件高度必须回到当前治理抽屉的设计系统规格，例如字段值 14px、辅助说明/列头 12px、默认按钮和输入高度，避免局部模块显得比其它表单大一号。
+- RouteRule 编辑抽屉不需要额外的左侧底部操作/校验栏；校验状态保留在右侧 Spec footer，编辑/发布/保存/撤销应继续使用治理详情抽屉既有标题区 `StickyTool` 操作。
+- RouteRule 编辑抽屉的「服务范围」标题区必须按 PRD 的展开/收起两态实现：展开态标题同行显示 `主调方 → 被调方`，收起态标题同行显示 `namespace/service → namespace/service` 摘要；不要额外放说明文案或右侧独立摘要。
+- RouteRule 编辑抽屉里的折叠态 section 不能沿用展开态的大块 header 高度；折叠后应是紧凑单行摘要，注意 CSS `min-height + padding` 在默认盒模型下会叠加撑高。
+- RouteRule 编辑态的目标分组表不能把实例标签退化成普通文本输入；应保留 chip 展示和“编辑标签”弹窗。权重列必须给 `InputNumber` 足够稳定宽度，分组名称由顺序自动生成 `Group {index}`，不要让用户手填。
+- RouteRule 基础信息编辑区的同一行字段应使用 TDesign `Row/Col` 这类稳定栅格控制比例，例如规则名称/优先级/状态按 8/2/2 排布；不要只用 `1fr + 固定列` 让名称输入框吞掉空间，造成右侧字段间距割裂。
+- RouteRule 右侧“实时规则 SPEC”用于保存前核对时，必须展示和保存接口同源的实际上传 payload；不要另造 `apiVersion/kind/spec` 这类伪资源格式，否则用户会以为这就是后端收到的数据。
+- 限流等后续治理规则编辑抽屉必须直接复用 RouteRule 已验证的双栏滚动模型：`editorBody` 固定抽屉正文高度，shell `height:100%/overflow:hidden`，左侧 `formPane overflow:auto`，右侧 Spec `height:100%`。不要另写 `overflow: visible` 或让 Spec 单独 `calc(100vh - N)`，否则会复现路由已踩过的裁切、错位和挤压问题。
+- RouteRule 匹配条件里的参数键是用户业务数据，不应按参数类型预置 `x-tenant`、`$method`、`session` 等候选；参数类型只决定来源类型，参数键用普通输入框让用户自行填写。
+- RouteRule 匹配类型为 `包含/不包含` 时，匹配值应使用 TDesign `TagInput` 做多值编辑；保存给后端的 `value.value` 仍是英文逗号分割字符串，不要让用户在普通 `Input` 中手写分隔格式。
+- RouteRule 目标分组的实例标签同样是 `MatchString`，标签值在 `包含/不包含` 时也必须使用 `TagInput`，并按英文逗号拼接回写；不要只修匹配条件表而漏掉标签编辑弹窗。
+- 治理规则编辑抽屉的视觉验收不能只看 Playwright snapshot 或 DOM 文本；涉及固定高度、滚动和双栏布局时必须截真实 8080 页面截图并检查关键卡片 rect，尤其不能在 `RuleDetailDrawer` 的 Tab 内容里再套 `100vh` 高度和多层 `overflow: hidden` 导致 section 内容被裁切。
+- 熔断规则 spec 调整时，`BlockConfig` 只承载熔断策略的接口、错误判断和触发条件；`max_ejection_percent`、`recoverCondition`、`faultDetectConfig`、`fallbackConfig` 这类策略执行配置应放在 `CircuitBreakerRule` 与 `BlockConfig` 之间的中间消息中。删除旧字段时按治理规则当前约定重新压实 `CircuitBreakerRule` field id，不要再加 `reserved`。
+- 熔断规则的 `level` / 熔断粒度是创建时确定的规则级语义，编辑已有规则时必须只读展示，不能在编辑态继续提供切换控件；同时熔断列表和治理工作台的熔断筛选态都应有明确的“新建熔断规则”入口。
+- specification 这类协议仓库 PR 应只包含协议源文件和既有生成产物；不要为单次变更新增临时校验脚本或未被仓库约定的辅助工具。需要额外校验时在本地执行并写入 PR 验证记录，除非用户或仓库维护规范明确要求提交脚本。
+- 用户说“治理规则里面的 Code 统一为 string”时，范围只限治理规则响应效果字段，例如熔断 `FallbackResponse.code`、限流 `CustomResponse.code`、Mock `MockResponse.code`、鉴权拒绝效果 `TrafficSecurityRejectEffect.code`；这些响应效果里不应保留 `status_code`。不要扩展到 `model.Response`、`DiscoverResponse`、`ConfigDiscoverResponse`、心跳响应或限流器协议响应。
+- Mock 响应效果中 `body` 已表达被 Mock 出来的响应内容，不应再保留 `message` 这类重复正文/错误说明字段；鉴权拒绝效果没有 `body`，可以保留 `message` 表达拒绝原因。
+- 主动探测规则的服务信息属于规则级：`FaultDetectRule.target_service` 在 `FaultDetectSubRule` 之上；`FaultDetectSubRule` 只承载协议、端口、间隔、超时和协议配置等探测参数。客户端发现响应不需要 `FaultDetector{rules, revision}` 包裹，直接用 `DiscoverResponse.faultDetectRules[]`，聚合 revision 放在 `DiscoverResponse.service.revision`。
+- 主动探测 Console 的「被探测对象」只展示和编辑服务信息：命名空间与服务。接口名称、接口匹配类型、接口协议和方法不属于该 section；如果协议需要保留兼容字段，也不要在页面主路径暴露成被探测对象的一部分。
+- 当用户明确说“现在讨论的是最终效果，不考虑新老 spec 兼容”时，协议 PR 不应保留 Deprecated 字段、兼容注释或 fallback 语义；例如流量镜像和服务 Mock 应直接用顶层 `SourceService caller -> DestinationService callee`，删除旧 `target_service`。
+- 流量镜像和服务 Mock 的最终 spec 不需要配置持续时间；不要保留 `MirrorRule.duration`、`MockRule.delay` 或仅用于这两个字段的 `google.protobuf.Duration` 依赖，删除后按最终字段号压实。
+- 调整治理规则 spec 时优先复用已有领域端点类型；流量镜像和服务 Mock 的 caller/callee 不要新增 `ServiceScope`，直接使用既有 `SourceService` / `DestinationService`。
 
 ## 相关页面
 
 - [[todo]]
+- [[patterns]]

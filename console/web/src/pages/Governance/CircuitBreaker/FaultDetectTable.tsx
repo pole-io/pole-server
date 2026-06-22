@@ -3,7 +3,7 @@ import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, Table
 import { DeleteIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
 import { useNavigate } from 'react-router-dom';
 
-import { API, HTTPMethod, InterfaceProtocol, Label, MatchType, Op } from 'services/types';
+import { Op } from 'services/types';
 import Text from 'components/Text';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
@@ -33,27 +33,22 @@ const columns = (handleOpRule: (row: TableRowData, op: Op) => void, redirect: (r
         >{row.name}</Link>,
     },
     {
-        colKey: 'targetService.api.protocol',
-        title: '接口信息',
-        cell: ({ row }) => (
-            <div>
-                <div className={style.serviceCell}>协议: {row.targetService?.api?.protocol || '-'}</div>
-                <div className={style.serviceCell}>方法: {row.targetService?.api?.path?.value || '-'}</div>
-            </div>
-        ),
-    },
-    {
         colKey: 'caller',
-        title: '服务',
+        title: '被探测服务',
         ellipsis: true,
-        cell: ({ row }: TableRowData) => (
+        cell: ({ row }) => (
             <div className={style.serviceCell}>命名空间: {row.targetService?.namespace || '-'}<br />服务: {row.targetService?.service || '-'}</div>
         ),
     },
     {
         colKey: 'port',
-        title: '探测端口',
-        cell: ({ row }) => <Text>{row.port || '-'}</Text>,
+        title: '探测参数',
+        cell: ({ row }) => (
+            <div className={style.serviceCell}>
+                <div>协议: {row.protocol || '-'}</div>
+                <div>端口: {row.port || '-'} / 间隔: {row.interval || '-'}s / 超时: {row.timeout || '-'}s</div>
+            </div>
+        ),
     },
     {
         colKey: 'action',
@@ -274,6 +269,7 @@ const FaultDetectTable: React.FC<IFaultDetectTableProps> = ({ }) => {
                 visible={editorState.visible}
                 title={editorState.mode === 'create' ? '新建主动探测规则' : editorState.data?.name || '主动探测详情'}
                 subtitle="主动探测"
+                size="min(1560px, calc(100vw - 40px))"
                 onClose={() => setEditorState(pre => ({ ...pre, visible: false }))}
             >
                 <RuleTabs

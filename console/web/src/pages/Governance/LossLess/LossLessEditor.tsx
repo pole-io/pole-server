@@ -1,21 +1,25 @@
-
+import React from 'react';
 import {
+    Button,
     Form,
-    Input,
-    Select,
-    InputNumber,
-    Switch,
-    StickyTool,
     FormProps,
-    Tag,
+    Input,
+    InputAdornment,
+    InputNumber,
     RadioGroup,
+    Select,
+    Space,
+    StickyTool,
+    Switch,
+    Tag,
+    Textarea,
 } from 'tdesign-react';
-import Text from 'components/Text';
-import { Edit1Icon, SaveIcon, RollbackIcon, RocketIcon } from 'tdesign-icons-react';
+import { Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
+
 import RuleLabelField from '../shared/RuleLabelField';
 import shared from '../shared/governance.module.less';
-import React from 'react';
-import { HTTPMethodOption, Label, Op } from 'services/types';
+import styles from './index.module.less';
+import { Label, Op } from 'services/types';
 import { cleanNamespacePage, listAllNamespaces, selectNamespace } from 'modules/namespace';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
@@ -27,7 +31,29 @@ import RuleStickyAction from '../RuleRelease/RuleStickyAction';
 import { PolicySourceType } from 'services/auth_policy';
 import { ServiceView } from 'services/service';
 import { NamespaceView } from 'services/namespace';
-import { set } from 'lodash';
+import {
+    buildLosslessPreviewSpec,
+    buildLosslessSubmitPayload,
+    buildWarmupCurvePoints,
+    defaultLosslessRuleDraft,
+    delayStrategyOptions,
+    describeDelaySummary,
+    describeOfflineSummary,
+    describeWarmupCurve,
+    describeWarmupSummary,
+    httpMethodOptions,
+    LosslessPayloadMatch,
+    LosslessProbeProtocol,
+    LosslessRuleDraft,
+    LosslessSpecFormat,
+    metadataToRecord,
+    normalizeLosslessRuleDraft,
+    payloadMatchOptions,
+    payloadMatchText,
+    protocolOptions,
+    stringifyLosslessSpec,
+    validateLosslessDraft,
+} from './losslessEditorUtils';
 
 const { FormItem } = Form;
 const { StickyItem } = StickyTool;
@@ -36,58 +62,10 @@ export interface LossLessRule {
     id?: string;
     service: string;
     namespace: string;
-    lossless_online: {
-        delay_register: {
-            enable: boolean;
-            strategy: string;
-            interval: number;
-            health_check_protocol?: string;
-            health_check_method?: string;
-            health_check_path?: string;
-            health_check_interval?: number;
-        };
-        warmup: {
-            enable: boolean;
-            interval: number;
-            enable_overload_protection: boolean;
-            overload_protection_threshold: number;
-            curvature: number;
-        };
-    };
-    lossless_offline: {
-        enable: boolean;
-        interval: number;
-    };
+    lossless_online: LosslessRuleDraft['lossless_online'];
+    lossless_offline: LosslessRuleDraft['lossless_offline'];
     metadata?: Label[];
 }
-
-const defaultLossLess = (): LossLessRule => ({
-    service: '',
-    namespace: '',
-    lossless_online: {
-        delay_register: {
-            enable: false,
-            strategy: 'DELAY_BY_TIME',
-            interval: 30,
-            health_check_protocol: 'http',
-            health_check_method: 'GET',
-            health_check_path: '/health',
-            health_check_interval: 10,
-        },
-        warmup: {
-            enable: false,
-            interval: 300,
-            enable_overload_protection: false,
-            overload_protection_threshold: 50,
-            curvature: 2,
-        },
-    },
-    lossless_offline: {
-        enable: false,
-        interval: 30,
-    },
-    metadata: [],
-})
 
 export interface LossLessEditorProps {
     op: Op;
@@ -95,48 +73,42 @@ export interface LossLessEditorProps {
     refresh: (close: boolean) => void;
 }
 
-const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
+const protocolText: Record<LosslessProbeProtocol, string> = {
+    HTTP: 'HTTP',
+    TCP: 'TCP',
+    UDP: 'UDP',
+};
+
+const curveChartBox = {
+    width: 360,
+    height: 220,
+    left: 42,
+    right: 18,
+    top: 18,
+    bottom: 34,
+};
+
+const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible }) => {
     const [form] = Form.useForm();
     const dispatch = useAppDispatch();
 
-    const namespaceState = useAppSelector(selectNamespace);
-    const { datas: namespaceDatas } = namespaceState;
+    const { datas: namespaceDatas } = useAppSelector(selectNamespace);
+    const { datas: serviceDatas } = useAppSelector(selectService);
+    const { editRule } = useAppSelector(selectLosslessRule);
 
-    const serviceState = useAppSelector(selectService);
-    const { datas: serviceDatas } = serviceState;
-
-    const losslessState = useAppSelector(selectLosslessRule);
-    const { editRule, viewRule } = losslessState;
-
-    // 创建规则状态
-    const [losslessRule, setLosslessRule] = React.useState<LossLessRule>(defaultLossLess());
-
+    const [losslessRule, setLosslessRule] = React.useState<LosslessRuleDraft>(() => defaultLosslessRuleDraft());
+    const [specFormat, setSpecFormat] = React.useState<LosslessSpecFormat>('yaml');
     const [editor, setEditor] = React.useState<{
-        visible: boolean;
-        editable?: boolean; // 是否可编辑
-        model: Op;
+        editable: boolean;
         publishView: boolean;
-    }>({ model: 'view', visible: false, editable: op === 'create', publishView: false });
+    }>({ editable: op === 'create', publishView: false });
 
-    const renderReadonlySwitch = (enabled?: boolean) => (
-        <Tag theme={enabled ? 'success' : 'default'} variant="light">
-            {enabled ? '开启' : '关闭'}
-        </Tag>
-    );
-
-    const renderReadonlyValue = (value: React.ReactNode) => (
-        <Text>{value ?? '-'}</Text>
-    );
-
-    const renderSeconds = (value?: number) => renderReadonlyValue(value === undefined || value === null ? '-' : `${value} 秒`);
-
-    // 初始化数据
     React.useEffect(() => {
         dispatch(listAllNamespaces()).then((res) => {
             if (res.meta.requestStatus === 'rejected') {
                 openErrNotification('请求错误', `获取命名空间列表失败: ${res.payload as string}`);
             }
-        })
+        });
         dispatch(listAllServices()).then((res) => {
             if (res.meta.requestStatus === 'rejected') {
                 openErrNotification('请求错误', `获取服务列表失败: ${res.payload as string}`);
@@ -146,100 +118,114 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
         return () => {
             dispatch(cleanNamespacePage());
             dispatch(cleanServicePage());
-        }
+        };
     }, []);
 
     React.useEffect(() => {
-        if (editRule) {
-            if (editRule.id !== '') {
-                dispatch(listOneLossLessRule({ id: editRule.id || '' })).then((res) => {
-                    if (res.meta.requestStatus === 'fulfilled') {
-                        const ret = res.payload as { viewRule: LossLessRuleView } | null
-                        resetCurRule(ret?.viewRule || null);
-                    } else {
-                        openErrNotification('请求错误', `获取无损规则详情失败: ${res.payload as string}`);
-                    }
-                })
-            } else {
-                resetCurRule(editRule);
-            }
+        if (!visible) {
+            setEditor({ editable: op === 'create', publishView: false });
+            setLosslessRule(defaultLosslessRuleDraft());
+            return;
         }
-    }, [editRule])
+        setEditor({ editable: op === 'create', publishView: false });
+    }, [visible, op]);
+
+    React.useEffect(() => {
+        if (!editRule) return;
+        if (editRule.id) {
+            dispatch(listOneLossLessRule({ id: editRule.id || '' })).then((res) => {
+                if (res.meta.requestStatus === 'fulfilled') {
+                    const ret = res.payload as { viewRule: LossLessRuleView } | null;
+                    resetCurRule(ret?.viewRule || null);
+                } else {
+                    openErrNotification('请求错误', `获取无损规则详情失败: ${res.payload as string}`);
+                }
+            });
+        } else {
+            resetCurRule(editRule);
+        }
+    }, [editRule?.id]);
 
     const resetCurRule = (rule: LossLessRuleView | null) => {
         if (!rule) {
+            setLosslessRule(defaultLosslessRuleDraft());
             return;
         }
-        setLosslessRule({
-            id: rule.id,
-            service: rule.service,
-            namespace: rule.namespace,
-            lossless_online: {
-                delay_register: {
-                    enable: rule.lossless_online.delay_register.enable,
-                    strategy: rule.lossless_online.delay_register.strategy,
-                    interval: parseInt((rule.lossless_online.delay_register.interval || '0').replace(/s$/, '')) || 0,
-                    health_check_protocol: rule.lossless_online.delay_register.health_check_protocol,
-                    health_check_method: rule.lossless_online.delay_register.health_check_method,
-                    health_check_path: rule.lossless_online.delay_register.health_check_path,
-                    health_check_interval: parseInt((rule.lossless_online.delay_register.health_check_interval || '0').replace(/s$/, '')) || 0,
-                },
-                warmup: {
-                    enable: rule.lossless_online.warmup.enable,
-                    interval: parseInt((rule.lossless_online.warmup.interval || '0').replace(/s$/, '')) || 0,
-                    enable_overload_protection: rule.lossless_online.warmup.enable_overload_protection,
-                    overload_protection_threshold: rule.lossless_online.warmup.overload_protection_threshold,
-                    curvature: rule.lossless_online.warmup.curvature,
-                },
-            },
-            lossless_offline: {
-                enable: rule.lossless_offline.enable,
-                interval: parseInt((rule.lossless_offline.interval || '0').replace(/s$/, '')) || 0,
-            },
-            metadata: rule.metadata ? Object.entries(rule.metadata).map(([key, value]) => ({ key, value })) : [],
-        });
-    }
+        setLosslessRule(normalizeLosslessRuleDraft(rule));
+    };
 
-    const onSubmit: FormProps['onSubmit'] = async (e) => {
-        if (e.validateResult !== true) {
+    const namespaceSelectOptions = namespaceDatas.map((ns: NamespaceView) => ({ label: ns.name, value: ns.name }));
+    const serviceSelectOptions = serviceDatas
+        .filter((opt: ServiceView) => !losslessRule.namespace || losslessRule.namespace === '*' || opt.namespace === losslessRule.namespace)
+        .map((service: ServiceView) => ({ label: service.name, value: service.name }));
+
+    const editable = editor.editable;
+    const validationErrors = React.useMemo(() => validateLosslessDraft(losslessRule), [losslessRule]);
+    const previewSpec = React.useMemo(() => buildLosslessPreviewSpec(losslessRule), [losslessRule]);
+    const previewText = React.useMemo(() => stringifyLosslessSpec(previewSpec, specFormat), [previewSpec, specFormat]);
+    const submitPayload = React.useMemo(() => buildLosslessSubmitPayload(losslessRule), [losslessRule]);
+    const metadataRecord = React.useMemo(() => metadataToRecord(losslessRule.metadata), [losslessRule.metadata]);
+    const warmupCurvePoints = React.useMemo(() => buildWarmupCurvePoints(losslessRule.lossless_online.warmup.curvature), [losslessRule.lossless_online.warmup.curvature]);
+
+    const updateDraft = (updater: (draft: LosslessRuleDraft) => LosslessRuleDraft) => {
+        setLosslessRule(prev => updater(prev));
+    };
+
+    const updateDelay = (patch: Partial<LosslessRuleDraft['lossless_online']['delay_register']>) => {
+        updateDraft(prev => ({
+            ...prev,
+            lossless_online: {
+                ...prev.lossless_online,
+                delay_register: {
+                    ...prev.lossless_online.delay_register,
+                    ...patch,
+                },
+            },
+        }));
+    };
+
+    const updateWarmup = (patch: Partial<LosslessRuleDraft['lossless_online']['warmup']>) => {
+        updateDraft(prev => ({
+            ...prev,
+            lossless_online: {
+                ...prev.lossless_online,
+                warmup: {
+                    ...prev.lossless_online.warmup,
+                    ...patch,
+                },
+            },
+        }));
+    };
+
+    const updateOffline = (patch: Partial<LosslessRuleDraft['lossless_offline']>) => {
+        updateDraft(prev => ({
+            ...prev,
+            lossless_offline: {
+                ...prev.lossless_offline,
+                ...patch,
+            },
+        }));
+    };
+
+    const copyPreview = async () => {
+        try {
+            await navigator.clipboard.writeText(previewText);
+            openInfoNotification('复制成功', '已复制无损规则 Spec');
+        } catch (err) {
+            openErrNotification('复制失败', (err as Error).message);
+        }
+    };
+
+    const onSubmit: FormProps['onSubmit'] = async () => {
+        const errors = validateLosslessDraft(losslessRule);
+        if (errors.length > 0) {
+            openErrNotification('保存校验失败', errors[0].message);
             return;
         }
         const saveAction = op === 'create' ? saveLossLessRule : updateLosslessRule;
-        dispatch(saveAction({
-            param: {
-                id: losslessRule.id,
-                service: losslessRule.service,
-                namespace: losslessRule.namespace,
-                lossless_online: {
-                    delay_register: {
-                        enable: losslessRule.lossless_online.delay_register.enable,
-                        strategy: losslessRule.lossless_online.delay_register.strategy,
-                        interval: losslessRule.lossless_online.delay_register.interval == 0 ? "0s" : `${losslessRule.lossless_online.delay_register.interval}s`,
-                        health_check_protocol: losslessRule.lossless_online.delay_register.health_check_protocol,
-                        health_check_method: losslessRule.lossless_online.delay_register.health_check_method,
-                        health_check_path: losslessRule.lossless_online.delay_register.health_check_path,
-                        health_check_interval: losslessRule.lossless_online.delay_register.health_check_interval == 0 ? "0s" : `${losslessRule.lossless_online.delay_register.health_check_interval}s`,
-                    },
-                    warmup: {
-                        enable: losslessRule.lossless_online.warmup.enable,
-                        interval: losslessRule.lossless_online.warmup.interval == 0 ? "0s" : `${losslessRule.lossless_online.warmup.interval}s`,
-                        enable_overload_protection: losslessRule.lossless_online.warmup.enable_overload_protection,
-                        overload_protection_threshold: losslessRule.lossless_online.warmup.overload_protection_threshold,
-                        curvature: losslessRule.lossless_online.warmup.curvature,
-                    },
-                },
-                lossless_offline: {
-                    enable: losslessRule.lossless_offline.enable,
-                    interval: losslessRule.lossless_offline.interval == 0 ? "0s" : `${losslessRule.lossless_offline.interval}s`,
-                },
-                metadata: losslessRule.metadata?.reduce((acc, cur) => {
-                    acc[cur.key] = cur.value;
-                    return acc;
-                }, {} as Record<string, string>)
-            }
-        })).then((res) => {
+        dispatch(saveAction({ param: submitPayload as any })).then((res) => {
             if (res.meta.requestStatus === 'fulfilled') {
-                openInfoNotification("请求成功", "保存无损规则成功");
+                openInfoNotification('请求成功', '保存无损规则成功');
                 if (op === 'create') {
                     refresh(true);
                 } else {
@@ -247,550 +233,534 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh }) => {
                     refresh(false);
                 }
             } else {
-                openErrNotification("请求失败", `保存无损规则失败: ${res.payload as string || '未知'}`);
+                openErrNotification('请求失败', `保存无损规则失败: ${res.payload as string || '未知'}`);
             }
         });
     };
 
-
-    const losslessMetadataRecord = React.useMemo(
-        () => (losslessRule.metadata || []).reduce<Record<string, string>>((acc, cur) => {
-            if (cur.key) acc[cur.key] = cur.value;
-            return acc;
-        }, {}),
-        [losslessRule.metadata],
+    const renderStatusTag = (enabled?: boolean) => (
+        <Tag theme={enabled ? 'success' : 'default'} variant="light">
+            {enabled ? '开启' : '关闭'}
+        </Tag>
     );
 
-    const serviceInfo = (
-        <div className={shared.section}>
-            <div className={shared.sectionHeader}>基础信息</div>
+    const renderReadonly = (value?: React.ReactNode) => (
+        <div className={shared.fieldValue}>{value || '-'}</div>
+    );
+
+    const renderSeconds = (value?: number) => renderReadonly(value === undefined || value === null ? '-' : `${value} Second`);
+
+    const renderUnitNumber = (
+        value: number | undefined,
+        onChange: (value: number | undefined) => void,
+        unit: string,
+        min?: number,
+        max?: number,
+        placeholder?: string,
+    ) => (
+        <InputAdornment append={unit} className={styles.unitNumber}>
+            <InputNumber
+                min={min}
+                max={max}
+                placeholder={placeholder}
+                value={value}
+                onChange={(next) => onChange(next === undefined || next === null ? undefined : next as number)}
+            />
+        </InputAdornment>
+    );
+
+    const renderWarmupCurveChart = () => {
+        const { width, height, left, right, top, bottom } = curveChartBox;
+        const innerWidth = width - left - right;
+        const innerHeight = height - top - bottom;
+        const xOf = (progress: number) => left + (progress / 100) * innerWidth;
+        const yOf = (weight: number) => top + (1 - weight / 100) * innerHeight;
+        const linePath = warmupCurvePoints.map((point, index) => `${index === 0 ? 'M' : 'L'} ${xOf(point.progress).toFixed(2)} ${yOf(point.weight).toFixed(2)}`).join(' ');
+        const areaPath = `${linePath} L ${xOf(100)} ${yOf(0)} L ${xOf(0)} ${yOf(0)} Z`;
+        const ticks = [0, 25, 50, 75, 100];
+        const markerPoints = warmupCurvePoints.filter(point => ticks.includes(point.progress));
+
+        return (
+            <svg className={styles.curveSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="预热曲线图">
+                {ticks.map(tick => (
+                    <React.Fragment key={`grid-${tick}`}>
+                        <line className={styles.curveGrid} x1={xOf(tick)} y1={top} x2={xOf(tick)} y2={yOf(0)} />
+                        <line className={styles.curveGrid} x1={left} y1={yOf(tick)} x2={xOf(100)} y2={yOf(tick)} />
+                        <text className={styles.curveTick} x={xOf(tick)} y={height - 12} textAnchor="middle">{tick}%</text>
+                        <text className={styles.curveTick} x={left - 10} y={yOf(tick) + 4} textAnchor="end">{tick}%</text>
+                    </React.Fragment>
+                ))}
+                <path className={styles.curveArea} d={areaPath} />
+                <path className={styles.curveLine} d={linePath} />
+                {markerPoints.map(point => (
+                    <g key={`marker-${point.progress}`}>
+                        <circle className={styles.curveDot} cx={xOf(point.progress)} cy={yOf(point.weight)} r="3.5" />
+                        <text className={styles.curveMarkerLabel} x={xOf(point.progress)} y={yOf(point.weight) - 8} textAnchor="middle">{point.weight}%</text>
+                    </g>
+                ))}
+                <text className={styles.curveAxisLabel} x={(left + xOf(100)) / 2} y={height - 2} textAnchor="middle">预热时间进度</text>
+                <text className={styles.curveAxisLabel} x="12" y={(top + yOf(0)) / 2} textAnchor="middle" transform={`rotate(-90 12 ${(top + yOf(0)) / 2})`}>动态权重占比</text>
+            </svg>
+        );
+    };
+
+    const renderBasicInfo = (
+        <section className={shared.section}>
+            <div className={shared.sectionHeader}>
+                <span>基础信息</span>
+            </div>
             <div className={shared.sectionBody}>
                 <div className={shared.infoGrid}>
                     <div className={shared.field}>
-                        <div className={shared.fieldLabel}>命名空间</div>
-                        {editor.editable ? (
-                            <Select
-                                filterable creatable
-                                value={losslessRule.namespace}
-                                options={namespaceDatas.map((ns: NamespaceView) => ({ label: ns.name, value: ns.name }))}
-                                onChange={(value) => setLosslessRule(prev => ({ ...prev, namespace: value as string }))}
-                            />
-                        ) : <div className={shared.fieldValue}>{losslessRule.namespace || '-'}</div>}
+                        <div className={shared.fieldLabel}>规则标识</div>
+                        <div className={`${shared.fieldValue} ${shared.mono}`}>{losslessRule.id || `${losslessRule.namespace || '-'}/${losslessRule.service || '-'}`}</div>
                     </div>
                     <div className={shared.field}>
-                        <div className={shared.fieldLabel}>服务名称</div>
-                        {editor.editable ? (
-                            <Select
-                                filterable creatable
-                                value={losslessRule.service}
-                                options={serviceDatas.filter(opt => losslessRule.namespace === '*' || opt.namespace === losslessRule.namespace).map((service: ServiceView) => ({ label: service.name, value: service.name }))}
-                                onChange={(value) => setLosslessRule(prev => ({ ...prev, service: value as string }))}
-                            />
-                        ) : <div className={shared.fieldValue}>{losslessRule.service || '-'}</div>}
+                        <div className={shared.fieldLabel}>优先级</div>
+                        {renderReadonly('5')}
+                    </div>
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>启用状态</div>
+                        {renderStatusTag(previewSpec.metadata.enabled)}
                     </div>
                     <div className={`${shared.field} ${shared.full}`}>
                         <div className={shared.fieldLabel}>规则标签</div>
                         <RuleLabelField
-                            metadata={losslessMetadataRecord}
-                            editable={editor.editable}
-                            onChange={(next) => setLosslessRule(prev => ({ ...prev, metadata: Object.entries(next).map(([key, value]) => ({ key, value })) }))}
+                            metadata={metadataRecord}
+                            editable={editable}
+                            onChange={(next) => updateDraft(prev => ({
+                                ...prev,
+                                metadata: Object.entries(next).map(([key, value]) => ({ key, value })),
+                            }))}
                         />
                     </div>
                 </div>
             </div>
+        </section>
+    );
+
+    const renderScope = (
+        <section className={shared.section}>
+            <div className={shared.sectionHeader}>
+                <span>治理对象</span>
+                <span className={`${shared.fieldValue} ${shared.mono}`}>{losslessRule.namespace || '-'}/{losslessRule.service || '-'}</span>
+            </div>
+            <div className={shared.sectionBody}>
+                <div className={styles.sectionSubtle}>无损上线 / 下线作用的服务实例集合</div>
+                <div className={shared.infoGrid}>
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>主调命名空间</div>
+                        {editable ? (
+                            <Select
+                                filterable
+                                creatable
+                                value={losslessRule.namespace}
+                                options={namespaceSelectOptions}
+                                onChange={(value) => updateDraft(prev => ({ ...prev, namespace: value as string }))}
+                            />
+                        ) : renderReadonly(losslessRule.namespace)}
+                    </div>
+                    <div className={shared.field}>
+                        <div className={shared.fieldLabel}>服务名称</div>
+                        {editable ? (
+                            <Select
+                                filterable
+                                creatable
+                                value={losslessRule.service}
+                                options={serviceSelectOptions}
+                                onChange={(value) => updateDraft(prev => ({ ...prev, service: value as string }))}
+                            />
+                        ) : renderReadonly(losslessRule.service)}
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+
+    const renderStrategyCards = (
+        <div className={styles.strategyCards}>
+            {delayStrategyOptions.map(option => {
+                const active = losslessRule.lossless_online.delay_register.strategy === option.value;
+                return (
+                    <button
+                        key={option.value}
+                        className={active ? styles.strategyCardActive : styles.strategyCard}
+                        disabled={!editable}
+                        type="button"
+                        onClick={() => updateDelay({ strategy: option.value as any })}
+                    >
+                        <span>{option.label}</span>
+                        <small>{option.value === 'DELAY_BY_TIME' ? '实例启动后等待固定秒数，再注册到服务发现。' : '健康检查成功后才暴露实例，避免未就绪接流。'}</small>
+                    </button>
+                );
+            })}
         </div>
     );
 
-    const renderEditForm = (
-        <div className={shared.section}>
-            <div className={shared.sectionHeader}>无损上下线配置</div>
-            <div className={shared.sectionBody}>
-                <div className={`${shared.group} ${losslessRule.lossless_online?.delay_register?.enable ? '' : shared.groupDisabled}`}>
-                    <div className={shared.groupHead}>
-                        <span className={shared.groupTitle}><span className={shared.groupIndex}>1</span>无损上线 · 延迟注册</span>
-                        <span className={`${shared.pill} ${losslessRule.lossless_online?.delay_register?.enable ? shared.pillOk : shared.pillOff} ${shared.pillDot}`}>{losslessRule.lossless_online?.delay_register?.enable ? '启用' : '未启用'}</span>
-                    </div>
-                    <div className={shared.groupBody}>
-                <FormItem label="延迟注册">
-                    {editor.editable ? (
-                        <div>
-                            <Switch
-                                defaultValue={losslessRule.lossless_online?.delay_register?.enable}
-                                value={losslessRule.lossless_online?.delay_register?.enable}
-                                disabled={!editor.editable}
-                                onChange={(checked) => {
-                                    setLosslessRule(prev => ({
-                                        ...prev,
-                                        lossless_online: {
-                                            ...prev.lossless_online,
-                                            delay_register: {
-                                                ...prev.lossless_online.delay_register,
-                                                enable: checked as boolean,
-                                            }
-                                        }
-                                    }))
-                                }} />
-                        </div>
-                    ) : renderReadonlySwitch(losslessRule.lossless_online?.delay_register?.enable)}
-                </FormItem>
-                {(losslessRule.lossless_online?.delay_register?.enable) && (
-                    <>
-                        <FormItem label="延迟注册策略">
-                            {editor.editable ? (
-                                <div>
-                                    <RadioGroup
-                                        theme='button'
-                                        variant='primary-filled'
-                                        options={[{
-                                            label: '时长延迟',
-                                            value: 'DELAY_BY_TIME'
-                                        }, {
-                                            label: '探测延迟',
-                                            value: 'DELAY_BY_HEALTH_CHECK'
-                                        }]}
-                                        value={losslessRule.lossless_online?.delay_register?.strategy}
-                                        defaultValue={losslessRule.lossless_online?.delay_register?.strategy}
-                                        readonly={!editor.editable}
-                                        onChange={(value) => {
-                                            setLosslessRule(prev => ({
-                                                ...prev,
-                                                lossless_online: {
-                                                    ...prev.lossless_online,
-                                                    delay_register: {
-                                                        ...prev.lossless_online.delay_register,
-                                                        strategy: value as string,
-                                                    }
-                                                }
-                                            }))
-                                        }}
-                                    />
-                                </div>
-                            ) : renderReadonlyValue(losslessRule.lossless_online?.delay_register?.strategy === 'DELAY_BY_HEALTH_CHECK' ? '探测延迟' : '时长延迟')}
-                        </FormItem>
-                        {losslessRule.lossless_online?.delay_register?.strategy === 'DELAY_BY_TIME' && (
-                            <FormItem label="延迟注册时间(秒)" name={["lossless_online", "delay_register", "interval"]}>
-                                {editor.editable ? (
-                                    <div>
-                                        <InputNumber
-                                            min={1}
-                                            max={86400}
-                                            theme='normal'
-                                            suffix="Second"
-                                            value={losslessRule.lossless_online?.delay_register?.interval}
-                                            readonly={!editor.editable}
-                                            inputProps={
-                                                {
-                                                    borderless: !editor.editable,
-                                                }
-                                            }
-                                            onChange={(value) => {
-                                                setLosslessRule(prev => ({
-                                                    ...prev,
-                                                    lossless_online: {
-                                                        ...prev.lossless_online,
-                                                        delay_register: {
-                                                            ...prev.lossless_online.delay_register,
-                                                            interval: value as number,
-                                                        }
-                                                    }
-                                                }))
-                                            }}
-                                        />
-                                    </div>
-                                ) : renderSeconds(losslessRule.lossless_online?.delay_register?.interval)}
-                            </FormItem>
-                        )}
-                        {losslessRule.lossless_online?.delay_register?.strategy === 'DELAY_BY_HEALTH_CHECK' && (
-                            <>
-                                <FormItem label="健康检查协议">
-                                    {editor.editable ? (
-                                        <div>
-                                            <Select
-                                                options={[
-                                                    {
-                                                        label: 'HTTP',
-                                                        value: 'http'
-                                                    }]}
-                                                value={losslessRule.lossless_online?.delay_register?.health_check_protocol}
-                                                readonly={!editor.editable}
-                                                inputProps={
-                                                    {
-                                                        borderless: !editor.editable,
-                                                    }
-                                                }
-                                                onChange={(value) => {
-                                                    setLosslessRule(prev => ({
-                                                        ...prev,
-                                                        lossless_online: {
-                                                            ...prev.lossless_online,
-                                                            delay_register: {
-                                                                ...prev.lossless_online.delay_register,
-                                                                health_check_protocol: value as string,
-                                                            }
-                                                        }
-                                                    }))
-                                                }}
-                                            />
-                                        </div>
-                                    ) : renderReadonlyValue((losslessRule.lossless_online?.delay_register?.health_check_protocol || '-').toUpperCase())}
-                                </FormItem>
-                                <FormItem label="健康检查方法">
-                                    {editor.editable ? (
-                                        <div>
-                                            <Select
-                                                options={HTTPMethodOption}
-                                                value={losslessRule.lossless_online?.delay_register?.health_check_method}
-                                                readonly={!editor.editable}
-                                                inputProps={
-                                                    {
-                                                        borderless: !editor.editable,
-                                                    }
-                                                }
-                                                onChange={(value) => {
-                                                    setLosslessRule(prev => ({
-                                                        ...prev,
-                                                        lossless_online: {
-                                                            ...prev.lossless_online,
-                                                            delay_register: {
-                                                                ...prev.lossless_online.delay_register,
-                                                                health_check_method: value as string,
-                                                            }
-                                                        }
-                                                    }))
-                                                }}
-                                            />
-                                        </div>
-                                    ) : renderReadonlyValue(losslessRule.lossless_online?.delay_register?.health_check_method || '-')}
-                                </FormItem>
-                                <FormItem label="健康检查路径">
-                                    {editor.editable ? (
-                                        <div>
-                                            <Input
-                                                value={losslessRule.lossless_online?.delay_register?.health_check_path}
-                                                readonly={!editor.editable}
-                                                borderless={!editor.editable}
-                                                onChange={(value) => {
-                                                    setLosslessRule(prev => ({
-                                                        ...prev,
-                                                        lossless_online: {
-                                                            ...prev.lossless_online,
-                                                            delay_register: {
-                                                                ...prev.lossless_online.delay_register,
-                                                                health_check_path: value as string,
-                                                            }
-                                                        }
-                                                    }))
-                                                }}
-                                            />
-                                        </div>
-                                    ) : renderReadonlyValue(losslessRule.lossless_online?.delay_register?.health_check_path || '-')}
-                                </FormItem>
-                                <FormItem label="健康检查间隔(秒)">
-                                    {editor.editable ? (
-                                        <div>
-                                            <InputNumber
-                                                min={1}
-                                                max={60}
-                                                value={losslessRule.lossless_online?.delay_register?.health_check_interval}
-                                                readonly={!editor.editable}
-                                                inputProps={
-                                                    {
-                                                        borderless: !editor.editable,
-                                                    }
-                                                }
-                                                theme='normal'
-                                                suffix="Second"
-                                                onChange={(value) => {
-                                                    setLosslessRule(prev => ({
-                                                        ...prev,
-                                                        lossless_online: {
-                                                            ...prev.lossless_online,
-                                                            delay_register: {
-                                                                ...prev.lossless_online.delay_register,
-                                                                health_check_interval: value as number,
-                                                            }
-                                                        }
-                                                    }))
-                                                }} />
-                                        </div>
-                                    ) : renderSeconds(losslessRule.lossless_online?.delay_register?.health_check_interval)}
-                                </FormItem>
-                            </>
-                        )}
-                    </>
-                )}
-                    </div>
-                </div>
-                <div className={`${shared.group} ${losslessRule.lossless_online?.warmup?.enable ? '' : shared.groupDisabled}`}>
-                    <div className={shared.groupHead}>
-                        <span className={shared.groupTitle}><span className={shared.groupIndex}>2</span>服务预热</span>
-                        <span className={`${shared.pill} ${losslessRule.lossless_online?.warmup?.enable ? shared.pillOk : shared.pillOff} ${shared.pillDot}`}>{losslessRule.lossless_online?.warmup?.enable ? '启用' : '未启用'}</span>
-                    </div>
-                    <div className={shared.groupBody}>
-                <FormItem label="预热启用" name={["lossless_online", "warmup", "enable"]}>
-                    {editor.editable ? (
-                        <div>
-                            <Switch
-                                value={losslessRule.lossless_online?.warmup?.enable}
-                                defaultValue={losslessRule.lossless_online?.warmup?.enable}
-                                disabled={!editor.editable}
-                                onChange={(checked) => {
-                                    setLosslessRule(prev => ({
-                                        ...prev,
-                                        lossless_online: {
-                                            ...prev.lossless_online,
-                                            warmup: {
-                                                ...prev.lossless_online.warmup,
-                                                enable: checked as boolean,
-                                            }
-                                        }
-                                    }))
-                                }}
-                            />
-                        </div>
-                    ) : renderReadonlySwitch(losslessRule.lossless_online?.warmup?.enable)}
-                </FormItem>
-                {(losslessRule.lossless_online?.warmup?.enable) && (
-                    <>
-                        <FormItem label="预热时长(秒)">
-                            {editor.editable ? (
-                                <div>
-                                    <InputNumber
-                                        min={1}
-                                        max={86400}
-                                        theme='normal'
-                                        suffix="Second"
-                                        value={losslessRule.lossless_online?.warmup?.interval}
-                                        readonly={!editor.editable}
-                                        inputProps={
-                                            {
-                                                borderless: !editor.editable,
-                                            }
-                                        }
-                                        onChange={(value) => {
-                                            setLosslessRule(prev => ({
-                                                ...prev,
-                                                lossless_online: {
-                                                    ...prev.lossless_online,
-                                                    warmup: {
-                                                        ...prev.lossless_online.warmup,
-                                                        interval: value as number,
-                                                    }
-                                                }
-                                            }))
-                                        }}
-                                    />
-                                </div>
-                            ) : renderSeconds(losslessRule.lossless_online?.warmup?.interval)}
-                        </FormItem>
-                        <FormItem label="预热终止保护">
-                            {editor.editable ? (
-                                <div>
-                                    <Switch
-                                        value={losslessRule.lossless_online?.warmup?.enable_overload_protection}
-                                        defaultValue={losslessRule.lossless_online?.warmup?.enable_overload_protection}
-                                        disabled={!editor.editable}
-                                        onChange={(checked) => {
-                                            setLosslessRule(prev => ({
-                                                ...prev,
-                                                lossless_online: {
-                                                    ...prev.lossless_online,
-                                                    warmup: {
-                                                        ...prev.lossless_online.warmup,
-                                                        enable_overload_protection: checked as boolean,
-                                                    }
-                                                }
-                                            }))
-                                        }}
-                                    />
-                                </div>
-                            ) : renderReadonlySwitch(losslessRule.lossless_online?.warmup?.enable_overload_protection)}
-                        </FormItem>
-                        {losslessRule.lossless_online?.warmup?.enable_overload_protection && (
-                            <FormItem label="预热终止百分比">
-                                {editor.editable ? (
-                                    <div>
-                                        <InputNumber
-                                            min={0}
-                                            max={100}
-                                            theme='normal'
-                                            value={losslessRule.lossless_online?.warmup?.overload_protection_threshold}
-                                            readonly={!editor.editable}
-                                            inputProps={
-                                                {
-                                                    borderless: !editor.editable,
-                                                }
-                                            }
-                                            suffix="%"
-                                            onChange={(value) => {
-                                                setLosslessRule(prev => ({
-                                                    ...prev,
-                                                    lossless_online: {
-                                                        ...prev.lossless_online,
-                                                        warmup: {
-                                                            ...prev.lossless_online.warmup,
-                                                            overload_protection_threshold: value as number,
-                                                        }
-                                                    }
-                                                }))
-                                            }}
-                                        />
-                                    </div>
-                                ) : renderReadonlyValue(`${losslessRule.lossless_online?.warmup?.overload_protection_threshold ?? '-'}%`)}
-                            </FormItem>
-                        )}
-                        <FormItem label="预热曲线值" name={["lossless_online", "warmup", "curvature"]}>
-                            {editor.editable ? (
-                                <InputNumber
-                                    min={1}
-                                    max={5}
-                                    theme='normal'
-                                    onChange={(value) => {
-                                        setLosslessRule(prev => ({
-                                            ...prev,
-                                            lossless_online: {
-                                                ...prev.lossless_online,
-                                                warmup: {
-                                                    ...prev.lossless_online.warmup,
-                                                    curvature: value as number,
-                                                }
-                                            }
-                                        }))
-                                    }}
-                                />
-                            ) : (
-                                <Text>{losslessRule.lossless_online?.warmup?.curvature || '-'}</Text>
-                            )}
-                        </FormItem>
-                    </>
-                )}
-                    </div>
-                </div>
-                <div className={`${shared.group} ${losslessRule.lossless_offline?.enable ? '' : shared.groupDisabled}`}>
-                    <div className={shared.groupHead}>
-                        <span className={shared.groupTitle}><span className={shared.groupIndex}>3</span>无损下线</span>
-                        <span className={`${shared.pill} ${losslessRule.lossless_offline?.enable ? shared.pillOk : shared.pillOff} ${shared.pillDot}`}>{losslessRule.lossless_offline?.enable ? '启用' : '未启用'}</span>
-                    </div>
-                    <div className={shared.groupBody}>
-                <FormItem label="无损下线启用">
-                    {editor.editable ? (
-                        <div>
-                            <Switch
-                                value={losslessRule.lossless_offline?.enable}
-                                defaultValue={losslessRule.lossless_offline?.enable}
-                                disabled={!editor.editable}
-                                onChange={(checked) => {
-                                    setLosslessRule(prev => ({
-                                        ...prev,
-                                        lossless_offline: {
-                                            ...prev.lossless_offline,
-                                            enable: checked as boolean,
-                                        }
-                                    }))
-                                }} />
-                        </div>
-                    ) : renderReadonlySwitch(losslessRule.lossless_offline?.enable)}
-                </FormItem>
-                {(losslessRule.lossless_offline?.enable) && (
-                    <FormItem label="无损下线间隔">
-                        {editor.editable ? (
-                            <div>
-                                <InputNumber
-                                    min={0}
-                                    max={120}
-                                    theme='normal'
-                                    suffix="Second"
-                                    value={losslessRule.lossless_offline?.interval}
-                                    readonly={!editor.editable}
-                                    inputProps={
-                                        {
-                                            borderless: !editor.editable,
-                                        }
-                                    }
-                                    onChange={(value) => {
-                                        setLosslessRule(prev => ({
-                                            ...prev,
-                                            lossless_offline: {
-                                                ...prev.lossless_offline,
-                                                interval: value as number,
-                                            }
-                                        }))
-                                    }}
-                                />
-                            </div>
-                        ) : renderSeconds(losslessRule.lossless_offline?.interval)}
-                    </FormItem>
-                )}
-                    </div>
-                </div>
+    const renderHTTPProbe = (
+        <div className={shared.kv2}>
+            <div>
+                <div className={shared.editLabel}>请求方法</div>
+                {editable ? (
+                    <Select
+                        value={losslessRule.lossless_online.delay_register.health_check_method}
+                        options={httpMethodOptions}
+                        onChange={(value) => updateDelay({ health_check_method: value as string })}
+                    />
+                ) : renderReadonly(losslessRule.lossless_online.delay_register.health_check_method)}
+            </div>
+            <div>
+                <div className={shared.editLabel}>检查路径</div>
+                {editable ? (
+                    <Input
+                        value={losslessRule.lossless_online.delay_register.health_check_path}
+                        onChange={(value) => updateDelay({ health_check_path: value as string })}
+                    />
+                ) : renderReadonly(losslessRule.lossless_online.delay_register.health_check_path)}
             </div>
         </div>
     );
 
+    const renderPayloadProbe = (
+        <>
+            <div className={styles.inlineNotice}>默认使用实例 {protocolText[losslessRule.lossless_online.delay_register.health_check_protocol]} 协议端口；仅当响应报文匹配成功后注册。</div>
+            <div className={shared.kv2}>
+                <div>
+                    <div className={shared.editLabel}>匹配方式</div>
+                    {editable ? (
+                        <Select
+                            value={losslessRule.lossless_online.delay_register.payload.match}
+                            options={payloadMatchOptions}
+                            onChange={(value) => updateDelay({
+                                payload: {
+                                    ...losslessRule.lossless_online.delay_register.payload,
+                                    match: value as LosslessPayloadMatch,
+                                },
+                            })}
+                        />
+                    ) : renderReadonly(payloadMatchText[losslessRule.lossless_online.delay_register.payload.match])}
+                </div>
+                <div />
+                <div>
+                    <div className={shared.editLabel}>发送报文</div>
+                    {editable ? (
+                        <Textarea
+                            autosize={{ minRows: 3, maxRows: 6 }}
+                            value={losslessRule.lossless_online.delay_register.payload.request}
+                            onChange={(value) => updateDelay({
+                                payload: {
+                                    ...losslessRule.lossless_online.delay_register.payload,
+                                    request: value as string,
+                                },
+                            })}
+                        />
+                    ) : renderReadonly(losslessRule.lossless_online.delay_register.payload.request || '-')}
+                </div>
+                <div>
+                    <div className={shared.editLabel}>响应匹配</div>
+                    {editable ? (
+                        <Textarea
+                            autosize={{ minRows: 3, maxRows: 6 }}
+                            value={losslessRule.lossless_online.delay_register.payload.response}
+                            onChange={(value) => updateDelay({
+                                payload: {
+                                    ...losslessRule.lossless_online.delay_register.payload,
+                                    response: value as string,
+                                },
+                            })}
+                        />
+                    ) : renderReadonly(losslessRule.lossless_online.delay_register.payload.response || '-')}
+                </div>
+            </div>
+        </>
+    );
+
+    const renderDelayRegister = (
+        <section className={shared.section}>
+            <div className={shared.sectionHeader}>
+                <span>无损上线 · 延迟注册</span>
+                {renderStatusTag(losslessRule.lossless_online.delay_register.enable)}
+            </div>
+            <div className={shared.sectionBody}>
+                <div className={styles.switchRow}>
+                    <div>
+                        <div className={shared.fieldLabel}>上线保护启用</div>
+                        <div className={styles.fieldHint}>{losslessRule.lossless_online.delay_register.enable ? '实例就绪前不会进入服务发现列表' : '已关闭，实例启动完成后立即注册到注册中心'}</div>
+                    </div>
+                    {editable ? (
+                        <Switch
+                            value={losslessRule.lossless_online.delay_register.enable}
+                            onChange={(checked) => updateDelay({ enable: checked as boolean })}
+                        />
+                    ) : renderStatusTag(losslessRule.lossless_online.delay_register.enable)}
+                </div>
+                {losslessRule.lossless_online.delay_register.enable && (
+                    <div className={styles.lifecycleConfig}>
+                        <div className={shared.step} data-step="1">
+                            <div className={shared.stepTitle}>延迟注册策略</div>
+                            <div className={shared.stepContent}>{renderStrategyCards}</div>
+                        </div>
+                        {losslessRule.lossless_online.delay_register.strategy === 'DELAY_BY_TIME' ? (
+                            <div className={shared.step} data-step="2">
+                                <div className={shared.stepTitle}>延迟注册时长</div>
+                                <div className={shared.stepContent}>
+                                    {editable
+                                        ? renderUnitNumber(losslessRule.lossless_online.delay_register.interval, value => updateDelay({ interval: value || 0 }), 'Second', 0)
+                                        : renderSeconds(losslessRule.lossless_online.delay_register.interval)}
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className={shared.step} data-step="2">
+                                    <div className={shared.stepTitle}>检查协议</div>
+                                    <div className={shared.stepContent}>
+                                        {editable ? (
+                                            <RadioGroup
+                                                theme="button"
+                                                variant="primary-filled"
+                                                options={protocolOptions}
+                                                value={losslessRule.lossless_online.delay_register.health_check_protocol}
+                                                onChange={(value) => updateDelay({ health_check_protocol: value as LosslessProbeProtocol })}
+                                            />
+                                        ) : renderReadonly(losslessRule.lossless_online.delay_register.health_check_protocol)}
+                                    </div>
+                                </div>
+                                <div className={shared.step} data-step="3">
+                                    <div className={shared.stepTitle}>探测目标</div>
+                                    <div className={shared.stepContent}>
+                                        {losslessRule.lossless_online.delay_register.health_check_protocol === 'HTTP' ? renderHTTPProbe : renderPayloadProbe}
+                                    </div>
+                                </div>
+                                <div className={shared.step} data-step="4">
+                                <div className={shared.stepTitle}>检查间隔</div>
+                                <div className={shared.stepContent}>
+                                        {editable
+                                            ? renderUnitNumber(losslessRule.lossless_online.delay_register.health_check_interval, value => updateDelay({ health_check_interval: value || 0 }), 'Second', 1)
+                                            : renderSeconds(losslessRule.lossless_online.delay_register.health_check_interval)}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                        <div className={styles.summaryLine}>{describeDelaySummary(losslessRule)}</div>
+                        {losslessRule.lossless_online.delay_register.strategy === 'DELAY_BY_HEALTH_CHECK' && (
+                            <div className={styles.infoTiles}>
+                                <div><strong>接口来源</strong><span>由业务实例自身暴露，不复用治理探测规则。</span></div>
+                                <div><strong>端口语义</strong><span>默认使用实例协议端口，不要求单独填写。</span></div>
+                                <div><strong>失败处理</strong><span>只延迟注册，不摘除已有健康实例。</span></div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </section>
+    );
+
+    const renderWarmup = (
+        <section className={shared.section}>
+            <div className={shared.sectionHeader}>
+                <span>服务预热 · 渐进放量</span>
+                {renderStatusTag(losslessRule.lossless_online.warmup.enable)}
+            </div>
+            <div className={shared.sectionBody}>
+                <div className={styles.switchRow}>
+                    <div>
+                        <div className={shared.fieldLabel}>预热启用</div>
+                        <div className={styles.fieldHint}>{losslessRule.lossless_online.warmup.enable ? '新实例按预热曲线逐步放量' : '已关闭，新实例注册后直接按完整权重接流'}</div>
+                    </div>
+                    {editable ? (
+                        <Switch
+                            value={losslessRule.lossless_online.warmup.enable}
+                            onChange={(checked) => updateWarmup({ enable: checked as boolean })}
+                        />
+                    ) : renderStatusTag(losslessRule.lossless_online.warmup.enable)}
+                </div>
+                {losslessRule.lossless_online.warmup.enable && (
+                    <div className={styles.lifecycleConfig}>
+                        <div className={shared.step} data-step="1">
+                            <div className={shared.stepTitle}>预热窗口 <span className={shared.stepHint}>新实例不会立即按完整权重接流</span></div>
+                            <div className={shared.stepContent}>
+                                {editable
+                                    ? renderUnitNumber(losslessRule.lossless_online.warmup.interval, value => updateWarmup({ interval: value || 0 }), 'Second', 1)
+                                    : renderSeconds(losslessRule.lossless_online.warmup.interval)}
+                                <div className={styles.fieldHint}>开启预热后，该时间窗内由治理层按预热曲线逐步放量。</div>
+                            </div>
+                        </div>
+                        <div className={shared.step} data-step="2">
+                            <div className={shared.stepTitle}>终止保护</div>
+                            <div className={shared.stepContent}>
+                                <div className={shared.kv2}>
+                                    <div>
+                                        <div className={shared.editLabel}>预热终止保护</div>
+                                        {editable ? (
+                                            <Switch
+                                                value={losslessRule.lossless_online.warmup.enable_overload_protection}
+                                                onChange={(checked) => updateWarmup({ enable_overload_protection: checked as boolean })}
+                                            />
+                                        ) : renderStatusTag(losslessRule.lossless_online.warmup.enable_overload_protection)}
+                                    </div>
+                                    {losslessRule.lossless_online.warmup.enable_overload_protection && (
+                                        <div>
+                                            <div className={shared.editLabel}>预热终止百分比</div>
+                                            {editable
+                                                ? renderUnitNumber(losslessRule.lossless_online.warmup.overload_protection_threshold, value => updateWarmup({ overload_protection_threshold: value || 0 }), '%', 0, 100)
+                                                : renderReadonly(`${losslessRule.lossless_online.warmup.overload_protection_threshold}%`)}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className={shared.step} data-step="3">
+                            <div className={shared.stepTitle}>预热曲线值 <span className={shared.stepHint}>范围 1～5，值越大末段爬升越陡</span></div>
+                            <div className={shared.stepContent}>
+                                <div className={styles.curveLayout}>
+                                    <div>
+                                        {editable ? (
+                                            <InputNumber
+                                                min={1}
+                                                max={5}
+                                                placeholder="默认"
+                                                value={losslessRule.lossless_online.warmup.curvature === '' ? undefined : losslessRule.lossless_online.warmup.curvature}
+                                                onChange={(value) => updateWarmup({ curvature: value === undefined || value === null ? '' : value as number })}
+                                            />
+                                        ) : renderReadonly(losslessRule.lossless_online.warmup.curvature || '默认')}
+                                        <div className={styles.fieldHint}>{describeWarmupCurve(losslessRule.lossless_online.warmup.curvature)}</div>
+                                    </div>
+                                    <div className={styles.curveChart}>
+                                        {renderWarmupCurveChart()}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className={styles.summaryLine}>{describeWarmupSummary(losslessRule)}</div>
+                    </div>
+                )}
+            </div>
+        </section>
+    );
+
+    const renderOffline = (
+        <section className={shared.section}>
+            <div className={shared.sectionHeader}>
+                <span>无损下线 · 等待时长</span>
+                {renderStatusTag(losslessRule.lossless_offline.enable)}
+            </div>
+            <div className={shared.sectionBody}>
+                <div className={styles.switchRow}>
+                    <div>
+                        <div className={shared.fieldLabel}>下线保护启用</div>
+                        <div className={styles.fieldHint}>{losslessRule.lossless_offline.enable ? '实例注销前等待存量请求完成' : '已关闭，实例注销时不等待存量请求完成'}</div>
+                    </div>
+                    {editable ? (
+                        <Switch
+                            value={losslessRule.lossless_offline.enable}
+                            onChange={(checked) => updateOffline({ enable: checked as boolean })}
+                        />
+                    ) : renderStatusTag(losslessRule.lossless_offline.enable)}
+                </div>
+                {losslessRule.lossless_offline.enable && (
+                    <div className={styles.lifecycleConfig}>
+                        <div className={shared.step} data-step="1">
+                            <div className={shared.stepTitle}>下线等待</div>
+                            <div className={shared.stepContent}>
+                                {editable
+                                    ? renderUnitNumber(losslessRule.lossless_offline.interval, value => updateOffline({ interval: value || 0 }), 'Second', 1)
+                                    : renderSeconds(losslessRule.lossless_offline.interval)}
+                            </div>
+                        </div>
+                        <div className={styles.summaryLine}>{describeOfflineSummary(losslessRule)}</div>
+                        <div className={styles.readonlyBehavior}>
+                            <div>默认执行行为：实例进入下线流程后，系统默认先从流量入口摘除并停止接收新请求，然后按上方间隔等待存量连接 / 请求完成。</div>
+                            <Space size={8}>
+                                <Tag variant="light">默认摘流</Tag>
+                                <Tag variant="light">停止新流量</Tag>
+                                <Tag variant="light">等待存量请求</Tag>
+                            </Space>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </section>
+    );
+
+    const renderSpecPane = (
+        <aside className={styles.specPane}>
+            <div className={styles.specCard}>
+                <div className={styles.specToolbar}>
+                    <div>
+                        <div className={styles.specTitle}>实时规则 SPEC</div>
+                        <div className={styles.specDesc}>保存前核对无损规则生命周期配置</div>
+                    </div>
+                    <div className={styles.specActions}>
+                        <div className={styles.specToggle}>
+                            <button
+                                className={specFormat === 'yaml' ? styles.specToggleActive : ''}
+                                type="button"
+                                onClick={() => setSpecFormat('yaml')}
+                            >YAML</button>
+                            <button
+                                className={specFormat === 'json' ? styles.specToggleActive : ''}
+                                type="button"
+                                onClick={() => setSpecFormat('json')}
+                            >JSON</button>
+                        </div>
+                        <Button size="small" theme="default" variant="outline" onClick={copyPreview}>复制</Button>
+                    </div>
+                </div>
+                <pre className={styles.specCode}>{previewText}</pre>
+                <div className={validationErrors.length ? styles.specFooterError : styles.specFooterOk}>
+                    {validationErrors.length ? validationErrors[0].message : '校验通过，可保存'}
+                </div>
+            </div>
+        </aside>
+    );
+
     const renderStickyTool = (
-        <StickyTool
-            style={{ zIndex: 1000 }}
-            placement="right-bottom"
-            offset={[-10, 200]}
-        >
+        <StickyTool style={{ zIndex: 1000 }} placement="right-bottom" offset={[-10, 200]}>
             <StickyItem
                 label=""
-                icon={!editor.editable ?
-                    <RuleStickyAction label="编辑" icon={<Edit1Icon />} onClick={() => {
-                        setEditor(prev => ({ ...prev, editable: true }));
-                    }} />
-                    :
-                    <RuleStickyAction label="保存" icon={<SaveIcon />} onClick={() => {
-                        form.submit();
-                    }} />
-                }
+                icon={!editable ? (
+                    <RuleStickyAction label="编辑" icon={<Edit1Icon />} onClick={() => setEditor(prev => ({ ...prev, editable: true }))} />
+                ) : (
+                    <RuleStickyAction label="保存" icon={<SaveIcon />} onClick={() => form.submit()} />
+                )}
             />
-            {editor.editable && (
-                <StickyItem label="" icon={
-                    <RuleStickyAction label="撤销" icon={<RollbackIcon />} onClick={() => {
-                        setEditor(prev => ({ ...prev, editable: false }));
-                    }} />
-                } />
+            {editable && (
+                <StickyItem
+                    label=""
+                    icon={<RuleStickyAction label="撤销" icon={<RollbackIcon />} onClick={() => setEditor(prev => ({ ...prev, editable: false }))} />}
+                />
             )}
-            {!editor.editable && (
-                <StickyItem label="" icon={
-                    <RuleStickyAction label="发布" icon={<RocketIcon />} onClick={() => {
-                        setEditor(prev => ({ ...prev, publishView: true }));
-                    }} />
-                } />
+            {!editable && (
+                <StickyItem
+                    label=""
+                    icon={<RuleStickyAction label="发布" icon={<RocketIcon />} onClick={() => setEditor(prev => ({ ...prev, publishView: true }))} />}
+                />
             )}
         </StickyTool>
     );
 
-    const renderPublishForm = (
-        <>
-            {editor.publishView && (
-                <PublishForm
-                    ruleId={losslessRule.id || ''}
-                    ruleName={losslessRule.id || ''}
-                    resource={PolicySourceType.LossLessRules}
-                    visible={editor.publishView}
-                    close={() => {
-                        setEditor(prev => ({ ...prev, publishView: false }));
-                    }}
-                />
-            )}
-        </>
-    )
-
     return (
-        <div style={{ padding: 24 }}>
-            <Form
-                form={form}
-                onSubmit={onSubmit}
-                layout="vertical"
-                labelAlign="left"
-                labelWidth={120}
-                colon
-            >
-                {serviceInfo}
-                {renderEditForm}
-                {renderPublishForm}
+        <div className={styles.editorBody}>
+            <Form form={form} onSubmit={onSubmit} layout="vertical" labelAlign="left">
+                <div className={styles.losslessEditorShell}>
+                    <div className={styles.formPane}>
+                        {renderBasicInfo}
+                        {renderScope}
+                        {renderDelayRegister}
+                        {renderWarmup}
+                        {renderOffline}
+                    </div>
+                    {renderSpecPane}
+                </div>
+                {editor.publishView && (
+                    <PublishForm
+                        ruleId={losslessRule.id || ''}
+                        ruleName={losslessRule.id || `${losslessRule.namespace}/${losslessRule.service}`}
+                        resource={PolicySourceType.LossLessRules}
+                        visible={editor.publishView}
+                        close={() => setEditor(prev => ({ ...prev, publishView: false }))}
+                    />
+                )}
                 {renderStickyTool}
             </Form>
         </div>

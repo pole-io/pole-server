@@ -1,6 +1,6 @@
 import React from "react";
-import { Col, Form, Input, Row, Space, Button, Select, Switch, Dialog, InputNumber, Table, FormProps, Tag, Popup, TableRowData, PrimaryTableProps, StickyTool, RadioGroup, Radio, InputAdornment, Textarea } from "tdesign-react";
-import { AddIcon, ChevronRightIcon, CloseIcon, Edit1Icon, SaveIcon, RocketIcon, RollbackIcon, RemoveIcon } from "tdesign-icons-react";
+import { Form, Input, Button, Select, Switch, Dialog, InputNumber, FormProps, Tag, Popup, StickyTool, RadioGroup, Radio, InputAdornment, Textarea, Space } from "tdesign-react";
+import { AddIcon, ChevronRightIcon, CloseIcon, Edit1Icon, SaveIcon, RocketIcon, RollbackIcon, RemoveIcon, CopyIcon } from "tdesign-icons-react";
 
 import Text from "components/Text";
 import RuleLabelField from "../shared/RuleLabelField";
@@ -8,25 +8,41 @@ import shared from "../shared/governance.module.less";
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { API, HTTPMethodOption, InterfaceProtocolOption, Label, MatchType, MatchTypeMap, MatchTypeOption, MatchValueType, Op } from "services/types";
 import { ServiceView } from "services/service";
-
 import { NamespaceView } from "services/namespace";
 import styles from './CircuitBreakerEditor.module.less';
 import { openErrNotification, openInfoNotification } from "utils/notifition";
 import PublishForm from "../RuleRelease/PublishForm";
 import RuleStickyAction from "../RuleRelease/RuleStickyAction";
 import { PolicySourceType } from "services/auth_policy";
-import { BlockConfig, BreakLevelMap, BreakLevelType, CircuitBreakerRule, ErrorCondition, ErrorConditionMap, ErrorConditionOptions, ErrorConditionType, TriggerCondition, TriggerType, TriggerTypeMap, TriggerTypeOptions } from "services/circuitbreaker";
-import { defaultBlockConfig, listOneCircuitBreaker, resetCircuitBreaker, saveCircuitBreakers, selectCircuitBreaker, updateCircuitBreakers } from "modules/governance/circuitbreaker";
+import { BreakLevelMap, BreakLevelType, CircuitBreakerRule, ErrorConditionMap, ErrorConditionOptions, ErrorConditionType, TriggerType, TriggerTypeMap, TriggerTypeOptions } from "services/circuitbreaker";
+import { listOneCircuitBreaker, resetCircuitBreaker, saveCircuitBreakers, selectCircuitBreaker, updateCircuitBreakers } from "modules/governance/circuitbreaker";
 import { cleanNamespacePage, listAllNamespaces, selectNamespace } from "modules/namespace";
 import { cleanServicePage, listAllServices, selectService } from "modules/discovery/service";
-import { clone, cloneDeep, set } from "lodash";
+import { cloneDeep } from "lodash";
+import {
+    buildCircuitBreakerSubmitPayload,
+    CircuitBreakerAPI,
+    CircuitBreakerDraftLike,
+    CircuitBreakerErrorCondition,
+    CircuitBreakerSpecFormat,
+    CircuitBreakerStrategyDraft,
+    CircuitBreakerSubRuleDraft,
+    CircuitBreakerTriggerCondition,
+    createCircuitBreakerDraftFromRule,
+    defaultCircuitBreakerStrategy,
+    defaultCircuitBreakerSubRule,
+    describeStrategySummary,
+    describeSubRuleSummary,
+    stringifyCircuitBreakerSpec,
+    validateCircuitBreakerDraft,
+} from "./circuitBreakerEditorUtils";
 
 const { FormItem } = Form;
 const { StickyItem } = StickyTool;
 
 interface CircuitBreakerDO {
     id?: string
-    name: string // 规则名
+    name: string
     level: string
     description: string
     priority: number
@@ -44,13 +60,13 @@ interface CircuitBreakerDO {
             }
         }
     }
-    block_configs: BlockConfig[]
+    subrules: CircuitBreakerSubRuleDraft[]
     metadata: Label[]
 }
 
 const defaultCircuitBreakerRule = (): CircuitBreakerDO => ({
     name: '',
-    level: BreakLevelType.Service,
+    level: BreakLevelType.Method,
     priority: 0,
     description: '',
     metadata: [],
@@ -68,12 +84,19 @@ const defaultCircuitBreakerRule = (): CircuitBreakerDO => ({
             }
         }
     },
-    block_configs: [defaultBlockConfig(1)],
+    subrules: [defaultCircuitBreakerSubRule(1)],
 })
 
 interface ICircuitBreakerEditorProps {
     op: Op;
     refresh: (close: boolean) => void;
+}
+
+const toLabels = (metadata?: CircuitBreakerDraftLike['metadata']): Label[] => {
+    if (Array.isArray(metadata)) {
+        return metadata;
+    }
+    return Object.entries(metadata || {}).map(([key, value]) => ({ key, value }));
 }
 
 const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refresh }) => {
@@ -92,24 +115,37 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
     const [editorState, setEditorState] = React.useState<{
         visible: boolean
         headerVisible: boolean
-        headerRuleIndex?: number
+        headerSubRuleIndex?: number
         editable?: boolean
         model: Op;
         publishView: boolean;
     }>({ model: 'view', publishView: false, visible: false, headerVisible: false, editable: op === 'create' || false, });
 
-    // 创建新的 rules 对象
     const [breakerRule, setBreakerRule] = React.useState<CircuitBreakerDO>(defaultCircuitBreakerRule());
-    const [collapsedRuleIndexes, setCollapsedRuleIndexes] = React.useState<Set<number>>(() => new Set());
+    const [collapsedSubRuleIndexes, setCollapsedSubRuleIndexes] = React.useState<Set<number>>(() => new Set());
+    const [collapsedStrategyKeys, setCollapsedStrategyKeys] = React.useState<Set<string>>(() => new Set());
+    const [specFormat, setSpecFormat] = React.useState<CircuitBreakerSpecFormat>('yaml');
+    const canEditLevel = editorState.editable && op === 'create';
 
-    const toggleRuleCollapsed = (ruleIdx: number) => {
-        setCollapsedRuleIndexes(prev => {
+    const updateRule = (updater: (draft: CircuitBreakerDO) => void) => {
+        const next = cloneDeep(breakerRule);
+        updater(next);
+        setBreakerRule(next);
+    };
+
+    const toggleSubRuleCollapsed = (idx: number) => {
+        setCollapsedSubRuleIndexes(prev => {
             const next = new Set(prev);
-            if (next.has(ruleIdx)) {
-                next.delete(ruleIdx);
-            } else {
-                next.add(ruleIdx);
-            }
+            next.has(idx) ? next.delete(idx) : next.add(idx);
+            return next;
+        });
+    };
+
+    const toggleStrategyCollapsed = (subRuleIdx: number, strategyIdx: number) => {
+        const key = `${subRuleIdx}-${strategyIdx}`;
+        setCollapsedStrategyKeys(prev => {
+            const next = new Set(prev);
+            next.has(key) ? next.delete(key) : next.add(key);
             return next;
         });
     };
@@ -128,10 +164,10 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         if (!editRule) {
             return;
         }
-        const cloneRule = cloneDeep(editRule);
-        const sourceNamespace = cloneRule?.ruleMatcher?.source?.namespace || '*';
-        let destinationNamespace = cloneRule?.ruleMatcher?.destination?.namespace || '*';
-        let destinationService = cloneRule?.ruleMatcher?.destination?.service || '';
+        const normalized = createCircuitBreakerDraftFromRule(cloneDeep(editRule) as CircuitBreakerDraftLike);
+        const sourceNamespace = normalized?.ruleMatcher?.source?.namespace || '*';
+        let destinationNamespace = normalized?.ruleMatcher?.destination?.namespace || '*';
+        let destinationService = normalized?.ruleMatcher?.destination?.service || '';
         const knownNamespaces = new Set((namespaceDatas || []).map((item: NamespaceView) => item.name));
         const swappedByOptions = knownNamespaces.has(destinationService)
             && serviceDatas.some((item: ServiceView) => item.namespace === destinationService && item.name === destinationNamespace);
@@ -140,33 +176,35 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
             [destinationNamespace, destinationService] = [destinationService, destinationNamespace];
         }
         setBreakerRule({
-            ...cloneRule, // Override with editRule values
-            name: cloneRule?.name || '',
-            description: cloneRule?.description || '',
-            priority: cloneRule?.priority || 0,
-            level: cloneRule?.level || BreakLevelType.Service, // Add default value for level
+            id: normalized.id,
+            name: normalized.name || '',
+            description: normalized.description || '',
+            priority: normalized.priority || 0,
+            level: normalized.level || BreakLevelType.Method,
             ruleMatcher: {
                 source: {
-                    service: cloneRule?.ruleMatcher?.source?.service || '',
-                    namespace: cloneRule?.ruleMatcher?.source?.namespace || '*'
+                    service: normalized.ruleMatcher?.source?.service || '',
+                    namespace: normalized.ruleMatcher?.source?.namespace || '*'
                 },
                 destination: {
                     service: destinationService,
                     namespace: destinationNamespace,
                     method: {
-                        type: cloneRule?.ruleMatcher?.destination?.method?.type || MatchType.EXACT,
-                        value: cloneRule?.ruleMatcher?.destination?.method?.value || ''
+                        type: normalized.ruleMatcher?.destination?.method?.type || MatchType.EXACT,
+                        value: normalized.ruleMatcher?.destination?.method?.value || ''
                     }
                 }
             },
-            metadata: Object.entries(cloneRule?.metadata || {}).map(([key, value]) => ({ key, value })),
+            subrules: normalized.subrules?.length ? normalized.subrules : [defaultCircuitBreakerSubRule(1)],
+            metadata: toLabels(normalized.metadata),
         });
+        setCollapsedSubRuleIndexes(new Set());
+        setCollapsedStrategyKeys(new Set());
     }
 
     React.useEffect(() => {
         if (editRule) {
             if (editRule.id !== '') {
-                // 发生变化，重置当前规则
                 setEditorState(pre => ({ ...pre, visible: false, editable: false }));
                 dispatch(listOneCircuitBreaker({ id: editRule.id || '' })).then(res => {
                     if (res.meta.requestStatus === 'rejected') {
@@ -176,7 +214,6 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                     resetCurRule(viewRule);
                 })
             } else {
-                // 新建规则，重置当前规则
                 resetCurRule(editRule);
             }
         }
@@ -203,33 +240,39 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         }
     }, []);
 
-    const onSubmit: FormProps['onSubmit'] = async (e) => {
-        console.log('提交数据:', breakerRule);
+    const metadataRecord = React.useMemo(
+        () => (breakerRule.metadata || []).reduce<Record<string, string>>((acc, cur) => {
+            if (cur.key) acc[cur.key] = cur.value;
+            return acc;
+        }, {}),
+        [breakerRule.metadata],
+    );
+
+    const submitPayload = React.useMemo(
+        () => buildCircuitBreakerSubmitPayload({ ...breakerRule, metadata: metadataRecord }),
+        [breakerRule, metadataRecord],
+    );
+    const validationErrors = React.useMemo(
+        () => validateCircuitBreakerDraft({ ...breakerRule, metadata: metadataRecord }),
+        [breakerRule, metadataRecord],
+    );
+    const specText = React.useMemo(
+        () => stringifyCircuitBreakerSpec(submitPayload, specFormat),
+        [submitPayload, specFormat],
+    );
+
+    const onSubmit: FormProps['onSubmit'] = async () => {
+        const errors = validateCircuitBreakerDraft({ ...breakerRule, metadata: metadataRecord });
+        if (errors.length > 0) {
+            openErrNotification('保存失败', errors[0].message);
+            return;
+        }
+
         let res;
         if (op !== 'create') {
-            res = await dispatch(updateCircuitBreakers({
-                param: {
-                    ...breakerRule,
-                    metadata: breakerRule.metadata?.reduce((acc, cur) => {
-                        if (cur.key && cur.value) {
-                            acc[cur.key] = cur.value;
-                        }
-                        return acc;
-                    }, {} as Record<string, string>)
-                }
-            }));
+            res = await dispatch(updateCircuitBreakers({ param: submitPayload as any }));
         } else {
-            res = await dispatch(saveCircuitBreakers({
-                param: {
-                    ...breakerRule,
-                    metadata: breakerRule.metadata?.reduce((acc, cur) => {
-                        if (cur.key && cur.value) {
-                            acc[cur.key] = cur.value;
-                        }
-                        return acc;
-                    }, {} as Record<string, string>)
-                }
-            }));
+            res = await dispatch(saveCircuitBreakers({ param: submitPayload as any }));
         }
 
         if (res.meta.requestStatus !== 'fulfilled') {
@@ -239,93 +282,17 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
             if (op !== 'create') {
                 setEditorState(prev => ({ ...prev, editable: false }));
             }
-            refresh(false); // 刷新列表
+            refresh(false);
         }
     }
 
-    const addErrorConditions = (ruleIdx: number) => {
-        const newRules = { ...breakerRule };
-        newRules.block_configs[ruleIdx].error_conditions.push({
-            inputType: ErrorConditionType.RET_CODE,
-            condition: {
-                type: MatchType.EXACT,
-                value: '',
-            }
-        });
-        setBreakerRule(newRules);
-    };
-
-    const updateErrorConditions = (del: boolean, ruleIdx: number, idx: number, args?: ErrorCondition) => {
-        const newRules = { ...breakerRule };
-        if (del) {
-            newRules.block_configs[ruleIdx].error_conditions.splice(idx, 1);
-        } else {
-            if (idx < newRules.block_configs[ruleIdx].error_conditions.length) {
-                newRules.block_configs[ruleIdx].error_conditions[idx] = {
-                    inputType: args?.inputType || ErrorConditionType.RET_CODE,
-                    condition: {
-                        type: args?.condition?.type || MatchType.EXACT,
-                        value: args?.condition?.value || '',
-                    }
-                }
-            } else {
-                newRules.block_configs[ruleIdx].error_conditions.push(args || {
-                    inputType: ErrorConditionType.RET_CODE,
-                    condition: {
-                        type: MatchType.EXACT,
-                        value: '',
-                    }
-                });
-            }
-        }
-        setBreakerRule(newRules);
-    };
-
-    const addTriggerConditions = (ruleIdx: number) => {
-        const newRules = { ...breakerRule };
-        newRules.block_configs[ruleIdx].trigger_conditions.push({
-            triggerType: TriggerType.ERROR_RATE,
-            errorCount: 0,
-            errorPercent: 0,
-            interval: 0,
-            minimumRequest: 0
-        });
-        setBreakerRule(newRules);
-    };
-
-    const removeTriggerConditions = (ruleIdx: number, idx: number) => {
-        const newRules = { ...breakerRule };
-        if (idx < newRules.block_configs[ruleIdx].trigger_conditions.length) {
-            newRules.block_configs[ruleIdx].trigger_conditions.splice(idx, 1);
-        }
-        setBreakerRule(newRules);
-    };
-
-    const updateTriggerConditions = (ruleIdx: number, idx: number, item: TriggerCondition) => {
-        console.log('更新触发条件:', ruleIdx, idx, item);
-        const newRules = { ...breakerRule };
-        if (idx < newRules.block_configs[ruleIdx].trigger_conditions.length) {
-            newRules.block_configs[ruleIdx].trigger_conditions[idx] = {
-                triggerType: item.triggerType || TriggerType.ERROR_RATE,
-                errorCount: item.errorCount,
-                errorPercent: item.errorPercent,
-                interval: item.interval,
-                minimumRequest: item.minimumRequest,
-                triggerVal: item.triggerVal,
-            };
-        } else {
-            newRules.block_configs[ruleIdx].trigger_conditions.push(item);
-        }
-        setBreakerRule(newRules);
-    }
-
-    const metadataRecord = React.useMemo(
-        () => (breakerRule.metadata || []).reduce<Record<string, string>>((acc, cur) => {
-            if (cur.key) acc[cur.key] = cur.value;
-            return acc;
-        }, {}),
-        [breakerRule.metadata],
-    );
+    const breakerNamespaceOptions = namespaceDatas.map((item: NamespaceView) => ({ label: item.name, value: item.name }));
+    const breakerSourceServiceOptions = serviceDatas
+        .filter((opt: ServiceView) => breakerRule.ruleMatcher.source.namespace === '*' || opt.namespace === breakerRule.ruleMatcher.source.namespace)
+        .map((item: ServiceView) => ({ label: item.name, value: item.name, namespace: item.namespace }));
+    const breakerDestServiceOptions = serviceDatas
+        .filter((opt: ServiceView) => breakerRule.ruleMatcher.destination.namespace === '*' || opt.namespace === breakerRule.ruleMatcher.destination.namespace)
+        .map((item: ServiceView) => ({ label: item.name, value: item.name, namespace: item.namespace }));
 
     const destinationView = React.useMemo(() => {
         const destination = breakerRule.ruleMatcher.destination;
@@ -338,16 +305,44 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         return destination;
     }, [breakerRule.ruleMatcher.destination]);
 
-    const breakerNamespaceOptions = namespaceDatas.map((item: NamespaceView) => ({ label: item.name, value: item.name }));
-    const breakerSourceServiceOptions = serviceDatas
-        .filter((opt: ServiceView) => breakerRule.ruleMatcher.source.namespace === '*' || opt.namespace === breakerRule.ruleMatcher.source.namespace)
-        .map((item: ServiceView) => ({ label: item.name, value: item.name, namespace: item.namespace }));
-    const breakerDestServiceOptions = serviceDatas
-        .filter((opt: ServiceView) => breakerRule.ruleMatcher.destination.namespace === '*' || opt.namespace === breakerRule.ruleMatcher.destination.namespace)
-        .map((item: ServiceView) => ({ label: item.name, value: item.name, namespace: item.namespace }));
+    const addSubRule = () => {
+        updateRule((draft) => {
+            draft.subrules.push(defaultCircuitBreakerSubRule(draft.subrules.length + 1));
+        });
+    };
 
-    // 统一基础信息区：名称 / 粒度 / 优先级 / 作用对象（主调→被调流向）/ 描述 / 标签
-    const ruleeditorState = (
+    const addStrategy = (subRuleIdx: number) => {
+        updateRule((draft) => {
+            const subrule = draft.subrules[subRuleIdx];
+            subrule.strategies.push(defaultCircuitBreakerStrategy(subrule.strategies.length + 1));
+        });
+    };
+
+    const defaultErrorCondition = (): CircuitBreakerErrorCondition => ({
+        inputType: ErrorConditionType.RET_CODE,
+        condition: { type: MatchType.RANGE, value: '500-599' },
+    });
+
+    const defaultTriggerCondition = (): CircuitBreakerTriggerCondition => ({
+        triggerType: TriggerType.ERROR_RATE,
+        errorCount: 0,
+        errorPercent: 50,
+        triggerVal: 50,
+        interval: 30,
+        minimumRequest: 5,
+    });
+
+    const addIface = (subRuleIdx: number, strategyIdx: number) => {
+        updateRule((draft) => {
+            draft.subrules[subRuleIdx].strategies[strategyIdx].ifaces.push({
+                protocol: 'HTTP',
+                method: 'GET',
+                path: { type: MatchType.EXACT, value: '', value_type: MatchValueType.TEXT },
+            });
+        });
+    };
+
+    const renderBasicInfo = (
         <div className={shared.section}>
             <div className={shared.sectionHeader}>基础信息</div>
             <div className={shared.sectionBody}>
@@ -359,57 +354,12 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                             : <div className={shared.fieldValue}>{breakerRule.name || '-'}</div>}
                     </div>
                     <div className={shared.field}>
-                        <div className={shared.fieldLabel}>熔断粒度</div>
-                        {editorState.editable ? (
-                            <RadioGroup theme="button" variant="primary-filled" value={breakerRule.level} onChange={(value) => setBreakerRule(prev => ({ ...prev, level: value as string }))}>
-                                <Radio.Button value={BreakLevelType.Service}>{BreakLevelMap[BreakLevelType.Service]}</Radio.Button>
-                                <Radio.Button value={BreakLevelType.Instance}>{BreakLevelMap[BreakLevelType.Instance]}</Radio.Button>
-                                <Radio.Button value={BreakLevelType.Method}>{BreakLevelMap[BreakLevelType.Method]}</Radio.Button>
-                            </RadioGroup>
-                        ) : <div className={shared.fieldValue}>{BreakLevelMap[breakerRule.level as BreakLevelType] || '-'}</div>}
-                    </div>
-                    <div className={shared.field}>
                         <div className={shared.fieldLabel}>优先级</div>
                         {editorState.editable
                             ? <InputNumber min={0} value={breakerRule.priority} onChange={(value) => setBreakerRule(prev => ({ ...prev, priority: value as number }))} />
                             : <div className={shared.fieldValue}>{breakerRule.priority ?? 0}</div>}
                     </div>
-                    <div className={`${shared.field} ${shared.full}`}>
-                        <div className={shared.fieldLabel}>作用对象</div>
-                        {editorState.editable ? (
-                            <div className={shared.kv2}>
-                                <div>
-                                    <div className={shared.editLabel}>主调命名空间</div>
-                                    <Select filterable creatable options={breakerNamespaceOptions} value={breakerRule.ruleMatcher.source.namespace} onChange={(value) => setBreakerRule(prev => ({ ...prev, ruleMatcher: { ...prev.ruleMatcher, source: { ...prev.ruleMatcher.source, namespace: value as string } } }))} />
-                                </div>
-                                <div>
-                                    <div className={shared.editLabel}>主调服务</div>
-                                    <Select filterable creatable options={breakerSourceServiceOptions} value={breakerRule.ruleMatcher.source.service} onChange={(value) => setBreakerRule(prev => ({ ...prev, ruleMatcher: { ...prev.ruleMatcher, source: { ...prev.ruleMatcher.source, service: value as string } } }))} />
-                                </div>
-                                <div>
-                                    <div className={shared.editLabel}>被调命名空间</div>
-                                    <Select filterable creatable options={breakerNamespaceOptions} value={breakerRule.ruleMatcher.destination.namespace} onChange={(value) => setBreakerRule(prev => ({ ...prev, ruleMatcher: { ...prev.ruleMatcher, destination: { ...prev.ruleMatcher.destination, namespace: value as string } } }))} />
-                                </div>
-                                <div>
-                                    <div className={shared.editLabel}>被调服务</div>
-                                    <Select filterable creatable options={breakerDestServiceOptions} value={breakerRule.ruleMatcher.destination.service} onChange={(value) => setBreakerRule(prev => ({ ...prev, ruleMatcher: { ...prev.ruleMatcher, destination: { ...prev.ruleMatcher.destination, service: value as string } } }))} />
-                                </div>
-                            </div>
-                        ) : (
-                            <div className={shared.flow}>
-                                <div className={shared.flowNode}>
-                                    <span className={shared.flowNodeLabel}>主调</span>
-                                    <span className={shared.flowNodeValue}>{`${breakerRule.ruleMatcher.source.namespace || '-'} / ${breakerRule.ruleMatcher.source.service || '-'}`}</span>
-                                </div>
-                                <span className={shared.flowArrow}><RocketIcon /></span>
-                                <div className={shared.flowNode}>
-                                    <span className={shared.flowNodeLabel}>被调</span>
-                                    <span className={shared.flowNodeValue}>{`${destinationView.namespace || '-'} / ${destinationView.service || '-'}`}</span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                    <div className={`${shared.field} ${shared.full}`}>
+                    <div className={`${shared.field} ${shared.span6}`}>
                         <div className={shared.fieldLabel}>描述</div>
                         {editorState.editable
                             ? <Input value={breakerRule.description} maxlength={255} onChange={(value) => setBreakerRule(prev => ({ ...prev, description: value }))} />
@@ -428,566 +378,284 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         </div>
     );
 
-    const errCondTableColumns = (ruleIdx: number): PrimaryTableProps['columns'] => [
-        {
-            colKey: 'inputType',
-            title: '参数类型',
-            edit: {
-                keepEditMode: editorState.editable,
-                showEditIcon: editorState.editable,
-                component: Select,
-                props: {
-                    clearable: true,
-                    options: ErrorConditionOptions,
-                    defaultValue: ErrorConditionType.RET_CODE,
-
-                },
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    updateErrorConditions(false, ruleIdx, context.rowIndex, context.newRowData as ErrorCondition);
-                },
-                // 校验规则，此处同 Form 表单
-                validateTrigger: 'change',
-            },
-            cell: ({ row }) => {
-                return <Text>{ErrorConditionMap[row.inputType as ErrorConditionType] || row.inputType}</Text>
-            }
-        },
-        {
-            colKey: 'condition.type',
-            title: '匹配类型',
-            edit: {
-                keepEditMode: editorState.editable,
-                showEditIcon: editorState.editable,
-                component: Select,
-                props: {
-                    clearable: true,
-                    options: MatchTypeOption,
-                },
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    updateErrorConditions(false, ruleIdx, context.rowIndex, context.newRowData as ErrorCondition);
-                },
-                // 校验规则，此处同 Form 表单
-                validateTrigger: 'change',
-            },
-            cell: ({ row }) => <Text>{MatchTypeMap[row.condition.type as MatchType]}</Text>
-        },
-        {
-            colKey: 'condition.value',
-            title: '匹配值',
-            edit: {
-                keepEditMode: editorState.editable,
-                showEditIcon: editorState.editable,
-                component: Input,
-                props: {
-                    clearable: true,
-                },
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    updateErrorConditions(false, ruleIdx, context.rowIndex, context.newRowData as ErrorCondition);
-                },
-                // 校验规则，此处同 Form 表单
-                validateTrigger: 'change',
-            },
-        },
-        {
-            colKey: 'action',
-            title: '操作',
-            cell: ({ row, rowIndex }) => (
-                <Space>
-                    <Popup trigger="hover" content="添加">
-                        <Button
-                            shape="circle"
-                            variant="text"
-                            onClick={() => {
-                                addErrorConditions(ruleIdx);
-                            }}>
-                            <AddIcon />
-                        </Button>
-                    </Popup>
-                    <Popup trigger="hover" content="删除">
-                        <Button
-                            shape="circle"
-                            variant="text"
-                            disabled={breakerRule.block_configs[ruleIdx].error_conditions.length <= 1}
-                            onClick={() => {
-                                updateErrorConditions(true, ruleIdx, rowIndex, undefined);
-                            }}>
-                            <RemoveIcon />
-                        </Button>
-                    </Popup>
-                </Space>
-            ),
-        }
-    ]
-
-    // 匹配条件表格（单行参数填写）
-    const renderMatchTable = (idx: number, rule: BlockConfig) => {
-        return (
-            <div className={styles.compactTable}>
-                <Table
-                    key={`breaker-error-${idx}-${editorState.editable ? 'edit' : 'view'}`}
-                    rowKey="key"
-                    tableLayout="fixed"
-                    data={rule.error_conditions.map((item, index) => ({ ...item, key: `error-${idx}-${index}` })) || []}
-                    columns={editorState.editable ?
-                        errCondTableColumns(idx)
-                        :
-                        errCondTableColumns(idx)?.filter(col => col.colKey !== 'action')}
-                />
-            </div>
-        )
-    };
-
-    const triggerTableColumns = (idx: number): PrimaryTableProps['columns'] => [
-        {
-            colKey: 'triggerType',
-            title: '类型',
-            edit: {
-                keepEditMode: editorState.editable,
-                showEditIcon: editorState.editable,
-                component: Select,
-                props: {
-                    clearable: true,
-                    options: TriggerTypeOptions
-                },
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    updateTriggerConditions(idx, context.rowIndex, context.newRowData as TriggerCondition);
-                },
-            },
-            cell: ({ row }) => {
-                return <Text>{TriggerTypeMap[row.triggerType as TriggerType]?.text || row.triggerType}</Text>
-            }
-        },
-        {
-            colKey: 'op_label',
-            title: '类型',
-            cell: ({ row }) => {
-                return <Text>{">="}</Text>
-            }
-        },
-        {
-            colKey: 'triggerVal',
-            title: '阈值',
-            edit: {
-                keepEditMode: editorState.editable,
-                showEditIcon: editorState.editable,
-                component: InputAdornment,
-                props: (context: { row: TriggerCondition }) => ({
-                    min: 0,
-                    // 根据 triggerType 动态设置单位
-                    append: context.row.triggerType === TriggerType.ERROR_RATE ? "%" : "个",
-                    children: (
-                        <InputNumber
-                            min={0}
-                            // 如果是错误率类型，可以设置最大值为100
-                            max={context.row.triggerType === TriggerType.ERROR_RATE ? 100 : undefined}
-                            // 如果是错误率类型，可以设置步长为0.1
-                            step={context.row.triggerType === TriggerType.ERROR_RATE ? 0.1 : 1}
-                        />
-                    ),
-                }),
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    updateTriggerConditions(idx, context.rowIndex, {
-                        ...context.newRowData as TriggerCondition,
-                        errorCount: context.newRowData.triggerType === TriggerType.ERROR_RATE ? 0 : context.newRowData.triggerVal || 0,
-                        errorPercent: context.newRowData.triggerType === TriggerType.ERROR_RATE ? context.newRowData.triggerVal || 0 : 0,
-                    });
-                },
-            },
-            cell: ({ row }) => (
-                editorState.editable ? (
-                    <Text>{row.triggerType === TriggerType.ERROR_RATE ? `${row.errorPercent}` : `${row.errorCount}`}</Text>
-                ) : (
-                    <Text>{row.triggerType === TriggerType.ERROR_RATE ? `${row.errorPercent} %` : `${row.errorCount} 个`}</Text>
-                )
-            )
-        },
-        {
-            colKey: 'interval',
-            title: '统计周期',
-            edit: {
-                keepEditMode: editorState.editable,
-                showEditIcon: editorState.editable,
-                component: InputAdornment,
-                props: {
-                    min: 0,
-                    append: ("秒"),
-                    children: (
-                        <InputNumber min={0} />
-                    ),
-                },
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    updateTriggerConditions(idx, context.rowIndex, context.newRowData as TriggerCondition);
-                },
-            },
-            cell: ({ row }) => (
-                editorState.editable ? (
-                    <Text>{row.tinterval}</Text>
-                ) : (
-                    <Text>{`${row.interval} 秒`}</Text>
-                )
-            )
-        },
-        {
-            colKey: 'minimumRequest',
-            title: '最小请求数',
-            edit: {
-                keepEditMode: editorState.editable,
-                showEditIcon: editorState.editable,
-                component: InputAdornment,
-                props: {
-                    min: 0,
-                    append: ("个"),
-                    children: (
-                        <InputNumber min={0} />
-                    ),
-                },
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    updateTriggerConditions(idx, context.rowIndex, context.newRowData as TriggerCondition);
-                },
-            }
-        },
-        {
-            colKey: 'action',
-            title: '操作',
-            cell: ({ row, rowIndex }) => (
-                <Space>
-                    <Popup trigger="hover" content="编辑标签">
-                        <Button
-                            shape="circle"
-                            variant="text"
-                            onClick={() => addTriggerConditions(idx)}>
-                            <AddIcon />
-                        </Button>
-                    </Popup>
-                    <Popup trigger="hover" content="删除分组">
-                        <Button
-                            shape="circle"
-                            variant="text"
-                            disabled={breakerRule.block_configs[idx].trigger_conditions.length <= 1}
-                            onClick={() => removeTriggerConditions(idx, rowIndex)}>
-                            <RemoveIcon />
-                        </Button>
-                    </Popup>
-                </Space>
-            ),
-        }
-    ]
-
-    // 路由策略分组表格（弹窗编辑标签）
-    const renderGroupTable = (idx: number, rule: BlockConfig) => (
-        <div className={styles.compactTable}>
-            <Table
-                key={`breaker-trigger-${idx}-${editorState.editable ? 'edit' : 'view'}`}
-                rowKey="key"
-                tableLayout={'fixed'}
-                data={rule.trigger_conditions}
-                columns={editorState.editable ?
-                    triggerTableColumns(idx)
-                    :
-                    triggerTableColumns(idx)?.filter(col => col.colKey !== 'action')}
-            />
-        </div>
-    );
-
-
-    const apiTableColumns = (ruleIdx: number): PrimaryTableProps['columns'] => [
-        {
-            colKey: 'protocol',
-            title: '协议',
-            width: 240,
-            edit: {
-                keepEditMode: editorState.editable,
-                showEditIcon: editorState.editable,
-                component: Select,
-                props: {
-                    filterable: true,
-                    creatable: true,
-                    options: InterfaceProtocolOption,
-                },
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    const newRules = { ...breakerRule };
-                    if (!newRules.block_configs[ruleIdx].api) {
-                        newRules.block_configs[ruleIdx].api = { protocol: '', method: '', path: { type: MatchType.EXACT, value: '', value_type: MatchValueType.TEXT } };
-                    }
-                    newRules.block_configs[ruleIdx].api = {
-                        ...newRules.block_configs[ruleIdx].api,
-                        protocol: context.newRowData.protocol as string,
-                    }
-                    setBreakerRule(newRules);
-                },
-                // 校验规则，此处同 Form 表单
-                validateTrigger: 'change',
-            },
-            cell: ({ row }) => {
-                return <Text>{row.protocol}</Text>
-            }
-        },
-        {
-            colKey: 'path.value',
-            title: '接口路径',
-            edit: {
-                keepEditMode: editorState.editable,
-                showEditIcon: editorState.editable,
-                component: InputAdornment,
-                props: (context: { row: API }) => ({
-                    clearable: true,
-                    children: (
-                        <Input readonly={!editorState.editable} />
-                    ),
-                    append: (
-                        <Select
-                            autoWidth={true}
-                            defaultValue={MatchType.EXACT}
-                            options={MatchTypeOption}
-                            value={breakerRule.block_configs[ruleIdx]?.api?.path.type}
-                            readonly={!editorState.editable}
-                            onChange={(value) => {
-                                const newRules = { ...breakerRule };
-                                if (!newRules.block_configs[ruleIdx].api) {
-                                    newRules.block_configs[ruleIdx].api = { protocol: '', method: '', path: { type: MatchType.EXACT, value: '', value_type: MatchValueType.TEXT } };
-                                }
-                                newRules.block_configs[ruleIdx].api = {
-                                    ...newRules.block_configs[ruleIdx].api,
-                                    path: {
-                                        type: value as MatchType,
-                                        value: context.row.path.value || value as string, // 保持原有值
-                                        value_type: MatchValueType.TEXT, // 默认值类型为文本
-                                    }
-                                }
-                                setBreakerRule(newRules);
-                            }}
-                        />
-                    ),
-                }),
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    const newRules = { ...breakerRule };
-                    if (!newRules.block_configs[ruleIdx].api) {
-                        newRules.block_configs[ruleIdx].api = { protocol: '', method: '', path: { type: MatchType.EXACT, value: '', value_type: MatchValueType.TEXT } };
-                    }
-                    newRules.block_configs[ruleIdx].api.path = {
-                        type: context.newRowData.path.type as MatchType,
-                        value: context.newRowData.path.value || '',
-                        value_type: MatchValueType.TEXT,
-                    };
-                    setBreakerRule(newRules);
-                },
-                // 校验规则，此处同 Form 表单
-                validateTrigger: 'change',
-            },
-            cell: ({ row }) => {
-                return <Text>{row.path?.value}</Text>
-            }
-        },
-        {
-            colKey: 'method',
-            title: '接口方法',
-            edit: {
-                keepEditMode: editorState.editable,
-                showEditIcon: editorState.editable,
-                component: Select,
-                props: (context: { row: API }) => ({
-                    creatable: true,
-                    filterable: true,
-                    options: context.row.protocol === 'HTTP' ? HTTPMethodOption : [],
-                }),
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    const newRules = { ...breakerRule };
-                    if (!newRules.block_configs[ruleIdx].api) {
-                        newRules.block_configs[ruleIdx].api = { protocol: '', method: '', path: { type: MatchType.EXACT, value: '', value_type: MatchValueType.TEXT } };
-                    }
-                    newRules.block_configs[ruleIdx].api = {
-                        ...newRules.block_configs[ruleIdx].api,
-                        method: context.newRowData.method as string,
-                    }
-                    setBreakerRule(newRules);
-                },
-                // 校验规则，此处同 Form 表单
-                validateTrigger: 'change',
-            },
-            cell: ({ row }) => {
-                return <Text>{row.method}</Text>
-            }
-        },
-    ]
-
-    // 路由策略分组表格（弹窗编辑标签）
-    const renderApiTable = (idx: number, rule: BlockConfig) => (
-        <div className={styles.compactTable}>
-            <Table
-                key={`breaker-api-${idx}-${editorState.editable ? 'edit' : 'view'}`}
-                rowKey="key"
-                tableLayout={'fixed'}
-                data={[rule.api ? rule.api : { key: `api-${idx}`, method: '', path: { type: MatchType.EXACT, value: '', value_type: MatchValueType.TEXT }, }]}
-                columns={apiTableColumns(idx)}
-            />
-        </div>
-    );
-
-    const renderRecover = (idx: number, rule: BlockConfig) => (
-        <div className={shared.step} data-step="4">
-            <div className={shared.stepTitle}>恢复策略<span className={shared.stepHint}>控制该策略进入熔断后的半开恢复和主动探测</span></div>
-            <div className={shared.stepContent}>
-                <Row gutter={[16, 16]}>
-                    <Col span={4}>
-                        <FormItem label={"最大剔除比例"}>
-                            {editorState.editable ? (
-                                <InputAdornment append={"%"}>
-                                    <InputNumber
-                                        min={0}
-                                        max={100}
-                                        value={rule.max_ejection_percent}
-                                        onChange={(val) => {
-                                            const newRules = cloneDeep(breakerRule);
-                                            newRules.block_configs[idx].max_ejection_percent = val as number;
-                                            setBreakerRule(newRules);
-                                        }} />
-                                </InputAdornment>
-                            ) : renderReadonlyValue(`${rule.max_ejection_percent ?? '-'}%`)}
-                        </FormItem>
-                    </Col>
-                    <Col span={4}>
-                        <FormItem label={"熔断时长"}>
-                            {editorState.editable ? (
-                                <InputAdornment append={"秒"}>
-                                    <InputNumber
-                                        min={0}
-                                        value={rule.recoverCondition?.sleepWindow}
-                                        onChange={(val) => {
-                                            const newRules = cloneDeep(breakerRule);
-                                            newRules.block_configs[idx].recoverCondition.sleepWindow = val as number;
-                                            setBreakerRule(newRules);
-                                        }} />
-                                </InputAdornment>
-                            ) : renderReadonlyValue(`${rule.recoverCondition?.sleepWindow ?? '-'} 秒`)}
-                        </FormItem>
-                    </Col>
-                    <Col span={4}>
-                        <FormItem label={"主动探测"}>
-                            {editorState.editable ? (
-                                <Switch
-                                    value={rule.faultDetectConfig?.enable}
-                                    onChange={(checked) => {
-                                        const newRules = cloneDeep(breakerRule);
-                                        newRules.block_configs[idx].faultDetectConfig = {
-                                            enable: checked as boolean,
-                                        };
-                                        setBreakerRule(newRules);
-                                    }} />
-                            ) : renderReadonlySwitch(rule.faultDetectConfig?.enable)}
-                        </FormItem>
-                    </Col>
-                </Row>
+    const renderServiceScope = (
+        <div className={shared.section}>
+            <div className={shared.sectionHeader}>服务范围</div>
+            <div className={shared.sectionBody}>
+                <div className={shared.infoGrid}>
+                    <div className={`${shared.field} ${shared.full}`}>
+                        <div className={shared.fieldLabel}>调用关系</div>
+                        {editorState.editable ? (
+                            <div className={shared.kv2}>
+                                <div>
+                                    <div className={shared.editLabel}>主调命名空间</div>
+                                    <Select filterable creatable options={breakerNamespaceOptions} value={breakerRule.ruleMatcher.source.namespace} onChange={(value) => updateRule(draft => { draft.ruleMatcher.source.namespace = value as string; })} />
+                                </div>
+                                <div>
+                                    <div className={shared.editLabel}>主调服务</div>
+                                    <Select filterable creatable options={breakerSourceServiceOptions} value={breakerRule.ruleMatcher.source.service} onChange={(value) => updateRule(draft => { draft.ruleMatcher.source.service = value as string; })} />
+                                </div>
+                                <div>
+                                    <div className={shared.editLabel}>被调命名空间</div>
+                                    <Select filterable creatable options={breakerNamespaceOptions} value={breakerRule.ruleMatcher.destination.namespace} onChange={(value) => updateRule(draft => { draft.ruleMatcher.destination.namespace = value as string; })} />
+                                </div>
+                                <div>
+                                    <div className={shared.editLabel}>被调服务</div>
+                                    <Select filterable creatable options={breakerDestServiceOptions} value={breakerRule.ruleMatcher.destination.service} onChange={(value) => updateRule(draft => { draft.ruleMatcher.destination.service = value as string; })} />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className={shared.flow}>
+                                <div className={shared.flowNode}>
+                                    <span className={shared.flowNodeLabel}>主调</span>
+                                    <span className={shared.flowNodeValue}>{`${breakerRule.ruleMatcher.source.namespace || '-'} / ${breakerRule.ruleMatcher.source.service || '-'}`}</span>
+                                </div>
+                                <span className={shared.flowArrow}><RocketIcon /></span>
+                                <div className={shared.flowNode}>
+                                    <span className={shared.flowNodeLabel}>被调</span>
+                                    <span className={shared.flowNodeValue}>{`${destinationView.namespace || '-'} / ${destinationView.service || '-'}`}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <div className={`${shared.field} ${shared.full}`}>
+                        <div className={shared.fieldLabel}>熔断粒度</div>
+                        {canEditLevel ? (
+                            <RadioGroup theme="button" variant="primary-filled" value={breakerRule.level} onChange={(value) => setBreakerRule(prev => ({ ...prev, level: value as string }))}>
+                                <Radio.Button value={BreakLevelType.Service}>{BreakLevelMap[BreakLevelType.Service]}</Radio.Button>
+                                <Radio.Button value={BreakLevelType.Instance}>{BreakLevelMap[BreakLevelType.Instance]}</Radio.Button>
+                                <Radio.Button value={BreakLevelType.Method}>{BreakLevelMap[BreakLevelType.Method]}</Radio.Button>
+                            </RadioGroup>
+                        ) : <div className={shared.fieldValue}>{BreakLevelMap[breakerRule.level as BreakLevelType] || '-'}</div>}
+                    </div>
+                </div>
             </div>
         </div>
     );
 
-    const renderFallback = (idx: number, rule: BlockConfig) => (
-        <div className={shared.step} data-step="5">
-            <div className={shared.stepTitle}>熔断后降级<span className={shared.stepHint}>该策略触发时返回的兜底响应</span></div>
-            <div className={shared.stepContent}>
-                <FormItem label={"是否开启"}>
-                    {editorState.editable ? (
-                        <Switch
-                            value={rule.fallbackConfig?.enable}
-                            onChange={(checked) => {
-                                const newRules = cloneDeep(breakerRule);
-                                newRules.block_configs[idx].fallbackConfig = {
-                                    ...newRules.block_configs[idx].fallbackConfig,
-                                    enable: checked as boolean,
-                                };
-                                setBreakerRule(newRules);
-                            }} />
-                    ) : renderReadonlySwitch(rule.fallbackConfig?.enable)}
-                </FormItem>
-                {rule.fallbackConfig?.enable && (
-                    <>
-                        <FormItem label={"响应码"}>
-                            {editorState.editable ? (
-                                <InputNumber
-                                    value={rule.fallbackConfig?.response?.code}
-                                    onChange={(val) => {
-                                        const newRules = cloneDeep(breakerRule);
-                                        newRules.block_configs[idx].fallbackConfig.response.code = val as number;
-                                        setBreakerRule(newRules);
-                                    }} />
-                            ) : renderReadonlyValue(rule.fallbackConfig?.response?.code ?? '-')}
-                        </FormItem>
-                        <FormItem label={"响应头"}>
-                            <div>
-                                {Object.entries(rule.fallbackConfig?.response?.headers || []).length > 0 ? (
-                                    <Space>
-                                        {Object.entries(rule.fallbackConfig?.response?.headers || []).map(([key, value], headerIdx) => (
-                                            <Tag key={headerIdx}>
-                                                {`${value.key}: ${value.value}`}
-                                            </Tag>
-                                        ))}
-                                    </Space>
-                                ) : (
-                                    <Text>暂无响应头</Text>
-                                )}
-                                {editorState.editable && (
+    const renderInterfaceRows = (subRuleIdx: number, strategyIdx: number, strategy: CircuitBreakerStrategyDraft) => (
+        <div className={styles.interfaceGrid}>
+            <div className={styles.gridHeader}>协议</div>
+            <div className={styles.gridHeader}>接口方法</div>
+            <div className={styles.gridHeader}>接口路径</div>
+            <div className={styles.gridHeader}>操作</div>
+            {(strategy.ifaces || []).map((api: CircuitBreakerAPI, ifaceIdx) => (
+                <React.Fragment key={`iface-${subRuleIdx}-${strategyIdx}-${ifaceIdx}`}>
+                    <div className={styles.gridCell}>
+                        {editorState.editable ? (
+                            <Select options={InterfaceProtocolOption} value={api.protocol || 'HTTP'} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].ifaces[ifaceIdx].protocol = value as string; })} />
+                        ) : <Text>{api.protocol || '-'}</Text>}
+                    </div>
+                    <div className={styles.gridCell}>
+                        {editorState.editable ? (
+                            <Select creatable filterable options={api.protocol === 'HTTP' ? HTTPMethodOption : []} value={api.method || 'GET'} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].ifaces[ifaceIdx].method = value as string; })} />
+                        ) : <Text>{api.method || '-'}</Text>}
+                    </div>
+                    <div className={styles.gridCell}>
+                        {editorState.editable ? (
+                            <InputAdornment append={(
+                                <Select
+                                    autoWidth
+                                    options={MatchTypeOption}
+                                    value={api.path?.type || MatchType.EXACT}
+                                    onChange={(value) => updateRule(draft => {
+                                        const path = draft.subrules[subRuleIdx].strategies[strategyIdx].ifaces[ifaceIdx].path || { type: MatchType.EXACT, value: '', value_type: MatchValueType.TEXT };
+                                        draft.subrules[subRuleIdx].strategies[strategyIdx].ifaces[ifaceIdx].path = { ...path, type: value as string };
+                                    })}
+                                />
+                            )}>
+                                <Input
+                                    className={styles.monoInput}
+                                    value={api.path?.value || ''}
+                                    onChange={(value) => updateRule(draft => {
+                                        const path = draft.subrules[subRuleIdx].strategies[strategyIdx].ifaces[ifaceIdx].path || { type: MatchType.EXACT, value: '', value_type: MatchValueType.TEXT };
+                                        draft.subrules[subRuleIdx].strategies[strategyIdx].ifaces[ifaceIdx].path = { ...path, value, value_type: MatchValueType.TEXT };
+                                    })}
+                                />
+                            </InputAdornment>
+                        ) : <span className={shared.pathTag}>{api.path?.value || '-'}</span>}
+                    </div>
+                    <div className={`${styles.gridCell} ${styles.actionCell}`}>
+                        {editorState.editable && (
+                            <Space size={4}>
+                                <Popup trigger="hover" content="添加接口">
+                                    <Button shape="circle" variant="text" onClick={() => addIface(subRuleIdx, strategyIdx)}><AddIcon /></Button>
+                                </Popup>
+                                <Popup trigger="hover" content="删除接口">
                                     <Button
                                         shape="circle"
                                         variant="text"
-                                        onClick={() => setEditorState(prev => ({ ...prev, headerVisible: true, headerRuleIndex: idx }))}
+                                        disabled={strategy.ifaces.length <= 1}
+                                        onClick={() => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].ifaces.splice(ifaceIdx, 1); })}
                                     >
-                                        <Edit1Icon />
+                                        <RemoveIcon />
                                     </Button>
-                                )}
-                                {renderRspHeaderDialog(idx, rule)}
-                            </div>
-                        </FormItem>
-                        <FormItem label={"响应体"}>
-                            {editorState.editable ? (
-                                <Textarea
-                                    value={rule.fallbackConfig?.response?.body || ''}
-                                    onChange={(value) => {
-                                        const newRules = cloneDeep(breakerRule);
-                                        newRules.block_configs[idx].fallbackConfig.response.body = value as string;
-                                        setBreakerRule(newRules);
-                                    }} />
-                            ) : (
-                                <pre className={styles.readonlyCodeBlock}>
-                                    {rule.fallbackConfig?.response?.body || '-'}
-                                </pre>
-                            )}
-                        </FormItem>
-                    </>
-                )}
-            </div>
+                                </Popup>
+                            </Space>
+                        )}
+                    </div>
+                </React.Fragment>
+            ))}
         </div>
     );
 
-    // 规则区块
-    const renderRule = (rule: BlockConfig, idx: number) => {
-        const collapsed = collapsedRuleIndexes.has(idx);
-        const errorCount = rule.error_conditions?.length || 0;
-        const triggerCount = rule.trigger_conditions?.length || 0;
-        const hasApiStep = breakerRule.level === BreakLevelType.Method || !!rule.api;
+    const renderErrorRows = (subRuleIdx: number, strategyIdx: number, strategy: CircuitBreakerStrategyDraft) => (
+        <div className={styles.conditionGrid}>
+            <div className={styles.gridHeader}>参数类型</div>
+            <div className={styles.gridHeader}>匹配类型</div>
+            <div className={styles.gridHeader}>匹配值</div>
+            <div className={styles.gridHeader}>操作</div>
+            {(strategy.error_conditions || []).map((condition, conditionIdx) => (
+                <React.Fragment key={`error-${subRuleIdx}-${strategyIdx}-${conditionIdx}`}>
+                    <div className={styles.gridCell}>
+                        {editorState.editable ? (
+                            <Select options={ErrorConditionOptions} value={condition.inputType} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].error_conditions[conditionIdx].inputType = value as string; })} />
+                        ) : <Text>{ErrorConditionMap[condition.inputType as ErrorConditionType] || condition.inputType}</Text>}
+                    </div>
+                    <div className={styles.gridCell}>
+                        {editorState.editable ? (
+                            <Select options={MatchTypeOption} value={condition.condition?.type || MatchType.RANGE} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].error_conditions[conditionIdx].condition.type = value as string; })} />
+                        ) : <Text>{MatchTypeMap[condition.condition?.type as MatchType] || condition.condition?.type}</Text>}
+                    </div>
+                    <div className={styles.gridCell}>
+                        {editorState.editable ? (
+                            <Input value={condition.condition?.value || ''} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].error_conditions[conditionIdx].condition.value = value; })} />
+                        ) : <Text>{condition.condition?.value || '-'}</Text>}
+                    </div>
+                    <div className={`${styles.gridCell} ${styles.actionCell}`}>
+                        {editorState.editable && (
+                            <Space size={4}>
+                                <Popup trigger="hover" content="添加错误条件">
+                                    <Button shape="circle" variant="text" onClick={() => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].error_conditions.push(defaultErrorCondition()); })}><AddIcon /></Button>
+                                </Popup>
+                                <Popup trigger="hover" content="删除错误条件">
+                                    <Button
+                                        shape="circle"
+                                        variant="text"
+                                        disabled={strategy.error_conditions.length <= 1}
+                                        onClick={() => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].error_conditions.splice(conditionIdx, 1); })}
+                                    >
+                                        <RemoveIcon />
+                                    </Button>
+                                </Popup>
+                            </Space>
+                        )}
+                    </div>
+                </React.Fragment>
+            ))}
+        </div>
+    );
+
+    const renderTriggerRows = (subRuleIdx: number, strategyIdx: number, strategy: CircuitBreakerStrategyDraft) => (
+        <div className={styles.triggerGrid}>
+            <div className={styles.gridHeader}>类型</div>
+            <div className={styles.gridHeader}>比较</div>
+            <div className={styles.gridHeader}>阈值</div>
+            <div className={styles.gridHeader}>统计周期</div>
+            <div className={styles.gridHeader}>最小请求数</div>
+            <div className={styles.gridHeader}>操作</div>
+            {(strategy.trigger_conditions || []).map((condition, conditionIdx) => {
+                const isRatio = condition.triggerType === TriggerType.ERROR_RATE;
+                const thresholdValue = isRatio ? condition.errorPercent ?? condition.triggerVal ?? 0 : condition.errorCount ?? condition.triggerVal ?? 0;
+                return (
+                    <React.Fragment key={`trigger-${subRuleIdx}-${strategyIdx}-${conditionIdx}`}>
+                        <div className={styles.gridCell}>
+                            {editorState.editable ? (
+                                <Select
+                                    options={TriggerTypeOptions}
+                                    value={condition.triggerType}
+                                    onChange={(value) => updateRule(draft => {
+                                        const item = draft.subrules[subRuleIdx].strategies[strategyIdx].trigger_conditions[conditionIdx];
+                                        item.triggerType = value as string;
+                                        item.triggerVal = value === TriggerType.ERROR_RATE ? item.errorPercent || 50 : item.errorCount || 3;
+                                    })}
+                                />
+                            ) : <Text>{TriggerTypeMap[condition.triggerType as TriggerType]?.text || condition.triggerType}</Text>}
+                        </div>
+                        <div className={styles.gridCell}><Text>{'>='}</Text></div>
+                        <div className={styles.gridCell}>
+                            {editorState.editable ? (
+                                <InputAdornment append={isRatio ? '%' : '次'}>
+                                    <InputNumber
+                                        min={0}
+                                        max={isRatio ? 100 : undefined}
+                                        value={thresholdValue}
+                                        onChange={(value) => updateRule(draft => {
+                                            const item = draft.subrules[subRuleIdx].strategies[strategyIdx].trigger_conditions[conditionIdx];
+                                            const nextVal = Number(value || 0);
+                                            item.triggerVal = nextVal;
+                                            if (item.triggerType === TriggerType.ERROR_RATE) {
+                                                item.errorPercent = nextVal;
+                                                item.errorCount = 0;
+                                            } else {
+                                                item.errorCount = nextVal;
+                                                item.errorPercent = 0;
+                                            }
+                                        })}
+                                    />
+                                </InputAdornment>
+                            ) : <Text>{`${thresholdValue} ${isRatio ? '%' : '次'}`}</Text>}
+                        </div>
+                        <div className={styles.gridCell}>
+                            {editorState.editable ? (
+                                <InputAdornment append="秒">
+                                    <InputNumber min={0} value={condition.interval || 0} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].trigger_conditions[conditionIdx].interval = Number(value || 0); })} />
+                                </InputAdornment>
+                            ) : <Text>{`${condition.interval || 0} 秒`}</Text>}
+                        </div>
+                        <div className={styles.gridCell}>
+                            {editorState.editable ? (
+                                <InputAdornment append="个">
+                                    <InputNumber min={0} value={condition.minimumRequest || 0} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].trigger_conditions[conditionIdx].minimumRequest = Number(value || 0); })} />
+                                </InputAdornment>
+                            ) : <Text>{`${condition.minimumRequest || 0} 个`}</Text>}
+                        </div>
+                        <div className={`${styles.gridCell} ${styles.actionCell}`}>
+                            {editorState.editable && (
+                                <Space size={4}>
+                                    <Popup trigger="hover" content="添加触发条件">
+                                        <Button shape="circle" variant="text" onClick={() => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].trigger_conditions.push(defaultTriggerCondition()); })}><AddIcon /></Button>
+                                    </Popup>
+                                    <Popup trigger="hover" content="删除触发条件">
+                                        <Button
+                                            shape="circle"
+                                            variant="text"
+                                            disabled={strategy.trigger_conditions.length <= 1}
+                                            onClick={() => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].trigger_conditions.splice(conditionIdx, 1); })}
+                                        >
+                                            <RemoveIcon />
+                                        </Button>
+                                    </Popup>
+                                </Space>
+                            )}
+                        </div>
+                    </React.Fragment>
+                );
+            })}
+        </div>
+    );
+
+    const renderStrategy = (subRuleIdx: number, strategy: CircuitBreakerStrategyDraft, strategyIdx: number) => {
+        const collapsed = collapsedStrategyKeys.has(`${subRuleIdx}-${strategyIdx}`);
         return (
-            <div className={`${shared.policy} ${collapsed ? shared.policyCollapsed : ''}`} key={idx}>
-                <div className={shared.policyHead} onClick={() => toggleRuleCollapsed(idx)}>
+            <div className={`${shared.policy} ${styles.strategyPolicy} ${collapsed ? shared.policyCollapsed : ''}`} key={`${subRuleIdx}-${strategyIdx}`}>
+                <div className={shared.policyHead} onClick={() => toggleStrategyCollapsed(subRuleIdx, strategyIdx)}>
                     <div className={shared.policyHeadMain}>
                         <span className={shared.caret}><ChevronRightIcon /></span>
                         <div>
-                            <div className={shared.policyIndex}>熔断策略 [{idx + 1}]{rule.name ? `：${rule.name}` : ''}</div>
-                            <div className={shared.policySummary}>
-                                {errorCount} 个错误判断条件 / {triggerCount} 个触发条件{rule.api ? ' / 指定接口' : ''}
-                            </div>
+                            <div className={shared.policyIndex}>熔断策略 [{strategyIdx + 1}]{strategy.name ? `：${strategy.name}` : ''}</div>
+                            <div className={shared.policySummary}>{describeStrategySummary(strategy)}</div>
                         </div>
                     </div>
                     <div className={shared.policyHeadActions} onClick={(e) => e.stopPropagation()}>
-                        <Tag variant="light">{BreakLevelMap[breakerRule.level as BreakLevelType] || '服务'}粒度</Tag>
                         {editorState.editable && (
                             <Popup trigger="hover" content="删除策略">
                                 <Button
                                     shape="circle"
                                     variant="text"
-                                    onClick={() => {
-                                        const newRules = { ...breakerRule };
-                                        newRules.block_configs.splice(idx, 1);
-                                        setBreakerRule(newRules);
-                                    }}>
+                                    disabled={breakerRule.subrules[subRuleIdx].strategies.length <= 1}
+                                    onClick={() => updateRule(draft => { draft.subrules[subRuleIdx].strategies.splice(strategyIdx, 1); })}
+                                >
                                     <CloseIcon />
                                 </Button>
                             </Popup>
@@ -995,91 +663,220 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                     </div>
                 </div>
                 <div className={shared.policyBody}>
-                    {hasApiStep && (
-                        <div className={shared.step} data-step="1">
-                            <div className={shared.stepTitle}>接口范围<span className={shared.stepHint}>满足该接口条件的请求才进入熔断判断</span></div>
-                            <div className={shared.stepContent}>{renderApiTable(idx, rule)}</div>
+                    <div className={shared.step} data-step="1">
+                        <div className={shared.stepTitle}>策略名称<span className={shared.stepHint}>用于区分同一子规则内不同触发策略</span></div>
+                        <div className={shared.stepContent}>
+                            {editorState.editable ? (
+                                <Input value={strategy.name} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].name = value; })} />
+                            ) : renderReadonlyValue(strategy.name || '-')}
                         </div>
-                    )}
-                    <div className={shared.step} data-step={hasApiStep ? '2' : '1'}>
-                        <div className={shared.stepTitle}>错误判断条件<span className={shared.stepHint}>满足任一应答条件的请求会被标识为错误</span></div>
-                        <div className={shared.stepContent}>{renderMatchTable(idx, rule)}</div>
                     </div>
-                    <div className={shared.step} data-step={hasApiStep ? '3' : '2'}>
+                    <div className={shared.step} data-step="2">
+                        <div className={shared.stepTitle}>接口范围<span className={shared.stepHint}>满足任一接口条件的请求进入该策略判断</span></div>
+                        <div className={shared.stepContent}>{renderInterfaceRows(subRuleIdx, strategyIdx, strategy)}</div>
+                    </div>
+                    <div className={shared.step} data-step="3">
+                        <div className={shared.stepTitle}>错误判断条件<span className={shared.stepHint}>定义哪些请求算作错误</span></div>
+                        <div className={shared.stepContent}>{renderErrorRows(subRuleIdx, strategyIdx, strategy)}</div>
+                    </div>
+                    <div className={shared.step} data-step="4">
                         <div className={shared.stepTitle}>熔断触发条件<span className={shared.stepHint}>满足任一统计条件即可触发熔断</span></div>
-                        <div className={shared.stepContent}>{renderGroupTable(idx, rule)}</div>
+                        <div className={shared.stepContent}>{renderTriggerRows(subRuleIdx, strategyIdx, strategy)}</div>
                     </div>
-                    {renderRecover(idx, rule)}
-                    {renderFallback(idx, rule)}
                 </div>
             </div>
         );
-    }
+    };
 
-    // 标签弹窗渲染
-    const renderRspHeaderDialog = (ruleIdx: number, rule: BlockConfig) => (
-        <Dialog
-            visible={editorState.headerVisible && editorState.headerRuleIndex === ruleIdx}
-            header="编辑响应头"
-            width={700}
-            onConfirm={() => setEditorState(prev => ({ ...prev, headerVisible: false, headerRuleIndex: undefined }))}
-            onClose={() => setEditorState(prev => ({ ...prev, headerVisible: false, headerRuleIndex: undefined }))}
-        >
-            <div>
-                {rule?.fallbackConfig?.response?.headers?.map((tag, idx) => (
-                    <Row key={idx} style={{ marginBottom: 12 }} align="middle">
-                        <Space size={8} style={{ width: '100%' }}>
-                            <Input
-                                value={tag.key}
-                                placeholder="请输入标签键"
-                                onChange={v => {
-                                    const newRules = cloneDeep(breakerRule);
-                                    const headers = [...(newRules.block_configs[ruleIdx]?.fallbackConfig?.response?.headers || [])];
-                                    headers[idx] = { ...headers[idx], key: v };
-                                    newRules.block_configs[ruleIdx].fallbackConfig.response.headers = headers;
-                                    setBreakerRule(newRules);
-                                }} />
-                            <Input
-                                value={tag.value}
-                                placeholder="请输入标签值"
-                                onChange={v => {
-                                    const newRules = cloneDeep(breakerRule);
-                                    const headers = [...(newRules.block_configs[ruleIdx]?.fallbackConfig?.response?.headers || [])];
-                                    headers[idx] = { ...headers[idx], value: v };
-                                    newRules.block_configs[ruleIdx].fallbackConfig.response.headers = headers;
-                                    setBreakerRule(newRules);
-                                }} />
-                            <Popup trigger="hover" content="删除标签">
+    const renderRecover = (subRuleIdx: number, subrule: CircuitBreakerSubRuleDraft) => (
+        <div className={shared.step} data-step="2">
+            <div className={shared.stepTitle}>恢复策略<span className={shared.stepHint}>该子规则进入熔断后的恢复与主动探测开关</span></div>
+            <div className={shared.stepContent}>
+                <div className={styles.recoverGrid}>
+                    <div>
+                        <div className={shared.fieldLabel}>最大剔除比例</div>
+                        {editorState.editable ? (
+                            <InputAdornment append="%">
+                                <InputNumber min={0} max={100} value={subrule.max_ejection_percent} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].max_ejection_percent = Number(value || 0); })} />
+                            </InputAdornment>
+                        ) : renderReadonlyValue(`${subrule.max_ejection_percent ?? '-'}%`)}
+                    </div>
+                    <div>
+                        <div className={shared.fieldLabel}>熔断时长</div>
+                        {editorState.editable ? (
+                            <InputAdornment append="秒">
+                                <InputNumber min={0} value={subrule.recoverCondition?.sleepWindow} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].recoverCondition.sleepWindow = Number(value || 0); })} />
+                            </InputAdornment>
+                        ) : renderReadonlyValue(`${subrule.recoverCondition?.sleepWindow ?? '-'} 秒`)}
+                    </div>
+                    <div>
+                        <div className={shared.fieldLabel}>连续成功次数</div>
+                        {editorState.editable ? (
+                            <InputAdornment append="次">
+                                <InputNumber min={0} value={subrule.recoverCondition?.consecutiveSuccess || 0} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].recoverCondition.consecutiveSuccess = Number(value || 0); })} />
+                            </InputAdornment>
+                        ) : renderReadonlyValue(`${subrule.recoverCondition?.consecutiveSuccess ?? 0} 次`)}
+                    </div>
+                    <div>
+                        <div className={shared.fieldLabel}>主动探测</div>
+                        {editorState.editable ? (
+                            <Switch value={subrule.faultDetectConfig?.enable} onChange={(checked) => updateRule(draft => { draft.subrules[subRuleIdx].faultDetectConfig = { enable: checked as boolean }; })} />
+                        ) : renderReadonlySwitch(subrule.faultDetectConfig?.enable)}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderFallback = (subRuleIdx: number, subrule: CircuitBreakerSubRuleDraft) => (
+        <div className={shared.step} data-step="3">
+            <div className={shared.stepTitle}>
+                熔断后降级
+                <span className={shared.stepHint}>该子规则触发时返回的兜底响应</span>
+                {editorState.editable ? (
+                    <Switch value={subrule.fallbackConfig?.enable} onChange={(checked) => updateRule(draft => { draft.subrules[subRuleIdx].fallbackConfig.enable = checked as boolean; })} />
+                ) : renderReadonlySwitch(subrule.fallbackConfig?.enable)}
+            </div>
+            {subrule.fallbackConfig?.enable && (
+                <div className={shared.stepContent}>
+                    <div className={styles.fallbackGrid}>
+                        <div>
+                            <div className={shared.fieldLabel}>响应码</div>
+                            {editorState.editable ? (
+                                <InputNumber value={subrule.fallbackConfig?.response?.code} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].fallbackConfig.response.code = Number(value || 0); })} />
+                            ) : renderReadonlyValue(subrule.fallbackConfig?.response?.code ?? '-')}
+                        </div>
+                        <div>
+                            <div className={shared.fieldLabel}>响应头</div>
+                            <div className={shared.tagRow}>
+                                {(subrule.fallbackConfig?.response?.headers || []).length > 0 ? (
+                                    subrule.fallbackConfig.response.headers.map((header, idx) => (
+                                        <Tag key={`${header.key}-${idx}`} variant="light">{`${header.key}: ${header.value}`}</Tag>
+                                    ))
+                                ) : (
+                                    <Text>暂无响应头</Text>
+                                )}
+                                {editorState.editable && (
+                                    <Button shape="circle" variant="text" onClick={() => setEditorState(prev => ({ ...prev, headerVisible: true, headerSubRuleIndex: subRuleIdx }))}>
+                                        <Edit1Icon />
+                                    </Button>
+                                )}
+                            </div>
+                            {renderRspHeaderDialog(subRuleIdx, subrule)}
+                        </div>
+                        <div className={styles.fallbackBodyCell}>
+                            <div className={shared.fieldLabel}>响应体</div>
+                            {editorState.editable ? (
+                                <Textarea value={subrule.fallbackConfig?.response?.body || ''} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].fallbackConfig.response.body = value as string; })} />
+                            ) : (
+                                <pre className={styles.readonlyCodeBlock}>{subrule.fallbackConfig?.response?.body || '-'}</pre>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+
+    const renderSubRule = (subrule: CircuitBreakerSubRuleDraft, subRuleIdx: number) => {
+        const collapsed = collapsedSubRuleIndexes.has(subRuleIdx);
+        return (
+            <div className={`${shared.policy} ${styles.subRulePolicy} ${collapsed ? shared.policyCollapsed : ''}`} key={subRuleIdx}>
+                <div className={`${shared.policyHead} ${styles.subRuleHead}`} onClick={() => toggleSubRuleCollapsed(subRuleIdx)}>
+                    <div className={shared.policyHeadMain}>
+                        <span className={shared.caret}><ChevronRightIcon /></span>
+                        <div>
+                            <div className={shared.policyIndex}>子规则 [{subRuleIdx + 1}]</div>
+                            <div className={shared.policySummary}>{describeSubRuleSummary(subrule)}</div>
+                        </div>
+                    </div>
+                    <div className={shared.policyHeadActions} onClick={(e) => e.stopPropagation()}>
+                        <Tag theme={subrule.fallbackConfig?.enable ? 'warning' : 'default'} variant="light">降级{subrule.fallbackConfig?.enable ? '开' : '关'}</Tag>
+                        {editorState.editable && (
+                            <Popup trigger="hover" content="删除子规则">
                                 <Button
                                     shape="circle"
                                     variant="text"
-                                    onClick={() => {
-                                        const newRules = cloneDeep(breakerRule);
-                                        const headers = [...(newRules.block_configs[ruleIdx]?.fallbackConfig?.response?.headers || [])];
-                                        headers.splice(idx, 1);
-                                        newRules.block_configs[ruleIdx].fallbackConfig.response.headers = headers;
-                                        setBreakerRule(newRules);
-                                    }}
+                                    disabled={breakerRule.subrules.length <= 1}
+                                    onClick={() => updateRule(draft => { draft.subrules.splice(subRuleIdx, 1); })}
                                 >
                                     <CloseIcon />
                                 </Button>
                             </Popup>
-                        </Space>
-                    </Row>
+                        )}
+                    </div>
+                </div>
+                <div className={shared.policyBody}>
+                    <div className={shared.step} data-step="1">
+                        <div className={shared.stepTitle}>
+                            熔断策略
+                            <span className={shared.countTag}>{subrule.strategies.length} 个</span>
+                            <span className={shared.stepHint}>命中任一策略即触发该子规则的恢复/降级配置</span>
+                        </div>
+                        <div className={shared.stepContent}>
+                            <div className={styles.strategyList}>
+                                {subrule.strategies.map((strategy, strategyIdx) => renderStrategy(subRuleIdx, strategy, strategyIdx))}
+                            </div>
+                            {editorState.editable && (
+                                <Button className={styles.inlineAdd} variant="dashed" icon={<AddIcon />} onClick={() => addStrategy(subRuleIdx)}>
+                                    添加熔断策略
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                    {renderRecover(subRuleIdx, subrule)}
+                    {renderFallback(subRuleIdx, subrule)}
+                </div>
+            </div>
+        );
+    };
+
+    const renderRspHeaderDialog = (subRuleIdx: number, subrule: CircuitBreakerSubRuleDraft) => (
+        <Dialog
+            visible={editorState.headerVisible && editorState.headerSubRuleIndex === subRuleIdx}
+            header="编辑响应头"
+            width={700}
+            onConfirm={() => setEditorState(prev => ({ ...prev, headerVisible: false, headerSubRuleIndex: undefined }))}
+            onClose={() => setEditorState(prev => ({ ...prev, headerVisible: false, headerSubRuleIndex: undefined }))}
+        >
+            <div>
+                {(subrule?.fallbackConfig?.response?.headers || []).map((tag, idx) => (
+                    <div key={idx} className={styles.headerEditRow}>
+                        <Input value={tag.key} placeholder="响应头 Key" onChange={value => updateRule(draft => { draft.subrules[subRuleIdx].fallbackConfig.response.headers[idx].key = value; })} />
+                        <Input value={tag.value} placeholder="响应头 Value" onChange={value => updateRule(draft => { draft.subrules[subRuleIdx].fallbackConfig.response.headers[idx].value = value; })} />
+                        <Button shape="circle" variant="text" onClick={() => updateRule(draft => { draft.subrules[subRuleIdx].fallbackConfig.response.headers.splice(idx, 1); })}>
+                            <CloseIcon />
+                        </Button>
+                    </div>
                 ))}
                 <Button
                     variant="text"
                     icon={<AddIcon />}
-                    onClick={() => {
-                        const newRules = cloneDeep(breakerRule);
-                        const headers = [...(newRules.block_configs[ruleIdx]?.fallbackConfig?.response?.headers || []), { key: '', value: '' }];
-                        newRules.block_configs[ruleIdx].fallbackConfig.response.headers = headers;
-                        setBreakerRule(newRules);
-                    }}>
-                    添加标签
+                    onClick={() => updateRule(draft => { draft.subrules[subRuleIdx].fallbackConfig.response.headers.push({ key: '', value: '' }); })}
+                >
+                    添加响应头
                 </Button>
             </div>
         </Dialog>
+    );
+
+    const renderSubRules = (
+        <div className={shared.section}>
+            <div className={shared.sectionHeader}>
+                <span>熔断子规则</span>
+                <span className={shared.countTag}>{breakerRule.subrules.length} 条</span>
+            </div>
+            <div className={shared.sectionBody}>
+                <div className={shared.ruleList}>
+                    {breakerRule.subrules.map((subrule, idx) => renderSubRule(subrule, idx))}
+                </div>
+                {editorState.editable && (
+                    <Button className={styles.inlineAdd} variant="dashed" icon={<AddIcon />} onClick={addSubRule}>
+                        添加子规则
+                    </Button>
+                )}
+            </div>
+        </div>
     );
 
     const renderPublishForm = (
@@ -1100,7 +897,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
 
     const renderStickyTool = (
         <>
-            {viewRule?.editable && (
+            {(op === 'create' || viewRule?.editable) && (
                 <FormItem style={{ marginTop: 20 }}>
                     <StickyTool
                         style={{ zIndex: 1000 }}
@@ -1125,12 +922,13 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                                     if (op === 'create') {
                                         refresh(true);
                                     } else {
+                                        resetCurRule(viewRule as CircuitBreakerRule);
                                         setEditorState(prev => ({ ...prev, editable: false }));
                                     }
                                 }} />}
                             />
                         )}
-                        {(!editorState.editable) && (
+                        {(!editorState.editable && op !== 'create') && (
                             <StickyItem label="" icon={
                                 <RuleStickyAction label="发布" icon={<RocketIcon />} onClick={() => {
                                     setEditorState(prev => ({ ...prev, publishView: true }));
@@ -1143,42 +941,54 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         </>
     )
 
+    const copySpec = () => {
+        navigator.clipboard?.writeText(specText).then(() => {
+            openInfoNotification('复制成功', '已复制当前熔断规则 Spec');
+        }).catch(() => {
+            openErrNotification('复制失败', '当前浏览器不支持复制到剪贴板');
+        });
+    };
+
     return (
-        <div style={{ padding: 24 }}>
-            <Form
-                form={form}
-                onSubmit={onSubmit}
-                layout="vertical"
-                colon
-            >
-                {ruleeditorState}
-                <div className={shared.section}>
-                    <div className={shared.sectionHeader}>
-                        <span>熔断策略</span>
-                        <span className={shared.countTag}>{breakerRule.block_configs.length} 条</span>
+        <div className={styles.editorBody}>
+            <Form form={form} onSubmit={onSubmit} layout="vertical" colon>
+                <div className={styles.circuitBreakerEditorShell}>
+                    <div className={styles.formPane}>
+                        {renderBasicInfo}
+                        {renderServiceScope}
+                        {renderSubRules}
                     </div>
-                    <div className={shared.sectionBody}>
-                        <div className={shared.ruleList}>
-                            {breakerRule.block_configs.map((rule, idx) => renderRule(rule, idx))}
+                    <aside className={styles.specPane}>
+                        <div className={styles.specCard}>
+                            <div className={styles.specToolbar}>
+                                <div>
+                                    <div className={styles.specTitle}>实时 Spec</div>
+                                    <div className={styles.specDesc}>展示保存时提交给后端的真实 CircuitBreakerRule payload</div>
+                                </div>
+                                <div className={styles.specActions}>
+                                    <div className={styles.specToggle}>
+                                        <button type="button" className={specFormat === 'yaml' ? styles.specToggleActive : ''} onClick={() => setSpecFormat('yaml')}>YAML</button>
+                                        <button type="button" className={specFormat === 'json' ? styles.specToggleActive : ''} onClick={() => setSpecFormat('json')}>JSON</button>
+                                    </div>
+                                    <Button size="small" variant="text" icon={<CopyIcon />} onClick={copySpec}>复制</Button>
+                                </div>
+                            </div>
+                            <pre className={styles.specCode}>{specText}</pre>
+                            <div className={styles.specFooter}>
+                                {validationErrors.length === 0 ? (
+                                    <span className={styles.previewOk}>当前规则可保存</span>
+                                ) : (
+                                    validationErrors.slice(0, 3).map((error, idx) => (
+                                        <span key={idx} className={styles.previewError}>{error.message}</span>
+                                    ))
+                                )}
+                            </div>
                         </div>
-                        {editorState.editable && (
-                            <Button
-                                className={shared.addRuleButton}
-                                style={{ marginTop: 12 }}
-                                variant="dashed" icon={<AddIcon />}
-                                onClick={() => {
-                                    const newRule = { ...breakerRule }
-                                    newRule.block_configs.push(defaultBlockConfig(newRule.block_configs.length + 1))
-                                    setBreakerRule(newRule);
-                                }}>
-                                添加熔断策略
-                            </Button>
-                        )}
-                    </div>
+                    </aside>
                 </div>
-                {renderPublishForm}
-                {renderStickyTool}
             </Form>
+            {renderPublishForm}
+            {renderStickyTool}
         </div>
     );
 };

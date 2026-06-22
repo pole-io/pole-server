@@ -516,6 +516,10 @@ type ServiceInstances struct {
 	emptyPushProtectThreshold time.Time
 	// openEmptyProtect 开启实例推空保护
 	openEmptyPushProtect bool
+	// allSnapshot 全量实例快照，用于发现请求复用
+	allSnapshot []*Instance
+	// healthySnapshot 健康实例快照，用于发现请求复用
+	healthySnapshot []*Instance
 }
 
 func NewServiceInstances(protectThreshold float32) *ServiceInstances {
@@ -539,6 +543,7 @@ func (si *ServiceInstances) UpdateProtectThreshold(protectThreshold float32) {
 	defer si.lock.Unlock()
 
 	si.protectThreshold = protectThreshold
+	si.invalidateSnapshotLocked()
 }
 
 func (si *ServiceInstances) UpsertInstance(ins *Instance) {
@@ -546,11 +551,14 @@ func (si *ServiceInstances) UpsertInstance(ins *Instance) {
 	defer si.lock.Unlock()
 
 	si.instances[ins.ID()] = ins
+	delete(si.healthyInstances, ins.ID())
+	delete(si.unhealthyInstances, ins.ID())
 	if ins.Healthy() {
 		si.healthyInstances[ins.ID()] = struct{}{}
 	} else {
 		si.unhealthyInstances[ins.ID()] = struct{}{}
 	}
+	si.invalidateSnapshotLocked()
 }
 
 func (si *ServiceInstances) RemoveInstance(ins *Instance) {
@@ -561,6 +569,7 @@ func (si *ServiceInstances) RemoveInstance(ins *Instance) {
 	delete(si.healthyInstances, ins.ID())
 	delete(si.unhealthyInstances, ins.ID())
 	delete(si.protectInstances, ins.ID())
+	si.invalidateSnapshotLocked()
 }
 
 func (si *ServiceInstances) Range(iterator func(id string, ins *Instance)) {
@@ -573,26 +582,68 @@ func (si *ServiceInstances) Range(iterator func(id string, ins *Instance)) {
 }
 
 func (si *ServiceInstances) GetInstances(onlyHealthy bool, consumer func(*Instance)) {
-	si.lock.RLock()
-	defer si.lock.RUnlock()
+	instances := si.getInstancesSnapshot(onlyHealthy)
+	for _, ins := range instances {
+		consumer(ins)
+	}
+}
 
-	if !onlyHealthy {
-		for k, v := range si.instances {
-			protectIns, ok := si.protectInstances[k]
-			if ok {
-				consumer(protectIns)
-			} else {
-				consumer(v)
-			}
+func (si *ServiceInstances) getInstancesSnapshot(onlyHealthy bool) []*Instance {
+	si.lock.RLock()
+	snapshot := si.allSnapshot
+	if onlyHealthy {
+		snapshot = si.healthySnapshot
+	}
+	if snapshot != nil {
+		si.lock.RUnlock()
+		return snapshot
+	}
+	si.lock.RUnlock()
+
+	si.lock.Lock()
+	defer si.lock.Unlock()
+
+	if onlyHealthy {
+		if si.healthySnapshot == nil {
+			si.healthySnapshot = si.buildHealthySnapshotLocked()
 		}
-	} else {
-		for k := range si.healthyInstances {
-			consumer(si.instances[k])
-		}
-		for _, v := range si.protectInstances {
-			consumer(v)
+		return si.healthySnapshot
+	}
+	if si.allSnapshot == nil {
+		si.allSnapshot = si.buildAllSnapshotLocked()
+	}
+	return si.allSnapshot
+}
+
+func (si *ServiceInstances) buildAllSnapshotLocked() []*Instance {
+	snapshot := make([]*Instance, 0, len(si.instances))
+	for k, v := range si.instances {
+		protectIns, ok := si.protectInstances[k]
+		if ok {
+			snapshot = append(snapshot, protectIns)
+		} else {
+			snapshot = append(snapshot, v)
 		}
 	}
+	return snapshot
+}
+
+func (si *ServiceInstances) buildHealthySnapshotLocked() []*Instance {
+	snapshot := make([]*Instance, 0, len(si.healthyInstances)+len(si.protectInstances))
+	for k := range si.healthyInstances {
+		if ins := si.instances[k]; ins != nil {
+			snapshot = append(snapshot, ins)
+		}
+	}
+	for _, v := range si.protectInstances {
+		snapshot = append(snapshot, v)
+	}
+	return snapshot
+}
+
+func (si *ServiceInstances) invalidateSnapshotLocked() {
+	si.allSnapshot = nil
+	si.healthySnapshot = nil
 }
 
 func (si *ServiceInstances) ReachHealthyProtect() bool {
@@ -612,6 +663,7 @@ func (si *ServiceInstances) RunHealthyProtect() {
 	if curProportion > si.protectThreshold {
 		// 不会触发, 并且清空当前保护状态的实例
 		si.protectInstances = make(map[string]*Instance, 128)
+		si.invalidateSnapshotLocked()
 		return
 	}
 	instanceLastBeatTimes := map[string]int64{}
@@ -646,6 +698,7 @@ func (si *ServiceInstances) RunHealthyProtect() {
 		}
 		si.protectInstances[ins.ID()] = ins
 	}
+	si.invalidateSnapshotLocked()
 }
 
 // needZeroProtect .

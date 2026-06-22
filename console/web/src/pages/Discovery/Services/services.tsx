@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Popconfirm, Tag } from 'tdesign-react';
+import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Popconfirm } from 'tdesign-react';
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,7 +9,6 @@ import Text from 'components/Text';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { Service } from 'services/service';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
-import { CheckVisibilityMode, VisibilityModeMap } from 'utils/visible';
 import ServiceEditor from './ServiceEditor';
 import style from './index.module.less';
 import { cleanServicePage, editorService, listServices, removeServices, resetService, selectService } from 'modules/discovery/service';
@@ -20,12 +19,6 @@ import { Op } from 'services/types';
 function parseCount(value?: string | number) {
     const parsed = Number(value ?? 0);
     return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function visibilityTheme(mode?: string) {
-    if (mode === 'all') return 'success';
-    if (mode === 'specified') return 'warning';
-    return 'default';
 }
 
 const hasValue = (value?: string) => value !== undefined && value !== null && value !== '';
@@ -77,27 +70,6 @@ const columns = (operateService: (op: Op, row: TableRowData) => void, redirect: 
                     <Text>{`${healthy_instance_count ?? '-'} / ${total_instance_count ?? '-'}`}</Text>
                     <span>{total > 0 ? `${rate}% 健康` : '暂无实例'}</span>
                 </div>
-            );
-        },
-    },
-    {
-        colKey: 'export_to',
-        title: t('services.visibility'),
-        cell: ({ row }: TableRowData) => {
-            const visibilityMode = CheckVisibilityMode(row.export_to, row.namespace);
-            const exports = row.export_to || [];
-            if (visibilityMode !== 'specified') {
-                return (
-                    <Tag theme={visibilityTheme(visibilityMode) as any} variant="light">
-                        {VisibilityModeMap[visibilityMode]}
-                    </Tag>
-                );
-            }
-            return (
-                <Space size={4}>
-                    {exports.slice(0, 2).map((item: string) => <Tag key={item} variant="outline">{item}</Tag>)}
-                    {exports.length > 2 && <Tag variant="outline">+{exports.length - 2}</Tag>}
-                </Space>
             );
         },
     },
@@ -175,12 +147,10 @@ const ServicesTable: React.FC<IServicesProps> = ({ }) => {
         const namespaces = new Set(datas.map((item) => item.namespace).filter(Boolean));
         const healthy = datas.reduce((sum, item) => sum + parseCount(item.healthy_instance_count), 0);
         const instances = datas.reduce((sum, item) => sum + parseCount(item.total_instance_count), 0);
-        const publicVisible = datas.filter((item) => CheckVisibilityMode(item.export_to, item.namespace) === 'all').length;
         return {
             namespaces,
             healthy,
             instances,
-            publicVisible,
         };
     }, [datas]);
 
@@ -267,10 +237,6 @@ const ServicesTable: React.FC<IServicesProps> = ({ }) => {
                 <div className={style.metricItem}>
                     <span>Healthy Instances</span>
                     <strong>{metric.healthy}/{metric.instances}</strong>
-                </div>
-                <div className={style.metricItem}>
-                    <span>Public Visible</span>
-                    <strong>{metric.publicVisible}</strong>
                 </div>
             </section>
             <section className={style.filterBar}>

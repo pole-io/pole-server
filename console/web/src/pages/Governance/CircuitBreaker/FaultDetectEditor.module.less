@@ -1,0 +1,334 @@
+.editorBody {
+  background: #f5f7fb;
+  height: calc(100vh - 158px);
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.editorShell {
+  align-items: stretch;
+  display: grid;
+  grid-template-columns: minmax(760px, 1fr) clamp(360px, 28vw, 420px);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.formPane {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  padding: 24px 28px 20px;
+
+  :global(.t-form) {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  :global(.t-form) > div {
+    flex: 0 0 auto;
+  }
+
+  :global(.t-form__item) {
+    margin-bottom: 0;
+  }
+}
+
+.specPane {
+  border-left: 1px solid #d7dde8;
+  display: flex;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+
+.specCard {
+  background: #0b1119;
+  border: 0;
+  border-radius: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.specToolbar {
+  align-items: flex-start;
+  background: #101823;
+  border-bottom: 1px solid #243044;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 18px;
+}
+
+.specTitle {
+  color: #b8c3d4;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.specDesc {
+  color: #7f8ca3;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.specActions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.specToggle {
+  background: #0b1119;
+  border: 1px solid #334155;
+  border-radius: 7px;
+  display: inline-flex;
+  padding: 2px;
+}
+
+.specToggle button {
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  color: #8b95a5;
+  cursor: pointer;
+  font-size: 11px;
+  height: 24px;
+  padding: 0 8px;
+}
+
+.specToggleActive {
+  background: #1677ff !important;
+  color: #fff !important;
+}
+
+.specCode {
+  background: #0b1119;
+  color: #9dccff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 22px;
+  margin: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 22px 28px;
+  white-space: pre;
+}
+
+.specFooter {
+  background: #101823;
+  border-top: 1px solid #243044;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 42px;
+  padding: 12px 18px;
+}
+
+.previewOk,
+.previewError {
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.previewOk {
+  color: #3fd4a8;
+}
+
+.previewError {
+  color: #ff9a92;
+}
+
+.monoTextarea textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.monoInput {
+  :global(.t-input__inner) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  }
+}
+
+.httpHeadersBlock {
+  background: #fff;
+  min-width: 0;
+  padding-top: 4px;
+  width: 100%;
+}
+
+.httpHeadersTitleRow {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.httpHeadersBadge {
+  align-items: center;
+  background: #e8f1ff;
+  border-radius: 5px;
+  color: #1677ff;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  height: 22px;
+  justify-content: center;
+  line-height: 18px;
+  width: 22px;
+}
+
+.httpHeadersTitle {
+  color: #1f2329;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.httpHeadersHint {
+  color: #8b93a3;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.httpHeadersGrid {
+  display: grid;
+  gap: 10px 12px;
+  grid-template-columns: minmax(220px, .78fr) minmax(300px, 1.1fr) 64px;
+}
+
+.httpHeadersHead {
+  color: #8b93a3;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.httpHeadersCell {
+  align-items: center;
+  display: flex;
+  min-width: 0;
+
+  :global(.t-input__wrap) {
+    width: 100%;
+  }
+}
+
+.httpHeadersActionCell {
+  justify-content: center;
+}
+
+.httpHeadersEmpty {
+  align-items: center;
+  background: #fbfcfe;
+  border: 1px dashed #dce3ec;
+  border-radius: 8px;
+  color: #8b93a3;
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: center;
+  min-height: 58px;
+}
+
+.httpHeadersFooter {
+  align-items: center;
+  color: #8b93a3;
+  display: flex;
+  font-size: 13px;
+  justify-content: space-between;
+  line-height: 20px;
+  margin-top: 14px;
+}
+
+.headerReadonlyText {
+  color: #1f2329;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 22px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.strategyNote {
+  background: #f7f9fc;
+  border: 1px solid #e3e8f2;
+  border-radius: 6px;
+  color: #4e5969;
+  font-size: 12px;
+  line-height: 20px;
+  padding: 10px 12px;
+}
+
+.compactSwitchRow {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.segmentedControl {
+  background: #f0f2f5;
+  border-radius: 6px;
+  display: inline-flex;
+  padding: 2px;
+}
+
+.segmentedButton,
+.segmentedButtonActive {
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  height: 28px;
+  line-height: 20px;
+  min-width: 60px;
+  padding: 4px 14px;
+}
+
+.segmentedButton {
+  background: transparent;
+  color: #4e5969;
+}
+
+.segmentedButtonActive {
+  background: #1677ff;
+  color: #fff;
+}
+
+@media (max-width: 1320px) {
+  .editorShell {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: auto;
+  }
+
+  .specPane {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .httpHeadersGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .httpHeadersHead {
+    display: none;
+  }
+
+  .httpHeadersActionCell {
+    justify-content: flex-start;
+  }
+}

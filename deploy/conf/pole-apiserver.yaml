@@ -61,7 +61,7 @@
       include: [default]
     # aia2a OpenAPI interface
     aia2a:
-      enable: false
+      enable: true
       # Registry-only API group; data-plane proxy is not provided by control-plane
       include: [default]
     # Console OpenAPI interface

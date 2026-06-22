@@ -43,8 +43,6 @@
   "common.refresh": "刷新",
   "services.name": "服务名",
   "services.namespace": "命名空间",
-  "services.visibility": "服务可见性",
-  "services.visibilityList": "服务可见的命名空间列表",
   "services.department": "部门",
   "services.business": "业务",
   "services.healthTotal": "健康实例/总实例数",

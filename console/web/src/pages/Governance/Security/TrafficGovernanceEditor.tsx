@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Form, Input, InputNumber, Select, Space, StickyTool, Switch, Tag, Textarea } from 'tdesign-react';
+import { Button, Dialog, Form, Input, InputNumber, Select, Space, StickyTool, Switch, Tag, Textarea } from 'tdesign-react';
 import type { FormProps } from 'tdesign-react';
 import { AddIcon, CheckIcon, ChevronRightIcon, CloseIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
 
@@ -19,10 +19,29 @@ import {
     Op,
 } from 'services/types';
 import {
+    buildSecurityPoliciesFromView,
+    buildSecurityPreviewSpec,
+    defaultProtectedInterface,
+    defaultSecurityArgument,
+    defaultSecurityMatchRule,
+    listTypeText,
+    matchParamDefaultKey,
+    normalizeSecurityMatchRule,
+    normalizeSecurityViewOrder,
+    normalizeSecurityViewRules,
+    readSecurityAction,
+    SecurityListType,
+    SecuritySubRuleKind,
+    SecurityViewRule,
+    securityMatchSourceOptions,
+    stringifySecuritySpec,
+    TrafficSecuritySpecFormat,
+    validateSecurityView,
+} from './trafficSecurityEditorUtils';
+import {
     createTrafficGovernanceRules,
     defaultTrafficGovernanceRule,
     defaultTrafficMirrorRule,
-    defaultTrafficMockRule,
     defaultTrafficSecurityRule,
     describeOneTrafficGovernanceRule,
     MirrorRule,
@@ -42,6 +61,40 @@ import {
     TrafficSecurityPolicy,
     TrafficSecurityRule,
 } from 'services/traffic_governance';
+import {
+    buildMockPreviewSpec,
+    buildMockRulesForSubmit,
+    defaultMockArgument,
+    defaultMockCaller,
+    defaultMockMatchValue,
+    defaultMockSubRule,
+    durationToMs,
+    extractMockCaller,
+    MockCallerScope,
+    mockCallerScopeText,
+    mockMatchSourceOptions,
+    msToDuration,
+    normalizeMockMatchRule,
+    normalizeMockRule,
+    normalizeMockRules,
+    stringifyMockSpec,
+    TrafficMockSpecFormat,
+    validateMockView,
+} from './trafficMockEditorUtils';
+import {
+    buildMirrorPreviewSpec,
+    buildMirrorRulesForSubmit,
+    callerScopeText,
+    defaultMirrorCaller,
+    extractMirrorCaller,
+    isAllMirrorCaller,
+    MirrorCallerScope,
+    normalizeMirrorRules,
+    removeCallerServiceArguments,
+    stringifyMirrorSpec,
+    TrafficMirrorSpecFormat,
+    validateMirrorView,
+} from './trafficMirrorEditorUtils';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import PublishForm from '../RuleRelease/PublishForm';
 import RuleStickyAction from '../RuleRelease/RuleStickyAction';
@@ -52,7 +105,7 @@ import style from './index.module.less';
 const { FormItem } = Form;
 const { StickyItem } = StickyTool;
 
-const matchSourceOptions = ['HEADER', 'QUERY', 'COOKIE', 'METHOD', 'PATH', 'CALLER_SERVICE', 'CALLER_IP'].map((item) => ({ label: item, value: item }));
+const matchSourceOptions = ['HEADER', 'QUERY', 'COOKIE', 'METHOD', 'PATH', 'CALLER_IP'].map((item) => ({ label: item, value: item }));
 const methodOptions = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'ANY'].map((item) => ({ label: item, value: item }));
 const protocolOptions = [
     { label: 'HTTP', value: InterfaceProtocol.HTTP },
@@ -70,13 +123,6 @@ interface TrafficGovernanceEditorProps {
     visible: boolean;
     refresh: (close: boolean) => void;
 }
-
-const readAction = (value?: string | number) => {
-    if (value === 1 || value === '1' || value === 'TRAFFIC_SECURITY_DENY' || value === 'DENY') {
-        return TrafficSecurityAction.DENY;
-    }
-    return TrafficSecurityAction.ALLOW;
-};
 
 const readonlyItem = (label: string, value: React.ReactNode, full = false) => (
     <div className={`${shared.field}${full ? ` ${shared.full}` : ''}`}>
@@ -130,6 +176,76 @@ const renderMatchRule = (match?: TrafficMatchRule) => {
     );
 };
 
+const renderMirrorMatchRule = (match?: TrafficMatchRule) => {
+    const current = removeCallerServiceArguments(match);
+    const args = current.arguments || [];
+    return (
+        <div className={style.conditionStack}>
+            <div className={style.conditionMeta}>
+                <Tag variant="light-outline">{text(current.matchMode || 'AND')}</Tag>
+                <span className={style.repeatMetaHint}>{current.matchMode === MatchLogic.OR ? '满足任一条件' : '需同时满足全部条件'}</span>
+            </div>
+            {args.length ? args.map((arg, index) => (
+                <div className={shared.tagRow} key={`${arg.type}-${arg.key}-${index}`}>
+                    <span className={`${shared.tagPlain} ${shared.tagMethod}`}>{text(arg.type)}</span>
+                    <span className={shared.chip}>
+                        <span className={shared.chipKey}>{text(arg.key)}</span>
+                        <span className={shared.chipValue}>{matchText(arg.value)}</span>
+                    </span>
+                </div>
+            )) : <div className={shared.emptyLine}>全部请求条件</div>}
+        </div>
+    );
+};
+
+const renderSecurityMatchRule = (match?: TrafficMatchRule) => {
+    const current = normalizeSecurityMatchRule(match);
+    const args = current.arguments || [];
+    return (
+        <div className={style.conditionStack}>
+            <div className={style.conditionMeta}>
+                <Tag variant="light-outline">{text(current.matchMode || 'AND')}</Tag>
+                <span className={style.repeatMetaHint}>
+                    {current.matchMode === MatchLogic.OR ? '满足任一条件即命中名单' : '需同时满足全部条件'}
+                </span>
+            </div>
+            {args.map((arg, index) => (
+                <div className={shared.tagRow} key={`${arg.type}-${arg.key}-${index}`}>
+                    <span className={`${shared.tagPlain} ${shared.tagMethod}`}>{text(arg.type)}</span>
+                    <span className={shared.chip}>
+                        <span className={shared.chipKey}>{text(arg.key)}</span>
+                        <span className={shared.chipValue}>{matchText(arg.value)}</span>
+                    </span>
+                </div>
+            ))}
+        </div>
+    );
+};
+
+const renderMockMatchRule = (match?: TrafficMatchRule) => {
+    const current = normalizeMockMatchRule(match);
+    const args = current.arguments || [];
+    return (
+        <div className={style.conditionStack}>
+            <div className={style.conditionMeta}>
+                <Tag variant="light-outline">{text(current.matchMode || 'AND')}</Tag>
+                <span className={style.repeatMetaHint}>
+                    {current.matchMode === MatchLogic.OR ? '满足任一条件即 Mock' : '需同时满足全部条件'}
+                </span>
+            </div>
+            {args.map((arg, index) => (
+                <div className={shared.tagRow} key={`${arg.type}-${arg.key}-${index}`}>
+                    <span className={`${shared.tagPlain} ${shared.tagMethod}`}>{text(arg.type)}</span>
+                    <span className={shared.chip}>
+                        <span className={shared.chipKey}>{text(arg.key)}</span>
+                        <span className={shared.chipValue}>{matchText(arg.value)}</span>
+                    </span>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 const renderRecord = (record?: Record<string, string | { type?: string; value?: string; value_type?: string }>) => {
     const entries = Object.entries(record || {});
     if (!entries.length) return <span>-</span>;
@@ -156,7 +272,7 @@ const securityPolicySummary = (policy: TrafficSecurityPolicy) => {
     const action = TrafficSecurityActionMap[String(policy.action)] || '-';
     const api = apiText(policy.api);
     const rejectEffect = rejectEffectText(policy);
-    return `${matchCount} 个匹配条件 / ${api} / ${action}${readAction(policy.action) === TrafficSecurityAction.DENY ? ` / ${rejectEffect}` : ''}`;
+    return `${matchCount} 个匹配条件 / ${api} / ${action}${readSecurityAction(policy.action) === TrafficSecurityAction.DENY ? ` / ${rejectEffect}` : ''}`;
 };
 
 const renderApiScope = (api?: TrafficApiScope) => {
@@ -173,7 +289,7 @@ const renderApiScope = (api?: TrafficApiScope) => {
 };
 
 const renderVerdictBlock = (policy: TrafficSecurityPolicy) => {
-    const isDeny = readAction(policy.action) === TrafficSecurityAction.DENY;
+    const isDeny = readSecurityAction(policy.action) === TrafficSecurityAction.DENY;
     const effect = policy.reject_effect;
     return (
         <div className={`${shared.verdict} ${isDeny ? shared.verdictDeny : shared.verdictAllow}`}>
@@ -230,18 +346,21 @@ export const trafficRuleCount = (kind: TrafficGovernanceKind, rule?: TrafficGove
 
 export const trafficRuleSummary = (kind: TrafficGovernanceKind, rule?: TrafficGovernanceRule) => {
     if (!rule) return '-';
+    const target = rule.target_service || { namespace: rule.namespace, service: rule.service };
     if (kind === 'security') {
         const security = rule as TrafficSecurityRule;
         const first = security.policies?.[0];
         const action = TrafficSecurityActionMap[String(first?.action || '')] || '-';
-        return `${action} / 默认${TrafficSecurityActionMap[String(security.default_action)] || '-'}`;
+        return `${target.namespace || '-'}/${target.service || '-'} / 首条策略 ${action}`;
     }
     if (kind === 'mirror') {
         const first = (rule as any).rules?.[0];
-        return first ? `${first.source?.namespace || '-'}/${first.source?.service || '-'} -> ${first.destination?.namespace || '-'}/${first.destination?.service || '-'} / ${first.mirror_percent ?? 0}%` : '-';
+        const caller = extractMirrorCaller(rule as TrafficMirror);
+        return first ? `${callerScopeText(caller)} -> ${target.namespace || '-'}/${target.service || '-'} / 镜像到 ${first.destination?.namespace || '-'}/${first.destination?.service || '-'} / ${first.mirror_percent ?? 0}%` : '-';
     }
-    const first = (rule as any).rules?.[0];
-    return first ? `${first.source?.namespace || '-'}/${first.source?.service || '-'} / ${first.response?.status_code || 200} / ${first.mock_percent ?? 0}%` : '-';
+    const first = normalizeMockRule((rule as TrafficMock).rules?.[0]);
+    const caller = extractMockCaller(rule as TrafficMock);
+    return first ? `${mockCallerScopeText(caller)} -> ${target.namespace || '-'}/${target.service || '-'} / Code ${first.response?.code || '200'}` : '-';
 };
 
 const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind, op, data, visible, refresh }) => {
@@ -253,6 +372,14 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
     const [editable, setEditable] = React.useState(op === 'create');
     const [publishVisible, setPublishVisible] = React.useState(false);
     const [collapsedSecurityPolicyIndexes, setCollapsedSecurityPolicyIndexes] = React.useState<Set<number>>(() => new Set());
+    const [collapsedMockRuleIndexes, setCollapsedMockRuleIndexes] = React.useState<Set<number>>(() => new Set());
+    const [securityViewRules, setSecurityViewRules] = React.useState<SecurityViewRule[]>(() => normalizeSecurityViewRules(defaultTrafficSecurityRule()));
+    const [specFormat, setSpecFormat] = React.useState<TrafficSecuritySpecFormat>('yaml');
+    const [mirrorCaller, setMirrorCaller] = React.useState<MirrorCallerScope>(() => defaultMirrorCaller());
+    const [mirrorSpecFormat, setMirrorSpecFormat] = React.useState<TrafficMirrorSpecFormat>('yaml');
+    const [mockCaller, setMockCaller] = React.useState<MockCallerScope>(() => defaultMockCaller());
+    const [mockSpecFormat, setMockSpecFormat] = React.useState<TrafficMockSpecFormat>('yaml');
+    const [mockBodyDialog, setMockBodyDialog] = React.useState<{ visible: boolean; index: number }>({ visible: false, index: -1 });
 
     React.useEffect(() => {
         dispatch(listAllNamespaces());
@@ -267,19 +394,36 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
         if (!visible) return;
         setEditable(op === 'create');
         setCollapsedSecurityPolicyIndexes(new Set());
+        setCollapsedMockRuleIndexes(new Set());
+        setMockBodyDialog({ visible: false, index: -1 });
         const load = async () => {
             const next = data?.id && op !== 'create'
                 ? await describeOneTrafficGovernanceRule(kind, data.id)
                 : (data || defaultTrafficGovernanceRule(kind));
-            setRule(next);
+            const targetService = next.target_service || { namespace: next.namespace || '', service: next.service || '' };
+            const normalized = {
+                ...next,
+                target_service: targetService,
+                ...(kind === 'mirror' ? { rules: normalizeMirrorRules(next as TrafficMirror) } : {}),
+                ...(kind === 'mock' ? { rules: normalizeMockRules(next as TrafficMock) } : {}),
+            } as TrafficGovernanceRule;
+            setRule(normalized);
+            if (kind === 'security') {
+                setSecurityViewRules(normalizeSecurityViewRules(normalized as TrafficSecurityRule));
+            }
+            if (kind === 'mirror') {
+                setMirrorCaller(extractMirrorCaller(next as TrafficMirror));
+            }
+            if (kind === 'mock') {
+                setMockCaller(extractMockCaller(next as TrafficMock));
+            }
             form.setFieldsValue({
                 name: next.name,
-                namespace: next.namespace,
-                service: next.service,
+                targetNamespace: targetService.namespace,
+                targetService: targetService.service,
                 description: next.description,
                 priority: next.priority ?? 0,
                 enable: next.enable ?? true,
-                default_action: kind === 'security' ? readAction((next as TrafficSecurityRule).default_action) : undefined,
             });
         };
         load().catch((error) => {
@@ -288,9 +432,62 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
     }, [data, form, kind, op, visible]);
 
     const namespaceOptions = (namespaceState.datas || []).map((ns: NamespaceView) => ({ label: ns.name, value: ns.name }));
+    const currentTarget = rule.target_service || { namespace: rule.namespace || '', service: rule.service || '' };
     const serviceOptions = (serviceState.datas || [])
-        .filter((svc: ServiceView) => !rule.namespace || rule.namespace === '*' || svc.namespace === rule.namespace)
+        .filter((svc: ServiceView) => !currentTarget.namespace || currentTarget.namespace === '*' || svc.namespace === currentTarget.namespace)
         .map((svc: ServiceView) => ({ label: svc.name, value: svc.name }));
+    const mirrorCallerNamespaceOptions = [{ label: '全部命名空间', value: '*' }, ...namespaceOptions];
+    const mirrorCallerServiceOptions = [
+        { label: '全部服务', value: '*' },
+        ...(serviceState.datas || [])
+            .filter((svc: ServiceView) => mirrorCaller.namespace && mirrorCaller.namespace !== '*' && svc.namespace === mirrorCaller.namespace)
+            .map((svc: ServiceView) => ({ label: svc.name, value: svc.name })),
+    ];
+    const mockCallerNamespaceOptions = [{ label: '全部命名空间', value: '*' }, ...namespaceOptions];
+    const mockCallerServiceOptions = [
+        { label: '全部服务', value: '*' },
+        ...(serviceState.datas || [])
+            .filter((svc: ServiceView) => mockCaller.namespace && mockCaller.namespace !== '*' && svc.namespace === mockCaller.namespace)
+            .map((svc: ServiceView) => ({ label: svc.name, value: svc.name })),
+    ];
+    const securityPreviewSpec = React.useMemo(() => buildSecurityPreviewSpec(rule, securityViewRules), [rule, securityViewRules]);
+    const securityValidationErrors = React.useMemo(() => kind === 'security' ? validateSecurityView(rule, securityViewRules) : [], [kind, rule, securityViewRules]);
+    const securityPreviewText = React.useMemo(() => stringifySecuritySpec(securityPreviewSpec, specFormat), [securityPreviewSpec, specFormat]);
+    const mirrorRules = React.useMemo(() => normalizeMirrorRules(rule as TrafficMirror), [rule]);
+    const mirrorPreviewSpec = React.useMemo(() => buildMirrorPreviewSpec(rule, mirrorRules, mirrorCaller), [rule, mirrorRules, mirrorCaller]);
+    const mirrorValidationErrors = React.useMemo(() => kind === 'mirror' ? validateMirrorView(rule, mirrorRules, mirrorCaller) : [], [kind, rule, mirrorRules, mirrorCaller]);
+    const mirrorPreviewText = React.useMemo(() => stringifyMirrorSpec(mirrorPreviewSpec, mirrorSpecFormat), [mirrorPreviewSpec, mirrorSpecFormat]);
+    const mockRules = React.useMemo(() => normalizeMockRules(rule as TrafficMock), [rule]);
+    const mockPreviewSpec = React.useMemo(() => buildMockPreviewSpec(rule, mockRules, mockCaller), [rule, mockRules, mockCaller]);
+    const mockValidationErrors = React.useMemo(() => kind === 'mock' ? validateMockView(rule, mockRules, mockCaller) : [], [kind, rule, mockRules, mockCaller]);
+    const mockPreviewText = React.useMemo(() => stringifyMockSpec(mockPreviewSpec, mockSpecFormat), [mockPreviewSpec, mockSpecFormat]);
+
+    const copySecurityPreview = async () => {
+        try {
+            await navigator.clipboard.writeText(securityPreviewText);
+            openInfoNotification('复制成功', '已复制鉴权规则预览');
+        } catch (error) {
+            openErrNotification('复制失败', (error as Error).message);
+        }
+    };
+
+    const copyMirrorPreview = async () => {
+        try {
+            await navigator.clipboard.writeText(mirrorPreviewText);
+            openInfoNotification('复制成功', '已复制镜像规则预览');
+        } catch (error) {
+            openErrNotification('复制失败', (error as Error).message);
+        }
+    };
+
+    const copyMockPreview = async () => {
+        try {
+            await navigator.clipboard.writeText(mockPreviewText);
+            openInfoNotification('复制成功', '已复制 Mock 规则预览');
+        } catch (error) {
+            openErrNotification('复制失败', (error as Error).message);
+        }
+    };
 
     const setSecurityPolicy = (index: number, updater: (policy: TrafficSecurityPolicy) => TrafficSecurityPolicy) => {
         setRule((prev) => {
@@ -301,8 +498,32 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
         });
     };
 
+    const setSecurityViewRule = (index: number, updater: (item: SecurityViewRule) => SecurityViewRule) => {
+        setSecurityViewRules((prev) => {
+            const next = [...prev];
+            next[index] = updater(next[index]);
+            return normalizeSecurityViewOrder(next);
+        });
+    };
+
+    const removeSecurityViewRule = (index: number) => {
+        setSecurityViewRules((prev) => normalizeSecurityViewOrder(prev.filter((_, idx) => idx !== index)));
+    };
+
     const toggleSecurityPolicyCollapsed = (index: number) => {
         setCollapsedSecurityPolicyIndexes((prev) => {
+            const next = new Set(prev);
+            if (next.has(index)) {
+                next.delete(index);
+            } else {
+                next.add(index);
+            }
+            return next;
+        });
+    };
+
+    const toggleMockRuleCollapsed = (index: number) => {
+        setCollapsedMockRuleIndexes((prev) => {
             const next = new Set(prev);
             if (next.has(index)) {
                 next.delete(index);
@@ -325,8 +546,8 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
     const setMockRule = (index: number, updater: (item: MockRule) => MockRule) => {
         setRule((prev) => {
             const mock = prev as TrafficMock;
-            const rules = [...(mock.rules || [])];
-            rules[index] = updater(rules[index] || defaultTrafficMockRule().rules[0]);
+            const rules = normalizeMockRules(mock);
+            rules[index] = normalizeMockRule(updater(rules[index] || defaultMockSubRule()));
             return { ...mock, rules };
         });
     };
@@ -423,6 +644,123 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
         );
     };
 
+    const renderMirrorMatchRuleEditor = (match: TrafficMatchRule | undefined, onChange: (next: TrafficMatchRule) => void) => {
+        const current = removeCallerServiceArguments(normalizeMatchRule(match));
+        const args = current.arguments || [];
+        const updateArg = (index: number, updater: (arg: NonNullable<TrafficMatchRule['arguments']>[number]) => NonNullable<TrafficMatchRule['arguments']>[number]) => {
+            const nextArgs = [...args];
+            nextArgs[index] = updater(nextArgs[index] || defaultArgument());
+            onChange({ matchMode: current.matchMode || MatchLogic.AND, arguments: nextArgs });
+        };
+        return (
+            <div className={style.repeatEditor}>
+                <div className={style.repeatMeta}>
+                    <span className={style.repeatMetaHint}>匹配关系</span>
+                    <Select
+                        className={style.metaSelect}
+                        options={matchModeOptions}
+                        value={current.matchMode || MatchLogic.AND}
+                        onChange={(next) => onChange({ matchMode: next as string, arguments: args })}
+                    />
+                    <span className={style.repeatMetaHint}>仅配置请求条件，镜像比例在采样步骤配置</span>
+                </div>
+                {args.map((arg, index) => (
+                    <div className={style.conditionRow} key={`${arg.type}-${arg.key}-${index}`}>
+                        <Select
+                            filterable
+                            creatable
+                            options={matchSourceOptions}
+                            value={arg.type || 'HEADER'}
+                            onChange={(next) => updateArg(index, (item) => ({ ...item, type: next as string }))}
+                        />
+                        <Input
+                            value={arg.key || ''}
+                            placeholder="匹配 Key"
+                            onChange={(next) => updateArg(index, (item) => ({ ...item, key: next }))}
+                        />
+                        {renderMatchValueEditor(arg.value, (next) => updateArg(index, (item) => ({ ...item, value: next })))}
+                        <Button
+                            shape="circle"
+                            variant="text"
+                            disabled={args.length <= 1}
+                            onClick={() => onChange({ matchMode: current.matchMode || MatchLogic.AND, arguments: args.filter((_, idx) => idx !== index) })}
+                        >
+                            <CloseIcon />
+                        </Button>
+                    </div>
+                ))}
+                <Button
+                    className={shared.addRuleButton}
+                    variant="dashed"
+                    icon={<AddIcon />}
+                    onClick={() => onChange({ matchMode: current.matchMode || MatchLogic.AND, arguments: [...args, defaultArgument()] })}
+                >
+                    添加匹配条件
+                </Button>
+            </div>
+        );
+    };
+
+    const renderSecurityMatchRuleEditor = (match: TrafficMatchRule | undefined, onChange: (next: TrafficMatchRule) => void) => {
+        const current = normalizeSecurityMatchRule(match);
+        const args = current.arguments || [];
+        const updateArg = (index: number, updater: (arg: NonNullable<TrafficMatchRule['arguments']>[number]) => NonNullable<TrafficMatchRule['arguments']>[number]) => {
+            const nextArgs = [...args];
+            nextArgs[index] = updater(nextArgs[index] || defaultSecurityArgument());
+            onChange({ ...current, arguments: nextArgs, randomPercent: current.randomPercent ?? 0 });
+        };
+        return (
+            <div className={style.repeatEditor}>
+                <div className={style.repeatMeta}>
+                    <Select
+                        className={style.metaSelect}
+                        options={matchModeOptions}
+                        value={current.matchMode || MatchLogic.AND}
+                        onChange={(next) => onChange({ ...current, matchMode: next as string, randomPercent: current.randomPercent ?? 0 })}
+                    />
+                    <span className={style.repeatMetaHint}>
+                        {current.matchMode === MatchLogic.OR ? '满足任一条件即命中名单' : '需同时满足全部条件'}
+                    </span>
+                </div>
+                {args.map((arg, index) => (
+                    <div className={style.conditionRow} key={`${arg.type}-${arg.key}-${index}`}>
+                        <Select
+                            options={securityMatchSourceOptions}
+                            value={arg.type || 'HEADER'}
+                            onChange={(next) => updateArg(index, (item) => ({
+                                ...item,
+                                type: next as string,
+                                key: matchParamDefaultKey[next as string] || '',
+                            }))}
+                        />
+                        <Input
+                            value={arg.key || ''}
+                            placeholder="参数键"
+                            onChange={(next) => updateArg(index, (item) => ({ ...item, key: next }))}
+                        />
+                        {renderMatchValueEditor(arg.value, (next) => updateArg(index, (item) => ({ ...item, value: next })))}
+                        <Button
+                            shape="circle"
+                            variant="text"
+                            disabled={args.length <= 1}
+                            onClick={() => onChange({ ...current, arguments: args.filter((_, idx) => idx !== index), randomPercent: current.randomPercent ?? 0 })}
+                        >
+                            <CloseIcon />
+                        </Button>
+                    </div>
+                ))}
+                <Button
+                    className={shared.addRuleButton}
+                    variant="dashed"
+                    icon={<AddIcon />}
+                    onClick={() => onChange({ ...current, arguments: [...args, defaultSecurityArgument()], randomPercent: current.randomPercent ?? 0 })}
+                >
+                    添加匹配条件
+                </Button>
+            </div>
+        );
+    };
+
     const renderApiEditor = (api: TrafficApiScope | undefined, onChange: (next: TrafficApiScope) => void) => {
         const current = api || {};
         return (
@@ -444,11 +782,116 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
         );
     };
 
-    const renderStringRecordEditor = (record: Record<string, string> | undefined, onChange: (next: Record<string, string>) => void, addLabel: string) => {
+    const renderMockApiEditor = (api: TrafficApiScope | undefined, onChange: (next: TrafficApiScope) => void) => {
+        const current = {
+            protocol: InterfaceProtocol.HTTP,
+            method: 'GET',
+            path: defaultMockMatchValue(),
+            ...(api || {}),
+        };
+        const path = current.path || defaultMockMatchValue();
+        return (
+            <div className={style.mockApiEditor}>
+                <Select
+                    options={protocolOptions}
+                    value={current.protocol || InterfaceProtocol.HTTP}
+                    onChange={(next) => onChange({ ...current, protocol: next as string })}
+                />
+                <Select
+                    filterable
+                    creatable
+                    options={methodOptions}
+                    value={current.method || 'GET'}
+                    onChange={(next) => onChange({ ...current, method: next as string })}
+                />
+                <Select
+                    options={MatchTypeOption}
+                    value={path.type || MatchType.EXACT}
+                    onChange={(next) => onChange({ ...current, path: { ...path, type: next as string } })}
+                />
+                <Input
+                    className={style.monoInput}
+                    value={path.value || ''}
+                    placeholder="/mock/orders"
+                    onChange={(next) => onChange({ ...current, path: { ...path, value: next, value_type: path.value_type || MatchValueType.TEXT } })}
+                />
+            </div>
+        );
+    };
+
+    const renderMockMatchRuleEditor = (match: TrafficMatchRule | undefined, onChange: (next: TrafficMatchRule) => void) => {
+        const current = normalizeMockMatchRule(match);
+        const args = current.arguments || [];
+        const updateArg = (index: number, updater: (arg: NonNullable<TrafficMatchRule['arguments']>[number]) => NonNullable<TrafficMatchRule['arguments']>[number]) => {
+            const nextArgs = [...args];
+            nextArgs[index] = updater(nextArgs[index] || defaultMockArgument());
+            onChange({ ...current, arguments: nextArgs });
+        };
+        return (
+            <div className={style.repeatEditor}>
+                <div className={style.repeatMeta}>
+                    <Select
+                        className={style.metaSelect}
+                        options={matchModeOptions}
+                        value={current.matchMode || MatchLogic.AND}
+                        onChange={(next) => onChange({ ...current, matchMode: next as string })}
+                    />
+                    <span className={style.repeatMetaHint}>
+                        {current.matchMode === MatchLogic.OR ? '满足任一条件即 Mock' : '需同时满足全部条件'}
+                    </span>
+                </div>
+                {args.map((arg, index) => {
+                    const value = arg.value || defaultMockMatchValue();
+                    return (
+                        <div className={style.mockConditionRow} key={`${arg.type}-${arg.key}-${index}`}>
+                            <Select
+                                options={mockMatchSourceOptions}
+                                value={arg.type || 'HEADER'}
+                                onChange={(next) => updateArg(index, (item) => ({ ...item, type: next as string }))}
+                            />
+                            <Input
+                                value={arg.key || ''}
+                                placeholder="参数键"
+                                onChange={(next) => updateArg(index, (item) => ({ ...item, key: next }))}
+                            />
+                            <Select
+                                options={MatchTypeOption}
+                                value={value.type || MatchType.EXACT}
+                                onChange={(next) => updateArg(index, (item) => ({ ...item, value: { ...(item.value || defaultMockMatchValue()), type: next as string } }))}
+                            />
+                            <Input
+                                value={value.value || ''}
+                                placeholder="匹配值"
+                                onChange={(next) => updateArg(index, (item) => ({ ...item, value: { ...(item.value || defaultMockMatchValue()), value: next, value_type: MatchValueType.TEXT } }))}
+                            />
+                            <Button
+                                shape="circle"
+                                variant="text"
+                                disabled={args.length <= 1}
+                                onClick={() => onChange({ ...current, arguments: args.filter((_, idx) => idx !== index) })}
+                            >
+                                <CloseIcon />
+                            </Button>
+                        </div>
+                    );
+                })}
+                <Button
+                    className={shared.addRuleButton}
+                    variant="dashed"
+                    icon={<AddIcon />}
+                    onClick={() => onChange({ ...current, arguments: [...args, defaultMockArgument()] })}
+                >
+                    添加匹配条件
+                </Button>
+            </div>
+        );
+    };
+
+    const renderMockHeaderEditor = (record: Record<string, string> | undefined, onChange: (next: Record<string, string>) => void) => {
         const rows = Object.entries(record || {}).map(([key, value]) => ({ key, value }));
         const commitRows = (nextRows: Array<{ key: string; value: string }>) => {
             onChange(nextRows.reduce<Record<string, string>>((acc, row) => {
-                if (row.key.trim()) acc[row.key.trim()] = row.value;
+                if (row.key || row.value) acc[row.key] = row.value;
                 return acc;
             }, {}));
         };
@@ -456,12 +899,160 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
             <div className={style.repeatEditor}>
                 {rows.map((row, index) => (
                     <div className={style.kvRow} key={`${row.key}-${index}`}>
-                        <Input value={row.key} placeholder="Key" onChange={(next) => commitRows(rows.map((item, idx) => idx === index ? { ...item, key: next } : item))} />
-                        <Input value={row.value} placeholder="Value" onChange={(next) => commitRows(rows.map((item, idx) => idx === index ? { ...item, value: next } : item))} />
+                        <Input value={row.key} placeholder="Header 名" onChange={(next) => commitRows(rows.map((item, idx) => idx === index ? { ...item, key: next } : item))} />
+                        <Input value={row.value} placeholder="Header 值" onChange={(next) => commitRows(rows.map((item, idx) => idx === index ? { ...item, value: next } : item))} />
                         <Button shape="circle" variant="text" onClick={() => commitRows(rows.filter((_, idx) => idx !== index))}><CloseIcon /></Button>
                     </div>
                 ))}
-                <Button className={shared.addRuleButton} variant="dashed" icon={<AddIcon />} onClick={() => commitRows([...rows, { key: '', value: '' }])}>{addLabel}</Button>
+                <Button className={shared.addRuleButton} variant="dashed" icon={<AddIcon />} onClick={() => commitRows([...rows, { key: '', value: '' }])}>添加响应头</Button>
+            </div>
+        );
+    };
+
+    const renderProtectedInterfacesEditor = (interfaces: TrafficApiScope[], onChange: (next: TrafficApiScope[]) => void) => {
+        const rows = interfaces.length ? interfaces : [defaultProtectedInterface()];
+        const updateRow = (index: number, updater: (api: TrafficApiScope) => TrafficApiScope) => {
+            onChange(rows.map((item, idx) => idx === index ? updater(item) : item));
+        };
+        return (
+            <div className={style.repeatEditor}>
+                <div className={style.interfaceHeader}>
+                    <span>协议</span>
+                    <span>方法</span>
+                    <span>匹配类型</span>
+                    <span>接口路径</span>
+                    <span>值类型</span>
+                    <span>操作</span>
+                </div>
+                {rows.map((api, index) => {
+                    const current = api || defaultProtectedInterface();
+                    const path = current.path || defaultMatchValue();
+                    return (
+                        <div className={style.interfaceRow} key={`${current.protocol}-${current.method}-${index}`}>
+                            <Select
+                                options={protocolOptions}
+                                value={current.protocol || InterfaceProtocol.HTTP}
+                                onChange={(next) => updateRow(index, (item) => ({ ...item, protocol: next as string }))}
+                            />
+                            <Select
+                                filterable
+                                creatable
+                                options={methodOptions}
+                                value={current.method || 'GET'}
+                                onChange={(next) => updateRow(index, (item) => ({ ...item, method: next as string }))}
+                            />
+                            <Select
+                                options={MatchTypeOption}
+                                value={path.type || MatchType.EXACT}
+                                onChange={(next) => updateRow(index, (item) => ({ ...item, path: { ...(item.path || defaultMatchValue()), type: next as string } }))}
+                            />
+                            <Input
+                                value={path.value || ''}
+                                placeholder="/orders"
+                                onChange={(next) => updateRow(index, (item) => ({ ...item, path: { ...(item.path || defaultMatchValue()), value: next } }))}
+                            />
+                            <Select
+                                options={MatchValueTypeOption}
+                                value={path.value_type || MatchValueType.TEXT}
+                                onChange={(next) => updateRow(index, (item) => ({ ...item, path: { ...(item.path || defaultMatchValue()), value_type: next as string } }))}
+                            />
+                            <Button
+                                shape="circle"
+                                variant="text"
+                                disabled={rows.length <= 1}
+                                onClick={() => onChange(rows.filter((_, idx) => idx !== index))}
+                            >
+                                <CloseIcon />
+                            </Button>
+                        </div>
+                    );
+                })}
+                <Button
+                    className={shared.addRuleButton}
+                    variant="dashed"
+                    icon={<AddIcon />}
+                    onClick={() => onChange([...rows, defaultProtectedInterface()])}
+                >
+                    添加接口
+                </Button>
+            </div>
+        );
+    };
+
+    const renderMockReturnPreview = (item: MockRule) => {
+        const current = normalizeMockRule(item);
+        const headers = Object.entries(current.response?.headers || {}).filter(([key]) => key.trim());
+        return (
+            <div className={style.mockReturnPreview}>
+                <div className={style.mockReturnHead}>
+                    <span>Code {current.response?.code || '-'}</span>
+                    <span>delay {durationToMs(current.delay)}ms</span>
+                </div>
+                <pre className={style.mockReturnCode}>
+{`Code: ${current.response?.code || ''}
+${headers.map(([key, value]) => `${key}: ${value}`).join('\n')}
+
+${current.response?.body || ''}`}
+                </pre>
+            </div>
+        );
+    };
+
+    const renderMockResponseEditor = (item: MockRule, index: number) => {
+        const current = normalizeMockRule(item);
+        const delayMs = durationToMs(current.delay);
+        const code = current.response?.code || '';
+        const contentType = Object.entries(current.response?.headers || {}).find(([key]) => key.trim().toLowerCase() === 'content-type')?.[1] || '未声明 Content-Type';
+        return (
+            <div className={style.mockResponsePanel}>
+                <div className={style.mockResponseSection}>
+                    <div className={style.mockResponseTitle}>响应 Code / 延迟</div>
+                    <div className={style.mockResponseGrid}>
+                        <div>
+                            <div className={shared.editLabel}>响应 Code</div>
+                            <Input
+                                value={code}
+                                placeholder="200 / SUCCESS / MOCK_OK"
+                                onChange={(value) => setMockRule(index, (draft) => ({ ...draft, response: { ...(draft.response || {}), code: value } }))}
+                            />
+                        </div>
+                        <div>
+                            <div className={shared.editLabel}>响应延迟 ms</div>
+                            <InputNumber
+                                min={0}
+                                value={delayMs}
+                                onChange={(value) => setMockRule(index, (draft) => ({ ...draft, delay: msToDuration(Number(value ?? 0)) }))}
+                            />
+                        </div>
+                    </div>
+                    <div className={style.mockOrderHint}>执行顺序：先等待 {delayMs}ms，再返回响应 Code {code || '-'}。</div>
+                </div>
+                <div className={style.mockResponseSection}>
+                    <div className={style.mockResponseTitle}>响应 Header</div>
+                    {renderMockHeaderEditor(current.response?.headers, (next) => setMockRule(index, (draft) => ({ ...draft, response: { ...(draft.response || {}), headers: next } })))}
+                </div>
+                <div className={style.mockResponseSection}>
+                    <div className={style.mockBodyHead}>
+                        <div>
+                            <div className={style.mockResponseTitle}>响应 Body</div>
+                            <div className={style.mockBodyTools}>
+                                <Tag variant="light-outline">{contentType}</Tag>
+                            </div>
+                        </div>
+                        <Button size="small" variant="outline" onClick={() => setMockBodyDialog({ visible: true, index })}>全屏编辑</Button>
+                    </div>
+                    <Textarea
+                        className={style.mockBodyTextarea}
+                        autosize={{ minRows: 1, maxRows: 15 }}
+                        value={current.response?.body || ''}
+                        onChange={(value) => setMockRule(index, (draft) => ({ ...draft, response: { ...(draft.response || {}), body: value } }))}
+                    />
+                </div>
+                <div className={style.mockResponseSection}>
+                    <div className={style.mockResponseTitle}>最终返回预览</div>
+                    <div className={style.sectionHint}>命中这条子规则后，客户端会收到下面的响应。</div>
+                    {renderMockReturnPreview(current)}
+                </div>
             </div>
         );
     };
@@ -496,20 +1087,49 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
     };
 
     const buildRequest = (): TrafficGovernanceRule => {
-        const values = form.getFieldsValue(true) as Partial<TrafficGovernanceRule & TrafficSecurityRule>;
+        const values = form.getFieldsValue(true) as Partial<TrafficGovernanceRule & TrafficSecurityRule> & {
+            targetNamespace?: string
+            targetService?: string
+        };
+        const ruleValues = { ...values } as Record<string, unknown>;
+        const targetNamespace = ruleValues.targetNamespace as string | undefined;
+        const targetService = ruleValues.targetService as string | undefined;
+        delete ruleValues.targetNamespace;
+        delete ruleValues.targetService;
+        delete ruleValues.namespace;
+        delete ruleValues.service;
         const base = {
             ...rule,
-            ...values,
+            ...ruleValues,
+            target_service: {
+                namespace: targetNamespace || rule.target_service?.namespace || '',
+                service: targetService || rule.target_service?.service || '',
+            },
             metadata: rule.metadata || {},
             enable: values.enable ?? true,
             priority: Number(values.priority ?? 0),
         } as TrafficGovernanceRule;
+        delete (base as Record<string, unknown>).namespace;
+        delete (base as Record<string, unknown>).service;
         if (kind === 'security') {
+            const securityBase = { ...base } as Record<string, unknown>;
+            delete securityBase['default' + '_action'];
+            return {
+                ...securityBase,
+                policies: buildSecurityPoliciesFromView(securityViewRules),
+            } as TrafficSecurityRule;
+        }
+        if (kind === 'mock') {
             return {
                 ...base,
-                default_action: readAction(values.default_action),
-                policies: (rule as TrafficSecurityRule).policies || [],
-            } as TrafficSecurityRule;
+                rules: buildMockRulesForSubmit(mockRules, mockCaller),
+            } as TrafficMock;
+        }
+        if (kind === 'mirror') {
+            return {
+                ...base,
+                rules: buildMirrorRulesForSubmit(mirrorRules, mirrorCaller),
+            } as TrafficMirror;
         }
         return {
             ...base,
@@ -519,6 +1139,18 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
 
     const onSubmit: FormProps['onSubmit'] = async (e) => {
         if (e.validateResult !== true) return;
+        if (kind === 'security' && securityValidationErrors.length > 0) {
+            openErrNotification('保存校验失败', securityValidationErrors[0].message);
+            return;
+        }
+        if (kind === 'mock' && mockValidationErrors.length > 0) {
+            openErrNotification('保存校验失败', mockValidationErrors[0].message);
+            return;
+        }
+        if (kind === 'mirror' && mirrorValidationErrors.length > 0) {
+            openErrNotification('保存校验失败', mirrorValidationErrors[0].message);
+            return;
+        }
         const req = buildRequest();
         try {
             if (op === 'create') {
@@ -537,14 +1169,15 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
     };
 
     const renderCommonFields = () => {
+        const target = rule.target_service || { namespace: rule.namespace, service: rule.service };
         if (!editable) {
             return (
                 <div className={shared.infoGrid}>
                     {readonlyItem('规则名称', rule.name)}
                     {readonlyItem('启用状态', <span className={`${shared.pill} ${rule.enable ? shared.pillOk : shared.pillOff} ${shared.pillDot}`}>{rule.enable ? '启用' : '禁用'}</span>)}
                     {readonlyItem('优先级', rule.priority ?? 0)}
-                    {readonlyItem('命名空间', rule.namespace)}
-                    {readonlyItem('服务名称', rule.service)}
+                    {kind === 'security' && readonlyItem('被调命名空间', target.namespace)}
+                    {kind === 'security' && readonlyItem('被调服务', target.service)}
                     {readonlyItem('Revision', rule.revision)}
                     {readonlyItem('描述', rule.description, true)}
                     {readonlyItem('规则标签', <RuleLabelField metadata={rule.metadata} />, true)}
@@ -562,12 +1195,25 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
                 <FormItem className={shared.field} label="优先级" name="priority">
                     <InputNumber min={0} max={1000000} />
                 </FormItem>
-                <FormItem className={shared.field} label="命名空间" name="namespace" rules={[{ required: true, message: '命名空间不能为空' }]}>
-                    <Select filterable creatable options={namespaceOptions} onChange={(value) => setRule((prev) => ({ ...prev, namespace: value as string, service: '' }))} />
-                </FormItem>
-                <FormItem className={shared.field} label="服务名称" name="service" rules={[{ required: true, message: '服务名称不能为空' }]}>
-                    <Select filterable creatable options={serviceOptions} />
-                </FormItem>
+                {kind === 'security' && <FormItem className={shared.field} label="被调命名空间" name="targetNamespace" rules={[{ required: true, message: '被调命名空间不能为空' }]}>
+                    <Select
+                        filterable
+                        creatable
+                        options={namespaceOptions}
+                        onChange={(value) => {
+                            setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), namespace: value as string, service: '' } }));
+                            form.setFieldsValue({ targetService: '' });
+                        }}
+                    />
+                </FormItem>}
+                {kind === 'security' && <FormItem className={shared.field} label="被调服务" name="targetService" rules={[{ required: true, message: '被调服务不能为空' }]}>
+                    <Select
+                        filterable
+                        creatable
+                        options={serviceOptions}
+                        onChange={(value) => setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), service: value as string } }))}
+                    />
+                </FormItem>}
                 <div className={`${shared.field} ${shared.full}`}>
                     <div className={shared.fieldLabel}>规则标签</div>
                     <RuleLabelField
@@ -583,76 +1229,275 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
         );
     };
 
-    const renderSecurityRules = () => {
-        const security = rule as TrafficSecurityRule;
-        const policies = security.policies || [];
-        return (
-            <>
-                <div className={style.securityDefaultBar}>
-                    <div>
-                        <div className={style.ruleSectionTitle}>未命中默认动作</div>
-                        <div className={style.ruleHelp}>所有策略都未命中时使用该动作，决定请求是否继续放通。</div>
+    const renderMockScopeFields = () => {
+        const target = rule.target_service || { namespace: rule.namespace, service: rule.service };
+        if (!editable) {
+            return (
+                <div className={shared.infoGrid}>
+                    {readonlyItem('主调方', mockCallerScopeText(mockCaller))}
+                    {readonlyItem('被调方', `${text(target.namespace)}/${text(target.service)}`)}
+                    <div className={`${shared.field} ${shared.full}`}>
+                        <div className={shared.fieldLabel}>流量方向</div>
+                        <div className={style.flowLine}>
+                            <span>{mockCallerScopeText(mockCaller)}</span>
+                            <span className={style.flowArrow}>-></span>
+                            <span>{text(target.namespace)}/{text(target.service)}</span>
+                        </div>
                     </div>
-                    <Tag theme={readAction(security.default_action) === TrafficSecurityAction.ALLOW ? 'success' : 'danger'} variant="light-outline">
-                        {TrafficSecurityActionMap[String(security.default_action)] || '-'}
-                    </Tag>
                 </div>
-                <div className={shared.ruleList}>
-                    {policies.length ? policies.map((policy, index) => (
-                        <div className={`${shared.policy} ${collapsedSecurityPolicyIndexes.has(index) ? shared.policyCollapsed : ''}`} key={`${policy.action}-${index}`}>
-                            <div className={shared.policyHead} onClick={() => toggleSecurityPolicyCollapsed(index)}>
-                                <div className={shared.policyHeadMain}>
-                                    <span className={shared.caret}><ChevronRightIcon /></span>
-                                    <div>
-                                        <div className={shared.policyIndex}>规则 [{index + 1}]</div>
-                                        {collapsedSecurityPolicyIndexes.has(index) && (
-                                            <div className={shared.policySummary}>{securityPolicySummary(policy)}</div>
-                                        )}
+            );
+        }
+        return (
+            <div className={shared.infoGrid}>
+                <div className={shared.field}>
+                    <div className={shared.fieldLabel}>主调命名空间</div>
+                    <Select
+                        filterable
+                        creatable
+                        options={mockCallerNamespaceOptions}
+                        value={mockCaller.namespace || '*'}
+                        onChange={(value) => setMockCaller((prev) => {
+                            if (value === '*') return defaultMockCaller();
+                            return { namespace: value as string, service: prev.service === '*' ? '' : prev.service };
+                        })}
+                    />
+                </div>
+                <div className={shared.field}>
+                    <div className={shared.fieldLabel}>主调服务</div>
+                    <Select
+                        filterable
+                        creatable
+                        options={mockCallerServiceOptions}
+                        value={mockCaller.service || '*'}
+                        onChange={(value) => setMockCaller((prev) => (value === '*' ? defaultMockCaller() : { ...prev, service: value as string }))}
+                    />
+                </div>
+                <FormItem className={shared.field} label="被调命名空间" name="targetNamespace" rules={[{ required: true, message: 'Mock 被调命名空间不能为空' }]}>
+                    <Select
+                        filterable
+                        creatable
+                        options={namespaceOptions}
+                        onChange={(value) => {
+                            setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), namespace: value as string, service: '' } }));
+                            form.setFieldsValue({ targetService: '' });
+                        }}
+                    />
+                </FormItem>
+                <FormItem className={shared.field} label="被调服务" name="targetService" rules={[{ required: true, message: 'Mock 被调服务不能为空' }]}>
+                    <Select
+                        filterable
+                        creatable
+                        options={serviceOptions}
+                        onChange={(value) => setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), service: value as string } }))}
+                    />
+                </FormItem>
+                <div className={`${shared.field} ${shared.full}`}>
+                    <div className={style.sectionHint}>
+                        主调方选择“全部服务”时不写入来源服务条件；选择具体服务时保存会自动同步到每条 Mock 子规则的流量匹配中。
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderMirrorScopeFields = () => {
+        const target = rule.target_service || { namespace: rule.namespace, service: rule.service };
+        if (!editable) {
+            return (
+                <div className={shared.infoGrid}>
+                    {readonlyItem('主调方', callerScopeText(mirrorCaller))}
+                    {readonlyItem('被调方', `${text(target.namespace)}/${text(target.service)}`)}
+                    <div className={`${shared.field} ${shared.full}`}>
+                        <div className={shared.fieldLabel}>流量方向</div>
+                        <div className={style.flowLine}>
+                            <span>{callerScopeText(mirrorCaller)}</span>
+                            <span className={style.flowArrow}>-></span>
+                            <span>{text(target.namespace)}/{text(target.service)}</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        return (
+            <div className={shared.infoGrid}>
+                <div className={shared.field}>
+                    <div className={shared.fieldLabel}>主调命名空间</div>
+                    <Select
+                        filterable
+                        creatable
+                        options={mirrorCallerNamespaceOptions}
+                        value={mirrorCaller.namespace || '*'}
+                        onChange={(value) => setMirrorCaller((prev) => {
+                            if (value === '*') return defaultMirrorCaller();
+                            return { namespace: value as string, service: prev.service === '*' ? '' : prev.service };
+                        })}
+                    />
+                </div>
+                <div className={shared.field}>
+                    <div className={shared.fieldLabel}>主调服务</div>
+                    <Select
+                        filterable
+                        creatable
+                        options={mirrorCallerServiceOptions}
+                        value={mirrorCaller.service || '*'}
+                        onChange={(value) => setMirrorCaller((prev) => (value === '*' ? defaultMirrorCaller() : { ...prev, service: value as string }))}
+                    />
+                </div>
+                <div className={shared.field}>
+                    <div className={shared.fieldLabel}>被调命名空间</div>
+                    <Select
+                        filterable
+                        creatable
+                        options={namespaceOptions}
+                        value={target.namespace || ''}
+                        onChange={(value) => setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), namespace: value as string, service: '' } }))}
+                    />
+                </div>
+                <div className={shared.field}>
+                    <div className={shared.fieldLabel}>被调服务</div>
+                    <Select
+                        filterable
+                        creatable
+                        options={serviceOptions}
+                        value={target.service || ''}
+                        onChange={(value) => setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), service: value as string } }))}
+                    />
+                </div>
+                <div className={`${shared.field} ${shared.full}`}>
+                    <div className={style.sectionHint}>
+                        主调方选择“全部服务”时不写入来源服务条件；选择具体服务时保存会自动同步到每条镜像规则的流量匹配中。
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderSecurityRules = () => {
+        const rules = normalizeSecurityViewOrder(securityViewRules);
+        const renderRuleCard = (item: SecurityViewRule, index: number) => {
+            const isCollapsed = collapsedSecurityPolicyIndexes.has(index);
+            const isService = item.kind === 'service';
+            const title = isService ? '服务级规则' : `子规则 [${index + 1}]`;
+            return (
+                <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`${item.kind}-${item.listType}-${index}`}>
+                    <div className={shared.policyHead} onClick={() => toggleSecurityPolicyCollapsed(index)}>
+                        <div className={shared.policyHeadMain}>
+                            <span className={shared.caret}><ChevronRightIcon /></span>
+                            <div>
+                                <div className={shared.policyIndex}>{title}</div>
+                                {isCollapsed && (
+                                    <div className={shared.policySummary}>
+                                        {isService ? '服务级兜底规则 · 1 条名单策略' : `${item.interfaces.length} 个接口 · 1 条名单策略`}
                                     </div>
-                                </div>
-                                <div className={shared.policyHeadActions} onClick={(e) => e.stopPropagation()}>
-                                    <Tag theme={readAction(policy.action) === TrafficSecurityAction.ALLOW ? 'success' : 'danger'} variant="light-outline">
-                                        {TrafficSecurityActionMap[String(policy.action)] || '-'}
-                                    </Tag>
-                                </div>
-                            </div>
-                            <div className={shared.policyBody}>
-                                <div className={shared.step} data-step="1">
-                                    <div className={shared.stepTitle}>接口范围</div>
-                                    <div className={shared.stepContent}>{renderApiScope(policy.api)}</div>
-                                </div>
-                                <div className={shared.step} data-step="2">
-                                    <div className={shared.stepTitle}>匹配条件</div>
-                                    <div className={shared.stepContent}>{renderMatchRule(policy.traffic_match_rule)}</div>
-                                </div>
-                                <div className={shared.step} data-step="3">
-                                    <div className={shared.stepTitle}>鉴权结果</div>
-                                    <div className={shared.stepContent}>{renderVerdictBlock(policy)}</div>
-                                </div>
+                                )}
                             </div>
                         </div>
-                    )) : <div className={shared.emptyLine}>暂无策略</div>}
+                        <div className={shared.policyHeadActions} onClick={(e) => e.stopPropagation()}>
+                            <Tag theme={item.listType === 'ALLOW_LIST' ? 'success' : 'danger'} variant="light-outline">
+                                {listTypeText[item.listType]}
+                            </Tag>
+                        </div>
+                    </div>
+                    <div className={shared.policyBody}>
+                        {isService ? (
+                            <div className={shared.step} data-step="1">
+                                <div className={shared.stepTitle}>服务级范围</div>
+                                <div className={shared.stepContent}>
+                                    <div className={style.sectionHint}>受保护接口为空，表示整个服务级别；它始终位于黑名单与白名单接口规则之后。</div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className={shared.step} data-step="1">
+                                <div className={shared.stepTitle}>受保护接口</div>
+                                <div className={shared.stepContent}>
+                                    <div className={style.sectionHint}>
+                                        所属{listTypeText[item.listType]}分区，提交时自动按 {item.listType} 映射；子规则内部不再重复选择名单类型。
+                                    </div>
+                                    <div className={style.interfaceList}>
+                                        {item.interfaces.map((api, apiIndex) => (
+                                            <div className={shared.tagRow} key={`${api.method}-${api.path?.value}-${apiIndex}`}>
+                                                {renderApiScope(api)}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {isService && (
+                            <div className={shared.step} data-step="2">
+                                <div className={shared.stepTitle}>服务级名单类型</div>
+                                <div className={shared.stepContent}>
+                                    <Tag theme={item.listType === 'ALLOW_LIST' ? 'success' : 'danger'} variant="light-outline">{listTypeText[item.listType]}</Tag>
+                                    <span className={style.inlineHint}>服务级名单语义由此处选择；受保护接口保持为空</span>
+                                </div>
+                            </div>
+                        )}
+                        <div className={shared.step} data-step={isService ? '3' : '2'}>
+                            <div className={shared.stepTitle}>名单匹配策略</div>
+                            <div className={shared.stepContent}>{renderSecurityMatchRule(item.strategy)}</div>
+                        </div>
+                    </div>
                 </div>
-            </>
+            );
+        };
+        return (
+            <div className={style.securitySections}>
+                <div className={style.securityPartition}>
+                    <div className={style.partitionHead}>
+                        <div>
+                            <div className={style.partitionTitle}>黑名单接口规则</div>
+                            <div className={style.partitionDesc}>黑名单语义由分区自动映射；受保护接口必须写在黑名单或白名单分区里。</div>
+                        </div>
+                        <Tag theme="danger" variant="light-outline">{rules.filter(item => item.kind === 'deny').length} 条</Tag>
+                    </div>
+                    <div className={shared.ruleList}>
+                        {rules.map((item, index) => item.kind === 'deny' ? renderRuleCard(item, index) : null)}
+                        {!rules.some(item => item.kind === 'deny') && <div className={shared.emptyLine}>暂无黑名单接口规则</div>}
+                    </div>
+                </div>
+                <div className={style.securityPartition}>
+                    <div className={style.partitionHead}>
+                        <div>
+                            <div className={style.partitionTitle}>白名单接口规则</div>
+                            <div className={style.partitionDesc}>白名单语义由分区自动映射；接口级名单规则统一放在服务级规则之前。</div>
+                        </div>
+                        <Tag theme="success" variant="light-outline">{rules.filter(item => item.kind === 'allow').length} 条</Tag>
+                    </div>
+                    <div className={shared.ruleList}>
+                        {rules.map((item, index) => item.kind === 'allow' ? renderRuleCard(item, index) : null)}
+                        {!rules.some(item => item.kind === 'allow') && <div className={shared.emptyLine}>暂无白名单接口规则</div>}
+                    </div>
+                </div>
+                <div className={style.securityPartition}>
+                    <div className={style.partitionHead}>
+                        <div>
+                            <div className={style.partitionTitle}>服务级规则</div>
+                            <div className={style.partitionDesc}>可选；受保护接口留空时表示整个服务级别，存在时始终位于最后。</div>
+                        </div>
+                    </div>
+                    <div className={shared.ruleList}>
+                        {rules.map((item, index) => item.kind === 'service' ? renderRuleCard(item, index) : null)}
+                        {!rules.some(item => item.kind === 'service') && <div className={shared.emptyLine}>未配置服务级规则，只按上方接口规则生效。</div>}
+                    </div>
+                </div>
+            </div>
         );
     };
 
     const renderMirrorRules = () => {
-        const mirror = rule as TrafficMirror;
-        const rules = mirror.rules || [];
+        const rules = mirrorRules;
         return (
             <div className={shared.ruleList}>
                 {rules.length ? rules.map((item: MirrorRule, index) => (
-                    <div className={`${shared.group} ${item.disable ? shared.groupDisabled : ''}`} key={`${item.source?.service}-${item.destination?.service}-${index}`}>
+                    <div className={`${shared.group} ${item.disable ? shared.groupDisabled : ''}`} key={`${item.api?.method}-${item.destination?.service}-${index}`}>
                         <div className={shared.groupHead}>
                             <span className={shared.groupTitle}><span className={shared.groupIndex}>{index + 1}</span>镜像规则</span>
                             <Tag theme={item.disable ? 'default' : 'success'} variant="light-outline">{item.disable ? '禁用' : '启用'}</Tag>
                         </div>
                         <div className={shared.groupBody}>
                             <div className={shared.infoGrid}>
-                                {readonlyItem('镜像接口', renderApiScope(item.source?.api), true)}
-                                {readonlyItem('来源服务', `${text(item.source?.namespace)}/${text(item.source?.service)}`)}
-                                {readonlyItem('请求标签匹配', renderMatchRule(item.source?.traffic_match_rule), true)}
+                                {readonlyItem('镜像接口', renderApiScope(item.api), true)}
+                                {readonlyItem('流量匹配', renderMirrorMatchRule(item.traffic_match_rule), true)}
                                 {readonlyItem('镜像比例', `${item.mirror_percent ?? 0}%`)}
                                 {readonlyItem('生效时长', durationText(item.duration))}
                                 {readonlyItem('镜像目标', `${text(item.destination?.namespace)}/${text(item.destination?.service)}`)}
@@ -666,182 +1511,193 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
     };
 
     const renderMockRules = () => {
-        const mock = rule as TrafficMock;
-        const rules = mock.rules || [];
+        const rules = mockRules;
         return (
             <div className={shared.ruleList}>
-                {rules.length ? rules.map((item: MockRule, index) => (
-                    <div className={`${shared.group} ${item.disable ? shared.groupDisabled : ''}`} key={`${item.source?.service}-${item.source?.api?.method}-${index}`}>
-                        <div className={shared.groupHead}>
-                            <span className={shared.groupTitle}><span className={shared.groupIndex}>{index + 1}</span>Mock 规则</span>
-                            <Tag theme={item.disable ? 'default' : 'success'} variant="light-outline">{item.disable ? '禁用' : '启用'}</Tag>
-                        </div>
-                        <div className={shared.groupBody}>
-                            <div className={shared.infoGrid}>
-                                {readonlyItem('来源服务', `${text(item.source?.namespace)}/${text(item.source?.service)}`)}
-                                {readonlyItem('接口范围', renderApiScope(item.source?.api), true)}
-                                {readonlyItem('Mock 比例', `${item.mock_percent ?? 0}%`)}
-                                {readonlyItem('延迟', durationText(item.delay))}
-                                {readonlyItem('响应状态', `${item.response?.status_code ?? 200} / ${text(item.response?.code)} / ${text(item.response?.message)}`)}
-                                {readonlyItem('响应头', renderRecord(item.response?.headers), true)}
-                                {readonlyItem('匹配条件', renderMatchRule(item.source?.traffic_match_rule), true)}
-                                {readonlyItem('响应体', <pre className={style.bodyView}>{text(item.response?.body)}</pre>, true)}
+                {rules.length ? rules.map((source: MockRule, index) => {
+                    const item = normalizeMockRule(source);
+                    const isCollapsed = collapsedMockRuleIndexes.has(index);
+                    const match = normalizeMockMatchRule(item.traffic_match_rule);
+                    return (
+                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`${item.api?.method}-${index}`}>
+                            <div className={shared.policyHead} onClick={() => toggleMockRuleCollapsed(index)}>
+                                <div className={shared.policyHeadMain}>
+                                    <span className={shared.caret}><ChevronRightIcon /></span>
+                                    <div>
+                                        <div className={shared.policyIndex}>Mock 子规则 [{index + 1}]</div>
+                                        <div className={shared.policySummary}>
+                                            {text(item.api?.method)} {item.api?.path?.value || '-'} · {match.matchMode === MatchLogic.OR ? '满足任一条件即 Mock' : '需同时满足全部条件'}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className={shared.policyHeadActions} onClick={(e) => e.stopPropagation()}>
+                                    <Tag theme={item.disable ? 'default' : 'success'} variant="light-outline">{item.disable ? '禁用' : '启用'}</Tag>
+                                </div>
+                            </div>
+                            <div className={shared.policyBody}>
+                                <div className={shared.step} data-step="1">
+                                    <div className={shared.stepTitle}>选择接口</div>
+                                    <div className={shared.stepContent}>{renderApiScope(item.api)}</div>
+                                </div>
+                                <div className={shared.step} data-step="2">
+                                    <div className={shared.stepTitle}>流量匹配</div>
+                                    <div className={shared.stepContent}>{renderMockMatchRule(item.traffic_match_rule)}</div>
+                                </div>
+                                <div className={shared.step} data-step="3">
+                                    <div className={shared.stepTitle}>Mock 响应结果</div>
+                                    <div className={shared.stepContent}>
+                                        <div className={shared.infoGrid}>
+                                            {readonlyItem('响应 Code', item.response?.code)}
+                                            {readonlyItem('响应延迟', `${durationToMs(item.delay)}ms`)}
+                                            {readonlyItem('响应 Header', renderRecord(item.response?.headers), true)}
+                                            {readonlyItem('响应 Body', <pre className={style.bodyView}>{text(item.response?.body)}</pre>, true)}
+                                        </div>
+                                        {renderMockReturnPreview(item)}
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )) : <div className={shared.emptyLine}>暂无规则</div>}
+                    );
+                }) : <div className={shared.emptyLine}>暂无 Mock 子规则</div>}
             </div>
         );
     };
 
     const renderEditSecurityRules = () => {
-        const security = rule as TrafficSecurityRule;
-        const policies = security.policies || [];
-        return (
-            <>
-                <div className={style.securityDefaultBar}>
-                    <div>
-                        <div className={style.ruleSectionTitle}>未命中默认动作</div>
-                        <div className={style.ruleHelp}>没有策略命中时的兜底动作，通常用于确定默认放通或默认拒绝。</div>
-                    </div>
-                    <FormItem className={style.defaultActionField} name="default_action">
-                        <Select options={[
-                            { label: '放通', value: TrafficSecurityAction.ALLOW },
-                            { label: '拒绝', value: TrafficSecurityAction.DENY },
-                        ]} />
-                    </FormItem>
-                </div>
-                <div className={shared.ruleList}>
-                    {policies.map((policy, index) => (
-                        <div className={`${shared.policy} ${collapsedSecurityPolicyIndexes.has(index) ? shared.policyCollapsed : ''}`} key={`${policy.action}-${index}`}>
-                            <div className={shared.policyHead} onClick={() => toggleSecurityPolicyCollapsed(index)}>
-                                <div className={shared.policyHeadMain}>
-                                    <span className={shared.caret}><ChevronRightIcon /></span>
-                                    <div>
-                                        <div className={shared.policyIndex}>规则 [{index + 1}]</div>
-                                        {collapsedSecurityPolicyIndexes.has(index) && (
-                                            <div className={shared.policySummary}>{securityPolicySummary(policy)}</div>
-                                        )}
+        const rules = normalizeSecurityViewOrder(securityViewRules);
+        const addRule = (kindValue: SecuritySubRuleKind, listType: SecurityListType) => {
+            const next: SecurityViewRule = {
+                kind: kindValue,
+                listType,
+                interfaces: kindValue === 'service' ? [] : [defaultProtectedInterface()],
+                strategy: defaultSecurityMatchRule(),
+            };
+            setSecurityViewRules((prev) => normalizeSecurityViewOrder([
+                ...prev.filter(item => kindValue !== 'service' || item.kind !== 'service'),
+                next,
+            ]));
+        };
+        const renderRuleCard = (item: SecurityViewRule, index: number) => {
+            const isCollapsed = collapsedSecurityPolicyIndexes.has(index);
+            const isService = item.kind === 'service';
+            return (
+                <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`${item.kind}-${item.listType}-${index}`}>
+                    <div className={shared.policyHead} onClick={() => toggleSecurityPolicyCollapsed(index)}>
+                        <div className={shared.policyHeadMain}>
+                            <span className={shared.caret}><ChevronRightIcon /></span>
+                            <div>
+                                <div className={shared.policyIndex}>{isService ? '服务级规则' : `子规则 [${index + 1}]`}</div>
+                                {isCollapsed && (
+                                    <div className={shared.policySummary}>
+                                        {isService ? '服务级兜底规则 · 1 条名单策略' : `${item.interfaces.length} 个接口 · 1 条名单策略`}
                                     </div>
-                                </div>
-                                <div className={shared.policyHeadActions} onClick={(e) => e.stopPropagation()}>
-                                    <Select
-                                        className={style.actionSelect}
-                                        options={[
-                                            { label: '放通', value: TrafficSecurityAction.ALLOW },
-                                            { label: '拒绝', value: TrafficSecurityAction.DENY },
-                                        ]}
-                                        value={readAction(policy.action)}
-                                        onChange={(value) => setSecurityPolicy(index, (item) => ({ ...item, action: value as string }))}
-                                    />
-                                    <Button
-                                        shape="circle"
-                                        variant="text"
-                                        disabled={policies.length <= 1}
-                                        onClick={() => setRule((prev) => ({ ...(prev as TrafficSecurityRule), policies: policies.filter((_, idx) => idx !== index) }))}
-                                    >
-                                        <CloseIcon />
-                                    </Button>
-                                </div>
+                                )}
                             </div>
-                            <div className={shared.policyBody}>
+                        </div>
+                        <div className={shared.policyHeadActions} onClick={(e) => e.stopPropagation()}>
+                            <Tag theme={item.listType === 'ALLOW_LIST' ? 'success' : 'danger'} variant="light-outline">{listTypeText[item.listType]}</Tag>
+                            <Button shape="circle" variant="text" onClick={() => removeSecurityViewRule(index)}><CloseIcon /></Button>
+                        </div>
+                    </div>
+                    <div className={shared.policyBody}>
+                        {isService ? (
+                            <>
                                 <div className={shared.step} data-step="1">
-                                    <div className={shared.stepTitle}>接口范围<span className={shared.stepHint}>满足该范围的请求才会进入鉴权条件判断</span></div>
+                                    <div className={shared.stepTitle}>服务级范围</div>
                                     <div className={shared.stepContent}>
-                                        {renderApiEditor(policy.api, (next) => setSecurityPolicy(index, (item) => ({ ...item, api: next })))}
+                                        <div className={style.sectionHint}>受保护接口为空，表示服务级兜底规则；它只能存在一条，并且始终排在接口级规则之后。</div>
                                     </div>
                                 </div>
                                 <div className={shared.step} data-step="2">
-                                    <div className={shared.stepTitle}>匹配条件<span className={shared.stepHint}>满足以下条件的请求会命中该策略</span></div>
+                                    <div className={shared.stepTitle}>服务级名单类型</div>
                                     <div className={shared.stepContent}>
-                                        {renderMatchRuleEditor(policy.traffic_match_rule, (next) => setSecurityPolicy(index, (item) => ({ ...item, traffic_match_rule: next })))}
+                                        <Select
+                                            className={style.serviceListTypeSelect}
+                                            options={[
+                                                { label: '白名单', value: 'ALLOW_LIST' },
+                                                { label: '黑名单', value: 'DENY_LIST' },
+                                            ]}
+                                            value={item.listType}
+                                            onChange={(value) => setSecurityViewRule(index, (current) => ({ ...current, listType: value as SecurityListType }))}
+                                        />
+                                        <span className={style.inlineHint}>服务级名单语义由此处选择；受保护接口保持为空</span>
                                     </div>
                                 </div>
-                                <div className={shared.step} data-step="3">
-                                    <div className={shared.stepTitle}>鉴权结果<span className={shared.stepHint}>命中后的处理动作；拒绝会返回下方响应信息</span></div>
-                                    <div className={shared.stepContent}>
-                                        {readAction(policy.action) === TrafficSecurityAction.DENY ? (
-                                            <div className={`${shared.verdictEdit} ${shared.verdictDeny}`}>
-                                                <div className={shared.verdictEditHead}>
-                                                    <div className={shared.verdictIcon}><CloseIcon /></div>
-                                                    <div>
-                                                        <div className={shared.verdictHead}>拒绝</div>
-                                                        <div className={shared.verdictDesc}>命中请求将被拦截，按下方配置返回响应</div>
-                                                    </div>
-                                                </div>
-                                                <div className={shared.verdictEditDetail}>
-                                                    <div className={shared.verdictEditDetailInner}>
-                                                        <div>
-                                                            <div className={shared.editLabel}>拒绝状态码</div>
-                                                            <InputNumber
-                                                                min={100}
-                                                                max={599}
-                                                                value={policy.reject_effect?.status_code ?? 403}
-                                                                onChange={(value) => setSecurityPolicy(index, (item) => ({
-                                                                    ...item,
-                                                                    reject_effect: { ...(item.reject_effect || {}), status_code: Number(value ?? 403) },
-                                                                }))}
-                                                            />
-                                                        </div>
-                                                        <div>
-                                                            <div className={shared.editLabel}>拒绝 Code</div>
-                                                            <Input
-                                                                value={policy.reject_effect?.code || ''}
-                                                                onChange={(value) => setSecurityPolicy(index, (item) => ({
-                                                                    ...item,
-                                                                    reject_effect: { ...(item.reject_effect || {}), code: value },
-                                                                }))}
-                                                            />
-                                                        </div>
-                                                        <div className={shared.full}>
-                                                            <div className={shared.editLabel}>拒绝文案</div>
-                                                            <Input
-                                                                value={policy.reject_effect?.message || ''}
-                                                                onChange={(value) => setSecurityPolicy(index, (item) => ({
-                                                                    ...item,
-                                                                    reject_effect: { ...(item.reject_effect || {}), message: value },
-                                                                }))}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className={`${shared.verdictEdit} ${shared.verdictAllow}`}>
-                                                <div className={shared.verdictEditHead}>
-                                                    <div className={shared.verdictIcon}><CheckIcon /></div>
-                                                    <div>
-                                                        <div className={shared.verdictHead}>放通</div>
-                                                        <div className={shared.verdictDesc}>命中请求允许继续访问，无需配置拒绝响应</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
+                            </>
+                        ) : (
+                            <div className={shared.step} data-step="1">
+                                <div className={shared.stepTitle}>受保护接口<span className={shared.stepHint}>接口必须归属黑名单或白名单分区，满足任一接口后进入名单判断</span></div>
+                                <div className={shared.stepContent}>
+                                    <div className={style.sectionHint}>
+                                        所属{listTypeText[item.listType]}分区，提交时自动按 {item.listType} 映射；子规则内部不再重复选择名单类型。
                                     </div>
+                                    {renderProtectedInterfacesEditor(item.interfaces, (next) => setSecurityViewRule(index, (current) => ({ ...current, interfaces: next })))}
                                 </div>
                             </div>
+                        )}
+                        <div className={shared.step} data-step={isService ? '3' : '2'}>
+                            <div className={shared.stepTitle}>名单匹配策略<span className={shared.stepHint}>仅配置 AND/OR 与条件表，名单结果由所在分区自动决定</span></div>
+                            <div className={shared.stepContent}>
+                                {renderSecurityMatchRuleEditor(item.strategy, (next) => setSecurityViewRule(index, (current) => ({ ...current, strategy: next })))}
+                            </div>
                         </div>
-                    ))}
-                    <Button
-                        className={shared.addRuleButton}
-                        variant="dashed"
-                        icon={<AddIcon />}
-                        onClick={() => setRule((prev) => ({ ...(prev as TrafficSecurityRule), policies: [...policies, defaultTrafficSecurityRule().policies[0]] }))}
-                    >
-                        添加策略
-                    </Button>
+                    </div>
                 </div>
-            </>
+            );
+        };
+        return (
+            <div className={style.securitySections}>
+                <div className={style.securityPartition}>
+                    <div className={style.partitionHead}>
+                        <div>
+                            <div className={style.partitionTitle}>黑名单接口规则</div>
+                            <div className={style.partitionDesc}>黑名单语义由分区自动映射；受保护接口必须写在黑名单或白名单分区里。</div>
+                        </div>
+                        <Button variant="outline" icon={<AddIcon />} onClick={() => addRule('deny', 'DENY_LIST')}>添加黑名单接口</Button>
+                    </div>
+                    <div className={shared.ruleList}>
+                        {rules.map((item, index) => item.kind === 'deny' ? renderRuleCard(item, index) : null)}
+                        {!rules.some(item => item.kind === 'deny') && <div className={shared.emptyLine}>暂无黑名单接口规则</div>}
+                    </div>
+                </div>
+                <div className={style.securityPartition}>
+                    <div className={style.partitionHead}>
+                        <div>
+                            <div className={style.partitionTitle}>白名单接口规则</div>
+                            <div className={style.partitionDesc}>白名单语义由分区自动映射；接口级名单规则统一放在服务级规则之前。</div>
+                        </div>
+                        <Button variant="outline" icon={<AddIcon />} onClick={() => addRule('allow', 'ALLOW_LIST')}>添加白名单接口</Button>
+                    </div>
+                    <div className={shared.ruleList}>
+                        {rules.map((item, index) => item.kind === 'allow' ? renderRuleCard(item, index) : null)}
+                        {!rules.some(item => item.kind === 'allow') && <div className={shared.emptyLine}>暂无白名单接口规则</div>}
+                    </div>
+                </div>
+                <div className={style.securityPartition}>
+                    <div className={style.partitionHead}>
+                        <div>
+                            <div className={style.partitionTitle}>服务级规则</div>
+                            <div className={style.partitionDesc}>可选；没有服务级规则时，只按上方黑名单和白名单接口规则生效。</div>
+                        </div>
+                        {!rules.some(item => item.kind === 'service') && (
+                            <Button variant="outline" icon={<AddIcon />} onClick={() => addRule('service', 'ALLOW_LIST')}>添加服务级规则</Button>
+                        )}
+                    </div>
+                    <div className={shared.ruleList}>
+                        {rules.map((item, index) => item.kind === 'service' ? renderRuleCard(item, index) : null)}
+                        {!rules.some(item => item.kind === 'service') && <div className={shared.emptyLine}>服务级规则可以不配置。</div>}
+                    </div>
+                </div>
+            </div>
         );
     };
 
     const renderEditMirrorRules = () => {
-        const mirror = rule as TrafficMirror;
-        const rules = mirror.rules || [];
+        const rules = mirrorRules;
         return (
             <div className={shared.ruleList}>
                 {rules.map((item, index) => (
-                    <div className={shared.group} key={`${item.source?.service}-${item.destination?.service}-${index}`}>
+                    <div className={shared.group} key={`${item.api?.method}-${item.destination?.service}-${index}`}>
                         <div className={shared.groupHead}>
                             <span className={shared.groupTitle}><span className={shared.groupIndex}>{index + 1}</span>镜像规则</span>
                             <Space size={8}>
@@ -864,35 +1720,13 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
                             <div className={shared.step} data-step="1">
                                 <div className={shared.stepTitle}>镜像接口<span className={shared.stepHint}>满足该接口范围的请求才会被镜像</span></div>
                                 <div className={shared.stepContent}>
-                                    {renderApiEditor(item.source?.api, (next) => setMirrorRule(index, (current) => ({ ...current, source: { ...(current.source || {}), api: next } })))}
+                                    {renderApiEditor(item.api, (next) => setMirrorRule(index, (current) => ({ ...current, api: next })))}
                                 </div>
                             </div>
                             <div className={shared.step} data-step="2">
-                                <div className={shared.stepTitle}>流量匹配<span className={shared.stepHint}>来源服务与请求标签共同界定需要镜像的流量</span></div>
+                                <div className={shared.stepTitle}>流量匹配<span className={shared.stepHint}>仅配置请求条件；来源服务由上方主调方统一决定</span></div>
                                 <div className={shared.stepContent}>
-                                    <div className={shared.kv2}>
-                                        <div>
-                                            <div className={shared.editLabel}>来源命名空间</div>
-                                            <Select
-                                                filterable
-                                                creatable
-                                                options={namespaceOptions}
-                                                value={item.source?.namespace || ''}
-                                                onChange={(value) => setMirrorRule(index, (current) => ({ ...current, source: { ...(current.source || {}), namespace: value as string } }))}
-                                            />
-                                        </div>
-                                        <div>
-                                            <div className={shared.editLabel}>来源服务</div>
-                                            <Input
-                                                value={item.source?.service || ''}
-                                                onChange={(value) => setMirrorRule(index, (current) => ({ ...current, source: { ...(current.source || {}), service: value } }))}
-                                            />
-                                        </div>
-                                        <div className={shared.full}>
-                                            <div className={shared.editLabel}>请求标签匹配</div>
-                                            {renderMatchRuleEditor(item.source?.traffic_match_rule, (next) => setMirrorRule(index, (current) => ({ ...current, source: { ...(current.source || {}), traffic_match_rule: next } })))}
-                                        </div>
-                                    </div>
+                                    {renderMirrorMatchRuleEditor(item.traffic_match_rule, (next) => setMirrorRule(index, (current) => ({ ...current, traffic_match_rule: next })))}
                                 </div>
                             </div>
                             <div className={shared.step} data-step="3">
@@ -963,118 +1797,69 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
     };
 
     const renderEditMockRules = () => {
-        const mock = rule as TrafficMock;
-        const rules = mock.rules || [];
+        const rules = mockRules;
         return (
             <div className={shared.ruleList}>
-                {rules.map((item, index) => (
-                    <div className={shared.group} key={`${item.source?.service}-${item.source?.api?.method}-${index}`}>
-                        <div className={shared.groupHead}>
-                            <span className={shared.groupTitle}><span className={shared.groupIndex}>{index + 1}</span>Mock 规则</span>
-                            <Space size={8}>
-                                <Switch
-                                    label={['启用', '禁用']}
-                                    value={!item.disable}
-                                    onChange={(value) => setMockRule(index, (current) => ({ ...current, disable: !value }))}
-                                />
-                                <Button
-                                    shape="circle"
-                                    variant="text"
-                                    disabled={rules.length <= 1}
-                                    onClick={() => setRule((prev) => ({ ...(prev as TrafficMock), rules: rules.filter((_, idx) => idx !== index) }))}
-                                >
-                                    <CloseIcon />
-                                </Button>
-                            </Space>
-                        </div>
-                        <div className={shared.kv2}>
-                            <div>
-                                <div className={shared.editLabel}>来源命名空间</div>
-                                <Select
-                                    filterable
-                                    creatable
-                                    options={namespaceOptions}
-                                    value={item.source?.namespace || ''}
-                                    onChange={(value) => setMockRule(index, (current) => ({ ...current, source: { ...(current.source || {}), namespace: value as string } }))}
-                                />
+                {rules.map((source, index) => {
+                    const item = normalizeMockRule(source);
+                    const isCollapsed = collapsedMockRuleIndexes.has(index);
+                    const match = normalizeMockMatchRule(item.traffic_match_rule);
+                    return (
+                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`${item.api?.method}-${index}`}>
+                            <div className={shared.policyHead} onClick={() => toggleMockRuleCollapsed(index)}>
+                                <div className={shared.policyHeadMain}>
+                                    <span className={shared.caret}><ChevronRightIcon /></span>
+                                    <div>
+                                        <div className={shared.policyIndex}>Mock 子规则 [{index + 1}]</div>
+                                        <div className={shared.policySummary}>
+                                            {text(item.api?.method)} {item.api?.path?.value || '-'} · {match.matchMode === MatchLogic.OR ? '满足任一条件即 Mock' : '需同时满足全部条件'}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className={shared.policyHeadActions} onClick={(e) => e.stopPropagation()}>
+                                    <Switch
+                                        label={['启用', '禁用']}
+                                        value={!item.disable}
+                                        onChange={(value) => setMockRule(index, (current) => ({ ...current, disable: !value }))}
+                                    />
+                                    <Button
+                                        shape="circle"
+                                        variant="text"
+                                        disabled={rules.length <= 1}
+                                        onClick={() => setRule((prev) => ({ ...(prev as TrafficMock), rules: rules.filter((_, idx) => idx !== index) }))}
+                                    >
+                                        <CloseIcon />
+                                    </Button>
+                                </div>
                             </div>
-                            <div>
-                                <div className={shared.editLabel}>来源服务</div>
-                                <Input
-                                    value={item.source?.service || ''}
-                                    onChange={(value) => setMockRule(index, (current) => ({ ...current, source: { ...(current.source || {}), service: value } }))}
-                                />
-                            </div>
-                            <div className={shared.full}>
-                                <div className={shared.editLabel}>接口范围</div>
-                                {renderApiEditor(item.source?.api, (next) => setMockRule(index, (current) => ({ ...current, source: { ...(current.source || {}), api: next } })))}
-                            </div>
-                            <div>
-                                <div className={shared.editLabel}>Mock 比例</div>
-                                <InputNumber
-                                    min={0}
-                                    max={100}
-                                    suffix="%"
-                                    value={item.mock_percent ?? 0}
-                                    onChange={(value) => setMockRule(index, (current) => ({ ...current, mock_percent: Number(value ?? 0) }))}
-                                />
-                            </div>
-                            <div>
-                                <div className={shared.editLabel}>延迟</div>
-                                <Input
-                                    value={durationText(item.delay)}
-                                    onChange={(value) => setMockRule(index, (current) => ({ ...current, delay: value }))}
-                                />
-                            </div>
-                            <div>
-                                <div className={shared.editLabel}>响应状态码</div>
-                                <InputNumber
-                                    min={100}
-                                    max={599}
-                                    value={item.response?.status_code ?? 200}
-                                    onChange={(value) => setMockRule(index, (current) => ({ ...current, response: { ...(current.response || {}), status_code: Number(value ?? 200) } }))}
-                                />
-                            </div>
-                            <div>
-                                <div className={shared.editLabel}>响应 Code</div>
-                                <Input
-                                    value={item.response?.code || ''}
-                                    onChange={(value) => setMockRule(index, (current) => ({ ...current, response: { ...(current.response || {}), code: value } }))}
-                                />
-                            </div>
-                            <div className={shared.full}>
-                                <div className={shared.editLabel}>响应文案</div>
-                                <Input
-                                    value={item.response?.message || ''}
-                                    onChange={(value) => setMockRule(index, (current) => ({ ...current, response: { ...(current.response || {}), message: value } }))}
-                                />
-                            </div>
-                            <div className={shared.full}>
-                                <div className={shared.editLabel}>响应头</div>
-                                {renderStringRecordEditor(item.response?.headers, (next) => setMockRule(index, (current) => ({ ...current, response: { ...(current.response || {}), headers: next } })), '添加响应头')}
-                            </div>
-                            <div className={shared.full}>
-                                <div className={shared.editLabel}>匹配条件</div>
-                                {renderMatchRuleEditor(item.source?.traffic_match_rule, (next) => setMockRule(index, (current) => ({ ...current, source: { ...(current.source || {}), traffic_match_rule: next } })))}
-                            </div>
-                            <div className={shared.full}>
-                                <div className={shared.editLabel}>响应体</div>
-                                <Textarea
-                                    autosize={{ minRows: 3, maxRows: 8 }}
-                                    value={item.response?.body || ''}
-                                    onChange={(value) => setMockRule(index, (current) => ({ ...current, response: { ...(current.response || {}), body: value } }))}
-                                />
+                            <div className={shared.policyBody}>
+                                <div className={shared.step} data-step="1">
+                                    <div className={shared.stepTitle}>选择接口<span className={shared.stepHint}>确定这条 Mock 子规则接管哪个接口</span></div>
+                                    <div className={shared.stepContent}>
+                                        {renderMockApiEditor(item.api, (next) => setMockRule(index, (current) => ({ ...current, api: next })))}
+                                    </div>
+                                </div>
+                                <div className={shared.step} data-step="2">
+                                    <div className={shared.stepTitle}>流量匹配<span className={shared.stepHint}>命中接口和匹配条件后直接返回 Mock 响应</span></div>
+                                    <div className={shared.stepContent}>
+                                        {renderMockMatchRuleEditor(item.traffic_match_rule, (next) => setMockRule(index, (current) => ({ ...current, traffic_match_rule: next })))}
+                                    </div>
+                                </div>
+                                <div className={shared.step} data-step="3">
+                                    <div className={shared.stepTitle}>Mock 响应结果</div>
+                                    <div className={shared.stepContent}>{renderMockResponseEditor(item, index)}</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
                 <Button
                     className={shared.addRuleButton}
                     variant="dashed"
                     icon={<AddIcon />}
-                    onClick={() => setRule((prev) => ({ ...(prev as TrafficMock), rules: [...rules, defaultTrafficMockRule().rules[0]] }))}
+                    onClick={() => setRule((prev) => ({ ...(prev as TrafficMock), rules: [...rules, defaultMockSubRule()] }))}
                 >
-                    添加 Mock 规则
+                    添加 Mock 子规则
                 </Button>
             </div>
         );
@@ -1095,13 +1880,151 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
     const renderPayload = () => (
         <div className={shared.section}>
             <div className={shared.sectionHeader}>
-                <span>{kind === 'security' ? '鉴权策略' : kind === 'mirror' ? '镜像规则' : 'Mock 规则'}</span>
-                <span className={shared.countTag}>{trafficRuleCount(kind, rule)} 条</span>
+                <span>{kind === 'security' ? '鉴权子规则' : kind === 'mirror' ? '镜像规则' : 'Mock 子规则'}</span>
+                <span className={shared.countTag}>{kind === 'security' ? securityViewRules.length : trafficRuleCount(kind, rule)} 条</span>
             </div>
             <div className={shared.sectionBody}>
+                {kind === 'mirror' && (
+                    <div className={style.mockScopeHint}>
+                        <div>
+                            <div className={style.partitionTitle}>服务范围</div>
+                            <div className={style.partitionDesc}>当前镜像规则按 {callerScopeText(mirrorCaller)} → {currentTarget.namespace || '-'}/{currentTarget.service || '-'} 判断流量方向。</div>
+                        </div>
+                        <div>
+                            <div className={style.partitionTitle}>子规则结构</div>
+                            <div className={style.partitionDesc}>每条镜像规则固定按 镜像接口 → 流量匹配 → 采样 → 镜像目标 配置。</div>
+                        </div>
+                    </div>
+                )}
+                {kind === 'mock' && (
+                    <div className={style.mockScopeHint}>
+                        <div>
+                            <div className={style.partitionTitle}>服务范围</div>
+                            <div className={style.partitionDesc}>当前 Mock 规则按 {mockCallerScopeText(mockCaller)} → {currentTarget.namespace || '-'}/{currentTarget.service || '-'} 判断流量方向。</div>
+                        </div>
+                        <div>
+                            <div className={style.partitionTitle}>子规则结构</div>
+                            <div className={style.partitionDesc}>每条子规则固定按 选择接口 → 流量匹配 → Mock 响应结果 配置。</div>
+                        </div>
+                    </div>
+                )}
                 {editable ? renderEditablePayload() : renderReadonlyPayload()}
             </div>
         </div>
+    );
+
+    const renderSecuritySpecPane = () => (
+        <aside className={style.specPane}>
+            <div className={style.specCard}>
+                <div className={style.specToolbar}>
+                    <div>
+                        <div className={style.specTitle}>实时规则 SPEC</div>
+                        <div className={style.specDesc}>前端交互预览，不代表后端 schema 变更</div>
+                    </div>
+                    <div className={style.specActions}>
+                        <div className={style.specToggle}>
+                            <button
+                                type="button"
+                                className={specFormat === 'yaml' ? style.specToggleActive : ''}
+                                onClick={() => setSpecFormat('yaml')}
+                            >
+                                YAML
+                            </button>
+                            <button
+                                type="button"
+                                className={specFormat === 'json' ? style.specToggleActive : ''}
+                                onClick={() => setSpecFormat('json')}
+                            >
+                                JSON
+                            </button>
+                        </div>
+                        <Button size="small" variant="outline" onClick={copySecurityPreview}>复制</Button>
+                    </div>
+                </div>
+                <pre className={style.specCode}>{securityPreviewText}</pre>
+                <div className={securityValidationErrors.length ? style.specFooterError : style.specFooterOk}>
+                    {securityValidationErrors.length
+                        ? securityValidationErrors.slice(0, 3).map((item) => <span key={`${item.field}-${item.message}`} className={style.previewError}>{item.message}</span>)
+                        : <span className={style.previewOk}>校验通过，可保存并下发</span>}
+                </div>
+            </div>
+        </aside>
+    );
+
+    const renderMirrorSpecPane = () => (
+        <aside className={style.specPane}>
+            <div className={style.specCard}>
+                <div className={style.specToolbar}>
+                    <div>
+                        <div className={style.specTitle}>实时规则 SPEC</div>
+                        <div className={style.specDesc}>保存预览；caller 会同步到当前后端匹配条件</div>
+                    </div>
+                    <div className={style.specActions}>
+                        <div className={style.specToggle}>
+                            <button
+                                type="button"
+                                className={mirrorSpecFormat === 'yaml' ? style.specToggleActive : ''}
+                                onClick={() => setMirrorSpecFormat('yaml')}
+                            >
+                                YAML
+                            </button>
+                            <button
+                                type="button"
+                                className={mirrorSpecFormat === 'json' ? style.specToggleActive : ''}
+                                onClick={() => setMirrorSpecFormat('json')}
+                            >
+                                JSON
+                            </button>
+                        </div>
+                        <Button size="small" variant="outline" onClick={copyMirrorPreview}>复制</Button>
+                    </div>
+                </div>
+                <pre className={style.specCode}>{mirrorPreviewText}</pre>
+                <div className={mirrorValidationErrors.length ? style.specFooterError : style.specFooterOk}>
+                    {mirrorValidationErrors.length
+                        ? mirrorValidationErrors.slice(0, 3).map((item) => <span key={`${item.field}-${item.message}`} className={style.previewError}>{item.message}</span>)
+                        : <span className={style.previewOk}>校验通过，可保存并下发</span>}
+                </div>
+            </div>
+        </aside>
+    );
+
+    const renderMockSpecPane = () => (
+        <aside className={style.specPane}>
+            <div className={style.specCard}>
+                <div className={style.specToolbar}>
+                    <div>
+                        <div className={style.specTitle}>实时规则 SPEC</div>
+                        <div className={style.specDesc}>前端交互预览，不代表后端 schema 变更</div>
+                    </div>
+                    <div className={style.specActions}>
+                        <div className={style.specToggle}>
+                            <button
+                                type="button"
+                                className={mockSpecFormat === 'yaml' ? style.specToggleActive : ''}
+                                onClick={() => setMockSpecFormat('yaml')}
+                            >
+                                YAML
+                            </button>
+                            <button
+                                type="button"
+                                className={mockSpecFormat === 'json' ? style.specToggleActive : ''}
+                                onClick={() => setMockSpecFormat('json')}
+                            >
+                                JSON
+                            </button>
+                        </div>
+                        <Button size="small" variant="outline" onClick={copyMockPreview}>复制</Button>
+                    </div>
+                </div>
+                <pre className={style.specCode}>{mockPreviewText}</pre>
+                <div className={mockValidationErrors.length ? style.specFooterError : style.specFooterOk}>
+                    {mockValidationErrors.length
+                        ? mockValidationErrors.slice(0, 3).map((item) => <span key={`${item.field}-${item.message}`} className={style.previewError}>{item.message}</span>)
+                        : <span className={style.previewOk}>校验通过，可保存并下发</span>}
+                </div>
+            </div>
+        </aside>
     );
 
     const renderStickyTool = (
@@ -1154,16 +2077,92 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
         </StickyTool>
     );
 
+    const syncRuleFromForm = (_changed: Record<string, unknown>, values: Record<string, unknown>) => {
+        setRule((prev) => ({
+            ...prev,
+            name: String(values.name || prev.name || ''),
+            description: String(values.description || ''),
+            priority: Number(values.priority ?? prev.priority ?? 0),
+            enable: values.enable === undefined ? prev.enable : Boolean(values.enable),
+            target_service: {
+                namespace: String(values.targetNamespace || prev.target_service?.namespace || ''),
+                service: String(values.targetService || prev.target_service?.service || ''),
+            },
+        } as TrafficGovernanceRule));
+    };
+
+    const formSections = (
+        <>
+            <div className={shared.section}>
+                <div className={shared.sectionHeader}>基础信息</div>
+                <div className={shared.sectionBody}>{renderCommonFields()}</div>
+            </div>
+            {kind === 'mock' && (
+                <div className={shared.section}>
+                    <div className={shared.sectionHeader}>
+                        <span>服务范围</span>
+                        <span className={shared.countTag}>caller -> callee</span>
+                    </div>
+                    <div className={shared.sectionBody}>{renderMockScopeFields()}</div>
+                </div>
+            )}
+            {kind === 'mirror' && (
+                <div className={shared.section}>
+                    <div className={shared.sectionHeader}>
+                        <span>服务范围</span>
+                        <span className={shared.countTag}>caller -> callee</span>
+                    </div>
+                    <div className={shared.sectionBody}>{renderMirrorScopeFields()}</div>
+                </div>
+            )}
+            {renderPayload()}
+        </>
+    );
+
     return (
         <div className={style.editor}>
-            <Form form={form} layout="vertical" onSubmit={onSubmit}>
-                <div className={shared.section}>
-                    <div className={shared.sectionHeader}>基础信息</div>
-                    <div className={shared.sectionBody}>{renderCommonFields()}</div>
-                </div>
-                {renderPayload()}
+            <Form form={form} layout="vertical" onSubmit={onSubmit} onValuesChange={syncRuleFromForm}>
+                {kind === 'security' ? (
+                    <div className={style.securityEditorShell}>
+                        <div className={style.formPane}>{formSections}</div>
+                        {renderSecuritySpecPane()}
+                    </div>
+                ) : kind === 'mirror' ? (
+                    <div className={style.securityEditorShell}>
+                        <div className={style.formPane}>{formSections}</div>
+                        {renderMirrorSpecPane()}
+                    </div>
+                ) : kind === 'mock' ? (
+                    <div className={style.securityEditorShell}>
+                        <div className={style.formPane}>{formSections}</div>
+                        {renderMockSpecPane()}
+                    </div>
+                ) : formSections}
                 {renderStickyTool}
             </Form>
+            <Dialog
+                visible={mockBodyDialog.visible}
+                header={(
+                    <div>
+                        <div>响应 Body 全屏编辑</div>
+                        <div className={style.dialogSubTitle}>Mock 子规则 [{mockBodyDialog.index + 1}]</div>
+                    </div>
+                )}
+                onClose={() => setMockBodyDialog({ visible: false, index: -1 })}
+                onConfirm={() => setMockBodyDialog({ visible: false, index: -1 })}
+                confirmBtn="完成"
+                cancelBtn={null}
+                width="82vw"
+            >
+                <div className={style.fullscreenBodyEditor}>
+                    <div className={style.sectionHint}>编辑内容会实时同步到当前 Mock 子规则。</div>
+                    <Textarea
+                        autosize={{ minRows: 20, maxRows: 28 }}
+                        value={mockRules[mockBodyDialog.index]?.response?.body || ''}
+                        onChange={(value) => setMockRule(mockBodyDialog.index, (current) => ({ ...current, response: { ...(current.response || {}), body: value } }))}
+                    />
+                </div>
+            </Dialog>
             <PublishForm
                 ruleId={rule.id || ''}
                 ruleName={rule.name || ''}

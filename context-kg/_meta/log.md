@@ -192,3 +192,22 @@ sources: 0
 
 - [[index]]
 - [[schema]]
+
+## [2026-06-21] refine | 治理规则编辑抽屉双栏滚动交互约定
+
+- 将治理规则编辑抽屉的左侧内部滚动、右侧 Spec 高度和 StickyTool 布局要求沉淀为长期技术约定。
+- 更新页面：patterns, index, todo, lessons。
+- 变更摘要：
+  - 明确编辑器正文固定高度、shell hidden、左侧 pane 内部滚动、右侧 Spec 跟随 shell 高度。
+  - 明确 column flex 下直接子 section 必须禁止 shrink，避免共享 section 的 overflow hidden 裁切内容。
+  - 明确真实验收必须验证 scrollHeight/clientHeight 和 scrollTop，而不是只看 CSS overflow。
+
+## [2026-06-22] ingest | Console OIDC 用户来源与企业目录同步方案归档
+
+- 新增页面：technical/adr/adr-console-oidc-identity-source.md。
+- 更新页面：auth-system, index, todo。
+- 变更摘要：
+  - 明确 OIDC 登录和企业目录同步都是 Console 扩展点，不进入 pole-server 核心鉴权链。
+  - 明确 native / oidc 登录模式启动期互斥，运行期间不支持切换。
+  - 明确 OIDC 只改变 Pole User 来源，业务请求仍使用 Pole token 和现有资源授权逻辑。
+  - 设计飞书、Lark、钉钉 DirectoryProvider 同步企业账号为 `source=oidc` 的 Pole User，解决未登录用户无法提前授权的问题。

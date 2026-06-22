@@ -1011,59 +1011,61 @@ func MakeOutlierDetection(serviceInfo *ServiceInfo) *cluster.OutlierDetection {
 
 // Translate the FaultDetector configuration of Polaris into HealthCheck
 func MakeHealthCheck(serviceInfo *ServiceInfo) []*core.HealthCheck {
-	if serviceInfo.FaultDetect == nil || len(serviceInfo.FaultDetect.Rules) == 0 {
+	if len(serviceInfo.FaultDetect) == 0 {
 		return nil
 	}
 	var healthChecks []*core.HealthCheck
-	for _, rule := range serviceInfo.FaultDetect.Rules {
-		healthCheck := &core.HealthCheck{
-			Timeout:            durationpb.New(time.Duration(rule.GetTimeout()) * time.Second),
-			Interval:           durationpb.New(time.Duration(rule.GetInterval()) * time.Second),
-			UnhealthyThreshold: &wrappers.UInt32Value{Value: 3},
-			HealthyThreshold:   &wrappers.UInt32Value{Value: 1},
-		}
-		if rule.GetProtocol() == apifault.FaultDetectRule_HTTP {
-			config := rule.GetHttpConfig()
-			if config == nil {
-				continue
+	for _, rule := range serviceInfo.FaultDetect {
+		for _, subRule := range rule.GetRules() {
+			healthCheck := &core.HealthCheck{
+				Timeout:            durationpb.New(time.Duration(subRule.GetTimeout()) * time.Second),
+				Interval:           durationpb.New(time.Duration(subRule.GetInterval()) * time.Second),
+				UnhealthyThreshold: &wrappers.UInt32Value{Value: 3},
+				HealthyThreshold:   &wrappers.UInt32Value{Value: 1},
 			}
-			var headers []*core.HeaderValueOption
-			for _, item := range config.GetHeaders() {
-				header := core.HeaderValueOption{
-					Header: &core.HeaderValue{
-						Key:   item.Key,
-						Value: item.Value,
-					},
+			if subRule.GetProtocol() == apifault.FaultDetectRule_HTTP {
+				config := subRule.GetHttpConfig()
+				if config == nil {
+					continue
 				}
-				headers = append(headers, &header)
-			}
+				var headers []*core.HeaderValueOption
+				for _, item := range config.GetHeaders() {
+					header := core.HeaderValueOption{
+						Header: &core.HeaderValue{
+							Key:   item.Key,
+							Value: item.Value,
+						},
+					}
+					headers = append(headers, &header)
+				}
 
-			httpHealthCheck := &core.HealthCheck_HttpHealthCheck{
-				Path:                config.Url,
-				Method:              core.RequestMethod(core.RequestMethod_value[config.Method]),
-				RequestHeadersToAdd: headers,
+				httpHealthCheck := &core.HealthCheck_HttpHealthCheck{
+					Path:                config.Url,
+					Method:              core.RequestMethod(core.RequestMethod_value[config.Method]),
+					RequestHeadersToAdd: headers,
+				}
+				healthCheck.HealthChecker = &core.HealthCheck_HttpHealthCheck_{HttpHealthCheck: httpHealthCheck}
+				healthChecks = append(healthChecks, healthCheck)
+			} else if subRule.GetProtocol() == apifault.FaultDetectRule_TCP {
+				config := subRule.GetTcpConfig()
+				if config == nil {
+					continue
+				}
+				var receives []*core.HealthCheck_Payload
+				for _, item := range config.GetReceive() {
+					receives = append(receives, &core.HealthCheck_Payload{
+						Payload: &core.HealthCheck_Payload_Text{Text: hex.EncodeToString([]byte(item))},
+					})
+				}
+				tcpHealthCheck := &core.HealthCheck_TcpHealthCheck{
+					Send: &core.HealthCheck_Payload{
+						Payload: &core.HealthCheck_Payload_Text{Text: hex.EncodeToString([]byte(config.Send))},
+					},
+					Receive: receives,
+				}
+				healthCheck.HealthChecker = &core.HealthCheck_TcpHealthCheck_{TcpHealthCheck: tcpHealthCheck}
+				healthChecks = append(healthChecks, healthCheck)
 			}
-			healthCheck.HealthChecker = &core.HealthCheck_HttpHealthCheck_{HttpHealthCheck: httpHealthCheck}
-			healthChecks = append(healthChecks, healthCheck)
-		} else if rule.GetProtocol() == apifault.FaultDetectRule_TCP {
-			config := rule.GetTcpConfig()
-			if config == nil {
-				continue
-			}
-			var receives []*core.HealthCheck_Payload
-			for _, item := range config.GetReceive() {
-				receives = append(receives, &core.HealthCheck_Payload{
-					Payload: &core.HealthCheck_Payload_Text{Text: hex.EncodeToString([]byte(item))},
-				})
-			}
-			tcpHealthCheck := &core.HealthCheck_TcpHealthCheck{
-				Send: &core.HealthCheck_Payload{
-					Payload: &core.HealthCheck_Payload_Text{Text: hex.EncodeToString([]byte(config.Send))},
-				},
-				Receive: receives,
-			}
-			healthCheck.HealthChecker = &core.HealthCheck_TcpHealthCheck_{TcpHealthCheck: tcpHealthCheck}
-			healthChecks = append(healthChecks, healthCheck)
 		}
 	}
 	return healthChecks
