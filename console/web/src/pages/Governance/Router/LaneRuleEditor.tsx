@@ -153,7 +153,7 @@ const LaneRuleEditor: React.FC<LaneRuleEditorProps> = ({ op, visible, onClose })
                                 <Row >
                                     <FormItem label="优先级" name="priority" help={'数字越小，优先级越大'}>
                                         {editable ? (
-                                            <InputNumber min={0} />
+                                            <InputNumber theme="normal" min={0} />
                                         ) : (
                                             <Text>{viewRule?.priority}</Text>
                                         )}

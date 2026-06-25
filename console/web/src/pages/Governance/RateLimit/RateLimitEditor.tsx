@@ -24,11 +24,12 @@ import {
 } from "tdesign-icons-react";
 
 import RuleLabelField from "../shared/RuleLabelField";
+import TrafficMatchConditionEditor, { TrafficMatchConditionRow } from "../shared/TrafficMatchConditionEditor";
 import shared from "../shared/governance.module.less";
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { ServiceView } from "services/service";
 import { NamespaceView } from "services/namespace";
-import { MatchType, MatchTypeMap, MatchTypeOption, MatchValueType, Op } from "services/types";
+import { MatchLogic, MatchType, MatchTypeMap, MatchTypeOption, MatchValueType, Op } from "services/types";
 import { openErrNotification, openInfoNotification } from "utils/notifition";
 import {
     listOneRateLimitRule,
@@ -336,7 +337,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                     <div className={shared.field}>
                         <div className={shared.fieldLabel}>优先级</div>
                         {editable
-                            ? <InputNumber className={styles.fullControl} min={0} value={rateLimit.priority ?? 0} onChange={(value) => setRateLimit(prev => ({ ...prev, priority: (value as number) ?? 0 }))} />
+                            ? <InputNumber theme="normal" className={styles.fullControl} min={0} value={rateLimit.priority ?? 0} onChange={(value) => setRateLimit(prev => ({ ...prev, priority: (value as number) ?? 0 }))} />
                             : <div className={shared.fieldValue}>{rateLimit.priority ?? 0}</div>}
                     </div>
                     <div className={shared.field}>
@@ -447,6 +448,12 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
     const matchCondition = (ruleIdx: number) => {
         const trigger = rateLimit.rules[ruleIdx];
         const args = trigger.arguments || [];
+        const rows: TrafficMatchConditionRow[] = args.map(arg => ({
+            paramType: arg.type,
+            paramKey: arg.key,
+            matchType: arg.value?.type || MatchType.EXACT,
+            matchValue: arg.value?.value || '',
+        }));
         return (
             <div className={shared.step} data-step="2">
                 <div className={shared.stepTitle}>
@@ -454,51 +461,29 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                     <span className={shared.stepHint}>当前限流契约按全部条件同时匹配</span>
                 </div>
                 <div className={shared.stepContent}>
-                    <div className={styles.conditionToolbar}>
-                        <div className={styles.segmented}>
-                            <button className={styles.segmentButtonActive} type="button">AND</button>
-                            <button className={styles.segmentButton} type="button" disabled>OR</button>
-                        </div>
-                    </div>
-                    <div className={styles.conditionGrid}>
-                        <div className={styles.gridHeader}>参数类型</div>
-                        <div className={styles.gridHeader}>参数键</div>
-                        <div className={styles.gridHeader}>匹配类型</div>
-                        <div className={styles.gridHeader}>匹配值</div>
-                        <div className={styles.gridHeader}>操作</div>
-                        {args.map((arg, index) => (
-                            <React.Fragment key={`${ruleIdx}-${index}`}>
-                                <div className={styles.gridCell}>
-                                    {editable
-                                        ? <Select options={LimitArgumentsTypeOptions} value={arg.type} onChange={(value) => updateMatch(ruleIdx, index, { type: value as LimitArgumentsType })} />
-                                        : <span>{LimitArgumentsTypeMap[arg.type] || arg.type}</span>}
-                                </div>
-                                <div className={styles.gridCell}>
-                                    {editable
-                                        ? <Input value={arg.key} onChange={(value) => updateMatch(ruleIdx, index, { key: value as string })} />
-                                        : <span>{arg.key || '-'}</span>}
-                                </div>
-                                <div className={styles.gridCell}>
-                                    {editable
-                                        ? <Select options={MatchTypeOption} value={arg.value?.type || MatchType.EXACT} onChange={(value) => updateMatch(ruleIdx, index, { value: { ...arg.value, type: value as MatchType, value_type: MatchValueType.TEXT } })} />
-                                        : <span>{MatchTypeMap[arg.value?.type as MatchType] || arg.value?.type || '-'}</span>}
-                                </div>
-                                <div className={styles.gridCell}>
-                                    {editable
-                                        ? <Input value={arg.value?.value} onChange={(value) => updateMatch(ruleIdx, index, { value: { ...arg.value, value: value as string, value_type: MatchValueType.TEXT } })} />
-                                        : <span>{arg.value?.value || '-'}</span>}
-                                </div>
-                                <div className={`${styles.gridCell} ${styles.actionCell}`}>
-                                    {editable && (
-                                        <Popup trigger="hover" content="删除匹配条件">
-                                            <Button shape="circle" variant="text" onClick={() => removeMatch(ruleIdx, index)}><CloseIcon /></Button>
-                                        </Popup>
-                                    )}
-                                </div>
-                            </React.Fragment>
-                        ))}
-                    </div>
-                    {editable && <Button className={styles.inlineAdd} variant="text" onClick={() => addMatch(ruleIdx)} icon={<AddIcon />}>添加匹配条件</Button>}
+                    <TrafficMatchConditionEditor
+                        rows={rows}
+                        editable={editable}
+                        relation={MatchLogic.AND}
+                        relationEditable={false}
+                        paramTypeOptions={LimitArgumentsTypeOptions}
+                        onRowChange={(index, row) => {
+                            const current = args[index] || defaultMatchArgs();
+                            updateMatch(ruleIdx, index, {
+                                ...current,
+                                type: row.paramType as LimitArgumentsType,
+                                key: row.paramKey || '',
+                                value: {
+                                    ...current.value,
+                                    type: row.matchType as MatchType,
+                                    value: row.matchValue || '',
+                                    value_type: MatchValueType.TEXT,
+                                },
+                            });
+                        }}
+                        onAdd={() => addMatch(ruleIdx)}
+                        onRemove={(index) => removeMatch(ruleIdx, index)}
+                    />
                 </div>
             </div>
         );
@@ -524,7 +509,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                         <div className={styles.singleMetricRow}>
                             <div className={styles.metricLabel}>最大并发数</div>
                             {editable
-                                ? <InputNumber min={1} value={trigger.concurrencyAmount?.maxAmount ?? trigger.amounts?.[0]?.maxAmount ?? 1} onChange={(value) => updateRule(ruleIdx, { concurrencyAmount: { maxAmount: (value as number) ?? 1 } })} />
+                                ? <InputNumber theme="normal" min={1} value={trigger.concurrencyAmount?.maxAmount ?? trigger.amounts?.[0]?.maxAmount ?? 1} onChange={(value) => updateRule(ruleIdx, { concurrencyAmount: { maxAmount: (value as number) ?? 1 } })} />
                                 : <div className={shared.fieldValue}>{trigger.concurrencyAmount?.maxAmount ?? '-'}</div>}
                         </div>
                     ) : (
@@ -536,12 +521,12 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                                 <React.Fragment key={`${ruleIdx}-amount-${index}`}>
                                     <div className={styles.gridCell}>
                                         {editable
-                                            ? <InputNumber min={1} suffix="秒" value={amount.validDuration} onChange={(value) => updateLimit(ruleIdx, index, { validDuration: (value as number) ?? 1, validDurationUnit: LimitAmountsValidationUnit.s })} />
+                                            ? <InputNumber theme="normal" min={1} suffix="秒" value={amount.validDuration} onChange={(value) => updateLimit(ruleIdx, index, { validDuration: (value as number) ?? 1, validDurationUnit: LimitAmountsValidationUnit.s })} />
                                             : <span>{amount.validDuration}{amount.validDurationUnit}</span>}
                                     </div>
                                     <div className={styles.gridCell}>
                                         {editable
-                                            ? <InputNumber min={1} suffix="次" value={amount.maxAmount} onChange={(value) => updateLimit(ruleIdx, index, { maxAmount: (value as number) ?? 1 })} />
+                                            ? <InputNumber theme="normal" min={1} suffix="次" value={amount.maxAmount} onChange={(value) => updateLimit(ruleIdx, index, { maxAmount: (value as number) ?? 1 })} />
                                             : <span>{amount.maxAmount}</span>}
                                     </div>
                                     <div className={`${styles.gridCell} ${styles.actionCell}`}>

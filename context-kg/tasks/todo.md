@@ -2,11 +2,290 @@
 title: 任务计划与 Review
 tags: [tasks, todo]
 links: [lessons]
-updated: 2026-06-22
+updated: 2026-06-24
 sources: 0
 ---
 
 # 任务计划与 Review
+
+## 泳道流量匹配头部错位修正
+
+- [x] 固定泳道放量输入与 AND/OR 分段控件的头部布局尺寸
+- [x] 补充静态验证，防止放量控件被 TDesign 内部最小宽度撑开
+- [x] 运行脚本、构建、context-kg lint、diff 检查和页面验证
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 本轮只修 Console 前端泳道匹配区的视觉错位，不修改 LaneRule 保存结构、匹配语义或放量比例字段。
+- 错位来自共享匹配控件头部右侧 `extraControl + AND/OR` 同行布局中，TDesign `InputNumber/InputAdornment` 内部宽度未被完整约束，导致 `%` 后缀挤到分段控件边界。
+
+验证：
+
+- `cd console/web && node scripts/verify-lane-editor-utils.mjs` 通过，断言泳道放量控件设置 `flex: 0 0 auto`、`InputAdornment min-width` 和 TDesign 内部 input `min-width: 0`。
+- `cd console/web && node scripts/verify-traffic-match-condition-editor.mjs` 通过，断言共享匹配条件头部 action 区允许 wrap、右对齐并设置 `min-width: 0`。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/shared/TrafficMatchConditionEditor.module.less console/web/src/pages/Governance/Router/LaneGroupEditor.module.less console/web/scripts/verify-lane-editor-utils.mjs console/web/scripts/verify-traffic-match-condition-editor.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 已重启 all-mode，tmux 日志显示 `finish starting server`，8080 首页返回 200。
+- 浏览器真实页面验证：进入 `seed-20260616-lane` 编辑态，切到 `泳道` Tab 并展开 `blue-lane` 后，放量输入框右边界为 `719px`，AND/OR 分段左边界为 `729px`，间距 `10px`，`overlapsRatioAndSegmented=false`；输入框值 `100` 完整可读。
+
+Review：
+
+- 本轮只修泳道匹配区头部布局稳定性，不改变共享匹配控件的数据接口，也不改 LaneRule 保存 payload。
+- 共享匹配头部允许右侧控件在极窄场景下安全换行；泳道常规宽度下仍保持 `命中后放量 + 输入框 + AND/OR` 同行右对齐。
+
+## 泳道组入口与组内服务选择交互修正
+
+- [x] 将泳道组入口的命名空间和服务拆成两个独立下拉框
+- [x] 将组内服务添加改成同表格行交互，命名空间和服务独立选择，但只允许选择普通服务
+- [x] 补充泳道编辑器静态验证，防止回退到“命名空间/服务”合并下拉
+- [x] 运行前端脚本、构建、context-kg lint、diff 检查和本地页面验证
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 本轮只调整 Console 前端泳道组编辑交互，不修改 LaneGroup 后端 schema、protobuf、保存接口或数据语义。
+- 入口选择需要先选类型，再分别选择命名空间和该命名空间下的服务；网关入口只列出 gateway 服务，应用入口只列出普通服务。
+- 组内服务添加需要和入口表格保持同样的行内编辑体验，但不需要入口类型列，只能从普通服务中选择。
+
+验证：
+
+- `cd console/web && node scripts/verify-lane-editor-utils.mjs` 通过，断言入口和组内服务都使用独立命名空间/服务下拉，并禁止回退到 `选择命名空间 / 服务` 合并下拉或顶部 `+ 添加服务` 下拉。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/Router/LaneGroupEdtor.tsx console/web/src/pages/Governance/Router/LaneGroupEditor.module.less console/web/scripts/verify-lane-editor-utils.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 已重启 all-mode，tmux 日志显示 `finish starting server`，8080 首页返回 200。
+- 浏览器真实页面验证：泳道新建抽屉中 `泳道组入口` 表格显示 `入口类型 / 命名空间 / 服务` 三列独立控件；`组内服务` 表格显示 `命名空间 / 服务 / 引用`，新增草稿行先选命名空间再选服务。普通服务命名空间下拉仅显示 `spec-governance / demo-governance / pole-system` 这类纯命名空间，服务下拉显示 `spec-checkout / spec-gateway / spec-inventory / spec-order / spec-payment` 这类纯服务名，无 `/` 或括号拼接项；选择 `spec-payment` 后表格新增一行并保留下一条新增草稿行。
+
+Review：
+
+- 本轮只修改 Console 前端泳道组编辑态，不改变 LaneGroup 保存 payload 的字段形状；仍由选择结果映射为 `entries[].selector.namespace/service` 与 `destinations[].namespace/service`。
+- 由于现有 `draft.selected` 仍以服务名为主键，编辑已有组内服务时切换命名空间会自动落到该命名空间下第一个可用普通服务，避免空服务行被草稿归一化过滤。
+
+## 治理规则匹配条件通用控件
+
+- [x] 梳理路由、限流、镜像、Mock、鉴权、泳道当前匹配条件数据结构和 UI 差异
+- [x] 抽取共享 `TrafficMatchConditionEditor`，覆盖 AND/OR、四列条件表、TagInput 多值和只读态
+- [x] 将路由匹配条件替换为共享控件
+- [x] 将限流匹配条件替换为共享控件
+- [x] 将镜像、Mock、鉴权匹配条件替换为共享控件
+- [x] 将泳道匹配条件替换为共享控件
+- [x] 补充静态验证脚本，防止这些规则类型继续维护私有匹配条件表
+- [x] 运行前端构建、相关脚本、context-kg lint 和 diff 检查
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 本轮只抽取 Console 前端匹配条件 UI，不修改后端 rule schema、protobuf、保存接口或匹配语义。
+- 共享组件要保留各规则自己的数据模型；调用方负责把 Route/RateLimit/TrafficGovernance/Lane 的字段映射成统一展示行，再映射回原结构。
+- 参数键仍是用户业务数据，不能按参数类型预置 `x-tenant` 等候选；匹配类型为 `包含/不包含` 时继续使用 TagInput，并保存为逗号分隔字符串。
+
+验证：
+
+- `cd console/web && node scripts/verify-traffic-match-condition-editor.mjs` 通过，断言共享组件存在且路由、限流、镜像、Mock、鉴权、泳道不再保留私有匹配条件表实现。
+- `cd console/web && node scripts/verify-lane-editor-utils.mjs` 通过，覆盖泳道卡片展开布局和共享匹配条件区。
+- `cd console/web && node scripts/verify-route-editor-utils.mjs`、`verify-traffic-mirror-editor-utils.mjs`、`verify-traffic-mock-editor-utils.mjs`、`verify-traffic-security-editor-utils.mjs` 均通过。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/shared/TrafficMatchConditionEditor.tsx console/web/src/pages/Governance/shared/TrafficMatchConditionEditor.module.less console/web/src/pages/Governance/Router/CustomRouteEditor.tsx console/web/src/pages/Governance/RateLimit/RateLimitEditor.tsx console/web/src/pages/Governance/Security/TrafficGovernanceEditor.tsx console/web/src/pages/Governance/Router/LaneGroupEdtor.tsx console/web/src/pages/Governance/Router/LaneGroupEditor.module.less console/web/scripts/verify-traffic-match-condition-editor.mjs console/web/scripts/verify-lane-editor-utils.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 已重启 all-mode，tmux 日志显示 `finish starting server`，8080 首页返回 200。
+- 浏览器真实页面验证：路由详情的 `匹配条件` 区显示 AND/OR、`参数类型 / 参数键 / 匹配类型 / 匹配值 / 操作` 表头和现有 `HEADER x-tenant 完全匹配 vip` 数据；泳道详情切到 `泳道` Tab 并展开 `blue-lane` 后，`流量匹配规则` 区显示同一四列表格、AND/OR、放量控件和现有 `HEADER x-lane 完全匹配 blue` 数据。
+
+Review：
+
+- 本轮只统一 Console 前端匹配条件 UI，不修改后端规则 schema、protobuf、保存接口或规则匹配语义。
+- 共享组件集中处理表头、AND/OR 分段、匹配类型、TagInput 多值和只读态；各规则编辑器只负责把自己的字段映射到统一展示行并回写。
+- 限流当前后端结构没有 OR 语义，页面使用共享组件但保持 relation 不可编辑，避免 UI 表达超出真实能力。
+
+## 泳道规则抽屉宽度与路由对齐
+
+- [x] 核对路由规则当前宽抽屉尺寸来源
+- [x] 将宽抽屉尺寸抽成共享常量
+- [x] 让泳道组独立入口和治理工作台 lane 入口使用与路由一致的宽度
+- [x] 运行前端构建、context-kg lint 和 diff 检查
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 路由规则在治理工作台使用 `min(1560px, calc(100vw - 40px))` 宽抽屉；泳道组编辑器同样是左编辑、右 Spec 的双栏结构，应保持同一抽屉宽度。
+- 已在 `RuleDetailDrawer` 导出 `WIDE_RULE_DETAIL_DRAWER_SIZE`，路由、泳道、熔断、主动探测和工作台宽抽屉入口统一引用，避免继续散落硬编码。
+
+验证：
+
+- `rg` 确认 `min(1560px, calc(100vw - 40px))` 只在 `RuleDetailDrawer` 的 `WIDE_RULE_DETAIL_DRAWER_SIZE` 中定义，路由、泳道、熔断、主动探测和工作台宽抽屉入口均引用常量。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/RuleRelease/RuleDetailDrawer.tsx console/web/src/pages/Governance/Router/CustomRoute.tsx console/web/src/pages/Governance/Router/LaneGroupTable.tsx console/web/src/pages/Governance/Workbench/index.tsx console/web/src/pages/Governance/CircuitBreaker/CircuitBreakerTable.tsx console/web/src/pages/Governance/CircuitBreaker/FaultDetectTable.tsx context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 已重启 all-mode，tmux 日志显示 `finish starting server`，8080 首页返回 200。
+- 浏览器在 1600px 视口下验证：泳道新建抽屉 `.t-drawer__content-wrapper` 宽度为 `1560px`、left 为 `40px`；路由新建抽屉宽度同为 `1560px`、left 为 `40px`。
+
+Review：
+
+- 本轮只统一治理规则详情抽屉宽度来源，不修改泳道、路由或其它规则的保存逻辑和接口契约。
+- 独立路由入口此前未显式传宽度，本轮也改为引用宽抽屉常量，使“路由作为基准”在独立入口和工作台入口一致。
+
+## 治理规则数字输入框统一无按钮
+
+- [x] 确认当前 TDesign React `InputNumber` 无按钮形态参数，并以本地依赖版本为准
+- [x] 横向检查 Governance 下所有治理规则编辑器的数字输入框
+- [x] 将所有治理规则数字输入统一为无按钮 `InputNumber`
+- [x] 补充静态校验，防止新增或回退到带按钮数字输入框
+- [x] 运行前端构建、校验脚本、context-kg lint 和 diff 检查
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- TDesign React `InputNumber` 当前默认 `theme="row"`，会显示加减按钮；治理规则编辑器应统一使用 `theme="normal"` 的无按钮形态。
+- 本轮范围限定为 Console 前端 Governance 规则编辑器，不修改后端接口、存储、protobuf 或规则语义。
+- 已新增 `verify-governance-input-number-theme.mjs`，扫描 Governance 下 TSX 中的 JSX `InputNumber` 和表格 inline edit `component: InputNumber`。
+
+验证：
+
+- TDesign React MCP 与本地 `tdesign-react` 依赖均确认 `InputNumber.theme` 可选 `column / row / normal`，当前默认值是 `row`，无按钮形态使用 `normal`。
+- `cd console/web && node scripts/verify-governance-input-number-theme.mjs` 通过，覆盖 Governance 下 JSX `InputNumber` 与表格 inline edit `component: InputNumber`。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/Router/CustomRouteEditor.tsx console/web/src/pages/Governance/RateLimit/RateLimitEditor.tsx console/web/src/pages/Governance/CircuitBreaker/FaultDetectEditor.tsx console/web/src/pages/Governance/CircuitBreaker/CircuitBreakerEditor.tsx console/web/src/pages/Governance/LossLess/LossLessEditor.tsx console/web/src/pages/Governance/Security/TrafficGovernanceEditor.tsx console/web/src/pages/Governance/Router/LaneGroupEdtor.tsx console/web/src/pages/Governance/Router/LaneRuleEditor.tsx console/web/scripts/verify-governance-input-number-theme.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 已重启 all-mode，tmux 日志显示 `finish starting server`，8080 首页返回 200。
+
+Review：
+
+- 本轮只统一 Console 前端治理规则编辑器数字输入的 TDesign 组件外观，不修改字段类型、保存转换或后端契约。
+- 覆盖范围包括路由、限流、熔断、主动探测、无损、泳道、调用鉴权、流量镜像、流量 Mock 的现有数字输入点。
+- 后续新增治理规则编辑器时应先跑 `verify-governance-input-number-theme.mjs`，避免默认 `row` 主题重新出现加减按钮。
+
+## 泳道规则编辑抽屉交接对齐
+
+- [x] 读取泳道规则设计交接文档，确认本轮只调整 Console 前端编辑体验、预览和保存前映射
+- [x] 核对当前 `LaneGroupEdtor` / `LaneRuleEditor` / `LaneGroupTable` 与共享治理编辑器范式
+- [x] 先补充前端回归验证脚本，覆盖泳道数据归一化、`LaneGroup` / `LaneRule` 实时 Spec、放量比例和拓扑摘要
+- [x] 将泳道组详情抽屉调整为 `泳道规则 / 泳道组 / 版本 / 审计` 分页编辑，组与泳道不混在同页
+- [x] 补齐泳道规则页的泳道定义、固定标签、流量匹配、组内服务选择和流量拓扑演示
+- [x] 运行相关前端脚本、构建、context-kg lint 和 diff 检查
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 本轮边界是治理工作台泳道规则编辑抽屉；不修改后端 schema、protobuf、存储或 API 契约。
+- 交接文档中的 `LaneGroup` / `LaneRule` YAML 是 Console 侧实时预览和产品态表达；真实保存仍通过当前 `/naming/v1/lane/groups` 与 `/naming/v1/lane/groups/rules` 接口。
+- 当前实现仍把泳道组编辑和泳道列表堆在详情页里，泳道规则另开单独弹窗；需要收敛到一个抽屉内的分页编辑体验。
+- 已新增 `laneEditorUtils.ts`，将前端 draft、校验、实时 Spec、YAML/JSON 序列化和拓扑摘要从组件中拆出，便于脚本验证。
+- 已将 `LaneGroupEdtor` 改为双栏编辑器：左侧内部滚动并含 `泳道规则 / 泳道组 / 版本 / 审计` Tab，右侧固定实时 Spec。
+- 用户截图反馈后确认：父级 `LaneGroupTable` 与治理工作台 lane 详情仍套了通用 `RuleTabs`，导致外层 `规则 / 版本 / 监听` 与内层泳道真实 Tab 嵌套。
+- 已让 `LaneGroupTable` 与治理工作台 lane 详情直接渲染 `LaneGroupEdtor`，只保留泳道编辑器自己的 `泳道规则 / 泳道组 / 版本 / 审计`，不再包外层通用 Tab。
+- 用户再次对照 PRD 截图后确认：左侧默认页不应是单一「泳道定义」卡片，而应是 `组信息 / 泳道 / 版本 / 审计`，默认 `组信息` 展示「基础信息 / 泳道组入口 / 组内服务」三段步骤卡。
+- 已将 `组信息` 作为默认 Tab，左侧基础信息改为 PRD 式两列表单；入口与组内服务改为表格行，`泳道` Tab 单独承载泳道规则定义。
+- 用户进一步给出泳道展开卡片截图后确认：`泳道` Tab 内单条泳道应按卡头摘要、基础字段、固定标签提示、流量匹配、组内服务和拓扑演示的连续展开布局实现；不能把流量匹配退回普通横排输入或路由规则表格。
+- 本轮继续只调整 Console 前端布局、交互和验证脚本，不修改后端接口、存储或 protobuf。
+
+验证：
+
+- RED：`cd console/web && node scripts/verify-lane-editor-utils.mjs` 初次失败，缺少 `src/pages/Governance/Router/laneEditorUtils.ts`。
+- GREEN：`cd console/web && node scripts/verify-lane-editor-utils.mjs` 通过，并断言 `LaneGroupTable` / 治理工作台不再用外层 `RuleTabs` 包裹 `LaneGroupEdtor`。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/Router/LaneGroupEdtor.tsx console/web/src/pages/Governance/Router/LaneGroupEditor.module.less console/web/src/pages/Governance/Router/laneEditorUtils.ts console/web/src/pages/Governance/Router/LaneGroupTable.tsx console/web/src/pages/Governance/Workbench/index.tsx console/web/scripts/verify-lane-editor-utils.mjs context-kg/tasks/todo.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过，tmux 日志显示 `finish starting server`，8080 首页返回 200。
+- Playwright 登录本地 8080（当前本地 main user 为 `admin/admin123`）后打开治理工作台 `seed-20260616-lane`：抽屉内显示 `泳道规则 / 泳道组 / 版本 / 审计`，右侧显示 `LaneRule` 实时 Spec，旧的下方 `泳道列表` 面板已移除。
+- 用户截图反馈的嵌套 Tab 修复后，Playwright DOM 检查泳道详情抽屉返回 `hasLaneTabs=true`、`hasOuterRuleTabSet=false`；抽屉文本为 `seed-20260616-lane / 泳道 / 泳道规则 / 泳道组 / 版本 / 审计 ...`，不再出现外层 `规则 / 版本 / 监听`。
+- PRD 左侧布局修复后，Playwright 真实页面验证默认 Tab 为 `组信息`，左侧显示 `基础信息 / 泳道组入口 / 组内服务` 三段，右侧 Spec 切为 `LaneGroup`；编辑态规则名称输入框值为 `seed-20260616-lane`，优先级为 `5`，两者同排展示。
+- Playwright 展开 `blue-lane` 后确认页面展示固定标签 `X-Lattice-Traffic-Lane = base`、放量比例 `100%`、组内服务 `spec-payment` 和 `③ 流量拓扑演示` SVG。
+- `cd console/web && node scripts/verify-standard-response-mapping.mjs` 当前失败在既有主动探测断言：`src/pages/Governance/CircuitBreaker/FaultDetectTable.tsx: missing "targetService?.api"`，非本轮泳道改动路径。
+- 最新泳道展开卡片布局修复后，`cd console/web && node scripts/verify-lane-editor-utils.mjs` 通过，覆盖卡头摘要、固定标签提示、流量匹配分段控件、四字段匹配行、组内服务行和底部新建泳道入口。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/Router/LaneGroupEdtor.tsx console/web/src/pages/Governance/Router/LaneGroupEditor.module.less console/web/scripts/verify-lane-editor-utils.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 已重启 all-mode，tmux 日志显示 `finish starting server`，8080 首页返回 200。
+- Playwright 登录真实 8080 后打开 `seed-20260616-lane`，进入编辑态并切到 `泳道` Tab：展开 `blue-lane` 后确认页面展示卡头摘要、泳道名称、泳道标签 Value、固定标签提示、流量匹配规则、命中后放量、匹配条件四字段、添加匹配规则、进入泳道的组内服务、添加组内服务和流量拓扑演示；截图保存到 `output/playwright/lane-card-layout.png`。
+- 用户继续反馈泳道卡控件和字体不应显得突兀；后续修正目标是把泳道卡局部字号、控件高度和间距统一到治理抽屉既有 12/14px 与 32px 控件密度。
+- 泳道卡视觉密度修正后，`verify-lane-editor-utils.mjs` 新增 CSS 断言并通过；`npm run build:test` 通过；all-mode 已重新启动，Playwright 真实页面确认放量数值 `100` 完整可读，最终截图保存到 `output/playwright/lane-card-layout-compact-final.png`。
+- 用户继续反馈泳道编辑内容滚动不了；Playwright DOM 指标确认根因是 `.t-tabs` 为 `overflow:hidden` 且 `scrollHeight > clientHeight`，但外层 `.formPane` 的 `scrollHeight == clientHeight`，导致滚动挂错层。修正方向：将 tabs 设为 column flex，把滚动明确挂到 `.t-tabs__content`。
+- 滚动修复后，真实 8080 页面中 `.t-tabs__content` 指标为 `overflowY=auto`、`scrollHeight=979`、`clientHeight=827`；脚本设置 `scrollTop` 可从 `0` 变为 `80`，鼠标滚轮从 `0` 滚到 `151.5`，最大可滚动值为 `152`。
+- 用户反馈实际仍无法滚动后，判断上轮验证命中的是内部 Tabs 内容层，不足以代表用户滚轮区域。进一步将左侧 `.formPane` 改为唯一滚动容器，Tabs 内容层改为 `overflow: visible`，避免嵌套滚动层命中不一致。
+- 单一滚动容器修复后，真实 8080 页面验证 `.formPane` 为 `overflowY=auto`、`scrollHeight=1055`、`clientHeight=903`；鼠标命中左侧泳道卡片中心点后，滚轮使 `.formPane.scrollTop` 从 `0` 变为 `151.5`，最大滚动值为 `152`。
+
+Review：
+
+- 本轮只调整 Console 前端泳道编辑体验和前端预览工具，不修改后端接口、存储或 protobuf。
+- `LaneGroupEdtor` 现在承担泳道聚合编辑主路径；旧 `LaneRuleEditor` 文件仍保留，避免影响其它入口，但主抽屉不再在底部重复挂 `LaneRuleTable`。
+- `matchRatio` 属于本轮交接文档要求的前端产品态字段，当前后端 LaneRule API 没有对应持久化字段；本轮在实时 Spec、校验和拓扑里完整表达，真实保存仍按当前 API 提交 `trafficMatchRule`、`defaultLabelValue` 和 `labelKey`。
+
+## 鉴权规则编辑抽屉规则 Tab 对齐
+
+- [x] 读取鉴权规则设计交接文档，确认只调整 Console 前端展示、交互组织和预览映射
+- [x] 核对当前 `TrafficGovernanceEditor` 鉴权分支、工具函数和治理编辑器共享布局范式
+- [x] 先补充前端回归验证脚本，覆盖基础信息与服务信息分离、子规则分区顺序、服务级唯一和预览映射
+- [x] 调整鉴权规则 Tab 为「① 基础信息 → ② 服务信息 → ③ 鉴权子规则」并保持右侧实时 `AuthRule` 预览
+- [x] 运行前端脚本、构建、context-kg lint 和 diff 检查
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 本轮边界是治理工作台鉴权规则编辑抽屉的「规则」Tab；不修改后端 schema、protobuf、存储或 API 契约。
+- 交接文档中的 `AuthRule/spec.scope/subRules/listType/protectedInterfaces/strategy.match` 是前端产品态预览结构；真实保存仍转换为当前 `TrafficSecurityRule.policies[]`。
+- 当前代码已有黑名单、白名单和服务级分区雏形，但鉴权服务字段仍在通用基础信息里，需要拆出独立「② 服务信息」section。
+- 已将鉴权服务信息从通用基础信息移到独立「② 服务信息」section；基础信息只保留名称、启用状态、优先级、Revision、描述和规则标签。
+- 已补充 `verify-traffic-security-editor-utils.mjs` 静态结构断言，防止后续把命名空间/服务名称放回基础信息。
+- 已补充规则名称 kebab-case 保存校验，右侧预览仍使用前端产品态 `AuthRule` 结构，提交仍转换为当前 `TrafficSecurityRule.policies[]`。
+
+验证：
+
+- RED：`cd console/web && node scripts/verify-traffic-security-editor-utils.mjs` 初次失败，现状缺少 `renderSecurityServiceInfo` 且服务字段仍在基础信息。
+- `cd console/web && node scripts/verify-traffic-security-editor-utils.mjs` 通过。
+- `cd console/web && node scripts/verify-traffic-mirror-editor-utils.mjs` 通过。
+- `cd console/web && node scripts/verify-traffic-mock-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/Security/TrafficGovernanceEditor.tsx console/web/src/pages/Governance/Security/index.module.less console/web/src/pages/Governance/Security/trafficSecurityEditorUtils.ts console/web/scripts/verify-traffic-security-editor-utils.mjs context-kg/tasks/todo.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过，tmux 日志显示 `finish starting server`，8080 返回 200。
+- Playwright 登录真实 8080 后打开 `seed-20260616-security`：查看态显示「① 基础信息」「② 服务信息」「③ 鉴权子规则」，服务信息区包含 `spec-governance/spec-order`，右侧 `AuthRule` 预览显示 `spec.scope.namespace/service`。
+- Playwright 编辑态断言通过：基础信息只包含规则名称、启用状态、优先级、规则标签和描述；命名空间/服务名称只出现在「② 服务信息」；接口级子规则没有名单类型选择；截图保存到 `output/playwright/traffic-security-authrule-editor.png`。
+
+Review：
+
+- 本轮只调整 Console 前端鉴权规则编辑抽屉、鉴权工具校验和对应验证脚本，不修改后端 schema、proto、存储或接口契约。
+- 「② 服务信息」作为大规则层独立 section 插在基础信息和子规则之间；服务级规则仍只表示受保护接口为空的兜底子规则，不混入大规则服务字段。
+- 右侧 `AuthRule` 预览继续作为产品态预览；真实保存仍由 `buildSecurityPoliciesFromView` 转换为当前后端接受的 `TrafficSecurityRule.policies[]`。
+
+## 服务范围组件复用
+
+- [x] 核对 RouteRule、熔断、Mock、镜像当前服务范围区实现与字段语义
+- [x] 抽取路由已验证的 caller -> callee 服务范围区为共享组件
+- [x] 将 RouteRule 服务范围区迁移到共享组件，保持现有视觉和折叠行为
+- [x] 将熔断、Mock、镜像服务范围区切换到共享组件，并保留各自独有字段
+- [x] 运行相关前端脚本、构建、context-kg lint 和 diff 检查
+- [x] 记录 review 和 lesson
+
+当前判断：
+
+- RouteRule 已有用户认可的服务范围结构：紧凑标题、展开/收起、主调/被调服务卡片和中间方向连接器。
+- 熔断也有 `source -> destination` 关系，但还额外包含熔断粒度；组件需要提供额外内容插槽，不能吞掉熔断独有配置。
+- Mock 和镜像已经按 caller -> callee 收敛，但当前还是普通四字段表单，视觉和路由不一致。
+
+当前进展：
+
+- 已新增共享 `ServiceScopeSection` 组件和样式，承载 section/header/card/connector/editable/readonly/collapse。
+- RouteRule 已从私有 `renderServiceCard` / `renderServiceScopeHeader` 迁移到共享组件，继续使用 `order=2` 和现有折叠状态。
+- 熔断已接入共享组件，`source -> destination` 用同一服务关系卡片渲染；熔断粒度通过 `extraContent` 插槽保留。
+- Mock 和镜像已接入共享组件，替换截图中的四字段平铺表单；Mock 的“全部命名空间/全部服务”只提供给 caller 侧，callee 侧仍使用实际命名空间/服务选项。
+- 共享组件支持 caller/callee 分别配置 namespace/service options，避免不同规则类型的“全部服务”语义互相污染。
+
+验证：
+
+- `cd console/web && node scripts/verify-route-editor-utils.mjs` 通过。
+- `cd console/web && node scripts/verify-circuitbreaker-editor-utils.mjs` 通过。
+- `cd console/web && node scripts/verify-traffic-mirror-editor-utils.mjs` 通过。
+- `cd console/web && node scripts/verify-traffic-mock-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/shared/ServiceScopeSection.tsx console/web/src/pages/Governance/shared/ServiceScopeSection.module.less console/web/src/pages/Governance/Router/CustomRouteEditor.tsx console/web/src/pages/Governance/CircuitBreaker/CircuitBreakerEditor.tsx console/web/src/pages/Governance/Security/TrafficGovernanceEditor.tsx console/web/src/pages/Governance/Security/index.module.less console/web/src/pages/Governance/Security/trafficMirrorEditorUtils.ts console/web/src/services/traffic_governance.ts console/web/scripts/verify-traffic-mirror-editor-utils.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+
+Review：
+
+- 本轮只抽取和复用 Console 前端服务范围展示组件，不修改后端保存接口或治理规则 spec。
+- `ServiceScopeSection` 封装的是产品态 caller -> callee 关系，不承载规则类型特有配置；特有配置通过 `extraContent` 追加，当前用于熔断粒度。
+- Mock 被调侧没有继承 caller 的“全部服务”选项，避免和最终语义冲突。
 
 ## specification 流量治理 caller -> callee 契约补齐
 
@@ -5162,3 +5441,41 @@ Review：
 
 - 本轮没有运行 `go mod tidy`，避免无关间接依赖漂移。
 - 本仓存在大量既有工作区改动，本轮只在其基础上追加 specification 依赖升级和必要的流量治理转换层适配。
+
+# 流量镜像规则编辑抽屉 PRD 对齐
+
+- [x] 读取镜像规则编辑设计交接文档并核对当前实现差距
+- [x] 将镜像前端类型与工具函数收敛到 `caller/callee`、无持续时间、多接口、多流量标签结构
+- [x] 重构镜像「规则」Tab：基础信息 / 服务范围 / 镜像规则三段，子规则按接口范围、流量标签、镜像执行排列
+- [x] 右侧实时 Spec 输出 `serviceRange.caller / serviceRange.callee / rules[].mirror.target`
+- [x] 更新保存校验和 mirror 工具验证脚本
+- [x] 运行前端工具脚本、构建检查、context-kg lint 和 diff 检查
+
+当前判断：
+
+- 新 PRD 要求镜像规则最终产品态显式表达 `caller -> callee`，服务范围直接读写 `caller` / `callee`，不再把 caller 同步到子规则 `CALLER_SERVICE` 条件。
+- 服务范围的主调和被调都提供 `全部命名空间/全部服务` 选项；`target_service` 只作为旧数据读取兜底，不作为镜像保存 payload 输出。
+- 镜像子规则按接口范围、流量标签、镜像执行三段表达；不展示持续时间，镜像目标只在子规则执行区内表达。
+- UI 允许一条子规则维护多个接口；提交到当前后端契约前会将多个接口展开为多条单接口 `MirrorRule`，并剥离前端草稿字段 `interfaces` 和旧残留 `duration`。
+
+当前进展：
+
+- `TrafficGovernanceEditor` 已将镜像服务范围切换到 `caller` / `callee`，查看态与编辑态均展示主调方、被调方和流量方向。
+- 镜像规则区已移除旧顶部说明块、持续时间和目标实例标签，改为可折叠的「镜像子规则」卡片。
+- 镜像子规则编辑态按接口范围、流量标签、镜像执行排列；接口范围支持 HTTP / gRPC / Dubbo 和多行接口，流量标签只展示 key / op / value，不再暴露来源服务类型选择。
+- 右侧实时 Spec 已改为 `apiVersion/kind/metadata/spec.serviceRange/spec.rules[].interfaces/trafficLabels/mirror` 结构，并随服务范围和子规则实时刷新。
+- `trafficMirrorEditorUtils` 已更新校验：名称 kebab-case、caller/callee 非空、至少 1 条子规则、接口路径非空、标签 key/value 非空、比例 0-100、镜像目标非空。
+- `traffic_governance` 前端服务层已让镜像默认规则使用 `caller` / `callee`，提交前剥离前端 `interfaces`；Mock 的 `delay` 也继续在提交前剥离，避免重新输出已删除的 duration 字段。
+
+验证：
+
+- `cd console/web && node scripts/verify-traffic-mirror-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/Security/TrafficGovernanceEditor.tsx console/web/src/pages/Governance/Security/index.module.less console/web/src/pages/Governance/Security/trafficMirrorEditorUtils.ts console/web/src/services/traffic_governance.ts console/web/scripts/verify-traffic-mirror-editor-utils.mjs context-kg/tasks/todo.md` 通过。
+
+Review：
+
+- 本轮只调整 Console 前端的镜像编辑抽屉、前端服务类型和验证脚本，不修改后端 Go 存储/缓存/下发链路。
+- 产品态 Spec 预览遵循交接稿；真实保存仍适配当前后端 `MirrorRule.api` 单接口结构，因此在提交前展开 `interfaces[]`。
+- 旧数据中的 `CALLER_SERVICE` 仍可被读取为 caller 兜底，但保存时不会再将 caller 写回流量标签或匹配条件。

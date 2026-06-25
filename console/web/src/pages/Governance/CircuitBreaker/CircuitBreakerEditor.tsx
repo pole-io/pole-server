@@ -4,6 +4,7 @@ import { AddIcon, ChevronRightIcon, CloseIcon, Edit1Icon, SaveIcon, RocketIcon, 
 
 import Text from "components/Text";
 import RuleLabelField from "../shared/RuleLabelField";
+import ServiceScopeSection from "../shared/ServiceScopeSection";
 import shared from "../shared/governance.module.less";
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { API, HTTPMethodOption, InterfaceProtocolOption, Label, MatchType, MatchTypeMap, MatchTypeOption, MatchValueType, Op } from "services/types";
@@ -122,6 +123,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
     }>({ model: 'view', publishView: false, visible: false, headerVisible: false, editable: op === 'create' || false, });
 
     const [breakerRule, setBreakerRule] = React.useState<CircuitBreakerDO>(defaultCircuitBreakerRule());
+    const [serviceCollapsed, setServiceCollapsed] = React.useState(false);
     const [collapsedSubRuleIndexes, setCollapsedSubRuleIndexes] = React.useState<Set<number>>(() => new Set());
     const [collapsedStrategyKeys, setCollapsedStrategyKeys] = React.useState<Set<string>>(() => new Set());
     const [specFormat, setSpecFormat] = React.useState<CircuitBreakerSpecFormat>('yaml');
@@ -286,7 +288,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         }
     }
 
-    const breakerNamespaceOptions = namespaceDatas.map((item: NamespaceView) => ({ label: item.name, value: item.name }));
+    const breakerNamespaceOptions = [{ label: '*', value: '*' }, ...namespaceDatas.map((item: NamespaceView) => ({ label: item.name, value: item.name }))];
     const breakerSourceServiceOptions = serviceDatas
         .filter((opt: ServiceView) => breakerRule.ruleMatcher.source.namespace === '*' || opt.namespace === breakerRule.ruleMatcher.source.namespace)
         .map((item: ServiceView) => ({ label: item.name, value: item.name, namespace: item.namespace }));
@@ -356,7 +358,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                     <div className={shared.field}>
                         <div className={shared.fieldLabel}>优先级</div>
                         {editorState.editable
-                            ? <InputNumber min={0} value={breakerRule.priority} onChange={(value) => setBreakerRule(prev => ({ ...prev, priority: value as number }))} />
+                            ? <InputNumber theme="normal" min={0} value={breakerRule.priority} onChange={(value) => setBreakerRule(prev => ({ ...prev, priority: value as number }))} />
                             : <div className={shared.fieldValue}>{breakerRule.priority ?? 0}</div>}
                     </div>
                     <div className={`${shared.field} ${shared.span6}`}>
@@ -379,58 +381,32 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
     );
 
     const renderServiceScope = (
-        <div className={shared.section}>
-            <div className={shared.sectionHeader}>服务范围</div>
-            <div className={shared.sectionBody}>
-                <div className={shared.infoGrid}>
-                    <div className={`${shared.field} ${shared.full}`}>
-                        <div className={shared.fieldLabel}>调用关系</div>
-                        {editorState.editable ? (
-                            <div className={shared.kv2}>
-                                <div>
-                                    <div className={shared.editLabel}>主调命名空间</div>
-                                    <Select filterable creatable options={breakerNamespaceOptions} value={breakerRule.ruleMatcher.source.namespace} onChange={(value) => updateRule(draft => { draft.ruleMatcher.source.namespace = value as string; })} />
-                                </div>
-                                <div>
-                                    <div className={shared.editLabel}>主调服务</div>
-                                    <Select filterable creatable options={breakerSourceServiceOptions} value={breakerRule.ruleMatcher.source.service} onChange={(value) => updateRule(draft => { draft.ruleMatcher.source.service = value as string; })} />
-                                </div>
-                                <div>
-                                    <div className={shared.editLabel}>被调命名空间</div>
-                                    <Select filterable creatable options={breakerNamespaceOptions} value={breakerRule.ruleMatcher.destination.namespace} onChange={(value) => updateRule(draft => { draft.ruleMatcher.destination.namespace = value as string; })} />
-                                </div>
-                                <div>
-                                    <div className={shared.editLabel}>被调服务</div>
-                                    <Select filterable creatable options={breakerDestServiceOptions} value={breakerRule.ruleMatcher.destination.service} onChange={(value) => updateRule(draft => { draft.ruleMatcher.destination.service = value as string; })} />
-                                </div>
-                            </div>
-                        ) : (
-                            <div className={shared.flow}>
-                                <div className={shared.flowNode}>
-                                    <span className={shared.flowNodeLabel}>主调</span>
-                                    <span className={shared.flowNodeValue}>{`${breakerRule.ruleMatcher.source.namespace || '-'} / ${breakerRule.ruleMatcher.source.service || '-'}`}</span>
-                                </div>
-                                <span className={shared.flowArrow}><RocketIcon /></span>
-                                <div className={shared.flowNode}>
-                                    <span className={shared.flowNodeLabel}>被调</span>
-                                    <span className={shared.flowNodeValue}>{`${destinationView.namespace || '-'} / ${destinationView.service || '-'}`}</span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                    <div className={`${shared.field} ${shared.full}`}>
-                        <div className={shared.fieldLabel}>熔断粒度</div>
-                        {canEditLevel ? (
-                            <RadioGroup theme="button" variant="primary-filled" value={breakerRule.level} onChange={(value) => setBreakerRule(prev => ({ ...prev, level: value as string }))}>
-                                <Radio.Button value={BreakLevelType.Service}>{BreakLevelMap[BreakLevelType.Service]}</Radio.Button>
-                                <Radio.Button value={BreakLevelType.Instance}>{BreakLevelMap[BreakLevelType.Instance]}</Radio.Button>
-                                <Radio.Button value={BreakLevelType.Method}>{BreakLevelMap[BreakLevelType.Method]}</Radio.Button>
-                            </RadioGroup>
-                        ) : <div className={shared.fieldValue}>{BreakLevelMap[breakerRule.level as BreakLevelType] || '-'}</div>}
-                    </div>
+        <ServiceScopeSection
+            editable={Boolean(editorState.editable)}
+            collapsed={serviceCollapsed}
+            caller={breakerRule.ruleMatcher.source}
+            callee={editorState.editable ? breakerRule.ruleMatcher.destination : destinationView}
+            namespaceOptions={breakerNamespaceOptions}
+            callerServiceOptions={breakerSourceServiceOptions}
+            calleeServiceOptions={breakerDestServiceOptions}
+            onCollapsedChange={setServiceCollapsed}
+            onCallerNamespaceChange={(value) => updateRule(draft => { draft.ruleMatcher.source.namespace = value; })}
+            onCallerServiceChange={(value) => updateRule(draft => { draft.ruleMatcher.source.service = value; })}
+            onCalleeNamespaceChange={(value) => updateRule(draft => { draft.ruleMatcher.destination.namespace = value; })}
+            onCalleeServiceChange={(value) => updateRule(draft => { draft.ruleMatcher.destination.service = value; })}
+            extraContent={(
+                <div className={shared.field}>
+                    <div className={shared.fieldLabel}>熔断粒度</div>
+                    {canEditLevel ? (
+                        <RadioGroup theme="button" variant="primary-filled" value={breakerRule.level} onChange={(value) => setBreakerRule(prev => ({ ...prev, level: value as string }))}>
+                            <Radio.Button value={BreakLevelType.Service}>{BreakLevelMap[BreakLevelType.Service]}</Radio.Button>
+                            <Radio.Button value={BreakLevelType.Instance}>{BreakLevelMap[BreakLevelType.Instance]}</Radio.Button>
+                            <Radio.Button value={BreakLevelType.Method}>{BreakLevelMap[BreakLevelType.Method]}</Radio.Button>
+                        </RadioGroup>
+                    ) : <div className={shared.fieldValue}>{BreakLevelMap[breakerRule.level as BreakLevelType] || '-'}</div>}
                 </div>
-            </div>
-        </div>
+            )}
+        />
     );
 
     const renderInterfaceRows = (subRuleIdx: number, strategyIdx: number, strategy: CircuitBreakerStrategyDraft) => (
@@ -577,6 +553,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                             {editorState.editable ? (
                                 <InputAdornment append={isRatio ? '%' : '次'}>
                                     <InputNumber
+                                        theme="normal"
                                         min={0}
                                         max={isRatio ? 100 : undefined}
                                         value={thresholdValue}
@@ -599,14 +576,14 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                         <div className={styles.gridCell}>
                             {editorState.editable ? (
                                 <InputAdornment append="秒">
-                                    <InputNumber min={0} value={condition.interval || 0} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].trigger_conditions[conditionIdx].interval = Number(value || 0); })} />
+                                    <InputNumber theme="normal" min={0} value={condition.interval || 0} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].trigger_conditions[conditionIdx].interval = Number(value || 0); })} />
                                 </InputAdornment>
                             ) : <Text>{`${condition.interval || 0} 秒`}</Text>}
                         </div>
                         <div className={styles.gridCell}>
                             {editorState.editable ? (
                                 <InputAdornment append="个">
-                                    <InputNumber min={0} value={condition.minimumRequest || 0} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].trigger_conditions[conditionIdx].minimumRequest = Number(value || 0); })} />
+                                    <InputNumber theme="normal" min={0} value={condition.minimumRequest || 0} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].trigger_conditions[conditionIdx].minimumRequest = Number(value || 0); })} />
                                 </InputAdornment>
                             ) : <Text>{`${condition.minimumRequest || 0} 个`}</Text>}
                         </div>
@@ -697,7 +674,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                         <div className={shared.fieldLabel}>最大剔除比例</div>
                         {editorState.editable ? (
                             <InputAdornment append="%">
-                                <InputNumber min={0} max={100} value={subrule.max_ejection_percent} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].max_ejection_percent = Number(value || 0); })} />
+                                <InputNumber theme="normal" min={0} max={100} value={subrule.max_ejection_percent} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].max_ejection_percent = Number(value || 0); })} />
                             </InputAdornment>
                         ) : renderReadonlyValue(`${subrule.max_ejection_percent ?? '-'}%`)}
                     </div>
@@ -705,7 +682,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                         <div className={shared.fieldLabel}>熔断时长</div>
                         {editorState.editable ? (
                             <InputAdornment append="秒">
-                                <InputNumber min={0} value={subrule.recoverCondition?.sleepWindow} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].recoverCondition.sleepWindow = Number(value || 0); })} />
+                                <InputNumber theme="normal" min={0} value={subrule.recoverCondition?.sleepWindow} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].recoverCondition.sleepWindow = Number(value || 0); })} />
                             </InputAdornment>
                         ) : renderReadonlyValue(`${subrule.recoverCondition?.sleepWindow ?? '-'} 秒`)}
                     </div>
@@ -713,7 +690,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                         <div className={shared.fieldLabel}>连续成功次数</div>
                         {editorState.editable ? (
                             <InputAdornment append="次">
-                                <InputNumber min={0} value={subrule.recoverCondition?.consecutiveSuccess || 0} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].recoverCondition.consecutiveSuccess = Number(value || 0); })} />
+                                <InputNumber theme="normal" min={0} value={subrule.recoverCondition?.consecutiveSuccess || 0} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].recoverCondition.consecutiveSuccess = Number(value || 0); })} />
                             </InputAdornment>
                         ) : renderReadonlyValue(`${subrule.recoverCondition?.consecutiveSuccess ?? 0} 次`)}
                     </div>
@@ -743,7 +720,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                         <div>
                             <div className={shared.fieldLabel}>响应码</div>
                             {editorState.editable ? (
-                                <InputNumber value={subrule.fallbackConfig?.response?.code} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].fallbackConfig.response.code = Number(value || 0); })} />
+                                <InputNumber theme="normal" value={subrule.fallbackConfig?.response?.code} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].fallbackConfig.response.code = Number(value || 0); })} />
                             ) : renderReadonlyValue(subrule.fallbackConfig?.response?.code ?? '-')}
                         </div>
                         <div>

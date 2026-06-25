@@ -7,10 +7,23 @@ import ts from 'typescript';
 
 const root = process.cwd();
 const sourcePath = path.join(root, 'src/pages/Governance/Security/trafficSecurityEditorUtils.ts');
+const editorPath = path.join(root, 'src/pages/Governance/Security/TrafficGovernanceEditor.tsx');
 
 if (!fs.existsSync(sourcePath)) {
   throw new Error(`missing helper: ${sourcePath}`);
 }
+if (!fs.existsSync(editorPath)) {
+  throw new Error(`missing editor: ${editorPath}`);
+}
+
+const editorSource = fs.readFileSync(editorPath, 'utf8');
+assert.match(editorSource, /const renderSecurityServiceInfo = \(\) =>/);
+assert.match(editorSource, /\{kind === 'security' && renderSecurityServiceInfo\(\)\}/);
+assert.doesNotMatch(editorSource, /renderCommonFields[\s\S]*?kind === 'security' && readonlyItem\('被调命名空间'/);
+assert.doesNotMatch(editorSource, /renderCommonFields[\s\S]*?kind === 'security' && <FormItem[\s\S]*?label="被调命名空间"/);
+assert.match(editorSource, /'① 基础信息'/);
+assert.match(editorSource, /<div className=\{shared\.sectionHeader\}>② 服务信息<\/div>/);
+assert.match(editorSource, /'③ 鉴权子规则'/);
 
 let source = fs.readFileSync(sourcePath, 'utf8');
 source = source
@@ -122,6 +135,9 @@ const invalid = [{
 assert.deepEqual(utils.validateSecurityView(rule, invalid).map(item => item.message), [
   '接口路径不能为空',
   '匹配条件的匹配值不能为空',
+]);
+assert.deepEqual(utils.validateSecurityView({ ...rule, name: 'Invalid Name' }, view).map(item => item.message), [
+  '规则名称需为 kebab-case',
 ]);
 
 const yaml = utils.stringifySecuritySpec(preview, 'yaml');

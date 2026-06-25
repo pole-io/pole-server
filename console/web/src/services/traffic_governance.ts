@@ -60,12 +60,19 @@ export interface TrafficTargetService {
     service?: string
 }
 
+export interface TrafficSourceService {
+    namespace?: string
+    service?: string
+}
+
 export interface TrafficRuleBase {
     id?: string
     name: string
     namespace?: string
     service?: string
     target_service?: TrafficTargetService
+    caller?: TrafficSourceService
+    callee?: TrafficTargetService
     description?: string
     priority?: number
     enable?: boolean
@@ -98,6 +105,7 @@ export interface TrafficMirror extends TrafficRuleBase {
 
 export interface MirrorRule {
     api?: TrafficApiScope
+    interfaces?: TrafficApiScope[]
     traffic_match_rule?: TrafficMatchRule
     destination?: {
         namespace?: string
@@ -105,7 +113,6 @@ export interface MirrorRule {
         labels?: Record<string, MatchString>
     }
     mirror_percent?: number
-    duration?: string | { seconds?: number | string; nanos?: number }
     disable?: boolean
 }
 
@@ -261,7 +268,8 @@ export const defaultTrafficSecurityRule = (): TrafficSecurityRule => ({
 
 export const defaultTrafficMirrorRule = (): TrafficMirror => ({
     name: '',
-    target_service: { namespace: '', service: '' },
+    caller: { namespace: '*', service: '*' },
+    callee: { namespace: '', service: '' },
     description: '',
     priority: 0,
     enable: true,
@@ -282,7 +290,6 @@ export const defaultTrafficMirrorRule = (): TrafficMirror => ({
             labels: {},
         },
         mirror_percent: 10,
-        duration: '0s',
         disable: false,
     }],
 });
@@ -321,17 +328,6 @@ export const defaultTrafficGovernanceRule = (kind: TrafficGovernanceKind): Traff
     return defaultTrafficMockRule();
 };
 
-const durationToProtoJson = (value?: string | { seconds?: number | string; nanos?: number }) => {
-    if (value === undefined || value === null || value === '') return undefined;
-    if (typeof value === 'string') return value;
-    const seconds = Number(value.seconds ?? 0);
-    const nanos = Number(value.nanos ?? 0);
-    if (!Number.isFinite(seconds) || !Number.isFinite(nanos)) return '0s';
-    if (nanos === 0) return `${seconds}s`;
-    const fraction = String(Math.abs(nanos)).padStart(9, '0').replace(/0+$/, '');
-    return `${seconds}.${fraction}s`;
-};
-
 const normalizeTrafficGovernanceRules = (kind: TrafficGovernanceKind, params: TrafficGovernanceRule[]) => {
     if (kind === 'security') return params;
     return params.map((item) => {
@@ -340,16 +336,16 @@ const normalizeTrafficGovernanceRules = (kind: TrafficGovernanceKind, params: Tr
             rules: ((item as TrafficMirror | TrafficMock).rules || []).map((rule) => {
                 if (kind === 'mirror') {
                     const mirrorRule = rule as MirrorRule;
+                    const { interfaces: _interfaces, ...submitRule } = mirrorRule;
                     return {
-                        ...mirrorRule,
-                        duration: durationToProtoJson(mirrorRule.duration),
+                        ...submitRule,
                     };
                 }
                 const mockRule = rule as MockRule;
                 const response = mockRule.response || {};
+                const { delay: _delay, ...submitRule } = mockRule;
                 return {
-                    ...mockRule,
-                    delay: durationToProtoJson(mockRule.delay),
+                    ...submitRule,
                     mock_percent: mockRule.mock_percent ?? 100,
                     response: {
                         code: response.code || String((response as Record<string, unknown>).status_code || '200'),

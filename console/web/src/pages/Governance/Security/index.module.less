@@ -141,6 +141,17 @@
   margin-bottom: 10px;
 }
 
+.serviceInfoHint {
+  background: #f8fbff;
+  border: 1px solid #dce8ff;
+  border-radius: 8px;
+  color: #4e5969;
+  font-size: 12px;
+  line-height: 20px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+}
+
 .inlineHint {
   margin-left: 10px;
 }
@@ -376,6 +387,20 @@
   padding: 8px 10px;
 }
 
+.mirrorExecuteGrid {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(120px, .8fr) minmax(160px, 1fr) minmax(180px, 1.2fr);
+  min-width: 0;
+}
+
+.mirrorExecuteGrid > div,
+.mirrorExecuteGrid > div > :global(.t-input-number),
+.mirrorExecuteGrid > div > :global(.t-select) {
+  min-width: 0;
+}
+
 /* 标签：Key / 匹配方式 / 值 / 值类型 / 删除 —— 单行卡片 */
 .labelRow {
   align-items: center;
@@ -454,6 +479,17 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 14px;
   padding: 14px;
+}
+
+.mirrorRuleFooter {
+  align-items: flex-start;
+  background: #fbfcfe;
+  border: 1px solid #e6ebf3;
+  border-radius: 8px;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  padding: 12px 14px;
 }
 
 .flowLine {
@@ -615,6 +651,7 @@
   .mockConditionRow,
   .labelRow,
   .kvRow,
+  .mirrorExecuteGrid,
   .interfaceHeader,
   .interfaceRow {
     grid-template-columns: 1fr;
@@ -623,6 +660,10 @@
   .mockScopeHint,
   .mockResponseGrid {
     grid-template-columns: 1fr;
+  }
+
+  .mirrorRuleFooter {
+    flex-direction: column;
   }
 
   .interfaceHeader {

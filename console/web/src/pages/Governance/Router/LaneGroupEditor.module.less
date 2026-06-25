@@ -2,6 +2,792 @@
   padding: 20px 24px 24px;
 }
 
+.editorBody {
+  height: calc(100vh - 96px);
+  min-height: 640px;
+  overflow: hidden;
+  background: #f5f7fb;
+}
+
+.laneEditorShell {
+  display: grid;
+  grid-template-columns: minmax(760px, 1fr) clamp(360px, 28vw, 420px);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.formPane {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 16px 16px;
+
+  :global(.t-tabs) {
+    min-height: 100%;
+  }
+
+  :global(.t-tabs__content) {
+    overflow: visible;
+    padding-top: 10px;
+  }
+
+  :global(.t-tab-panel) {
+    overflow: visible;
+  }
+
+  :global(.t-form__item) {
+    margin-bottom: 0;
+  }
+}
+
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.designSection {
+  min-width: 0;
+  border: 1px solid #e5e8ef;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.designSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 50px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.designSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.stepTitle {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.stepName {
+  color: #111827;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  white-space: nowrap;
+}
+
+.designSectionNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #1677ff;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.designSectionDesc,
+.sectionHint {
+  color: #8b95a5;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.designSectionBody {
+  padding: 12px 14px 14px;
+}
+
+.inlineHint {
+  margin-left: 10px;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.formField {
+  grid-column: span 1;
+  min-width: 0;
+}
+
+.editField {
+  min-width: 0;
+}
+
+.editLabel {
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 20px;
+  margin-bottom: 8px;
+}
+
+.tableLike {
+  display: grid;
+  gap: 10px;
+}
+
+.entryRow {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 36px 112px minmax(0, 1fr) 34px;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #edf1f7;
+  border-radius: 6px;
+  background: #fbfcff;
+}
+
+.rowIndex {
+  color: #8b95a5;
+  font-size: 12px;
+  text-align: center;
+}
+
+.prdTable {
+  overflow: hidden;
+  border: 1px solid #e5e8ef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.prdTableRow {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 64px 180px minmax(160px, 1fr) minmax(160px, 1fr) 48px;
+  column-gap: 14px;
+  min-height: 58px;
+  padding: 0 14px;
+  border-top: 1px solid #edf1f7;
+
+  &:first-child {
+    border-top: 0;
+  }
+
+  > * {
+    min-width: 0;
+  }
+}
+
+.prdTableHeader {
+  min-height: 42px;
+  background: #fbfcff;
+  color: #8b95a5;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.indexPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #eaf3ff;
+  color: #1677ff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.gatewayPill,
+.appPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 108px;
+  height: 28px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.gatewayPill {
+  border: 1px solid #9ac5ff;
+  background: #edf6ff;
+  color: #1264d8;
+}
+
+.appPill {
+  border: 1px solid #d7b8ff;
+  background: #f5edff;
+  color: #6b2ec9;
+}
+
+.serviceTable {
+  .prdTableRow {
+    grid-template-columns: 64px minmax(160px, 1fr) minmax(160px, 1fr) minmax(140px, 1fr) 48px;
+  }
+}
+
+.serviceDraftRow {
+  background: #fbfcff;
+}
+
+.laneCard {
+  border: 1px solid #e5e8ef;
+  border-radius: 8px;
+  background: #fff;
+
+  & + & {
+    margin-top: 8px;
+  }
+}
+
+.addLaneCardButton {
+  width: 100%;
+  height: 36px;
+  margin-top: 8px;
+  border-style: dashed;
+  color: #1677ff;
+  background: #fff;
+}
+
+.laneCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #edf1f7;
+}
+
+.laneExpandIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  background: transparent;
+  color: #a0a8b5;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.laneColorDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: #6d32d9;
+  flex: 0 0 auto;
+}
+
+.laneHeaderText {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.laneName {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+  white-space: nowrap;
+}
+
+.laneSummary {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.laneCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+}
+
+.laneCardBody :global(.t-input),
+.laneCardBody :global(.t-select),
+.laneCardBody :global(.t-tag-input) {
+  font-size: 14px;
+}
+
+.laneCardBody :global(.t-input__wrap),
+.laneCardBody :global(.t-select__wrap),
+.laneCardBody :global(.t-tag-input) {
+  min-height: 32px;
+}
+
+.fixedTag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d8b4fe;
+  border-radius: 6px;
+  background: #faf5ff;
+  color: #8b95a5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 20px;
+  padding: 8px 12px;
+}
+
+.fixedTag strong {
+  color: #5b21b6;
+  font-weight: 700;
+}
+
+.subSectionTitle {
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+  margin-top: 4px;
+}
+
+.conditionPanel,
+.laneServiceSection,
+.topologyPanel {
+  min-width: 0;
+}
+
+.conditionPanel {
+  padding-top: 2px;
+}
+
+.laneServiceSection,
+.topologyPanel {
+  padding-top: 4px;
+}
+
+.conditionPanelHead {
+  margin-bottom: 10px;
+}
+
+.laneSubTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.laneStepBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: #eaf3ff;
+  color: #1677ff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.subPanelTitle {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.subPanelHint {
+  color: #8b95a5;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.matchControlRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+  flex-wrap: wrap;
+}
+
+.segmented {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid #d7dde8;
+  border-radius: 6px;
+}
+
+.segmentButton {
+  height: 32px;
+  min-width: 58px;
+  padding: 0 12px;
+  border: 0;
+  border-right: 1px solid #d7dde8;
+  background: #fff;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:last-child {
+    border-right: 0;
+  }
+}
+
+.segmentButtonActive {
+  background: #1677ff;
+  color: #fff;
+}
+
+.segmentButton:disabled {
+  cursor: default;
+}
+
+.matchModeHint,
+.ratioLabel {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.matchControlRow :global(.t-input-number) {
+  width: 126px;
+}
+
+.matchControlRow :global(.t-input-adornment) {
+  height: 32px;
+}
+
+.laneRatioControl {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  min-width: 0;
+}
+
+.laneRatioControl :global(.t-input-adornment) {
+  height: 32px;
+  min-width: 104px;
+  width: 118px;
+}
+
+.laneRatioControl :global(.t-input-number) {
+  min-width: 0;
+  width: 100%;
+}
+
+.laneRatioControl :global(.t-input),
+.laneRatioControl :global(.t-input__wrap) {
+  min-width: 0;
+}
+
+.laneRatioControl :global(.t-input__inner) {
+  min-width: 0;
+}
+
+.matchRatioHint {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 20px;
+  margin: 4px 0 12px;
+}
+
+.matchRatioHint strong {
+  color: #1677ff;
+}
+
+.laneMatchRows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.laneMatchRow {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.8fr) minmax(180px, 1.2fr) minmax(140px, 0.9fr) minmax(190px, 1.2fr) 42px;
+  gap: 12px;
+  align-items: end;
+}
+
+.laneMatchField {
+  min-width: 0;
+}
+
+.laneMatchLabel {
+  color: #8b95a5;
+  font-size: 12px;
+  line-height: 18px;
+  margin-bottom: 6px;
+}
+
+.laneMatchField :global(.t-input__wrap),
+.laneMatchField :global(.t-select__wrap),
+.laneMatchField :global(.t-tag-input) {
+  width: 100%;
+}
+
+.laneRowDelete {
+  align-self: end;
+}
+
+.laneTextAdd {
+  align-self: flex-start;
+  margin-top: 6px;
+  color: #1677ff;
+}
+
+.serviceTagList {
+  display: grid;
+  gap: 8px;
+}
+
+.serviceTagRow {
+  display: grid;
+  align-items: center;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(260px, 1fr) 42px;
+  gap: 12px;
+}
+
+.serviceTagRow :global(.t-input__wrap),
+.serviceTagRow :global(.t-select__wrap) {
+  width: 100%;
+}
+
+.laneResultHint {
+  margin-top: 12px;
+  padding: 9px 12px;
+  border: 1px dashed #d8b4fe;
+  border-radius: 8px;
+  background: #fbf7ff;
+  color: #4b5563;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.laneResultHint strong {
+  color: #5b21b6;
+  font-weight: 700;
+}
+
+.placeholderPanel {
+  border: 1px solid #e5e8ef;
+  border-radius: 8px;
+  background: #fff;
+  padding: 48px 24px;
+}
+
+.topology {
+  border: 1px solid #e5e8ef;
+  border-radius: 8px;
+  background: #fbfcff;
+  padding: 10px;
+
+  svg {
+    width: 100%;
+    height: auto;
+    min-height: 190px;
+  }
+
+  text {
+    fill: #1f2937;
+    font-size: 12px;
+    paint-order: stroke;
+    stroke: #fff;
+    stroke-width: 4px;
+    stroke-linejoin: round;
+  }
+}
+
+.node,
+.matchNode,
+.baseNode,
+.serviceNode {
+  fill: #fff;
+  stroke: #cfd7e6;
+}
+
+.matchNode {
+  fill: #eef6ff;
+  stroke: #8fc0ff;
+}
+
+.laneShape {
+  fill: #e8f8f2;
+  stroke: #2ba471;
+}
+
+.greenLine,
+.greenLineThin {
+  stroke: #2ba471;
+  stroke-width: 2.4;
+  fill: none;
+}
+
+.greenLineThin {
+  stroke-width: 1.6;
+}
+
+.grayLine {
+  stroke: #98a2b3;
+  stroke-width: 1.8;
+}
+
+.fallbackLine {
+  stroke: #98a2b3;
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+}
+
+.smallSvgText {
+  font-size: 11px !important;
+}
+
+.greenText {
+  fill: #1f8f5f !important;
+  font-size: 12px !important;
+}
+
+.grayText {
+  fill: #667085 !important;
+  font-size: 12px !important;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  color: #667085;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend i {
+  width: 18px;
+  height: 3px;
+  border-radius: 999px;
+}
+
+.legendGreen {
+  background: #2ba471;
+}
+
+.legendGray {
+  background: repeating-linear-gradient(90deg, #98a2b3 0 5px, transparent 5px 8px);
+}
+
+.legendService {
+  background: #8fc0ff;
+}
+
+.specPane {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid #d7dde8;
+}
+
+.specCard {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: #0b1119;
+}
+
+.specToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #243044;
+  background: #101823;
+}
+
+.specTitle {
+  color: #b8c3d4;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 22px;
+}
+
+.specDesc {
+  color: #7f8ca3;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.specActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.specToggle {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid #334155;
+  border-radius: 7px;
+  background: #0b1119;
+}
+
+.specToggle button {
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #8b95a5;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.specToggleActive {
+  background: #1677ff !important;
+  color: #fff !important;
+}
+
+.specCode {
+  min-height: 0;
+  margin: 0;
+  overflow: auto;
+  padding: 18px 22px 28px;
+  background: #0b1119;
+  color: #d6e2f3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 20px;
+  white-space: pre;
+}
+
+.specFooter {
+  min-height: 48px;
+  padding: 12px 18px;
+  border-top: 1px solid #243044;
+  background: #101823;
+}
+
 .laneGroupEditor {
   :global(.t-steps--vertical) {
     padding-left: 4px;

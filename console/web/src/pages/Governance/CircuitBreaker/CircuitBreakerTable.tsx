@@ -16,7 +16,7 @@ import CircuitBreakerEditor from './CircuitBreakerEditor';
 import { cleanCircuitBreakerPage, editorCircuitBreaker, listCircuitBreakers, listCircuitBreakerVersions, removeCircuitBreakerRelease, removeCircuitBreakers, resetCircuitBreaker, rollbackCircuitBreakerRelease, selectCircuitBreaker } from 'modules/governance/circuitbreaker';
 import SubscribeTable from 'components/SubscribeTable';
 import RuleTabs from '../RuleRelease/RuleTabs';
-import RuleDetailDrawer from '../RuleRelease/RuleDetailDrawer';
+import RuleDetailDrawer, { WIDE_RULE_DETAIL_DRAWER_SIZE } from '../RuleRelease/RuleDetailDrawer';
 
 interface ICircuitBreakerTableProps {
 
@@ -271,7 +271,7 @@ const CircuitBreakerTable: React.FC<ICircuitBreakerTableProps> = ({ }) => {
                 visible={editorState.visible}
                 title={editorState.mode === 'create' ? '新建熔断规则' : editorState.data?.name || '熔断规则详情'}
                 subtitle="故障熔断"
-                size="min(1560px, calc(100vw - 40px))"
+                size={WIDE_RULE_DETAIL_DRAWER_SIZE}
                 onClose={() => setEditorState(pre => ({ ...pre, visible: false }))}
             >
                 <RuleTabs

@@ -25,7 +25,6 @@ import {
     defaultSecurityArgument,
     defaultSecurityMatchRule,
     listTypeText,
-    matchParamDefaultKey,
     normalizeSecurityMatchRule,
     normalizeSecurityViewOrder,
     normalizeSecurityViewRules,
@@ -41,7 +40,6 @@ import {
 import {
     createTrafficGovernanceRules,
     defaultTrafficGovernanceRule,
-    defaultTrafficMirrorRule,
     defaultTrafficSecurityRule,
     describeOneTrafficGovernanceRule,
     MirrorRule,
@@ -85,10 +83,13 @@ import {
     buildMirrorPreviewSpec,
     buildMirrorRulesForSubmit,
     callerScopeText,
+    defaultMirrorSubRule,
     defaultMirrorCaller,
     extractMirrorCaller,
-    isAllMirrorCaller,
     MirrorCallerScope,
+    MirrorViewRule,
+    mirrorScopeLabel,
+    normalizeMirrorCallee,
     normalizeMirrorRules,
     removeCallerServiceArguments,
     stringifyMirrorSpec,
@@ -99,23 +100,20 @@ import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import PublishForm from '../RuleRelease/PublishForm';
 import RuleStickyAction from '../RuleRelease/RuleStickyAction';
 import RuleLabelField from '../shared/RuleLabelField';
+import ServiceScopeSection from '../shared/ServiceScopeSection';
+import TrafficMatchConditionEditor, { TrafficMatchConditionRow } from '../shared/TrafficMatchConditionEditor';
 import shared from '../shared/governance.module.less';
 import style from './index.module.less';
 
 const { FormItem } = Form;
 const { StickyItem } = StickyTool;
 
-const matchSourceOptions = ['HEADER', 'QUERY', 'COOKIE', 'METHOD', 'PATH', 'CALLER_IP'].map((item) => ({ label: item, value: item }));
-const methodOptions = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'ANY'].map((item) => ({ label: item, value: item }));
+const methodOptions = ['GET', 'POST', 'PUT', 'DELETE', '*', 'PATCH', 'HEAD', 'OPTIONS', 'ANY'].map((item) => ({ label: item, value: item }));
 const protocolOptions = [
     { label: 'HTTP', value: InterfaceProtocol.HTTP },
     { label: 'GRPC', value: InterfaceProtocol.GRPC },
+    { label: 'DUBBO', value: InterfaceProtocol.DUBBO },
 ];
-const matchModeOptions = [
-    { label: 'AND', value: MatchLogic.AND },
-    { label: 'OR', value: MatchLogic.OR },
-];
-
 interface TrafficGovernanceEditorProps {
     kind: TrafficGovernanceKind;
     op: Op;
@@ -150,30 +148,6 @@ const durationText = (value?: string | { seconds?: number | string; nanos?: numb
     if (!value) return '-';
     if (typeof value === 'string') return value;
     return `${value.seconds ?? 0}s`;
-};
-
-const renderMatchRule = (match?: TrafficMatchRule) => {
-    const args = match?.arguments || [];
-    if (!args.length && match?.randomPercent === undefined && !match?.matchMode) {
-        return <span>-</span>;
-    }
-    return (
-        <div className={style.conditionStack}>
-            <div className={style.conditionMeta}>
-                <Tag variant="light-outline">{text(match?.matchMode || 'AND')}</Tag>
-                <Tag variant="light-outline">命中比例 {match?.randomPercent ?? 100}%</Tag>
-            </div>
-            {args.length ? args.map((arg, index) => (
-                <div className={shared.tagRow} key={`${arg.type}-${arg.key}-${index}`}>
-                    <span className={`${shared.tagPlain} ${shared.tagMethod}`}>{text(arg.type)}</span>
-                    <span className={shared.chip}>
-                        <span className={shared.chipKey}>{text(arg.key)}</span>
-                        <span className={shared.chipValue}>{matchText(arg.value)}</span>
-                    </span>
-                </div>
-            )) : <div className={shared.emptyLine}>全部流量</div>}
-        </div>
-    );
 };
 
 const renderMirrorMatchRule = (match?: TrafficMatchRule) => {
@@ -356,7 +330,8 @@ export const trafficRuleSummary = (kind: TrafficGovernanceKind, rule?: TrafficGo
     if (kind === 'mirror') {
         const first = (rule as any).rules?.[0];
         const caller = extractMirrorCaller(rule as TrafficMirror);
-        return first ? `${callerScopeText(caller)} -> ${target.namespace || '-'}/${target.service || '-'} / 镜像到 ${first.destination?.namespace || '-'}/${first.destination?.service || '-'} / ${first.mirror_percent ?? 0}%` : '-';
+        const callee = normalizeMirrorCallee(rule);
+        return first ? `${callerScopeText(caller)} -> ${mirrorScopeLabel(callee)} / 镜像到 ${first.destination?.namespace || '-'}/${first.destination?.service || '-'} / ${first.mirror_percent ?? 0}%` : '-';
     }
     const first = normalizeMockRule((rule as TrafficMock).rules?.[0]);
     const caller = extractMockCaller(rule as TrafficMock);
@@ -371,7 +346,9 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
     const [rule, setRule] = React.useState<TrafficGovernanceRule>(() => defaultTrafficGovernanceRule(kind));
     const [editable, setEditable] = React.useState(op === 'create');
     const [publishVisible, setPublishVisible] = React.useState(false);
+    const [serviceScopeCollapsed, setServiceScopeCollapsed] = React.useState(false);
     const [collapsedSecurityPolicyIndexes, setCollapsedSecurityPolicyIndexes] = React.useState<Set<number>>(() => new Set());
+    const [collapsedMirrorRuleIndexes, setCollapsedMirrorRuleIndexes] = React.useState<Set<number>>(() => new Set());
     const [collapsedMockRuleIndexes, setCollapsedMockRuleIndexes] = React.useState<Set<number>>(() => new Set());
     const [securityViewRules, setSecurityViewRules] = React.useState<SecurityViewRule[]>(() => normalizeSecurityViewRules(defaultTrafficSecurityRule()));
     const [specFormat, setSpecFormat] = React.useState<TrafficSecuritySpecFormat>('yaml');
@@ -393,17 +370,21 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
     React.useEffect(() => {
         if (!visible) return;
         setEditable(op === 'create');
+        setServiceScopeCollapsed(false);
         setCollapsedSecurityPolicyIndexes(new Set());
+        setCollapsedMirrorRuleIndexes(new Set());
         setCollapsedMockRuleIndexes(new Set());
         setMockBodyDialog({ visible: false, index: -1 });
         const load = async () => {
             const next = data?.id && op !== 'create'
                 ? await describeOneTrafficGovernanceRule(kind, data.id)
                 : (data || defaultTrafficGovernanceRule(kind));
-            const targetService = next.target_service || { namespace: next.namespace || '', service: next.service || '' };
+            const targetService = kind === 'mirror'
+                ? normalizeMirrorCallee(next)
+                : next.target_service || { namespace: next.namespace || '', service: next.service || '' };
             const normalized = {
                 ...next,
-                target_service: targetService,
+                ...(kind === 'mirror' ? { callee: targetService } : { target_service: targetService }),
                 ...(kind === 'mirror' ? { rules: normalizeMirrorRules(next as TrafficMirror) } : {}),
                 ...(kind === 'mock' ? { rules: normalizeMockRules(next as TrafficMock) } : {}),
             } as TrafficGovernanceRule;
@@ -433,6 +414,7 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
 
     const namespaceOptions = (namespaceState.datas || []).map((ns: NamespaceView) => ({ label: ns.name, value: ns.name }));
     const currentTarget = rule.target_service || { namespace: rule.namespace || '', service: rule.service || '' };
+    const mirrorCallee = normalizeMirrorCallee(rule);
     const serviceOptions = (serviceState.datas || [])
         .filter((svc: ServiceView) => !currentTarget.namespace || currentTarget.namespace === '*' || svc.namespace === currentTarget.namespace)
         .map((svc: ServiceView) => ({ label: svc.name, value: svc.name }));
@@ -441,6 +423,13 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
         { label: '全部服务', value: '*' },
         ...(serviceState.datas || [])
             .filter((svc: ServiceView) => mirrorCaller.namespace && mirrorCaller.namespace !== '*' && svc.namespace === mirrorCaller.namespace)
+            .map((svc: ServiceView) => ({ label: svc.name, value: svc.name })),
+    ];
+    const mirrorCalleeNamespaceOptions = [{ label: '全部命名空间', value: '*' }, ...namespaceOptions];
+    const mirrorCalleeServiceOptions = [
+        { label: '全部服务', value: '*' },
+        ...(serviceState.datas || [])
+            .filter((svc: ServiceView) => mirrorCallee.namespace && mirrorCallee.namespace !== '*' && svc.namespace === mirrorCallee.namespace)
             .map((svc: ServiceView) => ({ label: svc.name, value: svc.name })),
     ];
     const mockCallerNamespaceOptions = [{ label: '全部命名空间', value: '*' }, ...namespaceOptions];
@@ -534,11 +523,23 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
         });
     };
 
-    const setMirrorRule = (index: number, updater: (item: MirrorRule) => MirrorRule) => {
+    const toggleMirrorRuleCollapsed = (index: number) => {
+        setCollapsedMirrorRuleIndexes((prev) => {
+            const next = new Set(prev);
+            if (next.has(index)) {
+                next.delete(index);
+            } else {
+                next.add(index);
+            }
+            return next;
+        });
+    };
+
+    const setMirrorRule = (index: number, updater: (item: MirrorViewRule) => MirrorViewRule) => {
         setRule((prev) => {
             const mirror = prev as TrafficMirror;
-            const rules = [...(mirror.rules || [])];
-            rules[index] = updater(rules[index] || defaultTrafficMirrorRule().rules[0]);
+            const rules = normalizeMirrorRules(mirror);
+            rules[index] = updater(rules[index] || defaultMirrorSubRule());
             return { ...mirror, rules };
         });
     };
@@ -552,98 +553,6 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
         });
     };
 
-    // 匹配值的三段控件（匹配方式 / 值 / 值类型），以 fragment 返回，由父行栅格统一排成一行
-    const renderMatchValueEditor = (
-        value: { type?: string; value?: string; value_type?: string } | undefined,
-        onChange: (next: { type?: string; value?: string; value_type?: string }) => void,
-    ) => {
-        const current = value || defaultMatchValue();
-        return (
-            <>
-                <Select
-                    options={MatchTypeOption}
-                    value={current.type || MatchType.EXACT}
-                    onChange={(next) => onChange({ ...current, type: next as string })}
-                />
-                <Input
-                    value={current.value || ''}
-                    placeholder="匹配值"
-                    onChange={(next) => onChange({ ...current, value: next })}
-                />
-                <Select
-                    options={MatchValueTypeOption}
-                    value={current.value_type || MatchValueType.TEXT}
-                    onChange={(next) => onChange({ ...current, value_type: next as string })}
-                />
-            </>
-        );
-    };
-
-    const renderMatchRuleEditor = (match: TrafficMatchRule | undefined, onChange: (next: TrafficMatchRule) => void) => {
-        const current = normalizeMatchRule(match);
-        const args = current.arguments || [];
-        const updateArg = (index: number, updater: (arg: NonNullable<TrafficMatchRule['arguments']>[number]) => NonNullable<TrafficMatchRule['arguments']>[number]) => {
-            const nextArgs = [...args];
-            nextArgs[index] = updater(nextArgs[index] || defaultArgument());
-            onChange({ ...current, arguments: nextArgs });
-        };
-        return (
-            <div className={style.repeatEditor}>
-                <div className={style.repeatMeta}>
-                    <span className={style.repeatMetaHint}>匹配关系</span>
-                    <Select
-                        className={style.metaSelect}
-                        options={matchModeOptions}
-                        value={current.matchMode || MatchLogic.AND}
-                        onChange={(next) => onChange({ ...current, matchMode: next as string })}
-                    />
-                    <span className={style.repeatMetaHint}>命中比例</span>
-                    <InputNumber
-                        className={style.metaPercent}
-                        min={0}
-                        max={100}
-                        suffix="%"
-                        value={current.randomPercent ?? 100}
-                        onChange={(next) => onChange({ ...current, randomPercent: Number(next ?? 0) })}
-                    />
-                </div>
-                {args.map((arg, index) => (
-                    <div className={style.conditionRow} key={`${arg.type}-${arg.key}-${index}`}>
-                        <Select
-                            filterable
-                            creatable
-                            options={matchSourceOptions}
-                            value={arg.type || 'HEADER'}
-                            onChange={(next) => updateArg(index, (item) => ({ ...item, type: next as string }))}
-                        />
-                        <Input
-                            value={arg.key || ''}
-                            placeholder="匹配 Key"
-                            onChange={(next) => updateArg(index, (item) => ({ ...item, key: next }))}
-                        />
-                        {renderMatchValueEditor(arg.value, (next) => updateArg(index, (item) => ({ ...item, value: next })))}
-                        <Button
-                            shape="circle"
-                            variant="text"
-                            disabled={args.length <= 1}
-                            onClick={() => onChange({ ...current, arguments: args.filter((_, idx) => idx !== index) })}
-                        >
-                            <CloseIcon />
-                        </Button>
-                    </div>
-                ))}
-                <Button
-                    className={shared.addRuleButton}
-                    variant="dashed"
-                    icon={<AddIcon />}
-                    onClick={() => onChange({ ...current, arguments: [...args, defaultArgument()] })}
-                >
-                    添加匹配条件
-                </Button>
-            </div>
-        );
-    };
-
     const renderMirrorMatchRuleEditor = (match: TrafficMatchRule | undefined, onChange: (next: TrafficMatchRule) => void) => {
         const current = removeCallerServiceArguments(normalizeMatchRule(match));
         const args = current.arguments || [];
@@ -652,52 +561,35 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
             nextArgs[index] = updater(nextArgs[index] || defaultArgument());
             onChange({ matchMode: current.matchMode || MatchLogic.AND, arguments: nextArgs });
         };
+        const rows: TrafficMatchConditionRow[] = args.map(arg => ({
+            paramType: arg.type,
+            paramKey: arg.key,
+            matchType: arg.value?.type || MatchType.EXACT,
+            matchValue: arg.value?.value || '',
+        }));
         return (
-            <div className={style.repeatEditor}>
-                <div className={style.repeatMeta}>
-                    <span className={style.repeatMetaHint}>匹配关系</span>
-                    <Select
-                        className={style.metaSelect}
-                        options={matchModeOptions}
-                        value={current.matchMode || MatchLogic.AND}
-                        onChange={(next) => onChange({ matchMode: next as string, arguments: args })}
-                    />
-                    <span className={style.repeatMetaHint}>仅配置请求条件，镜像比例在采样步骤配置</span>
-                </div>
-                {args.map((arg, index) => (
-                    <div className={style.conditionRow} key={`${arg.type}-${arg.key}-${index}`}>
-                        <Select
-                            filterable
-                            creatable
-                            options={matchSourceOptions}
-                            value={arg.type || 'HEADER'}
-                            onChange={(next) => updateArg(index, (item) => ({ ...item, type: next as string }))}
-                        />
-                        <Input
-                            value={arg.key || ''}
-                            placeholder="匹配 Key"
-                            onChange={(next) => updateArg(index, (item) => ({ ...item, key: next }))}
-                        />
-                        {renderMatchValueEditor(arg.value, (next) => updateArg(index, (item) => ({ ...item, value: next })))}
-                        <Button
-                            shape="circle"
-                            variant="text"
-                            disabled={args.length <= 1}
-                            onClick={() => onChange({ matchMode: current.matchMode || MatchLogic.AND, arguments: args.filter((_, idx) => idx !== index) })}
-                        >
-                            <CloseIcon />
-                        </Button>
-                    </div>
-                ))}
-                <Button
-                    className={shared.addRuleButton}
-                    variant="dashed"
-                    icon={<AddIcon />}
-                    onClick={() => onChange({ matchMode: current.matchMode || MatchLogic.AND, arguments: [...args, defaultArgument()] })}
-                >
-                    添加匹配条件
-                </Button>
-            </div>
+            <TrafficMatchConditionEditor
+                rows={rows}
+                editable={editable}
+                relation={current.matchMode || MatchLogic.AND}
+                hint={current.matchMode === MatchLogic.OR ? '满足任一标签即命中' : '需同时满足全部标签'}
+                addText="添加流量标签"
+                paramTypeOptions={securityMatchSourceOptions}
+                onRelationChange={(next) => onChange({ matchMode: next as string, arguments: args })}
+                onRowChange={(index, row) => updateArg(index, (item) => ({
+                    ...item,
+                    type: row.paramType || 'HEADER',
+                    key: row.paramKey || '',
+                    value: {
+                        ...(item.value || defaultMatchValue()),
+                        type: row.matchType || MatchType.EXACT,
+                        value: row.matchValue || '',
+                        value_type: MatchValueType.TEXT,
+                    },
+                }))}
+                onAdd={() => onChange({ matchMode: current.matchMode || MatchLogic.AND, arguments: [...args, defaultArgument()] })}
+                onRemove={(index) => onChange({ matchMode: current.matchMode || MatchLogic.AND, arguments: args.filter((_, idx) => idx !== index) })}
+            />
         );
     };
 
@@ -709,76 +601,34 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
             nextArgs[index] = updater(nextArgs[index] || defaultSecurityArgument());
             onChange({ ...current, arguments: nextArgs, randomPercent: current.randomPercent ?? 0 });
         };
+        const rows: TrafficMatchConditionRow[] = args.map(arg => ({
+            paramType: arg.type,
+            paramKey: arg.key,
+            matchType: arg.value?.type || MatchType.EXACT,
+            matchValue: arg.value?.value || '',
+        }));
         return (
-            <div className={style.repeatEditor}>
-                <div className={style.repeatMeta}>
-                    <Select
-                        className={style.metaSelect}
-                        options={matchModeOptions}
-                        value={current.matchMode || MatchLogic.AND}
-                        onChange={(next) => onChange({ ...current, matchMode: next as string, randomPercent: current.randomPercent ?? 0 })}
-                    />
-                    <span className={style.repeatMetaHint}>
-                        {current.matchMode === MatchLogic.OR ? '满足任一条件即命中名单' : '需同时满足全部条件'}
-                    </span>
-                </div>
-                {args.map((arg, index) => (
-                    <div className={style.conditionRow} key={`${arg.type}-${arg.key}-${index}`}>
-                        <Select
-                            options={securityMatchSourceOptions}
-                            value={arg.type || 'HEADER'}
-                            onChange={(next) => updateArg(index, (item) => ({
-                                ...item,
-                                type: next as string,
-                                key: matchParamDefaultKey[next as string] || '',
-                            }))}
-                        />
-                        <Input
-                            value={arg.key || ''}
-                            placeholder="参数键"
-                            onChange={(next) => updateArg(index, (item) => ({ ...item, key: next }))}
-                        />
-                        {renderMatchValueEditor(arg.value, (next) => updateArg(index, (item) => ({ ...item, value: next })))}
-                        <Button
-                            shape="circle"
-                            variant="text"
-                            disabled={args.length <= 1}
-                            onClick={() => onChange({ ...current, arguments: args.filter((_, idx) => idx !== index), randomPercent: current.randomPercent ?? 0 })}
-                        >
-                            <CloseIcon />
-                        </Button>
-                    </div>
-                ))}
-                <Button
-                    className={shared.addRuleButton}
-                    variant="dashed"
-                    icon={<AddIcon />}
-                    onClick={() => onChange({ ...current, arguments: [...args, defaultSecurityArgument()], randomPercent: current.randomPercent ?? 0 })}
-                >
-                    添加匹配条件
-                </Button>
-            </div>
-        );
-    };
-
-    const renderApiEditor = (api: TrafficApiScope | undefined, onChange: (next: TrafficApiScope) => void) => {
-        const current = api || {};
-        return (
-            <div className={style.apiEditor}>
-                <Select
-                    options={protocolOptions}
-                    value={current.protocol || InterfaceProtocol.HTTP}
-                    onChange={(next) => onChange({ ...current, protocol: next as string })}
-                />
-                <Select
-                    filterable
-                    creatable
-                    options={methodOptions}
-                    value={current.method || 'GET'}
-                    onChange={(next) => onChange({ ...current, method: next as string })}
-                />
-                {renderMatchValueEditor(current.path, (next) => onChange({ ...current, path: next }))}
-            </div>
+            <TrafficMatchConditionEditor
+                rows={rows}
+                editable={editable}
+                relation={current.matchMode || MatchLogic.AND}
+                hint={current.matchMode === MatchLogic.OR ? '满足任一条件即命中名单' : '需同时满足全部条件'}
+                paramTypeOptions={securityMatchSourceOptions}
+                onRelationChange={(next) => onChange({ ...current, matchMode: next as string, randomPercent: current.randomPercent ?? 0 })}
+                onRowChange={(index, row) => updateArg(index, (item) => ({
+                    ...item,
+                    type: row.paramType || 'HEADER',
+                    key: row.paramKey || '',
+                    value: {
+                        ...(item.value || defaultMatchValue()),
+                        type: row.matchType || MatchType.EXACT,
+                        value: row.matchValue || '',
+                        value_type: MatchValueType.TEXT,
+                    },
+                }))}
+                onAdd={() => onChange({ ...current, arguments: [...args, defaultSecurityArgument()], randomPercent: current.randomPercent ?? 0 })}
+                onRemove={(index) => onChange({ ...current, arguments: args.filter((_, idx) => idx !== index), randomPercent: current.randomPercent ?? 0 })}
+            />
         );
     };
 
@@ -827,63 +677,34 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
             nextArgs[index] = updater(nextArgs[index] || defaultMockArgument());
             onChange({ ...current, arguments: nextArgs });
         };
+        const rows: TrafficMatchConditionRow[] = args.map(arg => ({
+            paramType: arg.type,
+            paramKey: arg.key,
+            matchType: arg.value?.type || MatchType.EXACT,
+            matchValue: arg.value?.value || '',
+        }));
         return (
-            <div className={style.repeatEditor}>
-                <div className={style.repeatMeta}>
-                    <Select
-                        className={style.metaSelect}
-                        options={matchModeOptions}
-                        value={current.matchMode || MatchLogic.AND}
-                        onChange={(next) => onChange({ ...current, matchMode: next as string })}
-                    />
-                    <span className={style.repeatMetaHint}>
-                        {current.matchMode === MatchLogic.OR ? '满足任一条件即 Mock' : '需同时满足全部条件'}
-                    </span>
-                </div>
-                {args.map((arg, index) => {
-                    const value = arg.value || defaultMockMatchValue();
-                    return (
-                        <div className={style.mockConditionRow} key={`${arg.type}-${arg.key}-${index}`}>
-                            <Select
-                                options={mockMatchSourceOptions}
-                                value={arg.type || 'HEADER'}
-                                onChange={(next) => updateArg(index, (item) => ({ ...item, type: next as string }))}
-                            />
-                            <Input
-                                value={arg.key || ''}
-                                placeholder="参数键"
-                                onChange={(next) => updateArg(index, (item) => ({ ...item, key: next }))}
-                            />
-                            <Select
-                                options={MatchTypeOption}
-                                value={value.type || MatchType.EXACT}
-                                onChange={(next) => updateArg(index, (item) => ({ ...item, value: { ...(item.value || defaultMockMatchValue()), type: next as string } }))}
-                            />
-                            <Input
-                                value={value.value || ''}
-                                placeholder="匹配值"
-                                onChange={(next) => updateArg(index, (item) => ({ ...item, value: { ...(item.value || defaultMockMatchValue()), value: next, value_type: MatchValueType.TEXT } }))}
-                            />
-                            <Button
-                                shape="circle"
-                                variant="text"
-                                disabled={args.length <= 1}
-                                onClick={() => onChange({ ...current, arguments: args.filter((_, idx) => idx !== index) })}
-                            >
-                                <CloseIcon />
-                            </Button>
-                        </div>
-                    );
-                })}
-                <Button
-                    className={shared.addRuleButton}
-                    variant="dashed"
-                    icon={<AddIcon />}
-                    onClick={() => onChange({ ...current, arguments: [...args, defaultMockArgument()] })}
-                >
-                    添加匹配条件
-                </Button>
-            </div>
+            <TrafficMatchConditionEditor
+                rows={rows}
+                editable={editable}
+                relation={current.matchMode || MatchLogic.AND}
+                hint={current.matchMode === MatchLogic.OR ? '满足任一条件即 Mock' : '需同时满足全部条件'}
+                paramTypeOptions={mockMatchSourceOptions}
+                onRelationChange={(next) => onChange({ ...current, matchMode: next as string })}
+                onRowChange={(index, row) => updateArg(index, (item) => ({
+                    ...item,
+                    type: row.paramType || 'HEADER',
+                    key: row.paramKey || '',
+                    value: {
+                        ...(item.value || defaultMockMatchValue()),
+                        type: row.matchType || MatchType.EXACT,
+                        value: row.matchValue || '',
+                        value_type: MatchValueType.TEXT,
+                    },
+                }))}
+                onAdd={() => onChange({ ...current, arguments: [...args, defaultMockArgument()] })}
+                onRemove={(index) => onChange({ ...current, arguments: args.filter((_, idx) => idx !== index) })}
+            />
         );
     };
 
@@ -979,6 +800,77 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
         );
     };
 
+    const renderMirrorInterfacesEditor = (interfaces: TrafficApiScope[], onChange: (next: TrafficApiScope[]) => void) => {
+        const rows = interfaces.length ? interfaces : defaultMirrorSubRule().interfaces;
+        const updateRow = (index: number, updater: (api: TrafficApiScope) => TrafficApiScope) => {
+            onChange(rows.map((item, idx) => idx === index ? updater(item) : item));
+        };
+        return (
+            <div className={style.repeatEditor}>
+                <div className={style.interfaceHeader}>
+                    <span>协议</span>
+                    <span>方法</span>
+                    <span>匹配类型</span>
+                    <span>接口路径</span>
+                    <span>值类型</span>
+                    <span>操作</span>
+                </div>
+                {rows.map((api, index) => {
+                    const current = api || defaultMirrorSubRule().interfaces[0];
+                    const path = current.path || defaultMatchValue();
+                    return (
+                        <div className={style.interfaceRow} key={`${current.protocol}-${current.method}-${index}`}>
+                            <Select
+                                options={protocolOptions}
+                                value={current.protocol || InterfaceProtocol.HTTP}
+                                onChange={(next) => updateRow(index, (item) => ({ ...item, protocol: next as string }))}
+                            />
+                            <Select
+                                filterable
+                                creatable
+                                options={methodOptions}
+                                value={current.method || 'GET'}
+                                onChange={(next) => updateRow(index, (item) => ({ ...item, method: next as string }))}
+                            />
+                            <Select
+                                options={MatchTypeOption}
+                                value={path.type || MatchType.EXACT}
+                                onChange={(next) => updateRow(index, (item) => ({ ...item, path: { ...(item.path || defaultMatchValue()), type: next as string } }))}
+                            />
+                            <Input
+                                className={style.monoInput}
+                                value={path.value || ''}
+                                placeholder="/orders"
+                                onChange={(next) => updateRow(index, (item) => ({ ...item, path: { ...(item.path || defaultMatchValue()), value: next, value_type: item.path?.value_type || MatchValueType.TEXT } }))}
+                            />
+                            <Select
+                                options={MatchValueTypeOption}
+                                value={path.value_type || MatchValueType.TEXT}
+                                onChange={(next) => updateRow(index, (item) => ({ ...item, path: { ...(item.path || defaultMatchValue()), value_type: next as string } }))}
+                            />
+                            <Button
+                                shape="circle"
+                                variant="text"
+                                disabled={rows.length <= 1}
+                                onClick={() => onChange(rows.filter((_, idx) => idx !== index))}
+                            >
+                                <CloseIcon />
+                            </Button>
+                        </div>
+                    );
+                })}
+                <Button
+                    className={shared.addRuleButton}
+                    variant="dashed"
+                    icon={<AddIcon />}
+                    onClick={() => onChange([...rows, defaultMirrorSubRule().interfaces[0]])}
+                >
+                    添加接口
+                </Button>
+            </div>
+        );
+    };
+
     const renderMockReturnPreview = (item: MockRule) => {
         const current = normalizeMockRule(item);
         const headers = Object.entries(current.response?.headers || {}).filter(([key]) => key.trim());
@@ -1019,6 +911,7 @@ ${current.response?.body || ''}`}
                         <div>
                             <div className={shared.editLabel}>响应延迟 ms</div>
                             <InputNumber
+                                theme="normal"
                                 min={0}
                                 value={delayMs}
                                 onChange={(value) => setMockRule(index, (draft) => ({ ...draft, delay: msToDuration(Number(value ?? 0)) }))}
@@ -1053,35 +946,6 @@ ${current.response?.body || ''}`}
                     <div className={style.sectionHint}>命中这条子规则后，客户端会收到下面的响应。</div>
                     {renderMockReturnPreview(current)}
                 </div>
-            </div>
-        );
-    };
-
-    const renderMatchRecordEditor = (
-        record: Record<string, { type?: string; value?: string; value_type?: string }> | undefined,
-        onChange: (next: Record<string, { type?: string; value?: string; value_type?: string }>) => void,
-    ) => {
-        const rows = Object.entries(record || {}).map(([key, value]) => ({ key, value }));
-        const commitRows = (nextRows: Array<{ key: string; value: { type?: string; value?: string; value_type?: string } }>) => {
-            onChange(nextRows.reduce<Record<string, { type?: string; value?: string; value_type?: string }>>((acc, row) => {
-                if (row.key.trim()) acc[row.key.trim()] = row.value;
-                return acc;
-            }, {}));
-        };
-        return (
-            <div className={style.repeatEditor}>
-                {rows.map((row, index) => (
-                    <div className={style.labelRow} key={`${row.key}-${index}`}>
-                        <Input
-                            value={row.key}
-                            placeholder="标签 Key"
-                            onChange={(next) => commitRows(rows.map((item, idx) => idx === index ? { ...item, key: next } : item))}
-                        />
-                        {renderMatchValueEditor(row.value, (next) => commitRows(rows.map((item, idx) => idx === index ? { ...item, value: next } : item)))}
-                        <Button shape="circle" variant="text" onClick={() => commitRows(rows.filter((_, idx) => idx !== index))}><CloseIcon /></Button>
-                    </div>
-                ))}
-                <Button className={shared.addRuleButton} variant="dashed" icon={<AddIcon />} onClick={() => commitRows([...rows, { key: '', value: defaultMatchValue() }])}>添加标签</Button>
             </div>
         );
     };
@@ -1126,9 +990,17 @@ ${current.response?.body || ''}`}
             } as TrafficMock;
         }
         if (kind === 'mirror') {
+            const mirrorBase = { ...base } as Record<string, unknown>;
+            const currentCallee = normalizeMirrorCallee(rule);
+            delete mirrorBase.target_service;
             return {
-                ...base,
-                rules: buildMirrorRulesForSubmit(mirrorRules, mirrorCaller),
+                ...mirrorBase,
+                caller: mirrorCaller,
+                callee: {
+                    namespace: targetNamespace || currentCallee.namespace || '',
+                    service: targetService || currentCallee.service || '',
+                },
+                rules: buildMirrorRulesForSubmit(mirrorRules),
             } as TrafficMirror;
         }
         return {
@@ -1168,16 +1040,68 @@ ${current.response?.body || ''}`}
         }
     };
 
+    const renderMockServiceScopeSection = (
+        <ServiceScopeSection
+            editable={editable}
+            collapsed={serviceScopeCollapsed}
+            caller={mockCaller}
+            callee={currentTarget}
+            callerNamespaceOptions={mockCallerNamespaceOptions}
+            calleeNamespaceOptions={namespaceOptions}
+            callerServiceOptions={mockCallerServiceOptions}
+            calleeServiceOptions={serviceOptions}
+            onCollapsedChange={setServiceScopeCollapsed}
+            onCallerNamespaceChange={(value) => setMockCaller((prev) => {
+                if (value === '*') return defaultMockCaller();
+                return { namespace: value, service: prev.service === '*' ? '' : prev.service };
+            })}
+            onCallerServiceChange={(value) => setMockCaller((prev) => (value === '*' ? defaultMockCaller() : { ...prev, service: value }))}
+            onCalleeNamespaceChange={(value) => {
+                setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), namespace: value, service: '' } }));
+                form.setFieldsValue({ targetNamespace: value, targetService: '' });
+            }}
+            onCalleeServiceChange={(value) => {
+                setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), service: value } }));
+                form.setFieldsValue({ targetService: value });
+            }}
+        />
+    );
+
+    const renderMirrorServiceScopeSection = (
+        <ServiceScopeSection
+            editable={editable}
+            collapsed={serviceScopeCollapsed}
+            caller={mirrorCaller}
+            callee={mirrorCallee}
+            callerNamespaceOptions={mirrorCallerNamespaceOptions}
+            calleeNamespaceOptions={mirrorCalleeNamespaceOptions}
+            callerServiceOptions={mirrorCallerServiceOptions}
+            calleeServiceOptions={mirrorCalleeServiceOptions}
+            onCollapsedChange={setServiceScopeCollapsed}
+            onCallerNamespaceChange={(value) => setMirrorCaller((prev) => {
+                if (value === '*') return defaultMirrorCaller();
+                return { namespace: value, service: prev.service === '*' ? '' : prev.service };
+            })}
+            onCallerServiceChange={(value) => setMirrorCaller((prev) => (value === '*' ? defaultMirrorCaller() : { ...prev, service: value }))}
+            onCalleeNamespaceChange={(value) => {
+                const service = value === '*' ? '*' : '';
+                setRule((prev) => ({ ...prev, callee: { namespace: value, service } } as TrafficMirror));
+                form.setFieldsValue({ targetNamespace: value, targetService: service });
+            }}
+            onCalleeServiceChange={(value) => {
+                setRule((prev) => ({ ...prev, callee: { ...normalizeMirrorCallee(prev), service: value } } as TrafficMirror));
+                form.setFieldsValue({ targetService: value });
+            }}
+        />
+    );
+
     const renderCommonFields = () => {
-        const target = rule.target_service || { namespace: rule.namespace, service: rule.service };
         if (!editable) {
             return (
                 <div className={shared.infoGrid}>
                     {readonlyItem('规则名称', rule.name)}
                     {readonlyItem('启用状态', <span className={`${shared.pill} ${rule.enable ? shared.pillOk : shared.pillOff} ${shared.pillDot}`}>{rule.enable ? '启用' : '禁用'}</span>)}
                     {readonlyItem('优先级', rule.priority ?? 0)}
-                    {kind === 'security' && readonlyItem('被调命名空间', target.namespace)}
-                    {kind === 'security' && readonlyItem('被调服务', target.service)}
                     {readonlyItem('Revision', rule.revision)}
                     {readonlyItem('描述', rule.description, true)}
                     {readonlyItem('规则标签', <RuleLabelField metadata={rule.metadata} />, true)}
@@ -1193,27 +1117,8 @@ ${current.response?.body || ''}`}
                     <Switch label={['启用', '禁用']} />
                 </FormItem>
                 <FormItem className={shared.field} label="优先级" name="priority">
-                    <InputNumber min={0} max={1000000} />
+                    <InputNumber theme="normal" min={0} max={1000000} />
                 </FormItem>
-                {kind === 'security' && <FormItem className={shared.field} label="被调命名空间" name="targetNamespace" rules={[{ required: true, message: '被调命名空间不能为空' }]}>
-                    <Select
-                        filterable
-                        creatable
-                        options={namespaceOptions}
-                        onChange={(value) => {
-                            setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), namespace: value as string, service: '' } }));
-                            form.setFieldsValue({ targetService: '' });
-                        }}
-                    />
-                </FormItem>}
-                {kind === 'security' && <FormItem className={shared.field} label="被调服务" name="targetService" rules={[{ required: true, message: '被调服务不能为空' }]}>
-                    <Select
-                        filterable
-                        creatable
-                        options={serviceOptions}
-                        onChange={(value) => setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), service: value as string } }))}
-                    />
-                </FormItem>}
                 <div className={`${shared.field} ${shared.full}`}>
                     <div className={shared.fieldLabel}>规则标签</div>
                     <RuleLabelField
@@ -1229,144 +1134,43 @@ ${current.response?.body || ''}`}
         );
     };
 
-    const renderMockScopeFields = () => {
+    const renderSecurityServiceInfo = () => {
         const target = rule.target_service || { namespace: rule.namespace, service: rule.service };
-        if (!editable) {
-            return (
-                <div className={shared.infoGrid}>
-                    {readonlyItem('主调方', mockCallerScopeText(mockCaller))}
-                    {readonlyItem('被调方', `${text(target.namespace)}/${text(target.service)}`)}
-                    <div className={`${shared.field} ${shared.full}`}>
-                        <div className={shared.fieldLabel}>流量方向</div>
-                        <div className={style.flowLine}>
-                            <span>{mockCallerScopeText(mockCaller)}</span>
-                            <span className={style.flowArrow}>-></span>
-                            <span>{text(target.namespace)}/{text(target.service)}</span>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
         return (
-            <div className={shared.infoGrid}>
-                <div className={shared.field}>
-                    <div className={shared.fieldLabel}>主调命名空间</div>
-                    <Select
-                        filterable
-                        creatable
-                        options={mockCallerNamespaceOptions}
-                        value={mockCaller.namespace || '*'}
-                        onChange={(value) => setMockCaller((prev) => {
-                            if (value === '*') return defaultMockCaller();
-                            return { namespace: value as string, service: prev.service === '*' ? '' : prev.service };
-                        })}
-                    />
-                </div>
-                <div className={shared.field}>
-                    <div className={shared.fieldLabel}>主调服务</div>
-                    <Select
-                        filterable
-                        creatable
-                        options={mockCallerServiceOptions}
-                        value={mockCaller.service || '*'}
-                        onChange={(value) => setMockCaller((prev) => (value === '*' ? defaultMockCaller() : { ...prev, service: value as string }))}
-                    />
-                </div>
-                <FormItem className={shared.field} label="被调命名空间" name="targetNamespace" rules={[{ required: true, message: 'Mock 被调命名空间不能为空' }]}>
-                    <Select
-                        filterable
-                        creatable
-                        options={namespaceOptions}
-                        onChange={(value) => {
-                            setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), namespace: value as string, service: '' } }));
-                            form.setFieldsValue({ targetService: '' });
-                        }}
-                    />
-                </FormItem>
-                <FormItem className={shared.field} label="被调服务" name="targetService" rules={[{ required: true, message: 'Mock 被调服务不能为空' }]}>
-                    <Select
-                        filterable
-                        creatable
-                        options={serviceOptions}
-                        onChange={(value) => setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), service: value as string } }))}
-                    />
-                </FormItem>
-                <div className={`${shared.field} ${shared.full}`}>
-                    <div className={style.sectionHint}>
-                        主调方选择“全部服务”时不写入来源服务条件；选择具体服务时保存会自动同步到每条 Mock 子规则的流量匹配中。
+            <div className={shared.section}>
+                <div className={shared.sectionHeader}>② 服务信息</div>
+                <div className={shared.sectionBody}>
+                    <div className={style.serviceInfoHint}>
+                        该服务下配置黑名单接口规则、白名单接口规则，以及可选的服务级规则；服务信息属于大规则层，不放进子规则。
                     </div>
-                </div>
-            </div>
-        );
-    };
-
-    const renderMirrorScopeFields = () => {
-        const target = rule.target_service || { namespace: rule.namespace, service: rule.service };
-        if (!editable) {
-            return (
-                <div className={shared.infoGrid}>
-                    {readonlyItem('主调方', callerScopeText(mirrorCaller))}
-                    {readonlyItem('被调方', `${text(target.namespace)}/${text(target.service)}`)}
-                    <div className={`${shared.field} ${shared.full}`}>
-                        <div className={shared.fieldLabel}>流量方向</div>
-                        <div className={style.flowLine}>
-                            <span>{callerScopeText(mirrorCaller)}</span>
-                            <span className={style.flowArrow}>-></span>
-                            <span>{text(target.namespace)}/{text(target.service)}</span>
+                    {!editable ? (
+                        <div className={shared.infoGrid}>
+                            {readonlyItem('命名空间', target.namespace, false)}
+                            {readonlyItem('服务名称', target.service, false)}
                         </div>
-                    </div>
-                </div>
-            );
-        }
-        return (
-            <div className={shared.infoGrid}>
-                <div className={shared.field}>
-                    <div className={shared.fieldLabel}>主调命名空间</div>
-                    <Select
-                        filterable
-                        creatable
-                        options={mirrorCallerNamespaceOptions}
-                        value={mirrorCaller.namespace || '*'}
-                        onChange={(value) => setMirrorCaller((prev) => {
-                            if (value === '*') return defaultMirrorCaller();
-                            return { namespace: value as string, service: prev.service === '*' ? '' : prev.service };
-                        })}
-                    />
-                </div>
-                <div className={shared.field}>
-                    <div className={shared.fieldLabel}>主调服务</div>
-                    <Select
-                        filterable
-                        creatable
-                        options={mirrorCallerServiceOptions}
-                        value={mirrorCaller.service || '*'}
-                        onChange={(value) => setMirrorCaller((prev) => (value === '*' ? defaultMirrorCaller() : { ...prev, service: value as string }))}
-                    />
-                </div>
-                <div className={shared.field}>
-                    <div className={shared.fieldLabel}>被调命名空间</div>
-                    <Select
-                        filterable
-                        creatable
-                        options={namespaceOptions}
-                        value={target.namespace || ''}
-                        onChange={(value) => setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), namespace: value as string, service: '' } }))}
-                    />
-                </div>
-                <div className={shared.field}>
-                    <div className={shared.fieldLabel}>被调服务</div>
-                    <Select
-                        filterable
-                        creatable
-                        options={serviceOptions}
-                        value={target.service || ''}
-                        onChange={(value) => setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), service: value as string } }))}
-                    />
-                </div>
-                <div className={`${shared.field} ${shared.full}`}>
-                    <div className={style.sectionHint}>
-                        主调方选择“全部服务”时不写入来源服务条件；选择具体服务时保存会自动同步到每条镜像规则的流量匹配中。
-                    </div>
+                    ) : (
+                        <div className={shared.infoGrid}>
+                            <FormItem className={`${shared.field} ${shared.span6}`} label="命名空间" name="targetNamespace" rules={[{ required: true, message: '命名空间不能为空' }]}>
+                                <Select
+                                    filterable
+                                    creatable
+                                    options={namespaceOptions}
+                                    onChange={(value) => {
+                                        setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), namespace: value as string, service: '' } }));
+                                        form.setFieldsValue({ targetService: '' });
+                                    }}
+                                />
+                            </FormItem>
+                            <FormItem className={`${shared.field} ${shared.span6}`} label="服务名称" name="targetService" rules={[{ required: true, message: '服务名称不能为空' }]}>
+                                <Select
+                                    filterable
+                                    creatable
+                                    options={serviceOptions}
+                                    onChange={(value) => setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), service: value as string } }))}
+                                />
+                            </FormItem>
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -1488,24 +1292,56 @@ ${current.response?.body || ''}`}
         const rules = mirrorRules;
         return (
             <div className={shared.ruleList}>
-                {rules.length ? rules.map((item: MirrorRule, index) => (
-                    <div className={`${shared.group} ${item.disable ? shared.groupDisabled : ''}`} key={`${item.api?.method}-${item.destination?.service}-${index}`}>
-                        <div className={shared.groupHead}>
-                            <span className={shared.groupTitle}><span className={shared.groupIndex}>{index + 1}</span>镜像规则</span>
-                            <Tag theme={item.disable ? 'default' : 'success'} variant="light-outline">{item.disable ? '禁用' : '启用'}</Tag>
-                        </div>
-                        <div className={shared.groupBody}>
-                            <div className={shared.infoGrid}>
-                                {readonlyItem('镜像接口', renderApiScope(item.api), true)}
-                                {readonlyItem('流量匹配', renderMirrorMatchRule(item.traffic_match_rule), true)}
-                                {readonlyItem('镜像比例', `${item.mirror_percent ?? 0}%`)}
-                                {readonlyItem('生效时长', durationText(item.duration))}
-                                {readonlyItem('镜像目标', `${text(item.destination?.namespace)}/${text(item.destination?.service)}`)}
-                                {readonlyItem('目标实例标签', renderRecord(item.destination?.labels), true)}
+                {rules.length ? rules.map((item: MirrorViewRule, index) => {
+                    const isCollapsed = collapsedMirrorRuleIndexes.has(index);
+                    const matchCount = removeCallerServiceArguments(item.traffic_match_rule).arguments?.length || 0;
+                    const target = `${text(item.destination?.namespace)}/${text(item.destination?.service)}`;
+                    const summary = `${item.interfaces.length} 个接口 · ${matchCount} 个流量标签 · ${item.mirror_percent ?? 0}% -> ${target}`;
+                    return (
+                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`${item.destination?.namespace}-${item.destination?.service}-${index}`}>
+                            <div className={shared.policyHead} onClick={() => toggleMirrorRuleCollapsed(index)}>
+                                <div className={shared.policyHeadMain}>
+                                    <span className={shared.caret}><ChevronRightIcon /></span>
+                                    <div>
+                                        <div className={shared.policyIndex}>镜像子规则 [{index + 1}]</div>
+                                        <div className={shared.policySummary}>{summary}</div>
+                                    </div>
+                                </div>
+                                <div className={shared.policyHeadActions} onClick={(e) => e.stopPropagation()}>
+                                    <Tag theme="primary" variant="light-outline">{item.mirror_percent ?? 0}%</Tag>
+                                    <Tag theme={item.disable ? 'default' : 'success'} variant="light-outline">{item.disable ? '禁用' : '启用'}</Tag>
+                                </div>
+                            </div>
+                            <div className={shared.policyBody}>
+                                <div className={shared.step} data-step="1">
+                                    <div className={shared.stepTitle}>接口范围</div>
+                                    <div className={shared.stepContent}>
+                                        <div className={style.interfaceList}>
+                                            {item.interfaces.map((api, apiIndex) => (
+                                                <div className={shared.tagRow} key={`${api.method}-${api.path?.value}-${apiIndex}`}>
+                                                    {renderApiScope(api)}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className={shared.step} data-step="2">
+                                    <div className={shared.stepTitle}>流量标签</div>
+                                    <div className={shared.stepContent}>{renderMirrorMatchRule(item.traffic_match_rule)}</div>
+                                </div>
+                                <div className={shared.step} data-step="3">
+                                    <div className={shared.stepTitle}>镜像执行</div>
+                                    <div className={shared.stepContent}>
+                                        <div className={shared.infoGrid}>
+                                            {readonlyItem('镜像比例', `${item.mirror_percent ?? 0}%`)}
+                                            {readonlyItem('镜像目标', target)}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )) : <div className={shared.emptyLine}>暂无规则</div>}
+                    );
+                }) : <div className={shared.emptyLine}>暂无镜像子规则</div>}
             </div>
         );
     };
@@ -1694,103 +1530,115 @@ ${current.response?.body || ''}`}
 
     const renderEditMirrorRules = () => {
         const rules = mirrorRules;
+        const serviceOptionsForNamespace = (namespace?: string) => (serviceState.datas || [])
+            .filter((svc: ServiceView) => !namespace || namespace === '*' || svc.namespace === namespace)
+            .map((svc: ServiceView) => ({ label: svc.name, value: svc.name }));
         return (
             <div className={shared.ruleList}>
-                {rules.map((item, index) => (
-                    <div className={shared.group} key={`${item.api?.method}-${item.destination?.service}-${index}`}>
-                        <div className={shared.groupHead}>
-                            <span className={shared.groupTitle}><span className={shared.groupIndex}>{index + 1}</span>镜像规则</span>
-                            <Space size={8}>
-                                <Switch
-                                    label={['启用', '禁用']}
-                                    value={!item.disable}
-                                    onChange={(value) => setMirrorRule(index, (current) => ({ ...current, disable: !value }))}
-                                />
-                                <Button
-                                    shape="circle"
-                                    variant="text"
-                                    disabled={rules.length <= 1}
-                                    onClick={() => setRule((prev) => ({ ...(prev as TrafficMirror), rules: rules.filter((_, idx) => idx !== index) }))}
-                                >
-                                    <CloseIcon />
-                                </Button>
-                            </Space>
-                        </div>
-                        <div className={shared.policyBody}>
-                            <div className={shared.step} data-step="1">
-                                <div className={shared.stepTitle}>镜像接口<span className={shared.stepHint}>满足该接口范围的请求才会被镜像</span></div>
-                                <div className={shared.stepContent}>
-                                    {renderApiEditor(item.api, (next) => setMirrorRule(index, (current) => ({ ...current, api: next })))}
-                                </div>
-                            </div>
-                            <div className={shared.step} data-step="2">
-                                <div className={shared.stepTitle}>流量匹配<span className={shared.stepHint}>仅配置请求条件；来源服务由上方主调方统一决定</span></div>
-                                <div className={shared.stepContent}>
-                                    {renderMirrorMatchRuleEditor(item.traffic_match_rule, (next) => setMirrorRule(index, (current) => ({ ...current, traffic_match_rule: next })))}
-                                </div>
-                            </div>
-                            <div className={shared.step} data-step="3">
-                                <div className={shared.stepTitle}>采样<span className={shared.stepHint}>命中流量中按比例采样镜像，可设置生效时长</span></div>
-                                <div className={shared.stepContent}>
-                                    <div className={shared.kv2}>
-                                        <div>
-                                            <div className={shared.editLabel}>镜像比例</div>
-                                            <InputNumber
-                                                min={0}
-                                                max={100}
-                                                suffix="%"
-                                                value={item.mirror_percent ?? 0}
-                                                onChange={(value) => setMirrorRule(index, (current) => ({ ...current, mirror_percent: Number(value ?? 0) }))}
-                                            />
-                                        </div>
-                                        <div>
-                                            <div className={shared.editLabel}>生效时长</div>
-                                            <Input
-                                                value={durationText(item.duration)}
-                                                onChange={(value) => setMirrorRule(index, (current) => ({ ...current, duration: value }))}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className={shared.step} data-step="4">
-                                <div className={shared.stepTitle}>镜像目标<span className={shared.stepHint}>采样流量被复制到的目标服务与实例标签</span></div>
-                                <div className={shared.stepContent}>
-                                    <div className={shared.kv2}>
-                                        <div>
-                                            <div className={shared.editLabel}>目标命名空间</div>
-                                            <Select
-                                                filterable
-                                                creatable
-                                                options={namespaceOptions}
-                                                value={item.destination?.namespace || ''}
-                                                onChange={(value) => setMirrorRule(index, (current) => ({ ...current, destination: { ...(current.destination || {}), namespace: value as string } }))}
-                                            />
-                                        </div>
-                                        <div>
-                                            <div className={shared.editLabel}>目标服务</div>
-                                            <Input
-                                                value={item.destination?.service || ''}
-                                                onChange={(value) => setMirrorRule(index, (current) => ({ ...current, destination: { ...(current.destination || {}), service: value } }))}
-                                            />
-                                        </div>
-                                        <div className={shared.full}>
-                                            <div className={shared.editLabel}>目标实例标签</div>
-                                            {renderMatchRecordEditor(item.destination?.labels, (next) => setMirrorRule(index, (current) => ({ ...current, destination: { ...(current.destination || {}), labels: next } })))}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                <div className={style.mirrorRuleFooter}>
+                    <div>
+                        <div className={style.partitionTitle}>镜像规则</div>
+                        <div className={style.partitionDesc}>在服务范围内配置多条接口 / 标签镜像子规则</div>
                     </div>
-                ))}
+                    <Space size={8}>
+                        <Tag theme="primary" variant="light-outline">{rules.length} 条</Tag>
+                        <Tag theme="success" variant="light-outline">{rules.filter((item) => !item.disable).length} 条启用</Tag>
+                    </Space>
+                </div>
+                {rules.map((item, index) => {
+                    const isCollapsed = collapsedMirrorRuleIndexes.has(index);
+                    const matchCount = removeCallerServiceArguments(item.traffic_match_rule).arguments?.length || 0;
+                    const target = `${item.destination?.namespace || '-'}/${item.destination?.service || '-'}`;
+                    const summary = `${item.interfaces.length} 个接口 · ${matchCount} 个流量标签 · ${item.mirror_percent ?? 0}% -> ${target}`;
+                    return (
+                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`${item.destination?.namespace}-${item.destination?.service}-${index}`}>
+                            <div className={shared.policyHead} onClick={() => toggleMirrorRuleCollapsed(index)}>
+                                <div className={shared.policyHeadMain}>
+                                    <span className={shared.caret}><ChevronRightIcon /></span>
+                                    <div>
+                                        <div className={shared.policyIndex}>镜像子规则 [{index + 1}]</div>
+                                        <div className={shared.policySummary}>{summary}</div>
+                                    </div>
+                                </div>
+                                <div className={shared.policyHeadActions} onClick={(e) => e.stopPropagation()}>
+                                    <Tag theme="primary" variant="light-outline">{item.mirror_percent ?? 0}%</Tag>
+                                    <Switch
+                                        label={['启用', '禁用']}
+                                        value={!item.disable}
+                                        onChange={(value) => setMirrorRule(index, (current) => ({ ...current, disable: !value }))}
+                                    />
+                                    <Button
+                                        shape="circle"
+                                        variant="text"
+                                        disabled={rules.length <= 1}
+                                        onClick={() => setRule((prev) => ({ ...(prev as TrafficMirror), rules: rules.filter((_, idx) => idx !== index) }))}
+                                    >
+                                        <CloseIcon />
+                                    </Button>
+                                </div>
+                            </div>
+                            <div className={shared.policyBody}>
+                                <div className={shared.step} data-step="1">
+                                    <div className={shared.stepTitle}>接口范围<span className={shared.stepHint}>支持为一条子规则配置多个接口</span></div>
+                                    <div className={shared.stepContent}>
+                                        {renderMirrorInterfacesEditor(item.interfaces, (next) => setMirrorRule(index, (current) => ({ ...current, interfaces: next })))}
+                                    </div>
+                                </div>
+                                <div className={shared.step} data-step="2">
+                                    <div className={shared.stepTitle}>流量标签<span className={shared.stepHint}>按标签关系命中需要镜像的流量</span></div>
+                                    <div className={shared.stepContent}>
+                                        {renderMirrorMatchRuleEditor(item.traffic_match_rule, (next) => setMirrorRule(index, (current) => ({ ...current, traffic_match_rule: next })))}
+                                    </div>
+                                </div>
+                                <div className={shared.step} data-step="3">
+                                    <div className={shared.stepTitle}>镜像执行</div>
+                                    <div className={shared.stepContent}>
+                                        <div className={style.mirrorExecuteGrid}>
+                                            <div>
+                                                <div className={shared.editLabel}>镜像比例</div>
+                                                <InputNumber
+                                                    theme="normal"
+                                                    min={0}
+                                                    max={100}
+                                                    suffix="%"
+                                                    value={item.mirror_percent ?? 0}
+                                                    onChange={(value) => setMirrorRule(index, (current) => ({ ...current, mirror_percent: Number(value ?? 0) }))}
+                                                />
+                                            </div>
+                                            <div>
+                                                <div className={shared.editLabel}>目标命名空间</div>
+                                                <Select
+                                                    filterable
+                                                    creatable
+                                                    options={namespaceOptions}
+                                                    value={item.destination?.namespace || ''}
+                                                    onChange={(value) => setMirrorRule(index, (current) => ({ ...current, destination: { ...(current.destination || {}), namespace: value as string, service: '' } }))}
+                                                />
+                                            </div>
+                                            <div>
+                                                <div className={shared.editLabel}>目标服务</div>
+                                                <Select
+                                                    filterable
+                                                    creatable
+                                                    options={serviceOptionsForNamespace(item.destination?.namespace)}
+                                                    value={item.destination?.service || ''}
+                                                    onChange={(value) => setMirrorRule(index, (current) => ({ ...current, destination: { ...(current.destination || {}), service: value as string } }))}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
                 <Button
                     className={shared.addRuleButton}
                     variant="dashed"
                     icon={<AddIcon />}
-                    onClick={() => setRule((prev) => ({ ...(prev as TrafficMirror), rules: [...rules, defaultTrafficMirrorRule().rules[0]] }))}
+                    onClick={() => setRule((prev) => ({ ...(prev as TrafficMirror), rules: [...rules, defaultMirrorSubRule()] }))}
                 >
-                    添加镜像规则
+                    添加镜像子规则
                 </Button>
             </div>
         );
@@ -1880,22 +1728,10 @@ ${current.response?.body || ''}`}
     const renderPayload = () => (
         <div className={shared.section}>
             <div className={shared.sectionHeader}>
-                <span>{kind === 'security' ? '鉴权子规则' : kind === 'mirror' ? '镜像规则' : 'Mock 子规则'}</span>
+                <span>{kind === 'security' ? '③ 鉴权子规则' : kind === 'mirror' ? '镜像规则' : 'Mock 子规则'}</span>
                 <span className={shared.countTag}>{kind === 'security' ? securityViewRules.length : trafficRuleCount(kind, rule)} 条</span>
             </div>
             <div className={shared.sectionBody}>
-                {kind === 'mirror' && (
-                    <div className={style.mockScopeHint}>
-                        <div>
-                            <div className={style.partitionTitle}>服务范围</div>
-                            <div className={style.partitionDesc}>当前镜像规则按 {callerScopeText(mirrorCaller)} → {currentTarget.namespace || '-'}/{currentTarget.service || '-'} 判断流量方向。</div>
-                        </div>
-                        <div>
-                            <div className={style.partitionTitle}>子规则结构</div>
-                            <div className={style.partitionDesc}>每条镜像规则固定按 镜像接口 → 流量匹配 → 采样 → 镜像目标 配置。</div>
-                        </div>
-                    </div>
-                )}
                 {kind === 'mock' && (
                     <div className={style.mockScopeHint}>
                         <div>
@@ -1957,7 +1793,7 @@ ${current.response?.body || ''}`}
                 <div className={style.specToolbar}>
                     <div>
                         <div className={style.specTitle}>实时规则 SPEC</div>
-                        <div className={style.specDesc}>保存预览；caller 会同步到当前后端匹配条件</div>
+                        <div className={style.specDesc}>保存预览；服务范围与子规则随编辑实时刷新</div>
                     </div>
                     <div className={style.specActions}>
                         <div className={style.specToggle}>
@@ -2078,43 +1914,43 @@ ${current.response?.body || ''}`}
     );
 
     const syncRuleFromForm = (_changed: Record<string, unknown>, values: Record<string, unknown>) => {
-        setRule((prev) => ({
-            ...prev,
-            name: String(values.name || prev.name || ''),
-            description: String(values.description || ''),
-            priority: Number(values.priority ?? prev.priority ?? 0),
-            enable: values.enable === undefined ? prev.enable : Boolean(values.enable),
-            target_service: {
-                namespace: String(values.targetNamespace || prev.target_service?.namespace || ''),
-                service: String(values.targetService || prev.target_service?.service || ''),
-            },
-        } as TrafficGovernanceRule));
+        setRule((prev) => {
+            const nextBase = {
+                ...prev,
+                name: String(values.name || prev.name || ''),
+                description: String(values.description || ''),
+                priority: Number(values.priority ?? prev.priority ?? 0),
+                enable: values.enable === undefined ? prev.enable : Boolean(values.enable),
+            };
+            if (kind === 'mirror') {
+                const currentCallee = normalizeMirrorCallee(prev);
+                return {
+                    ...nextBase,
+                    callee: {
+                        namespace: String(values.targetNamespace || currentCallee.namespace || ''),
+                        service: String(values.targetService || currentCallee.service || ''),
+                    },
+                } as TrafficMirror;
+            }
+            return {
+                ...nextBase,
+                target_service: {
+                    namespace: String(values.targetNamespace || prev.target_service?.namespace || ''),
+                    service: String(values.targetService || prev.target_service?.service || ''),
+                },
+            } as TrafficGovernanceRule;
+        });
     };
 
     const formSections = (
         <>
             <div className={shared.section}>
-                <div className={shared.sectionHeader}>基础信息</div>
+                <div className={shared.sectionHeader}>{kind === 'security' ? '① 基础信息' : '基础信息'}</div>
                 <div className={shared.sectionBody}>{renderCommonFields()}</div>
             </div>
-            {kind === 'mock' && (
-                <div className={shared.section}>
-                    <div className={shared.sectionHeader}>
-                        <span>服务范围</span>
-                        <span className={shared.countTag}>caller -> callee</span>
-                    </div>
-                    <div className={shared.sectionBody}>{renderMockScopeFields()}</div>
-                </div>
-            )}
-            {kind === 'mirror' && (
-                <div className={shared.section}>
-                    <div className={shared.sectionHeader}>
-                        <span>服务范围</span>
-                        <span className={shared.countTag}>caller -> callee</span>
-                    </div>
-                    <div className={shared.sectionBody}>{renderMirrorScopeFields()}</div>
-                </div>
-            )}
+            {kind === 'security' && renderSecurityServiceInfo()}
+            {kind === 'mock' && renderMockServiceScopeSection}
+            {kind === 'mirror' && renderMirrorServiceScopeSection}
             {renderPayload()}
         </>
     );

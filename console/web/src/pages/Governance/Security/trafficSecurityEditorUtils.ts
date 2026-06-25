@@ -249,6 +249,9 @@ export function validateSecurityView(rule: TrafficGovernanceRule, viewRules: Sec
     const errors: SecurityValidationError[] = [];
     const target = rule.target_service || { namespace: rule.namespace || '', service: rule.service || '' };
     if (!rule.name) errors.push({ field: 'name', message: '规则名称不能为空' });
+    if (rule.name && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(rule.name)) {
+        errors.push({ field: 'name', message: '规则名称需为 kebab-case' });
+    }
     if (!target.namespace) errors.push({ field: 'target.namespace', message: '被调命名空间不能为空' });
     if (!target.service) errors.push({ field: 'target.service', message: '被调服务不能为空' });
     const normalized = normalizeSecurityViewOrder(viewRules);

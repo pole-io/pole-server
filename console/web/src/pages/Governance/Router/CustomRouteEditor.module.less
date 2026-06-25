@@ -170,160 +170,12 @@
     min-height: 32px;
 }
 
-.serviceScopeHeader {
-    box-sizing: border-box;
-    min-height: 64px;
-    align-items: center;
-    cursor: pointer;
-}
-
-.serviceScopeCollapsedHeader {
-    min-height: 62px;
-    padding-top: 10px;
-    padding-bottom: 10px;
-}
-
-.serviceScopeTitleWrap {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    gap: 12px;
-}
-
-.serviceScopeTitleLine {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    gap: 14px;
-}
-
-.serviceScopeHint {
-    display: inline-block;
-    min-width: 0;
-    max-width: 100%;
-    overflow: hidden;
-    color: #8b95a5;
-    font-size: 15px;
-    font-weight: 500;
-    line-height: 22px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.serviceScopeSummary {
-    color: #1f2937;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    font-size: 15px;
-    font-weight: 600;
-}
-
-.caretButton {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    border: 1px solid #e5e8ef;
-    border-radius: 6px;
-    background: #fff;
-    color: #6b7280;
-    cursor: pointer;
-}
-
-.caretButton svg {
-    transition: transform 0.18s ease;
-}
-
-.caretButtonOpen svg {
-    transform: rotate(90deg);
-}
-
-.serviceFlowGrid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
-    gap: 12px;
-    padding: 16px;
-    align-items: stretch;
-}
-
-.serviceCard {
-    min-width: 0;
-    border: 1px solid #e7ebf2;
-    border-radius: 8px;
-    background: #fbfcff;
-    padding: 14px;
-}
-
-.serviceCaller {
-    border-left: 3px solid #1677ff;
-}
-
-.serviceCallee {
-    border-left: 3px solid #13c2c2;
-}
-
-.serviceCardHead {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    margin-bottom: 12px;
-}
-
-.serviceDot {
-    width: 10px;
-    height: 10px;
-    flex: 0 0 auto;
-    border-radius: 999px;
-    background: #1677ff;
-}
-
-.serviceCallee .serviceDot {
-    background: #13c2c2;
-}
-
-.serviceTitle {
-    color: #111827;
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 22px;
-}
-
-.serviceSubtitle {
-    color: #8b95a5;
-    font-size: 12px;
-    line-height: 18px;
-}
-
-.serviceFields {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 10px;
-}
-
-.serviceReadonly {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    color: #111827;
-    font-size: 14px;
-    line-height: 22px;
-}
-
 .ellipsisText {
     display: inline-block;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-.flowConnector {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #9aa3b2;
 }
 
 .conditionPanel,
@@ -1015,19 +867,6 @@
 
     .fieldBlockWide {
         min-width: 0;
-    }
-
-    .serviceFlowGrid {
-        grid-template-columns: 1fr;
-    }
-
-    .flowConnector {
-        transform: rotate(90deg);
-        min-height: 28px;
-    }
-
-    .serviceFields {
-        grid-template-columns: 1fr;
     }
 
     .conditionPanelHead {

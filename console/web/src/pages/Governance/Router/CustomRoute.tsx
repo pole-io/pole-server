@@ -14,7 +14,7 @@ import { cleanCustomRoutePage, cleanCustomRouteVersions, editorCustomRoute, list
 import { PolicySourceType } from 'services/auth_policy';
 import RuleTabs from '../RuleRelease/RuleTabs';
 import SubscribeTable from 'components/SubscribeTable';
-import RuleDetailDrawer from '../RuleRelease/RuleDetailDrawer';
+import RuleDetailDrawer, { WIDE_RULE_DETAIL_DRAWER_SIZE } from '../RuleRelease/RuleDetailDrawer';
 
 interface ICustomRouteProps {
 
@@ -256,6 +256,7 @@ const CustomRoute: React.FC<ICustomRouteProps> = ({ }) => {
                 visible={editorState.visible}
                 title={editorState.mode === 'create' ? '新建自定义路由' : editorState.data?.name || '自定义路由详情'}
                 subtitle="自定义路由"
+                size={WIDE_RULE_DETAIL_DRAWER_SIZE}
                 onClose={() => setEditorState(pre => ({ ...pre, visible: false }))}
             >
                 <RuleTabs

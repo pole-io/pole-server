@@ -2,7 +2,7 @@
 title: Lessons
 tags: [tasks, lessons]
 links: [todo, patterns]
-updated: 2026-06-22
+updated: 2026-06-24
 sources: 0
 ---
 
@@ -21,6 +21,13 @@ sources: 0
 - 对用户宣称 `8080` 可访问前，不能依赖 Codex 工具前台会话或普通 shell 后台子进程作为长期运行证明；需要确认服务脱离工具会话后仍由稳定进程管理，例如本机可用 `launchctl`，并再次验证端口、首页、静态资源和真实 API。
 - 修复 console 鉴权问题时，不能只验证重新登录后的 curl；还要覆盖浏览器已有 `localStorage` token / `jwt` cookie 的旧登录态。后端代理不应在后端 401 前续期旧 JWT，前端遇到 HTTP 401 或 `401001` 应清理登录态并回登录页。
 - 当用户评价页面设计时，先确认具体页面、抽屉、弹窗或空态；不要只优化主列表页，二级页面和无数据状态也必须按用户截图逐项处理。
+- 泳道规则编辑器一旦把 `泳道规则 / 泳道组 / 版本 / 审计` 作为自身真实信息架构，父级泳道详情就不能再包通用 `RuleTabs` 的 `规则 / 版本 / 监听`；泳道类型应直出 `LaneGroupEdtor`，避免双层 Tab。
+- 治理抽屉里的专用编辑器不能在公共抽屉 padding 之内继续叠加大块卡片间距；泳道这类双栏编辑器应把 pane、section、card 的 padding/gap 控制在紧凑工作台密度，避免内容像被二次缩进。
+- 对齐泳道 PRD 时不能只做泳道规则列表；默认左侧必须是 `组信息`，按 `基础信息 / 泳道组入口 / 组内服务` 三段步骤卡组织，泳道规则定义放到独立 `泳道` Tab。对照 PRD 时必须同时检查查看态和编辑态。
+- 泳道规则 Tab 的单条泳道不能退回路由规则表格或普通横排输入形态；应按 PRD 展开卡片实现卡头摘要、泳道名称与标签、固定标签提示条、流量匹配分段控件、四字段匹配行、组内服务行和拓扑演示。
+- 按 PRD 截图还原泳道卡片时，不能把局部控件和字体做得比治理抽屉其它编辑器更大；应统一回到 12px 标签/提示、14px 主文本、32px 常规输入控件和紧凑 section 间距，避免单个模块显得突兀。
+- 治理抽屉内使用 TDesign Tabs 承载长内容时，不能只给外层 pane 加 `overflow:auto`；如果 `.t-tabs` / `.t-tabs__content` 自身 `overflow:hidden`，外层不会产生 scrollHeight。应让 tabs 为 column flex，并把滚动明确挂到 `.t-tabs__content`，同时用真实 DOM 验证 `scrollHeight > clientHeight` 且 `scrollTop` 可变化。
+- 修复抽屉滚动不能只证明某个内部节点可以脚本设置 `scrollTop`；必须用用户实际滚轮命中区域验证目标滚动容器。若用户期望左侧整体滚动，优先让左侧 pane 成为唯一 scroll owner，避免 Tabs 内部滚动层和外层 pane 竞争或命中不一致。
 - MCP tools 页面不应按普通后台表格处理；带有 input/output schema 的工具能力更接近 OpenAPI 文档，应优先设计为工具目录、参数/响应字段、示例和 raw schema 折叠的 API 浏览体验。
 - MCP Server 注册语义应优先围绕 backend selector：关联 Pole 已注册服务时只要求 `backend_type=service` 和服务 `namespace/name`；只有自定义地址模式才要求用户提供 address，不要再把 `reference` 当成唯一后端表达。
 - 排查 console 列表“接口有数据但页面为空”时，要优先核对标准响应解包：当前后端列表通常返回 `{data, amount, size}`，旧前端字段如 `services`、`namespaces` 只能作为兼容兜底，不能作为唯一数据源。
@@ -112,6 +119,7 @@ sources: 0
 - 服务 Mock 的页面心智也必须像路由和镜像一样先表达 `caller -> callee`：spec 顶层用既有 `SourceService caller` 和 `DestinationService callee` 表达两端，caller 支持“全部服务”；Mock 子规则只表达接口、流量匹配和响应结果，不应让来源服务藏在子规则条件里。Caller 状态只能是“全部服务”或“具体 namespace/service”，不要保留“某 namespace 下全部服务”这种半状态。
 - 按设计交接实现治理规则编辑抽屉时，必须优先还原关键布局行为：右侧实时 Spec 面板固定并贯穿抽屉正文上下，左侧具体编辑区在窗口内部独立滚动；不要退化成普通页面两栏跟随整体滚动。
 - RouteRule 编辑抽屉的宽度分配必须优先保障左侧编辑表单可读、无横向滚动和标题正常横排；右侧实时 Spec 只是辅助预览，可以固定为较窄列，不能让 Spec 挤压服务范围、规则块等主编辑区。
+- 泳道这类左侧编辑 + 右侧实时 Spec 的治理规则抽屉宽度必须和 RouteRule 保持一致，统一使用宽抽屉尺寸 `min(1560px, calc(100vw - 40px))`；不要让独立表格入口或工作台入口回落到默认窄抽屉。
 - 治理编辑抽屉左侧“内部滚动”不能只看 CSS 写了 `overflow:auto`；必须验证真实 `scrollHeight > clientHeight`，并通过 wheel 或设置 `scrollTop` 确认滚动发生。若左侧是 column flex，直接子 section 需要 `flex: 0 0 auto`，否则 section 会 shrink 后被共享卡片的 `overflow:hidden` 裁掉，外层不会产生滚动。
 - 治理规则编辑抽屉双栏交互不是单个规则类型的局部样式问题；修复路由、限流、熔断这类共性行为后，必须同步沉淀到 [[patterns]] 的长期技术约定，后续新增或重构规则编辑器按该约定验收，避免用户按规则类型重复指出同一问题。
 - PRD 明确要求“数字输入 + 单位后缀”和曲线可视化时，不能只通过字段、文案或空容器判定完成；必须在真实页面确认数值和单位同时可读、曲线按算法实际绘制出来。TDesign 数字单位优先复用 `InputAdornment append`，避免 `InputNumber suffix` 在治理抽屉里把单位显示成输入值。
@@ -140,6 +148,12 @@ sources: 0
 - 当用户明确说“现在讨论的是最终效果，不考虑新老 spec 兼容”时，协议 PR 不应保留 Deprecated 字段、兼容注释或 fallback 语义；例如流量镜像和服务 Mock 应直接用顶层 `SourceService caller -> DestinationService callee`，删除旧 `target_service`。
 - 流量镜像和服务 Mock 的最终 spec 不需要配置持续时间；不要保留 `MirrorRule.duration`、`MockRule.delay` 或仅用于这两个字段的 `google.protobuf.Duration` 依赖，删除后按最终字段号压实。
 - 调整治理规则 spec 时优先复用已有领域端点类型；流量镜像和服务 Mock 的 caller/callee 不要新增 `ServiceScope`，直接使用既有 `SourceService` / `DestinationService`。
+- 按设计交接文档调整流量镜像编辑抽屉时，第三段必须是「镜像规则」子规则列表：每条子规则按接口范围、多流量标签和镜像执行三步组织，右侧实时 Spec 展示 `serviceRange.caller/callee` 与 `rules[].mirror.target`；不要继续沿用旧的全局目标服务、持续时间、目标实例标签或把 caller 写进子规则匹配条件的 UI。
+- 治理规则的 caller -> callee 服务范围区应复用共享 `ServiceScopeSection`：RouteRule、熔断、流量镜像和服务 Mock 都应使用同一套紧凑标题、折叠摘要、主调/被调卡片和方向连接器；规则类型特有配置通过插槽追加，不要在各编辑器里重新手写四字段平铺表单。
+- 治理规则编辑器里的数字输入框统一使用 TDesign React `InputNumber theme="normal"` 无按钮形态；不要使用默认 `row` 或 `column` 加减按钮样式。新增或调整治理规则编辑器时必须跑 Governance 数字输入静态校验，避免局部控件突兀。
+- 路由、限流、流量镜像、服务 Mock、调用鉴权和泳道的流量匹配条件必须复用共享 `TrafficMatchConditionEditor`；不要在各规则里重复手写四列条件表、AND/OR 分段控件或私有匹配值编辑器。参数键仍由用户输入，参数类型切换不能自动填业务示例键。
+- 泳道组入口和组内服务选择不能把命名空间与服务名拼成一个下拉项；必须用两个独立下拉框分别选择命名空间和服务。组内服务添加要保持与入口表格一致的行内选择体验，但只能从普通服务池里选服务，不能混入网关入口类型。
+- 在共享匹配条件头部放置额外控件时，必须给右侧 action 区和额外控件都设置稳定宽度与 `min-width: 0`，尤其是 TDesign `InputAdornment + InputNumber` 组合；否则 `%` 后缀、数字输入框和 AND/OR 分段控件会在泳道窄卡片里互相挤压错位。
 
 ## 相关页面
 

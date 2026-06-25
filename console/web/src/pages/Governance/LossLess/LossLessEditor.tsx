@@ -260,6 +260,7 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
     ) => (
         <InputAdornment append={unit} className={styles.unitNumber}>
             <InputNumber
+                theme="normal"
                 min={min}
                 max={max}
                 placeholder={placeholder}
@@ -616,6 +617,7 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
                                     <div>
                                         {editable ? (
                                             <InputNumber
+                                                theme="normal"
                                                 min={1}
                                                 max={5}
                                                 placeholder="默认"

@@ -10,13 +10,10 @@ import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
 import Search from 'components/Search';
 import LaneGroupEdtor from './LaneGroupEdtor';
-import LaneRuleTable from './LaneRuleTable';
-import { cleanLaneGroupPage, editorLaneGroup, listLaneGroups, listLaneGroupVersions, removeLaneGroups, removeLaneGroupVersion, rollbackLanGroupVersion, selectLaneGroup } from 'modules/governance/lane_group';
-import RuleTabs from '../RuleRelease/RuleTabs';
-import SubscribeTable from 'components/SubscribeTable';
+import { cleanLaneGroupPage, editorLaneGroup, listLaneGroups, listLaneGroupVersions, removeLaneGroups, removeLaneGroupVersion, resetLaneGroup, rollbackLanGroupVersion, selectLaneGroup } from 'modules/governance/lane_group';
 import AuthorizeInput from 'components/Authorize';
 import { PolicySourceType } from 'services/auth_policy';
-import RuleDetailDrawer from '../RuleRelease/RuleDetailDrawer';
+import RuleDetailDrawer, { WIDE_RULE_DETAIL_DRAWER_SIZE } from '../RuleRelease/RuleDetailDrawer';
 
 interface ILaneGroupTableProps {
 
@@ -98,6 +95,7 @@ const LaneGroupTable: React.FC<ILaneGroupTableProps> = ({ }) => {
     const handleOpRule = (row: TableRowData, op: Op) => {
         switch (op) {
             case 'create':
+                dispatch(resetLaneGroup());
                 seteditor(prev => ({ ...prev, visible: true, mode: 'create', data: undefined }));
                 break;
             case 'view':
@@ -260,71 +258,22 @@ const LaneGroupTable: React.FC<ILaneGroupTableProps> = ({ }) => {
                 visible={editor.visible}
                 title={editor.mode === 'create' ? '新建泳道组' : editor.data?.name || '泳道组详情'}
                 subtitle="全链路灰度"
+                size={WIDE_RULE_DETAIL_DRAWER_SIZE}
                 onClose={() => seteditor(pre => ({ ...pre, visible: false }))}
             >
-                <RuleTabs
-                    op={editor.mode}
-                    onVersionView={() => {
-                        refreshVersions()
-                    }}
-                    view={
-                        editor.mode !== 'create' && !editor.data ? (
-                            <Empty title="选择泳道组查看详情" />
-                        ) : (
-                            <div className={style.laneDetailStack}>
-                                <LaneGroupEdtor
-                                    op={editor.mode}
-                                    refresh={(close: boolean) => {
-                                        if (close) {
-                                            seteditor(pre => ({ ...pre, visible: false }));
-                                        }
-                                        refreshData(1, limit)
-                                    }}
-                                />
-                                {editor.mode !== 'create' && (
-                                    <section className={style.laneRulesPanel}>
-                                        <div className={style.laneRulesHeader}>
-                                            <div className={style.laneRulesTitle}>泳道列表</div>
-                                            <div className={style.laneRulesHint}>当前泳道组内的匹配规则和泳道标签。</div>
-                                        </div>
-                                        <LaneRuleTable groupId={editor.data?.id || ''} />
-                                    </section>
-                                )}
-                            </div>
-                        )
-                    }
-                    versions={{
-                        datas: versions,
-                        action: operateRelease,
-                        editable: editor.data?.editable ?? true,
-                        deleteable: editor.data?.deleteable ?? true,
-                        loading: versionLoading,
-                        pagination: {
-                            defaultCurrent: versionPage,
-                            defaultPageSize: versionLimit,
-                            total: versionTotal,
-                            showJumper: false,
-                            onChange(pageInfo) {
-                                refreshVersions(pageInfo.current, pageInfo.pageSize);
-                            },
-                        },
-                        onPageChange: (page) => {
-                            refreshVersions(page.current, page.pageSize);
-                        }
-                    }}
-                    subscribe={
-                        <>
-                            <div style={{ marginLeft: 20, marginTop: 20 }}>
-                                <SubscribeTable
-                                    title={`${editor.data?.name}`}
-                                    editable={editor.data?.editable ?? true}
-                                    deleteable={editor.data?.deleteable ?? true}
-                                    subscribers={subscribers || []}
-                                />
-                            </div>
-                        </>
-                    }
-                />
+                {editor.mode !== 'create' && !editor.data ? (
+                    <Empty title="选择泳道组查看详情" />
+                ) : (
+                    <LaneGroupEdtor
+                        op={editor.mode}
+                        refresh={(close: boolean) => {
+                            if (close) {
+                                seteditor(pre => ({ ...pre, visible: false }));
+                            }
+                            refreshData(1, limit)
+                        }}
+                    />
+                )}
             </RuleDetailDrawer>
         </div>
     )

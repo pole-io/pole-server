@@ -17,7 +17,7 @@ import FaultDetectEditor from './FaultDetectEditor';
 import { clearFaultDetect, editorFaultDetect, listFaultDetects, listFaultDetectVersions, removeFaultDetects, removeFaultDetectVersion, rollbackFaultDetectVersion, selectFaultDetect } from 'modules/governance/faultdetect';
 import RuleTabs from '../RuleRelease/RuleTabs';
 import SubscribeTable from 'components/SubscribeTable';
-import RuleDetailDrawer from '../RuleRelease/RuleDetailDrawer';
+import RuleDetailDrawer, { WIDE_RULE_DETAIL_DRAWER_SIZE } from '../RuleRelease/RuleDetailDrawer';
 
 interface IFaultDetectTableProps {
 
@@ -269,7 +269,7 @@ const FaultDetectTable: React.FC<IFaultDetectTableProps> = ({ }) => {
                 visible={editorState.visible}
                 title={editorState.mode === 'create' ? '新建主动探测规则' : editorState.data?.name || '主动探测详情'}
                 subtitle="主动探测"
-                size="min(1560px, calc(100vw - 40px))"
+                size={WIDE_RULE_DETAIL_DRAWER_SIZE}
                 onClose={() => setEditorState(pre => ({ ...pre, visible: false }))}
             >
                 <RuleTabs

@@ -9,9 +9,15 @@ import { InterfaceProtocol, MatchLogic, MatchString, MatchType, MatchValueType }
 
 export type TrafficMirrorSpecFormat = 'yaml' | 'json';
 
-export interface MirrorCallerScope {
+export interface MirrorServiceScope {
     namespace: string;
     service: string;
+}
+
+export type MirrorCallerScope = MirrorServiceScope;
+
+export interface MirrorViewRule extends Omit<MirrorRule, 'api'> {
+    interfaces: TrafficApiScope[];
 }
 
 export interface MirrorValidationError {
@@ -20,55 +26,82 @@ export interface MirrorValidationError {
 }
 
 export interface MirrorPreviewSpec {
-    name: string;
-    enable: boolean;
-    priority: number;
-    description: string;
-    metadata: Record<string, string>;
-    mirror_config: {
-        caller: MirrorCallerScope;
-        callee: {
-            namespace: string;
-            service: string;
+    apiVersion: string;
+    kind: 'MirrorRule';
+    metadata: {
+        name: string;
+        enabled: boolean;
+        priority: number;
+        labels: string[];
+    };
+    spec: {
+        serviceRange: {
+            caller: MirrorServiceScope;
+            callee: MirrorServiceScope;
         };
+        description: string;
+        enabled: boolean;
         rules: Array<{
-            name: string;
-            api: {
+            interfaces: Array<{
                 protocol: string;
                 method: string;
                 path: string;
                 op: string;
-            };
-            traffic_match_rule: {
-                matchMode: string;
-                arguments: Array<{
-                    type: string;
+            }>;
+            trafficLabels: {
+                relation: string;
+                labels: Array<{
                     key: string;
                     op: string;
                     value: string;
                 }>;
             };
-            mirror_percent: number;
-            duration: string;
-            destination: {
-                namespace: string;
-                service: string;
-                labels: Record<string, string>;
+            mirror: {
+                percent: number;
+                target: MirrorServiceScope;
             };
         }>;
     };
 }
 
 const callerServiceType = 'CALLER_SERVICE';
+const allNamespaceText = '全部命名空间';
+const allServiceText = '全部服务';
 
 export function defaultMirrorCaller(): MirrorCallerScope {
     return { namespace: '*', service: '*' };
 }
 
-export function normalizeMirrorCaller(caller?: MirrorCallerScope): MirrorCallerScope {
+export function defaultMirrorCallee(): MirrorServiceScope {
+    return { namespace: '', service: '' };
+}
+
+export function normalizeMirrorCaller(caller?: Partial<MirrorCallerScope>): MirrorCallerScope {
     if (!caller) return defaultMirrorCaller();
     if (caller.namespace === '*' || caller.service === '*') return defaultMirrorCaller();
-    return caller;
+    return {
+        namespace: caller.namespace || '',
+        service: caller.service || '',
+    };
+}
+
+export function normalizeMirrorCallee(rule?: TrafficGovernanceRule): MirrorServiceScope {
+    const mirror = rule as TrafficMirror | undefined;
+    const callee = mirror?.callee || mirror?.target_service || { namespace: rule?.namespace || '', service: rule?.service || '' };
+    return {
+        namespace: callee?.namespace || '',
+        service: callee?.service || '',
+    };
+}
+
+export function mirrorScopeLabel(scope?: Partial<MirrorServiceScope>): string {
+    const namespace = scope?.namespace === '*' ? allNamespaceText : scope?.namespace || '-';
+    const service = scope?.service === '*' ? allServiceText : scope?.service || '-';
+    return `${namespace}/${service}`;
+}
+
+export function isAllMirrorCaller(caller?: Partial<MirrorCallerScope>): boolean {
+    return !caller || (caller.namespace === '*' && caller.service === '*');
 }
 
 function defaultMirrorMatchValue(value = ''): MatchString {
@@ -79,33 +112,40 @@ function defaultMirrorMatchValue(value = ''): MatchString {
     };
 }
 
-function normalizeMirrorMatchRule(match?: TrafficMatchRule): TrafficMatchRule {
+function defaultMirrorApi(path = '/'): TrafficApiScope {
     return {
-        matchMode: match?.matchMode || MatchLogic.AND,
-        randomPercent: match?.randomPercent ?? 0,
-        arguments: match?.arguments || [],
+        protocol: InterfaceProtocol.HTTP,
+        method: 'GET',
+        path: defaultMirrorMatchValue(path),
     };
 }
 
-export function isAllMirrorCaller(caller?: MirrorCallerScope): boolean {
-    return !caller || (caller.namespace === '*' && caller.service === '*');
+function normalizeMirrorMatchRule(match?: TrafficMatchRule): TrafficMatchRule {
+    const args = match?.arguments && match.arguments.length ? match.arguments : [{
+        type: 'HEADER',
+        key: '',
+        value: defaultMirrorMatchValue(),
+    }];
+    return {
+        matchMode: match?.matchMode || MatchLogic.AND,
+        arguments: args,
+    };
 }
 
 export function extractMirrorCaller(rule?: TrafficMirror): MirrorCallerScope {
+    if (rule?.caller) return normalizeMirrorCaller(rule.caller);
     const matchArg = (rule?.rules || [])
         .flatMap((item) => item.traffic_match_rule?.arguments || [])
         .find((arg) => arg.type === callerServiceType);
     if (!matchArg) return defaultMirrorCaller();
-    return {
+    return normalizeMirrorCaller({
         namespace: matchArg.key || '*',
         service: matchArg.value?.value || '*',
-    };
+    });
 }
 
 export function callerScopeText(caller?: MirrorCallerScope): string {
-    const normalized = normalizeMirrorCaller(caller);
-    if (isAllMirrorCaller(normalized)) return '全部服务';
-    return `${normalized.namespace}/${normalized.service}`;
+    return mirrorScopeLabel(normalizeMirrorCaller(caller));
 }
 
 export function removeCallerServiceArguments(match?: TrafficMatchRule): TrafficMatchRule {
@@ -116,33 +156,37 @@ export function removeCallerServiceArguments(match?: TrafficMatchRule): TrafficM
     };
 }
 
-export function applyMirrorCallerToMatchRule(match: TrafficMatchRule | undefined, caller: MirrorCallerScope): TrafficMatchRule {
-    const next = removeCallerServiceArguments(match);
-    const normalizedCaller = normalizeMirrorCaller(caller);
-    if (isAllMirrorCaller(normalizedCaller)) {
-        return next;
-    }
+export function defaultMirrorSubRule(): MirrorViewRule {
     return {
-        ...next,
-        arguments: [{
-            type: callerServiceType,
-            key: normalizedCaller.namespace,
-            value: defaultMirrorMatchValue(normalizedCaller.service),
-        }, ...(next.arguments || [])],
+        interfaces: [defaultMirrorApi('/orders')],
+        traffic_match_rule: normalizeMirrorMatchRule(),
+        destination: {
+            namespace: '',
+            service: '',
+            labels: {},
+        },
+        mirror_percent: 30,
+        disable: false,
     };
 }
 
-export function normalizeMirrorRules(rule: TrafficMirror): MirrorRule[] {
-    return (rule.rules && rule.rules.length ? rule.rules : []).map((item) => ({
-        ...item,
-        api: {
-            protocol: item.api?.protocol || InterfaceProtocol.HTTP,
-            method: item.api?.method || 'GET',
-            path: {
-                ...defaultMirrorMatchValue('/'),
-                ...(item.api?.path || {}),
-            },
+function normalizeMirrorInterfaces(item?: MirrorRule): TrafficApiScope[] {
+    const interfaces = item?.interfaces && item.interfaces.length ? item.interfaces : [item?.api || defaultMirrorApi()];
+    return interfaces.map((api) => ({
+        protocol: api?.protocol || InterfaceProtocol.HTTP,
+        method: api?.method || 'GET',
+        path: {
+            ...defaultMirrorMatchValue('/'),
+            ...(api?.path || {}),
         },
+    }));
+}
+
+export function normalizeMirrorRules(rule: TrafficMirror): MirrorViewRule[] {
+    const rules = rule.rules && rule.rules.length ? rule.rules : [defaultMirrorSubRule()];
+    return rules.map((item) => ({
+        ...item,
+        interfaces: normalizeMirrorInterfaces(item),
         traffic_match_rule: removeCallerServiceArguments(item.traffic_match_rule),
         destination: {
             namespace: item.destination?.namespace || '',
@@ -150,20 +194,23 @@ export function normalizeMirrorRules(rule: TrafficMirror): MirrorRule[] {
             labels: item.destination?.labels || {},
         },
         mirror_percent: item.mirror_percent ?? 0,
-        duration: item.duration || '0s',
         disable: item.disable ?? false,
     }));
 }
 
-export function buildMirrorRulesForSubmit(rules: MirrorRule[], caller: MirrorCallerScope): MirrorRule[] {
-    return (rules || []).map((item) => ({
-        ...item,
-        traffic_match_rule: applyMirrorCallerToMatchRule(item.traffic_match_rule, caller),
-    }));
+export function buildMirrorRulesForSubmit(rules: MirrorViewRule[]): MirrorRule[] {
+    return (rules || []).flatMap((item) => {
+        const { interfaces, duration: _duration, ...rest } = item as MirrorViewRule & { duration?: unknown };
+        return (interfaces && interfaces.length ? interfaces : [defaultMirrorApi()]).map((api) => ({
+            ...rest,
+            api,
+            traffic_match_rule: removeCallerServiceArguments(rest.traffic_match_rule),
+        }));
+    });
 }
 
-function metadataToRecord(metadata?: Record<string, string>): Record<string, string> {
-    return { ...(metadata || {}) };
+function metadataLabels(metadata?: Record<string, string>): string[] {
+    return Object.entries(metadata || {}).map(([key, value]) => `${key}:${value}`);
 }
 
 function apiToPreview(api?: TrafficApiScope) {
@@ -175,19 +222,11 @@ function apiToPreview(api?: TrafficApiScope) {
     };
 }
 
-function labelsToPreview(labels?: Record<string, MatchString>): Record<string, string> {
-    return Object.entries(labels || {}).reduce<Record<string, string>>((acc, [key, value]) => {
-        if (key) acc[key] = value?.value || '';
-        return acc;
-    }, {});
-}
-
 function matchToPreview(match?: TrafficMatchRule) {
     const current = normalizeMirrorMatchRule(removeCallerServiceArguments(match));
     return {
-        matchMode: String(current.matchMode || MatchLogic.AND),
-        arguments: (current.arguments || []).map((arg) => ({
-            type: arg.type || 'HEADER',
+        relation: String(current.matchMode || MatchLogic.AND),
+        labels: (current.arguments || []).map((arg) => ({
             key: arg.key || '',
             op: arg.value?.type || MatchType.EXACT,
             value: arg.value?.value || '',
@@ -195,66 +234,81 @@ function matchToPreview(match?: TrafficMatchRule) {
     };
 }
 
-export function buildMirrorPreviewSpec(rule: TrafficGovernanceRule, rules: MirrorRule[], caller: MirrorCallerScope): MirrorPreviewSpec {
-    const target = rule.target_service || { namespace: rule.namespace || '', service: rule.service || '' };
-    const normalizedCaller = normalizeMirrorCaller(caller);
+export function buildMirrorPreviewSpec(rule: TrafficGovernanceRule, rules: MirrorViewRule[], caller: MirrorCallerScope): MirrorPreviewSpec {
+    const callee = normalizeMirrorCallee(rule);
     return {
-        name: rule.name || rule.id || '',
-        enable: rule.enable !== false,
-        priority: Number(rule.priority || 0),
-        description: rule.description || '',
-        metadata: metadataToRecord(rule.metadata),
-        mirror_config: {
-            caller: normalizedCaller,
-            callee: {
-                namespace: target.namespace || '',
-                service: target.service || '',
+        apiVersion: 'governance.pole.io/v1',
+        kind: 'MirrorRule',
+        metadata: {
+            name: rule.name || rule.id || '',
+            enabled: rule.enable !== false,
+            priority: Number(rule.priority || 0),
+            labels: metadataLabels(rule.metadata),
+        },
+        spec: {
+            serviceRange: {
+                caller: normalizeMirrorCaller(caller),
+                callee,
             },
-            rules: normalizeMirrorRules({ ...(rule as TrafficMirror), rules }).map((item, index) => ({
-                name: `mirror-rule-${index + 1}`,
-                api: apiToPreview(item.api),
-                traffic_match_rule: matchToPreview(item.traffic_match_rule),
-                mirror_percent: Number(item.mirror_percent || 0),
-                duration: typeof item.duration === 'string' ? item.duration : `${item.duration?.seconds || 0}s`,
-                destination: {
-                    namespace: item.destination?.namespace || '',
-                    service: item.destination?.service || '',
-                    labels: labelsToPreview(item.destination?.labels),
+            description: rule.description || '',
+            enabled: rule.enable !== false,
+            rules: normalizeMirrorRules({ ...(rule as TrafficMirror), rules }).map((item) => ({
+                interfaces: item.interfaces.map(apiToPreview),
+                trafficLabels: matchToPreview(item.traffic_match_rule),
+                mirror: {
+                    percent: Number(item.mirror_percent || 0),
+                    target: {
+                        namespace: item.destination?.namespace || '',
+                        service: item.destination?.service || '',
+                    },
                 },
             })),
         },
     };
 }
 
-export function validateMirrorView(rule: TrafficGovernanceRule, rules: MirrorRule[], caller: MirrorCallerScope): MirrorValidationError[] {
+export function validateMirrorView(rule: TrafficGovernanceRule, rules: MirrorViewRule[], caller: MirrorCallerScope): MirrorValidationError[] {
     const errors: MirrorValidationError[] = [];
-    const target = rule.target_service || { namespace: rule.namespace || '', service: rule.service || '' };
-    if (!rule.name) errors.push({ field: 'name', message: '规则名称不能为空' });
-    if (!target.namespace) errors.push({ field: 'callee.namespace', message: '被调命名空间不能为空' });
-    if (!target.service) errors.push({ field: 'callee.service', message: '被调服务不能为空' });
-    if (!isAllMirrorCaller(caller) && !caller.namespace) {
-        errors.push({ field: 'caller.namespace', message: '主调命名空间不能为空' });
+    const callee = normalizeMirrorCallee(rule);
+    if (!/^[a-z][a-z0-9-]*$/.test(rule.name || '')) {
+        errors.push({ field: 'name', message: '规则名称必须符合 kebab-case' });
     }
-    if (!rules.length) errors.push({ field: 'rules', message: '至少配置 1 条镜像规则' });
+    if (!caller.namespace) errors.push({ field: 'caller.namespace', message: '主调命名空间不能为空' });
+    if (!caller.service) errors.push({ field: 'caller.service', message: '主调服务不能为空' });
+    if (!callee.namespace) errors.push({ field: 'callee.namespace', message: '被调命名空间不能为空' });
+    if (!callee.service) errors.push({ field: 'callee.service', message: '被调服务不能为空' });
+    if (!rules.length) errors.push({ field: 'rules', message: '至少配置 1 条镜像子规则' });
     normalizeMirrorRules({ ...(rule as TrafficMirror), rules }).forEach((item, index) => {
         const ruleNumber = index + 1;
-        if (!item.api?.path?.value?.trim()) {
-            errors.push({ field: `rules.${index}.api.path`, message: `镜像规则[${ruleNumber}]接口路径不能为空` });
+        if (!item.interfaces.length) {
+            errors.push({ field: `rules.${index}.interfaces`, message: `镜像子规则[${ruleNumber}]至少配置 1 个接口` });
         }
-        if (Number(item.mirror_percent || 0) < 0 || Number(item.mirror_percent || 0) > 100) {
-            errors.push({ field: `rules.${index}.mirror_percent`, message: `镜像规则[${ruleNumber}]镜像比例必须在 0～100 之间` });
-        }
-        if (!item.destination?.namespace) {
-            errors.push({ field: `rules.${index}.destination.namespace`, message: `镜像规则[${ruleNumber}]镜像目标命名空间不能为空` });
-        }
-        if (!item.destination?.service) {
-            errors.push({ field: `rules.${index}.destination.service`, message: `镜像规则[${ruleNumber}]镜像目标服务不能为空` });
-        }
-        (removeCallerServiceArguments(item.traffic_match_rule).arguments || []).forEach((arg) => {
-            if (!arg.value?.value?.trim()) {
-                errors.push({ field: `rules.${index}.match.value`, message: `镜像规则[${ruleNumber}]存在空匹配值` });
+        item.interfaces.forEach((api, apiIndex) => {
+            if (!api.path?.value?.trim()) {
+                errors.push({ field: `rules.${index}.interfaces.${apiIndex}.path`, message: `镜像子规则[${ruleNumber}]存在空接口路径` });
             }
         });
+        const matchArgs = removeCallerServiceArguments(item.traffic_match_rule).arguments || [];
+        if (!matchArgs.length) {
+            errors.push({ field: `rules.${index}.trafficLabels`, message: `镜像子规则[${ruleNumber}]至少配置 1 条流量标签` });
+        }
+        matchArgs.forEach((arg) => {
+            if (!arg.key?.trim()) {
+                errors.push({ field: `rules.${index}.match.key`, message: `镜像子规则[${ruleNumber}]存在空标签键` });
+            }
+            if (!arg.value?.value?.trim()) {
+                errors.push({ field: `rules.${index}.match.value`, message: `镜像子规则[${ruleNumber}]存在空标签值` });
+            }
+        });
+        if (Number(item.mirror_percent || 0) < 0 || Number(item.mirror_percent || 0) > 100) {
+            errors.push({ field: `rules.${index}.mirror_percent`, message: `镜像子规则[${ruleNumber}]镜像比例必须在 0～100 之间` });
+        }
+        if (!item.destination?.namespace) {
+            errors.push({ field: `rules.${index}.destination.namespace`, message: `镜像子规则[${ruleNumber}]镜像目标命名空间不能为空` });
+        }
+        if (!item.destination?.service) {
+            errors.push({ field: `rules.${index}.destination.service`, message: `镜像子规则[${ruleNumber}]镜像目标服务不能为空` });
+        }
     });
     return errors;
 }

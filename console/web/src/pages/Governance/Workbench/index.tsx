@@ -4,7 +4,7 @@ import type { PrimaryTableProps, TableRowData } from 'tdesign-react';
 import { AddIcon, RefreshIcon } from 'tdesign-icons-react';
 
 import { useAppDispatch } from 'modules/store';
-import RuleDetailDrawer from '../RuleRelease/RuleDetailDrawer';
+import RuleDetailDrawer, { WIDE_RULE_DETAIL_DRAWER_SIZE } from '../RuleRelease/RuleDetailDrawer';
 import RuleTabs from '../RuleRelease/RuleTabs';
 import SubscribeTable from 'components/SubscribeTable';
 import CustomRouteEditor from '../Router/CustomRouteEditor';
@@ -13,7 +13,6 @@ import CircuitBreakerEditor from '../CircuitBreaker/CircuitBreakerEditor';
 import FaultDetectEditor from '../CircuitBreaker/FaultDetectEditor';
 import LossLessEditor from '../LossLess/LossLessEditor';
 import LaneGroupEdtor from '../Router/LaneGroupEdtor';
-import LaneRuleTable from '../Router/LaneRuleTable';
 import TrafficGovernanceEditor, { trafficRuleCount, trafficRuleSummary } from '../Security/TrafficGovernanceEditor';
 import {
     editorCustomRoute,
@@ -631,26 +630,7 @@ const GovernanceWorkbench: React.FC = () => {
                 />
             );
         }
-        return (
-            <RuleTabs
-                op="view"
-                onVersionView={() => refreshVersions()}
-                view={(
-                    <div className={style.laneDetailStack}>
-                        <LaneGroupEdtor op="view" refresh={() => refreshData()} />
-                        <section className={style.laneRulesPanel}>
-                            <div className={style.laneRulesHeader}>
-                                <div className={style.laneRulesTitle}>泳道列表</div>
-                                <div className={style.laneRulesHint}>当前泳道组内的匹配规则和泳道标签。</div>
-                            </div>
-                            <LaneRuleTable groupId={selected.raw.id as string || ''} />
-                        </section>
-                    </div>
-                )}
-                versions={commonVersions}
-                subscribe={subscribe}
-            />
-        );
+        return <LaneGroupEdtor op="view" refresh={() => refreshData()} />;
     };
 
     return (
@@ -762,7 +742,7 @@ const GovernanceWorkbench: React.FC = () => {
                 visible={drawerVisible}
                 title={drawerMode === 'create' ? '新建熔断规则' : selected?.name || '治理规则详情'}
                 subtitle={selected?.typeLabel}
-                size={selected?.kind === 'route' || selected?.kind?.startsWith('ratelimit') || selected?.kind === 'circuitbreaker' || selected?.kind === 'faultdetect' ? 'min(1560px, calc(100vw - 40px))' : undefined}
+                size={selected?.kind === 'route' || selected?.kind?.startsWith('ratelimit') || selected?.kind === 'circuitbreaker' || selected?.kind === 'faultdetect' || selected?.kind === 'lane' ? WIDE_RULE_DETAIL_DRAWER_SIZE : undefined}
                 onClose={() => {
                     setDrawerVisible(false);
                     setDrawerMode('view');

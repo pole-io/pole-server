@@ -643,7 +643,7 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                                 <div>
                                     <div className={shared.editLabel}>探测端口</div>
                                     <FormItem name={['rules', index, 'port']} style={{ marginBottom: 0 }}>
-                                        <InputNumber min={1} max={65535} placeholder="8080" />
+                                        <InputNumber theme="normal" min={1} max={65535} placeholder="8080" />
                                     </FormItem>
                                 </div>
                             ) : (
@@ -744,7 +744,7 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                                 <div className={shared.editLabel}>间隔</div>
                                 <FormItem name={['rules', index, 'interval']} style={{ marginBottom: 0 }}>
                                     {editorState.editable ? (
-                                        <Space><InputNumber min={1} placeholder="30" /><span>秒</span></Space>
+                                        <Space><InputNumber theme="normal" min={1} placeholder="30" /><span>秒</span></Space>
                                     ) : (
                                         <Text>{rule.interval || 30} 秒</Text>
                                     )}
@@ -754,7 +754,7 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                                 <div className={shared.editLabel}>超时</div>
                                 <FormItem name={['rules', index, 'timeout']} style={{ marginBottom: 0 }}>
                                     {editorState.editable ? (
-                                        <Space><InputNumber min={1} placeholder="60" /><span>秒</span></Space>
+                                        <Space><InputNumber theme="normal" min={1} placeholder="60" /><span>秒</span></Space>
                                     ) : (
                                         <Text>{rule.timeout || 60} 秒</Text>
                                     )}
@@ -799,7 +799,7 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                         <div className={shared.fieldLabel}>优先级</div>
                         <FormItem name="priority">
                             {editorState.editable
-                                ? <InputNumber min={0} placeholder="0" />
+                                ? <InputNumber theme="normal" min={0} placeholder="0" />
                                 : <Text>{displayText(currentDraft.priority)}</Text>}
                         </FormItem>
                     </div>

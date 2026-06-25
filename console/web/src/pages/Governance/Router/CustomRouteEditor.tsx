@@ -5,6 +5,8 @@ import cloneDeep from 'lodash/cloneDeep';
 
 import Text from "components/Text";
 import RuleLabelField from "../shared/RuleLabelField";
+import ServiceScopeSection from "../shared/ServiceScopeSection";
+import TrafficMatchConditionEditor, { TrafficMatchConditionRow } from "../shared/TrafficMatchConditionEditor";
 import shared from "../shared/governance.module.less";
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import {
@@ -22,7 +24,7 @@ import {
     RoutingValueType,
     normalizeRoutingConfigForEditor,
 } from "services/router";
-import { Label, MatchString, MatchType, MatchTypeMap, MatchTypeOption, MatchValueType, Op } from "services/types";
+import { Label, MatchLogic, MatchString, MatchType, MatchTypeMap, MatchTypeOption, MatchValueType, Op } from "services/types";
 import { listOneCustomRoute, resetCustomRoute, saveCustomRoutes, selectCustomRoute, updateCustomRoutes } from "modules/governance/route";
 
 import styles from './CustomRouteEditor.module.less';
@@ -43,7 +45,6 @@ import {
     stringifyRouteRuleSpec,
     tagsToCommaString,
     validateRouteRuleDraft,
-    withParamTypeDefaultKey,
     RouteSpecFormat,
     RouteRuleValidationError,
 } from "./routeEditorUtils";
@@ -557,8 +558,6 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
 
     const activeValidationErrors = validationErrors.length > 0 ? validationErrors : liveValidationErrors;
 
-    const serviceSummary = `${customRouteRule.caller_namespace || '*'}/${customRouteRule.caller_service || '-'} → ${customRouteRule.callee_namespace || '*'}/${customRouteRule.callee_service || '-'}`;
-
     const renderSectionHeader = (order: number, title: string, description: string, extra?: React.ReactNode, onClick?: () => void) => (
         <div className={styles.designSectionHeader} onClick={onClick}>
             <div className={styles.designSectionTitleWrap}>
@@ -576,25 +575,6 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
         <Popup trigger="hover" content={text || '-'}>
             <span className={styles.ellipsisText}>{text || '-'}</span>
         </Popup>
-    );
-
-    const renderServiceScopeHeader = (
-        <div className={`${styles.designSectionHeader} ${styles.serviceScopeHeader} ${serviceCollapsed ? styles.serviceScopeCollapsedHeader : ''}`} onClick={() => setServiceCollapsed(prev => !prev)}>
-            <div className={styles.serviceScopeTitleWrap}>
-                <span className={styles.designSectionNumber}>2</span>
-                <div className={styles.serviceScopeTitleLine}>
-                    <span className={styles.designSectionTitle}>服务范围</span>
-                    <Popup trigger="hover" content={serviceCollapsed ? serviceSummary : '主调方 → 被调方'}>
-                        <span className={`${styles.serviceScopeHint} ${serviceCollapsed ? styles.serviceScopeSummary : ''}`}>
-                            {serviceCollapsed ? serviceSummary : '主调方 → 被调方'}
-                        </span>
-                    </Popup>
-                </div>
-            </div>
-            <button type="button" className={`${styles.caretButton} ${serviceCollapsed ? '' : styles.caretButtonOpen}`} onClick={(event) => { event.stopPropagation(); setServiceCollapsed(prev => !prev); }}>
-                <ChevronRightIcon />
-            </button>
-        </div>
     );
 
     const renderBaseInfoSection = (
@@ -615,7 +595,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                         <div className={styles.fieldBlock}>
                             <div className={styles.fieldLabel}>优先级</div>
                             {editorState.editable
-                                ? <InputNumber className={styles.priorityInput} min={0} max={100} step={1} value={customRouteRule.priority ?? 5} onChange={(value) => setCustomRouteRule(prev => ({ ...prev, priority: value as number }))} />
+                                ? <InputNumber theme="normal" className={styles.priorityInput} min={0} max={100} step={1} value={customRouteRule.priority ?? 5} onChange={(value) => setCustomRouteRule(prev => ({ ...prev, priority: value as number }))} />
                                 : <div className={styles.fieldValue}>{customRouteRule.priority ?? 5}</div>}
                         </div>
                     </Col>
@@ -650,65 +630,22 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
         </div>
     );
 
-    const renderServiceCard = (type: 'caller' | 'callee') => {
-        const isCaller = type === 'caller';
-        const namespaceValue = isCaller ? customRouteRule.caller_namespace : customRouteRule.callee_namespace;
-        const serviceValue = isCaller ? customRouteRule.caller_service : customRouteRule.callee_service;
-        const serviceOptions = isCaller ? callerServiceOptions : calleeServiceOptions;
-        const updateNamespace = (value: string) => {
-            setCustomRouteRule(prev => ({
-                ...prev,
-                [isCaller ? 'caller_namespace' : 'callee_namespace']: value,
-            }));
-        };
-        const updateService = (value: string) => {
-            setCustomRouteRule(prev => ({
-                ...prev,
-                [isCaller ? 'caller_service' : 'callee_service']: value,
-            }));
-        };
-        return (
-            <div className={`${styles.serviceCard} ${isCaller ? styles.serviceCaller : styles.serviceCallee}`}>
-                <div className={styles.serviceCardHead}>
-                    <span className={styles.serviceDot} />
-                    <div>
-                        <div className={styles.serviceTitle}>{isCaller ? '主调' : '被调'}</div>
-                        <div className={styles.serviceSubtitle}>{isCaller ? '发起调用方' : '目标服务方'}</div>
-                    </div>
-                </div>
-                {editorState.editable ? (
-                    <div className={styles.serviceFields}>
-                        <div>
-                            <div className={styles.fieldLabel}>命名空间</div>
-                            <Select filterable creatable options={routeNamespaceOptions} value={namespaceValue} onChange={(value) => updateNamespace(value as string)} />
-                        </div>
-                        <div>
-                            <div className={styles.fieldLabel}>服务</div>
-                            <Select filterable creatable options={serviceOptions} value={serviceValue} onChange={(value) => updateService(value as string)} />
-                        </div>
-                    </div>
-                ) : (
-                    <div className={styles.serviceReadonly}>
-                        {renderTextWithPopup(namespaceValue || '*')}
-                        <span>/</span>
-                        {renderTextWithPopup(serviceValue || '-')}
-                    </div>
-                )}
-            </div>
-        );
-    };
-
     const renderServiceScopeSection = (
-        <div className={styles.designSection}>
-            {renderServiceScopeHeader}
-            {!serviceCollapsed && (
-                <div className={styles.serviceFlowGrid}>
-                    {renderServiceCard('caller')}
-                    <div className={styles.flowConnector}><SendIcon /></div>
-                    {renderServiceCard('callee')}
-                </div>
-            )}
-        </div>
+        <ServiceScopeSection
+            order={2}
+            editable={Boolean(editorState.editable)}
+            collapsed={serviceCollapsed}
+            caller={{ namespace: customRouteRule.caller_namespace, service: customRouteRule.caller_service }}
+            callee={{ namespace: customRouteRule.callee_namespace, service: customRouteRule.callee_service }}
+            namespaceOptions={routeNamespaceOptions}
+            callerServiceOptions={callerServiceOptions}
+            calleeServiceOptions={calleeServiceOptions}
+            onCollapsedChange={setServiceCollapsed}
+            onCallerNamespaceChange={(value) => setCustomRouteRule(prev => ({ ...prev, caller_namespace: value }))}
+            onCallerServiceChange={(value) => setCustomRouteRule(prev => ({ ...prev, caller_service: value }))}
+            onCalleeNamespaceChange={(value) => setCustomRouteRule(prev => ({ ...prev, callee_namespace: value }))}
+            onCalleeServiceChange={(value) => setCustomRouteRule(prev => ({ ...prev, callee_service: value }))}
+        />
     );
 
     // 统一基础信息区：名称 / 状态 / 优先级 / 作用对象（主调→被调）/ 描述 / 标签
@@ -732,7 +669,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                     <div className={shared.field}>
                         <div className={shared.fieldLabel}>优先级</div>
                         {editorState.editable
-                            ? <InputNumber min={0} value={customRouteRule.priority} onChange={(value) => setCustomRouteRule(prev => ({ ...prev, priority: value as number }))} />
+                            ? <InputNumber theme="normal" min={0} value={customRouteRule.priority} onChange={(value) => setCustomRouteRule(prev => ({ ...prev, priority: value as number }))} />
                             : <div className={shared.fieldValue}>{customRouteRule.priority ?? 0}</div>}
                     </div>
                     <div className={`${shared.field} ${shared.full}`}>
@@ -786,120 +723,6 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                     </div>
                 </div>
             </div>
-        </div>
-    );
-
-    const trafficTableColumns = (ruleIdx: number): PrimaryTableProps['columns'] => [
-        {
-            colKey: 'type',
-            title: '参数类型',
-            width: 178,
-            edit: {
-                keepEditMode: editorState.editable,
-                showEditIcon: editorState.editable,
-                component: Select,
-                props: {
-                    clearable: true,
-                    options: RoutingArgumentsTypeOptions,
-                },
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    updateMatchArgs(false, ruleIdx, context.rowIndex, context.newRowData as RoutingSourceArgument);
-                },
-                // 校验规则，此处同 Form 表单
-                validateTrigger: 'change',
-            },
-            cell: ({ row }) => <Text>{RouteArgumentTextMap[row.type]}</Text>
-        },
-        {
-            colKey: 'key',
-            title: '参数键',
-            width: 170,
-            edit: {
-                keepEditMode: editorState.editable,
-                showEditIcon: editorState.editable,
-                component: Input,
-                props: {
-                    clearable: true,
-                },
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    updateMatchArgs(false, ruleIdx, context.rowIndex, context.newRowData as RoutingSourceArgument);
-                },
-                // 校验规则，此处同 Form 表单
-                validateTrigger: 'change',
-            },
-        },
-        {
-            colKey: 'value.type',
-            title: '匹配类型',
-            width: 140,
-            edit: {
-                keepEditMode: editorState.editable,
-                showEditIcon: editorState.editable,
-                component: Select,
-                props: {
-                    clearable: true,
-                    options: MatchTypeOption,
-                },
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    updateMatchArgs(false, ruleIdx, context.rowIndex, context.newRowData as RoutingSourceArgument);
-                },
-                // 校验规则，此处同 Form 表单
-                validateTrigger: 'change',
-            },
-            cell: ({ row }) => <Text>{MatchTypeMap[row.value.type as MatchType]}</Text>
-        },
-        {
-            colKey: 'value.value',
-            title: '匹配值',
-            minWidth: 180,
-            edit: {
-                keepEditMode: editorState.editable,
-                showEditIcon: editorState.editable,
-                component: Input,
-                props: {
-                    clearable: true,
-                },
-                onEdited: (context: { rowIndex: number; newRowData: TableRowData }) => {
-                    updateMatchArgs(false, ruleIdx, context.rowIndex, context.newRowData as RoutingSourceArgument);
-                },
-                // 校验规则，此处同 Form 表单
-                validateTrigger: 'change',
-            },
-            cell: ({ row }) => <span className={styles.wrapText}>{row.value?.value || '-'}</span>
-        },
-        {
-            colKey: 'action',
-            title: '操作',
-            width: 64,
-            cell: ({ row, rowIndex }) => (
-                <Popup trigger="hover" content="删除参数">
-                    <Button
-                        shape="circle"
-                        variant="text"
-                        onClick={() => {
-                            updateMatchArgs(true, ruleIdx, rowIndex, undefined);
-                        }}>
-                        <CloseIcon />
-                    </Button>
-                </Popup>
-
-            ),
-        }
-    ]
-
-    // 匹配条件表格（单行参数填写）
-    const renderMatchTable = (ruleIdx: number) => (
-        <div className={styles.compactTable}>
-            <Table
-                key={`route-match-${ruleIdx}-${editorState.editable ? 'edit' : 'view'}`}
-                rowKey="key"
-                tableLayout="fixed"
-                data={customRouteRule.routing_config?.rules[ruleIdx].sources[0]?.arguments || []}
-                columns={editorState.editable ? trafficTableColumns(ruleIdx) : trafficTableColumns(ruleIdx)?.filter(col => col.colKey !== 'action')}
-            />
-            {editorState.editable && (
-                <Button className={styles.inlineAdd} variant="text" onClick={() => addMatch(ruleIdx)} icon={<AddIcon />}>添加匹配条件</Button>
-            )}
         </div>
     );
 
@@ -1061,6 +884,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                 showEditIcon: editorState.editable,
                 component: InputNumber,
                 props: {
+                    theme: 'normal',
                     min: 0,
                     max: 100,
                     step: 5,
@@ -1156,87 +980,36 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
 
     const renderMatchRows = (rule: RoutingRule, ruleIdx: number) => {
         const rows = getRouteRuleArguments(rule);
+        const matchRows: TrafficMatchConditionRow[] = rows.map(arg => ({
+            paramType: arg.type,
+            paramKey: arg.key,
+            matchType: arg.value?.type || MatchType.EXACT,
+            matchValue: arg.value?.value || '',
+        }));
         return (
-            <div className={styles.conditionPanel}>
-                <div className={styles.conditionPanelHead}>
-                    <div>
-                        <div className={styles.subPanelTitle}>匹配条件</div>
-                        <div className={styles.subPanelHint}>同一规则内条件按 {rule.arguments?.matchMode || 'AND'} 关系计算</div>
-                    </div>
-                    {renderMatchModeSwitch(rule, ruleIdx)}
-                </div>
-                <div className={styles.matchGrid}>
-                    <div className={styles.matchHeader}>参数类型</div>
-                    <div className={styles.matchHeader}>参数键</div>
-                    <div className={styles.matchHeader}>匹配类型</div>
-                    <div className={styles.matchHeader}>匹配值</div>
-                    <div className={styles.matchHeader}>操作</div>
-                    {rows.map((arg, idx) => (
-                        <React.Fragment key={`${ruleIdx}-match-${idx}`}>
-                            <div className={styles.matchCell}>
-                                {editorState.editable ? (
-                                    <Select
-                                        filterable
-                                        options={RoutingArgumentsTypeOptions}
-                                        value={arg.type}
-                                        onChange={(value) => updateMatchArgs(false, ruleIdx, idx, withParamTypeDefaultKey(arg, value as string) as RoutingSourceArgument)}
-                                    />
-                                ) : <span>{RouteArgumentTextMap[arg.type as RoutingArgumentsType] || arg.type}</span>}
-                            </div>
-                            <div className={styles.matchCell}>
-                                {editorState.editable ? (
-                                    <Input
-                                        placeholder="请输入参数键"
-                                        value={arg.key}
-                                        onChange={(value) => updateMatchArgs(false, ruleIdx, idx, { ...arg, key: value as string })}
-                                    />
-                                ) : renderTextWithPopup(arg.key)}
-                            </div>
-                            <div className={styles.matchCell}>
-                                {editorState.editable ? (
-                                    <Select
-                                        filterable
-                                        options={MatchTypeOption}
-                                        value={arg.value?.type || MatchType.EXACT}
-                                        onChange={(value) => updateMatchArgs(false, ruleIdx, idx, { ...arg, value: { ...arg.value, type: value as MatchType } })}
-                                    />
-                                ) : <span>{MatchTypeMap[arg.value?.type as MatchType] || arg.value?.type || '-'}</span>}
-                            </div>
-                            <div className={styles.matchCell}>
-                                {editorState.editable ? (
-                                    isTagInputMatchType(arg.value?.type) ? (
-                                        <TagInput
-                                            value={commaStringToTags(arg.value?.value)}
-                                            onChange={(value) => updateMatchArgs(false, ruleIdx, idx, {
-                                                ...arg,
-                                                value: { ...arg.value, value: tagsToCommaString(value as Array<string | number>) },
-                                            })}
-                                            placeholder="请输入多个值，回车分隔"
-                                        />
-                                    ) : (
-                                        <Input
-                                            value={arg.value?.value}
-                                            onChange={(value) => updateMatchArgs(false, ruleIdx, idx, { ...arg, value: { ...arg.value, value } })}
-                                        />
-                                    )
-                                ) : renderTextWithPopup(arg.value?.value || '-')}
-                            </div>
-                            <div className={`${styles.matchCell} ${styles.actionCell}`}>
-                                {editorState.editable && (
-                                    <Popup trigger="hover" content={rows.length <= 1 ? '至少保留一个条件' : '删除条件'}>
-                                        <Button shape="circle" variant="text" disabled={rows.length <= 1} onClick={() => updateMatchArgs(true, ruleIdx, idx)}>
-                                            <CloseIcon />
-                                        </Button>
-                                    </Popup>
-                                )}
-                            </div>
-                        </React.Fragment>
-                    ))}
-                </div>
-                {editorState.editable && (
-                    <Button className={styles.inlineAdd} variant="text" onClick={() => addMatch(ruleIdx)} icon={<AddIcon />}>添加匹配条件</Button>
-                )}
-            </div>
+            <TrafficMatchConditionEditor
+                rows={matchRows}
+                editable={Boolean(editorState.editable)}
+                relation={rule.arguments?.matchMode || MatchLogic.AND}
+                paramTypeOptions={RoutingArgumentsTypeOptions}
+                onRelationChange={(value) => updateRouteRule(ruleIdx, { arguments: { matchMode: value } })}
+                onRowChange={(idx, row) => {
+                    const current = rows[idx] || defaultMatchArgs();
+                    updateMatchArgs(false, ruleIdx, idx, {
+                        ...current,
+                        type: row.paramType as RoutingArgumentsType,
+                        key: row.paramKey || '',
+                        value: {
+                            ...current.value,
+                            type: row.matchType as MatchType,
+                            value: row.matchValue || '',
+                            value_type: current.value?.value_type || MatchValueType.TEXT,
+                        },
+                    });
+                }}
+                onAdd={() => addMatch(ruleIdx)}
+                onRemove={(idx) => updateMatchArgs(true, ruleIdx, idx)}
+            />
         );
     };
 
@@ -1323,7 +1096,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                                 </div>
                                 <div className={styles.groupCell}>
                                     {editorState.editable
-                                        ? <InputNumber className={styles.weightInput} min={0} max={100} step={5} value={group.weight} onChange={(value) => updateGroup(ruleIdx, idx, { ...group, weight: value as number })} />
+                                        ? <InputNumber theme="normal" className={styles.weightInput} min={0} max={100} step={5} value={group.weight} onChange={(value) => updateGroup(ruleIdx, idx, { ...group, weight: value as number })} />
                                         : <span>{group.weight}%</span>}
                                 </div>
                                 <div className={styles.groupCell}>

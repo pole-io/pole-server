@@ -1,0 +1,134 @@
+.conditionEditor {
+  min-width: 0;
+}
+
+.conditionHead {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.conditionTitle {
+  color: #111827;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.conditionHint {
+  color: #8b95a5;
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 2px;
+}
+
+.headActions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.segmented {
+  background: #f3f6fb;
+  border: 1px solid #d8dfe9;
+  border-radius: 8px;
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+}
+
+.segmentButton,
+.segmentButtonActive {
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  height: 28px;
+  line-height: 18px;
+  min-width: 56px;
+  padding: 0 14px;
+}
+
+.segmentButton {
+  background: transparent;
+  color: #4e5969;
+}
+
+.segmentButtonActive {
+  background: #1f75ff;
+  color: #fff;
+}
+
+.segmentButton:disabled,
+.segmentButtonActive:disabled {
+  cursor: not-allowed;
+  opacity: 0.78;
+}
+
+.conditionTable {
+  border: 1px solid #e3e8f2;
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: minmax(136px, 0.9fr) minmax(160px, 1fr) minmax(136px, 0.9fr) minmax(180px, 1.2fr) 56px;
+  overflow: hidden;
+}
+
+.tableHeader {
+  background: #f7f9fc;
+  border-bottom: 1px solid #e3e8f2;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  padding: 12px 14px;
+}
+
+.tableCell {
+  align-items: center;
+  border-bottom: 1px solid #edf1f7;
+  display: flex;
+  min-height: 56px;
+  min-width: 0;
+  padding: 10px 14px;
+}
+
+.tableCell :global(.t-input),
+.tableCell :global(.t-select__wrap),
+.tableCell :global(.t-tag-input) {
+  width: 100%;
+}
+
+.conditionTable > .tableCell:nth-last-child(-n + 5) {
+  border-bottom: 0;
+}
+
+.actionCell {
+  justify-content: center;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.readonlyText {
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 22px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.addButton {
+  margin-top: 10px;
+  padding-left: 0;
+}
+
+@media (max-width: 1280px) {
+  .conditionTable {
+    grid-template-columns: minmax(128px, 0.9fr) minmax(150px, 1fr) minmax(128px, 0.9fr) minmax(160px, 1.1fr) 52px;
+  }
+}
