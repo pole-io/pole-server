@@ -92,6 +92,7 @@ export interface CircuitBreakerPolicyLike {
     block_config?: {
         name?: string;
         api?: CircuitBreakerAPI;
+        apis?: CircuitBreakerAPI[];
         error_conditions?: CircuitBreakerErrorCondition[];
         errorConditions?: CircuitBreakerErrorCondition[];
         trigger_conditions?: CircuitBreakerTriggerCondition[];
@@ -100,6 +101,7 @@ export interface CircuitBreakerPolicyLike {
     blockConfig?: CircuitBreakerPolicyLike['block_config'];
     name?: string;
     api?: CircuitBreakerAPI;
+    apis?: CircuitBreakerAPI[];
     error_conditions?: CircuitBreakerErrorCondition[];
     errorConditions?: CircuitBreakerErrorCondition[];
     trigger_conditions?: CircuitBreakerTriggerCondition[];
@@ -138,7 +140,7 @@ export interface CircuitBreakerSubmitPayload {
     block_configs: Array<{
         block_config: {
             name: string;
-            api?: CircuitBreakerAPI;
+            apis?: CircuitBreakerAPI[];
             error_conditions: CircuitBreakerErrorCondition[];
             trigger_conditions: CircuitBreakerTriggerCondition[];
         };
@@ -260,7 +262,7 @@ function policyToSubRule(policy: CircuitBreakerPolicyLike, idx: number): Circuit
     return {
         strategies: [{
             name: block?.name || `策略-${idx + 1}`,
-            ifaces: [normalizeAPI(block?.api)],
+            ifaces: (block?.apis?.length ? block.apis : [block?.api]).map(normalizeAPI),
             error_conditions: block?.error_conditions ?? block?.errorConditions ?? [],
             trigger_conditions: (block?.trigger_conditions ?? block?.triggerConditions ?? []).map(normalizeTrigger),
         }],
@@ -300,10 +302,10 @@ export function createCircuitBreakerDraftFromRule(rule: CircuitBreakerDraftLike)
 
 function strategyToPolicies(subrule: CircuitBreakerSubRuleDraft, strategy: CircuitBreakerStrategyDraft) {
     const ifaces = strategy.ifaces?.length ? strategy.ifaces : [undefined];
-    return ifaces.map((api) => ({
+    return {
         block_config: {
             name: strategy.name || '',
-            api: api ? normalizeAPI(api) : undefined,
+            apis: ifaces.filter(Boolean).map((api) => normalizeAPI(api)),
             error_conditions: strategy.error_conditions || [],
             trigger_conditions: (strategy.trigger_conditions || []).map(normalizeTrigger),
         },
@@ -311,7 +313,7 @@ function strategyToPolicies(subrule: CircuitBreakerSubRuleDraft, strategy: Circu
         recoverCondition: subrule.recoverCondition || { sleepWindow: 60, consecutiveSuccess: 0 },
         faultDetectConfig: { enable: subrule.faultDetectConfig?.enable === true },
         fallbackConfig: normalizeFallback(subrule.fallbackConfig),
-    }));
+    };
 }
 
 export function buildCircuitBreakerSubmitPayload(draft: CircuitBreakerDraftLike): CircuitBreakerSubmitPayload {
@@ -325,7 +327,7 @@ export function buildCircuitBreakerSubmitPayload(draft: CircuitBreakerDraftLike)
         ruleMatcher: normalized.ruleMatcher,
         metadata: normalizeMetadata(normalized.metadata),
         block_configs: (normalized.subrules || []).flatMap((subrule) =>
-            (subrule.strategies || []).flatMap((strategy) => strategyToPolicies(subrule, strategy)),
+            (subrule.strategies || []).map((strategy) => strategyToPolicies(subrule, strategy)),
         ),
     };
 }

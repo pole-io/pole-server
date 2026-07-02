@@ -66,11 +66,11 @@ const rule = {
   metadata: { owner: 'codex', scenario: 'sample' },
   policies: [{
     action: 'TRAFFIC_SECURITY_ALLOW',
-    api: {
+    apis: [{
       protocol: 'HTTP',
       method: 'GET',
       path: { type: 'IN', value: '/orders', value_type: 'TEXT' },
-    },
+    }],
     traffic_match_rule: {
       matchMode: 'AND',
       arguments: [{
@@ -81,11 +81,11 @@ const rule = {
     },
   }, {
     action: 'TRAFFIC_SECURITY_DENY',
-    api: {
+    apis: [{
       protocol: 'HTTP',
       method: 'POST',
       path: { type: 'IN', value: '/admin', value_type: 'TEXT' },
-    },
+    }],
     traffic_match_rule: {
       matchMode: 'AND',
       arguments: [{
@@ -122,8 +122,12 @@ assert.equal(preview.spec.subRules[2].protectedInterfaces.length, 0);
 const submitPolicies = utils.buildSecurityPoliciesFromView(view);
 assert.equal(submitPolicies.length, 3);
 assert.equal(submitPolicies[0].action, 'TRAFFIC_SECURITY_DENY');
+assert.equal(submitPolicies[0].apis[0].path.value, '/admin');
+assert.equal(submitPolicies[0].api, undefined);
 assert.equal(submitPolicies[1].action, 'TRAFFIC_SECURITY_ALLOW');
+assert.equal(submitPolicies[1].apis[0].path.value, '/orders');
 assert.equal(submitPolicies[2].api, undefined);
+assert.equal(submitPolicies[2].apis, undefined);
 
 assert.deepEqual(utils.validateSecurityView(rule, view), []);
 

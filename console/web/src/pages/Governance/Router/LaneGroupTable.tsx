@@ -266,6 +266,8 @@ const LaneGroupTable: React.FC<ILaneGroupTableProps> = ({ }) => {
                 ) : (
                     <LaneGroupEdtor
                         op={editor.mode}
+                        editable={editor.data?.editable ?? true}
+                        deleteable={editor.data?.deleteable ?? true}
                         refresh={(close: boolean) => {
                             if (close) {
                                 seteditor(pre => ({ ...pre, visible: false }));

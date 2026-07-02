@@ -18,7 +18,14 @@ export interface RateLimitAmountView {
     maxAmount: number;
 }
 
+export interface RateLimitAPI {
+    protocol: string;
+    method: string;
+    path: RateLimitMatchValue;
+}
+
 export interface RateLimitTriggerViewLike {
+    apis?: RateLimitAPI[];
     method?: RateLimitMatchValue;
     arguments?: RateLimitArgument[];
     amounts?: RateLimitAmountView[];
@@ -63,7 +70,7 @@ export interface RateLimitSubmitPayload {
     cluster?: unknown;
     metadata?: Record<string, string>;
     rules: Array<{
-        method: RateLimitMatchValue;
+        apis: RateLimitAPI[];
         arguments: RateLimitArgument[];
         amounts?: Array<{
             validDuration: string;
@@ -91,6 +98,18 @@ export interface RateLimitValidationError {
     ruleIndex?: number;
 }
 
+export interface RateLimitInterfaceFields {
+    protocol: string;
+    method: string;
+    path: string;
+}
+
+export const RATE_LIMIT_PROTOCOL_OPTIONS = ['HTTP', 'HTTPS', 'GRPC'].map((item) => ({ label: item, value: item }));
+export const RATE_LIMIT_HTTP_METHOD_OPTIONS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', '*'].map((item) => ({ label: item, value: item }));
+
+const knownProtocols = new Set(RATE_LIMIT_PROTOCOL_OPTIONS.map((item) => item.value));
+const knownMethods = new Set(RATE_LIMIT_HTTP_METHOD_OPTIONS.map((item) => item.value));
+
 const resourceText: Record<string, string> = {
     QPS: '请求数',
     CONCURRENCY: '并发数',
@@ -107,6 +126,88 @@ function normalizeMethod(method?: RateLimitMatchValue): RateLimitMatchValue {
         value: method?.value || '',
         value_type: method?.value_type || 'TEXT',
     };
+}
+
+export function defaultRateLimitAPI(): RateLimitAPI {
+    return {
+        protocol: 'HTTP',
+        method: '*',
+        path: normalizeMethod(),
+    };
+}
+
+export function parseRateLimitInterfaceValue(value?: string): RateLimitInterfaceFields {
+    const text = String(value || '').trim();
+    if (!text) {
+        return { protocol: 'HTTP', method: '*', path: '' };
+    }
+
+    const parts = text.split(/\s+/);
+    const first = parts[0]?.toUpperCase();
+    const second = parts[1]?.toUpperCase();
+
+    if (knownProtocols.has(first) && knownMethods.has(second)) {
+        return {
+            protocol: first,
+            method: second,
+            path: parts.slice(2).join(' '),
+        };
+    }
+
+    if (knownProtocols.has(first)) {
+        return {
+            protocol: first,
+            method: '*',
+            path: parts.slice(1).join(' '),
+        };
+    }
+
+    if (knownMethods.has(first)) {
+        return {
+            protocol: 'HTTP',
+            method: first,
+            path: parts.slice(1).join(' '),
+        };
+    }
+
+    return { protocol: 'HTTP', method: '*', path: text };
+}
+
+export function buildRateLimitInterfaceValue(fields: RateLimitInterfaceFields): string {
+    const protocol = (fields.protocol || 'HTTP').toUpperCase();
+    const method = (fields.method || '*').toUpperCase();
+    const path = String(fields.path || '').trim();
+    const methodPart = method === '*' ? '' : method;
+    if (protocol === 'HTTP') {
+        return [methodPart, path].filter(Boolean).join(' ');
+    }
+    return [protocol, methodPart, path].filter(Boolean).join(' ');
+}
+
+export function getRateLimitInterfacePath(value?: string): string {
+    return parseRateLimitInterfaceValue(value).path;
+}
+
+function apiFromMethod(method?: RateLimitMatchValue): RateLimitAPI {
+    const fields = parseRateLimitInterfaceValue(method?.value);
+    return {
+        protocol: fields.protocol,
+        method: fields.method,
+        path: {
+            type: method?.type || 'EXACT',
+            value: fields.path,
+            value_type: method?.value_type || 'TEXT',
+        },
+    };
+}
+
+export function normalizeRateLimitApis(rule?: RateLimitTriggerViewLike): RateLimitAPI[] {
+    const apis = rule?.apis?.length ? rule.apis : [apiFromMethod(rule?.method)];
+    return apis.map((api) => ({
+        protocol: (api.protocol || 'HTTP').toUpperCase(),
+        method: (api.method || '*').toUpperCase(),
+        path: normalizeMethod(api.path),
+    }));
 }
 
 function normalizeAction(rule: RateLimitTriggerViewLike, limitType?: string): string {
@@ -127,7 +228,7 @@ export function buildRateLimitSubmitPayload(draft: RateLimitDraftLike): RateLimi
     const type = draft.type || 'LOCAL';
     const rules = (draft.rules || []).map((rule) => {
         const payloadRule: RateLimitSubmitPayload['rules'][number] = {
-            method: normalizeMethod(rule.method),
+            apis: normalizeRateLimitApis(rule),
             arguments: rule.arguments || [],
             action: normalizeAction(rule, type),
             resource: rule.resource || 'QPS',
@@ -175,7 +276,7 @@ export function describeRuleThreshold(rule: RateLimitTriggerViewLike): string {
 }
 
 export function describeRuleSummary(rule: RateLimitTriggerViewLike, limitType?: string): string {
-    const ifaceCount = rule.method?.value?.trim() ? 1 : 0;
+    const ifaceCount = normalizeRateLimitApis(rule).filter(api => api.path?.value?.trim()).length;
     const conditionCount = rule.arguments?.length || 0;
     const metric = resourceText[rule.resource || 'QPS'] || '请求数';
     const action = actionText[normalizeAction(rule, limitType)] || normalizeAction(rule, limitType);
@@ -208,8 +309,17 @@ export function validateRateLimitDraft(draft: RateLimitDraftLike): RateLimitVali
 
     rules.forEach((rule, index) => {
         const ruleNumber = index + 1;
-        if (!rule.method?.value?.trim()) {
-            errors.push({ field: `rules.${index}.method`, ruleIndex: index, message: `规则[${ruleNumber}] 存在空的接口路径` });
+        const apis = normalizeRateLimitApis(rule);
+        if (apis.length === 0) {
+            errors.push({ field: `rules.${index}.apis`, ruleIndex: index, message: `规则[${ruleNumber}] 至少配置 1 个接口` });
+        }
+        apis.forEach((api, apiIndex) => {
+            if (!api.path?.value?.trim()) {
+                errors.push({ field: `rules.${index}.apis.${apiIndex}.path`, ruleIndex: index, message: `规则[${ruleNumber}] 存在空的接口路径` });
+            }
+        });
+        if (apis.some(api => !api.protocol || !api.method)) {
+            errors.push({ field: `rules.${index}.apis`, ruleIndex: index, message: `规则[${ruleNumber}] 存在未完整配置的接口` });
         }
         if (rule.resource === 'CONCURRENCY') {
             const maxConcurrent = Number(rule.concurrencyAmount?.maxAmount ?? rule.amounts?.[0]?.maxAmount ?? 0);

@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Link, Table, Button, PageInfo, PrimaryTableProps, TableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Tag, Dialog, Input, Loading, Popconfirm } from 'tdesign-react';
-import { DeleteIcon, EditIcon, RefreshIcon, System2Icon, User1Icon, UsergroupIcon, UserVisibleIcon } from 'tdesign-icons-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link, Table, Button, PageInfo, TableProps, Tooltip, Space, Row, Col, TableRowData, Popconfirm } from 'tdesign-react';
+import { CreditcardIcon, DeleteIcon, RefreshIcon } from 'tdesign-icons-react';
 
 import Search from 'components/Search';
 import ErrorPage from 'components/ErrorPage';
 import Text from 'components/Text';
-import { useAppDispatch, useAppSelector } from 'modules/store';
+import { useAppDispatch } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
-import PolicyEditor from './RoleEditor';
 import { describeRoles } from 'services/role';
 import { editorRoles, removeRoles, resetRoles } from 'modules/auth/role';
 import RoleEditor from './RoleEditor';
@@ -22,7 +20,7 @@ interface IPolicyTableProps {
 
 const ServerError = () => <ErrorPage code={500} />;
 
-const customColumns = (handleEditRole: (row: TableRowData, op: Op, res: string) => void, redirect: (id: string, name: string) => void): TableProps['columns'] => [
+const customColumns = (handleEditRole: (row: TableRowData, op: Op, res: string) => void): TableProps['columns'] => [
     {
         colKey: 'id',
         title: 'ID',
@@ -32,9 +30,9 @@ const customColumns = (handleEditRole: (row: TableRowData, op: Op, res: string) 
     {
         colKey: 'name',
         title: '名称',
-        cell: ({ row: { name, id } }) => {
+        cell: ({ row }) => {
             return (
-                <Link theme='primary' onClick={() => redirect(id, name)}>{name}</Link>
+                <Link theme='primary' onClick={() => handleEditRole(row, 'view', 'role')}>{row.name}</Link>
             )
         },
     },
@@ -63,13 +61,14 @@ const customColumns = (handleEditRole: (row: TableRowData, op: Op, res: string) 
         cell: ({ row }) => {
             return (
                 <Space>
-                    <Tooltip content={row.editable === false ? '无权限操作' : '编辑'}>
+                    <Tooltip content={row.editable === false ? '无权限操作' : '查看 / 编辑'}>
                         <Button
                             shape="square"
                             variant="text"
                             disabled={row.editable === false}
-                            onClick={() => handleEditRole(row, 'edit', 'role')}>
-                            <EditIcon />
+                            aria-label="查看 / 编辑"
+                            onClick={() => handleEditRole(row, 'view', 'role')}>
+                            <CreditcardIcon />
                         </Button>
                     </Tooltip>
                     <Tooltip content={row.deleteable === false ? '无权限操作' : '删除'}>
@@ -101,7 +100,6 @@ const customColumns = (handleEditRole: (row: TableRowData, op: Op, res: string) 
 
 const RoleTable: React.FC<IPolicyTableProps> = (props) => {
     const dispatch = useAppDispatch();
-    const navigate = useNavigate();
     const [selectedRowKeys, setSelectedRowKeys] = useState<Array<string | number>>([]);
 
     // 合并编辑相关状态
@@ -152,7 +150,7 @@ const RoleTable: React.FC<IPolicyTableProps> = (props) => {
         setEditorState({
             visible: true,
             mode: 'create',
-            resource: 'user',
+            resource: 'role',
             data: undefined,
         });
     };
@@ -240,7 +238,7 @@ const RoleTable: React.FC<IPolicyTableProps> = (props) => {
             </Row>
             <RoleEditor
                 key={editorState.mode + (editorState.data?.name || 'new') + (editorState.visible ? '1' : '0')}
-                modify={editorState.mode === 'edit'}
+                modify={editorState.mode !== 'create'}
                 visible={editorState.visible && editorState.resource === 'role'}
                 refresh={refreshTables}
                 closeDrawer={() => {
@@ -250,11 +248,7 @@ const RoleTable: React.FC<IPolicyTableProps> = (props) => {
                 }} op={editorState.mode} />
             <Table
                 data={searchState.roles}
-                columns={
-                    customColumns(handleEditRole, (id: string, name: string) => {
-                        navigate(`roledetail?id=${id}&name=${name}`);
-                    })
-                }
+                columns={customColumns(handleEditRole)}
                 loading={searchState.isLoading}
                 rowKey="id"
                 size={"large"}

@@ -5,6 +5,7 @@ import { API, BaseURL, Label, RuleRelease } from './types';
 export interface BlockConfig {
     name: string
     api?: API
+    apis?: API[]
     error_conditions: ErrorCondition[]
     trigger_conditions: TriggerCondition[]
     max_ejection_percent?: number
@@ -14,7 +15,7 @@ export interface BlockConfig {
 }
 
 export interface CircuitBreakerPolicy {
-    block_config: Pick<BlockConfig, 'name' | 'api' | 'error_conditions' | 'trigger_conditions'>
+    block_config: Pick<BlockConfig, 'name' | 'apis' | 'error_conditions' | 'trigger_conditions'>
     max_ejection_percent?: number
     recoverCondition: RecoverCondition
     faultDetectConfig: FaultDetectConfig
@@ -159,6 +160,7 @@ function normalizeBlockConfig(block: any, rule: any): BlockConfig {
     return {
         name: blockConfig?.name || '',
         api: blockConfig?.api,
+        apis: blockConfig?.apis?.length ? blockConfig.apis : (blockConfig?.api ? [blockConfig.api] : []),
         error_conditions: (blockConfig?.error_conditions ?? blockConfig?.errorConditions ?? []).map(normalizeErrorCondition),
         trigger_conditions: (blockConfig?.trigger_conditions ?? blockConfig?.triggerConditions ?? []).map(normalizeTriggerCondition),
         max_ejection_percent: block?.max_ejection_percent ?? block?.maxEjectionPercent ?? rule?.max_ejection_percent ?? rule?.maxEjectionPercent ?? 100,
@@ -179,7 +181,7 @@ function toCircuitBreakerPolicy(block: CircuitBreakerBlockConfigInput): CircuitB
     return {
         block_config: {
             name: block.name,
-            api: block.api,
+            apis: block.apis?.length ? block.apis : (block.api ? [block.api] : []),
             error_conditions: block.error_conditions,
             trigger_conditions: block.trigger_conditions,
         },

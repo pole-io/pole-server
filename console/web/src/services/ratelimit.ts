@@ -1,5 +1,5 @@
 import request, { apiRequest, ApiResponse, getAllList, getApiRequest, putApiRequest } from 'utils/request';
-import { BaseURL, MatchString, MatchType, MatchValueType, RuleRelease } from './types';
+import { API, BaseURL, MatchLogic, MatchString, MatchType, MatchValueType, RuleRelease } from './types';
 
 export interface Lists {
     namespaceList: []
@@ -260,7 +260,9 @@ export interface Report {
 
 // 子规则：单条限流触发条件（匹配条件 + 限流阈值 + 行为）
 export interface LimitTrigger {
+    apis?: API[]
     method?: MatchString
+    matchMode?: MatchLogic
     arguments?: LimitArgumentsConfig[]
     amounts: LimitConfig[]
     action: LimitAction
@@ -274,7 +276,9 @@ export interface LimitTrigger {
 
 // 子规则视图（amounts 等为表单友好格式）
 export interface LimitTriggerView {
-    method: MatchString
+    apis: API[]
+    method?: MatchString
+    matchMode: MatchLogic
     arguments: LimitArgumentsConfig[]
     amounts: LimitConfigView[]
     action: LimitAction
@@ -430,6 +434,11 @@ function normalizeArgumentType(type?: LimitArgumentsType | number | string): Lim
     return (type as LimitArgumentsType) || LimitArgumentsType.CUSTOM;
 }
 
+function normalizeMatchMode(mode?: MatchLogic | number | string): MatchLogic {
+    if (mode === 1 || mode === MatchLogic.OR || mode === 'OR') return MatchLogic.OR;
+    return MatchLogic.AND;
+}
+
 function durationToView(duration?: string | { seconds?: number | string; nanos?: number }): Pick<LimitConfigView, 'validDuration' | 'validDurationUnit'> {
     if (duration && typeof duration === 'object') {
         const seconds = Number(duration.seconds || 0);
@@ -460,10 +469,45 @@ function amountsToView(amounts: LimitConfig[]): LimitConfigView[] {
     });
 }
 
+function defaultRateLimitAPI(): API {
+    return {
+        protocol: 'HTTP',
+        method: '*',
+        path: { value: '', type: MatchType.EXACT, value_type: MatchValueType.TEXT },
+    };
+}
+
+function apiFromMethod(method?: MatchString): API {
+    return {
+        ...defaultRateLimitAPI(),
+        path: {
+            type: normalizeMatchType(method?.type),
+            value: method?.value || '',
+            value_type: normalizeMatchValueType(method?.value_type),
+        },
+    };
+}
+
+function normalizeRateLimitApis(source: { apis?: API[]; method?: MatchString }): API[] {
+    if (source.apis?.length) {
+        return source.apis.map(api => ({
+            protocol: api.protocol || 'HTTP',
+            method: api.method || '*',
+            path: {
+                type: normalizeMatchType(api.path?.type),
+                value: api.path?.value || '',
+                value_type: normalizeMatchValueType(api.path?.value_type),
+            },
+        }));
+    }
+    return [apiFromMethod(source.method)];
+}
+
 // 将单条旧规则 (RateLimitRule) 转为 LimitTriggerView
 function ruleToTriggerView(item: RateLimitRule): LimitTriggerView {
     return {
-        method: item.method || { value: '', type: MatchType.EXACT, value_type: MatchValueType.TEXT },
+        apis: normalizeRateLimitApis(item as RateLimitRule & { apis?: API[] }),
+        matchMode: normalizeMatchMode((item as any).matchMode ?? (item as any).match_mode),
         arguments: item.arguments ? item.arguments.map(arg => ({
             type: normalizeArgumentType(arg.type),
             key: arg.key,
@@ -487,7 +531,8 @@ function ruleToTriggerView(item: RateLimitRule): LimitTriggerView {
 // 将 LimitTrigger 转为 LimitTriggerView
 function triggerToView(t: LimitTrigger): LimitTriggerView {
     return {
-        method: t.method || { value: '', type: MatchType.EXACT, value_type: MatchValueType.TEXT },
+        apis: normalizeRateLimitApis(t),
+        matchMode: normalizeMatchMode(t.matchMode ?? (t as any).match_mode),
         arguments: t.arguments ? t.arguments.map(arg => ({
             type: normalizeArgumentType(arg.type),
             key: arg.key,
@@ -635,7 +680,8 @@ export interface CreateRateLimitRequest {
 
 export function triggerViewToTrigger(v: LimitTriggerView): LimitTrigger {
     return {
-        method: v.method,
+        apis: v.apis,
+        matchMode: v.matchMode || MatchLogic.AND,
         arguments: v.arguments,
         amounts: v.amounts.map(a => ({
             validDuration: a.validDuration.toString() + a.validDurationUnit,
@@ -654,7 +700,8 @@ export function triggerViewToTrigger(v: LimitTriggerView): LimitTrigger {
 // 默认一条子规则（用于新建时）
 export function defaultLimitTriggerView(): LimitTriggerView {
     return {
-        method: { value: '', type: MatchType.EXACT, value_type: MatchValueType.TEXT },
+        apis: [defaultRateLimitAPI()],
+        matchMode: MatchLogic.AND,
         arguments: [],
         amounts: [{ validDuration: 1, validDurationUnit: LimitAmountsValidationUnit.s, maxAmount: 1 }],
         action: LimitAction.REJECT,
@@ -700,7 +747,8 @@ export async function createRateLimitsLegacy(params: CreateLimitRuleRequest[]) {
         namespace: p.namespace,
         type: p.type,
         rules: [{
-            method: p.method,
+            apis: [apiFromMethod(p.method)],
+            matchMode: MatchLogic.AND,
             arguments: p.arguments,
             amounts: p.amounts,
             action: p.action,

@@ -95,6 +95,7 @@ func (x *XDSServer) StreamHealthCheck(checksvr healthservice.HealthDiscoveryServ
 		zap.String("user-agent", userAgent),
 	)
 
+	var client *resource.XDSClient
 	for {
 		req, err := checksvr.Recv()
 		if err != nil {
@@ -104,7 +105,6 @@ func (x *XDSServer) StreamHealthCheck(checksvr healthservice.HealthDiscoveryServ
 			return err
 		}
 
-		var client *resource.XDSClient
 		checkReq := req.GetHealthCheckRequest()
 		if checkReq != nil {
 			client = resource.ParseXDSClient(checkReq.Node)
@@ -232,8 +232,27 @@ func toJsonStr(msg proto.Message) string {
 func (x *XDSServer) FetchHealthCheck(ctx context.Context,
 	req *healthservice.HealthCheckRequestOrEndpointHealthResponse) (*healthservice.HealthCheckSpecifier, error) {
 
-	// TODO: implement
-	return nil, status.Errorf(codes.Unimplemented, "FetchHealthCheck unimplemented")
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "health check request is empty")
+	}
+
+	if checkReq := req.GetHealthCheckRequest(); checkReq != nil {
+		if checkReq.Node == nil {
+			return nil, status.Error(codes.InvalidArgument, "xds node info not found")
+		}
+		client := resource.ParseXDSClient(checkReq.Node)
+		code := x.registerService(ctx, client)
+		if code != apimodel.Code_ExecuteSuccess {
+			return nil, status.Errorf(codes.Unavailable, "fail to register services, code is %v", code)
+		}
+		return buildHealthCheckSpecifier(client), nil
+	}
+
+	if req.GetEndpointHealthResponse() != nil {
+		return &healthservice.HealthCheckSpecifier{}, nil
+	}
+
+	return nil, status.Error(codes.InvalidArgument, "unsupported health check request")
 }
 
 const (

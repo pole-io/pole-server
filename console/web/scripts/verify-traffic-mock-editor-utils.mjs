@@ -101,7 +101,7 @@ assert.equal(preview.kind, 'MockRule');
 assert.deepEqual(preview.spec.scope.caller, { namespace: 'source-ns', service: 'checkout' });
 assert.deepEqual(preview.spec.scope.callee, { namespace: 'spec-governance', service: 'spec-gateway' });
 assert.equal(preview.spec.rules[0].name, 'mock-subrule-1');
-assert.equal(preview.spec.rules[0].interface.path, '/mock/orders');
+assert.equal(preview.spec.rules[0].interfaces[0].path, '/mock/orders');
 assert.equal(preview.spec.rules[0].match.conditions.length, 1);
 assert.equal(preview.spec.rules[0].match.conditions[0].param, 'HEADER');
 assert.equal(preview.spec.rules[0].match.conditions[0].value, 'orders');
@@ -113,6 +113,8 @@ assert.equal(JSON.stringify(preview).includes('CALLER_SERVICE'), false);
 
 const submit = utils.buildMockRulesForSubmit(normalized, { namespace: 'source-ns', service: 'checkout' });
 assert.equal(submit[0].mock_percent, 100);
+assert.equal(submit[0].api, undefined);
+assert.equal(submit[0].apis[0].path.value, '/mock/orders');
 assert.equal(submit[0].traffic_match_rule.randomPercent, undefined);
 assert.equal(submit[0].traffic_match_rule.arguments[0].type, 'CALLER_SERVICE');
 assert.equal(submit[0].traffic_match_rule.arguments[0].key, 'source-ns');
@@ -133,7 +135,7 @@ assert.deepEqual(utils.validateMockView(rule, normalized, { namespace: 'source-n
 
 const invalid = [{
   ...normalized[0],
-  api: { ...normalized[0].api, path: { ...normalized[0].api.path, value: '' } },
+  apis: [{ ...normalized[0].apis[0], path: { ...normalized[0].apis[0].path, value: '' } }],
   traffic_match_rule: {
     matchMode: 'AND',
     arguments: [{ type: 'HEADER', key: 'x-mock', value: { type: 'EXACT', value: '', value_type: 'TEXT' } }],

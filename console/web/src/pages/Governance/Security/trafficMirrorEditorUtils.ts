@@ -16,7 +16,7 @@ export interface MirrorServiceScope {
 
 export type MirrorCallerScope = MirrorServiceScope;
 
-export interface MirrorViewRule extends Omit<MirrorRule, 'api'> {
+export interface MirrorViewRule extends Omit<MirrorRule, 'api' | 'apis'> {
     interfaces: TrafficApiScope[];
 }
 
@@ -171,7 +171,7 @@ export function defaultMirrorSubRule(): MirrorViewRule {
 }
 
 function normalizeMirrorInterfaces(item?: MirrorRule): TrafficApiScope[] {
-    const interfaces = item?.interfaces && item.interfaces.length ? item.interfaces : [item?.api || defaultMirrorApi()];
+    const interfaces = item?.interfaces?.length ? item.interfaces : (item?.apis?.length ? item.apis : [item?.api || defaultMirrorApi()]);
     return interfaces.map((api) => ({
         protocol: api?.protocol || InterfaceProtocol.HTTP,
         method: api?.method || 'GET',
@@ -199,13 +199,13 @@ export function normalizeMirrorRules(rule: TrafficMirror): MirrorViewRule[] {
 }
 
 export function buildMirrorRulesForSubmit(rules: MirrorViewRule[]): MirrorRule[] {
-    return (rules || []).flatMap((item) => {
-        const { interfaces, duration: _duration, ...rest } = item as MirrorViewRule & { duration?: unknown };
-        return (interfaces && interfaces.length ? interfaces : [defaultMirrorApi()]).map((api) => ({
+    return (rules || []).map((item) => {
+        const { api: _api, interfaces, duration: _duration, ...rest } = item as MirrorViewRule & { api?: TrafficApiScope; duration?: unknown };
+        return {
             ...rest,
-            api,
+            apis: interfaces && interfaces.length ? interfaces : [defaultMirrorApi()],
             traffic_match_rule: removeCallerServiceArguments(rest.traffic_match_rule),
-        }));
+        };
     });
 }
 

@@ -287,15 +287,51 @@ func BuildRateLimitConf(prefix string) *lrl.LocalRateLimit {
 	return rateLimitConf
 }
 
-func BuildRateLimitDescriptors(limitTrigger *traffic_manage.LimitTrigger) ([]*route.RateLimit_Action,
+func limitTriggerPathMatches(limitTrigger *traffic_manage.LimitTrigger, pathSpecifier string) []*apimodel.MatchString {
+	if limitTrigger == nil {
+		return nil
+	}
+	matches := make([]*apimodel.MatchString, 0, len(limitTrigger.GetApis()))
+	for _, api := range limitTrigger.GetApis() {
+		path := api.GetPath()
+		if path == nil {
+			continue
+		}
+		if pathSpecifier == "" || path.GetValue() == pathSpecifier {
+			matches = append(matches, path)
+		}
+	}
+	if len(matches) == 0 && pathSpecifier == "" {
+		matches = append(matches, &apimodel.MatchString{
+			Type:      MatchString_Prefix,
+			Value:     "/",
+			ValueType: apimodel.MatchString_TEXT,
+		})
+	}
+	return matches
+}
+
+func BuildRateLimitDescriptors(limitTrigger *traffic_manage.LimitTrigger, pathSpecifier ...string) ([]*route.RateLimit_Action,
 	[]*ratelimitv32.LocalRateLimitDescriptor) {
 	actions := make([]*route.RateLimit_Action, 0, 8)
 	descriptors := make([]*ratelimitv32.LocalRateLimitDescriptor, 0, 8)
 
 	entries := make([]*envoy_extensions_common_ratelimit_v3.RateLimitDescriptor_Entry, 0, 16)
 
-	methodMatchType := limitTrigger.GetMethod().GetType()
-	methodName := limitTrigger.GetMethod().GetValue()
+	matchPath := ""
+	if len(pathSpecifier) > 0 {
+		matchPath = pathSpecifier[0]
+	}
+	method := &apimodel.MatchString{
+		Type:      MatchString_Prefix,
+		Value:     "/",
+		ValueType: apimodel.MatchString_TEXT,
+	}
+	if paths := limitTriggerPathMatches(limitTrigger, matchPath); len(paths) > 0 {
+		method = paths[0]
+	}
+	methodMatchType := method.GetType()
+	methodName := method.GetValue()
 	if methodName == "" {
 		methodName = "/"
 		methodMatchType = MatchString_Prefix
@@ -904,10 +940,10 @@ func MakeGatewayLocalRateLimit(rateLimitCache cacheapi.RateLimitCache, pathSpeci
 		}
 		// Loop through each LimitTrigger in the RateLimit
 		for _, rule := range rateLimit.GetRules() {
-			if rule.GetMethod().GetValue() != pathSpecifier {
+			if len(limitTriggerPathMatches(rule, pathSpecifier)) == 0 {
 				continue
 			}
-			actions, descriptors := BuildRateLimitDescriptors(rule)
+			actions, descriptors := BuildRateLimitDescriptors(rule, pathSpecifier)
 			rateLimitConf.Descriptors = descriptors
 			ratelimitRule := &route.RateLimit{Actions: actions}
 			switch rateLimit.GetType() {
@@ -946,16 +982,18 @@ func MakeSidecarLocalRateLimit(rateLimitCache cacheapi.RateLimitCache,
 		}
 		// Loop through each LimitTrigger in the RateLimit
 		for _, rule := range rateLimit.GetRules() {
-			actions, descriptors := BuildRateLimitDescriptors(rule)
-			rateLimitConf.Descriptors = descriptors
-			ratelimitRule := &route.RateLimit{Actions: actions}
-			switch rateLimit.GetType() {
-			case apitraffic.RateLimit_LOCAL:
-				ratelimitRule.Stage = wrapperspb.UInt32(LocalRateLimitStage)
-			case apitraffic.RateLimit_GLOBAL:
-				ratelimitRule.Stage = wrapperspb.UInt32(DistributedRateLimitStage)
+			for _, path := range limitTriggerPathMatches(rule, "") {
+				actions, descriptors := BuildRateLimitDescriptors(rule, path.GetValue())
+				rateLimitConf.Descriptors = descriptors
+				ratelimitRule := &route.RateLimit{Actions: actions}
+				switch rateLimit.GetType() {
+				case apitraffic.RateLimit_LOCAL:
+					ratelimitRule.Stage = wrapperspb.UInt32(LocalRateLimitStage)
+				case apitraffic.RateLimit_GLOBAL:
+					ratelimitRule.Stage = wrapperspb.UInt32(DistributedRateLimitStage)
+				}
+				ratelimits = append(ratelimits, ratelimitRule)
 			}
-			ratelimits = append(ratelimits, ratelimitRule)
 		}
 	}
 	filters["envoy.filters.http.local_ratelimit"] = MustNewAny(rateLimitConf)

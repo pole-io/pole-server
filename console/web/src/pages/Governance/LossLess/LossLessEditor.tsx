@@ -32,7 +32,6 @@ import { PolicySourceType } from 'services/auth_policy';
 import { ServiceView } from 'services/service';
 import { NamespaceView } from 'services/namespace';
 import {
-    buildLosslessPreviewSpec,
     buildLosslessSubmitPayload,
     buildWarmupCurvePoints,
     defaultLosslessRuleDraft,
@@ -45,13 +44,11 @@ import {
     LosslessPayloadMatch,
     LosslessProbeProtocol,
     LosslessRuleDraft,
-    LosslessSpecFormat,
     metadataToRecord,
     normalizeLosslessRuleDraft,
     payloadMatchOptions,
     payloadMatchText,
     protocolOptions,
-    stringifyLosslessSpec,
     validateLosslessDraft,
 } from './losslessEditorUtils';
 
@@ -97,7 +94,6 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
     const { editRule } = useAppSelector(selectLosslessRule);
 
     const [losslessRule, setLosslessRule] = React.useState<LosslessRuleDraft>(() => defaultLosslessRuleDraft());
-    const [specFormat, setSpecFormat] = React.useState<LosslessSpecFormat>('yaml');
     const [editor, setEditor] = React.useState<{
         editable: boolean;
         publishView: boolean;
@@ -160,10 +156,8 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
         .map((service: ServiceView) => ({ label: service.name, value: service.name }));
 
     const editable = editor.editable;
-    const validationErrors = React.useMemo(() => validateLosslessDraft(losslessRule), [losslessRule]);
-    const previewSpec = React.useMemo(() => buildLosslessPreviewSpec(losslessRule), [losslessRule]);
-    const previewText = React.useMemo(() => stringifyLosslessSpec(previewSpec, specFormat), [previewSpec, specFormat]);
     const submitPayload = React.useMemo(() => buildLosslessSubmitPayload(losslessRule), [losslessRule]);
+    const losslessEnabled = losslessRule.lossless_online.delay_register.enable || losslessRule.lossless_online.warmup.enable || losslessRule.lossless_offline.enable;
     const metadataRecord = React.useMemo(() => metadataToRecord(losslessRule.metadata), [losslessRule.metadata]);
     const warmupCurvePoints = React.useMemo(() => buildWarmupCurvePoints(losslessRule.lossless_online.warmup.curvature), [losslessRule.lossless_online.warmup.curvature]);
 
@@ -205,15 +199,6 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
                 ...patch,
             },
         }));
-    };
-
-    const copyPreview = async () => {
-        try {
-            await navigator.clipboard.writeText(previewText);
-            openInfoNotification('复制成功', '已复制无损规则 Spec');
-        } catch (err) {
-            openErrNotification('复制失败', (err as Error).message);
-        }
     };
 
     const onSubmit: FormProps['onSubmit'] = async () => {
@@ -322,7 +307,7 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
                     </div>
                     <div className={shared.field}>
                         <div className={shared.fieldLabel}>启用状态</div>
-                        {renderStatusTag(previewSpec.metadata.enabled)}
+                        {renderStatusTag(losslessEnabled)}
                     </div>
                     <div className={`${shared.field} ${shared.full}`}>
                         <div className={shared.fieldLabel}>规则标签</div>
@@ -684,38 +669,6 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
         </section>
     );
 
-    const renderSpecPane = (
-        <aside className={styles.specPane}>
-            <div className={styles.specCard}>
-                <div className={styles.specToolbar}>
-                    <div>
-                        <div className={styles.specTitle}>实时规则 SPEC</div>
-                        <div className={styles.specDesc}>保存前核对无损规则生命周期配置</div>
-                    </div>
-                    <div className={styles.specActions}>
-                        <div className={styles.specToggle}>
-                            <button
-                                className={specFormat === 'yaml' ? styles.specToggleActive : ''}
-                                type="button"
-                                onClick={() => setSpecFormat('yaml')}
-                            >YAML</button>
-                            <button
-                                className={specFormat === 'json' ? styles.specToggleActive : ''}
-                                type="button"
-                                onClick={() => setSpecFormat('json')}
-                            >JSON</button>
-                        </div>
-                        <Button size="small" theme="default" variant="outline" onClick={copyPreview}>复制</Button>
-                    </div>
-                </div>
-                <pre className={styles.specCode}>{previewText}</pre>
-                <div className={validationErrors.length ? styles.specFooterError : styles.specFooterOk}>
-                    {validationErrors.length ? validationErrors[0].message : '校验通过，可保存'}
-                </div>
-            </div>
-        </aside>
-    );
-
     const renderStickyTool = (
         <StickyTool style={{ zIndex: 1000 }} placement="right-bottom" offset={[-10, 200]}>
             <StickyItem
@@ -752,7 +705,6 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
                         {renderWarmup}
                         {renderOffline}
                     </div>
-                    {renderSpecPane}
                 </div>
                 {editor.publishView && (
                     <PublishForm

@@ -36,12 +36,12 @@ export interface MockPreviewSpec {
         description: string;
         rules: Array<{
             name: string;
-            interface: {
+            interfaces: Array<{
                 protocol: string;
                 method: string;
                 path: string;
                 op: string;
-            };
+            }>;
             match: {
                 relation: string;
                 conditions: Array<{
@@ -122,7 +122,7 @@ export function defaultMockMatchRule(): TrafficMatchRule {
 
 export function defaultMockSubRule(): MockRule {
     return {
-        api: defaultMockApi(),
+        apis: [defaultMockApi()],
         traffic_match_rule: defaultMockMatchRule(),
         response: {
             code: '200',
@@ -206,20 +206,27 @@ export function applyMockCallerToMatchRule(match: TrafficMatchRule | undefined, 
     };
 }
 
+function normalizeMockApis(rule?: MockRule): TrafficApiScope[] {
+    const apis = rule?.apis?.length ? rule.apis : [rule?.api || defaultMockApi()];
+    return apis.map((api) => ({
+        ...defaultMockApi(),
+        ...(api || {}),
+        path: {
+            ...defaultMockMatchValue(),
+            ...(api?.path || {}),
+        },
+    }));
+}
+
 export function normalizeMockRule(rule?: MockRule): MockRule {
     const source = rule || defaultMockSubRule();
     const response = source.response || {};
     const legacyResponse = response as Record<string, unknown>;
+    const apis = normalizeMockApis(source);
     return {
         ...source,
-        api: {
-            ...defaultMockApi(),
-            ...(source.api || {}),
-            path: {
-                ...defaultMockMatchValue(),
-                ...(source.api?.path || {}),
-            },
-        },
+        api: apis[0],
+        apis,
         traffic_match_rule: normalizeMockMatchRule(source.traffic_match_rule),
         response: {
             code: response.code !== undefined ? String(response.code) : String(legacyResponse.status_code || '200'),
@@ -251,7 +258,7 @@ export function buildMockRulesForSubmit(rules: MockRule[], caller?: MockCallerSc
             ? applyMockCallerToMatchRule(current.traffic_match_rule, caller)
             : removeMockCallerServiceArguments(current.traffic_match_rule);
         return {
-            api: current.api,
+            apis: current.apis?.length ? current.apis : [current.api || defaultMockApi()],
             traffic_match_rule: {
                 matchMode: match.matchMode,
                 arguments: match.arguments || [],
@@ -320,7 +327,7 @@ export function buildMockPreviewSpec(rule: TrafficGovernanceRule, viewRules: Moc
             description: rule.description || '',
             rules: normalizeMockRules({ ...(rule as TrafficMock), rules: viewRules }).map((item, index) => ({
                 name: `mock-subrule-${index + 1}`,
-                interface: apiToPreview(item.api),
+                interfaces: (item.apis?.length ? item.apis : [item.api]).map(apiToPreview),
                 match: matchToPreview(item.traffic_match_rule),
                 response: {
                     delayMs: durationToMs(item.delay),
@@ -360,9 +367,15 @@ export function validateMockView(rule: TrafficGovernanceRule, viewRules: MockRul
     if (!normalized.length) errors.push({ field: 'rules', message: '至少配置 1 条 Mock 子规则' });
     normalized.forEach((item, index) => {
         const displayIndex = index + 1;
-        if (!item.api?.path?.value) {
-            errors.push({ field: `rules.${index}.api.path`, message: `Mock 子规则[${displayIndex}] 接口路径不能为空` });
+        const apis = item.apis?.length ? item.apis : [item.api];
+        if (!apis.length) {
+            errors.push({ field: `rules.${index}.apis`, message: `Mock 子规则[${displayIndex}] 至少配置 1 个接口` });
         }
+        apis.forEach((api, apiIndex) => {
+            if (!api?.path?.value) {
+                errors.push({ field: `rules.${index}.apis.${apiIndex}.path`, message: `Mock 子规则[${displayIndex}] 接口路径不能为空` });
+            }
+        });
         if (durationToMs(item.delay) < 0) {
             errors.push({ field: `rules.${index}.delay`, message: `Mock 子规则[${displayIndex}] 返回延迟不能小于 0` });
         }

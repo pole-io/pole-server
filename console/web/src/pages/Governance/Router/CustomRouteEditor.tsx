@@ -42,11 +42,8 @@ import {
     getWeightStatus,
     isTagInputMatchType,
     prepareRouteRuleDraftForSubmit,
-    stringifyRouteRuleSpec,
     tagsToCommaString,
     validateRouteRuleDraft,
-    RouteSpecFormat,
-    RouteRuleValidationError,
 } from "./routeEditorUtils";
 
 const { FormItem } = Form;
@@ -170,8 +167,6 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
     const [customRouteRule, setCustomRouteRule] = React.useState<CustomRouteDO>(defaultCustomRoute());
     const [collapsedRuleIndexes, setCollapsedRuleIndexes] = React.useState<Set<number>>(new Set());
     const [serviceCollapsed, setServiceCollapsed] = React.useState(false);
-    const [specFormat, setSpecFormat] = React.useState<RouteSpecFormat>('yaml');
-    const [validationErrors, setValidationErrors] = React.useState<RouteRuleValidationError[]>([]);
     const [draggingRuleIndex, setDraggingRuleIndex] = React.useState<number | null>(null);
     const [draggingGroupKey, setDraggingGroupKey] = React.useState<string>('');
 
@@ -214,11 +209,6 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
         editable?: boolean
     }>({ model: 'view', publishView: false, visible: false, editable: op === 'create' || false, });
 
-    const previewSpec = React.useMemo(() => buildRouteRuleSubmitPayload(customRouteRule), [customRouteRule]);
-    const previewText = React.useMemo(() => stringifyRouteRuleSpec(previewSpec, specFormat), [previewSpec, specFormat]);
-    const liveValidationErrors = React.useMemo(() => validateRouteRuleDraft(customRouteRule), [customRouteRule]);
-
-
     React.useEffect(() => {
         dispatch(listAllNamespaces()).then((res) => {
             if (res.meta.requestStatus === 'rejected') {
@@ -258,7 +248,6 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
     const onSubmit: FormProps['onSubmit'] = async (e) => {
         const draftForSubmit = prepareRouteRuleDraftForSubmit(customRouteRule);
         const errors = validateRouteRuleDraft(draftForSubmit);
-        setValidationErrors(errors);
         if (errors.length > 0) {
             openErrNotification('校验失败', errors[0].message);
             return;
@@ -555,8 +544,6 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
     const calleeServiceOptions = serviceDatas
         .filter((opt) => customRouteRule.callee_namespace === '*' || opt.namespace === customRouteRule.callee_namespace)
         .map((opt) => ({ label: opt.name, value: opt.name }));
-
-    const activeValidationErrors = validationErrors.length > 0 ? validationErrors : liveValidationErrors;
 
     const renderSectionHeader = (order: number, title: string, description: string, extra?: React.ReactNode, onClick?: () => void) => (
         <div className={styles.designSectionHeader} onClick={onClick}>
@@ -1252,49 +1239,6 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
         </>
     )
 
-    const copyPreviewText = async () => {
-        try {
-            await navigator.clipboard.writeText(previewText);
-            openInfoNotification('已复制', 'RouteRule Spec 已复制到剪贴板');
-        } catch (err) {
-            openErrNotification('复制失败', '当前浏览器不允许访问剪贴板');
-        }
-    };
-
-    const renderSpecPreview = (
-        <aside className={styles.specPane}>
-            <div className={styles.specCard}>
-                <div className={styles.specToolbar}>
-                    <div>
-                        <div className={styles.specTitle}>实时规则 SPEC</div>
-                        <div className={styles.specDesc}>保存前可核对资源形态</div>
-                    </div>
-                    <div className={styles.specActions}>
-                        <div className={styles.specToggle}>
-                            {(['yaml', 'json'] as RouteSpecFormat[]).map((item) => (
-                                <button
-                                    type="button"
-                                    key={item}
-                                    className={specFormat === item ? styles.specToggleActive : ''}
-                                    onClick={() => setSpecFormat(item)}
-                                >
-                                    {item.toUpperCase()}
-                                </button>
-                            ))}
-                        </div>
-                        <Button size="small" variant="outline" onClick={copyPreviewText}>复制</Button>
-                    </div>
-                </div>
-                <pre className={styles.specCode}>{previewText}</pre>
-                <div className={styles.specFooter}>
-                    {activeValidationErrors.length > 0
-                        ? activeValidationErrors.slice(0, 3).map((item) => <span key={`${item.field}-${item.message}`} className={styles.previewError}>{item.message}</span>)
-                        : <span className={styles.previewOk}>校验通过，可保存并下发</span>}
-                </div>
-            </div>
-        </aside>
-    );
-
     return (
         <div className={styles.editorBody}>
             <Form
@@ -1342,7 +1286,6 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                             )}
                         </div>
                     </div>
-                    {renderSpecPreview}
                 </div>
                 {renderPublishForm}
                 {renderTagDialog()}

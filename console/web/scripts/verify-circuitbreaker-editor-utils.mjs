@@ -130,11 +130,12 @@ const payload = utils.buildCircuitBreakerSubmitPayload(baseDraft);
 assert.equal(payload.name, 'spec-check-circuitbreak');
 assert.equal(payload.level, 'METHOD');
 assert.deepEqual(payload.metadata, { owner: 'codex', scenario: 'sample' });
-assert.equal(payload.block_configs.length, 3, 'two interfaces in one strategy plus one strategy must flatten to three policies');
+assert.equal(payload.block_configs.length, 2, 'each strategy must keep multiple interfaces in one policy');
 assert.equal(payload.block_configs[0].block_config.name, 'payment-error-rate');
-assert.equal(payload.block_configs[0].block_config.api.path.value, '/api/v1/payments');
-assert.equal(payload.block_configs[1].block_config.api.path.value, '/api/v1/refunds');
-assert.equal(payload.block_configs[2].block_config.name, 'payment-consecutive-error');
+assert.equal(payload.block_configs[0].block_config.apis.length, 2);
+assert.equal(payload.block_configs[0].block_config.apis[0].path.value, '/api/v1/payments');
+assert.equal(payload.block_configs[0].block_config.apis[1].path.value, '/api/v1/refunds');
+assert.equal(payload.block_configs[1].block_config.name, 'payment-consecutive-error');
 assert.equal(payload.block_configs[0].recoverCondition.sleepWindow, 30);
 assert.equal(payload.block_configs[0].fallbackConfig.response.code, 503);
 assert.equal(payload.block_configs[0].max_ejection_percent, 100);
@@ -192,5 +193,6 @@ const normalized = utils.createCircuitBreakerDraftFromRule({
 assert.equal(normalized.subrules.length, 1);
 assert.equal(normalized.subrules[0].strategies.length, 1);
 assert.equal(normalized.subrules[0].strategies[0].ifaces[0].path.value, '/api/v1/payments');
+assert.equal(normalized.subrules[0].strategies[0].ifaces[1].path.value, '/api/v1/refunds');
 
 console.log('circuitbreaker editor utils verification passed');

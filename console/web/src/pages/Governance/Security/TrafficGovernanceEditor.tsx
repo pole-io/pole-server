@@ -20,7 +20,6 @@ import {
 } from 'services/types';
 import {
     buildSecurityPoliciesFromView,
-    buildSecurityPreviewSpec,
     defaultProtectedInterface,
     defaultSecurityArgument,
     defaultSecurityMatchRule,
@@ -33,8 +32,6 @@ import {
     SecuritySubRuleKind,
     SecurityViewRule,
     securityMatchSourceOptions,
-    stringifySecuritySpec,
-    TrafficSecuritySpecFormat,
     validateSecurityView,
 } from './trafficSecurityEditorUtils';
 import {
@@ -60,7 +57,6 @@ import {
     TrafficSecurityRule,
 } from 'services/traffic_governance';
 import {
-    buildMockPreviewSpec,
     buildMockRulesForSubmit,
     defaultMockArgument,
     defaultMockCaller,
@@ -75,12 +71,9 @@ import {
     normalizeMockMatchRule,
     normalizeMockRule,
     normalizeMockRules,
-    stringifyMockSpec,
-    TrafficMockSpecFormat,
     validateMockView,
 } from './trafficMockEditorUtils';
 import {
-    buildMirrorPreviewSpec,
     buildMirrorRulesForSubmit,
     callerScopeText,
     defaultMirrorSubRule,
@@ -92,8 +85,6 @@ import {
     normalizeMirrorCallee,
     normalizeMirrorRules,
     removeCallerServiceArguments,
-    stringifyMirrorSpec,
-    TrafficMirrorSpecFormat,
     validateMirrorView,
 } from './trafficMirrorEditorUtils';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
@@ -244,7 +235,8 @@ const rejectEffectText = (policy: TrafficSecurityPolicy) => {
 const securityPolicySummary = (policy: TrafficSecurityPolicy) => {
     const matchCount = policy.traffic_match_rule?.arguments?.length || 0;
     const action = TrafficSecurityActionMap[String(policy.action)] || '-';
-    const api = apiText(policy.api);
+    const apis = policy.apis?.length ? policy.apis : (policy.api ? [policy.api] : []);
+    const api = apis.length ? `${apis.length} 个接口` : apiText(undefined);
     const rejectEffect = rejectEffectText(policy);
     return `${matchCount} 个匹配条件 / ${api} / ${action}${readSecurityAction(policy.action) === TrafficSecurityAction.DENY ? ` / ${rejectEffect}` : ''}`;
 };
@@ -258,6 +250,20 @@ const renderApiScope = (api?: TrafficApiScope) => {
             {api.path?.type && <span className={shared.tagPlain}>{api.path.type}</span>}
             <span className={shared.pathTag}>{api.path?.value || '/'}</span>
             {api.path?.value_type && <span className={shared.tagPlain}>{api.path.value_type}</span>}
+        </div>
+    );
+};
+
+const renderApiScopeList = (apis?: TrafficApiScope[]) => {
+    const rows = apis?.length ? apis : [];
+    if (!rows.length) return renderApiScope(undefined);
+    return (
+        <div className={style.scopeTagList}>
+            {rows.map((api, index) => (
+                <React.Fragment key={`${api.protocol}-${api.method}-${api.path?.value}-${index}`}>
+                    {renderApiScope(api)}
+                </React.Fragment>
+            ))}
         </div>
     );
 };
@@ -351,11 +357,8 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
     const [collapsedMirrorRuleIndexes, setCollapsedMirrorRuleIndexes] = React.useState<Set<number>>(() => new Set());
     const [collapsedMockRuleIndexes, setCollapsedMockRuleIndexes] = React.useState<Set<number>>(() => new Set());
     const [securityViewRules, setSecurityViewRules] = React.useState<SecurityViewRule[]>(() => normalizeSecurityViewRules(defaultTrafficSecurityRule()));
-    const [specFormat, setSpecFormat] = React.useState<TrafficSecuritySpecFormat>('yaml');
     const [mirrorCaller, setMirrorCaller] = React.useState<MirrorCallerScope>(() => defaultMirrorCaller());
-    const [mirrorSpecFormat, setMirrorSpecFormat] = React.useState<TrafficMirrorSpecFormat>('yaml');
     const [mockCaller, setMockCaller] = React.useState<MockCallerScope>(() => defaultMockCaller());
-    const [mockSpecFormat, setMockSpecFormat] = React.useState<TrafficMockSpecFormat>('yaml');
     const [mockBodyDialog, setMockBodyDialog] = React.useState<{ visible: boolean; index: number }>({ visible: false, index: -1 });
 
     React.useEffect(() => {
@@ -439,44 +442,11 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
             .filter((svc: ServiceView) => mockCaller.namespace && mockCaller.namespace !== '*' && svc.namespace === mockCaller.namespace)
             .map((svc: ServiceView) => ({ label: svc.name, value: svc.name })),
     ];
-    const securityPreviewSpec = React.useMemo(() => buildSecurityPreviewSpec(rule, securityViewRules), [rule, securityViewRules]);
     const securityValidationErrors = React.useMemo(() => kind === 'security' ? validateSecurityView(rule, securityViewRules) : [], [kind, rule, securityViewRules]);
-    const securityPreviewText = React.useMemo(() => stringifySecuritySpec(securityPreviewSpec, specFormat), [securityPreviewSpec, specFormat]);
     const mirrorRules = React.useMemo(() => normalizeMirrorRules(rule as TrafficMirror), [rule]);
-    const mirrorPreviewSpec = React.useMemo(() => buildMirrorPreviewSpec(rule, mirrorRules, mirrorCaller), [rule, mirrorRules, mirrorCaller]);
     const mirrorValidationErrors = React.useMemo(() => kind === 'mirror' ? validateMirrorView(rule, mirrorRules, mirrorCaller) : [], [kind, rule, mirrorRules, mirrorCaller]);
-    const mirrorPreviewText = React.useMemo(() => stringifyMirrorSpec(mirrorPreviewSpec, mirrorSpecFormat), [mirrorPreviewSpec, mirrorSpecFormat]);
     const mockRules = React.useMemo(() => normalizeMockRules(rule as TrafficMock), [rule]);
-    const mockPreviewSpec = React.useMemo(() => buildMockPreviewSpec(rule, mockRules, mockCaller), [rule, mockRules, mockCaller]);
     const mockValidationErrors = React.useMemo(() => kind === 'mock' ? validateMockView(rule, mockRules, mockCaller) : [], [kind, rule, mockRules, mockCaller]);
-    const mockPreviewText = React.useMemo(() => stringifyMockSpec(mockPreviewSpec, mockSpecFormat), [mockPreviewSpec, mockSpecFormat]);
-
-    const copySecurityPreview = async () => {
-        try {
-            await navigator.clipboard.writeText(securityPreviewText);
-            openInfoNotification('复制成功', '已复制鉴权规则预览');
-        } catch (error) {
-            openErrNotification('复制失败', (error as Error).message);
-        }
-    };
-
-    const copyMirrorPreview = async () => {
-        try {
-            await navigator.clipboard.writeText(mirrorPreviewText);
-            openInfoNotification('复制成功', '已复制镜像规则预览');
-        } catch (error) {
-            openErrNotification('复制失败', (error as Error).message);
-        }
-    };
-
-    const copyMockPreview = async () => {
-        try {
-            await navigator.clipboard.writeText(mockPreviewText);
-            openInfoNotification('复制成功', '已复制 Mock 规则预览');
-        } catch (error) {
-            openErrNotification('复制失败', (error as Error).message);
-        }
-    };
 
     const setSecurityPolicy = (index: number, updater: (policy: TrafficSecurityPolicy) => TrafficSecurityPolicy) => {
         setRule((prev) => {
@@ -800,8 +770,8 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
         );
     };
 
-    const renderMirrorInterfacesEditor = (interfaces: TrafficApiScope[], onChange: (next: TrafficApiScope[]) => void) => {
-        const rows = interfaces.length ? interfaces : defaultMirrorSubRule().interfaces;
+    const renderMirrorInterfacesEditor = (interfaces: TrafficApiScope[], onChange: (next: TrafficApiScope[]) => void, defaultApi = defaultMirrorSubRule().interfaces[0]) => {
+        const rows = interfaces.length ? interfaces : [defaultApi];
         const updateRow = (index: number, updater: (api: TrafficApiScope) => TrafficApiScope) => {
             onChange(rows.map((item, idx) => idx === index ? updater(item) : item));
         };
@@ -816,7 +786,7 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
                     <span>操作</span>
                 </div>
                 {rows.map((api, index) => {
-                    const current = api || defaultMirrorSubRule().interfaces[0];
+                    const current = api || defaultApi;
                     const path = current.path || defaultMatchValue();
                     return (
                         <div className={style.interfaceRow} key={`${current.protocol}-${current.method}-${index}`}>
@@ -863,7 +833,7 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
                     className={shared.addRuleButton}
                     variant="dashed"
                     icon={<AddIcon />}
-                    onClick={() => onChange([...rows, defaultMirrorSubRule().interfaces[0]])}
+                    onClick={() => onChange([...rows, defaultApi])}
                 >
                     添加接口
                 </Button>
@@ -1354,15 +1324,16 @@ ${current.response?.body || ''}`}
                     const item = normalizeMockRule(source);
                     const isCollapsed = collapsedMockRuleIndexes.has(index);
                     const match = normalizeMockMatchRule(item.traffic_match_rule);
+                    const apis = item.apis?.length ? item.apis : [item.api];
                     return (
-                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`${item.api?.method}-${index}`}>
+                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`${apis[0]?.method}-${index}`}>
                             <div className={shared.policyHead} onClick={() => toggleMockRuleCollapsed(index)}>
                                 <div className={shared.policyHeadMain}>
                                     <span className={shared.caret}><ChevronRightIcon /></span>
                                     <div>
                                         <div className={shared.policyIndex}>Mock 子规则 [{index + 1}]</div>
                                         <div className={shared.policySummary}>
-                                            {text(item.api?.method)} {item.api?.path?.value || '-'} · {match.matchMode === MatchLogic.OR ? '满足任一条件即 Mock' : '需同时满足全部条件'}
+                                            {apis.length} 个接口 · {match.matchMode === MatchLogic.OR ? '满足任一条件即 Mock' : '需同时满足全部条件'}
                                         </div>
                                     </div>
                                 </div>
@@ -1373,7 +1344,7 @@ ${current.response?.body || ''}`}
                             <div className={shared.policyBody}>
                                 <div className={shared.step} data-step="1">
                                     <div className={shared.stepTitle}>选择接口</div>
-                                    <div className={shared.stepContent}>{renderApiScope(item.api)}</div>
+                                    <div className={shared.stepContent}>{renderApiScopeList(apis.filter(Boolean) as TrafficApiScope[])}</div>
                                 </div>
                                 <div className={shared.step} data-step="2">
                                     <div className={shared.stepTitle}>流量匹配</div>
@@ -1652,15 +1623,17 @@ ${current.response?.body || ''}`}
                     const item = normalizeMockRule(source);
                     const isCollapsed = collapsedMockRuleIndexes.has(index);
                     const match = normalizeMockMatchRule(item.traffic_match_rule);
+                    const mockDefaultApi = defaultMockSubRule().apis?.[0] || defaultMirrorSubRule().interfaces[0];
+                    const apis = item.apis?.length ? item.apis : [item.api || mockDefaultApi].filter(Boolean) as TrafficApiScope[];
                     return (
-                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`${item.api?.method}-${index}`}>
+                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`${apis[0]?.method}-${index}`}>
                             <div className={shared.policyHead} onClick={() => toggleMockRuleCollapsed(index)}>
                                 <div className={shared.policyHeadMain}>
                                     <span className={shared.caret}><ChevronRightIcon /></span>
                                     <div>
                                         <div className={shared.policyIndex}>Mock 子规则 [{index + 1}]</div>
                                         <div className={shared.policySummary}>
-                                            {text(item.api?.method)} {item.api?.path?.value || '-'} · {match.matchMode === MatchLogic.OR ? '满足任一条件即 Mock' : '需同时满足全部条件'}
+                                            {apis.length} 个接口 · {match.matchMode === MatchLogic.OR ? '满足任一条件即 Mock' : '需同时满足全部条件'}
                                         </div>
                                     </div>
                                 </div>
@@ -1682,9 +1655,9 @@ ${current.response?.body || ''}`}
                             </div>
                             <div className={shared.policyBody}>
                                 <div className={shared.step} data-step="1">
-                                    <div className={shared.stepTitle}>选择接口<span className={shared.stepHint}>确定这条 Mock 子规则接管哪个接口</span></div>
+                                    <div className={shared.stepTitle}>选择接口<span className={shared.stepHint}>确定这条 Mock 子规则接管哪些接口</span></div>
                                     <div className={shared.stepContent}>
-                                        {renderMockApiEditor(item.api, (next) => setMockRule(index, (current) => ({ ...current, api: next })))}
+                                        {renderMirrorInterfacesEditor(apis, (next) => setMockRule(index, (current) => ({ ...current, apis: next, api: next[0] })), mockDefaultApi)}
                                     </div>
                                 </div>
                                 <div className={shared.step} data-step="2">
@@ -1747,120 +1720,6 @@ ${current.response?.body || ''}`}
                 {editable ? renderEditablePayload() : renderReadonlyPayload()}
             </div>
         </div>
-    );
-
-    const renderSecuritySpecPane = () => (
-        <aside className={style.specPane}>
-            <div className={style.specCard}>
-                <div className={style.specToolbar}>
-                    <div>
-                        <div className={style.specTitle}>实时规则 SPEC</div>
-                        <div className={style.specDesc}>前端交互预览，不代表后端 schema 变更</div>
-                    </div>
-                    <div className={style.specActions}>
-                        <div className={style.specToggle}>
-                            <button
-                                type="button"
-                                className={specFormat === 'yaml' ? style.specToggleActive : ''}
-                                onClick={() => setSpecFormat('yaml')}
-                            >
-                                YAML
-                            </button>
-                            <button
-                                type="button"
-                                className={specFormat === 'json' ? style.specToggleActive : ''}
-                                onClick={() => setSpecFormat('json')}
-                            >
-                                JSON
-                            </button>
-                        </div>
-                        <Button size="small" variant="outline" onClick={copySecurityPreview}>复制</Button>
-                    </div>
-                </div>
-                <pre className={style.specCode}>{securityPreviewText}</pre>
-                <div className={securityValidationErrors.length ? style.specFooterError : style.specFooterOk}>
-                    {securityValidationErrors.length
-                        ? securityValidationErrors.slice(0, 3).map((item) => <span key={`${item.field}-${item.message}`} className={style.previewError}>{item.message}</span>)
-                        : <span className={style.previewOk}>校验通过，可保存并下发</span>}
-                </div>
-            </div>
-        </aside>
-    );
-
-    const renderMirrorSpecPane = () => (
-        <aside className={style.specPane}>
-            <div className={style.specCard}>
-                <div className={style.specToolbar}>
-                    <div>
-                        <div className={style.specTitle}>实时规则 SPEC</div>
-                        <div className={style.specDesc}>保存预览；服务范围与子规则随编辑实时刷新</div>
-                    </div>
-                    <div className={style.specActions}>
-                        <div className={style.specToggle}>
-                            <button
-                                type="button"
-                                className={mirrorSpecFormat === 'yaml' ? style.specToggleActive : ''}
-                                onClick={() => setMirrorSpecFormat('yaml')}
-                            >
-                                YAML
-                            </button>
-                            <button
-                                type="button"
-                                className={mirrorSpecFormat === 'json' ? style.specToggleActive : ''}
-                                onClick={() => setMirrorSpecFormat('json')}
-                            >
-                                JSON
-                            </button>
-                        </div>
-                        <Button size="small" variant="outline" onClick={copyMirrorPreview}>复制</Button>
-                    </div>
-                </div>
-                <pre className={style.specCode}>{mirrorPreviewText}</pre>
-                <div className={mirrorValidationErrors.length ? style.specFooterError : style.specFooterOk}>
-                    {mirrorValidationErrors.length
-                        ? mirrorValidationErrors.slice(0, 3).map((item) => <span key={`${item.field}-${item.message}`} className={style.previewError}>{item.message}</span>)
-                        : <span className={style.previewOk}>校验通过，可保存并下发</span>}
-                </div>
-            </div>
-        </aside>
-    );
-
-    const renderMockSpecPane = () => (
-        <aside className={style.specPane}>
-            <div className={style.specCard}>
-                <div className={style.specToolbar}>
-                    <div>
-                        <div className={style.specTitle}>实时规则 SPEC</div>
-                        <div className={style.specDesc}>前端交互预览，不代表后端 schema 变更</div>
-                    </div>
-                    <div className={style.specActions}>
-                        <div className={style.specToggle}>
-                            <button
-                                type="button"
-                                className={mockSpecFormat === 'yaml' ? style.specToggleActive : ''}
-                                onClick={() => setMockSpecFormat('yaml')}
-                            >
-                                YAML
-                            </button>
-                            <button
-                                type="button"
-                                className={mockSpecFormat === 'json' ? style.specToggleActive : ''}
-                                onClick={() => setMockSpecFormat('json')}
-                            >
-                                JSON
-                            </button>
-                        </div>
-                        <Button size="small" variant="outline" onClick={copyMockPreview}>复制</Button>
-                    </div>
-                </div>
-                <pre className={style.specCode}>{mockPreviewText}</pre>
-                <div className={mockValidationErrors.length ? style.specFooterError : style.specFooterOk}>
-                    {mockValidationErrors.length
-                        ? mockValidationErrors.slice(0, 3).map((item) => <span key={`${item.field}-${item.message}`} className={style.previewError}>{item.message}</span>)
-                        : <span className={style.previewOk}>校验通过，可保存并下发</span>}
-                </div>
-            </div>
-        </aside>
     );
 
     const renderStickyTool = (
@@ -1961,17 +1820,14 @@ ${current.response?.body || ''}`}
                 {kind === 'security' ? (
                     <div className={style.securityEditorShell}>
                         <div className={style.formPane}>{formSections}</div>
-                        {renderSecuritySpecPane()}
                     </div>
                 ) : kind === 'mirror' ? (
                     <div className={style.securityEditorShell}>
                         <div className={style.formPane}>{formSections}</div>
-                        {renderMirrorSpecPane()}
                     </div>
                 ) : kind === 'mock' ? (
                     <div className={style.securityEditorShell}>
                         <div className={style.formPane}>{formSections}</div>
-                        {renderMockSpecPane()}
                     </div>
                 ) : formSections}
                 {renderStickyTool}

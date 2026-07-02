@@ -16,6 +16,10 @@ interface ILabelInputProps {
     disabled?: boolean;
     keyPlaceholder?: string;
     valuePlaceholder?: string;
+    hideLabel?: boolean;
+    editorId?: string;
+    emptyId?: string;
+    countId?: string;
 }
 
 const normalizeLabels = (value: unknown): Label[] => {
@@ -43,6 +47,10 @@ const LabelInput: React.FC<ILabelInputProps> = ({
     disabled,
     keyPlaceholder = '标签键',
     valuePlaceholder = '标签值',
+    hideLabel = false,
+    editorId,
+    emptyId,
+    countId,
 }) => {
     const watchedLabels = Form.useWatch(name, form);
     const [labels, setLabels] = React.useState<Label[]>(() => normalizeLabels(form?.getFieldValue(name)));
@@ -56,6 +64,14 @@ const LabelInput: React.FC<ILabelInputProps> = ({
 
     const labelsValidator: CustomValidator = () => {
         const currentLabels = normalizeLabels(form?.getFieldValue(name) ?? labels);
+        const missingKey = currentLabels.some((item) => !item.key.trim() && item.value.trim());
+        if (missingKey) {
+            return {
+                result: false,
+                type: 'error',
+                message: '标签键不能为空',
+            };
+        }
         const filledKeys = currentLabels.map((item) => item.key.trim()).filter(Boolean);
         const hasDuplicate = filledKeys.length !== new Set(filledKeys).size;
         if (hasDuplicate) {
@@ -113,25 +129,24 @@ const LabelInput: React.FC<ILabelInputProps> = ({
     };
 
     const renderEditor = (setFields?: (fields: FieldData[]) => void) => (
-        <div className={style.editor}>
+        <div id={editorId} className={style.editor}>
             <div className={style.editorHeader}>
                 <span>键</span>
                 <span>值</span>
                 <span>操作</span>
             </div>
             {labels.length === 0 ? (
-                <div className={style.emptyEditor}>
+                <div id={emptyId} className={style.emptyEditor}>
                     <div>暂无标签</div>
-                    <Button size="small" variant="text" icon={<AddIcon />} onClick={() => addLabel(setFields)}>
-                        添加标签
-                    </Button>
                 </div>
             ) : (
                 <div className={style.rows}>
                     {labels.map((item, index) => {
                         const duplicated = item.key.trim() !== '' && keyCount[item.key.trim()] > 1;
+                        const missingKey = !item.key.trim() && item.value.trim();
+                        const rowError = missingKey ? '标签键不能为空' : duplicated ? '标签 key 不能重复' : '';
                         return (
-                            <div key={`${index}-${item.key}`} className={`${style.row} ${duplicated ? style.rowError : ''}`}>
+                            <div key={`${index}-${item.key}`} className={`${style.row} ${rowError ? style.rowError : ''}`}>
                                 <Input
                                     value={item.key}
                                     clearable
@@ -149,10 +164,13 @@ const LabelInput: React.FC<ILabelInputProps> = ({
                                         shape="square"
                                         variant="text"
                                         onClick={() => removeLabel(index, setFields)}
-                                    >
-                                        <DeleteIcon />
-                                    </Button>
+                                >
+                                    <DeleteIcon />
+                                </Button>
                                 </Popup>
+                                {rowError && (
+                                    <div className={style.rowErrorText}>{rowError}</div>
+                                )}
                             </div>
                         );
                     })}
@@ -162,7 +180,7 @@ const LabelInput: React.FC<ILabelInputProps> = ({
                 <Button size="small" variant="text" icon={<AddIcon />} onClick={() => addLabel(setFields)}>
                     添加标签
                 </Button>
-                <span>{labels.length} 个标签</span>
+                <span id={countId}>{labels.length} 个标签</span>
             </div>
         </div>
     );
@@ -170,7 +188,7 @@ const LabelInput: React.FC<ILabelInputProps> = ({
     return (
         <FormItem>
             {({ setFields }) => (
-                <FormItem label={label} name={name} rules={[{ validator: labelsValidator }]}>
+                <FormItem label={hideLabel ? undefined : label} name={name} rules={[{ validator: labelsValidator }]}>
                     {canEdit ? renderEditor(setFields) : renderReadOnly()}
                 </FormItem>
             )}

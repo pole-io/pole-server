@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Drawer, Form, Input, Space, Button, InputNumber, Radio, Switch, Select, Transfer } from "tdesign-react";
+import { Drawer, Form, Input, Space, Button, InputNumber, Radio, Switch, Select, Transfer, Tag, Tabs } from "tdesign-react";
 import type { FormProps, PageInfo } from 'tdesign-react';
 import { Icon } from 'tdesign-icons-react';
 
@@ -9,9 +9,12 @@ import LabelInput from 'components/LabelInput';
 import { saveRoles, selectRole, updateRoles } from 'modules/auth/role';
 import { describeAllUsers, describeUsers, User } from 'services/users';
 import { describeAllUserGroups, describeUserGroups, UserGroup } from 'services/user_group';
-import { describeRoles } from 'services/role';
+import { describeRoles, Role } from 'services/role';
+import style from './index.module.less';
+import PrincipalPolicyTable from './PrincipalPolicyTable';
 
 const { FormItem } = Form;
+const { TabPanel } = Tabs;
 
 interface IRoleEditorProps {
     modify: boolean;
@@ -23,6 +26,7 @@ interface IRoleEditorProps {
 
 const RoleEditor: React.FC<IRoleEditorProps> = ({ visible, op, modify, closeDrawer, refresh }) => {
     const [form] = Form.useForm();
+    const [editable, setEditable] = React.useState(op !== 'view');
     const dispatch = useAppDispatch();
     const currentRole = useAppSelector(selectRole);
 
@@ -37,6 +41,7 @@ const RoleEditor: React.FC<IRoleEditorProps> = ({ visible, op, modify, closeDraw
         groups: [],
         groupsLoading: false,
     });
+    const [detailRole, setDetailRole] = React.useState<Role | null>(null);
 
     const {
         id,
@@ -52,6 +57,7 @@ const RoleEditor: React.FC<IRoleEditorProps> = ({ visible, op, modify, closeDraw
 
     React.useEffect(() => {
         if (visible) {
+            setEditable(op !== 'view');
 
             const userlist = users ? users.map((user) => ({ value: user.id, label: user.name || '' })) : []
             const grouplist = user_groups ? user_groups.map((group) => ({ value: group.id, label: group.name || '' })) : []
@@ -62,9 +68,10 @@ const RoleEditor: React.FC<IRoleEditorProps> = ({ visible, op, modify, closeDraw
                 role_labels: role_labels,
             });
 
-            // 只有在编辑时才需要获取角色详情
-            if (op === 'edit' && id) {
+            if (op !== 'create' && id) {
                 fetchRoleDetail();
+            } else {
+                setDetailRole(null);
             }
             fetchUserData();
             fetchGroupData();
@@ -82,6 +89,7 @@ const RoleEditor: React.FC<IRoleEditorProps> = ({ visible, op, modify, closeDraw
                 return;
             }
             const role = response.content[0];
+            setDetailRole(role);
             const users = role.users ? role.users.map((user) => user.id) : []
             const groups = role.user_groups ? role.user_groups.map((group) => group.id) : []
             console.log(users, groups);
@@ -156,19 +164,100 @@ const RoleEditor: React.FC<IRoleEditorProps> = ({ visible, op, modify, closeDraw
         console.log("role submit", newData);
 
         let result;
-        if (modify) {
-            result = await dispatch(updateRoles({ state: { ...newData } }))
-        } else {
+        if (op === 'create') {
             result = await dispatch(saveRoles({ state: { ...newData } }))
+        } else {
+            result = await dispatch(updateRoles({ state: { ...newData } }))
         }
         if (result.meta.requestStatus !== 'fulfilled') {
             openErrNotification('请求错误', result?.payload as string);
         } else {
-            openInfoNotification('请求成功', modify ? '修改角色信息成功' : '创建角色成功');
+            openInfoNotification('请求成功', op === 'create' ? '创建角色成功' : '修改角色信息成功');
             closeDrawer();
             refresh();
         }
     }
+
+    const viewRole = detailRole || currentRole as Role;
+    const viewLabels = viewRole?.metadata ? Object.entries(viewRole.metadata) : [];
+    const viewUsers = viewRole?.users || [];
+    const viewGroups = viewRole?.user_groups || [];
+
+    const roleBaseView = (
+        <div className={style.authDetail}>
+            <div className={style.detailField}>
+                <span>角色名</span>
+                <strong>{viewRole?.name || '-'}</strong>
+            </div>
+            <div className={style.detailField}>
+                <span>角色 ID</span>
+                <p>{viewRole?.id || '-'}</p>
+            </div>
+            <div className={style.detailGrid}>
+                <div className={style.detailField}>
+                    <span>来源</span>
+                    <p>{viewRole?.source || '-'}</p>
+                </div>
+                <div className={style.detailField}>
+                    <span>默认角色</span>
+                    <Tag theme={viewRole?.default_role ? 'success' : 'default'} variant="outline">
+                        {viewRole?.default_role ? '是' : '否'}
+                    </Tag>
+                </div>
+                <div className={style.detailField}>
+                    <span>关联用户</span>
+                    <p>{viewUsers.length}</p>
+                </div>
+                <div className={style.detailField}>
+                    <span>关联用户组</span>
+                    <p>{viewGroups.length}</p>
+                </div>
+                <div className={style.detailField}>
+                    <span>时间</span>
+                    <p>修改: {viewRole?.mtime || '-'}<br />创建: {viewRole?.ctime || '-'}</p>
+                </div>
+            </div>
+            <div className={style.detailField}>
+                <span>备注</span>
+                <p>{viewRole?.comment || '-'}</p>
+            </div>
+            <div className={style.detailField}>
+                <span>用户</span>
+                <div className={style.detailLabels}>
+                    {viewUsers.length > 0 ? viewUsers.map((user) => (
+                        <em key={user.id}>{user.name || user.id}</em>
+                    )) : '-'}
+                </div>
+            </div>
+            <div className={style.detailField}>
+                <span>用户组</span>
+                <div className={style.detailLabels}>
+                    {viewGroups.length > 0 ? viewGroups.map((group) => (
+                        <em key={group.id}>{group.name || group.id}</em>
+                    )) : '-'}
+                </div>
+            </div>
+            <div className={style.detailField}>
+                <span>角色标签</span>
+                <div className={style.detailLabels}>
+                    {viewLabels.length > 0 ? viewLabels.map(([key, value]) => (
+                        <em key={key}>{key}: {value}</em>
+                    )) : '-'}
+                </div>
+            </div>
+        </div>
+    );
+
+    const roleView = (
+        <Tabs defaultValue="base">
+            <TabPanel value="base" label="基础信息">
+                {roleBaseView}
+            </TabPanel>
+            <TabPanel value="permission" label="权限信息">
+                <PrincipalPolicyTable principalId={viewRole?.id} principalType={3} />
+            </TabPanel>
+        </Tabs>
+    );
 
     const userForm = (
         <Form
@@ -187,9 +276,9 @@ const RoleEditor: React.FC<IRoleEditorProps> = ({ visible, op, modify, closeDraw
                     { max: 64, message: '长度不超过64个字符' },
                 ]}
             >
-                <Input disabled={op === 'edit'} />
+                <Input disabled={op !== 'create'} />
             </FormItem>
-            {op === 'edit' && (
+            {op !== 'create' && (
                 <FormItem
                     label={'来源'}
                     name={'source'}
@@ -206,7 +295,7 @@ const RoleEditor: React.FC<IRoleEditorProps> = ({ visible, op, modify, closeDraw
                     { max: 255, message: '长度不超过255个字符' }
                 ]}
             >
-                <Input />
+                <Input disabled={!editable} />
             </FormItem>
             <FormItem
                 label={'用户'}
@@ -215,6 +304,7 @@ const RoleEditor: React.FC<IRoleEditorProps> = ({ visible, op, modify, closeDraw
                 <Transfer
                     search={true}
                     data={searchState.users}
+                    disabled={!editable}
                 />
             </FormItem>
             <FormItem
@@ -224,15 +314,16 @@ const RoleEditor: React.FC<IRoleEditorProps> = ({ visible, op, modify, closeDraw
                 <Transfer
                     search={true}
                     data={searchState.groups}
+                    disabled={!editable}
                 />
             </FormItem>
             <LabelInput
                 form={form}
                 label='角色标签'
                 name='role_labels'
-                disabled={op === 'view'}
+                editable={editable}
             />
-            {op !== 'view' && (
+            {editable && (
                 <FormItem style={{ marginTop: 100 }}>
                     <Space>
                         <Button type="submit" theme="primary">
@@ -248,13 +339,22 @@ const RoleEditor: React.FC<IRoleEditorProps> = ({ visible, op, modify, closeDraw
         <div>
             <Drawer
                 size='large'
-                header={op === 'view' ? '详细' : modify ? "编辑" : "创建"}
-                footer={false}
+                header={op === 'create' ? "创建角色" : editable ? "编辑角色" : "角色详情"}
+                footer={op === 'view' && !editable ? (
+                    <Space>
+                        <Button theme="primary" onClick={() => setEditable(true)}>
+                            编辑
+                        </Button>
+                        <Button theme="default" onClick={closeDrawer}>
+                            关闭
+                        </Button>
+                    </Space>
+                ) : false}
                 visible={visible}
                 showOverlay={false}
                 onClose={closeDrawer}
             >
-                {userForm}
+                {editable ? userForm : roleView}
             </Drawer>
         </div>
     );

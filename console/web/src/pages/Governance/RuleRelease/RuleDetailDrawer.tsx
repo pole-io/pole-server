@@ -12,7 +12,7 @@ interface RuleDetailDrawerProps {
     children: React.ReactNode;
 }
 
-export const WIDE_RULE_DETAIL_DRAWER_SIZE = 'min(1560px, calc(100vw - 40px))';
+export const WIDE_RULE_DETAIL_DRAWER_SIZE = 'clamp(860px, 60vw, 1180px)';
 
 const RuleDetailDrawer: React.FC<RuleDetailDrawerProps> = ({ visible, title, subtitle, size = 'min(1080px, 92vw)', onClose, children }) => (
     <Drawer

@@ -21,7 +21,7 @@
 .row {
   display: grid;
   grid-template-columns: minmax(160px, 1fr) minmax(180px, 1.2fr) 48px;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   padding: 8px;
   background: #f8fafc;
@@ -32,6 +32,13 @@
 .rowError {
   background: #fff8f6;
   border-color: #f5b7aa;
+}
+
+.rowErrorText {
+  grid-column: 1 / -1;
+  color: #d54941;
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .empty,

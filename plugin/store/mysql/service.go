@@ -113,7 +113,10 @@ func (ss *serviceStore) deleteService(id, serviceName, namespaceName string) err
 		return err
 	}
 
-	// TODO 需要清理服务订阅信息数据
+	if err := deleteServiceSubscribersByService(tx, serviceName, namespaceName); err != nil {
+		log.Errorf("[Store][database] delete service_subscribe_graph(%s) err : %s", id, err.Error())
+		return err
+	}
 
 	if err := tx.Commit(); err != nil {
 		log.Errorf("[Store][database] add service tx commit err: %s", err.Error())
@@ -1350,6 +1353,19 @@ func deleteServiceMetadata(tx *BaseTx, service, namespace string) error {
 	log.Infof("[Store][database] delete service(%s) namespace(%s)", service, namespace)
 	delSql := "delete from service_metadata where id IN (select id from service where name = ? and namespace = ?)"
 	if _, err := tx.Exec(delSql, service, namespace); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func deleteServiceSubscribersByService(tx *BaseTx, service, namespace string) error {
+	log.Infof("[Store][database] delete service_subscribe_graph service(%s) namespace(%s)", service, namespace)
+	delSql := `
+		delete from service_subscribe_graph
+		where (caller_name = ? and caller_namespace = ?)
+		   or (callee_name = ? and callee_namespace = ?)`
+	if _, err := tx.Exec(delSql, service, namespace, service, namespace); err != nil {
 		return err
 	}
 

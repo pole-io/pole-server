@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { enableUserToken, listOneUser, resetUserToken, selectUser } from "modules/user/users";
+import { describeAuthPolicies, PolicyRule } from "services/auth_policy";
 import { User } from "services/users";
 import { openErrNotification, openInfoNotification } from "utils/notifition";
 
@@ -33,8 +34,11 @@ const UserDetailTable: React.FC<IUserDetailProps> = ({ }) => {
         loading: boolean;
         user: User;
         data: TableProps['data'];
+        policies: PolicyRule[];
+        policyTotal: number;
+        policyLoading: boolean;
         fetchError: boolean;
-    }>({ loading: false, user: {} as User, data: [], fetchError: false });
+    }>({ loading: false, user: {} as User, data: [], policies: [], policyTotal: 0, policyLoading: false, fetchError: false });
 
     React.useEffect(() => {
         if (userId && userId.length > 0) {
@@ -52,7 +56,6 @@ const UserDetailTable: React.FC<IUserDetailProps> = ({ }) => {
             }
 
             const { viewUser } = res.payload as { viewUser: User };
-            console.log('viewUser', viewUser);
 
             if (viewUser) {
                 form.setFieldsValue({
@@ -64,8 +67,30 @@ const UserDetailTable: React.FC<IUserDetailProps> = ({ }) => {
                     mobile: viewUser.mobile,
                     user_labels: viewUser.metadata ? Object.entries(viewUser.metadata).map(([key, value]) => ({ key, value })) : [],
                 });
+                loadUserPolicies(viewUser.id || (userId as string));
             }
         })
+    }
+
+    const loadUserPolicies = async (id: string) => {
+        setViewState(prev => ({ ...prev, policyLoading: true }));
+        try {
+            const ret = await describeAuthPolicies({
+                principal_id: id,
+                principal_type: 1,
+                offset: 0,
+                limit: 100,
+            });
+            setViewState(prev => ({
+                ...prev,
+                policies: ret.content,
+                policyTotal: ret.totalCount,
+                policyLoading: false,
+            }));
+        } catch (error) {
+            setViewState(prev => ({ ...prev, policyLoading: false }));
+            openErrNotification('请求错误', `获取关联策略失败, ${(error as Error).message}`);
+        }
     }
 
     const handleChangePassword = () => {
@@ -185,6 +210,74 @@ const UserDetailTable: React.FC<IUserDetailProps> = ({ }) => {
         </Form>
     )
 
+    const policyColumns: TableProps['columns'] = [
+        {
+            colKey: 'name',
+            title: '策略名称',
+            cell: ({ row }) => (
+                <Link
+                    theme="primary"
+                    onClick={() => navigate(`/auth/policies/detail?id=${row.id}&name=${row.name}`)}
+                >
+                    {row.name}
+                </Link>
+            ),
+        },
+        {
+            colKey: 'action',
+            title: '行为',
+            width: 120,
+            cell: ({ row }) => row.action || '-',
+        },
+        {
+            colKey: 'default_strategy',
+            title: '默认策略',
+            width: 120,
+            cell: ({ row }) => (
+                <Tag theme={row.default_strategy ? 'success' : 'default'} variant="outline">
+                    {row.default_strategy ? '是' : '否'}
+                </Tag>
+            ),
+        },
+        {
+            colKey: 'comment',
+            title: '描述',
+            ellipsis: true,
+            cell: ({ row }) => row.comment || '-',
+        },
+        {
+            colKey: 'time',
+            title: '操作时间',
+            width: 210,
+            cell: ({ row }) => (
+                <span>
+                    修改: {row.mtime || '-'}
+                    <br />
+                    创建: {row.ctime || '-'}
+                </span>
+            ),
+        },
+    ];
+
+    const policyTable = (
+        <Table
+            rowKey="id"
+            size="medium"
+            tableLayout="auto"
+            cellEmptyContent="-"
+            loading={viewState.policyLoading}
+            columns={policyColumns}
+            data={viewState.policies}
+            pagination={{
+                pageSize: 100,
+                total: viewState.policyTotal,
+                current: 1,
+                showPageSize: false,
+                showJumper: false,
+            }}
+        />
+    );
+
     return (
         <>
             <Space direction="vertical" style={{ width: '100%' }}>
@@ -220,18 +313,21 @@ const UserDetailTable: React.FC<IUserDetailProps> = ({ }) => {
                     </Loading>
                 </Card>
 
-                {viewUser?.user_type !== 'main' && (
-                    <Card>
-                        <Tabs>
-                            <TabPanel value="user-group" label="用户组信息">
-                            </TabPanel>
-                            <TabPanel value="role" label="角色信息">
-                            </TabPanel>
-                            <TabPanel value="permission" label="权限信息">
-                            </TabPanel>
-                        </Tabs>
-                    </Card>
-                )}
+                <Card>
+                    <Tabs>
+                        {viewUser?.user_type !== 'main' && (
+                            <>
+                                <TabPanel value="user-group" label="用户组信息">
+                                </TabPanel>
+                                <TabPanel value="role" label="角色信息">
+                                </TabPanel>
+                            </>
+                        )}
+                        <TabPanel value="permission" label="权限信息">
+                            {policyTable}
+                        </TabPanel>
+                    </Tabs>
+                </Card>
 
             </Space>
         </>

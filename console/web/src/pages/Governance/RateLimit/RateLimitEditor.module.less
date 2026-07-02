@@ -20,7 +20,7 @@
 .rateLimitEditorShell {
   align-items: stretch;
   display: grid;
-  grid-template-columns: minmax(760px, 1fr) clamp(360px, 28vw, 420px);
+  grid-template-columns: minmax(0, 1fr);
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -90,6 +90,7 @@
   :global(.t-input__wrap),
   :global(.t-select),
   :global(.t-select__wrap),
+  :global(.t-tag-input),
   :global(.t-input-number) {
     width: 100%;
   }

@@ -1,19 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Popconfirm } from 'tdesign-react';
-import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
+import { Link, Table, Button, PrimaryTableProps, Tooltip, TableRowData, Popconfirm, Input, Select } from 'tdesign-react';
+import { DeleteIcon, CreditcardIcon, SearchIcon } from 'tdesign-icons-react';
 import { useNavigate } from 'react-router-dom';
 
-import Search from 'components/Search';
 import Text from 'components/Text';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { Service } from 'services/service';
+import { NamespaceView } from 'services/namespace';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import ServiceEditor from './ServiceEditor';
 import style from './index.module.less';
 import { cleanServicePage, editorService, listServices, removeServices, resetService, selectService } from 'modules/discovery/service';
-import AuthorizeInput from 'components/Authorize';
-import { PolicySourceType } from 'services/auth_policy';
+import { listAllNamespaces, selectNamespace } from 'modules/namespace';
 import { Op } from 'services/types';
 
 function parseCount(value?: string | number) {
@@ -27,6 +26,7 @@ const columns = (operateService: (op: Op, row: TableRowData) => void, redirect: 
     {
         colKey: 'name',
         title: t('services.name'),
+        width: 260,
         fixed: 'left',
         cell: ({ row }) => {
             return (
@@ -38,7 +38,6 @@ const columns = (operateService: (op: Op, row: TableRowData) => void, redirect: 
                         >{row.name}</Link>
                     </div>
                     <div className={style.serviceMeta}>
-                        <span>{row.namespace || '-'}</span>
                         {row.comment && <span>{row.comment}</span>}
                     </div>
                 </div>
@@ -46,8 +45,15 @@ const columns = (operateService: (op: Op, row: TableRowData) => void, redirect: 
         },
     },
     {
+        colKey: 'namespace',
+        title: '命名空间',
+        width: 180,
+        cell: ({ row: { namespace } }) => <Text>{namespace || '-'}</Text>,
+    },
+    {
         colKey: 'owner',
         title: '归属',
+        width: 150,
         cell: ({ row: { department, business } }) => {
             if (!hasValue(department) && !hasValue(business)) return <Text>-</Text>;
             return (
@@ -61,14 +67,20 @@ const columns = (operateService: (op: Op, row: TableRowData) => void, redirect: 
     {
         colKey: 'health/total',
         title: t('services.healthTotal'),
+        width: 150,
         cell: ({ row: { healthy_instance_count, total_instance_count } }) => {
-            const healthy = parseCount(healthy_instance_count);
-            const total = parseCount(total_instance_count);
-            const rate = total > 0 ? Math.round((healthy / total) * 100) : 0;
+            const totalInstances = parseCount(total_instance_count);
+            const healthyInstances = parseCount(healthy_instance_count);
+            const percent = totalInstances > 0 ? Math.round((healthyInstances / totalInstances) * 100) : 0;
             return (
-                <div className={style.compactCell}>
-                    <Text>{`${healthy_instance_count ?? '-'} / ${total_instance_count ?? '-'}`}</Text>
-                    <span>{total > 0 ? `${rate}% 健康` : '暂无实例'}</span>
+                <div className={style.healthCell}>
+                    <div>
+                        <strong>{`${healthyInstances}/${totalInstances}`}</strong>
+                        <span>{totalInstances > 0 ? `${percent}%` : '无实例'}</span>
+                    </div>
+                    <div className={style.healthTrack}>
+                        <i style={{ width: `${percent}%` }} />
+                    </div>
                 </div>
             );
         },
@@ -76,6 +88,7 @@ const columns = (operateService: (op: Op, row: TableRowData) => void, redirect: 
     {
         colKey: 'time',
         title: t('services.time'),
+        width: 180,
         cell: ({ row: { ctime, mtime } }: TableRowData) => {
             if (!hasValue(ctime) && !hasValue(mtime)) return <Text>-</Text>;
             return (
@@ -89,24 +102,19 @@ const columns = (operateService: (op: Op, row: TableRowData) => void, redirect: 
     {
         colKey: 'action',
         title: t('common.action'),
+        width: 86,
+        align: 'center',
+        fixed: 'right',
         cell: ({ row }) => {
             return (
-                <Space>
-                    <Tooltip content={row.editable === false ? t('services.noPermission') : t('common.edit')}>
+                <div className={style.actionCell}>
+                    <Tooltip content={row.editable === false ? t('services.noPermission') : '查看 / 编辑'}>
                         <Button
                             shape="square"
                             variant="text"
                             disabled={row.editable === false}
-                            onClick={() => operateService('edit', row)}>
-                            <EditIcon />
-                        </Button>
-                    </Tooltip>
-                    <Tooltip content={row.editable === false ? t('services.noPermission') : t('services.authorize')}>
-                        <Button
-                            shape="square"
-                            variant="text"
-                            disabled={row.editable === false}
-                            onClick={() => operateService('authorize', row)}>
+                            aria-label="查看 / 编辑"
+                            onClick={() => operateService('view', row)}>
                             <CreditcardIcon />
                         </Button>
                     </Tooltip>
@@ -126,7 +134,7 @@ const columns = (operateService: (op: Op, row: TableRowData) => void, redirect: 
                             </Button>
                         </Popconfirm>
                     </Tooltip>
-                </Space>
+                </div>
             )
         },
     },
@@ -136,12 +144,18 @@ interface IServicesProps {
 
 }
 
-const ServicesTable: React.FC<IServicesProps> = ({ }) => {
+export interface ServicesTableHandle {
+    refresh: () => void;
+    create: () => void;
+}
+
+const ServicesTable = React.forwardRef<ServicesTableHandle, IServicesProps>((_, ref) => {
     const { t } = useTranslation();
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
 
     const { datas, loading, total, page, limit } = useAppSelector(selectService);
+    const { datas: namespaceDatas } = useAppSelector(selectNamespace);
 
     const metric = useMemo(() => {
         const namespaces = new Set(datas.map((item) => item.namespace).filter(Boolean));
@@ -157,11 +171,10 @@ const ServicesTable: React.FC<IServicesProps> = ({ }) => {
     // 合并编辑相关状态
     const [editorState, setEditorState] = useState<{
         visible: boolean;
-        authorizeVisible: boolean;
         mode: Op;
         data?: TableRowData;
-    }>({ visible: false, mode: 'create', data: undefined, authorizeVisible: false });
-    const [query, setQuery] = useState({ name: '' });
+    }>({ visible: false, mode: 'create', data: undefined });
+    const [query, setQuery] = useState({ namespace: '', name: '' });
 
     // 编辑、新建事件
     const operateService = (op: Op, row?: TableRowData) => {
@@ -173,9 +186,6 @@ const ServicesTable: React.FC<IServicesProps> = ({ }) => {
             case 'create':
                 dispatch(resetService());
                 setEditorState(prev => ({ ...prev, visible: true, mode: op, data: undefined }));
-                break;
-            case 'authorize':
-                setEditorState(prev => ({ ...prev, authorizeVisible: true, data: { ...row } }));
                 break;
             case 'delete':
                 dispatch(removeServices({ ids: [row?.id as string] }))
@@ -190,9 +200,8 @@ const ServicesTable: React.FC<IServicesProps> = ({ }) => {
                     })
                 break;
             case 'view':
-                // 跳转到实例列表
                 dispatch(editorService({ ...row as Service }));
-                navigate(`instance?namespace=${row?.namespace}&service=${row?.name}`);
+                setEditorState(prev => ({ ...prev, visible: true, mode: op, data: row }));
                 break;
             default:
                 openErrNotification(t('common.fail'), t('services.unknownOp'));
@@ -202,6 +211,12 @@ const ServicesTable: React.FC<IServicesProps> = ({ }) => {
 
     React.useEffect(() => {
         refreshTable();
+        dispatch(listAllNamespaces())
+            .then((res) => {
+                if (res.meta.requestStatus === 'rejected') {
+                    openErrNotification('获取命名空间列表失败', res.payload as string);
+                }
+            });
         return () => {
             // 清理编辑器状态
             dispatch(cleanServicePage());
@@ -213,6 +228,7 @@ const ServicesTable: React.FC<IServicesProps> = ({ }) => {
             param: {
                 offset: (page - 1) * limit,
                 limit: limit,
+                namespace: nextQuery.namespace || undefined,
                 name: nextQuery.name || undefined,
             }
         })).then((res) => {
@@ -222,91 +238,113 @@ const ServicesTable: React.FC<IServicesProps> = ({ }) => {
         });
     }
 
+    React.useImperativeHandle(ref, () => ({
+        refresh: () => refreshTable(page, limit, query),
+        create: () => operateService('create'),
+    }));
+
+    const submitFilter = () => {
+        refreshTable(1, limit, query);
+    };
+
+    const resetFilter = () => {
+        const nextQuery = { namespace: '', name: '' };
+        setQuery(nextQuery);
+        refreshTable(1, limit, nextQuery);
+    };
+
     {/* <!-- :defaultExpandedRowKeys="defaultExpandedRowKeys" --> */ }
     const table = (
         <>
             <section className={style.metricRail}>
                 <div className={style.metricItem}>
-                    <span>Services</span>
-                    <strong>{total}</strong>
+                    <span>服务数</span>
+                    <strong id="stSvc">{total}</strong>
                 </div>
                 <div className={style.metricItem}>
-                    <span>Namespaces</span>
-                    <strong>{metric.namespaces.size}</strong>
+                    <span>命名空间</span>
+                    <strong id="stNs">{metric.namespaces.size}</strong>
                 </div>
                 <div className={style.metricItem}>
-                    <span>Healthy Instances</span>
-                    <strong>{metric.healthy}/{metric.instances}</strong>
+                    <span>健康实例</span>
+                    <strong className={style.metricValue}>
+                        <b id="stHealthy">{metric.healthy}</b>
+                        /
+                        <b id="stInst">{metric.instances}</b>
+                    </strong>
                 </div>
             </section>
-            <section className={style.filterBar}>
-                <div className={style.filterHint}>
-                    <strong>服务清单</strong>
-                    <span>{loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}</span>
-                </div>
-                <Space>
-                    <Search
-                        placeholder="搜索服务名"
-                        onChange={(value: string) => {
-                            const nextQuery = { name: value };
-                            setQuery(nextQuery);
-                            refreshTable(1, limit, nextQuery);
+            <section className={style.listSection}>
+                <section className={style.filterBar}>
+                    <div className={style.filterHint}>
+                        <strong>服务清单</strong>
+                        <span id="listCount">{loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}</span>
+                    </div>
+                    <div className={style.filterActions}>
+                        <div id="nsFilter" className={style.namespaceFilter}>
+                            <Select
+                                clearable
+                                filterable
+                                placeholder="全部命名空间"
+                                value={query.namespace}
+                                options={namespaceDatas.map((item: NamespaceView) => ({
+                                    label: item.name,
+                                    value: item.name,
+                                }))}
+                                onChange={(value) => setQuery(prev => ({ ...prev, namespace: String(value || '') }))}
+                            />
+                        </div>
+                        <div id="keyword" className={style.filterInput}>
+                            <Input
+                                clearable
+                                prefixIcon={<SearchIcon />}
+                                placeholder="服务名"
+                                value={query.name}
+                                onChange={(value) => setQuery(prev => ({ ...prev, name: String(value) }))}
+                                onEnter={submitFilter}
+                            />
+                        </div>
+                        <Button variant="outline" onClick={submitFilter}>查询</Button>
+                        <Button variant="text" onClick={resetFilter}>重置</Button>
+                    </div>
+                </section>
+                {editorState.visible && (
+                    <ServiceEditor
+                        op={editorState.mode}
+                        visible={editorState.visible}
+                        closeDrawer={() => {
+                            // 关闭后重置编辑器状态
+                            dispatch(resetService());
+                            refreshTable();
+                            setEditorState(s => ({ ...s, visible: false }));
+                        }} />
+                )}
+                <section id="tbody" className={`${style.tableSurface} ${style.serviceTableSurface}`}>
+                    <Table
+                        data={datas}
+                        columns={columns(operateService, (row: TableRowData) => {
+                            dispatch(editorService({ ...row as Service }));
+                            navigate(`instance?namespace=${row?.namespace}&service=${row?.name}`);
+                        }, t)}
+                        loading={loading}
+                        rowKey="id"
+                        size={"large"}
+                        tableLayout={'fixed'}
+                        cellEmptyContent={'-'}
+                        pagination={{
+                            current: page,
+                            pageSize: limit,
+                            total: total,
+                            showJumper: true,
+                            onChange(pageInfo) {
+                                refreshTable(pageInfo.current, pageInfo.pageSize, query);
+                            },
+                        }}
+                        onPageChange={(pageInfo) => {
+                            refreshTable(pageInfo.current, pageInfo.pageSize, query);
                         }}
                     />
-                    <Tooltip content={t('common.refresh')}>
-                        <Button shape="square" variant="outline" onClick={() => refreshTable(page, limit, query)}>
-                            <RefreshIcon />
-                        </Button>
-                    </Tooltip>
-                    <Button theme="primary" icon={<AddIcon />} onClick={() => operateService('create')}>{t('common.add')}</Button>
-                </Space>
-            </section>
-            {editorState.visible && (
-                <ServiceEditor
-                    op={editorState.mode}
-                    visible={editorState.visible}
-                    closeDrawer={() => {
-                        // 关闭后重置编辑器状态
-                        dispatch(resetService());
-                        refreshTable();
-                        setEditorState(s => ({ ...s, visible: false }));
-                    }} />
-            )}
-            {editorState.authorizeVisible && (
-                <AuthorizeInput
-                    resource_type={PolicySourceType.Services}
-                    resource_id={editorState.data?.id}
-                    resource_name={`${editorState.data?.namespace}/${editorState.data?.name}`}
-                    visible={editorState.authorizeVisible}
-                    onClose={() => {
-                        setEditorState(s => ({ ...s, authorizeVisible: false }));
-                    }}
-                />
-            )}
-            <section className={style.tableSurface}>
-                <Table
-                    data={datas}
-                    columns={columns(operateService, (row: TableRowData) => {
-                        operateService('view', row);
-                    }, t)}
-                    loading={loading}
-                    rowKey="id"
-                    size={"large"}
-                    tableLayout={'auto'}
-                    cellEmptyContent={'-'}
-                    pagination={{
-                        current: page,
-                        pageSize: limit,
-                        total: total,
-                        showJumper: true,
-                        onChange(pageInfo) {
-                            refreshTable(pageInfo.current, pageInfo.pageSize, query);
-                        },
-                    }}
-                    onPageChange={(pageInfo) => {
-                        refreshTable(pageInfo.current, pageInfo.pageSize, query);
-                    }}
-                />
+                </section>
             </section>
         </>
     );
@@ -316,6 +354,6 @@ const ServicesTable: React.FC<IServicesProps> = ({ }) => {
             {table}
         </div>
     )
-}
+});
 
 export default React.memo(ServicesTable);

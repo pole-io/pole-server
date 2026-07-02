@@ -1,18 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Link, Table, Button, PageInfo, PrimaryTableProps, TableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Tag, Dialog, Input, Popconfirm } from 'tdesign-react';
-import { DeleteIcon, EditIcon, RefreshIcon, System2Icon, User1Icon, UsergroupIcon, UserVisibleIcon } from 'tdesign-icons-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link, Table, Button, PageInfo, PrimaryTableProps, TableProps, Tooltip, Space, Row, Col, TableRowData, Tag, Popconfirm } from 'tdesign-react';
+import { CreditcardIcon, DeleteIcon, RefreshIcon, System2Icon, User1Icon, UsergroupIcon } from 'tdesign-icons-react';
 
 import Search from 'components/Search';
 import ErrorPage from 'components/ErrorPage';
 import Text from 'components/Text';
-import { useAppDispatch, useAppSelector } from 'modules/store';
+import { useAppDispatch } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
 import { describeAuthPolicies } from 'services/auth_policy';
 import PolicyEditor from './PolicyEditor';
-import { editorPolicyRules, removePolicyRules, resetPolicyRules, updatePolicyRules } from 'modules/auth/policy';
-import { update } from 'lodash';
+import { editorPolicyRules, removePolicyRules, resetPolicyRules } from 'modules/auth/policy';
 
 interface IPolicyTableProps {
     type: 'default' | 'custom';
@@ -20,7 +18,7 @@ interface IPolicyTableProps {
 
 const ServerError = () => <ErrorPage code={500} />;
 
-const defaultColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'create' | 'edit' | 'delete', res: string) => void, redirect: (id: string, name: string) => void): PrimaryTableProps['columns'] => [
+const defaultColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'create' | 'edit' | 'delete', res: string) => void): PrimaryTableProps['columns'] => [
     {
         colKey: 'id',
         title: 'ID',
@@ -51,7 +49,8 @@ const defaultColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'crea
     {
         colKey: 'name',
         title: '名称',
-        cell: ({ row: { name, id } }) => {
+        cell: ({ row }) => {
+            const name = row.name as string;
             let displayName = name
             if (name.indexOf('(用户组)') === 0) {
                 displayName = name.replace('(用户组)', '')
@@ -60,7 +59,7 @@ const defaultColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'crea
                 displayName = name.replace('(用户)', '')
             }
             return (
-                <Link theme='primary' onClick={() => redirect(id, name)}>{displayName}</Link>
+                <Link theme='primary' onClick={() => handleEditPolicy(row, 'view', 'policy_rule')}>{displayName}</Link>
             )
         },
     },
@@ -95,13 +94,14 @@ const defaultColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'crea
         cell: ({ row }) => {
             return (
                 <Space>
-                    <Tooltip content={row.editable === false ? '无权限操作' : '编辑'}>
+                    <Tooltip content={row.editable === false ? '无权限操作' : '查看 / 编辑'}>
                         <Button
                             shape="square"
                             variant="text"
                             disabled={row.editable === false}
-                            onClick={() => handleEditPolicy(row, 'edit', 'policy_rule')}>
-                            <EditIcon />
+                            aria-label="查看 / 编辑"
+                            onClick={() => handleEditPolicy(row, 'view', 'policy_rule')}>
+                            <CreditcardIcon />
                         </Button>
                     </Tooltip>
                     {!row.default_strategy && (
@@ -125,7 +125,7 @@ const defaultColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'crea
 ]
 
 
-const customColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'create' | 'edit' | 'delete', res: string) => void, redirect: (id: string, name: string) => void): PrimaryTableProps['columns'] => [
+const customColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'create' | 'edit' | 'delete', res: string) => void): PrimaryTableProps['columns'] => [
     {
         colKey: 'id',
         title: 'ID',
@@ -135,8 +135,8 @@ const customColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'creat
     {
         colKey: 'name',
         title: '名称',
-        cell: ({ row: { name, id } }) => (
-            <Link theme='primary' onClick={() => redirect(id, name)}>{name}</Link>
+        cell: ({ row }) => (
+            <Link theme='primary' onClick={() => handleEditPolicy(row, 'view', 'policy_rule')}>{row.name}</Link>
         ),
     },
     {
@@ -170,13 +170,14 @@ const customColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'creat
         cell: ({ row }) => {
             return (
                 <Space>
-                    <Tooltip content={row.editable === false ? '无权限操作' : '编辑'}>
+                    <Tooltip content={row.editable === false ? '无权限操作' : '查看 / 编辑'}>
                         <Button
                             shape="square"
                             variant="text"
                             disabled={row.editable === false}
-                            onClick={() => handleEditPolicy(row, 'edit', 'user')}>
-                            <EditIcon />
+                            aria-label="查看 / 编辑"
+                            onClick={() => handleEditPolicy(row, 'view', 'policy_rule')}>
+                            <CreditcardIcon />
                         </Button>
                     </Tooltip>
                     {!row.default_strategy && (
@@ -188,7 +189,7 @@ const customColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'creat
                                 showArrow
                                 theme="default"
                                 onConfirm={() => {
-                                    handleEditPolicy(row, 'delete', 'user');
+                                    handleEditPolicy(row, 'delete', 'policy_rule');
                                 }}
                             >
                                 <Button
@@ -210,7 +211,6 @@ const customColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'creat
 
 const PolicyTable: React.FC<IPolicyTableProps> = (props) => {
     const dispatch = useAppDispatch();
-    const navigate = useNavigate();
     const [selectedRowKeys, setSelectedRowKeys] = useState<Array<string | number>>([]);
 
     // 合并编辑相关状态
@@ -349,13 +349,9 @@ const PolicyTable: React.FC<IPolicyTableProps> = (props) => {
             <Table
                 data={searchState.policies}
                 columns={props.type === 'default' ?
-                    defaultColumns(handleEditPolicy, (id: string, name: string) => {
-                        navigate(`detail?id=${id}&name=${name}`);
-                    })
+                    defaultColumns(handleEditPolicy)
                     :
-                    customColumns(handleEditPolicy, (id: string, name: string) => {
-                        navigate(`detail?id=${id}&name=${name}`);
-                    })}
+                    customColumns(handleEditPolicy)}
                 loading={searchState.isLoading}
                 rowKey="id"
                 size={"large"}

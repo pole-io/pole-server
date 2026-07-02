@@ -85,7 +85,7 @@
 .securityEditorShell {
   display: grid;
   gap: 0;
-  grid-template-columns: minmax(720px, 1fr) 400px;
+  grid-template-columns: minmax(0, 1fr);
   height: calc(100vh - 190px);
   min-height: 620px;
   overflow: hidden;
@@ -607,6 +607,11 @@
   overflow: auto;
   padding: 12px;
   white-space: pre-wrap;
+}
+
+.scopeTagList {
+  display: grid;
+  gap: 8px;
 }
 
 .dialogSubTitle {

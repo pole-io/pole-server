@@ -6,21 +6,30 @@ import { useAppDispatch, useAppSelector } from 'modules/store';
 import { saveNamespace, updateNamespace, selectNamespace } from 'modules/namespace';
 import LabelInput from 'components/LabelInput';
 import { Label, Op } from 'services/types';
+import style from './index.module.less';
 
 const { FormItem } = Form;
 
 interface NamespaceEditorProps {
     op: Op;
     closeDrawer: () => void;
+    onAuthorize?: () => void;
     visible: boolean;
 }
 
-const NamespaceEditor: React.FC<NamespaceEditorProps> = ({ visible, op, closeDrawer }) => {
+const NamespaceEditor: React.FC<NamespaceEditorProps> = ({ visible, op, closeDrawer, onAuthorize }) => {
     const [form] = Form.useForm();
+    const [editable, setEditable] = React.useState(op !== 'view');
 
     const dispatch = useAppDispatch();
     const namespaceState = useAppSelector(selectNamespace);
     const { editNs } = namespaceState;
+
+    React.useEffect(() => {
+        if (visible) {
+            setEditable(op !== 'view');
+        }
+    }, [visible, op]);
 
     React.useEffect(() => {
         if (visible && editNs) {
@@ -48,18 +57,41 @@ const NamespaceEditor: React.FC<NamespaceEditorProps> = ({ visible, op, closeDra
             }, {}),
         }
         let result;
-        if (op === 'edit') {
-            result = await dispatch(updateNamespace({ param: data }))
-        } else {
+        if (op === 'create') {
             result = await dispatch(saveNamespace({ param: data }))
+        } else {
+            result = await dispatch(updateNamespace({ param: data }))
         }
         if (result.meta.requestStatus !== 'fulfilled') {
             openErrNotification('请求错误', result?.payload as string);
         } else {
-            openInfoNotification('请求成功', op === 'edit' ? '修改命名空间成功' : '创建命名空间成功');
+            openInfoNotification('请求成功', op === 'create' ? '创建命名空间成功' : '修改命名空间成功');
             closeDrawer();
         }
     };
+
+    const labels = editNs?.metadata ? Object.entries(editNs.metadata) : [];
+
+    const namespaceView = (
+        <div className={style.namespaceDetail}>
+            <div className={style.detailField}>
+                <span>名称</span>
+                <strong>{editNs?.name || '-'}</strong>
+            </div>
+            <div className={style.detailField}>
+                <span>描述</span>
+                <p>{editNs?.comment || '-'}</p>
+            </div>
+            <div className={style.detailField}>
+                <span>标签</span>
+                <div className={style.detailLabels}>
+                    {labels.length > 0 ? labels.map(([key, value]) => (
+                        <em key={key}>{key}: {value}</em>
+                    )) : '-'}
+                </div>
+            </div>
+        </div>
+    );
 
     const namespaceForm = (
         <Form
@@ -78,7 +110,7 @@ const NamespaceEditor: React.FC<NamespaceEditorProps> = ({ visible, op, closeDra
                     { pattern: /^[a-zA-Z0-9._-]+$/, message: '只允许数字、英文字母、.、-、_' },
                     { max: 128, message: '长度不超过128个字符' }
                 ]}>
-                <Input readonly={op === 'edit'} />
+                <Input readonly={op !== 'create'} />
             </FormItem>
             <FormItem
                 label={'描述'}
@@ -104,13 +136,25 @@ const NamespaceEditor: React.FC<NamespaceEditorProps> = ({ visible, op, closeDra
         <div>
             <Drawer
                 size='large'
-                header={op === 'edit' ? "编辑命名空间" : "创建命名空间"}
-                footer={false}
+                header={op === 'create' ? "创建命名空间" : editable ? "编辑命名空间" : "命名空间详情"}
+                footer={op === 'view' && !editable ? (
+                    <Space>
+                        <Button theme="primary" onClick={() => setEditable(true)}>
+                            编辑
+                        </Button>
+                        <Button theme="default" onClick={onAuthorize}>
+                            授权
+                        </Button>
+                        <Button theme="default" onClick={closeDrawer}>
+                            关闭
+                        </Button>
+                    </Space>
+                ) : false}
                 visible={visible}
                 showOverlay={false}
                 onClose={closeDrawer}
             >
-                {namespaceForm}
+                {editable ? namespaceForm : namespaceView}
             </Drawer>
         </div>
     );

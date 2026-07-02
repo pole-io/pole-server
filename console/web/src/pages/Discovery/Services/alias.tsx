@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Popconfirm } from 'tdesign-react';
-import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
+import React, { useMemo, useState } from 'react';
+import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Popconfirm, Input } from 'tdesign-react';
+import { AddIcon, CopyIcon, DeleteIcon, EditIcon, SearchIcon } from 'tdesign-icons-react';
 import { useNavigate } from 'react-router-dom';
 
-import Search from 'components/Search';
 import Text from 'components/Text';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
@@ -11,54 +10,76 @@ import style from './index.module.less';
 import { cleanAliasPage, listServiceAliass, removeServiceAliass, resetServiceAlias } from 'modules/discovery/alias';
 import AliasEditor from './AliasEditor';
 import { Op } from 'services/types';
+import { copyToClipboard } from 'utils/sys';
 
 interface IServiceAliasProps {
-
+    namespace?: string;
+    serviceName?: string;
+    embedded?: boolean;
 }
 
-const columns = (operateService: (op: Op, row: TableRowData) => void, redirect: (service: string, namespace: string) => void): PrimaryTableProps['columns'] => [
-    {
+export interface ServiceAliasTableHandle {
+    refresh: () => void;
+    create: () => void;
+}
+
+const columns = (
+    operateService: (op: Op, row: TableRowData) => void,
+    redirect: (service: string, namespace: string) => void,
+    inServiceDetail: boolean,
+    copyAlias: (row: TableRowData) => void,
+): PrimaryTableProps['columns'] => {
+    const baseColumns: PrimaryTableProps['columns'] = [
+        {
         colKey: 'alias_namespace',
         title: '别名命名空间',
         cell: ({ row: { alias_namespace } }) => <Text>{alias_namespace}</Text>,
-    },
-    {
+        },
+        {
         colKey: 'alias',
         title: '服务别名',
         cell: ({ row: { alias } }) => <Text>{alias}</Text>,
-    },
-    {
-        colKey: 'namespace',
-        title: '目标服务命名空间',
-        cell: ({ row: { namespace } }: TableRowData) => <Text>{namespace}</Text>,
-    },
-    {
-        colKey: 'service',
-        title: '目标服务名',
-        cell: ({ row: { service, namespace } }) => {
-            return (
-                <Link theme='primary'
-                    onClick={() => {
-                        redirect(service, namespace);
-                    }}
-                >
-                    {service}
-                </Link>
-            )
-        }
-    },
-    {
-        colKey: 'commnet',
+        },
+    ];
+
+    if (!inServiceDetail) {
+        baseColumns.push(
+            {
+                colKey: 'namespace',
+                title: '目标服务命名空间',
+                cell: ({ row: { namespace } }: TableRowData) => <Text>{namespace}</Text>,
+            },
+            {
+                colKey: 'service',
+                title: '目标服务名',
+                cell: ({ row: { service, namespace } }) => {
+                    return (
+                        <Link theme='primary'
+                            onClick={() => {
+                                redirect(service, namespace);
+                            }}
+                        >
+                            {service}
+                        </Link>
+                    )
+                }
+            },
+        );
+    }
+
+    baseColumns.push(
+        {
+        colKey: 'comment',
         title: '描述',
         ellipsis: true,
         cell: ({ row: { comment } }: TableRowData) => (<Text>{comment || '-'}</Text>),
-    },
-    {
+        },
+        {
         colKey: 'time',
         title: '操作时间',
         cell: ({ row: { ctime, mtime } }: TableRowData) => <Text>修改: {mtime}<br />创建: {ctime}</Text>,
-    },
-    {
+        },
+        {
         colKey: 'action',
         title: '操作',
         cell: ({ row }) => {
@@ -71,11 +92,6 @@ const columns = (operateService: (op: Op, row: TableRowData) => void, redirect: 
                             disabled={row.editable === false}
                             onClick={() => operateService('edit', row)}>
                             <EditIcon />
-                        </Button>
-                    </Tooltip>
-                    <Tooltip content={row.editable === false ? '无权限操作' : '授权'}>
-                        <Button shape="square" variant="text" disabled={row.editable === false}>
-                            <CreditcardIcon />
                         </Button>
                     </Tooltip>
                     <Tooltip content={row.deleteable === false ? '无权限操作' : '删除'}>
@@ -93,20 +109,38 @@ const columns = (operateService: (op: Op, row: TableRowData) => void, redirect: 
                                 <DeleteIcon />
                             </Button>
                         </Popconfirm>
-
+                    </Tooltip>
+                    <Tooltip content="复制别名">
+                        <Button
+                            shape="square"
+                            variant="text"
+                            aria-label="复制别名"
+                            onClick={() => copyAlias(row)}
+                        >
+                            <CopyIcon />
+                        </Button>
                     </Tooltip>
                 </Space>
             )
         },
-    },
-]
+        },
+    );
 
-const ServiceAliasTable: React.FC<IServiceAliasProps> = ({ }) => {
+    return baseColumns;
+}
+
+const ServiceAliasTable = React.forwardRef<ServiceAliasTableHandle, IServiceAliasProps>((props, ref) => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
+    const { namespace, serviceName, embedded = false } = props;
+    const inServiceDetail = Boolean(namespace && serviceName);
 
     const aliasState = useAppSelector(state => state.discoveryServiceAlais);
     const { datas, loading, total, page, limit } = aliasState;
+    const targetServiceLabel = namespace && serviceName ? `${namespace} / ${serviceName}` : '-';
+    const aliasNamespaceCount = useMemo(() => {
+        return new Set(datas.map(item => item.alias_namespace).filter(Boolean)).size;
+    }, [datas]);
 
     // 合并编辑相关状态
     const [searchState, setSearchState] = useState<{
@@ -132,7 +166,7 @@ const ServiceAliasTable: React.FC<IServiceAliasProps> = ({ }) => {
                 dispatch(removeServiceAliass({
                     param: [{
                         alias: row?.alias || '',
-                        alias_namespace: row?.namespace || '',
+                        alias_namespace: row?.alias_namespace || '',
                     }]
                 }))
                     .then((res) => {
@@ -149,12 +183,18 @@ const ServiceAliasTable: React.FC<IServiceAliasProps> = ({ }) => {
         }
     }
 
+    const copyAlias = (row: TableRowData) => {
+        copyToClipboard(`${row.alias_namespace || '-'}/${row.alias || '-'}`);
+    };
+
     const refreshTable = (page = 1, limit = 10, nextQuery = searchState) => {
         dispatch(listServiceAliass({
             param: {
                 offset: (page - 1) * limit,
                 limit: limit,
                 alias: nextQuery.query || undefined,
+                namespace: inServiceDetail ? namespace : undefined,
+                service: inServiceDetail ? serviceName : undefined,
             }
         })).then((res) => {
             if (res.meta.requestStatus === 'rejected') {
@@ -163,84 +203,134 @@ const ServiceAliasTable: React.FC<IServiceAliasProps> = ({ }) => {
         });
     }
 
+    React.useImperativeHandle(ref, () => ({
+        refresh: () => refreshTable(page, limit, searchState),
+        create: () => operateService('create'),
+    }));
+
+    const submitFilter = () => {
+        refreshTable(1, limit, searchState);
+    };
+
+    const resetFilter = () => {
+        const nextQuery = { query: '' };
+        setSearchState(nextQuery);
+        refreshTable(1, limit, nextQuery);
+    };
+
     React.useEffect(() => {
         refreshTable();
         return () => {
             // 清理编辑器状态
             dispatch(cleanAliasPage());
         }
-    }, []);
+    }, [namespace, serviceName]);
 
     {/* <!-- :defaultExpandedRowKeys="defaultExpandedRowKeys" --> */ }
     const table = (
         <>
-            <section className={style.filterBar}>
-                <div className={style.filterHint}>
-                    <strong>别名清单</strong>
-                    <span>{loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}</span>
-                </div>
-                <Space>
-                    <Search
-                        placeholder="搜索别名"
-                        onChange={(value: string) => {
-                            const nextQuery = { query: value };
-                            setSearchState(nextQuery);
-                            refreshTable(1, limit, nextQuery);
-                        }}
-                    />
-                    <Tooltip content="刷新">
-                        <Button shape="square" variant="outline" onClick={() => refreshTable(page, limit, searchState)}>
-                            <RefreshIcon />
-                        </Button>
-                    </Tooltip>
-                    <Button theme="primary" icon={<AddIcon />} onClick={() => operateService('create')}>新建</Button>
-                </Space>
-            </section>
-            {editorState.visible && (
-                <AliasEditor
-                    key={editorState.mode + (editorState.data?.name || 'new') + (editorState.visible ? '1' : '0')}
-                    op={editorState.mode}
-                    visible={editorState.visible}
-                    closeDrawer={() => {
-                        // 关闭后重置编辑器状态
-                        dispatch(resetServiceAlias());
-                        setEditorState(s => ({ ...s, visible: false }));
-                        refreshTable();
-                    }} />
-            )}
-            <section className={style.tableSurface}>
-                <Table
-                    data={datas}
-                    columns={columns(operateService, (service: string, namespace: string) => {
-                        navigate(`instance?namespace=${namespace}&service=${service}`);
-                    })}
-                    loading={loading}
-                    rowKey="id"
-                    size={"large"}
-                    tableLayout={'auto'}
-                    cellEmptyContent={'-'}
-                    pagination={{
-                        current: page,
-                        pageSize: limit,
-                        total: total,
-                        showJumper: true,
-                        onChange(pageInfo) {
-                            refreshTable(pageInfo.current, pageInfo.pageSize, searchState);
-                        },
-                    }}
-                    onPageChange={(pageInfo) => {
-                        refreshTable(pageInfo.current, pageInfo.pageSize, searchState);
-                    }}
-                />
+            <section className={embedded ? style.aliasDetailSection : style.listSection}>
+                <section className={embedded ? style.aliasDetailToolbar : style.filterBar}>
+                    <div className={style.filterHint}>
+                        <strong>别名清单</strong>
+                        <span id={embedded ? 'listCount' : undefined}>
+                            {loading
+                                ? '正在同步列表'
+                                : embedded && namespace && serviceName
+                                    ? `${namespace}/${serviceName} 下当前显示 ${datas.length} 条`
+                                    : `当前显示 ${datas.length} 条`}
+                        </span>
+                    </div>
+                    <div className={embedded ? style.aliasDetailActions : style.filterActions}>
+                        {embedded && (
+                            <Button theme="primary" icon={<AddIcon />} onClick={() => operateService('create')}>
+                                新建别名
+                            </Button>
+                        )}
+                        <Input
+                            id={embedded ? 'keyword' : undefined}
+                            className={style.filterInput}
+                            clearable
+                            prefixIcon={<SearchIcon />}
+                            placeholder="别名"
+                            value={searchState.query}
+                            onChange={(value) => setSearchState({ query: String(value) })}
+                            onEnter={submitFilter}
+                        />
+                        <Button variant="outline" onClick={submitFilter}>查询</Button>
+                        <Button variant="text" onClick={resetFilter}>重置</Button>
+                    </div>
+                </section>
+                {editorState.visible && (
+                    <AliasEditor
+                        key={editorState.mode + (editorState.data?.alias || 'new') + (editorState.visible ? '1' : '0')}
+                        op={editorState.mode}
+                        visible={editorState.visible}
+                        data={editorState.data}
+                        existingAliases={datas}
+                        targetService={inServiceDetail ? { namespace: namespace as string, serviceName: serviceName as string } : undefined}
+                        closeDrawer={() => {
+                            // 关闭后重置编辑器状态
+                            dispatch(resetServiceAlias());
+                            setEditorState(s => ({ ...s, visible: false }));
+                            refreshTable();
+                        }} />
+                )}
+                <section className={embedded ? `${style.tableSurface} ${style.aliasDetailTableSurface}` : style.tableSurface}>
+                    {embedded && (
+                        <section className={style.aliasSummaryBar} id="summary">
+                            <div className={style.aliasSummaryItem}>
+                                <span className={style.aliasSummaryLabel}>目标服务</span>
+                                <strong className={style.aliasSummaryValue} id="sumTarget">{targetServiceLabel}</strong>
+                            </div>
+                            <div className={style.aliasSummaryItem}>
+                                <span className={style.aliasSummaryLabel}>别名数</span>
+                                <strong className={style.aliasSummaryValue} id="sumCount">{datas.length}</strong>
+                            </div>
+                            <div className={style.aliasSummaryItem}>
+                                <span className={style.aliasSummaryLabel}>覆盖命名空间</span>
+                                <strong className={style.aliasSummaryValue} id="sumNs">{aliasNamespaceCount}</strong>
+                            </div>
+                        </section>
+                    )}
+                    <div id={embedded ? 'tbody' : undefined}>
+                        <Table
+                            data={datas.map((item) => ({
+                                id: `${item.alias_namespace}/${item.alias}`,
+                                ...item,
+                            }))}
+                            columns={columns(operateService, (service: string, namespace: string) => {
+                                navigate(`instance?namespace=${namespace}&service=${service}`);
+                            }, inServiceDetail, copyAlias)}
+                            loading={loading}
+                            rowKey="id"
+                            size={"large"}
+                            tableLayout={'auto'}
+                            cellEmptyContent={'-'}
+                            pagination={{
+                                current: page,
+                                pageSize: limit,
+                                total: total,
+                                showJumper: true,
+                                onChange(pageInfo) {
+                                    refreshTable(pageInfo.current, pageInfo.pageSize, searchState);
+                                },
+                            }}
+                            onPageChange={(pageInfo) => {
+                                refreshTable(pageInfo.current, pageInfo.pageSize, searchState);
+                            }}
+                        />
+                    </div>
+                </section>
             </section>
         </>
     );
 
     return (
-        <div className={style.workspace}>
+        <div className={embedded ? style.embeddedWorkspace : style.workspace}>
             {table}
         </div>
     )
-}
+});
 
 export default React.memo(ServiceAliasTable);

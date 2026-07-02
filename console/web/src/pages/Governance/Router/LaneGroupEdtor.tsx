@@ -13,7 +13,7 @@ import {
     Tag,
     Textarea,
 } from 'tdesign-react';
-import { AddIcon, CopyIcon, DeleteIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
+import { AddIcon, DeleteIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
 
 import Text from 'components/Text';
 import { useAppDispatch, useAppSelector } from 'modules/store';
@@ -41,20 +41,14 @@ import { RoutingArgumentsTypeOptions, RoutingRuleDestination, RoutingSourceArgum
 import { ServiceView } from 'services/service';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import {
-    buildLaneAuditPreviewSpec,
-    buildLaneGroupPreviewSpec,
-    buildLaneRulePreviewSpec,
     buildLaneTopology,
-    buildLaneVersionPreviewSpec,
     LaneDraftCondition,
     LaneDraftEntry,
     LaneDraftRule,
     LaneGroupDraft,
     LANE_TRAFFIC_TAG_KEY,
     laneRuleSummary,
-    LaneSpecFormat,
     normalizeLaneGroupDraft,
-    stringifyLaneSpec,
     validateLaneGroupDraft,
     validateLaneRulesDraft,
 } from './laneEditorUtils';
@@ -77,6 +71,8 @@ interface SimpleService {
 interface ILaneGroupEditorProps {
     op: Op;
     refresh: (close: boolean) => void;
+    editable?: boolean;
+    deleteable?: boolean;
 }
 
 const defaultLaneGroupDraft = (): LaneGroupDraft => normalizeLaneGroupDraft({
@@ -156,7 +152,7 @@ const ruleToDraft = (rule: any, selected: string[]): LaneDraftRule => ({
     note: rule.description || '',
 });
 
-const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
+const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editable = true }) => {
     const dispatch = useAppDispatch();
     const { datas: serviceDatas } = useAppSelector(selectService);
     const { editGroup } = useAppSelector(selectLaneGroup);
@@ -167,7 +163,6 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
         publishView: false,
     });
     const [lanePage, setLanePage] = React.useState<LanePage>('group');
-    const [specFormat, setSpecFormat] = React.useState<LaneSpecFormat>('yaml');
     const [services, setServices] = React.useState<SimpleService[]>([]);
     const [gatewayServices, setGatewayServices] = React.useState<SimpleService[]>([]);
     const [allServices, setAllServices] = React.useState<SimpleService[]>([]);
@@ -271,17 +266,6 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
         }));
     };
 
-    const currentSpec = React.useMemo(() => {
-        if (lanePage === 'group') return buildLaneGroupPreviewSpec(draft);
-        if (lanePage === 'version') return buildLaneVersionPreviewSpec(draft);
-        if (lanePage === 'audit') return buildLaneAuditPreviewSpec(draft);
-        return buildLaneRulePreviewSpec(draft);
-    }, [draft, lanePage]);
-
-    const specText = React.useMemo(() => stringifyLaneSpec(currentSpec, specFormat), [currentSpec, specFormat]);
-    const groupIssues = React.useMemo(() => validateLaneGroupDraft(draft), [draft]);
-    const laneIssues = React.useMemo(() => validateLaneRulesDraft(draft), [draft]);
-    const activeIssues = lanePage === 'group' ? groupIssues : laneIssues;
     const metadata = React.useMemo(() => draft.tags.reduce((acc, item) => {
         if (item.key) acc[item.key] = item.value;
         return acc;
@@ -300,11 +284,6 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
             .filter(item => (!namespace || item.namespace === namespace) && !excluded.includes(item.service))
             .map(item => ({ label: item.service, value: item.service }))
     );
-
-    const copySpec = () => {
-        navigator.clipboard?.writeText(specText);
-        openInfoNotification('复制成功', '已复制当前泳道 Spec');
-    };
 
     const getServiceByName = (serviceName: string) => serviceByName.get(serviceName) || {
         label: serviceName,
@@ -821,33 +800,8 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
 
     const renderAuditPage = () => (
         <div className={styles.placeholderPanel}>
-            <Empty title="审计记录只读" description="操作记录不参与编辑；右侧展示 LaneGroupAudit 事件结构。" />
+            <Empty title="审计记录只读" description="操作记录不参与编辑。" />
         </div>
-    );
-
-    const renderSpecPreview = (
-        <aside className={styles.specPane}>
-            <div className={styles.specCard}>
-                <div className={styles.specToolbar}>
-                    <div>
-                        <div className={styles.specTitle}>实时规则 SPEC</div>
-                        <div className={styles.specDesc}>{currentSpec.kind} · 随当前 Tab 和表单实时刷新</div>
-                    </div>
-                    <div className={styles.specActions}>
-                        <div className={styles.specToggle}>
-                            {(['yaml', 'json'] as LaneSpecFormat[]).map(item => (
-                                <button key={item} type="button" className={specFormat === item ? styles.specToggleActive : ''} onClick={() => setSpecFormat(item)}>{item.toUpperCase()}</button>
-                            ))}
-                        </div>
-                        <Button size="small" variant="text" icon={<CopyIcon />} onClick={copySpec}>复制</Button>
-                    </div>
-                </div>
-                <pre className={styles.specCode}>{specText}</pre>
-                <div className={styles.specFooter}>
-                    {activeIssues.length ? <Tag theme="warning" variant="light">{activeIssues[0].message}</Tag> : <Tag theme="success" variant="light">当前页校验通过</Tag>}
-                </div>
-            </div>
-        </aside>
     );
 
     return (
@@ -869,7 +823,6 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
                         </TabPanel>
                     </Tabs>
                 </div>
-                {renderSpecPreview}
             </div>
             {editorState.publishView && (
                 <PublishForm
@@ -881,12 +834,11 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
                 />
             )}
             <StickyTool style={{ zIndex: 1000 }} placement="right-bottom" offset={[-10, 200]}>
-                <StickyItem
-                    label=""
-                    icon={!editorState.editable
-                        ? <RuleStickyAction label="编辑" icon={<Edit1Icon />} onClick={() => setEditorState(prev => ({ ...prev, editable: true }))} />
-                        : <RuleStickyAction label="保存" icon={<SaveIcon />} onClick={saveDraft} />}
-                />
+                {editorState.editable ? (
+                    <StickyItem label="" icon={<RuleStickyAction label="保存" icon={<SaveIcon />} onClick={saveDraft} />} />
+                ) : editable !== false && (
+                    <StickyItem label="" icon={<RuleStickyAction label="编辑" icon={<Edit1Icon />} onClick={() => setEditorState(prev => ({ ...prev, editable: true }))} />} />
+                )}
                 {editorState.editable && (
                     <StickyItem label="" icon={<RuleStickyAction label="撤销" icon={<RollbackIcon />} onClick={() => {
                         if (op === 'create') {
@@ -897,7 +849,7 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh }) => {
                         setEditorState(prev => ({ ...prev, editable: false }));
                     }} />} />
                 )}
-                {!editorState.editable && op !== 'create' && (
+                {!editorState.editable && op !== 'create' && editable !== false && (
                     <StickyItem label="" icon={<RuleStickyAction label="发布" icon={<RocketIcon />} onClick={() => setEditorState(prev => ({ ...prev, publishView: true }))} />} />
                 )}
             </StickyTool>

@@ -469,6 +469,17 @@ func wrapperRateLimitStoreResponse(rule *apitraffic.RateLimit, err error) *apimo
 	return resp
 }
 
+func rateLimitAPIFromMethod(value string) *apimodel.API {
+	return &apimodel.API{
+		Protocol: "HTTP",
+		Method:   "*",
+		Path: &apimodel.MatchString{
+			Value: value,
+			Type:  apimodel.MatchString_EXACT,
+		},
+	}
+}
+
 // =============================================================================
 // P0级别功能恢复 - 辅助函数
 // =============================================================================
@@ -480,14 +491,11 @@ func CreateSimpleRateLimit(name, service, namespace string, method string, maxAm
 		Name: name,
 		Type: apitraffic.RateLimit_GLOBAL, // 默认全局限流
 		Rules: []*apitraffic.LimitTrigger{
-			{
-				Name: name + "_trigger",
-				Method: &apimodel.MatchString{
-					Value: method,
-					Type:  apimodel.MatchString_EXACT,
-				},
-				Amounts: []*apitraffic.Amount{
-					{
+				{
+					Name: name + "_trigger",
+					Apis: []*apimodel.API{rateLimitAPIFromMethod(method)},
+					Amounts: []*apitraffic.Amount{
+						{
 						MaxAmount:     maxAmount,
 						ValidDuration: durationpb.New(duration),
 						Precision:     1,
@@ -606,10 +614,7 @@ func CreateAdvancedRateLimit(name, service, namespace string, config *AdvancedRa
 
 	// 设置HTTP方法匹配
 	if config.Method != "" {
-		trigger.Method = &apimodel.MatchString{
-			Value: config.Method,
-			Type:  apimodel.MatchString_EXACT,
-		}
+		trigger.Apis = []*apimodel.API{rateLimitAPIFromMethod(config.Method)}
 	}
 
 	// 设置限流量

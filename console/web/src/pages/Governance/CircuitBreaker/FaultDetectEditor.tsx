@@ -13,7 +13,7 @@ import {
     Tag,
     Popup
 } from 'tdesign-react';
-import { AddIcon, ChevronRightIcon, CloseIcon, CopyIcon, DeleteIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
+import { AddIcon, ChevronRightIcon, CloseIcon, DeleteIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
 
 import { API, HTTPMethod, HTTPMethodOption, InterfaceProtocol, Label, MatchType, Op } from "services/types";
 import RuleLabelField from "../shared/RuleLabelField";
@@ -25,16 +25,13 @@ import {
     FaultDetectSubRule
 } from 'services/faultdetect';
 import {
-    buildFaultDetectPreviewSpec,
     buildFaultDetectSubmitPayload,
     describeProbePort,
     describeProbeSummary,
-    FaultDetectSpecFormat,
     isCustomProbePort,
     normalizeFaultDetectRulesDraft,
     PayloadMatchOptions,
     receiveToText,
-    stringifyFaultDetectSpec,
     validateFaultDetectDraft,
 } from './faultDetectEditorUtils';
 import PublishForm from '../RuleRelease/PublishForm';
@@ -240,7 +237,6 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
         loading: false,
         visible: false
     });
-    const [specFormat, setSpecFormat] = React.useState<FaultDetectSpecFormat>('yaml');
     const [collapsedRuleIndexes, setCollapsedRuleIndexes] = React.useState<Set<number>>(new Set());
     const [formRevision, setFormRevision] = React.useState(0);
     const [ruleDrafts, setRuleDrafts] = React.useState<FaultDetectSubRule[]>(ensureFaultDetectRules(defaultFaultDetectRule()));
@@ -379,10 +375,6 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
         targetService,
         rules: subRules,
     }), [editRule, formValues, metadata, subRules, targetService]);
-    const validationErrors = React.useMemo(() => validateFaultDetectDraft(currentDraft), [currentDraft]);
-    const previewSpec = React.useMemo(() => buildFaultDetectPreviewSpec(currentDraft), [currentDraft]);
-    const specText = React.useMemo(() => stringifyFaultDetectSpec(previewSpec, specFormat), [previewSpec, specFormat]);
-
     const syncRuleDrafts = (nextRules: FaultDetectSubRule[], writeForm = true) => {
         const normalizedRules = normalizeFaultDetectRulesDraft(nextRules);
         if (writeForm) {
@@ -967,50 +959,12 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
         </>
     )
 
-    const copySpec = () => {
-        navigator.clipboard?.writeText(specText).then(() => {
-            openInfoNotification('复制成功', '已复制当前探测规则 Spec');
-        }).catch(() => {
-            openErrNotification('复制失败', '当前浏览器不支持复制到剪贴板');
-        });
-    };
-
-    const renderSpecPreview = (
-        <aside className={styles.specPane}>
-            <div className={styles.specCard}>
-                <div className={styles.specToolbar}>
-                    <div>
-                        <div className={styles.specTitle}>实时规则 SPEC</div>
-                        <div className={styles.specDesc}>保存前核对 FaultDetectRule 规则配置</div>
-                    </div>
-                    <div className={styles.specActions}>
-                        <div className={styles.specToggle}>
-                            {(['yaml', 'json'] as FaultDetectSpecFormat[]).map(item => (
-                                <button key={item} type="button" className={specFormat === item ? styles.specToggleActive : ''} onClick={() => setSpecFormat(item)}>
-                                    {item.toUpperCase()}
-                                </button>
-                            ))}
-                        </div>
-                        <Button size="small" variant="outline" icon={<CopyIcon />} onClick={copySpec}>复制</Button>
-                    </div>
-                </div>
-                <pre className={styles.specCode}>{specText}</pre>
-                <div className={styles.specFooter}>
-                    {validationErrors.length
-                        ? validationErrors.slice(0, 3).map(item => <span key={`${item.field}-${item.message}`} className={styles.previewError}>{item.message}</span>)
-                        : <span className={styles.previewOk}>校验通过，可保存并下发</span>}
-                </div>
-            </div>
-        </aside>
-    );
-
     return (
         <div className={styles.editorBody}>
             <div className={styles.editorShell}>
                 <div className={styles.formPane}>
                     {renderEditRule}
                 </div>
-                {renderSpecPreview}
             </div>
             {editorState.publishView && (
                 <PublishForm

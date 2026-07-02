@@ -183,6 +183,7 @@ func (bc *BatchController) mainLoop(ctx context.Context) {
 					triggerConsume(futures[0:idx])
 				}
 			}
+			triggerConsume(futures[0:idx])
 			for i := range bc.workers {
 				close(bc.workers[i])
 			}

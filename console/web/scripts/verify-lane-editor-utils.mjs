@@ -163,7 +163,6 @@ assert.match(editorSource, /className=\{styles\.laneServiceSection\}/);
 assert.match(editorSource, /className=\{styles\.laneResultHint\}/);
 assert.match(editorSource, /className=\{styles\.addLaneCardButton\}/);
 assert.match(editorSource, /renderLaneTopology/);
-assert.match(editorSource, /实时规则 SPEC/);
 assert.match(editorSource, /LANE_TRAFFIC_TAG_KEY/);
 assert.doesNotMatch(editorSource, /renderField\('固定标签 Key'/);
 assert.match(styleSource, /\.laneName\s*\{[\s\S]*?font-size:\s*14px;/);

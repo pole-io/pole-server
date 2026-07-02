@@ -411,6 +411,30 @@ func (svr *Server) checkResourceExist(resources *apisecurity.StrategyResources) 
 		}
 	}
 
+	if resp := checkTrafficGovernanceResourceExist(resources.GetSecurityRules(), svr.cacheMgr.TrafficSecurity()); resp != nil {
+		return resp
+	}
+	if resp := checkTrafficGovernanceResourceExist(resources.GetMirrorRules(), svr.cacheMgr.TrafficMirror()); resp != nil {
+		return resp
+	}
+	if resp := checkTrafficGovernanceResourceExist(resources.GetMockRules(), svr.cacheMgr.TrafficMock()); resp != nil {
+		return resp
+	}
+
+	return nil
+}
+
+func checkTrafficGovernanceResourceExist(resources []*apisecurity.StrategyResourceEntry,
+	cache cachetypes.TrafficGovernanceCache) *apimodel.Response {
+	for index := range resources {
+		val := resources[index]
+		if val.GetId() == "*" {
+			continue
+		}
+		if rule := cache.GetRule(val.GetId()); rule == nil {
+			return api.NewAuthResponse(apimodel.Code_NotFoundResource)
+		}
+	}
 	return nil
 }
 

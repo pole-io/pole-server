@@ -36,9 +36,16 @@ const columns = (handleOpRule: (row: TableRowData, op: Op) => void, redirect: (r
         colKey: 'caller',
         title: '被探测服务',
         ellipsis: true,
-        cell: ({ row }) => (
-            <div className={style.serviceCell}>命名空间: {row.targetService?.namespace || '-'}<br />服务: {row.targetService?.service || '-'}</div>
-        ),
+        cell: ({ row }) => {
+            const api = row.targetService?.api;
+            return (
+                <div className={style.serviceCell}>
+                    命名空间: {row.targetService?.namespace || '-'}<br />
+                    服务: {row.targetService?.service || '-'}<br />
+                    接口: {api?.protocol || '-'} {api?.method || '-'} {api?.path?.value || '-'}
+                </div>
+            )
+        },
     },
     {
         colKey: 'port',

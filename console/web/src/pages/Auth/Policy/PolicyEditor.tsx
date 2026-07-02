@@ -14,6 +14,7 @@ import { describeAllAuthPolicies, describeAuthPolicyDetail, describeServerFuncti
 import { describeAllNamespaces } from 'services/namespace';
 import { describeAllServices } from 'services/service';
 import { describeAllConfigGroups } from 'services/config_group';
+import PolicyDetailView from './PolicyDetailView';
 
 const { FormItem } = Form;
 const { StepItem } = Steps;
@@ -109,6 +110,7 @@ interface IPolicyEditorProps {
 
 const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }) => {
     const [form] = Form.useForm();
+    const [editable, setEditable] = React.useState(op !== 'view');
     const dispatch = useAppDispatch();
     const currentPolicy = useAppSelector(selectPolicyRule);
 
@@ -170,7 +172,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                 label: item.desc,
             }));
 
-            if (op === 'edit') {
+            if (op !== 'create') {
                 await loadCurRule(serverFnRes.list);
             }
             setState(prev => ({
@@ -320,6 +322,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
     // 表单初始化（支持create/edit/view）
     React.useEffect(() => {
         if (!visible) return;
+        setEditable(op !== 'view');
         loadOptions()
     }, [visible, currentPolicy, op]);
 
@@ -466,7 +469,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
         const labels = (form.getFieldValue('policy_labels') || []) as { key: string, value: string }[];
 
         const newData = {
-            id: op === 'edit' ? currentPolicy.id : undefined,
+            id: op === 'create' ? undefined : currentPolicy.id,
             name: String(form.getFieldValue('name') || ''),
             action: String(form.getFieldValue('action') || '').toUpperCase(),
             comment: String(form.getFieldValue('comment') || ''),
@@ -495,10 +498,10 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
         console.log(newData);
         let result;
         try {
-            if (op === 'edit') {
-                result = await dispatch(updatePolicyRules({ state: newData }));
-            } else {
+            if (op === 'create') {
                 result = await dispatch(savePolicyRules({ state: newData }));
+            } else {
+                result = await dispatch(updatePolicyRules({ state: newData }));
             }
         } catch (err) {
             setLoading(false);
@@ -507,7 +510,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
         }
         setLoading(false);
         if (result.meta.requestStatus === 'fulfilled') {
-            openInfoNotification('操作成功', op === 'edit' ? '修改策略规则成功' : '新建策略规则成功');
+            openInfoNotification('操作成功', op === 'create' ? '新建策略规则成功' : '修改策略规则成功');
             closeDrawer();
         } else {
             openErrNotification('请求错误', result.payload as string || '未知错误');
@@ -516,6 +519,30 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
 
     const maxStep = currentPolicy.default_strategy ? 3 : 4;
     const stepInfo = currentPolicy.default_strategy ? defaultStepNext : customStepNext;
+    const policyViewMode = op === 'view' && !editable;
+    const drawerFooter = (
+        <Space>
+            {state.step > 1 && (
+                <Button theme="default" onClick={() => handleStepChange(state.step - 1)}>
+                    上一步
+                </Button>
+            )}
+            {state.step < maxStep && (
+                <Button theme="default" onClick={() => handleStepChange(state.step + 1)}>
+                    下一步
+                </Button>
+            )}
+            {editable && state.step === maxStep && (
+                <Button
+                    theme="primary"
+                    onClick={() => form.submit()}
+                    loading={loading}
+                >
+                    提交
+                </Button>
+            )}
+        </Space>
+    );
 
     return (
         <Drawer
@@ -524,58 +551,38 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                 form.reset();
                 closeDrawer();
             }}
-            header={`${op === 'edit' ? '编辑' : '新建'}策略规则`}
-            size='60%'
-            footer={
-                <Space>
-                    {state.step > 1 && (
-                        <Button theme="default" onClick={() => handleStepChange(state.step - 1)}>
-                            上一步
-                        </Button>
-                    )}
-                    {state.step < maxStep && (
-                        <Button theme="default" onClick={() => handleStepChange(state.step + 1)}>
-                            下一步
-                        </Button>
-                    )}
-                    {state.step === maxStep && (
-                        <>
-                            <Button
-                                theme="primary"
-                                onClick={() => form.submit()}
-                                loading={loading}
-                                disabled={op === 'view'}
-                            >
-                                提交
-                            </Button>
-                        </>
-                    )}
-                </Space>
-            }
+            header={op === 'create' ? '新建策略规则' : editable ? '编辑策略规则' : '策略详情'}
+            size={policyViewMode ? 'min(980px, 94vw)' : '60%'}
+            footer={policyViewMode ? false : drawerFooter}
+            className={policyViewMode ? style.policyDetailDrawer : undefined}
         >
-            {currentPolicy.default_strategy ?
-                (
-                    <Steps current={state.step}>
-                        <StepItem value={1} title="基本信息" />
-                        <StepItem value={2} title="资源信息" />
-                        <StepItem value={3} title="接口信息" />
-                    </Steps>
-                )
-                :
-                (
-                    <Steps current={state.step}>
-                        <StepItem value={1} title="基本信息" />
-                        <StepItem value={2} title="成员信息" />
-                        <StepItem value={3} title="资源信息" />
-                        <StepItem value={4} title="接口信息" />
-                    </Steps>
-                )}
-            <Form
-                form={form}
-                labelWidth={120}
-                onSubmit={onSubmit}
-                style={{ padding: '24px 0' }}
-            >
+            {policyViewMode ? (
+                <PolicyDetailView policyId={currentPolicy.id} />
+            ) : (
+                <>
+                    {currentPolicy.default_strategy ?
+                        (
+                            <Steps current={state.step}>
+                                <StepItem value={1} title="基本信息" />
+                                <StepItem value={2} title="资源信息" />
+                                <StepItem value={3} title="接口信息" />
+                            </Steps>
+                        )
+                        :
+                        (
+                            <Steps current={state.step}>
+                                <StepItem value={1} title="基本信息" />
+                                <StepItem value={2} title="成员信息" />
+                                <StepItem value={3} title="资源信息" />
+                                <StepItem value={4} title="接口信息" />
+                            </Steps>
+                        )}
+                    <Form
+                        form={form}
+                        labelWidth={120}
+                        onSubmit={onSubmit}
+                        style={{ padding: '24px 0' }}
+                    >
                 {/* Step 1: Basic Information */}
                 {stepInfo[state.step].Cur === 'base' && (
                     <>
@@ -593,7 +600,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                             initialData={currentPolicy.action === '' ? 'ALLOW' : currentPolicy.action}
                             rules={[{ required: true, message: '策略动作不能为空' }]}
                         >
-                            <RadioGroup theme='button' variant='primary-filled' disabled={op === 'view' || currentPolicy.default_strategy}>
+                            <RadioGroup theme='button' variant='primary-filled' disabled={!editable || currentPolicy.default_strategy}>
                                 <Radio.Button value="ALLOW">允许</Radio.Button>
                                 <Radio.Button value="DENY">拒绝</Radio.Button>
                             </RadioGroup>
@@ -604,13 +611,13 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                             initialData={currentPolicy.comment}
                             rules={[{ max: 255, message: '长度不超过255个字符' }]}
                         >
-                            <Input placeholder="请输入策略描述" />
+                            <Input placeholder="请输入策略描述" disabled={!editable} />
                         </FormItem>
                         <LabelInput
                             form={form}
                             label='策略标签'
                             name='policy_labels'
-                            disabled={false}
+                            editable={editable}
                         />
                     </>
                 )}
@@ -637,6 +644,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                                 <RadioGroup
                                     theme='button'
                                     variant='primary-filled'
+                                    disabled={!editable}
                                     value={state.selectPrincipals[state.activePrincipalNode]?.all ? 'all' : 'custom'}
                                     onChange={(value) => {
                                         setState(prev => ({
@@ -660,6 +668,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                                         search={true}
                                         data={state.principalOptions[state.activePrincipalNode]}
                                         value={state.selectPrincipals[state.activePrincipalNode]?.ids}
+                                        disabled={!editable}
                                         onChange={(target, ctx) => {
                                             const newSelectPrincipals = { ...state.selectPrincipals };
                                             if (!newSelectPrincipals[state.activePrincipalNode]) {
@@ -711,6 +720,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                                 <RadioGroup
                                     theme='button'
                                     variant='primary-filled'
+                                    disabled={!editable}
                                     value={state.selectResources[state.activeResNode]?.all ? 'all' : 'custom'}
                                     onChange={(value) => {
                                         setState(prev => ({
@@ -734,6 +744,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                                         search={true}
                                         data={state.resourceOptions[state.activeResNode]}
                                         value={state.selectResources[state.activeResNode]?.ids}
+                                        disabled={!editable}
                                         onChange={(target, ctx) => {
                                             const newSelectResources = { ...state.selectResources };
                                             if (!newSelectResources[state.activeResNode]) {
@@ -778,6 +789,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                                     <RadioGroup
                                         theme='button'
                                         variant='primary-filled'
+                                        disabled={!editable}
                                         value={state.useAllFunc ? 'all' : 'custom'}
                                         onChange={(value) => {
                                             setState(prev => ({
@@ -795,6 +807,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                                 <Switch
                                     defaultValue
                                     label={['可视化选择', '文本模式']}
+                                    disabled={!editable}
                                     onChange={(value) => {
                                         setState(prev => ({
                                             ...prev,
@@ -810,6 +823,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                                     filterable={true}
                                     creatable={true}
                                     multiple={true}
+                                    disabled={!editable}
                                     options={state.functionOptions.reduce((acc: { value: string; label: string }[], group) => {
                                         acc.push(...group.functions.map(item => ({
                                             value: item,
@@ -855,6 +869,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                                                 search={true}
                                                 data={state.viewFunctionOptions}
                                                 value={state.selectFunctions[state.activeFuncNode]?.functions}
+                                                disabled={!editable}
                                                 onChange={(target, ctx) => {
                                                     const newSelectFunctions = { ...state.selectFunctions };
                                                     if (!newSelectFunctions[state.activeFuncNode]) {
@@ -892,7 +907,9 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                         )}
                     </>
                 )}
-            </Form>
+                    </Form>
+                </>
+            )}
         </Drawer>
     );
 };

@@ -72,6 +72,8 @@ export interface PolicyResources {
     route_rules?: PolicyResource[]
     // 泳道规则ID列表
     lane_rules?: PolicyResource[]
+    // 无损规则ID列表
+    lossless_rules?: PolicyResource[]
     // 熔断规则ID列表
     circuitbreaker_rules?: PolicyResource[]
     // 主动探测规则ID列表
@@ -198,15 +200,16 @@ export interface DescribeAuthPolicyDetailRequest {
 
 export interface DescribeAuthPolicyDetailResponse {
     // 鉴权策略详细
-    authStrategy: PolicyRule
+    authStrategy?: PolicyRule
 }
 
 export async function describeAuthPolicyDetail(params: DescribeAuthPolicyDetailRequest) {
-    const result = await getApiRequest<DescribeAuthPolicyDetailResponse>({
+    const result = await getApiRequest<DescribeAuthPolicyDetailResponse | PolicyRule>({
         action: '/auth/v1/policies/detail',
         data: params,
     })
-    return { strategy: result.authStrategy }
+    const strategy = (result as DescribeAuthPolicyDetailResponse).authStrategy ?? (result as PolicyRule)
+    return { strategy }
 }
 
 // 批量创建鉴权策略

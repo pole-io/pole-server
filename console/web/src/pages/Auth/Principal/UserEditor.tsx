@@ -1,5 +1,5 @@
 import React, {  } from 'react';
-import { Drawer, Form, Input, Space, Button, Switch } from "tdesign-react";
+import { Drawer, Form, Input, Space, Button, Switch, Tag, Tabs } from "tdesign-react";
 import type { FormProps } from 'tdesign-react';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
@@ -8,6 +8,9 @@ import LabelInput from 'components/LabelInput';
 import { saveUsers, updateUsers } from 'modules/user/users';
 import { selectUser } from 'modules/user/users';
 import { Label, Op } from 'services/types';
+import { USER_ROLE_MAP } from 'services/users';
+import style from './index.module.less';
+import PrincipalPolicyTable from './PrincipalPolicyTable';
 
 interface UserDO {
     // 用户ID
@@ -31,6 +34,7 @@ interface UserDO {
 }
 
 const { FormItem } = Form;
+const { TabPanel } = Tabs;
 
 interface IUserEditorProps {
     op: Op;
@@ -40,10 +44,17 @@ interface IUserEditorProps {
 
 const UserEditor: React.FC<IUserEditorProps> = ({ visible, op, closeDrawer }) => {
     const [form] = Form.useForm();
+    const [editable, setEditable] = React.useState(op !== 'view');
     const dispatch = useAppDispatch();
 
     const userState = useAppSelector(selectUser);
-    const {editUser, viewUser} = userState;
+    const { editUser } = userState;
+
+    React.useEffect(() => {
+        if (visible) {
+            setEditable(op !== 'view');
+        }
+    }, [visible, op]);
 
     React.useEffect(() => {
         if (visible && editUser) {
@@ -76,19 +87,88 @@ const UserEditor: React.FC<IUserEditorProps> = ({ visible, op, closeDrawer }) =>
         }
 
         let result;
-        if (op === 'edit') {
-            result = await dispatch(updateUsers({ param: { ...newData } }))
-        } else {
+        if (op === 'create') {
             result = await dispatch(saveUsers({ param: { ...newData } }))
+        } else {
+            result = await dispatch(updateUsers({ param: { ...newData } }))
         }
 
         if (result.meta.requestStatus !== 'fulfilled') {
             openErrNotification('请求错误', result?.payload as string);
         } else {
-            openInfoNotification('请求成功', op === 'edit' ? '修改用户信息成功' : '创建用户成功');
+            openInfoNotification('请求成功', op === 'create' ? '创建用户成功' : '修改用户信息成功');
             closeDrawer();
         }
     };
+
+    const labels = editUser?.metadata ? Object.entries(editUser.metadata) : [];
+    const canEdit = (editUser as (UserDO & { editable?: boolean }) | null)?.editable !== false;
+
+    const userBaseView = (
+        <div className={style.authDetail}>
+            <div className={style.detailField}>
+                <span>用户名</span>
+                <strong>{editUser?.name || '-'}</strong>
+            </div>
+            <div className={style.detailField}>
+                <span>用户 ID</span>
+                <p>{editUser?.id || '-'}</p>
+            </div>
+            <div className={style.detailGrid}>
+                <div className={style.detailField}>
+                    <span>用户类型</span>
+                    <Tag theme="primary" variant="outline">
+                        {USER_ROLE_MAP?.[editUser?.user_type as keyof typeof USER_ROLE_MAP]?.text ?? '-'}
+                    </Tag>
+                </div>
+                <div className={style.detailField}>
+                    <span>Token 状态</span>
+                    <Tag theme={editUser?.token_enable ? 'success' : 'danger'} variant="outline">
+                        {editUser?.token_enable ? '启用中' : '禁用中'}
+                    </Tag>
+                </div>
+                <div className={style.detailField}>
+                    <span>邮箱</span>
+                    <p>{editUser?.email || '-'}</p>
+                </div>
+                <div className={style.detailField}>
+                    <span>手机号</span>
+                    <p>{editUser?.mobile || '-'}</p>
+                </div>
+                <div className={style.detailField}>
+                    <span>来源</span>
+                    <p>{editUser?.source || '-'}</p>
+                </div>
+                <div className={style.detailField}>
+                    <span>时间</span>
+                    <p>修改: {editUser?.mtime || '-'}<br />创建: {editUser?.ctime || '-'}</p>
+                </div>
+            </div>
+            <div className={style.detailField}>
+                <span>备注</span>
+                <p>{editUser?.comment || '-'}</p>
+            </div>
+            <div className={style.detailField}>
+                <span>用户标签</span>
+                <div className={style.detailLabels}>
+                    {labels.length > 0 ? labels.map(([key, value]) => (
+                        <em key={key}>{key}: {value}</em>
+                    )) : '-'}
+                </div>
+            </div>
+        </div>
+    );
+
+    const userView = (
+        <Tabs defaultValue="base">
+            <TabPanel value="base" label="基础信息">
+                {userBaseView}
+            </TabPanel>
+            <TabPanel value="permission" label="权限信息">
+                <PrincipalPolicyTable principalId={editUser?.id} principalType={1} />
+            </TabPanel>
+        </Tabs>
+    );
 
     const userForm = (
         <Form
@@ -104,7 +184,7 @@ const UserEditor: React.FC<IUserEditorProps> = ({ visible, op, closeDrawer }) =>
                     { max: 64, message: '长度不超过64个字符' },
                 ]}
             >
-                <Input disabled={op === 'edit'} />
+                <Input disabled={op !== 'create'} />
             </FormItem>
             {op === 'create' && (
                 <FormItem label={'密码'} name={'password'}
@@ -120,13 +200,13 @@ const UserEditor: React.FC<IUserEditorProps> = ({ visible, op, closeDrawer }) =>
                 rules={[
                     { max: 255, message: '长度不超过255个字符' }
                 ]}>
-                <Input />
+                <Input disabled={!editable} />
             </FormItem>
             <FormItem label="Token 启用状态" name="token_enable">
-                <Switch disabled={op === 'view'} size="large" label={['启用', '禁用']} />
+                <Switch disabled={!editable} size="large" label={['启用', '禁用']} />
             </FormItem>
-            <LabelInput form={form} label='用户标签' name='user_labels' editable={true} />
-            {op !== 'view' && (
+            <LabelInput form={form} label='用户标签' name='user_labels' editable={editable} />
+            {editable && (
                 <FormItem style={{ marginTop: 100 }}>
                     <Space>
                         <Button type="submit" theme="primary">
@@ -145,13 +225,22 @@ const UserEditor: React.FC<IUserEditorProps> = ({ visible, op, closeDrawer }) =>
         <div>
             <Drawer
                 size='large'
-                header={op === 'edit' ? "编辑用户" : "创建用户"}
-                footer={false}
+                header={op === 'create' ? "创建用户" : editable ? "编辑用户" : "用户详情"}
+                footer={op === 'view' && !editable ? (
+                    <Space>
+                        <Button theme="primary" disabled={!canEdit} onClick={() => setEditable(true)}>
+                            编辑
+                        </Button>
+                        <Button theme="default" onClick={closeDrawer}>
+                            关闭
+                        </Button>
+                    </Space>
+                ) : false}
                 visible={visible}
                 showOverlay={false}
                 onClose={closeDrawer}
             >
-                {userForm}
+                {editable ? userForm : userView}
             </Drawer>
         </div>
     );

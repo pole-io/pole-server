@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Link, Popup, Table, Button, PageInfo, PrimaryTableProps, TableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Tag, Loading, Popconfirm } from 'tdesign-react';
-import { DeleteIcon, EditIcon, RefreshIcon, CreditcardIcon, UserVisibleIcon } from 'tdesign-icons-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link, Table, Button, PageInfo, PrimaryTableProps, TableProps, Tooltip, Space, Row, Col, TableRowData, Tag, Popconfirm } from 'tdesign-react';
+import { DeleteIcon, RefreshIcon, CreditcardIcon, UserVisibleIcon } from 'tdesign-icons-react';
 
 import Search from 'components/Search';
 import ErrorPage from 'components/ErrorPage';
 import Text from 'components/Text';
-import { useAppDispatch, useAppSelector } from 'modules/store';
+import { useAppDispatch } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
-import { describeUsers } from 'services/users';
-import { describeUserGroups } from 'services/user_group';
+import { describeUserGroups, describeUserGroupToken } from 'services/user_group';
 import ShowToken from './ShowToken';
 import GroupEditor from './GroupEditor';
 import { editorUserGroup, removeUserGroups } from 'modules/user/groups';
@@ -21,7 +19,7 @@ interface IUsersProps {
 
 const ServerError = () => <ErrorPage code={500} />;
 
-const columns = (handleEditGroup: (row: TableRowData, op: 'view' | 'create' | 'edit' | 'delete', res: string) => void, redirect: (id: string, name: string) => void): PrimaryTableProps['columns'] => [
+const columns = (handleEditGroup: (row: TableRowData, op: 'view' | 'create' | 'edit' | 'delete', res: string) => void): PrimaryTableProps['columns'] => [
     {
         colKey: 'id',
         title: 'ID',
@@ -31,8 +29,8 @@ const columns = (handleEditGroup: (row: TableRowData, op: 'view' | 'create' | 'e
     {
         colKey: 'name',
         title: '名称',
-        cell: ({ row: { name, id } }) => (
-            <Link theme='primary' onClick={() => redirect(id, name)}>{name}</Link>
+        cell: ({ row }) => (
+            <Link theme='primary' onClick={() => handleEditGroup(row, 'view', 'group')}>{row.name}</Link>
         ),
     },
     {
@@ -57,24 +55,29 @@ const columns = (handleEditGroup: (row: TableRowData, op: 'view' | 'create' | 'e
         cell: ({ row }) => {
             return (
                 <Space>
+                    <Tooltip content={row.editable === false ? '无权限操作' : '查看 / 编辑'}>
+                        <Button
+                            shape="square"
+                            variant="text"
+                            disabled={row.editable === false}
+                            aria-label="查看 / 编辑"
+                            onClick={() => handleEditGroup(row, 'view', 'group')}>
+                            <CreditcardIcon />
+                        </Button>
+                    </Tooltip>
                     <Tooltip content={row.editable === false ? '无权限操作' : '查看 Token'}>
                         <Button
                             shape="square"
                             variant="text"
                             disabled={row.editable === false}
                             onClick={() => {
-
+                                describeUserGroupToken({ id: row.id }).then((res) => {
+                                    if (res?.userGroup) {
+                                        handleEditGroup({ ...row, auth_token: res.userGroup.auth_token }, 'view', 'group_token');
+                                    }
+                                });
                             }}>
                             <UserVisibleIcon />
-                        </Button>
-                    </Tooltip>
-                    <Tooltip content={row.editable === false ? '无权限操作' : '编辑'}>
-                        <Button
-                            shape="square"
-                            variant="text"
-                            disabled={row.editable === false}
-                            onClick={() => handleEditGroup(row, 'edit', 'group')}>
-                            <EditIcon />
                         </Button>
                     </Tooltip>
                     <Tooltip content={row.deleteable === false ? '无权限操作' : '删除'}>
@@ -102,7 +105,6 @@ const columns = (handleEditGroup: (row: TableRowData, op: 'view' | 'create' | 'e
 
 const GroupsTable: React.FC<IUsersProps> = ({ }) => {
     const dispatch = useAppDispatch();
-    const navigate = useNavigate();
     const [selectedRowKeys, setSelectedRowKeys] = useState<Array<string | number>>([]);
 
     // 合并编辑相关状态
@@ -120,7 +122,7 @@ const GroupsTable: React.FC<IUsersProps> = ({ }) => {
     // 合并编辑相关状态
     const [editorState, setEditorState] = useState<{
         visible: boolean;
-        mode: 'create' | 'edit';
+        mode: 'create' | 'edit' | 'view';
         data?: TableRowData;
         resource: 'group' | 'group_token';
     }>({ visible: false, mode: 'create', data: undefined, resource: 'group' });
@@ -143,10 +145,13 @@ const GroupsTable: React.FC<IUsersProps> = ({ }) => {
         }
         setEditorState({
             visible: true,
-            mode: 'edit',
+            mode: mode === 'create' ? 'create' : mode === 'edit' ? 'edit' : 'view',
             data: { ...row },
-            resource: 'group',
+            resource: res as 'group' | 'group_token',
         })
+        if (res === 'group_token') {
+            return;
+        }
         dispatch(editorUserGroup({
             id: row.id,
             name: row.name,
@@ -235,7 +240,7 @@ const GroupsTable: React.FC<IUsersProps> = ({ }) => {
                 }} />
             <GroupEditor
                 key={editorState.mode + (editorState.data?.name || 'new') + (editorState.visible ? '1' : '0')}
-                modify={editorState.mode === 'edit'}
+                modify={editorState.mode !== 'create'}
                 visible={editorState.visible && editorState.resource === 'group'}
                 refresh={refreshTables}
                 closeDrawer={() => {
@@ -244,9 +249,7 @@ const GroupsTable: React.FC<IUsersProps> = ({ }) => {
                 }} op={editorState.mode} />
             <Table
                 data={searchState.groups}
-                columns={columns(handleEditUserGroup, (id: string, name: string) => {
-                    navigate(`groupdetail?id=${id}&name=${name}`);
-                })}
+                columns={columns(handleEditUserGroup)}
                 loading={searchState.isLoading}
                 rowKey="id"
                 size={"large"}

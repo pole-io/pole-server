@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Tag, Popconfirm } from 'tdesign-react';
-import { DeleteIcon, EditIcon, RefreshIcon, UserVisibleIcon } from 'tdesign-icons-react';
-import { useNavigate } from 'react-router-dom';
+import { CreditcardIcon, DeleteIcon, RefreshIcon, UserVisibleIcon } from 'tdesign-icons-react';
 
 import Search from 'components/Search';
 import ErrorPage from 'components/ErrorPage';
@@ -21,7 +20,7 @@ interface IUsersProps {
 
 const ServerError = () => <ErrorPage code={500} />;
 
-const columns = (operateUser: (op: Op, res: string, row?: TableRowData) => void, redirect: (id: string, name: string) => void): PrimaryTableProps['columns'] => [
+const columns = (operateUser: (op: Op, res: string, row?: TableRowData) => void): PrimaryTableProps['columns'] => [
     {
         colKey: 'id',
         title: 'ID',
@@ -31,8 +30,8 @@ const columns = (operateUser: (op: Op, res: string, row?: TableRowData) => void,
     {
         colKey: 'name',
         title: '用户名',
-        cell: ({ row: { name, id } }) => (
-            <Link theme='primary' onClick={() => redirect(id, name)}>{name}</Link>
+        cell: ({ row }) => (
+            <Link theme='primary' onClick={() => operateUser('view', 'user', { ...row })}>{row.name}</Link>
         ),
     },
     {
@@ -65,6 +64,16 @@ const columns = (operateUser: (op: Op, res: string, row?: TableRowData) => void,
         cell: ({ row }) => {
             return (
                 <Space>
+                    <Tooltip content={row.editable === false ? '无权限操作' : '查看 / 编辑'}>
+                        <Button
+                            shape="square"
+                            variant="text"
+                            disabled={row.editable === false}
+                            aria-label="查看 / 编辑"
+                            onClick={() => operateUser('view', 'user', { ...row })}>
+                            <CreditcardIcon />
+                        </Button>
+                    </Tooltip>
                     <Tooltip content={row.editable === false ? '无权限操作' : '查看 Token'}>
                         <Button
                             shape="square"
@@ -78,15 +87,6 @@ const columns = (operateUser: (op: Op, res: string, row?: TableRowData) => void,
                                 });
                             }}>
                             <UserVisibleIcon />
-                        </Button>
-                    </Tooltip>
-                    <Tooltip content={row.editable === false ? '无权限操作' : '编辑'}>
-                        <Button
-                            shape="square"
-                            variant="text"
-                            disabled={row.editable === false}
-                            onClick={() => operateUser('edit', 'user', { ...row })}>
-                            <EditIcon />
                         </Button>
                     </Tooltip>
                     {row.user_type !== 'main' && (
@@ -119,7 +119,6 @@ const columns = (operateUser: (op: Op, res: string, row?: TableRowData) => void,
 
 const UsersTable: React.FC<IUsersProps> = ({ }) => {
     const dispatch = useAppDispatch();
-    const navigate = useNavigate();
 
     const userState = useAppSelector(selectUser);
     const { datas, total, page, limit, loading } = userState;
@@ -153,6 +152,9 @@ const UsersTable: React.FC<IUsersProps> = ({ }) => {
                 setEditorState(prev => ({ ...prev, visible: true, mode: mode, resource: res, data: undefined }));
                 return;
             case 'view':
+                if (res === 'user') {
+                    dispatch(editorUser({ ...row as User }));
+                }
                 setEditorState(prev => ({ ...prev, visible: true, mode: mode, resource: res, data: { ...row } }))
         }
     }
@@ -218,9 +220,7 @@ const UsersTable: React.FC<IUsersProps> = ({ }) => {
             )}
             <Table
                 data={datas}
-                columns={columns(operateUser, (id: string, name: string) => {
-                    navigate(`userdetail?id=${id}&name=${name}`);
-                })}
+                columns={columns(operateUser)}
                 loading={loading}
                 rowKey="id"
                 size={"large"}

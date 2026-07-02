@@ -97,9 +97,11 @@ const multiInterfaceRule = [{
   ],
 }];
 const submit = utils.buildMirrorRulesForSubmit(multiInterfaceRule);
-assert.equal(submit.length, 2);
+assert.equal(submit.length, 1);
 assert.equal(submit[0].interfaces, undefined);
-assert.equal(submit[1].api.protocol, 'DUBBO');
+assert.equal(submit[0].api, undefined);
+assert.equal(submit[0].apis.length, 2);
+assert.equal(submit[0].apis[1].protocol, 'DUBBO');
 assert.equal(submit[0].traffic_match_rule.arguments.some((item) => item.type === 'CALLER_SERVICE'), false);
 assert.equal(submit[0].duration, undefined);
 

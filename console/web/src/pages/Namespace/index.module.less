@@ -260,6 +260,55 @@
   }
 }
 
+.namespaceDetail {
+  display: grid;
+  gap: 18px;
+}
+
+.detailField {
+  min-width: 0;
+
+  > span {
+    display: block;
+    margin-bottom: 6px;
+    color: #697586;
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  > strong {
+    display: block;
+    color: #111827;
+    font-size: 18px;
+    font-weight: 650;
+    line-height: 26px;
+  }
+
+  > p {
+    margin: 0;
+    color: #364152;
+    font-size: 14px;
+    line-height: 22px;
+  }
+}
+
+.detailLabels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #364152;
+  font-size: 13px;
+  line-height: 20px;
+
+  em {
+    padding: 3px 8px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    background: #f7f8fa;
+    font-style: normal;
+  }
+}
+
 @media (max-width: 1180px) {
   .metricRail {
     grid-template-columns: repeat(3, minmax(0, 1fr));

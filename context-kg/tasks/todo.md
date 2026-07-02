@@ -2,11 +2,901 @@
 title: 任务计划与 Review
 tags: [tasks, todo]
 links: [lessons]
-updated: 2026-06-24
+updated: 2026-07-03
 sources: 0
 ---
 
 # 任务计划与 Review
+
+## 前端 build 警告彻底清理
+
+- [x] 定位 `npm run build:test` 中 Browserslist 过期和大 chunk warning 的真实来源
+- [x] 更新 Browserslist/caniuse 数据，消除过期数据 warning
+- [x] 调整 Vite/Rollup 分包策略，消除 JS/CSS 大 chunk warning
+- [x] 重跑前端构建、lint、静态脚本、Go 测试与 context-kg 校验
+- [x] 提交并推送全部改动
+
+当前判断：
+
+- 不通过调高 `chunkSizeWarningLimit` 压制 warning；优先拆分依赖 chunk、恢复 CSS code split，并保留生产加载可缓存性。
+- `vite.config.js` 当前 `cssCodeSplit: false` 会把全部 CSS 聚合成单个大文件，是样式 chunk warning 的直接来源。
+- Browserslist 过期来自锁文件中的 `caniuse-lite` 版本落后；Node 25 下 Vite 2 还会因为读取 debug localStorage 触发 `--localstorage-file` 路径 warning。
+
+修复：
+
+- 使用 `npm_config_legacy_peer_deps=true npx update-browserslist-db@latest` 将 lockfile 中的 `caniuse-lite` 更新到 `1.0.30001800`，避免 Browserslist 数据过期 warning。
+- `vite.config.js` 恢复 `cssCodeSplit: true`，并按 React、TDesign、Monaco、ECharts、i18n、lodash 等依赖族配置 `manualChunks`，消除大 JS/CSS chunk warning。
+- 新增 `scripts/run-vite-build.mjs` 统一承载 `build:test`、`build`、`build:site`，在 Node 22+ 下提供有效的 `--localstorage-file` 路径，避免 Vite 2 与新 Node 组合产生构建 warning。
+
+验证：
+
+- `cd console/web && npm run build:test` 通过；随后对构建日志执行 `rg "Warning|warning|Browserslist|larger than|localstorage-file"` 无命中，确认本轮目标 warning 已清零。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过，覆盖全部前端静态回归脚本。
+- `go test ./...` 通过。
+- `go test ./pkg/common/batchctrl -count=20 -timeout=60s` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+
+Review：
+
+- 本轮没有通过调高 `chunkSizeWarningLimit` 隐藏 warning；JS 和 CSS 大包 warning 通过实际 code split 与 manual chunks 消除。
+- `run-vite-build.mjs` 只在 Node 22+ 注入 `--localstorage-file`，避免旧 Node 对未知 flag 失败，同时不改变 dev/preview 入口。
+- 当前最大 JS chunk 为 `react-vendor` 约 350 KiB，最大 CSS chunk 为 `tdesign-shared` 约 165 KiB，均低于 Vite 默认 warning 阈值。
+
+## pole-control-plane 全仓问题修复
+
+- [x] 复核全仓检查发现的问题，明确本轮修复范围
+- [x] 修复 `pkg/common/batchctrl` graceful stop 并发卡死
+- [x] 修复前端 `verify-standard-response-mapping` 暴露的治理页面回归点
+- [x] 修复可落地的未实现/清理/lint 入口问题
+- [x] 运行 Go、前端静态脚本、前端构建、context-kg lint 和 diff 检查
+- [x] 记录 review 与剩余风险
+
+当前判断：
+
+- 本轮优先修复已经被测试或静态脚本证明的问题。
+- 对产品能力尚未明确的大块未实现页面，不在本轮临时补假功能；优先避免可见入口暴露 501。
+
+修复：
+
+- `pkg/common/batchctrl` 的 `GracefulStop` 在 drain `tasksChan` 后会再次 flush 剩余未满批次，避免 `Future.Done()` 永久等待。
+- `console/web` 治理页面标准映射检查已补齐：泳道组详情继续传递 `editable/deleteable`，主动探测列表展示 `targetService.api` 接口信息。
+- XDS HDS `FetchHealthCheck` 不再返回 `codes.Unimplemented`；stream 健康检查保留初始请求解析出的 client，后续健康上报不再丢失 node 绑定。
+- 服务删除事务同步清理 `service_subscribe_graph` 中以该服务为 caller 或 callee 的订阅边。
+- 注册发现 `gateway` 未实现路由从可用 children 中移除，避免暴露 501 占位入口。
+- 前端补充轻量 ESLint 配置，恢复 `npm run lint` 可执行性。
+
+验证：
+
+- `go test ./pkg/common/batchctrl -run TestNewBatchControllerGracefulStopFlushesDrainedPartialBatch -count=1 -timeout=5s` 修复前失败，确认回归测试有效。
+- `go test ./plugin/apiserver/xdsserverv3 -run 'TestFetchHealthCheck' -count=1 -timeout=30s` 修复前失败，确认 HDS 不再返回 `Unimplemented`。
+- `go test ./plugin/apiserver/xdsserverv3 -run 'TestStreamHealthCheckKeepsClientForEndpointResponses' -count=1 -timeout=30s` 修复前失败，确认 stream 后续健康上报不再丢失 client。
+- `go test ./plugin/store/mysql -run TestServiceStoreDeleteServiceCleansSubscribeGraph -count=1 -timeout=60s` 修复前失败，确认订阅图清理测试有效。
+- `go test ./pkg/common/batchctrl -count=20 -timeout=60s` 通过，覆盖原 flaky 场景。
+- `go test ./...` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && node scripts/verify-standard-response-mapping.mjs` 通过。
+- `cd console/web && node scripts/verify-lane-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+
+Review：
+
+- 本轮修复只处理已被测试、静态脚本或可达入口证明的问题；未对 configuration 仍注释的路由和其它模板 501 页面做产品范围扩展。
+- 前端 ESLint 配置当前以“恢复解析与执行”为目标，暂未引入强规则；历史 `console.log` 调试输出仍建议后续单独清理。
+
+## pole-control-plane 全仓 TODO 与预期风险检查
+
+- [x] 回顾知识库索引、近期 lessons 和当前工作区状态，明确检查范围
+- [x] 扫描 TODO/FIXME/未实现/占位/临时代码和明显高风险模式
+- [x] 运行仓库可承受的构建、测试、静态脚本和 context-kg 校验
+- [x] 抽查关键命中源码上下文，区分真实阻断、待办债务和普通注释
+- [x] 记录 review、验证结果和后续建议
+
+当前判断：
+
+- 本次检查基于当前工作树进行，不回滚或改写已有未提交改动。
+- 优先关注“代码实际无法满足预期”“存在未实现/占位路径”“TODO 已经落在运行链路上”“验证命令暴露问题”四类风险。
+
+验证：
+
+- `go test ./...` 失败：`pkg/common/batchctrl.TestNewBatchControllerGracefulStop` 10 分钟超时，多个 goroutine 卡在 `future.Done()`。
+- `go test ./pkg/common/batchctrl -run TestNewBatchControllerGracefulStop -count=1 -timeout=15s` 单次通过，但 `go test ./pkg/common/batchctrl -count=20 -timeout=60s` 失败，说明问题是并发时序型 flaky，不是纯环境缺失。
+- `cd console/web && npm run build:test` 通过，保留既有 Browserslist 过期和大 chunk 警告。
+- `cd console/web && node scripts/verify-lane-editor-utils.mjs` 原失败原因是脚本仍保留旧规范里的 `实时规则 SPEC` 断言；最新规范不要求保留该区块，已移除过期断言后通过。
+- `cd console/web && node scripts/verify-standard-response-mapping.mjs` 失败：泳道组详情权限保留和主动探测 `targetService?.api` 安全读取检查未满足。
+- `cd console/web && npm run lint` 失败：项目没有可用 ESLint 配置文件，脚本本身不可执行。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+
+Review：
+
+- `pkg/common/batchctrl` 的 `GracefulStop` 存在真实并发缺陷：停止路径 drain `tasksChan` 后没有再次 flush 剩余未满批次的 `futures`，会导致部分 `Future.Done()` 永久等待。
+- XDS HDS unary 接口 `FetchHealthCheck` 已注册在 gRPC 服务上，但实现直接返回 `codes.Unimplemented`。
+- 注册发现 `gateway` 菜单路由可达但页面直接展示 501；`configuration` 路由模块定义了分组/K8s/文件路由，但在总路由中被注释掉，且模板页仍是 501。
+- 服务删除路径只软删服务和 metadata，明确 TODO 未清理 `service_subscribe_graph`，会留下订阅关系脏数据。
+- 前端源码仍有多处 `console.log` 调试输出；这不阻断构建，但会污染生产控制台并可能泄漏请求/表单上下文。
+- 更正：泳道编辑器不保留 `实时规则 SPEC` 符合最新规范，不作为问题；对应静态脚本里的旧断言已删除。
+
+## 注册发现指标条中文化与健康实例排版修正
+
+- [x] 复核服务列表页头和指标条中英文混排位置
+- [x] 修正健康实例指标值结构，避免 `0/1` 被拆成竖排
+- [x] 更新静态回归脚本和 lessons，防止指标条再次混用英文或嵌套 block span
+- [x] 运行静态脚本、前端构建、context-kg lint、diff 检查和真实页面量测
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 注册发现服务页页头 eyebrow 仍是 `Service Registry / Discovery`，指标条仍是 `Services / Namespaces / Healthy Instances`，与页面其它中文文案混排。
+- 健康实例值写成 `<strong><span id="stHealthy">0</span>/<span id="stInst">1</span></strong>`，而指标条通用 `.metricItem span { display: block }` 会作用到内部两个数字，导致 `0 / 1` 被拆成三行。
+- 本轮只调整服务列表页头和指标条展示，不改变服务列表数据、统计计算、筛选或后端接口。
+
+验证：
+
+- `cd console/web && node scripts/verify-discovery-services-layout.mjs` 通过，新增覆盖中文页头、中文指标条、健康实例非 span 单行结构，以及英文展示文案反回归。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Discovery/Services/index.tsx console/web/src/pages/Discovery/Services/services.tsx console/web/src/pages/Discovery/Services/index.module.less console/web/scripts/verify-discovery-services-layout.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`http://127.0.0.1:8080/discovery/service` 返回 `200`。
+- Playwright 使用临时登录态和 mock 服务/命名空间数据打开 `http://127.0.0.1:8080/discovery/service`：页头 eyebrow 为 `注册发现 / 服务实例`，指标条标题为 `服务数 / 命名空间 / 健康实例`，健康实例值为 `0/1`，`metricValue` computed display 为 `flex`，`stHealthy` 与 `stInst` top 均为 `261`，页面不包含 `Service Registry / Services / Namespaces / Healthy Instances` 展示文案。
+
+Review：
+
+- 本轮只修注册发现服务页展示，不改变统计计算、查询、分页、筛选或后端接口。
+- 健康实例保留 `stHealthy/stInst` 锚点，但从 `span` 改为 `b`，并用 `.metricItem .metricValue` 强制单行基线对齐，避免被 `.metricItem span` 的 block 规则影响。
+- 页头和指标条展示文案已统一中文化，避免主路径页面出现中英文混排。
+
+## 创建服务标签编辑器统一控件修正
+
+- [x] 复核统一 `LabelInput` 与创建服务私有标签编辑器的差异
+- [x] 修正统一标签控件空态操作列，添加入口只保留在底部
+- [x] 创建服务抽屉复用统一标签控件，并保留设计锚点与提交校验
+- [x] 更新静态回归脚本和 lessons，防止标签编辑器再次私有化
+- [x] 运行静态脚本、前端构建、context-kg lint、diff 检查和真实页面量测
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 仓库已有统一 `components/LabelInput`，创建服务抽屉上一轮为了补齐锚点和校验做了私有标签编辑器，导致和统一控件重复。
+- 用户截图指出空态操作列里出现了 `添加标签`，同时底部还有 `添加标签`；操作列语义应只放行级删除，空态没有行，因此不应放添加动作。
+- 本轮应把空态添加按钮从统一控件中移除，并让创建服务抽屉复用统一控件；提交 payload、名称校验和抽屉宽度不改变。
+
+验证：
+
+- `cd console/web && node scripts/verify-discovery-services-layout.mjs` 通过，新增覆盖创建服务复用 `LabelInput`、空态不含添加按钮、底部保留唯一添加入口、行操作列只承载删除、`tagRows/tagsEmpty/tagCount` 锚点保留。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/components/LabelInput/index.tsx console/web/src/components/LabelInput/index.module.less console/web/src/pages/Discovery/Services/ServiceEditor.tsx console/web/src/pages/Discovery/Services/index.module.less console/web/scripts/verify-discovery-services-layout.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`http://127.0.0.1:8080/discovery/service` 返回 `200`。
+- Playwright 使用临时登录态和 mock 命名空间/服务数据打开 `http://127.0.0.1:8080/discovery/service` 并点击 `新建服务`：空态 `#tagsEmpty` 文本为 `暂无标签`，空态内添加按钮数为 `0`，整个 `#tagRows` 内添加按钮数为 `1`，`#tagCount` 为 `0 个标签`。
+- Playwright 点击底部 `添加标签` 后：`#tagCount` 变为 `1 个标签`，`#tagRows` 内添加按钮仍为 `1`，删除按钮为 `1`，输入框为 `2`，空态消失。
+- 额外尝试 `cd console/web && npx tsc --noEmit --pretty false` 会被现有 `i18next/react-i18next` 类型与当前 TypeScript 版本不兼容问题阻断；本轮以仓库既有 `npm run build:test` 作为前端类型/打包验证。
+
+Review：
+
+- 统一 `LabelInput` 新增 `editorId/emptyId/countId/hideLabel`，创建服务抽屉通过这些 props 保留交接锚点，不再复制私有标签表格。
+- `LabelInput` 空态只展示 `暂无标签`；添加入口只在底部 footer；有标签行时操作列只展示删除。
+- `LabelInput` 补齐 `标签键不能为空` 校验和行内错误展示，避免复用统一控件后丢失创建服务上一轮补齐的基础校验。
+- 创建服务提交仍从 `service_labels` 转换为 `metadata`，保存、更新、重置、名称校验和抽屉宽度不变。
+
+## 创建服务抽屉宽度与字段间距修正
+
+- [x] 复核截图中创建服务抽屉字段贴边/贴合的问题
+- [x] 放宽创建服务抽屉宽度，并为字段 wrapper 增加稳定纵向间距
+- [x] 更新静态回归脚本和 lessons，防止字段间距再次退化
+- [x] 运行静态脚本、前端构建、context-kg lint、diff 检查和真实页面量测
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 用户截图中基础信息里的命名空间、名称两行控件几乎贴在一起，归属信息里的部门、业务也有同类问题。
+- 根因是字段间距主要依赖 TDesign FormItem 的内部 margin；当前每个字段外面又包了一层锚点 div，视觉上没有形成稳定的字段块间距。
+- 抽屉 600px 对当前三段表单和双列标签编辑器偏紧；本轮只调整创建/编辑服务抽屉宽度和字段间距，不改变提交映射、校验或后端接口。
+
+验证：
+
+- `cd console/web && node scripts/verify-discovery-services-layout.mjs` 通过，新增覆盖创建服务抽屉 `min(720px, 94vw)`、`serviceDrawerContent gap: 22px`、字段 wrapper `18px` 间距和 FormItem margin 归零。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Discovery/Services/ServiceEditor.tsx console/web/src/pages/Discovery/Services/index.module.less console/web/scripts/verify-discovery-services-layout.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`http://127.0.0.1:8080/discovery/service` 返回 `200`。
+- Playwright 使用临时登录态和 mock 命名空间/服务数据打开 `http://127.0.0.1:8080/discovery/service` 并点击 `新建服务`：抽屉实际宽度为 `720px`，`#drawer` 分段 gap 为 `22px`，`#inNs .t-form__item` 的 margin-bottom 为 `0px`，命名空间/名称输入框间距为 `18px`，部门/业务输入框间距为 `18px`。
+- Playwright 控制台里仅有 React Router future flag 和 TDesign Table key spread 的既有开发警告；未发现创建服务抽屉相关运行错误。
+
+Review：
+
+- 本轮只调整创建/编辑服务抽屉宽度和字段块间距，不改变保存、更新、重置、重名校验或标签提交逻辑。
+- 非查看态服务抽屉宽度从 `min(600px, 94vw)` 放宽到 `min(720px, 94vw)`；查看态仍保留 `680px`。
+- 连续输入字段的垂直节奏由字段锚点 wrapper 承担，避免 TDesign FormItem 内部 margin 被包裹结构吞掉后再次出现输入框贴合。
+
+## 新建服务抽屉设计交接落地
+
+- [x] 复核设计交接文档与当前 `ServiceEditor` / 服务清单差距
+- [x] 重构创建服务抽屉：基础信息、归属信息、服务标签三段结构
+- [x] 补齐名称实时计数、内联错误、重名校验和标签行编辑校验
+- [x] 补齐服务清单命名空间筛选和设计锚点
+- [x] 更新静态回归脚本和 lessons，记录创建服务抽屉交付约束
+- [x] 运行静态脚本、前端构建、context-kg lint、diff 检查和真实页面验证
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 当前创建服务抽屉仍是一条纵向表单，`showOverlay=false`，命名空间没有必填规则，名称只有提交时规则，没有实时计数和内联错误。
+- 服务标签复用通用 `LabelInput`，已有增删和重复 key 校验，但缺少“键空值非空”校验、设计锚点和创建服务语境下的计数/空态约束。
+- 交接文档只要求调整前端展示组织、交互映射和提交校验；本轮不改变后端服务注册模型、接口路径或 Redux store 结构。
+
+验证：
+
+- `cd console/web && node scripts/verify-discovery-services-layout.mjs` 通过，覆盖服务清单命名空间筛选、统计/筛选/表格锚点、创建服务抽屉分段结构、名称计数、标签编辑器、遮罩关闭和反回归约束。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Discovery/Services/services.tsx console/web/src/pages/Discovery/Services/ServiceEditor.tsx console/web/src/pages/Discovery/Services/index.module.less console/web/scripts/verify-discovery-services-layout.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`http://127.0.0.1:8080/discovery/service` 返回 `200`。
+- Playwright 使用临时登录态和 mock 服务/命名空间数据打开服务清单并点击 `新建服务`：抽屉存在遮罩，实际 `t-drawer__content-wrapper` 宽度为 `600px`，分段标题为 `基础信息 / 归属信息 / 服务标签`，`stSvc/stNs/stInst/stHealthy/listCount/nsFilter/keyword/tbody/inNs/inName/nameCount/errName/inDesc/inDept/inBiz/tagRows/tagsEmpty/tagCount` 锚点均存在。
+- Playwright 校验重复服务：命名空间 `spec-governance` + 名称 `spec-checkout` 内联显示 `该命名空间下服务名已存在`。
+- Playwright 校验名称格式：输入 `bad name!` 后 `#errName` 显示 `只允许数字、英文字母、.、-、_`，`#nameCount` 显示 `9/128`。
+- Playwright 校验标签：新增标签行后只填写值 `core`，提交时行内显示 `标签键不能为空`。
+- Playwright 校验成功提交：命名空间 `spec-governance`、名称 `spec-new-service`、标签 `tier=core` 的创建 payload 为 `metadata: { tier: "core" }`，抽屉关闭并提示 `服务已创建`。
+
+Review：
+
+- 本轮只调整 Console 前端服务清单和创建服务抽屉，不改变后端服务注册接口、Redux store 结构或服务详情路由。
+- 创建服务抽屉已从一条纵向表单改为 `基础信息 / 归属信息 / 服务标签` 三段，抽屉宽度为 `min(600px, 94vw)`，开启遮罩点击和 Esc 关闭。
+- 命名空间置顶必填；名称保留规则校验，同时增加实时计数、内联错误和同命名空间重名校验；成功提示文案为 `服务已创建`。
+- 服务标签改为当前抽屉内专用键值行编辑器，支持空态、添加、删除、计数、键空值非空拦截和重复键高亮；提交时忽略键值皆空的行。
+- 服务清单头补齐命名空间筛选，查询会带 `namespace` 参数；统计、筛选和表体锚点按交接文档补齐。
+
+## 注册发现服务表格内部滚动
+
+- [x] 复核注册发现服务页外层滚动来源和当前高度链
+- [x] 将服务列表页约束到当前视区高度，让服务表格内容区内部滚动
+- [x] 更新静态回归脚本和 lessons，记录列表页滚动归属约束
+- [x] 运行静态脚本、前端构建、context-kg lint、diff 检查和真实页面滚动验证
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 用户截图中服务列表行数较多时撑高了注册发现页面，滚动落在整个页面/外层内容区，而不是表格内部。
+- 现有根布局和治理工作台已有固定视区高度的模式；服务页应复用这个高度链：页头、指标条、筛选栏固定，只有服务表格内容区滚动。
+- 本轮只调整注册发现服务列表页和对应回归脚本，不改变服务查询、分页、详情跳转、别名详情页或后端接口。
+
+验证：
+
+- `cd console/web && node scripts/verify-discovery-services-layout.mjs` 通过，覆盖服务页固定视区高度、服务列表 flex 高度链和 `serviceTableSurface` 内部滚动容器。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Discovery/Services/services.tsx console/web/src/pages/Discovery/Services/index.module.less console/web/scripts/verify-discovery-services-layout.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`http://127.0.0.1:8080/discovery/service` 返回 `200`。
+- Playwright 使用临时登录态和 mock 服务列表数据打开 `http://127.0.0.1:8080/discovery/service`：`document.scrollHeight=900`、`document.clientHeight=900`、侧栏容器 `scrollHeight=900`、`clientHeight=900`，页面和外层容器没有纵向滚动。
+- Playwright 量测服务表格：`.t-table__content` 为 `overflow-y: auto`，`scrollHeight=736`、`clientHeight=400`；鼠标滚轮命中表格内容区后，页面 `scrollTop` 仍为 `0`，表格 `scrollTop` 从 `0` 变为 `336`。
+
+Review：
+
+- 本轮只调整注册发现服务列表页的布局和滚动归属，不改变服务列表接口、分页、筛选、创建、删除或详情跳转逻辑。
+- 服务页现在固定在当前视区内，页头、指标条、筛选栏和分页保持稳定；服务行较多时只滚动表格内容区。
+- 服务详情内的别名表格没有复用 `serviceTableSurface`，仍保留详情页内嵌清单自己的紧凑布局。
+
+## 服务别名 Tab 去卡片留白修正
+
+- [x] 复核用户对“可以不用卡片，只保留和 Tabs 边缘空隙”的反馈
+- [x] 移除服务别名内嵌区外层 panel 样式，仅保留 Tabs 内容区边缘留白
+- [x] 更新静态回归脚本和 lessons，防止再次用外层卡片解决该留白问题
+- [x] 运行静态脚本、前端构建、context-kg lint、diff 检查和真实页面量测
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 上一轮给 `服务别名` Tab 加了白底 panel，解决了贴边，但用户进一步确认可以不用卡片，只要和 Tabs 边缘有空隙。
+- 最小修正是保留 `embeddedWorkspace` 的 `20px` 外边距，撤掉 `aliasDetailSection` 的 `padding/border/background/radius`，让清单头和表格作为普通详情内容排布。
+- 表格自身仍是数据表面，保留原有白底边框；本轮不改变总栏、表格、抽屉、查询或提交逻辑。
+
+验证：
+
+- `cd console/web && node scripts/verify-discovery-services-layout.mjs` 通过，覆盖 `embeddedWorkspace margin: 20px`，并要求 `aliasDetailSection` 不再包含 `padding/border/border-radius/background`。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`http://127.0.0.1:8080/discovery/service` 返回 `200`。
+- Playwright 使用临时登录态和 mock 空别名数据打开 `服务详情 -> 服务别名`：别名查询请求仍为 `offset=0&limit=10&namespace=spec-governance&service=spec-checkout`，清单说明为 `spec-governance/spec-checkout 下当前显示 0 条`，总栏计数为 `0 / 0`。
+- Playwright 量测：Tabs 内容区到别名工作区左/上/右间距均为 `20px`；`aliasDetailSection` 为 `padding=0px`、`background=rgba(0, 0, 0, 0)`、`border=0px none`、`border-radius=0px`；toolbar 和表格距 Tabs 左边缘均为 `20px`。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Discovery/Services/index.module.less console/web/scripts/verify-discovery-services-layout.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+
+Review：
+
+- 本轮只移除服务别名 Tab 外层卡片样式，不改变别名列表、总栏、抽屉、查询或提交逻辑。
+- 留白由 `embeddedWorkspace` 的 `20px` margin 承担；`aliasDetailSection` 只做 grid 分组，不再承担视觉容器。
+- 表格自身仍保留白底边框，作为数据表格的必要表面；清单整体不再额外套卡片。
+
+## 服务别名 Tab 外边距修正
+
+- [x] 复核截图中服务别名 Tab 内容贴边的问题
+- [x] 为服务详情内嵌别名区增加 panel 包裹和周边空隙
+- [x] 更新静态回归脚本和 lessons，记录详情 Tab 内容不能贴边
+- [x] 运行静态脚本、前端构建、context-kg lint、diff 检查和真实页面量测
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 用户截图中 `服务别名` Tab 的清单头和表格贴着 Tabs 内容区左右边缘，与 `服务详情` Tab 的 `margin: 20px` 节奏不一致。
+- 需要为服务详情内的别名子资源区增加一个轻量白底 panel，让内容和 Tabs 周边留出稳定空隙；这不是恢复注册发现首页大卡片，而是详情 Tab 内部承载面。
+- 本轮只调整服务别名 Tab 的外边距与承载样式，不改变总栏、表格、抽屉或接口逻辑。
+
+验证：
+
+- `cd console/web && node scripts/verify-discovery-services-layout.mjs` 通过，新增覆盖 `embeddedWorkspace margin: 20px` 和 `aliasDetailSection` 白底 panel 样式。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`http://127.0.0.1:8080/discovery/service` 返回 `200`。
+- Playwright 使用临时登录态和 mock 空别名数据打开 `服务详情 -> 服务别名`：别名查询请求仍为 `offset=0&limit=10&namespace=spec-governance&service=spec-checkout`，清单说明为 `spec-governance/spec-checkout 下当前显示 0 条`，总栏计数为 `0 / 0`。
+- Playwright 量测：Tabs 内容区到别名工作区左/上/右间距均为 `20px`；panel 内部 padding 为 `18px`；panel 背景 `rgb(255, 255, 255)`，边框 `1px solid rgb(231, 235, 240)`，圆角 `8px`；表格左右距离 panel 内边缘约 `19px`。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Discovery/Services/index.module.less console/web/scripts/verify-discovery-services-layout.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+
+Review：
+
+- 本轮只调整服务详情内 `服务别名` Tab 的外边距和承载样式，不改变别名列表、总栏、抽屉、查询或提交逻辑。
+- 服务别名 Tab 现在与服务详情其它 Tab 的周边间距一致，内容不再贴着 Tabs 边缘。
+- 外层只使用一个轻量白底 panel 承载清单头和表格，避免回退到注册发现首页那种大卡片包裹整页结构。
+
+## 服务别名设计交接落地
+
+- [x] 复核服务别名交接文档与当前服务详情 Tab 差距
+- [x] 补齐别名总栏、清单计数、当前服务上下文和表格锚点
+- [x] 补齐行级复制别名入口，并保持编辑 / 删除 / 复制的必要操作密度
+- [x] 收敛创建 / 编辑抽屉：目标服务只读、默认当前命名空间、提交校验、重置保留目标服务
+- [x] 更新静态回归脚本和 lessons，记录服务详情别名 Tab 的交付约束
+- [x] 运行静态脚本、前端构建、context-kg lint、diff 检查和真实页面验证
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 交接文档要求服务别名 Tab 按“清单头 -> 表格内总栏 -> 主表 -> 分页”的工作台节奏组织；当前实现已有详情内嵌密度，但还缺总栏、复制别名和抽屉细节。
+- 本轮只调整 Console 前端展示组织、表单映射和前端校验，不改变后端服务注册模型、别名解析语义或接口契约。
+- 目标服务必须来自当前服务详情上下文并固定只读，创建时别名命名空间默认当前命名空间；编辑态至少锁定别名命名空间，避免误改记录归属。
+
+验证：
+
+- `cd console/web && node scripts/verify-discovery-services-layout.mjs` 通过，覆盖服务别名 Tab 的总栏锚点、复制入口、只读目标服务、默认命名空间、抽屉宽度和遮罩关闭约束。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`http://127.0.0.1:8080/discovery/service` 返回 `200`。
+- Playwright 使用临时登录态和 mock 注册发现接口数据打开 `服务详情 -> 服务别名`：别名查询请求为 `offset=0&limit=10&namespace=spec-governance&service=spec-checkout`，清单说明为 `spec-governance/spec-checkout 下当前显示 2 条`，总栏为 `目标服务=spec-governance / spec-checkout`、`别名数=2`、`覆盖命名空间=2`。
+- Playwright 确认表头为 `别名命名空间 / 服务别名 / 描述 / 操作时间 / 操作`，行级复制按钮数量为 `2`，总栏位于主表上方，表格最小宽度为 `720px`。
+- Playwright 点击 `新建别名` 后确认：实际抽屉面板宽度 `560px`，存在遮罩，目标服务只读显示 `spec-governance/spec-checkout`，别名命名空间默认 `spec-governance`，目标服务没有可编辑输入框。
+- Playwright 提交同命名空间重复别名 `checkout-legacy` 时，前端提示 `该命名空间下别名已存在`，抽屉保持打开，别名接口只发生 `GET` 请求、没有发创建请求。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Discovery/Services/index.tsx console/web/src/pages/Discovery/Services/services.tsx console/web/src/pages/Discovery/Services/alias.tsx console/web/src/pages/Discovery/Services/AliasEditor.tsx console/web/src/pages/Discovery/Services/Instance/index.tsx console/web/src/pages/Discovery/Services/index.module.less console/web/scripts/verify-discovery-services-layout.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+
+Review：
+
+- 本轮只调整 Console 前端服务别名 Tab 的展示组织、表单映射和前端首层校验，不改变后端服务注册模型、别名解析语义或接口契约。
+- `服务别名` Tab 现在按交接文档形成 `清单头 -> 表格内总栏 -> 主表 -> 分页` 的纵向关系，总栏随当前返回列表同步展示目标服务、别名数和覆盖命名空间。
+- 行级操作保留编辑、删除、复制别名；复制内容为 `命名空间/别名`，复用控制台已有剪贴板工具。
+- 创建 / 编辑抽屉改为轻量宽度，恢复遮罩与 Esc 关闭；目标服务固定只读，创建态别名命名空间默认当前命名空间，编辑态锁定别名命名空间。
+- 提交前增加别名命名规范和当前页已知重名校验；最终唯一性仍以后端返回为准。
+
+## 服务详情别名 Tab 布局优化
+
+- [x] 复核服务详情内 `服务别名` Tab 当前复用外层列表样式的问题
+- [x] 将服务详情内别名清单改为紧凑子清单布局
+- [x] 收敛别名表格空态高度、分页密度和嵌入式表格最小宽度
+- [x] 更新静态回归脚本和 lessons，记录详情内嵌列表布局约束
+- [x] 运行静态脚本、前端构建、context-kg lint、diff 检查和真实页面验证
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 用户截图中 `服务别名` Tab 已经下沉到服务详情，但内部仍复用注册发现外层列表样式，导致工具栏贴近 Tab、空表格高度过大、分页区域分散，视觉上像完整列表页嵌进详情页。
+- 服务详情内的别名清单应是当前服务下的子资源清单，布局需要更紧凑：标题说明、右侧新建/搜索/查询/重置、紧凑表格和收敛空态高度。
+- 本轮不改变别名归属、API、过滤条件或创建编辑逻辑，只优化详情页内部布局。
+
+验证：
+
+- `cd console/web && node scripts/verify-discovery-services-layout.mjs` 通过，覆盖服务详情内别名清单专用 toolbar、操作区、表格 surface、空态高度和分页密度。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Discovery/Services/index.tsx console/web/src/pages/Discovery/Services/services.tsx console/web/src/pages/Discovery/Services/alias.tsx console/web/src/pages/Discovery/Services/AliasEditor.tsx console/web/src/pages/Discovery/Services/Instance/index.tsx console/web/src/pages/Discovery/Services/index.module.less console/web/scripts/verify-discovery-services-layout.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`http://127.0.0.1:8080/discovery/service` 返回 `200`。
+- Playwright 使用临时登录态和 mock 注册发现接口数据打开 `服务详情 -> 服务别名`：空态下 toolbar 高度 `42px`，表格整体高度 `229px`，空态本体实际高度 `92px` 且 `box-sizing=border-box`，分页高度 `56px`，表格最小宽度 `720px`。
+- Playwright 有数据场景下量测：表格整体高度 `182px`，分页高度 `56px`，表头为 `别名命名空间 / 服务别名 / 描述 / 操作时间 / 操作`，仍按 `namespace=spec-governance&service=spec-checkout` 查询当前服务别名。
+
+Review：
+
+- 本轮只优化服务详情内 `服务别名` Tab 的内部布局，不改变别名归属、查询参数、创建编辑逻辑或后端接口。
+- 内嵌别名清单现在使用专用 `aliasDetailToolbar`、`aliasDetailActions`、`aliasDetailTableSurface`，避免直接继承外层注册发现宽表格密度。
+- 空态高度和分页安全区已收敛，减少截图中大面积空白；有数据和无数据两种场景都通过浏览器量测。
+
+## 注册发现别名下沉到服务详情
+
+- [x] 梳理注册发现首页、服务详情页和服务别名列表的现有结构
+- [x] 移除注册发现首页的顶层 `别名` Tab，只保留服务列表
+- [x] 在服务详情页增加 `服务别名` Tab，并按当前服务过滤别名
+- [x] 调整别名创建/编辑表单，在服务详情上下文中固定目标服务
+- [x] 更新静态回归脚本和 lessons，记录别名归属约束
+- [x] 运行静态脚本、前端构建、context-kg lint、diff 检查和真实页面验证
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 用户明确反馈：别名不应作为注册发现首页的独立 Tab，应合并到服务详情里作为服务下的一个 Tab。
+- 当前注册发现首页有 `服务 / 别名` 顶层 Tabs；服务详情页已有 `服务详情 / 服务实例 / 服务订阅` Tabs，适合承载 `服务别名`。
+- 别名接口支持 `namespace + service` 查询，因此服务详情中的别名清单可以按当前服务过滤。
+- 在服务详情上下文创建或编辑别名时，目标服务应固定为当前 `namespace/service`，不应再让用户重新选择目标服务。
+
+验证：
+
+- `cd console/web && node scripts/verify-discovery-services-layout.mjs` 通过，覆盖注册发现首页无顶层别名 Tab、服务详情存在 `服务别名` Tab、别名查询带当前服务过滤、编辑器固定目标服务等约束。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Discovery/Services/index.tsx console/web/src/pages/Discovery/Services/services.tsx console/web/src/pages/Discovery/Services/alias.tsx console/web/src/pages/Discovery/Services/AliasEditor.tsx console/web/src/pages/Discovery/Services/Instance/index.tsx console/web/src/pages/Discovery/Services/index.module.less console/web/scripts/verify-discovery-services-layout.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`http://127.0.0.1:8080/discovery/service` 返回 `200`。
+- 当前本地库默认用户仍缺失，浏览器验证继续使用临时登录态和 mock 注册发现接口数据，只验证前端信息架构和交互。
+- Playwright 打开注册发现首页确认：没有顶层 `别名` Tab、没有 `新建别名`，保留 `新建服务` 和服务清单。
+- Playwright 打开服务详情并切到 `服务别名` 后确认：展示 `别名清单` 与 `新建别名`；表头只有 `别名命名空间 / 服务别名 / 描述 / 操作时间 / 操作`，不再展示 `目标服务命名空间 / 目标服务名`。
+- Playwright 捕获别名查询请求：`/naming/v1/service/aliases?offset=0&limit=10&namespace=spec-governance&service=spec-checkout`。
+- Playwright 点击 `新建别名` 后确认：抽屉目标服务只读显示 `spec-governance/spec-checkout`。
+
+Review：
+
+- 本轮只调整 Console 前端注册发现信息架构，不修改后端服务、别名 API 或 Redux store 形状。
+- 注册发现首页从 `服务 / 别名` 顶层 Tabs 收敛为单一服务列表，页头操作固定为刷新服务列表和新建服务。
+- 服务详情新增 `服务别名` Tab，复用原别名列表能力，但在详情上下文中按当前 `namespace/service` 过滤。
+- 服务详情内的别名列表隐藏目标服务两列，创建/编辑别名时固定当前目标服务，只让用户填写别名命名空间、别名和备注。
+- 顺手修正别名删除参数使用 `alias_namespace`，并为别名表格补本地稳定 row key。
+
+## 注册发现服务列表对齐命名空间页
+
+- [x] 对比服务列表与命名空间管理的页面结构、工具栏位置、指标条和表格密度
+- [x] 补充静态回归脚本，要求服务列表采用命名空间页同类布局，不再使用白色 Tabs 大卡片包裹全部内容
+- [x] 调整注册发现页头操作、服务/别名 Tabs 外观、列表筛选区和表格样式
+- [x] 更新 lessons，记录服务列表与命名空间页的对齐约束
+- [x] 运行静态脚本、前端构建、context-kg lint、diff 检查和真实页面验证
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 用户截图中服务页仍把 `服务 / 别名` Tabs、指标条、筛选区和表格放在一个白色大卡片里；命名空间页是页头右侧操作、独立指标条、独立列表工具栏和表格。
+- 服务页仍需要保留 `服务 / 别名` 两个视图，但 Tabs 不应作为大容器卡片抢占层级；应改成轻量页签导航，下面内容按命名空间页的工作台布局铺开。
+- 新建与刷新是当前页头级操作，应放到注册发现页头右侧，并随当前页签切换为 `新建服务` 或 `新建别名`。
+- 用户继续反馈指标条需要和下面服务列表表格分开；指标条不应只和列表共享连续流，而应与 `服务清单 / 筛选 / 表格` 形成两个清晰的垂直分组。
+- 用户再次反馈视觉上仍像合并在一起；Playwright 量测确认根因是 `.t-tabs._registryTabs` 根节点仍为白底，即使内容子层透明，也会形成包住指标条和服务列表的大白底。
+
+验证：
+
+- `cd console/web && node scripts/verify-discovery-services-layout.mjs` 先在旧实现上失败，失败点为注册发现页缺少受控 `activeTab` 和页头动作；修复后通过。
+- `cd console/web && node scripts/verify-namespace-actions.mjs` 通过，确认命名空间页基准交互未被破坏。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `git diff --check -- console/web/src/pages/Discovery/Services/index.tsx console/web/src/pages/Discovery/Services/services.tsx console/web/src/pages/Discovery/Services/alias.tsx console/web/src/pages/Discovery/Services/index.module.less console/web/scripts/verify-discovery-services-layout.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`http://127.0.0.1:8080/discovery/service` 返回 `200`。
+- Playwright 打开 `http://127.0.0.1:8080/discovery/service` 后确认：页头右侧有刷新按钮和 `新建服务`，`服务 / 别名` 是轻量 Tabs，指标条独立展示，服务列表工具栏为 `服务清单 / 服务名 / 查询 / 重置`，表格使用健康进度条和紧凑操作列。
+- Playwright 切换到 `别名` 后确认：页头主按钮变为 `新建别名`，别名列表工具栏为 `别名清单 / 别名 / 查询 / 重置`，列表内不再重复放刷新和新建按钮。
+- 收到指标条分组反馈后，`verify-discovery-services-layout.mjs` 已补充断言：`.workspace` 使用 `gap: 28px` 分开指标条与列表区，服务列表和别名列表都必须用 `.listSection` 包住筛选区和表格。
+- 重新构建并拉起 8080 后，Playwright 量测服务页：`.workspace` gap 为 `28px`，指标条 `bottom=388`，列表区 `top=416`，实际间距 `28px`；列表区内部 `.filterBar` 到 `.tableSurface` 间距为 `14px`。
+- 收到 Tabs 白底仍合并的反馈后，样式和静态脚本进一步要求：`registryTabs` 根节点、Tabs 内容区和 Tab panel 均为透明；只有 `.t-tabs__nav` / `.t-tabs__nav-container` 保留白底与分隔线。
+- 根节点白底修复后，`cd console/web && node scripts/verify-discovery-services-layout.mjs` 通过，覆盖 Tabs 根透明、导航白底、内容透明和面板透明。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过；`git diff --check -- console/web/src/pages/Discovery/Services/index.tsx console/web/src/pages/Discovery/Services/services.tsx console/web/src/pages/Discovery/Services/alias.tsx console/web/src/pages/Discovery/Services/index.module.less console/web/scripts/verify-discovery-services-layout.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`http://127.0.0.1:8080/discovery/service` 返回 `200`。
+- 当前本地库默认登录用户缺失，`pole/pole123` 登录返回 `400312 not found user`，初始化管理员接口返回 `500001 store layer exception`；为验证纯前端布局，Playwright 注入临时登录态并 mock 注册发现接口数据后打开 `http://127.0.0.1:8080/discovery/service`。
+- Playwright 量测确认：`.t-tabs` 背景为 `rgba(0, 0, 0, 0)`；`.t-tabs__nav` 背景为 `rgb(255, 255, 255)` 且有 `1px solid rgb(229, 232, 239)` 分隔线；`.t-tabs__content`、`.t-tab-panel`、`.tabContent` 背景均为透明；导航到指标条间距 `24px`，指标条到列表间距 `28px`。
+
+Review：
+
+- 本轮只调整注册发现 Console 前端页面布局，不修改服务、别名 API、Redux 数据流或服务详情路由。
+- 注册发现页头现在和命名空间页一致承载当前页签的刷新/新建操作；服务/别名子表通过 ref 暴露 `refresh`、`create`，复用各自原有刷新和创建逻辑。
+- 服务页的 Tabs 不再是白色大卡片容器；指标条、筛选栏和表格作为独立工作台区块排列，服务表格密度、健康列和操作列向命名空间页收敛。
+- 指标条和服务列表现在是两个相邻一级区块；`服务清单 / 查询 / 重置 / 表格` 归入单独 `.listSection`，避免视觉上贴在指标条下面。
+- Tabs 根节点和内容层现在不会再提供大面积白底；视觉白底只保留在页签导航条、指标条和表格自身，服务页区块关系与命名空间页保持一致。
+
+## 权限策略资源页签左右独立滚动
+
+- [x] 确认资源信息页签当前左右栏滚动归属和高度链路
+- [x] 补充静态回归脚本，要求资源类别列表和资源详情主区分别作为独立滚动容器
+- [x] 调整资源信息页签布局，让左侧资源类别和右侧资源清单在抽屉内各自滚动
+- [x] 更新 lessons，记录资源页签左右分栏滚动约束
+- [x] 运行静态脚本、前端构建、context-kg lint、diff 检查和真实页面左右滚轮验证
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 用户期望资源信息页签里左侧“资源类别”和右侧“授权范围/资源清单”各自滚动，而不是整个资源页签内容一起滚动。
+- 资源页签应继续保持外层 Drawer、Tabs 内容区和页面不滚动；滚动所有权下沉到资源页签内部的左右两个 pane。
+- 修复方向是让资源页签 shell 接入 Tabs 内容区高度，左右 pane 建立 `min-height: 0` 的 flex/grid 高度链，并分别设置 `overflow: auto` 与 `overscroll-behavior: contain`。
+
+验证：
+
+- `cd console/web && node scripts/verify-auth-policy-detail-view.mjs && node scripts/verify-auth-drawer-actions.mjs` 通过。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `git diff --check -- console/web/src/pages/Auth/Policy/PolicyDetailView.tsx console/web/src/pages/Auth/Policy/PolicyEditor.tsx console/web/src/pages/Auth/Policy/index.module.less console/web/scripts/verify-auth-policy-detail-view.mjs console/web/scripts/verify-auth-drawer-actions.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`http://127.0.0.1:8080/auth/policies` 返回 `200`。
+- Playwright 打开 `权限策略 -> 默认策略 -> admin的默认策略 -> 资源信息` 后量测：`.t-tabs__content` 为 `scrollHeight=279`、`clientHeight=279`，不再承担资源页签整体滚动；`.resourceTypeList` 为 `scrollHeight=986`、`clientHeight=153`；`.policyResourceMain` 为 `scrollHeight=336`、`clientHeight=261`。
+- Playwright 在左侧资源类别列表中心执行鼠标滚轮后，`leftListScrollTop=360`，`rightMainScrollTop=0`，`tabsContentScrollTop=0`，`drawerBodyScrollTop=0`，`pageMainScrollTop=0`，`documentScrollTop=0`。
+- Playwright 在右侧资源详情主区中心执行鼠标滚轮后，`rightMainScrollTop=75`，`leftListScrollTop=0`，`tabsContentScrollTop=0`，`drawerBodyScrollTop=0`，`pageMainScrollTop=0`，`documentScrollTop=0`。
+
+Review：
+
+- 本轮只调整权限策略详情资源信息页签的前端滚动容器，不修改权限策略接口、资源数据或表格字段。
+- 资源页签 shell 现在继承 Tabs 内容区高度，左侧类别列表和右侧详情主区分别成为独立滚动容器；外层 Tabs、Drawer body 和页面均不随滚轮移动。
+- 静态回归脚本补充左右 pane 的 `height/min-height/overflow/overscroll-behavior` 断言，防止后续把滚动重新放回整个资源页签。
+
+## 权限策略详情抽屉内部滚动修正
+
+- [x] 复现并确认权限策略详情抽屉的滚动容器问题
+- [x] 补充静态回归脚本，要求策略查看态 Drawer 使用专用内部滚动样式
+- [x] 调整策略查看态 Drawer 和样式，让滚动锁在抽屉 body 内并阻止滚动链传到页面
+- [x] 更新 lessons，记录认证详情抽屉滚动容器约束
+- [x] 运行静态脚本、前端构建、context-kg lint、diff 检查和真实页面滚动验证
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 策略详情抽屉当前只设置查看态宽度和隐藏 footer，没有给查看态 Drawer 加专用 class，也没有约束 `.t-drawer__body` 的高度、滚动所有权和滚动链。
+- 用户期望不是去掉滚动，而是固定抽屉视区，让长内容在抽屉内部滚动，背景页面不随滚轮移动。
+- 修复方向是查看态 Drawer body 固定为 flex 容器并隐藏外层滚动，`PolicyDetailView` 自身不滚动，滚动交给 `Tabs` 内容区；概要和页签导航保留在抽屉视区内。
+
+验证：
+
+- `cd console/web && node scripts/verify-auth-policy-detail-view.mjs && node scripts/verify-auth-drawer-actions.mjs` 通过。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Auth/Policy/PolicyDetailView.tsx console/web/src/pages/Auth/Policy/PolicyEditor.tsx console/web/src/pages/Auth/Policy/index.module.less console/web/scripts/verify-auth-policy-detail-view.mjs console/web/scripts/verify-auth-drawer-actions.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`8080` 页面 `http://127.0.0.1:8080/auth/policies` 返回 `200`。
+- Playwright 打开 `权限策略 -> 默认策略 -> admin的默认策略 -> 资源信息` 后量测：`.t-drawer__body` 为 `overflowY=hidden`、`scrollHeight=664`、`clientHeight=664`；`.t-tabs__content` 为 `overflowY=auto`、`scrollHeight=1112`、`clientHeight=279`。
+- Playwright 在 `.t-tabs__content` 中心执行鼠标滚轮后，`tabsContentScrollTop=420`，`drawerBodyScrollTop=0`，`mainScrollTop=0`，`documentScrollTop=0`，`bodyScrollTop=0`。
+
+Review：
+
+- 本轮只调整权限策略详情查看态抽屉的前端滚动容器，不修改后端接口、策略数据结构或列表行为。
+- 查看态 Drawer body 现在固定为 flex 容器并隐藏外层滚动；策略概要和页签导航固定在抽屉内，长内容只在 Tabs 内容区内部滚动。
+- 静态回归脚本新增查看态 Drawer class、Tabs class 和滚动样式断言，防止后续把滚动所有权又放回整个详情页或页面外层。
+
+## 权限策略详情抽屉设计交接落地
+
+- [x] 补充静态回归脚本，覆盖策略详情抽屉查看态结构、反回归词和轻量交互锚点
+- [x] 先运行脚本确认旧实现失败，锁定当前 `Descriptions + Tree` 详情与交接文档差距
+- [x] 重写 `PolicyDetailView` 为单栏查看态：概要、成员信息、资源信息、资源标签、可访问接口
+- [x] 调整策略详情抽屉承载：查看态不展示编辑/关闭 footer，宽度收敛到 `min(980px, 94vw)`
+- [x] 根据用户反馈精简概要区字段，移除策略 ID、来源、成员和可访问接口统计
+- [x] 运行静态脚本、前端构建、context-kg lint、diff 检查和真实页面验证
+- [x] 记录 review 与验证结果
+
+当前判断：
+
+- 设计交接明确本轮只调整前端策略详情抽屉的信息组织和交互表达，不调整后端权限策略模型、接口契约或资源授权语义。
+- 旧版 `PolicyDetailView` 是 `Descriptions + Tree + Table`，缺少策略概要、资源类型搜索、资源筛选、行选择、复制反馈和资源页签内的授权范围摘要。
+- 查看态不应继续显示 `编辑 / 关闭` footer；详情抽屉关闭保留遮罩和 Esc 即可。
+- 用户反馈概要区不需要成员、可访问接口、策略 ID 和来源；这些信息不应在策略概要卡里抢占主信息，成员与接口保留在对应页签内。
+
+验证：
+
+- `cd console/web && node scripts/verify-auth-policy-detail-view.mjs` 先在精简前失败，失败点为“策略概要区不能展示 策略 ID”；精简后与 `node scripts/verify-auth-drawer-actions.mjs` 一起通过。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Auth/Policy/PolicyDetailView.tsx console/web/src/pages/Auth/Policy/PolicyEditor.tsx console/web/src/pages/Auth/Policy/index.module.less console/web/src/pages/Auth/Principal/PrincipalPolicyTable.tsx console/web/scripts/verify-auth-policy-detail-view.mjs console/web/scripts/verify-auth-drawer-actions.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，PID `49769`，`8080/8090` 监听正常，`http://127.0.0.1:8080/auth/policies` 返回 `200`。
+- Playwright 使用 `admin/admin123` 登录后打开 `权限策略 -> 默认策略 -> admin的默认策略`；策略详情抽屉概要区只包含策略名称、描述、创建时间、更新时间和策略标签，不包含策略 ID、来源、成员、可访问接口或复制 ID，成员信息与可访问接口仍保留为页签。
+
+Review：
+
+- 本轮只调整 Console 前端策略详情抽屉查看态，不修改权限策略后端接口、授权资源模型或策略列表列定义。
+- 策略概要区已移除策略 ID、来源、成员数量和可访问接口统计；成员与接口仍通过 `成员信息`、`可访问接口` 页签查看。
+- 静态回归脚本新增概要区禁用词断言，防止后续把这些字段重新放回概要卡。
+
+## context-kg frontend 目录索引检查
+
+- [x] 检查当前 `context-kg` 目录树和 git tracked 文件，确认是否存在 `fronted` / `frontend` 新目录或页面
+- [x] 复核 `_meta/schema.md` 与 `_meta/index.md` 的三域分类和索引覆盖
+- [x] 运行 `context-kg` lint 验证 index、frontmatter 和链接一致性
+- [x] 记录 review 结论
+
+当前判断：
+
+- 当前工作区未发现 `context-kg/fronted` 或 `context-kg/frontend` 目录，也没有新增前端知识页面；`git status --short` 中仅有既有 `context-kg/tasks/todo.md`、`context-kg/tasks/lessons.md` 变更。
+- `_meta/schema.md` 当前仍定义为业务、技术、质量三域结构；在没有实际前端页面落入新目录前，不应提前把 `fronted` 作为新知识域写入索引。
+- 如果后续确实要引入前端知识域，目录名建议统一为 `frontend/` 而不是 `fronted/`，并按 restructure 流程同步更新 `_meta/schema.md`、`_meta/index.md` 和 `_meta/log.md`。
+
+验证：
+
+- `find context-kg -maxdepth 3 -type d | sort` 未输出 `fronted` 或 `frontend`。
+- `git ls-files context-kg | sort` 未包含 `fronted` 或 `frontend` 目录下文件。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+
+Review：
+
+- 本轮不调整正式知识库索引；当前索引对现有页面覆盖完整。
+- 未修改 `_meta/schema.md`、`_meta/index.md` 或 `_meta/log.md`。
+
+## 命名空间列表操作列收敛
+
+- [x] 建立命名空间操作列静态校验，先确认当前三图标操作列和删除 no-op 会失败
+- [x] 将命名空间列表操作列收敛为单个 `查看 / 编辑` 入口与独立 `删除`
+- [x] 在命名空间详情抽屉中保留 `编辑`、`授权`、`关闭` 能力，避免行内继续并列授权图标
+- [x] 补通命名空间删除动作，删除成功后刷新列表
+- [x] 运行命名空间静态校验、前端构建、diff 检查、context-kg lint 和页面可访问验证
+
+当前判断：
+
+- 用户截图中的命名空间操作列仍是 `编辑 / 授权 / 删除` 三个并列图标，和服务列表、A2A 列表最近收敛后的 `查看 / 编辑` + `删除` 不一致。
+- 授权不应从产品能力中消失，但也不应继续挤在行内操作列；更合适的位置是命名空间详情抽屉。
+- 当前 `delete` 分支没有调用删除接口，本轮作为同一操作列链路一起修复。
+
+验证：
+
+- `cd console/web && node scripts/verify-namespace-actions.mjs` 先在旧实现上失败，随后在新实现上通过，覆盖统一行内入口、抽屉授权入口和删除调用。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `git diff --check -- console/web/src/pages/Namespace/index.tsx console/web/src/pages/Namespace/NamespaceEditor.tsx console/web/src/pages/Namespace/index.module.less console/web/src/services/namespace.ts console/web/scripts/verify-namespace-actions.mjs context-kg/tasks/todo.md` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，进程 PID `75643`，`8080/8090` 监听正常。
+- `http://127.0.0.1:8080/namespace` 返回 `200`，页面加载 release 资源 `assets/index.c94f0f17.js`、`assets/style.03dbdf2d.css` 和命名空间相关 chunk；`/core/v1/namespaces` 因当前本地库未初始化主账号被 console 代理拒绝，返回 `{"code":407,"info":"Proxy Authentication Required: access token is invalid"}`，默认账号 `pole/pole123` 登录返回 `400312 not found user`。本轮未为验证创建账号或改数据库。
+
+Review：
+
+- 本轮只调整命名空间 Console 前端，不修改后端 API、store 或鉴权策略。
+- 命名空间列表行内操作现在只有 `查看 / 编辑` 与 `删除` 两个图标；`授权` 从行内移到命名空间详情抽屉底部。
+- 命名空间抽屉新增查看态，展示名称、描述和标签；查看态底部提供 `编辑 / 授权 / 关闭`，切到编辑后复用原表单并继续走更新接口。
+- 删除按钮现在调用已有 `removeNamespace`，成功后刷新当前分页和筛选条件。
+- `DeleteNamespaceRequest.token` 改为可选，和后端 Console API 以及现有 e2e 只传 `name` 的用法一致。
+
+## 治理工作台新建规则向导与工具栏顺序调整
+
+- [x] 将治理工作台筛选栏操作顺序调整为 `刷新 / 重置筛选 / 新建规则`
+- [x] 将 `新建规则` 从图标按钮改为文字主按钮
+- [x] 将新建规则从下拉菜单改为两步向导：先选规则类型，再进入具体规则创建抽屉
+- [x] 在规则类型选择卡片中增加适用场景说明，帮助用户判断什么时候配置该规则
+- [x] 移除规则类型卡片中的 `新建 XXX 规则` 重复标题，只保留类型与场景说明
+- [x] 运行前端构建、diff 检查、context-kg lint 和工作台页面验证
+
+当前判断：
+
+- 用户明确指出工具按钮顺序应先刷新、重置，再新建；新建规则应使用文字体现，不能继续只用 `+` 图标。
+- 新建规则不应在下拉菜单里直接跳转，应先明确选择规则类型，再进入对应规则的创建页面；本轮用 `Dialog + Steps` 表达两步流程，第二步复用现有各规则创建抽屉。
+- 用户进一步指出规则类型卡片下面应展示场景描述；规则类型选择阶段要回答“什么场景下要配置这个规则”，不能只重复“新建 X 规则”。
+- 用户继续指出卡片里的 `新建 XXX 规则` 本身是冗余信息；弹窗标题和操作按钮已经表达新建，卡片内部应聚焦类型与适用场景。
+
+验证：
+
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `git diff --check -- console/web/src/pages/Governance/Workbench/index.tsx console/web/src/pages/Governance/Workbench/index.module.less context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- 静态扫描确认治理工作台不再引用 `Dropdown`，新建入口为 `新建规则` 文字按钮，并保留 `Dialog + Steps` 的创建向导。
+- 静态扫描确认 9 类规则卡片均已配置场景描述，并使用 `createTypeTitle` 显式控制标题样式。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，进程 PID `98542`，`8080/8090` 监听正常。
+- `http://127.0.0.1:8080/governance/workbench` 返回 `200`，页面资源 hash 为 `assets/index.4e9352f1.js` / `assets/style.0f17a3fe.css`。
+- 增加场景描述后重新执行 `cd console/web && npm run build:test`、`git diff --check` 和 `context-kg` lint 均通过；重新拉起 all-mode 后进程 PID `24201`，`8080/8090` 监听正常，`http://127.0.0.1:8080/governance/workbench` 返回 `200`，页面资源 hash 更新为 `assets/index.db057222.js` / `assets/style.d7be1df2.css`。
+
+Review：
+
+- 本轮只调整治理工作台前端交互，不修改各治理规则 editor 的保存逻辑。
+- 筛选栏右侧操作现在依次为刷新、重置筛选、新建规则；新建规则是文字主按钮，仍保留加号图标辅助识别。
+- 点击新建规则后先打开类型选择弹窗，弹窗顶部显示两步 Steps；确认后关闭弹窗并打开对应规则类型的创建抽屉。
+- 规则类型选择卡片现在展示规则类型、创建标题和适用场景；卡片高度略增，标题样式改为显式 class，避免新增说明后样式依赖 `last-child` 失效。
+- 规则类型选择卡片中的 `新建 XXX 规则` 标题已移除，卡片回到更轻的类型标签 + 场景说明结构。
+- 移除重复标题后重新执行 `cd console/web && npm run build:test`、`git diff --check` 和 `context-kg` lint 均通过；重新拉起 all-mode 后进程 PID `34403`，`8080/8090` 监听正常，`http://127.0.0.1:8080/governance/workbench` 返回 `200`，页面资源 hash 更新为 `assets/index.74365acb.js` / `assets/style.24239055.css`。
+
+## 注册发现服务列表行操作收敛
+
+- [x] 将服务列表操作列从 `编辑 / 授权 / 删除` 收敛为 `查看 / 编辑` 与 `删除`
+- [x] 为服务编辑抽屉增加查看态，并在抽屉内切换到编辑表单
+- [x] 运行前端构建、diff 检查、context-kg lint 和服务页面验证
+
+当前判断：
+
+- 用户要求服务列表操作列和治理平台保持一致，因此行内不应再同时摆多个近似入口；主操作统一为 `查看 / 编辑`。
+- 服务名点击仍保留原有进入服务详情/实例页路径；行操作的 `查看 / 编辑` 打开服务详情抽屉，并在抽屉内部切换编辑。
+
+验证：
+
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `git diff --check -- console/web/src/pages/Discovery/Services/services.tsx console/web/src/pages/Discovery/Services/ServiceEditor.tsx console/web/src/pages/Discovery/Services/index.module.less context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，进程 PID `80464`，`8080/8090` 监听正常。
+- `http://127.0.0.1:8080/discovery/service` 返回 `200`，页面资源 hash 为 `assets/index.544453b3.js` / `assets/style.8cd6f23a.css`。
+
+Review：
+
+- 本轮只调整注册发现服务列表和服务抽屉，不修改服务 API、store 或实例页面路由。
+- 服务列表操作列现在保留两个按钮：`查看 / 编辑` 和 `删除`；`查看 / 编辑` 打开服务详情抽屉，抽屉底部可切换到编辑表单。
+- 服务名点击仍保留原来的服务详情/实例页跳转能力，不和行内统一操作冲突。
+
+## 限流匹配条件 AND/OR 可编辑修正
+
+- [x] 定位限流编辑态 AND/OR 不能选择的根因
+- [x] 为限流子规则视图与提交 payload 接通 `matchMode`
+- [x] 让限流匹配条件共享组件在编辑态可切换 AND/OR
+- [x] 补充静态验证，防止关系再次被硬编码为 AND 或禁用
+- [x] 运行限流脚本、共享匹配脚本、前端构建、diff 检查、context-kg lint 和服务重启验证
+
+当前判断：
+
+- 根因是 `RateLimitEditor` 使用共享 `TrafficMatchConditionEditor` 时把 `relation` 写死为 `MatchLogic.AND`，并传入 `relationEditable={false}`，导致编辑态看得到 AND/OR 但不能切换。
+- 既然限流已经复用通用匹配条件组件，AND/OR 就必须和其它治理规则一样是可交互控件；用户选择应写入当前子限流规则草稿，而不是仅改变 UI 状态。
+- 当前后端限流 proto 尚未显式建模匹配关系字段，本轮不改协议；Console 在子规则 payload 中携带 `matchMode`，前端详情转换也兼容 `matchMode` / `match_mode` 读取。
+
+验证：
+
+- `cd console/web && node scripts/verify-ratelimit-editor-utils.mjs` 通过，新增断言覆盖限流编辑器不能再传 `relationEditable={false}`，也不能把关系写死为 `MatchLogic.AND`。
+- `cd console/web && node scripts/verify-traffic-match-condition-editor.mjs` 通过，确认共享匹配条件组件仍可用。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `git diff --check -- console/web/src/services/ratelimit.ts console/web/src/pages/Governance/RateLimit/RateLimitEditor.tsx console/web/scripts/verify-ratelimit-editor-utils.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，进程 PID `21478`，`8080/8090` 监听正常。
+- `http://127.0.0.1:8080/governance/workbench` 返回 `200`，页面资源 hash 为 `assets/index.1fe0af70.js` / `assets/style.4fe08e45.css`。
+
+Review：
+
+- 本轮只修 Console 限流编辑交互，不修改 specification proto、Go 存储或后端下发逻辑。
+- `LimitTriggerView` 与提交 payload 现在带 `matchMode`，新建默认 `AND`，详情读取兼容 `matchMode` 与 `match_mode`。
+- 限流匹配条件区的 AND/OR 分段控件在编辑态可点击；切换后会写回当前子规则，并同步更新顶部提示文案。
+
+## A2A Agent 详情入口与抽屉 Tabs 收敛
+
+- [x] 将 A2A Agent 列表行内的 Agent Card、技能、编辑三个入口合并为单个 `查看 / 编辑` 入口
+- [x] 保留删除为独立危险操作，并继续使用确认弹窗
+- [x] 将详情抽屉改为内部 Tabs：`Agent Card`、`技能`、`编辑`
+- [x] 让 Agent 名称点击进入详情抽屉，技能数点击进入同一抽屉的技能 Tab
+- [x] 复用现有编辑表单作为抽屉内编辑 Tab，不再从详情中弹出第二个编辑抽屉
+- [x] 运行前端构建、diff 检查、context-kg lint 并重启服务验证页面
+
+当前判断：
+
+- 用户指出 A2A 列表中查看信息和编辑也应像治理规则一样合并，不应在一行里放多个近似入口。
+- A2A 的不同查看视图包括 Agent Card、技能目录和编辑态，适合收敛到同一个详情抽屉内部用 Tabs 切换，而不是拆成多个 action 图标。
+- 新建 A2A Agent 仍是独立创建流程，不纳入已有 Agent 的详情抽屉，避免创建态和查看态混在一起。
+
+验证：
+
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `git diff --check -- console/web/src/pages/AI/A2A/index.tsx console/web/src/pages/AI/A2A/index.module.less context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- 静态扫描确认旧的 `EditIcon`、`ListIcon`、`查看技能`、`查看 Agent Card` 和 `detailState.mode` 分支已移除，列表仅保留 `查看 / 编辑` 统一入口。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，PID `3924`，`8080/8090` 监听正常。
+- `http://127.0.0.1:8080/ai/a2a` 返回 `200`，页面资源 hash 为 `assets/index.7d9e569c.js` / `assets/style.4fe08e45.css`。
+
+Review：
+
+- 本轮只调整 A2A Console 前端交互，不修改 A2A API、store、router 或后端协议。
+- 列表操作区现在只保留 `查看 / 编辑` 和 `删除` 两个图标按钮；`查看 / 编辑` 打开统一详情抽屉。
+- 详情抽屉摘要区展示 Agent 身份、协议、技能数、后端、接入地址和最近修改；抽屉正文用 Tabs 切换 `Agent Card`、`技能`、`编辑`。
+- 原有 `AgentCardView`、`AgentSkillsView` 和 `A2AEditor` 继续复用；`A2AEditor` 新增嵌入模式，避免编辑从详情抽屉里再打开第二层抽屉。
+
+## 注册发现服务列表列与密度修正
+
+- [x] 将服务列表命名空间从服务名副文本拆成独立列
+- [x] 移除健康实例列中的 `暂无实例` 副文案
+- [x] 压缩服务列表表格行高和单元格内边距
+- [x] 运行前端构建、diff 检查并重启服务验证页面
+- [x] 记录 review、验证结果和 lessons
+
+当前判断：
+
+- 用户指出服务列表需要把命名空间单独成列，服务名列不应再把 namespace 当第二行展示。
+- `暂无实例` 在健康实例列里增加了无效行高，应移除；服务列表整体表格密度需要更接近管理清单，不要每行过高。
+
+验证：
+
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `git diff --check -- console/web/src/pages/Discovery/Services/services.tsx console/web/src/pages/Discovery/Services/index.module.less context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，PID `59838`，`8080/8090` 监听正常。
+- `http://127.0.0.1:8080/discovery/service` 返回 `200`，页面资源 hash 为 `assets/index.3d2d85f3.js` / `assets/style.49690e46.css`。
+
+Review：
+
+- 本轮只调整注册发现服务列表，不改变服务查询、新建、编辑、授权、删除或实例跳转逻辑。
+- 服务名列现在只展示服务名和备注；命名空间作为独立列展示。
+- 健康实例列只展示 `健康实例 / 总实例数`，不再追加 `暂无实例` 或健康率副文案。
+- 服务表格从 `large` 收敛到 `medium`，表头和单元格 padding 从 `14/16px` 压缩到 `10px`。
+
+## 治理工作台规则类型多选与新建入口修正
+
+- [x] 将规则清单的规则类型筛选从横向按钮组改为多选下拉框
+- [x] 让规则类型多选支持空值等同全部，并正确筛选限流本地/全局规则
+- [x] 将新建规则入口改为常驻按钮，并通过下拉菜单选择具体规则类型
+- [x] 将新建、刷新和重置筛选操作从文字按钮改为 TDesign 图标按钮，并补充 tooltip
+- [x] 移除命名空间和服务两个筛选下拉，将新建、刷新、重置合并到同一条筛选工具栏
+- [x] 按参考图将规则表格改为规则、类型、作用对象、创建时间、更新时间、状态、操作的管理清单视图
+- [x] 参考服务列表，将创建时间和更新时间合并为单个操作时间列
+- [x] 将规则清单行操作改为服务列表同款图标按钮规范
+- [x] 将规则清单行内编辑和查看详情入口合并为单个 `查看 / 编辑` 操作
+- [x] 运行前端构建、diff 检查并重启服务验证页面
+- [x] 记录 review、验证结果和 lessons
+
+当前判断：
+
+- 用户指出横向按钮布局仍不理想，规则类型应统一为一个多选下拉框。
+- 规则创建不能依赖当前筛选只选中单一类型；多选筛选下应把“创建哪种规则”作为独立操作处理，因此新建入口应常驻，并在点击后选择具体规则类型。
+- 用户进一步指出工具栏里的 `新建规则 / 刷新 / 重置` 文字按钮占位过重；这类工具操作应使用 TDesign 图标按钮表达，悬浮提示补足语义。
+- 用户继续指出命名空间和服务两个筛选下拉在当前清单中占位过重，应移除；新建、刷新和重置图标应合并到筛选工具栏右侧，减少头部垂直分散。
+- 用户给出列表视图参考图后，规则清单应转为更常规的管理列表：规则名称下方展示摘要，类型用轻量彩色标签，右侧展示创建/更新时间、状态点和行内操作。
+- 用户进一步明确服务列表的行操作按钮是规范，因此治理规则行操作也应使用 `Tooltip + square text Button + icon`，不能继续用文字链接。
+- 用户继续指出创建时间和更新时间应参考服务列表合并到一列，避免右侧时间列占用过宽。
+- 用户继续指出列表里的编辑和查看详情按钮可以合并；编辑应作为详情抽屉内的动作，不需要在列表行里并列两个近似入口。
+
+验证：
+
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- 操作按钮图标化后重新执行 `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- 移除命名空间/服务筛选并合并按钮后重新执行 `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- 表格清单列调整后重新执行 `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- 行操作图标化后重新执行 `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `git diff --check -- console/web/src/pages/Governance/Workbench/index.tsx console/web/src/pages/Governance/Workbench/index.module.less context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，PID `92863`，`8080/8090` 监听正常。
+- `http://127.0.0.1:8080/governance/workbench` 返回 `200`，首页资源 hash 更新为 `assets/index.7af351e8.js` / `assets/style.b0a2e943.css`。
+- 图标化后重新执行 `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，PID `9317`，`8080/8090` 监听正常，`http://127.0.0.1:8080/governance/workbench` 返回 `200`，首页资源 hash 更新为 `assets/index.a6cf9ec3.js` / `assets/style.b0a2e943.css`。
+- 移除命名空间/服务筛选并合并按钮后重新执行 `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，PID `23736`，`8080/8090` 监听正常，`http://127.0.0.1:8080/governance/workbench` 返回 `200`，首页资源 hash 更新为 `assets/index.f35df749.js` / `assets/style.d9c7a360.css`。
+- 表格清单列调整后重新执行 `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，PID `38157`，`8080/8090` 监听正常，`http://127.0.0.1:8080/governance/workbench` 返回 `200`，首页资源 hash 更新为 `assets/index.e5d6dda3.js` / `assets/style.95a6adb2.css`。
+- 行操作对齐服务列表图标按钮规范后重新执行 `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，PID `48861`，`8080/8090` 监听正常，`http://127.0.0.1:8080/governance/workbench` 返回 `200`，首页资源 hash 更新为 `assets/index.221f93cb.js` / `assets/style.95a6adb2.css`。
+- 操作时间列合并后重新执行 `cd console/web && npm run build:test`、`git diff --check` 和 `context-kg` lint 均通过；重新拉起 all-mode 后 tmux 日志显示 `finish starting server`，PID `72263`，`8080/8090` 监听正常，`http://127.0.0.1:8080/governance/workbench` 返回 `200`，首页资源 hash 更新为 `assets/index.99c843e8.js` / `assets/style.516ca163.css`。
+- 编辑和查看详情入口合并后重新执行 `cd console/web && npm run build:test`、`git diff --check` 和 `context-kg` lint 均通过；重新拉起 all-mode 后 tmux 日志显示 `finish starting server`，PID `82792`，`8080/8090` 监听正常，`http://127.0.0.1:8080/governance/workbench` 返回 `200`，首页资源 hash 更新为 `assets/index.3984652f.js` / `assets/style.516ca163.css`。
+
+Review：
+
+- 本轮只调整治理工作台列表筛选和创建入口，不改各治理规则 editor 的保存 payload。
+- 规则类型筛选空数组表示全部；选择 `限流` 时仍覆盖本地限流和全局限流两类行。
+- 新建入口不再依赖筛选状态，点击 `新建规则` 后从下拉项中选择路由、限流、熔断、探测、无损、泳道、鉴权、镜像或 Mock。
+- 图标化使用 `AddIcon`、`RefreshIcon` 和 `FilterClearIcon`；按钮保留 `aria-label` 和 `Tooltip`，避免只剩图标后不可读。
+- 清单头部只保留标题与说明；筛选工具栏现在只包含规则类型多选、关键词搜索和右侧图标操作组，不再单独按命名空间/服务过滤。
+- 表格列已去掉 `匹配 / 触发` 和 `发布`，摘要移到规则名第二行，创建时间和更新时间合并为 `操作时间` 单列，行操作中的 `编辑` 打开编辑态，`删除` 走对应规则类型已有删除接口，`更多` 打开详情入口。
+- 行操作已收敛为两个方形图标按钮：`CreditcardIcon` 作为统一 `查看 / 编辑` 入口打开详情抽屉，`DeleteIcon` 负责删除并保留 `Popconfirm`；不再把编辑和查看详情并列为两个按钮。
+
+## 限流接口行新增与协议方法编辑修正
+
+- [x] 复现并定位限流接口行无法新增、协议/方法无法编辑的根因
+- [x] 为 `method.value` 增加协议/方法/路径兼容拆装 helper，保持现有后端单字段契约
+- [x] 将限流匹配接口编辑态改为可新增/删除接口行，并允许编辑协议和方法
+- [x] 补充静态验证，覆盖新增接口、协议/方法可编辑和保存值拆装
+- [x] 运行限流脚本、前端构建、context-kg lint、diff 检查和真实页面验证
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 用户指出前一轮只修了接口路径的匹配值控件，但仍无法新增接口，且已有接口的协议、方法被禁用，说明限流接口行交互仍未对齐设计。
+- 当前后端/前端保存结构仍是 `rules[].method: MatchString`，没有独立 interfaces 数组；本轮通过兼容拆装 `method.value` 承载协议/方法/路径，不改后端 schema。
+- 已定位根因：编辑器把 `method.value` 直接当成“接口路径”输入，且协议、方法 Select 硬编码 disabled；对于已有 `POST /api/v1/payments` 数据，方法被混在路径列里，无法单独修改。
+- 已补 `parseRateLimitInterfaceValue` / `buildRateLimitInterfaceValue`：兼容旧格式 `POST /path`，也能解析 `GRPC POST /path`；HTTP 继续保存为旧格式，非 HTTP 才带协议前缀。
+- 在当前单字段契约下，“新增接口”不能落为同一规则内的真实 interfaces 数组；本轮按可保存语义实现为复制当前规则生成下一条接口规则，继承限流配置并清空接口路径。
+
+验证：
+
+- `cd console/web && node scripts/verify-ratelimit-editor-utils.mjs` 通过，覆盖接口值拆装、协议/方法控件不再 disabled、接口路径 TagInput 和新增接口入口。
+- `cd console/web && node scripts/verify-traffic-match-condition-editor.mjs` 通过，确认共享匹配条件控件未被本轮改动破坏。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/RateLimit/RateLimitEditor.tsx console/web/src/pages/Governance/RateLimit/rateLimitEditorUtils.ts console/web/scripts/verify-ratelimit-editor-utils.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 已重启 all-mode，tmux 日志显示 `finish starting server`，8080 首页返回 200。
+- 浏览器真实页面验证：限流新建抽屉中协议、方法、匹配类型、接口路径均为可编辑控件；方法从 `*` 改为 `POST`、路径填 `/api/v1/payments` 后，右侧 Spec 写回 `value: "POST /api/v1/payments"`；点击 `新增接口` 后出现第二条规则，第二条接口字段可编辑且路径为空，校验提示 `规则[2] 存在空的接口路径`。
+
+Review：
+
+- 本轮不改 RateLimit 后端 schema，也不伪造 `interfaces` 数组；新增接口用新增一条 `LimitTrigger` 表达，保证保存 payload 和客户端发现语义仍可落地。
+- `HTTP POST /path` 兼容保存为旧格式 `POST /path`，避免不必要地改变已有数据；非 HTTP 协议会以协议前缀写入当前单字段，后续如果协议层新增独立字段，应再迁移到结构化字段。
+
+## 限流接口匹配类型交互修正
+
+- [x] 将限流接口路径编辑器接入 `IN/NOT_IN` 多值 TagInput 交互
+- [x] 补充限流编辑器静态验证，防止接口匹配类型切换后仍固定普通 Input
+- [x] 运行限流脚本、前端构建、context-kg lint 和 diff 检查
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 本轮只修 Console 前端限流接口匹配编辑态，不修改 RateLimitRule 后端 schema、保存接口或 method 字段语义。
+- 限流接口路径和路由匹配值一样，匹配类型为 `包含/不包含` 时应使用 TagInput 多值编辑，并按英文逗号拼回 `method.value`；其它匹配类型继续使用普通 Input。
+
+验证：
+
+- `cd console/web && node scripts/verify-ratelimit-editor-utils.mjs` 通过，断言限流接口匹配值在 `IN/NOT_IN` 时使用 TagInput，并复用逗号字符串与标签数组互转工具。
+- `cd console/web && node scripts/verify-traffic-match-condition-editor.mjs` 通过，确认共享流量匹配条件控件未被本轮改动破坏。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Governance/RateLimit/RateLimitEditor.tsx console/web/src/pages/Governance/RateLimit/RateLimitEditor.module.less console/web/scripts/verify-ratelimit-editor-utils.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 已重启 all-mode，tmux 日志显示 `finish starting server`，8080 首页返回 200。
+- 浏览器真实页面验证：限流新建抽屉中 `匹配接口` 的匹配类型从 `完全匹配` 切到 `包含` 后，接口路径字段从普通 Input 切换为 `.t-tag-input`，占位为 `输入后回车添加`，并可回车添加 `/api/v1/orders` 标签。
+
+Review：
+
+- 本轮只调整限流接口匹配值的编辑控件，不改变 `trigger.method` 的保存结构；多值仍按英文逗号写回 `method.value`。
+- 协议和方法字段继续保持只读，避免把“接口匹配类型交互”扩大成后端 method 契约调整。
 
 ## 泳道流量匹配头部错位修正
 
@@ -5479,3 +6369,201 @@ Review：
 - 本轮只调整 Console 前端的镜像编辑抽屉、前端服务类型和验证脚本，不修改后端 Go 存储/缓存/下发链路。
 - 产品态 Spec 预览遵循交接稿；真实保存仍适配当前后端 `MirrorRule.api` 单接口结构，因此在提交前展开 `interfaces[]`。
 - 旧数据中的 `CALLER_SERVICE` 仍可被读取为 caller 兜底，但保存时不会再将 caller 写回流量标签或匹配条件。
+
+## 治理规则 API 范围协议一致性核对
+
+- [x] 核对熔断、调用鉴权、流量镜像 spec 中 API 范围字段是否仍为单个 `API api`
+- [x] 判断这些规则是否存在和限流相同的“一个子规则应覆盖多个 API”问题
+- [x] 补充经验记录，避免只修限流而漏掉同类治理规则
+
+当前判断：
+
+- 用户已明确限流不需要考虑当前兼容，子限流规则应支持多个 API，并优先复用统一 `API` message。
+- 本轮先做协议核对和结论，不直接改 spec 与 Console，避免在未确认熔断/鉴权/镜像语义前批量改字段。
+- 已核对 specification：熔断 `BlockConfig.api`、调用鉴权 `TrafficSecurityPolicy.api`、流量镜像 `MirrorRule.api` 都是单个 `API`；同构的流量 Mock `MockRule.api` 也仍是单个 `API`。
+- 判断：如果产品语义允许一个策略/子规则使用同一套动作和条件覆盖多个 API，这些字段都应统一改为 `repeated API apis`，否则 Console 会被迫复制子规则或策略，和用户期望的“新增接口行”不一致。
+
+## 治理规则多 API 范围协议与 Console 收敛
+
+- [x] 核对 specification 生成命令、control-plane 对 `api/method` 字段的读写链路
+- [x] 将限流、熔断、调用鉴权、流量镜像、流量 Mock 的单 API 字段统一为 `repeated API apis`
+- [x] 适配 control-plane 后端转换、Console service 类型、编辑器 UI 和 Spec 预览
+- [x] 运行协议生成、前端构建、相关验证脚本和 diff 检查
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 用户确认不考虑现有兼容，子规则/策略应支持多个 API，接口资源用统一 `API` message 表达。
+- 改动范围应横向覆盖限流、熔断、调用鉴权、流量镜像、流量 Mock，避免只修限流后留下同构问题。
+- specification 已改为：`LimitTrigger.apis`、`BlockConfig.apis`、`TrafficSecurityPolicy.apis`、`MirrorRule.apis`、`MockRule.apis`；Mirror/Mock 同步补齐 `caller/callee` proto 形态以匹配 control-plane 当前生成类型。
+- control-plane 使用本地 `../specification` 生成代码验证，`pkg/goverrule/ratelimit_rule.go` 已把简单/高级限流创建写入 `LimitTrigger.apis`。
+- Console 限流的“新增接口”现在追加同一子规则内的 API 行；熔断、鉴权、镜像、Mock 提交时保留同一策略/子规则内的 `apis[]`，不再按接口展开成多条。
+
+验证：
+
+- `cd ../specification/source/go && bash build.sh` 通过，刷新 Go 生成代码。
+- `cd console/web && node scripts/verify-ratelimit-editor-utils.mjs && node scripts/verify-circuitbreaker-editor-utils.mjs && node scripts/verify-traffic-security-editor-utils.mjs && node scripts/verify-traffic-mirror-editor-utils.mjs && node scripts/verify-traffic-mock-editor-utils.mjs` 通过。
+- `cd console/web && npm run build:test` 通过；保留既有 Browserslist 过期和大 chunk 警告。
+- `go test ./pkg/goverrule/... ./plugin/store/mysql/... ./plugin/apiserver/httpserver/...` 通过。
+- `git diff --check -- console/web/src console/web/scripts pkg/goverrule go.mod context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `git -C ../specification diff --check --` 对本轮触及的 proto 和 Go 生成文件通过；未包含进入本轮前已脏的 `source/rust/pole-specification/proto/service.proto`。
+
+Review：
+
+- 本轮没有重跑 Rust 生成代码，避免把已有脏改 `source/rust/pole-specification/proto/service.proto` 及其派生内容混入；仅同步修改了对应 Rust proto 源文件。
+- `go.mod` 暂时指向 `../specification`，用于验证本地未发布的 proto 生成代码；后续发版后应再切回正式版本依赖。
+- 限流读取旧 `method` 字符串、熔断/鉴权/镜像/Mock 读取旧 `api` 字段只作为旧数据兜底；新的提交 payload 均输出 `apis`。
+
+## 治理规则移除动态实时 Spec 预览
+
+- [x] 梳理所有治理规则编辑器中 `实时规则 SPEC` 预览的挂载点
+- [x] 移除路由、限流、熔断、主动探测、无损、泳道、鉴权、镜像、Mock 的右侧实时 Spec 预览
+- [x] 清理对应无用 state、复制逻辑和预览文本构造，保留保存/校验所需逻辑
+- [x] 将宽抽屉从双栏时期的 `min(1560px, calc(100vw - 40px))` 收敛为单栏编辑态的 `clamp(860px, 60vw, 1180px)`
+- [x] 补齐治理工作台按规则类型筛选后的统一新建入口，覆盖路由、限流、熔断、主动探测、无损、泳道、鉴权、镜像、Mock
+- [x] 将工作台规则清单调整为标题/主操作一行、类型筛选/搜索筛选一条工具栏，避免把标题、类型按钮和输入框硬挤在同一行
+- [x] 构建或类型检查验证前端无未使用引用，重新拉起服务验证页面
+
+当前判断：
+
+- 用户明确要求移除所有治理规则里的动态实时 Spec 预览，本轮不调整后端 spec、保存 payload 或发布流程。
+- 二次扫描发现熔断编辑器也存在同类实时 Spec 预览，已纳入同一轮移除。
+- 右侧 Spec 列移除后，宽抽屉继续使用 1560px 会过宽；按用户反馈进一步收敛到 60vw，并保留 860px 最小宽度兜底复杂规则表单。
+- 治理工作台不能只在熔断筛选下提供新建入口；选择具体规则类型后应出现对应的新建按钮，并打开对应 editor 的 create 态。`全部` 筛选下暂不展示新建，避免规则类型不明确。
+- 规则清单不应把标题、类型按钮、搜索框和所有操作硬挤在同一行；标题与新建/刷新保持在清单头部，类型筛选与搜索/命名空间/服务/重置合并为一条筛选工具栏，宽屏一行展示，窄屏换行降级。
+
+验证：
+
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `git diff --check -- console/web/src/pages/Governance context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `rg -n "实时规则 SPEC|实时 Spec|保存前核对|前端交互预览|已复制当前.*Spec|已复制.*规则预览|当前规则可保存|校验通过，可保存" console/web/dist/assets console/web/src/pages/Governance || true` 无输出。
+- 后台服务已重启到 tmux 会话 `pole-control-plane`，PID `93603`，`8080/8090` 监听正常，`http://127.0.0.1:8080/governance/workbench` 返回 `200`。
+- 宽抽屉收敛后重新执行 `cd console/web && npm run build:test` 通过；后台服务已重启到 tmux 会话 `pole-control-plane`，PID `5312`，`8080/8090` 监听正常，`http://127.0.0.1:8080/governance/workbench` 返回 `200`，首页资源 hash 更新为 `assets/index.7258ca47.js`。
+- 统一新建入口补齐后重新执行 `cd console/web && npm run build:test` 通过；`git diff --check -- console/web/src/pages/Governance/Workbench/index.tsx context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过；后台服务已重启到 tmux 会话 `pole-control-plane`，PID `30567`，`8080/8090` 监听正常，`http://127.0.0.1:8080/governance/workbench` 返回 `200`，首页资源 hash 更新为 `assets/index.3f37b91c.js`。
+- 规则清单布局回收为“两段式”后重新执行 `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，PID `57545`，`8080/8090` 监听正常，`http://127.0.0.1:8080/governance/workbench` 返回 `200`，首页资源 hash 更新为 `assets/index.973be23c.js` / `assets/style.c876001e.css`。
+
+## 鉴权策略治理资源检查适配
+
+- [x] 核对调用鉴权、流量镜像、流量 Mock 在策略授权、资源存在性检查和资源详情回显中的资源类型映射
+- [x] 修复鉴权策略创建/更新时对 `security_rules`、`mirror_rules`、`mock_rules` 的资源存在性校验
+- [x] 补齐策略详情中这三类治理资源的资源摘要转换
+- [x] 增加针对资源检查和回显转换映射的单测
+- [x] 运行相关 Go 测试、diff 检查和 context-kg lint
+
+当前判断：
+
+- 前端和发布链路区分了管理鉴权资源名与发布资源名：授权策略资源使用 `SecurityRules/MirrorRules/MockRules`，发布版本使用 `TrafficSecurityRules/TrafficMirrorRules/TrafficMockRules`。
+- 后端 `auth_checker` 操作鉴权和治理规则发布资源收集已能识别 `SecurityRules/MirrorRules/MockRules`。
+- `plugin/access_control/auth/policy/interceptor/paramcheck/server.go` 的 `checkResourceExist` 只检查到 `LosslessRules`，没有检查调用鉴权、流量镜像、流量 Mock，因此策略创建/更新时可能接受不存在的治理资源 ID。
+- `plugin/access_control/auth/policy/policy.go` 的策略资源详情转换器缺少这三类治理资源，非 `*` 资源可能无法在策略详情中正确回显名称。
+
+验证：
+
+- `go test ./plugin/access_control/auth/policy/...` 通过。
+- `go test ./apis/pkg/types/auth ./pkg/goverrule/interceptor/auth ./plugin/access_control/auth/policy/...` 通过。
+- `git diff --check -- plugin/access_control/auth/policy/interceptor/paramcheck/server.go plugin/access_control/auth/policy/interceptor/paramcheck/traffic_governance_resource_test.go plugin/access_control/auth/policy/policy.go plugin/access_control/auth/policy/policy_test.go context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，all-mode 进程 PID `55355`，`8080/8090` 监听正常。
+- `http://127.0.0.1:8080/governance/workbench` 返回 `200`。
+
+Review：
+
+- 本轮确认问题存在：不是前端资源名传错，而是鉴权策略参数校验与详情回显没有同步适配新增的三类治理资源。
+- 已在策略创建/更新的资源存在性检查中补齐 `security_rules`、`mirror_rules`、`mock_rules`，不存在的调用鉴权、镜像或 Mock 规则 ID 会返回 `NotFoundResource`。
+- 已在策略详情资源转换器中补齐 `SecurityRules/MirrorRules/MockRules`，非通配资源可从对应治理缓存回填规则名和命名空间。
+
+## 用户详情关联策略展示修正
+
+- [x] 复现 admin 用户详情看不到关联策略的问题，并区分后端数据与前端展示责任
+- [x] 在用户详情页加载当前用户关联的鉴权策略
+- [x] 调整用户详情权限信息卡片，确保管理员用户也能看到关联策略
+- [x] 补充验证并记录 review
+
+当前判断：
+
+- 后端能返回 admin 的关联策略：`/auth/v1/policies?principal_id=<admin>&principal_type=user` 返回 1 条 `(用户) admin的默认策略`。
+- 前端 `UserDetail.tsx` 没有调用关联策略接口，并且用 `viewUser?.user_type !== 'main'` 把整个权限信息卡片对管理员用户隐藏了，因此 admin 详情必然看不到关联策略。
+
+验证：
+
+- `POST http://127.0.0.1:8080/auth/v1/user/login` 使用 `admin/admin123` 登录成功，返回 admin 用户 ID 和 Console token。
+- 带 `Authorization` 与 `X-Pole-User` 请求 `GET http://127.0.0.1:8080/auth/v1/users?id=<admin>&offset=0&limit=1` 返回 `user_type: "main"`，确认复现对象是主账号。
+- 带 `Authorization` 与 `X-Pole-User` 请求 `GET http://127.0.0.1:8080/auth/v1/policies?principal_id=<admin>&principal_type=1&offset=0&limit=10` 返回 `amount=1`，包含 `(用户) admin的默认策略`，证明后端数据存在。
+- `cd console/web && npm run build:test` 通过；保留既有 Browserslist 过期和大 chunk 警告。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`http://127.0.0.1:8080/login` 返回 `200`。
+- Playwright 登录 admin 并打开 `http://127.0.0.1:8080/auth/principals/userdetail?id=<admin>&name=admin`，页面包含 `管理员`、`权限信息` 和 `(用户) admin的默认策略`；仅捕获到既有 React key warning。
+
+Review：
+
+- 本轮根因是 Console 前端详情页缺少关联策略查询，并且把主账号的整个权限信息卡片隐藏了；不是后端策略数据缺失。
+- 已在用户详情页调用 `describeAuthPolicies` 加载当前用户关联策略，并把权限信息页签对管理员用户保留展示。
+
+## 认证管理详情编辑抽屉统一
+
+- [x] 确认认证管理主入口现状：用户、用户组、角色、策略列表仍跳 hidden detail route，操作列缺少统一查看/编辑入口。
+- [x] 先补充 `console/web/scripts/verify-auth-drawer-actions.mjs`，验证列表不再主动跳转详情页、名称和操作列统一打开抽屉。
+- [x] 调整用户、用户组、角色、策略表格：名称点击和行内主操作均打开详情抽屉，删除仍保留行内确认，Token 入口不再空实现。
+- [x] 调整用户、用户组、角色、策略编辑器：查看态和编辑态沿用同一抽屉入口，查看态可切到编辑态，创建态保持原语义。
+- [x] 运行静态验证脚本、前端构建、diff 检查和 context-kg lint，并补充 review。
+
+当前判断：
+
+- 本轮只统一 Console 认证管理主路径的交互入口，不删除 `/auth/principals/*detail` 和 `/auth/policies/detail` hidden route，保证已有直达链接仍可兼容。
+- 编辑保存链路保持现有 service/redux 结构，尤其策略编辑器不在本轮重写创建/更新接口契约。
+- 表格操作列应与命名空间、治理工作台的近期规范一致：保留一个 `查看 / 编辑` 主入口，具体编辑动作在抽屉内发生。
+
+调整判断：
+
+- 用户反馈修改后的权限视图不如之前，说明“统一抽屉”不能等同于“把详情页改成基础字段或禁用表单”。
+- 修正方向是恢复旧详情页的信息架构：主体详情保留关联策略/权限信息，策略详情保留成员、资源树、资源标签和接口范围；只把承载方式从独立页面改成抽屉。
+
+验证：
+
+- `cd console/web && node scripts/verify-auth-drawer-actions.mjs` 通过；脚本覆盖列表不跳旧详情路由、统一 `查看 / 编辑`、主体权限信息表和策略详情成员/资源/接口视图。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `git diff --check -- console/web/src/pages/Auth/Principal/UserTable.tsx console/web/src/pages/Auth/Principal/GroupTable.tsx console/web/src/pages/Auth/Principal/RoleTable.tsx console/web/src/pages/Auth/Principal/UserEditor.tsx console/web/src/pages/Auth/Principal/GroupEditor.tsx console/web/src/pages/Auth/Principal/RoleEditor.tsx console/web/src/pages/Auth/Principal/PrincipalPolicyTable.tsx console/web/src/pages/Auth/Principal/index.module.less console/web/src/pages/Auth/Policy/PolicyTable.tsx console/web/src/pages/Auth/Policy/PolicyEditor.tsx console/web/src/pages/Auth/Policy/PolicyDetailView.tsx console/web/src/pages/Auth/Policy/index.module.less console/web/scripts/verify-auth-drawer-actions.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`8080/8090` 监听正常。
+- `curl -I http://127.0.0.1:8080/auth/principals` 与 `curl -I http://127.0.0.1:8080/auth/policies` 均返回 `200`。
+- Playwright 登录 `admin/admin123` 后验证：用户详情抽屉存在 `权限信息` 和 `策略名称`；策略详情抽屉存在 `成员信息 / 资源信息 / 资源标签 / 可访问接口`。
+
+Review：
+
+- 本轮将用户、用户组、角色、策略列表名称和行内主操作统一为抽屉入口；hidden detail route 保留兼容，但主路径不再跳转过去。
+- 新增 `PrincipalPolicyTable` 复用关联策略接口恢复主体详情的权限信息；用户组 Token 行内按钮从空实现改为查询并展示 token。
+- 新增 `PolicyDetailView`，策略查看态不再使用禁用编辑器伪装详情，而是恢复旧详情页的成员、资源树、资源标签和接口范围视图。
+- 收到用户反馈后已将“抽屉迁移不能压扁权限视图”的规则写入 `context-kg/tasks/lessons.md`。
+
+## admin 策略详情数据缺失修复
+
+- [x] 复现 admin 关联策略详情很多字段为空的问题，并对照真实接口返回
+- [x] 补充认证抽屉静态校验，覆盖策略详情直接返回 `AuthStrategy` 和无损规则资源
+- [x] 修复策略详情 service 解包、资源树类型覆盖，以及主体关联策略详情入口
+- [x] 运行静态验证、前端构建、真实页面回归和 diff 检查
+- [x] 更新 review 与 lessons
+
+当前判断：
+
+- `GET /auth/v1/policies?principal_id=<admin>&principal_type=1` 能返回 admin 默认策略，包含成员、资源、接口范围等完整数据。
+- `GET /auth/v1/policies/detail?id=<policy>` 的 `data` 直接是 `AuthStrategy`，不是 `{ authStrategy: ... }`；当前 `describeAuthPolicyDetail` 只取 `result.authStrategy`，导致抽屉拿到 `undefined` 并显示大量空数据。
+- 真实资源返回里还包含 `lossless_rules`，当前 `PolicyResources` 类型和策略详情资源树都没有覆盖，属于同一详情展示缺口。
+- admin 默认策略通常不出现在普通策略列表主视图里，用户实际路径是主体详情的 `权限信息` 关联策略表；关联策略名称不能只是静态 Link，必须能继续打开策略详情抽屉。
+
+验证：
+
+- `POST http://127.0.0.1:8080/auth/v1/user/login` 使用 `admin/admin123` 登录成功，返回 admin 用户 ID 和 Console token。
+- 带 `Authorization` 与 `X-Pole-User` 请求 `GET http://127.0.0.1:8080/auth/v1/policies?principal_id=<admin>&principal_type=1&offset=0&limit=100` 返回 1 条 `(用户) admin的默认策略`，且资源包含 `namespaces/services/config_groups/route_rules/ratelimit_rules/circuitbreaker_rules/faultdetect_rules/lane_rules/lossless_rules/security_rules/mirror_rules/users/user_groups/roles/auth_policies` 等字段。
+- 带同一 token 请求 `GET http://127.0.0.1:8080/auth/v1/policies/detail?id=<policy>` 返回 `data` 直接为 `AuthStrategy`，包含成员、资源、`functions: ["*"]` 和描述。
+- `cd console/web && node scripts/verify-auth-drawer-actions.mjs` 先在旧实现上失败，修复后通过；脚本覆盖详情解包兼容、无损资源树、主体关联策略可打开详情抽屉。
+- `cd console/web && npm run build:test` 通过；保留既有 `--localstorage-file`、Browserslist 过期和大 chunk 警告。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 通过；tmux 日志显示 `finish starting server`，`8080/8090` 监听正常。
+- Playwright 从 `http://127.0.0.1:8080/auth/principals` 登录态打开 admin 用户详情，进入 `权限信息`，点击 `(用户) admin的默认策略` 后策略详情接口返回 200；详情抽屉展示策略名称、admin 成员、描述、资源通配、无损规则通配和全部接口。
+- `git diff --check -- console/web/src/services/auth_policy.ts console/web/src/pages/Auth/Policy/PolicyDetailView.tsx console/web/src/pages/Auth/Principal/PrincipalPolicyTable.tsx console/web/scripts/verify-auth-drawer-actions.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+
+Review：
+
+- 本轮根因不是后端 admin 策略缺失，而是 Console 前端详情 service 没兼容当前接口直接返回 `AuthStrategy` 的响应形态。
+- `describeAuthPolicyDetail` 已兼容 `{ authStrategy }` 和直接 `AuthStrategy` 两种形态，策略详情抽屉可以拿到完整成员、资源、接口和描述。
+- 策略资源类型补齐 `lossless_rules`，策略详情资源树新增 `无损规则`，避免默认策略中的无损规则资源无入口。
+- 主体详情的关联策略表现在点击策略名会打开策略详情抽屉，admin 这类默认策略也能从主体权限信息继续查看完整详情。

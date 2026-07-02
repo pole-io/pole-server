@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Table, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Popconfirm, Input } from 'tdesign-react';
-import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, CreditcardIcon, SearchIcon } from 'tdesign-icons-react';
+import { AddIcon, DeleteIcon, RefreshIcon, CreditcardIcon, SearchIcon } from 'tdesign-icons-react';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
-import { openErrNotification } from 'utils/notifition';
+import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import Text from 'components/Text';
 import NamespaceEditor from './NamespaceEditor';
 import style from './index.module.less';
-import { cleanNamespacePage, editorNamespace, listNamespaces, resetNamespace, selectNamespace } from 'modules/namespace';
+import { cleanNamespacePage, editorNamespace, listNamespaces, removeNamespace, resetNamespace, selectNamespace } from 'modules/namespace';
 import AuthorizeInput from 'components/Authorize';
 import { PolicySourceType } from 'services/auth_policy';
 import { Namespace } from 'services/namespace';
@@ -92,27 +92,19 @@ const columns = (operateNamespace: (op: Op, row: TableRowData) => void): Primary
     {
         colKey: 'action',
         title: '操作',
-        width: 104,
+        width: 76,
         align: 'center',
         fixed: 'right',
         cell: ({ row }: TableRowData) => {
             return (
                 <div className={style.actionCell}>
-                    <Tooltip content={row.editable === false ? '无权限操作' : '编辑'}>
+                    <Tooltip content={row.editable === false ? '无权限操作' : '查看 / 编辑'}>
                         <Button
                             shape="square"
                             variant="text"
                             disabled={row.editable === false}
-                            onClick={() => operateNamespace('edit', row)}>
-                            <EditIcon />
-                        </Button>
-                    </Tooltip>
-                    <Tooltip content={row.editable === false ? '无权限操作' : '授权'}>
-                        <Button
-                            shape="square"
-                            variant="text"
-                            disabled={row.editable === false}
-                            onClick={() => { operateNamespace('authorize', row) }}>
+                            aria-label="查看 / 编辑"
+                            onClick={() => operateNamespace('view', row)}>
                             <CreditcardIcon />
                         </Button>
                     </Tooltip>
@@ -128,10 +120,10 @@ const columns = (operateNamespace: (op: Op, row: TableRowData) => void): Primary
                             }}
                         >
                             <Button shape="square" variant="text" disabled={row.deleteable === false}>
-                            <DeleteIcon />
-                        </Button>
-                    </Popconfirm>
-                </Tooltip>
+                                <DeleteIcon />
+                            </Button>
+                        </Popconfirm>
+                    </Tooltip>
                 </div>
             )
         },
@@ -148,7 +140,7 @@ export default React.memo(() => {
     // 合并编辑相关状态
     const [editorState, setEditorState] = useState<{
         visible: boolean;
-        mode: 'create' | 'edit';
+        mode: 'create' | 'edit' | 'view';
         data?: TableRowData;
         authorizeVisible: boolean;
     }>({ visible: false, mode: 'create', data: undefined, authorizeVisible: false });
@@ -160,13 +152,27 @@ export default React.memo(() => {
                 dispatch(editorNamespace({ ...row as Namespace }));
                 setEditorState(prev => ({ ...prev, visible: true, mode: 'edit', data: { ...row } }));
                 break;
+            case 'view':
+                dispatch(editorNamespace({ ...row as Namespace }));
+                setEditorState(prev => ({ ...prev, visible: true, mode: 'view', data: { ...row } }));
+                break;
             case 'create':
+                dispatch(resetNamespace());
                 setEditorState(prev => ({ ...prev, visible: true, mode: 'create', data: undefined }));
                 break;
             case 'authorize':
                 setEditorState(prev => ({ ...prev, authorizeVisible: true, data: { ...row } }));
                 break;
             case 'delete':
+                dispatch(removeNamespace({ param: { name: row?.name as string } }))
+                    .then((res) => {
+                        if (res.meta.requestStatus === 'fulfilled') {
+                            openInfoNotification('请求成功', '删除命名空间成功');
+                            refreshTable(page, limit, query);
+                        } else {
+                            openErrNotification('请求失败', res.payload as string);
+                        }
+                    });
                 break;
         }
     }
@@ -273,6 +279,9 @@ export default React.memo(() => {
                     key={editorState.mode + (editorState.data?.name || 'new') + (editorState.visible ? '1' : '0')}
                     op={editorState.mode}
                     visible={editorState.visible}
+                    onAuthorize={() => {
+                        setEditorState(s => ({ ...s, authorizeVisible: true }));
+                    }}
                     closeDrawer={() => {
                         // 清理编辑器状态
                         dispatch(resetNamespace());

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Button, Input, Link, Select, Space, Table, Tag } from 'tdesign-react';
+import { Button, Dialog, Input, Link, Popconfirm, Select, Space, Steps, Table, Tag, Tooltip } from 'tdesign-react';
 import type { PrimaryTableProps, TableRowData } from 'tdesign-react';
-import { AddIcon, RefreshIcon } from 'tdesign-icons-react';
+import { AddIcon, CreditcardIcon, DeleteIcon, FilterClearIcon, RefreshIcon } from 'tdesign-icons-react';
 
 import { useAppDispatch } from 'modules/store';
 import RuleDetailDrawer, { WIDE_RULE_DETAIL_DRAWER_SIZE } from '../RuleRelease/RuleDetailDrawer';
@@ -18,18 +18,23 @@ import {
     editorCustomRoute,
     listCustomRouteVersions,
     listCustomRoutes,
+    removeCustomRoutes,
+    resetCustomRoute,
 } from 'modules/governance/route';
 import {
     editorRateLimitRule,
     listRateLimitRuleVersions,
     listRateLimitRules,
+    removeRateLimitRule,
     removeRateLimitRuleVersion,
+    resetRateLimitRule,
     rollbackRateLimitRuleVersion,
 } from 'modules/governance/ratelimit';
 import {
     editorCircuitBreaker,
     listCircuitBreakerVersions,
     listCircuitBreakers,
+    removeCircuitBreakers,
     removeCircuitBreakerRelease,
     resetCircuitBreaker,
     rollbackCircuitBreakerRelease,
@@ -38,21 +43,27 @@ import {
     editorFaultDetect,
     listFaultDetectVersions,
     listFaultDetects,
+    removeFaultDetects,
     removeFaultDetectVersion,
+    resetFaultDetect,
     rollbackFaultDetectVersion,
 } from 'modules/governance/faultdetect';
 import {
     editorLosslessRule,
     listLossLessRules,
     listLosslessRuleVersions,
+    removeLosslessRule,
     removeLosslessVersion,
+    resetLosslessRule,
     rollbackLosslessVersion,
 } from 'modules/governance/lossless';
 import {
     editorLaneGroup,
     listLaneGroupVersions,
     listLaneGroups,
+    removeLaneGroups,
     removeLaneGroupVersion,
+    resetLaneGroup,
     rollbackLanGroupVersion,
 } from 'modules/governance/lane_group';
 import { LimitActionMap, LimitType, LimitTypeMap, RateLimitView } from 'services/ratelimit';
@@ -64,6 +75,7 @@ import { LaneGroupView } from 'services/lane';
 import { Op, RuleRelease } from 'services/types';
 import {
     deleteTrafficGovernanceRelease,
+    deleteTrafficGovernanceRules,
     describeTrafficGovernanceRules,
     describeTrafficGovernanceVersions,
     TrafficGovernanceKind,
@@ -72,6 +84,8 @@ import {
 } from 'services/traffic_governance';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
+
+const { StepItem } = Steps;
 
 type RuleKind = 'route' | 'ratelimit-local' | 'ratelimit-global' | 'circuitbreaker' | 'faultdetect' | 'lossless' | 'lane' | 'traffic-security' | 'traffic-mirror' | 'traffic-mock';
 
@@ -87,6 +101,8 @@ interface GovernanceRuleRow extends TableRowData {
     condition: string;
     status: string;
     release: string;
+    ctime?: string;
+    mtime?: string;
     editable?: boolean;
     deleteable?: boolean;
     raw: TableRowData;
@@ -95,17 +111,28 @@ interface GovernanceRuleRow extends TableRowData {
 }
 
 const typeOptions = [
-    { label: '全部', value: 'all' },
-    { label: '路由', value: 'route' },
-    { label: '限流', value: 'ratelimit' },
-    { label: '熔断', value: 'circuitbreaker' },
-    { label: '探测', value: 'faultdetect' },
-    { label: '无损', value: 'lossless' },
-    { label: '泳道', value: 'lane' },
-    { label: '鉴权', value: 'traffic-security' },
-    { label: '镜像', value: 'traffic-mirror' },
-    { label: 'Mock', value: 'traffic-mock' },
+    { label: '路由', value: 'route', scene: '按主调、接口或标签把流量分配到不同目标服务或版本。' },
+    { label: '限流', value: 'ratelimit', scene: '接口流量需要按 QPS、并发或条件限制，避免服务被打满。' },
+    { label: '熔断', value: 'circuitbreaker', scene: '下游错误率、慢调用或异常升高时，快速切断不稳定依赖。' },
+    { label: '探测', value: 'faultdetect', scene: '需要主动探测接口或服务健康，并据此辅助治理决策。' },
+    { label: '无损', value: 'lossless', scene: '发布、重启或下线前需要延迟摘除流量，保护存量请求。' },
+    { label: '泳道', value: 'lane', scene: '灰度、联调或多环境隔离时，把命中流量导入指定泳道服务。' },
+    { label: '鉴权', value: 'traffic-security', scene: '需要按调用方、接口或请求条件控制访问许可。' },
+    { label: '镜像', value: 'traffic-mirror', scene: '需要把线上流量复制到影子服务，用于回放、验证或压测。' },
+    { label: 'Mock', value: 'traffic-mock', scene: '依赖未就绪或需要固定响应时，按接口返回模拟结果。' },
 ];
+
+const createRuleTargets: Record<string, { kind: RuleKind; label: string; limitType?: LimitType; trafficKind?: TrafficGovernanceKind }> = {
+    route: { kind: 'route', label: '路由' },
+    ratelimit: { kind: 'ratelimit-local', label: '限流', limitType: LimitType.LOCAL },
+    circuitbreaker: { kind: 'circuitbreaker', label: '熔断' },
+    faultdetect: { kind: 'faultdetect', label: '探测' },
+    lossless: { kind: 'lossless', label: '无损' },
+    lane: { kind: 'lane', label: '泳道' },
+    'traffic-security': { kind: 'traffic-security', label: '鉴权', trafficKind: 'security' },
+    'traffic-mirror': { kind: 'traffic-mirror', label: '镜像', trafficKind: 'mirror' },
+    'traffic-mock': { kind: 'traffic-mock', label: 'Mock', trafficKind: 'mock' },
+};
 
 const getActionPayload = <T,>(action: unknown): T | undefined => {
     const result = action as { meta?: { requestStatus?: string }, payload?: T };
@@ -116,6 +143,27 @@ const getActionPayload = <T,>(action: unknown): T | undefined => {
 const text = (value?: string | number | boolean) => {
     if (value === undefined || value === null || value === '') return '-';
     return String(value);
+};
+
+const formatTime = (value?: string) => {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    const pad = (num: number) => `${num}`.padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const getTypeClassName = (kind: RuleKind) => {
+    if (kind === 'route') return style.typeRoute;
+    if (kind === 'ratelimit-local' || kind === 'ratelimit-global') return style.typeRatelimit;
+    if (kind === 'circuitbreaker') return style.typeCircuitbreaker;
+    if (kind === 'faultdetect') return style.typeFaultdetect;
+    if (kind === 'lossless') return style.typeLossless;
+    if (kind === 'lane') return style.typeLane;
+    if (kind === 'traffic-security') return style.typeSecurity;
+    if (kind === 'traffic-mirror') return style.typeMirror;
+    if (kind === 'traffic-mock') return style.typeMock;
+    return '';
 };
 
 const routeTarget = (rule: CustomRouteView) => {
@@ -157,6 +205,8 @@ const normalizeRules = (items: {
             condition: target.condition,
             status: rule.enable === false ? '禁用' : '启用',
             release: rule.etime ? '已发布' : '待发布',
+            ctime: rule.ctime,
+            mtime: rule.mtime,
             editable: rule.editable,
             deleteable: rule.deleteable,
             raw: rule as TableRowData,
@@ -174,9 +224,11 @@ const normalizeRules = (items: {
             namespace: rule.namespace,
             service: rule.service,
             target: `${text(rule.namespace)}/${text(rule.service)}`,
-            condition: firstRule ? `${text(firstRule.method?.value || firstRule.resource)} / ${LimitActionMap[firstRule.action] || firstRule.action || '-'}` : '按接口或资源限流',
+            condition: firstRule ? `${text(firstRule.apis?.[0]?.path?.value || firstRule.method?.value || firstRule.resource)} / ${LimitActionMap[firstRule.action] || firstRule.action || '-'}` : '按接口或资源限流',
             status: rule.disable ? '禁用' : '启用',
             release: rule.revision ? '已发布' : '待发布',
+            ctime: rule.ctime,
+            mtime: rule.mtime,
             editable: rule.editable,
             deleteable: rule.deleteable,
             raw: rule as TableRowData,
@@ -196,6 +248,8 @@ const normalizeRules = (items: {
         condition: rule.block_configs?.[0]?.name || '按错误条件和触发条件熔断',
         status: '启用',
         release: rule.etime ? '已发布' : '待发布',
+        ctime: rule.ctime,
+        mtime: rule.mtime,
         editable: rule.editable,
         deleteable: rule.deleteable,
         raw: rule as TableRowData,
@@ -213,6 +267,8 @@ const normalizeRules = (items: {
         condition: `${text(rule.protocol)} / ${text(rule.targetService?.api?.path?.value || rule.httpConfig?.url)}`,
         status: '启用',
         release: rule.mtime ? '已发布' : '待发布',
+        ctime: rule.ctime,
+        mtime: rule.mtime,
         editable: rule.editable,
         deleteable: rule.deleteable,
         raw: rule as TableRowData,
@@ -234,6 +290,8 @@ const normalizeRules = (items: {
         ].filter(Boolean).join(' / ') || '无损上下线',
         status: '启用',
         release: rule.revision ? '已发布' : '待发布',
+        ctime: rule.ctime,
+        mtime: rule.mtime,
         editable: rule.editable,
         deleteable: rule.deleteable,
         raw: rule as TableRowData,
@@ -251,6 +309,8 @@ const normalizeRules = (items: {
         condition: rule.entries?.map((entry) => `${text(entry.selector?.namespace)}/${text(entry.selector?.service)}`).join(', ') || '按入口服务匹配',
         status: '启用',
         release: rule.mtime ? '已发布' : '待发布',
+        ctime: rule.ctime,
+        mtime: rule.mtime,
         editable: rule.editable,
         deleteable: rule.deleteable,
         raw: rule as TableRowData,
@@ -273,6 +333,8 @@ const normalizeRules = (items: {
             condition: `${trafficRuleCount(trafficKind, rule)} 条 / ${trafficRuleSummary(trafficKind, rule)}`,
             status: rule.enable ? '启用' : '禁用',
             release: rule.revision ? '已发布' : '待发布',
+            ctime: rule.ctime,
+            mtime: rule.mtime,
             editable: rule.editable,
             deleteable: rule.deleteable,
             raw: rule as TableRowData,
@@ -288,12 +350,13 @@ const GovernanceWorkbench: React.FC = () => {
     const [rules, setRules] = React.useState<GovernanceRuleRow[]>([]);
     const [loading, setLoading] = React.useState(false);
     const [search, setSearch] = React.useState('');
-    const [typeFilter, setTypeFilter] = React.useState('all');
-    const [namespaceFilter, setNamespaceFilter] = React.useState('');
-    const [serviceFilter, setServiceFilter] = React.useState('');
+    const [typeFilters, setTypeFilters] = React.useState<string[]>([]);
     const [selected, setSelected] = React.useState<GovernanceRuleRow | null>(null);
     const [drawerVisible, setDrawerVisible] = React.useState(false);
     const [drawerMode, setDrawerMode] = React.useState<Op>('view');
+    const [createWizardVisible, setCreateWizardVisible] = React.useState(false);
+    const [createWizardStep, setCreateWizardStep] = React.useState(1);
+    const [pendingCreateType, setPendingCreateType] = React.useState('');
     const [versions, setVersions] = React.useState<RuleRelease[]>([]);
     const [versionLoading, setVersionLoading] = React.useState(false);
     const [versionTotal, setVersionTotal] = React.useState(0);
@@ -362,9 +425,9 @@ const GovernanceWorkbench: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const openRule = (rule: GovernanceRuleRow) => {
+    const openRule = (rule: GovernanceRuleRow, mode: Op = 'view') => {
         setSelected(rule);
-        setDrawerMode('view');
+        setDrawerMode(mode);
         setVersions([]);
         setVersionTotal(0);
         setVersionPage(1);
@@ -397,12 +460,43 @@ const GovernanceWorkbench: React.FC = () => {
         setDrawerVisible(true);
     };
 
-    const openCreateCircuitBreaker = () => {
+    const deleteRule = async (rule: GovernanceRuleRow) => {
+        const id = rule.raw.id as string | undefined;
+        if (!id) {
+            openErrNotification('删除失败', '当前规则缺少可删除的 ID');
+            return;
+        }
+        try {
+            if (rule.kind === 'route') {
+                await dispatch(removeCustomRoutes({ ids: [id] }));
+            } else if (rule.kind === 'ratelimit-local' || rule.kind === 'ratelimit-global') {
+                await dispatch(removeRateLimitRule({ ids: [id] }));
+            } else if (rule.kind === 'circuitbreaker') {
+                await dispatch(removeCircuitBreakers({ ids: [id] }));
+            } else if (rule.kind === 'faultdetect') {
+                await dispatch(removeFaultDetects({ ids: [id] }));
+            } else if (rule.kind === 'lossless') {
+                await dispatch(removeLosslessRule({ ids: [id] }));
+            } else if (rule.kind === 'lane') {
+                await dispatch(removeLaneGroups({ ids: [id] }));
+            } else if (rule.trafficKind) {
+                await deleteTrafficGovernanceRules(rule.trafficKind, [{ id }]);
+            }
+            openInfoNotification('请求成功', '删除治理规则成功');
+            refreshData(search);
+        } catch (error) {
+            openErrNotification('删除失败', `删除治理规则错误: ${(error as Error).message}`);
+        }
+    };
+
+    const openCreateRule = (type: string) => {
+        const target = createRuleTargets[type];
+        if (!target) return;
         setSelected({
-            key: 'circuitbreaker-create',
-            kind: 'circuitbreaker',
-            typeLabel: '熔断',
-            name: '新建熔断规则',
+            key: `${target.kind}-create`,
+            kind: target.kind,
+            typeLabel: target.label,
+            name: `新建${target.label}规则`,
             description: '',
             namespace: '',
             service: '',
@@ -411,14 +505,56 @@ const GovernanceWorkbench: React.FC = () => {
             status: '启用',
             release: '待发布',
             raw: { id: '' } as TableRowData,
+            limitType: target.limitType,
+            trafficKind: target.trafficKind,
+            editable: true,
+            deleteable: true,
         });
         setDrawerMode('create');
         setVersions([]);
         setVersionTotal(0);
         setVersionPage(1);
         setVersionLimit(10);
-        dispatch(resetCircuitBreaker());
+        switch (target.kind) {
+            case 'route':
+                dispatch(resetCustomRoute());
+                break;
+            case 'ratelimit-local':
+            case 'ratelimit-global':
+                dispatch(resetRateLimitRule());
+                break;
+            case 'circuitbreaker':
+                dispatch(resetCircuitBreaker());
+                break;
+            case 'faultdetect':
+                dispatch(resetFaultDetect());
+                break;
+            case 'lossless':
+                dispatch(resetLosslessRule());
+                break;
+            case 'lane':
+                dispatch(resetLaneGroup());
+                break;
+            default:
+                break;
+        }
         setDrawerVisible(true);
+    };
+
+    const openCreateWizard = () => {
+        setPendingCreateType('');
+        setCreateWizardStep(1);
+        setCreateWizardVisible(true);
+    };
+
+    const confirmCreateWizard = () => {
+        if (!pendingCreateType) {
+            openErrNotification('无法创建', '请先选择规则类型');
+            return;
+        }
+        setCreateWizardStep(2);
+        setCreateWizardVisible(false);
+        openCreateRule(pendingCreateType);
     };
 
     const refreshVersions = async (page = 1, limit = 10) => {
@@ -502,15 +638,12 @@ const GovernanceWorkbench: React.FC = () => {
     };
 
     const filteredRules = rules.filter((rule) => {
-        const typeMatched = typeFilter === 'all' || (typeFilter === 'ratelimit' ? rule.kind.startsWith('ratelimit') : rule.kind === typeFilter);
-        const namespaceMatched = !namespaceFilter || rule.namespace === namespaceFilter;
-        const serviceMatched = !serviceFilter || rule.service === serviceFilter;
+        const typeMatched = typeFilters.length === 0 || typeFilters.some((type) => (type === 'ratelimit' ? rule.kind.startsWith('ratelimit') : rule.kind === type));
         const searchMatched = !search || [rule.name, rule.description, rule.namespace, rule.service, rule.condition].some((item) => item?.toLowerCase().includes(search.toLowerCase()));
-        return typeMatched && namespaceMatched && serviceMatched && searchMatched;
+        return typeMatched && searchMatched;
     });
 
     const namespaceOptions = Array.from(new Set(rules.map((item) => item.namespace).filter(Boolean))).map((item) => ({ label: item as string, value: item as string }));
-    const serviceOptions = Array.from(new Set(rules.map((item) => item.service).filter(Boolean))).map((item) => ({ label: item as string, value: item as string }));
     const enabledCount = rules.filter((item) => item.status === '启用').length;
     const pendingCount = rules.filter((item) => item.release === '待发布').length;
 
@@ -518,44 +651,122 @@ const GovernanceWorkbench: React.FC = () => {
         {
             colKey: 'name',
             title: '规则',
-            width: 280,
+            width: 300,
             cell: ({ row }) => (
                 <div className={style.ruleName}>
                     <Link className={style.ruleNameText} theme="primary" onClick={() => openRule(row as GovernanceRuleRow)}>{row.name}</Link>
-                    <div className={style.ruleDesc}>{row.description || '-'}</div>
+                    <div className={style.ruleDesc}>{row.condition || row.description || '-'}</div>
                 </div>
             ),
         },
         {
             colKey: 'typeLabel',
             title: '类型',
-            width: 120,
-            cell: ({ row }) => <Tag theme={row.kind === 'circuitbreaker' ? 'danger' : row.kind === 'lossless' ? 'success' : 'primary'} variant="light-outline">{row.typeLabel}</Tag>,
+            width: 110,
+            cell: ({ row }) => <Tag className={`${style.typeTag} ${getTypeClassName(row.kind as RuleKind)}`} variant="light-outline">{row.typeLabel}</Tag>,
         },
         {
             colKey: 'target',
             title: '作用对象',
-            width: 240,
+            minWidth: 280,
             cell: ({ row }) => <div className={style.target}>{row.target}</div>,
         },
         {
-            colKey: 'condition',
-            title: '匹配 / 触发',
-            ellipsis: true,
-        },
-        {
             colKey: 'status',
-            title: '运行状态',
+            title: '状态',
             width: 120,
-            cell: ({ row }) => <Tag theme={row.status === '启用' ? 'success' : 'default'} variant="light-outline">{row.status}</Tag>,
+            cell: ({ row }) => (
+                <span className={style.statusCell}>
+                    <span className={row.status === '启用' ? style.statusEnabled : style.statusDisabled} />
+                    {row.status === '启用' ? '已启用' : '已停用'}
+                </span>
+            ),
         },
         {
-            colKey: 'release',
-            title: '发布',
-            width: 120,
-            cell: ({ row }) => <Tag theme={row.release === '待发布' ? 'warning' : 'primary'} variant="light-outline">{row.release}</Tag>,
+            colKey: 'time',
+            title: '操作时间',
+            width: 190,
+            cell: ({ row }) => (
+                <div className={style.timeCell}>
+                    <span className={style.timeText}>{formatTime(row.mtime)}</span>
+                    <span className={style.timeSecondary}>创建: {formatTime(row.ctime)}</span>
+                </div>
+            ),
+        },
+        {
+            colKey: 'operation',
+            title: '操作',
+            width: 112,
+            fixed: 'right',
+            cell: ({ row }) => {
+                const rule = row as GovernanceRuleRow;
+                return (
+                    <Space className={style.rowActions} size={10} onClick={(event) => event.stopPropagation()}>
+                        <Tooltip content="查看 / 编辑">
+                            <Button
+                                shape="square"
+                                variant="text"
+                                aria-label="查看 / 编辑"
+                                onClick={() => openRule(rule)}
+                            >
+                                <CreditcardIcon />
+                            </Button>
+                        </Tooltip>
+                        <Tooltip content={rule.deleteable === false ? '无权限操作' : '删除'}>
+                            <Popconfirm
+                                content={`确认删除规则 ${rule.name}？`}
+                                destroyOnClose
+                                placement="top"
+                                showArrow
+                                theme="default"
+                                onConfirm={() => deleteRule(rule)}
+                            >
+                                <Button shape="square" variant="text" disabled={rule.deleteable === false}>
+                                    <DeleteIcon />
+                                </Button>
+                            </Popconfirm>
+                        </Tooltip>
+                    </Space>
+                );
+            },
         },
     ];
+
+    const renderCreateWizard = () => (
+        <Dialog
+            header="新建规则"
+            visible={createWizardVisible}
+            width={720}
+            confirmBtn="进入创建"
+            cancelBtn="取消"
+            onClose={() => setCreateWizardVisible(false)}
+            onConfirm={confirmCreateWizard}
+        >
+            <div className={style.createWizard}>
+                <Steps current={createWizardStep}>
+                    <StepItem value={1} title="选择规则类型" />
+                    <StepItem value={2} title="配置规则" />
+                </Steps>
+                <div className={style.createTypeGrid}>
+                    {typeOptions.map((item) => {
+                        const target = createRuleTargets[item.value];
+                        const active = pendingCreateType === item.value;
+                        return (
+                            <button
+                                key={item.value}
+                                className={active ? style.createTypeCardActive : style.createTypeCard}
+                                type="button"
+                                onClick={() => setPendingCreateType(item.value)}
+                            >
+                                <Tag className={`${style.typeTag} ${getTypeClassName(target.kind)}`} variant="light-outline">{item.label}</Tag>
+                                <p>{item.scene}</p>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        </Dialog>
+    );
 
     const renderDetail = () => {
         if (!selected) return null;
@@ -591,10 +802,22 @@ const GovernanceWorkbench: React.FC = () => {
         );
 
         if (selected.kind === 'route') {
-            return <RuleTabs op="view" onVersionView={() => refreshVersions()} view={<CustomRouteEditor op="view" editable={selected.editable ?? true} refresh={() => refreshData()} />} versions={commonVersions} subscribe={subscribe} />;
+            return <RuleTabs op={drawerMode} onVersionView={() => refreshVersions()} view={<CustomRouteEditor op={drawerMode} editable={selected.editable ?? true} refresh={(close) => {
+                if (close) {
+                    setDrawerVisible(false);
+                    setDrawerMode('view');
+                }
+                refreshData();
+            }} />} versions={commonVersions} subscribe={subscribe} />;
         }
         if (selected.kind === 'ratelimit-local' || selected.kind === 'ratelimit-global') {
-            return <RuleTabs op="view" onVersionView={() => refreshVersions()} view={<RateLimitEditor limitType={selected.limitType || LimitType.LOCAL} visible={drawerVisible} op="view" refresh={() => refreshData()} />} versions={commonVersions} subscribe={subscribe} />;
+            return <RuleTabs op={drawerMode} onVersionView={() => refreshVersions()} view={<RateLimitEditor limitType={selected.limitType || LimitType.LOCAL} visible={drawerVisible} op={drawerMode} refresh={(close) => {
+                if (close) {
+                    setDrawerVisible(false);
+                    setDrawerMode('view');
+                }
+                refreshData();
+            }} />} versions={commonVersions} subscribe={subscribe} />;
         }
         if (selected.kind === 'circuitbreaker') {
             return <RuleTabs op={drawerMode} onVersionView={() => refreshVersions()} view={<CircuitBreakerEditor op={drawerMode} refresh={(close) => {
@@ -606,10 +829,22 @@ const GovernanceWorkbench: React.FC = () => {
             }} />} versions={commonVersions} subscribe={subscribe} />;
         }
         if (selected.kind === 'faultdetect') {
-            return <RuleTabs op="view" onVersionView={() => refreshVersions()} view={<FaultDetectEditor op="view" refresh={() => refreshData()} />} versions={commonVersions} subscribe={subscribe} />;
+            return <RuleTabs op={drawerMode} onVersionView={() => refreshVersions()} view={<FaultDetectEditor op={drawerMode} refresh={(close) => {
+                if (close) {
+                    setDrawerVisible(false);
+                    setDrawerMode('view');
+                }
+                refreshData();
+            }} />} versions={commonVersions} subscribe={subscribe} />;
         }
         if (selected.kind === 'lossless') {
-            return <RuleTabs op="view" onVersionView={() => refreshVersions()} view={<LossLessEditor visible={drawerVisible} op="view" refresh={() => refreshData()} />} versions={commonVersions} subscribe={subscribe} />;
+            return <RuleTabs op={drawerMode} onVersionView={() => refreshVersions()} view={<LossLessEditor visible={drawerVisible} op={drawerMode} refresh={(close) => {
+                if (close) {
+                    setDrawerVisible(false);
+                    setDrawerMode('view');
+                }
+                refreshData();
+            }} />} versions={commonVersions} subscribe={subscribe} />;
         }
         if (selected.trafficKind) {
             return (
@@ -619,10 +854,16 @@ const GovernanceWorkbench: React.FC = () => {
                     view={(
                         <TrafficGovernanceEditor
                             kind={selected.trafficKind}
-                            op="view"
-                            data={selected.raw as TrafficGovernanceRule}
+                            op={drawerMode}
+                            data={drawerMode === 'create' ? undefined : selected.raw as TrafficGovernanceRule}
                             visible={drawerVisible}
-                            refresh={() => refreshData()}
+                            refresh={(close) => {
+                                if (close) {
+                                    setDrawerVisible(false);
+                                    setDrawerMode('view');
+                                }
+                                refreshData();
+                            }}
                         />
                     )}
                     versions={commonVersions}
@@ -630,7 +871,13 @@ const GovernanceWorkbench: React.FC = () => {
                 />
             );
         }
-        return <LaneGroupEdtor op="view" refresh={() => refreshData()} />;
+        return <LaneGroupEdtor op={drawerMode} refresh={(close) => {
+            if (close) {
+                setDrawerVisible(false);
+                setDrawerMode('view');
+            }
+            refreshData();
+        }} />;
     };
 
     return (
@@ -640,12 +887,6 @@ const GovernanceWorkbench: React.FC = () => {
                     <div className={style.title}>规则治理工作台</div>
                     <div className={style.description}>统一查看治理规则的运行状态、作用范围和发布状态。</div>
                 </div>
-                <Space>
-                    {typeFilter === 'circuitbreaker' && (
-                        <Button theme="primary" prefix={<AddIcon />} onClick={openCreateCircuitBreaker}>新建熔断规则</Button>
-                    )}
-                    <Button onClick={() => refreshData(search)} prefix={<RefreshIcon />}>刷新</Button>
-                </Space>
             </div>
             <div className={style.summary}>
                 <div className={style.summaryItem}>
@@ -671,25 +912,23 @@ const GovernanceWorkbench: React.FC = () => {
             </div>
             <div className={style.listPanel}>
                 <div className={style.panelHeader}>
-                    <div>
+                    <div className={style.panelIntro}>
                         <div className={style.panelTitle}>规则清单</div>
-                        <div className={style.panelHint}>点击规则行查看详情，支持按类型、命名空间和服务筛选。</div>
+                        <div className={style.panelHint}>点击规则行查看详情，支持按类型和关键词筛选。</div>
                     </div>
-                    <Space>
-                        {typeOptions.map((item) => (
-                            <Button
-                                key={item.value}
-                                theme={typeFilter === item.value ? 'primary' : 'default'}
-                                variant={typeFilter === item.value ? 'base' : 'outline'}
-                                onClick={() => setTypeFilter(item.value)}
-                            >
-                                {item.label}
-                            </Button>
-                        ))}
-                    </Space>
                 </div>
                 <div className={style.filters}>
+                    <Select
+                        className={style.typeSelect}
+                        multiple
+                        clearable
+                        value={typeFilters}
+                        placeholder="全部规则类型"
+                        options={typeOptions}
+                        onChange={(value) => setTypeFilters(Array.isArray(value) ? value as string[] : [])}
+                    />
                     <Input
+                        className={style.searchInput}
                         clearable
                         value={search}
                         placeholder="搜索规则名、服务、条件"
@@ -700,27 +939,36 @@ const GovernanceWorkbench: React.FC = () => {
                             refreshData('');
                         }}
                     />
-                    <Select
-                        clearable
-                        value={namespaceFilter}
-                        placeholder="全部命名空间"
-                        options={namespaceOptions}
-                        onChange={(value) => setNamespaceFilter(value as string || '')}
-                    />
-                    <Select
-                        clearable
-                        value={serviceFilter}
-                        placeholder="全部服务"
-                        options={serviceOptions}
-                        onChange={(value) => setServiceFilter(value as string || '')}
-                    />
-                    <Button onClick={() => {
-                        setTypeFilter('all');
-                        setNamespaceFilter('');
-                        setServiceFilter('');
-                        setSearch('');
-                        refreshData('');
-                    }}>重置</Button>
+                    <Space className={style.filterActions}>
+                        <Tooltip content="刷新">
+                            <Button
+                                aria-label="刷新"
+                                shape="square"
+                                theme="primary"
+                                icon={<RefreshIcon />}
+                                onClick={() => refreshData(search)}
+                            />
+                        </Tooltip>
+                        <Tooltip content="重置筛选">
+                            <Button
+                                aria-label="重置筛选"
+                                shape="square"
+                                icon={<FilterClearIcon />}
+                                onClick={() => {
+                                    setTypeFilters([]);
+                                    setSearch('');
+                                    refreshData('');
+                                }}
+                            />
+                        </Tooltip>
+                        <Button
+                            theme="primary"
+                            icon={<AddIcon />}
+                            onClick={openCreateWizard}
+                        >
+                            新建规则
+                        </Button>
+                    </Space>
                 </div>
                 <Table
                     className={style.table}
@@ -740,7 +988,7 @@ const GovernanceWorkbench: React.FC = () => {
             </div>
             <RuleDetailDrawer
                 visible={drawerVisible}
-                title={drawerMode === 'create' ? '新建熔断规则' : selected?.name || '治理规则详情'}
+                title={drawerMode === 'create' ? selected?.name || '新建治理规则' : selected?.name || '治理规则详情'}
                 subtitle={selected?.typeLabel}
                 size={selected?.kind === 'route' || selected?.kind?.startsWith('ratelimit') || selected?.kind === 'circuitbreaker' || selected?.kind === 'faultdetect' || selected?.kind === 'lane' ? WIDE_RULE_DETAIL_DRAWER_SIZE : undefined}
                 onClose={() => {
@@ -750,6 +998,7 @@ const GovernanceWorkbench: React.FC = () => {
             >
                 {renderDetail()}
             </RuleDetailDrawer>
+            {renderCreateWizard()}
         </div>
     );
 };

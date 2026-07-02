@@ -1049,6 +1049,48 @@ var (
 				Name:      user.Name,
 			}
 		},
+		apisecurity.ResourceType_SecurityRules: func(ctx context.Context, svr *Server,
+			item authtypes.StrategyResource) *apisecurity.StrategyResourceEntry {
+			rule := svr.cacheMgr.TrafficSecurity().GetRule(item.ResID)
+			if rule == nil {
+				log.Warn("[Auth][Strategy] not found traffic_security_rule in fill-info",
+					zap.String("id", item.StrategyID), zap.String("res-id", item.ResID), utils.RequestID(ctx))
+				return nil
+			}
+			return &apisecurity.StrategyResourceEntry{
+				Id:        item.ResID,
+				Namespace: rule.Namespace,
+				Name:      rule.Name,
+			}
+		},
+		apisecurity.ResourceType_MirrorRules: func(ctx context.Context, svr *Server,
+			item authtypes.StrategyResource) *apisecurity.StrategyResourceEntry {
+			rule := svr.cacheMgr.TrafficMirror().GetRule(item.ResID)
+			if rule == nil {
+				log.Warn("[Auth][Strategy] not found traffic_mirror_rule in fill-info",
+					zap.String("id", item.StrategyID), zap.String("res-id", item.ResID), utils.RequestID(ctx))
+				return nil
+			}
+			return &apisecurity.StrategyResourceEntry{
+				Id:        item.ResID,
+				Namespace: rule.Namespace,
+				Name:      rule.Name,
+			}
+		},
+		apisecurity.ResourceType_MockRules: func(ctx context.Context, svr *Server,
+			item authtypes.StrategyResource) *apisecurity.StrategyResourceEntry {
+			rule := svr.cacheMgr.TrafficMock().GetRule(item.ResID)
+			if rule == nil {
+				log.Warn("[Auth][Strategy] not found traffic_mock_rule in fill-info",
+					zap.String("id", item.StrategyID), zap.String("res-id", item.ResID), utils.RequestID(ctx))
+				return nil
+			}
+			return &apisecurity.StrategyResourceEntry{
+				Id:        item.ResID,
+				Namespace: rule.Namespace,
+				Name:      rule.Name,
+			}
+		},
 		// 鉴权资源
 		apisecurity.ResourceType_Users: func(ctx context.Context, svr *Server,
 			item authtypes.StrategyResource) *apisecurity.StrategyResourceEntry {

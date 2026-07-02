@@ -2,7 +2,7 @@
 title: 操作日志
 tags: [meta, log]
 links: [index, schema]
-updated: 2026-06-10
+updated: 2026-07-03
 sources: 0
 ---
 
@@ -211,3 +211,18 @@ sources: 0
   - 明确 native / oidc 登录模式启动期互斥，运行期间不支持切换。
   - 明确 OIDC 只改变 Pole User 来源，业务请求仍使用 Pole token 和现有资源授权逻辑。
   - 设计飞书、Lark、钉钉 DirectoryProvider 同步企业账号为 `source=oidc` 的 Pole User，解决未登录用户无法提前授权的问题。
+
+## [2026-07-02] implement | 全仓问题修复记录
+
+- 更新页面：todo。
+- 变更摘要：
+  - 记录 batchctrl graceful stop 卡死、HDS unary 未实现、服务删除订阅图清理、前端标准脚本和 lint 入口修复。
+  - 补充本轮 Go、前端和 context-kg 验证命令结果。
+
+## [2026-07-03] implement | 前端构建 warning 清理
+
+- 更新页面：todo。
+- 变更摘要：
+  - 更新 Browserslist/caniuse 锁文件数据，消除 Browserslist 过期 warning。
+  - 恢复 Vite CSS code split，并按依赖族配置 Rollup manualChunks，消除大 JS/CSS chunk warning。
+  - 新增 Vite build 包装脚本，为 Node 22+ 提供有效 localStorage 文件路径，消除 `--localstorage-file` warning。

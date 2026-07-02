@@ -137,4 +137,4 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250519155744-55703ea1f237 // indirect
 )
 
-replace github.com/pole-io/specification => github.com/lattice-hub/specification v0.1.0-ALPHA.31
+replace github.com/pole-io/specification => ../specification

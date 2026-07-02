@@ -1,6 +1,6 @@
 import React from "react";
 import { Form, Input, Button, Select, Switch, Dialog, InputNumber, FormProps, Tag, Popup, StickyTool, RadioGroup, Radio, InputAdornment, Textarea, Space } from "tdesign-react";
-import { AddIcon, ChevronRightIcon, CloseIcon, Edit1Icon, SaveIcon, RocketIcon, RollbackIcon, RemoveIcon, CopyIcon } from "tdesign-icons-react";
+import { AddIcon, ChevronRightIcon, CloseIcon, Edit1Icon, SaveIcon, RocketIcon, RollbackIcon, RemoveIcon } from "tdesign-icons-react";
 
 import Text from "components/Text";
 import RuleLabelField from "../shared/RuleLabelField";
@@ -25,7 +25,6 @@ import {
     CircuitBreakerAPI,
     CircuitBreakerDraftLike,
     CircuitBreakerErrorCondition,
-    CircuitBreakerSpecFormat,
     CircuitBreakerStrategyDraft,
     CircuitBreakerSubRuleDraft,
     CircuitBreakerTriggerCondition,
@@ -34,7 +33,6 @@ import {
     defaultCircuitBreakerSubRule,
     describeStrategySummary,
     describeSubRuleSummary,
-    stringifyCircuitBreakerSpec,
     validateCircuitBreakerDraft,
 } from "./circuitBreakerEditorUtils";
 
@@ -126,7 +124,6 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
     const [serviceCollapsed, setServiceCollapsed] = React.useState(false);
     const [collapsedSubRuleIndexes, setCollapsedSubRuleIndexes] = React.useState<Set<number>>(() => new Set());
     const [collapsedStrategyKeys, setCollapsedStrategyKeys] = React.useState<Set<string>>(() => new Set());
-    const [specFormat, setSpecFormat] = React.useState<CircuitBreakerSpecFormat>('yaml');
     const canEditLevel = editorState.editable && op === 'create';
 
     const updateRule = (updater: (draft: CircuitBreakerDO) => void) => {
@@ -254,15 +251,6 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         () => buildCircuitBreakerSubmitPayload({ ...breakerRule, metadata: metadataRecord }),
         [breakerRule, metadataRecord],
     );
-    const validationErrors = React.useMemo(
-        () => validateCircuitBreakerDraft({ ...breakerRule, metadata: metadataRecord }),
-        [breakerRule, metadataRecord],
-    );
-    const specText = React.useMemo(
-        () => stringifyCircuitBreakerSpec(submitPayload, specFormat),
-        [submitPayload, specFormat],
-    );
-
     const onSubmit: FormProps['onSubmit'] = async () => {
         const errors = validateCircuitBreakerDraft({ ...breakerRule, metadata: metadataRecord });
         if (errors.length > 0) {
@@ -918,14 +906,6 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         </>
     )
 
-    const copySpec = () => {
-        navigator.clipboard?.writeText(specText).then(() => {
-            openInfoNotification('复制成功', '已复制当前熔断规则 Spec');
-        }).catch(() => {
-            openErrNotification('复制失败', '当前浏览器不支持复制到剪贴板');
-        });
-    };
-
     return (
         <div className={styles.editorBody}>
             <Form form={form} onSubmit={onSubmit} layout="vertical" colon>
@@ -935,33 +915,6 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                         {renderServiceScope}
                         {renderSubRules}
                     </div>
-                    <aside className={styles.specPane}>
-                        <div className={styles.specCard}>
-                            <div className={styles.specToolbar}>
-                                <div>
-                                    <div className={styles.specTitle}>实时 Spec</div>
-                                    <div className={styles.specDesc}>展示保存时提交给后端的真实 CircuitBreakerRule payload</div>
-                                </div>
-                                <div className={styles.specActions}>
-                                    <div className={styles.specToggle}>
-                                        <button type="button" className={specFormat === 'yaml' ? styles.specToggleActive : ''} onClick={() => setSpecFormat('yaml')}>YAML</button>
-                                        <button type="button" className={specFormat === 'json' ? styles.specToggleActive : ''} onClick={() => setSpecFormat('json')}>JSON</button>
-                                    </div>
-                                    <Button size="small" variant="text" icon={<CopyIcon />} onClick={copySpec}>复制</Button>
-                                </div>
-                            </div>
-                            <pre className={styles.specCode}>{specText}</pre>
-                            <div className={styles.specFooter}>
-                                {validationErrors.length === 0 ? (
-                                    <span className={styles.previewOk}>当前规则可保存</span>
-                                ) : (
-                                    validationErrors.slice(0, 3).map((error, idx) => (
-                                        <span key={idx} className={styles.previewError}>{error.message}</span>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    </aside>
                 </div>
             </Form>
             {renderPublishForm}

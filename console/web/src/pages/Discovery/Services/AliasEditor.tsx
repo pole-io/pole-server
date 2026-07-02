@@ -1,5 +1,5 @@
-import React, {  } from 'react';
-import { Drawer, Form, Input, Select, Space, Button } from "tdesign-react";
+import React from 'react';
+import { Drawer, Form, Input, Select, Space, Button, TableRowData } from "tdesign-react";
 import type { FormProps } from 'tdesign-react';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { NamespaceView } from 'services/namespace';
@@ -9,21 +9,29 @@ import { saveServiceAliass, selectServiceAlias, updateServiceAliass } from 'modu
 import { listAllNamespaces, selectNamespace } from 'modules/namespace';
 import { listAllServices, selectService } from 'modules/discovery/service';
 import { Op } from 'services/types';
+import { ServiceAliasView } from 'services/alias';
+import style from './index.module.less';
 
 const { FormItem } = Form;
+const ALIAS_NAME_REG = /^[a-z][a-z0-9-]*$/;
 
 interface IServiceEditorProps {
     op: Op
     closeDrawer: () => void;
     visible: boolean;
+    data?: TableRowData;
+    existingAliases?: ServiceAliasView[];
+    targetService?: {
+        namespace: string;
+        serviceName: string;
+    };
 }
 
-const ServiceAliasEditor: React.FC<IServiceEditorProps> = ({ visible, op, closeDrawer }) => {
+const ServiceAliasEditor: React.FC<IServiceEditorProps> = ({ visible, op, closeDrawer, data, existingAliases = [], targetService }) => {
     const [form] = Form.useForm();
     const dispatch = useAppDispatch();
 
-    const aliasState = useAppSelector(selectServiceAlias);
-    const { editAlias } = aliasState;
+    useAppSelector(selectServiceAlias);
 
     const namespaceState = useAppSelector(selectNamespace);
     const { datas: namespaceDatas } = namespaceState;
@@ -31,22 +39,36 @@ const ServiceAliasEditor: React.FC<IServiceEditorProps> = ({ visible, op, closeD
     const serviceState = useAppSelector(selectService);
     const { datas: serviceDatas } = serviceState;
 
+    const getInitialValues = React.useCallback(() => ({
+        name: targetService ? `${targetService.namespace}/${targetService.serviceName}` : data?.service && data?.namespace ? `${data.namespace}@${data.service}` : undefined,
+        alias_namespace: data?.alias_namespace || targetService?.namespace,
+        alias: data?.alias,
+        comment: data?.comment,
+    }), [data?.alias, data?.alias_namespace, data?.comment, data?.namespace, data?.service, targetService?.namespace, targetService?.serviceName]);
+
+    const resetForm = React.useCallback(() => {
+        form.setFieldsValue(getInitialValues());
+    }, [form, getInitialValues]);
+
     React.useEffect(() => {
         if (visible) {
+            resetForm();
             dispatch(listAllNamespaces())
                 .then(res => {
                     if (res.meta.requestStatus === 'rejected') {
                         openErrNotification('获取命名空间列表失败', res?.payload as string);
                     }
                 })
-            dispatch(listAllServices())
-                .then(res => {
-                    if (res.meta.requestStatus === 'rejected') {
-                        openErrNotification('获取服务列表失败', res?.payload as string);
-                    }
-                })
+            if (!targetService) {
+                dispatch(listAllServices())
+                    .then(res => {
+                        if (res.meta.requestStatus === 'rejected') {
+                            openErrNotification('获取服务列表失败', res?.payload as string);
+                        }
+                    })
+            }
         }
-    }, [visible]);
+    }, [visible, resetForm, targetService?.namespace, targetService?.serviceName]);
 
     const onSubmit: FormProps['onSubmit'] = async (e) => {
         console.log('onSubmit', e);
@@ -55,15 +77,40 @@ const ServiceAliasEditor: React.FC<IServiceEditorProps> = ({ visible, op, closeD
         }
 
         const selectedSvc = form.getFieldValue('name') as string;
-        const selectedSvcNamespace = selectedSvc.split('@')[0];
-        const selectedSvcName = selectedSvc.split('@')[1];
+        const selectedSvcNamespace = targetService?.namespace || selectedSvc.split('@')[0];
+        const selectedSvcName = targetService?.serviceName || selectedSvc.split('@')[1];
+        const aliasNamespace = String(form.getFieldValue('alias_namespace') || '').trim();
+        const alias = String(form.getFieldValue('alias') || '').trim();
+        const comment = String(form.getFieldValue('comment') || '').trim();
+
+        if (!selectedSvcNamespace || !selectedSvcName) {
+            openErrNotification('校验失败', '目标服务不能为空');
+            return;
+        }
+        if (!aliasNamespace) {
+            openErrNotification('校验失败', '别名所在命名空间不能为空');
+            return;
+        }
+        if (!alias) {
+            openErrNotification('校验失败', '别名不能为空');
+            return;
+        }
+        if (!ALIAS_NAME_REG.test(alias)) {
+            openErrNotification('校验失败', '别名需以小写字母开头，只能包含小写字母、数字和中划线');
+            return;
+        }
+        const duplicated = op === 'create' && existingAliases.some(item => item.alias_namespace === aliasNamespace && item.alias === alias);
+        if (duplicated) {
+            openErrNotification('校验失败', '该命名空间下别名已存在');
+            return;
+        }
 
         const newData = {
             service: selectedSvcName,
             namespace: selectedSvcNamespace,
-            alias_namespace: form.getFieldValue('alias_namespace') as string,
-            alias: form.getFieldValue('alias') as string,
-            comment: form.getFieldValue('comment') as string,
+            alias_namespace: aliasNamespace,
+            alias: alias,
+            comment: comment || undefined,
         }
         let result;
         if (op === 'edit') {
@@ -86,18 +133,25 @@ const ServiceAliasEditor: React.FC<IServiceEditorProps> = ({ visible, op, closeD
             form={form}
             onSubmit={onSubmit}
         >
-            <FormItem label="目标服务" name="name" rules={[{ required: true, message: '服务名称不能为空' }]}>
-                <Select
-                    filterable={true}
-                    options={serviceDatas.map((item: ServiceView) => ({
-                        label: `${item.name} (${item.namespace})`,
-                        value: `${item.namespace}@${item.name}`,
-                    }))}
-                />
+            <FormItem label="目标服务" name="name" rules={targetService ? [] : [{ required: true, message: '服务名称不能为空' }]}>
+                {targetService ? (
+                    <div className={style.aliasReadonlyValue} aria-readonly="true">
+                        {targetService.namespace}/{targetService.serviceName}
+                    </div>
+                ) : (
+                    <Select
+                        filterable={true}
+                        options={serviceDatas.map((item: ServiceView) => ({
+                            label: `${item.name} (${item.namespace})`,
+                            value: `${item.namespace}@${item.name}`,
+                        }))}
+                    />
+                )}
             </FormItem>
             <FormItem label="别名所在命名空间" name="alias_namespace" rules={[{ required: true, message: '命名空间不能为空' }]}>
                 <Select
                     filterable={true}
+                    disabled={op === 'edit'}
                     options={namespaceDatas.map((item: NamespaceView) => ({
                         label: item.name,
                         value: item.name,
@@ -105,17 +159,17 @@ const ServiceAliasEditor: React.FC<IServiceEditorProps> = ({ visible, op, closeD
                 />
             </FormItem>
             <FormItem label="别名" name="alias" rules={[{ required: true, message: '别名不能为空' }]}>
-                <Input />
+                <Input id="inAlias" placeholder="请输入" />
             </FormItem>
             <FormItem label="备注" name="comment">
-                <Input />
+                <Input id="inRemark" placeholder="请输入" />
             </FormItem>
-            <FormItem style={{ marginTop: 100 }}>
+            <FormItem className={style.aliasDrawerFooter}>
                 <Space>
                     <Button type="submit" theme="primary">
                         提交
                     </Button>
-                    <Button type="reset" theme="default">
+                    <Button theme="default" onClick={resetForm}>
                         重置
                     </Button>
                 </Space>
@@ -127,11 +181,15 @@ const ServiceAliasEditor: React.FC<IServiceEditorProps> = ({ visible, op, closeD
         <>
             <div>
                 <Drawer
-                    size='large'
-                    header={op === 'edit' ? "编辑" : "创建"}
+                    size='min(560px, 92vw)'
+                    header={op === 'edit' ? "编辑服务别名" : "创建服务别名"}
                     footer={false}
                     visible={visible}
-                    showOverlay={false}
+                    showOverlay
+                    closeOnOverlayClick
+                    closeOnEscKeydown
+                    destroyOnClose
+                    className={style.aliasDrawer}
                     onClose={closeDrawer}
                 >
                     {aliasForm}

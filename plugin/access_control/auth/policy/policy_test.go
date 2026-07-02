@@ -33,6 +33,12 @@ func TestEnrichResourceDetailHandlesDefaultPolicyResources(t *testing.T) {
 	require.Equal(t, "*", resp.Resources.GetMockRules()[0].GetId())
 }
 
+func TestResourceConvertIncludesTrafficGovernanceRules(t *testing.T) {
+	require.Contains(t, resourceConvert, apisecurity.ResourceType_SecurityRules)
+	require.Contains(t, resourceConvert, apisecurity.ResourceType_MirrorRules)
+	require.Contains(t, resourceConvert, apisecurity.ResourceType_MockRules)
+}
+
 func TestEnrichResourceDetailSkipsUnsupportedResourceType(t *testing.T) {
 	svr := &Server{}
 

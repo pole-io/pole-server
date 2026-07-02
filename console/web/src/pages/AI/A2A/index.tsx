@@ -24,9 +24,7 @@ import type { FormProps, PageInfo } from 'tdesign-react';
 import {
   AddIcon,
   DeleteIcon,
-  EditIcon,
   FileIcon,
-  ListIcon,
   RefreshIcon,
   ServerIcon,
 } from 'tdesign-icons-react';
@@ -54,6 +52,8 @@ import style from './index.module.less';
 
 const { FormItem } = Form;
 const { TabPanel } = Tabs;
+
+type A2ADetailTab = 'card' | 'skills' | 'edit';
 
 const protocolOptions = [
   { label: 'JSON-RPC', value: 'jsonrpc' },
@@ -259,7 +259,7 @@ const capabilityTags = (agent: A2AAgent) => (
 );
 
 const agentColumns = (
-  operateAgent: (op: Op | 'skills' | 'card', row?: TableRowData) => void,
+  operateAgent: (op: Op | 'detail' | 'skills' | 'card', row?: TableRowData) => void,
   goBackendService: (agent?: A2AAgent) => void,
 ): PrimaryTableProps['columns'] => [
   {
@@ -270,7 +270,7 @@ const agentColumns = (
     cell: ({ row }) => (
       <div className={style.agentCell}>
         <div className={style.agentNameRow}>
-          <Link theme="primary" onClick={() => operateAgent('skills', row)}>
+          <Link theme="primary" onClick={() => operateAgent('detail', row)}>
             {row.name}
           </Link>
           <Tag theme={protocolTheme(row.preferred_protocol_binding) as any} variant="light">
@@ -372,22 +372,12 @@ const agentColumns = (
     colKey: 'action',
     title: '操作',
     fixed: 'right',
-    width: 160,
+    width: 112,
     cell: ({ row }) => (
       <Space>
-        <Tooltip content="查看 Agent Card">
-          <Button shape="square" variant="text" onClick={() => operateAgent('card', row)}>
+        <Tooltip content="查看 / 编辑">
+          <Button shape="square" variant="text" aria-label="查看 / 编辑" onClick={() => operateAgent('detail', row)}>
             <FileIcon />
-          </Button>
-        </Tooltip>
-        <Tooltip content="查看技能">
-          <Button shape="square" variant="text" onClick={() => operateAgent('skills', row)}>
-            <ListIcon />
-          </Button>
-        </Tooltip>
-        <Tooltip content="编辑">
-          <Button shape="square" variant="text" onClick={() => operateAgent('edit', row)}>
-            <EditIcon />
           </Button>
         </Tooltip>
         <Tooltip content="删除">
@@ -627,7 +617,8 @@ const A2AEditor: React.FC<{
   op: Op;
   visible: boolean;
   closeDrawer: () => void;
-}> = ({ op, visible, closeDrawer }) => {
+  embedded?: boolean;
+}> = ({ op, visible, closeDrawer, embedded = false }) => {
   const [form] = Form.useForm();
   const dispatch = useAppDispatch();
   const { editAgent } = useAppSelector(selectA2A);
@@ -726,15 +717,7 @@ const A2AEditor: React.FC<{
     closeDrawer();
   };
 
-  return (
-    <Drawer
-      size="large"
-      header={op === 'edit' ? '编辑 A2A Agent' : '创建 A2A Agent'}
-      footer={false}
-      visible={visible}
-      showOverlay={false}
-      onClose={closeDrawer}
-    >
+  const editorContent = (
       <Form form={form} layout="vertical" onSubmit={onSubmit}>
         <Tabs defaultValue="base">
           <TabPanel value="base" label="基础信息">
@@ -977,6 +960,20 @@ const A2AEditor: React.FC<{
           </Space>
         </FormItem>
       </Form>
+  );
+
+  if (embedded) return editorContent;
+
+  return (
+    <Drawer
+      size="large"
+      header={op === 'edit' ? '编辑 A2A Agent' : '创建 A2A Agent'}
+      footer={false}
+      visible={visible}
+      showOverlay={false}
+      onClose={closeDrawer}
+    >
+      {editorContent}
     </Drawer>
   );
 };
@@ -995,10 +992,10 @@ export default memo(() => {
     push_notifications: undefined as string | undefined,
   });
   const [editorState, setEditorState] = useState<{ visible: boolean; mode: Op }>({ visible: false, mode: 'create' });
-  const [detailState, setDetailState] = useState<{ visible: boolean; mode: 'skills' | 'card'; agent?: A2AAgent }>({
+  const [detailState, setDetailState] = useState<{ visible: boolean; agent?: A2AAgent }>({
     visible: false,
-    mode: 'skills',
   });
+  const [detailActiveTab, setDetailActiveTab] = useState<A2ADetailTab>('card');
   const [cardViewMode, setCardViewMode] = useState<'visual' | 'raw'>('visual');
 
   const cardText = useMemo(() => jsonPreview(card), [card]);
@@ -1035,7 +1032,38 @@ export default memo(() => {
     };
   }, []);
 
-  const operateAgent = (op: Op | 'skills' | 'card', row?: TableRowData) => {
+  const openAgentDetail = (agent: A2AAgent, activeTab: A2ADetailTab = 'card') => {
+    if (!agent?.id) return;
+    dispatch(cleanA2ADetails());
+    dispatch(editorA2AAgent(agent));
+    setCardViewMode('visual');
+    setDetailActiveTab(activeTab);
+    setDetailState({ visible: true, agent });
+    dispatch(listA2AAgentSkills({
+      param: {
+        agent_id: agent.id,
+      },
+    })).then((res) => {
+      if (res.meta.requestStatus === 'rejected') {
+        openErrNotification('获取 A2A 技能失败', res.payload as string);
+      }
+    });
+    dispatch(getA2AAgentCard({ id: agent.id })).then((res) => {
+      if (res.meta.requestStatus === 'rejected') {
+        openErrNotification('获取 Agent Card 失败', res.payload as string);
+      }
+    });
+  };
+
+  const closeDetailDrawer = () => {
+    dispatch(cleanA2ADetails());
+    dispatch(resetA2AAgent());
+    setCardViewMode('visual');
+    setDetailActiveTab('card');
+    setDetailState({ visible: false });
+  };
+
+  const operateAgent = (op: Op | 'detail' | 'skills' | 'card', row?: TableRowData) => {
     const agent = row as A2AAgent;
     switch (op) {
       case 'create':
@@ -1043,8 +1071,7 @@ export default memo(() => {
         setEditorState({ visible: true, mode: 'create' });
         break;
       case 'edit':
-        dispatch(editorA2AAgent(agent));
-        setEditorState({ visible: true, mode: 'edit' });
+        openAgentDetail(agent, 'edit');
         break;
       case 'delete':
         dispatch(removeA2AAgents({ ids: [agent?.id as string] })).then((res) => {
@@ -1056,26 +1083,14 @@ export default memo(() => {
           }
         });
         break;
+      case 'detail':
+        openAgentDetail(agent, 'card');
+        break;
       case 'skills':
-        setDetailState({ visible: true, mode: 'skills', agent });
-        dispatch(listA2AAgentSkills({
-          param: {
-            agent_id: agent?.id,
-          },
-        })).then((res) => {
-          if (res.meta.requestStatus === 'rejected') {
-            openErrNotification('获取 A2A 技能失败', res.payload as string);
-          }
-        });
+        openAgentDetail(agent, 'skills');
         break;
       case 'card':
-        setCardViewMode('visual');
-        setDetailState({ visible: true, mode: 'card', agent });
-        dispatch(getA2AAgentCard({ id: agent?.id as string })).then((res) => {
-          if (res.meta.requestStatus === 'rejected') {
-            openErrNotification('获取 Agent Card 失败', res.payload as string);
-          }
-        });
+        openAgentDetail(agent, 'card');
         break;
       default:
         break;
@@ -1103,20 +1118,15 @@ export default memo(() => {
   const refreshDetails = () => {
     const agent = detailState.agent;
     if (!agent?.id) return;
-    if (detailState.mode === 'skills') {
+    if (detailActiveTab === 'skills') {
       dispatch(listA2AAgentSkills({ param: { agent_id: agent.id } }));
       return;
     }
+    if (detailActiveTab === 'edit') {
+      dispatch(editorA2AAgent(agent));
+      return;
+    }
     dispatch(getA2AAgentCard({ id: agent.id }));
-  };
-
-  const editCurrentAgentFromDetail = () => {
-    if (!detailState.agent) return;
-    const currentAgent = detailState.agent;
-    dispatch(cleanA2ADetails());
-    setDetailState({ visible: false, mode: 'skills' });
-    dispatch(editorA2AAgent(currentAgent));
-    setEditorState({ visible: true, mode: 'edit' });
   };
 
   const goBackendService = (agent?: A2AAgent) => {
@@ -1276,14 +1286,10 @@ export default memo(() => {
 
       <Drawer
         size="min(1180px, 92vw)"
-        header={detailState.mode === 'skills' ? 'Agent 技能' : 'Agent Card'}
+        header="A2A Agent 详情"
         footer={false}
         visible={detailState.visible}
-        onClose={() => {
-          dispatch(cleanA2ADetails());
-          setCardViewMode('visual');
-          setDetailState({ visible: false, mode: 'skills' });
-        }}
+        onClose={closeDetailDrawer}
       >
         <div className={style.agentDrawer}>
           <section className={style.agentDrawerSummary}>
@@ -1331,54 +1337,81 @@ export default memo(() => {
                   <RefreshIcon />
                 </Button>
               </Tooltip>
-              <Tooltip content="编辑 Agent">
-                <Button shape="square" variant="outline" onClick={editCurrentAgentFromDetail}>
-                  <EditIcon />
-                </Button>
-              </Tooltip>
             </div>
           </section>
 
-          <section className={style.detailSurface}>
-            <div className={style.tableHeader}>
-              <div>
-                <strong>{detailState.mode === 'skills' ? '技能目录' : 'Agent Card'}</strong>
-                <span>{detailState.mode === 'skills' ? (skillsLoading ? '正在同步技能' : `当前显示 ${skills.length} 个技能`) : (cardViewMode === 'visual' ? '概览' : '原始 Card JSON')}</span>
-              </div>
-              {detailState.mode === 'card' && (
-                <Space className={style.cardViewSwitch} size={4}>
-                  <Button
-                    size="small"
-                    theme={cardViewMode === 'visual' ? 'primary' : 'default'}
-                    variant={cardViewMode === 'visual' ? 'base' : 'outline'}
-                    onClick={() => setCardViewMode('visual')}
-                  >
-                    概览
-                  </Button>
-                  <Button
-                    size="small"
-                    theme={cardViewMode === 'raw' ? 'primary' : 'default'}
-                    variant={cardViewMode === 'raw' ? 'base' : 'outline'}
-                    onClick={() => setCardViewMode('raw')}
-                  >
-                    原始 JSON
-                  </Button>
-                </Space>
-              )}
-            </div>
-            {detailState.mode === 'skills' ? (
-              <AgentSkillsView skills={skills} loading={skillsLoading} />
-            ) : cardViewMode === 'raw' ? (
-              <Textarea
-                className={style.codeText}
-                readonly
-                value={cardLoading ? '加载中...' : cardText}
-                autosize={{ minRows: 18, maxRows: 26 }}
-              />
-            ) : (
-              <AgentCardView card={cardObject} loading={cardLoading} />
-            )}
-          </section>
+          <Tabs className={style.agentDetailTabs} value={detailActiveTab} onChange={(value) => setDetailActiveTab(value as A2ADetailTab)}>
+            <TabPanel value="card" label="Agent Card">
+              <section className={style.detailSurface}>
+                <div className={style.tableHeader}>
+                  <div>
+                    <strong>Agent Card</strong>
+                    <span>{cardViewMode === 'visual' ? '概览' : '原始 Card JSON'}</span>
+                  </div>
+                  <Space className={style.cardViewSwitch} size={4}>
+                    <Button
+                      size="small"
+                      theme={cardViewMode === 'visual' ? 'primary' : 'default'}
+                      variant={cardViewMode === 'visual' ? 'base' : 'outline'}
+                      onClick={() => setCardViewMode('visual')}
+                    >
+                      概览
+                    </Button>
+                    <Button
+                      size="small"
+                      theme={cardViewMode === 'raw' ? 'primary' : 'default'}
+                      variant={cardViewMode === 'raw' ? 'base' : 'outline'}
+                      onClick={() => setCardViewMode('raw')}
+                    >
+                      原始 JSON
+                    </Button>
+                  </Space>
+                </div>
+                {cardViewMode === 'raw' ? (
+                  <Textarea
+                    className={style.codeText}
+                    readonly
+                    value={cardLoading ? '加载中...' : cardText}
+                    autosize={{ minRows: 18, maxRows: 26 }}
+                  />
+                ) : (
+                  <AgentCardView card={cardObject} loading={cardLoading} />
+                )}
+              </section>
+            </TabPanel>
+            <TabPanel value="skills" label="技能">
+              <section className={style.detailSurface}>
+                <div className={style.tableHeader}>
+                  <div>
+                    <strong>技能目录</strong>
+                    <span>{skillsLoading ? '正在同步技能' : `当前显示 ${skills.length} 个技能`}</span>
+                  </div>
+                </div>
+                <AgentSkillsView skills={skills} loading={skillsLoading} />
+              </section>
+            </TabPanel>
+            <TabPanel value="edit" label="编辑">
+              <section className={style.detailSurface}>
+                <div className={style.tableHeader}>
+                  <div>
+                    <strong>编辑 Agent</strong>
+                    <span>修改基础信息、接入方式、技能和 Agent Card 原文</span>
+                  </div>
+                </div>
+                <div className={style.embeddedEditor}>
+                  <A2AEditor
+                    op="edit"
+                    visible={detailState.visible && detailActiveTab === 'edit'}
+                    embedded
+                    closeDrawer={() => {
+                      closeDetailDrawer();
+                      refreshTable(page, limit);
+                    }}
+                  />
+                </div>
+              </section>
+            </TabPanel>
+          </Tabs>
         </div>
       </Drawer>
     </div>

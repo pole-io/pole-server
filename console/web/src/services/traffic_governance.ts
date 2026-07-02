@@ -90,6 +90,7 @@ export interface TrafficSecurityRule extends TrafficRuleBase {
 
 export interface TrafficSecurityPolicy {
     api?: TrafficApiScope
+    apis?: TrafficApiScope[]
     traffic_match_rule?: TrafficMatchRule
     action: TrafficSecurityAction | string
     reject_effect?: {
@@ -105,6 +106,7 @@ export interface TrafficMirror extends TrafficRuleBase {
 
 export interface MirrorRule {
     api?: TrafficApiScope
+    apis?: TrafficApiScope[]
     interfaces?: TrafficApiScope[]
     traffic_match_rule?: TrafficMatchRule
     destination?: {
@@ -122,6 +124,7 @@ export interface TrafficMock extends TrafficRuleBase {
 
 export interface MockRule {
     api?: TrafficApiScope
+    apis?: TrafficApiScope[]
     traffic_match_rule?: TrafficMatchRule
     response?: {
         headers?: Record<string, string>
@@ -214,7 +217,7 @@ export const defaultTrafficSecurityRule = (): TrafficSecurityRule => ({
     enable: true,
     policies: [{
         action: TrafficSecurityAction.DENY,
-        api: {
+        apis: [{
             protocol: InterfaceProtocol.HTTP,
             method: 'POST',
             path: {
@@ -222,7 +225,7 @@ export const defaultTrafficSecurityRule = (): TrafficSecurityRule => ({
                 value: '/admin',
                 value_type: MatchValueType.TEXT,
             },
-        },
+        }],
         traffic_match_rule: {
             ...defaultTrafficMatchRule(),
             arguments: [{
@@ -242,7 +245,7 @@ export const defaultTrafficSecurityRule = (): TrafficSecurityRule => ({
         },
     }, {
         action: TrafficSecurityAction.ALLOW,
-        api: {
+        apis: [{
             protocol: InterfaceProtocol.HTTP,
             method: 'GET',
             path: {
@@ -250,7 +253,7 @@ export const defaultTrafficSecurityRule = (): TrafficSecurityRule => ({
                 value: '/orders',
                 value_type: MatchValueType.TEXT,
             },
-        },
+        }],
         traffic_match_rule: {
             ...defaultTrafficMatchRule(),
             arguments: [{
@@ -274,7 +277,7 @@ export const defaultTrafficMirrorRule = (): TrafficMirror => ({
     priority: 0,
     enable: true,
     rules: [{
-        api: {
+        apis: [{
             protocol: InterfaceProtocol.HTTP,
             method: 'GET',
             path: {
@@ -282,7 +285,7 @@ export const defaultTrafficMirrorRule = (): TrafficMirror => ({
                 value: '/',
                 value_type: MatchValueType.TEXT,
             },
-        },
+        }],
         traffic_match_rule: defaultTrafficMatchRule(),
         destination: {
             namespace: '',
@@ -301,7 +304,7 @@ export const defaultTrafficMockRule = (): TrafficMock => ({
     priority: 0,
     enable: true,
     rules: [{
-        api: {
+        apis: [{
             protocol: InterfaceProtocol.HTTP,
             method: 'GET',
             path: {
@@ -309,7 +312,7 @@ export const defaultTrafficMockRule = (): TrafficMock => ({
                 value: '/',
                 value_type: MatchValueType.TEXT,
             },
-        },
+        }],
         traffic_match_rule: defaultTrafficMatchRule(),
         response: {
             code: '200',
@@ -329,21 +332,29 @@ export const defaultTrafficGovernanceRule = (kind: TrafficGovernanceKind): Traff
 };
 
 const normalizeTrafficGovernanceRules = (kind: TrafficGovernanceKind, params: TrafficGovernanceRule[]) => {
-    if (kind === 'security') return params;
+    if (kind === 'security') {
+        return params.map((item) => ({
+            ...item,
+            policies: ((item as TrafficSecurityRule).policies || []).map((policy) => {
+                const { api: _api, ...submitPolicy } = policy;
+                return submitPolicy;
+            }),
+        })) as TrafficGovernanceRule[];
+    }
     return params.map((item) => {
         const next = {
             ...item,
             rules: ((item as TrafficMirror | TrafficMock).rules || []).map((rule) => {
                 if (kind === 'mirror') {
                     const mirrorRule = rule as MirrorRule;
-                    const { interfaces: _interfaces, ...submitRule } = mirrorRule;
+                    const { api: _api, interfaces: _interfaces, ...submitRule } = mirrorRule;
                     return {
                         ...submitRule,
                     };
                 }
                 const mockRule = rule as MockRule;
                 const response = mockRule.response || {};
-                const { delay: _delay, ...submitRule } = mockRule;
+                const { api: _api, delay: _delay, ...submitRule } = mockRule;
                 return {
                     ...submitRule,
                     mock_percent: mockRule.mock_percent ?? 100,

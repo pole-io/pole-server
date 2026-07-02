@@ -3,3 +3,68 @@
   margin-bottom: 20px;
   margin-top: 20px;
 }
+
+.authDetail {
+  display: grid;
+  gap: 18px;
+  color: #1f2937;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+}
+
+.detailField {
+  min-width: 0;
+
+  > span {
+    display: block;
+    margin-bottom: 6px;
+    color: #697586;
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  > strong {
+    display: block;
+    color: #111827;
+    font-size: 18px;
+    font-weight: 650;
+    line-height: 26px;
+    word-break: break-word;
+  }
+
+  > p {
+    margin: 0;
+    color: #364152;
+    font-size: 14px;
+    line-height: 22px;
+    word-break: break-word;
+  }
+}
+
+.detailLabels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #364152;
+  font-size: 13px;
+  line-height: 20px;
+
+  em {
+    padding: 3px 8px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    background: #f7f8fa;
+    font-style: normal;
+    word-break: break-all;
+  }
+}
+
+@media (max-width: 820px) {
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+}

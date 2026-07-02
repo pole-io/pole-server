@@ -11,6 +11,7 @@ import {
     StickyTool,
     Switch,
     Tag,
+    TagInput,
     Textarea,
 } from "tdesign-react";
 import {
@@ -63,19 +64,20 @@ import { cleanServicePage, listAllServices, selectService } from "modules/discov
 import cloneDeep from "lodash/cloneDeep";
 
 import {
-    buildRateLimitSubmitPayload,
+    defaultRateLimitAPI,
     describeRuleSummary,
     describeRuleThreshold,
-    RateLimitSpecFormat,
-    stringifyRateLimitSpec,
+    normalizeRateLimitApis,
+    RATE_LIMIT_HTTP_METHOD_OPTIONS,
+    RateLimitAPI,
+    RATE_LIMIT_PROTOCOL_OPTIONS,
     validateRateLimitDraft,
 } from "./rateLimitEditorUtils";
+import { commaStringToTags, isTagInputMatchType, tagsToCommaString } from "../Router/routeEditorUtils";
 import styles from './RateLimitEditor.module.less';
 
 const { FormItem } = Form;
 const { StickyItem } = StickyTool;
-
-const methodOptions = ['GET', 'POST', 'PUT', 'DELETE', '*'].map((item) => ({ label: item, value: item }));
 
 const defaultMatchArgs: () => LimitArgumentsConfig = () => ({
     type: LimitArgumentsType.HEADER,
@@ -118,7 +120,6 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
         type: limitType,
     }));
     const [collapsedRuleIndexes, setCollapsedRuleIndexes] = React.useState<Set<number>>(() => new Set());
-    const [specFormat, setSpecFormat] = React.useState<RateLimitSpecFormat>('yaml');
     const [editorState, setEditorState] = React.useState<{
         editable: boolean;
         publishView: boolean;
@@ -173,7 +174,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
             action: type === LimitType.GLOBAL ? LimitAction.REJECT : rule.action,
             failover: rule.failover || LimitFailover.FAILOVER_LOCAL,
             regex_combine: rule.regex_combine === true,
-            method: rule.method || { value: '', type: MatchType.EXACT, value_type: MatchValueType.TEXT },
+            apis: normalizeRateLimitApis(rule),
             amounts: rule.amounts?.length ? rule.amounts : [{ validDuration: 1, validDurationUnit: LimitAmountsValidationUnit.s, maxAmount: 1 }],
         }))
     );
@@ -201,9 +202,6 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
         .map((s: ServiceView) => ({ label: s.name, value: s.name }));
 
     const editable = editorState.editable;
-    const activeValidationErrors = React.useMemo(() => validateRateLimitDraft(rateLimit), [rateLimit]);
-    const previewSpec = React.useMemo(() => buildRateLimitSubmitPayload(rateLimit), [rateLimit]);
-    const previewText = React.useMemo(() => stringifyRateLimitSpec(previewSpec, specFormat), [previewSpec, specFormat]);
 
     const updateRule = (ruleIdx: number, patch: Partial<RateLimitView['rules'][0]>) => {
         setRateLimit(prev => ({
@@ -318,11 +316,6 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
         }
     };
 
-    const copyPreviewText = async () => {
-        await navigator.clipboard.writeText(previewText);
-        openInfoNotification('已复制', 'RateLimitRule Spec 已复制到剪贴板');
-    };
-
     const ruleBaseInfo = (
         <section className={shared.section}>
             <div className={shared.sectionHeader}>基础信息</div>
@@ -394,51 +387,109 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
 
     const readonlyInterface = (ruleIdx: number) => {
         const trigger = rateLimit.rules[ruleIdx];
+        const apis = normalizeRateLimitApis(trigger);
         return (
-            <div className={shared.tagRow}>
-                <span className={shared.tagPlain}>HTTP</span>
-                <span className={`${shared.tagPlain} ${shared.tagMethod}`}>*</span>
-                <span className={shared.tagPlain}>{MatchTypeMap[trigger.method?.type as MatchType] || trigger.method?.type || '完全匹配'}</span>
-                <span className={shared.pathTag}>{trigger.method?.value || '-'}</span>
-            </div>
+            <>
+                {apis.map((api, index) => (
+                    <div className={shared.tagRow} key={`${api.protocol}-${api.method}-${api.path?.value}-${index}`}>
+                        <span className={shared.tagPlain}>{api.protocol || 'HTTP'}</span>
+                        <span className={`${shared.tagPlain} ${shared.tagMethod}`}>{api.method || '*'}</span>
+                        <span className={shared.tagPlain}>{MatchTypeMap[api.path?.type as MatchType] || api.path?.type || '完全匹配'}</span>
+                        <span className={shared.pathTag}>{api.path?.value || '-'}</span>
+                    </div>
+                ))}
+            </>
         );
     };
 
     const matchInterface = (ruleIdx: number) => {
         const trigger = rateLimit.rules[ruleIdx];
+        const apis = normalizeRateLimitApis(trigger);
+        const updateApi = (apiIdx: number, patch: Partial<RateLimitAPI>) => {
+            updateRule(ruleIdx, {
+                apis: apis.map((api, index) => index === apiIdx ? {
+                    ...api,
+                    ...patch,
+                    path: patch.path ? { ...api.path, ...patch.path } : api.path,
+                } : api),
+            });
+        };
+        const addInterface = () => {
+            updateRule(ruleIdx, {
+                apis: [...apis, defaultRateLimitAPI()],
+            });
+        };
+        const removeInterface = (apiIdx: number) => {
+            if (apis.length <= 1) return;
+            updateRule(ruleIdx, {
+                apis: apis.filter((_, index) => index !== apiIdx),
+            });
+        };
         return (
             <div className={shared.step} data-step="1">
-                <div className={shared.stepTitle}>匹配接口<span className={shared.stepHint}>当前后端契约保存为单个 method 匹配字段</span></div>
+                <div className={shared.stepTitle}>匹配接口<span className={shared.stepHint}>协议、方法和路径保存为当前子规则的 API 列表</span></div>
                 <div className={shared.stepContent}>
                     {editable ? (
-                        <div className={styles.interfaceGrid}>
-                            <div className={styles.gridHeader}>协议</div>
-                            <div className={styles.gridHeader}>方法</div>
-                            <div className={styles.gridHeader}>匹配类型</div>
-                            <div className={styles.gridHeader}>接口路径</div>
-                            <div className={styles.gridHeader}>操作</div>
-                            <div className={styles.gridCell}><Select disabled value="HTTP" options={[{ label: 'HTTP', value: 'HTTP' }]} /></div>
-                            <div className={styles.gridCell}><Select disabled value="*" options={methodOptions} /></div>
-                            <div className={styles.gridCell}>
-                                <Select
-                                    options={MatchTypeOption}
-                                    value={trigger.method?.type || MatchType.EXACT}
-                                    onChange={(value) => updateRule(ruleIdx, { method: { ...trigger.method, type: value as MatchType, value: trigger.method?.value || '', value_type: MatchValueType.TEXT } })}
-                                />
+                        <>
+                            <div className={styles.interfaceGrid}>
+                                <div className={styles.gridHeader}>协议</div>
+                                <div className={styles.gridHeader}>方法</div>
+                                <div className={styles.gridHeader}>匹配类型</div>
+                                <div className={styles.gridHeader}>接口路径</div>
+                                <div className={styles.gridHeader}>操作</div>
+                                {apis.map((api, apiIdx) => {
+                                    const apiMatchType = api.path?.type || MatchType.EXACT;
+                                    return (
+                                        <React.Fragment key={`${ruleIdx}-api-${apiIdx}`}>
+                                            <div className={styles.gridCell}>
+                                                <Select
+                                                    options={RATE_LIMIT_PROTOCOL_OPTIONS}
+                                                    value={api.protocol || 'HTTP'}
+                                                    onChange={(value) => updateApi(apiIdx, { protocol: value as string })}
+                                                />
+                                            </div>
+                                            <div className={styles.gridCell}>
+                                                <Select
+                                                    options={RATE_LIMIT_HTTP_METHOD_OPTIONS}
+                                                    value={api.method || '*'}
+                                                    onChange={(value) => updateApi(apiIdx, { method: value as string })}
+                                                />
+                                            </div>
+                                            <div className={styles.gridCell}>
+                                                <Select
+                                                    options={MatchTypeOption}
+                                                    value={apiMatchType}
+                                                    onChange={(value) => updateApi(apiIdx, { path: { ...api.path, type: value as MatchType } })}
+                                                />
+                                            </div>
+                                            <div className={styles.gridCell}>
+                                                {isTagInputMatchType(apiMatchType) ? (
+                                                    <TagInput
+                                                        className={styles.monoInput}
+                                                        value={commaStringToTags(api.path?.value || '')}
+                                                        placeholder="输入后回车添加"
+                                                        clearable
+                                                        onChange={(value) => updateApi(apiIdx, { path: { ...api.path, value: tagsToCommaString(value as Array<string | number>), value_type: MatchValueType.TEXT } })}
+                                                    />
+                                                ) : (
+                                                    <Input
+                                                        className={styles.monoInput}
+                                                        value={api.path?.value || ''}
+                                                        onChange={(value) => updateApi(apiIdx, { path: { ...api.path, value: value as string, value_type: MatchValueType.TEXT } })}
+                                                    />
+                                                )}
+                                            </div>
+                                            <div className={`${styles.gridCell} ${styles.actionCell}`}>
+                                                <Popup trigger="hover" content="删除接口">
+                                                    <Button shape="circle" variant="text" disabled={apis.length <= 1} onClick={() => removeInterface(apiIdx)}><CloseIcon /></Button>
+                                                </Popup>
+                                            </div>
+                                        </React.Fragment>
+                                    );
+                                })}
                             </div>
-                            <div className={styles.gridCell}>
-                                <Input
-                                    className={styles.monoInput}
-                                    value={trigger.method?.value}
-                                    onChange={(value) => updateRule(ruleIdx, { method: { ...trigger.method, type: trigger.method?.type || MatchType.EXACT, value: value as string, value_type: MatchValueType.TEXT } })}
-                                />
-                            </div>
-                            <div className={`${styles.gridCell} ${styles.actionCell}`}>
-                                <Popup trigger="hover" content="当前接口字段由后端单字段承载，暂不可删除最后一行">
-                                    <Button shape="circle" variant="text" disabled><CloseIcon /></Button>
-                                </Popup>
-                            </div>
-                        </div>
+                            <Button className={styles.inlineAdd} variant="text" onClick={addInterface} icon={<AddIcon />}>新增接口</Button>
+                        </>
                     ) : readonlyInterface(ruleIdx)}
                 </div>
             </div>
@@ -448,6 +499,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
     const matchCondition = (ruleIdx: number) => {
         const trigger = rateLimit.rules[ruleIdx];
         const args = trigger.arguments || [];
+        const relation = trigger.matchMode || MatchLogic.AND;
         const rows: TrafficMatchConditionRow[] = args.map(arg => ({
             paramType: arg.type,
             paramKey: arg.key,
@@ -458,14 +510,17 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
             <div className={shared.step} data-step="2">
                 <div className={shared.stepTitle}>
                     匹配条件
-                    <span className={shared.stepHint}>当前限流契约按全部条件同时匹配</span>
+                    <span className={shared.stepHint}>
+                        {relation === MatchLogic.OR ? '满足任一条件即进入限流规则' : '需同时满足全部条件'}
+                    </span>
                 </div>
                 <div className={shared.stepContent}>
                     <TrafficMatchConditionEditor
                         rows={rows}
                         editable={editable}
-                        relation={MatchLogic.AND}
-                        relationEditable={false}
+                        relation={relation}
+                        relationEditable
+                        onRelationChange={(value) => updateRule(ruleIdx, { matchMode: value as MatchLogic })}
                         paramTypeOptions={LimitArgumentsTypeOptions}
                         onRowChange={(index, row) => {
                             const current = args[index] || defaultMatchArgs();
@@ -642,35 +697,6 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
         );
     };
 
-    const renderSpecPreview = (
-        <aside className={styles.specPane}>
-            <div className={styles.specCard}>
-                <div className={styles.specToolbar}>
-                    <div>
-                        <div className={styles.specTitle}>实时规则 SPEC</div>
-                        <div className={styles.specDesc}>保存前核对真实提交 payload</div>
-                    </div>
-                    <div className={styles.specActions}>
-                        <div className={styles.specToggle}>
-                            {(['yaml', 'json'] as RateLimitSpecFormat[]).map((item) => (
-                                <button key={item} type="button" className={specFormat === item ? styles.specToggleActive : ''} onClick={() => setSpecFormat(item)}>
-                                    {item.toUpperCase()}
-                                </button>
-                            ))}
-                        </div>
-                        <Button size="small" variant="outline" onClick={copyPreviewText}>复制</Button>
-                    </div>
-                </div>
-                <pre className={styles.specCode}>{previewText}</pre>
-                <div className={styles.specFooter}>
-                    {activeValidationErrors.length
-                        ? activeValidationErrors.slice(0, 3).map((item) => <span key={`${item.field}-${item.message}`} className={styles.previewError}>{item.message}</span>)
-                        : <span className={styles.previewOk}>校验通过，可保存并下发</span>}
-                </div>
-            </div>
-        </aside>
-    );
-
     const renderPublishForm = (
         <>
             {editorState.publishView && (
@@ -729,7 +755,6 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                                 </div>
                             </section>
                         </div>
-                        {renderSpecPreview}
                     </div>
                     {renderPublishForm}
                     {renderStickyTool}

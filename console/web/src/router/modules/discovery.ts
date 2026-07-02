@@ -18,13 +18,14 @@ const discovery: IRouter[] = [
           title: 'menu.discovery.service',
         },
       },
-      {
-        path: 'gateway',
-        Component: lazy(() => import('pages/Discovery/Gateway')),
-        meta: {
-          title: 'menu.discovery.gateway',
-        },
-      },
+      // Gateway 页面尚未实现，避免暴露 501 占位入口。
+      // {
+      //   path: 'gateway',
+      //   Component: lazy(() => import('pages/Discovery/Gateway')),
+      //   meta: {
+      //     title: 'menu.discovery.gateway',
+      //   },
+      // },
       // {
       //   path: 'envoy',
       //   Component: lazy(() => import('pages/Discovery/Envoy')),

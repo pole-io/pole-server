@@ -131,10 +131,12 @@ export function listTypeToAction(listType: SecurityListType): TrafficSecurityAct
 }
 
 export function isServiceLevelPolicy(policy: TrafficSecurityPolicy): boolean {
-    const api = policy.api;
-    if (!api) return true;
-    const path = api.path?.value;
-    return path === undefined || path === null || path === '';
+    const apis = policy.apis?.length ? policy.apis : (policy.api ? [policy.api] : []);
+    if (!apis.length) return true;
+    return apis.every((api) => {
+        const path = api.path?.value;
+        return path === undefined || path === null || path === '';
+    });
 }
 
 export function normalizeSecurityViewRules(rule: TrafficSecurityRule): SecurityViewRule[] {
@@ -144,7 +146,7 @@ export function normalizeSecurityViewRules(rule: TrafficSecurityRule): SecurityV
         .map<SecurityViewRule>((policy) => ({
             kind: actionToListType(policy.action) === 'DENY_LIST' ? 'deny' : 'allow',
             listType: actionToListType(policy.action),
-            interfaces: [policy.api || defaultProtectedInterface()],
+            interfaces: policy.apis?.length ? policy.apis : [policy.api || defaultProtectedInterface()],
             strategy: normalizeSecurityMatchRule(policy.traffic_match_rule),
             rejectEffect: policy.reject_effect,
         }));
@@ -171,7 +173,7 @@ export function normalizeSecurityViewOrder(rules: SecurityViewRule[]): SecurityV
 }
 
 export function buildSecurityPoliciesFromView(rules: SecurityViewRule[]): TrafficSecurityPolicy[] {
-    return normalizeSecurityViewOrder(rules).flatMap((viewRule) => {
+    return normalizeSecurityViewOrder(rules).map((viewRule) => {
         const action = listTypeToAction(viewRule.listType);
         const base = {
             traffic_match_rule: normalizeSecurityMatchRule(viewRule.strategy),
@@ -183,12 +185,12 @@ export function buildSecurityPoliciesFromView(rules: SecurityViewRule[]): Traffi
             } : undefined),
         };
         if (viewRule.kind === 'service') {
-            return [{ ...base }];
+            return { ...base };
         }
-        return (viewRule.interfaces.length ? viewRule.interfaces : [defaultProtectedInterface()]).map((api) => ({
+        return {
             ...base,
-            api,
-        }));
+            apis: viewRule.interfaces.length ? viewRule.interfaces : [defaultProtectedInterface()],
+        };
     });
 }
 

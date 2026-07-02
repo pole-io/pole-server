@@ -7,12 +7,22 @@ import ts from 'typescript';
 
 const root = process.cwd();
 const sourcePath = path.join(root, 'src/pages/Governance/RateLimit/rateLimitEditorUtils.ts');
+const editorPath = path.join(root, 'src/pages/Governance/RateLimit/RateLimitEditor.tsx');
+const stylePath = path.join(root, 'src/pages/Governance/RateLimit/RateLimitEditor.module.less');
 
 if (!fs.existsSync(sourcePath)) {
   throw new Error(`missing helper: ${sourcePath}`);
 }
+if (!fs.existsSync(editorPath)) {
+  throw new Error(`missing editor: ${editorPath}`);
+}
+if (!fs.existsSync(stylePath)) {
+  throw new Error(`missing style: ${stylePath}`);
+}
 
 const source = fs.readFileSync(sourcePath, 'utf8');
+const editorSource = fs.readFileSync(editorPath, 'utf8');
+const styleSource = fs.readFileSync(stylePath, 'utf8');
 const compiled = ts.transpileModule(source, {
   compilerOptions: {
     module: ts.ModuleKind.ES2020,
@@ -41,7 +51,13 @@ const baseDraft = {
   },
   rules: [
     {
-      method: { type: 'EXACT', value: '/api/v1/payments', value_type: 'TEXT' },
+      apis: [
+        {
+          protocol: 'HTTP',
+          method: 'POST',
+          path: { type: 'EXACT', value: '/api/v1/payments', value_type: 'TEXT' },
+        },
+      ],
       arguments: [
         {
           type: 'HEADER',
@@ -69,7 +85,13 @@ assert.equal(payload.type, 'GLOBAL');
 assert.equal(payload.disable, false);
 assert.deepEqual(payload.metadata, { owner: 'codex', scenario: 'sample' });
 assert.equal(payload.rules[0].action, 'REJECT', 'global rate limit must force reject action');
-assert.deepEqual(payload.rules[0].method, { type: 'EXACT', value: '/api/v1/payments', value_type: 'TEXT' });
+assert.deepEqual(payload.rules[0].apis, [
+  {
+    protocol: 'HTTP',
+    method: 'POST',
+    path: { type: 'EXACT', value: '/api/v1/payments', value_type: 'TEXT' },
+  },
+]);
 assert.deepEqual(payload.rules[0].amounts, [
   { validDuration: '1s', maxAmount: 120 },
   { validDuration: '60s', maxAmount: 3000 },
@@ -83,6 +105,7 @@ const yaml = utils.stringifyRateLimitSpec(payload, 'yaml');
 assert.match(yaml, /name: spec-check-ratelimit/);
 assert.match(yaml, /type: GLOBAL/);
 assert.match(yaml, /rules:/);
+assert.match(yaml, /apis:/);
 assert.match(yaml, /validDuration: 1s/);
 assert.doesNotMatch(yaml, /apiVersion:/);
 
@@ -91,6 +114,27 @@ assert.match(json, /"name": "spec-check-ratelimit"/);
 
 assert.equal(utils.describeRuleThreshold(baseDraft.rules[0]), '120 次 / 1s 等 2 窗');
 assert.equal(utils.describeRuleSummary(baseDraft.rules[0], baseDraft.type), '1 个接口 · 1 个匹配条件 · 请求数 · 快速失败');
+
+assert.deepEqual(utils.parseRateLimitInterfaceValue('POST /api/v1/payments'), {
+  protocol: 'HTTP',
+  method: 'POST',
+  path: '/api/v1/payments',
+});
+assert.deepEqual(utils.parseRateLimitInterfaceValue('GRPC POST /payment.Pay/Charge'), {
+  protocol: 'GRPC',
+  method: 'POST',
+  path: '/payment.Pay/Charge',
+});
+assert.equal(utils.buildRateLimitInterfaceValue({ protocol: 'HTTP', method: 'POST', path: '/api/v1/payments' }), 'POST /api/v1/payments');
+assert.equal(utils.buildRateLimitInterfaceValue({ protocol: 'GRPC', method: 'POST', path: '/payment.Pay/Charge' }), 'GRPC POST /payment.Pay/Charge');
+assert.equal(utils.getRateLimitInterfacePath('POST /api/v1/payments'), '/api/v1/payments');
+assert.deepEqual(utils.normalizeRateLimitApis({ method: { type: 'EXACT', value: 'POST /api/v1/payments', value_type: 'TEXT' } }), [
+  {
+    protocol: 'HTTP',
+    method: 'POST',
+    path: { type: 'EXACT', value: '/api/v1/payments', value_type: 'TEXT' },
+  },
+]);
 
 const concurrencyRule = {
   ...baseDraft.rules[0],
@@ -109,7 +153,7 @@ const invalidDraft = {
   rules: [
     {
       ...baseDraft.rules[0],
-      method: { type: 'EXACT', value: '', value_type: 'TEXT' },
+      apis: [{ protocol: 'HTTP', method: 'POST', path: { type: 'EXACT', value: '', value_type: 'TEXT' } }],
       amounts: [{ validDuration: 1, validDurationUnit: 's', maxAmount: 0 }],
       arguments: [
         {
@@ -130,5 +174,29 @@ assert.deepEqual(utils.validateRateLimitDraft(invalidDraft).map((item) => item.m
   '规则[1] 存在空匹配值',
   '规则[1] 自定义响应必须是合法 JSON',
 ]);
+
+assert.match(editorSource, /import \{ commaStringToTags, isTagInputMatchType, tagsToCommaString \} from "\.\.\/Router\/routeEditorUtils";/);
+assert.match(editorSource, /TagInput/);
+assert.match(editorSource, /RATE_LIMIT_PROTOCOL_OPTIONS/);
+assert.match(editorSource, /RATE_LIMIT_HTTP_METHOD_OPTIONS/);
+assert.match(editorSource, /normalizeRateLimitApis\(trigger\)/);
+assert.match(editorSource, /updateApi\(apiIdx/);
+assert.match(editorSource, /isTagInputMatchType\(apiMatchType\)/);
+assert.match(editorSource, /const addInterface = \(\) =>/);
+assert.match(editorSource, /新增接口/);
+assert.match(editorSource, /API 列表/);
+assert.doesNotMatch(editorSource, /<Select disabled value="HTTP"/);
+assert.doesNotMatch(editorSource, /<Select disabled value="\*"/);
+assert.doesNotMatch(editorSource, /复制为新接口规则/);
+assert.match(editorSource, /value=\{commaStringToTags\(api\.path\?\.value \|\| ''\)\}/);
+assert.match(editorSource, /tagsToCommaString\(value as Array<string \| number>\)/);
+assert.match(editorSource, /onChange=\{\(value\) => updateApi\(apiIdx, \{ path: \{ \.\.\.api\.path, type: value as MatchType \} \}\)\}/);
+assert.doesNotMatch(editorSource, /relationEditable=\{false\}/);
+assert.doesNotMatch(editorSource, /relation=\{MatchLogic\.AND\}/);
+assert.match(editorSource, /const relation = trigger\.matchMode \|\| MatchLogic\.AND;/);
+assert.match(editorSource, /relation=\{relation\}/);
+assert.match(editorSource, /relationEditable/);
+assert.match(editorSource, /onRelationChange=\{\(value\) => updateRule\(ruleIdx, \{ matchMode: value as MatchLogic \}\)\}/);
+assert.match(styleSource, /:global\(\.t-tag-input\),/);
 
 console.log('ratelimit editor utils verification passed');

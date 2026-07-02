@@ -91,7 +91,7 @@ export async function modifyNamespace(params: ModifyNamespaceRequest[]) {
 
 export interface DeleteNamespaceRequest {
     name: string
-    token: string
+    token?: string
 }
 
 export interface DeleteNamespaceResponse {

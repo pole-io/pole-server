@@ -215,3 +215,88 @@ func TestNewBatchControllerGracefulStop(t *testing.T) {
 	wg.Wait()
 	t.Log("finish all batch job")
 }
+
+func TestNewBatchControllerGracefulStopFlushesDrainedPartialBatch(t *testing.T) {
+	total := 3
+
+	totalTasks := int32(0)
+	testHandle := func(futures []Future) {
+		atomic.AddInt32(&totalTasks, int32(len(futures)))
+		for i := range futures {
+			futures[i].Reply(nil, nil)
+		}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ctrl := &BatchController{
+		label: "graceful-drain-partial-batch",
+		conf: CtrlConfig{
+			QueueSize:     uint32(total),
+			MaxBatchCount: 16,
+			WaitTime:      time.Hour,
+			Concurrency:   1,
+			Handler:       testHandle,
+		},
+		cancel:     cancel,
+		tasksChan:  make(chan Future, total),
+		workers:    make([]chan []Future, 0, 1),
+		idleSignal: make(chan int, 1),
+		handler:    testHandle,
+	}
+	ctrl.runWorkers(ctx)
+
+	futures := make([]Future, 0, total)
+	for i := 0; i < total; i++ {
+		futureCtx, futureCancel := context.WithCancel(context.Background())
+		future := &future{
+			task:      fmt.Sprintf("%d", i),
+			ctx:       futureCtx,
+			cancel:    futureCancel,
+			setsignal: make(chan struct{}),
+		}
+		futures = append(futures, future)
+		ctrl.tasksChan <- future
+	}
+
+	atomic.StoreInt32(&ctrl.stop, shutdownGraceful)
+	cancel()
+	ctrl.mainLoop(ctx)
+
+	for _, future := range futures {
+		_, err := future.DoneTimeout(time.Second)
+		assert.NoError(t, err)
+	}
+	assert.Equal(t, total, int(atomic.LoadInt32(&totalTasks)))
+}
+
+func TestNewBatchControllerGracefulStopFlushesAcceptedPartialBatch(t *testing.T) {
+	total := 3
+
+	totalTasks := int32(0)
+	testHandle := func(futures []Future) {
+		atomic.AddInt32(&totalTasks, int32(len(futures)))
+		for i := range futures {
+			futures[i].Reply(nil, nil)
+		}
+	}
+
+	ctrl := NewBatchController(context.Background(), CtrlConfig{
+		QueueSize:     uint32(total),
+		MaxBatchCount: 16,
+		WaitTime:      time.Hour,
+		Concurrency:   1,
+		Handler:       testHandle,
+	})
+
+	futures := make([]Future, 0, total)
+	for i := 0; i < total; i++ {
+		futures = append(futures, ctrl.Submit(fmt.Sprintf("%d", i)))
+	}
+
+	ctrl.GracefulStop()
+	for _, future := range futures {
+		_, err := future.DoneTimeout(time.Second)
+		assert.NoError(t, err)
+	}
+	assert.Equal(t, total, int(atomic.LoadInt32(&totalTasks)))
+}
