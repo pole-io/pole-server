@@ -66,7 +66,7 @@ require (
 	github.com/gin-gonic/gin v1.4.0
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/mark3labs/mcp-go v0.18.0
-	github.com/pole-io/specification v0.1.0-ALPHA.31
+	github.com/pole-io/specification v0.1.0-ALPHA.32
 	go.opentelemetry.io/otel v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.36.0
@@ -136,5 +136,3 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20250519155744-55703ea1f237 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250519155744-55703ea1f237 // indirect
 )
-
-replace github.com/pole-io/specification => ../specification

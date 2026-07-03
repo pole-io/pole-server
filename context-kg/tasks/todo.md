@@ -8,6 +8,76 @@ sources: 0
 
 # 任务计划与 Review
 
+## 发布 specification 新 tag 并更新 control-plane
+
+- [x] 确认 `../specification` 远端 tag 基线、当前分支和待提交文件范围
+- [x] 提交 `../specification` 当前协议与生成产物改动
+- [x] 创建新的 specification tag，并确认 tag 指向本次提交
+- [x] 更新 `pole-control-plane` 的 `github.com/pole-io/specification` 依赖到新 tag，移除本地 replace
+- [x] 运行 spec 与 control-plane 验证，记录 review 与剩余风险
+
+当前判断：
+
+- `pole-control-plane` 当前 `go.mod` 同时存在 `github.com/pole-io/specification v0.1.0-ALPHA.31` 和 `replace github.com/pole-io/specification => ../specification`；更新到新 tag 时应去掉本地 replace，避免继续依赖未发布工作区。
+- spec 当前分支为 `codex/faultdetect-discovery-rules`，待提交内容包含本轮熔断 `regex_separate` 以及此前同一分支上的治理规则协议改动；本轮按用户要求提交 spec 仓库当前工作区，不回滚已有改动。
+
+发布：
+
+- `../specification` 提交：`70317c4 feat: update governance rule contracts`
+- 新 tag：`v0.1.0-ALPHA.32`，annotated tag 指向 `70317c4`
+- 已推送：`origin/codex/faultdetect-discovery-rules` 与 `origin/v0.1.0-ALPHA.32`
+- `pole-control-plane`：`go.mod` 升级 `github.com/pole-io/specification v0.1.0-ALPHA.31 -> v0.1.0-ALPHA.32`，并删除 `replace github.com/pole-io/specification => ../specification`
+
+验证：
+
+- `cd ../specification && git diff --cached --check` 通过。
+- `cd ../specification && go test ./...` 通过。
+- `cd ../specification/source/rust/pole-specification && PROTOC=... cargo test --release` 通过。
+- `git ls-remote --tags origin refs/tags/v0.1.0-ALPHA.32 refs/tags/v0.1.0-ALPHA.32^{}` 确认远端 tag 存在，tag object `adb498d` 指向提交 `70317c4`。
+- `go list -m -json github.com/pole-io/specification` 确认当前解析版本为 `v0.1.0-ALPHA.32`，且无 replace。
+- `go mod verify` 通过。
+- `go test ./apis/pkg/types/rules -run TestCircuitBreakerBlockConfigAcceptsRegexSeparate -count=1` 通过。
+- `go test ./apis/pkg/types/rules ./pkg/goverrule/... ./pkg/cache/rules -count=1` 通过。
+- `go test ./...` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- go.mod go.sum context-kg/tasks/todo.md apis/pkg/types/rules/circuit_breaker_regex_test.go` 通过。
+
+Review：
+
+- spec tag 未包含 `source/rust/pole-specification/proto/service.proto` 的行尾-only dirty 变化；该文件仍在 `../specification` 工作区未提交，`git diff --ignore-space-at-eol` 下没有实质差异。
+- control-plane 的依赖更新、回归测试和任务记录已纳入本次提交范围。
+
+## 熔断规则接口资源 regex_separate 支持
+
+- [x] 确认限流接口资源与熔断 `BlockConfig.apis` 的当前 spec 形态
+- [x] 先补失败测试，证明 `CircuitBreakerPolicy.block_config` 需要序列化 `regex_separate`
+- [x] 在 `../specification` 中为熔断策略接口资源补充 `regex_separate` 契约，并重新生成 Go/Rust 产物
+- [x] 运行针对性测试、spec 编译验证、control-plane 依赖编译验证与 context-kg lint
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 限流当前使用 `LimitTrigger.regex_combine` 控制正则接口命中后的合并/分开计算；用户本次明确要求熔断接口资源支持 `regex_separate`，因此字段名按 `regex_separate` 落地。
+- 熔断当前已把 `BlockConfig.api` 收敛为 `BlockConfig.apis[]`；本轮只补正则拆分契约，不扩展其它熔断策略字段。
+- `BlockConfig` 是熔断策略里承载接口资源、错误判断和触发条件的最小边界，`regex_separate` 放在该消息上比放在顶层规则更贴近作用域。
+
+验证：
+
+- `go test ./apis/pkg/types/rules -run TestCircuitBreakerBlockConfigAcceptsRegexSeparate -count=1` 修复前失败，报 `unknown field "regex_separate"`；生成新 spec 后通过。
+- `cd ../specification && go test ./...` 通过。
+- `cd ../specification/source/rust/pole-specification && PROTOC=../../protoc/protoc-darwin-arm64/bin/protoc cargo test --release` 通过；直接运行 `cargo test --release` 会因未设置 `PROTOC` 失败。
+- `go test ./apis/pkg/types/rules ./pkg/goverrule/... ./pkg/cache/rules -count=1` 通过。
+- `go test ./...` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- context-kg/tasks/todo.md apis/pkg/types/rules/circuit_breaker_regex_test.go` 通过。
+- `cd ../specification && git diff --check -- api/v1/fault_tolerance/circuitbreaker.proto source/go/api/v1/fault_tolerance/circuitbreaker.pb.go source/rust/pole-specification/proto/circuitbreaker.proto source/rust/pole-specification/src/v1.rs` 通过。
+
+Review：
+
+- `../specification/api/v1/fault_tolerance/circuitbreaker.proto` 的 `BlockConfig` 现在同时包含 `apis[]` 与 `regex_separate`，Go 生成产物提供 `BlockConfig.RegexSeparate/GetRegexSeparate()`，Rust 生成产物提供 `regex_separate` 字段。
+- 本轮保留 `../specification` 中已经存在的其它未提交 spec 改动，没有回滚或改写它们。
+- `cd ../specification && git diff --check` 全仓检查仍会被 `source/rust/pole-specification/proto/service.proto` 的行尾 whitespace 问题阻断；该文件在本轮开始前已是 dirty，且不是本次熔断字段落点。
+
 ## 前端 build 警告彻底清理
 
 - [x] 定位 `npm run build:test` 中 Browserslist 过期和大 chunk warning 的真实来源
