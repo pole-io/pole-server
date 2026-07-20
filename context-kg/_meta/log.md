@@ -2,7 +2,7 @@
 title: 操作日志
 tags: [meta, log]
 links: [index, schema]
-updated: 2026-07-03
+updated: 2026-07-20
 sources: 0
 ---
 
@@ -226,3 +226,12 @@ sources: 0
   - 更新 Browserslist/caniuse 锁文件数据，消除 Browserslist 过期 warning。
   - 恢复 Vite CSS code split，并按依赖族配置 Rollup manualChunks，消除大 JS/CSS chunk warning。
   - 新增 Vite build 包装脚本，为 Node 22+ 提供有效 localStorage 文件路径，消除 `--localstorage-file` warning。
+
+## [2026-07-20] refactor | 移除治理运行变量值来源
+
+- 新增页面：technical/adr/adr-governance-request-parameter-capture.md。
+- 更新页面：index, todo, lessons。
+- 变更摘要：
+  - 治理匹配值来源收敛为固定值和请求参数，不再支持读取运行机器环境变量。
+  - specification 保留历史枚举号与名称不可复用；Rust SDK 对未知旧值 fail closed。
+  - Console 移除运行变量选项和历史数值映射，并升级到 ALPHA.35。

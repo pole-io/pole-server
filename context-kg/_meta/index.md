@@ -2,7 +2,7 @@
 title: pole-control-plane 知识库
 tags: [meta, index]
 links: [schema, log]
-updated: 2026-06-21
+updated: 2026-07-20
 sources: 0
 ---
 
@@ -63,6 +63,7 @@ sources: 0
 ### 架构决策（technical/adr/）
 
 - [[adr-governance-rule-unified-storage]] — 治理规则统一存储与缓存更新决策 | adr, governance, storage, cache
+- [[adr-governance-request-parameter-capture]] — 治理请求参数采集与运行变量移除边界 | adr, governance, routing, ratelimit, sdk
 - [[adr-a2a-agent-registry]] — A2A Agent Registry 功能设计与分期 | adr, ai, a2a, mcp, registry
 - [[adr-console-oidc-identity-source]] — Console OIDC 用户来源与目录同步 | adr, auth, console, oidc, identity
 

@@ -2,11 +2,27 @@
 title: 任务计划与 Review
 tags: [tasks, todo]
 links: [lessons]
-updated: 2026-07-03
+updated: 2026-07-20
 sources: 0
 ---
 
 # 任务计划与 Review
+
+## 移除治理运行变量值来源
+
+- [x] 核对 `VARIABLE` 在 specification、Console、Go 后端、Rust SDK 与知识库的完整影响面
+- [x] 从 specification 删除 `VARIABLE` 并保留枚举号/名称不可复用约束，重新生成 Go/Rust 代码
+- [x] 从 Console 的值来源选项与归一化分支中移除运行变量
+- [x] 从 Rust SDK 路由与限流消费逻辑中移除机器环境变量读取
+- [x] 发布 specification `v0.1.0-ALPHA.35` 并更新 control-plane、Rust SDK 正式依赖
+- [x] 完成隔离测试、显式提交推送、all-mode 重建和真实页面验证
+
+Review：
+
+- specification 提交 `4e5e41e`，GitHub Release 与 crates.io 均已发布 `v0.1.0-ALPHA.35`；历史枚举号 `2` 和名称 `VARIABLE` 均被 reserved。
+- Rust SDK 对未知值类型 fail closed，不再读取机器环境变量；隔离暂存树测试通过，提交 `2b7b53f` 已推送 `develop`。
+- control-plane 删除运行变量选项和数值 `2` 映射，升级 ALPHA.35；隔离暂存树通过 Go 全量测试、前端 ESLint 与构建，提交 `99e96eb9` 已推送 `develop`。
+- all-mode 使用当前完整工作树重建，8080/8090 均返回 200；Playwright 验证值来源下拉只显示“固定值 / 请求参数”。
 
 ## 发布 specification 新 tag 并更新 control-plane
 
