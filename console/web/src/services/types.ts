@@ -25,7 +25,7 @@ export enum BaseURL {
 
 // MatchString 匹配方式
 // type: 'EXACT' | 'REGEX' | 'NOT_EQUALS' | 'IN' | 'NOT_IN' | 'RANGE'
-// value_type: 'TEXT' | 'PARAMETER' | 'VARIABLE'
+// value_type: 'TEXT' | 'PARAMETER'
 export enum MatchType {
     EXACT = 'EXACT',
     REGEX = 'REGEX',
@@ -74,13 +74,11 @@ export const MatchTypeOption = [
 export enum MatchValueType {
     TEXT = 'TEXT',
     PARAMETER = 'PARAMETER',
-    VARIABLE = 'VARIABLE',
 }
 
 export const MatchValueTypeMap = {
     'TEXT': '文本',
     'PARAMETER': '参数',
-    'VARIABLE': '变量',
 }
 
 export const MatchValueTypeOption = [
@@ -91,10 +89,6 @@ export const MatchValueTypeOption = [
     {
         label: MatchValueTypeMap[MatchValueType.PARAMETER],
         value: MatchValueType.PARAMETER,
-    },
-    {
-        label: MatchValueTypeMap[MatchValueType.VARIABLE],
-        value: MatchValueType.VARIABLE,
     },
 ]
 

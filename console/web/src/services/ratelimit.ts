@@ -402,10 +402,9 @@ function normalizeMatchValueType(type?: string | number): MatchValueType {
     const map: Record<number, MatchValueType> = {
         0: MatchValueType.TEXT,
         1: MatchValueType.PARAMETER,
-        2: MatchValueType.VARIABLE,
     };
     if (typeof type === 'number') return map[type] || MatchValueType.TEXT;
-    return (type as MatchValueType) || MatchValueType.TEXT;
+    return type === MatchValueType.PARAMETER ? MatchValueType.PARAMETER : MatchValueType.TEXT;
 }
 
 function normalizeLimitType(type?: LimitType | number): LimitType {
