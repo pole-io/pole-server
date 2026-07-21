@@ -1,0 +1,8 @@
+.git
+.codegraph
+**/node_modules
+data
+logs
+pole-server-release_*
+*.zip
+*.md5sum

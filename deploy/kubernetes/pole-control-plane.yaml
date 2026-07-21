@@ -1,0 +1,183 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pole-control-plane
+  namespace: pole-system
+  labels:
+    app.kubernetes.io/name: pole-control-plane
+    app.kubernetes.io/part-of: pole
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: pole-control-plane
+  ports:
+    - name: console
+      port: 8080
+      targetPort: console
+    - name: http-api
+      port: 8090
+      targetPort: http-api
+    - name: grpc-discovery
+      port: 8091
+      targetPort: grpc-discovery
+    - name: grpc-config
+      port: 8093
+      targetPort: grpc-config
+    - name: nacos
+      port: 8848
+      targetPort: nacos
+    - name: apollo
+      port: 8890
+      targetPort: apollo
+    - name: eureka
+      port: 8761
+      targetPort: eureka
+    - name: xds
+      port: 15010
+      targetPort: xds
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pole-control-plane
+  namespace: pole-system
+  labels:
+    app.kubernetes.io/name: pole-control-plane
+    app.kubernetes.io/part-of: pole
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pole-control-plane
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pole-control-plane
+        app.kubernetes.io/part-of: pole
+        pole.io/namespace: pole-system
+        pole.io/service: pole-control-plane
+    spec:
+      terminationGracePeriodSeconds: 30
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: pole-control-plane
+          image: pole-control-plane:local
+          imagePullPolicy: IfNotPresent
+          args: [start, -c, /work/pole-server.yaml, --mode, all]
+          env:
+            - name: MYSQL_HOST
+              value: pole-mysql:3306
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: pole-runtime-secrets
+                  key: MYSQL_USER
+            - name: MYSQL_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: pole-runtime-secrets
+                  key: MYSQL_PWD
+            - name: POLE_CONSOLE_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: pole-runtime-secrets
+                  key: CONSOLE_JWT_SECRET
+            - name: POLE_AUTH_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: pole-runtime-secrets
+                  key: AUTH_SALT
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: OTEL_COLLECTOR_GRPC_ENDPOINT
+              value: pole-otel-collector:4317
+            - name: OTEL_COLLECTOR_HTTP_ENDPOINT
+              value: http://pole-otel-collector:4318/v1/logs
+            - name: GREPTIMEDB_HTTP_ENDPOINT
+              value: http://pole-greptimedb:4000
+            - name: MYSQL_MAX_OPEN_CONNS
+              value: "20"
+            - name: MYSQL_MAX_IDLE_CONNS
+              value: "10"
+            - name: POLE_CLUSTER_NAME
+              value: local-k8s
+          ports:
+            - name: console
+              containerPort: 8080
+            - name: http-api
+              containerPort: 8090
+            - name: grpc-discovery
+              containerPort: 8091
+            - name: grpc-config
+              containerPort: 8093
+            - name: nacos
+              containerPort: 8848
+            - name: apollo
+              containerPort: 8890
+            - name: eureka
+              containerPort: 8761
+            - name: xds
+              containerPort: 15010
+          startupProbe:
+            tcpSocket:
+              port: console
+            failureThreshold: 60
+            periodSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /admin/v1/server/functions
+              port: console
+            periodSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /admin/v1/server/functions
+              port: console
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          volumeMounts:
+            - name: runtime-config
+              mountPath: /config-src/pole-server.yaml
+              subPath: pole-server.yaml
+              readOnly: true
+            - name: work
+              mountPath: /work
+            - name: runtime-data
+              mountPath: /app/data
+            - name: runtime-local-db
+              mountPath: /app/.pole_data
+            - name: runtime-logs
+              mountPath: /app/logs
+      volumes:
+        - name: runtime-config
+          configMap:
+            name: pole-runtime-config
+        - name: work
+          emptyDir: {}
+        - name: runtime-data
+          emptyDir: {}
+        - name: runtime-local-db
+          emptyDir: {}
+        - name: runtime-logs
+          emptyDir: {}

@@ -1,0 +1,181 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pole-otel-collector-config
+  namespace: pole-system
+  labels:
+    app.kubernetes.io/name: pole-otel-collector
+    app.kubernetes.io/part-of: pole
+data:
+  config.yaml: |
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 384
+      resource/pole_defaults:
+        attributes:
+          - key: pole.cluster
+            value: local-k8s
+            action: upsert
+          - key: deployment.environment.name
+            value: local
+            action: upsert
+          - key: k8s.namespace.name
+            value: pole-system
+            action: insert
+      batch:
+        timeout: 5s
+        send_batch_size: 1024
+
+    exporters:
+      otlp_http/greptime_traces:
+        endpoint: http://pole-greptimedb:4000/v1/otlp
+        headers:
+          x-greptime-pipeline-name: greptime_trace_v1
+        tls:
+          insecure: true
+      otlp_http/greptime_logs:
+        endpoint: http://pole-greptimedb:4000/v1/otlp
+        headers:
+          x-greptime-log-table-name: pole_events
+        tls:
+          insecure: true
+      otlp_http/greptime_metrics:
+        endpoint: http://pole-greptimedb:4000/v1/otlp
+        tls:
+          insecure: true
+      debug:
+        verbosity: basic
+
+    service:
+      extensions: [health_check]
+      telemetry:
+        metrics:
+          readers:
+            - pull:
+                exporter:
+                  prometheus:
+                    host: 0.0.0.0
+                    port: 8888
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, resource/pole_defaults, batch]
+          exporters: [otlp_http/greptime_traces, debug]
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, resource/pole_defaults, batch]
+          exporters: [otlp_http/greptime_metrics, debug]
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, resource/pole_defaults, batch]
+          exporters: [otlp_http/greptime_logs, debug]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pole-otel-collector
+  namespace: pole-system
+  labels:
+    app.kubernetes.io/name: pole-otel-collector
+    app.kubernetes.io/part-of: pole
+spec:
+  selector:
+    app.kubernetes.io/name: pole-otel-collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp-grpc
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
+    - name: metrics
+      port: 8888
+      targetPort: metrics
+    - name: health
+      port: 13133
+      targetPort: health
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pole-otel-collector
+  namespace: pole-system
+  labels:
+    app.kubernetes.io/name: pole-otel-collector
+    app.kubernetes.io/part-of: pole
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pole-otel-collector
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pole-otel-collector
+        app.kubernetes.io/part-of: pole
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.156.0
+          imagePullPolicy: IfNotPresent
+          args: [--config=/etc/otelcol/config.yaml]
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+            - name: otlp-http
+              containerPort: 4318
+            - name: metrics
+              containerPort: 8888
+            - name: health
+              containerPort: 13133
+          startupProbe:
+            httpGet:
+              path: /
+              port: health
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol/config.yaml
+              subPath: config.yaml
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: pole-otel-collector-config

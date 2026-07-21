@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v3"
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
@@ -84,12 +83,7 @@ func Start(configFilePath string, modeOverride ...string) {
 	}
 	cfg.Bootstrap.Mode = startMode
 
-	c, err := yaml.Marshal(cfg)
-	if err != nil {
-		fmt.Printf("[ERROR] config yaml marshal fail\n")
-		return
-	}
-	_, _ = fmt.Println(string(c))
+	fmt.Printf("[INFO] resolved start mode: %s\n", startMode)
 
 	// 初始化日志打印
 	if err = log.ConfigureFile(cfg.Bootstrap.Logger); err != nil {

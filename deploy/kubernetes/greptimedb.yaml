@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pole-greptimedb
+  namespace: pole-system
+  labels:
+    app.kubernetes.io/name: pole-greptimedb
+    app.kubernetes.io/part-of: pole
+spec:
+  selector:
+    app.kubernetes.io/name: pole-greptimedb
+  ports:
+    - name: http
+      port: 4000
+      targetPort: http
+    - name: grpc
+      port: 4001
+      targetPort: grpc
+    - name: mysql
+      port: 4002
+      targetPort: mysql
+    - name: postgres
+      port: 4003
+      targetPort: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pole-greptimedb
+  namespace: pole-system
+  labels:
+    app.kubernetes.io/name: pole-greptimedb
+    app.kubernetes.io/part-of: pole
+spec:
+  serviceName: pole-greptimedb
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pole-greptimedb
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pole-greptimedb
+        app.kubernetes.io/part-of: pole
+    spec:
+      terminationGracePeriodSeconds: 30
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: greptimedb
+          image: greptime/greptimedb:v1.1.3
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          args:
+            - standalone
+            - start
+            - --http-addr=0.0.0.0:4000
+            - --grpc-bind-addr=0.0.0.0:4001
+            - --mysql-addr=0.0.0.0:4002
+            - --postgres-addr=0.0.0.0:4003
+          ports:
+            - name: http
+              containerPort: 4000
+            - name: grpc
+              containerPort: 4001
+            - name: mysql
+              containerPort: 4002
+            - name: postgres
+              containerPort: 4003
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          volumeMounts:
+            - name: data
+              mountPath: /greptimedb_data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app.kubernetes.io/name: pole-greptimedb
+          app.kubernetes.io/part-of: pole
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 5Gi
