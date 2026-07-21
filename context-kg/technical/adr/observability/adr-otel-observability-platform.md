@@ -646,6 +646,14 @@ quickstart 也可以把第 1、2 步替换为 OpenObserve，用 OpenObserve 内�
 - Collector 配置接收 traces、metrics、logs 三类 OTLP signals，通过 GreptimeDB `/v1/otlp` 写入；logs 使用 `x-greptime-log-table-name: pole_events`，只用于结构化 event/audit。
 - 该 compose 不再是本地默认路径，也不会由 Kubernetes 部署脚本自动删除，避免误删已有 GreptimeDB volume。
 
+### Console Gateway 域名
+
+本地集群复用现有 `tidemind/tidemind-gateway`，不再为 Pole 单独安装 Ingress Controller。由于 Gateway 的 HTTP listener 只接受同 namespace Route，`pole-console` HTTPRoute 放在 `tidemind`，并由 `pole-system/allow-tidemind-pole-console` ReferenceGrant 按来源 namespace 和目标 Service 收敛跨 namespace 授权。
+
+- 本地域名：`pole.localhost`，依赖标准 `.localhost` 回环解析，无需修改 hosts。
+- `/agent` 与普通 Console 共用域名、Cookie 和认证边界。
+- GreptimeDB、Collector 和 MySQL 不加入 HTTPRoute，保持内部服务边界。
+
 生产演进路径：
 
 - Collector processor 增加资源属性标准化：cluster、namespace、service、instance、sdk、sidecar、rule。
@@ -822,7 +830,7 @@ SDK 和 sidecar 都可以上报业务侧数据，但职责不能重叠到互相�
 ## 证据
 
 - `deploy/conf/pole-server.yaml` 当前已有 `history`、`discoverEvent`、`statis` chain 配置。
-- `deploy/kubernetes/` 已包含本地镜像构建、部署脚本、Pole Deployment、Collector Deployment、GreptimeDB StatefulSet/PVC 和 MySQL ExternalName Service。
+- `deploy/kubernetes/` 已包含本地镜像构建、部署脚本、Pole Deployment、Collector Deployment、GreptimeDB StatefulSet/PVC、MySQL ExternalName Service、Console HTTPRoute 和跨 namespace ReferenceGrant。
 - OrbStack 实测三个 Pod 均 Ready；Console `/`、`/namespace`、`/agent`、`/login` 和入口静态资源返回 200。
 - Pod 内通过 `pole-mysql:3306` 读取到宿主机 `pole_server`、`pole_observability`；OTLP smoke event 经 Collector 写入 `pole_events` 并由 GreptimeDB SQL 返回一行。
 - `plugin/observability/` 当前已有 history、discoverevent、statis 三类插件实现。

@@ -29,6 +29,7 @@ kubectl apply -f "${manifest_dir}/mysql-external-service.yaml"
 kubectl apply -f "${manifest_dir}/greptimedb.yaml"
 kubectl apply -f "${manifest_dir}/otel-collector.yaml"
 kubectl apply -f "${manifest_dir}/pole-control-plane.yaml"
+kubectl apply -f "${manifest_dir}/gateway-route.yaml"
 
 kubectl -n "${namespace}" set image deployment/pole-control-plane \
   pole-control-plane="${image}"
@@ -49,4 +50,12 @@ kubectl -n "${namespace}" rollout status statefulset/pole-greptimedb --timeout=1
 kubectl -n "${namespace}" rollout status deployment/pole-otel-collector --timeout=180s
 kubectl -n "${namespace}" rollout status deployment/pole-control-plane --timeout=240s
 
+kubectl -n tidemind wait \
+  --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True \
+  httproute/pole-console --timeout=60s
+kubectl -n tidemind wait \
+  --for=jsonpath='{.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}'=True \
+  httproute/pole-console --timeout=60s
+
 kubectl -n "${namespace}" get pods,services,persistentvolumeclaims
+kubectl -n tidemind get httproute pole-console

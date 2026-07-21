@@ -1,0 +1,45 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: ReferenceGrant
+metadata:
+  name: allow-tidemind-pole-console
+  namespace: pole-system
+  labels:
+    app.kubernetes.io/name: pole-control-plane
+    app.kubernetes.io/part-of: pole
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: tidemind
+  to:
+    - group: ""
+      kind: Service
+      name: pole-control-plane
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: pole-console
+  namespace: tidemind
+  labels:
+    app.kubernetes.io/name: pole-control-plane
+    app.kubernetes.io/part-of: pole
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: tidemind-gateway
+      sectionName: http
+  hostnames:
+    - pole.localhost
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: pole-control-plane
+          namespace: pole-system
+          port: 8080
