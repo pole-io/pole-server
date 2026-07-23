@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { describeLimitClusters, RateLimitCluster } from 'services/ratelimit';
-import { Card, Space } from 'tdesign-react';
+import { Card, Space } from 'components/Fluent';
 import { openErrNotification } from 'utils/notifition';
 
 export interface IRateLimitClusterProps {

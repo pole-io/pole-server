@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const root = process.cwd();
 const files = {
+  fluent: 'src/components/Fluent/index.tsx',
   policyDetailView: 'src/pages/Auth/Policy/PolicyDetailView.tsx',
   policyEditor: 'src/pages/Auth/Policy/PolicyEditor.tsx',
   principalPolicyTable: 'src/pages/Auth/Principal/PrincipalPolicyTable.tsx',
@@ -21,6 +22,7 @@ const sources = Object.fromEntries(
 );
 
 const detail = sources.policyDetailView;
+const fluent = sources.fluent;
 const editor = sources.policyEditor;
 const principalPolicyTable = sources.principalPolicyTable;
 const style = sources.policyStyle;
@@ -112,9 +114,16 @@ assert.match(principalPolicyTable, /footer=\{false\}/,
   '主体关联策略详情抽屉不能展示关闭 footer');
 assert.match(detail, /<Tabs\s+className=\{style\.policyDetailTabs\}\s+defaultValue="principal">/,
   '策略详情 Tabs 内容区必须成为内部滚动容器');
+assert.match(detail, /colKey: 'group', title: '接口分组', width: 30[\s\S]*colKey: 'scope', title: '访问范围', width: 50[\s\S]*colKey: 'status',[\s\S]*width: 20/,
+  '可访问接口表格必须为所有列声明比例宽度，避免单个状态列占满表格');
+assert.match(detail, /<Loading className=\{style\.policyDetailLoading\}/,
+  '策略详情 Loading 必须进入自身的高度链');
+assert.match(fluent, /className=\{`fluent-loading \$\{className \|\| ''\}`\}/,
+  '共享 Loading 必须透传 className，供内容页建立高度链');
 
 for (const className of [
   'policyDetailDrawer',
+  'policyDetailLoading',
   'policyDetailView',
   'policyDetailTabs',
   'policySummary',
@@ -129,16 +138,20 @@ for (const className of [
 }
 
 assert.doesNotMatch(style, /\.policySummaryCopy\b/, '策略概要区不再需要复制 ID 按钮样式');
-assert.match(style, /\.policyDetailDrawer[\s\S]*:global\(\.t-drawer__body\)[\s\S]*overflow: hidden/,
+assert.match(style, /\.policyDetailDrawer[\s\S]*:global\(\.fui-DrawerBody\)[\s\S]*overflow: hidden/,
   '策略详情抽屉 body 必须隐藏外层滚动，把滚动交给内部内容区');
-assert.match(style, /\.policyDetailDrawer[\s\S]*:global\(\.t-drawer__body\)[\s\S]*overscroll-behavior: contain/,
+assert.match(style, /\.policyDetailDrawer[\s\S]*:global\(\.fui-DrawerBody\)[\s\S]*overscroll-behavior: contain/,
   '策略详情抽屉 body 必须阻止滚动链传到页面');
-assert.match(style, /\.policyDetailDrawer[\s\S]*:global\(\.t-loading__parent\)[\s\S]*flex: 1 1 auto/,
+assert.match(style, /\.policyDetailDrawer[\s\S]*:global\(\.fluent-loading\)[\s\S]*flex: 1 1 auto/,
   '策略详情抽屉必须把 Loading 中间层纳入 flex 高度链');
-assert.match(style, /\.policyDetailTabs[\s\S]*:global\(\.t-tabs__content\)[\s\S]*overflow: auto/,
+assert.match(style, /\.policyDetailTabs[\s\S]*:global\(\.fluent-tab-content\)[\s\S]*overflow: auto/,
   '策略详情 Tabs 内容区必须独立滚动');
-assert.match(style, /\.policyDetailTabs[\s\S]*:global\(\.t-tabs__content\)[\s\S]*overscroll-behavior: contain/,
+assert.match(style, /\.policyDetailTabs[\s\S]*:global\(\.fluent-tab-content\)[\s\S]*overscroll-behavior: contain/,
   '策略详情 Tabs 内容区必须阻止滚动链传到页面');
+assert.match(style, /\.policyDetailTabs[\s\S]*:global\(\.fluent-tab-content\) > div[\s\S]*display: flex/,
+  '策略详情活动页签必须成为 flex 容器，资源 pane 才能获得受限高度');
+assert.match(style, /\.policyDetailTabs[\s\S]*:global\(\.fluent-tab-content\) > div[\s\S]*width: 100%[\s\S]*flex-direction: column/,
+  '策略详情活动页签必须满宽纵向排列，成员信息不能按内容宽度收缩');
 assert.match(style, /\.policyResourceShell[\s\S]*height: 100%/,
   '资源信息页签必须接入 Tabs 内容区高度，避免整个页签外层滚动');
 assert.match(style, /\.policyResourceShell[\s\S]*min-height: 0/,

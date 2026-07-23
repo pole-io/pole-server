@@ -8,8 +8,8 @@
 
 .ruleListPane {
   min-width: 0;
-  background: #fff;
-  border: 1px solid #e7ebf0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
   padding: 0 16px 16px;
 }
@@ -34,7 +34,7 @@
 }
 
 .ruleDesc {
-  color: #86909c;
+  color: var(--app-text-tertiary);
   font-size: 12px;
   line-height: 18px;
   margin-top: 3px;
@@ -47,54 +47,55 @@
 .editor {
   padding: 16px 20px 32px;
 
-  :global(.t-form) {
+  :global(.fluent-form) {
     display: grid;
     gap: 16px;
   }
 
-  :global(.t-form__item) {
+  :global(.fluent-form-item) {
     display: block;
     margin-bottom: 0;
     min-width: 0;
   }
 
-  :global(.t-form__label) {
+  :global(.fluent-form-item__label) {
     display: block;
     width: auto !important;
     padding: 0 0 6px;
-    color: #667085;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
     text-align: left;
   }
 
-  :global(.t-form__controls) {
+  :global(.fluent-form-item__control) {
     display: block;
     margin-left: 0 !important;
   }
 
-  :global(.t-form__controls-content),
-  :global(.t-input__wrap),
-  :global(.t-select),
-  :global(.t-input-number),
-  :global(.t-textarea__inner) {
+  :global(.fluent-form-item__control),
+  :global(.fui-Input),
+  :global(.fui-Dropdown),
+  :global(.fluent-number-input),
+  :global(.fui-Textarea__textarea) {
     width: 100%;
   }
 }
 
 .securityEditorShell {
+  align-content: start;
   display: grid;
   gap: 0;
   grid-template-columns: minmax(0, 1fr);
-  height: calc(100vh - 190px);
-  min-height: 620px;
-  overflow: hidden;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
 }
 
 .formPane {
   min-height: 0;
-  overflow: auto;
-  padding-right: 16px;
+  overflow: visible;
+  padding-right: 0;
 }
 
 .formPane > div {
@@ -107,8 +108,8 @@
 }
 
 .securityPartition {
-  background: #fbfcfe;
-  border: 1px solid #e6ebf3;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
   display: grid;
   gap: 12px;
@@ -123,7 +124,7 @@
 }
 
 .partitionTitle {
-  color: #111827;
+  color: var(--app-text);
   font-size: 14px;
   font-weight: 600;
   line-height: 22px;
@@ -132,7 +133,7 @@
 .partitionDesc,
 .sectionHint,
 .inlineHint {
-  color: #667085;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }
@@ -142,14 +143,65 @@
 }
 
 .serviceInfoHint {
-  background: #f8fbff;
-  border: 1px solid #dce8ff;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  color: #4e5969;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 20px;
   margin-bottom: 16px;
   padding: 10px 12px;
+}
+
+.securityServiceInfoFields {
+  display: grid;
+  gap: 18px;
+  max-inline-size: 560px;
+}
+
+.securityServiceInfoField {
+  min-width: 0;
+}
+
+.authenticationSummary,
+.authenticationModePanel {
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.authenticationSummary {
+  align-items: flex-start;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.managedCallerSummary {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 6px;
+  color: var(--app-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
+.authenticationEditor {
+  display: grid;
+  gap: 14px;
+}
+
+.managedCallerEditor {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.managedCallerSelect {
+  inline-size: min(100%, 560px);
+  min-inline-size: min(280px, 100%);
 }
 
 .inlineHint {
@@ -161,149 +213,83 @@
   gap: 8px;
 }
 
+.interfaceViewport {
+  display: grid;
+  gap: 8px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .interfaceHeader,
 .interfaceRow {
   align-items: center;
   display: grid;
   gap: 8px;
-  grid-template-columns: minmax(92px, .8fr) minmax(92px, .8fr) minmax(108px, .9fr) minmax(160px, 1.5fr) minmax(96px, .8fr) 32px;
-  min-width: 0;
+  grid-template-columns: 80px 80px 104px minmax(144px, 1fr) 32px;
+  min-width: 620px;
 }
 
 .interfaceHeader {
-  color: #667085;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
   padding: 0 10px;
 }
 
 .interfaceRow {
-  background: #fff;
-  border: 1px solid #e6ebf3;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 6px;
   padding: 8px 10px;
 }
 
-.interfaceRow > :global(.t-input__wrap),
-.interfaceRow > :global(.t-select) {
+.interfaceRow > * {
   min-width: 0;
+}
+
+.interfaceRow > :global([role='combobox']),
+.interfaceRow > :global(.fui-Input) {
+  min-width: 0;
+  width: 100%;
+}
+
+.interfaceRow > :global(.fui-Button) {
+  background: var(--app-surface);
+  justify-self: end;
+  min-width: 32px;
+  padding: 0;
+  width: 32px;
+  position: sticky;
+  right: 0;
+  z-index: 2;
+}
+
+.interfaceHeader > :first-child,
+.interfaceRow > :first-child {
+  background: var(--app-surface);
+  left: 0;
+  position: sticky;
+  z-index: 2;
+}
+
+.interfaceHeader > :first-child,
+.interfaceHeader > :last-child {
+  background: var(--app-surface-subtle);
+  z-index: 3;
+}
+
+.interfaceHeader > :last-child {
+  position: sticky;
+  right: 0;
+}
+
+/* RPC 的 path 承载 service/interface，method 只作可选收窄条件；前者必须优先获得可读宽度。 */
+.rpcInterfaceRow {
+  grid-template-columns: 80px minmax(280px, 2fr) 104px minmax(160px, 0.7fr) 32px;
 }
 
 .serviceListTypeSelect {
   width: 160px;
-}
-
-.specPane {
-  border-left: 1px solid #d7dde8;
-  display: flex;
-  min-height: 0;
-  min-width: 0;
-}
-
-.specCard {
-  background: #0b1119;
-  border: 0;
-  border-radius: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  min-height: 0;
-  overflow: hidden;
-  width: 100%;
-}
-
-.specToolbar {
-  align-items: flex-start;
-  background: #101823;
-  border-bottom: 1px solid #243044;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 14px 18px;
-}
-
-.specTitle {
-  color: #b8c3d4;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: .08em;
-  line-height: 22px;
-}
-
-.specDesc {
-  color: #7f8ca3;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.specActions {
-  align-items: center;
-  display: flex;
-  gap: 8px;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.specToggle {
-  background: #0b1119;
-  border: 1px solid #334155;
-  border-radius: 7px;
-  display: inline-flex;
-  padding: 2px;
-}
-
-.specToggle button {
-  background: transparent;
-  border: 0;
-  border-radius: 5px;
-  color: #8b95a5;
-  cursor: pointer;
-  font-size: 12px;
-  height: 26px;
-  min-width: 52px;
-  padding: 0 10px;
-}
-
-.specToggleActive {
-  background: #366ef4 !important;
-  color: #fff !important;
-}
-
-.specCode {
-  color: #d8dee9;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
-  line-height: 19px;
-  margin: 0;
-  min-height: 0;
-  overflow: auto;
-  overflow-wrap: anywhere;
-  padding: 16px 18px;
-  white-space: pre-wrap;
-}
-
-.specFooterOk,
-.specFooterError {
-  border-top: 1px solid #243044;
-  display: grid;
-  font-size: 12px;
-  gap: 4px;
-  line-height: 18px;
-  padding: 10px 18px;
-}
-
-.specFooterOk {
-  background: #0f1c18;
-  color: #9ee6c3;
-}
-
-.specFooterError {
-  background: #241716;
-  color: #f3aaa6;
-}
-
-.previewOk,
-.previewError {
-  display: block;
 }
 
 /* 可增删的结构化行编辑器（接口范围 / 匹配条件 / 标签 / 响应头）统一为单行对齐栅格 */
@@ -335,7 +321,7 @@
 }
 
 .repeatMetaHint {
-  color: #8b95a5;
+  color: var(--app-text-secondary);
   flex: none;
   font-size: 12px;
   white-space: nowrap;
@@ -365,8 +351,8 @@
 /* 匹配条件 / 标签：来源 / Key / 匹配方式 / 值 / 值类型 / 删除 —— 单行卡片 */
 .conditionRow {
   align-items: center;
-  background: #fbfcfe;
-  border: 1px solid #e6ebf3;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 6px;
   display: grid;
   gap: 8px;
@@ -377,8 +363,8 @@
 
 .mockConditionRow {
   align-items: center;
-  background: #fbfcfe;
-  border: 1px solid #e6ebf3;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 6px;
   display: grid;
   gap: 8px;
@@ -396,16 +382,16 @@
 }
 
 .mirrorExecuteGrid > div,
-.mirrorExecuteGrid > div > :global(.t-input-number),
-.mirrorExecuteGrid > div > :global(.t-select) {
+.mirrorExecuteGrid > div > :global(.fluent-number-input),
+.mirrorExecuteGrid > div > :global(.fui-Dropdown) {
   min-width: 0;
 }
 
 /* 标签：Key / 匹配方式 / 值 / 值类型 / 删除 —— 单行卡片 */
 .labelRow {
   align-items: center;
-  background: #fbfcfe;
-  border: 1px solid #e6ebf3;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 6px;
   display: grid;
   gap: 8px;
@@ -417,8 +403,8 @@
 /* 响应头：Key / Value / 删除 —— 单行 */
 .kvRow {
   align-items: center;
-  background: #fbfcfe;
-  border: 1px solid #e6ebf3;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 6px;
   display: grid;
   gap: 8px;
@@ -427,17 +413,17 @@
   padding: 8px 10px;
 }
 
-.conditionRow > :global(.t-input__wrap),
-.conditionRow > :global(.t-select),
-.mockConditionRow > :global(.t-input__wrap),
-.mockConditionRow > :global(.t-select),
-.labelRow > :global(.t-input__wrap),
-.labelRow > :global(.t-select),
-.kvRow > :global(.t-input__wrap),
-.apiEditor > :global(.t-input__wrap),
-.apiEditor > :global(.t-select),
-.mockApiEditor > :global(.t-input__wrap),
-.mockApiEditor > :global(.t-select) {
+.conditionRow > :global(.fui-Input),
+.conditionRow > :global(.fui-Dropdown),
+.mockConditionRow > :global(.fui-Input),
+.mockConditionRow > :global(.fui-Dropdown),
+.labelRow > :global(.fui-Input),
+.labelRow > :global(.fui-Dropdown),
+.kvRow > :global(.fui-Input),
+.apiEditor > :global(.fui-Input),
+.apiEditor > :global(.fui-Dropdown),
+.mockApiEditor > :global(.fui-Input),
+.mockApiEditor > :global(.fui-Dropdown) {
   min-width: 0;
 }
 
@@ -456,10 +442,10 @@
 
 /* Mock 响应体只读展示 */
 .bodyView {
-  background: #fbfcfe;
-  border: 1px solid #e3e8f2;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  color: #1f2937;
+  color: var(--app-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 12px;
   line-height: 18px;
@@ -471,8 +457,8 @@
 }
 
 .mockScopeHint {
-  background: #fbfcfe;
-  border: 1px solid #e6ebf3;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
   display: grid;
   gap: 14px;
@@ -483,8 +469,8 @@
 
 .mirrorRuleFooter {
   align-items: flex-start;
-  background: #fbfcfe;
-  border: 1px solid #e6ebf3;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
   display: flex;
   gap: 14px;
@@ -500,10 +486,10 @@
 }
 
 .flowLine span:not(.flowArrow) {
-  background: #f3f6fb;
-  border: 1px solid #dbe3ef;
+  background: var(--app-brand-subtle);
+  border: 1px solid var(--app-border);
   border-radius: 6px;
-  color: #1f2937;
+  color: var(--app-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 12px;
   line-height: 18px;
@@ -518,14 +504,14 @@
 }
 
 .mockResponsePanel {
-  background: #fbfcfe;
-  border: 1px solid #e2e8f0;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .mockResponseSection {
-  border-bottom: 1px solid #e6ebf3;
+  border-bottom: 1px solid var(--app-border-subtle);
   padding: 14px;
 }
 
@@ -534,7 +520,7 @@
 }
 
 .mockResponseTitle {
-  color: #111827;
+  color: var(--app-text);
   font-size: 13px;
   font-weight: 600;
   line-height: 20px;
@@ -548,7 +534,7 @@
 }
 
 .mockOrderHint {
-  color: #667085;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
   margin-top: 8px;
@@ -598,7 +584,7 @@
 }
 
 .mockReturnCode {
-  color: #d8dee9;
+  color: var(--app-border-subtle);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 12px;
   line-height: 19px;
@@ -615,7 +601,7 @@
 }
 
 .dialogSubTitle {
-  color: #667085;
+  color: var(--app-text-secondary);
   font-size: 12px;
   font-weight: 400;
   line-height: 18px;
@@ -634,22 +620,6 @@
 
 /* 窄屏：可增删行退化为单列堆叠，删除按钮回流到行尾 */
 @media (max-width: 900px) {
-  .securityEditorShell {
-    grid-template-columns: 1fr;
-    height: auto;
-    min-height: 0;
-    overflow: visible;
-  }
-
-  .formPane {
-    overflow: visible;
-    padding-right: 0;
-  }
-
-  .specPane {
-    display: none;
-  }
-
   .apiEditor,
   .mockApiEditor,
   .conditionRow,
@@ -657,11 +627,6 @@
   .labelRow,
   .kvRow,
   .mirrorExecuteGrid,
-  .interfaceHeader,
-  .interfaceRow {
-    grid-template-columns: 1fr;
-  }
-
   .mockScopeHint,
   .mockResponseGrid {
     grid-template-columns: 1fr;
@@ -671,7 +636,4 @@
     flex-direction: column;
   }
 
-  .interfaceHeader {
-    display: none;
-  }
 }

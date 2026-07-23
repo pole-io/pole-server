@@ -6,7 +6,7 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
-  color: #1f2937;
+  color: var(--app-text);
 }
 
 .header {
@@ -16,7 +16,7 @@
   gap: 24px;
   flex: 0 0 auto;
   padding: 4px 0 22px;
-  border-bottom: 1px solid #e5e8ef;
+  border-bottom: 1px solid var(--app-border-subtle);
 
   h2 {
     margin: 4px 0 6px;
@@ -28,7 +28,7 @@
   p {
     max-width: 640px;
     margin: 0;
-    color: #5f6b7a;
+    color: var(--app-text-secondary);
     font-size: 14px;
     line-height: 22px;
   }
@@ -65,6 +65,41 @@
   margin: 20px;
 }
 
+.aliasViewGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 24px;
+  padding: 8px 0 24px;
+
+  > div {
+    min-width: 0;
+  }
+
+  span,
+  strong {
+    display: block;
+  }
+
+  span {
+    margin-bottom: 6px;
+    color: var(--app-text-secondary);
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  strong {
+    overflow-wrap: anywhere;
+    color: var(--app-text);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 22px;
+  }
+}
+
+.aliasViewWide {
+  grid-column: 1 / -1;
+}
+
 .aliasDetailSection {
   display: grid;
   gap: 12px;
@@ -81,11 +116,22 @@
 }
 
 .aliasDetailActions {
-  display: grid;
-  grid-template-columns: auto minmax(180px, 260px) auto auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: center;
   justify-content: end;
+
+  .filterInput {
+    flex: 1 1 220px;
+    width: min(260px, 100%);
+    min-width: 180px;
+  }
+
+  :global(.fui-Button) {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
 }
 
 .metricRail {
@@ -93,9 +139,9 @@
   grid-template-columns: repeat(3, minmax(132px, 1fr));
   flex: 0 0 auto;
   margin: 0;
-  border: 1px solid #e5e8ef;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fbfcfd;
+  background: var(--app-surface-subtle);
 }
 
 .listSection {
@@ -110,7 +156,7 @@
 .metricItem {
   min-height: 74px;
   padding: 14px 18px;
-  border-right: 1px solid #e5e8ef;
+  border-right: 1px solid var(--app-border-subtle);
 
   &:last-child {
     border-right: 0;
@@ -118,7 +164,7 @@
 
   span {
     display: block;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -126,7 +172,7 @@
   strong {
     display: block;
     margin-top: 4px;
-    color: #111827;
+    color: var(--app-text);
     font-size: 24px;
     font-weight: 650;
     line-height: 30px;
@@ -156,7 +202,7 @@
   min-width: 180px;
 
   strong {
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     font-weight: 600;
     line-height: 22px;
@@ -164,7 +210,7 @@
 
   span {
     margin-left: 10px;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -187,30 +233,31 @@
 }
 
 .tableSurface {
-  overflow-x: auto;
-  overflow-y: hidden;
-  border: 1px solid #e5e8ef;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-surface);
 
-  :global(.t-table) {
+  :global(.fluent-table-shell) {
     width: 100%;
-    min-width: 1040px;
+    min-width: 0;
+    max-width: 100%;
   }
 
-  :global(.t-table th) {
+  :global(.fluent-table-shell th) {
     padding: 14px;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-weight: 500;
     white-space: nowrap;
   }
 
-  :global(.t-table td) {
+  :global(.fluent-table-shell td) {
     padding: 14px;
     vertical-align: middle;
   }
 
-  :global(.t-table__pagination) {
+  :global(.fluent-pagination) {
     padding: 16px 18px;
   }
 }
@@ -222,22 +269,21 @@
   min-height: 0;
   overflow: hidden;
 
-  :global(.t-table) {
+  :global(.fluent-table-shell) {
     display: flex;
     flex: 1 1 auto;
     flex-direction: column;
     min-height: 0;
   }
 
-  :global(.t-table__content) {
+  :global(.fluent-table-scroll) {
     flex: 1 1 auto;
     min-height: 0;
     overflow: auto;
     overscroll-behavior: contain;
   }
 
-  :global(.t-table__pagination-wrap),
-  :global(.t-table__pagination) {
+  :global(.fluent-pagination) {
     flex: 0 0 auto;
   }
 }
@@ -247,18 +293,22 @@
     min-width: 720px;
   }
 
-  :global(.t-table) {
+  :global(.fluent-table-shell) {
+    min-width: 0;
+  }
+
+  :global(.fluent-table-scroll table) {
     min-width: 720px;
   }
 
-  :global(.t-table__empty) {
+  :global(.fluent-table-state) {
     box-sizing: border-box;
     height: 92px;
     min-height: 92px;
     padding: 18px 0;
   }
 
-  :global(.t-table__pagination) {
+  :global(.fluent-pagination) {
     padding: 12px 16px;
   }
 }
@@ -266,14 +316,14 @@
 .aliasSummaryBar {
   display: grid;
   grid-template-columns: minmax(220px, 1.4fr) repeat(2, minmax(120px, 1fr));
-  border-bottom: 1px solid #e5e8ef;
-  background: #fbfcfd;
+  border-bottom: 1px solid var(--app-border-subtle);
+  background: var(--app-surface-subtle);
 }
 
 .aliasSummaryItem {
   min-height: 64px;
   padding: 12px 16px;
-  border-right: 1px solid #e5e8ef;
+  border-right: 1px solid var(--app-border-subtle);
 
   &:last-child {
     border-right: 0;
@@ -282,7 +332,7 @@
 
 .aliasSummaryLabel {
   display: block;
-  color: #697586;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }
@@ -290,7 +340,7 @@
 .aliasSummaryValue {
   display: block;
   margin-top: 4px;
-  color: #111827;
+  color: var(--app-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 16px;
   font-weight: 650;
@@ -301,17 +351,17 @@
 }
 
 .aliasDrawer {
-  :global(.t-drawer__body) {
+  :global(.fui-DrawerBody) {
     overflow-y: auto;
   }
 }
 
 .aliasReadonlyValue {
   min-height: 32px;
-  border: 1px solid #d9e1ec;
+  border: 1px solid var(--app-border);
   border-radius: 4px;
-  background: #f7f9fc;
-  color: #111827;
+  background: var(--app-surface-subtle);
+  color: var(--app-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   line-height: 30px;
   padding: 0 12px;
@@ -324,13 +374,18 @@
 .serviceForm {
   height: 100%;
 
-  :global(.t-form__item) {
+  :global(.fluent-form-item) {
     margin-bottom: 0;
   }
 
-  :global(.t-form__label) {
-    color: #4b5565;
+  :global(.fluent-form-item__label) {
+    color: var(--app-text);
     font-size: 13px;
+  }
+
+  :global(.fui-Input),
+  :global(.fui-Combobox) {
+    width: min(640px, 100%);
   }
 }
 
@@ -358,7 +413,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 14px;
-  color: #111827;
+  color: var(--app-text);
   font-size: 14px;
   font-weight: 600;
   line-height: 22px;
@@ -376,7 +431,7 @@
     display: block;
     flex: 1 1 auto;
     height: 1px;
-    background: #e5e8ef;
+    background: var(--app-border-subtle);
     content: "";
   }
 }
@@ -388,7 +443,7 @@
   gap: 12px;
   margin-left: 104px;
   margin-top: 6px;
-  color: #697586;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }
@@ -406,24 +461,19 @@
   line-height: 18px;
 }
 
+.readonlyField {
+  min-height: 32px;
+  color: var(--app-text);
+  font-size: 14px;
+  line-height: 32px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .serviceFormFooter {
   margin-top: 4px;
   padding-top: 2px;
-}
-
-@media (min-width: 1260px) {
-  .tableSurface {
-    :global(.t-table__content) {
-      overflow-x: hidden;
-    }
-  }
-
-  .serviceTableSurface {
-    :global(.t-table__content) {
-      overflow-x: hidden;
-      overflow-y: auto;
-    }
-  }
 }
 
 .serviceCell {
@@ -442,7 +492,7 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 3px;
-  color: #697586;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
 
@@ -455,14 +505,15 @@
 }
 
 .compactCell {
-  min-width: 120px;
+  min-width: 0;
+  overflow: hidden;
 
   span {
     display: block;
-    max-width: 220px;
+    max-width: 100%;
     margin-top: 3px;
     overflow: hidden;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
     text-overflow: ellipsis;
@@ -482,14 +533,14 @@
   }
 
   strong {
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     font-weight: 600;
     line-height: 20px;
   }
 
   span {
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -499,7 +550,7 @@
   height: 6px;
   overflow: hidden;
   border-radius: 999px;
-  background: #e5e8ef;
+  background: var(--app-border-subtle);
 
   i {
     display: block;
@@ -510,85 +561,36 @@
 }
 
 .actionCell {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-width: 0;
-
-  :global(.t-button) {
-    width: 28px;
-    height: 28px;
-  }
-}
-
-.serviceView {
-  color: #1f2937;
-}
-
-.viewSection {
-  border: 1px solid #e5e8ef;
-  border-radius: 8px;
-  background: #fff;
-  padding: 16px;
-}
-
-.viewGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 18px;
-}
-
-.viewField,
-.viewFieldFull {
-  min-width: 0;
-}
-
-.viewFieldFull {
-  grid-column: 1 / -1;
-}
-
-.viewLabel {
-  display: block;
-  color: #697586;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.viewValue {
-  display: block;
-  margin-top: 4px;
-  color: #1f2937;
-  font-size: 14px;
-  line-height: 22px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.labelList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 6px;
-  color: #4e5969;
-  font-size: 13px;
-  line-height: 20px;
-
-  span {
-    border: 1px solid #d9e1ec;
-    border-radius: 4px;
-    background: #f7f9fc;
-    padding: 2px 8px;
-  }
+  margin: 0;
 }
 
 .toolBar {
-  color: #666;
+  color: var(--app-text-secondary);
   margin-bottom: 20px;
 }
 
 @media (max-width: 980px) {
+  .page {
+    height: auto;
+    min-height: calc(100vh - 113px);
+    overflow: visible;
+  }
+
+  .serviceWorkspace,
+  .workspace,
+  .listSection {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .serviceTableSurface {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 100%;
+    min-height: 420px;
+  }
+
   .header,
   .filterBar {
     flex-direction: column;
@@ -609,12 +611,7 @@
   }
 
   .aliasDetailActions {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-
-    :global(.t-button--theme-primary) {
-      grid-column: 1 / -1;
-      width: fit-content;
-    }
+    justify-content: flex-start;
   }
 
   .aliasSummaryBar {
@@ -623,7 +620,7 @@
 
   .aliasSummaryItem {
     border-right: 0;
-    border-bottom: 1px solid #e5e8ef;
+    border-bottom: 1px solid var(--app-border-subtle);
 
     &:last-child {
       border-bottom: 0;

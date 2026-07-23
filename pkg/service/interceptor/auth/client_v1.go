@@ -109,6 +109,12 @@ func (svr *Server) GetServiceWithCache(
 	return svr.nextSvr.GetServiceWithCache(ctx, req)
 }
 
+// GetServiceIdentity has its own fail-closed service-token authentication path.
+// It must not inherit the configurable anonymous behavior of generic client auth.
+func (svr *Server) GetServiceIdentity(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+	return svr.nextSvr.GetServiceIdentity(ctx, req)
+}
+
 // ServiceInstancesCache is the interface for getting service instances cache
 func (svr *Server) ServiceInstancesCache(
 	ctx context.Context, filter *apiservice.DiscoverFilter, req *apiservice.Service) *apiservice.DiscoverResponse {

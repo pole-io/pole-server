@@ -29,6 +29,8 @@ var (
 		"user_groups":          apisecurity.ResourceType_UserGroups,
 		"roles":                apisecurity.ResourceType_Roles,
 		"auth_policies":        apisecurity.ResourceType_PolicyRules,
+		"mcp_servers":          apisecurity.ResourceType_MCPServerResources,
+		"a2a_agents":           apisecurity.ResourceType_A2AAgentResources,
 	}
 
 	resourceFieldPointerGetters = map[apisecurity.ResourceType]func(*apisecurity.StrategyResources) reflect.Value{
@@ -127,6 +129,18 @@ var (
 				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
 			}
 			return reflect.ValueOf(&as.AuthPolicies)
+		},
+		apisecurity.ResourceType_MCPServerResources: func(as *apisecurity.StrategyResources) reflect.Value {
+			if as.GetMcpServers() == nil {
+				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
+			}
+			return reflect.ValueOf(&as.McpServers)
+		},
+		apisecurity.ResourceType_A2AAgentResources: func(as *apisecurity.StrategyResources) reflect.Value {
+			if as.GetA2AAgents() == nil {
+				return reflect.ValueOf(&[]*apisecurity.StrategyResourceEntry{})
+			}
+			return reflect.ValueOf(&as.A2AAgents)
 		},
 	}
 )

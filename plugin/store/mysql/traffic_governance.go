@@ -109,7 +109,7 @@ func (s *trafficGovernanceStore) getMoreRules(ruleType governanceRuleType, mtime
 	return out, nil
 }
 
-func (s *trafficGovernanceStore) lockRule(ruleType governanceRuleType, tx store.Tx, name string,
+func (s *trafficGovernanceStore) lockRule(ruleType governanceRuleType, tx store.Tx, namespace, name string,
 	fromRecord func(*governanceRuleRecord) (*rules.TrafficGovernanceRule, error),
 ) (*rules.TrafficGovernanceRule, error) {
 	if tx == nil {
@@ -118,7 +118,7 @@ func (s *trafficGovernanceStore) lockRule(ruleType governanceRuleType, tx store.
 	if name == "" {
 		return nil, ErrorMissingParams
 	}
-	record, err := s.repo().LockRule(tx, ruleType, name)
+	record, err := s.repo().LockRule(tx, ruleType, name, namespace, name)
 	if err != nil {
 		return nil, store.Error(err)
 	}
@@ -202,8 +202,8 @@ func (s *trafficSecurityStore) GetOneTrafficSecurityRule(id string) (*rules.Traf
 func (s *trafficSecurityStore) GetMoreTrafficSecurityRules(mtime time.Time, firstUpdate bool) ([]*rules.TrafficGovernanceRule, error) {
 	return s.getMoreRules(governanceRuleTypeTrafficSecurity, mtime, firstUpdate, governanceRuleRecordToTrafficSecurityRule)
 }
-func (s *trafficSecurityStore) LockTrafficSecurityRule(tx store.Tx, name string) (*rules.TrafficGovernanceRule, error) {
-	return s.lockRule(governanceRuleTypeTrafficSecurity, tx, name, governanceRuleRecordToTrafficSecurityRule)
+func (s *trafficSecurityStore) LockTrafficSecurityRule(tx store.Tx, namespace, name string) (*rules.TrafficGovernanceRule, error) {
+	return s.lockRule(governanceRuleTypeTrafficSecurity, tx, namespace, name, governanceRuleRecordToTrafficSecurityRule)
 }
 func (s *trafficSecurityStore) GetTrafficSecurityRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error) {
 	return s.repo().QueryReleaseVersions(ctx, governanceRuleTypeTrafficSecurity, apimodel.RuleRelease_TrafficSecurityRules, filter, offset, limit)
@@ -245,8 +245,8 @@ func (s *trafficMirrorStore) GetOneTrafficMirrorRule(id string) (*rules.TrafficG
 func (s *trafficMirrorStore) GetMoreTrafficMirrorRules(mtime time.Time, firstUpdate bool) ([]*rules.TrafficGovernanceRule, error) {
 	return s.getMoreRules(governanceRuleTypeTrafficMirror, mtime, firstUpdate, governanceRuleRecordToTrafficMirrorRule)
 }
-func (s *trafficMirrorStore) LockTrafficMirrorRule(tx store.Tx, name string) (*rules.TrafficGovernanceRule, error) {
-	return s.lockRule(governanceRuleTypeTrafficMirror, tx, name, governanceRuleRecordToTrafficMirrorRule)
+func (s *trafficMirrorStore) LockTrafficMirrorRule(tx store.Tx, namespace, name string) (*rules.TrafficGovernanceRule, error) {
+	return s.lockRule(governanceRuleTypeTrafficMirror, tx, namespace, name, governanceRuleRecordToTrafficMirrorRule)
 }
 func (s *trafficMirrorStore) GetTrafficMirrorRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error) {
 	return s.repo().QueryReleaseVersions(ctx, governanceRuleTypeTrafficMirror, apimodel.RuleRelease_TrafficMirrorRules, filter, offset, limit)
@@ -288,8 +288,8 @@ func (s *trafficMockStore) GetOneTrafficMockRule(id string) (*rules.TrafficGover
 func (s *trafficMockStore) GetMoreTrafficMockRules(mtime time.Time, firstUpdate bool) ([]*rules.TrafficGovernanceRule, error) {
 	return s.getMoreRules(governanceRuleTypeTrafficMock, mtime, firstUpdate, governanceRuleRecordToTrafficMockRule)
 }
-func (s *trafficMockStore) LockTrafficMockRule(tx store.Tx, name string) (*rules.TrafficGovernanceRule, error) {
-	return s.lockRule(governanceRuleTypeTrafficMock, tx, name, governanceRuleRecordToTrafficMockRule)
+func (s *trafficMockStore) LockTrafficMockRule(tx store.Tx, namespace, name string) (*rules.TrafficGovernanceRule, error) {
+	return s.lockRule(governanceRuleTypeTrafficMock, tx, namespace, name, governanceRuleRecordToTrafficMockRule)
 }
 func (s *trafficMockStore) GetTrafficMockRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error) {
 	return s.repo().QueryReleaseVersions(ctx, governanceRuleTypeTrafficMock, apimodel.RuleRelease_TrafficMockRules, filter, offset, limit)

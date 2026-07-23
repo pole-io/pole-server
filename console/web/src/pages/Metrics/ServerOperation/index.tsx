@@ -1,234 +1,530 @@
-import React, { memo } from 'react';
-import { Button, Loading, PageInfo, PrimaryTableProps, TableProps, Table, Col, Space, Row, Select, Card, Input, TimeRangePicker, DateRangePicker, DateRangePickerProps } from 'tdesign-react';
+import React from 'react';
+import dayjs from 'dayjs';
+import { Button, DateRangePicker, DateRangePickerProps, Drawer, Empty, Input, Select, Table, TableColumnData, Tag } from 'components/Fluent';
+import { FilterIcon, InfoCircleIcon, RefreshIcon, SearchIcon, ToolsCircleIcon, UserIcon } from 'components/Fluent/icons';
+import { describeOperationLog, getOperationTypeInfo, getResourceTypeInfo, OperationLog, OperationType, ResourceType } from 'services/observer';
+import { describeObservabilityOperations } from 'services/observability';
+import ErrorPage from 'components/ErrorPage';
 
 import style from './index.module.less';
-import { describeEventLog, describeOperationLog, EventType, getEventTypeInfo, getOperationTypeInfo, getResourceTypeInfo, OperationType, ResourceType } from 'services/observer';
-import { openErrNotification } from 'utils/notifition';
-import ErrorPage from 'components/ErrorPage';
-import dayjs from 'dayjs';
-import { FileCopyIcon } from 'tdesign-icons-react';
-import { copyToClipboard } from 'utils/sys';
 
-const ServerError = () => <ErrorPage code={500} />;
+type DataSource = 'remote' | 'mock';
 
-// resource_type: string;
-// resource_name: string;
-// namespace: string;
-// operator: string;
-// operation_type: string;
-// detail: string;
-// server: string; // 服务器名，用于区分生成记录的服务器
-// happen_time: string; // 时间字符串
-const columns: TableProps['columns'] = [
-  {
-    colKey: 'resource_type',
-    title: '资源类型',
-    cell: ({ row }) => {
-      return getResourceTypeInfo(row.resource_type).label || '-';
-    }
-  },
-  {
-    colKey: 'namespace',
-    title: '命名空间',
-    cell: ({ row }) => {
-      return row.namespace || '-';
-    }
-  },
-  {
-    colKey: 'resource_name',
-    title: '资源名称',
-    cell: ({ row }) => {
-      return row.resource_name || '-';
-    }
-  },
-  {
-    colKey: 'operator',
-    title: '操作人',
-    cell: ({ row }) => {
-      return row.operator || '-';
-    }
-  },
-  {
-    colKey: 'operation_type',
-    title: '操作类型',
-    cell: ({ row }) => {
-      return getOperationTypeInfo(row.operation_type)?.label || '-';
-    }
-  },
-  {
-    colKey: 'operation_detail',
-    title: '详情',
-    ellipsis: ({ row }) => (
-      <div>
-        {row.operation_detail}
-        <FileCopyIcon
-          style={{ cursor: 'pointer', marginLeft: '4px' }}
-          onClick={() => copyToClipboard(row.operation_detail)}
-        />
-      </div>
-    ),
-  },
-  {
-    colKey: 'happen_time',
-    title: '发生时间',
-    cell: ({ row }) => {
-      return row.happen_time || '-';
-    },
-  },
-  {
-    colKey: 'server',
-    title: '来源',
-    cell: ({ row }) => {
-      return row.server || '-';
-    }
-  },
-]
+type OperationMetricRow = OperationLog & {
+  rowKey?: string;
+  [key: string]: unknown;
+};
 
-export interface IProps {
-  // Define any props if needed
+interface SearchState {
+  searchResourceType: string;
+  searchOperation: string;
+  searchNamespace: string;
+  searchResource: string;
+  searchOperator: string;
+  startTime: string;
+  endTime: string;
 }
 
-const ServerOperationTable: React.FC<IProps> = ({ }) => {
+const PAGE_SIZE = 10;
 
-  // 合并编辑相关状态
-  const [searchState, setSearchState] = React.useState<{
-    operations: TableProps['data'];
-    limit: number;
-    cursor?: string;
-    fetchError: boolean;
-    isLoading: boolean;
-    hasNext: boolean;
+const MOCK_OPERATIONS: OperationMetricRow[] = [
+  {
+    cursor: 'op-20260718-001',
+    resource_type: 'Routing',
+    resource_name: 'checkout-gray-route',
+    namespace: 'mall-prod',
+    operator: 'admin',
+    operation_type: 'Update',
+    detail: '调整 checkout 灰度路由权重：gray 20% -> 35%，保留 stable 65%。',
+    server: 'pole-control-plane-0',
+    happen_time: '2026-07-18 12:44:02',
+  },
+  {
+    cursor: 'op-20260718-002',
+    resource_type: 'RateLimit',
+    resource_name: 'payment-submit-limit',
+    namespace: 'default',
+    operator: 'sre-bot',
+    operation_type: 'Enable',
+    detail: '启用 payment 提交接口限流规则，阈值 800 QPS，熔断保护联动开启。',
+    server: 'pole-control-plane-1',
+    happen_time: '2026-07-18 12:33:19',
+  },
+  {
+    cursor: 'op-20260718-003',
+    resource_type: 'CircuitBreakerRule',
+    resource_name: 'inventory-read-breaker',
+    namespace: 'mall-prod',
+    operator: 'lct',
+    operation_type: 'Release',
+    detail: '发布 inventory 读接口熔断规则 v17，错误率窗口 60s，半开探测 5 次。',
+    server: 'pole-control-plane-0',
+    happen_time: '2026-07-18 12:16:48',
+  },
+  {
+    cursor: 'op-20260718-004',
+    resource_type: 'Service',
+    resource_name: 'recommend',
+    namespace: 'gray',
+    operator: 'admin',
+    operation_type: 'Disable',
+    detail: '临时禁用 recommend 服务自动注册入口，等待实例健康检查恢复。',
+    server: 'pole-control-plane-1',
+    happen_time: '2026-07-18 11:58:07',
+  },
+  {
+    cursor: 'op-20260718-005',
+    resource_type: 'ConfigFileRelease',
+    resource_name: 'checkout/application.yaml',
+    namespace: 'default',
+    operator: 'config-bot',
+    operation_type: 'Rollback',
+    detail: '回滚 checkout 配置发布到 version 42，原因：新配置触发支付超时。',
+    server: 'pole-control-plane-0',
+    happen_time: '2026-07-18 11:45:31',
+  },
+  {
+    cursor: 'op-20260718-006',
+    resource_type: 'User',
+    resource_name: 'observability-viewer',
+    namespace: 'system',
+    operator: 'admin',
+    operation_type: 'Create',
+    detail: '创建只读观测用户，并绑定事件指标、操作审计查看权限。',
+    server: 'pole-control-plane-1',
+    happen_time: '2026-07-18 11:27:12',
+  },
+];
 
-    searchEvent: string;
-    searchOp: string;
-    searchNamespace: string;
-    searchResource: string;
-    searchOperator: string;
+const OPERATION_TREND = [
+  { label: '08:00', value: 4 },
+  { label: '09:00', value: 9 },
+  { label: '10:00', value: 7 },
+  { label: '11:00', value: 14 },
+  { label: '12:00', value: 21 },
+  { label: '13:00', value: 11 },
+  { label: '14:00', value: 16 },
+  { label: '15:00', value: 8 },
+];
 
-    startTime?: string;
-    endTime?: string;
-  }>({
-    operations: [], limit: 10, fetchError: false, isLoading: false, hasNext: true,
-    searchEvent: '',
-    searchOp: '',
-    searchNamespace: '',
-    searchResource: '',
-    searchOperator: '',
+const presets: DateRangePickerProps['presets'] = {
+  '最近 1 小时': [dayjs().subtract(1, 'hour').toDate(), dayjs().toDate()],
+  '最近 6 小时': [dayjs().subtract(6, 'hour').toDate(), dayjs().toDate()],
+  '最近 24 小时': [dayjs().subtract(24, 'hour').toDate(), dayjs().toDate()],
+};
+
+const defaultSearchState: SearchState = {
+  searchResourceType: '',
+  searchOperation: '',
+  searchNamespace: '',
+  searchResource: '',
+  searchOperator: '',
+  startTime: '',
+  endTime: '',
+};
+
+function resolveResourceLabel(resourceType: string) {
+  return getResourceTypeInfo(resourceType).label || resourceType || '-';
+}
+
+function resolveOperationLabel(operationType: string) {
+  return getOperationTypeInfo(operationType).label || operationType || '-';
+}
+
+function normalizeOperationRows(rows: OperationLog[]): OperationMetricRow[] {
+  return rows.map((row) => ({
+    ...row,
+    detail: row.detail || (row as unknown as { operation_detail?: string }).operation_detail || '',
+  }));
+}
+
+function isRiskOperation(operationType: string) {
+  return ['Delete', 'Rollback', 'Disable'].includes(operationType);
+}
+
+function operationToneClass(operationType: string) {
+  if (operationType === 'Delete' || operationType === 'Rollback') return style.toneDanger;
+  if (operationType === 'Disable') return style.toneWarning;
+  if (operationType === 'Create' || operationType === 'Enable') return style.toneSuccess;
+  return style.toneInfo;
+}
+
+function formatTime(value: string) {
+  if (!value) return '-';
+  const date = dayjs(value);
+  return date.isValid() ? date.format('YYYY-MM-DD HH:mm:ss') : value;
+}
+
+function filterMockOperations(rows: OperationMetricRow[], searchState: SearchState) {
+  return rows.filter((row) => {
+    const matchResourceType = !searchState.searchResourceType || row.resource_type === searchState.searchResourceType;
+    const matchOperation = !searchState.searchOperation || row.operation_type === searchState.searchOperation;
+    const matchNamespace = !searchState.searchNamespace || row.namespace.includes(searchState.searchNamespace);
+    const matchResource = !searchState.searchResource || row.resource_name.includes(searchState.searchResource);
+    const matchOperator = !searchState.searchOperator || row.operator.includes(searchState.searchOperator);
+    return matchResourceType && matchOperation && matchNamespace && matchResource && matchOperator;
   });
+}
 
-  const [presets] = React.useState<DateRangePickerProps['presets']>({
-    最近7天: [dayjs().subtract(6, 'day').toDate(), dayjs().toDate()],
-    最近3天: [dayjs().subtract(2, 'day').toDate(), dayjs().toDate()],
-    今天: [dayjs().toDate(), dayjs().toDate()],
-  });
+function buildResourceStats(rows: OperationMetricRow[]) {
+  const total = Math.max(rows.length, 1);
+  const resources = rows.reduce<Record<string, number>>((acc, row) => {
+    const label = resolveResourceLabel(row.resource_type);
+    acc[label] = (acc[label] || 0) + 1;
+    return acc;
+  }, {});
+  return Object.entries(resources).map(([label, value]) => ({
+    label,
+    value,
+    percent: Math.round((value / total) * 100),
+  }));
+}
 
-  // 模拟远程请求
-  async function fetchData(pageInfo: PageInfo) {
-    setSearchState(s => ({ ...s, limit: pageInfo.pageSize, fetchError: false, isLoading: true }));
+function buildOperationSummary(rows: OperationMetricRow[]) {
+  const operators = new Set(rows.map((row) => row.operator).filter(Boolean));
+  const resources = new Set(rows.map((row) => `${row.resource_type}/${row.namespace}/${row.resource_name}`));
+  const riskCount = rows.filter((row) => isRiskOperation(row.operation_type)).length;
+  return {
+    total: rows.length,
+    riskCount,
+    operators: operators.size,
+    resources: resources.size,
+  };
+}
+
+function SummaryCard(props: { title: string; value: React.ReactNode; hint: string; tone?: string }) {
+  const { title, value, hint, tone } = props;
+  return (
+    <section className={`${style.summaryCard} ${tone || ''}`}>
+      <span className={style.summaryTitle}>{title}</span>
+      <strong className={style.summaryValue}>{value}</strong>
+      <span className={style.summaryHint}>{hint}</span>
+    </section>
+  );
+}
+
+function TrendBars(props: { data: Array<{ label: string; value: number }> }) {
+  const { data } = props;
+  const max = Math.max(...data.map((item) => item.value), 1);
+  return (
+    <div className={style.trendBars}>
+      {data.map((item) => (
+        <div className={style.trendItem} key={item.label}>
+          <span className={style.trendValue}>{item.value}</span>
+          <span className={style.trendTrack}>
+            <span className={style.trendFill} style={{ height: `${Math.max((item.value / max) * 100, 8)}%` }} />
+          </span>
+          <span className={style.trendLabel}>{item.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DistributionList(props: { data: Array<{ label: string; value: number; percent: number }> }) {
+  const { data } = props;
+  if (!data.length) return <Empty description="暂无资源分布" />;
+  return (
+    <div className={style.distributionList}>
+      {data.map((item) => (
+        <div className={style.distributionItem} key={item.label}>
+          <div className={style.distributionMeta}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+          </div>
+          <span className={style.progressTrack}>
+            <span className={style.progressFill} style={{ width: `${item.percent}%` }} />
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DataSourceBadge(props: { source: DataSource; loading: boolean }) {
+  const { source, loading } = props;
+  if (loading) return <Tag className={style.sourceTag}>加载中</Tag>;
+  return <Tag className={source === 'mock' ? style.sourceTagMock : style.sourceTag}>{source === 'mock' ? 'Mock 预览' : '实时数据'}</Tag>;
+}
+
+export default function ServerOperation() {
+  const [operations, setOperations] = React.useState<OperationMetricRow[]>([]);
+  const [searchState, setSearchState] = React.useState<SearchState>(defaultSearchState);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [hasNext, setHasNext] = React.useState(false);
+  const [dataSource, setDataSource] = React.useState<DataSource>('mock');
+  const [fetchError, setFetchError] = React.useState(false);
+  const [selectedOperation, setSelectedOperation] = React.useState<OperationMetricRow | null>(null);
+
+  const displayOperations = React.useMemo(() => {
+    if (dataSource === 'remote') return operations;
+    return filterMockOperations(MOCK_OPERATIONS, searchState);
+  }, [dataSource, operations, searchState]);
+
+  const summary = React.useMemo(() => buildOperationSummary(displayOperations), [displayOperations]);
+  const resourceStats = React.useMemo(() => buildResourceStats(displayOperations), [displayOperations]);
+
+  const fetchData = React.useCallback(async (nextSearchState: SearchState = searchState) => {
+    setIsLoading(true);
     try {
-      const { current, pageSize } = pageInfo;
-      // 请求可能存在跨域问题
-      const response = await describeOperationLog({
-        limit: pageSize,
-        cursor: pageInfo.current,
+      const requestParams = {
+        resource_type: nextSearchState.searchResourceType,
+        operation_type: nextSearchState.searchOperation,
+        namespace: nextSearchState.searchNamespace,
+        resource_name: nextSearchState.searchResource,
+        operator: nextSearchState.searchOperator,
+        start_time: nextSearchState.startTime,
+        end_time: nextSearchState.endTime,
+        limit: PAGE_SIZE,
+        cursor: 0,
         direction: 'next',
-        namespace: searchState.searchNamespace,
-        resource_name: searchState.searchResource,
-        start_time: searchState.startTime || '',
-        end_time: searchState.endTime || '',
-      });
-      setSearchState(s => ({ ...s, operations: response.data, hasNext: response.has_next, isLoading: false }));
-    } catch (error: Error | any) {
-      setSearchState(s => ({ ...s, fetchError: true, isLoading: false }));
-      openErrNotification("获取数据失败", error);
+      } as const;
+      const observabilityRes = await describeObservabilityOperations(requestParams);
+      const fallbackRes = (observabilityRes.data || []).length ? observabilityRes : await describeOperationLog(requestParams);
+      const remoteRows = normalizeOperationRows((fallbackRes.data || []) as OperationLog[]);
+      setOperations(remoteRows);
+      setHasNext(Boolean(fallbackRes.has_next));
+      setDataSource(remoteRows.length ? 'remote' : 'mock');
+      setFetchError(false);
+    } catch {
+      setOperations([]);
+      setHasNext(false);
+      setDataSource('mock');
+      setFetchError(false);
+    } finally {
+      setIsLoading(false);
     }
-  }
+  }, [searchState]);
 
   React.useEffect(() => {
-    fetchData({ current: 1, pageSize: searchState.limit, previous: 0 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchData(defaultSearchState);
   }, []);
 
-  const table = (
-    <Card>
-      <Row justify='space-between' className={style.toolBar}>
-        <Space>
-          <Select label='资源类型' options={ResourceType}
-            onChange={(value) => setSearchState(prev => ({ ...prev, searchEvent: value as string }))}
-          />
-          <Select label='操作类型' options={OperationType}
-            onChange={(value) => setSearchState(prev => ({ ...prev, searchOp: value as string }))}
-          />
-          <Input label='命名空间'
-            onChange={(value) => setSearchState(prev => ({ ...prev, searchNamespace: value }))}
-          />
-          <Input label='资源'
-            onChange={(value) => setSearchState(prev => ({ ...prev, searchResource: value }))}
-          />
-          <Input label='操作人'
-            onChange={(value) => setSearchState(prev => ({ ...prev, searchOperator: value }))}
-          />
-          <DateRangePicker
-            clearable
-            format="YYYY-MM-DD HH:mm:ss"
-            valueType="YYYY-MM-DD HH:mm:ss"
-            defaultValue={undefined}
-            allowInput
-            presets={presets}
-            placeholder={['开始时间', '结束时间']}
-            onChange={(value) => {
-              if (value && value.length === 2) {
-                const [start, end] = value;
-                console.log('start', start, 'end', end);
-                setSearchState(prev => ({
-                  ...prev,
-                  startTime: start ? start as string : '',
-                  endTime: end ? end as string : '',
-                }));
-              } else {
-                setSearchState(prev => ({ ...prev, startTime: '', endTime: '' }));
-              }
-            }}
-          />
-          <Button theme='primary' variant='base' onClick={() => fetchData({ current: 1, pageSize: searchState.limit, previous: 0 })}>
-            查询
-          </Button>
-        </Space>
-      </Row>
-      <Table
-        rowKey='cursor'
-        columns={columns}
-        loading={searchState.isLoading}
-        size={"large"}
-        // tableLayout={'auto'}
-        cellEmptyContent={'-'}
-        data={searchState.operations}
-        pagination={{
-          total: searchState.hasNext ? (searchState.operations?.length || 0) + 1 : (searchState.operations?.length || 0),
-          totalContent: false,
-          pageSize: searchState.limit,
-          showJumper: false,
-          onChange(pageInfo) {
-            fetchData(pageInfo);
-          },
-        }}
-        selectOnRowClick={false}
-      />
-    </Card>
-  )
+  const columns = React.useMemo<TableColumnData<OperationMetricRow>[]>(() => [
+    {
+      colKey: 'operation_type',
+      title: '操作',
+      width: 150,
+      cell: ({ row }) => <Tag className={operationToneClass(row.operation_type)}>{resolveOperationLabel(row.operation_type)}</Tag>,
+    },
+    {
+      colKey: 'resource_type',
+      title: '资源类型',
+      width: 130,
+      cell: ({ row }) => resolveResourceLabel(row.resource_type),
+      ellipsis: true,
+    },
+    {
+      colKey: 'resource_name',
+      title: '资源名称',
+      width: 180,
+      ellipsis: true,
+    },
+    {
+      colKey: 'namespace',
+      title: '命名空间',
+      width: 120,
+      ellipsis: true,
+    },
+    {
+      colKey: 'operator',
+      title: '操作者',
+      width: 120,
+      cell: ({ row }) => (
+        <span className={style.operatorCell}>
+          <UserIcon />
+          {row.operator || '-'}
+        </span>
+      ),
+    },
+    {
+      colKey: 'detail',
+      title: '操作详情',
+      width: 240,
+      ellipsis: true,
+    },
+    {
+      colKey: 'happen_time',
+      title: '发生时间',
+      width: 170,
+      cell: ({ row }) => formatTime(row.happen_time),
+    },
+  ], []);
+
+  const updateSearchState = (patch: Partial<SearchState>) => {
+    setSearchState((previous) => ({ ...previous, ...patch }));
+  };
+
+  const handleReset = () => {
+    setSearchState(defaultSearchState);
+    fetchData(defaultSearchState);
+  };
+
+  if (fetchError) return <ErrorPage />;
 
   return (
-    <div>
-      {searchState.fetchError ? (
-        <ServerError />
-      ) : (
-        <Loading loading={searchState.isLoading} className={style.loading}>
-          {table}
-        </Loading>
-      )}
+    <div className={style.page}>
+      <section className={style.headerPanel}>
+        <div className={style.headerMain}>
+          <span className={style.headerIcon}><ToolsCircleIcon /></span>
+          <div>
+            <h1>操作审计</h1>
+            <p>按操作者、资源类型和操作类型追踪审计数据，联动治理动作和变更影响。</p>
+          </div>
+        </div>
+        <DataSourceBadge source={dataSource} loading={isLoading} />
+      </section>
+
+      <div className={style.summaryGrid}>
+        <SummaryCard title="操作总数" value={summary.total} hint={dataSource === 'mock' ? '当前筛选下的预览操作' : '当前筛选下的真实操作'} />
+        <SummaryCard title="高风险操作" value={summary.riskCount} hint="删除、回滚、禁用类操作" tone={style.summaryDanger} />
+        <SummaryCard title="活跃操作者" value={summary.operators} hint="按 operator 去重" />
+        <SummaryCard title="涉及资源" value={summary.resources} hint={hasNext ? '还有更多历史资源' : '已展示当前结果集'} />
+      </div>
+
+      <div className={style.analysisGrid}>
+        <section className={style.panel}>
+          <div className={style.panelHeader}>
+            <div>
+              <h2>操作趋势</h2>
+              <span>按小时聚合控制台与治理变更操作</span>
+            </div>
+            <InfoCircleIcon />
+          </div>
+          <TrendBars data={OPERATION_TREND} />
+        </section>
+
+        <section className={style.panel}>
+          <div className={style.panelHeader}>
+            <div>
+              <h2>资源分布</h2>
+              <span>操作影响的资源类型占比</span>
+            </div>
+            <FilterIcon />
+          </div>
+          <DistributionList data={resourceStats} />
+        </section>
+      </div>
+
+      <section className={style.panel}>
+        <div className={style.panelHeader}>
+          <div>
+            <h2>审计明细</h2>
+            <span>筛选资源、操作者和操作类型后查看完整审计上下文</span>
+          </div>
+          <Button icon={<RefreshIcon />} variant="outline" loading={isLoading} onClick={() => fetchData()}>
+            刷新
+          </Button>
+        </div>
+
+        <div className={style.filterGrid}>
+          <Select
+            className={style.filterControl}
+            clearable
+            value={searchState.searchResourceType}
+            options={ResourceType}
+            placeholder="资源类型"
+            onChange={(value) => updateSearchState({ searchResourceType: value as string })}
+          />
+          <Select
+            className={style.filterControl}
+            clearable
+            value={searchState.searchOperation}
+            options={OperationType}
+            placeholder="操作类型"
+            onChange={(value) => updateSearchState({ searchOperation: value as string })}
+          />
+          <Input
+            className={style.filterControl}
+            clearable
+            value={searchState.searchNamespace}
+            placeholder="命名空间"
+            onChange={(value) => updateSearchState({ searchNamespace: value })}
+          />
+          <Input
+            className={style.filterControl}
+            clearable
+            value={searchState.searchResource}
+            placeholder="资源名称"
+            onChange={(value) => updateSearchState({ searchResource: value })}
+          />
+          <Input
+            className={style.filterControl}
+            clearable
+            value={searchState.searchOperator}
+            placeholder="操作者"
+            onChange={(value) => updateSearchState({ searchOperator: value })}
+          />
+          <DateRangePicker
+            className={style.datePicker}
+            value={[searchState.startTime, searchState.endTime]}
+            clearable
+            allowInput
+            format="YYYY-MM-DD HH:mm:ss"
+            presets={presets}
+            onChange={(value) => updateSearchState({
+              startTime: String(value?.[0] || ''),
+              endTime: String(value?.[1] || ''),
+            })}
+          />
+          <div className={style.filterActions}>
+            <Button theme="primary" icon={<SearchIcon />} loading={isLoading} onClick={() => fetchData()}>
+              查询
+            </Button>
+            <Button variant="text" onClick={handleReset}>
+              重置
+            </Button>
+          </div>
+        </div>
+
+        <Table
+          data={displayOperations}
+          columns={columns}
+          rowKey="cursor"
+          loading={isLoading}
+          tableLayout="fixed"
+          cellEmptyContent="-"
+          empty={<Empty description="暂无操作数据" />}
+          pagination={{
+            pageSize: PAGE_SIZE,
+            total: displayOperations.length,
+            showJumper: true,
+          }}
+          onRowClick={({ row }: { row: OperationMetricRow }) => setSelectedOperation(row)}
+        />
+      </section>
+
+      <Drawer
+        visible={Boolean(selectedOperation)}
+        size="medium"
+        header={selectedOperation ? `${resolveOperationLabel(selectedOperation.operation_type)} ${selectedOperation.resource_name}` : '操作详情'}
+        onClose={() => setSelectedOperation(null)}
+      >
+        {selectedOperation && (
+          <div className={style.detailBody}>
+            <div className={style.detailStatus}>
+              <Tag className={operationToneClass(selectedOperation.operation_type)}>{resolveResourceLabel(selectedOperation.resource_type)}</Tag>
+              <span>{formatTime(selectedOperation.happen_time)}</span>
+            </div>
+            <dl className={style.detailGrid}>
+              <dt>命名空间</dt>
+              <dd>{selectedOperation.namespace || '-'}</dd>
+              <dt>资源类型</dt>
+              <dd>{resolveResourceLabel(selectedOperation.resource_type)}</dd>
+              <dt>资源名称</dt>
+              <dd>{selectedOperation.resource_name || '-'}</dd>
+              <dt>操作者</dt>
+              <dd>{selectedOperation.operator || '-'}</dd>
+              <dt>上报节点</dt>
+              <dd>{selectedOperation.server || '-'}</dd>
+              <dt>游标</dt>
+              <dd>{selectedOperation.cursor || '-'}</dd>
+              <dt>操作详情</dt>
+              <dd>{selectedOperation.detail || '-'}</dd>
+            </dl>
+          </div>
+        )}
+      </Drawer>
     </div>
-  )
+  );
 }
-
-
-export default React.memo(ServerOperationTable);

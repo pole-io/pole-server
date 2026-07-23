@@ -33,21 +33,25 @@ import (
 	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
+	"github.com/pole-io/pole-server/pkg/systemconfig"
+	"github.com/pole-io/pole-server/pkg/workloadcredential"
 )
 
 // Config 配置
 type Config struct {
-	Bootstrap  Bootstrap        `yaml:"bootstrap"`
-	APIServers string           `yaml:"apiservers"`
-	Cache      cache.Config     `yaml:"cache"`
-	Namespace  namespace.Config `yaml:"namespace"`
-	Naming     service.Config   `yaml:"naming"`
-	GoverRule  goverrule.Config `yaml:"goverrule"`
-	Config     config.Config    `yaml:"config"`
-	Maintain   admin.Config     `yaml:"maintain"`
-	Store      storeapi.Config  `yaml:"store"`
-	Auth       auth.Config      `yaml:"auth"`
-	Plugin     apis.Config      `yaml:"plugin"`
+	Bootstrap           Bootstrap                 `yaml:"bootstrap"`
+	APIServers          string                    `yaml:"apiservers"`
+	Cache               cache.Config              `yaml:"cache"`
+	Namespace           namespace.Config          `yaml:"namespace"`
+	Naming              service.Config            `yaml:"naming"`
+	GoverRule           goverrule.Config          `yaml:"goverrule"`
+	Config              config.Config             `yaml:"config"`
+	Maintain            admin.Config              `yaml:"maintain"`
+	Store               storeapi.Config           `yaml:"store"`
+	Auth                auth.Config               `yaml:"auth"`
+	Plugin              apis.Config               `yaml:"plugin"`
+	WorkloadCredential  workloadcredential.Config `yaml:"workloadCredential"`
+	SystemConfigSources systemconfig.SourceIndex  `yaml:"-" json:"-"`
 }
 
 // Bootstrap 启动引导配置
@@ -109,10 +113,16 @@ func Load(filePath string) (*Config, error) {
 		Bootstrap: defaultBootstrap(),
 		Maintain:  *admin.DefaultConfig(),
 	}
+	sources, err := systemconfig.SourceIndexFromFile(filePath)
+	if err != nil {
+		return nil, err
+	}
 	if _, err := utils.LoadYAML(filePath, conf); err != nil {
 		fmt.Printf("[ERROR] %v\n", err)
 		return nil, err
 	}
+	conf.SystemConfigSources = sources
+	conf.Bootstrap.Console.SystemConfigSources = sources.Subtree("bootstrap.console")
 	return conf, nil
 }
 

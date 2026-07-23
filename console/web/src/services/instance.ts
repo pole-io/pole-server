@@ -34,8 +34,15 @@ export interface InstanceView extends Instance {
 
 export interface HEALTH_CHECK_STRUCT {
     type: number
-    heartbeat: {
+    heartbeat?: {
         ttl: number
+    }
+    tcp?: {
+        interval: number
+    }
+    http?: {
+        interval: number
+        path: string
     }
 }
 
@@ -137,12 +144,42 @@ export interface DescribeInstancesResponse {
     instances?: Array<InstanceView>
 }
 
+const healthCheckTypeValue: Record<string, number> = {
+    UNKNOWN: 0,
+    HEARTBEAT: 1,
+    TCP: 2,
+    HTTP: 3,
+}
+
+const normalizeHealthCheck = (value: any): HEALTH_CHECK_STRUCT | undefined => {
+    if (!value) return undefined
+    return {
+        ...value,
+        type: typeof value.type === 'string' ? healthCheckTypeValue[value.type] ?? 0 : value.type,
+    }
+}
+
+const normalizeInstance = (value: any): InstanceView => ({
+    ...value,
+    enableHealthCheck: value.enableHealthCheck ?? value.enable_health_check ?? false,
+    healthCheck: normalizeHealthCheck(value.healthCheck ?? value.health_check),
+})
+
+const toApiInstance = <T extends CreateInstanceRequest | ModifyInstanceRequest>(value: T) => {
+    const { enableHealthCheck, healthCheck, ...rest } = value
+    return {
+        ...rest,
+        enable_health_check: enableHealthCheck,
+        health_check: healthCheck,
+    }
+}
+
 export async function describeInstances(params: DescribeInstancesRequest) {
     const res = await getApiRequest<DescribeInstancesResponse>({
         action: `${BaseURL.INSTANCE}`,
         data: params,
     })
-    const instances = res.data ?? res.instances ?? []
+    const instances = (res.data ?? res.instances ?? []).map(normalizeInstance)
     return {
         list: instances,
         totalCount: res.amount ?? instances.length,
@@ -168,7 +205,7 @@ export interface CreateInstanceRequest {
 export async function createInstances(params: CreateInstanceRequest[]) {
     const res = await apiRequest({
         action: `${BaseURL.INSTANCE}`,
-        data: params,
+        data: params.map(toApiInstance),
     })
 
     return res
@@ -192,7 +229,7 @@ export interface ModifyInstanceRequest {
 export async function modifyInstances(params: ModifyInstanceRequest[]) {
     const res = await putApiRequest({
         action: `${BaseURL.INSTANCE}`,
-        data: params,
+        data: params.map(toApiInstance),
     })
 
     return res

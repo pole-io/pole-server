@@ -23,9 +23,12 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/pole-io/pole-server/console/pkg/common/log"
+	"github.com/pole-io/pole-server/console/pkg/observabilityquery"
 	store "github.com/pole-io/pole-server/console/pkg/observer"
+	"github.com/pole-io/pole-server/pkg/systemconfig"
 	"gopkg.in/yaml.v2"
 )
 
@@ -44,12 +47,16 @@ type MonitorServer struct {
 
 // Config 配置
 type Config struct {
-	Logger        log.Options   `yaml:"logger"`
-	WebServer     WebServer     `yaml:"webServer"`
-	PoleServer    PoleServer    `yaml:"poleServer"`
-	MonitorServer MonitorServer `yaml:"monitorServer"`
-	Futures       string        `yaml:"futures"`
-	Store         store.Config  `yaml:"store"`
+	Logger              log.Options               `yaml:"logger"`
+	WebServer           WebServer                 `yaml:"webServer"`
+	PoleServer          PoleServer                `yaml:"poleServer"`
+	MonitorServer       MonitorServer             `yaml:"monitorServer"`
+	Futures             string                    `yaml:"futures"`
+	Store               store.Config              `yaml:"store"`
+	ObservabilityQuery  observabilityquery.Config `yaml:"observabilityQuery"`
+	Agent               AgentConfig               `yaml:"agent"`
+	SystemSecrets       SystemSecretsConfig       `yaml:"systemSecrets"`
+	SystemConfigSources systemconfig.SourceIndex  `yaml:"-" json:"-"`
 }
 
 func (c *Config) HasFutures(s string) bool {
@@ -80,6 +87,77 @@ type JWT struct {
 	Expired int `yaml:"expired"`
 }
 
+type AgentConfig struct {
+	RuntimeMode     string                `yaml:"runtimeMode" json:"runtimeMode"`
+	Definition      AgentDefinitionConfig `yaml:"definition" json:"definition"`
+	Model           AgentModelConfig      `yaml:"model" json:"model"`
+	MCP             AgentMCPConfig        `yaml:"mcp" json:"mcp"`
+	ProposalTTL     time.Duration         `yaml:"proposalTTL" json:"proposalTTL"`
+	UpstreamTimeout time.Duration         `yaml:"upstreamTimeout" json:"upstreamTimeout"`
+}
+
+type AgentDefinitionConfig struct {
+	ID           string                  `yaml:"id" json:"id"`
+	SystemPrompt AgentSystemPromptConfig `yaml:"systemPrompt" json:"systemPrompt"`
+}
+
+type AgentSystemPromptConfig struct {
+	BuiltinVersion       string `yaml:"builtinVersion" json:"builtinVersion"`
+	OperatorInstructions string `yaml:"operatorInstructions" json:"operatorInstructions"`
+}
+
+type AgentModelConfig struct {
+	Provider string        `yaml:"provider" json:"provider"`
+	BaseURL  string        `yaml:"baseURL" json:"baseURL"`
+	Model    string        `yaml:"model" json:"model"`
+	APIKey   string        `yaml:"apiKey" json:"-"`
+	Timeout  time.Duration `yaml:"timeout" json:"timeout"`
+}
+
+type AgentMCPConfig struct {
+	Endpoint      string   `yaml:"endpoint" json:"endpoint"`
+	ToolAllowlist []string `yaml:"toolAllowlist" json:"toolAllowlist"`
+}
+
+// SystemSecrets contains only the irreducible bootstrap root used to unwrap
+// Pole-managed product secrets. Individual product credentials never belong
+// here.
+type SystemSecretsConfig struct {
+	MasterKey    string        `yaml:"masterKey" json:"-"`
+	PollInterval time.Duration `yaml:"pollInterval" json:"pollInterval"`
+}
+
+func (c AgentConfig) Normalize() AgentConfig {
+	if c.RuntimeMode == "" {
+		c.RuntimeMode = "llm"
+	}
+	if c.Definition.ID == "" {
+		c.Definition.ID = "pole-control-plane"
+	}
+	if c.Definition.SystemPrompt.BuiltinVersion == "" {
+		c.Definition.SystemPrompt.BuiltinVersion = "v1"
+	}
+	if c.Model.Provider == "" {
+		c.Model.Provider = "openai-compatible"
+	}
+	if c.Model.Model == "" {
+		c.Model.Model = "auto"
+	}
+	if c.Model.Timeout <= 0 {
+		c.Model.Timeout = 60 * time.Second
+	}
+	if c.MCP.Endpoint == "" {
+		c.MCP.Endpoint = "http://127.0.0.1:8090/ai/mcp/v1/sse"
+	}
+	if c.ProposalTTL <= 0 {
+		c.ProposalTTL = DefaultAgentProposalTTL
+	}
+	if c.UpstreamTimeout <= 0 {
+		c.UpstreamTimeout = DefaultAgentUpstreamTimeout
+	}
+	return c
+}
+
 // LoadConfig 加载配置文件
 func LoadConfig(filePath string) (*Config, error) {
 	if filePath == "" {
@@ -97,6 +175,10 @@ func LoadConfig(filePath string) (*Config, error) {
 	}
 
 	finalContent := os.ExpandEnv(string(content))
+	sources, sourceErr := systemconfig.SourceIndexFromYAML(content)
+	if sourceErr != nil {
+		return nil, sourceErr
+	}
 
 	config := &Config{
 		Logger: DefaultLoggerOptions(),
@@ -109,6 +191,7 @@ func LoadConfig(filePath string) (*Config, error) {
 	}
 
 	_globalConfig = config
+	config.SystemConfigSources = sources
 	return config, nil
 }
 

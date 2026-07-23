@@ -24,7 +24,9 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
+	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
 	"github.com/pole-io/pole-server/apis/apiserver"
@@ -34,6 +36,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
+	"github.com/pole-io/pole-server/pkg/workloadcredential"
 	"github.com/pole-io/pole-server/plugin/apiserver/grpcserver"
 	v1 "github.com/pole-io/pole-server/plugin/apiserver/grpcserver/discover/v1"
 	"github.com/pole-io/pole-server/plugin/apiserver/grpcserver/utils"
@@ -113,10 +116,12 @@ func (g *GRPCServer) Initialize(ctx context.Context, option map[string]interface
 		v1.WithHealthCheckerServer(g.healthCheckServer),
 		v1.WithGoverRuleServer(g.ruleServer),
 		v1.WithNamingServer(g.namingServer),
+		v1.WithWorkloadCredentialServer(workloadcredential.GetServer()),
 	)
 	g.csvr = v1.NewConfigGRPCServer(
 		v1.WithCAllowAccess(g.allowAccess),
 		v1.WithCEnterRateLimit(g.enterRateLimit),
+		v1.WithConfigServer(g.configServer),
 	)
 	return nil
 }
@@ -124,6 +129,7 @@ func (g *GRPCServer) Initialize(ctx context.Context, option map[string]interface
 // Run 启动GRPC API服务器
 func (g *GRPCServer) Run(errCh chan error) {
 	g.BaseGrpcServer.Run(errCh, g.GetProtocol(), func(server *grpc.Server) error {
+		g.registerServices(server)
 		for name, config := range g.openAPI {
 			switch name {
 			case "client":
@@ -142,6 +148,13 @@ func (g *GRPCServer) Run(errCh chan error) {
 		}
 		return nil
 	})
+}
+
+func (g *GRPCServer) registerServices(server *grpc.Server) {
+	apiservice.RegisterDiscoverGRPCServer(server, g.dsvr)
+	apiservice.RegisterPoleHeartbeatGRPCServer(server, g.dsvr)
+	apisecurity.RegisterWorkloadCredentialServiceServer(server, g.dsvr)
+	apiconfig.RegisterConfigGRPCServer(server, g.csvr)
 }
 
 // Stop 关闭GRPC

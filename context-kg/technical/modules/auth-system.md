@@ -1,9 +1,9 @@
 ---
 title: 访问控制与认证系统
 tags: [auth, security]
-links: [adr-console-oidc-identity-source, architecture, index, patterns]
-updated: 2026-06-22
-sources: 1
+links: [business-rules, adr-console-oidc-identity-source, adr-managed-service-identity-authentication, architecture, index, patterns]
+updated: 2026-07-22
+sources: 6
 ---
 
 # 访问控制与认证系统
@@ -68,6 +68,20 @@ type StrategyServer interface {
 - 策略将用户/用户组与资源及允许的操作绑定
 - 使用 `StrategyCache` 加速策略评估
 
+### 内置系统角色
+
+Pole 的角色目录包含普通自定义角色，以及三个不可变的内置系统角色：
+
+| 稳定 ID | 名称 | 权限边界 |
+|---------|------|----------|
+| `pole-system-role-admin` | `admin` | 控制面管理、认证授权及全部业务资源 |
+| `pole-system-role-resource-reader` | `resource-reader` | 全部业务资源读取，不含认证、系统配置和运维管理 |
+| `pole-system-role-resource-writer` | `resource-writer` | 全部业务资源读写，不含认证、系统配置和运维管理 |
+
+`ensureSystemRoles()` 在策略服务初始化和角色查询时幂等补齐内置角色及固定策略，兼容已有数据库。角色 REST API 对自定义角色提供完整 CRUD；当目标是内置角色时，删除被拒绝，更新只允许 `users`、`user_groups`，并在服务端保留固定名称、描述、来源、类型、元数据和策略。系统策略禁止通过普通策略 API 修改或删除，普通策略创建、更新及直接资源授权也不得把内置角色作为授权主体。
+
+登录时，主账号仍签发 `main` 会话角色；直接或通过用户组加入内置 `admin` 的子账号签发 `admin` 会话角色，因此可进入 System Configuration 等 admin-only Console 页面。资源读写角色仍签发普通 `sub` 会话角色，具体资源权限由策略检查链决定。
+
 ### 限流（`access_control/ratelimit/token/`）
 - 令牌桶算法，用于 API 级别的速率限制
 - 防止管理/运维 API 被滥用
@@ -115,6 +129,10 @@ func (s *Server) CreateService(ctx context.Context, req *apiservice.Service) *ap
 
 Console 可以在登录入口层扩展企业 OIDC 用户来源，但该能力不进入 pole-server 核心鉴权链。OIDC 登录只用于确认外部用户身份，并将其映射或同步为 `source=oidc` 的 Pole User；后续 Console 请求仍使用 Pole token，资源权限仍由本页描述的 User/UserGroup/Role/Policy 与拦截器链判断。完整技术方案见 [[adr-console-oidc-identity-source]]。
 
+## 服务调用身份
+
+治理域的服务调用鉴权与本页的管理面用户认证/资源授权是两条链。默认调用鉴权由 control-plane 托管每个服务的内部身份和短期 workload 凭证，由调用方/被调方 SDK 完成凭证携带与本地验证；自定义 Header value 只作为兼容模式。完整边界见 [[adr-managed-service-identity-authentication]]。
+
 ## 参数检查拦截器
 
 与认证拦截器相邻，参数检查拦截器负责验证请求参数：
@@ -127,7 +145,9 @@ pkg/config/interceptor/paramcheck/
 
 ## 相关页面
 
+- [[business-rules]]
 - [[adr-console-oidc-identity-source]]
+- [[adr-managed-service-identity-authentication]]
 - [[architecture]]
 - [[index]]
 - [[patterns]]

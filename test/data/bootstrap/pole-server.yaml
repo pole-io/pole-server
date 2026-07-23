@@ -141,6 +141,12 @@ naming:
     # since the three belong to the same type of health check plugin, only one can be enabled to use one
     checkers:
       - name: heartbeat
+      - name: tcp
+        option:
+          timeout: 3s
+      - name: http
+        option:
+          timeout: 3s
 # Configuration center module start configuration
 config:
   # Whether to start the configuration module
@@ -195,12 +201,24 @@ plugin:
   # history:
   #   entries:
   #     - name: HistoryLogger
+  #     - name: otel
+  #       option:
+  #         endpoint: 127.0.0.1:4317
+  #         logsEndpoint: http://127.0.0.1:4318/v1/logs
+  #         logSpoolDir: ./data/observability/otel-events
+  #         logSpoolBucket: history
   #     - name: HistoryDB
   #       option:
   #         dns: "${MYSQL_USER}:${MYSQL_PWD}@tcp(${MYSQL_HOST})/pole_server?charset=utf8mb4&parseTime=True&loc=Local"
   # discoverEvent:
   #   entries:
   #     - name: EventLogger
+  #     - name: otel
+  #       option:
+  #         endpoint: 127.0.0.1:4317
+  #         logsEndpoint: http://127.0.0.1:4318/v1/logs
+  #         logSpoolDir: ./data/observability/otel-events
+  #         logSpoolBucket: discover_event
   #     - name: EventDB
   #       option:
   #         dns: "${MYSQL_USER}:${MYSQL_PWD}@tcp(${MYSQL_HOST})/pole_server?charset=utf8mb4&parseTime=True&loc=Local"

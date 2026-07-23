@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { ComponentSpaceIcon } from 'tdesign-icons-react';
+import { ComponentSpaceIcon } from 'components/Fluent/icons';
 import { IRouter } from '../index';
 
 const namespace: IRouter[] = [

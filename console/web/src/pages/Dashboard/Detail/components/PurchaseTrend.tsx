@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Col, Dropdown, Row, Tag, Card, Avatar } from 'tdesign-react';
-import { Icon, AddIcon } from 'tdesign-icons-react';
+import { Col, Dropdown, Row, Tag, Card, Avatar } from 'components/Fluent';
+import { Icon, AddIcon } from 'components/Fluent/icons';
 import ReactEcharts from 'echarts-for-react';
 import LastWeekDatePicker from 'components/DatePicker';
 import useDynamicChart from 'hooks/useDynamicChart';

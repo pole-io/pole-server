@@ -20,6 +20,16 @@ export const doLogin = async (params: ILoginRequest) => {
     return response;
 };
 
+export interface IConsoleSessionResponse {
+    user_id: string
+    role: string
+    admin: boolean
+}
+
+export const describeConsoleSession = async () => {
+    return await getApiRequest<IConsoleSessionResponse>({ action: '/auth/v1/user/session' });
+};
+
 
 export interface InitAdminUserParams {
     /** 用户组ID */

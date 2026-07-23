@@ -6,7 +6,6 @@ import {
   Form,
   Input,
   Link,
-  Popconfirm,
   PrimaryTableProps,
   Row,
   Select,
@@ -19,18 +18,20 @@ import {
   TagInput,
   Textarea,
   Tooltip,
-} from 'tdesign-react';
-import type { FormProps, PageInfo } from 'tdesign-react';
+} from 'components/Fluent';
+import type { FormProps, PageInfo } from 'components/Fluent';
 import {
   AddIcon,
   DeleteIcon,
-  FileIcon,
   RefreshIcon,
   ServerIcon,
-} from 'tdesign-icons-react';
+} from 'components/Fluent/icons';
 import { useNavigate } from 'react-router-dom';
 
 import Text from 'components/Text';
+import AuthorizeInput from 'components/Authorize';
+import { ConfirmOperationButton, OperationButton } from 'components/OperationButton';
+import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout';
 import {
   cleanA2ADetails,
   cleanA2APage,
@@ -46,7 +47,9 @@ import {
 } from 'modules/ai/a2a';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { A2AAgent, A2AAgentInterface, A2AAgentSkill } from 'services/a2a';
+import { PolicySourceType } from 'services/auth_policy';
 import { Op } from 'services/types';
+import ResourceNameLink from 'components/ResourceNameLink';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
 
@@ -104,7 +107,7 @@ function tagList(value?: string[]) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
 }
 
-function jsonPreview(value: unknown) {
+export function jsonPreview(value: unknown) {
   if (!value) return '';
   if (typeof value === 'string') {
     try {
@@ -116,7 +119,7 @@ function jsonPreview(value: unknown) {
   return JSON.stringify(value, null, 2);
 }
 
-function parseJSONValue(value: unknown): Record<string, any> | undefined {
+export function parseJSONValue(value: unknown): Record<string, any> | undefined {
   if (!value) return undefined;
   if (typeof value === 'string') {
     try {
@@ -159,18 +162,18 @@ function stringifyMetadata(metadata?: Record<string, string>) {
   return metadata ? Object.entries(metadata).map(([key, value]) => `${key}=${value}`).join('\n') : '';
 }
 
-function protocolLabel(value?: string) {
+export function protocolLabel(value?: string) {
   return protocolOptions.find((item) => item.value === value)?.label || value || '-';
 }
 
-function protocolTheme(value?: string) {
+export function protocolTheme(value?: string) {
   if (value === 'jsonrpc') return 'primary';
   if (value === 'http+json') return 'success';
   if (value === 'grpc') return 'warning';
   return 'default';
 }
 
-function backendType(agent?: A2AAgent) {
+export function backendType(agent?: A2AAgent) {
   if (agent?.backend_type === 'url' || agent?.backend_type === 'external') return 'address';
   if (agent?.backend_type) return agent.backend_type;
   if (agent?.backend_service_namespace || agent?.backend_service_name) return 'service';
@@ -178,12 +181,12 @@ function backendType(agent?: A2AAgent) {
   return '';
 }
 
-function backendTypeLabel(value?: string) {
+export function backendTypeLabel(value?: string) {
   const normalized = value === 'url' || value === 'external' ? 'address' : value;
   return backendOptions.find((item) => item.value === normalized)?.label || '-';
 }
 
-function backendLabel(agent?: A2AAgent) {
+export function backendLabel(agent?: A2AAgent) {
   const type = backendType(agent);
   if (type === 'service') {
     return `${agent?.backend_service_namespace || agent?.namespace || '-'}/${agent?.backend_service_name || agent?.name || '-'}`;
@@ -192,7 +195,7 @@ function backendLabel(agent?: A2AAgent) {
   return agent?.preferred_interface_url || '-';
 }
 
-function backendServiceRef(agent?: A2AAgent) {
+export function backendServiceRef(agent?: A2AAgent) {
   if (backendType(agent) !== 'service') return undefined;
   const namespace = agent?.backend_service_namespace || agent?.namespace || '';
   const name = agent?.backend_service_name || agent?.name || '';
@@ -250,46 +253,36 @@ function normalizeSkills(items: A2AAgentSkill[]) {
 }
 
 const capabilityTags = (agent: A2AAgent) => (
-  <Space size="small" breakLine>
+  <div className={style.capabilityTagList}>
     {agent.streaming && <Tag theme="success" variant="light-outline">Streaming</Tag>}
     {agent.push_notifications && <Tag theme="warning" variant="light-outline">Push</Tag>}
-    {agent.extended_agent_card && <Tag theme="primary" variant="light-outline">Extended Card</Tag>}
+    {agent.extended_agent_card && <Tag theme="primary" variant="light-outline">Extended</Tag>}
     {!agent.streaming && !agent.push_notifications && !agent.extended_agent_card && <Text>-</Text>}
-  </Space>
+  </div>
 );
 
 const agentColumns = (
-  operateAgent: (op: Op | 'detail' | 'skills' | 'card', row?: TableRowData) => void,
+  operateAgent: (op: Op | 'detail' | 'skills' | 'card' | 'authorize', row?: TableRowData) => void,
   goBackendService: (agent?: A2AAgent) => void,
 ): PrimaryTableProps['columns'] => [
   {
     colKey: 'name',
     title: 'A2A Agent',
     fixed: 'left',
-    width: 360,
+    width: 340,
     cell: ({ row }) => (
-      <div className={style.agentCell}>
-        <div className={style.agentNameRow}>
-          <Link theme="primary" onClick={() => operateAgent('detail', row)}>
-            {row.name}
-          </Link>
-          <Tag theme={protocolTheme(row.preferred_protocol_binding) as any} variant="light">
-            {protocolLabel(row.preferred_protocol_binding)}
-          </Tag>
-          {row.visibility && <Tag variant="outline">{row.visibility}</Tag>}
-        </div>
-        <div className={style.agentMeta}>
-          <span>{row.namespace || '-'}</span>
-          <span>{row.description || row.provider_organization || '-'}</span>
-        </div>
-      </div>
+      <ResourceNameLink
+        className={style.agentNameLink}
+        name={row.name}
+        onClick={() => operateAgent('detail', row)}
+      />
     ),
   },
   {
     colKey: 'endpoint',
     title: '接入',
     ellipsis: true,
-    width: 260,
+    width: 240,
     cell: ({ row }) => {
       const agent = row as A2AAgent;
       const serviceRef = backendServiceRef(agent);
@@ -310,7 +303,7 @@ const agentColumns = (
   {
     colKey: 'owner',
     title: '归属',
-    width: 180,
+    width: 160,
     cell: ({ row }) => (
       <div className={style.compactCell}>
         <Text>{row.business || '-'}</Text>
@@ -321,15 +314,15 @@ const agentColumns = (
   {
     colKey: 'capabilities',
     title: '能力',
-    width: 210,
+    width: 250,
     cell: ({ row }) => capabilityTags(row as A2AAgent),
   },
   {
     colKey: 'skills',
     title: '技能数',
-    width: 96,
+    width: 88,
     cell: ({ row }) => (
-      <Link theme="primary" onClick={() => operateAgent('skills', row)}>
+      <Link className={style.skillCountLink} theme="primary" onClick={() => operateAgent('skills', row)}>
         {Array.isArray(row.skills) ? row.skills.length : 0} 个
       </Link>
     ),
@@ -337,7 +330,7 @@ const agentColumns = (
   {
     colKey: 'last_fetch_status',
     title: '来源',
-    width: 136,
+    width: 124,
     cell: ({ row }) => {
       const agent = row as A2AAgent;
       const sourceType = agent.source_type || 'manual';
@@ -360,7 +353,7 @@ const agentColumns = (
   {
     colKey: 'time',
     title: '最近修改',
-    width: 220,
+    width: 210,
     cell: ({ row }) => (
       <div className={style.compactCell}>
         <Text>{row.mtime || '-'}</Text>
@@ -372,34 +365,18 @@ const agentColumns = (
     colKey: 'action',
     title: '操作',
     fixed: 'right',
-    width: 112,
+    width: 132,
     cell: ({ row }) => (
-      <Space>
-        <Tooltip content="查看 / 编辑">
-          <Button shape="square" variant="text" aria-label="查看 / 编辑" onClick={() => operateAgent('detail', row)}>
-            <FileIcon />
-          </Button>
-        </Tooltip>
-        <Tooltip content="删除">
-          <Popconfirm
-            content="确认删除该 A2A Agent 吗"
-            destroyOnClose
-            placement="top"
-            showArrow
-            theme="default"
-            onConfirm={() => operateAgent('delete', row)}
-          >
-            <Button shape="square" variant="text">
-              <DeleteIcon />
-            </Button>
-          </Popconfirm>
-        </Tooltip>
+      <Space className={style.actionCell} size={4}>
+        <OperationButton action="viewEdit" onClick={() => operateAgent('detail', row)} />
+        <OperationButton action="authorize" onClick={() => operateAgent('authorize', row)} />
+        <ConfirmOperationButton action="delete" confirmContent="确认删除该 A2A Agent 吗" onConfirm={() => operateAgent('delete', row)} />
       </Space>
     ),
   },
 ];
 
-const AgentCardView: React.FC<{ card?: Record<string, any>; loading: boolean }> = ({ card, loading }) => {
+export const AgentCardView: React.FC<{ card?: Record<string, any>; loading: boolean }> = ({ card, loading }) => {
   if (loading) {
     return <div className={style.cardEmpty}>Agent Card 加载中...</div>;
   }
@@ -509,7 +486,7 @@ function skillKey(skill: A2AAgentSkill, index: number) {
   return skill.id || skill.skill_id || skill.name || `skill-${index}`;
 }
 
-const AgentSkillsView: React.FC<{ skills: A2AAgentSkill[]; loading: boolean }> = ({ skills, loading }) => {
+export const AgentSkillsView: React.FC<{ skills: A2AAgentSkill[]; loading: boolean }> = ({ skills, loading }) => {
   const [activeKey, setActiveKey] = useState('');
 
   useEffect(() => {
@@ -546,7 +523,8 @@ const AgentSkillsView: React.FC<{ skills: A2AAgentSkill[]; loading: boolean }> =
             const key = skillKey(skill, index);
             const tags = tagList(skill.tags);
             return (
-              <button
+              <Button
+                variant="text"
                 key={key}
                 className={key === activeKey ? style.skillCatalogItemActive : style.skillCatalogItem}
                 type="button"
@@ -560,7 +538,7 @@ const AgentSkillsView: React.FC<{ skills: A2AAgentSkill[]; loading: boolean }> =
                   {tags.slice(0, 3).map((tag) => <Tag key={tag} variant="outline">{tag}</Tag>)}
                   {tags.length > 3 && <Tag variant="outline">+{tags.length - 3}</Tag>}
                 </div>
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -613,7 +591,7 @@ const AgentSkillsView: React.FC<{ skills: A2AAgentSkill[]; loading: boolean }> =
   );
 };
 
-const A2AEditor: React.FC<{
+export const A2AEditor: React.FC<{
   op: Op;
   visible: boolean;
   closeDrawer: () => void;
@@ -624,41 +602,56 @@ const A2AEditor: React.FC<{
   const { editAgent } = useAppSelector(selectA2A);
   const [interfaces, setInterfaces] = useState<A2AAgentInterface[]>([defaultInterface()]);
   const [skills, setSkills] = useState<A2AAgentSkill[]>([defaultSkill()]);
+  const initialValues = useMemo(() => ({
+    name: editAgent?.name || '',
+    namespace: editAgent?.namespace || '',
+    visibility: editAgent?.visibility || 'public',
+    description: editAgent?.description || '',
+    version: editAgent?.version || '',
+    protocol_version: editAgent?.protocol_version || '0.3.0',
+    provider_organization: editAgent?.provider_organization || '',
+    provider_url: editAgent?.provider_url || '',
+    documentation_url: editAgent?.documentation_url || '',
+    icon_url: editAgent?.icon_url || '',
+    business: editAgent?.business || '',
+    department: editAgent?.department || '',
+    backend_type: editAgent?.backend_type || 'service',
+    backend_service_namespace: editAgent?.backend_service_namespace || '',
+    backend_service_name: editAgent?.backend_service_name || '',
+    backend_address: editAgent?.backend_address || '',
+    preferred_interface_url: editAgent?.preferred_interface_url || '',
+    preferred_protocol_binding: editAgent?.preferred_protocol_binding || 'jsonrpc',
+    preferred_protocol_version: editAgent?.preferred_protocol_version || '0.3.0',
+    streaming: !!editAgent?.streaming,
+    push_notifications: !!editAgent?.push_notifications,
+    extended_agent_card: !!editAgent?.extended_agent_card,
+    source_type: editAgent?.source_type || 'manual',
+    source_url: editAgent?.source_url || '',
+    last_fetch_status: editAgent?.last_fetch_status || 'pending',
+    raw_card_json: jsonPreview(editAgent?.raw_card_json),
+    metadata_text: stringifyMetadata(editAgent?.metadata),
+  }), [editAgent]);
+  const initialInterfaces = useMemo(
+    () => editAgent?.interfaces?.length ? editAgent.interfaces : [defaultInterface()],
+    [editAgent],
+  );
+  const initialSkills = useMemo(
+    () => editAgent?.skills?.length ? editAgent.skills : [defaultSkill()],
+    [editAgent],
+  );
 
   useEffect(() => {
     if (!visible) return;
-    form.setFieldsValue({
-      name: editAgent?.name || '',
-      namespace: editAgent?.namespace || '',
-      visibility: editAgent?.visibility || 'public',
-      description: editAgent?.description || '',
-      version: editAgent?.version || '',
-      protocol_version: editAgent?.protocol_version || '0.3.0',
-      provider_organization: editAgent?.provider_organization || '',
-      provider_url: editAgent?.provider_url || '',
-      documentation_url: editAgent?.documentation_url || '',
-      icon_url: editAgent?.icon_url || '',
-      business: editAgent?.business || '',
-      department: editAgent?.department || '',
-      backend_type: editAgent?.backend_type || 'service',
-      backend_service_namespace: editAgent?.backend_service_namespace || '',
-      backend_service_name: editAgent?.backend_service_name || '',
-      backend_address: editAgent?.backend_address || '',
-      preferred_interface_url: editAgent?.preferred_interface_url || '',
-      preferred_protocol_binding: editAgent?.preferred_protocol_binding || 'jsonrpc',
-      preferred_protocol_version: editAgent?.preferred_protocol_version || '0.3.0',
-      streaming: !!editAgent?.streaming,
-      push_notifications: !!editAgent?.push_notifications,
-      extended_agent_card: !!editAgent?.extended_agent_card,
-      source_type: editAgent?.source_type || 'manual',
-      source_url: editAgent?.source_url || '',
-      last_fetch_status: editAgent?.last_fetch_status || 'pending',
-      raw_card_json: jsonPreview(editAgent?.raw_card_json),
-      metadata_text: stringifyMetadata(editAgent?.metadata),
-    });
-    setInterfaces(editAgent?.interfaces?.length ? editAgent.interfaces : [defaultInterface()]);
-    setSkills(editAgent?.skills?.length ? editAgent.skills : [defaultSkill()]);
-  }, [visible, editAgent]);
+    form.setFieldsValue(initialValues);
+    setInterfaces(initialInterfaces);
+    setSkills(initialSkills);
+  }, [visible, initialValues, initialInterfaces, initialSkills]);
+
+  const resetEditor = () => {
+    form.setFieldsValue(initialValues);
+    setInterfaces(initialInterfaces);
+    setSkills(initialSkills);
+  };
 
   const updateInterface = (index: number, patch: Partial<A2AAgentInterface>) => {
     setInterfaces((prev) => prev.map((item, idx) => (idx === index ? { ...item, ...patch } : item)));
@@ -718,7 +711,7 @@ const A2AEditor: React.FC<{
   };
 
   const editorContent = (
-      <Form form={form} layout="vertical" onSubmit={onSubmit}>
+      <Form form={form} layout="vertical" onSubmit={onSubmit} onReset={resetEditor}>
         <Tabs defaultValue="base">
           <TabPanel value="base" label="基础信息">
             <Row gutter={16}>
@@ -868,6 +861,7 @@ const A2AEditor: React.FC<{
                   </Col>
                   <Col span={1}>
                     <Button
+                      aria-label={`删除第 ${index + 1} 个接口`}
                       shape="square"
                       variant="text"
                       disabled={interfaces.length === 1}
@@ -902,6 +896,7 @@ const A2AEditor: React.FC<{
                   </Col>
                   <Col span={1}>
                     <Button
+                      aria-label={`删除第 ${index + 1} 个技能`}
                       shape="square"
                       variant="text"
                       disabled={skills.length === 1}
@@ -995,6 +990,9 @@ export default memo(() => {
   const [detailState, setDetailState] = useState<{ visible: boolean; agent?: A2AAgent }>({
     visible: false,
   });
+  const [authorizeState, setAuthorizeState] = useState<{ visible: boolean; agent?: A2AAgent }>({
+    visible: false,
+  });
   const [detailActiveTab, setDetailActiveTab] = useState<A2ADetailTab>('card');
   const [cardViewMode, setCardViewMode] = useState<'visual' | 'raw'>('visual');
 
@@ -1063,7 +1061,7 @@ export default memo(() => {
     setDetailState({ visible: false });
   };
 
-  const operateAgent = (op: Op | 'detail' | 'skills' | 'card', row?: TableRowData) => {
+  const operateAgent = (op: Op | 'detail' | 'skills' | 'card' | 'authorize', row?: TableRowData) => {
     const agent = row as A2AAgent;
     switch (op) {
       case 'create':
@@ -1071,7 +1069,7 @@ export default memo(() => {
         setEditorState({ visible: true, mode: 'create' });
         break;
       case 'edit':
-        openAgentDetail(agent, 'edit');
+        navigate(`/ai/a2a/detail?id=${encodeURIComponent(String(agent?.id || ''))}&namespace=${encodeURIComponent(String(agent?.namespace || ''))}&name=${encodeURIComponent(String(agent?.name || ''))}&tab=edit`);
         break;
       case 'delete':
         dispatch(removeA2AAgents({ ids: [agent?.id as string] })).then((res) => {
@@ -1084,13 +1082,16 @@ export default memo(() => {
         });
         break;
       case 'detail':
-        openAgentDetail(agent, 'card');
+        navigate(`/ai/a2a/detail?id=${encodeURIComponent(String(agent?.id || ''))}&namespace=${encodeURIComponent(String(agent?.namespace || ''))}&name=${encodeURIComponent(String(agent?.name || ''))}&tab=card`);
         break;
       case 'skills':
-        openAgentDetail(agent, 'skills');
+        navigate(`/ai/a2a/detail?id=${encodeURIComponent(String(agent?.id || ''))}&namespace=${encodeURIComponent(String(agent?.namespace || ''))}&name=${encodeURIComponent(String(agent?.name || ''))}&tab=skills`);
         break;
       case 'card':
-        openAgentDetail(agent, 'card');
+        navigate(`/ai/a2a/detail?id=${encodeURIComponent(String(agent?.id || ''))}&namespace=${encodeURIComponent(String(agent?.namespace || ''))}&name=${encodeURIComponent(String(agent?.name || ''))}&tab=card`);
+        break;
+      case 'authorize':
+        setAuthorizeState({ visible: true, agent });
         break;
       default:
         break;
@@ -1137,21 +1138,21 @@ export default memo(() => {
 
   return (
     <div className={style.page}>
-      <section className={style.header}>
-        <div>
-          <div className={style.eyebrow}>AI Native / A2A Agent Registry</div>
-          <h2>A2A Agent</h2>
-          <p>维护可被其它 Agent 发现的 Agent Card、访问接口、技能能力和后端绑定。</p>
-        </div>
-        <Space>
+      <ResourceHeader
+        eyebrow="AI Native / A2A Agent Registry"
+        title="A2A Agent"
+        description="维护可被其它 Agent 发现的 Agent Card、访问接口、技能能力和后端绑定。"
+        actions={(
+          <>
           <Tooltip content="刷新列表">
             <Button shape="square" variant="outline" onClick={() => refreshTable(page, limit)}>
               <RefreshIcon />
             </Button>
           </Tooltip>
           <Button theme="primary" icon={<AddIcon />} onClick={() => operateAgent('create')}>新建 A2A Agent</Button>
-        </Space>
-      </section>
+          </>
+        )}
+      />
 
       <section className={style.metricRail}>
         <div className={style.metricItem}>
@@ -1176,8 +1177,11 @@ export default memo(() => {
         </div>
       </section>
 
-      <section className={style.filterBar}>
-        <div className={style.filterControls}>
+      <ResourceToolbar
+        title="Agent 列表"
+        count={loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}
+        filters={(
+          <div className={style.filterControls}>
           <Select
             className={style.filterSelect}
             placeholder="协议"
@@ -1238,23 +1242,19 @@ export default memo(() => {
             <Button variant="outline" onClick={submitFilter}>查询</Button>
             <Button variant="text" onClick={resetFilter}>重置</Button>
           </div>
-        </div>
-      </section>
+          </div>
+        )}
+      />
 
       <section className={style.tableSurface}>
-        <div className={style.tableHeader}>
-          <div>
-            <strong>Agent 列表</strong>
-            <span>{loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}</span>
-          </div>
-        </div>
         <Table
+          className={style.agentTable}
           data={datas}
           columns={agentColumns(operateAgent, goBackendService)}
           loading={loading}
           rowKey="id"
           size="large"
-          tableLayout="auto"
+          tableLayout="fixed"
           cellEmptyContent="-"
           pagination={{
             current: page,
@@ -1284,6 +1284,16 @@ export default memo(() => {
         />
       )}
 
+      {authorizeState.visible && authorizeState.agent?.id && (
+        <AuthorizeInput
+          resource_type={PolicySourceType.A2AAgentResources}
+          resource_id={authorizeState.agent.id}
+          resource_name={`${authorizeState.agent.namespace}/${authorizeState.agent.name}`}
+          visible={authorizeState.visible}
+          onClose={() => setAuthorizeState({ visible: false })}
+        />
+      )}
+
       <Drawer
         size="min(1180px, 92vw)"
         header="A2A Agent 详情"
@@ -1298,12 +1308,14 @@ export default memo(() => {
             </div>
             <div className={style.agentDrawerMain}>
               <div className={style.agentDrawerTitle}>
-                <h3>{detailState.agent ? `${detailState.agent.namespace}/${detailState.agent.name}` : '未选择 A2A Agent'}</h3>
+                <h3 title={detailState.agent ? `${detailState.agent.namespace}/${detailState.agent.name}` : '未选择 A2A Agent'}>
+                  {detailState.agent ? `${detailState.agent.namespace}/${detailState.agent.name}` : '未选择 A2A Agent'}
+                </h3>
                 <Tag theme={protocolTheme(detailState.agent?.preferred_protocol_binding) as any} variant="light">
                   {protocolLabel(detailState.agent?.preferred_protocol_binding)}
                 </Tag>
               </div>
-              <div className={style.agentDrawerDesc}>
+              <div className={style.agentDrawerDesc} title={detailState.agent?.description || detailState.agent?.provider_organization || '该 Agent 暂无描述。'}>
                 {detailState.agent?.description || detailState.agent?.provider_organization || '该 Agent 暂无描述。'}
               </div>
               <div className={style.agentMetaGrid}>
@@ -1333,7 +1345,7 @@ export default memo(() => {
             </div>
             <div className={style.agentDrawerActions}>
               <Tooltip content="刷新">
-                <Button shape="square" variant="outline" onClick={refreshDetails}>
+                <Button aria-label="刷新 Agent 详情" className={style.drawerActionIconButton} shape="square" variant="outline" onClick={refreshDetails}>
                   <RefreshIcon />
                 </Button>
               </Tooltip>

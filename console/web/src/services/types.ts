@@ -7,6 +7,7 @@ export enum BaseURL {
     CONFIG_GROUP = '/config/v1/groups',
     CONFIG_FILE = '/config/v1/files',
     CONFIG_RELEASE = '/config/v1/files/release',
+    CONFIG_RELEASES = '/config/v1/files/releases',
     CUSTOM_ROUTE = '/naming/v1/routings',
     LANE_GROUP = '/naming/v1/lane/groups',
     RATELIMIT_RULE = '/naming/v1/ratelimits',
@@ -77,8 +78,8 @@ export enum MatchValueType {
 }
 
 export const MatchValueTypeMap = {
-    'TEXT': '文本',
-    'PARAMETER': '参数',
+    'TEXT': '固定值',
+    'PARAMETER': '请求参数',
 }
 
 export const MatchValueTypeOption = [
@@ -136,7 +137,7 @@ export const ClientLabelTypeMap = {
     CUSTOM: '自定义',
 }
 
-export type Op = '' | 'view' | 'create' | 'edit' | 'delete' | 'authorize' | 'publish' | 'rollback' | 'gray' | 'normal';
+export type Op = '' | 'view' | 'create' | 'edit' | 'delete' | 'authorize' | 'publish' | 'rollback' | 'gray' | 'normal' | 'stopGray' | 'promote';
 
 
 export interface RuleReleaseRequest {

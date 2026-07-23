@@ -44,6 +44,7 @@ func TestCircuitBreakerStoreCreateUsesGovernanceRuleRepository(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
+	expectGovernanceRuleNameAvailable(mock, governanceRuleTypeCircuitBreaker, rule.Namespace, rule.Name)
 	mock.ExpectExec(regexp.QuoteMeta(insertGovernanceRuleSQL)).
 		WithArgs(
 			rule.ID,

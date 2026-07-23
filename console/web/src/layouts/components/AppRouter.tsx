@@ -1,6 +1,6 @@
 import React, { Suspense, memo, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { Layout, Loading } from 'tdesign-react';
+import { Layout, Loading } from 'components/Fluent';
 import routers, { IRouter } from 'router';
 import { useAppSelector } from 'modules/store';
 import { resolve } from 'utils/path';
@@ -12,13 +12,25 @@ const { Content } = Layout;
 type TRenderRoutes = (routes: IRouter[], parentPath?: string, breadcrumbs?: string[]) => React.ReactNode[];
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isLogin } = useAppSelector((state) => state.userLogin);
+  const { isLogin, sessionResolved } = useAppSelector((state) => state.userLogin);
   const location = useLocation();
+
+  if (!sessionResolved) {
+    return <Loading />;
+  }
 
   if (!isLogin) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
+  return children;
+};
+
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const role = useAppSelector((state) => state.userLogin.currentUser.role);
+  if (role !== 'main' && role !== 'admin') {
+    return <Navigate to="/namespace" replace />;
+  }
   return children;
 };
 
@@ -61,9 +73,17 @@ const renderRoutes: TRenderRoutes = (routes, parentPath = '', breadcrumb = []) =
             path={currentPath}
             element={
               <PrivateRoute>
-                <Page isFullPage={route.isFullPage} breadcrumbs={currentBreadcrumb}>
-                  <Component />
-                </Page>
+                {meta?.adminOnly ? (
+                  <AdminRoute>
+                    <Page isFullPage={route.isFullPage} breadcrumbs={currentBreadcrumb}>
+                      <Component />
+                    </Page>
+                  </AdminRoute>
+                ) : (
+                  <Page isFullPage={route.isFullPage} breadcrumbs={currentBreadcrumb}>
+                    <Component />
+                  </Page>
+                )}
               </PrivateRoute>
             }
           />

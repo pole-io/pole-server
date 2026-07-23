@@ -19,6 +19,7 @@ package policy
 
 import (
 	"context"
+	"time"
 
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 
@@ -29,11 +30,22 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
 
+const (
+	defaultMainUserPolicyComment  = "default main user auth policy rule"
+	defaultReadWritePolicyComment = "global resources read and write"
+	defaultReadOnlyPolicyComment  = "global resources read only policy rule"
+)
+
 type DefaultPolicyHelper struct {
 	options  *AuthConfig
 	storage  store.Store
 	cacheMgr cachetypes.CacheManager
 	checker  authapi.AuthChecker
+}
+
+type defaultPolicyResourceStore interface {
+	GetMoreStrategies(mtime time.Time, firstUpdate bool) ([]*authtypes.StrategyDetail, error)
+	LooseAddStrategyResources(resources []authtypes.StrategyResource) error
 }
 
 func (h *DefaultPolicyHelper) GetRole(id string) *authtypes.Role {
@@ -89,7 +101,7 @@ func mainUserPrincipalPolicy(p authtypes.Principal) *authtypes.StrategyDetail {
 		Principals:    []authtypes.Principal{p},
 		CalleeMethods: calleeMethods,
 		Valid:         true,
-		Comment:       "default main user auth policy rule",
+		Comment:       defaultMainUserPolicyComment,
 	}
 }
 
@@ -118,7 +130,7 @@ func defaultReadWritePolicy(p authtypes.Principal) *authtypes.StrategyDetail {
 		Resources:     resources,
 		CalleeMethods: calleeMethods,
 		Valid:         true,
-		Comment:       "global resources read and write",
+		Comment:       defaultReadWritePolicyComment,
 		Metadata: map[string]string{
 			authtypes.MetadKeySystemDefaultPolicy: "true",
 		},
@@ -154,10 +166,69 @@ func defaultReadOnlyPolicy(p authtypes.Principal) *authtypes.StrategyDetail {
 		Resources:     resources,
 		CalleeMethods: calleeMethods,
 		Valid:         true,
-		Comment:       "global resources read only policy rule",
+		Comment:       defaultReadOnlyPolicyComment,
 		Metadata: map[string]string{
 			authtypes.MetadKeySystemDefaultPolicy: "true",
 		},
+	}
+}
+
+// backfillDefaultPolicyAIResourceWildcards 为历史全量默认策略补齐后续新增的 AI 资源类型。
+// 默认策略在创建时会枚举当时已知的 ResourceType；MCP/A2A 后加入时，已有策略不会自动拥有它们的通配授权。
+func backfillDefaultPolicyAIResourceWildcards(storage defaultPolicyResourceStore) (int, error) {
+	policies, err := storage.GetMoreStrategies(time.Time{}, true)
+	if err != nil {
+		return 0, err
+	}
+
+	missingResources := make([]authtypes.StrategyResource, 0)
+	for _, policy := range policies {
+		if !isAllResourceDefaultPolicy(policy) {
+			continue
+		}
+
+		resourceTypes := make(map[apisecurity.ResourceType]struct{}, len(policy.Resources))
+		for _, resource := range policy.Resources {
+			if resource.ResID == "*" {
+				resourceTypes[resource.ResType] = struct{}{}
+			}
+		}
+
+		for _, resourceType := range []apisecurity.ResourceType{
+			apisecurity.ResourceType_MCPServerResources,
+			apisecurity.ResourceType_A2AAgentResources,
+		} {
+			if _, exists := resourceTypes[resourceType]; exists {
+				continue
+			}
+			missingResources = append(missingResources, authtypes.StrategyResource{
+				StrategyID: policy.ID,
+				ResType:    resourceType,
+				ResID:      "*",
+			})
+		}
+	}
+
+	if len(missingResources) == 0 {
+		return 0, nil
+	}
+	if err := storage.LooseAddStrategyResources(missingResources); err != nil {
+		return 0, err
+	}
+	return len(missingResources), nil
+}
+
+func isAllResourceDefaultPolicy(policy *authtypes.StrategyDetail) bool {
+	if policy == nil || !policy.Default || !policy.Valid {
+		return false
+	}
+	switch policy.Comment {
+	case defaultMainUserPolicyComment:
+		return true
+	case defaultReadWritePolicyComment, defaultReadOnlyPolicyComment:
+		return policy.Metadata[authtypes.MetadKeySystemDefaultPolicy] == "true"
+	default:
+		return false
 	}
 }
 

@@ -93,16 +93,44 @@ func (svr *Server) UpdateRole(ctx context.Context, req *apisecurity.Role) *apimo
 			zap.String("id", newData.ID))
 		return api.NewAuthResponse(apimodel.Code_NotFoundResource)
 	}
+	definition, systemRole := authtypes.GetSystemRoleDefinition(saveData.ID)
+	if systemRole || saveData.Type == authtypes.RoleTypeSystem {
+		if !systemRole {
+			return api.NewAuthResponseWithMsg(apimodel.Code_BadRequest, "unknown system role cannot be modified")
+		}
+		if req.GetName() != "" && req.GetName() != definition.Name {
+			return api.NewAuthResponseWithMsg(apimodel.Code_BadRequest, "system role name is immutable")
+		}
+		if req.GetSource() != "" && req.GetSource() != saveData.Source {
+			return api.NewAuthResponseWithMsg(apimodel.Code_BadRequest, "system role source is immutable")
+		}
+		if req.GetComment() != "" && req.GetComment() != definition.Comment {
+			return api.NewAuthResponseWithMsg(apimodel.Code_BadRequest, "system role description is immutable")
+		}
+		if len(req.GetMetadata()) > 0 && !maps.Equal(req.GetMetadata(), saveData.Metadata) {
+			return api.NewAuthResponseWithMsg(apimodel.Code_BadRequest, "system role metadata is immutable")
+		}
+	}
 
 	if needUpdate := func() bool {
 		needUpdate := false
-		if saveData.Comment != newData.Comment {
-			saveData.Comment = newData.Comment
-			needUpdate = true
-		}
-		if saveData.Source != newData.Source {
-			saveData.Source = newData.Source
-			needUpdate = true
+		if !systemRole && saveData.Type != authtypes.RoleTypeSystem {
+			if req.GetName() != "" && saveData.Name != newData.Name {
+				saveData.Name = newData.Name
+				needUpdate = true
+			}
+			if saveData.Comment != newData.Comment {
+				saveData.Comment = newData.Comment
+				needUpdate = true
+			}
+			if saveData.Source != newData.Source {
+				saveData.Source = newData.Source
+				needUpdate = true
+			}
+			if !maps.Equal(saveData.Metadata, newData.Metadata) {
+				saveData.Metadata = newData.Metadata
+				needUpdate = true
+			}
 		}
 		if !slices.EqualFunc(saveData.Users, newData.Users, func(e1, e2 authtypes.Principal) bool {
 			return e1.PrincipalID == e2.PrincipalID && e1.PrincipalType == e2.PrincipalType
@@ -114,10 +142,6 @@ func (svr *Server) UpdateRole(ctx context.Context, req *apisecurity.Role) *apimo
 			return e1.PrincipalID == e2.PrincipalID && e1.PrincipalType == e2.PrincipalType
 		}) {
 			saveData.UserGroups = newData.UserGroups
-			needUpdate = true
-		}
-		if !maps.Equal(saveData.Metadata, newData.Metadata) {
-			saveData.Metadata = newData.Metadata
 			needUpdate = true
 		}
 		return needUpdate
@@ -158,6 +182,9 @@ func (svr *Server) DeleteRole(ctx context.Context, req *apisecurity.Role) *apimo
 	if saveData == nil {
 		return api.NewAuthResponse(apimodel.Code_ExecuteSuccess)
 	}
+	if _, systemRole := authtypes.GetSystemRoleDefinition(saveData.ID); systemRole || saveData.Type == authtypes.RoleTypeSystem {
+		return api.NewAuthResponseWithMsg(apimodel.Code_BadRequest, "system role cannot be deleted")
+	}
 
 	tx, err := svr.storage.StartTx()
 	if err != nil {
@@ -192,6 +219,10 @@ func (svr *Server) DeleteRole(ctx context.Context, req *apisecurity.Role) *apimo
 
 // GetRoles 查询角色列表
 func (svr *Server) GetRoles(ctx context.Context, filters map[string]string) *apimodel.BatchQueryResponse {
+	if err := svr.ensureSystemRoles(); err != nil {
+		log.Error("[Auth][Role] ensure built-in roles", utils.RequestID(ctx), zap.Error(err))
+		return api.NewBatchQueryResponse(storeapi.StoreCode2APICode(err))
+	}
 	offset, limit, _ := valid.ParseOffsetAndLimit(filters)
 
 	total, ret, err := svr.cacheMgr.Role().Query(ctx, cachetypes.RoleSearchArgs{

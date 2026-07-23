@@ -26,6 +26,24 @@ export enum TrafficSecurityAction {
     DENY = 'TRAFFIC_SECURITY_DENY',
 }
 
+export enum TrafficSecurityAuthMode {
+    LEGACY_REQUEST_MATCH = 'LEGACY_REQUEST_MATCH',
+    MANAGED_IDENTITY = 'MANAGED_IDENTITY',
+    CUSTOM_HEADER = 'CUSTOM_HEADER',
+}
+
+export interface TrafficSecurityAuthentication {
+    mode: TrafficSecurityAuthMode | string
+    managed_identity?: Record<string, never>
+    custom_header?: {
+        header_name?: string
+        /** Write-only management input; never returned after persistence. */
+        value?: string
+        /** Server-generated verifier digest; not accepted from Console writes. */
+        value_sha256?: string
+    }
+}
+
 export const TrafficSecurityActionMap: Record<string, string> = {
     [TrafficSecurityAction.ALLOW]: '放通',
     [TrafficSecurityAction.DENY]: '拒绝',
@@ -85,13 +103,20 @@ export interface TrafficRuleBase {
 }
 
 export interface TrafficSecurityRule extends TrafficRuleBase {
+    authentication?: TrafficSecurityAuthentication
     policies: TrafficSecurityPolicy[]
+}
+
+export interface ManagedCallerSelector {
+    any_authenticated?: boolean
+    callers?: TrafficSourceService[]
 }
 
 export interface TrafficSecurityPolicy {
     api?: TrafficApiScope
     apis?: TrafficApiScope[]
     traffic_match_rule?: TrafficMatchRule
+    managed_caller?: ManagedCallerSelector
     action: TrafficSecurityAction | string
     reject_effect?: {
         status_code?: number
@@ -215,56 +240,24 @@ export const defaultTrafficSecurityRule = (): TrafficSecurityRule => ({
     description: '',
     priority: 0,
     enable: true,
+    authentication: {
+        mode: TrafficSecurityAuthMode.MANAGED_IDENTITY,
+        managed_identity: {},
+    },
     policies: [{
-        action: TrafficSecurityAction.DENY,
-        apis: [{
-            protocol: InterfaceProtocol.HTTP,
-            method: 'POST',
-            path: {
-                type: MatchType.IN,
-                value: '/admin',
-                value_type: MatchValueType.TEXT,
-            },
-        }],
-        traffic_match_rule: {
-            ...defaultTrafficMatchRule(),
-            arguments: [{
-                type: 'HEADER',
-                key: 'authorization',
-                value: {
-                    type: MatchType.IN,
-                    value: 'deny-',
-                    value_type: MatchValueType.TEXT,
-                },
-            }],
-        },
-        reject_effect: {
-            status_code: 403,
-            code: 'FORBIDDEN',
-            message: 'request denied by auth rule',
-        },
-    }, {
         action: TrafficSecurityAction.ALLOW,
         apis: [{
             protocol: InterfaceProtocol.HTTP,
             method: 'GET',
             path: {
-                type: MatchType.IN,
-                value: '/orders',
+                type: MatchType.EXACT,
+                value: '/',
                 value_type: MatchValueType.TEXT,
             },
         }],
-        traffic_match_rule: {
-            ...defaultTrafficMatchRule(),
-            arguments: [{
-                type: 'HEADER',
-                key: 'x-user-type',
-                value: {
-                    type: MatchType.EXACT,
-                    value: 'internal',
-                    value_type: MatchValueType.TEXT,
-                },
-            }],
+        managed_caller: {
+            any_authenticated: true,
+            callers: [],
         },
     }],
 });

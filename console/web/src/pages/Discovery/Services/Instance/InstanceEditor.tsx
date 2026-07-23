@@ -1,7 +1,7 @@
 import React from 'react';
-import { Drawer, Form, Input, Space, Button, InputNumber, Switch, Select, Tag } from "tdesign-react";
-import { ServerIcon } from 'tdesign-icons-react';
-import type { FormProps } from 'tdesign-react';
+import { Drawer, Form, Input, Space, Button, InputNumber, Switch, Select, Tag } from 'components/Fluent';
+import { ServerIcon } from 'components/Fluent/icons';
+import type { FormProps } from 'components/Fluent';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
@@ -21,14 +21,31 @@ interface IInstanceEditorProps {
     visible: boolean;
 }
 
-const HealthCheckTypeOptions = [{ label: '心跳上报', value: 1 }, { label: 'TCP 探测', value: 2, disabled: true }, { label: 'HTTTP 探测', value: 3, disabled: true }]
+const HealthCheckType = {
+    Heartbeat: 1,
+    TCP: 2,
+    HTTP: 3,
+} as const;
+
+const DefaultProbeInterval = 5;
+
+const HealthCheckTypeOptions = [
+    { label: '心跳上报', value: HealthCheckType.Heartbeat },
+    { label: 'TCP 探测', value: HealthCheckType.TCP },
+    { label: 'HTTP 探测', value: HealthCheckType.HTTP },
+];
 
 const emptyText = '-';
 
 const isPresent = (value?: React.ReactNode) => value !== undefined && value !== null && value !== '';
 
 const Value = ({ children }: { children?: React.ReactNode }) => (
-    <div className={style.instanceDetailValue}>{isPresent(children) ? children : emptyText}</div>
+    <div
+        className={style.instanceDetailValue}
+        title={isPresent(children) ? String(children) : emptyText}
+    >
+        {isPresent(children) ? children : emptyText}
+    </div>
 )
 
 const DetailItem = ({ label, children }: { label: string, children?: React.ReactNode }) => (
@@ -39,9 +56,9 @@ const DetailItem = ({ label, children }: { label: string, children?: React.React
 )
 
 const getHealthCheckText = (type?: number) => {
-    if (type === 1) return '心跳上报';
-    if (type === 2) return 'TCP 探测';
-    if (type === 3) return 'HTTP 探测';
+    if (type === HealthCheckType.Heartbeat) return '心跳上报';
+    if (type === HealthCheckType.TCP) return 'TCP 探测';
+    if (type === HealthCheckType.HTTP) return 'HTTP 探测';
     return emptyText;
 }
 
@@ -74,12 +91,12 @@ const InstanceSummary: React.FC<InstanceSummaryProps> = ({
                     <ServerIcon />
                 </div>
                 <div className={style.instanceDetailTitleGroup}>
-                    <div className={style.instanceDetailAddress}>{address}</div>
-                    <Space size={8}>
-                        <Tag variant="light">{namespace}</Tag>
-                        <Tag variant="light">{service}</Tag>
+                    <div className={style.instanceDetailAddress} title={address}>{address}</div>
+                    <div className={style.instanceContextList}>
+                        <span className={style.instanceContextItem} title={namespace}>{namespace}</span>
+                        <span className={style.instanceContextItem} title={service}>{service}</span>
                         {protocol && <Tag theme="primary" variant="light">{protocol}</Tag>}
-                    </Space>
+                    </div>
                 </div>
             </div>
             <div className={style.instanceStatusStrip}>
@@ -112,19 +129,16 @@ const InstanceEditor: React.FC<IInstanceEditorProps> = ({ visible, op, closeDraw
 
     const insState = useAppSelector(selectInstance);
     const { editIns } = insState;
-    const watchedNamespace = Form.useWatch('namespace', form) as string | undefined;
-    const watchedService = Form.useWatch('service', form) as string | undefined;
     const watchedHost = Form.useWatch('host', form) as string | undefined;
     const watchedPort = Form.useWatch('port', form) as number | undefined;
     const watchedProtocol = Form.useWatch('protocol', form) as string | undefined;
     const watchedHealthy = Form.useWatch('healthy', form) as boolean | undefined;
     const watchedIsolate = Form.useWatch('isolate', form) as boolean | undefined;
     const watchedEnableHealthCheck = Form.useWatch('enableHealthCheck', form) as boolean | undefined;
+    const watchedHealthCheckType = Form.useWatch(['healthCheck', 'type'], form) as number | undefined;
 
     React.useEffect(() => {
         form.setFieldsValue({
-            namespace: namespace,
-            service: service,
             host: editIns?.host || '',
             port: editIns?.port || 0,
             protocol: editIns?.protocol || '',
@@ -133,7 +147,14 @@ const InstanceEditor: React.FC<IInstanceEditorProps> = ({ visible, op, closeDraw
             healthy: editIns?.healthy || false,
             isolate: editIns?.isolate || false,
             enableHealthCheck: editIns?.enableHealthCheck || false,
-            healthCheck: editIns?.healthCheck || {},
+            healthCheck: editIns?.healthCheck || {
+                type: HealthCheckType.TCP,
+                tcp: { interval: DefaultProbeInterval },
+            },
+            health_check_probe_interval: editIns?.healthCheck?.tcp?.interval
+                || editIns?.healthCheck?.http?.interval
+                || DefaultProbeInterval,
+            health_check_http_path: editIns?.healthCheck?.http?.path || '/',
             // 健康检查类型默认为心跳上报
             instance_labels: editIns?.metadata ? Object.entries(editIns.metadata).map(([key, value]) => ({ key, value })) : [],
             location: editIns?.location || {},
@@ -149,8 +170,8 @@ const InstanceEditor: React.FC<IInstanceEditorProps> = ({ visible, op, closeDraw
 
         let newData = {
             id: editIns?.id || '',
-            namespace: form.getFieldValue('namespace') as string,
-            service: form.getFieldValue('service') as string,
+            namespace: editIns?.namespace || namespace,
+            service: editIns?.service || service,
             host: form.getFieldValue('host') as string,
             port: form.getFieldValue('port') as number,
             protocol: form.getFieldValue('protocol') as string,
@@ -171,15 +192,32 @@ const InstanceEditor: React.FC<IInstanceEditorProps> = ({ visible, op, closeDraw
             }, {}),
         }
         if (newData.enableHealthCheck) {
-            newData.healthCheck = {
-                type: form.getFieldValue(['healthCheck', 'type']) as number,
-                heartbeat: {
-                    ttl: form.getFieldValue(['healthCheck', 'heartbeat', 'ttl']) as number,
-                }
-            };
+            const type = form.getFieldValue(['healthCheck', 'type']) as number;
+            if (type === HealthCheckType.Heartbeat) {
+                newData.healthCheck = {
+                    type,
+                    heartbeat: {
+                        ttl: form.getFieldValue(['healthCheck', 'heartbeat', 'ttl']) as number,
+                    },
+                };
+            } else if (type === HealthCheckType.HTTP) {
+                newData.healthCheck = {
+                    type,
+                    http: {
+                        interval: form.getFieldValue('health_check_probe_interval') as number,
+                        path: form.getFieldValue('health_check_http_path') as string,
+                    },
+                };
+            } else {
+                newData.healthCheck = {
+                    type: HealthCheckType.TCP,
+                    tcp: {
+                        interval: form.getFieldValue('health_check_probe_interval') as number,
+                    },
+                };
+            }
         }
 
-        console.log(e, newData);
         let result;
         if (op === 'edit') {
             result = await dispatch(updateInstances({ param: { ...newData } }))
@@ -198,8 +236,8 @@ const InstanceEditor: React.FC<IInstanceEditorProps> = ({ visible, op, closeDraw
     const metadata = Object.entries(editIns?.metadata || {});
     const location = editIns?.location || {};
     const address = editIns ? `${editIns.host || emptyText}:${isPresent(editIns.port) ? editIns.port : emptyText}` : emptyText;
-    const formNamespace = watchedNamespace || editIns?.namespace || namespace;
-    const formService = watchedService || editIns?.service || service;
+    const formNamespace = editIns?.namespace || namespace;
+    const formService = editIns?.service || service;
     const formHost = watchedHost || editIns?.host || '';
     const formPort = watchedPort ?? editIns?.port;
     const formAddress = formHost ? `${formHost}:${isPresent(formPort) && formPort !== 0 ? formPort : emptyText}` : '待填写实例';
@@ -238,9 +276,16 @@ const InstanceEditor: React.FC<IInstanceEditorProps> = ({ visible, op, closeDraw
                     <div className={style.instanceDetailGrid}>
                         <DetailItem label="状态">{editIns?.enableHealthCheck ? '开启' : '关闭'}</DetailItem>
                         <DetailItem label="检查方式">{editIns?.enableHealthCheck ? getHealthCheckText(editIns?.healthCheck?.type) : emptyText}</DetailItem>
-                        <DetailItem label="心跳 TTL">
-                            {editIns?.enableHealthCheck && editIns?.healthCheck?.type === 1 ? `${get(editIns?.healthCheck, 'heartbeat.ttl', 5)} 秒` : emptyText}
+                        <DetailItem label={editIns?.healthCheck?.type === HealthCheckType.Heartbeat ? '心跳 TTL' : '探测间隔'}>
+                            {editIns?.enableHealthCheck
+                                ? `${get(editIns?.healthCheck, editIns?.healthCheck?.type === HealthCheckType.Heartbeat
+                                    ? 'heartbeat.ttl'
+                                    : editIns?.healthCheck?.type === HealthCheckType.HTTP ? 'http.interval' : 'tcp.interval', DefaultProbeInterval)} 秒`
+                                : emptyText}
                         </DetailItem>
+                        {editIns?.enableHealthCheck && editIns?.healthCheck?.type === HealthCheckType.HTTP && (
+                            <DetailItem label="HTTP 路径">{get(editIns?.healthCheck, 'http.path', '/')}</DetailItem>
+                        )}
                     </div>
                 </section>
 
@@ -274,6 +319,7 @@ const InstanceEditor: React.FC<IInstanceEditorProps> = ({ visible, op, closeDraw
     const instanceForm = (
         <>
             <Form
+                className={style.instanceForm}
                 form={form}
                 layout="vertical"
                 labelWidth={120}
@@ -293,13 +339,7 @@ const InstanceEditor: React.FC<IInstanceEditorProps> = ({ visible, op, closeDraw
                     <div className={style.instanceDetailSections}>
                     <section className={style.instanceDetailSection}>
                         <div className={style.instanceDetailSectionTitle}>运行信息</div>
-                        <div className={style.instanceFormGrid}>
-                            <FormItem label={'命名空间'} name={'namespace'} initialData={namespace}>
-                                <Input readonly={true} />
-                            </FormItem>
-                            <FormItem label={'服务'} name={'service'} initialData={service}>
-                                <Input readonly={true} />
-                            </FormItem>
+                        <div className={`${style.instanceFormGrid} ${style.instanceRuntimeGrid}`}>
                             <FormItem label={'主机'} name={'host'} rules={[
                                 { required: true, message: '请输入服务IP' },
                                 { pattern: /^(((\d{1,2}|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d{2}|2[0-4]\d|25[0-5]))$|^([a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+\.?)$/, message: '请输入正确的IP地址或域名' },
@@ -368,42 +408,38 @@ const InstanceEditor: React.FC<IInstanceEditorProps> = ({ visible, op, closeDraw
                             </FormItem>
                         </div>
                         <div className={style.instanceFormGrid}>
-                            <FormItem shouldUpdate={(prev, next) => prev.enableHealthCheck !== next.enableHealthCheck}>
-                                {({ getFieldValue }) => {
-                                    if (getFieldValue('enableHealthCheck') === true) {
-                                        return (
-                                            <FormItem label="健康检查类型" key="ice" name={['healthCheck', 'type']}>
-                                                <Select
-                                                    options={HealthCheckTypeOptions}
-                                                />
-                                            </FormItem>
-                                        );
-                                    }
-                                    return <></>;
-                                }}
-                            </FormItem>
-                            <FormItem shouldUpdate={(prev, next) => {
-                                const enableChange = prev.enableHealthCheck !== next.enableHealthCheck;
-                                const typeChange = prev?.healthCheck?.type !== next?.healthCheck?.type;
-                                return enableChange || typeChange;
-                            }}>
-                                {({ getFieldValue }) => {
-                                    // 心跳健康检查
-                                    if (getFieldValue('enableHealthCheck') === true && getFieldValue(['healthCheck', 'type']) === 1) {
-                                        return (
-                                            <FormItem label="心跳上报 TTL" key="ttl" name={['healthCheck', 'heartbeat', 'ttl']}>
-                                                <InputNumber
-                                                    min={1}
-                                                    max={60}
-                                                    step={1}
-                                                    suffix="秒"
-                                                />
-                                            </FormItem>
-                                        );
-                                    }
-                                    return <></>
-                                }}
-                            </FormItem>
+                            {watchedEnableHealthCheck && (
+                                <FormItem label="健康检查类型" name={['healthCheck', 'type']}>
+                                    <Select
+                                        options={HealthCheckTypeOptions.map((option) => ({
+                                            ...option,
+                                            disabled: op === 'create' && option.value === HealthCheckType.Heartbeat,
+                                        }))}
+                                    />
+                                </FormItem>
+                            )}
+                            {watchedEnableHealthCheck && watchedHealthCheckType === HealthCheckType.Heartbeat && (
+                                <FormItem label="心跳上报 TTL" name={['healthCheck', 'heartbeat', 'ttl']}>
+                                    <InputNumber min={1} max={60} step={1} suffix="秒" />
+                                </FormItem>
+                            )}
+                            {watchedEnableHealthCheck && watchedHealthCheckType === HealthCheckType.HTTP && (
+                                <FormItem
+                                    label="HTTP 探测路径"
+                                    name="health_check_http_path"
+                                    rules={[{ required: true, message: '请输入 HTTP 探测路径' }]}
+                                >
+                                    <Input placeholder="例如：/health" />
+                                </FormItem>
+                            )}
+                            {watchedEnableHealthCheck && (
+                                watchedHealthCheckType === HealthCheckType.TCP
+                                || watchedHealthCheckType === HealthCheckType.HTTP
+                            ) && (
+                                <FormItem label="探测间隔" name="health_check_probe_interval">
+                                    <InputNumber min={1} max={60} step={1} suffix="秒" />
+                                </FormItem>
+                            )}
                         </div>
                     </section>
 
@@ -428,16 +464,6 @@ const InstanceEditor: React.FC<IInstanceEditorProps> = ({ visible, op, closeDraw
                     </section>
                     </div>
                 </section>
-                <FormItem className={style.instanceFormFooter}>
-                    <Space>
-                        <Button theme="primary" type="submit">
-                            提交
-                        </Button>
-                        <Button theme="default" onClick={closeDrawer}>
-                            取消
-                        </Button>
-                    </Space>
-                </FormItem>
             </Form>
         </>
     )
@@ -445,12 +471,27 @@ const InstanceEditor: React.FC<IInstanceEditorProps> = ({ visible, op, closeDraw
     return (
         <div>
             <Drawer
-                size={op === 'view' ? '680px' : 'large'}
+                className={style.instanceDrawer}
+                bodyClassName={style.instanceDrawerBody}
+                footerClassName={style.instanceDrawerFooter}
+                size="min(960px, calc(100vw - 32px))"
                 header={op === 'view' ? '实例详情' : op === 'edit' ? "编辑实例" : "创建实例"}
                 visible={visible}
-                showOverlay={false}
+                showOverlay
+                closeOnOverlayClick
+                closeOnEscKeydown
+                destroyOnClose
                 onClose={closeDrawer}
-                footer={null}
+                footer={op === 'view' ? false : (
+                    <div className={style.instanceDrawerActions}>
+                        <Button theme="default" onClick={closeDrawer}>
+                            取消
+                        </Button>
+                        <Button theme="primary" onClick={() => form.submit()}>
+                            提交
+                        </Button>
+                    </div>
+                )}
             >
                 {op === 'view' ? instanceView : instanceForm}
             </Drawer>

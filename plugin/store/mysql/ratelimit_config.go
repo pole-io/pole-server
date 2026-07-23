@@ -258,7 +258,7 @@ const (
 )
 
 // LockRateLimitRule implements store.RateLimitStore.
-func (rls *rateLimitStore) LockRateLimitRule(tx store.Tx, keyword string) (*rules.RateLimit, error) {
+func (rls *rateLimitStore) LockRateLimitRule(tx store.Tx, namespace, keyword string) (*rules.RateLimit, error) {
 	if tx == nil {
 		return nil, ErrTxIsNil
 	}
@@ -266,7 +266,7 @@ func (rls *rateLimitStore) LockRateLimitRule(tx store.Tx, keyword string) (*rule
 		return nil, ErrorMissingParams
 	}
 
-	record, err := rls.repo().LockRule(tx, governanceRuleTypeRateLimit, keyword)
+	record, err := rls.repo().LockRule(tx, governanceRuleTypeRateLimit, keyword, namespace, keyword)
 	if err != nil {
 		log.Errorf("[store][mysql][ratelimit] query rate limit with keyword(%s) err: %s", keyword, err.Error())
 		return nil, err

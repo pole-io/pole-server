@@ -1,0 +1,68 @@
+---
+title: Console Fluent UI v9 设计系统迁移
+tags: [adr, console, frontend, fluent-ui, design-system]
+links: [architecture, service-discovery, configuration, governance-rules]
+updated: 2026-07-23
+sources: 7
+---
+
+# Console Fluent UI v9 设计系统迁移
+
+## 背景
+
+Console 当前约 102 个 TypeScript/TSX 文件直接依赖 TDesign，覆盖页面壳层、导航、表格、表单、抽屉、通知和复杂治理编辑器。仅修改颜色或覆盖少量 CSS 会继续保留两套组件语义，无法形成统一的企业软件设计语言。
+
+## 决策
+
+- 全站设计系统采用 Microsoft Fluent UI React v9，依赖 `@fluentui/react-components` 与 `@fluentui/react-icons`。
+- 根节点使用 `FluentProvider` 和显式品牌主题，统一 Segoe UI 字体、企业蓝、灰白表面、焦点环、圆角、阴影和层级 token。
+- 应用壳层、导航、按钮、输入、选择、开关、标签、提示、弹层、通知和操作图标优先迁移为 Fluent UI 原生组件。
+- 建立 `components/Fluent` 作为仓库级适配边界，吸收旧页面的 TDesign 属性差异；页面不再直接依赖具体第三方组件库契约。
+- 已有复杂表单的字段状态、嵌套路径和校验行为保持不变，由本地 Fluent 表单控制器承接现有实例、校验、监听和提交契约。
+- 表格、分页、日期区间、树和穿梭框等复杂控件统一由 Fluent v9 或仓库内 Fluent 适配组件实现。
+- 生产依赖、锁文件和源码不得出现 `tdesign-react`、`tdesign-icons-react`、`.t-*` 选择器或 `--td-*` 变量；TSX 业务源码不得退回原生 `button/input/select/textarea` 绕开组件边界。
+
+## 视觉规范
+
+- 主色使用 Fluent Web Blue，页面背景使用冷灰，内容表面为白色；不使用渐变、装饰光斑或大面积深蓝。
+- 页面标题、查询工具栏、数据表、详情抽屉和表单 section 使用统一间距与边框层级，卡片圆角不超过 8px。
+- 资源创建动作使用主按钮，查询使用次按钮，重置使用透明按钮；行操作统一为 Fluent 图标按钮并提供 Tooltip。
+- 阅读态字段使用普通文本，不用 disabled 输入框模拟只读；编辑态才展示边框与输入状态。
+- 图标统一使用 `@fluentui/react-icons`，默认 20px regular，选中/强调状态使用 filled 版本或品牌色。
+
+## 验证要求
+
+- `test:no-tdesign` 同时检查依赖声明、锁文件、源码 import、样式选择器、主题变量及原生交互标签，任何一项残留都必须失败。
+- lint、生产构建和既有 verify 脚本通过。
+- 真实浏览器抽检登录、命名空间、服务详情、配置分组、治理工作台、认证管理和 AI 工具页面。
+- 浏览器不得出现 React key warning、组件运行时错误或明显的布局溢出。
+- 暗色模式的页面表面、状态提示与边框必须使用同时定义亮色和暗色值的 `--app-*` 语义 token；页面级变量只能引用全局 token，不得重新写死浅色值。
+- 静态门禁必须解析背景、边框和局部主题变量并拒绝高亮浅色硬编码；真实浏览器还要对服务详情、治理、监控、认证和 AI 页面计算可见表面颜色，防止静态检查与实际级联结果脱节。
+- 本地发布验收以 Kubernetes Pod 产物为唯一运行依据：前端检查和 production build 在 Linux/arm64 Pod 内执行，发布后核对 Pod imageID、Pod 内入口资源、Gateway 入口资源和真实浏览器结果。
+
+## 登录入口规范
+
+- 登录页是控制台任务入口，不作为大标题宣传页；表单必须进入明确的内容表面，主操作使用品牌色。
+- 桌面端可以使用“产品说明 + 登录面板”的非对称布局，但产品说明只保留一句平台定位，不展示营销式能力三栏，标题上限 42px，不得挤压登录任务。
+- 默认账号和密码不在页面明文展示；首次管理员初始化由现有检查与跳转流程承担，后续用户由登录后的认证管理创建。
+- 未接入真实注册 API 前，登录页不得展示“创建账号”或注册成功提示等伪入口。
+- 账号、密码、错误校验、密码可见性和提交状态都必须可键盘操作，并继续通过 `components/Fluent` 组件边界实现。
+- 窄视口保证标题、说明和表单按单列完整呈现。
+
+## 落地结果
+
+- 应用入口已接入 FluentProvider、品牌 light/dark theme、Segoe UI 字体和统一 Toast Host。
+- 页面、布局与普通共享组件已统一从 `components/Fluent` 使用控件和图标，静态门禁禁止新增 TDesign 直接 import。
+- 表格、分页、按钮、输入、选择、抽屉、对话框、Tab、Tooltip、Popconfirm、导航和通知已由 Fluent v9 渲染。
+- Form 状态控制器及 Popup、Tree、Transfer、Steps、日期时间等复杂控件已由本地 Fluent 适配实现，页面继续沿用稳定业务契约，不再加载旧组件库。
+- `tdesign-react` 与 `tdesign-icons-react` 已从 `package.json`、`package-lock.json` 和依赖树移除，生产源码的旧类名和主题变量也已清零。
+- 页面配置抽屉的主题卡片、色点尺寸、间距和 538px 表面宽度保持迁移前视觉，底层交互全部使用 Fluent 控件。
+- 构建已取消按第三方 UI 内部目录手工拆包，避免 React、Griffel、Fluent 与兼容层之间产生循环 chunk。
+- 真实生产入口完成桌面和移动端抽检，登录及主要资源页面 console error/warning 均为 0。
+
+## 相关页面
+
+- [[architecture]]
+- [[service-discovery]]
+- [[configuration]]
+- [[governance-rules]]

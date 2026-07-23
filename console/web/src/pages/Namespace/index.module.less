@@ -1,6 +1,22 @@
 .page {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 113px);
+  min-height: 0;
   min-width: 0;
-  color: #1f2937;
+  overflow: hidden;
+  color: var(--app-text);
+}
+
+.namespaceWorkspace {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  min-width: 0;
+  margin-top: 18px;
 }
 
 .header {
@@ -9,7 +25,7 @@
   justify-content: space-between;
   gap: 24px;
   padding: 4px 0 22px;
-  border-bottom: 1px solid #e5e8ef;
+  border-bottom: 1px solid var(--app-border-subtle);
 
   h2 {
     margin: 4px 0 6px;
@@ -21,7 +37,7 @@
   p {
     max-width: 680px;
     margin: 0;
-    color: #5f6b7a;
+    color: var(--app-text-secondary);
     font-size: 14px;
     line-height: 22px;
   }
@@ -37,16 +53,17 @@
 .metricRail {
   display: grid;
   grid-template-columns: repeat(5, minmax(120px, 1fr));
-  margin: 18px 0;
-  border: 1px solid #e5e8ef;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fbfcfd;
+  background: var(--app-surface-subtle);
 }
 
 .metricItem {
   min-height: 74px;
   padding: 14px 18px;
-  border-right: 1px solid #e5e8ef;
+  border-right: 1px solid var(--app-border-subtle);
 
   &:last-child {
     border-right: 0;
@@ -54,7 +71,7 @@
 
   span {
     display: block;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -62,7 +79,7 @@
   strong {
     display: block;
     margin-top: 4px;
-    color: #111827;
+    color: var(--app-text);
     font-size: 24px;
     font-weight: 650;
     line-height: 30px;
@@ -82,7 +99,7 @@
   min-width: 180px;
 
   strong {
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     font-weight: 600;
     line-height: 22px;
@@ -90,7 +107,7 @@
 
   span {
     margin-left: 10px;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -101,39 +118,60 @@
 }
 
 .tableSurface {
-  overflow-x: auto;
-  overflow-y: hidden;
-  border: 1px solid #e5e8ef;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-surface);
 
-  :global(.t-table) {
+  :global(.fluent-table-shell) {
     width: 100%;
-    min-width: 956px;
+    min-width: 0;
+    max-width: 100%;
   }
 
-  :global(.t-table th) {
+  :global(.fluent-table-shell th) {
     padding: 14px 14px;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-weight: 500;
     white-space: nowrap;
   }
 
-  :global(.t-table td) {
+  :global(.fluent-table-shell td) {
     padding: 14px;
     vertical-align: middle;
   }
 
-  :global(.t-table__pagination) {
+  :global(.fluent-pagination) {
     padding: 16px 18px;
   }
 }
 
-@media (min-width: 1260px) {
-  .tableSurface {
-    :global(.t-table__content) {
-      overflow-x: hidden;
-    }
+.namespaceTableSurface {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+
+  :global(.fluent-table-shell) {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  :global(.fluent-table-scroll) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  :global(.fluent-pagination) {
+    flex: 0 0 auto;
   }
 }
 
@@ -146,6 +184,10 @@
   align-items: center;
   gap: 8px;
   min-height: 24px;
+
+  :global(.fui-Tag) {
+    flex: 0 0 auto;
+  }
 }
 
 .namespaceMeta {
@@ -153,7 +195,7 @@
   flex-wrap: nowrap;
   gap: 10px;
   margin-top: 6px;
-  color: #697586;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
 
@@ -167,11 +209,8 @@
 
 .descriptionCell {
   min-width: 0;
-}
-
-.descriptionCell {
   overflow: hidden;
-  color: #364152;
+  color: var(--app-text);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -181,7 +220,7 @@
 
   strong {
     display: block;
-    color: #111827;
+    color: var(--app-text);
     font-size: 18px;
     font-weight: 650;
     line-height: 24px;
@@ -190,7 +229,7 @@
   span {
     display: block;
     margin-top: 2px;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -208,14 +247,14 @@
   }
 
   strong {
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     font-weight: 600;
     line-height: 20px;
   }
 
   span {
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -225,7 +264,7 @@
   height: 6px;
   overflow: hidden;
   border-radius: 999px;
-  background: #e5e8ef;
+  background: var(--app-border-subtle);
 
   i {
     display: block;
@@ -237,79 +276,140 @@
 
 .timeCell {
   min-width: 0;
+  overflow: hidden;
 
   span {
     display: block;
-    color: #364152;
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--app-text);
     font-size: 12px;
     line-height: 20px;
+    text-overflow: ellipsis;
     white-space: nowrap;
   }
 }
 
 .actionCell {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-width: 0;
+  margin: 0;
+}
 
-  :global(.t-button) {
-    width: 28px;
-    height: 28px;
+.namespaceForm {
+  height: 100%;
+
+  :global(.fluent-form-item) {
+    margin-bottom: 0;
+  }
+
+  :global(.fluent-form-item__label) {
+    color: var(--app-text);
+    font-size: 13px;
   }
 }
 
-.namespaceDetail {
-  display: grid;
-  gap: 18px;
-}
-
-.detailField {
-  min-width: 0;
-
-  > span {
-    display: block;
-    margin-bottom: 6px;
-    color: #697586;
-    font-size: 12px;
-    line-height: 18px;
-  }
-
-  > strong {
-    display: block;
-    color: #111827;
-    font-size: 18px;
-    font-weight: 650;
-    line-height: 26px;
-  }
-
-  > p {
-    margin: 0;
-    color: #364152;
-    font-size: 14px;
-    line-height: 22px;
-  }
-}
-
-.detailLabels {
+.namespaceDrawerContent {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  color: #364152;
-  font-size: 13px;
-  line-height: 20px;
+  min-height: 0;
+  flex-direction: column;
+  gap: 22px;
+}
 
-  em {
-    padding: 3px 8px;
-    border: 1px solid #dcdfe6;
-    border-radius: 4px;
-    background: #f7f8fa;
-    font-style: normal;
+.namespaceFormSection {
+  min-width: 0;
+
+  > div[id^="in"] {
+    margin-bottom: 18px;
   }
+
+  > div[id^="in"]:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.namespaceFormSectionTitle {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 14px;
+  color: var(--app-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+
+  &::before {
+    display: block;
+    width: 3px;
+    height: 14px;
+    border-radius: 999px;
+    background: #0052d9;
+    content: "";
+  }
+
+  &::after {
+    display: block;
+    height: 1px;
+    flex: 1 1 auto;
+    background: var(--app-border-subtle);
+    content: "";
+  }
+}
+
+.readonlyField {
+  min-height: 32px;
+  overflow: hidden;
+  color: var(--app-text);
+  font-size: 14px;
+  line-height: 32px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nameMeta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  margin-left: 104px;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.nameCountError,
+.inlineError {
+  color: #d54941;
+}
+
+.inlineError {
+  min-height: 18px;
+  margin-top: 2px;
+  margin-left: 104px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.namespaceFormFooter {
+  margin-top: 4px;
+  padding-top: 2px;
 }
 
 @media (max-width: 1180px) {
+  .page {
+    height: auto;
+    min-height: calc(100vh - 113px);
+    overflow: visible;
+  }
+
+  .namespaceWorkspace {
+    flex: 0 0 auto;
+  }
+
+  .namespaceTableSurface {
+    flex: 0 0 auto;
+    min-height: 420px;
+  }
+
   .metricRail {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -331,7 +431,7 @@
   }
 
   .metricItem {
-    border-right: 1px solid #e5e8ef;
+    border-right: 1px solid var(--app-border-subtle);
   }
 
   .metricItem:nth-child(2n) {

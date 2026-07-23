@@ -1,13 +1,292 @@
+.authPage {
+  min-width: 0;
+  color: var(--app-text);
+}
+
+.userDetailPage {
+  min-width: 0;
+  color: var(--app-text);
+}
+
+.detailBreadcrumb {
+  margin-bottom: 16px;
+}
+
+.userDetailStack {
+  display: grid;
+  gap: 16px;
+}
+
+.userDetailSummary {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 8px;
+  background: var(--app-surface-subtle);
+}
+
+.userDetailAvatar {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--app-brand-subtle);
+  color: #0f6cbd;
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.userDetailMain {
+  min-width: 0;
+}
+
+.userDetailTitleLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+
+  h2 {
+    margin: 0;
+    overflow: hidden;
+    color: var(--app-text);
+    font-size: 20px;
+    font-weight: 650;
+    line-height: 28px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.userDetailMain > p {
+  margin: 4px 0 0;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+  word-break: break-word;
+}
+
+.userMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 18px;
+  margin-top: 16px;
+}
+
+.userMetaItem {
+  min-width: 0;
+
+  span,
+  strong {
+    display: block;
+  }
+
+  span {
+    color: var(--app-text-secondary);
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  strong {
+    margin-top: 3px;
+    overflow: hidden;
+    color: var(--app-text);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.userMono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.userDetailContentGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr);
+  gap: 16px;
+}
+
+.userCredentialPanel,
+.userTagPanel,
+.userPolicySurface {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 8px;
+  background: var(--app-surface);
+}
+
+.userCredentialPanel,
+.userTagPanel {
+  padding: 16px;
+}
+
+.userPanelHeader,
+.userTableHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+
+  > div {
+    min-width: 0;
+  }
+
+  strong,
+  span {
+    display: block;
+  }
+
+  strong {
+    color: var(--app-text);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+  }
+
+  span {
+    margin-top: 3px;
+    color: var(--app-text-secondary);
+    font-size: 12px;
+    line-height: 18px;
+  }
+}
+
+.userTokenRow {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 6px;
+  background: var(--app-surface-subtle);
+
+  > div:first-child {
+    min-width: 0;
+  }
+
+  span,
+  code {
+    display: block;
+  }
+
+  span {
+    color: var(--app-text-secondary);
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  code {
+    margin-top: 4px;
+    overflow: hidden;
+    color: var(--app-text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 13px;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.userTokenActions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.userLabelList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.userPanelEmpty {
+  margin: 16px 0 0;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.userTableHeader {
+  min-height: 52px;
+  padding: 0 16px;
+  align-items: center;
+  border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.userDetailEmpty {
+  display: grid;
+  min-height: 320px;
+  place-items: center;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 8px;
+  background: var(--app-surface);
+}
+
+.authWorkspace {
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 10px;
+  background: var(--app-surface);
+}
+
+.authTabs {
+  :global(.fui-TabList) {
+    min-height: 54px;
+    padding: 0 18px;
+    border-bottom: 1px solid var(--app-border-subtle);
+    background: var(--app-surface-subtle);
+  }
+
+  :global(.fluent-tab-content) {
+    padding: 0;
+  }
+}
+
+.authPanel {
+  min-width: 0;
+}
+
+.panelHint {
+  max-width: 720px;
+  margin: 0;
+  padding: 18px 20px 2px;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.panelBody {
+  min-width: 0;
+  padding: 0 20px 20px;
+}
+
 .toolBar {
-  color: #666;
-  margin-bottom: 20px;
-  margin-top: 20px;
+  margin: 18px 0 14px;
+}
+
+.selectionHint {
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .authDetail {
   display: grid;
   gap: 18px;
-  color: #1f2937;
+  color: var(--app-text);
 }
 
 .detailGrid {
@@ -22,14 +301,14 @@
   > span {
     display: block;
     margin-bottom: 6px;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
 
   > strong {
     display: block;
-    color: #111827;
+    color: var(--app-text);
     font-size: 18px;
     font-weight: 650;
     line-height: 26px;
@@ -38,7 +317,7 @@
 
   > p {
     margin: 0;
-    color: #364152;
+    color: var(--app-text);
     font-size: 14px;
     line-height: 22px;
     word-break: break-word;
@@ -49,22 +328,71 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  color: #364152;
+  color: var(--app-text);
   font-size: 13px;
   line-height: 20px;
 
   em {
     padding: 3px 8px;
-    border: 1px solid #dcdfe6;
+    border: 1px solid var(--app-border);
     border-radius: 4px;
-    background: #f7f8fa;
+    background: var(--app-surface-subtle);
     font-style: normal;
     word-break: break-all;
   }
 }
 
 @media (max-width: 820px) {
+  .userDetailSummary {
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .userDetailAvatar {
+    width: 44px;
+    height: 44px;
+  }
+
+  .userMetaGrid,
+  .userDetailContentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .userTokenRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .userTokenActions {
+    justify-content: flex-start;
+  }
+
+  .authWorkspace {
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .panelBody {
+    overflow-x: auto;
+  }
+
   .detailGrid {
     grid-template-columns: 1fr;
   }
+}
+.memberButton {
+  min-height: 30px;
+  padding: 4px 12px;
+  color: var(--colorBrandForeground1);
+  font: inherit;
+  background: transparent;
+  border: 1px solid var(--colorNeutralStroke1);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.memberButton:hover {
+  background: var(--colorNeutralBackground1Hover);
 }

@@ -5,7 +5,7 @@
 }
 .badge {
   :global {
-    .t-badge--circle {
+    .fui-Badge {
       top: 5px;
       right: 6px;
     }
@@ -31,22 +31,20 @@
     margin: 0 5px;
   }
   :global {
-    .t-button--variant-text {
+    .fui-Button {
       padding-left: 9px;
       padding-right: 9px;
-    }
-    .t-button__text {
       display: flex;
       align-items: center;
     }
-    .t-dropdown__item {
+    .fui-MenuItem {
       max-width: none !important;
       width: 117px;
-      &-text {
+      &__content {
         display: flex;
         align-items: center;
       }
-      .t-icon {
+      svg {
         margin-right: 8px;
       }
     }

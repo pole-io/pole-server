@@ -96,6 +96,8 @@ type ConfigFileReleaseStore interface {
 	CountConfigReleases(namespace, group string, onlyActive bool) (uint64, error)
 	// GetConfigFileBetaReleaseTx 获取灰度发布的配置文件信息
 	GetConfigFileBetaReleaseTx(tx Tx, file *conftypes.ConfigFileKey) (*conftypes.ConfigFileRelease, error)
+	// GetConfigFileBetaReleasesTx 获取所有处于 Active 的灰度发布配置文件信息
+	GetConfigFileBetaReleasesTx(tx Tx, file *conftypes.ConfigFileKey) ([]*conftypes.ConfigFileRelease, error)
 }
 
 // ConfigFileReleaseHistoryStore 配置文件发布历史存储接口

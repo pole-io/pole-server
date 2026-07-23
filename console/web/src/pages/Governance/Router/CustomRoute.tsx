@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Popconfirm, Empty } from 'tdesign-react';
-import { DeleteIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
+import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Popconfirm, Empty } from 'components/Fluent';
+import { DeleteIcon, RefreshIcon, CreditcardIcon } from 'components/Fluent/icons';
 
 import { Op } from 'services/types';
 import { useAppDispatch, useAppSelector } from 'modules/store';

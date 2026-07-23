@@ -1,10 +1,13 @@
 import React from 'react';
 import { Editor as MonacoEditor } from '@monaco-editor/react'
 import type { OnChange, OnMount } from '@monaco-editor/react'
-import { Icon, LoadingIcon } from 'tdesign-icons-react';
+import { Icon, LoadingIcon } from 'components/Fluent/icons';
 import { editor } from 'monaco-editor';
 import Style from './index.module.less';
 import classNames from 'classnames';
+import { useAppSelector } from 'modules/store';
+import { selectGlobal } from 'modules/global';
+import { ETheme } from 'types/index.d';
 
 export interface ICodeEditorProps {
     readonly?: boolean;
@@ -12,6 +15,7 @@ export interface ICodeEditorProps {
     value?: string;
     language?: string;
     theme?: string;
+    height?: string | number;
     onChange?: (value: string | undefined, event: any) => void;
     onMount?: (editor: any, monaco: any) => void;
 }
@@ -30,6 +34,7 @@ export function toHighlightLanguage(format?: string) {
   }
 
 const CodeEditor: React.FC<ICodeEditorProps> = props => {
+    const { theme } = useAppSelector(selectGlobal);
     // 默认不开启全屏
     const [isFullScreen, setFullScreen] = React.useState(false)
     const editorRef = React.useRef<editor.IStandaloneCodeEditor>(null!);
@@ -88,7 +93,7 @@ const CodeEditor: React.FC<ICodeEditorProps> = props => {
                         zIndex: 2000,
                     }
                     : {
-                        height: 'calc(100vh - 390px)',
+                        height: props.height || 'calc(100vh - 390px)',
                         width: "100%",
                         position: 'relative'
                     }
@@ -109,7 +114,7 @@ const CodeEditor: React.FC<ICodeEditorProps> = props => {
             )}
             <MonacoEditor
                 loading={<LoadingIcon />}
-                theme={'vs'}
+                theme={props.theme || (theme === ETheme.dark ? 'vs-dark' : 'vs')}
                 language={toHighlightLanguage(props.language)}
                 value={props.value}
                 onMount={handleEditorDidMount}

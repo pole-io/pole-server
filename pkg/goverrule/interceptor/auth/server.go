@@ -21,6 +21,7 @@ import (
 	"context"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	apifault "github.com/pole-io/specification/source/go/api/v1/fault_tolerance"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -31,6 +32,7 @@ import (
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
+	ruletype "github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/goverrule"
@@ -167,14 +169,16 @@ func (svr *Server) collectRateLimitAuthContext(ctx context.Context, req []*apitr
 		}
 	}
 
+	accessResources := map[apisecurity.ResourceType][]authtypes.ResourceEntry{
+		apisecurity.ResourceType_RateLimitRules: resources,
+	}
+	svr.appendGovernanceOwnerNamespaces(accessResources, governanceOwnerNamespaces(req)...)
 	return authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
 		authtypes.WithOperation(resourceOp),
 		authtypes.WithModule(authtypes.DiscoverModule),
 		authtypes.WithMethod(methodName),
-		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
-			apisecurity.ResourceType_RateLimitRules: resources,
-		}),
+		authtypes.WithAccessResources(accessResources),
 	)
 }
 
@@ -200,14 +204,16 @@ func (svr *Server) collectLosslessAuthContext(ctx context.Context, req []*apitra
 		}
 	}
 
+	accessResources := map[apisecurity.ResourceType][]authtypes.ResourceEntry{
+		apisecurity.ResourceType_LosslessRules: resources,
+	}
+	svr.appendGovernanceOwnerNamespaces(accessResources, governanceOwnerNamespaces(req)...)
 	return authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
 		authtypes.WithOperation(resourceOp),
 		authtypes.WithModule(authtypes.DiscoverModule),
 		authtypes.WithMethod(methodName),
-		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
-			apisecurity.ResourceType_LosslessRules: resources,
-		}),
+		authtypes.WithAccessResources(accessResources),
 	)
 }
 
@@ -231,6 +237,7 @@ func (svr *Server) collectRouteRuleV2AuthContext(ctx context.Context, req []*api
 	if len(resources) != 0 {
 		accessResources[apisecurity.ResourceType_RouteRules] = resources
 	}
+	svr.appendGovernanceOwnerNamespaces(accessResources, governanceOwnerNamespaces(req)...)
 
 	return authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
@@ -257,14 +264,16 @@ func (svr *Server) collectCircuitBreakerRuleV2(ctx context.Context, req []*apifa
 		}
 	}
 
+	accessResources := map[apisecurity.ResourceType][]authtypes.ResourceEntry{
+		apisecurity.ResourceType_CircuitBreakerRules: resources,
+	}
+	svr.appendGovernanceOwnerNamespaces(accessResources, governanceOwnerNamespaces(req)...)
 	return authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
 		authtypes.WithOperation(op),
 		authtypes.WithModule(authtypes.DiscoverModule),
 		authtypes.WithMethod(methodName),
-		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
-			apisecurity.ResourceType_CircuitBreakerRules: resources,
-		}),
+		authtypes.WithAccessResources(accessResources),
 	)
 }
 
@@ -284,14 +293,16 @@ func (svr *Server) collectFaultDetectAuthContext(ctx context.Context, req []*api
 		}
 	}
 
+	accessResources := map[apisecurity.ResourceType][]authtypes.ResourceEntry{
+		apisecurity.ResourceType_FaultDetectRules: resources,
+	}
+	svr.appendGovernanceOwnerNamespaces(accessResources, governanceOwnerNamespaces(req)...)
 	return authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
 		authtypes.WithOperation(op),
 		authtypes.WithModule(authtypes.DiscoverModule),
 		authtypes.WithMethod(methodName),
-		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
-			apisecurity.ResourceType_FaultDetectRules: resources,
-		}),
+		authtypes.WithAccessResources(accessResources),
 	)
 }
 
@@ -310,12 +321,14 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 		apisecurity.ResourceType_MirrorRules:         {},
 		apisecurity.ResourceType_MockRules:           {},
 	}
+	namespaces := make([]string, 0, len(req))
 
 	for i := range req {
 		switch req[i].GetResource() {
 		case apimodel.RuleRelease_LaneRules:
 			saveRule := svr.Cache().LaneRule().GetRule(req[i].GetId())
 			if saveRule != nil {
+				namespaces = append(namespaces, saveRule.Namespace)
 				resources[apisecurity.ResourceType_LaneRules] = append(resources[apisecurity.ResourceType_LaneRules], authtypes.ResourceEntry{
 					Type:     apisecurity.ResourceType_LaneRules,
 					ID:       saveRule.ID,
@@ -325,6 +338,7 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 		case apimodel.RuleRelease_CircuitBreakerRules:
 			saveRule := svr.Cache().CircuitBreaker().GetRule(req[i].GetId())
 			if saveRule != nil {
+				namespaces = append(namespaces, saveRule.Namespace)
 				resources[apisecurity.ResourceType_CircuitBreakerRules] = append(resources[apisecurity.ResourceType_CircuitBreakerRules], authtypes.ResourceEntry{
 					Type:     apisecurity.ResourceType_CircuitBreakerRules,
 					ID:       saveRule.ID,
@@ -334,6 +348,7 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 		case apimodel.RuleRelease_FaultDetectRules:
 			saveRule := svr.Cache().FaultDetector().GetRule(req[i].GetId())
 			if saveRule != nil {
+				namespaces = append(namespaces, saveRule.Namespace)
 				resources[apisecurity.ResourceType_FaultDetectRules] = append(resources[apisecurity.ResourceType_FaultDetectRules], authtypes.ResourceEntry{
 					Type:     apisecurity.ResourceType_FaultDetectRules,
 					ID:       saveRule.ID,
@@ -343,6 +358,7 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 		case apimodel.RuleRelease_RouteRules:
 			saveRule := svr.Cache().RoutingConfig().GetRule(req[i].GetId())
 			if saveRule != nil {
+				namespaces = append(namespaces, saveRule.Namespace)
 				resources[apisecurity.ResourceType_RouteRules] = append(resources[apisecurity.ResourceType_RouteRules], authtypes.ResourceEntry{
 					Type:     apisecurity.ResourceType_RouteRules,
 					ID:       saveRule.ID,
@@ -352,6 +368,7 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 		case apimodel.RuleRelease_RateLimitRules:
 			saveRule := svr.Cache().RateLimit().GetRule(req[i].GetId())
 			if saveRule != nil {
+				namespaces = append(namespaces, saveRule.Namespace)
 				resources[apisecurity.ResourceType_RateLimitRules] = append(resources[apisecurity.ResourceType_RateLimitRules], authtypes.ResourceEntry{
 					Type:     apisecurity.ResourceType_RateLimitRules,
 					ID:       saveRule.ID,
@@ -361,6 +378,7 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 		case apimodel.RuleRelease_LosslessRules:
 			saveRule := svr.Cache().Lossless().GetRule(req[i].GetId())
 			if saveRule != nil {
+				namespaces = append(namespaces, saveRule.Namespace)
 				resources[apisecurity.ResourceType_LosslessRules] = append(resources[apisecurity.ResourceType_LosslessRules], authtypes.ResourceEntry{
 					Type:     apisecurity.ResourceType_LosslessRules,
 					ID:       saveRule.ID,
@@ -370,6 +388,7 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 		case apimodel.RuleRelease_TrafficSecurityRules:
 			saveRule := svr.Cache().TrafficSecurity().GetRule(req[i].GetId())
 			if saveRule != nil {
+				namespaces = append(namespaces, saveRule.Namespace)
 				resources[apisecurity.ResourceType_SecurityRules] = append(resources[apisecurity.ResourceType_SecurityRules], authtypes.ResourceEntry{
 					Type:     apisecurity.ResourceType_SecurityRules,
 					ID:       saveRule.ID,
@@ -379,6 +398,7 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 		case apimodel.RuleRelease_TrafficMirrorRules:
 			saveRule := svr.Cache().TrafficMirror().GetRule(req[i].GetId())
 			if saveRule != nil {
+				namespaces = append(namespaces, saveRule.Namespace)
 				resources[apisecurity.ResourceType_MirrorRules] = append(resources[apisecurity.ResourceType_MirrorRules], authtypes.ResourceEntry{
 					Type:     apisecurity.ResourceType_MirrorRules,
 					ID:       saveRule.ID,
@@ -388,6 +408,7 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 		case apimodel.RuleRelease_TrafficMockRules:
 			saveRule := svr.Cache().TrafficMock().GetRule(req[i].GetId())
 			if saveRule != nil {
+				namespaces = append(namespaces, saveRule.Namespace)
 				resources[apisecurity.ResourceType_MockRules] = append(resources[apisecurity.ResourceType_MockRules], authtypes.ResourceEntry{
 					Type:     apisecurity.ResourceType_MockRules,
 					ID:       saveRule.ID,
@@ -396,6 +417,7 @@ func (svr *Server) collectRuleReleases(ctx context.Context, req []*apimodel.Rule
 			}
 		}
 	}
+	svr.appendGovernanceOwnerNamespaces(resources, namespaces...)
 
 	return authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
@@ -511,10 +533,48 @@ func (svr *Server) queryRouteRuleResource(
 	}
 
 	ret := make(map[apisecurity.ResourceType][]authtypes.ResourceEntry)
+	svr.appendGovernanceOwnerNamespaces(ret, governanceOwnerNamespaces(req)...)
 	if authLog.DebugEnabled() {
 		authLog.Debug("[Auth][Server] collect route-rule access res", zap.Any("res", ret))
 	}
 	return ret
+}
+
+func governanceOwnerNamespaces[T proto.Message](req []T) []string {
+	names := container.NewSet[string]()
+	for _, item := range req {
+		if namespace := ruletype.OwnerNamespaceFromProto(item); namespace != "" {
+			names.Add(namespace)
+		}
+	}
+	return names.ToSlice()
+}
+
+func (svr *Server) appendGovernanceOwnerNamespaces(
+	resources map[apisecurity.ResourceType][]authtypes.ResourceEntry, namespaces ...string,
+) {
+	set := container.NewSet[string]()
+	for _, namespace := range namespaces {
+		if namespace != "" {
+			set.Add(namespace)
+		}
+	}
+	if len(set.ToSlice()) == 0 {
+		return
+	}
+	nsArr := svr.Cache().Namespace().GetNamespacesByName(set.ToSlice())
+	entries := make([]authtypes.ResourceEntry, 0, len(nsArr))
+	for _, namespace := range nsArr {
+		entries = append(entries, authtypes.ResourceEntry{
+			Type:     apisecurity.ResourceType_Namespaces,
+			ID:       namespace.Name,
+			Owner:    namespace.Owner,
+			Metadata: namespace.Metadata,
+		})
+	}
+	if len(entries) != 0 {
+		resources[apisecurity.ResourceType_Namespaces] = entries
+	}
 }
 
 // queryRateLimitConfigResource 根据所给的 RateLimit 信息，收集对应的 ResourceEntry 列表

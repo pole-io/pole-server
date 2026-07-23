@@ -13,10 +13,13 @@ import {
     Switch,
     Tag,
     Textarea,
-} from 'tdesign-react';
-import { Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
+} from 'components/Fluent';
+import { Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'components/Fluent/icons';
 
 import RuleLabelField from '../shared/RuleLabelField';
+import CollapsibleSection from '../shared/CollapsibleSection';
+import { GovernanceServiceContext } from '../shared/serviceContext';
+import { useRuleNamespace } from '../shared/ruleNamespace';
 import shared from '../shared/governance.module.less';
 import styles from './index.module.less';
 import { Label, Op } from 'services/types';
@@ -68,6 +71,7 @@ export interface LossLessEditorProps {
     op: Op;
     visible: boolean;
     refresh: (close: boolean) => void;
+    serviceContext?: GovernanceServiceContext;
 }
 
 const protocolText: Record<LosslessProbeProtocol, string> = {
@@ -85,7 +89,8 @@ const curveChartBox = {
     bottom: 34,
 };
 
-const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible }) => {
+const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible, serviceContext }) => {
+    const ruleNamespace = useRuleNamespace();
     const [form] = Form.useForm();
     const dispatch = useAppDispatch();
 
@@ -94,10 +99,13 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
     const { editRule } = useAppSelector(selectLosslessRule);
 
     const [losslessRule, setLosslessRule] = React.useState<LosslessRuleDraft>(() => defaultLosslessRuleDraft());
+    const [basicInfoCollapsed, setBasicInfoCollapsed] = React.useState(false);
     const [editor, setEditor] = React.useState<{
         editable: boolean;
         publishView: boolean;
-    }>({ editable: op === 'create', publishView: false });
+        saving: boolean;
+    }>({ editable: op === 'create', publishView: false, saving: false });
+    const persistedRuleRef = React.useRef<LosslessRuleDraft>(defaultLosslessRuleDraft());
 
     React.useEffect(() => {
         dispatch(listAllNamespaces()).then((res) => {
@@ -118,12 +126,13 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
     }, []);
 
     React.useEffect(() => {
+        setBasicInfoCollapsed(false);
         if (!visible) {
-            setEditor({ editable: op === 'create', publishView: false });
+            setEditor({ editable: op === 'create', publishView: false, saving: false });
             setLosslessRule(defaultLosslessRuleDraft());
             return;
         }
-        setEditor({ editable: op === 'create', publishView: false });
+        setEditor({ editable: op === 'create', publishView: false, saving: false });
     }, [visible, op]);
 
     React.useEffect(() => {
@@ -142,12 +151,25 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
         }
     }, [editRule?.id]);
 
+    React.useEffect(() => {
+        if (op !== 'create' || !visible) return;
+        setLosslessRule((prev) => ({
+            ...prev,
+            namespace: serviceContext?.namespace || ruleNamespace || prev.namespace,
+            service: serviceContext?.service || prev.service,
+        }));
+    }, [op, visible, ruleNamespace, serviceContext?.namespace, serviceContext?.service]);
+
     const resetCurRule = (rule: LossLessRuleView | null) => {
         if (!rule) {
-            setLosslessRule(defaultLosslessRuleDraft());
+            const next = defaultLosslessRuleDraft();
+            persistedRuleRef.current = next;
+            setLosslessRule(next);
             return;
         }
-        setLosslessRule(normalizeLosslessRuleDraft(rule));
+        const next = normalizeLosslessRuleDraft(rule);
+        persistedRuleRef.current = next;
+        setLosslessRule(next);
     };
 
     const namespaceSelectOptions = namespaceDatas.map((ns: NamespaceView) => ({ label: ns.name, value: ns.name }));
@@ -202,15 +224,19 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
     };
 
     const onSubmit: FormProps['onSubmit'] = async () => {
+        if (editor.saving) return;
         const errors = validateLosslessDraft(losslessRule);
         if (errors.length > 0) {
             openErrNotification('保存校验失败', errors[0].message);
             return;
         }
         const saveAction = op === 'create' ? saveLossLessRule : updateLosslessRule;
-        dispatch(saveAction({ param: submitPayload as any })).then((res) => {
+        setEditor(prev => ({ ...prev, saving: true }));
+        try {
+            const res = await dispatch(saveAction({ param: submitPayload as any }));
             if (res.meta.requestStatus === 'fulfilled') {
                 openInfoNotification('请求成功', '保存无损规则成功');
+                persistedRuleRef.current = losslessRule;
                 if (op === 'create') {
                     refresh(true);
                 } else {
@@ -220,7 +246,9 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
             } else {
                 openErrNotification('请求失败', `保存无损规则失败: ${res.payload as string || '未知'}`);
             }
-        });
+        } finally {
+            setEditor(prev => ({ ...prev, saving: false }));
+        }
     };
 
     const renderStatusTag = (enabled?: boolean) => (
@@ -291,11 +319,12 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
     };
 
     const renderBasicInfo = (
-        <section className={shared.section}>
-            <div className={shared.sectionHeader}>
-                <span>基础信息</span>
-            </div>
-            <div className={shared.sectionBody}>
+        <CollapsibleSection
+            collapsed={basicInfoCollapsed}
+            onCollapsedChange={setBasicInfoCollapsed}
+            header="基础信息"
+            summary={`${losslessRule.namespace || '-'}/${losslessRule.service || '-'} · ${losslessEnabled ? '启用' : '停用'} · 优先级 5`}
+        >
                 <div className={shared.infoGrid}>
                     <div className={shared.field}>
                         <div className={shared.fieldLabel}>规则标识</div>
@@ -321,8 +350,7 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
                         />
                     </div>
                 </div>
-            </div>
-        </section>
+        </CollapsibleSection>
     );
 
     const renderScope = (
@@ -335,8 +363,8 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
                 <div className={styles.sectionSubtle}>无损上线 / 下线作用的服务实例集合</div>
                 <div className={shared.infoGrid}>
                     <div className={shared.field}>
-                        <div className={shared.fieldLabel}>主调命名空间</div>
-                        {editable ? (
+                        <div className={shared.fieldLabel}>命名空间</div>
+                        {editable && !(op === 'create' && serviceContext) ? (
                             <Select
                                 filterable
                                 creatable
@@ -348,7 +376,7 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
                     </div>
                     <div className={shared.field}>
                         <div className={shared.fieldLabel}>服务名称</div>
-                        {editable ? (
+                        {editable && !(op === 'create' && serviceContext) ? (
                             <Select
                                 filterable
                                 creatable
@@ -368,7 +396,8 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
             {delayStrategyOptions.map(option => {
                 const active = losslessRule.lossless_online.delay_register.strategy === option.value;
                 return (
-                    <button
+                    <Button
+                        variant="text"
                         key={option.value}
                         className={active ? styles.strategyCardActive : styles.strategyCard}
                         disabled={!editable}
@@ -377,7 +406,7 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
                     >
                         <span>{option.label}</span>
                         <small>{option.value === 'DELAY_BY_TIME' ? '实例启动后等待固定秒数，再注册到服务发现。' : '健康检查成功后才暴露实例，避免未就绪接流。'}</small>
-                    </button>
+                    </Button>
                 );
             })}
         </div>
@@ -676,13 +705,20 @@ const LossLessEditor: React.FC<LossLessEditorProps> = ({ op, refresh, visible })
                 icon={!editable ? (
                     <RuleStickyAction label="编辑" icon={<Edit1Icon />} onClick={() => setEditor(prev => ({ ...prev, editable: true }))} />
                 ) : (
-                    <RuleStickyAction label="保存" icon={<SaveIcon />} onClick={() => form.submit()} />
+                    <RuleStickyAction label="保存" icon={<SaveIcon />} loading={editor.saving} disabled={editor.saving} onClick={() => form.submit()} />
                 )}
             />
             {editable && (
                 <StickyItem
                     label=""
-                    icon={<RuleStickyAction label="撤销" icon={<RollbackIcon />} onClick={() => setEditor(prev => ({ ...prev, editable: false }))} />}
+                    icon={<RuleStickyAction label="撤销" icon={<RollbackIcon />} onClick={() => {
+                        if (op === 'create') {
+                            refresh(true);
+                            return;
+                        }
+                        setLosslessRule(persistedRuleRef.current);
+                        setEditor(prev => ({ ...prev, editable: false }));
+                    }} />}
                 />
             )}
             {!editable && (

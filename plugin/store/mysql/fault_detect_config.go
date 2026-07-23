@@ -197,14 +197,14 @@ func (f *faultDetectRuleStore) GetFaultDetectRule(id string) (*rules.FaultDetect
 }
 
 // LockFaultDetectRule implements store.FaultDetectRuleStore.
-func (f *faultDetectRuleStore) LockFaultDetectRule(tx store.Tx, keyword string) (*rules.FaultDetectRule, error) {
+func (f *faultDetectRuleStore) LockFaultDetectRule(tx store.Tx, namespace, keyword string) (*rules.FaultDetectRule, error) {
 	if tx == nil {
 		return nil, ErrTxIsNil
 	}
 	if keyword == "" {
 		return nil, ErrorMissingParams
 	}
-	record, err := f.repo().LockRule(tx, governanceRuleTypeFaultDetect, keyword)
+	record, err := f.repo().LockRule(tx, governanceRuleTypeFaultDetect, keyword, namespace, keyword)
 	if err != nil {
 		return nil, err
 	}

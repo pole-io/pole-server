@@ -2471,6 +2471,20 @@ func (mr *MockConfigFileCacheMockRecorder) GetActiveGrayRelease(namespace, group
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveGrayRelease", reflect.TypeOf((*MockConfigFileCache)(nil).GetActiveGrayRelease), namespace, group, fileName)
 }
 
+// GetActiveGrayReleases mocks base method.
+func (m *MockConfigFileCache) GetActiveGrayReleases(namespace, group, fileName string) []*config.ConfigFileRelease {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetActiveGrayReleases", namespace, group, fileName)
+	ret0, _ := ret[0].([]*config.ConfigFileRelease)
+	return ret0
+}
+
+// GetActiveGrayReleases indicates an expected call of GetActiveGrayReleases.
+func (mr *MockConfigFileCacheMockRecorder) GetActiveGrayReleases(namespace, group, fileName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveGrayReleases", reflect.TypeOf((*MockConfigFileCache)(nil).GetActiveGrayReleases), namespace, group, fileName)
+}
+
 // GetActiveRelease mocks base method.
 func (m *MockConfigFileCache) GetActiveRelease(namespace, group, fileName string) *config.ConfigFileRelease {
 	m.ctrl.T.Helper()

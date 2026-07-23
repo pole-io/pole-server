@@ -38,8 +38,8 @@ const initialState: RoleState = {
 
 export const removeRoles = createAsyncThunk(`role/delete`, async ({ state }: { state: {id: string}[] }, { fulfillWithValue, rejectWithValue }) => {
     try {
-        const res = await deleteRoles(state);
-        return fulfillWithValue("ok"); // 返回 token
+        const success = await deleteRoles(state);
+        return success ? fulfillWithValue(true) : rejectWithValue('删除角色失败');
     } catch (error) {
         return rejectWithValue((error as Error).message); // 捕获错误并返回
     }
@@ -48,17 +48,19 @@ export const removeRoles = createAsyncThunk(`role/delete`, async ({ state }: { s
 
 export const saveRoles = createAsyncThunk(`role/create`, async ({ state }: { state: RoleState }, { fulfillWithValue, rejectWithValue }) => {
     try {
-        const res = await createRoles([{...state, source: 'pole.io'}]);
-        return fulfillWithValue("ok"); // 返回 token
+        const success = await createRoles([{...state, source: 'pole.io'}]);
+        return success ? fulfillWithValue(true) : rejectWithValue('创建角色失败');
     } catch (error) {
         return rejectWithValue((error as Error).message); // 捕获错误并返回
     }
 });
 
-export const updateRoles = createAsyncThunk(`role/update`, async ({ state }: { state: RoleState }, { fulfillWithValue, rejectWithValue }) => {
+export const updateRoles = createAsyncThunk(`role/update`, async ({ state }: {
+    state: Pick<RoleState, 'id'> & Partial<Omit<RoleState, 'id'>>
+}, { fulfillWithValue, rejectWithValue }) => {
     try {
-        const res = await modifyRoles([{...state, source: 'pole.io'}]);
-        return fulfillWithValue("ok"); // 返回 token
+        const success = await modifyRoles([state]);
+        return success ? fulfillWithValue(true) : rejectWithValue('更新角色失败');
     } catch (error) {
         return rejectWithValue((error as Error).message); // 捕获错误并返回
     }

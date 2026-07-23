@@ -1,13 +1,18 @@
 .drawer {
-  :global(.t-drawer__body) {
-    background: #f7f9fc;
-    padding: 20px 24px 24px;
-  }
+  border-left: 1px solid var(--app-border-subtle);
+  background: var(--app-surface);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.14);
+}
 
-  :global(.t-drawer__footer) {
-    border-top: 1px solid #e7eaf0;
-    padding: 16px 24px;
-  }
+.drawerBody {
+  padding: 20px 24px 24px;
+  background: var(--app-bg);
+}
+
+.drawerFooter {
+  padding: 16px 24px;
+  border-top: 1px solid var(--app-border-subtle);
+  background: var(--app-surface);
 }
 
 .drawerHeader {
@@ -18,14 +23,14 @@
 }
 
 .drawerTitle {
-  color: #1f2937;
+  color: var(--app-text);
   font-size: 18px;
   font-weight: 700;
   line-height: 24px;
 }
 
 .drawerSubtitle {
-  color: #8492a6;
+  color: var(--app-text-secondary);
   font-size: 13px;
   line-height: 20px;
   overflow: hidden;
@@ -38,19 +43,19 @@
   flex-direction: column;
   gap: 16px;
 
-  :global(.t-form__item) {
+  :global(.fluent-form-item) {
     margin-bottom: 0;
   }
 
-  :global(.t-form__label) {
-    color: #5f6b7a;
+  :global(.fluent-form-item__label) {
+    color: var(--app-text-secondary);
     font-weight: 500;
   }
 }
 
 .section {
-  background: #fff;
-  border: 1px solid #e1e6ef;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
   padding: 18px 20px;
 }
@@ -63,14 +68,14 @@
 }
 
 .sectionTitle {
-  color: #1f2937;
+  color: var(--app-text);
   font-size: 15px;
   font-weight: 700;
   line-height: 22px;
 }
 
 .sectionHint {
-  color: #8492a6;
+  color: var(--app-text-secondary);
   font-size: 13px;
   line-height: 20px;
   margin-top: 4px;
@@ -89,13 +94,13 @@
   grid-template-columns: 84px minmax(0, 1fr);
 
   span {
-    color: #8492a6;
+    color: var(--app-text-secondary);
     font-size: 13px;
     line-height: 22px;
   }
 
   strong {
-    color: #1f2937;
+    color: var(--app-text);
     font-size: 14px;
     font-weight: 500;
     line-height: 22px;
@@ -122,8 +127,8 @@
 }
 
 .strategyCard {
-  background: #fff;
-  border: 1px solid #dde3ec;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
   color: inherit;
   cursor: pointer;
@@ -137,13 +142,13 @@
   width: 100%;
 
   &:hover {
-    border-color: #b7c6dc;
+    border-color: var(--app-border);
     box-shadow: 0 2px 8px rgba(31, 41, 55, .06);
   }
 }
 
 .strategyCardActive {
-  background: #f4f7ff;
+  background: var(--app-brand-subtle);
   border-color: #0052d9;
   box-shadow: inset 0 0 0 1px rgba(0, 82, 217, .14);
 }
@@ -156,7 +161,7 @@
 
 .strategyIcon {
   align-items: center;
-  background: #edf3ff;
+  background: var(--app-brand-subtle);
   border-radius: 6px;
   color: #0052d9;
   display: inline-flex;
@@ -173,7 +178,7 @@
 
 .strategyDiagram {
   align-items: center;
-  color: #5f6b7a;
+  color: var(--app-text-secondary);
   display: flex;
   font-size: 12px;
   gap: 8px;
@@ -193,21 +198,21 @@
 }
 
 .diagramSource {
-  background: #f5f7fa;
+  background: var(--app-surface-secondary);
 }
 
 .diagramFilter {
-  background: #fff7e8;
+  background: var(--app-status-warning-subtle);
   color: #a65f00;
 }
 
 .diagramTarget {
-  background: #edf8f2;
+  background: var(--app-status-success-subtle);
   color: #176f3d;
 }
 
 .diagramLine {
-  background: #cfd7e3;
+  background: var(--app-surface-disabled);
   flex: 1;
   height: 1px;
   min-width: 18px;
@@ -215,7 +220,7 @@
 
   &::after {
     border-bottom: 3px solid transparent;
-    border-left: 5px solid #cfd7e3;
+    border-left: 5px solid var(--app-surface-disabled);
     border-top: 3px solid transparent;
     content: "";
     position: absolute;
@@ -225,14 +230,14 @@
 }
 
 .strategyTitle {
-  color: #1f2937;
+  color: var(--app-text);
   font-size: 14px;
   font-weight: 700;
   line-height: 20px;
 }
 
 .strategyDescription {
-  color: #8492a6;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }
@@ -243,7 +248,8 @@
 
 .grayEditor {
   margin-top: 14px;
-  overflow: hidden;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .grayHeader,
@@ -252,13 +258,14 @@
   display: grid;
   gap: 12px;
   grid-template-columns: minmax(150px, 1.15fr) minmax(118px, .8fr) minmax(98px, .65fr) minmax(170px, 1.35fr) 48px;
+  min-width: 680px;
 }
 
 .grayHeader {
-  background: #f5f7fa;
-  border: 1px solid #dde3ec;
+  background: var(--app-surface-secondary);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 6px 6px 0 0;
-  color: #5f6b7a;
+  color: var(--app-text-secondary);
   font-size: 13px;
   font-weight: 600;
   min-height: 42px;
@@ -266,23 +273,55 @@
 }
 
 .grayRows {
-  border-left: 1px solid #dde3ec;
-  border-right: 1px solid #dde3ec;
+  border-left: 1px solid var(--app-border-subtle);
+  border-right: 1px solid var(--app-border-subtle);
 }
 
 .grayRow {
-  background: #fff;
-  border-bottom: 1px solid #e7eaf0;
+  background: var(--app-surface);
+  border-bottom: 1px solid var(--app-border-subtle);
   min-height: 66px;
   padding: 10px 12px;
 
-  :global(.t-form__controls) {
+  :global(.fluent-form-item__control) {
     min-height: 36px;
   }
 
-  :global(.t-form__status) {
+  :global(.fluent-form-item__help) {
     grid-column: 1 / -1;
   }
+}
+
+.grayHeader > :first-child,
+.grayRow > :first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--app-surface);
+}
+
+.grayHeader > :last-child,
+.grayRow > :last-child {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: var(--app-surface);
+}
+
+.grayHeader > :first-child,
+.grayHeader > :last-child {
+  z-index: 3;
+  background: var(--app-surface-secondary);
+}
+
+.grayEmpty {
+  display: grid;
+  min-width: 680px;
+  min-height: 72px;
+  place-items: center;
+  border-bottom: 1px solid var(--app-border-subtle);
+  color: var(--app-text-secondary);
+  font-size: 13px;
 }
 
 .fullControl {
@@ -314,13 +353,13 @@
   min-width: 0;
 
   span {
-    color: #8492a6;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
 
   strong {
-    color: #1f2937;
+    color: var(--app-text);
     font-size: 14px;
     font-weight: 600;
     line-height: 20px;
@@ -334,15 +373,6 @@
 
   .strategyGrid {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .grayEditor {
-    overflow-x: auto;
-  }
-
-  .grayHeader,
-  .grayRow {
-    min-width: 680px;
   }
 
   .footerBar {

@@ -118,7 +118,7 @@ func (s *losslessStore) GetMoreLosslessRules(mtime time.Time, firstUpdate bool) 
 }
 
 // LockLosslessRule 锁住一个无损规则
-func (s *losslessStore) LockLosslessRule(tx store.Tx, name string) (*rules.LosslessRule, error) {
+func (s *losslessStore) LockLosslessRule(tx store.Tx, namespace, name string) (*rules.LosslessRule, error) {
 	// Schema 中没有 name 字段，这里将 name 视为 id 处理
 	if tx == nil {
 		return nil, ErrTxIsNil
@@ -126,7 +126,7 @@ func (s *losslessStore) LockLosslessRule(tx store.Tx, name string) (*rules.Lossl
 	if name == "" {
 		return nil, ErrorMissingParams
 	}
-	record, err := s.repo().LockRule(tx, governanceRuleTypeLossless, name)
+	record, err := s.repo().LockRule(tx, governanceRuleTypeLossless, name, namespace, name)
 	if err != nil {
 		return nil, store.Error(err)
 	}

@@ -5,10 +5,10 @@ import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 import store from 'modules/store';
 import App from 'layouts/index';
-
-import 'tdesign-react/es/style/index.css';
+import FluentAppProvider from 'components/Fluent/FluentAppProvider';
 
 import './styles/index.less';
+import './styles/fluent.less';
 
 const env = import.meta.env.MODE || 'development';
 const baseRouterName = env === 'site' ? '/starter/react/' : '';
@@ -19,9 +19,14 @@ const root = document.getElementById('app')!;
 const renderApp = () => {
   ReactDOM.createRoot(root).render(
     <Provider store={store}>
-      <BrowserRouter basename={baseRouterName}>
-        <App />
-      </BrowserRouter>
+      <FluentAppProvider>
+        <BrowserRouter
+          basename={baseRouterName}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
+          <App />
+        </BrowserRouter>
+      </FluentAppProvider>
     </Provider>,
   );
 };

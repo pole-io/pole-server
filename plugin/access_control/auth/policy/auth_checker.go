@@ -380,6 +380,16 @@ var (
 			saveVal := cacheSvr.ConfigGroup().GetGroupByID(resource.ID)
 			return saveVal != nil
 		},
+		apisecurity.ResourceType_MCPServerResources: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.MCPServer().GetMCPServerByID(resource.ID)
+			return saveVal != nil
+		},
+		apisecurity.ResourceType_A2AAgentResources: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
+			resource *authtypes.ResourceEntry) bool {
+			saveVal := cacheSvr.A2AAgent().GetA2AAgentByID(resource.ID)
+			return saveVal != nil
+		},
 		apisecurity.ResourceType_Users: func(ctx context.Context, cacheSvr cachetypes.CacheManager,
 			resource *authtypes.ResourceEntry) bool {
 			saveVal := cacheSvr.User().GetUserByID(resource.ID)

@@ -94,6 +94,11 @@ spec:
                 secretKeyRef:
                   name: pole-runtime-secrets
                   key: AUTH_SALT
+            - name: POLE_SYSTEM_SECRET_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: pole-runtime-secrets
+                  key: SYSTEM_SECRET_MASTER_KEY
             - name: POD_IP
               valueFrom:
                 fieldRef:

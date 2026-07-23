@@ -87,6 +87,11 @@ export async function describeMCPServers(params: DescribeMCPServersRequest) {
   };
 }
 
+export async function describeAllMCPServers() {
+  const { list } = await describeMCPServers({ offset: 0, limit: 10000 });
+  return list;
+}
+
 export async function createMCPServers(params: MCPServer[]) {
   return apiRequest({
     action: BaseURL.MCP_SERVER,

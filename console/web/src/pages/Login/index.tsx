@@ -1,9 +1,8 @@
 import React, { memo, useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames';
-import { Loading, MessagePlugin } from 'tdesign-react';
+import { Loading, MessagePlugin } from 'components/Fluent';
 import Login from './Login';
-import Register from './Register';
 import LoginHeader from './components/Header';
 import { useAppSelector } from 'modules/store';
 import { selectGlobal } from 'modules/global';
@@ -12,10 +11,8 @@ import { checkExistAdminUser } from 'services/login';
 import Style from './index.module.less';
 
 export default memo(() => {
-  const [type, setType] = useState('login');
   const [checking, setChecking] = useState(true);
   const navigate = useNavigate();
-  const location = useLocation();
   const globalState = useAppSelector(selectGlobal);
   const { theme } = globalState;
   const cancelledRef = useRef(false);
@@ -31,13 +28,10 @@ export default memo(() => {
           navigate('/init-admin', { replace: true });
           return;
         }
-        if ((location.state as { from?: unknown })?.from) {
-          MessagePlugin.warning('您当前未登录，请先登录');
-        }
       })
       .catch(() => {
         if (!cancelledRef.current) {
-          navigate('/init-admin', { replace: true });
+          MessagePlugin.error('无法检查管理员账户，请稍后重试');
         }
       })
       .finally(() => {
@@ -50,19 +44,15 @@ export default memo(() => {
       cancelledRef.current = true;
       ac.abort();
     };
-  }, [navigate, location.state]);
-
-  const handleSwitchLoginType = () => {
-    setType(type === 'register' ? 'login' : 'register');
-  };
+  }, [navigate]);
 
   if (checking) {
     return (
       <div className={classNames(Style.loginWrapper, { [Style.light]: theme === 'light', [Style.dark]: theme !== 'light' })}>
         <LoginHeader />
-        <div className={Style.loginContainer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+        <main className={Style.loadingState}>
           <Loading text="检查管理员账户..." />
-        </div>
+        </main>
       </div>
     );
   }
@@ -72,20 +62,32 @@ export default memo(() => {
       className={classNames(Style.loginWrapper, { [Style.light]: theme === 'light', [Style.dark]: theme !== 'light' })}
     >
       <LoginHeader />
-      <div className={Style.loginContainer}>
-        <div className={Style.titleContainer}>
-          <h1 className={Style.title}>AI Native 的服务治理平台</h1>
-          <div className={Style.subTitle}>
-            <p className={classNames(Style.tip, Style.registerTip)}>
-              {type === 'register' ? '已有账号?' : '默认帐户: pole/pole123, 如果没有账号'}
+      <main className={Style.loginMain}>
+        <section className={Style.introPanel} aria-labelledby="login-product-title">
+          <div className={Style.introContent}>
+            <p className={Style.eyebrow}>
+              <span aria-hidden="true" />
+              POLE CONTROL PLANE
             </p>
-            <p className={classNames(Style.tip, Style.loginTip)} onClick={handleSwitchLoginType}>
-              {type === 'register' ? '登录' : '注册新账号'}
+            <h1 id="login-product-title">服务治理控制台</h1>
+            <p className={Style.introDescription}>
+              统一管理服务发现、配置发布与治理策略，并通过 Agent 协助完成资源操作。
             </p>
           </div>
-        </div>
-        {type === 'login' ? <Login /> : <Register />}
-      </div>
+        </section>
+
+        <section className={Style.authSection} aria-labelledby="login-form-title">
+          <div className={Style.authCard}>
+            <div className={Style.authHeading}>
+              <p>欢迎回来</p>
+              <h2 id="login-form-title">登录控制台</h2>
+              <span>使用管理员或已创建的账号继续。</span>
+            </div>
+            <Login />
+          </div>
+          <p className={Style.authFootnote}>账号由管理员在控制台的认证管理中创建。</p>
+        </section>
+      </main>
     </div>
   );
 });

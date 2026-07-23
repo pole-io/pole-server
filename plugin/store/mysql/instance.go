@@ -689,10 +689,9 @@ func fetchInstanceWithMetaRows(rows *sql.Rows) (map[string]*svctypes.Instance, e
 			return nil, err
 		}
 
+		item.Meta = make(map[string]string)
+		_ = json.Unmarshal([]byte(metadataStr), &item.Meta)
 		out[item.ID] = svctypes.Store2Instance(&item)
-		// 实例存在meta
-		out[item.ID].Proto.Metadata = make(map[string]string)
-		_ = json.Unmarshal([]byte(metadataStr), &out[item.ID].Proto.Metadata)
 	}
 	if err := rows.Err(); err != nil {
 		log.Errorf("[Store][database] fetch instance+metadata rows next err: %s", err.Error())
@@ -748,7 +747,7 @@ func addInstanceCheck(tx *BaseTx, instance *svctypes.Instance) error {
 
 	str := "replace into health_check(`id`, `type`, `ttl`) values(?, ?, ?)"
 	_, err := tx.Exec(str, instance.ID(), check.GetType(),
-		check.GetHeartbeat().GetTtl())
+		svctypes.HealthCheckInterval(check))
 	return err
 }
 
@@ -767,7 +766,7 @@ func batchAddInstanceCheck(tx *BaseTx, instances []*svctypes.Instance) error {
 		str += "(?,?,?)"
 		first = false
 		args = append(args, entry.ID(), entry.HealthCheck().GetType(),
-			entry.HealthCheck().GetHeartbeat().GetTtl())
+			svctypes.HealthCheckInterval(entry.HealthCheck()))
 	}
 	// 不存在健康检查信息，直接返回
 	if first {
@@ -787,7 +786,7 @@ func updateInstanceCheck(tx *BaseTx, instance *svctypes.Instance) error {
 
 	str := "replace into health_check(id, type, ttl) values(?, ?, ?)"
 	_, err := tx.Exec(str, instance.ID(), check.GetType(),
-		check.GetHeartbeat().GetTtl())
+		svctypes.HealthCheckInterval(check))
 	return err
 }
 

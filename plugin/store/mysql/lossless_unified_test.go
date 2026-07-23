@@ -40,6 +40,7 @@ func TestLosslessStoreCreateUsesGovernanceRuleRepository(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
+	expectGovernanceRuleNameAvailable(mock, governanceRuleTypeLossless, rule.Namespace, rule.Service)
 	mock.ExpectExec(regexp.QuoteMeta(insertGovernanceRuleSQL)).
 		WithArgs(
 			rule.ID,

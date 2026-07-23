@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames';
-import { Form, MessagePlugin, Input, Button, SubmitContext, Loading } from 'tdesign-react';
-import { LockOnIcon, UserIcon, BrowseOffIcon, BrowseIcon } from 'tdesign-icons-react';
+import { Form, MessagePlugin, Input, Button, SubmitContext, Loading } from 'components/Fluent';
+import { LockOnIcon, UserIcon, BrowseOffIcon, BrowseIcon } from 'components/Fluent/icons';
 import { useAppSelector } from 'modules/store';
 import { selectGlobal } from 'modules/global';
 import { checkExistAdminUser, initAdminUser } from 'services/login';
@@ -34,7 +34,12 @@ export default function InitAdmin() {
           navigate('/login', { replace: true });
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelledRef.current) {
+          MessagePlugin.error('无法检查管理员账户，请确认服务可用后重试');
+          navigate('/login', { replace: true });
+        }
+      })
       .finally(() => {
         if (!cancelledRef.current) {
           setChecking(false);
@@ -78,9 +83,9 @@ export default function InitAdmin() {
         })}
       >
         <LoginHeader />
-        <div className={Style.loginContainer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+        <main className={Style.loadingState}>
           <Loading text="检查中..." />
-        </div>
+        </main>
       </div>
     );
   }
@@ -93,55 +98,86 @@ export default function InitAdmin() {
       })}
     >
       <LoginHeader />
-      <div className={Style.loginContainer}>
-        <div className={Style.titleContainer}>
-          <h1 className={Style.title}>初始化管理员账户</h1>
-          <div className={Style.subTitle}>
-            <p className={classNames(Style.tip, Style.registerTip)}>检测到当前无管理员账户，请创建首个管理员账号</p>
+      <main className={Style.loginMain}>
+        <section className={Style.introPanel} aria-labelledby="init-admin-product-title">
+          <div className={Style.introContent}>
+            <p className={Style.eyebrow}>
+              <span aria-hidden="true" />
+              POLE CONTROL PLANE
+            </p>
+            <h1 id="init-admin-product-title">开始使用服务治理控制台</h1>
+            <p className={Style.introDescription}>创建首个管理员后，即可配置服务、治理规则与 Agent 工作台。</p>
           </div>
-        </div>
-        <Form
-          className={classNames(FormStyle.itemContainer, 'init-admin')}
-          labelWidth={0}
-          onSubmit={onSubmit}
-        >
-          <FormItem name="name" rules={[{ required: true, message: '管理员账号必填', type: 'error' }]}>
-            <Input size="large" placeholder="请输入管理员账号" prefixIcon={<UserIcon />} />
-          </FormItem>
-          <FormItem name="password" rules={[{ required: true, message: '密码必填', type: 'error' }]}>
-            <Input
-              size="large"
-              type={showPsw ? 'text' : 'password'}
-              clearable
-              placeholder="请输入登录密码"
-              prefixIcon={<LockOnIcon />}
-              suffixIcon={
-                showPsw ? (
-                  <BrowseIcon onClick={() => toggleShowPsw(false)} />
-                ) : (
-                  <BrowseOffIcon onClick={() => toggleShowPsw(true)} />
-                )
-              }
-            />
-          </FormItem>
-          <FormItem
-            name="confirmPassword"
-            rules={[{ required: true, message: '请再次输入密码', type: 'error' }]}
-          >
-            <Input
-              size="large"
-              type="password"
-              placeholder="请再次输入密码"
-              prefixIcon={<LockOnIcon />}
-            />
-          </FormItem>
-          <FormItem className={FormStyle.btnContainer}>
-            <Button block size="large" type="submit" loading={loading}>
-              创建并前往登录
-            </Button>
-          </FormItem>
-        </Form>
-      </div>
+        </section>
+
+        <section className={Style.authSection} aria-labelledby="init-admin-form-title">
+          <div className={Style.authCard}>
+            <div className={Style.authHeading}>
+              <p>首次设置</p>
+              <h2 id="init-admin-form-title">初始化管理员账户</h2>
+              <span>此账户将拥有控制台的管理权限。</span>
+            </div>
+            <Form
+              className={classNames(FormStyle.itemContainer, 'init-admin')}
+              labelWidth={0}
+              onSubmit={onSubmit}
+            >
+              <FormItem name="name" rules={[{ required: true, message: '管理员账号必填', type: 'error' }]}>
+                <Input
+                  size="large"
+                  aria-label="管理员账号"
+                  aria-required="true"
+                  autoComplete="username"
+                  placeholder="请输入管理员账号"
+                  prefixIcon={<UserIcon />}
+                />
+              </FormItem>
+              <FormItem name="password" rules={[{ required: true, message: '密码必填', type: 'error' }]}>
+                <Input
+                  size="large"
+                  aria-label="管理员密码"
+                  aria-required="true"
+                  autoComplete="new-password"
+                  type={showPsw ? 'text' : 'password'}
+                  clearable
+                  placeholder="请输入登录密码"
+                  prefixIcon={<LockOnIcon />}
+                  suffixIcon={
+                    <Button
+                      type="button"
+                      className={FormStyle.passwordToggle}
+                      variant="text"
+                      shape="square"
+                      size="small"
+                      aria-label={showPsw ? '隐藏密码' : '显示密码'}
+                      onClick={() => toggleShowPsw((current) => !current)}
+                    >
+                      {showPsw ? <BrowseIcon /> : <BrowseOffIcon />}
+                    </Button>
+                  }
+                />
+              </FormItem>
+              <FormItem name="confirmPassword" rules={[{ required: true, message: '请再次输入密码', type: 'error' }]}>
+                <Input
+                  size="large"
+                  aria-label="确认管理员密码"
+                  aria-required="true"
+                  autoComplete="new-password"
+                  type="password"
+                  placeholder="请再次输入密码"
+                  prefixIcon={<LockOnIcon />}
+                />
+              </FormItem>
+              <FormItem className={FormStyle.btnContainer}>
+                <Button block size="large" theme="primary" type="submit" loading={loading}>
+                  创建并前往登录
+                </Button>
+              </FormItem>
+            </Form>
+          </div>
+          <p className={Style.authFootnote}>已有管理员时，系统会自动返回登录页。</p>
+        </section>
+      </main>
     </div>
   );
 }

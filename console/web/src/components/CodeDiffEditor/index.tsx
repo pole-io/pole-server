@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
-import { DiffEditor, Editor as MonacoEditor } from '@monaco-editor/react'
-import type { DiffOnMount, MonacoDiffEditor, OnChange, OnMount } from '@monaco-editor/react'
-import { Icon, LoadingIcon } from 'tdesign-icons-react';
+import React from 'react';
+import { DiffEditor } from '@monaco-editor/react'
+import { LoadingIcon } from 'components/Fluent/icons';
+import { useAppSelector } from 'modules/store';
+import { selectGlobal } from 'modules/global';
 import Style from './index.module.less';
 import classNames from 'classnames';
 
@@ -15,6 +16,7 @@ export interface ICodeDiffEditorProps {
     nextValue?: string;
     language?: string;
     theme?: string;
+    height?: string | number;
     onChange?: (value: string | undefined, event: any) => void;
     onMount?: (editor: any, monaco: any) => void;
 }
@@ -33,24 +35,31 @@ export function toHighlightLanguage(format?: string) {
 }
 
 const CodeDiffEditor: React.FC<ICodeDiffEditorProps> = props => {
+    const { theme: appTheme } = useAppSelector(selectGlobal);
+    const modelPathPrefix = React.useMemo(() => {
+        const fileKey = `${props.namespace}/${props.group}/${props.filename}` || 'config-file';
+        return `inmemory://config-diff/${encodeURIComponent(fileKey)}`;
+    }, [props.namespace, props.group, props.filename]);
+
     return (
         <section
             className={classNames({
                 [Style.monacoSection]: true,
             })}
             style={{
-                height: 'calc(100vh - 370px)',
+                height: props.height || 'clamp(280px, 48dvh, 560px)',
+                minHeight: 240,
                 width: "100%",
                 position: 'relative'
             }}
         >
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 8px 4px 8px', fontSize: 12, color: '#888' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 8px 4px 8px', fontSize: 12, color: 'var(--app-text-secondary)' }}>
                 <span>{'当前版本'}</span>
                 <span>{'目标版本'}</span>
             </div>
             <DiffEditor
                 loading={<LoadingIcon />}
-                theme={'vs'}
+                theme={props.theme || (appTheme === 'dark' ? 'vs-dark' : 'vs')}
                 options={{
                     // 控制是否只读
                     readOnly: true,
@@ -62,6 +71,10 @@ const CodeDiffEditor: React.FC<ICodeDiffEditorProps> = props => {
                 }}
                 original={props.curValue}
                 modified={props.nextValue}
+                originalModelPath={`${modelPathPrefix}/original.${toHighlightLanguage(props.language)}`}
+                modifiedModelPath={`${modelPathPrefix}/modified.${toHighlightLanguage(props.language)}`}
+                keepCurrentOriginalModel={true}
+                keepCurrentModifiedModel={true}
                 originalLanguage={toHighlightLanguage(props.language)}
                 modifiedLanguage={toHighlightLanguage(props.language)}
             />

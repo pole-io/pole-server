@@ -1,10 +1,9 @@
-import { set } from "lodash";
 import React from "react";
 import { authorizeResources, describeResourcePrincipals, PolicySourceType } from "services/auth_policy";
-import { describeAllRoles } from "services/role";
-import { describeAllUserGroups } from "services/user_group";
-import { describeAllUsers } from "services/users";
-import { Drawer, Form, FormProps, Input, Loading, Select } from "tdesign-react";
+import { describeRoles } from "services/role";
+import { describeUserGroups } from "services/user_group";
+import { describeUsers } from "services/users";
+import { Drawer, Form, FormProps, Input, Loading, Select, Space, Tag } from 'components/Fluent';
 import { openErrNotification, openInfoNotification } from "utils/notifition";
 
 const { FormItem } = Form;
@@ -19,6 +18,20 @@ export interface IAuthorizeInputProps {
 
 const AuthorizeInput: React.FC<IAuthorizeInputProps> = (props) => {
     const [form] = Form.useForm();
+    const isNamespaceResource = props.resource_type === PolicySourceType.Namespaces;
+    const isConfigGroupResource = props.resource_type === PolicySourceType.ConfigGroups;
+    const isMCPServerResource = props.resource_type === PolicySourceType.MCPServerResources;
+    const isA2AAgentResource = props.resource_type === PolicySourceType.A2AAgentResources;
+    const resourceNameParts = props.resource_name.split('/');
+    const [resourceNamespace, resourceName] = resourceNameParts;
+    const resourceFileName = resourceNameParts.slice(2).join('/');
+    const resourceNameLabel = isConfigGroupResource
+        ? '配置分组'
+        : isMCPServerResource
+            ? 'MCP Server'
+            : isA2AAgentResource
+                ? 'A2A Agent'
+                : '资源名称';
 
     // 下拉/Transfer数据
     const [state, setState] = React.useState<{
@@ -47,16 +60,25 @@ const AuthorizeInput: React.FC<IAuthorizeInputProps> = (props) => {
     async function loadOptions() {
         setState(pre => ({ ...pre, loading: true }));
         try {
-            const [users, groups, rolesRes, principals] = await Promise.all([
-                describeAllUsers(),
-                describeAllUserGroups(),
-                describeAllRoles(),
+            const [usersResult, groupsResult, rolesResult, principalsResult] = await Promise.allSettled([
+                describeUsers({ offset: 0, limit: 100 }),
+                describeUserGroups({ offset: 0, limit: 100 }),
+                describeRoles({ offset: 0, limit: 100 }),
                 describeResourcePrincipals({
                     res_type: props.resource_type,
                     res_id: props.resource_id,
                     action: "ALLOW"
                 })
             ]);
+            const users = usersResult.status === 'fulfilled' ? usersResult.value.content : [];
+            const groups = groupsResult.status === 'fulfilled' ? groupsResult.value.content : [];
+            const roles = rolesResult.status === 'fulfilled' ? rolesResult.value.content : [];
+            const principals = principalsResult.status === 'fulfilled' ? principalsResult.value : undefined;
+            const failures = [usersResult, groupsResult, rolesResult, principalsResult]
+                .filter((result): result is PromiseRejectedResult => result.status === 'rejected');
+            if (failures.length > 0) {
+                openErrNotification("部分授权数据加载失败", failures.map(result => String(result.reason)).join('；'));
+            }
 
             setState(pre => ({
                 ...pre,
@@ -71,7 +93,7 @@ const AuthorizeInput: React.FC<IAuthorizeInputProps> = (props) => {
                     value: item.id,
                     label: item.name
                 })),
-                roleOpts: rolesRes.map((item) => ({
+                roleOpts: roles.map((item) => ({
                     value: item.id,
                     label: item.name
                 })),
@@ -81,11 +103,12 @@ const AuthorizeInput: React.FC<IAuthorizeInputProps> = (props) => {
             }));
         } catch (err) {
             openErrNotification("获取资源授权失败", err as string);
+            setState(pre => ({ ...pre, loading: false }));
         }
     }
 
     const onSubmit: FormProps['onSubmit'] = async (e) => {
-        if (!e.validateResult) {
+        if (e.validateResult !== true) {
             return;
         }
         const { users, groups, roles } = e.fields;
@@ -133,25 +156,52 @@ const AuthorizeInput: React.FC<IAuthorizeInputProps> = (props) => {
                     layout={'vertical'}
                     style={{ width: '100%' }}
                 >
-                    <FormItem label="资源类型" name="resource_type" initialData={props.resource_type}>
-                        <Input readonly={true} />
-                    </FormItem>
-                    <FormItem label="资源ID" name="resource_id" initialData={props.resource_id}>
-                        <Input readonly={true} />
-                    </FormItem>
-                    <FormItem label="资源名称" name="resource_name" initialData={props.resource_name}>
-                        <Input readonly={true} />
-                    </FormItem>
+                    <section style={{ marginBottom: 18 }}>
+                        <h3 style={{ margin: '0 0 12px' }}>资源摘要</h3>
+                        <FormItem label="资源类型" name="resource_type" initialData={props.resource_type}>
+                            <Input readonly={true} />
+                        </FormItem>
+                        <FormItem label="命名空间" name="resource_namespace" initialData={resourceNamespace || props.resource_name}>
+                            <Input readonly={true} />
+                        </FormItem>
+                        {!isNamespaceResource && (
+                            <FormItem label={resourceNameLabel} name="resource_group" initialData={resourceName || '-'}>
+                                <Input readonly={true} />
+                            </FormItem>
+                        )}
+                        {resourceFileName && (
+                            <FormItem label="配置文件" name="resource_file" initialData={resourceFileName}>
+                                <Input readonly={true} />
+                            </FormItem>
+                        )}
+                        <FormItem label="资源ID" name="resource_id" initialData={props.resource_id}>
+                            <Input readonly={true} />
+                        </FormItem>
+                        <FormItem label="资源名称" name="resource_name" initialData={props.resource_name}>
+                            <Input readonly={true} />
+                        </FormItem>
+                    </section>
+                    <section style={{ marginBottom: 18 }}>
+                        <h3 style={{ margin: '0 0 12px' }}>权限范围</h3>
+                        <Space size={8} breakLine>
+                            {['查看', '编辑', '发布', '授权管理'].map((item) => (
+                                <Tag key={item} variant="light" theme="primary">{item}</Tag>
+                            ))}
+                        </Space>
+                    </section>
                     <Loading loading={state.loading}>
-                        <FormItem label="授权用户" name="users" initialData={state.checkedUsers}>
-                            <Select multiple={true} options={state.userOpts} />
-                        </FormItem>
-                        <FormItem label="授权用户组" name="groups" initialData={state.checkedGroups}>
-                            <Select multiple={true} options={state.groupOpts} />
-                        </FormItem>
-                        <FormItem label="授权角色" name="roles" initialData={state.checkedRoles}>
-                            <Select multiple={true} options={state.roleOpts} />
-                        </FormItem>
+                        <section>
+                            <h3 style={{ margin: '0 0 12px' }}>授权对象</h3>
+                            <FormItem label="用户" name="users" initialData={state.checkedUsers}>
+                                <Select multiple={true} options={state.userOpts} />
+                            </FormItem>
+                            <FormItem label="用户组" name="groups" initialData={state.checkedGroups}>
+                                <Select multiple={true} options={state.groupOpts} />
+                            </FormItem>
+                            <FormItem label="角色" name="roles" initialData={state.checkedRoles}>
+                                <Select multiple={true} options={state.roleOpts} />
+                            </FormItem>
+                        </section>
                     </Loading>
                 </Form>
             </Drawer>

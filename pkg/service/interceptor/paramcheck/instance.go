@@ -297,17 +297,13 @@ func checkReviseInstance(req *apiservice.Instance) (string, *apimodel.Response) 
 		return "", api.NewInstanceResponse(apimodel.Code_EmptyRequest, req)
 	}
 
-	if req.GetId() == "" {
-		return "", api.NewInstanceResponse(apimodel.Code_InvalidQueryInsParameter, req)
-	}
-
 	// 检查字段长度是否大于DB中对应字段长
 	err, notOk := CheckDbInstanceFieldLen(req)
 	if notOk {
 		return "", err
 	}
 
-	return req.GetId(), nil
+	return valid.CheckInstanceTetrad(req)
 }
 
 // CheckDbInstanceFieldLen 检查DB中service表对应的入参字段合法性

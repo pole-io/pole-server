@@ -1,12 +1,14 @@
 import React from 'react';
-import { Button, Empty, PageInfo, Pagination, Space, Tag, Tooltip } from 'tdesign-react';
-import { ArrowRightIcon, RefreshIcon, ServiceIcon } from 'tdesign-icons-react';
+import { Button, Empty, PageInfo, Pagination, Space, Tag, Tooltip } from 'components/Fluent';
+import { ArrowRightIcon, RefreshIcon, ServiceIcon } from 'components/Fluent/icons';
+import { useNavigate } from 'react-router-dom';
 
 import Search from 'components/Search';
 import Text from 'components/Text';
 import { describeServiceSubscribers, ServiceKey, ServiceSubscriberView } from 'services/service';
 import { openErrNotification } from 'utils/notifition';
 import style from './index.module.less';
+import ResourceNameLink from 'components/ResourceNameLink';
 
 interface IServiceSubscribeProps {
     namespace: string
@@ -22,7 +24,7 @@ const serviceLabel = (service?: ServiceKey) => {
 
 const classNames = (...names: Array<string | false | undefined>) => names.filter(Boolean).join(' ')
 
-const ServiceNode = ({ service, role, active = false }: { service?: ServiceKey, role: string, active?: boolean }) => (
+const ServiceNode = ({ service, role, active = false, onView }: { service?: ServiceKey, role: string, active?: boolean, onView: (service: ServiceKey) => void }) => (
     <div className={classNames(style.serviceNode, active && style.serviceNodeActive)}>
         <div className={style.serviceNodeIcon}>
             <ServiceIcon />
@@ -32,12 +34,15 @@ const ServiceNode = ({ service, role, active = false }: { service?: ServiceKey, 
                 <span>{role}</span>
                 {service?.namespace && <Tag size="small" variant="light">{service.namespace}</Tag>}
             </div>
-            <div className={style.serviceNodeName}>{service?.name || '-'}</div>
+            <div className={style.serviceNodeName}>
+                <ResourceNameLink name={service?.name} onClick={() => service && onView(service)} />
+            </div>
         </div>
     </div>
 )
 
 const ServiceSubscribeTable: React.FC<IServiceSubscribeProps> = ({ namespace, serviceName }) => {
+    const navigate = useNavigate();
     const [datas, setDatas] = React.useState<ServiceSubscriberView[]>([]);
     const [loading, setLoading] = React.useState(false);
     const [page, setPage] = React.useState(1);
@@ -46,6 +51,9 @@ const ServiceSubscribeTable: React.FC<IServiceSubscribeProps> = ({ namespace, se
     const [callerName, setCallerName] = React.useState('');
 
     const currentService = React.useMemo(() => ({ namespace, name: serviceName }), [namespace, serviceName]);
+    const viewService = React.useCallback((service: ServiceKey) => {
+        navigate(`/discovery/service/instance?namespace=${encodeURIComponent(service.namespace)}&service=${encodeURIComponent(service.name)}`);
+    }, [navigate]);
 
     const refreshTable = React.useCallback(async (nextPage = page, nextLimit = limit, nextCallerName = callerName) => {
         if (!namespace || !serviceName) {
@@ -112,7 +120,7 @@ const ServiceSubscribeTable: React.FC<IServiceSubscribeProps> = ({ namespace, se
                     }}
                 />
                 <Tooltip content="刷新">
-                    <Button shape="square" variant="text" onClick={() => refreshTable(1, limit, callerName)}>
+                    <Button aria-label="刷新订阅列表" shape="square" variant="text" onClick={() => refreshTable(1, limit, callerName)}>
                         <RefreshIcon />
                     </Button>
                 </Tooltip>
@@ -131,7 +139,7 @@ const ServiceSubscribeTable: React.FC<IServiceSubscribeProps> = ({ namespace, se
                 )}
                 {datas.map((item) => (
                     <div className={style.relationRow} key={item.id}>
-                        <ServiceNode service={item.caller} role="订阅方" />
+                        <ServiceNode service={item.caller} role="订阅方" onView={viewService} />
                         <div className={style.relationConnector}>
                             <div className={style.connectorLine} />
                             <div className={style.connectorBadge}>
@@ -146,6 +154,7 @@ const ServiceSubscribeTable: React.FC<IServiceSubscribeProps> = ({ namespace, se
                                     service={callee}
                                     role="被订阅"
                                     active={callee.namespace === namespace && callee.name === serviceName}
+                                    onView={viewService}
                                 />
                             ))}
                         </div>

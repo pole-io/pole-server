@@ -210,6 +210,7 @@ func (c *CircuitBreakerRule) ToSpec() (*apifault.CircuitBreakerRule, error) {
 		}
 	}
 	specData.Id = c.ID
+	specData.Namespace = c.Namespace
 	specData.Name = c.Name
 	specData.Description = c.Description
 	specData.Level = apifault.Level(c.Level)
@@ -278,6 +279,7 @@ func (c *FaultDetectRule) ToSpec() (*apifault.FaultDetectRule, error) {
 	}
 	normalizeFaultDetectRuleShape(specData, c.Rule)
 	specData.Id = c.ID
+	specData.Namespace = c.Namespace
 	specData.Name = c.Name
 	specData.Description = c.Description
 	specData.Revision = c.Revision

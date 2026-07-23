@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { Popup, Table, Button, PageInfo, PrimaryTableProps, TableProps, Tooltip, Space, Row, Col, TableRowData, Tag, Breadcrumb, Link, Loading, Popconfirm } from 'tdesign-react';
-import { DeleteIcon, EditIcon, RefreshIcon } from 'tdesign-icons-react';
-import { useNavigate, BrowserRouterProps } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Table, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Tag, Link, Popconfirm } from 'components/Fluent';
+import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from 'components/Fluent/icons';
+import { BrowserRouterProps } from 'react-router-dom';
 
 import Search from 'components/Search';
 import ErrorPage from 'components/ErrorPage';
 import Text from 'components/Text';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { describeInstances, HEALTH_STATUS_MAP, Instance, ISOLATE_STATUS_MAP } from 'services/instance';
-import { openErrNotification } from 'utils/notifition';
+import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
 import InstanceEditor from './InstanceEditor';
-import { cleanInsPage, editorInstance, listInstances, resetInstance, selectInstance } from 'modules/discovery/instance';
+import { cleanInsPage, editorInstance, listInstances, removeInstances, resetInstance, selectInstance } from 'modules/discovery/instance';
 import { Op } from 'services/types';
 
 export interface IInstanceListProps {
@@ -26,13 +26,16 @@ const columns = (operateInstance: (op: Op, row: TableRowData) => void): PrimaryT
         colKey: 'id',
         title: 'ID',
         type: 'multiple',
+        width: 52,
+        fixed: 'left',
         checkProps: ({ row }) => ({ disabled: row.editable === false || row.deleteable === false }),
     },
     {
         colKey: 'host',
         title: '主机',
+        width: 180,
         cell: ({ row }) => (
-            <Link theme='primary' onClick={() => operateInstance('view', row)}>
+            <Link theme='primary' title={String(row.host || '-')} onClick={() => operateInstance('view', row)}>
                 <Text>{row.host}</Text>
             </Link>
         ),
@@ -40,16 +43,19 @@ const columns = (operateInstance: (op: Op, row: TableRowData) => void): PrimaryT
     {
         colKey: 'port',
         title: '端口',
+        width: 88,
         cell: ({ row: { port } }) => <Text>{port || '-'}</Text>,
     },
     {
         colKey: 'protocol',
         title: '协议',
+        width: 104,
         cell: ({ row: { protocol } }) => <Text>{protocol || '-'}</Text>,
     },
     {
         colKey: 'version',
         title: '版本',
+        width: 116,
         cell: ({ row: { version } }) => (
             <Text>{version || '-'}</Text>
         ),
@@ -57,6 +63,7 @@ const columns = (operateInstance: (op: Op, row: TableRowData) => void): PrimaryT
     {
         colKey: 'weight',
         title: '权重',
+        width: 88,
         cell: ({ row: { weight } }) => (
             <Text>{weight || '-'}</Text>
         ),
@@ -64,6 +71,7 @@ const columns = (operateInstance: (op: Op, row: TableRowData) => void): PrimaryT
     {
         colKey: 'healthy',
         title: '健康状态',
+        width: 112,
         cell: ({ row: { healthy } }) => (
             <Tag theme={HEALTH_STATUS_MAP?.[healthy as keyof typeof HEALTH_STATUS_MAP]?.theme as "success" | "danger" | "default" | "primary" | "warning"} variant="outline">{HEALTH_STATUS_MAP?.[healthy as keyof typeof HEALTH_STATUS_MAP]?.text ?? '-'}</Tag>
         ),
@@ -71,6 +79,7 @@ const columns = (operateInstance: (op: Op, row: TableRowData) => void): PrimaryT
     {
         colKey: 'isolate',
         title: '隔离状态',
+        width: 112,
         cell: ({ row: { isolate } }) => (
             <Tag theme={ISOLATE_STATUS_MAP?.[isolate as keyof typeof ISOLATE_STATUS_MAP]?.theme as "success" | "danger" | "default" | "primary" | "warning"} variant="outline">{ISOLATE_STATUS_MAP?.[isolate as keyof typeof ISOLATE_STATUS_MAP]?.text ?? '-'}</Tag>
         ),
@@ -78,18 +87,24 @@ const columns = (operateInstance: (op: Op, row: TableRowData) => void): PrimaryT
     {
         colKey: 'location',
         title: '地理位置',
+        width: 190,
         cell: ({ row: { location } }) => (
-            <Text>{location?.region || '-'}/{location?.zone || '-'}/{location?.campus || '-'}</Text>
+            <Text title={`${location?.region || '-'}/${location?.zone || '-'}/${location?.campus || '-'}`}>
+                {location?.region || '-'}/{location?.zone || '-'}/{location?.campus || '-'}
+            </Text>
         ),
     },
     {
         colKey: 'time',
         title: '操作时间',
+        width: 210,
         cell: ({ row: { ctime, mtime } }: TableRowData) => <Text>修改: {mtime}<br />创建: {ctime}</Text>,
     },
     {
         colKey: 'action',
         title: '操作',
+        width: 112,
+        fixed: 'right',
         cell: ({ row }) => {
             return (
                 <Space>
@@ -97,6 +112,7 @@ const columns = (operateInstance: (op: Op, row: TableRowData) => void): PrimaryT
                         <Button
                             shape="square"
                             variant="text"
+                            aria-label="编辑实例"
                             disabled={row.editable === false}
                             onClick={() => operateInstance('edit', row)}>
                             <EditIcon />
@@ -113,7 +129,7 @@ const columns = (operateInstance: (op: Op, row: TableRowData) => void): PrimaryT
                                 operateInstance('delete', row);
                             }}
                         >
-                            <Button shape="square" variant="text" disabled={row.deleteable === false}>
+                            <Button shape="square" variant="text" aria-label="删除实例" disabled={row.deleteable === false}>
                                 <DeleteIcon />
                             </Button>
                         </Popconfirm>
@@ -126,7 +142,6 @@ const columns = (operateInstance: (op: Op, row: TableRowData) => void): PrimaryT
 
 export default React.memo((props: IInstanceListProps & BrowserRouterProps) => {
     const dispatch = useAppDispatch();
-    const navigate = useNavigate()
 
     const [namespace, serviceName] = [props.namespace, props.serviceName];
     const [selectedRowKeys, setSelectedRowKeys] = useState<Array<string | number>>([]);
@@ -153,6 +168,7 @@ export default React.memo((props: IInstanceListProps & BrowserRouterProps) => {
             param: {
                 namespace: namespace,
                 service: serviceName,
+                host: query || undefined,
                 offset: (page - 1) * limit,
                 limit: limit,
             }
@@ -175,8 +191,16 @@ export default React.memo((props: IInstanceListProps & BrowserRouterProps) => {
                 setEditState(prev => ({ ...prev, visible: true, mode: op, selectedRow: row }));
                 break;
             case 'delete':
-                dispatch(editorInstance({ ...row as Instance }));
-                setEditState(prev => ({ ...prev, visible: true, mode: 'delete', selectedRow: row }));
+                if (!row?.id) return;
+                dispatch(removeInstances({ ids: [String(row?.id)] })).then((res) => {
+                    if (res.meta.requestStatus === 'rejected') {
+                        openErrNotification('删除服务实例失败', res.payload as string);
+                        return;
+                    }
+                    openInfoNotification('请求成功', '删除服务实例成功');
+                    setSelectedRowKeys(keys => keys.filter(key => String(key) !== String(row.id)));
+                    refreshTable(page, limit);
+                });
                 break;
             case 'view':
                 dispatch(editorInstance({ ...row as Instance }));
@@ -189,37 +213,32 @@ export default React.memo((props: IInstanceListProps & BrowserRouterProps) => {
 
     const table = (
         <>
-            <Row justify='space-between' className={style.toolBar}>
-                <Col>
-                    <Row gutter={8} align='middle'>
-                        <Col>
-                            <Button onClick={() => operateInstance('create')}>新建</Button>
-                        </Col>
-                        {selectedRowKeys.length > 0 && (
-                            <>
-                                <Col>
-                                    <Button theme='danger'>批量删除</Button>
-                                </Col>
-                                <Col>
-                                    <div>已选 {selectedRowKeys?.length || 0} 项</div>
-                                </Col>
-                            </>
-                        )}
-
-                    </Row>
-                </Col>
-                <Col>
+            <section className={style.instanceToolbar}>
+                <div className={style.instanceToolbarMeta}>
+                    <strong>实例清单</strong>
+                    <span>{loading ? '正在同步列表' : `当前显示 ${datas.length} / ${total} 条`}</span>
+                    {selectedRowKeys.length > 0 && <span>已选 {selectedRowKeys.length} 项</span>}
+                </div>
+                <div className={style.instanceToolbarActions}>
+                    <Button theme="primary" icon={<AddIcon />} onClick={() => operateInstance('create')}>新建实例</Button>
                     <Space>
                         <Search
+                            placeholder="主机地址"
                             onChange={(value: string) => {
                                 refreshTable(1, limit, value);
                             }} />
                         <Tooltip content="刷新">
-                            <RefreshIcon onClick={() => refreshTable(1, limit)} />
+                            <Button
+                                aria-label="刷新实例列表"
+                                shape="square"
+                                variant="outline"
+                                icon={<RefreshIcon />}
+                                onClick={() => refreshTable(1, limit)}
+                            />
                         </Tooltip>
                     </Space>
-                </Col>
-            </Row>
+                </div>
+            </section>
             {editState.visible && (
                 <InstanceEditor
                     key={editState.mode + (editState.selectedRow?.host || 'new') + (editState.visible ? '1' : '0')}
@@ -234,37 +253,36 @@ export default React.memo((props: IInstanceListProps & BrowserRouterProps) => {
                         refreshTable();
                     }} />
             )}
-            <Table
-                data={datas}
-                columns={columns(operateInstance)}
-                loading={loading}
-                rowKey="id"
-                size={"large"}
-                tableLayout={'auto'}
-                cellEmptyContent={'-'}
-                pagination={{
-                    current: page,
-                    pageSize: limit,
-                    total: total,
-                    showJumper: true,
-                    onChange(pageInfo) {
-                        refreshTable(pageInfo.current, pageInfo.pageSize);
-                    },
-                }}
-                onPageChange={(pageInfo) => {
-                    refreshTable(pageInfo.current, pageInfo.pageSize);
-                }}
-                selectOnRowClick={false}
-                selectedRowKeys={selectedRowKeys}
-                onSelectChange={(selected: Array<string | number>) => {
-                    setSelectedRowKeys(selected);
-                }}
-            />
+            <section className={style.instanceTableSurface}>
+                <Table
+                    data={datas}
+                    columns={columns(operateInstance)}
+                    loading={loading}
+                    rowKey="id"
+                    size={"large"}
+                    tableLayout={'auto'}
+                    cellEmptyContent={'-'}
+                    pagination={{
+                        current: page,
+                        pageSize: limit,
+                        total: total,
+                        showJumper: true,
+                        onChange(pageInfo) {
+                            refreshTable(pageInfo.current, pageInfo.pageSize);
+                        },
+                    }}
+                    selectOnRowClick={false}
+                    selectedRowKeys={selectedRowKeys}
+                    onSelectChange={(selected: Array<string | number>) => {
+                        setSelectedRowKeys(selected);
+                    }}
+                />
+            </section>
         </>
     );
 
     return (
-        <div style={{ margin: 20 }}>
+        <div className={style.instanceTablePage}>
             {table}
         </div>
     );

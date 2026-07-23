@@ -56,8 +56,8 @@ export const listUsers = createAsyncThunk(`user/list`, async ({ param }: { param
 
 export const saveUsers = createAsyncThunk(`user/create`, async ({ param }: { param: CreateUsersRequest }, { fulfillWithValue, rejectWithValue }) => {
     try {
-        const res = await createUsers([param]);
-        return fulfillWithValue(res);
+        const success = await createUsers([param]);
+        return success ? fulfillWithValue(true) : rejectWithValue('创建用户失败');
     } catch (error) {
         return rejectWithValue((error as Error).message); // 捕获错误并返回
     }
@@ -65,8 +65,8 @@ export const saveUsers = createAsyncThunk(`user/create`, async ({ param }: { par
 
 export const updateUsers = createAsyncThunk(`user/update`, async ({ param }: { param: ModifyUserRequest }, { fulfillWithValue, rejectWithValue }) => {
     try {
-        const res = await modifyUsers([param]);
-        return fulfillWithValue(res);
+        const success = await modifyUsers([param]);
+        return success ? fulfillWithValue(true) : rejectWithValue('更新用户失败');
     } catch (error) {
         return rejectWithValue((error as Error).message); // 捕获错误并返回
     }

@@ -20,7 +20,6 @@ package config
 import (
 	"context"
 	"encoding/base64"
-	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -50,48 +49,45 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context, req *apiconfig.Conf
 	// 从缓存中获取灰度文件
 	var release *conftypes.ConfigFileRelease
 	var match = false
-	if release = s.fileCache.GetActiveGrayRelease(namespace, group, fileName); release != nil {
-		key := GetGrayConfigReaseKey(release.SimpleConfigFileRelease)
-		// 将客户端标签转换为灰度匹配需要的标签格式
-		clientLabels := make(map[string]string)
-		if req.Labels != nil {
-			for k, v := range req.Labels {
-				clientLabels[k] = v
-			}
+	// 将客户端标签转换为灰度匹配需要的标签格式
+	clientLabels := make(map[string]string)
+	if req.Labels != nil {
+		for k, v := range req.Labels {
+			clientLabels[k] = v
 		}
-		match = s.grayCache.HitGrayRule(key, clientLabels)
 	}
+	release = selectMatchedGrayRelease(s.fileCache.GetActiveGrayReleases(namespace, group, fileName),
+		func(release *conftypes.SimpleConfigFileRelease) bool {
+			return s.grayCache.HitGrayRule(GetGrayConfigReaseKey(release), clientLabels)
+		})
+	match = release != nil
 	if !match {
 		if release = s.fileCache.GetActiveRelease(namespace, group, fileName); release == nil {
-			return &apiconfig.ConfigDiscoverResponse{
-				Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
-				Info: "NotFoundResource",
-			}
+			response := api.NewConfigDiscoverResponse(apimodel.Code_NotFoundResource)
+			response.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE
+			return response
 		}
 	}
 	// 客户端版本号大于服务端版本号，服务端不返回变更
 	if req.Id > "" && release.Version > 0 {
 		log.Debug("[Config][Service] get config file to client", utils.RequestID(ctx),
 			zap.String("client-version", req.Id), zap.Uint64("server-version", release.Version))
-		return &apiconfig.ConfigDiscoverResponse{
-			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
-			Info: "DataNoChange",
-		}
+		response := api.NewConfigDiscoverResponse(apimodel.Code_DataNoChange)
+		response.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE
+		return response
 	}
 	configFile, err := toClientInfo(req, release)
 	if err != nil {
 		log.Error("[Config][Service] get config file to client", utils.RequestID(ctx), zap.Error(err))
-		return &apiconfig.ConfigDiscoverResponse{
-			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
-			Info: err.Error(),
-		}
+		response := api.NewConfigDiscoverResponse(apimodel.Code_ExecuteException)
+		response.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE
+		response.Info = err.Error()
+		return response
 	}
 	// 将 configFile 设置到响应中
-	response := &apiconfig.ConfigDiscoverResponse{
-		Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
-		Info: "ExecuteSuccess",
-	}
-	_ = configFile // 使用 configFile 避免 unused 错误
+	response := api.NewConfigDiscoverResponse(apimodel.Code_ExecuteSuccess)
+	response.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE
+	response.File = configFile
 	return response
 }
 
@@ -163,31 +159,25 @@ func (s *Server) GetConfigFileNamesWithCache(ctx context.Context,
 
 	releases, revision := s.fileCache.GetGroupActiveReleases(namespace, group)
 	if revision == "" {
-		return &apiconfig.ConfigDiscoverResponse{
-			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_NAMES,
-			Info: "ExecuteSuccess",
-		}
+		response := api.NewConfigDiscoverResponse(apimodel.Code_ExecuteSuccess)
+		response.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE_NAMES
+		return response
 	}
 	if revision == req.GetRevision() {
-		return &apiconfig.ConfigDiscoverResponse{
-			Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_NAMES,
-			Info: "DataNoChange",
-		}
+		response := api.NewConfigDiscoverResponse(apimodel.Code_DataNoChange)
+		response.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE_NAMES
+		return response
 	}
-	ret := make([]*apiconfig.ConfigFile, 0, len(releases))
+	ret := make([]*apiconfig.ConfigFileRelease, 0, len(releases))
 	for i := range releases {
-		ret = append(ret, &apiconfig.ConfigFile{
-			Namespace: releases[i].Namespace,
-			Group:     releases[i].Group,
-			Name:      releases[i].Name,
-			Id:        strconv.FormatUint(releases[i].Version, 10),
-		})
+		ret = append(ret, conftypes.ToConfiogFileReleaseApi(releases[i]))
 	}
 
-	return &apiconfig.ConfigDiscoverResponse{
-		Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE_NAMES,
-		Info: "ExecuteSuccess",
-	}
+	response := api.NewConfigDiscoverResponse(apimodel.Code_ExecuteSuccess)
+	response.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE_NAMES
+	response.Revision = revision
+	response.FileNames = ret
+	return response
 }
 
 func (s *Server) GetConfigGroupsWithCache(ctx context.Context, req *apiconfig.ConfigFile) *apiconfig.ConfigDiscoverResponse {
@@ -216,25 +206,25 @@ func (s *Server) GetConfigGroupsWithCache(ctx context.Context, req *apiconfig.Co
 	}
 
 	out.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE_GROUPS
+	out.Revision = revision
+	out.FileGroups = ret
 	return out
 }
 
 func toClientInfo(client *apiconfig.ConfigFile,
-	release *conftypes.ConfigFileRelease) (*apiconfig.ConfigFile, error) {
+	release *conftypes.ConfigFileRelease) (*apiconfig.ConfigFileRelease, error) {
 
 	namespace := client.Namespace
 	group := client.Group
 	fileName := client.Name
 	publicKey := ""
 
-	configFile := &apiconfig.ConfigFile{
-		Namespace: namespace,
-		Group:     group,
-		Name:      fileName,
-		Content:   release.Content,
-		Id:        strconv.FormatUint(release.Version, 10),
-		Encrypted: release.IsEncrypted(),
-	}
+	configFile := conftypes.ToConfiogFileReleaseApi(release)
+	configFile.Namespace = namespace
+	configFile.Group = group
+	configFile.FileName = fileName
+	configFile.Encrypted = release.IsEncrypted()
+	configFile.EncryptAlgo = release.GetEncryptAlgo()
 
 	dataKey := release.GetEncryptDataKey()
 	encryptAlgo := release.GetEncryptAlgo()
@@ -284,6 +274,7 @@ func (s *Server) CreateConfigFileFromClient(ctx context.Context,
 	client *apiconfig.ConfigFile) *apiconfig.ConfigDiscoverResponse {
 	configResponse := s.CreateConfigFile(ctx, client)
 	return &apiconfig.ConfigDiscoverResponse{
+		Code: configResponse.GetCode(),
 		Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
 		Info: configResponse.GetInfo(),
 	}
@@ -294,6 +285,7 @@ func (s *Server) UpdateConfigFileFromClient(ctx context.Context,
 	client *apiconfig.ConfigFile) *apiconfig.ConfigDiscoverResponse {
 	configResponse := s.UpdateConfigFile(ctx, client)
 	return &apiconfig.ConfigDiscoverResponse{
+		Code: configResponse.GetCode(),
 		Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
 		Info: configResponse.GetInfo(),
 	}
@@ -304,6 +296,7 @@ func (s *Server) PublishConfigFileFromClient(ctx context.Context,
 	client *apiconfig.ConfigFileRelease) *apiconfig.ConfigDiscoverResponse {
 	configResponse := s.PublishConfigFile(ctx, client)
 	return &apiconfig.ConfigDiscoverResponse{
+		Code: configResponse.GetCode(),
 		Type: apiconfig.ConfigDiscoverResponse_CONFIG_FILE,
 		Info: configResponse.GetInfo(),
 	}
@@ -401,7 +394,7 @@ func (s *Server) GetClientSubscribers(ctx context.Context, filter map[string]str
 			Group:     group,
 			FileName:  filename,
 			ReleaseType: func() rules.ReleaseType {
-				if gray := s.fileCache.GetActiveGrayRelease(ns, group, filename); gray != nil {
+				for _, gray := range s.fileCache.GetActiveGrayReleases(ns, group, filename) {
 					if gray.Version == curVer {
 						return conftypes.ReleaseTypeGray
 					}

@@ -22,6 +22,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
+	"github.com/pole-io/pole-server/pkg/workloadcredential"
 )
 
 type DOption func(s *DiscoverGRPCServer)
@@ -29,6 +30,12 @@ type DOption func(s *DiscoverGRPCServer)
 func WithNamingServer(svr service.DiscoverServer) DOption {
 	return func(s *DiscoverGRPCServer) {
 		s.namingServer = svr
+	}
+}
+
+func WithWorkloadCredentialServer(svr *workloadcredential.Server) DOption {
+	return func(s *DiscoverGRPCServer) {
+		s.workloadCredentialServer = svr
 	}
 }
 
@@ -57,11 +64,12 @@ func WithDAllowAccess(f func(method string) bool) DOption {
 }
 
 type DiscoverGRPCServer struct {
-	namingServer      service.DiscoverServer
-	ruleServer        goverrule.GoverRuleServer
-	healthCheckServer *healthcheck.Server
-	enterRateLimit    func(ip string, method string) uint32
-	allowAccess       func(method string) bool
+	namingServer             service.DiscoverServer
+	ruleServer               goverrule.GoverRuleServer
+	healthCheckServer        *healthcheck.Server
+	workloadCredentialServer *workloadcredential.Server
+	enterRateLimit           func(ip string, method string) uint32
+	allowAccess              func(method string) bool
 }
 
 func NewDiscoverGRPCServer(options ...DOption) *DiscoverGRPCServer {
@@ -85,6 +93,12 @@ func WithCEnterRateLimit(f func(ip string, method string) uint32) COption {
 func WithCAllowAccess(f func(method string) bool) COption {
 	return func(s *ConfigGRPCServer) {
 		s.allowAccess = f
+	}
+}
+
+func WithConfigServer(svr config.ConfigCenterServer) COption {
+	return func(s *ConfigGRPCServer) {
+		s.configServer = svr
 	}
 }
 

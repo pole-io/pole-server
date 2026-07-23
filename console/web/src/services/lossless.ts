@@ -4,10 +4,17 @@ import { DescribeRateLimitVersionsRequest } from "./ratelimit";
 import { RollbackCircuitBreakerReleaseRequest } from "./circuitbreaker";
 import { PolicySourceType } from "./auth_policy";
 
+const LosslessContextMetadata = {
+    namespace: 'pole.io/lossless/namespace',
+    service: 'pole.io/lossless/service',
+    description: 'pole.io/lossless/description',
+} as const;
+
 export interface LossLessRuleView {
     id?: string;
     service: string;
     namespace: string;
+    description?: string;
     lossless_online: GracefulOnline;
     lossless_offline: GracefulOffline;
     metadata?: Record<string, string>;
@@ -22,6 +29,7 @@ export interface LossLessRule {
     id?: string;
     service: string;
     namespace: string;
+    description?: string;
     lossless_online: GracefulOnline;
     lossless_offline: GracefulOffline;
     metadata?: Record<string, string>;
@@ -84,8 +92,19 @@ export function normalizeLosslessRule(rule: LossLessRuleView | any): LossLessRul
     const delay = online.delay_register ?? online.delayRegister ?? {};
     const warmup = online.warmup ?? {};
     const offline = rule.lossless_offline ?? rule.losslessOffline ?? {};
+    const metadata = { ...(rule.metadata || {}) };
+    const namespace = rule.namespace ?? metadata[LosslessContextMetadata.namespace] ?? '';
+    const service = rule.service ?? metadata[LosslessContextMetadata.service] ?? '';
+    const description = rule.description ?? metadata[LosslessContextMetadata.description] ?? '';
+    delete metadata[LosslessContextMetadata.namespace];
+    delete metadata[LosslessContextMetadata.service];
+    delete metadata[LosslessContextMetadata.description];
     return {
         ...rule,
+        namespace,
+        service,
+        description,
+        metadata,
         lossless_online: {
             delay_register: {
                 ...delay,
@@ -114,7 +133,12 @@ function losslessRuleToApi(rule: LossLessRule | any) {
         id: rule.id,
         service: rule.service,
         namespace: rule.namespace,
-        metadata: rule.metadata,
+        metadata: {
+            ...(rule.metadata || {}),
+            [LosslessContextMetadata.namespace]: rule.namespace || '',
+            [LosslessContextMetadata.service]: rule.service || '',
+            [LosslessContextMetadata.description]: rule.description || '',
+        },
         lossless_online: {
             delay_register: {
                 enable: delay.enable,

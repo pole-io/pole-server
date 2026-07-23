@@ -1,7 +1,6 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import proxy from '../configs/host';
 import { v4 as uuidv4 } from 'uuid';
-import { request } from 'http';
 
 const env = import.meta.env.MODE || 'development';
 const API_HOST = proxy[env].API;
@@ -40,9 +39,40 @@ export interface APIRequestOption {
 export interface ApiResponse {
   code: number
   info: string
+  requestId?: string
   data?: any
   amount?: number
   size?: number
+}
+
+/**
+ * 前端可跨 Redux 和 UI 边界传递的请求错误数据。
+ * `message` 只承载后端业务信息；业务码和 Request ID 始终使用独立字段。
+ */
+export interface RequestErrorPayload {
+  code?: number
+  message: string
+  requestId?: string
+}
+
+export class RequestError extends Error implements RequestErrorPayload {
+  readonly code?: number
+  readonly requestId: string
+
+  constructor(payload: RequestErrorPayload, options?: ErrorOptions) {
+    super(payload.message, options)
+    this.name = 'RequestError'
+    this.code = payload.code
+    this.requestId = payload.requestId || ''
+  }
+}
+
+export const toRequestErrorPayload = (error: unknown): RequestErrorPayload | string => {
+  if (error instanceof RequestError) {
+    return { code: error.code, message: error.message, requestId: error.requestId || undefined }
+  }
+  if (error instanceof Error) return error.message
+  return typeof error === 'string' ? error : String(error || '')
 }
 
 /** 标准 API 响应格式 { code, data, info, amount?, size? }，解包后返回 data 并合并顶层 amount/size */
@@ -85,33 +115,37 @@ const shouldResetLogin = (error: any, action: string) => {
   return status === 401 || status === TokenNotExistCode || code === TokenNotExistCode || code === NotAllowedAccessCode
 }
 
+const toRequestError = (reqId: string, error: unknown) => {
+  const response = axios.isAxiosError(error) ? error.response?.data as Partial<ApiResponse> | undefined : undefined
+  const detail = typeof response?.info === 'string' && response.info.trim() ? response.info.trim() : ''
+  const code = typeof response?.code === 'number' ? response.code : undefined
+  return new RequestError({
+    code,
+    message: detail || '请求失败',
+    requestId: typeof response?.requestId === 'string' && response.requestId.trim() ? response.requestId.trim() : reqId,
+  }, { cause: error })
+}
+
 export async function apiRequest<T>(options: APIRequestOption) {
   const { action, data = {}, opts } = options
   const reqId = uuidv4()
   try {
-    const res = (await instance
-      .post<T & ApiResponse>(action, data, {
-        ...opts,
-        headers: {
-          'Authorization': window.localStorage.getItem(PoleTokenKey),
-          'X-Pole-User': window.localStorage.getItem(LoginUserIdKey),
-          'X-Request-Id': reqId,
-          ...(opts?.headers ?? {}),
-        },
-      })
-      .catch(function (error) {
-        if (shouldResetLogin(error, action)) {
-          handleTokenNotExist()
-        }
-        if (error.response?.data) {
-          throw new Error('请求失败, RequestId: ' + reqId, {cause: error.response?.data?.info})
-        }
-        throw error;
-      })) as AxiosResponse<T & ApiResponse>
+    const res = await instance.post<T & ApiResponse>(action, data, {
+      ...opts,
+      headers: {
+        'Authorization': window.localStorage.getItem(PoleTokenKey),
+        'X-Pole-User': window.localStorage.getItem(LoginUserIdKey),
+        'X-Request-Id': reqId,
+        ...(opts?.headers ?? {}),
+      },
+    }) as AxiosResponse<T & ApiResponse>
 
     return unwrapResponse(res.data as ApiResponse) as T
-  } catch (e) {
-    throw new Error('请求失败, RequestId: ' + reqId, {cause: e})
+  } catch (error) {
+    if (shouldResetLogin(error, action)) {
+      handleTokenNotExist()
+    }
+    throw toRequestError(reqId, error)
   }
 }
 
@@ -119,29 +153,22 @@ export async function getApiRequest<T>(options: APIRequestOption) {
   const { action, data = {}, opts } = options
   const reqId = uuidv4()
   try {
-    const res = (await instance
-      .get<T & ApiResponse>(action, {
-        params: data,
-        ...opts,
-        headers: {
-          'Authorization': window.localStorage.getItem(PoleTokenKey),
-          'X-Pole-User': window.localStorage.getItem(LoginUserIdKey),
-          'X-Request-Id': reqId,
-          ...(opts?.headers ?? {}),
-        },
-      })
-      .catch(function (error) {
-        if (shouldResetLogin(error, action)) {
-          handleTokenNotExist()
-        }
-        if (error.response?.data) {
-          throw new Error('请求失败, RequestId: ' + reqId, {cause: error.response?.data?.info})
-        }
-        throw error;
-      })) as AxiosResponse<T & ApiResponse>
+    const res = await instance.get<T & ApiResponse>(action, {
+      params: data,
+      ...opts,
+      headers: {
+        'Authorization': window.localStorage.getItem(PoleTokenKey),
+        'X-Pole-User': window.localStorage.getItem(LoginUserIdKey),
+        'X-Request-Id': reqId,
+        ...(opts?.headers ?? {}),
+      },
+    }) as AxiosResponse<T & ApiResponse>
     return unwrapResponse(res.data as ApiResponse) as T
-  } catch (e) {
-    throw new Error('请求失败, RequestId: ' + reqId, {cause: e})
+  } catch (error) {
+    if (shouldResetLogin(error, action)) {
+      handleTokenNotExist()
+    }
+    throw toRequestError(reqId, error)
   }
 }
 
@@ -149,29 +176,21 @@ export async function putApiRequest<T>(options: APIRequestOption) {
   const { action, data = {}, opts } = options
   const reqId = uuidv4()
   try {
-    const res = (await axios
-      .put<T & ApiResponse>(action, data, {
-        ...opts,
-        headers: {
-          'Authorization': window.localStorage.getItem(PoleTokenKey),
-          'X-Pole-User': window.localStorage.getItem(LoginUserIdKey),
-          'X-Request-Id': reqId,
-        },
-      })
-      .catch(function (error) {
-        console.log('error', error)
-        if (shouldResetLogin(error, action)) {
-          handleTokenNotExist()
-        }
-        if (error.response?.data) {
-          throw new Error('请求失败, RequestId: ' + reqId, {cause: error.response?.data?.info})
-        }
-        throw error;
-      })) as AxiosResponse<T & ApiResponse>
+    const res = await axios.put<T & ApiResponse>(action, data, {
+      ...opts,
+      headers: {
+        'Authorization': window.localStorage.getItem(PoleTokenKey),
+        'X-Pole-User': window.localStorage.getItem(LoginUserIdKey),
+        'X-Request-Id': reqId,
+      },
+    }) as AxiosResponse<T & ApiResponse>
 
     return unwrapResponse(res.data as ApiResponse) as T
-  } catch (e) {
-    throw new Error('请求失败, RequestId: ' + reqId, {cause: e})
+  } catch (error) {
+    if (shouldResetLogin(error, action)) {
+      handleTokenNotExist()
+    }
+    throw toRequestError(reqId, error)
   }
 }
 
@@ -179,29 +198,22 @@ export async function deleteApiRequest<T>(options: APIRequestOption) {
   const { action, data = {}, opts } = options
   const reqId = uuidv4()
   try {
-    const res = (await axios
-      .delete<T & ApiResponse>(action, {
-        params: data,
-        ...opts,
-        headers: {
-          'Authorization': window.localStorage.getItem(PoleTokenKey),
-          'X-Pole-User': window.localStorage.getItem(LoginUserIdKey),
-          'X-Request-Id': reqId,
-        },
-      })
-      .catch(function (error) {
-        if (shouldResetLogin(error, action)) {
-          handleTokenNotExist()
-        }
-        if (error.response?.data) {
-          throw new Error('请求失败, RequestId: ' + reqId, {cause: error.response?.data?.info})
-        }
-        throw error;
-      })) as AxiosResponse<T & ApiResponse>
+    const res = await axios.delete<T & ApiResponse>(action, {
+      params: data,
+      ...opts,
+      headers: {
+        'Authorization': window.localStorage.getItem(PoleTokenKey),
+        'X-Pole-User': window.localStorage.getItem(LoginUserIdKey),
+        'X-Request-Id': reqId,
+      },
+    }) as AxiosResponse<T & ApiResponse>
 
     return unwrapResponse(res.data as ApiResponse) as T
-  } catch (e) {
-    throw new Error('请求失败, RequestId: ' + reqId, {cause: e})
+  } catch (error) {
+    if (shouldResetLogin(error, action)) {
+      handleTokenNotExist()
+    }
+    throw toRequestError(reqId, error)
   }
 }
 

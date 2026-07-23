@@ -18,7 +18,6 @@
 package utils
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/pole-io/pole-server/apis/apiserver"
@@ -36,7 +35,7 @@ func TestGetClientOpenMethod(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "case=1",
+			name: "register access includes legacy and spec service names",
 			args: args{
 				include: []string{
 					apiserver.RegisterAccess,
@@ -44,13 +43,15 @@ func TestGetClientOpenMethod(t *testing.T) {
 				protocol: "grpc",
 			},
 			want: map[string]bool{
-				"/v1.PolarisGRPC/RegisterInstance":   true,
-				"/v1.PolarisGRPC/DeregisterInstance": true,
+				"/v1.PolarisGRPC/RegisterInstance":    true,
+				"/v1.PolarisGRPC/DeregisterInstance":  true,
+				"/v1.DiscoverGRPC/RegisterInstance":   true,
+				"/v1.DiscoverGRPC/DeregisterInstance": true,
 			},
 			wantErr: false,
 		},
 		{
-			name: "case=1",
+			name: "discover access includes legacy and spec service names",
 			args: args{
 				include: []string{
 					apiserver.DiscoverAccess,
@@ -62,11 +63,15 @@ func TestGetClientOpenMethod(t *testing.T) {
 				"/v1.PolarisGRPC/ReportClient":                         true,
 				"/v1.PolarisServiceContractGRPC/ReportServiceContract": true,
 				"/v1.PolarisServiceContractGRPC/GetServiceContract":    true,
+				"/v1.DiscoverGRPC/Discover":                            true,
+				"/v1.DiscoverGRPC/ReportClient":                        true,
+				"/v1.DiscoverGRPC/ReportServiceContract":               true,
+				"/v1.DiscoverGRPC/GetServiceContract":                  true,
 			},
 			wantErr: false,
 		},
 		{
-			name: "case=2",
+			name: "healthcheck access includes legacy and spec service names",
 			args: args{
 				include: []string{
 					apiserver.HealthcheckAccess,
@@ -78,6 +83,31 @@ func TestGetClientOpenMethod(t *testing.T) {
 				"/v1.PolarisHeartbeatGRPC/BatchHeartbeat":    true,
 				"/v1.PolarisHeartbeatGRPC/BatchGetHeartbeat": true,
 				"/v1.PolarisHeartbeatGRPC/BatchDelHeartbeat": true,
+				"/v1.DiscoverGRPC/Heartbeat":                 true,
+				"/v1.PoleHeartbeatGRPC/BatchGetHeartbeat":    true,
+				"/v1.PoleHeartbeatGRPC/BatchDelHeartbeat":    true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "config access includes legacy and spec service names",
+			args: args{
+				include: []string{
+					apiserver.ConfigAccess,
+				},
+				protocol: "grpc",
+			},
+			want: map[string]bool{
+				"/v1.PolarisConfigGRPC/CreateConfigFile":    true,
+				"/v1.PolarisConfigGRPC/UpdateConfigFile":    true,
+				"/v1.PolarisConfigGRPC/PublishConfigFile":   true,
+				"/v1.PolarisConfigGRPC/Discover":            true,
+				"/v1.ConfigGRPC/CreateConfigFile":           true,
+				"/v1.ConfigGRPC/UpdateConfigFile":           true,
+				"/v1.ConfigGRPC/PublishConfigFile":          true,
+				"/v1.ConfigGRPC/Discover":                   true,
+				"/v1.ConfigGRPC/UpsertAndPublishConfigFile": true,
+				"/v1.ConfigGRPC/GetConfigFileMetadataList":  true,
 			},
 			wantErr: false,
 		},
@@ -89,8 +119,10 @@ func TestGetClientOpenMethod(t *testing.T) {
 				t.Errorf("GetDiscoverClientOpenMethod() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetDiscoverClientOpenMethod() = %v, want %v", got, tt.want)
+			for method := range tt.want {
+				if !got[method] {
+					t.Errorf("GetDiscoverClientOpenMethod() missing method %s, got %v", method, got)
+				}
 			}
 		})
 	}

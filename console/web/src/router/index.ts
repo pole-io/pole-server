@@ -7,6 +7,8 @@ import governance from './modules/governance';
 import metrics from './modules/metrics';
 import auth from './modules/auth';
 import ai from './modules/ai';
+import agent from './modules/agent';
+import systemConfiguration from './modules/systemConfiguration';
 
 export interface IRouter {
   path: string;
@@ -31,6 +33,10 @@ export interface IRouter {
      * 单层路由
      */
     single?: boolean;
+    /**
+     * 仅 Console 主账号或绑定内置 admin 角色的账号可见和访问。
+     */
+    adminOnly?: boolean;
   };
   children?: IRouter[];
 }
@@ -58,6 +64,17 @@ const routes: IRouter[] = [
   },
 ];
 
-const allRoutes = [...routes, ...namespace, ...ai, ...discovery, /** ...configuration */, ...governance, ...metrics, ...auth];
+const allRoutes = [
+  ...routes,
+  ...namespace,
+  ...agent,
+  ...ai,
+  ...discovery,
+  ...configuration,
+  ...governance,
+  ...metrics,
+  ...auth,
+  ...systemConfiguration,
+];
 
 export default allRoutes;

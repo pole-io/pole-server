@@ -98,6 +98,9 @@ func (o *OperationFetcher) GetHistory(filter map[string]string) ([]*model.Operat
 
 	rows, err := o.slave.Query(query, args...)
 	if err != nil {
+		if isMissingTableError(err) {
+			return []*model.OperationRecord{}, nil
+		}
 		return nil, err
 	}
 	defer rows.Close()

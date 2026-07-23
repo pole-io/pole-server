@@ -1,14 +1,16 @@
 ---
 title: 配置参考
 tags: [config, yaml, deploy]
-links: [overview, architecture]
-updated: 2026-05-14
-sources: 1
+links: [overview, architecture, adr-system-configuration-control-plane, adr-console-agent-resource-workbench]
+updated: 2026-07-23
+sources: 3
 ---
 
 # 配置参考
 
 本文覆盖 YAML 配置文件的完整结构。项目的启动流程见 [[overview]]，配置如何影响架构分层见 [[architecture]]。
+
+YAML 仍是系统自举和安全基线，但并非所有运行参数都必须永久静态化。统一动态覆盖、字段 apply mode、配置发布、回滚和实例生效状态由 [[adr-system-configuration-control-plane]] 定义；没有显式 applier 的字段仍按启动或重启配置处理。
 
 ## 配置文件位置
 
@@ -171,7 +173,19 @@ type Config struct {
 
 ## 环境变量
 
-无文档记录的环境变量——配置完全基于文件。配置文件路径是唯一的运行时参数。
+### Console Pole Agent
+
+`bootstrap.console.agent` 定义 Agent ID、Prompt、模型、MCP endpoint、工具白名单、proposal TTL 与超时。最小真实运行时需要：
+
+- `runtimeMode: llm`；
+- OpenAI-compatible LLM Gateway `baseURL` 与 `model`；
+- 可解析的 API key；
+- 可由 Console 访问的 Pole MCP SSE endpoint；
+- 工具白名单至少包含需要开放的只读工具。
+
+LLM Gateway 地址、模型、Prompt、MCP 策略和 API key 现在由 Admin-only `/system-configuration` 页面写入 Pole 内部系统配置库；保存草稿不生效，连接测试成功且发布后才原子切换当前实例。API key 由 Pole SystemSecretStore 信封加密，页面、配置正文、日志和模型上下文均不返回明文。Kubernetes 不再注入每个模型地址或 API key，只保留数据库连接和 `POLE_SYSTEM_SECRET_MASTER_KEY` 根加密材料。未发布有效模型配置时 `/ai/agent/v1/runtime` 返回未就绪，前端禁止发送；这不是降级到本地规则解析。
+
+其余未登记配置仍以 YAML 为准；配置文件路径是基础运行时参数。
 
 ## 部署目录
 
@@ -189,3 +203,5 @@ deploy/
 
 - [[overview]]
 - [[architecture]]
+- [[adr-system-configuration-control-plane]]
+- [[adr-console-agent-resource-workbench]]

@@ -235,6 +235,10 @@ func (svr *Server) checkCreateStrategy(req *apisecurity.AuthStrategy) *apimodel.
 	if err := svr.checkGroupExist(convertPrincipalsToGroups(req.GetPrincipals())); err != nil {
 		return api.NewAuthStrategyResponse(apimodel.Code_NotFoundUserGroup, req)
 	}
+	if hasBuiltInRolePrincipal(req.GetPrincipals()) {
+		return api.NewAuthStrategyResponseWithMsg(apimodel.Code_BadRequest,
+			"built-in role permissions are immutable", req)
+	}
 	// 检查资源是否存在
 	if errResp := svr.checkResourceExist(req.GetResources()); errResp != nil {
 		return errResp
@@ -247,6 +251,10 @@ func (svr *Server) checkCreateStrategy(req *apisecurity.AuthStrategy) *apimodel.
 // Case 2. 鉴权策略只能被自己的 owner 对应的用户修改
 func (svr *Server) checkUpdateStrategy(ctx context.Context, req *apisecurity.AuthStrategy,
 	saved *authtypes.StrategyDetail) *apimodel.Response {
+	if authtypes.IsSystemRolePolicyID(saved.ID) {
+		return api.NewAuthStrategyResponseWithMsg(apimodel.Code_BadRequest,
+			"built-in role policy is immutable", req)
+	}
 	if saved.Default {
 		if len(req.GetPrincipals().GetUsers()) != 0 ||
 			len(req.GetPrincipals().GetGroups()) != 0 {
@@ -268,6 +276,10 @@ func (svr *Server) checkUpdateStrategy(ctx context.Context, req *apisecurity.Aut
 	// 检查用户组是否存在
 	if err := svr.checkGroupExist(convertPrincipalsToGroups(req.GetPrincipals())); err != nil {
 		return api.NewAuthStrategyResponse(apimodel.Code_NotFoundUserGroup, req)
+	}
+	if hasBuiltInRolePrincipal(req.GetPrincipals()) {
+		return api.NewAuthStrategyResponseWithMsg(apimodel.Code_BadRequest,
+			"built-in role permissions are immutable", req)
 	}
 	// 检查资源是否存在
 	if errResp := svr.checkResourceExist(req.GetResources()); errResp != nil {
@@ -420,18 +432,34 @@ func (svr *Server) checkResourceExist(resources *apisecurity.StrategyResources) 
 	if resp := checkTrafficGovernanceResourceExist(resources.GetMockRules(), svr.cacheMgr.TrafficMock()); resp != nil {
 		return resp
 	}
+	if resp := checkResourceEntriesExist(resources.GetMcpServers(), func(id string) bool {
+		return svr.cacheMgr.MCPServer().GetMCPServerByID(id) != nil
+	}); resp != nil {
+		return resp
+	}
+	if resp := checkResourceEntriesExist(resources.GetA2AAgents(), func(id string) bool {
+		return svr.cacheMgr.A2AAgent().GetA2AAgentByID(id) != nil
+	}); resp != nil {
+		return resp
+	}
 
 	return nil
 }
 
 func checkTrafficGovernanceResourceExist(resources []*apisecurity.StrategyResourceEntry,
 	cache cachetypes.TrafficGovernanceCache) *apimodel.Response {
+	return checkResourceEntriesExist(resources, func(id string) bool {
+		return cache.GetRule(id) != nil
+	})
+}
+
+func checkResourceEntriesExist(resources []*apisecurity.StrategyResourceEntry, exists func(string) bool) *apimodel.Response {
 	for index := range resources {
 		val := resources[index]
 		if val.GetId() == "*" {
 			continue
 		}
-		if rule := cache.GetRule(val.GetId()); rule == nil {
+		if !exists(val.GetId()) {
 			return api.NewAuthResponse(apimodel.Code_NotFoundResource)
 		}
 	}
@@ -468,4 +496,16 @@ func convertPrincipalsToGroups(principals *apisecurity.Principals) []*apisecurit
 	}
 
 	return groups
+}
+
+func hasBuiltInRolePrincipal(principals *apisecurity.Principals) bool {
+	if principals == nil {
+		return false
+	}
+	for _, role := range principals.GetRoles() {
+		if _, ok := authtypes.GetSystemRoleDefinition(role.GetId()); ok {
+			return true
+		}
+	}
+	return false
 }

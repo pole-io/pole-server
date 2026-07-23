@@ -24,6 +24,7 @@ import (
 	"time"
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
+	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -35,11 +36,18 @@ type configFileReleaseStore struct {
 	slave  *BaseDB
 }
 
+func normalizeConfigFileReleaseType(release *conftypes.ConfigFileRelease) {
+	if release != nil && release.ReleaseType == "" {
+		release.ReleaseType = rules.ReleaseTypeNormal
+	}
+}
+
 // CreateConfigFileRelease 新建配置文件发布
 func (cfr *configFileReleaseStore) CreateConfigFileReleaseTx(tx store.Tx, data *conftypes.ConfigFileRelease) error {
 	if tx == nil {
 		return ErrTxIsNil
 	}
+	normalizeConfigFileReleaseType(data)
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	args := []interface{}{data.Namespace, data.Group, data.Name}
 	_, err := dbTx.Exec("SELECT id FROM config_file WHERE namespace = ? AND `group` = ? AND name = ? FOR UPDATE", args...)
@@ -52,9 +60,15 @@ func (cfr *configFileReleaseStore) CreateConfigFileReleaseTx(tx store.Tx, data *
 		return store.Error(err)
 	}
 
-	maxVersion, err := cfr.inactiveConfigFileRelease(dbTx, data)
+	maxVersion, err := cfr.selectMaxVersion(dbTx, data)
 	if err != nil {
 		return store.Error(err)
+	}
+	if data.ReleaseType != conftypes.ReleaseTypeGray {
+		maxVersion, err = cfr.inactiveConfigFileRelease(dbTx, data)
+		if err != nil {
+			return store.Error(err)
+		}
 	}
 
 	s := "INSERT INTO config_file_release(name, namespace, `group`, file_name, content , comment, md5, " +
@@ -99,7 +113,12 @@ func (cfr *configFileReleaseStore) GetConfigFileReleaseTx(tx store.Tx,
 		err  error
 	)
 
-	rows, err = dbTx.Query(querySql, req.Namespace, req.Group, req.FileName, req.Name)
+	if req.ReleaseType != "" {
+		querySql += " AND release_type = ?"
+		rows, err = dbTx.Query(querySql, req.Namespace, req.Group, req.FileName, req.Name, req.ReleaseType)
+	} else {
+		rows, err = dbTx.Query(querySql, req.Namespace, req.Group, req.FileName, req.Name)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +141,12 @@ func (cfr *configFileReleaseStore) DeleteConfigFileReleaseTx(tx store.Tx, data *
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	s := "update config_file_release set flag = 1, mtime = sysdate() " +
 		" where namespace = ? and `group` = ? and file_name = ? and name = ?"
-	_, err := dbTx.Exec(s, data.Namespace, data.Group, data.FileName, data.Name)
+	args := []interface{}{data.Namespace, data.Group, data.FileName, data.Name}
+	if data.ReleaseType != "" {
+		s += " and release_type = ?"
+		args = append(args, data.ReleaseType)
+	}
+	_, err := dbTx.Exec(s, args...)
 	if err != nil {
 		return store.Error(err)
 	}
@@ -200,13 +224,26 @@ func (cfr *configFileReleaseStore) GetConfigFileActiveReleaseTx(tx store.Tx,
 // GetConfigFileBetaReleaseTx .
 func (cfr *configFileReleaseStore) GetConfigFileBetaReleaseTx(tx store.Tx,
 	file *conftypes.ConfigFileKey) (*conftypes.ConfigFileRelease, error) {
+	fileReleases, err := cfr.GetConfigFileBetaReleasesTx(tx, file)
+	if err != nil {
+		return nil, err
+	}
+	if len(fileReleases) > 0 {
+		return fileReleases[0], nil
+	}
+	return nil, nil
+}
+
+// GetConfigFileBetaReleasesTx .
+func (cfr *configFileReleaseStore) GetConfigFileBetaReleasesTx(tx store.Tx,
+	file *conftypes.ConfigFileKey) ([]*conftypes.ConfigFileRelease, error) {
 	if tx == nil {
 		return nil, ErrTxIsNil
 	}
 
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 	querySql := cfr.baseQuerySql() + "WHERE namespace = ? AND `group` = ? AND " +
-		" file_name = ? AND active = 1 AND release_type = ? AND flag = 0 "
+		" file_name = ? AND active = 1 AND release_type = ? AND flag = 0 ORDER BY version DESC, mtime DESC "
 	var (
 		rows *sql.Rows
 		err  error
@@ -220,13 +257,7 @@ func (cfr *configFileReleaseStore) GetConfigFileBetaReleaseTx(tx store.Tx,
 	if err != nil {
 		return nil, err
 	}
-	if len(fileRelease) > 1 {
-		return nil, errors.New("multi active file release found")
-	}
-	if len(fileRelease) > 0 {
-		return fileRelease[0], nil
-	}
-	return nil, nil
+	return fileRelease, nil
 }
 
 // ActiveConfigFileReleaseTx
@@ -234,11 +265,18 @@ func (cfr *configFileReleaseStore) ActiveConfigFileReleaseTx(tx store.Tx, releas
 	if tx == nil {
 		return ErrTxIsNil
 	}
+	normalizeConfigFileReleaseType(release)
 
 	dbTx := tx.GetDelegateTx().(*BaseTx)
-	maxVersion, err := cfr.inactiveConfigFileRelease(dbTx, release)
+	maxVersion, err := cfr.selectMaxVersion(dbTx, release)
 	if err != nil {
 		return err
+	}
+	if release.ReleaseType != conftypes.ReleaseTypeGray {
+		maxVersion, err = cfr.inactiveConfigFileRelease(dbTx, release)
+		if err != nil {
+			return err
+		}
 	}
 	args := []interface{}{maxVersion + 1, release.ReleaseType, release.Namespace, release.Group,
 		release.FileName, release.Name}
@@ -255,6 +293,7 @@ func (cfr *configFileReleaseStore) InactiveConfigFileReleaseTx(tx store.Tx, rele
 	if tx == nil {
 		return ErrTxIsNil
 	}
+	normalizeConfigFileReleaseType(release)
 	dbTx := tx.GetDelegateTx().(*BaseTx)
 
 	args := []interface{}{release.Namespace, release.Group, release.FileName, release.Name, release.ReleaseType}

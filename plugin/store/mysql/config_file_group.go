@@ -114,9 +114,9 @@ func (fg *configFileGroupStore) GetMoreConfigGroup(firstUpdate bool,
 	loadSql := "SELECT id, name, namespace, IFNULL(comment,''), UNIX_TIMESTAMP(ctime), " +
 		" IFNULL(create_by,''), UNIX_TIMESTAMP(mtime), IFNULL(modify_by,''), " +
 		" IFNULL(owner,''), IFNULL(business,''), IFNULL(department,''), IFNULL(metadata,'{}'), " +
-		" flag FROM config_file_group WHERE mtime >= ?"
+		" flag FROM config_file_group WHERE UNIX_TIMESTAMP(mtime) >= ?"
 
-	rows, err := fg.slave.Query(loadSql, mtime)
+	rows, err := fg.slave.Query(loadSql, mtime.Unix())
 	if err != nil {
 		return nil, err
 	}

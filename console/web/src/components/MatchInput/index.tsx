@@ -1,7 +1,7 @@
 import React from 'react';
-import { AddIcon, CloseIcon } from 'tdesign-icons-react';
-import { Button, Col, Form, Input, Popup, RangeInput, Row, Select, Table, TagInput } from 'tdesign-react';
-import type { CustomValidator, FieldData, InternalFormInstance, NamePath, PrimaryTableProps, TableRowData } from 'tdesign-react';
+import { AddIcon, CloseIcon } from 'components/Fluent/icons';
+import { Button, Col, Form, Input, Popup, RangeInput, Row, Select, Table, TagInput } from 'components/Fluent';
+import type { CustomValidator, FieldData, InternalFormInstance, NamePath, PrimaryTableProps, TableRowData } from 'components/Fluent';
 
 import { MatchType, MatchTypeMap, MatchTypeOption, MatchValueType } from 'services/types';
 import { RouteArgumentTextMap, RoutingArgumentsType, RoutingArgumentsTypeOptions, RoutingSourceArgument } from 'services/router';

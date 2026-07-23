@@ -269,10 +269,12 @@ func (wc *watchCenter) CheckQuickResponseClient(watchCtx WatchContext) *apiconfi
 		fileName := configFile.GetName()
 		// 从缓存中获取灰度文件
 		if len(watchCtx.ClientLabels()) > 0 {
-			if release := wc.fileCache.GetActiveGrayRelease(namespace, group, fileName); release != nil {
-				if watchCtx.ShouldNotify(release.SimpleConfigFileRelease) {
-					return buildRet(release)
-				}
+			release := selectMatchedGrayRelease(wc.fileCache.GetActiveGrayReleases(namespace, group, fileName),
+				func(release *conftypes.SimpleConfigFileRelease) bool {
+					return watchCtx.ShouldNotify(release)
+				})
+			if release != nil {
+				return buildRet(release)
 			}
 		}
 		release := wc.fileCache.GetActiveRelease(namespace, group, fileName)

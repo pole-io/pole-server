@@ -1,9 +1,9 @@
 ---
 title: ADR：治理规则统一存储与缓存更新
-tags: [adr, governance, storage, cache]
-links: [governance-rules, storage, cache-layer, architecture]
-updated: 2026-06-09
-sources: 0
+tags: [adr, governance, storage, cache, namespace]
+links: [governance-rules, namespace, storage, cache-layer, architecture]
+updated: 2026-07-23
+sources: 6
 ---
 
 # ADR：治理规则统一存储与缓存更新
@@ -35,7 +35,8 @@ Accepted。
 统一表的关键字段：
 
 - `rule_type`：规则类型边界，所有读写、锁定、版本查询和 active 切换都必须携带。
-- `namespace` / `service`：服务维度过滤、权限过滤和列表查询的公共索引字段。
+- `namespace`：规则归属环境。规则逻辑身份为 `rule_type + name`，环境实例坐标为 `namespace + rule_type + name`。
+- `service`：规则运行时作用对象的公共索引字段；不能用目标服务 namespace 代替规则归属环境。
 - `enable` / `priority`：列表与排序中的高频公共字段，避免所有场景解析 JSON。
 - `rule`：完整规则 JSON，是领域对象事实来源。
 - `flag`：软删除标识，仍遵循 [[storage]] 中的 `flag=1` 删除语义。
@@ -80,6 +81,19 @@ type GovernanceRuleRepository interface {
 - 领域 store 不再维护独立表名和独立 insert/update/release SQL。
 - active 切换必须在事务内按 `rule_type + rule_id + release_type` 限定范围，避免不同规则类型互相影响。
 - 上层 `pkg/goverrule` 的领域 API、鉴权、参数校验和 console 调用形态尽量保持不变。
+
+## 规则归属环境
+
+所有治理聚合根在 specification 中携带顶层 `namespace`，该字段只表达规则归属环境。caller、callee、target service、泳道入口和目的服务等嵌套 namespace 仍表达数据面的运行时作用域，两者不得互相推导或覆盖。
+
+统一 repository 的名称查询、行锁、更新、删除、发布版本查询和 active 切换必须至少携带 `rule_type + namespace + name/id` 中可用的完整坐标。列表请求必须把 owner namespace 下推到 Store，不能先跨环境读取后只在 Console 过滤。
+
+权限与删除保护遵循以下边界：
+
+- 规则读写以顶层 namespace 构造授权资源上下文；运行时 target namespace 不代表规则管理权限。
+- Namespace 删除前统计统一表中未删除的治理规则；存在任意类型规则时返回 `NamespaceExistedGovernanceRules`。
+- Console 创建规则使用独立 `ruleNamespace`，不能复用服务上下文中的 caller/callee namespace。
+- 历史 payload 未携带顶层 namespace 时可以被 protobuf 读取，但新建与更新路径必须写入明确环境，不能继续制造无归属规则。
 
 ## 泳道聚合规则
 
@@ -167,6 +181,7 @@ type GovernanceRuleWatcher interface {
 ## 相关页面
 
 - [[governance-rules]]
+- [[namespace]]
 - [[storage]]
 - [[cache-layer]]
 - [[architecture]]

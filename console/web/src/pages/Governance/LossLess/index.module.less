@@ -12,8 +12,8 @@
 .ruleListPane,
 .ruleDetailPane {
   min-width: 0;
-  background: #fff;
-  border: 1px solid #e7ebf0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
 }
 
@@ -26,7 +26,7 @@
 }
 
 .serviceCell {
-  color: #4e5969;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 20px;
   margin-top: 4px;
@@ -37,7 +37,7 @@
   align-items: center;
   justify-content: center;
   min-height: calc(100vh - 205px);
-  color: #8b93a3;
+  color: var(--app-text-secondary);
 }
 
 .editorContainer {
@@ -55,20 +55,20 @@
 }
 
 .editorBody {
-  background: #f5f7fb;
+  background: var(--app-surface-subtle);
   height: calc(100vh - 158px);
   min-height: 0;
   overflow: hidden;
   padding: 0;
 
-  :global(.t-form) {
+  :global(.fluent-form) {
     display: flex;
     flex-direction: column;
     height: 100%;
     min-height: 0;
   }
 
-  :global(.t-form__item) {
+  :global(.fluent-form-item) {
     margin-bottom: 0;
   }
 }
@@ -97,7 +97,7 @@
 }
 
 .sectionSubtle {
-  color: #8b95a5;
+  color: var(--app-text-secondary);
   font-size: 13px;
   line-height: 20px;
   margin-bottom: 16px;
@@ -105,8 +105,8 @@
 
 .switchRow {
   align-items: center;
-  background: #fbfcfe;
-  border: 1px solid #edf1f7;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
   display: flex;
   gap: 16px;
@@ -116,7 +116,7 @@
 }
 
 .fieldHint {
-  color: #8b95a5;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
   margin-top: 4px;
@@ -135,10 +135,10 @@
 
 .strategyCard,
 .strategyCardActive {
-  background: #fff;
-  border: 1px solid #dfe6f1;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
-  color: #111827;
+  color: var(--app-text);
   cursor: pointer;
   display: grid;
   gap: 6px;
@@ -156,17 +156,17 @@
 
 .strategyCard small,
 .strategyCardActive small {
-  color: #667085;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }
 
 .strategyCard:hover {
-  border-color: #9db7ff;
+  border-color: var(--app-brand-border);
 }
 
 .strategyCardActive {
-  background: #f3f7ff;
+  background: var(--app-brand-subtle);
   border-color: #366ef4;
   box-shadow: inset 0 0 0 1px rgba(54, 110, 244, .12);
 }
@@ -177,10 +177,10 @@
 }
 
 .inlineNotice {
-  background: #f8fafc;
-  border: 1px solid #edf1f7;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 7px;
-  color: #4e5969;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 20px;
   margin-bottom: 12px;
@@ -188,10 +188,10 @@
 }
 
 .summaryLine {
-  background: #f8fafc;
-  border: 1px solid #edf1f7;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  color: #374151;
+  color: var(--app-text);
   font-size: 13px;
   line-height: 21px;
   padding: 11px 13px;
@@ -204,8 +204,8 @@
 }
 
 .infoTiles > div {
-  background: #fff;
-  border: 1px solid #edf1f7;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
   display: grid;
   gap: 4px;
@@ -213,13 +213,13 @@
 }
 
 .infoTiles strong {
-  color: #111827;
+  color: var(--app-text);
   font-size: 13px;
   line-height: 20px;
 }
 
 .infoTiles span {
-  color: #667085;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }
@@ -236,13 +236,13 @@
   width: 100%;
 }
 
-.unitNumber :global(.t-input-number) {
+.unitNumber :global(.fluent-number-input) {
   width: 100%;
 }
 
 .curveChart {
-  background: #fff;
-  border: 1px solid #edf1f7;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
   min-width: 0;
   overflow: hidden;
@@ -256,7 +256,7 @@
 }
 
 .curveGrid {
-  stroke: #edf1f7;
+  stroke: var(--app-border-subtle);
   stroke-width: 1;
 }
 
@@ -273,7 +273,7 @@
 }
 
 .curveDot {
-  fill: #fff;
+  fill: var(--app-surface);
   stroke: #366ef4;
   stroke-width: 2;
 }
@@ -281,138 +281,30 @@
 .curveTick,
 .curveAxisLabel,
 .curveMarkerLabel {
-  fill: #667085;
+  fill: var(--app-text-secondary);
   font-size: 10px;
   letter-spacing: 0;
 }
 
 .curveAxisLabel {
-  fill: #86909c;
+  fill: var(--app-text-tertiary);
 }
 
 .curveMarkerLabel {
-  fill: #344054;
+  fill: var(--app-text);
   font-weight: 600;
 }
 
 .readonlyBehavior {
-  background: #fbfcfe;
-  border: 1px solid #edf1f7;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  color: #4e5969;
+  color: var(--app-text-secondary);
   display: grid;
   font-size: 13px;
   gap: 10px;
   line-height: 21px;
   padding: 12px 14px;
-}
-
-.specPane {
-  border-left: 1px solid #d7dde8;
-  display: flex;
-  height: 100%;
-  max-height: 100%;
-  min-height: 0;
-  min-width: 0;
-}
-
-.specCard {
-  background: #0b1119;
-  border: 0;
-  border-radius: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  min-height: 0;
-  overflow: hidden;
-  width: 100%;
-}
-
-.specToolbar {
-  align-items: flex-start;
-  background: #101823;
-  border-bottom: 1px solid #243044;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 14px 18px;
-}
-
-.specTitle {
-  color: #b8c3d4;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: .08em;
-  line-height: 22px;
-}
-
-.specDesc {
-  color: #7f8ca3;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.specActions {
-  align-items: center;
-  display: flex;
-  gap: 8px;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.specToggle {
-  background: #0b1119;
-  border: 1px solid #334155;
-  border-radius: 7px;
-  display: inline-flex;
-  padding: 2px;
-}
-
-.specToggle button {
-  background: transparent;
-  border: 0;
-  border-radius: 5px;
-  color: #8b95a5;
-  cursor: pointer;
-  font-size: 12px;
-  height: 26px;
-  min-width: 52px;
-  padding: 0 10px;
-}
-
-.specToggleActive {
-  background: #366ef4 !important;
-  color: #fff !important;
-}
-
-.specCode {
-  color: #d8dee9;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
-  line-height: 19px;
-  margin: 0;
-  min-height: 0;
-  overflow: auto;
-  overflow-wrap: anywhere;
-  padding: 16px 18px;
-  white-space: pre-wrap;
-}
-
-.specFooterOk,
-.specFooterError {
-  border-top: 1px solid #243044;
-  font-size: 12px;
-  line-height: 18px;
-  padding: 10px 18px;
-}
-
-.specFooterOk {
-  background: #0f1c18;
-  color: #9ee6c3;
-}
-
-.specFooterError {
-  background: #241716;
-  color: #f3aaa6;
 }
 
 @media (max-width: 1180px) {
@@ -428,9 +320,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .specPane {
-    display: none;
-  }
 }
 
 @media (max-width: 900px) {

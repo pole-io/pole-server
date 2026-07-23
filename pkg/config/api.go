@@ -94,6 +94,8 @@ type ConfigFileReleaseOperate interface {
 	UpsertAndReleaseConfigFile(ctx context.Context, req *apiconfig.ConfigFilePublishInfo) *apimodel.Response
 	// StopGrayConfigFileReleases 停止所有的灰度发布配置
 	StopGrayConfigFileReleases(ctx context.Context, reqs []*apiconfig.ConfigFileRelease) *apimodel.BatchWriteResponse
+	// PromoteGrayConfigFileReleaseToDraft 将灰度发布版本提交为正式草稿
+	PromoteGrayConfigFileReleaseToDraft(ctx context.Context, req *apiconfig.ConfigFileRelease) *apimodel.Response
 }
 
 // ConfigFileClientOperate 给客户端提供服务接口，不同的上层协议抽象的公共服务逻辑

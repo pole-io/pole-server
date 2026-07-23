@@ -81,6 +81,7 @@ type itemValue struct {
 	ttlDurationSec    uint32
 	expireDurationSec uint32
 	checker           healthcheck.HealthChecker
+	path              string
 }
 
 type ResourceHealthCheckHandler struct {
@@ -184,14 +185,15 @@ func (c *CheckScheduler) upsertInstanceChecker(instanceWithChecker *InstanceWith
 	defer c.rwMutex.Unlock()
 	instance := instanceWithChecker.instance
 	// 注释：TTL获取改动 - GetTtl()返回uint32而非*wrapperspb.UInt32Value，去掉.GetValue()调用
-	ttl := instance.HealthCheck().GetHeartbeat().GetTtl()
+	interval := svctypes.HealthCheckInterval(instance.HealthCheck())
+	path := instance.HealthCheck().GetHttp().GetPath()
 	var (
 		instValue *itemValue
 		exist     bool
 	)
 	instValue, exist = c.scheduledInstances[instance.ID()]
 	if exist {
-		if ttl == instValue.ttlDurationSec {
+		if interval == instValue.ttlDurationSec && path == instValue.path {
 			return true, instValue
 		}
 		// force update check info
@@ -199,11 +201,12 @@ func (c *CheckScheduler) upsertInstanceChecker(instanceWithChecker *InstanceWith
 		oldTtl := instValue.ttlDurationSec
 		instValue.checker = instanceWithChecker.checker
 		instValue.expireDurationSec = getExpireDurationSec(instance.Proto)
-		instValue.ttlDurationSec = ttl
+		instValue.ttlDurationSec = interval
+		instValue.path = path
 		instValue.mutex.Unlock()
 		if log.DebugEnabled() {
 			log.Debug("[Health Check][Check] upsert instance checker", zap.String("id", instValue.id),
-				zap.Uint32("old-ttl", oldTtl), zap.Uint32("ttl", instValue.ttlDurationSec))
+				zap.Uint32("old-interval", oldTtl), zap.Uint32("interval", instValue.ttlDurationSec))
 		}
 	} else {
 		instValue = &itemValue{
@@ -213,7 +216,8 @@ func (c *CheckScheduler) upsertInstanceChecker(instanceWithChecker *InstanceWith
 			id:                instance.ID(),
 			expireDurationSec: getExpireDurationSec(instance.Proto),
 			checker:           instanceWithChecker.checker,
-			ttlDurationSec:    ttl,
+			ttlDurationSec:    interval,
+			path:              path,
 		}
 	}
 	c.scheduledInstances[instance.ID()] = instValue
@@ -283,8 +287,7 @@ func (c *CheckScheduler) AddClient(clientWithChecker *ClientWithChecker) {
 }
 
 func getExpireDurationSec(instance *apiservice.Instance) uint32 {
-	ttlValue := instance.GetHealthCheck().GetHeartbeat().GetTtl()
-	return expireTtlCount * ttlValue
+	return svctypes.HealthCheckExpireDuration(instance.GetHealthCheck())
 }
 
 func getRandDelayMilli() uint32 {
@@ -414,6 +417,7 @@ func (c *CheckScheduler) checkCallbackInstance(value interface{}) {
 		},
 		CurTimeSec:        c.svr.currentTimeSec,
 		ExpireDurationSec: instanceValue.expireDurationSec,
+		Path:              instanceValue.path,
 	}
 	checkResp, err = instanceValue.checker.Check(request)
 	if err != nil {

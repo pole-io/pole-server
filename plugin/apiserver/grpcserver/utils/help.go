@@ -43,8 +43,8 @@ func GetConfigClientOpenMethod(protocol string) (map[string]bool, error) {
 	openMethod := make(map[string]bool)
 
 	for _, item := range openMethods {
-		method := "/v1.PolarisConfig" + strings.ToUpper(protocol) + "/" + item
-		openMethod[method] = true
+		openMethod[legacyMethod("PolarisConfig", protocol, item)] = true
+		openMethod[newMethod("ConfigGRPC", item)] = true
 	}
 
 	return openMethod, nil
@@ -53,9 +53,19 @@ func GetConfigClientOpenMethod(protocol string) (map[string]bool, error) {
 // GetDiscoverClientOpenMethod 获取客户端openMethod
 func GetDiscoverClientOpenMethod(include []string, protocol string) (map[string]bool, error) {
 	clientAccess := make(map[string][]string)
-	clientAccess[apiserver.DiscoverAccess] = []string{"Discover", "ReportClient", "ReportServiceContract", "GetServiceContract"}
+	clientAccess[apiserver.DiscoverAccess] = []string{"Discover", "ReportClient", "ReportServiceContract", "GetServiceContract", "Issue", "Renew"}
 	clientAccess[apiserver.RegisterAccess] = []string{"RegisterInstance", "DeregisterInstance"}
 	clientAccess[apiserver.HealthcheckAccess] = []string{"Heartbeat", "BatchHeartbeat", "BatchGetHeartbeat", "BatchDelHeartbeat"}
+	clientAccess[apiserver.ConfigAccess] = []string{
+		"GetConfigFile",
+		"CreateConfigFile",
+		"UpdateConfigFile",
+		"PublishConfigFile",
+		"WatchConfigFiles",
+		"GetConfigFileMetadataList",
+		"UpsertAndPublishConfigFile",
+		"Discover",
+	}
 
 	openMethod := make(map[string]bool)
 	// 如果为空，开启全部接口
@@ -68,14 +78,18 @@ func GetDiscoverClientOpenMethod(include []string, protocol string) (map[string]
 	for _, item := range include {
 		if methods, ok := clientAccess[item]; ok {
 			for _, method := range methods {
-				recordMethod := "/v1.Polaris" + strings.ToUpper(protocol) + "/" + method
+				recordMethod := legacyMethod("Polaris", protocol, method)
+				if item == apiserver.ConfigAccess {
+					recordMethod = legacyMethod("PolarisConfig", protocol, method)
+				}
 				if item == apiserver.HealthcheckAccess && method != "Heartbeat" {
-					recordMethod = "/v1.PolarisHeartbeat" + strings.ToUpper(protocol) + "/" + method
+					recordMethod = legacyMethod("PolarisHeartbeat", protocol, method)
 				}
 				if method == "ReportServiceContract" || method == "GetServiceContract" {
-					recordMethod = "/v1.PolarisServiceContract" + strings.ToUpper(protocol) + "/" + method
+					recordMethod = legacyMethod("PolarisServiceContract", protocol, method)
 				}
 				openMethod[recordMethod] = true
+				addSpecOpenMethod(openMethod, item, method)
 			}
 		} else {
 			log.Errorf("method %s does not exist in %sserver client access", item, protocol)
@@ -84,4 +98,30 @@ func GetDiscoverClientOpenMethod(include []string, protocol string) (map[string]
 	}
 	log.Info("[APIServer] client open method info", zap.Any("openMethod", openMethod))
 	return openMethod, nil
+}
+
+func legacyMethod(service string, protocol string, method string) string {
+	return "/v1." + service + strings.ToUpper(protocol) + "/" + method
+}
+
+func newMethod(service string, method string) string {
+	return "/v1." + service + "/" + method
+}
+
+func addSpecOpenMethod(openMethod map[string]bool, access string, method string) {
+	switch access {
+	case apiserver.DiscoverAccess, apiserver.RegisterAccess, apiserver.HealthcheckAccess:
+		if method == "Issue" || method == "Renew" {
+			openMethod[newMethod("WorkloadCredentialService", method)] = true
+			return
+		}
+		if access != apiserver.HealthcheckAccess || method == "Heartbeat" {
+			openMethod[newMethod("DiscoverGRPC", method)] = true
+		}
+		if method == "BatchGetHeartbeat" || method == "BatchDelHeartbeat" {
+			openMethod[newMethod("PoleHeartbeatGRPC", method)] = true
+		}
+	case apiserver.ConfigAccess:
+		openMethod[newMethod("ConfigGRPC", method)] = true
+	}
 }

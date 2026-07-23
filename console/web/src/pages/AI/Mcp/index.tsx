@@ -5,7 +5,6 @@ import {
   Form,
   Input,
   Link,
-  Popconfirm,
   PrimaryTableProps,
   Select,
   Space,
@@ -13,22 +12,23 @@ import {
   TableRowData,
   Tag,
   Tooltip,
-} from 'tdesign-react';
-import type { FormProps, PageInfo } from 'tdesign-react';
+} from 'components/Fluent';
+import type { FormProps, PageInfo } from 'components/Fluent';
 import {
   AddIcon,
-  DeleteIcon,
   EditIcon,
   InfoCircleIcon,
-  ListIcon,
   RefreshIcon,
   SearchIcon,
   ServerIcon,
   ToolsCircleIcon,
-} from 'tdesign-icons-react';
+} from 'components/Fluent/icons';
 import { useNavigate } from 'react-router-dom';
 
 import Text from 'components/Text';
+import AuthorizeInput from 'components/Authorize';
+import { ConfirmOperationButton, OperationButton } from 'components/OperationButton';
+import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import {
   cleanMCPPage,
@@ -43,9 +43,11 @@ import {
   updateMCPServer,
 } from 'modules/ai/mcp';
 import { MCPServer, MCPServerTool } from 'services/mcp';
+import { PolicySourceType } from 'services/auth_policy';
 import { describeServices, ServiceView } from 'services/service';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import { Op } from 'services/types';
+import ResourceNameLink from 'components/ResourceNameLink';
 import style from './index.module.less';
 
 const { FormItem } = Form;
@@ -67,11 +69,11 @@ const backendTypeOptions = [
   { label: '自定义地址', value: 'address' },
 ];
 
-function protocolLabel(value?: string) {
+export function protocolLabel(value?: string) {
   return protocolOptions.find((item) => item.value === value)?.label || value || '-';
 }
 
-function protocolTheme(value?: string) {
+export function protocolTheme(value?: string) {
   if (value === 'http') return 'success';
   if (value === 'sse') return 'primary';
   if (value === 'streamable-http') return 'warning';
@@ -79,14 +81,14 @@ function protocolTheme(value?: string) {
   return 'default';
 }
 
-function backendType(server?: MCPServer) {
+export function backendType(server?: MCPServer) {
   if (server?.backend_type) return server.backend_type;
   if (server?.backend_service_namespace || server?.backend_service_name) return 'service';
   if (server?.backend_address) return 'address';
   return '';
 }
 
-function backendLabel(server?: MCPServer) {
+export function backendLabel(server?: MCPServer) {
   const type = backendType(server);
   if (type === 'service') {
     const namespace = server?.backend_service_namespace || server?.namespace || '-';
@@ -97,7 +99,7 @@ function backendLabel(server?: MCPServer) {
   return server?.reference || '-';
 }
 
-function backendServiceRef(server?: MCPServer) {
+export function backendServiceRef(server?: MCPServer) {
   if (backendType(server) !== 'service') return undefined;
   const namespace = server?.backend_service_namespace || server?.namespace || '';
   const name = server?.backend_service_name || server?.reference || server?.name || '';
@@ -118,12 +120,12 @@ function parseServiceKey(value?: string) {
   };
 }
 
-function backendTypeLabel(value?: string) {
+export function backendTypeLabel(value?: string) {
   return backendTypeOptions.find((item) => item.value === value)?.label || '-';
 }
 
 const serverColumns = (
-  operateServer: (op: Op | 'tools', row?: TableRowData) => void,
+  operateServer: (op: Op | 'detail' | 'authorize', row?: TableRowData) => void,
   goBackendService: (server?: MCPServer) => void,
 ): PrimaryTableProps['columns'] => [
   {
@@ -131,20 +133,7 @@ const serverColumns = (
     title: 'MCP Server',
     fixed: 'left',
     cell: ({ row }) => (
-      <div className={style.serverCell}>
-        <div className={style.serverNameRow}>
-          <Link theme="primary" onClick={() => operateServer('tools', row)}>
-            {row.name}
-          </Link>
-          <Tag theme={protocolTheme(row.protocol) as any} variant="light">
-            {protocolLabel(row.protocol)}
-          </Tag>
-        </div>
-        <div className={style.serverMeta}>
-          <span>{row.namespace || '-'}</span>
-          <span>{backendLabel(row as MCPServer)}</span>
-        </div>
-      </div>
+      <ResourceNameLink name={row.name} onClick={() => operateServer('detail', row)} />
     ),
   },
   {
@@ -207,30 +196,9 @@ const serverColumns = (
     title: '操作',
     cell: ({ row }) => (
       <Space>
-        <Tooltip content="查看工具">
-          <Button shape="square" variant="text" onClick={() => operateServer('tools', row)}>
-            <ListIcon />
-          </Button>
-        </Tooltip>
-        <Tooltip content="编辑">
-          <Button shape="square" variant="text" onClick={() => operateServer('edit', row)}>
-            <EditIcon />
-          </Button>
-        </Tooltip>
-        <Tooltip content="删除">
-          <Popconfirm
-            content="确认删除该 MCP Server 吗"
-            destroyOnClose
-            placement="top"
-            showArrow
-            theme="default"
-            onConfirm={() => operateServer('delete', row)}
-          >
-            <Button shape="square" variant="text">
-              <DeleteIcon />
-            </Button>
-          </Popconfirm>
-        </Tooltip>
+        <OperationButton action="view" onClick={() => operateServer('detail', row)} />
+        <OperationButton action="authorize" onClick={() => operateServer('authorize', row)} />
+        <ConfirmOperationButton action="delete" confirmContent="确认删除该 MCP Server 吗" onConfirm={() => operateServer('delete', row)} />
       </Space>
     ),
   },
@@ -370,7 +338,8 @@ const SchemaSection: React.FC<{ title: string; schema?: string }> = ({ title, sc
         <span>{fields.length > 0 ? `${fields.length} 个字段` : '原始 Schema'}</span>
       </div>
       {fields.length > 0 ? (
-        <table className={style.schemaFieldTable}>
+        <div className={style.schemaTableScroll}>
+          <table className={style.schemaFieldTable} aria-label={`${title}字段 Schema`}>
           <thead>
             <tr>
               <th>字段</th>
@@ -384,22 +353,23 @@ const SchemaSection: React.FC<{ title: string; schema?: string }> = ({ title, sc
             {fields.map((field) => (
               <React.Fragment key={field.name}>
                 <tr>
-                  <td><code>{field.name}</code></td>
-                  <td>{field.type}</td>
+                  <td title={field.name}><code>{field.name}</code></td>
+                  <td title={field.type}>{field.type}</td>
                   <td>
                     <Tag size="small" theme={field.required ? 'danger' : 'default'} variant="light">
                       {field.required ? 'required' : 'optional'}
                     </Tag>
                   </td>
-                  <td>{field.description}</td>
-                  <td>{field.defaultValue}</td>
+                  <td title={field.description}>{field.description}</td>
+                  <td title={field.defaultValue}>{field.defaultValue}</td>
                 </tr>
                 {hasNestedSchema(field.schema) && (
                   <tr className={style.schemaNestedRow}>
                     <td colSpan={5}>
                       <details>
                         <summary>展开 {field.name} 子字段</summary>
-                        <table>
+                        <div className={style.schemaTableScroll}>
+                          <table aria-label={`${title}中 ${field.name} 的子字段 Schema`}>
                           <thead>
                             <tr>
                               <th>字段</th>
@@ -412,19 +382,20 @@ const SchemaSection: React.FC<{ title: string; schema?: string }> = ({ title, sc
                           <tbody>
                             {nestedFields(field).map((child) => (
                               <tr key={child.name}>
-                                <td><code>{child.name}</code></td>
-                                <td>{child.type}</td>
+                                <td title={child.name}><code>{child.name}</code></td>
+                                <td title={child.type}>{child.type}</td>
                                 <td>
                                   <Tag size="small" theme={child.required ? 'danger' : 'default'} variant="light">
                                     {child.required ? 'required' : 'optional'}
                                   </Tag>
                                 </td>
-                                <td>{child.description}</td>
-                                <td>{child.defaultValue}</td>
+                                <td title={child.description}>{child.description}</td>
+                                <td title={child.defaultValue}>{child.defaultValue}</td>
                               </tr>
                             ))}
                           </tbody>
-                        </table>
+                          </table>
+                        </div>
                       </details>
                     </td>
                   </tr>
@@ -432,7 +403,8 @@ const SchemaSection: React.FC<{ title: string; schema?: string }> = ({ title, sc
               </React.Fragment>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       ) : (
         <div className={style.schemaFallback}>当前 schema 不是标准 JSON Schema object，已保留原始内容。</div>
       )}
@@ -444,7 +416,7 @@ const SchemaSection: React.FC<{ title: string; schema?: string }> = ({ title, sc
   );
 };
 
-const ToolExplorer: React.FC<{ tools: MCPServerTool[] }> = ({ tools }) => {
+export const ToolExplorer: React.FC<{ tools: MCPServerTool[] }> = ({ tools }) => {
   const [keyword, setKeyword] = useState('');
   const [selectedToolKey, setSelectedToolKey] = useState('');
   const filteredTools = useMemo(() => {
@@ -478,7 +450,8 @@ const ToolExplorer: React.FC<{ tools: MCPServerTool[] }> = ({ tools }) => {
             const key = tool.id || tool.name;
             const active = key === (selectedTool?.id || selectedTool?.name);
             return (
-              <button
+              <Button
+                variant="text"
                 key={key}
                 className={`${style.toolCatalogItem} ${active ? style.toolCatalogItemActive : ''}`}
                 type="button"
@@ -489,7 +462,7 @@ const ToolExplorer: React.FC<{ tools: MCPServerTool[] }> = ({ tools }) => {
                 <div>
                   {annotationTags(tool.annotations).map((item) => <Tag key={item} size="small" variant="light">{item}</Tag>)}
                 </div>
-              </button>
+              </Button>
             );
           })}
           {filteredTools.length === 0 && <div className={style.toolCatalogEmpty}>没有匹配的工具</div>}
@@ -564,7 +537,7 @@ function joinExportTo(value?: string[]) {
   return value?.filter(Boolean).join(',') || '';
 }
 
-const MCPEditor: React.FC<{
+export const MCPEditor: React.FC<{
   op: Op;
   visible: boolean;
   closeDrawer: () => void;
@@ -575,6 +548,25 @@ const MCPEditor: React.FC<{
   const [backendMode, setBackendMode] = useState('service');
   const [serviceLoading, setServiceLoading] = useState(false);
   const [serviceOptions, setServiceOptions] = useState<ServiceView[]>([]);
+  const initialBackendMode = backendType(editServer || undefined) || (editServer?.reference ? 'address' : 'service');
+  const initialServiceKey = serviceKey({
+    namespace: editServer?.backend_service_namespace || editServer?.namespace || '',
+    name: editServer?.backend_service_name || editServer?.reference || editServer?.name || '',
+  });
+  const initialValues = useMemo(() => ({
+    name: editServer?.name || '',
+    namespace: editServer?.namespace || '',
+    ports: editServer?.ports || '',
+    protocol: editServer?.protocol || 'http',
+    business: editServer?.business || '',
+    department: editServer?.department || '',
+    description: editServer?.description || '',
+    reference: editServer?.reference || '',
+    export_to: splitExportTo(editServer?.export_to),
+    backend_type: initialBackendMode,
+    backend_service_key: initialBackendMode === 'service' ? initialServiceKey : '',
+    backend_address: editServer?.backend_address || (initialBackendMode === 'address' ? editServer?.reference : ''),
+  }), [editServer, initialBackendMode, initialServiceKey]);
 
   const backendServiceOptions = useMemo(() => {
     const options = serviceOptions.map((item) => ({
@@ -615,28 +607,15 @@ const MCPEditor: React.FC<{
 
   useEffect(() => {
     if (!visible) return;
-    const currentBackendMode = backendType(editServer || undefined) || (editServer?.reference ? 'address' : 'service');
-    const currentServiceKey = serviceKey({
-      namespace: editServer?.backend_service_namespace || editServer?.namespace || '',
-      name: editServer?.backend_service_name || editServer?.reference || editServer?.name || '',
-    });
-    setBackendMode(currentBackendMode);
-    form.setFieldsValue({
-      name: editServer?.name || '',
-      namespace: editServer?.namespace || '',
-      ports: editServer?.ports || '',
-      protocol: editServer?.protocol || 'http',
-      business: editServer?.business || '',
-      department: editServer?.department || '',
-      description: editServer?.description || '',
-      reference: editServer?.reference || '',
-      export_to: splitExportTo(editServer?.export_to),
-      backend_type: currentBackendMode,
-      backend_service_key: currentBackendMode === 'service' ? currentServiceKey : '',
-      backend_address: editServer?.backend_address || (currentBackendMode === 'address' ? editServer?.reference : ''),
-    });
+    setBackendMode(initialBackendMode);
+    form.setFieldsValue(initialValues);
     loadServices();
-  }, [visible, editServer]);
+  }, [visible, initialBackendMode, initialValues]);
+
+  const resetEditor = () => {
+    setBackendMode(initialBackendMode);
+    form.setFieldsValue(initialValues);
+  };
 
   const onSubmit: FormProps['onSubmit'] = async (e) => {
     if (e.validateResult !== true) return;
@@ -683,7 +662,7 @@ const MCPEditor: React.FC<{
       showOverlay={false}
       onClose={closeDrawer}
     >
-      <Form className={style.drawerForm} form={form} layout="vertical" onSubmit={onSubmit}>
+      <Form className={style.drawerForm} form={form} layout="vertical" onSubmit={onSubmit} onReset={resetEditor}>
         <div className={style.formSection}>
           <div className={style.formSectionTitle}>基础信息</div>
           <div className={style.formGrid}>
@@ -717,7 +696,8 @@ const MCPEditor: React.FC<{
           <div className={style.formSectionTitle}>后端关联</div>
           <div className={style.backendChoice}>
             {backendTypeOptions.map((item) => (
-              <button
+              <Button
+                variant="text"
                 key={item.value}
                 className={`${style.backendChoiceItem} ${backendMode === item.value ? style.backendChoiceItemActive : ''}`}
                 type="button"
@@ -728,7 +708,7 @@ const MCPEditor: React.FC<{
               >
                 <strong>{item.label}</strong>
                 <span>{item.value === 'service' ? 'namespace/name' : 'URL'}</span>
-              </button>
+              </Button>
             ))}
           </div>
           <FormItem name="backend_type" style={{ display: 'none' }}>
@@ -802,6 +782,7 @@ export default memo(() => {
   });
   const [editorState, setEditorState] = useState<{ visible: boolean; mode: Op }>({ visible: false, mode: 'create' });
   const [toolsState, setToolsState] = useState<{ visible: boolean; server?: MCPServer }>({ visible: false });
+  const [authorizeState, setAuthorizeState] = useState<{ visible: boolean; server?: MCPServer }>({ visible: false });
   const namespaces = new Set(datas.map((item) => item.namespace).filter(Boolean));
   const protocolCount = datas.reduce<Record<string, number>>((memo, item) => {
     const key = item.protocol || 'unknown';
@@ -866,7 +847,7 @@ export default memo(() => {
     navigate(`/discovery/service/instance?namespace=${encodeURIComponent(service.namespace)}&service=${encodeURIComponent(service.name)}`);
   };
 
-  const operateServer = (op: Op | 'tools', row?: TableRowData) => {
+  const operateServer = (op: Op | 'detail' | 'authorize', row?: TableRowData) => {
     switch (op) {
       case 'create':
         dispatch(resetMCPServer());
@@ -886,9 +867,11 @@ export default memo(() => {
           }
         });
         break;
-      case 'tools':
-        setToolsState({ visible: true, server: row as MCPServer });
-        refreshTools(row as MCPServer);
+      case 'detail':
+        navigate(`/ai/mcps/detail?id=${encodeURIComponent(String(row?.id || ''))}&namespace=${encodeURIComponent(String(row?.namespace || ''))}&name=${encodeURIComponent(String(row?.name || ''))}`);
+        break;
+      case 'authorize':
+        setAuthorizeState({ visible: true, server: row as MCPServer });
         break;
       default:
         break;
@@ -909,21 +892,21 @@ export default memo(() => {
 
   return (
     <div className={style.page}>
-      <section className={style.header}>
-        <div>
-          <div className={style.eyebrow}>AI Native / MCP Registry</div>
-          <h2>MCP 服务</h2>
-          <p>维护对外暴露的 MCP Server，并查看每个 server 同步出的工具能力。</p>
-        </div>
-        <Space>
+      <ResourceHeader
+        eyebrow="AI Native / MCP Registry"
+        title="MCP 服务"
+        description="维护对外暴露的 MCP Server，并查看每个 server 同步出的工具能力。"
+        actions={(
+          <>
           <Tooltip content="刷新列表">
             <Button shape="square" variant="outline" onClick={() => refreshTable(page, limit)}>
               <RefreshIcon />
             </Button>
           </Tooltip>
           <Button theme="primary" icon={<AddIcon />} onClick={() => operateServer('create')}>新建 MCP Server</Button>
-        </Space>
-      </section>
+          </>
+        )}
+      />
 
       <section className={style.metricRail}>
         <div className={style.metricItem}>
@@ -948,54 +931,54 @@ export default memo(() => {
         </div>
       </section>
 
-      <section className={style.filterBar}>
-        <div className={style.protocolTabs}>
-          {quickProtocolOptions.map((item) => {
-            const active = query.protocol === item.value;
-            return (
-              <Button
-                key={item.value || 'all'}
-                size="small"
-                theme={active ? 'primary' : 'default'}
-                variant={active ? 'base' : 'outline'}
-                onClick={() => {
-                  const nextQuery = { ...query, protocol: item.value };
-                  setQuery(nextQuery);
-                  refreshTable(1, limit, nextQuery);
-                }}
-              >
-                {item.label}
-              </Button>
-            );
-          })}
-        </div>
-        <Space>
-          <Input
-            className={style.filterInput}
-            clearable
-            placeholder="名称前缀"
-            value={query.name}
-            onChange={(value) => setQuery((prev) => ({ ...prev, name: value as string }))}
-          />
-          <Input
-            className={style.filterInput}
-            clearable
-            placeholder="命名空间"
-            value={query.namespace}
-            onChange={(value) => setQuery((prev) => ({ ...prev, namespace: value as string }))}
-          />
-          <Button variant="outline" onClick={submitFilter}>查询</Button>
-          <Button variant="text" onClick={resetFilter}>重置</Button>
-        </Space>
-      </section>
+      <ResourceToolbar
+        title="服务列表"
+        count={loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}
+        filters={(
+          <>
+            <div className={style.protocolTabs}>
+              {quickProtocolOptions.map((item) => {
+                const active = query.protocol === item.value;
+                return (
+                  <Button
+                    key={item.value || 'all'}
+                    size="small"
+                    theme={active ? 'primary' : 'default'}
+                    variant={active ? 'base' : 'outline'}
+                    onClick={() => {
+                      const nextQuery = { ...query, protocol: item.value };
+                      setQuery(nextQuery);
+                      refreshTable(1, limit, nextQuery);
+                    }}
+                  >
+                    {item.label}
+                  </Button>
+                );
+              })}
+            </div>
+            <Input
+              className={style.filterInput}
+              clearable
+              placeholder="名称前缀"
+              value={query.name}
+              onChange={(value) => setQuery((prev) => ({ ...prev, name: value as string }))}
+              onEnter={submitFilter}
+            />
+            <Input
+              className={style.filterInput}
+              clearable
+              placeholder="命名空间"
+              value={query.namespace}
+              onChange={(value) => setQuery((prev) => ({ ...prev, namespace: value as string }))}
+              onEnter={submitFilter}
+            />
+            <Button variant="outline" onClick={submitFilter}>查询</Button>
+            <Button variant="text" onClick={resetFilter}>重置</Button>
+          </>
+        )}
+      />
 
       <section className={style.tableSurface}>
-        <div className={style.tableHeader}>
-          <div>
-            <strong>服务列表</strong>
-            <span>{loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}</span>
-          </div>
-        </div>
         <Table
           data={datas}
           columns={serverColumns(operateServer, goBackendService)}
@@ -1032,9 +1015,19 @@ export default memo(() => {
         />
       )}
 
+      {authorizeState.visible && authorizeState.server?.id && (
+        <AuthorizeInput
+          resource_type={PolicySourceType.MCPServerResources}
+          resource_id={authorizeState.server.id}
+          resource_name={`${authorizeState.server.namespace}/${authorizeState.server.name}`}
+          visible={authorizeState.visible}
+          onClose={() => setAuthorizeState({ visible: false })}
+        />
+      )}
+
       <Drawer
         size="min(1180px, 92vw)"
-        header="MCP 工具"
+        header="MCP 服务详情"
         footer={false}
         visible={toolsState.visible}
         onClose={closeToolsDrawer}
@@ -1081,15 +1074,13 @@ export default memo(() => {
             </div>
             <div className={style.toolDrawerActions}>
               <Tooltip content="刷新工具">
-                <Button shape="square" variant="outline" onClick={() => refreshTools(selectedToolServer)}>
+                <Button className={style.drawerActionIconButton} shape="square" variant="outline" onClick={() => refreshTools(selectedToolServer)}>
                   <RefreshIcon />
                 </Button>
               </Tooltip>
-              <Tooltip content="编辑 Server">
-                <Button shape="square" variant="outline" onClick={editCurrentServerFromTools}>
-                  <EditIcon />
-                </Button>
-              </Tooltip>
+              <Button variant="outline" icon={<EditIcon />} onClick={editCurrentServerFromTools}>
+                编辑 Server
+              </Button>
             </div>
           </section>
 

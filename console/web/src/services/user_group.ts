@@ -1,6 +1,6 @@
-import request, { apiRequest, ApiResponse, getAllList, getApiRequest, putApiRequest } from 'utils/request';
+import request, { apiRequest, getAllList, getApiRequest, putApiRequest } from 'utils/request';
 import { User } from './users';
-import { SuccessCode } from './const';
+import { AuthMutationResponse, isAuthMutationSuccessful } from './auth_policy';
 
 
 // 用户组
@@ -57,11 +57,11 @@ export interface ResetUserGroupTokenResponse {
 }
 
 export async function resetUserGroupToken(params: ResetUserGroupTokenRequest) {
-    const result = await putApiRequest<ResetUserGroupTokenResponse>({
+    const result = await putApiRequest<ResetUserGroupTokenResponse & AuthMutationResponse>({
         action: '/auth/v1/usergroup/token/refresh',
         data: params,
     })
-    return Number(result.code) === SuccessCode
+    return isAuthMutationSuccessful(result)
 }
 
 // 查询用户组列表
@@ -146,8 +146,8 @@ export interface DeleteUserGroupsResponse {
 }
 
 export async function deleteUserGroups(params: DeleteUserGroupsRequest[]) {
-    const result = await apiRequest<DeleteUserGroupsResponse>({ action: '/auth/v1/usergroups/delete', data: params })
-    return Number(result.code) === SuccessCode
+    const result = await apiRequest<DeleteUserGroupsResponse & AuthMutationResponse>({ action: '/auth/v1/usergroups/delete', data: params })
+    return isAuthMutationSuccessful(result)
 }
 
 // 查询治理中心用户组Token
@@ -162,11 +162,12 @@ export interface DescribeUserGroupTokenResponse {
 }
 
 export async function describeUserGroupToken(params: DescribeUserGroupTokenRequest) {
-    const result = await getApiRequest<DescribeUserGroupTokenResponse>({
+    const result = await getApiRequest<DescribeUserGroupTokenResponse | UserGroup>({
         action: '/auth/v1/usergroup/token',
         data: params,
     })
-    return result
+    const userGroup = (result as DescribeUserGroupTokenResponse).userGroup ?? (result as UserGroup)
+    return { userGroup }
 }
 
 // 批量创建用户组
@@ -189,14 +190,14 @@ export interface UpsertUserGroupResponse {
 }
 
 export async function createUserGroup(params: UpsertUserGroupRequest[]) {
-    const result = await apiRequest<UpsertUserGroupResponse>({ action: '/auth/v1/usergroups', data: params })
-    return Number(result.code) === SuccessCode
+    const result = await apiRequest<UpsertUserGroupResponse & AuthMutationResponse>({ action: '/auth/v1/usergroups', data: params })
+    return isAuthMutationSuccessful(result)
 }
 
 // 批量修改用户组
 export async function modifyUserGroup(params: UpsertUserGroupRequest[]) {
-    const result = await putApiRequest<UpsertUserGroupResponse>({ action: '/auth/v1/usergroups', data: params })
-    return Number(result.code) === SuccessCode
+    const result = await putApiRequest<UpsertUserGroupResponse & AuthMutationResponse>({ action: '/auth/v1/usergroups', data: params })
+    return isAuthMutationSuccessful(result)
 }
 
 // 批量修改用户组的资源访问 token
@@ -211,11 +212,11 @@ export interface ModifyUserGroupTokenResponse {
 }
 
 export async function modifyUserGroupToken(params: ModifyUserGroupTokenRequest) {
-    const result = await putApiRequest<ModifyUserGroupTokenResponse>({
+    const result = await putApiRequest<ModifyUserGroupTokenResponse & AuthMutationResponse>({
         action: '/auth/v1/usergroup/token/enable',
         data: params,
     })
-    return Number(result.code) === SuccessCode
+    return isAuthMutationSuccessful(result)
 }
 
 
@@ -231,9 +232,9 @@ export interface RefreshUserGroupTokenResponse {
 }
 
 export async function refreshUserGroupToken(params: RefreshUserGroupTokenRequest) {
-    const result = await putApiRequest<RefreshUserGroupTokenResponse>({
+    const result = await putApiRequest<RefreshUserGroupTokenResponse & AuthMutationResponse>({
         action: '/auth/v1/usergroup/token/refresh',
         data: params,
     })
-    return Number(result.code) === SuccessCode
+    return isAuthMutationSuccessful(result)
 }

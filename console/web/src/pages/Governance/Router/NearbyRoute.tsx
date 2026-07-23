@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Link, Popup, Table, Button, PageInfo, PrimaryTableProps, TableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Loading, Popconfirm } from 'tdesign-react';
-import { DeleteIcon, EditIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
+import { Link, Popup, Table, Button, PageInfo, PrimaryTableProps, TableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Loading, Popconfirm } from 'components/Fluent';
+import { DeleteIcon, EditIcon, RefreshIcon, CreditcardIcon } from 'components/Fluent/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 import { openErrNotification } from 'utils/notifition';

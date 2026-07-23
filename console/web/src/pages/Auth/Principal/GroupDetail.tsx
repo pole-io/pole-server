@@ -1,228 +1,230 @@
-import LabelInput from "components/LabelInput";
-import React from "react";
-import { Card, Form, Input, Link, Loading, Popup, Space, Table, Tag, TableProps, Collapse, Row, Col, Breadcrumb, Descriptions, Avatar, Tabs } from "tdesign-react";
-import type { FormProps } from 'tdesign-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React from 'react';
+import { Breadcrumb, Button, Empty, Link, Loading, Tag } from 'components/Fluent';
+import { CopyIcon, RefreshIcon } from 'components/Fluent/icons';
+import { useNavigate } from 'react-router-dom';
 
-import { useAppDispatch, useAppSelector } from 'modules/store';
-import { enableUserToken, resetUserToken } from "modules/user/users";
-import { describeUsers, describeUserToken, User } from "services/users";
-import { openErrNotification, openInfoNotification } from "utils/notifition";
-import { describeUserGroupDetail, describeUserGroupToken, UserGroup } from "services/user_group";
+import { useAppDispatch } from 'modules/store';
+import { enableUserGroupToken, resetUserGroupToken } from 'modules/user/groups';
+import { describeUserGroupDetail, describeUserGroupToken, UserGroup } from 'services/user_group';
+import { openErrNotification, openInfoNotification } from 'utils/notifition';
+import { copyToClipboard } from 'utils/sys';
+import PrincipalPolicyTable from './PrincipalPolicyTable';
+import style from './index.module.less';
 
-const { FormItem } = Form;
 const { BreadcrumbItem } = Breadcrumb;
-const { DescriptionsItem } = Descriptions;
-const { TabPanel } = Tabs;
+const formatValue = (value?: string) => value || '-';
 
-interface IGroupDetailProps {
-
-}
-
-const GroupDetailTable: React.FC<IGroupDetailProps> = ({ }) => {
-    const [form] = Form.useForm();
+const GroupDetailPage: React.FC = () => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
-    const urlParams = new URLSearchParams(window.location.search);
-    const userId = urlParams.get('id');
-    const username = urlParams.get('name');
-
-    const [viewState, setViewState] = React.useState<{
+    const searchParams = new URLSearchParams(window.location.search);
+    const groupId = searchParams.get('id') || '';
+    const groupName = searchParams.get('name') || '用户组详情';
+    const [state, setState] = React.useState<{
         loading: boolean;
-        group: UserGroup;
-        data: TableProps['data'];
+        group: UserGroup | null;
         fetchError: boolean;
-    }>({ loading: false, group: {} as UserGroup, data: [], fetchError: false });
+    }>({ loading: false, group: null, fetchError: false });
 
-    async function fetchData() {
-        setViewState({ ...viewState, loading: true, group: {} as UserGroup, fetchError: false });
-        const tokenRet = await describeUserGroupToken({ id: userId as string })
-        if (tokenRet?.userGroup) {
-            const ret = await describeUserGroupDetail({ id: userId as string })
-            if (ret?.userGroup) {
-                const expectGroup = ret.userGroup;
-                expectGroup.auth_token = tokenRet.userGroup.auth_token;
-                setViewState({
-                    loading: false, group: expectGroup, data: [
-                        { token: expectGroup.auth_token, status: expectGroup.token_enable }
-                    ], fetchError: false
-                });
-                form.setFieldsValue({
-                    id: expectGroup.id,
-                    name: expectGroup.name,
-                    comment: expectGroup.comment,
-                    source: expectGroup.source,
-                    user_labels: expectGroup.metadata ? Object.entries(expectGroup.metadata).map(([key, value]) => ({ key, value })) : [],
-                });
-            } else {
-                setViewState({ ...viewState, loading: false, fetchError: true });
+    const loadGroup = React.useCallback(async () => {
+        if (!groupId) return;
+        setState(prev => ({ ...prev, loading: true, fetchError: false }));
+        try {
+            const [detail, token] = await Promise.all([
+                describeUserGroupDetail({ id: groupId }),
+                describeUserGroupToken({ id: groupId }),
+            ]);
+            if (!detail.userGroup) {
+                setState({ loading: false, group: null, fetchError: true });
+                return;
             }
-        } else {
-            setViewState({ ...viewState, loading: false, fetchError: true });
+            setState({
+                loading: false,
+                group: {
+                    ...detail.userGroup,
+                    auth_token: token.userGroup?.auth_token || detail.userGroup.auth_token,
+                    token_enable: token.userGroup?.token_enable ?? detail.userGroup.token_enable,
+                },
+                fetchError: false,
+            });
+        } catch (error) {
+            setState(prev => ({ ...prev, loading: false, fetchError: true }));
+            openErrNotification('请求错误', `获取用户组详情失败, ${(error as Error).message}`);
         }
-    }
+    }, [groupId]);
 
     React.useEffect(() => {
-        fetchData();
-    }, [userId]);
+        loadGroup();
+    }, [loadGroup]);
 
-    const handleChangePassword = () => {
+    const refreshAfterTokenChange = () => {
+        setState(prev => ({ ...prev, loading: true }));
+        window.setTimeout(loadGroup, 1000);
+    };
 
-    }
+    const handleResetToken = async () => {
+        if (!groupId) return;
+        const result = await dispatch(resetUserGroupToken({ id: groupId }));
+        if (result.meta.requestStatus === 'rejected') {
+            openErrNotification('请求错误', String(result.payload || '资源访问凭据重置失败'));
+            return;
+        }
+        openInfoNotification('请求成功', '用户组访问凭据已重置');
+        refreshAfterTokenChange();
+    };
 
-    const onSubmit: FormProps['onSubmit'] = async (e) => { }
+    const handleToggleToken = async () => {
+        if (!groupId || !state.group) return;
+        const enabled = Boolean(state.group.token_enable);
+        const result = await dispatch(enableUserGroupToken({ id: groupId, token_enable: !enabled }));
+        if (result.meta.requestStatus === 'rejected') {
+            openErrNotification('请求错误', String(result.payload || `资源访问凭据${enabled ? '禁用' : '启用'}失败`));
+            return;
+        }
+        openInfoNotification('请求成功', `用户组访问凭据已${enabled ? '禁用' : '启用'}`);
+        refreshAfterTokenChange();
+    };
 
-    const userForm = (
-        <Form
-            form={form}
-            layout="vertical"
-            labelWidth={120}
-            labelAlign={'left'}
-            onSubmit={onSubmit}
-        >
-            <Space direction="vertical" style={{ width: '100%' }}>
-                <Descriptions>
-                    <DescriptionsItem label={'ID'}>
-                        {viewState.group?.id}
-                    </DescriptionsItem>
-                    <DescriptionsItem label={'备注'}>
-                        {viewState.group?.comment}
-                    </DescriptionsItem>
-                    <DescriptionsItem label={'组名'}>
-                        {viewState.group?.name}
-                    </DescriptionsItem>
-                    <DescriptionsItem label={'来源'}>
-                        {viewState.group?.source}
-                    </DescriptionsItem>
-                </Descriptions>
-                <FormItem label="资源访问凭据" name="token_enable" shouldUpdate={true}>
-                    <Table
-                        rowKey="id"
-                        size={"large"}
-                        tableLayout={'auto'}
-                        cellEmptyContent={'-'}
-                        columns={[
-                            {
-                                colKey: 'token',
-                                title: 'Token',
-                                cell: ({ row: { token } }) => {
-                                    return (
-                                        <Popup content="已复制" trigger="click">
-                                            <Input size="large" borderless={true} type="password" value={token} readonly onClick={() => {
-                                                navigator.clipboard.writeText(token as string)
-                                            }} />
-                                        </Popup>
-                                    )
-                                }
-                            },
-                            {
-                                colKey: 'status',
-                                title: '状态',
-                                cell: ({ row: { status } }) => {
-                                    return (
-                                        <Tag theme={status ? 'success' : 'danger'}>{status ? '启用' : '禁用'}</Tag>
-                                    )
-                                }
-                            },
-                            {
-                                colKey: 'op',
-                                title: '操作',
-                                cell: () => {
-                                    const enabled = viewState.group.token_enable
-                                    return (
-                                        <Space>
-                                            <Link theme="primary" onClick={() => {
-                                                dispatch(resetUserToken({ id: userId as string }))
-                                                    .then((res) => {
-                                                        if (res.meta.requestStatus !== 'fulfilled') {
-                                                            openErrNotification('请求错误', "资源访问凭据重置失败");
-                                                        } else {
-                                                            openInfoNotification('请求成功', "资源访问凭据重置成功");
-                                                            // 由于底层缓存设计的问题，这里需要延迟1s
-                                                            setViewState({ ...viewState, loading: true })
-                                                            setTimeout(() => fetchData(), 1000)
-                                                        }
-                                                    });
-                                            }}>重置</Link>
-                                            <Link theme={enabled ? 'danger' : 'success'} onClick={() => {
-                                                dispatch(enableUserToken({ id: userId as string, token_enable: !enabled }))
-                                                    .then((res) => {
-                                                        if (res.meta.requestStatus !== 'fulfilled') {
-                                                            openErrNotification('请求错误', `资源访问凭据${enabled ? '禁用' : '启用'}失败`);
-                                                        } else {
-                                                            openInfoNotification('请求成功', `资源访问凭据${enabled ? '禁用' : '启用'}成功`);
-                                                            setViewState({ ...viewState, loading: true })
-                                                            setTimeout(() => fetchData(), 1000)
-                                                        }
-                                                    });;
-                                            }}>{enabled ? '禁用' : '启用'}</Link>
-                                        </Space>
-                                    )
-                                }
-                            },
-                        ]}
-                        data={viewState.data}
-                    />
-                </FormItem>
-                <FormItem label="标签">
-                    {viewState.group?.metadata && Object.keys(viewState.group.metadata).length > 0 && (
-                        Object.entries(viewState.group.metadata).map(([key, value]) => {
-                            return <Tag>{`${key}: ${value}`}</Tag>
-                        })
-                    )}
-                </FormItem>
-            </Space>
-        </Form>
-    )
+    const group = state.group;
+    const metadata = Object.entries(group?.metadata || {});
+    const members = group?.relation?.users || [];
+    const initial = (group?.name || groupName || 'G').slice(0, 1).toUpperCase();
 
     return (
-        <>
-            <Space direction="vertical" style={{ width: '100%' }}>
-                <Breadcrumb maxItemWidth="200px">
-                    <BreadcrumbItem onClick={() => {
-                        navigate(-1);
-                    }}>用户组</BreadcrumbItem>
-                    <BreadcrumbItem>{username}</BreadcrumbItem>
-                </Breadcrumb>
-                <Card
-                    title={`用户组 ${username} 详情`}
-                    hoverShadow
-                >
-                    <Loading
-                        indicator
-                        loading={viewState.loading}
-                        preventScrollThrough
-                        showOverlay
-                    >
-                        {userForm}
-                    </Loading>
-                </Card>
-                <Card>
-                    <Tabs>
-                        <TabPanel value="user" label="用户信息">
-                            {viewState.group?.relation?.users?.map((item, index) => {
-                                return (
-                                    <Avatar
-                                        shape="round"
-                                        style={{ margin: 10 }}
-                                        size="60px"
-                                        onClick={() => {
-                                            navigate(`/auth/principals/userdetail?name=${item.name}&id=${item.id}`);
-                                        }}
-                                    >{item.name}</Avatar>
-                                )
-                            })
-                            }
-                        </TabPanel>
-                        <TabPanel value="role" label="角色信息">
-                        </TabPanel>
-                        <TabPanel value="permission" label="权限信息">
-                        </TabPanel>
-                    </Tabs>
-                </Card>
-            </Space>
-        </>
-    )
-}
+        <div className={style.userDetailPage}>
+            <Breadcrumb className={style.detailBreadcrumb} maxItemWidth="240px">
+                <BreadcrumbItem onClick={() => navigate('/auth/principals?tab=2')}>用户组</BreadcrumbItem>
+                <BreadcrumbItem>{group?.name || groupName}</BreadcrumbItem>
+            </Breadcrumb>
 
-export default React.memo(GroupDetailTable);
+            <Loading indicator loading={state.loading} preventScrollThrough showOverlay>
+                {!groupId || state.fetchError || !group ? (
+                    <section className={style.userDetailEmpty}>
+                        <Empty description={groupId ? '未找到用户组详情' : '缺少用户组标识，无法加载详情'} />
+                    </section>
+                ) : (
+                    <main className={style.userDetailStack}>
+                        <section className={style.userDetailSummary}>
+                            <div className={style.userDetailAvatar}>{initial}</div>
+                            <div className={style.userDetailMain}>
+                                <div className={style.userDetailTitleLine}>
+                                    <h2>{group.name}</h2>
+                                    <Tag theme="primary" variant="light">用户组</Tag>
+                                </div>
+                                <p>{group.comment || '暂无备注'}</p>
+                                <div className={style.userMetaGrid}>
+                                    <div className={style.userMetaItem}>
+                                        <span>用户组 ID</span>
+                                        <strong className={style.userMono} title={group.id}>{formatValue(group.id)}</strong>
+                                    </div>
+                                    <div className={style.userMetaItem}>
+                                        <span>来源</span>
+                                        <strong>{formatValue(group.source)}</strong>
+                                    </div>
+                                    <div className={style.userMetaItem}>
+                                        <span>成员数量</span>
+                                        <strong>{group.user_count ?? members.length} 个用户</strong>
+                                    </div>
+                                    <div className={style.userMetaItem}>
+                                        <span>创建时间</span>
+                                        <strong>{formatValue(group.ctime)}</strong>
+                                    </div>
+                                    <div className={style.userMetaItem}>
+                                        <span>修改时间</span>
+                                        <strong>{formatValue(group.mtime)}</strong>
+                                    </div>
+                                    <div className={style.userMetaItem}>
+                                        <span>凭据状态</span>
+                                        <strong>{group.token_enable ? '已启用' : '已禁用'}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <div className={style.userDetailContentGrid}>
+                            <section className={style.userCredentialPanel}>
+                                <div className={style.userPanelHeader}>
+                                    <div>
+                                        <strong>访问凭据</strong>
+                                        <span>用于以当前用户组身份访问 Console API。</span>
+                                    </div>
+                                    <Tag theme={group.token_enable ? 'success' : 'danger'} variant="light">
+                                        {group.token_enable ? '已启用' : '已禁用'}
+                                    </Tag>
+                                </div>
+                                <div className={style.userTokenRow}>
+                                    <div>
+                                        <span>访问 Token</span>
+                                        <code>{group.auth_token ? '••••••••••••••••' : '暂无 Token'}</code>
+                                    </div>
+                                    <div className={style.userTokenActions}>
+                                        <Button
+                                            variant="outline"
+                                            icon={<CopyIcon />}
+                                            disabled={!group.auth_token}
+                                            onClick={() => copyToClipboard(group.auth_token, '用户组访问凭据已复制到剪贴板')}
+                                        >
+                                            复制
+                                        </Button>
+                                        <Button variant="outline" icon={<RefreshIcon />} onClick={handleResetToken}>重置</Button>
+                                        <Button theme={group.token_enable ? 'danger' : 'primary'} variant="outline" onClick={handleToggleToken}>
+                                            {group.token_enable ? '禁用' : '启用'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className={style.userTagPanel}>
+                                <div className={style.userPanelHeader}>
+                                    <div>
+                                        <strong>用户组标签</strong>
+                                        <span>用于主体检索和权限策略匹配。</span>
+                                    </div>
+                                </div>
+                                {metadata.length > 0 ? (
+                                    <div className={style.userLabelList}>
+                                        {metadata.map(([key, value]) => <Tag key={key} variant="outline">{key}: {value}</Tag>)}
+                                    </div>
+                                ) : <p className={style.userPanelEmpty}>暂无标签</p>}
+                            </section>
+                        </div>
+
+                        <section className={style.userPolicySurface}>
+                            <div className={style.userTableHeader}>
+                                <div>
+                                    <strong>成员用户</strong>
+                                    <span>当前用户组关联 {members.length} 个用户</span>
+                                </div>
+                            </div>
+                            {members.length > 0 ? (
+                                <div className={style.userLabelList} style={{ padding: '0 16px 16px' }}>
+                                    {members.map(member => (
+                                        <Link
+                                            key={member.id}
+                                            theme="primary"
+                                            onClick={() => navigate(`/auth/principals/userdetail?name=${encodeURIComponent(member.name || member.id)}&id=${encodeURIComponent(member.id)}`)}
+                                        >
+                                            {member.name || member.id}
+                                        </Link>
+                                    ))}
+                                </div>
+                            ) : <p className={style.userPanelEmpty} style={{ padding: '0 16px 16px' }}>暂无成员用户</p>}
+                        </section>
+
+                        <section className={style.userPolicySurface}>
+                            <div className={style.userTableHeader}>
+                                <div>
+                                    <strong>关联策略</strong>
+                                    <span>直接关联到当前用户组的访问策略</span>
+                                </div>
+                            </div>
+                            <PrincipalPolicyTable principalId={group.id} principalType={2} />
+                        </section>
+                    </main>
+                )}
+            </Loading>
+        </div>
+    );
+};
+
+export default React.memo(GroupDetailPage);

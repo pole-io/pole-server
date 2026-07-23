@@ -1,29 +1,22 @@
 .boardPanelDark {
-  background: var(--td-brand-color) !important;
+  background: var(--app-brand) !important;
   .boardTitle,
   .boardItemLeft,
   .boardItemDesc,
   .trendColorUp,
   .trendColorDown,
   .boardItemBottom {
-    color: var(--td-text-color-anti);
+    color: var(--app-text-on-brand);
   }
   .trendIconUp,
   .trendIconDown {
-    background: var(--td-brand-color-5);
-  }
-}
-.boardPanel {
-  :global {
-    .t-card__body {
-      padding-top: 0;
-    }
+    background: var(--app-brand-5);
   }
 }
 .boardTitle {
   line-height: 22px;
   font-size: 14px;
-  color: var(--td-text-color-secondary);
+  color: var(--app-text-secondary);
 }
 
 .boardItem {
@@ -34,7 +27,7 @@
 
 .boardItemLeft {
   display: inline-block;
-  color: var(--td-text-color-primary);
+  color: var(--app-text);
   font-size: 27px;
   line-height: 44px;
 }
@@ -54,7 +47,7 @@
   align-items: center;
   justify-content: center;
   line-height: 22px;
-  color: var(--td-text-color-placeholder);
+  color: var(--app-text-placeholder);
 }
 
 .trendIcon {
@@ -66,11 +59,11 @@
 }
 
 .trendIconUp {
-  background: var(--td-error-color-2);
+  background: var(--app-status-error-subtle);
 }
 
 .trendIconDown {
-  background: var(--td-success-color-2);
+  background: var(--app-status-success-subtle);
 }
 
 .trendColorUp {

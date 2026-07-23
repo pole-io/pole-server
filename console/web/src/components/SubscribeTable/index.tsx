@@ -1,13 +1,11 @@
 import React, { useMemo } from 'react';
-import { Space, Button, Table, Tooltip, Tree, Empty, Tag } from "tdesign-react";
-import type { PrimaryTableProps, TableRowData } from 'tdesign-react';
-import { ListIcon } from 'tdesign-icons-react';
+import { Table, Tree, Empty, Tag } from 'components/Fluent';
+import type { PrimaryTableProps } from 'components/Fluent';
 
 import Text from 'components/Text';
 import { VersionClient } from 'services/config_release';
 
 import style from './index.module.less';
-import { t } from 'i18next';
 
 export interface ISubscribeTableProps {
     editable: boolean;
@@ -16,7 +14,7 @@ export interface ISubscribeTableProps {
     subscribers: VersionClient[];
 }
 
-const columns = (props: ISubscribeTableProps, handleViewRelease: (view: boolean, row: TableRowData) => void): PrimaryTableProps['columns'] => [
+const columns: PrimaryTableProps['columns'] = [
     {
         colKey: 'id',
         title: '客户端ID',
@@ -35,29 +33,34 @@ const columns = (props: ISubscribeTableProps, handleViewRelease: (view: boolean,
         width: 112,
         cell: ({ row: { client_type } }) => client_type ? <Tag variant="light">{client_type}</Tag> : <Text>-</Text>,
     },
-    {
-        colKey: 'action',
-        title: '操作',
-        width: 72,
-        align: 'center',
-        cell: ({ row }) => {
-            return (
-                <Space>
-                    <Tooltip content={t('button.tip.subscribe.showTrace')}>
-                        <Button shape="square" variant="text" disabled={props.editable === false}>
-                            <ListIcon />
-                        </Button>
-                    </Tooltip>
-                </Space>
-            )
-        },
-    },
 ]
 
 const SubscribeTable: React.FC<ISubscribeTableProps> = (props) => {
+    const clients = useMemo(() => props.subscribers.flatMap((group) => {
+        const legacyClient = group as unknown as Partial<VersionClient> & {
+            id?: string;
+            host?: string;
+            client_type?: string;
+            version?: string | number;
+        };
+        if (!Array.isArray(group.subscribers) && legacyClient.id) {
+            return [{
+                id: legacyClient.id,
+                host: legacyClient.host || '',
+                client_type: legacyClient.client_type || '',
+                release_name: '',
+                version: String(legacyClient.version || ''),
+            }];
+        }
+        return (group.subscribers || []).map((client) => ({
+            ...client,
+            version: client.version || String(group.version),
+        }));
+    }), [props.subscribers]);
+
     const versionTree = useMemo(() => {
         const versions: Record<string, number> = {}
-        props.subscribers.forEach((client) => {
+        clients.forEach((client) => {
             const version = client.version?.toString() || '-';
             versions[version] = (versions[version] || 0) + 1;
         });
@@ -66,23 +69,19 @@ const SubscribeTable: React.FC<ISubscribeTableProps> = (props) => {
             value: version,
             children: false,
         }));
-    }, [props.subscribers]);
+    }, [clients]);
 
     const clientTypes = useMemo(() => {
-        const types = new Set(props.subscribers.map((client) => client.client_type).filter(Boolean));
+        const types = new Set(clients.map((client) => client.client_type).filter(Boolean));
         return types.size;
-    }, [props.subscribers]);
-
-    const handleViewRelease = (view: boolean, row: TableRowData) => {
-
-    }
+    }, [clients]);
 
     const table = (
         <div className={style.subscribePanel}>
             <div className={style.summaryRail}>
                 <div className={style.summaryItem}>
                     <span>监听对象</span>
-                    <strong>{props.subscribers.length}</strong>
+                    <strong>{clients.length}</strong>
                 </div>
                 <div className={style.summaryItem}>
                     <span>订阅版本</span>
@@ -111,11 +110,11 @@ const SubscribeTable: React.FC<ISubscribeTableProps> = (props) => {
                 <div className={style.tableContent}>
                     <div className={style.tableHeader}>
                         <strong>客户端列表</strong>
-                        <span>{props.subscribers.length > 0 ? `当前 ${props.subscribers.length} 个客户端` : '暂无客户端订阅'}</span>
+                        <span>{clients.length > 0 ? `当前 ${clients.length} 个客户端` : '暂无客户端订阅'}</span>
                     </div>
                 <Table
-                    data={props.subscribers}
-                    columns={columns(props, handleViewRelease)}
+                    data={clients}
+                    columns={columns}
                     loading={false}
                     rowKey="id"
                     size="medium"
@@ -130,7 +129,7 @@ const SubscribeTable: React.FC<ISubscribeTableProps> = (props) => {
                     pagination={{
                         defaultCurrent: 1,
                         defaultPageSize: 10,
-                        total: props.subscribers.length,
+                        total: clients.length,
                         showJumper: true,
                     }}
                     selectOnRowClick={false}

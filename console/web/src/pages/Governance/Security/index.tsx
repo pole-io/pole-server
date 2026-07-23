@@ -1,7 +1,7 @@
 import React from 'react';
-import { Button, Col, Empty, Link, Popconfirm, Row, Space, Table, Tabs, Tag, Tooltip } from 'tdesign-react';
-import type { PageInfo, PrimaryTableProps, TableRowData } from 'tdesign-react';
-import { CreditcardIcon, DeleteIcon, RefreshIcon } from 'tdesign-icons-react';
+import { Button, Col, Empty, Link, Popconfirm, Row, Space, Table, Tabs, Tag, Tooltip } from 'components/Fluent';
+import type { PrimaryTableProps, TableRowData } from 'components/Fluent';
+import { CreditcardIcon, DeleteIcon, RefreshIcon } from 'components/Fluent/icons';
 
 import AuthorizeInput from 'components/Authorize';
 import Search from 'components/Search';
@@ -99,6 +99,7 @@ const columns = (
             <Space>
                 <Tooltip content={row.editable === false ? '无权限操作' : '授权'}>
                     <Button
+                        aria-label="授权"
                         shape="square"
                         variant="text"
                         disabled={row.editable === false}
@@ -116,7 +117,7 @@ const columns = (
                         theme="default"
                         onConfirm={() => operate(row as TrafficGovernanceRule, 'delete')}
                     >
-                        <Button shape="square" variant="text" disabled={row.deleteable === false}>
+                        <Button aria-label="删除" shape="square" variant="text" disabled={row.deleteable === false}>
                             <DeleteIcon />
                         </Button>
                     </Popconfirm>
@@ -247,7 +248,13 @@ const TrafficGovernanceTable: React.FC<TrafficGovernanceTableProps> = ({ kind })
                             }}
                         />
                         <Tooltip content="刷新">
-                            <RefreshIcon onClick={() => refreshData(1, limit, query)} />
+                            <Button
+                                aria-label="刷新规则列表"
+                                shape="square"
+                                variant="outline"
+                                icon={<RefreshIcon />}
+                                onClick={() => refreshData(1, limit, query)}
+                            />
                         </Tooltip>
                     </Space>
                 </Col>
@@ -278,7 +285,6 @@ const TrafficGovernanceTable: React.FC<TrafficGovernanceTableProps> = ({ kind })
                         refreshData(pageInfo.current, pageInfo.pageSize, query);
                     },
                 }}
-                onPageChange={(pageInfo: PageInfo) => refreshData(pageInfo.current, pageInfo.pageSize, query)}
             />
         </>
     );

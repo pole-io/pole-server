@@ -1,24 +1,25 @@
 .conditionEditor {
+  container-type: inline-size;
   min-width: 0;
 }
 
 .conditionHead {
   align-items: flex-start;
   display: flex;
-  gap: 16px;
+  gap: 20px;
   justify-content: space-between;
   margin-bottom: 12px;
 }
 
 .conditionTitle {
-  color: #111827;
+  color: var(--app-text);
   font-size: 15px;
   font-weight: 600;
   line-height: 22px;
 }
 
 .conditionHint {
-  color: #8b95a5;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
   margin-top: 2px;
@@ -29,106 +30,275 @@
   display: flex;
   flex: 0 0 auto;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   justify-content: flex-end;
   min-width: 0;
 }
 
-.segmented {
-  background: #f3f6fb;
-  border: 1px solid #d8dfe9;
-  border-radius: 8px;
-  display: inline-flex;
-  gap: 3px;
-  padding: 3px;
+.relationControl {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-height: 32px;
 }
 
-.segmentButton,
-.segmentButtonActive {
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  height: 28px;
+.relationLabel {
+  color: var(--app-text-secondary);
+  font-size: 12px;
   line-height: 18px;
-  min-width: 56px;
-  padding: 0 14px;
+  white-space: nowrap;
 }
 
-.segmentButton {
-  background: transparent;
-  color: #4e5969;
+.relationControl :global(.fui-RadioGroup) {
+  align-items: center;
+  column-gap: 4px;
+  display: flex;
 }
 
-.segmentButtonActive {
-  background: #1f75ff;
-  color: #fff;
+.relationControl :global(.fui-Radio) {
+  margin: 0;
 }
 
-.segmentButton:disabled,
-.segmentButtonActive:disabled {
-  cursor: not-allowed;
-  opacity: 0.78;
+.conditionSurface {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 8px;
+  min-width: 0;
+  overflow: visible;
 }
 
 .conditionTable {
-  border: 1px solid #e3e8f2;
-  border-radius: 8px;
+  min-width: 0;
+}
+
+.tableHeaderRow,
+.conditionRow {
   display: grid;
-  grid-template-columns: minmax(136px, 0.9fr) minmax(160px, 1fr) minmax(136px, 0.9fr) minmax(180px, 1.2fr) 56px;
-  overflow: hidden;
+  grid-template-columns: minmax(128px, 0.9fr) minmax(176px, 1.15fr) minmax(132px, 0.9fr) minmax(128px, 0.85fr) minmax(196px, 1.3fr) 48px;
+}
+
+.conditionTableNoKey .tableHeaderRow,
+.conditionTableNoKey .conditionRow {
+  grid-template-columns: minmax(150px, 1fr) minmax(142px, 0.95fr) minmax(134px, 0.9fr) minmax(220px, 1.4fr) 48px;
+}
+
+.tableHeaderRow {
+  background: var(--app-surface-subtle);
+  border-radius: 7px 7px 0 0;
 }
 
 .tableHeader {
-  background: #f7f9fc;
-  border-bottom: 1px solid #e3e8f2;
-  color: #667085;
+  align-items: center;
+  color: var(--app-text-secondary);
+  display: flex;
   font-size: 12px;
   font-weight: 600;
   line-height: 18px;
-  padding: 12px 14px;
-}
-
-.tableCell {
-  align-items: center;
-  border-bottom: 1px solid #edf1f7;
-  display: flex;
-  min-height: 56px;
+  min-height: 40px;
   min-width: 0;
-  padding: 10px 14px;
+  padding: 8px 12px;
+  white-space: nowrap;
 }
 
-.tableCell :global(.t-input),
-.tableCell :global(.t-select__wrap),
-.tableCell :global(.t-tag-input) {
+.actionHeader {
+  justify-content: center;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.conditionRow {
+  align-items: stretch;
+  border-top: 1px solid var(--app-border-subtle);
+  min-width: 0;
+  position: relative;
+}
+
+.tableField {
+  align-items: center;
+  display: flex;
+  min-height: 64px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.tableField :global(.fui-Input),
+.tableField :global(.fui-Combobox),
+.tableField :global(.fui-Dropdown),
+.tableField :global(.fluent-tag-input) {
+  max-width: 100%;
+  min-width: 0;
   width: 100%;
 }
 
-.conditionTable > .tableCell:nth-last-child(-n + 5) {
-  border-bottom: 0;
+.fieldLabel {
+  color: var(--app-text-secondary);
+  display: none;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
 }
 
 .actionCell {
+  align-items: center;
+  display: flex;
   justify-content: center;
-  padding-left: 8px;
-  padding-right: 8px;
+  min-height: 64px;
+  min-width: 0;
+  padding: 8px 4px;
+}
+
+.actionCell > span {
+  display: inline-flex;
 }
 
 .readonlyText {
-  color: #1f2937;
+  color: var(--app-text);
   font-size: 14px;
   line-height: 22px;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-.addButton {
-  margin-top: 10px;
-  padding-left: 0;
+.captureHint {
+  align-items: center;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 4px;
+  color: var(--app-text-secondary);
+  display: inline-flex;
+  font-size: 12px;
+  line-height: 18px;
+  min-height: 30px;
+  padding: 5px 9px;
+}
+
+.emptyState {
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+  padding: 28px 16px;
+  text-align: center;
+}
+
+.addBar {
+  align-items: center;
+  border-top: 1px solid var(--app-border-subtle);
+  display: flex;
+  min-height: 44px;
+  padding: 5px 8px;
+}
+
+.capabilityHint {
+  align-items: flex-start;
+  color: var(--app-text-secondary);
+  display: flex;
+  font-size: 12px;
+  gap: 6px;
+  line-height: 18px;
+  margin-top: 8px;
+}
+
+.capabilityHint svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
 }
 
 @media (max-width: 1280px) {
+  .tableHeaderRow,
+  .conditionRow {
+    grid-template-columns: minmax(116px, 0.9fr) minmax(152px, 1.1fr) minmax(122px, 0.9fr) minmax(118px, 0.85fr) minmax(178px, 1.25fr) 44px;
+  }
+
+  .conditionTableNoKey .tableHeaderRow,
+  .conditionTableNoKey .conditionRow {
+    grid-template-columns: minmax(136px, 1fr) minmax(130px, 0.95fr) minmax(124px, 0.9fr) minmax(190px, 1.35fr) 44px;
+  }
+
+  .tableField {
+    padding: 10px;
+  }
+}
+
+@container (max-width: 920px) {
+  .conditionHead {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .headActions {
+    justify-content: flex-start;
+  }
+
+  .tableHeaderRow {
+    display: none;
+  }
+
+  .conditionSurface {
+    background: transparent;
+    border: 0;
+  }
+
   .conditionTable {
-    grid-template-columns: minmax(128px, 0.9fr) minmax(150px, 1fr) minmax(128px, 0.9fr) minmax(160px, 1.1fr) 52px;
+    display: grid;
+    gap: 10px;
+  }
+
+  .conditionRow,
+  .conditionTableNoKey .conditionRow {
+    background: var(--app-surface);
+    border: 1px solid var(--app-border-subtle);
+    border-radius: 8px;
+    gap: 12px 16px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    padding: 14px 52px 14px 14px;
+  }
+
+  .tableField {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .fieldLabel {
+    display: block;
+  }
+
+  .valueField {
+    grid-column: 1 / -1;
+  }
+
+  .actionCell {
+    min-height: 0;
+    padding: 0;
+    position: absolute;
+    right: 8px;
+    top: 8px;
+  }
+
+  .addBar {
+    background: var(--app-surface);
+    border: 1px solid var(--app-border-subtle);
+    border-radius: 8px;
+    margin-top: 10px;
+  }
+}
+
+@container (max-width: 600px) {
+  .headActions,
+  .relationControl {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .conditionRow,
+  .conditionTableNoKey .conditionRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .valueField {
+    grid-column: auto;
   }
 }

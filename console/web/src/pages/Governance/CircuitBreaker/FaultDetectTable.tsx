@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Popconfirm, Empty } from 'tdesign-react';
-import { DeleteIcon, RefreshIcon, CreditcardIcon } from 'tdesign-icons-react';
+import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Popconfirm, Empty } from 'components/Fluent';
+import { DeleteIcon, RefreshIcon, CreditcardIcon } from 'components/Fluent/icons';
 import { useNavigate } from 'react-router-dom';
 
 import { Op } from 'services/types';
@@ -11,7 +11,7 @@ import style from './index.module.less';
 import Search from 'components/Search';
 import AuthorizeInput from 'components/Authorize';
 import { PolicySourceType } from 'services/auth_policy';
-import TabPanel from 'tdesign-react/es/tabs/TabPanel';
+import { TabPanel } from 'components/Fluent';
 import { FaultDetectRule } from 'services/faultdetect';
 import FaultDetectEditor from './FaultDetectEditor';
 import { clearFaultDetect, editorFaultDetect, listFaultDetects, listFaultDetectVersions, removeFaultDetects, removeFaultDetectVersion, rollbackFaultDetectVersion, selectFaultDetect } from 'modules/governance/faultdetect';

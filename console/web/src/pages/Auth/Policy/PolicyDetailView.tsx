@@ -1,12 +1,13 @@
 import React from 'react';
-import { Button, Input, Loading, PrimaryTableProps, Space, Table, TableRowData, Tabs, Tag } from 'tdesign-react';
-import { CopyIcon, SearchIcon } from 'tdesign-icons-react';
+import { Button, Drawer, Input, Loading, PrimaryTableProps, Space, Table, TableRowData, Tabs, Tag } from 'components/Fluent';
+import { CopyIcon, SearchIcon } from 'components/Fluent/icons';
 
 import style from './index.module.less';
 import { describeAuthPolicyDetail, PolicyResource, PolicyResourceLabel, PolicyRule } from 'services/auth_policy';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import { copyToClipboard } from 'utils/sys';
 import ErrorPage from 'components/ErrorPage';
+import ResourceNameLink from 'components/ResourceNameLink';
 
 const { TabPanel } = Tabs;
 
@@ -27,6 +28,8 @@ const resourceTypeOptions = [
     { label: '用户组', value: 'user_groups' },
     { label: '资源鉴权规则', value: 'auth_policies' },
     { label: '角色', value: 'roles' },
+    { label: 'MCP Server', value: 'mcp_servers' },
+    { label: 'A2A Agent', value: 'a2a_agents' },
 ];
 
 type ResourceFilter = 'all' | 'inherited';
@@ -130,6 +133,7 @@ const PolicyDetailView: React.FC<IPolicyDetailViewProps> = ({ policyId }) => {
         resourceFilter: 'all',
         selectedResourceRowKeys: [],
     });
+    const [selectedResource, setSelectedResource] = React.useState<ResourceRow | null>(null);
 
     React.useEffect(() => {
         if (!policyId) {
@@ -300,7 +304,16 @@ const PolicyDetailView: React.FC<IPolicyDetailViewProps> = ({ policyId }) => {
         {
             colKey: 'name',
             title: '资源名称',
-            cell: ({ row }) => <span>{row.name || '-'}</span>,
+            width: 220,
+            minWidth: 180,
+            ellipsis: true,
+            cell: ({ row }) => (
+                <ResourceNameLink
+                    className={style.policyResourceNameLink}
+                    name={row.name}
+                    onClick={() => setSelectedResource(row as ResourceRow)}
+                />
+            ),
         },
         {
             colKey: 'modeLabel',
@@ -342,7 +355,8 @@ const PolicyDetailView: React.FC<IPolicyDetailViewProps> = ({ policyId }) => {
                         const rows = viewState.allResources.filter(row => row.type === item.value);
                         const inherited = rows.some(row => row.mode === 'inherited');
                         return (
-                            <button
+                            <Button
+                                variant="text"
                                 key={item.value}
                                 type="button"
                                 className={viewState.activeResourceType === item.value ? style.activeResourceType : undefined}
@@ -354,7 +368,7 @@ const PolicyDetailView: React.FC<IPolicyDetailViewProps> = ({ policyId }) => {
                                     <em>{inherited ? '覆盖新增资源' : '仅显式资源'}</em>
                                 </span>
                                 <b>{rows.length}</b>
-                            </button>
+                            </Button>
                         );
                     })}
                 </div>
@@ -448,12 +462,12 @@ const PolicyDetailView: React.FC<IPolicyDetailViewProps> = ({ policyId }) => {
         <Table
             data={functionRows}
             columns={[
-                { colKey: 'group', title: '接口分组' },
-                { colKey: 'scope', title: '访问范围' },
+                { colKey: 'group', title: '接口分组', width: 30, ellipsis: true },
+                { colKey: 'scope', title: '访问范围', width: 50, ellipsis: true },
                 {
                     colKey: 'status',
                     title: '状态',
-                    width: 100,
+                    width: 20,
                     cell: ({ row }) => <Tag theme={getActionTheme(viewState.rule.action)} variant="light">{row.status}</Tag>,
                 },
             ]}
@@ -465,11 +479,12 @@ const PolicyDetailView: React.FC<IPolicyDetailViewProps> = ({ policyId }) => {
     );
 
     return (
-        <Loading indicator loading={viewState.loading} preventScrollThrough showOverlay>
-            {viewState.fetchError ? (
-                <ErrorPage code={500} />
-            ) : (
-                <div className={style.policyDetailView}>
+        <>
+            <Loading className={style.policyDetailLoading} indicator loading={viewState.loading} preventScrollThrough showOverlay>
+                {viewState.fetchError ? (
+                    <ErrorPage code={500} />
+                ) : (
+                    <div className={style.policyDetailView}>
                     <div className={style.policyDetailHeader}>
                         <Tag theme={getActionTheme(viewState.rule.action)} variant="light">{getActionLabel(viewState.rule.action)}</Tag>
                         {viewState.rule.default_strategy && <Tag theme="primary" variant="outline">默认策略</Tag>}
@@ -489,9 +504,28 @@ const PolicyDetailView: React.FC<IPolicyDetailViewProps> = ({ policyId }) => {
                             {renderFunctions()}
                         </TabPanel>
                     </Tabs>
-                </div>
-            )}
-        </Loading>
+                    </div>
+                )}
+            </Loading>
+            <Drawer
+                visible={Boolean(selectedResource)}
+                header={selectedResource?.name || '资源详情'}
+                footer={false}
+                size="small"
+                onClose={() => setSelectedResource(null)}
+            >
+                {selectedResource && (
+                    <div className={style.resourceReferenceDetail}>
+                        <div><span>资源名称</span><strong>{selectedResource.name || '-'}</strong></div>
+                        <div><span>资源类型</span><strong>{getResourceTypeLabel(selectedResource.type)}</strong></div>
+                        <div><span>资源 ID</span><strong>{selectedResource.id === '*' ? '全部（包括新增）' : selectedResource.id || '-'}</strong></div>
+                        <div><span>命名空间</span><strong>{selectedResource.namespace || '-'}</strong></div>
+                        <div><span>授权方式</span><strong>{selectedResource.modeLabel}</strong></div>
+                        <div><span>授权范围</span><strong>{selectedResource.scopeLabel}</strong></div>
+                    </div>
+                )}
+            </Drawer>
+        </>
     );
 };
 

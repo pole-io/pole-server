@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button, Dialog, Input } from 'tdesign-react';
-import { AddIcon, CloseIcon, Edit1Icon } from 'tdesign-icons-react';
+import { Button, Dialog, Input } from 'components/Fluent';
+import { AddIcon, CloseIcon, Edit1Icon } from 'components/Fluent/icons';
 
 import style from './governance.module.less';
 
@@ -49,9 +49,9 @@ const RuleLabelField: React.FC<RuleLabelFieldProps> = ({ metadata, editable = fa
                 </span>
             )) : <span className={style.emptyLine}>暂无规则标签</span>}
             {editable && (
-                <button type="button" className={style.editChipButton} onClick={open}>
+                <Button variant="text" type="button" className={style.editChipButton} onClick={open}>
                     <Edit1Icon />编辑标签
-                </button>
+                </Button>
             )}
             <Dialog
                 header="编辑规则标签"

@@ -3,9 +3,11 @@ package otel
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -21,6 +23,11 @@ type OtelShutdown func(context.Context) error
 // setupOTelSDK bootstraps the OpenTelemetry pipeline.
 // If it does not return an error, make sure to call shutdown for proper cleanup.
 func SetupOTelSDK(ctx context.Context, conf *Config) (shutdown OtelShutdown, err error) {
+	if conf == nil {
+		return nil, fmt.Errorf("otel config is nil")
+	}
+	conf.setDefault()
+
 	var shutdownFuncs []OtelShutdown
 
 	// shutdown calls cleanup functions registered via shutdownFuncs.
@@ -35,7 +42,7 @@ func SetupOTelSDK(ctx context.Context, conf *Config) (shutdown OtelShutdown, err
 		return err
 	}
 
-	res, err := resource.New(context.Background(), resource.WithAttributes())
+	res, err := resource.New(context.Background(), resource.WithAttributes(resourceAttributes(conf)...))
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +72,19 @@ func SetupOTelSDK(ctx context.Context, conf *Config) (shutdown OtelShutdown, err
 	}
 	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
 	return
+}
+
+func resourceAttributes(conf *Config) []attribute.KeyValue {
+	attrs := []attribute.KeyValue{
+		attribute.String("service.name", conf.ServiceName),
+		attribute.String("deployment.environment.name", conf.Environment),
+		attribute.String("pole.cluster", conf.Cluster),
+		attribute.String("pole.node.role", conf.NodeRole),
+	}
+	if conf.ServiceVersion != "" {
+		attrs = append(attrs, attribute.String("service.version", conf.ServiceVersion))
+	}
+	return attrs
 }
 
 func newPropagator() propagation.TextMapPropagator {

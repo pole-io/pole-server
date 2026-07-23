@@ -306,6 +306,16 @@ func NewDiscoverResponse(code apimodel.Code) *apiservice.DiscoverResponse {
 	}
 }
 
+// NewDiscoverServiceIdentityResponse creates a response for the authenticated
+// SDK's internal service identity. It intentionally does not carry Service.token.
+func NewDiscoverServiceIdentityResponse(code apimodel.Code) *apiservice.DiscoverResponse {
+	return &apiservice.DiscoverResponse{
+		Code: uint32(code),
+		Info: code2info[uint32(code)],
+		Type: apiservice.DiscoverResponse_SERVICE_IDENTITY,
+	}
+}
+
 /**
  * @brief 创建查询服务回复
  */

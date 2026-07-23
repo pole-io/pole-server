@@ -12,6 +12,7 @@ type ObserverStore interface {
 	Destroy() error
 	HistoryFetcher
 	EventFetcher
+	SystemSettingsRepository
 }
 
 type HistoryFetcher interface {

@@ -1,47 +1,29 @@
-import React, { memo, useState } from 'react';
-import classname from 'classnames';
-import Style from './RadioRect.module.less';
+import React, { memo } from 'react';
+import { Field, Radio, RadioGroup } from '@fluentui/react-components';
 
 interface IOption {
-  value?: any;
-  image: JSX.Element | string;
-  name?: string;
+  value: string;
+  name: string;
 }
 
 interface IProps {
-  defaultValue?: number | string;
-  onChange: (value?: any) => void;
+  value: string;
+  onChange: (value: string) => void;
   options: IOption[];
 }
 
 export default memo((props: IProps) => {
-  const [selectValue, setSelectValue] = useState(props.defaultValue);
-
-  const handleClick = (option: IOption) => {
-    setSelectValue(option.value);
-    props?.onChange(option.value);
-  };
-
   return (
-    <div className={Style.radioRectPanel}>
-      {props.options.map((item, index) => {
-        let ImageItem = item.image;
-        if (typeof item.image === 'string') {
-          ImageItem = <div className={Style.rectImg} style={{ backgroundImage: `url(${item.image})` }} />;
-        }
-
-        return (
-          <div key={index}>
-            <div
-              className={classname(Style.rectItem, { [Style.rectItemSelected]: selectValue === item.value })}
-              onClick={() => handleClick(item)}
-            >
-              {ImageItem}
-            </div>
-            {item.name && <div className={Style.rectText}>{item.name}</div>}
-          </div>
-        );
-      })}
-    </div>
+    <Field label='主题模式'>
+      <RadioGroup
+        layout='horizontal'
+        value={props.value}
+        onChange={(_event, data) => props.onChange(data.value)}
+      >
+        {props.options.map((item) => (
+          <Radio key={item.value} value={item.value} label={item.name} />
+        ))}
+      </RadioGroup>
+    </Field>
   );
 });

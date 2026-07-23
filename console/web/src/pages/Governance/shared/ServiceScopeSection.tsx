@@ -1,8 +1,9 @@
 import React from 'react';
-import { Popup, Select } from 'tdesign-react';
-import { ChevronRightIcon, SendIcon } from 'tdesign-icons-react';
+import { Button, Popup, Select, Tag } from 'components/Fluent';
+import { ChevronRightIcon, SendIcon } from 'components/Fluent/icons';
 
 import styles from './ServiceScopeSection.module.less';
+import { GovernanceServiceRole } from './serviceContext';
 
 export interface ServiceScopeValue {
     namespace?: string;
@@ -33,6 +34,7 @@ interface ServiceScopeSectionProps {
     onCalleeNamespaceChange: (value: string) => void;
     onCalleeServiceChange: (value: string) => void;
     extraContent?: React.ReactNode;
+    fixedRole?: GovernanceServiceRole;
 }
 
 const textFromOption = (options: ServiceScopeOption[], value?: string, fallback = '-') => {
@@ -66,6 +68,7 @@ const ServiceScopeSection: React.FC<ServiceScopeSectionProps> = ({
     onCalleeNamespaceChange,
     onCalleeServiceChange,
     extraContent,
+    fixedRole,
 }) => {
     const callerNamespaces = callerNamespaceOptions || namespaceOptions || [];
     const calleeNamespaces = calleeNamespaceOptions || namespaceOptions || [];
@@ -83,16 +86,18 @@ const ServiceScopeSection: React.FC<ServiceScopeSectionProps> = ({
         const currentNamespaceOptions = isCaller ? callerNamespaces : calleeNamespaces;
         const namespaceText = isCaller ? callerNamespaceText : calleeNamespaceText;
         const serviceText = isCaller ? callerServiceText : calleeServiceText;
+        const isFixed = fixedRole === type;
         return (
             <div className={`${styles.serviceCard} ${isCaller ? styles.serviceCaller : styles.serviceCallee}`}>
                 <div className={styles.serviceCardHead}>
                     <span className={styles.serviceDot} />
-                    <div>
+                    <div className={styles.serviceCardTitleGroup}>
                         <div className={styles.serviceTitle}>{isCaller ? '主调' : '被调'}</div>
                         <div className={styles.serviceSubtitle}>{isCaller ? '发起调用方' : '目标服务方'}</div>
                     </div>
+                    {isFixed && <Tag className={styles.fixedTag} theme="primary" variant="light">当前服务</Tag>}
                 </div>
-                {editable ? (
+                {editable && !isFixed ? (
                     <div className={styles.serviceFields}>
                         <div>
                             <div className={styles.fieldLabel}>命名空间</div>
@@ -143,7 +148,9 @@ const ServiceScopeSection: React.FC<ServiceScopeSectionProps> = ({
                         </Popup>
                     </div>
                 </div>
-                <button
+                <Button
+                    aria-label={collapsed ? `展开${title}` : `收起${title}`}
+                    variant="text"
                     type="button"
                     className={`${styles.caretButton} ${collapsed ? '' : styles.caretButtonOpen}`}
                     onClick={(event) => {
@@ -152,7 +159,7 @@ const ServiceScopeSection: React.FC<ServiceScopeSectionProps> = ({
                     }}
                 >
                     <ChevronRightIcon />
-                </button>
+                </Button>
             </div>
             {!collapsed && (
                 <div className={styles.scopeBody}>

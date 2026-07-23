@@ -1,13 +1,30 @@
 .itemContainer {
-  width: 400px;
-  margin-top: 48px;
+  width: 100%;
+
+  :global {
+    .fui-Field {
+      margin-bottom: 18px;
+    }
+
+    .fui-Input {
+      width: 100%;
+      min-height: 46px;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--app-surface) 88%, transparent);
+      transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+
+      &:focus-within {
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-brand) 14%, transparent);
+      }
+    }
+  }
 }
 
 .checkContainer {
   display: flex;
   align-items: center;
   font-size: 14px;
-  color: var(--td-text-color-secondary);
+  color: var(--app-text-secondary);
 
   &.rememberPwd {
     margin-bottom: 16px;
@@ -15,12 +32,12 @@
   }
 
   :global {
-    .t-checkbox__label {
-      color: var(--td-text-color-secondary);
+    .fui-Checkbox__label {
+      color: var(--app-text-secondary);
     }
 
     span {
-      color: var(--td-brand-color);
+      color: var(--app-brand);
 
       &:hover {
         cursor: pointer;
@@ -38,15 +55,15 @@
 
   :global {
     .tip {
-      color: var(--td-text-color-primary);
+      color: var(--app-text);
     }
 
     .refresh {
       display: flex;
       align-items: center;
-      color: var(--td-brand-color);
+      color: var(--app-brand);
 
-      .t-icon {
+      svg {
         font-size: 14px;
         margin-left: 4px;
       }
@@ -61,7 +78,7 @@
 .checkContainerTip {
   float: right;
   font-size: 14px;
-  color: var(--td-brand-color);
+  color: var(--app-brand);
 }
 
 .verificationBtn {
@@ -72,7 +89,36 @@
 }
 
 .btnContainer {
-  margin-top: 48px;
+  margin-top: 10px;
+
+  :global(.fui-Button) {
+    min-height: 46px;
+    border-radius: 8px;
+    font-weight: 650;
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+
+    &:hover {
+      box-shadow: 0 10px 24px color-mix(in srgb, var(--app-brand) 24%, transparent);
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      box-shadow: none;
+      transform: translateY(0);
+    }
+  }
+}
+
+.passwordToggle {
+  min-width: 30px !important;
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  color: var(--app-text-secondary) !important;
+
+  &:hover {
+    color: var(--app-text) !important;
+  }
 }
 
 .switchContainer {
@@ -81,7 +127,7 @@
   :global {
     .tip {
       font-size: 14px;
-      color: var(--td-brand-color);
+      color: var(--app-brand);
       cursor: pointer;
       display: inline-flex;
       align-items: center;
@@ -93,7 +139,7 @@
           display: block;
           width: 1px;
           height: 12px;
-          background: var(--td-gray-color-3);
+          background: var(--app-gray-3);
           margin-left: 14px;
         }
       }

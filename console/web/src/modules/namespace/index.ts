@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from '../store';
 import { modifyNamespace, createNamespace, NamespaceView, Namespace, CreateNamespaceRequest, ModifyNamespaceRequest, DeleteNamespaceRequest, deleteNamespace, describeNamespaces, DescribeNamespaceRequest, describeAllNamespaces } from '../../services/namespace'
+import { toRequestErrorPayload } from '../../utils/request';
 
 // State 和 Action 类型定义
 export interface NamespaceState {
@@ -30,7 +31,7 @@ export const listAllNamespaces = createAsyncThunk(`namespace/list_all`, async (_
             datas: res,
         }); // 返回 token
     } catch (error) {
-        return rejectWithValue((error as Error).message); // 捕获错误并返回
+        return rejectWithValue(toRequestErrorPayload(error));
     }
 });
 
@@ -44,7 +45,7 @@ export const listNamespaces = createAsyncThunk(`namespace/list`, async ({ param 
             limit: param.limit || 10
         }); // 返回 token
     } catch (error) {
-        return rejectWithValue((error as Error).message); // 捕获错误并返回
+        return rejectWithValue(toRequestErrorPayload(error));
     }
 });
 
@@ -53,7 +54,7 @@ export const saveNamespace = createAsyncThunk(`namespace/create`, async ({ param
         const res = await createNamespace([param]);
         return fulfillWithValue(res); // 返回 token
     } catch (error) {
-        return rejectWithValue((error as Error).message); // 捕获错误并返回
+        return rejectWithValue(toRequestErrorPayload(error));
     }
 });
 
@@ -62,7 +63,7 @@ export const updateNamespace = createAsyncThunk(`namespace/update`, async ({ par
         const res = await modifyNamespace([param]);
         return fulfillWithValue(res); // 返回 token
     } catch (error) {
-        return rejectWithValue((error as Error).message); // 捕获错误并返回
+        return rejectWithValue(toRequestErrorPayload(error));
     }
 });
 
@@ -71,7 +72,7 @@ export const removeNamespace = createAsyncThunk(`namespace/delete`, async ({ par
         const res = await deleteNamespace([param]);
         return fulfillWithValue(res); // 返回 token
     } catch (error) {
-        return rejectWithValue((error as Error).message); // 捕获错误并返回
+        return rejectWithValue(toRequestErrorPayload(error));
     }
 });
 

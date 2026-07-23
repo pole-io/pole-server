@@ -1,20 +1,23 @@
 import React from 'react';
-import { Breadcrumb, Tabs } from 'tdesign-react';
+import { Breadcrumb, Loading, Tabs } from 'components/Fluent';
 import { useNavigate } from 'react-router-dom';
 
 import InstanceTable from './InstanceTable';
 import ServiceDetail from './ServiceDetail';
 import SubscribeTable from './SubscribeTable';
 import ServiceAliasTable from '../alias';
+import style from './index.module.less';
 
 const { TabPanel } = Tabs;
 const { BreadcrumbItem } = Breadcrumb;
+const GovernanceWorkbench = React.lazy(() => import('pages/Governance/Workbench'));
 
 export default React.memo(() => {
     const navigate = useNavigate()
     const urlParams = new URLSearchParams(window.location.search);
     const namespace = urlParams.get('namespace');
     const serviceName = urlParams.get('service');
+    const editMode = urlParams.get('mode') === 'edit';
 
     const [activeTab, setActiveTab] = React.useState('0');
 
@@ -36,6 +39,8 @@ export default React.memo(() => {
                         <ServiceDetail
                             namespace={namespace || ''}
                             serviceName={serviceName || ''}
+                            onTabChange={setActiveTab}
+                            initialEdit={editMode}
                         />
                     )}
                 </TabPanel>
@@ -62,6 +67,21 @@ export default React.memo(() => {
                             namespace={namespace || ''}
                             serviceName={serviceName || ''}
                         />
+                    )}
+                </TabPanel>
+                <TabPanel value={"4"} label="流量治理">
+                    {activeTab === '4' && (
+                        <React.Suspense fallback={<Loading text="加载流量治理中..." />}>
+                            <section
+                                className={style.serviceGovernance}
+                                title={`${namespace || '-'}/${serviceName || '-'}`}
+                            >
+                                <GovernanceWorkbench
+                                    embedded
+                                    serviceContext={{ namespace: namespace || '', service: serviceName || '' }}
+                                />
+                            </section>
+                        </React.Suspense>
                     )}
                 </TabPanel>
             </Tabs>

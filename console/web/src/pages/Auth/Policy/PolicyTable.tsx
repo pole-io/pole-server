@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Link, Table, Button, PageInfo, PrimaryTableProps, TableProps, Tooltip, Space, Row, Col, TableRowData, Tag, Popconfirm } from 'tdesign-react';
-import { CreditcardIcon, DeleteIcon, RefreshIcon, System2Icon, User1Icon, UsergroupIcon } from 'tdesign-icons-react';
+import { Table, Button, PageInfo, Popconfirm, PrimaryTableProps, TableProps, Space, TableRowData, Tag, Tooltip } from 'components/Fluent';
+import { AddIcon, RefreshIcon, System2Icon, User1Icon, UsergroupIcon } from 'components/Fluent/icons';
+import { useNavigate } from 'react-router-dom';
 
 import Search from 'components/Search';
 import ErrorPage from 'components/ErrorPage';
 import Text from 'components/Text';
+import { ConfirmOperationButton, OperationButton } from 'components/OperationButton';
+import ResourceNameLink from 'components/ResourceNameLink';
+import { ResourceToolbar } from 'components/ResourceLayout';
 import { useAppDispatch } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
@@ -18,7 +22,10 @@ interface IPolicyTableProps {
 
 const ServerError = () => <ErrorPage code={500} />;
 
-const defaultColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'create' | 'edit' | 'delete', res: string) => void): PrimaryTableProps['columns'] => [
+const defaultColumns = (
+    handleEditPolicy: (row: TableRowData, op: 'view' | 'create' | 'edit' | 'delete', res: string) => void,
+    openPolicyDetail: (row: TableRowData) => void,
+): PrimaryTableProps['columns'] => [
     {
         colKey: 'id',
         title: 'ID',
@@ -58,9 +65,7 @@ const defaultColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'crea
             if (name.indexOf('(用户)') === 0) {
                 displayName = name.replace('(用户)', '')
             }
-            return (
-                <Link theme='primary' onClick={() => handleEditPolicy(row, 'view', 'policy_rule')}>{displayName}</Link>
-            )
+            return <ResourceNameLink name={displayName} onClick={() => openPolicyDetail(row)} />;
         },
     },
     {
@@ -94,29 +99,9 @@ const defaultColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'crea
         cell: ({ row }) => {
             return (
                 <Space>
-                    <Tooltip content={row.editable === false ? '无权限操作' : '查看 / 编辑'}>
-                        <Button
-                            shape="square"
-                            variant="text"
-                            disabled={row.editable === false}
-                            aria-label="查看 / 编辑"
-                            onClick={() => handleEditPolicy(row, 'view', 'policy_rule')}>
-                            <CreditcardIcon />
-                        </Button>
-                    </Tooltip>
+                    <OperationButton action="view" onClick={() => openPolicyDetail(row)} />
                     {!row.default_strategy && (
-                        <Tooltip content={row.deleteable === false ? '无权限操作' : '删除'}>
-                            <Button
-                                shape="square"
-                                variant="text"
-                                disabled={row.deleteable === false}
-                                onClick={() => {
-                                    handleEditPolicy(row, 'delete', 'policy_rule');
-                                }}
-                            >
-                                <DeleteIcon />
-                            </Button>
-                        </Tooltip>
+                        <ConfirmOperationButton action="delete" disabled={row.deleteable === false} disabledLabel="无权限操作" confirmContent="确认删除吗" onConfirm={() => handleEditPolicy(row, 'delete', 'policy_rule')} />
                     )}
                 </Space>
             )
@@ -125,7 +110,10 @@ const defaultColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'crea
 ]
 
 
-const customColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'create' | 'edit' | 'delete', res: string) => void): PrimaryTableProps['columns'] => [
+const customColumns = (
+    handleEditPolicy: (row: TableRowData, op: 'view' | 'create' | 'edit' | 'delete', res: string) => void,
+    openPolicyDetail: (row: TableRowData) => void,
+): PrimaryTableProps['columns'] => [
     {
         colKey: 'id',
         title: 'ID',
@@ -136,7 +124,7 @@ const customColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'creat
         colKey: 'name',
         title: '名称',
         cell: ({ row }) => (
-            <Link theme='primary' onClick={() => handleEditPolicy(row, 'view', 'policy_rule')}>{row.name}</Link>
+            <ResourceNameLink name={row.name} onClick={() => openPolicyDetail(row)} />
         ),
     },
     {
@@ -170,37 +158,9 @@ const customColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'creat
         cell: ({ row }) => {
             return (
                 <Space>
-                    <Tooltip content={row.editable === false ? '无权限操作' : '查看 / 编辑'}>
-                        <Button
-                            shape="square"
-                            variant="text"
-                            disabled={row.editable === false}
-                            aria-label="查看 / 编辑"
-                            onClick={() => handleEditPolicy(row, 'view', 'policy_rule')}>
-                            <CreditcardIcon />
-                        </Button>
-                    </Tooltip>
+                    <OperationButton action="view" onClick={() => openPolicyDetail(row)} />
                     {!row.default_strategy && (
-                        <Tooltip content={row.deleteable === false ? '无权限操作' : '删除'}>
-                            <Popconfirm
-                                content="确认删除吗"
-                                destroyOnClose
-                                placement="top"
-                                showArrow
-                                theme="default"
-                                onConfirm={() => {
-                                    handleEditPolicy(row, 'delete', 'policy_rule');
-                                }}
-                            >
-                                <Button
-                                    shape="square"
-                                    variant="text"
-                                    disabled={row.deleteable === false}
-                                >
-                                    <DeleteIcon />
-                                </Button>
-                            </Popconfirm>
-                        </Tooltip>
+                        <ConfirmOperationButton action="delete" disabled={row.deleteable === false} disabledLabel="无权限操作" confirmContent="确认删除吗" onConfirm={() => handleEditPolicy(row, 'delete', 'policy_rule')} />
                     )}
                 </Space>
             )
@@ -211,6 +171,7 @@ const customColumns = (handleEditPolicy: (row: TableRowData, op: 'view' | 'creat
 
 const PolicyTable: React.FC<IPolicyTableProps> = (props) => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const [selectedRowKeys, setSelectedRowKeys] = useState<Array<string | number>>([]);
 
     // 合并编辑相关状态
@@ -233,20 +194,30 @@ const PolicyTable: React.FC<IPolicyTableProps> = (props) => {
         data?: TableRowData;
     }>({ visible: false, resource: '', mode: 'create', data: undefined });
 
+    const openPolicyDetail = (row: TableRowData) => {
+        navigate(`/auth/policies/detail?name=${encodeURIComponent(String(row.name || ''))}&id=${encodeURIComponent(String(row.id || ''))}`);
+    };
+
+    const handleBatchDeletePolicies = async (ids: string[]) => {
+        if (!ids.length) {
+            return;
+        }
+        setSearchState(s => ({ ...s, isLoading: true }));
+        const result = await dispatch(removePolicyRules({ ids }));
+        if (result.meta.requestStatus === 'fulfilled') {
+            openInfoNotification('请求成功', `已删除 ${ids.length} 条鉴权策略`);
+            setSelectedRowKeys([]);
+            await fetchData({ current: 1, pageSize: searchState.limit, previous: 0 }, searchState.query);
+            return;
+        }
+        setSearchState(s => ({ ...s, isLoading: false }));
+        openErrNotification('删除鉴权策略失败', String(result.payload || '未知错误'));
+    };
+
     // 编辑、新建事件
     const handleEditPolicy = (row: TableRowData, mode: 'view' | 'create' | 'edit' | 'delete', res: string) => {
         if (mode === 'delete') {
-            setSearchState(s => ({ ...s, isLoading: true }));
-            dispatch(removePolicyRules({ ids: [row.id as string] }))
-                .then((res) => {
-                    openInfoNotification("请求成功", "删除鉴权策略成功");
-                })
-                .catch((err) => {
-                    openErrNotification("请求失败", err);
-                })
-                .finally(() => {
-                    setSearchState(s => ({ ...s, isLoading: false }));
-                });
+            void handleBatchDeletePolicies([row.id as string]);
             return;
         }
         dispatch(editorPolicyRules({
@@ -277,12 +248,13 @@ const PolicyTable: React.FC<IPolicyTableProps> = (props) => {
 
     // 模拟远程请求
     async function fetchData(pageInfo: PageInfo, searchParam?: string) {
-        setSearchState(s => ({ ...s, current: pageInfo.current, limit: pageInfo.pageSize, previous: pageInfo.previous, fetchError: false, isLoading: true }));
+        const query = searchParam ?? searchState.query;
+        setSearchState(s => ({ ...s, current: pageInfo.current, limit: pageInfo.pageSize, previous: pageInfo.previous, query, fetchError: false, isLoading: true }));
         try {
             const { current, pageSize } = pageInfo;
 
             const params = {
-                name: searchParam,
+                name: query,
                 default: props.type === 'default' ? "true" : "false",
             }
 
@@ -304,39 +276,43 @@ const PolicyTable: React.FC<IPolicyTableProps> = (props) => {
 
     const table = (
         <>
-            <Row justify='space-between' className={style.toolBar}>
-                <Col>
-                    <Row gutter={8} align='middle'>
-                        <Col>
-                            {props.type === 'custom' && (
-                                <Button onClick={handleCreatePolicy}>新建</Button>
-                            )}
-                        </Col>
-                        {(selectedRowKeys.length > 0 && props.type === 'custom') && (
-                            <>
-                                <Col>
-                                    <Button theme='danger'>批量删除</Button>
-                                </Col>
-                                <Col>
-                                    <div>已选 {selectedRowKeys?.length || 0} 项</div>
-                                </Col>
-                            </>
-                        )}
-                    </Row>
-                </Col>
-                <Col>
-                    <Space>
+            <ResourceToolbar
+                className={style.toolBar}
+                title={props.type === 'custom' ? '自定义策略列表' : '默认策略列表'}
+                count={searchState.isLoading ? '正在同步列表' : `共 ${searchState.total} 条`}
+                filters={(
+                    <>
                         <Search
+                            value={searchState.query}
                             onChange={(value: string) => {
                                 fetchData({ current: 1, pageSize: searchState.limit, previous: 0, }, value);
                             }}
                         />
                         <Tooltip content="刷新">
-                            <RefreshIcon onClick={() => fetchData({ current: 1, pageSize: searchState.limit, previous: 0 })} />
+                            <Button aria-label="刷新策略列表" shape="square" variant="outline" onClick={() => fetchData({ current: 1, pageSize: searchState.limit, previous: 0 }, searchState.query)}>
+                                <RefreshIcon />
+                            </Button>
                         </Tooltip>
-                    </Space>
-                </Col>
-            </Row>
+                        {(selectedRowKeys.length > 0 && props.type === 'custom') && (
+                            <>
+                                <span className={style.selectionHint}>已选 {selectedRowKeys.length} 项</span>
+                                <Popconfirm
+                                    content={`确认删除选中的 ${selectedRowKeys.length} 条策略吗？`}
+                                    destroyOnClose
+                                    placement="top"
+                                    showArrow
+                                    onConfirm={() => handleBatchDeletePolicies(selectedRowKeys.map(String))}
+                                >
+                                    <Button theme="danger">批量删除</Button>
+                                </Popconfirm>
+                            </>
+                        )}
+                        {props.type === 'custom' && (
+                            <Button theme="primary" icon={<AddIcon />} onClick={handleCreatePolicy}>新建策略</Button>
+                        )}
+                    </>
+                )}
+            />
             <PolicyEditor
                 key={editorState.mode + (editorState.data?.name || 'new') + (editorState.visible ? '1' : '0')}
                 visible={editorState.visible && editorState.resource === 'policy_rule'}
@@ -344,14 +320,14 @@ const PolicyTable: React.FC<IPolicyTableProps> = (props) => {
                     // 关闭后重置编辑器状态
                     dispatch(resetPolicyRules());
                     setEditorState(s => ({ ...s, visible: false }));
-                    fetchData({ current: 1, pageSize: searchState.limit, previous: 0 }, '');
+                    fetchData({ current: 1, pageSize: searchState.limit, previous: 0 }, searchState.query);
                 }} op={editorState.mode} />
             <Table
                 data={searchState.policies}
                 columns={props.type === 'default' ?
-                    defaultColumns(handleEditPolicy)
+                    defaultColumns(handleEditPolicy, openPolicyDetail)
                     :
-                    customColumns(handleEditPolicy)}
+                    customColumns(handleEditPolicy, openPolicyDetail)}
                 loading={searchState.isLoading}
                 rowKey="id"
                 size={"large"}
@@ -365,9 +341,6 @@ const PolicyTable: React.FC<IPolicyTableProps> = (props) => {
                     onChange(pageInfo) {
                         fetchData(pageInfo, searchState.query);
                     },
-                }}
-                onPageChange={(pageInfo) => {
-                    fetchData(pageInfo, searchState.query);
                 }}
                 selectOnRowClick={false}
                 selectedRowKeys={selectedRowKeys}

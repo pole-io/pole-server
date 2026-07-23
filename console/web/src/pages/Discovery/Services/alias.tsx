@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Popconfirm, Input } from 'tdesign-react';
-import { AddIcon, CopyIcon, DeleteIcon, EditIcon, SearchIcon } from 'tdesign-icons-react';
+import { Link, Table, Button, Drawer, PrimaryTableProps, Space, TableRowData, Input } from 'components/Fluent';
+import { AddIcon, SearchIcon } from 'components/Fluent/icons';
 import { useNavigate } from 'react-router-dom';
 
 import Text from 'components/Text';
+import { ConfirmOperationButton, OperationButton } from 'components/OperationButton';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
@@ -11,6 +12,7 @@ import { cleanAliasPage, listServiceAliass, removeServiceAliass, resetServiceAli
 import AliasEditor from './AliasEditor';
 import { Op } from 'services/types';
 import { copyToClipboard } from 'utils/sys';
+import ResourceNameLink from 'components/ResourceNameLink';
 
 interface IServiceAliasProps {
     namespace?: string;
@@ -28,17 +30,25 @@ const columns = (
     redirect: (service: string, namespace: string) => void,
     inServiceDetail: boolean,
     copyAlias: (row: TableRowData) => void,
+    viewAlias: (row: TableRowData) => void,
 ): PrimaryTableProps['columns'] => {
     const baseColumns: PrimaryTableProps['columns'] = [
         {
         colKey: 'alias_namespace',
         title: '别名命名空间',
-        cell: ({ row: { alias_namespace } }) => <Text>{alias_namespace}</Text>,
+        width: 180,
+        fixed: 'left',
+        cell: ({ row: { alias_namespace } }) => <Text title={String(alias_namespace || '-')}>{alias_namespace}</Text>,
         },
         {
         colKey: 'alias',
         title: '服务别名',
-        cell: ({ row: { alias } }) => <Text>{alias}</Text>,
+        width: 200,
+        cell: ({ row }) => (
+            <span title={String(row.alias || '-')}>
+                <ResourceNameLink name={row.alias} onClick={() => viewAlias(row)} />
+            </span>
+        ),
         },
     ];
 
@@ -47,14 +57,17 @@ const columns = (
             {
                 colKey: 'namespace',
                 title: '目标服务命名空间',
-                cell: ({ row: { namespace } }: TableRowData) => <Text>{namespace}</Text>,
+                width: 200,
+                cell: ({ row: { namespace } }: TableRowData) => <Text title={String(namespace || '-')}>{namespace}</Text>,
             },
             {
                 colKey: 'service',
                 title: '目标服务名',
+                width: 220,
                 cell: ({ row: { service, namespace } }) => {
                     return (
                         <Link theme='primary'
+                            title={String(service || '-')}
                             onClick={() => {
                                 redirect(service, namespace);
                             }}
@@ -71,55 +84,27 @@ const columns = (
         {
         colKey: 'comment',
         title: '描述',
+        width: 240,
         ellipsis: true,
-        cell: ({ row: { comment } }: TableRowData) => (<Text>{comment || '-'}</Text>),
+        cell: ({ row: { comment } }: TableRowData) => (<Text title={String(comment || '-')}>{comment || '-'}</Text>),
         },
         {
         colKey: 'time',
         title: '操作时间',
+        width: 210,
         cell: ({ row: { ctime, mtime } }: TableRowData) => <Text>修改: {mtime}<br />创建: {ctime}</Text>,
         },
         {
         colKey: 'action',
         title: '操作',
+        width: 132,
+        fixed: 'right',
         cell: ({ row }) => {
             return (
                 <Space>
-                    <Tooltip content={row.editable === false ? '无权限操作' : '编辑'}>
-                        <Button
-                            shape="square"
-                            variant="text"
-                            disabled={row.editable === false}
-                            onClick={() => operateService('edit', row)}>
-                            <EditIcon />
-                        </Button>
-                    </Tooltip>
-                    <Tooltip content={row.deleteable === false ? '无权限操作' : '删除'}>
-                        <Popconfirm
-                            content="确认删除吗"
-                            destroyOnClose
-                            placement="top"
-                            showArrow
-                            theme="default"
-                            onConfirm={() => {
-                                operateService('delete', row);
-                            }}
-                        >
-                            <Button shape="square" variant="text" disabled={row.deleteable === false}>
-                                <DeleteIcon />
-                            </Button>
-                        </Popconfirm>
-                    </Tooltip>
-                    <Tooltip content="复制别名">
-                        <Button
-                            shape="square"
-                            variant="text"
-                            aria-label="复制别名"
-                            onClick={() => copyAlias(row)}
-                        >
-                            <CopyIcon />
-                        </Button>
-                    </Tooltip>
+                    <OperationButton action="view" onClick={() => viewAlias(row)} />
+                    <ConfirmOperationButton action="delete" disabled={row.deleteable === false} disabledLabel="无权限操作" confirmContent="确认删除吗" onConfirm={() => operateService('delete', row)} />
+                    <OperationButton action="copy" label="复制别名" onClick={() => copyAlias(row)} />
                 </Space>
             )
         },
@@ -153,6 +138,7 @@ const ServiceAliasTable = React.forwardRef<ServiceAliasTableHandle, IServiceAlia
         mode: 'create' | 'edit';
         data?: TableRowData;
     }>({ visible: false, mode: 'create', data: undefined });
+    const [viewingAlias, setViewingAlias] = useState<TableRowData | null>(null);
 
     // 编辑、新建事件
     const operateService = (op: Op, row?: TableRowData) => {
@@ -237,7 +223,7 @@ const ServiceAliasTable = React.forwardRef<ServiceAliasTableHandle, IServiceAlia
                             {loading
                                 ? '正在同步列表'
                                 : embedded && namespace && serviceName
-                                    ? `${namespace}/${serviceName} 下当前显示 ${datas.length} 条`
+                                    ? `当前显示 ${datas.length} 条`
                                     : `当前显示 ${datas.length} 条`}
                         </span>
                     </div>
@@ -281,7 +267,7 @@ const ServiceAliasTable = React.forwardRef<ServiceAliasTableHandle, IServiceAlia
                         <section className={style.aliasSummaryBar} id="summary">
                             <div className={style.aliasSummaryItem}>
                                 <span className={style.aliasSummaryLabel}>目标服务</span>
-                                <strong className={style.aliasSummaryValue} id="sumTarget">{targetServiceLabel}</strong>
+                                <strong className={style.aliasSummaryValue} id="sumTarget" title={targetServiceLabel}>{targetServiceLabel}</strong>
                             </div>
                             <div className={style.aliasSummaryItem}>
                                 <span className={style.aliasSummaryLabel}>别名数</span>
@@ -301,7 +287,7 @@ const ServiceAliasTable = React.forwardRef<ServiceAliasTableHandle, IServiceAlia
                             }))}
                             columns={columns(operateService, (service: string, namespace: string) => {
                                 navigate(`instance?namespace=${namespace}&service=${service}`);
-                            }, inServiceDetail, copyAlias)}
+                            }, inServiceDetail, copyAlias, setViewingAlias)}
                             loading={loading}
                             rowKey="id"
                             size={"large"}
@@ -323,6 +309,34 @@ const ServiceAliasTable = React.forwardRef<ServiceAliasTableHandle, IServiceAlia
                     </div>
                 </section>
             </section>
+            <Drawer
+                visible={Boolean(viewingAlias)}
+                header={viewingAlias?.alias || '服务别名详情'}
+                footer={viewingAlias?.editable === false ? false : (
+                    <Button
+                        theme="primary"
+                        onClick={() => {
+                            const alias = viewingAlias;
+                            setViewingAlias(null);
+                            if (alias) operateService('edit', alias);
+                        }}
+                    >
+                        编辑
+                    </Button>
+                )}
+                size="small"
+                onClose={() => setViewingAlias(null)}
+            >
+                {viewingAlias && (
+                    <div className={style.aliasViewGrid}>
+                        <div><span>服务别名</span><strong>{viewingAlias.alias || '-'}</strong></div>
+                        <div><span>别名命名空间</span><strong>{viewingAlias.alias_namespace || '-'}</strong></div>
+                        <div><span>目标服务</span><strong>{viewingAlias.service || '-'}</strong></div>
+                        <div><span>目标命名空间</span><strong>{viewingAlias.namespace || '-'}</strong></div>
+                        <div className={style.aliasViewWide}><span>描述</span><strong>{viewingAlias.comment || '-'}</strong></div>
+                    </div>
+                )}
+            </Drawer>
         </>
     );
 

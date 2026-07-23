@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
 const checks = [
   {
     file: 'src/services/instance.ts',
-    required: ['const instances = res.data ?? res.instances ?? []'],
+    required: ['const instances = (res.data ?? res.instances ?? []).map'],
     message: '服务实例列表必须先读标准 data，再兼容 res.instances。',
   },
   {
@@ -54,8 +54,9 @@ const checks = [
   {
     file: 'src/pages/Discovery/Services/Instance/ServiceDetail.tsx',
     required: [
-      'const ServiceDetail: React.FC<IServiceDetailProps> = ({ namespace, serviceName })',
-      'namespace: namespace,',
+      'const ServiceDetail: React.FC<IServiceDetailProps> = ({ namespace, serviceName, onTabChange, initialEdit = false })',
+      'dispatch(listOneService({',
+      'namespace,',
       'name: serviceName,',
     ],
     message: '服务详情页刷新后 Redux editSvc 为空，必须按 URL 传入的 namespace/serviceName 重新查询。',

@@ -42,9 +42,8 @@ func NewRouter(config *bootstrap.Config) *gin.Engine {
 	r.Use(Cors())
 	// 加载静态资源
 	r.Static("/assets", config.WebServer.WebPath+"assets")
-	// 加载界面
-	r.LoadHTMLGlob(config.WebServer.WebPath + "index.html")
-	r.GET("/", handlers.PolarisPage(config))
+	spaPage := handlers.PolarisPage(config)
+	r.GET("/", spaPage)
 
 	// 监控请求路由组
 	mv1 := r.Group(config.WebServer.MonitorURL)
@@ -65,14 +64,24 @@ func NewRouter(config *bootstrap.Config) *gin.Engine {
 	AIMCPRouter(r, config)
 	// AI A2A 请求
 	AIA2ARouter(r, config)
+	// Console Agent 资源变更工作台与系统配置共享同一个热更新 RuntimeManager。
+	workbench, agentRuntime, err := NewAgentRuntime(config)
+	if err != nil {
+		panic(fmt.Sprintf("initialize Pole Agent runtime: %v", err))
+	}
+	AgentRouter(r, config, workbench, agentRuntime)
 	// 指标监控接口
 	MetricsRouter(r, config)
+	// OTel 可观测性查询接口，由 console 模块负责暴露。
+	ObservabilityRouter(r, config)
+	// 系统配置只读目录与当前有效值。
+	SystemConfigurationRouter(r, config, agentRuntime)
 
 	// SPA 路由回退，捕获所有非 API 路径的请求，返回 index.html 以支持前端路由
 	r.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 		if !isStaticPath(path) && !isAPIPath(path) {
-			c.HTML(http.StatusOK, "index.html", nil)
+			spaPage(c)
 			return
 		}
 		c.JSON(http.StatusNotFound, gin.H{"error": "Not Found"})
@@ -83,6 +92,9 @@ func NewRouter(config *bootstrap.Config) *gin.Engine {
 func isAPIPath(p string) bool {
 	apiPrefixes := []string{
 		"/v1/",
+		"/ai/agent/v1/",
+		"/observability/v1/",
+		"/system-config/v1/",
 	}
 	for _, prefix := range apiPrefixes {
 		if strings.HasPrefix(p, prefix) {

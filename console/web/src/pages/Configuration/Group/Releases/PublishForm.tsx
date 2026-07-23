@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { Button, CustomValidator, Drawer, Form, FormProps, Input, Radio, RadioGroup, Space, Steps } from 'tdesign-react';
+import { Button, CustomValidator, Drawer, Form, FormProps, Input, InputNumber, Radio, RadioGroup, Space, Steps } from 'components/Fluent';
 
 import CodeDiffEditor from 'components/CodeDiffEditor';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { listConfigFileReleases, listOneConfigFileRelease, publishConfigFiles, selectFileRelease } from 'modules/configuration/release';
-import ClientLabelInput from 'components/ClientLabelInput';
-import { MatcheLabel } from 'services/types';
 import { listOneConfigFile, selectConfigFile } from 'modules/configuration/file';
+import style from '../Files/index.module.less';
+import GrayRuleEditor, { defaultGrayRuleRow, grayRowsToBetaLabels } from './GrayRuleEditor';
 
 const { StepItem } = Steps;
 const { FormItem } = Form;
@@ -32,11 +32,13 @@ const PublishForm: React.FC<IPublishFormProps> = ({ namespace, group, filename, 
 
     // 合并编辑相关状态
     const [activeStep, setActiveStep] = React.useState(1);
+    const [grayRows, setGrayRows] = React.useState([defaultGrayRuleRow()]);
 
     React.useEffect(() => {
         if (visible) {
             // 重置表单
             setActiveStep(1);
+            setGrayRows([defaultGrayRuleRow()]);
             handleFetch();
         }
     }, [namespace, group, filename]);
@@ -58,6 +60,12 @@ const PublishForm: React.FC<IPublishFormProps> = ({ namespace, group, filename, 
         if (e.validateResult !== true) {
             return;
         }
+        const releaseType = form.getFieldValue("releaseType") as string;
+        const betaLabels = grayRowsToBetaLabels(grayRows);
+        if (releaseType === 'gray' && betaLabels.length === 0) {
+            openErrNotification('请求失败', '灰度发布至少需要一条有效灰度规则');
+            return;
+        }
         // 提交发布
         const pubData = {
             namespace: namespace,
@@ -65,8 +73,9 @@ const PublishForm: React.FC<IPublishFormProps> = ({ namespace, group, filename, 
             fileName: filename,
             name: form.getFieldValue("name") as string,
             releaseDescription: form.getFieldValue("comment") as string,
-            releaseType: form.getFieldValue("releaseType") as string,
-            betaLabels: form.getFieldValue("betaLabels") as MatcheLabel[],
+            releaseType,
+            grayPriority: form.getFieldValue("grayPriority") as number,
+            betaLabels: releaseType === 'gray' ? betaLabels : [],
         }
 
         const ret = await dispatch(publishConfigFiles({ param: pubData }));
@@ -121,85 +130,90 @@ const PublishForm: React.FC<IPublishFormProps> = ({ namespace, group, filename, 
 
     const renderForm = (
         <>
-            <FormItem
-                label="版本名称"
-                name="name"
-                rules={[
-                    { required: true, message: '版本名称不能为空' },
-                    { max: 64, message: '长度不超过64个字符' },
-                    { validator: versionValidator },
-                ]}
-            >
-                <Input />
-            </FormItem>
-            <FormItem
-                label="版本描述"
-                name="comment"
-                rules={[
-                    { max: 255, message: '长度不超过255个字符' }
-                ]}
-            >
-                <Input />
-            </FormItem>
-            <FormItem label='发布类型' name='releaseType' initialData={'normal'}>
-                <RadioGroup>
-                    <Radio value="normal">全量发布</Radio>
-                    <Radio value="gray">灰度发布</Radio>
-                </RadioGroup>
-            </FormItem>
-            <FormItem shouldUpdate={(prev, next) => {
-                const enableChange = prev.releaseType !== next.releaseType;
-                return enableChange;
-            }}>
-                {({ getFieldValue }) => {
-                    if (getFieldValue('releaseType') === 'gray') {
-                        return (
-                            <ClientLabelInput form={form} label='客户端标签' name='betaLabels' disabled={false} />
-                        );
-                    }
-                    return <></>
-                }}
-            </FormItem>
-            <FormItem>
-                <Button theme='primary' type='submit' style={{ marginTop: 20 }}>
-                    提交
-                </Button>
-            </FormItem>
+            <section className={style.drawerSection}>
+                <div className={style.drawerSectionTitle}>版本信息</div>
+                <div className={style.drawerSectionBody}>
+                    <FormItem
+                        label="版本名称"
+                        name="name"
+                        rules={[
+                            { required: true, message: '版本名称不能为空' },
+                            { max: 64, message: '长度不超过64个字符' },
+                            { validator: versionValidator },
+                        ]}
+                    >
+                        <Input />
+                    </FormItem>
+                    <FormItem
+                        label="发布说明"
+                        name="comment"
+                        rules={[
+                            { max: 255, message: '长度不超过255个字符' }
+                        ]}
+                    >
+                        <Input />
+                    </FormItem>
+                </div>
+            </section>
+            <section className={style.drawerSection}>
+                <div className={style.drawerSectionTitle}>发布范围</div>
+                <div className={style.drawerSectionBody}>
+                    <FormItem label='发布类型' name='releaseType' initialData={'normal'}>
+                        <RadioGroup>
+                            <Radio value="normal">全量发布</Radio>
+                            <Radio value="gray">灰度发布</Radio>
+                        </RadioGroup>
+                    </FormItem>
+                    <FormItem shouldUpdate={(prev, next) => prev.releaseType !== next.releaseType}>
+                        {({ getFieldValue }) => {
+                            if (getFieldValue('releaseType') === 'gray') {
+                                return (
+                                    <>
+                                        <FormItem label="灰度优先级" name="grayPriority" initialData={100}>
+                                            <InputNumber theme="normal" min={1} max={9999} />
+                                        </FormItem>
+                                        <GrayRuleEditor rows={grayRows} editable={true} onChange={setGrayRows} />
+                                    </>
+                                );
+                            }
+                            return (
+                                <div className={style.fieldValue}>
+                                    全量发布会替换当前全量基线，不结束正在生效的灰度版本。
+                                </div>
+                            )
+                        }}
+                    </FormItem>
+                </div>
+            </section>
         </>
     )
 
     const renderFooter = (
-        <>
-            {activeStep === 1 ? (
-                <>
-                    <Space>
-                        <Button theme="default" onClick={() => {
-                            setActiveStep(2);
-                        }}>
-                            下一步
-                        </Button>
-                    </Space>
-                </>
-            ) : activeStep === 2 ? (
-                <>
-                    <Space>
-                        <Button theme="default" onClick={() => {
-                            setActiveStep(1);
-                        }}>
-                            上一步
-                        </Button>
-                    </Space>
-                </>
-            ) : null}
-        </>
+        <Space>
+            <Button theme="default" onClick={close}>取消</Button>
+            {activeStep === 2 && (
+                <Button theme="default" onClick={() => setActiveStep(1)}>
+                    上一步
+                </Button>
+            )}
+            {activeStep === 1 && (
+                <Button theme="primary" onClick={() => setActiveStep(2)}>
+                    下一步
+                </Button>
+            )}
+            {activeStep === 2 && (
+                <Button theme="primary" onClick={() => form.submit()}>
+                    确认发布
+                </Button>
+            )}
+        </Space>
     )
 
     return (
         <>
             <Drawer
-                header={'配置发布'}
+                header={'发布配置'}
                 size='960px'
-                style={{ width: '100%' }}
                 visible={visible}
                 placement="right"
                 onClose={() => {
@@ -218,14 +232,19 @@ const PublishForm: React.FC<IPublishFormProps> = ({ namespace, group, filename, 
                     onSubmit={onSubmit}
                 >
                     {activeStep === 1 && (
-                        <CodeDiffEditor
-                            key={`${namespace}-${group}-${filename}`}
-                            namespace={namespace}
-                            group={group}
-                            filename={filename}
-                            curValue={viewFileRelease?.content}
-                            nextValue={viewFile?.content}
-                        />
+                        <section className={style.drawerSection}>
+                            <div className={style.drawerSectionTitle}>版本对比</div>
+                            <div className={style.drawerSectionBody}>
+                                <CodeDiffEditor
+                                    key={`${namespace}-${group}-${filename}`}
+                                    namespace={namespace}
+                                    group={group}
+                                    filename={filename}
+                                    curValue={viewFileRelease?.content}
+                                    nextValue={viewFile?.content}
+                                />
+                            </div>
+                        </section>
                     )}
                     {activeStep === 2 && (
                         <>

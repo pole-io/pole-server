@@ -13,6 +13,34 @@
     "preview": "vite preview --mode test",
     "test": "echo \"no test specified,work in process\"",
     "test:response-mapping": "node scripts/verify-standard-response-mapping.mjs",
+    "test:ai-detail-drawers": "node scripts/verify-standalone-detail-pages.mjs",
+    "test:standalone-details": "node scripts/verify-standalone-detail-pages.mjs",
+    "test:namespace-drawer": "node scripts/verify-namespace-drawer-layout.mjs",
+    "test:namespace-workspace": "node scripts/verify-namespace-workspace.mjs",
+    "test:config-group-delete-guard": "node scripts/verify-config-group-deletion-guard.mjs",
+    "test:error-toast": "node scripts/verify-error-toast-request-id.mjs",
+    "test:login-redirect": "node scripts/verify-login-redirect-contract.mjs",
+    "test:resource-name-links": "node scripts/verify-resource-name-links.mjs",
+    "test:cross-environment-resources": "node scripts/verify-cross-environment-resource-views.mjs",
+    "test:config-file-detail-layout": "node scripts/verify-config-file-detail-layout.mjs",
+  "test:auth-detail-layout": "node scripts/verify-auth-standalone-detail-layout.mjs",
+  "test:auth-drawer-actions": "node scripts/verify-auth-drawer-actions.mjs",
+  "test:auth-mutations": "node scripts/verify-auth-mutation-response-contract.mjs",
+    "test:dark-theme": "node scripts/verify-dark-theme-tokens.mjs",
+    "test:metrics-observability": "node scripts/verify-metrics-observability-pages.mjs",
+    "test:ux-closure": "node scripts/verify-console-ux-closure.mjs",
+    "test:traffic-security": "node scripts/verify-traffic-security-editor-utils.mjs",
+    "test:traffic-match-condition-editor": "node scripts/verify-traffic-match-condition-editor.mjs",
+    "test:governance-request-value-types": "node scripts/verify-governance-request-value-types.mjs",
+    "test:governance-no-live-spec": "node scripts/verify-governance-no-live-spec.mjs",
+    "test:governance-direct-create": "node scripts/verify-governance-direct-create.mjs",
+    "test:governance-rule-namespace": "node scripts/verify-governance-rule-namespace.mjs",
+    "test:no-tdesign": "node scripts/verify-no-tdesign.mjs",
+    "test:agent-workbench": "node scripts/verify-agent-workbench-contract.mjs",
+    "test:system-configuration-admin-gate": "node scripts/verify-system-configuration-admin-gate.mjs",
+    "test:system-role-directory": "node scripts/verify-system-role-directory.mjs",
+    "test:system-configuration-error-state": "node scripts/verify-system-configuration-error-state.mjs",
+    "smoke:agent-workbench": "node scripts/smoke-agent-workbench.mjs",
     "test:coverage": "echo \"no test specified,work in process\"",
     "lint": "eslint ./src --ext ts,tsx",
     "lint:fix": "eslint ./src --ext ts,tsx --fix",
@@ -44,6 +72,8 @@
     "vite-plugin-mock": "^2.9.6"
   },
   "dependencies": {
+    "@fluentui/react-components": "^9.74.3",
+    "@fluentui/react-icons": "^2.0.333",
     "@monaco-editor/react": "^4.7.0",
     "@reduxjs/toolkit": "^1.8.5",
     "axios": "^1.2.0",
@@ -62,8 +92,6 @@
     "react-i18next": "^15.6.1",
     "react-redux": "^7.2.4",
     "react-router-dom": "^6.3.0",
-    "tdesign-icons-react": "^0.4.0",
-    "tdesign-react": "^1.12.2",
     "tvision-color": "^1.5.0",
     "uuid": "^11.1.0"
   },
@@ -79,5 +107,5 @@
       "last 1 safari version"
     ]
   },
-  "description": "Base on tdesign-starter-cli"
+  "description": "Lattice.Hub console built with React and Fluent UI"
 }

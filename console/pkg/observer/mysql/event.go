@@ -91,6 +91,9 @@ func (e *EventFetcher) GetEvents(filter map[string]string) ([]*model.EventRecord
 	// Execute the query
 	rows, err := e.slave.Query(query, args...)
 	if err != nil {
+		if isMissingTableError(err) {
+			return []*model.EventRecord{}, nil
+		}
 		return nil, err
 	}
 	defer rows.Close()

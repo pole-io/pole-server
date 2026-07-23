@@ -38,6 +38,7 @@ import (
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	commontime "github.com/pole-io/pole-server/pkg/common/utils/time"
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 	"github.com/pole-io/pole-server/pkg/goverrule"
 )
@@ -82,6 +83,11 @@ func (s *Server) handlePublishConfigFile(ctx context.Context, tx store.Tx,
 	namespace := req.GetNamespace()
 	group := req.GetGroup()
 	fileName := req.GetFileName()
+	releaseType := rules.ReleaseType(req.GetReleaseType())
+	if releaseType == "" {
+		releaseType = rules.ReleaseTypeNormal
+		req.ReleaseType = conftypes.ReleaseTypeNormal
+	}
 
 	fileRelease := &conftypes.ConfigFileRelease{
 		SimpleConfigFileRelease: &conftypes.SimpleConfigFileRelease{
@@ -90,21 +96,10 @@ func (s *Server) handlePublishConfigFile(ctx context.Context, tx store.Tx,
 				Namespace:   namespace,
 				Group:       group,
 				FileName:    fileName,
-				ReleaseType: rules.ReleaseType(req.GetReleaseType()),
+				ReleaseType: releaseType,
 			},
 			BetaLabels: req.GetBetaLabels(),
 		},
-	}
-
-	// 确认是否存在正在灰度发布中的配置文件
-	betaRelease, err := s.storage.GetConfigFileBetaReleaseTx(tx, fileRelease.ToFileKey())
-	if err != nil {
-		log.Error("[Config][File] get beta config file release in get target.", utils.RequestID(ctx), zap.Error(err))
-		return nil, api.NewConfigResponse(storeapi.StoreCode2APICode(err))
-	}
-	if betaRelease != nil {
-		log.Error("[Config][File] still exist beta config file release.", utils.RequestID(ctx), zap.Error(err))
-		return nil, api.NewConfigResponse(apimodel.Code_DataConflict)
 	}
 
 	// 获取待发布的 configFile 信息
@@ -365,7 +360,9 @@ func (s *Server) handleDescribeConfigFileReleases(ctx context.Context, args cach
 			Format:             item.Format,
 			Version:            item.Version,
 			Active:             item.Active,
+			Ctime:              commontime.Time2String(item.CreateTime),
 			CreateBy:           item.CreateBy,
+			Mtime:              commontime.Time2String(item.ModifyTime),
 			ModifyBy:           item.ModifyBy,
 			ReleaseDescription: item.ReleaseDescription,
 			ReleaseType:        string(item.ReleaseType),
@@ -702,37 +699,142 @@ func (s *Server) StopGrayConfigFileRelease(ctx context.Context, req *apiconfig.C
 		log.Error("[Config][File] stop beta config file release in lock file.", utils.RequestID(ctx), zap.Error(err))
 		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
-	betaRelease, err := s.storage.GetConfigFileBetaReleaseTx(tx, fileKey)
-	if err != nil {
-		log.Error("[Config][File] stop beta config file release in get target.", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+	var betaReleases []*conftypes.ConfigFileRelease
+	if req.GetName() != "" {
+		betaRelease, err := s.storage.GetConfigFileReleaseTx(tx, &conftypes.ConfigFileReleaseKey{
+			Namespace:   req.GetNamespace(),
+			Group:       req.GetGroup(),
+			FileName:    req.GetFileName(),
+			Name:        req.GetName(),
+			ReleaseType: conftypes.ReleaseTypeGray,
+		})
+		if err != nil {
+			log.Error("[Config][File] stop beta config file release in get target.", utils.RequestID(ctx), zap.Error(err))
+			return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+		}
+		if betaRelease != nil && betaRelease.Active {
+			betaReleases = append(betaReleases, betaRelease)
+		}
+	} else {
+		betaReleases, err = s.storage.GetConfigFileBetaReleasesTx(tx, fileKey)
+		if err != nil {
+			log.Error("[Config][File] stop beta config file release in get targets.", utils.RequestID(ctx), zap.Error(err))
+			return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+		}
 	}
-	if betaRelease == nil {
+	if len(betaReleases) == 0 {
 		return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 	}
-	if err := s.storage.CleanGrayResource(tx, &rules.GrayResource{
-		Name: GetGrayConfigReaseKey(&conftypes.SimpleConfigFileRelease{
-			ConfigFileReleaseKey: &conftypes.ConfigFileReleaseKey{
-				Namespace:   req.GetNamespace(),
-				Group:       req.GetGroup(),
-				Name:        req.GetFileName(),
-				ReleaseType: conftypes.ReleaseTypeGray,
-			},
-		}),
-	}); err != nil {
-		log.Error("[Config][File] stop beta config file release when clean beta rule.", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
-	}
+	for _, betaRelease := range betaReleases {
+		if err := s.storage.CleanGrayResource(tx, &rules.GrayResource{
+			Name: GetGrayConfigReaseKey(betaRelease.SimpleConfigFileRelease),
+		}); err != nil {
+			log.Error("[Config][File] stop beta config file release when clean beta rule.", utils.RequestID(ctx), zap.Error(err))
+			return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+		}
 
-	if err = s.storage.InactiveConfigFileReleaseTx(tx, betaRelease); err != nil {
-		log.Error("[Config][File] stop beta config file release.", utils.RequestID(ctx), zap.Error(err))
-		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+		if err = s.storage.InactiveConfigFileReleaseTx(tx, betaRelease); err != nil {
+			log.Error("[Config][File] stop beta config file release.", utils.RequestID(ctx), zap.Error(err))
+			return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		log.Error("[Config][File] stop config file release when commit tx.", utils.RequestID(ctx), zap.Error(err))
 		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
-	s.recordReleaseHistory(ctx, betaRelease, conftypes.ReleaseTypeCancelGray, conftypes.ReleaseStatusSuccess, "")
+	for _, betaRelease := range betaReleases {
+		s.recordReleaseHistory(ctx, betaRelease, conftypes.ReleaseTypeCancelGray, conftypes.ReleaseStatusSuccess, "")
+	}
+	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
+}
+
+func (s *Server) PromoteGrayConfigFileReleaseToDraft(ctx context.Context,
+	req *apiconfig.ConfigFileRelease) *apimodel.Response {
+	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
+		return api.NewConfigResponseWithInfo(apimodel.Code_BadRequest, "invalid config namespace")
+	}
+	if err := valid.CheckResourceName(req.GetGroup()); err != nil {
+		return api.NewConfigResponseWithInfo(apimodel.Code_BadRequest, "invalid config group")
+	}
+	if req.GetFileName() == "" {
+		return api.NewConfigResponseWithInfo(apimodel.Code_BadRequest, "invalid config file_name")
+	}
+	if req.GetName() == "" {
+		return api.NewConfigResponseWithInfo(apimodel.Code_BadRequest, "invalid config release name")
+	}
+
+	tx, err := s.storage.StartTx()
+	if err != nil {
+		log.Error("[Config][File] promote gray config file when begin tx.", utils.RequestID(ctx), zap.Error(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	fileKey := &conftypes.ConfigFileKey{
+		Namespace: req.GetNamespace(),
+		Group:     req.GetGroup(),
+		Name:      req.GetFileName(),
+	}
+	if _, err := s.storage.LockConfigFile(tx, fileKey); err != nil {
+		log.Error("[Config][File] promote gray config file when lock file.", utils.RequestID(ctx), zap.Error(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+	}
+
+	targetRelease, err := s.storage.GetConfigFileReleaseTx(tx, &conftypes.ConfigFileReleaseKey{
+		Namespace:   req.GetNamespace(),
+		Group:       req.GetGroup(),
+		FileName:    req.GetFileName(),
+		Name:        req.GetName(),
+		ReleaseType: conftypes.ReleaseTypeGray,
+	})
+	if err != nil {
+		log.Error("[Config][File] promote gray config file when get release.", utils.RequestID(ctx), zap.Error(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+	}
+	if targetRelease == nil || !targetRelease.Active {
+		return api.NewConfigResponse(apimodel.Code_NotFoundResource)
+	}
+
+	targetEncrypted := targetRelease.IsEncrypted()
+	targetEncryptAlgo := targetRelease.GetEncryptAlgo()
+	targetRelease, err = s.chains.AfterGetFileRelease(ctx, targetRelease)
+	if err != nil {
+		log.Error("[Config][File] promote gray config file run chain.", utils.RequestID(ctx), zap.Error(err))
+		return api.NewConfigResponseWithInfo(apimodel.Code_ExecuteException, err.Error())
+	}
+	labels := map[string]string{}
+	for key, value := range targetRelease.Metadata {
+		labels[key] = value
+	}
+	promoteFile := &apiconfig.ConfigFile{
+		Namespace:   req.GetNamespace(),
+		Group:       req.GetGroup(),
+		Name:        req.GetFileName(),
+		Content:     targetRelease.Content,
+		Comment:     targetRelease.Comment,
+		Format:      targetRelease.Format,
+		Labels:      labels,
+		Encrypted:   targetEncrypted,
+		EncryptAlgo: targetEncryptAlgo,
+	}
+	resp := s.handleUpdateConfigFile(ctx, tx, promoteFile)
+	if resp.GetCode() != uint32(apimodel.Code_ExecuteSuccess) && resp.GetCode() != uint32(apimodel.Code_NoNeedUpdate) {
+		return resp
+	}
+	if err := tx.Commit(); err != nil {
+		log.Error("[Config][File] promote gray config file when commit tx.", utils.RequestID(ctx), zap.Error(err))
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+	}
+	s.RecordHistory(ctx, configFileReleaseRecordEntry(ctx, &apiconfig.ConfigFileRelease{
+		Namespace:          req.GetNamespace(),
+		Group:              req.GetGroup(),
+		FileName:           req.GetFileName(),
+		Name:               req.GetName(),
+		ReleaseType:        conftypes.ReleaseTypeGray,
+		ReleaseDescription: req.GetReleaseDescription(),
+	}, targetRelease, types.OUpdate))
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
 

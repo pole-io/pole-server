@@ -97,7 +97,7 @@
   api:
     client:
       enable: true
-      include: [discover, register, healthcheck]
+      include: [discover, register, healthcheck, config]
 - name: config-grpc
   option:
     listenIP: "0.0.0.0"

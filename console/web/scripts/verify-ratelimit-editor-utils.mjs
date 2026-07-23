@@ -197,6 +197,6 @@ assert.match(editorSource, /const relation = trigger\.matchMode \|\| MatchLogic\
 assert.match(editorSource, /relation=\{relation\}/);
 assert.match(editorSource, /relationEditable/);
 assert.match(editorSource, /onRelationChange=\{\(value\) => updateRule\(ruleIdx, \{ matchMode: value as MatchLogic \}\)\}/);
-assert.match(styleSource, /:global\(\.t-tag-input\),/);
+assert.match(styleSource, /:global\(\.fluent-tag-input\),/);
 
 console.log('ratelimit editor utils verification passed');

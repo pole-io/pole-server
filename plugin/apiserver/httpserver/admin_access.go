@@ -20,6 +20,7 @@ package httpserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -32,7 +33,9 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/admin"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
+	"github.com/pole-io/pole-server/pkg/systemconfig"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
@@ -71,9 +74,70 @@ func (h *HTTPServer) GetAdminAccessServer() *restful.WebService {
 	ws.Route(docs.EnrichGetReportClientsApiDocs(ws.GET("/report/clients").To(h.GetReportClients)))
 	ws.Route(docs.EnrichEnablePprofApiDocs(ws.POST("/pprof/enable").To(h.EnablePprof)))
 	ws.Route(docs.EnrichGetServerFunctionsApiDocs(ws.GET("/server/functions").To(h.GetServerFunctions)))
+	ws.Route(ws.GET("/system/configuration").To(h.GetSystemConfiguration))
 	ws.Route(ws.GET("/mainuser/exist").To(h.HasMainUser))
 	ws.Route(ws.POST("/mainuser/create").To(h.InitMainUser))
 	return ws
+}
+
+func (h *HTTPServer) GetSystemConfiguration(req *restful.Request, rsp *restful.Response) {
+	ctx := initContext(req)
+	if err := authorizeSystemConfiguration(h.systemConfigUser, h.systemConfigAuth, ctx); err != nil {
+		status := http.StatusUnauthorized
+		message := "valid administrator credentials are required"
+		if errors.Is(err, errSystemConfigurationPermissionDenied) {
+			status = http.StatusForbidden
+			message = "system configuration read permission is required"
+		}
+		_ = rsp.WriteErrorString(status, message)
+		return
+	}
+	if h.systemSettings == nil {
+		_ = rsp.WriteErrorString(http.StatusServiceUnavailable, "system configuration provider is unavailable")
+		return
+	}
+	snapshot, err := h.systemSettings.Effective(ctx, systemconfig.Scope{Component: systemconfig.ComponentServer})
+	if err != nil {
+		_ = rsp.WriteError(http.StatusInternalServerError, err)
+		return
+	}
+	_ = rsp.WriteAsJson(snapshot)
+}
+
+type consolePermissionChecker interface {
+	CheckConsolePermission(*authtypes.AcquireContext) (bool, error)
+}
+
+type credentialChecker interface {
+	CheckCredential(*authtypes.AcquireContext) error
+}
+
+var errSystemConfigurationPermissionDenied = errors.New("system configuration read permission denied")
+
+func authorizeSystemConfiguration(credentials credentialChecker, permissions consolePermissionChecker,
+	ctx context.Context) error {
+	if credentials == nil || permissions == nil {
+		return authtypes.ErrorTokenInvalid
+	}
+	authCtx := authtypes.NewAcquireContext(
+		authtypes.WithRequestContext(ctx),
+		authtypes.WithModule(authtypes.MaintainModule),
+		authtypes.WithOperation(authtypes.Read),
+		authtypes.WithMethod(authtypes.DescribeSystemConfiguration),
+	)
+	// The internal snapshot remains credential-protected even when the public
+	// Console authorization switch is disabled.
+	if err := credentials.CheckCredential(authCtx); err != nil {
+		return err
+	}
+	pass, err := permissions.CheckConsolePermission(authCtx)
+	if err != nil {
+		return err
+	}
+	if !pass {
+		return errSystemConfigurationPermissionDenied
+	}
+	return nil
 }
 
 // GetServerConnections 查看server的连接数

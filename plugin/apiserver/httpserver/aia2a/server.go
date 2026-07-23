@@ -14,6 +14,7 @@ import (
 
 	restful "github.com/emicklei/go-restful/v3"
 
+	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/store"
 	"github.com/pole-io/pole-server/pkg/cache"
@@ -28,8 +29,9 @@ const (
 )
 
 type HTTPServer struct {
-	storage  store.Store
-	cacheMgr cacheapi.CacheManager
+	storage   store.Store
+	cacheMgr  cacheapi.CacheManager
+	policySvr authapi.StrategyServer
 }
 
 func NewServer(ctx context.Context, storage store.Store) (*HTTPServer, error) {
@@ -46,7 +48,12 @@ func NewServer(ctx context.Context, storage store.Store) (*HTTPServer, error) {
 		commonlog.Errorf("start a2a-agent cache error. %v", err)
 		return nil, err
 	}
-	return &HTTPServer{storage: storage, cacheMgr: cacheMgr}, nil
+	policySvr, err := authapi.GetStrategyServer()
+	if err != nil {
+		commonlog.Errorf("set policy server to ai-a2a server error. %v", err)
+		return nil, err
+	}
+	return &HTTPServer{storage: storage, cacheMgr: cacheMgr, policySvr: policySvr}, nil
 }
 
 func startA2AAgentCache(ctx context.Context, agentCache cacheapi.A2AAgentCache, interval time.Duration) error {

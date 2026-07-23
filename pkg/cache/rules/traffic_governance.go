@@ -257,7 +257,7 @@ func (c *TrafficGovernanceCache) GetRulesForService(namespace string, service st
 		if value == nil || value.Rule == nil {
 			return
 		}
-		if value.Rule.Namespace == namespace && value.Rule.Service == service {
+		if value.Rule.ServiceNamespace == namespace && value.Rule.Service == service {
 			rules = append(rules, value.Rule)
 		}
 	})

@@ -280,7 +280,7 @@ export function validateRouteRuleDraft(draft: RouteEditorDraft): RouteRuleValida
         if ((rule.destinations || []).some((dest) => !dest.name?.trim())) {
             errors.push({ field: `rules.${idx}.destinations.name`, ruleIndex: idx, message: `规则[${ruleNumber}] 存在未命名分组` });
         }
-        if (getRouteRuleArguments(rule).some((arg) => !arg.value?.value?.trim())) {
+        if (getRouteRuleArguments(rule).some((arg) => arg.value?.value_type !== 'PARAMETER' && !arg.value?.value?.trim())) {
             errors.push({ field: `rules.${idx}.arguments.value`, ruleIndex: idx, message: `规则[${ruleNumber}] 存在空匹配值` });
         }
     });

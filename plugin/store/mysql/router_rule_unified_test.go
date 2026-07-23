@@ -40,6 +40,7 @@ func TestRouterRuleStoreCreateUsesGovernanceRuleRepository(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
+	expectGovernanceRuleNameAvailable(mock, governanceRuleTypeRoute, conf.Namespace, conf.Name)
 	mock.ExpectExec(regexp.QuoteMeta(insertGovernanceRuleSQL)).
 		WithArgs(
 			conf.ID,

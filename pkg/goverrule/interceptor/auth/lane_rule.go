@@ -238,14 +238,16 @@ func (svr *Server) collectLaneGroupAuthContext(ctx context.Context, req []*apitr
 		}
 	}
 
+	accessResources := map[apisecurity.ResourceType][]authtypes.ResourceEntry{
+		apisecurity.ResourceType_LaneRules: resources,
+	}
+	svr.appendGovernanceOwnerNamespaces(accessResources, governanceOwnerNamespaces(req)...)
 	return authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
 		authtypes.WithOperation(op),
 		authtypes.WithModule(authtypes.DiscoverModule),
 		authtypes.WithMethod(methodName),
-		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
-			apisecurity.ResourceType_LaneRules: resources,
-		}),
+		authtypes.WithAccessResources(accessResources),
 	)
 }
 
@@ -254,9 +256,11 @@ func (svr *Server) collectLaneRuleAuthContext(ctx context.Context, req []*apitra
 	op authtypes.ResourceOperation, methodName authtypes.ServerFunctionName) *authtypes.AcquireContext {
 
 	resources := make([]authtypes.ResourceEntry, 0, len(req))
+	namespaces := make([]string, 0, len(req))
 	for i := range req {
 		saveRule := svr.Cache().LaneRule().GetRule(req[i].GetGroupName())
 		if saveRule != nil {
+			namespaces = append(namespaces, saveRule.Namespace)
 			resources = append(resources, authtypes.ResourceEntry{
 				Type:     apisecurity.ResourceType_LaneRules,
 				ID:       saveRule.ID,
@@ -265,13 +269,15 @@ func (svr *Server) collectLaneRuleAuthContext(ctx context.Context, req []*apitra
 		}
 	}
 
+	accessResources := map[apisecurity.ResourceType][]authtypes.ResourceEntry{
+		apisecurity.ResourceType_LaneRules: resources,
+	}
+	svr.appendGovernanceOwnerNamespaces(accessResources, namespaces...)
 	return authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
 		authtypes.WithOperation(op),
 		authtypes.WithModule(authtypes.DiscoverModule),
 		authtypes.WithMethod(methodName),
-		authtypes.WithAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
-			apisecurity.ResourceType_LaneRules: resources,
-		}),
+		authtypes.WithAccessResources(accessResources),
 	)
 }

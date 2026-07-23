@@ -435,6 +435,7 @@ func (lc *LaneCache) Query(ctx context.Context, args *types.LaneGroupArgs) (uint
 
 	searchName, hasName := args.Filter["name"]
 	searchId, hasId := args.Filter["id"]
+	searchNamespace, hasNamespace := args.Filter["namespace"]
 
 	results := make([]*rules.LaneGroupProto, 0, 32)
 
@@ -443,6 +444,9 @@ func (lc *LaneCache) Query(ctx context.Context, args *types.LaneGroupArgs) (uint
 			return
 		}
 		if hasId && val.ID != searchId {
+			return
+		}
+		if hasNamespace && val.Namespace != searchNamespace {
 			return
 		}
 

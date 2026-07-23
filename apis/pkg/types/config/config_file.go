@@ -156,6 +156,9 @@ func (c ConfigFileReleaseKey) FileKey() string {
 }
 
 func (c ConfigFileReleaseKey) ActiveKey() string {
+	if c.ReleaseType == ReleaseTypeGray && c.Name != "" {
+		return fmt.Sprintf("%v@%v@%v@%v@%v", c.Namespace, c.Group, c.FileName, c.ReleaseType, c.Name)
+	}
 	return fmt.Sprintf("%v@%v@%v@%v", c.Namespace, c.Group, c.FileName, c.ReleaseType)
 }
 
@@ -190,6 +193,9 @@ type SimpleConfigFileRelease struct {
 }
 
 func (s *SimpleConfigFileRelease) GetGrayResource() string {
+	if s.Name != "" {
+		return fmt.Sprintf("%v@%v@%v@%v@%v", rules.GrayModuleConfig, s.Namespace, s.Group, s.FileName, s.Name)
+	}
 	return fmt.Sprintf("%v@%v@%v@%v", rules.GrayModuleConfig, s.Namespace, s.Group, s.FileName)
 }
 
@@ -343,7 +349,9 @@ func ToConfiogFileReleaseApi(release *ConfigFileRelease) *config_manage.ConfigFi
 		Md5:                release.Md5,
 		Version:            release.Version,
 		Ctime:              utils.Time2String(release.CreateTime),
+		CreateBy:           release.CreateBy,
 		Mtime:              utils.Time2String(release.ModifyTime),
+		ModifyBy:           release.ModifyBy,
 		ReleaseDescription: release.ReleaseDescription,
 		Labels:             release.Metadata,
 		Active:             release.Active,

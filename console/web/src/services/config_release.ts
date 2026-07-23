@@ -1,5 +1,4 @@
-import request, { apiRequest, ApiResponse, getAllList, getApiRequest, putApiRequest } from 'utils/request';
-import { SuccessCode } from './const';
+import { apiRequest, getApiRequest, putApiRequest } from 'utils/request';
 import { BaseURL, Label, MatcheLabel } from './types';
 
 export interface ConfigFileRelease {
@@ -15,7 +14,8 @@ export interface ConfigFileRelease {
     tags: Label[]
     releaseDescription?: string
     releaseStatus?: string
-    active: string
+    grayPriority?: number
+    active: boolean
     releaseType?: string
     format: string
     betaLabels: MatcheLabel[]
@@ -63,6 +63,121 @@ export interface ReleaseVersion {
     active?: boolean
 }
 
+type ApiConfigFileRelease = ConfigFileReleaseView & {
+    labels?: Record<string, string> | Label[]
+    ctime?: string
+    mtime?: string
+    create_by?: string
+    modify_by?: string
+    file_name?: string
+    release_description?: string
+    release_type?: string
+    beta_labels?: MatcheLabel[]
+    release_status?: string
+    gray_priority?: number
+}
+
+function labelsToTags(labels?: Record<string, string> | Label[]): Label[] {
+    if (!labels) {
+        return [];
+    }
+    if (Array.isArray(labels)) {
+        return labels;
+    }
+    return Object.entries(labels).map(([key, value]) => ({ key, value }));
+}
+
+function tagsToLabels(tags?: Label[] | Record<string, string>) {
+    if (!tags) {
+        return undefined;
+    }
+    if (!Array.isArray(tags)) {
+        return tags;
+    }
+    return tags.reduce((acc: Record<string, string>, item) => {
+        if (item.key) {
+            acc[item.key] = item.value;
+        }
+        return acc;
+    }, {});
+}
+
+function normalizeMatchStringForView(value: any) {
+    if (!value) {
+        return value;
+    }
+    return {
+        ...value,
+        value_type: value.value_type || value.valueType || 'TEXT',
+    };
+}
+
+function normalizeMatchStringForApi(value: any) {
+    if (!value) {
+        return value;
+    }
+    return {
+        ...value,
+        valueType: value.valueType || value.value_type || 'TEXT',
+    };
+}
+
+function normalizeClientLabelsForView(labels?: MatcheLabel[]): MatcheLabel[] {
+    return (labels || []).map((label: any) => ({
+        ...label,
+        value: normalizeMatchStringForView(label.value),
+    }));
+}
+
+function normalizeClientLabelsForApi(labels?: MatcheLabel[]): MatcheLabel[] | undefined {
+    if (!labels) {
+        return undefined;
+    }
+    return labels.map((label: any) => ({
+        ...label,
+        value: normalizeMatchStringForApi(label.value),
+    }));
+}
+
+function normalizeConfigFileRelease(release: ApiConfigFileRelease): ConfigFileReleaseView {
+    return {
+        ...release,
+        fileName: release.fileName || release.file_name || '',
+        tags: release.tags || labelsToTags(release.labels),
+        createTime: release.createTime || release.ctime || release.modifyTime || release.mtime || '',
+        createBy: release.createBy || release.create_by || '',
+        modifyTime: release.modifyTime || release.mtime || '',
+        modifyBy: release.modifyBy || release.modify_by || '',
+        releaseDescription: release.releaseDescription || release.release_description,
+        releaseType: release.releaseType || release.release_type,
+        releaseStatus: release.releaseStatus || release.release_status,
+        grayPriority: release.grayPriority || release.gray_priority,
+        active: Boolean(release.active),
+        betaLabels: normalizeClientLabelsForView(release.betaLabels || release.beta_labels),
+    }
+}
+
+function toApiConfigFileRelease(release: ReleaseConfigFilePequest | RollbackFileReleasesResquest | DeleteFileReleaseRequest | StopGrayFileReleaseRequest | PromoteGrayFileReleaseRequest) {
+    const {
+        tags,
+        betaLabels,
+        fileName,
+        releaseDescription,
+        releaseType,
+        grayPriority,
+        ...rest
+    } = release as ReleaseConfigFilePequest & { tags?: Label[] };
+    return {
+        ...rest,
+        file_name: fileName,
+        release_description: releaseDescription,
+        release_type: releaseType,
+        gray_priority: grayPriority,
+        labels: tagsToLabels(tags),
+        beta_labels: normalizeClientLabelsForApi(betaLabels),
+    };
+}
+
 // 发布配置文件
 export interface ReleaseConfigFilePequest {
     namespace: string
@@ -72,6 +187,7 @@ export interface ReleaseConfigFilePequest {
     releaseDescription?: string
     betaLabels?: MatcheLabel[]
     releaseType?: string
+    grayPriority?: number
 }
 
 export interface ReleaseConfigFileResponse {
@@ -81,7 +197,7 @@ export interface ReleaseConfigFileResponse {
 export async function releaseConfigFile(params: ReleaseConfigFilePequest) {
     const res = await apiRequest<ReleaseConfigFileResponse>({
         action: `${BaseURL.CONFIG_RELEASE}`,
-        data: params,
+        data: toApiConfigFileRelease(params),
     })
     return res
 }
@@ -108,7 +224,11 @@ export async function describeOneFileRelease(params: DescribeOneFileReleaseReque
         action: `${BaseURL.CONFIG_RELEASE}`,
         data: params,
     })
-    return res
+    const configFileRelease = res.configFileRelease || normalizeConfigFileRelease(res as unknown as ApiConfigFileRelease)
+    return {
+        ...res,
+        configFileRelease: normalizeConfigFileRelease(configFileRelease as ApiConfigFileRelease),
+    }
 }
 
 // 查询配置文件发布历史
@@ -121,6 +241,7 @@ export interface DescribeConfigFileReleasesRequest {
     file_name?: string
     // 只保护处于使用状态
     only_use?: boolean
+    only_active?: boolean
     // 发布名称
     release_name?: string
     // 条数
@@ -135,11 +256,20 @@ export interface DescribeConfigFileReleasesResponse {
 }
 
 export async function describeFileReleases(params: DescribeConfigFileReleasesRequest) {
+    const { only_use, ...rest } = params;
     const res = await getApiRequest<DescribeConfigFileReleasesResponse>({
-        action: `${BaseURL.CONFIG_RELEASE}`,
-        data: params,
+        action: `${BaseURL.CONFIG_RELEASES}`,
+        data: {
+            ...rest,
+            only_active: rest.only_active ?? only_use,
+        },
     })
-    return res
+    const releases = ((res as any).data ?? res.configFileReleases ?? []).map(normalizeConfigFileRelease)
+    return {
+        ...res,
+        configFileReleases: releases,
+        total: res.total ?? (res as any).amount ?? releases.length,
+    }
 }
 
 // 查询某个配置文件的发布的版本记录
@@ -162,7 +292,11 @@ export async function describeFileReleaseVersions(params: DescribeFileReleaseVer
         action: `${BaseURL.CONFIG_RELEASE}/versions`,
         data: params,
     })
-    return res
+    const releases = ((res as any).data ?? res.configFileReleases ?? []).map(normalizeConfigFileRelease)
+    return {
+        ...res,
+        configFileReleases: releases,
+    }
 }
 
 // 回滚配置发布
@@ -180,8 +314,8 @@ export interface RollbackFileReleasesResponse {
 
 export async function rollbackFileReleases(params: RollbackFileReleasesResquest[]) {
     const res = await putApiRequest<RollbackFileReleasesResponse>({
-        action: `${BaseURL.CONFIG_RELEASE}/rollback`,
-        data: params,
+        action: `${BaseURL.CONFIG_RELEASES}/rollback`,
+        data: params.map(toApiConfigFileRelease),
     })
     return res
 }
@@ -196,6 +330,7 @@ export interface DeleteFileReleaseRequest {
     fileName?: string
     // 发布名称
     name?: string
+    releaseType?: string
 }
 
 export interface DeleteConfigFileReleasesResponse {
@@ -205,8 +340,46 @@ export interface DeleteConfigFileReleasesResponse {
 
 export async function deleteFileReleases(params: DeleteFileReleaseRequest[]) {
     const res = await apiRequest<DeleteConfigFileReleasesResponse>({
-        action: `${BaseURL.CONFIG_RELEASE}/delete`,
-        data: params,
+        action: `${BaseURL.CONFIG_RELEASES}/delete`,
+        data: params.map(toApiConfigFileRelease),
+    })
+    return res
+}
+
+export interface StopGrayFileReleaseRequest {
+    namespace: string
+    group: string
+    fileName: string
+    name?: string
+    releaseType?: string
+}
+
+export async function stopGrayFileReleases(params: StopGrayFileReleaseRequest[]) {
+    const res = await apiRequest<DeleteConfigFileReleasesResponse>({
+        action: `${BaseURL.CONFIG_RELEASES}/stopbeta`,
+        data: params.map((item) => toApiConfigFileRelease({
+            ...item,
+            releaseType: item.releaseType || 'gray',
+        })),
+    })
+    return res
+}
+
+export interface PromoteGrayFileReleaseRequest {
+    namespace: string
+    group: string
+    fileName: string
+    name: string
+    releaseType?: string
+}
+
+export async function promoteGrayFileReleaseToDraft(params: PromoteGrayFileReleaseRequest) {
+    const res = await apiRequest<RollbackFileReleasesResponse>({
+        action: `${BaseURL.CONFIG_RELEASES}/promote-gray`,
+        data: toApiConfigFileRelease({
+            ...params,
+            releaseType: params.releaseType || 'gray',
+        }),
     })
     return res
 }

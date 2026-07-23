@@ -1,21 +1,22 @@
 ---
 title: 核心业务实体
 tags: [business, domain-model]
-links: [terminology, namespace, service-discovery, config-center, governance-rules, ai-features]
-updated: 2026-06-09
-sources: 0
+links: [terminology, business-rules, namespace, service-discovery, config-center, governance-rules, ai-features, auth-system]
+updated: 2026-07-23
+sources: 2
 ---
 
 # 核心业务实体
 
 | 实体 | 归属页面 | 说明 |
 |------|----------|------|
-| Namespace | [[namespace]] | 顶层多租户隔离单元 |
-| Service | [[service-discovery]] | 服务发现核心实体，承载实例、订阅和治理关系 |
+| Namespace | [[namespace]] | 顶层运行环境，统一承载并隔离服务、配置和治理规则的环境实例 |
+| Service | [[service-discovery]] | 服务名是全局逻辑标识；`namespace + serviceName` 定位一个独立环境实例 |
 | Instance | [[service-discovery]] | 服务运行节点，按健康、隔离、位置和元数据参与发现 |
 | Config File | [[config-center]] | 版本化配置内容，支持发布、回滚和监听 |
 | Governance Rule | [[governance-rules]] | 治理能力统称，包含路由、限流、熔断、探测、无损、泳道 |
 | MCP Server | [[ai-features]] | AI 原生能力中的 MCP 服务注册实体 |
+| System Role | [[auth-system]] | 固定权限集合，只维护与 User、UserGroup 的成员关系 |
 
 实体之间的核心关系：
 
@@ -23,18 +24,26 @@ sources: 0
 Namespace
   -> Service
     -> Instance
-    -> Governance Rule
     -> MCP Server backend selector
   -> Config File Group
     -> Config File
       -> Release
+  -> Governance Rule
+
+User -> System Role
+User -> UserGroup -> System Role
+System Role -> Immutable Policy
 ```
+
+角色聚合包含可管理的自定义角色与受保护的内置角色。自定义角色可增删改并关联权限；内置角色只有 `admin`、`resource-reader`、`resource-writer` 三个稳定身份。用户可直接加入角色，也可通过用户组继承；内置角色的名称、描述、权限策略和系统标识不是租户可编辑资源。具体规则见 [[business-rules]]。
 
 ## 相关页面
 
 - [[terminology]]
+- [[business-rules]]
 - [[namespace]]
 - [[service-discovery]]
 - [[config-center]]
 - [[governance-rules]]
 - [[ai-features]]
+- [[auth-system]]

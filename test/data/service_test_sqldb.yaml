@@ -296,11 +296,7 @@ cache:
     - name: serviceContract
 # 存储配置
 store:
-  # 单机文件存储插件
-  # name: boltdbStore
-  # option:
-  #   path: ./polaris.bolt
-  ## 数据库存储插件
+  # 数据库存储插件
   name: defaultStore
   option:
     master:

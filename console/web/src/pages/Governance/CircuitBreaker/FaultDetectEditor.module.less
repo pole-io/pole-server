@@ -1,5 +1,5 @@
 .editorBody {
-  background: #f5f7fb;
+  background: var(--app-surface-subtle);
   height: calc(100vh - 158px);
   min-height: 0;
   overflow: hidden;
@@ -24,132 +24,20 @@
   overflow: auto;
   padding: 24px 28px 20px;
 
-  :global(.t-form) {
+  :global(.fluent-form) {
     display: flex;
     flex: 0 0 auto;
     flex-direction: column;
     min-height: 0;
   }
 
-  :global(.t-form) > div {
+  :global(.fluent-form) > div {
     flex: 0 0 auto;
   }
 
-  :global(.t-form__item) {
+  :global(.fluent-form-item) {
     margin-bottom: 0;
   }
-}
-
-.specPane {
-  border-left: 1px solid #d7dde8;
-  display: flex;
-  height: 100%;
-  max-height: 100%;
-  min-height: 0;
-  min-width: 0;
-}
-
-.specCard {
-  background: #0b1119;
-  border: 0;
-  border-radius: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  min-height: 0;
-  overflow: hidden;
-  width: 100%;
-}
-
-.specToolbar {
-  align-items: flex-start;
-  background: #101823;
-  border-bottom: 1px solid #243044;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 14px 18px;
-}
-
-.specTitle {
-  color: #b8c3d4;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 22px;
-}
-
-.specDesc {
-  color: #7f8ca3;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.specActions {
-  align-items: center;
-  display: flex;
-  gap: 8px;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.specToggle {
-  background: #0b1119;
-  border: 1px solid #334155;
-  border-radius: 7px;
-  display: inline-flex;
-  padding: 2px;
-}
-
-.specToggle button {
-  background: transparent;
-  border: 0;
-  border-radius: 5px;
-  color: #8b95a5;
-  cursor: pointer;
-  font-size: 11px;
-  height: 24px;
-  padding: 0 8px;
-}
-
-.specToggleActive {
-  background: #1677ff !important;
-  color: #fff !important;
-}
-
-.specCode {
-  background: #0b1119;
-  color: #9dccff;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 13px;
-  line-height: 22px;
-  margin: 0;
-  min-height: 0;
-  overflow: auto;
-  padding: 18px 22px 28px;
-  white-space: pre;
-}
-
-.specFooter {
-  background: #101823;
-  border-top: 1px solid #243044;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-height: 42px;
-  padding: 12px 18px;
-}
-
-.previewOk,
-.previewError {
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.previewOk {
-  color: #3fd4a8;
-}
-
-.previewError {
-  color: #ff9a92;
 }
 
 .monoTextarea textarea {
@@ -157,13 +45,13 @@
 }
 
 .monoInput {
-  :global(.t-input__inner) {
+  :global(.fui-Input__input) {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   }
 }
 
 .httpHeadersBlock {
-  background: #fff;
+  background: var(--app-surface);
   min-width: 0;
   padding-top: 4px;
   width: 100%;
@@ -178,7 +66,7 @@
 
 .httpHeadersBadge {
   align-items: center;
-  background: #e8f1ff;
+  background: var(--app-brand-subtle);
   border-radius: 5px;
   color: #1677ff;
   display: inline-flex;
@@ -191,28 +79,38 @@
 }
 
 .httpHeadersTitle {
-  color: #1f2329;
+  color: var(--app-text);
   font-size: 14px;
   font-weight: 600;
   line-height: 22px;
 }
 
 .httpHeadersHint {
-  color: #8b93a3;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
+}
+
+.httpHeadersScroller {
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .httpHeadersGrid {
   display: grid;
   gap: 10px 12px;
   grid-template-columns: minmax(220px, .78fr) minmax(300px, 1.1fr) 64px;
+  min-width: 660px;
 }
 
 .httpHeadersHead {
-  color: #8b93a3;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
+}
+
+.httpHeadersRow {
+  display: contents;
 }
 
 .httpHeadersCell {
@@ -220,21 +118,46 @@
   display: flex;
   min-width: 0;
 
-  :global(.t-input__wrap) {
+  :global(.fui-Input) {
     width: 100%;
   }
 }
 
 .httpHeadersActionCell {
+  background: var(--app-surface);
   justify-content: center;
+  position: sticky;
+  right: 0;
+  z-index: 2;
+}
+
+.httpHeadersActionHead {
+  background: var(--app-surface);
+  position: sticky;
+  right: 0;
+  z-index: 3;
+}
+
+.httpHeadersFirstCell {
+  background: var(--app-surface);
+  left: 0;
+  position: sticky;
+  z-index: 2;
+}
+
+.httpHeadersFirstHead {
+  background: var(--app-surface);
+  left: 0;
+  position: sticky;
+  z-index: 3;
 }
 
 .httpHeadersEmpty {
   align-items: center;
-  background: #fbfcfe;
-  border: 1px dashed #dce3ec;
+  background: var(--app-surface-subtle);
+  border: 1px dashed var(--app-border-subtle);
   border-radius: 8px;
-  color: #8b93a3;
+  color: var(--app-text-secondary);
   display: flex;
   grid-column: 1 / -1;
   justify-content: center;
@@ -243,7 +166,7 @@
 
 .httpHeadersFooter {
   align-items: center;
-  color: #8b93a3;
+  color: var(--app-text-secondary);
   display: flex;
   font-size: 13px;
   justify-content: space-between;
@@ -252,7 +175,7 @@
 }
 
 .headerReadonlyText {
-  color: #1f2329;
+  color: var(--app-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 13px;
   line-height: 22px;
@@ -263,10 +186,10 @@
 }
 
 .strategyNote {
-  background: #f7f9fc;
-  border: 1px solid #e3e8f2;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 6px;
-  color: #4e5969;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 20px;
   padding: 10px 12px;
@@ -280,7 +203,7 @@
 }
 
 .segmentedControl {
-  background: #f0f2f5;
+  background: var(--app-surface-secondary);
   border-radius: 6px;
   display: inline-flex;
   padding: 2px;
@@ -300,7 +223,7 @@
 
 .segmentedButton {
   background: transparent;
-  color: #4e5969;
+  color: var(--app-text-secondary);
 }
 
 .segmentedButtonActive {
@@ -314,21 +237,4 @@
     overflow: auto;
   }
 
-  .specPane {
-    display: none;
-  }
-}
-
-@media (max-width: 960px) {
-  .httpHeadersGrid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .httpHeadersHead {
-    display: none;
-  }
-
-  .httpHeadersActionCell {
-    justify-content: flex-start;
-  }
 }

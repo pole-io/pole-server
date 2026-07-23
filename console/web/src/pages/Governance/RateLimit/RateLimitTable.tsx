@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button, Table, Space, Row, Col, Tooltip, PrimaryTableProps, TableRowData, Popconfirm, Tabs, Link, Empty } from 'tdesign-react';
-import { CreditcardIcon, DeleteIcon, RefreshIcon } from 'tdesign-icons-react';
+import { Button, Table, Space, Row, Col, Tooltip, PrimaryTableProps, TableRowData, Popconfirm, Tabs, Link, Empty } from 'components/Fluent';
+import { CreditcardIcon, DeleteIcon, RefreshIcon } from 'components/Fluent/icons';
 
 import RateLimitEditor, { defaultRateLimitView } from './RateLimitEditor';
 import { useAppDispatch, useAppSelector } from 'modules/store';
@@ -22,7 +22,7 @@ import { PolicySourceType } from 'services/auth_policy';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import RuleTabs from '../RuleRelease/RuleTabs';
 import SubscribeTable from 'components/SubscribeTable';
-import RuleDetailDrawer from '../RuleRelease/RuleDetailDrawer';
+import RuleDetailDrawer, { WIDE_RULE_DETAIL_DRAWER_SIZE } from '../RuleRelease/RuleDetailDrawer';
 
 const { TabPanel } = Tabs;
 
@@ -287,6 +287,7 @@ const RateLimitTable: React.FC<IRateLimitTableProps> = (props) => {
                 visible={editor.visible}
                 title={editor.mode === 'create' ? '新建限流规则' : editor.data?.name || '限流规则详情'}
                 subtitle="访问限流"
+                size={WIDE_RULE_DETAIL_DRAWER_SIZE}
                 onClose={() => setEditor((prev) => ({ ...prev, visible: false }))}
             >
                 <RuleTabs

@@ -18,6 +18,8 @@
 package sqldb
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"strconv"
 
@@ -57,6 +59,7 @@ func governanceRuleRecordToRouterConfig(record *governanceRuleRecord) (*rules.Ro
 			return nil, err
 		}
 	}
+	conf.Namespace = record.Namespace
 	conf.ID = record.ID
 	conf.Namespace = record.Namespace
 	conf.Name = record.Name
@@ -77,6 +80,7 @@ func routerRuleReleaseToGovernanceReleaseRecord(release *rules.RouterRuleRelease
 	record := &governanceRuleReleaseRecord{
 		ID:           release.Id,
 		RuleType:     governanceRuleTypeRoute,
+		Namespace:    release.Namespace,
 		ReleaseName:  release.ReleaseName,
 		RuleID:       release.RuleId,
 		RuleName:     release.RuleName,
@@ -113,6 +117,7 @@ func governanceRuleReleaseRecordToRouterRuleRelease(record *governanceRuleReleas
 	return &rules.RouterRuleRelease{
 		RuleRelease: rules.RuleRelease{
 			Id:          record.ID,
+			Namespace:   record.Namespace,
 			ReleaseName: record.ReleaseName,
 			RuleId:      record.RuleID,
 			RuleName:    record.RuleName,
@@ -175,6 +180,7 @@ func losslessRuleReleaseToGovernanceReleaseRecord(release *rules.LosslessRuleRel
 	record := &governanceRuleReleaseRecord{
 		ID:           release.Id,
 		RuleType:     governanceRuleTypeLossless,
+		Namespace:    release.Namespace,
 		ReleaseName:  release.ReleaseName,
 		RuleID:       release.RuleId,
 		RuleName:     release.RuleName,
@@ -212,6 +218,7 @@ func governanceRuleReleaseRecordToLosslessRuleRelease(record *governanceRuleRele
 	return &rules.LosslessRuleRelease{
 		RuleRelease: rules.RuleRelease{
 			Id:          record.ID,
+			Namespace:   record.Namespace,
 			ReleaseName: record.ReleaseName,
 			RuleId:      record.RuleID,
 			RuleName:    record.RuleName,
@@ -243,19 +250,21 @@ func trafficMockRuleToGovernanceRuleRecord(rule *rules.TrafficGovernanceRule) *g
 func trafficGovernanceRuleToGovernanceRuleRecord(rule *rules.TrafficGovernanceRule, ruleType governanceRuleType) *governanceRuleRecord {
 	ruleJSON := marshalTrafficGovernanceRule(rule)
 	return &governanceRuleRecord{
-		ID:          rule.ID,
-		RuleType:    ruleType,
-		Namespace:   rule.Namespace,
-		Name:        rule.Name,
-		Service:     rule.Service,
-		Priority:    int(rule.Priority),
-		Enable:      boolToInt(rule.Enable),
-		Config:      ruleJSON,
-		Rule:        ruleJSON,
-		Revision:    rule.Revision,
-		Description: rule.Description,
-		Metadata:    marshalMetadata(rule.Metadata),
-		Valid:       rule.Valid,
+		ID:           rule.ID,
+		RuleType:     ruleType,
+		Namespace:    rule.Namespace,
+		Name:         rule.Name,
+		Service:      rule.Service,
+		DstService:   rule.Service,
+		DstNamespace: rule.ServiceNamespace,
+		Priority:     int(rule.Priority),
+		Enable:       boolToInt(rule.Enable),
+		Config:       ruleJSON,
+		Rule:         ruleJSON,
+		Revision:     rule.Revision,
+		Description:  rule.Description,
+		Metadata:     marshalMetadata(rule.Metadata),
+		Valid:        rule.Valid,
 	}
 }
 
@@ -317,6 +326,9 @@ func applyTrafficGovernanceRecordFields(rule *rules.TrafficGovernanceRule, recor
 	if record.Service != "" {
 		rule.Service = record.Service
 	}
+	if record.DstNamespace != "" {
+		rule.ServiceNamespace = record.DstNamespace
+	}
 	if record.Priority != 0 || rule.Priority == 0 {
 		rule.Priority = uint32(record.Priority)
 	}
@@ -343,6 +355,7 @@ func trafficGovernanceRuleReleaseToGovernanceReleaseRecord(
 	record := &governanceRuleReleaseRecord{
 		ID:           release.Id,
 		RuleType:     ruleType,
+		Namespace:    release.Namespace,
 		ReleaseName:  release.ReleaseName,
 		RuleID:       release.RuleId,
 		RuleName:     release.RuleName,
@@ -389,6 +402,7 @@ func governanceRuleReleaseRecordToTrafficGovernanceRuleRelease(
 	return &rules.TrafficGovernanceRuleRelease{
 		RuleRelease: rules.RuleRelease{
 			Id:          record.ID,
+			Namespace:   record.Namespace,
 			ReleaseName: record.ReleaseName,
 			RuleId:      record.RuleID,
 			RuleName:    record.RuleName,
@@ -409,6 +423,7 @@ func rateLimitToGovernanceRuleRecord(limit *rules.RateLimit) *governanceRuleReco
 	return &governanceRuleRecord{
 		ID:        limit.ID,
 		RuleType:  governanceRuleTypeRateLimit,
+		Namespace: limit.Namespace,
 		Name:      limit.Name,
 		ServiceID: limit.ServiceID,
 		Method:    limit.Method,
@@ -429,6 +444,7 @@ func governanceRuleRecordToRateLimit(record *governanceRuleRecord) (*rules.RateL
 	}
 	limit := &rules.RateLimit{
 		ID:         record.ID,
+		Namespace:  record.Namespace,
 		Name:       record.Name,
 		ServiceID:  record.ServiceID,
 		Method:     record.Method,
@@ -449,6 +465,7 @@ func rateLimitReleaseToGovernanceReleaseRecord(release *rules.RateLimitRelease) 
 	record := &governanceRuleReleaseRecord{
 		ID:           release.Id,
 		RuleType:     governanceRuleTypeRateLimit,
+		Namespace:    release.Namespace,
 		ReleaseName:  release.ReleaseName,
 		RuleID:       release.RuleId,
 		RuleName:     release.RuleName,
@@ -462,6 +479,7 @@ func rateLimitReleaseToGovernanceReleaseRecord(release *rules.RateLimitRelease) 
 	if release.Rule != nil {
 		record.RuleID = utilsDefaultString(record.RuleID, release.Rule.ID)
 		record.RuleName = utilsDefaultString(record.RuleName, release.Rule.Name)
+		record.Namespace = utilsDefaultString(record.Namespace, release.Rule.Namespace)
 		record.Rule = marshalRateLimit(release.Rule)
 	}
 	return record
@@ -477,9 +495,11 @@ func governanceRuleReleaseRecordToRateLimitRelease(record *governanceRuleRelease
 			return nil, err
 		}
 	}
+	limit.Namespace = record.Namespace
 	return &rules.RateLimitRelease{
 		RuleRelease: rules.RuleRelease{
 			Id:          record.ID,
+			Namespace:   record.Namespace,
 			ReleaseName: record.ReleaseName,
 			RuleId:      record.RuleID,
 			RuleName:    record.RuleName,
@@ -548,6 +568,7 @@ func circuitBreakerReleaseToGovernanceReleaseRecord(release *rules.CircuitBreake
 	record := &governanceRuleReleaseRecord{
 		ID:           release.Id,
 		RuleType:     governanceRuleTypeCircuitBreaker,
+		Namespace:    release.Namespace,
 		ReleaseName:  release.ReleaseName,
 		RuleID:       release.RuleId,
 		RuleName:     release.RuleName,
@@ -578,9 +599,11 @@ func governanceRuleReleaseRecordToCircuitBreakerRelease(record *governanceRuleRe
 			return nil, err
 		}
 	}
+	rule.Namespace = record.Namespace
 	return &rules.CircuitBreakerRelease{
 		RuleRelease: rules.RuleRelease{
 			Id:          record.ID,
+			Namespace:   record.Namespace,
 			ReleaseName: record.ReleaseName,
 			RuleId:      record.RuleID,
 			RuleName:    record.RuleName,
@@ -645,6 +668,7 @@ func faultDetectReleaseToGovernanceReleaseRecord(release *rules.FaultDetectRelea
 	record := &governanceRuleReleaseRecord{
 		ID:           release.Id,
 		RuleType:     governanceRuleTypeFaultDetect,
+		Namespace:    release.Namespace,
 		ReleaseName:  release.ReleaseName,
 		RuleID:       release.RuleId,
 		RuleName:     release.RuleName,
@@ -675,9 +699,11 @@ func governanceRuleReleaseRecordToFaultDetectRelease(record *governanceRuleRelea
 			return nil, err
 		}
 	}
+	rule.Namespace = record.Namespace
 	return &rules.FaultDetectRelease{
 		RuleRelease: rules.RuleRelease{
 			Id:          record.ID,
+			Namespace:   record.Namespace,
 			ReleaseName: record.ReleaseName,
 			RuleId:      record.RuleID,
 			RuleName:    record.RuleName,
@@ -727,7 +753,15 @@ func marshalTrafficGovernanceRule(rule *rules.TrafficGovernanceRule) string {
 	var msg proto.Message
 	switch rule.Kind {
 	case rules.TrafficGovernanceRuleKindSecurity:
-		msg = rule.ToTrafficSecuritySpec()
+		securityRule := rule.ToTrafficSecuritySpec()
+		// Defense in depth: the store must never serialize a replayable custom
+		// Header secret, even if an in-process caller bypasses paramcheck.
+		if custom := securityRule.GetAuthentication().GetCustomHeader(); custom != nil && custom.GetValue() != "" {
+			digest := sha256.Sum256([]byte(custom.GetValue()))
+			custom.ValueSha256 = hex.EncodeToString(digest[:])
+			custom.Value = ""
+		}
+		msg = securityRule
 	case rules.TrafficGovernanceRuleKindMirror:
 		msg = rule.ToTrafficMirrorSpec()
 	case rules.TrafficGovernanceRuleKindMock:

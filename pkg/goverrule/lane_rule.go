@@ -60,7 +60,7 @@ func (s *Server) CreateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 		_ = tx.Rollback()
 	}()
 
-	saveVal, err := s.storage.LockLaneGroup(tx, req.GetName())
+	saveVal, err := s.storage.LockLaneGroup(tx, rules.OwnerNamespaceFromProto(req), req.GetName())
 	if err != nil {
 		log.Error("[Service][Lane] lock one lane_group", utils.RequestID(ctx),
 			zap.String("name", req.GetName()), zap.Error(err))
@@ -119,7 +119,7 @@ func (s *Server) UpdateLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 		_ = tx.Rollback()
 	}()
 
-	saveData, err := s.storage.LockLaneGroup(tx, req.GetName())
+	saveData, err := s.storage.LockLaneGroup(tx, rules.OwnerNamespaceFromProto(req), req.GetName())
 	if err != nil {
 		log.Error("[Service][Lane] lock one lane_group", utils.RequestID(ctx),
 			zap.String("name", req.GetName()), zap.Error(err))
@@ -173,7 +173,7 @@ func (s *Server) DeleteLaneGroup(ctx context.Context, req *apitraffic.LaneGroup)
 	if req.GetId() != "" {
 		saveData, err = s.storage.GetLaneGroupByID(req.GetId())
 	} else {
-		saveData, err = s.storage.GetLaneGroup(req.GetName())
+		saveData, err = s.storage.GetLaneGroup(rules.OwnerNamespaceFromProto(req), req.GetName())
 	}
 	if err != nil {
 		log.Error("[Server][LaneGroup] get target lane_group when delete", zap.String("id", req.GetId()),
@@ -270,7 +270,7 @@ func (s *Server) CreateLaneRule(ctx context.Context, req *apitraffic.LaneRule) *
 		_ = tx.Rollback()
 	}()
 
-	group, err := s.storage.LockLaneGroup(tx, req.GetGroupName())
+	group, err := s.storage.LockLaneGroup(tx, rules.OwnerNamespaceFromProto(req), req.GetGroupName())
 	if err != nil {
 		log.Error("[Service][Lane] lock one lane_group", utils.RequestID(ctx),
 			zap.String("name", req.GetGroupName()), zap.Error(err))
@@ -290,6 +290,7 @@ func (s *Server) CreateLaneRule(ctx context.Context, req *apitraffic.LaneRule) *
 		log.Error("[Service][Lane] create lane_group transfer spec to model", utils.RequestID(ctx), zap.Error(err))
 		return api.NewResponse(apimodel.Code_ExecuteException)
 	}
+	saveData.Namespace = group.Namespace
 	saveData.ID = utils.DefaultString(req.GetId(), utils.NewUUID())
 	saveData.Revision = utils.DefaultString(req.GetRevision(), utils.NewUUID())
 
@@ -329,7 +330,7 @@ func (s *Server) UpdateLaneRule(ctx context.Context, req *apitraffic.LaneRule) *
 		_ = tx.Rollback()
 	}()
 
-	group, err := s.storage.LockLaneGroup(tx, req.GetGroupName())
+	group, err := s.storage.LockLaneGroup(tx, rules.OwnerNamespaceFromProto(req), req.GetGroupName())
 	if err != nil {
 		log.Error("[Service][Lane] lock one lane_group", utils.RequestID(ctx),
 			zap.String("name", req.GetGroupName()), zap.Error(err))
@@ -345,6 +346,7 @@ func (s *Server) UpdateLaneRule(ctx context.Context, req *apitraffic.LaneRule) *
 		log.Error("[Service][Lane] create lane_group transfer spec to model", utils.RequestID(ctx), zap.Error(err))
 		return api.NewResponse(apimodel.Code_ExecuteException)
 	}
+	saveData.Namespace = group.Namespace
 
 	saveData.Revision = utils.DefaultString(req.GetRevision(), utils.NewUUID())
 	if err := s.storage.UpdateLaneRules(tx, []*rules.LaneRule{saveData}); err != nil {
@@ -396,7 +398,7 @@ func (s *Server) DeleteLaneRule(ctx context.Context, req *apitraffic.LaneRule) *
 	}()
 
 	saveData.Revision = utils.DefaultString(req.GetRevision(), utils.NewUUID())
-	if err := s.storage.DeleteLaneRules(tx, saveData.LaneGroup, []string{saveData.ID}); err != nil {
+	if err := s.storage.DeleteLaneRules(tx, saveData.Namespace, saveData.LaneGroup, []string{saveData.ID}); err != nil {
 		return api.NewResponse(storeapi.StoreCode2APICode(err))
 	}
 	if err := tx.Commit(); err != nil {

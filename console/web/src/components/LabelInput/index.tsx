@@ -1,8 +1,8 @@
 import React from 'react';
 import { Label } from 'services/types';
-import { AddIcon, DeleteIcon } from 'tdesign-icons-react';
-import { Button, Form, Input, Popup, Space, Tag } from 'tdesign-react';
-import type { CustomValidator, FieldData, InternalFormInstance, NamePath } from 'tdesign-react';
+import { AddIcon, DeleteIcon } from 'components/Fluent/icons';
+import { Button, Form, Input, Popup, Space, Tag } from 'components/Fluent';
+import type { CustomValidator, FieldData, InternalFormInstance, NamePath } from 'components/Fluent';
 
 import style from './index.module.less';
 
@@ -130,44 +130,54 @@ const LabelInput: React.FC<ILabelInputProps> = ({
 
     const renderEditor = (setFields?: (fields: FieldData[]) => void) => (
         <div id={editorId} className={style.editor}>
-            <div className={style.editorHeader}>
-                <span>键</span>
-                <span>值</span>
-                <span>操作</span>
+            <div className={style.tableViewport} role="table" aria-label={`${label || '标签'}编辑表格`}>
+            <div className={style.editorHeader} role="row">
+                <span className={style.firstHeader} role="columnheader">键</span>
+                <span role="columnheader">值</span>
+                <span className={style.actionHeader} role="columnheader">操作</span>
             </div>
             {labels.length === 0 ? (
                 <div id={emptyId} className={style.emptyEditor}>
                     <div>暂无标签</div>
                 </div>
             ) : (
-                <div className={style.rows}>
+                <div className={style.rows} role="rowgroup">
                     {labels.map((item, index) => {
                         const duplicated = item.key.trim() !== '' && keyCount[item.key.trim()] > 1;
                         const missingKey = !item.key.trim() && item.value.trim();
                         const rowError = missingKey ? '标签键不能为空' : duplicated ? '标签 key 不能重复' : '';
                         return (
-                            <div key={`${index}-${item.key}`} className={`${style.row} ${rowError ? style.rowError : ''}`}>
-                                <Input
-                                    value={item.key}
-                                    clearable
-                                    placeholder={keyPlaceholder}
-                                    onChange={(value) => updateLabel(index, 'key', value, setFields)}
-                                />
-                                <Input
-                                    value={item.value}
-                                    clearable
-                                    placeholder={valuePlaceholder}
-                                    onChange={(value) => updateLabel(index, 'value', value, setFields)}
-                                />
-                                <Popup trigger="hover" content="删除标签">
-                                    <Button
-                                        shape="square"
-                                        variant="text"
-                                        onClick={() => removeLabel(index, setFields)}
-                                >
-                                    <DeleteIcon />
-                                </Button>
-                                </Popup>
+                            <div key={`label-row-${index}`} className={`${style.row} ${rowError ? style.rowError : ''}`} role="row">
+                                <div className={style.firstCell} role="cell">
+                                    <Input
+                                        aria-label={`第 ${index + 1} 个标签的键`}
+                                        value={item.key}
+                                        clearable
+                                        placeholder={keyPlaceholder}
+                                        onChange={(value) => updateLabel(index, 'key', value, setFields)}
+                                    />
+                                </div>
+                                <div className={style.valueCell} role="cell">
+                                    <Input
+                                        aria-label={`第 ${index + 1} 个标签的值`}
+                                        value={item.value}
+                                        clearable
+                                        placeholder={valuePlaceholder}
+                                        onChange={(value) => updateLabel(index, 'value', value, setFields)}
+                                    />
+                                </div>
+                                <div className={style.actionCell} role="cell">
+                                    <Popup trigger="hover" content="删除标签">
+                                        <Button
+                                            aria-label={`删除第 ${index + 1} 个标签`}
+                                            shape="square"
+                                            variant="text"
+                                            onClick={() => removeLabel(index, setFields)}
+                                        >
+                                            <DeleteIcon />
+                                        </Button>
+                                    </Popup>
+                                </div>
                                 {rowError && (
                                     <div className={style.rowErrorText}>{rowError}</div>
                                 )}
@@ -176,6 +186,7 @@ const LabelInput: React.FC<ILabelInputProps> = ({
                     })}
                 </div>
             )}
+            </div>
             <div className={style.footer}>
                 <Button size="small" variant="text" icon={<AddIcon />} onClick={() => addLabel(setFields)}>
                     添加标签

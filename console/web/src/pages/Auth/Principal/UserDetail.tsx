@@ -1,337 +1,305 @@
-import React from "react";
-import { Card, Form, Input, Link, Loading, Popup, Space, Table, Tag, TableProps, Breadcrumb, Descriptions, Tabs } from "tdesign-react";
-import type { FormProps } from 'tdesign-react';
-import { DiscountIcon } from "tdesign-icons-react";
+import React from 'react';
+import { Breadcrumb, Button, Empty, Link, Loading, Table, Tag, TableProps } from 'components/Fluent';
+import { CopyIcon, RefreshIcon } from 'components/Fluent/icons';
 import { useNavigate } from 'react-router-dom';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
-import { enableUserToken, listOneUser, resetUserToken, selectUser } from "modules/user/users";
-import { describeAuthPolicies, PolicyRule } from "services/auth_policy";
-import { User } from "services/users";
-import { openErrNotification, openInfoNotification } from "utils/notifition";
+import { enableUserToken, listOneUser, resetUserToken, selectUser } from 'modules/user/users';
+import { describeAuthPolicies, PolicyRule } from 'services/auth_policy';
+import { User } from 'services/users';
+import { openErrNotification, openInfoNotification } from 'utils/notifition';
+import { copyToClipboard } from 'utils/sys';
+import style from './index.module.less';
 
-const { FormItem } = Form;
 const { BreadcrumbItem } = Breadcrumb;
-const { DescriptionsItem } = Descriptions;
-const { TabPanel } = Tabs;
 
-interface IUserDetailProps {
+const formatValue = (value?: string) => value || '-';
 
-}
+const UserDetailPage: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const searchParams = new URLSearchParams(window.location.search);
+  const userId = searchParams.get('id') || '';
+  const username = searchParams.get('name') || '用户详情';
+  const { viewUser } = useAppSelector(selectUser);
+  const [viewState, setViewState] = React.useState<{
+    loading: boolean;
+    user: User | null;
+    policies: PolicyRule[];
+    policyTotal: number;
+    policyLoading: boolean;
+    fetchError: boolean;
+  }>({
+    loading: false,
+    user: null,
+    policies: [],
+    policyTotal: 0,
+    policyLoading: false,
+    fetchError: false,
+  });
 
-const UserDetailTable: React.FC<IUserDetailProps> = ({ }) => {
-    const [form] = Form.useForm();
-    const dispatch = useAppDispatch();
-    const navigate = useNavigate();
-    const urlParams = new URLSearchParams(window.location.search);
-    const userId = urlParams.get('id');
-    const username = urlParams.get('name');
+  const loadUserPolicies = React.useCallback(async (id: string) => {
+    setViewState(prev => ({ ...prev, policyLoading: true }));
+    try {
+      const ret = await describeAuthPolicies({
+        principal_id: id,
+        principal_type: 1,
+        offset: 0,
+        limit: 100,
+      });
+      setViewState(prev => ({
+        ...prev,
+        policies: ret.content,
+        policyTotal: ret.totalCount,
+        policyLoading: false,
+      }));
+    } catch (error) {
+      setViewState(prev => ({ ...prev, policyLoading: false }));
+      openErrNotification('请求错误', `获取关联策略失败, ${(error as Error).message}`);
+    }
+  }, []);
 
-    const userState = useAppSelector(selectUser);
-    const { editUser, viewUser } = userState;
-
-    const [viewState, setViewState] = React.useState<{
-        loading: boolean;
-        user: User;
-        data: TableProps['data'];
-        policies: PolicyRule[];
-        policyTotal: number;
-        policyLoading: boolean;
-        fetchError: boolean;
-    }>({ loading: false, user: {} as User, data: [], policies: [], policyTotal: 0, policyLoading: false, fetchError: false });
-
-    React.useEffect(() => {
-        if (userId && userId.length > 0) {
-            loadUser();
-        }
-    }, [userId]);
-
-    const loadUser = () => {
-        setViewState(prev => ({ ...prev, loading: true }));
-        dispatch(listOneUser({ id: userId as string })).then((res) => {
-            setViewState(prev => ({ ...prev, loading: false }));
-            if (res.meta.requestStatus === 'rejected') {
-                openErrNotification('请求错误', `获取用户详情失败, ${res?.payload as string}`);
-                return;
-            }
-
-            const { viewUser } = res.payload as { viewUser: User };
-
-            if (viewUser) {
-                form.setFieldsValue({
-                    id: viewUser.id,
-                    name: viewUser.name,
-                    comment: viewUser.comment,
-                    source: viewUser.source,
-                    email: viewUser.email,
-                    mobile: viewUser.mobile,
-                    user_labels: viewUser.metadata ? Object.entries(viewUser.metadata).map(([key, value]) => ({ key, value })) : [],
-                });
-                loadUserPolicies(viewUser.id || (userId as string));
-            }
-        })
+  const loadUser = React.useCallback(async () => {
+    if (!userId) return;
+    setViewState(prev => ({ ...prev, loading: true, fetchError: false }));
+    const result = await dispatch(listOneUser({ id: userId }));
+    if (result.meta.requestStatus === 'rejected') {
+      setViewState(prev => ({ ...prev, loading: false, fetchError: true }));
+      openErrNotification('请求错误', `获取用户详情失败, ${result.payload as string}`);
+      return;
     }
 
-    const loadUserPolicies = async (id: string) => {
-        setViewState(prev => ({ ...prev, policyLoading: true }));
-        try {
-            const ret = await describeAuthPolicies({
-                principal_id: id,
-                principal_type: 1,
-                offset: 0,
-                limit: 100,
-            });
-            setViewState(prev => ({
-                ...prev,
-                policies: ret.content,
-                policyTotal: ret.totalCount,
-                policyLoading: false,
-            }));
-        } catch (error) {
-            setViewState(prev => ({ ...prev, policyLoading: false }));
-            openErrNotification('请求错误', `获取关联策略失败, ${(error as Error).message}`);
-        }
+    const user = (result.payload as { viewUser?: User }).viewUser;
+    if (!user) {
+      setViewState(prev => ({ ...prev, loading: false, fetchError: true }));
+      return;
     }
+    setViewState(prev => ({ ...prev, loading: false, user, fetchError: false }));
+    loadUserPolicies(user.id || userId);
+  }, [dispatch, loadUserPolicies, userId]);
 
-    const handleChangePassword = () => {
+  React.useEffect(() => {
+    loadUser();
+  }, [loadUser]);
 
+  const currentUser = viewState.user || viewUser || null;
+  const metadataEntries = Object.entries(currentUser?.metadata || {}).map(([key, value]) => ({
+    key,
+    value: typeof value === 'string' ? value : JSON.stringify(value),
+  }));
+  const isMainUser = currentUser?.user_type === 'main';
+  const userInitial = (currentUser?.name || username || 'U').slice(0, 1).toUpperCase();
+
+  const refreshAfterTokenChange = () => {
+    setViewState(prev => ({ ...prev, loading: true }));
+    window.setTimeout(loadUser, 1000);
+  };
+
+  const handleResetToken = async () => {
+    if (!userId) return;
+    const result = await dispatch(resetUserToken({ id: userId }));
+    if (result.meta.requestStatus === 'rejected') {
+      openErrNotification('请求错误', '资源访问凭据重置失败');
+      return;
     }
+    openInfoNotification('请求成功', '资源访问凭据已重置');
+    refreshAfterTokenChange();
+  };
 
-    const onSubmit: FormProps['onSubmit'] = async (e) => { }
+  const handleToggleToken = async () => {
+    if (!userId || !currentUser) return;
+    const enabled = Boolean(currentUser.token_enable);
+    const result = await dispatch(enableUserToken({ id: userId, token_enable: !enabled }));
+    if (result.meta.requestStatus === 'rejected') {
+      openErrNotification('请求错误', `资源访问凭据${enabled ? '禁用' : '启用'}失败`);
+      return;
+    }
+    openInfoNotification('请求成功', `资源访问凭据已${enabled ? '禁用' : '启用'}`);
+    refreshAfterTokenChange();
+  };
 
-    const userForm = (
-        <Form
-            form={form}
-            layout="vertical"
-            labelWidth={120}
-            labelAlign={'left'}
-            onSubmit={onSubmit}
+  const policyColumns: TableProps['columns'] = [
+    {
+      colKey: 'name',
+      title: '策略名称',
+      width: 260,
+      minWidth: 220,
+      ellipsis: true,
+      cell: ({ row }) => (
+        <Link
+          theme="primary"
+          onClick={() => navigate(`/auth/policies/detail?id=${encodeURIComponent(String(row.id || ''))}&name=${encodeURIComponent(String(row.name || ''))}`)}
         >
-            <Space direction="vertical" style={{ width: '100%' }}>
-                <Descriptions column={2} size="small">
-                    <DescriptionsItem label="用户ID">
-                        {viewUser?.id}
-                    </DescriptionsItem>
-                    <DescriptionsItem label="备注">
-                        {viewUser?.comment}
-                    </DescriptionsItem>
-                    <DescriptionsItem label="用户名">
-                        {viewUser?.name}
-                    </DescriptionsItem>
-                    <DescriptionsItem label="来源">
-                        {viewUser?.source}
-                    </DescriptionsItem>
-                    <DescriptionsItem label="邮箱">
-                        {viewUser?.email}
-                    </DescriptionsItem>
-                    <DescriptionsItem label="手机号">
-                        {viewUser?.mobile}
-                    </DescriptionsItem>
-                </Descriptions>
-                <FormItem label="资源访问凭据" name="token_enable" shouldUpdate={true}>
-                    <Table
-                        rowKey="id"
-                        size={"large"}
-                        tableLayout={'auto'}
-                        cellEmptyContent={'-'}
-                        columns={[
-                            {
-                                colKey: 'token',
-                                title: 'Token',
-                                cell: ({ row: { token } }) => {
-                                    return (
-                                        <Popup content="已复制" trigger="click">
-                                            <Input size="large" borderless={true} type="password" value={token} readonly onClick={() => {
-                                                navigator.clipboard.writeText(token as string)
-                                            }} />
-                                        </Popup>
-                                    )
-                                }
-                            },
-                            {
-                                colKey: 'status',
-                                title: '状态',
-                                cell: ({ row: { status } }) => {
-                                    return (
-                                        <Tag theme={status ? 'success' : 'danger'}>{status ? '启用' : '禁用'}</Tag>
-                                    )
-                                }
-                            },
-                            {
-                                colKey: 'op',
-                                title: '操作',
-                                cell: () => {
-                                    const enabled = viewUser?.token_enable
-                                    return (
-                                        <Space>
-                                            <Link theme="primary" onClick={() => {
-                                                dispatch(resetUserToken({ id: userId as string }))
-                                                    .then((res) => {
-                                                        if (res.meta.requestStatus === 'rejected') {
-                                                            openErrNotification('请求错误', "资源访问凭据重置失败");
-                                                        } else {
-                                                            openInfoNotification('请求成功', "资源访问凭据重置成功");
-                                                            // 由于底层缓存设计的问题，这里需要延迟1s
-                                                            setViewState({ ...viewState, loading: true })
-                                                            setTimeout(() => loadUser(), 1000)
-                                                        }
-                                                    });
-                                            }}>重置</Link>
-                                            <Link theme={enabled ? 'danger' : 'success'} onClick={() => {
-                                                dispatch(enableUserToken({ id: userId as string, token_enable: !enabled }))
-                                                    .then((res) => {
-                                                        if (res.meta.requestStatus === 'rejected') {
-                                                            openErrNotification('请求错误', `资源访问凭据${enabled ? '禁用' : '启用'}失败`);
-                                                        } else {
-                                                            openInfoNotification('请求成功', `资源访问凭据${enabled ? '禁用' : '启用'}成功`);
-                                                            setViewState({ ...viewState, loading: true })
-                                                            setTimeout(() => loadUser(), 1000)
-                                                        }
-                                                    });;
-                                            }}>{enabled ? '禁用' : '启用'}</Link>
-                                        </Space>
-                                    )
-                                }
-                            },
-                        ]}
-                        data={viewUser ? [{ token: viewUser.auth_token, status: viewUser.token_enable }] : []}
-                    />
-                </FormItem>
-                <FormItem label="标签">
-                    <Space>
-                        {viewUser?.metadata && Object.keys(viewUser.metadata).length > 0 && (
-                            Object.entries(viewUser.metadata).map(([key, value]) => {
-                                return <Tag>{`${key}: ${value}`}</Tag>
-                            })
-                        )}
-                    </Space>
-                </FormItem>
-            </Space>
-        </Form>
-    )
+          {row.name || '-'}
+        </Link>
+      ),
+    },
+    {
+      colKey: 'action',
+      title: '效果',
+      width: 112,
+      cell: ({ row }) => (
+        <Tag theme={row.action === 'ALLOW' ? 'success' : 'danger'} variant="light">
+          {row.action === 'ALLOW' ? '允许' : '拒绝'}
+        </Tag>
+      ),
+    },
+    {
+      colKey: 'default_strategy',
+      title: '策略类型',
+      width: 126,
+      cell: ({ row }) => (
+        <Tag theme={row.default_strategy ? 'primary' : 'default'} variant="outline">
+          {row.default_strategy ? '默认策略' : '自定义策略'}
+        </Tag>
+      ),
+    },
+    {
+      colKey: 'comment',
+      title: '描述',
+      width: 260,
+      minWidth: 200,
+      ellipsis: true,
+      cell: ({ row }) => row.comment || '-',
+    },
+    {
+      colKey: 'mtime',
+      title: '更新时间',
+      width: 180,
+      cell: ({ row }) => row.mtime || row.ctime || '-',
+    },
+  ];
 
-    const policyColumns: TableProps['columns'] = [
-        {
-            colKey: 'name',
-            title: '策略名称',
-            cell: ({ row }) => (
-                <Link
-                    theme="primary"
-                    onClick={() => navigate(`/auth/policies/detail?id=${row.id}&name=${row.name}`)}
-                >
-                    {row.name}
-                </Link>
-            ),
-        },
-        {
-            colKey: 'action',
-            title: '行为',
-            width: 120,
-            cell: ({ row }) => row.action || '-',
-        },
-        {
-            colKey: 'default_strategy',
-            title: '默认策略',
-            width: 120,
-            cell: ({ row }) => (
-                <Tag theme={row.default_strategy ? 'success' : 'default'} variant="outline">
-                    {row.default_strategy ? '是' : '否'}
-                </Tag>
-            ),
-        },
-        {
-            colKey: 'comment',
-            title: '描述',
-            ellipsis: true,
-            cell: ({ row }) => row.comment || '-',
-        },
-        {
-            colKey: 'time',
-            title: '操作时间',
-            width: 210,
-            cell: ({ row }) => (
-                <span>
-                    修改: {row.mtime || '-'}
-                    <br />
-                    创建: {row.ctime || '-'}
-                </span>
-            ),
-        },
-    ];
+  return (
+    <div className={style.userDetailPage}>
+      <Breadcrumb className={style.detailBreadcrumb} maxItemWidth="240px">
+        <BreadcrumbItem onClick={() => navigate('/auth/principals')}>用户</BreadcrumbItem>
+        <BreadcrumbItem>{currentUser?.name || username}</BreadcrumbItem>
+      </Breadcrumb>
 
-    const policyTable = (
-        <Table
-            rowKey="id"
-            size="medium"
-            tableLayout="auto"
-            cellEmptyContent="-"
-            loading={viewState.policyLoading}
-            columns={policyColumns}
-            data={viewState.policies}
-            pagination={{
-                pageSize: 100,
-                total: viewState.policyTotal,
-                current: 1,
-                showPageSize: false,
-                showJumper: false,
-            }}
-        />
-    );
+      <Loading indicator loading={viewState.loading} preventScrollThrough showOverlay>
+        {!userId || viewState.fetchError || !currentUser ? (
+          <section className={style.userDetailEmpty}>
+            <Empty description={userId ? '未找到用户详情' : '缺少用户标识，无法加载详情'} />
+          </section>
+        ) : (
+          <main className={style.userDetailStack}>
+            <section className={style.userDetailSummary}>
+              <div className={style.userDetailAvatar}>{userInitial}</div>
+              <div className={style.userDetailMain}>
+                <div className={style.userDetailTitleLine}>
+                  <h2>{currentUser.name}</h2>
+                  <Tag theme="primary" variant="light">{isMainUser ? '管理员' : '子用户'}</Tag>
+                </div>
+                <p>{currentUser.comment || '暂无备注'}</p>
+                <div className={style.userMetaGrid}>
+                  <div className={style.userMetaItem}>
+                    <span>用户 ID</span>
+                    <strong className={style.userMono} title={currentUser.id}>{formatValue(currentUser.id)}</strong>
+                  </div>
+                  <div className={style.userMetaItem}>
+                    <span>来源</span>
+                    <strong>{formatValue(currentUser.source)}</strong>
+                  </div>
+                  <div className={style.userMetaItem}>
+                    <span>创建时间</span>
+                    <strong>{formatValue(currentUser.ctime)}</strong>
+                  </div>
+                  <div className={style.userMetaItem}>
+                    <span>邮箱</span>
+                    <strong>{formatValue(currentUser.email)}</strong>
+                  </div>
+                  <div className={style.userMetaItem}>
+                    <span>手机号</span>
+                    <strong>{formatValue(currentUser.mobile)}</strong>
+                  </div>
+                  <div className={style.userMetaItem}>
+                    <span>关联策略</span>
+                    <strong>{viewState.policyLoading ? '-' : `${viewState.policyTotal} 条`}</strong>
+                  </div>
+                </div>
+              </div>
+            </section>
 
-    return (
-        <>
-            <Space direction="vertical" style={{ width: '100%' }}>
-                <Breadcrumb maxItemWidth="200px">
-                    <BreadcrumbItem onClick={() => {
-                        navigate(-1);
-                    }}>用户</BreadcrumbItem>
-                    <BreadcrumbItem>{username}</BreadcrumbItem>
-                </Breadcrumb>
-                <Card
-                    title={
-                        <>
-                            {`用户 ${username} 详情`}
-                            <Tag icon={<DiscountIcon />} style={{ marginLeft: 10 }} theme="default">
-                                {viewUser?.user_type === 'main' ? '管理员' : '子用户'}
-                            </Tag>
-                        </>
-                    }
-                    actions={
-                        <Link theme="primary" onClick={handleChangePassword} style={{ cursor: 'pointer' }}>
-                            修改密码
-                        </Link>
-                    }
-                    hoverShadow
-                >
-                    <Loading
-                        indicator
-                        loading={viewState.loading}
-                        preventScrollThrough
-                        showOverlay
+            <div className={style.userDetailContentGrid}>
+              <section className={style.userCredentialPanel}>
+                <div className={style.userPanelHeader}>
+                  <div>
+                    <strong>访问凭据</strong>
+                    <span>用于 Console 和 API 的用户身份验证。</span>
+                  </div>
+                  <Tag theme={currentUser.token_enable ? 'success' : 'danger'} variant="light">
+                    {currentUser.token_enable ? '已启用' : '已禁用'}
+                  </Tag>
+                </div>
+                <div className={style.userTokenRow}>
+                  <div>
+                    <span>访问 Token</span>
+                    <code>{currentUser.auth_token ? '••••••••••••••••' : '暂无 Token'}</code>
+                  </div>
+                  <div className={style.userTokenActions}>
+                    <Button
+                      variant="outline"
+                      icon={<CopyIcon />}
+                      disabled={!currentUser.auth_token}
+                      onClick={() => copyToClipboard(currentUser.auth_token, '资源访问凭据已复制到剪贴板')}
                     >
-                        {userForm}
-                    </Loading>
-                </Card>
+                      复制
+                    </Button>
+                    <Button variant="outline" icon={<RefreshIcon />} onClick={handleResetToken}>重置</Button>
+                    <Button theme={currentUser.token_enable ? 'danger' : 'primary'} variant="outline" onClick={handleToggleToken}>
+                      {currentUser.token_enable ? '禁用' : '启用'}
+                    </Button>
+                  </div>
+                </div>
+              </section>
 
-                <Card>
-                    <Tabs>
-                        {viewUser?.user_type !== 'main' && (
-                            <>
-                                <TabPanel value="user-group" label="用户组信息">
-                                </TabPanel>
-                                <TabPanel value="role" label="角色信息">
-                                </TabPanel>
-                            </>
-                        )}
-                        <TabPanel value="permission" label="权限信息">
-                            {policyTable}
-                        </TabPanel>
-                    </Tabs>
-                </Card>
+              <section className={style.userTagPanel}>
+                <div className={style.userPanelHeader}>
+                  <div>
+                    <strong>标签</strong>
+                    <span>{metadataEntries.length ? `当前有 ${metadataEntries.length} 个标签` : '当前没有标签'}</span>
+                  </div>
+                </div>
+                {metadataEntries.length ? (
+                  <div className={style.userLabelList}>
+                    {metadataEntries.map(item => <Tag key={item.key} theme="default" variant="outline">{item.key}: {item.value}</Tag>)}
+                  </div>
+                ) : (
+                  <p className={style.userPanelEmpty}>暂无标签</p>
+                )}
+              </section>
+            </div>
 
-            </Space>
-        </>
-    )
-}
+            <section className={style.userPolicySurface}>
+              <div className={style.userTableHeader}>
+                <div>
+                  <strong>权限信息</strong>
+                  <span>{viewState.policyLoading ? '正在加载关联策略' : `当前关联 ${viewState.policyTotal} 条策略`}</span>
+                </div>
+              </div>
+              <Table
+                rowKey="id"
+                size="medium"
+                tableLayout="fixed"
+                cellEmptyContent="-"
+                loading={viewState.policyLoading}
+                columns={policyColumns}
+                data={viewState.policies}
+                pagination={{
+                  pageSize: 100,
+                  total: viewState.policyTotal,
+                  current: 1,
+                  showPageSize: false,
+                  showJumper: false,
+                }}
+              />
+            </section>
+          </main>
+        )}
+      </Loading>
+    </div>
+  );
+};
 
-export default React.memo(UserDetailTable);
+export default React.memo(UserDetailPage);

@@ -19,14 +19,28 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	aitypes "github.com/pole-io/pole-server/apis/pkg/types/ai"
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 )
 
 func (h *HTTPServer) ListA2AAgents(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{Request: req, Response: rsp}
+	authCtx, err := h.checkA2AAgentPermission(handler.ParseHeaderContext(), authtypes.Read, authtypes.DescribeA2AAgents, nil)
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error()))
+		return
+	}
 	query := parseA2AAgentQuery(req.Request.URL.Query())
-	count, agents := h.cacheMgr.A2AAgent().Query(query)
-	_ = rsp.WriteHeaderAndJson(http.StatusOK, newA2AAgentListResponse(count, agents), restful.MIME_JSON)
+	_, agents := h.cacheMgr.A2AAgent().Query(query)
+	filtered := make([]*aitypes.A2AAgent, 0, len(agents))
+	for _, agent := range agents {
+		if agent == nil || !h.canReadA2AAgent(authCtx, agent.Id) {
+			continue
+		}
+		filtered = append(filtered, agent)
+	}
+	_ = rsp.WriteHeaderAndJson(http.StatusOK, newA2AAgentListResponse(uint32(len(filtered)), filtered), restful.MIME_JSON)
 }
 
 func (h *HTTPServer) CreateA2AAgents(req *restful.Request, rsp *restful.Response) {
@@ -34,6 +48,10 @@ func (h *HTTPServer) CreateA2AAgents(req *restful.Request, rsp *restful.Response
 	agents, err := readA2AAgents(req)
 	if err != nil {
 		handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+	if _, err := h.checkA2AAgentPermission(handler.ParseHeaderContext(), authtypes.Create, authtypes.CreateA2AAgents, nil); err != nil {
+		handler.WriteHeaderAndProto(api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error()))
 		return
 	}
 	for _, agent := range agents {
@@ -52,6 +70,10 @@ func (h *HTTPServer) UpdateA2AAgents(req *restful.Request, rsp *restful.Response
 		handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
+	if _, err := h.checkA2AAgentPermission(handler.ParseHeaderContext(), authtypes.Modify, authtypes.UpdateA2AAgents, a2aAgentIDs(agents)); err != nil {
+		handler.WriteHeaderAndProto(api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error()))
+		return
+	}
 	for _, agent := range agents {
 		if err := h.storage.UpdateA2AAgent(agent); err != nil {
 			handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
@@ -68,6 +90,10 @@ func (h *HTTPServer) DeleteA2AAgents(req *restful.Request, rsp *restful.Response
 		handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_ParseException, err.Error()))
 		return
 	}
+	if _, err := h.checkA2AAgentPermission(handler.ParseHeaderContext(), authtypes.Delete, authtypes.DeleteA2AAgents, deleteReq.AgentIds); err != nil {
+		handler.WriteHeaderAndProto(api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error()))
+		return
+	}
 	for _, id := range deleteReq.AgentIds {
 		if err := h.storage.DeleteA2AAgent(id); err != nil {
 			handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
@@ -78,6 +104,7 @@ func (h *HTTPServer) DeleteA2AAgents(req *restful.Request, rsp *restful.Response
 }
 
 func (h *HTTPServer) ListA2AAgentSkills(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{Request: req, Response: rsp}
 	agentID := req.QueryParameter("agent_id")
 	if agentID == "" {
 		name := req.QueryParameter("agent_name")
@@ -89,6 +116,10 @@ func (h *HTTPServer) ListA2AAgentSkills(req *restful.Request, rsp *restful.Respo
 			}
 		}
 	}
+	if _, err := h.checkA2AAgentPermission(handler.ParseHeaderContext(), authtypes.Read, authtypes.DescribeA2AAgentSkills, []string{agentID}); err != nil {
+		handler.WriteHeaderAndProto(api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error()))
+		return
+	}
 	skills := h.cacheMgr.A2AAgent().GetA2AAgentSkills(agentID)
 	_ = rsp.WriteHeaderAndJson(http.StatusOK, map[string]interface{}{
 		"code": uint32(apimodel.Code_ExecuteSuccess),
@@ -98,7 +129,12 @@ func (h *HTTPServer) ListA2AAgentSkills(req *restful.Request, rsp *restful.Respo
 }
 
 func (h *HTTPServer) GetA2AAgentCard(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{Request: req, Response: rsp}
 	id := req.PathParameter("id")
+	if _, err := h.checkA2AAgentPermission(handler.ParseHeaderContext(), authtypes.Read, authtypes.DescribeA2AAgentCard, []string{id}); err != nil {
+		handler.WriteHeaderAndProto(api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error()))
+		return
+	}
 	agent := h.cacheMgr.A2AAgent().GetA2AAgentByID(id)
 	if agent == nil {
 		_ = rsp.WriteHeaderAndJson(http.StatusNotFound, map[string]string{"error": "a2a agent not found"}, restful.MIME_JSON)

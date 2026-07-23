@@ -60,7 +60,7 @@ func (a *AdminUserGetter) GetAdminInfo() (*security.User, error) {
 		return a.user, nil
 	}
 
-	resp, err := http.Get(fmt.Sprintf("http://%s/maintain/v1/mainuser/exist", a.conf.PoleServer.Address))
+	resp, err := http.Get(fmt.Sprintf("http://%s/admin/v1/mainuser/exist", a.conf.PoleServer.Address))
 	if err != nil || resp.StatusCode != http.StatusOK {
 		user := &security.User{
 			Name: a.conf.WebServer.MainUser,
@@ -199,7 +199,8 @@ func refreshJWTFromLoginPayload(c *gin.Context, val map[string]interface{}, conf
 	if !ok || userID == "" {
 		return nil
 	}
-	return refreshJWT(c, userID, token, conf)
+	role, _ := val["role"].(string)
+	return refreshJWTWithRole(c, userID, token, role, conf)
 }
 
 // ReverseProxyForServer 反向代理
@@ -208,6 +209,13 @@ func ReverseProxyForServer(PoleServer *bootstrap.PoleServer, conf *bootstrap.Con
 		userID, token, ok := verifyAccessPermission(c, conf)
 		if !ok {
 			return
+		}
+		// Preserve authorization attributes when extending the signed session.
+		// The proxied request drops the browser cookie before it reaches the
+		// control-plane, so the role must be captured first.
+		role := ""
+		if claims, err := parseJWTClaims(c, conf); err == nil && claims != nil {
+			role = claims.Role
 		}
 
 		c.Request.Header.Del("Cookie")
@@ -223,7 +231,7 @@ func ReverseProxyForServer(PoleServer *bootstrap.PoleServer, conf *bootstrap.Con
 				return nil
 			}
 			if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
-				cookie, err := newJWTCookie(userID, token, conf)
+				cookie, err := newJWTCookieWithRole(userID, token, role, conf)
 				if err != nil {
 					return err
 				}
@@ -239,9 +247,14 @@ func ReverseProxyForServer(PoleServer *bootstrap.PoleServer, conf *bootstrap.Con
 }
 
 func verifyAccessPermission(c *gin.Context, conf *bootstrap.Config) (string, string, bool) {
+	return verifyAccessPermissionWithStatus(c, conf, http.StatusInternalServerError)
+}
+
+func verifyAccessPermissionWithStatus(c *gin.Context, conf *bootstrap.Config,
+	status int) (string, string, bool) {
 	userID, token, err := parseJWTThenSetToken(c, conf)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(status, gin.H{
 			"code": http.StatusProxyAuthRequired,
 			"info": "Proxy Authentication Required: " + err.Error(),
 		})
@@ -249,7 +262,7 @@ func verifyAccessPermission(c *gin.Context, conf *bootstrap.Config) (string, str
 	}
 
 	if ok := checkAuthoration(c, conf); !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(status, gin.H{
 			"code": http.StatusProxyAuthRequired,
 			"info": "Proxy Authentication Required: access token is invalid",
 		})
@@ -291,28 +304,42 @@ func ReverseProxyForMonitorServer(monitorServer *bootstrap.MonitorServer) gin.Ha
 type jwtClaims struct {
 	UserID string
 	Token  string
+	Role   string
 	jwt.RegisteredClaims
+}
+
+func parseJWTClaims(c *gin.Context, conf *bootstrap.Config) (*jwtClaims, error) {
+	if c == nil || c.Request == nil {
+		return nil, nil
+	}
+	jwtCookie, _ := c.Request.Cookie("jwt")
+	if jwtCookie == nil {
+		return nil, nil
+	}
+	token, err := jwt.ParseWithClaims(jwtCookie.Value, &jwtClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(conf.WebServer.JWT.SecretKey), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	claims, ok := token.Claims.(*jwtClaims)
+	if !ok || !token.Valid || claims.UserID == "" {
+		return nil, errors.New("jwt token is invalid")
+	}
+	return claims, nil
 }
 
 // parseJWTThenSetToken 从jwt中抽取userID 和 token
 func parseJWTThenSetToken(c *gin.Context, conf *bootstrap.Config) (string, string, error) {
 	receiveUserId := c.Request.Header.Get("x-pole-user")
 
-	jwtCookie, _ := c.Request.Cookie("jwt")
-	if jwtCookie == nil {
+	claims, err := parseJWTClaims(c, conf)
+	if claims == nil && err == nil {
 		return "", "", nil
 	}
-	token, err := jwt.ParseWithClaims(jwtCookie.Value, &jwtClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(conf.WebServer.JWT.SecretKey), nil
-	})
-	if _, ok := err.(*jwt.ValidationError); ok {
+	if err != nil {
 		log.Error("parse jwt with claims fail", zap.Error(err))
 		return "", "", err
-	}
-	claims, ok := token.Claims.(*jwtClaims)
-	if !ok || !token.Valid || claims.UserID == "" {
-		log.Error("jwt token is invalid", zap.String("user-id", receiveUserId), zap.String("token", jwtCookie.Value))
-		return "", "", errors.New("jwt token is invalid")
 	}
 	if receiveUserId != claims.UserID {
 		log.Error("Login information comparison failed", zap.String("receive-user-id", receiveUserId), zap.String("jwt-user-id", claims.UserID))
@@ -326,7 +353,15 @@ func parseJWTThenSetToken(c *gin.Context, conf *bootstrap.Config) (string, strin
 
 // refreshJWT 刷新jwtToken
 func refreshJWT(c *gin.Context, userID, token string, conf *bootstrap.Config) error {
-	cookie, err := newJWTCookie(userID, token, conf)
+	role := ""
+	if claims, err := parseJWTClaims(c, conf); err == nil && claims != nil {
+		role = claims.Role
+	}
+	return refreshJWTWithRole(c, userID, token, role, conf)
+}
+
+func refreshJWTWithRole(c *gin.Context, userID, token, role string, conf *bootstrap.Config) error {
+	cookie, err := newJWTCookieWithRole(userID, token, role, conf)
 	if err != nil || cookie == nil {
 		return err
 	}
@@ -335,6 +370,10 @@ func refreshJWT(c *gin.Context, userID, token string, conf *bootstrap.Config) er
 }
 
 func newJWTCookie(userID, token string, conf *bootstrap.Config) (*http.Cookie, error) {
+	return newJWTCookieWithRole(userID, token, "", conf)
+}
+
+func newJWTCookieWithRole(userID, token, role string, conf *bootstrap.Config) (*http.Cookie, error) {
 	if userID == "" || token == "" {
 		return nil, nil
 	}
@@ -342,6 +381,7 @@ func newJWTCookie(userID, token string, conf *bootstrap.Config) (*http.Cookie, e
 	claims := jwtClaims{
 		UserID: userID,
 		Token:  token,
+		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(nowTime.Add(time.Duration(conf.WebServer.JWT.Expired) * time.Second)),
 			NotBefore: jwt.NewNumericDate(nowTime),
@@ -357,7 +397,8 @@ func newJWTCookie(userID, token string, conf *bootstrap.Config) (*http.Cookie, e
 		Value:    jwtToken,
 		Path:     "/",
 		MaxAge:   conf.WebServer.JWT.Expired,
-		HttpOnly: false,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
 	}, nil
 }
 

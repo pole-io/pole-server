@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { ViewModuleIcon } from 'tdesign-icons-react';
+import { ViewModuleIcon } from 'components/Fluent/icons';
 import { IRouter } from '../index';
 
 const discovery: IRouter[] = [

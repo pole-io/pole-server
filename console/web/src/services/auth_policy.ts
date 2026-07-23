@@ -1,6 +1,35 @@
 import request, { apiRequest, ApiResponse, getAllList, getApiRequest, putApiRequest } from 'utils/request';
 import { SuccessCode } from './const';
 
+export interface AuthMutationResponse {
+    code?: number
+    result?: boolean
+    responses?: ApiResponse[]
+}
+
+/**
+ * 写接口经过 request 层后可能拿到已解包的 data，也可能拿到无 data 的旧式顶层响应。
+ * 因此在一个位置兼容 result、批量 responses 与旧式 code，业务 service 不再各自猜测响应形态。
+ */
+export function isAuthMutationSuccessful(response: unknown): boolean {
+    if (response === true) {
+        return true
+    }
+    if (!response || typeof response !== 'object') {
+        return false
+    }
+
+    const mutation = response as AuthMutationResponse
+    if (typeof mutation.result === 'boolean') {
+        return mutation.result
+    }
+    if (Array.isArray(mutation.responses)) {
+        return mutation.responses.length > 0
+            && mutation.responses.every(item => Number(item.code) === SuccessCode)
+    }
+    return Number(mutation.code) === SuccessCode
+}
+
 export enum PolicySourceType {
     Namespaces = "Namespaces",
     Services = "Services",
@@ -18,6 +47,8 @@ export enum PolicySourceType {
     UserGroups = "UserGroups",
     Roles = "Roles",
     PolicyRules = "PolicyRules",
+    MCPServerResources = "MCPServerResources",
+    A2AAgentResources = "A2AAgentResources",
 }
 
 // 鉴权策略
@@ -94,6 +125,10 @@ export interface PolicyResources {
     auth_policies?: PolicyResource[]
     // 角色ID列表
     roles?: PolicyResource[]
+    // MCP Server ID列表
+    mcp_servers?: PolicyResource[]
+    // A2A Agent ID列表
+    a2a_agents?: PolicyResource[]
 }
 
 // 资源
@@ -133,11 +168,11 @@ export interface DeleteAuthPoliciesResponse {
 }
 
 export async function deleteAuthPolicies(params: DeleteAuthPoliciesRequest[]) {
-    const result = await apiRequest<DeleteAuthPoliciesResponse>({
+    const result = await apiRequest<DeleteAuthPoliciesResponse & AuthMutationResponse>({
         action: '/auth/v1/policies/delete',
         data: params,
     })
-    return Number(result.code) === SuccessCode
+    return isAuthMutationSuccessful(result)
 }
 
 // 查询治理中心鉴权策略列表
@@ -241,8 +276,8 @@ export interface CreateAuthPoliciesResponse {
 }
 
 export async function createAuthPolicies(params: CreateAuthPoliciesRequest[]) {
-    const result = await apiRequest<CreateAuthPoliciesResponse>({ action: '/auth/v1/policies', data: params })
-    return Number(result.code) === SuccessCode
+    const result = await apiRequest<CreateAuthPoliciesResponse & AuthMutationResponse>({ action: '/auth/v1/policies', data: params })
+    return isAuthMutationSuccessful(result)
 }
 
 // 批量修改鉴权策略
@@ -251,7 +286,7 @@ export interface ModifyAuthPoliciesRequest {
     // 策略名称
     name: string
     // 涉及的用户 or 用户组
-    principals?: Principal
+    principals?: Principals
     // 资源操作权限
     action?: string
     // 简单描述
@@ -278,7 +313,7 @@ export async function modifyAuthPolicies(params: ModifyAuthPoliciesRequest[]) {
         action: '/auth/v1/policies',
         data: params,
     })
-    return result.responses.every(item => Number(item.code) === SuccessCode)
+    return isAuthMutationSuccessful(result)
 }
 
 // 按照 principal 的维度查询能改操作的资源信息
@@ -519,6 +554,7 @@ export const ServerFunctionZhDesc = {
         "RollbackConfigFileReleases": "批量回滚配置发布",
         "DeleteConfigFileReleases": "批量删除已发布配置版本",
         "StopGrayConfigFileReleases": "批量停止灰度发布配置版本",
+        "PromoteGrayConfigFileRelease": "提交灰度配置为正式草稿",
         "DescribeConfigFileRelease": "查询单个配置发布版本详细",
         "DescribeConfigFileReleases": "查询配置发布列表",
         "DescribeConfigFileReleaseVersions": "查询某一配置文件的发布版本列表",

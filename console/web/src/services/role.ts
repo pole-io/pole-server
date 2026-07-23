@@ -1,5 +1,5 @@
-import request, { apiRequest, ApiResponse, getAllList, getApiRequest, putApiRequest } from 'utils/request';
-import { SuccessCode } from './const';
+import request, { apiRequest, getAllList, getApiRequest, putApiRequest } from 'utils/request';
+import { AuthMutationResponse, isAuthMutationSuccessful } from './auth_policy';
 import { User } from './users';
 import { UserGroup } from './user_group';
 
@@ -97,8 +97,8 @@ export interface CreateRoleResponse {
 }
 
 export async function createRoles(params: CreateRoleRequest[]) {
-    const result = await apiRequest<CreateRoleResponse>({ action: '/auth/v1/roles', data: params })
-    return Number(result.code) === SuccessCode
+    const result = await apiRequest<CreateRoleResponse & AuthMutationResponse>({ action: '/auth/v1/roles', data: params })
+    return isAuthMutationSuccessful(result)
 }
 
 
@@ -106,6 +106,8 @@ export async function createRoles(params: CreateRoleRequest[]) {
 export interface ModifyRoleRequest {
     // 用户
     id: string
+    // 角色名称
+    name?: string
     // 备注
     comment?: string
     // 角色对应的用户列表
@@ -124,8 +126,8 @@ export interface ModifyRoleResponse {
 }
 
 export async function modifyRoles(params: ModifyRoleRequest[]) {
-    const result = await putApiRequest<ModifyRoleResponse>({ action: '/auth/v1/roles', data: params })
-    return Number(result.code) === SuccessCode
+    const result = await putApiRequest<ModifyRoleResponse & AuthMutationResponse>({ action: '/auth/v1/roles', data: params })
+    return isAuthMutationSuccessful(result)
 }
 
 // 修改用户信息
@@ -140,6 +142,6 @@ export interface DeleteRoleResponse {
 }
 
 export async function deleteRoles(params: DeleteRoleRequest[]) {
-    const result = await apiRequest<DeleteRoleResponse>({ action: '/auth/v1/roles/delete', data: params })
-    return Number(result.code) === SuccessCode
+    const result = await apiRequest<DeleteRoleResponse & AuthMutationResponse>({ action: '/auth/v1/roles/delete', data: params })
+    return isAuthMutationSuccessful(result)
 }

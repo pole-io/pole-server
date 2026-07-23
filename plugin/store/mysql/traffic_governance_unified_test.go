@@ -1,6 +1,7 @@
 package sqldb
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -9,6 +10,23 @@ import (
 	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 )
+
+func TestTrafficSecurityStoreSerializationNeverKeepsCustomHeaderPlaintext(t *testing.T) {
+	rule := rules.NewTrafficSecurityRule(&apisecurity.TrafficSecurityRule{
+		Authentication: &apisecurity.TrafficSecurityAuthentication{
+			Mode: apisecurity.TrafficSecurityAuthMode_CUSTOM_HEADER,
+			CustomHeader: &apisecurity.CustomHeaderAuthentication{
+				HeaderName: "x-api-key",
+				Value:      "plain-secret",
+			},
+		},
+	})
+
+	serialized := marshalTrafficGovernanceRule(rule)
+
+	require.False(t, strings.Contains(serialized, "plain-secret"))
+	require.Contains(t, serialized, "cc0e7608b73ea73b08fd28b582c21ba4ce5a0b1c9202bf7d2dcc85366205b622")
+}
 
 func TestTrafficGovernanceRuleRecordRoundTrip(t *testing.T) {
 	cases := []struct {

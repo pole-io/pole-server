@@ -3,10 +3,10 @@
 }
 
 .editorBody {
-  height: calc(100vh - 96px);
-  min-height: 640px;
+  height: calc(100vh - 158px);
+  min-height: 0;
   overflow: hidden;
-  background: #f5f7fb;
+  background: var(--app-surface-subtle);
 }
 
 .laneEditorShell {
@@ -23,20 +23,16 @@
   overflow: auto;
   padding: 12px 16px 16px;
 
-  :global(.t-tabs) {
+  > :global(.fluent-tabs) {
     min-height: 100%;
   }
 
-  :global(.t-tabs__content) {
+  > :global(.fluent-tabs) > :global(.fluent-tab-content) {
     overflow: visible;
     padding-top: 10px;
   }
 
-  :global(.t-tab-panel) {
-    overflow: visible;
-  }
-
-  :global(.t-form__item) {
+  :global(.fluent-form-item) {
     margin-bottom: 0;
   }
 }
@@ -49,9 +45,9 @@
 
 .designSection {
   min-width: 0;
-  border: 1px solid #e5e8ef;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-surface);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
@@ -62,14 +58,14 @@
   gap: 12px;
   min-height: 50px;
   padding: 10px 14px;
-  border-bottom: 1px solid #edf0f5;
+  border-bottom: 1px solid var(--app-border-subtle);
 }
 
 .designSectionTitle {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #111827;
+  color: var(--app-text);
   font-size: 15px;
   font-weight: 600;
   line-height: 22px;
@@ -83,7 +79,7 @@
 }
 
 .stepName {
-  color: #111827;
+  color: var(--app-text);
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;
@@ -106,7 +102,7 @@
 
 .designSectionDesc,
 .sectionHint {
-  color: #8b95a5;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }
@@ -117,7 +113,7 @@
 
 .inlineHint {
   margin-left: 10px;
-  color: #6b7280;
+  color: var(--app-text-secondary);
   font-size: 14px;
   line-height: 24px;
 }
@@ -132,7 +128,7 @@
 }
 
 .editLabel {
-  color: #6b7280;
+  color: var(--app-text-secondary);
   font-size: 13px;
   line-height: 20px;
   margin-bottom: 8px;
@@ -150,22 +146,25 @@
   gap: 10px;
   min-width: 0;
   padding: 10px;
-  border: 1px solid #edf1f7;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 6px;
-  background: #fbfcff;
+  background: var(--app-surface-subtle);
 }
 
 .rowIndex {
-  color: #8b95a5;
+  color: var(--app-text-secondary);
   font-size: 12px;
   text-align: center;
 }
 
 .prdTable {
-  overflow: hidden;
-  border: 1px solid #e5e8ef;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-surface);
 }
 
 .prdTableRow {
@@ -175,7 +174,9 @@
   column-gap: 14px;
   min-height: 58px;
   padding: 0 14px;
-  border-top: 1px solid #edf1f7;
+  min-width: 696px;
+  border-top: 1px solid var(--app-border-subtle);
+  background: var(--app-surface);
 
   &:first-child {
     border-top: 0;
@@ -184,12 +185,27 @@
   > * {
     min-width: 0;
   }
+
+  > :first-child,
+  > :last-child {
+    position: sticky;
+    z-index: 2;
+    background: inherit;
+  }
+
+  > :first-child {
+    left: 0;
+  }
+
+  > :last-child {
+    right: 0;
+  }
 }
 
 .prdTableHeader {
   min-height: 42px;
-  background: #fbfcff;
-  color: #8b95a5;
+  background: var(--app-surface-subtle);
+  color: var(--app-text-secondary);
   font-size: 13px;
   font-weight: 600;
 }
@@ -201,7 +217,7 @@
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: #eaf3ff;
+  background: var(--app-brand-subtle);
   color: #1677ff;
   font-size: 14px;
   font-weight: 600;
@@ -221,31 +237,32 @@
 }
 
 .gatewayPill {
-  border: 1px solid #9ac5ff;
-  background: #edf6ff;
+  border: 1px solid var(--app-brand-border);
+  background: var(--app-brand-subtle);
   color: #1264d8;
 }
 
 .appPill {
-  border: 1px solid #d7b8ff;
-  background: #f5edff;
+  border: 1px solid var(--app-violet-border);
+  background: var(--app-violet-subtle);
   color: #6b2ec9;
 }
 
 .serviceTable {
   .prdTableRow {
     grid-template-columns: 64px minmax(160px, 1fr) minmax(160px, 1fr) minmax(140px, 1fr) 48px;
+    min-width: 670px;
   }
 }
 
 .serviceDraftRow {
-  background: #fbfcff;
+  background: var(--app-surface-subtle);
 }
 
 .laneCard {
-  border: 1px solid #e5e8ef;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-surface);
 
   & + & {
     margin-top: 8px;
@@ -258,7 +275,7 @@
   margin-top: 8px;
   border-style: dashed;
   color: #1677ff;
-  background: #fff;
+  background: var(--app-surface);
 }
 
 .laneCardHeader {
@@ -267,7 +284,7 @@
   justify-content: space-between;
   gap: 10px;
   padding: 10px 12px;
-  border-bottom: 1px solid #edf1f7;
+  border-bottom: 1px solid var(--app-border-subtle);
 }
 
 .laneExpandIcon {
@@ -278,7 +295,7 @@
   height: 18px;
   border: 0;
   background: transparent;
-  color: #a0a8b5;
+  color: var(--app-text-tertiary);
   font-size: 13px;
   cursor: pointer;
 }
@@ -300,7 +317,7 @@
 }
 
 .laneName {
-  color: #111827;
+  color: var(--app-text);
   font-size: 14px;
   font-weight: 600;
   line-height: 22px;
@@ -308,7 +325,7 @@
 }
 
 .laneSummary {
-  color: #6b7280;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
   overflow: hidden;
@@ -323,15 +340,15 @@
   padding: 10px 12px 12px;
 }
 
-.laneCardBody :global(.t-input),
-.laneCardBody :global(.t-select),
-.laneCardBody :global(.t-tag-input) {
+.laneCardBody :global(.fui-Input),
+.laneCardBody :global(.fui-Dropdown),
+.laneCardBody :global(.fluent-tag-input) {
   font-size: 14px;
 }
 
-.laneCardBody :global(.t-input__wrap),
-.laneCardBody :global(.t-select__wrap),
-.laneCardBody :global(.t-tag-input) {
+.laneCardBody :global(.fui-Input),
+.laneCardBody :global(.fui-Dropdown),
+.laneCardBody :global(.fluent-tag-input) {
   min-height: 32px;
 }
 
@@ -339,10 +356,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #d8b4fe;
+  border: 1px solid var(--app-violet-border);
   border-radius: 6px;
-  background: #faf5ff;
-  color: #8b95a5;
+  background: var(--app-violet-subtle);
+  color: var(--app-text-secondary);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
   line-height: 20px;
@@ -355,7 +372,7 @@
 }
 
 .subSectionTitle {
-  color: #1f2937;
+  color: var(--app-text);
   font-size: 14px;
   font-weight: 600;
   line-height: 22px;
@@ -395,21 +412,21 @@
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  background: #eaf3ff;
+  background: var(--app-brand-subtle);
   color: #1677ff;
   font-size: 12px;
   font-weight: 600;
 }
 
 .subPanelTitle {
-  color: #111827;
+  color: var(--app-text);
   font-size: 14px;
   font-weight: 600;
   line-height: 22px;
 }
 
 .subPanelHint {
-  color: #8b95a5;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }
@@ -425,7 +442,7 @@
 .segmented {
   display: inline-flex;
   overflow: hidden;
-  border: 1px solid #d7dde8;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 6px;
 }
 
@@ -434,9 +451,9 @@
   min-width: 58px;
   padding: 0 12px;
   border: 0;
-  border-right: 1px solid #d7dde8;
-  background: #fff;
-  color: #4b5563;
+  border-right: 1px solid var(--app-border-subtle);
+  background: var(--app-surface);
+  color: var(--app-text);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -457,16 +474,16 @@
 
 .matchModeHint,
 .ratioLabel {
-  color: #6b7280;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }
 
-.matchControlRow :global(.t-input-number) {
+.matchControlRow :global(.fluent-number-input) {
   width: 126px;
 }
 
-.matchControlRow :global(.t-input-adornment) {
+.matchControlRow :global(.fluent-input-adornment) {
   height: 32px;
 }
 
@@ -478,28 +495,27 @@
   min-width: 0;
 }
 
-.laneRatioControl :global(.t-input-adornment) {
+.laneRatioControl :global(.fluent-input-adornment) {
   height: 32px;
   min-width: 104px;
   width: 118px;
 }
 
-.laneRatioControl :global(.t-input-number) {
+.laneRatioControl :global(.fluent-number-input) {
   min-width: 0;
   width: 100%;
 }
 
-.laneRatioControl :global(.t-input),
-.laneRatioControl :global(.t-input__wrap) {
+.laneRatioControl :global(.fui-Input) {
   min-width: 0;
 }
 
-.laneRatioControl :global(.t-input__inner) {
+.laneRatioControl :global(.fui-Input__input) {
   min-width: 0;
 }
 
 .matchRatioHint {
-  color: #6b7280;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 20px;
   margin: 4px 0 12px;
@@ -513,6 +529,9 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
 }
 
 .laneMatchRow {
@@ -520,6 +539,7 @@
   grid-template-columns: minmax(130px, 0.8fr) minmax(180px, 1.2fr) minmax(140px, 0.9fr) minmax(190px, 1.2fr) 42px;
   gap: 12px;
   align-items: end;
+  min-width: 730px;
 }
 
 .laneMatchField {
@@ -527,15 +547,15 @@
 }
 
 .laneMatchLabel {
-  color: #8b95a5;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
   margin-bottom: 6px;
 }
 
-.laneMatchField :global(.t-input__wrap),
-.laneMatchField :global(.t-select__wrap),
-.laneMatchField :global(.t-tag-input) {
+.laneMatchField :global(.fui-Input),
+.laneMatchField :global(.fui-Dropdown),
+.laneMatchField :global(.fluent-tag-input) {
   width: 100%;
 }
 
@@ -552,6 +572,9 @@
 .serviceTagList {
   display: grid;
   gap: 8px;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
 }
 
 .serviceTagRow {
@@ -559,20 +582,21 @@
   align-items: center;
   grid-template-columns: minmax(220px, 0.8fr) minmax(260px, 1fr) 42px;
   gap: 12px;
+  min-width: 546px;
 }
 
-.serviceTagRow :global(.t-input__wrap),
-.serviceTagRow :global(.t-select__wrap) {
+.serviceTagRow :global(.fui-Input),
+.serviceTagRow :global(.fui-Dropdown) {
   width: 100%;
 }
 
 .laneResultHint {
   margin-top: 12px;
   padding: 9px 12px;
-  border: 1px dashed #d8b4fe;
+  border: 1px dashed var(--app-violet-border);
   border-radius: 8px;
-  background: #fbf7ff;
-  color: #4b5563;
+  background: var(--app-violet-subtle);
+  color: var(--app-text);
   font-size: 12px;
   line-height: 20px;
 }
@@ -583,16 +607,16 @@
 }
 
 .placeholderPanel {
-  border: 1px solid #e5e8ef;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-surface);
   padding: 48px 24px;
 }
 
 .topology {
-  border: 1px solid #e5e8ef;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fbfcff;
+  background: var(--app-surface-subtle);
   padding: 10px;
 
   svg {
@@ -669,7 +693,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
-  color: #667085;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }
@@ -695,103 +719,7 @@
 }
 
 .legendService {
-  background: #8fc0ff;
-}
-
-.specPane {
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-  border-left: 1px solid #d7dde8;
-}
-
-.specCard {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  width: 100%;
-  min-height: 0;
-  overflow: hidden;
-  background: #0b1119;
-}
-
-.specToolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 18px;
-  border-bottom: 1px solid #243044;
-  background: #101823;
-}
-
-.specTitle {
-  color: #b8c3d4;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  line-height: 22px;
-}
-
-.specDesc {
-  color: #7f8ca3;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.specActions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.specToggle {
-  display: inline-flex;
-  padding: 2px;
-  border: 1px solid #334155;
-  border-radius: 7px;
-  background: #0b1119;
-}
-
-.specToggle button {
-  height: 24px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: #8b95a5;
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.specToggleActive {
-  background: #1677ff !important;
-  color: #fff !important;
-}
-
-.specCode {
-  min-height: 0;
-  margin: 0;
-  overflow: auto;
-  padding: 18px 22px 28px;
-  background: #0b1119;
-  color: #d6e2f3;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
-  line-height: 20px;
-  white-space: pre;
-}
-
-.specFooter {
-  min-height: 48px;
-  padding: 12px 18px;
-  border-top: 1px solid #243044;
-  background: #101823;
-}
-
-.laneGroupEditor {
-  :global(.t-steps--vertical) {
-    padding-left: 4px;
-  }
+  background: var(--app-brand-border);
 }
 
 .readonlyLayout {
@@ -803,16 +731,16 @@
 .summaryStrip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid #e7ebf0;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
   overflow: hidden;
-  background: #fff;
+  background: var(--app-surface);
 }
 
 .summaryItem {
   min-width: 0;
   padding: 14px 18px;
-  border-right: 1px solid #eef1f5;
+  border-right: 1px solid var(--app-border-subtle);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -822,7 +750,7 @@
   }
 
   strong {
-    color: #1f2937;
+    color: var(--app-text);
     font-size: 22px;
     line-height: 28px;
     font-weight: 600;
@@ -830,21 +758,21 @@
 }
 
 .summaryLabel {
-  color: #6b7280;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }
 
 .overviewSection {
   min-width: 0;
-  border: 1px solid #e7ebf0;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-surface);
   padding: 18px 20px;
 }
 
 .sectionTitle {
-  color: #1f2937;
+  color: var(--app-text);
   font-size: 15px;
   line-height: 22px;
   font-weight: 600;
@@ -868,14 +796,14 @@
 
 .infoLabel,
 .entryTitle {
-  color: #6b7280;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
   margin-bottom: 8px;
 }
 
 .infoValue {
-  color: #1f2937;
+  color: var(--app-text);
   font-size: 14px;
   line-height: 22px;
   word-break: break-word;
@@ -899,7 +827,7 @@
 }
 
 .emptyText {
-  color: #8b93a3;
+  color: var(--app-text-secondary);
   font-size: 13px;
   line-height: 22px;
 }
@@ -913,7 +841,7 @@
 
   .summaryItem {
     border-right: 0;
-    border-bottom: 1px solid #eef1f5;
+    border-bottom: 1px solid var(--app-border-subtle);
 
     &:last-child {
       border-bottom: 0;

@@ -80,6 +80,12 @@ func (s *Server) GetServiceWithCache(ctx context.Context, req *apiservice.Servic
 	return s.nextSvr.GetServiceWithCache(ctx, req)
 }
 
+// GetServiceIdentity delegates strict authentication to the core service. The
+// request service is optional and only used there as an identity consistency check.
+func (s *Server) GetServiceIdentity(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+	return s.nextSvr.GetServiceIdentity(ctx, req)
+}
+
 // ServiceInstancesCache Used for client acquisition service instance information
 func (s *Server) ServiceInstancesCache(ctx context.Context, filter *apiservice.DiscoverFilter,
 	req *apiservice.Service) *apiservice.DiscoverResponse {

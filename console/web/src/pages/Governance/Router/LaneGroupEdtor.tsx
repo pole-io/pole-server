@@ -12,8 +12,8 @@ import {
     Tabs,
     Tag,
     Textarea,
-} from 'tdesign-react';
-import { AddIcon, DeleteIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
+} from 'components/Fluent';
+import { AddIcon, DeleteIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'components/Fluent/icons';
 
 import Text from 'components/Text';
 import { useAppDispatch, useAppSelector } from 'modules/store';
@@ -23,6 +23,9 @@ import { saveLaneRules, updateLaneRules } from 'modules/governance/lane_rule';
 import PublishForm from '../RuleRelease/PublishForm';
 import RuleStickyAction from '../RuleRelease/RuleStickyAction';
 import RuleLabelField from '../shared/RuleLabelField';
+import CollapsibleSection from '../shared/CollapsibleSection';
+import { GovernanceServiceContext } from '../shared/serviceContext';
+import { useRuleNamespace } from '../shared/ruleNamespace';
 import TrafficMatchConditionEditor, { TrafficMatchConditionRow } from '../shared/TrafficMatchConditionEditor';
 import { PolicySourceType } from 'services/auth_policy';
 import { Label, MatchLogic, MatchType, MatchValueType, Op } from 'services/types';
@@ -73,6 +76,7 @@ interface ILaneGroupEditorProps {
     refresh: (close: boolean) => void;
     editable?: boolean;
     deleteable?: boolean;
+    serviceContext?: GovernanceServiceContext;
 }
 
 const defaultLaneGroupDraft = (): LaneGroupDraft => normalizeLaneGroupDraft({
@@ -130,7 +134,7 @@ const conditionToArgument = (condition: LaneDraftCondition): RoutingSourceArgume
     value: {
         type: matchTypeFromLabel(condition.match),
         value: condition.value,
-        value_type: MatchValueType.TEXT,
+        value_type: condition.valueType || MatchValueType.TEXT,
     },
 });
 
@@ -146,18 +150,21 @@ const ruleToDraft = (rule: any, selected: string[]): LaneDraftRule => ({
         type: item.type || 'HEADER',
         key: item.key || '',
         match: labelFromMatchType(item.value?.type),
+        valueType: item.value?.value_type || MatchValueType.TEXT,
         value: item.value?.value || '',
     })),
     serviceTags: selected.length ? selected.map(service => ({ service })) : [{ service: '' }],
     note: rule.description || '',
 });
 
-const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editable = true }) => {
+const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editable = true, serviceContext }) => {
+    const ruleNamespace = useRuleNamespace();
     const dispatch = useAppDispatch();
     const { datas: serviceDatas } = useAppSelector(selectService);
     const { editGroup } = useAppSelector(selectLaneGroup);
 
     const [draft, setDraft] = React.useState<LaneGroupDraft>(defaultLaneGroupDraft());
+    const [basicInfoCollapsed, setBasicInfoCollapsed] = React.useState(false);
     const [editorState, setEditorState] = React.useState({
         editable: op === 'create',
         publishView: false,
@@ -225,6 +232,7 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
     };
 
     React.useEffect(() => {
+        setBasicInfoCollapsed(false);
         setEditorState(prev => ({ ...prev, editable: op === 'create' }));
         setLanePage('group');
         if (op === 'create') {
@@ -244,6 +252,29 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
             applyGroup(payload?.viewGroup || editGroup);
         });
     }, [editGroup?.id, op]);
+
+    React.useEffect(() => {
+        if (op !== 'create' || !serviceContext) return;
+        setDraft((prev) => {
+            if (serviceContext.role === 'caller') {
+                const matched = allServices.find((item) => item.namespace === serviceContext.namespace && item.service === serviceContext.service);
+                return normalizeLaneGroupDraft({
+                    ...prev,
+                    entries: [{
+                        kind: matched?.isGateway ? 'gateway' : 'app',
+                        ns: serviceContext.namespace,
+                        svc: serviceContext.service,
+                    }, ...prev.entries.slice(1)],
+                });
+            }
+            return normalizeLaneGroupDraft({
+                ...prev,
+                selected: prev.selected.includes(serviceContext.service)
+                    ? prev.selected
+                    : [serviceContext.service, ...prev.selected],
+            });
+        });
+    }, [allServices, op, serviceContext?.namespace, serviceContext?.service, serviceContext?.role]);
 
     const updateDraft = (updater: (prev: LaneGroupDraft) => LaneGroupDraft) => {
         setDraft(prev => normalizeLaneGroupDraft(updater(prev)));
@@ -285,7 +316,16 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
             .map(item => ({ label: item.service, value: item.service }))
     );
 
-    const getServiceByName = (serviceName: string) => serviceByName.get(serviceName) || {
+    const getServiceByName = (serviceName: string) => (
+        serviceContext && serviceName === serviceContext.service
+            ? {
+                label: `${serviceContext.service} (${serviceContext.namespace})`,
+                value: `${serviceContext.namespace}/${serviceContext.service}`,
+                namespace: serviceContext.namespace,
+                service: serviceContext.service,
+            }
+            : serviceByName.get(serviceName)
+    ) || {
         label: serviceName,
         value: serviceName,
         namespace: '',
@@ -294,6 +334,7 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
 
     const buildGroupPayload = (): LaneGroup => ({
         id: draft.id || editGroup?.id || '',
+        namespace: (editGroup as (LaneGroup & { namespace?: string }) | undefined)?.namespace || ruleNamespace,
         name: draft.name,
         description: draft.desc,
         entries: draft.entries.map((entry) => ({
@@ -387,11 +428,15 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
 
     const renderGroupPage = () => (
         <div className={styles.formStack}>
-            <section className={styles.designSection}>
-                <div className={styles.designSectionHeader}>
-                    {renderStepTitle(1, '基础信息', '规则的标识与基本属性')}
-                </div>
-                <div className={styles.designSectionBody}>
+            <CollapsibleSection
+                className={styles.designSection}
+                headerClassName={styles.designSectionHeader}
+                bodyClassName={styles.designSectionBody}
+                collapsed={basicInfoCollapsed}
+                onCollapsedChange={setBasicInfoCollapsed}
+                header={renderStepTitle(1, '基础信息', '规则的标识与基本属性')}
+                summary={`${draft.name || '未命名规则'} · ${draft.enabled ? '启用' : '停用'} · 优先级 ${draft.priority}`}
+            >
                     <div className={styles.infoGrid}>
                         {editorState.editable ? (
                             <>
@@ -429,8 +474,7 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
                             </>
                         )}
                     </div>
-                </div>
-            </section>
+            </CollapsibleSection>
 
             <section className={styles.designSection}>
                 <div className={styles.designSectionHeader}>
@@ -448,15 +492,16 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
                         </div>
                         {draft.entries.map((entry, index) => {
                             const servicePool = getEntryServicePool(entry);
+                            const fixedEntry = op === 'create' && serviceContext?.role === 'caller' && index === 0;
                             return (
                                 <div className={styles.prdTableRow} key={`${entry.kind}-${entry.ns}-${entry.svc}-${index}`}>
                                     <div><span className={styles.indexPill}>{index + 1}</span></div>
-                                    {editorState.editable && !entry.svc ? (
+                                    {editorState.editable && !fixedEntry && !entry.svc ? (
                                         <Select value={entry.kind} options={[{ label: '网关入口', value: 'gateway' }, { label: '应用入口', value: 'app' }]} onChange={(value) => updateDraft(prev => ({ ...prev, entries: prev.entries.map((item, idx) => idx === index ? { ...item, kind: value as 'gateway' | 'app', ns: '', svc: '' } : item) }))} />
                                     ) : (
                                         <span className={entry.kind === 'gateway' ? styles.gatewayPill : styles.appPill}>{entry.kind === 'gateway' ? '网关入口' : '应用入口'}</span>
                                     )}
-                                    {editorState.editable ? (
+                                    {editorState.editable && !fixedEntry ? (
                                         <Select
                                             filterable
                                             value={entry.ns || undefined}
@@ -472,8 +517,8 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
                                                 }) }));
                                             }}
                                         />
-                                    ) : <Text>{entry.ns || '-'}</Text>}
-                                    {editorState.editable ? (
+                                    ) : <Text title={entry.ns || '-'}>{entry.ns || '-'}</Text>}
+                                    {editorState.editable && !fixedEntry ? (
                                         <Select
                                             filterable
                                             value={entry.svc || undefined}
@@ -482,9 +527,9 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
                                             disabled={!entry.ns}
                                             onChange={(value) => updateDraft(prev => ({ ...prev, entries: prev.entries.map((item, idx) => idx === index ? { ...item, svc: value as string } : item) }))}
                                         />
-                                    ) : <Text>{entry.svc || '-'}</Text>}
-                                    {editorState.editable && draft.entries.length > 1 && (
-                                        <Button shape="square" variant="text" icon={<DeleteIcon />} onClick={() => updateDraft(prev => ({ ...prev, entries: prev.entries.filter((_, idx) => idx !== index) }))} />
+                                    ) : <Text title={entry.svc || '-'}>{entry.svc || '-'}</Text>}
+                                    {editorState.editable && !fixedEntry && draft.entries.length > 1 && (
+                                        <Button shape="square" variant="text" aria-label={`删除入口 ${index + 1}`} icon={<DeleteIcon />} onClick={() => updateDraft(prev => ({ ...prev, entries: prev.entries.filter((_, idx) => idx !== index) }))} />
                                     )}
                                 </div>
                             );
@@ -511,10 +556,11 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
                                 const service = getServiceByName(serviceName);
                                 const referenceCount = serviceReferenceCount(serviceName);
                                 const rowNamespace = service.namespace || '';
+                                const fixedDestination = op === 'create' && serviceContext?.role === 'callee' && serviceName === serviceContext.service;
                                 return (
                                     <div className={styles.prdTableRow} key={serviceName}>
                                         <div><span className={styles.indexPill}>{index + 1}</span></div>
-                                        {editorState.editable ? (
+                                        {editorState.editable && !fixedDestination ? (
                                             <Select
                                                 filterable
                                                 value={rowNamespace || undefined}
@@ -531,8 +577,8 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
                                                     }) }));
                                                 }}
                                             />
-                                        ) : <Text>{rowNamespace || '-'}</Text>}
-                                        {editorState.editable ? (
+                                        ) : <Text title={rowNamespace || '-'}>{rowNamespace || '-'}</Text>}
+                                        {editorState.editable && !fixedDestination ? (
                                             <Select
                                                 filterable
                                                 value={serviceName || undefined}
@@ -541,10 +587,10 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
                                                 disabled={!rowNamespace}
                                                 onChange={(value) => updateDraft(prev => ({ ...prev, selected: prev.selected.map((item, idx) => idx === index ? value as string : item) }))}
                                             />
-                                        ) : <Text>{service.service}</Text>}
-                                        <Text>{referenceCount} 条泳道引用</Text>
-                                        {editorState.editable && (
-                                            <Button shape="square" variant="text" icon={<DeleteIcon />} onClick={() => updateDraft(prev => ({ ...prev, selected: prev.selected.filter(item => item !== serviceName) }))} />
+                                        ) : <Text title={service.service}>{service.service}</Text>}
+                                        <Text title={`${referenceCount} 条泳道引用`}>{referenceCount} 条泳道引用</Text>
+                                        {editorState.editable && !fixedDestination && (
+                                            <Button shape="square" variant="text" aria-label={`删除组内服务 ${serviceName}`} icon={<DeleteIcon />} onClick={() => updateDraft(prev => ({ ...prev, selected: prev.selected.filter(item => item !== serviceName) }))} />
                                         )}
                                     </div>
                                 );
@@ -572,7 +618,7 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
                                         }}
                                     />
                                     <Text>新增后可被泳道引用</Text>
-                                    <Button shape="square" variant="text" icon={<DeleteIcon />} disabled />
+                                    <Button shape="square" variant="text" aria-label="删除待添加服务" icon={<DeleteIcon />} disabled />
                                 </div>
                             )}
                         </div>
@@ -638,11 +684,11 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
                 <div className={styles.designSectionBody}>
                     {draft.selected.length === 0 && <Empty title="需先创建泳道组服务" />}
                     {draft.selected.length > 0 && draft.lanes.map((lane, laneIndex) => (
-                        <div className={styles.laneCard} key={`${lane.id || lane.name}-${laneIndex}`}>
+                        <div className={styles.laneCard} key={`lane-card-${laneIndex}`}>
                             <div className={styles.laneCardHeader}>
-                                <button type="button" className={styles.laneExpandIcon} onClick={() => updateLane(laneIndex, { open: !lane.open })}>
+                                <Button variant="text" type="button" className={styles.laneExpandIcon} aria-label={`${lane.open ? '收起' : '展开'}泳道 ${laneIndex + 1}`} onClick={() => updateLane(laneIndex, { open: !lane.open })}>
                                     {lane.open ? '⌄' : '›'}
-                                </button>
+                                </Button>
                                 <span className={styles.laneColorDot} />
                                 <div className={styles.laneHeaderText}>
                                     <span className={styles.laneName}>{lane.name || '未命名泳道'}</span>
@@ -654,6 +700,7 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
                                         <Button
                                             shape="square"
                                             variant="text"
+                                            aria-label={`删除泳道 ${laneIndex + 1}`}
                                             disabled={draft.lanes.length <= 1}
                                             icon={<DeleteIcon />}
                                             onClick={() => updateDraft(prev => ({ ...prev, lanes: prev.lanes.filter((_, idx) => idx !== laneIndex) }))}
@@ -693,6 +740,7 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
                                                 paramType: condition.type,
                                                 paramKey: condition.key,
                                                 matchType: matchTypeFromLabel(condition.match),
+                                                valueType: condition.valueType || MatchValueType.TEXT,
                                                 matchValue: condition.value,
                                             }));
                                             return (
@@ -722,9 +770,10 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
                                                         type: row.paramType || 'HEADER',
                                                         key: row.paramKey || '',
                                                         match: labelFromMatchType(row.matchType),
-                                                        value: row.matchValue || '',
+                                                        valueType: row.valueType || MatchValueType.TEXT,
+                                                        value: row.valueType === MatchValueType.PARAMETER ? '' : row.matchValue || '',
                                                     })}
-                                                    onAdd={() => updateDraft(prev => ({ ...prev, lanes: prev.lanes.map((item, idx) => idx === laneIndex ? { ...item, conditions: [...item.conditions, { type: 'HEADER', key: '', match: '完全匹配', value: '' }] } : item) }))}
+                                                    onAdd={() => updateDraft(prev => ({ ...prev, lanes: prev.lanes.map((item, idx) => idx === laneIndex ? { ...item, conditions: [...item.conditions, { type: 'HEADER', key: '', match: '完全匹配', valueType: MatchValueType.TEXT, value: '' }] } : item) }))}
                                                     onRemove={(conditionIndex) => updateDraft(prev => ({ ...prev, lanes: prev.lanes.map((item, idx) => idx === laneIndex ? { ...item, conditions: item.conditions.filter((_, cidx) => cidx !== conditionIndex) } : item) }))}
                                                 />
                                             );
@@ -742,17 +791,18 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
                                         </div>
                                         <div className={styles.serviceTagList}>
                                             {lane.serviceTags.map((serviceTag, serviceIndex) => (
-                                                <div className={styles.serviceTagRow} key={`${serviceTag.service}-${serviceIndex}`}>
+                                                <div className={styles.serviceTagRow} key={`lane-service-tag-${serviceIndex}`}>
                                                     {editorState.editable ? (
                                                         <Select value={serviceTag.service} options={draft.selected.map(service => ({ label: service, value: service }))} onChange={(value) => updateDraft(prev => ({ ...prev, lanes: prev.lanes.map((item, idx) => idx === laneIndex ? { ...item, serviceTags: item.serviceTags.map((tag, tidx) => tidx === serviceIndex ? { service: value as string } : tag) } : item) }))} />
                                                     ) : (
-                                                        <Text>{serviceTag.service}</Text>
+                                                        <Text title={serviceTag.service}>{serviceTag.service}</Text>
                                                     )}
                                                     <Input disabled value={`${LANE_TRAFFIC_TAG_KEY}=${lane.laneValue || '-'}`} />
                                                     {editorState.editable && (
                                                         <Button
                                                             shape="square"
                                                             variant="text"
+                                                            aria-label={`删除泳道服务 ${serviceIndex + 1}`}
                                                             disabled={lane.serviceTags.length <= 1}
                                                             icon={<DeleteIcon />}
                                                             onClick={() => updateDraft(prev => ({ ...prev, lanes: prev.lanes.map((item, idx) => idx === laneIndex ? { ...item, serviceTags: item.serviceTags.filter((_, sidx) => sidx !== serviceIndex) } : item) }))}
@@ -782,7 +832,7 @@ const LaneGroupEditor: React.FC<ILaneGroupEditorProps> = ({ op, refresh, editabl
                             className={styles.addLaneCardButton}
                             variant="outline"
                             icon={<AddIcon />}
-                            onClick={() => updateDraft(prev => ({ ...prev, lanes: [...prev.lanes, { name: '', on: true, open: true, laneValue: '', relation: 'AND', matchRatio: 100, conditions: [{ type: 'HEADER', key: '', match: '完全匹配', value: '' }], serviceTags: [{ service: prev.selected[0] || '' }] }] }))}
+                            onClick={() => updateDraft(prev => ({ ...prev, lanes: [...prev.lanes, { name: '', on: true, open: true, laneValue: '', relation: 'AND', matchRatio: 100, conditions: [{ type: 'HEADER', key: '', match: '完全匹配', valueType: MatchValueType.TEXT, value: '' }], serviceTags: [{ service: prev.selected[0] || '' }] }] }))}
                         >
                             新建泳道
                         </Button>

@@ -171,9 +171,23 @@ CREATE TABLE
         PRIMARY KEY (`id`),
         UNIQUE KEY `name` (`name`, `namespace`),
         KEY `namespace` (`namespace`),
+        KEY `token` (`token`(255)),
         KEY `mtime` (`mtime`),
         KEY `reference` (`reference`),
         KEY `platform_id` (`platform_id`)
+    ) ENGINE = InnoDB;
+
+-- Internal data-plane identity. This table is intentionally not joined into
+-- public service queries because subject is SDK-internal and immutable.
+CREATE TABLE
+    `service_identity` (
+        `service_id` VARCHAR(32) NOT NULL COMMENT 'Service resource ID',
+        `subject` VARCHAR(255) NOT NULL COMMENT 'Stable internal data-plane subject',
+        `revision` VARCHAR(32) NOT NULL COMMENT 'Identity descriptor revision',
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
+        PRIMARY KEY (`service_id`),
+        UNIQUE KEY `subject` (`subject`)
     ) ENGINE = InnoDB;
 
 -- --------------------------------------------------------

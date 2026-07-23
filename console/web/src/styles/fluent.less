@@ -1,0 +1,596 @@
+:root {
+  --app-brand: #0f6cbd;
+  --app-brand-hover: #115ea3;
+  --app-brand-pressed: #0c3b5e;
+  --app-brand-1: #f2f3ff;
+  --app-brand-2: #d9e1ff;
+  --app-brand-3: #b5c7ff;
+  --app-brand-4: #8eabff;
+  --app-brand-5: #618dff;
+  --app-brand-6: #366ef4;
+  --app-brand-7: #0052d9;
+  --app-brand-8: #003cab;
+  --app-brand-9: #002a7c;
+  --app-brand-10: #001a57;
+  --app-brand-subtle: #f2f6fb;
+  --app-brand-border: #bfd3ff;
+  --app-teal-subtle: #e8f7f5;
+  --app-teal-border: #9ee7df;
+  --app-violet-subtle: #f5edff;
+  --app-violet-border: #d8b4fe;
+  --app-pink-subtle: #fff0f6;
+  --app-bg: #f5f5f5;
+  --app-surface: #ffffff;
+  --app-surface-subtle: #fafafa;
+  --app-surface-secondary: #f3f3f3;
+  --app-surface-hover: #f5f5f5;
+  --app-surface-disabled: #cfd7e3;
+  --app-text: #242424;
+  --app-text-secondary: #616161;
+  --app-text-tertiary: #8a8886;
+  --app-muted: #616161;
+  --app-text-placeholder: rgba(0, 0, 0, 0.4);
+  --app-text-on-brand: #ffffff;
+  --app-border: #d1d1d1;
+  --app-border-subtle: #e0e0e0;
+  --app-border-level-1: var(--app-border-subtle);
+  --app-component-stroke: var(--app-border-subtle);
+  --app-gray-3: var(--app-border-subtle);
+  --app-gray-13: #242424;
+  --app-status-warning: #e37318;
+  --app-status-warning-subtle: #fff7ed;
+  --app-status-warning-border: #ffd591;
+  --app-status-success: #2ba471;
+  --app-status-success-subtle: #c6f3d7;
+  --app-status-success-border: #a7e3bf;
+  --app-status-error-subtle: #ffd8d2;
+  --app-status-error-border: #f3c3bf;
+  --app-danger: #b10e1c;
+  --app-duration-base: 0s;
+  --app-focus: #0f6cbd;
+  --app-radius: 4px;
+  --app-shadow-8: 0 2px 8px rgba(0, 0, 0, 0.14);
+}
+
+[theme-mode='dark'] {
+  --app-brand-1: #1b2f51;
+  --app-brand-2: #173463;
+  --app-brand-3: #143975;
+  --app-brand-4: #103d88;
+  --app-brand-5: #0d429a;
+  --app-brand-6: #054bbe;
+  --app-brand-7: #2667d4;
+  --app-brand-8: #4582e6;
+  --app-brand-9: #699ef5;
+  --app-brand-10: #96bbf8;
+  --app-brand-subtle: #20344f;
+  --app-brand-border: #315f8f;
+  --app-teal-subtle: #183e3b;
+  --app-teal-border: #286a65;
+  --app-violet-subtle: #3b2e4a;
+  --app-violet-border: #654d7f;
+  --app-pink-subtle: #452a38;
+  --app-bg: #1b1a19;
+  --app-surface: #252423;
+  --app-surface-subtle: #292827;
+  --app-surface-secondary: #2c2c2c;
+  --app-surface-hover: #333231;
+  --app-surface-disabled: #484644;
+  --app-text: #ffffff;
+  --app-text-secondary: #d6d6d6;
+  --app-text-tertiary: #adaba9;
+  --app-muted: #d6d6d6;
+  --app-text-placeholder: rgba(255, 255, 255, 0.35);
+  --app-border: #484644;
+  --app-border-subtle: #3b3a39;
+  --app-border-level-1: #393939;
+  --app-component-stroke: #393939;
+  --app-status-warning: #cf6e2d;
+  --app-status-warning-subtle: #4a2a14;
+  --app-status-warning-border: #7a4b21;
+  --app-status-success: #059465;
+  --app-status-success-subtle: #1a4230;
+  --app-status-success-border: #246044;
+  --app-status-error-subtle: #5e2a2d;
+  --app-status-error-border: #854149;
+  --app-danger: #ff99a4;
+}
+
+.fluent-provider-shell,
+.fluent-provider-shell > .fui-FluentProvider,
+.fluent-app-provider {
+  height: 100%;
+  min-height: 0;
+}
+
+.fluent-app-provider {
+  color: var(--app-text);
+  background: var(--app-bg);
+}
+
+.fluent-card {
+  color: var(--app-text);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-subtle);
+  border-radius: var(--app-radius);
+}
+
+.fluent-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--app-surface) 72%, transparent);
+  z-index: 2;
+}
+
+.fluent-empty {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  align-content: center;
+  padding: 20px;
+  text-align: center;
+  color: var(--app-text-secondary);
+}
+
+.fluent-empty-title {
+  color: var(--app-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fluent-empty-description {
+  max-width: 560px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.fluent-empty-action {
+  margin-top: 4px;
+}
+
+.fluent-popconfirm {
+  display: grid;
+  gap: 12px;
+  max-width: 280px;
+}
+
+.fluent-popconfirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.fui-Tooltip__content {
+  pointer-events: none;
+}
+
+.fluent-tabs {
+  min-width: 0;
+}
+
+.fluent-tabs > .fui-TabList {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.fluent-tabs > .fui-TabList > .fui-Tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.fluent-tab-content {
+  min-width: 0;
+  padding-top: 16px;
+}
+
+.fluent-date-range {
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 100%;
+}
+
+.fluent-date-range__input {
+  flex: 1 1 184px;
+  width: auto;
+  max-width: 100%;
+}
+
+.fluent-date-range__presets {
+  flex: 1 1 160px;
+  width: auto;
+  max-width: 100%;
+}
+
+.fluent-table-shell {
+  min-width: 0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-subtle);
+  border-radius: var(--app-radius);
+  overflow: hidden;
+}
+
+.fluent-table-scroll {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.fluent-table-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+  background: color-mix(in srgb, var(--app-surface) 82%, transparent);
+  backdrop-filter: blur(1px);
+}
+
+.fluent-table-scroll table {
+  width: 100%;
+  min-width: 100%;
+}
+
+.fluent-table-scroll th,
+.fluent-table-scroll td {
+  box-sizing: border-box;
+  min-width: 0;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.fluent-table-scroll .fluent-table-fixed {
+  background: var(--app-surface);
+  z-index: 2;
+}
+
+.fluent-table-scroll th.fluent-table-fixed {
+  background: var(--app-surface-subtle);
+  z-index: 4;
+}
+
+.fluent-table-scroll .fluent-table-fixed-left {
+  left: 0;
+  box-shadow: 1px 0 0 var(--app-border-subtle);
+}
+
+.fluent-table-scroll .fluent-table-fixed-right {
+  right: 0;
+  box-shadow: -1px 0 0 var(--app-border-subtle);
+}
+
+.fluent-table-scroll th {
+  height: 44px;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--app-surface-subtle);
+  border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.fluent-table-header-content,
+.fluent-table-cell-content {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.fluent-table-header-content,
+.fluent-table-cell-content--ellipsis {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fluent-table-scroll td {
+  min-height: 48px;
+  border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.fluent-table-scroll tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.fluent-row {
+  --fluent-grid-columns: 12;
+  --fluent-row-gutter-x: 0px;
+  --fluent-row-gutter-y: 0px;
+
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  margin-inline: calc(var(--fluent-row-gutter-x) / -2);
+  row-gap: var(--fluent-row-gutter-y);
+}
+
+.fluent-col {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+  padding-inline: calc(var(--fluent-row-gutter-x) / 2);
+}
+
+.fluent-col--fixed {
+  flex-basis: var(--fluent-col-span);
+  max-width: var(--fluent-col-span);
+}
+
+.fluent-col--has-xs {
+  flex-basis: var(--fluent-col-xs);
+  max-width: var(--fluent-col-xs);
+}
+
+@media (min-width: 576px) {
+  .fluent-col--has-sm {
+    flex-basis: var(--fluent-col-sm);
+    max-width: var(--fluent-col-sm);
+  }
+}
+
+@media (min-width: 768px) {
+  .fluent-col--has-md {
+    flex-basis: var(--fluent-col-md);
+    max-width: var(--fluent-col-md);
+  }
+}
+
+@media (min-width: 992px) {
+  .fluent-col--has-lg {
+    flex-basis: var(--fluent-col-lg);
+    max-width: var(--fluent-col-lg);
+  }
+}
+
+@media (min-width: 1200px) {
+  .fluent-col--has-xl {
+    flex-basis: var(--fluent-col-xl);
+    max-width: var(--fluent-col-xl);
+  }
+}
+
+@media (min-width: 1400px) {
+  .fluent-col--has-xxl {
+    flex-basis: var(--fluent-col-xxl);
+    max-width: var(--fluent-col-xxl);
+  }
+}
+
+.fluent-table-state {
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+}
+
+.fluent-pagination {
+  min-height: 56px;
+  padding: 8px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  border-top: 1px solid var(--app-border-subtle);
+}
+
+.fluent-pagination-total {
+  margin-right: auto;
+  color: var(--app-text-secondary);
+}
+
+.fluent-pagination-size {
+  height: 32px;
+  min-width: 94px;
+  color: var(--app-text);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+}
+
+.fluent-pagination-jumper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  color: var(--app-text-secondary);
+}
+
+.fluent-pagination-jumper > span {
+  width: 54px;
+}
+
+@media (max-width: 720px) {
+  .fluent-pagination {
+    justify-content: flex-start;
+    padding: 10px 12px;
+  }
+
+  .fluent-pagination-total {
+    flex: 1 0 100%;
+    margin-right: 0;
+  }
+
+  .fluent-pagination-jumper {
+    margin-left: 0;
+  }
+}
+
+.fluent-number-input,
+.fluent-input-adornment,
+.fluent-range-input {
+  display: inline-flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.fluent-number-input > span:first-child,
+.fluent-input-adornment > span[role='spinbutton'],
+.fluent-input-adornment > span:has(input) {
+  flex: 1;
+  min-width: 0;
+}
+
+.fluent-input-suffix,
+.fluent-input-adornment > span:not(:has(input)) {
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--app-text-secondary);
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border);
+  border-left: 0;
+  border-radius: 0 var(--app-radius) var(--app-radius) 0;
+}
+
+.fluent-tag-input {
+  min-height: 32px;
+  padding: 3px 6px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+}
+
+.fluent-tag-input > span:has(input) {
+  flex: 1;
+  min-width: 90px;
+}
+
+.fluent-range-input {
+  gap: 6px;
+  align-items: center;
+}
+
+@media (max-width: 720px) {
+  .fluent-pagination {
+    flex-wrap: wrap;
+  }
+
+  .fluent-pagination-total {
+    width: 100%;
+  }
+}
+
+body {
+  color: var(--app-text);
+  background: var(--app-bg);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: 2px;
+}
+
+/* Complex legacy controls retain behavior but use Fluent surface geometry. */
+.fluent-table-shell,
+.fluent-card,
+.fui-OverlayDrawer,
+.fui-DialogSurface,
+.fui-PopoverSurface {
+  border-color: var(--app-border-subtle) !important;
+  border-radius: var(--app-radius) !important;
+  box-shadow: none !important;
+}
+
+.fluent-table-shell th {
+  color: var(--app-text-secondary) !important;
+  font-weight: 600 !important;
+  background: var(--app-surface-subtle) !important;
+}
+
+.fluent-table-shell td,
+.fluent-table-shell th {
+  border-color: var(--app-border-subtle) !important;
+}
+
+.fui-Input,
+.fluent-number-input,
+.fui-Textarea__textarea,
+.fui-Dropdown,
+.fluent-range-input {
+  border-radius: var(--app-radius) !important;
+  border-color: var(--app-border) !important;
+  box-shadow: none !important;
+}
+
+.fluent-form-item__control > .fui-Input,
+.fluent-form-item__control > .fui-Textarea,
+.fluent-form-item__control > .fui-Dropdown,
+.fluent-form-item__control > .fui-Combobox,
+.fluent-form-item__control > .fluent-number-input,
+.fluent-form-item__control > .fluent-input-adornment,
+.fluent-form-item__control > .fluent-range-input {
+  width: 100%;
+}
+
+.fui-Input:hover,
+.fluent-number-input:hover,
+.fui-Textarea__textarea:hover,
+.fui-Dropdown:hover,
+.fluent-range-input:hover {
+  border-color: #929292 !important;
+}
+
+.fui-Input:focus-within,
+.fluent-number-input:focus-within,
+.fui-Textarea__textarea:focus,
+.fui-Dropdown:focus-within,
+.fluent-range-input:focus-within {
+  border-color: var(--app-focus) !important;
+  box-shadow: inset 0 -2px 0 var(--app-focus) !important;
+}
+
+.fluent-input-trailing {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.fluent-input-trailing .fui-Button {
+  min-width: 20px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+}
+
+.fluent-input-status-error {
+  border-color: var(--app-danger) !important;
+}
+
+.fui-DrawerHeader,
+.fui-DialogTitle {
+  border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.fui-DrawerFooter,
+.fui-DialogActions {
+  border-top: 1px solid var(--app-border-subtle);
+}
+
+.fluent-pagination .fui-Button[aria-current="page"] {
+  color: #ffffff !important;
+  background: var(--app-brand) !important;
+}

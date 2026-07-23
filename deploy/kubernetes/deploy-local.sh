@@ -14,11 +14,21 @@ auth_salt="${POLE_AUTH_SALT:?POLE_AUTH_SALT must be set}"
 
 kubectl apply -f "${manifest_dir}/namespace.yaml"
 
+system_secret_master_key="${POLE_SYSTEM_SECRET_MASTER_KEY:-}"
+if [[ -z "${system_secret_master_key}" ]]; then
+  system_secret_master_key="$(kubectl -n "${namespace}" get secret pole-runtime-secrets \
+    -o jsonpath='{.data.SYSTEM_SECRET_MASTER_KEY}' 2>/dev/null | base64 --decode || true)"
+fi
+if [[ -z "${system_secret_master_key}" ]]; then
+  system_secret_master_key="$(openssl rand -base64 32)"
+fi
+
 kubectl -n "${namespace}" create secret generic pole-runtime-secrets \
   --from-literal=MYSQL_USER="${mysql_user}" \
   --from-literal=MYSQL_PWD="${mysql_pwd}" \
   --from-literal=CONSOLE_JWT_SECRET="${console_jwt_secret}" \
   --from-literal=AUTH_SALT="${auth_salt}" \
+  --from-literal=SYSTEM_SECRET_MASTER_KEY="${system_secret_master_key}" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl -n "${namespace}" create configmap pole-runtime-config \
@@ -36,7 +46,7 @@ kubectl -n "${namespace}" set image deployment/pole-control-plane \
 
 config_revision="$(shasum -a 256 "${root_dir}/deploy/conf/pole-server.yaml" | awk '{print $1}')"
 image_revision="$(docker image inspect --format '{{.Id}}' "${image}" | shasum -a 256 | awk '{print $1}')"
-secret_revision="$(printf '%s\0%s\0%s\0%s' "${mysql_user}" "${mysql_pwd}" "${console_jwt_secret}" "${auth_salt}" | shasum -a 256 | awk '{print $1}')"
+secret_revision="$(printf '%s\0%s\0%s\0%s\0%s' "${mysql_user}" "${mysql_pwd}" "${console_jwt_secret}" "${auth_salt}" "${system_secret_master_key}" | shasum -a 256 | awk '{print $1}')"
 kubectl -n "${namespace}" set env deployment/pole-control-plane \
   POLE_CONFIG_REVISION="${config_revision}" \
   POLE_IMAGE_REVISION="${image_revision}" \

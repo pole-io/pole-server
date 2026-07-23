@@ -1,67 +1,202 @@
 .loginWrapper {
-  height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background-size: cover;
-  background-position: 100%;
   position: relative;
+  overflow: hidden;
+  color: var(--app-text);
+
   &.dark {
-    background-color: var(--td-bg-color-page);
-    background-image: url('assets/image/assets-login-bg-black.png');
+    background-color: var(--app-bg);
   }
+
   &.light {
-    background-color: white;
-    background-image: url('assets/image/assets-login-bg-white.png');
+    background-color: var(--app-bg);
   }
 }
 
-.loginContainer {
-  position: absolute;
-  top: 22%;
-  left: 5%;
-  min-height: 500px;
-  line-height: 22px;
+.loadingState {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: grid;
+  place-items: center;
 }
 
-.title {
-  font-size: 36px;
-  line-height: 44px;
-  color: var(--td-text-color-primary);
-  margin-top: 4px;
-  margin-bottom: 0;
+.loginMain {
+  position: relative;
+  z-index: 1;
+  width: min(1180px, calc(100% - 80px));
+  flex: 1;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 48px 0 72px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+  gap: clamp(64px, 7vw, 104px);
+  align-items: center;
 }
 
-.subTitle {
-  margin-top: 16px;
+.introPanel {
+  position: relative;
+  min-height: 440px;
+  display: flex;
+  align-items: center;
 }
 
-.tip {
-  display: inline-block;
-  margin-right: 8px;
-  font-size: 14px;
-  margin-top: 0;
-  margin-bottom: 0;
+.introContent {
+  position: relative;
+  z-index: 1;
+  max-width: 620px;
 
-  &.registerTip {
-    color: var(--td-text-color-secondary);
+  h1 {
+    max-width: 520px;
+    margin: 22px 0 20px;
+    font-size: clamp(32px, 3.4vw, 42px);
+    line-height: 1.12;
+    letter-spacing: -0.035em;
+    font-weight: 680;
+    text-wrap: balance;
+  }
+}
+
+.eyebrow {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+
+  span {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--app-brand);
+  }
+}
+
+.introDescription {
+  max-width: 520px;
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 16px;
+  line-height: 1.75;
+  text-wrap: pretty;
+}
+
+.authSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.authCard {
+  width: min(100%, 460px);
+  box-sizing: border-box;
+  padding: 42px 44px 38px;
+  border: 1px solid color-mix(in srgb, var(--app-text) 10%, transparent);
+  border-radius: 8px;
+  background: var(--app-surface);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--app-text) 8%, transparent);
+}
+
+.authHeading {
+  margin-bottom: 30px;
+
+  p {
+    margin: 0 0 10px;
+    color: var(--app-brand);
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: 0.08em;
   }
 
-  &.loginTip {
-    color: var(--td-text-color-primary);
-    cursor: pointer;
+  h2 {
+    margin: 0 0 10px;
+    color: var(--app-text);
+    font-size: 28px;
+    line-height: 1.25;
+    letter-spacing: -0.025em;
+  }
+
+  span {
+    color: var(--app-text-secondary);
+    font-size: 14px;
+    line-height: 1.6;
   }
 }
 
-.copyright {
-  font-size: 14px;
-  position: absolute;
-  left: 5%;
-  bottom: 64px;
-  color: var(--td-text-color-secondary);
+.authFootnote {
+  margin: 18px 0 0;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  text-align: center;
 }
 
-@media screen and (max-height: 762px) {
-  .copyright {
-    display: none;
+@media screen and (max-width: 900px) {
+  .loginWrapper {
+    overflow: auto;
+  }
+
+  .loginMain {
+    width: min(100% - 40px, 520px);
+    padding: 28px 0 56px;
+    display: block;
+  }
+
+  .introPanel {
+    min-height: auto;
+    margin-bottom: 32px;
+  }
+
+  .introContent h1 {
+    max-width: 480px;
+    margin: 14px 0 12px;
+    font-size: clamp(30px, 8vw, 36px);
+  }
+
+  .introDescription {
+    font-size: 14px;
+  }
+}
+
+@media screen and (max-width: 520px) {
+  .loginMain {
+    width: min(100% - 28px, 440px);
+  }
+
+  .authCard {
+    padding: 32px 24px 28px;
+    border-radius: 8px;
+  }
+
+  .authHeading h2 {
+    font-size: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .authCard,
+  .introContent {
+    animation: login-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .authCard {
+    animation-delay: 70ms;
+  }
+}
+
+@keyframes login-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

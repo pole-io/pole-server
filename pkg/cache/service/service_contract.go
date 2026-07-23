@@ -24,7 +24,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"go.etcd.io/bbolt"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
@@ -32,6 +31,7 @@ import (
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
+	"github.com/pole-io/pole-server/pkg/common/localdb"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
@@ -46,14 +46,14 @@ type ServiceContractCache struct {
 	*cachebase.BaseCache
 	// data namespace/service/type/protocol/version -> *svctypes.EnrichServiceContract
 	data *container.SyncMap[string, *svctypes.EnrichServiceContract]
-	// valueCache save ConfigFileRelease.Content into local file to reduce memory use
-	valueCache  *bbolt.DB
+	// valueCache saves service contract content into Pebble to reduce heap usage.
+	valueCache  *localdb.PebbleDB
 	singleGroup singleflight.Group
 }
 
 // Initialize
 func (sc *ServiceContractCache) Initialize(c map[string]interface{}) error {
-	valueCache, err := sc.openBoltCache(c)
+	valueCache, err := sc.openPebbleCache(c)
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func (sc *ServiceContractCache) Initialize(c map[string]interface{}) error {
 	return nil
 }
 
-func (fc *ServiceContractCache) openBoltCache(opt map[string]interface{}) (*bbolt.DB, error) {
+func (fc *ServiceContractCache) openPebbleCache(opt map[string]interface{}) (*localdb.PebbleDB, error) {
 	path, _ := opt["cachePath"].(string)
 	if path == "" {
 		path = "./.pole_data/cache/service_contract"
@@ -70,9 +70,9 @@ func (fc *ServiceContractCache) openBoltCache(opt map[string]interface{}) (*bbol
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
 		return nil, err
 	}
-	dbFile := filepath.Join(path, "service_contract.bolt")
-	_ = os.Remove(dbFile)
-	valueCache, err := bbolt.Open(dbFile, os.ModePerm, &bbolt.Options{})
+	dbFile := filepath.Join(path, "service_contract.pebble")
+	_ = os.RemoveAll(dbFile)
+	valueCache, err := localdb.OpenPebble(dbFile)
 	if err != nil {
 		return nil, err
 	}
@@ -135,6 +135,13 @@ func (sc *ServiceContractCache) Clear() error {
 	return nil
 }
 
+func (sc *ServiceContractCache) Close() error {
+	if sc.valueCache == nil {
+		return nil
+	}
+	return sc.valueCache.Close()
+}
+
 // Name
 func (sc *ServiceContractCache) Name() string {
 	return cachetypes.ServiceContractName
@@ -145,33 +152,27 @@ func (sc *ServiceContractCache) Get(ctx context.Context, req *svctypes.ServiceCo
 	return ret
 }
 
-func (fc *ServiceContractCache) upsertValueCache(item *svctypes.EnrichServiceContract, del bool) error {
-	return fc.valueCache.Update(func(tx *bbolt.Tx) error {
-		if del {
-			return tx.DeleteBucket([]byte(item.GetCacheKey()))
-		}
-		bucket, err := tx.CreateBucketIfNotExists([]byte(item.GetCacheKey()))
-		if err != nil {
-			return err
-		}
-		return bucket.Put([]byte(item.GetCacheKey()), []byte(utils.MustJson(item)))
-	})
+func (sc *ServiceContractCache) upsertValueCache(item *svctypes.EnrichServiceContract, del bool) error {
+	key := serviceContractValueKey(item.GetCacheKey())
+	if del {
+		return sc.valueCache.Delete(key, localdb.WriteNoSync)
+	}
+	return sc.valueCache.Set(key, []byte(utils.MustJson(item)), localdb.WriteNoSync)
 }
 
-func (fc *ServiceContractCache) loadValueCache(release *svctypes.ServiceContract) (*svctypes.EnrichServiceContract, error) {
+func (sc *ServiceContractCache) loadValueCache(release *svctypes.ServiceContract) (*svctypes.EnrichServiceContract, error) {
 	ret := &svctypes.EnrichServiceContract{}
-	found := false
-	err := fc.valueCache.View(func(tx *bbolt.Tx) error {
-		bucket := tx.Bucket([]byte(release.GetCacheKey()))
-		if bucket == nil {
-			return nil
-		}
-		found = true
-		val := bucket.Get([]byte(release.GetCacheKey()))
-		return json.Unmarshal(val, ret)
-	})
+	val, found, err := sc.valueCache.Get(serviceContractValueKey(release.GetCacheKey()))
+	if err != nil {
+		return ret, err
+	}
 	if !found {
 		ret.ServiceContract = &svctypes.ServiceContract{}
+		return ret, nil
 	}
-	return ret, err
+	return ret, json.Unmarshal(val, ret)
+}
+
+func serviceContractValueKey(cacheKey string) []byte {
+	return []byte("contract/" + cacheKey)
 }

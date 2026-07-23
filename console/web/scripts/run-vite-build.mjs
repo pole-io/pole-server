@@ -17,6 +17,10 @@ const viteBin = path.join(rootDir, 'node_modules', 'vite', 'bin', 'vite.js');
 const env = { ...process.env };
 const nodeMajor = Number(process.versions.node.split('.')[0]);
 
+// Vite mode selects env files; NODE_ENV controls React's production transform.
+env.NODE_ENV = 'production';
+env.VITE_USER_NODE_ENV = 'production';
+
 if (nodeMajor >= 22) {
   const storageDir = path.join(os.tmpdir(), 'pole-control-plane-vite-localstorage');
   fs.mkdirSync(storageDir, { recursive: true });

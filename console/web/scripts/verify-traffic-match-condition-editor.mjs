@@ -9,15 +9,27 @@ const sharedSource = read('src/pages/Governance/shared/TrafficMatchConditionEdit
 const sharedStyleSource = read('src/pages/Governance/shared/TrafficMatchConditionEditor.module.less');
 assert.match(sharedSource, /export interface TrafficMatchConditionRow/);
 assert.match(sharedSource, /TagInput/);
+assert.match(sharedSource, /RadioGroup/);
+assert.match(sharedSource, /role="table"/);
+assert.match(sharedSource, /role="row"/);
 assert.match(sharedSource, /MatchTypeOption/);
-assert.match(sharedSource, /relationOptions/);
+assert.doesNotMatch(sharedSource, /relationOptions|segmentButton/);
 assert.match(sharedSource, /参数类型/);
 assert.match(sharedSource, /参数键/);
 assert.match(sharedSource, /匹配类型/);
+assert.match(sharedSource, /值来源/);
 assert.match(sharedSource, /匹配值/);
+assert.match(sharedSource, /DeleteIcon/);
+assert.match(sharedSource, /暂无匹配条件/);
 assert.match(sharedStyleSource, /\.headActions\s*\{[\s\S]*?flex-wrap:\s*wrap;/);
 assert.match(sharedStyleSource, /\.headActions\s*\{[\s\S]*?justify-content:\s*flex-end;/);
 assert.match(sharedStyleSource, /\.headActions\s*\{[\s\S]*?min-width:\s*0;/);
+assert.match(sharedStyleSource, /\.conditionRow\s*\{[\s\S]*?display:\s*grid;/);
+assert.match(sharedStyleSource, /\.tableHeader\s*\{[\s\S]*?white-space:\s*nowrap;/);
+assert.match(sharedStyleSource, /container-type:\s*inline-size/);
+assert.match(sharedStyleSource, /@container\s*\(max-width:\s*920px\)/);
+assert.match(sharedStyleSource, /\.fieldLabel\s*\{[\s\S]*?display:\s*none;/);
+assert.doesNotMatch(sharedStyleSource, /overflow:\s*hidden/);
 
 const consumers = [
   {
@@ -40,6 +52,12 @@ const consumers = [
     minUses: 1,
     forbidden: [/renderLaneMatchModeSwitch/, /className=\{styles\.laneMatchRows\}/],
   },
+  {
+    file: 'src/pages/Configuration/Group/Releases/GrayRuleEditor.tsx',
+    minUses: 1,
+    required: [/showParamKey=\{false\}/, /relationEditable=\{false\}/],
+    forbidden: [],
+  },
 ];
 
 for (const item of consumers) {
@@ -49,6 +67,9 @@ for (const item of consumers) {
   assert.ok(uses >= item.minUses, `${item.file} should use TrafficMatchConditionEditor at least ${item.minUses} time(s)`);
   for (const pattern of item.forbidden) {
     assert.doesNotMatch(source, pattern, `${item.file} should not contain ${pattern}`);
+  }
+  for (const pattern of item.required || []) {
+    assert.match(source, pattern, `${item.file} should contain ${pattern}`);
   }
 }
 

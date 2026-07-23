@@ -1,13 +1,22 @@
 .sidePanel {
   height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: row!important;
+  overflow: hidden;
 }
 
 .sideContainer {
   flex: 1;
+  height: 100%;
+  min-height: 0;
   min-width: 760px;
   overflow: auto;
+  background: var(--app-bg);
+}
+
+.agentContainer {
+  min-width: 0;
 }
 
 .topPanel {
@@ -26,4 +35,12 @@
 
 .mixContent {
   overflow: auto;
+}
+
+@media (max-width: 900px) {
+  .sideContainer,
+  .topPanel,
+  .mixContent {
+    min-width: 0;
+  }
 }

@@ -68,11 +68,11 @@ func withChecker() serverOption {
 				return fmt.Errorf("[healthcheck]unknown healthchecker %s", entry.Name)
 			}
 			// The same health type check plugin can only exist in one
-			_, exist := svr.checkers[int32(checker.Type())]
+			_, exist := svr.checkers[int32(checker.CheckType())]
 			if exist {
-				return fmt.Errorf("[healthcheck]duplicate healthchecker %s, checkType %d", entry.Name, checker.Type())
+				return fmt.Errorf("[healthcheck]duplicate healthchecker %s, checkType %d", entry.Name, checker.CheckType())
 			}
-			svr.checkers[int32(checker.Type())] = checker
+			svr.checkers[int32(checker.CheckType())] = checker
 			if nil == svr.defaultChecker {
 				svr.defaultChecker = checker
 			}

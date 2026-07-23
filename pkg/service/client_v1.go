@@ -29,9 +29,11 @@ import (
 	"github.com/pole-io/pole-server/apis/cmdb"
 	"github.com/pole-io/pole-server/apis/pkg/types/protobuf"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/workloadcredential"
 )
 
 // RegisterInstance create one instance
@@ -145,6 +147,61 @@ func (s *Server) GetServiceWithCache(ctx context.Context, req *apiservice.Servic
 		Revision:  revision,
 	}
 
+	return resp
+}
+
+// GetServiceIdentity returns the service identity bound to the service token in
+// the authenticated gRPC metadata. Request fields are only consistency checks;
+// they never select the identity being returned.
+func (s *Server) GetServiceIdentity(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
+	resp := api.NewDiscoverServiceIdentityResponse(apimodel.Code_ExecuteSuccess)
+	token := utils.ParseAuthToken(ctx)
+	if token == "" {
+		return api.NewDiscoverServiceIdentityResponse(apimodel.Code_EmptyAutToken)
+	}
+
+	svc, err := s.storage.GetOrCreateServiceIdentityByToken(token)
+	if err != nil {
+		log.Error("[Service][Identity] resolve service token", utils.RequestID(ctx), zap.Error(err))
+		return api.NewDiscoverServiceIdentityResponse(storeapi.StoreCode2APICode(err))
+	}
+	if svc == nil || svc.Identity == nil {
+		return api.NewDiscoverServiceIdentityResponse(apimodel.Code_TokenNotExisted)
+	}
+
+	descriptorRevision := svc.Identity.Revision
+	issuer := workloadcredential.GetServer()
+	if issuer != nil {
+		descriptorRevision = issuer.DescriptorRevision(descriptorRevision)
+	}
+	if req != nil {
+		if namespace := req.GetNamespace(); namespace != "" && namespace != svc.Namespace {
+			return api.NewDiscoverServiceIdentityResponse(apimodel.Code_NotAllowedAccess)
+		}
+		if name := req.GetName(); name != "" && name != svc.Name {
+			return api.NewDiscoverServiceIdentityResponse(apimodel.Code_NotAllowedAccess)
+		}
+		if req.GetRevision() == descriptorRevision {
+			return api.NewDiscoverServiceIdentityResponse(apimodel.Code_DataNoChange)
+		}
+	}
+
+	resp.ServiceIdentity = &apiservice.ServiceIdentityDescriptor{
+		Subject:   svc.Identity.Subject,
+		Namespace: svc.Namespace,
+		Service:   svc.Name,
+		Revision:  descriptorRevision,
+	}
+	if issuer != nil {
+		mode, bundleVersion, trustDomain, audience, endpoint, protocolVersion, formats := issuer.DescriptorFields()
+		resp.ServiceIdentity.CredentialMode = mode
+		resp.ServiceIdentity.TrustBundleVersion = bundleVersion
+		resp.ServiceIdentity.TrustDomain = trustDomain
+		resp.ServiceIdentity.Audience = audience
+		resp.ServiceIdentity.CredentialEndpoint = endpoint
+		resp.ServiceIdentity.IdentityProtocolVersion = protocolVersion
+		resp.ServiceIdentity.CredentialFormats = formats
+	}
 	return resp
 }
 

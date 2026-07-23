@@ -54,6 +54,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
+	"github.com/pole-io/pole-server/pkg/systemconfig"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/aia2a"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/aimcp"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/auth"
@@ -103,6 +104,9 @@ type HTTPServer struct {
 	rateLimit         ratelimit.Ratelimit
 	statis            statis.Statis
 	whitelist         whitelist.Whitelist
+	systemSettings    systemconfig.EffectiveProvider
+	systemConfigUser  credentialChecker
+	systemConfigAuth  consolePermissionChecker
 
 	discoverSvr *discovery.HTTPServer
 	configSvr   *confighttp.HTTPServer
@@ -144,6 +148,7 @@ func (h *HTTPServer) Initialize(ctx context.Context, option map[string]interface
 	}
 	h.enableSwagger, _ = option["enableSwagger"].(bool)
 	h.apiserverSlots, _ = ctx.Value(utils.ContextAPIServerSlot{}).(map[string]apiserver.Apiserver)
+	h.systemSettings, _ = systemconfig.ProviderFromContext(ctx, systemconfig.ComponentServer)
 	// 连接数限制的配置
 	if raw, _ := option["connLimit"].(map[interface{}]interface{}); raw != nil {
 		connLimitConfig, err := connlimit.ParseConnLimitConfig(raw)
@@ -233,6 +238,7 @@ func (h *HTTPServer) Run(errCh chan error) {
 		errCh <- err
 		return
 	}
+	h.systemConfigUser = userSvr
 
 	policySvr, err := authapi.GetStrategyServer()
 	if err != nil {
@@ -240,6 +246,7 @@ func (h *HTTPServer) Run(errCh chan error) {
 		errCh <- err
 		return
 	}
+	h.systemConfigAuth = policySvr.GetAuthChecker()
 
 	h.authSvr = auth.NewServer(userSvr, policySvr)
 

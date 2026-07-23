@@ -18,7 +18,7 @@
 package handlers
 
 import (
-	"net/http"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pole-io/pole-server/console/bootstrap"
@@ -27,6 +27,11 @@ import (
 // PolarisPage polaris页面
 func PolarisPage(conf *bootstrap.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", nil)
+		// index.html 引用带内容哈希的静态资源，入口本身必须每次重新校验。
+		// 否则 Console 重启后，浏览器可能继续运行旧 SPA，导致新路由或工作模式不可用。
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
+		c.File(filepath.Join(conf.WebServer.WebPath, "index.html"))
 	}
 }

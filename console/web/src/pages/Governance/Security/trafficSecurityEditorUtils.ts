@@ -3,6 +3,8 @@ import {
     TrafficGovernanceRule,
     TrafficMatchRule,
     TrafficSecurityAction,
+    TrafficSecurityAuthMode,
+    ManagedCallerSelector,
     TrafficSecurityPolicy,
     TrafficSecurityRule,
 } from 'services/traffic_governance';
@@ -17,6 +19,7 @@ export interface SecurityViewRule {
     listType: SecurityListType;
     interfaces: TrafficApiScope[];
     strategy: TrafficMatchRule;
+    managedCaller: ManagedCallerSelector;
     rejectEffect?: TrafficSecurityPolicy['reject_effect'];
 }
 
@@ -40,6 +43,16 @@ export interface SecurityPreviewSpec {
             service: string;
         };
         description: string;
+        authentication: {
+            mode: TrafficSecurityAuthMode;
+            managedIdentity?: {
+                managedBy: 'control-plane';
+            };
+            customHeader?: {
+                headerName: string;
+                value: '<redacted>' | '<required>';
+            };
+        };
         subRules: Array<{
             name: string;
             listType: SecurityListType;
@@ -50,7 +63,14 @@ export interface SecurityPreviewSpec {
                 op: string;
             }>;
             strategy: {
-                match: {
+                managedCaller?: {
+                    anyAuthenticated: boolean;
+                    callers: Array<{ namespace: string; service: string }>;
+                };
+                customHeader?: {
+                    headerName: string;
+                };
+                match?: {
                     relation: string;
                     conditions: Array<{
                         param: string;
@@ -91,9 +111,77 @@ export const defaultProtectedInterface = (): TrafficApiScope => ({
     path: {
         type: MatchType.EXACT,
         value: '/',
-        value_type: MatchValueType.TEXT,
-    },
+    } as MatchString,
 });
+
+export interface ApiProtocolPresentation {
+    methodLabel: string;
+    methodPlaceholder: string;
+    pathLabel: string;
+    pathPlaceholder: string;
+    usesHttpMethodSelect: boolean;
+}
+
+// The protobuf stores every API scope as protocol/method/path, but those fields
+// carry protocol-specific meanings. Keep that distinction in one place so all
+// governance editors render and reset the same way.
+export function getApiProtocolPresentation(protocol?: string): ApiProtocolPresentation {
+    switch (String(protocol || InterfaceProtocol.HTTP).toUpperCase()) {
+        case 'GRPC':
+            return {
+                methodLabel: '可选方法',
+                methodPlaceholder: '可选，例如 SayHello',
+                pathLabel: '服务名',
+                pathPlaceholder: 'helloworld.Greeter',
+                usesHttpMethodSelect: false,
+            };
+        case 'DUBBO':
+            return {
+                methodLabel: '可选方法',
+                methodPlaceholder: '可选，例如 getUser',
+                pathLabel: '接口名',
+                pathPlaceholder: 'com.example.UserService',
+                usesHttpMethodSelect: false,
+            };
+        default:
+            return {
+                methodLabel: 'HTTP 方法',
+                methodPlaceholder: 'GET',
+                pathLabel: '接口路径',
+                pathPlaceholder: '/orders',
+                usesHttpMethodSelect: true,
+            };
+    }
+}
+
+export function resetApiScopeForProtocol(api: TrafficApiScope, protocol: string): TrafficApiScope {
+    const presentation = getApiProtocolPresentation(protocol);
+    return {
+        ...api,
+        protocol,
+        method: presentation.usesHttpMethodSelect ? 'GET' : '',
+        path: {
+            type: api.path?.type || MatchType.EXACT,
+            value: '',
+        } as MatchString,
+    };
+}
+
+// `API.path` reuses MatchString in the protobuf contract, but value_type only
+// has business meaning for request-parameter matching. Keep API paths limited
+// to their actual resource shape and let protobuf use its TEXT default.
+function normalizeProtectedInterface(api?: TrafficApiScope): TrafficApiScope {
+    const protocol = api?.protocol || InterfaceProtocol.HTTP;
+    const presentation = getApiProtocolPresentation(protocol);
+    return {
+        protocol,
+        method: api?.method ?? (presentation.usesHttpMethodSelect ? 'GET' : ''),
+        path: {
+            type: api?.path?.type || MatchType.EXACT,
+            value: api?.path?.value ?? (presentation.usesHttpMethodSelect ? '/' : ''),
+        } as MatchString,
+    };
+}
 
 export const defaultSecurityArgument = () => ({
     type: 'HEADER',
@@ -106,6 +194,39 @@ export const defaultSecurityMatchRule = (): TrafficMatchRule => ({
     randomPercent: 0,
     arguments: [defaultSecurityArgument()],
 });
+
+export const defaultManagedCaller = (): ManagedCallerSelector => ({
+    any_authenticated: true,
+    callers: [],
+});
+
+export function readSecurityAuthMode(rule?: TrafficSecurityRule): TrafficSecurityAuthMode {
+    const mode = rule?.authentication?.mode;
+    if (mode === TrafficSecurityAuthMode.MANAGED_IDENTITY || mode === 'MANAGED_IDENTITY' || mode === '1') {
+        return TrafficSecurityAuthMode.MANAGED_IDENTITY;
+    }
+    if (mode === TrafficSecurityAuthMode.CUSTOM_HEADER || mode === 'CUSTOM_HEADER' || mode === '2') {
+        return TrafficSecurityAuthMode.CUSTOM_HEADER;
+    }
+    return TrafficSecurityAuthMode.LEGACY_REQUEST_MATCH;
+}
+
+export function buildSecurityAuthenticationForMode(
+    mode: TrafficSecurityAuthMode,
+): NonNullable<TrafficSecurityRule['authentication']> {
+    if (mode === TrafficSecurityAuthMode.MANAGED_IDENTITY) {
+        return { mode, managed_identity: {} };
+    }
+    return { mode: TrafficSecurityAuthMode.LEGACY_REQUEST_MATCH };
+}
+
+export function normalizeManagedCaller(selector?: ManagedCallerSelector): ManagedCallerSelector {
+    const callers = selector?.callers || [];
+    return {
+        any_authenticated: selector?.any_authenticated !== false && callers.length === 0,
+        callers,
+    };
+}
 
 export function normalizeSecurityMatchRule(match?: TrafficMatchRule): TrafficMatchRule {
     return {
@@ -146,8 +267,10 @@ export function normalizeSecurityViewRules(rule: TrafficSecurityRule): SecurityV
         .map<SecurityViewRule>((policy) => ({
             kind: actionToListType(policy.action) === 'DENY_LIST' ? 'deny' : 'allow',
             listType: actionToListType(policy.action),
-            interfaces: policy.apis?.length ? policy.apis : [policy.api || defaultProtectedInterface()],
+            interfaces: (policy.apis?.length ? policy.apis : [policy.api || defaultProtectedInterface()])
+                .map(normalizeProtectedInterface),
             strategy: normalizeSecurityMatchRule(policy.traffic_match_rule),
+            managedCaller: normalizeManagedCaller(policy.managed_caller),
             rejectEffect: policy.reject_effect,
         }));
     const serviceRule = policies.find(isServiceLevelPolicy);
@@ -156,6 +279,7 @@ export function normalizeSecurityViewRules(rule: TrafficSecurityRule): SecurityV
         listType: actionToListType(serviceRule.action),
         interfaces: [],
         strategy: normalizeSecurityMatchRule(serviceRule.traffic_match_rule),
+        managedCaller: normalizeManagedCaller(serviceRule.managed_caller),
         rejectEffect: serviceRule.reject_effect,
     }] : [];
     return normalizeSecurityViewOrder([...interfaceRules, ...serviceRules]);
@@ -172,11 +296,10 @@ export function normalizeSecurityViewOrder(rules: SecurityViewRule[]): SecurityV
     ];
 }
 
-export function buildSecurityPoliciesFromView(rules: SecurityViewRule[]): TrafficSecurityPolicy[] {
+export function buildSecurityPoliciesFromView(rules: SecurityViewRule[], authMode: TrafficSecurityAuthMode): TrafficSecurityPolicy[] {
     return normalizeSecurityViewOrder(rules).map((viewRule) => {
         const action = listTypeToAction(viewRule.listType);
-        const base = {
-            traffic_match_rule: normalizeSecurityMatchRule(viewRule.strategy),
+        const base: TrafficSecurityPolicy = {
             action,
             reject_effect: viewRule.rejectEffect || (action === TrafficSecurityAction.DENY ? {
                 status_code: 403,
@@ -184,12 +307,18 @@ export function buildSecurityPoliciesFromView(rules: SecurityViewRule[]): Traffi
                 message: 'request denied by auth rule',
             } : undefined),
         };
+        if (authMode === TrafficSecurityAuthMode.MANAGED_IDENTITY) {
+            base.managed_caller = normalizeManagedCaller(viewRule.managedCaller);
+        } else {
+            base.traffic_match_rule = normalizeSecurityMatchRule(viewRule.strategy);
+        }
         if (viewRule.kind === 'service') {
             return { ...base };
         }
         return {
             ...base,
-            apis: viewRule.interfaces.length ? viewRule.interfaces : [defaultProtectedInterface()],
+            apis: (viewRule.interfaces.length ? viewRule.interfaces : [defaultProtectedInterface()])
+                .map(normalizeProtectedInterface),
         };
     });
 }
@@ -209,6 +338,11 @@ function protectedInterfaceToPreview(api: TrafficApiScope) {
 
 export function buildSecurityPreviewSpec(rule: TrafficGovernanceRule, viewRules: SecurityViewRule[]): SecurityPreviewSpec {
     const target = rule.target_service || { namespace: rule.namespace || '', service: rule.service || '' };
+    const securityRule = rule as TrafficSecurityRule;
+    const storedAuthMode = readSecurityAuthMode(securityRule);
+    const authMode = storedAuthMode === TrafficSecurityAuthMode.CUSTOM_HEADER
+        ? TrafficSecurityAuthMode.LEGACY_REQUEST_MATCH
+        : storedAuthMode;
     return {
         apiVersion: 'governance.pole.io/v1',
         kind: 'AuthRule',
@@ -224,13 +358,28 @@ export function buildSecurityPreviewSpec(rule: TrafficGovernanceRule, viewRules:
                 service: target.service || '',
             },
             description: rule.description || '',
+            authentication: {
+                mode: authMode,
+                ...(authMode === TrafficSecurityAuthMode.MANAGED_IDENTITY
+                    ? { managedIdentity: { managedBy: 'control-plane' as const } }
+                    : {}),
+            },
             subRules: normalizeSecurityViewOrder(viewRules).map((item, index) => {
                 const match = normalizeSecurityMatchRule(item.strategy);
+                const managedCaller = normalizeManagedCaller(item.managedCaller);
                 return {
                     name: `auth-subrule-${index + 1}`,
                     listType: item.listType,
                     protectedInterfaces: item.kind === 'service' ? [] : item.interfaces.map(protectedInterfaceToPreview),
-                    strategy: {
+                    strategy: authMode === TrafficSecurityAuthMode.MANAGED_IDENTITY ? {
+                        managedCaller: {
+                            anyAuthenticated: Boolean(managedCaller.any_authenticated),
+                            callers: (managedCaller.callers || []).map((caller) => ({
+                                namespace: caller.namespace || '',
+                                service: caller.service || '',
+                            })),
+                        },
+                    } : {
                         match: {
                             relation: String(match.matchMode || MatchLogic.AND),
                             conditions: (match.arguments || []).map((arg) => ({
@@ -247,7 +396,7 @@ export function buildSecurityPreviewSpec(rule: TrafficGovernanceRule, viewRules:
     };
 }
 
-export function validateSecurityView(rule: TrafficGovernanceRule, viewRules: SecurityViewRule[]): SecurityValidationError[] {
+export function validateSecurityView(rule: TrafficSecurityRule, viewRules: SecurityViewRule[]): SecurityValidationError[] {
     const errors: SecurityValidationError[] = [];
     const target = rule.target_service || { namespace: rule.namespace || '', service: rule.service || '' };
     if (!rule.name) errors.push({ field: 'name', message: '规则名称不能为空' });
@@ -257,6 +406,10 @@ export function validateSecurityView(rule: TrafficGovernanceRule, viewRules: Sec
     if (!target.namespace) errors.push({ field: 'target.namespace', message: '被调命名空间不能为空' });
     if (!target.service) errors.push({ field: 'target.service', message: '被调服务不能为空' });
     const normalized = normalizeSecurityViewOrder(viewRules);
+    const storedAuthMode = readSecurityAuthMode(rule);
+    const authMode = storedAuthMode === TrafficSecurityAuthMode.CUSTOM_HEADER
+        ? TrafficSecurityAuthMode.LEGACY_REQUEST_MATCH
+        : storedAuthMode;
     if (!normalized.length) errors.push({ field: 'rules', message: '至少配置 1 条鉴权子规则' });
     if (normalized.filter((item) => item.kind === 'service').length > 1) {
         errors.push({ field: 'service', message: '服务级规则最多只能配置 1 条' });
@@ -274,15 +427,22 @@ export function validateSecurityView(rule: TrafficGovernanceRule, viewRules: Sec
         } else if (item.interfaces.length) {
             errors.push({ field: `rules.${ruleIndex}.interfaces`, message: '服务级规则不能配置受保护接口' });
         }
-        const match = normalizeSecurityMatchRule(item.strategy);
-        if (!(match.arguments || []).length) {
-            errors.push({ field: `rules.${ruleIndex}.conditions`, message: '名单匹配策略至少配置 1 条匹配条件' });
-        }
-        (match.arguments || []).forEach((condition, conditionIndex) => {
-            if (!condition.value?.value) {
-                errors.push({ field: `rules.${ruleIndex}.conditions.${conditionIndex}.value`, message: '匹配条件的匹配值不能为空' });
+        if (authMode === TrafficSecurityAuthMode.MANAGED_IDENTITY) {
+            const caller = normalizeManagedCaller(item.managedCaller);
+            if (!caller.any_authenticated && !(caller.callers || []).length) {
+                errors.push({ field: `rules.${ruleIndex}.callers`, message: '请选择至少一个可信来源服务，或允许任意已认证服务' });
             }
-        });
+        } else {
+            const match = normalizeSecurityMatchRule(item.strategy);
+            if (!(match.arguments || []).length) {
+                errors.push({ field: `rules.${ruleIndex}.conditions`, message: '名单匹配策略至少配置 1 条匹配条件' });
+            }
+            (match.arguments || []).forEach((condition, conditionIndex) => {
+                if (condition.value?.value_type !== MatchValueType.PARAMETER && !condition.value?.value) {
+                    errors.push({ field: `rules.${ruleIndex}.conditions.${conditionIndex}.value`, message: '匹配条件的匹配值不能为空' });
+                }
+            });
+        }
     });
     return errors;
 }

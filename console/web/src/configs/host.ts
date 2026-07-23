@@ -16,7 +16,7 @@ export default {
     API: '',
   },
   site: {
-    // TDesign部署特殊需要 与release功能一致
+    // 静态站点部署需要与 release 模式保持一致。
     API: '',
   },
 };

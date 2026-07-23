@@ -2,7 +2,7 @@
 title: Pole Control Plane — 项目概览
 tags: [overview]
 links: [architecture, index, configuration]
-updated: 2026-06-08
+updated: 2026-07-23
 sources: 1
 ---
 
@@ -16,7 +16,7 @@ sources: 1
 - **服务发现** — 服务实例的注册、注销与查询
 - **配置中心** — 支持灰度发布的版本化配置文件管理
 - **治理规则** — 路由、限流、熔断、故障探测、泳道规则
-- **命名空间管理** — 多租户资源隔离
+- **命名空间管理** — 运行环境与资源隔离
 - **AI 原生功能** — MCP 服务器注册中心
 - **多协议兼容** — 支持 Polaris gRPC、REST、Nacos、Apollo、Eureka、xDS/Envoy
 
@@ -34,7 +34,7 @@ sources: 1
 | 日志 | `go.uber.org/zap` |
 | 指标监控 | OpenTelemetry（OTLP gRPC 导出） |
 | API 规范 | `github.com/pole-io/specification`（protobuf） |
-| 内嵌 KV | `go.etcd.io/bbolt` |
+| 内嵌 KV | `github.com/cockroachdb/pebble` |
 
 ## 顶层目录结构
 

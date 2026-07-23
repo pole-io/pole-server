@@ -1,14 +1,14 @@
 import React, { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Button, Popup, Badge, Dropdown, Space } from 'tdesign-react';
+import { Button, Popup, Badge, Dropdown, Space } from 'components/Fluent';
 import {
   Icon,
   HelpCircleIcon,
   SettingIcon,
   PoweroffIcon,
   UserCircleIcon,
-} from 'tdesign-icons-react';
+} from 'components/Fluent/icons';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { toggleSetting } from 'modules/global';
 import { logout } from 'modules/user/login';
@@ -23,7 +23,7 @@ export default memo(() => {
   const { i18n, t } = useTranslation();
 
   const gotoWiki = () => {
-    window.open('https://tdesign.tencent.com/react/overview');
+    window.open('https://github.com/pole-io/pole-control-plane');
   };
 
   const clickHandler = (data: any) => {
@@ -57,6 +57,7 @@ export default memo(() => {
       </Dropdown>
       <Popup content='帮助文档' placement='bottom' showArrow destroyOnClose>
         <Button
+          aria-label='打开帮助文档'
           className={Style.menuIcon}
           shape='square'
           size='large'
@@ -88,6 +89,7 @@ export default memo(() => {
       </Dropdown>
       <Popup content='页面设置' placement='bottom' showArrow destroyOnClose>
         <Button
+          aria-label='打开页面设置'
           className={Style.menuIcon}
           shape='square'
           size='large'

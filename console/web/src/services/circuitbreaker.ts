@@ -26,6 +26,7 @@ export type CircuitBreakerBlockConfigInput = BlockConfig | CircuitBreakerPolicy
 
 export interface CircuitBreakerRule {
     id?: string
+    namespace?: string // 规则归属环境
     name: string // 规则名
     level: string
     description: string
@@ -363,6 +364,7 @@ export interface DescribeCircuitBreakersRequest {
     limit: number
     id?: string
     name?: string
+    namespace?: string
     enable?: boolean
     level?: number
     service?: string

@@ -1,7 +1,7 @@
 import React from 'react';
-import { AddIcon, CheckCircleFilledIcon, DeleteIcon, FilterIcon, RocketIcon, SendIcon, TagIcon, UsergroupIcon } from 'tdesign-icons-react';
-import { Button, Drawer, Form, Input, Radio, RadioGroup, RangeInput, Select, Space, TagInput } from 'tdesign-react';
-import type { CustomValidator, FormProps } from 'tdesign-react';
+import { AddIcon, CheckCircleFilledIcon, DeleteIcon, FilterIcon, RocketIcon, SendIcon, TagIcon, UsergroupIcon } from 'components/Fluent/icons';
+import { Button, Drawer, Form, Input, Radio, RadioGroup, RangeInput, Select, Space, TagInput } from 'components/Fluent';
+import type { CustomValidator, FormProps } from 'components/Fluent';
 
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import { useAppDispatch } from 'modules/store';
@@ -148,7 +148,8 @@ const PublishForm: React.FC<IPublishFormProps> = (props) => {
     ) => {
         const active = releaseType === type;
         return (
-            <button
+            <Button
+                variant="text"
                 type="button"
                 className={`${style.strategyCard} ${active ? style.strategyCardActive : ''}`}
                 aria-pressed={active}
@@ -180,12 +181,12 @@ const PublishForm: React.FC<IPublishFormProps> = (props) => {
                 </div>
                 <div className={style.strategyTitle}>{title}</div>
                 <div className={style.strategyDescription}>{description}</div>
-            </button>
+            </Button>
         );
     };
 
     const renderValueInput = (name: number, restField: Record<string, unknown>) => (
-        <FormItem shouldUpdate={(prev, next) => {
+        <FormItem role="cell" shouldUpdate={(prev, next) => {
             const prevType = prev.betaLabels?.[name]?.value?.type;
             const nextType = next.betaLabels?.[name]?.value?.type;
             return prevType !== nextType;
@@ -230,19 +231,21 @@ const PublishForm: React.FC<IPublishFormProps> = (props) => {
             rules={[{ validator: labelsValidator }]}
         >
             {(fields, { add, remove }) => (
-                <div className={style.grayEditor}>
-                    <div className={style.grayHeader}>
-                        <span>客户端标签</span>
-                        <span>匹配类型</span>
-                        <span>值类型</span>
-                        <span>匹配值</span>
-                        <span>操作</span>
+                <div className={style.grayEditor} role="table" aria-label="灰度发布客户端标签">
+                    <div className={style.grayHeader} role="row">
+                        <span role="columnheader">客户端标签</span>
+                        <span role="columnheader">匹配类型</span>
+                        <span role="columnheader">值类型</span>
+                        <span role="columnheader">匹配值</span>
+                        <span role="columnheader">操作</span>
                     </div>
-                    <div className={style.grayRows}>
+                    <div className={style.grayRows} role="rowgroup">
+                        {fields.length === 0 && <div className={style.grayEmpty}>暂无客户端标签，请添加后配置灰度范围</div>}
                         {fields.map(({ key, name, ...restField }) => (
-                            <div className={style.grayRow} key={key}>
+                            <div className={style.grayRow} key={key} role="row">
                                 <FormItem
                                     {...restField}
+                                    role="cell"
                                     name={[name, 'key']}
                                     rules={[
                                         { required: true, message: '标签不能为空' },
@@ -252,15 +255,16 @@ const PublishForm: React.FC<IPublishFormProps> = (props) => {
                                 >
                                     <Select options={ClientLabelTypeOption} filterable creatable className={style.fullControl} />
                                 </FormItem>
-                                <FormItem {...restField} name={[name, 'value', 'type']}>
+                                <FormItem {...restField} role="cell" name={[name, 'value', 'type']}>
                                     <Select options={MatchTypeOption} className={style.fullControl} />
                                 </FormItem>
-                                <FormItem {...restField} name={[name, 'value', 'value_type']}>
+                                <FormItem {...restField} role="cell" name={[name, 'value', 'value_type']}>
                                     <Select options={MatchValueTypeOption} className={style.fullControl} />
                                 </FormItem>
                                 {renderValueInput(name, restField)}
-                                <div className={style.grayActions}>
+                                <div className={style.grayActions} role="cell">
                                     <Button
+                                        aria-label={`删除第 ${name + 1} 个客户端标签`}
                                         shape="square"
                                         variant="text"
                                         icon={<DeleteIcon />}
@@ -287,6 +291,8 @@ const PublishForm: React.FC<IPublishFormProps> = (props) => {
         <>
             <Drawer
                 className={style.drawer}
+                bodyClassName={style.drawerBody}
+                footerClassName={style.drawerFooter}
                 destroyOnClose
                 header={(
                     <div className={style.drawerHeader}>

@@ -1,6 +1,6 @@
 import React, {  } from 'react';
-import { Drawer, Form, Input, Space, Button, Switch, Tag, Tabs } from "tdesign-react";
-import type { FormProps } from 'tdesign-react';
+import { Drawer, Form, Input, Space, Button, Switch, Tag, Tabs } from 'components/Fluent';
+import type { FormProps } from 'components/Fluent';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
@@ -103,6 +103,17 @@ const UserEditor: React.FC<IUserEditorProps> = ({ visible, op, closeDrawer }) =>
 
     const labels = editUser?.metadata ? Object.entries(editUser.metadata) : [];
     const canEdit = (editUser as (UserDO & { editable?: boolean }) | null)?.editable !== false;
+    const resetEditor = () => {
+        form.setFieldsValue({
+            name: editUser?.name || '',
+            password: '',
+            token_enable: op === 'create' ? true : !!editUser?.token_enable,
+            comment: editUser?.comment || '',
+            user_labels: editUser?.metadata
+                ? Object.entries(editUser.metadata).map(([key, value]) => ({ key, value }))
+                : [],
+        });
+    };
 
     const userBaseView = (
         <div className={style.authDetail}>
@@ -177,6 +188,7 @@ const UserEditor: React.FC<IUserEditorProps> = ({ visible, op, closeDrawer }) =>
             labelWidth={120}
             labelAlign={'left'}
             onSubmit={onSubmit}
+            onReset={resetEditor}
         >
             <FormItem label={'用户名'} name={'name'} initialData={name}
                 rules={[

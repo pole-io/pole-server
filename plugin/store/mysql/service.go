@@ -70,6 +70,18 @@ func (ss *serviceStore) addService(s *svctypes.Service) error {
 		return err
 	}
 
+	// Aliases route to a source service and never own credentials or a distinct
+	// data-plane principal.
+	if s.Reference == "" {
+		if s.Identity == nil {
+			s.Identity = svctypes.NewServiceIdentity(s.ID)
+		}
+		if err := addServiceIdentity(tx, s.Identity); err != nil {
+			log.Errorf("[Store][database] add service identity err: %s", err.Error())
+			return err
+		}
+	}
+
 	// 填充metadata表
 	if err := addServiceMeta(tx, s.ID, s.Meta); err != nil {
 		log.Errorf("[Store][database] add service meta table err: %s", err.Error())
@@ -403,6 +415,69 @@ func (ss *serviceStore) GetSourceServiceToken(name string, namespace string) (*s
 		out.Namespace = namespace
 		return &out, nil
 	}
+}
+
+// GetOrCreateServiceIdentityByToken resolves a service from its control-plane
+// token and atomically backfills identities for services created before this
+// table existed. Aliases are excluded because they do not own credentials.
+func (ss *serviceStore) GetOrCreateServiceIdentityByToken(token string) (*svctypes.Service, error) {
+	if token == "" {
+		return nil, nil
+	}
+
+	tx, err := ss.master.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	rows, err := tx.Query(`select id, name, namespace from service
+		where token = ? and flag = 0 and (reference is null or reference = '')
+		limit 2 for update`, token)
+	if err != nil {
+		return nil, err
+	}
+
+	services := make([]*svctypes.Service, 0, 2)
+	for rows.Next() {
+		svc := &svctypes.Service{Token: token, Valid: true}
+		if err := rows.Scan(&svc.ID, &svc.Name, &svc.Namespace); err != nil {
+			_ = rows.Close()
+			return nil, err
+		}
+		services = append(services, svc)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if len(services) == 0 {
+		return nil, nil
+	}
+	if len(services) != 1 {
+		return nil, fmt.Errorf("service token resolves to multiple services")
+	}
+
+	svc := services[0]
+	identity := svctypes.NewServiceIdentity(svc.ID)
+	if _, err := tx.Exec(`insert ignore into service_identity
+		(service_id, subject, revision, ctime, mtime)
+		values (?, ?, ?, sysdate(), sysdate())`, identity.ServiceID, identity.Subject, identity.Revision); err != nil {
+		return nil, err
+	}
+	if err := tx.QueryRow(`select subject, revision from service_identity where service_id = ?`, svc.ID).
+		Scan(&identity.Subject, &identity.Revision); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	svc.Identity = identity
+	return svc, nil
 }
 
 // GetServiceByID 根据服务ID查询服务详情
@@ -926,6 +1001,13 @@ func (ss *serviceStore) getServiceByID(serviceID string) (*svctypes.Service, err
 // cleanService 清理无效数据，flag=1的数据，只需要删除service即可
 func cleanService(tx *BaseTx, name string, namespace string) error {
 	log.Infof("[Store][database] clean service(%s, %s)", name, namespace)
+	identityStmt := `delete service_identity from service_identity
+		inner join service on service.id = service_identity.service_id
+		where service.name = ? and service.namespace = ? and service.flag = 1`
+	if _, err := tx.Exec(identityStmt, name, namespace); err != nil {
+		log.Errorf("[Store][database] clean service identity(%s, %s) err: %s", name, namespace, err.Error())
+		return err
+	}
 	str := "delete from service where name = ? and namespace = ? and flag = 1"
 	_, err := tx.Exec(str, name, namespace)
 	if err != nil {
@@ -1157,6 +1239,16 @@ func addServiceMain(tx *BaseTx, s *svctypes.Service) error {
 	_, err := tx.Exec(insertStmt, s.ID, s.Name, s.Namespace, s.Ports, s.Business, s.Department,
 		s.CmdbMod1, s.CmdbMod2, s.CmdbMod3, s.Comment, s.Token,
 		s.Reference, s.PlatformID, s.Revision, s.Owner, utils.MustJson(s.ExportTo))
+	return err
+}
+
+func addServiceIdentity(tx *BaseTx, identity *svctypes.ServiceIdentity) error {
+	if identity == nil || identity.ServiceID == "" || identity.Subject == "" || identity.Revision == "" {
+		return store.NewStatusError(store.EmptyParamsErr, "add service identity missing some params")
+	}
+	_, err := tx.Exec(`insert into service_identity
+		(service_id, subject, revision, ctime, mtime)
+		values (?, ?, ?, sysdate(), sysdate())`, identity.ServiceID, identity.Subject, identity.Revision)
 	return err
 }
 

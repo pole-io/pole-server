@@ -62,8 +62,8 @@ func (l *laneStore) UpdateLaneGroup(tx store.Tx, item *ruletypes.LaneGroup) erro
 }
 
 // GetLaneGroup 查询泳道组
-func (l *laneStore) GetLaneGroup(name string) (*ruletypes.LaneGroup, error) {
-	record, err := l.repo().GetRuleByName(governanceRuleTypeLaneGroup, name)
+func (l *laneStore) GetLaneGroup(namespace, name string) (*ruletypes.LaneGroup, error) {
+	record, err := l.repo().GetRuleByName(governanceRuleTypeLaneGroup, namespace, name)
 	if err != nil {
 		return nil, store.Error(err)
 	}
@@ -79,14 +79,14 @@ func (l *laneStore) GetLaneGroupByID(id string) (*ruletypes.LaneGroup, error) {
 	return governanceRuleRecordToLaneGroup(record)
 }
 
-func (l *laneStore) LockLaneGroup(tx store.Tx, keyword string) (*ruletypes.LaneGroup, error) {
+func (l *laneStore) LockLaneGroup(tx store.Tx, namespace, keyword string) (*ruletypes.LaneGroup, error) {
 	if tx == nil {
 		return nil, ErrTxIsNil
 	}
 	if keyword == "" {
 		return nil, ErrorMissingParams
 	}
-	record, err := l.repo().LockRule(tx, governanceRuleTypeLaneGroup, keyword)
+	record, err := l.repo().LockRule(tx, governanceRuleTypeLaneGroup, keyword, namespace, keyword)
 	if err != nil {
 		log.Error("[Store][Lane] lock one lane group", zap.String("keyword", keyword), zap.Error(err))
 		return nil, store.Error(err)
@@ -232,7 +232,7 @@ func (l *laneStore) AddLaneRules(tx store.Tx, rules []*ruletypes.LaneRule) error
 	}
 	for i := range rules {
 		item := rules[i]
-		if err := l.updateLaneRuleAggregate(tx, item.LaneGroup, func(group *ruletypes.LaneGroup) error {
+		if err := l.updateLaneRuleAggregate(tx, item.Namespace, item.LaneGroup, func(group *ruletypes.LaneGroup) error {
 			if group.LaneRules == nil {
 				group.LaneRules = map[string]*ruletypes.LaneRule{}
 			}
@@ -254,7 +254,7 @@ func (l *laneStore) UpdateLaneRules(tx store.Tx, rules []*ruletypes.LaneRule) er
 	}
 	for i := range rules {
 		item := rules[i]
-		if err := l.updateLaneRuleAggregate(tx, item.LaneGroup, func(group *ruletypes.LaneGroup) error {
+		if err := l.updateLaneRuleAggregate(tx, item.Namespace, item.LaneGroup, func(group *ruletypes.LaneGroup) error {
 			if group.LaneRules == nil {
 				group.LaneRules = map[string]*ruletypes.LaneRule{}
 			}
@@ -276,7 +276,7 @@ func (l *laneStore) UpdateLaneRules(tx store.Tx, rules []*ruletypes.LaneRule) er
 }
 
 // DeleteLaneRules 删除泳道规则
-func (l *laneStore) DeleteLaneRules(tx store.Tx, group string, ids []string) error {
+func (l *laneStore) DeleteLaneRules(tx store.Tx, namespace, group string, ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -284,7 +284,7 @@ func (l *laneStore) DeleteLaneRules(tx store.Tx, group string, ids []string) err
 	for i := range ids {
 		deleteSet[ids[i]] = struct{}{}
 	}
-	if err := l.updateLaneRuleAggregate(tx, group, func(group *ruletypes.LaneGroup) error {
+	if err := l.updateLaneRuleAggregate(tx, namespace, group, func(group *ruletypes.LaneGroup) error {
 		for id := range deleteSet {
 			delete(group.LaneRules, id)
 		}
@@ -313,9 +313,9 @@ func (l *laneStore) repo() *governanceRuleRepository {
 }
 
 func (l *laneStore) updateLaneRuleAggregate(
-	tx store.Tx, groupName string, update func(group *ruletypes.LaneGroup) error,
+	tx store.Tx, namespace, groupName string, update func(group *ruletypes.LaneGroup) error,
 ) error {
-	group, err := l.LockLaneGroup(tx, groupName)
+	group, err := l.LockLaneGroup(tx, namespace, groupName)
 	if err != nil {
 		return err
 	}
@@ -336,6 +336,7 @@ func laneGroupToGovernanceRuleRecord(group *ruletypes.LaneGroup) *governanceRule
 	return &governanceRuleRecord{
 		ID:          group.ID,
 		RuleType:    governanceRuleTypeLaneGroup,
+		Namespace:   group.Namespace,
 		Name:        group.Name,
 		Rule:        marshalLaneGroupAggregate(group),
 		Revision:    group.Revision,
@@ -354,6 +355,10 @@ func governanceRuleRecordToLaneGroup(record *governanceRuleRecord) (*ruletypes.L
 		return nil, err
 	}
 	group.ID = record.ID
+	group.Namespace = record.Namespace
+	for _, laneRule := range group.LaneRules {
+		laneRule.Namespace = record.Namespace
+	}
 	group.Name = record.Name
 	group.Revision = record.Revision
 	group.Description = record.Description
@@ -367,6 +372,7 @@ func laneGroupReleaseToGovernanceReleaseRecord(release *ruletypes.LaneGroupRelea
 	record := &governanceRuleReleaseRecord{
 		ID:           release.Id,
 		RuleType:     governanceRuleTypeLaneGroup,
+		Namespace:    release.Namespace,
 		ReleaseName:  release.ReleaseName,
 		RuleID:       release.RuleId,
 		RuleName:     release.RuleName,
@@ -380,6 +386,7 @@ func laneGroupReleaseToGovernanceReleaseRecord(release *ruletypes.LaneGroupRelea
 	if release.Rule != nil {
 		record.RuleID = utilsDefaultString(record.RuleID, release.Rule.ID)
 		record.RuleName = utilsDefaultString(record.RuleName, release.Rule.Name)
+		record.Namespace = utilsDefaultString(record.Namespace, release.Rule.Namespace)
 		record.Rule = marshalLaneGroupAggregate(release.Rule.LaneGroup)
 	}
 	return record
@@ -393,6 +400,7 @@ func governanceRuleReleaseRecordToLaneGroupRelease(record *governanceRuleRelease
 	if err := unmarshalLaneGroupAggregate(record.Rule, group); err != nil {
 		return nil, err
 	}
+	group.Namespace = record.Namespace
 	proto, err := group.ToProto()
 	if err != nil {
 		return nil, err
@@ -400,6 +408,7 @@ func governanceRuleReleaseRecordToLaneGroupRelease(record *governanceRuleRelease
 	return &ruletypes.LaneGroupRelease{
 		RuleRelease: ruletypes.RuleRelease{
 			Id:           record.ID,
+			Namespace:    record.Namespace,
 			ReleaseName:  record.ReleaseName,
 			RuleId:       record.RuleID,
 			RuleName:     record.RuleName,

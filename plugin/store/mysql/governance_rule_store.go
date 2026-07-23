@@ -62,6 +62,8 @@ WHERE rule_type = ? AND id = ?`
 
 const deleteGovernanceRuleSQL = `UPDATE governance_rule SET flag = 1, mtime = sysdate() WHERE rule_type = ? AND id = ?`
 
+const countGovernanceRulesByNamespaceSQL = `SELECT COUNT(*) FROM governance_rule WHERE namespace = ? AND flag = 0`
+
 const governanceRuleSelectColumns = `id, rule_type, namespace, name, service_id, service, method, priority,
 	enable, disable, level, src_service, src_namespace, dst_service, dst_namespace,
 	dst_method, labels, policy, config, rule, revision, description, metadata,
@@ -73,11 +75,11 @@ WHERE rule_type = ? AND id = ? AND flag = 0`
 
 const selectGovernanceRuleByNameSQL = `SELECT ` + governanceRuleSelectColumns + `
 FROM governance_rule
-WHERE rule_type = ? AND name = ? AND flag = 0`
+WHERE rule_type = ? AND namespace = ? AND name = ? AND flag = 0`
 
 const lockGovernanceRuleSQL = `SELECT ` + governanceRuleSelectColumns + `
 FROM governance_rule
-WHERE rule_type = ? AND (name = ? OR id = ?) AND flag = 0
+WHERE rule_type = ? AND (id = ? OR (namespace = ? AND name = ?)) AND flag = 0
 FOR UPDATE`
 
 const selectMoreGovernanceRulesSQL = `SELECT ` + governanceRuleSelectColumns + `
@@ -109,7 +111,21 @@ const selectGovernanceRuleReleaseSQL = `SELECT id, rule_type, name, rule_id, rul
 	version, active, description, release_type, client_labels, metadata, flag,
 	UNIX_TIMESTAMP(ctime), UNIX_TIMESTAMP(mtime)
 FROM governance_rule_release
-WHERE rule_type = ? AND (id = ? OR (rule_id = ? AND name = ? AND release_type = ?)) AND flag = 0
+WHERE rule_type = ? AND namespace = ? AND rule_name = ? AND name = ? AND release_type = ? AND flag = 0
+LIMIT 1`
+
+const selectGovernanceRuleReleaseByIDSQL = `SELECT id, rule_type, name, rule_id, rule_name, namespace, service, rule,
+	version, active, description, release_type, client_labels, metadata, flag,
+	UNIX_TIMESTAMP(ctime), UNIX_TIMESTAMP(mtime)
+FROM governance_rule_release
+WHERE rule_type = ? AND id = ? AND flag = 0
+LIMIT 1`
+
+const selectGovernanceRuleReleaseByRuleIDSQL = `SELECT id, rule_type, name, rule_id, rule_name, namespace, service, rule,
+	version, active, description, release_type, client_labels, metadata, flag,
+	UNIX_TIMESTAMP(ctime), UNIX_TIMESTAMP(mtime)
+FROM governance_rule_release
+WHERE rule_type = ? AND rule_id = ? AND name = ? AND release_type = ? AND flag = 0
 LIMIT 1`
 
 const selectActiveGovernanceRuleReleaseSQL = `SELECT id, rule_type, name, rule_id, rule_name, namespace, service, rule,
@@ -134,7 +150,7 @@ WHERE mtime > FROM_UNIXTIME(?)`
 
 const inactiveGovernanceRuleReleaseByNameSQL = `UPDATE governance_rule_release
 SET active = 0, mtime = sysdate()
-WHERE rule_type = ? AND name = ? AND rule_name = ? AND active = 1 AND release_type = ?`
+WHERE rule_type = ? AND namespace = ? AND name = ? AND rule_name = ? AND active = 1 AND release_type = ?`
 
 const deleteGovernanceRuleReleaseSQL = `UPDATE governance_rule_release SET flag = 1, mtime = sysdate() WHERE rule_type = ? AND id = ?`
 
@@ -201,9 +217,19 @@ func newGovernanceRuleRepository(master, slave *BaseDB) *governanceRuleRepositor
 }
 
 func (r *governanceRuleRepository) CreateRule(tx store.Tx, record *governanceRuleRecord) error {
+	if record == nil || record.Namespace == "" || record.Name == "" {
+		return store.NewStatusError(store.EmptyParamsErr, "governance rule owner namespace and name are required")
+	}
 	dbTx, err := MustGetBaseTx(tx)
 	if err != nil {
 		return err
+	}
+	existing, err := r.LockRule(tx, record.RuleType, "", record.Namespace, record.Name)
+	if err != nil {
+		return err
+	}
+	if existing != nil {
+		return store.NewStatusError(store.DuplicateEntryErr, "governance rule already exists in namespace")
 	}
 	_, err = dbTx.Exec(insertGovernanceRuleSQL, record.insertArgs()...)
 	return store.Error(err)
@@ -227,20 +253,32 @@ func (r *governanceRuleRepository) DeleteRule(tx store.Tx, ruleType governanceRu
 	return store.Error(err)
 }
 
+func (r *governanceRuleRepository) CountRulesByNamespace(namespace string) (uint64, error) {
+	var total uint64
+	if err := r.slave.QueryRow(countGovernanceRulesByNamespaceSQL, namespace).Scan(&total); err != nil {
+		return 0, store.Error(err)
+	}
+	return total, nil
+}
+
 func (r *governanceRuleRepository) GetRuleByID(ruleType governanceRuleType, id string) (*governanceRuleRecord, error) {
 	return r.getRule(r.master.QueryRow(selectGovernanceRuleByIDSQL, string(ruleType), id))
 }
 
-func (r *governanceRuleRepository) GetRuleByName(ruleType governanceRuleType, name string) (*governanceRuleRecord, error) {
-	return r.getRule(r.master.QueryRow(selectGovernanceRuleByNameSQL, string(ruleType), name))
+func (r *governanceRuleRepository) GetRuleByName(
+	ruleType governanceRuleType, namespace, name string,
+) (*governanceRuleRecord, error) {
+	return r.getRule(r.master.QueryRow(selectGovernanceRuleByNameSQL, string(ruleType), namespace, name))
 }
 
-func (r *governanceRuleRepository) LockRule(tx store.Tx, ruleType governanceRuleType, keyword string) (*governanceRuleRecord, error) {
+func (r *governanceRuleRepository) LockRule(
+	tx store.Tx, ruleType governanceRuleType, id, namespace, name string,
+) (*governanceRuleRecord, error) {
 	dbTx, err := MustGetBaseTx(tx)
 	if err != nil {
 		return nil, err
 	}
-	return r.getRule(dbTx.QueryRow(lockGovernanceRuleSQL, string(ruleType), keyword, keyword))
+	return r.getRule(dbTx.QueryRow(lockGovernanceRuleSQL, string(ruleType), id, namespace, name))
 }
 
 func (r *governanceRuleRepository) QueryRules(
@@ -401,6 +439,7 @@ func (r *governanceRuleRepository) InactiveRelease(tx store.Tx, release *governa
 	_, err = dbTx.Exec(
 		inactiveGovernanceRuleReleaseByNameSQL,
 		string(release.RuleType),
+		release.Namespace,
 		release.ReleaseName,
 		release.RuleName,
 		release.ReleaseType,
@@ -415,14 +454,22 @@ func (r *governanceRuleRepository) GetRelease(
 	if err != nil {
 		return nil, err
 	}
-	record, err := scanGovernanceRuleReleaseRecord(dbTx.QueryRow(
-		selectGovernanceRuleReleaseSQL,
-		string(ruleType),
-		release.Id,
-		release.RuleId,
-		release.ReleaseName,
-		release.ReleaseType,
-	))
+	var row governanceRuleReleaseScanner
+	switch {
+	case release.Id != "":
+		row = dbTx.QueryRow(selectGovernanceRuleReleaseByIDSQL, string(ruleType), release.Id)
+	case release.RuleId != "":
+		row = dbTx.QueryRow(
+			selectGovernanceRuleReleaseByRuleIDSQL,
+			string(ruleType), release.RuleId, release.ReleaseName, release.ReleaseType,
+		)
+	default:
+		row = dbTx.QueryRow(
+			selectGovernanceRuleReleaseSQL,
+			string(ruleType), release.Namespace, release.RuleName, release.ReleaseName, release.ReleaseType,
+		)
+	}
+	record, err := scanGovernanceRuleReleaseRecord(row)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -494,6 +541,10 @@ func (r *governanceRuleRepository) QueryReleaseVersions(
 ) (uint64, []*rules.RuleRelease, error) {
 	countWhere := "rule_type = ?"
 	args := []interface{}{string(ruleType)}
+	if namespace := filter["namespace"]; namespace != "" {
+		countWhere += " AND namespace = ?"
+		args = append(args, namespace)
+	}
 	if ruleID := filter["rule_id"]; ruleID != "" {
 		countWhere += " AND rule_id = ?"
 		args = append(args, ruleID)
@@ -738,6 +789,10 @@ func scanGovernanceRuleReleaseRecord(row governanceRuleReleaseScanner) (*governa
 func buildGovernanceRuleReleaseActiveWhere(release *governanceRuleReleaseRecord) (string, []interface{}) {
 	whereHolder := []string{"rule_type = ?"}
 	args := []interface{}{string(release.RuleType)}
+	if release.Namespace != "" {
+		whereHolder = append(whereHolder, "namespace = ?")
+		args = append(args, release.Namespace)
+	}
 	if release.RuleID != "" {
 		whereHolder = append(whereHolder, "rule_id = ?")
 		args = append(args, release.RuleID)

@@ -10,6 +10,7 @@ import (
 
 type RuleRelease struct {
 	Id           string
+	Namespace    string
 	ReleaseName  string
 	RuleId       string
 	RuleName     string
@@ -37,7 +38,7 @@ func (l *RuleRelease) Key() string {
 }
 
 func (r *RuleRelease) ToSpec() *apimodel.RuleRelease {
-	return &apimodel.RuleRelease{
+	out := &apimodel.RuleRelease{
 		Id:          r.Id,
 		ReleaseName: r.ReleaseName,
 		RuleId:      r.RuleId,
@@ -50,10 +51,13 @@ func (r *RuleRelease) ToSpec() *apimodel.RuleRelease {
 		Ctime:       commontime.Time2String(r.Ctime),
 		Mtime:       commontime.Time2String(r.Mtime),
 	}
+	SetOwnerNamespaceOnProto(out, r.Namespace)
+	return out
 }
 
 func (r *RuleRelease) FromSpec(spec *apimodel.RuleRelease) {
 	r.Id = spec.Id
+	r.Namespace = OwnerNamespaceFromProto(spec)
 	r.ReleaseName = spec.ReleaseName
 	r.RuleId = spec.RuleId
 	r.RuleName = spec.RuleName
@@ -67,6 +71,7 @@ func (r *RuleRelease) FromSpec(spec *apimodel.RuleRelease) {
 func (r *RuleRelease) Clone() *RuleRelease {
 	return &RuleRelease{
 		Id:          r.Id,
+		Namespace:   r.Namespace,
 		ReleaseName: r.ReleaseName,
 		RuleId:      r.RuleId,
 		RuleName:    r.RuleName,

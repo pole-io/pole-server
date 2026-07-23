@@ -1,5 +1,5 @@
-import { createSlice, createAsyncThunk, current } from '@reduxjs/toolkit';
-import { doLogin } from '../../services/login'
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { describeConsoleSession, doLogin } from '../../services/login'
 import { LoginUserIdKey, PoleTokenKey } from 'utils/request';
 
 const namespace = 'user';
@@ -7,11 +7,14 @@ export const LoginRoleKey = 'login-role'
 export const LoginUserOwnerIdKey = 'login-owner-id'
 export const LoginUserNameKey = 'login-name'
 
+const hasPersistedLogin = !!localStorage.getItem(PoleTokenKey);
+
 const initialState = {
-  isLogin: !!localStorage.getItem(PoleTokenKey), // 是否登录
+  isLogin: hasPersistedLogin, // 是否存在待服务端确认的登录会话
+  sessionResolved: !hasPersistedLogin,
   currentUser: {
     name: localStorage.getItem(LoginUserNameKey) || '', // 用户名
-    role: localStorage.getItem(LoginRoleKey) || '', // 角色
+    role: '', // 角色只能从服务端签名会话恢复
     user_id: localStorage.getItem(LoginUserIdKey) || '', // 用户ID
     owner_id: localStorage.getItem(LoginUserOwnerIdKey) || '', // 所属ID
   }
@@ -23,12 +26,20 @@ export const login = createAsyncThunk(`${namespace}/login`, async ({ username, p
     const res = await doLogin({ name: username, password: password });
     localStorage.setItem(PoleTokenKey, res.token);
     localStorage.setItem(LoginUserNameKey, res.name);
-    localStorage.setItem(LoginRoleKey, res.role);
+    localStorage.removeItem(LoginRoleKey);
     localStorage.setItem(LoginUserIdKey, res.user_id);
     localStorage.setItem(LoginUserOwnerIdKey, res.owner_id);
     return fulfillWithValue(res); // 返回 token
   } catch (error) {
     return rejectWithValue((error as Error).message); // 捕获错误并返回
+  }
+});
+
+export const hydrateSession = createAsyncThunk(`${namespace}/session`, async (_, { rejectWithValue }) => {
+  try {
+    return await describeConsoleSession();
+  } catch (error) {
+    return rejectWithValue((error as Error).message);
   }
 });
 
@@ -44,6 +55,7 @@ const loginReducer = createSlice({
       localStorage.removeItem(LoginUserOwnerIdKey);
       // 清空当前用户信息
       state.isLogin = false;
+      state.sessionResolved = true;
       state.currentUser = {
         name: '',
         role: '',
@@ -56,6 +68,7 @@ const loginReducer = createSlice({
     builder
       .addCase(login.fulfilled, (state, action) => {
         state.isLogin = true;
+        state.sessionResolved = true;
         state.currentUser = {
           name: action.payload.name,
           role: action.payload.role,
@@ -65,6 +78,22 @@ const loginReducer = createSlice({
       })
       .addCase(login.rejected, (state, action) => {
         state.isLogin = false;
+        state.sessionResolved = true;
+      })
+      .addCase(hydrateSession.pending, (state) => {
+        state.sessionResolved = false;
+        state.currentUser.role = '';
+      })
+      .addCase(hydrateSession.fulfilled, (state, action) => {
+        state.isLogin = true;
+        state.sessionResolved = true;
+        state.currentUser.user_id = action.payload.user_id;
+        state.currentUser.role = action.payload.role;
+      })
+      .addCase(hydrateSession.rejected, (state) => {
+        state.isLogin = false;
+        state.sessionResolved = true;
+        state.currentUser.role = '';
       });
   },
 });

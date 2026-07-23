@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -73,11 +74,12 @@ func DefaultAuthConfig() *AuthConfig {
 }
 
 type Server struct {
-	options  *AuthConfig
-	storage  store.Store
-	cacheMgr cachetypes.CacheManager
-	checker  authapi.AuthChecker
-	userSvr  authapi.UserServer
+	options       *AuthConfig
+	storage       store.Store
+	cacheMgr      cachetypes.CacheManager
+	checker       authapi.AuthChecker
+	userSvr       authapi.UserServer
+	systemRolesMu sync.Mutex
 }
 
 // PolicyHelper implements authapi.StrategyServer.
@@ -97,6 +99,14 @@ func (svr *Server) Initialize(options *authapi.Config, storage store.Store, cach
 	svr.storage = storage
 	if err := svr.ParseOptions(options); err != nil {
 		return err
+	}
+	if count, err := backfillDefaultPolicyAIResourceWildcards(storage); err != nil {
+		return fmt.Errorf("backfill default policy AI resources: %w", err)
+	} else if count > 0 {
+		log.Info("[Auth][Strategy] backfilled AI wildcard resources for default policies", zap.Int("count", count))
+	}
+	if err := svr.ensureSystemRoles(); err != nil {
+		return fmt.Errorf("ensure built-in system roles: %w", err)
 	}
 
 	_ = cacheMgr.OpenResourceCache(_cacheEntries...)

@@ -92,8 +92,9 @@ func (s *Server) deleteRouterRule(ctx context.Context, req *apitraffic.RouteRule
 	}
 
 	s.RecordHistory(ctx, routeRuleRecordEntry(ctx, req, &rules.RouterConfig{
-		ID:   req.GetId(),
-		Name: req.GetName(),
+		ID:        req.GetId(),
+		Namespace: req.GetNamespace(),
+		Name:      req.GetName(),
 	}, types.ODelete))
 	return apiv1.NewRouterResponse(apimodel.Code_ExecuteSuccess, req)
 }

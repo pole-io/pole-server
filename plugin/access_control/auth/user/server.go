@@ -157,8 +157,40 @@ func (svr *Server) Login(req *apisecurity.LoginRequest) *apimodel.Response {
 		UserId: user.ID,
 		Token:  token,
 		Name:   user.Name,
-		Role:   authtypes.UserRoleNames[user.Type],
+		Role: resolveLoginRole(
+			user,
+			svr.cacheMgr.Role().GetPrincipalRoles,
+			svr.cacheMgr.User().GetUserLinkGroupIds,
+		),
 	})
+}
+
+func resolveLoginRole(user *authtypes.User,
+	rolesFor func(authtypes.Principal) []*authtypes.Role,
+	groupsFor func(string) []string) string {
+	if user == nil {
+		return ""
+	}
+	if user.Type == authtypes.OwnerUserRole {
+		return authtypes.UserRoleNames[user.Type]
+	}
+	hasAdminRole := func(principal authtypes.Principal) bool {
+		for _, role := range rolesFor(principal) {
+			if role != nil && role.ID == authtypes.SystemRoleAdminID && role.Type == authtypes.RoleTypeSystem {
+				return true
+			}
+		}
+		return false
+	}
+	if hasAdminRole(authtypes.Principal{PrincipalID: user.ID, PrincipalType: authtypes.PrincipalUser}) {
+		return "admin"
+	}
+	for _, groupID := range groupsFor(user.ID) {
+		if hasAdminRole(authtypes.Principal{PrincipalID: groupID, PrincipalType: authtypes.PrincipalGroup}) {
+			return "admin"
+		}
+	}
+	return authtypes.UserRoleNames[user.Type]
 }
 
 func (svr *Server) loginToken(user *authtypes.User) (string, *apimodel.Response) {

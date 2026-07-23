@@ -105,6 +105,8 @@ type ClientServer interface {
 	ReportClient(ctx context.Context, req *apiservice.Client) *apimodel.Response
 	// GetServiceWithCache Used for client acquisition service information
 	GetServiceWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse
+	// GetServiceIdentity returns the authenticated SDK's internal data-plane identity.
+	GetServiceIdentity(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse
 	// ServiceInstancesCache Used for client acquisition service instance information
 	ServiceInstancesCache(ctx context.Context, filter *apiservice.DiscoverFilter, req *apiservice.Service) *apiservice.DiscoverResponse
 	// GetServiceContractWithCache User Client Get ServiceContract Rule Information

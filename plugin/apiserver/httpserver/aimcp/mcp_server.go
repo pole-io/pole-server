@@ -12,6 +12,7 @@ import (
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
+	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
 	"github.com/pole-io/specification/source/go/api/v1/ai"
@@ -219,18 +220,26 @@ func (h *HTTPServer) mcpServerQuery(ctx context.Context, query *ai.MCPServerQuer
 	if h.cacheMgr == nil {
 		return api.NewBatchQueryResponse(apimodel.Code_ExecuteException)
 	}
+	authCtx, err := h.checkMCPServerPermission(ctx, authtypes.Read, authtypes.DescribeMCPServers, nil)
+	if err != nil {
+		return api.NewBatchQueryResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error())
+	}
 
-	count, servers := h.cacheMgr.MCPServer().Query(query)
+	_, servers := h.cacheMgr.MCPServer().Query(query)
 
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
-	resp.Amount = count
-	resp.Size = uint32(len(servers))
+	resp.Size = 0
 	for _, s := range servers {
+		if s == nil || !h.canReadMCPServer(authCtx, s.GetId()) {
+			continue
+		}
 		if err := appendMCPServerToResp(resp, s); err != nil {
 			log.Warnf("[apiserver][ai-mcp] marshal mcp server to resp data err: %s", err.Error())
 			continue
 		}
+		resp.Size++
 	}
+	resp.Amount = resp.Size
 	return resp
 }
 
@@ -238,6 +247,9 @@ func (h *HTTPServer) mcpServerQuery(ctx context.Context, query *ai.MCPServerQuer
 func (h *HTTPServer) mcpServerCreate(ctx context.Context, servers []*ai.MCPServer) *apimodel.Response {
 	if h.storage == nil {
 		return api.NewResponse(apimodel.Code_StoreLayerException)
+	}
+	if _, err := h.checkMCPServerPermission(ctx, authtypes.Create, authtypes.CreateMCPServers, nil); err != nil {
+		return api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error())
 	}
 
 	for _, s := range servers {
@@ -254,6 +266,9 @@ func (h *HTTPServer) mcpServerUpdate(ctx context.Context, servers []*ai.MCPServe
 	if h.storage == nil {
 		return api.NewResponse(apimodel.Code_StoreLayerException)
 	}
+	if _, err := h.checkMCPServerPermission(ctx, authtypes.Modify, authtypes.UpdateMCPServers, mcpServerIDs(servers)); err != nil {
+		return api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error())
+	}
 
 	for _, s := range servers {
 		if err := h.storage.UpdateMCPServer(s); err != nil {
@@ -268,6 +283,9 @@ func (h *HTTPServer) mcpServerUpdate(ctx context.Context, servers []*ai.MCPServe
 func (h *HTTPServer) mcpServerDelete(ctx context.Context, ids []string) *apimodel.Response {
 	if h.storage == nil {
 		return api.NewResponse(apimodel.Code_StoreLayerException)
+	}
+	if _, err := h.checkMCPServerPermission(ctx, authtypes.Delete, authtypes.DeleteMCPServers, ids); err != nil {
+		return api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error())
 	}
 
 	for _, id := range ids {
@@ -304,6 +322,9 @@ func (h *HTTPServer) mcpServerToolQuery(ctx context.Context, query *ai.MCPServer
 
 	if serverID == "" {
 		return api.NewBatchQueryResponseWithMsg(apimodel.Code_BadRequest, "server_id or server_name+server_namespace is required")
+	}
+	if _, err := h.checkMCPServerPermission(ctx, authtypes.Read, authtypes.DescribeMCPServerTools, []string{serverID}); err != nil {
+		return api.NewBatchQueryResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error())
 	}
 
 	tools := h.cacheMgr.MCPServer().GetMCPServerTools(serverID)

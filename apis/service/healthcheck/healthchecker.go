@@ -20,7 +20,6 @@ package healthcheck
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/pkg/types"
@@ -45,6 +44,7 @@ type CheckRequest struct {
 	QueryRequest
 	ExpireDurationSec uint32
 	CurTimeSec        func() int64
+	Path              string
 }
 
 // CheckResponse check heartbeat response
@@ -91,16 +91,12 @@ type AddCheckRequest struct {
 type HealthCheckType int32
 
 const (
-	HealthCheckerHeartbeat HealthCheckType = iota + 1
-	HealthCheckerDetectTCP
-	HealthCheckerDetectUDP
-	HealthCheckerDetectHTTP
-	HealthCheckerDetectGRPC
-	HealthCheckerDetectMYSQL
-)
-
-var (
-	healthCheckOnce = &sync.Once{}
+	HealthCheckerHeartbeat   HealthCheckType = 1
+	HealthCheckerDetectTCP   HealthCheckType = 2
+	HealthCheckerDetectHTTP  HealthCheckType = 3
+	HealthCheckerDetectUDP   HealthCheckType = 4
+	HealthCheckerDetectGRPC  HealthCheckType = 5
+	HealthCheckerDetectMYSQL HealthCheckType = 6
 )
 
 // HealthChecker health checker plugin interface
@@ -133,11 +129,9 @@ func GetHealthChecker(name string, cfg *apis.ConfigEntry) HealthChecker {
 		return nil
 	}
 
-	healthCheckOnce.Do(func() {
-		if err := item.Initialize(cfg); err != nil {
-			panic(fmt.Errorf("HealthChecker plugin init err: %s", err.Error()))
-		}
-	})
+	if err := item.Initialize(cfg); err != nil {
+		panic(fmt.Errorf("HealthChecker plugin init err: %s", err.Error()))
+	}
 
 	return item.(HealthChecker)
 }

@@ -26,16 +26,24 @@ import (
 )
 
 func TestLoadConfigDefaultsConsoleLoggerToLogsDirectory(t *testing.T) {
+	t.Setenv("TEST_POLE_AGENT_LLM_API_KEY", "test-agent-secret")
 	cfgPath := filepath.Join(t.TempDir(), "pole-console.yaml")
 	require.NoError(t, os.WriteFile(cfgPath, []byte(`
 webServer:
   listenPort: 8080
 poleServer:
   address: 127.0.0.1:8090
+agent:
+  model:
+    baseURL: https://llm-gateway.example.test
+    apiKey: ${TEST_POLE_AGENT_LLM_API_KEY}
 `), 0644))
 
 	cfg, err := LoadConfig(cfgPath)
 	require.NoError(t, err)
 	require.Equal(t, "logs/runtime/pole-console.log", cfg.Logger.RotateOutputPath)
 	require.Contains(t, cfg.Logger.ErrorOutputPaths, "logs/runtime/pole-console-error.log")
+	require.Equal(t, "https://llm-gateway.example.test", cfg.Agent.Model.BaseURL)
+	require.Equal(t, "test-agent-secret", cfg.Agent.Model.APIKey)
+	require.Equal(t, "env:TEST_POLE_AGENT_LLM_API_KEY", cfg.SystemConfigSources["agent.model.apiKey"].Reference)
 }

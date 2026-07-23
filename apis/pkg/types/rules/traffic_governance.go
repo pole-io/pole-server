@@ -21,20 +21,21 @@ const (
 // TrafficGovernanceRule wraps the three traffic governance protobuf rules that
 // share the same storage, cache, release, and query lifecycle.
 type TrafficGovernanceRule struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Namespace   string `json:"namespace"`
-	Service     string `json:"service"`
-	Enable      bool
-	Priority    uint32
-	Valid       bool
-	CTime       time.Time
-	MTime       time.Time
-	Metadata    map[string]string
-	Revision    string
-	Description string
-	Kind        TrafficGovernanceRuleKind
-	Proto       proto.Message
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	Namespace        string `json:"namespace"`
+	ServiceNamespace string `json:"service_namespace"`
+	Service          string `json:"service"`
+	Enable           bool
+	Priority         uint32
+	Valid            bool
+	CTime            time.Time
+	MTime            time.Time
+	Metadata         map[string]string
+	Revision         string
+	Description      string
+	Kind             TrafficGovernanceRuleKind
+	Proto            proto.Message
 }
 
 func NewTrafficSecurityRule(spec *apisecurity.TrafficSecurityRule) *TrafficGovernanceRule {
@@ -61,7 +62,8 @@ func (r *TrafficGovernanceRule) FromTrafficSecuritySpec(spec *apisecurity.Traffi
 	}
 	r.ID = spec.Id
 	r.Name = spec.Name
-	r.Namespace, r.Service = trafficTargetServiceScope(spec.GetTargetService())
+	r.Namespace = spec.GetNamespace()
+	r.ServiceNamespace, r.Service = trafficTargetServiceScope(spec.GetTargetService())
 	r.Enable = spec.Enable
 	r.Priority = spec.Priority
 	r.Metadata = spec.Metadata
@@ -78,7 +80,8 @@ func (r *TrafficGovernanceRule) FromTrafficMirrorSpec(spec *apitraffic.TrafficMi
 	}
 	r.ID = spec.Id
 	r.Name = spec.Name
-	r.Namespace, r.Service = trafficDestinationServiceScope(spec.GetCallee())
+	r.Namespace = spec.GetNamespace()
+	r.ServiceNamespace, r.Service = trafficDestinationServiceScope(spec.GetCallee())
 	r.Enable = spec.Enable
 	r.Priority = spec.Priority
 	r.Metadata = spec.Metadata
@@ -95,7 +98,8 @@ func (r *TrafficGovernanceRule) FromTrafficMockSpec(spec *apitraffic.TrafficMock
 	}
 	r.ID = spec.Id
 	r.Name = spec.Name
-	r.Namespace, r.Service = trafficDestinationServiceScope(spec.GetCallee())
+	r.Namespace = spec.GetNamespace()
+	r.ServiceNamespace, r.Service = trafficDestinationServiceScope(spec.GetCallee())
 	r.Enable = spec.Enable
 	r.Priority = spec.Priority
 	r.Metadata = spec.Metadata
@@ -151,12 +155,13 @@ func (r *TrafficGovernanceRule) ToTrafficMockSpec() *apitraffic.TrafficMock {
 func (r *TrafficGovernanceRule) applyTrafficSecurityFields(spec *apisecurity.TrafficSecurityRule) {
 	spec.Id = r.ID
 	spec.Name = r.Name
+	spec.Namespace = r.Namespace
 	spec.Enable = r.Enable
 	spec.Priority = r.Priority
 	spec.Metadata = r.Metadata
 	spec.Revision = r.Revision
 	spec.Description = r.Description
-	applyTrafficTargetService(&spec.TargetService, r.Namespace, r.Service)
+	applyTrafficTargetService(&spec.TargetService, r.ServiceNamespace, r.Service)
 	spec.Ctime = commontime.Time2String(r.CTime)
 	spec.Mtime = commontime.Time2String(r.MTime)
 }
@@ -164,12 +169,13 @@ func (r *TrafficGovernanceRule) applyTrafficSecurityFields(spec *apisecurity.Tra
 func (r *TrafficGovernanceRule) applyTrafficMirrorFields(spec *apitraffic.TrafficMirror) {
 	spec.Id = r.ID
 	spec.Name = r.Name
+	spec.Namespace = r.Namespace
 	spec.Enable = r.Enable
 	spec.Priority = r.Priority
 	spec.Metadata = r.Metadata
 	spec.Revision = r.Revision
 	spec.Description = r.Description
-	applyTrafficDestinationService(&spec.Callee, r.Namespace, r.Service)
+	applyTrafficDestinationService(&spec.Callee, r.ServiceNamespace, r.Service)
 	ensureTrafficCaller(&spec.Caller)
 	spec.Ctime = commontime.Time2String(r.CTime)
 	spec.Mtime = commontime.Time2String(r.MTime)
@@ -178,12 +184,13 @@ func (r *TrafficGovernanceRule) applyTrafficMirrorFields(spec *apitraffic.Traffi
 func (r *TrafficGovernanceRule) applyTrafficMockFields(spec *apitraffic.TrafficMock) {
 	spec.Id = r.ID
 	spec.Name = r.Name
+	spec.Namespace = r.Namespace
 	spec.Enable = r.Enable
 	spec.Priority = r.Priority
 	spec.Metadata = r.Metadata
 	spec.Revision = r.Revision
 	spec.Description = r.Description
-	applyTrafficDestinationService(&spec.Callee, r.Namespace, r.Service)
+	applyTrafficDestinationService(&spec.Callee, r.ServiceNamespace, r.Service)
 	ensureTrafficCaller(&spec.Caller)
 	spec.Ctime = commontime.Time2String(r.CTime)
 	spec.Mtime = commontime.Time2String(r.MTime)
@@ -242,5 +249,5 @@ func (r *TrafficGovernanceRuleRelease) ActiveKey() string {
 	if r == nil || r.Rule == nil {
 		return ""
 	}
-	return string(r.ReleaseType) + "/" + r.Rule.Namespace + "/" + r.Rule.Service
+	return string(r.ReleaseType) + "/" + r.Rule.ServiceNamespace + "/" + r.Rule.Service
 }

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import classnames from 'classnames';
-import { Form, MessagePlugin, Input, Checkbox, Button, FormInstanceFunctions, SubmitContext } from 'tdesign-react';
-import { LockOnIcon, UserIcon, MailIcon, BrowseOffIcon, BrowseIcon } from 'tdesign-icons-react';
+import { Form, MessagePlugin, Input, Checkbox, Button, FormInstanceFunctions, SubmitContext } from 'components/Fluent';
+import { LockOnIcon, UserIcon, MailIcon, BrowseOffIcon, BrowseIcon } from 'components/Fluent/icons';
 import useCountdown from '../components/hooks/useCountDown';
 
 import Style from './index.module.less';
@@ -20,7 +20,7 @@ export default function Register() {
     if (e.validateResult === true) {
       const { checked } = formRef.current?.getFieldsValue?.(['checked']) as { checked: boolean };
       if (!checked) {
-        MessagePlugin.error('请同意 TDesign 服务协议和 TDesign 隐私声明');
+        MessagePlugin.error('请同意服务协议和隐私声明');
         return;
       }
       MessagePlugin.success('注册成功');

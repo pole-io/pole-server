@@ -145,3 +145,17 @@ func (s *Server) StopGrayConfigFileReleases(ctx context.Context,
 
 	return s.nextServer.StopGrayConfigFileReleases(ctx, reqs)
 }
+
+func (s *Server) PromoteGrayConfigFileReleaseToDraft(ctx context.Context,
+	req *apiconfig.ConfigFileRelease) *apimodel.Response {
+	authCtx := s.collectConfigFileReleaseAuthContext(ctx,
+		[]*apiconfig.ConfigFileRelease{req}, auth.Modify, auth.PromoteGrayConfigFileRelease)
+	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewConfigResponse(auth.ConvertToErrCode(err))
+	}
+
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+
+	return s.nextServer.PromoteGrayConfigFileReleaseToDraft(ctx, req)
+}

@@ -120,6 +120,10 @@ func (svr *Server) UpdatePolicy(ctx context.Context, req *apisecurity.AuthStrate
 	if saveData == nil {
 		return api.NewAuthStrategyResponse(apimodel.Code_NotFoundAuthStrategyRule, req)
 	}
+	if authtypes.IsSystemRolePolicyID(saveData.ID) {
+		return api.NewAuthStrategyResponseWithMsg(apimodel.Code_BadRequest,
+			"built-in role policy is immutable", req)
+	}
 
 	updateData := authtypes.ParsePolicyRule(req)
 	data, needUpdate := svr.updateAuthPolicyAttribute(ctx, saveData, updateData)
@@ -165,6 +169,10 @@ func (svr *Server) DeletePolicy(ctx context.Context, req *apisecurity.AuthStrate
 
 	if strategy == nil {
 		return api.NewAuthStrategyResponse(apimodel.Code_ExecuteSuccess, req)
+	}
+	if authtypes.IsSystemRolePolicyID(strategy.ID) {
+		return api.NewAuthStrategyResponseWithMsg(apimodel.Code_BadRequest,
+			"built-in role policy cannot be deleted", req)
 	}
 
 	if strategy.Default {
@@ -237,9 +245,15 @@ func (svr *Server) GetPolicies(ctx context.Context, filters map[string]string) *
 
 var (
 	resTypeFilter = map[string]string{
-		"namespace":    "0",
-		"service":      "1",
-		"config_group": "2",
+		"namespace":            "0",
+		"service":              "1",
+		"config_group":         "2",
+		"mcpserverresources":   "30",
+		"mcp_server_resources": "30",
+		"mcp_servers":          "30",
+		"a2aagentresources":    "31",
+		"a2a_agent_resources":  "31",
+		"a2a_agents":           "31",
 	}
 
 	principalTypeFilter = map[string]string{
@@ -567,6 +581,14 @@ func (svr *Server) authorizeCheckResourceExist(ctx context.Context, resType apis
 		if svr.cacheMgr.ConfigGroup().GetGroupByID(resourceID) == nil {
 			return api.NewAuthResponse(apimodel.Code_NotFoundResource)
 		}
+	case apisecurity.ResourceType_MCPServerResources:
+		if svr.cacheMgr.MCPServer().GetMCPServerByID(resourceID) == nil {
+			return api.NewAuthResponse(apimodel.Code_NotFoundResource)
+		}
+	case apisecurity.ResourceType_A2AAgentResources:
+		if svr.cacheMgr.A2AAgent().GetA2AAgentByID(resourceID) == nil {
+			return api.NewAuthResponse(apimodel.Code_NotFoundResource)
+		}
 	default:
 		return api.NewAuthResponseWithMsg(apimodel.Code_InvalidParameter, "resource_type not supported for authorize")
 	}
@@ -601,7 +623,13 @@ func (svr *Server) authorizeCheckPrincipalsExist(ctx context.Context, principals
 		}
 	}
 	for _, p := range principals.Roles {
-		if p.Id != "" && svr.PolicyHelper().GetRole(p.Id) == nil {
+		if p.Id == "" {
+			continue
+		}
+		if _, ok := authtypes.GetSystemRoleDefinition(p.Id); ok {
+			return api.NewAuthResponseWithMsg(apimodel.Code_BadRequest, "built-in role permissions are immutable")
+		}
+		if svr.PolicyHelper().GetRole(p.Id) == nil {
 			return api.NewAuthResponseWithMsg(apimodel.Code_NotFoundResource, "role not found: "+p.Id)
 		}
 	}
@@ -801,6 +829,8 @@ func (svr *Server) enrichResourceInfo(ctx context.Context, resp *apisecurity.Aut
 		UserGroups:          make([]*apisecurity.StrategyResourceEntry, 0, 4),
 		Roles:               make([]*apisecurity.StrategyResourceEntry, 0, 4),
 		AuthPolicies:        make([]*apisecurity.StrategyResourceEntry, 0, 4),
+		McpServers:          make([]*apisecurity.StrategyResourceEntry, 0, 4),
+		A2AAgents:           make([]*apisecurity.StrategyResourceEntry, 0, 4),
 	}
 
 	for index := range data.Resources {
@@ -1089,6 +1119,34 @@ var (
 				Id:        item.ResID,
 				Namespace: rule.Namespace,
 				Name:      rule.Name,
+			}
+		},
+		apisecurity.ResourceType_MCPServerResources: func(ctx context.Context, svr *Server,
+			item authtypes.StrategyResource) *apisecurity.StrategyResourceEntry {
+			server := svr.cacheMgr.MCPServer().GetMCPServerByID(item.ResID)
+			if server == nil {
+				log.Warn("[Auth][Strategy] not found mcp_server in fill-info",
+					zap.String("id", item.StrategyID), zap.String("res-id", item.ResID), utils.RequestID(ctx))
+				return nil
+			}
+			return &apisecurity.StrategyResourceEntry{
+				Id:        item.ResID,
+				Namespace: server.GetNamespace(),
+				Name:      server.GetName(),
+			}
+		},
+		apisecurity.ResourceType_A2AAgentResources: func(ctx context.Context, svr *Server,
+			item authtypes.StrategyResource) *apisecurity.StrategyResourceEntry {
+			agent := svr.cacheMgr.A2AAgent().GetA2AAgentByID(item.ResID)
+			if agent == nil {
+				log.Warn("[Auth][Strategy] not found a2a_agent in fill-info",
+					zap.String("id", item.StrategyID), zap.String("res-id", item.ResID), utils.RequestID(ctx))
+				return nil
+			}
+			return &apisecurity.StrategyResourceEntry{
+				Id:        item.ResID,
+				Namespace: agent.Namespace,
+				Name:      agent.Name,
 			}
 		},
 		// 鉴权资源

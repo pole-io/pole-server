@@ -131,6 +131,7 @@ func (r *ExtendRouterConfig) ToApi() (*apitraffic.RouteRule, error) {
 
 	rule := &apitraffic.RouteRule{
 		Id:            r.ID,
+		Namespace:     r.Namespace,
 		Name:          r.Name,
 		Enable:        r.Enable,
 		RoutePolicy:   r.GetRoutePolicy(),
@@ -302,6 +303,7 @@ func (r *RouterConfig) ParseRouteRuleFromAPI(routing *apitraffic.RouteRule) erro
 		return err
 	}
 	r.ID = routing.Id
+	r.Namespace = routing.GetNamespace()
 	r.Revision = routing.Revision
 	r.Name = routing.Name
 	r.Enable = routing.Enable

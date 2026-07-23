@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { TableRowData, Dialog, Input } from 'tdesign-react';
+import { TableRowData, Dialog, Input } from 'components/Fluent';
 
 
 interface IShowTokenProps {

@@ -1,4 +1,5 @@
 .panel {
+  box-sizing: border-box;
   flex-shrink: 0;
   padding-left: 20px;
   padding-right: 20px;
@@ -7,5 +8,14 @@
   z-index: 101;
   display: flex;
   justify-content: space-between;
-  border-bottom: 1px solid var(--td-component-stroke);
+  color: var(--app-text);
+  background: var(--app-surface);
+  border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }

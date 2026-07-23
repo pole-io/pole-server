@@ -1,14 +1,14 @@
 ---
 title: 服务发现（`pkg/service/`）
 tags: [business, feature, service, healthcheck]
-links: [namespace, architecture, storage, cache-layer, governance-rules]
-updated: 2026-06-15
-sources: 1
+links: [namespace, architecture, storage, cache-layer, governance-rules, adr-instance-active-healthcheck]
+updated: 2026-07-23
+sources: 3
 ---
 
 # 服务发现（`pkg/service/`）
 
-核心服务网格功能。管理服务、实例、客户端和服务契约。整体架构见 [[architecture]]，命名空间依赖见 [[namespace]]，存储接口见 [[storage]]，缓存层见 [[cache-layer]]，治理规则见 [[governance-rules]]。
+核心服务网格功能。服务名称是全局逻辑标识，同名服务在不同命名空间中表示同一服务的不同环境实例；每个环境实例独立管理实例、客户端状态和运行数据。整体架构见 [[architecture]]，命名空间依赖见 [[namespace]]，存储接口见 [[storage]]，缓存层见 [[cache-layer]]，治理规则见 [[governance-rules]]，实例主动检查见 [[adr-instance-active-healthcheck]]。
 
 ## `DiscoverServer` 接口
 
@@ -43,9 +43,9 @@ type Server struct {
 
 ## 健康检查（`pkg/service/healthcheck/`、`plugin/service/healthchecker/`）
 
-- 基于心跳的健康检查机制
-- 插件：`heartbeat`（默认）
-- 追踪 `lastHeartbeatTime`；不健康的实例在服务发现中不可见
+- SDK 注册实例使用 `heartbeat` 插件追踪 `lastHeartbeatTime`。
+- Console 手工实例使用 `tcp` 或 `http` 插件由控制面主动探测，创建态不允许选择心跳。
+- 不健康的实例在服务发现中不可见；协议、调度和持久化边界见 [[adr-instance-active-healthcheck]]。
 
 ## 空推送保护
 
@@ -58,3 +58,4 @@ type Server struct {
 - [[storage]]
 - [[cache-layer]]
 - [[governance-rules]]
+- [[adr-instance-active-healthcheck]]

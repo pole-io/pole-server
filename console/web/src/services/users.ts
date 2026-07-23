@@ -1,5 +1,5 @@
 import request, { apiRequest, ApiResponse, getAllList, getApiRequest, putApiRequest } from 'utils/request';
-import { SuccessCode } from './const';
+import { AuthMutationResponse, isAuthMutationSuccessful } from './auth_policy';
 
 export enum USER_ROLE {
     ADMIN = 'main',
@@ -58,7 +58,7 @@ export interface DeleteUsersResponse {
 
 export async function deleteUsers(params: DeleteUsersRequest[]) {
     const result = await apiRequest<DeleteUsersResponse>({ action: '/auth/v1/users/delete', data: params })
-    return result.responses.every(item => Number(item.code) === SuccessCode)
+    return isAuthMutationSuccessful(result)
 }
 
 // 查询用户列表
@@ -121,8 +121,9 @@ export interface DescribeUserTokenResponse {
 }
 
 export async function describeUserToken(params: DescribeUserTokenRequest) {
-    const result = await getApiRequest<DescribeUserTokenResponse>({ action: '/auth/v1/user/token', data: params })
-    return result
+    const result = await getApiRequest<DescribeUserTokenResponse | User>({ action: '/auth/v1/user/token', data: params })
+    const user = (result as DescribeUserTokenResponse).user ?? (result as User)
+    return { user }
 }
 
 // 修改用户信息
@@ -140,8 +141,8 @@ export interface ModifyUserResponse {
 }
 
 export async function modifyUsers(params: ModifyUserRequest[]) {
-    const result = await putApiRequest<ModifyUserResponse>({ action: '/auth/v1/users', data: params })
-    return Number(result.code) === SuccessCode
+    const result = await putApiRequest<ModifyUserResponse & AuthMutationResponse>({ action: '/auth/v1/users', data: params })
+    return isAuthMutationSuccessful(result)
 }
 
 // 修改用户密码
@@ -158,11 +159,11 @@ export interface ModifyUserPasswordResponse {
 }
 
 export async function modifyUserPassword(params: ModifyUserPasswordRequest) {
-    const result = await putApiRequest<ModifyUserPasswordResponse>({
+    const result = await putApiRequest<ModifyUserPasswordResponse & AuthMutationResponse>({
         action: '/auth/v1/user/password',
         data: params,
     })
-    return Number(result.code) === SuccessCode
+    return isAuthMutationSuccessful(result)
 }
 
 // 修改用户Token
@@ -178,11 +179,11 @@ export interface ModifyUserTokenResponse {
 }
 
 export async function modifyUserToken(params: ModifyUserTokenRequest) {
-    const result = await putApiRequest<ModifyUserTokenResponse>({
+    const result = await putApiRequest<ModifyUserTokenResponse & AuthMutationResponse>({
         action: '/auth/v1/user/token/enable',
         data: params,
     })
-    return Number(result.code) === SuccessCode
+    return isAuthMutationSuccessful(result)
 }
 
 // 修改用户Token
@@ -197,11 +198,11 @@ export interface RefreshUserTokenResponse {
 }
 
 export async function refreshUserToken(params: RefreshUserTokenRequest) {
-    const result = await putApiRequest<RefreshUserTokenResponse>({
+    const result = await putApiRequest<RefreshUserTokenResponse & AuthMutationResponse>({
         action: '/auth/v1/user/token/refresh',
         data: params,
     })
-    return Number(result.code) === SuccessCode
+    return isAuthMutationSuccessful(result)
 }
 
 // 批量创建用户
@@ -222,7 +223,7 @@ export interface CreateUsersResponse {
 
 export async function createUsers(params: CreateUsersRequest[]) {
     const result = await apiRequest<CreateUsersResponse>({ action: '/auth/v1/users', data: params })
-    return result.responses.every(item => Number(item.code) === SuccessCode)
+    return isAuthMutationSuccessful(result)
 }
 
 // 重置用户的资源访问 token
@@ -237,9 +238,9 @@ export interface ResetUserTokenResponse {
 }
 
 export async function resetUserToken(params: ResetUserTokenRequest) {
-    const result = await putApiRequest<ResetUserTokenResponse>({
+    const result = await putApiRequest<ResetUserTokenResponse & AuthMutationResponse>({
         action: '/auth/v1/user/token/refresh',
         data: params,
     })
-    return Number(result.code) === SuccessCode
+    return isAuthMutationSuccessful(result)
 }

@@ -29,6 +29,8 @@ func AuthRouter(webSvr *gin.Engine, config *bootstrap.Config) {
 	v1 := webSvr.Group(config.WebServer.AuthURL)
 	// 用户登陆
 	v1.POST("/user/login", handlers.ReverseProxyForLogin(&config.PoleServer, config))
+	// 从 Console 签名会话获取当前用户的权威角色
+	v1.GET("/user/session", handlers.DescribeConsoleSession(config))
 	// 获取用户列表
 	v1.GET("/users", handlers.ReverseProxyForServer(&config.PoleServer, config))
 	// 批量创建用户

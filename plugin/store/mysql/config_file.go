@@ -183,14 +183,17 @@ func (cf *configFileStore) DeleteConfigFileTx(tx store.Tx, namespace, group, nam
 // QueryConfigFiles 翻页查询配置文件，group、name可为模糊匹配
 func (cf *configFileStore) QueryConfigFiles(filter map[string]string, offset, limit uint32) (uint32, []*conftypes.ConfigFile, error) {
 	// 是否只显示简单数据，如果设置为 true，则不返回 content 字段
-	berif := filter["berif"] == "true"
+	brief := filter["brief"] == "true" || filter["berif"] == "true"
 	countSql := "SELECT COUNT(*) FROM config_file WHERE flag = 0 "
-	querySql := cf.baseSelectConfigFileSql(berif) + " WHERE flag = 0 "
+	querySql := cf.baseSelectConfigFileSql(brief) + " WHERE flag = 0 "
 
 	args := make([]interface{}, 0, len(filter))
 	searchQuery := make([]string, 0, len(filter))
 
 	for k, v := range filter {
+		if k == "brief" || k == "berif" || k == "offset" || k == "limit" {
+			continue
+		}
 		if v, ok := configFileStoreFieldMapping["config_file"][k]; ok {
 			k = v
 		}
@@ -224,7 +227,7 @@ func (cf *configFileStore) QueryConfigFiles(filter map[string]string, offset, li
 		return 0, nil, store.Error(err)
 	}
 
-	files, err := cf.transferRows(rows, berif)
+	files, err := cf.transferRows(rows, brief)
 	if err != nil {
 		return 0, nil, store.Error(err)
 	}

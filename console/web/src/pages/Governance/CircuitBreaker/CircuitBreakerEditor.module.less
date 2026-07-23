@@ -4,7 +4,7 @@
     align-items: center;
     border-radius: 8px;
     box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.03);
-    border: 1px solid #e5e6eb;
+    border: 1px solid var(--app-border-subtle);
     padding: 10px 16px;
     margin-bottom: 24px;
 }
@@ -12,7 +12,7 @@
 .route-editor-header-block {
     flex: 1;
     border-radius: 8px;
-    border: 1px solid #e5e6eb;
+    border: 1px solid var(--app-border-subtle);
     box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.02);
     padding: 10px 16px;
     display: flex;
@@ -40,7 +40,7 @@
 }
 
 .route-editor-header-desc {
-    color: #8a8f99;
+    color: var(--app-text-tertiary);
     font-size: 13px;
     margin-bottom: 4px;
 }
@@ -53,7 +53,7 @@
 
 .sectionCard {
     border-radius: 8px;
-    border: 1px solid #e5e6eb;
+    border: 1px solid var(--app-border-subtle);
     box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.03);
     padding: 24px 32px;
     margin-bottom: 24px;
@@ -73,7 +73,7 @@
 }
 
 .listTitle {
-    color: #111827;
+    color: var(--app-text);
     font-size: 16px;
     font-weight: 700;
     line-height: 24px;
@@ -97,7 +97,7 @@
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 10px;
-    color: #111827;
+    color: var(--app-text);
     font-size: 15px;
     font-weight: 600;
     line-height: 24px;
@@ -123,7 +123,7 @@
 
 .ruleSummary {
     margin-top: 2px;
-    color: #8b95a5;
+    color: var(--app-text-secondary);
     font-size: 12px;
     font-weight: 400;
     line-height: 18px;
@@ -140,12 +140,12 @@
     border: 0;
     border-radius: 6px;
     background: transparent;
-    color: #6b7280;
+    color: var(--app-text-secondary);
     cursor: pointer;
 }
 
 .collapseButton:hover {
-    background: #eef3ff;
+    background: var(--app-surface-secondary);
     color: #366ef4;
 }
 
@@ -160,19 +160,19 @@
 }
 
 .ruleSection {
-    border-top: 1px solid #edf0f5;
+    border-top: 1px solid var(--app-border-subtle);
     padding-top: 14px;
 }
 
 .ruleSectionTitle {
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     font-weight: 700;
     line-height: 22px;
 }
 
 .ruleHelp {
-    color: #8b95a5;
+    color: var(--app-text-secondary);
     font-size: 13px;
     font-weight: 400;
     line-height: 20px;
@@ -183,7 +183,7 @@
     min-height: 32px;
     display: inline-flex;
     align-items: center;
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     line-height: 22px;
 }
@@ -193,10 +193,10 @@
     min-height: 72px;
     margin: 0;
     padding: 12px 14px;
-    border: 1px solid #edf0f5;
+    border: 1px solid var(--app-border-subtle);
     border-radius: 6px;
-    background: #f7f8fa;
-    color: #111827;
+    background: var(--app-surface-subtle);
+    color: var(--app-text);
     font-family: inherit;
     font-size: 14px;
     line-height: 22px;
@@ -208,11 +208,11 @@
     min-width: 0;
     margin-top: 8px;
 
-    :global(.t-table) {
+    :global(.fluent-table-shell) {
         width: 100%;
     }
 
-    :global(.t-table__cell) {
+    :global(.fui-TableCell) {
         white-space: normal;
         word-break: break-word;
     }
@@ -231,7 +231,7 @@
 
 .matchTable th,
 .matchTable td {
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--app-border-subtle);
     padding: 8px 12px;
     text-align: left;
     font-size: 14px;
@@ -239,7 +239,7 @@
 
 .matchTable th {
     font-weight: 500;
-    color: #4e5969;
+    color: var(--app-text-secondary);
 }
 
 .matchTable tr:last-child td {
@@ -247,20 +247,20 @@
 }
 
 .editorBody {
-    background: #f5f7fb;
+    background: var(--app-surface-subtle);
     height: calc(100vh - 158px);
     min-height: 0;
     overflow: hidden;
     padding: 0;
 
-    :global(.t-form) {
+    :global(.fluent-form) {
         display: flex;
         flex-direction: column;
         height: 100%;
         min-height: 0;
     }
 
-    :global(.t-form__item) {
+    :global(.fluent-form-item) {
         margin-bottom: 0;
     }
 }
@@ -289,15 +289,15 @@
 }
 
 .subRulePolicy {
-    border-color: #cfe0ff;
+    border-color: var(--app-brand-border);
 }
 
 .subRuleHead {
-    background: #eef5ff;
+    background: var(--app-brand-subtle);
 }
 
 .strategyPolicy {
-    background: #fbfcfe;
+    background: var(--app-surface-subtle);
     margin-bottom: 12px;
 }
 
@@ -310,32 +310,40 @@
     gap: 12px;
 }
 
+.matrixScroller {
+    border: 1px solid var(--app-border-subtle);
+    border-radius: 8px;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
 .interfaceGrid,
 .conditionGrid,
 .triggerGrid {
-    background: #fff;
-    border: 1px solid #e5e8ef;
-    border-radius: 8px;
+    background: var(--app-surface);
     display: grid;
-    overflow: hidden;
+    min-width: max-content;
 }
 
 .interfaceGrid {
     grid-template-columns: minmax(110px, .8fr) minmax(120px, .8fr) minmax(240px, 1.8fr) 64px;
+    min-width: 640px;
 }
 
 .conditionGrid {
     grid-template-columns: minmax(130px, .9fr) minmax(130px, .9fr) minmax(200px, 1.4fr) 64px;
+    min-width: 590px;
 }
 
 .triggerGrid {
     grid-template-columns: minmax(150px, 1.1fr) 64px minmax(120px, .9fr) minmax(120px, .9fr) minmax(130px, .9fr) 64px;
+    min-width: 820px;
 }
 
 .gridHeader {
-    background: #f8fafc;
-    border-bottom: 1px solid #e9edf4;
-    color: #6b7280;
+    background: var(--app-surface-subtle);
+    border-bottom: 1px solid var(--app-border-subtle);
+    color: var(--app-text-secondary);
     font-size: 12px;
     font-weight: 500;
     line-height: 18px;
@@ -344,8 +352,8 @@
 
 .gridCell {
     align-items: center;
-    border-bottom: 1px solid #f0f2f6;
-    color: #111827;
+    border-bottom: 1px solid var(--app-surface-secondary);
+    color: var(--app-text);
     display: flex;
     font-size: 13px;
     line-height: 20px;
@@ -353,16 +361,47 @@
     min-width: 0;
     padding: 8px 10px;
 
-    :global(.t-input__wrap),
-    :global(.t-select),
-    :global(.t-select__wrap),
-    :global(.t-input-number) {
+    :global(.fui-Input),
+    :global(.fui-Dropdown),
+    :global(.fui-Dropdown),
+    :global(.fluent-number-input) {
         width: 100%;
     }
 }
 
+.gridCell > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .actionCell {
+    background: var(--app-surface);
     justify-content: center;
+    position: sticky;
+    right: 0;
+    z-index: 2;
+}
+
+.actionHeader {
+    position: sticky;
+    right: 0;
+    z-index: 3;
+}
+
+.firstCell {
+    background: var(--app-surface);
+    left: 0;
+    position: sticky;
+    z-index: 2;
+}
+
+.firstHeader {
+    background: var(--app-surface-subtle);
+    left: 0;
+    position: sticky;
+    z-index: 3;
 }
 
 .monoInput {
@@ -398,127 +437,12 @@
     padding-left: 0;
 }
 
-.specPane {
-    border-left: 1px solid #d7dde8;
-    display: flex;
-    height: 100%;
-    max-height: 100%;
-    min-height: 0;
-    min-width: 0;
-}
-
-.specCard {
-    background: #0b1119;
-    border: 0;
-    border-radius: 0;
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    min-height: 0;
-    overflow: hidden;
-    width: 100%;
-}
-
-.specToolbar {
-    align-items: flex-start;
-    background: #101823;
-    border-bottom: 1px solid #243044;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 14px 18px;
-}
-
-.specTitle {
-    color: #b8c3d4;
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 22px;
-}
-
-.specDesc {
-    color: #7f8ca3;
-    font-size: 12px;
-    line-height: 18px;
-}
-
-.specActions {
-    align-items: center;
-    display: flex;
-    gap: 8px;
-    justify-content: space-between;
-    width: 100%;
-}
-
-.specToggle {
-    background: #0b1119;
-    border: 1px solid #334155;
-    border-radius: 7px;
-    display: inline-flex;
-    padding: 2px;
-}
-
-.specToggle button {
-    background: transparent;
-    border: 0;
-    border-radius: 5px;
-    color: #8b95a5;
-    cursor: pointer;
-    font-size: 11px;
-    height: 24px;
-    padding: 0 8px;
-}
-
-.specToggleActive {
-    background: #1677ff !important;
-    color: #fff !important;
-}
-
-.specCode {
-    background: #0b1119;
-    color: #9dccff;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    font-size: 13px;
-    line-height: 22px;
-    margin: 0;
-    min-height: 0;
-    overflow: auto;
-    padding: 18px 22px 28px;
-    white-space: pre;
-}
-
-.specFooter {
-    background: #101823;
-    border-top: 1px solid #243044;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-height: 42px;
-    padding: 12px 18px;
-}
-
-.previewOk,
-.previewError {
-    font-size: 12px;
-    line-height: 18px;
-}
-
-.previewOk {
-    color: #3fd4a8;
-}
-
-.previewError {
-    color: #ff9a92;
-}
-
 @media (max-width: 1320px) {
     .circuitBreakerEditorShell {
         grid-template-columns: minmax(0, 1fr);
         overflow: auto;
     }
 
-    .specPane {
-        display: none;
-    }
 }
 
 @media (max-width: 1100px) {
@@ -527,15 +451,6 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .interfaceGrid,
-    .conditionGrid,
-    .triggerGrid {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .gridHeader {
-        display: none;
-    }
 }
 
 @media (max-width: 960px) {

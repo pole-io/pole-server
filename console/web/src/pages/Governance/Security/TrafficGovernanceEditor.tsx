@@ -1,7 +1,7 @@
 import React from 'react';
-import { Button, Dialog, Form, Input, InputNumber, Select, Space, StickyTool, Switch, Tag, Textarea } from 'tdesign-react';
-import type { FormProps } from 'tdesign-react';
-import { AddIcon, CheckIcon, ChevronRightIcon, CloseIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
+import { Button, Dialog, Form, Input, InputNumber, Radio, RadioGroup, Select, Space, StickyTool, Switch, Tag, Textarea } from 'components/Fluent';
+import type { FormProps } from 'components/Fluent';
+import { AddIcon, CheckIcon, ChevronRightIcon, CloseIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'components/Fluent/icons';
 
 import { cleanNamespacePage, listAllNamespaces, selectNamespace } from 'modules/namespace';
 import { cleanServicePage, listAllServices, selectService } from 'modules/discovery/service';
@@ -15,23 +15,28 @@ import {
     MatchType,
     MatchTypeOption,
     MatchValueType,
-    MatchValueTypeOption,
     Op,
 } from 'services/types';
 import {
+    buildSecurityAuthenticationForMode,
     buildSecurityPoliciesFromView,
     defaultProtectedInterface,
     defaultSecurityArgument,
     defaultSecurityMatchRule,
+    defaultManagedCaller,
     listTypeText,
+    getApiProtocolPresentation,
     normalizeSecurityMatchRule,
+    normalizeManagedCaller,
     normalizeSecurityViewOrder,
     normalizeSecurityViewRules,
     readSecurityAction,
+    readSecurityAuthMode,
     SecurityListType,
     SecuritySubRuleKind,
     SecurityViewRule,
     securityMatchSourceOptions,
+    resetApiScopeForProtocol,
     validateSecurityView,
 } from './trafficSecurityEditorUtils';
 import {
@@ -53,6 +58,7 @@ import {
     TrafficGovernanceRule,
     TrafficSecurityAction,
     TrafficSecurityActionMap,
+    TrafficSecurityAuthMode,
     TrafficSecurityPolicy,
     TrafficSecurityRule,
 } from 'services/traffic_governance';
@@ -91,7 +97,10 @@ import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import PublishForm from '../RuleRelease/PublishForm';
 import RuleStickyAction from '../RuleRelease/RuleStickyAction';
 import RuleLabelField from '../shared/RuleLabelField';
+import CollapsibleSection from '../shared/CollapsibleSection';
 import ServiceScopeSection from '../shared/ServiceScopeSection';
+import { GovernanceServiceContext } from '../shared/serviceContext';
+import { useRuleNamespace } from '../shared/ruleNamespace';
 import TrafficMatchConditionEditor, { TrafficMatchConditionRow } from '../shared/TrafficMatchConditionEditor';
 import shared from '../shared/governance.module.less';
 import style from './index.module.less';
@@ -111,6 +120,7 @@ interface TrafficGovernanceEditorProps {
     data?: TrafficGovernanceRule;
     visible: boolean;
     refresh: (close: boolean) => void;
+    serviceContext?: GovernanceServiceContext;
 }
 
 const readonlyItem = (label: string, value: React.ReactNode, full = false) => (
@@ -249,7 +259,6 @@ const renderApiScope = (api?: TrafficApiScope) => {
             {api.method && <span className={`${shared.tagPlain} ${shared.tagMethod}`}>{api.method}</span>}
             {api.path?.type && <span className={shared.tagPlain}>{api.path.type}</span>}
             <span className={shared.pathTag}>{api.path?.value || '/'}</span>
-            {api.path?.value_type && <span className={shared.tagPlain}>{api.path.value_type}</span>}
         </div>
     );
 };
@@ -260,7 +269,7 @@ const renderApiScopeList = (apis?: TrafficApiScope[]) => {
     return (
         <div className={style.scopeTagList}>
             {rows.map((api, index) => (
-                <React.Fragment key={`${api.protocol}-${api.method}-${api.path?.value}-${index}`}>
+                <React.Fragment key={`api-scope-${index}`}>
                     {renderApiScope(api)}
                 </React.Fragment>
             ))}
@@ -326,7 +335,7 @@ export const trafficRuleCount = (kind: TrafficGovernanceKind, rule?: TrafficGove
 
 export const trafficRuleSummary = (kind: TrafficGovernanceKind, rule?: TrafficGovernanceRule) => {
     if (!rule) return '-';
-    const target = rule.target_service || { namespace: rule.namespace, service: rule.service };
+    const target = rule.target_service || { namespace: '', service: '' };
     if (kind === 'security') {
         const security = rule as TrafficSecurityRule;
         const first = security.policies?.[0];
@@ -344,7 +353,8 @@ export const trafficRuleSummary = (kind: TrafficGovernanceKind, rule?: TrafficGo
     return first ? `${mockCallerScopeText(caller)} -> ${target.namespace || '-'}/${target.service || '-'} / Code ${first.response?.code || '200'}` : '-';
 };
 
-const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind, op, data, visible, refresh }) => {
+const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind, op, data, visible, refresh, serviceContext }) => {
+    const ruleNamespace = useRuleNamespace();
     const [form] = Form.useForm();
     const dispatch = useAppDispatch();
     const namespaceState = useAppSelector(selectNamespace);
@@ -352,11 +362,15 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
     const [rule, setRule] = React.useState<TrafficGovernanceRule>(() => defaultTrafficGovernanceRule(kind));
     const [editable, setEditable] = React.useState(op === 'create');
     const [publishVisible, setPublishVisible] = React.useState(false);
+    const [basicInfoCollapsed, setBasicInfoCollapsed] = React.useState(false);
+    const [securityServiceInfoCollapsed, setSecurityServiceInfoCollapsed] = React.useState(false);
+    const [securityAuthenticationCollapsed, setSecurityAuthenticationCollapsed] = React.useState(false);
     const [serviceScopeCollapsed, setServiceScopeCollapsed] = React.useState(false);
     const [collapsedSecurityPolicyIndexes, setCollapsedSecurityPolicyIndexes] = React.useState<Set<number>>(() => new Set());
     const [collapsedMirrorRuleIndexes, setCollapsedMirrorRuleIndexes] = React.useState<Set<number>>(() => new Set());
     const [collapsedMockRuleIndexes, setCollapsedMockRuleIndexes] = React.useState<Set<number>>(() => new Set());
     const [securityViewRules, setSecurityViewRules] = React.useState<SecurityViewRule[]>(() => normalizeSecurityViewRules(defaultTrafficSecurityRule()));
+    const [reloadVersion, setReloadVersion] = React.useState(0);
     const [mirrorCaller, setMirrorCaller] = React.useState<MirrorCallerScope>(() => defaultMirrorCaller());
     const [mockCaller, setMockCaller] = React.useState<MockCallerScope>(() => defaultMockCaller());
     const [mockBodyDialog, setMockBodyDialog] = React.useState<{ visible: boolean; index: number }>({ visible: false, index: -1 });
@@ -371,7 +385,15 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
     }, [dispatch]);
 
     React.useEffect(() => {
-        if (!visible) return;
+        if (!visible) {
+            setBasicInfoCollapsed(false);
+            setSecurityServiceInfoCollapsed(false);
+            setSecurityAuthenticationCollapsed(false);
+            return;
+        }
+        setBasicInfoCollapsed(false);
+        setSecurityServiceInfoCollapsed(false);
+        setSecurityAuthenticationCollapsed(false);
         setEditable(op === 'create');
         setServiceScopeCollapsed(false);
         setCollapsedSecurityPolicyIndexes(new Set());
@@ -379,21 +401,42 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
         setCollapsedMockRuleIndexes(new Set());
         setMockBodyDialog({ visible: false, index: -1 });
         const load = async () => {
-            const next = data?.id && op !== 'create'
+            const loaded = data?.id && op !== 'create'
                 ? await describeOneTrafficGovernanceRule(kind, data.id)
                 : (data || defaultTrafficGovernanceRule(kind));
+            const endpoint = serviceContext
+                ? { namespace: serviceContext.namespace, service: serviceContext.service }
+                : undefined;
+            let next = loaded;
+            if (op === 'create' && endpoint) {
+                if (kind === 'mirror') {
+                    next = {
+                        ...loaded,
+                        ...(serviceContext?.role === 'caller' ? { caller: endpoint } : { callee: endpoint }),
+                    } as TrafficMirror;
+                } else if (kind === 'mock') {
+                    next = {
+                        ...loaded,
+                        ...(serviceContext?.role === 'caller' ? { caller: endpoint } : { target_service: endpoint }),
+                    } as TrafficMock;
+                } else {
+                    next = { ...loaded, target_service: endpoint } as TrafficSecurityRule;
+                }
+            }
             const targetService = kind === 'mirror'
                 ? normalizeMirrorCallee(next)
-                : next.target_service || { namespace: next.namespace || '', service: next.service || '' };
+                : next.target_service || { namespace: '', service: '' };
             const normalized = {
                 ...next,
                 ...(kind === 'mirror' ? { callee: targetService } : { target_service: targetService }),
                 ...(kind === 'mirror' ? { rules: normalizeMirrorRules(next as TrafficMirror) } : {}),
                 ...(kind === 'mock' ? { rules: normalizeMockRules(next as TrafficMock) } : {}),
             } as TrafficGovernanceRule;
-            setRule(normalized);
+            const consoleRule = normalized;
+            setRule(consoleRule);
             if (kind === 'security') {
-                setSecurityViewRules(normalizeSecurityViewRules(normalized as TrafficSecurityRule));
+                const security = consoleRule as TrafficSecurityRule;
+                setSecurityViewRules(normalizeSecurityViewRules(security));
             }
             if (kind === 'mirror') {
                 setMirrorCaller(extractMirrorCaller(next as TrafficMirror));
@@ -413,10 +456,10 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
         load().catch((error) => {
             openErrNotification('请求失败', `获取${TrafficGovernanceKindLabel[kind]}详情失败: ${(error as Error).message}`);
         });
-    }, [data, form, kind, op, visible]);
+    }, [data, form, kind, op, reloadVersion, visible, serviceContext?.namespace, serviceContext?.service, serviceContext?.role]);
 
     const namespaceOptions = (namespaceState.datas || []).map((ns: NamespaceView) => ({ label: ns.name, value: ns.name }));
-    const currentTarget = rule.target_service || { namespace: rule.namespace || '', service: rule.service || '' };
+    const currentTarget = rule.target_service || { namespace: '', service: '' };
     const mirrorCallee = normalizeMirrorCallee(rule);
     const serviceOptions = (serviceState.datas || [])
         .filter((svc: ServiceView) => !currentTarget.namespace || currentTarget.namespace === '*' || svc.namespace === currentTarget.namespace)
@@ -442,7 +485,23 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
             .filter((svc: ServiceView) => mockCaller.namespace && mockCaller.namespace !== '*' && svc.namespace === mockCaller.namespace)
             .map((svc: ServiceView) => ({ label: svc.name, value: svc.name })),
     ];
-    const securityValidationErrors = React.useMemo(() => kind === 'security' ? validateSecurityView(rule, securityViewRules) : [], [kind, rule, securityViewRules]);
+    const securityRule = rule as TrafficSecurityRule;
+    const storedSecurityAuthMode = readSecurityAuthMode(securityRule);
+    // Console no longer creates rule-level CUSTOM_HEADER credentials. Existing
+    // records are edited as the original per-policy request-match model.
+    const securityAuthMode = storedSecurityAuthMode === TrafficSecurityAuthMode.CUSTOM_HEADER
+        ? TrafficSecurityAuthMode.LEGACY_REQUEST_MATCH
+        : storedSecurityAuthMode;
+    const securityRuleForValidation = storedSecurityAuthMode === securityAuthMode
+        ? securityRule
+        : { ...securityRule, authentication: buildSecurityAuthenticationForMode(securityAuthMode) };
+    const securityValidationErrors = React.useMemo(() => kind === 'security' ? validateSecurityView(securityRuleForValidation, securityViewRules) : [], [kind, securityRuleForValidation, securityViewRules]);
+    const managedCallerOptions = React.useMemo(() => [...(serviceState.datas || [])]
+        .sort((left, right) => `${left.namespace}/${left.name}`.localeCompare(`${right.namespace}/${right.name}`))
+        .map((svc: ServiceView) => ({
+            label: `${svc.namespace}/${svc.name}`,
+            value: JSON.stringify([svc.namespace, svc.name]),
+        })), [serviceState.datas]);
     const mirrorRules = React.useMemo(() => normalizeMirrorRules(rule as TrafficMirror), [rule]);
     const mirrorValidationErrors = React.useMemo(() => kind === 'mirror' ? validateMirrorView(rule, mirrorRules, mirrorCaller) : [], [kind, rule, mirrorRules, mirrorCaller]);
     const mockRules = React.useMemo(() => normalizeMockRules(rule as TrafficMock), [rule]);
@@ -456,6 +515,33 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
             return { ...security, policies };
         });
     };
+
+    const setSecurityAuthMode = (mode: TrafficSecurityAuthMode) => {
+        setRule((prev) => {
+            const current = prev as TrafficSecurityRule;
+            return {
+                ...current,
+                authentication: buildSecurityAuthenticationForMode(mode),
+            };
+        });
+        if (mode === TrafficSecurityAuthMode.MANAGED_IDENTITY) {
+            setSecurityViewRules((prev) => prev.map((item) => ({ ...item, managedCaller: normalizeManagedCaller(item.managedCaller) })));
+        }
+    };
+
+    const encodeManagedCallers = (item: SecurityViewRule) => (normalizeManagedCaller(item.managedCaller).callers || [])
+        .map((caller) => JSON.stringify([caller.namespace || '', caller.service || '']));
+
+    const decodeManagedCallers = (values: unknown): Array<{ namespace?: string; service?: string }> => (
+        Array.isArray(values) ? values : []
+    ).flatMap((value) => {
+        try {
+            const [namespace, service] = JSON.parse(String(value));
+            return [{ namespace, service }];
+        } catch {
+            return [];
+        }
+    });
 
     const setSecurityViewRule = (index: number, updater: (item: SecurityViewRule) => SecurityViewRule) => {
         setSecurityViewRules((prev) => {
@@ -535,6 +621,7 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
             paramType: arg.type,
             paramKey: arg.key,
             matchType: arg.value?.type || MatchType.EXACT,
+            valueType: arg.value?.value_type || MatchValueType.TEXT,
             matchValue: arg.value?.value || '',
         }));
         return (
@@ -553,8 +640,8 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
                     value: {
                         ...(item.value || defaultMatchValue()),
                         type: row.matchType || MatchType.EXACT,
-                        value: row.matchValue || '',
-                        value_type: MatchValueType.TEXT,
+                        value: row.valueType === MatchValueType.PARAMETER ? '' : row.matchValue || '',
+                        value_type: row.valueType || MatchValueType.TEXT,
                     },
                 }))}
                 onAdd={() => onChange({ matchMode: current.matchMode || MatchLogic.AND, arguments: [...args, defaultArgument()] })}
@@ -575,6 +662,7 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
             paramType: arg.type,
             paramKey: arg.key,
             matchType: arg.value?.type || MatchType.EXACT,
+            valueType: arg.value?.value_type || MatchValueType.TEXT,
             matchValue: arg.value?.value || '',
         }));
         return (
@@ -592,8 +680,8 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
                     value: {
                         ...(item.value || defaultMatchValue()),
                         type: row.matchType || MatchType.EXACT,
-                        value: row.matchValue || '',
-                        value_type: MatchValueType.TEXT,
+                        value: row.valueType === MatchValueType.PARAMETER ? '' : row.matchValue || '',
+                        value_type: row.valueType || MatchValueType.TEXT,
                     },
                 }))}
                 onAdd={() => onChange({ ...current, arguments: [...args, defaultSecurityArgument()], randomPercent: current.randomPercent ?? 0 })}
@@ -610,31 +698,47 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
             ...(api || {}),
         };
         const path = current.path || defaultMockMatchValue();
+        const presentation = getApiProtocolPresentation(current.protocol);
+        const methodField = presentation.usesHttpMethodSelect ? (
+            <Select
+                filterable
+                creatable
+                options={methodOptions}
+                value={current.method || 'GET'}
+                onChange={(next) => onChange({ ...current, method: next as string })}
+            />
+        ) : (
+            <Input
+                value={current.method || ''}
+                placeholder={presentation.methodPlaceholder}
+                onChange={(next) => onChange({ ...current, method: next })}
+            />
+        );
+        const matchField = (
+            <Select
+                options={MatchTypeOption}
+                value={path.type || MatchType.EXACT}
+                onChange={(next) => onChange({ ...current, path: { ...path, type: next as string } })}
+            />
+        );
+        const pathField = (
+            <Input
+                className={style.monoInput}
+                value={path.value || ''}
+                placeholder={presentation.pathPlaceholder}
+                onChange={(next) => onChange({ ...current, path: { ...path, value: next, value_type: path.value_type || MatchValueType.TEXT } })}
+            />
+        );
         return (
             <div className={style.mockApiEditor}>
                 <Select
                     options={protocolOptions}
                     value={current.protocol || InterfaceProtocol.HTTP}
-                    onChange={(next) => onChange({ ...current, protocol: next as string })}
+                    onChange={(next) => onChange(resetApiScopeForProtocol(current, next as string))}
                 />
-                <Select
-                    filterable
-                    creatable
-                    options={methodOptions}
-                    value={current.method || 'GET'}
-                    onChange={(next) => onChange({ ...current, method: next as string })}
-                />
-                <Select
-                    options={MatchTypeOption}
-                    value={path.type || MatchType.EXACT}
-                    onChange={(next) => onChange({ ...current, path: { ...path, type: next as string } })}
-                />
-                <Input
-                    className={style.monoInput}
-                    value={path.value || ''}
-                    placeholder="/mock/orders"
-                    onChange={(next) => onChange({ ...current, path: { ...path, value: next, value_type: path.value_type || MatchValueType.TEXT } })}
-                />
+                {presentation.usesHttpMethodSelect ? methodField : pathField}
+                {matchField}
+                {presentation.usesHttpMethodSelect ? pathField : methodField}
             </div>
         );
     };
@@ -651,6 +755,7 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
             paramType: arg.type,
             paramKey: arg.key,
             matchType: arg.value?.type || MatchType.EXACT,
+            valueType: arg.value?.value_type || MatchValueType.TEXT,
             matchValue: arg.value?.value || '',
         }));
         return (
@@ -668,8 +773,8 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
                     value: {
                         ...(item.value || defaultMockMatchValue()),
                         type: row.matchType || MatchType.EXACT,
-                        value: row.matchValue || '',
-                        value_type: MatchValueType.TEXT,
+                        value: row.valueType === MatchValueType.PARAMETER ? '' : row.matchValue || '',
+                        value_type: row.valueType || MatchValueType.TEXT,
                     },
                 }))}
                 onAdd={() => onChange({ ...current, arguments: [...args, defaultMockArgument()] })}
@@ -689,10 +794,10 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
         return (
             <div className={style.repeatEditor}>
                 {rows.map((row, index) => (
-                    <div className={style.kvRow} key={`${row.key}-${index}`}>
+                    <div className={style.kvRow} key={`mock-header-${index}`}>
                         <Input value={row.key} placeholder="Header 名" onChange={(next) => commitRows(rows.map((item, idx) => idx === index ? { ...item, key: next } : item))} />
                         <Input value={row.value} placeholder="Header 值" onChange={(next) => commitRows(rows.map((item, idx) => idx === index ? { ...item, value: next } : item))} />
-                        <Button shape="circle" variant="text" onClick={() => commitRows(rows.filter((_, idx) => idx !== index))}><CloseIcon /></Button>
+                        <Button aria-label={`删除第 ${index + 1} 个响应头`} shape="circle" variant="text" onClick={() => commitRows(rows.filter((_, idx) => idx !== index))}><CloseIcon /></Button>
                     </div>
                 ))}
                 <Button className={shared.addRuleButton} variant="dashed" icon={<AddIcon />} onClick={() => commitRows([...rows, { key: '', value: '' }])}>添加响应头</Button>
@@ -702,52 +807,66 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
 
     const renderProtectedInterfacesEditor = (interfaces: TrafficApiScope[], onChange: (next: TrafficApiScope[]) => void) => {
         const rows = interfaces.length ? interfaces : [defaultProtectedInterface()];
+        const usesRpcLayout = rows.every((api) => !getApiProtocolPresentation(api?.protocol).usesHttpMethodSelect);
         const updateRow = (index: number, updater: (api: TrafficApiScope) => TrafficApiScope) => {
             onChange(rows.map((item, idx) => idx === index ? updater(item) : item));
         };
         return (
             <div className={style.repeatEditor}>
-                <div className={style.interfaceHeader}>
+                <div className={style.interfaceViewport} role="region" aria-label="受保护接口配置">
+                <div className={`${style.interfaceHeader}${usesRpcLayout ? ` ${style.rpcInterfaceRow}` : ''}`}>
                     <span>协议</span>
-                    <span>方法</span>
+                    <span>HTTP 方法 / RPC 接口</span>
                     <span>匹配类型</span>
-                    <span>接口路径</span>
-                    <span>值类型</span>
+                    <span>HTTP 路径 / RPC 方法（可选）</span>
                     <span>操作</span>
                 </div>
                 {rows.map((api, index) => {
                     const current = api || defaultProtectedInterface();
-                    const path = current.path || defaultMatchValue();
+                    const presentation = getApiProtocolPresentation(current.protocol);
+                    const path = current.path || { type: MatchType.EXACT, value: presentation.usesHttpMethodSelect ? '/' : '' };
+                    const methodField = presentation.usesHttpMethodSelect ? (
+                        <Select
+                            filterable
+                            creatable
+                            options={methodOptions}
+                            value={current.method || 'GET'}
+                            onChange={(next) => updateRow(index, (item) => ({ ...item, method: next as string }))}
+                        />
+                    ) : (
+                        <Input
+                            value={current.method || ''}
+                            placeholder={presentation.methodPlaceholder}
+                            onChange={(next) => updateRow(index, (item) => ({ ...item, method: next }))}
+                        />
+                    );
+                    const matchField = (
+                        <Select
+                            options={MatchTypeOption}
+                            value={path.type || MatchType.EXACT}
+                            onChange={(next) => updateRow(index, (item) => ({ ...item, path: { type: next as string, value: item.path?.value || '' } }))}
+                        />
+                    );
+                    const pathField = (
+                        <Input
+                            value={path.value || ''}
+                            placeholder={presentation.pathPlaceholder}
+                            onChange={(next) => updateRow(index, (item) => ({ ...item, path: { type: item.path?.type || MatchType.EXACT, value: next } }))}
+                        />
+                    );
                     return (
-                        <div className={style.interfaceRow} key={`${current.protocol}-${current.method}-${index}`}>
+                        <div className={`${style.interfaceRow}${presentation.usesHttpMethodSelect ? '' : ` ${style.rpcInterfaceRow}`}`} key={`protected-interface-${index}`}>
                             <Select
+                                aria-label={`第 ${index + 1} 个接口的协议`}
                                 options={protocolOptions}
                                 value={current.protocol || InterfaceProtocol.HTTP}
-                                onChange={(next) => updateRow(index, (item) => ({ ...item, protocol: next as string }))}
+                                onChange={(next) => updateRow(index, (item) => resetApiScopeForProtocol(item, next as string))}
                             />
-                            <Select
-                                filterable
-                                creatable
-                                options={methodOptions}
-                                value={current.method || 'GET'}
-                                onChange={(next) => updateRow(index, (item) => ({ ...item, method: next as string }))}
-                            />
-                            <Select
-                                options={MatchTypeOption}
-                                value={path.type || MatchType.EXACT}
-                                onChange={(next) => updateRow(index, (item) => ({ ...item, path: { ...(item.path || defaultMatchValue()), type: next as string } }))}
-                            />
-                            <Input
-                                value={path.value || ''}
-                                placeholder="/orders"
-                                onChange={(next) => updateRow(index, (item) => ({ ...item, path: { ...(item.path || defaultMatchValue()), value: next } }))}
-                            />
-                            <Select
-                                options={MatchValueTypeOption}
-                                value={path.value_type || MatchValueType.TEXT}
-                                onChange={(next) => updateRow(index, (item) => ({ ...item, path: { ...(item.path || defaultMatchValue()), value_type: next as string } }))}
-                            />
+                            {presentation.usesHttpMethodSelect ? methodField : pathField}
+                            {matchField}
+                            {presentation.usesHttpMethodSelect ? pathField : methodField}
                             <Button
+                                aria-label={`删除第 ${index + 1} 个受保护接口`}
                                 shape="circle"
                                 variant="text"
                                 disabled={rows.length <= 1}
@@ -758,6 +877,7 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
                         </div>
                     );
                 })}
+                </div>
                 <Button
                     className={shared.addRuleButton}
                     variant="dashed"
@@ -772,53 +892,67 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
 
     const renderMirrorInterfacesEditor = (interfaces: TrafficApiScope[], onChange: (next: TrafficApiScope[]) => void, defaultApi = defaultMirrorSubRule().interfaces[0]) => {
         const rows = interfaces.length ? interfaces : [defaultApi];
+        const usesRpcLayout = rows.every((api) => !getApiProtocolPresentation(api?.protocol).usesHttpMethodSelect);
         const updateRow = (index: number, updater: (api: TrafficApiScope) => TrafficApiScope) => {
             onChange(rows.map((item, idx) => idx === index ? updater(item) : item));
         };
         return (
             <div className={style.repeatEditor}>
-                <div className={style.interfaceHeader}>
+                <div className={style.interfaceViewport} role="region" aria-label="镜像接口配置">
+                <div className={`${style.interfaceHeader}${usesRpcLayout ? ` ${style.rpcInterfaceRow}` : ''}`}>
                     <span>协议</span>
-                    <span>方法</span>
+                    <span>HTTP 方法 / RPC 接口</span>
                     <span>匹配类型</span>
-                    <span>接口路径</span>
-                    <span>值类型</span>
+                    <span>HTTP 路径 / RPC 方法（可选）</span>
                     <span>操作</span>
                 </div>
                 {rows.map((api, index) => {
                     const current = api || defaultApi;
                     const path = current.path || defaultMatchValue();
+                    const presentation = getApiProtocolPresentation(current.protocol);
+                    const methodField = presentation.usesHttpMethodSelect ? (
+                        <Select
+                            filterable
+                            creatable
+                            options={methodOptions}
+                            value={current.method || 'GET'}
+                            onChange={(next) => updateRow(index, (item) => ({ ...item, method: next as string }))}
+                        />
+                    ) : (
+                        <Input
+                            value={current.method || ''}
+                            placeholder={presentation.methodPlaceholder}
+                            onChange={(next) => updateRow(index, (item) => ({ ...item, method: next }))}
+                        />
+                    );
+                    const matchField = (
+                        <Select
+                            options={MatchTypeOption}
+                            value={path.type || MatchType.EXACT}
+                            onChange={(next) => updateRow(index, (item) => ({ ...item, path: { ...(item.path || defaultMatchValue()), type: next as string } }))}
+                        />
+                    );
+                    const pathField = (
+                        <Input
+                            className={style.monoInput}
+                            value={path.value || ''}
+                            placeholder={presentation.pathPlaceholder}
+                            onChange={(next) => updateRow(index, (item) => ({ ...item, path: { type: item.path?.type || MatchType.EXACT, value: next } }))}
+                        />
+                    );
                     return (
-                        <div className={style.interfaceRow} key={`${current.protocol}-${current.method}-${index}`}>
+                        <div className={`${style.interfaceRow}${presentation.usesHttpMethodSelect ? '' : ` ${style.rpcInterfaceRow}`}`} key={`mirror-interface-${index}`}>
                             <Select
+                                aria-label={`第 ${index + 1} 个接口的协议`}
                                 options={protocolOptions}
                                 value={current.protocol || InterfaceProtocol.HTTP}
-                                onChange={(next) => updateRow(index, (item) => ({ ...item, protocol: next as string }))}
+                                onChange={(next) => updateRow(index, (item) => resetApiScopeForProtocol(item, next as string))}
                             />
-                            <Select
-                                filterable
-                                creatable
-                                options={methodOptions}
-                                value={current.method || 'GET'}
-                                onChange={(next) => updateRow(index, (item) => ({ ...item, method: next as string }))}
-                            />
-                            <Select
-                                options={MatchTypeOption}
-                                value={path.type || MatchType.EXACT}
-                                onChange={(next) => updateRow(index, (item) => ({ ...item, path: { ...(item.path || defaultMatchValue()), type: next as string } }))}
-                            />
-                            <Input
-                                className={style.monoInput}
-                                value={path.value || ''}
-                                placeholder="/orders"
-                                onChange={(next) => updateRow(index, (item) => ({ ...item, path: { ...(item.path || defaultMatchValue()), value: next, value_type: item.path?.value_type || MatchValueType.TEXT } }))}
-                            />
-                            <Select
-                                options={MatchValueTypeOption}
-                                value={path.value_type || MatchValueType.TEXT}
-                                onChange={(next) => updateRow(index, (item) => ({ ...item, path: { ...(item.path || defaultMatchValue()), value_type: next as string } }))}
-                            />
+                            {presentation.usesHttpMethodSelect ? methodField : pathField}
+                            {matchField}
+                            {presentation.usesHttpMethodSelect ? pathField : methodField}
                             <Button
+                                aria-label={`删除第 ${index + 1} 个镜像接口`}
                                 shape="circle"
                                 variant="text"
                                 disabled={rows.length <= 1}
@@ -829,6 +963,7 @@ const TrafficGovernanceEditor: React.FC<TrafficGovernanceEditorProps> = ({ kind,
                         </div>
                     );
                 })}
+                </div>
                 <Button
                     className={shared.addRuleButton}
                     variant="dashed"
@@ -948,9 +1083,11 @@ ${current.response?.body || ''}`}
         if (kind === 'security') {
             const securityBase = { ...base } as Record<string, unknown>;
             delete securityBase['default' + '_action'];
+            const authentication = buildSecurityAuthenticationForMode(securityAuthMode);
             return {
                 ...securityBase,
-                policies: buildSecurityPoliciesFromView(securityViewRules),
+                authentication,
+                policies: buildSecurityPoliciesFromView(securityViewRules, securityAuthMode),
             } as TrafficSecurityRule;
         }
         if (kind === 'mock') {
@@ -993,7 +1130,11 @@ ${current.response?.body || ''}`}
             openErrNotification('保存校验失败', mirrorValidationErrors[0].message);
             return;
         }
-        const req = buildRequest();
+        const builtRequest = buildRequest();
+        const req = {
+            ...builtRequest,
+            namespace: builtRequest.namespace || ruleNamespace,
+        } as TrafficGovernanceRule;
         try {
             if (op === 'create') {
                 await createTrafficGovernanceRules(kind, [req]);
@@ -1034,6 +1175,7 @@ ${current.response?.body || ''}`}
                 setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), service: value } }));
                 form.setFieldsValue({ targetService: value });
             }}
+            fixedRole={op === 'create' ? serviceContext?.role : undefined}
         />
     );
 
@@ -1062,6 +1204,7 @@ ${current.response?.body || ''}`}
                 setRule((prev) => ({ ...prev, callee: { ...normalizeMirrorCallee(prev), service: value } } as TrafficMirror));
                 form.setFieldsValue({ targetService: value });
             }}
+            fixedRole={op === 'create' ? serviceContext?.role : undefined}
         />
     );
 
@@ -1105,44 +1248,99 @@ ${current.response?.body || ''}`}
     };
 
     const renderSecurityServiceInfo = () => {
-        const target = rule.target_service || { namespace: rule.namespace, service: rule.service };
+        const target = rule.target_service || { namespace: '', service: '' };
+        const summary = target.namespace || target.service
+            ? `${target.namespace || '-'} / ${target.service || '-'}`
+            : '未选择被调服务';
         return (
-            <div className={shared.section}>
-                <div className={shared.sectionHeader}>② 服务信息</div>
-                <div className={shared.sectionBody}>
-                    <div className={style.serviceInfoHint}>
-                        该服务下配置黑名单接口规则、白名单接口规则，以及可选的服务级规则；服务信息属于大规则层，不放进子规则。
-                    </div>
-                    {!editable ? (
-                        <div className={shared.infoGrid}>
-                            {readonlyItem('命名空间', target.namespace, false)}
-                            {readonlyItem('服务名称', target.service, false)}
-                        </div>
-                    ) : (
-                        <div className={shared.infoGrid}>
-                            <FormItem className={`${shared.field} ${shared.span6}`} label="命名空间" name="targetNamespace" rules={[{ required: true, message: '命名空间不能为空' }]}>
-                                <Select
-                                    filterable
-                                    creatable
-                                    options={namespaceOptions}
-                                    onChange={(value) => {
-                                        setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), namespace: value as string, service: '' } }));
-                                        form.setFieldsValue({ targetService: '' });
-                                    }}
-                                />
-                            </FormItem>
-                            <FormItem className={`${shared.field} ${shared.span6}`} label="服务名称" name="targetService" rules={[{ required: true, message: '服务名称不能为空' }]}>
-                                <Select
-                                    filterable
-                                    creatable
-                                    options={serviceOptions}
-                                    onChange={(value) => setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), service: value as string } }))}
-                                />
-                            </FormItem>
-                        </div>
-                    )}
+            <CollapsibleSection
+                collapsed={securityServiceInfoCollapsed}
+                onCollapsedChange={setSecurityServiceInfoCollapsed}
+                header="② 服务信息"
+                summary={summary}
+                collapseLabel="服务信息"
+            >
+                <div className={style.serviceInfoHint}>
+                    调用鉴权绑定被调服务；来源身份由下一步认证方式决定，不再通过普通请求 Header 冒充服务来源。
                 </div>
-            </div>
+                {!editable || (op === 'create' && Boolean(serviceContext)) ? (
+                    <div className={style.securityServiceInfoFields}>
+                        <div className={style.securityServiceInfoField}>{readonlyItem('命名空间', target.namespace, false)}</div>
+                        <div className={style.securityServiceInfoField}>{readonlyItem('服务名称', target.service, false)}</div>
+                    </div>
+                ) : (
+                    <div className={style.securityServiceInfoFields}>
+                        <FormItem className={style.securityServiceInfoField} label="命名空间" name="targetNamespace" rules={[{ required: true, message: '命名空间不能为空' }]}>
+                            <Select
+                                filterable
+                                creatable
+                                options={namespaceOptions}
+                                onChange={(value) => {
+                                    setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), namespace: value as string, service: '' } }));
+                                    form.setFieldsValue({ targetService: '' });
+                                }}
+                            />
+                        </FormItem>
+                        <FormItem className={style.securityServiceInfoField} label="服务名称" name="targetService" rules={[{ required: true, message: '服务名称不能为空' }]}>
+                            <Select
+                                filterable
+                                creatable
+                                options={serviceOptions}
+                                onChange={(value) => setRule((prev) => ({ ...prev, target_service: { ...(prev.target_service || {}), service: value as string } }))}
+                            />
+                        </FormItem>
+                    </div>
+                )}
+            </CollapsibleSection>
+        );
+    };
+
+    const renderSecurityAuthentication = () => {
+        const modeLabel = securityAuthMode === TrafficSecurityAuthMode.MANAGED_IDENTITY
+            ? 'Pole 托管服务身份'
+            : '自定义 Header（兼容模式）';
+        return (
+            <CollapsibleSection
+                collapsed={securityAuthenticationCollapsed}
+                onCollapsedChange={setSecurityAuthenticationCollapsed}
+                header="③ 认证方式"
+                summary={modeLabel}
+                collapseLabel="认证方式"
+            >
+                {!editable ? (
+                    <div className={style.authenticationSummary}>
+                        <div>
+                            <div className={style.partitionTitle}>{modeLabel}</div>
+                            <div className={style.partitionDesc}>
+                                {securityAuthMode === TrafficSecurityAuthMode.MANAGED_IDENTITY
+                                    ? 'control-plane 托管服务身份与短期凭证；业务需显式接入 SDK 的出站注入和入站验证适配器。'
+                                    : '兼容模式按每条鉴权子规则中的请求 Header 条件匹配，不设置规则级共享 Header 值。'}
+                            </div>
+                        </div>
+                        <Tag theme="warning" variant="light-outline">{modeLabel}</Tag>
+                    </div>
+                ) : (
+                    <div className={style.authenticationEditor}>
+                        <RadioGroup value={securityAuthMode} onChange={(value) => setSecurityAuthMode(value as TrafficSecurityAuthMode)}>
+                            <Radio value={TrafficSecurityAuthMode.MANAGED_IDENTITY}>Pole 托管服务身份（推荐）</Radio>
+                            <Radio value={TrafficSecurityAuthMode.LEGACY_REQUEST_MATCH}>自定义 Header（兼容模式）</Radio>
+                        </RadioGroup>
+                        <div className={style.authenticationModePanel}>
+                            {securityAuthMode === TrafficSecurityAuthMode.MANAGED_IDENTITY ? (
+                                <>
+                                    <div className={style.partitionTitle}>身份由 control-plane 自动管理</div>
+                                    <div className={style.partitionDesc}>无需填写身份 ID 或密钥。SDK 使用 service token 领取和续期 WorkloadCredential；HTTP 或 gRPC 服务需显式挂载 SDK 适配器，入站验签后才会生成可信调用方。</div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className={style.partitionTitle}>在每个鉴权子规则中配置 Header 匹配条件</div>
+                                    <div className={style.partitionDesc}>先配置受保护接口，再在对应子规则的“自定义 Header 匹配条件”中填写 Header 名、匹配类型和值；每个子规则相互独立。</div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </CollapsibleSection>
         );
     };
 
@@ -1152,6 +1350,10 @@ ${current.response?.body || ''}`}
             const isCollapsed = collapsedSecurityPolicyIndexes.has(index);
             const isService = item.kind === 'service';
             const title = isService ? '服务级规则' : `子规则 [${index + 1}]`;
+            const managedCaller = normalizeManagedCaller(item.managedCaller);
+            const callerText = managedCaller.any_authenticated
+                ? '任意已认证服务'
+                : (managedCaller.callers || []).map((caller) => `${caller.namespace || '-'}/${caller.service || '-'}`).join('、') || '-';
             return (
                 <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`${item.kind}-${item.listType}-${index}`}>
                     <div className={shared.policyHead} onClick={() => toggleSecurityPolicyCollapsed(index)}>
@@ -1189,7 +1391,7 @@ ${current.response?.body || ''}`}
                                     </div>
                                     <div className={style.interfaceList}>
                                         {item.interfaces.map((api, apiIndex) => (
-                                            <div className={shared.tagRow} key={`${api.method}-${api.path?.value}-${apiIndex}`}>
+                                            <div className={shared.tagRow} key={`security-interface-${index}-${apiIndex}`}>
                                                 {renderApiScope(api)}
                                             </div>
                                         ))}
@@ -1206,10 +1408,19 @@ ${current.response?.body || ''}`}
                                 </div>
                             </div>
                         )}
-                        <div className={shared.step} data-step={isService ? '3' : '2'}>
-                            <div className={shared.stepTitle}>名单匹配策略</div>
-                            <div className={shared.stepContent}>{renderSecurityMatchRule(item.strategy)}</div>
-                        </div>
+                        {securityAuthMode === TrafficSecurityAuthMode.MANAGED_IDENTITY ? (
+                            <div className={shared.step} data-step={isService ? '3' : '2'}>
+                                <div className={shared.stepTitle}>配置的来源服务</div>
+                                <div className={shared.stepContent}>
+                                    <div className={style.managedCallerSummary}>{callerText}</div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className={shared.step} data-step={isService ? '3' : '2'}>
+                                <div className={shared.stepTitle}>自定义 Header 匹配条件</div>
+                                <div className={shared.stepContent}>{renderSecurityMatchRule(item.strategy)}</div>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
@@ -1268,7 +1479,7 @@ ${current.response?.body || ''}`}
                     const target = `${text(item.destination?.namespace)}/${text(item.destination?.service)}`;
                     const summary = `${item.interfaces.length} 个接口 · ${matchCount} 个流量标签 · ${item.mirror_percent ?? 0}% -> ${target}`;
                     return (
-                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`${item.destination?.namespace}-${item.destination?.service}-${index}`}>
+                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`mirror-rule-${index}`}>
                             <div className={shared.policyHead} onClick={() => toggleMirrorRuleCollapsed(index)}>
                                 <div className={shared.policyHeadMain}>
                                     <span className={shared.caret}><ChevronRightIcon /></span>
@@ -1288,7 +1499,7 @@ ${current.response?.body || ''}`}
                                     <div className={shared.stepContent}>
                                         <div className={style.interfaceList}>
                                             {item.interfaces.map((api, apiIndex) => (
-                                                <div className={shared.tagRow} key={`${api.method}-${api.path?.value}-${apiIndex}`}>
+                                                <div className={shared.tagRow} key={`mirror-interface-view-${index}-${apiIndex}`}>
                                                     {renderApiScope(api)}
                                                 </div>
                                             ))}
@@ -1326,7 +1537,7 @@ ${current.response?.body || ''}`}
                     const match = normalizeMockMatchRule(item.traffic_match_rule);
                     const apis = item.apis?.length ? item.apis : [item.api];
                     return (
-                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`${apis[0]?.method}-${index}`}>
+                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`mock-rule-${index}`}>
                             <div className={shared.policyHead} onClick={() => toggleMockRuleCollapsed(index)}>
                                 <div className={shared.policyHeadMain}>
                                     <span className={shared.caret}><ChevronRightIcon /></span>
@@ -1378,6 +1589,7 @@ ${current.response?.body || ''}`}
                 listType,
                 interfaces: kindValue === 'service' ? [] : [defaultProtectedInterface()],
                 strategy: defaultSecurityMatchRule(),
+                managedCaller: defaultManagedCaller(),
             };
             setSecurityViewRules((prev) => normalizeSecurityViewOrder([
                 ...prev.filter(item => kindValue !== 'service' || item.kind !== 'service'),
@@ -1403,7 +1615,7 @@ ${current.response?.body || ''}`}
                         </div>
                         <div className={shared.policyHeadActions} onClick={(e) => e.stopPropagation()}>
                             <Tag theme={item.listType === 'ALLOW_LIST' ? 'success' : 'danger'} variant="light-outline">{listTypeText[item.listType]}</Tag>
-                            <Button shape="circle" variant="text" onClick={() => removeSecurityViewRule(index)}><CloseIcon /></Button>
+                            <Button aria-label={`删除第 ${index + 1} 条鉴权子规则`} shape="circle" variant="text" onClick={() => removeSecurityViewRule(index)}><CloseIcon /></Button>
                         </div>
                     </div>
                     <div className={shared.policyBody}>
@@ -1442,12 +1654,46 @@ ${current.response?.body || ''}`}
                                 </div>
                             </div>
                         )}
-                        <div className={shared.step} data-step={isService ? '3' : '2'}>
-                            <div className={shared.stepTitle}>名单匹配策略<span className={shared.stepHint}>仅配置 AND/OR 与条件表，名单结果由所在分区自动决定</span></div>
-                            <div className={shared.stepContent}>
-                                {renderSecurityMatchRuleEditor(item.strategy, (next) => setSecurityViewRule(index, (current) => ({ ...current, strategy: next })))}
+                        {securityAuthMode === TrafficSecurityAuthMode.MANAGED_IDENTITY ? (
+                            <div className={shared.step} data-step={isService ? '3' : '2'}>
+                                <div className={shared.stepTitle}>配置的来源服务<span className={shared.stepHint}>后续由被调方凭证验证结果匹配</span></div>
+                                <div className={shared.stepContent}>
+                                    <div className={style.managedCallerEditor}>
+                                        <Switch
+                                            label={['任意已认证服务', '选择具体服务']}
+                                            value={normalizeManagedCaller(item.managedCaller).any_authenticated}
+                                            onChange={(value) => setSecurityViewRule(index, (current) => ({
+                                                ...current,
+                                                managedCaller: { any_authenticated: value, callers: value ? [] : (current.managedCaller?.callers || []) },
+                                            }))}
+                                        />
+                                        {!normalizeManagedCaller(item.managedCaller).any_authenticated && (
+                                            <Select
+                                                className={style.managedCallerSelect}
+                                                multiple
+                                                filterable
+                                                clearable
+                                                label="搜索来源服务"
+                                                placeholder="选择一个或多个来源服务"
+                                                options={managedCallerOptions}
+                                                value={encodeManagedCallers(item)}
+                                                onChange={(value) => setSecurityViewRule(index, (current) => ({
+                                                    ...current,
+                                                    managedCaller: { any_authenticated: false, callers: decodeManagedCallers(value) },
+                                                }))}
+                                            />
+                                        )}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className={shared.step} data-step={isService ? '3' : '2'}>
+                                <div className={shared.stepTitle}>自定义 Header 匹配条件<span className={shared.stepHint}>每个子规则独立匹配调用请求</span></div>
+                                <div className={shared.stepContent}>
+                                    {renderSecurityMatchRuleEditor(item.strategy, (next) => setSecurityViewRule(index, (current) => ({ ...current, strategy: next })))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
@@ -1522,7 +1768,7 @@ ${current.response?.body || ''}`}
                     const target = `${item.destination?.namespace || '-'}/${item.destination?.service || '-'}`;
                     const summary = `${item.interfaces.length} 个接口 · ${matchCount} 个流量标签 · ${item.mirror_percent ?? 0}% -> ${target}`;
                     return (
-                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`${item.destination?.namespace}-${item.destination?.service}-${index}`}>
+                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`mirror-rule-edit-${index}`}>
                             <div className={shared.policyHead} onClick={() => toggleMirrorRuleCollapsed(index)}>
                                 <div className={shared.policyHeadMain}>
                                     <span className={shared.caret}><ChevronRightIcon /></span>
@@ -1539,6 +1785,7 @@ ${current.response?.body || ''}`}
                                         onChange={(value) => setMirrorRule(index, (current) => ({ ...current, disable: !value }))}
                                     />
                                     <Button
+                                        aria-label={`删除第 ${index + 1} 条镜像子规则`}
                                         shape="circle"
                                         variant="text"
                                         disabled={rules.length <= 1}
@@ -1626,7 +1873,7 @@ ${current.response?.body || ''}`}
                     const mockDefaultApi = defaultMockSubRule().apis?.[0] || defaultMirrorSubRule().interfaces[0];
                     const apis = item.apis?.length ? item.apis : [item.api || mockDefaultApi].filter(Boolean) as TrafficApiScope[];
                     return (
-                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`${apis[0]?.method}-${index}`}>
+                        <div className={`${shared.policy} ${isCollapsed ? shared.policyCollapsed : ''}`} key={`mock-rule-edit-${index}`}>
                             <div className={shared.policyHead} onClick={() => toggleMockRuleCollapsed(index)}>
                                 <div className={shared.policyHeadMain}>
                                     <span className={shared.caret}><ChevronRightIcon /></span>
@@ -1644,6 +1891,7 @@ ${current.response?.body || ''}`}
                                         onChange={(value) => setMockRule(index, (current) => ({ ...current, disable: !value }))}
                                     />
                                     <Button
+                                        aria-label={`删除第 ${index + 1} 条 Mock 子规则`}
                                         shape="circle"
                                         variant="text"
                                         disabled={rules.length <= 1}
@@ -1701,7 +1949,7 @@ ${current.response?.body || ''}`}
     const renderPayload = () => (
         <div className={shared.section}>
             <div className={shared.sectionHeader}>
-                <span>{kind === 'security' ? '③ 鉴权子规则' : kind === 'mirror' ? '镜像规则' : 'Mock 子规则'}</span>
+                <span>{kind === 'security' ? '④ 鉴权子规则' : kind === 'mirror' ? '镜像规则' : 'Mock 子规则'}</span>
                 <span className={shared.countTag}>{kind === 'security' ? securityViewRules.length : trafficRuleCount(kind, rule)} 条</span>
             </div>
             <div className={shared.sectionBody}>
@@ -1758,6 +2006,7 @@ ${current.response?.body || ''}`}
                                     return;
                                 }
                                 setEditable(false);
+                                setReloadVersion((value) => value + 1);
                             }}
                         />
                     )}
@@ -1803,11 +2052,16 @@ ${current.response?.body || ''}`}
 
     const formSections = (
         <>
-            <div className={shared.section}>
-                <div className={shared.sectionHeader}>{kind === 'security' ? '① 基础信息' : '基础信息'}</div>
-                <div className={shared.sectionBody}>{renderCommonFields()}</div>
-            </div>
+            <CollapsibleSection
+                collapsed={basicInfoCollapsed}
+                onCollapsedChange={setBasicInfoCollapsed}
+                header={kind === 'security' ? '① 基础信息' : '基础信息'}
+                summary={`${rule.name || '未命名规则'} · ${rule.enable === false ? '停用' : '启用'} · 优先级 ${rule.priority ?? 0}`}
+            >
+                {renderCommonFields()}
+            </CollapsibleSection>
             {kind === 'security' && renderSecurityServiceInfo()}
+            {kind === 'security' && renderSecurityAuthentication()}
             {kind === 'mock' && renderMockServiceScopeSection}
             {kind === 'mirror' && renderMirrorServiceScopeSection}
             {renderPayload()}

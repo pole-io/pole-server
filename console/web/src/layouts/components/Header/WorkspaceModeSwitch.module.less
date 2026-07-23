@@ -1,0 +1,154 @@
+.headerSwitch {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  padding: 3px;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 8px;
+  background: var(--app-surface-subtle);
+
+  button {
+    position: relative;
+    z-index: 1;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 11px;
+    border: 0;
+    border-radius: 6px;
+    color: var(--app-text-secondary);
+    background: transparent;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 550;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 150ms ease, background 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+
+    svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    &:hover:not(.modeActive) {
+      color: var(--app-text);
+      background: color-mix(in srgb, var(--app-surface) 64%, transparent);
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+}
+
+.modeActive {
+  color: var(--app-primary) !important;
+  background: var(--app-surface) !important;
+  box-shadow: 0 1px 3px color-mix(in srgb, #000 10%, transparent);
+}
+
+.sidebarSwitch {
+  flex: 0 0 auto;
+  padding: 8px;
+  border-top: 1px solid var(--app-border-subtle);
+  background: var(--app-surface);
+}
+
+.sidebarButton {
+  width: 100%;
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--app-text);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+
+  &:hover {
+    color: var(--app-primary);
+    border-color: color-mix(in srgb, var(--app-primary) 24%, var(--app-border-subtle));
+    background: var(--app-brand-1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--app-focus);
+    outline-offset: -2px;
+  }
+}
+
+.sidebarIcon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--app-primary);
+  background: var(--app-brand-1);
+
+  svg {
+    width: 19px;
+    height: 19px;
+  }
+}
+
+.sidebarCopy {
+  min-width: 0;
+
+  strong,
+  small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+  }
+
+  small {
+    margin-top: 1px;
+    color: var(--app-text-secondary);
+    font-size: 10px;
+    line-height: 14px;
+  }
+}
+
+.sidebarArrow {
+  width: 16px;
+  height: 16px;
+  color: var(--app-text-secondary);
+}
+
+.sidebarCollapsed {
+  padding-inline: 8px;
+
+  .sidebarButton {
+    min-height: 48px;
+    display: flex;
+    justify-content: center;
+    padding: 6px;
+  }
+}
+
+@media (max-width: 720px) {
+  .headerSwitch button {
+    padding: 0 9px;
+
+    span {
+      display: none;
+    }
+  }
+}

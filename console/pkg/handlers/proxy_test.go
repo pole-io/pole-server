@@ -18,6 +18,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/pole-io/pole-server/console/bootstrap"
+	"github.com/pole-io/specification/source/go/api/v1/security"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -61,13 +63,13 @@ func TestReverseProxyForLoginSetsJWTFromStandardData(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/maintain/v1/mainuser/exist" {
+		if r.URL.Path == "/admin/v1/mainuser/exist" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 		require.Equal(t, "/auth/v1/user/login", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"code":200000,"data":{"user_id":"user1","name":"admin","token":"token1"}}`))
+		_, _ = w.Write([]byte(`{"code":200000,"data":{"user_id":"user1","name":"admin","role":"main","token":"token1"}}`))
 	}))
 	defer backend.Close()
 
@@ -90,6 +92,70 @@ func TestReverseProxyForLoginSetsJWTFromStandardData(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.NotEmpty(t, resp.Cookies())
 	assert.Equal(t, "jwt", resp.Cookies()[0].Name)
+	assert.True(t, resp.Cookies()[0].HttpOnly)
+	request := &http.Request{Header: http.Header{}}
+	request.AddCookie(resp.Cookies()[0])
+	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+	ctx.Request = request
+	claims, err := parseJWTClaims(ctx, conf)
+	require.NoError(t, err)
+	require.NotNil(t, claims)
+	assert.Equal(t, "main", claims.Role)
+}
+
+func TestDescribeConsoleSessionUsesSignedRole(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	conf := &bootstrap.Config{}
+	conf.WebServer.JWT.Expired = 1800
+	conf.WebServer.JWT.SecretKey = "session-secret"
+
+	for _, testCase := range []struct {
+		name       string
+		role       string
+		wantStatus int
+		wantAdmin  bool
+	}{
+		{name: "admin", role: "admin", wantStatus: http.StatusOK, wantAdmin: true},
+		{name: "main", role: "main", wantStatus: http.StatusOK, wantAdmin: true},
+		{name: "non admin", role: "sub", wantStatus: http.StatusOK, wantAdmin: false},
+		{name: "missing session", role: "", wantStatus: http.StatusUnauthorized, wantAdmin: false},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			ctx, _ := gin.CreateTestContext(recorder)
+			ctx.Request = httptest.NewRequest(http.MethodGet, "/auth/v1/user/session", nil)
+			if testCase.role != "" {
+				cookieRecorder := httptest.NewRecorder()
+				cookieCtx, _ := gin.CreateTestContext(cookieRecorder)
+				require.NoError(t, refreshJWTWithRole(cookieCtx, "user-1", "token-1", testCase.role, conf))
+				ctx.Request.Header.Set("Cookie", cookieRecorder.Header().Get("Set-Cookie"))
+			}
+
+			DescribeConsoleSession(conf)(ctx)
+			require.Equal(t, testCase.wantStatus, recorder.Code)
+			if testCase.wantStatus == http.StatusOK {
+				assert.Contains(t, recorder.Body.String(), `"role":"`+testCase.role+`"`)
+				assert.Contains(t, recorder.Body.String(), fmt.Sprintf(`"admin":%t`, testCase.wantAdmin))
+			}
+		})
+	}
+}
+
+func TestResolveSystemConfigurationSessionRoleUpgradesLegacyMainCookie(t *testing.T) {
+	getter := &AdminUserGetter{user: &security.User{Id: "user-1"}}
+	role, admin := resolveSystemConfigurationSessionRole(&jwtClaims{
+		UserID: "user-1",
+		Token:  "token-1",
+	}, getter)
+	assert.Equal(t, "main", role)
+	assert.True(t, admin)
+
+	role, admin = resolveSystemConfigurationSessionRole(&jwtClaims{
+		UserID: "ordinary-user",
+		Token:  "token-2",
+	}, getter)
+	assert.Empty(t, role)
+	assert.False(t, admin)
 }
 
 func TestReverseProxyForServerRefreshesJWTAfterBackendSuccess(t *testing.T) {
@@ -111,7 +177,7 @@ func TestReverseProxyForServerRefreshesJWTAfterBackendSuccess(t *testing.T) {
 
 	req, err := http.NewRequest(http.MethodGet, console.URL+"/naming/v1/services", nil)
 	require.NoError(t, err)
-	req.AddCookie(testJWTCookie(t, "user1", "token1", conf))
+	req.AddCookie(testJWTCookieWithRole(t, "user1", "token1", "main", conf))
 	req.Header.Set("x-pole-user", "user1")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -122,6 +188,15 @@ func TestReverseProxyForServerRefreshesJWTAfterBackendSuccess(t *testing.T) {
 	require.NotEmpty(t, resp.Cookies())
 	assert.Equal(t, "jwt", resp.Cookies()[0].Name)
 	assert.NotEmpty(t, resp.Cookies()[0].Value)
+
+	refreshedRequest := &http.Request{Header: http.Header{}}
+	refreshedRequest.AddCookie(resp.Cookies()[0])
+	refreshedContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+	refreshedContext.Request = refreshedRequest
+	claims, err := parseJWTClaims(refreshedContext, conf)
+	require.NoError(t, err)
+	require.NotNil(t, claims)
+	assert.Equal(t, "main", claims.Role)
 }
 
 func TestReverseProxyForServerClearsJWTAfterBackendUnauthorized(t *testing.T) {
@@ -166,6 +241,14 @@ func testProxyConfig(backendURL string) *bootstrap.Config {
 func testJWTCookie(t *testing.T, userID string, token string, conf *bootstrap.Config) *http.Cookie {
 	t.Helper()
 	cookie, err := newJWTCookie(userID, token, conf)
+	require.NoError(t, err)
+	require.NotNil(t, cookie)
+	return cookie
+}
+
+func testJWTCookieWithRole(t *testing.T, userID string, token string, role string, conf *bootstrap.Config) *http.Cookie {
+	t.Helper()
+	cookie, err := newJWTCookieWithRole(userID, token, role, conf)
 	require.NoError(t, err)
 	require.NotNil(t, cookie)
 	return cookie

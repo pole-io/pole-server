@@ -12,8 +12,12 @@ import {
     releaseConfigFile,
     ReleaseConfigFilePequest,
     ReleaseVersion,
+    promoteGrayFileReleaseToDraft,
+    PromoteGrayFileReleaseRequest,
     rollbackFileReleases,
-    RollbackFileReleasesResquest
+    RollbackFileReleasesResquest,
+    stopGrayFileReleases,
+    StopGrayFileReleaseRequest
 } from 'services/config_release';
 
 // State 和 Action 类型定义
@@ -99,6 +103,24 @@ export const releasesRemove = createAsyncThunk(`config_release/delete`, async ({
         return fulfillWithValue("ok"); // 返回 token
     } catch (error) {
         return rejectWithValue((error as Error).message); // 捕获错误并返回
+    }
+});
+
+export const stopGrayRelease = createAsyncThunk(`config_release/stop_gray`, async ({ param }: { param: StopGrayFileReleaseRequest }, { fulfillWithValue, rejectWithValue }) => {
+    try {
+        await stopGrayFileReleases([param]);
+        return fulfillWithValue("ok");
+    } catch (error) {
+        return rejectWithValue((error as Error).message);
+    }
+});
+
+export const promoteGrayReleaseToDraft = createAsyncThunk(`config_release/promote_gray`, async ({ param }: { param: PromoteGrayFileReleaseRequest }, { fulfillWithValue, rejectWithValue }) => {
+    try {
+        await promoteGrayFileReleaseToDraft(param);
+        return fulfillWithValue("ok");
+    } catch (error) {
+        return rejectWithValue((error as Error).message);
     }
 });
 

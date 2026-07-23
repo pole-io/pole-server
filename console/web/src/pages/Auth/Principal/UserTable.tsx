@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Tag, Popconfirm } from 'tdesign-react';
-import { CreditcardIcon, DeleteIcon, RefreshIcon, UserVisibleIcon } from 'tdesign-icons-react';
+import { Table, Button, PrimaryTableProps, Space, TableRowData, Tag, Tooltip } from 'components/Fluent';
+import { AddIcon, RefreshIcon } from 'components/Fluent/icons';
+import { useNavigate } from 'react-router-dom';
 
 import Search from 'components/Search';
 import ErrorPage from 'components/ErrorPage';
 import Text from 'components/Text';
+import { ConfirmOperationButton, OperationButton } from 'components/OperationButton';
+import ResourceNameLink from 'components/ResourceNameLink';
+import { ResourceToolbar } from 'components/ResourceLayout';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
@@ -20,7 +24,10 @@ interface IUsersProps {
 
 const ServerError = () => <ErrorPage code={500} />;
 
-const columns = (operateUser: (op: Op, res: string, row?: TableRowData) => void): PrimaryTableProps['columns'] => [
+const columns = (
+    operateUser: (op: Op, res: string, row?: TableRowData) => void,
+    openUserDetail: (row: TableRowData) => void,
+): PrimaryTableProps['columns'] => [
     {
         colKey: 'id',
         title: 'ID',
@@ -31,7 +38,7 @@ const columns = (operateUser: (op: Op, res: string, row?: TableRowData) => void)
         colKey: 'name',
         title: '用户名',
         cell: ({ row }) => (
-            <Link theme='primary' onClick={() => operateUser('view', 'user', { ...row })}>{row.name}</Link>
+            <ResourceNameLink name={row.name} onClick={() => openUserDetail(row)} />
         ),
     },
     {
@@ -64,52 +71,21 @@ const columns = (operateUser: (op: Op, res: string, row?: TableRowData) => void)
         cell: ({ row }) => {
             return (
                 <Space>
-                    <Tooltip content={row.editable === false ? '无权限操作' : '查看 / 编辑'}>
-                        <Button
-                            shape="square"
-                            variant="text"
-                            disabled={row.editable === false}
-                            aria-label="查看 / 编辑"
-                            onClick={() => operateUser('view', 'user', { ...row })}>
-                            <CreditcardIcon />
-                        </Button>
-                    </Tooltip>
-                    <Tooltip content={row.editable === false ? '无权限操作' : '查看 Token'}>
-                        <Button
-                            shape="square"
-                            variant="text"
-                            disabled={row.editable === false}
-                            onClick={() => {
-                                describeUserToken({ id: row.id }).then((res) => {
-                                    if (res) {
-                                        operateUser('view', 'user_token', { ...row, auth_token: res.user.auth_token });
-                                    }
-                                });
-                            }}>
-                            <UserVisibleIcon />
-                        </Button>
-                    </Tooltip>
+                    <OperationButton action="view" onClick={() => openUserDetail(row)} />
+                    <OperationButton
+                        action="token"
+                        disabled={row.editable === false}
+                        disabledLabel="无权限操作"
+                        onClick={() => {
+                            describeUserToken({ id: row.id }).then((res) => {
+                                if (res) {
+                                    operateUser('view', 'user_token', { ...row, auth_token: res.user.auth_token });
+                                }
+                            });
+                        }}
+                    />
                     {row.user_type !== 'main' && (
-                        <Tooltip content={row.deleteable === false ? '无权限操作' : '删除'}>
-                            <Popconfirm
-                                content="确认删除吗"
-                                destroyOnClose
-                                placement="top"
-                                showArrow
-                                theme="default"
-                                onConfirm={() => {
-                                    operateUser('delete', 'user', row);
-                                }}
-                            >
-                                <Button
-                                    shape="square"
-                                    variant="text"
-                                    disabled={row.deleteable === false}
-                                >
-                                    <DeleteIcon />
-                                </Button>
-                            </Popconfirm>
-                        </Tooltip>
+                        <ConfirmOperationButton action="delete" disabled={row.deleteable === false} disabledLabel="无权限操作" confirmContent="确认删除吗" onConfirm={() => operateUser('delete', 'user', row)} />
                     )}
                 </Space>
             )
@@ -119,9 +95,15 @@ const columns = (operateUser: (op: Op, res: string, row?: TableRowData) => void)
 
 const UsersTable: React.FC<IUsersProps> = ({ }) => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
 
     const userState = useAppSelector(selectUser);
     const { datas, total, page, limit, loading } = userState;
+    const [query, setQuery] = useState('');
+
+    const openUserDetail = (row: TableRowData) => {
+        navigate(`/auth/principals/userdetail?name=${encodeURIComponent(String(row.name || ''))}&id=${encodeURIComponent(String(row.id || ''))}`);
+    };
 
     // 合并编辑相关状态
     const [editorState, setEditorState] = useState<{
@@ -159,11 +141,13 @@ const UsersTable: React.FC<IUsersProps> = ({ }) => {
         }
     }
 
-    const refreshData = (page = 1, limit = 10, query?: string) => {
+    const refreshData = (page = 1, limit = 10, searchParam = query) => {
+        setQuery(searchParam);
         dispatch(listUsers({
             param: {
                 limit: limit,
                 offset: (page - 1) * limit,
+                ...(searchParam && { name: searchParam }),
             }
         })).then((res) => {
             if (res.meta.requestStatus === 'rejected') {
@@ -178,27 +162,27 @@ const UsersTable: React.FC<IUsersProps> = ({ }) => {
 
     const table = (
         <>
-            <Row justify='space-between' className={style.toolBar}>
-                <Col>
-                    <Row gutter={8} align='middle'>
-                        <Col>
-                            <Button onClick={() => {
-                                operateUser('create', 'user');
-                            }}>新建</Button>
-                        </Col>
-                    </Row>
-                </Col>
-                <Col>
-                    <Space>
+            <ResourceToolbar
+                className={style.toolBar}
+                title="用户列表"
+                count={loading ? '正在同步列表' : `共 ${total} 条`}
+                filters={(
+                    <>
                         <Search
+                            value={query}
                             onChange={(value: string) => { refreshData(1, limit, value); }}
                         />
                         <Tooltip content="刷新">
-                            <RefreshIcon onClick={() => refreshData(1, limit)} />
+                            <Button aria-label="刷新用户列表" shape="square" variant="outline" onClick={() => refreshData(1, limit, query)}>
+                                <RefreshIcon />
+                            </Button>
                         </Tooltip>
-                    </Space>
-                </Col>
-            </Row>
+                        <Button theme="primary" icon={<AddIcon />} onClick={() => {
+                            operateUser('create', 'user');
+                        }}>新建用户</Button>
+                    </>
+                )}
+            />
             <ShowToken
                 key={editorState.mode + editorState.data?.name + '_showtoken'}
                 row={editorState.data || {} as TableRowData}
@@ -214,13 +198,13 @@ const UsersTable: React.FC<IUsersProps> = ({ }) => {
                         // 关闭后重置编辑器状态
                         dispatch(resetUser());
                         setEditorState(s => ({ ...s, visible: false }));
-                        refreshData(1, limit);
+                        refreshData(1, limit, query);
                     }}
                 />
             )}
             <Table
                 data={datas}
-                columns={columns(operateUser)}
+                columns={columns(operateUser, openUserDetail)}
                 loading={loading}
                 rowKey="id"
                 size={"large"}
@@ -232,11 +216,11 @@ const UsersTable: React.FC<IUsersProps> = ({ }) => {
                     total: total,
                     showJumper: true,
                     onChange(pageInfo) {
-                        refreshData(pageInfo.current, pageInfo.pageSize);
+                        refreshData(pageInfo.current, pageInfo.pageSize, query);
                     },
                 }}
                 onPageChange={(pageInfo) => {
-                    refreshData(pageInfo.current, pageInfo.pageSize);
+                    refreshData(pageInfo.current, pageInfo.pageSize, query);
                 }}
             />
         </>

@@ -134,6 +134,14 @@ func (s *Server) StopGrayConfigFileReleases(ctx context.Context,
 	return s.nextServer.StopGrayConfigFileReleases(ctx, reqs)
 }
 
+func (s *Server) PromoteGrayConfigFileReleaseToDraft(ctx context.Context,
+	req *apiconfig.ConfigFileRelease) *apimodel.Response {
+	if errCode, errMsg := checkBaseReleaseParam(req, true); errCode != apimodel.Code_ExecuteSuccess {
+		return api.NewConfigResponseWithInfo(errCode, errMsg)
+	}
+	return s.nextServer.PromoteGrayConfigFileReleaseToDraft(ctx, req)
+}
+
 func checkBaseReleaseParam(req *apiconfig.ConfigFileRelease, checkRelease bool) (apimodel.Code, string) {
 	namespace := req.GetNamespace()
 	group := req.GetGroup()

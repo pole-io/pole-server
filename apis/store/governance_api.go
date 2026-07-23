@@ -26,6 +26,8 @@ import (
 
 // GovernanceStore Service discovery, governance center module storage interface
 type GovernanceStore interface {
+	// CountGovernanceRules counts active governance rules owned by namespace.
+	CountGovernanceRules(namespace string) (uint64, error)
 	// RateLimitStore 限流规则接口
 	RateLimitStore
 	// CircuitBreakerStore 熔断规则接口
@@ -65,7 +67,7 @@ type RateLimitStore interface {
 	// GetMoreRateLimits 根据修改时间拉取增量限流规则及最新版本号, 此方法用于 cache 增量更新，需要注意 mtime 应为数据库时间戳
 	GetMoreRateLimits(mtime time.Time, firstUpdate bool) ([]*rules.RateLimit, error)
 	// LockRateLimitRule 锁住一个限流规则
-	LockRateLimitRule(tx Tx, name string) (*rules.RateLimit, error)
+	LockRateLimitRule(tx Tx, namespace, name string) (*rules.RateLimit, error)
 
 	// 关于规则发布
 	GetRateLimitRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error)
@@ -104,7 +106,7 @@ type CircuitBreakerStore interface {
 	// GetCircuitBreakerRulesForCache get increment circuitbreaker rules
 	GetMoreCircuitBreakers(mtime time.Time, firstUpdate bool) ([]*rules.CircuitBreakerRule, error)
 	// LockCircuitBreakerRule 锁住一个熔断规则
-	LockCircuitBreakerRule(tx Tx, name string) (*rules.CircuitBreakerRule, error)
+	LockCircuitBreakerRule(tx Tx, namespace, name string) (*rules.CircuitBreakerRule, error)
 	// GetCircuitBreakerRule 获取单个熔断规则
 	GetCircuitBreakerRule(id string) (*rules.CircuitBreakerRule, error)
 
@@ -148,7 +150,7 @@ type RouterRuleConfigStore interface {
 	// GetRoutingConfigWithIDTx 根据服务ID拉取路由配置
 	GetRoutingConfigWithIDTx(tx Tx, id string) (*rules.RouterConfig, error)
 	// LockRouterRule 锁住一个路由规则
-	LockRouterRule(tx Tx, name string) (*rules.RouterConfig, error)
+	LockRouterRule(tx Tx, namespace, name string) (*rules.RouterConfig, error)
 
 	// 关于规则发布
 	GetRouterRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error)
@@ -187,7 +189,7 @@ type FaultDetectRuleStore interface {
 	// GetMoreFaultDetects get increment fault detect rules
 	GetMoreFaultDetects(mtime time.Time, firstUpdate bool) ([]*rules.FaultDetectRule, error)
 	// LockFaultDetectRule 锁住一个探测规则
-	LockFaultDetectRule(tx Tx, id string) (*rules.FaultDetectRule, error)
+	LockFaultDetectRule(tx Tx, namespace, id string) (*rules.FaultDetectRule, error)
 	// GetFaultDetectRule 获取一个探测规则
 	GetFaultDetectRule(id string) (*rules.FaultDetectRule, error)
 
@@ -216,7 +218,7 @@ type LaneStore interface {
 	// UpdateLaneGroup 更新泳道组
 	UpdateLaneGroup(tx Tx, item *rules.LaneGroup) error
 	// GetLaneGroup 按照名称查询泳道组
-	GetLaneGroup(name string) (*rules.LaneGroup, error)
+	GetLaneGroup(namespace, name string) (*rules.LaneGroup, error)
 	// GetLaneGroupByID 按照名称查询泳道组
 	GetLaneGroupByID(id string) (*rules.LaneGroup, error)
 	// GetLaneGroups 查询泳道组
@@ -226,7 +228,7 @@ type LaneStore interface {
 	// DeleteLaneGroup 删除泳道组
 	DeleteLaneGroup(id string) error
 	// LockLaneGroup 锁住一个泳道分组
-	LockLaneGroup(tx Tx, name string) (*rules.LaneGroup, error)
+	LockLaneGroup(tx Tx, namespace, name string) (*rules.LaneGroup, error)
 	// GetLaneRule 查询泳道规则
 	GetLaneRule(id string) (*rules.LaneRule, error)
 	// AddLaneRules 添加泳道规则
@@ -234,7 +236,7 @@ type LaneStore interface {
 	// UpdateLaneRules 更新泳道规则
 	UpdateLaneRules(tx Tx, rules []*rules.LaneRule) error
 	// DeleteLaneRules 删除泳道规则
-	DeleteLaneRules(tx Tx, group string, ids []string) error
+	DeleteLaneRules(tx Tx, namespace, group string, ids []string) error
 
 	// 关于规则发布
 	GetLaneGroupVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error)
@@ -267,7 +269,7 @@ type LosslessRuleStore interface {
 	// GetMoreLosslessRules 根据修改时间拉取增量无损规则及最新版本号, 此方法用于 cache 增量更新，需要注意 mtime 应为数据库时间戳
 	GetMoreLosslessRules(mtime time.Time, firstUpdate bool) ([]*rules.LosslessRule, error)
 	// LockLosslessRule 锁住一个无损规则
-	LockLosslessRule(tx Tx, name string) (*rules.LosslessRule, error)
+	LockLosslessRule(tx Tx, namespace, name string) (*rules.LosslessRule, error)
 
 	// 关于规则发布
 	GetLosslessRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error)
@@ -293,7 +295,7 @@ type TrafficSecurityRuleStore interface {
 	DeleteTrafficSecurityRule(rule *rules.TrafficGovernanceRule) error
 	GetOneTrafficSecurityRule(id string) (*rules.TrafficGovernanceRule, error)
 	GetMoreTrafficSecurityRules(mtime time.Time, firstUpdate bool) ([]*rules.TrafficGovernanceRule, error)
-	LockTrafficSecurityRule(tx Tx, name string) (*rules.TrafficGovernanceRule, error)
+	LockTrafficSecurityRule(tx Tx, namespace, name string) (*rules.TrafficGovernanceRule, error)
 	GetTrafficSecurityRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error)
 	GetActiveTrafficSecurityRule(tx Tx, release *rules.TrafficGovernanceRuleRelease) (*rules.TrafficGovernanceRuleRelease, error)
 	GetReleaseTrafficSecurityRule(tx Tx, release *rules.RuleRelease) (*rules.TrafficGovernanceRuleRelease, error)
@@ -310,7 +312,7 @@ type TrafficMirrorRuleStore interface {
 	DeleteTrafficMirrorRule(rule *rules.TrafficGovernanceRule) error
 	GetOneTrafficMirrorRule(id string) (*rules.TrafficGovernanceRule, error)
 	GetMoreTrafficMirrorRules(mtime time.Time, firstUpdate bool) ([]*rules.TrafficGovernanceRule, error)
-	LockTrafficMirrorRule(tx Tx, name string) (*rules.TrafficGovernanceRule, error)
+	LockTrafficMirrorRule(tx Tx, namespace, name string) (*rules.TrafficGovernanceRule, error)
 	GetTrafficMirrorRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error)
 	GetActiveTrafficMirrorRule(tx Tx, release *rules.TrafficGovernanceRuleRelease) (*rules.TrafficGovernanceRuleRelease, error)
 	GetReleaseTrafficMirrorRule(tx Tx, release *rules.RuleRelease) (*rules.TrafficGovernanceRuleRelease, error)
@@ -327,7 +329,7 @@ type TrafficMockRuleStore interface {
 	DeleteTrafficMockRule(rule *rules.TrafficGovernanceRule) error
 	GetOneTrafficMockRule(id string) (*rules.TrafficGovernanceRule, error)
 	GetMoreTrafficMockRules(mtime time.Time, firstUpdate bool) ([]*rules.TrafficGovernanceRule, error)
-	LockTrafficMockRule(tx Tx, name string) (*rules.TrafficGovernanceRule, error)
+	LockTrafficMockRule(tx Tx, namespace, name string) (*rules.TrafficGovernanceRule, error)
 	GetTrafficMockRuleVersions(ctx context.Context, filter map[string]string, offset, limit uint32) (uint64, []*rules.RuleRelease, error)
 	GetActiveTrafficMockRule(tx Tx, release *rules.TrafficGovernanceRuleRelease) (*rules.TrafficGovernanceRuleRelease, error)
 	GetReleaseTrafficMockRule(tx Tx, release *rules.RuleRelease) (*rules.TrafficGovernanceRuleRelease, error)

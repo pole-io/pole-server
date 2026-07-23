@@ -1,10 +1,35 @@
 .itemContainer {
-  width: 400px;
-  margin-top: 48px;
+  width: 100%;
+
+  :global {
+    .fui-Field {
+      margin-bottom: 18px;
+    }
+
+    .fui-Input {
+      width: 100%;
+      min-height: 46px;
+      border-radius: 8px;
+    }
+  }
 }
 
 .btnContainer {
-  margin-top: 24px;
+  margin-top: 10px;
+
+  :global(.fui-Button) {
+    min-height: 46px;
+    border-radius: 8px;
+    font-weight: 650;
+  }
+}
+
+.passwordToggle {
+  min-width: 30px !important;
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  color: var(--app-text-secondary) !important;
 }
 
 .verificationBtn {
@@ -20,7 +45,7 @@
 
 .switchTip {
   font-size: 14px;
-  color: var(--td-brand-color);
+  color: var(--app-brand);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -29,12 +54,12 @@
 
 .checkContainer {
   font-size: 14px;
-  color: var(--td-text-color-secondary);
+  color: var(--app-text-secondary);
   :global {
     .tip {
       float: right;
       font-size: 14px;
-      color: var(--td-brand-color);
+      color: var(--app-brand);
     }
   }
 }

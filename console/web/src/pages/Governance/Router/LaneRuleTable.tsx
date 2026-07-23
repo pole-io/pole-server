@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Button, Tooltip, Space, TableRowData, Popconfirm, Tag, Link } from 'tdesign-react';
-import { AddIcon, DeleteIcon, EditIcon } from 'tdesign-icons-react';
+import { Button, Tooltip, Space, TableRowData, Popconfirm, Tag, Link } from 'components/Fluent';
+import { AddIcon, DeleteIcon, EditIcon } from 'components/Fluent/icons';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import Text from 'components/Text';

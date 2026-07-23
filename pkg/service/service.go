@@ -292,13 +292,7 @@ func (s *Server) GetAllServices(ctx context.Context, query map[string]string) *a
 	ret := make([]*apiservice.Service, 0, len(svcs))
 	for i := range svcs {
 		count := s.Cache().Instance().GetInstancesCountByServiceID(svcs[i].ID)
-		ret = append(ret, &apiservice.Service{
-			Namespace:            string(svcs[i].Namespace),
-			Name:                 string(svcs[i].Name),
-			TotalInstanceCount:   uint32(count.TotalInstanceCount),
-			HealthyInstanceCount: uint32(count.HealthyInstanceCount),
-			Metadata:             svcs[i].Meta,
-		})
+		ret = append(ret, buildServiceQueryItem(svcs[i], uint32(count.TotalInstanceCount), uint32(count.HealthyInstanceCount)))
 	}
 
 	resp := api.NewBatchQueryResponse(apimodel.Code_ExecuteSuccess)
@@ -378,19 +372,28 @@ func (s *Server) GetServices(ctx context.Context, query map[string]string) *apim
 	resp.Size = uint32(len(services))
 	for i := range services {
 		count := s.Cache().Instance().GetInstancesCountByServiceID(services[i].ID)
-		item := &apiservice.Service{
-			Namespace:            string(services[i].Namespace),
-			Name:                 string(services[i].Name),
-			TotalInstanceCount:   uint32(count.TotalInstanceCount),
-			HealthyInstanceCount: uint32(count.HealthyInstanceCount),
-			Metadata:             services[i].Meta,
-		}
+		item := buildServiceQueryItem(services[i].Service, uint32(count.TotalInstanceCount), uint32(count.HealthyInstanceCount))
 		if err := api.AddAnyDataIntoBatchQuery(resp, item); err != nil {
 			log.Errorf("[Server][Service][Query] add service to response data: %s", err.Error())
 			return api.NewBatchQueryResponse(apimodel.Code_ExecuteException)
 		}
 	}
 	return resp
+}
+
+func buildServiceQueryItem(svc *svctypes.Service, totalInstanceCount, healthyInstanceCount uint32) *apiservice.Service {
+	if svc == nil {
+		return nil
+	}
+	// List APIs intentionally expose a narrow projection. In particular, do not
+	// reuse ToSpec here because it contains the SDK -> control-plane service token.
+	return &apiservice.Service{
+		Namespace:            svc.Namespace,
+		Name:                 svc.Name,
+		TotalInstanceCount:   totalInstanceCount,
+		HealthyInstanceCount: healthyInstanceCount,
+		Metadata:             svc.CopyMeta(),
+	}
 }
 
 // parseServiceArgs 解析服务的查询条件
@@ -479,9 +482,10 @@ func (s *Server) createNamespaceIfAbsent(ctx context.Context, svc *apiservice.Se
 
 // createServiceModel 创建存储层服务模型
 func (s *Server) createServiceModel(req *apiservice.Service) *svctypes.Service {
+	serviceID := utils.NewUUID()
 	// 注释：创建服务模型改动 - API规范变更导致字段类型变化，从wrapper类型改为基础类型
 	return &svctypes.Service{
-		ID:         utils.NewUUID(),
+		ID:         serviceID,
 		Name:       req.GetName(),
 		Namespace:  req.GetNamespace(),
 		Meta:       req.GetMetadata(),
@@ -496,6 +500,7 @@ func (s *Server) createServiceModel(req *apiservice.Service) *svctypes.Service {
 		// 移除 PlatformID 字段，因为 pole-io/specification 中已不存在
 		Token:    utils.NewUUID(),
 		Revision: utils.NewUUID(),
+		Identity: svctypes.NewServiceIdentity(serviceID),
 	}
 }
 

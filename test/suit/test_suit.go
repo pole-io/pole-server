@@ -20,7 +20,6 @@ package testsuit
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -29,7 +28,6 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	bolt "go.etcd.io/bbolt"
 	"gopkg.in/yaml.v3"
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
@@ -66,6 +64,7 @@ import (
 	_ "github.com/pole-io/pole-server/pkg/namespace/interceptor"
 	_ "github.com/pole-io/pole-server/pkg/service/interceptor"
 	_ "github.com/pole-io/pole-server/plugin/service/healthchecker/heartbeat"
+	_ "github.com/pole-io/pole-server/plugin/service/healthchecker/probe"
 )
 
 func init() {
@@ -220,8 +219,6 @@ func (d *DiscoverTestSuit) loadConfig() error {
 		confFileName = testdata.Path("service_test_sqldb.yaml")
 		d.DefaultCtx = context.WithValue(d.DefaultCtx, types.ContextAuthTokenKey,
 			"nu/0WRA4EqSR1FagrjRj0fZwPXuGlMpX+zCuWu4uMqy8xr1vRjisSbA25aAC3mtU8MeeRsKhQiDAynUR09I=")
-	} else {
-		fmt.Printf("run store mode : boltdb\n")
 	}
 	// 如果有额外定制的配置文件，优先采用
 	if val := os.Getenv("POLARIS_TEST_BOOTSTRAP_FILE"); val != "" {
@@ -235,9 +232,6 @@ func (d *DiscoverTestSuit) loadConfig() error {
 	if err = parseYamlContent(string(buf), d.cfg); err != nil {
 		fmt.Printf("[ERROR] %v\n", err)
 		return err
-	}
-	if os.Getenv("STORE_MODE") != "sqldb" {
-		d.cfg.Store.Option["loadFile"] = testdata.Path("bolt-data.yaml")
 	}
 	d.cfg.Naming.Interceptors = service.GetChainOrder()
 	d.cfg.Config.Interceptors = config.GetChainOrder()
@@ -278,12 +272,6 @@ func (d *DiscoverTestSuit) initialize(opts ...options) error {
 	d.DefaultCtx = context.WithValue(context.Background(), types.ContextRequestId, "test-1")
 	d.DefaultCtx = context.WithValue(d.DefaultCtx, types.ContextAuthTokenKey,
 		"nu/0WRA4EqSR1FagrjRj0fZwPXuGlMpX+zCuWu4uMqy8xr1vRjisSbA25aAC3mtU8MeeRsKhQiDAynUR09I=")
-
-	if err := os.RemoveAll("polaris.bolt"); err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			panic(err)
-		}
-	}
 
 	if err := d.loadConfig(); err != nil {
 		panic(err)
@@ -465,18 +453,6 @@ func rollbackDbTx(dbTx *sqldb.BaseTx) {
 func commitDbTx(dbTx *sqldb.BaseTx) {
 	if err := dbTx.Commit(); err != nil {
 		log.Errorf("fail to commit db tx, err %v", err)
-	}
-}
-
-func rollbackBoltTx(tx *bolt.Tx) {
-	if err := tx.Rollback(); err != nil {
-		log.Errorf("fail to rollback bolt tx, err %v", err)
-	}
-}
-
-func commitBoltTx(tx *bolt.Tx) {
-	if err := tx.Commit(); err != nil {
-		log.Errorf("fail to commit bolt tx, err %v", err)
 	}
 }
 

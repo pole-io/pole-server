@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { AddIcon, DeleteIcon } from 'tdesign-icons-react';
-import { Button, Form, Input, InputAdornment, RangeInput, Select, Space, TagInput } from 'tdesign-react';
-import type { CustomValidator, InternalFormInstance } from 'tdesign-react';
+import { AddIcon, DeleteIcon } from 'components/Fluent/icons';
+import { Button, Form, Input, InputAdornment, RangeInput, Select, Space, TagInput } from 'components/Fluent';
+import type { CustomValidator, InternalFormInstance } from 'components/Fluent';
 
 import { ClientLabelType, ClientLabelTypeOption, MatcheLabel, MatchType, MatchTypeOption, MatchValueType, MatchValueTypeOption } from 'services/types';
 import { get, set } from 'lodash';

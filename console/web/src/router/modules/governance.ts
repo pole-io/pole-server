@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { LayersIcon } from 'tdesign-icons-react';
+import { LayersIcon } from 'components/Fluent/icons';
 import { IRouter } from '../index';
 
 const result: IRouter[] = [
@@ -18,6 +18,16 @@ const result: IRouter[] = [
         path: 'workbench',
         Component: lazy(() => import('pages/Governance/Workbench')),
         meta: { title: 'menu.governance.workbench' },
+      },
+      {
+        path: 'rules/detail',
+        Component: lazy(() => import('pages/Governance/RuleDetailPage')),
+        meta: { title: 'menu.governance.workbench', hidden: true },
+      },
+      {
+        path: 'rules/create',
+        Component: lazy(() => import('pages/Governance/RuleCreatePage')),
+        meta: { title: 'menu.governance.workbench', hidden: true },
       },
       {
         path: 'lossless',

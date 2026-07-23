@@ -43,6 +43,7 @@ type LaneGroupProto struct {
 // LaneGroup 泳道分组
 type LaneGroup struct {
 	ID          string
+	Namespace   string
 	Name        string
 	Rule        string
 	Revision    string
@@ -66,6 +67,7 @@ func (r *LaneGroup) GetMtime() time.Time {
 
 func (l *LaneGroup) FromSpec(item *apitraffic.LaneGroup) error {
 	l.ID = item.GetId()
+	l.Namespace = OwnerNamespaceFromProto(item)
 	l.Name = item.GetName()
 	l.Description = item.GetDescription()
 	l.LaneRules = map[string]*LaneRule{}
@@ -96,6 +98,7 @@ func (l *LaneGroup) ToProto() (*LaneGroupProto, error) {
 	}
 
 	ret.Id = l.ID
+	SetOwnerNamespaceOnProto(ret, l.Namespace)
 	ret.Revision = l.Revision
 	ret.Description = l.Description
 	ret.Rules = make([]*apitraffic.LaneRule, 0, 32)
@@ -122,12 +125,14 @@ func (l *LaneGroup) ToSpec() (*apitraffic.LaneGroup, error) {
 	if err := json.Unmarshal([]byte(l.Rule), ret); err != nil {
 		return nil, err
 	}
+	SetOwnerNamespaceOnProto(ret, l.Namespace)
 	return ret, nil
 }
 
 // LaneRule 泳道规则实体
 type LaneRule struct {
 	ID          string
+	Namespace   string
 	LaneGroup   string
 	Name        string
 	Rule        string
@@ -163,6 +168,7 @@ func (l *LaneRule) IsAdd() bool {
 
 func (l *LaneRule) FromSpec(item *apitraffic.LaneRule) error {
 	l.ID = item.GetId()
+	l.Namespace = OwnerNamespaceFromProto(item)
 	l.Name = item.GetName()
 	l.LaneGroup = item.GetGroupName()
 	l.Priority = item.GetPriority()
@@ -184,6 +190,7 @@ func (l *LaneRule) ToProto() (*LaneRuleProto, error) {
 		return nil, err
 	}
 	rule.Id = l.ID
+	SetOwnerNamespaceOnProto(rule, l.Namespace)
 	rule.Name = l.Name
 	rule.Enable = l.Enable
 	rule.GroupName = l.LaneGroup

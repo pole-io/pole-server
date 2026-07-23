@@ -24,6 +24,7 @@ func (h *HTTPServer) addReleasesRuleAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichUpsertAndReleaseConfigFileApiDocs(ws.POST("/files/createandpub").To(h.UpsertAndReleaseConfigFile)))
 	ws.Route(docs.EnrichGetConfigFileReleaseApiDocs(ws.PUT("/files/releases/rollback").To(h.RollbackConfigFileReleases)))
 	ws.Route(docs.EnrichStopBetaReleaseConfigFileApiDocs(ws.POST("/files/releases/stopbeta").To(h.StopGrayConfigFileReleases)))
+	ws.Route(ws.POST("/files/releases/promote-gray").To(h.PromoteGrayConfigFileReleaseToDraft))
 }
 
 // PublishConfigFile 发布配置文件
@@ -198,4 +199,22 @@ func (h *HTTPServer) StopGrayConfigFileReleases(req *restful.Request, rsp *restf
 	}
 
 	handler.WriteHeaderAndProto(h.configServer.StopGrayConfigFileReleases(ctx, releases))
+}
+
+// PromoteGrayConfigFileReleaseToDraft .
+func (h *HTTPServer) PromoteGrayConfigFileReleaseToDraft(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+
+	configFile := &apiconfig.ConfigFileRelease{}
+	ctx, err := handler.Parse(configFile)
+	if err != nil {
+		configLog.Error("[Config][HttpServer] parse promote gray config file release from request error.",
+			zap.String("error", err.Error()))
+		handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+	handler.WriteHeaderAndProto(h.configServer.PromoteGrayConfigFileReleaseToDraft(ctx, configFile))
 }

@@ -70,6 +70,7 @@ func (s *ServiceWithRateLimits) Reload() {
 type RateLimit struct {
 	Proto     *apitraffic.RateLimit
 	ID        string
+	Namespace string
 	ServiceID string
 	Name      string
 	Method    string
@@ -89,6 +90,7 @@ type RateLimit struct {
 func (r *RateLimit) CopyNoProto() *RateLimit {
 	return &RateLimit{
 		ID:         r.ID,
+		Namespace:  r.Namespace,
 		ServiceID:  r.ServiceID,
 		Name:       r.Name,
 		Method:     r.Method,
@@ -117,6 +119,7 @@ func (r *RateLimit) GetMtime() time.Time {
 func (r *RateLimit) ToSpec() error {
 	r.Proto = &apitraffic.RateLimit{}
 	if len(r.Rule) == 0 {
+		SetOwnerNamespaceOnProto(r.Proto, r.Namespace)
 		return nil
 	}
 	// 反序列化rule
@@ -124,6 +127,7 @@ func (r *RateLimit) ToSpec() error {
 		return err
 	}
 	r.Proto.Disable = r.Disable
+	SetOwnerNamespaceOnProto(r.Proto, r.Namespace)
 	return nil
 }
 

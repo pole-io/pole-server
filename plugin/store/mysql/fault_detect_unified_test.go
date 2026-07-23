@@ -41,6 +41,7 @@ func TestFaultDetectStoreCreateUsesGovernanceRuleRepository(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
+	expectGovernanceRuleNameAvailable(mock, governanceRuleTypeFaultDetect, rule.Namespace, rule.Name)
 	mock.ExpectExec(regexp.QuoteMeta(insertGovernanceRuleSQL)).
 		WithArgs(
 			rule.ID,

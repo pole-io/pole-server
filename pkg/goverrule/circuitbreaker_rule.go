@@ -293,6 +293,9 @@ func circuitBreakerRuleNamespace(req *apifault.CircuitBreakerRule) string {
 	if req == nil {
 		return namespace.DefaultNamespace
 	}
+	if ownerNamespace := req.GetNamespace(); ownerNamespace != "" {
+		return ownerNamespace
+	}
 	if namespace := req.GetRuleMatcher().GetDestination().GetNamespace(); namespace != "" {
 		return namespace
 	}

@@ -1,0 +1,72 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+  resource/pole_defaults:
+    attributes:
+      - key: pole.cluster
+        value: local-docker
+        action: upsert
+      - key: deployment.environment.name
+        value: local
+        action: upsert
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+exporters:
+  otlp_http/greptime_traces:
+    endpoint: http://greptimedb:4000/v1/otlp
+    headers:
+      x-greptime-pipeline-name: greptime_trace_v1
+    tls:
+      insecure: true
+  otlp_http/greptime_logs:
+    endpoint: http://greptimedb:4000/v1/otlp
+    headers:
+      x-greptime-log-table-name: pole_events
+    tls:
+      insecure: true
+  otlp_http/greptime_metrics:
+    endpoint: http://greptimedb:4000/v1/otlp
+    tls:
+      insecure: true
+  debug:
+    verbosity: basic
+
+service:
+  extensions:
+    - health_check
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource/pole_defaults, batch]
+      exporters: [otlp_http/greptime_traces, debug]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource/pole_defaults, batch]
+      exporters: [otlp_http/greptime_metrics, debug]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource/pole_defaults, batch]
+      exporters: [otlp_http/greptime_logs, debug]

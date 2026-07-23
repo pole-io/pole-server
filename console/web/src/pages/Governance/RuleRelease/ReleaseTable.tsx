@@ -1,11 +1,12 @@
 import React from 'react';
-import { Space, Button, Table, Tooltip, Tag, Popconfirm, Link, Empty } from "tdesign-react";
-import type { PageInfo, PaginationProps, PrimaryTableProps, TableRowData } from 'tdesign-react';
-import { Delete1Icon, RollbackIcon } from 'tdesign-icons-react';
+import { Space, Button, Drawer, Table, Tooltip, Tag, Popconfirm, Empty } from 'components/Fluent';
+import type { PageInfo, PaginationProps, PrimaryTableProps, TableRowData } from 'components/Fluent';
+import { Delete1Icon, RollbackIcon } from 'components/Fluent/icons';
 
 import Text from 'components/Text';
 import { Op } from 'services/types';
 import style from './ReleaseTable.module.less';
+import ResourceNameLink from 'components/ResourceNameLink';
 
 interface IReleaseTableProps {
     datas: TableRowData[];
@@ -27,12 +28,7 @@ export const ReleaseColumns = (
         title: '名称',
         width: 176,
         fixed: 'left',
-        cell: ({ row }) => (
-            <div className={style.releaseNameCell}>
-                <Link theme='primary' onClick={() => operateRelease('view', { ...row })}>{row.release_name}</Link>
-                <span>系统版本 {row.version || '-'}</span>
-            </div>
-        ),
+        cell: ({ row }) => <ResourceNameLink name={row.release_name} onClick={() => operateRelease('view', { ...row })} />,
     },
     {
         colKey: 'version',
@@ -131,6 +127,7 @@ export const ReleaseColumns = (
 ]
 
 const ReleaseTable: React.FC<IReleaseTableProps> = ({ datas, loading, pagination, onPageChange, action, editable, deleteable, rollbackable = true }) => {
+    const [viewingRelease, setViewingRelease] = React.useState<TableRowData | null>(null);
     const activeRelease = datas.find((item) => item.active);
     const grayCount = datas.filter((item) => item.releaseType === 'gray').length;
     const normalCount = datas.length - grayCount;
@@ -161,7 +158,13 @@ const ReleaseTable: React.FC<IReleaseTableProps> = ({ datas, loading, pagination
                     editable: editable,
                     deleteable: deleteable,
                     rollbackable: rollbackable,
-                }, action)}
+                }, (op, row) => {
+                    if (op === 'view') {
+                        setViewingRelease(row);
+                        return;
+                    }
+                    action(op, row);
+                })}
                 loading={loading}
                 rowKey="id"
                 size="medium"
@@ -180,6 +183,24 @@ const ReleaseTable: React.FC<IReleaseTableProps> = ({ datas, loading, pagination
                     }
                 }}
             />
+            <Drawer
+                visible={Boolean(viewingRelease)}
+                header={viewingRelease?.release_name || '发布版本详情'}
+                footer={false}
+                size="small"
+                onClose={() => setViewingRelease(null)}
+            >
+                {viewingRelease && (
+                    <div className={style.releaseDetail}>
+                        <div><span>名称</span><strong>{viewingRelease.release_name || '-'}</strong></div>
+                        <div><span>系统版本</span><strong>{viewingRelease.version || '-'}</strong></div>
+                        <div><span>状态</span><strong>{viewingRelease.active ? '使用中' : '历史'}</strong></div>
+                        <div><span>发布类型</span><strong>{viewingRelease.releaseType === 'gray' ? '灰度发布' : '全量发布'}</strong></div>
+                        <div><span>发布时间</span><strong>{viewingRelease.ctime || '-'}</strong></div>
+                        <div className={style.releaseDetailWide}><span>描述</span><strong>{viewingRelease.description || '-'}</strong></div>
+                    </div>
+                )}
+            </Drawer>
         </div>
     )
 

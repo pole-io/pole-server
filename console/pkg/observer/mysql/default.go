@@ -4,10 +4,15 @@ import (
 	"errors"
 	"fmt"
 
-	_ "github.com/go-sql-driver/mysql"
+	mysqlDriver "github.com/go-sql-driver/mysql"
 	"github.com/pole-io/pole-server/console/pkg/common/log"
 	"github.com/pole-io/pole-server/console/pkg/observer"
 )
+
+func isMissingTableError(err error) bool {
+	var mysqlErr *mysqlDriver.MySQLError
+	return errors.As(err, &mysqlErr) && mysqlErr.Number == 1146
+}
 
 const (
 	// STORENAME database storage name
@@ -78,6 +83,9 @@ func (s *stableStore) Initialize(conf *store.Config) error {
 
 	log.Infof("[Store][database] connect the database successfully")
 
+	if err := ensureSystemSettingsSchema(s.master); err != nil {
+		return fmt.Errorf("ensure Console system settings schema: %w", err)
+	}
 	s.start = true
 	s.newStore()
 	return nil

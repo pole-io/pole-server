@@ -1,6 +1,6 @@
 import React from 'react';
-import { Tabs } from "tdesign-react";
-import type { PageInfo, PaginationProps, TableRowData } from 'tdesign-react';
+import { Tabs } from 'components/Fluent';
+import type { PageInfo, PaginationProps, TableRowData } from 'components/Fluent';
 
 import { Op } from 'services/types';
 import ReleaseTable from './ReleaseTable';

@@ -170,6 +170,7 @@ export interface ServiceSelector {
 
 export interface LaneGroup {
     id?: string
+    namespace?: string // 规则归属环境
     name?: string // 规则名
     entries: TrafficEntry[] // 条目列表
     destinations: RoutingRuleDestination[] // 路由目标列表
@@ -190,6 +191,7 @@ export interface DescribeLaneGroupsRequest {
     limit: number
     id?: string // LaneGroup ID
     name?: string // LaneGroup 名称
+    namespace?: string // 规则归属环境
     brief: boolean
 }
 

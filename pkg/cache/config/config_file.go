@@ -28,7 +28,6 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/bbolt"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
@@ -38,6 +37,7 @@ import (
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
+	"github.com/pole-io/pole-server/pkg/common/localdb"
 	commonatomic "github.com/pole-io/pole-server/pkg/common/syncs/atomic"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -58,8 +58,8 @@ type fileCache struct {
 	activeReleaseRevisions *container.SyncMap[string, *container.SyncMap[string, string]]
 	// singleGroup
 	singleGroup *singleflight.Group
-	// valueCache save ConfigFileRelease.Content into local file to reduce memory use
-	valueCache *bbolt.DB
+	// valueCache saves ConfigFileRelease.Content into Pebble to reduce heap usage.
+	valueCache *localdb.PebbleDB
 	// metricsReleaseCount
 	metricsReleaseCount *container.SyncMap[string, *container.SyncMap[string, uint64]]
 	// preMetricsFiles
@@ -95,7 +95,7 @@ func (fc *fileCache) Initialize(opt map[string]interface{}) error {
 	fc.metricsReleaseCount = container.NewSyncMap[string, *container.SyncMap[string, uint64]]()
 	fc.preMetricsFiles = commonatomic.NewAtomicValue(map[string]map[string]struct{}{})
 	fc.lastReportTime = commonatomic.NewAtomicValue(time.Time{})
-	valueCache, err := openBoltCache(opt)
+	valueCache, err := openPebbleCache(opt)
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func (fc *fileCache) Initialize(opt map[string]interface{}) error {
 	return nil
 }
 
-func openBoltCache(opt map[string]interface{}) (*bbolt.DB, error) {
+func openPebbleCache(opt map[string]interface{}) (*localdb.PebbleDB, error) {
 	path, _ := opt["cachePath"].(string)
 	if path == "" {
 		path = "./.pole_data/cache/config"
@@ -111,9 +111,9 @@ func openBoltCache(opt map[string]interface{}) (*bbolt.DB, error) {
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
 		return nil, err
 	}
-	dbFile := filepath.Join(path, "config_file.bolt")
-	_ = os.Remove(dbFile)
-	valueCache, err := bbolt.Open(dbFile, os.ModePerm, &bbolt.Options{})
+	dbFile := filepath.Join(path, "config_file.pebble")
+	_ = os.RemoveAll(dbFile)
+	valueCache, err := localdb.OpenPebble(dbFile)
 	if err != nil {
 		return nil, err
 	}
@@ -294,13 +294,8 @@ func (fc *fileCache) saveActiveRelease(item *conftypes.ConfigFileRelease) error 
 	group, _ := namespace.Load(item.Group)
 	group.Store(item.ActiveKey(), item.SimpleConfigFileRelease)
 
-	if err := fc.valueCache.Update(func(tx *bbolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists([]byte(item.OwnerKey()))
-		if err != nil {
-			return err
-		}
-		return bucket.Put([]byte(item.ActiveKey()), []byte(item.Content))
-	}); err != nil {
+	if err := fc.valueCache.Set(configReleaseValueKey(item.OwnerKey(), item.ActiveKey()),
+		[]byte(item.Content), localdb.WriteNoSync); err != nil {
 		return errors.Join(err, errors.New("persistent active config_file content fail"))
 	}
 	return nil
@@ -323,13 +318,8 @@ func (fc *fileCache) cleanActiveRelease(release *conftypes.SimpleConfigFileRelea
 	}
 
 	group.Delete(release.ActiveKey())
-	if err := fc.valueCache.Update(func(tx *bbolt.Tx) error {
-		bucket := tx.Bucket([]byte(release.OwnerKey()))
-		if bucket == nil {
-			return nil
-		}
-		return bucket.Delete([]byte(release.ActiveKey()))
-	}); err != nil {
+	if err := fc.valueCache.Delete(configReleaseValueKey(release.OwnerKey(), release.ActiveKey()),
+		localdb.WriteNoSync); err != nil {
 		return errors.Join(err, errors.New("remove active config_file content fail"))
 	}
 	return nil
@@ -438,7 +428,40 @@ func (fc *fileCache) GetActiveRelease(namespace, group, fileName string) *confty
 
 // GetActiveGrayRelease .
 func (fc *fileCache) GetActiveGrayRelease(namespace, group, fileName string) *conftypes.ConfigFileRelease {
-	return fc.handleGetActiveRelease(namespace, group, fileName, rules.ReleaseTypeGray)
+	releases := fc.GetActiveGrayReleases(namespace, group, fileName)
+	if len(releases) == 0 {
+		return nil
+	}
+	return releases[0]
+}
+
+func (fc *fileCache) GetActiveGrayReleases(namespace, group, fileName string) []*conftypes.ConfigFileRelease {
+	nsBucket, ok := fc.activeReleases.Load(namespace)
+	if !ok {
+		return nil
+	}
+	groupBucket, ok := nsBucket.Load(group)
+	if !ok {
+		return nil
+	}
+	releases := make([]*conftypes.ConfigFileRelease, 0, 4)
+	groupBucket.ReadRange(func(key string, val *conftypes.SimpleConfigFileRelease) {
+		if val.FileName != fileName || val.ReleaseType != rules.ReleaseTypeGray {
+			return
+		}
+		release := &conftypes.ConfigFileRelease{
+			SimpleConfigFileRelease: val,
+		}
+		fc.loadValueCache(release)
+		releases = append(releases, release)
+	})
+	sort.SliceStable(releases, func(i, j int) bool {
+		if releases[i].Version == releases[j].Version {
+			return releases[i].ModifyTime.After(releases[j].ModifyTime)
+		}
+		return releases[i].Version > releases[j].Version
+	})
+	return releases
 }
 
 func (fc *fileCache) handleGetActiveRelease(namespace, group, fileName string, typ rules.ReleaseType) *conftypes.ConfigFileRelease {
@@ -603,13 +626,16 @@ func doPageConfigReleases(values []*conftypes.SimpleConfigFileRelease,
 }
 
 func (fc *fileCache) loadValueCache(release *conftypes.ConfigFileRelease) {
-	_ = fc.valueCache.View(func(tx *bbolt.Tx) error {
-		bucket := tx.Bucket([]byte(release.OwnerKey()))
-		if bucket == nil {
-			return nil
-		}
-		val := bucket.Get([]byte(release.ActiveKey()))
+	val, ok, err := fc.valueCache.Get(configReleaseValueKey(release.OwnerKey(), release.ActiveKey()))
+	if err != nil {
+		configLog.Error("[Cache][ConfigReleases] load active config_file content", zap.Error(err))
+		return
+	}
+	if ok {
 		release.Content = string(val)
-		return nil
-	})
+	}
+}
+
+func configReleaseValueKey(ownerKey, activeKey string) []byte {
+	return []byte("cfg-active/" + ownerKey + "/" + activeKey)
 }

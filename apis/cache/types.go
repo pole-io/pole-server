@@ -641,6 +641,8 @@ type (
 		GetActiveRelease(namespace, group, fileName string) *conftypes.ConfigFileRelease
 		// GetActiveGrayRelease
 		GetActiveGrayRelease(namespace, group, fileName string) *conftypes.ConfigFileRelease
+		// GetActiveGrayReleases
+		GetActiveGrayReleases(namespace, group, fileName string) []*conftypes.ConfigFileRelease
 		// GetRelease
 		GetRelease(key conftypes.ConfigFileReleaseKey) *conftypes.ConfigFileRelease
 		// QueryReleases

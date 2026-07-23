@@ -28,6 +28,7 @@ import (
 
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
@@ -654,11 +655,13 @@ func instanceLocationNeedUpdate(req *apimodel.Location, old *apimodel.Location) 
 func updateHealthCheck(req *apiservice.Instance, instance *svctypes.Instance) bool {
 	needUpdate := false
 	insProto := instance.Proto
-	// health Check，healthCheck不能为空，且没有把enable_health_check置为false
-	if req.GetHealthCheck().GetHeartbeat() != nil &&
-		req.GetEnableHealthCheck() {
+	if req.GetEnableHealthCheck() {
+		healthCheck := svctypes.NormalizeHealthCheck(req.GetHealthCheck())
+		if healthCheck == nil {
+			return false
+		}
 		// 如果数据库中实例原有是不打开健康检查，
-		// 那么一旦打开，status需置为false，等待一次心跳成功才能变成true
+		// 那么一旦打开，status需置为false，等待检查成功后才能变成true
 		if !instance.EnableHealthCheck() {
 			// 需要重置healthy，则认为有变更
 			insProto.Healthy = false
@@ -666,24 +669,12 @@ func updateHealthCheck(req *apiservice.Instance, instance *svctypes.Instance) bo
 			needUpdate = true
 		}
 
-		ttl := req.GetHealthCheck().GetHeartbeat().GetTtl()
-		if ttl == 0 || ttl > 60 {
-			ttl = DefaultTLL
-		}
-		if ttl != instance.HealthCheck().GetHeartbeat().GetTtl() {
-			// ttl有变更
+		if !proto.Equal(healthCheck, instance.HealthCheck()) {
 			needUpdate = true
 		}
-		if apiservice.HealthCheck_HEARTBEAT != instance.HealthCheck().GetType() {
-			// health check type有变更
-			needUpdate = true
-		}
-		insProto.HealthCheck = req.GetHealthCheck()
-		insProto.HealthCheck.Type = apiservice.HealthCheck_HEARTBEAT
-		if insProto.HealthCheck.Heartbeat.Ttl == 0 {
-			insProto.HealthCheck.Heartbeat.Ttl = uint32(0)
-		}
-		insProto.HealthCheck.Heartbeat.Ttl = ttl
+		insProto.HealthCheck = healthCheck
+		insProto.EnableHealthCheck = true
+		insProto.Metadata = svctypes.MetadataWithHealthCheck(insProto.Metadata, healthCheck)
 	}
 
 	// update的时候，修改了enableHealthCheck的值
@@ -697,6 +688,7 @@ func updateHealthCheck(req *apiservice.Instance, instance *svctypes.Instance) bo
 
 		insProto.EnableHealthCheck = bool(false)
 		insProto.HealthCheck = nil
+		insProto.Metadata = svctypes.MetadataWithHealthCheck(insProto.Metadata, nil)
 	}
 
 	return needUpdate

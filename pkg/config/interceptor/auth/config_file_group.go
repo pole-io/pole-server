@@ -115,5 +115,5 @@ func (s *Server) QueryConfigFileGroups(ctx context.Context,
 	authCtx.SetRequestContext(ctx)
 
 	resp := s.nextServer.QueryConfigFileGroups(ctx, filter)
-	return resp
+	return s.filterConfigGroupQuery(ctx, authCtx, resp)
 }

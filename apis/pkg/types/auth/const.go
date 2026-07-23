@@ -29,6 +29,8 @@ type ServerFunctionName string
 
 // SDK 接口
 const (
+	DescribeSystemConfiguration ServerFunctionName = "DescribeSystemConfiguration"
+
 	// 注册发现接口
 	RegisterInstance      ServerFunctionName = "RegisterInstance"
 	DeregisterInstance    ServerFunctionName = "DeregisterInstance"
@@ -138,6 +140,7 @@ const (
 	RollbackConfigFileReleases        ServerFunctionName = "RollbackConfigFileReleases"
 	DeleteConfigFileReleases          ServerFunctionName = "DeleteConfigFileReleases"
 	StopGrayConfigFileReleases        ServerFunctionName = "StopGrayConfigFileReleases"
+	PromoteGrayConfigFileRelease      ServerFunctionName = "PromoteGrayConfigFileRelease"
 	DescribeConfigFileRelease         ServerFunctionName = "DescribeConfigFileRelease"
 	DescribeConfigFileReleases        ServerFunctionName = "DescribeConfigFileReleases"
 	DescribeConfigFileReleaseVersions ServerFunctionName = "DescribeConfigFileReleaseVersions"
@@ -269,6 +272,20 @@ const (
 )
 
 // 用户/用户组
+const (
+	CreateMCPServers       ServerFunctionName = "CreateMCPServers"
+	UpdateMCPServers       ServerFunctionName = "UpdateMCPServers"
+	DeleteMCPServers       ServerFunctionName = "DeleteMCPServers"
+	DescribeMCPServers     ServerFunctionName = "DescribeMCPServers"
+	DescribeMCPServerTools ServerFunctionName = "DescribeMCPServerTools"
+	CreateA2AAgents        ServerFunctionName = "CreateA2AAgents"
+	UpdateA2AAgents        ServerFunctionName = "UpdateA2AAgents"
+	DeleteA2AAgents        ServerFunctionName = "DeleteA2AAgents"
+	DescribeA2AAgents      ServerFunctionName = "DescribeA2AAgents"
+	DescribeA2AAgentSkills ServerFunctionName = "DescribeA2AAgentSkills"
+	DescribeA2AAgentCard   ServerFunctionName = "DescribeA2AAgentCard"
+)
+
 const (
 	// 用户
 	CreateUsers        ServerFunctionName = "CreateUsers"
@@ -495,10 +512,27 @@ var ServerFunctions = []ServerFunctionGroup{
 			RollbackConfigFileReleases,
 			DeleteConfigFileReleases,
 			StopGrayConfigFileReleases,
+			PromoteGrayConfigFileRelease,
 			DescribeConfigFileRelease,
 			DescribeConfigFileReleases,
 			DescribeConfigFileReleaseVersions,
 			UpsertAndReleaseConfigFile,
+		},
+	},
+	{
+		Name: "AINative",
+		Functions: []ServerFunctionName{
+			CreateMCPServers,
+			UpdateMCPServers,
+			DeleteMCPServers,
+			DescribeMCPServers,
+			DescribeMCPServerTools,
+			CreateA2AAgents,
+			UpdateA2AAgents,
+			DeleteA2AAgents,
+			DescribeA2AAgents,
+			DescribeA2AAgentSkills,
+			DescribeA2AAgentCard,
 		},
 	},
 	{
@@ -549,8 +583,10 @@ var ServerFunctions = []ServerFunctionGroup{
 
 var (
 	SearchTypeMapping = map[string]apisecurity.ResourceType{
-		"0": apisecurity.ResourceType_Namespaces,
-		"1": apisecurity.ResourceType_Services,
-		"2": apisecurity.ResourceType_ConfigGroups,
+		"0":  apisecurity.ResourceType_Namespaces,
+		"1":  apisecurity.ResourceType_Services,
+		"2":  apisecurity.ResourceType_ConfigGroups,
+		"30": apisecurity.ResourceType_MCPServerResources,
+		"31": apisecurity.ResourceType_A2AAgentResources,
 	}
 )

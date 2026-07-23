@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from '../store';
 import { ConfigFileGroup, ConfigFileGroupView, CreateConfigFileGroupRequest, createConfigFileGroups, DeleteConfigFileGroupRequest, deleteConfigFileGroups, describeAllConfigGroups, DescribeConfigFileGroupRequest, describeConfigFileGroups, ModifyConfigFileGroupRequest, modifyConfigFileGroups } from 'services/config_group';
+import { toRequestErrorPayload } from 'utils/request';
 
 
 // State 和 Action 类型定义
@@ -32,7 +33,7 @@ export const listAllConfigGroups = createAsyncThunk(`config_group/list_all`, asy
             total: res.totalCount,
         }); // 返回 token
     } catch (error) {
-        return rejectWithValue((error as Error).message); // 捕获错误并返回
+        return rejectWithValue(toRequestErrorPayload(error));
     }
 });
 
@@ -46,7 +47,7 @@ export const listConfigGroups = createAsyncThunk(`config_group/list`, async ({ p
             limit: param.limit || 10
         }); // 返回 token
     } catch (error) {
-        return rejectWithValue((error as Error).message); // 捕获错误并返回
+        return rejectWithValue(toRequestErrorPayload(error));
     }
 });
 
@@ -55,7 +56,7 @@ export const saveConfigGroups = createAsyncThunk(`config_group/create`, async ({
         const res = await createConfigFileGroups([param]);
         return fulfillWithValue(res); // 返回 token
     } catch (error) {
-        return rejectWithValue((error as Error).message); // 捕获错误并返回
+        return rejectWithValue(toRequestErrorPayload(error));
     }
 });
 
@@ -64,7 +65,7 @@ export const updateConfigGroups = createAsyncThunk(`config_group/update`, async 
         const res = await modifyConfigFileGroups([param]);
         return fulfillWithValue(res); // 返回 token
     } catch (error) {
-        return rejectWithValue((error as Error).message); // 捕获错误并返回
+        return rejectWithValue(toRequestErrorPayload(error));
     }
 });
 
@@ -73,7 +74,7 @@ export const removeConfigGroups = createAsyncThunk(`config_group/delete`, async 
         const res = await deleteConfigFileGroups([param]);
         return fulfillWithValue(res); // 返回 token
     } catch (error) {
-        return rejectWithValue((error as Error).message); // 捕获错误并返回
+        return rejectWithValue(toRequestErrorPayload(error));
     }
 });
 

@@ -1,9 +1,9 @@
 ---
 title: AI 原生功能：MCP Registry 与 A2A Agent Registry
 tags: [ai, mcp, a2a]
-links: [storage, cache-layer, api-servers, adr-a2a-agent-registry]
-updated: 2026-06-10
-sources: 1
+links: [storage, cache-layer, api-servers, adr-a2a-agent-registry, adr-console-agent-resource-workbench]
+updated: 2026-07-23
+sources: 9
 ---
 
 # AI 原生功能：MCP Registry 与 A2A Agent Registry
@@ -153,9 +153,20 @@ A2A 页面与 MCP Registry 页面保持同一交互风格：筛选工具栏、�
 
 完整方案背景见 [[adr-a2a-agent-registry]]。
 
+## Console Pole Agent
+
+Console 已提供独立一级 `/agent` 工作模式。它不属于“AI 工具”资源管理分组：A2A Agent 与 MCP 服务页面负责注册表管理，Pole Agent 则是用户通过对话调用控制面工具的操作入口。默认侧边布局在侧栏底部、版本信息上方提供工作区切换：普通模式进入 Agent，Agent 模式在同一位置返回普通控制台；Agent 模式隐藏普通资源导航但保留返回入口，切回时恢复最近访问的普通页面。无侧栏的顶部布局保留页头切换兜底。
+
+页面采用 280px 本地会话侧栏、全局栏、对话标题栏、消息流、浮动输入器和 294px 可收起上下文面板。会话支持搜索、日期分组、重命名、删除与快捷新建，消息、草稿、资源引用和 4/10/20 轮记忆窗口持久化在浏览器 IndexedDB。资源读取和草稿修改展示真实工具调用轨迹；临时 diff 作为消息流中的工具结果展示，用户确认后只保存编辑态资源并返回 `waiting_for_publish`，发布仍由用户进入现有配置分组完成。配置文件详情可通过“交给 Agent”传递 `config.file + namespace/group/name + returnTo`，不把配置正文放入 URL。
+
+Phase 1 最小真实运行时已在 Console 后端提供一等 `PoleAgent`：页面调用 `/ai/agent/v1/turns`；Pole Agent 内部加载版本化 System Prompt，通过 OpenAI-compatible LLM Gateway 运行最多 8 轮 model-tool loop，并以当前用户身份连接 Pole MCP、导入白名单工具。Pole MCP 已提供 namespace、MCP Registry 和配置文件只读工具；配置 update 只通过内部 proposal 工具进入不可绕过的 `ChangeApprovalKernel`，承担预览、哈希、幂等、并发检查和草稿执行。运行时探针同时检查模型配置与 MCP 连接，未就绪时页面 fail closed。当前仍未覆盖流式输出、服务端会话持久化、create、治理规则写入和更多资源域。
+
+Agent 运行配置已从 Kubernetes 日常环境变量迁入 Pole 内部 System Settings：Admin 在 `/system-configuration?component=pole-console&domain=agent` 编辑 Gateway、模型、Prompt、MCP 白名单和 write-only API key；MySQL 保存不可变配置版本及信封加密 Secret，发布前重新探测模型与 MCP，成功后当前实例原子切换，其他实例通过周期 reconcile 收敛。静态 YAML 仅保留首次启动基线，K8s 只保留数据库连接与 Secret 根密钥。
+
 ## 相关页面
 
 - [[storage]]
 - [[cache-layer]]
 - [[api-servers]]
 - [[adr-a2a-agent-registry]]
+- [[adr-console-agent-resource-workbench]]

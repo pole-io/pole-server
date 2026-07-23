@@ -6,6 +6,7 @@ import { RollbackCircuitBreakerReleaseRequest } from './circuitbreaker';
 
 export interface FaultDetectRule {
     id?: string
+    namespace?: string // 规则归属环境
     name: string
     description: string
     priority?: number
@@ -154,6 +155,7 @@ export interface DescribeFaultDetectsRequest {
     limit: number
     id?: string
     name?: string
+    namespace?: string
     service?: string
     serviceNamespace?: string
     dstService?: string

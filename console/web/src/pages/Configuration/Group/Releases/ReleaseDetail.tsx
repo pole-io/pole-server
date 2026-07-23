@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Descriptions, Drawer, Radio, RadioGroup, Select, Space, Switch, Tag } from 'tdesign-react';
+import { Descriptions, Drawer, Radio, RadioGroup, Select, Space, Switch, Tag } from 'components/Fluent';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { listActiveConfigFileRelease, listOneConfigFileRelease, selectFileRelease } from 'modules/configuration/release';

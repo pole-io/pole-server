@@ -13,7 +13,7 @@ import {
     Steps,
     InputNumber,
     Table,
-} from 'tdesign-react';
+} from 'components/Fluent';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import Text from 'components/Text';
@@ -61,7 +61,7 @@ const LaneRuleEditor: React.FC<LaneRuleEditorProps> = ({ op, visible, onClose })
 
     // 表单提交
     const onSubmit: FormProps['onSubmit'] = async (e) => {
-        if (!e.validateResult) {
+        if (e.validateResult !== true) {
             return; // 如果表单验证失败，直接返回
         }
 
@@ -103,7 +103,7 @@ const LaneRuleEditor: React.FC<LaneRuleEditorProps> = ({ op, visible, onClose })
                 <Steps readonly={true} layout="vertical" theme="default">
                     <StepItem value={1} title="实例打标" status="process">
                         <div style={{ marginTop: 24 }}>
-                            <div style={{ color: '#888', fontSize: 13 }}>
+                            <div style={{ color: 'var(--app-text-secondary)', fontSize: 13 }}>
                                 标签 key 为 "lane"，value 作为自定义的“泳道标签值”。
                             </div>
                         </div>
@@ -219,7 +219,7 @@ const LaneRuleEditor: React.FC<LaneRuleEditorProps> = ({ op, visible, onClose })
                                     name={'fallbackType'}
                                     showErrorMessage={editable}
                                     initialData={LaneMatchLogic.PERMISSIVE}
-                                    help={<div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>
+                                    help={<div style={{ color: 'var(--app-text-secondary)', fontSize: 12, marginTop: 4 }}>
                                         松散匹配策略：若无法满足匹配到对应泳道的节点，则流量路由至基础集群节点<br />
                                         严格匹配策略：若无法满足匹配到对应泳道的节点，则返回错误，流量留在指定泳道内
                                     </div>}>

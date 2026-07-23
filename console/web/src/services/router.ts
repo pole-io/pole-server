@@ -83,6 +83,7 @@ export const RouteArgumentTextMap = RoutingArgumentsTypeOptions.reduce((map, cur
 
 export interface CustomRoute {
     id?: string
+    namespace?: string // 规则归属环境
     name: string // 规则名
     enable?: boolean // 是否启用
     priority?: number

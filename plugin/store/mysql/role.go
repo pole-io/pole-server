@@ -102,10 +102,10 @@ func (s *roleStore) UpdateRole(role *authcommon.Role) error {
 	err := s.master.processWithTransaction("update_role", func(tx *BaseTx) error {
 		updateSql := `
 UPDATE auth_role
-SET source = ?, role_type = ?, comment = ?, metadata = ?, mtime = sysdate()
+SET name = ?, source = ?, role_type = ?, comment = ?, metadata = ?, mtime = sysdate()
 WHERE id = ?
 				`
-		args := []interface{}{role.Source, role.Type, role.Comment, utils.MustJson(role.Metadata), role.ID}
+		args := []interface{}{role.Name, role.Source, role.Type, role.Comment, utils.MustJson(role.Metadata), role.ID}
 		if _, err := tx.Exec(updateSql, args...); err != nil {
 			log.Error("[store][role] update role main info", zap.String("name", role.Name), zap.Error(err))
 			return err
@@ -286,6 +286,7 @@ func (s *roleStore) fetchRolePrincipals(role *authcommon.Role) error {
 	if err != nil {
 		return store.Error(err)
 	}
+	defer func() { _ = tx.Rollback() }()
 	rows, err := tx.Query("SELECT role_id, principal_id, principal_role, IFNULL(extend_info, '') FROM "+
 		" auth_role_principal WHERE role_id = ?", role.ID)
 	if err != nil {

@@ -93,7 +93,8 @@ func (s *Server) SearchConfigFiles(ctx context.Context,
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
-	return s.nextServer.SearchConfigFiles(ctx, filter)
+	resp := s.nextServer.SearchConfigFiles(ctx, filter)
+	return s.filterConfigFileQuery(ctx, authCtx, resp)
 }
 
 func (s *Server) ExportConfigFile(ctx context.Context,

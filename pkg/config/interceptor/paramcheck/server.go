@@ -131,6 +131,7 @@ var (
 			"limit":       "limit",
 			"order_type":  "order_type",
 			"order_field": "order_field",
+			"brief":       "brief",
 		},
 		"config_file_release": {
 			"namespace":    "namespace",

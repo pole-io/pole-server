@@ -27,6 +27,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"go.uber.org/zap"
 
+	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
@@ -56,6 +57,7 @@ type HTTPServer struct {
 	namespaceServer namespace.NamespaceOperateServer
 	configServer    config.ConfigCenterServer
 	discoverySvr    service.DiscoverServer
+	policySvr       authapi.StrategyServer
 	storage         store.Store
 	cacheMgr        cacheapi.CacheManager
 	mcpSvr          *server.MCPServer
@@ -96,6 +98,11 @@ func NewServer(
 		commonlog.Errorf("start mcp-server cache error. %v", err)
 		return nil, err
 	}
+	policySvr, err := authapi.GetStrategyServer()
+	if err != nil {
+		commonlog.Errorf("set policy server to ai-mcp server error. %v", err)
+		return nil, err
+	}
 
 	mcpSvr := server.NewMCPServer("pole.io", version.Get(),
 		server.WithResourceCapabilities(true, true),
@@ -129,6 +136,7 @@ func NewServer(
 		namespaceServer: namespaceServer,
 		configServer:    configServer,
 		discoverySvr:    discoverySvr,
+		policySvr:       policySvr,
 		storage:         storage,
 		cacheMgr:        cacheMgr,
 		mcpSvr:          mcpSvr,
@@ -194,6 +202,7 @@ func (h *HTTPServer) GetMCPAccessServer(include []string) *restful.WebService {
 func (h *HTTPServer) addMcpTools() {
 	h.addToolsNamespace(h.mcpSvr)
 	h.addToolsMCPServer(h.mcpSvr)
+	h.addToolsConfigFile(h.mcpSvr)
 }
 
 func (h *HTTPServer) addDefaultAccess(ws *restful.WebService) {

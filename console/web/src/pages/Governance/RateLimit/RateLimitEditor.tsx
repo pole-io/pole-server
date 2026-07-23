@@ -13,7 +13,7 @@ import {
     Tag,
     TagInput,
     Textarea,
-} from "tdesign-react";
+} from 'components/Fluent';
 import {
     AddIcon,
     ChevronRightIcon,
@@ -22,10 +22,13 @@ import {
     RocketIcon,
     RollbackIcon,
     SaveIcon,
-} from "tdesign-icons-react";
+} from 'components/Fluent/icons';
 
 import RuleLabelField from "../shared/RuleLabelField";
+import CollapsibleSection from "../shared/CollapsibleSection";
 import TrafficMatchConditionEditor, { TrafficMatchConditionRow } from "../shared/TrafficMatchConditionEditor";
+import { GovernanceServiceContext } from "../shared/serviceContext";
+import { useRuleNamespace } from "../shared/ruleNamespace";
 import shared from "../shared/governance.module.less";
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { ServiceView } from "services/service";
@@ -105,9 +108,11 @@ interface IRateLimitEditorProps {
     op: Op;
     refresh: (close: boolean) => void;
     visible: boolean;
+    serviceContext?: GovernanceServiceContext;
 }
 
-const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refresh, visible }) => {
+const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refresh, visible, serviceContext }) => {
+    const ruleNamespace = useRuleNamespace();
     const [form] = Form.useForm();
     const dispatch = useAppDispatch();
 
@@ -119,6 +124,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
         ...defaultRateLimitView(),
         type: limitType,
     }));
+    const [basicInfoCollapsed, setBasicInfoCollapsed] = React.useState(false);
     const [collapsedRuleIndexes, setCollapsedRuleIndexes] = React.useState<Set<number>>(() => new Set());
     const [editorState, setEditorState] = React.useState<{
         editable: boolean;
@@ -144,6 +150,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
     }, []);
 
     React.useEffect(() => {
+        setBasicInfoCollapsed(false);
         if (!visible) {
             setEditorState({ editable: op === 'create', publishView: false });
             setCollapsedRuleIndexes(new Set());
@@ -167,6 +174,15 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
             resetCurRule(editRule);
         }
     }, [editRule]);
+
+    React.useEffect(() => {
+        if (op !== 'create' || !visible) return;
+        setRateLimit((prev) => ({
+            ...prev,
+            namespace: serviceContext?.namespace || ruleNamespace || prev.namespace,
+            service: serviceContext?.service || prev.service,
+        }));
+    }, [op, visible, ruleNamespace, serviceContext?.namespace, serviceContext?.service]);
 
     const normalizeRulesForMode = (rules: RateLimitView['rules'], type: LimitType) => (
         rules.map((rule) => ({
@@ -317,9 +333,12 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
     };
 
     const ruleBaseInfo = (
-        <section className={shared.section}>
-            <div className={shared.sectionHeader}>基础信息</div>
-            <div className={shared.sectionBody}>
+        <CollapsibleSection
+            collapsed={basicInfoCollapsed}
+            onCollapsedChange={setBasicInfoCollapsed}
+            header="基础信息"
+            summary={`${rateLimit.name || '未命名规则'} · ${rateLimit.disable ? '停用' : '启用'} · 优先级 ${rateLimit.priority ?? 0}`}
+        >
                 <div className={shared.infoGrid}>
                     <div className={shared.field}>
                         <div className={shared.fieldLabel}>规则名称</div>
@@ -348,8 +367,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                         />
                     </div>
                 </div>
-            </div>
-        </section>
+        </CollapsibleSection>
     );
 
     const scopeInfo = (
@@ -359,13 +377,13 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                 <div className={shared.infoGrid}>
                     <div className={shared.field}>
                         <div className={shared.fieldLabel}>命名空间</div>
-                        {editable
+                        {editable && !(op === 'create' && serviceContext)
                             ? <Select filterable creatable options={namespaceSelectOptions} value={rateLimit.namespace} onChange={(value) => setRateLimit(prev => ({ ...prev, namespace: value as string, service: '' }))} />
                             : <div className={shared.fieldValue}>{rateLimit.namespace || '-'}</div>}
                     </div>
                     <div className={shared.field}>
                         <div className={shared.fieldLabel}>服务名称</div>
-                        {editable
+                        {editable && !(op === 'create' && serviceContext)
                             ? <Select filterable creatable options={serviceSelectOptions} value={rateLimit.service} onChange={(value) => setRateLimit(prev => ({ ...prev, service: value as string }))} />
                             : <div className={shared.fieldValue}>{rateLimit.service || '-'}</div>}
                     </div>
@@ -391,7 +409,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
         return (
             <>
                 {apis.map((api, index) => (
-                    <div className={shared.tagRow} key={`${api.protocol}-${api.method}-${api.path?.value}-${index}`}>
+                    <div className={shared.tagRow} key={`rate-limit-api-${index}`}>
                         <span className={shared.tagPlain}>{api.protocol || 'HTTP'}</span>
                         <span className={`${shared.tagPlain} ${shared.tagMethod}`}>{api.method || '*'}</span>
                         <span className={shared.tagPlain}>{MatchTypeMap[api.path?.type as MatchType] || api.path?.type || '完全匹配'}</span>
@@ -481,7 +499,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                                             </div>
                                             <div className={`${styles.gridCell} ${styles.actionCell}`}>
                                                 <Popup trigger="hover" content="删除接口">
-                                                    <Button shape="circle" variant="text" disabled={apis.length <= 1} onClick={() => removeInterface(apiIdx)}><CloseIcon /></Button>
+                                                    <Button shape="circle" variant="text" aria-label={`删除接口 ${apiIdx + 1}`} disabled={apis.length <= 1} onClick={() => removeInterface(apiIdx)}><CloseIcon /></Button>
                                                 </Popup>
                                             </div>
                                         </React.Fragment>
@@ -504,6 +522,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
             paramType: arg.type,
             paramKey: arg.key,
             matchType: arg.value?.type || MatchType.EXACT,
+            valueType: arg.value?.value_type || MatchValueType.TEXT,
             matchValue: arg.value?.value || '',
         }));
         return (
@@ -531,8 +550,8 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                                 value: {
                                     ...current.value,
                                     type: row.matchType as MatchType,
-                                    value: row.matchValue || '',
-                                    value_type: MatchValueType.TEXT,
+                                    value: row.valueType === MatchValueType.PARAMETER ? '' : row.matchValue || '',
+                                    value_type: row.valueType || MatchValueType.TEXT,
                                 },
                             });
                         }}
@@ -587,7 +606,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                                     <div className={`${styles.gridCell} ${styles.actionCell}`}>
                                         {editable && (
                                             <Popup trigger="hover" content="删除窗口">
-                                                <Button shape="circle" variant="text" disabled={(trigger.amounts || []).length <= 1} onClick={() => removeLimit(ruleIdx, index)}><CloseIcon /></Button>
+                                                <Button shape="circle" variant="text" aria-label={`删除窗口 ${index + 1}`} disabled={(trigger.amounts || []).length <= 1} onClick={() => removeLimit(ruleIdx, index)}><CloseIcon /></Button>
                                             </Popup>
                                         )}
                                     </div>
@@ -682,7 +701,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                         <Tag variant="light">{describeRuleThreshold(trigger)}</Tag>
                         {editable && (
                             <Popup trigger="hover" content="删除规则">
-                                <Button shape="circle" variant="text" disabled={rateLimit.rules.length <= 1} onClick={() => removeRule(ruleIdx)}><CloseIcon /></Button>
+                                <Button shape="circle" variant="text" aria-label={`删除规则 ${ruleIdx + 1}`} disabled={rateLimit.rules.length <= 1} onClick={() => removeRule(ruleIdx)}><CloseIcon /></Button>
                             </Popup>
                         )}
                     </div>

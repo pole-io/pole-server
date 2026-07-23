@@ -1,5 +1,5 @@
-import { Button } from 'tdesign-react';
-import { HelpCircleIcon, SettingIcon } from 'tdesign-icons-react';
+import { Button } from 'components/Fluent';
+import { HelpCircleIcon, SettingIcon } from 'components/Fluent/icons';
 import { useAppDispatch } from 'modules/store';
 import { toggleSetting } from 'modules/global';
 
@@ -10,7 +10,7 @@ export default function Header() {
   const dispatch = useAppDispatch();
 
   const navToHelper = () => {
-    window.open('http://tdesign.tencent.com/starter/docs/react/get-started');
+    window.open('https://github.com/pole-io/pole-control-plane');
   };
 
   const toggleSettingPanel = () => {
@@ -27,6 +27,7 @@ export default function Header() {
             theme='default'
             shape='square'
             variant='text'
+            aria-label='打开项目帮助'
             onClick={navToHelper}
           >
             <HelpCircleIcon className={Style.icon} />
@@ -36,6 +37,7 @@ export default function Header() {
             theme='default'
             shape='square'
             variant='text'
+            aria-label='打开外观设置'
             onClick={toggleSettingPanel}
           >
             <SettingIcon className={Style.icon} />

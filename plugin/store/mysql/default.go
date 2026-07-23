@@ -95,6 +95,10 @@ func (s *stableStore) Name() string {
 	return STORENAME
 }
 
+func (s *stableStore) CountGovernanceRules(namespace string) (uint64, error) {
+	return newGovernanceRuleRepository(s.master, s.slave).CountRulesByNamespace(namespace)
+}
+
 // Initialize 初始化函数
 func (s *stableStore) Initialize(conf *store.Config) error {
 	if s.start {
@@ -127,6 +131,9 @@ func (s *stableStore) Initialize(conf *store.Config) error {
 	log.Infof("[Store][database] connect the database successfully")
 
 	if err := ensureServiceSubscribeGraphSchema(s.master); err != nil {
+		return err
+	}
+	if err := ensureServiceIdentitySchema(s.master); err != nil {
 		return err
 	}
 	if err := ensureGovernanceRuleSchema(s.master); err != nil {

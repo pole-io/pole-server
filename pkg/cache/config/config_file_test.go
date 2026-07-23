@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestOpenBoltCache_DefaultPathUsesPoleData(t *testing.T) {
+func TestOpenPebbleCache_DefaultPathUsesPoleData(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -19,7 +19,7 @@ func TestOpenBoltCache_DefaultPathUsesPoleData(t *testing.T) {
 		_ = os.Chdir(wd)
 	})
 
-	db, err := openBoltCache(map[string]interface{}{})
+	db, err := openPebbleCache(map[string]interface{}{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func TestOpenBoltCache_DefaultPathUsesPoleData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := os.Stat(filepath.Join(tmpDir, ".pole_data", "cache", "config", "config_file.bolt")); err != nil {
+	if _, err := os.Stat(filepath.Join(tmpDir, ".pole_data", "cache", "config", "config_file.pebble")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(tmpDir, "data")); !os.IsNotExist(err) {

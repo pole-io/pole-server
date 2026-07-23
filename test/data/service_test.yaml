@@ -291,10 +291,19 @@ cache:
 #    - name: l5 # 加载l5数据
 # 存储配置
 store:
-  # 单机文件存储插件
-  name: boltdbStore
+  # 数据库存储插件
+  name: defaultStore
   option:
-    path: ./polaris.bolt
+    master:
+      dbType: mysql
+      dbName: polaris_server
+      dbUser: ${MYSQL_DB_USER} ##DB_USER##
+      dbPwd: ${MYSQL_DB_PWD} ##DB_PWD##
+      dbAddr: "127.0.0.1:3306" ##DB_ADDR##
+      maxOpenConns: -1
+      maxIdleConns: -1
+      connMaxLifetime: 300 # 单位秒
+      txIsolationLevel: 2 #LevelReadCommitted
 # 插件配置
 plugin:
   crypto:

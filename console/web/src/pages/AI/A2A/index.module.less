@@ -1,6 +1,17 @@
 .page {
   min-width: 0;
-  color: #1f2937;
+  color: var(--app-text);
+}
+
+.detailBreadcrumb {
+  margin-bottom: 16px;
+}
+
+.detailLoading {
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .header {
@@ -9,7 +20,7 @@
   justify-content: space-between;
   gap: 24px;
   padding: 4px 0 22px;
-  border-bottom: 1px solid #e5e8ef;
+  border-bottom: 1px solid var(--app-border-subtle);
 
   h2 {
     margin: 4px 0 6px;
@@ -21,7 +32,7 @@
   p {
     max-width: 660px;
     margin: 0;
-    color: #5f6b7a;
+    color: var(--app-text-secondary);
     font-size: 14px;
     line-height: 22px;
   }
@@ -38,15 +49,15 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(120px, 1fr));
   margin: 18px 0;
-  border: 1px solid #e5e8ef;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fbfcfd;
+  background: var(--app-surface-subtle);
 }
 
 .metricItem {
   min-height: 74px;
   padding: 14px 18px;
-  border-right: 1px solid #e5e8ef;
+  border-right: 1px solid var(--app-border-subtle);
 
   &:last-child {
     border-right: 0;
@@ -54,7 +65,7 @@
 
   span {
     display: block;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -62,7 +73,7 @@
   strong {
     display: block;
     margin-top: 4px;
-    color: #111827;
+    color: var(--app-text);
     font-size: 24px;
     font-weight: 650;
     line-height: 30px;
@@ -72,21 +83,27 @@
 .filterBar {
   margin-bottom: 14px;
   padding: 12px 14px;
-  border: 1px solid #e5e8ef;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-surface);
 }
 
 .filterControls {
   display: grid;
   grid-template-columns:
-    minmax(124px, 0.7fr)
-    repeat(3, minmax(152px, 1fr))
-    repeat(3, minmax(132px, 0.8fr))
-    minmax(124px, auto);
+    minmax(132px, 140px)
+    minmax(172px, 190px)
+    minmax(156px, 176px)
+    minmax(148px, 168px)
+    minmax(148px, 164px)
+    minmax(128px, 142px)
+    minmax(128px, 142px)
+    minmax(112px, auto);
   gap: 10px 12px;
   align-items: center;
+  justify-content: end;
   min-width: 0;
+  width: 100%;
 }
 
 .filterInput,
@@ -122,19 +139,49 @@
 .tableSurface,
 .detailSurface {
   overflow: hidden;
-  border: 1px solid #e5e8ef;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-surface);
 }
 
 .tableSurface {
-  :global(.t-table th) {
+  :global(.fluent-table-shell) {
+    border: 0;
+    border-radius: 0;
+  }
+
+  :global(.fluent-table-scroll) {
+    overflow-x: auto;
+  }
+
+  :global(.fluent-table-scroll table) {
+    min-width: 1544px;
+  }
+
+  :global(.fluent-table-scroll th) {
+    height: 44px;
+    padding: 0 12px;
     white-space: nowrap;
   }
 
-  :global(.t-table td) {
+  :global(.fluent-table-scroll td) {
+    min-height: 68px;
+    padding: 12px;
+    vertical-align: top;
+  }
+
+  :global(.fluent-table-scroll td:last-child) {
     vertical-align: middle;
   }
+
+  :global(.fluent-pagination) {
+    min-height: 58px;
+    padding: 10px 18px;
+  }
+}
+
+.agentTable {
+  min-width: 0;
 }
 
 .tableHeader {
@@ -143,63 +190,71 @@
   justify-content: space-between;
   min-height: 48px;
   padding: 0 16px;
-  border-bottom: 1px solid #eef1f5;
+  border-bottom: 1px solid var(--app-border-subtle);
 
   strong {
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     font-weight: 600;
   }
 
   span {
     margin-left: 10px;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
   }
 }
 
 .agentCell {
-  min-width: 280px;
+  min-width: 0;
 }
 
 .agentNameRow {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   min-height: 24px;
+}
+
+.agentNameLink {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .agentMeta {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
-  margin-top: 4px;
-  color: #697586;
+  margin-top: 6px;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
 
   span {
-    max-width: 320px;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 
     &:first-child {
-      color: #364152;
+      color: var(--app-text);
       font-weight: 500;
     }
   }
 }
 
 .compactCell {
-  min-width: 120px;
+  min-width: 0;
 
   span {
     display: block;
-    max-width: 240px;
+    max-width: 100%;
     margin-top: 3px;
     overflow: hidden;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
     text-overflow: ellipsis;
@@ -209,7 +264,7 @@
 
 .backendLink {
   display: block;
-  max-width: 240px;
+  max-width: 100%;
   margin-top: 3px;
   overflow: hidden;
   font-size: 12px;
@@ -220,10 +275,32 @@
 
 .sourceCell {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
   align-items: center;
-  min-width: 104px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.capabilityTagList {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.skillCountLink {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.actionCell {
+  justify-content: flex-end;
+  width: 100%;
+  min-width: 0;
 }
 
 .formAction {
@@ -239,7 +316,7 @@
 
 .inlineBlock {
   padding: 12px 0;
-  border-bottom: 1px solid var(--td-component-border);
+  border-bottom: 1px solid var(--app-border);
 }
 
 .skillBlock {
@@ -247,7 +324,7 @@
   flex-direction: column;
   gap: 12px;
   padding: 14px 0;
-  border-bottom: 1px solid var(--td-component-border);
+  border-bottom: 1px solid var(--app-border);
 }
 
 .codeText {
@@ -268,7 +345,7 @@
 }
 
 .cardViewSwitch {
-  :global(.t-button) {
+  :global(.fui-Button) {
     min-width: 72px;
   }
 }
@@ -279,11 +356,11 @@
   justify-content: space-between;
   gap: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #eef1f5;
+  border-bottom: 1px solid var(--app-border-subtle);
 
   h4 {
     margin: 0;
-    color: #111827;
+    color: var(--app-text);
     font-size: 18px;
     font-weight: 650;
     line-height: 26px;
@@ -292,7 +369,7 @@
   p {
     max-width: 780px;
     margin: 6px 0 0;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 13px;
     line-height: 20px;
   }
@@ -303,7 +380,7 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
   padding: 16px 0;
-  border-bottom: 1px solid #eef1f5;
+  border-bottom: 1px solid var(--app-border-subtle);
 
   div {
     min-width: 0;
@@ -311,7 +388,7 @@
 
   span {
     display: block;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -320,14 +397,14 @@
     display: block;
     margin-top: 3px;
     overflow: hidden;
-    color: #111827;
+    color: var(--app-text);
     font-size: 13px;
     font-weight: 600;
     line-height: 20px;
     text-overflow: ellipsis;
     white-space: nowrap;
 
-    :global(.t-link) {
+    :global(.fui-Link) {
       max-width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -339,7 +416,7 @@
 
 .cardSection {
   padding: 16px 0;
-  border-bottom: 1px solid #eef1f5;
+  border-bottom: 1px solid var(--app-border-subtle);
 
   &:last-child {
     padding-bottom: 0;
@@ -352,7 +429,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
-  color: #111827;
+  color: var(--app-text);
   font-size: 14px;
   font-weight: 600;
   line-height: 20px;
@@ -367,9 +444,9 @@
 .cardSkillItem {
   min-width: 0;
   padding: 12px;
-  border: 1px solid #e5e8ef;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fbfcfd;
+  background: var(--app-surface-subtle);
 }
 
 .cardSkillMain {
@@ -384,7 +461,7 @@
 
   strong {
     overflow: hidden;
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     font-weight: 600;
     line-height: 20px;
@@ -395,7 +472,7 @@
   }
 
   span {
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
     white-space: nowrap;
@@ -404,7 +481,7 @@
   p {
     margin: 6px 0 0;
     overflow: hidden;
-    color: #5f6b7a;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
     text-overflow: ellipsis;
@@ -414,7 +491,7 @@
 
 .cardEmpty {
   padding: 48px 20px;
-  color: #697586;
+  color: var(--app-text-secondary);
   text-align: center;
 }
 
@@ -427,8 +504,8 @@
 .skillCatalog {
   min-width: 0;
   padding: 16px;
-  border-right: 1px solid #eef1f5;
-  background: #fbfcfd;
+  border-right: 1px solid var(--app-border-subtle);
+  background: var(--app-surface-subtle);
 }
 
 .skillCatalogHeader {
@@ -439,14 +516,14 @@
   margin-bottom: 12px;
 
   strong {
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     font-weight: 600;
     line-height: 20px;
   }
 
   span {
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -462,22 +539,22 @@
   width: 100%;
   min-width: 0;
   padding: 12px;
-  border: 1px solid #e5e8ef;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-surface);
   cursor: pointer;
   text-align: left;
   transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
 
   &:hover {
-    border-color: #c8d7ff;
-    background: #f8fbff;
+    border-color: var(--app-brand-border);
+    background: var(--app-brand-subtle);
   }
 }
 
 .skillCatalogItemActive {
   border-color: #2f6bff;
-  background: #f4f7ff;
+  background: var(--app-brand-subtle);
   box-shadow: inset 3px 0 0 #2f6bff;
 }
 
@@ -487,7 +564,7 @@
   strong {
     display: block;
     overflow: hidden;
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     font-weight: 600;
     line-height: 20px;
@@ -499,7 +576,7 @@
     display: block;
     margin-top: 3px;
     overflow: hidden;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
     text-overflow: ellipsis;
@@ -525,21 +602,21 @@
   justify-content: space-between;
   gap: 18px;
   padding-bottom: 18px;
-  border-bottom: 1px solid #eef1f5;
+  border-bottom: 1px solid var(--app-border-subtle);
 
   > div {
     min-width: 0;
   }
 
   span {
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
 
   h4 {
     margin: 4px 0 6px;
-    color: #111827;
+    color: var(--app-text);
     font-size: 20px;
     font-weight: 650;
     line-height: 28px;
@@ -548,7 +625,7 @@
   p {
     max-width: 720px;
     margin: 0;
-    color: #5f6b7a;
+    color: var(--app-text-secondary);
     font-size: 13px;
     line-height: 22px;
   }
@@ -559,7 +636,7 @@
   grid-template-columns: minmax(240px, 1.4fr) repeat(2, minmax(160px, 1fr));
   gap: 18px;
   padding: 18px 0;
-  border-bottom: 1px solid #eef1f5;
+  border-bottom: 1px solid var(--app-border-subtle);
 
   > div {
     min-width: 0;
@@ -567,7 +644,7 @@
 
   span {
     display: block;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -576,7 +653,7 @@
     display: block;
     margin-top: 4px;
     overflow: hidden;
-    color: #111827;
+    color: var(--app-text);
     font-size: 13px;
     font-weight: 600;
     line-height: 20px;
@@ -587,7 +664,7 @@
 
 .skillDetailSection {
   padding: 18px 0;
-  border-bottom: 1px solid #eef1f5;
+  border-bottom: 1px solid var(--app-border-subtle);
 
   &:last-child {
     border-bottom: 0;
@@ -596,7 +673,7 @@
   > strong {
     display: block;
     margin-bottom: 10px;
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     font-weight: 600;
     line-height: 20px;
@@ -607,10 +684,10 @@
     margin: 0;
     padding: 12px;
     overflow: auto;
-    border: 1px solid #e5e8ef;
+    border: 1px solid var(--app-border-subtle);
     border-radius: 8px;
-    background: #fbfcfd;
-    color: #364152;
+    background: var(--app-surface-subtle);
+    color: var(--app-text);
     font-family: Menlo, Monaco, Consolas, 'Courier New', monospace;
     font-size: 12px;
     line-height: 18px;
@@ -626,10 +703,10 @@
     max-width: 100%;
     padding: 5px 8px;
     overflow: hidden;
-    border: 1px solid #e5e8ef;
+    border: 1px solid var(--app-border-subtle);
     border-radius: 6px;
-    background: #fbfcfd;
-    color: #364152;
+    background: var(--app-surface-subtle);
+    color: var(--app-text);
     font-size: 12px;
     line-height: 18px;
     text-overflow: ellipsis;
@@ -660,7 +737,7 @@
 
   .skillCatalog {
     border-right: 0;
-    border-bottom: 1px solid #eef1f5;
+    border-bottom: 1px solid var(--app-border-subtle);
   }
 
   .skillDetailGrid {
@@ -669,18 +746,21 @@
 }
 
 .agentDrawer {
+  display: flex;
   min-height: calc(100vh - 112px);
-  color: #1f2937;
+  flex-direction: column;
+  color: var(--app-text);
 }
 
 .agentDrawerSummary {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
+  grid-template-columns: 44px minmax(0, 1fr) max-content;
   gap: 14px;
+  align-items: start;
   padding: 18px;
-  border: 1px solid #e5e8ef;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fbfcfd;
+  background: var(--app-surface-subtle);
 }
 
 .agentDrawerIcon {
@@ -690,7 +770,7 @@
   width: 44px;
   height: 44px;
   border-radius: 8px;
-  background: #e8f7f5;
+  background: var(--app-teal-subtle);
   color: #007f78;
   font-size: 22px;
 }
@@ -708,7 +788,7 @@
     max-width: 560px;
     margin: 0;
     overflow: hidden;
-    color: #111827;
+    color: var(--app-text);
     font-size: 20px;
     font-weight: 650;
     line-height: 28px;
@@ -721,7 +801,7 @@
   max-width: 760px;
   margin-top: 6px;
   overflow: hidden;
-  color: #5f6b7a;
+  color: var(--app-text-secondary);
   font-size: 13px;
   line-height: 20px;
   text-overflow: ellipsis;
@@ -740,7 +820,7 @@
 
   span {
     display: block;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -749,7 +829,7 @@
     display: block;
     margin-top: 2px;
     overflow: hidden;
-    color: #111827;
+    color: var(--app-text);
     font-size: 13px;
     font-weight: 600;
     line-height: 20px;
@@ -759,14 +839,29 @@
 }
 
 .agentDrawerActions {
-  display: flex;
+  display: inline-flex;
+  align-self: start;
+  align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  white-space: nowrap;
+
+  :global(.fui-Button) {
+    min-height: 32px;
+    height: 32px;
+  }
+}
+
+.drawerActionIconButton {
+  width: 32px;
+  min-width: 32px;
+  padding: 0;
 }
 
 .agentDetailTabs {
   margin-top: 16px;
 
-  :global(.t-tabs__content) {
+  :global(.fluent-tab-content) {
     padding-top: 0;
   }
 }
@@ -774,7 +869,28 @@
 .embeddedEditor {
   padding: 18px 20px 22px;
 
-  :global(.t-form__item:last-child) {
+  :global(.fluent-form-item:last-child) {
     margin-bottom: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .agentDrawerSummary {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .agentDrawerActions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .agentMetaGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .agentMetaGrid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

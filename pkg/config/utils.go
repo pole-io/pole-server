@@ -33,7 +33,6 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
-	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 )
 
@@ -149,5 +148,5 @@ func CompressConfigFiles(files []*conftypes.ConfigFile,
 
 // GetGrayConfigReaseKey 获取灰度资源key
 func GetGrayConfigReaseKey(release *conftypes.SimpleConfigFileRelease) string {
-	return fmt.Sprintf("%v@%v@%v@%v", rules.GrayModuleConfig, release.Namespace, release.Group, release.FileName)
+	return release.GetGrayResource()
 }

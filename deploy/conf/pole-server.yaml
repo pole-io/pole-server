@@ -60,6 +60,41 @@ bootstrap:
       address: 127.0.0.1:8090
     monitorServer:
       address: 127.0.0.1:9090
+    observabilityQuery:
+      provider: greptimedb
+      endpoint: http://127.0.0.1:4000
+      database: public
+      timeout: 10s
+    # Only this root encryption key remains deployment-owned. Product secrets
+    # such as an LLM API Key are versioned and encrypted by Pole itself.
+    systemSecrets:
+      masterKey: ${POLE_SYSTEM_SECRET_MASTER_KEY}
+      pollInterval: 5s
+    # Pole Agent is owned by the Console backend. It is available only when the
+    # LLM Gateway address and API key resolve to non-empty values.
+    agent:
+      runtimeMode: llm
+      definition:
+        id: pole-control-plane
+        systemPrompt:
+          builtinVersion: v1
+          operatorInstructions: 管理 Pole 控制面资源，写操作必须先生成临时视图并等待人工确认，禁止直接发布或删除资源
+      model:
+        provider: openai-compatible
+        baseURL: ""
+        model: auto
+        apiKey: ""
+        timeout: 60s
+      mcp:
+        endpoint: http://127.0.0.1:8090/ai/mcp/v1/sse
+        toolAllowlist:
+          - list_namespaces
+          - list_mcp_servers
+          - list_mcp_server_tools
+          - get_config_file
+          - search_config_files
+      proposalTTL: 30m
+      upstreamTimeout: 10s
   # Start the server in order
   startInOrder:
     # Start the pole-server in order, mainly to avoid data synchronization logic when the server starts the DB to pull the DB out of high load
@@ -114,6 +149,19 @@ auth:
 namespace:
   # Whether to allow automatic creation of naming space
   autoCreate: true
+# Short-lived data-plane credentials. Disabled until an Ed25519 keyring is
+# mounted from an external secret source; private key material must not be
+# embedded in this YAML.
+workloadCredential:
+  enabled: false
+  issuer: pole-control-plane
+  audience: pole-data-plane
+  trustDomain: pole.local
+  ttl: 5m
+  clockSkew: 30s
+  bundleSequence: 1
+  bundleTTL: 10m
+  keys: []
 naming:
   # Whether to allow automatic creation of service
   autoCreate: true
@@ -156,6 +204,12 @@ naming:
     # since the three belong to the same type of health check plugin, only one can be enabled to use one
     checkers:
       - name: heartbeat
+      - name: tcp
+        option:
+          timeout: 3s
+      - name: http
+        option:
+          timeout: 3s
 # Configuration center module start configuration
 config:
   # Whether to start the configuration module
@@ -213,14 +267,51 @@ plugin:
   history:
     entries:
       - name: HistoryLogger
+      - name: otel
+        option:
+          endpoint: 127.0.0.1:4317
+          logsEndpoint: http://127.0.0.1:4318/v1/logs
+          timeout: 5s
+          logQueueSize: 2048
+          logSpoolDir: ./data/observability/otel-events
+          logSpoolBucket: history
+          logSpoolMaxBytes: 67108864
+          serviceName: pole-control-plane
+          environment: local
+          cluster: local-docker
+          nodeRole: control-plane
   discoverEvent:
     entries:
       - name: EventLogger
+      - name: otel
+        option:
+          endpoint: 127.0.0.1:4317
+          logsEndpoint: http://127.0.0.1:4318/v1/logs
+          timeout: 5s
+          logQueueSize: 2048
+          logSpoolDir: ./data/observability/otel-events
+          logSpoolBucket: discover_event
+          logSpoolMaxBytes: 67108864
+          serviceName: pole-control-plane
+          environment: local
+          cluster: local-docker
+          nodeRole: control-plane
   statis:
     entries:
       - name: local
         option:
           interval: 60
+      - name: otel
+        option:
+          endpoint: 127.0.0.1:4317
+          timeout: 5s
+          reconnectionPeriod: 10s
+          pushInterval: 5s
+          compressor: gzip
+          serviceName: pole-control-plane
+          environment: local
+          cluster: local-docker
+          nodeRole: control-plane
       - name: prometheus
   ratelimit:
     name: token-bucket

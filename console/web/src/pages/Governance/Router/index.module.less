@@ -12,8 +12,8 @@
 .ruleListPane,
 .ruleDetailPane {
   min-width: 0;
-  background: #fff;
-  border: 1px solid #e7ebf0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
 }
 
@@ -26,7 +26,7 @@
 }
 
 .serviceCell {
-  color: #4e5969;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 20px;
   margin-top: 4px;
@@ -37,7 +37,7 @@
   align-items: center;
   justify-content: center;
   min-height: calc(100vh - 205px);
-  color: #8b93a3;
+  color: var(--app-text-secondary);
 }
 
 .editorContainer {
@@ -62,26 +62,26 @@
 
 .laneRulesPanel {
   margin: 0 24px 24px;
-  border: 1px solid #e7ebf0;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-surface);
   overflow: hidden;
 }
 
 .laneRulesHeader {
   padding: 18px 20px 12px;
-  border-bottom: 1px solid #eef1f5;
+  border-bottom: 1px solid var(--app-border-subtle);
 }
 
 .laneRulesTitle {
-  color: #1f2937;
+  color: var(--app-text);
   font-size: 15px;
   line-height: 22px;
   font-weight: 600;
 }
 
 .laneRulesHint {
-  color: #6b7280;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
   margin-top: 4px;
@@ -110,10 +110,10 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
   align-items: flex-start;
-  border: 1px solid #e7ebf0;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
   padding: 14px 16px;
-  background: #fff;
+  background: var(--app-surface);
 }
 
 .laneRuleMain {
@@ -135,7 +135,7 @@
 }
 
 .laneRuleDescription {
-  color: #4e5969;
+  color: var(--app-text-secondary);
   font-size: 13px;
   line-height: 20px;
   margin-top: 6px;
@@ -159,7 +159,7 @@
 }
 
 .laneRuleMetaLabel {
-  color: #8b93a3;
+  color: var(--app-text-secondary);
   flex: none;
   font-size: 12px;
   line-height: 18px;
@@ -170,9 +170,9 @@
 }
 
 .laneRuleEmpty {
-  border: 1px dashed #d8dde6;
+  border: 1px dashed var(--app-border);
   border-radius: 8px;
-  color: #8b93a3;
+  color: var(--app-text-secondary);
   font-size: 13px;
   line-height: 22px;
   padding: 28px 16px;
@@ -193,9 +193,9 @@
 }
 
 .timeLabel {
-  background: #f2f4f8;
+  background: var(--app-surface-secondary);
   border-radius: 3px;
-  color: #8b95a5;
+  color: var(--app-text-secondary);
   flex: none;
   font-size: 11px;
   line-height: 16px;
@@ -203,7 +203,7 @@
 }
 
 .timeValue {
-  color: #4e5969;
+  color: var(--app-text-secondary);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
   line-height: 18px;

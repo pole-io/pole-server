@@ -1,70 +1,39 @@
 import React from 'react';
-import { Button, Dialog, Input, Link, Popconfirm, Select, Space, Steps, Table, Tag, Tooltip } from 'tdesign-react';
-import type { PrimaryTableProps, TableRowData } from 'tdesign-react';
-import { AddIcon, CreditcardIcon, DeleteIcon, FilterClearIcon, RefreshIcon } from 'tdesign-icons-react';
+import { Button, Dialog, Input, Radio, RadioGroup, Select, Space, Table, Tag, Tooltip } from 'components/Fluent';
+import type { PrimaryTableProps, TableRowData } from 'components/Fluent';
+import { AddIcon, RefreshIcon } from 'components/Fluent/icons';
+import { useNavigate } from 'react-router-dom';
 
 import { useAppDispatch } from 'modules/store';
-import RuleDetailDrawer, { WIDE_RULE_DETAIL_DRAWER_SIZE } from '../RuleRelease/RuleDetailDrawer';
-import RuleTabs from '../RuleRelease/RuleTabs';
-import SubscribeTable from 'components/SubscribeTable';
-import CustomRouteEditor from '../Router/CustomRouteEditor';
-import RateLimitEditor from '../RateLimit/RateLimitEditor';
-import CircuitBreakerEditor from '../CircuitBreaker/CircuitBreakerEditor';
-import FaultDetectEditor from '../CircuitBreaker/FaultDetectEditor';
-import LossLessEditor from '../LossLess/LossLessEditor';
-import LaneGroupEdtor from '../Router/LaneGroupEdtor';
-import TrafficGovernanceEditor, { trafficRuleCount, trafficRuleSummary } from '../Security/TrafficGovernanceEditor';
+import { listAllNamespaces, selectNamespace } from 'modules/namespace';
+import { useAppSelector } from 'modules/store';
+import { ConfirmOperationButton, OperationButton } from 'components/OperationButton';
+import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout';
+import { trafficRuleCount, trafficRuleSummary } from '../Security/TrafficGovernanceEditor';
+import { GovernanceServiceContext, GovernanceServiceRole } from '../shared/serviceContext';
 import {
-    editorCustomRoute,
-    listCustomRouteVersions,
     listCustomRoutes,
     removeCustomRoutes,
-    resetCustomRoute,
 } from 'modules/governance/route';
 import {
-    editorRateLimitRule,
-    listRateLimitRuleVersions,
     listRateLimitRules,
     removeRateLimitRule,
-    removeRateLimitRuleVersion,
-    resetRateLimitRule,
-    rollbackRateLimitRuleVersion,
 } from 'modules/governance/ratelimit';
 import {
-    editorCircuitBreaker,
-    listCircuitBreakerVersions,
     listCircuitBreakers,
     removeCircuitBreakers,
-    removeCircuitBreakerRelease,
-    resetCircuitBreaker,
-    rollbackCircuitBreakerRelease,
 } from 'modules/governance/circuitbreaker';
 import {
-    editorFaultDetect,
-    listFaultDetectVersions,
     listFaultDetects,
     removeFaultDetects,
-    removeFaultDetectVersion,
-    resetFaultDetect,
-    rollbackFaultDetectVersion,
 } from 'modules/governance/faultdetect';
 import {
-    editorLosslessRule,
     listLossLessRules,
-    listLosslessRuleVersions,
     removeLosslessRule,
-    removeLosslessVersion,
-    resetLosslessRule,
-    rollbackLosslessVersion,
 } from 'modules/governance/lossless';
 import {
-    editorLaneGroup,
-    listLaneGroupVersions,
     listLaneGroups,
     removeLaneGroups,
-    removeLaneGroupVersion,
-    resetLaneGroup,
-    rollbackLanGroupVersion,
 } from 'modules/governance/lane_group';
 import { LimitActionMap, LimitType, LimitTypeMap, RateLimitView } from 'services/ratelimit';
 import { CustomRouteView, normalizeRoutingConfigForEditor } from 'services/router';
@@ -72,20 +41,16 @@ import { CircuitBreakerRule } from 'services/circuitbreaker';
 import { FaultDetectRule } from 'services/faultdetect';
 import { LossLessRuleView } from 'services/lossless';
 import { LaneGroupView } from 'services/lane';
-import { Op, RuleRelease } from 'services/types';
 import {
-    deleteTrafficGovernanceRelease,
     deleteTrafficGovernanceRules,
     describeTrafficGovernanceRules,
-    describeTrafficGovernanceVersions,
     TrafficGovernanceKind,
     TrafficGovernanceKindLabel,
     TrafficGovernanceRule,
 } from 'services/traffic_governance';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
+import ResourceNameLink from 'components/ResourceNameLink';
 import style from './index.module.less';
-
-const { StepItem } = Steps;
 
 type RuleKind = 'route' | 'ratelimit-local' | 'ratelimit-global' | 'circuitbreaker' | 'faultdetect' | 'lossless' | 'lane' | 'traffic-security' | 'traffic-mirror' | 'traffic-mock';
 
@@ -110,6 +75,11 @@ interface GovernanceRuleRow extends TableRowData {
     trafficKind?: TrafficGovernanceKind;
 }
 
+interface GovernanceWorkbenchProps {
+    embedded?: boolean;
+    serviceContext?: Pick<GovernanceServiceContext, 'namespace' | 'service'>;
+}
+
 const typeOptions = [
     { label: '路由', value: 'route', scene: '按主调、接口或标签把流量分配到不同目标服务或版本。' },
     { label: '限流', value: 'ratelimit', scene: '接口流量需要按 QPS、并发或条件限制，避免服务被打满。' },
@@ -120,6 +90,12 @@ const typeOptions = [
     { label: '鉴权', value: 'traffic-security', scene: '需要按调用方、接口或请求条件控制访问许可。' },
     { label: '镜像', value: 'traffic-mirror', scene: '需要把线上流量复制到影子服务，用于回放、验证或压测。' },
     { label: 'Mock', value: 'traffic-mock', scene: '依赖未就绪或需要固定响应时，按接口返回模拟结果。' },
+];
+
+const statusOptions = [
+    { label: '全部', value: '' },
+    { label: '已启用', value: '启用' },
+    { label: '已停用', value: '禁用' },
 ];
 
 const createRuleTargets: Record<string, { kind: RuleKind; label: string; limitType?: LimitType; trafficKind?: TrafficGovernanceKind }> = {
@@ -199,7 +175,7 @@ const normalizeRules = (items: {
             typeLabel: '路由',
             name: rule.name,
             description: rule.description,
-            namespace: target.namespace,
+            namespace: rule.namespace || target.namespace,
             service: target.service,
             target: target.target,
             condition: target.condition,
@@ -242,7 +218,7 @@ const normalizeRules = (items: {
         typeLabel: '熔断',
         name: rule.name,
         description: rule.description,
-        namespace: rule.ruleMatcher?.destination?.namespace,
+        namespace: rule.namespace || rule.ruleMatcher?.destination?.namespace,
         service: rule.ruleMatcher?.destination?.service,
         target: `${text(rule.ruleMatcher?.source?.namespace)}/${text(rule.ruleMatcher?.source?.service)} -> ${text(rule.ruleMatcher?.destination?.namespace)}/${text(rule.ruleMatcher?.destination?.service)}`,
         condition: rule.block_configs?.[0]?.name || '按错误条件和触发条件熔断',
@@ -261,7 +237,7 @@ const normalizeRules = (items: {
         typeLabel: '探测',
         name: rule.name,
         description: rule.description,
-        namespace: rule.targetService?.namespace,
+        namespace: rule.namespace || rule.targetService?.namespace,
         service: rule.targetService?.service,
         target: `${text(rule.targetService?.namespace)}/${text(rule.targetService?.service)}`,
         condition: `${text(rule.protocol)} / ${text(rule.targetService?.api?.path?.value || rule.httpConfig?.url)}`,
@@ -303,7 +279,7 @@ const normalizeRules = (items: {
         typeLabel: '泳道',
         name: rule.name || '-',
         description: rule.description,
-        namespace: rule.destinations?.[0]?.namespace,
+        namespace: rule.namespace || rule.destinations?.[0]?.namespace,
         service: rule.destinations?.[0]?.service,
         target: `${rule.rules?.length || 0} 个泳道 / ${rule.destinations?.length || 0} 个目标服务`,
         condition: rule.entries?.map((entry) => `${text(entry.selector?.namespace)}/${text(entry.selector?.service)}`).join(', ') || '按入口服务匹配',
@@ -321,51 +297,105 @@ const normalizeRules = (items: {
         ['traffic-mirror', 'mirror', items.trafficMirrorRules],
         ['traffic-mock', 'mock', items.trafficMockRules],
     ] as Array<[RuleKind, TrafficGovernanceKind, TrafficGovernanceRule[]]>).flatMap(([rowKind, trafficKind, rules]) => (
-        rules.map((rule) => ({
-            key: `${rowKind}-${rule.id || rule.name}`,
-            kind: rowKind,
-            typeLabel: TrafficGovernanceKindLabel[trafficKind],
-            name: rule.name,
-            description: rule.description,
-            namespace: rule.namespace,
-            service: rule.service,
-            target: `${text(rule.namespace)}/${text(rule.service)}`,
-            condition: `${trafficRuleCount(trafficKind, rule)} 条 / ${trafficRuleSummary(trafficKind, rule)}`,
-            status: rule.enable ? '启用' : '禁用',
-            release: rule.revision ? '已发布' : '待发布',
-            ctime: rule.ctime,
-            mtime: rule.mtime,
-            editable: rule.editable,
-            deleteable: rule.deleteable,
-            raw: rule as TableRowData,
-            trafficKind,
-        }))
+        rules.map((rule) => {
+            const caller = rule.caller;
+            const callee = rule.callee || rule.target_service || {};
+            const callerLabel = caller?.namespace || caller?.service
+                ? `${text(caller.namespace)}/${text(caller.service)}`
+                : '';
+            const calleeLabel = `${text(callee?.namespace)}/${text(callee?.service)}`;
+            return {
+                key: `${rowKind}-${rule.id || rule.name}`,
+                kind: rowKind,
+                typeLabel: TrafficGovernanceKindLabel[trafficKind],
+                name: rule.name,
+                description: rule.description,
+                namespace: rule.namespace || callee?.namespace,
+                service: callee?.service,
+                target: callerLabel ? `${callerLabel} -> ${calleeLabel}` : calleeLabel,
+                condition: `${trafficRuleCount(trafficKind, rule)} 条 / ${trafficRuleSummary(trafficKind, rule)}`,
+                status: rule.enable ? '启用' : '禁用',
+                release: rule.revision ? '已发布' : '待发布',
+                ctime: rule.ctime,
+                mtime: rule.mtime,
+                editable: rule.editable,
+                deleteable: rule.deleteable,
+                raw: rule as TableRowData,
+                trafficKind,
+            };
+        })
     ));
 
     return [...routeRows, ...rateRows, ...circuitRows, ...faultRows, ...losslessRows, ...laneRows, ...trafficRows];
 };
 
-const GovernanceWorkbench: React.FC = () => {
+const matchesEndpoint = (endpoint: unknown, context: Pick<GovernanceServiceContext, 'namespace' | 'service'>) => {
+    const value = endpoint as { namespace?: string; service?: string } | undefined;
+    return value?.namespace === context.namespace && value?.service === context.service;
+};
+
+export const isRuleAssociatedWithService = (
+    rule: GovernanceRuleRow,
+    context: Pick<GovernanceServiceContext, 'namespace' | 'service'>,
+) => {
+    const raw = rule.raw as Record<string, any>;
+    if (rule.kind === 'route') {
+        const config = normalizeRoutingConfigForEditor(raw.routing_config);
+        return matchesEndpoint(config?.caller, context)
+            || matchesEndpoint(config?.callee, context)
+            || (config?.rules || []).some((item) => (
+                (item.sources || []).some((source) => matchesEndpoint(source, context))
+                || (item.destinations || []).some((destination) => matchesEndpoint(destination, context))
+            ));
+    }
+    if (rule.kind === 'circuitbreaker') {
+        return matchesEndpoint(raw.ruleMatcher?.source, context)
+            || matchesEndpoint(raw.ruleMatcher?.destination, context);
+    }
+    if (rule.kind === 'lane') {
+        return (raw.entries || []).some((entry: any) => matchesEndpoint(entry.selector, context))
+            || (raw.destinations || []).some((destination: any) => matchesEndpoint(destination, context));
+    }
+    if (rule.trafficKind) {
+        return matchesEndpoint(raw.caller, context)
+            || matchesEndpoint(raw.callee, context)
+            || matchesEndpoint(raw.target_service, context)
+            || (raw.namespace === context.namespace && raw.service === context.service);
+    }
+    return matchesEndpoint(raw.targetService || raw.target_service, context)
+        || (rule.namespace === context.namespace && rule.service === context.service);
+};
+
+const GovernanceWorkbench: React.FC<GovernanceWorkbenchProps> = ({ embedded = false, serviceContext }) => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
+    const { datas: namespaceDatas } = useAppSelector(selectNamespace);
     const [rules, setRules] = React.useState<GovernanceRuleRow[]>([]);
     const [loading, setLoading] = React.useState(false);
     const [search, setSearch] = React.useState('');
     const [typeFilters, setTypeFilters] = React.useState<string[]>([]);
-    const [selected, setSelected] = React.useState<GovernanceRuleRow | null>(null);
-    const [drawerVisible, setDrawerVisible] = React.useState(false);
-    const [drawerMode, setDrawerMode] = React.useState<Op>('view');
+    const [statusFilter, setStatusFilter] = React.useState('');
+    const [selectedNamespace, setSelectedNamespace] = React.useState(serviceContext?.namespace || 'default');
     const [createWizardVisible, setCreateWizardVisible] = React.useState(false);
-    const [createWizardStep, setCreateWizardStep] = React.useState(1);
-    const [pendingCreateType, setPendingCreateType] = React.useState('');
-    const [versions, setVersions] = React.useState<RuleRelease[]>([]);
-    const [versionLoading, setVersionLoading] = React.useState(false);
-    const [versionTotal, setVersionTotal] = React.useState(0);
-    const [versionPage, setVersionPage] = React.useState(1);
-    const [versionLimit, setVersionLimit] = React.useState(10);
+    const [serviceRole, setServiceRole] = React.useState<GovernanceServiceRole>('caller');
 
-    const refreshData = React.useCallback(async (query = search) => {
+    const createServiceContext = serviceContext ? {
+        ...serviceContext,
+        role: serviceRole,
+    } : undefined;
+
+    React.useEffect(() => {
+        dispatch(listAllNamespaces());
+    }, [dispatch]);
+
+    React.useEffect(() => {
+        if (serviceContext?.namespace) setSelectedNamespace(serviceContext.namespace);
+    }, [serviceContext?.namespace]);
+
+    const refreshData = React.useCallback(async (query = search, namespace = selectedNamespace) => {
         setLoading(true);
         try {
+            const queryLimit = serviceContext ? 100 : 20;
             const [
                 routeAction,
                 localRateAction,
@@ -378,16 +408,16 @@ const GovernanceWorkbench: React.FC = () => {
                 trafficMirrorAction,
                 trafficMockAction,
             ] = await Promise.all([
-                dispatch(listCustomRoutes({ param: { offset: 0, limit: 20, route_type: 'RulePolicy', name: query } })),
-                dispatch(listRateLimitRules({ param: { offset: 0, limit: 20, name: query, limit_type: LimitType.LOCAL } })),
-                dispatch(listRateLimitRules({ param: { offset: 0, limit: 20, name: query, limit_type: LimitType.GLOBAL } })),
-                dispatch(listCircuitBreakers({ param: { offset: 0, limit: 20, name: query, brief: true } })),
-                dispatch(listFaultDetects({ param: { offset: 0, limit: 20, name: query, brief: true } })),
-                dispatch(listLossLessRules({ param: { offset: 0, limit: 20, name: query } })),
-                dispatch(listLaneGroups({ param: { offset: 0, limit: 20, name: query, brief: true } })),
-                describeTrafficGovernanceRules('security', { offset: 0, limit: 20, name: query }),
-                describeTrafficGovernanceRules('mirror', { offset: 0, limit: 20, name: query }),
-                describeTrafficGovernanceRules('mock', { offset: 0, limit: 20, name: query }),
+                dispatch(listCustomRoutes({ param: { offset: 0, limit: queryLimit, route_type: 'RulePolicy', name: query, namespace } })),
+                dispatch(listRateLimitRules({ param: { offset: 0, limit: queryLimit, name: query, limit_type: LimitType.LOCAL, namespace } })),
+                dispatch(listRateLimitRules({ param: { offset: 0, limit: queryLimit, name: query, limit_type: LimitType.GLOBAL, namespace } })),
+                dispatch(listCircuitBreakers({ param: { offset: 0, limit: queryLimit, name: query, brief: true, namespace } })),
+                dispatch(listFaultDetects({ param: { offset: 0, limit: queryLimit, name: query, brief: true, namespace } })),
+                dispatch(listLossLessRules({ param: { offset: 0, limit: queryLimit, name: query, namespace } })),
+                dispatch(listLaneGroups({ param: { offset: 0, limit: queryLimit, name: query, brief: true, namespace } })),
+                describeTrafficGovernanceRules('security', { offset: 0, limit: queryLimit, name: query, namespace }),
+                describeTrafficGovernanceRules('mirror', { offset: 0, limit: queryLimit, name: query, namespace }),
+                describeTrafficGovernanceRules('mock', { offset: 0, limit: queryLimit, name: query, namespace }),
             ]);
 
             const routePayload = getActionPayload<{ datas: CustomRouteView[] }>(routeAction);
@@ -418,46 +448,26 @@ const GovernanceWorkbench: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [dispatch, search]);
+    }, [dispatch, search, selectedNamespace, serviceContext?.namespace, serviceContext?.service]);
 
     React.useEffect(() => {
         refreshData('');
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const openRule = (rule: GovernanceRuleRow, mode: Op = 'view') => {
-        setSelected(rule);
-        setDrawerMode(mode);
-        setVersions([]);
-        setVersionTotal(0);
-        setVersionPage(1);
-        setVersionLimit(10);
-        switch (rule.kind) {
-            case 'route':
-                dispatch(editorCustomRoute(rule.raw as CustomRouteView));
-                break;
-            case 'ratelimit-local':
-            case 'ratelimit-global':
-                dispatch(editorRateLimitRule(rule.raw as RateLimitView));
-                break;
-            case 'circuitbreaker':
-                dispatch(editorCircuitBreaker(rule.raw as CircuitBreakerRule));
-                break;
-            case 'faultdetect':
-                dispatch(editorFaultDetect(rule.raw as FaultDetectRule));
-                break;
-            case 'lossless':
-                dispatch(editorLosslessRule(rule.raw as LossLessRuleView));
-                break;
-            case 'lane':
-                dispatch(editorLaneGroup(rule.raw as LaneGroupView));
-                break;
-            case 'traffic-security':
-            case 'traffic-mirror':
-            case 'traffic-mock':
-                break;
+    const openRule = (rule: GovernanceRuleRow) => {
+        const id = rule.raw.id as string | undefined;
+        if (!id) {
+            openErrNotification('无法打开详情', '当前规则缺少详情 ID');
+            return;
         }
-        setDrawerVisible(true);
+        const params = new URLSearchParams({
+            kind: rule.kind,
+            id,
+            name: rule.name,
+        });
+        if (rule.namespace) params.set('ruleNamespace', rule.namespace);
+        navigate(`/governance/rules/detail?${params.toString()}`);
     };
 
     const deleteRule = async (rule: GovernanceRuleRow) => {
@@ -492,160 +502,38 @@ const GovernanceWorkbench: React.FC = () => {
     const openCreateRule = (type: string) => {
         const target = createRuleTargets[type];
         if (!target) return;
-        setSelected({
-            key: `${target.kind}-create`,
-            kind: target.kind,
-            typeLabel: target.label,
-            name: `新建${target.label}规则`,
-            description: '',
-            namespace: '',
-            service: '',
-            target: '-',
-            condition: '-',
-            status: '启用',
-            release: '待发布',
-            raw: { id: '' } as TableRowData,
-            limitType: target.limitType,
-            trafficKind: target.trafficKind,
-            editable: true,
-            deleteable: true,
-        });
-        setDrawerMode('create');
-        setVersions([]);
-        setVersionTotal(0);
-        setVersionPage(1);
-        setVersionLimit(10);
-        switch (target.kind) {
-            case 'route':
-                dispatch(resetCustomRoute());
-                break;
-            case 'ratelimit-local':
-            case 'ratelimit-global':
-                dispatch(resetRateLimitRule());
-                break;
-            case 'circuitbreaker':
-                dispatch(resetCircuitBreaker());
-                break;
-            case 'faultdetect':
-                dispatch(resetFaultDetect());
-                break;
-            case 'lossless':
-                dispatch(resetLosslessRule());
-                break;
-            case 'lane':
-                dispatch(resetLaneGroup());
-                break;
-            default:
-                break;
+        const params = new URLSearchParams({ kind: target.kind });
+        params.set('ruleNamespace', createServiceContext?.namespace || selectedNamespace);
+        if (createServiceContext) {
+            params.set('namespace', createServiceContext.namespace);
+            params.set('service', createServiceContext.service);
+            params.set('role', createServiceContext.role);
         }
-        setDrawerVisible(true);
+        navigate(`/governance/rules/create?${params.toString()}`);
     };
 
-    const openCreateWizard = () => {
-        setPendingCreateType('');
-        setCreateWizardStep(1);
-        setCreateWizardVisible(true);
-    };
+    const openCreateWizard = () => setCreateWizardVisible(true);
 
-    const confirmCreateWizard = () => {
-        if (!pendingCreateType) {
-            openErrNotification('无法创建', '请先选择规则类型');
-            return;
-        }
-        setCreateWizardStep(2);
+    const createRuleFromType = (type: string) => {
         setCreateWizardVisible(false);
-        openCreateRule(pendingCreateType);
+        openCreateRule(type);
     };
 
-    const refreshVersions = async (page = 1, limit = 10) => {
-        if (!selected) return;
-        setVersionLoading(true);
-        try {
-            let action: unknown;
-            if (selected.kind === 'route') {
-                action = await dispatch(listCustomRouteVersions({ param: { offset: (page - 1) * limit, limit, id: selected.raw.id as string } }));
-            } else if (selected.kind === 'ratelimit-local' || selected.kind === 'ratelimit-global') {
-                action = await dispatch(listRateLimitRuleVersions({ param: { offset: (page - 1) * limit, limit, rule_name: selected.name } }));
-            } else if (selected.kind === 'circuitbreaker') {
-                action = await dispatch(listCircuitBreakerVersions({ param: { offset: (page - 1) * limit, limit, rule_name: selected.name } }));
-            } else if (selected.kind === 'faultdetect') {
-                action = await dispatch(listFaultDetectVersions({ param: { offset: (page - 1) * limit, limit, id: selected.raw.id as string } }));
-            } else if (selected.kind === 'lossless') {
-                action = await dispatch(listLosslessRuleVersions({ param: { offset: (page - 1) * limit, limit, id: selected.raw.id as string } }));
-            } else if (selected.kind === 'lane') {
-                action = await dispatch(listLaneGroupVersions({ param: { offset: (page - 1) * limit, limit, id: selected.raw.id as string } }));
-            } else if (selected.trafficKind) {
-                const result = await describeTrafficGovernanceVersions(selected.trafficKind, {
-                    offset: (page - 1) * limit,
-                    limit,
-                    id: selected.raw.id as string,
-                    rule_name: selected.name,
-                });
-                setVersions(result.list);
-                setVersionTotal(result.totalCount);
-                setVersionPage(page);
-                setVersionLimit(limit);
-                return;
-            }
+    const scopedRules = serviceContext
+        ? rules.filter((rule) => isRuleAssociatedWithService(rule, serviceContext))
+        : rules;
 
-            const payload = getActionPayload<{ datas?: RuleRelease[], versions?: RuleRelease[], total?: number, versionTotal?: number, page?: number, versionPage?: number, limit?: number, versionLimit?: number }>(action);
-            setVersions(payload?.datas || payload?.versions || []);
-            setVersionTotal(payload?.total || payload?.versionTotal || 0);
-            setVersionPage(payload?.page || payload?.versionPage || page);
-            setVersionLimit(payload?.limit || payload?.versionLimit || limit);
-        } finally {
-            setVersionLoading(false);
-        }
-    };
-
-    const operateRelease = async (op: Op, row: TableRowData) => {
-        if (!selected) return;
-        if (selected.kind === 'route') return;
-        if (op === 'delete') {
-            if (selected.kind === 'ratelimit-local' || selected.kind === 'ratelimit-global') {
-                await dispatch(removeRateLimitRuleVersion({ id: row.id }));
-            } else if (selected.kind === 'circuitbreaker') {
-                await dispatch(removeCircuitBreakerRelease({ id: row.id }));
-            } else if (selected.kind === 'faultdetect') {
-                await dispatch(removeFaultDetectVersion({ id: row.id }));
-            } else if (selected.kind === 'lossless') {
-                await dispatch(removeLosslessVersion({ id: row.id }));
-            } else if (selected.kind === 'lane') {
-                await dispatch(removeLaneGroupVersion({ ids: [row.id] }));
-            } else if (selected.trafficKind) {
-                await deleteTrafficGovernanceRelease(selected.trafficKind, row.id as string);
-            }
-            openInfoNotification('请求成功', '删除规则版本成功');
-            refreshVersions(versionPage, versionLimit);
-        }
-        if (op === 'rollback') {
-            if (selected.kind === 'ratelimit-local' || selected.kind === 'ratelimit-global') {
-                await dispatch(rollbackRateLimitRuleVersion({ id: row.id }));
-            } else if (selected.kind === 'circuitbreaker') {
-                await dispatch(rollbackCircuitBreakerRelease({ id: row.id }));
-            } else if (selected.kind === 'faultdetect') {
-                await dispatch(rollbackFaultDetectVersion({ id: row.id }));
-            } else if (selected.kind === 'lossless') {
-                await dispatch(rollbackLosslessVersion({ id: row.id }));
-            } else if (selected.kind === 'lane') {
-                await dispatch(rollbackLanGroupVersion({ id: row.id }));
-            } else if (selected.trafficKind) {
-                return;
-            }
-            openInfoNotification('请求成功', '回滚规则版本成功');
-            refreshVersions(versionPage, versionLimit);
-        }
-    };
-
-    const filteredRules = rules.filter((rule) => {
+    const filteredRules = scopedRules.filter((rule) => {
+        const namespaceMatched = !selectedNamespace || rule.namespace === selectedNamespace;
         const typeMatched = typeFilters.length === 0 || typeFilters.some((type) => (type === 'ratelimit' ? rule.kind.startsWith('ratelimit') : rule.kind === type));
         const searchMatched = !search || [rule.name, rule.description, rule.namespace, rule.service, rule.condition].some((item) => item?.toLowerCase().includes(search.toLowerCase()));
-        return typeMatched && searchMatched;
+        const statusMatched = !statusFilter || rule.status === statusFilter;
+        return namespaceMatched && typeMatched && searchMatched && statusMatched;
     });
 
-    const namespaceOptions = Array.from(new Set(rules.map((item) => item.namespace).filter(Boolean))).map((item) => ({ label: item as string, value: item as string }));
-    const enabledCount = rules.filter((item) => item.status === '启用').length;
-    const pendingCount = rules.filter((item) => item.release === '待发布').length;
+    const namespaceOptions = namespaceDatas.map((item) => ({ label: item.name, value: item.name }));
+    const enabledCount = scopedRules.filter((item) => item.status === '启用').length;
+    const pendingCount = scopedRules.filter((item) => item.release === '待发布').length;
 
     const columns: PrimaryTableProps['columns'] = [
         {
@@ -653,10 +541,11 @@ const GovernanceWorkbench: React.FC = () => {
             title: '规则',
             width: 300,
             cell: ({ row }) => (
-                <div className={style.ruleName}>
-                    <Link className={style.ruleNameText} theme="primary" onClick={() => openRule(row as GovernanceRuleRow)}>{row.name}</Link>
-                    <div className={style.ruleDesc}>{row.condition || row.description || '-'}</div>
-                </div>
+                <ResourceNameLink
+                    className={style.ruleNameText}
+                    name={row.name}
+                    onClick={() => openRule(row as GovernanceRuleRow)}
+                />
             ),
         },
         {
@@ -702,30 +591,8 @@ const GovernanceWorkbench: React.FC = () => {
                 const rule = row as GovernanceRuleRow;
                 return (
                     <Space className={style.rowActions} size={10} onClick={(event) => event.stopPropagation()}>
-                        <Tooltip content="查看 / 编辑">
-                            <Button
-                                shape="square"
-                                variant="text"
-                                aria-label="查看 / 编辑"
-                                onClick={() => openRule(rule)}
-                            >
-                                <CreditcardIcon />
-                            </Button>
-                        </Tooltip>
-                        <Tooltip content={rule.deleteable === false ? '无权限操作' : '删除'}>
-                            <Popconfirm
-                                content={`确认删除规则 ${rule.name}？`}
-                                destroyOnClose
-                                placement="top"
-                                showArrow
-                                theme="default"
-                                onConfirm={() => deleteRule(rule)}
-                            >
-                                <Button shape="square" variant="text" disabled={rule.deleteable === false}>
-                                    <DeleteIcon />
-                                </Button>
-                            </Popconfirm>
-                        </Tooltip>
+                        <OperationButton action="viewEdit" onClick={() => openRule(rule)} />
+                        <ConfirmOperationButton action="delete" disabled={rule.deleteable === false} disabledLabel="无权限操作" confirmContent={`确认删除规则 ${rule.name}？`} onConfirm={() => deleteRule(rule)} />
                     </Space>
                 );
             },
@@ -737,30 +604,32 @@ const GovernanceWorkbench: React.FC = () => {
             header="新建规则"
             visible={createWizardVisible}
             width={720}
-            confirmBtn="进入创建"
-            cancelBtn="取消"
+            footer={false}
             onClose={() => setCreateWizardVisible(false)}
-            onConfirm={confirmCreateWizard}
         >
-            <div className={style.createWizard}>
-                <Steps current={createWizardStep}>
-                    <StepItem value={1} title="选择规则类型" />
-                    <StepItem value={2} title="配置规则" />
-                </Steps>
+                <div className={style.createWizard}>
+                <Select
+                    label="归属环境"
+                    value={selectedNamespace}
+                    options={namespaceOptions}
+                    disabled={!!serviceContext}
+                    onChange={(value) => setSelectedNamespace(value as string)}
+                />
                 <div className={style.createTypeGrid}>
                     {typeOptions.map((item) => {
                         const target = createRuleTargets[item.value];
-                        const active = pendingCreateType === item.value;
                         return (
-                            <button
+                            <Button
+                                variant="text"
                                 key={item.value}
-                                className={active ? style.createTypeCardActive : style.createTypeCard}
+                                className={style.createTypeCard}
                                 type="button"
-                                onClick={() => setPendingCreateType(item.value)}
+                                aria-label={`创建${item.label}规则`}
+                                onClick={() => createRuleFromType(item.value)}
                             >
                                 <Tag className={`${style.typeTag} ${getTypeClassName(target.kind)}`} variant="light-outline">{item.label}</Tag>
                                 <p>{item.scene}</p>
-                            </button>
+                            </Button>
                         );
                     })}
                 </div>
@@ -768,131 +637,65 @@ const GovernanceWorkbench: React.FC = () => {
         </Dialog>
     );
 
-    const renderDetail = () => {
-        if (!selected) return null;
-        const commonVersions = {
-            datas: versions,
-            action: operateRelease,
-            editable: selected.editable ?? true,
-            deleteable: selected.deleteable ?? true,
-            rollbackable: selected.kind !== 'lossless' && !selected.trafficKind,
-            loading: versionLoading,
-            pagination: {
-                current: versionPage,
-                pageSize: versionLimit,
-                total: versionTotal,
-                showJumper: false,
-                onChange(pageInfo: { current: number, pageSize: number }) {
-                    refreshVersions(pageInfo.current, pageInfo.pageSize);
-                },
-            },
-            onPageChange: (page: { current: number, pageSize: number }) => {
-                refreshVersions(page.current, page.pageSize);
-            },
-        };
-        const subscribe = (
-            <div style={{ marginLeft: 20, marginTop: 20 }}>
-                <SubscribeTable
-                    title={selected.name}
-                    editable={selected.editable ?? true}
-                    deleteable={selected.deleteable ?? true}
-                    subscribers={[]}
-                />
-            </div>
-        );
-
-        if (selected.kind === 'route') {
-            return <RuleTabs op={drawerMode} onVersionView={() => refreshVersions()} view={<CustomRouteEditor op={drawerMode} editable={selected.editable ?? true} refresh={(close) => {
-                if (close) {
-                    setDrawerVisible(false);
-                    setDrawerMode('view');
-                }
-                refreshData();
-            }} />} versions={commonVersions} subscribe={subscribe} />;
-        }
-        if (selected.kind === 'ratelimit-local' || selected.kind === 'ratelimit-global') {
-            return <RuleTabs op={drawerMode} onVersionView={() => refreshVersions()} view={<RateLimitEditor limitType={selected.limitType || LimitType.LOCAL} visible={drawerVisible} op={drawerMode} refresh={(close) => {
-                if (close) {
-                    setDrawerVisible(false);
-                    setDrawerMode('view');
-                }
-                refreshData();
-            }} />} versions={commonVersions} subscribe={subscribe} />;
-        }
-        if (selected.kind === 'circuitbreaker') {
-            return <RuleTabs op={drawerMode} onVersionView={() => refreshVersions()} view={<CircuitBreakerEditor op={drawerMode} refresh={(close) => {
-                if (close) {
-                    setDrawerVisible(false);
-                    setDrawerMode('view');
-                }
-                refreshData();
-            }} />} versions={commonVersions} subscribe={subscribe} />;
-        }
-        if (selected.kind === 'faultdetect') {
-            return <RuleTabs op={drawerMode} onVersionView={() => refreshVersions()} view={<FaultDetectEditor op={drawerMode} refresh={(close) => {
-                if (close) {
-                    setDrawerVisible(false);
-                    setDrawerMode('view');
-                }
-                refreshData();
-            }} />} versions={commonVersions} subscribe={subscribe} />;
-        }
-        if (selected.kind === 'lossless') {
-            return <RuleTabs op={drawerMode} onVersionView={() => refreshVersions()} view={<LossLessEditor visible={drawerVisible} op={drawerMode} refresh={(close) => {
-                if (close) {
-                    setDrawerVisible(false);
-                    setDrawerMode('view');
-                }
-                refreshData();
-            }} />} versions={commonVersions} subscribe={subscribe} />;
-        }
-        if (selected.trafficKind) {
-            return (
-                <RuleTabs
-                    op="view"
-                    onVersionView={() => refreshVersions()}
-                    view={(
-                        <TrafficGovernanceEditor
-                            kind={selected.trafficKind}
-                            op={drawerMode}
-                            data={drawerMode === 'create' ? undefined : selected.raw as TrafficGovernanceRule}
-                            visible={drawerVisible}
-                            refresh={(close) => {
-                                if (close) {
-                                    setDrawerVisible(false);
-                                    setDrawerMode('view');
-                                }
-                                refreshData();
-                            }}
-                        />
-                    )}
-                    versions={commonVersions}
-                    subscribe={subscribe}
-                />
-            );
-        }
-        return <LaneGroupEdtor op={drawerMode} refresh={(close) => {
-            if (close) {
-                setDrawerVisible(false);
-                setDrawerMode('view');
-            }
-            refreshData();
-        }} />;
-    };
-
     return (
-        <div className={style.page}>
-            <div className={style.header}>
-                <div>
-                    <div className={style.title}>规则治理工作台</div>
-                    <div className={style.description}>统一查看治理规则的运行状态、作用范围和发布状态。</div>
+        <div className={`${style.page} ${embedded ? style.embeddedPage : ''}`}>
+            {embedded && serviceContext ? (
+                <div className={style.serviceContextBar}>
+                    <div className={style.serviceContextIdentity}>
+                        <span className={style.serviceContextLabel}>当前服务</span>
+                        <strong title={`${serviceContext.namespace}/${serviceContext.service}`}>
+                            {serviceContext.namespace}/{serviceContext.service}
+                        </strong>
+                    </div>
+                    <div className={style.serviceContextActions}>
+                        <div className={style.serviceRoleControl}>
+                            <span>双端规则角色</span>
+                            <RadioGroup
+                                theme="button"
+                                variant="primary-filled"
+                                value={serviceRole}
+                                onChange={(value) => setServiceRole(value as GovernanceServiceRole)}
+                            >
+                                <Radio.Button value="caller">作为主调方</Radio.Button>
+                                <Radio.Button value="callee">作为被调方</Radio.Button>
+                            </RadioGroup>
+                        </div>
+                        <Tooltip content="刷新列表">
+                            <Button aria-label="刷新列表" shape="square" variant="outline" icon={<RefreshIcon />} onClick={() => refreshData(search)} />
+                        </Tooltip>
+                        <Button theme="primary" icon={<AddIcon />} onClick={openCreateWizard}>新建规则</Button>
+                    </div>
                 </div>
-            </div>
-            <div className={style.summary}>
+            ) : <ResourceHeader
+                eyebrow="治理管理 / 规则治理"
+                title="规则治理工作台"
+                description="命名空间用于标识规则归属环境；caller、callee 和目标服务属于独立的运行时作用范围。"
+                actions={(
+                    <>
+                        <Tooltip content="刷新列表">
+                            <Button
+                                aria-label="刷新列表"
+                                shape="square"
+                                variant="outline"
+                                icon={<RefreshIcon />}
+                                onClick={() => refreshData(search)}
+                            />
+                        </Tooltip>
+                        <Button
+                            theme="primary"
+                            icon={<AddIcon />}
+                            onClick={openCreateWizard}
+                        >
+                            新建规则
+                        </Button>
+                    </>
+                )}
+            />}
+            {!embedded && <div className={style.summary}>
                 <div className={style.summaryItem}>
                     <div className={style.summaryLabel}>规则总数</div>
-                    <div className={style.summaryValue}>{rules.length}</div>
-                    <div className={style.summaryHint}>覆盖 {namespaceOptions.length} 个命名空间</div>
+                    <div className={style.summaryValue}>{scopedRules.length}</div>
+                    <div className={style.summaryHint}>当前环境：{selectedNamespace || '-'}</div>
                 </div>
                 <div className={style.summaryItem}>
                     <div className={style.summaryLabel}>已启用</div>
@@ -906,70 +709,77 @@ const GovernanceWorkbench: React.FC = () => {
                 </div>
                 <div className={style.summaryItem}>
                     <div className={style.summaryLabel}>规则类型</div>
-                    <div className={style.summaryValue}>{new Set(rules.map((item) => item.typeLabel)).size}</div>
+                    <div className={style.summaryValue}>{new Set(scopedRules.map((item) => item.typeLabel)).size}</div>
                     <div className={style.summaryHint}>按治理场景分类查看</div>
                 </div>
-            </div>
-            <div className={style.listPanel}>
-                <div className={style.panelHeader}>
-                    <div className={style.panelIntro}>
-                        <div className={style.panelTitle}>规则清单</div>
-                        <div className={style.panelHint}>点击规则行查看详情，支持按类型和关键词筛选。</div>
-                    </div>
-                </div>
-                <div className={style.filters}>
-                    <Select
-                        className={style.typeSelect}
-                        multiple
-                        clearable
-                        value={typeFilters}
-                        placeholder="全部规则类型"
-                        options={typeOptions}
-                        onChange={(value) => setTypeFilters(Array.isArray(value) ? value as string[] : [])}
-                    />
-                    <Input
-                        className={style.searchInput}
-                        clearable
-                        value={search}
-                        placeholder="搜索规则名、服务、条件"
-                        onChange={(value) => setSearch(value)}
-                        onEnter={(value) => refreshData(value)}
-                        onClear={() => {
-                            setSearch('');
-                            refreshData('');
-                        }}
-                    />
-                    <Space className={style.filterActions}>
-                        <Tooltip content="刷新">
-                            <Button
-                                aria-label="刷新"
-                                shape="square"
-                                theme="primary"
-                                icon={<RefreshIcon />}
-                                onClick={() => refreshData(search)}
-                            />
-                        </Tooltip>
-                        <Tooltip content="重置筛选">
-                            <Button
-                                aria-label="重置筛选"
-                                shape="square"
-                                icon={<FilterClearIcon />}
-                                onClick={() => {
-                                    setTypeFilters([]);
-                                    setSearch('');
-                                    refreshData('');
-                                }}
-                            />
-                        </Tooltip>
+            </div>}
+            <ResourceToolbar
+                title={embedded ? '关联规则' : '规则清单'}
+                count={loading ? '正在同步列表' : `当前显示 ${filteredRules.length} / ${scopedRules.length} 条`}
+                className={style.panelToolbar}
+                filters={(
+                    <>
+                        <Input
+                            className={style.searchInput}
+                            clearable
+                            label="关键字"
+                            value={search}
+                            placeholder="规则名、服务、条件"
+                            onChange={(value) => setSearch(value)}
+                            onEnter={(value) => refreshData(value)}
+                            onClear={() => {
+                                setSearch('');
+                                refreshData('');
+                            }}
+                        />
+                        <Select
+                            className={style.statusSelect}
+                            label="归属环境"
+                            value={selectedNamespace}
+                            options={namespaceOptions}
+                            disabled={!!serviceContext}
+                            onChange={(value) => {
+                                const namespace = value as string;
+                                setSelectedNamespace(namespace);
+                                refreshData(search, namespace);
+                            }}
+                        />
+                        <Select
+                            className={style.typeSelect}
+                            multiple
+                            clearable
+                            label="规则类型"
+                            value={typeFilters}
+                            placeholder="全部规则类型"
+                            options={typeOptions}
+                            onChange={(value) => setTypeFilters(Array.isArray(value) ? value as string[] : [])}
+                        />
+                        <Select
+                            className={style.statusSelect}
+                            label="状态"
+                            value={statusFilter}
+                            placeholder="全部"
+                            options={statusOptions}
+                            onChange={(value) => setStatusFilter(value as string)}
+                        />
+                        <Button variant="outline" onClick={() => refreshData(search)}>查询</Button>
                         <Button
-                            theme="primary"
-                            icon={<AddIcon />}
-                            onClick={openCreateWizard}
+                            variant="text"
+                            onClick={() => {
+                                const nextNamespace = serviceContext?.namespace || 'default';
+                                setTypeFilters([]);
+                                setStatusFilter('');
+                                setSearch('');
+                                setSelectedNamespace(nextNamespace);
+                                refreshData('', nextNamespace);
+                            }}
                         >
-                            新建规则
+                            重置
                         </Button>
-                    </Space>
-                </div>
+                    </>
+                )}
+            />
+            <div className={style.listPanel}>
                 <Table
                     className={style.table}
                     data={filteredRules}
@@ -986,18 +796,6 @@ const GovernanceWorkbench: React.FC = () => {
                     onRowClick={({ row }) => openRule(row as GovernanceRuleRow)}
                 />
             </div>
-            <RuleDetailDrawer
-                visible={drawerVisible}
-                title={drawerMode === 'create' ? selected?.name || '新建治理规则' : selected?.name || '治理规则详情'}
-                subtitle={selected?.typeLabel}
-                size={selected?.kind === 'route' || selected?.kind?.startsWith('ratelimit') || selected?.kind === 'circuitbreaker' || selected?.kind === 'faultdetect' || selected?.kind === 'lane' ? WIDE_RULE_DETAIL_DRAWER_SIZE : undefined}
-                onClose={() => {
-                    setDrawerVisible(false);
-                    setDrawerMode('view');
-                }}
-            >
-                {renderDetail()}
-            </RuleDetailDrawer>
             {renderCreateWizard()}
         </div>
     );

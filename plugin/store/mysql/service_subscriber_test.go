@@ -35,6 +35,7 @@ func TestServiceSubscriberStore_UpsertAndQuery(t *testing.T) {
 		db.Close()
 	})
 	require.NoError(t, ensureServiceSubscribeGraphSchema(db))
+	require.NoError(t, ensureServiceIdentitySchema(db))
 
 	store := &serviceStore{master: db, slave: db}
 	cleanupServiceSubscriberTestRows(t, db)
@@ -74,6 +75,7 @@ func TestServiceStoreDeleteServiceCleansSubscribeGraph(t *testing.T) {
 		db.Close()
 	})
 	require.NoError(t, ensureServiceSubscribeGraphSchema(db))
+	require.NoError(t, ensureServiceIdentitySchema(db))
 
 	store := &serviceStore{master: db, slave: db}
 	cleanupServiceDeleteSubscribeTestRows(t, db)
@@ -188,6 +190,14 @@ func cleanupServiceDeleteSubscribeTestRows(t *testing.T, db *BaseDB) {
 			  and name in (?, ?, ?)
 		)`,
 		names[0], names[1], names[2])
+	require.NoError(t, err)
+
+	_, err = db.Exec(`
+		delete from service_identity
+		where service_id in (?, ?, ?)`,
+		"svcsubcleancaller000000000001",
+		"svcsubcleantarget000000000001",
+		"svcsubcleanobserver0000000001")
 	require.NoError(t, err)
 
 	_, err = db.Exec(`

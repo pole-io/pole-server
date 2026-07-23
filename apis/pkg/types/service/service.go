@@ -41,8 +41,28 @@ type Service struct {
 	Mtime        int64
 	Ctime        int64
 	ServicePorts []*ServicePort
+	// Identity is the service's internal data-plane identity. It is never
+	// converted to the public Service message or exposed through management APIs.
+	Identity *ServiceIdentity
 	// ExportTo 服务可见性暴露设置
 	ExportTo map[string]struct{}
+}
+
+// ServiceIdentity is the stable internal principal bound to one service.
+// Subject is not a credential and Revision changes only when descriptor
+// semantics change.
+type ServiceIdentity struct {
+	ServiceID string
+	Subject   string
+	Revision  string
+}
+
+func NewServiceIdentity(serviceID string) *ServiceIdentity {
+	return &ServiceIdentity{
+		ServiceID: serviceID,
+		Subject:   "pole://service/" + utils.NewUUID(),
+		Revision:  utils.NewUUID(),
+	}
 }
 
 func (s *Service) ToSpec() *apiservice.Service {

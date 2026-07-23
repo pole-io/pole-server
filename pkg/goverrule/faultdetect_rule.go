@@ -258,6 +258,9 @@ func faultDetectRuleNamespace(req *apifault.FaultDetectRule) string {
 	if req == nil {
 		return namespace.DefaultNamespace
 	}
+	if ownerNamespace := req.GetNamespace(); ownerNamespace != "" {
+		return ownerNamespace
+	}
 	if namespace := faultDetectRulePrimaryTarget(req).GetNamespace(); namespace != "" {
 		return namespace
 	}

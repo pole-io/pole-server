@@ -34,6 +34,7 @@ import (
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/apiserver"
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
+	"github.com/pole-io/pole-server/apis/observability/statis"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
@@ -54,6 +55,8 @@ import (
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
+	"github.com/pole-io/pole-server/pkg/systemconfig"
+	"github.com/pole-io/pole-server/pkg/workloadcredential"
 )
 
 var (
@@ -82,6 +85,11 @@ func Start(configFilePath string, modeOverride ...string) {
 		return
 	}
 	cfg.Bootstrap.Mode = startMode
+	if strings.TrimSpace(override) != "" {
+		cfg.SystemConfigSources["bootstrap.mode"] = systemconfig.SourceDescriptor{
+			Kind: systemconfig.SourceCommandLine, Reference: "--mode",
+		}
+	}
 
 	fmt.Printf("[INFO] resolved start mode: %s\n", startMode)
 
@@ -94,6 +102,12 @@ func Start(configFilePath string, modeOverride ...string) {
 	// 初始化
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	serverSettings, err := boot_config.NewSystemSettingsProvider(cfg)
+	if err != nil {
+		fmt.Printf("[ERROR] initialize system settings registry fail: %v\n", err)
+		return
+	}
+	ctx = systemconfig.WithProvider(ctx, systemconfig.ComponentServer, serverSettings)
 
 	if startMode == boot_config.StartModeConsole {
 		errCh := make(chan error, 1)
@@ -123,11 +137,13 @@ func Start(configFilePath string, modeOverride ...string) {
 	// 设置默认端口信息数据
 	acquireLocalPort(ctx, apientries)
 
-	metrics.InitMetrics()
-	eventhub.InitEventHub()
-
 	// 设置插件配置
 	apis.SetPluginConfig(&cfg.Plugin)
+	// 先初始化 statis chain，确保 otel entry 有机会设置全局 MeterProvider。
+	statis.GetStatis()
+
+	metrics.InitMetrics()
+	eventhub.InitEventHub()
 
 	// 初始化存储层
 	storeapi.SetStoreConfig(&cfg.Store)
@@ -264,6 +280,9 @@ func StartComponents(ctx context.Context, cfg *boot_config.Config) error {
 
 func StartDiscoverComponents(ctx context.Context, cfg *boot_config.Config, s storeapi.Store,
 	cacheMgn *cache.CacheManager) error {
+	if err := workloadcredential.Initialize(cfg.WorkloadCredential, s); err != nil {
+		return fmt.Errorf("initialize workload credential issuer: %w", err)
+	}
 	// 批量控制器
 	namingBatchConfig, err := batch.ParseBatchConfig(cfg.Naming.Batch)
 	if err != nil {

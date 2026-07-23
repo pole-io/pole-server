@@ -1,6 +1,6 @@
 import React from 'react';
-import { Drawer, Form, Input, Select, Space, Button, TableRowData } from "tdesign-react";
-import type { FormProps } from 'tdesign-react';
+import { Drawer, Form, Input, Select, Space, Button, TableRowData } from 'components/Fluent';
+import type { FormProps } from 'components/Fluent';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { NamespaceView } from 'services/namespace';
 import { ServiceView } from 'services/service';

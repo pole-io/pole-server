@@ -39,11 +39,11 @@ type routerRuleStore struct {
 // CreateRoutingConfig Add a new routing configuration
 func (r *routerRuleStore) CreateRoutingConfig(conf *rules.RouterConfig) error {
 	if conf.ID == "" || conf.Revision == "" {
-		log.Errorf("[Store][boltdb] create routing config  missing id or revision")
+		log.Errorf("[Store][database] create routing config missing id or revision")
 		return store.NewStatusError(store.EmptyParamsErr, "missing id or revision")
 	}
 	if conf.Policy == "" || conf.Config == "" {
-		log.Errorf("[Store][boltdb] create routing config  missing params")
+		log.Errorf("[Store][database] create routing config missing params")
 		return store.NewStatusError(store.EmptyParamsErr, "missing some params")
 	}
 
@@ -134,7 +134,7 @@ func (r *routerRuleStore) updateRoutingConfigTx(tx *BaseTx, conf *rules.RouterCo
 		return store.NewStatusError(store.EmptyParamsErr, "missing id or revision")
 	}
 	if conf.Policy == "" || conf.Config == "" {
-		log.Errorf("[Store][boltdb] create routing config  missing params")
+		log.Errorf("[Store][database] update routing config missing params")
 		return store.NewStatusError(store.EmptyParamsErr, "missing some params")
 	}
 
@@ -249,14 +249,14 @@ func (r *routerRuleStore) GetRouterRuleVersions(ctx context.Context, filter map[
 }
 
 // LockRouterRule implements store.RouterRuleConfigStore.
-func (r *routerRuleStore) LockRouterRule(tx store.Tx, keyword string) (*rules.RouterConfig, error) {
+func (r *routerRuleStore) LockRouterRule(tx store.Tx, namespace, keyword string) (*rules.RouterConfig, error) {
 	if tx == nil {
 		return nil, ErrTxIsNil
 	}
 	if keyword == "" {
 		return nil, ErrorMissingParams
 	}
-	record, err := r.repo().LockRule(tx, governanceRuleTypeRoute, keyword)
+	record, err := r.repo().LockRule(tx, governanceRuleTypeRoute, keyword, namespace, keyword)
 	if err != nil {
 		log.Errorf("[Store][database] query routing  with keyword(%s) err: %s", keyword, err.Error())
 		return nil, err

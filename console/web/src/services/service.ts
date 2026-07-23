@@ -65,6 +65,16 @@ export async function describeAllServices(params = {}) {
     return res.list ? res.list : []
 }
 
+/** 查询同一逻辑服务在用户有权访问的各个环境中的实例。 */
+export async function describeServiceEnvironments(name: string) {
+    const res = await describeServices({
+        offset: 0,
+        limit: 100,
+        name,
+    })
+    return res.list.filter((service) => service.name === name)
+}
+
 export interface ServiceKey {
     name: string
     namespace: string

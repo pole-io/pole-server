@@ -1,42 +1,42 @@
 .editorBody {
-    height: calc(100vh - 96px);
-    min-height: 640px;
+    height: calc(100vh - 158px);
+    min-height: 0;
     overflow: hidden;
     padding: 0;
-    background: #f5f7fb;
+    background: var(--app-surface-subtle);
 
-    :global(.t-form) {
+    :global(.fluent-form) {
         display: flex;
         height: 100%;
         min-height: 0;
         flex-direction: column;
     }
 
-    :global(.t-form__item) {
+    :global(.fluent-form-item) {
         margin-bottom: 0;
     }
 
-    :global(.t-form__label) {
-        color: #6b7280;
+    :global(.fluent-form-item__label) {
+        color: var(--app-text-secondary);
         font-size: 12px;
         line-height: 20px;
     }
 
-    :global(.t-table) {
-        border: 1px solid #e5e8ef;
+    :global(.fluent-table-shell) {
+        border: 1px solid var(--app-border-subtle);
         border-radius: 6px;
         overflow: hidden;
     }
 
-    :global(.t-table td),
-    :global(.t-table th) {
+    :global(.fluent-table-shell td),
+    :global(.fluent-table-shell th) {
         padding: 10px 14px;
         vertical-align: top;
     }
 
-    :global(.t-table th) {
-        background: #f8fafc;
-        color: #6b7280;
+    :global(.fluent-table-shell th) {
+        background: var(--app-surface-subtle);
+        color: var(--app-text-secondary);
         font-weight: 500;
     }
 }
@@ -62,9 +62,9 @@
 
 .designSection {
     min-width: 0;
-    border: 1px solid #e5e8ef;
+    border: 1px solid var(--app-border-subtle);
     border-radius: 8px;
-    background: #fff;
+    background: var(--app-surface);
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
@@ -75,7 +75,7 @@
     gap: 12px;
     min-height: 66px;
     padding: 14px 16px;
-    border-bottom: 1px solid #edf0f5;
+    border-bottom: 1px solid var(--app-border-subtle);
 }
 
 .designSectionTitleWrap {
@@ -94,14 +94,14 @@
     height: 26px;
     flex: 0 0 auto;
     border-radius: 999px;
-    background: #e8f2ff;
+    background: var(--app-brand-subtle);
     color: #1677ff;
     font-size: 13px;
     font-weight: 600;
 }
 
 .designSectionTitle {
-    color: #111827;
+    color: var(--app-text);
     font-size: 15px;
     font-weight: 600;
     line-height: 22px;
@@ -109,7 +109,7 @@
 }
 
 .designSectionDesc {
-    color: #8b95a5;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
 }
@@ -136,14 +136,14 @@
 
 .fieldLabel {
     margin-bottom: 6px;
-    color: #6b7280;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
 }
 
 .fieldValue {
     min-height: 32px;
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     line-height: 22px;
     word-break: break-word;
@@ -151,7 +151,7 @@
 
 .fieldHint {
     margin-top: 6px;
-    color: #9aa3b2;
+    color: var(--app-text-tertiary);
     font-size: 12px;
     line-height: 18px;
 }
@@ -192,14 +192,14 @@
 }
 
 .subPanelTitle {
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     font-weight: 600;
     line-height: 22px;
 }
 
 .subPanelHint {
-    color: #8b95a5;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
 }
@@ -207,9 +207,9 @@
 .segmented {
     display: inline-flex;
     padding: 2px;
-    border: 1px solid #d7dde8;
+    border: 1px solid var(--app-border-subtle);
     border-radius: 7px;
-    background: #f7f9fc;
+    background: var(--app-surface-subtle);
 }
 
 .segmentButton {
@@ -219,7 +219,7 @@
     border: 0;
     border-radius: 5px;
     background: transparent;
-    color: #4b5563;
+    color: var(--app-text);
     font-size: 12px;
     cursor: pointer;
 }
@@ -236,10 +236,14 @@
 .matchGrid,
 .groupGrid {
     display: grid;
-    overflow: hidden;
-    border: 1px solid #e5e8ef;
+    border: 1px solid var(--app-border-subtle);
     border-radius: 8px;
-    background: #fff;
+    background: var(--app-surface);
+}
+
+.groupGridViewport {
+    max-width: 100%;
+    overflow-x: auto;
 }
 
 .matchGrid {
@@ -248,14 +252,15 @@
 
 .groupGrid {
     grid-template-columns: minmax(150px, 0.95fr) 76px 168px minmax(260px, 1.8fr) 56px;
+    min-width: 820px;
 }
 
 .matchHeader,
 .groupHeader {
     padding: 9px 10px;
-    border-bottom: 1px solid #e9edf4;
-    background: #f8fafc;
-    color: #6b7280;
+    border-bottom: 1px solid var(--app-border-subtle);
+    background: var(--app-surface-subtle);
+    color: var(--app-text-secondary);
     font-size: 12px;
     font-weight: 500;
     line-height: 18px;
@@ -268,28 +273,50 @@
     min-width: 0;
     min-height: 44px;
     padding: 8px 10px;
-    border-bottom: 1px solid #f0f2f6;
-    color: #111827;
+    border-bottom: 1px solid var(--app-surface-secondary);
+    color: var(--app-text);
     font-size: 13px;
     line-height: 20px;
 }
 
 .matchCell:not(:nth-last-child(-n+5)),
 .groupCell:not(:nth-last-child(-n+5)) {
-    border-bottom: 1px solid #f0f2f6;
+    border-bottom: 1px solid var(--app-surface-secondary);
 }
 
-.matchCell :global(.t-input__wrap),
-.matchCell :global(.t-select__wrap),
-.matchCell :global(.t-tag-input),
-.groupCell :global(.t-input__wrap),
-.groupCell :global(.t-select__wrap),
-.groupCell :global(.t-input-number) {
+.matchCell :global(.fui-Input),
+.matchCell :global(.fui-Dropdown),
+.matchCell :global(.fluent-tag-input),
+.groupCell :global(.fui-Input),
+.groupCell :global(.fui-Dropdown),
+.groupCell :global(.fluent-number-input) {
     width: 100%;
 }
 
 .actionCell {
+    background: var(--app-surface);
     justify-content: center;
+    position: sticky;
+    right: 0;
+    z-index: 2;
+}
+
+.groupGrid > :nth-child(5n+1) {
+    background: var(--app-surface);
+    left: 0;
+    position: sticky;
+    z-index: 2;
+}
+
+.groupGrid > .groupHeader:nth-child(5n+1),
+.groupGrid > .groupHeader:nth-child(5n) {
+    background: var(--app-surface-subtle);
+    z-index: 3;
+}
+
+.groupGrid > :nth-child(5n) {
+    position: sticky;
+    right: 0;
 }
 
 .groupCell {
@@ -306,7 +333,7 @@
 
 .generatedGroupName {
     overflow: hidden;
-    color: #111827;
+    color: var(--app-text);
     font-size: 13px;
     font-weight: 600;
     line-height: 20px;
@@ -318,7 +345,7 @@
     min-width: 0;
 }
 
-.groupLabelDisplay :global(.t-icon) {
+.groupLabelDisplay svg {
     flex: 0 0 auto;
 }
 
@@ -335,7 +362,7 @@
     height: 8px;
     overflow: hidden;
     border-radius: 999px;
-    background: #edf1f7;
+    background: var(--app-surface-secondary);
 }
 
 .weightSegment {
@@ -364,119 +391,9 @@
     height: 24px;
     padding: 0 8px;
     border-radius: 999px;
-    background: #e8f2ff;
+    background: var(--app-brand-subtle);
     color: #1677ff;
     font-size: 12px;
-}
-
-.specPane {
-    display: flex;
-    min-width: 0;
-    min-height: 0;
-    border-left: 1px solid #d7dde8;
-}
-
-.specCard {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    width: 100%;
-    min-height: 0;
-    overflow: hidden;
-    border: 0;
-    border-radius: 0;
-    background: #0b1119;
-}
-
-.specToolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 14px 22px;
-    border-bottom: 1px solid #243044;
-    background: #101823;
-}
-
-.specTitle {
-    color: #b8c3d4;
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    line-height: 22px;
-    text-transform: uppercase;
-}
-
-.specDesc {
-    color: #7f8ca3;
-    font-size: 12px;
-    line-height: 18px;
-}
-
-.specActions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.specToggle {
-    display: inline-flex;
-    padding: 2px;
-    border: 1px solid #334155;
-    border-radius: 7px;
-    background: #0b1119;
-}
-
-.specToggle button {
-    height: 24px;
-    padding: 0 8px;
-    border: 0;
-    border-radius: 5px;
-    background: transparent;
-    color: #8b95a5;
-    font-size: 11px;
-    cursor: pointer;
-}
-
-.specToggleActive {
-    background: #1677ff !important;
-    color: #fff !important;
-}
-
-.specCode {
-    min-height: 0;
-    margin: 0;
-    overflow: auto;
-    padding: 18px 28px 28px;
-    background: #0b1119;
-    color: #9dccff;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    font-size: 13px;
-    line-height: 22px;
-    white-space: pre;
-}
-
-.specFooter {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-height: 42px;
-    padding: 12px 22px;
-    border-top: 1px solid #243044;
-    background: #101823;
-}
-
-.previewOk,
-.previewError {
-    font-size: 12px;
-    line-height: 18px;
-}
-
-.previewOk {
-    color: #73d13d;
-}
-
-.previewError {
-    color: #ff7875;
 }
 
 .route-editor-header {
@@ -485,8 +402,8 @@
     align-items: stretch;
     gap: 12px;
     border-radius: 8px;
-    border: 1px solid #e5e6eb;
-    background: #f8fafc;
+    border: 1px solid var(--app-border-subtle);
+    background: var(--app-surface-subtle);
     padding: 12px;
     margin-bottom: 0;
 }
@@ -494,8 +411,8 @@
 .route-editor-header-block {
     flex: 1;
     border-radius: 8px;
-    border: 1px solid #e5e6eb;
-    background: #fff;
+    border: 1px solid var(--app-border-subtle);
+    background: var(--app-surface);
     padding: 12px 14px;
     display: flex;
     flex-direction: column;
@@ -504,7 +421,7 @@
 }
 
 .route-editor-header-block:hover {
-    border-color: #d8dee9;
+    border-color: var(--app-border-subtle);
 }
 
 .serviceSummaryHeader {
@@ -515,7 +432,7 @@
     display: flex;
     align-items: center;
     min-width: 0;
-    color: #111827;
+    color: var(--app-text);
     font-size: 15px;
     line-height: 24px;
     word-break: break-word;
@@ -528,7 +445,7 @@
 .serviceDivider {
     flex: none;
     margin: 0 6px;
-    color: #9ca3af;
+    color: var(--app-text-tertiary);
 }
 
 .route-editor-header-arrow {
@@ -541,7 +458,7 @@
 }
 
 .route-editor-header-title {
-    color: #1f2937;
+    color: var(--app-text);
     font-weight: 600;
     font-size: 14px;
     line-height: 22px;
@@ -549,7 +466,7 @@
 }
 
 .route-editor-header-desc {
-    color: #8b95a5;
+    color: var(--app-text-secondary);
     font-size: 13px;
     line-height: 20px;
     margin-bottom: 2px;
@@ -563,14 +480,14 @@
 
 .sectionCard {
     border-radius: 8px;
-    border: 1px solid #e5e6eb;
-    background: #fff;
+    border: 1px solid var(--app-border-subtle);
+    background: var(--app-surface);
     padding: 16px 18px;
     margin-bottom: 0;
 }
 
 .sectionCard:hover {
-    border-color: #d8dee9;
+    border-color: var(--app-border-subtle);
 }
 
 .matchTable {
@@ -582,7 +499,7 @@
 
 .matchTable th,
 .matchTable td {
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--app-border-subtle);
     padding: 8px 12px;
     text-align: left;
     font-size: 14px;
@@ -590,7 +507,7 @@
 
 .matchTable th {
     font-weight: 500;
-    color: #4e5969;
+    color: var(--app-text-secondary);
 }
 
 .matchTable tr:last-child td {
@@ -614,24 +531,24 @@
     column-gap: 18px;
     row-gap: 12px;
 
-    :global(.t-form__item) {
+    :global(.fluent-form-item) {
         min-width: 0;
     }
 
-    :global(.t-form__label) {
+    :global(.fluent-form-item__label) {
         width: auto !important;
         padding-bottom: 4px;
         text-align: left;
         line-height: 18px;
     }
 
-    :global(.t-form__controls) {
+    :global(.fluent-form-item__control) {
         margin-left: 0 !important;
     }
 
-    :global(.t-form__controls-content),
-    :global(.t-input__wrap),
-    :global(.t-input-number) {
+    :global(.fluent-form-item__control),
+    :global(.fui-Input),
+    :global(.fluent-number-input) {
         width: 100%;
     }
 }
@@ -673,21 +590,21 @@
 }
 
 .metaLabel {
-    color: #6b7280;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
     margin-bottom: 4px;
 }
 
 .metaValue {
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     line-height: 22px;
     word-break: break-word;
 }
 
 .fieldValue {
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     line-height: 22px;
     word-break: break-word;
@@ -707,7 +624,7 @@
     min-width: 0;
 }
 
-.tagList :global(.t-tag) {
+.tagList :global(.fui-Tag) {
     max-width: 100%;
     height: auto;
     min-height: 24px;
@@ -720,7 +637,26 @@
     align-items: flex-start;
 }
 
-.instanceTagList :global(.t-tag) {
+.dynamicLabelHint {
+    color: var(--app-text-secondary);
+    font-size: 12px;
+    line-height: 20px;
+    margin-bottom: 12px;
+}
+
+.dynamicLabelValue {
+    align-items: center;
+    background: var(--app-surface-subtle);
+    border: 1px dashed var(--app-border-subtle);
+    border-radius: 4px;
+    color: var(--app-text-secondary);
+    display: flex;
+    font-size: 12px;
+    min-height: 32px;
+    padding: 0 10px;
+}
+
+.instanceTagList :global(.fui-Tag) {
     max-width: 100%;
     padding: 2px 8px;
     line-height: 20px;
@@ -734,14 +670,14 @@
 .compactTable {
     min-width: 0;
 
-    :global(.t-input-number) {
+    :global(.fluent-number-input) {
         max-width: 100%;
     }
 }
 
 .wrapText {
     display: block;
-    color: #111827;
+    color: var(--app-text);
     line-height: 22px;
     white-space: normal;
     word-break: break-word;
@@ -769,7 +705,7 @@
 
 .ruleBlockDragging {
     border-color: #366ef4;
-    background: #f7faff;
+    background: var(--app-brand-subtle);
 }
 
 .ruleBlockHeader {
@@ -777,7 +713,7 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 8px;
-    color: #111827;
+    color: var(--app-text);
     font-size: 15px;
     font-weight: 600;
     line-height: 24px;
@@ -803,7 +739,7 @@
 
 .ruleSummary {
     margin-top: 2px;
-    color: #8b95a5;
+    color: var(--app-text-secondary);
     font-size: 12px;
     font-weight: 400;
     line-height: 18px;
@@ -821,14 +757,14 @@
     border: 0;
     border-radius: 6px;
     background: transparent;
-    color: #6b7280;
+    color: var(--app-text-secondary);
     cursor: pointer;
 }
 
 .collapseButton:hover,
 .dragHandle:hover,
 .dragHandleActive {
-    background: #eef3ff;
+    background: var(--app-surface-secondary);
     color: #366ef4;
 }
 
@@ -849,7 +785,7 @@
 }
 
 .ruleHelp {
-    color: #8b95a5;
+    color: var(--app-text-secondary);
     font-size: 13px;
     line-height: 20px;
     margin: 0 0 8px;
@@ -860,7 +796,7 @@
         grid-template-columns: 1fr;
     }
 
-    .baseGrid :global(.t-col) {
+    .baseGrid > div {
         flex: 0 0 100% !important;
         max-width: 100% !important;
     }
@@ -874,21 +810,18 @@
         flex-direction: column;
     }
 
-    .matchGrid,
-    .groupGrid {
+    .matchGrid {
         display: block;
         border: 0;
         border-radius: 0;
         background: transparent;
     }
 
-    .matchHeader,
-    .groupHeader {
+    .matchHeader {
         display: none;
     }
 
-    .matchCell,
-    .groupCell {
+    .matchCell {
         min-height: 42px;
         padding: 8px 0;
         border-bottom: 0;
@@ -910,37 +843,12 @@
         content: "匹配值";
     }
 
-    .groupCell:nth-child(5n+1)::before {
-        content: "分组名称";
-    }
-
-    .groupCell:nth-child(5n+2)::before {
-        content: "隔离";
-    }
-
-    .groupCell:nth-child(5n+3)::before {
-        content: "权重";
-    }
-
-    .groupCell:nth-child(5n+4)::before {
-        content: "标签";
-    }
-
-    .matchCell::before,
-    .groupCell::before {
+    .matchCell::before {
         width: 72px;
         flex: 0 0 auto;
-        color: #6b7280;
+        color: var(--app-text-secondary);
         font-size: 12px;
         line-height: 18px;
-    }
-
-    .actionCell {
-        justify-content: flex-start;
-    }
-
-    .specCard {
-        position: static;
     }
 
     .metaGrid,

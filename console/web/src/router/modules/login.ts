@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { LogoutIcon } from 'tdesign-icons-react';
+import { LogoutIcon } from 'components/Fluent/icons';
 import { IRouter } from '../index';
 
 const result: IRouter[] = [

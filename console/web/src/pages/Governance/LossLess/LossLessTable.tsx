@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button, Table, Space, Row, Col, Tooltip, PrimaryTableProps, TableRowData, Popconfirm, Tabs, Link, Empty } from 'tdesign-react';
-import { CreditcardIcon, DeleteIcon, RefreshIcon } from 'tdesign-icons-react';
+import { Button, Table, Space, Row, Col, Tooltip, PrimaryTableProps, TableRowData, Popconfirm, Tabs, Link, Empty } from 'components/Fluent';
+import { CreditcardIcon, DeleteIcon, RefreshIcon } from 'components/Fluent/icons';
 
 import LossLessEditor, { } from './LossLessEditor';
 import { useAppDispatch, useAppSelector } from 'modules/store';

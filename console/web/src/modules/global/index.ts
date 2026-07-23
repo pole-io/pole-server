@@ -96,17 +96,15 @@ const globalSlice = createSlice({
     },
     openSystemTheme: (state) => {
       const media = window.matchMedia('(prefers-color-scheme:dark)');
-      if (media.matches) {
-        const finalTheme = media.matches ? ETheme.dark : ETheme.light;
-        state.chartColors = CHART_COLORS[finalTheme];
-        // 切换主题颜色
-        state.theme = finalTheme;
-        state.systemTheme = true;
-        // 只需要记录跟随操作系统即可
-        localStorage.setItem('theme', finalTheme);
-        localStorage.setItem('systemTheme', 'true');
-        document.documentElement.setAttribute('theme-mode', finalTheme);
-      }
+      const finalTheme = media.matches ? ETheme.dark : ETheme.light;
+      state.chartColors = CHART_COLORS[finalTheme];
+      // 切换主题颜色
+      state.theme = finalTheme;
+      state.systemTheme = true;
+      // 只需要记录跟随操作系统即可
+      localStorage.setItem('theme', finalTheme);
+      localStorage.setItem('systemTheme', 'true');
+      document.documentElement.setAttribute('theme-mode', finalTheme);
     },
     switchColor: (state, action) => {
       if (action?.payload) {

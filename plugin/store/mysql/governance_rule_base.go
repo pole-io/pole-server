@@ -370,7 +370,7 @@ func BuildActiveRuleWhere(ruleName, releaseName, releaseType string) (where stri
 }
 
 // ReleaseVersionColumns 发布表版本列表查询的公共列（与统一表结构一致）
-const ReleaseVersionColumns = `id, name, rule_id, rule_name, flag, active, version, description, release_type, unix_timestamp(ctime), unix_timestamp(mtime)`
+const ReleaseVersionColumns = `id, namespace, name, rule_id, rule_name, flag, active, version, description, release_type, unix_timestamp(ctime), unix_timestamp(mtime)`
 
 // ExecInactiveRelease 将发布表中符合 where 条件的记录置为 active=0（与统一表结构一致）。
 // whereClause 不含 "WHERE" 前缀，args 为对应参数。
@@ -416,7 +416,7 @@ func QueryRuleVersions(
 		item := &rules.RuleRelease{}
 		var flag, active int
 		var ctime, mtime int64
-		if err := rows.Scan(&item.Id, &item.ReleaseName, &item.RuleId, &item.RuleName, &flag, &active, &item.Version, &item.Description, &item.ReleaseType, &ctime, &mtime); err != nil {
+		if err := rows.Scan(&item.Id, &item.Namespace, &item.ReleaseName, &item.RuleId, &item.RuleName, &flag, &active, &item.Version, &item.Description, &item.ReleaseType, &ctime, &mtime); err != nil {
 			return 0, nil, store.Error(err)
 		}
 		item.Active = active == 1

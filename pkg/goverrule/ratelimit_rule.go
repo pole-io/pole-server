@@ -320,14 +320,15 @@ func api2RateLimit(req *apitraffic.RateLimit) (*rules.RateLimit, error) {
 	}
 
 	out := &rules.RateLimit{
-		ID:       utils.NewUUID(),
-		Name:     req.GetName(),
-		Disable:  req.GetDisable(),
-		Priority: req.GetPriority(),
-		Labels:   string(labelStr),
-		Rule:     rule,
-		Revision: utils.NewUUID(),
-		Metadata: req.Metadata,
+		ID:        utils.NewUUID(),
+		Namespace: rules.OwnerNamespaceFromProto(req),
+		Name:      req.GetName(),
+		Disable:   req.GetDisable(),
+		Priority:  req.GetPriority(),
+		Labels:    string(labelStr),
+		Rule:      rule,
+		Revision:  utils.NewUUID(),
+		Metadata:  req.Metadata,
 	}
 	return out, nil
 }
@@ -349,6 +350,7 @@ func rateLimit2Console(rateLimit *rules.RateLimit) (*apitraffic.RateLimit, error
 	}
 	rule := &apitraffic.RateLimit{}
 	rule.Id = rateLimit.ID
+	rules.SetOwnerNamespaceOnProto(rule, rateLimit.Namespace)
 	rule.Name = rateLimit.Name
 	rule.Priority = rateLimit.Priority
 	rule.Ctime = commontime.Time2String(rateLimit.CreateTime)
@@ -491,11 +493,11 @@ func CreateSimpleRateLimit(name, service, namespace string, method string, maxAm
 		Name: name,
 		Type: apitraffic.RateLimit_GLOBAL, // 默认全局限流
 		Rules: []*apitraffic.LimitTrigger{
-				{
-					Name: name + "_trigger",
-					Apis: []*apimodel.API{rateLimitAPIFromMethod(method)},
-					Amounts: []*apitraffic.Amount{
-						{
+			{
+				Name: name + "_trigger",
+				Apis: []*apimodel.API{rateLimitAPIFromMethod(method)},
+				Amounts: []*apitraffic.Amount{
+					{
 						MaxAmount:     maxAmount,
 						ValidDuration: durationpb.New(duration),
 						Precision:     1,

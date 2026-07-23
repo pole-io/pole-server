@@ -1,10 +1,13 @@
 import React from "react";
-import { Form, Input, Button, Select, Switch, Dialog, InputNumber, FormProps, Tag, Popup, StickyTool, RadioGroup, Radio, InputAdornment, Textarea, Space } from "tdesign-react";
-import { AddIcon, ChevronRightIcon, CloseIcon, Edit1Icon, SaveIcon, RocketIcon, RollbackIcon, RemoveIcon } from "tdesign-icons-react";
+import { Form, Input, Button, Select, Switch, Dialog, InputNumber, FormProps, Tag, Popup, StickyTool, RadioGroup, Radio, InputAdornment, Textarea, Space } from 'components/Fluent';
+import { AddIcon, ChevronRightIcon, CloseIcon, Edit1Icon, SaveIcon, RocketIcon, RollbackIcon, RemoveIcon } from 'components/Fluent/icons';
 
 import Text from "components/Text";
 import RuleLabelField from "../shared/RuleLabelField";
+import CollapsibleSection from "../shared/CollapsibleSection";
 import ServiceScopeSection from "../shared/ServiceScopeSection";
+import { GovernanceServiceContext } from "../shared/serviceContext";
+import { useRuleNamespace } from "../shared/ruleNamespace";
 import shared from "../shared/governance.module.less";
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { API, HTTPMethodOption, InterfaceProtocolOption, Label, MatchType, MatchTypeMap, MatchTypeOption, MatchValueType, Op } from "services/types";
@@ -36,7 +39,6 @@ import {
     validateCircuitBreakerDraft,
 } from "./circuitBreakerEditorUtils";
 
-const { FormItem } = Form;
 const { StickyItem } = StickyTool;
 
 interface CircuitBreakerDO {
@@ -89,6 +91,7 @@ const defaultCircuitBreakerRule = (): CircuitBreakerDO => ({
 interface ICircuitBreakerEditorProps {
     op: Op;
     refresh: (close: boolean) => void;
+    serviceContext?: GovernanceServiceContext;
 }
 
 const toLabels = (metadata?: CircuitBreakerDraftLike['metadata']): Label[] => {
@@ -98,7 +101,8 @@ const toLabels = (metadata?: CircuitBreakerDraftLike['metadata']): Label[] => {
     return Object.entries(metadata || {}).map(([key, value]) => ({ key, value }));
 }
 
-const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refresh }) => {
+const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refresh, serviceContext }) => {
+    const ruleNamespace = useRuleNamespace();
     const [form] = Form.useForm();
     const dispatch = useAppDispatch();
 
@@ -121,6 +125,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
     }>({ model: 'view', publishView: false, visible: false, headerVisible: false, editable: op === 'create' || false, });
 
     const [breakerRule, setBreakerRule] = React.useState<CircuitBreakerDO>(defaultCircuitBreakerRule());
+    const [basicInfoCollapsed, setBasicInfoCollapsed] = React.useState(false);
     const [serviceCollapsed, setServiceCollapsed] = React.useState(false);
     const [collapsedSubRuleIndexes, setCollapsedSubRuleIndexes] = React.useState<Set<number>>(() => new Set());
     const [collapsedStrategyKeys, setCollapsedStrategyKeys] = React.useState<Set<string>>(() => new Set());
@@ -202,6 +207,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
     }
 
     React.useEffect(() => {
+        setBasicInfoCollapsed(false);
         if (editRule) {
             if (editRule.id !== '') {
                 setEditorState(pre => ({ ...pre, visible: false, editable: false }));
@@ -217,6 +223,23 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
             }
         }
     }, [editRule])
+
+    React.useEffect(() => {
+        if (op !== 'create' || !serviceContext) return;
+        setBreakerRule((prev) => {
+            const next = cloneDeep(prev);
+            const endpoint = { namespace: serviceContext.namespace, service: serviceContext.service };
+            if (serviceContext.role === 'caller') {
+                next.ruleMatcher.source = endpoint;
+            } else {
+                next.ruleMatcher.destination = {
+                    ...next.ruleMatcher.destination,
+                    ...endpoint,
+                };
+            }
+            return next;
+        });
+    }, [op, serviceContext?.namespace, serviceContext?.service, serviceContext?.role]);
 
     React.useEffect(() => {
         dispatch(listAllNamespaces())
@@ -247,10 +270,10 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
         [breakerRule.metadata],
     );
 
-    const submitPayload = React.useMemo(
-        () => buildCircuitBreakerSubmitPayload({ ...breakerRule, metadata: metadataRecord }),
-        [breakerRule, metadataRecord],
-    );
+    const submitPayload = React.useMemo(() => {
+        const payload = buildCircuitBreakerSubmitPayload({ ...breakerRule, metadata: metadataRecord });
+        return { ...payload, namespace: (payload as { namespace?: string }).namespace || ruleNamespace };
+    }, [breakerRule, metadataRecord, ruleNamespace]);
     const onSubmit: FormProps['onSubmit'] = async () => {
         const errors = validateCircuitBreakerDraft({ ...breakerRule, metadata: metadataRecord });
         if (errors.length > 0) {
@@ -333,9 +356,12 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
     };
 
     const renderBasicInfo = (
-        <div className={shared.section}>
-            <div className={shared.sectionHeader}>基础信息</div>
-            <div className={shared.sectionBody}>
+        <CollapsibleSection
+            collapsed={basicInfoCollapsed}
+            onCollapsedChange={setBasicInfoCollapsed}
+            header="基础信息"
+            summary={`${breakerRule.name || '未命名规则'} · 优先级 ${breakerRule.priority ?? 0}`}
+        >
                 <div className={shared.infoGrid}>
                     <div className={shared.field}>
                         <div className={shared.fieldLabel}>规则名称</div>
@@ -364,8 +390,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                         />
                     </div>
                 </div>
-            </div>
-        </div>
+        </CollapsibleSection>
     );
 
     const renderServiceScope = (
@@ -382,6 +407,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
             onCallerServiceChange={(value) => updateRule(draft => { draft.ruleMatcher.source.service = value; })}
             onCalleeNamespaceChange={(value) => updateRule(draft => { draft.ruleMatcher.destination.namespace = value; })}
             onCalleeServiceChange={(value) => updateRule(draft => { draft.ruleMatcher.destination.service = value; })}
+            fixedRole={op === 'create' ? serviceContext?.role : undefined}
             extraContent={(
                 <div className={shared.field}>
                     <div className={shared.fieldLabel}>熔断粒度</div>
@@ -398,24 +424,25 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
     );
 
     const renderInterfaceRows = (subRuleIdx: number, strategyIdx: number, strategy: CircuitBreakerStrategyDraft) => (
-        <div className={styles.interfaceGrid}>
-            <div className={styles.gridHeader}>协议</div>
-            <div className={styles.gridHeader}>接口方法</div>
-            <div className={styles.gridHeader}>接口路径</div>
-            <div className={styles.gridHeader}>操作</div>
+        <div className={styles.matrixScroller} role="region" aria-label="接口方法配置">
+        <div className={styles.interfaceGrid} role="table">
+            <div className={`${styles.gridHeader} ${styles.firstHeader}`} role="columnheader">协议</div>
+            <div className={styles.gridHeader} role="columnheader">接口方法</div>
+            <div className={styles.gridHeader} role="columnheader">接口路径</div>
+            <div className={`${styles.gridHeader} ${styles.actionHeader}`} role="columnheader">操作</div>
             {(strategy.ifaces || []).map((api: CircuitBreakerAPI, ifaceIdx) => (
                 <React.Fragment key={`iface-${subRuleIdx}-${strategyIdx}-${ifaceIdx}`}>
-                    <div className={styles.gridCell}>
+                    <div className={`${styles.gridCell} ${styles.firstCell}`} role="cell">
                         {editorState.editable ? (
                             <Select options={InterfaceProtocolOption} value={api.protocol || 'HTTP'} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].ifaces[ifaceIdx].protocol = value as string; })} />
-                        ) : <Text>{api.protocol || '-'}</Text>}
+                        ) : <Text title={api.protocol || '-'}>{api.protocol || '-'}</Text>}
                     </div>
-                    <div className={styles.gridCell}>
+                    <div className={styles.gridCell} role="cell">
                         {editorState.editable ? (
                             <Select creatable filterable options={api.protocol === 'HTTP' ? HTTPMethodOption : []} value={api.method || 'GET'} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].ifaces[ifaceIdx].method = value as string; })} />
-                        ) : <Text>{api.method || '-'}</Text>}
+                        ) : <Text title={api.method || '-'}>{api.method || '-'}</Text>}
                     </div>
-                    <div className={styles.gridCell}>
+                    <div className={styles.gridCell} role="cell">
                         {editorState.editable ? (
                             <InputAdornment append={(
                                 <Select
@@ -437,16 +464,17 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                                     })}
                                 />
                             </InputAdornment>
-                        ) : <span className={shared.pathTag}>{api.path?.value || '-'}</span>}
+                        ) : <span className={shared.pathTag} title={api.path?.value || '-'}>{api.path?.value || '-'}</span>}
                     </div>
-                    <div className={`${styles.gridCell} ${styles.actionCell}`}>
+                    <div className={`${styles.gridCell} ${styles.actionCell}`} role="cell">
                         {editorState.editable && (
                             <Space size={4}>
                                 <Popup trigger="hover" content="添加接口">
-                                    <Button shape="circle" variant="text" onClick={() => addIface(subRuleIdx, strategyIdx)}><AddIcon /></Button>
+                                    <Button aria-label={`在第 ${ifaceIdx + 1} 个接口后添加接口`} shape="circle" variant="text" onClick={() => addIface(subRuleIdx, strategyIdx)}><AddIcon /></Button>
                                 </Popup>
                                 <Popup trigger="hover" content="删除接口">
                                     <Button
+                                        aria-label={`删除第 ${ifaceIdx + 1} 个接口`}
                                         shape="circle"
                                         variant="text"
                                         disabled={strategy.ifaces.length <= 1}
@@ -461,39 +489,42 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                 </React.Fragment>
             ))}
         </div>
+        </div>
     );
 
     const renderErrorRows = (subRuleIdx: number, strategyIdx: number, strategy: CircuitBreakerStrategyDraft) => (
-        <div className={styles.conditionGrid}>
-            <div className={styles.gridHeader}>参数类型</div>
-            <div className={styles.gridHeader}>匹配类型</div>
-            <div className={styles.gridHeader}>匹配值</div>
-            <div className={styles.gridHeader}>操作</div>
+        <div className={styles.matrixScroller} role="region" aria-label="错误条件配置">
+        <div className={styles.conditionGrid} role="table">
+            <div className={`${styles.gridHeader} ${styles.firstHeader}`} role="columnheader">参数类型</div>
+            <div className={styles.gridHeader} role="columnheader">匹配类型</div>
+            <div className={styles.gridHeader} role="columnheader">匹配值</div>
+            <div className={`${styles.gridHeader} ${styles.actionHeader}`} role="columnheader">操作</div>
             {(strategy.error_conditions || []).map((condition, conditionIdx) => (
                 <React.Fragment key={`error-${subRuleIdx}-${strategyIdx}-${conditionIdx}`}>
-                    <div className={styles.gridCell}>
+                    <div className={`${styles.gridCell} ${styles.firstCell}`} role="cell">
                         {editorState.editable ? (
                             <Select options={ErrorConditionOptions} value={condition.inputType} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].error_conditions[conditionIdx].inputType = value as string; })} />
-                        ) : <Text>{ErrorConditionMap[condition.inputType as ErrorConditionType] || condition.inputType}</Text>}
+                        ) : <Text title={ErrorConditionMap[condition.inputType as ErrorConditionType] || condition.inputType}>{ErrorConditionMap[condition.inputType as ErrorConditionType] || condition.inputType}</Text>}
                     </div>
-                    <div className={styles.gridCell}>
+                    <div className={styles.gridCell} role="cell">
                         {editorState.editable ? (
                             <Select options={MatchTypeOption} value={condition.condition?.type || MatchType.RANGE} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].error_conditions[conditionIdx].condition.type = value as string; })} />
-                        ) : <Text>{MatchTypeMap[condition.condition?.type as MatchType] || condition.condition?.type}</Text>}
+                        ) : <Text title={MatchTypeMap[condition.condition?.type as MatchType] || condition.condition?.type}>{MatchTypeMap[condition.condition?.type as MatchType] || condition.condition?.type}</Text>}
                     </div>
-                    <div className={styles.gridCell}>
+                    <div className={styles.gridCell} role="cell">
                         {editorState.editable ? (
                             <Input value={condition.condition?.value || ''} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].error_conditions[conditionIdx].condition.value = value; })} />
-                        ) : <Text>{condition.condition?.value || '-'}</Text>}
+                        ) : <Text title={condition.condition?.value || '-'}>{condition.condition?.value || '-'}</Text>}
                     </div>
-                    <div className={`${styles.gridCell} ${styles.actionCell}`}>
+                    <div className={`${styles.gridCell} ${styles.actionCell}`} role="cell">
                         {editorState.editable && (
                             <Space size={4}>
                                 <Popup trigger="hover" content="添加错误条件">
-                                    <Button shape="circle" variant="text" onClick={() => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].error_conditions.push(defaultErrorCondition()); })}><AddIcon /></Button>
+                                    <Button aria-label={`在第 ${conditionIdx + 1} 个错误条件后添加条件`} shape="circle" variant="text" onClick={() => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].error_conditions.push(defaultErrorCondition()); })}><AddIcon /></Button>
                                 </Popup>
                                 <Popup trigger="hover" content="删除错误条件">
                                     <Button
+                                        aria-label={`删除第 ${conditionIdx + 1} 个错误条件`}
                                         shape="circle"
                                         variant="text"
                                         disabled={strategy.error_conditions.length <= 1}
@@ -508,22 +539,24 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                 </React.Fragment>
             ))}
         </div>
+        </div>
     );
 
     const renderTriggerRows = (subRuleIdx: number, strategyIdx: number, strategy: CircuitBreakerStrategyDraft) => (
-        <div className={styles.triggerGrid}>
-            <div className={styles.gridHeader}>类型</div>
-            <div className={styles.gridHeader}>比较</div>
-            <div className={styles.gridHeader}>阈值</div>
-            <div className={styles.gridHeader}>统计周期</div>
-            <div className={styles.gridHeader}>最小请求数</div>
-            <div className={styles.gridHeader}>操作</div>
+        <div className={styles.matrixScroller} role="region" aria-label="触发条件配置">
+        <div className={styles.triggerGrid} role="table">
+            <div className={`${styles.gridHeader} ${styles.firstHeader}`} role="columnheader">类型</div>
+            <div className={styles.gridHeader} role="columnheader">比较</div>
+            <div className={styles.gridHeader} role="columnheader">阈值</div>
+            <div className={styles.gridHeader} role="columnheader">统计周期</div>
+            <div className={styles.gridHeader} role="columnheader">最小请求数</div>
+            <div className={`${styles.gridHeader} ${styles.actionHeader}`} role="columnheader">操作</div>
             {(strategy.trigger_conditions || []).map((condition, conditionIdx) => {
                 const isRatio = condition.triggerType === TriggerType.ERROR_RATE;
                 const thresholdValue = isRatio ? condition.errorPercent ?? condition.triggerVal ?? 0 : condition.errorCount ?? condition.triggerVal ?? 0;
                 return (
                     <React.Fragment key={`trigger-${subRuleIdx}-${strategyIdx}-${conditionIdx}`}>
-                        <div className={styles.gridCell}>
+                        <div className={`${styles.gridCell} ${styles.firstCell}`} role="cell">
                             {editorState.editable ? (
                                 <Select
                                     options={TriggerTypeOptions}
@@ -534,10 +567,10 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                                         item.triggerVal = value === TriggerType.ERROR_RATE ? item.errorPercent || 50 : item.errorCount || 3;
                                     })}
                                 />
-                            ) : <Text>{TriggerTypeMap[condition.triggerType as TriggerType]?.text || condition.triggerType}</Text>}
+                            ) : <Text title={TriggerTypeMap[condition.triggerType as TriggerType]?.text || condition.triggerType}>{TriggerTypeMap[condition.triggerType as TriggerType]?.text || condition.triggerType}</Text>}
                         </div>
-                        <div className={styles.gridCell}><Text>{'>='}</Text></div>
-                        <div className={styles.gridCell}>
+                        <div className={styles.gridCell} role="cell"><Text>{'>='}</Text></div>
+                        <div className={styles.gridCell} role="cell">
                             {editorState.editable ? (
                                 <InputAdornment append={isRatio ? '%' : '次'}>
                                     <InputNumber
@@ -561,28 +594,29 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                                 </InputAdornment>
                             ) : <Text>{`${thresholdValue} ${isRatio ? '%' : '次'}`}</Text>}
                         </div>
-                        <div className={styles.gridCell}>
+                        <div className={styles.gridCell} role="cell">
                             {editorState.editable ? (
                                 <InputAdornment append="秒">
                                     <InputNumber theme="normal" min={0} value={condition.interval || 0} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].trigger_conditions[conditionIdx].interval = Number(value || 0); })} />
                                 </InputAdornment>
                             ) : <Text>{`${condition.interval || 0} 秒`}</Text>}
                         </div>
-                        <div className={styles.gridCell}>
+                        <div className={styles.gridCell} role="cell">
                             {editorState.editable ? (
                                 <InputAdornment append="个">
                                     <InputNumber theme="normal" min={0} value={condition.minimumRequest || 0} onChange={(value) => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].trigger_conditions[conditionIdx].minimumRequest = Number(value || 0); })} />
                                 </InputAdornment>
                             ) : <Text>{`${condition.minimumRequest || 0} 个`}</Text>}
                         </div>
-                        <div className={`${styles.gridCell} ${styles.actionCell}`}>
+                        <div className={`${styles.gridCell} ${styles.actionCell}`} role="cell">
                             {editorState.editable && (
                                 <Space size={4}>
                                     <Popup trigger="hover" content="添加触发条件">
-                                        <Button shape="circle" variant="text" onClick={() => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].trigger_conditions.push(defaultTriggerCondition()); })}><AddIcon /></Button>
+                                        <Button aria-label={`在第 ${conditionIdx + 1} 个触发条件后添加条件`} shape="circle" variant="text" onClick={() => updateRule(draft => { draft.subrules[subRuleIdx].strategies[strategyIdx].trigger_conditions.push(defaultTriggerCondition()); })}><AddIcon /></Button>
                                     </Popup>
                                     <Popup trigger="hover" content="删除触发条件">
                                         <Button
+                                            aria-label={`删除第 ${conditionIdx + 1} 个触发条件`}
                                             shape="circle"
                                             variant="text"
                                             disabled={strategy.trigger_conditions.length <= 1}
@@ -597,6 +631,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                     </React.Fragment>
                 );
             })}
+        </div>
         </div>
     );
 
@@ -616,6 +651,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                         {editorState.editable && (
                             <Popup trigger="hover" content="删除策略">
                                 <Button
+                                    aria-label={`删除第 ${strategyIdx + 1} 个熔断策略`}
                                     shape="circle"
                                     variant="text"
                                     disabled={breakerRule.subrules[subRuleIdx].strategies.length <= 1}
@@ -722,7 +758,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                                     <Text>暂无响应头</Text>
                                 )}
                                 {editorState.editable && (
-                                    <Button shape="circle" variant="text" onClick={() => setEditorState(prev => ({ ...prev, headerVisible: true, headerSubRuleIndex: subRuleIdx }))}>
+                                    <Button aria-label={`编辑第 ${subRuleIdx + 1} 个子规则的响应头`} shape="circle" variant="text" onClick={() => setEditorState(prev => ({ ...prev, headerVisible: true, headerSubRuleIndex: subRuleIdx }))}>
                                         <Edit1Icon />
                                     </Button>
                                 )}
@@ -760,6 +796,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                         {editorState.editable && (
                             <Popup trigger="hover" content="删除子规则">
                                 <Button
+                                    aria-label={`删除第 ${subRuleIdx + 1} 个子规则`}
                                     shape="circle"
                                     variant="text"
                                     disabled={breakerRule.subrules.length <= 1}
@@ -809,7 +846,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                     <div key={idx} className={styles.headerEditRow}>
                         <Input value={tag.key} placeholder="响应头 Key" onChange={value => updateRule(draft => { draft.subrules[subRuleIdx].fallbackConfig.response.headers[idx].key = value; })} />
                         <Input value={tag.value} placeholder="响应头 Value" onChange={value => updateRule(draft => { draft.subrules[subRuleIdx].fallbackConfig.response.headers[idx].value = value; })} />
-                        <Button shape="circle" variant="text" onClick={() => updateRule(draft => { draft.subrules[subRuleIdx].fallbackConfig.response.headers.splice(idx, 1); })}>
+                        <Button aria-label={`删除第 ${idx + 1} 个响应头`} shape="circle" variant="text" onClick={() => updateRule(draft => { draft.subrules[subRuleIdx].fallbackConfig.response.headers.splice(idx, 1); })}>
                             <CloseIcon />
                         </Button>
                     </div>
@@ -862,8 +899,8 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
 
     const renderStickyTool = (
         <>
-            {(op === 'create' || viewRule?.editable) && (
-                <FormItem style={{ marginTop: 20 }}>
+            {(op === 'create' || viewRule?.editable !== false) && (
+                <div style={{ marginTop: 20 }}>
                     <StickyTool
                         style={{ zIndex: 1000 }}
                         placement='right-bottom'
@@ -901,7 +938,7 @@ const CircuitBreakerEditor: React.FC<ICircuitBreakerEditorProps> = ({ op, refres
                             />
                         )}
                     </StickyTool>
-                </FormItem>
+                </div>
             )}
         </>
     )

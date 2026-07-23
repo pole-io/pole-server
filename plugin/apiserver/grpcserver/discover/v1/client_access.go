@@ -94,8 +94,11 @@ func (g *DiscoverGRPCServer) Discover(server apiservice.DiscoverGRPC_DiscoverSer
 			}
 			return err
 		}
-
-		msg := fmt.Sprintf("receive grpc discover request: %s", in.Service.String())
+		serviceDescription := ""
+		if service := in.GetService(); service != nil {
+			serviceDescription = service.String()
+		}
+		msg := fmt.Sprintf("receive grpc discover request: %s", serviceDescription)
 		accesslog.Info(msg,
 			zap.String("type", apiservice.DiscoverRequest_DiscoverRequestType_name[int32(in.Type)]),
 			zap.String("client-address", clientAddress),
@@ -132,6 +135,10 @@ func (g *DiscoverGRPCServer) handleDiscoverRequest(ctx context.Context, in *apis
 	var action string
 	startTime := commontime.CurrentMillisecond()
 	defer func() {
+		revision := out.GetService().GetRevision()
+		if out.GetType() == apiservice.DiscoverResponse_SERVICE_IDENTITY {
+			revision = out.GetServiceIdentity().GetRevision()
+		}
 		statis.GetStatis().ReportDiscoverCall(metrics.ClientDiscoverMetric{
 			Action:    action,
 			ClientIP:  utils.ParseClientAddress(ctx),
@@ -139,13 +146,15 @@ func (g *DiscoverGRPCServer) handleDiscoverRequest(ctx context.Context, in *apis
 			Resource:  in.GetType().String() + ":" + in.GetService().GetName(),
 			Timestamp: startTime,
 			CostTime:  commontime.CurrentMillisecond() - startTime,
-			Revision:  out.GetService().GetRevision(),
+			Revision:  revision,
 			Success:   out.GetCode() > uint32(apimodel.Code_DataNoChange),
 		})
 	}()
 
-	// 兼容。如果请求中带了token，优先使用该token
-	if in.GetService().GetToken() != "" {
+	// 兼容旧资源：请求 body 中的 token 可以覆盖 metadata。服务身份是
+	// fail-closed 资源，必须只信任 stream metadata，禁止走此兼容路径。
+	if in.GetType() != apiservice.DiscoverRequest_SERVICE_IDENTITY &&
+		in.GetType() != apiservice.DiscoverRequest_SERVICE_IDENTITY_BUNDLE && in.GetService().GetToken() != "" {
 		ctx = context.WithValue(ctx, types.ContextAuthTokenKey, in.GetService().GetToken())
 	}
 
@@ -165,6 +174,19 @@ func (g *DiscoverGRPCServer) handleDiscoverRequest(ctx context.Context, in *apis
 	case apiservice.DiscoverRequest_SERVICES:
 		action = metrics.ActionDiscoverServices
 		out = g.namingServer.GetServiceWithCache(ctx, in.Service)
+	case apiservice.DiscoverRequest_SERVICE_IDENTITY:
+		action = metrics.ActionDiscoverServiceIdentity
+		out = g.namingServer.GetServiceIdentity(ctx, in.Service)
+	case apiservice.DiscoverRequest_SERVICE_IDENTITY_BUNDLE:
+		action = metrics.ActionDiscoverServiceIdentityBundle
+		out = api.NewDiscoverResponse(apimodel.Code_WorkloadCredentialIssuerUnavailable)
+		out.Type = apiservice.DiscoverResponse_SERVICE_IDENTITY_BUNDLE
+		if g.workloadCredentialServer != nil {
+			bundle, code := g.workloadCredentialServer.DiscoverTrustBundle(ctx, in.GetTrustBundleQuery())
+			out = api.NewDiscoverResponse(code)
+			out.Type = apiservice.DiscoverResponse_SERVICE_IDENTITY_BUNDLE
+			out.ServiceIdentityBundle = bundle
+		}
 	case apiservice.DiscoverRequest_FAULT_DETECTOR:
 		action = metrics.ActionDiscoverFaultDetect
 		out = g.ruleServer.GetFaultDetectWithCache(ctx, in.Service)

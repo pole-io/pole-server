@@ -1,5 +1,5 @@
 import React from 'react';
-import { Drawer, Link, Table, Tag, TableProps } from 'tdesign-react';
+import { Drawer, Link, Table, Tag, TableProps } from 'components/Fluent';
 
 import { describeAuthPolicies, PolicyRule } from 'services/auth_policy';
 import { openErrNotification } from 'utils/notifition';

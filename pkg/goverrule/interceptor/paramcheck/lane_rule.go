@@ -36,6 +36,7 @@ var (
 	_allowLaneGroupFilters = map[string]struct{}{
 		"id":          {},
 		"name":        {},
+		"namespace":   {},
 		"offset":      {},
 		"brief":       {},
 		"limit":       {},

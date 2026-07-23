@@ -13,6 +13,7 @@ export interface NamespaceView extends Namespace {
     total_service_count?: number
     total_health_instance_count?: number
     total_instance_count?: number
+    total_config_file_count?: number
     editable: boolean
     deleteable: boolean
 }

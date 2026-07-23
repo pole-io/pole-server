@@ -1,28 +1,2468 @@
 ---
 title: 任务计划与 Review
 tags: [tasks, todo]
-links: [lessons]
-updated: 2026-07-20
+links: [lessons, adr-otel-observability-platform, adr-pole-rust-client-observability]
+updated: 2026-07-23
 sources: 0
 ---
 
 # 任务计划与 Review
 
+## Agent 对话输入器视觉优化
+
+- [x] 收敛输入器边框、阴影、间距与按钮层级
+- [x] 消除 Fluent 全局 Textarea 聚焦样式造成的双蓝线
+- [x] 补充输入器视觉契约并在 Kubernetes 容器内完成测试与构建
+- [x] 发布新镜像并通过 Kubernetes Gateway 验证亮暗主题和交互状态
+
+Review：
+
+- 输入器改为 17px 组合表面、1px 弱边框和单层品牌色焦点光环；资源范围收敛为次级标签，发送按钮补齐 enabled、disabled、hover 和 pressed 层级。
+- 根因不仅是内层 `textarea` 的全局 focus shadow，Fluent `Textarea` 根节点还通过 `::after` 绘制 4px 底线；现已在 `composerInput` 局部同时关闭 outline、shadow 和根节点伪元素。
+- 第一版焦点声明引用了未定义的 `--app-primary`，K8s 浏览器发现焦点光环未生效后停止收尾；最终改用全局已定义的 `--app-brand`，亮暗主题均得到有效计算样式。
+- `test:agent-workbench`、`test:login-redirect`、目标文件 ESLint 和 release build 均在 K8s Node Pod 内通过。
+- 已滚动更新 `pole-system/deployment/pole-control-plane` 到 `pole-control-plane:local-20260723-agent-composer-v2`；Pod `pole-control-plane-85d65f4796-skqkp` Ready、0 restart，imageID 为 `sha256:0f72fb4e9d18...`。
+- K8s Playwright 在 1440×900 的亮暗主题中确认：内层 border/outline/shadow 均为 0/none，根节点 `::after` 不显示，外层宽 819px、高 134px、圆角 17px、边框 1px，并存在 3px 品牌色焦点光环；输入后发送按钮可用。
+- Pod 与 Gateway 都加载 `assets/index.14eb389b.js`，实际截图为 `output/playwright/agent-composer-light.png` 和 `output/playwright/agent-composer-dark.png`。
+
+## 登录页未登录提示降噪
+
+- [x] 建立受保护路由跳转登录页时出现重复 Toast 的回归信号
+- [x] 移除登录页重复“您当前未登录，请先登录”提示，保留原路径跳转状态
+- [x] 在 Kubernetes 容器内完成前端专项测试与构建
+- [x] 发布新镜像并通过 Kubernetes Gateway 验证登录页与登录失败提示
+
+Review：
+
+- 根因是 `PrivateRoute` 将来源位置写入 `state.from` 后，登录页主动把该状态解释成警告；本次只移除重复 Toast，受保护路由仍保留来源位置。
+- 新增 `test:login-redirect` 契约测试；在 K8s Node Pod 内确认修复前因精确文案稳定失败，修复后通过，目标文件 ESLint 与 release build 同样在 K8s Pod 内通过。
+- 已滚动更新 `pole-system/deployment/pole-control-plane` 到 `pole-control-plane:local-20260723-login-redirect-v1`；Pod `pole-control-plane-8469fc987b-kw9sp` Ready、0 restart，imageID 为 `sha256:34e24030ef62...`。
+- K8s Playwright 使用全新无会话浏览器访问 `/namespace`，确认静默跳转 `/login`、`history.state.usr.from.pathname=/namespace`、页面没有重复 Toast；不存在的探针账号登录返回 400 时仍显示“请求错误”反馈。
+- Pod 内 `index.html` 与 Gateway 都加载 `assets/index.a389d17f.js`，活动静态资源图中不再包含“您当前未登录，请先登录”。
+
+## Namespace 环境模型全链路实现
+
+- [x] specification 为全部治理规则聚合根增加归属 namespace，并完成生成代码与兼容测试
+- [x] control-plane 统一治理规则存储、查询、锁定、发布、鉴权与删除保护的 namespace 语义
+- [x] Console 治理工作台和规则编辑器支持归属环境筛选、展示与创建
+- [x] Service、Config Group、Config File 详情支持同一逻辑资源的跨环境切换与摘要对照
+- [x] 补齐跨环境查询的逐资源权限过滤，禁止泄露无权环境的资源存在性
+- [x] 发布新版 specification，并更新 control-plane 与 Rust SDK 正式依赖
+- [x] 完成单测、全量测试、前端构建、知识库校验、代码审查和本地 Kubernetes 发布
+
+Review：
+
+- specification 已发布 `v0.1.0-ALPHA.37`：九类治理聚合根增加顶层 `namespace`，并增加 `NamespaceExistedGovernanceRules=400220`；Go/Rust wire、JSON 与旧 payload 读取测试通过。
+- control-plane 按 `namespace + rule_type + name` 查询、加锁和防重；发布、回滚、审计、授权资源上下文和 Namespace 删除保护均使用 owner namespace，流量治理目标服务 namespace 保持独立。
+- Console 工作台默认进入 `default` 环境，按 owner namespace 查询和过滤；新建规则先选择归属环境，点击规则类型直接进入独立创建页，URL 使用独立 `ruleNamespace`。
+- Service、Config Group、Config File 详情提供同一逻辑资源的可访问环境摘要与切换；Config File 使用 `group + file` 身份，并只读取 brief 摘要。配置查询在服务端逐资源授权后重算数量。
+- Rust SDK 与 control-plane 正式依赖均更新到 `v0.1.0-ALPHA.37`；Rust SDK 157 个库测试、control-plane 全量 `go test ./... -count=1`、Console 专项契约和 release build 全部通过。
+- 已仅更新 `pole-system/deployment/pole-control-plane` 到 `pole-control-plane:local-20260723-namespace-environment-v3`；Pod `pole-control-plane-78549b6f79-k7vmr` Ready、0 restart，imageID 为 `sha256:8a944100fde3...`。本地与 Gateway 的 `index.html` 和 release 构建 SHA256 一致，主资源为 `assets/index.4996b430.js`。
+- 真实浏览器验证规则工作台显示“归属环境”，规则卡片点击直接进入 `?kind=route&ruleNamespace=default`，创建页明确显示“归属环境 default”；服务详情显示 Fluent 跨环境视图与可访问环境数量。
+- 升级注意：历史 `governance_rule.namespace=''` 无法可靠推断真实环境，尤其旧流量治理曾混用目标环境；必须由部署方制定显式回填策略，不能自动猜测。
+
+## Namespace 环境语义与 Website 描述统一
+
+- [x] 复核 Namespace、Service、Config Group、Config File 与 Governance Rule 的资源身份语义
+- [x] 将 Console 主要资源页说明统一为“namespace 是运行环境”
+- [x] 更新领域术语、业务规则和功能档案，移除多租户及同名候选资源表述
+- [x] 完成前端静态检查、构建、知识库一致性验证和本地 Kubernetes 发布
+
+Review：
+
+- Namespace、服务、配置分组、配置文件详情和治理工作台的说明已统一采用环境语义；治理工作台文案只描述目标领域边界，没有宣称尚未落地的跨环境切换或对比能力。
+- 领域知识明确区分全局逻辑标识与 `namespace + resource key` 环境实例坐标；治理规则直接归属 Namespace，caller、callee、target service 保持运行时作用范围。
+- 已通过 namespace workspace/drawer 专项检查、ESLint、release build、`git diff --check` 与 context-kg lint。
+- 已构建 `linux/arm64` 镜像 `pole-control-plane:local-20260723-namespace-environment-copy-v2`，仅更新 `pole-system/deployment/pole-control-plane`；新 Pod Ready、无重启，8080、Gateway 深链及 8090 鉴权入口正常，新文案所在静态 chunk 与构建产物一致。
+
+## 治理匹配条件 Fluent UI 交互与布局优化
+
+- [x] 审计共享匹配条件编辑器的 Fluent UI 组件、信息层级、列宽和响应式问题
+- [x] 将条件关系、字段行、删除和新增交互调整为 Fluent UI v9 的标准模式
+- [x] 修复下拉触发区被相邻输入框遮挡、操作列表头换行和宽屏留白失衡
+- [x] 覆盖固定值、请求参数、只读、无参数键及多行条件场景
+- [x] 完成专项回归、ESLint、构建、all-mode 运行入口和真实页面验收
+
+Review：
+
+- 条件关系改用 Fluent `RadioGroup`，删除与新增改用原生 `Button`、`Tooltip` 和图标；每条条件成为独立语义行，补齐 table/row/cell 与字段可访问名称。
+- “值来源”去掉会清空选中展示的可筛选模式，只保留固定值和请求参数；请求参数态明确展示“采集参数 / 采集该键的请求值”，不再伪装成需要填写匹配值。
+- 响应式从页面视口判断改为组件容器查询：宽容器使用六列表格，嵌套子规则约 700px 时自动切换两列字段卡，最右操作按钮不再被裁切，窄容器进一步降为单列。
+- 所有颜色、表面、边框和文字均使用应用主题 token；Playwright 在亮色和暗色模式下验证可读，截图为 `output/playwright/governance-fluent-match-condition-detail.png` 与 `output/playwright/governance-fluent-match-condition-dark.png`。
+- 已通过 `test:traffic-match-condition-editor`、`test:governance-request-value-types`、`test:traffic-security`、`test:dark-theme`、ESLint 和 `build:test`；本地 8080/8090 运行入口持续可用，实时 `index.html` 与最新构建一致。
+
 ## 移除治理运行变量值来源
 
 - [x] 核对 `VARIABLE` 在 specification、Console、Go 后端、Rust SDK 与知识库的完整影响面
 - [x] 从 specification 删除 `VARIABLE` 并保留枚举号/名称不可复用约束，重新生成 Go/Rust 代码
-- [x] 从 Console 的值来源选项与归一化分支中移除运行变量
+- [x] 从 Console 的值来源选项、归一化分支、提示文案和专项测试中移除运行变量
 - [x] 从 Rust SDK 路由与限流消费逻辑中移除机器环境变量读取
-- [x] 发布 specification `v0.1.0-ALPHA.35` 并更新 control-plane、Rust SDK 正式依赖
-- [x] 完成隔离测试、显式提交推送、all-mode 重建和真实页面验证
+- [x] 发布新 specification 版本并更新 control-plane、Rust SDK 正式依赖
+- [x] 完成测试、显式提交推送、all-mode 重建和真实页面验证
 
 Review：
 
-- specification 提交 `4e5e41e`，GitHub Release 与 crates.io 均已发布 `v0.1.0-ALPHA.35`；历史枚举号 `2` 和名称 `VARIABLE` 均被 reserved。
-- Rust SDK 对未知值类型 fail closed，不再读取机器环境变量；隔离暂存树测试通过，提交 `2b7b53f` 已推送 `develop`。
-- control-plane 删除运行变量选项和数值 `2` 映射，升级 ALPHA.35；隔离暂存树通过 Go 全量测试、前端 ESLint 与构建，提交 `99e96eb9` 已推送 `develop`。
-- all-mode 使用当前完整工作树重建，8080/8090 均返回 200；Playwright 验证值来源下拉只显示“固定值 / 请求参数”。
+- specification 已发布 `v0.1.0-ALPHA.35`，枚举号 `2` 与名称 `VARIABLE` 均已保留不可复用；Go/Rust 生成代码及发布流水线通过。
+- Rust SDK 已移除路由、限流对机器环境变量的读取，未知值类型按 fail-closed 处理；隔离暂存树完整测试通过，提交 `2b7b53f` 已推送 `develop`。
+- Console 已删除运行变量选项及数值 `2` 的归一化映射，正式依赖已切换 ALPHA.35；隔离暂存树的 Go 全量测试、前端 ESLint 与 `build:test` 通过。
+- control-plane 提交 `99e96eb9` 已推送 `develop`；all-mode 使用当前完整工作树重建，8080/8090 均返回 200。
+- Playwright 使用 `admin/admin123` 打开本地限流规则创建页，新增匹配条件后展开“值来源”，下拉只显示“固定值 / 请求参数”，无“运行变量”；截图为 `output/playwright/governance-value-source-without-runtime-variable.png`。
+
+## specification ALPHA.34 发布与依赖联动
+
+- [x] 审核 specification 协议与 Go/Rust 生成代码差异，确认版本号和发布机制
+- [x] 完成 specification 生成、测试、显式暂存、提交、推送和 `v0.1.0-ALPHA.34` 发布
+- [x] 将 control-plane 的 Go 依赖更新到 ALPHA.34，移除仅用于本地联调的 replace 并完成回归
+- [x] 将 Rust SDK 与 e2e 依赖更新到 ALPHA.34，刷新 lock 并验证治理动态参数及完整编译
+- [x] 分别显式暂存、提交和推送 control-plane、Rust SDK 变更，记录最终 Review
+
+Review：
+
+- specification 已提交 `d50d691`，发布标签与 GitHub Release `v0.1.0-ALPHA.34`；Release-Rust 工作流成功，crates.io 已可检索和下载 `pole-specification 0.1.0-ALPHA.34`。
+- specification 的 Go/Rust 生成脚本、`go test ./...`、Rust `cargo test` 均通过。
+- Rust SDK 与 e2e 已切换到 canonical 仓库和 ALPHA.34，完整 `cargo test` 通过（155 个单元测试、6 个 public API 测试），提交 `da9381a` 已推送 `develop`。
+- control-plane 已移除本地 specification replace，依赖切换到 ALPHA.34；在隔离 worktree 中完整 `go test ./...` 通过，提交 `33aa806c` 已推送 `develop`。
+- 三个仓库均采用显式暂存，未把各自工作区中已有的其它未提交变更混入本次提交。
+
+## 治理请求参数值类型统一闭环
+
+- [x] 核对 `TEXT/PARAMETER/VARIABLE` 在 specification、Console、路由与限流数据面中的现状及缺口
+- [x] 定义统一的“固定匹配、请求值提取、运行变量引用”契约，并明确各治理类型的可消费范围
+- [x] 让共享条件编辑器与鉴权、路由、限流、泳道、镜像、Mock 读写完整保留值类型
+- [x] 实现已具备数据面承载能力的动态限流/路由消费，拒绝或显式降级未支持的场景
+- [x] 补齐前后端回归、文档、重建与真实页面验证
+
+Review：
+
+- specification 已有值类型契约，无需新增协议字段；Console 统一显示“固定值 / 请求参数 / 运行变量”，并由共享条件编辑器及所有治理调用方完整读写 `value_type`。
+- Rust Proxyless SDK 将新式 `PARAMETER + 空 value` 解释为采集当前键：本地限流按采集值摘要拆分计数器，路由目标标签可消费同名采集值；旧式 `PARAMETER + 非空 value` 保留兼容读取另一参数键。
+- xDS 当前不消费该动态语义，Console 和 ADR 均明确展示能力边界，没有静默伪装支持。
+- Console 已通过值类型专项、鉴权/路由/限流/泳道专项、ESLint 和 `build:test`；Go 治理参数校验测试与 context-kg lint 通过。
+- Rust SDK 在指向当前本地 specification 的临时副本中通过路由 8 项、限流 12 项测试；原工作区仍因远端旧 specification 标签缺少既有身份类型而无法直接编译，本次未擅自改动其正式依赖版本。
+- all-mode 已重建，8080/8090 均可访问。真实浏览器在限流创建页新增匹配条件并切换为“请求参数”，确认固定值输入被采集提示替换、六列没有溢出、完整能力说明位于表格下方，浏览器控制台 0 错误/0 警告。截图：`output/playwright/governance-request-parameter-final.png`。
+
+## 鉴权兼容模式恢复子规则 Header 匹配
+
+- [x] 核对托管身份、全局 Custom Header 与原有子规则请求条件的存储及校验边界
+- [x] 将“自定义 Header（兼容模式）”收敛为子规则内的请求 Header 匹配，而非规则级凭证
+- [x] 清理错误的规则级 Header UI/提交路径并完成前后端、实页回归
+
+Review：
+
+- 已确认后端既有 `LEGACY_REQUEST_MATCH` 会校验每条策略的 `traffic_match_rule`，无需改变其存储或校验边界；历史 `CUSTOM_HEADER` 继续可解析，避免存量规则读取失败。
+- Console 将“自定义 Header（兼容模式）”映射为 `LEGACY_REQUEST_MATCH`，并把每个子规则的请求条件作为提交载荷；规则级 Header 名、值、轮换提示和相关样式均已移除。
+- 已通过 `npm run test:traffic-security`、`npm run lint -- --quiet`、`npm run build:test` 与 `go test ./pkg/goverrule/interceptor/paramcheck`；all-mode 已重建，8080/8090 均返回 HTTP 200。
+- 真实浏览器以 `admin` 打开 `/governance/rules/create?kind=traffic-security`：第③段选择“自定义 Header（兼容模式）”后，只展示“在每个鉴权子规则中配置 Header 匹配条件”；白名单子规则下显示独立的 `HEADER / authorization / 完全匹配 / 匹配值` 条件，没有规则级 Header 名和值输入。截图：`.playwright-cli/page-2026-07-20T09-17-58-283Z.yml`。
+
+## 鉴权认证方式折叠
+
+- [x] 将认证方式接入统一折叠组件并保留现有编辑、只读逻辑
+- [x] 在折叠标题展示当前认证模式摘要
+- [x] 完成专项检查、构建、重建与真实页面验收
+
+Review：
+
+- 认证方式复用 `CollapsibleSection`，默认展开；关闭页面或切换规则时重置为展开，避免将旧页面的临时折叠状态带入新规则。
+- 收起时分别显示“Pole 托管服务身份”“自定义 Header”或“旧版请求匹配”，正文表单和凭证提示不再占用编辑页面空间。
+- 已通过 `npm run test:traffic-security`、`npm run lint -- --quiet`、`npm run build:test`。all-mode 重建完成且 8080/8090 返回 200；浏览器确认收起后正文隐藏并显示认证模式摘要。
+
+## RPC 接口字段语义与布局修正
+
+- [x] 核对 gRPC/Dubbo 的 `path`、`method` 协议契约与当前编辑映射
+- [x] 使列标题、占位说明和列宽明确表达“接口在 path、方法在 method”
+- [x] 增加专项回归并完成构建、重建和真实页面验收
+
+Review：
+
+- 协议契约保持 `path.value` 承载 gRPC service / Dubbo interface，`method` 承载可选 RPC 方法；原实现的数据读写正确，问题是混合表头与宽度分配让这个语义不清晰。
+- 表头改为“HTTP 方法 / RPC 接口”和“HTTP 路径 / RPC 方法（可选）”；RPC 行将接口列扩展到最小 280px，方法列收敛为最小 160px。
+- 专项回归已先以旧表头失败、再随修复通过；`npm run lint -- --quiet`、`npm run build:test` 通过。all-mode 重建完成且 8080/8090 返回 200；浏览器切换 GRPC 后确认 `helloworld.Greeter` 是接口输入、`SayHello` 是可选方法输入。
+
+## 鉴权服务信息垂直可折叠布局
+
+- [x] 将被调命名空间、服务名称改为上下顺序的紧凑表单
+- [x] 将服务信息卡片接入统一折叠组件并提供已选服务摘要
+- [x] 完成专项检查、构建、重建和真实页面验收
+
+Review：
+
+- 服务信息复用统一的 `CollapsibleSection`：默认展开，收起后显示“命名空间 / 服务名称”摘要，未选择时显示“未选择被调服务”。
+- 可编辑和只读状态均按命名空间、服务名称的上下顺序渲染，并将表单宽度限制在 560px 内，避免宽画布把关联字段拆散。
+- 已通过 `npm run test:traffic-security`、`npm run lint -- --quiet`、`npm run build:test`。all-mode 重建完成，8080/8090 均返回 200；真实浏览器确认字段的纵向顺序及收起、展开交互。
+
+## RPC API 编辑顺序与可选方法
+
+- [x] 将 gRPC、Dubbo 的编辑顺序调整为服务/接口、匹配类型、可选方法
+- [x] 保持 HTTP 既有的方法、匹配类型、路径顺序，并让混合协议表头准确表达差异
+- [x] 补充回归、构建、重建与真实页面验收
+
+Review：
+
+- RPC 的主匹配对象是服务名或接口名，方法只用于进一步收窄范围。因此 gRPC/Dubbo 行按“协议、服务/接口、匹配类型、可选方法、操作”渲染；HTTP 仍为“协议、方法、匹配类型、路径、操作”。
+- `method` 空值保持合法，专项脚本已覆盖 gRPC 服务名存在、方法为空时的鉴权规则校验与提交载荷。
+- 已通过 `npm run test:traffic-security`、`npm run lint -- --quiet`、`npm run build:test`。all-mode 重建完成且 8080/8090 均返回 200；真实浏览器验证 gRPC 行的服务名位于第二列，方法位于末列并标明可选。
+
+## 治理 API 协议化编辑交互
+
+- [x] 为 HTTP、gRPC、Dubbo 建立可测试的字段语义与默认值映射
+- [x] 在鉴权、镜像与 Mock API 编辑行按协议渲染字段、占位说明与切换行为
+- [x] 完成专项检查、构建、重建和真实页面验收
+
+Review：
+
+- `API` 的存储字段仍为 `protocol/method/path`，但编辑语义按协议明确区分：HTTP 使用方法下拉和 URI；gRPC 使用方法名和服务名；Dubbo 使用方法名和接口名。
+- 切换协议时会重置 `method/path.value`，HTTP 回到 `GET`，RPC 保持空值，避免把 `GET /` 误保存为 RPC 匹配条件；匹配类型会被保留。
+- 已通过 `npm run test:traffic-security`、`npm run lint -- --quiet`、`npm run build:test`。all-mode 重建完成且 8080/8090 均返回 200；真实浏览器验证鉴权创建页切换 Dubbo 显示 `getUser` / `com.example.UserService`，切换 gRPC 显示 `SayHello` / `helloworld.Greeter`。
+
+## 鉴权规则 API 接口匹配语义收敛
+
+- [x] 用专项脚本锁定 API 路径不包含值类型、参数匹配仍保留值类型的契约
+- [x] 移除受保护接口的值类型控件与布局列，并在提交前清理遗留字段
+- [x] 完成专项检查、构建、服务重建和真实页面验收
+
+Review：
+
+- `API.path` 在 protobuf 中复用了 `MatchString`，但 `value_type` 仅是请求参数匹配语义；鉴权接口读取和提交时均收敛为 `type/value`，protobuf 侧使用 `TEXT` 默认枚举值。
+- 受保护接口与同屏接口编辑行均移除“值类型”列，保留协议、方法、匹配类型、接口路径和操作；请求参数匹配的 `value_type` 逻辑未改动。
+- 已通过 `npm run test:traffic-security`、`npm run lint -- --quiet`、`npm run build:test`；all-mode 重建完成。真实浏览器以 `admin` 打开鉴权创建页，接口表头与行均为五列，未出现“值类型”。
+
+## 治理独立创建页滚动与浮动控件修复
+
+- [x] 建立鉴权创建页滚动与右侧空白控件的可重复浏览器复现
+- [x] 修复独立创建页的高度/滚动归属，并移除遗留浮动操作容器
+- [x] 添加回归约束，重建并在真实页面验证内部滚动和无空白控件
+
+Review：
+
+- 独立创建页为根、规则 frame、body 与表单内容区建立有限高度的 flex 链，滚动只保留在内容区；页面头部操作仍固定可用。
+- `StickyTool` 的保存/撤销按钮已经通过 portal 渲染到页头，原固定容器以 `display: none !important` 隐藏，消除了右侧两个空白方块。
+- 已通过 `npm run test:governance-direct-create`、`npm run lint -- --quiet`、`npm run build:test`。all-mode 已重建，8080/8090 返回 200；真实鉴权创建页内容区为 `1782/822px`（内容/可视高度），鼠标滚轮使内容区从 `720` 滚至 `960`，外层工作区保持 `0`，浮动容器计算样式为 `display: none`。
+
+## 治理规则独立创建页
+
+- [x] 复核规则详情独立页与现有九类创建编辑器的复用边界
+- [x] 将工作台类型选择跳转到独立创建路由，移除创建抽屉状态和渲染
+- [x] 让创建页支持返回工作台、取消和保存后的回流，并完成静态、构建和浏览器验收
+
+Review：
+
+- 新增隐藏路由 `/governance/rules/create?kind=…`，复用规则详情页的页面框架、操作栏和九类编辑器；工作台只保留规则类型选择弹窗，不再管理创建抽屉。
+- 创建页在进入时按规则类型重置草稿；从服务详情嵌入工作台进入时，会把 `namespace/service/role` 带到 URL 并预填服务范围。取消或保存完成后均回到治理工作台。
+- 已通过专项静态检查、ESLint、前端测试构建；all-mode 重建后 8080/8090 返回 200。真实浏览器点击“创建路由规则”后进入 `/governance/rules/create?kind=route`，显示完整创建页而非抽屉。
+
+## 治理规则类型即选即建
+
+- [x] 定位类型选择弹窗的二次确认与创建分发逻辑
+- [x] 点击类型卡片后直接进入对应规则创建，并保留无障碍键盘操作
+- [x] 更新回归检查、lessons 与任务记录，完成构建和浏览器验收
+
+Review：
+
+- 新建规则弹窗不再展示步骤条、类型选中态或“进入创建”二次确认；每个类型卡片现在是原生按钮，点击后关闭类型选择弹窗并直接打开对应规则编辑器。
+- 新增 `test:governance-direct-create`，静态约束直接创建分发、无二次确认状态和卡片可访问名称。
+- 已通过专项检查、ESLint 与前端测试构建；all-mode 重建后，8080/8090 返回 200。真实浏览器以 `admin` 打开治理工作台，点击“创建路由规则”后直接进入“新建路由规则”编辑器，未出现确认按钮。
+
+## 治理鉴权规则编辑布局与服务选择
+
+- [x] 定位受保护接口行及来源服务选择的布局、组件和高度约束
+- [x] 将接口行改为可收缩的响应式字段布局，并将来源服务改为可搜索的多选下拉
+- [x] 消除规则分段的无效满高拉伸，保留必要的内部滚动
+- [x] 完成专项静态检查、lint、构建和真实浏览器验收
+
+Review：
+
+- `Select` 的 filterable 模式现会按输入关键字实际过滤候选项；来源服务按 `namespace/service` 排序，以紧凑的多选搜索下拉呈现。
+- 受保护接口行移除过大的最小列宽，路径列吸收余量，删除按钮固定为 32px；在真实内容区宽度 694px 下，六列控件均完整可见。
+- 编辑器 shell 改为自然高度，长内容仍由规则详情 Tab 内容区滚动，不再为内容稀少的规则制造整页空白。
+- 已通过 Fluent 输入控件与鉴权编辑器专项脚本、ESLint、前端测试构建；all-mode 重建后 8080/8090 返回 200。真实浏览器验证 `spec-gateway` 搜索仅保留 `spec-governance/spec-gateway` 候选项，并验证接口行完整可见。
+
+## 治理编辑器移除实时 Spec
+
+- [x] 横向枚举路由、泳道、限流、熔断、探测、无损、鉴权、镜像和 Mock 编辑器中的实时 Spec 实现
+- [x] 删除预览面板及其专用状态、格式化逻辑、样式和不再需要的回归断言，保留真实保存 payload 与编辑交互
+- [x] 更新治理功能档案、技术约定、任务记录与 lessons，清除“实时 Spec 为必需”的旧表述
+- [x] 完成专项静态校验、lint、构建、all-mode 重建及真实浏览器横向验收
+
+Review：
+
+- 横向复核确认：路由、泳道、限流、熔断、探测、无损、镜像和 Mock 编辑器此前已无预览节点；调用鉴权是唯一仍实际渲染右侧面板的编辑器，现已移除。九类编辑器的遗留预览样式一并清理。
+- 新增 `test:governance-no-live-spec` 静态门禁，逐一检查九个编辑器和七个样式入口，不允许 `实时 Spec`、`specPane` 或 YAML/JSON 预览结构重新进入页面。
+- 已通过 `npm run test:governance-no-live-spec`、`npm run test:traffic-security`、`npm run lint -- --quiet`、`npm run build:test`、context-kg lint 与范围化 `git diff --check`。
+- all-mode 已使用最新静态资源重建；本地 MySQL 容器恢复后，8080 与 8090 均返回成功。真实浏览器以 `admin` 打开 `seed-20260616-security` 的编辑态，确认只有表单单栏、无右侧实时 Spec 面板；截图：`.playwright-cli/page-2026-07-20T01-15-32-917Z.png`。
+
+## Toast 正文可读宽度
+
+- [x] 根据截图定位底部操作区移除后 Toast 回落为默认窄宽度
+- [x] 设置受视口约束的桌面正文宽度，避免错误消息过早换行
+- [x] 构建、重建并在真实 400203 通知中验收
+
+Review：
+
+- Fluent Toaster 容器固定为 420px 桌面宽度，并以视口宽度减 32px 为上限，避免 Toast 自身超出承载容器。
+- Fluent 默认将 `ToastBody` 限制在中间网格列；正文现跨越右侧空列，错误信息可使用完整可读宽度。
+- 已通过静态约束、ESLint、测试构建和 `git diff --check`；重建 all-mode 后 8080、8090 返回 200。真实 400203 通知确认错误信息保持单行，复制和关闭按钮完整可见。
+
+## 紧凑错误 Toast 操作区
+
+- [x] 复核截图中的底部双复制按钮及其完整错误复制语义
+- [x] 将复制完整错误 JSON 收敛为标题右上角的单一图标加文案按钮
+- [x] 重建服务、验证视觉布局和剪贴板内容，并记录 review
+
+Review：
+
+- 错误 Toast 的底部操作区已移除；标题右侧只保留一个 Fluent 图标加“复制”文案按钮和关闭按钮。
+- “复制”仍复制格式化 `code/message/requestId` JSON，避免为 Request ID 单独占用一个视觉动作；按钮有同名可访问标签。
+- 已在真实 400203 Toast 截图确认紧凑布局，重建后 8080、8090 返回 200。
+
+## Toast 自动与手动关闭
+
+- [x] 核对错误、成功通知与 Fluent Toast 容器的超时和关闭能力
+- [x] 为每条 Toast 增加 Fluent 手动关闭入口，并统一错误、成功通知为 10 秒自动关闭
+- [x] 运行静态、构建和真实浏览器验收，并记录 review
+
+Review：
+
+- 每条 Toast 都生成独立 ID，并在 Fluent `ToastTitle` 右侧提供“关闭通知”按钮；点击只关闭当前通知。
+- Toast 默认超时和成功通知超时均为 10 秒，错误通知继续显式保持 10 秒。
+- 已在真实页面验证：错误通知可立即手动关闭，错误通知 11 秒后自动移除；登录成功通知同样拥有关闭按钮，并在手动操作前按 10 秒超时自动关闭。
+
+## 结构化请求错误与国际化展示
+
+- [x] 将请求失败从字符串拼接改为可序列化的 `code/message/requestId` 错误载荷
+- [x] 用 Fluent Toast 分别展示错误码和国际化错误信息，并仅以操作按钮复制 Request ID
+- [x] 为命名空间、配置分组删除链路保留结构化错误载荷，支持完整 JSON 复制
+- [x] 补充静态与真实浏览器验证，重建 all-mode 服务并记录结果
+
+Review：
+
+- `RequestError.message` 只保留后端业务信息；`code` 和 `requestId` 以独立字段随 Redux reject payload 传递，消除了原先依赖字符串解析的主路径。
+- Toast 以 Fluent UI 格式化展示“错误码 / 错误信息”，Request ID 不再出现在正文，仅支持点击复制；同时提供“复制错误 JSON”，内容稳定为 `code`、国际化后的 `message`、`requestId`。
+- 已在真实 400203（命名空间仍存在服务）链路验收中文与英文消息，并确认剪贴板分别得到纯 Request ID 与格式化 JSON；all-mode 重建后 8080、8090 均返回 200。
+
+## 配置分组删除拒绝与错误提示收敛
+
+- [x] 建立并最小化“删除有配置文件的分组”返回 400201 的可重复反馈环
+- [x] 定位删除链路的资源存在性校验，修正前端 `file_count` 到 `fileCount` 的响应映射与删除可用性不一致
+- [x] 将失败通知收敛为紧凑 Fluent 提示，RequestId 仅提供复制操作
+- [x] 添加回归测试，重建服务并在真实页面验收删除保护与错误提示
+
+Review：
+
+- `400201 existed resource` 是正确的保护：目标分组仍有有效 `app.yaml` 和活跃发布，后端不会级联删除配置。根因是前端遗漏 proto JSON 的 `file_count`，将真实的 1 显示为 0 并开放了删除按钮。
+- 配置分组响应现归一化 `file_count`，含文件的分组直接禁用删除，并提示“请先删除 N 个配置文件”。
+- 失败 Toast 统一从正文剥离末尾 RequestId，以 Fluent Footer 的“复制 Request ID”按钮提供排障标识；已用真实浏览器确认 UUID 不在正文且复制结果正确。
+- 已通过两条新增静态约束、ESLint、测试构建、diff 检查；all-mode 重建后 8080、8090 返回 200。
+
+## 命名空间工作台滚动与配置数量
+
+- [x] 根据截图复现页面整体滚动，定位命名空间列表当前数据与高度链
+- [x] 将页面滚动所有权下沉到命名空间表格内容区，固定页头、摘要、工具栏和分页
+- [x] 在命名空间后端列表响应中聚合真实配置数量，并在前端摘要和表格中展示
+- [x] 添加静态回归检查，执行后端/前端测试、重建服务与真实浏览器验收
+
+Review：
+
+- `Namespace.total_config_file_count` 使用新的协议字段号 23；后端通过一次 `CountConfigFileEachGroup` 调用汇总配置文件数，避免按命名空间 N+1 查询。
+- 命名空间页采用与服务列表一致的固定工作区：页面高度固定为视口工作区，滚动只在 `.fluent-table-scroll` 内发生，分页保持可见。
+- 已通过命名空间静态约束、抽屉和暗色 token、零 TDesign、ESLint、测试构建、Go 定向包测试与 `go build ./...`；all-mode 重启后 8080、8090 均返回 200。真实浏览器在 2048×1200 下确认页面高度等于视口、表格内容区 `803 > 687` 可滚动，滚轮后表格滚动 116px 而页面仍为 0px。
+
+## 命名空间详情布局与全站暗色可读性修复
+
+- [x] 建立真实浏览器复现，确认命名空间详情标签和值的布局错位，以及暗色主题文字对比度问题
+- [x] 将命名空间详情表单切换为与标签宽度匹配的横向字段布局
+- [x] 建立暗色主题兼容层，将常见浅色硬编码颜色映射为现有应用主题 token
+- [x] 对命名空间、认证管理、配置管理、治理代表页面进行暗色浏览器验收
+- [x] 运行静态验证、lint、构建并记录 review
+
+Review：
+
+- 详情抽屉的根因是 Fluent `Form` 默认纵向布局与 `labelAlign="right"` 组合，已改为 inline 布局；浏览器截图确认“名称 / 描述”标签和值同一行。
+- 暗色问题来自页面级 LESS 覆盖 Fluent Provider 的文字、背景与边框语义色。已统一映射常见中性颜色到 `--app-*` token，并补齐亮/暗主题的三级文字、弱文字、危险色和悬浮表面 token。
+- 已通过 `npm run test:namespace-drawer`、`npm run test:dark-theme`、`npm run test:no-tdesign`、`npm run lint`、`npm run build:test` 以及 `git diff --check`。
+- 已用真实浏览器在 `/namespace`、`/auth/principals`、`/configuration/group`、`/governance/workbench` 验收暗色显示；all-mode 重启后 8080 与 8090 均返回 HTTP 200。
+
+## Pebble/观测与客户端完整验证
+
+- [x] 复现 Rust 客户端 e2e 的真实失败：`v1.DiscoverGRPC`/`v1.ConfigGRPC` 注册、服务发现 `get_one`、配置中心远端资源加载、反注册清理。
+- [x] 修复 control-plane gRPC client API 注册，`service-grpc` 同时暴露 `DiscoverGRPC`、`PoleHeartbeatGRPC`、`ConfigGRPC`。
+- [x] 修复配置发布默认 `release_type=normal`，并补齐 ConfigGRPC discover response 的 `code/revision/file_names/file_groups`。
+- [x] 修复 Rust SDK 内存 cache 的 available 实例列表同步，避免 `get_all_instance` 可见但 `get_one_instance` 权重为 0。
+- [x] 修复 client deregister 四元组校验，允许 SDK 使用 `namespace/service/host/port` 反注册。
+- [x] 修复 Rust e2e control-plane client 的 token header，兼容后端原始 `Authorization` / `X-Polaris-Token`。
+- [x] 完成 Go 全量测试、Console 前端检查、Rust workspace 测试、Rust clippy、all-mode 启动和核心客户端真实 e2e。
+- [ ] 治理全量 e2e 仍需单独处理 control-plane plan payload：routing 缺 `@type`，ratelimit 参数不合法，部分治理资源 create/publish 标识不匹配导致 publish 404。
+
+Review：
+
+- 已验证 `go test -count=1 ./...` 全量通过。
+- 已验证 `npm run lint -- --quiet && npm run test:metrics-observability && npm run build:test` 通过。
+- 已验证 `cargo fmt --all -- --check`、`cargo test --workspace --all-features`、`cargo clippy --workspace --all-targets --all-features` 通过；clippy 仍有既有 warning，但退出码为 0。
+- 已重建 all-mode，`http://127.0.0.1:8080/` 与 `http://127.0.0.1:8090/` 均返回 200，`8091` gRPC 正常监听。
+- 已验证 Rust 客户端核心真实 e2e：`connectivity`、`service-discovery`、`config-center` 三项通过，覆盖 SDK context、服务注册/心跳/发现/选实例/反注册、配置 upsert/publish/get。
+- 已尝试默认 12 项客户端 e2e 与 `--execute-governance-control-plane` 全量治理 e2e；核心三项通过，治理九项当前失败在测试 plan 与后端治理接口契约不匹配，不应计为本轮观测/Pebble/核心 SDK 链路已完成。
+
+## 可观测性数据体系首轮对接
+
+- [x] 复核现有可观测性 ADR、Console 监控入口、control-plane 内部 chain 和相邻 Rust client / sidecar 当前能力
+- [x] 梳理首轮端到端接入切片，明确 Collector、存储、control-plane、SDK、sidecar 和 Console 的接口边界
+- [x] 更新 ADR，记录先打通数据生产、采集、存储、查询的最小闭环
+- [x] 新增 `deploy/observability` 本地栈，用 Docker Compose 拉起 GreptimeDB + OpenTelemetry Collector Contrib
+- [x] 在 console 模块新增 `/observability/v1/platform/overview` 查询 provider skeleton 与配置入口
+- [x] 当前实现：control-plane server 先完成 `statis` 的 `otel` chain entry，输出平台 metrics
+- [x] 当前实现：control-plane server 增加 `history/discoverEvent` 的 `otel` event/audit entry
+- [x] 当前实现：console `observability-query` provider 接入 GreptimeDB 平台 metrics 查询，并让系统监控页优先展示真实数据
+- [ ] 后续实现：pole-client-rust 接入真实 OTel exporter、服务发现 endpoint 和 remote config 启动链路
+- [ ] 后续实现：pole-sidecar 增加 OTel 上报模块并与治理执行链路打点
+
+本轮 control-plane metrics 计划：
+
+- [x] 新增 `plugin/observability/statis/otel` 插件，并注册为 `statis.entries[].name=otel`。
+- [x] 映射 `ReportCallMetrics` 为 `pole.control_plane.request.*`、`pole.control_plane.store.request.*`、`pole.control_plane.cache.*` 等 `pole.*` 指标。
+- [x] 映射 `ReportDiscoveryMetrics` 为 `pole.discovery.service.count`、`pole.discovery.instance.count`、`pole.control_plane.client.connection.count`。
+- [x] 映射 `ReportConfigMetrics` 为 `pole.config.group.count`、`pole.config.file.count`、`pole.config.file.release.count`。
+- [x] 接入默认部署配置，但保留 `local` 和 `prometheus` entry 兼容。
+- [x] 补充单元测试、配置加载回归和本地 Collector/GreptimeDB smoke 验证。
+
+本轮页面真实查询计划：
+
+- [x] 后端 `observability-query` 默认 provider 从静态 DTO 改为 GreptimeDB SQL 查询。
+- [x] `/observability/v1/platform/overview` 返回系统监控页可直接消费的组件行、摘要指标和时间序列。
+- [x] 系统监控页优先调用 `/observability/v1/platform/overview`，失败或无数据时回退 mock 预览。
+- [x] 保留前端不直连 GreptimeDB 的边界，所有真实查询走 console 模块。
+- [x] 用本地 GreptimeDB 中的 `pole_control_plane_request_*` 表验证页面接口返回真实样本。
+
+本轮系统监控看板调整计划：
+
+- [x] 将 CPU/MEM 从接口明细表和组件混合看板中移出，独立成组件资源看板。
+- [x] 为 `pole-control-plane` Go 服务端增加 Go runtime 看板，包括 goroutine、heap、GC、调度延迟等标准指标视图。
+- [x] 扩展 `/observability/v1/platform/overview` 返回资源 metrics 与 runtime metrics，前端仍不直连 GreptimeDB。
+- [x] 当 GreptimeDB 暂无 kubeletstats / Go runtime 表时保持空态或 0 值，不用 mock 伪装成真实资源指标。
+- [x] 补充 Go provider 测试、前端静态检查、lint/build 和真实接口验证。
+
+本轮系统监控布局修正计划：
+
+- [x] 将 Go runtime 看板改为 `panelFull` 整行面板，避免落在双列 grid 左侧后右侧留空。
+- [x] 将 runtime 指标卡改为更紧凑的桌面网格，减少运行时指标区块的纵向占用。
+- [x] 增加前端静态约束，要求 Go runtime 看板保持整行布局。
+- [x] 用真实浏览器验证 1280 与 1920 宽度下 runtime 面板均跨满所在 grid。
+
+本轮 runtime 小图 hover 修正计划：
+
+- [x] 将 `TinyTrend` 从静态 SVG 折线升级为支持最近采样点 hover 的轻量图表。
+- [x] 在 hover 数据中展示指标名、采样点序号和按 runtime unit 格式化后的值。
+- [x] 增加前端静态约束，防止图线回退成无交互静态线。
+- [x] 用真实浏览器 hover Go runtime 小图，确认 tooltip 有数据。
+
+本轮 Grafana-like 看板视图调整计划：
+
+- [x] 将系统监控页头调整为 dashboard header，展示 dashboard 名称、时间范围、数据源和刷新动作。
+- [x] 将筛选区调整为 Grafana variables 风格，显式展示 `$category`、`$api`、`$component`。
+- [x] 将 panel 统一为带标题栏、query 元信息和内容区的 Grafana-like 面板。
+- [x] 为接口延迟趋势补 hover 数据层，和 runtime 小图保持一致的可读交互。
+- [x] 补静态约束、前端构建和真实浏览器截图验证。
+
+本轮图表坐标轴补齐计划：
+
+- [x] 为接口延迟趋势补充左侧 Y 轴刻度，保留底部时间线。
+- [x] 为延迟热力图补充顶部时间轴和左侧接口/组件维度标签。
+- [x] 为每个 Go runtime 小图补充简化 Y 轴刻度和底部时间线。
+- [x] 补静态约束、前端构建和真实浏览器截图验证。
+
+本轮 Grafana 官方口径校准计划：
+
+- [x] 对齐 Grafana Time series 与 Stat panel 的职责差异：主趋势保留 x/y 轴，runtime 指标按 Stat + sparkline 呈现。
+- [x] 移除 runtime 小卡片内显眼坐标刻度和大气泡标签，改为弱化的背景 sparkline、底部时间范围和 hover marker。
+- [x] 优化 tooltip 为 Grafana 风格的紧凑 overlay，避免遮挡卡片主体。
+- [x] 补静态约束、前端构建和真实浏览器截图验证。
+
+本轮 Grafana variables 区优化计划：
+
+- [x] 按 Grafana variables 默认呈现方式，将变量区从大卡片收敛为顶部轻量变量行。
+- [x] 去掉变量控件的厚重前缀盒和整块阴影边框，变量名改为小标签，控件本体保持独立边界。
+- [x] 保持 `$category`、`$api`、`$component` 顺序和重置动作，避免破坏查询行为。
+- [x] 补静态约束、前端构建和真实浏览器截图验证。
+
+本轮 runtime Stat sparkline 比例修正计划：
+
+- [x] 调整 Go runtime Stat 卡片的高度和内部排布，让当前值与趋势图形成合理比例。
+- [x] 扩大 `TinyTrend` 的逻辑画布与可视高度，避免曲线变成过短的底部横线。
+- [x] 保持 Stat panel 形态、时间范围和 hover tooltip，不回退为完整坐标轴小图。
+- [x] 补静态约束、前端构建和真实浏览器截图验证。
+
+本轮 Grafana 视觉风格对齐计划：
+
+- [x] 将 runtime Stat 卡片从 Fluent 卡片样式收敛为 Grafana panel 风格：薄边框、低圆角、平面背景、紧凑标题。
+- [x] 将 sparkline 改为 Grafana Stat 常见的下半区 area sparkline，保留当前值为主视觉。
+- [x] 弱化 runtime 分类标签和说明文案，避免和单值指标争夺主视觉。
+- [x] 补静态约束、前端构建和真实浏览器截图验证。
+
+本轮系统监控时间轴时区修正计划：
+
+- [x] 移除系统监控页静态 `TIME_LABELS`，按当前查询窗口生成时间标签。
+- [x] 所有图表、热力图和 hover tooltip 使用浏览器本地时区格式化时间。
+- [x] 在 dashboard header 显示当前本地时区，避免误解为 UTC 展示。
+- [x] 补静态约束、前端构建和真实浏览器截图验证。
+
+本轮操作审计与服务事件 OTel logs 接入计划：
+
+- [x] 在 `history` chain 增加 `otel` entry，将操作审计映射为带 `event.name` 的 OTel LogRecord。
+- [x] 在 `discoverEvent` chain 增加 `otel` entry，将服务事件映射为 OTel LogRecord，并写入 Collector logs pipeline。
+- [x] OTel logs entry 必须 fail-open：请求链路只入本地 batch queue，Collector 异常不能阻塞业务、不能影响旧 `logger/rds` entry。
+- [x] 增加本地持久化 spool 队列：`Put` 写入 bounded Pebble queue，后台 consumer 成功写入 Collector 后删除已确认 key，Collector 短暂不可用时可恢复补发；默认 history/discover-event 共享一个 Pebble DB 并用 key prefix 隔离。
+- [x] 扩展 console `/observability/v1` 查询接口，从 GreptimeDB `pole_events` 读取操作审计与服务事件。
+- [x] 让操作审计、服务事件页面优先读取 `/observability/v1`，旧 `/metrics/v1` 仅作为兼容兜底。
+- [x] 补充 Go/前端测试、Collector/GreptimeDB smoke 和 context-kg review。
+
+当前判断：
+
+- 后台存储选型已确定：长期默认是 GreptimeDB，OpenObserve 只作为 quickstart / 可选 provider；Collector 仍是统一 OTLP 接收、处理、过滤和导出入口。
+- control-plane 现有 `history`、`discoverEvent`、`statis` 已经形成内部观测 chain，首轮应补 `otel` entry，而不是新建并列插件体系。
+- `pkg/common/otel/` 已有 OTLP gRPC exporter 和部分本进程指标，但指标名仍有旧命名，且启动配置、logs/event exporter、trace instrumentation 尚未完整接入。
+- Console 当前只有 `/metrics/v1` 的历史事件和操作审计入口；新服务监控、系统监控、event、audit 查询应由 console 模块提供 `/observability/v1` 后端适配层。
+- `pole-client-rust` 已经有 observability 语义模型、Resource attributes、低基数 metrics 过滤和 no-op recorder；但真实 OTel exporter、服务发现 endpoint 热更新、配置中心 remote config 启动/热更新链路还需要接入。
+- `pole-sidecar` 当前没有可用 OTel 上报模块，首轮需要补流量请求、治理命中/拒绝、结构化 event 和 trace propagation 的统一打点位置。
+- `deploy/observability` 已提供本地快速体验路径：Collector 接收 `4317/4318`，写入 GreptimeDB `4000/v1/otlp`；logs 默认进入 `pole_events`，只承载结构化 event/audit。
+- console 模块已暴露 `/observability/v1/platform/overview`，并通过 GreptimeDB 查询 `pole_control_plane_request_*` 指标表；系统监控页优先使用真实返回，异常或无数据时回退 mock 预览。
+- 系统监控页已将 CPU/MEM 拆成独立组件资源看板；真实模式下只使用 `/observability/v1/platform/overview.resources`，当前本地 GreptimeDB 没有 kubeletstats 资源表，因此显示资源指标空态。
+- `pole-control-plane` Go runtime 看板已使用 `/observability/v1/platform/overview.runtime` 返回的 GreptimeDB 真实指标，覆盖 goroutine、heap alloc/inuse/sys、GC count、GC pause，并预留 schedule latency 标准指标查询。
+- control-plane metrics 已按现有 `statis` chain 增加 `otel` entry；启动时先初始化 statis chain，再注册本进程旧 helper 指标，确保全局 OTel MeterProvider 已就绪。
+- 系统监控 variables 区已从大卡片和 `$name` 前缀盒调整为轻量顶部变量带，保留 `$category`、`$api`、`$component` 顺序，变量名以小标签形式辅助识别。
+- Go runtime Stat 卡片已扩大 sparkline 逻辑画布和可视高度，趋势线占满卡片有效宽度，当前值与图线不再比例失衡。
+- Go runtime Stat 卡片已进一步对齐 Grafana panel 风格：低圆角薄边框、紧凑标题、弱化分类标签，并使用下半区 area sparkline 表达趋势。
+- 系统监控页已移除固定时间标签，图表、热力图和 runtime tooltip 的时间轴都从当前查询窗口动态生成，并按浏览器本地时区显示；header 展示 `UTC+08:00` 等本地时区标识。
+
+验证：
+
+- 已静态复核 `context-kg/technical/adr/observability/`、`console/pkg/router/metrics_router.go`、`pkg/common/otel/`、`plugin/observability/`、`../pole-client-rust/src/observability/` 和 `../pole-sidecar/src`。
+- 已执行 `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py context-kg`，通过 Markdown/frontmatter/link/index 基础检查。
+- 已执行 `git diff --check` 检查本轮相关 context-kg 文件，未发现 whitespace error。
+- 已执行 `docker compose -f deploy/observability/docker-compose.yaml config`，Compose 配置通过。
+- 已执行 `docker compose -f deploy/observability/docker-compose.yaml up -d`，`pole-greptimedb` 与 `pole-otel-collector` 均正常启动。
+- 已验证 `http://127.0.0.1:13133/` Collector health 返回可用，`http://127.0.0.1:4000/health` GreptimeDB health 返回成功。
+- 已通过 OTLP/HTTP 向 Collector `4318/v1/logs` 上报 smoke event，并在 GreptimeDB `public.pole_events` 查询到 `pole observability smoke event`。
+- 已执行 `go test ./bootstrap/config ./console/bootstrap ./console/pkg/observabilityquery ./console/pkg/handlers ./console/pkg/router`，通过 console 查询入口和配置加载回归。
+- 已执行 `go test -count=1 ./apis/observability/statis ./plugin/observability/statis/... ./pkg/common/otel/... ./bootstrap/config ./bootstrap`，通过 statis chain、otel entry、配置加载和 bootstrap 编译回归。
+- 已执行 `POLE_OTEL_COLLECTOR_ENDPOINT=127.0.0.1:4317 go test -count=1 ./plugin/observability/statis/otel -run TestStatisWorkerExportsToCollector -v`，通过本地 Collector 导出 smoke。
+- 已在 GreptimeDB 查询到 `pole_control_plane_request_count_total`、`pole_control_plane_request_duration_seconds_*` 表，并确认样本包含 `pole_api_name=OtelSmoke`、`pole_component=apiserver`、`pole_result=success`。
+- 已执行 `go test -count=1 ./console/pkg/observabilityquery ./console/pkg/handlers ./console/pkg/router`，通过 GreptimeDB provider、handler 和 console router 回归。
+- 已执行 `npm run test:metrics-observability`、`npm run lint -- --quiet`、`npm run build:test`，通过系统/服务/event/audit 页面静态约束、ESLint 和前端测试构建。
+- 已执行 `npm run test:metrics-observability`、`npm run lint -- --quiet`、`npm run build:test`，通过 Grafana variables 轻量结构约束、ESLint 和前端测试构建。
+- 已通过 Playwright 在 `http://127.0.0.1:8080/metrics/system` 验证 variables 区不再以厚重外层卡片展示，截图保存在 `output/playwright/system-monitor-grafana-variables.png`。
+- 已通过 Playwright 在 `http://127.0.0.1:8080/metrics/system` 验证 Go runtime Stat sparkline 比例，截图保存在 `output/playwright/system-monitor-runtime-sparkline-ratio.png`。
+- 已通过 Playwright 在 `http://127.0.0.1:8080/metrics/system` 验证 Grafana-like Stat 视觉风格，截图保存在 `output/playwright/system-monitor-grafana-stat-style.png`。
+- 已通过 Playwright 在 `http://127.0.0.1:8080/metrics/system` 验证本地时区时间轴，页面 header 显示 `UTC+08:00`，主图、热力图和 runtime sparkline 显示 `16:50 → 17:50` 本地时间，截图保存在 `output/playwright/system-monitor-local-timezone.png`。
+- 已重建并启动 all-mode，`http://127.0.0.1:8080/` 与 `http://127.0.0.1:8090/` 均返回 200；`GET /observability/v1/platform/overview?category=control-plane` 返回 `provider=greptimedb`、`configured=true`、真实 `components`。
+- 已用浏览器登录 `admin/admin123` 进入 `/metrics/system`，页面显示“实时数据”，接口明细表渲染 `pole-control-plane`、`OtelSmoke`、`POST:/auth/v1/user/login`、`GET:/core/v1/namespaces` 等 GreptimeDB 样本行。
+- 已再次执行 `go test -count=1 ./console/pkg/observabilityquery ./console/pkg/handlers ./console/pkg/router`，验证 `overview.runtime` Go 指标查询与 `/observability/v1` 路由兼容。
+- 已再次执行 `npm run test:metrics-observability`、`npm run lint -- --quiet`、`npm run build:test`，验证系统监控新增资源看板、Go runtime 看板、真实/Mock 边界和前端构建。
+- 已重建 all-mode，`http://127.0.0.1:8080/` 与 `http://127.0.0.1:8090/` 均返回 200；`GET /observability/v1/platform/overview?category=control-plane` 返回 `components=4`、`resources=0`、`runtime=7`，其中 Go runtime 包含 `process.runtime.go.goroutines`、`process.runtime.go.mem.heap_alloc`、`process.runtime.go.mem.heap_inuse`、`process.runtime.go.mem.heap_sys`。
+- 已用浏览器登录 `admin/admin123` 进入 `/metrics/system`，页面显示“实时数据”；顶部 stat card 显示 Go 协程数，Go runtime 看板展示 Goroutines、Heap Alloc、Heap Inuse、Heap Sys、GC Count、GC Pause Avg、Heap Objects；组件资源看板显示“暂无 CPU/MEM 资源指标”，接口明细表不再包含 CPU/MEM 列。
+- 已再次执行 `npm run test:metrics-observability && npm run lint -- --quiet && npm run build:test`，通过 Go runtime 整行面板静态约束、ESLint 和前端测试构建。
+- 已再次重建 all-mode，`http://127.0.0.1:8080/` 与 `http://127.0.0.1:8090/` 均返回 200；真实浏览器在 `/metrics/system` 验证 Go runtime 面板 `panelWidth=1607`、所在 `gridWidth=1607`、`leftGap=0`、`rightGap=0`，截图保存为 `output/playwright/system-monitor-runtime-layout-wide.png`。
+- 已再次执行 `npm run test:metrics-observability && npm run lint -- --quiet && npm run build:test`，通过 runtime 小图 hover 静态约束、ESLint 和前端测试构建。
+- 已再次重建 all-mode，`http://127.0.0.1:8080/` 与 `http://127.0.0.1:8090/` 均返回 200；真实浏览器 hover `Heap Alloc` 小图后显示 `Heap Alloc / 采样点 6 / 23.28MiB`，截图保存为 `output/playwright/system-monitor-runtime-hover-tooltip.png`。
+- 已再次执行 `npm run test:metrics-observability && npm run lint -- --quiet && npm run build:test`，通过 Grafana-like dashboard header、variables、panel query metadata 和主趋势图 hover 静态约束。
+- 已再次重建 all-mode，`http://127.0.0.1:8080/` 与 `http://127.0.0.1:8090/` 均返回 200；真实浏览器进入 `/metrics/system` 后显示 `Dashboards / Platform / Control Plane`、`Last 1 hour`、`$category/$api/$component`、panel query 标签，并且 hover 接口延迟趋势显示 `p95 latency / 12:25 / 1ms`，截图保存为 `output/playwright/system-monitor-grafana-dashboard.png`。
+- 已再次执行 `npm run test:metrics-observability && npm run lint -- --quiet && npm run build:test`，通过主趋势图坐标轴、热力图时间轴/接口维度、runtime 小图坐标轴静态约束。
+- 已再次重建 all-mode，`http://127.0.0.1:8080/` 与 `http://127.0.0.1:8090/` 均返回 200；真实浏览器进入 `/metrics/system` 后确认接口延迟趋势显示 `2ms/1ms/0ms` 与 `12:00/12:30/12:55`，热力图显示 `12:20-12:55` 与接口维度，runtime 小图显示纵向刻度和 `12:00/12:55`，截图保存为 `output/playwright/system-monitor-dashboard-axes.png`。
+- 已按 Grafana 官方口径校准：Time series 面板保留 x/y 轴，Stat 面板展示大数值和可选 sparkline，不再把完整坐标轴塞进 runtime 小卡片。
+- 已再次执行 `npm run test:metrics-observability && npm run lint -- --quiet && npm run build:test`，通过 runtime stat sparkline 静态约束、ESLint 和前端测试构建。
+- 已再次重建 all-mode，`http://127.0.0.1:8080/` 与 `http://127.0.0.1:8090/` 均返回 200；真实浏览器进入 `/metrics/system` 后确认 runtime 指标呈现为大值 + sparkline + 时间范围，hover `GC Pause Avg` 显示 `GC Pause Avg / 12:25 / 1.88ms`，截图保存为 `output/playwright/system-monitor-grafana-stat-sparkline-hover.png`。
+
+Review：
+
+- 已在 [[adr-otel-observability-platform]] 增加首轮对接切片，明确 control-plane server、Rust SDK、sidecar、Collector、GreptimeDB、console 模块 `/observability/v1` 和 Console 页面的真实数据闭环。
+- 已在 [[adr-otel-observability-platform]] 补充 SDK 与 sidecar 上报分工，要求用 `pole.node.role=sdk|sidecar` 区分来源，并避免同一请求和同一治理决策重复计数。
+- 已在 [[adr-pole-rust-client-observability]] 记录 Rust SDK 首轮模块拆分、接入点、与 sidecar 共存规则和当前实现差距。
+- 已新增 `deploy/observability/docker-compose.yaml`、`deploy/observability/otel-collector-config.yaml` 与 README，本地可以直接启动 GreptimeDB + Collector 并验证 OTLP event 写入。
+- 已新增 console `observabilityquery` GreptimeDB provider、handler、router 和配置项，`/observability/v1/platform/overview` 由 console 模块负责提供，并保持前端不直连 GreptimeDB。
+- 系统监控页已接入 `services/observability.describePlatformOverview`，优先展示真实数据标签与 GreptimeDB 返回行；当 provider 未配置、无数据或请求失败时继续保留 mock 预览，便于本地未启动观测栈时体验页面。
+- 系统监控页的资源与运行时已经拆分：CPU/MEM 独立进入组件资源看板，Go runtime 独立进入 `pole-control-plane` 服务端看板；真实模式下组件资源不再从 mock 行推导，避免把未接入的 kubeletstats 指标伪装成真实数据。
+- Go runtime 看板已从双列 grid 左侧卡位调整为整行看板，并补充静态约束和真实浏览器尺寸验证，避免桌面布局出现右侧大面积空白。
+- Go runtime 小图已支持 hover/focus 数据层，悬浮时展示指标名、采样点和值，避免看板只有趋势形状而无法读取具体数据。
+- 系统监控页已改为 Grafana-like dashboard 视图：dashboard header 承载时间窗、步长、数据源和刷新，variables 区承载变量筛选，每个 panel 标题栏展示 query 元信息，主趋势图和 runtime 小图都具备 hover 数据层。
+- 系统监控页所有图表已补齐基本坐标语义：主折线图有 Y 轴刻度和时间线，热力图有时间轴和接口/组件维度，runtime 小图有简化 Y 轴和时间线。
+- 系统监控页已按 Grafana Time series / Stat panel 职责重新校准：主趋势图承担完整坐标轴，runtime 单值指标使用 Stat + sparkline，减少小面板内的刻度和标签噪音。
+- 已新增 control-plane `statis/otel` entry，真实输出 API、Store、内部组件、缓存、服务发现、配置中心和客户端发现调用指标；默认部署配置启用 `local + otel + prometheus`，保持旧 logger/prometheus 兼容。
+- 已新增 control-plane `history/otel` 和 `discoverEvent/otel` entry，操作审计和服务事件都按 OTel logs 写入 Collector logs pipeline；新增 logs exporter 采用 bounded queue / 本地 Pebble spool + 后台批量发送，Collector 异常不阻塞业务链路，恢复后可继续补发未确认记录。默认两个 OTel entry 共享 `./data/observability/otel-events/otel-events.pebble`，分别使用 `history`、`discover_event` key prefix 隔离。
+- 已新增 console `/observability/v1/events` 和 `/observability/v1/operations`，从 GreptimeDB `pole_events` 查询 `pole.event.kind=service|audit` 的结构化日志，并保持 `/metrics/v1` MySQL 历史接口作为页面兜底。
+- 已重建 all-mode 并验证真实接口：`/observability/v1/events?namespace=default&service=checkout&event_type=InstanceOffline` 与 `/observability/v1/operations?resource_type=Routing&operation_type=Update&operator=admin` 均返回 GreptimeDB 样本，时间按本地时区正常显示。
+
+## RequestId d42dffb6 失败定位
+
+- [x] 检索 tmux、运行日志和本地文件中的 RequestId
+- [x] 确认失败接口、HTTP/业务错误码及服务端堆栈
+- [x] 定位根因并修复；若是运行环境问题则给出可复现证据
+- [x] 通过真实请求验证并补充 Review
+
+当前判断：
+
+- `d42dffb6-1680-4e37-abc0-dbf676441e35` 是删除 `demo-governance` 的请求。后端以 `400203` 拒绝，`info` 为 `some services existed in namespace`，并在 namespace 服务记录“待删除命名空间仍存在服务”。这是领域完整性保护，不是服务端异常。
+- Console 请求层在内部捕获 HTTP 错误后抛出带 `info` 的 Error，却被外层 `catch` 再次包装成通用“请求失败, RequestId”，因此用户无法看到拒绝原因。现已收敛为单次错误包装，统一显示业务码、后端 `info` 与 RequestId。
+
+Review：
+
+- 根因：该 RequestId 对应 `POST /core/v1/namespaces/delete` 删除 `demo-governance`。该命名空间仍有 4 个服务，后端按领域完整性返回 `400203 / some services existed in namespace`，拒绝删除以避免留下孤立服务。
+- 修复：四种 HTTP 请求包装统一保留后端标准响应的 `code`、`info` 和 RequestId，避免内部格式化 Error 再被外层 `catch` 泛化；失败提示现在可直接给出可操作原因。Tooltip 内容层统一禁用指针事件，避免悬浮提示遮挡 Popconfirm 的“确认”按钮。
+- 稳定性补充：Console 路由不再通过 Gin `LoadHTMLGlob` 缓存启动时的 `index.html`，而是按请求直接读取当前静态入口；重建后 hash 资源更新不会再导致旧入口引用不存在的 JS 文件并出现空白页。
+- 验证：以 `admin/admin123` 真实登录，在命名空间列表确认删除 `demo-governance` 后，页面展示“请求失败（400203）：some services existed in namespace，RequestId: ce300c8c-1a48-4e0b-8ba8-47ad4a54b523”，且命名空间仍存在。`go test ./console/pkg/router ./console/pkg/handlers`、`npm run lint`、`npm run build`、`git diff --check` 通过；all-mode 的 `8080/8090` 均返回 `200`，运行中的 `8080` 页面入口与最新 `dist/index.html` 一致。
+
+## AI 资源覆盖新增授权补齐
+
+- [x] 核对 MCP/A2A 策略资源字段、Console 编辑器与详情页的通配表达
+- [x] 核对 specification、默认策略生成、策略存在性校验与授权匹配是否完整支持 `id="*"`
+- [x] 修复 MCP/A2A 默认策略或资源授权范围遗漏，并补最小回归测试
+- [x] 用管理员真实页面验证 MCP/A2A 显示“覆盖新增资源”，并确认新建资源可访问
+- [x] 补充 Review 与 lessons
+
+当前判断：
+
+- `mcp_servers`、`a2a_agents` 已是独立资源字段，Console 编辑器也能将“全部”提交为 `id="*"`；默认策略详情仍显示“仅显式资源”，说明通配资源没有被默认策略生成链路写入，或后端未将其按通配资源解释。
+- 已确认历史主账号默认策略只含当时创建的 MCP/A2A 具体 ID。默认策略创建时会枚举当时已有的 `ResourceType`，而后续新增资源类型不会回填到既有策略；策略容器本身已支持 `id="*"` 命中未来资源。
+
+Review：
+
+- 根因：MCP Server、A2A Agent 的 resource type 和 Console 全量选择早已支持 `id="*"`，但管理员默认策略是在 AI 资源类型加入前创建的。历史策略只在资源创建后得到具体 ID，缺少 `*`，所以详情只能显示“仅显式资源”，未来资源也不会继承。
+- 修复：鉴权策略初始化时只扫描主账号默认策略与两条系统全量策略；对缺失的 MCP/A2A 通配资源执行幂等 `LooseAddStrategyResources`。普通自定义策略不在匹配范围内，不会被自动扩大授权。
+- 补充：策略新建/更新的资源存在性检查现覆盖 MCP/A2A；缓存层新增回归，证明 MCP/A2A 的 `*` 会命中策略创建后出现的资源 ID。
+- 验证：`go test ./plugin/access_control/... ./pkg/cache/auth/...`、`git diff --check` 通过；all-mode 重启完成且 `8080/8090` 返回 `200`。`admin/admin123` 真实页面的默认策略资源页中 MCP Server、A2A Agent 均显示“覆盖新增资源”，打开详情后均显示“全部（包括新增）/包括新增”，浏览器 console 无 error/warning；验收截图为 `output/playwright/auth-policy-ai-wildcard.png`。
+
+## 权限策略成员页签宽度回归修复
+
+- [x] 根据截图复现成员信息页签内容收缩，并定位 Fluent 活动 panel 的横向 flex 行为
+- [x] 将所有活动页签统一为满宽纵向内容容器，且不影响资源页的受限高度和左栏滚动
+- [x] 增加成员信息页签满宽布局静态回归约束
+- [x] 重建后验证成员、资源、标签和接口页签布局及资源左栏滚动
+- [x] 补充 Review 与 lessons
+
+当前判断：
+
+- `fluent-tab-content` 的活动 TabPanel 不能只设置 `display:flex`；当成员页含 `.policyTabBody` 包装层时，默认 `flex-direction: row` 会按内容宽度收缩。活动 panel 必须为 `flex-direction: column` 且占满可用宽度。
+
+Review：
+
+- 根因：上一轮为了资源页的受限高度，将活动 TabPanel 改为 flex 容器，但没有指定方向；资源页的双栏 grid 作为直接子元素会自然撑满，成员页的 `.policyTabBody` 则在默认横向 flex 中按内容宽度收缩，造成右侧大面积空白。
+- 修复：活动 TabPanel 统一增加 `width: 100%`、`min-width: 0` 和 `flex-direction: column`，使成员、资源标签和接口表都沿纵向布局并自动拉伸到内容区宽度；资源页仍通过自身 `flex: 1` 保持受限高度与独立滚动。
+- 补充：横向验证时发现可访问接口表格只为状态列提供数字宽度，导致共享百分比列宽适配器将其独占为 `100%`；现为接口分组、访问范围和状态分别声明 `30 / 50 / 20` 的比例宽度。
+- 验证：认证详情、策略详情、Fluent 表格布局校验、ESLint 与 `git diff --check` 通过；all-mode 重启后 `8080/8090` 返回 `200`。`admin/admin123` 真实页面中成员信息为满宽布局，资源标签正常显示空态，可访问接口三列完整显示；资源类别左栏 `clientHeight=157`、`scrollHeight=1110`，滚轮后 `scrollTop=920`，console 为 0 error/warning。
+
+## 权限策略资源类别滚动修复
+
+- [x] 建立真实策略资源页签的左栏滚动复现与高度测量
+- [x] 修复独立详情页中资源类别列表的滚动高度链和滚轮命中
+- [x] 增加滚动容器静态回归约束
+- [x] 用真实滚轮把左栏滚到末项并完成构建、重启验证
+- [x] 补充 Review 与 lessons
+
+当前判断：
+
+- 当前独立详情页沿用抽屉版的固定高度与 Tabs 内部滚动；左侧 `.resourceTypeList` 虽声明 `overflow: auto`，但必须用真实 DOM 的 `scrollHeight / clientHeight / scrollTop` 和鼠标滚轮确认它确实是唯一滚动所有者。
+
+Review：
+
+- 根因：策略详情迁移到 Fluent 后，页面仍使用 `.t-loading__parent`、`.t-tabs__content` 和 `.t-tab-panel` 建立高度链；真实 DOM 使用 `.fluent-loading` 与 `.fluent-tab-content`，规则没有命中，资源类别列表被内容完整撑到 `1110px`，其 `clientHeight` 与 `scrollHeight` 相等，因此无法滚动。
+- 修复：共享 `Loading` 透传 `className`，策略详情为 Loading 设置专用高度链 class；Tabs 内容区和活动 panel 改为依据 Fluent 真实结构的 flex 容器，资源 shell 保持受限高度，左侧 `.resourceTypeList` 成为唯一 `overflow: auto` 的滚动所有者。
+- 验证：定向布局脚本、策略详情脚本、ESLint、前端 release 构建和 `git diff --check` 通过；all-mode 重启日志出现 `finish starting server`，`8080/8090` 均返回 `200`；使用 `admin/admin123` 进入默认策略“资源信息”页签，左栏 `clientHeight=157`、`scrollHeight=1110`，真实滚轮后 `scrollTop` 从 `0` 变为 `920`，末项“角色 / MCP Server / A2A Agent”可见。
+
+## 认证详情页设计统一
+
+- [x] 复核策略详情页、用户详情页与已统一的 MCP/服务详情页设计语言
+- [x] 用唯一的策略详情视图替换独立页残留的旧 `Descriptions` 实现
+- [x] 重构用户详情为身份摘要、访问凭据、标签与关联策略工作区
+- [x] 补充静态约束，防止旧布局和对象字符串回归
+- [x] 运行 lint、构建和真实浏览器截图验证
+- [x] 补充 Review 和验证结果
+
+当前判断：
+
+- 认证管理独立详情页必须遵循资源详情页的页面壳、身份摘要、信息分区和表格工作区，不再使用旧式 `Card + Descriptions + 空 Tabs` 拼接。
+- 策略详情已有 `PolicyDetailView` 作为抽屉和页面共用的唯一实现，独立页只负责路由上下文和可用高度，避免两份资源、标签和成员逻辑继续漂移。
+
+Review：
+
+- `PolicyDetail.tsx` 已收敛为面包屑与 `PolicyDetailView` 的页面容器，移除了旧资源树、`Descriptions`、成员卡片和标签渲染逻辑；因此策略 metadata 不会再被模板字符串渲染为 `[object Object]`。
+- `UserDetail.tsx` 现在以身份摘要、访问凭据、标签和权限表四个层次展示信息；凭据重置、Token 启停、复制和关联策略跳转均保留。关联策略名称列显式分配宽度，浏览器截图确认链接可见且可点击。
+- 静态验证覆盖独立详情页不回退到旧布局、策略详情复用唯一实现、用户 Token 操作和策略跳转锚点；实际使用 `admin/admin123` 登录后验证用户详情与默认策略的成员、资源页签。
+
+## 输入控件连续输入修复
+
+- [x] 复现输入控件无法连续输入的具体页面和字段
+- [x] 定位焦点丢失、组件重挂载或状态写回根因
+- [x] 修复输入控件连续输入问题并补静态/浏览器回归校验
+- [x] 运行 lint、构建、重启并用真实浏览器验证
+- [x] 补充 Review 和验证结果
+- [x] 补充全量输入控件巡检：共享输入组件、动态行 key、主要页面真实输入矩阵
+
+当前判断：
+
+- 用户反馈的是输入交互断裂问题，必须用逐字符键盘输入验证，不能只用 `fill` 或看表单是否能渲染。
+- 优先在最近改动的服务详情内嵌编辑表单复现，因为该页面刚从抽屉编辑改为页面内编辑，更容易出现表单组件重挂载导致焦点丢失。
+
+Review：
+
+- 已复现：服务详情编辑页标签键输入 `labelkey` 时，修复前实际只保留 `l`，且 `document.activeElement` 已离开标签键 input。
+- 已复现：服务列表命名空间 filterable Select 输入 `spec` 时，修复前 input value 仍为空，无法连续过滤输入。
+- 根因 1：`LabelInput` 标签行 `key` 使用 `${index}-${item.key}`，输入标签键时每个字符都会改变 key，React 卸载并重建整行导致焦点丢失。
+- 根因 2：Fluent `Select` 将 Combobox `value` 固定为选中项 `displayValue`，filterable/creatable 场景没有独立输入文本状态，键盘输入会被展示值覆盖。
+- 已完成：`LabelInput` 行 key 改为稳定的 `label-row-${index}`；Fluent `Select` 增加 `inputValue`，在键盘输入、选项选择和 blur 时同步。
+- 已完成：新增 `verify-fluent-input-controls.mjs`，约束标签行 key 不能再包含正在编辑的标签键，并约束 filterable/creatable Select 必须维护输入态。
+- 已验证：`node scripts/verify-fluent-input-controls.mjs`、`npm run lint`、`npm run build:test`、`git diff --check` 均通过。
+- 已验证：重新拉起 all-mode 后日志出现 `finish starting server`，`http://127.0.0.1:8080/` 和 `http://127.0.0.1:8090/` 均返回 200。
+- 已验证：使用 `admin/admin123` 真实 Chromium 逐字符输入，服务列表命名空间下拉可连续输入 `spec` 且保持焦点，服务详情标签键可连续输入 `labelkey` 且保持焦点；浏览器 console warning/error 为 0。
+
+补充巡检：
+
+- 已完成：静态扫描 `Input / Textarea / Select / TagInput / RangeInput / InputNumber / LabelInput / ClientLabelInput` 使用点，重点检查会导致输入行重挂载的动态 `key`。
+- 已完成：治理鉴权/镜像编辑器中 Header 行、接口行、Mock/Mirror 规则卡、泳道编辑器中的泳道卡和组内服务行 key 改为稳定 index key，避免编辑协议、方法、路径、服务名时重挂载。
+- 已完成：`verify-fluent-input-controls.mjs` 扩展覆盖治理鉴权/镜像编辑器和泳道编辑器的输入行 key 规则。
+- 已验证：普通文本 Input 覆盖服务列表搜索、服务详情描述/部门/业务、实例主机/版本/位置、A2A Agent 名称/命名空间/技能 ID/技能名。
+- 已验证：filterable Select 覆盖服务列表命名空间，连续输入 `spec` 后值完整且焦点保持。
+- 已验证：InputNumber 覆盖实例端口和权重，连续输入 `8080`、`88` 后值完整且焦点保持。
+- 已验证：LabelInput 覆盖服务详情标签键值、实例标签键值，连续输入后值完整且焦点保持。
+- 已验证：TagInput 覆盖 A2A Skill 标签/示例，输入后回车生成标签且输入框状态正常。
+- 已验证：Textarea 覆盖 A2A Skill 描述，连续输入后值完整且焦点保持。
+- 说明：RangeInput 当前没有在主要页面默认可见路径中自然出现，本轮通过共享组件源码和动态 key 静态规则检查覆盖，没有发现会因输入值变化重挂载的风险。
+
+## 服务详情冗余系统信息/运行状态移除
+
+- [x] 移除服务详情底部“系统信息 / 运行状态”双栏区域
+- [x] 清理不再使用的详情键值样式、状态样式和回归脚本断言
+- [x] 更新 lessons，记录服务详情不要重复堆叠已覆盖的信息区
+- [x] 运行定向校验、lint、构建、重启并用真实浏览器验证
+- [x] 补充 Review 和验证结果
+
+当前判断：
+
+- 服务详情已经有身份头部、四项摘要指标和内嵌服务基础信息表单，底部“系统信息 / 运行状态”会重复展示 ID、命名空间、实例健康、别名等信息。
+- 本次应直接移除这块重复信息区，而不是继续微调样式或保留空占位。
+
+Review：
+
+- 已完成：`ServiceDetail` 删除系统信息和运行状态两个详情区块，清理 `DetailItem`、端口格式化、进度条和状态 Tag 等只为该区块存在的代码。
+- 已完成：`index.module.less` 删除服务详情旧键值布局和运行状态布局，详情内容区收敛为单列内嵌服务表单。
+- 已完成：`verify-discovery-services-layout.mjs` 从要求双栏详情改为禁止系统信息/运行状态重复区块回归。
+- 已验证：`node scripts/verify-discovery-services-layout.mjs`、`npm run lint`、`npm run build:test`、`git diff --check` 均通过。
+- 已验证：重新拉起 all-mode 后日志出现 `finish starting server`，`http://127.0.0.1:8080/` 和 `http://127.0.0.1:8090/` 均返回 200。
+- 已验证：使用 `admin/admin123` 真实 Chromium 打开服务详情编辑页，页面文本不包含 `系统信息 / 运行状态 / 实例健康 / 别名访问`，没有 Drawer/Dialog，浏览器 console warning/error 为 0；验收截图为 `output/playwright/service-detail-no-system-runtime.png`。
+
+## 全局 Header 透明背景修复
+
+- [x] 定位顶部透明来源：全局 Header 使用 sticky 但没有实体背景
+- [x] 补齐 Header 不透明 surface 背景、文本色和 Fluent 边界色
+- [x] 增加静态回归校验，防止 sticky Header 重新变透明
+- [x] 运行校验、构建、重启并用真实浏览器验证服务详情页顶部不再透出内容
+- [x] 补充 Review 和验证结果
+
+当前判断：
+
+- 服务详情页顶部透明不是详情卡片问题，而是 `layouts/components/Header/index.module.less` 的 sticky header 没有设置 background，内容滚到 header 下方时会透出。
+- Header 属于全局壳层，应使用 `--app-surface` 作为不透明背景，并使用 `--app-border-subtle` 做底部分割线。
+
+Review：
+
+- 已完成：全局 Header `.panel` 增加 `background: var(--app-surface)`、`color: var(--app-text)`、`border-bottom: 1px solid var(--app-border-subtle)` 和 `box-sizing: border-box`，sticky 顶栏不再透明。
+- 已完成：`verify-fluent-ui-migration.mjs` 增加 Header 不透明背景、Fluent 边界色和禁止透明背景的静态回归约束。
+- 已验证：`node scripts/verify-fluent-ui-migration.mjs`、`npm run lint`、`npm run build:test`、`git diff --check` 均通过。
+- 已验证：重新拉起 all-mode 后日志出现 `finish starting server`，`http://127.0.0.1:8080/` 和 `http://127.0.0.1:8090/` 均返回 200。
+- 已验证：使用 `admin/admin123` 真实 Chromium 打开服务详情编辑页，Header computed background 为 `rgb(255, 255, 255)`，`position=sticky`，底部分割线为 `1px`，浏览器 console warning/error 为空；验收截图为 `output/playwright/header-opaque-service-detail.png`。
+
+## 服务详情页内编辑统一
+
+- [x] 梳理服务列表、服务详情页、服务编辑弹窗和 Redux service 状态流
+- [x] 明确交互：名称点击进入详情查看，操作列查看/编辑进入详情页编辑态，详情页内部切换查看/编辑
+- [x] 拆出可复用服务表单，创建保留弹窗，已有服务编辑改为详情页内嵌表单
+- [x] 增加静态回归校验，防止服务查看/编辑重新走 Drawer
+- [x] 运行定向校验、lint、构建、重启并用 admin 浏览器验证服务详情页编辑链路
+- [x] 补充 Review 和验证结果
+
+当前判断：
+
+- 当前服务列表的“查看/编辑”操作会打开 `ServiceEditor` 抽屉，而服务详情 Tab 使用另一套 `ServiceDetail` 展示布局，导致查看和编辑割裂。
+- 目标交互应收敛为：服务名称链接进入详情查看；行操作进入同一服务详情页并打开编辑态；详情页内的基础信息、归属信息、标签使用同一套字段结构在查看和编辑之间切换。
+- 创建服务仍是短流程，保留创建弹窗更合适；本次取消的是已有服务的弹窗查看/编辑形态。
+
+Review：
+
+- 已完成：新增 `ServiceForm`，服务创建弹窗和服务详情页内查看/编辑共用同一套基础信息、归属信息和服务标签表单；命名空间和名称只在创建态可编辑，已有服务编辑态保持只读。
+- 已完成：`ServiceEditor` 收敛为“创建服务”弹窗容器，不再承载已有服务查看或编辑。
+- 已完成：服务列表名称点击进入详情查看；操作列 `viewEdit` 进入 `/discovery/service/instance?...&mode=edit`，在详情页原地打开编辑态，不再打开 Drawer。
+- 已完成：服务详情页头部提供“编辑 / 退出编辑”，提交后回到查看态并重新拉取详情；系统信息和运行状态仍保留在同一详情页内。
+- 已完成：更新 `verify-discovery-services-layout.mjs`，约束已有服务查看/编辑不能回到 `ServiceEditor` Drawer，并校验页面内编辑态、`mode=edit` 路由和输入框宽度。
+- 已验证：`node scripts/verify-discovery-services-layout.mjs`、`npm run lint`、`npm run build:test`、`git diff --check` 均通过。
+- 已验证：重新拉起 all-mode 后日志出现 `finish starting server`，`http://127.0.0.1:8080/` 和 `http://127.0.0.1:8090/` 均返回 200。
+- 已验证：使用 `admin/admin123` 真实 Chromium 打开服务列表，操作列进入详情页编辑态且没有 Drawer/Dialog；名称链接进入详情查看态且没有编辑表单；浏览器 console warning/error 为空。验收截图为 `output/playwright/service-detail-edit-mode.png`。
+
+## A2A Agent 列表固定列修复
+
+- [x] 确认 A2A Agent 列表的名称列、操作列和 Fluent Table 封装当前行为
+- [x] 补齐 fixed 列的真实 sticky 实现，让名称固定首列、操作固定尾列
+- [x] 更新静态回归校验，覆盖列定义和封装实现
+- [x] 运行校验、lint/构建，并用浏览器验证横向滚动下固定列仍可见
+- [x] 补充 Review 和验证结果
+
+当前判断：
+
+- A2A Agent 列表已经在列定义上声明 `fixed: 'left'` 和 `fixed: 'right'`，但共享 Fluent Table 当前没有把该语义转成真实 sticky 列，导致页面滚动时首尾列不会固定。
+- 修复应优先补齐共享表格封装的 fixed 语义，同时保留 A2A 页面的稳定最小宽度和横向滚动容器。
+
+Review：
+
+- 已完成：`components/Fluent/Table` 将 `column.fixed` 映射为 `fluent-table-fixed-left/right` 和 sticky `left/right: 0`，表头与内容单元格都会应用同一套固定列语义。
+- 已完成：统一 Fluent 表格 fixed 列背景、层级和边界线，避免横向滚动时中间内容穿透到固定列下面。
+- 已完成：A2A Agent 列表继续声明名称列 `fixed: 'left'`，操作列 `fixed: 'right'`，并由 `verify-a2a-agent-table-layout.mjs` 同时约束页面列定义和共享封装实现。
+- 已验证：`node scripts/verify-a2a-agent-table-layout.mjs`、`npm run lint`、`npm run build:test`、`git diff --check` 均通过。
+- 已验证：重新拉起 all-mode 后日志出现 `finish starting server`，`http://127.0.0.1:8080/` 和 `http://127.0.0.1:8090/` 均返回 200。
+- 已验证：使用 `admin/admin123` 在真实 Chromium 打开 `/ai/a2a`，表格横向滚动到最右后，首列左边缘和操作列右边缘仍分别贴住表格容器，浏览器 console warning/error 为空；验收截图为 `output/playwright/a2a-fixed-columns.png`。
+
+## 复杂资源详情页路由化
+
+- [x] 盘点治理工作台、MCP、A2A、主体管理、权限策略详情抽屉的现有入口和数据链路
+- [x] 明确详情路由化规则：复杂资源查看走独立页面，轻量创建/授权/确认保留抽屉
+- [x] 优先改造 MCP/A2A 详情为独立页面，保留工具/技能浏览能力和编辑入口
+- [x] 改造认证主体和权限策略详情为独立页面，保留关联策略、成员、资源信息等详情 Tab
+- [x] 设计治理规则详情页面承载方式，替换工作台详情抽屉入口
+- [x] 增加静态回归校验，防止复杂详情继续从列表打开 Drawer
+- [x] 运行 lint、构建、重启并用 admin 浏览器验证关键详情链路
+- [x] 补充 Review、截图和运行态结果
+
+当前判断：
+
+- 详情内容复杂、需要多 Tab、工具/技能/版本/资源树/成员信息的资源，不适合继续塞在抽屉里；独立页面可以刷新、直达、复制链接，也和配置中心、服务实例的心智一致。
+- 抽屉仍适合短流程：新建、编辑、授权、删除确认、简单表单；不适合承载治理规则详情、MCP 工具浏览、A2A Agent Card、主体权限信息和策略资源详情。
+- 第一批要覆盖用户明确点名的治理工作台、MCP、A2A、认证管理、策略管理；实现时优先复用现有详情内容，避免同时重写业务逻辑。
+
+Review：
+
+- 已完成：治理工作台规则名称、行点击和查看操作不再打开详情抽屉，统一跳转 `/governance/rules/detail?kind=...&id=...`；独立详情页按 URL 重新拉取规则并复用现有 RuleTabs、版本、监听和九类规则 editor。
+- 已完成：MCP Server 列表查看入口跳转 `/ai/mcps/detail`；详情页保留 Server 摘要、后端跳转、工具浏览、刷新、编辑和授权入口。
+- 已完成：A2A Agent 列表查看、技能、Agent Card 入口跳转 `/ai/a2a/detail`；详情页保留 Agent Card、技能浏览和页面内编辑 Tab。
+- 已完成：认证主体用户、用户组、角色和权限策略列表名称/查看操作统一跳转既有独立详情页，不再从列表打开查看态编辑抽屉。
+- 已完成：新增 `verify-standalone-detail-pages.mjs` 并接入 `npm run test:standalone-details`；兼容旧 `npm run test:ai-detail-drawers` 指向新门禁，防止复杂详情回退成 Drawer。
+- 已验证：`npm run test:standalone-details`、`npm run test:ai-detail-drawers`、`npm run test:resource-name-links`、`npm run lint`、`npm run build:test`、`git diff --check` 通过。
+- 已验证：重新拉起 all-mode 后日志出现 `finish starting server`，`http://127.0.0.1:8080/` 和 `http://127.0.0.1:8090/` 均返回 200。
+- 已验证：使用 `admin/admin123` 真实浏览器从列表点击进入 MCP、A2A、治理规则、主体管理、权限策略详情，URL 均为独立详情页，详情页可见核心内容且没有 Drawer/Dialog；console warning/error 收集为空。
+- 验收截图：`output/playwright/standalone-governance-detail.png`。
+- 说明：仓库当前没有可执行的 `context_kg_lint.py`，本轮未运行 context-kg lint。
+
+## MCP 详情抽屉设计统一
+
+- [x] 对比 MCP/A2A/服务/命名空间详情抽屉的信息架构和操作区样式
+- [x] 重构 MCP 服务详情摘要、操作按钮、工具浏览区域为统一 Fluent 资源详情布局
+- [x] 横向检查 A2A 详情是否复用同类问题并同步收敛
+- [x] 增加静态回归校验，防止详情抽屉继续出现大卡片式操作按钮和分裂布局
+- [x] 运行 lint、构建、重启并用 admin 真实浏览器验证 MCP 详情
+- [x] 补充 Review、截图和运行态结果
+
+当前判断：
+
+- MCP 详情抽屉已经承载“查看详情 + 工具能力浏览 + 进入编辑”的主路径，不应再把刷新和编辑做成大卡片按钮；操作应回到标题/摘要区右侧的轻量按钮组。
+- MCP 与 A2A 都属于 AI 资源详情，信息架构应和服务、命名空间抽屉统一为：身份摘要、关键元信息、分段内容、紧凑操作，不要每个页面独立发明卡片密度和按钮尺寸。
+- 工具浏览更接近 API 文档/能力清单，应保持可扫描的目录式布局，但外层容器、标题、计数、空态和操作区需要和资源列表/详情的 Fluent 风格一致。
+
+Review：
+
+- 已完成：MCP 详情摘要区保持身份图标、名称、协议、描述和四项关键元信息，右侧操作收敛为 32px 刷新图标按钮 + 紧凑 `编辑 Server`，不再出现截图里的大卡片式操作块。
+- 已完成：A2A Agent 详情同步收敛摘要操作区，防止 AI 资源详情继续出现两套按钮密度。
+- 已完成：新增 `verify-ai-detail-drawer-layout.mjs` 并接入 `npm run test:ai-detail-drawers`，约束 MCP/A2A 详情抽屉宽度、摘要三段结构、紧凑操作组和 32px 图标按钮。
+- 已验证：`npm run test:ai-detail-drawers`、`npm run test:resource-name-links`、`npm run lint`、`npm run build:test` 均通过。
+- 已验证：重新拉起 all-mode 后日志出现 `finish starting server`，`http://127.0.0.1:8080/`、`http://127.0.0.1:8090/` 和当前入口静态资源均返回 200。
+- 已验证：使用 `admin/admin123` 真实浏览器打开 MCP `default/demo-mcp-2` 详情，刷新按钮实测 32x32、编辑按钮 127x32、工具浏览正常显示 3 个工具；浏览器 console warning/error 为 0，MCP/A2A 业务请求均返回 200。
+- 已验证：A2A `default/order-planner-agent` 详情刷新按钮实测 32x32，同类样式没有回退；验收截图为 `output/playwright/mcp-detail-drawer-unified-final.png`。
+
+## 命名空间抽屉查看编辑布局统一
+
+- [x] 对比服务详情/编辑抽屉的布局、宽度、页脚和只读态模式
+- [x] 调整命名空间详情抽屉宽度，移除详情页底部授权按钮
+- [x] 让命名空间查看态和编辑态复用同一表单式布局
+- [x] 运行静态检查、lint、构建、重启并用 admin 真实浏览器验证
+- [x] 补充 Review、截图和运行态结果
+
+当前判断：
+
+- 命名空间授权入口已经在列表操作列中存在，详情抽屉底部不应再放“授权”主操作，避免查看态承担权限变更入口。
+- 命名空间详情当前像信息展示页，编辑态像表单页；需要参考服务抽屉，将查看态渲染成同一套字段布局，仅控件进入只读展示。
+- 命名空间信息字段少，抽屉宽度不应沿用过宽详情面板，应该收敛到更紧凑的中等抽屉宽度。
+
+Review：
+
+- 已完成：命名空间详情抽屉宽度收敛为 `min(720px, 94vw)`，底部只保留 `编辑 / 关闭`，不再重复展示“授权”；列表操作列的授权入口保持不变。
+- 已完成：`NamespaceEditor` 移除详情展示页和编辑表单两套结构，查看、编辑、创建统一走同一套 `namespaceForm` 分段布局；查看态使用无边框正常文本渲染，编辑态原地放开描述和标签编辑。
+- 已完成：命名空间名称沿用既有规则，创建态可编辑，编辑态和查看态只读展示，避免修改不可变资源标识。
+- 已验证：`npm run test:namespace-drawer`、`npm run test:resource-name-links`、`npm run lint`、`npm run build:test` 均通过。
+- 已验证：重新拉起 all-mode 后日志出现 `finish starting server`，`http://127.0.0.1:8080/`、`http://127.0.0.1:8090/` 和当前入口静态资源均返回 200。
+- 已验证：使用 `admin/admin123` 真实浏览器打开命名空间详情，抽屉实测宽度 720px，详情按钮只有 `编辑 / 关闭`；点击编辑后仍为同一套 `基础信息 / 命名空间标签` 布局，按钮切换为 `提交 / 重置`，无“授权”按钮。
+- 已验证：浏览器 console warning/error 为 0，命名空间页面业务请求均返回 200；验收截图为 `output/playwright/namespace-drawer-unified-final.png`。
+
+## 全站资源列表名称列统一
+
+- [x] 盘点所有资源列表的名称列、附加内容和现有查看入口
+- [x] 建立共享资源名称链接组件与可访问性约束
+- [x] 将可见资源列表名称列收敛为“仅名称 + 查看链接”
+- [x] 修复没有现成名称查看入口的列表跳转或抽屉交互
+- [x] 增加静态门禁并运行 lint、构建、重启和真实浏览器逐页验证
+- [x] 补充 Review、验收截图和最终运行态结果
+
+当前规则：
+
+- “名称”列只展示资源名称，不在同一单元格附带描述、类型、状态、数量、归属或其它摘要。
+- 资源名称统一呈现为可访问的链接式控件；点击复用该资源已有的查看页或查看抽屉，不直接进入编辑态。
+- 描述等仍有列表扫描价值的信息保留为独立列；没有独立列且非必要的信息从列表移除，到详情中查看。
+
+Review：
+
+- 已完成：新增共享 `ResourceNameLink`，命名空间、服务、配置分组、治理工作台、治理发布版本、A2A Agent、MCP Server、服务别名、服务订阅和权限策略资源清单统一为“名称列仅资源名称 + 查看链接”。
+- 已完成：缺少查看入口的资源补齐详情动作；服务别名进入只读详情后可切换编辑，治理发布版本点击名称打开版本详情，权限策略资源名点击打开资源引用详情。
+- 已完成：修复策略资源清单中 `ResourceNameLink` 被表格固定布局压成 0 宽的问题；资源名称列现在有稳定列宽，真实点击 `全部（包括新增）` 可打开资源详情。
+- 已验证：`npm run test:resource-name-links`、`npm run lint`、`npm run build:test`、`context_kg_lint.py context-kg`、`git diff --check` 均通过。
+- 已验证：all-mode 日志出现 `finish starting server`，`http://127.0.0.1:8080/`、`http://127.0.0.1:8090/` 和当前入口资源均返回 200。
+- 已验证：使用 `admin/admin123` 真实浏览器点击命名空间、服务、配置分组、治理工作台、治理版本、A2A、MCP、权限策略资源引用；名称列均只显示名称，点击进入对应查看页或查看抽屉。
+- 已验证：浏览器 console warning/error 为 0，业务请求均返回 200；验收截图为 `output/playwright/resource-name-links-policy-detail.png`。
+
+## 配置中心布局与治理规则 Fluent 抽屉统一
+
+- [x] 复现配置文件详情页订阅查询的宽度压缩和空状态错位
+- [x] 修复配置文件详情主内容、Tab 内容和订阅表格的自适应布局
+- [x] 盘点九类治理规则详情抽屉的共享容器、标题操作、Tab 与滚动边界
+- [x] 在 `RuleDetailDrawer` 共享边界统一 Fluent UI 视觉和交互规范
+- [x] 增加静态门禁并运行 lint、构建、重启和真实浏览器逐类验证
+- [x] 补充 Review、验收截图和最终运行态结果
+
+当前判断：
+
+- 配置订阅查询同时渲染空版本索引和主表，外层 `subscribeShell` 的 flex 布局把空索引压成窄列并挤占表格宽度；订阅列表应以主表为主，版本筛选只在存在可用版本时作为紧凑筛选能力出现。
+- 治理规则已经使用 Fluent `OverlayDrawer`，但详情样式仍主要覆盖旧 TDesign `.t-drawer__*` 与 `.t-tabs__*` class，导致标题区、关闭按钮、Tab、正文表面和操作组没有真正进入 Fluent 设计语言。
+- 本轮应通过共享抽屉与共享 RuleTabs 横向覆盖路由、限流、熔断、主动探测、无损、泳道、调用鉴权、流量镜像和流量 Mock，不在九类编辑器里分别打补丁。
+
+Review：
+
+- 配置订阅查询移除无数据的版本索引栏，Fluent Tab 内容、订阅容器和表格均以容器宽度自适应；真实页面实测 `clientWidth === scrollWidth`，版本栏数量为 0，空状态不再被挤成竖排。
+- `RuleDetailDrawer` 统一 Fluent 标题、类型标签、关闭按钮、正文表面、Tab 和滚动边界；编辑、发布、保存、撤销通过共享 action host 固定在标题区，旧 `StickyTool` 仅作为兼容挂载点且不可见。
+- 发布抽屉和泳道内部 Tab 不再覆盖 `.t-drawer__*`、`.t-tabs__*`；路由、泳道、安全类编辑器统一按共享抽屉正文高度计算，限流直接入口与工作台保持同一宽型尺寸。
+- 九类规则使用 `admin/admin123` 逐条真实打开：复杂规则宽 864px，轻量规则宽 749px；九类均存在“编辑/发布”，进入编辑后均切换为“保存/撤销”，可见旧悬浮操作数为 0，正文实际滚动、版本/监听或泳道版本/审计 Tab 均通过。
+- 巡检额外修复熔断详情把缺失 `editable` 错当成拒绝的问题；现在只有接口明确返回 `editable=false` 才隐藏操作，admin 和默认可维护资源保持可编辑。
+- `node scripts/verify-fluent-governance-drawer-layout.mjs`、`npm run lint`、`npm run build:test` 通过；all-mode 日志出现 `finish starting server`，8080、8090 和治理工作台均返回 200。
+- 验收证据：`output/playwright/config-subscribe-layout-fluent-final.png`、`governance-drawer-fluent-route.png`、`governance-drawer-fluent-security.png` 和 `governance-fluent-drawer-audit.js`。
+
+## Console 全页面交互与跳转巡检
+
+- [x] 生成全部可见菜单、隐藏详情路由和页面内主要交互清单
+- [x] 使用 admin 真实登录逐页点击菜单、查看、创建、编辑、授权、Tab、返回和详情链接
+- [x] 同步记录 URL、抽屉/弹窗状态、请求失败及浏览器 warning/error
+- [x] 修复巡检发现的路由、状态传递和交互问题并增加回归门禁
+- [x] 重建 all-mode，完整复跑并记录 Review
+
+巡检范围：
+
+- 可见入口：命名空间、A2A Agent、MCP 服务、服务实例、配置分组、治理工作台、事件指标、操作审计、主体管理、权限策略。
+- 隐藏链路：服务详情/实例、配置分组文件、用户/用户组/角色详情、策略详情、治理各类型规则详情。
+- 交互类型：菜单跳转、资源名称链接、查看/编辑、创建、授权、删除确认但不执行删除、Tab、分页、返回、新标签用户链接。
+
+发现与修复：
+
+- 用户 Token 接口经过统一响应解包后直接返回 `User`，页面仍读取 `res.user.auth_token` 导致崩溃；用户和用户组 Token service 现同时兼容直接对象与旧包裹对象。
+- 权限策略创建页使用 `Radio.Button`，Fluent 适配层迁移时只保留了 `Radio.Group`；现补齐 `Radio.Button` 静态成员，创建抽屉恢复。
+- 事件指标和操作审计在观测插件使用日志模式、数据库表尚未创建时返回 MySQL 1146；Console MySQL observer 现把缺表识别为空数据，其它数据库错误仍正常上抛。
+- 当前 specification 的 `LosslessRule` 不包含命名空间、服务和描述字段，内部模型信息在 API 输出时丢失，工作台显示 `undefined/undefined`；控制面和 Console 现通过保留 metadata 键完成上下文往返，同时从用户标签中隐藏这些内部键。
+
+Review：
+
+- 可见菜单：命名空间、A2A Agent、MCP 服务、服务实例、配置分组、治理工作台、事件指标、操作审计、主体管理、权限策略，真实侧边栏点击 10/10 到达预期 URL。
+- 资源操作：创建、查看、详情转编辑、授权、技能、Token、绑定服务、配置文件、关联策略与删除确认均已点击；删除仅验证确认浮层，未提交破坏性操作。
+- 隐藏链路：服务详情 5 个 Tab、配置文件创建、用户权限与关联策略、默认策略 4 个 Tab、治理工作台 9 种规则详情全部通过。
+- 修复后定向复验：两个指标页、无损规则名称、用户 Token、权限策略创建均通过，warning/error、pageerror 和 HTTP 4xx/5xx 为 0。
+- 自动化证据：`output/playwright/full-navigation-audit.js`、`focused-interaction-fix-audit.js`、`hidden-interaction-audit.js` 和详情转编辑巡检脚本。
+- 代码门禁：新增 `verify-console-interaction-contracts.mjs`、无损上下文往返测试和 observer 缺表识别测试。
+
+## 资源表格列对齐与自适应规范
+
+- [x] 核对 Fluent Table 默认布局、页面显式 fixed/auto 和列对齐来源
+- [x] 共享表格默认改为按容器缩放的列宽、左对齐和长内容省略
+- [x] 命名空间与服务列表移除操作列居中覆盖并接入自适应权重
+- [x] 增加静态门禁，验证表头与内容起始位置、列宽和省略行为
+- [x] 运行 lint、构建、重启及真实浏览器复验并记录 Review
+
+当前判断：
+
+- Fluent Table 的数字列宽原本直接作为像素宽度使用，窄容器下各列宽度相加会把表格撑出容器；自适应布局需要把数字宽度解释为列权重并转换为百分比。
+- 表头与内容虽然读取同一列配置，但操作列显式 `align: center` 且按钮组使用 `margin: 0 auto`，破坏了全列左侧基线。
+- 长文本省略目前只在少量页面私有 class 中实现，共享表格没有稳定的单行溢出边界。
+
+Review：
+
+- 已完成：共享 Fluent Table 对数字列宽计算总权重并转换为百分比，配合 fixed 算法让表格始终填满且不超出容器；显式 `auto` 的特殊内容表格仍保留内容驱动行为。
+- 已完成：共享表头和单元格统一左对齐，增加表头与内容溢出容器；普通文本默认单行省略。
+- 已完成：命名空间与服务列表移除操作列 `align: center` 和按钮组自动居中，操作按钮保持紧凑并统一靠左。
+- 已完成：命名空间操作时间、服务列表时间与归属等自定义多行内容补齐内部省略规则。
+- 已完成：新增 `verify-fluent-table-layout.mjs`，固定百分比列权重、左对齐、容器宽度和省略规则。
+- 已验证：`verify-fluent-table-layout.mjs`、`verify-operation-button-icons.mjs`、`npm run lint`、`npm run build:test` 通过。
+- 已验证：all-mode 输出 `finish starting server`，8080/8090 返回 200；1024px 实测命名空间表格与容器均为 739px、无横向溢出，表头/首行逐列起点一致，所有列左对齐，操作时间实际触发 ellipsis；1440px 服务列表表格与容器均为 1155px且逐列对齐；浏览器 warning/error 为 0。
+- 验收截图：`output/playwright/namespace-table-left-adaptive-final.png`。
+
+## 资源表格操作列紧凑化
+
+- [x] 在真实命名空间页面测量操作列、按钮和按钮组的实际尺寸
+- [x] 在共享 OperationButton 边界统一图标按钮尺寸、间距和对齐
+- [x] 命名空间与服务列表接入共享操作按钮组
+- [x] 增加静态验证并运行 lint、构建和真实浏览器复验
+- [x] 记录 Review 与本次用户纠正经验
+
+当前判断：
+
+- Fluent 迁移后共享操作按钮仍使用中号默认尺寸，但命名空间页面只保留了旧 `.t-button` 的 28px 覆盖规则，该规则对 `.fui-Button` 不生效。
+- 命名空间操作列声明宽度为 108px，浏览器实际分配约 155px；操作区必须自身保持 `max-content` 紧凑宽度，不能依赖表格列宽决定图标间距。
+
+Review：
+
+- 已完成：共享 `OperationButton` 默认使用 small 尺寸，并统一为 28×28px；Tooltip 包装节点同步固定为 28px，避免包装层参与拉伸。
+- 已完成：新增 `OperationButtonGroup`，使用 `width: max-content`、4px gap 和不换行布局；命名空间与服务列表的操作列已接入。
+- 已完成：删除两个资源页中仅适配旧 TDesign `.t-button` 的失效规则，页面仅保留按钮组居中职责。
+- 已完成：`verify-operation-button-icons.mjs` 增加共享尺寸、间距、内容宽度和资源页接入门禁。
+- 已验证：`node scripts/verify-operation-button-icons.mjs`、`npm run lint`、`npm run build:test` 通过。
+- 已验证：all-mode 日志出现 `finish starting server`，8080/8090 均返回 200；真实命名空间页三个按钮组为 92×28px，按钮横向间隔 32px，真实服务列表两个按钮组为 60×28px，浏览器 warning/error 为 0。
+- 验收截图：`output/playwright/namespace-operation-column-compact.png`。
+
+## A2A Agent 列表表格排版细节优化
+
+- [x] 对照截图定位表格头部、筛选区、列宽、标签、技能数、操作列和分页的排版问题
+- [x] 将 A2A Agent 表格调整为稳定列宽、紧凑标签、单行技能数、右侧固定操作和可控横向溢出
+- [x] 优化 A2A 筛选区在宽屏/中屏下的网格节奏，避免控件过宽、掉行或和表格边界不齐
+- [x] 增加静态验证脚本，固定本次表格排版约束
+- [x] 将本次用户纠正沉淀到 lessons
+- [x] 运行前端 lint、相关 verify、构建或可用的页面验证，并记录 review
+
+Review：
+
+- 已完成：A2A Agent 表格改为 `tableLayout="fixed"`，并通过 `agentTable`/`tableSurface` 固定表格最小宽度、表头 nowrap、单元格 padding、分页边界和最后操作列垂直居中。
+- 已完成：身份列、接入列、归属列、能力列、技能数、来源、最近修改和操作列重新分配稳定宽度；Agent 名称、后端地址、归属说明和时间字段均使用单行省略。
+- 已完成：能力标签改成单行紧凑列表，`Extended Card` 在列表中缩短为 `Extended`；技能数使用 `skillCountLink` 保证 `2 个` 不拆行；操作列使用 `actionCell` 控制图标间距和右对齐。
+- 已完成：筛选区改成确定性 grid 宽度，宽屏右对齐，中屏按 4 列/2 列换行。
+- 已完成：新增 `console/web/scripts/verify-a2a-agent-table-layout.mjs`，固定 fixed table、列宽、单行技能数、能力/来源标签不换行、操作列居中和禁止旧 `.t-table` 表格选择器回退。
+- 已完成：更新 `context-kg/tasks/lessons.md`，记录资源列表交付必须检查表头换行、标签撑高、计数字段拆行、分页边界和操作图标间距。
+- 已验证：`node scripts/verify-a2a-agent-table-layout.mjs` 通过。
+- 已验证：`npm run lint` 通过。
+- 已验证：`npm run build:test` 通过。
+- 已验证：Playwright 使用样例 A2A 数据打开 `http://127.0.0.1:4175/ai/a2a`，表头高度 45px，首行高度 107px，技能数链接高度 20px，能力标签高度 20/32px，操作列中心偏移 0，表格 `clientWidth=scrollWidth=1765`，浏览器 warning/error 为 0；截图见 `output/playwright/a2a-agent-table-layout-final.png`。
+
+## Fluent 侧边栏视觉纠偏
+
+- [x] 对照用户截图检查 Fluent Nav 默认表面和层级问题
+- [x] 收敛一级分组、二级菜单、选中态和 Footer 的视觉规范
+- [x] 验证展开态、折叠态、窄屏布局及所有菜单点击
+- [x] 运行前端校验、重建 all-mode 并复验 8080
+
+当前判断：
+
+- 当前每个 NavItem、NavCategoryItem 和 NavSubItem 都保留 Fluent 默认灰色 surface，连续排列后形成大块圆角卡片，破坏了侧边栏的信息层级。
+- 侧边栏应保持白色连续导航面，一级模块强调图标和标题，二级菜单只做缩进；仅当前资源显示浅蓝背景与左侧品牌色标记。
+- 本轮不改变 Logo、232px 宽度、模块顺序、全部展开和折叠行为。
+
+修复：
+
+- 普通一级、分组标题和二级菜单统一为透明连续表面，移除每行常驻灰底和卡片感。
+- 一级模块使用图标与中等字重，二级菜单使用 44px 缩进和 36px 紧凑行高；hover 仅显示轻灰反馈。
+- 当前资源使用 `#ebf3fc` 浅蓝背景、品牌色文字和 3px 左侧指示条，并移除 Fluent 默认重复选中标记。
+- 折叠态固定 64px，图标居中、隐藏文字和分组箭头；Footer 保留版本号且不参与滚动。
+- Toast 增加 Error/对象内容归一化，避免菜单横向验收遇到接口错误时把 Error 对象作为 React 子节点导致页面崩溃。
+- FluentProvider 外增加独立 `fluent-provider-shell`，补齐应用根节点满高链路；`sidePanel` 固定内部滚动，侧边栏和内容区均占满视口，Footer 锚定到底部。
+
+验证：
+
+- `npm run lint`、`verify-fluent-ui-migration.mjs`、`verify-brand-logo.mjs`、`verify-production-react-build.mjs` 和生产构建通过。
+- Playwright 验证 MCP、服务实例、配置分组、治理工作台、事件指标和主体管理菜单均可跳转。
+- 1440x900 展开态、64px 折叠态和 390x844 窄屏截图检查通过，侧栏没有灰色卡片或残留展开箭头。
+- 8080 生产环境 1200x1600 长视口实测侧栏 `top=0`、`bottom=1600`、`height=1600`，Footer 位于 `1563–1600`，根页面 `scrollHeight=1600`。
+- all-mode 重建后出现 `finish starting server`；8080 使用 `admin/admin123` 登录复验，console error/warning 为 0；8080、8090 均返回 200。
+
+Review：
+
+- 本次只纠正侧边栏视觉和 Toast 错误边界，没有改变路由结构、模块顺序、默认展开、权限或业务页面。
+- 侧边栏视觉约束已加入 Fluent 迁移静态检查，防止后续恢复每行灰色 surface 或折叠态箭头。
+
+## Console 全站迁移 Fluent UI v9
+
+- [x] 盘点 TDesign 组件、图标、样式和复杂表单使用面
+- [x] 安装 Fluent UI v9 并建立品牌主题、Provider 与全局 token
+- [x] 建立 Fluent 组件适配边界，迁移共享按钮、输入、选择、提示、通知和图标
+- [x] 迁移应用壳层、侧边导航和资源页共享布局
+- [x] 迁移配置、治理、认证、AI 与监控页面的可见控件
+- [x] 增加 TDesign 直接 import 禁止检查并将旧依赖限制在适配层
+- [x] 运行 lint/build/verify、重启和真实浏览器全站抽检
+
+当前判断：
+
+- 当前约 102 个源码文件直接导入 TDesign，包含 60 余种组件/类型和 457 处表单相关调用；这不是颜色变量调整，而是组件系统迁移。
+- 本轮按 [[adr-console-fluent-ui-design-system]] 使用 Fluent UI React v9。通过仓库级适配层保持现有业务流程与表单字段契约，优先统一所有用户可见控件和页面语言。
+- 企业软件风格固定为 Fluent 的蓝、灰、白体系，强调信息密度、清晰层级和键盘焦点，不引入营销页式装饰。
+
+修复：
+
+- 引入 Fluent UI React v9 与 Fluent Icons，增加品牌 light/dark theme、根 Provider、Toast Host 和蓝灰白全局 token。
+- `components/Fluent` 提供按钮、输入、选择、表格、分页、抽屉、对话框、Tab、Tooltip、Popconfirm、通知、布局和表单控件适配；页面源码不再直接 import TDesign。
+- 侧边栏改用 Fluent Nav，并统一展开态、折叠态、图标、品牌 Logo、页头和资源页控件；桌面与移动端使用同一设计语言。
+- 修复迁移中发现的 Layout 静态子组件缺失、旧 placement 与 Fluent positioning 枚举不兼容、表单受控状态切换和 Portal Provider 拦截点击问题。
+- 移除按 React/TDesign 内部目录硬拆 chunk 的旧构建规则，避免 React、Griffel、Fluent 和兼容层形成运行时循环；增加静态门禁和构建安全检查。
+- 旧 Form 状态控制器及少数高复杂度控件只允许存在于适配层，继续保持嵌套字段、校验和现有业务提交契约；页面层已与具体旧组件库解耦。
+
+验证：
+
+- `npm run lint`、`npm run build` 和 `scripts/verify-*.mjs` 全部通过，生产构建无 warning。
+- `verify-fluent-ui-migration.mjs` 确认页面、布局及普通共享组件不存在 TDesign/TDesign Icons 直接 import。
+- Playwright 使用 `admin/admin123` 验证登录、命名空间、配置分组、治理工作台、服务列表/详情、MCP 和主体管理；下拉、抽屉与 Portal 交互正常。
+- 1440x900 与 390x844 视口均完成截图检查；浏览器 console error/warning 为 `0`。
+- all-mode 重建日志出现 `finish starting server`，`http://127.0.0.1:8080` 与 `http://127.0.0.1:8090` 均返回 `200`。
+
+Review：
+
+- 迁移边界集中在 `components/Fluent`，业务页面保留原有字段、权限、查询和提交逻辑；后续新增页面只能从该边界或 Fluent v9 直接使用统一控件。
+- TDesign 依赖暂不删除，原因是复杂 Form 状态控制器和树/穿梭框等高风险交互仍需兼容；它不能再从页面直接引用，也不能决定全局视觉语言。
+
+## Console 实例 TCP/HTTP 主动健康检查
+
+- [x] 核对现有 Console、specification、健康检查插件、调度器和 MySQL 映射
+- [x] 扩展 `HealthCheck` 契约并生成 Go 代码
+- [x] 实现并注册 TCP/HTTP 主动探测插件
+- [x] 适配实例创建、调度和 MySQL round-trip
+- [x] 调整 Console：创建态禁用心跳，默认 TCP，开放 TCP/HTTP
+- [x] 补充契约、后端、存储和前端回归测试
+- [x] 重建 all-mode 并完成真实页面、请求和探测验证
+
+当前判断：
+
+- SDK 注册实例可以通过心跳维持健康状态，Console 手工创建实例没有心跳上报方，因此创建页面不能允许选择心跳。
+- 当前后端 `service.proto`、实例转换和默认插件都只实现 HEARTBEAT；TCP/HTTP 是禁用占位项，不能仅修改前端选项状态。
+- 本轮按 [[adr-instance-active-healthcheck]] 实现控制面 TCP/HTTP 实例主动探测；不改变治理规则 `FaultDetectRule` 的客户端探测模型。
+
+修复：
+
+- specification 的 `HealthCheck` 增加 TCP/HTTP 类型与探测间隔，HTTP 增加路径；同步生成 Go 代码并更新 Rust 协议源。
+- 服务端新增 TCP 和 HTTP 真实探测插件，调度器按检查类型与间隔执行；当所有 checker 自身尚未健康时，使用非隔离 checker 兜底，避免主动检查无节点执行。
+- MySQL 继续复用 `health_check.ttl` 保存心跳 TTL 或主动探测间隔，HTTP 路径保存到保留 metadata；读取时先解析 metadata 再构造类型化健康检查，确保路径不会退回默认 `/`。
+- Console 创建实例时禁用心跳，默认 TCP，开放 TCP/HTTP；编辑已有心跳实例仍可正确回显。请求边界将 camelCase 表单数据转换为后端 snake_case。
+
+验证：
+
+- `go test ./...` 通过；TCP/HTTP 插件、实例协议转换、调度器 checker 兜底和 MySQL metadata 恢复均有回归测试。
+- `cd console/web && node scripts/verify-discovery-services-layout.mjs && npm run lint && npm run build:test` 通过。
+- specification 执行 `go test ./...` 通过；Rust 使用仓库内 protoc 执行 `cargo check` 通过。
+- all-mode 重建后日志出现 `finish starting server`，8080 和 8090 均返回 `200`。
+- 真实创建 HTTP 主动检查实例指向临时 HTTP 服务：服务运行时实例转为健康，停止服务后实例转为不健康；两个测试实例均已删除，查询结果为 0 条。
+- Playwright 验证创建态心跳 option 为 `t-is-disabled`，TCP/HTTP 可选；HTTP 提交 payload 为 `enable_health_check=true`、`health_check.type=3`、`http.interval=5`、`http.path=/ready`，浏览器 warning/error 为 0。截图见 `output/playwright/instance-healthcheck-create-options-final.png`。
+
+Review：
+
+- 本轮不是只开放前端选项，协议、插件、调度、存储、缓存恢复、Console 请求和真实健康状态切换已形成完整闭环。
+- API/SDK 仍可使用心跳实例；限制只作用于 Console 手工创建态，不破坏已有心跳注册模型。
+
+## 创建服务实例隐藏固定资源字段
+
+- [x] 确认实例创建表单的命名空间、服务来源及提交依赖
+- [x] 从创建/编辑表单移除固定的命名空间和服务输入框
+- [x] 让创建请求直接使用当前服务上下文并补充静态回归检查
+- [x] 运行前端校验、构建、重启和真实浏览器验证
+- [x] 将运行信息字段改为单列纵向排列并完成真实页面复验
+
+当前判断：
+
+- 服务实例只能在当前服务详情上下文创建，命名空间和服务不是本次操作可选择的参数，不应以只读输入框伪装成表单字段。
+- 顶部实例身份摘要继续展示当前命名空间和服务，保证用户知道操作对象；运行信息只保留实例自身可填写或可调整的主机、端口、协议、版本和权重。
+- 请求中的 `namespace/service` 应直接来自当前服务上下文或已有实例，不再依赖不可见的 Form 字段。
+
+修复：
+
+- `InstanceEditor` 删除命名空间、服务两个只读 `FormItem`，同步移除对应的 `useWatch` 和 `setFieldsValue` 初始化字段。
+- 新建实例直接使用详情页传入的 `namespace/service`，编辑实例优先使用已有实例归属；顶部 `InstanceSummary` 继续显示当前资源上下文。
+- `verify-discovery-services-layout.mjs` 增加实例创建边界检查，防止固定资源上下文再次退化为只读表单框，并固定请求归属来源。
+- 移除实例提交路径遗留的调试 `console.log`。
+- 为运行信息增加独立 `instanceRuntimeGrid` 单列样式，主机、端口、协议、版本、权重纵向排列；通用表单网格仍保持双栏，健康检查和位置分段不受影响。
+
+验证：
+
+- `cd console/web && npm run lint && node scripts/verify-discovery-services-layout.mjs && npm run build:test` 通过。
+- all-mode 重建后日志出现 `finish starting server`。
+- Playwright 使用 `admin/admin123` 打开 `spec-governance/spec-checkout` 服务实例创建抽屉：表单标签为主机、端口、协议、版本、权重、健康与位置等字段，命名空间和服务表单项均不存在；顶部上下文仍正常显示。
+- 浏览器拦截 POST 而未实际创建实例，payload 中 `namespace=spec-governance`、`service=spec-checkout`、`host=127.0.0.254`、`port=18080` 均正确；浏览器错误和警告为 `0`。
+- 截图见 `output/playwright/instance-create-without-resource-fields.png`。
+- Playwright 复验纵向布局：五个运行信息字段均为 `x=552px`、宽度 `696px`，按 `70px` 的纵向节奏排列；截图见 `output/playwright/instance-create-runtime-vertical.png`。
+
+Review：
+
+- 资源归属由服务详情上下文负责，实例表单只采集实例自身属性；UI 展示与请求数据责任保持一致。
+- 本次未修改实例 API 契约、权限、列表、查看和删除逻辑，也没有向真实环境写入测试实例。
+
+## 治理规则基础信息统一折叠
+
+- [x] 盘点路由、限流、熔断、探测、无损、泳道和流量治理编辑器的基础信息结构
+- [x] 新增共享基础信息折叠组件和紧凑摘要
+- [x] 横向接入全部治理规则编辑器，默认展开并保持表单状态
+- [x] 补充静态回归检查和 lessons
+- [x] 运行前端校验、构建、重启和真实浏览器验证
+
+当前判断：
+
+- 基础信息折叠是治理规则编辑器的共性交互，不应只在当前截图对应的 RouteRule 局部实现。
+- 折叠态应保留规则名称、状态或优先级摘要，并采用紧凑单行高度；展开态继续使用现有字段布局和表单控件。
+- 本轮只改变编辑器信息分段的展开/折叠，不改规则模型、保存 payload、校验、发布和权限逻辑。
+
+修复：
+
+- 新增共享 `CollapsibleSection`，统一展开图标、`aria-expanded`、折叠摘要和正文显隐；正文使用 `hidden` 保持组件挂载，避免切换时清空尚未保存的表单状态。
+- 路由、限流、熔断、主动探测、无损、泳道以及鉴权/镜像/Mock 编辑器全部接入，默认展开，重新打开编辑器时恢复展开态。
+- 折叠摘要保留当前规则名称、启停状态和优先级；路由与泳道沿用已有编号式分段标题，其它编辑器沿用共享治理分段样式。
+- 删除折叠外层的 `overflow: hidden` 和主动 `scrollIntoView`。正文已经由 `hidden` 收起，额外 overflow 会把 section 自身识别成滚动容器并将标题滚出卡片，落到粘性 Tab 下方导致无法点击。
+- 新增 `verify-governance-basic-collapse.mjs`，固定共享组件的可访问状态、表单保留方式、统一图标和全部编辑器接入范围。
+
+验证：
+
+- `cd console/web && npm run lint && for script in scripts/verify-*.mjs; do node "$script"; done && npm run build:test` 通过。
+- all-mode 重建后日志出现 `finish starting server`；8080、8090 和服务详情入口均返回 `200`。
+- Playwright 使用 `admin/admin123` 从服务详情进入流量治理并新建 RouteRule：折叠后标题 `top=183px`、高度 `57px`，位于粘性 Tab 下方且可用普通点击重新展开。
+- 折叠前输入规则名 `collapse-state-check`，重新展开后值保持不变，`aria-expanded=true`；折叠态截图为 `output/playwright/governance-basic-info-collapsed.png`。
+
+Review：
+
+- 本次没有修改规则数据模型、API 请求和保存行为；共享组件只控制信息分段显隐，已有表单校验及发布链路保持不变。
+- 治理规则编辑器现在使用同一折叠交互，后续新增规则类型应继续复用共享组件，避免出现局部标题高度、滚动和图标行为不一致。
+
+## 服务详情页信息排版修正
+
+- [x] 对照 `service-alias.html` 原型确认服务详情页的信息架构与交互边界
+- [x] 将真实 Console 服务详情改为身份头部、四项摘要、基础信息和运行状态四层结构
+- [x] 接通复制服务 ID、查看实例、管理别名三个操作，并动态查询服务别名数量
+- [x] 按宽屏双栏、摘要四列和窄屏单列补齐响应式布局
+- [x] 更新静态回归检查和 lessons，防止原型与真实源码再次脱节
+- [x] 运行前端校验、构建、重启和真实浏览器验证
+
+当前判断：
+
+- `service-alias.html` 是设计原型且已经符合本轮说明，真实落点是 `/discovery/service/instance` 下的 `ServiceDetail.tsx`。
+- 当前真实页面仍是顶部命名空间标签、三项统计和单列字段分段，缺少跨 Tab 操作、别名总数和运行状态，因此不能把原型完成误判为源码完成。
+- 本轮只调整服务详情 Tab 的阅读态布局和父级 Tab 切换回调；复用现有服务、别名查询接口，不改实例/别名/订阅/治理 Tab 的数据管理和后端契约。
+
+修复：
+
+- 服务详情已按身份头部、四项摘要、基础信息和运行状态重组；移除头部命名空间标签，基础信息保留 ID、命名空间、名称、Revision、端口、业务、部门、描述和时间。
+- “复制 ID”复用剪贴板工具并支持页面指定反馈文案；“查看实例”“管理别名”和运行状态“查看”通过父级受控 Tab 切换，不改原有 Tab 数据组件。
+- 服务别名数量通过现有 `DescribeServiceAliases` 接口按当前 namespace/service 动态查询；真实环境当前返回 `0`，页面不使用原型中的固定示例值。
+- 无实例时后端端口可能返回字符串 `[]`，详情页统一归一化为“未注册实例，暂无端口”。
+- 摘要宽屏四列、详情区宽屏双栏、基础信息内部双列；960px 以下详情区单列，640px 以下摘要和键值区单列。
+- 修正 `AppLayout` 小屏折叠菜单后仍保留 `min-width: 760px` 的冲突，900px 以下 side/top/mix 内容区允许收缩，避免页面整体横向滚动。
+
+验证：
+
+- `cd console/web && node scripts/verify-discovery-services-layout.mjs && npm run lint && npm run build:test` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过；相关文件 `git diff --check` 通过。
+- all-mode 重建后日志出现 `finish starting server`；8080、8090 和当前入口资源 `/assets/index.c8ca2fdf.js` 均返回 `200`。
+- Playwright 在 1440px 下确认摘要为四个等宽 `272.5px` 列，详情区为 `652.5px / 453.5px` 双栏，无横向溢出。
+- Playwright 在 640px 下确认摘要、详情区和键值项均为单列，`scrollWidth = clientWidth = 640`；截图见 `output/playwright/service-detail-mobile-final.png`。
+- 复制 ID 显示“已复制 服务 ID”；管理别名和查看实例均切换到对应 Tab 并显示轻量反馈；浏览器 console error/warning 为 `0`。
+
+Review：
+
+- 原型和真实 Console 已使用同一信息架构；运行数据继续以真实服务和别名接口为准，不硬编码示例中的实例数、别名数或标签数。
+- 页面没有新增调用拓扑或治理入口模块；现有独立“流量治理”Tab、服务别名 CRUD、实例和订阅逻辑保持原实现。
+
+## 服务查看态复用编辑布局
+
+- [x] 复核服务列表行操作里的 `ServiceEditor` 查看态和编辑态布局差异
+- [x] 将服务查看态改为复用编辑表单分段布局，字段渲染为无边框只读文本
+- [x] 在查看态保留“编辑”按钮，点击后原地放开表单编辑并显示提交/重置
+- [x] 增加静态回归检查和 lessons，避免再次维护独立服务查看布局
+- [x] 运行前端校验、构建、context-kg 校验和真实浏览器验证
+
+当前判断：
+
+- 用户当前反馈指向服务行操作里的查看/编辑抽屉：查看态和编辑态视觉结构不应是两套页面。
+- 本轮不改变服务名点击进入服务详情/实例页的路由，也不改服务创建/更新接口；只收敛 `ServiceEditor` 内部查看态和编辑态的布局语言。
+- 正确模型是同一套 `基础信息 / 归属信息 / 服务标签` 表单布局：查看态右侧字段用无边框只读文本正常展示，点击“编辑”后原地切换为可编辑控件。
+
+修复：
+
+- 删除 `ServiceEditor` 里的独立 `serviceView` 查看分支，查看和编辑统一渲染 `serviceForm`。
+- 查看态用 `ReadonlyField` 展示命名空间、名称、描述、部门和业务，不再渲染灰底 disabled `Input/Select`；抽屉底部只展示 `编辑 / 关闭`，点击编辑后同一表单原地切换为可编辑控件，并展示 `提交 / 重置`。
+- 服务查看和编辑抽屉统一使用 `min(720px, 94vw)` 宽度，避免查看态和编辑态切换时布局跳变。
+- 删除未使用的 `serviceView/viewGrid/labelList` 等独立查看样式。
+- 更新 `verify-discovery-services-layout.mjs`，固定服务查看态不得再维护独立展示分支，必须复用编辑表单，且阅读态字段不能通过 disabled `Input/Select` 表现。
+
+验证：
+
+- `cd console/web && node scripts/verify-discovery-services-layout.mjs && npm run lint` 通过。
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done && npm run build:test` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- 8080/8090 均返回 `200`；8080 当前 `index.html` 引用的 17 个静态资源全部返回 `200`。
+- Playwright 使用 `admin/admin123` 打开 `/discovery/service`，点击第一行 `查看 / 编辑`：查看态抽屉展示 `基础信息 / 归属信息 / 服务标签`，5 个输入控件全部 disabled，无旧 `serviceView` class，底部为 `编辑 / 关闭`，console warning/error 为 `0`。
+- 点击 `编辑` 后同一抽屉切换为 `编辑服务`，控件启用，底部显示 `提交 / 重置`；截图输出到 `.playwright-cli/service-view-form-readonly.png` 和 `.playwright-cli/service-view-form-editable.png`。
+- 根据阅读态字段视觉反馈，已将查看态 5 个字段从 disabled `Input/Select` 改为 `ReadonlyField` 无边框文本；Playwright 复验阅读态 input/textarea 数量为 `0`、disabled input 数量为 `0`、Select 箭头不存在、字段背景透明、边框 `0px`、文字颜色 `rgb(31, 41, 55)`，截图输出到 `.playwright-cli/service-view-readonly-plain-text.png`。
+- 根据阅读态名称字段反馈，已将 `FormItem rules` 限制到编辑态，并让名称字段的命名提示、字数统计和内联错误只在编辑态展示；阅读态不再显示 required 红星、`命名后不可修改` 和 `13/128`。
+- Playwright 复验阅读态：`requiredMarkCount=0`，`hasNameHint=false`，`hasNameCountText=false`，`hasNameCountNode=false`，`hasErrNameNode=false`，截图输出到 `.playwright-cli/service-view-readonly-no-edit-hints.png`。
+
+## 控制台资源页操作区统一
+
+- [x] 盘点命名空间、注册发现、配置分组、MCP、A2A、治理工作台的页头、创建按钮和查询筛选布局差异
+- [x] 抽取共享资源页页头与列表工具栏组件，固定标题、辅助文案、刷新、新建、列表标题和查询区结构
+- [x] 将主要资源列表页切换到共享组件，保持蓝白/灰黑白企业软件风格，不重做侧边栏和全局背景
+- [x] 增加静态校验，防止资源页继续绕开共享页头/工具栏各自实现
+- [x] 运行前端脚本、lint、构建、context-kg 校验、重启服务和真实页面抽检
+
+当前判断：
+
+- 用户当前反馈集中在“资源创建按钮、查询搜索布局不统一”，不是要求再次整体换肤；本轮范围只统一资源页操作区的信息架构和承载方式。
+- 资源页统一标准：页头左侧为业务路径、标题、说明，右侧为刷新和主创建动作；列表工具栏左侧为列表名与当前数量，右侧为查询、筛选、查询按钮和重置入口。
+- 治理工作台已有“刷新 / 重置筛选 / 新建规则”的局部规则，本轮需要纳入统一资源页语言，同时避免破坏其两步新建规则流程。
+
+修复：
+
+- 新增 `components/ResourceLayout`，提供 `ResourceHeader` 和 `ResourceToolbar`，统一页头、右侧操作、列表标题、数量提示和查询区排列。
+- 命名空间、注册发现服务、配置分组、AI MCP、AI A2A、治理工作台接入共享页头和工具栏；创建入口统一放到页头右侧，查询/重置统一放在列表工具栏右侧。
+- 配置分组将“新建/刷新”从筛选条移到页头，并补齐显式“查询/重置”；治理工作台保留两步新建规则流程，只调整入口承载。
+- 共享页头路径提示统一为企业蓝 `#0052d9`，不改侧边栏和全局背景。
+- 新增 `verify-resource-page-layout.mjs`，并更新注册发现、配置分组已有校验，使脚本识别共享布局而不是私有 `header/filterBar`。
+- 收到本次纠正后已更新 `context-kg/tasks/lessons.md`，固化资源页头和查询工具栏统一规则。
+- 根据治理工作台搜索布局仍与其它资源不一致的反馈，撤回专用搜索区分支和额外说明行；治理工作台回到共享 `ResourceToolbar` 默认单行结构，左侧只展示 `规则清单 / 当前显示`，右侧展示类型筛选、搜索框、查询和重置。
+- 根据配置分组截图对齐治理工作台筛选控件：`规则类型` 和 `关键字` 改为控件内 label，关键词 placeholder 收敛为 `规则名、服务、条件`，不再只依赖 placeholder 表达字段名。
+- 根据最新截图纠正最终顺序和字段数量：治理工作台查询区改为 `关键字 / 规则类型 / 状态 / 查询 / 重置`，并让状态筛选参与本地列表过滤。
+- 根据本次页面设计层级反馈，将治理工作台 `ResourceToolbar` 移出白色 `listPanel`，让查询工具栏独立处在灰色页面背景上；`listPanel` 只承载表格和分页，和配置分组列表保持同一页面结构。
+
+验证：
+
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && node scripts/verify-resource-page-layout.mjs` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- 8080/8090 均返回 `200`；8080 当前 `index.html` 引用的 17 个静态资源全部返回 `200`。
+- Playwright 使用 `admin/admin123` 登录态打开 `/namespace`、`/discovery/service`、`/configuration/group`、`/ai/mcps`、`/ai/a2a`、`/governance/workbench`，六个页面均存在统一标题、列表工具栏、当前数量、查询、重置和新建按钮；路径提示色为 `rgb(0, 82, 217)`；浏览器 console warning/error 为 `0`。
+- 治理工作台搜索区回收为单行共享结构后，Playwright 与命名空间页对比验证：治理工作台工具栏无额外说明行，文本为 `规则清单 / 当前显示 9 / 9 条 / 查询 / 重置`，搜索框与标题行顶边节奏和命名空间页一致。
+- 按配置分组同款控件内标签修正后，Playwright 验证治理工作台工具栏文本包含 `规则类型`、`关键字`、`查询`、`重置`，截图输出到 `.playwright-cli/workbench-toolbar-labeled.png`。
+- 最终 Playwright 验证治理工作台查询区文本顺序为 `关键字 -> 规则类型 -> 状态 -> 查询 -> 重置`，所有控件顶边一致，截图输出到 `.playwright-cli/workbench-toolbar-final.png`。
+- 页面层级修正后，真实浏览器验证治理工作台工具栏父级为页面容器、位于 `listPanel` 之前且不被 `listPanel` 包含；工具栏文本顺序为 `关键字 / 规则类型 / 状态 / 查询 / 重置`，截图输出到 `.playwright-cli/workbench-toolbar-page-structure.png`，浏览器 console warning/error 为 `0`。
+
+## 控制台整体设计恢复原状
+
+- [x] 识别本轮整体设计改动范围：全局样式、壳层、侧边栏、核心页面 module.less 和设计校验脚本
+- [x] 恢复全局样式、布局壳层、页面样式到仓库原有版本
+- [x] 恢复侧边栏宽度、Logo 尺寸和默认 TDesign 导航样式
+- [x] 保留用户此前明确要求的 `Lattice.Hub` 品牌文案与 Logo 资产
+- [x] 运行前端静态验证、lint、构建、重启和真实页面抽检
+
+当前判断：
+
+- 用户明确要求“整体恢复原状”，因此撤回本轮 `redesign-existing-projects` 引入的整体设计语言、侧栏企业蓝白重做和页面 token 化。
+- 业务功能、配置中心能力、授权能力、统一操作按钮、Lattice.Hub Logo 等之前明确完成的功能类改动不属于本次恢复范围。
+
+修复：
+
+- `styles/index.less` 恢复为原始 body/html/code 基础样式，移除本轮新增的 Console 设计 token、全局按钮/表格/抽屉覆盖和背景纹理。
+- `layouts` 相关样式恢复原始壳层、Header、Page 和 Menu Logo 样式。
+- 命名空间、注册发现、配置分组、配置文件详情、AI MCP/A2A、治理工作台、登录页等页面样式恢复到仓库原有版本。
+- 侧边栏宽度恢复为 `232px`，完整 Logo 尺寸恢复为 `184x32`；`Menu.tsx` 仅保留 `Lattice.Hub ${version}` 文案。
+- `verify-brand-logo.mjs` 不再约束整体设计主色和侧栏重做，只保留 Lattice.Hub 品牌和恢复后的原始尺寸检查。
+- 对配置中心这类已经由业务 TSX 引用的新 class，仅补回基础 TDesign 风格样式，避免恢复原状后出现 CSS module undefined / 页面裸奔。
+
+验证：
+
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- CSS module 引用审计通过，配置中心相关 TSX 无缺失 class。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`，8080/8090 均返回 `200`。
+- 8080 当前 `index.html` 引用的 17 个静态资源全部返回成功，无 hash 资源 404。
+- Playwright 使用 `admin/admin123` 登录态打开 `/discovery/service` 和 `/configuration/group`，侧栏宽度 `232`、Logo `184x32`，配置中心列表可见，浏览器 console warnings/errors 为 `0`。
+
+## 侧边栏企业软件视觉修正
+
+- [x] 复核用户截图反馈：当前侧边栏 active 状态和品牌色偏轻快，不符合企业软件气质
+- [x] 将全局主色从偏绿收敛为企业蓝，并保留黑灰白中性色
+- [x] 重做侧边栏密度、logo 尺寸、菜单层级、hover 和 active 状态
+- [x] 更新相关静态校验，避免旧尺寸和旧色彩断言误判
+- [x] 运行前端静态验证、lint、构建、重启和真实页面抽检
+
+当前判断：
+
+- 配置中心和控制台属于企业管理软件，默认应采用蓝白或黑灰白体系；偏绿的品牌色和大面积浅绿色 active 背景会让侧边栏显得消费化。
+- 侧边栏应优先表达导航层级和当前页面位置：白底、黑灰文本、蓝色细指示条、轻量 hover；不要使用大胶囊和过大的留白。
+- Logo 可以保留用户指定图形和 `Lattice.Hub` 文案，但在侧边栏里需要降低视觉占比，把更多空间留给导航。
+
+修复：
+
+- 全局 `--console-brand` 从偏绿改为企业蓝 `#0052d9`，同步更新 TDesign brand focus/active/light、按钮阴影、输入 hover、页面背景和抽屉背景中的弱品牌色。
+- 侧边栏宽度从 `232px` 收敛为 `220px`，完整 Logo 从 `204x36` 收敛为 `186x33`，折叠 Logo 从 `36x36` 收敛为 `32x32`。
+- 侧边栏改为白底、黑灰文本、18px 图标、34-38px 菜单高度；hover 使用浅灰，active 使用浅蓝底、企业蓝文字和左侧 3px 指示线。
+- 默认展开恢复为所有一级分组全部展开，保证全量导航入口可见。
+- 修正顶层单菜单项缩进，`命名空间` 和其它一级分组标题保持同一图标/文字垂直列。
+- `verify-brand-logo.mjs` 增加侧栏宽度、logo 尺寸、企业蓝主色、禁止旧绿色 token、默认全部展开和顶层单菜单项对齐的静态检查。
+
+验证：
+
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`，8080/8090 均返回 `200`。
+- 8080 当前 `index.html` 引用的 17 个静态资源全部返回成功，无 hash 资源 404。
+- Playwright 使用 `admin/admin123` 登录态打开 `/discovery/service`：侧边栏宽度 `220`，Logo 宽度 `186`，`服务实例` active 为浅蓝底 `rgb(232, 241, 255)` 和企业蓝文字 `rgb(0, 82, 217)`，浏览器 console warnings/errors 为 `0`。
+- 针对侧边栏对齐复测：所有一级分组均默认展开，`命名空间` 与 `AI 工具 / 注册发现 / 配置管理` 等一级项均为 `x=42/iconX=58/contentX=84`，顶层单项和分组标题已在同一垂直列。
+
+Review：
+
+- 截图反馈的根因不是单个 active 样式，而是主色、logo 占比、默认展开策略和侧栏密度共同偏离企业软件气质；本轮已从设计语言层收敛。
+- 侧栏目前保持白底蓝白方案；如果后续要走灰黑白，可以在同一 token 层切换，不需要改业务页面结构。
+- 单菜单项和分组菜单项在 TDesign DOM 中缩进不同，视觉验收不能只看 active 颜色，还要量图标列和文字列是否一致。
+
+## 控制台整体设计语言统一
+
+- [x] 扫描现有前端技术栈、布局壳层和主要工作台页面样式
+- [x] 诊断整体设计不一致点：字体、色彩、页面背景、卡片边界、表格、按钮、抽屉和导航状态
+- [x] 建立全局设计语言变量与基础控件状态，不迁移框架、不破坏 TDesign
+- [x] 收敛布局壳层、左侧导航、Header、主内容背景和页面容器
+- [x] 将命名空间、服务、配置分组、AI MCP/A2A、治理工作台等主要工作台页面对齐同一视觉语言
+- [x] 运行前端静态验证、lint、构建和真实页面抽检
+
+诊断：
+
+- 当前前端是 React + Vite + TDesign React 1.18 + LESS，适合通过全局 token 和现有 module.less 做低风险统一。
+- 全局字体仍是浏览器系统栈，数据界面的数字没有统一 tabular 处理；不同页面各自写 `#1f2937/#111827/#1677ff/#007f78` 等色值，品牌色和中性色不稳定。
+- 主工作台页面已有相近结构，但命名空间、注册发现、配置分组、AI、治理分别维护自己的背景、边框、指标条和表格 surface，视觉语言不完全一致。
+- 左侧导航和主内容区仍偏 TDesign 默认模板感，页面背景、表格边界、抽屉、按钮 hover/active 的质感不统一。
+- 本轮应先做统一语言层：字体、色彩、surface、交互状态、导航 active、表格和抽屉；避免大幅改业务布局或新增依赖。
+
+修复：
+
+- 在 `styles/index.less` 建立 Console 级设计 token，并映射到 TDesign 品牌色、页面背景、文本、边框、按钮、输入、表格、抽屉和滚动条等基础状态。
+- 统一主壳层视觉：左侧导航、Header、页面容器、面包屑、主内容背景改为同一套轻量工作台语言，保留现有 React/Vite/TDesign 架构。
+- 对齐命名空间、注册发现服务、配置分组、配置文件详情、AI MCP/A2A、治理工作台、登录页等高频页面的 padding、标题、surface、表格边界、指标条和阴影。
+- 更新注册发现布局静态校验到新的 `100dvh` 视区模型和全局 token，避免旧断言把新设计语言误判为回归。
+- 补充配置文件详情页固定高度容器的 `box-sizing`，避免 padding 在固定视区高度下撑出页面。
+
+验证：
+
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`，8080/8090 均返回 `200`。
+- Playwright 使用 `admin/admin123` 登录态打开 `/login`、`/namespace`、`/discovery/service`、`/configuration/group`、`/ai/mcps`、`/ai/a2a`、`/governance/workbench`，页面均能正常展示且未回跳登录，浏览器 console warnings/errors 为 `0`。
+- 直接校验 8080 当前 `index.html` 引用的 17 个 `/assets/*` 静态资源，全部返回成功，无 hash 资源 404。
+
+Review：
+
+- 这轮没有重写组件体系，也没有替换 TDesign；只通过全局 token、壳层样式和主要工作台页面样式收敛设计语言，风险集中在 LESS 层。
+- 少量业务语义色仍保留在治理规则类型、AI 状态等局部状态标签内；这些属于语义区分，不应强行压成单色。
+
+## MCP 服务详情入口与行操作查看语义收敛
+
+- [x] 确认 MCP 服务当前列表同时暴露“查看工具”和“编辑”，工具能力不在编辑入口中呈现
+- [x] 将 MCP 服务列表主入口收敛为“查看”，打开服务详情/工具抽屉
+- [x] 在 MCP 服务详情抽屉内部保留“编辑 Server”入口，用于进入修改
+- [x] 将统一 `viewEdit` 操作展示从“查看 / 编辑”改为“查看”
+- [x] 将仍直接显示 `edit` 的配置分组、服务别名列表入口改为查看图标语义
+- [x] 运行前端静态验证、lint、构建和真实页面回归
+
+当前判断：
+
+- MCP 服务的“查看”入口应该能看到工具，因为工具是 MCP Server 最核心的可观察能力；单独放“查看工具”和“编辑”两个行按钮会让入口语义分裂。
+- 行操作列不应继续强调“编辑”；资源列表的主入口统一叫“查看”，详情弹窗/抽屉内部再提供编辑动作，降低误操作和操作列拥挤。
+
+修复：
+
+- `OperationButton` 的 `viewEdit` 显示从“查看 / 编辑”改为“查看”，图标也从编辑图标改为查看图标。
+- MCP 服务列表操作列移除单独“查看工具”和“编辑”按钮，保留“查看 / 授权 / 删除”；点击查看打开“MCP 服务详情”抽屉，并直接展示工具能力。
+- MCP 服务详情抽屉内部继续提供可见的“编辑 Server”入口，空态也保留编辑入口，满足从详情进入修改。
+- 配置分组、服务别名这两个仍直接使用 `action="edit"` 的列表入口改成 `action="view"` 展示，避免行操作继续突出编辑语义。
+- 更新静态回归脚本，要求 MCP 列表主入口必须是查看详情，列表操作列不能再直接暴露编辑或单独查看工具。
+
+验证：
+
+- `cd console/web && node scripts/verify-ai-resource-authorization.mjs && node scripts/verify-operation-button-icons.mjs && node scripts/verify-namespace-actions.mjs && node scripts/verify-auth-drawer-actions.mjs` 通过。
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg && git diff --check` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`，8080/8090 均返回 `200`。
+- Playwright 使用 `admin/admin123` 登录态打开 `/ai/mcps`，确认操作列存在 `查看 / 授权 / 删除`，不存在直接 `编辑` 和 `查看工具`；点击 `查看` 后抽屉显示 `MCP 服务详情`、工具浏览或空态，以及可见 `编辑 Server`，浏览器 console errors/warnings 均为 `0`。
+
+## AI 工具 MCP/A2A 资源授权模型评估
+
+- [x] 确认当前 specification `ResourceType` 与 `StrategyResources` 未包含 MCP/A2A 资源
+- [x] 确认 MCP Server 与 A2A Agent 已是独立注册实体，并具备稳定资源 ID、Store 和 Cache
+- [x] 盘点后端授权适配缺口：资源字段映射、资源存在性检查、详情回显和操作鉴权收集
+- [x] 盘点前端适配缺口：策略资源枚举、策略编辑器资源选择、授权抽屉和 AI 列表行内授权入口
+- [x] 形成推荐方案：先更新 spec 资源模型，再在 control-plane 和 Console 接入授权链路
+
+当前判断：
+
+- MCP Server 和 A2A Agent 都不应借用 `Services` 或 `PolicyRules` 授权；它们有独立 CRUD、独立表、独立 cache 和独立页面，应成为独立 `ResourceType`。
+- specification 需要先更新，因为授权策略详情的 `StrategyResources` 是强类型字段集合，不只依赖 `ResourceType` 字符串枚举。
+- 推荐新增 `MCPServers` 与 `A2AAgents` 两类资源；MCP Server Tool 和 A2A Agent Skill 首期不单独作为授权资源，先继承所属 MCP Server / A2A Agent 的管理权限。
+- control-plane 适配时要横向补齐四条链路：策略资源字段映射、授权请求资源存在性校验、策略详情资源摘要回显、MCP/A2A CRUD 操作鉴权收集。
+- Console 适配时需要补 `PolicySourceType`、`PolicyResources` 字段、策略编辑器资源加载、`AuthorizeInput` 摘要，以及 MCP/A2A 列表页统一授权操作。
+
+Review：
+
+- 当前缺口不是单纯前端“放开按钮”；如果前端直接传不存在的资源类型，后端 `authorizeCheckResourceExist` 会返回不支持，策略详情也无法回显。
+- A2A 旧 ADR 已提到“管理 API 走现有 auth-system”，但当时只写了建议资源类型，没有落到 `specification/api/v1/security/auth.proto` 和本仓鉴权链路。
+- 下一步应先在 `../specification` 更新 `ResourceType` 与 `StrategyResources` 并生成代码，再更新 control-plane 依赖和前后端授权适配。
+
+## AI 工具 MCP/A2A 资源授权实现
+
+- [x] 补充 MCP/A2A 授权资源映射红测，并确认当前失败
+- [x] 更新 `../specification` 的 `ResourceType` 与 `StrategyResources`，生成 Go 代码
+- [x] 更新 control-plane auth 类型映射、资源存在性校验、策略详情回显和操作鉴权收集
+- [x] 更新 Console 策略资源模型、授权抽屉摘要和 MCP/A2A 列表授权入口
+- [x] 运行 Go、前端静态验证、构建和必要接口回归
+
+当前判断：
+
+- MCP Server 和 A2A Agent 是独立资源，不能复用服务、策略规则或配置分组的授权类型；specification 已新增 `MCPServerResources` 和 `A2AAgentResources`。
+- Tool / Skill 首期继承所属 MCP Server / A2A Agent 的读权限；本轮不把 Tool / Skill 拆成单独资源，避免资源模型过细导致策略编辑复杂化。
+- Console 行内授权入口提交的 `resource_type` 是字符串，后端 `AuthorizeResources` 必须同时支持 enum 名称和 snake_case 别名，否则会在资源存在性校验前失败。
+
+修复：
+
+- `../specification/api/v1/security/auth.proto` 新增 MCP/A2A 资源枚举和 `StrategyResources.mcp_servers/a2a_agents` 字段，并重新生成 Go 代码。
+- control-plane 使用本地 `../specification`，补齐 `ResourceFieldNames`、`SearchTypeMapping`、资源存在性检查、策略详情资源回显、兼容资源检查和 AI 工具操作鉴权收集。
+- MCP Server / A2A Agent 列表读操作接入资源级过滤；创建、更新、删除、工具/技能/Agent Card 查询接入对应服务端函数鉴权。
+- Console 策略编辑器支持选择 MCP Server / A2A Agent 资源，策略详情可回显 `mcp_servers/a2a_agents`，MCP/A2A 列表页增加统一授权按钮，授权抽屉支持 AI 资源摘要。
+- `AuthorizeResources` 增加 `MCPServerResources`、`A2AAgentResources` 以及 `mcp_servers/a2a_agents` 等别名映射，修复真实冒烟中 `invalid resource_type` 的问题。
+
+验证：
+
+- 新增 `TestAIResourceFieldMappings`、`TestResourceConvertIncludesAIRegistryResources`、`TestAIRegistryResourceTypeFilter`；其中 `TestAIRegistryResourceTypeFilter` 修复前失败于 `resTypeFilter` 未识别 MCP/A2A 资源类型，修复后通过。
+- `go test ./apis/pkg/types/auth ./plugin/access_control/auth/policy ./plugin/apiserver/httpserver/aimcp ./plugin/apiserver/httpserver/aia2a -count=1` 通过。
+- `cd console/web && node scripts/verify-ai-resource-authorization.mjs` 通过。
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 在 control-plane 与 `../specification` 均通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`，8080/8090 均返回 `200`。
+- Node 冒烟使用 `admin/admin123` 登录后创建临时 MCP Server 和 A2A Agent，等待缓存可见，分别调用 `/auth/v1/resources/authorize` 授权 `MCPServerResources` 与 `A2AAgentResources`，再查询 MCP Tools 和 A2A Skills，最后清理临时资源；结果返回 `ok=true`。
+
+Review：
+
+- 这轮真实接口冒烟发现前端/后端契约还有一层字符串解析入口，不能只补 `SearchTypeMapping`；以后新增授权资源类型要同步 `resTypeFilter` 或改成统一从 enum 名称解析。
+- Admin 主账号虽然默认策略覆盖所有 `ResourceType_value`，但操作接口仍要显式记录服务端函数与资源上下文；否则普通账号和行级授权无法正确生效。
+
+## admin 服务列表无权限修复
+
+- [x] 用 `admin/admin123` 真实复现服务列表行操作显示无权限
+- [x] 对比登录响应、服务列表接口响应和后端权限打标链路定位根因
+- [x] 新增失败测试，约束服务列表响应必须保留服务 ID 和默认操作权限
+- [x] 修复服务列表响应构造，复用服务领域模型的 `ToSpec()` 转换
+- [x] 运行 Go 针对性测试、all-mode 重启、接口与真实页面回归
+- [x] 记录 review 和 lessons
+
+当前判断：
+
+- admin 登录响应返回 `role: main`，`ResourcePredicate` 对主账号会直接放行，因此 admin 服务列表不应显示无权限。
+- 真实接口返回的服务行 `id=""` 且 `editable=false/deleteable=false`；根因是 `pkg/service/service.go` 在 `GetServices` / `GetAllServices` 中手工构造 `apiservice.Service`，漏掉 `id/ctime/mtime/revision/editable/deleteable` 等字段，而不是前端按钮误判。
+
+修复：
+
+- 新增 `TestBuildServiceQueryItemKeepsIdentityAndOperateFlags`，要求服务列表响应转换保留 `id/name/namespace/business/department/comment/metadata/instance count/editable/deleteable`。
+- 新增 `buildServiceQueryItem`，统一通过 `svctypes.Service.ToSpec()` 构造服务列表响应，再补充 `total_instance_count/healthy_instance_count`。
+- `GetServices` 和 `GetAllServices` 均改用 `buildServiceQueryItem`，避免继续手工构造残缺响应。
+
+验证：
+
+- `go test ./pkg/service -run TestBuildServiceQueryItemKeepsIdentityAndOperateFlags -count=1` 修复前失败于缺少转换函数，修复后通过。
+- `go test ./pkg/service/... -count=1` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- `curl` 验证 8080 和 8090 均返回 `200`。
+- curl 使用 `admin/admin123` 登录后请求 `/naming/v1/services?offset=0&limit=10`，第一条服务返回 `id=spec-svc-checkout-20260610`、`editable=true`、`deleteable=true`。
+- Playwright 使用 `admin/admin123` 登录后打开服务列表，行操作显示 `查看 / 编辑` 和 `删除` 可点击，不再是“无权限操作”；浏览器 console errors/warnings 均为 `0`。
+
+Review：
+
+- 这不是 admin 默认策略缺失，也不是前端误读；是后端服务列表响应构造绕开 `ToSpec()` 导致权限字段保持 proto bool 零值。
+- 后续列表响应不要手工挑字段重建 proto；如果领域模型已有 `ToSpec()`，应先复用再追加列表专属聚合字段。
+
+## 命名空间授权入口补齐
+
+- [x] 确认命名空间当前后端授权资源契约
+- [x] 新增静态反回归检查，要求命名空间列表提供授权入口并使用资源名作为资源 ID
+- [x] 在命名空间列表行操作补回统一授权按钮
+- [x] 修正命名空间授权抽屉的 `resource_id/resource_name`
+- [x] 运行前端静态验证、lint、构建、all-mode 重启和真实页面回归
+- [x] 记录 review 和 lessons
+
+当前判断：
+
+- specification 已有 `ResourceType.Namespaces`；后端授权校验 `Namespaces` 时按 `resourceID` 查命名空间名称。
+- 命名空间作为资源应和配置分组、配置文件一样在资源列表上下文可授权；不能只藏在详情抽屉里。
+
+修复：
+
+- `verify-namespace-actions.mjs` 改为要求命名空间列表行操作提供统一 `OperationButton action="authorize"`，并要求授权资源类型使用 `PolicySourceType.Namespaces`。
+- 命名空间列表行操作补回授权按钮，保持 `查看 / 编辑`、`授权`、`删除` 三个统一图标操作。
+- 命名空间授权 `resource_id` 改为命名空间名称；后端 `authorizeCheckResourceExist` 对 `Namespaces` 正是按该名称查资源。
+- `AuthorizeInput` 增加 `Namespaces` 资源摘要分支，命名空间资源只展示命名空间、资源 ID 和资源名称，不再显示空的第二段 `资源名称: -`。
+
+验证：
+
+- `cd console/web && node scripts/verify-namespace-actions.mjs` 修复前失败于缺少行内授权入口；补摘要分支前失败于缺少命名空间资源摘要分支；修复后通过。
+- `cd console/web && node scripts/verify-config-group-detail-design.mjs` 通过，确认配置文件授权摘要未受影响。
+- `cd console/web && set -e; for script in scripts/verify-*.mjs; do node "$script"; done && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- `curl` 验证 8080 和 8090 均返回 `200`。
+- Playwright 使用 `admin/admin123` 登录 `/namespace`，确认命名空间行操作出现 `授权`；点击 `spec-governance` 行授权后，抽屉资源摘要显示 `资源类型 Namespaces`、`命名空间 spec-governance`、`资源ID spec-governance`、`资源名称 spec-governance`，浏览器 console errors/warnings 均为 `0`。
+
+Review：
+
+- 命名空间已有独立后端授权资源类型，不能因为之前操作列收敛就移除列表授权入口；资源列表上下文应直接暴露授权能力。
+- 命名空间没有独立 numeric/string id 字段，当前授权资源 ID 就是命名空间名称；前端不能继续传 `editorState.data?.id`。
+
+## 配置文件授权入口补齐
+
+- [x] 确认配置文件当前后端授权资源契约
+- [x] 新增静态反回归检查，要求配置文件详情提供授权入口
+- [x] 更新通用授权抽屉资源摘要，支持配置文件三段资源名展示
+- [x] 在配置文件详情页接入授权按钮和授权抽屉
+- [x] 运行前端静态验证、lint、构建、all-mode 重启和真实页面回归
+- [x] 记录 review 和 lessons
+
+当前判断：
+
+- 现有后端/spec 的鉴权资源枚举没有独立 `ConfigFiles`；配置文件创建、更新、删除、发布、发布历史等后端鉴权均通过所属 `ConfigGroups` 资源转换。
+- 前端仍应在配置文件详情页展示授权入口；当前授权会落到所属配置分组资源上，并在抽屉摘要中展示具体文件名，避免用户从文件详情页找不到授权位置。
+
+修复：
+
+- `FileView` 标题操作区新增统一 `OperationButton action="authorize"` 授权入口，只在已选中配置文件且有编辑权限时展示。
+- 配置文件详情页接入 `AuthorizeInput`，按当前后端契约提交 `PolicySourceType.ConfigGroups` 和所属配置分组 ID，同时把 `namespace/group/fileName` 传给授权抽屉作为资源摘要。
+- `AuthorizeInput` 的资源摘要支持配置文件字段；文件名可能包含 `/`，因此使用第三段之后整体 join 回完整文件名，避免 `aaa/1111` 被截成 `aaa`。
+- `verify-config-group-detail-design.mjs` 增加配置文件授权入口、授权资源类型和斜杠文件名解析的静态反回归检查。
+
+验证：
+
+- `cd console/web && node scripts/verify-config-group-detail-design.mjs` 修复前失败于缺少配置文件授权入口，修复后通过。
+- `cd console/web && set -e; for script in scripts/verify-*.mjs; do node "$script"; done && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- `curl` 验证 8080 和 8090 均返回 `200`。
+- Playwright 使用 `admin/admin123` 登录后进入 `/configuration/group/files?namespace=spec-governance&group=123`，选中 `aaa/1111`，文件标题区出现 `授权` 操作；打开授权抽屉后资源摘要显示 `资源类型 ConfigGroups`、`命名空间 spec-governance`、`配置分组 123`、`配置文件 aaa/1111`、资源 ID 和完整资源名称，浏览器 console errors/warnings 均为 `0`。
+
+Review：
+
+- 这次不能因为后端没有独立 `ConfigFiles` 枚举就隐藏配置文件授权入口；配置文件同样是用户心智里的资源，入口应出现在文件详情上下文中。
+- 当前实现不改后端鉴权模型，只把文件详情入口映射到所属配置分组授权；如果后续 specification 增加独立配置文件资源类型，再把 `resource_type/resource_id` 切换为文件资源即可。
+
+## 前端操作按钮图标统一
+
+- [x] 盘点主要列表页行操作按钮的现状和重复图标模式
+- [x] 新增静态反回归检查，要求主要行操作统一走共享组件
+- [x] 抽取统一 `OperationButton` / `ConfirmOperationButton`
+- [x] 替换配置中心、命名空间、认证、注册发现、治理工作台和 AI 页面主要操作列
+- [x] 运行前端静态验证、lint、构建、all-mode 重启和真实页面冒烟
+- [x] 记录 review 和 lessons
+
+当前判断：
+
+- 行操作语义应统一映射到一套图标：查看/编辑、编辑、授权、删除、发布、回滚、复制、查看工具、查看 Token、刷新等不能由各页面自行选择。
+- 删除、回滚这类确认操作需要统一稳定触发结构，避免 `Tooltip` 直接包 `Popconfirm` 造成悬浮提示不稳定。
+
+修复：
+
+- 新增 `components/OperationButton`，集中维护操作语义到图标、Tooltip、`aria-label` 和 `title` 的映射。
+- 新增 `ConfirmOperationButton`，把确认类操作统一为稳定 `span` target + `Popconfirm` + 图标按钮，避免各页面自行组合。
+- 替换配置分组、配置发布记录、命名空间、认证主体/策略、服务列表、服务别名、治理工作台、A2A、MCP Server 主要行操作。
+- 新增 `verify-operation-button-icons.mjs`，要求主要页面使用统一组件，并检查页面使用 `<Tooltip>` 时必须从 `tdesign-react` 导入。
+- 更新旧的配置中心、认证、命名空间、注册发现静态检查，让它们校验统一组件语义，而不是继续绑定旧私有图标实现。
+
+验证：
+
+- `cd console/web && node scripts/verify-operation-button-icons.mjs` 修复前失败于缺少统一组件，修复后通过。
+- `cd console/web && set -e; for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- `curl` 验证 8080 和 8090 均返回 `200`。
+- Playwright 使用 `admin/admin123` 登录后验证命名空间、配置分组、治理工作台页面可正常渲染；行操作按钮可访问名称统一为“查看 / 编辑 / 编辑 / 授权 / 删除”等语义；最新 console 日志没有 `error`。
+
+Review：
+
+- 本轮先按统一组件收敛主要资源列表和配置发布记录的操作列；表单内部的标签行、协议行增删按钮暂不纳入资源行操作统一范围，避免误改局部编辑器。
+- 初次替换时误删了部分页面刷新按钮仍使用的 `Tooltip` import，真实浏览器发现 `Tooltip is not defined`；已补齐 import，并将该类问题纳入 `verify-operation-button-icons.mjs`。
+
+## 配置分组配置加密数恢复
+
+- [x] 确认上一轮过度删除：应移除分组默认加密配置，但应保留配置加密数
+- [x] 更新静态反回归检查，让当前缺少配置加密数的实现失败
+- [x] 使用配置文件列表真实计算当前页每个配置分组的加密文件数量
+- [x] 在配置分组 KPI 和表格列恢复配置加密数/加密数
+- [x] 运行前端静态验证、构建、all-mode 重启和真实页面回归
+- [x] 记录 review 和 lessons
+
+当前判断：
+
+- 配置加密数是配置文件维度的聚合统计，可以在配置分组列表展示；但它不能来自配置分组 metadata 的 `defaultEncrypted`，也不能恢复成“分组默认加密”编辑项。
+- 当前后端配置分组列表只返回 `fileCount`，没有返回加密文件聚合数；本轮以前端复用配置文件列表接口计算当前页展示数量，避免扩大到 specification 变更。
+
+修复：
+
+- `verify-config-group-list-design.mjs` 要求配置分组列表保留 `配置加密数` KPI 和 `加密数` 表格列，并要求通过 `describeAllConfigFiles` / `encryptedFileCounts` 从配置文件真实计算。
+- `group.tsx` 为当前页分组异步加载配置文件列表，按 `encrypted=true` 聚合加密文件数量；KPI 汇总当前页加密文件总数，表格展示每个分组的加密数。
+- 继续禁止 `加密占比`、`加密状态筛选`、`defaultEncrypted` metadata 伪口径和编辑抽屉的默认加密开关。
+
+验证：
+
+- `cd console/web && node scripts/verify-config-group-list-design.mjs` 修复前失败于缺少 `配置加密数`，修复后通过。
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- `curl` 验证 8080 和 8090 均返回 `200`。
+- Playwright 使用 `admin/admin123` 登录后打开配置分组列表，确认 KPI 有 `配置加密数`，表格列有 `加密数`，没有 `加密占比` 和 `加密状态` 筛选；点击编辑抽屉，确认只保留基础信息和标签，没有默认配置、文件格式默认值和是否默认加密，浏览器控制台无 `error`。
+
+Review：
+
+- 上一轮删除了错误的默认加密配置，但把真实聚合指标也删掉了，属于过度修改。
+- 本轮恢复的是只读统计口径：配置加密数来自配置文件真实 `encrypted` 字段聚合；配置分组编辑仍不承载文件级默认格式/默认加密配置。
+
+## 配置分组文件级默认配置移除
+
+- [x] 确认配置分组编辑抽屉里误放了文件格式默认值和默认加密
+- [x] 先更新配置分组静态反回归检查，让当前错误实现失败
+- [x] 移除配置分组编辑抽屉中的文件级默认配置和错误 metadata 写入
+- [x] 移除配置分组列表中基于错误 metadata 推导的加密占比/加密状态
+- [x] 运行前端静态验证、构建、all-mode 重启和真实点击回归
+- [x] 记录 review 和 lessons
+
+当前判断：
+
+- 配置分组的边界是 `namespace/name/comment/department/business/metadata(labels)` 这类分组基础信息；文件格式、文件加密应在配置文件创建/编辑链路处理，不应作为配置分组默认值。
+- 当前实现把 `defaultFormat/defaultEncrypted` 写入配置分组 `metadata`，并在列表里用 `defaultEncrypted` 推导“加密占比”，这是把文件级属性错误下沉到了分组级。
+
+修复：
+
+- `verify-config-group-list-design.mjs` 反向约束配置分组不能出现文件格式默认值、默认加密、加密状态筛选和加密占比列。
+- `ConfigGroupEditor.tsx` 移除“默认配置”区，不再提交 `defaultFormat/defaultEncrypted`；编辑时仍过滤历史误写入的这两个 metadata key，避免它们作为普通标签显示。
+- `group.tsx` 移除加密状态筛选、加密占比 KPI 和加密占比列，列表只展示分组名称、命名空间、文件数、待发布和操作。
+
+验证：
+
+- `cd console/web && node scripts/verify-config-group-list-design.mjs` 修复前失败于配置分组列表仍用 `defaultEncrypted` 推导加密指标，修复后通过。
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- console/web/src/pages/Configuration/Group/ConfigGroupEditor.tsx console/web/src/pages/Configuration/Group/group.tsx console/web/scripts/verify-config-group-list-design.mjs context-kg/tasks/todo.md context-kg/tasks/lessons.md` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- `curl` 验证 8080 和 8090 均返回 `200`。
+- Playwright 使用 `admin/admin123` 登录后打开配置分组列表，确认总栏只显示分组数、配置文件数、待发布数，筛选只有关键字、命名空间、发布状态，表格列为分组名称、命名空间、文件数、待发布、操作；点击编辑后抽屉只显示基础信息和标签，未出现默认配置、文件格式默认值和是否默认加密，浏览器控制台无 `error`。
+
+Review：
+
+- 本轮纠正的是配置分组与配置文件的领域边界：格式和加密是配置文件属性，不属于配置分组默认配置。
+- 后续如果需要文件格式/加密批量策略，应先有后端/spec 明确字段和产品语义，不能再用分组 metadata 私自承载。
+
+## 配置分组编辑抽屉展示修复
+
+- [x] 使用 `admin/admin123` 真实复现配置分组列表点击编辑按钮后页面空白的问题
+- [x] 从浏览器控制台定位运行时异常，并补充静态反回归检查
+- [x] 修复配置分组编辑抽屉缺失的组件导入
+- [x] 运行前端静态验证、构建、all-mode 重启和真实点击回归
+- [x] 记录 review
+
+当前判断：
+
+- 编辑按钮点击后不是路由或权限问题，而是 `ConfigGroupEditor` 渲染时使用了 `<Switch />`，但没有从 `tdesign-react` 导入，导致运行时 `ReferenceError: Switch is not defined`，React 页面直接崩成空白。
+- 该问题需要用真实浏览器点击验证，单纯列表渲染或后端接口 200 无法覆盖。
+
+修复：
+
+- `verify-config-group-list-design.mjs` 增加 `Switch` 导入约束，避免编辑抽屉再次使用未导入组件。
+- `ConfigGroupEditor.tsx` 从 `tdesign-react` 补齐 `Switch` 导入。
+
+验证：
+
+- `cd console/web && node scripts/verify-config-group-list-design.mjs` 修复前失败于 `Switch` 未从 `tdesign-react` 导入，修复后通过。
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- `curl` 验证 8080 和 8090 均返回 `200`。
+- Playwright 使用 `admin/admin123` 登录后进入 `/configuration/group`，点击首行编辑按钮，抽屉显示 `编辑配置分组`，并回填命名空间、配置分组名称、描述、部门、业务、默认配置与加密开关；浏览器控制台没有 `error`。
+
+Review：
+
+- 本轮根因是编辑抽屉点击后才挂载的 JSX 组件缺少 import；列表首屏可用不代表行操作抽屉可用。
+- 后续配置中心列表行操作需要覆盖真实点击路径，至少检查抽屉标题、关键字段回填和浏览器控制台错误。
+
+## 配置中心完整链路设计适配
+
+- [x] 对照完整链路设计文档确认当前列表页和详情页缺口
+- [x] 先补静态反回归检查，覆盖列表页总栏、筛选、授权抽屉、创建/编辑抽屉结构，以及详情页文件标题区字段减法
+- [x] 实现配置分组列表页 KPI 总栏、筛选条、表格列和授权抽屉入口
+- [x] 调整创建/编辑配置分组抽屉的信息分段和默认配置字段
+- [x] 调整配置分组详情当前文件标题区，只保留文件名、副标题、格式/加密 tag、修改时间、创建时间、加密算法、文件标签
+- [x] 运行前端静态验证、lint、构建、smoke 和 all-mode 重启验收
+- [x] 记录 review
+
+当前判断：
+
+- 详情页已经具备文件 tree、业务画布、发布记录内部 Tabs、灰度发布和订阅查询基础结构，本轮不重复大改。
+- 列表页仍是旧表格形态，缺少总栏 KPI、命名空间/加密状态/发布状态筛选，以及授权抽屉的资源摘要与权限范围语义，是当前完整链路设计的主要缺口。
+- 灰度优先级的真实后端/spec 字段仍需要单独契约支撑；本轮只保持已有前端入口和多灰度链路，不把 store/cache/key 暴露成前端字段。
+
+修复：
+
+- 新增 `verify-config-group-list-design.mjs`，覆盖配置分组列表页页面骨架、总栏 KPI、筛选条、设计要求表格列、授权抽屉语义和创建/编辑抽屉结构。
+- 更新 `verify-config-group-detail-design.mjs`，禁止当前文件标题区继续展示抽象“文件上下文”，并约束字段区只保留修改时间、创建时间、加密算法和文件标签。
+- 配置分组列表页改为浅灰工作区 + 白色业务面：顶部展示分组数、配置文件数、加密占比、待发布数；筛选条包含关键字、命名空间、加密状态、发布状态；表格列调整为分组名称、命名空间、文件数、加密占比、待发布、操作。
+- 创建/编辑配置分组抽屉拆成基础信息和默认配置，默认文件格式、是否默认加密、标签写入 `metadata`，不新增后端字段。
+- 授权抽屉补资源摘要、权限范围、授权对象三段，继续使用现有配置分组资源授权接口。
+- 配置分组详情当前文件标题区改为文件名 + `命名空间 / 配置分组` 副标题 + 文件格式/加密/状态 tag，字段区移除命名空间、配置分组、订阅客户端、活跃版本、发布状态等重复信息。
+
+验证：
+
+- 修复前 `node scripts/verify-config-group-list-design.mjs` 失败于缺少列表页工作区骨架；`node scripts/verify-config-group-detail-design.mjs` 失败于详情页仍展示“文件上下文”。
+- 修复后 `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- 8080 和 8090 均返回 `200`。
+- `cd console/web && node scripts/smoke-configuration-flow.mjs` 通过。
+- Playwright 使用 `admin/admin123` 登录后打开 `/configuration/group`，列表页显示总栏、四项筛选和设计要求表格列；点击分组进入详情后，文件 tree 按 `/` 分层，选择文件后当前文件标题区显示文件名和 `spec-governance / 123`，字段区只显示修改时间、创建时间、加密算法、文件标签。
+- Playwright 打开授权抽屉，能看到资源摘要、权限范围、授权对象；浏览器 console errors/warnings 均为 `0`。
+
+Review：
+
+- 本轮只把附件要求中当前缺口最大的列表页链路补齐，并收紧详情页字段展示；发布、多灰度、订阅查询沿用前序已落地结构。
+- 活跃版本和订阅客户端属于文件/订阅查询视角，不在配置分组列表展示；加密占比目前基于分组默认加密 metadata 推导，后续若后端提供聚合字段再替换。
+- 灰度优先级真实命中规则仍需要 specification / 后端契约支持，不能只靠前端字段完成。
+
+## 配置客户端读取发布/多灰度测试
+
+- [x] 明确客户端读取链路测试范围：全量发布、多个灰度发布、未命中灰度回落全量、同时命中多个灰度取最新版本
+- [x] 补服务层单元测试，直接覆盖 `GetConfigFileWithCache` 返回给客户端的 `code/file/content/version`
+- [x] 修复测试暴露的客户端发现响应缺字段问题
+- [x] 运行定向 Go 测试和必要回归检查
+- [x] 记录 review
+
+当前判断：
+
+- 配置中心已有缓存层保留多个 active gray、选择器按 version/mtime 取最新的局部测试，但缺少客户端读取最终响应的链路测试。
+- 客户端读取链路必须断言响应 `Code`、`File`、`Content` 和 `Version`，否则 Nacos/HTTP 客户端即使命中正确发布版本，也可能拿不到配置正文。
+
+修复：
+
+- 新增 `TestGetConfigFileWithCacheReturnsNormalAndMatchedGrayContent`，覆盖普通客户端回落全量发布、客户端 A 命中灰度 A、客户端 B 命中灰度 B、客户端同时命中多个灰度时选择最新版本。
+- `GetConfigFileWithCache` 成功、未找到、无变化和异常响应统一写入真实 `Code`；成功响应补回 `File`。
+- `toClientInfo` 改为返回客户端发现协议实际需要的 `ConfigFileRelease`，保留 content、version、release type、release name、mtime/md5 等发布字段。
+
+验证：
+
+- 修复前 `go test ./pkg/config -run TestGetConfigFileWithCacheReturnsNormalAndMatchedGrayContent -count=1` 失败于成功响应 `Code=0`，且后续会缺少 `File`。
+- 修复后 `go test ./pkg/config -run TestGetConfigFileWithCacheReturnsNormalAndMatchedGrayContent -count=1` 通过。
+- `go test ./pkg/config -run 'TestGetConfigFileWithCacheReturnsNormalAndMatchedGrayContent|TestSelectMatchedGrayRelease|TestPublishConfigFileDoesNotBlockOnActiveGrayRelease' -count=1` 通过。
+- `go test ./pkg/cache/config ./pkg/cache/gray ./apis/pkg/types/config -run 'TestConfigFileCacheKeepsMultipleActiveGrayReleases|TestMatch|TestConfigGray' -count=1` 通过。
+- `go test ./pkg/config ./pkg/cache/config ./pkg/cache/gray ./apis/pkg/types/config -count=1` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+- `go test ./...` 通过。
+
+Review：
+
+- 这次新增测试不是只测灰度选择器，而是直接锁定客户端发现响应，能覆盖正常发布和多个灰度发布共存时每类客户端拿到的最终配置正文。
+- 客户端读取接口之前计算出了配置对象但没有写入响应，同时成功 `Code` 也是默认 0；Nacos/HTTP 客户端会从 `queryResp.GetFile().GetContent()` 取内容，因此这里必须作为链路级测试长期保留。
+
+## 产品 Logo 与名称替换
+
+- [x] 确认当前 Logo 资产和使用位置
+- [x] 写入静态检查，覆盖 SVG 名称、内嵌产品 Logo、侧边栏底部名称
+- [x] 替换展开态与折叠态 SVG，产品名称改为 `Lattice.Hub`
+- [x] 调整侧边栏/登录页 Logo 尺寸与底部文案
+- [x] 运行前端验证、构建，并用真实页面检查 Logo 展示
+- [x] 记录 review
+
+当前判断：
+
+- 当前控制台 Logo 由 `assets-logo-full.svg` 和 `assets-t-logo.svg` 承载，登录页和侧边栏展开态复用 full svg，侧边栏折叠态复用 mini svg。
+- 用户要求“使用产品Logo”且“一模一样”，手写 path 很难和提供的 PNG 完全一致；本轮采用 SVG 内嵌产品 PNG base64 的方式保证视觉一致，同时文字部分使用 SVG text 改成 `Lattice.Hub`。
+
+修复：
+
+- `assets-logo-full.svg` 改为产品图形 + `Lattice.Hub` 文案，图形部分直接内嵌用户提供的产品 PNG。
+- `assets-t-logo.svg` 改为仅产品图形的 36px 折叠态 SVG。
+- 侧边栏底部版本文案从 `Pole.IO ${version}` 改为 `Lattice.Hub ${version}`。
+- 调整登录页与侧边栏 Logo 容器宽高，避免 `Lattice.Hub` 被裁切。
+- 新增 `verify-brand-logo.mjs` 反回归检查。
+
+验证：
+
+- 旧 Logo 下 `cd console/web && node scripts/verify-brand-logo.mjs` 按预期失败于完整 Logo 仍是 `Pole.IO`。
+- 修复后 `cd console/web && node scripts/verify-brand-logo.mjs && for script in scripts/verify-*.mjs; do node "$script"; done && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- 重启后 8080 返回的入口 `/assets/index.a409eed8.js` 与 `console/web/dist/index.html` 一致，入口资源返回 `200`。
+- Playwright 打开登录页，存在 `svg[aria-label="Lattice.Hub"]`，尺寸 `204x36`，图形为 `data:image/png;base64` 内嵌。
+- Playwright 使用 `admin/admin123` 登录，展开侧边栏显示 `Lattice.Hub` 完整 Logo，底部文案包含 `Lattice.Hub`。
+- 折叠侧边栏后，mini Logo 尺寸为 `36x36`，图形为同一内嵌产品 PNG。
+
+Review：
+
+- SVG 使用内嵌 PNG 是为了满足“和产品 Logo 一模一样”的视觉要求；如果后续拿到官方矢量源，可以再替换为纯 path 版本。
+
+## 配置发布记录发布时间与操作人链接
+
+- [x] 写入失败检查，覆盖 release API 审计字段、前端时间兜底和操作人链接
+- [x] 修复后端发布记录列表/详情响应，补齐 `ctime/mtime/create_by/modify_by`
+- [x] 修复前端发布记录时间展示，避免灰度行发布时间为空
+- [x] 将发布人渲染为新标签打开的用户详情链接，缺少用户 id 时回退文本
+- [x] 运行前后端验证，重启并用真实页面验收
+- [x] 清理临时数据并记录 review/lesson
+
+当前判断：
+
+- 发布记录列表里灰度行没有发布时间，根因不是表格列不存在，而是列表接口组装 `ConfigFileRelease` 时漏了 `ctime/mtime`；前端只读 `createTime`，没有用 `modifyTime` 兜底。
+- 发布人详情已有隐藏路由 `/auth/principals/userdetail?name=...&id=...`；发布记录只有操作人名称，需要前端按名称查询用户 id 后生成新标签链接。
+
+修复：
+
+- `ToConfiogFileReleaseApi` 补齐 `create_by/modify_by`，列表接口 `handleDescribeConfigFileReleases` 补齐 `ctime/mtime`。
+- `config_release.ts` 归一发布时间时增加 `modifyTime/mtime` 兜底。
+- `ReleaseTable` 新增 `OperatorLink`，按发布人名称调用用户列表解析用户 id；解析成功时使用新标签打开 `/auth/principals/userdetail?name=...&id=...`，解析失败时回退文本。
+
+验证：
+
+- 先写入失败检查，`go test ./apis/pkg/types/config -run TestConfigFileReleaseAPIIncludesAuditFields -count=1` 失败于 `create_by/modify_by` 为空；`node scripts/verify-config-group-detail-design.mjs` 失败于缺少 `OperatorLink`。
+- 修复后 `go test ./apis/pkg/types/config ./pkg/config -run 'TestConfigFileReleaseAPIIncludesAuditFields|TestPublishConfigFileDoesNotBlockOnActiveGrayRelease|TestSelectMatchedGrayRelease' -count=1` 通过。
+- `cd console/web && node scripts/verify-configuration-api-contract.mjs && node scripts/verify-config-group-detail-design.mjs && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `go test ./apis/pkg/types/config ./pkg/config -count=1` 通过。
+- `go test ./...` 通过。
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- 重启后 8080 返回的入口 `/assets/index.7fe9cc13.js` 与 `console/web/dist/index.html` 一致，入口资源返回 `200`。
+- 真实接口创建临时灰度发布后，版本列表返回 `ctime/mtime/create_by/modify_by`：`2026-07-05 03:17:14 / admin`。
+- Playwright 使用 `admin/admin123` 打开临时配置文件 `default/codex-operator-0704191714/operator.yaml`，发布记录 / 灰度发布行显示发布时间 `2026-07-05 03:17:14`；发布人 `admin` 链接 href 为 `/auth/principals/userdetail?name=admin&id=49dba3c69bca4b668903901d85c61528`，`target="_blank"`。
+- 临时配置文件和分组已清理，按分组名查询 `remaining=0`。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg && git diff --check` 通过。
+
+Review：
+
+- 发布记录这类审计信息不能只在前端列上展示字段名，后端列表/详情响应必须完整带出审计字段；前端再做兜底展示和可点击用户详情。
+
+## 配置发布记录操作悬浮提示修复
+
+- [x] 定位发布记录操作列的 Tooltip / Popconfirm 嵌套方式
+- [x] 将图标操作收敛为稳定 DOM target 的 `ActionButton` / `ConfirmActionButton`
+- [x] 补充 `aria-label`、`title` 和静态反回归检查，确保悬浮提示与可访问名称不丢失
+- [x] 运行前端验证、lint、构建，并重新拉起 all-mode 服务
+- [x] 使用真实页面 hover 验证发布记录操作提示可见
+- [x] 清理临时配置数据并记录 review
+
+当前判断：
+
+- 用户截图对应配置文件详情的发布记录操作列，图标按钮没有文字说明，必须依赖悬浮提示表达“提交为正式草稿 / 删除灰度 / 删除”等动作。
+- 原实现里部分按钮是 `Tooltip` 直接包 `Popconfirm`，触发目标不是稳定 DOM；在表格行和确认气泡组合下，悬浮提示容易不出现。
+- 修复应收敛在发布记录操作按钮层，不改发布流程语义。
+
+修复：
+
+- 新增 `ActionButton` 和 `ConfirmActionButton`，所有发布记录行操作统一走这两个组件。
+- `Tooltip` 挂到稳定的 `span.actionTooltipTarget`，确认类动作仍由 `Popconfirm` 包住按钮，避免两类浮层争抢触发目标。
+- 每个图标按钮补 `aria-label` 与 `title`，即使 Tooltip portal 受影响，也有浏览器原生提示和可访问名称兜底。
+- 静态验证脚本增加约束，后续不能把发布记录操作退回直接裸写 `Tooltip/Popconfirm/Button` 的不稳定组合。
+
+验证：
+
+- `cd console/web && node scripts/verify-config-group-detail-design.mjs && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- 重启后 8080 返回的入口 `/assets/index.52ec3e64.js` 与 `console/web/dist/index.html` 一致，入口资源返回 `200`。
+- Playwright 使用 `admin/admin123` 登录真实页面，打开临时配置文件 `default/codex-tooltip-0704190148/tooltip.yaml`，切到发布记录 / 灰度发布；hover “提交为正式草稿”和“删除灰度”两个图标按钮后，页面分别出现对应 Tooltip 文案。
+- 同一页面 DOM 验证两个操作按钮均有 `aria-label` 和 `title`，值分别为 `提交为正式草稿`、`删除灰度`。
+- 临时配置文件和分组已清理，按分组名查询 `remaining=0`。
+
+Review：
+
+- 行操作图标必须同时满足视觉提示和可访问名称；后续发布记录新增操作时应继续复用 `ActionButton` / `ConfirmActionButton`，不要在行内重新手写裸按钮组合。
+
+## 配置发布灰度规则复用治理通用控件
+
+- [x] 核对治理侧 `TrafficMatchConditionEditor` 和配置发布 `betaLabels` 的数据结构差异
+- [x] 新增配置灰度规则适配组件，复用治理通用匹配条件控件
+- [x] 替换配置发布抽屉中的旧 `ClientLabelInput` 灰度规则编辑器
+- [x] 更新静态反回归脚本，禁止配置灰度规则继续直接使用旧私有控件
+- [x] 运行前端验证、lint、构建，并更新 lessons / review
+
+当前判断：
+
+- 用户截图对应配置发布抽屉里的灰度规则，当前由 `components/ClientLabelInput` 私有实现渲染。
+- 治理侧已有通用控件 `pages/Governance/shared/TrafficMatchConditionEditor`，支持匹配关系、参数类型、参数键、匹配类型、匹配值和添加/删除行；配置灰度应复用它，而不是继续维护私有行编辑。
+- 配置灰度的后端契约仍是 `betaLabels: MatcheLabel[]`，因此需要在配置侧做 `MatcheLabel <-> TrafficMatchConditionRow` 适配。
+
+修复：
+
+- `TrafficMatchConditionEditor` 增加 `showParamKey` 可选参数，默认保持治理规则现有五列形态；配置灰度传 `false`，隐藏内置客户端标签不需要的参数键列。
+- 新增 `GrayRuleEditor`，复用治理侧 `TrafficMatchConditionEditor`，并提供 `grayRowsToBetaLabels` / `betaLabelsToGrayRows` 转换。
+- `PublishForm` 的灰度发布态从 `ClientLabelInput` 切换到 `GrayRuleEditor`，提交前校验至少存在一条有效灰度规则。
+- `verify-config-group-detail-design.mjs` 增加约束：配置发布抽屉不能直接使用旧 `ClientLabelInput`，灰度规则适配组件必须复用 `TrafficMatchConditionEditor`。
+
+验证：
+
+- `cd console/web && node scripts/verify-config-group-detail-design.mjs && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- 重启后 8080 返回的入口 `/assets/index.70e1e4ca.js` 与 `console/web/dist/index.html` 一致，入口资源返回 `200`。
+- Playwright 使用 `admin/admin123` 打开临时配置文件 `default/codex-gray-control-0704184856/gray-control.yaml`，发布抽屉切换灰度发布后展示通用控件：`AND/OR`、`参数类型`、`匹配类型`、`匹配值`、`添加灰度规则`。
+- 真实点击确认发布成功，POST `/config/v1/files/release` 返回 `200`，请求体包含 `beta_labels:[{key:"CLIENT_IP", value:{type:"EXACT", value_type:"TEXT", value:"10.42."}}]`。
+- 临时配置分组和文件已清理，按名称查询 `amount=0`。
+
+Review：
+
+- 用户判断是对的，这里应该复用治理通用匹配条件控件；旧 `ClientLabelInput` 仍可留给尚未迁移的发布场景，但配置灰度发布不再直接使用它。
+- 配置灰度当前只暴露客户端 IP/ID/语言这类内置标签，因此隐藏参数键列；如果后续 spec 支持自定义客户端标签，需要再打开参数键列或补自定义标签选项。
+
+## 配置中心页面打不开与 spec 适配确认
+
+- [x] 复现 8080 页面打不开现象，确认是后端接口、console 网关、静态资源还是浏览器缓存问题
+- [x] 重建并重新拉起 all-mode，确保当前 `dist/index.html` 引用的入口 JS 在 8080 可访问
+- [x] 用真实浏览器打开配置中心深链，检查页面非空且没有入口资源 404
+- [x] 明确方案 B 对 `github.com/pole-io/specification` 的适配范围，区分当前仓库临时兼容与长期协议契约
+- [x] 补充 review、验证结果和剩余风险
+
+当前判断：
+
+- 8080 首页和配置中心深链都能返回 HTML，但浏览器控制台出现 `/assets/index.2b33ff44.js` 404；当前 `console/web/dist/index.html` 实际引用的是 `/assets/index.eccd0215.js`，说明运行中的页面或浏览器缓存拿到了旧入口 HTML。
+- 这类问题不能只用 `curl /` 判断页面可用，必须验证 `index.html` 中引用的入口 JS 在同一 8080 服务下返回 200，并用浏览器打开深链确认应用真正渲染。
+- 方案 B 已在本仓库内补了后端 HTTP route 和前端调用，但长期协议契约仍需要同步更新 `github.com/pole-io/specification`；否则跨仓库生成代码、OpenAPI 文档和其它客户端不会知道灰度转正式草稿、多灰度 active 和按 releaseName 停止灰度的语义。
+
+验证：
+
+- 重启前复现 8080 返回旧入口 `/assets/index.2b33ff44.js`，而磁盘 `dist/index.html` 已是新入口，确认页面打不开根因是运行中 console 静态资源与构建产物 hash 不一致。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- 重启后 `curl http://127.0.0.1:8080/` 返回的入口 JS 与 `console/web/dist/index.html` 一致，入口资源返回 `200`。
+- Playwright fresh session 打开配置中心深链不再空白；未登录时正常跳转登录页。
+
+Review：
+
+- spec 需要适配更新，已归档到 [[adr-config-gray-release-spec-contract]]：必须补灰度转正式草稿操作、多 active gray 语义、停止单个灰度语义，以及真正参与客户端命中的 gray priority 字段。
+- 当前仓库内的灰度优先级前端字段属于预留入口；在 specification 未发版前，后端会忽略未知字段，实际命中仍按当前 version/mtime 兜底。
+
+## 配置分组详情设计交接适配
+
+- [x] 对照附件交接文档盘点当前配置分组详情页，确认主结构、交互和发布模型差距
+- [x] 重构配置分组详情页为文件树 + 中央白色业务画布，不恢复顶部摘要卡、右侧预览栏或悬浮操作条
+- [x] 调整配置编辑页签：文件上下文编号分段、Monaco 正文、全屏编辑、保存草稿和发布配置操作
+- [x] 调整发布配置抽屉：版本对比、版本信息、发布范围上下布局，灰度态展示规则和优先级入口
+- [x] 调整发布记录页签：正式发布、灰度发布、正式草稿、历史记录内部 Tabs，每类独立分页和状态操作
+- [x] 调整订阅查询页签：展示客户端 ID/IP/类型/标签/监听版本/最近拉取/操作，并按当前发布记录解析监听版本展示
+- [x] 补静态反回归脚本覆盖附件要求的旧关键词禁用、内部 Tabs、监听版本和多灰度关键文案
+- [x] 运行前端静态验证、lint、构建，重启后用真实账号打开配置分组详情验收
+
+当前判断：
+
+- 当前页面是 `Row/Col + Tree + Tabs`，发布记录是单表，配置编辑使用 `StickyTool` 悬浮操作，和交接文档要求的工作台结构差距较大。
+- 当前后端已支持多 active gray、灰度转正式草稿和正式发布不阻塞灰度；但“灰度优先级”没有 specification 字段，当前实际命中仍按 version/mtime。前端本轮可以展示优先级入口和设计结构，若要真正影响客户端解析，需要后续先改 specification。
+
+修复：
+
+- `Files/index.tsx` 改为灰色工作区中的白色业务画布，左侧固定文件树资源浏览器，右侧为受控业务 Tabs；文件树按路径分层并显示状态 pill。
+- `FileView` 移除右侧悬浮 `StickyTool`，改为“文件上下文 / 配置正文”两个编号分段；查看态显示 Monaco 正文，编辑态提供保存草稿、撤销和发布配置。
+- `PublishForm` 抽屉固定为版本对比和发布信息两步，第二步按“版本信息 / 发布范围”上下布局；全量态隐藏灰度规则，灰度态展示灰度规则和灰度优先级入口。
+- `ReleaseTable` 改为正式发布、灰度发布、正式草稿、历史记录内部 Tabs，每类独立分页 6 条；灰度发布支持提交为正式草稿和删除灰度，当前全量删除有强风险提示。
+- `SubscribeTable` 增加客户端 ID、客户端 IP、类型、标签、监听版本、最近拉取、操作列，并按当前发布记录标识命中灰度、当前全量和无可用版本状态。
+- 新增 `scripts/verify-config-group-detail-design.mjs`，固化附件中的反回归关键词、内部 Tabs、多灰度文案、监听版本列和全屏编辑 class 约束。
+
+验证：
+
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过，包含新增 `config group detail design checks passed`。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `go test ./...` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- 重启后 8080 返回的入口 `/assets/index.752d1cb6.js` 与 `console/web/dist/index.html` 一致，入口资源返回 `200`。
+- `cd console/web && node scripts/smoke-configuration-flow.mjs` 通过，输出 `configuration flow smoke passed: default/codex-flow-0704183538/app.yaml`。
+- Playwright 使用 `admin/admin123` 登录，打开 `default/codex-detail-0704183233/services/app.yaml` 配置分组详情；配置编辑页签显示文件上下文、配置正文和发布操作，发布记录显示正式发布/灰度发布/正式草稿/历史记录内部 Tabs，灰度发布行显示 `env=gray / P100`，订阅查询显示监听版本列；浏览器 console errors/warnings 均为 `0`。
+- 临时配置分组 `codex-detail-0704183233` 和文件已通过真实接口清理，按名称查询 `amount=0`。
+
+Review：
+
+- 页面 Tabs 必须受控设置 active value；未受控时真实页面只显示 Tabs 头不挂载内容，本轮已修复。
+- 当前订阅接口没有返回客户端标签和最近拉取时间，页面先保留列和明确占位；后续应随 specification / 后端接口补字段后在 service 层归一。
+- 当前 gray priority 只是 Console 入口和展示预留，不等同于后端已按优先级选择灰度版本；真正生效需要先完成 [[adr-config-gray-release-spec-contract]]。
+
+## 配置灰度多版本与转正式草稿
+
+- [x] 写入方案 B 实施计划，明确后端发布模型、灰度匹配、前端操作和验证边界
+- [x] 补后端 RED 测试：有活跃灰度时仍允许正式发布
+- [x] 补后端 RED 测试：同一配置文件允许多个活跃灰度版本并按优先级/更新时间选择命中版本
+- [x] 补后端 RED 测试：灰度版本可提交为正式草稿，不自动正式发布且不停止灰度
+- [x] 实现灰度 release 独立 key、灰度规则存储、缓存读取和客户端匹配选择
+- [x] 实现停止单个灰度、停止全部灰度与灰度转正式草稿接口
+- [x] 适配前端发布记录操作：灰度发布不阻塞正式发布，灰度版本支持转正式草稿和停止
+- [x] 扩展配置中心静态契约和接口烟测，覆盖 normal + 多 gray + promote-to-draft
+- [x] 运行 Go 测试、前端 lint/build、真实接口烟测、context-kg lint 和 diff 检查
+- [x] 使用 `admin/admin123` 在真实页面验证灰度发布、正式发布、转草稿和发布记录展示
+- [x] 清理临时数据并记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 采用方案 B：正式发布与灰度发布分离；同一配置文件支持多个 active gray release；灰度验证通过后可以把某个灰度内容写回正式草稿，再由用户走 normal 发布。
+- 现状里 `handlePublishConfigFile` 在发布前查询 `GetConfigFileBetaReleaseTx`，只要存在活跃灰度就返回冲突，因此 active gray 会阻塞 normal release 和新的 gray release。
+- 现状灰度规则 key 是 `config@namespace@group@fileName`，不含 `release_name`；active cache key 也只到 `file + release_type`，因此模型天然限制为每个文件最多一个活跃灰度。
+- 多灰度命中冲突本轮不改 specification proto，不新增显式优先级字段；客户端命中多个灰度时按 version 倒序、mtime 倒序兜底，后续如果要运营可配置优先级，需要先补协议字段。
+
+修复：
+
+- 配置发布模型拆分 normal 与 gray：normal 发布仍保持同一配置文件只有一个 active normal，gray 发布不再互斥已有 active gray，也不再阻塞 normal 发布。
+- 灰度 active key 和 gray resource key 增加 releaseName 维度，支持同一配置文件多个 active gray release 与多套灰度规则共存；旧无名灰度 key 保留兼容。
+- store/cache/client/watch 链路增加 active gray 列表读取，客户端按命中灰度规则的 release 中 version/mtime 最新版本返回，文件状态和订阅视图也按多灰度判断。
+- 新增 `/config/v1/files/releases/promote-gray`，将指定 active gray 内容提交回配置文件正式草稿，不自动发布 normal，也不停止灰度。
+- `StopGrayConfigFileRelease` 支持带 releaseName 停止单个灰度；不带 releaseName 时兼容旧语义，停止该配置文件全部 active gray。
+- 前端发布记录对 active gray 展示“提交为正式草稿”和“停止灰度”操作；删除/停止/promote 都带 releaseType，避免同名 normal/gray 误操作。
+- 扩展 `scripts/smoke-configuration-flow.mjs`，覆盖 normal 发布、两个 gray 并存、gray active 时 normal 发布、promote-to-draft、promote 后 normal 发布、停止单个 gray 且另一个 gray 保持 active。
+
+验证：
+
+- `go test ./apis/pkg/types/config ./plugin/store/mysql ./pkg/cache/config ./pkg/config -run 'TestConfigGrayRelease|TestCreateConfigFileGrayReleaseKeepsExistingGrayActive|TestConfigFileCacheKeepsMultipleActiveGrayReleases|TestSelectMatchedGrayRelease|TestPublishConfigFileDoesNotBlockOnActiveGrayRelease' -count=1` 通过。
+- `go test ./apis/pkg/types/config ./apis/store ./plugin/store/mysql ./pkg/cache/config ./pkg/config/... -count=1` 通过。
+- `go test ./...` 通过。
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功，日志到 `finish starting server`。
+- `cd console/web && node scripts/smoke-configuration-flow.mjs` 通过，输出 `configuration flow smoke passed: default/codex-flow-0704174837/app.yaml`。
+- Playwright 使用 `admin/admin123` 登录真实页面，进入 `default/codex-ui-gray-0704175104/app.yaml` 发布记录；页面显示两个 active gray 行，每行有提交草稿、停止灰度、删除三个操作。
+- 页面点击 `gray-a-0704175104` 的“提交为正式草稿”成功，接口确认文件草稿内容为 `a: gray-a\n`，active normal 未自动变化。
+- 页面点击 `gray-a-0704175104` 的“停止灰度”成功，接口确认 `gray-a` inactive、`gray-b` 仍 active；临时配置文件和配置分组已清理，按分组查询 `amount=0`。
+- 浏览器控制台仅有登录页 autocomplete 提示和 Redux log，无配置中心操作 error/warning。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+
+Review：
+
+- 方案 B 的关键点是 active 维度从“文件 + releaseType”扩展为“文件 + gray releaseName”，否则无论 store 还是 cache 都会把多灰度压扁成一个版本。
+- promote-to-draft 必须只写配置文件草稿，不能顺手发布 normal 或停止 gray；真实烟测已覆盖这个行为。
+- 本轮未引入显式灰度优先级字段，因为当前 specification `ConfigFileRelease` 没有对应字段；如后续需要运营可配置优先级，应先补 proto/前端字段，再把选择函数从 version/mtime 切到 priority/mtime。
+
+## 配置中心全流程可用化修复
+
+- [x] 复现配置文件创建失败，记录真实请求、响应和控制台错误
+- [x] 编写接口级烟测脚本覆盖配置分组、配置文件创建、详情、更新、发布、版本、回滚、删除和清理
+- [x] 按烟测失败点核对后端 handler、业务层、前端 service 与页面提交数据
+- [x] 先补回归验证，再修复配置文件创建及后续流程的契约错位
+- [x] 运行 Go 测试、前端配置中心静态脚本、lint、构建、context-kg lint 和 diff 检查
+- [x] 使用 `admin/admin123` 真实页面走配置分组到配置文件创建/发布流程
+- [x] 清理临时数据并记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 本轮以当前前端已暴露的配置中心能力为边界，覆盖配置分组、配置文件、发布记录、订阅查询和加密算法；不新增未设计的导入导出、操作历史或客户端视角订阅入口。
+- 先用真实接口脚本把流程打通，避免只修页面上的单个表单字段后遗漏发布、删除或回滚链路。
+- 复现配置文件创建失败时，前端请求体为 `namespace/group/format/content/labels`，缺失 `name/comment`；后端返回 `400103 invalid parameter`，根因是两步表单进入第二步后第一步字段卸载，提交时再读 `form.getFieldValue('name')` 得到空值。
+- 发布配置失败的接口根因是前端按 `fileName/releaseDescription/releaseType/betaLabels` 提交，当前后端 proto JSON 契约要求 `file_name/release_description/release_type/beta_labels`。
+- 直达或刷新配置文件页时，Redux 中可能没有当前配置分组，必须按 URL `namespace/group` 补拉分组信息；不能让新建入口依赖上一次从分组列表进入时残留的 `editGroup`。
+
+修复：
+
+- `FileCreator` 在第一步离开前缓存 `name/comment/encrypted/encryptAlgo/tags`，第二步提交使用缓存的元信息和当前内容组装创建请求，避免字段卸载导致丢参。
+- `config_release` service 在边界层把发布、回滚、删除写请求从前端 camelCase 映射为后端 snake_case，并把响应中的 `file_name/release_type/release_description/beta_labels` 归一回前端字段。
+- 配置文件页按当前 URL 自动查询配置分组并写回 `editGroup`，同时只使用与 URL 匹配的分组权限，修复直达/刷新后新建入口不可用。
+- `CodeDiffEditor` 为 original/modified 设置不同稳定 model path，并在卸载时保留当前 model，修复发布抽屉从版本对比切到发布信息时的 Monaco `TextModel got disposed before DiffEditorWidget model got reset` 错误。
+- 新增 `scripts/smoke-configuration-flow.mjs`，用 `admin/admin123` 默认凭据覆盖配置分组、配置文件、详情、更新、发布 v1/v2、发布列表、版本列表、订阅查询、回滚、删除发布、删除文件、删除分组和清理校验。
+
+验证：
+
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过，包含配置中心契约、入口、TDesign 升级、生产 React 构建和既有页面静态校验。
+- `cd console/web && node scripts/smoke-configuration-flow.mjs` 通过，输出 `configuration flow smoke passed: default/codex-flow-0704034412/app.yaml`。
+- `go test ./pkg/common/api/v1 ./pkg/config/... -count=1` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 多次通过，tmux 日志显示 `finish starting server`。
+- Playwright 使用 `admin/admin123` 真实登录，直达 `default/codex-ui-flow-0704033043` 配置文件页；页面自动请求 `/config/v1/groups?namespace=default&offset=0&limit=1&name=codex-ui-flow-0704033043`，新建入口可用。
+- 同一页面创建 `ui-flow.yaml` 成功，请求体包含 `namespace/group/name/comment/format/content/encrypted/encryptAlgo/labels`，配置树显示文件。
+- 同一页面发布 `v1` 成功，请求体包含 `file_name/release_description/release_type`，接口返回 `200000`；切换发布步骤后浏览器 console error 为 `0`。
+- 临时配置分组 `codex-ui-flow-0704033043`、`codex-ui-flow-0704111959`、`codex-flow-0704110556` 已清理，按前缀查询剩余 `codex-` 分组为 `none`。
+
+Review：
+
+- 配置文件创建失败不是后端创建接口不可用，而是前端分步表单把第一步字段卸载后仍从 Form 实例读取，导致 `name` 为空。
+- 发布、回滚、删除要以当前后端生成 proto JSON 字段为准，页面继续使用 camelCase，转换收敛在 `config_release` service。
+- 配置文件页不能假设一定从配置分组列表进入；刷新、直达、复制链接都必须通过 URL 参数恢复分组上下文和权限。
+- 页面发布流程仍可捕获到一次 `TDesign Tree Warn: Duplicated value: ui-flow.yaml`，但后端文件查询为 `amount=1`，配置创建和发布流程未受影响；后续若继续收敛控制台 warning，可单独排查 TDesign Tree 数据/状态提示。
+
+## 配置文件加密算法下拉为空修复
+
+- [x] 复现并抓取创建配置文件时加密算法接口请求与响应
+- [x] 核对后端加密算法接口、前端 service 和 Redux slice 的数据形态
+- [x] 补配置中心静态回归验证，约束加密算法响应必须适配到 Select options
+- [x] 实现最小修复并跑前端验证、lint、构建
+- [x] 用真实账号打开创建配置文件抽屉，验证加密算法下拉有可选项
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 截图显示加密算法 Select 已打开但为空；优先沿 `listConfigFileCryptoAlgos -> service -> 后端路由` 查真实响应形态，不先做 UI 假数据。
+- 根因是后端 `GetAllConfigEncryptAlgorithms` 的简化实现只返回 `code/info`，`data:null`；前端拿不到 `algorithms`，因此 Select 空态显示“暂无数据”。
+
+修复：
+
+- `NewConfigEncryptAlgorithmResponse` 改为用 protobuf `Struct` 承载 `{ algorithms: [...] }`，并写入 `Response.data` 的 `Any`。
+- `GetAllConfigEncryptAlgorithms` 从 `cryptoManager.GetCryptoAlgoNames()` 读取真实注册算法；本地 all-mode 当前配置只启用 `AES`。
+- `describeEncryptAlgo` 在 service 边界兼容后端 `Struct.value.algorithms` 和直接 `algorithms` 两种形态，Redux 与组件继续消费稳定的 `string[]`。
+- `scripts/verify-configuration-api-contract.mjs` 增加加密算法响应归一约束，避免页面层感知后端 `Any/Struct` 细节。
+
+验证：
+
+- `go test ./pkg/common/api/v1 -run 'TestConfigEncryptAlgorithmResponseIncludesAlgorithms|TestConfigSingleObjectResponsesIncludeData' -count=1` 修复前失败，修复后通过。
+- `go test ./pkg/common/api/v1 ./pkg/config/... -count=1` 通过。
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `go test ./...` 通过。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- 真实登录 `admin/admin123` 后请求 `/config/v1/files/encrypt/algorithms` 返回 `200000`，响应 `data.value.algorithms: ["AES"]`。
+- Playwright 使用真实账号进入临时配置分组 `default/codex-algo-drawer-0704094254`，打开创建配置文件抽屉，启用 `配置加密` 后打开 `加密算法类型` 下拉；下拉显示 `AES`，浏览器 console error/warning 均为 `0`。
+- 通过真实删除接口清理临时配置分组，随后按名称查询返回 `amount:0`。
+
+Review：
+
+- 这次不应在前端硬编码算法选项；可选算法来自后端 crypto 插件配置，当前本地只启用 `AES` 是配置结果，不是 UI 限制。
+- specification 当前没有专门的加密算法响应 proto，使用标准 `Struct` 是最小可用承载方式；前端兼容逻辑收敛在 service 层，后续若 specification 补正式 message，只需要调整该边界。
+
+## 配置文件创建抽屉分组信息回显修复
+
+- [x] 复现并定位从配置分组进入配置文件创建时 namespace/group 不显示的问题
+- [x] 补配置中心静态回归验证，约束创建抽屉必须回填 namespace/group
+- [x] 实现最小修复并跑前端验证、lint、构建
+- [x] 用真实账号打开配置分组、进入文件创建抽屉验证字段显示
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 文件创建页 URL query 已包含 `namespace/group`，`FileCreator` 也收到了 props；问题在抽屉 Form 没有把这两个外部值写入字段，disabled Input 只显示空占位。
+
+修复：
+
+- `FileCreator` 在抽屉打开或 `namespace/group` 变化时调用 `form.setFieldsValue({ namespace, group })`，让禁用输入框显示当前选中的配置分组上下文。
+- 移除 `FileCreator` 中未使用的 `editFile` 解构和提交时的 `console.log('newData')` 调试输出。
+- `scripts/verify-configuration-api-contract.mjs` 增加配置文件创建抽屉回填 `namespace/group` 的静态约束。
+
+验证：
+
+- `cd console/web && node scripts/verify-configuration-api-contract.mjs` 修复前失败，修复后通过。
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- 使用真实账号 `admin/admin123` 登录，创建临时配置分组 `default/codex-file-drawer-07040927`，从配置分组列表点击进入文件页后打开创建抽屉；抽屉中 `命名空间` 显示 `default`，`配置组` 显示 `codex-file-drawer-07040927`，浏览器 console error/warning 均为 `0`。
+- 通过真实删除接口清理 `codex-file-drawer-07040927`，随后按名称查询返回 `amount:0`。
+
+Review：
+
+- 修复点应放在表单初始化边界，而不是改路由或提交 payload；提交路径之前已经拿到正确 props，本次缺陷只是 UI Form 字段未同步。
+
+## 配置分组新建失败修复
+
+- [x] 用 `admin/admin123` 真实复现新建配置分组失败，记录请求、响应和控制台
+- [x] 沿前端表单、service、后端 handler/store 定位契约错位
+- [x] 先补失败验证，覆盖新建配置分组请求必须符合后端当前定义
+- [x] 实现最小修复，并跑前端静态验证、lint、构建和后端针对性测试
+- [x] 用真实账号完成新建配置分组烟测，并清理测试数据
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 配置分组列表可用不代表创建可用；本轮以真实创建链路为准，不用 mock 判定。
+- 新建配置分组失败包含三层根因：空标签时前端 `reduce(undefined)`，创建请求带 `id: 0` 与后端 `string id` 契约冲突，创建落库后 MySQL `DATETIME` 与 Go 本地时区比较导致缓存增量同步漏数据。
+
+修复：
+
+- `ConfigGroupEditor` 将空 `group_labels` 按空数组处理，提交时不再构造 `id: 0`，避免创建请求在前端抛错或被后端 JSON 解码拒绝。
+- `config_group.ts` 将配置分组 `id` 改为后端真实的 `string` 契约；配置中心契约验证新增空标签与 `id` 类型约束。
+- `plugin/store/mysql/config_file_group.go` 的增量查询从 `WHERE mtime >= ?` 改为 `WHERE UNIX_TIMESTAMP(mtime) >= ?`，参数传 `mtime.Unix()`，避免 MySQL `sysdate()` 时区与 Go `loc=Local` 绑定参数不一致时漏同步。
+- 新增 `plugin/store/mysql/config_file_group_test.go`，约束配置分组增量查询必须使用 Unix timestamp 比较。
+
+验证：
+
+- 修复前，Playwright 使用 `admin/admin123` 新建不填标签配置分组，控制台报 `TypeError: Cannot read properties of undefined (reading 'reduce')`，且没有 POST。
+- 修复空标签后，真实 POST 发出但返回 `400001 request decode failed: json: cannot unmarshal number into Go value of type string`，请求体包含 `id:0`。
+- 修复 `id` 后，真实 POST 返回 `200000` 且 DB 落库，但列表仍为空；DB 记录 `mtime=2026-07-03 19:47:00`，服务本地时间为 `2026-07-04 03:47`，确认缓存增量查询存在时区比较漏读。
+- `go test ./plugin/store/mysql -run TestConfigFileGroupIncrementalQueryUsesUnixTimestamp -count=1` 修复前失败，修复后通过。
+- `go test ./plugin/store/mysql ./pkg/cache/config ./pkg/config/... -count=1` 通过。
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- Playwright 使用 `admin/admin123` 真实创建 `codex-create-smoke-0704035605`：POST `/config/v1/groups` 返回 `200`，请求体不含 `id`，最终 GET `/config/v1/groups?offset=0&limit=10&namespace=` 返回 `amount:1` 且包含该分组，浏览器 console error/warning 均为 `0`。
+- 通过真实删除接口 `POST /config/v1/groups/delette` 清理 `codex-create-smoke-0704035605`，响应 `200000`；随后按名称查询返回 `amount:0`，DB 中该记录 `flag=1`。
+
+Review：
+
+- 这次问题说明“配置中心可用”必须验完整写链路；只打开页面和读空列表会漏掉表单空值、前端/后端类型契约、缓存增量同步三类问题。
+- 后端创建响应中 `data.id` 仍返回空字符串，因为 `CreateConfigFileGroup` 返回体使用了 `saveData.Id` 而不是 `ret.Id`；列表可见性不依赖该字段，本轮未扩大修复范围。
+
+## 配置中心 TDesign key spread warning 修复
+
+- [x] 定位配置中心页面运行时 `key` 被 spread 到 JSX 的真实来源
+- [x] 升级 `tdesign-react` 到 `1.18.0`，并核对锁文件变化
+- [x] 补充可重复验证，约束构建产物不能继续包含 React 开发 JSX runtime
+- [x] 运行前端静态验证、lint、构建和浏览器控制台验证
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- warning 来自 React 对第三方组件内部 `{...props}` 携带 `key` 的运行时检查，堆栈落在 TDesign 打包产物，不应在配置中心页面层做无效绕行。
+- 本轮以消除配置中心页面可见控制台 warning 为目标；允许升级 `tdesign-react` 到 `1.18.0`，同时保留已验证的 vendor 分包策略。
+
+修复：
+
+- `tdesign-react` 升级到 `^1.18.0`，锁文件解析到 `1.18.0`；随版本依赖同步升级 `sortablejs` 到 `1.15.7`，移除旧版间接依赖 `tinycolor2`。
+- `scripts/run-vite-build.mjs` 同时设置 `NODE_ENV=production` 与 `VITE_USER_NODE_ENV=production`；Vite 2 自定义 `release/test/site` mode 下必须依赖 `VITE_USER_NODE_ENV` 才会让 `@vitejs/plugin-react` 走 production JSX transform。
+- 新增 `scripts/verify-production-react-build.mjs`，检查构建脚本和 dist 产物不能含 `react-jsx-dev-runtime.development`、`jsxDEV(` 调用或 React key-spread warning 文案。
+- 新增 `scripts/verify-tdesign-upgrade.mjs`，约束 `package.json` 与 `package-lock.json` 不能回退 `tdesign-react@1.18.0`。
+- 更新 `vite.config.js` 中 `tdesignSharedDepChunks` 到 TDesign 1.18.0 的真实 shared `_chunks` 集合；`verify-vite-manual-chunks.mjs` 改为从当前 `node_modules/tdesign-react/es` 追踪 shared 目录依赖，避免内部 `dep-*.js` hash 变更后再次出现 `tdesign-shared -> tdesign-data-form` 循环。
+
+验证：
+
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过，无 React key-spread warning、无 React dev runtime、无大 chunk warning。
+- `cd console/web && CHECK_DIST=1 node scripts/verify-production-react-build.mjs` 通过。
+- `cd console/web && rg "A props object containing|react-jsx-dev-runtime\\.development|\\.jsxDEV\\(|\\bjsxDEV\\(" dist/assets -g '*.js'` 无命中。
+- `cd console/web && rg "tdesign-data-form" dist/assets/tdesign-shared.*.js` 无命中，确认 shared chunk 不再反向依赖 data-form。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- `curl http://127.0.0.1:8080/configuration/group` 返回 `200`，页面引用当前 `tdesign-shared.bcbb542a.js` 与 `tdesign-data-form.49d39d7c.js`。
+- Playwright 注入临时登录态并 mock `/config/v1/groups` 空列表后打开 `/configuration/group`，配置分组 Table 与分页 Select 渲染完成；`playwright-cli console warning` 与 `console error` 均为 `0`。
+- Playwright 清理 mock 与本地登录态后，使用 `admin/admin123` 真实登录成功；打开 `/configuration/group?check=real-admin`，真实 `/config/v1/groups?offset=0&limit=10&namespace=` 返回 `200`，响应 `{code:200000, amount:0, size:0, data:[]}`；配置分组 Table 与分页 Select 渲染完成，`playwright-cli console warning` 与 `console error` 均为 `0`。
+
+Review：
+
+- 升级 TDesign 后，单靠版本变化不能消除该 warning；`tdesign-react@1.18.0` 内部仍存在 `React.createElement(... { key, ... })` 形态。真正让 8080 页面不再报 warning 的关键是 release/test/site 构建必须使用 React production JSX transform。
+- 修复过程中发现并消除了一个升级后的分包循环：旧的 TDesign 1.12.2 `_chunks` 白名单不适配 1.18.0，会导致 `tdesign-shared` 反向 import `tdesign-data-form`，进而触发 `dayjs.extend` 初始化错误。
+- 页面提示的默认 `pole/pole123` 不适用于当前本地库；用户提供的 `admin/admin123` 已完成真实登录和真实配置分组列表接口验证，无需再依赖 mock 判断配置分组页是否可渲染。
+
+## 配置中心可用化适配
+
+- [x] 补配置中心接口契约验证，先让现有错路由和字段适配缺口暴露出来
+- [x] 修复后端配置中心单对象响应未写入 `data` 的实现缺口
+- [x] 在前端配置中心 service 层归一后端响应、请求字段和真实路由
+- [x] 跑前端静态验证、lint、构建和后端针对性测试
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 本轮目标是让已放开的配置中心入口真正可用，优先修复配置分组、配置文件、发布、订阅者、加密算法这些已有页面会调用的能力。
+- 页面层不直接感知后端 `Any`、`labels`、`ctime` 等细节；这些差异统一收敛在 `console/web/src/services/config_*.ts`。
+- `createandpub`、导入导出、操作历史、客户端视角订阅暂不新增页面入口，避免能力放开超过当前页面设计。
+
+修复：
+
+- 后端 `NewConfigGroupResponse`、`NewConfigFileResponse`、`NewConfigFileReleaseResponse`、`NewConfigFileTemplateResponse`、`NewConfigClientResponse` 统一把 proto message 写入 `Response.data` 的 `Any`，使配置文件详情、发布详情等单对象接口能返回真实数据。
+- 前端新增 `scripts/verify-configuration-api-contract.mjs`，静态约束配置中心 service 必须使用后端真实路由和归一化边界。
+- 配置组 service 适配 `/config/v1/groups/delette`，查询时把前端 `group` 搜索项映射到后端 `name` 参数，列表响应归一 `ctime/mtime -> createTime/modifyTime`。
+- 配置文件 service 归一 `labels -> tags`、`ctime/mtime/rtime -> createTime/modifyTime/releaseTime`，写请求将 `tags -> labels`，并修正 `berif -> brief`。
+- 发布 service 增加 `BaseURL.CONFIG_RELEASES = /config/v1/files/releases`，列表、回滚、删除分别走 `/files/releases`、`/files/releases/rollback`、`/files/releases/delete`；发布/详情继续走 `/files/release`；灰度标签在 `value_type` 与 proto JSON `valueType` 间双向适配。
+- 配置组页面删除时改为传 `namespace/name`，不再只传后端不会使用的 `id`。
+
+验证：
+
+- `go test ./pkg/common/api/v1 -run TestConfigSingleObjectResponsesIncludeData -count=1` 修复前失败，修复后通过。
+- `cd console/web && node scripts/verify-configuration-api-contract.mjs` 修复前失败，修复后通过。
+- `go test ./pkg/common/api/v1 ./pkg/config/... -count=1` 通过。
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过；`rg "Warning|warning|larger than|localstorage-file|Browserslist|error" /tmp/pole-config-build-test.log` 无命中。
+- `go test ./...` 通过。
+- `git diff --check` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功重建并启动 all-mode，日志到 `finish starting server`。
+- `curl http://127.0.0.1:8080/` 与 `curl http://127.0.0.1:8080/configuration/group` 均返回 `200`。
+- 未登录直连 `8090/config/v1/groups`、`8090/config/v1/files/release`、`8090/config/v1/files/releases` 返回 `401001 access is not approved`，说明配置接口挂载存在且被 Console 鉴权拦截。
+- Playwright 使用 `admin/admin123` 真实登录后打开 `/configuration/group?check=real-admin`，配置分组页真实请求 `/config/v1/groups?offset=0&limit=10&namespace=` 返回 `200`，响应体为 `{code:200000, amount:0, size:0, data:[]}`；页面展示配置分组表格空态与分页控件。
+
+Review：
+
+- 本轮让已暴露的配置中心页面入口、service 层和后端单对象响应契约对齐，避免页面拿不到详情、删除走错路由、发布回滚/删除走不存在路由。
+- 当前本地 MySQL 已存在主账号 `admin`，有效登录密码为 `admin123`；本轮已完成带 token 的配置分组列表真实读取烟测。
+- `/files/client/subscription` 仍由后端错误挂到文件视角 handler；本轮未放开客户端视角订阅页面入口。
+
+## 配置中心接口契约适配评估
+
+- [x] 核对后端配置中心 REST 路由、请求结构和响应结构
+- [x] 核对前端配置分组、配置文件、发布和订阅 service 的当前假设
+- [x] 对照页面使用点，列出必须适配、可兼容和不应暴露的能力边界
+- [x] 形成前端接口适配方案、验证方式和剩余风险
+
+当前判断：
+
+- 本轮以当前后端接口定义为准，不按前端已有 TypeScript 类型反推接口。
+- 前端应先把 `services/config_*.ts` 做成配置中心契约适配层，页面和 Redux slice 继续消费稳定 UI 模型，不把后端路由、`Any` 响应和字段别名扩散到组件。
+- 批量查询接口当前通过 `BatchQueryResponse.data` 返回列表，现有 `unwrapResponse` 能解出 `data/amount/size`；单对象详情接口当前构造函数没有把对象写进 `Response.data`，这是后端实现缺口，前端无法单独补齐详情内容。
+
+适配建议：
+
+- 配置组：删除接口按当前后端路由适配到 `/config/v1/groups/delette`；分组模糊查询把前端 `group` 搜索项映射为后端 `name` 查询参数；列表响应保留 `fileCount`，并把 `ctime/mtime` 兼容归一到 `createTime/modifyTime`。
+- 配置文件：列表、详情、创建、更新、删除继续走 `/config/v1/files`、`/detail`、`/search`、`/delete`；把后端 `labels` 与前端 `tags` 双向转换；`describeAllConfigFiles` 的 `berif` 拼写应收敛为后端可识别的 `brief` 或移除无效参数；详情只依赖 `namespace/group/name`，不依赖 `id`。
+- 发布：单个生效/指定发布详情仍走 `/config/v1/files/release`；发布列表走 `/config/v1/files/releases`；版本列表走 `/config/v1/files/release/versions`；回滚走 `PUT /config/v1/files/releases/rollback`；删除走 `POST /config/v1/files/releases/delete`；如页面放开灰度停止，再接 `/config/v1/files/releases/stopbeta`。
+- 订阅者：文件视角订阅者使用 `/config/v1/files/subscribers`；`/files/client/subscription` 当前路由到了同一个文件视角 handler，客户端视角订阅能力不应在前端放开，除非后端改挂到 `GetClientSubscription`。
+- 能力放开：可优先补全配置分组、配置文件、发布版本、订阅者、加密算法；导入导出、`createandpub` 一键保存发布、灰度停止、操作历史是后端已有能力，但需要先确认页面入口和交互，不建议无设计直接暴露。
+
+Review：
+
+- 当前前端的主要错位在路由和边界转换，不是页面结构；直接在页面里兼容后端细节会扩大改动面。
+- 当前后端的 `NewConfigGroupResponse`、`NewConfigFileResponse`、`NewConfigFileReleaseResponse` 未填充 `data`，会影响配置文件详情和发布详情页面；这应作为后端契约实现缺陷处理。
+- 后续落代码时建议先补一个配置中心契约静态检查脚本，覆盖 `/groups/delette`、`/files/releases`、`/files/releases/delete`、`/files/releases/rollback`、`labels/tags` 归一和禁用旧的 `/files/release/delete|rollback`。
+
+## 配置中心前端入口放开
+
+- [x] 确认配置中心前端已有页面、路由、菜单和服务接口现状
+- [x] 先补静态回归检查，覆盖配置中心入口可见性和未实现页面隐藏策略
+- [x] 放开已具备真实闭环的配置分组入口，继续隐藏 Kubernetes 与模板占位能力
+- [x] 运行前端静态脚本、构建、context-kg lint 和 diff 检查
+- [x] 记录 review、验证结果和剩余风险
+
+当前判断：
+
+- 配置中心的 Redux slice、配置分组、配置文件、发布记录与订阅查询页面已经存在，服务接口也已接入 `/config/v1/groups`、`/config/v1/files` 和 `/config/v1/files/release`。
+- 总路由 `console/web/src/router/index.ts` 当前仍把 `configuration` 模块注释掉，导致配置中心能力在侧边栏与页面路由中不可达。
+- 顶层 Kubernetes 页面与配置分组页里的模板 Tab 仍是 `ECode.unimplemented` 占位，本轮不应跟随入口一起暴露。
+
+修复：
+
+- 放开 `configuration` 路由模块，让配置中心进入侧边栏与页面路由。
+- 只暴露已有真实闭环的配置分组入口；配置文件、发布、订阅页面继续作为配置分组内的隐藏子路由进入。
+- 继续隐藏 Kubernetes 配置页面，并移除配置分组页上的模板 Tab，避免把未实现占位能力暴露给用户。
+- 修复 release 构建下的 vendor 分包运行时问题：React 生态依赖归入 `react-vendor`，TDesign shared 依赖的 `_chunks` 留在 `tdesign-shared`，其余 TDesign 组件按 data-form、base-overlay、navigation、misc 分组，避免 shared/data-form 循环初始化。
+
+验证：
+
+- `node scripts/verify-configuration-entry.mjs` 修复前失败，修复后通过。
+- `node scripts/verify-vite-manual-chunks.mjs` 修复前失败，修复后通过。
+- `cd console/web && for script in scripts/verify-*.mjs; do node "$script"; done` 通过。
+- `cd console/web && npm run lint` 通过。
+- `cd console/web && npm run build:test` 通过；`rg "Warning|warning|larger than|localstorage-file|Browserslist" /tmp/pole-config-build-test.log` 无命中。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check` 通过。
+- `MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 ./scripts/rebuild-start-all.sh --detach` 成功启动 all-mode，日志到 `finish starting server`。
+- `curl http://127.0.0.1:8080/` 与 `curl http://127.0.0.1:8080/configuration/group` 均返回 `200`。
+- Playwright 打开 `/configuration/group` 验证：配置管理、配置分组、分组名、新建可见；Kubernetes、模板不可见；页面不再出现 `attachEvent` 运行时错误或空白页。
+
+Review：
+
+- 本轮只放开配置中心中已经有前后端链路的配置分组能力，没有暴露 Kubernetes 和模板这两个未实现占位入口。
+- 配置文件、发布记录、订阅查询仍通过配置分组详情流程进入，未新增平级菜单，避免菜单能力超过当前实现边界。
+- 浏览器控制台还存在 TDesign Table 在 React 开发警告中的 `key` spread warning；该 warning 不影响页面渲染或本轮配置入口能力，未在本次范围内改第三方组件实现。
 
 ## 发布 specification 新 tag 并更新 control-plane
 
@@ -1371,7 +3811,7 @@ Review：
 - 推荐优先保持 OTel 协议边界：OpenServer 可以成为默认采集/治理入口，但 SDK 和用户侧仍应能够直接替换为标准 OTLP collector 或其它后端。
 - 用户已确认观测后端内置闭环：接收 OTLP，自己存 logs、metrics、traces，并给 lattice-hub / Console 查询治理。
 - 在 pole-control-plane 侧不需要新增独立 `openobserver` 插件类型；现有 `history`、`discoverEvent`、`statis` 都是 chain 模式，应分别新增可配置的 `otel` chain entry，启用后把内部模型转换并发送到内置观测后端。
-- OTel events 不应设计成独立第四类协议；按 OTel 语义应建模为带 `event.name` 的 LogRecord，再在 OpenObserver 查询层提供 events 视图。
+- OTel events 不应设计成独立第四类协议；按当前 OTel 语义应建模为带 EventName 的 LogRecord，再在 OpenObserver 查询层提供 events 视图。
 - 初步映射：`history.RecordEntry` 经 `history.entries: [{name: otel}]` 进入 audit event/log，`DiscoverEvent` 经 `discoverEvent.entries: [{name: otel}]` 进入 domain event/log，`statis` 经 `statis.entries: [{name: otel}]` 进入 metrics，真实请求链路和 SDK 调用链进入 traces。
 
 验证：
@@ -5446,6 +7886,8 @@ Review：
 ## 相关页面
 
 - [[lessons]]
+- [[adr-otel-observability-platform]]
+- [[adr-pole-rust-client-observability]]
 
 # 修复 go test ./... 既有失败点
 
@@ -5461,7 +7903,7 @@ Review：
 
 已完成：
 
-- healthcheck：恢复 `test/data/service_test.yaml`、`service_test_sqldb.yaml`、`bolt-data.yaml` 三个测试 fixture；同时把 `Test_serialSetInsDbStatus` 收窄为内存 fake store 单测，避免为一个元数据写删函数启动整套 DiscoverTestSuit。
+- healthcheck：恢复 `test/data/service_test.yaml`、`service_test_sqldb.yaml` 测试 fixture；同时把 `Test_serialSetInsDbStatus` 收窄为内存 fake store 单测，避免为一个元数据写删函数启动整套 DiscoverTestSuit。后续 Pebble 迁移已删除旧 `bolt-data.yaml` fixture。
 - i18n：测试不再读取已不存在的 `release/conf/i18n/*.toml`，改为基于 `runtime.Caller` 定位仓库根目录下的 `deploy/conf/i18n/*.toml`。
 - heartbeat：`HeartBeatHealthChecker.Initialize` 现在会通过 `unmarshal` 保存默认配置到 `c.conf`，避免 `refreshPeers` 中 `peer.Initialize(*c.conf)` 解引用 nil；heartbeat 单测改用共享内存 peer，保留一致性哈希、扩缩容、Report/Query/Delete 行为验证，但不依赖真实 gRPC 端口。
 - 测试套件：补齐 `test/suit` 所需的 interceptor、auth 和 heartbeat blank import，避免单独跑测试包时缺少插件注册。
@@ -6653,3 +9095,1244 @@ Review：
 - `describeAuthPolicyDetail` 已兼容 `{ authStrategy }` 和直接 `AuthStrategy` 两种形态，策略详情抽屉可以拿到完整成员、资源、接口和描述。
 - 策略资源类型补齐 `lossless_rules`，策略详情资源树新增 `无损规则`，避免默认策略中的无损规则资源无入口。
 - 主体详情的关联策略表现在点击策略名会打开策略详情抽屉，admin 这类默认策略也能从主体权限信息继续查看完整详情。
+## OTel 可观测性平台设计归档
+
+- [x] 回顾现有 `history`、`discoverEvent`、`statis` chain 与历史设计结论
+- [x] 明确系统内部可观测性与业务服务调用可观测性两个平面
+- [x] 明确统一走 OTel/OTLP，但不采集业务普通日志，仅结构化 event/audit 使用 OTel Logs
+- [x] 选择 OpenTelemetry Collector Contrib 作为采集管道，OpenObserve 作为默认存储查询后端
+- [x] 将 Kubernetes 快速体验部署路径写入 ADR
+- [x] 更新 context-kg index/log 并执行结构校验
+
+当前判断：
+
+- `pole-control-plane` 负责上报自身内部 metrics、trace、event 和 audit，并负责 Console 查询分析；不负责业务流量采集。
+- 业务侧 event、metrics、trace 由 sidecar 和 Rust SDK 上报。
+- Collector 是统一采集/处理/路由入口，OpenObserve 是默认存储查询后端，Console 通过后端 `observability-query` 适配层读取分析。
+- 生产标准路径应是 `sidecar/Rust SDK/pole-control-plane -> OpenTelemetry Collector Contrib -> OpenObserve -> Console`。
+- Kubernetes 是默认交付体验路径，首期以 `pole-observability` namespace 部署 Collector 与 OpenObserve。
+
+Review：
+
+- 方案已归档到 [[adr-otel-observability-platform]]。
+- 本轮只沉淀架构决策和部署方案，没有修改运行代码。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- context-kg/technical/adr/adr-otel-observability-platform.md context-kg/_meta/index.md context-kg/_meta/log.md context-kg/tasks/todo.md` 通过。
+- 需要后续实现时，再拆分 Collector/OpenObserve Helm 示例、control-plane OTel entry、Console query API、SDK/sidecar 样例上报四条任务线。
+
+## OTel metrics 与 event 命名规范设计
+
+- [x] 对齐 OTel metrics 和 event 语义约定，确认 HTTP/RPC 优先使用标准语义名
+- [x] 盘点当前仓库已有 metrics、discover event 和 history 字段
+- [x] 设计 Pole 自定义 metrics 命名、单位和属性约束
+- [x] 设计 Pole 结构化 event 名称、属性和严重级别约束
+- [x] 更新 [[adr-otel-observability-platform]] 并补充验证记录
+
+当前判断：
+
+- 适用 OTel 标准语义约定的 HTTP/RPC 指标不另造 `pole.*` 名称；Pole 自定义领域指标统一使用 `pole.` 前缀。
+- 指标属性必须低基数，`rule.id`、`config.file`、`trace_id`、`request_id` 等高基数字段不能进入 metrics label，放到 trace 或 event。
+- Event 使用 OTel LogRecord 的 EventName 语义，EventName 必须是低基数的全限定名称，动态值全部放 attribute。
+
+Review：
+
+- 已在 [[adr-otel-observability-platform]] 增加 metrics 与 EventName 规范。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- context-kg/technical/adr/adr-otel-observability-platform.md context-kg/_meta/log.md context-kg/tasks/todo.md` 通过。
+
+## OTel metrics 覆盖与联动设计补充
+
+- [x] 横向审计平台内部 metrics 缺口：启动、ready、插件、EventHub、配置 watch、治理发布、推送、鉴权、DB pool、telemetry export
+- [x] 补充业务 CPU/Mem 与请求监控数据的关联模型
+- [x] 补充治理 metrics 与治理 event 的关联规则
+- [x] 更新 [[adr-otel-observability-platform]] 并补充验证记录
+
+当前判断：
+
+- 平台内部 metrics 不能只覆盖请求、Store、Cache 和资源数量，还要覆盖启动健康、异步队列、配置发布/Watch、治理发布、协议推送、鉴权、DB 连接池和观测出口健康。
+- 业务 CPU/Mem 不由 Pole SDK 自己采进程资源，而由 Kubernetes 模式下 Collector `kubeletstats` / Kubernetes 相关 receiver 采集容器/Pod 指标，再通过 `k8s.pod.uid`、`service.instance.id`、`pole.service.name` 等资源属性与业务请求指标联动。
+- 治理 metrics 负责低基数聚合，治理 event 负责具体规则、实例、trace 的高基数定位，两者通过 `pole.governance.decision.id`、`trace_id/span_id`、`pole.rule.type` 和时间窗口关联。
+
+Review：
+
+- 已在 [[adr-otel-observability-platform]] 补齐平台内部 metrics 覆盖面、业务 CPU/Mem 与请求指标联动、治理 metrics 与治理 event 联动。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- context-kg/technical/adr/adr-otel-observability-platform.md context-kg/_meta/log.md context-kg/tasks/todo.md` 通过。
+
+## OTel 服务绑定标签与语言体系补充
+
+- [x] 设计 Pole 服务/实例保留标签，用于绑定请求 metrics、runtime metrics、Kubernetes CPU/Mem、trace 和 event
+- [x] 增加 `pole.io/runtime-language` 与 `pole.runtime.language`，用于 Console 选择 Java/Go/Rust/Node/Python/.NET 运行时面板
+- [x] 明确 Java/Go 使用 OTel 标准 runtime metrics 名称，不新增 `pole.*` runtime 指标名
+- [x] 更新 [[adr-otel-observability-platform]] 并补充验证记录
+
+当前判断：
+
+- 服务调用指标和系统资源指标的关联应依赖显式绑定标签，不应靠服务名或 metric name 猜测。
+- 语言体系只决定 Console 查询和展示哪些标准 runtime metrics；runtime 指标名称继续使用 JVM、Go 等 OTel 标准语义。
+- 绑定优先级为 `k8s.pod.uid + container.name`、`service.instance.id`、`workload`、`namespace/service`。
+
+Review：
+
+- 已在 [[adr-otel-observability-platform]] 增加服务绑定标签、运行时语言体系和 Java/Go runtime metrics 展示规则。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- context-kg/technical/adr/adr-otel-observability-platform.md context-kg/_meta/log.md context-kg/tasks/todo.md` 通过。
+
+## 可观测性 ADR 子目录与 pole-rust-client 职责设计
+
+- [x] 明确 `pole-rust-client` 在观测体系里的职责与非职责
+- [x] 创建 `context-kg/technical/adr/observability/` 子目录
+- [x] 移动 OTel 平台 ADR 到可观测性子目录
+- [x] 新增 Rust SDK 观测职责 ADR
+- [x] 更新 index/log/todo 并执行结构校验
+
+当前判断：
+
+- `pole-rust-client` 是业务侧观测入口之一，负责服务绑定属性、SDK 内部 metrics/events、治理决策关联和 tracing hooks。
+- `pole-rust-client` 不负责业务普通日志、不负责 Kubernetes CPU/Mem 采集、不替代业务框架标准 HTTP/gRPC instrumentation。
+- 治理 metrics 只做低基数聚合；具体规则、实例、trace 由 event/trace 通过 `pole.governance.decision.id` 关联。
+- 可观测性 ADR 后续统一放到 `context-kg/technical/adr/observability/`。
+
+Review：
+
+- 已创建 `context-kg/technical/adr/observability/`，并将 [[adr-otel-observability-platform]] 移入该目录。
+- 已新增 [[adr-pole-rust-client-observability]]，明确 Rust SDK 的 Resource attributes、SDK metrics/events、治理决策关联、trace hooks 和非职责。
+- `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg` 通过。
+- `git diff --check -- context-kg/technical/adr/observability/adr-otel-observability-platform.md context-kg/technical/adr/observability/adr-pole-rust-client-observability.md context-kg/_meta/index.md context-kg/_meta/log.md context-kg/tasks/todo.md` 通过。
+
+## 可观测性后端 GreptimeDB 优先选型调整
+
+- [x] 核对 GreptimeDB 与 OpenObserve 官方定位和 OTel 支持范围
+- [x] 将长期默认后端调整为 GreptimeDB
+- [x] 保留 OpenObserve 作为 quickstart / 可选 provider
+- [x] 更新 Collector、Kubernetes、Phase、验证要求和 Rust SDK 边界描述
+- [x] 更新 index/log/todo 并执行结构校验
+
+当前判断：
+
+- Pole Console 要自己做服务、实例、治理、配置、审计的领域化分析，因此长期默认后端更适合选择 observability database，而不是完整观测平台。
+- GreptimeDB 支持 metrics/logs/traces 统一 OTel 后端、SQL 和 PromQL，更适合作为 `observability-query` 的默认 provider。
+- OpenObserve 仍适合 quickstart 和内置 UI 辅助排查，但不作为长期默认后端。
+- OpenTelemetry Collector Contrib 的职责不变，仍负责 OTLP 接入、processor、过滤、补标签、批量、重试和路由。
+
+Review：
+
+- 已确认当前 ADR 正文中 GreptimeDB 是长期默认后端，OpenObserve 只作为 quickstart / 可选 provider；历史任务记录中的旧判断保留为历史记录。
+- 已更新平台 ADR、Rust SDK ADR、`context-kg/_meta/index.md` 与 `context-kg/_meta/log.md`。
+- 已执行 `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg`，通过 Markdown/frontmatter/link/index 基础检查。
+- 已执行 `git diff --check -- context-kg/technical/adr/observability/adr-otel-observability-platform.md context-kg/technical/adr/observability/adr-pole-rust-client-observability.md context-kg/_meta/index.md context-kg/_meta/log.md context-kg/tasks/todo.md`，未发现 whitespace error。
+
+## 认证管理页面整体布局优化
+
+- [x] 审计认证管理主体与策略页面的真实视觉、信息层级和共享页面范式
+- [x] 重构页面级标题、导航与内容区布局，移除零散内联间距
+- [x] 横向检查用户、用户组、角色、自定义策略和默认策略五个视图
+- [x] 运行前端静态校验、构建和真实页面视觉验收
+- [x] 补充 Review 与验证记录
+
+当前判断：
+
+- 认证管理目前直接以 Tabs 包裹带 `margin: 20` 的资源表格，缺少页面身份、功能分组说明和稳定内容边界；主体管理与策略管理也没有形成同一套页面级视觉结构。
+- 优化应复用现有 Fluent 与资源列表组件，不改变表格、抽屉和 API 行为，重点修正页面骨架、留白、导航层级和响应式表现。
+
+Review：
+
+- 主体管理与权限策略统一为 `ResourceHeader → Tabs → ResourceToolbar → Table` 四层结构；页头说明认证域目标，Tab 承载资源分类，内容区只保留一行上下文提示，避免重复标题和装饰标签。
+- 用户、用户组、角色、自定义策略和默认策略五个视图统一了列表标题、总数、搜索、刷新和新建操作；新建按钮明确具体资源类型，刷新使用标准方形按钮。
+- 页面工作区使用同一套边框、圆角、浅色 Tab 导航面和响应式横向滚动策略，原有表格、抽屉、权限判断和 API 行为未调整。
+- `npm run lint -- --quiet` 与 `npm run build:test` 通过；all-mode 重建日志出现 `finish starting server`，`8080` 与 `8090` 均返回 `200`。
+- 使用 `admin` 真实登录后逐一切换五个视图，列表与空状态均正常加载，浏览器控制台无 error；视觉截图位于 `output/playwright/auth-principals-layout.png` 和 `output/playwright/auth-policies-layout.png`。
+## 服务详情增加流量治理上下文
+
+- [x] 核对服务详情标签结构、治理工作台列表和各规则编辑器的服务模型
+- [x] 在服务订阅后新增“流量治理”标签并传入当前命名空间/服务
+- [x] 将治理工作台适配为服务上下文模式，只展示与当前服务关联的规则
+- [x] 增加“作为主调方 / 作为被调方”角色切换，默认主调方
+- [x] 新建规则时固定当前服务到选定角色，单端规则固定目标服务
+- [x] 补充静态回归校验、构建、重启和真实浏览器验收
+
+当前判断：
+
+- 服务详情中的治理能力应复用现有治理工作台，不能复制一套规则列表、抽屉和发布逻辑。
+- 角色切换只决定新建双端规则时当前服务绑定到 caller 还是 callee；规则清单仍展示当前服务作为任一端或目标服务的全部关联规则。
+- 路由、熔断、镜像、Mock、泳道等双端规则默认把当前服务固定为 caller，用户可在标签页顶部切换为 callee；鉴权、限流、主动探测、无损等按目标服务归属的规则固定当前服务为目标。
+
+修复：
+
+- 服务详情在“服务订阅”后新增“流量治理”Tab，懒加载并复用 `GovernanceWorkbench`；嵌入模式保留统一查询栏、规则表、详情抽屉、版本、发布和删除链路。
+- 工作台按路由/熔断的 caller-callee、流量治理规则的 caller/callee/target、泳道入口/目标和单端规则目标服务计算关联关系，只展示当前服务相关规则；服务上下文请求上限提高到 100，减少全局首页截断导致的漏项。
+- 顶部使用分段控件切换“作为主调方 / 作为被调方”，默认主调方；切换只影响后续新建规则的服务绑定，不改变关联规则清单。
+- 共享 `ServiceScopeSection` 新增固定端能力：固定端以无边框只读文本和“当前服务”标签展示，另一端保持可编辑。
+- 路由、熔断、镜像、Mock 和泳道按角色绑定当前服务；鉴权、限流、主动探测、无损按规则索引模型固定当前目标服务。未提交任何测试规则。
+
+验证：
+
+- `cd console/web && npm run lint && npm run build:test` 通过；全部 `scripts/verify-*.mjs` 通过，新增 `verify-service-governance-context.mjs` 固定入口、筛选、默认角色和编辑器透传契约。
+- all-mode release 重建后日志出现 `finish starting server`；`8080`、`8090` 和服务详情 URL 均返回 `200`。
+- 真实浏览器使用 `admin/admin123` 打开 `spec-governance/spec-checkout`：确认“流量治理”位于“服务订阅”后，默认主调；新建路由时主调端固定当前服务，切换被调后被调端固定当前服务，未绑定端仍为可编辑 Select。
+- 交互截图输出到 `output/playwright/service-governance-callee-binding.png`；`context-kg` lint 与 `git diff --check` 均通过。
+
+Review：
+
+- 新能力没有复制治理页面或后端接口，服务详情与全局治理工作台共享同一数据和操作链路。
+- caller/callee 角色仅在有双端语义的规则中生效；单端规则继续遵守当前后端资源归属模型，不伪造 caller 字段。
+
+## 可观测性 Console 查询接口与 Rust SDK 动态配置设计
+
+- [x] 核对现有 Console 监控路由与可观测性 ADR 边界
+- [x] 设计 `observability-query` API 分组、请求模型、响应模型和后端 provider 边界
+- [x] 设计 `pole-rust-client` 通过服务发现获取 OTLP 上报地址
+- [x] 设计 `pole-rust-client` 通过配置中心 remote 下发 SDK 观测配置
+- [x] 更新平台 ADR、Rust SDK ADR、index/log/todo 并执行结构校验
+
+当前判断：
+
+- Console 不应直接暴露 GreptimeDB/OpenObserve 查询语法；前端只调用 Pole 领域化查询接口。
+- `pole-rust-client` 应优先通过 Pole 服务发现获取 Collector/sidecar OTLP endpoint，减少用户配置。
+- SDK 观测开关、采样率、batch/export、治理事件开关等动态项适合通过配置中心下发，但必须保留本地静态配置和 OTel 标准环境变量作为兜底。
+
+Review：
+
+- 已在 [[adr-otel-observability-platform]] 增加 `/observability/v1` Console 查询接口设计，包括 overview、topology、metrics、runtime、events、traces、governance、platform、audit 和 correlate。
+- 已在 [[adr-pole-rust-client-observability]] 增加 OTLP endpoint 服务发现、`pole-otel-collector` 注册约定、配置中心 `pole-sdk/observability.yaml` remote config、配置优先级和热更新规则。
+- 已确认当前 Console 已有 `/metrics/v1` 历史监控路由，新 OTel 查询接口独立放在 `/observability/v1`，避免扩大旧接口职责。
+- 已执行 `python3 /Users/chuntao.liao/.codex/skills/context-kg-maintainer/scripts/context_kg_lint.py ./context-kg`，通过 Markdown/frontmatter/link/index 基础检查。
+- 已执行 `git diff --check -- context-kg/technical/adr/observability/adr-otel-observability-platform.md context-kg/technical/adr/observability/adr-pole-rust-client-observability.md context-kg/_meta/index.md context-kg/_meta/log.md context-kg/tasks/todo.md`，未发现 whitespace error。
+
+## 监控指标事件与操作页面 mock-first 设计
+
+- [x] 核对现有事件指标、操作审计页面结构和监控路由
+- [x] 设计并落地事件指标页面 mock-first 展示效果
+- [x] 设计并落地操作审计页面 mock-first 展示效果
+- [x] 增加静态验证，约束页面关键结构和 mock 降级能力
+- [x] 执行前端验证、构建检查、context-kg lint 和 diff 检查
+- [x] 新增系统监控页面，展示平台自身组件运行看板
+- [x] 新增服务监控页面，展示服务流量与治理效果看板
+- [x] 更新监控菜单顺序、静态校验和浏览器验证记录
+- [x] 将系统监控升级为 Grafana-like 看板，支持类别与接口筛选
+- [x] 将服务监控升级为 Grafana-like 看板，支持服务、接口与实例筛选
+
+当前判断：
+
+- “事件指标”和“操作审计”不应只是日志表格，应按观测页面设计：摘要、趋势、分布、筛选、列表、详情联动。
+- 当前后端数据可能为空或接口未准备完整，页面应允许通过 mock 数据先把体验效果勾勒出来，同时保留真实接口接入点。
+- 这两页属于管理控制台，不做营销式大图和装饰卡片，优先信息密度、时间线、可定位性和低噪声。
+
+Review：
+
+- 事件指标页已改为 mock-first 观测视图，包含事件摘要、风险事件数、影响服务数、最近事件时间、小时趋势、事件类型分布、筛选表格和事件详情抽屉；真实接口为空或失败时自动静默展示 Mock 预览。
+- 操作审计页已改为审计观测视图，包含操作总数、高风险操作、活跃操作者、涉及资源、小时趋势、资源类型分布、筛选表格和操作详情抽屉；真实接口为空或失败时自动静默展示 Mock 预览。
+- 同步修正前端查询链路：事件页 `resource` 与 `event_type` 参数不再传反；操作页补齐 `resource_type`、`operation_type`、`operator` 查询参数，并使用接口契约中的 `detail` 字段展示操作详情。
+- 已新增 `npm run test:metrics-observability` 静态校验，约束两页保留 mock fallback、远程接口调用、详情抽屉和关键字段映射。
+- 已通过 `npm run test:metrics-observability`、`npm run lint`、`npm run build:test`、context-kg lint 和相关文件 `git diff --check`。
+- 已通过 Playwright 在 `http://127.0.0.1:5174/metrics/event`、`http://127.0.0.1:5174/metrics/operation` 验证页面非空、Mock 预览可见、筛选区不挤压、摘要时间不截断；截图保存在 `output/playwright/metrics-event.png` 与 `output/playwright/metrics-operation.png`。
+- 监控菜单已扩展为 `系统监控 / 服务监控 / 事件指标 / 操作审计`。系统监控展示平台自身组件资源、请求、写入链路、平台信号和组件明细；服务监控展示服务请求、治理命中、拦截/降级、治理分布和限流、路由、熔断、探测、鉴权、Mock、镜像明细。
+- 已通过 Playwright 在 `http://127.0.0.1:5174/metrics/system`、`http://127.0.0.1:5174/metrics/service` 验证新增页面非空、菜单顺序正确、Mock 预览可见、筛选区和表格可读；截图保存在 `output/playwright/metrics-system.png` 与 `output/playwright/metrics-service.png`。
+- 系统监控已升级为 Grafana-like dashboard：顶部变量筛选支持 `类别 / 接口 / 组件或 Pod`，下方展示 stat panels、接口延迟趋势、延迟热力图、组件资源和接口明细，筛选会驱动所有 mock 面板。
+- 服务监控已升级为 Grafana-like dashboard：顶部变量筛选支持 `服务信息 / 接口 / 实例 / 治理能力`，下方展示请求量、治理命中、拦截/降级、P95/P99、服务流量趋势、治理分布、实例延迟和治理信号明细，筛选会驱动所有 mock 面板。
+
+## 服务治理监控下钻预览
+
+- [x] 梳理现有服务监控看板、路由和 mock 数据结构
+- [x] 将服务监控首页调整为服务级整体概览
+- [x] 新增独立服务详情页，支持从服务总览下钻
+- [x] 详情页按参考图设计为左侧接口列表、右侧接口概览与治理 Tab
+- [x] 运行静态验证、lint、构建和浏览器截图验证
+- [x] 补充 Review 与截图路径
+
+当前判断：
+
+- 服务监控入口应先回答“哪些服务值得关注”，不要一开始就把治理信号按规则铺开；规则、接口和实例应放在服务详情页下钻。
+- 详情页适合参考用户截图中的工作台结构：左侧资源/接口列表，右侧按 Tab 展示接口概览、节点/实例、调用流量、路由、限流、熔断、探测、鉴权、Mock、镜像和事件时间线。
+- mock 预览必须保留服务、接口、实例、语言体系和治理能力标签，后续真实查询接口可按同一组 OTel resource labels 关联调用指标、系统指标和治理事件。
+
+Review：
+
+- 服务监控首页已从治理信号明细看板调整为服务级整体概览，保留 `服务信息 / 接口 / 实例 / 治理能力` 筛选，并按服务聚合请求量、治理命中、拦截/降级、P95/P99、CPU/MEM、语言体系和治理能力标签。
+- 新增隐藏路由 `/metrics/service/detail?namespace=...&service=...`，从服务总览行点击进入独立详情页；详情页采用左侧接口目录、服务端/客户端调用方向切换、右侧 Tab 下钻结构，不再区分 RPC / Web 服务类型。
+- 服务详情页已覆盖 `接口概览 / 实例详情 / 调用流量 / 路由 / 限流 / 熔断 / 探测 / 鉴权 / Mock / 镜像 / 事件时间线`；实例详情只展示实例维度调用概览、系统资源与延迟表，不展示 JVM、Go runtime、Rust runtime 等语言运行时指标。
+- 已新增共享 mock 数据文件，统一服务、接口、实例、语言和治理能力数据，避免首页与详情页指标不一致。
+- 已通过 `npm run test:metrics-observability`、`npm run lint`、`npm run build:test`、`git diff --check` 和 `context-kg` lint。
+- 已通过 Playwright 在本地 Vite mock 服务 `http://127.0.0.1:5174/metrics/service` 验证服务级总览，并从 `default/checkout` 行点击下钻到详情页；截图保存在 `output/playwright/metrics-service-overview-drilldown.png` 与 `output/playwright/metrics-service-detail-drilldown.png`。
+- 根据最新反馈，服务详情页已移除 `WEB服务 / RPC服务` 协议类型切换，接口元信息不再根据协议分支渲染；静态验证新增禁止 RPC/Web 服务类型拆分的约束。
+- 根据最新反馈，`实例详情` 已移除语言运行时指标卡片，改为 `实例调用概览` 趋势与 `实例延迟与资源` 表格；静态验证新增禁止 JVM、GC、goroutine、Tokio 等运行时指标回归的约束。Playwright 已切换到 `实例详情` Tab 刷新截图 `output/playwright/metrics-service-detail-drilldown.png`。
+- 根据最新反馈，服务监控首页已移除服务级总览表格前的 `服务流量趋势 / 治理分布` 面板，摘要指标后直接展示服务级表格；静态验证新增禁止首页图表面板回归的约束。
+- 根据最新反馈，服务监控首页筛选区已从页头下方移动到数字总览和服务级表格之间；静态验证新增 `statGrid -> variableBar -> 服务级总览` 顺序约束。
+- 根据最新反馈，服务监控首页已移除 `接口 / 实例` 筛选，只保留 `服务信息 / 治理能力`；接口和实例筛选归属服务详情下钻页。
+- 浏览器控制台仍保留登录后命名空间页触发的既有 Fluent Tooltip ref warning，本轮服务监控预览路径未新增阻塞性运行错误。
+
+## 系统命名空间删除保护与前端标识
+
+- [x] 核对 `default`、`pole-system` 常量与命名空间删除调用链
+- [x] 后端拒绝删除两个系统自带命名空间并补充测试
+- [x] 前端禁用两个系统命名空间的删除操作
+- [x] 在命名空间列表明确标记 `pole-system` 为 Pole 内部系统空间
+- [x] 更新命名空间知识页并完成后端、前端和真实页面验证
+
+当前判断：
+
+- `default` 与 `pole-system` 都属于系统自带命名空间，不可删除约束必须由后端兜底，前端禁用只负责提前表达限制。
+- `pole-system` 还承载 Pole 内部系统资源，列表需要提供稳定、明确的系统空间标识；`default` 只需表达默认命名空间属性，不能与内部系统空间混为一类。
+
+Review：
+
+- 后端在创建删除事务前统一拒绝 `default` 与 `pole-system`，批量删除复用同一保护逻辑；命名空间列表同时返回 `deleteable=false`。
+- 前端为 `default` 标记“默认空间”、为 `pole-system` 标记“内部系统空间”，并同时在按钮状态与删除分发入口阻断两个内置空间。
+- 已通过 `go test ./pkg/namespace`、`go test ./...`、前端静态校验、`npm run lint -- --quiet`、`npm run build:test` 和 context-kg lint。
+- all 模式重建后，`8080`、`8090` 均返回 HTTP 200；真实接口删除两个系统空间均返回 HTTP 400 / `400103`，且数据仍存在。
+- Playwright 实页验证两个标签和禁用态均正确，普通命名空间删除按钮不受影响，浏览器控制台无错误。
+
+## TDesign 依赖移除可行性审计
+
+- [x] 定位“页面配置”抽屉及内部控件的真实实现
+- [x] 审计生产源码、样式、依赖声明和校验脚本中的 TDesign 残留
+- [x] 判断当前是否满足移除 `tdesign-react` 的条件
+
+Review：
+
+- 抽屉外壳已经使用 Fluent UI `OverlayDrawer`，主题卡片与色点为自绘 DOM；彩虹颜色选择器的 `Popup`、`ColorPickerPanel` 仍直接来自 TDesign。
+- `components/Fluent/index.tsx` 仍以兼容层方式使用 TDesign Form、全量样式、十余个组件及大量类型，业务页面尚未完成纯 Fluent 化。
+- 生产样式仍存在较多 `.t-*` 选择器与 `--td-*` 主题变量；现阶段移除 `tdesign-react` 会导致构建失败和页面交互、样式损坏，因此本次审计没有卸载依赖。
+
+## Console 全量迁移 Fluent UI 并移除 TDesign
+
+- [x] 建立生产源码、依赖和样式层面的零 TDesign 校验
+- [x] 迁移 Form/FormItem 及其现有实例、校验和类型契约
+- [x] 迁移 Popup、Tree、Transfer、Steps、日期时间等复杂控件
+- [x] 将页面配置面板改为 Fluent UI 控件并保持当前视觉布局
+- [x] 清理 `tdesign-react`、`tdesign-icons-react`、全量样式和锁文件
+- [x] 完成 lint、构建、真实页面交互和视觉回归验证
+
+视觉基准：保持当前 Console 的信息密度、间距、色彩和布局不变，只替换底层控件实现。
+
+内容基准：导航、表格、表单、抽屉、详情页的信息结构和文案完全沿用现状。
+
+交互基准：保留现有打开/关闭、校验、选择、分页与主题切换行为，不增加新的动画或视觉重设计。
+
+Review：
+
+- `components/Fluent` 已由本地 Form 与复杂控件适配实现接管，生产源码、样式和依赖树均无 TDesign；分页及原先自绘按钮也已改用 Fluent 控件。
+- `test:no-tdesign` 固化依赖、锁文件、import、CSS 类名、主题变量与原生交互标签六类门禁，`npm ls tdesign-react tdesign-icons-react --all` 返回空树。
+- 页面配置抽屉与迁移前截图保持 538px 表面、主题卡片和色点布局；认证策略列表、命名空间表单、策略多步表单、Tree/Transfer、主题切换均完成真实浏览器操作，控制台无错误。
+- `npm run lint -- --quiet`、`npm run build:test` 通过；all 模式 release 重建日志出现 `finish starting server`，8080/8090 运行入口可用。
+
+## 页面配置面板切换为 Fluent UI 默认外观
+
+- [x] 核对旧预览卡、色点与抽屉尺寸的自定义样式来源
+- [x] 使用 Fluent `Field`、`RadioGroup`、`Radio` 重做主题模式选择
+- [x] 使用 Fluent `SwatchPicker`、`ColorSwatch` 重做主题色选择
+- [x] 移除旧卡片/色点强制尺寸，并恢复 Fluent Drawer 默认尺寸
+- [x] 完成零 TDesign、lint、构建及明暗主题真实页面验证
+
+视觉基准：采用 Fluent UI v9 默认设置表单外观，不再保持旧 TDesign 风格的三张主题预览卡和描边色点。
+
+交互基准：继续即时切换明亮、黑暗、跟随系统和主题色；自定义颜色入口继续可用。
+
+Review：
+
+- 页面配置使用 Fluent `Field + RadioGroup + Radio`、`Field + SwatchPicker + ColorSwatch` 和原生 `Popover + Button`；旧主题图片卡片、彩虹色点和强制尺寸样式已移除，Drawer 使用官方 `medium` 尺寸。
+- “跟随系统”在亮暗系统主题下均可进入选中态，刷新后保持，并监听 `prefers-color-scheme` 变化即时同步；HEX 比较统一小写，取色器返回大写预设值时仍能正确选中对应色板。
+- `npm run lint`、`npm run test:no-tdesign`、`npm run build:test` 通过；release all 模式重建出现 `finish starting server`，8080/8090 均返回 HTTP 200。
+- Playwright 验证亮色、暗色、跟随系统、预设色和自定义取色；页面可访问树为标准 radio/radiogroup，DOM 类名和资源请求中均无 TDesign。
+
+## Pebble 本地 protobuf value cache 设计
+
+- [x] 将配置文件和服务契约本地 value cache 从 bbolt 切换为 Pebble
+- [x] 将 OTel 操作审计和服务事件本地可靠队列从 bbolt 切换为 Pebble
+- [x] 明确 Pebble 适用场景：实例列表、配置、服务契约和治理规则发布快照
+- [x] 明确默认内存、开关启用后才按“内存索引 + Pebble value”卸载大数据
+- [x] 明确启用 Pebble 后客户端数据读取性能不能低于当前路径
+- [x] 明确心跳状态继续留在内存热路径
+- [x] 新增长期 ADR 并同步缓存层页面、index 和 log
+- [x] 实现共享 Pebble 封装并接入配置文件、服务契约、OTel event/audit queue
+- [x] 移除测试套件中遗留的 boltdb store 默认配置、`bolt-data.yaml` fixture 和 bbolt 依赖残留
+- [ ] 后续实现完整 `ValueCache` 开关抽象，并分阶段接入服务发现和治理下发
+- [ ] 后续补齐服务发现、配置发现、服务契约和治理下发性能基准
+
+Review：
+
+- Pebble 的定位是本地可重建 value cache，存 protobuf marshal 后的 bytes，不替代 MySQL、注册内存态或治理 cache 的事实来源。
+- 实例列表 key 必须携带 revision 与过滤/权限可见性 hash，避免不同调用者可见实例误命中。
+- 开关关闭时必须完全保持当前内存路径；开关开启后才把面向客户端的大 value 卸载到 Pebble，且没有通过性能基准的领域不能纳入卸载范围。
+- 配置文件和服务契约已先切到 Pebble：内存继续保留轻量索引，本地 value 从 `config_file.pebble` / `service_contract.pebble` 读取。
+- OTel 操作审计和服务事件本地队列已切到 Pebble：写入 `otel-events.pebble`，按 `otel-queue/{history|discover_event}/` 前缀隔离，Collector 成功确认后删除。
+- 测试默认 fixture 已不再指向 `boltdbStore`，`test/suit` 不再注入 `bolt-data.yaml` 或清理 `polaris.bolt`。
+- 治理规则发布快照和服务发现响应后续再接入；实例心跳继续只保留在内存，最多做低频快照，不进入同步写磁盘链路。
+
+## Pebble 切换完整验证
+
+- [x] 运行 control-plane 后端全量 Go 测试
+- [ ] 运行 console 前端 lint、构建和现有校验脚本
+- [ ] 运行 control-plane all-mode 真实启动和关键 HTTP 接口 smoke
+- [ ] 运行 pole-client-rust 客户端测试
+- [ ] 汇总验证结论和剩余风险
+
+Review：
+
+- `go test -count=1 ./...` 已通过；补齐 Pebble/Gin 相关 checksum 后未发现后端断言失败。
+- 当前代码/配置和 Go 模块图均无 bbolt/boltdb 运行残留。
+
+## 服务调用鉴权：托管服务身份与自定义 Header 双模式
+
+- [x] 核对现有调用鉴权规则、自定义 Header 匹配和客户端下发链路
+- [x] 明确服务身份标识、身份凭证、control-plane 与数据面的职责边界
+- [x] 形成默认托管身份与可选自定义 Header 模式的长期 ADR
+- [x] 同步 index、log 与 lessons，并运行 context-kg lint / diff check
+- [x] 核对客户端如何绑定自身服务身份，以及是否复用 Discover 流
+- [x] 明确身份句柄、workload credential 与 trust bundle 的下发协议
+- [x] 将身份领取/续期边界补充到 ADR 并完成校验
+- [x] specification 增加认证模式、托管 caller selector 与 `SERVICE_IDENTITY` Discover 契约
+- [x] control-plane 增加隐藏服务身份生命周期与严格 token 认证的身份发现
+- [x] Rust SDK 补齐 Discover token metadata、身份订阅和内部 descriptor 缓存
+- [x] Console 新建规则默认托管身份，自定义 Header 降为兼容模式
+- [x] 完成跨仓定向测试、构建、context-kg lint 与代码审查
+- [x] 实现 SERVICE_TOKEN binding 的 WorkloadCredential Issue/Renew 与被调方入站验证
+
+第二阶段（已完成）：
+
+- [x] 固化短期凭证 claims、签名算法、key rotation 与 trust bundle 契约
+- [x] specification 增加 WorkloadCredential Issue/Renew RPC 和验证材料 Discover
+- [x] control-plane 实现签发密钥生命周期、service token/workload 绑定校验与短期凭证签发
+- [x] Rust SDK 实现凭证领取/续期、HTTP/gRPC 出站注入和入站离线验证
+- [x] 将验证结果写入可信 `AuthenticatedCaller`，按 `managed_caller` 执行授权
+- [x] 增加过期、篡改、跨服务冒用、轮换窗口和 control-plane 暂时不可用时的本地凭证保持语义
+- [x] 更新 ADR、context-kg log，完成跨仓构建和代码审查
+
+当前判断：
+
+- 调用鉴权解决服务间信任，不复用 Console 用户 Token 或资源授权策略作为服务身份。
+- 默认模式应由 control-plane 为每个服务管理稳定、不可由用户查看或修改的服务身份，并向合法 workload 下发可证明该身份的短期凭证；仅下发一个可复制的身份字符串不足以完成认证。
+- 现有“匹配请求 Header 的自定义 value”保留为显式可选的兼容模式，不作为默认安全模型。
+
+Review：
+
+- 当前 `TrafficSecurityRule` 只有 API、通用流量匹配和 `ALLOW/DENY`，Console 默认条件确实是 `HEADER / authorization / EXACT / value`；这属于兼容型请求字段匹配，不是托管身份认证。
+- 当前 `Service.token` 出现在公开 Service 契约中，并支持查询和刷新，不能直接当作不可见、不可修改的服务身份；最多在迁移期作为受限 bootstrap credential。
+- 当前 Rust client 在调用方出站链路执行 policy，调用方可以绕过；可信模式必须把凭证验证和最终拒绝放到被调方入站 SDK/sidecar。
+- ADR 已将 `ServiceIdentity` 与 `WorkloadCredential` 分离，明确调用方只领取自己的短期凭证，被调方只接收 trust bundle 和策略，control-plane 不进入业务调用热路径。
+- 已通过 context-kg lint（35 个 Markdown 页面）与相关文件 `git diff --check`；本轮只沉淀架构决策，没有修改运行代码。
+
+身份领取补充判断：
+
+- `Service.token` 专用于 SDK → control-plane 认证，`ServiceIdentity` 专用于服务 → 服务的数据面主体；token 校验通过后，control-plane 才能确认 SDK 有权领取哪个服务的身份描述。
+- `SERVICE_IDENTITY` 可以作为新的 Discover type，下发稳定、非秘密且用户不可见/不可改的 identity descriptor，并按服务 revision 缓存。
+- 实例级 workload credential 仍使用独立 Issue/Renew RPC 定向返回，不进入 Discover 普通缓存；Discover 还可下发公共 trust bundle/issuer key。
+- 身份 Discover 必须由 gRPC metadata 中的 service token 严格认证，服务端从认证 principal 推导 identity；当前 Rust 长连接尚未稳定携带 token metadata，需要先补齐，并禁止 identity type 走 anonymous/clientStrict 兼容路径。
+
+实施范围：
+
+- 当前先交付 `service token -> SERVICE_IDENTITY Discover -> SDK 内部 descriptor` 以及 Console/spec 模式闭环，证明服务身份能稳定创建、严格领取和被策略引用。
+- `WorkloadCredential` 的签发、轮换与被调方入站验签是下一阶段安全闭环；在它完成前，不能宣称托管身份已经能阻止绕过 SDK 的恶意调用方。
+
+实施 Review（2026-07-20）：
+
+- `ServiceIdentity` 使用独立表与 subject/revision，新建真实服务事务内创建，历史真实服务在严格 metadata token 认证后原子补齐；alias 不拥有独立身份，管理 Service 列表继续使用不含 token 的窄投影。
+- `SERVICE_IDENTITY` 禁止请求体 token 覆盖，并从 token 对应服务推导 descriptor；namespace/service 仅做一致性校验，重复 token、空 token 和声明不一致均 fail-closed。
+- Rust 配置显式命名为 `serviceIdentityDiscovery.controlPlaneToken`，避免 token 与 descriptor 混淆；descriptor 只存在 Engine 内部，成功后停止两秒轮询，不进入普通/failover cache。
+- Custom Header value 在管理写入时立即转换为 SHA-256 摘要并清空明文；mode、子配置和 managed caller selector 在服务端做一致性校验。
+- Rust 仅使用不含 plaintext 的 Custom Header 摘要做精确比较；托管身份在 `AuthenticatedCaller` 尚未落地时 fail-closed，不会因 matcher 缺失而误放行。
+- Console 实时 Spec 已按 mode 生成 managed caller/custom header 结构，value 固定显示 `<redacted>`；第二阶段完成后页面改为提示业务显式挂载 SDK 出站注入与入站验签适配器。
+
+第二阶段实施 Review（2026-07-20）：
+
+- specification 新增 Ed25519 JWT 的 Issue/Renew、binding type、错误码与 `SERVICE_IDENTITY_BUNDLE=31`，请求体不允许选择服务主体，request ID 只用于关联。
+- control-plane 仅使用 metadata service token 推导签发主体；私钥通过只读文件引用加载，要求唯一 ACTIVE key，并用 VERIFY_ONLY key 支撑滚动轮换。Trust Bundle 只包含公开验证材料、issuer、有效期和单调 sequence，不进入普通发现缓存。
+- Rust Engine 在内存中维护 descriptor、trust bundle 和短期凭证，按 renew-after 续期；identity revision 变化立即重新 Issue，续期失败时未过期凭证仍可用于数据面。
+- descriptor 与 trust bundle 保持周期刷新；同 sequence/version 的 bundle 只有在 issuer、trust domain、key 和吊销集合一致时才允许续租有效期，防止有效期刷新被用来替换安全材料。
+- Rust SDK 与 control-plane 支持按部署需要选择 `grpc` 或 `grpcs`；生产环境推荐 TLS，但托管身份不以 TLS 为强制前置条件。
+- SDK 暴露 HTTP Header 注入、tonic client interceptor、HTTP/tonic 入站验证器，但由于 SDK 不拥有业务网络栈，业务必须显式挂载这些适配器，不能描述为自动拦截全部业务调用。
+- 入站只在 Ed25519 签名、issuer、audience、时间窗、kid、bundle sequence 和吊销条件全部通过后创建 `AuthenticatedCaller`；托管 caller 策略不读取普通 caller/header/metadata 自报值。
+- V1 是 `SERVICE_TOKEN` 服务级 bearer credential，不能证明具体 Pod/实例，且被窃取后在有效期内有重放风险；TLS、短 TTL、audience 与吊销是当前缓解，PoP/mTLS 留待后续。
+- 已通过 specification Rust 测试、control-plane `go test ./...`、Rust `cargo test --workspace` 与格式检查；未在本轮引入凭证明文日志、持久化或公共读取接口。
+
+TLS 按需调整（2026-07-20）：
+
+- [x] 移除 Rust 托管身份对 `grpcs` 的强制校验，保留 `grpc` 与 `grpcs` 两种 endpoint。
+- [x] 移除 control-plane 身份 Discover、Issue/Renew 对非 TLS transport 的强制拒绝。
+- [x] 更新安全边界说明：TLS 为生产推荐的可选传输保护，不是启用托管身份的前置条件。
+- [x] 更新测试、ADR、log、lessons，并完成定向与全量验证。
+
+TLS 按需调整 Review（2026-07-20）：
+
+- 需求复核确认代码与 ADR 均未残留强制 `grpcs`/TLS 条件，`grpc` 与 `grpcs` 分别映射到明文和 TLS endpoint，身份认证逻辑不再按 transport 分叉。
+- 当前 `grpcs` 使用 WebPKI 根证书；历史 `ssl` 配置虽存在但旧连接器从未消费且始终使用 `http://`。私有 CA/mTLS 配置应作为独立增强恢复，不能宣称本轮已经支持。
+- 当前单元测试覆盖协议映射、metadata 和 handler 行为，但尚缺真实 `grpc`/`grpcs` 握手、证书信任与 metadata 传递的双链路集成测试，后续补充时应使用本地 CA 与真实 gRPC server。
+
+## Console Agent 资源变更工作台需求调研（2026-07-20）
+
+- [x] 核对 Console 前端入口、现有资源编辑器和创建/发布交互
+- [x] 核对后端资源写入、草稿/发布语义、鉴权与审计能力
+- [x] 比较至少三种 Agent 编排模块接口与 seam 放置方案
+- [x] 明确临时视图、确认、创建为草稿、等待发布的状态机与失败语义
+- [x] 形成分期方案、风险与验收标准，并归档长期 ADR
+- [x] 同步 context-kg index/log，运行知识库 lint 与 diff 检查
+
+Review：
+
+- 现有“保存后待发布”仅对配置文件与治理规则成立；命名空间、服务、实例、鉴权、MCP 和 A2A 都是直接生效 CRUD，首期只开放查询。
+- 推荐采用 Console 后端 `AgentWorkbench` 深模块，外部保持会话、确认和放弃的小 interface，内部用 ConfigFile/Governance 强类型 adapter 隐藏资源差异。
+- 模型只能查询和生成结构化 proposal，不能持有资源写工具；确认时重新鉴权、重读 baseline、校验 preview hash 和幂等键，只保存编辑态资源。
+- Agent 页面临时视图展示 semantic diff、影响范围、风险和待发布语义；确认成功后返回现有详情/发布页深链，页面本身不提供发布按钮。
+- 长期方案已归档到 `technical/adr/adr-console-agent-resource-workbench.md`，并同步 `ai-features`、index 和 log。
+- `context_kg_lint.py ./context-kg` 通过：36 个 Markdown 页面、页面名唯一、frontmatter、链接和 index 基础检查全部通过；`git diff --check -- context-kg` 通过。
+
+## Console Agent 工作台 Phase 0 纵向闭环（2026-07-21）
+
+- [x] 固化可运行范围：配置文件单资源提案、临时 diff、确认保存草稿、禁止发布
+- [x] 实现 Console 后端内存 proposal 状态机和 pole-server 配置文件 adapter
+- [x] 实现 `/ai/agent` 页面、提案预览与确认交互
+- [x] 增加后端状态机/路由测试、前端交互契约测试与真实 smoke 脚本
+- [x] 完成 lint、前端构建、定向 Go/race 测试及真实 server + Console 页面/API 验证
+- [x] 范围化代码审查并记录 Review
+
+Review：
+
+- Phase 0 严格限定为已有配置文件 update；结构化输入是有意的确定性切片，不宣称已接入自然语言模型、create 或治理规则。
+- 提案预览不会写草稿；确认前重读并校验 baseline hash，确认时校验 preview hash 与幂等键；成功后只调用配置 PUT 并返回 `waiting_for_publish`。
+- 真实 smoke 证明预览前后草稿与 active release 都不变，确认后草稿变化而 active release 保持原值，重复确认返回同一 receipt；浏览器完成登录、生成临时视图、diff、确认、待发布提示和配置分组深链。
+- Go 状态机、HTTP adapter、handler/router 测试和 race 通过；前端契约检查、定向 ESLint、test/release 构建通过。
+- 当前工作区已有的 `go-control-plane v0.14.0` 升级与 xDS cache 源码不兼容，导致根二进制全量重建失败；本轮使用旧 pole-server 进程加当前 Console 模块完成真实验证，未修改或回退该用户变更。
+- pole-server 配置 API 尚无原子 CAS，确认前重读只能缩小而不能消除 TOCTOU；已在页面警告和 ADR 中明确，后续需要 revision/CAS 契约。
+- Standards/Spec 双轴审查发现的提案无界驻留、下游故障误报、成功后过期/容量淘汰破坏幂等、确认缺少 version、空批量响应、Request ID 未展示和 smoke 假断言均已修复；复验无遗留阻塞项。
+
+## Console 治理鉴权交互完整收尾（2026-07-20）
+
+- [x] 明确已有自定义 Header 凭证为 write-only，进入编辑态后提示必须重新输入才能轮换，避免空输入框被误解为数据丢失。
+- [x] 保证托管身份与自定义 Header 切换时不会复用、预览或回显旧 secret，同时保留合理的 Header 名编辑上下文。
+- [x] 补齐专项静态回归断言，覆盖默认托管身份、模式切换、轮换提示、保存校验和实时 Spec 脱敏。
+- [x] 通过 Console lint、测试构建和真实浏览器完成“创建、模式切换、保存、详情回显、再次编辑”验收。
+- [x] 完成范围化代码审查，并在本节记录 Review、证据和剩余边界。
+
+Review（待代码审查结论补齐）：
+
+- Custom Header 明文已从持久化规则 state 中拆出为一次性 draft；加载、关闭、撤销、模式切换和成功保存都会清空，服务端返回的 `value_sha256` 也会在进入 Console state 前丢弃。
+- 提交载荷由独立纯函数按模式重建：托管模式只发送 `managed_identity`，兼容模式只发送 Header 名和本次新值，不会把详情响应中的摘要或历史值扩散回写请求。
+- all 模式使用最新 release 静态资源启动成功，8080/8090 均返回 HTTP 200；浏览器实测创建托管规则、切换模式、首次保存、自定义值轮换、详情掩码、再次编辑空值校验和撤销清理均符合预期。
+- 真实 PUT 请求只包含本次 `value` 且不含 `value_sha256`；保存后的详情只返回空明文与摘要，页面只显示 `••••••••`，再次编辑为空并提示“重新输入新值以轮换”。
+- 右侧实时 Spec 已接入 YAML/JSON 切换：只读已存凭证显示 `<redacted>`，编辑态空 draft 显示 `<required>`，输入新值后只切换为 `<redacted>`，不会渲染明文；历史 legacy 规则保持 `LEGACY_REQUEST_MATCH`，普通编辑保存不会被误迁移。
+- 临时规则 `codex-auth-closeout-0720` 已通过 Console 删除，筛选结果为 0；浏览器控制台无 error/warning。截图：`output/playwright/console-auth-custom-header-rotation.png`。
+- 已通过 `npm run test:traffic-security`、`npm run lint` 与 `npm run build:test`。
+- Standards 与 Spec 两轴审查发现的模式契约、实时 Spec 接线、只读凭证语义和深色对比问题均已修复，最终复核无遗留阻塞项。
+## Console 表格统一规范审计（2026-07-20）
+
+- [x] 盘点 Console 全部生产表格及共享表格封装入口。
+- [x] 检查首列与尾列固定、表格内部横向滚动和容器宽度自适应。
+- [x] 检查长内容省略以及悬浮展示完整内容。
+- [ ] 使用真实页面与不同视口抽样验证高频表格：本轮 in-app Browser 初始化失败，未改用未经用户许可的 Playwright。
+- [x] 汇总不符合项、共享修复入口与验收建议。
+
+Review：
+
+- `console/web/src` 共 39 个 `<Table>` 实例、分布在 36 个文件，全部经 `components/Fluent` 共享封装；仅 6 个显式同时固定首尾列、4 个只固定一侧，其余 29 个均未固定。
+- 共享滚动容器已有 `overflow: auto`，但 fixed layout 会把数字宽度按总权重换算为百分比，表格 `min-width` 又固定为 100%，因此大多数窄容器会压缩列而不是产生可靠的内部横向滚动；声明的 `column.minWidth` 当前完全未应用。
+- 字符串和数字会进入单行省略容器，但悬浮全文只覆盖 `ellipsis=true` 且最终内容为原始字符串的情况；大量返回 ReactNode 的自定义 cell 会被截断，却没有完整内容提示。
+- 当前只有 A2A 页面通过局部 `table min-width: 1544px` 可靠形成横向滚动，说明页面侧补丁无法替代共享默认规范。
+- 统一修复应落在 Fluent Table：默认固定首尾可见列，保留数字宽度并应用 `minWidth`，按列计算 table 最小宽度，在真实溢出时使用统一 OverflowTooltip；复杂 cell 提供 `tooltipText` resolver，并允许编辑型小表显式退出。
+- 额外发现：PolicyTable 将渲染函数误写入 `ellipsis` 且列键拼成 `commnet`；NearbyRoute 的主调、被调两列都错误渲染 `priority`。这两项属于确定性页面缺陷，应独立修复。
+
+## Console Agent 页面不可访问恢复（2026-07-21）
+
+- [x] 用 8080/8090 curl 与端口监听复现连接拒绝。
+- [x] 确认临时工具会话退出且没有 tmux 接管。
+- [x] 用独立 tmux 启动 pole-server 与当前 Console 二进制。
+- [x] 验证首页、Agent 深链、静态资源和真实 smoke。
+- [x] 沉淀持久后台启动 lesson。
+
+Review：
+
+- 根因不是 Agent 路由或页面代码，而是上一轮进程绑定在临时工具会话，回合结束后被回收。
+- 当前 `pole-agent-backend` 与 `pole-agent-console` 两个 tmux 会话分别守护 8090 和 8080；日志位于 `/tmp/pole-agent-backend.log` 与 `/tmp/pole-agent-console.log`。
+- `/`、`/ai/agent`、8090 健康检查以及入口 JS/CSS 均返回 200；`npm run smoke:agent-workbench` 通过，草稿确认后保持 waiting-for-publish 且活动发布版本未变化。
+
+## Console 对话式 Agent 工作台重做（2026-07-21）
+
+- [x] 核对当前 Agent、MCP、提案 API 与一级导航接缝。
+- [x] 将 Agent 从“AI 工具”子菜单迁移为独立一级入口。
+- [x] 以聊天时间线替换配置表单，展示资源操作与工具调用轨迹。
+- [x] 在对话中接入临时视图、用户确认、保存草稿和待发布回执。
+- [x] 补齐前端契约测试、API smoke 和 8080 真实页面验收。
+- [x] 修订 Agent ADR、AI 功能模块页、知识库索引和变更日志。
+
+设计基线：
+
+- 视觉主张：独立的运维对话工作区，主画布是聊天时间线，右侧只在需要时展示资源变更与发布状态。
+- 内容结构：会话列表 → 对话与 MCP 调用轨迹 → 临时视图/diff → 用户确认 → 待发布回执。
+- 交互主张：工具调用在消息流中逐步展开；预览结果进入右侧检查器；确认后状态平滑切到“已创建草稿，等待发布”。
+
+Review：
+
+- 本轮纠正的核心不是视觉改版，而是产品模型修正：Agent 不能是资源表单，也不属于 AI 资源管理菜单。
+- `/agent` 已成为一级单入口；侧栏“AI 工具”只保留 A2A Agent 与 MCP 服务。
+- 首屏是 Pole Agent 对话时间线；发送配置变更消息后依次展示资源查询工具轨迹、右侧临时 diff、确认门禁、草稿修改工具轨迹与待发布回执。
+- 真实浏览器使用 `default/codex-agent-0720181130/app.yaml` 跑通预览与确认，Request ID 正常回显；测试夹具已删除。
+- `npm run test:agent-workbench`、`npm run lint`、`npm run build:test`、`npm run build` 与 `npm run smoke:agent-workbench` 均通过；8080 `/agent` 和 8090 返回 200。
+- 当前仍是确定性 planner + 强类型 HTTP tool port。页面表达已经对齐目标产品，但真正让模型通过 MCP client transport 调用 Pole 工具仍属于 Phase 1，不能把本轮结果描述成完整通用 Agent runtime。
+
+## Console 普通视图与 Agent 视图双模式（2026-07-21）
+
+- [x] 定义两种工作模式的路由、导航和上下文交接契约。
+- [x] 建立“普通控制台 / Agent”双向工作区切换。
+- [x] Agent 模式隐藏普通资源导航，并可返回最近访问的普通页面。
+- [x] 配置文件详情增加“交给 Agent”，携带资源自然键和返回地址。
+- [x] Agent 接收资源上下文并生成可继续输入的对话起点。
+- [x] 用真实页面验证普通 → Agent → 普通的完整往返。
+- [x] 更新 ADR、日志、lesson 和 Review。
+
+设计基线：
+
+- 视觉主张：模式切换像固定工作区入口而不是资源菜单，保持暖白表面、细分隔线和单一蓝色强调。
+- 内容结构：全局模式 → 当前环境/资源上下文 → 普通资源操作或 Agent 对话 → 返回检查与发布。
+- 交互主张：默认侧边布局在固定底部位置双向切换；进入 Agent 时普通资源导航退出；资源上下文在 Agent 会话首屏明确接入。
+
+Review：
+
+- 两种视图共享同一登录态、权限、API 和发布链路，不复制资源实现。
+- 默认侧边布局在 Menu footer 固定工作区入口，普通和 Agent 模式对称切换；顶部布局没有侧栏，因此保留 Header 兜底入口。
+- `WorkspaceModeSwitch` 记录最近普通页面，显式 `returnTo` 只接受安全本地非 Agent 路径，避免开放重定向和模式循环。
+- 配置文件交接 URL 只包含 `kind=config.file` 与 namespace/group/name；Agent 根据上下文生成消息和目标代码块骨架，不把配置正文写入 URL。
+- 静态契约、前端 lint 与测试构建已通过；真实 Chrome 点击验证 `/namespace → /agent?returnTo=%2Fnamespace → /namespace` 完整往返，进入 Agent 后资源导航隐藏且底部返回入口保留，返回后普通导航恢复。
+- 用户报告无法切回时，真实浏览器首先复现为旧 SPA 仍驻留在已打开标签页；重新加载当前入口后切换逻辑正常。Console 的 `index.html` 已增加 `no-cache, no-store, must-revalidate`，深链 fallback 同样生效，并由路由测试锁定。
+- 继续在用户实际 Chrome 中排查后确认更精确的根因：旧主包在模式切换时动态加载已被后续 Vite 构建删除的哈希 chunk，浏览器报 `Failed to fetch dynamically imported module` 与 404；仅禁止 `index.html` 缓存无法修复已经驻留的旧文档。
+- 工作模式边界现改为 `window.location.assign` 整页导航，普通控制台内部仍保持 SPA 导航；这样每次跨模式都会重新获取当前 `index.html` 及与之匹配的资源哈希。
+- 用户实际 Chrome 已再次跑通 `/namespace → /agent?returnTo=%2Fnamespace → /namespace`：Agent 工作台、模式选中态、普通侧栏和命名空间列表均恢复，DevTools Console 为 0 条运行错误。
+
+## Agent 底部工作区切换（2026-07-21）
+
+- [x] 从普通资源导航和默认页头移除重复的 Agent 模式入口。
+- [x] 在普通控制台侧栏底部、版本信息上方增加固定“进入 Agent 工作台”。
+- [x] 在 Agent 模式提供对称的固定“返回普通控制台”，保留最近页面回跳。
+- [x] 补齐展开、收起、键盘焦点和窄视口状态。
+- [x] 更新静态契约并完成真实 Chrome 双向切换与视觉验收。
+- [x] 记录 Design QA、Review 与最终验证结果。
+
+设计基线：
+
+- 模式切换属于侧栏固定 footer，不参与资源菜单滚动，也不占用资源信息架构。
+- 普通模式显示 Agent 工作台入口；Agent 模式使用同一位置提供返回普通控制台，避免隐藏普通菜单后丢失返回路径。
+- 顶部只保留当前页面与全局账户操作；除无侧栏的顶部布局外，不重复展示模式切换。
+
+Review：
+
+- `/agent` 路由保留注册但标记为隐藏，普通资源导航和默认页头不再出现重复的 Agent 入口。
+- `WorkspaceModeSwitch` 复用原有安全 `returnTo` 与整页导航逻辑，并新增 sidebar 呈现；普通模式显示“进入 Agent 工作台”，Agent 模式显示“返回普通控制台”。
+- Agent 模式保留侧栏骨架，只替换资源导航为最小工作区标识，因此底部返回入口和版本信息始终可见；收起侧栏时入口退化为带 `aria-label` 和 `title` 的图标按钮。
+- 真实 Chrome 已跑通 `/namespace → /agent?returnTo=%2Fnamespace → /namespace`，同时验证展开与收起侧栏；DevTools Console 为 0 条消息。
+- `npm run test:agent-workbench`、`npm run lint`、`npm run build` 均通过；视觉对比和问题分级记录在根目录 `design-qa.md`。
+
+## Console Agent Runtime 与 LLM Gateway 接缝分析（2026-07-21）
+
+- [x] 核对现有 Agent ADR、前端、Console handler 与 agentworkbench 的真实调用链。
+- [x] 核对 LLM、MCP、身份透传、预览确认和发布隔离的配置与接口现状。
+- [x] 判断 LLM Gateway 地址和凭证的配置归属，以及 Console 内部 Agent 的最小职责。
+- [x] 给出推荐模块接缝、部署形态与分阶段落地顺序。
+
+分析约束：
+
+- 浏览器只承担会话 UI 和用户确认，不直接持有 LLM Gateway 密钥或 Pole 管理凭证。
+- Console 内部 Agent 应复用现有权限、审计和资源发布链路，不能复制第二套资源实现。
+- 结论必须区分当前确定性 Phase 0 与真正模型驱动的 Agent Runtime，不能把 stub 描述成已接入 LLM/MCP。
+
+Review：
+
+- 当前没有 LLM Gateway 配置或 ModelPort；前端用正则解析固定格式，后端只暴露 config-file proposal/confirm 两个接口。
+- 当前 `agentworkbench.Workbench` 是安全执行内核：负责读取、diff、preview hash、TTL、幂等、stale 检查和保存草稿，不是完整 Agent Runtime。
+- 页面展示的 `pole.config.get_file`、`pole.config.update_file_draft` 工具轨迹实际走 Console 到 pole-server 的 REST adapter；Pole MCP 当前只注册 namespace 与 MCP Server Registry 工具，因此“Pole MCP 已连接”会误导用户。
+- 用户纠正后将主体收敛为一等 `PoleAgent` 深模块；页面只与其会话 interface 交流，System Prompt、LLM、MCP 导入、tool loop、会话和 approval resume 全部由 Agent 内部拥有。
+- `ModelPort`、`MCPToolRegistry`、`SessionRepository` 和现有 Workbench 不是页面拼装的并列后端；它们是 Pole Agent 的内部实现，其中 Workbench 定位为 `ChangeApprovalKernel`。
+- Console 配置新增 `agent.model.baseURL/model/apiKey/timeout` 与运行限制；密钥只从服务端环境或 Secret 注入，Pole token 只进入受控 ToolExecutor，不进入模型上下文。
+- Phase 1 顺序应为：定义 Pole Agent 与版本化 Prompt → 会话/流式 interface → LLM Gateway ModelPort → Agent 内部 MCP 导入和 tool loop → 接回现有确认内核 → 修正页面真实连接状态。
+
+## Console Agent 系统配置来源分析（2026-07-21）
+
+- [x] 核对 Console 启动 YAML、console-only 模式和现有 MySQL Store 职责。
+- [x] 比较 YAML、Pole 配置中心与 Console 直连数据库三种方案。
+- [x] 定义启动配置、AgentDefinition、动态运行设置和 Secret 的归属。
+- [x] 设计“系统设置 / Agent”页面的保存、校验、发布与热加载语义。
+
+Review：
+
+- 纯 YAML 只适合自举和安全兜底，不适合日常模型、Prompt、MCP 和运行限制调整；当前 `LoadConfig` 也没有 reload/watch。
+- 不建议 Console 直连 pole-server 数据库。console-only 模式不初始化核心 Store；现有 Console MySQL 只承载 `pole_observability` 的 history/event reader，`server_setting` 仅有 DDL 而无完整业务链。
+- 推荐把非敏感 AgentDefinition 存在 `pole-system/console-agent/agent-runtime.yaml`，只消费配置中心已发布版本；模型密钥和 Pole 后台凭证只保存 `secretRef`。
+- Console 提供类型化“系统设置 / Agent”页面，底层复用配置中心草稿、发布、历史、回滚、权限和审计，不暴露原始 YAML。
+- Agent Watch active release，完整校验后原子替换 last-known-good；新会话绑定配置 revision，现有会话不中途切换。
+- 内置安全 Prompt 不允许页面覆盖，可配置的 operator instructions 独立版本化；Agent 工具集禁止修改自身系统配置或读取密钥。
+
+## Pole Server 与 Console 统一系统配置（2026-07-21）
+
+- [x] 盘点 Pole Server 配置加载、模块初始化和现有局部动态能力。
+- [x] 盘点 Console 配置、自有 Store、console-only 模式和动态候选项。
+- [x] 定义统一 SettingDefinition、配置分级、来源优先级和自举闭环。
+- [x] 设计发布、热加载、重启生效、last-known-good 和多实例 apply receipt。
+- [x] 设计系统设置页面、权限审计、Secret 和分阶段迁移。
+- [x] 新增统一 System Configuration ADR 并同步关联知识页。
+
+Review：
+
+- 统一能力不是“在线编辑整份 YAML”，而是独立 System Configuration 领域；静态文件始终保留自举和安全基线。
+- 动态层复用配置中心保留空间与草稿/发布/历史/回滚；Server 和 Console 分别实现自己的 ConfigApplier，不互相修改内部对象或数据库。
+- 每个字段必须声明 `BootstrapOnly/RestartRequired/HotReload/GuardedHotReload`；没有显式并发安全 applier 的字段禁止热更新。
+- 正常来源优先级为 `default < static YAML < published overlay < emergency allowlist`，动态删除字段表示回落静态值。
+- 发布只切换 DesiredSnapshot；实例通过 ApplyReceipt 报告 applied/rejected/pending_restart，页面展示 desired/effective revision 和版本漂移。
+- 系统设置按 Server、Console、发布中心和实例状态组织；字段展示来源与 apply mode，BootstrapOnly 只读。
+- Phase 1 先做全量配置目录与只读页面；Phase 2 从 AgentDefinition、Console observability timeout、feature flag 等低风险项开始热更新。
+## Pole Kubernetes 本地一体化部署（2026-07-21）
+
+- [x] 新增 `pole-system` namespace 下 Pole、GreptimeDB、OTel Collector 的 Kubernetes manifests。
+- [x] 通过 ExternalName Service 让 Pod 继续访问宿主机 MySQL `3306`，不把 MySQL 迁入集群。
+- [x] 提供可重复执行的本地镜像构建、配置注入和部署脚本。
+- [x] 部署到 OrbStack Kubernetes，验证三个工作负载、持久卷、服务发现和健康检查。
+- [x] 验证 Console/Agent 页面、Pole API、OTLP 写入与 GreptimeDB 查询闭环。
+- [x] 更新部署文档、可观测性 ADR 和知识库索引日志。
+- [x] 完成针对性检查、知识库 lint、代码审查并提交本次变更。
+
+设计基线：
+
+- “合并部署”表示同一 Kubernetes 部署栈和 namespace 编排，不把三个有独立生命周期的组件合并到同一个 Pod。
+- MySQL 保持宿主机现有实例，集群内使用 `host.docker.internal:3306`；账号密码只进入 Kubernetes Secret。
+- GreptimeDB 使用 PVC 持久化，Collector 通过 ClusterIP 写入 GreptimeDB，Pole 通过 ClusterIP 上报和查询。
+
+Review：
+
+- OrbStack `pole-system` 中 Pole Deployment、Collector Deployment、GreptimeDB StatefulSet 均 Ready 且重启数为 0；GreptimeDB 5Gi PVC 已绑定。
+- `pole-mysql` ExternalName 解析到 `host.docker.internal`，Pod 内已读取到宿主机 `pole_server` 和 `pole_observability` 两个数据库。
+- Pole 有效配置使用 Pod IP 自注册、`pole-otel-collector` 和 `pole-greptimedb` Service DNS，本地 MySQL 连接池降为 20/10。
+- 本机 `127.0.0.1:8080` 和 LoadBalancer `172.30.31.2:8080` 的首页、命名空间、Agent、登录页均返回 200。
+- 唯一 OTLP smoke event 已通过 Collector 写入 Kubernetes GreptimeDB，并由 `pole_events` SQL 精确查回。
+- 旧 Docker GreptimeDB/Collector 和宿主 tmux Pole 已停止但未删除，旧 GreptimeDB volume 可恢复；宿主 MySQL 保持运行。
+- 双轴审查发现并推动修复镜像/Secret/config 重部署、YAML Secret 转义、非 root/只读运行、ServiceAccount token、核心 liveness 和启动日志凭据泄漏问题。
+
+## Pole Console Gateway 域名接入（2026-07-21）
+
+- [x] 盘点现有 GatewayClass、Gateway listener、HTTPRoute 和本地域名解析。
+- [x] 设计不修改共享 Gateway 的跨 namespace 路由授权。
+- [x] 新增 ReferenceGrant、HTTPRoute 并接入本地部署脚本。
+- [x] 验证 Route Accepted/ResolvedRefs、普通控制台和 Agent 深链。
+- [x] 完成文档、知识库 lint、代码审查和提交。
+
+设计基线：
+
+- 复用 `tidemind/tidemind-gateway`，不重复部署 Ingress Controller，也不修改共享 listener 的 `allowedRoutes`。
+- `HTTPRoute` 与 Gateway 同处 `tidemind`；`pole-system` 通过最小范围 `ReferenceGrant` 只授权访问 `pole-control-plane` Service。
+- Gateway 只路由 Console `8080`；Pole 的 LoadBalancer 多协议端口暂保留给本地 SDK/协议调试，GreptimeDB、Collector 和 MySQL 保持集群内部访问。
+
+Review：
+
+- `tidemind/pole-console` 已被 Envoy Gateway 接受，`Accepted=True`、`ResolvedRefs=True`，共享 Gateway attachedRoutes 从 4 增至 5。
+- `http://pole.localhost/`、`/namespace`、`/agent`、`/login` 均返回 200，无需修改 hosts。
+- OrbStack 的 `*.k8s.orb.local` 当前对既有 `admin` Route 也会断连，因此未作为交付入口；只保留已实测稳定的 `.localhost` 域名。
+- ReferenceGrant 只允许 `tidemind` namespace 的 HTTPRoute 引用 `pole-control-plane` Service，没有扩大到其它 Service 或 namespace。
+- 双轴审查无阻塞项；已将 ReferenceGrant 文案修正为“按来源 namespace 和目标 Service 收敛授权”，并明确 Pole LoadBalancer 仅保留为本地多协议调试边界。
+
+## Console 登录页视觉重设计（2026-07-22）
+
+- [x] 审计当前登录页的信息层级、表单状态、响应式和视觉问题。
+- [x] 收敛为产品说明区与聚焦登录面板，移除默认账号裸露提示。
+- [x] 强化主按钮、输入焦点、密码可见性和登录提交态。
+- [x] 完成构建、真实页面截图、窄视口与登录功能回归。
+- [x] 完成双轴代码审查并修复阻塞项。
+- [ ] 待全站 Fluent UI 迁移形成可提交基线后提交登录页改动，避免生成依赖未提交组件的破损 commit。
+
+设计基线：
+
+- 登录是控制台入口，不是营销落地页；标题和背景必须让位于账号输入与主操作。
+- 普通控制台与 Agent 只作为产品能力说明，不在登录页复制模式切换或资源导航。
+- 保持现有认证 API、管理员检查和登录后跳转不变；移除没有后端注册 API 的伪“创建账号”入口。
+- 后台管理员检查异常只提示重试，不得把网络或 5xx 错误误判为“尚未初始化”并跳转首管理员创建页。
+
+Review：
+
+- 标题上限由 64px 收敛到 42px，移除营销式三栏能力块；桌面认证区权重高于说明区，390px 下改为完整单列。
+- 默认账号明文和没有后端 API 的注册入口已移除；账号、密码、可见性按钮具有可访问名称，空提交校验可见。
+- 管理员检查异常不再跳转 `/init-admin`；只有接口明确返回不存在管理员时才进入初始化流程。
+- 登录与初始化管理员页面均补齐自动填充语义、密码可见性按钮和可访问名称；初始化检查失败会安全返回登录页，不再暴露首管理员创建表单。
+- `npm run lint`、`npm run build`、知识库 lint、`git diff --check` 通过；Playwright 对登录与初始化管理员页面完成桌面及 390×844 验证，无溢出且 Console warning/error 为 0。
+- 全量 `test:no-tdesign` 仍被本任务前已有的 WorkspaceModeSwitch/Agent 原生按钮残留阻塞；本次登录文件未新增原生交互标签或 TDesign 依赖。
+- 当前 HEAD 尚未包含工作树中的全站 Fluent 适配层与依赖迁移；因此未把登录文件单独提交成不可独立构建的 commit。
+
+## Console K8s 登录页更新核验（2026-07-22）
+
+- [x] 核对 Deployment 镜像、运行 Pod imageID、启动时间与健康状态。
+- [x] 比对本地构建、Pod 内静态入口和 Gateway 响应的 SHA-256。
+- [x] 比对域名、localhost、127.0.0.1 与 LoadBalancer 四个入口的资源哈希。
+- [x] 显式重启 Deployment，并在新 Pod 上复验页面资源。
+
+Review：
+
+- 新 Pod `pole-control-plane-6b47675975-5m45f` 使用镜像 `sha256:65238729977b...`，Ready 且重启数为 0。
+- 本地、Pod 和 Gateway 的 `index.html` SHA-256 均为 `e2c7ed3614ab...`，四个入口均引用新版 `assets/index.e47e79bc.js`。
+- SPA 入口返回 `Cache-Control: no-cache, no-store, must-revalidate`；服务端与 Gateway 均已更新，若旧标签仍显示旧界面，应重新加载文档以退出旧 JS 运行时。
+
+## System Configuration Phase 1（2026-07-22）
+
+- [x] 盘点 Pole Server 与 Console 首批核心有效配置结构、来源和敏感字段。
+- [x] 定义只读 `SettingDefinition` registry 与 effective snapshot interface。
+- [x] 实现 Console 只读查询接口，返回分组、类型、apply mode、敏感级别、有效值与来源。
+- [x] 新增独立“系统配置”侧栏入口和只读页面，支持概览、组件/子域筛选与来源说明。
+- [x] 为 registry、接口契约和页面映射补充专项测试。
+- [x] 完成 lint、构建、Go 测试、真实页面与窄视口验证。
+- [x] 更新 System Configuration ADR 状态、知识库索引日志与 review 记录。
+- [x] 完成双轴代码审查并处理阻塞项。
+
+设计基线：
+
+- Phase 1 不改变任何配置加载、发布或热更新行为；静态 YAML/环境变量仍是当前有效来源。
+- 页面只消费类型化只读快照，不读取或渲染整份原始 YAML。
+- Secret 值必须脱敏；页面只展示存在性或引用来源，不返回密钥正文。
+- 配置定义、配置读取和 Console 展示通过一个稳定 interface 衔接，字段映射集中在 registry，不散落到 handler 和页面。
+
+Review：
+
+- 首批 registry 当前共 63 项：Pole Server 29、Console 34；页面明确标记为“首批已注册核心配置”，不反射插件任意 `Option`，避免目录覆盖范围误导。
+- Console `/system-config/v1/settings` 只接受 GET，匿名请求返回 401，再通过网络读取 Pole Server；Server `/admin/v1/system/configuration` 自身通过 `DescribeSystemConfiguration` 方法权限再次执行策略授权，不能绕过 Console 直接匿名读取。
+- 来源索引能区分编译默认值、静态 YAML、环境变量和 CLI 覆盖；复合 DSN 记录全部环境变量引用，归一化回退字段标记为编译默认值。
+- 5 个 Secret 字段在服务端清空 `value` 并仅返回配置状态与引用；K8s 实测响应没有密钥正文。
+- 专项 Go 测试、ESLint 和 Vite production build 通过；K8s 新 Pod 使用本次镜像且 Ready/0 restart，Gateway 鉴权接口返回 63 项。
+- 双轴审查提出的内部接口鉴权、独立读取权限、来源失真、来源筛选统计和目录覆盖误导均已处理；页面不提供编辑、草稿或发布动作。
+- 已使用测试管理员完成真实登录态验收：桌面 1280px 下页面无整页横向溢出，搜索 `server.bootstrap.mode` 后结果为 1/52；390x844 窄视口下文档宽度保持 390px，摘要区按两列重排，配置表以 273px 可视宽度承载 1030px 内容并可在表格内部滚动，Secret 仅显示“已配置”和环境变量引用，不出现密钥正文。
+
+## System Configuration 领域化页面（2026-07-22）
+
+- [x] 明确组件、领域、配置项三级信息架构与窄屏降级方式。
+- [x] 实现 Pole Server / Console 组件切换和领域导航。
+- [x] 将单一总表改为当前领域配置表，同时保留跨领域搜索与来源筛选。
+- [x] 完成 ESLint、production build 和真实桌面/390px 页面验证。
+- [x] 构建部署到当前 Kubernetes，并复验 Gateway 资源哈希。
+
+设计基线：
+
+- 总览只负责说明当前组件的配置规模和来源分布，不承载全部配置行。
+- 领域是配置浏览和后续草稿/发布的工作单元；主表不再重复展示组件和领域列。
+- 搜索覆盖当前组件全部领域，领域导航实时展示命中数并自动定位首个有结果的领域。
+- 窄屏将领域导航保持为可横向滚动的紧凑入口，表格只在自身容器内横向滚动。
+
+Review：
+
+- Pole Server 依次展示启动与装配、命名空间、服务发现、配置中心、缓存同步、存储、认证授权和工作负载凭证；Console 依次展示运行时、日志、认证授权、上游连接、存储、可观测查询和 Agent。
+- 跨领域搜索 `console.agent.upstream_timeout` 会把 Console 从“运行时”自动定位到“Agent”，领域命中显示为 1/2，表格仅保留命中的一行；桌面领域列表和移动端横向导航都会把 Agent 自动滚入视野。
+- 1280px 和 390x844 真实页面均无整页横向溢出；390px 下领域导航宽 275px、内容宽 645px，配置表可视宽 247px、内容宽 880px，两者均只在自身容器滚动。
+- ESLint 与 Vite production build 通过；Kubernetes Pod `pole-control-plane-7b54865989-g8xg9` Ready、0 restart，运行镜像 ID 为 `sha256:3763b3518a06...`，本地与 Gateway 均引用 `assets/index.9b7513c5.js`。
+
+## Console AgentDefinition 配置目录（2026-07-22）
+
+- [x] 明确 Agent 自举配置、动态定义和 Secret 的职责边界。
+- [x] 增加 Agent ID、Prompt 版本、LLM Gateway、模型、API Key、MCP 与运行限制配置结构。
+- [x] 将 Agent 配置显式注册到 System Configuration，并保证 API Key 服务端脱敏。
+- [x] 让现有 Agent Workbench 使用配置化 proposal TTL 与资源工具上游超时。
+- [x] 补充配置加载、来源和 Secret 泄漏测试。
+- [x] 完成构建、Kubernetes 部署和真实 Agent 领域页面验证。
+
+设计基线：
+
+- 页面必须同时显示当前 `deterministic` runtime 和目标 AgentDefinition，不能因为登记了 LLM 地址就宣称 ModelPort 已接通。
+- LLM API Key 最终由 Pole `SystemSecretStore` 托管；当前环境变量注入仅是 Phase 1 自举兼容。页面响应只返回“已配置/未配置”、版本和 Secret 引用。
+- AgentDefinition 归 Console 后端拥有，pole-server 核心只提供受控 MCP/管理能力，不持有模型密钥。
+
+Review：
+
+- Console Agent 领域从 2 项扩展为 13 项，Console 合计 34 项、两组件合计 63 项；页面同时展示 Agent ID、Prompt、LLM、MCP、运行限制和 `deterministic` 当前模式。
+- `console.agent.model_api_key` 的 Gateway 鉴权响应为 `redacted=true`、`configured=false`、无 `value` 字段，只保留 `env:POLE_AGENT_LLM_API_KEY` 引用；LLM Gateway 地址同样明确显示未配置。
+- YAML 列表来源聚合已修正，MCP 工具白名单在真实页面显示为“静态配置”，不再误标为编译默认值。
+- `go test ./...`、前端 ESLint/production build、Kubernetes manifest dry-run 与 context-kg lint 均通过；最终 Pod `pole-control-plane-8597d4c968-gmlh8` 使用镜像 `sha256:66d4a28e3ee4...`，Ready、0 restart。
+- Playwright 通过 `pole.localhost` 真实登录态验收：Agent 13/13 行完整可见，API Key 仅显示未配置和 Secret 引用，页面未显示任何密钥正文。
+
+## Pole 托管 Agent Secret 纠偏（2026-07-22）
+
+- [x] 核对现有配置文件加密链与 Agent API key 当前来源。
+- [x] 明确 Pole 托管业务 Secret、基础设施只托管 KEK 的目标边界。
+- [x] 修正 System Configuration 与 Agent ADR、任务基线和经验规则。
+- [ ] 实现 `SystemSecretStore` 深模块、密文表、envelope encryption 与版本化引用。
+- [ ] 实现 Agent Secret write-only 页面、轮换/禁用/连接测试和独立权限审计。
+- [ ] 将 Agent Runtime 从环境变量引用迁移为受控 `pole-secret://` resolve interface。
+
+Review：
+
+- 当前配置文件加密链将 DEK 与密文共同保存在配置 metadata，并会对配置读取者解密正文，不满足系统 Secret 的 write-only、KEK 包装、用途约束和轮换要求，不能直接复用。
+- 目标 interface 由 Pole 隐藏密文、wrapped DEK、版本和审计实现；Console 与 AgentDefinition 只处理 SecretReference，浏览器永远不读取明文。
+
+## System Configuration 编辑保存交互与 Admin 门禁（2026-07-22）
+
+- [x] 明确有效值、草稿、发布和 Secret 新版本的页面状态与操作顺序。
+- [x] 为路由元数据增加 admin-only 能力，非 `main/admin` 用户不展示系统配置菜单且直达时拒绝进入。
+- [x] 为 `/system-config/v1/*` 增加服务端主账号或内置 admin 角色校验，覆盖查询和后续写接口。
+- [ ] 将配置表升级为可选中配置项的编辑面板，区分普通值、列表和 write-only Secret。
+- [x] 设计未保存、已保存草稿、待发布、待重启和已生效反馈，不把“保存”伪装成“生效”。
+- [x] 补充前后端权限与交互契约测试，完成真实 admin 页面验证。
+
+设计基线：
+
+- 保存只创建领域草稿；发布是独立动作，`RestartRequired` 发布后仍需明确显示待重启。
+- Secret 编辑不回填旧值；留空表示保持当前版本，只有显式输入并确认才创建新 Secret 版本。
+- 前端菜单隐藏只是体验优化，后端必须以签名会话中的 `main/admin` 身份做最终拒绝。
+
+Review：
+
+- 主账号登录响应使用规范角色 `main`；内置 `admin` 角色成员使用 `admin`。两者均写入 Console 签名 JWT，不能仅按用户名判断。
+- 前端对非 `main/admin` 用户隐藏菜单并阻止直达，`/system-config/v1/*` 在后端再次校验；测试覆盖未登录 401、普通子账号 403，以及 `main/admin` 分类。
+- 真实 Kubernetes 页面验证：`pole-control-plane-5f578d99c6-2t5kj` 使用镜像 `sha256:dfcbb20fc65c...`，admin 页面显示 Pole Server 29 项、Console 34 项且无 execute exception。
+- 本轮完成编辑生命周期交互设计和 Admin 门禁；真实编辑面板仍等待领域草稿、Secret 新版本与发布 API 后接入，不提供浏览器本地伪保存。
+## 三个内置系统角色与成员绑定（2026-07-22）
+
+- [x] 固化 Admin、资源全读、资源全写三个系统角色的稳定 ID、名称与权限边界。
+- [x] 在服务启动和角色查询路径中幂等补齐三个系统角色及固定策略，避免已有 MySQL 环境继续显示 0 条。
+- [x] 在角色 REST API 拒绝创建额外角色、删除系统角色，以及修改系统角色名称/权限定义；只允许更新用户和用户组绑定。
+- [x] 将 Console 角色页改为固定角色目录，移除新建、删除、批量选择和可变基础字段，只保留查看与成员绑定。
+- [x] 增加服务端行为测试和前端契约测试，并在真实 Kubernetes 页面验证三条角色及不可变交互。
+- [x] 更新领域规则、认证模块知识与 Review，运行全量相关测试、context-kg lint 和 diff 检查。
+
+设计基线：
+
+- `admin` 负责控制面管理能力；`resource-reader` 可读取全部业务资源；`resource-writer` 可读取和写入全部业务资源，但不获得认证管理和系统配置能力。
+- 三个角色属于系统目录，不是可自由增删的租户资源；角色 ID、名称、描述和权限集合固定，管理员只维护用户/用户组成员关系。
+- “资源全部角色”按上下文收敛为“资源全读角色”，与“资源全写角色”形成最小权限梯度。
+
+Review：
+
+- 服务端以稳定 ID 幂等创建 `admin`、`resource-reader`、`resource-writer` 及固定策略；角色列表只返回这三条，创建、删除、基础字段变更和系统策略变更均由后端拒绝，成员绑定继续复用角色更新接口。
+- Console 角色目录移除新建、删除和批量选择，只保留查看与“管理成员”；成员管理通过可寻址查询参数恢复，抽屉只提交 `users` 与 `user_groups`，角色名称、描述和权限定义不可编辑。
+- 回归通过：相关 Go 包测试、Console ESLint、`test:system-role-directory`、生产构建、context-kg lint 与定向 diff check；此前完整 `go test ./... -count=1` 也已通过。
+- Kubernetes 定向发布到 `pole-control-plane-7d6478bd58-jzxl2`，镜像 `sha256:a42b9db8c33a...`；Gateway 返回 200，真实 admin 页面显示三条系统角色，并验证 `admin` 成员抽屉仅包含用户和用户组绑定。
+- 补充修复 MySQL 角色主体读取事务未结束导致的连接泄漏；发布后连续采样 `pole_server` Sleep 连接数为 `10/10/10`，未再随缓存刷新增长。
+
+## 自定义角色 CRUD 与内置角色保护纠正（2026-07-22）
+
+- [x] 恢复自定义角色的创建、查询、修改和删除，并保持既有权限关联能力。
+- [x] 将三个内置角色识别为受保护子类型：只允许修改用户与用户组绑定。
+- [x] 在 Console 恢复自定义角色的新建、编辑和删除入口，内置角色只展示成员管理入口。
+- [x] 锁定内置角色名称、描述、标签及资源/API 权限，补齐前后端契约测试。
+- [x] 交叉编译 Linux/arm64 镜像并仅发布到 Kubernetes，发布后完成 API 与真实页面验收。
+
+验收矩阵：
+
+| 角色类型 | 创建 | 名称/描述/标签 | 用户/用户组 | 资源/API 权限 | 删除 |
+| --- | --- | --- | --- | --- | --- |
+| 自定义角色 | 允许 | 允许 | 允许 | 允许 | 允许 |
+| 三个内置角色 | 系统幂等创建 | 禁止 | 允许 | 禁止 | 禁止 |
+
+Review：
+
+- 服务端恢复自定义角色创建、全量查询、定义/成员更新与删除；MySQL 更新同时持久化自定义角色名称。三个稳定 ID 的内置角色仍拒绝改定义和删除，只写入成员绑定。
+- 策略创建、策略更新和直接资源授权均拒绝把内置角色作为授权主体；Console 策略编辑器不再把内置角色放进可授权角色选项。
+- Console 角色表恢复“新建角色”、自定义角色选择/编辑/删除；内置角色只显示“查看/管理成员”，成员抽屉明确锁定名称、描述、标签和资源/API 权限。
+- 发布后回归通过：相关 Go 测试、Console 契约、ESLint 与测试构建；真实 API 完成自定义角色创建、改名/改描述/改标签、删除，内置角色改名/删除/新建授权策略均返回拒绝，测试资源已清理。
+- Kubernetes Pod `pole-control-plane-64b5d5dfbc-h5psd` 使用 Linux/arm64 镜像 `sha256:47f21b1e7000...`，Ready 且 0 restart；真实 admin 页面显示新建入口，自定义角色行为为“查看/编辑/删除”，内置角色为“查看/管理成员”，浏览器控制台 0 error。
+## 系统配置目录 0/0 回归修复（2026-07-22）
+
+- [x] 建立真实 `/system-config/v1/*` 请求与页面目录非空的确定性回归检查，复现截图中的 `0 / 0`。
+- [x] 核对接口响应、Pod 日志、配置定义注册和启动装配，验证候选根因。
+- [x] 在正确边界补回归测试并实施最小修复。
+- [x] 运行相关 Go/Console 测试与生产构建，定向发布 `pole-control-plane`。
+- [x] 用 admin 真实浏览器复验领域、配置项和统计非空，更新 Review 与 lessons。
+
+Review：
+
+- 截图中的 `0 / 0` 不是配置定义丢失；新 admin 页面和后端当前稳定返回 Pole Server 29 项、Console 34 项。根因是前端请求异常分支执行 `setSettings([])`，把 rollout 瞬态失败伪装成了合法空目录。
+- 修复后首次加载失败显示“系统配置目录加载失败”和重试；已有快照刷新失败继续显示 last-known-good 数据并告警，不再将统计清零。
+- `test:system-configuration-error-state` 已先复现失败后转绿；Console ESLint/生产构建，以及 handlers、router、Console/Server 配置注册表相关 Go 测试均通过。
+- 已定向发布 Pod `pole-control-plane-945c9f567-94m4b`、镜像 `sha256:c9d662e39eda...`；Gateway 200，真实 admin 页面复验 29/34、启动与装配 3/3，未出现 0/0。
+## 非 Admin 完全隐藏系统配置页面（2026-07-22）
+
+- [x] 增加服务端签名会话角色接口和非 admin 前端 fail-closed 契约。
+- [x] 前端启动时不再信任 localStorage 角色，鉴权完成前不渲染受保护页面。
+- [x] 非 admin 隐藏系统配置菜单，直达 `/system-configuration` 重定向到普通控制台。
+- [x] 运行测试与生产构建，定向发布 Kubernetes。
+- [x] 使用 admin 与非 admin 真实会话验证入口和直达行为，补齐 Review。
+
+Review：
+
+- 根因是菜单和 `AdminRoute` 虽已有 admin-only 分支，但角色从 `localStorage.login-role` 恢复，旧值或篡改值会在前端放行页面。
+- 新增签名会话角色接口；刷新时 Redux 角色初始为空，受保护路由在 `sessionResolved` 前只显示加载态，菜单默认隐藏。解析为非 admin 后 `/system-configuration` 在组件渲染前跳转 `/namespace`。
+- 服务端 session/route 测试、前端 admin gate 契约、ESLint 和生产构建通过；全部运行验收在发布 Kubernetes 后执行。
+- K8s Pod `pole-control-plane-6466b7d4cb-88wx2` 使用 Linux/arm64 镜像 `sha256:8c37127d75b5...` 并单副本 Ready。main 会话系统配置接口为 200、临时 sub 为 403；测试用户删除并确认剩余 0。
+- 宿主机不存在 `pole-server` 或 `go run` 进程；8080/8090 监听归属 OrbStack Kubernetes 网络入口。
+## Console 暗色主题全站一致性修复（2026-07-23）
+
+- [x] 从当前 Kubernetes Gateway 页面建立暗色表面误用浅色背景的红灯检查，并复现服务详情页问题。
+- [x] 盘点全局主题变量、共享资源布局与页面级硬编码，定位 3–5 个候选根因并验证。
+- [x] 在共享主题/组件边界实施最小修复，补充能锁定浅色表面泄漏的回归约束。
+- [x] 在容器环境完成前端检查与生产构建，构建 Linux/arm64 镜像并仅更新 `pole-control-plane` Deployment。
+- [x] 基于新 K8s Pod、Gateway 与真实浏览器抽检主要页面，记录镜像、Pod、控制台与视觉结果。
+
+Review：
+
+- K8s 真实服务详情页红灯检查在 `theme-mode=dark` 下捕获详情头、4 张统计卡和基础信息区共 6 个纯白表面；根因是页面级 `--console-*` 固定浅色变量覆盖了全局主题，而既有脚本只检查正文颜色。
+- 服务详情改为继承 `--app-*`；全局新增品牌、青色、紫色及成功/警告/错误的 subtle/border 双主题 token，并将治理、AI、认证、监控和登录页残留浅色背景/边框收敛到这些 token。
+- `test:dark-theme` 现在解析背景、边框和局部主题变量，拒绝高亮浅色硬编码；K8s Linux/arm64 Node Pod 内完成依赖安装、门禁、ESLint 和 production build。
+- 后端无代码变化，复用与旧 Pod 内 SHA-256 完全一致的 Linux/arm64 `pole-server`；新镜像 `sha256:190e72f2e01e...` 仅发布到 `deployment/pole-control-plane`，Pod `pole-control-plane-5b847c7794-sfzlg` Ready、0 restart。
+- Pod 内与 Gateway 的入口资源均为 `assets/index.c4d47adb.js`；真实浏览器复验服务详情红灯转绿，并抽检命名空间、服务、配置、治理、监控、认证、A2A、MCP 和 Agent 共 20 个路由，均为暗色主题、无高亮浅色表面，控制台 0 error/warn。
+## 配置文件详情页 Fluent UI 布局优化
+
+- [x] 将跨环境实例切换收敛为紧凑上下文条，避免单实例占据大面积卡片
+- [x] 重组文件身份、状态、操作、元数据与标签的信息层级
+- [x] 将配置正文区域改为紧凑工作台，并让 Monaco 编辑器跟随全局明暗主题
+- [x] 增加专项静态回归，完成 ESLint、暗色主题检查与 release build
+- [x] 仅重建发布 control-plane，并使用真实页面验证布局、滚动与明暗主题
+
+Review：
+
+- 配置分组与配置文件两级环境切换均改为紧凑上下文条，单环境不再占据大面积空卡片；当前环境只使用品牌浅色边框和表面，不再整块高饱和填充。
+- 文件名、格式、加密与发布状态、资源路径及主次操作合并到统一摘要头；修改时间、创建时间、加密算法采用三列定义网格，长标签独占底行以避免截断。
+- 配置正文改为稳定高度的编辑工作台，标题直接展示格式与只读/编辑状态；Monaco 根据全局 `ETheme` 在 `vs` 与 `vs-dark` 间切换，暗色实测背景 `rgb(30, 30, 30)`、文字 `rgb(212, 212, 212)`。
+- `test:config-file-detail-layout`、跨环境视图专项、目标文件 ESLint、暗色主题检查和 release build 通过；全局 `test:no-tdesign` 仍被本任务外 6 处既有原生 `<button>` 门禁失败拦截，本次未扩大修改范围。
+- 已仅更新 `pole-system/deployment/pole-control-plane` 到 `pole-control-plane:local-20260723-config-file-detail-v2`；Pod `pole-control-plane-79d8945686-gsl4c` Ready、0 restart，imageID 为 `sha256:1ae0cfcfd109...`，8080 主资源与 release 构建均为 `assets/index.1999739b.js`。
+- 真实浏览器在 1800×1100 下验证亮色与暗色页面均无横向页面溢出和控制台错误；截图为 `output/playwright/config-file-detail-light-v2.png`、`output/playwright/config-file-detail-dark-v2.png`。
+
+## 配置文件详情信息渐进披露
+
+- [x] 将环境版本由卡片切换器改为 Fluent 风格环境 Tab
+- [x] 将文件内容、基本信息、发布记录、订阅查询合并为同一层资源 Tab
+- [x] 文件身份与操作固定展示，非当前 Tab 内容不同时展开
+- [x] 完成专项检查、ESLint、release build 和亮暗主题真实页面验证
+- [x] 仅更新 control-plane 运行实例并记录 Review
+
+Review：
+
+- 配置文件环境版本改为具备 `tablist/tab/aria-selected` 语义的横向 Tab；选中文件后隐藏重复的配置分组环境条，页面只保留一组与当前文件直接相关的环境版本。
+- 外层“配置编辑”Tab 已移除，`FileView` 统一管理“文件内容 / 基本信息 / 发布记录 / 订阅查询”四个同级 Tab；文件身份、状态和主操作固定，正文、元数据与表格不再同时展开。
+- 文件内容默认展示并占据剩余工作区；基本信息以有留白的两列 definition grid 展示描述、时间、加密和标签；发布记录与订阅查询沿用原业务组件和请求生命周期。
+- 已通过 `test:config-file-detail-layout`、跨环境专项、暗色主题检查、目标文件 ESLint、release build 与 `git diff --check`；全局 `test:no-tdesign` 的 6 处任务外既有原生按钮问题仍未扩大处理。
+- 真实浏览器逐一切换四个资源 Tab，发布记录展示 1 条当前全量，订阅查询展示 0 条空态；亮色、暗色均无控制台错误或警告，1800px 视口下 `pageWidth=viewportWidth=1800`，暗色 Monaco 为 `vs-dark`。
+- 已仅更新 `pole-system/deployment/pole-control-plane` 到 `pole-control-plane:local-20260723-config-file-tabs-v2`；Pod `pole-control-plane-5b89cb6d77-zsn85` Ready、0 restart，imageID 为 `sha256:e23d08b14945...`，8080 与 release 构建入口均为 `assets/index.260d970a.js`。
+- 验收截图：`output/playwright/config-file-tabs-content-light.png`、`output/playwright/config-file-tabs-basic-light.png`、`output/playwright/config-file-tabs-content-dark.png`。
+## Pole Agent 本地会话与 ChatGPT 式工作台重构（2026-07-23）
+
+视觉主张：安静、连续、以对话为中心；会话列表是导航，消息流是主画布，临时视图只在需要确认时出现。
+
+内容计划：本地会话栏 → 当前会话标题与资源上下文 → 消息流 → 浮动输入框 → 按需出现的变更检查器。
+
+交互主张：新会话即时进入；切换会话恢复消息和输入草稿；记忆开关与历史窗口按会话持久化；消息、侧栏和检查器使用克制的进入与布局过渡。
+
+- [x] 建立 IndexedDB 会话存储，覆盖会话、消息、输入草稿、资源上下文和记忆设置。
+- [x] 实现会话创建、切换、自动标题、重命名、删除及刷新恢复。
+- [x] 将主工作区重构为 ChatGPT 式会话栏、消息流和浮动输入框，消除当前横向溢出。
+- [x] 实现每会话记忆开关和历史窗口，并让当前确定性解析真实消费所选历史。
+- [x] 保持 MCP 工具轨迹、临时视图、确认保存草稿和用户发布边界。
+- [x] 在 K8s Pod 内完成契约、暗色、Lint 和 production build，仅发布 `pole-control-plane`。
+- [x] 在 K8s Gateway 真实浏览器验证会话持久化、切换、记忆、响应式及提案流程。
+
+Review：
+
+- Agent 工作台改为左侧本地会话导航、中央连续消息流、底部浮动输入框和按需变更检查器；桌面 1280px 实测 `scrollWidth = clientWidth = 1280`，不再出现页面横向滚动。
+- `pole-agent-workbench` IndexedDB 分离 `sessions` 与 `metadata`，持久化消息、未发送草稿、资源引用、记忆开关/窗口和当前会话；浏览器实测创建第二会话、切回首会话并刷新后，草稿“K8s IndexedDB 恢复验证”和最近 4 轮设置均恢复。
+- 会话记忆提供关闭与 4/10/20 轮档位；确定性解析先消费当前消息，只在上下文不完整时使用当前会话历史，避免旧意图覆盖新指令。浏览器本地历史不保存或恢复服务端 proposal，不改变 preview/confirm/待用户发布的安全边界。
+- K8s Node Pod 内通过 `test:agent-workbench`、`test:dark-theme`、ESLint 和 release build；视觉回归发现 Fluent Textarea 外层未撑满后修复，并再次完成同一组容器检查。
+- 仅滚动更新 `pole-system/deployment/pole-control-plane` 到 `pole-control-plane:local-20260723-agent-sessions-v2`；GreptimeDB 与 OTel 未更新。真实 Gateway 登录页面会话切换、记忆面板、刷新恢复均正常，浏览器控制台 0 error/warn。
+
+## Pole Agent 单侧栏交互收敛（2026-07-23）
+
+视觉主张：单侧栏、单画布、单输入焦点；移除产品侧栏与页面会话栏的重复层级。
+
+内容计划：品牌 → 会话管理 → 返回普通控制台；主画布只保留会话标题、消息流、输入框和按需临时视图。
+
+交互主张：会话切换只更新主画布；操作按钮悬浮显现；变更检查器仅在生成提案时展开。
+
+- [x] 让最左侧现有 Agent 导航区域直接承载 IndexedDB 会话管理。
+- [x] 删除 Agent 页面内部会话栏、重复新会话入口和空态建议按钮。
+- [x] 收敛主画布宽度、标题栏和输入区，保持会话记忆与 MCP 安全链路。
+- [x] 更新 Agent 契约与架构记录。
+- [x] 在 K8s Pod 内完成前端检查、构建和 context-kg lint。
+- [x] 仅发布 `pole-control-plane`，通过 Gateway 真实浏览器验证布局、会话管理和刷新恢复。
+
+Review：
+
+- Agent 模式的全局 `Menu` 提供唯一会话宿主，页面通过 Portal 把 IndexedDB 会话管理渲染到最左侧；原“Agent 工作台”占位和内容区内嵌会话栏均移除。
+- 新建会话入口只保留在最左侧一次；空态移除三块建议按钮，会话项移除拥挤的时间副文案，主区只保留标题、MCP 状态、记忆设置、消息流与输入框。
+- 输入区去除 Fluent Textarea 的内层描边，仅保留外部输入容器；真实暗色截图呈现为一条侧栏和一个完整对话画布。
+- K8s Node Pod 内两轮通过 Agent 契约、暗色 token、ESLint 和 release build；真实 Gateway 页面从最左侧创建第二会话、自动标题、切回旧会话并刷新后仍恢复，测试会话已清理。
+- 最终浏览器实测 `sessionHosts = 1`、`scrollWidth = clientWidth = 1280`、控制台 0 error/warn；仅滚动更新 `pole-control-plane`，未更新 GreptimeDB 或 OTel。
+
+## Pole Agent 参考稿布局对齐（2026-07-23）
+
+视觉主张：以 `lattice-agent-workbench.html` 为唯一布局基准，保持 Lattice.Hub 暗色设计系统，同时不削弱现有 Agent 真实能力。
+
+内容计划：280px 会话侧栏 → 52px 全局栏 → 62px 对话标题栏 → 对话画布与底部浮动输入器 → 294px 可收起上下文面板。
+
+交互主张：会话支持搜索、日期分组和快捷新建；资源上下文、权限与记忆设置集中到右侧面板；MCP 提案仍按预览、确认保存草稿、用户发布的链路执行。
+
+- [x] 测量参考 HTML 的布局、层级、响应式和关键交互状态。
+- [x] 重构 Agent 会话侧栏、全局栏、对话画布、输入器与上下文面板。
+- [x] 保持 IndexedDB 会话/记忆和 MCP 临时视图安全链路，并更新契约测试。
+- [x] 更新 Agent 架构记录、设计 QA 报告和经验规则。
+- [x] 在 K8s Pod 内完成前端契约、暗色、Lint、构建和 context-kg lint。
+- [x] 仅发布 `pole-control-plane`，通过 Gateway 真实浏览器完成同视口视觉对比与交互验证。
+
+Review：
+
+- Agent 模式使用 280px 产品侧栏、52px 全局栏、62px 对话标题栏和 294px 上下文面板；1440×900 实测页面 `scrollWidth = clientWidth = 1440`，没有横向溢出或重复会话宿主。
+- 会话侧栏新增搜索、今天/昨天/更早分组、摘要、时间和 `Command/Ctrl + N`；空态按参考稿恢复三类任务起点，但只写入真实输入器，不伪造模型结果。
+- 资源范围、运行模式、可用工具、4/10/20 轮记忆和操作权限集中到右侧上下文面板；临时 diff 改为消息流内工具结果，确认仍只保存草稿并等待用户发布。
+- K8s Node Pod 内通过 Agent 契约、暗色约束、ESLint 和 production build；K8s Python Pod 内 context-kg lint 通过。
+- 仅滚动更新 `pole-system/deployment/pole-control-plane` 到 `pole-control-plane:local-20260723-agent-reference-layout-v1`；新 Pod 1/1 Ready、0 restart，Gateway `/agent`、入口资源与健康接口均为 200。
+- 真实浏览器验证任务起点、搜索空态、记忆切换、上下文收放和 IndexedDB 刷新恢复，控制台 0 warning/error；测试会话、输入草稿和记忆窗口已恢复清理。
+
+## Pole Agent 真实 LLM + MCP 可用闭环（2026-07-23）
+
+目标：配置 LLM Gateway 后，用户可以在 `/agent` 与 Console 内部 Pole Agent 真实对话；Agent 使用服务端版本化 System Prompt 和白名单 Pole 工具完成查询与变更提案，写操作仍必须经过不可绕过的临时视图、用户确认、保存草稿并等待用户发布。
+
+- [x] 冻结 PoleAgent、ModelPort、ToolPort、会话与审批恢复的最小接口，并补齐失败态契约测试。
+- [x] 实现 OpenAI-compatible LLM Gateway 调用、服务端 System Prompt 和有上限的 model-tool loop。
+- [x] 将配置查询与配置变更提案接入 Agent 工具面，保证模型无法确认草稿或发布资源。
+- [x] 用真实 Agent 会话 API 替换前端本地正则意图解析，保留 IndexedDB 会话和每会话记忆窗口。
+- [x] 未配置模型、模型超时、非法工具、工具失败时返回可诊断状态，页面不得显示虚假的“已连接”。
+- [x] 构建不可变镜像，仅在 Kubernetes 中完成单测、构建、接口、浏览器和安全边界验收。
+- [x] 更新 ADR、AI 模块、配置说明、知识库索引/日志和本节 Review。
+
+### Review
+
+- Console 新增一等 `poleagent` 深模块：OpenAI-compatible ModelPort、v1 System Prompt、最多 8 轮 model-tool loop、actor-bound MCP client、工具白名单和稳定错误分类。模型工具面不含 confirm、publish、delete；配置 update 只能生成 Workbench proposal。
+- Pole MCP 新增 `get_config_file`、`search_config_files` 只读工具；前端 `/agent` 已删除本地正则 planner，每轮调用 `/ai/agent/v1/turns`，真实工具轨迹、proposal 与 receipt 均按 IndexedDB 会话隔离持久化。
+- K8s Go Pod 通过 `poleagent`、`agentworkbench`、handlers、router、aimcp 测试；K8s Node Pod 通过 Agent 契约、目标 ESLint 和 release build；K8s Python Pod 通过 context-kg lint。
+- 使用 K8s 临时 OpenAI-compatible 模型服务完成真实浏览器验收：有工具 namespace 查询、无工具回复、带历史多轮、配置提案、diff 预览、用户确认、草稿保存与 `waiting_for_publish` 均通过；确认前配置正文未变化，确认后只改变草稿，测试配置随后恢复原正文。
+- 验收中修复两个空集合契约缺陷：无工具回复的 `tools` 与未配置 runtime 的 `tools` 现在稳定返回空数组，前端同时做空值防御。独立新标签页复验未配置状态显示“Agent 未配置”、发送禁用且 0 warning/error。
+- 已发布不可变镜像 `pole-control-plane:local-20260723-agent-runtime-v5`，新 Pod Ready、0 restart。临时模型 Pod/Service 已删除，API key 与 baseURL 已恢复为空；当前部署因没有真实 LLM Gateway 配置而安全地保持未就绪。发送门禁使用 runtime `ready`，模型已配置但 MCP 探针失败时同样禁止发送，不能把临时模型桩或部分配置当成生产可用。
+- 本轮仍不包含流式输出、服务端会话持久化、配置 create、治理规则写入和 Pole `SystemSecretStore` 编辑页面；这些是后续增强，不影响当前“查询 + 已有配置 update 提案 + 人工确认保存草稿”的最小闭环。
+
+## Pole 内部 Agent 配置与 Secret 闭环（2026-07-23）
+
+目标：LLM Gateway 地址、模型、API key、Prompt 和 MCP 策略由 pole-control-plane 自己完成 Admin 页面编辑、数据库加密持久化、草稿/发布、生效回执与运行时热加载；Kubernetes 不再承担日常业务配置，只保留数据库连接和不可避免的根加密材料等最小自举信息。
+
+- [x] 复核系统配置定义注册表、数据库表、Store、Console 页面和运行时加载链路。
+- [x] 决定配置中心、sys config DB 与 Secret Store 的复用方式，冻结领域模型、来源优先级和启动恢复规则。
+- [x] 实现 Agent 配置草稿、校验、发布、历史和有效值读取接口，并统一 Admin gate。
+- [x] 实现 API key write-only 加密存储、版本引用、替换/保留语义和脱敏响应。
+- [x] 让 PoleAgent 运行时从内部发布快照构建并热切换，失败时保持 last-known-good。
+- [x] 实现 Admin-only 页面编辑、连接测试、diff、发布和实例生效反馈。
+- [x] 迁移现有 YAML/env 为首次初始化值或应急覆盖，不再作为日常编辑入口。
+- [x] 仅在 Kubernetes 中完成数据库迁移、接口、单测、浏览器、热更新、回滚和密钥不泄露验收。
+- [x] 更新 ADR、配置说明、AI 模块、知识库日志和本节 Review。
+
+### Review
+
+- Console 首期以独立 `SystemSettingsRepository` 复用现有 Pole MySQL，三张专用表分别保存领域指针、不可变配置 revision 与加密 Secret；普通配置管理、Agent 和浏览器均不能直接操作数据库。
+- API key 使用随机 DEK + 根 KEK 的 AES-GCM 信封加密，配置 payload 只保存不可变 `pole-secret://` 引用；读取、diff、连接测试响应和运行日志均不回填明文。新 Secret 后续草稿保存冲突时会删除未引用版本。
+- 发布会重新探测 OpenAI-compatible LLM Gateway 与 actor-bound Pole MCP，失败返回 502 并保留 last-known-good；发布和后台 reconcile 共用互斥，旧 revision 不得覆盖新快照。当前实例原子切换，多实例通过周期 reconcile 收敛。
+- 修复普通控制面代理成功响应刷新 JWT 时清空 role 的问题，并统一兼容旧无 role 主账号 Cookie；真实浏览器在一次普通资源请求和刷新后仍显示 System Configuration，非 Admin 仍由前后端双重门禁拒绝。
+- K8s builder Pod 内通过 Go handler/router/store/runtime 测试、System Configuration Admin/error-state 契约、Agent 工作台契约和 Vite production build。K8s E2E 完成草稿、Pole Secret、连接测试、发布前探活、热更新、MCP 工具发现与真实 turn；错误 Gateway 发布被 502 拒绝且 runtime 保持上一 revision。
+- 测试 revision、Secret、mock LLM、builder 和数据库客户端均已清理；最终数据库 Agent domain/draft/secret 计数为 0，Pod 重启后 runtime 回到 `static` 且未配置模型时 fail closed。生产仅保留 `pole-control-plane:local-20260723-system-settings-v5`，Ready、0 restart。
+- Deployment 不再包含 `POLE_AGENT_LLM_BASE_URL` 或 Agent API key；`pole-runtime-secrets` 只保留 MySQL、Console JWT、auth salt 与 `SYSTEM_SECRET_MASTER_KEY`。管理员现在可在 `/system-configuration?component=pole-console&domain=agent` 配置真实 Gateway 后使用。
+
+## System Configuration Agent 交互重设计（2026-07-23）
+
+目标：把当前“目录表格上叠加编辑和发布按钮”的 Agent 页面重构为任务导向的配置工作台，让管理员清楚理解当前生效配置、连接状态、草稿状态以及测试/保存/发布顺序，同时保持 Pole Secret、发布前探活和 last-known-good 边界不变。
+
+- [x] 审计当前页面、抽屉、暗色主题、窄屏和交互状态。
+- [x] 冻结 Agent 专用信息架构、状态摘要、配置分组与主操作层级。
+- [x] 重构 Agent 领域主区，常规领域继续使用配置目录表格。
+- [x] 重构编辑抽屉和审阅发布交互，明确测试连接、保存草稿和发布的阶段关系。
+- [x] 补齐加载、未配置、草稿、已发布、失败和窄屏状态。
+- [x] 仅在 Kubernetes builder 与运行 Pod 中完成契约、生产构建和真实浏览器验收。
+- [x] 更新本节 Review、lessons 和知识库日志。
+
+Review：
+
+- Agent 领域已从 13 行通用配置表提升为专用工作区：首屏直接展示运行配置、模型、Pole Secret、草稿状态，以及模型连接、MCP、指令和三阶段发布流程；普通领域仍保留来源统计、搜索、筛选和配置目录表格。
+- 编辑器改为 720px 模态任务抽屉，API Key 仅支持首次设置、保留和替换；移除会制造不可发布草稿的禁用入口。任何字段或 Secret 改动都会使连接测试结果失效，未通过测试不能保存草稿。
+- 发布 Dialog 改为 effective → draft 的字段级差异、Secret 版本引用和三项发布保护审阅；测试连接、保存草稿、发布仍是三个独立动作，服务端发布前复验与 last-known-good 边界未改变。
+- Kubernetes builder Pod 内通过目标 ESLint、System Configuration Admin gate、错误态、暗色约束和 production build。运行镜像 `pole-control-plane:local-20260723-system-config-ui-v2` Ready、0 restart，Pod 与 Gateway 主资源 hash 均为 `index.b74291c1.js`。
+- 真实 Gateway 以 admin 会话验证 Agent 默认页、编辑抽屉、普通配置目录回归和 1280×720、1180×820、900×800 三档布局，均无页面横向溢出，浏览器 console 0 warning/error；未写入测试草稿或 Secret。
+
+## 全领域 System Configuration 编辑闭环（2026-07-23）
+
+目标：逐项审查 Pole Server 与 Console 的全部系统配置定义，不再把 Agent 当作唯一可编辑领域；为每个字段明确只读/可编辑、校验、生效方式、敏感策略和发布影响，并实现统一的领域草稿、差异审阅、发布与状态反馈。
+
+- [x] 盘点两个组件全部领域、配置项和当前来源。
+- [x] 建立字段级编辑性、类型控件、校验、生效和敏感策略矩阵。
+- [x] 实现非 Agent 领域的通用草稿、校验、并发控制、发布和历史接口。
+- [x] 实现各领域的类型化编辑、变更差异和发布交互。
+- [x] 对 BootstrapOnly、RestartRequired、HotReload 和 GuardedHotReload 分别给出准确行为。
+- [x] 复用 Admin gate，并覆盖 Secret、冲突、失败和 last-known-good 边界。
+- [x] 仅在 Kubernetes 中完成后端、前端、数据库、生产构建和真实浏览器逐领域验收。
+- [x] 更新 ADR、知识库索引/日志、lessons 和本节 Review。
+
+### Review
+
+- 63 个定义均增加显式字段策略和服务端校验元数据：Pole Server 29 项中 21 项可管理、8 项保持部署锁定；Console 34 项中 22 项可管理、12 项保持部署锁定。新增字段没有策略时默认锁定，不能因 YAML tag 自动开放。
+- 通用领域复用 `SystemSettingsRepository` 保存不可变草稿/发布版本；服务端按 component/domain、字段归属、编辑权限、类型、枚举、数值/时长范围和跨字段关系验证。重启级发布只记录 desired revision 并回执 `pending_restart`，页面继续独立展示 effective value，未伪装成已生效。
+- 通用页面保留组件/领域导航，但表格新增发布目标和管理方式；抽屉只渲染该领域已评审字段，发布 Dialog 展示 effective → draft 差异和重启影响。自举、Secret、监听端口、存储连接等字段显示具体锁定原因。
+- Agent 专用编辑器补齐原目录中遗漏的提案有效期与资源工具上游超时；二者随发布通过原子 TTL 和请求 context timeout 立即更新，13 项配置不再有“注册但不可操作”的缺口。
+- Kubernetes 串行 Go Pod 通过 systemconfig、bootstrap、systemsettings、agentworkbench、handlers、router 测试；Node Pod 通过 Vite release build。镜像 `pole-control-plane:local-20260723-system-config-all-v3` 已滚动，Pod Ready、0 restart。
+- Gateway 真实浏览器验证 Server naming 8 项编辑并保存草稿 r4、Server storage 全锁定、Console runtime 仅开放 features、observability 4 项可编辑、Agent 13 项完整编辑；1280×720 下 `scrollWidth = clientWidth = 1280`，控制台 0 warning/error。
+
+## Console 全流程布局与交互实页审计（2026-07-23）
+
+目标：使用 Admin 账号在真实本地 Console 中覆盖全部可见导航和安全可执行操作，识别页面布局、信息层级、表格、抽屉/弹窗、表单、空态、响应式和可访问性问题；旧截图与源码只作为线索，最终结论以本轮实页证据为准。
+
+- [x] 盘点全部可见路由、详情 Tab 和主要操作，建立“页面 × 操作 × 状态”矩阵。
+- [x] 登录 Console，逐页覆盖列表、查询、刷新、分页、详情、创建/编辑入口与校验反馈。
+- [x] 仅对本轮创建的测试数据执行保存、删除与恢复，不修改现有业务数据。
+- [x] 采集并检查关键状态截图，覆盖桌面与窄视口下的布局和滚动行为。
+- [x] 将重复问题映射到共享组件、页面样式和统一设计规范，区分结构问题与页面级问题。
+- [x] 输出逐步审计结果、优先级、可访问性风险、证据边界和建议修复顺序。
+
+### Review
+
+- 使用 Admin 账号完成全部可见业务域、主要详情 Tab 和安全创建/编辑入口的实页走查，共保留 71 张本轮截图；未提交或修改现有业务资源。
+- 确认问题具有系统性：共享 Table 未落实固定首尾列和内部横向滚动，Row/Col 兼容层忽略布局属性，大抽屉未做响应式表单重排，固定高度空表格制造大量无效空间。
+- P0 阻断：熔断规则创建页运行时白屏，错误为 `FormItem 必须在 Form 内使用`；源码确认悬浮操作区的 `FormItem` 位于主 `Form` 外。
+- 实测窄屏失败：命名空间表格容器约 1046px、主内容约 787px且右侧不可达；服务实例 11 列被压缩进约 745px，内部无横向滚动、无固定列。
+- 系统监控、系统配置和 Agent 工作台整体较稳定，可作为后续统一页面节奏与状态表达的正向参考。
+- 完整报告与证据保存在 `output/audits/console-full-flow-2026-07-23/`；配置文件详情受列表数据口径阻断，Agent 工作台受本地运行时不完整阻断。
+
+## Console 全站交互与视觉持续整改（2026-07-24）
+
+目标：基于真实 Console 审计结果，一边实页验证一边修复，直到可见业务页面在桌面、超宽和窄视口下不再存在阻断操作、布局破坏、无效交互和明显体验问题。
+
+- [x] 修复熔断规则创建页 `FormItem` 脱离 `Form` 导致的白屏，并建立回归契约。
+- [x] 重构共享 Table 的列宽、最小宽度、固定首尾列、内部滚动、省略与全文提示契约。
+- [x] 修复共享 Row/Col 的对齐属性和默认占宽，统一资源工具栏响应式行为。
+- [x] 优化服务实例、别名、订阅和流量治理的工具栏、长标识、空态与大抽屉布局。
+- [x] 修复认证策略向导逐字换行、无动作批量按钮和服务监控伪切换等交互问题。
+- [x] 运行前端专项测试、ESLint、生产构建和 Go 相关回归。
+- [x] 重建 all-mode，并以 Admin 真实浏览器覆盖全部业务域、主要操作、亮暗主题和多档视口。
+- [x] 对新发现的问题继续迭代，直至逐页验收矩阵没有未解决的阻断、布局和明显体验缺陷。
+
+### Review
+
+- 共享 Table 已统一实现自适应列宽、表格内部横向滚动、选择列与首个业务列左侧固定、操作列右侧固定、长内容省略及 `title` 全文提示；非受控分页会进行真实本地切片，受控分页只触发一套回调，窄屏分页可换行。
+- 服务实例、命名空间、认证主体/策略、配置文件、MCP Schema、治理规则编辑器等表格型界面均复用或遵循上述契约；640px 实测 `body.scrollWidth === body.clientWidth`，中间内容由局部容器滚动承接。
+- 补齐角色查看、编辑与权限详情闭环，并统一鉴权 mutation 对 `{result}`、批量 `{responses}` 和旧式 `{code}` 的响应判断，避免接口失败时前端伪报成功。
+- 使用 Admin 会话真实创建、查看、编辑并删除临时角色 `ux-e2e-role-20260724-001`，最终列表恢复为 3 个系统角色；服务监控“带过滤条件查看事件指标”可跳转并预填命名空间与服务名。
+- 900px 浏览器遍历命名空间、注册发现、配置、九类治理入口、监控、认证、AI、系统配置和 Agent 共 19 个主路由，均无页面级横向溢出、错误提示或残留弹窗；640px 复验角色表格、MCP Schema、限流和泳道编辑器，亮暗主题下固定列背景均正确。
+- 专项契约、全量 ESLint、生产构建（3536 modules）、`go test ./console/...` 和 `git diff --check` 通过。
+- Kubernetes 部署更新为 `pole-control-plane:local-20260724-console-ux-v10`，运行 Pod Ready、重启数 0，Console 与 API 探测均为 HTTP 200。
+
+## Console 全站体验完成审计（2026-07-24）
+
+目标：不沿用上一轮“已完成”结论，重新以完整路由、全部可见操作、多视口和真实浏览器状态寻找反例；只有逐项证据闭合后才判断全站体验整改完成。
+
+- [x] 重建全部可见路由、详情页、抽屉、弹窗和创建/编辑操作清单。
+- [x] 在 640px、900px、2048px 和亮暗主题下扫描页面级溢出、局部裁切、不可达操作和空白高度。
+- [x] 逐项执行安全的查询、重置、刷新、分页、Tab、详情、创建/编辑校验和确认/取消流程。
+- [x] 修复共享按钮尺寸、表格操作列、无障碍名称和所有新发现的布局/交互问题。
+- [x] 运行全部前端验证脚本、ESLint、生产构建和 Console Go 回归。
+- [x] 重建 Kubernetes 运行产物并完成最终浏览器回归。
+
+### Review
+
+- 以 Admin 会话覆盖 19 个主路由，并执行列表查询、重置、刷新、治理/认证页签、服务详情 5 页签、实例与别名新建、配置文件 4 页签、配置发布两步抽屉，以及命名空间/用户/用户组/A2A/MCP 表单重置；未提交、删除或修改现有业务资源。
+- 共享 `Button shape="square/circle"` 现在按尺寸约束为 24/32/40px，治理鉴权固定操作列不再裁掉第二个按钮；Header、治理矩阵和 AI 编辑器的图标操作补齐稳定无障碍名称。
+- 共享 Table 保持首尾列固定、内部横向滚动和长内容省略；熔断接口/错误/触发条件、探测 Headers、路由目标分组、流量治理接口、标签编辑等伪表格也统一为局部滚动并固定首尾列，不再在窄屏隐藏列头。
+- 共享 Drawer/Dialog 修正自定义宽度覆盖、空 footer/action 和响应式边界；960px 配置创建/发布抽屉在 900px 视口实测宽 868px，未产生页面级溢出。CodeDiffEditor 同步主题并使用受视口约束的高度。
+- 真实点击发现并修复受控 Input/Textarea 从字符串恢复为 `undefined` 时不更新 DOM 的公共根因；命名空间、用户、用户组、A2A、MCP 表单均以输入后点击重置、读取实际 DOM value 的方式复验通过。
+- 资源授权抽屉改为直接有界分页查询并用 `Promise.allSettled` 收敛，单项失败可报告且不永久 Loading；v12 实测授权抽屉 0 alert、0 可见 progressbar。
+- 640px、900px、2048px 三档最终遍历 19 个主路由均满足 `body.scrollWidth === body.clientWidth`，无不可达操作、无未提示裁切、无错误 alert；黑暗主题固定列背景使用深色 surface token。
+- ESLint、59 个 `verify-*.mjs`、release build（3536 modules）和 `go test ./console/...` 通过。不可变镜像 `pole-control-plane:local-20260724-console-ux-v12` 已滚动，imageID 为 `sha256:fd2ae7a9bf8c927bff306341f4a28c6c71f7af8a2b824d2b910c11d74e6a45d2`。一次性跨 19 个路由、3 个视口的压力式浏览器巡检触发过 1 次 `OOMKilled`（容器内存上限 2 GiB）；容器自动恢复后常态占用约 92 MiB，并持续 Ready，Console 与 readiness 均为 HTTP 200。该重启作为压力巡检运行态事实保留，不再误记为 0 restart。
+
+## Console 全站体验收尾复验（2026-07-24）
+
+目标：针对“所有表格首尾固定、内部滚动、宽度自适应、长内容省略并悬浮展示全文”的统一规范和 Console 治理交互，再次从真实运行页面寻找反例，修复后完成发布级回归。
+
+- [x] 在 1280×720 真实 Admin 会话中遍历 18 个主路由并检查页面级溢出。
+- [x] 打开命名空间、A2A、MCP、服务实例、配置分组、用户、策略及五类治理编辑器，检查宽度、滚动、底部操作和校验反馈。
+- [x] 对 AI、配置、监控和鉴权表格执行真实横向滚动，测量首尾列滚动前后位置。
+- [x] 检查长服务标识的省略样式、实际宽度和 `title` 全文提示。
+- [x] 验证主体搜索、刷新、清空、详情，以及 A2A、MCP、服务详情和服务详情五个页签。
+- [x] 修复详情面包屑的键盘可达性，并完成静态检查、镜像滚动和最终运行态复验。
+
+### Review
+
+- 共享 Breadcrumb 的可点击项已从鼠标专用 `span onClick` 收敛为 Fluent Button；User Detail 最新资源实测无障碍树出现“用户”按钮，点击后返回 `/auth/principals`。
+- 1280×720 下最终遍历 18 个主路由，全部 `documentElement.scrollWidth === clientWidth`，无错误 alert、无残留 progressbar；服务详情五个页签、A2A/MCP 详情、主体查询/刷新/清空与治理编辑器校验均可达。
+- A2A 宽表内部真实滚动 547px 后，首列左边界保持 258px、尾列右边界保持 1255px；配置、服务监控、权限策略也完成相同滚动测量。长服务名实际使用 `overflow: hidden`、`text-overflow: ellipsis`、单行省略，并保留完整 `title`。
+- ESLint、59 个 `verify-*.mjs`、release build（3536 modules）、`go test ./console/...` 和目标 `git diff --check` 通过。
+- 不可变镜像 `pole-control-plane:local-20260724-console-ux-v14` 已滚动，imageID 为 `sha256:85426205e655519cde355dc346350fb6c0186ccef688e21920a24b2a86a33951`；新 Pod Ready、0 restart，Console、API 与 Deployment readiness 均为 HTTP 200，主资源为 `index.ab37b8a5.js`。

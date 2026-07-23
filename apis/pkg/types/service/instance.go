@@ -20,6 +20,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,6 +31,11 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/utils"
+)
+
+const (
+	DefaultHealthCheckInterval uint32 = 5
+	MaxHealthCheckInterval     uint32 = 60
 )
 
 // InstanceCount Service instance statistics
@@ -163,6 +169,121 @@ func (i *Instance) HealthCheck() *apiservice.HealthCheck {
 	return i.Proto.GetHealthCheck()
 }
 
+// NormalizeHealthCheck applies defaults and keeps only the selected checker configuration.
+func NormalizeHealthCheck(check *apiservice.HealthCheck) *apiservice.HealthCheck {
+	if check == nil {
+		return nil
+	}
+	checkType := check.GetType()
+	if checkType == apiservice.HealthCheck_UNKNOWN {
+		switch {
+		case check.GetHeartbeat() != nil:
+			checkType = apiservice.HealthCheck_HEARTBEAT
+		case check.GetTcp() != nil:
+			checkType = apiservice.HealthCheck_TCP
+		case check.GetHttp() != nil:
+			checkType = apiservice.HealthCheck_HTTP
+		}
+	}
+	normalizeInterval := func(value uint32) uint32 {
+		if value == 0 || value > MaxHealthCheckInterval {
+			return DefaultHealthCheckInterval
+		}
+		return value
+	}
+	switch checkType {
+	case apiservice.HealthCheck_HEARTBEAT:
+		return &apiservice.HealthCheck{
+			Type: apiservice.HealthCheck_HEARTBEAT,
+			Heartbeat: &apiservice.HeartbeatHealthCheck{
+				Ttl: normalizeInterval(check.GetHeartbeat().GetTtl()),
+			},
+		}
+	case apiservice.HealthCheck_TCP:
+		return &apiservice.HealthCheck{
+			Type: apiservice.HealthCheck_TCP,
+			Tcp: &apiservice.TcpHealthCheck{
+				Interval: normalizeInterval(check.GetTcp().GetInterval()),
+			},
+		}
+	case apiservice.HealthCheck_HTTP:
+		path := strings.TrimSpace(check.GetHttp().GetPath())
+		if path == "" {
+			path = "/"
+		} else if !strings.HasPrefix(path, "/") {
+			path = "/" + path
+		}
+		return &apiservice.HealthCheck{
+			Type: apiservice.HealthCheck_HTTP,
+			Http: &apiservice.HttpHealthCheck{
+				Interval: normalizeInterval(check.GetHttp().GetInterval()),
+				Path:     path,
+			},
+		}
+	default:
+		return nil
+	}
+}
+
+// HealthCheckInterval returns heartbeat TTL or active probe interval.
+func HealthCheckInterval(check *apiservice.HealthCheck) uint32 {
+	normalized := NormalizeHealthCheck(check)
+	if normalized == nil {
+		return 0
+	}
+	switch normalized.GetType() {
+	case apiservice.HealthCheck_HEARTBEAT:
+		return normalized.GetHeartbeat().GetTtl()
+	case apiservice.HealthCheck_TCP:
+		return normalized.GetTcp().GetInterval()
+	case apiservice.HealthCheck_HTTP:
+		return normalized.GetHttp().GetInterval()
+	default:
+		return 0
+	}
+}
+
+// HealthCheckExpireDuration returns the scheduler delay for each checker type.
+func HealthCheckExpireDuration(check *apiservice.HealthCheck) uint32 {
+	interval := HealthCheckInterval(check)
+	if check.GetType() == apiservice.HealthCheck_HEARTBEAT {
+		return expireTtlCount * interval
+	}
+	return interval
+}
+
+const expireTtlCount uint32 = 3
+
+// MetadataWithHealthCheck persists HTTP path without adding a database column.
+func MetadataWithHealthCheck(metadata map[string]string, check *apiservice.HealthCheck) map[string]string {
+	result := maps.Clone(metadata)
+	if result == nil {
+		result = make(map[string]string)
+	}
+	delete(result, types.MetadataInternalMetaHealthCheckPath)
+	normalized := NormalizeHealthCheck(check)
+	if normalized != nil && normalized.GetType() == apiservice.HealthCheck_HTTP {
+		result[types.MetadataInternalMetaHealthCheckPath] = normalized.GetHttp().GetPath()
+	}
+	return result
+}
+
+// HealthCheckFromStore rebuilds the type-specific configuration from health_check and metadata.
+func HealthCheckFromStore(checkType int32, interval uint32, metadata map[string]string) *apiservice.HealthCheck {
+	check := &apiservice.HealthCheck{Type: apiservice.HealthCheck_HealthCheckType(checkType)}
+	switch check.GetType() {
+	case apiservice.HealthCheck_HEARTBEAT:
+		check.Heartbeat = &apiservice.HeartbeatHealthCheck{Ttl: interval}
+	case apiservice.HealthCheck_TCP:
+		check.Tcp = &apiservice.TcpHealthCheck{Interval: interval}
+	case apiservice.HealthCheck_HTTP:
+		check.Http = &apiservice.HttpHealthCheck{Interval: interval, Path: metadata[types.MetadataInternalMetaHealthCheckPath]}
+	default:
+		return nil
+	}
+	return NormalizeHealthCheck(check)
+}
+
 // Healthy get healthy
 func (i *Instance) Healthy() bool {
 	if i.Proto == nil {
@@ -292,12 +413,7 @@ func Store2Instance(is *InstanceStore) *Instance {
 	}
 	// 如果不存在checkType，即checkType==-1。HealthCheck置为nil
 	if is.CheckType != -1 {
-		ins.Proto.HealthCheck = &apiservice.HealthCheck{
-			Type: apiservice.HealthCheck_HealthCheckType(is.CheckType),
-			Heartbeat: &apiservice.HeartbeatHealthCheck{
-				Ttl: is.TTL,
-			},
-		}
+		ins.Proto.HealthCheck = HealthCheckFromStore(is.CheckType, is.TTL, is.Meta)
 	}
 	// 如果location不为空，那么填充一下location
 	if is.Region != "" {
@@ -343,22 +459,16 @@ func CreateInstanceModel(serviceID string, req *apiservice.Instance) *Instance {
 		Healthy:  req.GetHealthy(),
 		Isolate:  req.GetIsolate(),
 		Location: req.Location,
-		Metadata: req.Metadata,
+		Metadata: maps.Clone(req.Metadata),
 		Revision: utils.NewUUID(), // 更新版本号
 	}
 
-	// health Check，healthCheck不能为空，且没有显示把enable_health_check置为false
-	// 如果create的时候，打开了healthCheck，那么实例模式是unhealthy，必须要一次心跳才会healthy
-	if req.GetHealthCheck().GetHeartbeat() != nil && req.GetEnableHealthCheck() {
-		protoIns.EnableHealthCheck = true
-		protoIns.HealthCheck = req.HealthCheck
-		protoIns.HealthCheck.Type = apiservice.HealthCheck_HEARTBEAT
-		// ttl range: (0, 60]
-		ttl := protoIns.GetHealthCheck().GetHeartbeat().GetTtl()
-		if ttl == 0 || ttl > 60 {
-			if protoIns.HealthCheck.Heartbeat.Ttl == 0 {
-				protoIns.HealthCheck.Heartbeat.Ttl = uint32(5)
-			}
+	if req.GetEnableHealthCheck() {
+		healthCheck := NormalizeHealthCheck(req.GetHealthCheck())
+		if healthCheck != nil {
+			protoIns.EnableHealthCheck = true
+			protoIns.HealthCheck = healthCheck
+			protoIns.Metadata = MetadataWithHealthCheck(protoIns.Metadata, healthCheck)
 		}
 	}
 

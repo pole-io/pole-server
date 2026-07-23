@@ -63,6 +63,10 @@ type ServiceStore interface {
 	UpdateServiceToken(serviceID string, token string, revision string) error
 	// GetSourceServiceToken 获取源服务的token信息
 	GetSourceServiceToken(name string, namespace string) (*svctypes.Service, error)
+	// GetOrCreateServiceIdentityByToken resolves the service principal from a
+	// service token and lazily creates an identity for services created before
+	// managed identities were introduced.
+	GetOrCreateServiceIdentityByToken(token string) (*svctypes.Service, error)
 	// GetService 根据服务名和命名空间获取服务的详情
 	GetService(name string, namespace string) (*svctypes.Service, error)
 	// GetServiceByID 根据服务ID查询服务详情

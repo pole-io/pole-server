@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
-import { Space, Button, Table, Tooltip, Descriptions, Tree } from "tdesign-react";
-import type { PrimaryTableProps, TableProps, TableRowData } from 'tdesign-react';
-import { Delete1Icon, Edit1Icon, RollbackIcon } from 'tdesign-icons-react';
+import React from 'react';
+import { Button, Descriptions, Drawer, Table, Tooltip, Tag } from 'components/Fluent';
+import type { PrimaryTableProps } from 'components/Fluent';
+import { BrowseIcon } from 'components/Fluent/icons';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import Text from 'components/Text';
-import { VersionClient } from 'services/config_release';
+import { FileSubscriber, VersionClient } from 'services/config_release';
 import { openErrNotification } from 'utils/notifition';
 
 import style from './index.module.less';
 import { cleanFilePage, listFileSubscribers, selectConfigFile } from 'modules/configuration/file';
+import { cleanFileReleasePage, listConfigFileReleases, selectFileRelease } from 'modules/configuration/release';
 
 interface ISubscribeTableProps {
     namespace: string;
@@ -19,7 +20,14 @@ interface ISubscribeTableProps {
     deleteable: boolean;
 }
 
-const columns = (props: ISubscribeTableProps, handleViewRelease: (view: boolean, row: TableRowData) => void): PrimaryTableProps['columns'] => [
+type SubscriberRow = FileSubscriber & {
+    resolvedStatus?: 'gray' | 'normal' | 'missing';
+    resolvedText?: string;
+}
+
+const { DescriptionsItem } = Descriptions;
+
+const columns = (onView: (row: SubscriberRow) => void): PrimaryTableProps['columns'] => [
     {
         colKey: 'id',
         title: '客户端ID',
@@ -32,31 +40,44 @@ const columns = (props: ISubscribeTableProps, handleViewRelease: (view: boolean,
     },
     {
         colKey: 'client_type',
-        title: '客户端类型',
+        title: '类型',
         cell: ({ row: { client_type } }) => <Text>{client_type}</Text>,
+    },
+    {
+        colKey: 'labels',
+        title: '标签',
+        cell: () => '-',
+    },
+    {
+        colKey: 'listeningVersion',
+        title: '监听版本',
+        cell: ({ row }) => {
+            const status = row.resolvedStatus as SubscriberRow['resolvedStatus'];
+            const theme = status === 'gray' ? 'warning' : status === 'normal' ? 'success' : 'danger';
+            return (
+                <Tag theme={theme} variant="light">
+                    {row.resolvedText || `v${row.version || '-'}`}
+                </Tag>
+            );
+        },
+    },
+    {
+        colKey: 'lastPull',
+        title: '最近拉取',
+        cell: () => '-',
     },
     {
         colKey: 'action',
         title: '操作',
+        fixed: 'right',
+        width: 72,
         cell: ({ row }) => {
             return (
-                <Space>
-                    <Tooltip content={props.editable === false ? '无权限操作' : '重发布'}>
-                        <Button shape="square" variant="text" disabled={props.editable === false}>
-                            <Edit1Icon />
-                        </Button>
-                    </Tooltip>
-                    <Tooltip content={props.editable === false ? '无权限操作' : '回滚至此版本'}>
-                        <Button shape="square" variant="text" disabled={row.deleteable === false}>
-                            <RollbackIcon />
-                        </Button>
-                    </Tooltip>
-                    <Tooltip content={props.editable === false ? '无权限操作' : '撤销'}>
-                        <Button shape="square" variant="text" disabled={row.deleteable === false}>
-                            <Delete1Icon />
-                        </Button>
-                    </Tooltip>
-                </Space>
+                <Tooltip content="查看详情">
+                    <Button aria-label="查看订阅客户端详情" shape="square" variant="text" onClick={() => onView(row as SubscriberRow)}>
+                        <BrowseIcon />
+                    </Button>
+                </Tooltip>
             )
         },
     },
@@ -67,86 +88,132 @@ const SubscribeTable: React.FC<ISubscribeTableProps> = (props) => {
 
     const fileState = useAppSelector(selectConfigFile);
     const { subscribers } = fileState;
-
-    const [searchState, setSearchState] = useState<{
-        versionTree: any[]
-        subscribers: TableProps['data'];
-        total: number;
-        query: string;
-        fetchError: boolean;
-        isLoading: boolean;
-    }>({ versionTree: [], subscribers: [], total: 0, query: '', fetchError: false, isLoading: false });
+    const releaseState = useAppSelector(selectFileRelease);
+    const { versions } = releaseState;
+    const [loading, setLoading] = React.useState(false);
+    const [selectedSubscriber, setSelectedSubscriber] = React.useState<SubscriberRow | null>(null);
 
     React.useEffect(() => {
+        let active = true;
+        dispatch(cleanFilePage());
+        dispatch(cleanFileReleasePage());
+        setSelectedSubscriber(null);
         if (props.namespace && props.group && props.filename) {
-            dispatch(listFileSubscribers({
-                param: {
-                    namespace: props.namespace,
-                    group: props.group,
-                    file_name: props.filename,
+            setLoading(true);
+            Promise.all([
+                dispatch(listFileSubscribers({
+                    param: {
+                        namespace: props.namespace,
+                        group: props.group,
+                        file_name: props.filename,
+                    }
+                })),
+                dispatch(listConfigFileReleases({
+                    param: {
+                        namespace: props.namespace,
+                        group: props.group,
+                        file_name: props.filename,
+                    }
+                })),
+            ]).then(([subscriberResult, releaseResult]) => {
+                if (!active) return;
+                if (subscriberResult.meta.requestStatus === 'rejected') {
+                    openErrNotification('请求失败', String(subscriberResult.payload || '获取订阅客户端失败'));
                 }
-            })).then((res) => {
-                if (res.meta.requestStatus === 'rejected') {
-                    openErrNotification('请求失败', res?.payload as string);
+                if (releaseResult.meta.requestStatus === 'rejected') {
+                    openErrNotification('获取发布记录失败', String(releaseResult.payload || '请求失败'));
                 }
+            }).finally(() => {
+                if (active) setLoading(false);
             });
         }
         return () => {
-            cleanFilePage();
+            active = false;
+            dispatch(cleanFilePage());
+            dispatch(cleanFileReleasePage());
         }
-    }, [props.namespace, props.group, props.filename]);
+    }, [dispatch, props.namespace, props.group, props.filename]);
 
-    const renderVersionTree = (subscribers: VersionClient[]) => {
-        const versions: Record<string, boolean> = {}
-        subscribers.forEach((client) => {
-            versions[client.version.toString()] = true;
-        });
-        return Object.keys(versions).map((version) => ({
-            label: version,
-            value: version,
-            children: false,
+    const activeNormal = React.useMemo(() => versions.find((item: any) => item.active && item.releaseType !== 'gray'), [versions]);
+    const activeGrayByName = React.useMemo(() => versions.reduce((acc: Record<string, any>, item: any) => {
+        if (item.active && item.releaseType === 'gray' && item.name) {
+            acc[item.name] = item;
+        }
+        return acc;
+    }, {}), [versions]);
+
+    const subscriberRows = React.useMemo<SubscriberRow[]>(() => {
+        return (subscribers || []).flatMap((item: VersionClient) => (item.subscribers || []).map((client) => {
+            const gray = activeGrayByName[client.release_name];
+            if (gray) {
+                return {
+                    ...client,
+                    resolvedStatus: 'gray',
+                    resolvedText: `命中灰度 v${gray.version || client.version}`,
+                } as SubscriberRow;
+            }
+            if (activeNormal && String(activeNormal.version) === String(client.version)) {
+                return {
+                    ...client,
+                    resolvedStatus: 'normal',
+                    resolvedText: `当前全量 v${client.version}`,
+                } as SubscriberRow;
+            }
+            return {
+                ...client,
+                resolvedStatus: activeNormal ? 'normal' : 'missing',
+                resolvedText: activeNormal ? `当前全量 v${client.version}` : '无可用版本',
+            } as SubscriberRow;
         }));
-    }
-
-    const handleViewRelease = (view: boolean, row: TableRowData) => {
-
-    }
+    }, [activeGrayByName, activeNormal, subscribers]);
 
     const table = (
         <>
-            <Descriptions
-                itemLayout="horizontal"
-                layout="horizontal"
-                size="small"
-                title={`${props.filename}`}
-            ></Descriptions>
-            <Space>
-                <div className={style.treeContent}>
-                    <Tree data={renderVersionTree(subscribers)} activable hover transition />
-                </div>
+            <div className={style.subscribeShell}>
                 <Table
-                    data={subscribers}
-                    columns={columns(props, handleViewRelease)}
-                    loading={searchState.isLoading}
+                    data={subscriberRows}
+                    columns={columns(setSelectedSubscriber)}
+                    loading={loading}
                     rowKey="id"
-                    size={"large"}
+                    size={"medium"}
                     tableLayout={'fixed'}
                     cellEmptyContent={'-'}
                     pagination={{
                         defaultCurrent: 1,
-                        defaultPageSize: 10,
-                        total: searchState.total,
+                        defaultPageSize: 6,
+                        total: subscriberRows.length,
                         showJumper: true,
                     }}
                     selectOnRowClick={false}
+                    ariaLabel="配置文件订阅客户端"
                 />
-            </Space>
+            </div>
         </>
     )
 
     return (
         <>
             {table}
+            <Drawer
+                size="min(560px, calc(100vw - 32px))"
+                header="订阅客户端详情"
+                footer={false}
+                visible={Boolean(selectedSubscriber)}
+                onClose={() => setSelectedSubscriber(null)}
+            >
+                {selectedSubscriber && (
+                    <Descriptions column={1} tableLayout="fixed">
+                        <DescriptionsItem label="客户端 ID">{selectedSubscriber.id || '-'}</DescriptionsItem>
+                        <DescriptionsItem label="客户端 IP">{selectedSubscriber.host || '-'}</DescriptionsItem>
+                        <DescriptionsItem label="客户端类型">{selectedSubscriber.client_type || '-'}</DescriptionsItem>
+                        <DescriptionsItem label="命名空间">{props.namespace || '-'}</DescriptionsItem>
+                        <DescriptionsItem label="配置分组">{props.group || '-'}</DescriptionsItem>
+                        <DescriptionsItem label="配置文件">{props.filename || '-'}</DescriptionsItem>
+                        <DescriptionsItem label="监听版本">{selectedSubscriber.resolvedText || `v${selectedSubscriber.version || '-'}`}</DescriptionsItem>
+                        <DescriptionsItem label="灰度发布">{selectedSubscriber.release_name || '未命中灰度发布'}</DescriptionsItem>
+                    </Descriptions>
+                )}
+            </Drawer>
         </>
     )
 }

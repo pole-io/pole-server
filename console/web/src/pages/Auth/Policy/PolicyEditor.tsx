@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Drawer, Form, Input, Space, Button, Radio, Steps, Tree, Transfer, RadioGroup, Row, Col, Switch, SelectInput, Select, Textarea } from "tdesign-react";
-import type { FormProps } from 'tdesign-react';
+import { Drawer, Form, Input, Space, Button, Radio, Steps, Tree, Transfer, RadioGroup, Row, SelectInput, Select, Textarea } from 'components/Fluent';
+import type { FormProps } from 'components/Fluent';
 
 import style from './index.module.less';
 import { useAppDispatch, useAppSelector } from 'modules/store';
@@ -14,6 +14,8 @@ import { describeAllAuthPolicies, describeAuthPolicyDetail, describeServerFuncti
 import { describeAllNamespaces } from 'services/namespace';
 import { describeAllServices } from 'services/service';
 import { describeAllConfigGroups } from 'services/config_group';
+import { describeAllMCPServers } from 'services/mcp';
+import { describeAllA2AAgents } from 'services/a2a';
 import PolicyDetailView from './PolicyDetailView';
 
 const { FormItem } = Form;
@@ -81,6 +83,8 @@ const resourceTree = [
     { label: '用户组', value: 'UserGroup' },
     { label: '角色', value: 'Role' },
     { label: '鉴权策略', value: 'AuthPolicy' },
+    { label: 'MCP Server', value: 'MCPServer' },
+    { label: 'A2A Agent', value: 'A2AAgent' },
 ];
 
 const principalTree = [
@@ -97,6 +101,7 @@ const serverFunctionTree = [
     { label: "治理规则", value: 'RouteRule|RateLimitRule|CircuitBreakerRule|FaultDetectRule' },
     { label: "配置分组", value: 'ConfigGroup' },
     { label: "配置文件", value: 'ConfigFile|ConfigRelease' },
+    { label: "AI 工具", value: 'AINative' },
     { label: "用户", value: 'User' },
     { label: "用户组", value: 'UserGroup' },
     { label: "鉴权策略", value: "AuthPolicy" },
@@ -180,7 +185,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                 principalOptions: {
                     User: users.map((u: any) => ({ value: u.id, label: u.name })),
                     UserGroup: groups.map((g: any) => ({ value: g.id, label: g.name })),
-                    Role: rolesRes.map((r: any) => ({ value: r.id, label: r.name })),
+                    Role: rolesRes.filter((r: any) => !r.default_role).map((r: any) => ({ value: r.id, label: r.name })),
                 },
                 functionOptions: serverFnRes.list,
                 viewFunctionOptions: functionList,
@@ -240,7 +245,6 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
             // 查询当前鉴权策略的详细数据
             const ret = await describeAuthPolicyDetail({ id: currentPolicy.id as string });
             if (ret.strategy) {
-                console.log("loadCurRule", ret.strategy);
                 const { name, action, comment, principals, resources, functions, metadata } = ret.strategy;
                 const selectFuncs: { [key: string]: { group: string; functions: string[] } } = transferFunctions(functions || [], functionOptions);
 
@@ -303,6 +307,14 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                         FaultDetectRule: {
                             all: resources?.faultdetect_rules?.length === 1 && resources?.faultdetect_rules?.[0].id === '*',
                             ids: resources?.faultdetect_rules?.map((item: any) => item.id) || []
+                        },
+                        MCPServer: {
+                            all: resources?.mcp_servers?.length === 1 && resources?.mcp_servers?.[0].id === '*',
+                            ids: resources?.mcp_servers?.map((item: any) => item.id) || []
+                        },
+                        A2AAgent: {
+                            all: resources?.a2a_agents?.length === 1 && resources?.a2a_agents?.[0].id === '*',
+                            ids: resources?.a2a_agents?.map((item: any) => item.id) || []
                         },
                     }
                 }));
@@ -415,6 +427,14 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                             data = await describeAllAuthPolicies();
                             resources = data?.content?.map((item: any) => ({ value: item.id, label: item.name })) || [];
                             break;
+                        case 'MCPServer':
+                            data = await describeAllMCPServers();
+                            resources = data?.map((item: any) => ({ value: item.id, label: `${item.namespace}/${item.name}` })) || [];
+                            break;
+                        case 'A2AAgent':
+                            data = await describeAllA2AAgents();
+                            resources = data?.map((item: any) => ({ value: item.id, label: `${item.namespace}/${item.name}` })) || [];
+                            break;
                         case 'RouteRule':
                             break;
                         case 'RateLimitRule':
@@ -429,7 +449,6 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                             break;
                     }
 
-                    console.log("resources", resources);
                     setState(prev => ({
                         ...prev,
                         activeResNode: value,
@@ -485,6 +504,8 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                 users: state.selectResources['User']?.all ? [{ id: "*" }] : state.selectResources['User']?.ids.map((id) => ({ id })) || [],
                 user_groups: state.selectResources['UserGroup']?.all ? [{ id: "*" }] : state.selectResources['UserGroup']?.ids.map((id) => ({ id })) || [],
                 roles: state.selectResources['Role']?.all ? [{ id: "*" }] : state.selectResources['Role']?.ids.map((id) => ({ id })) || [],
+                mcp_servers: state.selectResources['MCPServer']?.all ? [{ id: "*" }] : state.selectResources['MCPServer']?.ids.map((id) => ({ id })) || [],
+                a2a_agents: state.selectResources['A2AAgent']?.all ? [{ id: "*" }] : state.selectResources['A2AAgent']?.ids.map((id) => ({ id })) || [],
             },
             functions: state.useAllFunc ? ['*'] : Object.values(state.selectFunctions).reduce((acc: string[], cur) => {
                 if (cur.functions.length > 0) {
@@ -495,7 +516,6 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
             metadata: labels.reduce((acc: any, cur: any) => { acc[cur.key] = cur.value; return acc; }, {}),
         };
 
-        console.log(newData);
         let result;
         try {
             if (op === 'create') {
@@ -626,7 +646,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                 {/* 默认策略不能修改默认成员数据信息 */}
                 {stepInfo[state.step].Cur === 'principal' && (
                     <>
-                        <Space>
+                        <Space className={style.policySelectionLayout}>
                             <div className={style.treeContent}>
                                 <Tree
                                     data={principalTree}
@@ -640,7 +660,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                                     onClick={({ node }) => handleTreeNodeClick('principal', node.value as string)}
                                 />
                             </div>
-                            <Space direction='vertical'>
+                            <Space className={style.policySelectionMain} direction='vertical'>
                                 <RadioGroup
                                     theme='button'
                                     variant='primary-filled'
@@ -702,7 +722,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                 {/* Step 3: Resource Information */}
                 {stepInfo[state.step].Cur === 'resource' && (
                     <>
-                        <Space>
+                        <Space className={style.policySelectionLayout}>
                             <div className={style.treeContent}>
                                 <Tree
                                     data={resourceTree}
@@ -716,7 +736,7 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                                     onClick={({ node }) => handleTreeNodeClick('resource', node.value as string)}
                                 />
                             </div>
-                            <Space direction='vertical'>
+                            <Space className={style.policySelectionMain} direction='vertical'>
                                 <RadioGroup
                                     theme='button'
                                     variant='primary-filled'
@@ -783,8 +803,8 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                 {/* 需要支持高级参数填写，走 TagSelect 用户可自行填写 */}
                 {stepInfo[state.step].Cur === 'interface' && (
                     <>
-                        <Row style={{ marginBottom: 10 }}>
-                            <Col span={10}>
+                        <div className={style.policyModeRow}>
+                            <div className={style.policyModeScope}>
                                 {!state.swithCustomFunc && (
                                     <RadioGroup
                                         theme='button'
@@ -802,21 +822,24 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                                         <Radio.Button value="all">全部（包括新增）</Radio.Button>
                                     </RadioGroup>
                                 )}
-                            </Col>
-                            <Col span={2}>
-                                <Switch
-                                    defaultValue
-                                    label={['可视化选择', '文本模式']}
+                            </div>
+                            <div className={style.policyModeSwitch}>
+                                <RadioGroup
+                                    layout="horizontal"
+                                    value={state.swithCustomFunc ? 'text' : 'visual'}
                                     disabled={!editable}
                                     onChange={(value) => {
                                         setState(prev => ({
                                             ...prev,
-                                            swithCustomFunc: !value,
+                                            swithCustomFunc: value === 'text',
                                         }));
                                     }}
-                                />
-                            </Col>
-                        </Row>
+                                >
+                                    <Radio.Button value="visual">可视化选择</Radio.Button>
+                                    <Radio.Button value="text">文本模式</Radio.Button>
+                                </RadioGroup>
+                            </div>
+                        </div>
                         {state.swithCustomFunc ? (
                             <Space style={{ width: '100%' }} direction='vertical'>
                                 <Select
@@ -849,8 +872,8 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                         ) : (
                             <>
                                 {!state.useAllFunc && (
-                                    <Row>
-                                        <Space style={{ marginTop: 20 }}>
+                                    <Row className={style.policySelectionContent}>
+                                        <Space className={style.policySelectionLayout} style={{ marginTop: 20 }}>
                                             <div className={style.treeContent}>
                                                 <Tree
                                                     data={serverFunctionTree}
@@ -864,13 +887,14 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                                                     onClick={({ node }) => handleTreeNodeClick("function", node.value as string)}
                                                 />
                                             </div>
-                                            <Transfer
-                                                key={state.activeFuncNode}
-                                                search={true}
-                                                data={state.viewFunctionOptions}
-                                                value={state.selectFunctions[state.activeFuncNode]?.functions}
-                                                disabled={!editable}
-                                                onChange={(target, ctx) => {
+                                            <div className={style.policySelectionMain}>
+                                                <Transfer
+                                                    key={state.activeFuncNode}
+                                                    search={true}
+                                                    data={state.viewFunctionOptions}
+                                                    value={state.selectFunctions[state.activeFuncNode]?.functions}
+                                                    disabled={!editable}
+                                                    onChange={(target, ctx) => {
                                                     const newSelectFunctions = { ...state.selectFunctions };
                                                     if (!newSelectFunctions[state.activeFuncNode]) {
                                                         newSelectFunctions[state.activeFuncNode] = { group: state.activeFuncNode, functions: [] };
@@ -898,8 +922,9 @@ const PolicyEditor: React.FC<IPolicyEditorProps> = ({ visible, op, closeDrawer }
                                                             })
                                                             break;
                                                     }
-                                                }}
-                                            />
+                                                    }}
+                                                />
+                                            </div>
                                         </Space>
                                     </Row>
                                 )}

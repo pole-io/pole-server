@@ -67,6 +67,7 @@ const (
 	ServiceSubscribedByMeshes       = uint32(apimodel.Code_ServiceSubscribedByMeshes)
 	ServiceExistedFluxRateLimits    = uint32(apimodel.Code_ServiceExistedFluxRateLimits)
 	NamespaceExistedConfigGroups    = uint32(apimodel.Code_NamespaceExistedConfigGroups)
+	NamespaceExistedGovernanceRules = uint32(apimodel.Code_NamespaceExistedGovernanceRules)
 
 	ClientAPINotOpen        = uint32(apimodel.Code_ClientAPINotOpen)
 	Unauthorized            = uint32(apimodel.Code_Unauthorized)
@@ -84,7 +85,8 @@ const (
 
 	// 配置中心模块的错误码
 
-	InvalidMatchRule = uint32(apimodel.Code_InvalidMatchRule)
+	InvalidMatchRule                 = uint32(apimodel.Code_InvalidMatchRule)
+	InvalidWorkloadCredentialRequest = uint32(apimodel.Code_InvalidWorkloadCredentialRequest)
 
 	// 鉴权相关错误码
 	InvalidUserOwners         = uint32(apimodel.Code_InvalidUserOwners)
@@ -108,12 +110,18 @@ const (
 	NotAllowModifyDefaultStrategyPrincipal = uint32(apimodel.Code_NotAllowModifyDefaultStrategyPrincipal)
 	NotAllowModifyOwnerDefaultStrategy     = uint32(apimodel.Code_NotAllowModifyOwnerDefaultStrategy)
 
-	EmptyAutToken   = uint32(apimodel.Code_EmptyAutToken)
-	TokenDisabled   = uint32(apimodel.Code_TokenDisabled)
-	TokenNotExisted = uint32(apimodel.Code_TokenNotExisted)
+	EmptyAutToken             = uint32(apimodel.Code_EmptyAutToken)
+	TokenDisabled             = uint32(apimodel.Code_TokenDisabled)
+	TokenNotExisted           = uint32(apimodel.Code_TokenNotExisted)
+	InvalidWorkloadCredential = uint32(apimodel.Code_InvalidWorkloadCredential)
+	ExpiredWorkloadCredential = uint32(apimodel.Code_ExpiredWorkloadCredential)
 
-	AuthTokenVerifyException = uint32(apimodel.Code_AuthTokenForbidden)
-	OperationRoleException   = uint32(apimodel.Code_OperationRoleForbidden)
+	AuthTokenVerifyException            = uint32(apimodel.Code_AuthTokenForbidden)
+	OperationRoleException              = uint32(apimodel.Code_OperationRoleForbidden)
+	WorkloadCredentialIssueForbidden    = uint32(apimodel.Code_WorkloadCredentialIssueForbidden)
+	StaleServiceIdentityRevision        = uint32(apimodel.Code_StaleServiceIdentityRevision)
+	WorkloadCredentialRateLimited       = uint32(apimodel.Code_WorkloadCredentialRateLimited)
+	WorkloadCredentialIssuerUnavailable = uint32(apimodel.Code_WorkloadCredentialIssuerUnavailable)
 )
 
 // code to string
@@ -149,6 +157,7 @@ var code2info = map[uint32]string{
 	ServiceExistedAlias:             "some aliases existed in service",
 	NamespaceExistedMeshResources:   "some mesh resources existed in namespace",
 	NamespaceExistedCircuitBreakers: "some circuit breakers existed in namespace",
+	NamespaceExistedGovernanceRules: "some governance rules existed in namespace",
 	ExistReleasedConfig:             "exist released config",
 	Unauthorized:                    "unauthorized",
 	NotAllowedAccess:                "access is not approved",
@@ -171,7 +180,8 @@ var code2info = map[uint32]string{
 	InstanceRegisTimeout: "instance async regist timeout",
 
 	// 配置中心的错误信息
-	InvalidMatchRule: "invalid gray config beta labels",
+	InvalidMatchRule:                 "invalid gray config beta labels",
+	InvalidWorkloadCredentialRequest: "invalid workload credential request",
 
 	// 鉴权错误
 	NotFoundUser:             "not found user",
@@ -179,21 +189,27 @@ var code2info = map[uint32]string{
 	NotFoundUserGroup:        "not found usergroup",
 	NotFoundAuthStrategyRule: "not found auth strategy rule",
 
-	UserExisted:               "exist user",
-	UserGroupExisted:          "exist usergroup",
-	AuthStrategyRuleExisted:   "exist auth strategy rule",
-	InvalidUserGroupOwners:    "invalid usergroup owner attribute",
-	InvalidAuthStrategyName:   "invalid auth strategy rule name",
-	InvalidAuthStrategyOwners: "invalid auth strategy rule owner",
-	InvalidUserPassword:       "invalid user password",
-	InvalidPrincipalType:      "invalid principal type",
-	TokenDisabled:             "token already disabled",
-	AuthTokenVerifyException:  "token verify exception",
-	OperationRoleException:    "operation role exception",
-	EmptyAutToken:             "auth token empty",
-	SubAccountExisted:         "some sub-account existed in owner",
-	InvalidUserID:             "invalid user-id",
-	TokenNotExisted:           "token not existed",
+	UserExisted:                         "exist user",
+	UserGroupExisted:                    "exist usergroup",
+	AuthStrategyRuleExisted:             "exist auth strategy rule",
+	InvalidUserGroupOwners:              "invalid usergroup owner attribute",
+	InvalidAuthStrategyName:             "invalid auth strategy rule name",
+	InvalidAuthStrategyOwners:           "invalid auth strategy rule owner",
+	InvalidUserPassword:                 "invalid user password",
+	InvalidPrincipalType:                "invalid principal type",
+	TokenDisabled:                       "token already disabled",
+	AuthTokenVerifyException:            "token verify exception",
+	OperationRoleException:              "operation role exception",
+	EmptyAutToken:                       "auth token empty",
+	SubAccountExisted:                   "some sub-account existed in owner",
+	InvalidUserID:                       "invalid user-id",
+	TokenNotExisted:                     "token not existed",
+	InvalidWorkloadCredential:           "invalid workload credential",
+	ExpiredWorkloadCredential:           "workload credential expired",
+	WorkloadCredentialIssueForbidden:    "workload credential issue forbidden",
+	StaleServiceIdentityRevision:        "stale service identity revision",
+	WorkloadCredentialRateLimited:       "workload credential rate limited",
+	WorkloadCredentialIssuerUnavailable: "workload credential issuer unavailable",
 
 	NotAllowModifyDefaultStrategyPrincipal: "not allow modify default strategy principal",
 	NotAllowModifyOwnerDefaultStrategy:     "not allow modify main account default strategy",

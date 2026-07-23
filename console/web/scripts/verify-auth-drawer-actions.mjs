@@ -33,21 +33,21 @@ for (const [key, source] of Object.entries({
   roleTable: sources.roleTable,
   policyTable: sources.policyTable,
 })) {
-  assert.match(source, /查看 \/ 编辑/, `${key} 操作列必须提供统一查看 / 编辑入口`);
-  assert.doesNotMatch(source, /navigate\(`?(userdetail|groupdetail|roledetail|detail)\?/,
-    `${key} 列表主入口不应继续跳转旧详情路由`);
+  assert.match(source, /action="viewEdit"|action="view"/, `${key} 操作列必须提供统一查看入口`);
+  assert.match(source, /components\/OperationButton/, `${key} 操作列必须使用统一 OperationButton 组件`);
+  assert.match(source, /navigate\(/, `${key} 列表主入口必须进入可深链的独立详情页`);
 }
 
-assert.match(sources.userTable, /operateUser\('view', 'user', \{ \.\.\.row \}\)/,
-  '用户名称和主操作必须打开用户详情抽屉');
-assert.match(sources.groupTable, /handleEdit(Group|UserGroup)\(row, 'view', 'group'\)/,
-  '用户组名称和主操作必须打开用户组详情抽屉');
+assert.match(sources.userTable, /openUserDetail\(row\)/,
+  '用户名称和主操作必须进入用户详情页');
+assert.match(sources.groupTable, /openGroupDetail\(row\)/,
+  '用户组名称和主操作必须进入用户组详情页');
 assert.match(sources.groupTable, /describeUserGroupToken/,
   '用户组 Token 操作不能继续为空实现');
-assert.match(sources.roleTable, /handleEditRole\(row, 'view', 'role'\)/,
-  '角色名称和主操作必须打开角色详情抽屉');
-assert.match(sources.policyTable, /handleEditPolicy\(row, 'view', 'policy_rule'\)/,
-  '策略名称和主操作必须打开策略详情抽屉');
+assert.match(sources.roleTable, /openRoleDetail\(row\)/,
+  '角色名称和主操作必须进入角色详情页');
+assert.match(sources.policyTable, /openPolicyDetail\(row\)/,
+  '策略名称和主操作必须进入策略详情页');
 
 assert.match(sources.userEditor, /用户详情/, '用户抽屉必须有详情态标题');
 assert.match(sources.groupEditor, /用户组详情/, '用户组抽屉必须有详情态标题');

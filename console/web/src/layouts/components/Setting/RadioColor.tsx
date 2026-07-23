@@ -1,66 +1,64 @@
 import React, { useState } from 'react';
+import {
+  Button,
+  ColorSwatch,
+  Field,
+  Popover,
+  PopoverSurface,
+  PopoverTrigger,
+  SwatchPicker,
+} from '@fluentui/react-components';
 import { defaultColor } from 'configs/color';
-import { Popup, ColorPickerPanel } from 'tdesign-react';
+import { ColorPickerPanel } from 'components/Fluent';
 import Style from './RadioColor.module.less';
 
 interface IProps {
-  defaultValue?: number | string;
+  value: string;
   onChange: (color: string) => void;
 }
 
 const RadioColor = (props: IProps) => {
-  const [isColoPickerDisplay, onPopupVisibleChange] = useState(false);
+  const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
+  const normalizedValue = props.value.toLowerCase();
+  const isCustomColor = !defaultColor.includes(normalizedValue);
 
   return (
-    <div className={Style.panel}>
-      {defaultColor.map((color, index) => (
-        <div
-          key={index}
-          onClick={() => props?.onChange(color)}
-          className={Style.box}
-          style={{ borderColor: props.defaultValue === color && !isColoPickerDisplay ? color : 'transparent' }}
+    <Field label='主题色'>
+      <div className={Style.colorControls}>
+        <SwatchPicker
+          layout='row'
+          shape='circular'
+          size='medium'
+          selectedValue={normalizedValue}
+          onSelectionChange={(_event, data) => props.onChange(data.selectedValue)}
         >
-          <div className={Style.item} style={{ backgroundColor: color }} />
-        </div>
-      ))}
+          {defaultColor.map((color) => (
+            <ColorSwatch key={color} color={color} value={color} aria-label={`切换主题色为 ${color}`} />
+          ))}
+        </SwatchPicker>
 
-      <Popup
-        trigger='click'
-        placement='bottom-right'
-        expandAnimation
-        visible={isColoPickerDisplay}
-        onVisibleChange={(v) => onPopupVisibleChange(v)}
-        overlayInnerStyle={{ padding: 0 }}
-        content={
-          <ColorPickerPanel
-            onChange={(v) => props?.onChange(v)}
-            colorModes={['monochrome']}
-            format='HEX'
-            swatchColors={[]}
-            defaultValue={props.defaultValue as string}
-          />
-        }
-      >
-        <div
-          key='dynamic'
-          className={Style.box}
-          style={{
-            borderColor:
-              isColoPickerDisplay || defaultColor.indexOf(props.defaultValue as string) === -1
-                ? (props.defaultValue as string)
-                : 'transparent',
-          }}
+        <Popover
+          open={isColorPickerOpen}
+          onOpenChange={(_event, data) => setIsColorPickerOpen(data.open)}
+          positioning='below-end'
         >
-          <div
-            className={Style.item}
-            style={{
-              background:
-                'conic-gradient(from 90deg at 50% 50%, #FF0000 -19.41deg, #FF0000 18.76deg, #FF8A00 59.32deg, #FFE600 99.87deg, #14FF00 141.65deg, #00A3FF 177.72deg, #0500FF 220.23deg, #AD00FF 260.13deg, #FF00C7 300.69deg, #FF0000 340.59deg, #FF0000 378.76deg)',
-            }}
-          />
-        </div>
-      </Popup>
-    </div>
+          <PopoverTrigger disableButtonEnhancement>
+            <Button appearance={isCustomColor ? 'primary' : 'secondary'} aria-pressed={isCustomColor}>
+              {isCustomColor ? `自定义颜色 ${props.value.toUpperCase()}` : '自定义颜色'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverSurface className={Style.colorPickerSurface}>
+            <ColorPickerPanel
+              value={props.value}
+              onChange={props.onChange}
+              colorModes={['monochrome']}
+              format='HEX'
+              swatchColors={[]}
+            />
+          </PopoverSurface>
+        </Popover>
+      </div>
+    </Field>
   );
 };
 

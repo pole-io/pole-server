@@ -1,25 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Tooltip, Row, Col, Breadcrumb, Tree, Input, TreeInstanceFunctions, Tabs, Popconfirm } from 'tdesign-react';
-import { Delete1Icon, FileAddIcon, Icon, RefreshIcon } from 'tdesign-icons-react';
+import { Button, Tooltip, Breadcrumb, Tree, Input, TreeInstanceFunctions, Popconfirm, Tag } from 'components/Fluent';
+import { Delete1Icon, FileAddIcon, Icon, RefreshIcon } from 'components/Fluent/icons';
 import { useNavigate, BrowserRouterProps } from 'react-router-dom';
-import type { TreeProps, TreeNodeModel } from 'tdesign-react';
+import type { TreeProps, TreeNodeModel } from 'components/Fluent';
 
-import ErrorPage from 'components/ErrorPage';
+import AuthorizeInput from 'components/Authorize';
 import { useAppDispatch, useAppSelector } from 'modules/store';
-import { openErrNotification } from 'utils/notifition';
+import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
-import { ConfigFile, ConfigFileView, describeAllConfigFiles } from 'services/config_files';
+import { ConfigFileView, FileStatusMap } from 'services/config_files';
 import FileCreator from './FileCreator';
-import ReleaseTable from '../Releases/ReleaseTable';
-import { selectConfigGroup } from 'modules/configuration/group';
-import SubscribeTable from './SubscribeTable';
+import { editorConfigGroup, listConfigGroups, selectConfigGroup } from 'modules/configuration/group';
 import FileView from './FileView';
 import { Op } from 'services/types';
-import { editorConfigFile, listAllConfigFiles, selectConfigFile } from 'modules/configuration/file';
+import { editorConfigFile, listAllConfigFiles, removeConfigFeils, selectConfigFile } from 'modules/configuration/file';
+import { PolicySourceType } from 'services/auth_policy';
+import { describeConfigGroupEnvironments, type ConfigFileGroupView } from 'services/config_group';
+import EnvironmentResourceSwitcher from 'components/EnvironmentResourceSwitcher';
 
 const { BreadcrumbItem } = Breadcrumb;
-const { TabPanel } = Tabs;
-
 interface IFileListProps {
 }
 
@@ -38,6 +37,27 @@ const renderIcon: TreeProps['icon'] = (node) => {
     return <Icon name={name} />;
 };
 
+const statusTheme = (status?: string) => {
+    const theme = FileStatusMap?.[status as keyof typeof FileStatusMap]?.theme;
+    return (theme || 'default') as 'default' | 'primary' | 'success' | 'warning' | 'danger';
+};
+
+const statusText = (status?: string) => FileStatusMap?.[status as keyof typeof FileStatusMap]?.text || '未发布';
+
+const renderNodeLabel = (file?: ConfigFileView, label?: string) => {
+    if (!file) {
+        return <span className={style.treeNodeName}>{label}</span>;
+    }
+    return (
+        <span className={style.treeNodeLabel}>
+            <span className={style.treeNodeName}>{label}</span>
+            <Tag size="small" variant="light" theme={statusTheme(file.status)} className={style.treeNodeStatus}>
+                {statusText(file.status)}
+            </Tag>
+        </span>
+    );
+};
+
 const renderTree = (files: ConfigFileView[]) => {
     const root: any = [];
 
@@ -49,10 +69,12 @@ const renderTree = (files: ConfigFileView[]) => {
             let node = currentLevel.find((item: any) => item.label === part);
             if (!node) {
                 node = {
-                    label: part,
+                    label: renderNodeLabel(idx === parts.length - 1 ? file : undefined, part),
+                    rawLabel: part,
                     value: idx === parts.length - 1 ? file.name : part,
                     disabled: idx === parts.length - 1 ? false : true,
                     children: idx === parts.length - 1 ? false : [],
+                    file: idx === parts.length - 1 ? file : undefined,
                 };
                 currentLevel.push(node);
             }
@@ -70,11 +92,13 @@ export default React.memo((props: IFileListProps & BrowserRouterProps) => {
     const urlParams = new URLSearchParams(window.location.search);
     const namespace = urlParams.get('namespace');
     const group = urlParams.get('group');
+    const requestedFile = urlParams.get('file');
 
     const treeRef = React.useRef<TreeInstanceFunctions>(null);
 
     const groupState = useAppSelector(selectConfigGroup);
     const { editGroup: ownerGroup } = groupState;
+    const activeGroup = ownerGroup?.namespace === namespace && ownerGroup?.name === group ? ownerGroup : undefined;
 
     const fileState = useAppSelector(selectConfigFile);
     const { datas } = fileState;
@@ -91,10 +115,13 @@ export default React.memo((props: IFileListProps & BrowserRouterProps) => {
         activeNode: undefined,
         visible: false,
         mode: 'view',
-        editable: ownerGroup?.editable,
-        deleteable: ownerGroup?.deleteable,
+        editable: activeGroup?.editable,
+        deleteable: activeGroup?.deleteable,
         nodeFilter: '',
     });
+    const [authorizeVisible, setAuthorizeVisible] = useState(false);
+    const [environmentGroups, setEnvironmentGroups] = useState<ConfigFileGroupView[]>([]);
+    const selectedFileName = editState.activeNode?.value as string | undefined;
 
     // 模拟远程请求
     const fetchData = () => {
@@ -113,10 +140,79 @@ export default React.memo((props: IFileListProps & BrowserRouterProps) => {
     React.useEffect(() => {
         fetchData();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [namespace, group]);
+
+    React.useEffect(() => {
+        let active = true;
+        if (!group) return () => { active = false; };
+        describeConfigGroupEnvironments(group)
+            .then((items) => {
+                if (active) setEnvironmentGroups(items);
+            })
+            .catch(() => {
+                if (active) setEnvironmentGroups([]);
+            });
+        return () => { active = false; };
+    }, [group]);
+
+    React.useEffect(() => {
+        if (!requestedFile || !namespace || !group || editState.visible) return;
+        const requested = datas.find((item) => item.name === requestedFile);
+        if (!requested) return;
+        dispatch(editorConfigFile({
+            ...requested,
+            namespace,
+            group,
+            editable: activeGroup?.editable,
+            deleteable: activeGroup?.deleteable,
+        }));
+        setEditState((prev) => ({
+            ...prev,
+            activeNode: { value: requested.name, data: { value: requested.name } } as TreeNodeModel,
+            visible: true,
+            mode: 'edit',
+        }));
+    }, [activeGroup?.deleteable, activeGroup?.editable, datas, dispatch, editState.visible, group, namespace, requestedFile]);
+
+    React.useEffect(() => {
+        if (!namespace || !group) {
+            return;
+        }
+        if (activeGroup) {
+            setEditState((prev) => ({
+                ...prev,
+                editable: activeGroup.editable,
+                deleteable: activeGroup.deleteable,
+            }));
+            return;
+        }
+        dispatch(listConfigGroups({
+            param: {
+                namespace,
+                group,
+                offset: 0,
+                limit: 1,
+            },
+        })).then((res) => {
+            if (listConfigGroups.fulfilled.match(res)) {
+                const nextGroup = res.payload.datas[0];
+                if (nextGroup) {
+                    dispatch(editorConfigGroup(nextGroup));
+                    setEditState((prev) => ({
+                        ...prev,
+                        editable: nextGroup.editable,
+                        deleteable: nextGroup.deleteable,
+                    }));
+                }
+            } else {
+                openErrNotification('获取配置分组失败', res.payload as string);
+            }
+        });
+    }, [activeGroup, dispatch, group, namespace]);
 
     const treeSearch: TreeProps['filter'] = (node) => {
-        const rs = (node.data.label as string).indexOf(editState.nodeFilter) >= 0;
+        const rawLabel = (node.data.rawLabel || node.data.value || '') as string;
+        const rs = rawLabel.indexOf(editState.nodeFilter) >= 0;
         return rs;
     };
 
@@ -126,7 +222,7 @@ export default React.memo((props: IFileListProps & BrowserRouterProps) => {
             {editState.activeNode && editState.activeNode.data.value === node.value && (
                 <Tooltip content={editState.deleteable ? '删除' : '无权限操作'}>
                     <Popconfirm
-                        content="确认删除吗"
+                        content="确认删除配置文件吗？删除后当前文件的配置内容和发布记录将不可继续使用。"
                         destroyOnClose
                         placement="top"
                         showArrow
@@ -150,8 +246,8 @@ export default React.memo((props: IFileListProps & BrowserRouterProps) => {
                     namespace: namespace ? namespace : '',
                     group: group ? group : '',
                     name: node.value as string,
-                    editable: ownerGroup?.editable,
-                    deleteable: ownerGroup?.deleteable,
+                    editable: activeGroup?.editable,
+                    deleteable: activeGroup?.deleteable,
                 }));
                 setEditState(prev => ({ ...prev, visible: true, mode: 'view', activeNode: { ...node } }));
                 break;
@@ -160,19 +256,35 @@ export default React.memo((props: IFileListProps & BrowserRouterProps) => {
                     namespace: namespace ? namespace : '',
                     group: group ? group : '',
                     name: node.value as string,
-                    editable: ownerGroup?.editable,
-                    deleteable: ownerGroup?.deleteable,
+                    editable: activeGroup?.editable,
+                    deleteable: activeGroup?.deleteable,
                 }));
                 setEditState(prev => ({ ...prev, visible: true, mode: 'create', activeNode: undefined }));
                 break;
             case 'delete':
+                dispatch(removeConfigFeils({
+                    param: [{
+                        namespace: namespace ? namespace : '',
+                        group: group ? group : '',
+                        name: node.value as string,
+                    }]
+                })).then((res) => {
+                    if (res.meta.requestStatus === 'fulfilled') {
+                        openInfoNotification('删除成功', '配置文件已删除');
+                        setEditState(prev => ({ ...prev, visible: false, mode: 'view', activeNode: undefined }));
+                        fetchData();
+                    } else {
+                        openErrNotification('删除配置文件失败', res.payload as string);
+                    }
+                });
                 break;
         }
     }
 
     const mainView = (
-        <>
-            <Breadcrumb maxItemWidth="200px">
+        <div className={style.groupDetail}>
+            <Breadcrumb maxItemWidth="200px" className={style.breadcrumb}>
+                <BreadcrumbItem>配置中心</BreadcrumbItem>
                 <BreadcrumbItem onClick={() => {
                     navigate(-1);
                 }}>{namespace}</BreadcrumbItem>
@@ -180,36 +292,61 @@ export default React.memo((props: IFileListProps & BrowserRouterProps) => {
                     {group}
                 </BreadcrumbItem>
             </Breadcrumb>
-            <Row>
-                <Col span={3}>
-                    <Row justify='space-between' className={style.toolBar}>
-                        <Col span={9}>
-                            <Input value={editState.nodeFilter} onChange={value => setEditState(s => ({ ...s, nodeFilter: value }))} />
-                        </Col>
-                        <Col>
-                            <Tooltip content={ownerGroup?.editable ? '新建配置文件' : '没有权限'}>
+            {!selectedFileName && (
+                <EnvironmentResourceSwitcher
+                    currentNamespace={namespace || ''}
+                    resourceLabel="配置分组"
+                    presentation="tabs"
+                    items={environmentGroups.map((item) => ({
+                        namespace: item.namespace,
+                        summary: `${item.fileCount || 0} 个配置文件`,
+                    }))}
+                    onSelect={(nextNamespace) => {
+                        const params = new URLSearchParams(window.location.search);
+                        params.set('namespace', nextNamespace);
+                        params.set('group', group || '');
+                        navigate(`${window.location.pathname}?${params.toString()}`);
+                    }}
+                />
+            )}
+            <div className={style.workbench}>
+                <aside className={style.fileExplorer}>
+                    <div className={style.fileExplorerHeader}>
+                        <div className={style.fileExplorerTitle}>
+                            <span>配置文件</span>
+                            <div className={style.fileExplorerActions}>
+                            <Tooltip content={activeGroup?.editable ? '新建配置文件' : '没有权限'}>
                                 <Button
+                                    shape="square"
                                     variant='text'
                                     size='small'
                                     icon={<FileAddIcon />}
                                     onClick={() => handleOperateFile({} as TreeNodeModel, 'create')}
-                                    disabled={!ownerGroup?.editable}
+                                    disabled={!activeGroup?.editable}
                                 />
                             </Tooltip>
-                        </Col>
-                        <Col>
                             <Tooltip content="刷新">
                                 <Button
+                                    shape="square"
                                     variant='text'
                                     size='small'
                                     icon={<RefreshIcon />}
                                     onClick={() => fetchData()}
                                 />
                             </Tooltip>
-                        </Col>
-                    </Row>
+                            </div>
+                        </div>
+                        <Input
+                            className={style.treeSearch}
+                            placeholder="搜索文件路径"
+                            value={editState.nodeFilter}
+                            onChange={value => setEditState(s => ({ ...s, nodeFilter: value }))}
+                        />
+                    </div>
+                    <div className={style.treeScroll}>
                     <Tree
                         ref={treeRef}
+                        className={style.fileTree}
                         activable={true}
                         checkStrictly={true}
                         valueMode='onlyLeaf'
@@ -219,7 +356,6 @@ export default React.memo((props: IFileListProps & BrowserRouterProps) => {
                         expandAll={true}
                         icon={renderIcon}
                         scroll={{ type: 'virtual' }}
-                        style={{ height: 'calc(100vh - 270px)' }}
                         filter={treeSearch}
                         onActive={(node, ctx) => {
                             setEditState(s => ({ ...s, activeNode: { ...ctx.node }, visible: true, mode: 'edit' }));
@@ -228,43 +364,28 @@ export default React.memo((props: IFileListProps & BrowserRouterProps) => {
                                 group: group ? group : '',
                                 name: ctx.node.value as string,
                             }));
+                            const params = new URLSearchParams(window.location.search);
+                            params.set('file', ctx.node.value as string);
+                            navigate(`${window.location.pathname}?${params.toString()}`, { replace: true });
                         }}
                         operations={renderOperations}
                     />
-                </Col>
-                <Col span={8} style={{ marginLeft: 30 }}>
+                    </div>
+                </aside>
+                <main className={style.canvas}>
                     {(editState.visible && editState.mode === 'edit') && (
-                        <Tabs>
-                            <TabPanel value={'file_editor'} label="配置编辑">
-                                <div style={{ marginLeft: 20, marginTop: 20 }}>
-                                    <FileView editable={ownerGroup?.editable} deleteable={ownerGroup?.deleteable} key={editState.activeNode?.value} />
-                                </div>
-                            </TabPanel>
-                            <TabPanel value={'file_release'} label="发布记录">
-                                <div style={{ marginLeft: 20, marginTop: 20 }}>
-                                    <ReleaseTable
-                                        namespace={namespace ? namespace : ''}
-                                        group={group ? group : ''}
-                                        filename={editState.activeNode?.value as string}
-                                        editable={editState.editable || true}
-                                        deleteable={editState.deleteable || true}
-                                    />
-                                </div>
-                            </TabPanel>
-                            <TabPanel value={'file_subscribe'} label="订阅查询">
-                                <div style={{ marginLeft: 20, marginTop: 20 }}>
-                                    <SubscribeTable
-                                        namespace={namespace ? namespace : ''}
-                                        group={group ? group : ''}
-                                        filename={editState.activeNode?.value as string}
-                                        editable={editState.editable || true}
-                                        deleteable={editState.deleteable || true} />
-                                </div>
-                            </TabPanel>
-                        </Tabs>
+                        <FileView
+                            editable={activeGroup?.editable}
+                            deleteable={activeGroup?.deleteable}
+                            key={editState.activeNode?.value}
+                            onAuthorize={() => setAuthorizeVisible(true)}
+                        />
                     )}
-                </Col>
-            </Row>
+                    {(!editState.visible || editState.mode !== 'edit') && (
+                        <div className={style.emptyCanvas}>选择左侧配置文件后查看配置正文、发布记录和订阅查询</div>
+                    )}
+                </main>
+            </div>
             {(editState.visible && editState.mode === 'create') && (
                 <FileCreator
                     namespace={namespace ? namespace : ''}
@@ -277,12 +398,19 @@ export default React.memo((props: IFileListProps & BrowserRouterProps) => {
                     }}
                 />
             )}
-        </>
+            {authorizeVisible && selectedFileName && activeGroup?.id && (
+                <AuthorizeInput
+                    resource_type={PolicySourceType.ConfigGroups}
+                    resource_id={activeGroup?.id}
+                    resource_name={`${namespace || '-'}/${group || '-'}/${selectedFileName}`}
+                    visible={authorizeVisible}
+                    onClose={() => setAuthorizeVisible(false)}
+                />
+            )}
+        </div>
     );
 
     return (
-        <div>
-            {mainView}
-        </div>
+        <>{mainView}</>
     );
 });

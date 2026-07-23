@@ -119,6 +119,11 @@ export async function describeA2AAgents(params: DescribeA2AAgentsRequest) {
   };
 }
 
+export async function describeAllA2AAgents() {
+  const { list } = await describeA2AAgents({ offset: 0, limit: 10000 });
+  return list;
+}
+
 export async function createA2AAgents(params: A2AAgent[]) {
   return apiRequest({
     action: BaseURL.A2A_AGENT,

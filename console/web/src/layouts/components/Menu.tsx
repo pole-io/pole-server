@@ -1,138 +1,162 @@
-import React, { memo, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Menu, MenuValue } from 'tdesign-react';
-import router, { IRouter } from 'router';
+import React, { memo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  Button,
+  Nav,
+  NavCategory,
+  NavCategoryItem,
+  NavItem,
+  NavSubItem,
+  NavSubItemGroup,
+} from '@fluentui/react-components';
+import { IRouter } from 'router';
+import router from 'router';
 import { resolve } from 'utils/path';
 import { useAppSelector } from 'modules/store';
 import { selectGlobal } from 'modules/global';
 import MenuLogo from './MenuLogo';
+import WorkspaceModeSwitch from './Header/WorkspaceModeSwitch';
 import Style from './Menu.module.less';
 import { useTranslation } from 'react-i18next';
 
-const { SubMenu, MenuItem, HeadMenu } = Menu;
-
 const getSelectedMenuValue = (pathname: string) => {
-  if (pathname === '/governance' || pathname.startsWith('/governance/')) {
-    return '/governance/workbench';
-  }
+  if (pathname === '/governance' || pathname.startsWith('/governance/')) return '/governance/workbench';
   return pathname;
 };
+
+const visibleRoutes = (routes: IRouter[], isAdmin: boolean) => routes.filter(
+  (item) => item.meta && !item.meta.hidden && (!item.meta.adminOnly || isAdmin),
+);
 
 interface IMenuProps {
   showLogo?: boolean;
   showOperation?: boolean;
 }
 
-const renderMenuItems = (t: (key: string) => string, menu: IRouter[], parentPath = '') => {
-  const navigate = useNavigate();
-  return menu.map((item) => {
-    const { children, meta, path } = item;
+interface NavNodesProps {
+  routes: IRouter[];
+  parentPath?: string;
+  compact?: boolean;
+  onNavigate: (path: string) => void;
+  t: (key: string) => string;
+  isAdmin: boolean;
+}
 
-    if (!meta || meta?.hidden === true) {
-      // 无meta信息 或 hidden == true，路由不显示为菜单
-      return null;
-    }
+const NavNodes: React.FC<NavNodesProps> = ({ routes, parentPath = '', compact, onNavigate, t, isAdmin }) => (
+  <>
+    {visibleRoutes(routes, isAdmin).map((item) => {
+      const { children, meta, path } = item;
+      const routePath = resolve(parentPath, path);
+      const label = t(meta?.title || '');
+      const ItemIcon = meta?.Icon;
 
-    const { Icon, title, single } = meta;
-    const routerPath = resolve(parentPath, path);
-
-    if (!children || children.length === 0) {
-      return (
-        <MenuItem
-          key={routerPath}
-          value={routerPath}
-          icon={Icon ? <Icon /> : undefined}
-          onClick={() => navigate(routerPath)}
-        >
-          {t(title || '')}
-        </MenuItem>
-      );
-    }
-
-    if (single && children?.length > 0) {
-      const firstChild = children[0];
-      if (firstChild?.meta && !firstChild?.meta?.hidden) {
-        const { Icon, title } = meta;
-        const singlePath = resolve(resolve(parentPath, path), firstChild.path);
+      if (!children?.length) {
         return (
-          <MenuItem
-            key={singlePath}
-            value={singlePath}
-            icon={Icon ? <Icon /> : undefined}
-            onClick={() => navigate(singlePath)}
-          >
-            {t(title || '')}
-          </MenuItem>
+          <NavItem key={routePath} value={routePath} icon={ItemIcon ? <ItemIcon /> : undefined} onClick={() => onNavigate(routePath)}>
+            <span className={Style.navLabel}>{label}</span>
+          </NavItem>
         );
       }
-    }
 
-    // if (item.group) {
-    //   // 如果是分组菜单，直接返回一个分组菜单
-    //   return (
-    //     <MenuGroup title={item.group}>
-    //       {/* <SubMenu key={routerPath} value={routerPath} title={item.group} icon={Icon ? <Icon /> : undefined}>
-    //         {renderMenuItems(children, routerPath)}
-    //       </SubMenu> */}
-    //       {renderMenuItems(children, routerPath)}
-    //     </MenuGroup>
-    //   );
-    // }
+      if (meta?.single) {
+        const firstChild = visibleRoutes(children, isAdmin)[0];
+        if (!firstChild) return null;
+        const childPath = resolve(routePath, firstChild.path);
+        return (
+          <NavItem key={childPath} value={childPath} icon={ItemIcon ? <ItemIcon /> : undefined} onClick={() => onNavigate(childPath)}>
+            <span className={Style.navLabel}>{label}</span>
+          </NavItem>
+        );
+      }
 
-    return (
-      <SubMenu key={routerPath} value={routerPath} title={t(title || '')} icon={Icon ? <Icon /> : undefined}>
-        {renderMenuItems(t, children, routerPath)}
-      </SubMenu>
-    );
-  });
-};
+      return (
+        <NavCategory key={routePath} value={routePath}>
+          <NavCategoryItem icon={ItemIcon ? <ItemIcon /> : undefined}>
+            <span className={Style.navLabel}>{label}</span>
+          </NavCategoryItem>
+          {!compact && (
+            <NavSubItemGroup>
+              {visibleRoutes(children, isAdmin).map((child) => {
+                const childPath = resolve(routePath, child.path);
+                return (
+                  <NavSubItem key={childPath} value={childPath} onClick={() => onNavigate(childPath)}>
+                    {t(child.meta?.title || '')}
+                  </NavSubItem>
+                );
+              })}
+            </NavSubItemGroup>
+          )}
+        </NavCategory>
+      );
+    })}
+  </>
+);
 
-/**
- * 顶部菜单
- */
 export const HeaderMenu = memo(() => {
   const { t } = useTranslation();
-  const globalState = useAppSelector(selectGlobal);
+  const navigate = useNavigate();
   const location = useLocation();
-  const [active, setActive] = useState<MenuValue>(location.pathname); // todo
-
+  const role = useAppSelector((state) => state.userLogin.currentUser.role);
+  const isAdmin = role === 'main' || role === 'admin';
   return (
-    <HeadMenu
-      expandType='popup'
-      style={{ marginBottom: 20 }}
-      value={active}
-      theme={globalState.theme}
-      onChange={(v) => setActive(v)}
-    >
-      {renderMenuItems(t, router)}
-    </HeadMenu>
+    <nav className={Style.headerNav} aria-label="主导航">
+      {visibleRoutes(router, isAdmin).map((item) => {
+        const path = item.meta?.single && item.children?.length ? resolve(item.path, item.children[0].path) : item.path;
+        return (
+          <Button
+            key={path}
+            appearance={location.pathname.startsWith(item.path) ? 'primary' : 'subtle'}
+            icon={item.meta?.Icon ? <item.meta.Icon /> : undefined}
+            onClick={() => navigate(path)}
+          >
+            {t(item.meta?.title || '')}
+          </Button>
+        );
+      })}
+    </nav>
   );
 });
 
-/**
- * 左侧菜单
- */
 export default memo((props: IMenuProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const location = useLocation();
-  const globalState = useAppSelector(selectGlobal);
-
-  const { version } = globalState;
-  const bottomText = globalState.collapsed ? version : `Pole.IO ${version}`;
-  const selectedMenuValue = getSelectedMenuValue(location.pathname);
+  const { version, collapsed } = useAppSelector(selectGlobal);
+  const role = useAppSelector((state) => state.userLogin.currentUser.role);
+  const isAdmin = role === 'main' || role === 'admin';
+  const categoryValues = React.useMemo(
+    () => visibleRoutes(router, isAdmin)
+      .filter((item) => item.children && item.children.length > 0 && !item.meta?.single)
+      .map((item) => resolve('', item.path)),
+    [isAdmin],
+  );
+  const selectedValue = getSelectedMenuValue(location.pathname);
+  const isAgent = location.pathname === '/agent' || location.pathname.startsWith('/agent/');
 
   return (
-    <Menu
-      width='232px'
-      style={{ flexShrink: 0, height: '100%' }}
-      className={Style.menuPanel2}
-      value={selectedMenuValue}
-      theme={globalState.theme}
-      collapsed={globalState.collapsed}
-      logo={props.showLogo ? <MenuLogo collapsed={globalState.collapsed} /> : undefined}
-      defaultExpanded={['/ai', '/discovery', '/configuration', '/governance', '/metrics', '/auth']}
-    >
-      {renderMenuItems(t, router)}
-    </Menu>
+    <aside className={`${Style.fluentSidebar} ${isAgent ? Style.agentSidebar : ''} ${collapsed ? Style.collapsed : ''}`} aria-label="应用导航">
+      {props.showLogo && <MenuLogo collapsed={collapsed} />}
+      {!isAgent ? (
+        <Nav
+          className={Style.fluentNav}
+          selectedValue={selectedValue}
+          openCategories={collapsed ? [] : categoryValues}
+          multiple
+          density="medium"
+          onNavItemSelect={(_, data) => navigate(String(data.value))}
+        >
+          <NavNodes routes={router} compact={collapsed} onNavigate={navigate} t={t} isAdmin={isAdmin} />
+        </Nav>
+      ) : (
+        <div
+          id="agent-session-sidebar-host"
+          className={Style.agentSessionHost}
+          data-collapsed={collapsed ? 'true' : 'false'}
+          aria-label="Agent 会话管理"
+        />
+      )}
+      <WorkspaceModeSwitch placement="sidebar" collapsed={collapsed} />
+      <footer className={Style.navFooter}>{collapsed ? version : `Lattice.Hub ${version}`}</footer>
+    </aside>
   );
 });

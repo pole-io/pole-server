@@ -39,6 +39,18 @@ func TestResourceConvertIncludesTrafficGovernanceRules(t *testing.T) {
 	require.Contains(t, resourceConvert, apisecurity.ResourceType_MockRules)
 }
 
+func TestResourceConvertIncludesAIRegistryResources(t *testing.T) {
+	require.Contains(t, resourceConvert, apisecurity.ResourceType_MCPServerResources)
+	require.Contains(t, resourceConvert, apisecurity.ResourceType_A2AAgentResources)
+}
+
+func TestAIRegistryResourceTypeFilter(t *testing.T) {
+	require.Equal(t, "30", resTypeFilter["mcpserverresources"])
+	require.Equal(t, "30", resTypeFilter["mcp_servers"])
+	require.Equal(t, "31", resTypeFilter["a2aagentresources"])
+	require.Equal(t, "31", resTypeFilter["a2a_agents"])
+}
+
 func TestEnrichResourceDetailSkipsUnsupportedResourceType(t *testing.T) {
 	svr := &Server{}
 

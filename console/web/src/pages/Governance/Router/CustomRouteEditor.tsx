@@ -1,11 +1,14 @@
 import React from "react";
-import { Col, Form, Input, Row, Space, Button, Select, Switch, Dialog, InputNumber, Table, FormProps, Tag, TagInput, Popup, TableRowData, PrimaryTableProps, StickyTool } from "tdesign-react";
-import { SendIcon, AddIcon, CloseIcon, Edit1Icon, SaveIcon, RocketIcon, RollbackIcon, DragMoveIcon, ChevronRightIcon } from "tdesign-icons-react";
+import { Col, Form, Input, Row, Space, Button, Select, Switch, Dialog, InputNumber, Table, FormProps, Tag, TagInput, Popup, TableRowData, PrimaryTableProps, StickyTool } from 'components/Fluent';
+import { SendIcon, AddIcon, CloseIcon, Edit1Icon, SaveIcon, RocketIcon, RollbackIcon, DragMoveIcon, ChevronRightIcon } from 'components/Fluent/icons';
 import cloneDeep from 'lodash/cloneDeep';
 
 import Text from "components/Text";
 import RuleLabelField from "../shared/RuleLabelField";
+import CollapsibleSection from "../shared/CollapsibleSection";
 import ServiceScopeSection from "../shared/ServiceScopeSection";
+import { GovernanceServiceContext } from "../shared/serviceContext";
+import { useRuleNamespace } from "../shared/ruleNamespace";
 import TrafficMatchConditionEditor, { TrafficMatchConditionRow } from "../shared/TrafficMatchConditionEditor";
 import shared from "../shared/governance.module.less";
 import { useAppDispatch, useAppSelector } from 'modules/store';
@@ -24,7 +27,7 @@ import {
     RoutingValueType,
     normalizeRoutingConfigForEditor,
 } from "services/router";
-import { Label, MatchLogic, MatchString, MatchType, MatchTypeMap, MatchTypeOption, MatchValueType, Op } from "services/types";
+import { Label, MatchLogic, MatchString, MatchType, MatchTypeMap, MatchTypeOption, MatchValueType, MatchValueTypeOption, Op } from "services/types";
 import { listOneCustomRoute, resetCustomRoute, saveCustomRoutes, selectCustomRoute, updateCustomRoutes } from "modules/governance/route";
 
 import styles from './CustomRouteEditor.module.less';
@@ -148,9 +151,11 @@ interface ICustomRouteEditorProps {
     op: Op;
     refresh: (close: boolean) => void;
     editable: boolean;
+    serviceContext?: GovernanceServiceContext;
 }
 
-const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, editable }) => {
+const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, editable, serviceContext }) => {
+    const ruleNamespace = useRuleNamespace();
     const [form] = Form.useForm();
     const dispatch = useAppDispatch();
 
@@ -166,6 +171,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
     // 创建新的 rules 对象
     const [customRouteRule, setCustomRouteRule] = React.useState<CustomRouteDO>(defaultCustomRoute());
     const [collapsedRuleIndexes, setCollapsedRuleIndexes] = React.useState<Set<number>>(new Set());
+    const [basicInfoCollapsed, setBasicInfoCollapsed] = React.useState(false);
     const [serviceCollapsed, setServiceCollapsed] = React.useState(false);
     const [draggingRuleIndex, setDraggingRuleIndex] = React.useState<number | null>(null);
     const [draggingGroupKey, setDraggingGroupKey] = React.useState<string>('');
@@ -229,6 +235,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
     }, []);
 
     React.useEffect(() => {
+        setBasicInfoCollapsed(false);
         if (editRoute) {
             if (editRoute.id !== '') {
                 dispatch(listOneCustomRoute({ id: editRoute.id || '' })).then((res) => {
@@ -245,6 +252,24 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
         }
     }, [editRoute?.id])
 
+    React.useEffect(() => {
+        if (op !== 'create' || !serviceContext) return;
+        setCustomRouteRule((prev) => {
+            const next = cloneDeep(prev);
+            const endpoint = { namespace: serviceContext.namespace, service: serviceContext.service };
+            if (serviceContext.role === 'caller') {
+                next.caller_namespace = endpoint.namespace;
+                next.caller_service = endpoint.service;
+                next.routing_config = { ...next.routing_config, caller: endpoint } as RoutingConfig;
+            } else {
+                next.callee_namespace = endpoint.namespace;
+                next.callee_service = endpoint.service;
+                next.routing_config = { ...next.routing_config, callee: endpoint } as RoutingConfig;
+            }
+            return next;
+        });
+    }, [op, serviceContext?.namespace, serviceContext?.service, serviceContext?.role]);
+
     const onSubmit: FormProps['onSubmit'] = async (e) => {
         const draftForSubmit = prepareRouteRuleDraftForSubmit(customRouteRule);
         const errors = validateRouteRuleDraft(draftForSubmit);
@@ -253,7 +278,8 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
             return;
         }
 
-        const data = buildRouteRuleSubmitPayload(draftForSubmit) as CustomRoute;
+        const routePayload = buildRouteRuleSubmitPayload(draftForSubmit) as CustomRoute & { namespace?: string };
+        const data = { ...routePayload, namespace: routePayload.namespace || ruleNamespace } as CustomRoute;
 
         let res;
         if (op === 'view') {
@@ -491,7 +517,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                         value: {
                             type: value.type || MatchType.EXACT,
                             value: value.value || '',
-                            value_type: MatchValueType.TEXT
+                            value_type: value.value_type || MatchValueType.TEXT
                         }
                     }))
                 });
@@ -565,9 +591,24 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
     );
 
     const renderBaseInfoSection = (
-        <div className={styles.designSection}>
-            {renderSectionHeader(1, '基础信息', '规则元数据，不包含主调和被调服务范围')}
-            <div className={styles.baseGrid}>
+        <CollapsibleSection
+            className={styles.designSection}
+            headerClassName={styles.designSectionHeader}
+            bodyClassName={styles.baseGrid}
+            collapsed={basicInfoCollapsed}
+            onCollapsedChange={setBasicInfoCollapsed}
+            collapseLabel="基础信息"
+            header={(
+                <div className={styles.designSectionTitleWrap}>
+                    <span className={styles.designSectionNumber}>1</span>
+                    <div>
+                        <div className={styles.designSectionTitle}>基础信息</div>
+                        <div className={styles.designSectionDesc}>规则元数据，不包含主调和被调服务范围</div>
+                    </div>
+                </div>
+            )}
+            summary={`${customRouteRule.name || '未命名规则'} · ${customRouteRule.enable === false ? '停用' : '启用'} · 优先级 ${customRouteRule.priority ?? 5}`}
+        >
                 <Row gutter={[16, 14]}>
                     <Col span={8}>
                         <div className={`${styles.fieldBlock} ${styles.fieldBlockWide}`}>
@@ -613,8 +654,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                         </div>
                     </Col>
                 </Row>
-            </div>
-        </div>
+        </CollapsibleSection>
     );
 
     const renderServiceScopeSection = (
@@ -632,6 +672,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
             onCallerServiceChange={(value) => setCustomRouteRule(prev => ({ ...prev, caller_service: value }))}
             onCalleeNamespaceChange={(value) => setCustomRouteRule(prev => ({ ...prev, callee_namespace: value }))}
             onCalleeServiceChange={(value) => setCustomRouteRule(prev => ({ ...prev, callee_service: value }))}
+            fixedRole={op === 'create' ? serviceContext?.role : undefined}
         />
     );
 
@@ -723,11 +764,12 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                 if (tagEdit.ruleIdx >= 0 && tagEdit.groupIdx >= 0) {
                     const newRules = cloneDeep(customRouteRule.routing_config?.rules || []);
                     newRules[tagEdit.ruleIdx].destinations[tagEdit.groupIdx].labels = tagEdit.tags.reduce((acc, tag) => {
-                        if (tag.key && tag.value.value) {
+                        const valueType = tag.value.value_type || MatchValueType.TEXT;
+                        if (tag.key && (valueType === MatchValueType.PARAMETER || tag.value.value)) {
                             acc[tag.key] = {
                                 type: tag.value.type || MatchType.EXACT,
-                                value: tag.value.value,
-                                value_type: tag.value.value_type || RoutingValueType.TEXT
+                                value: valueType === MatchValueType.PARAMETER ? '' : tag.value.value,
+                                value_type: valueType || RoutingValueType.TEXT
                             };
                         }
                         return acc;
@@ -747,12 +789,13 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
             }}
             confirmBtn="确认"
             cancelBtn="取消"
-            width={700}
+            width={820}
         >
             <div>
+                <div className={styles.dynamicLabelHint}>请求参数标签会使用同名请求参数的实际值筛选实例；请在流量匹配条件中将该参数设置为“请求参数”。</div>
                 {tagEdit.tags.map((tag, idx) => (
                     <Row gutter={8} key={idx} style={{ marginBottom: 12 }} align="middle">
-                        <Col span={4}>
+                        <Col span={3}>
                             <Input
                                 value={tag.key}
                                 placeholder="请输入标签键"
@@ -765,8 +808,26 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                                 style={{ width: '100%' }}
                                 onChange={v => updateTagEdit(idx, { ...tag, value: { ...tag.value, type: v as string } })} />
                         </Col>
-                        <Col span={4}>
-                            {isTagInputMatchType(tag.value.type) ? (
+                        <Col span={3}>
+                            <Select
+                                value={tag.value.value_type || MatchValueType.TEXT}
+                                options={MatchValueTypeOption}
+                                style={{ width: '100%' }}
+                                onChange={v => updateTagEdit(idx, {
+                                    ...tag,
+                                    value: {
+                                        ...tag.value,
+                                        value_type: v as string,
+                                        type: v === MatchValueType.PARAMETER ? MatchType.EXACT : tag.value.type,
+                                        value: v === MatchValueType.PARAMETER ? '' : tag.value.value,
+                                    },
+                                })}
+                            />
+                        </Col>
+                        <Col span={3}>
+                            {tag.value.value_type === MatchValueType.PARAMETER ? (
+                                <div className={styles.dynamicLabelValue}>使用同名请求参数</div>
+                            ) : isTagInputMatchType(tag.value.type) ? (
                                 <TagInput
                                     value={commaStringToTags(tag.value.value)}
                                     placeholder="请输入多个标签值，回车分隔"
@@ -783,10 +844,11 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                                     onChange={v => updateTagEdit(idx, { ...tag, value: { ...tag.value, value: v } })} />
                             )}
                         </Col>
-                        <Col span={2}>
+                        <Col span={1}>
                             {Object.keys(tagEdit.tags).length > 1 && (
                                 <Popup trigger="hover" content="删除标签">
                                     <Button
+                                        aria-label={`删除第 ${idx + 1} 个标签`}
                                         shape="circle"
                                         variant="text"
                                         onClick={() => removeTagEdit(idx)}
@@ -813,7 +875,9 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                 const dragKey = `${ruleIdx}:${groupIdx}`;
                 return (
                     <Popup trigger="hover" content="拖动调整分组顺序">
-                        <button
+                        <Button
+                            aria-label={`拖动第 ${groupIdx + 1} 个目标分组调整顺序`}
+                            variant="text"
                             type="button"
                             className={`${styles.dragHandle} ${draggingGroupKey === dragKey ? styles.dragHandleActive : ''}`}
                             draggable
@@ -823,7 +887,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                             onDrop={(event) => handleGroupDrop(event, ruleIdx, groupIdx)}
                         >
                             <DragMoveIcon />
-                        </button>
+                        </Button>
                     </Popup>
                 );
             },
@@ -890,7 +954,9 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                 <div className={`${styles.tagList} ${styles.instanceTagList}`}>
                     {Object.entries(row.labels as Record<string, MatchString> || {}).map(([key, value]) => (
                         <Tag key={key}>
-                            {`${key} ${MatchTypeMap[value.type as MatchType]} ${value.value}`}
+                            {value.value_type === MatchValueType.PARAMETER
+                                ? `${key} 使用同名请求参数`
+                                : `${key} ${MatchTypeMap[value.type as MatchType]} ${value.value}`}
                         </Tag>
                     ))}
                 </div>
@@ -904,6 +970,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                 <Space size={4}>
                     <Popup trigger="hover" content="编辑标签">
                         <Button
+                            aria-label={`编辑第 ${rowIndex + 1} 个目标分组标签`}
                             shape="circle"
                             variant="text"
                             onClick={() => destGroupOp('labels', ruleIdx, rowIndex)}>
@@ -912,6 +979,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                     </Popup>
                     <Popup trigger="hover" content="删除分组">
                         <Button
+                            aria-label={`删除第 ${rowIndex + 1} 个目标分组`}
                             shape="circle"
                             variant="text"
                             onClick={() => destGroupOp('remove', ruleIdx, rowIndex)}>
@@ -951,7 +1019,8 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
         return (
             <div className={styles.segmented}>
                 {(['AND', 'OR'] as const).map((item) => (
-                    <button
+                    <Button
+                        variant="text"
                         key={item}
                         type="button"
                         className={`${styles.segmentButton} ${mode === item ? styles.segmentButtonActive : ''}`}
@@ -959,7 +1028,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                         onClick={() => updateRuleMatchMode(ruleIdx, item)}
                     >
                         {item}
-                    </button>
+                    </Button>
                 ))}
             </div>
         );
@@ -971,6 +1040,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
             paramType: arg.type,
             paramKey: arg.key,
             matchType: arg.value?.type || MatchType.EXACT,
+            valueType: arg.value?.value_type || MatchValueType.TEXT,
             matchValue: arg.value?.value || '',
         }));
         return (
@@ -989,8 +1059,8 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                         value: {
                             ...current.value,
                             type: row.matchType as MatchType,
-                            value: row.matchValue || '',
-                            value_type: current.value?.value_type || MatchValueType.TEXT,
+                            value: row.valueType === MatchValueType.PARAMETER ? '' : row.matchValue || '',
+                            value_type: row.valueType || MatchValueType.TEXT,
                         },
                     });
                 }}
@@ -1026,15 +1096,15 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
             return (
                 <div className={`${shared.labelDisplay} ${styles.groupLabelDisplay}`}>
                     {labels.length ? labels.map(([key, value]) => (
-                        <span className={shared.chip} key={`${key}-${value.value}`}>
-                            <span className={shared.chipKey}>{key}</span>
-                            <span className={shared.chipValue}>{value.value}</span>
+                        <span className={shared.chip} key={`${key}-${value.value}`} title={`${key}=${value.value}`}>
+                            <span className={shared.chipKey} title={key}>{key}</span>
+                            <span className={shared.chipValue} title={value.value}>{value.value}</span>
                         </span>
                     )) : <span className={shared.emptyLine}>暂无实例标签</span>}
                     {editorState.editable && (
-                        <button type="button" className={shared.editChipButton} onClick={() => destGroupOp('labels', ruleIdx, idx)}>
+                        <Button variant="text" type="button" className={shared.editChipButton} onClick={() => destGroupOp('labels', ruleIdx, idx)}>
                             <Edit1Icon />编辑标签
-                        </button>
+                        </Button>
                     )}
                 </div>
             );
@@ -1048,18 +1118,20 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                     </div>
                     {renderWeightMeter(rule)}
                 </div>
-                <div className={styles.groupGrid}>
-                    <div className={styles.groupHeader}>分组名称</div>
-                    <div className={styles.groupHeader}>隔离</div>
-                    <div className={styles.groupHeader}>权重</div>
-                    <div className={styles.groupHeader}>标签</div>
-                    <div className={styles.groupHeader}>操作</div>
+                <div className={styles.groupGridViewport} role="region" aria-label={`第 ${ruleIdx + 1} 条路由规则的目标分组`}>
+                <div className={styles.groupGrid} role="table" aria-label="目标分组">
+                    <div className={styles.groupHeader} role="columnheader">分组名称</div>
+                    <div className={styles.groupHeader} role="columnheader">隔离</div>
+                    <div className={styles.groupHeader} role="columnheader">权重</div>
+                    <div className={styles.groupHeader} role="columnheader">标签</div>
+                    <div className={styles.groupHeader} role="columnheader">操作</div>
                     {destinations.map((group, idx) => {
                         const dragKey = `${ruleIdx}:${idx}`;
                         return (
                             <React.Fragment key={`${ruleIdx}-group-${idx}`}>
                                 <div
                                     className={styles.groupCell}
+                                    role="cell"
                                     draggable={editorState.editable}
                                     onDragStart={(event) => handleGroupDragStart(event, ruleIdx, idx)}
                                     onDragEnd={() => setDraggingGroupKey('')}
@@ -1068,31 +1140,31 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                                 >
                                     {editorState.editable && (
                                         <Popup trigger="hover" content="拖动调整分组顺序">
-                                            <button type="button" className={`${styles.dragHandle} ${draggingGroupKey === dragKey ? styles.dragHandleActive : ''}`}>
+                                            <Button aria-label={`拖动第 ${idx + 1} 个目标分组调整顺序`} variant="text" type="button" className={`${styles.dragHandle} ${draggingGroupKey === dragKey ? styles.dragHandleActive : ''}`}>
                                                 <DragMoveIcon />
-                                            </button>
+                                            </Button>
                                         </Popup>
                                     )}
                                     <span className={styles.groupSwatch} />
-                                    <span className={styles.generatedGroupName}>{getAutoGroupName(idx)}</span>
+                                    <span className={styles.generatedGroupName} title={getAutoGroupName(idx)}>{getAutoGroupName(idx)}</span>
                                 </div>
-                                <div className={styles.groupCell}>
+                                <div className={styles.groupCell} role="cell">
                                     {editorState.editable
                                         ? <Switch value={group.isolate} onChange={(value) => updateGroup(ruleIdx, idx, { ...group, isolate: value as boolean })} />
                                         : <span>{group.isolate ? '是' : '否'}</span>}
                                 </div>
-                                <div className={styles.groupCell}>
+                                <div className={styles.groupCell} role="cell">
                                     {editorState.editable
                                         ? <InputNumber theme="normal" className={styles.weightInput} min={0} max={100} step={5} value={group.weight} onChange={(value) => updateGroup(ruleIdx, idx, { ...group, weight: value as number })} />
                                         : <span>{group.weight}%</span>}
                                 </div>
-                                <div className={styles.groupCell}>
+                                <div className={styles.groupCell} role="cell">
                                     {renderGroupLabelCell(group, idx)}
                                 </div>
-                                <div className={`${styles.groupCell} ${styles.actionCell}`}>
+                                <div className={`${styles.groupCell} ${styles.actionCell}`} role="cell">
                                     {editorState.editable && (
                                         <Popup trigger="hover" content={destinations.length <= 1 ? '至少保留一个分组' : '删除分组'}>
-                                            <Button shape="circle" variant="text" disabled={destinations.length <= 1} onClick={() => removeGroup(ruleIdx, idx)}>
+                                            <Button aria-label={`删除第 ${idx + 1} 个目标分组`} shape="circle" variant="text" disabled={destinations.length <= 1} onClick={() => removeGroup(ruleIdx, idx)}>
                                                 <CloseIcon />
                                             </Button>
                                         </Popup>
@@ -1101,6 +1173,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                             </React.Fragment>
                         );
                     })}
+                </div>
                 </div>
                 {editorState.editable && (
                     <Button
@@ -1132,7 +1205,9 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                     <div className={shared.policyHeadMain}>
                         {editorState.editable && (
                             <Popup trigger="hover" content="拖动调整子规则顺序">
-                                <button
+                                <Button
+                                    aria-label={`拖动第 ${ruleIdx + 1} 条规则调整顺序`}
+                                    variant="text"
                                     type="button"
                                     className={`${styles.dragHandle} ${draggingRuleIndex === ruleIdx ? styles.dragHandleActive : ''}`}
                                     draggable
@@ -1141,7 +1216,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                                     onDragEnd={() => setDraggingRuleIndex(null)}
                                 >
                                     <DragMoveIcon />
-                                </button>
+                                </Button>
                             </Popup>
                         )}
                         <span className={shared.caret}><ChevronRightIcon /></span>
@@ -1156,6 +1231,7 @@ const CustomRouteEditor: React.FC<ICustomRouteEditorProps> = ({ op, refresh, edi
                         {editorState.editable && (
                             <Popup trigger="hover" content="删除规则">
                                 <Button
+                                    aria-label={`删除第 ${ruleIdx + 1} 条规则`}
                                     shape="circle"
                                     variant="text"
                                     onClick={() => removeRule(ruleIdx)}>

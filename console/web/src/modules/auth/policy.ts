@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from '../store';
-import { createAuthPolicies, PolicyResources, Principals } from 'services/auth_policy';
+import { createAuthPolicies, deleteAuthPolicies, modifyAuthPolicies, PolicyResources, Principals } from 'services/auth_policy';
 
 
 // State 和 Action 类型定义
@@ -45,8 +45,11 @@ const initialState: PolicyRuleState = {
 
 export const savePolicyRules = createAsyncThunk(`policy/create`, async ({ state }: { state: PolicyRuleState }, { fulfillWithValue, rejectWithValue }) => {
     try {
-        // const ret = await createAuthPolicies([{ ...state, source: 'pole.io' }]);
-        return fulfillWithValue("ok"); // 返回 token
+        const result = await createAuthPolicies([{ ...state, source: 'pole.io' }]);
+        if (!result) {
+            return rejectWithValue('创建鉴权策略失败');
+        }
+        return fulfillWithValue(result);
     } catch (error) {
         return rejectWithValue((error as Error).message); // 捕获错误并返回
     }
@@ -54,7 +57,18 @@ export const savePolicyRules = createAsyncThunk(`policy/create`, async ({ state 
 
 export const updatePolicyRules = createAsyncThunk(`policy/update`, async ({ state }: { state: PolicyRuleState }, { fulfillWithValue, rejectWithValue }) => {
     try {
-        return fulfillWithValue("ok"); // 返回 token
+        if (!state.id) {
+            return rejectWithValue('鉴权策略 ID 不能为空');
+        }
+        const result = await modifyAuthPolicies([{
+            ...state,
+            id: state.id,
+            source: 'pole.io',
+        }]);
+        if (!result) {
+            return rejectWithValue('更新鉴权策略失败');
+        }
+        return fulfillWithValue(result);
     } catch (error) {
         return rejectWithValue((error as Error).message); // 捕获错误并返回
     }
@@ -62,7 +76,11 @@ export const updatePolicyRules = createAsyncThunk(`policy/update`, async ({ stat
 
 export const removePolicyRules = createAsyncThunk(`policy/remove`, async ({ ids }: { ids: string[] }, { fulfillWithValue, rejectWithValue }) => {
     try {
-        return fulfillWithValue("ok"); // 返回 token
+        const result = await deleteAuthPolicies(ids.map((id) => ({ id })));
+        if (!result) {
+            return rejectWithValue('删除鉴权策略失败');
+        }
+        return fulfillWithValue(result);
     } catch (error) {
         return rejectWithValue((error as Error).message); // 捕获错误并返回
     }

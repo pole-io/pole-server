@@ -7,16 +7,16 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 14px;
   overflow: hidden;
-  border: 1px solid #e5e8ef;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fbfcfd;
+  background: var(--app-surface-subtle);
 }
 
 .summaryItem {
   min-width: 0;
   min-height: 64px;
   padding: 12px 14px;
-  border-right: 1px solid #e5e8ef;
+  border-right: 1px solid var(--app-border-subtle);
 
   &:last-child {
     border-right: 0;
@@ -24,7 +24,7 @@
 
   span {
     display: block;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -33,25 +33,10 @@
     display: block;
     margin-top: 3px;
     overflow: hidden;
-    color: #111827;
+    color: var(--app-text);
     font-size: 20px;
     font-weight: 650;
     line-height: 26px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
-
-.releaseNameCell {
-  min-width: 0;
-
-  span {
-    display: block;
-    margin-top: 4px;
-    overflow: hidden;
-    color: #697586;
-    font-size: 12px;
-    line-height: 18px;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -65,8 +50,43 @@
   white-space: nowrap;
 }
 
+.releaseDetail {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 24px;
+  padding: 8px 0 24px;
+
+  > div {
+    min-width: 0;
+  }
+
+  span,
+  strong {
+    display: block;
+  }
+
+  span {
+    margin-bottom: 6px;
+    color: var(--app-text-secondary);
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  strong {
+    overflow-wrap: anywhere;
+    color: var(--app-text);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 22px;
+  }
+}
+
+.releaseDetailWide {
+  grid-column: 1 / -1;
+}
+
 .timeCell {
-  color: #364152;
+  color: var(--app-text);
   font-size: 12px;
   line-height: 20px;
 }

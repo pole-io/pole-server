@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { CheckCircleIcon, IndicatorIcon } from 'tdesign-icons-react';
+import { IndicatorIcon } from 'components/Fluent/icons';
 import { IRouter } from '../index';
 
 const metrics: IRouter[] = [
@@ -10,6 +10,28 @@ const metrics: IRouter[] = [
       Icon: IndicatorIcon,
     },
     children: [
+      {
+        path: 'system',
+        Component: lazy(() => import('pages/Metrics/SystemMonitor')),
+        meta: {
+          title: 'menu.metrics.system',
+        },
+      },
+      {
+        path: 'service',
+        Component: lazy(() => import('pages/Metrics/ServiceMonitor')),
+        meta: {
+          title: 'menu.metrics.service',
+        },
+      },
+      {
+        path: 'service/detail',
+        Component: lazy(() => import('pages/Metrics/ServiceMonitor/Detail')),
+        meta: {
+          hidden: true,
+          title: 'menu.metrics.service',
+        },
+      },
       {
         path: 'event',
         Component: lazy(() => import('pages/Metrics/ServerEvent')),
@@ -24,20 +46,6 @@ const metrics: IRouter[] = [
           title: 'menu.metrics.operation',
         },
       },
-      // {
-      //   path: 'control',
-      //   Component: lazy(() => import('pages/Metrics/NetworkError')),
-      //   meta: {
-      //     title: '监控指标',
-      //   },
-      // },
-      // {
-      //   path: 'microservice',
-      //   Component: lazy(() => import('pages/Metrics/NetworkError')),
-      //   meta: {
-      //     title: '服务监控',
-      //   },
-      // }
     ],
   },
 ];

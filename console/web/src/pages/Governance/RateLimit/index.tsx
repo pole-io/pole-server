@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tabs } from 'tdesign-react';
+import { Tabs } from 'components/Fluent';
 
 import RateLimitTable from './RateLimitTable';
 import { LimitType } from 'services/ratelimit';

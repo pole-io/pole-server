@@ -2,13 +2,13 @@
 title: 配置中心（`pkg/config/`）
 tags: [business, feature, config]
 links: [namespace, architecture, storage, cache-layer]
-updated: 2026-06-15
+updated: 2026-07-23
 sources: 1
 ---
 
 # 配置中心（`pkg/config/`）
 
-管理支持灰度发布的版本化配置文件。整体架构见 [[architecture]]，命名空间依赖见 [[namespace]]，存储接口见 [[storage]]，缓存层见 [[cache-layer]]。
+管理支持灰度发布的版本化配置文件。相同分组名，以及相同分组下的相同文件名，表示同一配置资源在不同命名空间中的独立环境实例；各环境分别维护草稿、版本和发布状态。整体架构见 [[architecture]]，命名空间依赖见 [[namespace]]，存储接口见 [[storage]]，缓存层见 [[cache-layer]]。
 
 ## `ConfigCenterServer` 接口
 

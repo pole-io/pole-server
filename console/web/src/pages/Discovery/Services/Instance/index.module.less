@@ -1,21 +1,101 @@
-.toolBar {
-  color: #666;
-  margin-bottom: 20px;
-  margin-top: 20px;
+.instanceTablePage {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 20px;
+  color: var(--app-text);
+}
+
+.instanceToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.instanceToolbarMeta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+
+  strong {
+    flex: 0 0 auto;
+    color: var(--app-text);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 22px;
+  }
+
+  span {
+    overflow: hidden;
+    color: var(--app-text-secondary);
+    font-size: 12px;
+    line-height: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.instanceToolbarActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex: 0 0 auto;
+
+  :global(.fui-Input) {
+    min-width: 220px;
+  }
+}
+
+.instanceTableSurface {
+  min-width: 0;
+  overflow-x: auto;
+  border-radius: var(--console-radius-md);
+
+  :global(.fluent-table-shell) {
+    min-width: 0;
+  }
+
+  :global(.fluent-table-scroll table) {
+    min-width: 1180px;
+  }
+
+  :global(.fluent-table-state) {
+    min-height: 120px;
+  }
 }
 
 .detailPanel {
+  --console-text: var(--app-text);
+  --console-text-secondary: var(--app-text-secondary);
+  --console-text-muted: var(--app-text-tertiary);
+  --console-surface-solid: var(--app-surface);
+  --console-surface-muted: var(--app-surface-subtle);
+  --console-border: var(--app-border-subtle);
+  --console-border-subtle: var(--app-border-subtle);
+  --console-brand: var(--app-brand);
+  --console-brand-weak: var(--app-brand-subtle);
+  --console-radius-sm: 6px;
+  --console-radius-md: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   margin: 20px;
-  color: #1f2329;
+  color: var(--console-text);
 }
 
 .detailHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 24px;
-  padding: 4px 0 20px;
-  border-bottom: 1px solid #eaedf1;
+  gap: 20px;
+  padding: 18px 20px;
+  background: var(--console-surface-solid);
+  border: 1px solid var(--console-border-subtle);
+  border-radius: var(--console-radius-md);
 }
 
 .detailIdentity {
@@ -29,14 +109,17 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 42px;
-  width: 42px;
-  height: 42px;
-  color: #366ef4;
-  background: #f4f7ff;
-  border: 1px solid #d9e4ff;
-  border-radius: 8px;
-  font-size: 20px;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  color: var(--console-brand);
+  background: var(--console-brand-weak);
+  border: 1px solid var(--console-border);
+  border-radius: var(--console-radius-md);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: lowercase;
 }
 
 .detailTitleGroup {
@@ -45,106 +128,125 @@
 
 .detailName {
   overflow: hidden;
-  color: #1f2329;
+  color: var(--console-text);
   font-size: 22px;
   font-weight: 600;
   line-height: 30px;
-  margin-bottom: 8px;
+  margin: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.detailStats {
-  display: flex;
-  gap: 10px;
-}
-
-.detailStat {
-  min-width: 92px;
-  padding: 8px 12px;
-  background: #f6f8fb;
-  border: 1px solid #edf1f6;
-  border-radius: 6px;
-}
-
-.detailStat span {
-  display: block;
-  color: #8b93a3;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.detailStat strong {
-  display: block;
-  color: #1f2329;
-  font-size: 20px;
-  line-height: 28px;
-  font-weight: 600;
-}
-
-.detailSections {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.85fr);
-  gap: 18px;
-  padding-top: 18px;
-}
-
-.detailSection {
-  min-width: 0;
-  padding: 16px;
-  background: #fff;
-  border: 1px solid #e7ebf0;
-  border-radius: 8px;
-}
-
-.detailSection:nth-child(1),
-.detailSection:nth-child(2),
-.detailSection:nth-child(5) {
-  grid-column: 1 / -1;
-}
-
-.detailSectionTitle {
-  color: #1f2329;
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 22px;
-  margin-bottom: 14px;
-}
-
-.detailGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px 24px;
-}
-
-.detailItem {
-  min-width: 0;
-}
-
-.detailLabel {
-  color: #8b93a3;
-  font-size: 12px;
-  line-height: 18px;
-  margin-bottom: 4px;
-}
-
-.detailValue {
+.detailDescription {
   overflow: hidden;
-  color: #1f2329;
+  max-width: 720px;
+  margin-top: 6px;
+  color: var(--console-text-muted);
   font-size: 14px;
   line-height: 22px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.detailBlock {
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid #eef2f6;
+.detailActions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.detailActions :global(.fui-Button) {
+  border-radius: var(--console-radius-md);
+}
+
+.detailStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.detailStat {
+  min-width: 0;
+  min-height: 104px;
+  padding: 13px 14px;
+  background: var(--console-surface-solid);
+  border: 1px solid var(--console-border-subtle);
+  border-radius: var(--console-radius-md);
+}
+
+.detailStatLabel,
+.detailStatDescription {
+  display: block;
+  color: var(--console-text-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.detailStatValue {
+  display: block;
+  margin-top: 4px;
+  color: var(--console-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.detailStatDescription {
+  margin-top: 5px;
+}
+
+.detailSections {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+}
+
+.detailSection {
+  overflow: hidden;
+  min-width: 0;
+  background: var(--console-surface-solid);
+  border: 1px solid var(--console-border-subtle);
+  border-radius: var(--console-radius-md);
+}
+
+.detailFormSection {
+  grid-column: 1 / -1;
+
+  :global(.fluent-form) {
+    padding: 16px;
+  }
+}
+
+.detailSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px;
+  background: var(--console-surface-muted);
+  border-bottom: 1px solid var(--console-border-subtle);
+}
+
+.detailSectionHeader h3 {
+  margin: 0;
+  color: var(--console-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.detailSectionHeader span {
+  color: var(--console-text-muted);
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .instanceDetailPanel {
-  color: #1f2329;
+  color: var(--console-text);
 }
 
 .instanceDetailHeader {
@@ -152,7 +254,7 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   padding-bottom: 18px;
-  border-bottom: 1px solid #eaedf1;
+  border-bottom: 1px solid var(--console-border-subtle);
 }
 
 .instanceDetailIdentity {
@@ -169,10 +271,10 @@
   flex: 0 0 42px;
   width: 42px;
   height: 42px;
-  color: #366ef4;
-  background: #f4f7ff;
-  border: 1px solid #d9e4ff;
-  border-radius: 8px;
+  color: var(--console-brand);
+  background: var(--console-brand-weak);
+  border: 1px solid var(--console-border);
+  border-radius: var(--console-radius-md);
   font-size: 20px;
 }
 
@@ -182,11 +284,34 @@
 
 .instanceDetailAddress {
   overflow: hidden;
-  color: #1f2329;
+  color: var(--console-text);
   font-size: 22px;
   font-weight: 600;
   line-height: 30px;
   margin-bottom: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instanceContextList {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.instanceContextItem {
+  display: block;
+  max-width: min(300px, 36vw);
+  min-width: 0;
+  overflow: hidden;
+  padding: 3px 8px;
+  border-radius: var(--console-radius-sm);
+  background: var(--console-surface-muted);
+  color: var(--console-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -200,14 +325,14 @@
 .instanceStatusItem {
   min-width: 0;
   padding: 10px 12px;
-  background: #f6f8fb;
-  border: 1px solid #edf1f6;
-  border-radius: 6px;
+  background: var(--console-surface-muted);
+  border: 1px solid var(--console-border-subtle);
+  border-radius: var(--console-radius-sm);
 }
 
 .instanceStatusItem span {
   display: block;
-  color: #8b93a3;
+  color: var(--console-text-muted);
   font-size: 12px;
   line-height: 18px;
   margin-bottom: 6px;
@@ -222,13 +347,13 @@
 .instanceDetailSection {
   min-width: 0;
   padding: 16px;
-  background: #fff;
-  border: 1px solid #e7ebf0;
-  border-radius: 8px;
+  background: var(--console-surface-solid);
+  border: 1px solid var(--console-border);
+  border-radius: var(--console-radius-md);
 }
 
 .instanceDetailSectionTitle {
-  color: #1f2329;
+  color: var(--console-text);
   font-size: 15px;
   font-weight: 600;
   line-height: 22px;
@@ -246,7 +371,7 @@
 }
 
 .instanceDetailLabel {
-  color: #8b93a3;
+  color: var(--console-text-muted);
   font-size: 12px;
   line-height: 18px;
   margin-bottom: 4px;
@@ -254,7 +379,7 @@
 
 .instanceDetailValue {
   overflow: hidden;
-  color: #1f2329;
+  color: var(--console-text);
   font-size: 14px;
   line-height: 22px;
   text-overflow: ellipsis;
@@ -264,19 +389,19 @@
 .instanceFormPanel {
   display: grid;
   gap: 16px;
-  color: #1f2329;
+  color: var(--console-text);
 }
 
 .instanceFormSection {
   min-width: 0;
   padding: 16px;
-  background: #fff;
-  border: 1px solid #e7ebf0;
-  border-radius: 8px;
+  background: var(--console-surface-solid);
+  border: 1px solid var(--console-border);
+  border-radius: var(--console-radius-md);
 }
 
 .instanceFormTitle {
-  color: #1f2329;
+  color: var(--console-text);
   font-size: 15px;
   font-weight: 600;
   line-height: 22px;
@@ -287,6 +412,17 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px 18px;
+
+  :global(.fui-Input),
+  :global(.fui-Combobox),
+  :global(.fui-SpinButton) {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.instanceRuntimeGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .instanceSwitchGrid {
@@ -296,19 +432,57 @@
   margin-bottom: 10px;
 }
 
-.instanceFormFooter {
-  position: sticky;
-  bottom: -24px;
-  z-index: 2;
-  margin-top: 18px;
-  padding: 14px 0 0;
-  background: #fff;
-  border-top: 1px solid #eef2f6;
+.instanceDrawer {
+  display: flex;
+  flex-direction: column;
+}
+
+.instanceDrawerBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.instanceDrawerFooter {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--console-border-subtle);
+  background: var(--console-surface-solid);
+}
+
+.instanceDrawerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  width: 100%;
+}
+
+.instanceForm {
+  min-width: 0;
+}
+
+.serviceGovernance {
+  min-width: 0;
+  overflow: hidden;
+
+  > div > div:first-child {
+    min-width: 0;
+  }
+
+  > div > div:first-child strong {
+    min-width: 0;
+  }
+
+  :global(.fui-Radio) {
+    flex: 0 0 auto;
+    min-width: max-content;
+    white-space: nowrap;
+  }
 }
 
 .subscribePanel {
   margin: 20px;
-  color: #1f2329;
+  color: var(--console-text);
 }
 
 .subscribeHeader {
@@ -317,7 +491,7 @@
   justify-content: space-between;
   gap: 24px;
   padding: 4px 0 18px;
-  border-bottom: 1px solid #eaedf1;
+  border-bottom: 1px solid var(--console-border-subtle);
 }
 
 .subscribeContext {
@@ -335,7 +509,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #5f6673;
+  color: var(--app-text-secondary);
 }
 
 .subscribeStats {
@@ -347,21 +521,21 @@
 .statItem {
   min-width: 88px;
   padding: 8px 12px;
-  background: #f6f8fb;
-  border: 1px solid #edf1f6;
-  border-radius: 6px;
+  background: var(--console-surface-muted);
+  border: 1px solid var(--console-border-subtle);
+  border-radius: var(--console-radius-sm);
 }
 
 .statItem span {
   display: block;
-  color: #8b93a3;
+  color: var(--console-text-muted);
   font-size: 12px;
   line-height: 18px;
 }
 
 .statItem strong {
   display: block;
-  color: #1f2329;
+  color: var(--console-text);
   font-size: 20px;
   line-height: 28px;
   font-weight: 600;
@@ -391,14 +565,14 @@
   align-items: center;
   gap: 16px;
   padding: 14px 16px;
-  border: 1px solid #e7ebf0;
-  border-radius: 8px;
-  background: #fff;
+  border: 1px solid var(--console-border);
+  border-radius: var(--console-radius-md);
+  background: var(--console-surface-solid);
   transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
 
 .relationRow:hover {
-  border-color: #c9d8ff;
+  border-color: var(--app-brand-border);
   box-shadow: 0 6px 18px rgba(29, 67, 143, 0.08);
   transform: translateY(-1px);
 }
@@ -409,14 +583,14 @@
   gap: 12px;
   min-width: 0;
   padding: 10px 12px;
-  background: #f8fafc;
-  border: 1px solid #edf1f6;
-  border-radius: 8px;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--console-border-subtle);
+  border-radius: var(--console-radius-md);
 }
 
 .serviceNodeActive {
-  background: #f4f7ff;
-  border-color: #c9d8ff;
+  background: var(--console-brand-weak);
+  border-color: var(--app-brand-border);
 }
 
 .serviceNodeIcon {
@@ -426,10 +600,10 @@
   flex: 0 0 32px;
   width: 32px;
   height: 32px;
-  color: #366ef4;
-  background: #fff;
-  border: 1px solid #e6ebf5;
-  border-radius: 8px;
+  color: var(--console-brand);
+  background: var(--console-surface-solid);
+  border: 1px solid var(--app-border-subtle);
+  border-radius: var(--console-radius-md);
 }
 
 .serviceNodeBody {
@@ -440,7 +614,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #8b93a3;
+  color: var(--console-text-muted);
   font-size: 12px;
   line-height: 18px;
   margin-bottom: 2px;
@@ -448,7 +622,7 @@
 
 .serviceNodeName {
   overflow: hidden;
-  color: #1f2329;
+  color: var(--console-text);
   font-size: 14px;
   font-weight: 600;
   line-height: 22px;
@@ -463,7 +637,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  color: #6b7280;
+  color: var(--console-text-secondary);
   font-size: 12px;
 }
 
@@ -473,7 +647,7 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: #dce3ec;
+  background: var(--app-border-subtle);
 }
 
 .connectorBadge {
@@ -483,9 +657,9 @@
   justify-content: center;
   width: 34px;
   height: 34px;
-  color: #366ef4;
-  background: #fff;
-  border: 1px solid #c9d8ff;
+  color: var(--console-brand);
+  background: var(--console-surface-solid);
+  border: 1px solid var(--app-brand-border);
   border-radius: 50%;
 }
 
@@ -500,9 +674,9 @@
   align-items: center;
   justify-content: center;
   min-height: 180px;
-  border: 1px dashed #dce3ec;
-  border-radius: 8px;
-  background: #fbfcfe;
+  border: 1px dashed var(--app-border-subtle);
+  border-radius: var(--console-radius-md);
+  background: var(--app-surface-subtle);
 }
 
 .subscribeFooter {
@@ -511,7 +685,7 @@
   justify-content: space-between;
   gap: 16px;
   padding-top: 14px;
-  color: #6b7280;
+  color: var(--console-text-secondary);
 }
 
 .subscribeFooter > span {
@@ -524,23 +698,20 @@
     align-items: stretch;
   }
 
-  .detailStats {
-    flex-wrap: wrap;
+  .detailActions {
+    justify-content: flex-start;
   }
 
-  .detailSections,
-  .detailGrid,
-  .instanceStatusStrip,
-  .instanceDetailGrid,
-  .instanceFormGrid,
-  .instanceSwitchGrid {
+  .detailStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detailSections {
     grid-template-columns: 1fr;
   }
 
-  .detailSection:nth-child(1),
-  .detailSection:nth-child(2),
-  .detailSection:nth-child(5) {
-    grid-column: auto;
+  .instanceDetailGrid {
+    grid-template-columns: 1fr;
   }
 
   .subscribeHeader,
@@ -572,5 +743,69 @@
 
   .connectorBadge {
     transform: rotate(90deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .instanceTablePage {
+    margin: 16px;
+  }
+
+  .instanceToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .instanceToolbarActions {
+    align-items: stretch;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+
+    > div {
+      min-width: 0;
+    }
+
+    :global(.fui-Input) {
+      min-width: min(260px, 100%);
+    }
+  }
+
+  .instanceRuntimeGrid,
+  .instanceFormGrid,
+  .instanceSwitchGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .serviceGovernance {
+    > div > div:first-child {
+      align-items: stretch;
+      flex-wrap: wrap;
+    }
+
+    > div > div:first-child > div:last-child {
+      flex-wrap: wrap;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .instanceStatusStrip {
+    grid-template-columns: 1fr;
+  }
+
+  .detailPanel {
+    margin: 16px;
+  }
+
+  .detailHeader {
+    padding: 16px;
+  }
+
+  .detailStats {
+    grid-template-columns: 1fr;
+  }
+
+  .detailDescription {
+    white-space: normal;
   }
 }

@@ -234,14 +234,14 @@ func (c *circuitBreakerStore) GetCircuitBreakerRule(id string) (*rules.CircuitBr
 }
 
 // LockCircuitBreakerRule implements store.CircuitBreakerStore.
-func (c *circuitBreakerStore) LockCircuitBreakerRule(tx store.Tx, keyword string) (*rules.CircuitBreakerRule, error) {
+func (c *circuitBreakerStore) LockCircuitBreakerRule(tx store.Tx, namespace, keyword string) (*rules.CircuitBreakerRule, error) {
 	if tx == nil {
 		return nil, ErrTxIsNil
 	}
 	if keyword == "" {
 		return nil, ErrorMissingParams
 	}
-	record, err := c.repo().LockRule(tx, governanceRuleTypeCircuitBreaker, keyword)
+	record, err := c.repo().LockRule(tx, governanceRuleTypeCircuitBreaker, keyword, namespace, keyword)
 	if err != nil {
 		return nil, store.Error(err)
 	}

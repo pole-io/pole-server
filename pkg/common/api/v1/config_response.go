@@ -18,7 +18,9 @@
 package v1
 
 import (
+	"google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 )
@@ -65,15 +67,10 @@ func NewConfigClientResponse0(code apimodel.Code) *apimodel.Response {
 
 // NewConfigClientResponse 创建带配置文件的配置客户端响应
 func NewConfigClientResponse(code apimodel.Code, configFile interface{}) *apimodel.Response {
-	var data *anypb.Any
-	if configFile != nil {
-		// 如果需要，可以将configFile序列化为Any类型
-		// data, _ = anypb.New(configFile.(proto.Message))
-	}
 	return &apimodel.Response{
 		Code: uint32(code),
 		Info: Code2Info(uint32(code)),
-		Data: data,
+		Data: marshalConfigResponseData(configFile),
 	}
 }
 
@@ -106,15 +103,10 @@ func NewConfigResponse(code apimodel.Code) *apimodel.Response {
 
 // NewConfigGroupResponse 创建配置组响应
 func NewConfigGroupResponse(code apimodel.Code, g interface{}) *apimodel.Response {
-	var data *anypb.Any
-	if g != nil {
-		// 如果需要，可以将g序列化为Any类型
-		// data, _ = anypb.New(g.(proto.Message))
-	}
 	return &apimodel.Response{
 		Code: uint32(code),
 		Info: Code2Info(uint32(code)),
-		Data: data,
+		Data: marshalConfigResponseData(g),
 	}
 }
 
@@ -189,15 +181,10 @@ func NewConfigFileReleaseHistoryQueryResponse(code apimodel.Code, total uint32,
 
 // NewConfigFileResponse 创建配置文件响应
 func NewConfigFileResponse(code apimodel.Code, configFile interface{}) *apimodel.Response {
-	var data *anypb.Any
-	if configFile != nil {
-		// 如果需要，可以将configFile序列化为Any类型
-		// data, _ = anypb.New(configFile.(proto.Message))
-	}
 	return &apimodel.Response{
 		Code: uint32(code),
 		Info: Code2Info(uint32(code)),
-		Data: data,
+		Data: marshalConfigResponseData(configFile),
 	}
 }
 
@@ -224,15 +211,10 @@ func NewConfigFileBatchQueryResponseWithMessage(
 // NewConfigFileTemplateResponse 创建配置文件模板响应
 func NewConfigFileTemplateResponse(
 	code apimodel.Code, template interface{}) *apimodel.Response {
-	var data *anypb.Any
-	if template != nil {
-		// 如果需要，可以将template序列化为Any类型
-		// data, _ = anypb.New(template.(proto.Message))
-	}
 	return &apimodel.Response{
 		Code: uint32(code),
 		Info: Code2Info(uint32(code)),
-		Data: data,
+		Data: marshalConfigResponseData(template),
 	}
 }
 
@@ -259,16 +241,26 @@ func NewConfigFileTemplateBatchQueryResponse(code apimodel.Code, total uint32,
 // NewConfigFileReleaseResponse 创建配置文件发布响应
 func NewConfigFileReleaseResponse(
 	code apimodel.Code, configFileRelease interface{}) *apimodel.Response {
-	var data *anypb.Any
-	if configFileRelease != nil {
-		// 如果需要，可以将configFileRelease序列化为Any类型
-		// data, _ = anypb.New(configFileRelease.(proto.Message))
-	}
 	return &apimodel.Response{
 		Code: uint32(code),
 		Info: Code2Info(uint32(code)),
-		Data: data,
+		Data: marshalConfigResponseData(configFileRelease),
 	}
+}
+
+func marshalConfigResponseData(obj interface{}) *anypb.Any {
+	if obj == nil {
+		return nil
+	}
+	msg, ok := obj.(proto.Message)
+	if !ok {
+		return nil
+	}
+	data, err := anypb.New(msg)
+	if err != nil {
+		return nil
+	}
+	return data
 }
 
 // NewConfigResponseWithInfo 创建带详细信息的配置响应
@@ -329,11 +321,19 @@ func NewConfigFileExportResponseWithMessage(code apimodel.Code, message string) 
 
 // NewConfigEncryptAlgorithmResponse 创建配置加密算法响应
 func NewConfigEncryptAlgorithmResponse(code apimodel.Code,
-	algorithms []*string) *apimodel.Response {
-	resp := &apimodel.Response{
+	algorithms []string) *apimodel.Response {
+	values := make([]*structpb.Value, 0, len(algorithms))
+	for _, algorithm := range algorithms {
+		values = append(values, structpb.NewStringValue(algorithm))
+	}
+	data := &structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			"algorithms": structpb.NewListValue(&structpb.ListValue{Values: values}),
+		},
+	}
+	return &apimodel.Response{
 		Code: uint32(code),
 		Info: Code2Info(uint32(code)),
-		Data: nil, // Note: Algorithm data will be added when specific protobuf types are available
+		Data: marshalConfigResponseData(data),
 	}
-	return resp
 }

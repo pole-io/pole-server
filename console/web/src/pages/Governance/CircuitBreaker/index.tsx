@@ -1,6 +1,6 @@
 import React, { } from 'react';
-import { Tabs } from 'tdesign-react';
-import TabPanel from 'tdesign-react/es/tabs/TabPanel';
+import { Tabs } from 'components/Fluent';
+import { TabPanel } from 'components/Fluent';
 import CircuitBreakerTable from './CircuitBreakerTable';
 import FaultDetectTable from './FaultDetectTable';
 

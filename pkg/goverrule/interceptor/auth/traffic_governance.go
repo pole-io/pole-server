@@ -48,19 +48,19 @@ func trafficMockAuthSpec() trafficGovernanceAuthSpec {
 }
 
 func (s *Server) CreateTrafficSecurityRules(ctx context.Context, req []*apisecurity.TrafficSecurityRule) *apimodel.BatchWriteResponse {
-	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Create, authtypes.CreateTrafficSecurityRules); rsp != nil {
+	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Create, authtypes.CreateTrafficSecurityRules, governanceOwnerNamespaces(req)); rsp != nil {
 		return rsp
 	}
 	return s.nextSvr.CreateTrafficSecurityRules(ctx, req)
 }
 func (s *Server) UpdateTrafficSecurityRules(ctx context.Context, req []*apisecurity.TrafficSecurityRule) *apimodel.BatchWriteResponse {
-	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Modify, authtypes.UpdateTrafficSecurityRules); rsp != nil {
+	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Modify, authtypes.UpdateTrafficSecurityRules, governanceOwnerNamespaces(req)); rsp != nil {
 		return rsp
 	}
 	return s.nextSvr.UpdateTrafficSecurityRules(ctx, req)
 }
 func (s *Server) DeleteTrafficSecurityRules(ctx context.Context, req []*apisecurity.TrafficSecurityRule) *apimodel.BatchWriteResponse {
-	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Delete, authtypes.DeleteTrafficSecurityRules); rsp != nil {
+	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Delete, authtypes.DeleteTrafficSecurityRules, governanceOwnerNamespaces(req)); rsp != nil {
 		return rsp
 	}
 	return s.nextSvr.DeleteTrafficSecurityRules(ctx, req)
@@ -87,19 +87,19 @@ func (s *Server) GetOneTrafficSecurityRule(ctx context.Context, req *apisecurity
 }
 
 func (s *Server) CreateTrafficMirrorRules(ctx context.Context, req []*apitraffic.TrafficMirror) *apimodel.BatchWriteResponse {
-	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Create, authtypes.CreateTrafficMirrorRules); rsp != nil {
+	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Create, authtypes.CreateTrafficMirrorRules, governanceOwnerNamespaces(req)); rsp != nil {
 		return rsp
 	}
 	return s.nextSvr.CreateTrafficMirrorRules(ctx, req)
 }
 func (s *Server) UpdateTrafficMirrorRules(ctx context.Context, req []*apitraffic.TrafficMirror) *apimodel.BatchWriteResponse {
-	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Modify, authtypes.UpdateTrafficMirrorRules); rsp != nil {
+	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Modify, authtypes.UpdateTrafficMirrorRules, governanceOwnerNamespaces(req)); rsp != nil {
 		return rsp
 	}
 	return s.nextSvr.UpdateTrafficMirrorRules(ctx, req)
 }
 func (s *Server) DeleteTrafficMirrorRules(ctx context.Context, req []*apitraffic.TrafficMirror) *apimodel.BatchWriteResponse {
-	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Delete, authtypes.DeleteTrafficMirrorRules); rsp != nil {
+	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Delete, authtypes.DeleteTrafficMirrorRules, governanceOwnerNamespaces(req)); rsp != nil {
 		return rsp
 	}
 	return s.nextSvr.DeleteTrafficMirrorRules(ctx, req)
@@ -126,19 +126,19 @@ func (s *Server) GetOneTrafficMirrorRule(ctx context.Context, req *apitraffic.Tr
 }
 
 func (s *Server) CreateTrafficMockRules(ctx context.Context, req []*apitraffic.TrafficMock) *apimodel.BatchWriteResponse {
-	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Create, authtypes.CreateTrafficMockRules); rsp != nil {
+	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Create, authtypes.CreateTrafficMockRules, governanceOwnerNamespaces(req)); rsp != nil {
 		return rsp
 	}
 	return s.nextSvr.CreateTrafficMockRules(ctx, req)
 }
 func (s *Server) UpdateTrafficMockRules(ctx context.Context, req []*apitraffic.TrafficMock) *apimodel.BatchWriteResponse {
-	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Modify, authtypes.UpdateTrafficMockRules); rsp != nil {
+	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Modify, authtypes.UpdateTrafficMockRules, governanceOwnerNamespaces(req)); rsp != nil {
 		return rsp
 	}
 	return s.nextSvr.UpdateTrafficMockRules(ctx, req)
 }
 func (s *Server) DeleteTrafficMockRules(ctx context.Context, req []*apitraffic.TrafficMock) *apimodel.BatchWriteResponse {
-	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Delete, authtypes.DeleteTrafficMockRules); rsp != nil {
+	if rsp := s.checkSimpleTrafficPermission(ctx, authtypes.Delete, authtypes.DeleteTrafficMockRules, governanceOwnerNamespaces(req)); rsp != nil {
 		return rsp
 	}
 	return s.nextSvr.DeleteTrafficMockRules(ctx, req)
@@ -177,12 +177,16 @@ func (s *Server) checkReadTrafficPermission(ctx context.Context, spec trafficGov
 	return authCtx, nil
 }
 
-func (s *Server) checkSimpleTrafficPermission(ctx context.Context, op authtypes.ResourceOperation, method authtypes.ServerFunctionName) *apimodel.BatchWriteResponse {
+func (s *Server) checkSimpleTrafficPermission(ctx context.Context, op authtypes.ResourceOperation,
+	method authtypes.ServerFunctionName, namespaces []string) *apimodel.BatchWriteResponse {
+	resources := make(map[apisecurity.ResourceType][]authtypes.ResourceEntry)
+	s.appendGovernanceOwnerNamespaces(resources, namespaces...)
 	authCtx := authtypes.NewAcquireContext(
 		authtypes.WithRequestContext(ctx),
 		authtypes.WithOperation(op),
 		authtypes.WithModule(authtypes.DiscoverModule),
 		authtypes.WithMethod(method),
+		authtypes.WithAccessResources(resources),
 	)
 	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchWriteResponse(authtypes.ConvertToErrCode(err))

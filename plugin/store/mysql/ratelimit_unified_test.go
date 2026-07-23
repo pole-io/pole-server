@@ -27,25 +27,27 @@ func TestRateLimitStoreCreateUsesGovernanceRuleRepository(t *testing.T) {
 	db := &BaseDB{DB: rawDB}
 	store := &rateLimitStore{master: db, slave: db, governanceRuleRepository: newGovernanceRuleRepository(db, db)}
 	limit := &rules.RateLimit{
-		ID:          "limit-1",
-		Name:        "limit-a",
-		ServiceID:   "svc-id-a",
-		Method:      "GET",
-		Labels:      `{"$method":{"type":"EXACT","value":"GET"}}`,
-		Priority:    100,
-		Rule:        `{"id":"limit-1","name":"limit-a"}`,
-		Revision:    "rev-1",
-		Disable:     false,
-		Valid:       true,
-		Metadata:    map[string]string{"env": "test"},
+		ID:        "limit-1",
+		Namespace: "default",
+		Name:      "limit-a",
+		ServiceID: "svc-id-a",
+		Method:    "GET",
+		Labels:    `{"$method":{"type":"EXACT","value":"GET"}}`,
+		Priority:  100,
+		Rule:      `{"id":"limit-1","name":"limit-a"}`,
+		Revision:  "rev-1",
+		Disable:   false,
+		Valid:     true,
+		Metadata:  map[string]string{"env": "test"},
 	}
 
 	mock.ExpectBegin()
+	expectGovernanceRuleNameAvailable(mock, governanceRuleTypeRateLimit, limit.Namespace, limit.Name)
 	mock.ExpectExec(regexp.QuoteMeta(insertGovernanceRuleSQL)).
 		WithArgs(
 			limit.ID,
 			string(governanceRuleTypeRateLimit),
-			"",
+			limit.Namespace,
 			limit.Name,
 			limit.ServiceID,
 			"",

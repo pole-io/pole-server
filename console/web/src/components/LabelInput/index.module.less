@@ -1,6 +1,11 @@
 .editor {
   width: 100%;
-  color: #1f2329;
+  color: var(--app-text);
+}
+
+.tableViewport {
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .editorHeader {
@@ -8,14 +13,16 @@
   grid-template-columns: minmax(160px, 1fr) minmax(180px, 1.2fr) 48px;
   gap: 10px;
   padding: 0 0 8px;
-  color: #8b93a3;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
+  min-width: 420px;
 }
 
 .rows {
   display: grid;
   gap: 8px;
+  min-width: 420px;
 }
 
 .row {
@@ -24,14 +31,14 @@
   align-items: flex-start;
   gap: 10px;
   padding: 8px;
-  background: #f8fafc;
-  border: 1px solid #edf1f6;
+  background: var(--app-surface-subtle);
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
 }
 
 .rowError {
-  background: #fff8f6;
-  border-color: #f5b7aa;
+  background: var(--app-status-error-subtle);
+  border-color: var(--app-status-error-border);
 }
 
 .rowErrorText {
@@ -41,15 +48,52 @@
   line-height: 18px;
 }
 
+.firstHeader,
+.firstCell {
+  background: var(--app-surface-subtle);
+  left: 0;
+  position: sticky;
+  z-index: 2;
+}
+
+.actionHeader,
+.actionCell {
+  background: var(--app-surface-subtle);
+  position: sticky;
+  right: 0;
+  z-index: 2;
+}
+
+.firstHeader,
+.actionHeader {
+  z-index: 3;
+}
+
+.firstCell,
+.valueCell,
+.actionCell {
+  min-width: 0;
+}
+
+.firstCell :global(.fui-Input),
+.valueCell :global(.fui-Input) {
+  width: 100%;
+}
+
+.actionCell {
+  display: flex;
+  justify-content: center;
+}
+
 .empty,
 .emptyEditor {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 72px;
-  color: #8b93a3;
-  background: #fbfcfe;
-  border: 1px dashed #dce3ec;
+  color: var(--app-text-secondary);
+  background: var(--app-surface-subtle);
+  border: 1px dashed var(--app-border-subtle);
   border-radius: 8px;
 }
 
@@ -63,17 +107,7 @@
   align-items: center;
   justify-content: space-between;
   padding-top: 10px;
-  color: #8b93a3;
+  color: var(--app-text-secondary);
   font-size: 12px;
   line-height: 18px;
-}
-
-@media (max-width: 720px) {
-  .editorHeader {
-    display: none;
-  }
-
-  .row {
-    grid-template-columns: 1fr;
-  }
 }

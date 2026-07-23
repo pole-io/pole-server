@@ -1,19 +1,21 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, TableRowData, Popconfirm, Input, Select } from 'tdesign-react';
-import { DeleteIcon, CreditcardIcon, SearchIcon } from 'tdesign-icons-react';
+import { Table, Button, PrimaryTableProps, TableRowData, Input, Select } from 'components/Fluent';
+import { SearchIcon } from 'components/Fluent/icons';
 import { useNavigate } from 'react-router-dom';
 
 import Text from 'components/Text';
+import { ConfirmOperationButton, OperationButton, OperationButtonGroup } from 'components/OperationButton';
+import { ResourceToolbar } from 'components/ResourceLayout';
 import { useAppDispatch, useAppSelector } from 'modules/store';
-import { Service } from 'services/service';
 import { NamespaceView } from 'services/namespace';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import ServiceEditor from './ServiceEditor';
 import style from './index.module.less';
-import { cleanServicePage, editorService, listServices, removeServices, resetService, selectService } from 'modules/discovery/service';
+import { cleanServicePage, listServices, removeServices, resetService, selectService } from 'modules/discovery/service';
 import { listAllNamespaces, selectNamespace } from 'modules/namespace';
 import { Op } from 'services/types';
+import ResourceNameLink from 'components/ResourceNameLink';
 
 function parseCount(value?: string | number) {
     const parsed = Number(value ?? 0);
@@ -28,21 +30,7 @@ const columns = (operateService: (op: Op, row: TableRowData) => void, redirect: 
         title: t('services.name'),
         width: 260,
         fixed: 'left',
-        cell: ({ row }) => {
-            return (
-                <div className={style.serviceCell}>
-                    <div className={style.serviceNameRow}>
-                        <Link
-                            theme="primary"
-                            onClick={() => { redirect(row) }}
-                        >{row.name}</Link>
-                    </div>
-                    <div className={style.serviceMeta}>
-                        {row.comment && <span>{row.comment}</span>}
-                    </div>
-                </div>
-            );
-        },
+        cell: ({ row }) => <ResourceNameLink name={row.name} onClick={() => redirect(row)} />,
     },
     {
         colKey: 'namespace',
@@ -103,38 +91,13 @@ const columns = (operateService: (op: Op, row: TableRowData) => void, redirect: 
         colKey: 'action',
         title: t('common.action'),
         width: 86,
-        align: 'center',
         fixed: 'right',
         cell: ({ row }) => {
             return (
-                <div className={style.actionCell}>
-                    <Tooltip content={row.editable === false ? t('services.noPermission') : '查看 / 编辑'}>
-                        <Button
-                            shape="square"
-                            variant="text"
-                            disabled={row.editable === false}
-                            aria-label="查看 / 编辑"
-                            onClick={() => operateService('view', row)}>
-                            <CreditcardIcon />
-                        </Button>
-                    </Tooltip>
-                    <Tooltip content={row.deleteable === false ? t('services.noPermission') : t('common.delete')}>
-                        <Popconfirm
-                            content={t('services.confirmDelete')}
-                            destroyOnClose
-                            placement="top"
-                            showArrow
-                            theme="default"
-                            onConfirm={() => {
-                                operateService('delete', row);
-                            }}
-                        >
-                            <Button shape="square" variant="text" disabled={row.deleteable === false}>
-                                <DeleteIcon />
-                            </Button>
-                        </Popconfirm>
-                    </Tooltip>
-                </div>
+                <OperationButtonGroup className={style.actionCell}>
+                    <OperationButton action="viewEdit" disabled={row.editable === false} disabledLabel={t('services.noPermission')} onClick={() => operateService('view', row)} />
+                    <ConfirmOperationButton action="delete" disabled={row.deleteable === false} disabledLabel={t('services.noPermission')} label={t('common.delete')} confirmContent={t('services.confirmDelete')} onConfirm={() => operateService('delete', row)} />
+                </OperationButtonGroup>
             )
         },
     },
@@ -176,12 +139,26 @@ const ServicesTable = React.forwardRef<ServicesTableHandle, IServicesProps>((_, 
     }>({ visible: false, mode: 'create', data: undefined });
     const [query, setQuery] = useState({ namespace: '', name: '' });
 
+    const openServiceDetail = (row?: TableRowData, edit = false) => {
+        if (!row?.namespace || !row?.name) {
+            openErrNotification(t('common.fail'), '服务缺少命名空间或名称，无法打开详情');
+            return;
+        }
+        const params = new URLSearchParams({
+            namespace: String(row.namespace),
+            service: String(row.name),
+        });
+        if (edit) {
+            params.set('mode', 'edit');
+        }
+        navigate(`instance?${params.toString()}`);
+    };
+
     // 编辑、新建事件
     const operateService = (op: Op, row?: TableRowData) => {
         switch (op) {
             case 'edit':
-                dispatch(editorService({ ...row as Service }));
-                setEditorState(prev => ({ ...prev, visible: true, mode: op, data: row }));
+                openServiceDetail(row, true);
                 break;
             case 'create':
                 dispatch(resetService());
@@ -200,8 +177,7 @@ const ServicesTable = React.forwardRef<ServicesTableHandle, IServicesProps>((_, 
                     })
                 break;
             case 'view':
-                dispatch(editorService({ ...row as Service }));
-                setEditorState(prev => ({ ...prev, visible: true, mode: op, data: row }));
+                openServiceDetail(row, true);
                 break;
             default:
                 openErrNotification(t('common.fail'), t('services.unknownOp'));
@@ -275,12 +251,11 @@ const ServicesTable = React.forwardRef<ServicesTableHandle, IServicesProps>((_, 
                 </div>
             </section>
             <section className={style.listSection}>
-                <section className={style.filterBar}>
-                    <div className={style.filterHint}>
-                        <strong>服务清单</strong>
-                        <span id="listCount">{loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}</span>
-                    </div>
-                    <div className={style.filterActions}>
+                <ResourceToolbar
+                    title="服务清单"
+                    count={<span id="listCount">{loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}</span>}
+                    filters={(
+                        <>
                         <div id="nsFilter" className={style.namespaceFilter}>
                             <Select
                                 clearable
@@ -306,8 +281,9 @@ const ServicesTable = React.forwardRef<ServicesTableHandle, IServicesProps>((_, 
                         </div>
                         <Button variant="outline" onClick={submitFilter}>查询</Button>
                         <Button variant="text" onClick={resetFilter}>重置</Button>
-                    </div>
-                </section>
+                        </>
+                    )}
+                />
                 {editorState.visible && (
                     <ServiceEditor
                         op={editorState.mode}
@@ -323,13 +299,12 @@ const ServicesTable = React.forwardRef<ServicesTableHandle, IServicesProps>((_, 
                     <Table
                         data={datas}
                         columns={columns(operateService, (row: TableRowData) => {
-                            dispatch(editorService({ ...row as Service }));
-                            navigate(`instance?namespace=${row?.namespace}&service=${row?.name}`);
+                            openServiceDetail(row, false);
                         }, t)}
                         loading={loading}
                         rowKey="id"
                         size={"large"}
-                        tableLayout={'fixed'}
+                        tableLayout="fixed"
                         cellEmptyContent={'-'}
                         pagination={{
                             current: page,

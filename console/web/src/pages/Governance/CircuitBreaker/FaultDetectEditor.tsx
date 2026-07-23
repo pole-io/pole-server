@@ -12,11 +12,14 @@ import {
     FormProps,
     Tag,
     Popup
-} from 'tdesign-react';
-import { AddIcon, ChevronRightIcon, CloseIcon, DeleteIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'tdesign-icons-react';
+} from 'components/Fluent';
+import { AddIcon, ChevronRightIcon, CloseIcon, DeleteIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'components/Fluent/icons';
 
 import { API, HTTPMethod, HTTPMethodOption, InterfaceProtocol, Label, MatchType, Op } from "services/types";
 import RuleLabelField from "../shared/RuleLabelField";
+import CollapsibleSection from "../shared/CollapsibleSection";
+import { GovernanceServiceContext } from "../shared/serviceContext";
+import { useRuleNamespace } from "../shared/ruleNamespace";
 import shared from "../shared/governance.module.less";
 import styles from './FaultDetectEditor.module.less';
 import {
@@ -213,9 +216,11 @@ const normalizeFaultDetectFormValue = (rule?: Partial<FaultDetectRule> | null): 
 interface IFaultDetectEditorProps {
     op: Op;
     refresh: (close: boolean) => void;
+    serviceContext?: GovernanceServiceContext;
 }
 
 const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
+    const ruleNamespace = useRuleNamespace();
     const [form] = Form.useForm();
     const dispatch = useAppDispatch();
 
@@ -237,11 +242,13 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
         loading: false,
         visible: false
     });
+    const [basicInfoCollapsed, setBasicInfoCollapsed] = React.useState(false);
     const [collapsedRuleIndexes, setCollapsedRuleIndexes] = React.useState<Set<number>>(new Set());
     const [formRevision, setFormRevision] = React.useState(0);
     const [ruleDrafts, setRuleDrafts] = React.useState<FaultDetectSubRule[]>(ensureFaultDetectRules(defaultFaultDetectRule()));
     const [protocolOverrides, setProtocolOverrides] = React.useState<Record<number, FaultDetectProtocol>>({});
     const syncingRuleDraftsRef = React.useRef(false);
+    const persistedValueRef = React.useRef<ReturnType<typeof normalizeFaultDetectFormValue>>(normalizeFaultDetectFormValue(defaultFaultDetectRule()));
     const editRuleId = editRule?.id || '';
 
     // 选项数据
@@ -254,6 +261,7 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
     React.useEffect(() => {
         // 创建模式，设置默认值
         const initialValue = normalizeFaultDetectFormValue(defaultFaultDetectRule());
+        persistedValueRef.current = initialValue;
         form.setFieldsValue(initialValue);
         setRuleDrafts(initialValue.rules);
         setProtocolOverrides({});
@@ -279,6 +287,7 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
     }, []);
 
     React.useEffect(() => {
+        setBasicInfoCollapsed(false);
         if (!editRuleId) {
             return;
         }
@@ -289,6 +298,7 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
             }
             const { editRule } = res.payload as { editRule: FaultDetectRule };
             const nextValue = normalizeFaultDetectFormValue(editRule);
+            persistedValueRef.current = nextValue;
             form.setFieldsValue(nextValue);
             setRuleDrafts(nextValue.rules);
             setProtocolOverrides({});
@@ -296,9 +306,21 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
         })
     }, [editRuleId])
 
+    React.useEffect(() => {
+        if (props.op !== 'create' || !props.serviceContext) return;
+        form.setFieldsValue({
+            targetService: {
+                ...normalizeTargetService(form.getFieldValue('targetService')),
+                namespace: props.serviceContext.namespace,
+                service: props.serviceContext.service,
+            },
+        });
+        setFormRevision((prev) => prev + 1);
+    }, [form, props.op, props.serviceContext?.namespace, props.serviceContext?.service]);
+
     // 表单提交
     const onSubmit: FormProps['onSubmit'] = async (e) => {
-        if (e.validateResult !== true) {
+        if (e.validateResult !== true || editorState.loading) {
             return;
         }
 
@@ -315,12 +337,12 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
             const errors = validateFaultDetectDraft(draft);
             if (errors.length > 0) {
                 openErrNotification('校验失败', errors[0].message);
-                setEditorState(prev => ({ ...prev, loading: false }));
                 return;
             }
 
             const ruleData: FaultDetectRule = {
                 ...buildFaultDetectSubmitPayload(draft),
+                namespace: (draft as FaultDetectRule & { namespace?: string }).namespace || ruleNamespace,
                 id: viewRule?.id || '',
                 editable: true,
                 deleteable: true
@@ -337,18 +359,20 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
             } else {
                 openInfoNotification('请求成功', props.op !== 'create' ? '修改主动探测规则成功' : '创建主动探测规则成功');
                 const nextValue = normalizeFaultDetectFormValue(ruleData);
+                persistedValueRef.current = nextValue;
                 form.setFieldsValue(nextValue);
                 setRuleDrafts(nextValue.rules);
                 setProtocolOverrides({});
                 if (props.op === 'create') {
                     props.refresh(false); // 刷新列表
                 } else {
-                    setEditorState(prev => ({ ...prev, loading: false, editable: false }));
+                    setEditorState(prev => ({ ...prev, editable: false }));
                 }
             }
         } catch (error) {
             console.error('提交失败:', error);
             openErrNotification('操作失败', '提交故障检测规则失败，请检查输入或稍后重试');
+        } finally {
             setEditorState(prev => ({ ...prev, loading: false }));
         }
     };
@@ -474,42 +498,47 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                     <span className={styles.httpHeadersTitle}>Headers</span>
                     <span className={styles.httpHeadersHint}>随探测请求发送的请求头</span>
                 </div>
-                <div className={styles.httpHeadersGrid}>
-                    <div className={styles.httpHeadersHead}>键</div>
-                    <div className={styles.httpHeadersHead}>值</div>
-                    <div className={styles.httpHeadersHead}>操作</div>
+                <div className={styles.httpHeadersScroller} role="region" aria-label={`第 ${index + 1} 条探测规则的请求头`}>
+                <div className={styles.httpHeadersGrid} role="table">
+                    <div className={styles.httpHeadersRow} role="row">
+                        <div className={`${styles.httpHeadersHead} ${styles.httpHeadersFirstHead}`} role="columnheader">键</div>
+                        <div className={styles.httpHeadersHead} role="columnheader">值</div>
+                        <div className={`${styles.httpHeadersHead} ${styles.httpHeadersActionHead}`} role="columnheader">操作</div>
+                    </div>
                     {rows.length === 0 ? (
-                        <div className={styles.httpHeadersEmpty}>暂无标签</div>
+                        <div className={styles.httpHeadersEmpty} role="cell">暂无标签</div>
                     ) : rows.map((item, headerIndex) => (
-                        <React.Fragment key={headerIndex}>
-                            <div className={styles.httpHeadersCell}>
+                        <div className={styles.httpHeadersRow} key={headerIndex} role="row">
+                            <div className={`${styles.httpHeadersCell} ${styles.httpHeadersFirstCell}`} role="cell">
                                 {editorState.editable ? (
                                     <Input
+                                        aria-label={`第 ${headerIndex + 1} 个请求头的键`}
                                         className={styles.monoInput}
                                         value={item.key}
                                         placeholder="x-seed"
                                         onChange={(value) => updateHttpHeader(index, headerIndex, 'key', value, rows)}
                                     />
                                 ) : (
-                                    <span className={styles.headerReadonlyText}>{displayText(item.key)}</span>
+                                    <span className={styles.headerReadonlyText} title={displayText(item.key)}>{displayText(item.key)}</span>
                                 )}
                             </div>
-                            <div className={styles.httpHeadersCell}>
+                            <div className={styles.httpHeadersCell} role="cell">
                                 {editorState.editable ? (
                                     <Input
+                                        aria-label={`第 ${headerIndex + 1} 个请求头的值`}
                                         className={styles.monoInput}
                                         value={item.value}
                                         placeholder="true"
                                         onChange={(value) => updateHttpHeader(index, headerIndex, 'value', value, rows)}
                                     />
                                 ) : (
-                                    <span className={styles.headerReadonlyText}>{displayText(item.value)}</span>
+                                    <span className={styles.headerReadonlyText} title={displayText(item.value)}>{displayText(item.value)}</span>
                                 )}
                             </div>
-                            <div className={`${styles.httpHeadersCell} ${styles.httpHeadersActionCell}`}>
+                            <div className={`${styles.httpHeadersCell} ${styles.httpHeadersActionCell}`} role="cell">
                                 {editorState.editable ? (
                                     <Popup trigger="hover" content="删除标签">
-                                        <Button shape="square" variant="outline" onClick={() => removeHttpHeader(index, headerIndex, rows)}>
+                                        <Button aria-label={`删除第 ${headerIndex + 1} 个请求头`} shape="square" variant="outline" onClick={() => removeHttpHeader(index, headerIndex, rows)}>
                                             <DeleteIcon />
                                         </Button>
                                     </Popup>
@@ -517,8 +546,9 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                                     <span className={styles.headerReadonlyText}>-</span>
                                 )}
                             </div>
-                        </React.Fragment>
+                        </div>
                     ))}
+                </div>
                 </div>
                 {editorState.editable && (
                     <div className={styles.httpHeadersFooter}>
@@ -767,9 +797,12 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
     };
 
     const ruleBaseInfo = (
-        <div className={shared.section}>
-            <div className={shared.sectionHeader}>基础信息</div>
-            <div className={shared.sectionBody}>
+        <CollapsibleSection
+            collapsed={basicInfoCollapsed}
+            onCollapsedChange={setBasicInfoCollapsed}
+            header="基础信息"
+            summary={`${currentDraft.name || '未命名规则'} · 优先级 ${currentDraft.priority ?? 0}`}
+        >
                 <div className={shared.infoGrid}>
                     <div className={shared.field}>
                         <div className={shared.fieldLabel}>规则名称</div>
@@ -812,9 +845,10 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                         />
                     </div>
                 </div>
-            </div>
-        </div>
+        </CollapsibleSection>
     );
+
+    const fixedTarget = props.op === 'create' && Boolean(props.serviceContext);
 
     const targetInfo = (
         <div className={shared.section}>
@@ -830,7 +864,7 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                             name={['targetService', 'namespace']}
                             rules={[{ required: true, message: '请选择命名空间' }]}
                         >
-                            {editorState.editable ? (
+                            {editorState.editable && !fixedTarget ? (
                                 <Select
                                     filterable
                                     creatable
@@ -852,7 +886,7 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                                         name={['targetService', 'service']}
                                         rules={[{ required: true, message: '请选择服务' }]}
                                     >
-                                        {editorState.editable ? (
+                                        {editorState.editable && !fixedTarget ? (
                                             <Select
                                                 placeholder="请选择服务"
                                                 filterable
@@ -930,7 +964,7 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                                     setEditorState(prev => ({ ...prev, editable: true }));
                                 }} />
                                 :
-                                <RuleStickyAction label="保存" icon={<SaveIcon />} onClick={() => {
+                                <RuleStickyAction label="保存" icon={<SaveIcon />} loading={editorState.loading} disabled={editorState.loading} onClick={() => {
                                     form.submit();
                                 }} />
                             }
@@ -941,6 +975,11 @@ const FaultDetectEditor: React.FC<IFaultDetectEditorProps> = (props) => {
                                     if (props.op === 'create') {
                                         props.refresh(true);
                                     } else {
+                                        const baseline = persistedValueRef.current;
+                                        form.setFieldsValue(baseline);
+                                        setRuleDrafts(baseline.rules);
+                                        setProtocolOverrides({});
+                                        setFormRevision(prev => prev + 1);
                                         setEditorState(prev => ({ ...prev, editable: false }));
                                     }
                                 }} />}

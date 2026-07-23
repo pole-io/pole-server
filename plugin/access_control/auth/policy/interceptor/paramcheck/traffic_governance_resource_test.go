@@ -50,3 +50,20 @@ func TestCheckTrafficGovernanceResourceExist(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, uint32(apimodel.Code_NotFoundResource), resp.GetCode())
 }
+
+func TestCheckResourceEntriesExist(t *testing.T) {
+	existing := map[string]bool{"mcp-1": true, "a2a-1": true}
+	require.Nil(t, checkResourceEntriesExist([]*apisecurity.StrategyResourceEntry{
+		{Id: "*"},
+		{Id: "mcp-1"},
+		{Id: "a2a-1"},
+	}, func(id string) bool {
+		return existing[id]
+	}))
+
+	resp := checkResourceEntriesExist([]*apisecurity.StrategyResourceEntry{{Id: "missing-ai-resource"}}, func(id string) bool {
+		return existing[id]
+	})
+	require.NotNil(t, resp)
+	require.Equal(t, uint32(apimodel.Code_NotFoundResource), resp.GetCode())
+}

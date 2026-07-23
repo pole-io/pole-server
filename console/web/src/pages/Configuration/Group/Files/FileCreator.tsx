@@ -1,6 +1,6 @@
 import React, { } from 'react';
-import { Steps, Drawer, Form, Input, Space, Row, Col, Switch, Select, FormProps, Button } from "tdesign-react";
-import FormItem from 'tdesign-react/es/form/FormItem'
+import { Steps, Drawer, Form, Input, Space, Row, Col, Switch, Select, FormProps, Button } from 'components/Fluent';
+import { FormItem } from 'components/Fluent'
 
 import { useAppDispatch, useAppSelector } from 'modules/store';;
 import CodeEditor from 'components/CodeEditor';
@@ -20,17 +20,43 @@ interface IFileCreatorProps {
 
 const { StepItem } = Steps;
 
+interface ConfigFileMetaValues {
+    name: string;
+    comment: string;
+    tags: Label[];
+    encrypted: boolean;
+    encryptAlgo: string;
+}
+
+const emptyMetaValues = (): ConfigFileMetaValues => ({
+    name: '',
+    comment: '',
+    tags: [],
+    encrypted: false,
+    encryptAlgo: '',
+});
+
 const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visible, closeDrawer }) => {
     const dispatch = useAppDispatch();
     const [form] = Form.useForm();
 
     const fileState = useAppSelector(selectConfigFile);
-    const { editFile, cryptoAlgos } = fileState;
+    const { cryptoAlgos } = fileState;
 
     const [activeStep, setActiveStep] = React.useState<number>(1);
+    const [metaValues, setMetaValues] = React.useState<ConfigFileMetaValues>(emptyMetaValues);
 
     React.useEffect(() => {
         if (visible) {
+            const initialMetaValues = emptyMetaValues();
+            setActiveStep(1);
+            setMetaValues(initialMetaValues);
+            form.setFieldsValue({
+                namespace: namespace,
+                group: group,
+                ...initialMetaValues,
+                content: '',
+            });
             dispatch(listConfigFileCryptoAlgos())
                 .then(res => {
                     if (res.meta.requestStatus === 'rejected') {
@@ -38,7 +64,41 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                     }
                 })
         }
-    }, [visible]);
+    }, [visible, namespace, group, form, dispatch]);
+
+    React.useEffect(() => {
+        if (visible && activeStep === 1) {
+            form.setFieldsValue({
+                namespace: namespace,
+                group: group,
+                ...metaValues,
+            });
+        }
+    }, [activeStep, visible, namespace, group, metaValues, form]);
+
+    const collectMetaValues = () => {
+        const name = form.getFieldValue('name') as string;
+        const comment = form.getFieldValue('comment') as string;
+        const tags = form.getFieldValue('tags') as Label[];
+        const encrypted = form.getFieldValue('encrypted') as boolean;
+        const encryptAlgo = form.getFieldValue('encryptAlgo') as string;
+        const nextMetaValues = {
+            name: name || '',
+            comment: comment || '',
+            tags: tags || [],
+            encrypted: Boolean(encrypted),
+            encryptAlgo: encryptAlgo || '',
+        };
+        setMetaValues(nextMetaValues);
+        return nextMetaValues;
+    };
+
+    const changeStep = (value: number) => {
+        if (activeStep === 1 && value === 2) {
+            collectMetaValues();
+        }
+        setActiveStep(value);
+    };
 
     const onSubmit: FormProps['onSubmit'] = async (e) => {
         if (e.validateResult !== true) {
@@ -48,16 +108,14 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
         const newData = {
             namespace: namespace,
             group: group,
-            name: form.getFieldValue('name') as string,
-            comment: form.getFieldValue('comment') as string,
-            format: resolveFileFormat(form.getFieldValue('name') as string),
+            name: metaValues.name,
+            comment: metaValues.comment,
+            format: resolveFileFormat(metaValues.name),
             content: form.getFieldValue('content') as string,
-            tags: form.getFieldValue('tags') as Label[] || [],
-            encrypted: form.getFieldValue('encrypted') as boolean,
-            encryptAlgo: form.getFieldValue('encryptAlgo') as string,
+            tags: metaValues.tags,
+            encrypted: metaValues.encrypted,
+            encryptAlgo: metaValues.encrypted ? metaValues.encryptAlgo : '',
         }
-
-        console.log('newData', newData);
 
         const result = await dispatch(saveConfigFiles({ param: { ...newData } }));
         if (result.meta.requestStatus !== 'fulfilled') {
@@ -122,18 +180,12 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                 {activeStep === 2 && (
                     <>
                         <Space style={{ marginTop: 20, width: '100%' }}>
-                            <FormItem>
-                                {({ getFieldValue }) => {
-                                    return (
-                                        <FormItem name={'content'} style={{ width: '100%' }}>
-                                            <CodeEditor
-                                                allowFullScreen={true}
-                                                readonly={false}
-                                                language={resolveFileFormat(getFieldValue('name') as string)}
-                                            />
-                                        </FormItem>
-                                    )
-                                }}
+                            <FormItem name={'content'} style={{ width: '100%' }}>
+                                <CodeEditor
+                                    allowFullScreen={true}
+                                    readonly={false}
+                                    language={resolveFileFormat(metaValues.name)}
+                                />
                             </FormItem>
                         </Space>
                     </>
@@ -145,10 +197,10 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
         <Drawer
             header={op === 'edit' ? "编辑" : "创建"}
             size='960px'
-            style={{ width: '100%' }}
             visible={visible}
             onClose={() => {
-                setActiveStep(1);
+                changeStep(1);
+                setMetaValues(emptyMetaValues());
                 closeDrawer();
             }}
             footer={
@@ -156,7 +208,7 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                     <>
                         <Space>
                             <Button theme="default" onClick={() => {
-                                setActiveStep(2);
+                                changeStep(2);
                             }}>
                                 下一步
                             </Button>
@@ -168,7 +220,7 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                         <>
                             <Space>
                                 <Button theme="default" onClick={() => {
-                                    setActiveStep(1);
+                                    changeStep(1);
                                 }}>
                                     上一步
                                 </Button>
@@ -188,7 +240,7 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
             <Row>
                 <Col span={3}>
                     <Steps layout="vertical" current={activeStep} onChange={(value) => {
-                        setActiveStep(value as number);
+                        changeStep(value as number);
                     }}>
                         <StepItem value={1} title="元信息">
                         </StepItem>

@@ -1,108 +1,84 @@
 import React, { useEffect, useState } from 'react';
-import { Link, Table, Button, PageInfo, TableProps, Tooltip, Space, Row, Col, TableRowData, Popconfirm } from 'tdesign-react';
-import { CreditcardIcon, DeleteIcon, RefreshIcon } from 'tdesign-icons-react';
+import { Button, PageInfo, PrimaryTableProps, Space, Table, TableProps, TableRowData, Tooltip } from 'components/Fluent';
+import { AddIcon, RefreshIcon } from 'components/Fluent/icons';
+import { useNavigate } from 'react-router-dom';
 
 import Search from 'components/Search';
 import ErrorPage from 'components/ErrorPage';
 import Text from 'components/Text';
+import { ConfirmOperationButton, OperationButton } from 'components/OperationButton';
+import ResourceNameLink from 'components/ResourceNameLink';
+import { ResourceToolbar } from 'components/ResourceLayout';
 import { useAppDispatch } from 'modules/store';
+import { removeRoles } from 'modules/auth/role';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
-import { describeRoles } from 'services/role';
-import { editorRoles, removeRoles, resetRoles } from 'modules/auth/role';
+import { describeRoles, Role } from 'services/role';
 import RoleEditor from './RoleEditor';
 
-type Op = 'view' | 'create' | 'edit' | 'delete';
-
-interface IPolicyTableProps {
-    type: 'default' | 'custom';
-}
+type Op = 'create' | 'view' | 'edit';
 
 const ServerError = () => <ErrorPage code={500} />;
+const isBuiltInRole = (role: Partial<Role>) => role.default_role === true;
 
-const customColumns = (handleEditRole: (row: TableRowData, op: Op, res: string) => void): TableProps['columns'] => [
+const columns = (
+    openRoleDetail: (row: TableRowData) => void,
+    openEditor: (row: Role, mode: Op) => void,
+    deleteRole: (role: Role) => void,
+): PrimaryTableProps['columns'] => [
     {
         colKey: 'id',
         title: 'ID',
         type: 'multiple',
-        checkProps: ({ row }) => ({ disabled: row.editable === false || row.deleteable === false || row.user_type === 'main' }),
+        checkProps: ({ row }) => ({ disabled: isBuiltInRole(row as Role) }),
     },
     {
         colKey: 'name',
         title: '名称',
-        cell: ({ row }) => {
-            return (
-                <Link theme='primary' onClick={() => handleEditRole(row, 'view', 'role')}>{row.name}</Link>
-            )
-        },
+        cell: ({ row }) => <ResourceNameLink name={row.name} onClick={() => openRoleDetail(row)} />,
     },
     {
         colKey: 'source',
-        title: '来源',
-        cell: ({ row: { source } }: TableRowData) => (<Text>{source}</Text>),
+        title: '类型',
+        cell: ({ row }) => <Text>{isBuiltInRole(row as Role) ? '系统内置' : '自定义'}</Text>,
     },
     {
         title: '描述',
-        colKey: 'commnet',
+        colKey: 'comment',
         ellipsis: true,
-        cell: ({ row: { comment } }: TableRowData) => {
-            console.log(comment);
-            return <Text>{comment}</Text>
-        }
+        cell: ({ row }) => <Text>{row.comment || '-'}</Text>,
     },
     {
         colKey: 'time',
         title: '操作时间',
-        cell: ({ row: { ctime, mtime } }: TableRowData) => <Text>修改: {mtime}<br />创建: {ctime}</Text>,
+        cell: ({ row }) => <Text>修改: {row.mtime}<br />创建: {row.ctime}</Text>,
     },
     {
         colKey: 'action',
         title: '操作',
         cell: ({ row }) => {
+            const role = row as Role;
             return (
                 <Space>
-                    <Tooltip content={row.editable === false ? '无权限操作' : '查看 / 编辑'}>
-                        <Button
-                            shape="square"
-                            variant="text"
-                            disabled={row.editable === false}
-                            aria-label="查看 / 编辑"
-                            onClick={() => handleEditRole(row, 'view', 'role')}>
-                            <CreditcardIcon />
-                        </Button>
-                    </Tooltip>
-                    <Tooltip content={row.deleteable === false ? '无权限操作' : '删除'}>
-                        <Popconfirm
-                            content="确认删除吗"
-                            destroyOnClose
-                            placement="top"
-                            showArrow
-                            theme="default"
-                            onConfirm={() => {
-                                handleEditRole(row, 'delete', 'role');
-                            }}
-                        >
-                            <Button
-                                shape="square"
-                                variant="text"
-                                disabled={row.deleteable === false}
-                            >
-                                <DeleteIcon />
-                            </Button>
-                        </Popconfirm>
-                    </Tooltip>
+                    <OperationButton action="view" onClick={() => openRoleDetail(row)} />
+                    {isBuiltInRole(role) ? (
+                        <Button variant="transparent" aria-label="管理成员" onClick={() => openEditor(role, 'edit')}>管理成员</Button>
+                    ) : (
+                        <>
+                            <OperationButton action="edit" onClick={() => openEditor(role, 'edit')} />
+                            <ConfirmOperationButton action="delete" confirmContent="确认删除该自定义角色吗" onConfirm={() => deleteRole(role)} />
+                        </>
+                    )}
                 </Space>
-            )
+            );
         },
     },
-]
+];
 
-
-const RoleTable: React.FC<IPolicyTableProps> = (props) => {
+const RoleTable: React.FC = () => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const [selectedRowKeys, setSelectedRowKeys] = useState<Array<string | number>>([]);
-
-    // 合并编辑相关状态
     const [searchState, setSearchState] = useState<{
         roles: TableProps['data'];
         current: number;
@@ -113,175 +89,106 @@ const RoleTable: React.FC<IPolicyTableProps> = (props) => {
         fetchError: boolean;
         isLoading: boolean;
     }>({ roles: [], current: 1, limit: 10, previous: 0, total: 0, query: '', fetchError: false, isLoading: false });
+    const [editorState, setEditorState] = useState<{ visible: boolean; mode: Op; role: Role | null }>({
+        visible: false,
+        mode: 'create',
+        role: null,
+    });
 
-    // 合并编辑相关状态
-    const [editorState, setEditorState] = useState<{
-        visible: boolean;
-        resource: string;
-        mode: Op;
-        data?: TableRowData;
-    }>({ visible: false, resource: '', mode: 'create', data: undefined });
-
-    // 编辑、新建事件
-    const handleEditRole = (row: TableRowData, mode: Op, res: string) => {
-        if (mode === 'delete') {
-            handleDelete([row.id]);
-            return;
-        }
-
-        dispatch(editorRoles({
-            id: row.id,
-            name: row.name,
-            comment: row.comment,
-            metadata: row.metadata,
-            source: row.source,
-            users: row.users,
-            user_groups: row.user_groups,
-        }))
-        setEditorState({
-            visible: true,
-            mode: mode,
-            resource: res,
-            data: { ...row },
-        })
-    }
-
-    const handleCreatePolicy = () => {
-        setEditorState({
-            visible: true,
-            mode: 'create',
-            resource: 'role',
-            data: undefined,
-        });
+    const openRoleDetail = (row: TableRowData) => {
+        navigate(`/auth/principals/roledetail?name=${encodeURIComponent(String(row.name || ''))}&id=${encodeURIComponent(String(row.id || ''))}`);
     };
 
-    const handleDelete = (ids: string[]) => {
-        dispatch(removeRoles({ state: ids.map(id => ({ id: String(id) })) }))
-            .then((res) => {
-                openInfoNotification("请求成功", "删除角色成功");
-            })
-            .catch((err) => {
-                openErrNotification("请求失败", "删除角色失败：" + err);
-            })
-            .finally(() => {
-                refreshTables()
-            });
-    }
-
-    const refreshTables = () => {
-        setSearchState(s => ({ ...s, fetchError: false, isLoading: true }));
-        fetchData({ current: 1, pageSize: searchState.limit, previous: 0 }, searchState.query);
-    }
-
-    // 模拟远程请求
-    async function fetchData(pageInfo: PageInfo, searchParam?: string) {
-        setSearchState(s => ({ ...s, current: pageInfo.current, limit: pageInfo.pageSize, previous: pageInfo.previous, fetchError: false, isLoading: true }));
+    async function fetchData(pageInfo: PageInfo, searchParam = '') {
+        setSearchState(s => ({ ...s, current: pageInfo.current, limit: pageInfo.pageSize, previous: pageInfo.previous, query: searchParam, fetchError: false, isLoading: true }));
         try {
-            const { current, pageSize } = pageInfo;
-
-            const params = {
-                name: searchParam,
-            }
-
-            // 默认只查询简要信息
             const response = await describeRoles({
-                limit: pageSize, offset: (current - 1) * pageSize, berif: true, ...params
+                limit: pageInfo.pageSize,
+                offset: (pageInfo.current - 1) * pageInfo.pageSize,
+                berif: true,
+                ...(searchParam && { name: searchParam }),
             });
             setSearchState(s => ({ ...s, roles: response.content, total: response.totalCount, isLoading: false }));
         } catch (error: Error | any) {
             setSearchState(s => ({ ...s, fetchError: true, isLoading: false }));
-            openErrNotification("获取数据失败", error);
+            openErrNotification('获取数据失败', error);
         }
     }
 
-    useEffect(() => {
+    const refreshTables = () => {
+        setSelectedRowKeys([]);
+        fetchData({ current: 1, pageSize: searchState.limit, previous: 0 }, searchState.query);
+    };
+
+    const deleteRolesByIds = async (ids: string[]) => {
+        const result = await dispatch(removeRoles({ state: ids.map(id => ({ id })) }));
+        if (result.meta.requestStatus !== 'fulfilled') {
+            openErrNotification('请求失败', String(result.payload || '删除角色失败'));
+            return;
+        }
+        openInfoNotification('请求成功', ids.length > 1 ? '批量删除角色成功' : '删除角色成功');
         refreshTables();
+    };
+
+    useEffect(() => {
+        fetchData({ current: 1, pageSize: searchState.limit, previous: 0 });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const table = (
         <>
-            <Row justify='space-between' className={style.toolBar}>
-                <Col>
-                    <Row gutter={8} align='middle'>
-                        <Col>
-                            {props.type === 'custom' && (
-                                <Button onClick={handleCreatePolicy}>新建</Button>
-                            )}
-                        </Col>
-                        {(selectedRowKeys.length > 0 && props.type === 'custom') && (
+            <ResourceToolbar
+                className={style.toolBar}
+                title="角色列表"
+                count={searchState.isLoading ? '正在同步列表' : `共 ${searchState.total} 条`}
+                filters={(
+                    <>
+                        <Search onChange={(value: string) => fetchData({ current: 1, pageSize: searchState.limit, previous: 0 }, value)} />
+                        <Tooltip content="刷新">
+                            <Button shape="square" variant="outline" onClick={refreshTables}><RefreshIcon /></Button>
+                        </Tooltip>
+                        {selectedRowKeys.length > 0 && (
                             <>
-                                <Col>
-                                    <Button theme='danger' onClick={() => {
-                                        handleDelete(selectedRowKeys as string[]);
-                                    }}>批量删除</Button>
-                                </Col>
-                                <Col>
-                                    <div>已选 {selectedRowKeys?.length || 0} 项</div>
-                                </Col>
+                                <span className={style.selectionHint}>已选 {selectedRowKeys.length} 项</span>
+                                <Button theme="danger" onClick={() => deleteRolesByIds(selectedRowKeys.map(String))}>批量删除</Button>
                             </>
                         )}
-                    </Row>
-                </Col>
-                <Col>
-                    <Space>
-                        <Search
-                            onChange={(value: string) => {
-                                fetchData({ current: 1, pageSize: searchState.limit, previous: 0, }, value);
-                            }}
-                        />
-                        <Tooltip content="刷新">
-                            <RefreshIcon onClick={() => fetchData({ current: 1, pageSize: searchState.limit, previous: 0 })} />
-                        </Tooltip>
-                    </Space>
-                </Col>
-            </Row>
+                        <Button theme="primary" icon={<AddIcon />} onClick={() => setEditorState({ visible: true, mode: 'create', role: null })}>新建角色</Button>
+                    </>
+                )}
+            />
             <RoleEditor
-                key={editorState.mode + (editorState.data?.name || 'new') + (editorState.visible ? '1' : '0')}
-                modify={editorState.mode !== 'create'}
-                visible={editorState.visible && editorState.resource === 'role'}
+                key={`${editorState.mode}-${editorState.role?.id || 'new'}-${editorState.visible}`}
+                visible={editorState.visible}
+                op={editorState.mode}
+                role={editorState.role}
                 refresh={refreshTables}
-                closeDrawer={() => {
-                    // 关闭后重置编辑器状态
-                    dispatch(resetRoles());
-                    setEditorState(s => ({ ...s, visible: false }));
-                }} op={editorState.mode} />
+                closeDrawer={() => setEditorState(s => ({ ...s, visible: false }))}
+            />
             <Table
                 data={searchState.roles}
-                columns={customColumns(handleEditRole)}
+                columns={columns(openRoleDetail, (role, mode) => setEditorState({ visible: true, mode, role }), role => deleteRolesByIds([role.id]))}
                 loading={searchState.isLoading}
                 rowKey="id"
-                size={"large"}
+                size="large"
+                tableLayout="auto"
+                cellEmptyContent="-"
                 pagination={{
                     current: searchState.current,
                     pageSize: searchState.limit,
                     total: searchState.total,
                     showJumper: true,
-                    onChange(pageInfo) {
-                        fetchData(pageInfo, searchState.query);
-                    },
+                    onChange: pageInfo => fetchData(pageInfo, searchState.query),
                 }}
-                onPageChange={(pageInfo) => {
-                    fetchData(pageInfo, searchState.query);
-                }}
+                onPageChange={pageInfo => fetchData(pageInfo, searchState.query)}
                 selectOnRowClick={false}
                 selectedRowKeys={selectedRowKeys}
-                onSelectChange={(selected: Array<string | number>) => {
-                    setSelectedRowKeys(selected);
-                }}
+                onSelectChange={(selected: Array<string | number>) => setSelectedRowKeys(selected)}
             />
         </>
-    )
+    );
 
-    return (
-        <>
-            {searchState.fetchError ? (
-                <ServerError />
-            ) : (
-                table
-            )}
-        </>
-    )
-}
+    return searchState.fetchError ? <ServerError /> : table;
+};
 
 export default React.memo(RoleTable);

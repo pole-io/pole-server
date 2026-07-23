@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Drawer, Form, Input, Space, Button, InputNumber, Radio, Switch, Select, Transfer, Tag, Tabs } from "tdesign-react";
-import type { FormProps } from 'tdesign-react';
+import { Drawer, Form, Input, Space, Button, InputNumber, Radio, Switch, Select, Transfer, Tag, Tabs } from 'components/Fluent';
+import type { FormProps } from 'components/Fluent';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
@@ -41,11 +41,14 @@ const GroupEditor: React.FC<IGroupEditorProps> = ({ visible, op, modify, closeDr
     const [searchState, setSearchState] = React.useState<{
         users: { value: string; label: string }[];
         userLoading: boolean,
+        userError: string,
     }>({
         users: [],
         userLoading: false,
+        userError: '',
     });
     const [detailGroup, setDetailGroup] = React.useState<UserGroup | null>(null);
+    const [submitting, setSubmitting] = React.useState(false);
 
     React.useEffect(() => {
         if (visible) {
@@ -85,13 +88,12 @@ const GroupEditor: React.FC<IGroupEditorProps> = ({ visible, op, modify, closeDr
                 group_labels: group_labels,
             })
         } catch (error: Error | any) {
-            setSearchState(s => ({ ...s, fetchError: true, isLoading: false }));
             openErrNotification("获取用户组详情失败", error);
         }
     }
 
     const fetchUserData = async () => {
-        setSearchState(s => ({ ...s, user_loading: true }));
+        setSearchState(s => ({ ...s, userLoading: true, userError: '' }));
         try {
             // 请求可能存在跨域问题
             const response = await describeAllUsers();
@@ -102,18 +104,18 @@ const GroupEditor: React.FC<IGroupEditorProps> = ({ visible, op, modify, closeDr
                     disabled: user.user_type !== 'sub',
                 }
             })
-            setSearchState(s => ({ ...s, users: users, user_loading: false }));
+            setSearchState(s => ({ ...s, users: users, userLoading: false }));
         } catch (error) {
-            setSearchState(s => ({ ...s, fetchError: true, isLoading: false }));
+            setSearchState(s => ({ ...s, userLoading: false, userError: (error as Error).message || '加载成员失败' }));
             openErrNotification('获取用户列表失败', (error as Error).message);
         }
     }
 
     const onSubmit: FormProps['onSubmit'] = async (e) => {
-        console.log(e);
-        if (e.validateResult !== true) {
+        if (e.validateResult !== true || submitting) {
             return;
         }
+        setSubmitting(true);
 
         const inusers = form.getFieldValue('users') as string[]
         const labels = form.getFieldValue('group_labels') as { key: string, value: string }[]
@@ -137,25 +139,37 @@ const GroupEditor: React.FC<IGroupEditorProps> = ({ visible, op, modify, closeDr
             },
         }
 
-        let result;
-        if (op === 'create') {
-            result = await dispatch(saveUserGroups({ state: { ...newData } }))
-        } else {
-            result = await dispatch(updateUserGroups({ state: { ...newData } }))
-        }
-
-        if (result.meta.requestStatus !== 'fulfilled') {
-            openErrNotification('请求错误', result?.payload as string);
-        } else {
-            openInfoNotification('请求成功', op === 'create' ? '创建用户组成功' : '修改用户组信息成功');
-            closeDrawer();
-            refresh();
+        try {
+            const result = op === 'create'
+                ? await dispatch(saveUserGroups({ state: { ...newData } }))
+                : await dispatch(updateUserGroups({ state: { ...newData } }));
+            if (result.meta.requestStatus !== 'fulfilled') {
+                openErrNotification('请求错误', result?.payload as string);
+            } else {
+                openInfoNotification('请求成功', op === 'create' ? '创建用户组成功' : '修改用户组信息成功');
+                closeDrawer();
+                refresh();
+            }
+        } finally {
+            setSubmitting(false);
         }
     };
 
     const viewGroup = detailGroup || currentUserGroup as UserGroup;
     const labels = viewGroup?.metadata ? Object.entries(viewGroup.metadata) : [];
     const users = viewGroup?.relation?.users || [];
+    const resetEditor = () => {
+        const baseline = op === 'create' ? null : viewGroup;
+        form.setFieldsValue({
+            name: baseline?.name || '',
+            comment: baseline?.comment || '',
+            token_enable: baseline ? !!baseline.token_enable : true,
+            users: baseline?.relation?.users?.map((user) => user.id) || [],
+            group_labels: baseline?.metadata
+                ? Object.entries(baseline.metadata).map(([key, value]) => ({ key, value }))
+                : [],
+        });
+    };
 
     const groupBaseView = (
         <div className={style.authDetail}>
@@ -228,6 +242,7 @@ const GroupEditor: React.FC<IGroupEditorProps> = ({ visible, op, modify, closeDr
             labelWidth={120}
             labelAlign={'left'}
             onSubmit={onSubmit}
+            onReset={resetEditor}
         >
             <FormItem label={'用户组名'} name={'name'} initialData={name}
                 rules={[
@@ -249,18 +264,25 @@ const GroupEditor: React.FC<IGroupEditorProps> = ({ visible, op, modify, closeDr
             <FormItem
                 label={'用户'}
                 name={'users'}
+                help={searchState.userError ? (
+                    <span role="alert">
+                        成员列表加载失败：{searchState.userError}
+                        <Button size="small" variant="text" onClick={fetchUserData}>重新加载</Button>
+                    </span>
+                ) : undefined}
             >
                 <Transfer
                     search={true}
                     data={searchState.users}
-                    disabled={!editable}
+                    loading={searchState.userLoading}
+                    disabled={!editable || Boolean(searchState.userError)}
                 />
             </FormItem>
             <LabelInput form={form} label='用户组标签' name='group_labels' editable={editable} />
             {editable && (
-                <FormItem style={{ marginTop: 100 }}>
+                <FormItem style={{ marginTop: 24 }}>
                     <Space>
-                        <Button type="submit" theme="primary">
+                        <Button type="submit" theme="primary" loading={submitting} disabled={searchState.userLoading}>
                             提交
                         </Button>
                         <Button type="reset" theme="default">

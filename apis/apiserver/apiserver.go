@@ -28,6 +28,7 @@ const (
 	DiscoverAccess    string = "discover"
 	RegisterAccess    string = "register"
 	HealthcheckAccess string = "healthcheck"
+	ConfigAccess      string = "config"
 	CreateFileAccess  string = "createfile"
 )
 

@@ -12,6 +12,7 @@ export interface LaneDraftCondition {
     type: string;
     key: string;
     match: string;
+    valueType: string;
     value: string;
 }
 
@@ -68,6 +69,7 @@ const DEFAULT_CONDITION: LaneDraftCondition = {
     type: 'HEADER',
     key: '',
     match: '完全匹配',
+    valueType: 'TEXT',
     value: '',
 };
 
@@ -113,6 +115,7 @@ function normalizeCondition(condition?: Partial<LaneDraftCondition> | any): Lane
         type: condition?.type || condition?.param || DEFAULT_CONDITION.type,
         key: condition?.key || '',
         match: condition?.match || condition?.op || DEFAULT_CONDITION.match,
+        valueType: condition?.valueType || condition?.value_type || (typeof value === 'object' ? value?.value_type : '') || DEFAULT_CONDITION.valueType,
         value: typeof value === 'object' ? value?.value || '' : value || '',
     };
 }
@@ -223,7 +226,7 @@ export function validateLaneRulesDraft(draft: LaneGroupDraft): ValidationIssue[]
         if (lane.matchRatio < 0 || lane.matchRatio > 100) {
             issues.push({ field: `lanes.${index}.matchRatio`, message: `${prefix} 命中后放量比例必须在 0–100 之间` });
         }
-        if (!lane.conditions.length || lane.conditions.some(item => !item.type || !item.key || !item.match || !item.value)) {
+        if (!lane.conditions.length || lane.conditions.some(item => !item.type || !item.key || !item.match || (item.valueType !== 'PARAMETER' && !item.value))) {
             issues.push({ field: `lanes.${index}.conditions`, message: `${prefix} 存在空匹配条件` });
         }
         if (!lane.laneValue.trim()) {
@@ -269,6 +272,7 @@ export function buildLaneRulePreviewSpec(draft: LaneGroupDraft) {
                         param: condition.type,
                         key: condition.key,
                         op: condition.match,
+                        valueType: condition.valueType,
                         value: condition.value,
                     })),
                 },

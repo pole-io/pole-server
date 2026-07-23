@@ -337,7 +337,7 @@ export function validateRateLimitDraft(draft: RateLimitDraftLike): RateLimitVali
                 }
             });
         }
-        if ((rule.arguments || []).some((arg) => !arg.value?.value?.trim())) {
+        if ((rule.arguments || []).some((arg) => arg.value?.value_type !== 'PARAMETER' && !arg.value?.value?.trim())) {
             errors.push({ field: `rules.${index}.arguments.value`, ruleIndex: index, message: `规则[${ruleNumber}] 存在空匹配值` });
         }
         if (hasInvalidCustomResponse(rule)) {

@@ -35,3 +35,26 @@ func TestTrafficGovernanceResourceFieldMappings(t *testing.T) {
 	require.Equal(t, "rule-1", resources.GetSecurityRules()[0].GetId())
 	require.Equal(t, "rule-1", resources.GetMockRules()[0].GetId())
 }
+
+func TestAIResourceFieldMappings(t *testing.T) {
+	require.Equal(t, apisecurity.ResourceType_MCPServerResources, ResourceFieldNames["mcp_servers"])
+	require.Equal(t, apisecurity.ResourceType_A2AAgentResources, ResourceFieldNames["a2a_agents"])
+
+	resources := &apisecurity.StrategyResources{
+		McpServers: []*apisecurity.StrategyResourceEntry{},
+		A2AAgents:  []*apisecurity.StrategyResourceEntry{},
+	}
+	for _, typ := range []apisecurity.ResourceType{
+		apisecurity.ResourceType_MCPServerResources,
+		apisecurity.ResourceType_A2AAgentResources,
+	} {
+		getter := ResourceFieldPointerGetters[typ]
+		require.NotNil(t, getter)
+		ptr := getter(resources)
+		require.Equal(t, reflect.Ptr, ptr.Kind())
+		ptr.Elem().Set(reflect.Append(ptr.Elem(), reflect.ValueOf(&apisecurity.StrategyResourceEntry{Id: "ai-1"})))
+	}
+
+	require.Equal(t, "ai-1", resources.GetMcpServers()[0].GetId())
+	require.Equal(t, "ai-1", resources.GetA2AAgents()[0].GetId())
+}

@@ -5,7 +5,7 @@
 }
 
 .menuTip {
-  color: var(--td-text-color-primary);
+  color: var(--app-text);
   opacity: 0.4;
   height: 38px;
   line-height: 38px;
@@ -19,7 +19,7 @@
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  color: var(--td-text-color-primary);
+  color: var(--app-text);
   overflow: hidden;
 }
 
@@ -39,9 +39,176 @@
 }
 
 .logoFull {
-  color: var(--td-text-color-primary);
+  color: var(--app-text);
   width: 184px;
   height: 32px;
   display: block;
   flex: 0 0 auto;
+}
+
+.fluentSidebar {
+  width: 232px;
+  height: 100%;
+  min-height: 0;
+  flex: 0 0 232px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--app-text);
+  background: var(--app-surface);
+  border-right: 1px solid var(--app-border-subtle);
+  transition: width 160ms ease, flex-basis 160ms ease;
+}
+
+.agentSidebar {
+  width: 280px;
+  flex-basis: 280px;
+  background: var(--app-surface-subtle);
+
+  .menuLogo {
+    height: 68px;
+    border-bottom: 1px solid var(--app-border-subtle);
+  }
+}
+
+.collapsed {
+  width: 64px;
+  flex-basis: 64px;
+}
+
+.agentSidebar.collapsed {
+  width: 64px;
+  flex-basis: 64px;
+}
+
+.fluentNav {
+  flex: 1;
+  min-height: 0;
+  padding: 8px 8px 12px;
+  overflow: auto;
+}
+
+.fluentNav :global(.fui-NavItem),
+.fluentNav :global(.fui-NavCategoryItem),
+.fluentNav :global(.fui-NavSubItem) {
+  position: relative;
+  width: 100%;
+  min-height: 40px;
+  margin: 0;
+  color: var(--app-text-secondary);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+  background: transparent;
+  border-radius: 4px;
+}
+
+.fluentNav :global(.fui-NavCategoryItem) {
+  color: var(--app-text);
+  font-weight: 500;
+}
+
+.fluentNav :global(.fui-NavCategory) {
+  margin-top: 2px;
+}
+
+.fluentNav :global(.fui-NavSubItemGroup) {
+  padding: 0;
+}
+
+.fluentNav :global(.fui-NavSubItem) {
+  min-height: 36px;
+  padding-left: 44px;
+  text-align: left;
+}
+
+.fluentNav :global(.fui-NavItem:hover),
+.fluentNav :global(.fui-NavCategoryItem:hover),
+.fluentNav :global(.fui-NavSubItem:hover) {
+  color: var(--app-text);
+  background: var(--app-bg);
+}
+
+.fluentNav :global([aria-current='page']) {
+  color: var(--app-brand);
+  font-weight: 600;
+  background: var(--app-brand-1);
+}
+
+.fluentNav :global([aria-current='page'])::before {
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  left: 0;
+  width: 3px;
+  content: '';
+  background: var(--app-brand);
+  border-radius: 0 2px 2px 0;
+}
+
+.fluentNav :global([aria-current='page'])::after {
+  display: none;
+}
+
+.fluentNav :global(.fui-NavItem:focus-visible),
+.fluentNav :global(.fui-NavCategoryItem:focus-visible),
+.fluentNav :global(.fui-NavSubItem:focus-visible) {
+  outline: 2px solid var(--app-focus);
+  outline-offset: -2px;
+}
+
+.collapsed .fluentNav {
+  padding-inline: 6px;
+}
+
+.collapsed .fluentNav :global(.fui-NavItem),
+.collapsed .fluentNav :global(.fui-NavCategoryItem) {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.collapsed .fluentNav :global(.fui-NavCategoryItem__expandIcon) {
+  display: none;
+}
+
+.collapsed .navLabel {
+  display: none;
+}
+
+.navLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agentSessionHost {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.navFooter {
+  min-height: 36px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  border-top: 1px solid var(--app-border-subtle);
+  white-space: nowrap;
+}
+
+.collapsed .navFooter {
+  padding-inline: 6px;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.headerNav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
 }

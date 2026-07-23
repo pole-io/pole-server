@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { UserCircleIcon } from 'tdesign-icons-react';
+import { UserCircleIcon } from 'components/Fluent/icons';
 import { IRouter } from '../index';
 
 const auth: IRouter[] = [

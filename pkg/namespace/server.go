@@ -37,6 +37,10 @@ const (
 	DefaultTLL = 5
 )
 
+func isProtectedNamespace(name string) bool {
+	return name == DefaultNamespace || name == SystemNamespace
+}
+
 var _ NamespaceOperateServer = (*Server)(nil)
 
 type Server struct {

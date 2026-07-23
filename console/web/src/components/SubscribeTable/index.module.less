@@ -7,15 +7,15 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 14px;
   overflow: hidden;
-  border: 1px solid #e5e8ef;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fbfcfd;
+  background: var(--app-surface-subtle);
 }
 
 .summaryItem {
   min-height: 64px;
   padding: 12px 14px;
-  border-right: 1px solid #e5e8ef;
+  border-right: 1px solid var(--app-border-subtle);
 
   &:last-child {
     border-right: 0;
@@ -23,7 +23,7 @@
 
   span {
     display: block;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -31,7 +31,7 @@
   strong {
     display: block;
     margin-top: 3px;
-    color: #111827;
+    color: var(--app-text);
     font-size: 20px;
     font-weight: 650;
     line-height: 26px;
@@ -43,16 +43,16 @@
   grid-template-columns: 220px minmax(0, 1fr);
   min-height: 360px;
   overflow: hidden;
-  border: 1px solid #e5e8ef;
+  border: 1px solid var(--app-border-subtle);
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-surface);
 }
 
 .treeContent {
   min-width: 0;
   padding: 16px;
-  border-right: 1px solid #e5e8ef;
-  background: #fbfcfd;
+  border-right: 1px solid var(--app-border-subtle);
+  background: var(--app-surface-subtle);
 }
 
 .sectionTitle {
@@ -61,7 +61,7 @@
   strong {
     display: block;
     overflow: hidden;
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     font-weight: 600;
     line-height: 22px;
@@ -72,7 +72,7 @@
   span {
     display: block;
     margin-top: 2px;
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -89,17 +89,17 @@
   justify-content: space-between;
   min-height: 46px;
   padding: 0 16px;
-  border-bottom: 1px solid #eef1f5;
+  border-bottom: 1px solid var(--app-border-subtle);
 
   strong {
-    color: #111827;
+    color: var(--app-text);
     font-size: 14px;
     font-weight: 600;
     line-height: 22px;
   }
 
   span {
-    color: #697586;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 18px;
   }
@@ -112,7 +112,7 @@
 
   .summaryItem {
     border-right: 0;
-    border-bottom: 1px solid #e5e8ef;
+    border-bottom: 1px solid var(--app-border-subtle);
 
     &:last-child {
       border-bottom: 0;
@@ -125,6 +125,6 @@
 
   .treeContent {
     border-right: 0;
-    border-bottom: 1px solid #e5e8ef;
+    border-bottom: 1px solid var(--app-border-subtle);
   }
 }
