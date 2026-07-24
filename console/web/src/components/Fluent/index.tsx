@@ -50,7 +50,6 @@ export {
   Breadcrumb,
   Collapse,
   ColorPickerPanel,
-  DateRangePicker,
   Descriptions,
   Dropdown,
   List,
@@ -63,6 +62,7 @@ export {
   Transfer,
   Tree,
 } from './legacyWidgets';
+export { DateRangePicker } from './DateRangePicker';
 
 export type {
   CustomValidator,
@@ -76,14 +76,13 @@ export type {
 export { Form, FormItem } from './form';
 
 export type {
-  DateRangePickerProps,
-  DateRangeValue,
   MenuValue,
   TransferValue,
   TreeInstanceFunctions,
   TreeNodeModel,
   TreeProps,
 } from './legacyWidgets';
+export type { DateRangePickerProps, DateRangeValue } from './DateRangePicker';
 
 export interface PageInfo {
   current?: number;

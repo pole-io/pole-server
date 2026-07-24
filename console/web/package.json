@@ -27,6 +27,7 @@
   "test:auth-drawer-actions": "node scripts/verify-auth-drawer-actions.mjs",
   "test:auth-mutations": "node scripts/verify-auth-mutation-response-contract.mjs",
     "test:dark-theme": "node scripts/verify-dark-theme-tokens.mjs",
+    "test:date-range-picker": "node scripts/verify-date-range-picker.mjs",
     "test:metrics-observability": "node scripts/verify-metrics-observability-pages.mjs",
     "test:ux-closure": "node scripts/verify-console-ux-closure.mjs",
     "test:traffic-security": "node scripts/verify-traffic-security-editor-utils.mjs",
@@ -67,11 +68,12 @@
     "husky": "^8.0.1",
     "less": "^4.1.3",
     "prettier": "^2.5.1",
-    "typescript": "^4.8.4",
+    "typescript": "5.1.6",
     "vite": "^2.9.15",
     "vite-plugin-mock": "^2.9.6"
   },
   "dependencies": {
+    "@fluentui/react-calendar-compat": "^0.4.4",
     "@fluentui/react-components": "^9.74.3",
     "@fluentui/react-icons": "^2.0.333",
     "@monaco-editor/react": "^4.7.0",

@@ -22,7 +22,8 @@ import {
   Option,
   Tooltip,
 } from '@fluentui/react-components';
-import { ChevronDown16Regular, ChevronRight16Regular, Dismiss16Regular } from '@fluentui/react-icons';
+import { ChevronDown16Regular, ChevronRight16Regular } from '@fluentui/react-icons';
+import type { DateRangePickerProps, DateRangeValue } from './DateRangePicker';
 
 type AnyRecord = Record<string, any>;
 type LegacyValue = string | number;
@@ -151,60 +152,6 @@ export const ColorPickerPanel: React.FC<ColorPickerPanelProps> = ({ value, defau
             <Button key={color} className="fluent-color-picker__swatch" aria-label={color} appearance="subtle" shape="circular" size="small" onClick={() => update(color)} style={{ minWidth: 24, width: 24, height: 24, border: `1px solid ${palette.border}`, background: color }} />
           ))}
         </div>
-      )}
-    </div>
-  );
-};
-
-export type DateRangeValue = Array<string | Date>;
-export interface DateRangePickerProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'defaultValue' | 'onChange'> {
-  value?: DateRangeValue;
-  defaultValue?: DateRangeValue;
-  onChange?: (value: DateRangeValue, context?: AnyRecord) => void;
-  placeholder?: [string, string];
-  format?: string;
-  valueType?: string;
-  mode?: 'date' | 'week' | 'month' | string;
-  presets?: Record<string, DateRangeValue>;
-  clearable?: boolean;
-  allowInput?: boolean;
-  disabled?: boolean;
-}
-
-const toInputValue = (value: string | Date | undefined, withTime: boolean) => {
-  if (!value) return '';
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value).replace(' ', 'T').slice(0, withTime ? 16 : 10);
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString();
-  return local.slice(0, withTime ? 16 : 10);
-};
-
-const formatInputValue = (value: string, format?: string) => {
-  if (!value) return '';
-  if (format?.includes('HH')) return `${value.replace('T', ' ')}${format.includes('ss') && value.length === 16 ? ':00' : ''}`;
-  return value.slice(0, 10);
-};
-
-export const DateRangePicker: React.FC<DateRangePickerProps> = ({ value, defaultValue, onChange, placeholder = ['开始日期', '结束日期'], format, presets, clearable, disabled, mode: _mode, valueType: _valueType, allowInput: _allowInput, className, style, ...props }) => {
-  const withTime = Boolean(format?.includes('HH'));
-  const [inner, setInner] = React.useState<DateRangeValue>(defaultValue || []);
-  const selected = value ?? inner;
-  const update = (index: number, next: string) => {
-    const result: DateRangeValue = [selected[0] || '', selected[1] || ''];
-    result[index] = formatInputValue(next, format);
-    if (value === undefined) setInner(result);
-    onChange?.(result, { dayjsValue: result });
-  };
-  return (
-    <div {...props} className={`fluent-date-range ${className || ''}`.trim()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, ...style }}>
-      <Input className="fluent-date-range__input" disabled={disabled} aria-label={placeholder[0]} type={withTime ? 'datetime-local' : 'date'} value={toInputValue(selected[0], withTime)} onChange={(_event, data) => update(0, data.value)} style={{ minWidth: withTime ? 184 : 138 }} />
-      <span style={{ color: palette.muted }}>—</span>
-      <Input className="fluent-date-range__input" disabled={disabled} aria-label={placeholder[1]} type={withTime ? 'datetime-local' : 'date'} value={toInputValue(selected[1], withTime)} onChange={(_event, data) => update(1, data.value)} style={{ minWidth: withTime ? 184 : 138 }} />
-      {clearable && selected.some(Boolean) && <Button appearance="subtle" size="small" icon={<Dismiss16Regular />} aria-label="清空日期" onClick={() => { if (value === undefined) setInner([]); onChange?.([]); }} />}
-      {presets && (
-        <FluentSelect className="fluent-date-range__presets" aria-label="快捷日期" placeholder="快捷选择" onOptionSelect={(_event, data) => { const next = presets[String(data.optionValue)]; if (next) { if (value === undefined) setInner(next); onChange?.(next); } }}>
-          {Object.keys(presets).map((label) => <Option key={label} value={label}>{label}</Option>)}
-        </FluentSelect>
       )}
     </div>
   );

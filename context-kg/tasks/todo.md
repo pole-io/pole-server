@@ -8,6 +8,22 @@ sources: 0
 
 # 任务计划与 Review
 
+## 观测筛选日期范围选择器
+
+- [x] 核对事件指标、操作审计的时间筛选状态与共享 DateRangePicker 契约
+- [x] 将 TypeScript 升级到当前 ESLint 工具链支持的 5.1.6，并验证正常依赖解析
+- [x] 将分离的起止日期时间输入与快捷下拉整合为弹层式日期范围选择器
+- [x] 保留秒级时间、手动输入、清空和快捷时间范围能力
+- [x] 补充共享组件与观测页面的专项回归检查
+- [x] 完成 ESLint、专项测试、前端构建与变更审查
+
+Review：
+
+- 根因是 Fluent 适配层中的 `DateRangePicker` 实际只渲染两个原生日期时间输入和一个独立快捷下拉；现已替换为单一范围触发器、Fluent Popover、连续日期范围、开始/结束时间切换与可滚动时/分/秒三列，事件指标和操作审计无需修改页面数据流即可复用。
+- 手动输入、清空、确认和快捷范围均保留；预设中的 `Date` 会先按 `YYYY-MM-DD HH:mm:ss` 归一化再回传，避免 API 收到 JavaScript Date 文本。反向点选会按新端点重新计算自然日边界，浏览器验证 `7/25 → 7/24` 得到 `7/24 00:00:00—7/25 23:59:59`。
+- 新增 Fluent 官方 `@fluentui/react-calendar-compat@0.4.4`，并将 TypeScript 固定升级到当前 `@typescript-eslint@5.62` 支持的 `5.1.6`；不带兼容参数的 `npm install` 正常通过，未引入 TDesign。
+- 已通过 `test:date-range-picker`、`test:no-tdesign`、`test:metrics-observability`、`test:dark-theme`、目标文件 ESLint、`build:test` 与 `git diff --check`。真实浏览器验证亮暗主题、弹层定位、日期范围端点、秒级手动输入、时分秒联动、快捷范围和反向点选；双轴代码复审最终无遗留问题。
+
 ## Agent 对话输入器视觉优化
 
 - [x] 收敛输入器边框、阴影、间距与按钮层级

@@ -193,21 +193,298 @@
 
 .fluent-date-range {
   box-sizing: border-box;
-  flex-wrap: wrap;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
   width: 100%;
   max-width: 100%;
 }
 
-.fluent-date-range__input {
-  flex: 1 1 184px;
-  width: auto;
-  max-width: 100%;
+.fluent-date-range__trigger {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  padding: 5px 34px 5px 10px;
+  color: var(--app-text);
+  font: inherit;
+  line-height: 20px;
+  text-align: left;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-control, 4px);
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+
+  .fui-Button__content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--app-border-strong, #8a8886);
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--app-brand);
+    box-shadow: 0 0 0 1px var(--app-brand);
+  }
+
+  &:disabled {
+    color: var(--app-text-disabled, #a19f9d);
+    background: var(--app-surface-disabled, #f3f2f1);
+    cursor: not-allowed;
+  }
+}
+
+.fluent-date-range.has-value .fluent-date-range__trigger {
+  padding-right: 60px;
+}
+
+.fluent-date-range__value {
+  min-width: 0;
+  overflow: hidden;
+  flex: 1 1 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &.is-placeholder {
+    color: var(--app-text-secondary);
+  }
+}
+
+.fluent-date-range__separator {
+  flex: 0 0 auto;
+  color: var(--app-text-secondary);
+}
+
+.fluent-date-range__calendar-icon {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  color: var(--app-text-secondary);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.fluent-date-range__clear {
+  position: absolute;
+  z-index: 1;
+  top: 4px;
+  right: 30px;
+  min-width: 24px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
+.fluent-date-range__popover {
+  box-sizing: border-box;
+  width: min(820px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  padding: 0 !important;
+  overflow: hidden;
+  color: var(--app-text);
+  background: var(--app-surface);
+}
+
+.fluent-date-range__panel {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr);
+  min-width: 0;
+
+  &.with-time {
+    grid-template-columns: minmax(320px, 340px) minmax(400px, 1fr);
+  }
+}
+
+.fluent-date-range__calendar {
+  min-width: 0;
+  padding: 14px 16px 10px;
+
+  td.is-range-start > button,
+  td.is-range-end > button {
+    color: #fff !important;
+    background: var(--app-brand) !important;
+    border-radius: 4px;
+  }
+
+  &.has-range td[aria-current='date']:not(.is-range-start):not(.is-range-end) > button {
+    color: var(--app-brand) !important;
+    background: transparent !important;
+    box-shadow: inset 0 0 0 1px var(--app-brand);
+  }
+}
+
+.fluent-date-range__phase {
+  margin: 0 0 4px 4px;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.fluent-date-range__inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px 16px;
+  background: var(--app-surface-subtle);
+  border-left: 1px solid var(--app-border-subtle);
+
+  label {
+    display: grid;
+    gap: 6px;
+    color: var(--app-text-secondary);
+    font-size: 12px;
+  }
+
+  .fui-Input {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.fluent-date-range__manual-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fluent-date-range__endpoint-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+
+  .fui-Button {
+    justify-content: space-between;
+    min-width: 0;
+    padding-inline: 10px;
+    color: var(--app-text-secondary);
+    border: 1px solid transparent;
+
+    strong {
+      color: var(--app-text);
+      font-weight: 600;
+    }
+
+    &.is-active {
+      color: var(--app-brand);
+      background: color-mix(in srgb, var(--app-brand) 10%, transparent);
+      border-color: color-mix(in srgb, var(--app-brand) 36%, transparent);
+    }
+  }
+}
+
+.fluent-date-range__time-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  min-height: 28px;
+  padding: 2px 8px 0;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+
+  strong {
+    color: var(--app-text);
+    font-size: 16px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.fluent-date-range__time-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 0;
+}
+
+.fluent-date-range__time-column {
+  height: 164px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-subtle);
+  border-radius: var(--app-radius-control, 4px);
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+
+  .fui-Button {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    margin: 2px 0;
+    font-variant-numeric: tabular-nums;
+
+    &.is-selected {
+      color: var(--app-brand);
+      font-weight: 600;
+      background: color-mix(in srgb, var(--app-brand) 12%, transparent);
+    }
+  }
+}
+
+.fluent-date-range__panel:not(.with-time) .fluent-date-range__inputs {
+  display: none;
+}
+
+.fluent-date-range__error {
+  color: var(--app-danger, #c50f1f);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.fluent-date-range__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 56px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--app-border-subtle);
 }
 
 .fluent-date-range__presets {
-  flex: 1 1 160px;
-  width: auto;
-  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+@media (max-width: 620px) {
+  .fluent-date-range__panel.with-time {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fluent-date-range__inputs {
+    display: flex;
+    padding: 14px 16px;
+    background: var(--app-surface);
+    border-top: 1px solid var(--app-border-subtle);
+    border-left: 0;
+  }
+
+  .fluent-date-range__error {
+    width: 100%;
+  }
+
+  .fluent-date-range__manual-inputs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fluent-date-range__footer {
+    align-items: flex-end;
+  }
 }
 
 .fluent-table-shell {
