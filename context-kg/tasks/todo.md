@@ -10394,3 +10394,20 @@ Review：
 - `configuration` 补充 `pole-mysql`、`pole-greptimedb` 两个 ExternalName seam、MySQL 与 GreptimeDB 同名逻辑库的实例区别、旧 PVC 保留和依赖恢复顺序。
 - Fluent ADR、知识库索引和 ingest 日志已同步；index 快速定位增加托管身份、System Configuration、共享 GreptimeDB 和 Console UI 验收入口。
 - context-kg lint 验证 39 个 Markdown 页面、全局唯一 basename、frontmatter、双向链接和 index 覆盖全部通过；所有目标页面均只有一个末尾 `## 相关页面`，`git diff --check` 通过。
+
+## Handoff 本地目录规范（2026-07-25）
+
+目标：把交接文档从系统临时目录迁移到项目 `.handoff/`，确保它只作为本地协作资产存在，并将规则提升到全局 AGENTS。
+
+- [x] 将现有 Pole handoff 移入仓库根目录 `.handoff/`。
+- [x] 使用 `.git/info/exclude` 本地排除 `.handoff/`，不修改项目 `.gitignore`。
+- [x] 在全局 `~/.codex/AGENTS.md` 增加 handoff 路径、脱敏和 Git 验证规范。
+- [x] 将本次用户纠正写入项目 lessons。
+- [x] 验证源临时文件已移除、handoff 被 Git 忽略且工作区只剩规范记录。
+
+### Review
+
+- 原系统临时目录中的 handoff 已移动到 `.handoff/2026-07-25-pole-control-plane-handoff.md`，原路径不存在。
+- `.git/info/exclude` 已本地加入 `.handoff/`；`git check-ignore -v` 返回该规则，`git status --short --untracked-files=all` 不显示 handoff。
+- 全局 `~/.codex/AGENTS.md` 已明确本地目录、禁止 Git、脱敏、引用现有产物和双重验证规则，并声明覆盖 handoff skill 的临时目录默认值。
+- context-kg lint、双向链接/index 覆盖和 `git diff --check` 通过；仓库待提交范围仅为本次 todo、lessons 和 log。

@@ -1041,3 +1041,11 @@ sources: 0
   - 将近期全站体验整改提炼为共享表格、表单重置、响应式弹层、可访问性和多视口发布验收契约。
   - 区分接口 E2E、Node 源码契约、构建回归与 Kubernetes 真实浏览器证据，避免用单层检查替代完整 UI 验收。
   - 固化本地 Kubernetes 对共享 GreptimeDB、外部 MySQL、逻辑库隔离、旧 PVC 保留和依赖恢复的运行边界。
+
+## [2026-07-25] refine | Handoff 本地协作资产规范
+
+- 更新页面：todo、lessons。
+- 变更摘要：
+  - Handoff 统一保存在项目 `.handoff/`，不再写入系统临时目录。
+  - 使用 `.git/info/exclude` 做本地排除，禁止 handoff 文件进入暂存、提交或推送。
+  - 交付前同时检查 ignore 来源与完整 Git 状态，避免被默认隐藏的未跟踪文件误入版本控制。

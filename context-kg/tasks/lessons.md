@@ -416,3 +416,4 @@ sources: 0
 - 用户只反馈“页面打不开”时，先用根页面、主资源、业务深链和 API 组成快速失败检查，再看 Deployment、Endpoint 与前一容器日志；若入口直接拒绝连接且 Pod 因外部 MySQL CrashLoop，不能误判为 SPA 缓存或前端提交回归。
 - Kubernetes 使用宿主机 Docker 容器提供外部 MySQL 时，依赖容器必须配置可恢复的 RestartPolicy；只把应用 Pod 验收到 Ready 不足以抵御 OrbStack/Docker 后续重启，应同时确认 MySQL `unless-stopped` 和应用重启后的 0 restart。
 - 同一本地集群已有兼容的共享 GreptimeDB 时，不应再为 Pole 部署重复 standalone 实例；应通过 Pole namespace 内的稳定服务适配层复用共享物理集群，并用独立逻辑库隔离表、权限与查询边界。迁移收敛旧工作负载时必须保留原 PVC，直到历史数据确认导出或明确放弃。
+- Handoff 是项目本地的会话协作资产，应写入仓库根目录 `.handoff/` 并通过 `.git/info/exclude` 排除；不得写到系统临时目录，也不得暂存、提交或推送。完成后必须同时用 `git check-ignore` 和包含全部未跟踪文件的 `git status` 验证排除生效。
