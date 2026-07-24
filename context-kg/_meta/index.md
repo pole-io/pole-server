@@ -2,7 +2,7 @@
 title: pole-control-plane 知识库
 tags: [meta, index]
 links: [schema, log]
-updated: 2026-07-24
+updated: 2026-07-25
 sources: 0
 ---
 
@@ -84,6 +84,7 @@ sources: 0
 ### 自动化背景知识（quality/automation/）
 
 - [[testing]] — 测试目录结构、Mock Store/Auth、集成测试套件与测试规范 | quality, automation, testing, mock
+- [[console-ui-quality-gates]] — Console 共享组件与发布验收矩阵 | quality, automation, console, frontend, ux
 
 ### 测试用例集（quality/testcases/）
 
@@ -103,8 +104,11 @@ sources: 0
 | 配置文件发布与 Watch | [[config-center]] |
 | 路由/限流/熔断等治理规则 | [[governance-rules]] |
 | 治理规则统一存储方案 | [[adr-governance-rule-unified-storage]] |
+| 服务间托管身份与凭证 | [[adr-managed-service-identity-authentication]] |
 | 管理后台运维操作 | [[admin]] |
 | MCP 如何运作 | [[ai-features]] |
+| System Configuration 如何发布 | [[adr-system-configuration-control-plane]] |
+| OTel 与共享 GreptimeDB 如何部署 | [[adr-otel-observability-platform]] |
 | 数据库表/查询是怎样的 | [[storage]] |
 | 内存缓存如何刷新 | [[cache-layer]] |
 | 认证 Token 如何校验 | [[auth-system]] |
@@ -113,6 +117,7 @@ sources: 0
 | YAML 配置项含义 | [[configuration]] |
 | 代码约定和惯用模式 | [[patterns]] |
 | 如何写/跑测试 | [[testing]] |
+| Console 表格和页面如何验收 | [[console-ui-quality-gates]] |
 | wiki 本身的维护规范 | [[schema]] |
 
 ## 相关页面

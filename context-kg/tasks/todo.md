@@ -10374,3 +10374,23 @@ Review：
 - `pole-control-plane`、`pole-otel-collector` 与 `tidemind/maas-greptimedb-frontend` 均 Ready、0 restart；Console `/namespace` 返回 HTTP 200，Collector 与 Control Plane 近十分钟日志无 Greptime exporter 错误。
 - 旧 `pole-greptimedb` StatefulSet 和 Pod 已删除，5Gi `data-pole-greptimedb-0` PVC 保持 Bound。部署脚本再次执行后建库、服务与 rollout 均成功，Control Plane Pod UID 保持不变，不再产生镜像 tag 往返导致的瞬时 ReplicaSet。
 - `bash -n`、ShellCheck（本机可用时）、Kubernetes client dry-run、context-kg lint、目标 Console Go 测试和 `git diff --check` 全部通过。
+
+## 最新知识沉淀整理（2026-07-25）
+
+目标：审计近期托管身份、Console 全站体验、System Configuration、运行恢复与共享 GreptimeDB 交付，把仍停留在任务记录中的稳定知识归档到业务、技术或质量页面。
+
+- [x] 对照最近提交、知识库索引与任务 Review，识别长期页面的覆盖缺口和过时表述。
+- [x] 新增 Console UI 质量验收规范，固化表格、表单、响应式与真实浏览器证据边界。
+- [x] 更新测试页，区分接口 E2E、静态契约门禁和发布级浏览器验收。
+- [x] 更新配置部署页，补充本地 Kubernetes 共享 GreptimeDB 与外部 MySQL 恢复边界。
+- [x] 同步相关 ADR、index、log 和双向链接。
+- [x] 运行 context-kg lint 与差异检查，记录 Review 后提交推送。
+
+### Review
+
+- 最近的托管身份、WorkloadCredential、TLS 按需、System Configuration 和共享 GreptimeDB 决策已存在于长期 ADR，未重复创建近义页面；本轮重点补齐仍只存在于任务 Review 的 Console UI 质量知识。
+- 新增 `console-ui-quality-gates`，固化三层证据模型、共享表格统一契约、表单/弹层约束、多视口发布矩阵、压力巡检诚实记录和页面不可访问快速诊断。
+- `testing` 继续限定 `test/e2e` 为 Go/HTTP API，另行链接 Node 源码契约、构建回归与 Kubernetes 真实浏览器验收，消除“接口 E2E 不用浏览器”等于“发布无需 UI 验收”的歧义。
+- `configuration` 补充 `pole-mysql`、`pole-greptimedb` 两个 ExternalName seam、MySQL 与 GreptimeDB 同名逻辑库的实例区别、旧 PVC 保留和依赖恢复顺序。
+- Fluent ADR、知识库索引和 ingest 日志已同步；index 快速定位增加托管身份、System Configuration、共享 GreptimeDB 和 Console UI 验收入口。
+- context-kg lint 验证 39 个 Markdown 页面、全局唯一 basename、frontmatter、双向链接和 index 覆盖全部通过；所有目标页面均只有一个末尾 `## 相关页面`，`git diff --check` 通过。

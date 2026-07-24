@@ -1,9 +1,9 @@
 ---
 title: 测试
 tags: [quality, automation, testing, mock]
-links: [storage, index, patterns, console-client-auth-e2e-testcases]
-updated: 2026-06-16
-sources: 1
+links: [storage, index, patterns, console-client-auth-e2e-testcases, console-ui-quality-gates]
+updated: 2026-07-25
+sources: 4
 ---
 
 # 测试
@@ -70,7 +70,15 @@ Console API、Client 查询和权限开关的接口端到端测试覆盖矩阵�
 - Console API E2E：通过 8080 console proxy 验证所有控制台读写请求。
 - Client E2E：通过 8090 client API 验证服务发现、治理规则发布态、权限开关和缓存传播。
 
-该 E2E 套件只包含 HTTP/API 维度，自动化入口为 Go test；不建设前端页面自动化测试能力，也不验证 `console/web` 页面交互。
+该 E2E 套件只包含 HTTP/API 维度，自动化入口为 Go test；不在 `test/e2e` 中建设 Playwright、DOM 或截图测试，也不把页面交互断言混入接口套件。
+
+这不表示 Console 发布可以跳过 UI 验收。前端另有三层质量证据：
+
+- `console/web/scripts/verify-*.mjs` 负责共享组件、关键样式和交互绑定的源码契约。
+- ESLint、Vite production build 和 Console Go tests 负责构建与后端回归。
+- Kubernetes 实际产物和真实浏览器负责路由、布局、主题、交互与请求闭环。
+
+完整范围和验收矩阵见 [[console-ui-quality-gates]]。
 
 接口 E2E 默认通过 build tag 隔离，不会被普通测试命令触发：
 
@@ -106,3 +114,4 @@ mock.ExpectExec("INSERT").WillReturnResult(...)
 - [[index]]
 - [[patterns]]
 - [[console-client-auth-e2e-testcases]]
+- [[console-ui-quality-gates]]

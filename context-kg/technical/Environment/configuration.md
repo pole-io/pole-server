@@ -1,9 +1,9 @@
 ---
 title: 配置参考
 tags: [config, yaml, deploy]
-links: [overview, architecture, adr-system-configuration-control-plane, adr-console-agent-resource-workbench]
-updated: 2026-07-23
-sources: 3
+links: [overview, architecture, adr-system-configuration-control-plane, adr-console-agent-resource-workbench, adr-otel-observability-platform]
+updated: 2026-07-25
+sources: 8
 ---
 
 # 配置参考
@@ -196,8 +196,22 @@ deploy/
 │   ├── i18n/                # 翻译文件
 │   └── plugin/
 │       └── ratelimit/       # 限流规则文件
+├── kubernetes/              # 本地 K8s 编排、共享依赖适配与 Gateway Route
+├── observability/           # 无 Kubernetes 时的独立观测 quickstart
 └── tools/                   # 部署脚本
 ```
+
+## 本地 Kubernetes 依赖边界
+
+`deploy/kubernetes/` 只在 `pole-system` 运行 Pole Control Plane 和 OpenTelemetry Collector，不重复拥有 MySQL 或 GreptimeDB 的物理生命周期：
+
+- `pole-mysql` 是指向 `host.docker.internal` 的 ExternalName Service。宿主机 MySQL 中的 `pole_server` 承载核心业务数据，MySQL `pole_observability` 承载 Console history/event reader；它们与 GreptimeDB 中同名的观测逻辑库不是同一个数据库实例。
+- `pole-greptimedb` 是指向 `maas-greptimedb-frontend.tidemind.svc.cluster.local` 的 ExternalName 适配服务。Collector 和 Console 只依赖 Pole namespace 内的稳定服务名。
+- Collector 的 traces、metrics、logs exporter 和 Console query provider 统一使用共享 GreptimeDB 的 `pole_observability` 逻辑库；MaaS 的 `maas_logs`、`maas_metrics` 保持独立。
+- 部署脚本会幂等创建 GreptimeDB 逻辑库，等待 Collector 与 Control Plane rollout 成功后再删除旧 standalone StatefulSet；旧 `data-pole-greptimedb-0` PVC 保留，直到历史数据明确导出或放弃。
+- 宿主机 `pole-mysql` 容器必须配置 `unless-stopped`。Console 入口拒绝连接且 Pod CrashLoop 时，应先检查前一容器日志、MySQL 状态和 RestartPolicy，再判断是否为 SPA 问题。
+
+共享观测后端的所有权、数据隔离和迁移理由见 [[adr-otel-observability-platform]]。
 
 ## 相关页面
 
@@ -205,3 +219,4 @@ deploy/
 - [[architecture]]
 - [[adr-system-configuration-control-plane]]
 - [[adr-console-agent-resource-workbench]]
+- [[adr-otel-observability-platform]]

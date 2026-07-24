@@ -1,9 +1,9 @@
 ---
 title: Console Fluent UI v9 设计系统迁移
 tags: [adr, console, frontend, fluent-ui, design-system]
-links: [architecture, service-discovery, configuration, governance-rules]
-updated: 2026-07-23
-sources: 7
+links: [architecture, service-discovery, configuration, governance-rules, console-ui-quality-gates]
+updated: 2026-07-25
+sources: 10
 ---
 
 # Console Fluent UI v9 设计系统迁移
@@ -39,6 +39,10 @@ Console 当前约 102 个 TypeScript/TSX 文件直接依赖 TDesign，覆盖页�
 - 暗色模式的页面表面、状态提示与边框必须使用同时定义亮色和暗色值的 `--app-*` 语义 token；页面级变量只能引用全局 token，不得重新写死浅色值。
 - 静态门禁必须解析背景、边框和局部主题变量并拒绝高亮浅色硬编码；真实浏览器还要对服务详情、治理、监控、认证和 AI 页面计算可见表面颜色，防止静态检查与实际级联结果脱节。
 - 本地发布验收以 Kubernetes Pod 产物为唯一运行依据：前端检查和 production build 在 Linux/arm64 Pod 内执行，发布后核对 Pod imageID、Pod 内入口资源、Gateway 入口资源和真实浏览器结果。
+- 所有 Table 默认保证首尾列固定、内部横向滚动、列最小宽度、长文本省略及全文提示；编辑型伪表格若使用列头表达字段语义，也必须遵循相同滚动和可达性边界。
+- 固定列不能只靠静态规则验收，必须在真实浏览器把表格滚动到最大位置并测量首尾列边界；表单重置必须读取实际 DOM value。
+
+共享表格、表单、弹层、多视口和浏览器发布矩阵的完整规范见 [[console-ui-quality-gates]]。
 
 ## 登录入口规范
 
@@ -66,3 +70,4 @@ Console 当前约 102 个 TypeScript/TSX 文件直接依赖 TDesign，覆盖页�
 - [[service-discovery]]
 - [[configuration]]
 - [[governance-rules]]
+- [[console-ui-quality-gates]]

@@ -1032,3 +1032,12 @@ sources: 0
   - 移除 `pole-system` 重复的 GreptimeDB standalone 工作负载，通过 `pole-greptimedb` ExternalName 适配 `tidemind/maas-greptimedb-frontend`。
   - Collector 三类 signal 与 Console 查询统一使用 `pole_observability` 逻辑库，保持 Pole 与 MaaS 数据模型隔离。
   - 部署脚本幂等建库，并在新链路 rollout 成功后删除旧 StatefulSet、保留旧 PVC 作为历史数据导出和回退边界。
+
+## [2026-07-25] ingest | 最新 Console 质量与本地部署知识
+
+- 新增页面：console-ui-quality-gates。
+- 更新页面：testing、adr-console-fluent-ui-design-system、configuration、todo、index。
+- 变更摘要：
+  - 将近期全站体验整改提炼为共享表格、表单重置、响应式弹层、可访问性和多视口发布验收契约。
+  - 区分接口 E2E、Node 源码契约、构建回归与 Kubernetes 真实浏览器证据，避免用单层检查替代完整 UI 验收。
+  - 固化本地 Kubernetes 对共享 GreptimeDB、外部 MySQL、逻辑库隔离、旧 PVC 保留和依赖恢复的运行边界。
