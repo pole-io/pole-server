@@ -413,3 +413,5 @@ sources: 0
 - 聚合加载多个授权对象时，单个接口失败不能让抽屉永久 Loading；应使用有界单页请求与 `allSettled` 收敛，展示可用的部分数据、报告失败项，并在所有路径明确结束 loading。
 - 详情页面包屑不能只绑定 `span onClick` 并在鼠标下看似可用；返回上级资源必须渲染为原生可聚焦按钮或链接，真实无障碍树中应出现可操作名称，并用键盘路径复验。
 - 表格“首尾固定”不能只检查 CSS 声明。必须把内部容器真实滚动到最大 `scrollLeft`，比较首列左边界和尾列右边界在滚动前后保持不变，同时确认页面根节点没有横向溢出。
+- 用户只反馈“页面打不开”时，先用根页面、主资源、业务深链和 API 组成快速失败检查，再看 Deployment、Endpoint 与前一容器日志；若入口直接拒绝连接且 Pod 因外部 MySQL CrashLoop，不能误判为 SPA 缓存或前端提交回归。
+- Kubernetes 使用宿主机 Docker 容器提供外部 MySQL 时，依赖容器必须配置可恢复的 RestartPolicy；只把应用 Pod 验收到 Ready 不足以抵御 OrbStack/Docker 后续重启，应同时确认 MySQL `unless-stopped` 和应用重启后的 0 restart。

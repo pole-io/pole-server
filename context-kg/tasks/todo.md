@@ -10336,3 +10336,21 @@ Review：
 - A2A 宽表内部真实滚动 547px 后，首列左边界保持 258px、尾列右边界保持 1255px；配置、服务监控、权限策略也完成相同滚动测量。长服务名实际使用 `overflow: hidden`、`text-overflow: ellipsis`、单行省略，并保留完整 `title`。
 - ESLint、59 个 `verify-*.mjs`、release build（3536 modules）、`go test ./console/...` 和目标 `git diff --check` 通过。
 - 不可变镜像 `pole-control-plane:local-20260724-console-ux-v14` 已滚动，imageID 为 `sha256:85426205e655519cde355dc346350fb6c0186ccef688e21920a24b2a86a33951`；新 Pod Ready、0 restart，Console、API 与 Deployment readiness 均为 HTTP 200，主资源为 `index.ab37b8a5.js`。
+
+## Console 页面不可访问故障修复（2026-07-24）
+
+目标：复现用户反馈的“页面打不开”，从 Gateway、Pod、SPA 入口、静态资源与浏览器运行时逐层定位根因，修复后重新部署并完成真实页面验收。
+
+- [x] 建立根页面、主资源和业务深链的确定性复现检查。
+- [x] 检查 Pod、Gateway、入口资源哈希与浏览器错误，确认唯一根因。
+- [x] 恢复外部 MySQL 依赖，并补充容器自动重启策略。
+- [x] 重建 Pod 并用 HTTP 与真实浏览器复验页面。
+- [x] 更新 Review、lessons，提交并推送故障记录。
+
+### Review
+
+- 快速复现检查在修复前稳定得到 `127.0.0.1:8080 connection refused`；Kubernetes 显示 `pole-control-plane` 为 `CrashLoopBackOff`、Service Endpoint 为空。
+- Pod 前一实例日志明确报错 `initialize store defaultStore fail: dial tcp ...:3306: connect: connection refused`；宿主机 `pole-mysql` 容器已退出约 8 小时，根因是外部 MySQL 不可达，不是 Console 静态资源或本轮前端提交。
+- 已启动既有 `pole-mysql`，确认 `mysqladmin ping` 成功，并把 RestartPolicy 从 `no` 更新为 `unless-stopped`；删除故障 Pod 后 Deployment 自动恢复为 1/1 Ready，新 Pod 0 restart。
+- 原始复现检查转绿：根页面、主资源 `index.ab37b8a5.js`、`/namespace` 深链与 8090 API 均为 HTTP 200。
+- 真实浏览器验证登录页正常渲染，使用 Admin 会话成功进入 `/namespace`，浏览器无 error 日志。该故障没有代码层回归 seam，最终以依赖容器状态、Pod 日志和端到端 HTTP/浏览器检查锁定。
