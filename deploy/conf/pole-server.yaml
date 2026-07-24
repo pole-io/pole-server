@@ -63,7 +63,7 @@ bootstrap:
     observabilityQuery:
       provider: greptimedb
       endpoint: http://127.0.0.1:4000
-      database: public
+      database: pole_observability
       timeout: 10s
     # Only this root encryption key remains deployment-owned. Product secrets
     # such as an LLM API Key are versioned and encrypted by Pole itself.

@@ -1024,3 +1024,11 @@ sources: 0
   - 非 Agent 领域复用统一 repository 完成草稿、并发控制、发布、历史与 desired/effective 差异；重启级发布明确回执 `pending_restart`。
   - 通用页面增加类型化编辑抽屉、字段差异和发布影响；Agent 补齐提案 TTL、资源工具超时并接入真实运行时更新。
   - Kubernetes 内通过 Go 测试、Vite release build、Pod/Gateway 与真实浏览器验收，发布镜像 `pole-control-plane:local-20260723-system-config-all-v3`。
+
+## [2026-07-24] refactor | Pole 复用 tidemind GreptimeDB
+
+- 更新页面：adr-otel-observability-platform、todo、lessons、index。
+- 变更摘要：
+  - 移除 `pole-system` 重复的 GreptimeDB standalone 工作负载，通过 `pole-greptimedb` ExternalName 适配 `tidemind/maas-greptimedb-frontend`。
+  - Collector 三类 signal 与 Console 查询统一使用 `pole_observability` 逻辑库，保持 Pole 与 MaaS 数据模型隔离。
+  - 部署脚本幂等建库，并在新链路 rollout 成功后删除旧 StatefulSet、保留旧 PVC 作为历史数据导出和回退边界。

@@ -10354,3 +10354,23 @@ Review：
 - 已启动既有 `pole-mysql`，确认 `mysqladmin ping` 成功，并把 RestartPolicy 从 `no` 更新为 `unless-stopped`；删除故障 Pod 后 Deployment 自动恢复为 1/1 Ready，新 Pod 0 restart。
 - 原始复现检查转绿：根页面、主资源 `index.ab37b8a5.js`、`/namespace` 深链与 8090 API 均为 HTTP 200。
 - 真实浏览器验证登录页正常渲染，使用 Admin 会话成功进入 `/namespace`，浏览器无 error 日志。该故障没有代码层回归 seam，最终以依赖容器状态、Pod 日志和端到端 HTTP/浏览器检查锁定。
+
+## Pole 复用 tidemind GreptimeDB（2026-07-24）
+
+目标：停止在 `pole-system` 重复运行 standalone GreptimeDB，通过稳定的本地服务适配层复用 `tidemind` 已有集群，并用独立逻辑库隔离 Pole 遥测数据。
+
+- [x] 核对现有 OTel 数据流、GreptimeDB 查询配置和集群服务边界。
+- [x] 将 `pole-greptimedb` 改为跨 namespace 的稳定服务适配层。
+- [x] 为 Collector 写入与 Console 查询统一配置 `pole_observability` 逻辑库。
+- [x] 更新 Kubernetes 部署说明、观测 ADR、知识库索引与变更日志。
+- [x] 在真实 Kubernetes 环境验证建库、OTLP 写入、SQL 查询、Console 查询和资源收敛。
+- [x] 保留旧 PVC 作为可恢复历史数据，并提交、推送全部改动。
+
+### Review
+
+- `pole-greptimedb` 已由 ClusterIP + standalone StatefulSet 收敛为 ExternalName Service，目标为 `maas-greptimedb-frontend.tidemind.svc.cluster.local`；Collector 和 Console 继续只依赖 Pole namespace 内的稳定服务名。
+- 部署脚本成功幂等创建共享集群中的 `pole_observability`，Collector traces、metrics、logs exporter 均显式携带该数据库 header，Console provider 返回的有效配置也确认 `database=pole_observability`。
+- 真实 OTLP log smoke 经 `pole-otel-collector:4318` 写入，并从共享 GreptimeDB 的 `pole_observability.pole_events` 精确查回唯一 marker；`/observability/v1/platform/overview` 返回 provider configured 和真实统计数据。
+- `pole-control-plane`、`pole-otel-collector` 与 `tidemind/maas-greptimedb-frontend` 均 Ready、0 restart；Console `/namespace` 返回 HTTP 200，Collector 与 Control Plane 近十分钟日志无 Greptime exporter 错误。
+- 旧 `pole-greptimedb` StatefulSet 和 Pod 已删除，5Gi `data-pole-greptimedb-0` PVC 保持 Bound。部署脚本再次执行后建库、服务与 rollout 均成功，Control Plane Pod UID 保持不变，不再产生镜像 tag 往返导致的瞬时 ReplicaSet。
+- `bash -n`、ShellCheck（本机可用时）、Kubernetes client dry-run、context-kg lint、目标 Console Go 测试和 `git diff --check` 全部通过。

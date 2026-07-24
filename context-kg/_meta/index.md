@@ -2,7 +2,7 @@
 title: pole-control-plane 知识库
 tags: [meta, index]
 links: [schema, log]
-updated: 2026-07-23
+updated: 2026-07-24
 sources: 0
 ---
 
@@ -76,7 +76,7 @@ sources: 0
 
 #### 可观测性（technical/adr/observability/）
 
-- [[adr-otel-observability-platform]] — OTel 后端、接入闭环与 K8s 部署 | adr, observability, otel, kubernetes
+- [[adr-otel-observability-platform]] — 共享 GreptimeDB 后端、OTel 接入闭环与 K8s 部署 | adr, observability, otel, kubernetes
 - [[adr-pole-rust-client-observability]] — Rust SDK 观测上报与动态配置 | adr, observability, otel, rust-sdk
 
 ## 质量保障知识域（quality/）

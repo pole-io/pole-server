@@ -2,7 +2,7 @@
 title: ADR：OTel 可观测性平台与 Kubernetes 部署方案
 tags: [adr, observability, otel, kubernetes]
 links: [architecture, common-infra, configuration, api-servers, adr-pole-rust-client-observability, adr-local-pebble-protobuf-value-cache]
-updated: 2026-07-21
+updated: 2026-07-24
 sources: 47
 ---
 
@@ -601,17 +601,21 @@ Console 联动原则：
 - pole-control-plane server：通过现有部署方式接入 Collector endpoint，上报自身内部 signals。
 - pole-control-plane console 模块：配置 observability-query provider endpoint，提供 `/observability/v1` 查询接口。
 
-本地一体化部署使用单一 namespace，生产环境允许按容量和权限边界拆分：
+本地集群复用 `tidemind` 已有 GreptimeDB，Pole 通过本 namespace 的稳定服务适配层隔离物理拓扑：
 
 ```text
 pole-system
   pole-control-plane
   pole-otel-collector
-  pole-greptimedb
+  pole-greptimedb (ExternalName adapter)
+    -> maas-greptimedb-frontend.tidemind.svc.cluster.local
+    -> database: pole_observability
   pole-mysql -> ExternalName host.docker.internal # 仅本地开发
 ```
 
-这里的“一体化”表示同一个发布单元和 namespace，不表示合并进同一个 Pod。Pole 与 Collector 使用 Deployment，GreptimeDB 使用 StatefulSet 和 PVC，三者保留独立升级、探针和资源配额。MySQL 仍可作为部署外部依赖；本地 OrbStack 通过 `pole-mysql` ExternalName Service 访问宿主机 `3306`，凭证只进入 Kubernetes Secret。
+`pole-greptimedb` 是 Pole 拥有的依赖接口，不是数据库工作负载。它用 ExternalName 指向 `tidemind/maas-greptimedb-frontend`，使 Collector 和 Console 查询模块继续依赖稳定的 `http://pole-greptimedb:4000`，不把跨 namespace DNS 扩散到应用配置。物理 GreptimeDB 集群生命周期由 `tidemind` 维护；Pole 只拥有 `pole_observability` 逻辑库、Collector pipeline 和查询 provider。MySQL 仍可作为部署外部依赖；本地 OrbStack 通过 `pole-mysql` ExternalName Service 访问宿主机 `3306`，凭证只进入 Kubernetes Secret。
+
+共享物理集群不等于共享数据模型。Collector 的 traces、metrics、logs exporter 都显式携带 `x-greptime-db-name: pole_observability`，Console provider 也查询同一数据库；MaaS 的 `maas_logs`、`maas_metrics` 与 Pole 表保持逻辑隔离。若生产环境需要独立容量、故障域或合规边界，仍可把 `pole-greptimedb` 适配服务切换到专用 GreptimeDB，而无需修改数据面调用方。
 
 Collector 部署形态：
 
@@ -623,7 +627,7 @@ Collector 部署形态：
 
 快速体验路径：
 
-1. 安装 GreptimeDB，启用 OTLP HTTP/gRPC 接收和 SQL/PromQL 查询入口。
+1. 准备 GreptimeDB：本地集群复用 `tidemind/maas-greptimedb-frontend` 并创建 `pole_observability`；独立环境则安装专用 GreptimeDB。
 2. 安装 OpenTelemetry Collector Contrib，配置 OTLP receiver 与 GreptimeDB exporter/OTLP endpoint。
 3. 部署或重启 pole-control-plane，配置 OTLP endpoint 指向 Collector。
 4. 部署带 sidecar 或 Rust SDK 的样例业务服务，上报 metrics、traces、event logs。
@@ -634,10 +638,11 @@ quickstart 也可以把第 1、2 步替换为 OpenObserve，用 OpenObserve 内�
 仓库已经提供 `deploy/kubernetes/` 本地 Kubernetes 栈：
 
 - `pole-control-plane` LoadBalancer Service 暴露 Console、HTTP、gRPC、Nacos、Apollo、Eureka 和 xDS 端口。
-- `pole-greptimedb` StatefulSet 使用 5Gi PVC，ClusterIP Service 暴露 `4000`—`4003`。
-- `pole-otel-collector` Deployment 通过 ClusterIP 接收 OTLP，并写入 `pole-greptimedb`。
+- `pole-greptimedb` ExternalName Service 适配 `tidemind/maas-greptimedb-frontend`，对 Pole 暴露稳定的 `4000`—`4003` 依赖接口。
+- `pole-otel-collector` Deployment 通过 ClusterIP 接收 OTLP，并经 `pole-greptimedb` 写入独立的 `pole_observability` 逻辑库。
 - `pole-mysql` ExternalName Service 指向 `host.docker.internal`；Pole Pod 通过 `${MYSQL_HOST}` 使用宿主机 `3306`。
 - Pole 镜像包含 all-mode 二进制、Console `dist` 和运行配置；启动入口把 Pod IP、Secret、Collector/GreptimeDB Service DNS 与本地连接池限制渲染进有效配置。
+- 从旧 standalone 迁移时，部署脚本只在共享数据库建库、Collector 与 Control Plane rollout 成功后删除旧 StatefulSet；`data-pole-greptimedb-0` PVC 保留用于历史数据导出或回退。
 
 `deploy/observability/docker-compose.yaml` 继续保留为不具备 Kubernetes 时的兼容 quickstart：
 
@@ -679,7 +684,7 @@ pole-control-plane / pole-client-rust / pole-sidecar
 | 工作面 | 首轮范围 | 不在首轮范围 |
 |---|---|---|
 | 数据契约 | 固化 metrics 名称、EventName、Resource attributes、低/高基数字段边界 | 告警规则 DSL、任意 SQL 查询 |
-| Collector/K8s | 提供 `pole-system` namespace、Collector、GreptimeDB values 或 manifest；注册 `pole-otel-collector` 服务 | 多后端 fan-out、生产级多租户容量治理 |
+| Collector/K8s | 提供 `pole-system` namespace、Collector、GreptimeDB 适配服务或独立部署 values；注册 `pole-otel-collector` 服务 | 多后端 fan-out、生产级多租户容量治理 |
 | control-plane 上报 | `statis/history/discoverEvent` 增加 `otel` entry；HTTP/gRPC/Console API 补基础 trace；内部 metrics 使用 `pole.control_plane.*` 新命名 | 替换旧 `/metrics/v1` 或删除 logger/prometheus entry |
 | Rust SDK 上报 | 接入真实 OTel exporter；从环境变量、本地配置、服务发现和配置中心合并观测配置；治理 metrics/event/trace 写入同一决策 ID | 替代业务框架完整 instrumentation |
 | sidecar 上报 | 在代理请求、路由、限流、熔断、探测、鉴权、Mock、镜像执行点上报请求指标、治理指标、event 和 span attributes | 采集业务普通日志、采集 Kubernetes CPU/Mem |
@@ -688,7 +693,7 @@ pole-control-plane / pole-client-rust / pole-sidecar
 首轮实现顺序：
 
 1. **契约先行**：在 console 模块定义 `observability-query` DTO、metric/event 白名单和 Resource attributes 校验规则；Rust SDK 与 sidecar 按同一份名称和标签上报。
-2. **Collector 先跑通**：用 Kubernetes quickstart 启动 Collector + GreptimeDB，暴露 `pole-system/pole-otel-collector`，并把该服务注册进 Pole 服务发现。
+2. **Collector 先跑通**：用 Kubernetes quickstart 接通 Collector 与 GreptimeDB，暴露 `pole-system/pole-otel-collector`，并把该服务注册进 Pole 服务发现。
 3. **control-plane 自观测先接入**：新增 `otel` chain entry，优先让 `pole.audit.operation`、`pole.discovery.instance.*`、`pole.control_plane.request.*` 进入 GreptimeDB；这能在没有业务样例前验证 event、audit、metrics 三类信号。
 4. **业务侧最小样例**：Rust SDK 和 sidecar 都先接一条样例调用链，至少覆盖 `pole.service.request.count`、`pole.service.request.duration`、`pole.service.governance.*`、`pole.service.governance.rule.matched` 和 trace/span 关联。
 5. **Console 去 mock**：服务监控首页优先接 `/observability/v1/services/overview`，服务详情按 tab 懒加载 `/metrics`、`/events`、`/traces`；系统监控接 `/platform/overview`，事件与操作审计接 `/platform/events` 和 `/audit/operations`。
@@ -777,7 +782,7 @@ SDK 和 sidecar 都可以上报业务侧数据，但职责不能重叠到互相�
 
 ### Phase 1：Kubernetes 快速体验
 
-- [x] 提供 `pole-system` namespace 下 Pole + Collector + GreptimeDB 示例部署。
+- [x] 提供 `pole-system` namespace 下 Pole + Collector，并通过适配服务复用共享 GreptimeDB。
 - [x] 支持通过 ExternalName Service 继续使用宿主机 MySQL，并以 Secret 注入凭证。
 - [x] 使用真实 OTLP log smoke 验证 Collector 写入 GreptimeDB 后可由 SQL 查回。
 - 可选提供 Collector + OpenObserve quickstart values，用于快速体验和调试。
@@ -820,7 +825,7 @@ SDK 和 sidecar 都可以上报业务侧数据，但职责不能重叠到互相�
 
 ## 验证要求
 
-- Kubernetes 快速体验必须能在空集群中通过一组 manifest/Helm values 启动 Collector、GreptimeDB、pole-control-plane 和样例服务。
+- 独立 Kubernetes 快速体验必须能通过一组 manifest/Helm values 启动 Collector、GreptimeDB、pole-control-plane 和样例服务；本地组合环境允许复用现有共享 GreptimeDB，但必须使用 Pole 独立逻辑库。
 - OpenObserve quickstart 作为可选 values 验证路径。
 - Collector 配置必须包含 OTLP receiver、batch processor、resource processor、GreptimeDB exporter/OTLP endpoint。
 - 业务普通日志过滤规则必须有测试或配置验证。
@@ -830,9 +835,9 @@ SDK 和 sidecar 都可以上报业务侧数据，但职责不能重叠到互相�
 ## 证据
 
 - `deploy/conf/pole-server.yaml` 当前已有 `history`、`discoverEvent`、`statis` chain 配置。
-- `deploy/kubernetes/` 已包含本地镜像构建、部署脚本、Pole Deployment、Collector Deployment、GreptimeDB StatefulSet/PVC、MySQL ExternalName Service、Console HTTPRoute 和跨 namespace ReferenceGrant。
-- OrbStack 实测三个 Pod 均 Ready；Console `/`、`/namespace`、`/agent`、`/login` 和入口静态资源返回 200。
-- Pod 内通过 `pole-mysql:3306` 读取到宿主机 `pole_server`、`pole_observability`；OTLP smoke event 经 Collector 写入 `pole_events` 并由 GreptimeDB SQL 返回一行。
+- `deploy/kubernetes/` 已包含本地镜像构建、部署脚本、Pole Deployment、Collector Deployment、GreptimeDB ExternalName 适配服务、MySQL ExternalName Service、Console HTTPRoute 和跨 namespace ReferenceGrant。
+- OrbStack 实测 Pole 与 Collector Pod Ready，共享 `tidemind/maas-greptimedb-frontend` Ready；Console `/`、`/namespace`、`/agent`、`/login` 和入口静态资源返回 200。
+- Pod 内通过 `pole-mysql:3306` 读取宿主机 `pole_server`、`pole_observability`；OTLP smoke event 经 Collector 写入共享 GreptimeDB 的 `pole_observability.pole_events` 并由 SQL 查回。
 - `plugin/observability/` 当前已有 history、discoverevent、statis 三类插件实现。
 - `apis/observability/` 当前已有 event、history、statis 三类接口定义。
 - `plugin/observability/statis/otel` 已实现 `statis.entries[].name=otel`，将 `CallMetric`、`DiscoveryMetric`、`ConfigMetrics` 和 `ClientDiscoverMetric` 映射为 `pole.*` OTel metrics。

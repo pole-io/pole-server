@@ -1,6 +1,6 @@
 # Pole 本地 Kubernetes 部署
 
-本目录把 Pole Control Plane、GreptimeDB 和 OpenTelemetry Collector 编排到同一个 `pole-system` namespace，但保持为三个独立工作负载。MySQL 不进入 Kubernetes，Pod 通过 `pole-mysql` ExternalName Service 访问宿主机 `host.docker.internal:3306`。Console 复用 `tidemind/tidemind-gateway`，通过跨 namespace `HTTPRoute` 暴露域名。
+本目录在 `pole-system` namespace 编排 Pole Control Plane 和 OpenTelemetry Collector。观测存储复用 `tidemind/maas-greptimedb-frontend`，Pole 通过本 namespace 的 `pole-greptimedb` ExternalName Service 保持稳定依赖接口，并使用独立逻辑库 `pole_observability`。MySQL 不进入 Kubernetes，Pod 通过 `pole-mysql` ExternalName Service 访问宿主机 `host.docker.internal:3306`。Console 复用 `tidemind/tidemind-gateway`，通过跨 namespace `HTTPRoute` 暴露域名。
 
 ## 部署
 
@@ -11,6 +11,7 @@
 - 如果 MySQL 由 Docker 容器提供，应配置 `--restart unless-stopped`；既有容器可执行 `docker update --restart unless-stopped pole-mysql`，避免 OrbStack/Docker 重启后 Control Plane 因数据库不可达持续 CrashLoop。
 - 已安装 Docker、Go、Node.js 和 npm。
 - 集群中已有 `tidemind/tidemind-gateway`，其 `http` listener 允许同 namespace 的 Route。
+- 集群中已有 Ready 的 `tidemind/maas-greptimedb-frontend` Deployment；部署脚本会幂等创建 `pole_observability` 逻辑库。
 
 ```bash
 ./deploy/kubernetes/build-image.sh
@@ -76,7 +77,9 @@ kubectl -n pole-system port-forward service/pole-control-plane 18080:8080 18090:
 
 ## 数据边界
 
-- GreptimeDB 数据写入 `data-pole-greptimedb-0` PVC。
+- Pole 的 metrics、traces 和结构化 event/audit logs 写入共享 GreptimeDB 的 `pole_observability` 逻辑库；MaaS 继续使用自己的逻辑库，双方不共享业务表。
+- `pole-greptimedb` 只是 Pole namespace 内的稳定适配服务，不拥有 GreptimeDB 生命周期；物理集群由 `tidemind` 维护。
+- 从旧 standalone 部署迁移时，脚本在新链路验证并完成 rollout 后删除旧 StatefulSet，但保留 `data-pole-greptimedb-0` PVC，便于历史数据导出或回退；确认不再需要前不要手工删除。
 - Pole 本地 OTel 可靠队列和日志使用 `emptyDir`，Pod 重建后不保留；生产部署应替换为 PVC 或外部队列。
 - 宿主机 MySQL 是部署外部依赖，删除 namespace 不会删除 MySQL 数据。
 - 旧 Docker Compose 栈不会被部署脚本自动删除；完成数据迁移和验证后再停掉，避免误删原有 GreptimeDB volume。

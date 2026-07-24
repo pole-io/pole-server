@@ -43,17 +43,21 @@ data:
       otlp_http/greptime_traces:
         endpoint: http://pole-greptimedb:4000/v1/otlp
         headers:
+          x-greptime-db-name: pole_observability
           x-greptime-pipeline-name: greptime_trace_v1
         tls:
           insecure: true
       otlp_http/greptime_logs:
         endpoint: http://pole-greptimedb:4000/v1/otlp
         headers:
+          x-greptime-db-name: pole_observability
           x-greptime-log-table-name: pole_events
         tls:
           insecure: true
       otlp_http/greptime_metrics:
         endpoint: http://pole-greptimedb:4000/v1/otlp
+        headers:
+          x-greptime-db-name: pole_observability
         tls:
           insecure: true
       debug:

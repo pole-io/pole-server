@@ -6,6 +6,10 @@ root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 manifest_dir="${root_dir}/deploy/kubernetes"
 namespace="pole-system"
 image="${POLE_IMAGE:-pole-control-plane:local}"
+shared_greptime_namespace="tidemind"
+shared_greptime_deployment="maas-greptimedb-frontend"
+shared_greptime_service="maas-greptimedb-frontend.tidemind.svc.cluster.local"
+greptime_database="pole_observability"
 
 mysql_user="${MYSQL_USER:-root}"
 mysql_pwd="${MYSQL_PWD:?MYSQL_PWD must be set}"
@@ -36,13 +40,36 @@ kubectl -n "${namespace}" create configmap pole-runtime-config \
   --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl apply -f "${manifest_dir}/mysql-external-service.yaml"
-kubectl apply -f "${manifest_dir}/greptimedb.yaml"
-kubectl apply -f "${manifest_dir}/otel-collector.yaml"
-kubectl apply -f "${manifest_dir}/pole-control-plane.yaml"
-kubectl apply -f "${manifest_dir}/gateway-route.yaml"
 
-kubectl -n "${namespace}" set image deployment/pole-control-plane \
-  pole-control-plane="${image}"
+current_greptime_type="$(kubectl -n "${namespace}" get service pole-greptimedb \
+  -o jsonpath='{.spec.type}' 2>/dev/null || true)"
+current_greptime_target="$(kubectl -n "${namespace}" get service pole-greptimedb \
+  -o jsonpath='{.spec.externalName}' 2>/dev/null || true)"
+if [[ -n "${current_greptime_type}" ]] && {
+  [[ "${current_greptime_type}" != "ExternalName" ]] ||
+    [[ "${current_greptime_target}" != "${shared_greptime_service}" ]]
+}; then
+  kubectl -n "${namespace}" delete service pole-greptimedb
+fi
+
+kubectl apply -f "${manifest_dir}/greptimedb.yaml"
+kubectl -n "${shared_greptime_namespace}" rollout status \
+  "deployment/${shared_greptime_deployment}" --timeout=180s
+
+kubectl -n "${namespace}" delete pod pole-greptimedb-init \
+  --ignore-not-found --wait=true
+kubectl -n "${namespace}" run pole-greptimedb-init \
+  --image=curlimages/curl:8.12.1 \
+  --restart=Never \
+  --attach \
+  --rm \
+  --command -- \
+  sh -ec "curl -fsS --data-urlencode 'sql=CREATE DATABASE IF NOT EXISTS ${greptime_database}' http://pole-greptimedb:4000/v1/sql"
+
+kubectl apply -f "${manifest_dir}/otel-collector.yaml"
+sed "s|image: pole-control-plane:local|image: ${image}|" \
+  "${manifest_dir}/pole-control-plane.yaml" | kubectl apply -f -
+kubectl apply -f "${manifest_dir}/gateway-route.yaml"
 
 config_revision="$(shasum -a 256 "${root_dir}/deploy/conf/pole-server.yaml" | awk '{print $1}')"
 image_revision="$(docker image inspect --format '{{.Id}}' "${image}" | shasum -a 256 | awk '{print $1}')"
@@ -56,9 +83,13 @@ collector_revision="$(shasum -a 256 "${manifest_dir}/otel-collector.yaml" | awk 
 kubectl -n "${namespace}" set env deployment/pole-otel-collector \
   POLE_CONFIG_REVISION="${collector_revision}"
 
-kubectl -n "${namespace}" rollout status statefulset/pole-greptimedb --timeout=180s
 kubectl -n "${namespace}" rollout status deployment/pole-otel-collector --timeout=180s
 kubectl -n "${namespace}" rollout status deployment/pole-control-plane --timeout=240s
+
+# The old standalone StatefulSet is removed only after both callers have
+# switched successfully. Kubernetes retains its PVC for rollback or export.
+kubectl -n "${namespace}" delete statefulset pole-greptimedb \
+  --ignore-not-found --wait=true
 
 kubectl -n tidemind wait \
   --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True \
