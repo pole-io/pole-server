@@ -275,6 +275,9 @@ func (m *mcpServerStore) GetMCPServer(id string) (*ai.MCPServer, error) {
 	}
 	defer func() { _ = rows.Close() }()
 
+	if !rows.Next() {
+		return nil, rows.Err()
+	}
 	return fetchMCPServerRow(rows)
 }
 
@@ -294,6 +297,9 @@ func (m *mcpServerStore) GetMCPServerByName(name, namespace string) (*ai.MCPServ
 	}
 	defer func() { _ = rows.Close() }()
 
+	if !rows.Next() {
+		return nil, rows.Err()
+	}
 	return fetchMCPServerRow(rows)
 }
 

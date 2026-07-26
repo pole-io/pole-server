@@ -99,3 +99,32 @@ func TestCreateMCPServerToolRevivesStableRegistryTool(t *testing.T) {
 	require.NoError(t, store.CreateMCPServerTool(tool))
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestGetMCPServerReturnsNilWhenRegistryProjectionDoesNotExist(t *testing.T) {
+	rawDB, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer rawDB.Close()
+
+	store := &mcpServerStore{master: &BaseDB{DB: rawDB}}
+	columns := []string{
+		"id", "name", "namespace", "ports", "business", "department", "description",
+		"revision", "flag", "reference", "protocol", "ctime", "mtime", "export_to",
+		"backend_type", "backend_service_namespace", "backend_service_name", "backend_address",
+	}
+
+	mock.ExpectQuery("FROM mcp_server WHERE id =").
+		WithArgs("missing-id").
+		WillReturnRows(sqlmock.NewRows(columns))
+	server, err := store.GetMCPServer("missing-id")
+	require.NoError(t, err)
+	require.Nil(t, server)
+
+	mock.ExpectQuery("FROM mcp_server WHERE name = .*namespace = .*flag != 1").
+		WithArgs("pole-control-plane", "pole-system").
+		WillReturnRows(sqlmock.NewRows(columns))
+	server, err = store.GetMCPServerByName("pole-control-plane", "pole-system")
+	require.NoError(t, err)
+	require.Nil(t, server)
+
+	require.NoError(t, mock.ExpectationsWereMet())
+}
