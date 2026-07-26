@@ -2,7 +2,7 @@
 title: pole-control-plane 知识库
 tags: [meta, index]
 links: [schema, log]
-updated: 2026-07-26
+updated: 2026-07-27
 sources: 0
 ---
 

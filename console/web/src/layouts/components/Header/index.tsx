@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'components/Router';
 import { Layout, Button, Space } from 'components/Fluent';
 import { ViewListIcon } from 'components/Fluent/icons';
 import { useAppDispatch, useAppSelector } from 'modules/store';

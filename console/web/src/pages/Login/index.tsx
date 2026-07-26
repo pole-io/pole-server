@@ -1,5 +1,5 @@
 import React, { memo, useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 import classNames from 'classnames';
 import { Loading, MessagePlugin } from 'components/Fluent';
 import Login from './Login';

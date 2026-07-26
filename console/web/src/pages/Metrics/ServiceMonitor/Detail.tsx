@@ -1,7 +1,7 @@
 import React from 'react';
 import { Breadcrumb, Button, Empty, Input, Table, TableColumnData, TabPanel, Tabs, Tag } from 'components/Fluent';
 import { ArrowRightIcon, SearchIcon, ServiceIcon } from 'components/Fluent/icons';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'components/Router';
 
 import {
   GOVERNANCE_LABEL,

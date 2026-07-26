@@ -1,7 +1,7 @@
 import React from 'react';
 import { Breadcrumb, Button, Empty, Link, Loading, Tag } from 'components/Fluent';
 import { CopyIcon, RefreshIcon } from 'components/Fluent/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 
 import { useAppDispatch } from 'modules/store';
 import { enableUserGroupToken, resetUserGroupToken } from 'modules/user/groups';

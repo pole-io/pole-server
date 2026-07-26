@@ -1,6 +1,6 @@
 import React from 'react';
 import { Breadcrumb, Button, Empty, Loading, TableRowData } from 'components/Fluent';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'components/Router';
 
 import SubscribeTable from 'components/SubscribeTable';
 import { useAppDispatch } from 'modules/store';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Empty, PageInfo, Pagination, Space, Tag, Tooltip } from 'components/Fluent';
 import { ArrowRightIcon, RefreshIcon, ServiceIcon } from 'components/Fluent/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 
 import Search from 'components/Search';
 import Text from 'components/Text';

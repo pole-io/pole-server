@@ -2,11 +2,13 @@
 title: Lessons
 tags: [tasks, lessons]
 links: [todo, patterns]
-updated: 2026-07-25
+updated: 2026-07-27
 sources: 0
 ---
 
 # Lessons
+
+- 发布或推送前不能只依赖构建与功能测试判断依赖安全；必须同时检查 GitHub Dependabot、`npm audit` 和 Go 漏洞扫描。对 critical/high 告警优先升级或移除依赖；没有修复版本的直接依赖不能长期接受或静默 dismiss，应删除、替换或隔离到不进入交付物的独立工具链，并在提交后复核远端告警确实关闭。
 
 - 设计统一治理平台时不能为了能力矩阵完整，提前把 Kafka、RocketMQ、Redis、MySQL 和 Job 纳入公共运行时治理协议。RPC 有统一调用上下文和低侵入 Interceptor，消息、存储则缺少跨产品、跨语言的一致执行 seam；在没有两个真实低侵入 Adapter 证明可标准化前，核心治理保持 RPC-first，外部中间件只做资源目录、健康、指标和原生管理集成，不展示虚假的灰度、路由、镜像或 Mock。
 

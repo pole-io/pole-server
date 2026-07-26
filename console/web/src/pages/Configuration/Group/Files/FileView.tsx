@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'components/Router';
 import { Button, Form, Input, Select, Space, Switch, Tag, Tabs, FormProps } from 'components/Fluent';
 
 import { OperationButton } from 'components/OperationButton';

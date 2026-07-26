@@ -2,7 +2,7 @@
 title: 任务计划与 Review
 tags: [tasks, todo]
 links: [lessons, adr-otel-observability-platform, adr-pole-rust-client-observability]
-updated: 2026-07-26
+updated: 2026-07-27
 sources: 0
 ---
 
@@ -10699,3 +10699,22 @@ Review：
 - 不向 specification 增加 `ResourceDomain`、MESSAGE/STORAGE/JOB Rule 或万能 GovernancePolicy；服务数据面的 Capability Profile、原子 Bundle 和 Apply Receipt 仍属于 RPC 治理深化范围。
 - 原多资源域 ADR 已撤下，当前范围决策归档为 `adr-rpc-first-governance-scope`。
 - 已通过全部 context-kg frontmatter、全局唯一 basename、index 覆盖、wiki 链接解析、相关页面一致性和 `git diff --check` 校验。
+
+## Dependabot 安全告警清零（2026-07-27）
+
+目标：清理 `develop` 分支全部可达依赖漏洞，不保留 critical/high 告警，也不通过 dismiss 掩盖没有修复版本的直接依赖。
+
+- [x] 拉取 GitHub Dependabot 明细，按生态、依赖、严重度和修复版本归并。
+- [x] 运行本地 npm 审计并定位 Go 依赖路径。
+- [x] 升级 Go 安全相关模块并解决兼容问题。
+- [x] 升级 Console 运行时与构建工具链，移除无修复版本的 mock 依赖。
+- [x] 运行 `govulncheck`、`npm audit`、全量 Go 测试、Console lint/build 和专项脚本。
+- [ ] 提交并推送 `develop`，复核远端 Dependabot 告警状态。
+
+### Review
+
+- GitHub 开放 Dependabot 告警共 98 条，集中在 Go 的 Docker SDK、Gin、JWT、`x/crypto`、gRPC，以及 Console 的 Axios、Vite、React Router、Lodash、MockJS 等依赖。
+- Go 已升级 Gin、JWT、gRPC、`x/crypto`、`x/net`、`x/text`、QUIC 与 Testcontainers；Testcontainers 改用拆分后的 Moby API/Client 模块，移除存在告警的旧 Docker 单体模块。`govulncheck` 结果为 0 个受影响漏洞、0 个导入包漏洞。
+- Console 已升级 Axios、Vite、ECharts、Lodash、UUID 与 SVG 工具链；删除无修复版本的 MockJS/Vite Mock，使用轻量路由兼容层替代存在相互冲突安全公告的 React Router，使用 Oxc 替代引入旧 vulnerable glob 依赖链的 ESLint 工具链。
+- `npm audit --audit-level=low` 为 0；全部已登记 Console 专项测试、服务契约专项、lint、测试/发布构建、真实浏览器路由冒烟、Go 全量测试、E2E 标签编译、完整打包、知识库检查和 `git diff --check` 均通过。
+- 新增 Go 与 Console npm 的 Dependabot 周更配置，目标分支固定为 `develop`；远端告警复核待推送后完成。

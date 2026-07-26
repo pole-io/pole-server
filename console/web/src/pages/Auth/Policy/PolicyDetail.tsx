@@ -1,6 +1,6 @@
 import React from 'react';
 import { Breadcrumb, Empty } from 'components/Fluent';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 
 import PolicyDetailView from './PolicyDetailView';
 import style from './index.module.less';

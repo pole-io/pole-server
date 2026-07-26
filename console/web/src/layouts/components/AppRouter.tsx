@@ -1,5 +1,5 @@
 import React, { Suspense, memo, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'components/Router';
 import { Layout, Loading } from 'components/Fluent';
 import routers, { IRouter } from 'router';
 import { useAppSelector } from 'modules/store';

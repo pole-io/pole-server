@@ -1,6 +1,6 @@
 import React from 'react';
 import { Breadcrumb, Loading, Tabs } from 'components/Fluent';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 
 import InstanceTable from './InstanceTable';
 import ServiceDetail from './ServiceDetail';

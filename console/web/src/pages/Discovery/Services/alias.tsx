@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, Table, Button, Drawer, PrimaryTableProps, Space, TableRowData, Input } from 'components/Fluent';
 import { AddIcon, SearchIcon } from 'components/Fluent/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 
 import Text from 'components/Text';
 import { ConfirmOperationButton, OperationButton } from 'components/OperationButton';

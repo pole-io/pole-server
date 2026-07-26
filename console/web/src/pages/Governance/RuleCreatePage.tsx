@@ -1,6 +1,6 @@
 import React from 'react';
 import { Breadcrumb, Empty, Loading } from 'components/Fluent';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'components/Router';
 
 import { useAppDispatch } from 'modules/store';
 import { resetCustomRoute } from 'modules/governance/route';

@@ -2,7 +2,7 @@
 title: 操作日志
 tags: [meta, log]
 links: [index, schema]
-updated: 2026-07-26
+updated: 2026-07-27
 sources: 0
 ---
 
@@ -1103,6 +1103,14 @@ sources: 0
   - 路由转换改用顶层 caller → callee 服务范围，保留 DestinationGroup 标签、权重和多目标，不再从目标组反推服务身份。
   - Gateway 接入真实节点策略生成链；LDS 与策略资源先完整构建再原子替换，相同 namespace 与治理标签的节点复用规则选择结果。
   - OR、动态请求参数、非基础 QPS 限流字段及无等价 Envoy 执行模型的能力不再静默降级，并在知识库固化当前支持矩阵。
+
+## [2026-07-27] refactor | Dependabot 安全告警清理
+
+- 更新页面：todo、lessons、index。
+- 变更摘要：
+  - 清理 Go 与 Console 的 Dependabot 告警依赖，移除无安全修复版本的前端 Mock 与路由依赖。
+  - Go 漏洞扫描无受影响符号或导入包，Console npm 审计无开放漏洞。
+  - 增加面向 `develop` 的 Go 与 Console npm Dependabot 周更配置，并将远端开放告警归零作为发布门禁。
 
 ## 相关页面
 

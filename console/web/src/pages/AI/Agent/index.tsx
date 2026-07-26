@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'components/Router';
 
 import CodeDiffEditor from 'components/CodeDiffEditor';
 import { Button, Input, Switch, Tag, Textarea, Tooltip } from 'components/Fluent';

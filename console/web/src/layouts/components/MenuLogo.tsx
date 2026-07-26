@@ -1,8 +1,8 @@
 import React, { memo } from 'react';
 import Style from './Menu.module.less';
-import FullLogo from 'assets/svg/assets-logo-full.svg?component';
-import MiniLogo from 'assets/svg/assets-t-logo.svg?component';
-import { useNavigate } from 'react-router-dom';
+import FullLogo from 'assets/svg/assets-logo-full.svg?react';
+import MiniLogo from 'assets/svg/assets-t-logo.svg?react';
+import { useNavigate } from 'components/Router';
 
 interface IProps {
   collapsed?: boolean;

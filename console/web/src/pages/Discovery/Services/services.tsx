@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Table, Button, PrimaryTableProps, TableRowData } from 'components/Fluent';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 
 import Text from 'components/Text';
 import { ConfirmOperationButton, OperationButton, OperationButtonGroup } from 'components/OperationButton';

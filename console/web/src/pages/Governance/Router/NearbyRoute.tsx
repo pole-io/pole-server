@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Popup, Table, Button, PageInfo, PrimaryTableProps, TableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Loading, Popconfirm } from 'components/Fluent';
 import { DeleteIcon, EditIcon, RefreshIcon, CreditcardIcon } from 'components/Fluent/icons';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'components/Router';
 
 import { openErrNotification } from 'utils/notifition';
 import { describeCustomRoute } from 'services/router';

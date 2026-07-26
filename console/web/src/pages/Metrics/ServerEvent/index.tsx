@@ -6,7 +6,7 @@ import QueryComposer from 'components/QueryComposer';
 import { describeEventLog, EventLog, EventType, getEventTypeInfo } from 'services/observer';
 import { describeObservabilityEvents } from 'services/observability';
 import ErrorPage from 'components/ErrorPage';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'components/Router';
 
 import style from './index.module.less';
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 import { Form, MessagePlugin, Input, Button, SubmitContext } from 'components/Fluent';
 import { LockOnIcon, UserIcon, BrowseOffIcon, BrowseIcon } from 'components/Fluent/icons';
 import classnames from 'classnames';

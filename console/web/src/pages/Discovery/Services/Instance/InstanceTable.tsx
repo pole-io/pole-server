@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Table, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Tag, Link, Popconfirm } from 'components/Fluent';
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from 'components/Fluent/icons';
-import { BrowserRouterProps } from 'react-router-dom';
+import { BrowserRouterProps } from 'components/Router';
 
 import Search from 'components/Search';
 import ErrorPage from 'components/ErrorPage';

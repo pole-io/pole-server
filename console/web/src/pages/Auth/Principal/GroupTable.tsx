@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, PageInfo, Popconfirm, PrimaryTableProps, TableProps, Space, TableRowData, Tag, Tooltip } from 'components/Fluent';
 import { AddIcon, RefreshIcon } from 'components/Fluent/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 
 import Search from 'components/Search';
 import ErrorPage from 'components/ErrorPage';

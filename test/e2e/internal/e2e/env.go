@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,9 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -98,10 +99,10 @@ func RepoRoot(t *testing.T) string {
 
 func (e *Env) startMySQL(ctx context.Context) {
 	e.T.Helper()
-	mysqlPort := nat.Port("3306/tcp")
+	mysqlPort := "3306/tcp"
 	req := testcontainers.ContainerRequest{
 		Image:        "mysql:8.0.36",
-		ExposedPorts: []string{mysqlPort.Port()},
+		ExposedPorts: []string{mysqlPort},
 		Env: map[string]string{
 			"MYSQL_ROOT_PASSWORD": mysqlRootPass,
 			"MYSQL_DATABASE":      "pole_server",
@@ -109,9 +110,9 @@ func (e *Env) startMySQL(ctx context.Context) {
 		},
 		WaitingFor: wait.ForListeningPort(mysqlPort).WithStartupTimeout(2 * time.Minute),
 		HostConfigModifier: func(hostConfig *container.HostConfig) {
-			hostConfig.PortBindings = nat.PortMap{
-				mysqlPort: []nat.PortBinding{{
-					HostIP:   "127.0.0.1",
+			hostConfig.PortBindings = network.PortMap{
+				network.MustParsePort(mysqlPort): []network.PortBinding{{
+					HostIP:   netip.MustParseAddr("127.0.0.1"),
 					HostPort: strconv.Itoa(e.MySQLPort),
 				}},
 			}

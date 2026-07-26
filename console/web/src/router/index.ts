@@ -1,5 +1,5 @@
 import React, { lazy } from 'react';
-import { BrowserRouterProps } from 'react-router-dom';
+import { BrowserRouterProps } from 'components/Router';
 import namespace from './modules/namespace';
 import discovery from './modules/discovery';
 import configuration from './modules/configuration';

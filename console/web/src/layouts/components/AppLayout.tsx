@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'components/Router';
 import { Layout } from 'components/Fluent';
 import { ELayout } from 'modules/global';
 import Header from './Header';

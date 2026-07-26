@@ -1,10 +1,10 @@
 import React, { memo } from 'react';
 import { Button } from 'components/Fluent';
 
-import Light403Icon from 'assets/svg/assets-result-403.svg?component';
-import Light404Icon from 'assets/svg/assets-result-404.svg?component';
-import Light500Icon from 'assets/svg/assets-result-500.svg?component';
-import LightUnimplementIcon from 'assets/svg/assets-result-maintenance.svg?component';
+import Light403Icon from 'assets/svg/assets-result-403.svg?react';
+import Light404Icon from 'assets/svg/assets-result-404.svg?react';
+import Light500Icon from 'assets/svg/assets-result-500.svg?react';
+import LightUnimplementIcon from 'assets/svg/assets-result-maintenance.svg?react';
 import style from './index.module.less';
 
 export enum ECode {

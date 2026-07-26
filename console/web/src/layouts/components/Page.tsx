@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'components/Router';
 import { useAppDispatch, useAppSelector } from '../../modules/store';
 import { selectGlobal, switchFullPage } from '../../modules/global';
 import { Layout, Breadcrumb } from 'components/Fluent';

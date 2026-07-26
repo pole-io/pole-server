@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 import { Button, Empty, Loading, MessagePlugin } from 'components/Fluent';
 import { CopyIcon, LinkIcon, ViewListIcon } from 'components/Fluent/icons';
 

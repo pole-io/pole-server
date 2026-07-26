@@ -1,5 +1,5 @@
 import React, { memo, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'components/Router';
 import { Drawer, Layout } from 'components/Fluent';
 import throttle from 'lodash/throttle';
 import { useAppSelector, useAppDispatch } from 'modules/store';

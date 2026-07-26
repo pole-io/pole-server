@@ -7,7 +7,7 @@ import { ConfirmOperationButton, OperationButton } from 'components/OperationBut
 import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout';
 import QueryComposer, { QuerySnapshot } from 'components/QueryComposer';
 import { useAppDispatch, useAppSelector } from 'modules/store';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 import ConfigGroupEditor from './ConfigGroupEditor';
 
 import style from './index.module.less';

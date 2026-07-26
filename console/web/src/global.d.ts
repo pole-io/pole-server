@@ -29,7 +29,7 @@ declare module '*.webp' {
 declare module '*.svg' {
   export default src as string;
 }
-declare module '*.svg?component' {
+declare module '*.svg?react' {
   export default src as string;
 }
 declare module '*.module.css' {

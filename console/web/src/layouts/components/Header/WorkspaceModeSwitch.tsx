@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'components/Router';
 
 import { Button } from 'components/Fluent';
 import { ArrowRightIcon, BotIcon, System2Icon } from 'components/Fluent/icons';

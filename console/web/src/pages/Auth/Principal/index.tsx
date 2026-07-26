@@ -1,7 +1,7 @@
 import React from 'react';
 import { TabPanel, Tabs } from 'components/Fluent';
 import { ResourceHeader } from 'components/ResourceLayout';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'components/Router';
 
 import UserTable from './UserTable';
 import GroupsTable from './GroupTable';

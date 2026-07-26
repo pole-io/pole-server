@@ -1,6 +1,6 @@
 import React from 'react';
 import { Breadcrumb, Empty, Link, Loading, Tag } from 'components/Fluent';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 
 import { describeRoles, Role } from 'services/role';
 import { openErrNotification } from 'utils/notifition';

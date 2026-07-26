@@ -1,7 +1,7 @@
 import React from 'react';
 import { Breadcrumb, Button, Empty, Link, Loading, Space, Tabs, Tag, Textarea, Tooltip } from 'components/Fluent';
 import { RefreshIcon, ServerIcon } from 'components/Fluent/icons';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'components/Router';
 
 import AuthorizeInput from 'components/Authorize';
 import { useAppDispatch } from 'modules/store';

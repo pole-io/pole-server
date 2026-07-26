@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Dialog, Input, Radio, RadioGroup, Select, Space, Table, Tag, Tooltip } from 'components/Fluent';
 import type { PrimaryTableProps, TableRowData } from 'components/Fluent';
 import { AddIcon, RefreshIcon } from 'components/Fluent/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 
 import { useAppDispatch } from 'modules/store';
 import { listAllNamespaces, selectNamespace } from 'modules/namespace';

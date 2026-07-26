@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Tooltip, Breadcrumb, Tree, Input, TreeInstanceFunctions, Popconfirm, Tag } from 'components/Fluent';
 import { Delete1Icon, FileAddIcon, Icon, RefreshIcon } from 'components/Fluent/icons';
-import { useNavigate, BrowserRouterProps } from 'react-router-dom';
+import { useNavigate, BrowserRouterProps } from 'components/Router';
 import type { TreeProps, TreeNodeModel } from 'components/Fluent';
 
 import AuthorizeInput from 'components/Authorize';

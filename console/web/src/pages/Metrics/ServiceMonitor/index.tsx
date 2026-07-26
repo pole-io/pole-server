@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Empty, Table, TableColumnData, Tag } from 'components/Fluent';
 import { ArrowRightIcon, ServiceIcon } from 'components/Fluent/icons';
 import QueryComposer from 'components/QueryComposer';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 
 import {
   GOVERNANCE_LABEL,

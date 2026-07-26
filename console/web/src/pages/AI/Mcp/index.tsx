@@ -23,7 +23,7 @@ import {
   ServerIcon,
   ToolsCircleIcon,
 } from 'components/Fluent/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 
 import Text from 'components/Text';
 import AuthorizeInput from 'components/Authorize';

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Popconfirm, Empty } from 'components/Fluent';
 import { DeleteIcon, RefreshIcon, CreditcardIcon } from 'components/Fluent/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'components/Router';
 
 import { Op } from 'services/types';
 import Text from 'components/Text';
