@@ -1112,6 +1112,15 @@ sources: 0
   - Go 漏洞扫描无受影响符号或导入包，Console npm 审计无开放漏洞。
   - 增加面向 `develop` 的 Go 与 Console npm Dependabot 周更配置，并将远端开放告警归零作为发布门禁。
 
+## [2026-07-27] ingest | Dependabot 修复版本更新至本地 Kubernetes
+
+- 更新页面：todo、index。
+- 变更摘要：
+  - 为 `develop@69be9be7` 构建 Linux ARM64 镜像 `pole-control-plane:local-20260727-dependabot-69be9be7`，滚动更新 OrbStack `pole-system` Control Plane。
+  - 通过 Pod imageID、Pod 内静态资源、Gateway 返回哈希和 HTTPRoute 状态确认实际入口已切换到新容器产物。
+  - Pod 内 Console、8090 Control Plane 与 functions 健康接口均返回 200；真实浏览器在 Gateway 打开 `demo-governance/demo-order` 契约 Tab，四协议真实数据可见且无浏览器错误。
+  - Deployment 补齐 source revision、image ID、change-cause 和部署时间注解；Dependabot 开放告警保持为 0。
+
 ## 相关页面
 
 - [[index]]

@@ -10718,3 +10718,22 @@ Review：
 - Console 已升级 Axios、Vite、ECharts、Lodash、UUID 与 SVG 工具链；删除无修复版本的 MockJS/Vite Mock，使用轻量路由兼容层替代存在相互冲突安全公告的 React Router，使用 Oxc 替代引入旧 vulnerable glob 依赖链的 ESLint 工具链。
 - `npm audit --audit-level=low` 为 0；全部已登记 Console 专项测试、服务契约专项、lint、测试/发布构建、真实浏览器路由冒烟、Go 全量测试、E2E 标签编译、完整打包、知识库检查和 `git diff --check` 均通过。
 - 新增 Go 与 Console npm 的 Dependabot 周更配置，目标分支固定为 `develop`；提交推送后 GitHub 重算期间开放告警由 98 降至 46，最终为 0，未 dismiss 任何未修复告警。
+
+## Dependabot 修复版本更新至 K8s（2026-07-27）
+
+目标：将 `develop@69be9be7` 对应的安全修复版本更新到当前 Pole Kubernetes 环境，并验证运行实例、接口与 Console 页面均使用新构建。
+
+- [x] 核对当前 Kubernetes context、namespace、工作负载、镜像与部署脚本。
+- [x] 基于当前 `develop` 构建本地镜像并更新目标工作负载。
+- [x] 等待 rollout 完成，检查 Pod、镜像摘要、重启与容器日志。
+- [x] 验证 Console、Control Plane HTTP 接口和服务契约页面入口。
+- [ ] 记录部署 Review，完成知识库校验、提交并推送 `develop`。
+
+### Review
+
+- OrbStack `pole-system/deployment/pole-control-plane` 已从 `local-20260726-service-contract-6ac2cd34` 更新为 `pole-control-plane:local-20260727-dependabot-69be9be7`，镜像 ID 为 `sha256:ee73f1729910a156453f38fd7bdbe37871e1f548fef32785eba08820e0c621f2`。
+- 新 Pod `pole-control-plane-d59ccb559-bb9mp` Ready；首次进程因 self-manager 启动瞬时失败以退出码 0 重启一次，随后持续稳定超过两分钟，重启计数未增加，当前日志无 ERROR/panic/fatal，周期 self-management Agent Card 探测均为 200。
+- Pod 内 Console、Control Plane 8090 根接口与 functions 健康接口均返回 200；Gateway 根页返回 200，HTTPRoute `Accepted=True`、`ResolvedRefs=True`。
+- Pod 内与 `pole.localhost` 返回的 `index.html` SHA-256 均为 `fef5b55c16da87ce78e2d4cd19752a2db102f1c7acd050f7e34b2d2aae4f3f09`，证明实际 Gateway 已提供本次容器产物；Dependabot 开放告警复核仍为 0。
+- 真实浏览器登录 K8s Gateway 后打开 `demo-governance/demo-order` 的“服务契约”Tab，页面显示 4 份真实契约，HTTP/OpenAPI、Dubbo、gRPC、Thrift 各 1 份，Dubbo 接口及重载方法可见，浏览器错误为 0。
+- Deployment 已补齐 `change-cause=deploy 69be9be7: Dependabot security fixes`、source revision、image ID 与部署时间注解，运行版本可追溯。
