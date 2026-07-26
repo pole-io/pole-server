@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Empty, Loading, Select, Tag } from 'components/Fluent';
+import { Button, Drawer, Empty, Loading, Select, Tag } from 'components/Fluent';
 import {
     DescribeGovernanceServiceContracts as describeGovernanceServiceContracts,
     DescribeGovernanceServiceContractVersions as describeGovernanceServiceContractVersions,
@@ -84,6 +84,72 @@ const sourceLabel = (source?: string) => {
     return source || '未标注来源';
 }
 
+const metadataValue = (metadata: Record<string, string> | undefined, ...keys: string[]) => {
+    for (const key of keys) {
+        const value = metadata?.[key];
+        if (String(value || '').trim()) {
+            return value;
+        }
+    }
+    return '-';
+}
+
+const operationNativeMetadata = (operation?: GovernanceInterfaceDescription) => {
+    if (!operation?.content) {
+        return {};
+    }
+    try {
+        const definition = JSON.parse(operation.content) as Record<string, unknown>;
+        const raw = definition.params ?? definition.parameters;
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+            return {};
+        }
+        return Object.fromEntries(
+            Object.entries(raw as Record<string, unknown>)
+                .filter(([, value]) => ['string', 'number', 'boolean'].includes(typeof value))
+                .map(([key, value]) => [key, String(value)]),
+        );
+    } catch {
+        return {};
+    }
+}
+
+const dubboMetadataFields = (
+    contract?: GovernanceServiceContract,
+    operation?: GovernanceInterfaceDescription,
+) => {
+    const metadata = contract?.metadata;
+    const native = operationNativeMetadata(operation);
+    const value = (...keys: string[]) => {
+        const operationValue = metadataValue(native, ...keys);
+        return operationValue !== '-' ? operationValue : metadataValue(metadata, ...keys);
+    }
+    const interfaceName = operation?.path || value('dubbo.interface', 'interface');
+    const group = value('dubbo.group', 'group');
+    const version = value('dubbo.version', 'version');
+    const projectedServiceKey = [
+        group === '-' ? '' : `${group}/`,
+        interfaceName === '-' ? '' : interfaceName,
+        version === '-' ? '' : `:${version}`,
+    ].join('') || '-';
+    return [
+        { label: '应用名', value: value('dubbo.application', 'application', 'app') },
+        { label: '接口名', value: interfaceName },
+        { label: '服务分组', value: group },
+        { label: '接口版本', value: version },
+        { label: '服务端角色', value: value('dubbo.side', 'side') },
+        { label: '元数据模式', value: value('dubbo.metadata-type', 'metadata-type') },
+        { label: '应用修订', value: value('dubbo.metadata-revision', 'metadata-revision') },
+        { label: '序列化', value: value('dubbo.serialization', 'serialization') },
+        { label: 'Service Key', value: value('dubbo.service-key', 'service-key') === '-'
+            ? projectedServiceKey : value('dubbo.service-key', 'service-key') },
+        {
+            label: '映射应用',
+            value: value('dubbo.mapping-applications', 'mapping-applications', 'applications'),
+        },
+    ];
+}
+
 const loadAllContracts = async (namespace: string, serviceName: string) => {
     const all: GovernanceServiceContract[] = [];
     const limit = 100;
@@ -107,6 +173,7 @@ const ServiceContractPanel: React.FC<ServiceContractPanelProps> = ({ namespace, 
     const [versions, setVersions] = React.useState<string[]>([]);
     const [selectedVersion, setSelectedVersion] = React.useState('');
     const [selectedContractId, setSelectedContractId] = React.useState('');
+    const [selectedOperation, setSelectedOperation] = React.useState<GovernanceInterfaceDescription | null>(null);
     const [activeView, setActiveView] = React.useState<ContractView>('interfaces');
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState('');
@@ -121,6 +188,7 @@ const ServiceContractPanel: React.FC<ServiceContractPanelProps> = ({ namespace, 
                 setVersions([]);
                 setSelectedVersion('');
                 setSelectedContractId('');
+                setSelectedOperation(null);
                 setLoading(false);
                 return;
             }
@@ -147,6 +215,7 @@ const ServiceContractPanel: React.FC<ServiceContractPanelProps> = ({ namespace, 
                 setVersions(nextVersions);
                 setSelectedVersion(nextVersion);
                 setSelectedContractId(firstContractIndex >= 0 ? contractIdentity(nextContracts[firstContractIndex], firstContractIndex) : '');
+                setSelectedOperation(null);
                 setActiveView('interfaces');
             } catch (reason) {
                 if (!disposed) {
@@ -154,6 +223,7 @@ const ServiceContractPanel: React.FC<ServiceContractPanelProps> = ({ namespace, 
                     setVersions([]);
                     setSelectedVersion('');
                     setSelectedContractId('');
+                    setSelectedOperation(null);
                     setError(String((reason as Error)?.message || reason || '未知错误'));
                 }
             } finally {
@@ -197,6 +267,7 @@ const ServiceContractPanel: React.FC<ServiceContractPanelProps> = ({ namespace, 
             .filter((item) => !value || item.contract.version === value);
         setSelectedVersion(value);
         setSelectedContractId(nextVisible[0]?.id || '');
+        setSelectedOperation(null);
         setActiveView('interfaces');
     }
 
@@ -288,6 +359,7 @@ const ServiceContractPanel: React.FC<ServiceContractPanelProps> = ({ namespace, 
                         })}
                         onChange={(value: string) => {
                             setSelectedContractId(value);
+                            setSelectedOperation(null);
                             setActiveView('interfaces');
                         }}
                         placeholder="选择契约"
@@ -335,26 +407,33 @@ const ServiceContractPanel: React.FC<ServiceContractPanelProps> = ({ namespace, 
                     {interfaces.length === 0 ? (
                         <Empty title="暂无接口定义" description="当前契约没有可展示的归一化接口。" />
                     ) : interfaces.map((operation, index) => (
-                        <article className={style.interfaceRow} key={operation.id || `${operation.path}-${operation.method}-${index}`}>
-                            <div className={style.operationIdentity}>
+                        <button
+                            type="button"
+                            className={style.interfaceRow}
+                            key={operation.id || `${operation.path}-${operation.method}-${index}`}
+                            aria-label={`查看接口详情：${protocolOperationLabel(selectedContract?.protocol, operation)}`}
+                            onClick={() => setSelectedOperation(operation)}
+                        >
+                            <span className={style.operationIdentity}>
                                 <strong>{protocolOperationLabel(selectedContract?.protocol, operation)}</strong>
                                 <span>{operation.content || '暂无接口说明'}</span>
-                            </div>
-                            <dl className={style.operationFields}>
-                                <div>
-                                    <dt>{fields.path}</dt>
-                                    <dd>{operation.path || '-'}</dd>
-                                </div>
-                                <div>
-                                    <dt>{fields.method}</dt>
-                                    <dd>{operation.method || '-'}</dd>
-                                </div>
-                                <div>
-                                    <dt>来源</dt>
-                                    <dd>{sourceLabel(operation.source)}</dd>
-                                </div>
-                            </dl>
-                        </article>
+                            </span>
+                            <span className={style.operationFields}>
+                                <span className={style.operationField}>
+                                    <span>{fields.path}</span>
+                                    <strong>{operation.path || '-'}</strong>
+                                </span>
+                                <span className={style.operationField}>
+                                    <span>{fields.method}</span>
+                                    <strong>{operation.method || '-'}</strong>
+                                </span>
+                                <span className={style.operationField}>
+                                    <span>来源</span>
+                                    <strong>{sourceLabel(operation.source)}</strong>
+                                </span>
+                            </span>
+                            <span className={style.detailAction}>查看详情</span>
+                        </button>
                     ))}
                 </div>
             ) : (
@@ -366,6 +445,96 @@ const ServiceContractPanel: React.FC<ServiceContractPanelProps> = ({ namespace, 
                     <pre className={style.rawContent}>{selectedContract?.content || '当前契约未保存原始内容。'}</pre>
                 </div>
             )}
+            <Drawer
+                size="large"
+                header="接口详情"
+                footer={false}
+                visible={Boolean(selectedOperation)}
+                onClose={() => setSelectedOperation(null)}
+            >
+                {selectedOperation && (
+                    <div className={style.detailPanel}>
+                        <header className={style.detailHeader}>
+                            <span>{protocolLabel(selectedContract?.protocol)}</span>
+                            <h3>{protocolOperationLabel(selectedContract?.protocol, selectedOperation)}</h3>
+                            <p>来自 {namespace}/{serviceName} · 契约版本 {selectedContract?.version || '-'}</p>
+                        </header>
+
+                        <section className={style.detailSection} aria-label="接口标识">
+                            <h4>接口标识</h4>
+                            <dl className={style.detailGrid}>
+                                <div>
+                                    <dt>{fields.path}</dt>
+                                    <dd>{selectedOperation.path || '-'}</dd>
+                                </div>
+                                <div>
+                                    <dt>{fields.method}</dt>
+                                    <dd>{selectedOperation.method || '-'}</dd>
+                                </div>
+                                <div>
+                                    <dt>方法签名</dt>
+                                    <dd>{selectedOperation.type || '-'}</dd>
+                                </div>
+                                <div>
+                                    <dt>来源</dt>
+                                    <dd>{sourceLabel(selectedOperation.source)}</dd>
+                                </div>
+                                <div>
+                                    <dt>接口修订</dt>
+                                    <dd>{selectedOperation.revision || selectedContract?.revision || '-'}</dd>
+                                </div>
+                                <div>
+                                    <dt>契约状态</dt>
+                                    <dd>{selectedContract?.status === 'Online' ? '在线' : '离线'}</dd>
+                                </div>
+                            </dl>
+                        </section>
+
+                        {normalizeProtocol(selectedContract?.protocol) === 'dubbo' && (
+                            <section className={style.detailSection} aria-label="Dubbo 元数据">
+                                <div className={style.detailSectionHeading}>
+                                    <h4>Dubbo 元数据</h4>
+                                    <Tag variant="outline">Metadata Center 投影</Tag>
+                                </div>
+                                <p className={style.sectionHint}>
+                                    保留 Dubbo 原生应用、接口映射与修订语义；当前区域是统一契约上的可查询投影。
+                                </p>
+                                <dl className={style.detailGrid}>
+                                    {dubboMetadataFields(selectedContract, selectedOperation).map((field) => (
+                                        <div key={field.label}>
+                                            <dt>{field.label}</dt>
+                                            <dd>{field.value}</dd>
+                                        </div>
+                                    ))}
+                                </dl>
+                            </section>
+                        )}
+
+                        <section className={style.detailSection} aria-label="接口定义">
+                            <h4>接口定义</h4>
+                            <pre className={style.detailContent}>
+                                {selectedOperation.content || selectedOperation.type || '当前接口未保存独立定义。'}
+                            </pre>
+                        </section>
+
+                        {Object.keys(selectedContract?.metadata ?? {}).length > 0 && (
+                            <section className={style.detailSection} aria-label="全部契约元数据">
+                                <h4>全部契约元数据</h4>
+                                <dl className={style.metadataList}>
+                                    {Object.entries(selectedContract?.metadata ?? {})
+                                        .sort(([left], [right]) => left.localeCompare(right))
+                                        .map(([key, value]) => (
+                                            <div key={key}>
+                                                <dt>{key}</dt>
+                                                <dd>{value}</dd>
+                                            </div>
+                                        ))}
+                                </dl>
+                            </section>
+                        )}
+                    </div>
+                )}
+            </Drawer>
         </section>
     )
 }

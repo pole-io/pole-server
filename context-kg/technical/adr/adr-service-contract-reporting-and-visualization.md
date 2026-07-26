@@ -2,8 +2,8 @@
 title: 四协议服务契约上报、发现与可视化
 tags: [adr, service-contract, openapi, grpc, dubbo, thrift]
 links: [service-discovery, api-servers, storage, cache-layer]
-updated: 2026-07-26
-sources: 14
+updated: 2026-07-27
+sources: 17
 ---
 
 # 四协议服务契约上报、发现与可视化
@@ -61,6 +61,50 @@ sources: 14
 - 服务详情新增“服务契约”页签，按版本和契约切换，统一展示四协议能力卡、接口清单、来源、状态与原始契约。
 - 管理查询在已指定 namespace/service 时按目标服务执行授权检查。
 
+### 5. Dubbo 采用“原生元数据快照 + 统一契约投影”
+
+Dubbo 3 的 Metadata Center 同时承载两套语义，不能只把 Java 接口文本当作完整契约：
+
+1. 地址发现元数据：`interface -> application` 一对多映射，以及按
+   `{application}/{metadata revision}` 聚合的接口配置快照。
+2. 运维元数据：provider/consumer 的 parameters、provider 方法签名和类型定义。
+
+Pole 不把这两类数据压扁成新的私有 Dubbo 格式。上报端保留 Dubbo 原生 JSON 作为
+`content`，服务端在同一次 `ReportServiceContract` 中生成可检索的统一投影：
+
+| Dubbo 原生概念 | Pole 保存位置 |
+|---|---|
+| 应用修订快照、provider 定义 | `ServiceContract.content` 原样保存 |
+| application、interface、group、version、side、metadata-type | 原始 metadata 键保留，并生成稳定的 `dubbo.*` 查询键 |
+| metadata revision | `metadata["dubbo.metadata-revision"]`；不覆盖 Pole 自己的契约 revision |
+| `group/interface:version` | `metadata["dubbo.service-key"]` |
+| interface -> applications | `metadata["dubbo.mapping-applications"]`；后续可独立关系化索引 |
+| methods 与 parameterTypes | `InterfaceDescriptor`；`type=method(parameterTypes...)` 区分重载 |
+| 单个方法/服务的原生片段 | `InterfaceDescriptor.content` |
+
+统一入口直接识别三种 Dubbo 官方 JSON 形态：
+
+- 运维 provider 定义：`canonicalName + parameters + methods + types`。
+- 应用级服务发现快照：`app + revision + services{...params}`。
+- 运维 consumer 定义：顶层 `side + application + interface + methods + group/version`。
+
+调用方已经提交结构化 `interfaces` 时，Pole 保持兼容并只补齐规范化元数据；没有提交时，
+服务端从上述原生 JSON 自动抽取接口。无法识别的非 JSON Dubbo IDL 仍要求调用方提交
+结构化接口，避免猜测重载签名。
+
+推荐的上报顺序是：
+
+1. Dubbo SDK/Agent 在框架完成 metadata revision 计算后异步推送；Pole 接口幂等，
+   可复用 Dubbo Metadata Report 的失败重试与周期刷新策略。
+2. 已有独立 Metadata Center 的部署，可用只读桥接器订阅原生节点后推送到 Pole，
+   Pole 不主动扫描业务进程或持有 Metadata Center 管理凭证。
+3. Pole namespace 由部署映射明确指定；Dubbo application 对应 Pole Service，
+   application 下多个 Dubbo interface 作为同一契约快照的接口明细。
+
+当前表结构足以无损保存原始快照和查询投影。若后续需要按 interface 反查全部 application、
+展示 provider/consumer 依赖图或独立管理 revision 生命周期，再将
+`DubboServiceMapping` 与 `DubboMetadataSnapshot` 关系化；现有上报入口和投影键保持兼容。
+
 ## 兼容与演进
 
 - `name` 是历史字段，`type` 是当前字段；读写和 ID 计算都采用 `type` 优先、`name` 兜底。
@@ -74,6 +118,8 @@ sources: 14
 - 缓存 miss 返回 `nil`，多版本列表稳定，软删除详情不会出现。
 - Client 与 Manual 全量替换互不覆盖。
 - Console 可真实查询并展示四协议的版本、接口和原始内容。
+- Dubbo 原生 provider 定义和应用修订快照可直接上报并自动抽取接口；Console 点击接口后
+  可查看方法签名、原生元数据投影和完整 metadata。
 - Go 单元测试、MySQL Store 测试、Console 专项契约、ESLint 和生产构建全部通过。
 
 ## 相关页面

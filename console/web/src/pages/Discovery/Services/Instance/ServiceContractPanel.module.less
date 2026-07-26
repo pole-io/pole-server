@@ -121,8 +121,7 @@
   }
 }
 
-.contractMeta,
-.operationFields {
+.contractMeta {
   display: grid;
   margin: 0;
 
@@ -168,15 +167,36 @@
 }
 
 .interfaceRow {
+  appearance: none;
   display: grid;
-  grid-template-columns: minmax(240px, 1.3fr) minmax(360px, 1fr);
+  grid-template-columns: minmax(240px, 1.3fr) minmax(360px, 1fr) auto;
+  align-items: center;
   gap: 22px;
+  width: 100%;
   min-width: 0;
   padding: 15px 16px;
+  border: 0;
   border-bottom: 1px solid var(--app-border-subtle);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease;
 
   &:last-child {
     border-bottom: 0;
+  }
+
+  &:hover {
+    background: var(--app-surface-subtle);
+  }
+
+  &:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline: 2px solid var(--app-primary);
+    outline-offset: -2px;
   }
 }
 
@@ -203,8 +223,182 @@
 }
 
 .operationFields {
+  display: grid;
   grid-template-columns: 1.4fr 0.8fr 0.7fr;
   gap: 14px;
+}
+
+.operationField {
+  display: grid;
+  min-width: 0;
+
+  > span {
+    overflow: hidden;
+    color: var(--app-text-secondary);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  > strong {
+    overflow: hidden;
+    margin-top: 3px;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.detailAction {
+  color: var(--app-primary);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.detailPanel {
+  display: grid;
+  gap: 20px;
+  padding-bottom: 24px;
+  color: var(--app-text);
+}
+
+.detailHeader {
+  display: grid;
+  gap: 6px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--app-border-subtle);
+
+  > span {
+    color: var(--app-primary);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  h3 {
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 18px;
+  }
+
+  p {
+    margin: 0;
+    color: var(--app-text-secondary);
+    font-size: 12px;
+  }
+}
+
+.detailSection {
+  display: grid;
+  gap: 12px;
+
+  h4 {
+    margin: 0;
+    font-size: 14px;
+  }
+}
+
+.detailSectionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sectionHint {
+  margin: -4px 0 0;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 8px;
+  background: var(--app-border-subtle);
+
+  div {
+    min-width: 0;
+    padding: 12px 14px;
+    background: var(--app-surface);
+  }
+
+  dt,
+  dd {
+    overflow-wrap: anywhere;
+  }
+
+  dt {
+    color: var(--app-text-secondary);
+    font-size: 11px;
+  }
+
+  dd {
+    margin: 5px 0 0;
+    font-size: 12px;
+    font-weight: 600;
+  }
+}
+
+.detailContent {
+  box-sizing: border-box;
+  min-height: 96px;
+  max-height: 300px;
+  margin: 0;
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 8px;
+  background: var(--app-surface-subtle);
+  color: var(--app-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.metadataList {
+  display: grid;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 8px;
+
+  div {
+    display: grid;
+    grid-template-columns: minmax(140px, 0.8fr) minmax(0, 1.5fr);
+    gap: 16px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--app-border-subtle);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+
+  dt,
+  dd {
+    overflow-wrap: anywhere;
+  }
+
+  dt {
+    color: var(--app-text-secondary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+  }
+
+  dd {
+    margin: 0;
+    font-size: 12px;
+  }
 }
 
 .rawPanel {
@@ -270,6 +464,10 @@
   .interfaceRow {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .detailAction {
+    justify-self: start;
+  }
 }
 
 @media (max-width: 760px) {
@@ -299,5 +497,14 @@
 
   .operationFields {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detailGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .metadataList div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
   }
 }

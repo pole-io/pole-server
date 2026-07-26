@@ -1,9 +1,9 @@
 ---
 title: 核心业务实体
 tags: [business, domain-model]
-links: [terminology, business-rules, namespace, service-discovery, config-center, governance-rules, ai-features, auth-system, adr-rpc-first-governance-scope]
-updated: 2026-07-26
-sources: 2
+links: [terminology, business-rules, namespace, service-discovery, config-center, governance-rules, ai-features, auth-system, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization]
+updated: 2026-07-27
+sources: 3
 ---
 
 # 核心业务实体
@@ -13,6 +13,9 @@ sources: 2
 | Namespace | [[namespace]] | 顶层运行环境，统一承载并隔离服务、配置和治理规则的环境实例 |
 | Service | [[service-discovery]] | 服务名是全局逻辑标识；`namespace + serviceName` 定位一个独立环境实例 |
 | Instance | [[service-discovery]] | 服务运行节点，按健康、隔离、位置和元数据参与发现 |
+| Service Contract | [[adr-service-contract-reporting-and-visualization]] | 服务在某版本下的协议原始定义及其统一接口投影 |
+| Dubbo Metadata Snapshot | [[adr-service-contract-reporting-and-visualization]] | 以 application + metadata revision 标识的 Dubbo 原生接口配置快照 |
+| Dubbo Service Mapping | [[adr-service-contract-reporting-and-visualization]] | Dubbo interface 到一个或多个 provider application 的映射关系 |
 | Config File | [[config-center]] | 版本化配置内容，支持发布、回滚和监听 |
 | Governance Rule | [[governance-rules]] | 针对服务调用的类型化期望策略，支持草稿、发布和回滚 |
 | Service Policy Bundle | [[adr-rpc-first-governance-scope]] | 面向某类服务数据面编译并原子应用的规则发布集合 |
@@ -26,6 +29,10 @@ sources: 2
 Namespace
   -> Service
     -> Instance
+    -> Service Contract
+      -> Interface Descriptor
+      -> Dubbo Metadata Snapshot
+        -> Dubbo Service Mapping
     -> MCP Server backend selector
   -> Config File Group
     -> Config File
@@ -58,3 +65,4 @@ System Role -> Immutable Policy
 - [[ai-features]]
 - [[auth-system]]
 - [[adr-rpc-first-governance-scope]]
+- [[adr-service-contract-reporting-and-visualization]]

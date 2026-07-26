@@ -285,6 +285,9 @@ export interface GovernanceServiceContract {
     /** 额外内容描述 */
     content?: string
 
+    /** 协议原生元数据及上报来源信息 */
+    metadata?: Record<string, string>
+
     /** 创建时间 */
     ctime?: string
 

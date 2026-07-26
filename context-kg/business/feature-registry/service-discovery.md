@@ -2,8 +2,8 @@
 title: 服务发现（`pkg/service/`）
 tags: [business, feature, service, healthcheck]
 links: [namespace, architecture, storage, cache-layer, governance-rules, adr-instance-active-healthcheck, adr-service-contract-reporting-and-visualization]
-updated: 2026-07-26
-sources: 6
+updated: 2026-07-27
+sources: 7
 ---
 
 # 服务发现（`pkg/service/`）
@@ -53,7 +53,9 @@ type Server struct {
 
 ## 服务契约
 
-服务契约支持 HTTP/OpenAPI、gRPC、Dubbo、Thrift 四类协议，采用 SDK gRPC 或 Agent/CI HTTP 推送，统一落库、缓存发现和 Console 展示。具体上报载荷、来源覆盖规则及兼容策略见 [[adr-service-contract-reporting-and-visualization]]。
+服务契约支持 HTTP/OpenAPI、gRPC、Dubbo、Thrift 四类协议，采用 SDK gRPC 或 Agent/CI HTTP 推送，统一落库、缓存发现和 Console 展示。接口清单可进入独立详情，展示协议字段、方法签名、来源、修订和原始定义。
+
+Dubbo 额外兼容 Metadata Center 的应用修订快照与 provider 运维定义：原生 JSON 不改写，服务端自动投影 application、interface、group/version、side、metadata-type、Service Key 与重载方法。具体上报载荷、来源覆盖规则及兼容策略见 [[adr-service-contract-reporting-and-visualization]]。
 
 ## 相关页面
 

@@ -1,8 +1,8 @@
 ---
 title: 领域术语表
 tags: [business, terminology]
-links: [domain-models, business-rules, auth-system, adr-console-agent-resource-workbench, adr-system-configuration-control-plane, adr-rpc-first-governance-scope]
-updated: 2026-07-26
+links: [domain-models, business-rules, auth-system, adr-console-agent-resource-workbench, adr-system-configuration-control-plane, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization]
+updated: 2026-07-27
 sources: 0
 ---
 
@@ -13,6 +13,9 @@ sources: 0
 | 命名空间 | Namespace | Pole 的运行环境边界；服务、配置、治理规则等资源在各命名空间中形成相互隔离的环境实例 |
 | 服务 | Service | 由全局唯一服务名标识的逻辑服务；同名服务在不同命名空间中的记录表示该服务的不同环境实例 |
 | 实例 | Instance | 服务的运行节点，包含 host、port、协议、健康状态、隔离状态和元数据 |
+| 服务契约 | Service Contract | 协议原始定义与可检索接口投影的组合；原文是事实来源，投影用于发现、治理和展示 |
+| Dubbo 元数据快照 | Dubbo Metadata Snapshot | Dubbo 按 application 与 metadata revision 聚合的接口配置和方法定义 |
+| Dubbo 服务映射 | Dubbo Service Mapping | Dubbo interface 到 provider application 的一对多关系，用于应用级服务发现 |
 | 配置文件 | Config File | 配置中心管理的版本化配置内容 |
 | 服务调用 | Service Invocation | 一次具有调用方、被调方、接口、请求属性和结果状态的 HTTP/RPC 交互 |
 | 服务治理能力 | Service Governance Capability | 作用于服务调用的路由、限流、鉴权、镜像、Mock、熔断等能力 |
@@ -43,3 +46,4 @@ sources: 0
 - [[adr-console-agent-resource-workbench]]
 - [[adr-system-configuration-control-plane]]
 - [[adr-rpc-first-governance-scope]]
+- [[adr-service-contract-reporting-and-visualization]]

@@ -75,6 +75,36 @@ assert.match(
   /<pre[\s\S]*selectedContract\?\.content/,
   '原始契约必须以保留格式的代码区域展示',
 );
+assert.match(
+  component,
+  /selectedOperation/,
+  '接口清单必须维护当前选中的接口，不能停留在不可交互的静态摘要',
+);
+assert.match(
+  component,
+  /<button[\s\S]*aria-label=\{`查看接口详情[\s\S]*onClick=\{\(\) => setSelectedOperation\(operation\)\}/,
+  '每个接口必须使用原生按钮打开当前接口详情',
+);
+assert.match(
+  component,
+  /<Drawer[\s\S]*header="接口详情"[\s\S]*visible=\{Boolean\(selectedOperation\)\}/,
+  '选择接口后必须由同一个 selectedOperation 状态打开独立详情区域',
+);
+assert.match(
+  component,
+  /Dubbo 元数据/,
+  'Dubbo 契约详情必须显式展示原生元数据，而不是只显示通用 IDL',
+);
+assert.match(
+  component,
+  /dubboMetadataFields\(selectedContract, selectedOperation\)/,
+  'Dubbo 元数据必须绑定当前接口的原生片段，不能只读取契约级 metadata',
+);
+assert.match(
+  component,
+  /operationNativeMetadata/,
+  'Dubbo application snapshot 的接口级 params 必须进入详情投影',
+);
 
 assert.match(
   style,

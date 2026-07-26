@@ -28,7 +28,7 @@ sources: 0
 ### 功能档案（business/feature-registry/）
 
 - [[namespace]] — 运行环境、跨环境资源身份与系统环境保护 | business, feature, namespace
-- [[service-discovery]] — 服务发现核心：DiscoverServer 接口、批处理、健康检查、空推保护 | business, feature, service, healthcheck
+- [[service-discovery]] — 服务发现、健康检查与四协议服务契约 | business, feature, service, healthcheck
 - [[config-center]] — 配置中心：版本化配置文件、灰度发布、Watch 长轮询机制 | business, feature, config
 - [[governance-rules]] — 治理规则：路由、限流、熔断、故障探测、泳道、无损规则 | business, feature, governance
 - [[admin]] — 管理后台：AdminOperateServer 接口与跨域运维操作 | business, feature, admin
@@ -63,7 +63,7 @@ sources: 0
 ### 架构决策（technical/adr/）
 
 - [[adr-governance-rule-unified-storage]] — 治理规则按环境统一存储、发布与授权 | adr, governance, storage, cache, namespace
-- [[adr-service-contract-reporting-and-visualization]] — 四协议服务契约统一上报、发现与可视化 | adr, service-contract, openapi, grpc, dubbo, thrift
+- [[adr-service-contract-reporting-and-visualization]] — 四协议契约与 Dubbo 原生元数据适配 | adr, service-contract, openapi, grpc, dubbo, thrift
 - [[adr-rpc-first-governance-scope]] — RPC-first 治理范围与消息、存储、任务集成边界 | adr, governance, rpc, scope, integration
 - [[adr-governance-request-parameter-capture]] — 治理请求参数采集与动态限流、路由消费边界 | adr, governance, routing, ratelimit, sdk
 - [[adr-managed-service-identity-authentication]] — 托管身份、短期凭证与 Header 兼容模式 | adr, governance, auth, identity

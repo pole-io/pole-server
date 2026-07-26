@@ -10737,3 +10737,32 @@ Review：
 - Pod 内与 `pole.localhost` 返回的 `index.html` SHA-256 均为 `fef5b55c16da87ce78e2d4cd19752a2db102f1c7acd050f7e34b2d2aae4f3f09`，证明实际 Gateway 已提供本次容器产物；Dependabot 开放告警复核仍为 0。
 - 真实浏览器登录 K8s Gateway 后打开 `demo-governance/demo-order` 的“服务契约”Tab，页面显示 4 份真实契约，HTTP/OpenAPI、Dubbo、gRPC、Thrift 各 1 份，Dubbo 接口及重载方法可见，浏览器错误为 0。
 - Deployment 已补齐 `change-cause=deploy 69be9be7: Dependabot security fixes`、source revision、image ID 与部署时间注解，运行版本可追溯。
+
+## 服务契约详情与 Dubbo Metadata 适配闭环（2026-07-27）
+
+目标：修复服务契约只能浏览清单、无法进入接口详情的问题；对照 Apache Dubbo 原生 Metadata Center 体系，补齐应用、接口、修订、服务映射和方法重载的适配设计，并将实现更新到 Kubernetes 实际环境。
+
+- [x] 用 K8s Gateway 上的 `demo-governance/demo-order` 真实数据复现“接口详情不可达”，建立失败验证命令。
+- [x] 阅读 Apache Dubbo 官方 Metadata Center、MetadataService、应用级服务发现与服务映射资料，明确原生数据边界。
+- [x] 设计 Pole 的 Dubbo 原生元数据保存模型、统一契约投影和上报适配边界，并更新 ADR/领域知识。
+- [x] 实现可点击、可键盘访问的接口详情与 Dubbo 专属元数据展示，保留原始契约和归一化接口视图。
+- [ ] 补充前端专项回归、构建与真实浏览器交互验证。
+- [ ] 提交并推送 `develop`，构建新镜像、滚动更新 K8s，并复验运行镜像和页面效果。
+
+### Review
+
+- 待完成。
+
+## go-restful v3 依赖升级评估（2026-07-27）
+
+目标：判断当前 `github.com/emicklei/go-restful/v3 v3.9.0` 是否需要升级，并以官方版本、安全信息、仓库实际使用面和升级验证结果为依据给出建议；本轮只评估，不直接变更生产依赖。
+
+- [x] 确认当前依赖版本、Go 版本、工作树状态和 go-restful 使用范围。
+- [ ] 核验最新稳定版本、官方发布变更、Go 版本要求与安全公告。
+- [ ] 在隔离的临时工作树或临时模块状态下验证升级后的编译和相关测试。
+- [ ] 评估兼容风险、收益、紧迫度和推荐目标版本。
+- [ ] 记录 Review 与最终建议。
+
+### Review
+
+- 待完成。

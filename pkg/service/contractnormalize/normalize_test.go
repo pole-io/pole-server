@@ -100,6 +100,164 @@ func TestNormalizeRequiresAndPreservesStructuredRPCInterfaces(t *testing.T) {
 	}
 }
 
+func TestNormalizeProjectsDubboNativeMetadataWithoutDiscardingSourceKeys(t *testing.T) {
+	input := &apiservice.ServiceContract{
+		Service:  "order-provider",
+		Version:  "v1",
+		Protocol: "dubbo",
+		Content:  `{"app":"order-provider","revision":"app-revision","services":{}}`,
+		Metadata: map[string]string{
+			"application":          "order-provider",
+			"interface":            "com.demo.order.api.OrderService",
+			"group":                "shop",
+			"version":              "1.2.0",
+			"side":                 "provider",
+			"metadata-type":        "remote",
+			"metadata-revision":    "app-revision",
+			"mapping-applications": "order-provider,order-provider-canary",
+		},
+		Interfaces: []*apiservice.InterfaceDescriptor{{
+			Path:   "com.demo.order.api.OrderService",
+			Method: "getOrder",
+			Type:   "getOrder(java.lang.String)",
+		}},
+	}
+
+	got, err := contractnormalize.Normalize(input)
+	if err != nil {
+		t.Fatalf("Normalize() error = %v", err)
+	}
+	for key, want := range map[string]string{
+		"dubbo.application":          "order-provider",
+		"dubbo.interface":            "com.demo.order.api.OrderService",
+		"dubbo.group":                "shop",
+		"dubbo.version":              "1.2.0",
+		"dubbo.side":                 "provider",
+		"dubbo.metadata-type":        "remote",
+		"dubbo.metadata-revision":    "app-revision",
+		"dubbo.mapping-applications": "order-provider,order-provider-canary",
+	} {
+		if got.Metadata[key] != want {
+			t.Errorf("Metadata[%q] = %q, want %q", key, got.Metadata[key], want)
+		}
+	}
+	if got.Metadata["application"] != "order-provider" {
+		t.Fatal("Normalize() discarded the original Dubbo metadata key")
+	}
+	if _, exists := input.Metadata["dubbo.application"]; exists {
+		t.Fatal("Normalize() mutated caller-owned metadata")
+	}
+}
+
+func TestNormalizeExtractsDubboProviderDefinition(t *testing.T) {
+	got, err := contractnormalize.Normalize(&apiservice.ServiceContract{
+		Service:  "order-provider",
+		Version:  "v1",
+		Protocol: "dubbo",
+		Content: `{
+			"parameters": {
+				"side": "provider",
+				"application": "order-provider",
+				"interface": "com.demo.order.api.OrderService",
+				"group": "shop",
+				"version": "1.2.0"
+			},
+			"canonicalName": "com.demo.order.api.OrderService",
+			"methods": [
+				{"name": "getOrder", "parameterTypes": ["java.lang.String"], "returnType": "com.demo.Order"},
+				{"name": "getOrder", "parameterTypes": ["long"], "returnType": "com.demo.Order"}
+			],
+			"types": []
+		}`,
+	})
+	if err != nil {
+		t.Fatalf("Normalize() error = %v", err)
+	}
+	if len(got.Interfaces) != 2 {
+		t.Fatalf("len(Interfaces) = %d, want 2", len(got.Interfaces))
+	}
+	if got.Interfaces[0].Path != "com.demo.order.api.OrderService" ||
+		got.Interfaces[0].Type != "getOrder(java.lang.String)" {
+		t.Fatalf("Interfaces[0] = %#v", got.Interfaces[0])
+	}
+	if got.Interfaces[1].Type != "getOrder(long)" {
+		t.Fatalf("Interfaces[1].Type = %q, want getOrder(long)", got.Interfaces[1].Type)
+	}
+	if got.Metadata["dubbo.application"] != "order-provider" ||
+		got.Metadata["dubbo.service-key"] != "shop/com.demo.order.api.OrderService:1.2.0" {
+		t.Fatalf("Metadata = %#v", got.Metadata)
+	}
+}
+
+func TestNormalizeExtractsDubboApplicationRevisionSnapshot(t *testing.T) {
+	got, err := contractnormalize.Normalize(&apiservice.ServiceContract{
+		Service:  "order-provider",
+		Version:  "v1",
+		Protocol: "dubbo",
+		Content: `{
+			"app": "order-provider",
+			"revision": "da3be833baa2088c5f6776fb7ab1a436",
+			"services": {
+				"com.demo.order.api.OrderService:dubbo": {
+					"name": "com.demo.order.api.OrderService",
+					"protocol": "dubbo",
+					"path": "com.demo.order.api.OrderService",
+					"params": {
+						"side": "provider",
+						"methods": "createOrder,getOrder",
+						"group": "shop",
+						"version": "1.2.0",
+						"metadata-type": "remote"
+					}
+				}
+			}
+		}`,
+	})
+	if err != nil {
+		t.Fatalf("Normalize() error = %v", err)
+	}
+	if len(got.Interfaces) != 2 ||
+		got.Interfaces[0].Method != "createOrder" ||
+		got.Interfaces[1].Method != "getOrder" {
+		t.Fatalf("Interfaces = %#v", got.Interfaces)
+	}
+	if got.Metadata["dubbo.application"] != "order-provider" ||
+		got.Metadata["dubbo.metadata-revision"] != "da3be833baa2088c5f6776fb7ab1a436" ||
+		got.Metadata["dubbo.metadata-type"] != "remote" ||
+		got.Metadata["dubbo.service-key"] != "shop/com.demo.order.api.OrderService:1.2.0" ||
+		got.Metadata["dubbo.snapshot-service-key"] != "com.demo.order.api.OrderService:dubbo" {
+		t.Fatalf("Metadata = %#v", got.Metadata)
+	}
+}
+
+func TestNormalizeExtractsDubboConsumerMetadata(t *testing.T) {
+	got, err := contractnormalize.Normalize(&apiservice.ServiceContract{
+		Service:  "order-consumer",
+		Version:  "v1",
+		Protocol: "dubbo",
+		Content: `{
+			"valid": "true",
+			"side": "consumer",
+			"application": "order-consumer",
+			"methods": "createOrder,getOrder",
+			"interface": "com.demo.order.api.OrderService",
+			"version": "1.2.0",
+			"group": "shop"
+		}`,
+	})
+	if err != nil {
+		t.Fatalf("Normalize() error = %v", err)
+	}
+	if len(got.Interfaces) != 2 || got.Interfaces[1].Method != "getOrder" {
+		t.Fatalf("Interfaces = %#v", got.Interfaces)
+	}
+	if got.Metadata["dubbo.side"] != "consumer" ||
+		got.Metadata["dubbo.application"] != "order-consumer" ||
+		got.Metadata["dubbo.service-key"] != "shop/com.demo.order.api.OrderService:1.2.0" {
+		t.Fatalf("Metadata = %#v", got.Metadata)
+	}
+}
+
 func TestNormalizeExtractsStableHTTPInterfacesFromOpenAPIJSON(t *testing.T) {
 	input := &apiservice.ServiceContract{
 		Service:  "payments",
@@ -141,6 +299,9 @@ func TestNormalizeExtractsStableHTTPInterfacesFromOpenAPIJSON(t *testing.T) {
 			t.Errorf("Interfaces[%d] = %s %s, want %s %s",
 				i, got.Interfaces[i].Method, got.Interfaces[i].Path, pair[1], pair[0])
 		}
+	}
+	if got.Interfaces[0].Content != `{"operationId":"listPets"}` {
+		t.Errorf("Interfaces[0].Content = %q, want original OpenAPI operation", got.Interfaces[0].Content)
 	}
 }
 

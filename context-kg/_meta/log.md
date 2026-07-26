@@ -1121,6 +1121,15 @@ sources: 0
   - Pod 内 Console、8090 Control Plane 与 functions 健康接口均返回 200；真实浏览器在 Gateway 打开 `demo-governance/demo-order` 契约 Tab，四协议真实数据可见且无浏览器错误。
   - Deployment 补齐 source revision、image ID、change-cause 和部署时间注解；Dependabot 开放告警保持为 0。
 
+## [2026-07-27] feat | 服务契约详情与 Dubbo Metadata 适配
+
+- 更新页面：terminology、domain-models、service-discovery、adr-service-contract-reporting-and-visualization、todo、lessons、index。
+- 变更摘要：
+  - 修复接口清单只有静态摘要、无法进入详情的问题，新增可点击和键盘访问的接口详情抽屉。
+  - 详情展示协议字段、方法签名、来源、修订、接口定义和全部 metadata；Dubbo 增加 Metadata Center 专属投影。
+  - 统一上报入口可直接识别 Dubbo provider 运维定义和 application revision 快照，保留原始 JSON 并自动抽取接口。
+  - Dubbo 原始 metadata 键不丢失，同时生成稳定的 `dubbo.*` 查询键和 Service Key。
+
 ## 相关页面
 
 - [[index]]
