@@ -2,8 +2,8 @@
 title: API 服务端 — 协议实现
 tags: [api, http, grpc, xds, nacos]
 links: [architecture, ai-features, auth-system, adr-service-contract-reporting-and-visualization]
-updated: 2026-07-26
-sources: 3
+updated: 2026-07-27
+sources: 4
 ---
 
 # API 服务端 — 协议实现
@@ -74,7 +74,10 @@ grpcserver/
 
 实现了来自 `pole-io/specification` protobuf 定义的 `polaris.Discover` 和 `polaris.Heartbeat` gRPC 服务。
 
-服务契约同时提供 gRPC `ReportServiceContract` 和 HTTP `POST /naming/v1/ReportServiceContract` 上报入口，并通过统一 Discover 的 `SERVICE_CONTRACTS` 类型下发；协议与载荷约定见 [[adr-service-contract-reporting-and-visualization]]。
+服务契约同时提供 gRPC `ReportServiceContract` 和 HTTP client API
+`POST /v1/ReportServiceContract` 上报入口，并通过统一 Discover 的 `SERVICE_CONTRACTS`
+类型下发；`/naming/v1` 仅用于 Console 管理查询。协议与载荷约定见
+[[adr-service-contract-reporting-and-visualization]]。
 
 ---
 

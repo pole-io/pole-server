@@ -10670,7 +10670,7 @@ Review：
 
 ### Review
 
-- 上报采用 caller push：SDK 走 gRPC `ReportServiceContract`，Agent/CI 走 HTTP `POST /naming/v1/ReportServiceContract`；控制面不主动扫描生产服务。
+- 上报采用 caller push：SDK 走 gRPC `ReportServiceContract`，Agent/CI 走 HTTP client API `POST /v1/ReportServiceContract`；控制面不主动扫描生产服务。
 - HTTP 始终校验并解析 OpenAPI 3.x；gRPC、Dubbo、Thrift 要求原始契约和结构化接口。接口签名进入 ID 与覆盖键，Dubbo 重载不会丢失且重复上报幂等。
 - 契约和接口 ID 均由自然键确定并校验，管理端查询逐契约执行资源权限过滤；Client/Manual 分源替换，兼容历史 `source=0` SDK 数据。
 - 服务详情新增“服务契约”页签，支持四协议能力概览、全量分页、版本/契约切换、接口来源和原始内容展示。
@@ -10746,23 +10746,15 @@ Review：
 - [x] 阅读 Apache Dubbo 官方 Metadata Center、MetadataService、应用级服务发现与服务映射资料，明确原生数据边界。
 - [x] 设计 Pole 的 Dubbo 原生元数据保存模型、统一契约投影和上报适配边界，并更新 ADR/领域知识。
 - [x] 实现可点击、可键盘访问的接口详情与 Dubbo 专属元数据展示，保留原始契约和归一化接口视图。
-- [ ] 补充前端专项回归、构建与真实浏览器交互验证。
-- [ ] 提交并推送 `develop`，构建新镜像、滚动更新 K8s，并复验运行镜像和页面效果。
+- [x] 补充前端专项回归、构建与真实浏览器交互验证。
+- [x] 提交并推送 `develop`，构建新镜像、滚动更新 K8s，并复验运行镜像和页面效果。
 
 ### Review
 
-- 待完成。
-
-## go-restful v3 依赖升级评估（2026-07-27）
-
-目标：判断当前 `github.com/emicklei/go-restful/v3 v3.9.0` 是否需要升级，并以官方版本、安全信息、仓库实际使用面和升级验证结果为依据给出建议；本轮只评估，不直接变更生产依赖。
-
-- [x] 确认当前依赖版本、Go 版本、工作树状态和 go-restful 使用范围。
-- [ ] 核验最新稳定版本、官方发布变更、Go 版本要求与安全公告。
-- [ ] 在隔离的临时工作树或临时模块状态下验证升级后的编译和相关测试。
-- [ ] 评估兼容风险、收益、紧迫度和推荐目标版本。
-- [ ] 记录 Review 与最终建议。
-
-### Review
-
-- 待完成。
+- 根因是接口清单只渲染静态摘要，没有选中状态、点击/键盘入口或详情容器；专项测试先以 `selectedOperation` 缺失稳定失败，再实现原生按钮和 Fluent Drawer。
+- HTTP/OpenAPI 在服务端归一化时保存每个 operation 原文；Dubbo 可直接识别 provider 定义、consumer 定义和 application revision snapshot，原始 JSON 保存在契约主体，方法和接口级原生片段进入统一接口投影。
+- Dubbo 原始 metadata 不改写，同时生成 `dubbo.application/interface/group/version/side/metadata-type/metadata-revision/service-key/mapping-applications` 稳定查询键；多接口快照的详情优先读取所选接口原生 params，避免错误套用契约级 group/version。
+- 运行时 HTTP client 上报入口确认并回归为 `POST /v1/ReportServiceContract`；`/naming/v1` 仅用于 Console 管理 API。K8s client 入口已用无结构化 interfaces 的 Dubbo provider 原生 JSON 上报成功，返回 `code=200000`。
+- `develop@6d01a3d4` 已构建为 `pole-control-plane:local-20260727-contract-detail-6d01a3d4`，镜像 ID `sha256:6acdcbaadd34e82708f087077eff7cb5b33883313a94b5eaa7981ec48ba8be01`；Pod `pole-control-plane-844c97d589-sqwmx` Ready、零重启，日志无 ERROR/panic/fatal，HTTPRoute `Accepted=True`、`ResolvedRefs=True`。
+- 真实浏览器在 `demo-governance/demo-order` 点击 Dubbo 重载方法后，详情展示 application、group/version、side、metadata-type、serialization、Service Key、映射应用和方法原生定义；鼠标和 Enter 键均可打开，3 个接口详情入口可达，浏览器错误为 0。
+- `go test ./...`、服务契约目标测试、Console 专项脚本、全量 lint、`npm run build:test`、`npm audit`、知识库链接检查与 `git diff --check` 均通过；GitHub 开放 Dependabot 告警保持为 0。

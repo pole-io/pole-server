@@ -26,7 +26,8 @@ sources: 17
 ### 1. 使用调用方推送，不由控制面主动抓取
 
 - SDK 使用 specification 已定义的 gRPC `ReportServiceContract` 上报。
-- Agent、Sidecar 或 CI 使用 `POST /naming/v1/ReportServiceContract` 上报同一 `ServiceContract` 模型。
+- Agent、Sidecar 或 CI 使用 client API `POST /v1/ReportServiceContract` 上报同一 `ServiceContract` 模型；
+  `/naming/v1` 是 Console 管理 API，不承载客户端上报。
 - Console 人工维护保留兼容的两步接口：先用 `POST /naming/v1/service/contracts` 创建主体，再用 `POST /naming/v1/service/contract/methods` 写入 `Manual` 接口；不会把旧 CRUD 强制改成全量发布。
 
 控制面不主动扫描 OpenAPI URL，也不主动连接 gRPC Reflection、Dubbo Metadata Center 或 Thrift 服务。主动抓取会引入 SSRF、网络可达性、凭证托管、超时重试和生产服务额外负载，不能作为默认控制面职责。部署侧可自行实现采集器，再通过统一 HTTP 上报入口推送。

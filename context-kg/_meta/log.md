@@ -1127,8 +1127,10 @@ sources: 0
 - 变更摘要：
   - 修复接口清单只有静态摘要、无法进入详情的问题，新增可点击和键盘访问的接口详情抽屉。
   - 详情展示协议字段、方法签名、来源、修订、接口定义和全部 metadata；Dubbo 增加 Metadata Center 专属投影。
-  - 统一上报入口可直接识别 Dubbo provider 运维定义和 application revision 快照，保留原始 JSON 并自动抽取接口。
+  - 统一上报入口可直接识别 Dubbo provider/consumer 运维定义和 application revision 快照，保留原始 JSON 并自动抽取接口。
   - Dubbo 原始 metadata 键不丢失，同时生成稳定的 `dubbo.*` 查询键和 Service Key。
+  - 运行时 HTTP client 上报路径明确为 `/v1/ReportServiceContract`；`/naming/v1` 只承载 Console 管理 API。
+  - `develop@6d01a3d4` 构建并更新到本地 Kubernetes；真实 Dubbo 原生样例上报、鼠标/键盘详情交互与 Metadata Center 投影均通过浏览器验证。
 
 ## 相关页面
 

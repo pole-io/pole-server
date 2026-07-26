@@ -12,12 +12,12 @@ import (
 
 func TestClientAccessRegistersServiceContractReportRoute(t *testing.T) {
 	ws := new(restful.WebService)
-	ws.Path("/naming/v1").Consumes(restful.MIME_JSON).Produces(restful.MIME_JSON)
+	ws.Path("/v1").Consumes(restful.MIME_JSON).Produces(restful.MIME_JSON)
 	(&HTTPServer{}).GetClientAccessServer(ws, []string{apiserver.DiscoverAccess})
 
 	found := false
 	for _, route := range ws.Routes() {
-		if route.Method == http.MethodPost && route.Path == "/naming/v1/ReportServiceContract" {
+		if route.Method == http.MethodPost && route.Path == "/v1/ReportServiceContract" {
 			found = true
 			break
 		}
