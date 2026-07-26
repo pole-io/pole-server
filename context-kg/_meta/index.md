@@ -63,6 +63,7 @@ sources: 0
 ### 架构决策（technical/adr/）
 
 - [[adr-governance-rule-unified-storage]] — 治理规则按环境统一存储、发布与授权 | adr, governance, storage, cache, namespace
+- [[adr-service-contract-reporting-and-visualization]] — 四协议服务契约统一上报、发现与可视化 | adr, service-contract, openapi, grpc, dubbo, thrift
 - [[adr-governance-request-parameter-capture]] — 治理请求参数采集与动态限流、路由消费边界 | adr, governance, routing, ratelimit, sdk
 - [[adr-managed-service-identity-authentication]] — 托管身份、短期凭证与 Header 兼容模式 | adr, governance, auth, identity
 - [[adr-a2a-agent-registry]] — A2A Agent Registry 功能设计与分期 | adr, ai, a2a, mcp, registry

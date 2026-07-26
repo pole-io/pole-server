@@ -379,7 +379,11 @@ func CheckInstanceTetrad(req *apiservice.Instance) (string, *apimodel.Response) 
 
 // CheckContractTetrad 根据服务实例四元组计算ID
 func CheckContractTetrad(req *apiservice.ServiceContract) (string, *apimodel.Response) {
-	str := fmt.Sprintf("%s##%s##%s##%s##%s", req.GetNamespace(), req.GetService(), req.GetName(),
+	contractType := req.GetType()
+	if contractType == "" {
+		contractType = req.GetName()
+	}
+	str := fmt.Sprintf("%s##%s##%s##%s##%s", req.GetNamespace(), req.GetService(), contractType,
 		req.GetProtocol(), req.GetVersion())
 
 	h := sha1.New()

@@ -1033,6 +1033,22 @@ func (mr *MockServiceContractCacheMockRecorder) Get(ctx, req interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockServiceContractCache)(nil).Get), ctx, req)
 }
 
+// List mocks base method.
+func (m *MockServiceContractCache) List(ctx context.Context, namespace, serviceName string) []*service.EnrichServiceContract {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List", ctx, namespace, serviceName)
+	ret0, _ := ret[0].([]*service.EnrichServiceContract)
+	return ret0
+}
+
+// List indicates an expected call of List.
+func (mr *MockServiceContractCacheMockRecorder) List(ctx, namespace, serviceName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock, "List", reflect.TypeOf((*MockServiceContractCache)(nil).List), ctx, namespace, serviceName,
+	)
+}
+
 // Initialize mocks base method.
 func (m *MockServiceContractCache) Initialize(c map[string]interface{}) error {
 	m.ctrl.T.Helper()

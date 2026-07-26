@@ -216,7 +216,7 @@ export interface DescribeGovernanceServiceContractsResponse {
 
 export function DescribeGovernanceServiceContracts(params: DescribeGovernanceServiceContractsRequest) {
     return getApiRequest<DescribeGovernanceServiceContractsResponse>({
-        action: `${BaseURL.SERVICE}/contract`,
+        action: BaseURL.SERVICE_CONTRACT,
         data: params,
     })
 }
@@ -239,7 +239,7 @@ export interface DescribeGovernanceServiceContractVersionsResponse {
 /** 查询服务下契约版本列表 */
 export function DescribeGovernanceServiceContractVersions(params: DescribeGovernanceServiceContractVersionsRequest) {
     return getApiRequest<DescribeGovernanceServiceContractVersionsResponse>({
-        action: `${BaseURL.SERVICE}/contract/versions`,
+        action: BaseURL.SERVICE_CONTRACT_VERSION,
         data: params,
     })
 }
@@ -251,6 +251,9 @@ export interface GovernanceServiceContractVersion {
 
     /** 契约名称 */
     name?: string
+
+    /** 契约类型（name 的兼容替代字段） */
+    type?: string
 }
 
 /** 服务契约定义 */
@@ -260,6 +263,9 @@ export interface GovernanceServiceContract {
 
     /** 契约名称 */
     name?: string
+
+    /** 契约类型（OpenAPI/protobuf/dubbo/thrift） */
+    type?: string
 
     /** 所属服务命名空间 */
     namespace?: string
@@ -305,6 +311,9 @@ export interface GovernanceInterfaceDescription {
 
     /** 方法名称 */
     method?: string
+
+    /** 方法签名/接口类型，用于区分 Dubbo 等协议的重载方法 */
+    type?: string
 
     /** 路径/接口名称 */
     path?: string
@@ -355,7 +364,7 @@ export interface DeleteGovernanceServiceContractInterfacesRequest {
 /** 批量删除服务契约接口定义 */
 export function DeleteGovernanceServiceContractInterfaces(params: DeleteGovernanceServiceContractInterfacesRequest) {
     return apiRequest({
-        action: `${BaseURL.SERVICE}/contract/interfaces/delete`,
+        action: `${BaseURL.SERVICE_CONTRACT_METHOD}/delete`,
         data: params,
     })
 }

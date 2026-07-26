@@ -1,9 +1,9 @@
 ---
 title: 服务发现（`pkg/service/`）
 tags: [business, feature, service, healthcheck]
-links: [namespace, architecture, storage, cache-layer, governance-rules, adr-instance-active-healthcheck]
-updated: 2026-07-23
-sources: 3
+links: [namespace, architecture, storage, cache-layer, governance-rules, adr-instance-active-healthcheck, adr-service-contract-reporting-and-visualization]
+updated: 2026-07-26
+sources: 6
 ---
 
 # 服务发现（`pkg/service/`）
@@ -51,6 +51,10 @@ type Server struct {
 
 针对单个服务：当所有实例消失（网络故障）时，可选择保留最后已知的实例集合。防止网络恢复期间的级联故障。
 
+## 服务契约
+
+服务契约支持 HTTP/OpenAPI、gRPC、Dubbo、Thrift 四类协议，采用 SDK gRPC 或 Agent/CI HTTP 推送，统一落库、缓存发现和 Console 展示。具体上报载荷、来源覆盖规则及兼容策略见 [[adr-service-contract-reporting-and-visualization]]。
+
 ## 相关页面
 
 - [[namespace]]
@@ -59,3 +63,4 @@ type Server struct {
 - [[cache-layer]]
 - [[governance-rules]]
 - [[adr-instance-active-healthcheck]]
+- [[adr-service-contract-reporting-and-visualization]]

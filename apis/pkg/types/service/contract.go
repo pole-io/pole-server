@@ -19,6 +19,7 @@ package service
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
@@ -59,6 +60,8 @@ type ServiceContract struct {
 type EnrichServiceContract struct {
 	*ServiceContract
 	isFormated bool
+	// InterfaceSource 标识本次全量替换的接口来源，避免 SDK 上报覆盖人工维护的数据。
+	InterfaceSource apiservice.InterfaceDescriptor_Source
 	// 接口描述信息
 	Interfaces       []*InterfaceDescriptor
 	ClientInterfaces map[string]*InterfaceDescriptor
@@ -85,11 +88,12 @@ func (e *EnrichServiceContract) Format() {
 	copyInterfaces := e.Interfaces
 	for i := range copyInterfaces {
 		item := copyInterfaces[i]
+		key := item.Path + "/" + item.Method + "/" + item.Type
 		switch item.Source {
 		case apiservice.InterfaceDescriptor_Client:
-			e.ClientInterfaces[item.Path+"/"+item.Method] = item
+			e.ClientInterfaces[key] = item
 		case apiservice.InterfaceDescriptor_Manual:
-			e.ManualInterfaces[item.Path+"/"+item.Method] = item
+			e.ManualInterfaces[key] = item
 		}
 	}
 
@@ -103,6 +107,15 @@ func (e *EnrichServiceContract) Format() {
 		}
 		e.Interfaces = append(e.Interfaces, e.ClientInterfaces[k])
 	}
+	sort.Slice(e.Interfaces, func(i, j int) bool {
+		if e.Interfaces[i].Path != e.Interfaces[j].Path {
+			return e.Interfaces[i].Path < e.Interfaces[j].Path
+		}
+		if e.Interfaces[i].Method != e.Interfaces[j].Method {
+			return e.Interfaces[i].Method < e.Interfaces[j].Method
+		}
+		return e.Interfaces[i].Type < e.Interfaces[j].Type
+	})
 }
 
 func (e *EnrichServiceContract) ToSpec() *apiservice.ServiceContract {
@@ -110,31 +123,34 @@ func (e *EnrichServiceContract) ToSpec() *apiservice.ServiceContract {
 	for i := range e.Interfaces {
 		item := e.Interfaces[i]
 		interfaces = append(interfaces, &apiservice.InterfaceDescriptor{
-			Id:       item.ID,
-			Path:     item.Path,
-			Name:     item.Type,
-			Type:     item.Type,
-			Method:   item.Method,
-			Source:   item.Source,
-			Content:  item.Content,
-			Revision: item.Revision,
-			Ctime:    commontime.Time2String(item.CreateTime),
-			Mtime:    commontime.Time2String(item.ModifyTime),
+			Id:            item.ID,
+			Path:          item.Path,
+			Name:          item.Type,
+			Type:          item.Type,
+			Method:        item.Method,
+			Source:        item.Source,
+			Content:       item.Content,
+			ContentDigest: item.ContentDigest,
+			Revision:      item.Revision,
+			Ctime:         commontime.Time2String(item.CreateTime),
+			Mtime:         commontime.Time2String(item.ModifyTime),
 		})
 	}
 	return &apiservice.ServiceContract{
-		Id:         e.ID,
-		Name:       e.Type,
-		Type:       e.Type,
-		Namespace:  e.Namespace,
-		Service:    e.Service,
-		Protocol:   e.Protocol,
-		Version:    e.Version,
-		Revision:   e.Revision,
-		Content:    e.Content,
-		Ctime:      commontime.Time2String(e.CreateTime),
-		Mtime:      commontime.Time2String(e.ModifyTime),
-		Interfaces: interfaces,
+		Id:            e.ID,
+		Name:          e.Type,
+		Type:          e.Type,
+		Namespace:     e.Namespace,
+		Service:       e.Service,
+		Protocol:      e.Protocol,
+		Version:       e.Version,
+		Revision:      e.Revision,
+		Content:       e.Content,
+		ContentDigest: e.ContentDigest,
+		Metadata:      e.Metadata,
+		Ctime:         commontime.Time2String(e.CreateTime),
+		Mtime:         commontime.Time2String(e.ModifyTime),
+		Interfaces:    interfaces,
 	}
 }
 

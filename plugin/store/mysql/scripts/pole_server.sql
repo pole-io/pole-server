@@ -682,7 +682,7 @@ CREATE TABLE
     `type`      VARCHAR(128) NOT NULL COMMENT '类型',
     `method`      VARCHAR(32)  NOT NULL COMMENT 'http协议中的 method 字段, eg:POST/GET/PUT/DELETE, 其他 gRPC 可以用来标识 stream 类型',
     `path`        VARCHAR(128) NOT NULL COMMENT '接口具体全路径描述',
-    `source`      INT COMMENT '该条记录来源, 0:SDK/1:MANUAL',
+    `source`      INT COMMENT '该条记录来源, 0:历史SDK/1:MANUAL/2:CLIENT',
     `content`     LONGTEXT COMMENT '描述信息',
     `revision`    VARCHAR(128) NOT NULL COMMENT '当前接口定义的全部内容版本摘要',
     `flag`        TINYINT(4)            DEFAULT 0 COMMENT '逻辑删除标志位, 0 位有效, 1 为逻辑删除',

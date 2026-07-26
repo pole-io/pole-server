@@ -111,6 +111,8 @@ type ClientServer interface {
 	ServiceInstancesCache(ctx context.Context, filter *apiservice.DiscoverFilter, req *apiservice.Service) *apiservice.DiscoverResponse
 	// GetServiceContractWithCache User Client Get ServiceContract Rule Information
 	GetServiceContractWithCache(ctx context.Context, req *apiservice.ServiceContract) *apimodel.Response
+	// DiscoverServiceContracts returns every contract version for one logical service.
+	DiscoverServiceContracts(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse
 	// UpdateInstance update one instance by client
 	UpdateInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response
 	// ReportServiceContract client report service_contract

@@ -1,6 +1,9 @@
 export enum BaseURL {
     NAMESPACE = '/core/v1/namespaces',
     SERVICE = '/naming/v1/services',
+    SERVICE_CONTRACT = '/naming/v1/service/contracts',
+    SERVICE_CONTRACT_VERSION = '/naming/v1/service/contract/versions',
+    SERVICE_CONTRACT_METHOD = '/naming/v1/service/contract/methods',
     SERVICE_SUBSCRIBER = '/naming/v1/service/subscribers',
     ALIAS = '/naming/v1/service/aliases',
     INSTANCE = '/naming/v1/instances',

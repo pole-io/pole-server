@@ -41,6 +41,13 @@ func EnrichReportClientApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {
 		}{})
 }
 
+func EnrichReportServiceContractApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {
+	return r.Doc("上报服务契约").
+		Metadata(restfulspec.KeyOpenAPITags, registerInstanceApiTags).
+		Reads(apiservice.ServiceContract{}).
+		Returns(0, "", BaseResponse{})
+}
+
 func EnrichRegisterInstanceApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {
 	return r.Doc("注册实例").
 		Metadata(restfulspec.KeyOpenAPITags, registerInstanceApiTags).
@@ -84,6 +91,6 @@ func EnrichDiscoverApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {
 	return r.Doc("服务发现").
 		Metadata(restfulspec.KeyOpenAPITags, registerInstanceApiTags).
 		Reads(DiscoverRequest{},
-			"Type 支持 [UNKNOWN/INSTANCE/ROUTING/RATE_LIMIT/CIRCUIT_BREAKER/SERVICES/NAMESPACES/FAULT_DETECTOR]").
+			"Type 支持 [UNKNOWN/INSTANCE/ROUTING/RATE_LIMIT/CIRCUIT_BREAKER/SERVICES/SERVICE_CONTRACTS/NAMESPACES/FAULT_DETECTOR]").
 		Returns(0, "", service_manage.DiscoverResponse{})
 }

@@ -1055,6 +1055,16 @@ sources: 0
   - System Settings 保存管理员 desired revision 后自动探测和应用健康 Prompt/模型/工具策略，失败时保留 rejected 草稿和 last-known-good。
   - Registry 写入使用稳定 ID、revision、软删除复活和子项 upsert，重复 reconcile 保持幂等；配置主体与系统执行主体分别审计。
 
+## [2026-07-26] feat | 四协议服务契约上报与可视化闭环
+
+- 新增页面：adr-service-contract-reporting-and-visualization。
+- 更新页面：service-discovery、api-servers、storage、cache-layer、todo、index。
+- 变更摘要：
+  - 统一 HTTP/OpenAPI、gRPC、Dubbo、Thrift 的 SDK gRPC 与 Agent/CI HTTP 推送模型。
+  - OpenAPI 3.x 由服务端抽取接口，其余 RPC 协议由构建侧提交结构化接口；不让控制面主动扫描生产服务。
+  - Client 与 Manual 按来源独立全量替换，修复缓存 miss、软删除回流、字段兼容和统一 Discover 分发。
+  - 服务详情增加“服务契约”页签，展示四协议版本、接口来源和原始契约。
+
 ## 相关页面
 
 - [[index]]

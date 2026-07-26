@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 import InstanceTable from './InstanceTable';
 import ServiceDetail from './ServiceDetail';
+import ServiceContractPanel from './ServiceContractPanel';
 import SubscribeTable from './SubscribeTable';
 import ServiceAliasTable from '../alias';
 import style from './index.module.less';
@@ -69,8 +70,16 @@ export default React.memo(() => {
                         />
                     )}
                 </TabPanel>
-                <TabPanel value={"4"} label="流量治理">
+                <TabPanel value={"4"} label="服务契约">
                     {activeTab === '4' && (
+                        <ServiceContractPanel
+                            namespace={namespace || ''}
+                            serviceName={serviceName || ''}
+                        />
+                    )}
+                </TabPanel>
+                <TabPanel value={"5"} label="流量治理">
+                    {activeTab === '5' && (
                         <React.Suspense fallback={<Loading text="加载流量治理中..." />}>
                             <section
                                 className={style.serviceGovernance}

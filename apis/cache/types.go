@@ -310,6 +310,8 @@ type (
 		Cache
 		// Get .
 		Get(ctx context.Context, req *svctypes.ServiceContract) *svctypes.EnrichServiceContract
+		// List returns every cached contract version for one logical service.
+		List(ctx context.Context, namespace, service string) []*svctypes.EnrichServiceContract
 	}
 )
 

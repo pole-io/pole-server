@@ -70,6 +70,9 @@ func (svr *Server) ReportClient(ctx context.Context, req *apiservice.Client) *ap
 
 // ReportServiceContract .
 func (svr *Server) ReportServiceContract(ctx context.Context, req *apiservice.ServiceContract) *apimodel.Response {
+	if req == nil {
+		return api.NewResponse(apimodel.Code_EmptyRequest)
+	}
 	authCtx := svr.collectServiceAuthContext(
 		ctx, []*apiservice.Service{{
 			Name:      string(req.GetService()),
@@ -161,4 +164,21 @@ func (svr *Server) GetServiceContractWithCache(ctx context.Context,
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
 
 	return svr.nextSvr.GetServiceContractWithCache(ctx, req)
+}
+
+func (svr *Server) DiscoverServiceContracts(
+	ctx context.Context, req *apiservice.Service,
+) *apiservice.DiscoverResponse {
+	authCtx := svr.collectServiceAuthContext(
+		ctx, []*apiservice.Service{req}, authtypes.Read, authtypes.DiscoverServiceContract,
+	)
+	if _, err := svr.policySvr.GetAuthChecker().CheckClientPermission(authCtx); err != nil {
+		resp := api.NewDiscoverResponse(authtypes.ConvertToErrCode(err))
+		resp.Type = apiservice.DiscoverResponse_SERVICE_CONTRACTS
+		resp.Service = req
+		return resp
+	}
+	ctx = authCtx.GetRequestContext()
+	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
+	return svr.nextSvr.DiscoverServiceContracts(ctx, req)
 }

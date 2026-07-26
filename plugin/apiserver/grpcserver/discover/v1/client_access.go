@@ -174,6 +174,9 @@ func (g *DiscoverGRPCServer) handleDiscoverRequest(ctx context.Context, in *apis
 	case apiservice.DiscoverRequest_SERVICES:
 		action = metrics.ActionDiscoverServices
 		out = g.namingServer.GetServiceWithCache(ctx, in.Service)
+	case apiservice.DiscoverRequest_SERVICE_CONTRACTS:
+		action = metrics.ActionDiscoverServiceContract
+		out = g.namingServer.DiscoverServiceContracts(ctx, in.Service)
 	case apiservice.DiscoverRequest_SERVICE_IDENTITY:
 		action = metrics.ActionDiscoverServiceIdentity
 		out = g.namingServer.GetServiceIdentity(ctx, in.Service)

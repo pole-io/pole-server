@@ -95,14 +95,39 @@ func (svr *Server) DeleteServiceContractInterfaces(ctx context.Context,
 }
 
 func checkBaseServiceContract(req *apiservice.ServiceContract) *apimodel.Response {
+	if req == nil {
+		return api.NewResponse(apimodel.Code_EmptyRequest)
+	}
 	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}
-	if req.GetName() == "" {
-		return api.NewResponseWithMsg(apimodel.Code_BadRequest, "invalid service_contract name")
+	if req.GetType() == "" && req.GetName() == "" {
+		return api.NewResponseWithMsg(apimodel.Code_BadRequest, "invalid service_contract type")
 	}
 	if req.GetProtocol() == "" {
 		return api.NewResponseWithMsg(apimodel.Code_BadRequest, "invalid service_contract protocol")
+	}
+	return nil
+}
+
+func checkPublishServiceContract(req *apiservice.ServiceContract) *apimodel.Response {
+	if req == nil {
+		return api.NewResponse(apimodel.Code_EmptyRequest)
+	}
+	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
+		return api.NewResponse(apimodel.Code_InvalidParameter)
+	}
+	if err := valid.CheckResourceName(req.GetService()); err != nil {
+		return api.NewResponseWithMsg(apimodel.Code_InvalidParameter, "invalid service_contract service")
+	}
+	if req.GetProtocol() == "" {
+		return api.NewResponseWithMsg(apimodel.Code_BadRequest, "invalid service_contract protocol")
+	}
+	if req.GetVersion() == "" {
+		return api.NewResponseWithMsg(apimodel.Code_BadRequest, "invalid service_contract version")
+	}
+	if req.GetContent() == "" {
+		return api.NewResponseWithMsg(apimodel.Code_BadRequest, "invalid service_contract content")
 	}
 	return nil
 }

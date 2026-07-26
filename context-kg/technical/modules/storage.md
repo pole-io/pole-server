@@ -1,9 +1,9 @@
 ---
 title: 存储层
 tags: [storage, mysql, database]
-links: [architecture, cache-layer, index]
-updated: 2026-06-08
-sources: 1
+links: [architecture, cache-layer, index, adr-service-contract-reporting-and-visualization]
+updated: 2026-07-26
+sources: 2
 ---
 
 # 存储层
@@ -104,3 +104,4 @@ store:
 - [[architecture]]
 - [[cache-layer]]
 - [[index]]
+- [[adr-service-contract-reporting-and-visualization]]

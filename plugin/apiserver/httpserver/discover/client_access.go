@@ -35,8 +35,24 @@ import (
 // addDiscoverAccess 增加服务发现接口
 func (h *HTTPServer) addDiscoverAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichReportClientApiDocs(ws.POST("/ReportClient").To(h.ReportClient)))
+	ws.Route(docs.EnrichReportServiceContractApiDocs(ws.POST("/ReportServiceContract").To(h.ReportServiceContract)))
 	ws.Route(docs.EnrichDiscoverApiDocs(ws.POST("/Discover").To(h.Discover)))
 	ws.Route(docs.EnrichGetServiceSubscribersApiDocs(ws.GET("/subscribers").To(h.GetServiceSubscribers)))
+}
+
+// ReportServiceContract 上报服务契约及接口定义。
+func (h *HTTPServer) ReportServiceContract(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{
+		Request:  req,
+		Response: rsp,
+	}
+	contract := &apiservice.ServiceContract{}
+	ctx, err := handler.Parse(contract)
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_ParseException, err.Error()))
+		return
+	}
+	handler.WriteHeaderAndProto(h.namingServer.ReportServiceContract(ctx, contract))
 }
 
 // addRegisterAccess 增加注册/反注册接口
@@ -146,6 +162,9 @@ func (h *HTTPServer) Discover(req *restful.Request, rsp *restful.Response) {
 	case apiservice.DiscoverRequest_SERVICES:
 		action = metrics.ActionDiscoverServices
 		ret = h.namingServer.GetServiceWithCache(ctx, discoverRequest.Service)
+	case apiservice.DiscoverRequest_SERVICE_CONTRACTS:
+		action = metrics.ActionDiscoverServiceContract
+		ret = h.namingServer.DiscoverServiceContracts(ctx, discoverRequest.Service)
 	case apiservice.DiscoverRequest_FAULT_DETECTOR:
 		action = metrics.ActionDiscoverFaultDetect
 		ret = h.ruleServer.GetFaultDetectWithCache(ctx, discoverRequest.Service)

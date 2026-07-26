@@ -1,9 +1,9 @@
 ---
 title: 缓存层
 tags: [cache, performance]
-links: [storage, architecture, ai-features, adr-local-pebble-protobuf-value-cache]
-updated: 2026-07-19
-sources: 1
+links: [storage, architecture, ai-features, adr-local-pebble-protobuf-value-cache, adr-service-contract-reporting-and-visualization]
+updated: 2026-07-26
+sources: 2
 ---
 
 # 缓存层
@@ -136,3 +136,4 @@ cacheMgr.OpenResourceCache(
 - [[architecture]]
 - [[ai-features]]
 - [[adr-local-pebble-protobuf-value-cache]]
+- [[adr-service-contract-reporting-and-visualization]]

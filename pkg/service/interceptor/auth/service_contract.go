@@ -19,9 +19,12 @@ package service_auth
 
 import (
 	"context"
-	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+	apisecurity "github.com/pole-io/specification/source/go/api/v1/security"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authcommon "github.com/pole-io/pole-server/apis/pkg/types/auth"
@@ -52,28 +55,80 @@ func (svr *Server) CreateServiceContracts(ctx context.Context,
 // GetServiceContracts .
 func (svr *Server) GetServiceContracts(ctx context.Context,
 	query map[string]string) *apimodel.BatchQueryResponse {
-	authCtx := svr.collectServiceAuthContext(ctx, nil, authcommon.Read, authcommon.DescribeServiceContracts)
+	services := contractQueryServices(query)
+	authCtx := svr.collectServiceAuthContext(ctx, services, authcommon.Read, authcommon.DescribeServiceContracts)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchQueryResponse(authcommon.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.GetServiceContracts(ctx, query)
+	return svr.filterServiceContractsByPermission(svr.nextSvr.GetServiceContracts(ctx, query), authCtx)
 }
 
 // GetServiceContractVersions .
 func (svr *Server) GetServiceContractVersions(ctx context.Context,
 	filter map[string]string) *apimodel.BatchQueryResponse {
 
-	authCtx := svr.collectServiceAuthContext(ctx, nil, authcommon.Read, authcommon.DescribeServiceContractVersions)
+	authCtx := svr.collectServiceAuthContext(ctx, contractQueryServices(filter), authcommon.Read,
+		authcommon.DescribeServiceContractVersions)
 	if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
 		return api.NewBatchQueryResponse(authcommon.ConvertToErrCode(err))
 	}
 
 	ctx = authCtx.GetRequestContext()
 	ctx = context.WithValue(ctx, types.ContextAuthContextKey, authCtx)
-	return svr.nextSvr.GetServiceContractVersions(ctx, filter)
+	return svr.filterServiceContractsByPermission(svr.nextSvr.GetServiceContractVersions(ctx, filter), authCtx)
+}
+
+func (svr *Server) filterServiceContractsByPermission(
+	resp *apimodel.BatchQueryResponse, authCtx *authcommon.AcquireContext,
+) *apimodel.BatchQueryResponse {
+	if resp == nil || resp.Code != uint32(apimodel.Code_ExecuteSuccess) || len(resp.Data) == 0 {
+		return resp
+	}
+	filtered := make([]*anypb.Any, 0, len(resp.Data))
+	for _, data := range resp.Data {
+		contract := &apiservice.ServiceContract{}
+		if data == nil || anypb.UnmarshalTo(data, contract, proto.UnmarshalOptions{}) != nil {
+			continue
+		}
+
+		allowed := false
+		if svc := svr.Cache().Service().GetServiceByName(contract.GetService(), contract.GetNamespace()); svc != nil {
+			allowed = svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
+				Type:     apisecurity.ResourceType_Services,
+				ID:       svc.ID,
+				Metadata: svc.Meta,
+			})
+		}
+		if !allowed {
+			if ns := svr.Cache().Namespace().GetNamespace(contract.GetNamespace()); ns != nil {
+				allowed = svr.policySvr.GetAuthChecker().ResourcePredicate(authCtx, &authcommon.ResourceEntry{
+					Type:     apisecurity.ResourceType_Namespaces,
+					ID:       ns.Name,
+					Metadata: ns.Metadata,
+				})
+			}
+		}
+		if allowed {
+			filtered = append(filtered, data)
+		}
+	}
+	resp.Data = filtered
+	resp.Size = uint32(len(filtered))
+	resp.Amount = uint32(len(filtered))
+	return resp
+}
+
+func contractQueryServices(query map[string]string) []*apiservice.Service {
+	if query["namespace"] == "" || query["service"] == "" {
+		return nil
+	}
+	return []*apiservice.Service{{
+		Namespace: query["namespace"],
+		Name:      query["service"],
+	}}
 }
 
 // DeleteServiceContracts .

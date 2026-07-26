@@ -266,19 +266,24 @@ func CheckContractInterfaceTetrad(contractId string, source apiservice.Interface
 	if contractId == "" {
 		return "", api.NewResponseWithMsg(apimodel.Code_BadRequest, "invalid service_contract id")
 	}
-	if req.GetId() != "" {
-		return req.GetId(), nil
-	}
 	if req.GetPath() == "" {
 		return "", api.NewResponseWithMsg(apimodel.Code_BadRequest, "invalid service_contract interface path")
 	}
 	h := sha1.New()
-	str := fmt.Sprintf("%s##%s##%s##%s##%d", contractId, req.GetMethod(), req.GetPath(), req.GetName(), source)
+	interfaceType := req.GetType()
+	if interfaceType == "" {
+		interfaceType = req.GetName()
+	}
+	str := fmt.Sprintf("%s##%s##%s##%s##%d", contractId, req.GetMethod(), req.GetPath(), interfaceType, source)
 
 	if _, err := io.WriteString(h, str); err != nil {
 		return "", api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
 	}
 	out := hex.EncodeToString(h.Sum(nil))
+	if req.GetId() != "" && req.GetId() != out {
+		return "", api.NewResponseWithMsg(apimodel.Code_BadRequest,
+			"service_contract interface id does not match its identity")
+	}
 	return out, nil
 }
 

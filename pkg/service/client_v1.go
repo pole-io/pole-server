@@ -19,6 +19,9 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -48,23 +51,7 @@ func (s *Server) DeregisterInstance(ctx context.Context, req *apiservice.Instanc
 
 // ReportServiceContract report client service interface info
 func (s *Server) ReportServiceContract(ctx context.Context, req *apiservice.ServiceContract) *apimodel.Response {
-	cacheData := s.caches.ServiceContract().Get(ctx, &svctypes.ServiceContract{
-		Namespace: req.GetNamespace(),
-		Service:   req.GetService(),
-		Type:      req.GetName(),
-		Version:   req.GetVersion(),
-		Protocol:  req.GetProtocol(),
-	})
-	// 通过 Cache 模块减少无意义的 CreateServiceContract 逻辑
-	if cacheData == nil || cacheData.Content != req.GetContent() {
-		rsp := s.CreateServiceContract(ctx, req)
-		if !isSuccessReportContract(rsp) {
-			return rsp
-		}
-	}
-
-	rsp := s.CreateServiceContractInterfaces(ctx, req, apiservice.InterfaceDescriptor_Client)
-	return rsp
+	return s.publishServiceContract(ctx, req, apiservice.InterfaceDescriptor_Client)
 }
 
 func isSuccessReportContract(rsp *apimodel.Response) bool {
@@ -333,7 +320,7 @@ func (s *Server) GetServiceContractWithCache(ctx context.Context,
 		Namespace: aliasFor.Namespace,
 		Service:   aliasFor.Name,
 		Version:   req.Version,
-		Type:      req.Name,
+		Type:      utils.DefaultString(req.GetType(), req.GetName()),
 		Protocol:  req.Protocol,
 	})
 	if out == nil {
@@ -352,6 +339,39 @@ func (s *Server) GetServiceContractWithCache(ctx context.Context,
 
 	rspSvc.Revision = out.Revision
 	resp.Data = protobuf.MarshalAny(out.ToSpec())
+	return resp
+}
+
+// DiscoverServiceContracts returns the normalized contract snapshots for one service.
+func (s *Server) DiscoverServiceContracts(
+	ctx context.Context, req *apiservice.Service,
+) *apiservice.DiscoverResponse {
+	resp := api.NewDiscoverResponse(apimodel.Code_ExecuteSuccess)
+	resp.Type = apiservice.DiscoverResponse_SERVICE_CONTRACTS
+	resp.Service = &apiservice.Service{Name: req.GetName(), Namespace: req.GetNamespace()}
+
+	contracts := s.caches.ServiceContract().List(ctx, req.GetNamespace(), req.GetName())
+	if len(contracts) == 0 {
+		resp.Code = uint32(apimodel.Code_NotFoundResource)
+		resp.Info = api.Code2Info(resp.Code)
+		return resp
+	}
+
+	revisionInput := strings.Builder{}
+	for _, contract := range contracts {
+		revisionInput.WriteString(contract.GetCacheKey())
+		revisionInput.WriteByte(0)
+		revisionInput.WriteString(contract.Revision)
+		revisionInput.WriteByte(0)
+		resp.ServiceContracts = append(resp.ServiceContracts, contract.ToSpec())
+	}
+	digest := sha256.Sum256([]byte(revisionInput.String()))
+	resp.Service.Revision = hex.EncodeToString(digest[:])
+	if req.GetRevision() == resp.Service.Revision {
+		resp.Code = uint32(apimodel.Code_DataNoChange)
+		resp.Info = api.Code2Info(resp.Code)
+		resp.ServiceContracts = nil
+	}
 	return resp
 }
 

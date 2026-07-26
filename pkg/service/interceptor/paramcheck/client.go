@@ -114,6 +114,19 @@ func (s *Server) GetServiceContractWithCache(ctx context.Context, req *apiservic
 	return s.nextSvr.GetServiceContractWithCache(ctx, req)
 }
 
+func (s *Server) DiscoverServiceContracts(
+	ctx context.Context, req *apiservice.Service,
+) *apiservice.DiscoverResponse {
+	resp := service.CreateCommonDiscoverResponse(req, apiservice.DiscoverResponse_SERVICE_CONTRACTS)
+	if req != nil && req.GetNamespace() == "" {
+		req.Namespace = service.DefaultNamespace
+	}
+	if !s.commonCheckDiscoverRequest(req, resp) {
+		return resp
+	}
+	return s.nextSvr.DiscoverServiceContracts(ctx, req)
+}
+
 // UpdateInstance update one instance by client
 func (s *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance) *apimodel.Response {
 	// 参数检查
@@ -130,6 +143,9 @@ func (s *Server) UpdateInstance(ctx context.Context, req *apiservice.Instance) *
 
 // ReportServiceContract client report service_contract
 func (s *Server) ReportServiceContract(ctx context.Context, req *apiservice.ServiceContract) *apimodel.Response {
+	if rsp := checkPublishServiceContract(req); rsp != nil {
+		return rsp
+	}
 	return s.nextSvr.ReportServiceContract(ctx, req)
 }
 
@@ -150,14 +166,14 @@ func (s *Server) commonCheckDiscoverRequest(req *apiservice.Service, resp *apise
 
 	// 注释：服务名检查改动 - GetName()返回string而非*wrapperspb.StringValue
 	if req.GetName() == "" {
-		// resp.Code = uint32(apimodel.Code_InvalidServiceName)
+		resp.Code = uint32(apimodel.Code_InvalidParameter)
 		resp.Info = api.Code2Info(resp.GetCode())
 		resp.Service = req
 		return false
 	}
 	// 注释：命名空间检查改动 - GetNamespace()返回string而非*wrapperspb.StringValue
 	if req.GetNamespace() == "" {
-		// resp.Code = uint32(apimodel.Code_InvalidNamespaceName)
+		resp.Code = uint32(apimodel.Code_InvalidParameter)
 		resp.Info = api.Code2Info(resp.GetCode())
 		resp.Service = req
 		return false
@@ -183,7 +199,7 @@ func (s *Server) serviceContractCheckDiscoverRequest(req *apiservice.ServiceCont
 		return false
 	}
 
-	if req.GetName() == "" {
+	if req.GetType() == "" && req.GetName() == "" {
 		resp.Code = uint32(apimodel.Code_InvalidParameter)
 		resp.Info = api.Code2Info(resp.GetCode())
 		return false

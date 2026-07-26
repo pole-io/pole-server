@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"go.uber.org/zap"
@@ -118,10 +119,27 @@ func (sc *ServiceContractCache) setContracts(values []*svctypes.EnrichServiceCon
 		item := values[i]
 		if !item.Valid {
 			del++
+			sc.data.Delete(item.GetCacheKey())
 			_ = sc.upsertValueCache(item, true)
 			continue
 		}
 		upsert++
+		sc.data.Store(item.GetCacheKey(), &svctypes.EnrichServiceContract{
+			ServiceContract: &svctypes.ServiceContract{
+				ID:            item.ID,
+				Namespace:     item.Namespace,
+				Service:       item.Service,
+				Type:          item.Type,
+				Protocol:      item.Protocol,
+				Version:       item.Version,
+				Revision:      item.Revision,
+				ContentDigest: item.ContentDigest,
+				Metadata:      item.Metadata,
+				CreateTime:    item.CreateTime,
+				ModifyTime:    item.ModifyTime,
+				Valid:         true,
+			},
+		})
 		_ = sc.upsertValueCache(item, false)
 	}
 	return map[string]time.Time{
@@ -148,7 +166,35 @@ func (sc *ServiceContractCache) Name() string {
 }
 
 func (sc *ServiceContractCache) Get(ctx context.Context, req *svctypes.ServiceContract) *svctypes.EnrichServiceContract {
-	ret, _ := sc.loadValueCache(req)
+	ret, err := sc.loadValueCache(req)
+	if err != nil {
+		log.Error("[Cache][ServiceContract] load cached contract", zap.Error(err))
+		return nil
+	}
+	return ret
+}
+
+func (sc *ServiceContractCache) List(
+	ctx context.Context, namespace, service string,
+) []*svctypes.EnrichServiceContract {
+	ret := make([]*svctypes.EnrichServiceContract, 0)
+	sc.data.Range(func(_ string, item *svctypes.EnrichServiceContract) {
+		if item.Namespace != namespace || item.Service != service {
+			return
+		}
+		if contract := sc.Get(ctx, item.ServiceContract); contract != nil {
+			ret = append(ret, contract)
+		}
+	})
+	sort.Slice(ret, func(i, j int) bool {
+		if ret[i].Protocol != ret[j].Protocol {
+			return ret[i].Protocol < ret[j].Protocol
+		}
+		if ret[i].Type != ret[j].Type {
+			return ret[i].Type < ret[j].Type
+		}
+		return ret[i].Version < ret[j].Version
+	})
 	return ret
 }
 
@@ -167,8 +213,7 @@ func (sc *ServiceContractCache) loadValueCache(release *svctypes.ServiceContract
 		return ret, err
 	}
 	if !found {
-		ret.ServiceContract = &svctypes.ServiceContract{}
-		return ret, nil
+		return nil, nil
 	}
 	return ret, json.Unmarshal(val, ret)
 }

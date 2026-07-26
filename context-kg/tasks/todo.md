@@ -10448,3 +10448,26 @@ Review：
 - Agent Prompt、模型与工具策略保存后自动构建候选、探测模型/MCP，并由 `pole-self-manager` 发布；失败草稿保留为 rejected，当前运行时继续使用上一健康版本。内建安全 Prompt 和 Secret 不向模型开放。
 - MySQL MCP tool、A2A interface/skill 使用稳定子项 ID 与 upsert；聚合根 Update 显式恢复 `flag=0`，保证手工软删除后的下一轮可复活。
 - 验证：全量 `go test ./... -count=1`、`go test -race ./pkg/selfmanager`、`go vet ./pkg/selfmanager`、前端目标 ESLint、管理员门禁契约、`npm run build:test`、context-kg lint 与 `git diff --check` 全部通过。
+
+## 四协议服务契约完整闭环（2026-07-26）
+
+目标：支持 HTTP/OpenAPI、Dubbo、gRPC、Thrift 四类服务契约统一上报、存储、发现和 Console 可视化，并修复现有契约链路的正确性与权限缺口。
+
+- [x] 比较上报与协议适配模块的候选接口，确定深模块 seam 和兼容策略。
+- [x] 以 RED 测试固化缓存 miss、首次上报主从延迟、软删除、Manual/Client 合并和字段兼容语义。
+- [x] 实现 gRPC SDK 主上报、HTTP 单对象上报与 OpenAPI 接口提取。
+- [x] 修通客户端契约查询、管理端列表/版本、权限过滤和真实 HTTP 路由。
+- [x] 在服务详情增加服务契约 Tab，完成四协议列表、版本、接口与原始内容可视化。
+- [x] 补齐前后端专项测试、集成验证和构建验证。
+- [x] 将上报契约、协议映射和兼容决策归档到 `context-kg`，同步 index/log。
+- [x] 完成双轴代码审查、修复遗留问题并显式提交本次改动。
+
+### Review
+
+- 上报采用 caller push：SDK 走 gRPC `ReportServiceContract`，Agent/CI 走 HTTP `POST /naming/v1/ReportServiceContract`；控制面不主动扫描生产服务。
+- HTTP 始终校验并解析 OpenAPI 3.x；gRPC、Dubbo、Thrift 要求原始契约和结构化接口。接口签名进入 ID 与覆盖键，Dubbo 重载不会丢失且重复上报幂等。
+- 契约和接口 ID 均由自然键确定并校验，管理端查询逐契约执行资源权限过滤；Client/Manual 分源替换，兼容历史 `source=0` SDK 数据。
+- 服务详情新增“服务契约”页签，支持四协议能力概览、全量分页、版本/契约切换、接口来源和原始内容展示。
+- 通过服务契约目标 Go 测试、MySQL sqlmock、HTTP/gRPC 路由测试、Console 专项脚本、目标 ESLint、`npm run build:test`、context-kg lint 和 `git diff --check`。
+- 双轴复审最初发现 ID 越权、主从延迟、旧 CRUD 兼容、权限泄露、OpenAPI 绕过、Dubbo 重载和幂等问题；全部修复后 Standards 与 Spec 复审均确认无阻塞/高风险项。
+- `go test ./...` 与 `make build` 被任务范围外的未提交 xDS 改动阻断：`plugin/apiserver/xdsserverv3/cache/node_resources_test.go` 使用错误 BoolValue 类型，`plugin/apiserver/xdsserverv3/generate.go` 缺少 `fmt` import；本任务目标包和 Console 构建均通过。

@@ -36,6 +36,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	commontime "github.com/pole-io/pole-server/pkg/common/utils/time"
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
+	"github.com/pole-io/pole-server/pkg/service/contractnormalize"
 )
 
 var (
@@ -82,17 +83,39 @@ func (s *Server) CreateServiceContracts(ctx context.Context,
 	return api.FormatBatchWriteResponse(responses)
 }
 
+// publishServiceContract 归一化并顺序执行“契约主体 + 同来源接口全量替换”的统一上报流程。
+func (s *Server) publishServiceContract(ctx context.Context, contract *apiservice.ServiceContract,
+	source apiservice.InterfaceDescriptor_Source) *apimodel.Response {
+
+	normalized, err := contractnormalize.Normalize(contract)
+	if err != nil {
+		return api.NewResponseWithMsg(apimodel.Code_BadRequest, err.Error())
+	}
+	id, errRsp := valid.CheckContractTetrad(normalized)
+	if errRsp != nil {
+		return errRsp
+	}
+	if normalized.GetId() != "" && normalized.GetId() != id {
+		return api.NewResponseWithMsg(apimodel.Code_BadRequest, "service_contract id does not match its identity")
+	}
+	normalized.Id = id
+
+	if rsp := s.CreateServiceContract(ctx, normalized); !isSuccessReportContract(rsp) {
+		return rsp
+	}
+	return s.createServiceContractInterfaces(ctx, normalized, source, true)
+}
+
 func (s *Server) CreateServiceContract(ctx context.Context, contract *apiservice.ServiceContract) *apimodel.Response {
 	if errRsp := checkBaseServiceContract(contract); errRsp != nil {
 		return errRsp
 	}
-	contractId := contract.GetId()
-	if contractId == "" {
-		tmpId, errRsp := valid.CheckContractTetrad(contract)
-		if errRsp != nil {
-			return errRsp
-		}
-		contractId = tmpId
+	contractId, errRsp := valid.CheckContractTetrad(contract)
+	if errRsp != nil {
+		return errRsp
+	}
+	if contract.GetId() != "" && contract.GetId() != contractId {
+		return api.NewResponseWithMsg(apimodel.Code_BadRequest, "service_contract id does not match its identity")
 	}
 
 	existContract, err := s.storage.GetServiceContract(contractId)
@@ -301,6 +324,10 @@ func (s *Server) DeleteServiceContract(ctx context.Context,
 	if saveData == nil {
 		return api.NewServiceContractResponse(apimodel.Code_ExecuteSuccess, nil)
 	}
+	if !matchesStoredContractIdentity(saveData, contract) {
+		return api.NewResponseWithMsg(apimodel.Code_BadRequest,
+			"service_contract id does not match the stored contract identity")
+	}
 
 	deleteData := &svctypes.ServiceContract{
 		ID:        contract.Id,
@@ -364,6 +391,12 @@ func (s *Server) GetServiceContractVersions(ctx context.Context, filter map[stri
 // CreateServiceContractInterfaces 添加服务契约详情
 func (s *Server) CreateServiceContractInterfaces(ctx context.Context,
 	contract *apiservice.ServiceContract, source apiservice.InterfaceDescriptor_Source) *apimodel.Response {
+	return s.createServiceContractInterfaces(ctx, contract, source, false)
+}
+
+func (s *Server) createServiceContractInterfaces(ctx context.Context,
+	contract *apiservice.ServiceContract, source apiservice.InterfaceDescriptor_Source,
+	allowReplicaLag bool) *apimodel.Response {
 
 	if errRsp := checkOperationServiceContractInterface(contract); errRsp != nil {
 		return errRsp
@@ -374,7 +407,8 @@ func (s *Server) CreateServiceContractInterfaces(ctx context.Context,
 			ID:       contract.Id,
 			Revision: utils.NewUUID(),
 		},
-		Interfaces: make([]*svctypes.InterfaceDescriptor, 0, len(contract.Interfaces)),
+		InterfaceSource: source,
+		Interfaces:      make([]*svctypes.InterfaceDescriptor, 0, len(contract.Interfaces)),
 	}
 	retContract := &apiservice.ServiceContract{Id: contract.Id}
 	var err error
@@ -393,7 +427,7 @@ func (s *Server) CreateServiceContractInterfaces(ctx context.Context,
 			Service:    contract.Service,
 			Protocol:   contract.Protocol,
 			Version:    contract.Version,
-			Type:       contract.GetType(),
+			Type:       utils.DefaultString(utils.DefaultString(item.GetType(), item.GetName()), contract.GetType()),
 			Method:     item.Method,
 			Path:       item.Path,
 			Content:    item.Content,
@@ -415,14 +449,30 @@ func (s *Server) CreateServiceContractInterfaces(ctx context.Context,
 		log.Error("[Service][Contract] get save service_contract when add interfaces", utils.RequestID(ctx), zap.Error(err))
 		return api.NewServiceContractResponse(storeapi.StoreCode2APICode(err), nil)
 	}
-	var needUpdate = false
+	if saveData == nil && !allowReplicaLag {
+		return api.NewServiceContractResponse(apimodel.Code_NotFoundResource, nil)
+	}
+	var needUpdate = saveData == nil
 	if saveData != nil {
-		if len(saveData.Interfaces) != len(interfaces) {
+		if !matchesStoredContractIdentity(saveData, contract) {
+			return api.NewResponseWithMsg(apimodel.Code_BadRequest,
+				"service_contract id does not match the stored contract identity")
+		}
+		savedSourceCount := 0
+		for _, localInterface := range saveData.Interfaces {
+			if localInterface.Source == source {
+				savedSourceCount++
+			}
+		}
+		if savedSourceCount != len(interfaces) {
 			needUpdate = true
 		} else {
 			for _, localInterface := range saveData.Interfaces {
+				if localInterface.Source != source {
+					continue
+				}
 				if remoteInterface, ok := interfaces[localInterface.ID]; ok {
-					if localInterface.Type != contract.Type {
+					if localInterface.Type != remoteInterface.Type {
 						needUpdate = true
 						break
 					}
@@ -470,6 +520,10 @@ func (s *Server) AppendServiceContractInterfaces(ctx context.Context,
 	if saveData == nil {
 		return api.NewServiceContractResponse(apimodel.Code_NotFoundResource, nil)
 	}
+	if !matchesStoredContractIdentity(saveData, contract) {
+		return api.NewResponseWithMsg(apimodel.Code_BadRequest,
+			"service_contract id does not match the stored contract identity")
+	}
 
 	appendData := &svctypes.EnrichServiceContract{
 		ServiceContract: &svctypes.ServiceContract{
@@ -493,7 +547,7 @@ func (s *Server) AppendServiceContractInterfaces(ctx context.Context,
 			Service:    contract.Service,
 			Protocol:   contract.Protocol,
 			Version:    contract.Version,
-			Type:       contract.GetType(),
+			Type:       utils.DefaultString(utils.DefaultString(item.GetType(), item.GetName()), contract.GetType()),
 			Method:     item.Method,
 			Path:       item.Path,
 			Content:    item.Content,
@@ -531,6 +585,10 @@ func (s *Server) DeleteServiceContractInterfaces(ctx context.Context,
 	}
 	if saveData == nil {
 		return api.NewServiceContractResponse(apimodel.Code_NotFoundResource, nil)
+	}
+	if !matchesStoredContractIdentity(saveData, contract) {
+		return api.NewResponseWithMsg(apimodel.Code_BadRequest,
+			"service_contract id does not match the stored contract identity")
 	}
 
 	deleteData := &svctypes.EnrichServiceContract{
@@ -636,6 +694,17 @@ func checkOperationServiceContractInterface(contract *apiservice.ServiceContract
 	return nil
 }
 
+func matchesStoredContractIdentity(stored *svctypes.EnrichServiceContract, request *apiservice.ServiceContract) bool {
+	if stored == nil || request == nil {
+		return false
+	}
+	return stored.Namespace == request.GetNamespace() &&
+		stored.Service == request.GetService() &&
+		stored.Type == utils.DefaultString(request.GetType(), request.GetName()) &&
+		stored.Protocol == request.GetProtocol() &&
+		stored.Version == request.GetVersion()
+}
+
 // serviceContractRecordEntry 生成服务的记录entry
 func serviceContractRecordEntry(ctx context.Context, req *apiservice.ServiceContract, data *svctypes.EnrichServiceContract,
 	operationType types.OperationType) *types.RecordEntry {
@@ -656,6 +725,9 @@ func serviceContractRecordEntry(ctx context.Context, req *apiservice.ServiceCont
 }
 
 func checkBaseServiceContract(req *apiservice.ServiceContract) *apimodel.Response {
+	if req == nil {
+		return api.NewResponse(apimodel.Code_EmptyRequest)
+	}
 	if err := valid.CheckResourceName(req.GetNamespace()); err != nil {
 		return api.NewResponse(apimodel.Code_InvalidParameter)
 	}

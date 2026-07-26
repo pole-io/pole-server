@@ -43,7 +43,10 @@ type serviceContractStore struct {
 func (s *serviceContractStore) CreateServiceContract(contract *svctypes.ServiceContract) error {
 	addSql := "INSERT INTO service_contract(`id`,`type`, `namespace`, `service`, `protocol`,`version`, " +
 		" `revision`, `flag`, `content`, `content_digest`, `metadata`, `ctime`, `mtime`" +
-		") VALUES (?,?,?,?,?,?,?,0,?,?,?,sysdate(),sysdate())"
+		") VALUES (?,?,?,?,?,?,?,0,?,?,?,sysdate(),sysdate()) " +
+		"ON DUPLICATE KEY UPDATE type=VALUES(type), namespace=VALUES(namespace), service=VALUES(service), " +
+		"protocol=VALUES(protocol), version=VALUES(version), revision=VALUES(revision), flag=0, " +
+		"content=VALUES(content), content_digest=VALUES(content_digest), metadata=VALUES(metadata), mtime=sysdate()"
 
 	_, err := s.master.Exec(addSql, []interface{}{
 		contract.ID,
@@ -122,7 +125,7 @@ func (s *serviceContractStore) GetServiceContract(id string) (*svctypes.EnrichSe
 			queryDetailSql := "SELECT id, contract_id, namespace, service, protocol, version, type, method, path, content, " +
 				"content_digest, revision, UNIX_TIMESTAMP(ctime), UNIX_TIMESTAMP(mtime), IFNULL(source, 1) " +
 				" FROM service_contract_detail " +
-				" WHERE contract_id = ?"
+				" WHERE contract_id = ? AND flag = 0"
 
 			descriptors, err := s.loadContractInterfaces(tx, queryDetailSql, []interface{}{contract.ID})
 			if err != nil {
@@ -179,8 +182,13 @@ func (s *serviceContractStore) AddServiceContractInterfaces(contract *svctypes.E
 			return err
 		}
 
-		deleteSql := "DELETE FROM service_contract_detail WHERE contract_id = ?"
-		if _, err := tx.Exec(deleteSql, []interface{}{contract.ID}...); err != nil {
+		deleteSql := "DELETE FROM service_contract_detail WHERE contract_id = ? AND source = ?"
+		deleteArgs := []interface{}{contract.ID, int(contract.InterfaceSource)}
+		if contract.InterfaceSource == service_manage.InterfaceDescriptor_Client {
+			// 兼容早期表注释约定的 source=0 SDK 数据。
+			deleteSql = "DELETE FROM service_contract_detail WHERE contract_id = ? AND source IN (?, 0)"
+		}
+		if _, err := tx.Exec(deleteSql, deleteArgs...); err != nil {
 			log.Errorf("[Store][database] delete service contract detail for contract %s revision err: %s",
 				contract.ID, err.Error())
 			return err
@@ -366,7 +374,7 @@ WHERE flag = 0
 				" type, method, path, content, content_digest, revision, "+
 				" UNIX_TIMESTAMP(ctime), UNIX_TIMESTAMP(mtime), IFNULL(source, 1) "+
 				" FROM service_contract_detail "+
-				" WHERE contract_id IN (%s)", placeholders(len(contractIds)))
+				" WHERE flag = 0 AND contract_id IN (%s)", placeholders(len(contractIds)))
 
 			contractDetailMap := map[string][]*svctypes.InterfaceDescriptor{}
 			interfaces, err := s.loadContractInterfaces(tx, queryDetailSql, contractIds)
@@ -466,7 +474,7 @@ func (s *serviceContractStore) loadContractInterfaces(tx *BaseTx, query string, 
 
 	var list []*svctypes.InterfaceDescriptor
 	for rows.Next() {
-		var flag, ctime, mtime, source int64
+		var ctime, mtime, source int64
 		detailItem := &svctypes.InterfaceDescriptor{}
 		if scanErr := rows.Scan(
 			&detailItem.ID, &detailItem.ContractID, &detailItem.Namespace, &detailItem.Service, &detailItem.Protocol,
@@ -478,11 +486,11 @@ func (s *serviceContractStore) loadContractInterfaces(tx *BaseTx, query string, 
 			return nil, scanErr
 		}
 
-		detailItem.Valid = flag == 0
+		detailItem.Valid = true
 		detailItem.CreateTime = time.Unix(ctime, 0)
 		detailItem.ModifyTime = time.Unix(mtime, 0)
 		switch source {
-		case 2:
+		case 0, 2:
 			detailItem.Source = service_manage.InterfaceDescriptor_Client
 		default:
 			detailItem.Source = service_manage.InterfaceDescriptor_Manual
@@ -575,7 +583,7 @@ func (s *serviceContractStore) GetMoreServiceContracts(firstUpdate bool, mtime t
 		queryDetailSql := "SELECT sd.id, sd.contract_id, sd.type, sd.method, sd.path, sd.content, sd.content_digest, " +
 			"sd.revision, UNIX_TIMESTAMP(sd.ctime), UNIX_TIMESTAMP(sd.mtime), IFNULL(sd.source, 1) " +
 			" FROM service_contract_detail sd  LEFT JOIN service_contract sc ON sd.contract_id = sc.id " +
-			" WHERE sc.mtime >= ?"
+			" WHERE sc.mtime >= ? AND sd.flag = 0"
 		detailRows, err := tx.Query(queryDetailSql, mtime)
 		if err != nil {
 			log.Error("[Store][Contract] list contract detail", zap.String("query sql", queryDetailSql), zap.Error(err))
@@ -585,7 +593,7 @@ func (s *serviceContractStore) GetMoreServiceContracts(firstUpdate bool, mtime t
 			_ = detailRows.Close()
 		}()
 		for detailRows.Next() {
-			var flag, ctime, mtime, source int64
+			var ctime, mtime, source int64
 			detailItem := &svctypes.InterfaceDescriptor{}
 			if scanErr := detailRows.Scan(
 				&detailItem.ID, &detailItem.ContractID, &detailItem.Type, &detailItem.Method,
@@ -596,11 +604,11 @@ func (s *serviceContractStore) GetMoreServiceContracts(firstUpdate bool, mtime t
 				return nil, store.Error(scanErr)
 			}
 
-			detailItem.Valid = flag == 0
+			detailItem.Valid = true
 			detailItem.CreateTime = time.Unix(ctime, 0)
 			detailItem.ModifyTime = time.Unix(mtime, 0)
 			switch source {
-			case 2:
+			case 0, 2:
 				detailItem.Source = service_manage.InterfaceDescriptor_Client
 			default:
 				detailItem.Source = service_manage.InterfaceDescriptor_Manual
