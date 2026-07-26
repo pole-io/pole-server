@@ -233,7 +233,33 @@ func (llc *LossLessCache) Query(ctx context.Context, args *cachetypes.LosslessAr
 
 // GetLosslessConfig 根据ServiceID获取无损配置
 func (llc *LossLessCache) GetLosslessConfig(svcName string, namespace string) *rules.LosslessRule {
-	return nil
+	rule, _ := llc.GetLosslessConfigWithLabels(svcName, namespace, nil)
+	return rule
+}
+
+func (llc *LossLessCache) GetLosslessConfigWithLabels(
+	svcName string, namespace string, labels map[string]string,
+) (*rules.LosslessRule, string) {
+	releases := make([]*rules.LosslessRuleRelease, 0, 4)
+	bases := make([]*rules.RuleRelease, 0, 4)
+	llc.rules.Range(func(_ string, release *rules.LosslessRuleRelease) {
+		if release == nil || release.Rule == nil ||
+			release.Rule.Namespace != namespace || release.Rule.Service != svcName {
+			return
+		}
+		releases = append(releases, release)
+		bases = append(bases, &release.RuleRelease)
+	})
+	selected, snapshotRevision := selectGovernanceReleases(bases, labels)
+	if len(selected) == 0 {
+		return nil, ""
+	}
+	for _, release := range releases {
+		if release.Id == selected[0].Id {
+			return release.Rule, snapshotRevision
+		}
+	}
+	return nil, ""
 }
 
 // GetRule 获取规则 ID 获取无损规则

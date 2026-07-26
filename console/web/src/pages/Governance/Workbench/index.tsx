@@ -9,6 +9,7 @@ import { listAllNamespaces, selectNamespace } from 'modules/namespace';
 import { useAppSelector } from 'modules/store';
 import { ConfirmOperationButton, OperationButton } from 'components/OperationButton';
 import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout';
+import QueryComposer from 'components/QueryComposer';
 import { trafficRuleCount, trafficRuleSummary } from '../Security/TrafficGovernanceEditor';
 import { GovernanceServiceContext, GovernanceServiceRole } from '../shared/serviceContext';
 import {
@@ -376,6 +377,7 @@ const GovernanceWorkbench: React.FC<GovernanceWorkbenchProps> = ({ embedded = fa
     const [typeFilters, setTypeFilters] = React.useState<string[]>([]);
     const [statusFilter, setStatusFilter] = React.useState('');
     const [selectedNamespace, setSelectedNamespace] = React.useState(serviceContext?.namespace || 'default');
+    const [paginationVersion, setPaginationVersion] = React.useState(0);
     const [createWizardVisible, setCreateWizardVisible] = React.useState(false);
     const [serviceRole, setServiceRole] = React.useState<GovernanceServiceRole>('caller');
 
@@ -718,69 +720,64 @@ const GovernanceWorkbench: React.FC<GovernanceWorkbenchProps> = ({ embedded = fa
                 count={loading ? '正在同步列表' : `当前显示 ${filteredRules.length} / ${scopedRules.length} 条`}
                 className={style.panelToolbar}
                 filters={(
-                    <>
-                        <Input
-                            className={style.searchInput}
-                            clearable
-                            label="关键字"
-                            value={search}
-                            placeholder="规则名、服务、条件"
-                            onChange={(value) => setSearch(value)}
-                            onEnter={(value) => refreshData(value)}
-                            onClear={() => {
-                                setSearch('');
-                                refreshData('');
-                            }}
-                        />
-                        <Select
-                            className={style.statusSelect}
-                            label="归属环境"
-                            value={selectedNamespace}
-                            options={namespaceOptions}
-                            disabled={!!serviceContext}
-                            onChange={(value) => {
-                                const namespace = value as string;
-                                setSelectedNamespace(namespace);
-                                refreshData(search, namespace);
-                            }}
-                        />
-                        <Select
-                            className={style.typeSelect}
-                            multiple
-                            clearable
-                            label="规则类型"
-                            value={typeFilters}
-                            placeholder="全部规则类型"
-                            options={typeOptions}
-                            onChange={(value) => setTypeFilters(Array.isArray(value) ? value as string[] : [])}
-                        />
-                        <Select
-                            className={style.statusSelect}
-                            label="状态"
-                            value={statusFilter}
-                            placeholder="全部"
-                            options={statusOptions}
-                            onChange={(value) => setStatusFilter(value as string)}
-                        />
-                        <Button variant="outline" onClick={() => refreshData(search)}>查询</Button>
-                        <Button
-                            variant="text"
-                            onClick={() => {
-                                const nextNamespace = serviceContext?.namespace || 'default';
-                                setTypeFilters([]);
-                                setStatusFilter('');
-                                setSearch('');
-                                setSelectedNamespace(nextNamespace);
-                                refreshData('', nextNamespace);
-                            }}
-                        >
-                            重置
-                        </Button>
-                    </>
+                    <QueryComposer
+                        keyword={search}
+                        keywordPlaceholder="搜索规则名、服务或条件"
+                        suggestions={scopedRules.map((item) => item.name).filter(Boolean)}
+                        fields={[
+                            ...(!serviceContext ? [{
+                                key: 'namespace',
+                                label: '归属环境',
+                                type: 'select' as const,
+                                filterable: true,
+                                options: namespaceOptions,
+                            }] : []),
+                            {
+                                key: 'types',
+                                label: '规则类型',
+                                type: 'multiselect',
+                                filterable: true,
+                                options: typeOptions,
+                            },
+                            {
+                                key: 'status',
+                                label: '状态',
+                                type: 'select',
+                                options: statusOptions,
+                            },
+                        ]}
+                        values={{
+                            ...(!serviceContext ? { namespace: selectedNamespace } : {}),
+                            types: typeFilters,
+                            status: statusFilter,
+                        }}
+                        onKeywordChange={setSearch}
+                        onValuesChange={(values) => {
+                            if (!serviceContext) setSelectedNamespace(String(values.namespace || ''));
+                            setTypeFilters(Array.isArray(values.types) ? values.types.map(String) : []);
+                            setStatusFilter(String(values.status || ''));
+                        }}
+                        onSubmit={({ keyword, values }) => {
+                            const nextNamespace = serviceContext?.namespace || String(values.namespace || '');
+                            setPaginationVersion((version) => version + 1);
+                            refreshData(keyword, nextNamespace);
+                        }}
+                        onReset={() => {
+                            const nextNamespace = serviceContext?.namespace || 'default';
+                            setTypeFilters([]);
+                            setStatusFilter('');
+                            setSearch('');
+                            setSelectedNamespace(nextNamespace);
+                            setPaginationVersion((version) => version + 1);
+                            refreshData('', nextNamespace);
+                        }}
+                        loading={loading}
+                    />
                 )}
             />
             <div className={style.listPanel}>
                 <Table
+                    key={paginationVersion}
                     className={style.table}
                     data={filteredRules}
                     columns={columns}

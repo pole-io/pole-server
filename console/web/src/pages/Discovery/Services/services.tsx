@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Table, Button, PrimaryTableProps, TableRowData, Input, Select } from 'components/Fluent';
-import { SearchIcon } from 'components/Fluent/icons';
+import { Table, Button, PrimaryTableProps, TableRowData } from 'components/Fluent';
 import { useNavigate } from 'react-router-dom';
 
 import Text from 'components/Text';
 import { ConfirmOperationButton, OperationButton, OperationButtonGroup } from 'components/OperationButton';
 import { ResourceToolbar } from 'components/ResourceLayout';
+import QueryComposer, { QuerySnapshot } from 'components/QueryComposer';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { NamespaceView } from 'services/namespace';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
@@ -219,8 +219,11 @@ const ServicesTable = React.forwardRef<ServicesTableHandle, IServicesProps>((_, 
         create: () => operateService('create'),
     }));
 
-    const submitFilter = () => {
-        refreshTable(1, limit, query);
+    const submitFilter = ({ keyword, values }: QuerySnapshot) => {
+        refreshTable(1, limit, {
+            name: keyword,
+            namespace: String(values.namespace || ''),
+        });
     };
 
     const resetFilter = () => {
@@ -255,33 +258,32 @@ const ServicesTable = React.forwardRef<ServicesTableHandle, IServicesProps>((_, 
                     title="服务清单"
                     count={<span id="listCount">{loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}</span>}
                     filters={(
-                        <>
-                        <div id="nsFilter" className={style.namespaceFilter}>
-                            <Select
-                                clearable
-                                filterable
-                                placeholder="全部命名空间"
-                                value={query.namespace}
-                                options={namespaceDatas.map((item: NamespaceView) => ({
-                                    label: item.name,
-                                    value: item.name,
-                                }))}
-                                onChange={(value) => setQuery(prev => ({ ...prev, namespace: String(value || '') }))}
-                            />
-                        </div>
-                        <div id="keyword" className={style.filterInput}>
-                            <Input
-                                clearable
-                                prefixIcon={<SearchIcon />}
-                                placeholder="服务名"
-                                value={query.name}
-                                onChange={(value) => setQuery(prev => ({ ...prev, name: String(value) }))}
-                                onEnter={submitFilter}
-                            />
-                        </div>
-                        <Button variant="outline" onClick={submitFilter}>查询</Button>
-                        <Button variant="text" onClick={resetFilter}>重置</Button>
-                        </>
+                        <QueryComposer
+                            keyword={query.name}
+                            keywordPlaceholder="服务名"
+                            suggestions={datas.map((item) => String(item.name || '')).filter(Boolean)}
+                            fields={[
+                                {
+                                    key: 'namespace',
+                                    label: '命名空间',
+                                    type: 'select',
+                                    placeholder: '全部命名空间',
+                                    filterable: true,
+                                    options: namespaceDatas.map((item: NamespaceView) => ({
+                                        label: item.name,
+                                        value: item.name,
+                                    })),
+                                },
+                            ]}
+                            values={{ namespace: query.namespace }}
+                            onKeywordChange={(name) => setQuery((prev) => ({ ...prev, name }))}
+                            onValuesChange={(values) => setQuery((prev) => ({
+                                ...prev,
+                                namespace: String(values.namespace || ''),
+                            }))}
+                            onSubmit={submitFilter}
+                            onReset={resetFilter}
+                        />
                     )}
                 />
                 {editorState.visible && (

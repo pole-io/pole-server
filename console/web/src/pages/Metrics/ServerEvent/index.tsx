@@ -1,7 +1,8 @@
 import React from 'react';
 import dayjs from 'dayjs';
-import { Button, DateRangePicker, DateRangePickerProps, Drawer, Empty, Input, Select, Table, TableColumnData, Tag } from 'components/Fluent';
-import { FilterIcon, InfoCircleIcon, RefreshIcon, SearchIcon, ServerIcon } from 'components/Fluent/icons';
+import { Button, DateRangePicker, DateRangePickerProps, Drawer, Empty, Table, TableColumnData, Tag } from 'components/Fluent';
+import { FilterIcon, InfoCircleIcon, RefreshIcon, ServerIcon } from 'components/Fluent/icons';
+import QueryComposer from 'components/QueryComposer';
 import { describeEventLog, EventLog, EventType, getEventTypeInfo } from 'services/observer';
 import { describeObservabilityEvents } from 'services/observability';
 import ErrorPage from 'components/ErrorPage';
@@ -243,6 +244,7 @@ export default function ServerEvent() {
   const [dataSource, setDataSource] = React.useState<DataSource>('mock');
   const [fetchError, setFetchError] = React.useState(false);
   const [selectedEvent, setSelectedEvent] = React.useState<EventMetricRow | null>(null);
+  const [paginationVersion, setPaginationVersion] = React.useState(0);
 
   const displayEvents = React.useMemo(() => {
     if (dataSource === 'remote') return events;
@@ -338,6 +340,7 @@ export default function ServerEvent() {
 
   const handleReset = () => {
     setSearchState(defaultSearchState);
+    setPaginationVersion((version) => version + 1);
     fetchData(defaultSearchState);
   };
 
@@ -399,58 +402,71 @@ export default function ServerEvent() {
         </div>
 
         <div className={style.filterGrid}>
-          <Select
-            className={style.filterControl}
-            clearable
-            value={searchState.searchEvent}
-            options={EventType}
-            placeholder="事件类型"
-            onChange={(value) => updateSearchState({ searchEvent: value as string })}
-          />
-          <Input
-            className={style.filterControl}
-            clearable
-            value={searchState.searchNamespace}
-            placeholder="命名空间"
-            onChange={(value) => updateSearchState({ searchNamespace: value })}
-          />
-          <Input
-            className={style.filterControl}
-            clearable
-            value={searchState.searchService}
-            placeholder="服务名"
-            onChange={(value) => updateSearchState({ searchService: value })}
-          />
-          <Input
-            className={style.filterControl}
-            clearable
-            value={searchState.searchResource}
-            placeholder="资源 / 实例"
-            onChange={(value) => updateSearchState({ searchResource: value })}
-          />
-          <DateRangePicker
-            className={style.datePicker}
-            value={[searchState.startTime, searchState.endTime]}
-            clearable
-            allowInput
-            format="YYYY-MM-DD HH:mm:ss"
-            presets={presets}
-            onChange={(value) => updateSearchState({
-              startTime: String(value?.[0] || ''),
-              endTime: String(value?.[1] || ''),
+          <QueryComposer
+            keyword={searchState.searchService}
+            keywordPlaceholder="搜索服务名称"
+            suggestions={Array.from(new Set(events.map((item) => item.service).filter(Boolean)))}
+            fields={[
+              {
+                key: 'searchEvent',
+                label: '事件类型',
+                type: 'select',
+                options: EventType,
+              },
+              {
+                key: 'searchNamespace',
+                label: '命名空间',
+                type: 'text',
+              },
+              {
+                key: 'searchResource',
+                label: '资源 / 实例',
+                type: 'text',
+              },
+            ]}
+            values={{
+              searchEvent: searchState.searchEvent,
+              searchNamespace: searchState.searchNamespace,
+              searchResource: searchState.searchResource,
+            }}
+            timeRange={(
+              <DateRangePicker
+                className={style.datePicker}
+                value={[searchState.startTime, searchState.endTime]}
+                clearable
+                allowInput
+                format="YYYY-MM-DD HH:mm:ss"
+                presets={presets}
+                onChange={(value) => updateSearchState({
+                  startTime: String(value?.[0] || ''),
+                  endTime: String(value?.[1] || ''),
+                })}
+              />
+            )}
+            onKeywordChange={(searchService) => updateSearchState({ searchService })}
+            onValuesChange={(values) => updateSearchState({
+              searchEvent: String(values.searchEvent || ''),
+              searchNamespace: String(values.searchNamespace || ''),
+              searchResource: String(values.searchResource || ''),
             })}
+            onSubmit={({ keyword, values }) => {
+              const nextSearchState = {
+                ...searchState,
+                searchService: keyword,
+                searchEvent: String(values.searchEvent || ''),
+                searchNamespace: String(values.searchNamespace || ''),
+                searchResource: String(values.searchResource || ''),
+              };
+              setPaginationVersion((version) => version + 1);
+              fetchData(nextSearchState);
+            }}
+            onReset={handleReset}
+            loading={isLoading}
           />
-          <div className={style.filterActions}>
-            <Button theme="primary" icon={<SearchIcon />} loading={isLoading} onClick={() => fetchData()}>
-              查询
-            </Button>
-            <Button variant="text" onClick={handleReset}>
-              重置
-            </Button>
-          </div>
         </div>
 
         <Table
+          key={paginationVersion}
           data={displayEvents}
           columns={columns}
           rowKey="cursor"

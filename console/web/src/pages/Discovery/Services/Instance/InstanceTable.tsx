@@ -246,6 +246,8 @@ export default React.memo((props: IInstanceListProps & BrowserRouterProps) => {
                     namespace={namespace}
                     service={serviceName}
                     visible={editState.visible}
+                    canEdit={editState.selectedRow?.editable !== false}
+                    onEdit={editState.selectedRow ? () => operateInstance('edit', editState.selectedRow) : undefined}
                     closeDrawer={() => {
                         // 关闭后重置编辑器状态
                         dispatch(resetInstance());

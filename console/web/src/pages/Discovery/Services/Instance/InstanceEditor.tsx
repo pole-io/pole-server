@@ -18,6 +18,8 @@ interface IInstanceEditorProps {
     namespace: string;
     service: string;
     closeDrawer: () => void;
+    onEdit?: () => void;
+    canEdit?: boolean;
     visible: boolean;
 }
 
@@ -123,7 +125,15 @@ const InstanceSummary: React.FC<InstanceSummaryProps> = ({
     )
 }
 
-const InstanceEditor: React.FC<IInstanceEditorProps> = ({ visible, op, closeDrawer, namespace, service }) => {
+const InstanceEditor: React.FC<IInstanceEditorProps> = ({
+    visible,
+    op,
+    closeDrawer,
+    onEdit,
+    canEdit = true,
+    namespace,
+    service,
+}) => {
     const [form] = Form.useForm();
     const dispatch = useAppDispatch();
 
@@ -482,7 +492,13 @@ const InstanceEditor: React.FC<IInstanceEditorProps> = ({ visible, op, closeDraw
                 closeOnEscKeydown
                 destroyOnClose
                 onClose={closeDrawer}
-                footer={op === 'view' ? false : (
+                footer={op === 'view' ? (canEdit && onEdit ? (
+                    <div className={style.instanceDrawerActions}>
+                        <Button theme="primary" onClick={onEdit}>
+                            编辑实例
+                        </Button>
+                    </div>
+                ) : false) : (
                     <div className={style.instanceDrawerActions}>
                         <Button theme="default" onClick={closeDrawer}>
                             取消

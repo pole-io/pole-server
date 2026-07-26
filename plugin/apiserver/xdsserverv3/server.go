@@ -125,6 +125,7 @@ func (x *XDSServer) Initialize(ctx context.Context, option map[string]interface{
 	}
 	x.resourceGenerator = &XdsResourceGenerator{
 		namingServer:    x.namingServer,
+		ruleServer:      x.ruleServer,
 		cache:           x.cache,
 		versionNum:      x.versionNum,
 		xdsNodesMgr:     x.nodeMgr,
@@ -315,6 +316,11 @@ func (x *XDSServer) startSynTask(ctx context.Context) {
 			log.Info("start update xds resource snapshot ticker task", zap.Int("need-push", len(needPush)),
 				zap.Int("need-remove", len(needRemove)))
 			x.Generate(needPush, needRemove)
+		} else {
+			// Gray releases do not change the normal namespace snapshot. Refresh
+			// node-scoped policy resources so publish/stop/rollback still reaches
+			// already connected Envoy clients.
+			x.resourceGenerator.RefreshNodeCaches()
 		}
 	}
 
@@ -388,7 +394,8 @@ func (x *XDSServer) getRegistryInfoWithCache(ctx context.Context,
 			}
 
 			// 获取routing配置
-			routerRules, _, err := x.namingServer.Cache().RoutingConfig().GetRouterRule("", svc.Name, svc.Namespace)
+			routerRules, routingRevision, err := x.namingServer.Cache().RoutingConfig().
+				GetRouterRule("", svc.Name, svc.Namespace)
 			if err != nil {
 				log.Errorf("error sync routing for namespace(%s) service(%s), info : %s", svc.Namespace,
 					svc.Name, err.Error())
@@ -396,10 +403,8 @@ func (x *XDSServer) getRegistryInfoWithCache(ctx context.Context,
 			}
 
 			if len(routerRules) > 0 {
-				// Take the first routing rule
-				firstRule := routerRules[0]
-				svc.SvcRoutingRevision = firstRule.GetRevision()
-				svc.Routing = firstRule
+				svc.SvcRoutingRevision = routingRevision
+				svc.Routing = routerRules
 			}
 
 			// 获取instance配置

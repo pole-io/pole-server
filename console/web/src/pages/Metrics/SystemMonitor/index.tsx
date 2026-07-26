@@ -1,6 +1,7 @@
 import React from 'react';
-import { Button, Empty, Input, Select, Table, TableColumnData, Tag } from 'components/Fluent';
-import { RefreshIcon, SearchIcon, System2Icon } from 'components/Fluent/icons';
+import { Button, Empty, Table, TableColumnData, Tag } from 'components/Fluent';
+import { RefreshIcon, System2Icon } from 'components/Fluent/icons';
+import QueryComposer from 'components/QueryComposer';
 import {
   describePlatformOverview,
   PlatformComponentMetric,
@@ -661,19 +662,6 @@ function formatRuntimeValue(row: RuntimeMetricRow) {
   return formatMetricValue(row.value, row.unit);
 }
 
-function VariableItem(props: { name: string; label: string; children: React.ReactNode; wide?: boolean }) {
-  const { name, label, children, wide } = props;
-  return (
-    <div className={`${style.variableItem} ${wide ? style.variableItemWide : ''}`}>
-      <div className={style.variableLabelRow}>
-        <span>{label}</span>
-        <code>{name}</code>
-      </div>
-      {children}
-    </div>
-  );
-}
-
 export default function SystemMonitor() {
   const [category, setCategory] = React.useState('');
   const [api, setApi] = React.useState('');
@@ -822,38 +810,34 @@ export default function SystemMonitor() {
       </section>
 
       <section className={style.variableBar} aria-label="Dashboard variables">
-        <span className={style.variableHeading}>Variables</span>
-        <VariableItem name="$category" label="类别">
-          <Select
-            className={style.variableControl}
-            clearable
-            placeholder="类别"
-            value={category}
-            options={CATEGORY_OPTIONS}
-            onChange={(value) => setCategory(value as string)}
-          />
-        </VariableItem>
-        <VariableItem name="$api" label="接口" wide>
-          <Select
-            className={style.variableControl}
-            clearable
-            placeholder="接口"
-            value={api}
-            options={uniqueOptions(sourceRows, 'api')}
-            onChange={(value) => setApi(value as string)}
-          />
-        </VariableItem>
-        <VariableItem name="$component" label="组件">
-          <Input
-            className={style.variableControl}
-            clearable
-            prefixIcon={<SearchIcon />}
-            placeholder="组件 / Pod"
-            value={componentKeyword}
-            onChange={setComponentKeyword}
-          />
-        </VariableItem>
-        <Button className={style.variableReset} variant="outline" onClick={resetFilters}>重置</Button>
+        <QueryComposer
+          keyword={componentKeyword}
+          keywordPlaceholder="搜索组件、Pod 或角色"
+          suggestions={Array.from(new Set(sourceRows.flatMap((item) => [item.component, item.pod]).filter(Boolean)))}
+          fields={[
+            {
+              key: 'category',
+              label: '类别',
+              type: 'select',
+              options: CATEGORY_OPTIONS,
+            },
+            {
+              key: 'api',
+              label: '接口',
+              type: 'select',
+              filterable: true,
+              options: uniqueOptions(sourceRows, 'api'),
+            },
+          ]}
+          values={{ category, api }}
+          onKeywordChange={setComponentKeyword}
+          onValuesChange={(values) => {
+            setCategory(String(values.category || ''));
+            setApi(String(values.api || ''));
+          }}
+          onReset={resetFilters}
+          mode="instant"
+        />
       </section>
 
       <div className={style.statGrid}>

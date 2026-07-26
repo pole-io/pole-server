@@ -68,6 +68,9 @@ const (
 	SidecarOpenOnDemandFeature = "sidecar.polarismesh.cn/openOnDemand"
 	// SidecarOpenOnDemandServer .
 	SidecarOpenOnDemandServer = "sidecar.polarismesh.cn/demandServer"
+	// GovernanceLabelPrefix marks Envoy node metadata that participates in
+	// governance gray release selection.
+	GovernanceLabelPrefix = "pole.io/governance-label."
 )
 
 type EnvoyNodeView struct {
@@ -134,16 +137,26 @@ func (x *XDSNodeManager) AddNodeIfAbsent(streamId int64, node *core.Node) {
 	}
 }
 
-func (x *XDSNodeManager) DelNode(streamId int64) {
+func (x *XDSNodeManager) DelNode(streamId int64) bool {
 	x.lock.Lock()
 	defer x.lock.Unlock()
 
 	if p, ok := x.streamTonodes[streamId]; ok {
+		delete(x.streamTonodes, streamId)
+		for _, remaining := range x.streamTonodes {
+			if remaining.Node.Id == p.Node.Id {
+				return false
+			}
+		}
 		delete(x.nodes, p.Node.Id)
+		delete(x.sidecarNodes, p.Node.Id)
+		delete(x.gatewayNodes, p.Node.Id)
 		log.Info("[XDS][Node][V3] remove xds node", zap.Int64("stream", streamId),
 			zap.String("info", p.String()))
+		return true
 	}
 	delete(x.streamTonodes, streamId)
+	return false
 }
 
 func (x *XDSNodeManager) GetNodeByStreamID(streamId int64) *XDSClient {
@@ -364,6 +377,22 @@ func (n *XDSClient) GetSelfNamespace() string {
 		return val
 	}
 	return n.Namespace
+}
+
+// GovernanceLabels projects explicitly namespaced Envoy node metadata into
+// the same key/value label model used by DiscoverFilter.caller.labels.
+func (n *XDSClient) GovernanceLabels() map[string]string {
+	labels := make(map[string]string)
+	for key, value := range n.Metadata {
+		if !strings.HasPrefix(key, GovernanceLabelPrefix) {
+			continue
+		}
+		labelKey := strings.TrimPrefix(key, GovernanceLabelPrefix)
+		if labelKey != "" {
+			labels[labelKey] = value
+		}
+	}
+	return labels
 }
 
 // ParseXDSClient .

@@ -16,7 +16,10 @@ package cache
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -26,6 +29,7 @@ import (
 	cachev3 "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/server/stream/v3"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/resource"
@@ -74,6 +78,7 @@ func NewUpdateResourcesRequest() *UpdateResourcesRequest {
 	return &UpdateResourcesRequest{
 		lock:               &sync.Mutex{},
 		Lds:                map[string]map[string]types.Resource{},
+		NodeResources:      map[string]map[resource.XDSType]map[string]types.Resource{},
 		NamespaceResources: map[string]*NamespaceUpdateResourcesRequest{},
 	}
 }
@@ -83,6 +88,10 @@ type UpdateResourcesRequest struct {
 	lock *sync.Mutex
 	// Lds LDS 相关的资源
 	Lds map[string]map[string]types.Resource
+	// NodeResources contains policy-sensitive resources selected for one Envoy
+	// node. EDS remains namespace-scoped; RDS/VHDS/CDS can differ by caller and
+	// gray release labels.
+	NodeResources map[string]map[resource.XDSType]map[string]types.Resource
 	// NamespaceResources .
 	NamespaceResources map[string]*NamespaceUpdateResourcesRequest
 }
@@ -295,6 +304,8 @@ type ResourceCache struct {
 	ads bool
 	// ldsResources 记录 Envoy Node LDS 的资源记录信息
 	ldsResources map[string]*ResourcesContainer
+	// nodeResources stores policy-sensitive snapshots by Envoy node ID.
+	nodeResources map[string]map[resource.XDSType]*ResourcesContainer
 	// namespaceContainer 按照命名空间级别隔离 xDS resources
 	namespaceContainer map[string]*NamespaceResourcesContainer
 	// status information for all nodes indexed by node IDs
@@ -317,6 +328,7 @@ func NewResourceCache(hook CacheHook) *ResourceCache {
 		hook:               hook,
 		ads:                true,
 		ldsResources:       make(map[string]*ResourcesContainer),
+		nodeResources:      make(map[string]map[resource.XDSType]*ResourcesContainer),
 		namespaceContainer: make(map[string]*NamespaceResourcesContainer),
 		status:             make(map[string]*NamespaceStatusInfo),
 	}
@@ -329,18 +341,52 @@ func (sc *ResourceCache) CleanEnvoyNodeCache(node *corev3.Node) error {
 	defer sc.mu.Unlock()
 
 	delete(sc.ldsResources, node.GetId())
+	delete(sc.nodeResources, node.GetId())
 	return nil
 }
 
-func (sc *ResourceCache) updateResourceContainer(ctx context.Context, req *UpdateResourcesRequest) {
-	// 更新 LDS 资源信息
-	for nodeId, resources := range req.Lds {
-		if _, ok := sc.ldsResources[nodeId]; !ok {
-			sc.ldsResources[nodeId] = &ResourcesContainer{
-				Resources: resources,
+func (sc *ResourceCache) updateResourceContainer(ctx context.Context, req *UpdateResourcesRequest) error {
+	preparedLDS := make(map[string]*ResourcesContainer, len(req.Lds))
+	for nodeID, resources := range req.Lds {
+		version, err := resourceSnapshotVersion(resources)
+		if err != nil {
+			return fmt.Errorf("build LDS snapshot version for node %s: %w", nodeID, err)
+		}
+		container := &ResourcesContainer{Resources: resources, GlobalVersion: version}
+		if err := container.ConstructVersionMap(nil); err != nil {
+			return fmt.Errorf("build LDS delta versions for node %s: %w", nodeID, err)
+		}
+		preparedLDS[nodeID] = container
+	}
+	preparedNodeResources := make(map[string]map[resource.XDSType]*ResourcesContainer, len(req.NodeResources))
+	for nodeID, resourcesByType := range req.NodeResources {
+		preparedNodeResources[nodeID] = make(map[resource.XDSType]*ResourcesContainer, len(resourcesByType))
+		for xdsType, resources := range resourcesByType {
+			version, err := resourceSnapshotVersion(resources)
+			if err != nil {
+				return fmt.Errorf("build %s snapshot version for node %s: %w", xdsType, nodeID, err)
 			}
-			sc.ldsResources[nodeId].updateGlobalRevision()
-			_ = sc.ldsResources[nodeId].ConstructVersionMap(nil)
+			container := &ResourcesContainer{
+				Resources:     resources,
+				GlobalVersion: version,
+			}
+			if err := container.ConstructVersionMap(nil); err != nil {
+				return fmt.Errorf("build %s delta versions for node %s: %w", xdsType, nodeID, err)
+			}
+			preparedNodeResources[nodeID][xdsType] = container
+		}
+	}
+
+	// 更新 LDS 资源信息
+	for nodeID, container := range preparedLDS {
+		sc.ldsResources[nodeID] = container
+	}
+	for nodeID, resourcesByType := range preparedNodeResources {
+		if _, ok := sc.nodeResources[nodeID]; !ok {
+			sc.nodeResources[nodeID] = make(map[resource.XDSType]*ResourcesContainer)
+		}
+		for xdsType, container := range resourcesByType {
+			sc.nodeResources[nodeID][xdsType] = container
 		}
 	}
 
@@ -409,6 +455,7 @@ func (sc *ResourceCache) updateResourceContainer(ctx context.Context, req *Updat
 			namespaceContainer.resourcesContainer[typeUrl].updateGlobalRevision()
 		}
 	}
+	return nil
 }
 
 // UpdateResources updates a snapshot for a node.
@@ -417,7 +464,9 @@ func (sc *ResourceCache) UpdateResources(ctx context.Context, req *UpdateResourc
 	defer sc.mu.Unlock()
 
 	// updateResourceContainer 更新所有 XDS 资源的容器
-	sc.updateResourceContainer(ctx, req)
+	if err := sc.updateResourceContainer(ctx, req); err != nil {
+		return err
+	}
 
 	for ns, nsStatus := range sc.status {
 		for _, info := range nsStatus.status {
@@ -811,6 +860,11 @@ func (sc *ResourceCache) loadWatchStatus(node *corev3.Node) (*statusInfo, *resou
 }
 
 func (sc *ResourceCache) loadResourceContainer(client *resource.XDSClient, watchType resource.XDSType) (*ResourcesContainer, bool) {
+	if byType, ok := sc.nodeResources[client.GetNodeID()]; ok {
+		if container, exists := byType[watchType]; exists {
+			return container, true
+		}
+	}
 
 	namespaceContainer, ok := sc.namespaceContainer[client.GetSelfNamespace()]
 	if !ok {
@@ -843,6 +897,26 @@ func (sc *ResourceCache) loadResourceContainer(client *resource.XDSClient, watch
 	}
 
 	return container, exists
+}
+
+func resourceSnapshotVersion(resources map[string]types.Resource) (string, error) {
+	names := make([]string, 0, len(resources))
+	for name := range resources {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	hash := sha256.New()
+	for _, name := range names {
+		_, _ = hash.Write([]byte(name))
+		_, _ = hash.Write([]byte{0})
+		marshaled, err := proto.MarshalOptions{Deterministic: true}.Marshal(resources[name])
+		if err != nil {
+			return "", fmt.Errorf("marshal resource %q: %w", name, err)
+		}
+		_, _ = hash.Write(marshaled)
+		_, _ = hash.Write([]byte{0})
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 // GetStatusKeys retrieves all node IDs in the status map.

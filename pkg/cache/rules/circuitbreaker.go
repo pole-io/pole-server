@@ -153,6 +153,50 @@ func (c *circuitBreakerCache) GetCircuitBreakerConfig(
 	return c.allWildcardRules
 }
 
+func (c *circuitBreakerCache) GetCircuitBreakerConfigWithLabels(
+	name string, namespace string, labels map[string]string,
+) (*rules.ServiceWithCircuitBreakerRules, string) {
+	if result, revision := selectCircuitBreakerConfig(c.checkServiceSpecificCache(name, namespace), labels); result != nil {
+		return result, revision
+	}
+	if result, revision := selectCircuitBreakerConfig(c.checkNamespaceSpecificCache(namespace), labels); result != nil {
+		return result, revision
+	}
+	return selectCircuitBreakerConfig(c.allWildcardRules, labels)
+}
+
+func selectCircuitBreakerConfig(
+	source *rules.ServiceWithCircuitBreakerRules, labels map[string]string,
+) (*rules.ServiceWithCircuitBreakerRules, string) {
+	if source == nil {
+		return nil, ""
+	}
+	releases := make([]*rules.CircuitBreakerRelease, 0, source.CountCircuitBreakerRules())
+	bases := make([]*rules.RuleRelease, 0, source.CountCircuitBreakerRules())
+	source.IterateCircuitBreakerRules(func(release *rules.CircuitBreakerRelease) {
+		if release != nil && release.Rule != nil {
+			releases = append(releases, release)
+			bases = append(bases, &release.RuleRelease)
+		}
+	})
+	selected, snapshotRevision := selectGovernanceReleases(bases, labels)
+	if len(selected) == 0 {
+		return nil, ""
+	}
+	selectedIDs := make(map[string]struct{}, len(selected))
+	for _, release := range selected {
+		selectedIDs[release.Id] = struct{}{}
+	}
+	result := rules.NewServiceWithCircuitBreakerRules(source.Service)
+	for _, release := range releases {
+		if _, ok := selectedIDs[release.Id]; ok {
+			result.AddCircuitBreakerRule(release)
+		}
+	}
+	result.Revision = snapshotRevision
+	return result, snapshotRevision
+}
+
 func (c *circuitBreakerCache) checkServiceSpecificCache(
 	name string, namespace string) *rules.ServiceWithCircuitBreakerRules {
 	c.lock.RLock()

@@ -98,6 +98,15 @@ xdsserverv3/
 
 转换关系：Pole 服务/实例/路由规则 → Envoy xDS 资源
 
+治理策略下发遵循统一治理 release 语义：
+
+- Envoy Node 使用 `pole.io/governance-label.<key>=<value>` metadata 显式声明治理灰度标签；TLS、端口、服务身份等 xDS 控制 metadata 不会被隐式当作业务标签。
+- LDS 按 node 隔离；EDS 仍按 namespace 共享；受 caller 或灰度标签影响的 RDS、VHDS、CDS 按 node 生成稳定内容版本，避免同 namespace 节点互相污染。
+- 路由按 `CustomRoute.caller → CustomRoute.callee` 选择，`DestinationGroup` 只表达 callee 实例子集、标签和权重，不再用于反推 caller/callee。
+- 当前 Envoy 转换支持路由、基础 QPS 限流、实例级熔断和故障探测。路由匹配支持 HTTP path、method、header、query、AND 与随机比例；限流只转换固定 HTTP 匹配与基础 token bucket，排队、自定义响应、并发/系统资源、爬坡、均摊和自定义 failover/action 等尚未等价实现的字段会整条跳过。
+- OR、动态请求参数、通配匹配和其它无法等价表达的条件会被明确跳过并记录日志，不会删除条件后扩大规则命中范围。
+- 泳道、无损、调用鉴权、流量镜像和流量 Mock 尚未建立 Envoy 等价执行模型，不属于当前 xDS 能力声明；管理端可保存和发布不等于 Envoy 已执行。
+
 ---
 
 ## Nacos 服务端（`plugin/apiserver/nacosserver/`）

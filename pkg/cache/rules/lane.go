@@ -359,6 +359,12 @@ func (lc *LaneCache) postUpdateRevisions(affectSvcs map[string]map[string]struct
 }
 
 func (lc *LaneCache) GetLaneRules(serviceKey *svctypes.Service) ([]*rules.LaneGroupProto, string) {
+	return lc.GetLaneRulesWithLabels(serviceKey, nil)
+}
+
+func (lc *LaneCache) GetLaneRulesWithLabels(
+	serviceKey *svctypes.Service, labels map[string]string,
+) ([]*rules.LaneGroupProto, string) {
 	namespaceContainer, ok := lc.serviceRules.Load(serviceKey.Namespace)
 	if !ok {
 		return []*rules.LaneGroupProto{}, ""
@@ -367,17 +373,24 @@ func (lc *LaneCache) GetLaneRules(serviceKey *svctypes.Service) ([]*rules.LaneGr
 	if !ok {
 		return []*rules.LaneGroupProto{}, ""
 	}
-	ret := make([]*rules.LaneGroupProto, 0, 32)
+	releases := make([]*rules.LaneGroupRelease, 0, 32)
+	bases := make([]*rules.RuleRelease, 0, 32)
 	serviceContainer.Range(func(ruleId string, val *rules.LaneGroupRelease) {
-		ret = append(ret, val.Rule)
+		releases = append(releases, val)
+		bases = append(bases, &val.RuleRelease)
 	})
-
-	nsRevision, ok := lc.revisions.Load(serviceKey.Namespace)
-	if !ok {
-		return ret, ""
+	selected, snapshotRevision := selectGovernanceReleases(bases, labels)
+	selectedIDs := make(map[string]struct{}, len(selected))
+	for _, release := range selected {
+		selectedIDs[release.Id] = struct{}{}
 	}
-	revision, _ := nsRevision.Load(serviceKey.Name)
-	return ret, revision
+	ret := make([]*rules.LaneGroupProto, 0, len(selected))
+	for _, release := range releases {
+		if _, ok := selectedIDs[release.Id]; ok {
+			ret = append(ret, release.Rule)
+		}
+	}
+	return ret, snapshotRevision
 }
 
 func (lc *LaneCache) LastMtime() time.Time {

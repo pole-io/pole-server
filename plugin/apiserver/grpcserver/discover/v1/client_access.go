@@ -27,6 +27,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/protobuf/proto"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -157,6 +158,7 @@ func (g *DiscoverGRPCServer) handleDiscoverRequest(ctx context.Context, in *apis
 		in.GetType() != apiservice.DiscoverRequest_SERVICE_IDENTITY_BUNDLE && in.GetService().GetToken() != "" {
 		ctx = context.WithValue(ctx, types.ContextAuthTokenKey, in.GetService().GetToken())
 	}
+	ctx = context.WithValue(ctx, types.ContextDiscoverFilter, in.GetFilter())
 
 	switch in.Type {
 	case apiservice.DiscoverRequest_INSTANCE:
@@ -193,6 +195,9 @@ func (g *DiscoverGRPCServer) handleDiscoverRequest(ctx context.Context, in *apis
 	case apiservice.DiscoverRequest_FAULT_DETECTOR:
 		action = metrics.ActionDiscoverFaultDetect
 		out = g.ruleServer.GetFaultDetectWithCache(ctx, in.Service)
+	case apiservice.DiscoverRequest_LANE:
+		action = metrics.ActionDiscoverLane
+		out = g.ruleServer.GetLaneRuleWithCache(ctx, in.Service)
 	case apiservice.DiscoverRequest_LOSSLESS:
 		action = metrics.ActionDiscoverLosslessRule
 		out = g.ruleServer.GetLosslessRuleWithCache(ctx, in.Service)
@@ -410,7 +415,22 @@ func (g *ConfigGRPCServer) handleDiscoverRequest(ctx context.Context, in *apicon
 	switch in.Type {
 	case apiconfig.ConfigDiscoverRequest_CONFIG_FILE:
 		action = metrics.ActionGetConfigFile
-		ret := g.configServer.GetConfigFileWithCache(ctx, in.GetFile())
+		file := in.GetFile()
+		if file != nil {
+			file = proto.Clone(file).(*apiconfig.ConfigFile)
+			file.Id = in.GetRevision()
+			if caller := in.GetFilter().GetCaller(); caller != nil {
+				if file.Labels == nil {
+					file.Labels = map[string]string{}
+				}
+				for _, label := range caller.GetLabels() {
+					if label.GetKey() != "" {
+						file.Labels[label.GetKey()] = label.GetValue().GetValue()
+					}
+				}
+			}
+		}
+		ret := g.configServer.GetConfigFileWithCache(ctx, file)
 		out = api.NewConfigDiscoverResponse(apimodel.Code(ret.GetCode()))
 		out.File = ret.GetFile()
 		out.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE

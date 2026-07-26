@@ -31,10 +31,54 @@ import (
 	apitraffic "github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	// 注释：移除protobuf工具包导入 - 改用基础类型
+	types "github.com/pole-io/pole-server/apis/pkg/types"
+	ruletypes "github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 )
+
+func governanceDiscoverLabels(ctx context.Context) map[string]string {
+	filter, _ := ctx.Value(types.ContextDiscoverFilter).(*apiservice.DiscoverFilter)
+	labels := map[string]string{}
+	if filter == nil || filter.GetCaller() == nil {
+		return labels
+	}
+	for _, label := range filter.GetCaller().GetLabels() {
+		if label.GetKey() != "" {
+			labels[label.GetKey()] = label.GetValue().GetValue()
+		}
+	}
+	return labels
+}
+
+type routerRuleLabelCache interface {
+	GetRouterRuleWithLabels(id, service, namespace string, labels map[string]string) ([]*apitraffic.RouteRule, string, error)
+}
+
+type rateLimitLabelCache interface {
+	GetRateLimitRulesWithLabels(svctypes.ServiceKey, map[string]string) ([]*ruletypes.RateLimit, string)
+}
+
+type circuitBreakerLabelCache interface {
+	GetCircuitBreakerConfigWithLabels(name, namespace string, labels map[string]string) (*ruletypes.ServiceWithCircuitBreakerRules, string)
+}
+
+type faultDetectLabelCache interface {
+	GetFaultDetectConfigWithLabels(name, namespace string, labels map[string]string) (*ruletypes.ServiceWithFaultDetectRules, string)
+}
+
+type laneLabelCache interface {
+	GetLaneRulesWithLabels(*svctypes.Service, map[string]string) ([]*ruletypes.LaneGroupProto, string)
+}
+
+type losslessLabelCache interface {
+	GetLosslessConfigWithLabels(name, namespace string, labels map[string]string) (*ruletypes.LosslessRule, string)
+}
+
+type trafficGovernanceLabelCache interface {
+	GetRulesForServiceWithLabels(namespace, service string, labels map[string]string) ([]*ruletypes.TrafficGovernanceRule, string)
+}
 
 // GetOldRouterRuleWithCache 获取缓存中的路由配置信息
 func (s *Server) GetOldRouterRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
@@ -73,10 +117,15 @@ func (s *Server) GetRateLimitWithCache(ctx context.Context, req *apiservice.Serv
 	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_RATE_LIMIT)
 	aliasFor := s.findServiceAlias(req)
 
-	rules, revision := s.caches.RateLimit().GetRateLimitRules(svctypes.ServiceKey{
+	rateLimitCache := s.caches.RateLimit()
+	serviceKey := svctypes.ServiceKey{
 		Namespace: aliasFor.Namespace,
 		Name:      aliasFor.Name,
-	})
+	}
+	rules, revision := rateLimitCache.GetRateLimitRules(serviceKey)
+	if cache, ok := rateLimitCache.(rateLimitLabelCache); ok {
+		rules, revision = cache.GetRateLimitRulesWithLabels(serviceKey, governanceDiscoverLabels(ctx))
+	}
 	if len(rules) == 0 || revision == "" {
 		return resp
 	}
@@ -114,12 +163,20 @@ func (s *Server) GetFaultDetectWithCache(ctx context.Context, req *apiservice.Se
 	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_FAULT_DETECTOR)
 	aliasFor := s.findServiceAlias(req)
 
-	out := s.caches.FaultDetector().GetFaultDetectConfig(aliasFor.Name, aliasFor.Namespace)
-	if out == nil || out.Revision == "" {
+	faultCache := s.caches.FaultDetector()
+	out := faultCache.GetFaultDetectConfig(aliasFor.Name, aliasFor.Namespace)
+	revision := ""
+	if out != nil {
+		revision = out.Revision
+	}
+	if cache, ok := faultCache.(faultDetectLabelCache); ok {
+		out, revision = cache.GetFaultDetectConfigWithLabels(aliasFor.Name, aliasFor.Namespace, governanceDiscoverLabels(ctx))
+	}
+	if out == nil || revision == "" {
 		return resp
 	}
 
-	if req.GetRevision() == out.Revision {
+	if req.GetRevision() == revision {
 		return api.NewDiscoverFaultDetectorResponse(apimodel.Code_DataNoChange, req)
 	}
 
@@ -129,7 +186,7 @@ func (s *Server) GetFaultDetectWithCache(ctx context.Context, req *apiservice.Se
 		Name:      aliasFor.Name,
 		Namespace: aliasFor.Namespace,
 	}
-	resp.Service.Revision = out.Revision
+	resp.Service.Revision = revision
 	resp.FaultDetectRules, err = faultDetectRule2ClientAPI(out)
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
@@ -143,14 +200,22 @@ func (s *Server) GetCircuitBreakerWithCache(ctx context.Context, req *apiservice
 	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_CIRCUIT_BREAKER)
 	// 获取源服务
 	aliasFor := s.findServiceAlias(req)
-	out := s.caches.CircuitBreaker().GetCircuitBreakerConfig(aliasFor.Name, aliasFor.Namespace)
-	if out == nil || out.Revision == "" {
+	circuitCache := s.caches.CircuitBreaker()
+	out := circuitCache.GetCircuitBreakerConfig(aliasFor.Name, aliasFor.Namespace)
+	revision := ""
+	if out != nil {
+		revision = out.Revision
+	}
+	if cache, ok := circuitCache.(circuitBreakerLabelCache); ok {
+		out, revision = cache.GetCircuitBreakerConfigWithLabels(aliasFor.Name, aliasFor.Namespace, governanceDiscoverLabels(ctx))
+	}
+	if out == nil || revision == "" {
 		return resp
 	}
 
 	// 获取熔断规则数据，并对比revision
 	// 注释：版本比较改动 - req.GetRevision()从*wrapperspb.StringValue改为string
-	if len(req.GetRevision()) > 0 && req.GetRevision() == out.Revision {
+	if len(req.GetRevision()) > 0 && req.GetRevision() == revision {
 		return api.NewDiscoverCircuitBreakerResponse(apimodel.Code_DataNoChange, req)
 	}
 
@@ -162,7 +227,7 @@ func (s *Server) GetCircuitBreakerWithCache(ctx context.Context, req *apiservice
 		Namespace: aliasFor.Namespace,
 	}
 	// 注释：Revision字段类型改动 - 从*wrapperspb.StringValue改为string
-	resp.Service.Revision = out.Revision
+	resp.Service.Revision = revision
 	// 注释：重大API改动 - circuitBreaker2ClientAPI现在返回单个CircuitBreakerRule而非CircuitBreaker
 	circuitBreakerRule, err := circuitBreaker2ClientAPI(out, req.GetName(), req.GetNamespace())
 	if err != nil {
@@ -181,7 +246,11 @@ func (s *Server) GetLaneRuleWithCache(ctx context.Context, req *apiservice.Servi
 	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_LANE)
 	// 获取源服务
 	aliasFor := s.findServiceAlias(req)
-	out, revision := s.caches.LaneRule().GetLaneRules(aliasFor)
+	laneCache := s.caches.LaneRule()
+	out, revision := laneCache.GetLaneRules(aliasFor)
+	if cache, ok := laneCache.(laneLabelCache); ok {
+		out, revision = cache.GetLaneRulesWithLabels(aliasFor, governanceDiscoverLabels(ctx))
+	}
 	if out == nil || revision == "" {
 		return resp
 	}
@@ -208,7 +277,11 @@ func (s *Server) GetRouterRuleWithCache(ctx context.Context, req *apiservice.Ser
 	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_CUSTOM_ROUTE_RULE)
 	aliasFor := s.findServiceAlias(req)
 
-	out, revision, err := s.caches.RoutingConfig().GetRouterRule(aliasFor.ID, aliasFor.Name, aliasFor.Namespace)
+	routerCache := s.caches.RoutingConfig()
+	out, revision, err := routerCache.GetRouterRule(aliasFor.ID, aliasFor.Name, aliasFor.Namespace)
+	if cache, ok := routerCache.(routerRuleLabelCache); ok {
+		out, revision, err = cache.GetRouterRuleWithLabels(aliasFor.ID, aliasFor.Name, aliasFor.Namespace, governanceDiscoverLabels(ctx))
+	}
 	if err != nil {
 		log.Error("[Server][Service][Routing] discover routing", utils.RequestID(ctx), zap.Error(err))
 		return api.NewDiscoverRoutingResponse(apimodel.Code_ExecuteException, req)
@@ -238,13 +311,21 @@ func (s *Server) GetLosslessRuleWithCache(ctx context.Context, req *apiservice.S
 	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_LOSSLESS)
 	aliasFor := s.findServiceAlias(req)
 
-	out := s.caches.Lossless().GetLosslessConfig(aliasFor.Namespace, aliasFor.Name)
-	if out == nil || out.Revision == "" {
+	losslessCache := s.caches.Lossless()
+	out := losslessCache.GetLosslessConfig(aliasFor.Name, aliasFor.Namespace)
+	revision := ""
+	if out != nil {
+		revision = out.Revision
+	}
+	if cache, ok := losslessCache.(losslessLabelCache); ok {
+		out, revision = cache.GetLosslessConfigWithLabels(aliasFor.Name, aliasFor.Namespace, governanceDiscoverLabels(ctx))
+	}
+	if out == nil || revision == "" {
 		return resp
 	}
 
 	// 获取无损规则数据，并对比revision
-	if len(req.GetRevision()) > 0 && req.GetRevision() == out.Revision {
+	if len(req.GetRevision()) > 0 && req.GetRevision() == revision {
 		return api.NewDiscoverLosslessResponse(apimodel.Code_DataNoChange, req)
 	}
 
@@ -252,7 +333,7 @@ func (s *Server) GetLosslessRuleWithCache(ctx context.Context, req *apiservice.S
 		Name:      aliasFor.Name,
 		Namespace: aliasFor.Namespace,
 	}
-	resp.Service.Revision = out.Revision
+	resp.Service.Revision = revision
 	resp.LosslessRules = []*apitraffic.LosslessRule{out.ToSpec()}
 	return resp
 }
@@ -260,7 +341,11 @@ func (s *Server) GetLosslessRuleWithCache(ctx context.Context, req *apiservice.S
 func (s *Server) GetTrafficSecurityRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
 	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_TRAFFIC_SECURITY_RULE)
 	aliasFor := s.findServiceAlias(req)
-	out, revision := s.caches.TrafficSecurity().GetRulesForService(aliasFor.Namespace, aliasFor.Name)
+	trafficCache := s.caches.TrafficSecurity()
+	out, revision := trafficCache.GetRulesForService(aliasFor.Namespace, aliasFor.Name)
+	if cache, ok := trafficCache.(trafficGovernanceLabelCache); ok {
+		out, revision = cache.GetRulesForServiceWithLabels(aliasFor.Namespace, aliasFor.Name, governanceDiscoverLabels(ctx))
+	}
 	if revision == "" {
 		return resp
 	}
@@ -279,7 +364,11 @@ func (s *Server) GetTrafficSecurityRuleWithCache(ctx context.Context, req *apise
 func (s *Server) GetTrafficMirrorRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
 	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_TRAFFIC_MIRROR_RULE)
 	aliasFor := s.findServiceAlias(req)
-	out, revision := s.caches.TrafficMirror().GetRulesForService(aliasFor.Namespace, aliasFor.Name)
+	trafficCache := s.caches.TrafficMirror()
+	out, revision := trafficCache.GetRulesForService(aliasFor.Namespace, aliasFor.Name)
+	if cache, ok := trafficCache.(trafficGovernanceLabelCache); ok {
+		out, revision = cache.GetRulesForServiceWithLabels(aliasFor.Namespace, aliasFor.Name, governanceDiscoverLabels(ctx))
+	}
 	if revision == "" {
 		return resp
 	}
@@ -298,7 +387,11 @@ func (s *Server) GetTrafficMirrorRuleWithCache(ctx context.Context, req *apiserv
 func (s *Server) GetTrafficMockRuleWithCache(ctx context.Context, req *apiservice.Service) *apiservice.DiscoverResponse {
 	resp := createCommonDiscoverResponse(req, apiservice.DiscoverResponse_TRAFFIC_MOCK_RULE)
 	aliasFor := s.findServiceAlias(req)
-	out, revision := s.caches.TrafficMock().GetRulesForService(aliasFor.Namespace, aliasFor.Name)
+	trafficCache := s.caches.TrafficMock()
+	out, revision := trafficCache.GetRulesForService(aliasFor.Namespace, aliasFor.Name)
+	if cache, ok := trafficCache.(trafficGovernanceLabelCache); ok {
+		out, revision = cache.GetRulesForServiceWithLabels(aliasFor.Namespace, aliasFor.Name, governanceDiscoverLabels(ctx))
+	}
 	if revision == "" {
 		return resp
 	}

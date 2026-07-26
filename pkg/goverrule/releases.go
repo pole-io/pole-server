@@ -267,24 +267,7 @@ func (s *Server) executeRuleReleasePipeline(ctx context.Context, pipeline *RuleR
 			return api.NewResponse(apimodel.Code_ExistedResource)
 		}
 
-		// 如果是发布正常的版本，需要检查下是否存在灰度发布的版本，存在的话，需要先结束
-		if curData.ReleaseType == rules.ReleaseTypeNormal {
-			grayRes, err := pipeline.checkExistGrayRelease(ctx, tx, req)
-			if err != nil {
-				return api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
-			}
-			if grayRes {
-				return api.NewResponse(apimodel.Code_DataConflict)
-			}
-		} else {
-			// 如果是灰度发布版本，则需要检查下是否已经存在灰度发布版本，存在的话，不能重复发布
-			grayRes, err := pipeline.checkExistGrayRelease(ctx, tx, req)
-			if err != nil {
-				return api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error())
-			}
-			if grayRes {
-				return api.NewResponse(apimodel.Code_ExistedResource)
-			}
+		if curData.ReleaseType == rules.ReleaseTypeGray {
 			// 保存灰度发布信息
 			if errRsp := SaveGrayRule(ctx, tx, s.storage, curData); errRsp != nil {
 				log.Error("[goverrule][release] save gray rule when publish gray rule.", utils.RequestID(ctx), zap.Any("resource", req.Resource),

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Form, Input, Select, Space, Button } from 'components/Fluent';
+import { Form, Input, Select, Space, Button, Tag } from 'components/Fluent';
 import type { FormProps } from 'components/Fluent';
 import LabelInput from 'components/LabelInput';
 import { useAppDispatch, useAppSelector } from 'modules/store';
@@ -34,6 +34,21 @@ const metadataToRows = (metadata?: Record<string, string>): ServiceLabelRow[] =>
 
 const ReadonlyField = ({ value }: { value?: string }) => (
     <div className={style.readonlyField}>{value || '-'}</div>
+);
+
+const ReadonlyItem = ({
+    label,
+    value,
+    wide = false,
+}: {
+    label: string;
+    value?: string;
+    wide?: boolean;
+}) => (
+    <div className={wide ? `${style.serviceReadonlyItem} ${style.serviceReadonlyItemWide}` : style.serviceReadonlyItem}>
+        <span>{label}</span>
+        <strong title={value || '-'}>{value || '-'}</strong>
+    </div>
 );
 
 const ServiceForm: React.FC<ServiceFormProps> = ({ mode, service, onSubmitted, onCancel }) => {
@@ -189,17 +204,57 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ mode, service, onSubmitted, o
         }
     };
 
+    if (mode === 'view') {
+        const metadata = Object.entries(service?.metadata || {});
+        return (
+            <div className={style.serviceReadonly}>
+                <section className={style.serviceReadonlySection}>
+                    <div className={style.serviceFormSectionTitle}>身份与描述</div>
+                    <div className={style.serviceReadonlyGrid}>
+                        <ReadonlyItem label="命名空间" value={service?.namespace} />
+                        <ReadonlyItem label="名称" value={service?.name} />
+                        <ReadonlyItem label="描述" value={service?.comment} wide />
+                    </div>
+                </section>
+
+                <section className={style.serviceReadonlySection}>
+                    <div className={style.serviceFormSectionTitle}>归属信息</div>
+                    <div className={style.serviceReadonlyGrid}>
+                        <ReadonlyItem label="部门" value={service?.department} />
+                        <ReadonlyItem label="业务" value={service?.business} />
+                    </div>
+                </section>
+
+                <section className={style.serviceReadonlySection}>
+                    <div className={style.serviceFormSectionTitle}>服务标签</div>
+                    {metadata.length > 0 ? (
+                        <div className={style.serviceReadonlyTags}>
+                            {metadata.map(([key, value]) => (
+                                <Tag key={key} theme="primary" variant="light">
+                                    {key}: {value}
+                                </Tag>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className={style.serviceReadonlyEmpty}>暂无标签</div>
+                    )}
+                </section>
+            </div>
+        );
+    }
+
     return (
         <Form
             form={form}
             className={style.serviceForm}
+            layout="vertical"
             labelWidth={104}
-            labelAlign="right"
+            labelAlign="left"
             onSubmit={onSubmit}
         >
             <div id="drawer" className={style.serviceDrawerContent}>
                 <section className={style.serviceFormSection}>
-                    <div className={style.serviceFormSectionTitle}>基础信息</div>
+                    <div className={style.serviceFormSectionTitle}>身份与描述</div>
                     <div id="inNs">
                         <FormItem
                             label="命名空间"

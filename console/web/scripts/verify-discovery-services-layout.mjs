@@ -137,6 +137,16 @@ assert.match(serviceForm, /const identityEditable = mode === 'create'/,
   '服务表单中命名空间和名称只能在创建服务时编辑');
 assert.match(serviceForm, /mode === 'create'[\s\S]*dispatch\(saveServices[\s\S]*dispatch\(updateServices/,
   '服务表单必须同时服务创建弹窗和详情页内编辑提交');
+assert.match(serviceForm, /if \(mode === 'view'\)[\s\S]*className=\{style\.serviceReadonlyGrid\}[\s\S]*ReadonlyItem label="命名空间"[\s\S]*ReadonlyItem label="名称"[\s\S]*ReadonlyItem label="描述"/,
+  '服务查看态必须使用独立定义网格，不能继续把只读字段塞进默认 FormItem 布局');
+assert.match(serviceForm, /layout="vertical"[\s\S]*labelAlign="left"/,
+  '服务编辑态必须显式使用左对齐纵向表单，禁止依赖默认布局或把整行标签推到最右');
+assert.doesNotMatch(serviceForm, /labelAlign="right"/,
+  '服务表单禁止使用造成标签和值分居两端的整行右对齐');
+assert.match(style, /\.serviceReadonlyGrid[\s\S]*display: grid[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/,
+  '服务查看态字段必须使用稳定双列网格');
+assert.match(style, /@media \(max-width: 980px\)[\s\S]*\.serviceReadonlyGrid[\s\S]*grid-template-columns: minmax\(0, 1fr\)/,
+  '窄视口下服务查看态字段必须收敛为单列');
 assert.match(style, /\.metricRail[\s\S]*margin: 0;/,
   '服务指标条应作为独立区块，不再用自身 margin 粘连列表节奏');
 assert.match(style, /\.metricRail[\s\S]*flex: 0 0 auto/,
@@ -210,10 +220,8 @@ assert.match(services, /<strong className=\{style\.metricValue\}>[\s\S]*<b id="s
   '健康实例统计必须保留 stHealthy/stInst 锚点，并用非 span 单行结构展示');
 assert.match(services, /<span id="listCount">/,
   '服务清单显示条数必须提供 listCount 锚点');
-assert.match(services, /<div id="nsFilter"[\s\S]*placeholder="全部命名空间"/,
-  '服务列表必须提供命名空间筛选锚点和全部命名空间 placeholder');
-assert.match(services, /<div id="keyword"[\s\S]*placeholder="服务名"/,
-  '服务列表关键词筛选必须提供 keyword 锚点');
+assert.match(services, /<QueryComposer[\s\S]*keywordPlaceholder="服务名"[\s\S]*key: 'namespace'[\s\S]*placeholder: '全部命名空间'/,
+  '服务列表必须通过统一复合查询组件提供服务名和命名空间筛选');
 assert.match(services, /<section id="tbody" className=\{`\$\{style\.tableSurface\} \$\{style\.serviceTableSurface\}`\}>/,
   '服务表格主体必须提供 tbody 锚点并保持内部滚动 surface');
 assert.match(services, /<section className=\{style\.metricRail\}[\s\S]*<section className=\{style\.listSection\}>[\s\S]*<ResourceToolbar[\s\S]*<section id="tbody" className=\{`\$\{style\.tableSurface\} \$\{style\.serviceTableSurface\}`\}>/,
@@ -222,12 +230,10 @@ assert.doesNotMatch(services, /<Tooltip content=\{t\('common\.refresh'\)\}>/,
   '服务列表工具栏不应再重复放刷新按钮');
 assert.doesNotMatch(services, /onClick=\{\(\) => operateService\('create'\)\}>\{t\('common\.add'\)\}/,
   '服务列表工具栏不应再重复放新建按钮');
-assert.match(services, /placeholder="服务名"/,
+assert.match(services, /keywordPlaceholder="服务名"/,
   '服务列表筛选输入应使用命名空间页同类短 placeholder');
-assert.match(services, /<Button variant="outline" onClick=\{submitFilter\}>查询<\/Button>/,
-  '服务列表筛选区必须提供查询按钮');
-assert.match(services, /<Button variant="text" onClick=\{resetFilter\}>重置<\/Button>/,
-  '服务列表筛选区必须提供重置按钮');
+assert.match(services, /<QueryComposer[\s\S]*onSubmit=\{submitFilter\}[\s\S]*onReset=\{resetFilter\}/,
+  '服务列表筛选区必须把查询和重置动作接入统一复合查询组件');
 assert.match(services, /size=\{"large"\}/,
   '服务表格密度必须对齐命名空间页');
 assert.match(services, /tableLayout=(\{"fixed"\}|"fixed")/,
@@ -243,8 +249,8 @@ assert.match(serviceForm, /validateServiceName[\s\S]*该命名空间下服务名
   '创建服务提交前必须校验同命名空间服务名不可重复');
 assert.match(serviceForm, /validateLabels[\s\S]*标签键不能为空[\s\S]*标签键 \$\{key\} 重复/,
   '服务标签提交前必须校验键为空和值重复');
-assert.match(serviceForm, /id="drawer"[\s\S]*基础信息[\s\S]*id="inNs"[\s\S]*id="inName"[\s\S]*id="inDesc"[\s\S]*归属信息[\s\S]*id="inDept"[\s\S]*id="inBiz"[\s\S]*服务标签/,
-  '创建服务抽屉必须按基础信息、归属信息、服务标签三段组织并提供字段锚点');
+assert.match(serviceForm, /id="drawer"[\s\S]*身份与描述[\s\S]*id="inNs"[\s\S]*id="inName"[\s\S]*id="inDesc"[\s\S]*归属信息[\s\S]*id="inDept"[\s\S]*id="inBiz"[\s\S]*服务标签/,
+  '创建服务抽屉必须按身份与描述、归属信息、服务标签三段组织并提供字段锚点');
 assert.match(serviceForm, /id="nameCount"[\s\S]*id="errName"/,
   '服务名称字段必须提供实时计数和内联错误锚点');
 assert.match(serviceForm, /rules=\{identityEditable \? \[\{ required: true, message: '请选择命名空间' \}\] : \[\]\}/,
@@ -269,8 +275,8 @@ assert.doesNotMatch(serviceForm, /<(Input|Select)[\s\S]{0,180}disabled=\{!editab
   '服务查看态字段不能通过 disabled Input/Select 表现，只能通过只读文本表现');
 assert.match(serviceForm, /<LabelInput[\s\S]*editable=\{editable\}[\s\S]*disabled=\{!editable\}/,
   '服务标签仍由统一 LabelInput 根据 editable 切换查看/编辑态');
-assert.match(serviceDetail, /<Button theme="primary" disabled=\{service\.editable === false\} onClick=\{\(\) => setEditing\(true\)\}>[\s\S]*编辑[\s\S]*<\/Button>/,
-  '服务查看态必须在详情页头部提供编辑按钮，点击后原地放开同一表单编辑');
+assert.match(serviceDetail, /className=\{style\.detailSectionHeader\}[\s\S]*disabled=\{service\.editable === false\}[\s\S]*onClick=\{\(\) => setEditing\(true\)\}[\s\S]*编辑服务/,
+  '服务查看态必须在服务信息区提供编辑入口，点击后原地放开同一表单编辑');
 assert.match(serviceForm, /\{editable && \([\s\S]*<FormItem className=\{style\.serviceFormFooter\}>[\s\S]*<Button type="submit" theme="primary">[\s\S]*提交[\s\S]*<Button theme="default" onClick=\{onCancel \|\| resetForm\}>[\s\S]*取消/s,
   '服务表单只有进入编辑态后才显示提交和取消按钮');
 assert.match(serviceEditor, /size="min\(720px, 94vw\)"[\s\S]*showOverlay[\s\S]*closeOnOverlayClick[\s\S]*closeOnEscKeydown[\s\S]*destroyOnClose/,
@@ -405,8 +411,8 @@ assert.match(instanceEditor, /className=\{style\.instanceDrawer\}[\s\S]*bodyClas
   '实例抽屉必须提供独立的头、正文滚动和固定页脚样式锚点');
 assert.match(instanceEditor, /size="min\(960px, calc\(100vw - 32px\)\)"[\s\S]*showOverlay[\s\S]*closeOnOverlayClick[\s\S]*closeOnEscKeydown/,
   '实例编辑抽屉必须充分利用宽屏并保留标准模态关闭行为');
-assert.match(instanceEditor, /footer=\{op === 'view' \? false : \([\s\S]*取消[\s\S]*form\.submit\(\)[\s\S]*提交/,
-  '实例编辑操作必须放在 Drawer 固定页脚，而不是正文滚动区域');
+assert.match(instanceEditor, /footer=\{op === 'view' \? \(canEdit && onEdit \? \([\s\S]*编辑实例[\s\S]*\) : false\) : \([\s\S]*取消[\s\S]*form\.submit\(\)[\s\S]*提交/,
+  '实例查看和编辑操作必须放在 Drawer 固定页脚，而不是正文滚动区域');
 assert.doesNotMatch(instanceEditor, /<FormItem className=\{style\.instanceFormFooter\}>/,
   '实例表单正文不能再保留 sticky FormItem 页脚');
 assert.match(instanceEditor, /disabled: op === 'create' && option\.value === HealthCheckType\.Heartbeat/,
@@ -439,6 +445,10 @@ assert.match(serviceDetailStyle, /\.instanceTableSurface[\s\S]*:global\(\.fluent
   '实例空表格必须保持紧凑，不能占满大部分视口');
 assert.match(instanceEditor, /title=\{isPresent\(children\) \? String\(children\) : emptyText\}/,
   '实例详情长值必须提供原生完整提示');
+assert.match(instanceEditor, /op === 'view'[\s\S]*canEdit && onEdit[\s\S]*编辑实例/,
+  '单实例详情查看态必须提供受编辑能力控制的编辑入口');
+assert.match(instanceTable, /canEdit=\{editState\.selectedRow\?\.editable !== false\}[\s\S]*onEdit=\{editState\.selectedRow \? \(\) => operateInstance\('edit', editState\.selectedRow\)/,
+  '单实例详情的编辑入口必须切换到当前实例编辑态');
 assert.match(instanceTable, /className=\{style\.instanceToolbar\}[\s\S]*className=\{style\.instanceToolbarActions\}/,
   '实例页工具栏必须使用本地 flex 布局，不能依赖不完整的 Row/Col 兼容层');
 assert.match(instanceTable, /className=\{style\.instanceTableSurface\}[\s\S]*<Table/,
@@ -461,8 +471,12 @@ assert.match(serviceDetail, /className=\{style\.detailIcon\} aria-hidden="true">
   '服务身份头部必须使用稳定的 svc 资源类型标识');
 assert.match(serviceDetail, /复制 ID[\s\S]*查看实例[\s\S]*管理别名/,
   '服务身份头部必须保留复制 ID、查看实例和管理别名三个操作');
-assert.match(serviceDetail, /退出编辑[\s\S]*编辑/,
-  '服务详情头部必须提供页面内编辑和退出编辑入口');
+assert.match(serviceDetail, /className=\{style\.detailSectionHeader\}[\s\S]*!editing[\s\S]*编辑服务/,
+  '服务信息区必须提供随内容可见的编辑入口，不能只把编辑按钮放在离屏的页首');
+assert.equal((serviceDetail.match(/setEditing\(true\)/g) || []).length, 1,
+  '服务详情查看态只能保留一个编辑入口，不能在页首和服务信息区重复展示');
+assert.doesNotMatch(serviceDetail, /退出编辑/,
+  '服务详情编辑态应使用表单内取消操作退出，页首不能再提供重复的退出编辑入口');
 assert.match(serviceDetail, /describeServiceAlias\(\{[\s\S]*namespace,[\s\S]*service: serviceName,[\s\S]*limit: 1/,
   '服务摘要必须通过现有别名查询接口动态获取别名总数');
 assert.match(serviceDetail, /可用实例[\s\S]*注册实例[\s\S]*服务别名[\s\S]*服务标签/,

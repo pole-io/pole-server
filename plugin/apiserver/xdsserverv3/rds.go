@@ -19,19 +19,18 @@ package xdsserverv3
 
 import (
 	"fmt"
+	"sort"
 
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
-	v32 "github.com/envoyproxy/go-control-plane/envoy/type/matcher/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	"github.com/pole-io/specification/source/go/api/v1/traffic_manage"
 
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
-	matchs "github.com/pole-io/pole-server/pkg/common/utils/match"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/resource"
 )
@@ -165,8 +164,11 @@ func (rds *RDSBuilder) makeSidecarInBoundRoutes(selfService svctypes.ServiceKey,
 		},
 	}
 
-	seacher := rds.svr.Cache().RateLimit()
-	limits, typedPerFilterConfig, err := resource.MakeSidecarLocalRateLimit(seacher, selfService)
+	var rateLimits []*traffic_manage.RateLimit
+	if selfInfo := opt.Services[selfService]; selfInfo != nil {
+		rateLimits = selfInfo.RateLimits
+	}
+	limits, typedPerFilterConfig, err := resource.MakeSidecarLocalRateLimitFromRules(rateLimits, selfService)
 	if err == nil {
 		currentRoute.TypedPerFilterConfig = typedPerFilterConfig
 		if opt.IsDemand() {
@@ -229,55 +231,29 @@ func (rds *RDSBuilder) makeGatewayRoutes(option *resource.BuildOption) ([]*route
 		return nil, nil
 	}
 
-	routerCache := rds.svr.Cache().RoutingConfig()
-	routerRules := routerCache.ListRouterRule(callerService, callerNamespace)
-	for i := range routerRules {
-		rule := routerRules[i]
-		if rule.GetRoutePolicy() != traffic_manage.RoutePolicy_RulePolicy {
-			continue
-		}
-
-		for i := range rule.RuleRouting.RuleRouting.Rules {
-			subRule := rule.RuleRouting.RuleRouting.Rules[i]
-			// 先判断 dest 的服务是否满足目标 namespace
-			var (
-				matchNamespace    bool
-				findGatewaySource bool
-			)
-			for _, dest := range subRule.GetDestinations() {
-				if dest.Namespace == callerNamespace && dest.Service != matchs.MatchAll {
-					matchNamespace = true
-				}
-			}
-			if !matchNamespace {
+	serviceKeys := make([]svctypes.ServiceKey, 0, len(option.Services))
+	for key := range option.Services {
+		serviceKeys = append(serviceKeys, key)
+	}
+	sort.Slice(serviceKeys, func(i, j int) bool {
+		return serviceKeys[i].Domain() < serviceKeys[j].Domain()
+	})
+	for _, key := range serviceKeys {
+		serviceInfo := option.Services[key]
+		for _, subRule := range resource.FilterOutboundRouterRules(serviceInfo, selfService) {
+			trafficMatch := subRule.GetArguments()
+			if !resource.SupportsEnvoyTrafficMatch(trafficMatch) {
+				log.Warn("[XDS][Envoy] skip gateway route with unsupported traffic match",
+					zap.String("caller", callerNamespace+"/"+callerService),
+					zap.String("callee", serviceInfo.Namespace+"/"+serviceInfo.Name),
+					zap.String("rule", subRule.GetName()))
 				continue
 			}
-
 			routeMatch := &route.RouteMatch{
 				PathSpecifier: &route.RouteMatch_Prefix{Prefix: "/"},
 			}
-
-			// Enhanced logic to handle the new API structure
-			// CustomRouteRule.Arguments is now *TrafficMatchRule which contains source matching info
-			if subRule.GetArguments() != nil {
-				// Additional validation: ensure this rule applies to our service context
-				if extractServiceInfoFromContext(subRule, callerService, callerNamespace) {
-					// Check if this matches our gateway source requirements
-					if isMatchGatewaySourceFromTrafficMatchRule(subRule.GetArguments(), callerService, callerNamespace) {
-						findGatewaySource = true
-						buildGatewayRouteMatchFromTrafficMatchRule(routeMatch, subRule.GetArguments())
-					}
-				}
-			} else {
-				// Handle cases where there are no specific source arguments
-				// This maintains backward compatibility for rules without detailed source matching
-				if extractServiceInfoFromContext(subRule, callerService, callerNamespace) {
-					findGatewaySource = true
-				}
-			}
-
-			if !findGatewaySource {
-				continue
+			if trafficMatch != nil {
+				resource.BuildSidecarRouteMatch(routeMatch, trafficMatch)
 			}
 
 			gatewayRoute := resource.MakeGatewayRoute(corev3.TrafficDirection_OUTBOUND, routeMatch,
@@ -287,8 +263,12 @@ func (rds *RDSBuilder) makeGatewayRoutes(option *resource.BuildOption) ([]*route
 				pathInfo = gatewayRoute.GetMatch().GetSafeRegex().GetRegex()
 			}
 
-			seacher := rds.svr.Cache().RateLimit()
-			limits, typedPerFilterConfig, err := resource.MakeGatewayLocalRateLimit(seacher, pathInfo, selfService)
+			var rateLimits []*traffic_manage.RateLimit
+			if selfInfo := option.Services[selfService]; selfInfo != nil {
+				rateLimits = selfInfo.RateLimits
+			}
+			limits, typedPerFilterConfig, err := resource.MakeGatewayLocalRateLimitFromRules(
+				rateLimits, pathInfo, selfService)
 			if err == nil {
 				gatewayRoute.TypedPerFilterConfig = typedPerFilterConfig
 				gatewayRoute.GetRoute().RateLimits = limits
@@ -312,56 +292,4 @@ func (rds *RDSBuilder) makeGatewayRoutes(option *resource.BuildOption) ([]*route
 		},
 	})
 	return routes, nil
-}
-
-func buildGatewayRouteMatchFromTrafficMatchRule(routeMatch *route.RouteMatch, trafficMatch *traffic_manage.TrafficMatchRule) {
-	for i := range trafficMatch.GetArguments() {
-		argument := trafficMatch.GetArguments()[i]
-		if argument.Type == traffic_manage.SourceMatch_PATH {
-			if argument.Value.Type == apimodel.MatchString_EXACT {
-				routeMatch.PathSpecifier = &route.RouteMatch_Path{
-					Path: argument.GetValue().GetValue(),
-				}
-			} else if argument.Value.Type == apimodel.MatchString_REGEX {
-				routeMatch.PathSpecifier = &route.RouteMatch_SafeRegex{
-					SafeRegex: &v32.RegexMatcher{
-						Regex: argument.GetValue().GetValue(),
-					},
-				}
-			}
-		}
-	}
-	resource.BuildCommonRouteMatch(routeMatch, trafficMatch)
-}
-
-func isMatchGatewaySourceFromTrafficMatchRule(trafficMatch *traffic_manage.TrafficMatchRule, svcName, svcNamespace string) bool {
-	var existPathLabel bool
-
-	args := trafficMatch.GetArguments()
-	for i := range args {
-		if args[i].Type == traffic_manage.SourceMatch_PATH {
-			existPathLabel = true
-			break
-		}
-	}
-
-	// In the new API, service matching is handled at the rule level rather than source level
-	// The service context should already be filtered when we get the TrafficMatchRule
-	// We only need to check if there are path-based routing conditions
-	return existPathLabel
-}
-
-// Helper function to extract service info from routing rule context
-// This compensates for the removal of explicit service info in TrafficMatchRule
-func extractServiceInfoFromContext(rule *traffic_manage.CustomRouteRule, targetSvcName, targetNamespace string) bool {
-	// Check destinations to see if this rule applies to our target service
-	for _, dest := range rule.GetDestinations() {
-		if dest.Service == targetSvcName && dest.Namespace == targetNamespace {
-			return true
-		}
-		if dest.Service == matchs.MatchAll || dest.Namespace == matchs.MatchAll {
-			return true
-		}
-	}
-	return false
 }

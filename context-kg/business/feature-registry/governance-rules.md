@@ -1,14 +1,14 @@
 ---
 title: 治理规则（`pkg/goverrule/`）
 tags: [business, feature, governance, routing, ratelimit]
-links: [namespace, architecture, storage, cache-layer, service-discovery, adr-governance-rule-unified-storage, adr-governance-request-parameter-capture, patterns]
-updated: 2026-07-23
-sources: 8
+links: [namespace, architecture, storage, cache-layer, service-discovery, adr-governance-rule-unified-storage, adr-governance-request-parameter-capture, adr-rpc-first-governance-scope, patterns]
+updated: 2026-07-26
+sources: 10
 ---
 
 # 治理规则（`pkg/goverrule/`）
 
-领域模型规定治理规则归属于明确的命名空间，并遵循相同的模式：增删改查 + 版本控制 + 灰度发布。相同类型和名称的规则表示同一逻辑规则在不同环境中的独立实例；规则归属环境与 caller、callee、target service 等运行时作用范围必须分别表达。当前 specification、存储映射和 Console 尚未完整落地独立的规则归属字段，现有页面中的部分 namespace 仍来自运行时作用对象。整体架构见 [[architecture]]，命名空间依赖见 [[namespace]]，存储接口见 [[storage]]，缓存层见 [[cache-layer]]，与服务发现的关联见 [[service-discovery]]。
+治理规则归属于明确的命名空间，并遵循相同的模式：增删改查 + 版本控制 + 灰度发布。相同类型和名称的规则表示同一逻辑规则在不同环境中的独立实例；规则归属环境与 caller、callee、target service 等运行时作用范围分别表达。现有 specification、统一存储和 Console 已为九类服务治理聚合根提供 owner namespace，但匹配、目标索引和数据面协议仍主要面向服务调用。整体架构见 [[architecture]]，命名空间依赖见 [[namespace]]，存储接口见 [[storage]]，缓存层见 [[cache-layer]]，与服务发现的关联见 [[service-discovery]]。
 
 ## 规则类型
 
@@ -38,6 +38,14 @@ sources: 8
 - 泳道以 LaneGroup 为聚合根，LaneRule 是 group JSON 内的子对象。
 - 普通规则和泳道规则都支持版本控制、灰度发布和细粒度权限。
 
+## RPC-first 范围
+
+Pole 核心治理聚焦 HTTP、gRPC、Dubbo 等同步服务调用。现有路由、限流、熔断、故障探测、无损、泳道、调用鉴权、流量镜像和流量 Mock 继续围绕服务调用做深，并补充数据面能力协商、原子 Bundle、应用回执和 RPC A/B Test。
+
+Kafka、RocketMQ、Redis、MySQL 暂不进入运行时灰度、路由、镜像、Mock 或请求级治理。它们可以提供非侵入式资源目录、健康、指标和经过单独评审的原生管理集成，但不得把 Topic、DataSource 或 Shard 伪装成 Service/Instance，也不得展示没有真实执行点的治理入口。
+
+任务调度只有在 Pole 拥有统一 Worker/Agent、租约和执行协议后再独立评估，不复用 RPC RouteRule。完整范围决策见 [[adr-rpc-first-governance-scope]]。
+
 ## Console 编辑交互
 
 - 路由、泳道、限流、熔断、故障探测、无损、调用鉴权、流量镜像和流量 Mock 均以分段表单完成查看与编辑。
@@ -48,6 +56,13 @@ sources: 8
 - API 资源仅配置协议、方法、路径匹配类型和路径值；值类型属于请求参数匹配条件，不作为 API 资源字段展示或提交。编辑语义随协议变化：HTTP 使用 `method` 与 URI `path`；gRPC 使用 `path` 承载 service/interface、`method` 承载可选方法名；Dubbo 使用 `path` 承载 interface、`method` 承载可选方法名。RPC 接口输入应比可选方法输入更宽。切换协议会清空旧协议的值，避免误用 HTTP 默认值。
 - 请求参数匹配条件只区分固定值和请求参数；“请求参数”采集当前键的实际值，Proxyless SDK 可用于按值拆分本地限流器或匹配同名路由标签，xDS 当前不消费该动态语义。运行机器环境变量不属于治理规则值来源。
 - 分段表单按内容自然收缩；独立创建页的内容区承接长规则滚动，页头操作固定且不保留空白浮动操作按钮，避免编辑器在内容较少时仍撑满整页。具体布局约定见 [[patterns]]。
+
+## Envoy xDS v3 执行边界
+
+- Envoy 以显式 node metadata 治理标签参与 normal/gray release 选择，策略快照按 node 隔离；同 namespace 不同标签节点可以得到不同 RDS、VHDS 和 CDS。
+- 路由执行以顶层 caller/callee 为服务范围，目标组继续承载实例标签和权重。xDS 不从目标组反推调用方或被调方。
+- xDS 当前只声明可等价翻译的路由、基础 QPS 限流、实例级熔断和故障探测能力。OR 条件、动态请求参数，以及排队、自定义响应、并发/系统资源限流等未被转换的字段会整条跳过；尚无 Envoy 执行模型的泳道、无损、鉴权、镜像和 Mock 同样不做静默降级。
+- `random_percent` 映射为 Envoy RouteMatch 的运行时比例；目标组 weight 映射为 WeightedCluster。当前仍未提供基于用户键的稳定 HashPolicy，因此不能把随机比例或权重路由宣传为稳定 A/B 分桶。
 
 ## `Server` 结构体关键字段
 
@@ -72,4 +87,5 @@ type Server struct {
 - [[service-discovery]]
 - [[adr-governance-rule-unified-storage]]
 - [[adr-governance-request-parameter-capture]]
+- [[adr-rpc-first-governance-scope]]
 - [[patterns]]

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Dialog, Empty, Input, Select, Table, TableColumnData, Tag, Textarea } from 'components/Fluent';
-import { ArrowRightIcon, CheckCircleIcon, RefreshIcon, RocketIcon, SearchIcon } from 'components/Fluent/icons';
+import { Button, Dialog, Empty, Table, TableColumnData, Tag, Textarea } from 'components/Fluent';
+import { ArrowRightIcon, CheckCircleIcon, RefreshIcon, RocketIcon } from 'components/Fluent/icons';
 import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout';
+import QueryComposer from 'components/QueryComposer';
 import {
   describeEffectiveSystemSettings,
   AgentSystemDomain,
@@ -478,40 +479,51 @@ export default function SystemConfiguration() {
                   count={`${rows.length} / ${activeDomainTotal}`}
                   description={`${activeDomainMeta.description} 当前组件匹配 ${matchingSettings.length} 项。`}
                   filters={(
-                    <>
-                      <Input
-                        className={style.search}
-                        prefixIcon={<SearchIcon />}
-                        value={query}
-                        onChange={(value) => setQuery(value)}
-                        placeholder={`搜索 ${COMPONENT_LABEL[component]} 全部领域`}
-                        aria-label="搜索系统配置"
-                      />
-                      <Select
-                        className={style.filter}
-                        value={source}
-                        options={sourceOptions}
-                        onChange={(value) => setSource(String(value || ''))}
-                        aria-label="筛选来源"
-                      />
-                      <Button
-                        variant="outline"
-                        disabled={!editableRows.length}
-                        onClick={() => setManagedPanelOpen(true)}
-                      >
-                        编辑 {editableRows.length} 项
-                      </Button>
-                      <Button
-                        theme="primary"
-                        disabled={!managedDomain?.draft}
-                        onClick={() => {
-                          setManagedPublishError('');
-                          setManagedPublishOpen(true);
-                        }}
-                      >
-                        {managedDomain?.draft ? `审阅 r${managedDomain.draft.revision}` : '无待发布草稿'}
-                      </Button>
-                    </>
+                    <QueryComposer
+                      keyword={query}
+                      keywordPlaceholder={`搜索 ${COMPONENT_LABEL[component]} 的配置键、说明或值`}
+                      suggestions={componentSettings.map((item) => ({
+                        label: item.label || item.key,
+                        value: item.key,
+                      }))}
+                      fields={[
+                        {
+                          key: 'source',
+                          label: '配置来源',
+                          type: 'select',
+                          options: sourceOptions,
+                        },
+                      ]}
+                      values={{ source }}
+                      onKeywordChange={setQuery}
+                      onValuesChange={(values) => setSource(String(values.source || ''))}
+                      onReset={() => {
+                        setQuery('');
+                        setSource('');
+                      }}
+                      mode="instant"
+                      actions={(
+                        <>
+                          <Button
+                            variant="outline"
+                            disabled={!editableRows.length}
+                            onClick={() => setManagedPanelOpen(true)}
+                          >
+                            编辑 {editableRows.length} 项
+                          </Button>
+                          <Button
+                            theme="primary"
+                            disabled={!managedDomain?.draft}
+                            onClick={() => {
+                              setManagedPublishError('');
+                              setManagedPublishOpen(true);
+                            }}
+                          >
+                            {managedDomain?.draft ? `审阅 r${managedDomain.draft.revision}` : '无待发布草稿'}
+                          </Button>
+                        </>
+                      )}
+                    />
                   )}
                 />
 

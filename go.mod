@@ -69,7 +69,7 @@ require (
 	github.com/gin-gonic/gin v1.8.1
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/mark3labs/mcp-go v0.18.0
-	github.com/pole-io/specification v0.1.0-ALPHA.37
+	github.com/pole-io/specification v0.1.0-ALPHA.38
 	github.com/testcontainers/testcontainers-go v0.35.0
 	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.36.0

@@ -147,6 +147,31 @@ func TestGovernanceRuleRepositoryActiveReleaseScopesByRuleTypeRuleAndReleaseType
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestGovernanceRuleRepositoryPublishGrayKeepsOtherGrayActive(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	repo := &governanceRuleRepository{}
+	mock.ExpectBegin()
+	tx, err := db.Begin()
+	require.NoError(t, err)
+	storeTx := NewSqlDBTx(&BaseTx{Tx: tx})
+
+	mock.ExpectQuery(regexp.QuoteMeta(selectMaxGovernanceRuleReleaseVersionSQL)).
+		WithArgs(string(governanceRuleTypeRoute), "rule-1").
+		WillReturnRows(sqlmock.NewRows([]string{"max"}).AddRow(uint64(4)))
+	mock.ExpectExec(regexp.QuoteMeta(insertGovernanceRuleReleaseSQL)).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	err = repo.PublishRelease(storeTx, &governanceRuleReleaseRecord{
+		ID: "gray-b-id", RuleType: governanceRuleTypeRoute, RuleID: "rule-1",
+		ReleaseName: "gray-b", ReleaseType: string(rules.ReleaseTypeGray),
+	})
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestGovernanceRuleRepositoryGetMoreRulesReturnsMultipleRuleTypes(t *testing.T) {
 	rawDB, mock, err := sqlmock.New()
 	require.NoError(t, err)

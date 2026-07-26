@@ -1854,6 +1854,8 @@ github.com/pole-io/specification v0.1.0-ALPHA.36 h1:DGLFEXOKmnalk07sFzSWP/JgD7E8
 github.com/pole-io/specification v0.1.0-ALPHA.36/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
 github.com/pole-io/specification v0.1.0-ALPHA.37 h1:KF8qs2p5cR8IYtf1dgRepzcVf5Oi5M+bJFyNBWe+LAs=
 github.com/pole-io/specification v0.1.0-ALPHA.37/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
+github.com/pole-io/specification v0.1.0-ALPHA.38 h1:5R3eukf1aZYPwWHmAadoSCvqKCRw+A2lMi2HI3VVbWU=
+github.com/pole-io/specification v0.1.0-ALPHA.38/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c h1:ncq/mPwQF4JjgDlrVEn3C11VoGHZN7m8qihwgMEtzYw=
 github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c/go.mod h1:OmDBASR4679mdNQnz2pUhc2G8CO2JrUAVFDRBDP/hJE=

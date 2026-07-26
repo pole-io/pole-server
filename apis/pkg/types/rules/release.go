@@ -1,6 +1,8 @@
 package rules
 
 import (
+	"strconv"
+	"strings"
 	"time"
 
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -26,6 +28,9 @@ type RuleRelease struct {
 }
 
 func (l *RuleRelease) GetGrayResource() string {
+	if l.ReleaseType == ReleaseTypeGray && l.ReleaseName != "" {
+		return l.Resource.String() + "/" + l.RuleId + "/" + l.ReleaseName
+	}
 	return l.Resource.String() + "/" + l.RuleId
 }
 
@@ -34,22 +39,33 @@ func (l *RuleRelease) GetClientLabels() []*apimodel.ClientLabel {
 }
 
 func (l *RuleRelease) Key() string {
-	return l.RuleName + "_" + string(l.ReleaseType)
+	parts := []string{l.Namespace, l.RuleId, l.RuleName, string(l.ReleaseType)}
+	if l.ReleaseType == ReleaseTypeGray {
+		parts = append(parts, l.ReleaseName)
+	}
+	var key strings.Builder
+	for _, part := range parts {
+		key.WriteString(strconv.Itoa(len(part)))
+		key.WriteByte(':')
+		key.WriteString(part)
+	}
+	return key.String()
 }
 
 func (r *RuleRelease) ToSpec() *apimodel.RuleRelease {
 	out := &apimodel.RuleRelease{
-		Id:          r.Id,
-		ReleaseName: r.ReleaseName,
-		RuleId:      r.RuleId,
-		RuleName:    r.RuleName,
-		Description: r.Description,
-		Resource:    r.Resource,
-		ReleaseType: string(r.ReleaseType),
-		Version:     r.Version,
-		Active:      r.Active,
-		Ctime:       commontime.Time2String(r.Ctime),
-		Mtime:       commontime.Time2String(r.Mtime),
+		Id:           r.Id,
+		ReleaseName:  r.ReleaseName,
+		RuleId:       r.RuleId,
+		RuleName:     r.RuleName,
+		Description:  r.Description,
+		Resource:     r.Resource,
+		ReleaseType:  string(r.ReleaseType),
+		ClientLabels: r.ClientLabels,
+		Version:      r.Version,
+		Active:       r.Active,
+		Ctime:        commontime.Time2String(r.Ctime),
+		Mtime:        commontime.Time2String(r.Mtime),
 	}
 	SetOwnerNamespaceOnProto(out, r.Namespace)
 	return out
@@ -63,6 +79,7 @@ func (r *RuleRelease) FromSpec(spec *apimodel.RuleRelease) {
 	r.RuleName = spec.RuleName
 	r.Description = spec.Description
 	r.ReleaseType = ReleaseType(spec.ReleaseType)
+	r.ClientLabels = spec.ClientLabels
 	r.Version = spec.Version
 	r.Active = spec.Active
 	r.Resource = spec.Resource
@@ -70,19 +87,20 @@ func (r *RuleRelease) FromSpec(spec *apimodel.RuleRelease) {
 
 func (r *RuleRelease) Clone() *RuleRelease {
 	return &RuleRelease{
-		Id:          r.Id,
-		Namespace:   r.Namespace,
-		ReleaseName: r.ReleaseName,
-		RuleId:      r.RuleId,
-		RuleName:    r.RuleName,
-		Description: r.Description,
-		ReleaseType: r.ReleaseType,
-		Resource:    r.Resource,
-		Active:      r.Active,
-		Ctime:       r.Ctime,
-		Mtime:       r.Mtime,
-		Version:     r.Version,
-		Valid:       r.Valid,
+		Id:           r.Id,
+		Namespace:    r.Namespace,
+		ReleaseName:  r.ReleaseName,
+		RuleId:       r.RuleId,
+		RuleName:     r.RuleName,
+		Description:  r.Description,
+		ReleaseType:  r.ReleaseType,
+		Resource:     r.Resource,
+		Active:       r.Active,
+		Ctime:        r.Ctime,
+		Mtime:        r.Mtime,
+		Version:      r.Version,
+		Valid:        r.Valid,
+		ClientLabels: r.ClientLabels,
 	}
 }
 
@@ -117,5 +135,5 @@ type LosslessRuleRelease struct {
 }
 
 func (l *LosslessRuleRelease) ActiveKey() string {
-	return string(l.ReleaseType) + "/" + l.Rule.Namespace + "/" + l.Rule.Service
+	return l.RuleRelease.Key()
 }

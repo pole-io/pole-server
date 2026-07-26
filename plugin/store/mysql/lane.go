@@ -419,7 +419,7 @@ func governanceRuleReleaseRecordToLaneGroupRelease(record *governanceRuleRelease
 			Valid:        record.Valid,
 			Ctime:        record.CreateTime,
 			Mtime:        record.ModifyTime,
-			ClientLabels: nil,
+			ClientLabels: unmarshalClientLabels(record.ClientLabels),
 		},
 		Rule: proto,
 	}, nil
@@ -457,6 +457,17 @@ func marshalClientLabels(labels []*model.ClientLabel) string {
 		return "[]"
 	}
 	return string(data)
+}
+
+func unmarshalClientLabels(raw string) []*model.ClientLabel {
+	if raw == "" {
+		return nil
+	}
+	labels := []*model.ClientLabel{}
+	if err := json.Unmarshal([]byte(raw), &labels); err != nil {
+		return nil
+	}
+	return labels
 }
 
 func utilsDefaultString(v string, fallback string) string {

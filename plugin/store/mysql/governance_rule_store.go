@@ -403,8 +403,10 @@ func (r *governanceRuleRepository) ActiveRelease(tx store.Tx, release *governanc
 	if err != nil {
 		return err
 	}
-	if _, err := dbTx.Exec(inactiveGovernanceRuleReleaseSQL, string(release.RuleType), release.RuleID, release.ReleaseType); err != nil {
-		return store.Error(err)
+	if release.ReleaseType != string(rules.ReleaseTypeGray) {
+		if _, err := dbTx.Exec(inactiveGovernanceRuleReleaseSQL, string(release.RuleType), release.RuleID, release.ReleaseType); err != nil {
+			return store.Error(err)
+		}
 	}
 	var maxVersion uint64
 	if err := dbTx.QueryRow(selectMaxGovernanceRuleReleaseVersionSQL, string(release.RuleType), release.RuleID).Scan(&maxVersion); err != nil {
@@ -419,8 +421,10 @@ func (r *governanceRuleRepository) PublishRelease(tx store.Tx, release *governan
 	if err != nil {
 		return err
 	}
-	if _, err := dbTx.Exec(inactiveGovernanceRuleReleaseSQL, string(release.RuleType), release.RuleID, release.ReleaseType); err != nil {
-		return store.Error(err)
+	if release.ReleaseType != string(rules.ReleaseTypeGray) {
+		if _, err := dbTx.Exec(inactiveGovernanceRuleReleaseSQL, string(release.RuleType), release.RuleID, release.ReleaseType); err != nil {
+			return store.Error(err)
+		}
 	}
 	var maxVersion uint64
 	if err := dbTx.QueryRow(selectMaxGovernanceRuleReleaseVersionSQL, string(release.RuleType), release.RuleID).Scan(&maxVersion); err != nil {

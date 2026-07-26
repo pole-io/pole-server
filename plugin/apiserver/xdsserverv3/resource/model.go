@@ -205,7 +205,7 @@ type ServiceInfo struct {
 	AliasFor               *svctypes.Service
 	Instances              []*apiservice.Instance
 	SvcInsRevision         string
-	Routing                *traffic_manage.RouteRule
+	Routing                []*traffic_manage.RouteRule
 	SvcRoutingRevision     string
 	Ports                  []*svctypes.ServicePort
 	RateLimits             []*traffic_manage.RateLimit

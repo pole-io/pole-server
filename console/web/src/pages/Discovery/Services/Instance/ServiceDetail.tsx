@@ -159,15 +159,6 @@ const ServiceDetail: React.FC<IServiceDetailProps> = ({ namespace, serviceName, 
                     </div>
                 </div>
                 <div className={style.detailActions}>
-                    {editing ? (
-                        <Button variant="outline" onClick={() => setEditing(false)}>
-                            退出编辑
-                        </Button>
-                    ) : (
-                        <Button theme="primary" disabled={service.editable === false} onClick={() => setEditing(true)}>
-                            编辑
-                        </Button>
-                    )}
                     <Button
                         variant="outline"
                         icon={<CopyIcon />}
@@ -218,8 +209,19 @@ const ServiceDetail: React.FC<IServiceDetailProps> = ({ namespace, serviceName, 
             <section className={style.detailSections}>
                 <section className={`${style.detailSection} ${style.detailFormSection}`}>
                     <header className={style.detailSectionHeader}>
-                        <h3>{editing ? '编辑服务信息' : '基础信息'}</h3>
-                        <span>{editing ? '在当前详情页修改服务描述、归属和标签' : '注册发现服务元数据'}</span>
+                        <div className={style.detailSectionHeading}>
+                            <h3>{editing ? '编辑服务信息' : '服务信息'}</h3>
+                            <span>{editing ? '在当前详情页修改服务描述、归属和标签' : '注册发现服务元数据'}</span>
+                        </div>
+                        {!editing && (
+                            <Button
+                                theme="primary"
+                                disabled={service.editable === false}
+                                onClick={() => setEditing(true)}
+                            >
+                                编辑服务
+                            </Button>
+                        )}
                     </header>
                     <ServiceForm
                         mode={editing ? 'edit' : 'view'}

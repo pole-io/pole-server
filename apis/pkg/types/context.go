@@ -86,6 +86,8 @@ const (
 	ContextUserAgent = StringContext(HeaderUserAgent)
 	// ContextKeyConditions key conditions
 	ContextKeyConditions = StringContext("key-conditions")
+	// ContextDiscoverFilter carries the per-request discovery labels to governance caches.
+	ContextDiscoverFilter = StringContext("discover-filter")
 )
 
 func AppendRequestHeader(ctx context.Context, headers map[string][]string) context.Context {

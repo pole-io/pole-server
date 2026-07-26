@@ -130,6 +130,7 @@ const (
 	ActionDiscoverRateLimit             = "DISCOVER_RATE_LIMIT"
 	ActionDiscoverCircuitBreaker        = "DISCOVER_CIRCUIT_BREAKER"
 	ActionDiscoverFaultDetect           = "DISCOVER_FAULT_DETECT"
+	ActionDiscoverLane                  = "DISCOVER_LANE"
 	ActionDiscoverServiceContract       = "DISCOVER_SERVICE_CONTRACT"
 	ActionDiscoverLosslessRule          = "DISCOVER_LOSSLESS_RULE"
 	ActionDiscoverTrafficSecurityRule   = "DISCOVER_TRAFFIC_SECURITY_RULE"

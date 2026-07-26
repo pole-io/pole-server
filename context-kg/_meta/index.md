@@ -21,8 +21,8 @@ sources: 0
 
 ## 业务知识域（business/）
 
-- [[terminology]] — 核心资源、系统角色、Pole Agent 与系统配置术语 | business, terminology
-- [[domain-models]] — 核心业务实体、自定义角色、内置角色及实体关系 | business, domain-model
+- [[terminology]] — RPC 服务治理、核心资源、系统角色与运行配置术语 | business, terminology
+- [[domain-models]] — 服务治理 Bundle、执行点、核心实体及关系 | business, domain-model
 - [[business-rules]] — 跨域、访问控制、服务发现、配置和治理规则 | business, rules
 
 ### 功能档案（business/feature-registry/）
@@ -42,7 +42,7 @@ sources: 0
 
 ### 接口契约（technical/apis/）
 
-- [[api-servers]] — HTTP、gRPC、xDS、Nacos、Apollo、Eureka 六类协议服务端与 MCP 集成 | api, http, grpc, xds, nacos
+- [[api-servers]] — HTTP、gRPC、xDS、Nacos、Apollo、Eureka 六类协议服务端，含 xDS 节点级治理快照与能力边界 | api, http, grpc, xds, nacos
 
 ### 环境部署（technical/Environment/）
 
@@ -64,13 +64,14 @@ sources: 0
 
 - [[adr-governance-rule-unified-storage]] — 治理规则按环境统一存储、发布与授权 | adr, governance, storage, cache, namespace
 - [[adr-service-contract-reporting-and-visualization]] — 四协议服务契约统一上报、发现与可视化 | adr, service-contract, openapi, grpc, dubbo, thrift
+- [[adr-rpc-first-governance-scope]] — RPC-first 治理范围与消息、存储、任务集成边界 | adr, governance, rpc, scope, integration
 - [[adr-governance-request-parameter-capture]] — 治理请求参数采集与动态限流、路由消费边界 | adr, governance, routing, ratelimit, sdk
 - [[adr-managed-service-identity-authentication]] — 托管身份、短期凭证与 Header 兼容模式 | adr, governance, auth, identity
 - [[adr-a2a-agent-registry]] — A2A Agent Registry 功能设计与分期 | adr, ai, a2a, mcp, registry
 - [[adr-console-oidc-identity-source]] — Console OIDC 用户来源与目录同步 | adr, auth, console, oidc, identity
 - [[adr-config-gray-release-spec-contract]] — 配置中心多灰度发布与 specification 契约适配 | adr, config, api, gray-release
 - [[adr-instance-active-healthcheck]] — Console 实例 TCP/HTTP 主动健康检查 | adr, service, healthcheck, tcp, http
-- [[adr-console-fluent-ui-design-system]] — Console 全站 Fluent UI v9 设计系统迁移 | adr, console, frontend, fluent-ui, design-system
+- [[adr-console-fluent-ui-design-system]] — Console Fluent UI v9 设计系统与复合查询交互规范 | adr, console, frontend, fluent-ui, design-system
 - [[adr-console-agent-resource-workbench]] — Pole Agent 真实 LLM/MCP 运行时与资源确认待发布 | adr, ai, agent, console, governance, config
 - [[adr-system-configuration-control-plane]] — 63 项字段级配置策略、全领域草稿发布、desired/effective 状态与 Agent Secret 热更新 | adr, config, runtime, console, operations
 - [[adr-pole-self-management-control-loop]] — Pole 自身 MCP/A2A 注册、Prompt 自动应用与系统身份协调 | adr, ai, mcp, a2a, agent, prompt, automation
@@ -106,6 +107,7 @@ sources: 0
 | 配置文件发布与 Watch | [[config-center]] |
 | 路由/限流/熔断等治理规则 | [[governance-rules]] |
 | 治理规则统一存储方案 | [[adr-governance-rule-unified-storage]] |
+| RPC-first 治理范围与外部资源边界 | [[adr-rpc-first-governance-scope]] |
 | 服务间托管身份与凭证 | [[adr-managed-service-identity-authentication]] |
 | 管理后台运维操作 | [[admin]] |
 | MCP 如何运作 | [[ai-features]] |

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Button, Empty, Select, Table, TableColumnData, Tag } from 'components/Fluent';
-import { ArrowRightIcon, RefreshIcon, ServiceIcon } from 'components/Fluent/icons';
+import { Button, Empty, Table, TableColumnData, Tag } from 'components/Fluent';
+import { ArrowRightIcon, ServiceIcon } from 'components/Fluent/icons';
+import QueryComposer from 'components/QueryComposer';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -115,7 +116,7 @@ export default function ServiceMonitor() {
   const [kind, setKind] = React.useState('');
 
   const rows = React.useMemo(() => SERVICE_SIGNALS.filter((item) => {
-    const matchService = !service || serviceKey(item) === service;
+    const matchService = !service || serviceKey(item).toLocaleLowerCase().includes(service.toLocaleLowerCase());
     const matchKind = !kind || item.kind === kind;
     return matchService && matchKind;
   }), [kind, service]);
@@ -246,23 +247,27 @@ export default function ServiceMonitor() {
       </div>
 
       <section className={style.variableBar}>
-        <Select
-          className={style.variableControl}
-          clearable
-          placeholder="服务信息"
-          value={service}
-          options={uniqueOptions(SERVICE_SIGNALS, serviceKey)}
-          onChange={(value) => setService(value as string)}
+        <QueryComposer
+          keyword={service}
+          keywordPlaceholder="搜索命名空间 / 服务"
+          suggestions={uniqueOptions(SERVICE_SIGNALS, serviceKey).map((item) => ({
+            label: String(item.label),
+            value: String(item.value),
+          }))}
+          fields={[
+            {
+              key: 'kind',
+              label: '治理能力',
+              type: 'select',
+              options: governanceKindOptions,
+            },
+          ]}
+          values={{ kind }}
+          onKeywordChange={setService}
+          onValuesChange={(values) => setKind(String(values.kind || ''))}
+          onReset={resetFilters}
+          mode="instant"
         />
-        <Select
-          className={style.variableControl}
-          clearable
-          placeholder="治理能力"
-          value={kind}
-          options={governanceKindOptions}
-          onChange={(value) => setKind(value as string)}
-        />
-        <Button icon={<RefreshIcon />} variant="outline" onClick={resetFilters}>重置</Button>
       </section>
 
       <Panel title="服务级总览" subtitle="点击行进入独立服务详情页，继续按接口、实例和治理能力下钻">

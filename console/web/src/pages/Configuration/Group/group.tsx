@@ -1,10 +1,11 @@
 import React, { } from 'react';
-import { Button, Input, PrimaryTableProps, Select, Space, Table, TableRowData, Tag, Tooltip } from 'components/Fluent';
+import { Button, PrimaryTableProps, Space, Table, TableRowData, Tag, Tooltip } from 'components/Fluent';
 import { AddIcon, RefreshIcon } from 'components/Fluent/icons';
 
 import Text from 'components/Text';
 import { ConfirmOperationButton, OperationButton } from 'components/OperationButton';
 import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout';
+import QueryComposer, { QuerySnapshot } from 'components/QueryComposer';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { useNavigate } from 'react-router-dom';
 import ConfigGroupEditor from './ConfigGroupEditor';
@@ -236,8 +237,12 @@ const ConfigGroupTable: React.FC<IConfigGroupTableProps> = ({ }) => {
 		setFilterState(merged);
 	};
 
-	const submitFilter = () => {
-		refreshTable(1, limit, filterState);
+	const submitFilter = ({ keyword, values }: QuerySnapshot) => {
+		refreshTable(1, limit, {
+			keyword,
+			namespace: String(values.namespace || ''),
+			publishStatus: String(values.publishStatus || ''),
+		});
 	};
 
 	const resetFilter = () => {
@@ -282,37 +287,40 @@ const ConfigGroupTable: React.FC<IConfigGroupTableProps> = ({ }) => {
 				title="配置分组列表"
 				count={loading ? '正在同步列表' : `当前显示 ${filteredDatas.length} 条`}
 				filters={(
-					<>
-						<Input
-							className={style.filterKeyword}
-							clearable
-							label="关键字"
-							placeholder="分组名称"
-							value={filterState.keyword}
-							onChange={(value) => updateFilters({ keyword: value as string })}
-							onEnter={submitFilter}
-						/>
-						<Select
-							className={style.filterSelect}
-							label="命名空间"
-							options={namespaceOptions}
-							value={filterState.namespace}
-							onChange={(value) => updateFilters({ namespace: value as string })}
-						/>
-						<Select
-							className={style.filterSelect}
-							label="发布状态"
-							options={[
-								{ label: '全部', value: '' },
-								{ label: '待发布', value: 'pending' },
-								{ label: '无待发布', value: 'clean' },
-							]}
-							value={filterState.publishStatus}
-							onChange={(value) => updateFilters({ publishStatus: value as string })}
-						/>
-						<Button variant="outline" onClick={submitFilter}>查询</Button>
-						<Button variant="text" onClick={resetFilter}>重置</Button>
-					</>
+					<QueryComposer
+						keyword={filterState.keyword}
+						keywordPlaceholder="搜索配置分组名称"
+						suggestions={datas.map((item) => String(item.name || '')).filter(Boolean)}
+						fields={[
+							{
+								key: 'namespace',
+								label: '命名空间',
+								type: 'select',
+								filterable: true,
+								options: namespaceOptions,
+							},
+							{
+								key: 'publishStatus',
+								label: '发布状态',
+								type: 'select',
+								options: [
+									{ label: '待发布', value: 'pending' },
+									{ label: '无待发布', value: 'clean' },
+								],
+							},
+						]}
+						values={{
+							namespace: filterState.namespace,
+							publishStatus: filterState.publishStatus,
+						}}
+						onKeywordChange={(keyword) => updateFilters({ keyword })}
+						onValuesChange={(values) => updateFilters({
+							namespace: String(values.namespace || ''),
+							publishStatus: String(values.publishStatus || ''),
+						})}
+						onSubmit={submitFilter}
+						onReset={resetFilter}
+					/>
 				)}
 			/>
 			{editorState.visible && (

@@ -1045,6 +1045,25 @@ sources: 0
   - 使用 `.git/info/exclude` 做本地排除，禁止 handoff 文件进入暂存、提交或推送。
   - 交付前同时检查 ignore 来源与完整 Git 状态，避免被默认隐藏的未跟踪文件误入版本控制。
 
+## [2026-07-25] refactor | Console 复合查询交互统一
+
+- 更新页面：adr-console-fluent-ui-design-system、todo、lessons、index。
+- 变更摘要：
+  - 新增应用级 `QueryComposer`，统一主搜索、自动补全、条件 Tag、高级筛选浮层，以及远程显式查询和本地即时过滤两种模式。
+  - 命名空间、服务、配置分组、治理工作台、MCP、A2A、系统配置与观测多条件页完成迁移；单字段和详情局部搜索继续保持轻量。
+  - 事件指标与操作审计继续使用独立 DateRangePicker，不把时间范围放入高级条件或 Tag。
+  - 新增专项契约并通过 ESLint、观测/日期/暗色回归、test build 和 1440/720 浏览器交互验收。
+
+## [2026-07-26] ingest | 多资源域统一治理平台技术方案
+
+- 新增页面：adr-multi-resource-governance-platform。
+- 更新页面：terminology、domain-models、governance-rules、todo、lessons、index。
+- 变更摘要：
+  - 将服务、消息、存储和任务定义为资源域，将路由、限流、运行时鉴权、镜像、Mock 等定义为治理能力。
+  - 采用公共规则信封、单效果类型化 Spec、Policy Bundle、能力协商、编译 Adapter、原子 Bundle 和应用回执。
+  - 明确 Kafka/RocketMQ、Redis/MySQL、Job 的资源模型、执行点、安全不变量和 fail-open/fail-closed 边界。
+  - 给出兼容现有九类服务规则的 Phase 0—5 演进路线、契约测试和完整纳管验收标准。
+
 ## [2026-07-26] feat | Pole 自身能力自动注册与自管理闭环
 
 - 新增页面：adr-pole-self-management-control-loop。
@@ -1055,6 +1074,17 @@ sources: 0
   - System Settings 保存管理员 desired revision 后自动探测和应用健康 Prompt/模型/工具策略，失败时保留 rejected 草稿和 last-known-good。
   - Registry 写入使用稳定 ID、revision、软删除复活和子项 upsert，重复 reconcile 保持幂等；配置主体与系统执行主体分别审计。
 
+## [2026-07-26] refactor | 治理范围收敛为 RPC-first
+
+- 新增页面：adr-rpc-first-governance-scope。
+- 撤下页面：adr-multi-resource-governance-platform。
+- 更新页面：terminology、domain-models、governance-rules、todo、lessons、index。
+- 变更摘要：
+  - 核心治理明确聚焦 HTTP、gRPC、Dubbo 服务调用及其路由、限流、鉴权、镜像、Mock、熔断和 A/B Test。
+  - Kafka、RocketMQ、Redis、MySQL 暂不进入运行时灰度和请求级治理，只保留资源目录、健康、指标与原生管理集成。
+  - 不向 specification 预埋多资源域万能策略；Capability Profile、原子 Bundle 和 Apply Receipt 只围绕真实服务数据面深化。
+  - Job 只有在 Pole 拥有统一 Worker/Agent、租约和执行协议后再独立评估。
+
 ## [2026-07-26] feat | 四协议服务契约上报与可视化闭环
 
 - 新增页面：adr-service-contract-reporting-and-visualization。
@@ -1064,6 +1094,15 @@ sources: 0
   - OpenAPI 3.x 由服务端抽取接口，其余 RPC 协议由构建侧提交结构化接口；不让控制面主动扫描生产服务。
   - Client 与 Manual 按来源独立全量替换，修复缓存 miss、软删除回流、字段兼容和统一 Discover 分发。
   - 服务详情增加“服务契约”页签，展示四协议版本、接口来源和原始契约。
+
+## [2026-07-26] refactor | Envoy xDS v3 对齐统一治理发布
+
+- 更新页面：api-servers、governance-rules、todo、index。
+- 变更摘要：
+  - Envoy Node 通过显式治理 metadata 标签复用 normal/gray release 选择，RDS、VHDS、CDS 改为 node-scoped 稳定快照，EDS 继续按 namespace 共享。
+  - 路由转换改用顶层 caller → callee 服务范围，保留 DestinationGroup 标签、权重和多目标，不再从目标组反推服务身份。
+  - Gateway 接入真实节点策略生成链；LDS 与策略资源先完整构建再原子替换，相同 namespace 与治理标签的节点复用规则选择结果。
+  - OR、动态请求参数、非基础 QPS 限流字段及无等价 Envoy 执行模型的能力不再静默降级，并在知识库固化当前支持矩阵。
 
 ## 相关页面
 

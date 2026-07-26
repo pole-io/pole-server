@@ -249,5 +249,5 @@ func (r *TrafficGovernanceRuleRelease) ActiveKey() string {
 	if r == nil || r.Rule == nil {
 		return ""
 	}
-	return string(r.ReleaseType) + "/" + r.Rule.ServiceNamespace + "/" + r.Rule.Service
+	return r.RuleRelease.Key()
 }

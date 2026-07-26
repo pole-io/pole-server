@@ -1,8 +1,8 @@
 ---
 title: 核心业务实体
 tags: [business, domain-model]
-links: [terminology, business-rules, namespace, service-discovery, config-center, governance-rules, ai-features, auth-system]
-updated: 2026-07-23
+links: [terminology, business-rules, namespace, service-discovery, config-center, governance-rules, ai-features, auth-system, adr-rpc-first-governance-scope]
+updated: 2026-07-26
 sources: 2
 ---
 
@@ -14,7 +14,9 @@ sources: 2
 | Service | [[service-discovery]] | 服务名是全局逻辑标识；`namespace + serviceName` 定位一个独立环境实例 |
 | Instance | [[service-discovery]] | 服务运行节点，按健康、隔离、位置和元数据参与发现 |
 | Config File | [[config-center]] | 版本化配置内容，支持发布、回滚和监听 |
-| Governance Rule | [[governance-rules]] | 治理能力统称，包含路由、限流、熔断、探测、无损、泳道 |
+| Governance Rule | [[governance-rules]] | 针对服务调用的类型化期望策略，支持草稿、发布和回滚 |
+| Service Policy Bundle | [[adr-rpc-first-governance-scope]] | 面向某类服务数据面编译并原子应用的规则发布集合 |
+| Enforcement Point | [[adr-rpc-first-governance-scope]] | 执行规则并返回能力档案与应用回执的 SDK、Sidecar 或 Gateway |
 | MCP Server | [[ai-features]] | AI 原生能力中的 MCP 服务注册实体 |
 | System Role | [[auth-system]] | 固定权限集合，只维护与 User、UserGroup 的成员关系 |
 
@@ -29,6 +31,14 @@ Namespace
     -> Config File
       -> Release
   -> Governance Rule
+    -> Policy Release
+
+Service Policy Bundle
+  -> Policy Release(s)
+
+Enforcement Point
+  -> Capability Profile
+  -> Apply Receipt
 
 User -> System Role
 User -> UserGroup -> System Role
@@ -47,3 +57,4 @@ System Role -> Immutable Policy
 - [[governance-rules]]
 - [[ai-features]]
 - [[auth-system]]
+- [[adr-rpc-first-governance-scope]]

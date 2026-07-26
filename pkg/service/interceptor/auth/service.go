@@ -260,6 +260,41 @@ func (svr *Server) filterServicesByPermission(
 			})
 		}
 		if ok {
+			svc.Editable = true
+			svc.Deleteable = true
+
+			resourceID := svc.GetId()
+			resourceMetadata := svc.GetMetadata()
+			if cachedService := svr.Cache().Service().GetServiceByName(svc.GetName(), svc.GetNamespace()); cachedService != nil {
+				resourceID = cachedService.ID
+				resourceMetadata = cachedService.Meta
+			}
+			authCtx.SetAccessResources(map[apisecurity.ResourceType][]authtypes.ResourceEntry{
+				apisecurity.ResourceType_Services: {
+					{
+						Type:     apisecurity.ResourceType_Services,
+						ID:       resourceID,
+						Metadata: resourceMetadata,
+					},
+				},
+			})
+
+			authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.UpdateServices})
+			if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+				svc.Editable = false
+			}
+
+			authCtx.SetMethod([]authtypes.ServerFunctionName{authtypes.DeleteServices})
+			if _, err := svr.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+				svc.Deleteable = false
+			}
+
+			updated, err := anypb.New(svc)
+			if err != nil {
+				continue
+			}
+			anyData.TypeUrl = updated.TypeUrl
+			anyData.Value = updated.Value
 			filtered = append(filtered, anyData)
 		}
 	}

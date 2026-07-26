@@ -2,11 +2,53 @@
 title: 任务计划与 Review
 tags: [tasks, todo]
 links: [lessons, adr-otel-observability-platform, adr-pole-rust-client-observability]
-updated: 2026-07-23
+updated: 2026-07-26
 sources: 0
 ---
 
 # 任务计划与 Review
+
+## Envoy xDS v3 适配最新内部治理规则（2026-07-26）
+
+目标：让 Envoy xDS v3 复用统一治理规则的 active release 选择结果，按节点身份和治理标签隔离策略快照，并按显式 caller → callee 契约生成路由，避免 namespace 共享策略、旧 destination 反推和目标组信息丢失。
+
+- [x] 审计现有 ADS/LDS/CDS/EDS/RDS/VHDS 请求链、缓存粒度和治理规则转换边界。
+- [x] 对照统一存储、多灰度 release、owner namespace、caller/callee 与 RPC-first ADR 明确验收规格。
+- [x] 为 Envoy Node 定义治理标签投影，并构造与 Discover 一致的 `ContextDiscoverFilter`。
+- [x] 将 RDS/VHDS/CDS 等治理相关资源改为 node-scoped 快照，EDS 保持 namespace 共享。
+- [x] 修复路由 wrapper 的 caller/callee 映射、多规则保留、Gateway 生成链和 DestinationGroup 权重/标签转换。
+- [x] 对不支持的 OR、动态参数及非 Envoy 执行能力建立显式跳过/错误边界，禁止静默变义。
+- [x] 补充 node label 灰度、caller/callee 隔离、sidecar/gateway 与缓存隔离回归测试。
+- [x] 完成格式化、定向测试、全仓编译/测试、diff 检查和双轴代码审查。
+
+### Review
+
+- Envoy Node 仅将 `pole.io/governance-label.*` metadata 投影为治理标签，复用 Discover 的 active release 选择；同 namespace、同标签上下文复用一次规则选择，不同上下文生成相互隔离的 LDS/RDS/VHDS/CDS 稳定快照，EDS 继续按 namespace 共享。
+- 自定义路由按顶层 caller → callee 契约过滤，normal/gray 都保留 release 内全部路由规则；sidecar 与 gateway 均保留 DestinationGroup 的多目标、权重和 `envoy.lb` 子集标签，网关路由按服务域名稳定排序。
+- 基础 QPS 限流只接受可等价表达的固定 HTTP 条件与 token bucket；OR、动态参数、通配匹配、并发/系统资源、排队、自定义响应、爬坡、均摊及自定义 failover/action 等能力整条跳过并记录日志，避免删除条件后扩大命中。
+- 节点快照先完成全部资源构建与确定性版本计算再原子替换；构建/序列化失败保留 last-known-good，最后一条 stream 关闭后同时清理节点索引与缓存。
+- 新增 wrapper caller/callee、normal/gray 接线、治理标签投影、sidecar/gateway 路由、DestinationGroup 权重/标签、稳定排序、节点缓存隔离/原子性/生命周期及能力边界回归。`go test ./pkg/cache/rules ./pkg/goverrule ./plugin/apiserver/grpcserver/discover/v1 ./plugin/apiserver/xdsserverv3/... ./apis/pkg/types/rules -count=1`、`go test -p 1 ./... -count=1`、`go test -race ./plugin/apiserver/xdsserverv3/... -count=1` 与 `git diff --check` 均通过。
+- 双轴代码复审最终无阻断或重要问题。并行全仓测试曾出现一次 Go 工具链读取标准库临时文件失败；目标包单测随即通过，串行全仓复验通过，确认不是代码失败。
+
+## 控制台复合查询交互统一
+
+目标：将控制台查询区统一为“主搜索框 + 已选条件标签 + 高级筛选浮层/折叠面板”，默认保持轻量；时间范围作为独立控件，不纳入智能条件标签。
+
+- [x] 盘点全部查询页面、字段类型、时间范围和现有查询行为
+- [x] 定义共享复合查询组件契约与页面迁移验收矩阵
+- [x] 实现主搜索、自动补全、条件标签和高级筛选面板
+- [x] 迁移资源列表、治理、认证、AI 与观测页面
+- [x] 保持时间范围独立，并保留查询、重置、分页回到第一页等原行为
+- [x] 补充全局静态契约、交互回归、暗色主题和响应式验证
+- [x] 完成 ESLint、专项测试、构建、真实浏览器验收与双轴审查
+
+Review：
+
+- 新增应用级 `QueryComposer`：主搜索使用 Fluent Combobox 自动补全，文本/单选/多选/三态布尔进入高级 Popover，确认后生成可删除 Tag；远程页面使用显式查询，本地页面在主搜索输入或高级条件确认后即时过滤。
+- 已迁移命名空间、服务、配置分组、治理工作台、MCP、A2A、系统配置、系统/服务监控、事件指标和操作审计。认证、治理子表与详情侧栏只有单字段局部搜索，继续保持一个轻量搜索框，不生成空高级筛选。
+- 事件指标和操作审计的 DateRangePicker 通过独立 `timeRange` 插槽保留，不进入高级字段或 Tag；显式页面使用统一查询快照隔离草稿与已应用条件，查询和重置都回到第一页。
+- 新增 `test:query-composer`，同步更新观测回归契约。`test:query-composer`、`test:metrics-observability`、`test:date-range-picker`、`test:dark-theme`、目标 ESLint、`build:test` 与 `git diff --check` 均通过。
+- release 产物在 1440px 完成自动补全、中文输入法组合态 Enter、嵌套 Select、取消/Esc 回滚、完成提交、Tag 删除、显式查询草稿隔离和时间独立验收；720px 下页面无横向溢出，浮层宽 522px 且完整位于 900px 视口内，浏览器控制台 0 错误。最终双轴复审无遗留阻断；Orca 桌面辅助权限未授予，因此未执行桌面级读屏验收。
 
 ## 观测筛选日期范围选择器
 
@@ -10428,6 +10470,124 @@ Review：
 - 全局 `~/.codex/AGENTS.md` 已明确本地目录、禁止 Git、脱敏、引用现有产物和双重验证规则，并声明覆盖 handoff skill 的临时目录默认值。
 - context-kg lint、双向链接/index 覆盖和 `git diff --check` 通过；仓库待提交范围仅为本次 todo、lessons 和 log。
 
+## 历史 Worktree 合并核对与清理（2026-07-25）
+
+目标：核对两个额外 worktree 是否仍有未提交或未合并成果，仅在确认已被 `develop` 包含后安全移除。
+
+- [x] 盘点额外 worktree 的分支、HEAD 与工作区状态。
+- [x] 验证各分支提交是否已被本地及远端 `develop` 包含。
+- [x] 移除确认安全的 worktree，并清理失效 worktree 元数据。
+- [x] 复核 worktree 列表、主工作区状态并记录 Review。
+
+### Review
+
+- `codex-a2a-agent-registry` 工作区干净，HEAD `6574b2b1` 已同时被 `develop` 与 `origin/develop` 包含，相对主线无独有提交。
+- `traffic-governance-rules` 工作区干净，HEAD `29c68320` 已同时被 `develop` 与 `origin/develop` 包含，相对主线无独有提交。
+- 两个 worktree 均使用普通 `git worktree remove` 成功移除，无需 `--force`；随后执行 `git worktree prune`。
+- 最终 `git worktree list` 只保留主工作区；对应本地分支及远端分支未删除，避免把 worktree 清理扩大为分支清理。
+
+## 服务实例详情布局与编辑入口修复（2026-07-25）
+
+目标：修复服务实例详情中字段标签和值严重错位、信息密度失衡以及编辑入口不可见的问题，使查看态与编辑态形成完整且可验证的操作闭环。
+
+- [x] 对照用户截图审计详情组件、字段布局、权限数据和编辑状态链路。
+- [x] 用紧凑的身份摘要、关键状态与分组字段重构服务和实例查看态布局。
+- [x] 为有权限的服务与实例提供清晰的编辑入口，并复用现有编辑提交链路。
+- [x] 增加布局与操作契约回归，运行专项检查、Lint 和构建。
+- [x] 在真实 8080 页面验证亮暗主题、进入编辑与取消操作并记录 Review。
+
+### Review
+
+- 用户截图实际对应 `/discovery/service/instance` 的“服务详情”Tab，而不是单实例 Drawer。根因是 `ServiceForm` 依赖 Fluent Form 默认纵向布局，同时设置整行标签右对齐，导致标签贴到最右、值从最左另起一行。
+- 服务查看态已改为独立 definition grid，按“身份与描述 / 归属信息 / 服务标签”组织；宽屏双列、窄屏单列，标签和值保持同一起点。编辑态显式使用左对齐纵向表单，不再依赖默认布局。
+- 服务信息区标题栏增加随内容可见的“编辑服务”，并在后续重复入口修复中移除服务身份页首的同义“编辑”；真正的单实例详情 Drawer 固定页脚增加“编辑实例”，点击后复用原有实例编辑器。
+- 真实点击发现服务查询的安全投影未返回 capability，导致管理员的 `editable/deleteable` 被 proto 默认值置为 false。服务鉴权拦截器现按逐服务资源分别检查 `UpdateServices` 与 `DeleteServices` 并回填能力，不暴露 SDK 到 control-plane token。
+- `verify-discovery-services-layout.mjs` 新增只读网格、显式表单布局、窄屏退化、内容区编辑入口和单实例 view-to-edit 契约；专项检查、目标 ESLint、release build、`go test ./pkg/service/... -count=1` 和 `go test ./... -count=1` 均通过。
+- Kubernetes 已滚动更新为 `pole-control-plane:local-20260725-service-instance-detail-v2`。真实 8080 浏览器在 `pole-system/pole.checker` 验证：5 个只读字段标签和值几何对齐，亮暗主题均正常；“编辑服务”可进入编辑态并取消；960px 单实例 Drawer 固定页脚显示“编辑实例”，可进入编辑态并取消。
+- 验证截图：`output/playwright/service-detail-layout-light.png`、`output/playwright/service-detail-layout-dark.png`、`output/playwright/instance-detail-edit-entry-dark.png`。
+
+## 服务详情重复编辑入口修复（2026-07-25）
+
+目标：删除服务详情页首与服务信息区重复的编辑操作，仅保留与被编辑内容直接对应的入口。
+
+- [x] 对照用户截图确认两个按钮触发同一 `setEditing(true)` 状态转换。
+- [x] 删除服务身份页首的“编辑 / 退出编辑”，保留服务信息区“编辑服务”和表单内取消操作。
+- [x] 增加编辑入口数量必须恰好为 `1` 的静态回归检查。
+- [x] 执行专项校验、前端构建，并在 Kubernetes 实际页面验证。
+
+### Review
+
+- 根因是前一轮为解决长页面中编辑入口不可见，在服务信息区新增“编辑服务”后，没有同步删除身份页首原有“编辑”，导致同一 `setEditing(true)` 在查看态出现两次。
+- 页首现只保留“复制 ID / 查看实例 / 管理别名”；服务信息区保留唯一“编辑服务”。进入编辑态后的退出继续复用表单内“取消”，不再额外增加页首“退出编辑”。
+- `verify-discovery-services-layout.mjs` 已清理“页首必须有编辑”的过时契约，并断言 `setEditing(true)` 恰好出现一次、源码不含“退出编辑”。
+- 专项校验、目标 ESLint、release build 和 `git diff --check` 均通过。
+- Kubernetes 已滚动更新为 `pole-control-plane:local-20260725-service-instance-detail-v3`，运行镜像 ID 为 `sha256:90bb6a30f4e6dffb941a5fcc27b741a03f6d1e8715a5abc5f4ddd6d1a556e4cb`，Pod Ready 且重启次数为 `0`。
+- 真实 8080 浏览器验证：查看态“编辑服务”数量为 `1`、精确文案“编辑”数量为 `0`；点击进入编辑态后可通过“取消”恢复查看态，浏览器 page error 为 `0`。截图：`output/playwright/service-detail-single-edit-light.png`。
+
+## 治理规则对消息路由、存储路由与 A/B Test 的覆盖评估（2026-07-26）
+
+- [x] 明确现有治理规则的领域模型、匹配维度、动作模型与执行位置
+- [x] 评估消息路由的直接覆盖、可复用能力与数据面缺口
+- [x] 评估存储路由的直接覆盖、可复用能力与数据面缺口
+- [x] 评估 A/B Test 的流量分组、稳定分桶、指标归因与实验生命周期缺口
+- [x] 用代码、知识库与测试证据复核结论
+
+### Review
+
+- 用户进一步明确“消息路由、存储路由”是指中间件运行时治理，而不是 Pole 自身 Store；继续评估标准化和侵入成本后，最终决定不纳入当前核心治理，只保留非侵入式资源集成。
+- 现有治理体系可复用的是控制面 CRUD、版本/灰度发布、条件匹配和目标服务实例选择；实际执行仍位于 SDK、xDS 或其它数据面，不能仅凭规则可保存就认定业务能力已覆盖。
+- 消息路由仅能覆盖同步 HTTP/RPC 请求按 Header、Query、Cookie、Path、调用方等条件选择服务实例子集；真正 MQ 的 Topic、Queue、Consumer Group、Partition、DLQ 与投递语义没有领域模型或数据面适配。
+- 存储路由只能近似复用“将存储节点注册为服务实例后按标签、优先级、权重选址”的骨架；Pole 自身 Store 是启动时全局单选，分库分表、读写分离、主从、事务粘滞、一致性与故障切主均未覆盖。
+- A/B Test 只能近似完成预先分群与流量权重路由，尚无稳定用户分桶、实验/变体模型、曝光事件、指标归因、统计显著性、互斥分层和实验生命周期；治理规则的灰度发布表达“向治理客户端下发哪个规则版本”，不等于最终用户实验。
+- 数据面存在明显语义差异：xDS 会把目标分组权重转换成 Envoy WeightedCluster，但没有 HashPolicy，不能保证用户粘滞；Rust Proxyless 当前按优先级取第一个有实例的目标组，未消费目标组权重，且 `random_percent` 仅区分 0 与非 0，没有实际百分比采样。Console 当前又默认持续提交 `randomPercent: 0`，会使 Rust SDK 将新建路由判为不命中。
+- xDS 的匹配转换也只是协议子集：主要消费 Header、Method、Query 和单独的 Path，未完整转换 Cookie、Caller IP/Metadata/Service、OR 与 `random_percent`，因此 specification 或 Console 可保存不代表 xDS 可执行。
+- 静态复核发现 `parseSubRouteRule` 未把 `CustomRoute.caller/callee` 写入内部 wrapper，但缓存依赖 wrapper 的 `Caller/Callee` 建索引；现有专项包测试虽通过，却没有覆盖该映射缺口，因此当前通用服务路由基础也需要先修复并补回归。
+- 验证：`go test ./apis/pkg/types/rules ./pkg/cache/rules -count=1` 与 `git diff --check` 通过。
+
+## 多资源域统一治理平台技术方案（2026-07-26，已被 RPC-first 决策取代）
+
+目标：在不立即实现的前提下，设计服务、消息、存储和任务调度四类资源域共享路由、限流、鉴权、镜像、Mock 等治理能力的长期技术方案。
+
+- [x] 收敛“资源域、治理能力、治理策略、数据面能力”等统一语言
+- [x] 对比万能规则、按域复制和公共信封加类型化策略三种架构
+- [x] 设计资源注册、策略校验、发布分发、能力协商和执行回执接口
+- [x] 明确消息、存储、任务领域的差异化模型和安全不变量
+- [x] 设计兼容现有九类规则的渐进迁移与分阶段交付
+- [x] 定义测试、可观测性、安全和可用性验收标准
+- [x] 归档 ADR，并同步 terminology、domain-models、governance-rules、index 和 log
+
+### Review
+
+- 后续评审确认消息、存储和任务缺少与 RPC 等价的标准低侵入执行 seam；本方案不再作为目标架构，未实现的 `adr-multi-resource-governance-platform` 已撤下，由 `adr-rpc-first-governance-scope` 取代。
+- 采用“公共规则信封 + 单效果类型化 Spec + Domain/Compiler Adapter”，拒绝万能 JSON、把所有资源伪装成 Service，以及按资源域复制发布栈。
+- 一条 Governance Rule 恰好包含一个 effect；多策略协同通过只引用不可变 release 的 Policy Bundle 原子应用，跨 effect 顺序由领域编译管线定义。
+- Governance Kernel 以 `ValidateDraft / Publish / ResolveBundle` 三个入口隐藏资源解析、能力覆盖、编译、发布事务和 Bundle 生成复杂度。
+- 数据面上报 Capability Profile；控制面按 profile 编译不可变 artifact。不支持、未知或语义不等价时阻止发布，不允许静默降级。
+- 数据面使用 `staged / active / last-known-good` 三槽原子应用 Bundle，控制面不可用时继续 LKG；AUTH、存储写和 Job lease 等高风险动作默认 fail-closed。
+- Schedule 属于任务定义，负责产生带幂等键的 Execution；Route、RateLimit、Auth、Dry-run、Mock 和故障恢复才属于任务治理。
+- 消息镜像不承诺跨 Broker 原子性，存储普通 Mirror 只允许 Shadow Read，Dual Write 是独立高风险能力，Job Mirror 默认 Dry-run。
+- V2 canonical spec 保存 deterministic protobuf bytes/type URL/hash；JSON 仅用于展示和兼容导入，避免旧版本 `DiscardUnknown` 读写丢字段。
+- 演进按 Phase 0 修复服务治理基线、Phase 1 抽取 V2 内核、Phase 2 Kafka/RocketMQ、Phase 3 Redis/MySQL、Phase 4 Job、Phase 5 Experiment/高级编排推进。
+- 该轮曾归档 `adr-multi-resource-governance-platform` 并同步知识库，后续 RPC-first 范围评审已将其撤下；本条仅保留历史过程。
+- 已验证所有 context-kg 页面 frontmatter 和 index 覆盖、新增 ADR 双向链接与 related pages 一致、log 的 related pages 位于末尾，`git diff --check` 通过。
+
+## Control Plane 自身 MCP 注册与 Console Agent 消费链路核查（2026-07-26）
+
+- [x] 回顾 lessons、知识库索引并确认仓库未启用 CodeGraph。
+- [x] 核实 Control Plane 自身 MCP 协议端点及工具清单。
+- [x] 核实 MCP Registry 的注册模型是否支持把 Control Plane 自身作为 MCP Server 注册。
+- [x] 核实 Console Agent 是否从 MCP Registry 读取并实际调用已选 MCP 工具。
+- [x] 汇总当前闭环、配置前提和未自动化环节，补充 Review。
+
+### Review
+
+- Control Plane 已在 `/ai/mcp/v1/sse` 暴露真实 MCP Server，并提供 Namespace、MCP Registry、配置文件查询等工具；Console Agent 当前也确实消费这个 MCP。
+- 当前消费链路是 System Settings/YAML 中的固定 `agent.mcp.endpoint` → SSE client → `tools/list` → allowlist 过滤 → LLM tool call → 同一 client `tools/call`，默认地址直接指向本机 Control Plane MCP。
+- MCP Registry 是另一层服务目录。它允许手工登记 Control Plane 自身，但启动期没有幂等自注册，登记后也不会自动执行远端 `tools/list` 并同步 `mcp_server_tool`。
+- Agent 默认可通过 `list_mcp_servers`、`list_mcp_server_tools` 读取 Registry 元数据，但没有根据 Registry 地址建立第二个 MCP client 或动态路由下游工具；因此“能看见 Registry 数据”不等于“消费 Registry 中登记的 MCP”。
+- 目标闭环尚需补齐自注册、工具探测同步、动态连接/路由，以及鉴权、SSRF、协议兼容和健康治理；当前 Registry 记录不影响 Agent 是否能连接 Pole MCP。
+- 验证：`go test ./plugin/apiserver/httpserver/aimcp ./console/pkg/poleagent ./console/pkg/router -count=1` 全部通过。
+
 ## Pole 自注册、Prompt 管理与 Agent 自管理闭环（2026-07-26）
 
 目标：让 Control Plane 自动注册自身 MCP、Pole Agent 自动注册自身 A2A，并将 Registry、Prompt 版本与运行时能力纳入统一、可审计的自管理闭环。
@@ -10449,6 +10609,46 @@ Review：
 - MySQL MCP tool、A2A interface/skill 使用稳定子项 ID 与 upsert；聚合根 Update 显式恢复 `flag=0`，保证手工软删除后的下一轮可复活。
 - 验证：全量 `go test ./... -count=1`、`go test -race ./pkg/selfmanager`、`go vet ./pkg/selfmanager`、前端目标 ESLint、管理员门禁契约、`npm run build:test`、context-kg lint 与 `git diff --check` 全部通过。
 
+## 治理多灰度与 Discover 标签快照（2026-07-26）
+
+- [x] 核对配置多灰度、治理发布存储、各治理缓存和 gRPC Discover 的现状。
+- [x] 以 RED 测试固化同一规则多个 active gray 发布并存。
+- [x] 以 RED 测试固化按 caller labels 选择 normal/gray、最新命中优先和稳定快照 revision。
+- [x] 以 RED 测试固化 gRPC LANE 分发、DiscoverFilter 透传与配置顶层 revision。
+- [x] 实现最小完整链路并完成针对性 Go 测试与差异审查。
+
+### Review
+
+- 治理发布存储不再在发布/激活 gray 时停用同规则其它 gray；normal 只替换 normal，因此 normal 与多个 gray 可并行。gray 的缓存键和灰度资源键均包含 release name，避免发布与匹配条件互相覆盖。
+- 新增统一发布选择器：按 rule_id 独立选择；匹配多个 gray 时按 version、mtime 降序取最新，否则回退最新 normal；revision 哈希选中发布的 rule/release 身份和 version，顺序稳定且不同标签快照可区分。
+- Router、RateLimit、CircuitBreaker、FaultDetect、Lane、Lossless、TrafficSecurity、TrafficMirror、TrafficMock 九类治理缓存均从同一选择器生成客户端快照；MySQL 转换恢复持久化的 ClientLabels，gRPC 把 DiscoverFilter 放入请求上下文供治理服务消费。
+- `RuleRelease.FromSpec/ToSpec` 已补齐 ClientLabels 往返，避免发布入口在保存灰度资源和发布记录前丢失匹配条件；control-plane specification 正式依赖升级到 `v0.1.0-ALPHA.38`。
+- 交叉审查修复两项 P1：发布缓存键改为对 `namespace + rule_id + rule_name + release_type + gray release_name` 做长度前缀编码，跨环境同名规则不会覆盖；熔断与故障探测只有在当前 service/namespace 层实际选中发布时才停止，否则继续回退到 namespace/global。
+- 新增 inactive gray 后回退 normal 且 revision 改变的核心选择测试，以及跨 namespace key、熔断 namespace 回退、故障探测 global 回退测试。
+- gRPC Discover 新增 LANE 分发。Config Discover 使用顶层 revision，不再把任意非空 file.id 误判为未变；同时透传 filter caller labels，并以发布 ID/name/type/version/md5 生成快照 revision，停止高版本 gray 后可正确回退较旧 normal。
+- RED → GREEN 验证：专项 `go test ./apis/pkg/types/rules ./pkg/cache/rules ./pkg/goverrule ./pkg/config ./plugin/store/mysql ./plugin/apiserver/grpcserver/discover/v1 -count=1` 通过；全量 `go test ./... -count=1` 通过；`git diff --check` 通过。
+
+## 服务契约能力完成度核查（2026-07-26）
+
+- [x] 回顾 lessons、工作树状态并确认仓库未启用 CodeGraph。
+- [x] 核对服务契约 specification、业务服务、存储、缓存与对外 API 链路。
+- [x] 核对 Console 入口、页面、请求适配与交互闭环。
+- [x] 核对单元测试、集成测试、客户端消费与知识库承诺。
+- [x] 运行针对性验证，区分已实现、未接通与缺失能力。
+- [x] 汇总结论并补充 Review。
+
+### Review
+
+- 服务契约不是从零未做：已有 specification 模型、MySQL 主表与接口明细表、业务 CRUD、接口全量替换/追加/删除、HTTP 管理接口、gRPC 客户端上报/发现、鉴权/参数校验和本地 Pebble value cache。
+- 但 Console 没有菜单、路由、服务详情 Tab、列表/详情/版本/编辑页面；`services/service.ts` 仅残留三个零调用请求，并且 `/services/contract`、`/services/contract/versions`、`/services/contract/interfaces/delete` 均与后端 `/service/contracts`、`/service/contract/versions`、`/service/contract/methods/delete` 不一致。`services/contract.ts` 是办公采购合同 mock 模板，与服务契约无关。
+- 后端存在未收口断点：specification 已声明 `SERVICE_CONTRACTS`，但 HTTP/gRPC 统一 Discover 分发均没有对应 case；代码中的 gRPC `GetServiceContract` 未进入 specification 的 service descriptor，实际不会注册。`GetServiceInterfaces` 也未进入业务接口或 HTTP 路由。
+- 契约列表/版本查询只做函数权限校验，没有复用服务列表的逐资源权限过滤；契约明细关联查询未过滤 `service_contract_detail.flag`，软删除接口仍可能进入管理响应和客户端缓存。
+- 缓存 miss 返回带空 `ServiceContract` 的非 nil 对象，而客户端上报与发现使用 nil 判断是否不存在；空 content 首次上报可能跳过创建，发现 miss 也可能返回成功的空契约。
+- 新旧字段兼容没有闭环：proto 已弃用 `name` 并推荐 `type`，但参数拦截器和客户端缓存查询仍依赖 `name`；缓存响应还会遗漏 metadata/content digest。全量替换接口会先删除所有来源明细，SDK 上报可能清掉原有手工接口，与 Manual 覆盖 Client 的领域合并逻辑冲突。
+- 专项测试几乎只有 Pebble 默认路径与 gRPC 方法名清单；没有业务 CRUD、接口增删、HTTP handler、MySQL Store、鉴权过滤、缓存命中/未命中/删除、一致性、客户端 Report/Get、集成/E2E 和性能基准。
+- 已运行 `go test ./pkg/service ./pkg/service/interceptor/auth ./pkg/service/interceptor/paramcheck ./pkg/cache/service ./plugin/store/mysql ./plugin/apiserver/httpserver/discover ./plugin/apiserver/grpcserver/discover/v1 -count=1`，现有测试均通过；这只能证明已有包与用例未失败，不能覆盖上述断点。`git diff --check` 通过。
+- 完成度结论：后端属于“骨架与主干已存在但可靠性未收口”，Console 属于“基本未产品化”，整体服务契约能力不能视为完成。
+
 ## 四协议服务契约完整闭环（2026-07-26）
 
 目标：支持 HTTP/OpenAPI、Dubbo、gRPC、Thrift 四类服务契约统一上报、存储、发现和 Console 可视化，并修复现有契约链路的正确性与权限缺口。
@@ -10462,6 +10662,12 @@ Review：
 - [x] 将上报契约、协议映射和兼容决策归档到 `context-kg`，同步 index/log。
 - [x] 完成双轴代码审查、修复遗留问题并显式提交本次改动。
 
+### 已确认测试 seam
+
+- 上报 seam：gRPC `ReportServiceContract` 与 HTTP 单对象上报入口。
+- 查询 seam：管理端契约列表/版本和客户端按五元组发现。
+- 展示 seam：服务详情“服务契约”Tab 及其统一请求适配器。
+
 ### Review
 
 - 上报采用 caller push：SDK 走 gRPC `ReportServiceContract`，Agent/CI 走 HTTP `POST /naming/v1/ReportServiceContract`；控制面不主动扫描生产服务。
@@ -10471,3 +10677,25 @@ Review：
 - 通过服务契约目标 Go 测试、MySQL sqlmock、HTTP/gRPC 路由测试、Console 专项脚本、目标 ESLint、`npm run build:test`、context-kg lint 和 `git diff --check`。
 - 双轴复审最初发现 ID 越权、主从延迟、旧 CRUD 兼容、权限泄露、OpenAPI 绕过、Dubbo 重载和幂等问题；全部修复后 Standards 与 Spec 复审均确认无阻塞/高风险项。
 - `go test ./...` 与 `make build` 被任务范围外的未提交 xDS 改动阻断：`plugin/apiserver/xdsserverv3/cache/node_resources_test.go` 使用错误 BoolValue 类型，`plugin/apiserver/xdsserverv3/generate.go` 缺少 `fmt` import；本任务目标包和 Console 构建均通过。
+- 已提交服务契约闭环 `e6991f4b`；部署时发现后续自管理链路在 MCP Registry 空结果上直接 `Scan` 的启动回归，补充回归测试并以 `6ac2cd34` 修复。
+- 已从干净提交 `6ac2cd34` 构建镜像 `pole-control-plane:local-20260726-service-contract-6ac2cd34` 并滚动部署到 `pole-system/pole-control-plane`；Pod `1/1 Ready`、零重启，Console 与健康检查均返回 200。
+- 实际演示数据位于 `demo-governance/demo-order`：HTTP/OpenAPI、gRPC、Dubbo、Thrift 各 1 份契约和 3 个接口，共 4 份契约、12 个接口。
+
+## RPC-first 治理范围收敛（2026-07-26）
+
+- [x] 复核 RPC、消息、存储和任务的数据面标准化与侵入成本
+- [x] 决定核心治理只面向 HTTP、gRPC、Dubbo 等同步服务调用
+- [x] 明确 Kafka、RocketMQ、Redis、MySQL 只保留非侵入式资源集成
+- [x] 明确任务调度需等待统一 Worker/Agent 后独立评估
+- [x] 撤下多资源域运行时治理提案并归档 RPC-first 范围 ADR
+- [x] 同步术语、领域模型、治理功能档案、index、log 和 lessons
+- [x] 完成知识库结构、双向链接和差异校验
+
+### Review
+
+- RPC 拥有请求上下文和 Client/Server Interceptor 形成的真实低侵入 seam，适合继续深化路由、限流、鉴权、镜像、Mock、熔断和 A/B Test。
+- Kafka/RocketMQ 的 Producer、Consumer、Partition/Queue 和事务语义，以及 Redis/MySQL 的连接、Session、事务、Shard 和一致性语义无法用统一 RPC 模型无损表达；当前不建设运行时路由、灰度或镜像。
+- 外部中间件只允许资源目录、健康、指标、管理链接和经单独评审的原生 ACL/Quota/配置 Adapter，不称为已纳管的运行时治理。
+- 不向 specification 增加 `ResourceDomain`、MESSAGE/STORAGE/JOB Rule 或万能 GovernancePolicy；服务数据面的 Capability Profile、原子 Bundle 和 Apply Receipt 仍属于 RPC 治理深化范围。
+- 原多资源域 ADR 已撤下，当前范围决策归档为 `adr-rpc-first-governance-scope`。
+- 已通过全部 context-kg frontmatter、全局唯一 basename、index 覆盖、wiki 链接解析、相关页面一致性和 `git diff --check` 校验。

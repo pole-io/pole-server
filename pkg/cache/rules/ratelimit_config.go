@@ -235,6 +235,12 @@ func (rlc *rateLimitCache) IteratorRateLimit(proc cachetypes.RateLimitIterProc) 
 
 // GetRateLimitByServiceID 根据serviceID获取限流数据
 func (rlc *rateLimitCache) GetRateLimitRules(serviceKey svctypes.ServiceKey) ([]*rules.RateLimit, string) {
+	return rlc.GetRateLimitRulesWithLabels(serviceKey, nil)
+}
+
+func (rlc *rateLimitCache) GetRateLimitRulesWithLabels(
+	serviceKey svctypes.ServiceKey, labels map[string]string,
+) ([]*rules.RateLimit, string) {
 	// 获取对应服务的限流规则配置
 	svcRules := rlc.GetRateLimitConfig(serviceKey.Name, serviceKey.Namespace)
 	if svcRules == nil {
@@ -242,14 +248,26 @@ func (rlc *rateLimitCache) GetRateLimitRules(serviceKey svctypes.ServiceKey) ([]
 	}
 
 	// 收集所有规则
-	var rateLimitRules []*rules.RateLimit
+	var releases []*rules.RateLimitRelease
+	var bases []*rules.RuleRelease
 	svcRules.Rules.Range(func(key string, release *rules.RateLimitRelease) {
 		if release != nil && release.Rule != nil {
-			rateLimitRules = append(rateLimitRules, release.Rule)
+			releases = append(releases, release)
+			bases = append(bases, &release.RuleRelease)
 		}
 	})
-
-	return rateLimitRules, svcRules.Revision
+	selected, snapshotRevision := selectGovernanceReleases(bases, labels)
+	selectedIDs := make(map[string]struct{}, len(selected))
+	for _, release := range selected {
+		selectedIDs[release.Id] = struct{}{}
+	}
+	rateLimitRules := make([]*rules.RateLimit, 0, len(selected))
+	for _, release := range releases {
+		if _, ok := selectedIDs[release.Id]; ok {
+			rateLimitRules = append(rateLimitRules, release.Rule)
+		}
+	}
+	return rateLimitRules, snapshotRevision
 }
 
 // GetRateLimitsCount 获取限流规则总数

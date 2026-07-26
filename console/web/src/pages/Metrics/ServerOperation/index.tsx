@@ -1,7 +1,8 @@
 import React from 'react';
 import dayjs from 'dayjs';
-import { Button, DateRangePicker, DateRangePickerProps, Drawer, Empty, Input, Select, Table, TableColumnData, Tag } from 'components/Fluent';
-import { FilterIcon, InfoCircleIcon, RefreshIcon, SearchIcon, ToolsCircleIcon, UserIcon } from 'components/Fluent/icons';
+import { Button, DateRangePicker, DateRangePickerProps, Drawer, Empty, Table, TableColumnData, Tag } from 'components/Fluent';
+import { FilterIcon, InfoCircleIcon, RefreshIcon, ToolsCircleIcon, UserIcon } from 'components/Fluent/icons';
+import QueryComposer from 'components/QueryComposer';
 import { describeOperationLog, getOperationTypeInfo, getResourceTypeInfo, OperationLog, OperationType, ResourceType } from 'services/observer';
 import { describeObservabilityOperations } from 'services/observability';
 import ErrorPage from 'components/ErrorPage';
@@ -255,6 +256,7 @@ export default function ServerOperation() {
   const [dataSource, setDataSource] = React.useState<DataSource>('mock');
   const [fetchError, setFetchError] = React.useState(false);
   const [selectedOperation, setSelectedOperation] = React.useState<OperationMetricRow | null>(null);
+  const [paginationVersion, setPaginationVersion] = React.useState(0);
 
   const displayOperations = React.useMemo(() => {
     if (dataSource === 'remote') return operations;
@@ -357,6 +359,7 @@ export default function ServerOperation() {
 
   const handleReset = () => {
     setSearchState(defaultSearchState);
+    setPaginationVersion((version) => version + 1);
     fetchData(defaultSearchState);
   };
 
@@ -418,66 +421,80 @@ export default function ServerOperation() {
         </div>
 
         <div className={style.filterGrid}>
-          <Select
-            className={style.filterControl}
-            clearable
-            value={searchState.searchResourceType}
-            options={ResourceType}
-            placeholder="资源类型"
-            onChange={(value) => updateSearchState({ searchResourceType: value as string })}
-          />
-          <Select
-            className={style.filterControl}
-            clearable
-            value={searchState.searchOperation}
-            options={OperationType}
-            placeholder="操作类型"
-            onChange={(value) => updateSearchState({ searchOperation: value as string })}
-          />
-          <Input
-            className={style.filterControl}
-            clearable
-            value={searchState.searchNamespace}
-            placeholder="命名空间"
-            onChange={(value) => updateSearchState({ searchNamespace: value })}
-          />
-          <Input
-            className={style.filterControl}
-            clearable
-            value={searchState.searchResource}
-            placeholder="资源名称"
-            onChange={(value) => updateSearchState({ searchResource: value })}
-          />
-          <Input
-            className={style.filterControl}
-            clearable
-            value={searchState.searchOperator}
-            placeholder="操作者"
-            onChange={(value) => updateSearchState({ searchOperator: value })}
-          />
-          <DateRangePicker
-            className={style.datePicker}
-            value={[searchState.startTime, searchState.endTime]}
-            clearable
-            allowInput
-            format="YYYY-MM-DD HH:mm:ss"
-            presets={presets}
-            onChange={(value) => updateSearchState({
-              startTime: String(value?.[0] || ''),
-              endTime: String(value?.[1] || ''),
+          <QueryComposer
+            keyword={searchState.searchResource}
+            keywordPlaceholder="搜索资源名称"
+            suggestions={Array.from(new Set(operations.map((item) => item.resource_name).filter(Boolean)))}
+            fields={[
+              {
+                key: 'searchResourceType',
+                label: '资源类型',
+                type: 'select',
+                options: ResourceType,
+              },
+              {
+                key: 'searchOperation',
+                label: '操作类型',
+                type: 'select',
+                options: OperationType,
+              },
+              {
+                key: 'searchNamespace',
+                label: '命名空间',
+                type: 'text',
+              },
+              {
+                key: 'searchOperator',
+                label: '操作者',
+                type: 'text',
+              },
+            ]}
+            values={{
+              searchResourceType: searchState.searchResourceType,
+              searchOperation: searchState.searchOperation,
+              searchNamespace: searchState.searchNamespace,
+              searchOperator: searchState.searchOperator,
+            }}
+            timeRange={(
+              <DateRangePicker
+                className={style.datePicker}
+                value={[searchState.startTime, searchState.endTime]}
+                clearable
+                allowInput
+                format="YYYY-MM-DD HH:mm:ss"
+                presets={presets}
+                onChange={(value) => updateSearchState({
+                  startTime: String(value?.[0] || ''),
+                  endTime: String(value?.[1] || ''),
+                })}
+              />
+            )}
+            onKeywordChange={(searchResource) => updateSearchState({ searchResource })}
+            onValuesChange={(values) => updateSearchState({
+              searchResourceType: String(values.searchResourceType || ''),
+              searchOperation: String(values.searchOperation || ''),
+              searchNamespace: String(values.searchNamespace || ''),
+              searchOperator: String(values.searchOperator || ''),
             })}
+            onSubmit={({ keyword, values }) => {
+              const nextSearchState = {
+                ...searchState,
+                searchResource: keyword,
+                searchResourceType: String(values.searchResourceType || ''),
+                searchOperation: String(values.searchOperation || ''),
+                searchNamespace: String(values.searchNamespace || ''),
+                searchOperator: String(values.searchOperator || ''),
+              };
+              setPaginationVersion((version) => version + 1);
+              fetchData(nextSearchState);
+            }}
+            onReset={handleReset}
+            loading={isLoading}
           />
-          <div className={style.filterActions}>
-            <Button theme="primary" icon={<SearchIcon />} loading={isLoading} onClick={() => fetchData()}>
-              查询
-            </Button>
-            <Button variant="text" onClick={handleReset}>
-              重置
-            </Button>
-          </div>
         </div>
 
         <Table
+          key={paginationVersion}
           data={displayOperations}
           columns={columns}
           rowKey="cursor"

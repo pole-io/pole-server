@@ -19,7 +19,10 @@ package config
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
+	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -68,12 +71,13 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context, req *apiconfig.Conf
 			return response
 		}
 	}
-	// 客户端版本号大于服务端版本号，服务端不返回变更
-	if req.Id > "" && release.Version > 0 {
+	snapshotRevision := configReleaseSnapshotRevision(release)
+	if req.Id != "" && req.Id == snapshotRevision {
 		log.Debug("[Config][Service] get config file to client", utils.RequestID(ctx),
 			zap.String("client-version", req.Id), zap.Uint64("server-version", release.Version))
 		response := api.NewConfigDiscoverResponse(apimodel.Code_DataNoChange)
 		response.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE
+		response.Revision = snapshotRevision
 		return response
 	}
 	configFile, err := toClientInfo(req, release)
@@ -88,7 +92,26 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context, req *apiconfig.Conf
 	response := api.NewConfigDiscoverResponse(apimodel.Code_ExecuteSuccess)
 	response.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE
 	response.File = configFile
+	response.Revision = snapshotRevision
 	return response
+}
+
+func configReleaseSnapshotRevision(release *conftypes.ConfigFileRelease) string {
+	if release == nil || release.SimpleConfigFileRelease == nil {
+		return ""
+	}
+	hash := sha256.New()
+	for _, part := range []string{
+		release.Id,
+		release.Name,
+		string(release.ReleaseType),
+		strconv.FormatUint(release.Version, 10),
+		release.Md5,
+	} {
+		_, _ = hash.Write([]byte(part))
+		_, _ = hash.Write([]byte{0})
+	}
+	return hex.EncodeToString(hash.Sum(nil))
 }
 
 // formatClientRequest 自动填充客户端的相关标签数据

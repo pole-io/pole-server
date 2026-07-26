@@ -48,6 +48,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	_struct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -69,37 +70,33 @@ func MakeServiceGatewayDomains() []string {
 	return []string{"*"}
 }
 
-func FilterInboundRouterRule(svc *ServiceInfo) []*traffic_manage.TrafficMatchRule {
-	ret := make([]*traffic_manage.TrafficMatchRule, 0, 16)
-	// svc.Routing is a single RouteRule, not a slice
-	if svc.Routing == nil {
-		return ret
-	}
-	rule := svc.Routing
-	if rule.GetRoutePolicy() != traffic_manage.RoutePolicy_RulePolicy {
-		return ret
-	}
-	routerRule := &traffic_manage.CustomRoute{}
-	if err := ptypes.UnmarshalAny(rule.RoutingConfig, routerRule); err != nil {
-		return ret
-	}
-
-	for _, subRule := range routerRule.Rules {
-		var match bool
-		for _, dest := range subRule.GetDestinations() {
-			if svc.MatchService(dest.GetNamespace(), dest.GetService()) {
-				match = true
-				break
-			}
+func FilterOutboundRouterRules(svc *ServiceInfo, caller svctypes.ServiceKey) []*traffic_manage.CustomRouteRule {
+	ret := make([]*traffic_manage.CustomRouteRule, 0, 16)
+	for _, rule := range svc.Routing {
+		if rule.GetRoutePolicy() != traffic_manage.RoutePolicy_RulePolicy {
+			continue
 		}
-		if match {
-			// CustomRouteRule.Arguments is now of type *TrafficMatchRule
-			if subRule.GetArguments() != nil {
-				ret = append(ret, subRule.GetArguments())
-			}
+		routerRule := &traffic_manage.CustomRoute{}
+		if err := ptypes.UnmarshalAny(rule.RoutingConfig, routerRule); err != nil {
+			continue
 		}
+		hasCaller := caller.Namespace != "" || caller.Name != ""
+		if !matchRouteService(routerRule.GetCallee(), svc.ServiceKey) ||
+			(hasCaller && !matchRouteService(routerRule.GetCaller(), caller)) {
+			continue
+		}
+		ret = append(ret, routerRule.GetRules()...)
 	}
 	return ret
+}
+
+func matchRouteService(expected *traffic_manage.CustomRoute_ServiceKey, actual svctypes.ServiceKey) bool {
+	if expected == nil {
+		return false
+	}
+	namespaceMatch := expected.GetNamespace() == matchs.MatchAll || expected.GetNamespace() == actual.Namespace
+	serviceMatch := expected.GetService() == matchs.MatchAll || expected.GetService() == actual.Name
+	return namespaceMatch && serviceMatch
 }
 
 func BuildSidecarRouteMatch(routeMatch *route.RouteMatch, source *traffic_manage.TrafficMatchRule) {
@@ -115,7 +112,64 @@ func BuildSidecarRouteMatch(routeMatch *route.RouteMatch, source *traffic_manage
 			}
 		}
 	}
+	if percent := source.GetRandomPercent(); percent > 0 && percent < 100 {
+		routeMatch.RuntimeFraction = &core.RuntimeFractionalPercent{
+			DefaultValue: &envoy_type_v3.FractionalPercent{
+				Numerator:   percent,
+				Denominator: envoy_type_v3.FractionalPercent_HUNDRED,
+			},
+		}
+	}
 	BuildCommonRouteMatch(routeMatch, source)
+}
+
+// SupportsEnvoyTrafficMatch rejects governance semantics that Envoy RDS cannot
+// reproduce faithfully. Skipping is safer than silently translating OR to AND
+// or treating a captured request parameter as a fixed literal.
+func SupportsEnvoyTrafficMatch(match *traffic_manage.TrafficMatchRule) bool {
+	if match == nil {
+		return true
+	}
+	if match.GetMatchMode() == traffic_manage.TrafficMatchRule_OR {
+		return false
+	}
+	pathCount := 0
+	for _, argument := range match.GetArguments() {
+		if argument.GetValue() == nil ||
+			argument.GetValue().GetValueType() != apimodel.MatchString_TEXT {
+			return false
+		}
+		if argument.GetKey() == matchs.MatchAll || argument.GetValue().GetValue() == matchs.MatchAll {
+			// Existing Envoy match builders would treat "*" as a literal. Keep
+			// wildcard rules out until presence/any-value semantics are modeled.
+			return false
+		}
+		switch argument.GetType() {
+		case traffic_manage.SourceMatch_PATH:
+			pathCount++
+			if pathCount > 1 {
+				return false
+			}
+			if argument.GetValue().GetType() != apimodel.MatchString_EXACT &&
+				argument.GetValue().GetType() != apimodel.MatchString_REGEX {
+				return false
+			}
+		case traffic_manage.SourceMatch_HEADER, traffic_manage.SourceMatch_METHOD:
+			if argument.GetValue().GetType() != apimodel.MatchString_EXACT &&
+				argument.GetValue().GetType() != apimodel.MatchString_NOT_EQUALS &&
+				argument.GetValue().GetType() != apimodel.MatchString_REGEX {
+				return false
+			}
+		case traffic_manage.SourceMatch_QUERY:
+			if argument.GetValue().GetType() != apimodel.MatchString_EXACT &&
+				argument.GetValue().GetType() != apimodel.MatchString_REGEX {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func BuildCommonRouteMatch(routeMatch *route.RouteMatch, source *traffic_manage.TrafficMatchRule) {
@@ -311,6 +365,100 @@ func limitTriggerPathMatches(limitTrigger *traffic_manage.LimitTrigger, pathSpec
 	return matches
 }
 
+// SupportsEnvoyLimitTrigger keeps unsupported governance conditions from being
+// silently dropped, which would otherwise broaden the requests being limited.
+func SupportsEnvoyLimitTrigger(limitTrigger *traffic_manage.LimitTrigger) bool {
+	if limitTrigger == nil {
+		return false
+	}
+	if limitTrigger.GetResource() != traffic_manage.LimitTrigger_QPS ||
+		limitTrigger.GetMaxQueueDelay() != 0 ||
+		limitTrigger.GetConcurrencyAmount() != nil ||
+		limitTrigger.GetCustomResponse() != nil ||
+		limitTrigger.GetRegexCombine() ||
+		limitTrigger.GetFailover() != traffic_manage.LimitTrigger_FAILOVER_LOCAL ||
+		limitTrigger.GetAction() != "" ||
+		limitTrigger.GetAmountMode() != traffic_manage.LimitTrigger_GLOBAL_TOTAL {
+		return false
+	}
+	for _, amount := range limitTrigger.GetAmounts() {
+		if amount == nil || amount.GetPrecision() != 0 ||
+			amount.GetStartAmount() != 0 || amount.GetMinAmount() != 0 {
+			return false
+		}
+	}
+	for _, api := range limitTrigger.GetApis() {
+		if api == nil {
+			return false
+		}
+		protocol := strings.ToUpper(api.GetProtocol())
+		if protocol != "" && protocol != "*" && protocol != "HTTP" && protocol != "HTTP1" && protocol != "HTTP2" {
+			return false
+		}
+		if method := api.GetMethod(); method != "" && method != "*" {
+			// The current descriptor builder scopes by path. A method-specific
+			// API must not be widened into a path-only limit.
+			return false
+		}
+		if path := api.GetPath(); path != nil {
+			if path.GetValueType() != apimodel.MatchString_TEXT {
+				return false
+			}
+			switch path.GetType() {
+			case apimodel.MatchString_EXACT, apimodel.MatchString_REGEX, MatchString_Prefix:
+			default:
+				return false
+			}
+		}
+	}
+	for _, arg := range limitTrigger.GetArguments() {
+		if arg == nil || arg.GetValue() == nil || arg.GetValue().GetValueType() != apimodel.MatchString_TEXT {
+			return false
+		}
+		switch arg.GetType() {
+		case apitraffic.MatchArgument_HEADER:
+			switch arg.GetValue().GetType() {
+			case apimodel.MatchString_EXACT, apimodel.MatchString_NOT_EQUALS,
+				apimodel.MatchString_REGEX, MatchString_Prefix:
+			default:
+				return false
+			}
+		case apitraffic.MatchArgument_QUERY:
+			switch arg.GetValue().GetType() {
+			case apimodel.MatchString_EXACT, apimodel.MatchString_REGEX:
+			default:
+				return false
+			}
+		case apitraffic.MatchArgument_METHOD:
+			switch arg.GetValue().GetType() {
+			case apimodel.MatchString_EXACT, apimodel.MatchString_NOT_EQUALS,
+				apimodel.MatchString_REGEX:
+			default:
+				return false
+			}
+		case apitraffic.MatchArgument_CALLER_SERVICE:
+			if arg.GetValue().GetType() != apimodel.MatchString_EXACT {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+func SupportsEnvoyRateLimit(rateLimit *traffic_manage.RateLimit) bool {
+	if rateLimit == nil || rateLimit.GetReport() != nil || rateLimit.GetCluster() != nil {
+		return false
+	}
+	switch rateLimit.GetType() {
+	case traffic_manage.RateLimit_LOCAL, traffic_manage.RateLimit_GLOBAL:
+		return true
+	default:
+		return false
+	}
+}
+
 func BuildRateLimitDescriptors(limitTrigger *traffic_manage.LimitTrigger, pathSpecifier ...string) ([]*route.RateLimit_Action,
 	[]*ratelimitv32.LocalRateLimitDescriptor) {
 	actions := make([]*route.RateLimit_Action, 0, 8)
@@ -388,11 +536,9 @@ func BuildRateLimitDescriptors(limitTrigger *traffic_manage.LimitTrigger, pathSp
 			})
 		case apitraffic.MatchArgument_METHOD:
 			actions = append(actions, &route.RateLimit_Action{
-				ActionSpecifier: &route.RateLimit_Action_RequestHeaders_{
-					RequestHeaders: &route.RateLimit_Action_RequestHeaders{
-						HeaderName:    ":method",
-						DescriptorKey: descriptorKey,
-					},
+				ActionSpecifier: &route.RateLimit_Action_HeaderValueMatch_{
+					HeaderValueMatch: BuildRateLimitActionHeaderValueMatch(descriptorKey, descriptorValue,
+						&apitraffic.MatchArgument{Key: ":method", Value: arg.GetValue()}),
 				},
 			})
 			entries = append(entries, &envoy_extensions_common_ratelimit_v3.RateLimitDescriptor_Entry{
@@ -430,7 +576,7 @@ func BuildRateLimitDescriptors(limitTrigger *traffic_manage.LimitTrigger, pathSp
 							Key: "source_service_name",
 							Value: &apimodel.MatchString{
 								Type:  apimodel.MatchString_EXACT,
-								Value: arg.Key,
+								Value: arg.GetValue().GetValue(),
 							},
 						},
 					}...),
@@ -923,6 +1069,17 @@ func MustNewAny(src proto.Message) *anypb.Any {
 func MakeGatewayLocalRateLimit(rateLimitCache cacheapi.RateLimitCache, pathSpecifier string,
 	svcKey svctypes.ServiceKey) ([]*route.RateLimit, map[string]*anypb.Any, error) {
 	conf, _ := rateLimitCache.GetRateLimitRules(svcKey)
+	rules := make([]*apitraffic.RateLimit, 0, len(conf))
+	for _, item := range conf {
+		if item != nil && item.Proto != nil {
+			rules = append(rules, item.Proto)
+		}
+	}
+	return MakeGatewayLocalRateLimitFromRules(rules, pathSpecifier, svcKey)
+}
+
+func MakeGatewayLocalRateLimitFromRules(conf []*apitraffic.RateLimit, pathSpecifier string,
+	svcKey svctypes.ServiceKey) ([]*route.RateLimit, map[string]*anypb.Any, error) {
 	if conf == nil {
 		return nil, nil, nil
 	}
@@ -930,9 +1087,10 @@ func MakeGatewayLocalRateLimit(rateLimitCache cacheapi.RateLimitCache, pathSpeci
 	rateLimitConf := BuildRateLimitConf(confKey)
 	filters := make(map[string]*anypb.Any)
 	ratelimits := make([]*route.RateLimit, 0, len(conf))
-	for _, c := range conf {
-		rateLimit := c.Proto
-		if rateLimit == nil {
+	for _, rateLimit := range conf {
+		if !SupportsEnvoyRateLimit(rateLimit) {
+			log.Warn("[XDS][Envoy] skip rate limit with unsupported policy",
+				zap.String("service", svcKey.Domain()), zap.String("rule", rateLimit.GetName()))
 			continue
 		}
 		if rateLimit.GetDisable() {
@@ -940,11 +1098,19 @@ func MakeGatewayLocalRateLimit(rateLimitCache cacheapi.RateLimitCache, pathSpeci
 		}
 		// Loop through each LimitTrigger in the RateLimit
 		for _, rule := range rateLimit.GetRules() {
+			if rule.GetDisable() {
+				continue
+			}
+			if !SupportsEnvoyLimitTrigger(rule) {
+				log.Warn("[XDS][Envoy] skip rate limit with unsupported trigger",
+					zap.String("service", svcKey.Domain()), zap.String("rule", rule.GetName()))
+				continue
+			}
 			if len(limitTriggerPathMatches(rule, pathSpecifier)) == 0 {
 				continue
 			}
 			actions, descriptors := BuildRateLimitDescriptors(rule, pathSpecifier)
-			rateLimitConf.Descriptors = descriptors
+			rateLimitConf.Descriptors = append(rateLimitConf.Descriptors, descriptors...)
 			ratelimitRule := &route.RateLimit{Actions: actions}
 			switch rateLimit.GetType() {
 			case apitraffic.RateLimit_LOCAL:
@@ -965,6 +1131,17 @@ func MakeGatewayLocalRateLimit(rateLimitCache cacheapi.RateLimitCache, pathSpeci
 func MakeSidecarLocalRateLimit(rateLimitCache cacheapi.RateLimitCache,
 	svcKey svctypes.ServiceKey) ([]*route.RateLimit, map[string]*anypb.Any, error) {
 	conf, _ := rateLimitCache.GetRateLimitRules(svcKey)
+	rules := make([]*apitraffic.RateLimit, 0, len(conf))
+	for _, item := range conf {
+		if item != nil && item.Proto != nil {
+			rules = append(rules, item.Proto)
+		}
+	}
+	return MakeSidecarLocalRateLimitFromRules(rules, svcKey)
+}
+
+func MakeSidecarLocalRateLimitFromRules(conf []*apitraffic.RateLimit,
+	svcKey svctypes.ServiceKey) ([]*route.RateLimit, map[string]*anypb.Any, error) {
 	if conf == nil {
 		return nil, map[string]*anypb.Any{}, nil
 	}
@@ -972,9 +1149,10 @@ func MakeSidecarLocalRateLimit(rateLimitCache cacheapi.RateLimitCache,
 	rateLimitConf := BuildRateLimitConf(confKey)
 	filters := make(map[string]*anypb.Any)
 	ratelimits := make([]*route.RateLimit, 0, len(conf))
-	for _, c := range conf {
-		rateLimit := c.Proto
-		if rateLimit == nil {
+	for _, rateLimit := range conf {
+		if !SupportsEnvoyRateLimit(rateLimit) {
+			log.Warn("[XDS][Envoy] skip rate limit with unsupported policy",
+				zap.String("service", svcKey.Domain()), zap.String("rule", rateLimit.GetName()))
 			continue
 		}
 		if rateLimit.GetDisable() {
@@ -982,9 +1160,17 @@ func MakeSidecarLocalRateLimit(rateLimitCache cacheapi.RateLimitCache,
 		}
 		// Loop through each LimitTrigger in the RateLimit
 		for _, rule := range rateLimit.GetRules() {
+			if rule.GetDisable() {
+				continue
+			}
+			if !SupportsEnvoyLimitTrigger(rule) {
+				log.Warn("[XDS][Envoy] skip rate limit with unsupported trigger",
+					zap.String("service", svcKey.Domain()), zap.String("rule", rule.GetName()))
+				continue
+			}
 			for _, path := range limitTriggerPathMatches(rule, "") {
 				actions, descriptors := BuildRateLimitDescriptors(rule, path.GetValue())
-				rateLimitConf.Descriptors = descriptors
+				rateLimitConf.Descriptors = append(rateLimitConf.Descriptors, descriptors...)
 				ratelimitRule := &route.RateLimit{Actions: actions}
 				switch rateLimit.GetType() {
 				case apitraffic.RateLimit_LOCAL:
@@ -995,6 +1181,9 @@ func MakeSidecarLocalRateLimit(rateLimitCache cacheapi.RateLimitCache,
 				ratelimits = append(ratelimits, ratelimitRule)
 			}
 		}
+	}
+	if len(ratelimits) == 0 {
+		return nil, filters, nil
 	}
 	filters["envoy.filters.http.local_ratelimit"] = MustNewAny(rateLimitConf)
 	return ratelimits, filters, nil
@@ -1110,27 +1299,13 @@ func MakeHealthCheck(serviceInfo *ServiceInfo) []*core.HealthCheck {
 }
 
 func MakeLbSubsetConfig(serviceInfo *ServiceInfo) *cluster.Cluster_LbSubsetConfig {
-	rules := FilterInboundRouterRule(serviceInfo)
+	rules := FilterOutboundRouterRules(serviceInfo, svctypes.ServiceKey{})
 	if len(rules) == 0 {
 		return nil
 	}
 
 	var subsetSelectors []*cluster.Cluster_LbSubsetConfig_LbSubsetSelector
-	// Since TrafficMatchRule doesn't have GetDestinations, we need to get destination info differently
-	// We'll need to go back to the original CustomRoute rules for destination information
-	if serviceInfo.Routing == nil {
-		return nil
-	}
-	rule := serviceInfo.Routing
-	if rule.GetRoutePolicy() != traffic_manage.RoutePolicy_RulePolicy {
-		return nil
-	}
-	routerRule := &traffic_manage.CustomRoute{}
-	if err := ptypes.UnmarshalAny(rule.RoutingConfig, routerRule); err != nil {
-		return nil
-	}
-
-	for _, subRule := range routerRule.Rules {
+	for _, subRule := range rules {
 		// 对每一个 destination 产生一个 subset
 		for _, destination := range subRule.GetDestinations() {
 			var keys []string

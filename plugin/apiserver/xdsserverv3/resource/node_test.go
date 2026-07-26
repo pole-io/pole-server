@@ -17,7 +17,12 @@
 
 package resource
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+
+	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+)
 
 func Test_parseNodeID(t *testing.T) {
 	type args struct {
@@ -108,5 +113,42 @@ func Test_parseNodeID(t *testing.T) {
 				t.Errorf("parseNodeID() gotHostIP = %v, want %v", gotHostIP, tt.wantHostIP)
 			}
 		})
+	}
+}
+
+func TestXDSNodeManagerRemovesIndexesOnlyAfterLastStreamCloses(t *testing.T) {
+	manager := NewXDSNodeManager()
+	node := &corev3.Node{Id: "sidecar~prod/checkout~127.0.0.1"}
+	manager.AddNodeIfAbsent(1, node)
+	manager.AddNodeIfAbsent(2, node)
+
+	if removed := manager.DelNode(1); removed {
+		t.Fatal("first stream close must retain node")
+	}
+	if got := manager.ListEnvoyNodes(); len(got) != 1 {
+		t.Fatalf("ListEnvoyNodes() after first close = %d, want 1", len(got))
+	}
+	if removed := manager.DelNode(2); !removed {
+		t.Fatal("last stream close must remove node")
+	}
+	if got := manager.ListEnvoyNodes(); len(got) != 0 {
+		t.Fatalf("ListEnvoyNodes() after last close = %d, want 0", len(got))
+	}
+}
+
+func TestXDSClientGovernanceLabelsOnlyUsesExplicitPrefix(t *testing.T) {
+	client := &XDSClient{Metadata: map[string]string{
+		"pole.io/governance-label.env":            "canary",
+		"pole.io/governance-label.region":         "ap-shanghai",
+		"sidecar.polarismesh.cn/serviceName":      "checkout",
+		"sidecar.polarismesh.cn/serviceNamespace": "prod",
+		"sidecar.polarismesh.cn/openOnDemand":     "true",
+	}}
+	want := map[string]string{
+		"env":    "canary",
+		"region": "ap-shanghai",
+	}
+	if got := client.GovernanceLabels(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("GovernanceLabels() = %#v, want %#v", got, want)
 	}
 }

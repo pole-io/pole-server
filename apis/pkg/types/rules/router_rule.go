@@ -354,6 +354,18 @@ func parseSubRouteRule(ruleRouting *apitraffic.CustomRoute) *RuleRoutingConfigWr
 	wrapper := &RuleRoutingConfigWrapper{
 		RuleRouting: ruleRouting,
 	}
+	if caller := ruleRouting.GetCaller(); caller != nil {
+		wrapper.Caller = service.ServiceKey{
+			Namespace: caller.GetNamespace(),
+			Name:      caller.GetService(),
+		}
+	}
+	if callee := ruleRouting.GetCallee(); callee != nil {
+		wrapper.Callee = service.ServiceKey{
+			Namespace: callee.GetNamespace(),
+			Name:      callee.GetService(),
+		}
+	}
 	return wrapper
 }
 

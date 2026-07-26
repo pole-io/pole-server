@@ -231,6 +231,10 @@
   border-bottom: 1px solid var(--console-border-subtle);
 }
 
+.detailSectionHeading {
+  min-width: 0;
+}
+
 .detailSectionHeader h3 {
   margin: 0;
   color: var(--console-text);
@@ -433,6 +437,17 @@
 }
 
 .instanceDrawer {
+  --console-text: var(--app-text);
+  --console-text-secondary: var(--app-text-secondary);
+  --console-text-muted: var(--app-text-tertiary);
+  --console-surface-solid: var(--app-surface);
+  --console-surface-muted: var(--app-surface-subtle);
+  --console-border: var(--app-border-subtle);
+  --console-border-subtle: var(--app-border-subtle);
+  --console-brand: var(--app-brand);
+  --console-brand-weak: var(--app-brand-subtle);
+  --console-radius-sm: 6px;
+  --console-radius-md: 8px;
   display: flex;
   flex-direction: column;
 }

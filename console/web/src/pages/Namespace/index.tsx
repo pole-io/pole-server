@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import { Table, Button, PrimaryTableProps, TableRowData, Input, Tag, Tooltip } from 'components/Fluent';
-import { AddIcon, RefreshIcon, SearchIcon } from 'components/Fluent/icons';
+import { Table, Button, PrimaryTableProps, TableRowData, Tag, Tooltip } from 'components/Fluent';
+import { AddIcon, RefreshIcon } from 'components/Fluent/icons';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import Text from 'components/Text';
 import { ConfirmOperationButton, OperationButton, OperationButtonGroup } from 'components/OperationButton';
 import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout';
+import QueryComposer, { QuerySnapshot } from 'components/QueryComposer';
 import NamespaceEditor from './NamespaceEditor';
 import style from './index.module.less';
 import { cleanNamespacePage, editorNamespace, listNamespaces, removeNamespace, resetNamespace, selectNamespace } from 'modules/namespace';
@@ -219,8 +220,8 @@ export default React.memo(() => {
         return { serviceCount, configFileCount, instanceCount, healthCount, healthRate };
     }, [datas]);
 
-    const submitFilter = () => {
-        refreshTable(1, limit, query);
+    const submitFilter = ({ keyword }: QuerySnapshot) => {
+        refreshTable(1, limit, keyword);
     };
 
     const resetFilter = () => {
@@ -274,19 +275,14 @@ export default React.memo(() => {
                     title="命名空间列表"
                     count={loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}
                     filters={(
-                        <>
-                        <Input
-                            className={style.filterInput}
-                            clearable
-                            prefixIcon={<SearchIcon />}
-                            placeholder="名称前缀"
-                            value={query}
-                            onChange={(value) => setQuery(value as string)}
-                            onEnter={submitFilter}
+                        <QueryComposer
+                            keyword={query}
+                            keywordPlaceholder="搜索命名空间名称"
+                            suggestions={datas.map((item) => String(item.name || '')).filter(Boolean)}
+                            onKeywordChange={setQuery}
+                            onSubmit={submitFilter}
+                            onReset={resetFilter}
                         />
-                        <Button variant="outline" onClick={submitFilter}>查询</Button>
-                        <Button variant="text" onClick={resetFilter}>重置</Button>
-                        </>
                     )}
                 />
 

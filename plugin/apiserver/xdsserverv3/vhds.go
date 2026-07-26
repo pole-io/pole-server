@@ -21,10 +21,8 @@ import (
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
+	"go.uber.org/zap"
 
-	"github.com/pole-io/specification/source/go/api/v1/traffic_manage"
-
-	matchs "github.com/pole-io/pole-server/pkg/common/utils/match"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/plugin/apiserver/xdsserverv3/resource"
 )
@@ -63,45 +61,26 @@ func (vhds *VHDSBuilder) makeSidecarOutBoundRoutes(trafficDirection corev3.Traff
 		routes        []*route.Route
 		matchAllRoute *route.Route
 	)
-	// 路由目前只处理 inbounds, 由于目前 envoy 获取不到自身服务数据，因此获取所有服务的被调规则
-	rules := resource.FilterInboundRouterRule(serviceInfo)
+	rules := resource.FilterOutboundRouterRules(serviceInfo, opt.SelfService)
 	for _, rule := range rules {
-		var (
-			matchAll     bool
-			destinations []*traffic_manage.DestinationGroup
-		)
-
-		// Create destination based on current service context
-		// This compensates for TrafficMatchRule not having GetDestinations method
-		destinations = append(destinations, &traffic_manage.DestinationGroup{
-			Namespace: serviceInfo.Namespace,
-			Service:   serviceInfo.Name,
-			Weight:    100,
-		})
+		trafficMatch := rule.GetArguments()
+		if !resource.SupportsEnvoyTrafficMatch(trafficMatch) {
+			log.Warn("[XDS][Envoy] skip route with unsupported traffic match",
+				zap.String("service", serviceInfo.ServiceKey.Domain()),
+				zap.String("rule", rule.GetName()))
+			continue
+		}
+		matchAll := len(trafficMatch.GetArguments()) == 0
 
 		routeMatch := &route.RouteMatch{
 			PathSpecifier: &route.RouteMatch_Prefix{Prefix: "/"},
 		}
-
-		// Enhanced logic to handle TrafficMatchRule which contains source matching arguments
-		if len(rule.GetArguments()) == 0 {
-			// No specific matching arguments means match all
-			matchAll = true
-		} else {
-			// Check if any argument is a wildcard match
-			for _, arg := range rule.GetArguments() {
-				if arg.Key == matchs.MatchAll || arg.GetValue().GetValue() == matchs.MatchAll {
-					matchAll = true
-					break
-				}
-			}
-			// If not matching all, build specific route match conditions
-			if !matchAll {
-				resource.BuildSidecarRouteMatch(routeMatch, rule)
-			}
+		if !matchAll {
+			resource.BuildSidecarRouteMatch(routeMatch, trafficMatch)
 		}
 
-		currentRoute := resource.MakeSidecarRoute(trafficDirection, routeMatch, serviceInfo, destinations, opt)
+		currentRoute := resource.MakeSidecarRoute(
+			trafficDirection, routeMatch, serviceInfo, rule.GetDestinations(), opt)
 		if matchAll {
 			matchAllRoute = currentRoute
 		} else {

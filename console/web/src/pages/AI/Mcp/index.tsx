@@ -29,6 +29,7 @@ import Text from 'components/Text';
 import AuthorizeInput from 'components/Authorize';
 import { ConfirmOperationButton, OperationButton } from 'components/OperationButton';
 import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout';
+import QueryComposer, { QuerySnapshot } from 'components/QueryComposer';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import {
   cleanMCPPage,
@@ -57,11 +58,6 @@ const protocolOptions = [
   { label: 'SSE', value: 'sse' },
   { label: 'Streamable HTTP', value: 'streamable-http' },
   { label: 'STDIO', value: 'stdio' },
-];
-
-const quickProtocolOptions = [
-  { label: '全部', value: '' },
-  ...protocolOptions,
 ];
 
 const backendTypeOptions = [
@@ -878,8 +874,12 @@ export default memo(() => {
     }
   };
 
-  const submitFilter = () => {
-    refreshTable(1, limit, query);
+  const submitFilter = ({ keyword, values }: QuerySnapshot) => {
+    refreshTable(1, limit, {
+      name: keyword,
+      namespace: String(values.namespace || ''),
+      protocol: String(values.protocol || ''),
+    });
   };
 
   const resetFilter = () => {
@@ -935,46 +935,36 @@ export default memo(() => {
         title="服务列表"
         count={loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}
         filters={(
-          <>
-            <div className={style.protocolTabs}>
-              {quickProtocolOptions.map((item) => {
-                const active = query.protocol === item.value;
-                return (
-                  <Button
-                    key={item.value || 'all'}
-                    size="small"
-                    theme={active ? 'primary' : 'default'}
-                    variant={active ? 'base' : 'outline'}
-                    onClick={() => {
-                      const nextQuery = { ...query, protocol: item.value };
-                      setQuery(nextQuery);
-                      refreshTable(1, limit, nextQuery);
-                    }}
-                  >
-                    {item.label}
-                  </Button>
-                );
-              })}
-            </div>
-            <Input
-              className={style.filterInput}
-              clearable
-              placeholder="名称前缀"
-              value={query.name}
-              onChange={(value) => setQuery((prev) => ({ ...prev, name: value as string }))}
-              onEnter={submitFilter}
-            />
-            <Input
-              className={style.filterInput}
-              clearable
-              placeholder="命名空间"
-              value={query.namespace}
-              onChange={(value) => setQuery((prev) => ({ ...prev, namespace: value as string }))}
-              onEnter={submitFilter}
-            />
-            <Button variant="outline" onClick={submitFilter}>查询</Button>
-            <Button variant="text" onClick={resetFilter}>重置</Button>
-          </>
+          <QueryComposer
+            keyword={query.name}
+            keywordPlaceholder="搜索 MCP 服务名称"
+            suggestions={datas.map((item) => String(item.name || '')).filter(Boolean)}
+            fields={[
+              {
+                key: 'namespace',
+                label: '命名空间',
+                type: 'text',
+              },
+              {
+                key: 'protocol',
+                label: '协议',
+                type: 'select',
+                options: protocolOptions,
+              },
+            ]}
+            values={{
+              namespace: query.namespace,
+              protocol: query.protocol,
+            }}
+            onKeywordChange={(name) => setQuery((prev) => ({ ...prev, name }))}
+            onValuesChange={(values) => setQuery((prev) => ({
+              ...prev,
+              namespace: String(values.namespace || ''),
+              protocol: String(values.protocol || ''),
+            }))}
+            onSubmit={submitFilter}
+            onReset={resetFilter}
+          />
         )}
       />
 

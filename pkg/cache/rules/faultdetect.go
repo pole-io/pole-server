@@ -154,6 +154,51 @@ func (f *faultDetectCache) GetFaultDetectConfig(name string, namespace string) *
 	return f.allWildcardRules
 }
 
+func (f *faultDetectCache) GetFaultDetectConfigWithLabels(
+	name string, namespace string, labels map[string]string,
+) (*rules.ServiceWithFaultDetectRules, string) {
+	if result, revision := selectFaultDetectConfig(f.checkServiceSpecificCache(name, namespace), labels); result != nil {
+		return result, revision
+	}
+	namespaceRules, _ := f.nsWildcardRules.Load(namespace)
+	if result, revision := selectFaultDetectConfig(namespaceRules, labels); result != nil {
+		return result, revision
+	}
+	return selectFaultDetectConfig(f.allWildcardRules, labels)
+}
+
+func selectFaultDetectConfig(
+	source *rules.ServiceWithFaultDetectRules, labels map[string]string,
+) (*rules.ServiceWithFaultDetectRules, string) {
+	if source == nil {
+		return nil, ""
+	}
+	releases := make([]*rules.FaultDetectRelease, 0, source.CountFaultDetectRules())
+	bases := make([]*rules.RuleRelease, 0, source.CountFaultDetectRules())
+	source.IterateFaultDetectRules(func(release *rules.FaultDetectRelease) {
+		if release != nil && release.Rule != nil {
+			releases = append(releases, release)
+			bases = append(bases, &release.RuleRelease)
+		}
+	})
+	selected, snapshotRevision := selectGovernanceReleases(bases, labels)
+	if len(selected) == 0 {
+		return nil, ""
+	}
+	selectedIDs := make(map[string]struct{}, len(selected))
+	for _, release := range selected {
+		selectedIDs[release.Id] = struct{}{}
+	}
+	result := rules.NewServiceWithFaultDetectRules(source.Service)
+	for _, release := range releases {
+		if _, ok := selectedIDs[release.Id]; ok {
+			result.AddFaultDetectRule(release)
+		}
+	}
+	result.Revision = snapshotRevision
+	return result, snapshotRevision
+}
+
 func (f *faultDetectCache) checkServiceSpecificCache(
 	name string, namespace string) *rules.ServiceWithFaultDetectRules {
 	f.lock.RLock()

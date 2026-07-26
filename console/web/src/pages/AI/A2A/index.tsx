@@ -32,6 +32,7 @@ import Text from 'components/Text';
 import AuthorizeInput from 'components/Authorize';
 import { ConfirmOperationButton, OperationButton } from 'components/OperationButton';
 import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout';
+import QueryComposer, { QuerySnapshot } from 'components/QueryComposer';
 import {
   cleanA2ADetails,
   cleanA2APage,
@@ -64,11 +65,6 @@ const protocolOptions = [
   { label: 'gRPC', value: 'grpc' },
 ];
 
-const quickProtocolOptions = [
-  { label: '全部', value: '' },
-  ...protocolOptions,
-];
-
 const backendOptions = [
   { label: 'Pole 注册服务', value: 'service' },
   { label: '自定义地址', value: 'address' },
@@ -78,11 +74,6 @@ const fetchStatusOptions = [
   { label: '成功', value: 'success' },
   { label: '失败', value: 'failed' },
   { label: '未拉取', value: 'pending' },
-];
-
-const capabilityFilterOptions = [
-  { label: '支持', value: 'true' },
-  { label: '不支持', value: 'false' },
 ];
 
 const defaultInterface = (): A2AAgentInterface => ({
@@ -1098,8 +1089,16 @@ export default memo(() => {
     }
   };
 
-  const submitFilter = () => {
-    refreshTable(1, limit, query);
+  const submitFilter = ({ keyword, values }: QuerySnapshot) => {
+    refreshTable(1, limit, {
+      name: keyword,
+      namespace: String(values.namespace || ''),
+      protocol_binding: String(values.protocol_binding || ''),
+      skill_tag: String(values.skill_tag || ''),
+      backend_type: String(values.backend_type || ''),
+      streaming: values.streaming ? String(values.streaming) : undefined,
+      push_notifications: values.push_notifications ? String(values.push_notifications) : undefined,
+    });
   };
 
   const resetFilter = () => {
@@ -1181,68 +1180,69 @@ export default memo(() => {
         title="Agent 列表"
         count={loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}
         filters={(
-          <div className={style.filterControls}>
-          <Select
-            className={style.filterSelect}
-            placeholder="协议"
-            options={quickProtocolOptions}
-            value={query.protocol_binding}
-            onChange={(value) => {
-              const nextQuery = { ...query, protocol_binding: value as string };
-              setQuery(nextQuery);
-              refreshTable(1, limit, nextQuery);
+          <QueryComposer
+            keyword={query.name}
+            keywordPlaceholder="搜索 Agent 名称"
+            suggestions={datas.map((item) => String(item.name || '')).filter(Boolean)}
+            fields={[
+              {
+                key: 'namespace',
+                label: '命名空间',
+                type: 'text',
+              },
+              {
+                key: 'protocol_binding',
+                label: '协议',
+                type: 'select',
+                options: protocolOptions,
+              },
+              {
+                key: 'skill_tag',
+                label: 'Skill Tag',
+                type: 'text',
+              },
+              {
+                key: 'backend_type',
+                label: '后端类型',
+                type: 'select',
+                options: backendOptions,
+              },
+              {
+                key: 'streaming',
+                label: 'Streaming',
+                type: 'boolean',
+                trueLabel: '支持',
+                falseLabel: '不支持',
+              },
+              {
+                key: 'push_notifications',
+                label: 'Push',
+                type: 'boolean',
+                trueLabel: '支持',
+                falseLabel: '不支持',
+              },
+            ]}
+            values={{
+              namespace: query.namespace,
+              protocol_binding: query.protocol_binding,
+              skill_tag: query.skill_tag,
+              backend_type: query.backend_type,
+              streaming: query.streaming,
+              push_notifications: query.push_notifications,
             }}
+            onKeywordChange={(name) => setQuery((prev) => ({ ...prev, name }))}
+            onValuesChange={(values) => setQuery((prev) => ({
+              ...prev,
+              namespace: String(values.namespace || ''),
+              protocol_binding: String(values.protocol_binding || ''),
+              skill_tag: String(values.skill_tag || ''),
+              backend_type: String(values.backend_type || ''),
+              streaming: values.streaming ? String(values.streaming) : undefined,
+              push_notifications: values.push_notifications ? String(values.push_notifications) : undefined,
+            }))}
+            onSubmit={submitFilter}
+            onReset={resetFilter}
           />
-          <Input
-            className={style.filterInput}
-            clearable
-            placeholder="名称前缀"
-            value={query.name}
-            onChange={(value) => setQuery((prev) => ({ ...prev, name: value as string }))}
-          />
-          <Input
-            className={style.filterInput}
-            clearable
-            placeholder="命名空间"
-            value={query.namespace}
-            onChange={(value) => setQuery((prev) => ({ ...prev, namespace: value as string }))}
-          />
-          <Input
-            className={style.filterInput}
-            clearable
-            placeholder="Skill Tag"
-            value={query.skill_tag}
-            onChange={(value) => setQuery((prev) => ({ ...prev, skill_tag: value as string }))}
-          />
-          <Select
-            className={style.filterSelect}
-            clearable
-            placeholder="后端类型"
-            options={backendOptions}
-            value={query.backend_type}
-            onChange={(value) => setQuery((prev) => ({ ...prev, backend_type: value as string }))}
-          />
-          <Select
-            className={style.filterSelect}
-            clearable
-            placeholder="Streaming"
-            options={capabilityFilterOptions}
-            value={query.streaming}
-            onChange={(value) => setQuery((prev) => ({ ...prev, streaming: value as string }))}
-          />
-          <Select
-            className={style.filterSelect}
-            clearable
-            placeholder="Push"
-            options={capabilityFilterOptions}
-            value={query.push_notifications}
-            onChange={(value) => setQuery((prev) => ({ ...prev, push_notifications: value as string }))}
-          />
-          <div className={style.filterActions}>
-            <Button variant="outline" onClick={submitFilter}>查询</Button>
-            <Button variant="text" onClick={resetFilter}>重置</Button>
-          </div>
-          </div>
         )}
       />
 

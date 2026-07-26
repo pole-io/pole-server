@@ -1,8 +1,8 @@
 ---
 title: 领域术语表
 tags: [business, terminology]
-links: [domain-models, business-rules, auth-system, adr-console-agent-resource-workbench, adr-system-configuration-control-plane]
-updated: 2026-07-23
+links: [domain-models, business-rules, auth-system, adr-console-agent-resource-workbench, adr-system-configuration-control-plane, adr-rpc-first-governance-scope]
+updated: 2026-07-26
 sources: 0
 ---
 
@@ -14,7 +14,12 @@ sources: 0
 | 服务 | Service | 由全局唯一服务名标识的逻辑服务；同名服务在不同命名空间中的记录表示该服务的不同环境实例 |
 | 实例 | Instance | 服务的运行节点，包含 host、port、协议、健康状态、隔离状态和元数据 |
 | 配置文件 | Config File | 配置中心管理的版本化配置内容 |
-| 治理规则 | Governance Rule | 路由、限流、熔断、故障探测、无损上下线、泳道等规则的统称 |
+| 服务调用 | Service Invocation | 一次具有调用方、被调方、接口、请求属性和结果状态的 HTTP/RPC 交互 |
+| 服务治理能力 | Service Governance Capability | 作用于服务调用的路由、限流、鉴权、镜像、Mock、熔断等能力 |
+| 治理规则 | Governance Rule | 声明对哪些服务调用、在何种条件下施加一个服务治理效果的期望策略聚合根 |
+| 执行点 | Enforcement Point | 真正执行服务治理规则的 SDK、Sidecar 或 Gateway |
+| 能力档案 | Capability Profile | 执行点声明的服务治理规则类型、匹配能力、动作版本和可选特性集合 |
+| 应用回执 | Apply Receipt | 执行点对某个服务治理 Bundle 返回的已应用、拒绝或部分应用状态 |
 | 发布版本 | Release | 配置或治理规则发布时形成的快照版本 |
 | 灰度发布 | Gray Release | 面向部分客户端、标签或条件生效的发布方式 |
 | 泳道组 | Lane Group | 一组泳道路由规则的聚合根 |
@@ -37,3 +42,4 @@ sources: 0
 - [[auth-system]]
 - [[adr-console-agent-resource-workbench]]
 - [[adr-system-configuration-control-plane]]
+- [[adr-rpc-first-governance-scope]]

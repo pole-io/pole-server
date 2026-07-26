@@ -48,15 +48,17 @@ func (cb *Callbacks) OnDeltaStreamOpen(_ context.Context, id int64, typ string) 
 }
 
 func (cb *Callbacks) OnStreamClosed(id int64, node *corev3.Node) {
-	cb.nodeMgr.DelNode(id)
-	// 清理 cache
-	_ = cb.cacheMgr.CleanEnvoyNodeCache(node)
+	if cb.nodeMgr.DelNode(id) {
+		// 清理最后一条 stream 关闭后的 node cache。
+		_ = cb.cacheMgr.CleanEnvoyNodeCache(node)
+	}
 }
 
 func (cb *Callbacks) OnDeltaStreamClosed(id int64, node *corev3.Node) {
-	cb.nodeMgr.DelNode(id)
-	// 清理 cache
-	_ = cb.cacheMgr.CleanEnvoyNodeCache(node)
+	if cb.nodeMgr.DelNode(id) {
+		// 清理最后一条 stream 关闭后的 node cache。
+		_ = cb.cacheMgr.CleanEnvoyNodeCache(node)
+	}
 }
 
 func (cb *Callbacks) OnStreamRequest(id int64, req *discovery.DiscoveryRequest) error {

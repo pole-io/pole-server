@@ -139,29 +139,38 @@ func (rc *RouteRuleCache) ListRouterRule(service, namespace string) []*rules.Ext
 
 // GetRouterRule Obtain routing configuration based on serviceid
 func (rc *RouteRuleCache) GetRouterRule(id, service, namespace string) ([]*apitraffic.RouteRule, string, error) {
+	return rc.GetRouterRuleWithLabels(id, service, namespace, nil)
+}
+
+func (rc *RouteRuleCache) GetRouterRuleWithLabels(
+	id, service, namespace string, labels map[string]string,
+) ([]*apitraffic.RouteRule, string, error) {
 	if id == "" && service == "" && namespace == "" {
 		return nil, "", nil
 	}
 
-	routerRules := rc.container.SearchCustomRules(service, namespace)
-	revisions := make([]string, 0, len(routerRules))
-	rules := make([]*apitraffic.RouteRule, 0, len(routerRules))
-	for i := range routerRules {
-		item := routerRules[i]
-		entry, err := item.ToApi()
+	releases := rc.container.SearchCustomReleases(service, namespace)
+	bases := make([]*rules.RuleRelease, 0, len(releases))
+	for _, release := range releases {
+		bases = append(bases, &release.RuleRelease)
+	}
+	selected, snapshotRevision := selectGovernanceReleases(bases, labels)
+	selectedIDs := make(map[string]struct{}, len(selected))
+	for _, release := range selected {
+		selectedIDs[release.Id] = struct{}{}
+	}
+	out := make([]*apitraffic.RouteRule, 0, len(selected))
+	for _, release := range releases {
+		if _, ok := selectedIDs[release.Id]; !ok {
+			continue
+		}
+		entry, err := release.Rule.ToApi()
 		if err != nil {
 			return nil, "", err
 		}
-		rules = append(rules, entry)
-		revisions = append(revisions, entry.GetRevision())
+		out = append(out, entry)
 	}
-	revision, err := revisionapi.CompositeComputeRevision(revisions)
-	if err != nil {
-		log.Warn("[Cache][Routing] v2=>v1 compute revisions fail, use fake revision", zap.Error(err))
-		revision = utils.NewRevision()
-	}
-
-	return rules, revision, nil
+	return out, snapshotRevision, nil
 }
 
 // GetNearbyRouteRule 根据服务名查询就近路由数据
@@ -391,7 +400,16 @@ type ClientRouteRuleContainer struct {
 }
 
 func (c *ClientRouteRuleContainer) SearchRouteRuleV2(svc svctypes.ServiceKey) []*rules.ExtendRouterConfig {
-	ret := make([]*rules.ExtendRouterConfig, 0, 32)
+	releases := c.SearchRouteRuleReleases(svc)
+	ret := make([]*rules.ExtendRouterConfig, 0, len(releases))
+	for _, release := range releases {
+		ret = append(ret, release.Rule)
+	}
+	return ret
+}
+
+func (c *ClientRouteRuleContainer) SearchRouteRuleReleases(svc svctypes.ServiceKey) []*rules.RouterRuleRelease {
+	ret := make([]*rules.RouterRuleRelease, 0, 32)
 
 	c.lock.RLock()
 	defer c.lock.RUnlock()
@@ -399,23 +417,23 @@ func (c *ClientRouteRuleContainer) SearchRouteRuleV2(svc svctypes.ServiceKey) []
 	exactRule, existExactRule := c.exactRules.Load(svc.Domain())
 	if existExactRule {
 		exactRule.IterateRouterRules(func(erc *rules.RouterRuleRelease) {
-			ret = append(ret, erc.Rule)
+			ret = append(ret, erc)
 		})
 	}
 
 	nsWildcardRule, existNsWildcardRule := c.nsWildcardRules.Load(svc.Namespace)
 	if existNsWildcardRule {
 		nsWildcardRule.IterateRouterRules(func(erc *rules.RouterRuleRelease) {
-			ret = append(ret, erc.Rule)
+			ret = append(ret, erc)
 		})
 	}
 
 	c.allWildcardRules.IterateRouterRules(func(erc *rules.RouterRuleRelease) {
-		ret = append(ret, erc.Rule)
+		ret = append(ret, erc)
 	})
 
 	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].Priority < ret[j].Priority
+		return ret[i].Rule.Priority < ret[j].Rule.Priority
 	})
 	return ret
 }
@@ -581,6 +599,24 @@ func (b *RouteRuleContainer) SearchCustomRules(svcName, namespace string) []*rul
 		}
 	}
 
+	return ret
+}
+
+func (b *RouteRuleContainer) SearchCustomReleases(svcName, namespace string) []*rules.RouterRuleRelease {
+	svcKey := svctypes.ServiceKey{
+		Namespace: namespace,
+		Name:      svcName,
+	}
+	ret := b.customContainers[rules.TrafficDirection_INBOUND].SearchRouteRuleReleases(svcKey)
+	seen := make(map[string]struct{}, len(ret))
+	for _, release := range ret {
+		seen[release.Id] = struct{}{}
+	}
+	for _, release := range b.customContainers[rules.TrafficDirection_OUTBOUND].SearchRouteRuleReleases(svcKey) {
+		if _, ok := seen[release.Id]; !ok {
+			ret = append(ret, release)
+		}
+	}
 	return ret
 }
 

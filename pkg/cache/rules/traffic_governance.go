@@ -8,7 +8,6 @@ import (
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	ruletypes "github.com/pole-io/pole-server/apis/pkg/types/rules"
-	"github.com/pole-io/pole-server/apis/pkg/utils/revision"
 	"github.com/pole-io/pole-server/apis/store"
 	cachebase "github.com/pole-io/pole-server/pkg/cache/base"
 	"github.com/pole-io/pole-server/pkg/common/syncs/container"
@@ -249,33 +248,42 @@ func (c *TrafficGovernanceCache) GetRule(id string) *ruletypes.TrafficGovernance
 }
 
 func (c *TrafficGovernanceCache) GetRulesForService(namespace string, service string) ([]*ruletypes.TrafficGovernanceRule, string) {
+	return c.GetRulesForServiceWithLabels(namespace, service, nil)
+}
+
+func (c *TrafficGovernanceCache) GetRulesForServiceWithLabels(
+	namespace string, service string, labels map[string]string,
+) ([]*ruletypes.TrafficGovernanceRule, string) {
 	if err := c.Update(); err != nil {
 		return nil, ""
 	}
-	rules := make([]*ruletypes.TrafficGovernanceRule, 0, 4)
+	releases := make([]*ruletypes.TrafficGovernanceRuleRelease, 0, 4)
+	bases := make([]*ruletypes.RuleRelease, 0, 4)
 	c.rules.Range(func(key string, value *ruletypes.TrafficGovernanceRuleRelease) {
 		if value == nil || value.Rule == nil {
 			return
 		}
 		if value.Rule.ServiceNamespace == namespace && value.Rule.Service == service {
-			rules = append(rules, value.Rule)
+			releases = append(releases, value)
+			bases = append(bases, &value.RuleRelease)
 		}
 	})
+	selected, snapshotRevision := selectGovernanceReleases(bases, labels)
+	selectedIDs := make(map[string]struct{}, len(selected))
+	for _, release := range selected {
+		selectedIDs[release.Id] = struct{}{}
+	}
+	rules := make([]*ruletypes.TrafficGovernanceRule, 0, len(selected))
+	for _, release := range releases {
+		if _, ok := selectedIDs[release.Id]; ok {
+			rules = append(rules, release.Rule)
+		}
+	}
 	sort.Slice(rules, func(i, j int) bool {
 		if rules[i].Priority == rules[j].Priority {
 			return rules[i].ID < rules[j].ID
 		}
 		return rules[i].Priority < rules[j].Priority
 	})
-	revisions := make([]string, 0, len(rules))
-	for i := range rules {
-		if rules[i].Revision != "" {
-			revisions = append(revisions, rules[i].Revision)
-		}
-	}
-	if len(revisions) == 0 {
-		return rules, ""
-	}
-	rev, _ := revision.CompositeComputeRevision(revisions)
-	return rules, rev
+	return rules, snapshotRevision
 }

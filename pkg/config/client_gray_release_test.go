@@ -113,8 +113,43 @@ func TestGetConfigFileWithCacheReturnsNormalAndMatchedGrayContent(t *testing.T) 
 			require.Equal(t, tt.wantVersion, resp.GetFile().GetVersion())
 			require.Equal(t, tt.wantContent, resp.GetFile().GetContent())
 			require.Equal(t, tt.wantType, resp.GetFile().GetReleaseType())
+			require.Equal(t, configReleaseSnapshotRevision(
+				map[string]*conftypes.ConfigFileRelease{
+					"normal-release": normal,
+					"gray-a":         grayA,
+					"gray-b":         grayB,
+				}[tt.wantReleaseName],
+			), resp.GetRevision())
 		})
 	}
+}
+
+func TestGetConfigFileWithCacheFallsBackFromStoppedGrayEvenWhenNormalVersionIsOlder(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	normal := configClientReleaseForTest("normal-release", conftypes.ReleaseTypeNormal, 2, "normal-content")
+	gray := configClientReleaseForTest("gray-release", conftypes.ReleaseTypeGray, 5, "gray-content")
+	fileCache := cachemock.NewMockConfigFileCache(ctrl)
+	grayCache := cachemock.NewMockGrayCache(ctrl)
+	fileCache.EXPECT().GetActiveGrayReleases("default", "group-a", "app.yaml").
+		Return([]*conftypes.ConfigFileRelease{gray})
+	grayCache.EXPECT().HitGrayRule(GetGrayConfigReaseKey(gray.SimpleConfigFileRelease), gomock.Any()).Return(true)
+	fileCache.EXPECT().GetActiveGrayReleases("default", "group-a", "app.yaml").
+		Return(nil)
+	fileCache.EXPECT().GetActiveRelease("default", "group-a", "app.yaml").Return(normal)
+
+	svr := &Server{fileCache: fileCache, grayCache: grayCache}
+	first := svr.GetConfigFileWithCache(context.Background(), &apiconfig.ConfigFile{
+		Namespace: "default", Group: "group-a", Name: "app.yaml",
+	})
+	second := svr.GetConfigFileWithCache(context.Background(), &apiconfig.ConfigFile{
+		Id: first.GetRevision(), Namespace: "default", Group: "group-a", Name: "app.yaml",
+	})
+
+	require.Equal(t, uint32(apimodel.Code_ExecuteSuccess), second.GetCode())
+	require.Equal(t, "normal-release", second.GetFile().GetName())
+	require.NotEqual(t, first.GetRevision(), second.GetRevision())
 }
 
 func configClientReleaseForTest(name string, releaseType rules.ReleaseType, version uint64,
