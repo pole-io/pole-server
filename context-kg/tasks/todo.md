@@ -10727,7 +10727,7 @@ Review：
 - [x] 基于当前 `develop` 构建本地镜像并更新目标工作负载。
 - [x] 等待 rollout 完成，检查 Pod、镜像摘要、重启与容器日志。
 - [x] 验证 Console、Control Plane HTTP 接口和服务契约页面入口。
-- [ ] 记录部署 Review，完成知识库校验、提交并推送 `develop`。
+- [x] 记录部署 Review，完成知识库校验、提交并推送 `develop`。
 
 ### Review
 
