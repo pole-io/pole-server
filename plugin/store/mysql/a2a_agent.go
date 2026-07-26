@@ -132,7 +132,7 @@ func (s *a2aAgentStore) GetA2AAgent(id string) (*aitypes.A2AAgent, error) {
 	if id == "" {
 		return nil, store.NewStatusError(store.EmptyParamsErr, "get a2a agent missing id")
 	}
-	rows, err := s.queryA2AAgents(`WHERE id = ?`, id)
+	rows, err := s.queryA2AAgentsFrom(s.master, `WHERE id = ?`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,8 @@ func (s *a2aAgentStore) GetA2AAgentByName(name, namespace string) (*aitypes.A2AA
 	if name == "" || namespace == "" {
 		return nil, store.NewStatusError(store.EmptyParamsErr, "get a2a agent missing name or namespace")
 	}
-	rows, err := s.queryA2AAgents(`WHERE name = ? AND namespace = ? AND flag != 1`, name, namespace)
+	rows, err := s.queryA2AAgentsFrom(s.master,
+		`WHERE name = ? AND namespace = ? AND flag != 1`, name, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +244,8 @@ func (s *a2aAgentStore) insertA2AAgent(tx *BaseTx, agent *aitypes.A2AAgent) erro
 		backend_address, preferred_interface_url, preferred_protocol_binding, preferred_protocol_version,
 		streaming, push_notifications, extended_agent_card, raw_card_json, source_type, source_url,
 		last_fetch_status, last_fetch_time, metadata, flag, ctime, mtime)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())`
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())
+		ON DUPLICATE KEY UPDATE flag = VALUES(flag), mtime = sysdate()`
 	_, err := tx.Exec(sqlText,
 		agent.Id, agent.Name, agent.Namespace, agent.Visibility, agent.Description, agent.Version,
 		agent.ProtocolVersion, agent.ProviderOrganization, agent.ProviderUrl, agent.DocumentationUrl,
@@ -302,6 +304,10 @@ func (s *a2aAgentStore) replaceA2AAgentSkills(tx *BaseTx, agent *aitypes.A2AAgen
 }
 
 func (s *a2aAgentStore) queryA2AAgents(where string, args ...interface{}) (*sql.Rows, error) {
+	return s.queryA2AAgentsFrom(s.slave, where, args...)
+}
+
+func (s *a2aAgentStore) queryA2AAgentsFrom(db *BaseDB, where string, args ...interface{}) (*sql.Rows, error) {
 	sqlText := `SELECT id, name, namespace, visibility, description, version, protocol_version,
 		provider_organization, provider_url, documentation_url, icon_url, business, department,
 		backend_type, backend_service_namespace, backend_service_name, backend_address,
@@ -309,7 +315,7 @@ func (s *a2aAgentStore) queryA2AAgents(where string, args ...interface{}) (*sql.
 		push_notifications, extended_agent_card, raw_card_json, source_type, source_url,
 		last_fetch_status, last_fetch_time, metadata, flag, unix_timestamp(ctime), unix_timestamp(mtime)
 		FROM a2a_agent ` + where
-	return s.slave.Query(sqlText, args...)
+	return db.Query(sqlText, args...)
 }
 
 func (s *a2aAgentStore) fetchA2AAgentRow(rows *sql.Rows) (*aitypes.A2AAgent, error) {

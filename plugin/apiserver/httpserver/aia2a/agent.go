@@ -54,6 +54,11 @@ func (h *HTTPServer) CreateA2AAgents(req *restful.Request, rsp *restful.Response
 		handler.WriteHeaderAndProto(api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error()))
 		return
 	}
+	if h.touchesSelfManagedA2AAgents(agents, nil) {
+		handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_NotAllowedAccess,
+			"pole-system A2A Agent 是系统投影，只能通过管理员 System Configuration 修改"))
+		return
+	}
 	for _, agent := range agents {
 		if err := h.storage.CreateA2AAgent(agent); err != nil {
 			handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
@@ -72,6 +77,11 @@ func (h *HTTPServer) UpdateA2AAgents(req *restful.Request, rsp *restful.Response
 	}
 	if _, err := h.checkA2AAgentPermission(handler.ParseHeaderContext(), authtypes.Modify, authtypes.UpdateA2AAgents, a2aAgentIDs(agents)); err != nil {
 		handler.WriteHeaderAndProto(api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error()))
+		return
+	}
+	if h.touchesSelfManagedA2AAgents(agents, nil) {
+		handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_NotAllowedAccess,
+			"pole-system A2A Agent 是系统投影，只能通过管理员 System Configuration 修改"))
 		return
 	}
 	for _, agent := range agents {
@@ -94,6 +104,11 @@ func (h *HTTPServer) DeleteA2AAgents(req *restful.Request, rsp *restful.Response
 		handler.WriteHeaderAndProto(api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error()))
 		return
 	}
+	if h.touchesSelfManagedA2AAgents(nil, deleteReq.AgentIds) {
+		handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_NotAllowedAccess,
+			"pole-system A2A Agent 是系统投影，只能通过管理员 System Configuration 修改"))
+		return
+	}
 	for _, id := range deleteReq.AgentIds {
 		if err := h.storage.DeleteA2AAgent(id); err != nil {
 			handler.WriteHeaderAndProto(api.NewResponseWithMsg(apimodel.Code_ExecuteException, err.Error()))
@@ -101,6 +116,37 @@ func (h *HTTPServer) DeleteA2AAgents(req *restful.Request, rsp *restful.Response
 		}
 	}
 	handler.WriteHeaderAndProto(api.NewResponse(apimodel.Code_ExecuteSuccess))
+}
+
+func (h *HTTPServer) touchesSelfManagedA2AAgents(agents []*aitypes.A2AAgent, ids []string) bool {
+	for _, agent := range agents {
+		if isSelfManagedA2AAgent(agent) {
+			return true
+		}
+		if agent != nil && agent.Id != "" {
+			existing, err := h.storage.GetA2AAgent(agent.Id)
+			if err != nil || existing == nil {
+				return true
+			}
+			if isSelfManagedA2AAgent(existing) {
+				return true
+			}
+		}
+	}
+	for _, id := range ids {
+		existing, err := h.storage.GetA2AAgent(id)
+		if err != nil || existing == nil {
+			return true
+		}
+		if isSelfManagedA2AAgent(existing) {
+			return true
+		}
+	}
+	return false
+}
+
+func isSelfManagedA2AAgent(agent *aitypes.A2AAgent) bool {
+	return agent != nil && agent.Namespace == "pole-system"
 }
 
 func (h *HTTPServer) ListA2AAgentSkills(req *restful.Request, rsp *restful.Response) {

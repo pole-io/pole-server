@@ -74,6 +74,9 @@ bootstrap:
     # LLM Gateway address and API key resolve to non-empty values.
     agent:
       runtimeMode: llm
+      # Dedicated machine-auth key for split Console -> Server self-capability probes.
+      # Use the same base64-encoded 32-byte value on both processes.
+      selfManagementProbeKey: ${POLE_SELF_MANAGER_PROBE_KEY}
       definition:
         id: pole-control-plane
         systemPrompt:
@@ -96,7 +99,8 @@ bootstrap:
       a2a:
         name: Pole Agent
         description: 通过 MCP 发现并管理 Pole 控制面资源
-        endpoint: http://127.0.0.1:8080/ai/agent/a2a/v1
+        # endpoint 留空时使用启动期探测到的本机可达地址；跨网关部署应显式配置对外 advertised URL
+        endpoint: ""
       proposalTTL: 30m
       upstreamTimeout: 10s
   # Start the server in order

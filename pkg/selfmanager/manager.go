@@ -47,6 +47,8 @@ type Store interface {
 	UpdateA2AAgent(agent *aitypes.A2AAgent) error
 	GetA2AAgent(id string) (*aitypes.A2AAgent, error)
 	GetA2AAgentByName(name, namespace string) (*aitypes.A2AAgent, error)
+	DeleteA2AAgent(id string) error
+	QueryA2AAgents(query *aitypes.A2AAgentQuery) (uint32, []*aitypes.A2AAgent, error)
 }
 
 type AuditSink interface {
@@ -136,6 +138,31 @@ func (m *Manager) reconcileMCP(ctx context.Context, state DesiredState, result *
 	if existing == nil {
 		if err := m.store.CreateMCPServer(server); err != nil {
 			return fmt.Errorf("create MCP server %s/%s: %w", server.Namespace, server.Name, err)
+		}
+		// Re-read the canonical root after the idempotent claim. With a legacy
+		// soft-deleted row or a concurrent creator, the unique natural key may
+		// retain an ID different from our deterministic candidate. Never attach
+		// children until that canonical ID is observable.
+		canonical, readErr := m.store.GetMCPServerByName(server.Name, server.Namespace)
+		if readErr != nil {
+			return fmt.Errorf("read canonical MCP server %s/%s after create: %w",
+				server.Namespace, server.Name, readErr)
+		}
+		if canonical == nil {
+			return fmt.Errorf("canonical MCP server %s/%s is not observable after create",
+				server.Namespace, server.Name)
+		}
+		server.Id = canonical.Id
+		for _, tool := range tools {
+			tool.McpServerId = server.Id
+			tool.Id = stableID("mcp-tool", server.Id, tool.Name)
+		}
+		if err := setMCPRevision(server, tools); err != nil {
+			return err
+		}
+		if err := m.store.UpdateMCPServer(server); err != nil {
+			return fmt.Errorf("converge canonical MCP server %s/%s: %w",
+				server.Namespace, server.Name, err)
 		}
 		for _, tool := range tools {
 			if err := m.store.CreateMCPServerTool(tool); err != nil {

@@ -251,6 +251,10 @@ func (h *HTTPServer) mcpServerCreate(ctx context.Context, servers []*ai.MCPServe
 	if _, err := h.checkMCPServerPermission(ctx, authtypes.Create, authtypes.CreateMCPServers, nil); err != nil {
 		return api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error())
 	}
+	if h.touchesSelfManagedMCPServers(servers, nil) {
+		return api.NewResponseWithMsg(apimodel.Code_NotAllowedAccess,
+			"Pole 自身 MCP 是系统投影，只能通过管理员 System Configuration 修改")
+	}
 
 	for _, s := range servers {
 		if err := h.storage.CreateMCPServer(s); err != nil {
@@ -268,6 +272,10 @@ func (h *HTTPServer) mcpServerUpdate(ctx context.Context, servers []*ai.MCPServe
 	}
 	if _, err := h.checkMCPServerPermission(ctx, authtypes.Modify, authtypes.UpdateMCPServers, mcpServerIDs(servers)); err != nil {
 		return api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error())
+	}
+	if h.touchesSelfManagedMCPServers(servers, nil) {
+		return api.NewResponseWithMsg(apimodel.Code_NotAllowedAccess,
+			"Pole 自身 MCP 是系统投影，只能通过管理员 System Configuration 修改")
 	}
 
 	for _, s := range servers {
@@ -287,6 +295,10 @@ func (h *HTTPServer) mcpServerDelete(ctx context.Context, ids []string) *apimode
 	if _, err := h.checkMCPServerPermission(ctx, authtypes.Delete, authtypes.DeleteMCPServers, ids); err != nil {
 		return api.NewResponseWithMsg(authtypes.ConvertToErrCode(err), err.Error())
 	}
+	if h.touchesSelfManagedMCPServers(nil, ids) {
+		return api.NewResponseWithMsg(apimodel.Code_NotAllowedAccess,
+			"Pole 自身 MCP 是系统投影，只能通过管理员 System Configuration 修改")
+	}
 
 	for _, id := range ids {
 		if err := h.storage.DeleteMCPServer(id); err != nil {
@@ -295,6 +307,41 @@ func (h *HTTPServer) mcpServerDelete(ctx context.Context, ids []string) *apimode
 		}
 	}
 	return api.NewResponse(apimodel.Code_ExecuteSuccess)
+}
+
+func (h *HTTPServer) touchesSelfManagedMCPServers(servers []*ai.MCPServer, ids []string) bool {
+	for _, server := range servers {
+		if isSelfManagedMCPServer(server) {
+			return true
+		}
+		if server != nil && server.GetId() != "" {
+			existing, err := h.storage.GetMCPServer(server.GetId())
+			if err != nil || existing == nil {
+				return true
+			}
+			if isSelfManagedMCPServer(existing) {
+				return true
+			}
+		}
+	}
+	for _, id := range ids {
+		existing, err := h.storage.GetMCPServer(id)
+		if err != nil || existing == nil {
+			return true
+		}
+		if isSelfManagedMCPServer(existing) {
+			return true
+		}
+	}
+	return false
+}
+
+func isSelfManagedMCPServer(server *ai.MCPServer) bool {
+	if server == nil {
+		return false
+	}
+	return server.GetNamespace() == "pole-system" &&
+		(server.GetName() == "pole-control-plane" || server.GetReference() == "pole-self-manager")
 }
 
 // mcpServerToolQuery 查询 MCP Server Tools

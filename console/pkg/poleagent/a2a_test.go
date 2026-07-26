@@ -2,6 +2,7 @@ package poleagent
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -40,9 +41,40 @@ func TestA2AAdapterPublishesCallableAgentCard(t *testing.T) {
 	require.Equal(t, "Pole Agent", card.Name)
 	require.Equal(t, "https://pole.example.com/ai/agent/a2a/v1", card.URL)
 	require.Equal(t, "0.3.0", card.ProtocolVersion)
+	require.Equal(t, "JSONRPC", card.PreferredTransport)
+	require.Equal(t, []string{"text/plain"}, card.DefaultInputModes)
+	require.Equal(t, []string{"text/plain"}, card.DefaultOutputModes)
 	require.False(t, card.Capabilities.Streaming)
 	require.Len(t, card.Skills, 1)
 	require.Equal(t, "pole-control-plane-management", card.Skills[0].ID)
+	require.Equal(t, []string{"text/plain"}, card.Skills[0].InputModes)
+	require.Equal(t, []string{"text/plain"}, card.Skills[0].OutputModes)
+	require.Equal(t, A2ASecurityScheme{Type: "http", Scheme: "bearer"},
+		card.SecuritySchemes["bearerAuth"])
+	require.Equal(t, []map[string][]string{{"bearerAuth": {}}}, card.Security)
+}
+
+func TestA2ARequestRejectsInvalidJSONRPCIDsAndTracksNotifications(t *testing.T) {
+	var request A2ARequest
+	require.NoError(t, json.Unmarshal([]byte(
+		`{"jsonrpc":"2.0","id":7,"method":"message/send","params":{}}`,
+	), &request))
+	require.True(t, request.HasID)
+	require.Equal(t, json.Number("7"), request.ID)
+
+	require.NoError(t, json.Unmarshal([]byte(
+		`{"jsonrpc":"2.0","method":"message/send","params":{}}`,
+	), &request))
+	require.False(t, request.HasID)
+
+	for _, invalid := range []string{
+		`{"jsonrpc":"2.0","id":true,"method":"message/send"}`,
+		`{"jsonrpc":"2.0","id":{},"method":"message/send"}`,
+		`{"jsonrpc":"2.0","id":[],"method":"message/send"}`,
+		`{"jsonrpc":"2.0","id":1.5,"method":"message/send"}`,
+	} {
+		require.Error(t, json.Unmarshal([]byte(invalid), &request), invalid)
+	}
 }
 
 func TestA2AAdapterMessageSendUsesPoleAgentRuntime(t *testing.T) {
@@ -86,6 +118,8 @@ func TestA2AAdapterRejectsUnsupportedMethodAndNonTextMessage(t *testing.T) {
 		JSONRPC: "2.0", ID: 1, Method: "tasks/get",
 	})
 	require.ErrorContains(t, err, "unsupported A2A method")
+	require.Equal(t, -32601, A2AErrorResponse(1, err).Error.Code)
+	require.Equal(t, 1, A2AErrorResponse(1, err).ID)
 
 	_, err = adapter.Send(context.Background(), agentworkbench.Actor{}, A2ARequest{
 		JSONRPC: "2.0", ID: 2, Method: "message/send",
@@ -94,4 +128,5 @@ func TestA2AAdapterRejectsUnsupportedMethodAndNonTextMessage(t *testing.T) {
 		}},
 	})
 	require.ErrorContains(t, err, "text part")
+	require.Equal(t, -32602, A2AErrorResponse(2, err).Error.Code)
 }

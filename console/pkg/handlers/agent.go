@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -19,6 +21,7 @@ type AgentHandler struct {
 	workbench *agentworkbench.Workbench
 	runtime   *systemsettings.Manager
 	a2a       *poleagent.A2AAdapter
+	a2aErr    error
 }
 
 func NewAgentHandler(config *bootstrap.Config, workbench *agentworkbench.Workbench,
@@ -51,38 +54,85 @@ func NewAgentHandler(config *bootstrap.Config, workbench *agentworkbench.Workben
 		return snapshot.Agent
 	})
 	if err != nil {
-		panic(fmt.Sprintf("initialize Pole Agent A2A adapter: %v", err))
+		return &AgentHandler{
+			config: config, workbench: workbench, runtime: runtime,
+			a2aErr: fmt.Errorf("initialize Pole Agent A2A adapter: %w", err),
+		}
 	}
 	return &AgentHandler{config: config, workbench: workbench, runtime: runtime, a2a: adapter}
 }
 
 func (h *AgentHandler) A2ACard(c *gin.Context) {
-	c.JSON(http.StatusOK, h.a2a.Card())
+	if h.a2aErr != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": h.a2aErr.Error()})
+		return
+	}
+	card := h.a2a.Card()
+	if snapshot := h.runtime.Current(); snapshot != nil {
+		if name := strings.TrimSpace(snapshot.Profile.AgentID); name != "" {
+			card.Name = name
+		}
+		if version := strings.TrimSpace(snapshot.Profile.PromptVersion); version != "" {
+			card.Version = version
+		}
+	}
+	c.JSON(http.StatusOK, card)
 }
 
 func (h *AgentHandler) A2ASend(c *gin.Context) {
+	if h.a2aErr != nil {
+		c.JSON(http.StatusServiceUnavailable, poleagent.A2AErrorResponse(nil, h.a2aErr))
+		return
+	}
 	actor, ok := h.a2aActor(c)
 	if !ok {
 		return
 	}
 	var request poleagent.A2ARequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"jsonrpc": "2.0",
-			"id":      nil,
-			"error": gin.H{
-				"code":    -32600,
-				"message": "invalid A2A JSON-RPC request",
-			},
-		})
+	decoder := json.NewDecoder(c.Request.Body)
+	decoder.UseNumber()
+	if err := decoder.Decode(&request); err != nil {
+		code := -32600
+		message := "invalid A2A JSON-RPC request"
+		var syntaxErr *json.SyntaxError
+		if errors.As(err, &syntaxErr) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) {
+			code = -32700
+			message = "invalid JSON payload"
+		}
+		c.JSON(http.StatusBadRequest, poleagent.A2AErrorResponse(nil,
+			&poleagent.A2AProtocolError{Code: code, Message: message}))
+		return
+	}
+	if err := ensureJSONBodyConsumed(decoder); err != nil {
+		c.JSON(http.StatusBadRequest, poleagent.A2AErrorResponse(nil,
+			&poleagent.A2AProtocolError{Code: -32700, Message: "invalid JSON payload"}))
 		return
 	}
 	response, err := h.a2a.Send(c.Request.Context(), actor, request)
 	if err != nil {
-		writePoleAgentError(c, err)
+		if !request.HasID {
+			c.Status(http.StatusNoContent)
+			return
+		}
+		c.JSON(http.StatusOK, poleagent.A2AErrorResponse(request.ID, err))
+		return
+	}
+	if !request.HasID {
+		c.Status(http.StatusNoContent)
 		return
 	}
 	c.JSON(http.StatusOK, response)
+}
+
+func ensureJSONBodyConsumed(decoder *json.Decoder) error {
+	var extra any
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return errors.New("multiple JSON values")
+		}
+		return err
+	}
+	return nil
 }
 
 func (h *AgentHandler) Runtime(c *gin.Context) {

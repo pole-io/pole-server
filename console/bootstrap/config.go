@@ -19,6 +19,7 @@ package bootstrap
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -47,16 +48,17 @@ type MonitorServer struct {
 
 // Config 配置
 type Config struct {
-	Logger              log.Options               `yaml:"logger"`
-	WebServer           WebServer                 `yaml:"webServer"`
-	PoleServer          PoleServer                `yaml:"poleServer"`
-	MonitorServer       MonitorServer             `yaml:"monitorServer"`
-	Futures             string                    `yaml:"futures"`
-	Store               store.Config              `yaml:"store"`
-	ObservabilityQuery  observabilityquery.Config `yaml:"observabilityQuery"`
-	Agent               AgentConfig               `yaml:"agent"`
-	SystemSecrets       SystemSecretsConfig       `yaml:"systemSecrets"`
-	SystemConfigSources systemconfig.SourceIndex  `yaml:"-" json:"-"`
+	Logger               log.Options                           `yaml:"logger"`
+	WebServer            WebServer                             `yaml:"webServer"`
+	PoleServer           PoleServer                            `yaml:"poleServer"`
+	MonitorServer        MonitorServer                         `yaml:"monitorServer"`
+	Futures              string                                `yaml:"futures"`
+	Store                store.Config                          `yaml:"store"`
+	ObservabilityQuery   observabilityquery.Config             `yaml:"observabilityQuery"`
+	Agent                AgentConfig                           `yaml:"agent"`
+	SystemSecrets        SystemSecretsConfig                   `yaml:"systemSecrets"`
+	SystemConfigSources  systemconfig.SourceIndex              `yaml:"-" json:"-"`
+	AgentCapabilityProbe func(context.Context, []string) error `yaml:"-" json:"-"`
 }
 
 func (c *Config) HasFutures(s string) bool {
@@ -88,13 +90,14 @@ type JWT struct {
 }
 
 type AgentConfig struct {
-	RuntimeMode     string                `yaml:"runtimeMode" json:"runtimeMode"`
-	Definition      AgentDefinitionConfig `yaml:"definition" json:"definition"`
-	Model           AgentModelConfig      `yaml:"model" json:"model"`
-	MCP             AgentMCPConfig        `yaml:"mcp" json:"mcp"`
-	A2A             AgentA2AConfig        `yaml:"a2a" json:"a2a"`
-	ProposalTTL     time.Duration         `yaml:"proposalTTL" json:"proposalTTL"`
-	UpstreamTimeout time.Duration         `yaml:"upstreamTimeout" json:"upstreamTimeout"`
+	RuntimeMode            string                `yaml:"runtimeMode" json:"runtimeMode"`
+	SelfManagementProbeKey string                `yaml:"selfManagementProbeKey" json:"-"`
+	Definition             AgentDefinitionConfig `yaml:"definition" json:"definition"`
+	Model                  AgentModelConfig      `yaml:"model" json:"model"`
+	MCP                    AgentMCPConfig        `yaml:"mcp" json:"mcp"`
+	A2A                    AgentA2AConfig        `yaml:"a2a" json:"a2a"`
+	ProposalTTL            time.Duration         `yaml:"proposalTTL" json:"proposalTTL"`
+	UpstreamTimeout        time.Duration         `yaml:"upstreamTimeout" json:"upstreamTimeout"`
 }
 
 type AgentDefinitionConfig struct {

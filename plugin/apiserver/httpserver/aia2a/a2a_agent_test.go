@@ -48,6 +48,15 @@ func TestParseA2AAgentQuery(t *testing.T) {
 	}, query)
 }
 
+func TestPoleSystemA2AProjectionCannotUseGenericMutationPath(t *testing.T) {
+	require.True(t, isSelfManagedA2AAgent(&aitypes.A2AAgent{
+		Name: "pole-control-plane", Namespace: "pole-system",
+	}))
+	require.False(t, isSelfManagedA2AAgent(&aitypes.A2AAgent{
+		Name: "planner", Namespace: "default",
+	}))
+}
+
 func TestNewA2AAgentListResponse(t *testing.T) {
 	agents := []*aitypes.A2AAgent{{Id: "agent-1", Name: "planner"}}
 

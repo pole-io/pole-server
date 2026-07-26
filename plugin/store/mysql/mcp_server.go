@@ -158,7 +158,8 @@ func (m *mcpServerStore) insertMCPServerMain(tx *BaseTx, server *ai.MCPServer) e
 	sql := `INSERT INTO mcp_server(id, name, namespace, ports, business, department, description,
 		revision, flag, reference, protocol, ctime, mtime, export_to,
 		backend_type, backend_service_namespace, backend_service_name, backend_address)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate(), ?, ?, ?, ?, ?)`
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate(), ?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE flag = VALUES(flag), mtime = sysdate()`
 
 	_, err := tx.Exec(sql,
 		server.Id,
@@ -264,7 +265,7 @@ func (m *mcpServerStore) GetMCPServer(id string) (*ai.MCPServer, error) {
 		return nil, store.NewStatusError(store.EmptyParamsErr, "get mcp server missing id")
 	}
 
-	rows, err := m.slave.Query(`SELECT id, name, namespace, ports, business, department, description,
+	rows, err := m.master.Query(`SELECT id, name, namespace, ports, business, department, description,
 		revision, flag, reference, protocol, unix_timestamp(ctime), unix_timestamp(mtime), export_to,
 		IFNULL(backend_type, ""), IFNULL(backend_service_namespace, ""), IFNULL(backend_service_name, ""), IFNULL(backend_address, "")
 		FROM mcp_server WHERE id = ?`, id)
@@ -283,7 +284,7 @@ func (m *mcpServerStore) GetMCPServerByName(name, namespace string) (*ai.MCPServ
 		return nil, store.NewStatusError(store.EmptyParamsErr, "get mcp server missing name or namespace")
 	}
 
-	rows, err := m.slave.Query(`SELECT id, name, namespace, ports, business, department, description,
+	rows, err := m.master.Query(`SELECT id, name, namespace, ports, business, department, description,
 		revision, flag, reference, protocol, unix_timestamp(ctime), unix_timestamp(mtime), export_to,
 		IFNULL(backend_type, ""), IFNULL(backend_service_namespace, ""), IFNULL(backend_service_name, ""), IFNULL(backend_address, "")
 		FROM mcp_server WHERE name = ? AND namespace = ? AND flag != 1`, name, namespace)

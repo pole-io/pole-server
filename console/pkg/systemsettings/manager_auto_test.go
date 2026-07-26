@@ -42,6 +42,19 @@ func TestSaveAndReconcileKeepsLastHealthyRuntimeWhenProbeFails(t *testing.T) {
 	require.Equal(t, "rejected", view.ApplyStatus)
 	require.Same(t, before.Agent, manager.Current().Agent)
 	require.Equal(t, before.Revision, manager.Current().Revision)
+
+	manager.systemCandidate = func(context.Context, agentworkbench.Actor, AgentProfile, string) (*poleagent.Agent, error) {
+		return poleagent.New(poleagent.Options{
+			ID: "pole-control-plane", PromptVersion: "v1",
+		}, nil, nil, manager.workbench), nil
+	}
+	require.NoError(t, manager.reconcilePendingDraft(context.Background()))
+	reconciled, err := manager.Domain(context.Background())
+	require.NoError(t, err)
+	require.Nil(t, reconciled.Draft)
+	require.NotNil(t, reconciled.Active)
+	require.Equal(t, SelfManagerActorID, reconciled.Active.PublishedBy)
+	require.Equal(t, "applied", reconciled.ApplyStatus)
 }
 
 func TestPoleServerRegistryEndpointPreservesExplicitScheme(t *testing.T) {
@@ -50,6 +63,20 @@ func TestPoleServerRegistryEndpointPreservesExplicitScheme(t *testing.T) {
 	require.Equal(t, "http://127.0.0.1:8090/ai/mcp/v1/servers",
 		poleServerRegistryEndpoint("127.0.0.1:8090"))
 	require.Empty(t, poleServerRegistryEndpoint(" "))
+}
+
+func TestManualRetryStillRecordsSelfManagerAsExecutor(t *testing.T) {
+	manager := newAutoReconcileTestManager(t, nil)
+	draft, err := manager.SaveDraft(context.Background(), "admin", validAgentDraft("待重试 Prompt"))
+	require.NoError(t, err)
+	require.NotNil(t, draft.Draft)
+
+	view, err := manager.Publish(context.Background(), agentworkbench.Actor{
+		UserID: "admin", Token: "admin-token",
+	}, PublishRequest{DraftRevision: draft.Draft.Revision})
+	require.NoError(t, err)
+	require.Equal(t, "admin", view.Active.CreatedBy)
+	require.Equal(t, SelfManagerActorID, view.Active.PublishedBy)
 }
 
 func newAutoReconcileTestManager(t *testing.T, probeErr error) *Manager {

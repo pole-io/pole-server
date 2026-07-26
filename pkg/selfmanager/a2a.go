@@ -28,15 +28,43 @@ func (m *Manager) reconcileA2A(ctx context.Context, state DesiredState, result *
 		}
 	}
 	if existing == nil {
-		if err := m.store.CreateA2AAgent(agent); err != nil {
+		root := cloneA2AAgent(agent)
+		root.Interfaces = nil
+		root.Skills = nil
+		if err := m.store.CreateA2AAgent(root); err != nil {
 			return fmt.Errorf("create A2A agent %s/%s: %w", agent.Namespace, agent.Name, err)
+		}
+		canonical, readErr := m.store.GetA2AAgentByName(agent.Name, agent.Namespace)
+		if readErr != nil {
+			return fmt.Errorf("read canonical A2A agent %s/%s after create: %w",
+				agent.Namespace, agent.Name, readErr)
+		}
+		if canonical == nil {
+			return fmt.Errorf("canonical A2A agent %s/%s is not observable after create",
+				agent.Namespace, agent.Name)
+		}
+		agent.Id = canonical.Id
+		for _, item := range agent.Interfaces {
+			item.Id = ""
+			item.AgentId = ""
+		}
+		for _, item := range agent.Skills {
+			item.Id = ""
+			item.AgentId = ""
+		}
+		agent, err = normalizeA2AAgent(agent)
+		if err != nil {
+			return err
+		}
+		if err := m.store.UpdateA2AAgent(agent); err != nil {
+			return fmt.Errorf("attach A2A agent children %s/%s: %w", agent.Namespace, agent.Name, err)
 		}
 		result.Created++
 		revision, err := a2aRevision(agent)
 		if err != nil {
 			return err
 		}
-		return m.recordAudit(ctx, AuditEvent{
+		if err := m.recordAudit(ctx, AuditEvent{
 			Actor:         SystemActor,
 			Trigger:       strings.TrimSpace(state.Trigger),
 			ConfiguredBy:  strings.TrimSpace(state.ConfiguredBy),
@@ -46,7 +74,10 @@ func (m *Manager) reconcileA2A(ctx context.Context, state DesiredState, result *
 			ResourceID:    agent.Id,
 			Action:        ActionCreate,
 			AfterRevision: revision,
-		})
+		}); err != nil {
+			return err
+		}
+		return m.cleanupStaleA2A(ctx, state, agent, result)
 	}
 
 	current, err := normalizeA2AAgent(existing)
@@ -61,7 +92,7 @@ func (m *Manager) reconcileA2A(ctx context.Context, state DesiredState, result *
 	deleted := preserveA2AChildIDs(agent, current)
 	if existing.Flag != 1 && sameA2AAgent(current, agent) {
 		result.Unchanged++
-		return nil
+		return m.cleanupStaleA2A(ctx, state, agent, result)
 	}
 	if err := m.store.UpdateA2AAgent(agent); err != nil {
 		return fmt.Errorf("update A2A agent %s/%s: %w", agent.Namespace, agent.Name, err)
@@ -72,7 +103,7 @@ func (m *Manager) reconcileA2A(ctx context.Context, state DesiredState, result *
 	}
 	result.Updated++
 	result.Deleted += deleted
-	return m.recordAudit(ctx, AuditEvent{
+	if err := m.recordAudit(ctx, AuditEvent{
 		Actor:          SystemActor,
 		Trigger:        strings.TrimSpace(state.Trigger),
 		ConfiguredBy:   strings.TrimSpace(state.ConfiguredBy),
@@ -83,7 +114,49 @@ func (m *Manager) reconcileA2A(ctx context.Context, state DesiredState, result *
 		Action:         ActionUpdate,
 		BeforeRevision: beforeRevision,
 		AfterRevision:  afterRevision,
+	}); err != nil {
+		return err
+	}
+	return m.cleanupStaleA2A(ctx, state, agent, result)
+}
+
+func (m *Manager) cleanupStaleA2A(ctx context.Context, state DesiredState,
+	desired *aitypes.A2AAgent, result *Result) error {
+	_, agents, err := m.store.QueryA2AAgents(&aitypes.A2AAgentQuery{
+		Namespace: desired.Namespace,
+		Limit:     100,
 	})
+	if err != nil {
+		return fmt.Errorf("query stale self-managed A2A agents: %w", err)
+	}
+	for _, agent := range agents {
+		if agent == nil || agent.Id == desired.Id ||
+			agent.Metadata["managed_by"] != SystemActor {
+			continue
+		}
+		if err := m.store.DeleteA2AAgent(agent.Id); err != nil {
+			return fmt.Errorf("delete stale self-managed A2A agent %s/%s: %w",
+				agent.Namespace, agent.Name, err)
+		}
+		result.Deleted++
+		if err := m.recordAudit(ctx, AuditEvent{
+			Actor:        SystemActor,
+			Trigger:      strings.TrimSpace(state.Trigger),
+			ConfiguredBy: strings.TrimSpace(state.ConfiguredBy),
+			ResourceKind: ResourceA2AAgent,
+			Namespace:    agent.Namespace,
+			Name:         agent.Name,
+			ResourceID:   agent.Id,
+			Action:       ActionDelete,
+			BeforeRevision: func() string {
+				revision, _ := a2aRevision(agent)
+				return revision
+			}(),
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func normalizeA2AAgent(source *aitypes.A2AAgent) (*aitypes.A2AAgent, error) {

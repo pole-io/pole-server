@@ -31,16 +31,20 @@ const SelfManagerActorID = "pole-self-manager"
 type candidateBuilder func(context.Context, agentworkbench.Actor, AgentProfile, string) (*poleagent.Agent, error)
 
 type Manager struct {
-	config    *bootstrap.Config
-	repo      store.SystemSettingsRepository
-	workbench *agentworkbench.Workbench
-	envelope  *secretEnvelope
-	current   atomic.Pointer[RuntimeSnapshot]
-	applyMu   sync.Mutex
-	statusMu  sync.RWMutex
-	status    string
-	message   string
-	candidate candidateBuilder
+	config          *bootstrap.Config
+	repo            store.SystemSettingsRepository
+	workbench       *agentworkbench.Workbench
+	envelope        *secretEnvelope
+	current         atomic.Pointer[RuntimeSnapshot]
+	applyMu         sync.Mutex
+	statusMu        sync.RWMutex
+	status          string
+	message         string
+	candidate       candidateBuilder
+	systemCandidate candidateBuilder
+	retryMu         sync.Mutex
+	nextDraftRetry  time.Time
+	draftRetryDelay time.Duration
 }
 
 func NewManager(config *bootstrap.Config, repo store.SystemSettingsRepository,
@@ -158,7 +162,7 @@ func (m *Manager) SaveDraft(ctx context.Context, actor string, request SaveDraft
 }
 
 func (m *Manager) Publish(ctx context.Context, actor agentworkbench.Actor, request PublishRequest) (*DomainView, error) {
-	return m.publish(ctx, actor, actor.UserID, request)
+	return m.publish(ctx, actor, SelfManagerActorID, request)
 }
 
 // SaveAndReconcile records the administrator-owned desired state and lets the
@@ -350,8 +354,100 @@ func (m *Manager) poll(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for range ticker.C {
+		m.retryPendingDraft(context.Background(), interval)
 		_ = m.reload(context.Background())
 	}
+}
+
+func (m *Manager) retryPendingDraft(ctx context.Context, baseInterval time.Duration) {
+	m.retryMu.Lock()
+	if time.Now().Before(m.nextDraftRetry) {
+		m.retryMu.Unlock()
+		return
+	}
+	m.retryMu.Unlock()
+
+	err := m.reconcilePendingDraft(ctx)
+	m.retryMu.Lock()
+	defer m.retryMu.Unlock()
+	if err == nil {
+		m.draftRetryDelay = 0
+		m.nextDraftRetry = time.Time{}
+		return
+	}
+	if baseInterval <= 0 {
+		baseInterval = 5 * time.Second
+	}
+	if m.draftRetryDelay < baseInterval {
+		m.draftRetryDelay = baseInterval
+	} else {
+		m.draftRetryDelay *= 2
+	}
+	if m.draftRetryDelay > 5*time.Minute {
+		m.draftRetryDelay = 5 * time.Minute
+	}
+	m.nextDraftRetry = time.Now().Add(m.draftRetryDelay)
+}
+
+func (m *Manager) reconcilePendingDraft(ctx context.Context) error {
+	m.applyMu.Lock()
+	defer m.applyMu.Unlock()
+	domain, err := m.repo.GetSystemConfigDomain(ctx, AgentComponent, AgentDomain)
+	if err != nil || domain.DraftRevision == nil {
+		return err
+	}
+	profile, secret, err := m.materialize(ctx, domain.DraftRevision)
+	if err != nil {
+		return err
+	}
+	var agent *poleagent.Agent
+	if m.systemCandidate != nil {
+		agent, err = m.systemCandidate(ctx, agentworkbench.Actor{UserID: SelfManagerActorID}, profile, secret)
+	} else {
+		agent, err = m.prepareSystemCandidate(ctx, profile, secret)
+	}
+	if err != nil {
+		m.setStatus("rejected", "自动重试尚未通过，继续使用上一次有效配置")
+		return err
+	}
+	revision, err := m.repo.PublishSystemConfigDraft(ctx, AgentComponent, AgentDomain,
+		domain.DraftRevision.ID, SelfManagerActorID)
+	if err != nil {
+		return err
+	}
+	m.current.Store(&RuntimeSnapshot{
+		Revision: strconv.FormatInt(revision.ID, 10), Profile: profile, Agent: agent, AppliedAt: time.Now().UTC(),
+	})
+	m.applyWorkbenchSettings(profile)
+	m.setStatus("applied", "pole-self-manager 自动重试成功，运行时已原子切换")
+	return nil
+}
+
+func (m *Manager) prepareSystemCandidate(ctx context.Context, profile AgentProfile,
+	secret string) (*poleagent.Agent, error) {
+	model, err := poleagent.NewOpenAIModel(poleagent.OpenAIModelConfig{
+		BaseURL: profile.BaseURL, APIKey: secret, Model: profile.Model,
+		Timeout: parseDuration(profile.ModelTimeout, 60*time.Second),
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	if _, err = model.Complete(ctx, poleagent.ModelRequest{
+		Model: profile.Model,
+		Messages: []poleagent.Message{
+			{Role: poleagent.RoleSystem, Content: "You are a connectivity probe. Reply with OK."},
+			{Role: poleagent.RoleUser, Content: "OK"},
+		},
+	}); err != nil {
+		return nil, err
+	}
+	if m.config.AgentCapabilityProbe == nil {
+		return nil, errors.New("Pole MCP internal capability probe is unavailable")
+	}
+	if err := m.config.AgentCapabilityProbe(ctx, profile.MCPToolAllowlist); err != nil {
+		return nil, fmt.Errorf("Pole MCP internal capability probe failed: %w", err)
+	}
+	return m.buildAgent(profile, secret)
 }
 
 func (m *Manager) reload(ctx context.Context) error {

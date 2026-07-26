@@ -174,8 +174,11 @@ func TestPoleAgentPublishesA2ACardAndProtectsMessageEndpoint(t *testing.T) {
 	cardRecorder := httptest.NewRecorder()
 	router.ServeHTTP(cardRecorder, httptest.NewRequest(http.MethodGet, "/.well-known/agent-card.json", nil))
 	require.Equal(t, http.StatusOK, cardRecorder.Code, cardRecorder.Body.String())
-	require.Contains(t, cardRecorder.Body.String(), `"name":"Pole Agent"`)
+	require.Contains(t, cardRecorder.Body.String(), `"name":"pole-control-plane"`)
 	require.Contains(t, cardRecorder.Body.String(), `"protocolVersion":"0.3.0"`)
+	require.Contains(t, cardRecorder.Body.String(), `"preferredTransport":"JSONRPC"`)
+	require.Contains(t, cardRecorder.Body.String(), `"defaultInputModes":["text/plain"]`)
+	require.Contains(t, cardRecorder.Body.String(), `"bearerAuth"`)
 	require.Contains(t, cardRecorder.Body.String(), `"pole-control-plane-management"`)
 	require.Contains(t, cardRecorder.Body.String(), `/ai/agent/a2a/v1`)
 
@@ -186,6 +189,32 @@ func TestPoleAgentPublishesA2ACardAndProtectsMessageEndpoint(t *testing.T) {
 	messageRequest.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(messageRecorder, messageRequest)
 	require.Equal(t, http.StatusUnauthorized, messageRecorder.Code, messageRecorder.Body.String())
+
+	for _, test := range []struct {
+		name     string
+		body     string
+		wantCode int
+		wantRPC  string
+	}{
+		{name: "syntax", body: `{`, wantCode: http.StatusBadRequest, wantRPC: `"code":-32700`},
+		{name: "invalid-id", body: `{"jsonrpc":"2.0","id":true,"method":"message/send"}`,
+			wantCode: http.StatusBadRequest, wantRPC: `"code":-32600`},
+		{name: "notification", body: `{"jsonrpc":"2.0","method":"message/send","params":{"message":{"parts":[]}}}`,
+			wantCode: http.StatusNoContent},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodPost, "/ai/agent/a2a/v1", strings.NewReader(test.body))
+			request.Header.Set("Content-Type", "application/json")
+			request.Header.Set("X-Pole-User", "admin")
+			request.AddCookie(newTestJWTCookie(t, "admin", "pole-token", "secret"))
+			router.ServeHTTP(recorder, request)
+			require.Equal(t, test.wantCode, recorder.Code, recorder.Body.String())
+			if test.wantRPC != "" {
+				require.Contains(t, recorder.Body.String(), test.wantRPC)
+			}
+		})
+	}
 }
 
 type agentReceipt struct {

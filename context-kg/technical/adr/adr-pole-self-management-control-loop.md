@@ -48,12 +48,14 @@ type Manager interface {
 
 模块内部负责自然键解析、稳定 ID、规范化、revision、差异比较、软删除复活、子项替换、幂等与审计。调用方不拼装 Create/Update/Delete 流程。
 
+聚合根创建采用自然键幂等 claim，随后必须从主库强一致回读规范 ID，再绑定 Tool、Interface 和 Skill 子项。通用 Registry Update/Delete 的按 ID 保护同样使用主库点查；记录不可解析时失败关闭，避免副本延迟绕过系统投影保护。
+
 受管资源固定在保留空间：
 
 | 资源 | 自然键 | 来源 |
 |---|---|---|
 | Control Plane MCP | `pole-system/pole-control-plane` | 进程内 MCP `tools/list` 快照 |
-| Pole Agent A2A | `pole-system/{agent_definition_id}` | `/.well-known/agent-card.json` |
+| Pole Agent A2A | `pole-system/{agent_card_name}` | `/.well-known/agent-card.json` |
 
 启动时必须先完成 MCP 首次收敛；之后每 30 秒全量 reconcile。A2A Card 尚未就绪时不阻断 MCP，下一轮自动补齐。漂移、手工软删除和工具/skill 变化均由下一轮恢复到目标状态。
 
@@ -77,7 +79,7 @@ GET /.well-known/agent-card.json
 POST /ai/agent/a2a/v1
 ```
 
-端点实现同步 JSON-RPC `message/send`，并复用现有 `Agent.RunTurn`，因此 A2A 与 Console 对话使用同一 Prompt、模型、MCP 工具策略和确定性资源确认内核。Registry 记录由真实 Card 投影，而不是维护第二份手写能力清单。
+端点实现同步 JSON-RPC `message/send`，并复用现有 `Agent.RunTurn`，因此 A2A 与 Console 对话使用同一 Prompt、模型、MCP 工具策略和确定性资源确认内核。Agent Card 按 A2A 0.3 声明 `preferredTransport: JSONRPC` 和 MIME 类型输入输出模式；JSON-RPC 区分 parse error、invalid request 和 notification。Registry 记录由真实 Card 投影，而不是维护第二份手写能力清单。
 
 ### 5. Prompt 保存后自动校验与应用
 
@@ -87,7 +89,7 @@ POST /ai/agent/a2a/v1
 2. 构建候选 Agent。
 3. 使用管理员请求身份探测模型与 MCP。
 4. 探测成功后由 `pole-self-manager` 发布并原子替换当前运行快照。
-5. 探测失败则保留 rejected 草稿和上一健康运行快照，允许管理员修正或手工重试。
+5. 探测失败则保留 rejected 草稿和上一健康运行快照；周期协调器以系统身份自动重试模型，强一致核验 Registry 中唯一的受管 MCP 投影、地址和目标 endpoint，并校验真实 MCP 工具目录中的 allowlist，成功后发布。`all` 模式走进程内探针；`console` 分离模式调用 Pole Server 的窄只读 `/ai/mcp/v1/self-capabilities/probe`。远程请求使用独立部署的 `selfManagementProbeKey` 生成短期 HMAC 机器签名；`all` 模式未显式配置时可在启动边界从 System Secret 根密钥域分离派生一次，但只把派生子密钥注入 MCP Server。签名绑定 method、path、body hash 与一分钟时间窗；匿名/过期/篡改请求失败关闭，请求体限制为 64 KiB。该端点只返回就绪状态，不返回 Registry 记录、工具 Schema 或凭证。重试采用指数退避，最长 5 分钟；只有结构或凭证本身错误时才需要管理员修正 desired state。
 
 这属于确定性配置协调，不授予 Pole Agent 修改自身 Prompt、模型、Secret 或工具权限的能力。内建安全 Prompt 仍由代码版本控制，页面只管理 operator instructions。
 
@@ -95,15 +97,18 @@ POST /ai/agent/a2a/v1
 
 - 只有系统管理员路由能写 System Configuration；前端隐藏不是授权依据。
 - `pole-self-manager` 只拥有自身 MCP/A2A 投影和 Agent 运行配置的窄执行能力。
+- `pole-system` 下的受管 Registry 记录禁止通过通用 MCP/A2A 写接口变更；管理员修改 desired state，投影只由协调器写入。
 - Agent Card 可以公开发现，消息执行、Registry 查询和 MCP 调用继续鉴权。
 - Registry 地址必须精确解析一个受管自然键，拒绝空值、多值、非 address backend 和非 HTTP(S) 地址。
 - Secret 明文、管理员 Token 和系统身份能力均不得进入模型上下文或 Registry。
+- 分离部署的 Pole Server 只持有专用 `selfManagementProbeKey`，不得分发或缓存 Console Secret Store 根密钥。
 - 候选版本未通过探测时不切换 current runtime；重复 reconcile 必须无副作用。
 
 ## 故障与一致性
 
 - MCP 首次注册失败会阻止启动，避免 Console Agent 在无事实来源时进入半可用状态。
 - 周期 reconcile 失败只记录告警，保留最近一次 Registry 状态并在下一轮重试。
+- Prompt 首次探测失败后不保存管理员 Token；周期重试只使用系统身份执行模型凭证探测和自身 MCP 能力校验，发布审计仍记录 `pole-self-manager`。`all` 与 `console` 分离模式均不依赖管理员 Token；远程探针要求 `pole-self-manager` HMAC 机器身份，只暴露布尔就绪语义且不可用于通用 Registry 查询。
 - A2A Card 启动期短暂不可用时跳过本轮 A2A，不阻断 Control Plane 主服务。
 - Prompt 采用发布前探测和单进程原子指针切换；当前阶段尚未提供跨多实例 apply receipt，也不宣称已经解决“发布后才发生的外部依赖故障”自动回滚。
 

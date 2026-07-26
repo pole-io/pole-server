@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	aitypes "github.com/pole-io/pole-server/apis/pkg/types/ai"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	boot_config "github.com/pole-io/pole-server/bootstrap/config"
+	consolebootstrap "github.com/pole-io/pole-server/console/bootstrap"
 	"github.com/pole-io/pole-server/console/pkg/poleagent"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/selfmanager"
@@ -125,6 +127,111 @@ func findMCPSnapshotter(servers []apiserver.Apiserver) mcpToolSnapshotter {
 	return nil
 }
 
+func configureConsoleAgentCapabilityProbe(cfg *boot_config.Config, storage storeapi.Store,
+	servers []apiserver.Apiserver) {
+	if cfg == nil || storage == nil {
+		return
+	}
+	snapshotter := findMCPSnapshotter(servers)
+	if snapshotter == nil {
+		return
+	}
+	cfg.Bootstrap.Console.AgentCapabilityProbe = func(ctx context.Context, allowlist []string) error {
+		registered, err := storage.GetMCPServerByName("pole-control-plane", "pole-system")
+		if err != nil {
+			return fmt.Errorf("resolve Pole MCP registry projection: %w", err)
+		}
+		if registered == nil || registered.GetFlag() == 1 ||
+			registered.GetReference() != selfmanager.SystemActor ||
+			registered.GetBackendType() != "address" {
+			return fmt.Errorf("Pole MCP registry projection is unavailable or not self-managed")
+		}
+		endpoint, err := url.ParseRequestURI(strings.TrimSpace(registered.GetBackendAddress()))
+		if err != nil || endpoint.Host == "" ||
+			(endpoint.Scheme != "http" && endpoint.Scheme != "https") {
+			return fmt.Errorf("Pole MCP registry projection has an invalid address")
+		}
+		expected := strings.TrimSpace(cfg.Bootstrap.Console.Agent.Normalize().MCP.Endpoint)
+		if expected != "" && strings.TrimSpace(registered.GetBackendAddress()) != expected {
+			return fmt.Errorf("Pole MCP registry projection has not converged to the configured endpoint")
+		}
+		tools, err := snapshotter.SnapshotMCPTools(ctx)
+		if err != nil {
+			return err
+		}
+		available := make(map[string]struct{}, len(tools))
+		for _, tool := range tools {
+			if tool != nil {
+				available[strings.TrimSpace(tool.GetName())] = struct{}{}
+			}
+		}
+		for _, name := range allowlist {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				continue
+			}
+			if _, ok := available[name]; !ok {
+				return fmt.Errorf("Pole MCP tool %q is not available", name)
+			}
+		}
+		return nil
+	}
+}
+
+func configureRemoteConsoleAgentCapabilityProbe(cfg *consolebootstrap.Config) {
+	if cfg == nil {
+		return
+	}
+	probeKey, err := selfmanager.ResolveCapabilityProbeKey(
+		cfg.Agent.SelfManagementProbeKey, cfg.SystemSecrets.MasterKey)
+	if err != nil {
+		return
+	}
+	address := strings.TrimSpace(cfg.PoleServer.Address)
+	if address == "" {
+		return
+	}
+	if !strings.Contains(address, "://") {
+		address = "http://" + address
+	}
+	endpoint, err := url.Parse(address)
+	if err != nil || endpoint.Host == "" {
+		return
+	}
+	endpoint.Path = "/ai/mcp/v1/self-capabilities/probe"
+	endpoint.RawQuery, endpoint.Fragment = "", ""
+	cfg.AgentCapabilityProbe = func(ctx context.Context, allowlist []string) error {
+		payload, err := json.Marshal(struct {
+			Allowlist []string `json:"allowlist"`
+		}{Allowlist: allowlist})
+		if err != nil {
+			return err
+		}
+		request, err := http.NewRequestWithContext(ctx, http.MethodPost,
+			endpoint.String(), bytes.NewReader(payload))
+		if err != nil {
+			return err
+		}
+		request.Header.Set("Content-Type", "application/json")
+		timestamp, signature, err := selfmanager.SignCapabilityProbe(
+			probeKey, request.Method, request.URL.Path, payload, time.Now())
+		if err != nil {
+			return err
+		}
+		request.Header.Set(selfmanager.ProbeTimestampHeader, timestamp)
+		request.Header.Set(selfmanager.ProbeSignatureHeader, signature)
+		response, err := (&http.Client{Timeout: 5 * time.Second}).Do(request)
+		if err != nil {
+			return fmt.Errorf("probe remote Pole MCP self-capabilities: %w", err)
+		}
+		defer response.Body.Close()
+		if response.StatusCode != http.StatusNoContent {
+			return fmt.Errorf("remote Pole MCP self-capabilities returned HTTP %d", response.StatusCode)
+		}
+		return nil
+	}
+}
+
 func selfManagementDesired(cfg *boot_config.Config, tools []*specai.MCPServerTool,
 	agent *aitypes.A2AAgent, trigger string) selfmanager.DesiredState {
 	agentConfig := cfg.Bootstrap.Console.Agent.Normalize()
@@ -201,8 +308,16 @@ func fetchPoleAgentCard(ctx context.Context,
 func poleAgentRegistryProjection(cfg *boot_config.Config, card *poleagent.A2AAgentCard,
 	rawCard string) *aitypes.A2AAgent {
 	agentConfig := cfg.Bootstrap.Console.Agent.Normalize()
+	agentName := strings.TrimSpace(card.Name)
+	if agentName == "" {
+		agentName = agentConfig.Definition.ID
+	}
+	preferredTransport := strings.TrimSpace(card.PreferredTransport)
+	if preferredTransport == "" {
+		preferredTransport = "JSONRPC"
+	}
 	agent := &aitypes.A2AAgent{
-		Name:                     agentConfig.Definition.ID,
+		Name:                     agentName,
 		Namespace:                "pole-system",
 		Visibility:               "internal",
 		Description:              card.Description,
@@ -212,7 +327,7 @@ func poleAgentRegistryProjection(cfg *boot_config.Config, card *poleagent.A2AAge
 		BackendType:              "address",
 		BackendAddress:           card.URL,
 		PreferredInterfaceUrl:    card.URL,
-		PreferredProtocolBinding: "jsonrpc",
+		PreferredProtocolBinding: preferredTransport,
 		PreferredProtocolVersion: card.ProtocolVersion,
 		RawCardJson:              rawCard,
 		SourceType:               "well-known",
@@ -223,7 +338,7 @@ func poleAgentRegistryProjection(cfg *boot_config.Config, card *poleagent.A2AAge
 			"mcp_server": "pole-system/pole-control-plane",
 		},
 		Interfaces: []*aitypes.A2AAgentInterface{{
-			Url: card.URL, ProtocolBinding: "jsonrpc", ProtocolVersion: card.ProtocolVersion,
+			Url: card.URL, ProtocolBinding: preferredTransport, ProtocolVersion: card.ProtocolVersion,
 		}},
 	}
 	for _, skill := range card.Skills {

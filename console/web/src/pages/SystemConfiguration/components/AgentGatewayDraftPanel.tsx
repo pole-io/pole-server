@@ -104,10 +104,17 @@ export default function AgentGatewayDraftPanel({ visible, domain, fallback, onCl
       footer={(
         <div className={style.agentDrawerFooter}>
           <span className={verified ? style.agentFooterVerified : style.agentFooterPending}>
-            {verified ? <><CheckCircleIcon /> 当前配置已通过连接测试</> : '保存前需要完成连接测试'}
+            {verified ? <><CheckCircleIcon /> 当前配置已通过可选预检</> : '保存后将自动完成连接测试并应用'}
           </span>
           <Button variant="outline" onClick={onClose}>取消</Button>
-          <Button theme="primary" loading={busy === 'save'} disabled={Boolean(busy) || !verified} onClick={save}>保存并自动应用</Button>
+          <Button
+            theme="primary"
+            loading={busy === 'save'}
+            disabled={Boolean(busy) || !connectionComplete || !domain?.secretStoreReady}
+            onClick={save}
+          >
+            保存并自动应用
+          </Button>
         </div>
       )}
     >
@@ -115,8 +122,8 @@ export default function AgentGatewayDraftPanel({ visible, domain, fallback, onCl
         <header className={style.agentDrawerIntro}>
           <div className={style.agentEditorSteps} aria-label="Agent 配置流程">
             <span className={style.agentEditorStepActive}><b>1</b> 编辑配置</span>
-            <span><b>2</b> 测试连接</span>
-            <span><b>3</b> 自动应用</span>
+            <span><b>2</b> 可选预检</span>
+            <span><b>3</b> 保存并自动应用</span>
           </div>
           <p>系统管理员保存期望状态后，pole-self-manager 会自动复验 LLM、MCP 与 Prompt 契约；验证通过即原子热更新，失败则保留最近健康版本和待重试草稿。</p>
         </header>

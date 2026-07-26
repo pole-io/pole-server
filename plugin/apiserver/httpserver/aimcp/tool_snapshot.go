@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -52,4 +55,47 @@ func (h *HTTPServer) SnapshotTools(ctx context.Context) ([]*ai.MCPServerTool, er
 		})
 	}
 	return tools, nil
+}
+
+// ProbeSelfCapabilities verifies only Pole's reserved MCP projection and the
+// requested tool names. It intentionally returns no registry record or schema,
+// so a split Console can perform autonomous health checks without a user token.
+func (h *HTTPServer) ProbeSelfCapabilities(ctx context.Context, allowlist []string) error {
+	if h == nil || h.storage == nil {
+		return errors.New("Pole MCP storage is not initialized")
+	}
+	registered, err := h.storage.GetMCPServerByName("pole-control-plane", "pole-system")
+	if err != nil {
+		return fmt.Errorf("resolve Pole MCP registry projection: %w", err)
+	}
+	if registered == nil || registered.GetFlag() == 1 ||
+		registered.GetReference() != "pole-self-manager" ||
+		registered.GetBackendType() != "address" {
+		return errors.New("Pole MCP registry projection is unavailable or not self-managed")
+	}
+	endpoint, err := url.ParseRequestURI(strings.TrimSpace(registered.GetBackendAddress()))
+	if err != nil || endpoint.Host == "" ||
+		(endpoint.Scheme != "http" && endpoint.Scheme != "https") {
+		return errors.New("Pole MCP registry projection has an invalid address")
+	}
+	tools, err := h.SnapshotTools(ctx)
+	if err != nil {
+		return err
+	}
+	available := make(map[string]struct{}, len(tools))
+	for _, tool := range tools {
+		if tool != nil {
+			available[strings.TrimSpace(tool.GetName())] = struct{}{}
+		}
+	}
+	for _, name := range allowlist {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if _, ok := available[name]; !ok {
+			return fmt.Errorf("Pole MCP tool %q is not available", name)
+		}
+	}
+	return nil
 }

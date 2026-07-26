@@ -19,8 +19,11 @@ package aimcp
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/emicklei/go-restful/v3"
@@ -37,6 +40,7 @@ import (
 	"github.com/pole-io/pole-server/pkg/common/version"
 	"github.com/pole-io/pole-server/pkg/config"
 	"github.com/pole-io/pole-server/pkg/namespace"
+	"github.com/pole-io/pole-server/pkg/selfmanager"
 	"github.com/pole-io/pole-server/pkg/service"
 )
 
@@ -51,6 +55,11 @@ const (
 	msgEp string = "/message"
 )
 
+var (
+	selfProbeKeyMu sync.RWMutex
+	selfProbeKey   string
+)
+
 // HTTPServer
 type HTTPServer struct {
 	maintainServer  admin.AdminOperateServer
@@ -62,6 +71,23 @@ type HTTPServer struct {
 	cacheMgr        cacheapi.CacheManager
 	mcpSvr          *server.MCPServer
 	sseSvr          *server.SSEServer
+	selfProbeKey    string
+}
+
+func ConfigureSelfCapabilityProbeKey(probeKey string) error {
+	if err := selfmanager.ValidateCapabilityProbeKey(probeKey); err != nil {
+		return err
+	}
+	selfProbeKeyMu.Lock()
+	selfProbeKey = strings.TrimSpace(probeKey)
+	selfProbeKeyMu.Unlock()
+	return nil
+}
+
+func configuredSelfCapabilityProbeKey() string {
+	selfProbeKeyMu.RLock()
+	defer selfProbeKeyMu.RUnlock()
+	return selfProbeKey
 }
 
 // NewServer 创建配置中心的 HttpServer
@@ -141,6 +167,7 @@ func NewServer(
 		cacheMgr:        cacheMgr,
 		mcpSvr:          mcpSvr,
 		sseSvr:          sseSvr,
+		selfProbeKey:    configuredSelfCapabilityProbeKey(),
 	}, nil
 }
 
@@ -206,6 +233,8 @@ func (h *HTTPServer) addMcpTools() {
 }
 
 func (h *HTTPServer) addDefaultAccess(ws *restful.WebService) {
+	ws.Route(ws.POST("/self-capabilities/probe").To(h.ProbeSelfCapabilitiesEndpoint))
+
 	// MCP registry console handlers
 	ws.Route(ws.GET("/servers").To(h.ListMCPServers))
 	ws.Route(ws.POST("/servers").To(h.CreateMCPServers))
@@ -228,4 +257,36 @@ func (h *HTTPServer) addDefaultAccess(ws *restful.WebService) {
 	ws.Route(ws.POST(msgEp).To(func(req *restful.Request, rsp *restful.Response) {
 		h.sseSvr.ServeHTTP(rsp, req.Request)
 	}))
+}
+
+func (h *HTTPServer) ProbeSelfCapabilitiesEndpoint(req *restful.Request, rsp *restful.Response) {
+	timestamp := req.Request.Header.Get(selfmanager.ProbeTimestampHeader)
+	signature := req.Request.Header.Get(selfmanager.ProbeSignatureHeader)
+	if timestamp == "" || signature == "" {
+		_ = rsp.WriteErrorString(http.StatusUnauthorized, "machine identity is required")
+		return
+	}
+	req.Request.Body = http.MaxBytesReader(rsp, req.Request.Body, 64<<10)
+	bodyBytes, err := io.ReadAll(req.Request.Body)
+	if err != nil {
+		_ = rsp.WriteErrorString(http.StatusRequestEntityTooLarge, "capability probe request is too large")
+		return
+	}
+	if err := selfmanager.VerifyCapabilityProbe(h.selfProbeKey, req.Request.Method,
+		req.Request.URL.Path, bodyBytes, timestamp, signature, time.Now()); err != nil {
+		_ = rsp.WriteErrorString(http.StatusForbidden, "invalid machine identity")
+		return
+	}
+	var body struct {
+		Allowlist []string `json:"allowlist"`
+	}
+	if err := json.Unmarshal(bodyBytes, &body); err != nil || len(body.Allowlist) > 256 {
+		_ = rsp.WriteErrorString(http.StatusBadRequest, "invalid capability probe request")
+		return
+	}
+	if err := h.ProbeSelfCapabilities(req.Request.Context(), body.Allowlist); err != nil {
+		_ = rsp.WriteErrorString(http.StatusServiceUnavailable, "Pole MCP self-capabilities are not ready")
+		return
+	}
+	rsp.WriteHeader(http.StatusNoContent)
 }

@@ -187,6 +187,13 @@ func SaveSystemConfigurationDraft(config *bootstrap.Config, manager *systemsetti
 				UserID: userID, Token: token, RequestID: ctx.GetHeader("X-Request-Id"),
 			}, request)
 			if err != nil {
+				// The desired revision was stored successfully, but its automatic
+				// probe was rejected. Return the fresh domain so the UI receives
+				// the new optimistic-lock revision and last-known-good status.
+				if view != nil {
+					writeSystemConfigurationSuccess(ctx, view)
+					return
+				}
 				writeSystemConfigurationError(ctx, systemConfigurationMutationStatus(err), err)
 				return
 			}

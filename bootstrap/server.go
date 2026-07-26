@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -52,11 +53,13 @@ import (
 	config_center "github.com/pole-io/pole-server/pkg/config"
 	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/namespace"
+	"github.com/pole-io/pole-server/pkg/selfmanager"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	"github.com/pole-io/pole-server/pkg/systemconfig"
 	"github.com/pole-io/pole-server/pkg/workloadcredential"
+	aimcpserver "github.com/pole-io/pole-server/plugin/apiserver/httpserver/aimcp"
 )
 
 var (
@@ -110,6 +113,7 @@ func Start(configFilePath string, modeOverride ...string) {
 	ctx = systemconfig.WithProvider(ctx, systemconfig.ComponentServer, serverSettings)
 
 	if startMode == boot_config.StartModeConsole {
+		configureRemoteConsoleAgentCapabilityProbe(&cfg.Bootstrap.Console)
 		errCh := make(chan error, 1)
 		_, err := console.Start(ctx, &cfg.Bootstrap.Console, errCh)
 		if err != nil {
@@ -139,6 +143,19 @@ func Start(configFilePath string, modeOverride ...string) {
 
 	// 设置插件配置
 	apis.SetPluginConfig(&cfg.Plugin)
+	probeFallbackMasterKey := ""
+	if startMode == boot_config.StartModeAll {
+		probeFallbackMasterKey = cfg.Bootstrap.Console.SystemSecrets.MasterKey
+	}
+	probeKey, probeKeyErr := selfmanager.ResolveCapabilityProbeKey(
+		cfg.Bootstrap.Console.Agent.SelfManagementProbeKey,
+		probeFallbackMasterKey)
+	if probeKeyErr == nil {
+		probeKeyErr = aimcpserver.ConfigureSelfCapabilityProbeKey(probeKey)
+	}
+	if probeKeyErr != nil {
+		log.Warnf("Pole MCP split-mode capability probe is disabled: %v", probeKeyErr)
+	}
 	// 先初始化 statis chain，确保 otel entry 有机会设置全局 MeterProvider。
 	statis.GetStatis()
 
@@ -174,6 +191,8 @@ func Start(configFilePath string, modeOverride ...string) {
 		return
 	}
 	if startMode == boot_config.StartModeAll {
+		ensureA2AAdvertisedEndpoint(cfg, utils.LocalHost)
+		configureConsoleAgentCapabilityProbe(cfg, s, servers)
 		_, err := console.Start(ctx, &cfg.Bootstrap.Console, errCh)
 		if err != nil {
 			StopServers(servers)
@@ -198,6 +217,22 @@ func Start(configFilePath string, modeOverride ...string) {
 	// 等待信号量
 	WaitSignal(servers, errCh)
 	fmt.Println("begin stop server")
+}
+
+func ensureA2AAdvertisedEndpoint(cfg *boot_config.Config, host string) {
+	if cfg == nil || strings.TrimSpace(cfg.Bootstrap.Console.Agent.A2A.Endpoint) != "" {
+		return
+	}
+	host = strings.TrimSpace(host)
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	port := cfg.Bootstrap.Console.WebServer.ListenPort
+	if port <= 0 {
+		port = 8080
+	}
+	cfg.Bootstrap.Console.Agent.A2A.Endpoint = "http://" +
+		net.JoinHostPort(host, strconv.Itoa(port)) + "/ai/agent/a2a/v1"
 }
 
 // StartComponents start health check and naming components

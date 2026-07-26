@@ -189,6 +189,39 @@ func TestManagerReconcileRevivesSoftDeletedMCPAggregate(t *testing.T) {
 	require.Equal(t, selfmanager.ActionUpdate, audit.events[0].Action)
 }
 
+func TestManagerReconcileConvergesLegacyMCPRootOnFirstRevive(t *testing.T) {
+	store := newMemoryStore()
+	store.preserveMCPRootIDOnCreate = true
+	store.mcpServers["pole-system/pole-control-plane"] = &specai.MCPServer{
+		Id: "legacy-root-id", Name: "pole-control-plane", Namespace: "pole-system",
+		Protocol: "legacy", BackendType: "address", BackendAddress: "http://legacy.invalid",
+		Revision: "legacy-revision", Flag: 1,
+	}
+	manager := selfmanager.NewManager(store, nil)
+	result, err := manager.Reconcile(context.Background(), selfmanager.DesiredState{
+		MCP: &selfmanager.DesiredMCP{
+			Server: &specai.MCPServer{
+				Name: "pole-control-plane", Namespace: "pole-system",
+				Protocol: "sse", BackendType: "address",
+				BackendAddress: "http://pole-server:8090/ai/mcp/v1/sse",
+			},
+			Tools: []*specai.MCPServerTool{{Name: "list_namespaces", InputSchema: `{}`}},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, selfmanager.Result{Created: 1}, result)
+	actual, err := store.GetMCPServerByName("pole-control-plane", "pole-system")
+	require.NoError(t, err)
+	require.Equal(t, "legacy-root-id", actual.Id)
+	require.Equal(t, "sse", actual.Protocol)
+	require.Equal(t, "http://pole-server:8090/ai/mcp/v1/sse", actual.BackendAddress)
+	require.NotEqual(t, "legacy-revision", actual.Revision)
+	tools, err := store.GetMCPServerToolsByServerID("legacy-root-id")
+	require.NoError(t, err)
+	require.Len(t, tools, 1)
+	require.Equal(t, "legacy-root-id", tools[0].McpServerId)
+}
+
 func TestManagerReconcileCreatesAndUpdatesA2AAgentIdempotently(t *testing.T) {
 	t.Parallel()
 
@@ -275,6 +308,70 @@ func TestManagerReconcileCreatesAndUpdatesA2AAgentIdempotently(t *testing.T) {
 	require.NotEqual(t, audit.events[0].BeforeRevision, audit.events[0].AfterRevision)
 }
 
+func TestManagerReconcileDeletesStaleSelfManagedA2ARootAfterRename(t *testing.T) {
+	store := newMemoryStore()
+	require.NoError(t, store.CreateA2AAgent(&aitypes.A2AAgent{
+		Id: "old-agent", Name: "old-agent", Namespace: "pole-system",
+		RawCardJson: `{}`, Metadata: map[string]string{"managed_by": selfmanager.SystemActor},
+	}))
+	manager := selfmanager.NewManager(store, nil)
+	result, err := manager.Reconcile(context.Background(), selfmanager.DesiredState{
+		Trigger: "periodic",
+		A2A: &aitypes.A2AAgent{
+			Name: "new-agent", Namespace: "pole-system", RawCardJson: `{}`,
+			Metadata: map[string]string{"managed_by": selfmanager.SystemActor},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, result.Created)
+	require.Equal(t, 1, result.Deleted)
+	old, err := store.GetA2AAgent("old-agent")
+	require.NoError(t, err)
+	require.Equal(t, uint32(1), old.Flag)
+}
+
+func TestManagerReconcileFailsClosedUntilCanonicalRootsAreObservable(t *testing.T) {
+	t.Run("MCP", func(t *testing.T) {
+		store := newMemoryStore()
+		store.hideMCPByName = true
+		manager := selfmanager.NewManager(store, nil)
+		result, err := manager.Reconcile(context.Background(), selfmanager.DesiredState{
+			MCP: &selfmanager.DesiredMCP{
+				Server: &specai.MCPServer{
+					Name: "pole-control-plane", Namespace: "pole-system",
+					Protocol: "sse", BackendType: "address",
+					BackendAddress: "http://pole-server:8090/ai/mcp/v1/sse",
+				},
+				Tools: []*specai.MCPServerTool{{Name: "list_namespaces", InputSchema: `{}`}},
+			},
+		})
+		require.ErrorContains(t, err, "is not observable after create")
+		require.Equal(t, selfmanager.Result{}, result)
+		require.Empty(t, store.mcpTools)
+	})
+
+	t.Run("A2A", func(t *testing.T) {
+		store := newMemoryStore()
+		require.NoError(t, store.CreateA2AAgent(&aitypes.A2AAgent{
+			Id: "old-agent", Name: "old-agent", Namespace: "pole-system",
+			Metadata: map[string]string{"managed_by": selfmanager.SystemActor},
+		}))
+		store.hideA2AByName = true
+		manager := selfmanager.NewManager(store, nil)
+		result, err := manager.Reconcile(context.Background(), selfmanager.DesiredState{
+			A2A: &aitypes.A2AAgent{
+				Name: "new-agent", Namespace: "pole-system", RawCardJson: `{}`,
+				Metadata: map[string]string{"managed_by": selfmanager.SystemActor},
+			},
+		})
+		require.ErrorContains(t, err, "is not observable after create")
+		require.Equal(t, selfmanager.Result{}, result)
+		old, getErr := store.GetA2AAgent("old-agent")
+		require.NoError(t, getErr)
+		require.Zero(t, old.Flag)
+	})
+}
+
 func TestManagerReconcilePreservesLegacyA2AIDs(t *testing.T) {
 	t.Parallel()
 
@@ -348,9 +445,12 @@ func TestManagerReconcileRevivesSoftDeletedA2AAgent(t *testing.T) {
 }
 
 type memoryStore struct {
-	mcpServers map[string]*specai.MCPServer
-	mcpTools   map[string]map[string]*specai.MCPServerTool
-	a2aAgents  map[string]*aitypes.A2AAgent
+	mcpServers                map[string]*specai.MCPServer
+	mcpTools                  map[string]map[string]*specai.MCPServerTool
+	a2aAgents                 map[string]*aitypes.A2AAgent
+	hideMCPByName             bool
+	hideA2AByName             bool
+	preserveMCPRootIDOnCreate bool
 }
 
 func newMemoryStore() *memoryStore {
@@ -362,6 +462,10 @@ func newMemoryStore() *memoryStore {
 }
 
 func (s *memoryStore) CreateMCPServer(server *specai.MCPServer) error {
+	if existing := s.mcpServers[resourceKey(server.Namespace, server.Name)]; s.preserveMCPRootIDOnCreate && existing != nil {
+		existing.Flag = 0
+		return nil
+	}
 	s.mcpServers[resourceKey(server.Namespace, server.Name)] = cloneMCPServer(server)
 	return nil
 }
@@ -372,6 +476,9 @@ func (s *memoryStore) UpdateMCPServer(server *specai.MCPServer) error {
 }
 
 func (s *memoryStore) GetMCPServerByName(name, namespace string) (*specai.MCPServer, error) {
+	if s.hideMCPByName {
+		return nil, nil
+	}
 	server := s.mcpServers[resourceKey(namespace, name)]
 	if server != nil && server.Flag == 1 {
 		return nil, nil
@@ -429,6 +536,9 @@ func (s *memoryStore) UpdateA2AAgent(agent *aitypes.A2AAgent) error {
 }
 
 func (s *memoryStore) GetA2AAgentByName(name, namespace string) (*aitypes.A2AAgent, error) {
+	if s.hideA2AByName {
+		return nil, nil
+	}
 	agent := s.a2aAgents[resourceKey(namespace, name)]
 	if agent != nil && agent.Flag == 1 {
 		return nil, nil
@@ -443,6 +553,26 @@ func (s *memoryStore) GetA2AAgent(id string) (*aitypes.A2AAgent, error) {
 		}
 	}
 	return nil, nil
+}
+
+func (s *memoryStore) DeleteA2AAgent(id string) error {
+	for _, agent := range s.a2aAgents {
+		if agent.Id == id {
+			agent.Flag = 1
+		}
+	}
+	return nil
+}
+
+func (s *memoryStore) QueryA2AAgents(query *aitypes.A2AAgentQuery) (uint32, []*aitypes.A2AAgent, error) {
+	agents := make([]*aitypes.A2AAgent, 0, len(s.a2aAgents))
+	for _, agent := range s.a2aAgents {
+		if agent.Flag == 1 || query != nil && query.Namespace != "" && agent.Namespace != query.Namespace {
+			continue
+		}
+		agents = append(agents, cloneA2AAgent(agent))
+	}
+	return uint32(len(agents)), agents, nil
 }
 
 type memoryAuditSink struct {

@@ -1,9 +1,12 @@
 package poleagent
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"strings"
 
@@ -37,15 +40,23 @@ type A2AAdapter struct {
 }
 
 type A2AAgentCard struct {
-	Name               string          `json:"name"`
-	Description        string          `json:"description,omitempty"`
-	URL                string          `json:"url"`
-	Version            string          `json:"version"`
-	ProtocolVersion    string          `json:"protocolVersion"`
-	Capabilities       A2ACapabilities `json:"capabilities"`
-	DefaultInputModes  []string        `json:"defaultInputModes"`
-	DefaultOutputModes []string        `json:"defaultOutputModes"`
-	Skills             []A2ASkill      `json:"skills"`
+	Name               string                       `json:"name"`
+	Description        string                       `json:"description,omitempty"`
+	URL                string                       `json:"url"`
+	Version            string                       `json:"version"`
+	ProtocolVersion    string                       `json:"protocolVersion"`
+	PreferredTransport string                       `json:"preferredTransport"`
+	Capabilities       A2ACapabilities              `json:"capabilities"`
+	DefaultInputModes  []string                     `json:"defaultInputModes"`
+	DefaultOutputModes []string                     `json:"defaultOutputModes"`
+	Skills             []A2ASkill                   `json:"skills"`
+	SecuritySchemes    map[string]A2ASecurityScheme `json:"securitySchemes,omitempty"`
+	Security           []map[string][]string        `json:"security,omitempty"`
+}
+
+type A2ASecurityScheme struct {
+	Type   string `json:"type"`
+	Scheme string `json:"scheme"`
 }
 
 type A2ACapabilities struct {
@@ -68,6 +79,7 @@ type A2ARequest struct {
 	ID      any              `json:"id"`
 	Method  string           `json:"method"`
 	Params  A2AMessageParams `json:"params"`
+	HasID   bool             `json:"-"`
 }
 
 type A2AMessageParams struct {
@@ -91,6 +103,21 @@ type A2AResponse struct {
 	JSONRPC string      `json:"jsonrpc"`
 	ID      any         `json:"id"`
 	Result  *A2AMessage `json:"result,omitempty"`
+	Error   *A2AError   `json:"error,omitempty"`
+}
+
+type A2AError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
+type A2AProtocolError struct {
+	Code    int
+	Message string
+}
+
+func (e *A2AProtocolError) Error() string {
+	return e.Message
 }
 
 func NewA2AAdapter(config A2AConfig, runner TurnRunnerProvider) (*A2AAdapter, error) {
@@ -113,10 +140,10 @@ func NewA2AAdapter(config A2AConfig, runner TurnRunnerProvider) (*A2AAdapter, er
 	skills := append([]A2ASkill(nil), config.Skills...)
 	for i := range skills {
 		if len(skills[i].InputModes) == 0 {
-			skills[i].InputModes = []string{"text"}
+			skills[i].InputModes = []string{"text/plain"}
 		}
 		if len(skills[i].OutputModes) == 0 {
-			skills[i].OutputModes = []string{"text"}
+			skills[i].OutputModes = []string{"text/plain"}
 		}
 	}
 	return &A2AAdapter{
@@ -126,10 +153,15 @@ func NewA2AAdapter(config A2AConfig, runner TurnRunnerProvider) (*A2AAdapter, er
 			URL:                config.URL,
 			Version:            config.Version,
 			ProtocolVersion:    A2AProtocolVersion,
+			PreferredTransport: "JSONRPC",
 			Capabilities:       A2ACapabilities{},
-			DefaultInputModes:  []string{"text"},
-			DefaultOutputModes: []string{"text"},
+			DefaultInputModes:  []string{"text/plain"},
+			DefaultOutputModes: []string{"text/plain"},
 			Skills:             skills,
+			SecuritySchemes: map[string]A2ASecurityScheme{
+				"bearerAuth": {Type: "http", Scheme: "bearer"},
+			},
+			Security: []map[string][]string{{"bearerAuth": {}}},
 		},
 		runner: runner,
 	}, nil
@@ -140,20 +172,28 @@ func (a *A2AAdapter) Card() A2AAgentCard {
 	card.DefaultInputModes = append([]string(nil), a.card.DefaultInputModes...)
 	card.DefaultOutputModes = append([]string(nil), a.card.DefaultOutputModes...)
 	card.Skills = append([]A2ASkill(nil), a.card.Skills...)
+	card.SecuritySchemes = make(map[string]A2ASecurityScheme, len(a.card.SecuritySchemes))
+	for name, scheme := range a.card.SecuritySchemes {
+		card.SecuritySchemes[name] = scheme
+	}
+	card.Security = append([]map[string][]string(nil), a.card.Security...)
 	return card
 }
 
 func (a *A2AAdapter) Send(ctx context.Context, actor agentworkbench.Actor,
 	request A2ARequest) (*A2AResponse, error) {
 	if request.JSONRPC != "2.0" {
-		return nil, errors.New("unsupported JSON-RPC version")
+		return nil, &A2AProtocolError{Code: -32600, Message: "unsupported JSON-RPC version"}
+	}
+	if !validA2ARequestID(request.ID) {
+		return nil, &A2AProtocolError{Code: -32600, Message: "invalid JSON-RPC request id"}
 	}
 	if request.Method != A2AMessageSend {
-		return nil, fmt.Errorf("unsupported A2A method %q", request.Method)
+		return nil, &A2AProtocolError{Code: -32601, Message: fmt.Sprintf("unsupported A2A method %q", request.Method)}
 	}
 	message := textMessage(request.Params.Message)
 	if message == "" {
-		return nil, errors.New("A2A message requires a non-empty text part")
+		return nil, &A2AProtocolError{Code: -32602, Message: "A2A message requires a non-empty text part"}
 	}
 	runner := a.runner()
 	if runner == nil {
@@ -181,6 +221,71 @@ func (a *A2AAdapter) Send(ctx context.Context, actor agentworkbench.Actor,
 			},
 		},
 	}, nil
+}
+
+func (r *A2ARequest) UnmarshalJSON(data []byte) error {
+	type requestAlias struct {
+		JSONRPC string           `json:"jsonrpc"`
+		ID      json.RawMessage  `json:"id"`
+		Method  string           `json:"method"`
+		Params  A2AMessageParams `json:"params"`
+	}
+	var raw requestAlias
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := decoder.Decode(&raw); err != nil {
+		return err
+	}
+	r.JSONRPC = raw.JSONRPC
+	r.Method = raw.Method
+	r.Params = raw.Params
+	r.HasID = raw.ID != nil
+	r.ID = nil
+	if !r.HasID {
+		return nil
+	}
+	idDecoder := json.NewDecoder(bytes.NewReader(raw.ID))
+	idDecoder.UseNumber()
+	if err := idDecoder.Decode(&r.ID); err != nil {
+		return err
+	}
+	if !validA2ARequestID(r.ID) {
+		return errors.New("JSON-RPC id must be a string, integer number, or null")
+	}
+	return nil
+}
+
+func validA2ARequestID(id any) bool {
+	switch value := id.(type) {
+	case nil, string, json.Number:
+		if number, ok := value.(json.Number); ok {
+			parsed, err := number.Float64()
+			return err == nil && !math.IsInf(parsed, 0) && !math.IsNaN(parsed) && math.Trunc(parsed) == parsed
+		}
+		return true
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return true
+	case float32:
+		return math.Trunc(float64(value)) == float64(value)
+	case float64:
+		return math.Trunc(value) == value
+	default:
+		return false
+	}
+}
+
+func A2AErrorResponse(id any, err error) *A2AResponse {
+	response := &A2AResponse{
+		JSONRPC: "2.0",
+		ID:      id,
+		Error:   &A2AError{Code: -32603, Message: "Pole Agent execution failed"},
+	}
+	var protocolError *A2AProtocolError
+	if errors.As(err, &protocolError) {
+		response.Error.Code = protocolError.Code
+		response.Error.Message = protocolError.Message
+	}
+	return response
 }
 
 func textMessage(message A2AMessage) string {

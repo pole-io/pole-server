@@ -59,6 +59,18 @@ func TestParseMCPServerQuery_UsesSpecMessage(t *testing.T) {
 	}, query)
 }
 
+func TestSelfManagedMCPProjectionCannotUseGenericMutationPath(t *testing.T) {
+	require.True(t, isSelfManagedMCPServer(&ai.MCPServer{
+		Name: "pole-control-plane", Namespace: "pole-system",
+	}))
+	require.True(t, isSelfManagedMCPServer(&ai.MCPServer{
+		Name: "renamed", Namespace: "pole-system", Reference: "pole-self-manager",
+	}))
+	require.False(t, isSelfManagedMCPServer(&ai.MCPServer{
+		Name: "application-mcp", Namespace: "default",
+	}))
+}
+
 func TestParseMCPServers_UsesSpecContainer(t *testing.T) {
 	servers, err := parseMCPServers([]interface{}{
 		map[string]interface{}{
