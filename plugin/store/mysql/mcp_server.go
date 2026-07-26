@@ -209,7 +209,7 @@ func (m *mcpServerStore) updateMCPServer(server *ai.MCPServer) error {
 	sql := `UPDATE mcp_server SET name = ?, namespace = ?, ports = ?, business = ?,
 		department = ?, description = ?, revision = ?, reference = ?, protocol = ?,
 		mtime = sysdate(), export_to = ?, backend_type = ?, backend_service_namespace = ?,
-		backend_service_name = ?, backend_address = ? WHERE id = ?`
+		backend_service_name = ?, backend_address = ?, flag = ? WHERE id = ?`
 
 	_, err := m.master.Exec(sql,
 		server.Name,
@@ -226,6 +226,7 @@ func (m *mcpServerStore) updateMCPServer(server *ai.MCPServer) error {
 		server.BackendServiceNamespace,
 		server.BackendServiceName,
 		server.BackendAddress,
+		server.Flag,
 		server.Id,
 	)
 	if err != nil {
@@ -375,7 +376,11 @@ func (m *mcpServerStore) CreateMCPServerTool(tool *ai.MCPServerTool) error {
 	}
 
 	sql := `INSERT INTO mcp_server_tools(id, mcp_server_id, name, description, input_schema, output_schema, annotations, flag, ctime, mtime)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())`
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())
+		ON DUPLICATE KEY UPDATE mcp_server_id = VALUES(mcp_server_id), name = VALUES(name),
+		description = VALUES(description), input_schema = VALUES(input_schema),
+		output_schema = VALUES(output_schema), annotations = VALUES(annotations),
+		flag = VALUES(flag), mtime = sysdate()`
 
 	_, err := m.master.Exec(sql,
 		tool.Id,

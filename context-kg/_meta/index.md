@@ -2,7 +2,7 @@
 title: pole-control-plane 知识库
 tags: [meta, index]
 links: [schema, log]
-updated: 2026-07-25
+updated: 2026-07-26
 sources: 0
 ---
 
@@ -72,6 +72,7 @@ sources: 0
 - [[adr-console-fluent-ui-design-system]] — Console 全站 Fluent UI v9 设计系统迁移 | adr, console, frontend, fluent-ui, design-system
 - [[adr-console-agent-resource-workbench]] — Pole Agent 真实 LLM/MCP 运行时与资源确认待发布 | adr, ai, agent, console, governance, config
 - [[adr-system-configuration-control-plane]] — 63 项字段级配置策略、全领域草稿发布、desired/effective 状态与 Agent Secret 热更新 | adr, config, runtime, console, operations
+- [[adr-pole-self-management-control-loop]] — Pole 自身 MCP/A2A 注册、Prompt 自动应用与系统身份协调 | adr, ai, mcp, a2a, agent, prompt, automation
 - [[adr-local-pebble-protobuf-value-cache]] — Pebble 本地 protobuf bytes 缓存 | adr, cache, pebble, protobuf, performance
 
 #### 可观测性（technical/adr/observability/）
@@ -107,6 +108,7 @@ sources: 0
 | 服务间托管身份与凭证 | [[adr-managed-service-identity-authentication]] |
 | 管理后台运维操作 | [[admin]] |
 | MCP 如何运作 | [[ai-features]] |
+| Pole 如何自动注册和管理自身能力 | [[adr-pole-self-management-control-loop]] |
 | System Configuration 如何发布 | [[adr-system-configuration-control-plane]] |
 | OTel 与共享 GreptimeDB 如何部署 | [[adr-otel-observability-platform]] |
 | 数据库表/查询是怎样的 | [[storage]] |

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -20,11 +22,14 @@ const (
 )
 
 type MCPToolConfig struct {
-	Endpoint      string
-	ToolAllowlist []string
-	ClientName    string
-	ClientVersion string
-	ReadTimeout   time.Duration
+	Endpoint         string
+	RegistryEndpoint string
+	ServerNamespace  string
+	ServerName       string
+	ToolAllowlist    []string
+	ClientName       string
+	ClientVersion    string
+	ReadTimeout      time.Duration
 }
 
 type MCPToolPort struct {
@@ -34,9 +39,12 @@ type MCPToolPort struct {
 
 func NewMCPToolPort(cfg MCPToolConfig) (*MCPToolPort, error) {
 	cfg.Endpoint = strings.TrimSpace(cfg.Endpoint)
-	if cfg.Endpoint == "" {
+	cfg.RegistryEndpoint = strings.TrimSpace(cfg.RegistryEndpoint)
+	cfg.ServerNamespace = strings.TrimSpace(cfg.ServerNamespace)
+	cfg.ServerName = strings.TrimSpace(cfg.ServerName)
+	if cfg.Endpoint == "" && (cfg.RegistryEndpoint == "" || cfg.ServerNamespace == "" || cfg.ServerName == "") {
 		return nil, runtimeError(CategoryRuntimeUnavailable, 503121,
-			"Pole MCP endpoint is not configured", false, nil)
+			"Pole MCP endpoint or registry reference is not configured", false, nil)
 	}
 	if cfg.ClientName == "" {
 		cfg.ClientName = "pole-console-agent"
@@ -72,8 +80,12 @@ func (p *MCPToolPort) Open(ctx context.Context, actor agentworkbench.Actor) (Too
 	if actor.RequestID != "" {
 		headers["X-Request-Id"] = actor.RequestID
 	}
+	endpoint, err := p.resolveEndpoint(ctx, actor)
+	if err != nil {
+		return nil, err
+	}
 	client, err := mcpclient.NewSSEMCPClient(
-		p.config.Endpoint,
+		endpoint,
 		mcpclient.WithHeaders(headers),
 		mcpclient.WithSSEReadTimeout(p.config.ReadTimeout),
 	)
@@ -98,6 +110,78 @@ func (p *MCPToolPort) Open(ctx context.Context, actor agentworkbench.Actor) (Too
 			"initialize Pole MCP session", true, err)
 	}
 	return &mcpToolSession{client: client, allowed: p.allowed}, nil
+}
+
+func (p *MCPToolPort) resolveEndpoint(ctx context.Context, actor agentworkbench.Actor) (string, error) {
+	if p.config.RegistryEndpoint == "" {
+		return p.config.Endpoint, nil
+	}
+	target, err := url.Parse(p.config.RegistryEndpoint)
+	if err != nil || target.Scheme == "" || target.Host == "" {
+		return "", runtimeError(CategoryRuntimeUnavailable, 503129,
+			"Pole MCP registry endpoint is invalid", false, err)
+	}
+	query := target.Query()
+	query.Set("namespace", p.config.ServerNamespace)
+	query.Set("name", p.config.ServerName)
+	query.Set("offset", "0")
+	query.Set("limit", "2")
+	target.RawQuery = query.Encode()
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
+	if err != nil {
+		return "", runtimeError(CategoryToolUnavailable, 503130,
+			"build Pole MCP registry request", false, err)
+	}
+	request.Header.Set("X-Pole-User", actor.UserID)
+	request.Header.Set("Authorization", bearerToken(actor.Token))
+	if actor.RequestID != "" {
+		request.Header.Set("X-Request-Id", actor.RequestID)
+	}
+	client := &http.Client{Timeout: p.config.ReadTimeout}
+	response, err := client.Do(request)
+	if err != nil {
+		return "", runtimeError(CategoryToolUnavailable, 503131,
+			"resolve Pole MCP from registry", true, err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return "", runtimeError(CategoryToolUnavailable, 503132,
+			fmt.Sprintf("Pole MCP registry returned HTTP %d", response.StatusCode), true, nil)
+	}
+	var envelope struct {
+		Code uint32 `json:"code"`
+		Data []struct {
+			Name           string `json:"name"`
+			Namespace      string `json:"namespace"`
+			BackendType    string `json:"backend_type"`
+			BackendAddress string `json:"backend_address"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&envelope); err != nil {
+		return "", runtimeError(CategoryToolUnavailable, 503133,
+			"decode Pole MCP registry response", false, err)
+	}
+	if envelope.Code != 0 && envelope.Code != 200000 {
+		return "", runtimeError(CategoryToolUnavailable, 503134,
+			"Pole MCP registry query failed", true, nil)
+	}
+	if len(envelope.Data) != 1 {
+		return "", runtimeError(CategoryToolUnavailable, 503135,
+			"Pole MCP registry reference must resolve exactly one server", false, nil)
+	}
+	server := envelope.Data[0]
+	if server.Name != p.config.ServerName || server.Namespace != p.config.ServerNamespace ||
+		server.BackendType != "address" || strings.TrimSpace(server.BackendAddress) == "" {
+		return "", runtimeError(CategoryToolUnavailable, 503136,
+			"Pole MCP registry server has no supported address backend", false, nil)
+	}
+	endpoint, err := url.ParseRequestURI(server.BackendAddress)
+	if err != nil || endpoint.Scheme == "" || endpoint.Host == "" ||
+		(endpoint.Scheme != "http" && endpoint.Scheme != "https") {
+		return "", runtimeError(CategoryToolUnavailable, 503137,
+			"Pole MCP registry returned an invalid endpoint", false, err)
+	}
+	return endpoint.String(), nil
 }
 
 type mcpToolSession struct {

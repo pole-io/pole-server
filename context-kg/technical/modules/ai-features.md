@@ -1,9 +1,9 @@
 ---
 title: AI 原生功能：MCP Registry 与 A2A Agent Registry
 tags: [ai, mcp, a2a]
-links: [storage, cache-layer, api-servers, adr-a2a-agent-registry, adr-console-agent-resource-workbench]
-updated: 2026-07-23
-sources: 9
+links: [storage, cache-layer, api-servers, adr-a2a-agent-registry, adr-console-agent-resource-workbench, adr-pole-self-management-control-loop]
+updated: 2026-07-26
+sources: 18
 ---
 
 # AI 原生功能：MCP Registry 与 A2A Agent Registry
@@ -163,6 +163,8 @@ Phase 1 最小真实运行时已在 Console 后端提供一等 `PoleAgent`：页
 
 Agent 运行配置已从 Kubernetes 日常环境变量迁入 Pole 内部 System Settings：Admin 在 `/system-configuration?component=pole-console&domain=agent` 编辑 Gateway、模型、Prompt、MCP 白名单和 write-only API key；MySQL 保存不可变配置版本及信封加密 Secret，发布前重新探测模型与 MCP，成功后当前实例原子切换，其他实例通过周期 reconcile 收敛。静态 YAML 仅保留首次启动基线，K8s 只保留数据库连接与 Secret 根密钥。
 
+Pole 自身能力现已形成自动闭环：`pole-self-manager` 在启动和周期 reconcile 中把 Control Plane MCP 及真实工具快照登记为 `pole-system/pole-control-plane`，`all` 模式再从真实 Agent Card 投影并登记 Pole Agent A2A 能力。Console Agent 以 Registry 自然键解析 MCP 地址，不再把固定 endpoint 当作唯一事实来源。管理员保存 Agent Prompt/模型/工具策略后自动执行候选探测并应用；失败版本保留为 rejected 草稿，运行时继续使用 last-known-good。完整边界见 [[adr-pole-self-management-control-loop]]。
+
 ## 相关页面
 
 - [[storage]]
@@ -170,3 +172,4 @@ Agent 运行配置已从 Kubernetes 日常环境变量迁入 Pole 内部 System 
 - [[api-servers]]
 - [[adr-a2a-agent-registry]]
 - [[adr-console-agent-resource-workbench]]
+- [[adr-pole-self-management-control-loop]]

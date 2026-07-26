@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -16,11 +18,71 @@ type AgentHandler struct {
 	config    *bootstrap.Config
 	workbench *agentworkbench.Workbench
 	runtime   *systemsettings.Manager
+	a2a       *poleagent.A2AAdapter
 }
 
 func NewAgentHandler(config *bootstrap.Config, workbench *agentworkbench.Workbench,
 	runtime *systemsettings.Manager) *AgentHandler {
-	return &AgentHandler{config: config, workbench: workbench, runtime: runtime}
+	agentConfig := config.Agent.Normalize()
+	endpoint := strings.TrimSpace(agentConfig.A2A.Endpoint)
+	if endpoint == "" {
+		port := config.WebServer.ListenPort
+		if port <= 0 {
+			port = 8080
+		}
+		endpoint = fmt.Sprintf("http://127.0.0.1:%d/ai/agent/a2a/v1", port)
+	}
+	adapter, err := poleagent.NewA2AAdapter(poleagent.A2AConfig{
+		Name:        agentConfig.A2A.Name,
+		Description: agentConfig.A2A.Description,
+		URL:         endpoint,
+		Version:     agentConfig.Definition.SystemPrompt.BuiltinVersion,
+		Skills: []poleagent.A2ASkill{{
+			ID:          "pole-control-plane-management",
+			Name:        "Pole 控制面管理",
+			Description: "通过 Pole MCP 发现、查询并安全管理控制面资源",
+			Tags:        []string{"pole", "mcp", "control-plane"},
+		}},
+	}, func() poleagent.TurnRunner {
+		snapshot := runtime.Current()
+		if snapshot == nil {
+			return nil
+		}
+		return snapshot.Agent
+	})
+	if err != nil {
+		panic(fmt.Sprintf("initialize Pole Agent A2A adapter: %v", err))
+	}
+	return &AgentHandler{config: config, workbench: workbench, runtime: runtime, a2a: adapter}
+}
+
+func (h *AgentHandler) A2ACard(c *gin.Context) {
+	c.JSON(http.StatusOK, h.a2a.Card())
+}
+
+func (h *AgentHandler) A2ASend(c *gin.Context) {
+	actor, ok := h.a2aActor(c)
+	if !ok {
+		return
+	}
+	var request poleagent.A2ARequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"jsonrpc": "2.0",
+			"id":      nil,
+			"error": gin.H{
+				"code":    -32600,
+				"message": "invalid A2A JSON-RPC request",
+			},
+		})
+		return
+	}
+	response, err := h.a2a.Send(c.Request.Context(), actor, request)
+	if err != nil {
+		writePoleAgentError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *AgentHandler) Runtime(c *gin.Context) {
@@ -138,6 +200,18 @@ func (h *AgentHandler) actor(c *gin.Context) (agentworkbench.Actor, bool) {
 	}
 	// Browser requests use the signed JWT cookie, while API clients may already
 	// carry the Pole user and token headers validated above.
+	if userID == "" {
+		userID = c.GetHeader("X-Pole-User")
+		token = c.GetHeader("Authorization")
+	}
+	return agentworkbench.Actor{UserID: userID, Token: token, RequestID: c.GetHeader("X-Request-Id")}, true
+}
+
+func (h *AgentHandler) a2aActor(c *gin.Context) (agentworkbench.Actor, bool) {
+	userID, token, ok := verifyAccessPermissionWithStatus(c, h.config, http.StatusUnauthorized)
+	if !ok {
+		return agentworkbench.Actor{}, false
+	}
 	if userID == "" {
 		userID = c.GetHeader("X-Pole-User")
 		token = c.GetHeader("Authorization")

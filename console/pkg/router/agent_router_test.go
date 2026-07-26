@@ -167,6 +167,27 @@ func TestAgentRuntimeAndTurnFailClosedWhenLLMGatewayIsNotConfigured(t *testing.T
 	require.Contains(t, turnRecorder.Body.String(), `"category":"RUNTIME_UNAVAILABLE"`)
 }
 
+func TestPoleAgentPublishesA2ACardAndProtectsMessageEndpoint(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := newAgentTestRouter(t, "127.0.0.1:1", "secret")
+
+	cardRecorder := httptest.NewRecorder()
+	router.ServeHTTP(cardRecorder, httptest.NewRequest(http.MethodGet, "/.well-known/agent-card.json", nil))
+	require.Equal(t, http.StatusOK, cardRecorder.Code, cardRecorder.Body.String())
+	require.Contains(t, cardRecorder.Body.String(), `"name":"Pole Agent"`)
+	require.Contains(t, cardRecorder.Body.String(), `"protocolVersion":"0.3.0"`)
+	require.Contains(t, cardRecorder.Body.String(), `"pole-control-plane-management"`)
+	require.Contains(t, cardRecorder.Body.String(), `/ai/agent/a2a/v1`)
+
+	messageRecorder := httptest.NewRecorder()
+	messageRequest := httptest.NewRequest(http.MethodPost, "/ai/agent/a2a/v1", strings.NewReader(
+		`{"jsonrpc":"2.0","id":"request-1","method":"message/send","params":{"message":{"kind":"message","messageId":"message-1","role":"user","parts":[{"kind":"text","text":"列出命名空间"}]}}}`,
+	))
+	messageRequest.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(messageRecorder, messageRequest)
+	require.Equal(t, http.StatusUnauthorized, messageRecorder.Code, messageRecorder.Body.String())
+}
+
 type agentReceipt struct {
 	ProposalID string `json:"proposalId"`
 	Status     string `json:"status"`

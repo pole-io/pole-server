@@ -181,6 +181,11 @@ func Start(configFilePath string, modeOverride ...string) {
 			return
 		}
 	}
+	if err := StartSelfManagement(ctx, cfg, s, servers); err != nil {
+		StopServers(servers)
+		fmt.Printf("[ERROR] start pole self manager fail: %v\n", err)
+		return
+	}
 
 	if err := polarisServiceRegister(&cfg.Bootstrap.PolarisService, apientries); err != nil {
 		StopServers(servers)

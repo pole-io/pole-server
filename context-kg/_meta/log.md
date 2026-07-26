@@ -2,7 +2,7 @@
 title: 操作日志
 tags: [meta, log]
 links: [index, schema]
-updated: 2026-07-23
+updated: 2026-07-26
 sources: 0
 ---
 
@@ -984,11 +984,6 @@ sources: 0
   - 临时 diff 改为消息流内工具结果，继续强制预览、确认保存草稿、用户另行发布的安全边界。
   - K8s 容器检查、Gateway 探测和真实浏览器验收通过，仅滚动发布 `pole-control-plane:local-20260723-agent-reference-layout-v1`。
 
-## 相关页面
-
-- [[index]]
-- [[schema]]
-
 ## [2026-07-23] feat | Pole Agent 真实 LLM 与 MCP 最小闭环
 
 - 更新页面：adr-console-agent-resource-workbench、ai-features、configuration、todo、lessons、index。
@@ -1049,3 +1044,18 @@ sources: 0
   - Handoff 统一保存在项目 `.handoff/`，不再写入系统临时目录。
   - 使用 `.git/info/exclude` 做本地排除，禁止 handoff 文件进入暂存、提交或推送。
   - 交付前同时检查 ignore 来源与完整 Git 状态，避免被默认隐藏的未跟踪文件误入版本控制。
+
+## [2026-07-26] feat | Pole 自身能力自动注册与自管理闭环
+
+- 新增页面：adr-pole-self-management-control-loop。
+- 更新页面：ai-features、adr-console-agent-resource-workbench、adr-system-configuration-control-plane、auth-system、architecture、todo、index。
+- 变更摘要：
+  - 新增隔离执行身份 `pole-self-manager`，启动和周期性收敛 Control Plane 自身 MCP、真实工具快照与 Pole Agent A2A Card。
+  - Pole Agent 发布公开 Card 和受认证的 JSON-RPC `message/send`；Console Agent 按 Registry 自然键解析并消费自身 MCP。
+  - System Settings 保存管理员 desired revision 后自动探测和应用健康 Prompt/模型/工具策略，失败时保留 rejected 草稿和 last-known-good。
+  - Registry 写入使用稳定 ID、revision、软删除复活和子项 upsert，重复 reconcile 保持幂等；配置主体与系统执行主体分别审计。
+
+## 相关页面
+
+- [[index]]
+- [[schema]]

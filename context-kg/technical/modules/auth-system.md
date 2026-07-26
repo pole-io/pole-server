@@ -1,8 +1,8 @@
 ---
 title: 访问控制与认证系统
 tags: [auth, security]
-links: [business-rules, adr-console-oidc-identity-source, adr-managed-service-identity-authentication, architecture, index, patterns]
-updated: 2026-07-22
+links: [business-rules, adr-console-oidc-identity-source, adr-managed-service-identity-authentication, architecture, index, patterns, adr-pole-self-management-control-loop]
+updated: 2026-07-26
 sources: 6
 ---
 
@@ -143,6 +143,10 @@ pkg/config/interceptor/paramcheck/
 
 这些拦截器在请求到达业务逻辑之前，对必填字段、长度限制、格式约束等进行校验。
 
+## 自管理系统身份
+
+`pole-self-manager` 是进程内确定性协调器的固定执行身份，不是可登录用户或管理员角色，也不签发可交给 Agent 的 Token。它只能收敛 Pole 自身 MCP/A2A Registry 投影，并在管理员保存 desired state 后记录 Agent 配置的自动执行主体；管理员仍是唯一配置主体。完整边界见 [[adr-pole-self-management-control-loop]]。
+
 ## 相关页面
 
 - [[business-rules]]
@@ -151,3 +155,4 @@ pkg/config/interceptor/paramcheck/
 - [[architecture]]
 - [[index]]
 - [[patterns]]
+- [[adr-pole-self-management-control-loop]]

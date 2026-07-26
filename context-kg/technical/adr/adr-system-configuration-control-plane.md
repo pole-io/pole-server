@@ -1,8 +1,8 @@
 ---
 title: ADR：统一系统配置与动态生效
 tags: [adr, config, runtime, console, operations]
-links: [configuration, architecture, config-center, adr-console-agent-resource-workbench, auth-system, storage]
-updated: 2026-07-23
+links: [configuration, architecture, config-center, adr-console-agent-resource-workbench, auth-system, storage, adr-pole-self-management-control-loop]
+updated: 2026-07-26
 sources: 47
 ---
 
@@ -151,7 +151,7 @@ Console 页面只提供“设置新值、保留当前版本、替换、连接测
 
 现有配置文件加密链不能直接充当 `SystemSecretStore`：它把数据密钥与密文放在同一配置 metadata 中，并会对有权限的配置读取者解密正文，缺少 write-only interface、KEK 包装、独立权限、轮换状态和用途约束。JWT/签名密钥只有建立 old/new 双 key 窗口后才能进入受控轮换，否则保持 `BootstrapOnly`。
 
-Pole Agent 不获得任何 System Configuration 写工具，也不能读取 Secret；避免 Agent 自修改 Prompt、模型和工具权限。
+Pole Agent 不获得任何 System Configuration 写工具，也不能读取 Secret。系统管理员保存 Agent desired revision 后，由隔离的确定性执行身份 `pole-self-manager` 自动完成候选探测与发布；这不是 Agent/LLM 自修改 Prompt、模型和工具权限。详细执行边界见 [[adr-pole-self-management-control-loop]]。
 
 ## 页面信息架构
 
@@ -265,3 +265,4 @@ Phase 1 的来源限定为 `compiled_default`、`static_file`、`environment` �
 - [[adr-console-agent-resource-workbench]]
 - [[auth-system]]
 - [[storage]]
+- [[adr-pole-self-management-control-loop]]

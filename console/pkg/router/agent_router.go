@@ -31,6 +31,8 @@ func NewAgentRuntime(config *bootstrap.Config) (*agentworkbench.Workbench, *syst
 func AgentRouter(r *gin.Engine, config *bootstrap.Config, workbench *agentworkbench.Workbench,
 	runtime *systemsettings.Manager) {
 	handler := handlers.NewAgentHandler(config, workbench, runtime)
+	r.GET("/.well-known/agent-card.json", handler.A2ACard)
+	r.POST("/ai/agent/a2a/v1", handler.A2ASend)
 	v1 := r.Group("/ai/agent/v1")
 	v1.GET("/runtime", handler.Runtime)
 	v1.POST("/turns", handler.RunTurn)

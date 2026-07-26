@@ -10427,3 +10427,24 @@ Review：
 - `.git/info/exclude` 已本地加入 `.handoff/`；`git check-ignore -v` 返回该规则，`git status --short --untracked-files=all` 不显示 handoff。
 - 全局 `~/.codex/AGENTS.md` 已明确本地目录、禁止 Git、脱敏、引用现有产物和双重验证规则，并声明覆盖 handoff skill 的临时目录默认值。
 - context-kg lint、双向链接/index 覆盖和 `git diff --check` 通过；仓库待提交范围仅为本次 todo、lessons 和 log。
+
+## Pole 自注册、Prompt 管理与 Agent 自管理闭环（2026-07-26）
+
+目标：让 Control Plane 自动注册自身 MCP、Pole Agent 自动注册自身 A2A，并将 Registry、Prompt 版本与运行时能力纳入统一、可审计的自管理闭环。
+
+- [x] 通过递进式讨论明确自管理目标、自治边界与安全不变量。
+- [x] 核实现有 MCP Registry、A2A Registry、Pole Agent Runtime 与 System Settings/Prompt 管理 seam。
+- [x] 设计统一的自身能力声明、协调、探测、版本发布和回滚模块。
+- [x] 将长期架构决策归档到 `context-kg/technical/adr/`，同步 index、log 与相关页面。
+- [x] 按确认范围实现 MCP/A2A 自动注册、工具同步、Prompt 管理与 Agent 消费闭环。
+- [x] 完成单元、集成、权限、安全、故障恢复和真实运行环境验证。
+
+### Review
+
+- 管理员是唯一 desired state 配置主体；确定性执行身份固定为 `pole-self-manager`。它没有可供模型使用的管理员 Token，只负责自身 MCP/A2A 投影和已获管理员授权的 Agent 配置自动应用。
+- Control Plane 启动时通过进程内 `tools/list` 获取真实 MCP 工具定义，将 `pole-system/pole-control-plane` 与工具 Schema 幂等写入 Registry；每 30 秒全量 reconcile 可恢复漂移和软删除。
+- Pole Agent 已发布 `/.well-known/agent-card.json` 和受认证的 `/ai/agent/a2a/v1` JSON-RPC `message/send`，`all` 模式从真实 Card 自动生成 A2A Registry 投影，避免两份能力清单漂移。
+- Console Agent 使用当前用户身份查询 Registry，自然键必须精确解析唯一 address backend 且 URL 仅允许 HTTP(S)，再建立 MCP 会话并应用工具白名单。
+- Agent Prompt、模型与工具策略保存后自动构建候选、探测模型/MCP，并由 `pole-self-manager` 发布；失败草稿保留为 rejected，当前运行时继续使用上一健康版本。内建安全 Prompt 和 Secret 不向模型开放。
+- MySQL MCP tool、A2A interface/skill 使用稳定子项 ID 与 upsert；聚合根 Update 显式恢复 `flag=0`，保证手工软删除后的下一轮可复活。
+- 验证：全量 `go test ./... -count=1`、`go test -race ./pkg/selfmanager`、`go vet ./pkg/selfmanager`、前端目标 ESLint、管理员门禁契约、`npm run build:test`、context-kg lint 与 `git diff --check` 全部通过。

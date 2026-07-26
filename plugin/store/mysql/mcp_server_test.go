@@ -18,10 +18,13 @@
 package sqldb
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pole-io/specification/source/go/api/v1/ai"
 )
@@ -73,4 +76,26 @@ func TestValidateMCPServerBackend_MissingRequiredFields(t *testing.T) {
 	assert.Error(t, validateMCPServerBackend(&ai.MCPServer{BackendType: "service", BackendServiceNamespace: "default"}))
 	assert.Error(t, validateMCPServerBackend(&ai.MCPServer{BackendType: "address"}))
 	assert.NoError(t, validateMCPServerBackend(&ai.MCPServer{}))
+}
+
+func TestCreateMCPServerToolRevivesStableRegistryTool(t *testing.T) {
+	rawDB, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer rawDB.Close()
+	store := &mcpServerStore{master: &BaseDB{DB: rawDB}}
+	tool := &ai.MCPServerTool{
+		Id: "tool-id", McpServerId: "server-id", Name: "list_namespaces",
+		Description: "list", InputSchema: `{"type":"object"}`,
+	}
+	mock.ExpectExec(regexp.QuoteMeta(`INSERT INTO mcp_server_tools(id, mcp_server_id, name, description, input_schema, output_schema, annotations, flag, ctime, mtime)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())
+		ON DUPLICATE KEY UPDATE mcp_server_id = VALUES(mcp_server_id), name = VALUES(name),
+		description = VALUES(description), input_schema = VALUES(input_schema),
+		output_schema = VALUES(output_schema), annotations = VALUES(annotations),
+		flag = VALUES(flag), mtime = sysdate()`)).
+		WithArgs("tool-id", "server-id", "list_namespaces", "list", `{"type":"object"}`, "", "", uint32(0)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	require.NoError(t, store.CreateMCPServerTool(tool))
+	require.NoError(t, mock.ExpectationsWereMet())
 }

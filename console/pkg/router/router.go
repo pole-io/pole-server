@@ -93,6 +93,7 @@ func isAPIPath(p string) bool {
 	apiPrefixes := []string{
 		"/v1/",
 		"/ai/agent/v1/",
+		"/ai/agent/a2a/",
 		"/observability/v1/",
 		"/system-config/v1/",
 	}

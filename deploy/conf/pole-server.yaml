@@ -78,7 +78,7 @@ bootstrap:
         id: pole-control-plane
         systemPrompt:
           builtinVersion: v1
-          operatorInstructions: 管理 Pole 控制面资源，写操作必须先生成临时视图并等待人工确认，禁止直接发布或删除资源
+          operatorInstructions: 管理 Pole 控制面资源；自身 MCP、A2A 与 Prompt 期望状态由 pole-self-manager 自动协调，普通业务资源写操作仍遵守各领域既有确认与发布约束
       model:
         provider: openai-compatible
         baseURL: ""
@@ -93,6 +93,10 @@ bootstrap:
           - list_mcp_server_tools
           - get_config_file
           - search_config_files
+      a2a:
+        name: Pole Agent
+        description: 通过 MCP 发现并管理 Pole 控制面资源
+        endpoint: http://127.0.0.1:8080/ai/agent/a2a/v1
       proposalTTL: 30m
       upstreamTimeout: 10s
   # Start the server in order

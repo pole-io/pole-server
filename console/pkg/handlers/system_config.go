@@ -173,7 +173,7 @@ func SaveSystemConfigurationDraft(config *bootstrap.Config, manager *systemsetti
 		if !ok {
 			return
 		}
-		userID, _, ok := verifyAccessPermission(ctx, config)
+		userID, token, ok := verifyAccessPermission(ctx, config)
 		if !ok {
 			return
 		}
@@ -183,7 +183,9 @@ func SaveSystemConfigurationDraft(config *bootstrap.Config, manager *systemsetti
 				writeSystemConfigurationError(ctx, http.StatusBadRequest, errors.New("Agent 配置草稿格式无效"))
 				return
 			}
-			view, err := manager.SaveDraft(ctx.Request.Context(), userID, request)
+			view, err := manager.SaveAndReconcile(ctx.Request.Context(), agentworkbench.Actor{
+				UserID: userID, Token: token, RequestID: ctx.GetHeader("X-Request-Id"),
+			}, request)
 			if err != nil {
 				writeSystemConfigurationError(ctx, systemConfigurationMutationStatus(err), err)
 				return

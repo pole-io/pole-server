@@ -92,6 +92,7 @@ type AgentConfig struct {
 	Definition      AgentDefinitionConfig `yaml:"definition" json:"definition"`
 	Model           AgentModelConfig      `yaml:"model" json:"model"`
 	MCP             AgentMCPConfig        `yaml:"mcp" json:"mcp"`
+	A2A             AgentA2AConfig        `yaml:"a2a" json:"a2a"`
 	ProposalTTL     time.Duration         `yaml:"proposalTTL" json:"proposalTTL"`
 	UpstreamTimeout time.Duration         `yaml:"upstreamTimeout" json:"upstreamTimeout"`
 }
@@ -117,6 +118,12 @@ type AgentModelConfig struct {
 type AgentMCPConfig struct {
 	Endpoint      string   `yaml:"endpoint" json:"endpoint"`
 	ToolAllowlist []string `yaml:"toolAllowlist" json:"toolAllowlist"`
+}
+
+type AgentA2AConfig struct {
+	Name        string `yaml:"name" json:"name"`
+	Description string `yaml:"description" json:"description"`
+	Endpoint    string `yaml:"endpoint" json:"endpoint"`
 }
 
 // SystemSecrets contains only the irreducible bootstrap root used to unwrap
@@ -148,6 +155,12 @@ func (c AgentConfig) Normalize() AgentConfig {
 	}
 	if c.MCP.Endpoint == "" {
 		c.MCP.Endpoint = "http://127.0.0.1:8090/ai/mcp/v1/sse"
+	}
+	if c.A2A.Name == "" {
+		c.A2A.Name = "Pole Agent"
+	}
+	if c.A2A.Description == "" {
+		c.A2A.Description = "通过 MCP 发现并管理 Pole 控制面资源"
 	}
 	if c.ProposalTTL <= 0 {
 		c.ProposalTTL = DefaultAgentProposalTTL

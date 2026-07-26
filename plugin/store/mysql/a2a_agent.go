@@ -97,7 +97,7 @@ func (s *a2aAgentStore) updateA2AAgent(agent *aitypes.A2AAgent) error {
 		preferred_interface_url = ?, preferred_protocol_binding = ?, preferred_protocol_version = ?,
 		streaming = ?, push_notifications = ?, extended_agent_card = ?, raw_card_json = ?,
 		source_type = ?, source_url = ?, last_fetch_status = ?, last_fetch_time = ?, metadata = ?,
-		mtime = sysdate() WHERE id = ?`
+		flag = ?, mtime = sysdate() WHERE id = ?`
 	if _, err := tx.Exec(sqlText,
 		agent.Name, agent.Namespace, agent.Visibility, agent.Description, agent.Version, agent.ProtocolVersion,
 		agent.ProviderOrganization, agent.ProviderUrl, agent.DocumentationUrl, agent.IconUrl, agent.Business,
@@ -105,7 +105,7 @@ func (s *a2aAgentStore) updateA2AAgent(agent *aitypes.A2AAgent) error {
 		agent.BackendAddress, agent.PreferredInterfaceUrl, agent.PreferredProtocolBinding,
 		agent.PreferredProtocolVersion, agent.Streaming, agent.PushNotifications, agent.ExtendedAgentCard,
 		agent.RawCardJson, agent.SourceType, agent.SourceUrl, agent.LastFetchStatus, agent.LastFetchTime,
-		metadataJSON, agent.Id); err != nil {
+		metadataJSON, agent.Flag, agent.Id); err != nil {
 		return err
 	}
 	if err := s.replaceA2AAgentInterfaces(tx, agent); err != nil {
@@ -265,7 +265,10 @@ func (s *a2aAgentStore) replaceA2AAgentInterfaces(tx *BaseTx, agent *aitypes.A2A
 		}
 		item.AgentId = agent.Id
 		if _, err := tx.Exec(`INSERT INTO a2a_agent_interface(id, agent_id, url, protocol_binding,
-			protocol_version, tenant, flag, ctime, mtime) VALUES(?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())`,
+			protocol_version, tenant, flag, ctime, mtime) VALUES(?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())
+			ON DUPLICATE KEY UPDATE agent_id = VALUES(agent_id), url = VALUES(url),
+			protocol_binding = VALUES(protocol_binding), protocol_version = VALUES(protocol_version),
+			tenant = VALUES(tenant), flag = VALUES(flag), mtime = sysdate()`,
 			item.Id, item.AgentId, item.Url, item.ProtocolBinding, item.ProtocolVersion, item.Tenant, item.Flag); err != nil {
 			return err
 		}
@@ -284,7 +287,11 @@ func (s *a2aAgentStore) replaceA2AAgentSkills(tx *BaseTx, agent *aitypes.A2AAgen
 		item.AgentId = agent.Id
 		if _, err := tx.Exec(`INSERT INTO a2a_agent_skill(id, agent_id, skill_id, name, description,
 			tags, examples, input_modes, output_modes, security_requirements, flag, ctime, mtime)
-			VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())`,
+			VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())
+			ON DUPLICATE KEY UPDATE agent_id = VALUES(agent_id), skill_id = VALUES(skill_id),
+			name = VALUES(name), description = VALUES(description), tags = VALUES(tags),
+			examples = VALUES(examples), input_modes = VALUES(input_modes), output_modes = VALUES(output_modes),
+			security_requirements = VALUES(security_requirements), flag = VALUES(flag), mtime = sysdate()`,
 			item.Id, item.AgentId, item.SkillId, item.Name, item.Description, marshalStringSlice(item.Tags),
 			marshalStringSlice(item.Examples), marshalStringSlice(item.InputModes), marshalStringSlice(item.OutputModes),
 			item.SecurityRequirementsJson, item.Flag); err != nil {

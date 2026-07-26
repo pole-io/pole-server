@@ -26,6 +26,10 @@ type RuntimeSnapshot struct {
 	AppliedAt time.Time
 }
 
+const SelfManagerActorID = "pole-self-manager"
+
+type candidateBuilder func(context.Context, agentworkbench.Actor, AgentProfile, string) (*poleagent.Agent, error)
+
 type Manager struct {
 	config    *bootstrap.Config
 	repo      store.SystemSettingsRepository
@@ -36,6 +40,7 @@ type Manager struct {
 	statusMu  sync.RWMutex
 	status    string
 	message   string
+	candidate candidateBuilder
 }
 
 func NewManager(config *bootstrap.Config, repo store.SystemSettingsRepository,
@@ -153,6 +158,38 @@ func (m *Manager) SaveDraft(ctx context.Context, actor string, request SaveDraft
 }
 
 func (m *Manager) Publish(ctx context.Context, actor agentworkbench.Actor, request PublishRequest) (*DomainView, error) {
+	return m.publish(ctx, actor, actor.UserID, request)
+}
+
+// SaveAndReconcile records the administrator-owned desired state and lets the
+// isolated self-manager validate and promote it without a second manual step.
+// The administrator credential is used only for candidate probes; revision
+// history records pole-self-manager as the executor.
+func (m *Manager) SaveAndReconcile(ctx context.Context, actor agentworkbench.Actor,
+	request SaveDraftRequest) (*DomainView, error) {
+	view, err := m.SaveDraft(ctx, actor.UserID, request)
+	if err != nil {
+		return nil, err
+	}
+	if view.Draft == nil {
+		return view, errors.New("Agent desired revision was not created")
+	}
+	result, err := m.publish(ctx, actor, SelfManagerActorID, PublishRequest{
+		DraftRevision: view.Draft.Revision,
+		Description:   "automatic reconciliation after administrator update",
+	})
+	if err != nil {
+		current, domainErr := m.Domain(ctx)
+		if domainErr == nil {
+			return current, err
+		}
+		return nil, err
+	}
+	return result, nil
+}
+
+func (m *Manager) publish(ctx context.Context, actor agentworkbench.Actor, executor string,
+	request PublishRequest) (*DomainView, error) {
 	m.applyMu.Lock()
 	defer m.applyMu.Unlock()
 	domain, err := m.repo.GetSystemConfigDomain(ctx, AgentComponent, AgentDomain)
@@ -166,17 +203,16 @@ func (m *Manager) Publish(ctx context.Context, actor agentworkbench.Actor, reque
 	if err != nil {
 		return nil, err
 	}
-	if _, err = m.testMaterializedConnection(ctx, actor, profile, secret); err != nil {
+	agent, err := m.prepareCandidate(ctx, actor, profile, secret)
+	if err != nil {
 		m.setStatus("rejected", "发布前连接校验失败，继续使用上一次有效配置")
 		return nil, fmt.Errorf("发布前连接校验失败: %w", err)
 	}
-	agent, err := m.buildAgent(profile, secret)
-	if err != nil {
-		m.setStatus("rejected", "新配置校验失败，继续使用上一次有效配置")
-		return nil, err
+	if strings.TrimSpace(executor) == "" {
+		executor = SelfManagerActorID
 	}
 	revision, err := m.repo.PublishSystemConfigDraft(ctx, AgentComponent, AgentDomain,
-		request.DraftRevision, actor.UserID)
+		request.DraftRevision, executor)
 	if err != nil {
 		return nil, err
 	}
@@ -186,6 +222,17 @@ func (m *Manager) Publish(ctx context.Context, actor agentworkbench.Actor, reque
 	m.applyWorkbenchSettings(profile)
 	m.setStatus("applied", "当前实例已热更新；其他实例将通过周期协调收敛")
 	return m.Domain(ctx)
+}
+
+func (m *Manager) prepareCandidate(ctx context.Context, actor agentworkbench.Actor,
+	profile AgentProfile, secret string) (*poleagent.Agent, error) {
+	if m.candidate != nil {
+		return m.candidate(ctx, actor, profile, secret)
+	}
+	if _, err := m.testMaterializedConnection(ctx, actor, profile, secret); err != nil {
+		return nil, err
+	}
+	return m.buildAgent(profile, secret)
 }
 
 func (m *Manager) TestConnection(ctx context.Context, actor agentworkbench.Actor,
@@ -348,8 +395,12 @@ func (m *Manager) buildAgent(profile AgentProfile, secret string) (*poleagent.Ag
 		return nil, err
 	}
 	tools, err := poleagent.NewMCPToolPort(poleagent.MCPToolConfig{
-		Endpoint: profile.MCPEndpoint, ToolAllowlist: profile.MCPToolAllowlist,
-		ReadTimeout: parseDuration(profile.ModelTimeout, 60*time.Second),
+		Endpoint:         profile.MCPEndpoint,
+		RegistryEndpoint: poleServerRegistryEndpoint(m.config.PoleServer.Address),
+		ServerNamespace:  "pole-system",
+		ServerName:       "pole-control-plane",
+		ToolAllowlist:    profile.MCPToolAllowlist,
+		ReadTimeout:      parseDuration(profile.ModelTimeout, 60*time.Second),
 	})
 	if err != nil {
 		return nil, err
@@ -535,4 +586,15 @@ func parseDuration(value string, fallback time.Duration) time.Duration {
 		return fallback
 	}
 	return duration
+}
+
+func poleServerRegistryEndpoint(address string) string {
+	address = strings.TrimRight(strings.TrimSpace(address), "/")
+	if address == "" {
+		return ""
+	}
+	if !strings.HasPrefix(address, "http://") && !strings.HasPrefix(address, "https://") {
+		address = "http://" + address
+	}
+	return address + "/ai/mcp/v1/servers"
 }

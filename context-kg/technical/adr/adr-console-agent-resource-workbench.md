@@ -1,8 +1,8 @@
 ---
 title: ADR：Console Agent 资源变更工作台
 tags: [adr, ai, agent, console, governance, config]
-links: [ai-features, adr-a2a-agent-registry, architecture, auth-system, api-servers, config-center, governance-rules, patterns, adr-system-configuration-control-plane]
-updated: 2026-07-23
+links: [ai-features, adr-a2a-agent-registry, architecture, auth-system, api-servers, config-center, governance-rules, patterns, adr-system-configuration-control-plane, adr-pole-self-management-control-loop]
+updated: 2026-07-26
 sources: 45
 ---
 
@@ -10,7 +10,7 @@ sources: 45
 
 ## 状态
 
-Accepted。Phase 1 最小真实运行时已完成：Console 内部 `PoleAgent` 通过 OpenAI-compatible `ModelPort` 调用 LLM Gateway，通过带当前用户身份的 MCP client 导入白名单只读工具，并把配置文件 update 收敛到确定性临时视图与确认内核。流式输出、服务端会话持久化、create、治理规则 adapter 与 Pole 托管 Secret 页面仍按后续分期推进。
+Accepted。Phase 1 最小真实运行时已完成：Console 内部 `PoleAgent` 通过 OpenAI-compatible `ModelPort` 调用 LLM Gateway，通过带当前用户身份、从 Registry 解析自身服务地址的 MCP client 导入白名单只读工具，并把配置文件 update 收敛到确定性临时视图与确认内核。Pole Agent 同时发布真实 A2A Card 和认证消息端点，并由 `pole-self-manager` 自动注册。流式输出、服务端会话持久化、create 与治理规则 adapter 仍按后续分期推进。
 
 ## 背景
 
@@ -495,3 +495,4 @@ System Prompt 分成不可由页面覆盖的内置安全策略和可配置的 op
 - [[governance-rules]]
 - [[patterns]]
 - [[adr-system-configuration-control-plane]]
+- [[adr-pole-self-management-control-loop]]

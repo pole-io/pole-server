@@ -31,6 +31,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/encoding/protojson"
 
+	specai "github.com/pole-io/specification/source/go/api/v1/ai"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
@@ -127,6 +128,15 @@ const (
 // GetPort 获取端口
 func (h *HTTPServer) GetPort() uint32 {
 	return h.listenPort
+}
+
+// SnapshotMCPTools exposes the in-process tools/list projection to the
+// bootstrap self-manager without widening the public MCP management surface.
+func (h *HTTPServer) SnapshotMCPTools(ctx context.Context) ([]*specai.MCPServerTool, error) {
+	if h.aimcpSvr == nil || !h.isAPIEnabled("aimcp") {
+		return nil, errors.New("ai-mcp API server is not enabled")
+	}
+	return h.aimcpSvr.SnapshotTools(ctx)
 }
 
 // GetProtocol 获取Server的协议
