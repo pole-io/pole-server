@@ -10709,7 +10709,7 @@ Review：
 - [x] 升级 Go 安全相关模块并解决兼容问题。
 - [x] 升级 Console 运行时与构建工具链，移除无修复版本的 mock 依赖。
 - [x] 运行 `govulncheck`、`npm audit`、全量 Go 测试、Console lint/build 和专项脚本。
-- [ ] 提交并推送 `develop`，复核远端 Dependabot 告警状态。
+- [x] 提交并推送 `develop`，复核远端 Dependabot 告警状态。
 
 ### Review
 
@@ -10717,4 +10717,4 @@ Review：
 - Go 已升级 Gin、JWT、gRPC、`x/crypto`、`x/net`、`x/text`、QUIC 与 Testcontainers；Testcontainers 改用拆分后的 Moby API/Client 模块，移除存在告警的旧 Docker 单体模块。`govulncheck` 结果为 0 个受影响漏洞、0 个导入包漏洞。
 - Console 已升级 Axios、Vite、ECharts、Lodash、UUID 与 SVG 工具链；删除无修复版本的 MockJS/Vite Mock，使用轻量路由兼容层替代存在相互冲突安全公告的 React Router，使用 Oxc 替代引入旧 vulnerable glob 依赖链的 ESLint 工具链。
 - `npm audit --audit-level=low` 为 0；全部已登记 Console 专项测试、服务契约专项、lint、测试/发布构建、真实浏览器路由冒烟、Go 全量测试、E2E 标签编译、完整打包、知识库检查和 `git diff --check` 均通过。
-- 新增 Go 与 Console npm 的 Dependabot 周更配置，目标分支固定为 `develop`；远端告警复核待推送后完成。
+- 新增 Go 与 Console npm 的 Dependabot 周更配置，目标分支固定为 `develop`；提交推送后 GitHub 重算期间开放告警由 98 降至 46，最终为 0，未 dismiss 任何未修复告警。
