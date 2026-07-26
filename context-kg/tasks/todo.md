@@ -10755,6 +10755,6 @@ Review：
 - HTTP/OpenAPI 在服务端归一化时保存每个 operation 原文；Dubbo 可直接识别 provider 定义、consumer 定义和 application revision snapshot，原始 JSON 保存在契约主体，方法和接口级原生片段进入统一接口投影。
 - Dubbo 原始 metadata 不改写，同时生成 `dubbo.application/interface/group/version/side/metadata-type/metadata-revision/service-key/mapping-applications` 稳定查询键；多接口快照的详情优先读取所选接口原生 params，避免错误套用契约级 group/version。
 - 运行时 HTTP client 上报入口确认并回归为 `POST /v1/ReportServiceContract`；`/naming/v1` 仅用于 Console 管理 API。K8s client 入口已用无结构化 interfaces 的 Dubbo provider 原生 JSON 上报成功，返回 `code=200000`。
-- `develop@6d01a3d4` 已构建为 `pole-control-plane:local-20260727-contract-detail-6d01a3d4`，镜像 ID `sha256:6acdcbaadd34e82708f087077eff7cb5b33883313a94b5eaa7981ec48ba8be01`；Pod `pole-control-plane-844c97d589-sqwmx` Ready、零重启，日志无 ERROR/panic/fatal，HTTPRoute `Accepted=True`、`ResolvedRefs=True`。
+- 运行时代码提交 `015cbdbd` 已构建为 `pole-control-plane:local-20260727-contract-detail-015cbdbd`，镜像 ID `sha256:a504161611c0cd1354a571c9f1828e0616ee79e97cd4d9b43967e55a4709da1a`；Pod `pole-control-plane-6c795bc94c-gnhdr` Ready、零重启，日志无 ERROR/panic/fatal，HTTPRoute `Accepted=True`、`ResolvedRefs=True`。
 - 真实浏览器在 `demo-governance/demo-order` 点击 Dubbo 重载方法后，详情展示 application、group/version、side、metadata-type、serialization、Service Key、映射应用和方法原生定义；鼠标和 Enter 键均可打开，3 个接口详情入口可达，浏览器错误为 0。
 - `go test ./...`、服务契约目标测试、Console 专项脚本、全量 lint、`npm run build:test`、`npm audit`、知识库链接检查与 `git diff --check` 均通过；GitHub 开放 Dependabot 告警保持为 0。
