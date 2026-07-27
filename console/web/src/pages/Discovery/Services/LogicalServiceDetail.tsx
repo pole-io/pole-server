@@ -1,0 +1,206 @@
+import React, { useCallback, useEffect, useState } from 'react'
+import { Button, Drawer, Input, Select, Table } from 'components/Fluent'
+import { useNavigate, useSearchParams } from 'components/Router'
+
+import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout'
+import ResourceNameLink from 'components/ResourceNameLink'
+import {
+  bindServiceEnvironment,
+  deleteLogicalService,
+  describeLogicalServiceEnvironments,
+  describeLogicalServices,
+  describeUnboundServiceEnvironments,
+  LogicalServiceView,
+  ServiceEnvironmentBindingView,
+  unbindServiceEnvironment,
+} from 'services/logical_service'
+import { ServiceView } from 'services/service'
+import { openErrNotification, openInfoNotification } from 'utils/notifition'
+import style from './index.module.less'
+
+export default function LogicalServiceDetail() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const logicalServiceId = searchParams.get('id') || ''
+  const [logicalService, setLogicalService] = useState<LogicalServiceView | null>(null)
+  const [environments, setEnvironments] = useState<ServiceEnvironmentBindingView[]>([])
+  const [unbound, setUnbound] = useState<ServiceView[]>([])
+  const [selectedServiceId, setSelectedServiceId] = useState('')
+  const [bindingKeyword, setBindingKeyword] = useState('')
+  const [bindingVisible, setBindingVisible] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!logicalServiceId) return
+    setLoading(true)
+    try {
+      const [logical, bindings] = await Promise.all([
+        describeLogicalServices({ id: logicalServiceId, offset: 0, limit: 1 }),
+        describeLogicalServiceEnvironments(logicalServiceId),
+      ])
+      setLogicalService(logical.list.find(item => item.id === logicalServiceId) || null)
+      setEnvironments(bindings.list)
+    } catch (error) {
+      openErrNotification('加载逻辑服务失败', error instanceof Error ? error.message : String(error))
+    } finally {
+      setLoading(false)
+    }
+  }, [logicalServiceId])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const openBinding = async (keyword = '') => {
+    try {
+      const result = await describeUnboundServiceEnvironments({
+        name: keyword || undefined,
+        offset: 0,
+        limit: 100,
+      })
+      setUnbound(result.list)
+      setSelectedServiceId('')
+      setBindingVisible(true)
+    } catch (error) {
+      openErrNotification('获取未关联服务失败', error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const bind = async () => {
+    if (!selectedServiceId) return
+    try {
+      await bindServiceEnvironment(logicalServiceId, selectedServiceId)
+      openInfoNotification('关联成功', '环境服务已加入逻辑服务')
+      setBindingVisible(false)
+      await load()
+    } catch (error) {
+      openErrNotification('关联失败', error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const unbind = async (binding: ServiceEnvironmentBindingView) => {
+    try {
+      await unbindServiceEnvironment(logicalServiceId, binding.service_id)
+      openInfoNotification('已解除关联', '环境服务仍保留并继续正常注册发现')
+      await load()
+    } catch (error) {
+      openErrNotification('解除关联失败', error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const remove = async () => {
+    try {
+      await deleteLogicalService(logicalServiceId)
+      openInfoNotification('删除成功', '逻辑服务已删除，环境服务未受影响')
+      navigate('/discovery/service')
+    } catch (error) {
+      openErrNotification('删除失败', error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const columns = [
+    { colKey: 'namespace', title: 'Namespace', width: 180 },
+    {
+      colKey: 'service_name',
+      title: '运行时服务名',
+      width: 260,
+      cell: ({ row }: any) => (
+        <ResourceNameLink
+          name={row.service_name}
+          onClick={row.service ? () => navigate(
+            `/discovery/service/instance?logicalServiceId=${encodeURIComponent(logicalServiceId)}`
+            + `&namespace=${encodeURIComponent(row.namespace)}&service=${encodeURIComponent(row.service_name)}`,
+          ) : undefined}
+        />
+      ),
+    },
+    {
+      colKey: 'health',
+      title: '健康实例',
+      width: 140,
+      cell: ({ row }: any) => row.service
+        ? `${row.service.healthy_instance_count || 0}/${row.service.total_instance_count || 0}`
+        : '服务已缺失',
+    },
+    { colKey: 'mtime', title: '关联时间', width: 180 },
+    {
+      colKey: 'action',
+      title: '操作',
+      width: 190,
+      cell: ({ row }: any) => (
+        <>
+          <Button variant="text" disabled={!row.service} onClick={() => navigate(
+            `/discovery/service/instance?logicalServiceId=${encodeURIComponent(logicalServiceId)}`
+            + `&namespace=${encodeURIComponent(row.namespace)}&service=${encodeURIComponent(row.service_name)}`,
+          )}>进入环境</Button>
+          <Button variant="text" theme="danger" onClick={() => void unbind(row)}>解除关联</Button>
+        </>
+      ),
+    },
+  ]
+
+  return (
+    <div className={style.page}>
+      <ResourceHeader
+        eyebrow="注册发现 / 逻辑服务"
+        title={logicalService?.name || '逻辑服务详情'}
+        description={logicalService?.comment || '显式维护该逻辑服务在各 Namespace 中对应的运行时服务。'}
+        actions={(
+          <>
+            <Button variant="outline" onClick={() => navigate('/discovery/service')}>返回列表</Button>
+            <Button variant="outline" theme="danger" disabled={environments.length > 0} onClick={() => void remove()}>删除逻辑服务</Button>
+            <Button theme="primary" onClick={() => void openBinding(bindingKeyword)}>关联环境服务</Button>
+          </>
+        )}
+      />
+      <section className={style.metricRail}>
+        <div className={style.metricItem}><span>可访问环境</span><strong>{environments.length}</strong></div>
+        <div className={style.metricItem}><span>健康实例</span><strong>{logicalService?.healthy_instance_count || 0}</strong></div>
+        <div className={style.metricItem}><span>实例总数</span><strong>{logicalService?.total_instance_count || 0}</strong></div>
+      </section>
+      <section className={style.listSection}>
+        <ResourceToolbar title="环境服务" count={`共 ${environments.length} 个显式关联`} />
+        <section className={style.tableSurface}>
+          <Table
+            data={environments}
+            columns={columns}
+            rowKey="service_id"
+            loading={loading}
+            empty="尚未关联环境服务。逻辑服务会保留，关联操作必须由管理员显式完成。"
+          />
+        </section>
+      </section>
+      <Drawer
+        visible={bindingVisible}
+        header="关联已有环境服务"
+        size="min(640px, 94vw)"
+        destroyOnClose
+        onClose={() => setBindingVisible(false)}
+        footer={<><Button onClick={() => setBindingVisible(false)}>取消</Button><Button theme="primary" disabled={!selectedServiceId} onClick={() => void bind()}>确认关联</Button></>}
+      >
+        <div className={style.logicalForm}>
+          <p>一个逻辑服务在同一 Namespace 只能关联一个运行时服务。</p>
+          <label>
+            <span>按运行时服务名筛选</span>
+            <div>
+              <Input value={bindingKeyword} onChange={setBindingKeyword} />
+              <Button variant="outline" onClick={() => void openBinding(bindingKeyword)}>查询</Button>
+            </div>
+          </label>
+          <label>
+            <span>未关联环境服务</span>
+            <Select
+              value={selectedServiceId}
+              placeholder="选择 Namespace / 运行时服务"
+              options={unbound.map(item => ({
+                label: `${item.namespace} / ${item.name}`,
+                value: item.id,
+              }))}
+              onChange={setSelectedServiceId}
+            />
+          </label>
+        </div>
+      </Drawer>
+    </div>
+  )
+}

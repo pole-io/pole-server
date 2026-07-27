@@ -1,5 +1,5 @@
 import React, { } from 'react';
-import { Steps, Drawer, Form, Input, Space, Row, Col, Switch, Select, FormProps, Button } from 'components/Fluent';
+import { Steps, Drawer, Form, Input, Space, Row, Col, Switch, Select, FormProps, Button, Radio, RadioGroup } from 'components/Fluent';
 import { FormItem } from 'components/Fluent'
 
 import { useAppDispatch, useAppSelector } from 'modules/store';;
@@ -9,6 +9,14 @@ import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import { listConfigFileCryptoAlgos, saveConfigFiles, selectConfigFile } from 'modules/configuration/file';
 import { resolveFileFormat } from 'utils/path';
 import { Label, Op } from 'services/types';
+import { ConfigType } from 'services/config_files';
+import {
+    ConfigFileTemplate,
+    ConfigTemplateRelease,
+    describeConfigTemplateReleases,
+    describeConfigTemplates,
+} from 'services/config_templates';
+import { useNavigate } from 'components/Router';
 
 interface IFileCreatorProps {
     op: Op;
@@ -26,6 +34,9 @@ interface ConfigFileMetaValues {
     tags: Label[];
     encrypted: boolean;
     encryptAlgo: string;
+    configType: ConfigType;
+    templateId: string;
+    templateReleaseId: string;
 }
 
 const emptyMetaValues = (): ConfigFileMetaValues => ({
@@ -34,10 +45,14 @@ const emptyMetaValues = (): ConfigFileMetaValues => ({
     tags: [],
     encrypted: false,
     encryptAlgo: '',
+    configType: 'CONFIG_FILE',
+    templateId: '',
+    templateReleaseId: '',
 });
 
 const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visible, closeDrawer }) => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const [form] = Form.useForm();
 
     const fileState = useAppSelector(selectConfigFile);
@@ -45,6 +60,8 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
 
     const [activeStep, setActiveStep] = React.useState<number>(1);
     const [metaValues, setMetaValues] = React.useState<ConfigFileMetaValues>(emptyMetaValues);
+    const [templates, setTemplates] = React.useState<ConfigFileTemplate[]>([]);
+    const [templateReleases, setTemplateReleases] = React.useState<ConfigTemplateRelease[]>([]);
 
     React.useEffect(() => {
         if (visible) {
@@ -63,8 +80,21 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                         openErrNotification('获取加密算法列表失败', res?.payload as string);
                     }
                 })
+            describeConfigTemplates()
+                .then(({ templates: items }) => setTemplates(items))
+                .catch(() => setTemplates([]));
         }
     }, [visible, namespace, group, form, dispatch]);
+
+    React.useEffect(() => {
+        if (!metaValues.templateId) {
+            setTemplateReleases([]);
+            return;
+        }
+        describeConfigTemplateReleases(metaValues.templateId)
+            .then(({ releases }) => setTemplateReleases(releases))
+            .catch(() => setTemplateReleases([]));
+    }, [metaValues.templateId]);
 
     React.useEffect(() => {
         if (visible && activeStep === 1) {
@@ -82,12 +112,16 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
         const tags = form.getFieldValue('tags') as Label[];
         const encrypted = form.getFieldValue('encrypted') as boolean;
         const encryptAlgo = form.getFieldValue('encryptAlgo') as string;
+        const configType = (form.getFieldValue('configType') || 'CONFIG_FILE') as ConfigType;
         const nextMetaValues = {
             name: name || '',
             comment: comment || '',
             tags: tags || [],
             encrypted: Boolean(encrypted),
             encryptAlgo: encryptAlgo || '',
+            configType,
+            templateId: metaValues.templateId,
+            templateReleaseId: metaValues.templateReleaseId,
         };
         setMetaValues(nextMetaValues);
         return nextMetaValues;
@@ -104,6 +138,11 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
         if (e.validateResult !== true) {
             return;
         }
+        if (metaValues.configType === 'CONFIG_TEMPLATE' && (!metaValues.templateId || !metaValues.templateReleaseId)) {
+            openErrNotification('无法创建', '模板配置必须显式选择模板及其不可变发布版本');
+            changeStep(1);
+            return;
+        }
 
         const newData = {
             namespace: namespace,
@@ -115,6 +154,11 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
             tags: metaValues.tags,
             encrypted: metaValues.encrypted,
             encryptAlgo: metaValues.encrypted ? metaValues.encryptAlgo : '',
+            configType: metaValues.configType,
+            templateBinding: metaValues.configType === 'CONFIG_TEMPLATE' ? {
+                templateId: metaValues.templateId,
+                templateReleaseId: metaValues.templateReleaseId,
+            } : undefined,
         }
 
         const result = await dispatch(saveConfigFiles({ param: { ...newData } }));
@@ -155,6 +199,59 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                         <FormItem label="文件描述" name="comment">
                             <Input />
                         </FormItem>
+                        <FormItem label="配置类型" name="configType">
+                            <RadioGroup
+                                value={metaValues.configType}
+                                onChange={(configType: ConfigType) => {
+                                    form.setFieldsValue({ configType });
+                                    setMetaValues(current => ({
+                                        ...current,
+                                        configType,
+                                        templateId: configType === 'CONFIG_TEMPLATE' ? current.templateId : '',
+                                        templateReleaseId: configType === 'CONFIG_TEMPLATE' ? current.templateReleaseId : '',
+                                    }));
+                                }}
+                            >
+                                <Radio value="CONFIG_FILE">普通配置</Radio>
+                                <Radio value="CONFIG_TEMPLATE">模板配置</Radio>
+                            </RadioGroup>
+                        </FormItem>
+                        {metaValues.configType === 'CONFIG_TEMPLATE' && (
+                            <>
+                                <FormItem label="配置模板">
+                                    <Select
+                                        value={metaValues.templateId}
+                                        placeholder="选择模板"
+                                        options={templates.map(item => ({ label: item.name, value: String(item.id) }))}
+                                        onChange={(templateId: string) => setMetaValues(current => ({
+                                            ...current,
+                                            templateId,
+                                            templateReleaseId: '',
+                                        }))}
+                                    />
+                                </FormItem>
+                                <FormItem label="固定模板版本">
+                                    <Select
+                                        value={metaValues.templateReleaseId}
+                                        placeholder="显式选择不可变发布版本"
+                                        options={templateReleases.map(item => ({
+                                            label: `v${item.version} · ${item.id}`,
+                                            value: item.id,
+                                        }))}
+                                        onChange={(templateReleaseId: string) => setMetaValues(current => ({
+                                            ...current,
+                                            templateReleaseId,
+                                        }))}
+                                    />
+                                </FormItem>
+                                <Button
+                                    variant="text"
+                                    onClick={() => navigate(`/configuration/templates?templateId=${encodeURIComponent(metaValues.templateId)}&namespace=${encodeURIComponent(namespace)}&tab=values&returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
+                                >
+                                    管理模板库与当前 Namespace Value
+                                </Button>
+                            </>
+                        )}
                         <FormItem label="配置加密" name={'encrypted'}>
                             <Switch />
                         </FormItem>
@@ -177,7 +274,7 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                         <LabelInput editable={true} label="文件标签" name="tags" />
                     </>
                 )}
-                {activeStep === 2 && (
+                {activeStep === 2 && metaValues.configType === 'CONFIG_FILE' && (
                     <>
                         <Space style={{ marginTop: 20, width: '100%' }}>
                             <FormItem name={'content'} style={{ width: '100%' }}>
@@ -189,6 +286,12 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                             </FormItem>
                         </Space>
                     </>
+                )}
+                {activeStep === 2 && metaValues.configType === 'CONFIG_TEMPLATE' && (
+                    <div style={{ marginTop: 20 }}>
+                        模板正文来自已固定的 Template Release。创建后请在模板库维护
+                        <strong> {namespace}</strong> 的 Value；SDK 将自行完成渲染。
+                    </div>
                 )}
             </Form>
         </>
@@ -239,7 +342,7 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
         >
             <Row>
                 <Col span={3}>
-                    <Steps layout="vertical" current={activeStep} onChange={(value) => {
+                    <Steps layout="vertical" current={activeStep} onChange={(value: number) => {
                         changeStep(value as number);
                     }}>
                         <StepItem value={1} title="元信息">

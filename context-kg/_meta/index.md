@@ -78,6 +78,7 @@ sources: 0
 - [[adr-pole-self-management-control-loop]] — Pole 自身 MCP/A2A 注册、Prompt 自动应用与系统身份协调 | adr, ai, mcp, a2a, agent, prompt, automation
 - [[adr-local-pebble-protobuf-value-cache]] — Pebble 本地 protobuf bytes 缓存 | adr, cache, pebble, protobuf, performance
 - [[adr-unified-process-mode-and-limiter-integration]] — 单一制品、多进程模式与 Limiter 独立部署边界 | adr, runtime, limiter, deploy, process
+- [[adr-logical-service-environment-binding]] — 控制面逻辑服务与环境服务显式关联 | adr, service, namespace, domain-model, console
 
 #### 可观测性（technical/adr/observability/）
 
@@ -106,6 +107,7 @@ sources: 0
 | 领域术语和核心实体 | [[terminology]]、[[domain-models]] |
 | 命名空间如何管理运行环境 | [[namespace]] |
 | 服务发现与健康检查 | [[service-discovery]] |
+| 同一业务服务如何跨环境关联 | [[adr-logical-service-environment-binding]] |
 | 配置文件发布与 Watch | [[config-center]] |
 | 配置模板与 Namespace Value 如何渲染 | [[adr-config-template-client-rendering]] |
 | 路由/限流/熔断等治理规则 | [[governance-rules]] |

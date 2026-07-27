@@ -81,6 +81,13 @@ const (
 	DescribeServiceToken  ServerFunctionName = "DescribeServiceToken"
 	DescribeServiceOwner  ServerFunctionName = "DescribeServiceOwner"
 
+	CreateLogicalServices     ServerFunctionName = "CreateLogicalServices"
+	UpdateLogicalServices     ServerFunctionName = "UpdateLogicalServices"
+	DeleteLogicalServices     ServerFunctionName = "DeleteLogicalServices"
+	DescribeLogicalServices   ServerFunctionName = "DescribeLogicalServices"
+	BindServiceEnvironments   ServerFunctionName = "BindServiceEnvironments"
+	UnbindServiceEnvironments ServerFunctionName = "UnbindServiceEnvironments"
+
 	CreateServiceAlias     ServerFunctionName = "CreateServiceAlias"
 	DeleteServiceAliases   ServerFunctionName = "DeleteServiceAliases"
 	UpdateServiceAlias     ServerFunctionName = "UpdateServiceAlias"
@@ -389,6 +396,12 @@ var ServerFunctions = []ServerFunctionGroup{
 			DescribeAllServices,
 			DescribeServices,
 			DescribeServicesCount,
+			CreateLogicalServices,
+			UpdateLogicalServices,
+			DeleteLogicalServices,
+			DescribeLogicalServices,
+			BindServiceEnvironments,
+			UnbindServiceEnvironments,
 			// DescribeServiceToken,
 			// DescribeServiceOwner,
 			CreateServiceAlias,

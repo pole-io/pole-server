@@ -13,12 +13,13 @@ const configFileService = read('src/services/config_files.ts');
 const configReleaseService = read('src/services/config_release.ts');
 const templatePage = read('src/pages/Configuration/Template/index.tsx');
 const fileView = read('src/pages/Configuration/Group/Files/FileView.tsx');
+const fileCreator = read('src/pages/Configuration/Group/Files/FileCreator.tsx');
 const releaseDetail = read('src/pages/Configuration/Group/Releases/ReleaseDetail.tsx');
 
 assertMatch(
   router,
-  /path:\s*'templates'[\s\S]*pages\/Configuration\/Template[\s\S]*menu\.configuration\.template/,
-  '配置中心必须注册配置模板路由。',
+  /path:\s*'templates'[\s\S]*pages\/Configuration\/Template[\s\S]*menu\.configuration\.template[\s\S]*hidden:\s*true/,
+  '配置模板工作区必须保留深链路由，但不能占用一级菜单。',
 );
 
 for (const [pattern, message] of [
@@ -31,6 +32,15 @@ for (const [pattern, message] of [
   [/code:\s*number[\s\S]*diagnostics:/, 'RenderPreview 必须区分统一 API code 与渲染 diagnostics。'],
 ]) {
   assertMatch(service, pattern, message);
+}
+
+for (const [pattern, message] of [
+  [/普通配置[\s\S]*模板配置/, '新建配置必须显式选择普通配置或模板配置。'],
+  [/describeConfigTemplateReleases/, '模板配置创建必须加载不可变 Template Release。'],
+  [/templateBinding/, '模板配置创建必须通过单次 ConfigFile 创建请求携带 binding。'],
+  [/管理模板库与当前 Namespace Value/, '创建流程必须提供当前 Namespace Value 的模板库入口。'],
+]) {
+  assertMatch(fileCreator, pattern, message);
 }
 
 for (const [pattern, message] of [

@@ -27,11 +27,11 @@ const namespaceName = betweenColumns(read('src/pages/Namespace/index.tsx'), 'nam
 assert(namespaceName.includes('ResourceNameLink'), '命名空间名称必须是查看链接');
 assert(!namespaceName.includes('metadata') && !namespaceName.includes('editable'), '命名空间名称列不能混入标签或权限状态');
 
-const serviceName = betweenColumns(read('src/pages/Discovery/Services/services.tsx'), 'name', 'namespace');
+const serviceName = betweenColumns(read('src/pages/Discovery/Services/services.tsx'), 'name', 'environment_count');
 assert(serviceName.includes('ResourceNameLink'), '服务名称必须是查看链接');
 assert(!serviceName.includes('comment') && !serviceName.includes('serviceMeta'), '服务名称列不能混入描述');
 
-const configGroupName = betweenColumns(read('src/pages/Configuration/Group/group.tsx'), 'name', 'namespace');
+const configGroupName = betweenColumns(read('src/pages/Configuration/Group/group.tsx'), 'name', 'namespaceCount');
 assert(configGroupName.includes('ResourceNameLink'), '配置分组名称必须是查看链接');
 
 const governanceName = betweenColumns(read('src/pages/Governance/Workbench/index.tsx'), 'name', 'typeLabel');

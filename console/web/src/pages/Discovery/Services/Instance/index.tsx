@@ -19,6 +19,7 @@ export default React.memo(() => {
     const namespace = urlParams.get('namespace');
     const serviceName = urlParams.get('service');
     const editMode = urlParams.get('mode') === 'edit';
+    const logicalServiceId = urlParams.get('logicalServiceId') || '';
 
     const [activeTab, setActiveTab] = React.useState('0');
 
@@ -26,15 +27,19 @@ export default React.memo(() => {
         <>
             <Breadcrumb maxItemWidth="200px">
                 <BreadcrumbItem onClick={() => {
-                    navigate(-1);
+                    if (logicalServiceId) {
+                        navigate(`/discovery/service/detail?id=${encodeURIComponent(logicalServiceId)}`);
+                    } else {
+                        navigate(-1);
+                    }
                 }}>
-                    {namespace}
+                    {logicalServiceId ? '逻辑服务' : namespace}
                 </BreadcrumbItem>
                 <BreadcrumbItem>
                     {serviceName}
                 </BreadcrumbItem>
             </Breadcrumb>
-            <Tabs style={{ marginTop: 20 }} value={activeTab} onChange={(v) => setActiveTab(v as string)}>
+            <Tabs style={{ marginTop: 20 }} value={activeTab} onChange={(v: string) => setActiveTab(v)}>
                 <TabPanel value={"0"} label="服务详情">
                     {activeTab === '0' && (
                         <ServiceDetail
@@ -42,6 +47,7 @@ export default React.memo(() => {
                             serviceName={serviceName || ''}
                             onTabChange={setActiveTab}
                             initialEdit={editMode}
+                            logicalServiceId={logicalServiceId}
                         />
                     )}
                 </TabPanel>

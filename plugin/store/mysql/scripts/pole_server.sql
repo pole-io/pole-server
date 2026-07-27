@@ -190,6 +190,40 @@ CREATE TABLE
         UNIQUE KEY `subject` (`subject`)
     ) ENGINE = InnoDB;
 
+-- Control-plane-only logical services. Runtime SDKs continue to address
+-- services by namespace and service name.
+CREATE TABLE
+    `logical_service` (
+        `id` VARCHAR(32) NOT NULL COMMENT 'Control-plane logical service ID',
+        `name` VARCHAR(128) COLLATE utf8_bin NOT NULL COMMENT 'Logical service display name',
+        `comment` VARCHAR(1024) DEFAULT NULL,
+        `owner` VARCHAR(1024) NOT NULL DEFAULT '',
+        `business` VARCHAR(64) DEFAULT NULL,
+        `department` VARCHAR(1024) DEFAULT NULL,
+        `revision` VARCHAR(32) NOT NULL,
+        `flag` TINYINT (4) NOT NULL DEFAULT 0,
+        `active_name` VARCHAR(128) COLLATE utf8_bin GENERATED ALWAYS AS
+            (CASE WHEN `flag` = 0 THEN `name` ELSE NULL END) STORED,
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uk_logical_service_active_name` (`active_name`),
+        KEY `idx_logical_service_mtime` (`mtime`)
+    ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_bin;
+
+CREATE TABLE
+    `service_environment_binding` (
+        `logical_service_id` VARCHAR(32) NOT NULL,
+        `service_id` VARCHAR(32) NOT NULL,
+        `namespace` VARCHAR(64) COLLATE utf8_bin NOT NULL,
+        `service_name` VARCHAR(128) COLLATE utf8_bin NOT NULL,
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`service_id`),
+        UNIQUE KEY `uk_logical_service_namespace` (`logical_service_id`, `namespace`),
+        KEY `idx_environment_binding_logical` (`logical_service_id`)
+    ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_bin;
+
 -- --------------------------------------------------------
 --
 -- Data in the conveyor `service`

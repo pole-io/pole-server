@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/encoding/protojson"
 
@@ -48,13 +49,17 @@ func (s *Server) CreateConfigFiles(ctx context.Context, reqs []*apiconfig.Config
 
 // CreateConfigFile 创建配置文件
 func (s *Server) CreateConfigFile(ctx context.Context, req *apiconfig.ConfigFile) *apimodel.Response {
-	savaData := conftypes.ToConfigFileStore(req)
-	if errResp := s.chains.BeforeCreateFile(ctx, savaData); errResp != nil {
-		return errResp
-	}
-
 	if rsp := s.prepareCreateConfigFile(ctx, req); rsp.Code != api.ExecuteSuccess {
 		return rsp
+	}
+	templateBinding, rsp := s.prepareCreateTemplateBinding(req)
+	if rsp != nil {
+		return rsp
+	}
+
+	saveData := conftypes.ToConfigFileStore(req)
+	if errResp := s.chains.BeforeCreateFile(ctx, saveData); errResp != nil {
+		return errResp
 	}
 
 	tx, err := s.storage.StartTx()
@@ -66,9 +71,15 @@ func (s *Server) CreateConfigFile(ctx context.Context, req *apiconfig.ConfigFile
 		_ = tx.Rollback()
 	}()
 
-	resp := s._handleCreateConfigFile(ctx, tx, savaData)
+	resp := s._handleCreateConfigFile(ctx, tx, saveData)
 	if resp.GetCode() != uint32(apimodel.Code_ExecuteSuccess) {
 		return resp
+	}
+	if templateBinding != nil {
+		if err := s.storage.CreateConfigTemplateBindingTx(tx, templateBinding); err != nil {
+			log.Error("[Config][File] create template binding.", utils.RequestID(ctx), zap.Error(err))
+			return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		log.Error("[Config][File] create config file commit tx.", utils.RequestID(ctx), zap.Error(err))
@@ -76,6 +87,42 @@ func (s *Server) CreateConfigFile(ctx context.Context, req *apiconfig.ConfigFile
 	}
 	s.RecordHistory(ctx, configFileRecordEntry(ctx, req, types.OCreate))
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
+}
+
+func (s *Server) prepareCreateTemplateBinding(
+	file *apiconfig.ConfigFile) (*conftypes.ConfigTemplateBinding, *apimodel.Response) {
+	if file.GetConfigType() != apiconfig.ConfigFile_CONFIG_TEMPLATE {
+		if file.GetTemplateBinding() != nil {
+			return nil, api.NewConfigResponse(apimodel.Code_InvalidParameter)
+		}
+		return nil, nil
+	}
+	binding := file.GetTemplateBinding()
+	if binding == nil || binding.GetTemplateId() == 0 || binding.GetTemplateReleaseId() == "" {
+		return nil, api.NewConfigResponse(apimodel.Code_InvalidParameter)
+	}
+	release, err := s.storage.GetConfigTemplateRelease(binding.GetTemplateReleaseId())
+	if err != nil {
+		return nil, api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+	}
+	if release == nil {
+		return nil, api.NewConfigResponse(apimodel.Code_NotFoundResource)
+	}
+	if release.TemplateID != binding.GetTemplateId() {
+		return nil, api.NewConfigResponse(apimodel.Code_DataConflict)
+	}
+	if binding.GetBindingReleaseId() == "" {
+		binding.BindingReleaseId = uuid.NewString()
+	}
+	return &conftypes.ConfigTemplateBinding{
+		BindingReleaseID:  binding.GetBindingReleaseId(),
+		Namespace:         file.GetNamespace(),
+		Group:             file.GetGroup(),
+		FileName:          file.GetName(),
+		TemplateID:        binding.GetTemplateId(),
+		TemplateReleaseID: binding.GetTemplateReleaseId(),
+		Version:           1,
+	}, nil
 }
 
 // handleCreateConfigFile .

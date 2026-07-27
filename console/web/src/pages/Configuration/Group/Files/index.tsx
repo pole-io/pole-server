@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button, Tooltip, Breadcrumb, Tree, Input, TreeInstanceFunctions, Popconfirm, Tag } from 'components/Fluent';
 import { Delete1Icon, FileAddIcon, Icon, RefreshIcon } from 'components/Fluent/icons';
-import { useNavigate, BrowserRouterProps } from 'components/Router';
+import { useNavigate } from 'components/Router';
 import type { TreeProps, TreeNodeModel } from 'components/Fluent';
 
 import AuthorizeInput from 'components/Authorize';
@@ -19,9 +19,6 @@ import { describeConfigGroupEnvironments, type ConfigFileGroupView } from 'servi
 import EnvironmentResourceSwitcher from 'components/EnvironmentResourceSwitcher';
 
 const { BreadcrumbItem } = Breadcrumb;
-interface IFileListProps {
-}
-
 const renderIcon: TreeProps['icon'] = (node) => {
     let name = 'file';
     if (node.getChildren(true)) {
@@ -86,7 +83,7 @@ const renderTree = (files: ConfigFileView[]) => {
     return root;
 }
 
-export default React.memo((props: IFileListProps & BrowserRouterProps) => {
+export default React.memo(() => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate()
     const urlParams = new URLSearchParams(window.location.search);
@@ -315,6 +312,13 @@ export default React.memo((props: IFileListProps & BrowserRouterProps) => {
                         <div className={style.fileExplorerTitle}>
                             <span>配置文件</span>
                             <div className={style.fileExplorerActions}>
+                            <Button
+                                variant="text"
+                                size="small"
+                                onClick={() => navigate(`/configuration/templates?namespace=${encodeURIComponent(namespace || '')}&returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
+                            >
+                                模板库
+                            </Button>
                             <Tooltip content={activeGroup?.editable ? '新建配置文件' : '没有权限'}>
                                 <Button
                                     shape="square"

@@ -51,6 +51,11 @@ func (svr *Server) ensureSystemRoles() error {
 			return err
 		}
 		if saved != nil {
+			if !containsAllFunctions(saved.CalleeMethods, policy.CalleeMethods) {
+				if err := svr.storage.UpdateStrategy(policy); err != nil {
+					return fmt.Errorf("repair system role policy %s: %w", policy.Name, err)
+				}
+			}
 			continue
 		}
 		tx, err := svr.storage.StartTx()
@@ -67,6 +72,19 @@ func (svr *Server) ensureSystemRoles() error {
 		}
 	}
 	return nil
+}
+
+func containsAllFunctions(saved, canonical []string) bool {
+	available := make(map[string]struct{}, len(saved))
+	for _, function := range saved {
+		available[function] = struct{}{}
+	}
+	for _, function := range canonical {
+		if _, ok := available[function]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func systemRolePolicies() []*authtypes.StrategyDetail {
@@ -161,6 +179,9 @@ func managementFunctions() []string {
 		string(authtypes.DescribePrincipalResources), string(authtypes.AuthorizeResources),
 		string(authtypes.CreateAuthRoles), string(authtypes.UpdateAuthRoles), string(authtypes.DeleteAuthRoles),
 		string(authtypes.DescribeAuthRoles), string(authtypes.DescribeAuthRoleDetail),
+		string(authtypes.CreateLogicalServices), string(authtypes.UpdateLogicalServices),
+		string(authtypes.DeleteLogicalServices), string(authtypes.DescribeLogicalServices),
+		string(authtypes.BindServiceEnvironments), string(authtypes.UnbindServiceEnvironments),
 		"DescribeServer*", "CloseConnections", "FreeOSMemory", "ReleaseLeaderElection", "UpdateLogOutputLevel",
 	}
 }

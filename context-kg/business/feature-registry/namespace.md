@@ -1,8 +1,8 @@
 ---
 title: 命名空间（`pkg/namespace/`）
 tags: [business, feature, namespace]
-links: [architecture, storage, service-discovery]
-updated: 2026-07-23
+links: [architecture, storage, service-discovery, adr-logical-service-environment-binding]
+updated: 2026-07-28
 sources: 6
 ---
 
@@ -12,7 +12,8 @@ sources: 6
 
 ## 跨环境资源身份
 
-- 服务名是全局逻辑服务标识；`namespace + serviceName` 定位该服务的一个环境实例。
+- `namespace + runtimeServiceName` 定位一个环境服务；跨环境逻辑服务使用控制面稳定 ID，
+  并通过显式环境关联连接不同名称的环境服务。
 - 配置分组名是跨环境逻辑标识；`namespace + groupName` 定位该分组的一个环境实例。
 - 配置文件以 `groupName + fileName` 作为跨环境逻辑标识；`namespace + groupName + fileName` 定位具体环境中的文件。
 - 治理规则以 `ruleType + ruleName` 作为跨环境逻辑标识；`namespace + ruleType + ruleName` 定位具体环境中的规则。
@@ -64,3 +65,4 @@ DefaultTTL          = 5
 - [[architecture]]
 - [[storage]]
 - [[service-discovery]]
+- [[adr-logical-service-environment-binding]]

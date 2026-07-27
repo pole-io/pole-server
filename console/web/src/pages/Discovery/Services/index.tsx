@@ -20,9 +20,9 @@ export default React.memo(() => {
     return (
         <div className={style.page}>
             <ResourceHeader
-                eyebrow="注册发现 / 服务实例"
-                title="注册发现"
-                description="服务名是全局逻辑标识；同名服务在不同命名空间中表示该服务的不同环境实例。"
+                eyebrow="注册发现 / 逻辑服务"
+                title="服务"
+                description="逻辑服务用于跨环境聚合；每个环境继续使用自己的 Namespace 与运行时服务名。"
                 actions={(
                     <>
                     <Tooltip content="刷新服务列表">
@@ -30,7 +30,7 @@ export default React.memo(() => {
                             <RefreshIcon />
                         </Button>
                     </Tooltip>
-                    <Button theme="primary" icon={<AddIcon />} onClick={createService}>新建服务</Button>
+                    <Button theme="primary" icon={<AddIcon />} onClick={createService}>新建逻辑服务</Button>
                     </>
                 )}
             />

@@ -6,7 +6,12 @@ import { CopyIcon, LinkIcon, ViewListIcon } from 'components/Fluent/icons';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { listOneService, selectService } from 'modules/discovery/service';
 import { describeServiceAlias } from 'services/alias';
-import { describeServiceEnvironments, type ServiceView } from 'services/service';
+import { type ServiceView } from 'services/service';
+import {
+    describeLogicalServiceEnvironments,
+    resolveServiceEnvironmentBinding,
+    ServiceEnvironmentBindingView,
+} from 'services/logical_service';
 import EnvironmentResourceSwitcher from 'components/EnvironmentResourceSwitcher';
 import { copyToClipboard } from 'utils/sys';
 import { openErrNotification } from 'utils/notifition';
@@ -18,6 +23,7 @@ interface IServiceDetailProps {
     serviceName: string;
     onTabChange: (tab: '1' | '2') => void;
     initialEdit?: boolean;
+    logicalServiceId?: string;
 }
 
 const emptyText = '—';
@@ -29,14 +35,21 @@ const parseCount = (value?: string) => {
     return Number.isNaN(parsed) ? 0 : parsed;
 };
 
-const ServiceDetail: React.FC<IServiceDetailProps> = ({ namespace, serviceName, onTabChange, initialEdit = false }) => {
+const ServiceDetail: React.FC<IServiceDetailProps> = ({
+    namespace,
+    serviceName,
+    onTabChange,
+    initialEdit = false,
+    logicalServiceId = '',
+}) => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const { editSvc, viewSvc } = useAppSelector(selectService);
     const [loading, setLoading] = React.useState(false);
     const [aliasCount, setAliasCount] = React.useState<number | null>(null);
     const [editing, setEditing] = React.useState(initialEdit);
-    const [environmentServices, setEnvironmentServices] = React.useState<ServiceView[]>([]);
+    const [environmentServices, setEnvironmentServices] = React.useState<ServiceEnvironmentBindingView[]>([]);
+    const [resolvedLogicalId, setResolvedLogicalId] = React.useState(logicalServiceId);
 
     const reloadService = React.useCallback(() => {
         let active = true;
@@ -86,25 +99,40 @@ const ServiceDetail: React.FC<IServiceDetailProps> = ({ namespace, serviceName, 
     React.useEffect(() => reloadService(), [reloadService]);
 
     React.useEffect(() => {
-        let active = true;
-        if (!serviceName) return () => { active = false; };
-        describeServiceEnvironments(serviceName)
-            .then((items) => {
-                if (active) setEnvironmentServices(items);
-            })
-            .catch(() => {
-                if (active) setEnvironmentServices([]);
-            });
-        return () => { active = false; };
-    }, [serviceName]);
-
-    React.useEffect(() => {
         setEditing(initialEdit);
     }, [initialEdit, namespace, serviceName]);
 
     const service = viewSvc?.namespace === namespace && viewSvc?.name === serviceName
         ? viewSvc as ServiceView
         : null;
+
+    React.useEffect(() => {
+        let active = true;
+        const loadBindings = async () => {
+            if (!service?.id) {
+                setResolvedLogicalId('');
+                setEnvironmentServices([]);
+                return;
+            }
+            const binding = await resolveServiceEnvironmentBinding(service.id);
+            const nextLogicalId = 'logical_service_id' in binding ? binding.logical_service_id : '';
+            if (!active) return;
+            setResolvedLogicalId(nextLogicalId);
+            if (!nextLogicalId) {
+                setEnvironmentServices([]);
+                return;
+            }
+            const result = await describeLogicalServiceEnvironments(nextLogicalId);
+            if (active) setEnvironmentServices(result.list);
+        };
+        loadBindings().catch(() => {
+            if (active) {
+                setResolvedLogicalId('');
+                setEnvironmentServices([]);
+            }
+        });
+        return () => { active = false; };
+    }, [service?.id]);
     const metadata = Object.entries(service?.metadata || {});
     const totalInstances = parseCount(service?.total_instance_count);
     const healthyInstances = parseCount(service?.healthy_instance_count);
@@ -138,16 +166,24 @@ const ServiceDetail: React.FC<IServiceDetailProps> = ({ namespace, serviceName, 
                 resourceLabel="服务"
                 items={environmentServices.map((item) => ({
                     namespace: item.namespace,
-                    summary: `${parseCount(item.healthy_instance_count)}/${parseCount(item.total_instance_count)} 健康实例`,
+                    summary: `${item.service_name} · ${parseCount(item.service?.healthy_instance_count)}/${parseCount(item.service?.total_instance_count)} 健康实例`,
                 }))}
                 onSelect={(nextNamespace) => {
+                    const binding = environmentServices.find(item => item.namespace === nextNamespace);
+                    if (!binding) return;
                     const params = new URLSearchParams(window.location.search);
                     params.set('namespace', nextNamespace);
-                    params.set('service', serviceName);
+                    params.set('service', binding.service_name);
+                    if (resolvedLogicalId) params.set('logicalServiceId', resolvedLogicalId);
                     params.delete('mode');
                     navigate(`${window.location.pathname}?${params.toString()}`);
                 }}
             />
+            {!resolvedLogicalId && (
+                <div className={style.unboundNotice}>
+                    当前环境服务尚未关联逻辑服务，因此不参与跨环境聚合。
+                </div>
+            )}
             <section className={style.detailHeader}>
                 <div className={style.detailIdentity}>
                     <div className={style.detailIcon} aria-hidden="true">svc</div>

@@ -23,6 +23,33 @@ export interface ConfigFileGroupView extends ConfigFileGroup {
     deleteable: boolean
 }
 
+export interface ConfigGroupSummary {
+    name: string
+    environments: ConfigFileGroupView[]
+    namespaceCount: number
+    fileCount: number
+    editable: boolean
+}
+
+export function summarizeConfigGroups(groups: ConfigFileGroupView[]): ConfigGroupSummary[] {
+    const summaries = new Map<string, ConfigGroupSummary>()
+    groups.forEach((group) => {
+        const current = summaries.get(group.name) ?? {
+            name: group.name,
+            environments: [],
+            namespaceCount: 0,
+            fileCount: 0,
+            editable: false,
+        }
+        current.environments.push(group)
+        current.namespaceCount = current.environments.length
+        current.fileCount += Number(group.fileCount || 0)
+        current.editable = current.editable || group.editable
+        summaries.set(group.name, current)
+    })
+    return Array.from(summaries.values()).sort((left, right) => left.name.localeCompare(right.name))
+}
+
 type ApiConfigFileGroup = ConfigFileGroupView & {
     ctime?: string
     mtime?: string
@@ -46,7 +73,7 @@ function normalizeConfigFileGroup(group: ApiConfigFileGroup): ConfigFileGroupVie
 }
 
 function toApiConfigGroupQuery(params: DescribeConfigFileGroupRequest) {
-    const { group, file_name, ...rest } = params;
+    const { group, file_name: _fileName, ...rest } = params;
     const query: Record<string, unknown> = {
         ...rest,
         name: group || undefined,

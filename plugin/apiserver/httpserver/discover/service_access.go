@@ -44,6 +44,7 @@ func (h *HTTPServer) addServiceAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichGetServiceAliasesApiDocs(ws.GET("/service/aliases").To(h.GetServiceAliases)))
 	ws.Route(docs.EnrichDeleteServiceAliasesApiDocs(ws.POST("/service/aliases/delete").To(h.DeleteServiceAliases)))
 	ws.Route(docs.EnrichDeleteServiceAliasesApiDocs(ws.GET("/service/subscribers").To(h.GetServiceSubscribers)))
+	h.addLogicalServiceAccess(ws)
 
 	// 服务契约相关
 	ws.Route(docs.EnrichCreateServiceContractsApiDocs(ws.POST("/service/contracts").To(h.CreateServiceContract)))

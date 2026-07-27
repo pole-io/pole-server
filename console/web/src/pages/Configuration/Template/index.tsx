@@ -15,6 +15,7 @@ import {
 import { AddIcon, RefreshIcon, RocketIcon, SaveIcon } from 'components/Fluent/icons';
 import CodeEditor from 'components/CodeEditor';
 import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout';
+import { useNavigate, useSearchParams } from 'components/Router';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import { toRequestErrorPayload } from 'utils/request';
 import { describeAllNamespaces } from 'services/namespace';
@@ -74,6 +75,12 @@ const initialValues = (template: ConfigFileTemplate) => Object.fromEntries(
 );
 
 const TemplateWorkspace: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedTemplateId = searchParams.get('templateId') || '';
+  const requestedNamespace = searchParams.get('namespace') || '';
+  const requestedTab = searchParams.get('tab') as WorkspaceTab | null;
+  const returnTo = searchParams.get('returnTo') || '';
   const [templates, setTemplates] = React.useState<ConfigFileTemplate[]>([]);
   const [selectedId, setSelectedId] = React.useState<string>('');
   const [draft, setDraft] = React.useState<ConfigFileTemplate>(emptyTemplate());
@@ -100,12 +107,14 @@ const TemplateWorkspace: React.FC = () => {
     [selectedId, templates],
   );
 
-  const loadTemplates = React.useCallback(async (preferredName?: string) => {
+  const loadTemplates = React.useCallback(async (preferredName?: string, preferredId?: string) => {
     setLoading(true);
     try {
       const result = await describeConfigTemplates();
       setTemplates(result.templates);
-      const preferred = preferredName
+      const preferred = preferredId
+        ? result.templates.find(item => String(item.id) === preferredId)
+        : preferredName
         ? result.templates.find(item => item.name === preferredName)
         : result.templates.find(item => String(item.id) === selectedId) || result.templates[0];
       if (preferred) setSelectedId(String(preferred.id));
@@ -121,12 +130,12 @@ const TemplateWorkspace: React.FC = () => {
   }, [selectedId]);
 
   React.useEffect(() => {
-    loadTemplates();
+    loadTemplates(undefined, requestedTemplateId);
     describeAllNamespaces()
       .then(items => {
         const names = items.map(item => item.name);
         setNamespaces(names);
-        setNamespace(current => current || names[0] || '');
+        setNamespace(current => requestedNamespace || current || names[0] || '');
       })
       .catch(error => openErrNotification('加载命名空间失败', toRequestErrorPayload(error)));
     // 初始化只执行一次，后续刷新由显式操作触发。
@@ -142,8 +151,10 @@ const TemplateWorkspace: React.FC = () => {
     });
     setEditing(false);
     setPreview(undefined);
-    setActiveTab('definition');
-  }, [selected]);
+    setActiveTab(requestedTab && ['definition', 'values', 'releases', 'preview'].includes(requestedTab)
+      ? requestedTab
+      : 'definition');
+  }, [requestedTab, selected]);
 
   React.useEffect(() => {
     if (!draft.id) {
@@ -392,6 +403,7 @@ const TemplateWorkspace: React.FC = () => {
         description="全局维护模板与参数 Schema，各 Namespace 独立维护 Value；配置文件显式固定不可变模板版本。"
         actions={(
           <Space>
+            {returnTo && <Button variant="outline" onClick={() => navigate(returnTo)}>返回配置分组</Button>}
             <Button variant="outline" icon={<RefreshIcon />} onClick={() => loadTemplates()}>刷新</Button>
             <Button
               theme="primary"

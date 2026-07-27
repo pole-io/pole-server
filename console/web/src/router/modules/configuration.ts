@@ -22,6 +22,7 @@ const configuration: IRouter[] = [
         Component: lazy(() => import('pages/Configuration/Template')),
         meta: {
           title: 'menu.configuration.template',
+          hidden: true,
         },
       },
       // 这里的路由是为了在服务列表中点击实例跳转到实例详情页

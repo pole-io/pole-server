@@ -1,14 +1,19 @@
 ---
 title: 服务发现（`pkg/service/`）
 tags: [business, feature, service, healthcheck]
-links: [namespace, architecture, storage, cache-layer, governance-rules, adr-instance-active-healthcheck, adr-service-contract-reporting-and-visualization]
-updated: 2026-07-27
+links: [namespace, architecture, storage, cache-layer, governance-rules, adr-instance-active-healthcheck, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding]
+updated: 2026-07-28
 sources: 7
 ---
 
 # 服务发现（`pkg/service/`）
 
-核心服务网格功能。服务名称是全局逻辑标识，同名服务在不同命名空间中表示同一服务的不同环境实例；每个环境实例独立管理实例、客户端状态和运行数据。整体架构见 [[architecture]]，命名空间依赖见 [[namespace]]，存储接口见 [[storage]]，缓存层见 [[cache-layer]]，治理规则见 [[governance-rules]]，实例主动检查见 [[adr-instance-active-healthcheck]]。
+核心服务网格功能。环境服务以 `namespace + runtimeServiceName` 标识，独立管理实例、客户端状态、
+契约和运行数据。跨环境业务身份由控制面 `LogicalService` 稳定 ID 表达，管理员通过显式关联把
+名称不同的环境服务归入同一逻辑服务；SDK 与数据面不感知该 ID。完整决策见
+[[adr-logical-service-environment-binding]]。整体架构见 [[architecture]]，命名空间依赖见
+[[namespace]]，存储接口见 [[storage]]，缓存层见 [[cache-layer]]，治理规则见
+[[governance-rules]]，实例主动检查见 [[adr-instance-active-healthcheck]]。
 
 ## `DiscoverServer` 接口
 
@@ -66,3 +71,4 @@ Dubbo 额外兼容 Metadata Center 的应用修订快照与 provider 运维定�
 - [[governance-rules]]
 - [[adr-instance-active-healthcheck]]
 - [[adr-service-contract-reporting-and-visualization]]
+- [[adr-logical-service-environment-binding]]

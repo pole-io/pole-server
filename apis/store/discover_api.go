@@ -29,6 +29,8 @@ import (
 type DiscoverStore interface {
 	// ServiceStore 服务接口
 	ServiceStore
+	// LogicalServiceStore 控制面逻辑服务接口
+	LogicalServiceStore
 	// InstanceStore 实例接口
 	InstanceStore
 	// RateLimitStore 限流规则接口
@@ -45,6 +47,22 @@ type DiscoverStore interface {
 	ServiceContractStore
 	// LaneStore 泳道规则存储操作接口
 	LaneStore
+}
+
+// LogicalServiceStore stores control-plane logical services and their explicit
+// bindings to existing environment services.
+type LogicalServiceStore interface {
+	CreateLogicalService(service *svctypes.LogicalService) error
+	UpdateLogicalService(service *svctypes.LogicalService, previousRevision string) error
+	DeleteLogicalService(id string) error
+	GetLogicalService(id string) (*svctypes.LogicalService, error)
+	ListLogicalServices(name string, offset, limit uint32) (uint32, []*svctypes.LogicalService, error)
+	BindServiceEnvironment(binding *svctypes.ServiceEnvironmentBinding, revision string) error
+	UnbindServiceEnvironment(logicalServiceID, serviceID, revision string) error
+	ListServiceEnvironmentBindings(logicalServiceID string) ([]*svctypes.ServiceEnvironmentBinding, error)
+	ListServiceEnvironmentBindingsByLogicalIDs(
+		logicalServiceIDs []string) (map[string][]*svctypes.ServiceEnvironmentBinding, error)
+	GetServiceEnvironmentBinding(serviceID string) (*svctypes.ServiceEnvironmentBinding, error)
 }
 
 // ServiceStore 服务存储接口

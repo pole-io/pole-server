@@ -21,6 +21,7 @@
     "test:login-redirect": "node scripts/verify-login-redirect-contract.mjs",
     "test:resource-name-links": "node scripts/verify-resource-name-links.mjs",
     "test:cross-environment-resources": "node scripts/verify-cross-environment-resource-views.mjs",
+    "test:logical-service-console": "node scripts/verify-logical-service-console.mjs",
     "test:config-file-detail-layout": "node scripts/verify-config-file-detail-layout.mjs",
     "test:config-template-console": "node scripts/verify-config-template-console.mjs",
     "test:auth-detail-layout": "node scripts/verify-auth-standalone-detail-layout.mjs",

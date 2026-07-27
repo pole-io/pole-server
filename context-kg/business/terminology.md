@@ -1,8 +1,8 @@
 ---
 title: 领域术语表
 tags: [business, terminology]
-links: [domain-models, business-rules, auth-system, adr-console-agent-resource-workbench, adr-system-configuration-control-plane, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization]
-updated: 2026-07-27
+links: [domain-models, business-rules, auth-system, adr-console-agent-resource-workbench, adr-system-configuration-control-plane, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding]
+updated: 2026-07-28
 sources: 0
 ---
 
@@ -11,7 +11,8 @@ sources: 0
 | 中文术语 | English | 含义 |
 |----------|---------|------|
 | 命名空间 | Namespace | Pole 的运行环境边界；服务、配置、治理规则等资源在各命名空间中形成相互隔离的环境实例 |
-| 服务 | Service | 由全局唯一服务名标识的逻辑服务；同名服务在不同命名空间中的记录表示该服务的不同环境实例 |
+| 逻辑服务 | Logical Service | 由控制面稳定 ID 标识的跨环境业务服务；聚合多个显式关联的环境服务，SDK 不感知该 ID |
+| 环境服务 | Service Environment | 由 `namespace + runtimeServiceName` 标识的运行时服务记录，独立承载实例、契约和运行状态 |
 | 实例 | Instance | 服务的运行节点，包含 host、port、协议、健康状态、隔离状态和元数据 |
 | 服务契约 | Service Contract | 协议原始定义与可检索接口投影的组合；原文是事实来源，投影用于发现、治理和展示 |
 | Dubbo 元数据快照 | Dubbo Metadata Snapshot | Dubbo 按 application 与 metadata revision 聚合的接口配置和方法定义 |
@@ -47,3 +48,4 @@ sources: 0
 - [[adr-system-configuration-control-plane]]
 - [[adr-rpc-first-governance-scope]]
 - [[adr-service-contract-reporting-and-visualization]]
+- [[adr-logical-service-environment-binding]]

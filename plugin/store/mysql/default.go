@@ -50,6 +50,7 @@ type stableStore struct {
 
 	// 服务治理中心 stores
 	*serviceStore
+	*logicalServiceStore
 	*instanceStore
 	*routerRuleStore
 	*rateLimitStore
@@ -137,6 +138,9 @@ func (s *stableStore) Initialize(conf *store.Config) error {
 		return err
 	}
 	if err := ensureServiceIdentitySchema(s.master); err != nil {
+		return err
+	}
+	if err := ensureLogicalServiceSchema(s.master); err != nil {
 		return err
 	}
 	if err := ensureGovernanceRuleSchema(s.master); err != nil {
@@ -275,6 +279,7 @@ func (s *stableStore) newStore() {
 	s.namespaceStore = &namespaceStore{master: s.master, slave: s.slave}
 
 	s.serviceStore = &serviceStore{master: s.master, slave: s.slave}
+	s.logicalServiceStore = &logicalServiceStore{master: s.master, slave: s.slave}
 	s.instanceStore = &instanceStore{master: s.master, slave: s.slave}
 	governanceRepo := newGovernanceRuleRepository(s.master, s.slave)
 	s.routerRuleStore = &routerRuleStore{master: s.master, slave: s.slave, governanceRuleRepository: governanceRepo}

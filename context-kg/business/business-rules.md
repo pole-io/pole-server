@@ -1,8 +1,8 @@
 ---
 title: 业务规则手册
 tags: [business, rules]
-links: [terminology, domain-models, namespace, service-discovery, config-center, governance-rules, auth-system, adr-governance-rule-unified-storage]
-updated: 2026-07-23
+links: [terminology, domain-models, namespace, service-discovery, config-center, governance-rules, auth-system, adr-governance-rule-unified-storage, adr-logical-service-environment-binding]
+updated: 2026-07-28
 sources: 3
 ---
 
@@ -11,7 +11,8 @@ sources: 3
 ## 跨域规则
 
 - 命名空间明确表示运行环境；所有业务资源必须归属某个环境，系统资源默认位于 `pole-system`。
-- 服务名称是全局逻辑标识；同名服务在不同命名空间中的记录表示同一服务的不同环境实例，而不是互不相关的同名服务。
+- 逻辑服务使用控制面稳定 ID 作为跨环境身份；环境服务继续以 `namespace + runtimeServiceName`
+  标识，只有经过管理员显式关联才属于同一个逻辑服务。
 - 配置分组以名称、配置文件以“分组名 + 文件名”形成跨环境逻辑标识，各命名空间分别保存独立内容、版本和发布状态。
 - 服务、实例、配置、治理规则都采用软删除语义，外部查询默认只返回有效资源。
 - 写操作直接落库，读路径优先通过 cache 获取内存视图。
@@ -19,7 +20,8 @@ sources: 3
 
 ## 服务发现规则
 
-- 服务是发现与治理的核心逻辑对象，服务环境实例以“命名空间 + 服务名”定位。
+- 环境服务是发现与治理的运行时对象，以“命名空间 + 运行时服务名”定位；逻辑服务只负责控制面
+  跨环境聚合，不进入 SDK 或数据面寻址。
 - 实例健康状态、隔离状态和健康检查状态共同决定实例是否参与发现。
 - 空推保护用于避免服务实例全量消失时触发级联故障。
 
@@ -53,3 +55,4 @@ sources: 3
 - [[governance-rules]]
 - [[auth-system]]
 - [[adr-governance-rule-unified-storage]]
+- [[adr-logical-service-environment-binding]]

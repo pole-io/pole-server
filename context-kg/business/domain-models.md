@@ -1,8 +1,8 @@
 ---
 title: 核心业务实体
 tags: [business, domain-model]
-links: [terminology, business-rules, namespace, service-discovery, config-center, governance-rules, ai-features, auth-system, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization]
-updated: 2026-07-27
+links: [terminology, business-rules, namespace, service-discovery, config-center, governance-rules, ai-features, auth-system, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding]
+updated: 2026-07-28
 sources: 3
 ---
 
@@ -11,7 +11,8 @@ sources: 3
 | 实体 | 归属页面 | 说明 |
 |------|----------|------|
 | Namespace | [[namespace]] | 顶层运行环境，统一承载并隔离服务、配置和治理规则的环境实例 |
-| Service | [[service-discovery]] | 服务名是全局逻辑标识；`namespace + serviceName` 定位一个独立环境实例 |
+| Logical Service | [[adr-logical-service-environment-binding]] | 控制面跨环境聚合根，由稳定 ID 标识，SDK 不感知 |
+| Service Environment | [[service-discovery]] | `namespace + runtimeServiceName` 定位一个独立运行环境服务 |
 | Instance | [[service-discovery]] | 服务运行节点，按健康、隔离、位置和元数据参与发现 |
 | Service Contract | [[adr-service-contract-reporting-and-visualization]] | 服务在某版本下的协议原始定义及其统一接口投影 |
 | Dubbo Metadata Snapshot | [[adr-service-contract-reporting-and-visualization]] | 以 application + metadata revision 标识的 Dubbo 原生接口配置快照 |
@@ -27,7 +28,7 @@ sources: 3
 
 ```text
 Namespace
-  -> Service
+  -> Service Environment
     -> Instance
     -> Service Contract
       -> Interface Descriptor
@@ -46,6 +47,10 @@ Service Policy Bundle
 Enforcement Point
   -> Capability Profile
   -> Apply Receipt
+
+Logical Service
+  -> Service Environment Binding
+    -> Namespace + Runtime Service Name
 
 User -> System Role
 User -> UserGroup -> System Role
@@ -66,3 +71,4 @@ System Role -> Immutable Policy
 - [[auth-system]]
 - [[adr-rpc-first-governance-scope]]
 - [[adr-service-contract-reporting-and-visualization]]
+- [[adr-logical-service-environment-binding]]

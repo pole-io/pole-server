@@ -1,336 +1,296 @@
-import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Table, Button, PrimaryTableProps, TableRowData } from 'components/Fluent';
-import { useNavigate } from 'components/Router';
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  Button,
+  Drawer,
+  Input,
+  Select,
+  TabPanel,
+  Table,
+  Tabs,
+  Textarea,
+} from 'components/Fluent'
+import { useNavigate } from 'components/Router'
 
-import Text from 'components/Text';
-import { ConfirmOperationButton, OperationButton, OperationButtonGroup } from 'components/OperationButton';
-import { ResourceToolbar } from 'components/ResourceLayout';
-import QueryComposer, { QuerySnapshot } from 'components/QueryComposer';
-import { useAppDispatch, useAppSelector } from 'modules/store';
-import { NamespaceView } from 'services/namespace';
-import { openErrNotification, openInfoNotification } from 'utils/notifition';
-import ServiceEditor from './ServiceEditor';
-import style from './index.module.less';
-import { cleanServicePage, listServices, removeServices, resetService, selectService } from 'modules/discovery/service';
-import { listAllNamespaces, selectNamespace } from 'modules/namespace';
-import { Op } from 'services/types';
-import ResourceNameLink from 'components/ResourceNameLink';
+import { ResourceToolbar } from 'components/ResourceLayout'
+import ResourceNameLink from 'components/ResourceNameLink'
+import {
+  bindServiceEnvironment,
+  createLogicalService,
+  describeAllLogicalServices,
+  describeLogicalServices,
+  describeUnboundServiceEnvironments,
+  LogicalServiceView,
+} from 'services/logical_service'
+import { ServiceView } from 'services/service'
+import { openErrNotification, openInfoNotification } from 'utils/notifition'
+import style from './index.module.less'
 
-function parseCount(value?: string | number) {
-    const parsed = Number(value ?? 0);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
-
-const hasValue = (value?: string) => value !== undefined && value !== null && value !== '';
-
-const columns = (operateService: (op: Op, row: TableRowData) => void, redirect: (row: TableRowData) => void, t: any): PrimaryTableProps['columns'] => [
-    {
-        colKey: 'name',
-        title: t('services.name'),
-        width: 260,
-        fixed: 'left',
-        cell: ({ row }) => <ResourceNameLink name={row.name} onClick={() => redirect(row)} />,
-    },
-    {
-        colKey: 'namespace',
-        title: '命名空间',
-        width: 180,
-        cell: ({ row: { namespace } }) => <Text>{namespace || '-'}</Text>,
-    },
-    {
-        colKey: 'owner',
-        title: '归属',
-        width: 150,
-        cell: ({ row: { department, business } }) => {
-            if (!hasValue(department) && !hasValue(business)) return <Text>-</Text>;
-            return (
-                <div className={style.compactCell}>
-                    {hasValue(business) && <Text>{business}</Text>}
-                    {hasValue(department) && <span>{department}</span>}
-                </div>
-            );
-        },
-    },
-    {
-        colKey: 'health/total',
-        title: t('services.healthTotal'),
-        width: 150,
-        cell: ({ row: { healthy_instance_count, total_instance_count } }) => {
-            const totalInstances = parseCount(total_instance_count);
-            const healthyInstances = parseCount(healthy_instance_count);
-            const percent = totalInstances > 0 ? Math.round((healthyInstances / totalInstances) * 100) : 0;
-            return (
-                <div className={style.healthCell}>
-                    <div>
-                        <strong>{`${healthyInstances}/${totalInstances}`}</strong>
-                        <span>{totalInstances > 0 ? `${percent}%` : '无实例'}</span>
-                    </div>
-                    <div className={style.healthTrack}>
-                        <i style={{ width: `${percent}%` }} />
-                    </div>
-                </div>
-            );
-        },
-    },
-    {
-        colKey: 'time',
-        title: t('services.time'),
-        width: 180,
-        cell: ({ row: { ctime, mtime } }: TableRowData) => {
-            if (!hasValue(ctime) && !hasValue(mtime)) return <Text>-</Text>;
-            return (
-                <div className={style.compactCell}>
-                    <Text>{mtime || '-'}</Text>
-                    {hasValue(ctime) && <span>{t('services.create')}: {ctime}</span>}
-                </div>
-            );
-        },
-    },
-    {
-        colKey: 'action',
-        title: t('common.action'),
-        width: 86,
-        fixed: 'right',
-        cell: ({ row }) => {
-            return (
-                <OperationButtonGroup className={style.actionCell}>
-                    <OperationButton action="viewEdit" disabled={row.editable === false} disabledLabel={t('services.noPermission')} onClick={() => operateService('view', row)} />
-                    <ConfirmOperationButton action="delete" disabled={row.deleteable === false} disabledLabel={t('services.noPermission')} label={t('common.delete')} confirmContent={t('services.confirmDelete')} onConfirm={() => operateService('delete', row)} />
-                </OperationButtonGroup>
-            )
-        },
-    },
-]
-
-interface IServicesProps {
-
-}
+const pageSize = 10
 
 export interface ServicesTableHandle {
-    refresh: () => void;
-    create: () => void;
+  refresh: () => void
+  create: () => void
 }
 
-const ServicesTable = React.forwardRef<ServicesTableHandle, IServicesProps>((_, ref) => {
-    const { t } = useTranslation();
-    const dispatch = useAppDispatch();
-    const navigate = useNavigate();
+const ServicesTable = React.forwardRef<ServicesTableHandle>((_, ref) => {
+  const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState('logical')
+  const [logicalServices, setLogicalServices] = useState<LogicalServiceView[]>([])
+  const [logicalServiceOptions, setLogicalServiceOptions] = useState<LogicalServiceView[]>([])
+  const [logicalTotal, setLogicalTotal] = useState(0)
+  const [unboundServices, setUnboundServices] = useState<ServiceView[]>([])
+  const [unboundTotal, setUnboundTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [keyword, setKeyword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [creatorVisible, setCreatorVisible] = useState(false)
+  const [bindingTarget, setBindingTarget] = useState<ServiceView | null>(null)
+  const [selectedLogicalId, setSelectedLogicalId] = useState('')
+  const [draft, setDraft] = useState({ name: '', comment: '', business: '', department: '' })
 
-    const { datas, loading, total, page, limit } = useAppSelector(selectService);
-    const { datas: namespaceDatas } = useAppSelector(selectNamespace);
+  const loadLogicalServices = useCallback(async (nextPage = page) => {
+    const result = await describeLogicalServices({
+      name: keyword || undefined,
+      offset: (nextPage - 1) * pageSize,
+      limit: pageSize,
+    })
+    setLogicalServices(result.list)
+    setLogicalTotal(result.totalCount)
+  }, [keyword, page])
 
-    const metric = useMemo(() => {
-        const namespaces = new Set(datas.map((item) => item.namespace).filter(Boolean));
-        const healthy = datas.reduce((sum, item) => sum + parseCount(item.healthy_instance_count), 0);
-        const instances = datas.reduce((sum, item) => sum + parseCount(item.total_instance_count), 0);
-        return {
-            namespaces,
-            healthy,
-            instances,
-        };
-    }, [datas]);
+  const loadUnboundServices = useCallback(async (nextPage = page) => {
+    const result = await describeUnboundServiceEnvironments({
+      name: keyword || undefined,
+      offset: (nextPage - 1) * pageSize,
+      limit: pageSize,
+    })
+    setUnboundServices(result.list)
+    setUnboundTotal(result.totalCount)
+  }, [keyword, page])
 
-    // 合并编辑相关状态
-    const [editorState, setEditorState] = useState<{
-        visible: boolean;
-        mode: Op;
-        data?: TableRowData;
-    }>({ visible: false, mode: 'create', data: undefined });
-    const [query, setQuery] = useState({ namespace: '', name: '' });
+  const loadLogicalServiceOptions = useCallback(async () => {
+    setLogicalServiceOptions(await describeAllLogicalServices())
+  }, [])
 
-    const openServiceDetail = (row?: TableRowData, edit = false) => {
-        if (!row?.namespace || !row?.name) {
-            openErrNotification(t('common.fail'), '服务缺少命名空间或名称，无法打开详情');
-            return;
-        }
-        const params = new URLSearchParams({
-            namespace: String(row.namespace),
-            service: String(row.name),
-        });
-        if (edit) {
-            params.set('mode', 'edit');
-        }
-        navigate(`instance?${params.toString()}`);
-    };
-
-    // 编辑、新建事件
-    const operateService = (op: Op, row?: TableRowData) => {
-        switch (op) {
-            case 'edit':
-                openServiceDetail(row, true);
-                break;
-            case 'create':
-                dispatch(resetService());
-                setEditorState(prev => ({ ...prev, visible: true, mode: op, data: undefined }));
-                break;
-            case 'delete':
-                dispatch(removeServices({ ids: [row?.id as string] }))
-                    .then((res) => {
-                        if (res.meta.requestStatus === 'fulfilled') {
-                            openInfoNotification(t('common.success'), t('services.deleteSuccess'));
-                            // 刷新表格
-                            refreshTable();
-                        } else {
-                            openErrNotification(t('common.fail'), res.payload as string);
-                        }
-                    })
-                break;
-            case 'view':
-                openServiceDetail(row, true);
-                break;
-            default:
-                openErrNotification(t('common.fail'), t('services.unknownOp'));
-                return;
-        }
+  const refresh = useCallback(async (nextPage = page) => {
+    setLoading(true)
+    try {
+      if (activeTab === 'logical') await loadLogicalServices(nextPage)
+      else await Promise.all([loadUnboundServices(nextPage), loadLogicalServiceOptions()])
+    } catch (error) {
+      openErrNotification('获取服务失败', error instanceof Error ? error.message : String(error))
+    } finally {
+      setLoading(false)
     }
+  }, [activeTab, loadLogicalServices, loadLogicalServiceOptions, loadUnboundServices, page])
 
-    React.useEffect(() => {
-        refreshTable();
-        dispatch(listAllNamespaces())
-            .then((res) => {
-                if (res.meta.requestStatus === 'rejected') {
-                    openErrNotification('获取命名空间列表失败', res.payload as string);
-                }
-            });
-        return () => {
-            // 清理编辑器状态
-            dispatch(cleanServicePage());
-        }
-    }, []);
+  useEffect(() => {
+    setPage(1)
+    void refresh(1)
+  }, [activeTab])
 
-    const refreshTable = (page = 1, limit = 10, nextQuery = query) => {
-        dispatch(listServices({
-            param: {
-                offset: (page - 1) * limit,
-                limit: limit,
-                namespace: nextQuery.namespace || undefined,
-                name: nextQuery.name || undefined,
-            }
-        })).then((res) => {
-            if (res.meta.requestStatus === 'rejected') {
-                openErrNotification("获取数据失败", res.payload as string);
-            }
-        });
+  React.useImperativeHandle(ref, () => ({
+    refresh: () => void refresh(),
+    create: () => setCreatorVisible(true),
+  }))
+
+  const metrics = useMemo(() => logicalServices.reduce((result, item) => ({
+    environments: result.environments + Number(item.environment_count || 0),
+    healthy: result.healthy + Number(item.healthy_instance_count || 0),
+    total: result.total + Number(item.total_instance_count || 0),
+  }), { environments: 0, healthy: 0, total: 0 }), [logicalServices])
+
+  const create = async () => {
+    if (!draft.name.trim()) {
+      openErrNotification('无法创建', '请输入逻辑服务名称')
+      return
     }
+    try {
+      await createLogicalService({ ...draft, name: draft.name.trim() })
+      openInfoNotification('创建成功', '逻辑服务已创建')
+      setCreatorVisible(false)
+      setDraft({ name: '', comment: '', business: '', department: '' })
+      await refresh(1)
+    } catch (error) {
+      openErrNotification('创建失败', error instanceof Error ? error.message : String(error))
+    }
+  }
 
-    React.useImperativeHandle(ref, () => ({
-        refresh: () => refreshTable(page, limit, query),
-        create: () => operateService('create'),
-    }));
+  const bind = async () => {
+    if (!bindingTarget?.id || !selectedLogicalId) return
+    try {
+      await bindServiceEnvironment(selectedLogicalId, bindingTarget.id)
+      openInfoNotification('关联成功', `${bindingTarget.namespace}/${bindingTarget.name} 已加入逻辑服务`)
+      setBindingTarget(null)
+      setSelectedLogicalId('')
+      await refresh()
+    } catch (error) {
+      openErrNotification('关联失败', error instanceof Error ? error.message : String(error))
+    }
+  }
 
-    const submitFilter = ({ keyword, values }: QuerySnapshot) => {
-        refreshTable(1, limit, {
-            name: keyword,
-            namespace: String(values.namespace || ''),
-        });
-    };
+  const logicalColumns = [
+    {
+      colKey: 'name',
+      title: '逻辑服务',
+      width: 260,
+      cell: ({ row }: any) => (
+        <ResourceNameLink name={row.name} onClick={() => navigate(`detail?id=${encodeURIComponent(row.id)}`)} />
+      ),
+    },
+    {
+      colKey: 'environment_count',
+      title: '可访问环境',
+      width: 130,
+      cell: ({ row }: any) => `${row.environment_count || 0} 个`,
+    },
+    {
+      colKey: 'health',
+      title: '健康实例',
+      width: 150,
+      cell: ({ row }: any) => `${row.healthy_instance_count || 0}/${row.total_instance_count || 0}`,
+    },
+    {
+      colKey: 'owner',
+      title: '归属',
+      width: 180,
+      cell: ({ row }: any) => row.department || row.business || row.owners || '-',
+    },
+    {
+      colKey: 'mtime',
+      title: '更新时间',
+      width: 180,
+      cell: ({ row }: any) => row.mtime || '-',
+    },
+    {
+      colKey: 'action',
+      title: '操作',
+      width: 100,
+      cell: ({ row }: any) => (
+        <Button variant="text" onClick={() => navigate(`detail?id=${encodeURIComponent(row.id)}`)}>查看 / 编辑</Button>
+      ),
+    },
+  ]
 
-    const resetFilter = () => {
-        const nextQuery = { namespace: '', name: '' };
-        setQuery(nextQuery);
-        refreshTable(1, limit, nextQuery);
-    };
-
-    {/* <!-- :defaultExpandedRowKeys="defaultExpandedRowKeys" --> */ }
-    const table = (
+  const unboundColumns = [
+    {
+      colKey: 'name',
+      title: '运行时服务',
+      width: 260,
+      cell: ({ row }: any) => (
+        <ResourceNameLink
+          name={row.name}
+          onClick={() => navigate(`instance?namespace=${encodeURIComponent(row.namespace)}&service=${encodeURIComponent(row.name)}`)}
+        />
+      ),
+    },
+    { colKey: 'namespace', title: '命名空间', width: 180 },
+    {
+      colKey: 'health',
+      title: '健康实例',
+      width: 150,
+      cell: ({ row }: any) => `${row.healthy_instance_count || 0}/${row.total_instance_count || 0}`,
+    },
+    {
+      colKey: 'action',
+      title: '操作',
+      width: 180,
+      cell: ({ row }: any) => (
         <>
-            <section className={style.metricRail}>
-                <div className={style.metricItem}>
-                    <span>服务数</span>
-                    <strong id="stSvc">{total}</strong>
-                </div>
-                <div className={style.metricItem}>
-                    <span>命名空间</span>
-                    <strong id="stNs">{metric.namespaces.size}</strong>
-                </div>
-                <div className={style.metricItem}>
-                    <span>健康实例</span>
-                    <strong className={style.metricValue}>
-                        <b id="stHealthy">{metric.healthy}</b>
-                        /
-                        <b id="stInst">{metric.instances}</b>
-                    </strong>
-                </div>
-            </section>
-            <section className={style.listSection}>
-                <ResourceToolbar
-                    title="服务清单"
-                    count={<span id="listCount">{loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}</span>}
-                    filters={(
-                        <QueryComposer
-                            keyword={query.name}
-                            keywordPlaceholder="服务名"
-                            suggestions={datas.map((item) => String(item.name || '')).filter(Boolean)}
-                            fields={[
-                                {
-                                    key: 'namespace',
-                                    label: '命名空间',
-                                    type: 'select',
-                                    placeholder: '全部命名空间',
-                                    filterable: true,
-                                    options: namespaceDatas.map((item: NamespaceView) => ({
-                                        label: item.name,
-                                        value: item.name,
-                                    })),
-                                },
-                            ]}
-                            values={{ namespace: query.namespace }}
-                            onKeywordChange={(name) => setQuery((prev) => ({ ...prev, name }))}
-                            onValuesChange={(values) => setQuery((prev) => ({
-                                ...prev,
-                                namespace: String(values.namespace || ''),
-                            }))}
-                            onSubmit={submitFilter}
-                            onReset={resetFilter}
-                        />
-                    )}
-                />
-                {editorState.visible && (
-                    <ServiceEditor
-                        op={editorState.mode}
-                        visible={editorState.visible}
-                        closeDrawer={() => {
-                            // 关闭后重置编辑器状态
-                            dispatch(resetService());
-                            refreshTable();
-                            setEditorState(s => ({ ...s, visible: false }));
-                        }} />
-                )}
-                <section id="tbody" className={`${style.tableSurface} ${style.serviceTableSurface}`}>
-                    <Table
-                        data={datas}
-                        columns={columns(operateService, (row: TableRowData) => {
-                            openServiceDetail(row, false);
-                        }, t)}
-                        loading={loading}
-                        rowKey="id"
-                        size={"large"}
-                        tableLayout="fixed"
-                        cellEmptyContent={'-'}
-                        pagination={{
-                            current: page,
-                            pageSize: limit,
-                            total: total,
-                            showJumper: true,
-                            onChange(pageInfo) {
-                                refreshTable(pageInfo.current, pageInfo.pageSize, query);
-                            },
-                        }}
-                        onPageChange={(pageInfo) => {
-                            refreshTable(pageInfo.current, pageInfo.pageSize, query);
-                        }}
-                    />
-                </section>
-            </section>
+          <Button variant="text" onClick={() => navigate(`instance?namespace=${encodeURIComponent(row.namespace)}&service=${encodeURIComponent(row.name)}`)}>进入环境</Button>
+          <Button variant="text" onClick={() => setBindingTarget(row)}>关联</Button>
         </>
-    );
+      ),
+    },
+  ]
 
-    return (
-        <div className={style.workspace}>
-            {table}
+  const currentTotal = activeTab === 'logical' ? logicalTotal : unboundTotal
+  const currentData = activeTab === 'logical' ? logicalServices : unboundServices
+
+  return (
+    <div className={style.workspace}>
+      <section className={style.metricRail}>
+        <div className={style.metricItem}><span>逻辑服务</span><strong>{logicalTotal}</strong></div>
+        <div className={style.metricItem}><span>环境服务</span><strong>{metrics.environments}</strong></div>
+        <div className={style.metricItem}><span>健康实例</span><strong>{metrics.healthy}/{metrics.total}</strong></div>
+      </section>
+      <Tabs value={activeTab} onChange={(value) => setActiveTab(String(value))}>
+        <TabPanel value="logical" label="逻辑服务" />
+        <TabPanel value="unbound" label={`未关联环境服务${unboundTotal ? ` (${unboundTotal})` : ''}`} />
+      </Tabs>
+      <section className={style.listSection}>
+        <ResourceToolbar
+          title={activeTab === 'logical' ? '逻辑服务清单' : '未关联环境服务'}
+          count={loading ? '正在同步列表' : `共 ${currentTotal} 条`}
+          filters={(
+            <>
+              <Input value={keyword} placeholder={activeTab === 'logical' ? '搜索逻辑服务' : '搜索运行时服务'} onChange={setKeyword} />
+              <Button variant="outline" onClick={() => { setPage(1); void refresh(1) }}>查询</Button>
+            </>
+          )}
+        />
+        <section className={`${style.tableSurface} ${style.serviceTableSurface}`}>
+          <Table
+            data={currentData}
+            columns={activeTab === 'logical' ? logicalColumns : unboundColumns}
+            loading={loading}
+            rowKey="id"
+            pagination={{
+              current: page,
+              pageSize,
+              total: currentTotal,
+              onChange: (info: any) => {
+                const nextPage = info.current || 1
+                setPage(nextPage)
+                void refresh(nextPage)
+              },
+            }}
+            empty={activeTab === 'logical'
+              ? '尚无逻辑服务。先创建逻辑服务，再显式关联已有环境服务。'
+              : '所有可访问环境服务均已关联。'}
+          />
+        </section>
+      </section>
+
+      <Drawer
+        visible={creatorVisible}
+        header="新建逻辑服务"
+        size="min(640px, 94vw)"
+        destroyOnClose
+        onClose={() => setCreatorVisible(false)}
+        footer={<><Button onClick={() => setCreatorVisible(false)}>取消</Button><Button theme="primary" onClick={() => void create()}>创建</Button></>}
+      >
+        <div className={style.logicalForm}>
+          <label><span>逻辑服务名称</span><Input value={draft.name} onChange={name => setDraft(current => ({ ...current, name }))} /></label>
+          <label><span>业务</span><Input value={draft.business} onChange={business => setDraft(current => ({ ...current, business }))} /></label>
+          <label><span>部门</span><Input value={draft.department} onChange={department => setDraft(current => ({ ...current, department }))} /></label>
+          <label><span>说明</span><Textarea value={draft.comment} onChange={comment => setDraft(current => ({ ...current, comment }))} /></label>
         </div>
-    )
-});
+      </Drawer>
 
-export default React.memo(ServicesTable);
+      <Drawer
+        visible={Boolean(bindingTarget)}
+        header="关联到逻辑服务"
+        size="min(560px, 94vw)"
+        destroyOnClose
+        onClose={() => setBindingTarget(null)}
+        footer={<><Button onClick={() => setBindingTarget(null)}>取消</Button><Button theme="primary" disabled={!selectedLogicalId} onClick={() => void bind()}>确认关联</Button></>}
+      >
+        <div className={style.logicalForm}>
+          <p>环境服务：{bindingTarget?.namespace}/{bindingTarget?.name}</p>
+          <label>
+            <span>目标逻辑服务</span>
+            <Select
+              value={selectedLogicalId}
+              placeholder="选择逻辑服务"
+              options={logicalServiceOptions.map(item => ({ label: item.name, value: item.id }))}
+              onChange={setSelectedLogicalId}
+            />
+          </label>
+        </div>
+      </Drawer>
+    </div>
+  )
+})
+
+export default React.memo(ServicesTable)

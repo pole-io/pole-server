@@ -10946,3 +10946,86 @@ control-plane 构建产物滚动更新到本地 Kubernetes。
 - 8080、8090、Gateway 模板深链均返回 HTTP 200；HTTPRoute
   `Accepted=True`、`ResolvedRefs=True`。真实管理员只读调用
   `/config/v1/templates` 返回 `code=200000`。
+
+## 配置中心模板信息架构复核（2026-07-28）
+
+目标：复核配置模板是否应作为配置中心一级入口，并明确配置分组、Namespace、模板定义与配置文件的用户任务层级。
+
+- [x] 对照当前配置模板页面与配置分组环境视图。
+- [x] 核对现有领域身份：配置分组实例为 `namespace + group`，配置文件为 `namespace + group + file`。
+- [x] 区分可复用模板定义的资源归属与模板配置文件的创建入口。
+- [x] 给出以配置分组和 Namespace 为上下文的推荐信息架构。
+
+### Review
+
+- 当前把“配置模板”放在配置管理侧栏一级，与“配置分组”并列，会让用户先维护一个没有
+  Group/Namespace 上下文的全局模板工作台，随后还要回到配置文件详情完成绑定，任务链路断裂。
+- 推荐主流程收敛为“配置分组 → Namespace/环境 → 配置项”，创建配置项时再显式选择
+  “普通配置文件”或“模板配置文件”。模板配置文件固定一个 Template Release，
+  Value 继续按 `Namespace + Template` 维护。
+- 可复用的模板定义仍可保持全局资源，不必错误地变成 Namespace 子资源；但它应作为模板配置文件
+  创建/编辑时的选择器和辅助“模板库”入口，而不是配置中心默认的并列主导航。
+
+## 服务跨环境信息架构讨论（2026-07-28）
+
+目标：讨论服务是否也应采用“逻辑资源 → Namespace/环境实例 → 运行资源”的统一层级，并明确服务名称、环境实例及其属性归属。
+
+- [x] 核对现有领域定义与存储身份。
+- [x] 核对当前 Console 服务列表是否按逻辑服务聚合。
+- [x] 确认产品中的“服务”拆分为控制面逻辑服务与 Namespace 内环境服务。
+- [x] 确认逻辑服务 ID 仅属于控制面管理模型，SDK 仍只感知 Namespace 与运行时服务名。
+- [x] 明确逻辑层属性与环境层属性的归属。
+- [x] 收敛服务列表、创建与详情的信息架构。
+
+### Review
+
+- Logical Service 是控制面跨环境聚合根，使用稳定 ID；Service Environment 是现有
+  `namespace + runtimeServiceName` 运行时记录。
+- SDK、注册发现、治理和数据面寻址继续使用 Namespace 与运行时服务名，不新增逻辑服务字段。
+- 管理员显式把环境服务关联到逻辑服务；候选匹配只提供建议，未经确认不得自动绑定。
+- Console 推荐层级为“逻辑服务 → Namespace/环境服务 → 实例、契约、订阅和运行状态”；
+  未关联环境服务保留独立入口且不影响现有运行能力。
+- 长期决策已归档至 `adr-logical-service-environment-binding`。
+
+## 配置与服务统一资源层级实施（2026-07-28）
+
+目标：实现“配置分组 → Namespace → 普通/模板配置项”和“逻辑服务 → Namespace/环境服务”
+两条统一资源路径，同时保持 SDK 注册发现与治理协议零变更。
+
+- [x] 冻结后端、服务 Console、配置 Console 三条纵向 seam 与最小契约。
+- [x] 以 TDD 实现 Logical Service 与 Service Environment 显式关联的存储和管理 API。
+- [x] 实现逻辑服务列表、未关联环境服务、显式关联和环境服务详情入口。
+- [x] 将普通/模板配置创建入口收敛到配置分组的 Namespace 上下文。
+- [x] 将全局模板工作台降级为配置项流程内的模板库能力，移除一级主导航。
+- [x] 运行专项测试、前端 lint/build、全量 Go 测试和知识库检查。
+- [x] 构建 Linux ARM64 镜像并在本地 Kubernetes 验收真实页面与 API。
+- [x] 执行 Standards/Spec 双轴审查，修复后提交并推送。
+
+### 预定验收 seam
+
+- 管理 API：通过公开 HTTP/服务接口创建逻辑服务、关联/解除环境服务，并查询聚合结果。
+- 服务 Console：从逻辑服务进入环境服务；未关联服务可见且可由管理员显式关联。
+- 配置 Console：从配置分组选择 Namespace，新建时明确选择普通配置或模板配置，并在同一流程完成模板版本与 Value 操作。
+- 兼容边界：SDK 继续只使用 `namespace + runtimeServiceName`，本轮不修改注册发现与治理协议。
+
+### Review
+
+- specification 新增纯管理面的 `LogicalService`、`ServiceEnvironmentBinding` 及显式关联请求，
+  提交 `5c4400f` 已推送；现有运行时 `Service` 和 SDK 注册发现协议未增加逻辑服务字段。
+- control-plane 新增逻辑服务与环境绑定表、独立管理函数权限、公开 HTTP 管理 API 和 Console
+  两层服务视图。绑定以 `service_id` 为权威键，并由根行锁、唯一索引和归属校验封闭并发与解绑不变量。
+- 配置主流程已收敛为“配置分组名称 → Namespace 环境实例 → 普通/模板配置项”；模板库不再占用
+  一级导航。模板配置创建会在一个事务中写入配置文件和固定 Template Release 的 binding，
+  普通配置携带模板 binding 会被服务端拒绝。
+- specification Go/Rust 测试、禁用 workspace 的 control-plane 专项测试、Console 四组契约检查、
+  oxlint 和 release/test build 均通过；全量回归发现的 limiter 滑窗墙钟测试已改为确定性时间并连续
+  运行 100 次通过。
+- Linux/ARM64 镜像 `pole-control-plane:local-20260728-logical-service-v2` 已部署到
+  OrbStack `pole-system`。Pod Ready、0 restart，imageID 为 `sha256:abe698b186cb...`；
+  真实 API 已完成逻辑服务创建、按 ID 查询、关联、解除关联和删除。
+- `logical_service`、`service_environment_binding` 及三个关键唯一约束已在 MySQL 验证。
+  本地、Pod 和 Gateway 的 `index.html` SHA256 均为
+  `3d4d5dc88d8d94d335c4e165f9f697bed9388b3c7ee69b11dbcde4940d498925`，
+  入口资源均为 `assets/index-KxLGDVh2.js`；HTTPRoute Accepted/ResolvedRefs 均为 True。
+- Orca 的 Accessibility 已授权，但 Screen Recording 未授权且当前浏览器无可观测窗口，
+  因此本轮没有声称完成像素级浏览器验收；页面能力由构建、静态资源一致性与真实 API 闭环覆盖。

@@ -15,13 +15,14 @@ import (
 
 type roleSystemTestStore struct {
 	storeapi.Store
-	getMainUser func() (*authtypes.User, error)
-	getRole     func(string) (*authtypes.Role, error)
-	addRole     func(*authtypes.Role) error
-	updateRole  func(*authtypes.Role) error
-	getStrategy func(string) (*authtypes.StrategyDetail, error)
-	startTx     func() (storeapi.Tx, error)
-	addStrategy func(storeapi.Tx, *authtypes.StrategyDetail) error
+	getMainUser    func() (*authtypes.User, error)
+	getRole        func(string) (*authtypes.Role, error)
+	addRole        func(*authtypes.Role) error
+	updateRole     func(*authtypes.Role) error
+	getStrategy    func(string) (*authtypes.StrategyDetail, error)
+	startTx        func() (storeapi.Tx, error)
+	addStrategy    func(storeapi.Tx, *authtypes.StrategyDetail) error
+	updateStrategy func(*authtypes.StrategyDetail) error
 }
 
 func (s roleSystemTestStore) GetMainUser() (*authtypes.User, error) { return s.getMainUser() }
@@ -44,6 +45,10 @@ func (s roleSystemTestStore) StartTx() (storeapi.Tx, error) { return s.startTx()
 
 func (s roleSystemTestStore) AddStrategy(tx storeapi.Tx, strategy *authtypes.StrategyDetail) error {
 	return s.addStrategy(tx, strategy)
+}
+
+func (s roleSystemTestStore) UpdateStrategy(strategy *authtypes.StrategyDetail) error {
+	return s.updateStrategy(strategy)
 }
 
 type roleSystemTestTx struct{}
@@ -174,6 +179,7 @@ func TestDeleteSystemRoleIsRejected(t *testing.T) {
 func TestEnsureSystemRolesCreatesThreeRolesAndFixedPolicies(t *testing.T) {
 	roles := map[string]*authtypes.Role{}
 	policies := map[string]*authtypes.StrategyDetail{}
+	repairedPolicies := 0
 	storage := roleSystemTestStore{
 		getMainUser: func() (*authtypes.User, error) {
 			return &authtypes.User{ID: "owner-1"}, nil
@@ -193,10 +199,18 @@ func TestEnsureSystemRolesCreatesThreeRolesAndFixedPolicies(t *testing.T) {
 			policies[strategy.ID] = strategy
 			return nil
 		},
+		updateStrategy: func(strategy *authtypes.StrategyDetail) error {
+			repairedPolicies++
+			policies[strategy.ID] = strategy
+			return nil
+		},
 	}
 	server := &Server{storage: storage}
 
 	require.NoError(t, server.ensureSystemRoles())
+	policies[authtypes.SystemRoleResourceGuardPolicyID].CalleeMethods = []string{
+		string(authtypes.DescribeSystemConfiguration),
+	}
 	require.NoError(t, server.ensureSystemRoles())
 	require.Len(t, roles, 3)
 	require.Len(t, policies, 4)
@@ -211,4 +225,9 @@ func TestEnsureSystemRolesCreatesThreeRolesAndFixedPolicies(t *testing.T) {
 		{PrincipalID: authtypes.SystemRoleResourceWriterID, PrincipalType: authtypes.PrincipalRole},
 		{PrincipalID: authtypes.SystemRoleResourceReaderID, PrincipalType: authtypes.PrincipalRole},
 	}, policies[authtypes.SystemRoleResourceGuardPolicyID].Principals)
+	require.Contains(t, policies[authtypes.SystemRoleResourceGuardPolicyID].CalleeMethods,
+		string(authtypes.DescribeLogicalServices))
+	require.Contains(t, policies[authtypes.SystemRoleResourceGuardPolicyID].CalleeMethods,
+		string(authtypes.BindServiceEnvironments))
+	require.Equal(t, 1, repairedPolicies)
 }

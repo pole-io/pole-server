@@ -49,6 +49,14 @@ const discovery: IRouter[] = [
           hidden: true,
         },
       },
+      {
+        path: 'service/detail',
+        Component: lazy(() => import('pages/Discovery/Services/LogicalServiceDetail')),
+        isFullPage: false,
+        meta: {
+          hidden: true,
+        },
+      },
     ],
   },
 ];

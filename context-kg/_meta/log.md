@@ -1185,6 +1185,16 @@ sources: 0
   - 记录现有 `all=control-plane+console` 的破坏性兼容问题，并给出跨 breaking release 的迁移方案。
   - 记录 Limiter node-id、advertised endpoint、长流、内存状态以及 8100/8101 网络安全约束。
 
+## [2026-07-28] ingest | 逻辑服务与环境服务显式关联
+
+- 新增页面：adr-logical-service-environment-binding。
+- 更新页面：terminology、domain-models、business-rules、namespace、service-discovery、index、todo。
+- 变更摘要：
+  - 不再使用服务名作为跨环境权威身份；环境服务继续以 `namespace + runtimeServiceName` 运行。
+  - 引入仅属于控制面的 Logical Service 稳定 ID，SDK、注册发现和数据面治理协议均不感知。
+  - 不同 Namespace 下的环境服务由管理员在 Console 显式关联，控制面只提供候选建议，不自动强绑定。
+  - 未关联的环境服务仍可正常注册、发现和治理，但不参与跨环境聚合。
+
 ## [2026-07-28] feat | 统一进程模式与 Pole Limiter 集成
 
 - 更新页面：adr-unified-process-mode-and-limiter-integration、architecture、configuration、todo。

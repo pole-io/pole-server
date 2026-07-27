@@ -61,6 +61,17 @@ type ServiceOperateServer interface {
 	GetServicesCount(ctx context.Context) *apimodel.BatchQueryResponse
 	// GetServiceSubscribers Owner for obtaining service
 	GetServiceSubscribers(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
+	// Logical service management is control-plane only. It never changes SDK
+	// registration or discovery addressing.
+	CreateLogicalServices(ctx context.Context, req []*apiservice.LogicalService) *apimodel.BatchWriteResponse
+	UpdateLogicalServices(ctx context.Context, req []*apiservice.LogicalService) *apimodel.BatchWriteResponse
+	DeleteLogicalServices(ctx context.Context, req []*apiservice.LogicalService) *apimodel.BatchWriteResponse
+	GetLogicalServices(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
+	GetLogicalServiceEnvironments(ctx context.Context, logicalServiceID string) *apimodel.BatchQueryResponse
+	GetUnboundServiceEnvironments(ctx context.Context, query map[string]string) *apimodel.BatchQueryResponse
+	GetServiceEnvironmentBinding(ctx context.Context, serviceID string) *apimodel.Response
+	BindServiceEnvironment(ctx context.Context, req *apiservice.BindServiceEnvironmentRequest) *apimodel.Response
+	UnbindServiceEnvironment(ctx context.Context, req *apiservice.UnbindServiceEnvironmentRequest) *apimodel.Response
 }
 
 // ServiceAliasOperateServer Service alias related operations
