@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,6 +18,27 @@ import (
 	"github.com/pole-io/pole-server/console/pkg/poleagent"
 	"github.com/pole-io/pole-server/pkg/selfmanager"
 )
+
+func TestReconcileSelfManagementStartupRetriesTransientFailure(t *testing.T) {
+	attempts := 0
+	err := reconcileSelfManagementStartup(context.Background(), func(trigger string) error {
+		require.Equal(t, "startup", trigger)
+		attempts++
+		if attempts == 1 {
+			return errors.New("not ready")
+		}
+		return nil
+	}, 3, 0)
+	require.NoError(t, err)
+	require.Equal(t, 2, attempts)
+}
+
+func TestReconcileSelfManagementStartupReturnsContextualPersistentFailure(t *testing.T) {
+	err := reconcileSelfManagementStartup(context.Background(), func(string) error {
+		return errors.New("not ready")
+	}, 2, 0)
+	require.EqualError(t, err, "startup reconciliation failed after 2 attempts: not ready")
+}
 
 func TestSelfManagementDesiredOwnsPoleMCPAndA2AProjection(t *testing.T) {
 	cfg := &boot_config.Config{Bootstrap: boot_config.Bootstrap{

@@ -24,7 +24,11 @@ import (
 	"github.com/pole-io/pole-server/pkg/selfmanager"
 )
 
-const selfManagementInterval = 30 * time.Second
+const (
+	selfManagementInterval        = 30 * time.Second
+	selfManagementStartupAttempts = 3
+	selfManagementStartupDelay    = 100 * time.Millisecond
+)
 
 type mcpToolSnapshotter interface {
 	SnapshotMCPTools(context.Context) ([]*specai.MCPServerTool, error)
@@ -77,7 +81,7 @@ func StartSelfManagement(ctx context.Context, cfg *boot_config.Config, storage s
 	reconcile := func(trigger string) error {
 		tools, err := snapshotter.SnapshotMCPTools(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("snapshot Pole MCP tools: %w", err)
 		}
 		desired := selfManagementDesired(cfg, tools, nil, trigger)
 		if cfg.Bootstrap.Mode == boot_config.StartModeAll {
@@ -90,7 +94,7 @@ func StartSelfManagement(ctx context.Context, cfg *boot_config.Config, storage s
 		}
 		result, err := manager.Reconcile(ctx, desired)
 		if err != nil {
-			return err
+			return fmt.Errorf("reconcile Pole self-managed capabilities: %w", err)
 		}
 		if result.Created+result.Updated+result.Deleted > 0 {
 			commonlog.Infof("[SelfManager] reconciled own capabilities: created=%d updated=%d deleted=%d",
@@ -98,7 +102,9 @@ func StartSelfManagement(ctx context.Context, cfg *boot_config.Config, storage s
 		}
 		return nil
 	}
-	if err := reconcile("startup"); err != nil {
+	if err := reconcileSelfManagementStartup(
+		ctx, reconcile, selfManagementStartupAttempts, selfManagementStartupDelay,
+	); err != nil {
 		return err
 	}
 	go func() {
@@ -116,6 +122,32 @@ func StartSelfManagement(ctx context.Context, cfg *boot_config.Config, storage s
 		}
 	}()
 	return nil
+}
+
+func reconcileSelfManagementStartup(ctx context.Context, reconcile func(string) error,
+	attempts int, delay time.Duration) error {
+	if attempts < 1 {
+		attempts = 1
+	}
+	var lastErr error
+	for attempt := 1; attempt <= attempts; attempt++ {
+		if err := reconcile("startup"); err == nil {
+			return nil
+		} else {
+			lastErr = err
+		}
+		if attempt == attempts {
+			break
+		}
+		timer := time.NewTimer(delay)
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		}
+	}
+	return fmt.Errorf("startup reconciliation failed after %d attempts: %w", attempts, lastErr)
 }
 
 func findMCPSnapshotter(servers []apiserver.Apiserver) mcpToolSnapshotter {

@@ -10869,3 +10869,15 @@ Review：
   再创建不可变 Release，不允许请求绕过模板聚合直接发布任意内容。
 - specification Go/Rust 契约测试、control-plane 关闭 `go.work` 的配置专项测试、
   `go test -tags nomsgpack -p 1 ./... -count=1`、Console 专项契约、目标 lint 与 Vite test 构建均通过。
+
+## 三仓提交与本地 Kubernetes 更新（2026-07-28）
+
+目标：确认 specification、control-plane、Rust client 的当前实现均有可追溯提交，并将最新
+control-plane 构建产物滚动更新到本地 Kubernetes。
+
+- [x] 核对三个仓库的分支、远端、提交与工作区状态。
+- [x] 验证并提交、推送 Rust client 当前改动及已有本地提交。
+- [ ] 构建包含最新 Console 与 control-plane 的 Linux ARM64 镜像。
+- [ ] 更新 `pole-system/pole-control-plane` Deployment 并等待 rollout 完成。
+- [ ] 核对新 Pod imageID、重启次数、Pod 内与 Gateway 静态资源哈希、8080/8090 入口。
+- [ ] 记录最终提交、镜像、Deployment 和运行验证结果。

@@ -25,7 +25,7 @@ printf '[pole-k8s] build console web\n'
 printf '[pole-k8s] build linux/%s binary\n' "${goarch}"
 (
   cd "${root_dir}"
-  CGO_ENABLED=0 GOOS=linux GOARCH="${goarch}" go build -o pole-server \
+  CGO_ENABLED=0 GOOS=linux GOARCH="${goarch}" go build -tags nomsgpack -o pole-server \
     -ldflags="-X github.com/pole-io/pole-server/pkg/common/version.Version=$(cat version 2>/dev/null || printf dev) -X github.com/pole-io/pole-server/pkg/common/version.BuildDate=$(date '+%Y%m%d.%H%M%S')" .
 )
 
