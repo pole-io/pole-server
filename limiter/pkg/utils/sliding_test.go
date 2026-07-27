@@ -18,69 +18,29 @@
 package utils
 
 import (
-	"fmt"
 	"testing"
-	"time"
 )
 
 func TestSlidingWindow_SlideFive(t *testing.T) {
-	var total uint32 = 100
 	slidingWindow := NewSlidingWindow(5, 1000)
 
-	var allocated uint32
-	var value uint32
-	value = slidingWindow.AddAndGetCurrent(CurrentMillisecond(), CurrentMillisecond(), 10)
-	allocated += total - value
-	fmt.Printf("left is %d\n", total-value)
-	time.Sleep(200 * time.Millisecond)
-	value = slidingWindow.AddAndGetCurrent(CurrentMillisecond(), CurrentMillisecond(), 40)
-	allocated += total - value
-	fmt.Printf("left is %d\n", total-value)
-	time.Sleep(500 * time.Millisecond)
-	value = slidingWindow.AddAndGetCurrent(CurrentMillisecond(), CurrentMillisecond(), 15)
-	allocated += total - value
-	fmt.Printf("left is %d\n", total-value)
-	time.Sleep(500 * time.Millisecond)
-	value = slidingWindow.AddAndGetCurrent(CurrentMillisecond(), CurrentMillisecond(), 30)
-	allocated += total - value
-	fmt.Printf("left is %d\n", total-value)
+	slidingWindow.AddAndGetCurrent(1000, 1000, 10)
+	slidingWindow.AddAndGetCurrent(1200, 1200, 40)
+	slidingWindow.AddAndGetCurrent(1700, 1700, 15)
+	value := slidingWindow.AddAndGetCurrent(2200, 2200, 30)
 	if value != 45 {
 		t.Fatalf("value is %d, invalid", value)
 	}
-	time.Sleep(300 * time.Millisecond)
-	value = slidingWindow.AddAndGetCurrent(CurrentMillisecond(), CurrentMillisecond(), 20)
-	allocated += total - value
-	fmt.Printf("left is %d\n", total-value)
-	fmt.Printf("allocated is %d\n", allocated)
 }
 
 func TestSlidingWindow_SlideOne(t *testing.T) {
-	var total uint32 = 100
 	slidingWindow := NewSlidingWindow(1, 1000)
 
-	var allocated uint32
-	var value uint32
-	value = slidingWindow.AddAndGetCurrent(CurrentMillisecond(), CurrentMillisecond(), 10)
-	allocated += total - value
-	fmt.Printf("left is %d\n", total-value)
-	time.Sleep(200 * time.Millisecond)
-	value = slidingWindow.AddAndGetCurrent(CurrentMillisecond(), CurrentMillisecond(), 40)
-	allocated += total - value
-	fmt.Printf("left is %d\n", total-value)
-	time.Sleep(600 * time.Millisecond)
-	value = slidingWindow.AddAndGetCurrent(CurrentMillisecond(), CurrentMillisecond(), 15)
-	allocated += total - value
-	fmt.Printf("left is %d\n", total-value)
-	time.Sleep(200 * time.Millisecond)
-	value = slidingWindow.AddAndGetCurrent(CurrentMillisecond(), CurrentMillisecond(), 30)
-	allocated += total - value
-	fmt.Printf("left is %d\n", total-value)
-	if value != 45 {
+	slidingWindow.AddAndGetCurrent(1000, 1000, 10)
+	slidingWindow.AddAndGetCurrent(1200, 1200, 40)
+	slidingWindow.AddAndGetCurrent(1800, 1800, 15)
+	value := slidingWindow.AddAndGetCurrent(2000, 2000, 30)
+	if value != 30 {
 		t.Fatalf("value is %d, invalid", value)
 	}
-	time.Sleep(300 * time.Millisecond)
-	value = slidingWindow.AddAndGetCurrent(CurrentMillisecond(), CurrentMillisecond(), 20)
-	allocated += total - value
-	fmt.Printf("left is %d\n", total-value)
-	fmt.Printf("allocated is %d\n", allocated)
 }
