@@ -1,0 +1,359 @@
+.page {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  background: var(--app-bg-canvas);
+}
+
+.workspace {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  border-top: 1px solid var(--app-border-subtle);
+}
+
+.catalog,
+.detail {
+  min-height: 0;
+  overflow: auto;
+  background: var(--app-bg-surface);
+}
+
+.catalog {
+  border-right: 1px solid var(--app-border-subtle);
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+}
+
+.templateName {
+  padding: 0;
+  border: 0;
+  color: var(--app-brand);
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--app-border-subtle);
+
+  h3,
+  p {
+    margin: 0;
+  }
+
+  p {
+    margin-top: 6px;
+    color: var(--app-text-secondary);
+    font-size: 13px;
+  }
+}
+
+.titleLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.definitionPane,
+.valuesPane,
+.tablePane {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 24px 28px;
+}
+
+.metadataGrid {
+  display: grid;
+  grid-template-columns: minmax(180px, .8fr) minmax(150px, .45fr) minmax(260px, 1.4fr);
+  gap: 16px;
+
+  label,
+  .commentField {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 7px;
+
+    > span {
+      color: var(--app-text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+    }
+  }
+}
+
+.templateEditorSection,
+.schemaSection,
+.previewOutput,
+.diagnosticPanel,
+.releaseComposer {
+  overflow: hidden;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 8px;
+  background: var(--app-bg-surface);
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--app-border-subtle);
+  background: var(--app-bg-subtle);
+
+  > div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  strong {
+    font-size: 14px;
+  }
+
+  span {
+    color: var(--app-text-secondary);
+    font-size: 12px;
+  }
+}
+
+.templateEditor {
+  height: 360px;
+}
+
+.schemaTable {
+  overflow-x: auto;
+}
+
+.schemaHeader,
+.schemaRow {
+  display: grid;
+  min-width: 820px;
+  align-items: center;
+  grid-template-columns: minmax(170px, 1.25fr) minmax(150px, .9fr) 64px 64px minmax(190px, 1.2fr) 48px;
+  gap: 10px;
+  padding: 9px 12px;
+}
+
+.schemaHeader {
+  color: var(--app-text-secondary);
+  background: var(--app-bg-subtle);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.schemaRow {
+  min-height: 50px;
+  border-top: 1px solid var(--app-border-subtle);
+
+  code {
+    color: var(--app-text-primary);
+  }
+}
+
+.emptyState {
+  padding: 28px 16px;
+  color: var(--app-text-secondary);
+  text-align: center;
+}
+
+.valueToolbar {
+  display: grid;
+  align-items: end;
+  grid-template-columns: minmax(180px, .65fr) minmax(260px, 1fr) auto;
+  gap: 14px;
+
+  label {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 6px;
+
+    > span {
+      color: var(--app-text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+    }
+  }
+}
+
+.valueActions {
+  display: flex;
+  gap: 8px;
+}
+
+.valueGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.valueField {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  padding: 13px;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 6px;
+  background: var(--app-bg-surface);
+
+  > span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  em {
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--app-brand);
+    background: var(--app-brand-subtle);
+    font-size: 11px;
+    font-style: normal;
+  }
+
+  small {
+    color: var(--app-text-secondary);
+  }
+}
+
+.releaseComposer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 14px;
+
+  > :not(:first-child) {
+    margin-right: 14px;
+    margin-left: 14px;
+  }
+}
+
+.releaseFooter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.previewLayout {
+  display: grid;
+  min-height: 520px;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  padding: 20px 24px 28px;
+}
+
+.previewOutput {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: auto minmax(360px, 1fr) auto;
+}
+
+.previewEditor {
+  min-height: 360px;
+}
+
+.hashLine {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--app-border-subtle);
+  color: var(--app-text-secondary);
+  font-size: 12px;
+
+  code {
+    overflow: hidden;
+    color: var(--app-text-primary);
+    text-overflow: ellipsis;
+  }
+}
+
+.diagnosticPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+
+.diagnosticItem {
+  padding: 10px;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 6px;
+
+  p {
+    margin: 8px 0 6px;
+    color: var(--app-text-primary);
+    font-size: 13px;
+  }
+
+  code {
+    color: var(--app-text-secondary);
+    font-size: 12px;
+  }
+}
+
+.muted {
+  color: var(--app-text-secondary);
+  font-size: 13px;
+}
+
+@media (max-width: 1120px) {
+  .workspace {
+    grid-template-columns: minmax(260px, 310px) minmax(0, 1fr);
+  }
+
+  .metadataGrid,
+  .valueToolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .commentField,
+  .valueActions {
+    grid-column: 1 / -1;
+  }
+
+  .previewLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .catalog {
+    max-height: 260px;
+    border-right: 0;
+    border-bottom: 1px solid var(--app-border-subtle);
+  }
+
+  .detailHeader {
+    flex-direction: column;
+  }
+
+  .metadataGrid,
+  .valueToolbar,
+  .valueGrid,
+  .releaseFooter {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

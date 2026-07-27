@@ -2,7 +2,7 @@
 title: 任务计划与 Review
 tags: [tasks, todo]
 links: [lessons, adr-otel-observability-platform, adr-pole-rust-client-observability]
-updated: 2026-07-27
+updated: 2026-07-28
 sources: 0
 ---
 
@@ -10758,3 +10758,114 @@ Review：
 - 运行时代码提交 `015cbdbd` 已构建为 `pole-control-plane:local-20260727-contract-detail-015cbdbd`，镜像 ID `sha256:a504161611c0cd1354a571c9f1828e0616ee79e97cd4d9b43967e55a4709da1a`；Pod `pole-control-plane-6c795bc94c-gnhdr` Ready、零重启，日志无 ERROR/panic/fatal，HTTPRoute `Accepted=True`、`ResolvedRefs=True`。
 - 真实浏览器在 `demo-governance/demo-order` 点击 Dubbo 重载方法后，详情展示 application、group/version、side、metadata-type、serialization、Service Key、映射应用和方法原生定义；鼠标和 Enter 键均可打开，3 个接口详情入口可达，浏览器错误为 0。
 - `go test ./...`、服务契约目标测试、Console 专项脚本、全量 lint、`npm run build:test`、`npm audit`、知识库链接检查与 `git diff --check` 均通过；GitHub 开放 Dependabot 告警保持为 0。
+
+## 配置模板按 Namespace 渲染能力评估（2026-07-28）
+
+目标：核对配置中心现有模板能力与发布链路，评估“统一模板 + Namespace 级变量值”模型的领域边界、渲染时机和兼容方案。
+
+- [x] 回顾项目 lessons、配置中心知识库索引与深模块设计准则。
+- [x] 核对 ConfigFileTemplate 存储接口、实现、业务调用与 Console 暴露情况。
+- [x] 梳理配置编辑、发布、灰度发布、Watch/查询的内容流转链路。
+- [x] 比较发布时、服务端读取时和客户端本地渲染的正确性、审计性与性能。
+- [x] 给出推荐领域模型、最小接口、安全约束和分期落地建议。
+
+### Review
+
+- 当前 `ConfigFileTemplate` 是全局按 `name` 唯一的静态内容记录，仅支持列举、创建/覆盖和按名称获取；没有 Namespace、变量定义、变量值、配置文件绑定或渲染语义，Console 也没有模板管理与套用界面。
+- 配置发布会把当前草稿 `Content` 原样复制到不可变 `ConfigFileRelease.Content`，计算 MD5 后进入 cache；客户端读取与 Watch 都围绕 release 快照和 revision 工作。
+- 初步曾建议发布时固化渲染结果；用户指出 Namespace Value 也需要灰度，发布阶段不存在面向所有客户端的唯一结果，该建议已撤回。
+- 当前方向调整为分别发布不可变的 Template Release 与 Namespace Value Release；客户端获取与自身匹配的组合快照，在本地缓存后渲染。不能让客户端每次读取都回源或让同一个组合 revision 对应不同内容。
+- 灰度匹配职责已确认：服务端沿用现有客户端标签匹配能力，只返回唯一命中的 Value 快照；SDK 不接收全部灰度规则，只实现确定性的模板渲染，避免各语言复制灰度规则引擎。
+- Value 资源粒度已确认：按 `Namespace + Template` 建立独立 Value 聚合，不建设无边界的 Namespace 全局变量池。模板声明参数 Schema，各 Namespace 分别维护正式/灰度 Value Release。
+- 组合响应必须包含 `template_release_id`、`value_release_id` 和由二者确定的 `revision`；Watch 以组合 revision 判断变化，SDK 只在拿到完整组合后原子替换本地缓存。
+- 模板版本绑定方式已确认：配置文件显式固定 `template_release_id`，模板发布新版本不会自动影响已有绑定；使用方完成兼容检查和预览后显式切换。
+- 完整方案已归档到 `adr-config-template-client-rendering`：服务端通过深模块统一解析绑定、灰度 Value 和组合 revision，SDK 只负责确定性渲染、原子缓存替换与 last-known-good。
+- 首期保持最小变量替换语法，不支持任意函数、脚本、环境变量或外部 I/O；纯文本配置保持兼容，模板模式按配置文件显式启用。
+- 已验证 43 个 context-kg 页面：frontmatter、标题、全局唯一 basename、Wiki 链接有效性和 index 覆盖均通过；新增/更新页面的双向链接一致，`git diff --check` 通过。
+
+## 配置模板引擎与服务端渲染契约补充评估（2026-07-28）
+
+- [x] 对照 Go `text/template` 官方语义与安全模型。
+- [x] 对照 Mustache 正式规范、配置文件适用性和多语言实现覆盖。
+- [x] 区分服务端权威渲染结果与服务端预览、SDK 本地渲染两类契约。
+- [x] 确认 `rendered_content` 是否作为客户端运行时权威结果。
+- [x] 根据最终选择更新模板 ADR 的渲染职责、引擎 Profile 和响应契约。
+
+### Review
+
+- 完整 Go template 带有 dot、pipeline、函数映射、方法调用、变量作用域和 Go 特有控制语义，不适合作为要求多语言逐项重现的协议。
+- 如果服务端 `rendered_content` 是运行时权威结果，灰度匹配后可按 `template_release_id + value_release_id + engine_version` 缓存，SDK 只消费最终内容，不需要模板引擎。
+- 如果 SDK 仍需独立渲染，推荐定义基于 Mustache 1.3 core 的 `pole-mustache-v1` 严格子集，禁用 lambda、partial、section、继承和动态 delimiter，并把缺失变量改为错误；跨语言一致性由共享测试向量而不是库名称保证。
+- 最终确认服务端渲染只用于预览和校验；运行时由 SDK 本地渲染，并将结果哈希与服务端为同一 release 组合生成的参考哈希比较，不一致则拒绝应用并保留 last-known-good。
+- ADR、配置中心功能档案、日志和 lessons 已同步；43 个知识库页面结构校验及 `git diff --check` 通过。
+
+## 配置模板跨仓库实现（2026-07-28）
+
+目标：在 specification、control-plane 和首个可安全接入的 SDK 中实现 `Namespace + Template` Value、服务端灰度匹配、预览校验与客户端 `pole-mustache-v1` 渲染闭环。
+
+- [x] 核对 specification 现有 ConfigFile 模式、占位符字段和生成流程。
+- [x] 收敛兼容契约：复用现有 `CONFIG_FILE / CONFIG_TEMPLATE` 字段号，弃用内嵌 `placeholder_value_map` 正式建模。
+- [x] specification 增加模板参数 Schema、Template Release、Namespace Template Value/Release、RenderSnapshot 和 RenderPreview。
+- [x] 重新生成并验证 specification Go/Rust 产物。
+- [x] control-plane 实现 `pole-mustache-v1` 参考渲染器、格式校验和 SHA-256。
+- [x] control-plane 实现模板/Value/绑定持久化、正式与灰度发布、快照解析和预览接口。
+- [x] 明确隔离首个 SDK 的本地渲染、参考哈希校验与 last-known-good：Rust SDK 工作区存在覆盖配置消费核心的大量用户改动，本轮不直接写入。
+- [x] 补充 Console 最小模板、Namespace Value、预览和显式切换入口。
+- [ ] 扩展 Watch，使通知基于客户端可见的组合 revision。
+- [x] 完成跨仓库测试、代码审查与知识库同步，并修复持久化编码、绑定事务、发布快照串版和预览错误分层问题。
+- [x] specification 契约提交推送后，将 control-plane 切换到该提交的 Go pseudo-version；
+  正式语义版本标签仍由 specification 独立发布流程处理。
+
+### Review
+
+- specification 已存在嵌套 `ConfigFileType`，字段号 200 定义 `CONFIG_FILE=0 / CONFIG_TEMPLATE=1`，并在 ConfigFile、Release、History、PublishInfo 中重复；当前 control-plane 领域模型与存储未消费这些字段。
+- 现有 `placeholder_value_map` 把 Value 内嵌到 ConfigFile/Release，无法表达独立版本、Namespace 聚合、服务端灰度选择和显式模板版本绑定；新契约应保留其字段号兼容但标记 deprecated。
+- `../pole-client-rust` 当前存在大量用户未提交改动且覆盖配置消费核心，本轮不会在未隔离前直接写入。
+- specification 已新增并生成模板、Value、绑定、快照、能力协商和预览 RPC 契约；`ConfigFile` 仍只有 `CONFIG_FILE` 与 `CONFIG_TEMPLATE` 两种类型，渲染结果不建模为第三种配置文件类型。
+- control-plane 已实现严格 `pole-mustache-v1` 参考渲染、JSON/YAML/TOML/text 格式校验、规范化标量、SHA-256、模板与 Value release、草稿 binding、发布时事务激活、回滚恢复和 Discover 快照。
+- 预览 API 已将鉴权/参数/系统错误与渲染诊断分层：前者使用统一 `apimodel.Code + info`，后者只报告模板、Value、类型和格式问题，并有鉴权/参数回归测试固定该边界。
+- Discover 先按客户端标签选中普通或灰度 `ConfigFileRelease`，再读取该 release 固化的 binding 并选择 Value；SDK 只收到命中的 Value，灰度标签不会下发。
+- Console 管理入口已在后续任务完成；仍未完成组合 revision Watch 和 SDK 本地渲染/LKG。
+  specification 契约已提交并推送；control-plane 使用该提交的 Go pseudo-version，
+  可在关闭 `go.work` 时复现构建。正式语义版本标签仍留待 specification 发布流程。
+- specification 已通过 `go test ./...`、`cargo fmt --all -- --check`、显式仓库 `protoc` 的 `cargo test --all` 与 `cargo check --all`；control-plane 已通过 `go test -tags nomsgpack -p 1 ./... -count=1`，知识库 43 个页面 lint 与两仓 `git diff --check` 通过。
+
+## 配置模板 Console 接入（2026-07-28）
+
+目标：让 Console 能完整维护模板草稿与发布版本、`Namespace + Template` Value、服务端预览，并在配置文件中显式切换模板发布版本。
+
+- [x] 盘点配置中心路由、ConfigFile 详情、前端 service/Redux 数据流和专项测试方式。
+- [x] 补齐模板发布版本、Namespace Value 草稿/发布记录、Binding 记录的只读管理接口。
+- [x] 增加前端模板、参数 Schema、类型化 Value、预览和 Binding TypeScript 契约。
+- [x] 增加配置中心“配置模板”页面，支持模板草稿、发布版本、环境 Value 和服务端预览。
+- [x] 在 ConfigFile 详情中增加普通文本/模板模式显示及模板版本显式切换。
+- [x] 保证 `RenderPreview.code/info` 与 `diagnostics` 在 UI 中分层展示。
+- [x] 补充专项静态契约、响应映射、ESLint、TypeScript 构建和暗色/响应式验证。
+- [x] 完成 code-review 双轴审查、知识库 Review 和可独立改动提交。
+
+### 验收矩阵
+
+| 场景 | 验收结果 |
+|---|---|
+| 普通配置文件 | 保持现有内容编辑和发布流程，不出现模板必填项 |
+| 模板草稿 | 可编辑内容、格式和参数 Schema，明确引擎固定为 `pole-mustache-v1` |
+| 模板发布 | 创建不可变 Template Release，并可刷新后重新选择 |
+| Namespace Value | 按环境和模板维护类型化 Value，可发布正式或灰度 Value Release |
+| 服务端预览 | 展示渲染内容、SHA-256 和渲染 diagnostics；API code 失败走统一错误提示 |
+| 显式切换 | ConfigFile 选择确定的 Template Release，保存为 binding 草稿，配置发布后才生效 |
+| 回退兼容 | `config_type=CONFIG_FILE` 不携带 binding，已有 ConfigFile 页面和接口字段保持兼容 |
+
+### Review
+
+- Console 新增独立“配置模板”工作台，模板草稿、参数 Schema、不可变 Template Release、
+  `Namespace + Template` Value 草稿、正式/灰度 Value Release 和服务端参考预览形成管理闭环。
+- ConfigFile 详情使用显式的“普通文本 / 模板渲染”类型选择；模板模式必须选择具体
+  Template Release，并通过单个事务同时保存文件草稿字段与 binding，避免两步请求留下不完整草稿。
+- ConfigFile 和 ConfigFileRelease 前端响应边界均归一化 `config_type/template_binding`；
+  当前文件及发布详情都可回答所固定的 Template、Template Release 和 Binding Release。
+- `RenderPreview` 的 API `code/info` 继续走统一请求错误提示，模板语法、Value、类型与格式问题
+  才展示为 diagnostics；不支持的模板引擎在参数拦截层返回标准 `InvalidParameter`。
+- 完成前审查额外修复模板发布信任请求正文的问题：服务端现在按 `template_id + name` 读取已保存草稿，
+  再创建不可变 Release，不允许请求绕过模板聚合直接发布任意内容。
+- specification Go/Rust 契约测试、control-plane 关闭 `go.work` 的配置专项测试、
+  `go test -tags nomsgpack -p 1 ./... -count=1`、Console 专项契约、目标 lint 与 Vite test 构建均通过。

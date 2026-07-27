@@ -188,7 +188,7 @@ func (s *Server) updateConfigFileAttribute(saveData, updateData *conftypes.Confi
 		needUpdate = true
 		saveData.Comment = updateData.Comment
 	}
-	if saveData.Comment != updateData.Content {
+	if saveData.Content != updateData.Content {
 		needUpdate = true
 		saveData.Content = updateData.Content
 	}
@@ -322,6 +322,19 @@ func (s *Server) GetConfigFileRichInfo(ctx context.Context, req *apiconfig.Confi
 		return api.NewConfigResponseWithInfo(apimodel.Code_ExecuteException, err.Error())
 	}
 	ret := conftypes.ToConfigFileAPI(richFile)
+	if ret.GetConfigType() == apiconfig.ConfigFile_CONFIG_TEMPLATE && ret.GetTemplateBinding() == nil {
+		binding, bindingErr := s.storage.GetActiveConfigTemplateBinding(richFile.Key())
+		if bindingErr != nil {
+			return api.NewConfigResponse(storeapi.StoreCode2APICode(bindingErr))
+		}
+		if binding != nil {
+			ret.TemplateBinding = &apiconfig.ConfigTemplateBinding{
+				TemplateId:        binding.TemplateID,
+				TemplateReleaseId: binding.TemplateReleaseID,
+				BindingReleaseId:  binding.BindingReleaseID,
+			}
+		}
+	}
 	return api.NewConfigFileResponse(apimodel.Code_ExecuteSuccess, ret)
 }
 

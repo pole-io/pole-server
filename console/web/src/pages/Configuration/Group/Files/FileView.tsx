@@ -1,13 +1,25 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'components/Router';
-import { Button, Form, Input, Select, Space, Switch, Tag, Tabs, FormProps } from 'components/Fluent';
+import { Button, Form, Input, Radio, RadioGroup, Select, Space, Switch, Tag, Tabs, FormProps } from 'components/Fluent';
 
 import { OperationButton } from 'components/OperationButton';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import CodeEditor from 'components/CodeEditor';
 import { listConfigFileCryptoAlgos, listOneConfigFile, selectConfigFile, updateConfigFiles } from 'modules/configuration/file';
-import { describeConfigFileEnvironments, FileStatusMap, type ConfigFileView } from 'services/config_files';
+import {
+    describeConfigFileEnvironments,
+    FileStatusMap,
+    type ConfigFileView,
+    type ConfigType,
+} from 'services/config_files';
+import {
+    bindConfigFileTemplate,
+    describeConfigTemplateReleases,
+    describeConfigTemplates,
+    type ConfigFileTemplate,
+    type ConfigTemplateRelease,
+} from 'services/config_templates';
 import LabelInput from 'components/LabelInput';
 import { BotIcon, Edit1Icon, RocketIcon, RollbackIcon, SaveIcon } from 'components/Fluent/icons';
 import PublishForm from '../Releases/PublishForm';
@@ -44,6 +56,11 @@ const FileView: React.FC<IFileViewProps> = (props) => {
     }>({ model: 'view', publishView: false });
     const [activeTab, setActiveTab] = React.useState<ResourceTab>('content');
     const [environmentFiles, setEnvironmentFiles] = React.useState<ConfigFileView[]>([]);
+    const [templates, setTemplates] = React.useState<ConfigFileTemplate[]>([]);
+    const [templateReleases, setTemplateReleases] = React.useState<ConfigTemplateRelease[]>([]);
+    const [configType, setConfigType] = React.useState<ConfigType>('CONFIG_FILE');
+    const [templateId, setTemplateId] = React.useState<string>('');
+    const [templateReleaseId, setTemplateReleaseId] = React.useState<string>('');
 
     const fetchOneFile = React.useCallback(() => {
         dispatch(listOneConfigFile({
@@ -62,6 +79,9 @@ const FileView: React.FC<IFileViewProps> = (props) => {
             }
         });
         fetchOneFile();
+        describeConfigTemplates()
+            .then(({ templates: items }) => setTemplates(items))
+            .catch(() => setTemplates([]));
     }, [dispatch, fetchOneFile]);
 
     React.useEffect(() => {
@@ -93,10 +113,38 @@ const FileView: React.FC<IFileViewProps> = (props) => {
             content: viewFile.content || '',
             file_tags: viewFile.tags || [],
         });
+        setConfigType(viewFile.configType || 'CONFIG_FILE');
+        setTemplateId(String(viewFile.templateBinding?.templateId || ''));
+        setTemplateReleaseId(viewFile.templateBinding?.templateReleaseId || '');
     }, [form, viewFile]);
+
+    React.useEffect(() => {
+        if (!templateId) {
+            setTemplateReleases([]);
+            return;
+        }
+        let active = true;
+        describeConfigTemplateReleases(templateId)
+            .then(({ releases }) => {
+                if (active) setTemplateReleases(releases);
+            })
+            .catch(() => {
+                if (active) setTemplateReleases([]);
+            });
+        return () => { active = false; };
+    }, [templateId]);
 
     const onSubmit: FormProps['onSubmit'] = async (e) => {
         if (e.validateResult !== true) return;
+        if (configType === 'CONFIG_TEMPLATE' && (!templateId || !templateReleaseId)) {
+            openErrNotification('无法保存', '模板渲染模式必须显式选择模板及其发布版本');
+            setActiveTab('basic');
+            return;
+        }
+        const templateBinding = configType === 'CONFIG_TEMPLATE' ? {
+            templateId,
+            templateReleaseId,
+        } : undefined;
         const updateData = {
             id: editFile?.id || 0,
             namespace: editFile?.namespace || '',
@@ -108,12 +156,24 @@ const FileView: React.FC<IFileViewProps> = (props) => {
             encryptAlgo: form.getFieldValue('encryptAlgo') as string,
             content: form.getFieldValue('content') as string,
             tags: form.getFieldValue('file_tags') as Label[],
+            configType,
+            templateBinding,
         };
 
-        const result = await dispatch(updateConfigFiles({ param: updateData }));
-        if (result.meta.requestStatus !== 'fulfilled') {
-            openErrNotification('请求错误', result?.payload as string);
-            return;
+        if (configType === 'CONFIG_TEMPLATE' && templateBinding) {
+            try {
+                await bindConfigFileTemplate(updateData, templateBinding);
+            } catch (error) {
+                openErrNotification('模板绑定失败', error instanceof Error ? error.message : String(error));
+                fetchOneFile();
+                return;
+            }
+        } else {
+            const result = await dispatch(updateConfigFiles({ param: updateData }));
+            if (result.meta.requestStatus !== 'fulfilled') {
+                openErrNotification('请求错误', result?.payload as string);
+                return;
+            }
         }
         openInfoNotification('请求成功', '配置文件已成功保存');
         fetchOneFile();
@@ -152,6 +212,9 @@ const FileView: React.FC<IFileViewProps> = (props) => {
                 content: viewFile.content || '',
                 file_tags: viewFile.tags || [],
             });
+            setConfigType(viewFile.configType || 'CONFIG_FILE');
+            setTemplateId(String(viewFile.templateBinding?.templateId || ''));
+            setTemplateReleaseId(viewFile.templateBinding?.templateReleaseId || '');
         }
         setEditorState(prev => ({ ...prev, model: 'view' }));
     };
@@ -180,6 +243,9 @@ const FileView: React.FC<IFileViewProps> = (props) => {
                         <div className={`${style.currentFileName} ${style.mono}`}>{currentFileName}</div>
                         <Space size={6}>
                             <Tag variant="light" theme="primary">{currentFormat}</Tag>
+                            <Tag variant="light" theme={viewFile?.configType === 'CONFIG_TEMPLATE' ? 'warning' : 'default'}>
+                                {viewFile?.configType === 'CONFIG_TEMPLATE' ? '模板渲染' : '普通文本'}
+                            </Tag>
                             <Tag theme={viewFile?.encrypted ? 'warning' : 'default'} variant="light">
                                 {viewFile?.encrypted ? '已加密' : '未加密'}
                             </Tag>
@@ -231,12 +297,27 @@ const FileView: React.FC<IFileViewProps> = (props) => {
         <div className={style.contentPane}>
             <div className={style.contentToolbar}>
                 <div>
-                    <strong>{editorState.model === 'edit' ? '编辑配置内容' : '当前配置内容'}</strong>
-                    <span>{editorState.model === 'edit' ? '修改后保存为正式草稿' : '只读预览，支持全屏查看'}</span>
+                    <strong>
+                        {configType === 'CONFIG_TEMPLATE'
+                            ? '客户端渲染模板配置'
+                            : (editorState.model === 'edit' ? '编辑配置内容' : '当前配置内容')}
+                    </strong>
+                    <span>
+                        {configType === 'CONFIG_TEMPLATE'
+                            ? '服务端下发命中的 Template / Value 快照，SDK 使用 pole-mustache-v1 渲染'
+                            : (editorState.model === 'edit' ? '修改后保存为正式草稿' : '只读预览，支持全屏查看')}
+                    </span>
                 </div>
                 <Tag variant="light">{currentFormat} · {editorState.model === 'edit' ? '编辑态' : '只读'}</Tag>
             </div>
             <div className={style.editorShell}>
+                {configType === 'CONFIG_TEMPLATE' && (
+                    <div className={style.templateBindingBanner}>
+                        <strong>显式绑定</strong>
+                        <span>Template：{templateId || '未选择'}</span>
+                        <span>Release：{templateReleaseId || '未选择'}</span>
+                    </div>
+                )}
                 <div className={style.editorBody}>
                     {editorState.model === 'edit' ? (
                         <FormItem name="content">
@@ -258,6 +339,56 @@ const FileView: React.FC<IFileViewProps> = (props) => {
         <div className={style.basicInfoPane}>
             {editorState.model === 'edit' ? (
                 <div className={style.basicEditGrid}>
+                    <div className={style.configTypeField}>
+                        <span>配置类型</span>
+                        <RadioGroup
+                            value={configType}
+                            onChange={(value: string) => {
+                                const nextType = value as ConfigType;
+                                setConfigType(nextType);
+                                if (nextType === 'CONFIG_FILE') {
+                                    setTemplateId('');
+                                    setTemplateReleaseId('');
+                                }
+                            }}
+                        >
+                            <Radio value="CONFIG_FILE">普通文本</Radio>
+                            <Radio value="CONFIG_TEMPLATE">模板渲染</Radio>
+                        </RadioGroup>
+                        <small>类型只会在保存草稿后显式切换；模板配置由 SDK 在客户端渲染。</small>
+                    </div>
+                    {configType === 'CONFIG_TEMPLATE' && (
+                        <>
+                            <label className={style.bindingField}>
+                                <span>配置模板</span>
+                                <Select
+                                    filterable
+                                    value={templateId}
+                                    options={templates.map(item => ({
+                                        label: item.name,
+                                        value: String(item.id),
+                                    }))}
+                                    onChange={(value: string) => {
+                                        setTemplateId(String(value));
+                                        setTemplateReleaseId('');
+                                    }}
+                                />
+                            </label>
+                            <label className={style.bindingField}>
+                                <span>Template Release</span>
+                                <Select
+                                    filterable
+                                    disabled={!templateId}
+                                    value={templateReleaseId}
+                                    options={templateReleases.map(item => ({
+                                        label: `v${item.version} · ${item.id}`,
+                                        value: item.id,
+                                    }))}
+                                    onChange={(value: string) => setTemplateReleaseId(String(value))}
+                                />
+                            </label>
+                        </>
+                    )}
                     <FormItem
                         label="文件描述"
                         name="comment"
@@ -281,6 +412,22 @@ const FileView: React.FC<IFileViewProps> = (props) => {
                 </div>
             ) : (
                 <div className={style.basicInfoGrid}>
+                    <div className={style.basicField}>
+                        <span>配置类型</span>
+                        <strong>{viewFile?.configType === 'CONFIG_TEMPLATE' ? '模板渲染' : '普通文本'}</strong>
+                    </div>
+                    {viewFile?.configType === 'CONFIG_TEMPLATE' && (
+                        <>
+                            <div className={style.basicField}>
+                                <span>Template</span>
+                                <strong className={style.mono}>{viewFile.templateBinding?.templateId || '-'}</strong>
+                            </div>
+                            <div className={style.basicField}>
+                                <span>Template Release</span>
+                                <strong className={style.mono}>{viewFile.templateBinding?.templateReleaseId || '-'}</strong>
+                            </div>
+                        </>
+                    )}
                     <div className={`${style.basicField} ${style.basicDescription}`}>
                         <span>文件描述</span>
                         <strong>{viewFile?.comment || '暂无描述'}</strong>
@@ -314,7 +461,7 @@ const FileView: React.FC<IFileViewProps> = (props) => {
     return (
         <Form form={form} layout="vertical" className={style.fileDetail} onSubmit={onSubmit}>
             {renderHeader}
-            <Tabs className={style.resourceTabs} value={activeTab} onChange={(value) => setActiveTab(value as ResourceTab)}>
+            <Tabs className={style.resourceTabs} value={activeTab} onChange={(value: string) => setActiveTab(value as ResourceTab)}>
                 <TabPanel value="content" label="文件内容">{renderContent}</TabPanel>
                 <TabPanel value="basic" label="基本信息">{renderBasicInfo}</TabPanel>
                 <TabPanel value="release" label="发布记录">

@@ -2,7 +2,7 @@
 title: pole-control-plane 知识库
 tags: [meta, index]
 links: [schema, log]
-updated: 2026-07-27
+updated: 2026-07-28
 sources: 0
 ---
 
@@ -70,6 +70,7 @@ sources: 0
 - [[adr-a2a-agent-registry]] — A2A Agent Registry 功能设计与分期 | adr, ai, a2a, mcp, registry
 - [[adr-console-oidc-identity-source]] — Console OIDC 用户来源与目录同步 | adr, auth, console, oidc, identity
 - [[adr-config-gray-release-spec-contract]] — 配置中心多灰度发布与 specification 契约适配 | adr, config, api, gray-release
+- [[adr-config-template-client-rendering]] — 模板与 Namespace Value 版本化、服务端灰度匹配和 SDK 本地渲染 | adr, config, template, namespace, sdk, gray-release
 - [[adr-instance-active-healthcheck]] — Console 实例 TCP/HTTP 主动健康检查 | adr, service, healthcheck, tcp, http
 - [[adr-console-fluent-ui-design-system]] — Console Fluent UI v9 设计系统与复合查询交互规范 | adr, console, frontend, fluent-ui, design-system
 - [[adr-console-agent-resource-workbench]] — Pole Agent 真实 LLM/MCP 运行时与资源确认待发布 | adr, ai, agent, console, governance, config
@@ -105,6 +106,7 @@ sources: 0
 | 命名空间如何管理运行环境 | [[namespace]] |
 | 服务发现与健康检查 | [[service-discovery]] |
 | 配置文件发布与 Watch | [[config-center]] |
+| 配置模板与 Namespace Value 如何渲染 | [[adr-config-template-client-rendering]] |
 | 路由/限流/熔断等治理规则 | [[governance-rules]] |
 | 治理规则统一存储方案 | [[adr-governance-rule-unified-storage]] |
 | RPC-first 治理范围与外部资源边界 | [[adr-rpc-first-governance-scope]] |

@@ -11,6 +11,7 @@ export enum BaseURL {
     CONFIG_FILE = '/config/v1/files',
     CONFIG_RELEASE = '/config/v1/files/release',
     CONFIG_RELEASES = '/config/v1/files/releases',
+    CONFIG_TEMPLATE = '/config/v1/templates',
     CUSTOM_ROUTE = '/naming/v1/routings',
     LANE_GROUP = '/naming/v1/lane/groups',
     RATELIMIT_RULE = '/naming/v1/ratelimits',

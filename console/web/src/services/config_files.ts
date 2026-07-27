@@ -1,5 +1,8 @@
 import { apiRequest, getAllList, getApiRequest, putApiRequest } from 'utils/request';
 import { BaseURL, Label } from './types';
+import type { ConfigTemplateBinding } from './config_templates';
+
+export type ConfigType = 'CONFIG_FILE' | 'CONFIG_TEMPLATE';
 
 export enum FileStatus {
     Normal = 'normal',
@@ -44,6 +47,8 @@ export interface ConfigFile {
     tags?: Array<Label>
     encrypted?: boolean
     encryptAlgo?: string
+    configType?: ConfigType
+    templateBinding?: ConfigTemplateBinding
 }
 
 export interface ConfigFileView extends ConfigFile {
@@ -63,6 +68,16 @@ type ApiConfigFile = ConfigFileView & {
     mtime?: string
     rtime?: string
     encrypt_algo?: string
+    config_type?: ConfigType | number
+    template_binding?: {
+        template_id?: string | number
+        template_release_id?: string
+        binding_release_id?: string
+    }
+}
+
+function normalizeConfigType(value?: ConfigType | number): ConfigType {
+    return value === 'CONFIG_TEMPLATE' || value === 1 ? 'CONFIG_TEMPLATE' : 'CONFIG_FILE';
 }
 
 function labelsToTags(labels?: Record<string, string> | Label[]): Label[] {
@@ -98,14 +113,35 @@ function normalizeConfigFile(file: ApiConfigFile): ConfigFileView {
         modifyTime: file.modifyTime || file.mtime,
         releaseTime: file.releaseTime || file.rtime,
         encryptAlgo: file.encryptAlgo || file.encrypt_algo,
+        configType: normalizeConfigType(file.configType ?? file.config_type),
+        templateBinding: file.templateBinding || (file.template_binding ? {
+            templateId: file.template_binding.template_id ?? '',
+            templateReleaseId: file.template_binding.template_release_id ?? '',
+            bindingReleaseId: file.template_binding.binding_release_id,
+        } : undefined),
     }
 }
 
 function toApiConfigFile(file: CreateConfigFileRequest | ModifyConfigFileRequest) {
-    const { tags, createTime, modifyTime, releaseTime, releaseBy, editable, deleteable, ...rest } = file as ConfigFileView;
+    const {
+        tags,
+        createTime: _createTime,
+        modifyTime: _modifyTime,
+        releaseTime: _releaseTime,
+        releaseBy: _releaseBy,
+        editable: _editable,
+        deleteable: _deleteable,
+        ...rest
+    } = file as ConfigFileView;
     return {
         ...rest,
         labels: tagsToLabels(tags),
+        config_type: file.configType,
+        template_binding: file.templateBinding ? {
+            template_id: file.templateBinding.templateId,
+            template_release_id: file.templateBinding.templateReleaseId,
+            binding_release_id: file.templateBinding.bindingReleaseId || '',
+        } : undefined,
     };
 }
 
@@ -121,6 +157,8 @@ export interface CreateConfigFileRequest {
     tags: Array<Label>
     encrypted: boolean
     encryptAlgo: string
+    configType?: ConfigType
+    templateBinding?: ConfigTemplateBinding
 }
 
 export interface CreateConfigFileResponse {
@@ -230,6 +268,8 @@ export interface ModifyConfigFileRequest {
     format?: string
     encrypted: boolean
     encryptAlgo: string
+    configType?: ConfigType
+    templateBinding?: ConfigTemplateBinding
 }
 export interface ModifyConfigFileResponse {
     configFile: ConfigFile

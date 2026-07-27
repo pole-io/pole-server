@@ -113,6 +113,27 @@ func (s *Server) handlePublishConfigFile(ctx context.Context, tx store.Tx,
 	if toPublishFile == nil {
 		return nil, api.NewConfigResponse(apimodel.Code_NotFoundResource)
 	}
+	publishView := conftypes.ToConfigFileAPI(toPublishFile)
+	if publishView.GetConfigType() == apiconfig.ConfigFile_CONFIG_TEMPLATE {
+		binding := publishView.GetTemplateBinding()
+		if binding == nil {
+			return nil, api.NewConfigResponseWithInfo(
+				apimodel.Code_BadRequest, "template config file has no explicit draft binding")
+		}
+		templateRelease, getErr := s.storage.GetConfigTemplateRelease(binding.GetTemplateReleaseId())
+		if getErr != nil {
+			return nil, api.NewConfigResponse(storeapi.StoreCode2APICode(getErr))
+		}
+		if templateRelease == nil || templateRelease.TemplateID != binding.GetTemplateId() {
+			return nil, api.NewConfigResponse(apimodel.Code_NotFoundResource)
+		}
+		if err := s.storage.SetConfigTemplateBindingActiveTx(
+			tx, binding.GetBindingReleaseId(), true); err != nil {
+			return nil, api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+		}
+		req.ConfigType = apiconfig.ConfigFileRelease_CONFIG_TEMPLATE
+		req.TemplateBinding = binding
+	}
 	if releaseName := req.GetName(); releaseName == "" {
 		// 这里要保证每一次发布都有唯一的 release_name 名称
 		req.Name = fmt.Sprintf("%s-%d-%d", fileName, time.Now().Unix(), s.nextSequence())
@@ -463,6 +484,13 @@ func (s *Server) handleRollbackConfigFileRelease(ctx context.Context, tx store.T
 	if targetRelease == nil {
 		log.Error("[Config][Release] rollback config file to target release not found")
 		return nil, api.NewConfigResponse(apimodel.Code_NotFoundResource)
+	}
+	if binding := conftypes.ToConfiogFileReleaseApi(targetRelease).GetTemplateBinding(); binding != nil {
+		if err := s.storage.SetConfigTemplateBindingActiveTx(
+			tx, binding.GetBindingReleaseId(), true); err != nil {
+			log.Error("[Config][Release] rollback template binding", zap.Error(err))
+			return targetRelease, api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+		}
 	}
 
 	if err := s.storage.ActiveConfigFileReleaseTx(tx, data); err != nil {

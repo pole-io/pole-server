@@ -829,6 +829,48 @@ func (mr *MockStoreMockRecorder) CreateConfigFileTx(tx, file interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateConfigFileTx", reflect.TypeOf((*MockStore)(nil).CreateConfigFileTx), tx, file)
 }
 
+// CreateConfigTemplateBinding mocks base method.
+func (m *MockStore) CreateConfigTemplateBinding(binding *config.ConfigTemplateBinding) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateConfigTemplateBinding", binding)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateConfigTemplateBinding indicates an expected call of CreateConfigTemplateBinding.
+func (mr *MockStoreMockRecorder) CreateConfigTemplateBinding(binding interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateConfigTemplateBinding", reflect.TypeOf((*MockStore)(nil).CreateConfigTemplateBinding), binding)
+}
+
+// CreateConfigTemplateBindingTx mocks base method.
+func (m *MockStore) CreateConfigTemplateBindingTx(tx store.Tx, binding *config.ConfigTemplateBinding) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateConfigTemplateBindingTx", tx, binding)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateConfigTemplateBindingTx indicates an expected call of CreateConfigTemplateBindingTx.
+func (mr *MockStoreMockRecorder) CreateConfigTemplateBindingTx(tx, binding interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateConfigTemplateBindingTx", reflect.TypeOf((*MockStore)(nil).CreateConfigTemplateBindingTx), tx, binding)
+}
+
+// CreateConfigTemplateRelease mocks base method.
+func (m *MockStore) CreateConfigTemplateRelease(release *config.ConfigTemplateRelease) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateConfigTemplateRelease", release)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateConfigTemplateRelease indicates an expected call of CreateConfigTemplateRelease.
+func (mr *MockStoreMockRecorder) CreateConfigTemplateRelease(release interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateConfigTemplateRelease", reflect.TypeOf((*MockStore)(nil).CreateConfigTemplateRelease), release)
+}
+
 // CreateFaultDetectRule mocks base method.
 func (m *MockStore) CreateFaultDetectRule(conf *rules.FaultDetectRule) error {
 	m.ctrl.T.Helper()
@@ -897,6 +939,20 @@ func (m *MockStore) CreateMCPServerTool(tool *ai0.MCPServerTool) error {
 func (mr *MockStoreMockRecorder) CreateMCPServerTool(tool interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMCPServerTool", reflect.TypeOf((*MockStore)(nil).CreateMCPServerTool), tool)
+}
+
+// CreateNamespaceTemplateValueRelease mocks base method.
+func (m *MockStore) CreateNamespaceTemplateValueRelease(release *config.NamespaceTemplateValueRelease) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateNamespaceTemplateValueRelease", release)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateNamespaceTemplateValueRelease indicates an expected call of CreateNamespaceTemplateValueRelease.
+func (mr *MockStoreMockRecorder) CreateNamespaceTemplateValueRelease(release interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateNamespaceTemplateValueRelease", reflect.TypeOf((*MockStore)(nil).CreateNamespaceTemplateValueRelease), release)
 }
 
 // CreateRateLimit mocks base method.
@@ -1604,6 +1660,21 @@ func (mr *MockStoreMockRecorder) GetActiveCircuitBreakerRule(tx, release interfa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveCircuitBreakerRule", reflect.TypeOf((*MockStore)(nil).GetActiveCircuitBreakerRule), tx, release)
 }
 
+// GetActiveConfigTemplateBinding mocks base method.
+func (m *MockStore) GetActiveConfigTemplateBinding(file *config.ConfigFileKey) (*config.ConfigTemplateBinding, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetActiveConfigTemplateBinding", file)
+	ret0, _ := ret[0].(*config.ConfigTemplateBinding)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetActiveConfigTemplateBinding indicates an expected call of GetActiveConfigTemplateBinding.
+func (mr *MockStoreMockRecorder) GetActiveConfigTemplateBinding(file interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveConfigTemplateBinding", reflect.TypeOf((*MockStore)(nil).GetActiveConfigTemplateBinding), file)
+}
+
 // GetActiveFaultDetectRule mocks base method.
 func (m *MockStore) GetActiveFaultDetectRule(tx store.Tx, release *rules.FaultDetectRelease) (*rules.FaultDetectRelease, error) {
 	m.ctrl.T.Helper()
@@ -1919,6 +1990,21 @@ func (m *MockStore) GetConfigFileTx(tx store.Tx, namespace, group, name string) 
 func (mr *MockStoreMockRecorder) GetConfigFileTx(tx, namespace, group, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConfigFileTx", reflect.TypeOf((*MockStore)(nil).GetConfigFileTx), tx, namespace, group, name)
+}
+
+// GetConfigTemplateRelease mocks base method.
+func (m *MockStore) GetConfigTemplateRelease(id string) (*config.ConfigTemplateRelease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetConfigTemplateRelease", id)
+	ret0, _ := ret[0].(*config.ConfigTemplateRelease)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetConfigTemplateRelease indicates an expected call of GetConfigTemplateRelease.
+func (mr *MockStoreMockRecorder) GetConfigTemplateRelease(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConfigTemplateRelease", reflect.TypeOf((*MockStore)(nil).GetConfigTemplateRelease), id)
 }
 
 // GetDefaultStrategyDetailByPrincipal mocks base method.
@@ -2811,6 +2897,36 @@ func (m *MockStore) GetNamespace(name string) (*types.Namespace, error) {
 func (mr *MockStoreMockRecorder) GetNamespace(name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNamespace", reflect.TypeOf((*MockStore)(nil).GetNamespace), name)
+}
+
+// GetNamespaceTemplateValueRelease mocks base method.
+func (m *MockStore) GetNamespaceTemplateValueRelease(id string) (*config.NamespaceTemplateValueRelease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetNamespaceTemplateValueRelease", id)
+	ret0, _ := ret[0].(*config.NamespaceTemplateValueRelease)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetNamespaceTemplateValueRelease indicates an expected call of GetNamespaceTemplateValueRelease.
+func (mr *MockStoreMockRecorder) GetNamespaceTemplateValueRelease(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNamespaceTemplateValueRelease", reflect.TypeOf((*MockStore)(nil).GetNamespaceTemplateValueRelease), id)
+}
+
+// GetNamespaceTemplateValues mocks base method.
+func (m *MockStore) GetNamespaceTemplateValues(namespace string, templateID uint64) (*config.NamespaceTemplateValues, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetNamespaceTemplateValues", namespace, templateID)
+	ret0, _ := ret[0].(*config.NamespaceTemplateValues)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetNamespaceTemplateValues indicates an expected call of GetNamespaceTemplateValues.
+func (mr *MockStoreMockRecorder) GetNamespaceTemplateValues(namespace, templateID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNamespaceTemplateValues", reflect.TypeOf((*MockStore)(nil).GetNamespaceTemplateValues), namespace, templateID)
 }
 
 // GetNamespaces mocks base method.
@@ -3785,6 +3901,36 @@ func (mr *MockStoreMockRecorder) IsLeader(key interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsLeader", reflect.TypeOf((*MockStore)(nil).IsLeader), key)
 }
 
+// ListConfigTemplateBindings mocks base method.
+func (m *MockStore) ListConfigTemplateBindings(file *config.ConfigFileKey) ([]*config.ConfigTemplateBinding, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListConfigTemplateBindings", file)
+	ret0, _ := ret[0].([]*config.ConfigTemplateBinding)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListConfigTemplateBindings indicates an expected call of ListConfigTemplateBindings.
+func (mr *MockStoreMockRecorder) ListConfigTemplateBindings(file interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListConfigTemplateBindings", reflect.TypeOf((*MockStore)(nil).ListConfigTemplateBindings), file)
+}
+
+// ListConfigTemplateReleases mocks base method.
+func (m *MockStore) ListConfigTemplateReleases(templateID uint64) ([]*config.ConfigTemplateRelease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListConfigTemplateReleases", templateID)
+	ret0, _ := ret[0].([]*config.ConfigTemplateRelease)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListConfigTemplateReleases indicates an expected call of ListConfigTemplateReleases.
+func (mr *MockStoreMockRecorder) ListConfigTemplateReleases(templateID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListConfigTemplateReleases", reflect.TypeOf((*MockStore)(nil).ListConfigTemplateReleases), templateID)
+}
+
 // ListLeaderElections mocks base method.
 func (m *MockStore) ListLeaderElections() ([]*admin.LeaderElection, error) {
 	m.ctrl.T.Helper()
@@ -3798,6 +3944,21 @@ func (m *MockStore) ListLeaderElections() ([]*admin.LeaderElection, error) {
 func (mr *MockStoreMockRecorder) ListLeaderElections() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListLeaderElections", reflect.TypeOf((*MockStore)(nil).ListLeaderElections))
+}
+
+// ListNamespaceTemplateValueReleases mocks base method.
+func (m *MockStore) ListNamespaceTemplateValueReleases(namespace string, templateID uint64) ([]*config.NamespaceTemplateValueRelease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListNamespaceTemplateValueReleases", namespace, templateID)
+	ret0, _ := ret[0].([]*config.NamespaceTemplateValueRelease)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListNamespaceTemplateValueReleases indicates an expected call of ListNamespaceTemplateValueReleases.
+func (mr *MockStoreMockRecorder) ListNamespaceTemplateValueReleases(namespace, templateID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListNamespaceTemplateValueReleases", reflect.TypeOf((*MockStore)(nil).ListNamespaceTemplateValueReleases), namespace, templateID)
 }
 
 // ListVersions mocks base method.
@@ -4241,6 +4402,48 @@ func (mr *MockStoreMockRecorder) SaveConfigFileTemplate(template interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveConfigFileTemplate", reflect.TypeOf((*MockStore)(nil).SaveConfigFileTemplate), template)
 }
 
+// SaveNamespaceTemplateValues mocks base method.
+func (m *MockStore) SaveNamespaceTemplateValues(values *config.NamespaceTemplateValues) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveNamespaceTemplateValues", values)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveNamespaceTemplateValues indicates an expected call of SaveNamespaceTemplateValues.
+func (mr *MockStoreMockRecorder) SaveNamespaceTemplateValues(values interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveNamespaceTemplateValues", reflect.TypeOf((*MockStore)(nil).SaveNamespaceTemplateValues), values)
+}
+
+// SetConfigTemplateBindingActive mocks base method.
+func (m *MockStore) SetConfigTemplateBindingActive(bindingReleaseID string, active bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetConfigTemplateBindingActive", bindingReleaseID, active)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetConfigTemplateBindingActive indicates an expected call of SetConfigTemplateBindingActive.
+func (mr *MockStoreMockRecorder) SetConfigTemplateBindingActive(bindingReleaseID, active interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetConfigTemplateBindingActive", reflect.TypeOf((*MockStore)(nil).SetConfigTemplateBindingActive), bindingReleaseID, active)
+}
+
+// SetConfigTemplateBindingActiveTx mocks base method.
+func (m *MockStore) SetConfigTemplateBindingActiveTx(tx store.Tx, bindingReleaseID string, active bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetConfigTemplateBindingActiveTx", tx, bindingReleaseID, active)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetConfigTemplateBindingActiveTx indicates an expected call of SetConfigTemplateBindingActiveTx.
+func (mr *MockStoreMockRecorder) SetConfigTemplateBindingActiveTx(tx, bindingReleaseID, active interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetConfigTemplateBindingActiveTx", reflect.TypeOf((*MockStore)(nil).SetConfigTemplateBindingActiveTx), tx, bindingReleaseID, active)
+}
+
 // SetInstanceHealthStatus mocks base method.
 func (m *MockStore) SetInstanceHealthStatus(instanceID string, flag int, revision string) error {
 	m.ctrl.T.Helper()
@@ -4253,6 +4456,20 @@ func (m *MockStore) SetInstanceHealthStatus(instanceID string, flag int, revisio
 func (mr *MockStoreMockRecorder) SetInstanceHealthStatus(instanceID, flag, revision interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetInstanceHealthStatus", reflect.TypeOf((*MockStore)(nil).SetInstanceHealthStatus), instanceID, flag, revision)
+}
+
+// SetNamespaceTemplateValueReleaseActive mocks base method.
+func (m *MockStore) SetNamespaceTemplateValueReleaseActive(id string, active bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetNamespaceTemplateValueReleaseActive", id, active)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetNamespaceTemplateValueReleaseActive indicates an expected call of SetNamespaceTemplateValueReleaseActive.
+func (mr *MockStoreMockRecorder) SetNamespaceTemplateValueReleaseActive(id, active interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetNamespaceTemplateValueReleaseActive", reflect.TypeOf((*MockStore)(nil).SetNamespaceTemplateValueReleaseActive), id, active)
 }
 
 // StartLeaderElection mocks base method.

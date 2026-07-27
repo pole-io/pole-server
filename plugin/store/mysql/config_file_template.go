@@ -34,12 +34,16 @@ type configFileTemplateStore struct {
 func (cf *configFileTemplateStore) SaveConfigFileTemplate(
 	template *conftypes.ConfigFileTemplate) (*conftypes.ConfigFileTemplate, error) {
 	createSql := `
-	INSERT INTO config_file_template (name, content, comment, format, ctime
-		, create_by, mtime, modify_by)
-	VALUES (?, ?, ?, ?, sysdate()
-		, ?, sysdate(), ?)
+	INSERT INTO config_file_template (name, content, comment, format, engine, engine_version,
+		parameter_schema, revision, ctime, create_by, mtime, modify_by)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, sysdate(), ?, sysdate(), ?)
+	ON DUPLICATE KEY UPDATE content = VALUES(content), comment = VALUES(comment),
+		format = VALUES(format), engine = VALUES(engine), engine_version = VALUES(engine_version),
+		parameter_schema = VALUES(parameter_schema), revision = VALUES(revision),
+		modify_by = VALUES(modify_by), mtime = sysdate()
 	`
 	_, err := cf.master.Exec(createSql, template.Name, template.Content, template.Comment, template.Format,
+		template.Engine, template.EngineVersion, template.ParameterSchema, template.Revision,
 		template.CreateBy, template.ModifyBy)
 	if err != nil {
 		return nil, store.Error(err)
@@ -89,6 +93,10 @@ SELECT id, name, content
 	, IFNULL(create_by, '')
 	, UNIX_TIMESTAMP(mtime)
 	, IFNULL(modify_by, '')
+	, IFNULL(engine, 'pole-mustache')
+	, IFNULL(engine_version, 'v1')
+	, IFNULL(parameter_schema, '')
+	, IFNULL(revision, '')
 FROM config_file_template 
 	`
 }
@@ -106,7 +114,8 @@ func (cf *configFileTemplateStore) transferRows(rows *sql.Rows) ([]*conftypes.Co
 		template := &conftypes.ConfigFileTemplate{}
 		var ctime, mtime int64
 		err := rows.Scan(&template.Id, &template.Name, &template.Content, &template.Comment, &template.Format,
-			&ctime, &template.CreateBy, &mtime, &template.ModifyBy)
+			&ctime, &template.CreateBy, &mtime, &template.ModifyBy, &template.Engine,
+			&template.EngineVersion, &template.ParameterSchema, &template.Revision)
 		if err != nil {
 			return nil, err
 		}

@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { Descriptions, Drawer, Radio, RadioGroup, Select, Space, Switch, Tag } from 'components/Fluent';
+import React from 'react';
+import { Descriptions, Drawer, Radio, RadioGroup, Select, Space, Tag } from 'components/Fluent';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { listActiveConfigFileRelease, listOneConfigFileRelease, selectFileRelease } from 'modules/configuration/release';
-import { ConfigFileRelease, describeOneFileRelease, ReleaseVersion } from 'services/config_release';
 import CodeEditor from 'components/CodeEditor';
 import { resolveFileFormat } from 'utils/path';
 import CodeDiffEditor from 'components/CodeDiffEditor';
@@ -40,7 +39,7 @@ const ReleaseDetail: React.FC<IReleaseDetailProps> = ({ namespace, group, fileNa
     const dispatch = useAppDispatch();
 
     const releaseState = useAppSelector(selectFileRelease);
-    const { versions = [], total = 0, loading, editFileRelease, viewFileRelease, activeFileRelease } = releaseState;
+    const { versions = [], editFileRelease, viewFileRelease, activeFileRelease } = releaseState;
 
     const [openDiff, setOpenDiff] = React.useState<boolean>(false);
 
@@ -128,6 +127,20 @@ const ReleaseDetail: React.FC<IReleaseDetailProps> = ({ namespace, group, fileNa
                     <DescriptionsItem label="文件名">{activeFileRelease?.fileName}</DescriptionsItem>
                     <DescriptionsItem label="版本">{activeFileRelease?.version}</DescriptionsItem>
                     <DescriptionsItem label="发布类型">{activeFileRelease?.releaseType}</DescriptionsItem>
+                    <DescriptionsItem label="配置类型">
+                        {activeFileRelease?.configType === 'CONFIG_TEMPLATE' ? '模板渲染' : '普通文本'}
+                    </DescriptionsItem>
+                    {activeFileRelease?.configType === 'CONFIG_TEMPLATE' && (
+                        <>
+                            <DescriptionsItem label="Template">{activeFileRelease.templateBinding?.templateId || '-'}</DescriptionsItem>
+                            <DescriptionsItem label="Template Release">
+                                {activeFileRelease.templateBinding?.templateReleaseId || '-'}
+                            </DescriptionsItem>
+                            <DescriptionsItem label="Binding Release">
+                                {activeFileRelease.templateBinding?.bindingReleaseId || '-'}
+                            </DescriptionsItem>
+                        </>
+                    )}
                     <DescriptionsItem label="发布描述">{activeFileRelease?.releaseDescription}</DescriptionsItem>
                     <DescriptionsItem label="创建时间">{activeFileRelease?.createTime}</DescriptionsItem>
                     <DescriptionsItem label="创建人">{activeFileRelease?.createBy}</DescriptionsItem>

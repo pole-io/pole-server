@@ -123,6 +123,19 @@ type ConfigFileClientOperate interface {
 
 // ConfigFileTemplateOperate config file template operate
 type ConfigFileTemplateOperate interface {
+	// PreviewConfigTemplate performs the server reference render for validation only.
+	PreviewConfigTemplate(ctx context.Context, req *apiconfig.RenderPreviewRequest) *apiconfig.RenderPreview
+	PublishConfigTemplateRelease(ctx context.Context, req *apiconfig.ConfigTemplateRelease) *apimodel.Response
+	SaveNamespaceTemplateValues(ctx context.Context, req *apiconfig.NamespaceTemplateValues) *apimodel.Response
+	PublishNamespaceTemplateValueRelease(
+		ctx context.Context, req *apiconfig.NamespaceTemplateValueRelease) *apimodel.Response
+	BindConfigFileTemplate(ctx context.Context, file *apiconfig.ConfigFile) *apimodel.Response
+	ListConfigTemplateReleases(ctx context.Context, templateID uint64) *apimodel.BatchQueryResponse
+	GetNamespaceTemplateValues(ctx context.Context, namespace string, templateID uint64) *apimodel.Response
+	ListNamespaceTemplateValueReleases(
+		ctx context.Context, namespace string, templateID uint64) *apimodel.BatchQueryResponse
+	ListConfigTemplateBindings(
+		ctx context.Context, namespace, group, fileName string) *apimodel.BatchQueryResponse
 	// GetAllConfigFileTemplates get all config file templates
 	GetAllConfigFileTemplates(ctx context.Context) *apimodel.BatchQueryResponse
 	// CreateConfigFileTemplates create config file template

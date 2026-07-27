@@ -1,5 +1,7 @@
 import { apiRequest, getApiRequest, putApiRequest } from 'utils/request';
 import { BaseURL, Label, MatcheLabel } from './types';
+import type { ConfigType } from './config_files';
+import type { ConfigTemplateBinding } from './config_templates';
 
 export interface ConfigFileRelease {
     id: string
@@ -19,6 +21,8 @@ export interface ConfigFileRelease {
     releaseType?: string
     format: string
     betaLabels: MatcheLabel[]
+    configType?: ConfigType
+    templateBinding?: ConfigTemplateBinding
 }
 
 export interface ConfigFileReleaseView extends ConfigFileRelease {
@@ -75,6 +79,12 @@ type ApiConfigFileRelease = ConfigFileReleaseView & {
     beta_labels?: MatcheLabel[]
     release_status?: string
     gray_priority?: number
+    config_type?: ConfigType | number
+    template_binding?: {
+        template_id?: string | number
+        template_release_id?: string
+        binding_release_id?: string
+    }
 }
 
 function labelsToTags(labels?: Record<string, string> | Label[]): Label[] {
@@ -154,6 +164,13 @@ function normalizeConfigFileRelease(release: ApiConfigFileRelease): ConfigFileRe
         grayPriority: release.grayPriority || release.gray_priority,
         active: Boolean(release.active),
         betaLabels: normalizeClientLabelsForView(release.betaLabels || release.beta_labels),
+        configType: release.configType === 'CONFIG_TEMPLATE' || release.config_type === 'CONFIG_TEMPLATE' ||
+            release.config_type === 1 ? 'CONFIG_TEMPLATE' : 'CONFIG_FILE',
+        templateBinding: release.templateBinding || (release.template_binding ? {
+            templateId: release.template_binding.template_id ?? '',
+            templateReleaseId: release.template_binding.template_release_id ?? '',
+            bindingReleaseId: release.template_binding.binding_release_id,
+        } : undefined),
     }
 }
 

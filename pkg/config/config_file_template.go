@@ -29,14 +29,63 @@ import (
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	configtemplate "github.com/pole-io/pole-server/pkg/config/template"
 )
+
+// PreviewConfigTemplate performs a deterministic reference render. The result is
+// intended for preview, validation and cross-language hash comparison; it is not
+// the runtime configuration payload.
+func (s *Server) PreviewConfigTemplate(
+	ctx context.Context, req *apiconfig.RenderPreviewRequest) *apiconfig.RenderPreview {
+	out := &apiconfig.RenderPreview{
+		TemplateReleaseId: req.GetTemplateReleaseId(),
+		ValueReleaseId:    req.GetValueReleaseId(),
+		Code:              uint32(apimodel.Code_ExecuteSuccess),
+		Info:              apimodel.Code_ExecuteSuccess.String(),
+		Engine: &apiconfig.ConfigTemplateEngine{
+			Name: configtemplate.EnginePoleMustache, Version: configtemplate.EngineVersionV1,
+		},
+	}
+	previewReq, err := configtemplate.RenderRequestFromSpec(req.GetInput())
+	if err != nil {
+		out.Diagnostics = []*apiconfig.RenderDiagnostic{{
+			Severity: apiconfig.RenderDiagnostic_DIAGNOSTIC_ERROR,
+			Code:     string(configtemplate.DiagnosticInvalidValue),
+			Message:  err.Error(),
+		}}
+		return out
+	}
+	result, err := configtemplate.Preview(ctx, previewReq)
+	if err != nil {
+		out.Diagnostics = []*apiconfig.RenderDiagnostic{{
+			Severity: apiconfig.RenderDiagnostic_DIAGNOSTIC_ERROR,
+			Code:     string(configtemplate.DiagnosticInvalidValue),
+			Message:  err.Error(),
+		}}
+		return out
+	}
+	out.Valid = result.Valid
+	out.Format = result.Format
+	out.RenderedContent = result.RenderedContent
+	out.RenderedSha256 = result.RenderedSHA256
+	out.Diagnostics = make([]*apiconfig.RenderDiagnostic, 0, len(result.Diagnostics))
+	for _, diagnostic := range result.Diagnostics {
+		out.Diagnostics = append(out.Diagnostics, &apiconfig.RenderDiagnostic{
+			Severity:  apiconfig.RenderDiagnostic_DIAGNOSTIC_ERROR,
+			Code:      string(diagnostic.Code),
+			Message:   diagnostic.Message,
+			Parameter: diagnostic.Parameter,
+		})
+	}
+	return out
+}
 
 // CreateConfigFileTemplates create config file template
 func (s *Server) CreateConfigFileTemplates(
 	ctx context.Context, reqs []*apiconfig.ConfigFileTemplate) *apimodel.Response {
 	for _, req := range reqs {
 		rsp := s.CreateConfigFileTemplate(ctx, req)
-		if api.IsSuccess(rsp) {
+		if !api.IsSuccess(rsp) {
 			return rsp
 		}
 	}
@@ -72,7 +121,7 @@ func (s *Server) UpdateConfigFileTemplates(
 	ctx context.Context, reqs []*apiconfig.ConfigFileTemplate) *apimodel.Response {
 	for _, req := range reqs {
 		rsp := s.UpdateConfigFileTemplate(ctx, req)
-		if api.IsSuccess(rsp) {
+		if !api.IsSuccess(rsp) {
 			return rsp
 		}
 	}

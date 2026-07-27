@@ -336,8 +336,37 @@
 
 .basicDescription,
 .basicTags,
-.basicTagsEditor {
+.basicTagsEditor,
+.configTypeField {
   grid-column: 1 / -1;
+}
+
+.configTypeField,
+.bindingField {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 20px;
+
+  > span {
+    color: var(--app-text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+  }
+}
+
+.configTypeField {
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 8px;
+  background: var(--app-surface-subtle);
+
+  small {
+    color: var(--app-text-secondary);
+    font-size: 12px;
+  }
 }
 
 .editorShell {
@@ -347,6 +376,23 @@
   flex-direction: column;
   background: var(--app-surface-subtle);
   border-top: 1px solid var(--app-border-subtle);
+}
+
+.templateBindingBanner {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--app-brand-border);
+  color: var(--app-text-secondary);
+  background: var(--app-brand-subtle);
+  font-size: 12px;
+
+  strong {
+    color: var(--app-brand);
+  }
 }
 
 .editorBody {

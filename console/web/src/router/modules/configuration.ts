@@ -17,6 +17,13 @@ const configuration: IRouter[] = [
           title: 'menu.configuration.group',
         },
       },
+      {
+        path: 'templates',
+        Component: lazy(() => import('pages/Configuration/Template')),
+        meta: {
+          title: 'menu.configuration.template',
+        },
+      },
       // 这里的路由是为了在服务列表中点击实例跳转到实例详情页
       {
         path: 'group/files',

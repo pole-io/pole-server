@@ -30,6 +30,9 @@ type ConfigFileModuleStore interface {
 	ConfigFileReleaseStore
 	ConfigFileReleaseHistoryStore
 	ConfigFileTemplateStore
+	ConfigTemplateReleaseStore
+	NamespaceTemplateValuesStore
+	ConfigTemplateBindingStore
 }
 
 // ConfigFileGroupStore 配置文件组存储接口
@@ -118,4 +121,32 @@ type ConfigFileTemplateStore interface {
 	SaveConfigFileTemplate(template *conftypes.ConfigFileTemplate) (*conftypes.ConfigFileTemplate, error)
 	// GetConfigFileTemplate get config file template by name
 	GetConfigFileTemplate(name string) (*conftypes.ConfigFileTemplate, error)
+}
+
+// ConfigTemplateReleaseStore stores immutable config template releases.
+type ConfigTemplateReleaseStore interface {
+	CreateConfigTemplateRelease(release *conftypes.ConfigTemplateRelease) error
+	GetConfigTemplateRelease(id string) (*conftypes.ConfigTemplateRelease, error)
+	ListConfigTemplateReleases(templateID uint64) ([]*conftypes.ConfigTemplateRelease, error)
+}
+
+// NamespaceTemplateValuesStore stores Namespace-scoped Value drafts and releases.
+type NamespaceTemplateValuesStore interface {
+	SaveNamespaceTemplateValues(values *conftypes.NamespaceTemplateValues) error
+	GetNamespaceTemplateValues(namespace string, templateID uint64) (*conftypes.NamespaceTemplateValues, error)
+	CreateNamespaceTemplateValueRelease(release *conftypes.NamespaceTemplateValueRelease) error
+	GetNamespaceTemplateValueRelease(id string) (*conftypes.NamespaceTemplateValueRelease, error)
+	ListNamespaceTemplateValueReleases(namespace string, templateID uint64) (
+		[]*conftypes.NamespaceTemplateValueRelease, error)
+	SetNamespaceTemplateValueReleaseActive(id string, active bool) error
+}
+
+// ConfigTemplateBindingStore stores explicit config-file-to-template-release bindings.
+type ConfigTemplateBindingStore interface {
+	CreateConfigTemplateBinding(binding *conftypes.ConfigTemplateBinding) error
+	CreateConfigTemplateBindingTx(tx Tx, binding *conftypes.ConfigTemplateBinding) error
+	GetActiveConfigTemplateBinding(file *conftypes.ConfigFileKey) (*conftypes.ConfigTemplateBinding, error)
+	ListConfigTemplateBindings(file *conftypes.ConfigFileKey) ([]*conftypes.ConfigTemplateBinding, error)
+	SetConfigTemplateBindingActive(bindingReleaseID string, active bool) error
+	SetConfigTemplateBindingActiveTx(tx Tx, bindingReleaseID string, active bool) error
 }

@@ -18,7 +18,10 @@
 package config
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/pole-io/specification/source/go/api/v1/config_manage"
@@ -27,6 +30,21 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	"github.com/pole-io/pole-server/apis/pkg/utils"
+)
+
+const metadataKeyConfigFileType = "pole.internal/config-file-type"
+
+const (
+	metadataKeyTemplateID       = "pole.internal/template-id"
+	metadataKeyTemplateRelease  = "pole.internal/template-release-id"
+	metadataKeyBindingReleaseID = "pole.internal/binding-release-id"
+)
+
+type ConfigFileType int32
+
+const (
+	ConfigFileTypePlain    ConfigFileType = 0
+	ConfigFileTypeTemplate ConfigFileType = 1
 )
 
 /** ----------- DataObject ------------- */
@@ -75,6 +93,7 @@ type ConfigFile struct {
 	Metadata      map[string]string
 	Encrypt       bool
 	EncryptAlgo   string
+	ConfigType    ConfigFileType
 	Status        string
 	CreateBy      string
 	ModifyBy      string
@@ -190,6 +209,7 @@ type SimpleConfigFileRelease struct {
 	ModifyBy           string
 	ReleaseDescription string
 	BetaLabels         []*apimodel.ClientLabel
+	ConfigType         ConfigFileType
 }
 
 func (s *SimpleConfigFileRelease) GetGrayResource() string {
@@ -279,21 +299,35 @@ type ConfigFileTag struct {
 
 // ConfigFileTemplate config file template data object
 type ConfigFileTemplate struct {
-	Id         uint64
-	Name       string
-	Content    string
-	Comment    string
-	Format     string
-	CreateTime time.Time
-	CreateBy   string
-	ModifyTime time.Time
-	ModifyBy   string
+	Id              uint64
+	Name            string
+	Content         string
+	Comment         string
+	Format          string
+	Engine          string
+	EngineVersion   string
+	ParameterSchema string
+	Revision        string
+	CreateTime      time.Time
+	CreateBy        string
+	ModifyTime      time.Time
+	ModifyBy        string
 }
 
 func ToConfigFileStore(file *config_manage.ConfigFile) *ConfigFile {
-	metadata := file.GetLabels()
+	metadata := make(map[string]string, len(file.GetLabels())+4)
+	for key, value := range file.GetLabels() {
+		metadata[key] = value
+	}
 	if file.GetEncryptAlgo() != "" {
 		metadata[types.MetaKeyConfigFileEncryptAlgo] = file.GetEncryptAlgo()
+	}
+	configType := ConfigFileType(file.GetConfigType())
+	metadata[metadataKeyConfigFileType] = strconv.FormatInt(int64(configType), 10)
+	if binding := file.GetTemplateBinding(); binding != nil {
+		metadata[metadataKeyTemplateID] = strconv.FormatUint(binding.GetTemplateId(), 10)
+		metadata[metadataKeyTemplateRelease] = binding.GetTemplateReleaseId()
+		metadata[metadataKeyBindingReleaseID] = binding.GetBindingReleaseId()
 	}
 
 	return &ConfigFile{
@@ -305,6 +339,7 @@ func ToConfigFileStore(file *config_manage.ConfigFile) *ConfigFile {
 		Format:      file.Format,
 		Encrypt:     file.GetEncrypted(),
 		EncryptAlgo: file.GetEncryptAlgo(),
+		ConfigType:  configType,
 		Metadata:    metadata,
 	}
 }
@@ -313,21 +348,30 @@ func ToConfigFileAPI(file *ConfigFile) *config_manage.ConfigFile {
 	if file == nil {
 		return nil
 	}
+	configType := file.ConfigType
+	if value, ok := file.Metadata[metadataKeyConfigFileType]; ok {
+		if parsed, err := strconv.ParseInt(value, 10, 32); err == nil {
+			configType = ConfigFileType(parsed)
+		}
+	}
+	labels := publicConfigMetadata(file.Metadata)
 	return &config_manage.ConfigFile{
-		Id:          file.Id,
-		Name:        file.Name,
-		Namespace:   file.Namespace,
-		Group:       file.Group,
-		Content:     file.Content,
-		Comment:     file.Comment,
-		Format:      file.Format,
-		Status:      file.Status,
-		Labels:      file.Metadata,
-		EncryptAlgo: file.GetEncryptAlgo(),
-		Encrypted:   file.IsEncrypted(),
-		Ctime:       utils.Time2String(file.CreateTime),
-		Mtime:       utils.Time2String(file.ModifyTime),
-		Rtime:       utils.Time2String(file.ReleaseTime),
+		Id:              file.Id,
+		Name:            file.Name,
+		Namespace:       file.Namespace,
+		Group:           file.Group,
+		Content:         file.Content,
+		Comment:         file.Comment,
+		Format:          file.Format,
+		Status:          file.Status,
+		Labels:          labels,
+		ConfigType:      config_manage.ConfigFile_ConfigFileType(configType),
+		TemplateBinding: TemplateBindingFromMetadata(file.Metadata),
+		EncryptAlgo:     file.GetEncryptAlgo(),
+		Encrypted:       file.IsEncrypted(),
+		Ctime:           utils.Time2String(file.CreateTime),
+		Mtime:           utils.Time2String(file.ModifyTime),
+		Rtime:           utils.Time2String(file.ReleaseTime),
 	}
 }
 
@@ -337,6 +381,12 @@ func ToConfiogFileReleaseApi(release *ConfigFileRelease) *config_manage.ConfigFi
 		return nil
 	}
 
+	configType := release.ConfigType
+	if value, ok := release.Metadata[metadataKeyConfigFileType]; ok {
+		if parsed, err := strconv.ParseInt(value, 10, 32); err == nil {
+			configType = ConfigFileType(parsed)
+		}
+	}
 	return &config_manage.ConfigFileRelease{
 		Id:                 release.Id,
 		Name:               release.Name,
@@ -353,7 +403,9 @@ func ToConfiogFileReleaseApi(release *ConfigFileRelease) *config_manage.ConfigFi
 		Mtime:              utils.Time2String(release.ModifyTime),
 		ModifyBy:           release.ModifyBy,
 		ReleaseDescription: release.ReleaseDescription,
-		Labels:             release.Metadata,
+		Labels:             publicConfigMetadata(release.Metadata),
+		ConfigType:         config_manage.ConfigFileRelease_ConfigFileType(configType),
+		TemplateBinding:    TemplateBindingFromMetadata(release.Metadata),
 		Active:             release.Active,
 		ReleaseType:        string(release.ReleaseType),
 		BetaLabels:         release.BetaLabels,
@@ -374,13 +426,43 @@ func ToConfigFileReleaseStore(release *config_manage.ConfigFileRelease) *ConfigF
 				Group:     release.Group,
 				FileName:  release.FileName,
 			},
-			Comment:  release.Comment,
-			Md5:      release.Md5,
-			Version:  release.Version,
-			CreateBy: release.CreateBy,
-			ModifyBy: release.ModifyBy,
+			Comment:    release.Comment,
+			Md5:        release.Md5,
+			Version:    release.Version,
+			CreateBy:   release.CreateBy,
+			ModifyBy:   release.ModifyBy,
+			ConfigType: ConfigFileType(release.GetConfigType()),
 		},
 		Content: release.Content,
+	}
+}
+
+func publicConfigMetadata(metadata map[string]string) map[string]string {
+	if metadata == nil {
+		return nil
+	}
+	out := make(map[string]string, len(metadata))
+	for key, value := range metadata {
+		if key != metadataKeyConfigFileType && key != metadataKeyTemplateID &&
+			key != metadataKeyTemplateRelease && key != metadataKeyBindingReleaseID {
+			out[key] = value
+		}
+	}
+	return out
+}
+
+func TemplateBindingFromMetadata(metadata map[string]string) *config_manage.ConfigTemplateBinding {
+	if metadata == nil || metadata[metadataKeyBindingReleaseID] == "" {
+		return nil
+	}
+	templateID, err := strconv.ParseUint(metadata[metadataKeyTemplateID], 10, 64)
+	if err != nil {
+		return nil
+	}
+	return &config_manage.ConfigTemplateBinding{
+		TemplateId:        templateID,
+		TemplateReleaseId: metadata[metadataKeyTemplateRelease],
+		BindingReleaseId:  metadata[metadataKeyBindingReleaseID],
 	}
 }
 
@@ -442,26 +524,53 @@ func ToConfigGroupStore(group *config_manage.ConfigFileGroup) *ConfigFileGroup {
 }
 
 func ToConfigFileTemplateAPI(template *ConfigFileTemplate) *config_manage.ConfigFileTemplate {
-	return &config_manage.ConfigFileTemplate{
-		Id:      template.Id,
-		Name:    template.Name,
-		Content: template.Content,
-		Comment: template.Comment,
-		Format:  template.Format,
-		Ctime:   utils.Time2String(template.CreateTime),
-		Mtime:   utils.Time2String(template.ModifyTime),
+	out := &config_manage.ConfigFileTemplate{}
+	if template.ParameterSchema != "" {
+		out.ParameterSchema, _ = DecodeTemplateParameterSchema(template.ParameterSchema)
 	}
+	out.Id = template.Id
+	out.Name = template.Name
+	out.Content = template.Content
+	out.Comment = template.Comment
+	out.Format = template.Format
+	out.Engine = &config_manage.ConfigTemplateEngine{Name: template.Engine, Version: template.EngineVersion}
+	out.Revision = template.Revision
+	out.Ctime = utils.Time2String(template.CreateTime)
+	out.Mtime = utils.Time2String(template.ModifyTime)
+	return out
 }
 
 func ToConfigFileTemplateStore(template *config_manage.ConfigFileTemplate) *ConfigFileTemplate {
+	parameterSchema, _ := EncodeTemplateParameterSchema(template.GetParameterSchema())
+	engineName := template.GetEngine().GetName()
+	engineVersion := template.GetEngine().GetVersion()
+	if engineName == "" {
+		engineName = "pole-mustache"
+	}
+	if engineVersion == "" {
+		engineVersion = "v1"
+	}
+	revision := template.GetRevision()
+	if revision == "" {
+		sum := sha256.Sum256([]byte(template.GetContent() + "\x00" + parameterSchema))
+		revision = hex.EncodeToString(sum[:])
+	}
+	format := template.GetFormat()
+	if format == "" {
+		format = "text"
+	}
 	return &ConfigFileTemplate{
-		Id:       template.Id,
-		Name:     template.Name,
-		Content:  template.Content,
-		Comment:  template.Comment,
-		Format:   template.Format,
-		CreateBy: template.Ctime,
-		ModifyBy: template.Mtime,
+		Id:              template.Id,
+		Name:            template.Name,
+		Content:         template.Content,
+		Comment:         template.Comment,
+		Format:          format,
+		Engine:          engineName,
+		EngineVersion:   engineVersion,
+		ParameterSchema: parameterSchema,
+		Revision:        revision,
+		CreateBy:        template.Ctime,
+		ModifyBy:        template.Mtime,
 	}
 }
 

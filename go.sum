@@ -1870,6 +1870,8 @@ github.com/polarismesh/go-restful-openapi/v2 v2.0.0-20220928152401-083908d10219 
 github.com/polarismesh/go-restful-openapi/v2 v2.0.0-20220928152401-083908d10219/go.mod h1:4WhwBysTom9Eoy0hQ4W69I0FmO+T0EpjEW9/5sgHoUk=
 github.com/pole-io/specification v0.1.0-ALPHA.38 h1:5R3eukf1aZYPwWHmAadoSCvqKCRw+A2lMi2HI3VVbWU=
 github.com/pole-io/specification v0.1.0-ALPHA.38/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
+github.com/pole-io/specification v0.1.0-ALPHA.38.0.20260727182744-be8c35c33315 h1:+t/00/+ZZ4ShF3/0H0JXSPDH6t4SpyiL1ggT3FVnfc0=
+github.com/pole-io/specification v0.1.0-ALPHA.38.0.20260727182744-be8c35c33315/go.mod h1:XC5do5S07EitHKFxd67bN7f5FzYNZWTzL8TkSMMcWCY=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 h1:o4JXh1EVt9k/+g42oCprj/FisM4qX9L3sZB3upGN2ZU=
 github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55/go.mod h1:OmDBASR4679mdNQnz2pUhc2G8CO2JrUAVFDRBDP/hJE=

@@ -17,6 +17,7 @@
   "menu.discovery.envoy": "SideCar 实例",
   "menu.configuration": "配置管理",
   "menu.configuration.group": "配置分组",
+  "menu.configuration.template": "配置模板",
   "menu.configuration.k8s": "Kubernetes 配置",
   "menu.discovery.k8s": "Kubernetes 集群",
   "menu.agent": "Agent",

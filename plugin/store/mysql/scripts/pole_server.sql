@@ -395,6 +395,10 @@ CREATE TABLE
         `name` VARCHAR(128) COLLATE utf8_bin NOT NULL COMMENT '配置文件模板名称',
         `content` LONGTEXT COLLATE utf8_bin NOT NULL COMMENT '配置文件模板内容',
         `format` VARCHAR(16) COLLATE utf8_bin DEFAULT 'text' COMMENT '模板文件格式',
+        `engine` VARCHAR(32) COLLATE utf8_bin NOT NULL DEFAULT 'pole-mustache' COMMENT '模板引擎',
+        `engine_version` VARCHAR(32) COLLATE utf8_bin NOT NULL DEFAULT 'v1' COMMENT '模板引擎版本',
+        `parameter_schema` LONGTEXT COLLATE utf8_bin COMMENT '参数 Schema JSON',
+        `revision` VARCHAR(128) COLLATE utf8_bin NOT NULL DEFAULT '' COMMENT '草稿 revision',
         `comment` VARCHAR(512) COLLATE utf8_bin DEFAULT NULL COMMENT '模板描述信息',
         `create_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '创建人',
         `modify_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '最后更新人',
@@ -403,6 +407,88 @@ CREATE TABLE
         PRIMARY KEY (`id`),
         UNIQUE KEY `uk_name` (`name`)
     ) ENGINE = InnoDB AUTO_INCREMENT = 1 DEFAULT CHARSET = utf8 COLLATE = utf8_bin COMMENT = '配置文件模板表';
+
+/* 配置模板不可变发布 */
+CREATE TABLE `config_template_release` (
+    `id` VARCHAR(128) NOT NULL COMMENT '模板发布 ID',
+    `template_id` BIGINT UNSIGNED NOT NULL COMMENT '配置模板 ID',
+    `name` VARCHAR(128) COLLATE utf8_bin NOT NULL COMMENT '发布名称',
+    `content` LONGTEXT COLLATE utf8_bin NOT NULL COMMENT '不可变模板内容',
+    `format` VARCHAR(16) COLLATE utf8_bin NOT NULL DEFAULT 'text' COMMENT '渲染后配置格式',
+    `parameter_schema` LONGTEXT COLLATE utf8_bin COMMENT '参数 Schema JSON',
+    `engine` VARCHAR(32) COLLATE utf8_bin NOT NULL DEFAULT 'pole-mustache' COMMENT '模板引擎',
+    `engine_version` VARCHAR(32) COLLATE utf8_bin NOT NULL DEFAULT 'v1' COMMENT '模板引擎版本',
+    `version` BIGINT UNSIGNED NOT NULL COMMENT '模板发布版本',
+    `content_sha256` VARCHAR(64) COLLATE utf8_bin NOT NULL COMMENT '模板源码 SHA-256',
+    `comment` VARCHAR(512) COLLATE utf8_bin DEFAULT NULL COMMENT '发布描述',
+    `create_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '创建人',
+    `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_template_version` (`template_id`, `version`),
+    KEY `idx_template_ctime` (`template_id`, `ctime`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_bin COMMENT = '配置模板不可变发布表';
+
+/* Namespace + Template Value 草稿 */
+CREATE TABLE `namespace_template_values` (
+    `id` VARCHAR(128) NOT NULL COMMENT 'Value 聚合 ID',
+    `namespace` VARCHAR(64) COLLATE utf8_bin NOT NULL COMMENT '命名空间',
+    `template_id` BIGINT UNSIGNED NOT NULL COMMENT '配置模板 ID',
+    `values_content` LONGTEXT COLLATE utf8_bin NOT NULL COMMENT 'Value 草稿 JSON',
+    `revision` VARCHAR(128) COLLATE utf8_bin NOT NULL DEFAULT '' COMMENT '草稿 revision',
+    `create_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '创建人',
+    `modify_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '最后更新人',
+    `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_namespace_template` (`namespace`, `template_id`),
+    KEY `idx_values_mtime` (`mtime`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_bin COMMENT = 'Namespace 模板 Value 草稿表';
+
+/* Namespace + Template Value 不可变发布 */
+CREATE TABLE `namespace_template_value_release` (
+    `id` VARCHAR(128) NOT NULL COMMENT 'Value 发布 ID',
+    `values_id` VARCHAR(128) NOT NULL COMMENT 'Value 聚合 ID',
+    `namespace` VARCHAR(64) COLLATE utf8_bin NOT NULL COMMENT '命名空间',
+    `template_id` BIGINT UNSIGNED NOT NULL COMMENT '配置模板 ID',
+    `template_release_id` VARCHAR(128) NOT NULL COMMENT '校验时使用的模板发布 ID',
+    `values_content` LONGTEXT COLLATE utf8_bin NOT NULL COMMENT '不可变 Value JSON',
+    `release_type` VARCHAR(16) COLLATE utf8_bin NOT NULL COMMENT 'normal 或 gray',
+    `beta_labels` TEXT COLLATE utf8_bin COMMENT '灰度客户端标签 JSON',
+    `priority` INT NOT NULL DEFAULT 0 COMMENT '灰度匹配优先级',
+    `active` TINYINT(4) NOT NULL DEFAULT 0 COMMENT '是否生效',
+    `version` BIGINT UNSIGNED NOT NULL COMMENT 'Value 发布版本',
+    `revision` VARCHAR(128) COLLATE utf8_bin NOT NULL COMMENT '不可变 Value 发布 revision',
+    `comment` VARCHAR(512) COLLATE utf8_bin DEFAULT NULL COMMENT '发布描述',
+    `create_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '创建人',
+    `modify_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '最后更新人',
+    `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_values_version` (`values_id`, `version`),
+    KEY `idx_value_release_match` (`namespace`, `template_id`, `active`, `release_type`, `priority`),
+    KEY `idx_value_release_mtime` (`mtime`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_bin COMMENT = 'Namespace 模板 Value 不可变发布表';
+
+/* 配置文件模板绑定不可变发布 */
+CREATE TABLE `config_file_template_binding_release` (
+    `binding_release_id` VARCHAR(128) NOT NULL COMMENT '绑定发布 ID',
+    `namespace` VARCHAR(64) COLLATE utf8_bin NOT NULL COMMENT '配置命名空间',
+    `config_group` VARCHAR(128) COLLATE utf8_bin NOT NULL COMMENT '配置分组',
+    `file_name` VARCHAR(128) COLLATE utf8_bin NOT NULL COMMENT '配置文件名',
+    `template_id` BIGINT UNSIGNED NOT NULL COMMENT '配置模板 ID',
+    `template_release_id` VARCHAR(128) NOT NULL COMMENT '显式固定的模板发布 ID',
+    `active` TINYINT(4) NOT NULL DEFAULT 0 COMMENT '是否生效',
+    `version` BIGINT UNSIGNED NOT NULL COMMENT '绑定发布版本',
+    `comment` VARCHAR(512) COLLATE utf8_bin DEFAULT NULL COMMENT '绑定描述',
+    `create_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '创建人',
+    `modify_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '最后更新人',
+    `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
+    PRIMARY KEY (`binding_release_id`),
+    UNIQUE KEY `uk_config_binding_version` (`namespace`, `config_group`, `file_name`, `version`),
+    KEY `idx_config_binding_active` (`namespace`, `config_group`, `file_name`, `active`),
+    KEY `idx_config_binding_template` (`template_id`, `template_release_id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_bin COMMENT = '配置文件模板绑定不可变发布表';
 
 /* 用户 */
 CREATE TABLE

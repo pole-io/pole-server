@@ -68,7 +68,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/mark3labs/mcp-go v0.18.0
 	github.com/moby/moby/api v1.54.2
-	github.com/pole-io/specification v0.1.0-ALPHA.38
+	github.com/pole-io/specification v0.1.0-ALPHA.38.0.20260727182744-be8c35c33315
 	github.com/testcontainers/testcontainers-go v0.43.0
 	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.36.0

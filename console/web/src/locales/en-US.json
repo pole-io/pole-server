@@ -17,6 +17,7 @@
   "menu.discovery.envoy": "SideCar Instances",
   "menu.configuration": "Configuration Management",
   "menu.configuration.group": "Config Group",
+  "menu.configuration.template": "Config Templates",
   "menu.configuration.k8s": "Kubernetes Config",
   "menu.discovery.k8s": "Kubernetes",
   "menu.agent": "Agent",

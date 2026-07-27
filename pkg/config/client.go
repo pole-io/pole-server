@@ -36,6 +36,7 @@ import (
 	"github.com/pole-io/pole-server/apis/pkg/types/rules"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	configtemplate "github.com/pole-io/pole-server/pkg/config/template"
 )
 
 type (
@@ -72,6 +73,27 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context, req *apiconfig.Conf
 		}
 	}
 	snapshotRevision := configReleaseSnapshotRevision(release)
+	var renderSnapshot *apiconfig.RenderSnapshot
+	releaseView := conftypes.ToConfiogFileReleaseApi(release)
+	if releaseView.GetConfigType() == apiconfig.ConfigFileRelease_CONFIG_TEMPLATE {
+		if !clientSupportsTemplateEngine(ctx, configtemplate.EnginePoleMustache, configtemplate.EngineVersionV1) {
+			response := api.NewConfigDiscoverResponse(apimodel.Code_BadRequest)
+			response.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE
+			response.Info = "client does not declare support for pole-mustache v1"
+			return response
+		}
+		var resolveErr error
+		renderSnapshot, resolveErr = s.resolveTemplateSnapshot(
+			ctx, release.ToFileKey(), releaseView.GetTemplateBinding(), clientLabels)
+		if resolveErr != nil {
+			log.Error("[Config][Service] resolve template snapshot", utils.RequestID(ctx), zap.Error(resolveErr))
+			response := api.NewConfigDiscoverResponse(apimodel.Code_ExecuteException)
+			response.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE
+			response.Info = resolveErr.Error()
+			return response
+		}
+		snapshotRevision = renderSnapshot.GetRevision()
+	}
 	if req.Id != "" && req.Id == snapshotRevision {
 		log.Debug("[Config][Service] get config file to client", utils.RequestID(ctx),
 			zap.String("client-version", req.Id), zap.Uint64("server-version", release.Version))
@@ -92,8 +114,26 @@ func (s *Server) GetConfigFileWithCache(ctx context.Context, req *apiconfig.Conf
 	response := api.NewConfigDiscoverResponse(apimodel.Code_ExecuteSuccess)
 	response.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE
 	response.File = configFile
+	response.RenderSnapshot = renderSnapshot
+	if renderSnapshot != nil {
+		// Template source and Values are transported atomically in RenderSnapshot.
+		// Leaving ordinary content populated would allow an old SDK to apply an
+		// unrendered template as if it were a plain config file.
+		response.File.Content = ""
+		response.File.TemplateBinding = renderSnapshot.GetTemplateBinding()
+	}
 	response.Revision = snapshotRevision
 	return response
+}
+
+func clientSupportsTemplateEngine(ctx context.Context, name, version string) bool {
+	filter, _ := ctx.Value(types.ContextDiscoverFilter).(*apiconfig.ConfigDiscoverFilter)
+	for _, engine := range filter.GetSupportedTemplateEngines() {
+		if engine.GetName() == name && engine.GetVersion() == version {
+			return true
+		}
+	}
+	return false
 }
 
 func configReleaseSnapshotRevision(release *conftypes.ConfigFileRelease) string {

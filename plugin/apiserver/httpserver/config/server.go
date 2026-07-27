@@ -90,6 +90,10 @@ func (h *HTTPServer) addDefaultReadAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichGetConfigFileReleaseHistoryApiDocs(ws.GET("/files/release/history").
 		To(h.GetConfigFileReleaseHistory)))
 	ws.Route(docs.EnrichGetAllConfigFileTemplatesApiDocs(ws.GET("/templates").To(h.GetAllConfigFileTemplates)))
+	ws.Route(ws.GET("/templates/releases").To(h.ListConfigTemplateReleases))
+	ws.Route(ws.GET("/templates/values").To(h.GetNamespaceTemplateValues))
+	ws.Route(ws.GET("/templates/values/releases").To(h.ListNamespaceTemplateValueReleases))
+	ws.Route(ws.GET("/templates/bindings").To(h.ListConfigTemplateBindings))
 }
 
 func (h *HTTPServer) addDefaultAccess(ws *restful.WebService) {

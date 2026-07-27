@@ -308,6 +308,14 @@ func (g *ConfigGRPCServer) PublishConfigFile(ctx context.Context,
 	}, nil
 }
 
+// PreviewConfigTemplate exposes the server reference renderer. SDK runtime
+// rendering remains client-side and must verify the returned reference hash.
+func (g *ConfigGRPCServer) PreviewConfigTemplate(ctx context.Context,
+	req *apiconfig.RenderPreviewRequest) (*apiconfig.RenderPreview, error) {
+	ctx = utils.ConvertGRPCContext(ctx)
+	return g.configServer.PreviewConfigTemplate(ctx, req), nil
+}
+
 // UpsertAndPublishConfigFile 创建/更新并发布配置文件
 func (g *ConfigGRPCServer) UpsertAndPublishConfigFile(ctx context.Context,
 	req *apiconfig.ConfigFilePublishInfo) (*apimodel.Response, error) {
@@ -411,6 +419,7 @@ func (g *ConfigGRPCServer) handleDiscoverRequest(ctx context.Context, in *apicon
 			Success:   out.GetCode() > uint32(apimodel.Code_DataNoChange),
 		})
 	}()
+	ctx = context.WithValue(ctx, types.ContextDiscoverFilter, in.GetFilter())
 
 	switch in.Type {
 	case apiconfig.ConfigDiscoverRequest_CONFIG_FILE:
@@ -433,6 +442,7 @@ func (g *ConfigGRPCServer) handleDiscoverRequest(ctx context.Context, in *apicon
 		ret := g.configServer.GetConfigFileWithCache(ctx, file)
 		out = api.NewConfigDiscoverResponse(apimodel.Code(ret.GetCode()))
 		out.File = ret.GetFile()
+		out.RenderSnapshot = ret.GetRenderSnapshot()
 		out.Type = apiconfig.ConfigDiscoverResponse_CONFIG_FILE
 		out.Revision = ret.GetRevision()
 	case apiconfig.ConfigDiscoverRequest_CONFIG_FILE_NAMES:

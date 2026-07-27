@@ -68,6 +68,9 @@ type stableStore struct {
 	*configFileReleaseStore
 	*configFileReleaseHistoryStore
 	*configFileTemplateStore
+	*configTemplateReleaseStore
+	*namespaceTemplateValuesStore
+	*configTemplateBindingStore
 
 	*clientStore
 	*adminStore
@@ -137,6 +140,9 @@ func (s *stableStore) Initialize(conf *store.Config) error {
 		return err
 	}
 	if err := ensureGovernanceRuleSchema(s.master); err != nil {
+		return err
+	}
+	if err := ensureConfigTemplateSchema(s.master); err != nil {
 		return err
 	}
 
@@ -287,6 +293,9 @@ func (s *stableStore) newStore() {
 	s.configFileReleaseStore = &configFileReleaseStore{master: s.master, slave: s.slave}
 	s.configFileReleaseHistoryStore = &configFileReleaseHistoryStore{master: s.master, slave: s.slave}
 	s.configFileTemplateStore = &configFileTemplateStore{master: s.master, slave: s.slave}
+	s.configTemplateReleaseStore = &configTemplateReleaseStore{master: s.master, slave: s.slave}
+	s.namespaceTemplateValuesStore = &namespaceTemplateValuesStore{master: s.master, slave: s.slave}
+	s.configTemplateBindingStore = &configTemplateBindingStore{master: s.master, slave: s.slave}
 	s.clientStore = &clientStore{master: s.master, slave: s.slave}
 
 	s.grayStore = &grayStore{master: s.master, slave: s.slave}

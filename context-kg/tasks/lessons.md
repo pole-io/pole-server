@@ -2,11 +2,16 @@
 title: Lessons
 tags: [tasks, lessons]
 links: [todo, patterns]
-updated: 2026-07-27
+updated: 2026-07-28
 sources: 0
 ---
 
 # Lessons
+
+- 配置模板方案中，不能把“服务端提供渲染后的格式”含混地并入客户端渲染。必须明确服务端 `rendered_content` 是运行时权威结果还是预览/一致性校验；本项目选择后者，SDK 仍按 `pole-mustache-v1` 本地渲染，服务端预览返回参考结果、诊断和哈希。跨语言一致性必须靠严格语法 Profile 与共享测试向量保证，不能直接要求各语言复刻完整 Go template。
+- 模板预览接口必须区分 API 错误与渲染诊断：鉴权、参数和系统失败使用项目统一 `apimodel.Code` 与 `info`，不能伪装成 `RenderDiagnostic` 字符串；diagnostics 只描述模板语法、Value、类型和目标格式问题。
+
+- 设计配置模板渲染时，不能默认“发布时渲染并固化”。当 Namespace Value 本身支持按客户端标签灰度时，发布阶段不存在唯一结果；应将模板和 Value 分别版本化发布，由客户端获取与自身匹配的原子快照、本地缓存并渲染。需要进一步区分“服务端负责灰度匹配、客户端只负责渲染”和“客户端同时负责匹配与渲染”，避免把灰度规则引擎无必要地复制到所有语言 SDK。
 
 - 发布或推送前不能只依赖构建与功能测试判断依赖安全；必须同时检查 GitHub Dependabot、`npm audit` 和 Go 漏洞扫描。对 critical/high 告警优先升级或移除依赖；没有修复版本的直接依赖不能长期接受或静默 dismiss，应删除、替换或隔离到不进入交付物的独立工具链，并在提交后复核远端告警确实关闭。
 

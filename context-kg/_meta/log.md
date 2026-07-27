@@ -2,7 +2,7 @@
 title: 操作日志
 tags: [meta, log]
 links: [index, schema]
-updated: 2026-07-27
+updated: 2026-07-28
 sources: 0
 ---
 
@@ -1131,6 +1131,48 @@ sources: 0
   - Dubbo 原始 metadata 键不丢失，同时生成稳定的 `dubbo.*` 查询键和 Service Key。
   - 运行时 HTTP client 上报路径明确为 `/v1/ReportServiceContract`；`/naming/v1` 只承载 Console 管理 API。
   - 运行时代码提交 `015cbdbd` 构建并更新到本地 Kubernetes；真实 Dubbo 原生样例上报、鼠标/键盘详情交互与 Metadata Center 投影均通过浏览器验证。
+
+## [2026-07-28] ingest | 配置模板与 Namespace Value 客户端渲染方案
+
+- 新增页面：adr-config-template-client-rendering。
+- 更新页面：config-center、todo、lessons、index。
+- 变更摘要：
+  - 模板与 Value 分别版本化，Value 按 `Namespace + Template` 建立聚合并支持正式、灰度发布。
+  - 服务端根据客户端标签选择唯一命中的 Value Release，SDK 不接收或解释灰度规则。
+  - SDK 获取模板与 Value 的原子组合快照，本地缓存并确定性渲染；失败时保留 last-known-good。
+  - 配置文件显式固定和切换模板发布版本，模板升级不会自动影响已有绑定。
+  - 首期模板语法只支持类型化变量替换，不允许任意函数、脚本、环境变量或外部 I/O。
+
+## [2026-07-28] refactor | 配置模板跨语言引擎与服务端预览职责
+
+- 更新页面：adr-config-template-client-rendering、config-center、todo、lessons。
+- 变更摘要：
+  - 服务端渲染结果只用于预览、格式诊断和跨语言一致性参考，不作为 SDK 运行时权威配置。
+  - SDK 继续对服务端选中的 Template Release 与 Value Release 执行本地渲染，并校验服务端参考哈希。
+  - 不采用完整 Go template，定义基于 Mustache 1.3 core 的 `pole-mustache-v1` 严格 Profile。
+  - 首期只允许 triple-mustache dotted scalar 变量，禁用 section、partial、lambda、helper、动态 delimiter 和外部 I/O。
+  - 服务端参考实现与所有语言 SDK 必须运行同一份语言无关测试向量。
+
+## [2026-07-28] ingest | 配置模板 specification 与服务端参考实现
+
+- 更新页面：adr-config-template-client-rendering、config-center、todo、lessons。
+- 变更摘要：
+  - specification 保留现有配置类型 wire 布局，新增模板/Value release、显式 binding、RenderSnapshot、预览 RPC 和客户端能力协商契约。
+  - ConfigFile 只有纯文本与模板两种类型；SDK 的渲染结果不是第三种文件类型。
+  - control-plane 增加模板与 Namespace Value 持久化、严格参考渲染、格式校验、发布时 binding 事务激活和回滚恢复。
+  - Discover 从已经命中的普通或灰度 ConfigFileRelease 读取固化 binding，只向 SDK 返回匹配后的 Value 快照和参考哈希。
+  - 预览响应通过统一 `code/info` 表达鉴权、参数和系统错误，渲染 diagnostics 不承担 API 错误。
+  - SDK 本地渲染/last-known-good、组合 revision Watch 与 Console 管理入口仍待后续接入。
+
+## [2026-07-28] feat | 配置模板 Console 管理入口
+
+- 更新页面：adr-config-template-client-rendering、config-center、todo。
+- 变更摘要：
+  - Console 增加模板草稿、参数 Schema、Template Release、Namespace Value 正式/灰度发布与参考预览工作台。
+  - ConfigFile 详情显式选择普通文本或模板渲染，并固定明确的 Template Release；发布详情展示固化 binding。
+  - 新增模板、Value 与 binding 管理查询接口，前端可在刷新后恢复草稿和发布历史。
+  - 模板 binding 与文件草稿字段在同一服务端事务内更新，失败不会留下不完整模板草稿。
+  - 模板发布只从已保存的模板草稿生成不可变快照；不支持的预览引擎使用统一参数错误码。
 
 ## 相关页面
 
