@@ -10877,7 +10877,30 @@ control-plane 构建产物滚动更新到本地 Kubernetes。
 
 - [x] 核对三个仓库的分支、远端、提交与工作区状态。
 - [x] 验证并提交、推送 Rust client 当前改动及已有本地提交。
-- [ ] 构建包含最新 Console 与 control-plane 的 Linux ARM64 镜像。
-- [ ] 更新 `pole-system/pole-control-plane` Deployment 并等待 rollout 完成。
-- [ ] 核对新 Pod imageID、重启次数、Pod 内与 Gateway 静态资源哈希、8080/8090 入口。
-- [ ] 记录最终提交、镜像、Deployment 和运行验证结果。
+- [x] 构建包含最新 Console 与 control-plane 的 Linux ARM64 镜像。
+- [x] 更新 `pole-system/pole-control-plane` Deployment 并等待 rollout 完成。
+- [x] 核对新 Pod imageID、重启次数、Pod 内与 Gateway 静态资源哈希、8080/8090 入口。
+- [x] 记录最终提交、镜像、Deployment 和运行验证结果。
+
+### Review
+
+- specification `be8c35c`、control-plane 功能提交 `f0ac76c4`、Rust client
+  `ed20e19` 与 `8ff360d` 均已推送到各自 `develop`；Rust client
+  `cargo fmt --all -- --check`、`cargo test --all` 全部通过。
+- Kubernetes 构建首次暴露 Gin msgpack 的重复 module 解析问题，构建脚本已固定
+  `nomsgpack`；旧镜像冷启动还会在自管理协调首次失败后退出并由容器重启。
+  `9692175e` 增加有限启动重试和分阶段错误上下文，定向测试与
+  `go test -tags nomsgpack -p 1 ./... -count=1` 均通过。
+- 最终 Linux ARM64 镜像为
+  `pole-control-plane:local-20260728-config-template-9692175e`，imageID
+  `sha256:5d351950cea66f8fc66998e86d597de0d41705b2966ba0bf21269ca1f0f0ea7c`。
+  `pole-system/pole-control-plane` generation `144` 已完全可用；独立重建后的 Pod
+  `pole-control-plane-7f45cd47c9-sc458` Ready、0 restart，运行日志无
+  error、panic 或 fatal。
+- Pod、本地 release 与 Gateway 的 `index.html` SHA-256 均为
+  `3b5a01cfbace8a3c0da1c421e2e52ebf31c3825da4b49b45c2534a1a7548acf4`；
+  主资源 `assets/index-Dk6IPrmM.js` 的 Pod/Gateway SHA-256 均为
+  `632ed0b233898d09a016aa553a981cfc37165b275ccc4cb11416d0d485a2478a`。
+- 8080、8090、Gateway 模板深链均返回 HTTP 200；HTTPRoute
+  `Accepted=True`、`ResolvedRefs=True`。真实管理员只读调用
+  `/config/v1/templates` 返回 `code=200000`。
