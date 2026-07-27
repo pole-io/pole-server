@@ -17,9 +17,13 @@
 bootstrap:
   # Global log
   logger: ./conf/pole-log.yaml
-  # Startup mode: all, server, console.
+  # 启动模式：
+  # - all：control-plane + console（兼容默认值）
+  # - full：control-plane + limiter-server + console
+  # - control-plane / limiter-server / console：仅启动对应模块
+  # - server：control-plane 的弃用兼容别名
   mode: all
-  # Embedded console gateway config used by mode=all or mode=console.
+  # mode=all、mode=full 或 mode=console 使用的内嵌 Console Gateway 配置。
   console:
     logger:
       ErrorOutputPaths:
@@ -131,6 +135,28 @@ bootstrap:
         # Set the port protocol information that requires registration
         protocols:
           - service-grpc
+# Limiter 运行配置，仅在 mode=limiter-server 或 mode=full 时加载。
+# 默认不启用公开 HTTP 兼容端点；gRPC 只应暴露在内部网络。
+limiter:
+  registry:
+    enable: true
+    control-plane-address: 127.0.0.1:8091
+    advertised-host: 127.0.0.1
+    name: pole-limiter
+    namespace: pole-system
+    health-check-enable: true
+  api-servers:
+    - name: grpc
+      option:
+        ip: 0.0.0.0
+        port: 8101
+  limit:
+    node-id: 1
+    max-counter: 1000000
+    max-client: 20000
+  plugin:
+    statistics:
+      name: echo
 # apiserver Configuration
 apiservers: ./conf/pole-apiserver.yaml
 # Core logic configuration

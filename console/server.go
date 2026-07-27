@@ -19,7 +19,9 @@ package console
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -33,10 +35,16 @@ import (
 // Start initializes and starts the embedded console gateway in the current process.
 func Start(ctx context.Context, config *console_bootstrap.Config, errCh chan<- error) (*http.Server, error) {
 	handlers.NewAdminGetter(config)
-	console_bootstrap.Initialize(config)
+	if err := console_bootstrap.Initialize(config); err != nil {
+		return nil, err
+	}
 	console_bootstrap.SetMode(config)
 
 	address := fmt.Sprintf("%v:%v", config.WebServer.ListenIP, config.WebServer.ListenPort)
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return nil, fmt.Errorf("listen console %s: %w", address, err)
+	}
 	server := &http.Server{
 		Addr:    address,
 		Handler: router.NewRouter(config),
@@ -50,11 +58,14 @@ func Start(ctx context.Context, config *console_bootstrap.Config, errCh chan<- e
 	}()
 
 	go func() {
-		err := server.ListenAndServe()
-		if err == nil || err == http.ErrServerClosed {
-			return
+		err := server.Serve(listener)
+		if err == nil || errors.Is(err, http.ErrServerClosed) {
+			err = nil
 		}
-		errCh <- err
+		select {
+		case errCh <- err:
+		default:
+		}
 	}()
 
 	return server, nil

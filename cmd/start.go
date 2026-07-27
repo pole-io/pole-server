@@ -18,6 +18,11 @@
 package cmd
 
 import (
+	"context"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pole-io/pole-server/bootstrap"
@@ -31,8 +36,14 @@ var (
 		Use:   "start",
 		Short: "start running",
 		Long:  "start running",
-		Run: func(c *cobra.Command, args []string) {
-			bootstrap.Start(configFilePath, startMode)
+		RunE: func(c *cobra.Command, args []string) error {
+			ctx, stop := signal.NotifyContext(
+				context.Background(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
+			return bootstrap.Run(ctx, bootstrap.Options{
+				ConfigPath:   configFilePath,
+				ModeOverride: startMode,
+			})
 		},
 	}
 )
@@ -40,5 +51,6 @@ var (
 // init 解析命令参数
 func init() {
 	startCmd.PersistentFlags().StringVarP(&configFilePath, "config", "c", "conf/pole-server.yaml", "config file path")
-	startCmd.PersistentFlags().StringVar(&startMode, "mode", "", "startup mode: all, server, console")
+	startCmd.PersistentFlags().StringVar(&startMode, "mode", "",
+		"启动模式：all、console、control-plane、limiter-server、full（server 是 control-plane 的弃用别名）")
 }

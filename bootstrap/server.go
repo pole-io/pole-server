@@ -22,44 +22,39 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"go.uber.org/zap"
 
 	apiservice "github.com/pole-io/specification/source/go/api/v1/service_manage"
 
-	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/apiserver"
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
-	"github.com/pole-io/pole-server/apis/observability/statis"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	authtypes "github.com/pole-io/pole-server/apis/pkg/types/auth"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	boot_config "github.com/pole-io/pole-server/bootstrap/config"
-	"github.com/pole-io/pole-server/console"
 	"github.com/pole-io/pole-server/pkg/admin"
 	"github.com/pole-io/pole-server/pkg/cache"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
-	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/log"
-	"github.com/pole-io/pole-server/pkg/common/otel/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/common/version"
 	config_center "github.com/pole-io/pole-server/pkg/config"
 	"github.com/pole-io/pole-server/pkg/goverrule"
 	"github.com/pole-io/pole-server/pkg/namespace"
-	"github.com/pole-io/pole-server/pkg/selfmanager"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
-	"github.com/pole-io/pole-server/pkg/systemconfig"
 	"github.com/pole-io/pole-server/pkg/workloadcredential"
-	aimcpserver "github.com/pole-io/pole-server/plugin/apiserver/httpserver/aimcp"
 )
 
 var (
@@ -68,155 +63,20 @@ var (
 	selfHeathChecker    *SelfHeathChecker
 )
 
-// Start 启动
+// Start 是保留给旧调用方的兼容入口。新调用方应使用 Run 并传入进程 Context。
 func Start(configFilePath string, modeOverride ...string) {
-	// 加载配置
-	ConfigFilePath = configFilePath
-	utils.ConfDir = parseConfDir(configFilePath)
-	cfg, err := boot_config.Load(configFilePath)
-	if err != nil {
-		fmt.Printf("[ERROR] load config fail\n")
-		return
-	}
 	override := ""
 	if len(modeOverride) > 0 {
 		override = modeOverride[0]
 	}
-	startMode, err := boot_config.ResolveStartMode(cfg.Bootstrap.Mode, override)
-	if err != nil {
-		fmt.Printf("[ERROR] resolve start mode fail: %v\n", err)
-		return
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	if err := Run(ctx, Options{
+		ConfigPath:   configFilePath,
+		ModeOverride: override,
+	}); err != nil {
+		fmt.Printf("[ERROR] start process: %v\n", err)
 	}
-	cfg.Bootstrap.Mode = startMode
-	if strings.TrimSpace(override) != "" {
-		cfg.SystemConfigSources["bootstrap.mode"] = systemconfig.SourceDescriptor{
-			Kind: systemconfig.SourceCommandLine, Reference: "--mode",
-		}
-	}
-
-	fmt.Printf("[INFO] resolved start mode: %s\n", startMode)
-
-	// 初始化日志打印
-	if err = log.ConfigureFile(cfg.Bootstrap.Logger); err != nil {
-		fmt.Printf("[ERROR] configure logger fail: %v\n", err)
-		return
-	}
-
-	// 初始化
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	serverSettings, err := boot_config.NewSystemSettingsProvider(cfg)
-	if err != nil {
-		fmt.Printf("[ERROR] initialize system settings registry fail: %v\n", err)
-		return
-	}
-	ctx = systemconfig.WithProvider(ctx, systemconfig.ComponentServer, serverSettings)
-
-	if startMode == boot_config.StartModeConsole {
-		configureRemoteConsoleAgentCapabilityProbe(&cfg.Bootstrap.Console)
-		errCh := make(chan error, 1)
-		_, err := console.Start(ctx, &cfg.Bootstrap.Console, errCh)
-		if err != nil {
-			fmt.Printf("[ERROR] start console fail: %v\n", err)
-			return
-		}
-		fmt.Println("finish starting console")
-		WaitSignal(nil, errCh)
-		fmt.Println("begin stop console")
-		return
-	}
-
-	apientries, err := boot_config.LoadAPIEntries(cfg.APIServers)
-	if err != nil {
-		fmt.Printf("[ERROR] load api entries fail: %v\n", err)
-		return
-	}
-
-	// 获取本地IP地址
-	ctx, err = acquireLocalhost(ctx, &cfg.Bootstrap.PolarisService)
-	if err != nil {
-		fmt.Printf("[ERROR] acquire localhost fail: %v\n", err)
-		return
-	}
-	// 设置默认端口信息数据
-	acquireLocalPort(ctx, apientries)
-
-	// 设置插件配置
-	apis.SetPluginConfig(&cfg.Plugin)
-	probeFallbackMasterKey := ""
-	if startMode == boot_config.StartModeAll {
-		probeFallbackMasterKey = cfg.Bootstrap.Console.SystemSecrets.MasterKey
-	}
-	probeKey, probeKeyErr := selfmanager.ResolveCapabilityProbeKey(
-		cfg.Bootstrap.Console.Agent.SelfManagementProbeKey,
-		probeFallbackMasterKey)
-	if probeKeyErr == nil {
-		probeKeyErr = aimcpserver.ConfigureSelfCapabilityProbeKey(probeKey)
-	}
-	if probeKeyErr != nil {
-		log.Warnf("Pole MCP split-mode capability probe is disabled: %v", probeKeyErr)
-	}
-	// 先初始化 statis chain，确保 otel entry 有机会设置全局 MeterProvider。
-	statis.GetStatis()
-
-	metrics.InitMetrics()
-	eventhub.InitEventHub()
-
-	// 初始化存储层
-	storeapi.SetStoreConfig(&cfg.Store)
-	var s storeapi.Store
-	s, err = storeapi.GetStore()
-	if err != nil {
-		fmt.Printf("[ERROR] get store fail: %v", err)
-		return
-	}
-
-	// 开启进入启动流程，初始化插件，加载数据等
-	var tx storeapi.Transaction
-	tx, err = StartBootstrapInOrder(s, cfg)
-	if err != nil {
-		// 多次尝试加锁失败
-		fmt.Printf("[ERROR] bootstrap fail: %v\n", err)
-		return
-	}
-	err = StartComponents(ctx, cfg)
-	if err != nil {
-		fmt.Printf("[ERROR] start components fail: %v\n", err)
-		return
-	}
-	errCh := make(chan error, len(apientries)+1)
-	servers, err := StartServers(ctx, apientries, errCh)
-	if err != nil {
-		fmt.Printf("[ERROR] start servers fail: %v\n", err)
-		return
-	}
-	if startMode == boot_config.StartModeAll {
-		ensureA2AAdvertisedEndpoint(cfg, utils.LocalHost)
-		configureConsoleAgentCapabilityProbe(cfg, s, servers)
-		_, err := console.Start(ctx, &cfg.Bootstrap.Console, errCh)
-		if err != nil {
-			StopServers(servers)
-			fmt.Printf("[ERROR] start console fail: %v\n", err)
-			return
-		}
-	}
-	if err := StartSelfManagement(ctx, cfg, s, servers); err != nil {
-		StopServers(servers)
-		fmt.Printf("[ERROR] start pole self manager fail: %v\n", err)
-		return
-	}
-
-	if err := polarisServiceRegister(&cfg.Bootstrap.PolarisService, apientries); err != nil {
-		StopServers(servers)
-		fmt.Printf("[ERROR] register polaris service fail: %v\n", err)
-		return
-	}
-	_ = FinishBootstrapOrder(tx) // 启动完成，解锁
-	fmt.Println("finish starting server")
-
-	// 等待信号量
-	WaitSignal(servers, errCh)
-	fmt.Println("begin stop server")
 }
 
 func ensureA2AAdvertisedEndpoint(cfg *boot_config.Config, host string) {
@@ -454,6 +314,7 @@ func StartServers(ctx context.Context, apientries []apiserver.Config, errCh chan
 
 		err := slot.Initialize(ctx, protocol.Option, protocol.API)
 		if err != nil {
+			StopServers(servers)
 			fmt.Printf("[ERROR] %v\n", err)
 			return nil, fmt.Errorf("apiserver %s initialize err: %s", protocol.Name, err.Error())
 		}

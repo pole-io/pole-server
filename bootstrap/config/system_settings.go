@@ -137,7 +137,7 @@ func serverSystemSettingPolicies() map[string]systemconfig.EditPolicy {
 		}
 	}
 	return map[string]systemconfig.EditPolicy{
-		"server.bootstrap.mode":        locked("进程装配边界，只能通过部署配置修改", "决定 Server、Console 的进程装配方式。"),
+		"server.bootstrap.mode":        locked("进程装配边界，只能通过部署配置修改", "决定 Control Plane、Limiter Server、Console 的进程装配方式。"),
 		"server.bootstrap.logger":      locked("日志配置文件属于部署工件", "日志配置文件路径由镜像或挂载卷提供。"),
 		"server.bootstrap.api_servers": locked("API Server 拓扑属于部署工件", "API Server 清单路径由部署阶段确定。"),
 

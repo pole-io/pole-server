@@ -17,9 +17,9 @@
 bootstrap:
   # Global log configuration
   logger: ./test/data/bootstrap/pole-log.yaml
-  # Startup mode: all, server, console. Local backend bootstrap keeps server-only behavior.
-  mode: server
-  # Embedded console gateway config used by mode=all or mode=console.
+  # 规范模式：all、full、control-plane、limiter-server、console。
+  mode: control-plane
+  # mode=all、mode=full 或 mode=console 使用的内嵌 Console Gateway 配置。
   # console:
   #   webServer:
   #     listenIP: 0.0.0.0
@@ -55,6 +55,26 @@ bootstrap:
         # Set the port protocol information that requires registration
         protocols:
           - service-grpc
+limiter:
+  registry:
+    enable: true
+    control-plane-address: 127.0.0.1:8091
+    advertised-host: 127.0.0.1
+    name: pole-limiter
+    namespace: pole-system
+    health-check-enable: true
+  api-servers:
+    - name: grpc
+      option:
+        ip: 0.0.0.0
+        port: 8101
+  limit:
+    node-id: 1
+    max-counter: 1000000
+    max-client: 20000
+  plugin:
+    statistics:
+      name: echo
 # apiserver Configuration
 apiservers: ./test/data/bootstrap/pole-apiserver.yaml
 # Core logic configuration

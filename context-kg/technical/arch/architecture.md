@@ -1,8 +1,8 @@
 ---
 title: 架构 — 分层设计与插件系统
 tags: [architecture, design]
-links: [storage, cache-layer, auth-system, patterns, adr-pole-self-management-control-loop]
-updated: 2026-07-26
+links: [storage, cache-layer, auth-system, patterns, adr-pole-self-management-control-loop, adr-unified-process-mode-and-limiter-integration]
+updated: 2026-07-28
 sources: 5
 ---
 
@@ -125,6 +125,8 @@ pkg/namespace/interceptor/auth/ — 命名空间操作的认证链
 
 `pkg/selfmanager/` 是一个窄而深的确定性控制器：启动层提供自身 MCP 工具快照和 Pole Agent Card，控制器负责稳定身份、差异计算、软删除复活、幂等写入和审计。它不进入普通业务拦截器链，也不持有管理员 Token；完整设计见 [[adr-pole-self-management-control-loop]]。
 
+进程装配已经收敛为 Control Plane、Console 与 Limiter 三个显式运行 Module，由 mode Profile 和统一 Supervisor 管理 readiness、失败回滚与逆序优雅停机。兼容期 `all` 保持 Control Plane + Console，`full` 启动三个模块；设计与生产部署边界见 [[adr-unified-process-mode-and-limiter-integration]]。
+
 ## Batch Controller
 
 `pkg/service/batch/` 提供高吞吐量批处理能力：
@@ -153,3 +155,4 @@ HTTP POST /naming/v1/instances
 - [[auth-system]]
 - [[patterns]]
 - [[adr-pole-self-management-control-loop]]
+- [[adr-unified-process-mode-and-limiter-integration]]

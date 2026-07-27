@@ -35,7 +35,7 @@ func TestResolveStartMode_UsesConfigMode(t *testing.T) {
 	mode, err := ResolveStartMode(StartModeServer, "")
 
 	require.NoError(t, err)
-	assert.Equal(t, StartModeServer, mode)
+	assert.Equal(t, StartModeControlPlane, mode)
 }
 
 func TestResolveStartMode_CLIOverridesConfig(t *testing.T) {
@@ -49,4 +49,87 @@ func TestResolveStartMode_RejectsInvalidMode(t *testing.T) {
 	_, err := ResolveStartMode("", "invalid")
 
 	require.Error(t, err)
+}
+
+func TestResolveStartMode_AcceptsCanonicalModes(t *testing.T) {
+	tests := []string{
+		StartModeAll,
+		StartModeConsole,
+		StartModeControlPlane,
+		StartModeLimiterServer,
+		StartModeFull,
+	}
+
+	for _, expected := range tests {
+		t.Run(expected, func(t *testing.T) {
+			mode, err := ResolveStartMode("", expected)
+
+			require.NoError(t, err)
+			assert.Equal(t, expected, mode)
+		})
+	}
+}
+
+func TestResolveStartProfile_AllKeepsCompatibilityModules(t *testing.T) {
+	profile, err := ResolveStartProfile("", StartModeAll)
+
+	require.NoError(t, err)
+	assert.Equal(t, StartProfile{
+		Mode:         StartModeAll,
+		ControlPlane: true,
+		Console:      true,
+	}, profile)
+}
+
+func TestResolveStartProfile_FullIncludesAllModules(t *testing.T) {
+	profile, err := ResolveStartProfile("", StartModeFull)
+
+	require.NoError(t, err)
+	assert.Equal(t, StartProfile{
+		Mode:          StartModeFull,
+		ControlPlane:  true,
+		Console:       true,
+		LimiterServer: true,
+	}, profile)
+}
+
+func TestResolveStartProfile_ModuleMatrix(t *testing.T) {
+	tests := []struct {
+		mode     string
+		expected StartProfile
+	}{
+		{
+			mode: StartModeConsole,
+			expected: StartProfile{
+				Mode: StartModeConsole, Console: true,
+			},
+		},
+		{
+			mode: StartModeControlPlane,
+			expected: StartProfile{
+				Mode: StartModeControlPlane, ControlPlane: true,
+			},
+		},
+		{
+			mode: StartModeLimiterServer,
+			expected: StartProfile{
+				Mode: StartModeLimiterServer, LimiterServer: true,
+			},
+		},
+		{
+			mode: StartModeServer,
+			expected: StartProfile{
+				Mode: StartModeControlPlane, ControlPlane: true,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.mode, func(t *testing.T) {
+			profile, err := ResolveStartProfile(test.mode, "")
+
+			require.NoError(t, err)
+			assert.Equal(t, test.expected, profile)
+		})
+	}
 }

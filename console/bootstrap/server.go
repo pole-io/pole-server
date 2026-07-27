@@ -26,26 +26,24 @@ import (
 )
 
 // Initialize 日志初始化
-func Initialize(config *Config) {
+func Initialize(config *Config) error {
 	err := config.Logger.SetOutputLevel(log.DefaultScopeName, config.Logger.Level)
 	if err != nil {
-		fmt.Printf("[ERROR] %v\n", err)
-		return
+		return fmt.Errorf("set console log level: %w", err)
 	}
 
 	config.Logger.SetStackTraceLevel(log.DefaultScopeName, "none")
 	config.Logger.SetLogCallers(log.DefaultScopeName, true)
 	err = log.Configure(&config.Logger)
 	if err != nil {
-		fmt.Printf("[ERROR] %v\n", err)
-		return
+		return fmt.Errorf("configure console logger: %w", err)
 	}
 
 	store.SetStoreConfig(&config.Store)
 	if _, err := store.GetStore(); err != nil {
-		fmt.Printf("[ERROR] %v\n", err)
-		return
+		return fmt.Errorf("initialize console store: %w", err)
 	}
+	return nil
 }
 
 // SetMode 设置模式

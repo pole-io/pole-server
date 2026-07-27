@@ -8,6 +8,48 @@ sources: 0
 
 # 任务计划与 Review
 
+## pole-limiter-server 统一进程模式实现（2026-07-28）
+
+目标：按 `adr-unified-process-mode-and-limiter-integration` 将 Limiter 迁入统一源码与制品，新增 `control-plane`、`limiter-server` 和兼容期 `full` 模式，建立可验证的生命周期、readiness、失败回滚和优雅停机。
+
+- [x] 固化 mode/Profile、配置校验、CLI 覆盖和兼容别名验收测试。
+- [x] 将 Limiter 核心、gRPC/HTTP、统计与注册实现迁入当前模块并对齐依赖。
+- [x] 移除 Limiter 对 `os.Exit`、OS signal、根 Context、blank import 和不可重入生命周期单例的依赖。
+- [x] 建立 `Module.Start → Running.Wait/Stop` 与 Supervisor，接入 Control Plane、Console、Limiter。
+- [x] 保持兼容期 `all=control-plane+console`，增加 `full=control-plane+limiter-server+console`。
+- [x] 更新配置样例、命令说明、部署边界与知识库。
+- [x] 完成定向测试、全仓测试、race、构建、diff 检查和双轴代码审查。
+- [x] 显式提交本次任务改动，不混入既有 `lessons.md` 用户修改。
+
+### Review
+
+- 统一入口现支持 `console`、`control-plane`、`limiter-server`、兼容期 `all` 和三模块 `full`；`server` 作为弃用别名保留并输出迁移告警。
+- Limiter 核心、gRPC/可选 HTTP、注册心跳和统计插件已迁入实例生命周期，可在同一测试进程中连续启动、停止并再次启动。
+- Supervisor 按 Control Plane → Limiter → Console 启动并逆序停止；启动前检查选中 Profile 的 listener 冲突，listener 绑定、注册或运行期失败均会触发回滚。
+- Control Plane gRPC、HTTP、Limiter 与 Console 均在必要 listener 完成同步绑定后才报告启动成功；HTTP 自管理能力不会再早于 MCP handler readiness 执行。
+- 隔离工作树中 `go test -tags nomsgpack -p 1 ./... -count=1`、目标包 race 和 `go build -tags nomsgpack ./...` 通过。当前共享工作区的直接全仓编译被另一组未完成的 Logical Service 接口改动阻断，未改动或混入该任务。
+- 双轴审查发现的端口预校验、HTTP readiness、知识库索引/日志暂存和中文说明问题均已修复；最终复核无遗留阻断。
+
+## pole-limiter-server 进程模式集成评估（2026-07-28）
+
+目标：评估将 `pole-limiter-server` 作为可选运行模块集成到 `pole-control-plane` 的可行性，明确 `console`、`control-plane`、`limiter-server`、`all` 四种模式的启动语义、依赖边界与推荐落地路径。
+
+- [x] 定位现有 `start --mode`、配置加载和进程生命周期编排。
+- [x] 审计 `pole-limiter-server` 的入口、协议、存储、端口和全局状态依赖。
+- [x] 对比源码内嵌、子进程编排、保持独立部署三种 seam 设计。
+- [x] 明确推荐模式矩阵、配置结构、优雅停机和测试验收边界。
+- [x] 将长期架构结论归档到 `context-kg` 并完成索引、日志与一致性验证。
+
+### Review
+
+- 结论是可以统一为同一源码、二进制和镜像，由 mode 选择 Console、Control Plane、Limiter 或三者组合；生产仍推荐将 Limiter 作为独立 workload，`all` 只用于 quickstart、演示和轻量部署。
+- Limiter 当前的 `os.Exit`、signal ownership、根 Context、异步 listener、blank import 注册和包级单例使其不能直接嵌入；需先提炼 `Module.Start → Running.Wait/Stop` 生命周期 seam。
+- 目标规范名为 `console`、`control-plane`、`limiter-server`、`all`，`server` 保留为废弃别名。当前默认 `all=control-plane+console`，必须经过兼容期或 breaking release 才能收敛为三模块。
+- `all` 按 Control Plane ready → Limiter bind/register → Console 启动，停止时逆序；Limiter 即使同进程也继续通过 loopback gRPC `8091` 注册，保持 split/combined 语义一致。
+- Limiter `8100` 运维端口应默认关闭或仅绑定管理网络，`8101` 使用独立内部 Service/NetworkPolicy；`node-id`、advertised endpoint、内存状态和长流排空是生产验收硬门槛。
+- 架构方案已归档到 `adr-unified-process-mode-and-limiter-integration`，并同步 architecture、configuration、index 和 log。新增 ADR 的 frontmatter、正反向链接、相关页面和 index lint 通过，`git diff --check` 通过。
+- Limiter 定向 `go test -vet=off ./bootstrap ./pkg/config ./apiserver/http ./apiserver/grpc ./ratelimitv2 -count=1` 通过；开启 vet 的全仓基线存在两处既有格式串错误。Control Plane 启动模式定向测试被既有 `github.com/ugorji/go/codec` ambiguous import 阻断，与本次文档评估无关。
+
 ## Envoy xDS v3 适配最新内部治理规则（2026-07-26）
 
 目标：让 Envoy xDS v3 复用统一治理规则的 active release 选择结果，按节点身份和治理标签隔离策略快照，并按显式 caller → callee 契约生成路由，避免 namespace 共享策略、旧 destination 反推和目标组信息丢失。

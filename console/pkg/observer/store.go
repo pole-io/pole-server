@@ -3,7 +3,6 @@ package store
 import (
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 )
 
@@ -17,8 +16,9 @@ var (
 	// StoreSlots store slots
 	StoreSlots = make(map[string]ObserverStore)
 
-	once   = &sync.Once{}
-	config = &Config{}
+	once    = &sync.Once{}
+	config  = &Config{}
+	initErr error
 )
 
 // RegisterStore 注册一个新的Store
@@ -44,7 +44,9 @@ func GetStore() (ObserverStore, error) {
 		return nil, fmt.Errorf("store `%s` not found", name)
 	}
 
-	initialize(store)
+	if err := initialize(store); err != nil {
+		return nil, err
+	}
 	return store, nil
 }
 
@@ -54,12 +56,12 @@ func SetStoreConfig(conf *Config) {
 }
 
 // initialize  包裹了初始化函数，在GetStore的时候会在自动调用，全局初始化一次
-func initialize(s ObserverStore) {
+func initialize(s ObserverStore) error {
 	once.Do(func() {
 		fmt.Printf("[Store][Info] current use store plugin : %s\n", s.Name())
 		if err := s.Initialize(config); err != nil {
-			fmt.Printf("[ERROR] initialize store `%s` fail: %v", s.Name(), err)
-			os.Exit(1)
+			initErr = fmt.Errorf("initialize store %q: %w", s.Name(), err)
 		}
 	})
+	return initErr
 }

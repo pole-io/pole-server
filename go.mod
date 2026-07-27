@@ -50,7 +50,7 @@ require (
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/modern-go/reflect2 v1.0.2
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
@@ -66,6 +66,7 @@ require (
 	github.com/envoyproxy/go-control-plane/envoy v1.37.0
 	github.com/gin-gonic/gin v1.11.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
+	github.com/magiconair/properties v1.8.10
 	github.com/mark3labs/mcp-go v0.18.0
 	github.com/moby/moby/api v1.54.2
 	github.com/pole-io/specification v0.1.0-ALPHA.38.0.20260727182744-be8c35c33315
@@ -128,7 +129,6 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
-	github.com/magiconair/properties v1.8.10 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.2.0 // indirect

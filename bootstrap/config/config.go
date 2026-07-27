@@ -26,6 +26,7 @@ import (
 	"github.com/pole-io/pole-server/apis/apiserver"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	console_bootstrap "github.com/pole-io/pole-server/console/bootstrap"
+	"github.com/pole-io/pole-server/limiter"
 	"github.com/pole-io/pole-server/pkg/admin"
 	"github.com/pole-io/pole-server/pkg/cache"
 	"github.com/pole-io/pole-server/pkg/common/utils"
@@ -51,6 +52,7 @@ type Config struct {
 	Auth                auth.Config               `yaml:"auth"`
 	Plugin              apis.Config               `yaml:"plugin"`
 	WorkloadCredential  workloadcredential.Config `yaml:"workloadCredential"`
+	Limiter             limiter.Config            `yaml:"limiter"`
 	SystemConfigSources systemconfig.SourceIndex  `yaml:"-" json:"-"`
 }
 

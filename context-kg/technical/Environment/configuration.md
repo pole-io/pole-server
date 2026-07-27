@@ -1,8 +1,8 @@
 ---
 title: 配置参考
 tags: [config, yaml, deploy]
-links: [overview, architecture, adr-system-configuration-control-plane, adr-console-agent-resource-workbench, adr-otel-observability-platform]
-updated: 2026-07-25
+links: [overview, architecture, adr-system-configuration-control-plane, adr-console-agent-resource-workbench, adr-otel-observability-platform, adr-unified-process-mode-and-limiter-integration]
+updated: 2026-07-28
 sources: 8
 ---
 
@@ -17,6 +17,50 @@ YAML 仍是系统自举和安全基线，但并非所有运行参数都必须永
 默认路径：`conf/pole-server.yaml`（可通过 `-c` 参数覆盖）
 
 `utils.ConfDir` 被设置为配置文件所在的目录。
+
+Control Plane、Console 与 Limiter 的目标 mode、兼容发布和顶层 `limiter:` 配置边界见 [[adr-unified-process-mode-and-limiter-integration]]。
+
+## 进程模式
+
+CLI `--mode` 优先于 `bootstrap.mode`。当前兼容期 Profile 为：
+
+| mode | 启动模块 |
+|---|---|
+| `console` | Console |
+| `control-plane` | Control Plane |
+| `limiter-server` | Limiter |
+| `all` | Control Plane + Console |
+| `full` | Control Plane + Limiter + Console |
+| `server` | `control-plane` 的弃用别名 |
+
+生产 manifest 应显式指定 mode。推荐三个模块使用同一镜像、不同 workload；`full` 只用于本地、演示和轻量部署。
+
+Limiter 最小配置：
+
+```yaml
+limiter:
+  registry:
+    enable: true
+    control-plane-address: 127.0.0.1:8091
+    advertised-host: 127.0.0.1
+    name: pole-limiter
+    namespace: pole-system
+    health-check-enable: true
+  api-servers:
+    - name: grpc
+      option:
+        ip: 0.0.0.0
+        port: 8101
+  limit:
+    node-id: 1
+    max-counter: 1000000
+    max-client: 20000
+  plugin:
+    statistics:
+      name: echo
+```
+
+每个 Limiter 副本必须配置唯一的 `node-id`。HTTP `8100` 包含运维能力，示例默认不启用；生产应只向内部网络暴露 gRPC `8101`，并正确配置可被 SDK 访问的 `advertised-host`。
 
 ## 配置结构（`bootstrap/config/`）
 
@@ -220,3 +264,4 @@ deploy/
 - [[adr-system-configuration-control-plane]]
 - [[adr-console-agent-resource-workbench]]
 - [[adr-otel-observability-platform]]
+- [[adr-unified-process-mode-and-limiter-integration]]

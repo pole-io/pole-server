@@ -84,7 +84,8 @@ func StartSelfManagement(ctx context.Context, cfg *boot_config.Config, storage s
 			return fmt.Errorf("snapshot Pole MCP tools: %w", err)
 		}
 		desired := selfManagementDesired(cfg, tools, nil, trigger)
-		if cfg.Bootstrap.Mode == boot_config.StartModeAll {
+		if cfg.Bootstrap.Mode == boot_config.StartModeAll ||
+			cfg.Bootstrap.Mode == boot_config.StartModeFull {
 			card, rawCard, cardErr := fetchPoleAgentCard(ctx, cfg)
 			if cardErr != nil {
 				commonlog.Warnf("[SelfManager] Pole Agent card is not ready: %v", cardErr)

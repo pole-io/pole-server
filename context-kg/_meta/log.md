@@ -1174,6 +1174,26 @@ sources: 0
   - 模板 binding 与文件草稿字段在同一服务端事务内更新，失败不会留下不完整模板草稿。
   - 模板发布只从已保存的模板草稿生成不可变快照；不支持的预览引擎使用统一参数错误码。
 
+## [2026-07-28] ingest | 统一进程模式与 Pole Limiter 集成方案
+
+- 新增页面：adr-unified-process-mode-and-limiter-integration。
+- 更新页面：architecture、configuration、index、todo。
+- 变更摘要：
+  - 决定以同一源码、二进制和镜像提供 Console、Control Plane、Limiter 与 all Profile，生产仍保持独立 workload。
+  - 定义可嵌入 Module、Running 与 Supervisor seam，以及 readiness、失败回滚和逆序优雅停机不变量。
+  - 明确 Limiter 是有状态数据面，`all` 只适用于 quickstart、演示和轻量部署。
+  - 记录现有 `all=control-plane+console` 的破坏性兼容问题，并给出跨 breaking release 的迁移方案。
+  - 记录 Limiter node-id、advertised endpoint、长流、内存状态以及 8100/8101 网络安全约束。
+
+## [2026-07-28] feat | 统一进程模式与 Pole Limiter 集成
+
+- 更新页面：adr-unified-process-mode-and-limiter-integration、architecture、configuration、todo。
+- 变更摘要：
+  - 将 Limiter 核心、协议服务、注册与统计实现纳入统一源码和二进制。
+  - 增加 `control-plane`、`limiter-server`、`full` Profile，保留 `server` 别名和原 `all` 兼容语义。
+  - 建立统一 Supervisor，提供同步 listener readiness、部分启动回滚、运行期 fail-fast 和逆序优雅停机。
+  - 示例默认只开放内部 gRPC `8101`，HTTP 运维端口保持关闭；生产仍推荐同镜像、分 workload 部署。
+
 ## 相关页面
 
 - [[index]]

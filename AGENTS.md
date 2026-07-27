@@ -109,17 +109,24 @@ MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 \
 MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 \
   ./scripts/rebuild-start-all.sh --detach
 
-# 本地启动后端（需要 MySQL，test/data 配置默认 mode=server）
+# 本地启动后端（需要 MySQL，test/data 配置默认 mode=control-plane）
 MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 \
   go run . start -c ./test/data/bootstrap/pole-server.yaml
 
-# 本地启动完整 all 模式（server + console，console 默认 8080，后端 HTTP 默认 8090）
+# 本地启动兼容 all 模式（control-plane + console，console 默认 8080，后端 HTTP 默认 8090）
 MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 \
   go run . start -c ./deploy/conf/pole-server.yaml --mode all
 
-# 仅启动 control-plane server
+# 启动全部三个模块（control-plane + limiter-server + console）
 MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 \
-  go run . start -c ./deploy/conf/pole-server.yaml --mode server
+  go run . start -c ./deploy/conf/pole-server.yaml --mode full
+
+# 仅启动 control-plane
+MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 \
+  go run . start -c ./deploy/conf/pole-server.yaml --mode control-plane
+
+# 仅启动 limiter-server（默认内部 gRPC 端口 8101）
+go run . start -c ./deploy/conf/pole-server.yaml --mode limiter-server
 
 # 仅启动 console 网关（需要已有后端，配置里 poleServer.address 指向 127.0.0.1:8090）
 MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 \
@@ -129,8 +136,11 @@ MYSQL_USER=root MYSQL_PWD=123456 MYSQL_HOST=127.0.0.1:3306 \
 ### 运行模式
 
 - `start --mode all`：默认产品入口，control-plane server 和 console 一起启动。
-- `start --mode server`：只启动 control-plane server，适合后端接口和集成测试。
+- `start --mode full`：control-plane、limiter-server 和 console 一起启动。
+- `start --mode control-plane`：只启动 control-plane，适合后端接口和集成测试。
+- `start --mode limiter-server`：只启动 limiter-server；生产环境推荐与 control-plane 分进程部署。
 - `start --mode console`：只启动 console 网关，要求 `bootstrap.console.poleServer.address` 指向一个已运行的后端。
+- `start --mode server`：`control-plane` 的弃用兼容别名。
 - CLI 的 `--mode` 优先级高于 YAML 中的 `bootstrap.mode`；未显式设置时，代码默认回退到 `all`。
 
 ### 测试环境变量

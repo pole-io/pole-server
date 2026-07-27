@@ -77,6 +77,7 @@ sources: 0
 - [[adr-system-configuration-control-plane]] — 63 项字段级配置策略、全领域草稿发布、desired/effective 状态与 Agent Secret 热更新 | adr, config, runtime, console, operations
 - [[adr-pole-self-management-control-loop]] — Pole 自身 MCP/A2A 注册、Prompt 自动应用与系统身份协调 | adr, ai, mcp, a2a, agent, prompt, automation
 - [[adr-local-pebble-protobuf-value-cache]] — Pebble 本地 protobuf bytes 缓存 | adr, cache, pebble, protobuf, performance
+- [[adr-unified-process-mode-and-limiter-integration]] — 单一制品、多进程模式与 Limiter 独立部署边界 | adr, runtime, limiter, deploy, process
 
 #### 可观测性（technical/adr/observability/）
 
@@ -115,6 +116,7 @@ sources: 0
 | MCP 如何运作 | [[ai-features]] |
 | Pole 如何自动注册和管理自身能力 | [[adr-pole-self-management-control-loop]] |
 | System Configuration 如何发布 | [[adr-system-configuration-control-plane]] |
+| Control Plane、Console 与 Limiter 如何组合运行 | [[adr-unified-process-mode-and-limiter-integration]] |
 | OTel 与共享 GreptimeDB 如何部署 | [[adr-otel-observability-platform]] |
 | 数据库表/查询是怎样的 | [[storage]] |
 | 内存缓存如何刷新 | [[cache-layer]] |

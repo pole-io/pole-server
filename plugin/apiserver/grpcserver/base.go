@@ -58,6 +58,7 @@ type BaseGrpcServer struct {
 	start           bool
 	restart         bool
 	exitCh          chan struct{}
+	ready           chan struct{}
 
 	protocol string
 
@@ -79,8 +80,14 @@ func (b *BaseGrpcServer) GetPort() uint32 {
 	return b.listenPort
 }
 
+// Ready 在 listener 已绑定且 gRPC 服务完成构造后关闭。
+func (b *BaseGrpcServer) Ready() <-chan struct{} {
+	return b.ready
+}
+
 // Initialize init the gRPC server
 func (b *BaseGrpcServer) Initialize(ctx context.Context, conf map[string]interface{}, initOptions ...InitOption) error {
+	b.ready = make(chan struct{})
 	for i := range initOptions {
 		initOptions[i](b)
 	}
@@ -189,6 +196,7 @@ func (b *BaseGrpcServer) Run(errCh chan error, protocol string, initServer InitS
 	b.server = server
 
 	b.statis = statis.GetStatis()
+	close(b.ready)
 
 	if err := server.Serve(listener); err != nil {
 		b.log.Errorf("[API-Server][GRPC] %v", err)

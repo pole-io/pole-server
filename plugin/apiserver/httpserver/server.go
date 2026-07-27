@@ -90,6 +90,7 @@ type HTTPServer struct {
 	start           bool
 	restart         bool
 	exitCh          chan struct{}
+	ready           chan struct{}
 	ctx             context.Context
 
 	enablePprof   *atomic.Bool
@@ -130,6 +131,11 @@ func (h *HTTPServer) GetPort() uint32 {
 	return h.listenPort
 }
 
+// Ready 在 handler 完成构造且 listener 已绑定后关闭。
+func (h *HTTPServer) Ready() <-chan struct{} {
+	return h.ready
+}
+
 // SnapshotMCPTools exposes the in-process tools/list projection to the
 // bootstrap self-manager without widening the public MCP management surface.
 func (h *HTTPServer) SnapshotMCPTools(ctx context.Context) ([]*specai.MCPServerTool, error) {
@@ -147,6 +153,7 @@ func (h *HTTPServer) GetProtocol() string {
 // Initialize 初始化HTTP API服务器
 func (h *HTTPServer) Initialize(ctx context.Context, option map[string]interface{},
 	apiConf map[string]apiserver.APIConfig) error {
+	h.ready = make(chan struct{})
 	h.option = option
 	h.ctx = ctx
 	h.openAPI = apiConf
@@ -329,6 +336,7 @@ func (h *HTTPServer) Run(errCh chan error) {
 		}
 	}
 	h.server = &server
+	close(h.ready)
 
 	// 开始对外服务
 	if h.tlsInfo.IsEmpty() {
