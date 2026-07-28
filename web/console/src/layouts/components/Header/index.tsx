@@ -49,6 +49,7 @@ export default memo((props: { showMenu?: boolean }) => {
   return (
     <Header className={Style.panel}>
       {HeaderLeft}
+      <div id="app-header-context" className={Style.headerContext} />
       <HeaderIcon />
     </Header>
   );

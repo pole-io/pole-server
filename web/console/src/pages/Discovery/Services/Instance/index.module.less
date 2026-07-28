@@ -1,8 +1,54 @@
-.instanceTablePage {
-  display: grid;
-  gap: 14px;
+.serviceDetailPage {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 113px);
+  min-height: 0;
   min-width: 0;
-  margin: 20px;
+  overflow: hidden;
+}
+
+.serviceDetailActions {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.serviceDetailTabs {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 0;
+
+  :global(.fui-TabList) {
+    flex: 0 0 auto;
+  }
+
+  :global(.fluent-tab-content) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding-top: 8px;
+  }
+
+  :global(.fluent-tab-content) > div {
+    height: 100%;
+    min-height: 0;
+  }
+}
+
+.instanceTablePage {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  padding: 12px 20px 20px;
   color: var(--app-text);
 }
 
@@ -51,12 +97,27 @@
 }
 
 .instanceTableSurface {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
   min-width: 0;
-  overflow-x: auto;
+  overflow: hidden;
   border-radius: var(--console-radius-md);
 
   :global(.fluent-table-shell) {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
     min-width: 0;
+  }
+
+  :global(.fluent-table-scroll) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
   }
 
   :global(.fluent-table-scroll table) {
@@ -82,8 +143,8 @@
   --console-radius-md: 8px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin: 20px;
+  gap: 10px;
+  margin: 12px 20px 20px;
   color: var(--console-text);
 }
 
@@ -500,6 +561,10 @@
   color: var(--console-text);
 }
 
+.subscribePanelCompact {
+  margin: 12px 20px 20px;
+}
+
 .subscribeHeader {
   display: flex;
   align-items: flex-start;
@@ -763,7 +828,7 @@
 
 @media (max-width: 900px) {
   .instanceTablePage {
-    margin: 16px;
+    padding: 12px 16px 16px;
   }
 
   .instanceToolbar {

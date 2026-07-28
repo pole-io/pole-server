@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Empty, PageInfo, Pagination, Space, Tag, Tooltip } from 'components/Fluent';
+import { Button, Empty, PageInfo, Pagination, Tag, Tooltip } from 'components/Fluent';
 import { ArrowRightIcon, RefreshIcon, ServiceIcon } from 'components/Fluent/icons';
 import { useNavigate } from 'components/Router';
 
@@ -91,7 +91,7 @@ const ServiceSubscribeTable: React.FC<IServiceSubscribeProps> = ({ namespace, se
     }
 
     return (
-        <section className={style.subscribePanel}>
+        <section className={`${style.subscribePanel} ${style.subscribePanelCompact}`}>
             <div className={style.subscribeHeader}>
                 <div className={style.subscribeContext}>
                     <div className={style.subscribeTitle}>服务订阅</div>

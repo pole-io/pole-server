@@ -8,7 +8,9 @@ import {
   Table,
   Tabs,
   Textarea,
+  Tooltip,
 } from 'components/Fluent'
+import { AddIcon, RefreshIcon } from 'components/Fluent/icons'
 import { useNavigate } from 'components/Router'
 
 import { ResourceToolbar } from 'components/ResourceLayout'
@@ -29,12 +31,7 @@ import style from './index.module.less'
 
 const pageSize = 10
 
-export interface ServicesTableHandle {
-  refresh: () => void
-  create: () => void
-}
-
-const ServicesTable = React.forwardRef<ServicesTableHandle>((_, ref) => {
+const ServicesTable = () => {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('logical')
   const [logicalServices, setLogicalServices] = useState<LogicalServiceView[]>([])
@@ -90,11 +87,6 @@ const ServicesTable = React.forwardRef<ServicesTableHandle>((_, ref) => {
     setPage(1)
     void refresh(1)
   }, [activeTab])
-
-  React.useImperativeHandle(ref, () => ({
-    refresh: () => void refresh(),
-    create: () => setCreatorVisible(true),
-  }))
 
   const metrics = useMemo(() => logicalServices.reduce((result, item) => ({
     environments: result.environments + Number(item.environment_count || 0),
@@ -252,18 +244,27 @@ const ServicesTable = React.forwardRef<ServicesTableHandle>((_, ref) => {
         <div className={style.metricItem}><span>环境服务</span><strong>{metrics.environments}</strong></div>
         <div className={style.metricItem}><span>健康实例</span><strong>{metrics.healthy}/{metrics.total}</strong></div>
       </section>
-      <Tabs value={activeTab} onChange={(value) => setActiveTab(String(value))}>
+      <Tabs className={style.workspaceTabs} value={activeTab} onChange={(value) => setActiveTab(String(value))}>
         <TabPanel value="logical" label="逻辑服务" />
         <TabPanel value="unbound" label={`未关联环境服务${unboundTotal ? ` (${unboundTotal})` : ''}`} />
       </Tabs>
       <section className={style.listSection}>
         <ResourceToolbar
+          density="compact"
           title={activeTab === 'logical' ? '逻辑服务清单' : '未关联环境服务'}
           count={loading ? '正在同步列表' : `共 ${currentTotal} 条`}
           filters={(
             <>
               <Input value={keyword} placeholder={activeTab === 'logical' ? '搜索逻辑服务' : '搜索运行时服务'} onChange={setKeyword} />
               <Button variant="outline" onClick={() => { setPage(1); void refresh(1) }}>查询</Button>
+              <Tooltip content="刷新服务列表">
+                <Button shape="square" variant="outline" onClick={() => void refresh()}>
+                  <RefreshIcon />
+                </Button>
+              </Tooltip>
+              {activeTab === 'logical' && (
+                <Button theme="primary" icon={<AddIcon />} onClick={() => setCreatorVisible(true)}>新建逻辑服务</Button>
+              )}
             </>
           )}
         />
@@ -329,6 +330,6 @@ const ServicesTable = React.forwardRef<ServicesTableHandle>((_, ref) => {
       </Drawer>
     </div>
   )
-})
+}
 
 export default React.memo(ServicesTable)

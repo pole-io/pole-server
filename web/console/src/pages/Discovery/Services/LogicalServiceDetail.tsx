@@ -143,28 +143,13 @@ export default function LogicalServiceDetail() {
   ]
 
   return (
-    <div className={style.page}>
+    <div className={`${style.page} ${style.logicalDetailPage}`}>
       <ResourceHeader
+        density="compact"
+        placement="app-header"
         eyebrow="注册发现 / 逻辑服务"
         title={logicalService?.name || '逻辑服务详情'}
         description={logicalService?.comment || '显式维护该逻辑服务在各 Namespace 中对应的运行时服务。'}
-        actions={(
-          <>
-            <Button variant="outline" onClick={() => navigate('/discovery/service')}>返回列表</Button>
-            <ConfirmOperationButton
-              action="delete"
-              label="删除逻辑服务"
-              shape="rectangle"
-              variant="outline"
-              theme="danger"
-              disabled={logicalService?.deleteable === false || environments.length > 0}
-              disabledLabel={logicalService?.deleteable === false ? '无权限操作' : '请先解除环境关联'}
-              confirmContent={`确认删除逻辑服务 ${logicalService?.name || ''} 吗？环境服务不会被删除。`}
-              onConfirm={() => void remove()}
-            />
-            <Button theme="primary" onClick={() => void openBinding(bindingKeyword)}>关联环境服务</Button>
-          </>
-        )}
       />
       <section className={style.metricRail}>
         <div className={style.metricItem}><span>业务环境</span><strong>{businessEnvironments.length}</strong></div>
@@ -172,8 +157,29 @@ export default function LogicalServiceDetail() {
         <div className={style.metricItem}><span>实例总数</span><strong>{logicalService?.total_instance_count || 0}</strong></div>
       </section>
       <section className={style.listSection}>
-        <ResourceToolbar title="环境服务" count={`共 ${businessEnvironments.length} 个显式关联`} />
-        <section className={style.tableSurface}>
+        <ResourceToolbar
+          density="compact"
+          title="环境服务"
+          count={`共 ${businessEnvironments.length} 个显式关联`}
+          filters={(
+            <>
+              <Button variant="outline" onClick={() => navigate('/discovery/service')}>返回列表</Button>
+              <ConfirmOperationButton
+                action="delete"
+                label="删除逻辑服务"
+                shape="rectangle"
+                variant="outline"
+                theme="danger"
+                disabled={logicalService?.deleteable === false || environments.length > 0}
+                disabledLabel={logicalService?.deleteable === false ? '无权限操作' : '请先解除环境关联'}
+                confirmContent={`确认删除逻辑服务 ${logicalService?.name || ''} 吗？环境服务不会被删除。`}
+                onConfirm={() => void remove()}
+              />
+              <Button theme="primary" onClick={() => void openBinding(bindingKeyword)}>关联环境服务</Button>
+            </>
+          )}
+        />
+        <section className={`${style.tableSurface} ${style.serviceTableSurface}`}>
           <Table
             data={businessEnvironments}
             columns={columns}
@@ -186,10 +192,11 @@ export default function LogicalServiceDetail() {
       {systemBindings.length > 0 && (
         <section className={style.listSection}>
           <ResourceToolbar
+            density="compact"
             title="历史系统空间关联（仅清理）"
             count={`发现 ${systemBindings.length} 个不参与业务聚合的关联，请解除后再删除逻辑服务`}
           />
-          <section className={style.tableSurface}>
+          <section className={`${style.tableSurface} ${style.serviceTableSurface}`}>
             <Table
               data={systemBindings}
               columns={columns}

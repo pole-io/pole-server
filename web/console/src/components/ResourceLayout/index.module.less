@@ -44,12 +44,85 @@
   white-space: nowrap;
 }
 
+.resourceHeaderCompact {
+  padding: 0 0 14px;
+
+  .headerContent h2 {
+    margin: 2px 0 3px;
+    font-size: 24px;
+    line-height: 30px;
+  }
+
+  .headerContent p {
+    line-height: 20px;
+  }
+
+  .headerActions {
+    padding-top: 0;
+  }
+}
+
+.resourceHeaderIntegrated {
+  align-items: center;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border-bottom: 0;
+
+  .headerContent {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: 6px 10px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .headerContent h2 {
+    overflow: hidden;
+    max-width: clamp(140px, 24vw, 360px);
+    min-width: 0;
+    margin: 0;
+    color: var(--app-text);
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 22px;
+    letter-spacing: -0.01em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .headerContent p {
+    overflow: hidden;
+    max-width: none;
+    color: var(--app-text-tertiary);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .eyebrow {
+    color: var(--app-text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 18px;
+    white-space: nowrap;
+  }
+}
+
 .resourceToolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 14px;
+}
+
+.resourceToolbarCompact {
+  margin-bottom: 8px;
 }
 
 .toolbarIntro {
@@ -103,5 +176,19 @@
   .toolbarFilters {
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+
+  .resourceHeaderIntegrated {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .resourceHeaderIntegrated .headerContent {
+    display: flex;
+    align-items: baseline;
+  }
+
+  .resourceHeaderIntegrated .headerContent p {
+    display: none;
   }
 }

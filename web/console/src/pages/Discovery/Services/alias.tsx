@@ -341,7 +341,7 @@ const ServiceAliasTable = React.forwardRef<ServiceAliasTableHandle, IServiceAlia
     );
 
     return (
-        <div className={embedded ? style.embeddedWorkspace : style.workspace}>
+        <div className={embedded ? `${style.embeddedWorkspace} ${style.embeddedWorkspaceCompact}` : style.workspace}>
             {table}
         </div>
     )

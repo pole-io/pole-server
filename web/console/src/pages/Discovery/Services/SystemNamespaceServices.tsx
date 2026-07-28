@@ -100,6 +100,7 @@ export default function SystemNamespaceServices({ namespace }: { namespace: stri
   return (
     <section className={style.listSection}>
       <ResourceToolbar
+        density="compact"
         title={`${namespace} 服务`}
         count={loading ? '正在同步列表' : `共 ${total} 条`}
         filters={(

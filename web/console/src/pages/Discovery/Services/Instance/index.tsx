@@ -1,7 +1,8 @@
 import React from 'react';
-import { Breadcrumb, Loading, Tabs } from 'components/Fluent';
+import { Button, Loading, Tabs } from 'components/Fluent';
 import { useNavigate } from 'components/Router';
 
+import { ResourceHeader } from 'components/ResourceLayout';
 import InstanceTable from './InstanceTable';
 import ServiceDetail from './ServiceDetail';
 import ServiceContractPanel from './ServiceContractPanel';
@@ -10,7 +11,6 @@ import ServiceAliasTable from '../alias';
 import style from './index.module.less';
 
 const { TabPanel } = Tabs;
-const { BreadcrumbItem } = Breadcrumb;
 const GovernanceWorkbench = React.lazy(() => import('pages/Governance/Workbench'));
 
 export default React.memo(() => {
@@ -22,24 +22,27 @@ export default React.memo(() => {
     const logicalServiceId = urlParams.get('logicalServiceId') || '';
 
     const [activeTab, setActiveTab] = React.useState('0');
+    const returnToService = () => {
+        if (logicalServiceId) {
+            navigate(`/discovery/service/detail?id=${encodeURIComponent(logicalServiceId)}`);
+        } else {
+            navigate(-1);
+        }
+    };
 
     return (
-        <>
-            <Breadcrumb maxItemWidth="200px">
-                <BreadcrumbItem onClick={() => {
-                    if (logicalServiceId) {
-                        navigate(`/discovery/service/detail?id=${encodeURIComponent(logicalServiceId)}`);
-                    } else {
-                        navigate(-1);
-                    }
-                }}>
-                    {logicalServiceId ? '逻辑服务' : namespace}
-                </BreadcrumbItem>
-                <BreadcrumbItem>
-                    {serviceName}
-                </BreadcrumbItem>
-            </Breadcrumb>
-            <Tabs style={{ marginTop: 20 }} value={activeTab} onChange={(v: string) => setActiveTab(v)}>
+        <div className={style.serviceDetailPage}>
+            <ResourceHeader
+                density="compact"
+                placement="app-header"
+                eyebrow="注册发现 / 环境服务"
+                title={serviceName || '服务详情'}
+                description={namespace ? `Namespace：${namespace}` : undefined}
+            />
+            <div className={style.serviceDetailActions}>
+                <Button variant="outline" onClick={returnToService}>返回</Button>
+            </div>
+            <Tabs className={style.serviceDetailTabs} value={activeTab} onChange={(v: string) => setActiveTab(v)}>
                 <TabPanel value={"0"} label="服务详情">
                     {activeTab === '0' && (
                         <ServiceDetail
@@ -100,6 +103,6 @@ export default React.memo(() => {
                     )}
                 </TabPanel>
             </Tabs>
-        </>
+        </div>
     )
 })
