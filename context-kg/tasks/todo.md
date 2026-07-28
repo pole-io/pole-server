@@ -11075,7 +11075,7 @@ dev/test/prod 业务环境；通过类型化协议、后端不变量和 Console 
 - [x] Console 先红后绿完成系统空间分区、标识和操作限制。
 - [x] 更新 Namespace 领域文档、ADR、索引和知识库日志。
 - [x] 完成专项测试、全量回归、双轴代码审查和差异检查。
-- [ ] 分别提交并推送 specification、control-plane；更新本地 Kubernetes 并做真实浏览器验收。
+- [x] 分别提交并推送 specification、control-plane；更新本地 Kubernetes 并做真实浏览器验收。
 
 ### Review
 
@@ -11091,5 +11091,13 @@ dev/test/prod 业务环境；通过类型化协议、后端不变量和 Console 
 - Standards 与 Spec 双轴审查发现的授权收紧、历史绑定清理、legacy kind、未知枚举、刷新和
   OpenAPI 等问题均已修复并由原审查代理复核关闭。
 - `go test -tags nomsgpack ./... -count=1`、specification Go/Rust 全量测试、Console 专项脚本、
-  oxlint、release/test build、context-kg lint 与 `git diff --check` 均通过；待完成提交、
-  Kubernetes 发布和真实页面验收后补充运行态证据。
+  oxlint、release/test build、context-kg lint 与 `git diff --check` 均通过。
+- control-plane 提交 `d871aea2` 已推送；镜像
+  `pole-control-plane:local-20260728-system-namespace-v1` 已滚动到 OrbStack，Pod
+  `pole-control-plane-869c58c8b8-4fwsx` Ready、0 restart。运行态 API 验证 BUSINESS 仅返回
+  21 个业务空间、SYSTEM 仅返回 `pole-system`，普通创建 SYSTEM 返回 `400103`；MySQL
+  `namespace.kind` 列与 `pole-system=1` 回填均已确认。
+- 隔离 Chrome 会话完成真实页面验收：Namespace 页显示“业务环境”与
+  “Pole 系统空间（当前控制面）”两个分区；系统服务页只展示 `pole-system` 的
+  `pole-limiter`、`pole.checker`，系统配置资源页固定在 `pole-system`，两页均明确不参与
+  业务跨环境聚合，1440×1000 视口布局与空状态正常。
