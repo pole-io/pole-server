@@ -20,10 +20,12 @@ package namespace
 import (
 	"golang.org/x/sync/singleflight"
 
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+
+	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/observability/history"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
-	"github.com/pole-io/pole-server/pkg/cache"
 )
 
 const (
@@ -41,11 +43,20 @@ func isProtectedNamespace(name string) bool {
 	return name == DefaultNamespace || name == SystemNamespace
 }
 
+func isSystemNamespace(namespace *types.Namespace) bool {
+	return namespace != nil && namespace.Kind == apimodel.NamespaceKind_NAMESPACE_KIND_SYSTEM
+}
+
 var _ NamespaceOperateServer = (*Server)(nil)
+
+type namespaceCacheManager interface {
+	Namespace() cacheapi.NamespaceCache
+	Service() cacheapi.ServiceCache
+}
 
 type Server struct {
 	storage               store.Store
-	caches                *cache.CacheManager
+	caches                namespaceCacheManager
 	createNamespaceSingle *singleflight.Group
 	cfg                   Config
 }

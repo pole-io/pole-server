@@ -1,7 +1,7 @@
 import React from 'react'
 import { Button, Table, Tag, Tooltip } from 'components/Fluent'
 import { AddIcon, RefreshIcon } from 'components/Fluent/icons'
-import { useNavigate } from 'components/Router'
+import { useNavigate, useSearchParams } from 'components/Router'
 
 import QueryComposer, { QuerySnapshot } from 'components/QueryComposer'
 import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout'
@@ -12,6 +12,7 @@ import {
   ConfigFileGroupView,
   ConfigGroupSummary,
   describeAllConfigGroups,
+  describeSystemConfigGroups,
   summarizeConfigGroups,
 } from 'services/config_group'
 import { openErrNotification } from 'utils/notifition'
@@ -28,6 +29,10 @@ const hasPendingRelease = (group: ConfigFileGroupView) => {
 export default React.memo(() => {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const systemNamespace = searchParams.get('scope') === 'system'
+    ? searchParams.get('namespace') || 'pole-system'
+    : ''
   const [groups, setGroups] = React.useState<ConfigGroupSummary[]>([])
   const [loading, setLoading] = React.useState(false)
   const [page, setPage] = React.useState(1)
@@ -37,14 +42,16 @@ export default React.memo(() => {
   const refresh = React.useCallback(async () => {
     setLoading(true)
     try {
-      const result = await describeAllConfigGroups()
+      const result = systemNamespace
+        ? await describeSystemConfigGroups(systemNamespace)
+        : await describeAllConfigGroups()
       setGroups(summarizeConfigGroups(result.list))
     } catch (error) {
       openErrNotification('获取配置分组失败', error instanceof Error ? error.message : String(error))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [systemNamespace])
 
   React.useEffect(() => {
     void refresh()
@@ -125,18 +132,20 @@ export default React.memo(() => {
   return (
     <>
       <ResourceHeader
-        eyebrow="配置中心 / 配置分组"
-        title="配置分组"
-        description="先选择逻辑配置分组，再进入具体 Namespace 维护普通配置或模板配置。"
+        eyebrow={systemNamespace ? '配置中心 / 系统空间' : '配置中心 / 配置分组'}
+        title={systemNamespace ? `${systemNamespace} 配置资源` : '配置分组'}
+        description={systemNamespace
+          ? '显式维护当前控制面系统空间中的配置分组；这些配置不参与业务跨环境聚合。'
+          : '先选择逻辑配置分组，再进入具体 Namespace 维护普通配置或模板配置。'}
         actions={(
           <>
             <Tooltip content="刷新列表">
               <Button shape="square" variant="outline" icon={<RefreshIcon />} onClick={() => void refresh()} />
             </Tooltip>
-            <Button theme="primary" icon={<AddIcon />} onClick={() => {
+            {!systemNamespace && <Button theme="primary" icon={<AddIcon />} onClick={() => {
               dispatch(resetConfigGroup())
               setCreatorVisible(true)
-            }}>新建配置分组</Button>
+            }}>新建配置分组</Button>}
           </>
         )}
       />

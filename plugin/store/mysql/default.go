@@ -134,6 +134,9 @@ func (s *stableStore) Initialize(conf *store.Config) error {
 
 	log.Infof("[Store][database] connect the database successfully")
 
+	if err := ensureNamespaceKindSchema(s.master); err != nil {
+		return err
+	}
 	if err := ensureServiceSubscribeGraphSchema(s.master); err != nil {
 		return err
 	}

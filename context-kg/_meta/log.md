@@ -1193,6 +1193,17 @@ sources: 0
   - 不再使用服务名作为跨环境权威身份；环境服务继续以 `namespace + runtimeServiceName` 运行。
   - 引入仅属于控制面的 Logical Service 稳定 ID，SDK、注册发现和数据面治理协议均不感知。
   - 不同 Namespace 下的环境服务由管理员在 Console 显式关联，控制面只提供候选建议，不自动强绑定。
+
+## [2026-07-28] ingest | 业务环境与 Pole 系统空间类型化
+
+- 新增页面：adr-system-namespace-kind。
+- 更新页面：namespace、terminology、domain-models、business-rules、index、todo、lessons。
+- 变更摘要：
+  - Namespace 增加 `BUSINESS | SYSTEM` 一等类型，旧 payload 缺省值保持为 BUSINESS。
+  - `pole-system` 定义为当前 Pole 安装实例的内部管理面空间，不再解释为普通业务环境。
+  - 公共 API 禁止创建或删除系统空间，MySQL 启动迁移幂等回填系统类型。
+  - Logical Service、配置分组与配置文件的跨环境聚合排除系统空间，显式系统管理能力仍保留。
+  - Console 将业务环境和“Pole 系统空间（当前控制面）”分区展示。
   - 未关联的环境服务仍可正常注册、发现和治理，但不参与跨环境聚合。
 
 ## [2026-07-28] feat | 统一进程模式与 Pole Limiter 集成

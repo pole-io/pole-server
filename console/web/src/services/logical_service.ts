@@ -72,7 +72,8 @@ export async function describeLogicalServiceEnvironments(logicalServiceId: strin
     action: `${BaseURL.LOGICAL_SERVICE}/environments`,
     data: { logical_service_id: logicalServiceId },
   })
-  return { list: response.data ?? [], totalCount: response.amount ?? response.data?.length ?? 0 }
+  const list = response.data ?? []
+  return { list, totalCount: list.length }
 }
 
 export async function describeUnboundServiceEnvironments(params: {
@@ -85,7 +86,8 @@ export async function describeUnboundServiceEnvironments(params: {
     action: `${BaseURL.LOGICAL_SERVICE}/unbound-environments`,
     data: params,
   })
-  return { list: response.data ?? [], totalCount: response.amount ?? response.data?.length ?? 0 }
+  const list = (response.data ?? []).filter(item => item.namespace !== 'pole-system')
+  return { list, totalCount: list.length }
 }
 
 export async function bindServiceEnvironment(logicalServiceId: string, serviceId: string) {

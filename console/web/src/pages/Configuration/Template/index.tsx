@@ -18,7 +18,7 @@ import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout';
 import { useNavigate, useSearchParams } from 'components/Router';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import { toRequestErrorPayload } from 'utils/request';
-import { describeAllNamespaces } from 'services/namespace';
+import { describeBusinessNamespaces } from 'services/namespace';
 import {
   ConfigFileTemplate,
   ConfigTemplateRelease,
@@ -131,7 +131,7 @@ const TemplateWorkspace: React.FC = () => {
 
   React.useEffect(() => {
     loadTemplates(undefined, requestedTemplateId);
-    describeAllNamespaces()
+    describeBusinessNamespaces()
       .then(items => {
         const names = items.map(item => item.name);
         setNamespaces(names);

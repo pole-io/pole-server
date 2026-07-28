@@ -29,6 +29,8 @@ export default function LogicalServiceDetail() {
   const [bindingKeyword, setBindingKeyword] = useState('')
   const [bindingVisible, setBindingVisible] = useState(false)
   const [loading, setLoading] = useState(false)
+  const businessEnvironments = environments.filter(item => item.namespace !== 'pole-system')
+  const systemBindings = environments.filter(item => item.namespace === 'pole-system')
 
   const load = useCallback(async () => {
     if (!logicalServiceId) return
@@ -154,15 +156,15 @@ export default function LogicalServiceDetail() {
         )}
       />
       <section className={style.metricRail}>
-        <div className={style.metricItem}><span>可访问环境</span><strong>{environments.length}</strong></div>
+        <div className={style.metricItem}><span>业务环境</span><strong>{businessEnvironments.length}</strong></div>
         <div className={style.metricItem}><span>健康实例</span><strong>{logicalService?.healthy_instance_count || 0}</strong></div>
         <div className={style.metricItem}><span>实例总数</span><strong>{logicalService?.total_instance_count || 0}</strong></div>
       </section>
       <section className={style.listSection}>
-        <ResourceToolbar title="环境服务" count={`共 ${environments.length} 个显式关联`} />
+        <ResourceToolbar title="环境服务" count={`共 ${businessEnvironments.length} 个显式关联`} />
         <section className={style.tableSurface}>
           <Table
-            data={environments}
+            data={businessEnvironments}
             columns={columns}
             rowKey="service_id"
             loading={loading}
@@ -170,6 +172,22 @@ export default function LogicalServiceDetail() {
           />
         </section>
       </section>
+      {systemBindings.length > 0 && (
+        <section className={style.listSection}>
+          <ResourceToolbar
+            title="历史系统空间关联（仅清理）"
+            count={`发现 ${systemBindings.length} 个不参与业务聚合的关联，请解除后再删除逻辑服务`}
+          />
+          <section className={style.tableSurface}>
+            <Table
+              data={systemBindings}
+              columns={columns}
+              rowKey="service_id"
+              loading={loading}
+            />
+          </section>
+        </section>
+      )}
       <Drawer
         visible={bindingVisible}
         header="关联已有环境服务"

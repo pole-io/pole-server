@@ -47,12 +47,12 @@ func (ns *namespaceStore) AddNamespace(data *types.Namespace) error {
 			}
 
 			str := `
-			INSERT INTO namespace (name, comment, token, owner, ctime
+			INSERT INTO namespace (name, comment, token, owner, kind, ctime
 				, mtime, service_export_to, metadata)
-			VALUES (?, ?, ?, ?, sysdate()
+			VALUES (?, ?, ?, ?, ?, sysdate()
 				, sysdate(), ?, ?)
 			`
-			args := []interface{}{data.Name, data.Comment, data.Token, data.Owner,
+			args := []interface{}{data.Name, data.Comment, data.Token, data.Owner, data.Kind,
 				utils.MustJson(data.ServiceExportTo), utils.MustJson(data.Metadata)}
 			if _, err := tx.Exec(str, args...); err != nil {
 				return store.Error(err)
@@ -231,6 +231,7 @@ func genNamespaceSelectSQL() string {
 	, UNIX_TIMESTAMP(mtime)
 	, IFNULL(service_export_to, '{}')
 	, IFNULL(metadata, '{}')
+	, kind
 FROM namespace
 	`
 	return str
@@ -252,7 +253,7 @@ func namespaceFetchRows(rows *sql.Rows) ([]*types.Namespace, error) {
 		space := &types.Namespace{}
 		err := rows.Scan(
 			&space.Name, &space.Comment, &space.Token, &space.Owner, &flag, &ctime,
-			&mtime, &serviceExportTo, &metadata,
+			&mtime, &serviceExportTo, &metadata, &space.Kind,
 		)
 		if err != nil {
 			log.Errorf("[Store][database] fetch namespace rows scan err: %s", err.Error())

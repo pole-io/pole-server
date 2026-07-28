@@ -1,7 +1,7 @@
 ---
 title: 核心业务实体
 tags: [business, domain-model]
-links: [terminology, business-rules, namespace, service-discovery, config-center, governance-rules, ai-features, auth-system, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding]
+links: [terminology, business-rules, namespace, service-discovery, config-center, governance-rules, ai-features, auth-system, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding, adr-system-namespace-kind]
 updated: 2026-07-28
 sources: 3
 ---
@@ -10,7 +10,7 @@ sources: 3
 
 | 实体 | 归属页面 | 说明 |
 |------|----------|------|
-| Namespace | [[namespace]] | 顶层运行环境，统一承载并隔离服务、配置和治理规则的环境实例 |
+| Namespace | [[namespace]] | 顶层运行边界；Kind 区分参与跨环境聚合的 BUSINESS 与 Pole 内部 SYSTEM |
 | Logical Service | [[adr-logical-service-environment-binding]] | 控制面跨环境聚合根，由稳定 ID 标识，SDK 不感知 |
 | Service Environment | [[service-discovery]] | `namespace + runtimeServiceName` 定位一个独立运行环境服务 |
 | Instance | [[service-discovery]] | 服务运行节点，按健康、隔离、位置和元数据参与发现 |
@@ -28,6 +28,7 @@ sources: 3
 
 ```text
 Namespace
+  -> Namespace Kind (BUSINESS | SYSTEM)
   -> Service Environment
     -> Instance
     -> Service Contract
@@ -72,3 +73,4 @@ System Role -> Immutable Policy
 - [[adr-rpc-first-governance-scope]]
 - [[adr-service-contract-reporting-and-visualization]]
 - [[adr-logical-service-environment-binding]]
+- [[adr-system-namespace-kind]]

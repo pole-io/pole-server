@@ -105,6 +105,7 @@ CREATE TABLE
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
         `service_export_to` TEXT COMMENT 'namespace metadata',
         `metadata` TEXT COMMENT 'namespace metadata',
+        `kind` TINYINT (4) NOT NULL DEFAULT '0' COMMENT 'namespace kind: 0 business, 1 system',
         PRIMARY KEY (`name`)
     ) ENGINE = InnoDB;
 
@@ -117,6 +118,7 @@ INSERT INTO
         `comment`,
         `token`,
         `owner`,
+        `kind`,
         `flag`,
         `ctime`,
         `mtime`
@@ -127,6 +129,7 @@ VALUES
         'system namespace only for pole.io server',
         '2d1bfe5d12e04d54b8ee69e62494c7fd',
         'pole',
+        1,
         0,
         '2019-09-06 07:55:07',
         '2019-09-06 07:55:07'
@@ -136,6 +139,7 @@ VALUES
         'Default Environment',
         'e2e473081d3d4306b52264e49f7ce227',
         'pole',
+        0,
         0,
         '2021-07-27 19:37:37',
         '2021-07-27 19:37:37'

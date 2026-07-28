@@ -1,14 +1,17 @@
 ---
 title: 命名空间（`pkg/namespace/`）
 tags: [business, feature, namespace]
-links: [architecture, storage, service-discovery, adr-logical-service-environment-binding]
+links: [architecture, storage, service-discovery, adr-logical-service-environment-binding, adr-system-namespace-kind]
 updated: 2026-07-28
 sources: 6
 ---
 
 # 命名空间（`pkg/namespace/`）
 
-命名空间是 Pole 最顶层的运行环境。服务、配置、治理规则等资源都在命名空间中形成相互隔离的环境实例；权限、发布状态和运行数据也以命名空间为环境边界。整体架构见 [[architecture]]，存储接口见 [[storage]]，服务发现如何依赖命名空间见 [[service-discovery]]。
+命名空间是 Pole 最顶层的运行边界。`BUSINESS` Namespace 表示相互隔离的业务环境；
+`SYSTEM` Namespace 表示当前 Pole 安装实例的内部管理面空间。服务、配置、治理规则等资源
+都归属某个 Namespace，但只有业务环境参与跨环境聚合。完整决策见
+[[adr-system-namespace-kind]]。
 
 ## 跨环境资源身份
 
@@ -41,7 +44,10 @@ DefaultTTL          = 5
 ## 系统命名空间不变量
 
 - `default` 是系统自带的默认业务命名空间，不允许删除。
-- `pole-system` 是 Pole 内部组件和系统资源使用的内部命名空间，不允许删除。
+- `pole-system` 的 Kind 固定为 `SYSTEM`，是 Pole 内部组件和系统资源使用的内部命名空间，
+  不表示 dev/test/prod，也不允许删除。
+- 公共创建接口只能创建 `BUSINESS`；旧 payload 未携带 Kind 时因 `BUSINESS=0` 保持兼容。
+- 系统空间不进入逻辑服务、配置分组或配置文件的业务跨环境聚合，但仍可被显式访问和授权。
 - 后端 `DeleteNamespace` 在创建事务前拒绝删除这两个命名空间，批量删除同样逐项生效；命名空间列表对两者返回 `deleteable=false`，不能仅依赖前端隐藏入口。
 - Console 列表按名称再次禁用删除操作，分别提示默认命名空间和内部系统空间不可删除；`pole-system` 必须展示“内部系统空间”标识，避免用户将其误认为普通业务空间。
 
@@ -66,3 +72,4 @@ DefaultTTL          = 5
 - [[storage]]
 - [[service-discovery]]
 - [[adr-logical-service-environment-binding]]
+- [[adr-system-namespace-kind]]

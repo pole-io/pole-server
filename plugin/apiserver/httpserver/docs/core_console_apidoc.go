@@ -34,6 +34,11 @@ func EnrichGetNamespacesApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {
 		Metadata(restfulspec.KeyOpenAPITags, namespaceApiTags).
 		Param(restful.QueryParameter("name", "命名空间唯一名称").
 			DataType(typeNameString).Required(true)).
+		Param(restful.QueryParameter("kind", "空间类型过滤：business 或 system；不传时返回全部").
+			DataType(typeNameString).Required(false).AllowableValues(map[string]string{
+			"business": "业务运行环境",
+			"system":   "Pole 系统空间",
+		})).
 		Param(restful.QueryParameter("offset", "查询偏移量").
 			DataType(typeNameInteger).Required(false).DefaultValue("0")).
 		Param(restful.QueryParameter("limit", "查询条数，**最多查询100条**").

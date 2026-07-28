@@ -17,6 +17,7 @@ assert(router.includes("path: 'service/detail'") && router.includes('LogicalServ
 assert(list.includes('逻辑服务') && list.includes('未关联环境服务'), '根列表必须区分逻辑服务与未关联环境服务')
 assert(list.includes('describeLogicalServices') && !list.includes('listServices'), '逻辑列表不得再按运行时服务名猜测聚合')
 assert(detail.includes('bindServiceEnvironment') && detail.includes('unbindServiceEnvironment'), '详情必须支持显式关联和解除')
+assert(detail.includes('历史系统空间关联（仅清理）') && detail.includes('systemBindings'), '历史系统绑定必须可发现并保留解绑入口')
 assert(environmentDetail.includes('binding.service_name'), '环境切换必须同时使用 Namespace 与运行时服务名')
 assert(!environmentDetail.includes('describeServiceEnvironments'), '环境详情不得继续按同名服务猜测关联')
 assert(api.includes('/environment-bindings') && api.includes('/unbound-environments'), '逻辑服务管理 API seam 不完整')

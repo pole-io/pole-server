@@ -79,6 +79,7 @@ sources: 0
 - [[adr-local-pebble-protobuf-value-cache]] — Pebble 本地 protobuf bytes 缓存 | adr, cache, pebble, protobuf, performance
 - [[adr-unified-process-mode-and-limiter-integration]] — 单一制品、多进程模式与 Limiter 独立部署边界 | adr, runtime, limiter, deploy, process
 - [[adr-logical-service-environment-binding]] — 控制面逻辑服务与环境服务显式关联 | adr, service, namespace, domain-model, console
+- [[adr-system-namespace-kind]] — 业务环境与 Pole 内部系统空间类型化 | adr, namespace, environment, system, console
 
 #### 可观测性（technical/adr/observability/）
 

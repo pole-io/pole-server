@@ -190,6 +190,13 @@ const NamespaceEditor: React.FC<NamespaceEditorProps> = ({ visible, op, closeDra
                             </>
                         )}
                     </div>
+                    <div id="inNsKind">
+                        <FormItem label="空间类型">
+                            <ReadonlyField value={
+                                editNs?.kind === 'SYSTEM' ? 'Pole 系统空间（当前控制面）' : '业务运行环境'
+                            } />
+                        </FormItem>
+                    </div>
                     <div id="inNsDesc">
                         <FormItem
                             label="描述"

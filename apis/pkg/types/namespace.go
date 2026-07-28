@@ -3,6 +3,8 @@ package types
 import (
 	"errors"
 	"time"
+
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 )
 
 var (
@@ -21,6 +23,8 @@ type Namespace struct {
 	Valid      bool
 	CreateTime time.Time
 	ModifyTime time.Time
+	// Kind distinguishes business runtime environments from Pole internal system spaces.
+	Kind apimodel.NamespaceKind
 	// ServiceExportTo 服务可见性设置
 	ServiceExportTo map[string]struct{}
 	// Metadata 命名空间元数据

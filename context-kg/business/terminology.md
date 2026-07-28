@@ -1,7 +1,7 @@
 ---
 title: 领域术语表
 tags: [business, terminology]
-links: [domain-models, business-rules, auth-system, adr-console-agent-resource-workbench, adr-system-configuration-control-plane, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding]
+links: [domain-models, business-rules, auth-system, adr-console-agent-resource-workbench, adr-system-configuration-control-plane, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding, adr-system-namespace-kind]
 updated: 2026-07-28
 sources: 0
 ---
@@ -10,7 +10,9 @@ sources: 0
 
 | 中文术语 | English | 含义 |
 |----------|---------|------|
-| 命名空间 | Namespace | Pole 的运行环境边界；服务、配置、治理规则等资源在各命名空间中形成相互隔离的环境实例 |
+| 命名空间 | Namespace | Pole 的顶层运行边界，先按 Kind 区分业务环境与内部系统空间 |
+| 业务环境 | Business Namespace | `kind=BUSINESS` 的 Namespace；参与服务、配置与治理资源的跨环境聚合 |
+| Pole 系统空间 | System Namespace | `kind=SYSTEM` 的内部管理面空间；继承当前 Pole 部署阶段，不属于业务发布环境 |
 | 逻辑服务 | Logical Service | 由控制面稳定 ID 标识的跨环境业务服务；聚合多个显式关联的环境服务，SDK 不感知该 ID |
 | 环境服务 | Service Environment | 由 `namespace + runtimeServiceName` 标识的运行时服务记录，独立承载实例、契约和运行状态 |
 | 实例 | Instance | 服务的运行节点，包含 host、port、协议、健康状态、隔离状态和元数据 |
@@ -49,3 +51,4 @@ sources: 0
 - [[adr-rpc-first-governance-scope]]
 - [[adr-service-contract-reporting-and-visualization]]
 - [[adr-logical-service-environment-binding]]
+- [[adr-system-namespace-kind]]

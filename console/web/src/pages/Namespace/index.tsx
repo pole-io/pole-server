@@ -14,15 +14,16 @@ import { cleanNamespacePage, editorNamespace, listNamespaces, removeNamespace, r
 import AuthorizeInput from 'components/Authorize';
 import ResourceNameLink from 'components/ResourceNameLink';
 import { PolicySourceType } from 'services/auth_policy';
-import { Namespace } from 'services/namespace';
+import { describeSystemNamespaces, Namespace, NamespaceView } from 'services/namespace';
 import { Op } from 'services/types';
+import { useNavigate } from 'components/Router';
 
 const DEFAULT_NAMESPACE = 'default';
 const SYSTEM_NAMESPACE = 'pole-system';
 
-const protectedNamespaceReason = (name?: string) => {
-    if (name === SYSTEM_NAMESPACE) return 'Pole 内部系统空间不可删除';
-    if (name === DEFAULT_NAMESPACE) return '默认命名空间不可删除';
+const protectedNamespaceReason = (namespace?: Pick<NamespaceView, 'name' | 'kind'>) => {
+    if (namespace?.kind === 'SYSTEM' || namespace?.name === SYSTEM_NAMESPACE) return 'Pole 内部系统空间不可删除';
+    if (namespace?.name === DEFAULT_NAMESPACE) return '默认命名空间不可删除';
     return '';
 };
 
@@ -33,7 +34,7 @@ const columns = (operateNamespace: (op: Op, row: TableRowData) => void): Primary
         width: 220,
         cell: ({ row }: TableRowData) => {
             const isDefault = row.name === DEFAULT_NAMESPACE;
-            const isSystem = row.name === SYSTEM_NAMESPACE;
+            const isSystem = row.kind === 'SYSTEM' || row.name === SYSTEM_NAMESPACE;
             return (
                 <div className={style.namespaceNameRow}>
                     <ResourceNameLink name={row.name} onClick={() => operateNamespace('view', row)} />
@@ -119,7 +120,7 @@ const columns = (operateNamespace: (op: Op, row: TableRowData) => void): Primary
         width: 108,
         fixed: 'right',
         cell: ({ row }: TableRowData) => {
-            const protectedReason = protectedNamespaceReason(row.name);
+            const protectedReason = protectedNamespaceReason(row as NamespaceView);
             return (
                 <OperationButtonGroup className={style.actionCell}>
                     <OperationButton action="viewEdit" disabled={row.editable === false} disabledLabel="无权限操作" onClick={() => operateNamespace('view', row)} />
@@ -139,10 +140,13 @@ const columns = (operateNamespace: (op: Op, row: TableRowData) => void): Primary
 
 export default React.memo(() => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
 
     const namespaceState = useAppSelector(selectNamespace);
     const { datas, loading, page, limit, total } = namespaceState;
     const [query, setQuery] = useState('');
+    const [systemNamespaces, setSystemNamespaces] = useState<NamespaceView[]>([]);
+    const [systemLoading, setSystemLoading] = useState(false);
 
     // 合并编辑相关状态
     const [editorState, setEditorState] = useState<{
@@ -171,8 +175,8 @@ export default React.memo(() => {
                 setEditorState(prev => ({ ...prev, authorizeVisible: true, data: { ...row } }));
                 break;
             case 'delete':
-                if (protectedNamespaceReason(row?.name as string)) {
-                    openErrNotification('无法删除命名空间', protectedNamespaceReason(row?.name as string));
+                if (protectedNamespaceReason(row as NamespaceView)) {
+                    openErrNotification('无法删除命名空间', protectedNamespaceReason(row as NamespaceView));
                     break;
                 }
                 dispatch(removeNamespace({ param: { name: row?.name as string } }))
@@ -194,6 +198,7 @@ export default React.memo(() => {
                 offset: (page - 1) * limit,
                 limit: limit,
                 name: query || undefined,
+                kind: 'business',
             }
         })).then((res) => {
             if (res.meta.requestStatus === 'rejected') {
@@ -202,8 +207,17 @@ export default React.memo(() => {
         });
     }
 
+    const refreshSystemNamespaces = () => {
+        setSystemLoading(true);
+        describeSystemNamespaces()
+            .then(setSystemNamespaces)
+            .catch(error => openErrNotification('加载系统空间失败', error))
+            .finally(() => setSystemLoading(false));
+    };
+
     React.useEffect(() => {
         refreshTable();
+        refreshSystemNamespaces();
         return () => {
             // 清理编辑器状态
             dispatch(cleanNamespacePage());
@@ -233,16 +247,19 @@ export default React.memo(() => {
         <>
             <ResourceHeader
                 eyebrow="Environment / Namespace"
-                title="命名空间管理"
-                description="命名空间代表独立运行环境，统一纳管该环境下的服务、配置与治理规则，并隔离权限和发布状态。"
+                title="环境与系统空间"
+                description="业务 Namespace 是相互隔离的运行环境；Pole 系统空间属于当前控制面，不参与业务资源的跨环境聚合。"
                 actions={(
                     <>
                     <Tooltip content="刷新列表">
-                        <Button shape="square" variant="outline" onClick={() => refreshTable(page, limit, query)}>
+                        <Button shape="square" variant="outline" onClick={() => {
+                            refreshTable(page, limit, query);
+                            refreshSystemNamespaces();
+                        }}>
                             <RefreshIcon />
                         </Button>
                     </Tooltip>
-                    <Button theme="primary" icon={<AddIcon />} onClick={() => operateNamespace('create')}>新建命名空间</Button>
+                    <Button theme="primary" icon={<AddIcon />} onClick={() => operateNamespace('create')}>新建业务环境</Button>
                     </>
                 )}
             />
@@ -250,7 +267,7 @@ export default React.memo(() => {
             <section className={style.namespaceWorkspace}>
                 <section className={style.metricRail}>
                     <div className={style.metricItem}>
-                        <span>命名空间</span>
+                        <span>业务环境</span>
                         <strong>{total}</strong>
                     </div>
                     <div className={style.metricItem}>
@@ -272,7 +289,7 @@ export default React.memo(() => {
                 </section>
 
                 <ResourceToolbar
-                    title="命名空间列表"
+                    title="业务环境"
                     count={loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}
                     filters={(
                         <QueryComposer
@@ -296,6 +313,7 @@ export default React.memo(() => {
                         dispatch(resetNamespace());
                         setEditorState(s => ({ ...s, visible: false }))
                         refreshTable(page, limit, query);
+                        refreshSystemNamespaces();
                     }} />
             )}
             {editorState.authorizeVisible && (
@@ -328,6 +346,43 @@ export default React.memo(() => {
                         },
                     }}
                 />
+                </section>
+
+                <section className={style.systemNamespaceSection}>
+                    <div className={style.systemNamespaceHeader}>
+                        <div>
+                            <strong>Pole 系统空间（当前控制面）</strong>
+                            <span>承载 Pole 内部服务、MCP、Agent 与系统配置；继承当前部署阶段，不参与业务跨环境聚合。</span>
+                        </div>
+                        <div className={style.systemNamespaceActions}>
+                            <Button size="small" variant="outline" onClick={() => navigate('/discovery/service?scope=system&namespace=pole-system')}>
+                                查看系统服务
+                            </Button>
+                            <Button size="small" variant="outline" onClick={() => navigate('/configuration/group?scope=system&namespace=pole-system')}>
+                                查看配置资源
+                            </Button>
+                            <Button size="small" variant="outline" onClick={() => navigate('/system-configuration')}>
+                                维护系统配置
+                            </Button>
+                            <Button size="small" variant="outline" onClick={() => navigate('/ai/mcps')}>
+                                查看 MCP
+                            </Button>
+                            <Button size="small" variant="outline" onClick={() => navigate('/ai/a2a')}>
+                                查看 Agent
+                            </Button>
+                        </div>
+                    </div>
+                    <section className={`${style.tableSurface} ${style.systemNamespaceTableSurface}`}>
+                        <Table
+                            data={systemNamespaces}
+                            columns={columns(operateNamespace)}
+                            loading={systemLoading}
+                            rowKey="name"
+                            size="large"
+                            tableLayout="fixed"
+                            cellEmptyContent="-"
+                        />
+                    </section>
                 </section>
             </section>
         </>

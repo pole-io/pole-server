@@ -1,7 +1,7 @@
 ---
 title: 业务规则手册
 tags: [business, rules]
-links: [terminology, domain-models, namespace, service-discovery, config-center, governance-rules, auth-system, adr-governance-rule-unified-storage, adr-logical-service-environment-binding]
+links: [terminology, domain-models, namespace, service-discovery, config-center, governance-rules, auth-system, adr-governance-rule-unified-storage, adr-logical-service-environment-binding, adr-system-namespace-kind]
 updated: 2026-07-28
 sources: 3
 ---
@@ -10,7 +10,8 @@ sources: 3
 
 ## 跨域规则
 
-- 命名空间明确表示运行环境；所有业务资源必须归属某个环境，系统资源默认位于 `pole-system`。
+- `BUSINESS` Namespace 表示业务运行环境；`SYSTEM` Namespace 表示 Pole 内部管理面空间。
+  系统空间不参与业务跨环境聚合，完整边界见 [[adr-system-namespace-kind]]。
 - 逻辑服务使用控制面稳定 ID 作为跨环境身份；环境服务继续以 `namespace + runtimeServiceName`
   标识，只有经过管理员显式关联才属于同一个逻辑服务。
 - 配置分组以名称、配置文件以“分组名 + 文件名”形成跨环境逻辑标识，各命名空间分别保存独立内容、版本和发布状态。
@@ -56,3 +57,4 @@ sources: 3
 - [[auth-system]]
 - [[adr-governance-rule-unified-storage]]
 - [[adr-logical-service-environment-binding]]
+- [[adr-system-namespace-kind]]

@@ -175,6 +175,49 @@
   }
 }
 
+.systemNamespaceSection {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.systemNamespaceHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  strong,
+  span {
+    display: block;
+  }
+
+  strong {
+    color: var(--app-text);
+    font-size: 14px;
+    line-height: 22px;
+  }
+
+  span {
+    margin-top: 2px;
+    color: var(--app-text-secondary);
+    font-size: 12px;
+    line-height: 20px;
+  }
+}
+
+.systemNamespaceActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.systemNamespaceTableSurface {
+  max-height: 210px;
+  overflow: auto;
+}
+
 .namespaceCell {
   min-width: 0;
 }

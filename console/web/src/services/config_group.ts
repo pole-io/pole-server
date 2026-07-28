@@ -1,6 +1,8 @@
 import { apiRequest, getAllList, getApiRequest, putApiRequest } from 'utils/request';
 import { BaseURL } from './types';
 
+const SYSTEM_NAMESPACE = 'pole-system'
+
 // 配置分组
 export interface ConfigFileGroup {
     id: string
@@ -127,9 +129,22 @@ export async function describeAllConfigGroups() {
         listKey: 'list',
         totalKey: 'totalCount',
     })({})
+    const list = (res.list ?? []).filter(group => group.namespace !== SYSTEM_NAMESPACE)
     return {
-        list: res.list ? res.list : [],
-        totalCount: res.totalCount
+        list,
+        totalCount: list.length
+    }
+}
+
+export async function describeSystemConfigGroups(namespace = SYSTEM_NAMESPACE) {
+    const res = await getAllList(describeConfigFileGroups, {
+        listKey: 'list',
+        totalKey: 'totalCount',
+    })({ namespace })
+    const list = (res.list ?? []).filter(group => group.namespace === namespace)
+    return {
+        list,
+        totalCount: list.length
     }
 }
 
@@ -140,7 +155,7 @@ export async function describeConfigGroupEnvironments(name: string) {
         limit: 100,
         group: name,
     })
-    return res.list.filter((group) => group.name === name)
+    return res.list.filter((group) => group.name === name && group.namespace !== SYSTEM_NAMESPACE)
 }
 
 // 创建配置分组

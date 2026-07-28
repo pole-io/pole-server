@@ -1,10 +1,13 @@
 import { apiRequest, getAllList, getApiRequest, putApiRequest } from 'utils/request';
 import { BaseURL } from './types';
 
+export type NamespaceKind = 'BUSINESS' | 'SYSTEM'
+
 export interface Namespace {
     name: string
     comment: string
     metadata: Record<string, string>
+    kind?: NamespaceKind
 }
 
 export interface NamespaceView extends Namespace {
@@ -18,11 +21,23 @@ export interface NamespaceView extends Namespace {
     deleteable: boolean
 }
 
+const normalizeNamespaceKind = (item: NamespaceView): NamespaceKind => {
+    const rawKind = item.kind as NamespaceKind | 'NAMESPACE_KIND_BUSINESS' | 'NAMESPACE_KIND_SYSTEM' | number | undefined
+    if (rawKind === 'SYSTEM' || rawKind === 'NAMESPACE_KIND_SYSTEM' || rawKind === 1 || item.name === 'pole-system') {
+        return 'SYSTEM'
+    }
+    return 'BUSINESS'
+}
+
+export const isBusinessNamespace = (item: Pick<NamespaceView, 'name' | 'kind'>) =>
+    normalizeNamespaceKind(item as NamespaceView) === 'BUSINESS'
+
 export interface DescribeNamespaceRequest {
     limit: number
     offset: number
     name?: string
     owners?: string
+    kind?: 'business' | 'system'
 }
 
 
@@ -40,7 +55,7 @@ export async function describeNamespaces(params: DescribeNamespaceRequest) {
     })
 
     const list = res.data ?? res.namespaces ?? []
-    const ns = list.map((item) => ({ ...item }))
+    const ns = list.map((item) => ({ ...item, kind: normalizeNamespaceKind(item) }))
 
     return { ...res, namespaces: ns, amount: res.amount ?? ns.length, size: res.size ?? ns.length }
 }
@@ -52,6 +67,22 @@ export async function describeAllNamespaces() {
     })({})
 
     return namespaceList.map((item) => ({ ...item })) as NamespaceView[]
+}
+
+export async function describeBusinessNamespaces() {
+    const { list } = await getAllList(describeNamespaces, {
+        listKey: 'namespaces',
+        totalKey: 'amount',
+    })({ kind: 'business' })
+    return list.filter(isBusinessNamespace) as NamespaceView[]
+}
+
+export async function describeSystemNamespaces() {
+    const { list } = await getAllList(describeNamespaces, {
+        listKey: 'namespaces',
+        totalKey: 'amount',
+    })({ kind: 'system' })
+    return list.filter(item => !isBusinessNamespace(item)) as NamespaceView[]
 }
 
 export interface CreateNamespaceRequest {

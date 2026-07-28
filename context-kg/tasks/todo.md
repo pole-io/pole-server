@@ -11056,3 +11056,40 @@ control-plane 构建产物滚动更新到本地 Kubernetes。
   镜像 `pole-control-plane:local-20260728-logical-service-v3` 已滚动到 OrbStack，
   Pod `pole-control-plane-5c4d566f4b-n9pfz` Ready、0 restart，Gateway 返回 HTTP 200；
   真实页面已显示“Namespace Value”。
+
+## System Namespace 类型与环境语义（2026-07-28）
+
+目标：将 `pole-system` 明确定义为当前 Pole 安装实例的内部管理面空间，而不是普通
+dev/test/prod 业务环境；通过类型化协议、后端不变量和 Console 独立分区消除语义混淆。
+
+### 已确认验收 seam
+
+- [x] 协议 seam：Namespace 对外返回 `BUSINESS | SYSTEM` 类型，旧调用方和旧数据安全回退为
+  `BUSINESS`。
+- [x] 服务 seam：`pole-system` 始终为 `SYSTEM` 且不可删除；普通创建接口不能伪造系统空间，
+  `default` 与用户创建 Namespace 始终为 `BUSINESS`。
+- [x] Console seam：系统空间独立展示为“Pole 系统空间（当前控制面）”，不进入普通业务环境
+  的创建、删除、跨环境聚合、复制或提升操作。
+- [x] specification 先红后绿完成协议和 Go/Rust 生成代码。
+- [x] control-plane 先红后绿完成存储/API 兼容和系统空间不变量。
+- [x] Console 先红后绿完成系统空间分区、标识和操作限制。
+- [x] 更新 Namespace 领域文档、ADR、索引和知识库日志。
+- [x] 完成专项测试、全量回归、双轴代码审查和差异检查。
+- [ ] 分别提交并推送 specification、control-plane；更新本地 Kubernetes 并做真实浏览器验收。
+
+### Review
+
+- specification 已定义 `NamespaceKind` 的 BUSINESS/SYSTEM wire 契约并补齐 Go/Rust
+  legacy payload 测试；提交 `26c17e3` 已推送。control-plane 的 `go.mod` 已固定到该提交，
+  `GOWORK=off` 专项测试通过。
+- MySQL 启动迁移幂等增加 `namespace.kind` 并回填 `pole-system=SYSTEM`；普通创建只接受
+  BUSINESS，系统空间不可删除，Namespace API/OpenAPI 支持 `kind=business|system` 且分页前过滤。
+- Logical Service 的绑定、候选和统计排除系统空间；历史系统绑定不会静默删除，而是在管理页
+  单列为“仅清理”并保留解绑入口，避免永久阻塞逻辑服务删除。
+- 配置跨环境聚合只排除 `pole-system`，不再用独立 Namespace 授权列表二次过滤已经直接授权的
+  ConfigGroup/ConfigFile；系统空间提供单 Namespace 的服务、配置资源和专用系统管理入口。
+- Standards 与 Spec 双轴审查发现的授权收紧、历史绑定清理、legacy kind、未知枚举、刷新和
+  OpenAPI 等问题均已修复并由原审查代理复核关闭。
+- `go test -tags nomsgpack ./... -count=1`、specification Go/Rust 全量测试、Console 专项脚本、
+  oxlint、release/test build、context-kg lint 与 `git diff --check` 均通过；待完成提交、
+  Kubernetes 发布和真实页面验收后补充运行态证据。

@@ -119,7 +119,8 @@ func (s *Server) GetLogicalServices(
 		spec := item.ToSpec()
 		for _, binding := range bindings[item.ID] {
 			service := s.caches.Service().GetServiceByID(binding.ServiceID)
-			if service == nil || !service.Valid || !logicalServiceVisible(ctx, service) {
+			if service == nil || !service.Valid || s.isSystemNamespace(service.Namespace) ||
+				!logicalServiceVisible(ctx, service) {
 				continue
 			}
 			count := s.caches.Instance().GetInstancesCountByServiceID(binding.ServiceID)
@@ -182,7 +183,8 @@ func (s *Server) GetUnboundServiceEnvironments(
 	}
 	items := make([]*apiservice.Service, 0)
 	_ = s.caches.Service().IteratorServices(func(_ string, service *svctypes.Service) (bool, error) {
-		if service == nil || !service.Valid || service.IsAlias() || !logicalServiceVisible(ctx, service) {
+		if service == nil || !service.Valid || service.IsAlias() ||
+			s.isSystemNamespace(service.Namespace) || !logicalServiceVisible(ctx, service) {
 			return true, nil
 		}
 		if _, ok := bound[service.ID]; ok {
@@ -252,6 +254,17 @@ func logicalServiceVisible(ctx context.Context, service *svctypes.Service) bool 
 	return true
 }
 
+func (s *Server) isSystemNamespace(name string) bool {
+	if name == SystemNamespace {
+		return true
+	}
+	namespace := s.caches.Namespace().GetNamespace(name)
+	if namespace != nil {
+		return namespace.Kind == apimodel.NamespaceKind_NAMESPACE_KIND_SYSTEM
+	}
+	return false
+}
+
 func (s *Server) BindServiceEnvironment(
 	_ context.Context, req *apiservice.BindServiceEnvironmentRequest) *apimodel.Response {
 	logical, err := s.storage.GetLogicalService(req.GetLogicalServiceId())
@@ -264,6 +277,10 @@ func (s *Server) BindServiceEnvironment(
 	service := s.caches.Service().GetServiceByID(req.GetServiceId())
 	if service == nil || !service.Valid || service.IsAlias() {
 		return api.NewResponse(apimodel.Code_NotFoundResource)
+	}
+	if s.isSystemNamespace(service.Namespace) {
+		return api.NewResponseWithMsg(apimodel.Code_NotAllowedAccess,
+			"system namespace services cannot join business logical services")
 	}
 	binding := &svctypes.ServiceEnvironmentBinding{
 		LogicalServiceID: logical.ID, ServiceID: service.ID,

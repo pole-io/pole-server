@@ -26,6 +26,8 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+
 	cacheapi "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/store"
@@ -193,6 +195,7 @@ func (nsCache *namespaceCache) Query(ctx context.Context, args *cacheapi.Namespa
 
 	searchName, hasName := args.Filter["name"]
 	searchOwner, hasOwner := args.Filter["owner"]
+	searchKind, hasKind := args.Filter["kind"]
 
 	nsCache.ids.ReadRange(func(key string, val *types.Namespace) {
 		for i := range predicates {
@@ -225,6 +228,20 @@ func (nsCache *namespaceCache) Query(ctx context.Context, args *cacheapi.Namespa
 			}
 			// 如果没有匹配到，直接返回
 			if !matchOne {
+				return
+			}
+		}
+
+		if hasKind {
+			matchesKind := false
+			for _, kind := range searchKind {
+				if (kind == "business" && val.Kind == apimodel.NamespaceKind_NAMESPACE_KIND_BUSINESS) ||
+					(kind == "system" && val.Kind == apimodel.NamespaceKind_NAMESPACE_KIND_SYSTEM) {
+					matchesKind = true
+					break
+				}
+			}
+			if !matchesKind {
 				return
 			}
 		}

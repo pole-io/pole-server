@@ -2,6 +2,8 @@ import { apiRequest, getAllList, getApiRequest, putApiRequest } from 'utils/requ
 import { BaseURL, Label } from './types';
 import type { ConfigTemplateBinding } from './config_templates';
 
+const SYSTEM_NAMESPACE = 'pole-system'
+
 export type ConfigType = 'CONFIG_FILE' | 'CONFIG_TEMPLATE';
 
 export enum FileStatus {
@@ -228,7 +230,8 @@ export async function describeConfigFileEnvironments(group: string, name: string
         name,
         brief: true,
     })
-    return res.list.filter((file) => file.group === group && file.name === name)
+    return res.list.filter((file) =>
+        file.group === group && file.name === name && file.namespace !== SYSTEM_NAMESPACE)
 }
 
 // describeOneConfigFile 查询单个配置文件

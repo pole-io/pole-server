@@ -12,6 +12,6 @@ assert.match(pageSource, /默认命名空间不可删除/, 'default 删除入口
 assert.match(pageSource, /Pole 内部系统空间不可删除/, 'pole-system 删除入口必须给出不可删除原因');
 assert.match(pageSource, /内部系统空间/, 'pole-system 必须在命名空间列表展示内部系统空间标识');
 assert.match(pageSource, /disabled=\{Boolean\(protectedReason\) \|\| row\.deleteable === false\}/, '系统命名空间删除按钮必须在权限判断之外强制禁用');
-assert.match(pageSource, /if \(protectedNamespaceReason\(row\?\.name as string\)\)/, '删除 dispatch 前必须再次拦截系统命名空间');
+assert.match(pageSource, /if \(protectedNamespaceReason\(row as NamespaceView\)\)/, '删除 dispatch 前必须按类型再次拦截系统命名空间');
 
 console.log('protected namespace verification passed');

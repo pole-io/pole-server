@@ -16,6 +16,7 @@
     "test:standalone-details": "node scripts/verify-standalone-detail-pages.mjs",
     "test:namespace-drawer": "node scripts/verify-namespace-drawer-layout.mjs",
     "test:namespace-workspace": "node scripts/verify-namespace-workspace.mjs",
+    "test:system-namespace-kind": "node scripts/verify-system-namespace-kind.mjs",
     "test:config-group-delete-guard": "node scripts/verify-config-group-deletion-guard.mjs",
     "test:error-toast": "node scripts/verify-error-toast-request-id.mjs",
     "test:login-redirect": "node scripts/verify-login-redirect-contract.mjs",

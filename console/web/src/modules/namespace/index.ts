@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from '../store';
-import { modifyNamespace, createNamespace, NamespaceView, Namespace, CreateNamespaceRequest, ModifyNamespaceRequest, DeleteNamespaceRequest, deleteNamespace, describeNamespaces, DescribeNamespaceRequest, describeAllNamespaces } from '../../services/namespace'
+import { modifyNamespace, createNamespace, NamespaceView, Namespace, CreateNamespaceRequest, ModifyNamespaceRequest, DeleteNamespaceRequest, deleteNamespace, describeNamespaces, DescribeNamespaceRequest, describeBusinessNamespaces } from '../../services/namespace'
 import { toRequestErrorPayload } from '../../utils/request';
 
 // State 和 Action 类型定义
@@ -26,7 +26,7 @@ const initialState: NamespaceState = {
 
 export const listAllNamespaces = createAsyncThunk(`namespace/list_all`, async (_, { fulfillWithValue, rejectWithValue }) => {
     try {
-        const res = await describeAllNamespaces();
+        const res = await describeBusinessNamespaces();
         return fulfillWithValue({
             datas: res,
         }); // 返回 token

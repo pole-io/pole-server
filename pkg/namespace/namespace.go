@@ -19,6 +19,7 @@ package namespace
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
@@ -142,6 +143,7 @@ func (s *Server) createNamespaceModel(req *apimodel.Namespace) *types.Namespace 
 		Comment:  req.GetComment(),
 		Owner:    req.GetOwners(),
 		Token:    utils.NewUUID(),
+		Kind:     apimodel.NamespaceKind_NAMESPACE_KIND_BUSINESS,
 		Metadata: req.GetMetadata(),
 	}
 	return namespace
@@ -190,6 +192,11 @@ func (s *Server) DeleteNamespace(ctx context.Context, req *apimodel.Namespace) *
 	}
 	if namespace == nil {
 		return api.NewNamespaceResponse(apimodel.Code_ExecuteSuccess, req)
+	}
+	if isSystemNamespace(namespace) {
+		response := api.NewNamespaceResponse(apimodel.Code_InvalidParameter, req)
+		response.Info += ": system namespace cannot be deleted"
+		return response
 	}
 
 	// 判断属于该命名空间的服务是否都已经被删除
@@ -331,7 +338,8 @@ func (s *Server) GetNamespaces(ctx context.Context, query map[string][]string) *
 			TotalHealthInstanceCount: uint32(nsCntInfo.InstanceCnt.HealthyInstanceCount),
 			TotalConfigFileCount:     configFileCounts[namespace.Name],
 			Editable:                 true,
-			Deleteable:               !isProtectedNamespace(namespace.Name),
+			Deleteable:               !isProtectedNamespace(namespace.Name) && !isSystemNamespace(namespace),
+			Kind:                     namespace.Kind,
 			Metadata:                 namespace.Metadata,
 		}); err != nil {
 			log.Error("add namespace to batch query response failed", zap.Error(err))
@@ -429,6 +437,12 @@ func checkCreateNamespace(req *apimodel.Namespace) *apimodel.Response {
 		// 注释：错误码改动 - InvalidNamespaceName已被移除，使用通用的InvalidParameter错误码
 		return api.NewNamespaceResponse(apimodel.Code_InvalidParameter, req)
 	}
+	if req.GetName() == SystemNamespace ||
+		req.GetKind() != apimodel.NamespaceKind_NAMESPACE_KIND_BUSINESS {
+		response := api.NewNamespaceResponse(apimodel.Code_InvalidParameter, req)
+		response.Info += ": system namespace can only be provisioned by Pole"
+		return response
+	}
 
 	return nil
 }
@@ -456,6 +470,20 @@ func checkGetNamespace(query map[string][]string) (map[string][]string, int, int
 
 	if value := query["owner"]; len(value) > 0 {
 		filter["owner"] = value
+	}
+
+	if value := query["kind"]; len(value) > 0 {
+		if len(value) != 1 {
+			return nil, 0, 0, api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
+		}
+		switch strings.ToLower(value[0]) {
+		case "business":
+			filter["kind"] = []string{"business"}
+		case "system":
+			filter["kind"] = []string{"system"}
+		default:
+			return nil, 0, 0, api.NewBatchQueryResponse(apimodel.Code_InvalidParameter)
+		}
 	}
 
 	offset, err := valid.CheckQueryOffset(query["offset"])

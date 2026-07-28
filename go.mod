@@ -69,7 +69,7 @@ require (
 	github.com/magiconair/properties v1.8.10
 	github.com/mark3labs/mcp-go v0.18.0
 	github.com/moby/moby/api v1.54.2
-	github.com/pole-io/specification v0.1.0-ALPHA.38.0.20260727195001-5c4400fa20fe
+	github.com/pole-io/specification v0.1.0-ALPHA.38.0.20260728031725-26c17e37bec5
 	github.com/testcontainers/testcontainers-go v0.43.0
 	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.36.0
