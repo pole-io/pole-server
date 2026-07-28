@@ -2,7 +2,7 @@
 title: Console UI 质量门禁与发布验收
 tags: [quality, automation, console, frontend, ux]
 links: [testing, adr-console-fluent-ui-design-system, configuration]
-updated: 2026-07-25
+updated: 2026-07-29
 sources: 6
 ---
 
@@ -71,11 +71,11 @@ sources: 6
 
 ## 证据
 
-- `console/web/src/components/Fluent/index.tsx`
-- `console/web/src/styles/fluent.less`
-- `console/web/scripts/verify-fluent-table-layout.mjs`
-- `console/web/scripts/verify-console-ux-closure.mjs`
-- `console/web/scripts/verify-fluent-input-controls.mjs`
+- `web/console/src/components/Fluent/index.tsx`
+- `web/console/src/styles/fluent.less`
+- `web/console/scripts/verify-fluent-table-layout.mjs`
+- `web/console/scripts/verify-console-ux-closure.mjs`
+- `web/console/scripts/verify-fluent-input-controls.mjs`
 - `deploy/kubernetes/pole-control-plane.yaml`
 
 ## 相关页面

@@ -15,15 +15,13 @@ import (
 	"github.com/pole-io/pole-server/apis/observability/statis"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	bootconfig "github.com/pole-io/pole-server/bootstrap/config"
-	"github.com/pole-io/pole-server/console"
-	consolebootstrap "github.com/pole-io/pole-server/console/bootstrap"
 	"github.com/pole-io/pole-server/internal/runtime/supervisor"
-	"github.com/pole-io/pole-server/limiter"
-	limiterapiserver "github.com/pole-io/pole-server/limiter/apiserver"
 	"github.com/pole-io/pole-server/pkg/common/eventhub"
 	"github.com/pole-io/pole-server/pkg/common/log"
 	"github.com/pole-io/pole-server/pkg/common/otel/metrics"
 	"github.com/pole-io/pole-server/pkg/common/utils"
+	"github.com/pole-io/pole-server/pkg/console"
+	"github.com/pole-io/pole-server/pkg/limiter"
 	"github.com/pole-io/pole-server/pkg/selfmanager"
 	"github.com/pole-io/pole-server/pkg/systemconfig"
 	aimcpserver "github.com/pole-io/pole-server/plugin/apiserver/httpserver/aimcp"
@@ -261,7 +259,7 @@ func validateProfileListeners(
 	}
 	if profile.LimiterServer {
 		for i, entry := range cfg.Limiter.APIServers {
-			host, port, err := limiterapiserver.ParseListenOption(entry.Option)
+			host, port, err := limiter.ParseListenOption(entry.Option)
 			if err != nil {
 				return fmt.Errorf("validate limiter api-servers[%d] %q listener: %w",
 					i, entry.Name, err)
@@ -466,18 +464,7 @@ func (m *limiterModule) Start(ctx context.Context) (supervisor.Running, error) {
 }
 
 type consoleModule struct {
-	cfg *consolebootstrap.Config
-}
-
-type consoleRunning struct {
-	server   shutdownServer
-	errCh    <-chan error
-	stopOnce sync.Once
-	stopErr  error
-}
-
-type shutdownServer interface {
-	Shutdown(context.Context) error
+	cfg *console.Config
 }
 
 func (m *consoleModule) Name() string {
@@ -485,21 +472,5 @@ func (m *consoleModule) Name() string {
 }
 
 func (m *consoleModule) Start(ctx context.Context) (supervisor.Running, error) {
-	errCh := make(chan error, 1)
-	server, err := console.Start(ctx, m.cfg, errCh)
-	if err != nil {
-		return nil, err
-	}
-	return &consoleRunning{server: server, errCh: errCh}, nil
-}
-
-func (r *consoleRunning) Wait() error {
-	return <-r.errCh
-}
-
-func (r *consoleRunning) Stop(ctx context.Context) error {
-	r.stopOnce.Do(func() {
-		r.stopErr = r.server.Shutdown(ctx)
-	})
-	return r.stopErr
+	return console.Start(ctx, m.cfg)
 }

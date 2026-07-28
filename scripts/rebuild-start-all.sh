@@ -212,10 +212,7 @@ stop_existing_pole_processes() {
 
 build_console_web() {
   log "build console web"
-  (
-    cd "${ROOT_DIR}/console/web"
-    npm run build
-  )
+  "${ROOT_DIR}/scripts/build-console-assets.sh" release
 }
 
 build_control_plane_binary() {
@@ -228,28 +225,25 @@ build_control_plane_binary() {
   log "build control-plane binary: ${POLE_BIN_PATH}"
   (
     cd "${ROOT_DIR}"
-    CGO_ENABLED="${CGO_ENABLED:-0}" go build -o "${POLE_BIN_PATH}" \
+    CGO_ENABLED="${CGO_ENABLED:-0}" go build -tags consoleassets -o "${POLE_BIN_PATH}" \
       -ldflags="-X ${package}.Version=${version} -X ${package}.BuildDate=${build_date}" .
   )
 }
 
 generate_all_config() {
-  local log_config apiserver_config web_path
+  local log_config apiserver_config
 
   log_config="${ROOT_DIR}/deploy/conf/pole-log.yaml"
   apiserver_config="${ROOT_DIR}/deploy/conf/pole-apiserver.yaml"
-  web_path="${ROOT_DIR}/console/web/dist/"
 
   log "generate all-mode config: ${POLE_CONFIG_PATH}"
   cp "${ROOT_DIR}/deploy/conf/pole-server.yaml" "${POLE_CONFIG_PATH}"
 
   POLE_LOG_CONFIG="${log_config}" \
   POLE_APISERVER_CONFIG="${apiserver_config}" \
-  POLE_WEB_PATH="${web_path}" \
   perl -0pi -e '
     s|logger: \./conf/pole-log\.yaml|logger: $ENV{POLE_LOG_CONFIG}|g;
     s|apiservers: \./conf/pole-apiserver\.yaml|apiservers: $ENV{POLE_APISERVER_CONFIG}|g;
-    s|webPath: console/web/dist/|webPath: $ENV{POLE_WEB_PATH}|g;
     s|dbUser: ##DB_USER##|dbUser: $ENV{MYSQL_USER}|g;
     s|dbPwd: ##DB_PWD##|dbPwd: $ENV{MYSQL_PWD}|g;
     s|dbAddr: ##DB_ADDR##|dbAddr: $ENV{MYSQL_HOST}|g;

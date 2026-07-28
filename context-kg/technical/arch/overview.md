@@ -2,7 +2,7 @@
 title: Pole Control Plane — 项目概览
 tags: [overview]
 links: [architecture, index, configuration]
-updated: 2026-07-23
+updated: 2026-07-29
 sources: 1
 ---
 
@@ -52,6 +52,8 @@ pole-control-plane/
 │   ├── access_control/      # 认证插件接口
 │   └── apiserver/           # Apiserver 插件接口
 ├── pkg/                     # 业务逻辑实现
+│   ├── console/             # Console Go Module、内嵌静态资源与私有实现
+│   ├── limiter/             # Limiter Module、协议适配与限流核心
 │   ├── service/             # 服务发现 + 健康检查
 │   ├── config/              # 配置中心
 │   ├── namespace/           # 命名空间管理
@@ -69,7 +71,8 @@ pole-control-plane/
 │   └── cmdb/                # CMDB 插件（内存实现）
 ├── context-kg/              # 知识库与任务过程记录
 ├── deploy/                  # 部署配置和脚本
-└── test/                    # 集成测试与测试套件
+├── test/                    # 集成测试与测试套件
+└── web/console/             # React/Vite Console 源码；由 Go 制品流程统一构建
 ```
 
 ## 功能路线图状态（来自 README）
@@ -92,26 +95,15 @@ pole-control-plane/
 ## 启动流程（高层次）
 
 ```
-main.go → cmd.Execute() → cmd/start.go → bootstrap.Start(configFile)
-  1. 加载 YAML 配置
-  2. 初始化日志
-  3. 获取本机 IP
-  4. 初始化指标（OTel）
-  5. 初始化 EventHub
-  6. 加载插件配置
-  7. 初始化存储层（MySQL）
-  8. 获取启动锁（防止集群中并行初始化）
-  9. 预热缓存（所有已开启的资源类型）
- 10. 初始化认证（用户服务 + 策略服务）
- 11. 初始化命名空间
- 12. 初始化服务发现 + 健康检查 + BatchController
- 13. 初始化治理规则
- 14. 初始化配置中心
- 15. 初始化管理后台
- 16. 启动 API 服务端（goroutine：HTTP、gRPC、xDS、Nacos、Apollo、Eureka）
- 17. 自注册为服务实例
- 18. 释放启动锁
- 19. WaitSignal() — 阻塞，直到收到 SIGTERM/SIGINT
+main.go → cmd.Execute() → cmd/start.go → bootstrap.Run(options)
+  1. 加载 YAML，并解析 CLI `--mode` 覆盖后的运行 Profile
+  2. 校验选中模块配置和 listener 冲突
+  3. 构造 Control Plane、Limiter、Console Module
+  4. Supervisor 按 Profile 顺序启动模块并等待 readiness
+  5. 任一模块启动或运行失败时回滚；收到 SIGTERM/SIGINT 后逆序停止
+
+Console 静态资源在 release/test 构建中由 `web/console` 生成并复制到
+`pkg/console/internal/assets/dist`，随后通过 `go:embed` 进入同一个 Go 二进制。
 ```
 
 ## 相关页面

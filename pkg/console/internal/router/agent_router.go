@@ -1,0 +1,41 @@
+package router
+
+import (
+	"github.com/gin-gonic/gin"
+
+	bootstrap "github.com/pole-io/pole-server/pkg/console/config"
+	"github.com/pole-io/pole-server/pkg/console/internal/agentworkbench"
+	"github.com/pole-io/pole-server/pkg/console/internal/handlers"
+	store "github.com/pole-io/pole-server/pkg/console/internal/observer"
+	"github.com/pole-io/pole-server/pkg/console/internal/systemsettings"
+)
+
+func NewAgentRuntime(config *bootstrap.Config) (*agentworkbench.Workbench, *systemsettings.Manager, error) {
+	agentConfig := config.Agent.Normalize()
+	port := agentworkbench.NewHTTPConfigFilePort(config.PoleServer.Address, nil)
+	workbench := agentworkbench.New(port, agentworkbench.Options{TTL: agentConfig.ProposalTTL})
+	observerStore, err := store.GetStore()
+	var repository store.SystemSettingsRepository
+	if err != nil {
+		if config.Store.Name != "" {
+			return nil, nil, err
+		}
+		repository = systemsettings.NewMemoryRepository()
+	} else {
+		repository = observerStore
+	}
+	manager, err := systemsettings.NewManager(config, repository, workbench)
+	return workbench, manager, err
+}
+
+func AgentRouter(r *gin.Engine, config *bootstrap.Config, workbench *agentworkbench.Workbench,
+	runtime *systemsettings.Manager) {
+	handler := handlers.NewAgentHandler(config, workbench, runtime)
+	r.GET("/.well-known/agent-card.json", handler.A2ACard)
+	r.POST("/ai/agent/a2a/v1", handler.A2ASend)
+	v1 := r.Group("/ai/agent/v1")
+	v1.GET("/runtime", handler.Runtime)
+	v1.POST("/turns", handler.RunTurn)
+	v1.POST("/proposals/config-file", handler.PrepareConfigFile)
+	v1.POST("/proposals/:proposal_id/confirm", handler.ConfirmProposal)
+}

@@ -2,7 +2,7 @@
 title: 命名空间（`pkg/namespace/`）
 tags: [business, feature, namespace]
 links: [architecture, storage, service-discovery, adr-logical-service-environment-binding, adr-system-namespace-kind]
-updated: 2026-07-28
+updated: 2026-07-29
 sources: 6
 ---
 
@@ -64,7 +64,7 @@ DefaultTTL          = 5
 - `apis/store/config_file_api.go`
 - `plugin/store/mysql/config_file.go`
 - `../specification/api/v1/model/namespace.proto`
-- `console/web/src/pages/Namespace/index.tsx`
+- `web/console/src/pages/Namespace/index.tsx`
 
 ## 相关页面
 

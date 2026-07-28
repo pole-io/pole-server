@@ -153,7 +153,6 @@ func (e *Env) writeConfig(opts Options) {
 	e.T.Helper()
 	apiConfigPath := filepath.Join(e.TempDir, "pole-apiserver.yaml")
 	serverConfigPath := filepath.Join(e.TempDir, "pole-server.yaml")
-	webPath := filepath.Join(e.Root, "console/web/dist")
 	logPath := filepath.Join(e.Root, "deploy/conf/pole-log.yaml")
 	dbAddr := fmt.Sprintf("127.0.0.1:%d", e.MySQLPort)
 	dsn := fmt.Sprintf("root:%s@tcp(%s)/pole_server?loc=Local&parseTime=true", mysqlRootPass, dbAddr)
@@ -217,7 +216,6 @@ func (e *Env) writeConfig(opts Options) {
       authURL: /auth/v1
       configURL: /config/v1
       monitorURL: /api/v1
-      webPath: %s
       mainUser: admin
     store:
       name: mysql
@@ -324,7 +322,6 @@ plugin:
 		filepath.Join(e.TempDir, "pole-console-error.log"),
 		filepath.Join(e.TempDir, "pole-console.log"),
 		e.ConsolePort,
-		webPath,
 		mysqlRootPass,
 		dbAddr,
 		e.APIPort,

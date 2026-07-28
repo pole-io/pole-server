@@ -2,7 +2,7 @@
 title: AI 原生功能：MCP Registry 与 A2A Agent Registry
 tags: [ai, mcp, a2a]
 links: [storage, cache-layer, api-servers, adr-a2a-agent-registry, adr-console-agent-resource-workbench, adr-pole-self-management-control-loop]
-updated: 2026-07-26
+updated: 2026-07-29
 sources: 18
 ---
 
@@ -135,7 +135,7 @@ Pole 中的 A2A 首期只做注册与发现，不做完整任务运行时：
 - MySQL 表：`a2a_agent`、`a2a_agent_interface`、`a2a_agent_skill`，采用 `flag=1` 软删除和 `mtime` 增量刷新。
 - `pkg/cache/ai.A2AAgentCache` 按 ID、`namespace/name` 和 namespace 建索引，并支持 skill tag、协议绑定、后端服务和能力过滤。
 
-### Console 页面（`console/web/src/pages/AI/A2A/`）
+### Console 页面（`web/console/src/pages/AI/A2A/`）
 
 A2A 页面与 MCP Registry 页面保持同一交互风格：筛选工具栏、主表格、抽屉编辑和详情抽屉。
 

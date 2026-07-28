@@ -159,7 +159,7 @@ Limiter 是维护 gRPC 双向长流和内存计数器的有状态数据面，不
 - `bootstrap/config/start_mode.go` 负责规范 mode、`server` 别名和 Profile 解析；
 - `bootstrap/process.go` 负责进程配置加载与 Control Plane、Limiter、Console Module 装配；
 - `internal/runtime/supervisor/` 负责顺序启动、运行期 fail-fast、失败回滚和逆序停止；
-- `limiter/` 提供可重复构造的 `Start → Running.Wait/Stop` 模块，不拥有 OS signal；
+- `pkg/limiter/` 提供可重复构造的 `Start → Running.Wait/Stop` 模块，不拥有 OS signal；
 - 选中 Profile 的 listener 在获取运行资源前完成端口冲突检查；
 - Control Plane gRPC/HTTP 使用显式 ready 信号，旧协议 Server 使用有界 TCP readiness 探测；
 - Limiter gRPC/HTTP listener 同步绑定后才报告启动成功；默认示例只启用内部 gRPC `8101`；

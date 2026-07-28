@@ -20,8 +20,8 @@ package config
 import (
 	"fmt"
 
-	console_bootstrap "github.com/pole-io/pole-server/console/bootstrap"
 	"github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pkg/console"
 )
 
 func defaultBootstrap() Bootstrap {
@@ -44,8 +44,8 @@ func defaultBootstrap() Bootstrap {
 				},
 			},
 		},
-		Console: console_bootstrap.Config{
-			Logger: console_bootstrap.DefaultLoggerOptions(),
+		Console: console.Config{
+			Logger: console.DefaultLoggerOptions(),
 		},
 	}
 }

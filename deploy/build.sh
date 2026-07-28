@@ -68,17 +68,9 @@ export CGO_ENABLED=0
 build_date=$(date "+%Y%m%d.%H%M%S")
 package="github.com/pole-io/pole-server/pkg/common/version"
 sqldb_res="plugin/store/mysql"
-console_web_dir="console/web"
-GOARCH=${GOARCH} GOOS=${GOOS} go build -o ${bin_name} -ldflags="-X ${package}.Version=${version} -X ${package}.BuildDate=${build_date}"
-
-if [ -d "${console_web_dir}" ]; then
-  echo "build console web"
-  (
-    cd "${console_web_dir}"
-    npm ci --legacy-peer-deps
-    npm run build
-  )
-fi
+echo "build embedded console web"
+POLE_CONSOLE_NPM_CI=1 ./scripts/build-console-assets.sh release
+GOARCH=${GOARCH} GOOS=${GOOS} go build -tags consoleassets -o ${bin_name} -ldflags="-X ${package}.Version=${version} -X ${package}.BuildDate=${build_date}"
 
 # 打包
 mkdir -p ${folder_name}
@@ -87,12 +79,5 @@ mkdir -p ${folder_name}/${sqldb_res}
 cp -r ${sqldb_res}/scripts/* ${folder_name}/${sqldb_res}
 cp -r ./deploy/tools ${folder_name}/
 cp -r ./deploy/conf ${folder_name}/
-if [ -d "${console_web_dir}/dist" ]; then
-  mkdir -p ${folder_name}/${console_web_dir}
-  cp -r ${console_web_dir}/dist ${folder_name}/${console_web_dir}/
-else
-  echo "console web dist not found"
-  exit 1
-fi
 zip -r "${pkg_name}" ${folder_name}
 md5sum ${pkg_name} >"${pkg_name}.md5sum"

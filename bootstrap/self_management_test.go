@@ -14,8 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	boot_config "github.com/pole-io/pole-server/bootstrap/config"
-	consolebootstrap "github.com/pole-io/pole-server/console/bootstrap"
-	"github.com/pole-io/pole-server/console/pkg/poleagent"
+	"github.com/pole-io/pole-server/pkg/console"
 	"github.com/pole-io/pole-server/pkg/selfmanager"
 )
 
@@ -42,9 +41,9 @@ func TestReconcileSelfManagementStartupReturnsContextualPersistentFailure(t *tes
 
 func TestSelfManagementDesiredOwnsPoleMCPAndA2AProjection(t *testing.T) {
 	cfg := &boot_config.Config{Bootstrap: boot_config.Bootstrap{
-		Console: consolebootstrap.Config{Agent: consolebootstrap.AgentConfig{
-			Definition: consolebootstrap.AgentDefinitionConfig{ID: "pole-control-plane"},
-			MCP: consolebootstrap.AgentMCPConfig{
+		Console: console.Config{Agent: console.AgentConfig{
+			Definition: console.AgentDefinitionConfig{ID: "pole-control-plane"},
+			MCP: console.AgentMCPConfig{
 				Endpoint: "http://pole-server:8090/ai/mcp/v1/sse",
 			},
 		}},
@@ -57,10 +56,10 @@ func TestSelfManagementDesiredOwnsPoleMCPAndA2AProjection(t *testing.T) {
 	require.Equal(t, "http://pole-server:8090/ai/mcp/v1/sse", desired.MCP.Server.GetBackendAddress())
 	require.Equal(t, "list_namespaces", desired.MCP.Tools[0].GetName())
 
-	card := &poleagent.A2AAgentCard{
+	card := &console.A2AAgentCard{
 		Name: "Pole Agent", Description: "Pole 管理", URL: "http://pole-console:8080/ai/agent/a2a/v1",
 		Version: "v1", ProtocolVersion: "0.3.0", PreferredTransport: "JSONRPC",
-		Skills: []poleagent.A2ASkill{{
+		Skills: []console.A2ASkill{{
 			ID: "pole-control-plane-management", Name: "Pole 控制面管理",
 			InputModes: []string{"text/plain"}, OutputModes: []string{"text/plain"},
 		}},
@@ -96,10 +95,10 @@ func TestRemoteConsoleCapabilityProbeSupportsSplitDeployment(t *testing.T) {
 	}))
 	defer backend.Close()
 
-	cfg := &consolebootstrap.Config{
-		PoleServer:    consolebootstrap.PoleServer{Address: backend.URL},
-		SystemSecrets: consolebootstrap.SystemSecretsConfig{MasterKey: masterKey},
-		Agent: consolebootstrap.AgentConfig{
+	cfg := &console.Config{
+		PoleServer:    console.PoleServer{Address: backend.URL},
+		SystemSecrets: console.SystemSecretsConfig{MasterKey: masterKey},
+		Agent: console.AgentConfig{
 			SelfManagementProbeKey: probeKey,
 		},
 	}
@@ -112,8 +111,8 @@ func TestRemoteConsoleCapabilityProbeSupportsSplitDeployment(t *testing.T) {
 
 func TestEnsureA2AAdvertisedEndpointUsesDiscoveredReachableHost(t *testing.T) {
 	cfg := &boot_config.Config{Bootstrap: boot_config.Bootstrap{
-		Console: consolebootstrap.Config{
-			WebServer: consolebootstrap.WebServer{ListenPort: 8080},
+		Console: console.Config{
+			WebServer: console.WebServer{ListenPort: 8080},
 		},
 	}}
 	ensureA2AAdvertisedEndpoint(cfg, "10.0.0.8")

@@ -2,11 +2,43 @@
 title: 任务计划与 Review
 tags: [tasks, todo]
 links: [lessons, adr-otel-observability-platform, adr-pole-rust-client-observability]
-updated: 2026-07-28
+updated: 2026-07-29
 sources: 0
 ---
 
 # 任务计划与 Review
+
+## Console、Limiter 源码归属与前端嵌入实施（2026-07-29）
+
+目标：实施 `adr-console-limiter-source-layout-and-embedded-web`，将 Console/Limiter Go Module 收拢到 `pkg/`，前端迁入 `web/console`，Release/Test 使用 `go:embed` 单文件交付，本地保留 Vite HMR。
+
+- [x] 提交实施前现有工作树，建立可回退基线。
+- [x] 固化迁移前 Go、Console 前端、启动模式和静态资源回归基线。
+- [x] 将 Limiter 迁入 `pkg/limiter`，收口根 Interface 与内部实现。
+- [x] 将 Console Go 代码迁入 `pkg/console`，消除 bootstrap 对内部配置和 Agent 类型的穿透依赖。
+- [x] 将前端源码迁入 `web/console`，建立确定性的前端构建与 embed 生成目录。
+- [x] Release/Test 改用嵌入静态资源，正式运行移除外部 `webPath`；开发模式保留 Vite HMR/API 代理。
+- [x] 同步 Makefile、构建脚本、Docker/Kubernetes、E2E、CI、Dependabot 和知识库路径。
+- [x] 完成格式化、定向测试、前端检查、全仓测试、单二进制无外部静态目录验收和双轴代码审查。
+- [x] 提交全部实施改动。
+
+### Review
+
+- `console/`、`limiter/` 的 Go 实现已分别迁入 `pkg/console`、`pkg/limiter`；根 `bootstrap`
+  只依赖两个模块根包，路由、Handler、Observer、Pole Agent、协议服务、限流核心和统计实现
+  均收敛到局部 `internal`。
+- Console 前端源码已迁入 `web/console`。Release、Kubernetes、本地重建与测试目标统一先执行
+  `scripts/build-console-assets.sh`，再使用 `consoleassets` 构建标签编译 Go 制品。
+- `consoleassets` 模式显式匹配 `index.html`；缺少前端产物时 Go 编译按预期失败。完整产物通过
+  `go:embed` 提供首页、hash 资源和 SPA fallback，YAML、Docker 和发布包不再依赖外部
+  `webPath` 或 dist 目录。
+- 本地 Vite 继续使用 3003 端口和 HMR，并将 Console/API 前缀统一代理到 8080。A2A Card、
+  Skill、Capabilities 和 SecurityScheme 稳定契约已上提到 `apis/pkg/types/ai`。
+- 验证通过：Console/Limiter/bootstrap 定向测试、race、vet、`consoleassets` 完整性测试、
+  缺产物失败测试、带嵌入资源的单二进制构建、全仓 `go test -tags nomsgpack ./...`、
+  前端 lint/build、context-kg lint 和 `git diff --check`。
+- 双轴复审首轮发现的制品缺失未 fail-fast、A2A Seam 未上提、standalone CI 独立版本、
+  历史日志修改、知识页日期和过期 lesson 均已修复；最终 Standards 与 Spec 两轴均通过。
 
 ## Console 与 Limiter 源码归属评估（2026-07-28）
 

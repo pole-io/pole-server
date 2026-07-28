@@ -110,7 +110,7 @@ sources: 0
 - 配置中心发布记录这类审计列要从后端列表/详情响应开始完整返回 `ctime/mtime/create_by/modify_by`，不能只在前端表格补列；前端展示发布时间还应使用 `createTime/ctime/modifyTime/mtime` 兜底，操作人需要先解析用户 id，再用新标签链接到 `/auth/principals/userdetail`。
 - 表格行操作里的图标按钮必须有可见悬浮提示和可访问名称；`Tooltip` 不能直接包 `Popconfirm` 这类非稳定 DOM 触发组件，应使用稳定 `span` target 包住按钮/确认组件，并同时给 `Button` 补 `aria-label` 和 `title` 作为兜底。
 - 配置中心灰度规则这类“客户端/流量匹配条件”应优先复用治理侧已验证的 `TrafficMatchConditionEditor` 或其适配层；不要继续用 `ClientLabelInput` 这类私有行编辑器复制参数类型、匹配类型、匹配值和增删行逻辑，否则视觉与交互会和治理平台控件割裂。
-- Console 静态资源在 `npm run build:test` 或任何重写 `console/web/dist` 后，必须重新拉起 console/all-mode 并用真实浏览器验证深链页面；只验证旧浏览器会话或 `curl /` 不够。还要检查当前 `index.html` 引用的入口 JS 在 8080 下返回 200，避免浏览器缓存旧 HTML 指向已删除的 hash asset，造成页面空白和 `/assets/index.*.js` 404。
+- Console 静态资源在 `npm run build:test` 或任何重写 `web/console/dist` 后，必须重新执行统一资源脚本、重编译并重新拉起 console/all-mode，再用真实浏览器验证深链页面；只验证旧二进制、旧浏览器会话或 `curl /` 不够。还要检查内嵌 `index.html` 引用的入口 JS 在 8080 下返回 200，避免浏览器缓存旧 HTML 指向已删除的 hash asset，造成页面空白和 `/assets/index.*.js` 404。
 - 配置中心可用性不能只验证入口渲染或列表查询；新建配置分组这类核心链路必须用真实账号覆盖 `POST` 请求、后端响应、创建后列表可见和删除清理，尤其要验证空标签、id 类型和缓存增量同步。
 - 泳道编辑器最新规范不要求保留“实时规则 SPEC”区块；审查或静态回归脚本不能继续把缺少该区块当成问题。对齐泳道 PRD 时应以当前三段组信息、泳道、版本、审计结构为准。
 - 注册发现首页只承载服务清单；服务别名是具体服务的附属入口，应放在服务详情的 `服务别名` Tab 内，并按当前 `namespace/service` 过滤和创建。不要把 `别名` 做成和 `服务` 平级的注册发现顶层 Tab。
@@ -222,7 +222,7 @@ sources: 0
 - 控制台资源列表的身份列和操作列必须优先固定可见；不要为了展示更多字段牺牲操作可达性。中间列应通过稳定列宽、单行摘要、省略和紧凑扫描单元控制，尽可能让常见桌面宽度无需横向滚动即可查看全部信息。
 - 优化控制台资源列表时不能只检查功能和数据是否展示；表头是否换行、标签是否撑高行、计数字段是否拆行、分页是否和表格边界对齐、操作图标是否过散都属于交付质量，需要用页面级样式和验证脚本固定。
 - Console 品牌标识应优先展示产品品牌 `Pole.IO`；不要在主 logo 文案里追加 `Console` 这类功能后缀，除非用户明确要求区分多个产品线。
-- 本地 all/console 模式下，`console/web/dist/index.html` 是启动时由 Gin `LoadHTMLGlob` 加载的；执行 `npm run build` 后必须重启 all/console，否则 8080 可能继续返回旧 index，进而请求已不存在的 hash 资源并导致页面打不开。
+- 本地 all/console 制品模式下，Console 静态资源通过 `go:embed` 固化在 Go 二进制中；执行 `npm run build` 只会更新 `web/console/dist`，必须重新运行统一资源脚本并重编译、重启 all/console，8080 才会加载新 index 与 hash 资源。前端日常开发应使用 Vite HMR。
 - 新增治理规则详情时，操作按钮不能另做内容底部 sticky footer；应复用 `RuleDetailDrawer` 内的 `StickyTool + RuleStickyAction`，否则按钮位置会和既有治理详情不一致，并可能影响抽屉正文滚动体验。
 - 治理工作台这类仪表盘页面不应让整个主页面随列表长度滚动；应固定页面视区高度，让清单面板内部的表格内容区滚动，保持页头、汇总、筛选和分页稳定可见。
 - 新增治理规则类型的查询接口不能只返回业务对象；auth interceptor 必须像既有路由、限流、熔断等规则一样在列表和详情响应里回填 `editable/deleteable`，否则 proto bool 默认 false 会让 Console 误判为无编辑权限。

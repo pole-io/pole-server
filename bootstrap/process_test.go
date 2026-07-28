@@ -16,9 +16,8 @@ import (
 
 	"github.com/pole-io/pole-server/apis/apiserver"
 	bootconfig "github.com/pole-io/pole-server/bootstrap/config"
-	consolebootstrap "github.com/pole-io/pole-server/console/bootstrap"
-	"github.com/pole-io/pole-server/limiter"
-	limiterapiserver "github.com/pole-io/pole-server/limiter/apiserver"
+	"github.com/pole-io/pole-server/pkg/console"
+	"github.com/pole-io/pole-server/pkg/limiter"
 	apiv2 "github.com/pole-io/specification/source/go/api/v1/traffic_manage/ratelimiter"
 )
 
@@ -84,14 +83,14 @@ func reserveTCPPort(t *testing.T) int {
 func TestValidateProfileListenersRejectsCrossModuleConflict(t *testing.T) {
 	cfg := &bootconfig.Config{
 		Bootstrap: bootconfig.Bootstrap{
-			Console: consolebootstrap.Config{
-				WebServer: consolebootstrap.WebServer{
+			Console: console.Config{
+				WebServer: console.WebServer{
 					ListenIP: "127.0.0.1", ListenPort: 8080,
 				},
 			},
 		},
 		Limiter: limiter.Config{
-			APIServers: []limiterapiserver.Config{{
+			APIServers: []limiter.APIServerConfig{{
 				Name: "grpc",
 				Option: map[string]interface{}{
 					"ip": "127.0.0.1", "port": 8101,
@@ -118,14 +117,14 @@ func TestValidateProfileListenersRejectsCrossModuleConflict(t *testing.T) {
 func TestValidateProfileListenersAllowsDistinctPorts(t *testing.T) {
 	cfg := &bootconfig.Config{
 		Bootstrap: bootconfig.Bootstrap{
-			Console: consolebootstrap.Config{
-				WebServer: consolebootstrap.WebServer{
+			Console: console.Config{
+				WebServer: console.WebServer{
 					ListenIP: "0.0.0.0", ListenPort: 8080,
 				},
 			},
 		},
 		Limiter: limiter.Config{
-			APIServers: []limiterapiserver.Config{{
+			APIServers: []limiter.APIServerConfig{{
 				Name: "grpc",
 				Option: map[string]interface{}{
 					"ip": "0.0.0.0", "port": 8101,

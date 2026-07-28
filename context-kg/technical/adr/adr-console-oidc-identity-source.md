@@ -2,7 +2,7 @@
 title: ADR：Console OIDC 用户来源与企业目录同步
 tags: [adr, auth, console, oidc, identity]
 links: [auth-system, architecture, api-servers, configuration, patterns]
-updated: 2026-06-22
+updated: 2026-07-29
 sources: 6
 ---
 
@@ -382,8 +382,8 @@ GET  /auth/v1/identity-sync/preview
 
 当前代码边界依据：
 
-- `console/pkg/handlers/proxy.go`：Console 登录后通过 `jwt` cookie 保存 `user_id + token`，后续代理请求设置 `Authorization`。
-- `console/pkg/router/auth_router.go`：Console auth 路由集中注册，适合作为 SSO 路由扩展点。
+- `pkg/console/internal/handlers/proxy.go`：Console 登录后通过 `jwt` cookie 保存 `user_id + token`，后续代理请求设置 `Authorization`。
+- `pkg/console/internal/router/auth_router.go`：Console auth 路由集中注册，适合作为 SSO 路由扩展点。
 - `apis/access_control/auth/api.go`：`UserServer` 和 `StrategyServer` 是 pole-server 内部认证授权核心接口。
 - `plugin/access_control/auth/user/user.go`：`CheckCredential` 从上下文或请求头读取 Pole token 并解析为本地 operator。
 - `plugin/access_control/auth/user/token.go`：Pole token 是内部 AES 加密格式，不是 OIDC token。

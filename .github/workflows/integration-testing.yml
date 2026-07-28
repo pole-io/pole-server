@@ -69,6 +69,16 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v2
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/console/package-lock.json
+
+      - name: Verify embedded Console test artifact
+        run: make test-console-assets
+
       # Compile
       - name: Build server
         env:
@@ -113,4 +123,3 @@ jobs:
           cd $work_dir
           ./tool/stop.sh
           cd ..
-

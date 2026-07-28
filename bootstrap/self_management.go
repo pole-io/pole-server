@@ -18,9 +18,8 @@ import (
 	aitypes "github.com/pole-io/pole-server/apis/pkg/types/ai"
 	storeapi "github.com/pole-io/pole-server/apis/store"
 	boot_config "github.com/pole-io/pole-server/bootstrap/config"
-	consolebootstrap "github.com/pole-io/pole-server/console/bootstrap"
-	"github.com/pole-io/pole-server/console/pkg/poleagent"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pkg/console"
 	"github.com/pole-io/pole-server/pkg/selfmanager"
 )
 
@@ -211,7 +210,7 @@ func configureConsoleAgentCapabilityProbe(cfg *boot_config.Config, storage store
 	}
 }
 
-func configureRemoteConsoleAgentCapabilityProbe(cfg *consolebootstrap.Config) {
+func configureRemoteConsoleAgentCapabilityProbe(cfg *console.Config) {
 	if cfg == nil {
 		return
 	}
@@ -290,7 +289,7 @@ func selfManagementDesired(cfg *boot_config.Config, tools []*specai.MCPServerToo
 }
 
 func fetchPoleAgentCard(ctx context.Context,
-	cfg *boot_config.Config) (*poleagent.A2AAgentCard, string, error) {
+	cfg *boot_config.Config) (*console.A2AAgentCard, string, error) {
 	agentConfig := cfg.Bootstrap.Console.Agent.Normalize()
 	endpoint := strings.TrimSpace(agentConfig.A2A.Endpoint)
 	if endpoint == "" {
@@ -316,7 +315,7 @@ func fetchPoleAgentCard(ctx context.Context,
 		response, err := client.Do(request)
 		if err == nil && response.StatusCode == http.StatusOK {
 			defer response.Body.Close()
-			var card poleagent.A2AAgentCard
+			var card console.A2AAgentCard
 			if decodeErr := json.NewDecoder(response.Body).Decode(&card); decodeErr != nil {
 				return nil, "", decodeErr
 			}
@@ -338,7 +337,7 @@ func fetchPoleAgentCard(ctx context.Context,
 	return nil, "", lastErr
 }
 
-func poleAgentRegistryProjection(cfg *boot_config.Config, card *poleagent.A2AAgentCard,
+func poleAgentRegistryProjection(cfg *boot_config.Config, card *console.A2AAgentCard,
 	rawCard string) *aitypes.A2AAgent {
 	agentConfig := cfg.Bootstrap.Console.Agent.Normalize()
 	agentName := strings.TrimSpace(card.Name)

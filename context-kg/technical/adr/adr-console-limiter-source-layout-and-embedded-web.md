@@ -10,7 +10,7 @@ sources: 12
 
 ## 状态
 
-已接受，尚未实施。
+已实施。
 
 ## 背景
 
@@ -32,7 +32,8 @@ Console Go 网关与 Limiter 都迁入 `pkg/`：
 ```text
 pkg/
 ├── console/
-│   ├── config.go
+│   ├── config/
+│   │   └── config.go
 │   ├── module.go
 │   ├── assets.go
 │   └── internal/
@@ -45,10 +46,10 @@ pkg/
 └── limiter/
     ├── config.go
     ├── module.go
+    ├── registry.go
     └── internal/
         ├── apiserver/
-        ├── ratelimit/
-        ├── registry/
+        ├── ratelimitv2/
         ├── statistics/
         └── utils/
 ```
@@ -130,7 +131,7 @@ Release 模式下：
 
 ## 共享类型与 Seam 收口
 
-当前 `bootstrap/self_management.go` 直接使用 Console 内部 Pole Agent 类型。迁移时将 Control Plane 与 Console 都需要理解的 A2A、Agent Card 等稳定契约放入 `apis/pkg/types/ai`；仅 Console 使用的模型调用、工具会话和工作台逻辑保留在 `pkg/console/internal`。
+`bootstrap/self_management.go` 只通过 `pkg/console` 根包使用 A2A Agent Card 等 Console 启动契约；模型调用、工具会话和工作台逻辑保留在 `pkg/console/internal`，组合根不再导入内部实现。
 
 Console 配置从 `console/bootstrap.Config` 收口为 `pkg/console.Config`。配置加载和系统配置来源描述可以在根 bootstrap 组装，但 Console 内部默认值、校验和运行时构造由 Console Module 自己负责。
 
@@ -164,6 +165,15 @@ Go 可见性最严格，但与本仓库现有 `pkg/service`、`pkg/config` 等�
 6. 建立确定性的前端构建、产物复制和 `go:embed` 流程；
 7. 删除 Release 运行时 `webPath`，保留显式 Vite 开发入口；
 8. 完成全仓测试、前端专项检查、单二进制无外部静态目录启动和真实浏览器验证。
+
+## 实施结果
+
+- Console 生命周期收口为 `pkg/console.Start → Running.Wait/Stop`，Limiter 生命周期收口为 `pkg/limiter.Start → Running.Wait/Stop`；
+- 根 `bootstrap` 只导入两个 Module 根包，协议服务、路由、Observer、Pole Agent、限流核心和统计实现均由局部 `internal` 隐藏；
+- 前端源码位于 `web/console`，`scripts/build-console-assets.sh` 负责 release/test 构建、清理旧产物并复制到嵌入目录；
+- `pkg/console/assets.go` 使用 `go:embed`，首页、hash 静态资源和 SPA fallback 统一从二进制内文件系统读取；
+- YAML 中的 `webPath` 已删除；发布包和 Kubernetes 镜像不再复制外部 Console dist；
+- Vite dev server 保留 HMR，并把 Console/API 路径代理到本地 `8080`。
 
 ## 验收标准
 

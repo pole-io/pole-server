@@ -2,7 +2,7 @@
 title: ADR：Console Agent 资源变更工作台
 tags: [adr, ai, agent, console, governance, config]
 links: [ai-features, adr-a2a-agent-registry, architecture, auth-system, api-servers, config-center, governance-rules, patterns, adr-system-configuration-control-plane, adr-pole-self-management-control-loop]
-updated: 2026-07-26
+updated: 2026-07-29
 sources: 45
 ---
 
@@ -107,7 +107,7 @@ type ResourceDescriptor struct {
 Pole Agent 主体实现位于 Console 后端，现有 `agentworkbench` 保留为它内部的确定性变更确认内核：
 
 ```text
-console/pkg/poleagent/
+pkg/console/internal/poleagent/
 ├── agent.go                # PoleAgent interface 与 model-tool loop
 ├── definition.go           # System Prompt、模型、MCP 与工具策略
 ├── prompt.go               # 版本化系统 Prompt
@@ -117,7 +117,7 @@ console/pkg/poleagent/
 ├── approval.go             # awaiting_approval 与恢复执行
 └── repository.go           # 会话持久化 seam
 
-console/pkg/agentworkbench/
+pkg/console/internal/agentworkbench/
 ├── workbench.go            # ChangeApprovalKernel 现有实现
 ├── proposal.go             # 不可变提案、hash 和确认策略
 ├── resource.go             # DraftResourceAdapter seam
@@ -461,17 +461,17 @@ System Prompt 分成不可由页面覆盖的内置安全策略和可配置的 op
 
 ## 证据
 
-- `console/web/src/router/modules/agent.ts`、`console/web/src/router/modules/ai.ts`：Agent 是独立 `/agent` 一级入口，AI 工具菜单只包含 A2A 与 MCP 页面。
-- `console/web/src/pages/AI/Agent/index.tsx`：本地会话导航、按会话记忆、对话时间线、工具调用轨迹、临时视图、确认与待发布回执。
-- `console/web/src/pages/AI/Agent/sessionStore.ts`：IndexedDB 会话、消息、草稿、资源上下文、记忆窗口和当前会话元数据。
-- `console/web/src/layouts/components/Menu.tsx`、`Header/WorkspaceModeSwitch.tsx`、`AppLayout.tsx`：Agent 会话侧栏宿主、全局双模式切换、最近普通页面恢复和 Agent 专属布局。
-- `console/web/src/pages/Configuration/Group/Files/FileView.tsx`：配置资源到 Agent 的强类型上下文交接。
-- `console/pkg/router/router.go`、`console/pkg/handlers/proxy.go`：Console 验证登录态并反向代理 pole-server。
-- `console/web/src/services/config_files.ts`：配置文件有 `to-be-released` 状态，create/update 与 release 分离。
-- `console/web/src/services/config_release.ts`：配置发布、版本、灰度与回滚接口。
-- `console/web/src/pages/Configuration/Group/Files/FileView.tsx`：保存草稿与发布配置是两个动作。
-- `console/web/src/pages/Configuration/Group/Releases/PublishForm.tsx`：发布需要独立信息和确认。
-- `console/web/src/components/CodeDiffEditor/index.tsx`：已有配置差异展示能力。
+- `web/console/src/router/modules/agent.ts`、`web/console/src/router/modules/ai.ts`：Agent 是独立 `/agent` 一级入口，AI 工具菜单只包含 A2A 与 MCP 页面。
+- `web/console/src/pages/AI/Agent/index.tsx`：本地会话导航、按会话记忆、对话时间线、工具调用轨迹、临时视图、确认与待发布回执。
+- `web/console/src/pages/AI/Agent/sessionStore.ts`：IndexedDB 会话、消息、草稿、资源上下文、记忆窗口和当前会话元数据。
+- `web/console/src/layouts/components/Menu.tsx`、`Header/WorkspaceModeSwitch.tsx`、`AppLayout.tsx`：Agent 会话侧栏宿主、全局双模式切换、最近普通页面恢复和 Agent 专属布局。
+- `web/console/src/pages/Configuration/Group/Files/FileView.tsx`：配置资源到 Agent 的强类型上下文交接。
+- `pkg/console/internal/router/router.go`、`pkg/console/internal/handlers/proxy.go`：Console 验证登录态并反向代理 pole-server。
+- `web/console/src/services/config_files.ts`：配置文件有 `to-be-released` 状态，create/update 与 release 分离。
+- `web/console/src/services/config_release.ts`：配置发布、版本、灰度与回滚接口。
+- `web/console/src/pages/Configuration/Group/Files/FileView.tsx`：保存草稿与发布配置是两个动作。
+- `web/console/src/pages/Configuration/Group/Releases/PublishForm.tsx`：发布需要独立信息和确认。
+- `web/console/src/components/CodeDiffEditor/index.tsx`：已有配置差异展示能力。
 - `plugin/apiserver/httpserver/discover/router_access.go`：治理 CRUD 与 release 路由分离。
 - `plugin/apiserver/httpserver/discover/ratelimit_access.go`：限流 CRUD 与 release 路由分离。
 - `plugin/apiserver/httpserver/discover/circuitbreaker_access.go`：熔断 CRUD 与 release 路由分离。
@@ -482,7 +482,7 @@ System Prompt 分成不可由页面覆盖的内置安全策略和可配置的 op
 - `pkg/goverrule/releases.go`：治理发布按资源类型分派。
 - `plugin/apiserver/httpserver/discover/service_access.go`：服务为直接 CRUD，无 release。
 - `plugin/apiserver/httpserver/aimcp/server.go`、`plugin/apiserver/httpserver/aia2a/server.go`：MCP/A2A 为直接 CRUD。
-- `console/web/src/utils/request.ts`：现有错误模型保留 code、info 和 Request ID。
+- `web/console/src/utils/request.ts`：现有错误模型保留 code、info 和 Request ID。
 
 ## 相关页面
 

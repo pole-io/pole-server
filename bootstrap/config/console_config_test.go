@@ -36,7 +36,6 @@ bootstrap:
     webServer:
       listenIP: 127.0.0.1
       listenPort: 8080
-      webPath: console/web/dist/
     poleServer:
       address: 127.0.0.1:8090
 `), 0o644))
@@ -47,7 +46,6 @@ bootstrap:
 	assert.Equal(t, StartModeAll, cfg.Bootstrap.Mode)
 	assert.Equal(t, "127.0.0.1", cfg.Bootstrap.Console.WebServer.ListenIP)
 	assert.Equal(t, 8080, cfg.Bootstrap.Console.WebServer.ListenPort)
-	assert.Equal(t, "console/web/dist/", cfg.Bootstrap.Console.WebServer.WebPath)
 	assert.Equal(t, "127.0.0.1:8090", cfg.Bootstrap.Console.PoleServer.Address)
 }
 

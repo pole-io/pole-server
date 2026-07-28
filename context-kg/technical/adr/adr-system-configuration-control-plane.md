@@ -2,7 +2,7 @@
 title: ADR：统一系统配置与动态生效
 tags: [adr, config, runtime, console, operations]
 links: [configuration, architecture, config-center, adr-console-agent-resource-workbench, auth-system, storage, adr-pole-self-management-control-loop]
-updated: 2026-07-26
+updated: 2026-07-29
 sources: 47
 ---
 
@@ -54,7 +54,7 @@ Pole Server 与 Console 当前都以静态 YAML 为主要配置来源。静态�
 | Apply mode | 语义 | 代表配置 |
 |---|---|---|
 | `BootstrapOnly` | 只能通过部署配置修改 | mode、Store/DSN、配置源、Secret Provider、认证/加密根 |
-| `RestartRequired` | 可页面发布目标值，但实例只回执待重启 | Listener/TLS、API include、插件类型与链、缓存拓扑、Console webPath |
+| `RestartRequired` | 可页面发布目标值，但实例只回执待重启 | Listener/TLS、API include、插件类型与链、缓存拓扑 |
 | `HotReload` | 校验通过后可原子替换 | AgentDefinition、Console 观测查询 timeout、普通 feature flag |
 | `GuardedHotReload` | 需要预热、双版本窗口或 drain 后切换 | 鉴权开关、健康检查参数、OTel exporter、workload credential 轮换 |
 
@@ -200,7 +200,7 @@ Pole Agent 不获得任何 System Configuration 写工具，也不能读取 Secr
 - 页面只读展示 effective value 和 source，不改变加载行为。
 - 页面必须区分“合法空筛选结果”和“目录请求失败”：首次请求失败显示明确错误与重试，不渲染全零统计；刷新失败保留 last-known-good 快照并提示当前数据可能过期。
 
-当前实现通过 `pkg/systemconfig` 提供 registry、source index 与 effective snapshot interface。Pole Server 在 `/admin/v1/system/configuration` 输出本组件快照，并通过 `MaintainModule + Read + DescribeSystemConfiguration` 执行凭证及策略授权；Console 在 `/system-config/v1/settings` 聚合本地 Console 与远端 Server 快照。首批目录共 63 项，其中 Pole Server 29 项、Console 34 项；Console Agent 领域已从提案参数扩展为 13 项完整元信息。页面已按组件和领域组织单领域配置表，新增字段必须显式注册并声明领域、敏感级别与 apply mode。
+当前实现通过 `pkg/systemconfig` 提供 registry、source index 与 effective snapshot interface。Pole Server 在 `/admin/v1/system/configuration` 输出本组件快照，并通过 `MaintainModule + Read + DescribeSystemConfiguration` 执行凭证及策略授权；Console 在 `/system-config/v1/settings` 聚合本地 Console 与远端 Server 快照。移除外部 `webPath` 后首批目录共 62 项，其中 Pole Server 29 项、Console 33 项；Console Agent 领域已从提案参数扩展为 13 项完整元信息。页面已按组件和领域组织单领域配置表，新增字段必须显式注册并声明领域、敏感级别与 apply mode。
 
 Phase 1 的来源限定为 `compiled_default`、`static_file`、`environment` 和 `command_line`。默认值归一化后必须同步回落为 `compiled_default`，复合环境模板记录全部变量引用；列表设置聚合其 YAML 子项来源，避免被误报为编译默认值。Secret 在服务端删除原值后只返回“已配置/未配置”状态和引用。
 
@@ -235,27 +235,27 @@ Phase 1 的来源限定为 `compiled_default`、`static_file`、`environment` �
 ## 证据
 
 - `bootstrap/config/config.go`：Pole Server 配置聚合并在启动时一次读取。
-- `console/bootstrap/config.go`：Console 配置一次读取并展开环境变量，无 Watch/reload。
+- `pkg/console/config/config.go`：Console 配置一次读取并展开环境变量，无 Watch/reload。
 - `bootstrap/server.go`：Store、组件、API Server 与 Console 的启动顺序。
 - `apis/store/store.go`：核心 Store 通过全局配置和一次初始化获取。
-- `console/pkg/observer/api.go`：Console ObserverStore 只有 history/event 查询。
+- `pkg/console/internal/observer/api.go`：Console ObserverStore 只有 history/event 查询。
 - `pkg/config/watcher.go`：配置中心已有发布通知和长轮询机制。
 - `pkg/cache/config/config_file.go`：active release 缓存和本地发布事件。
 - `plugin/store/mysql/scripts/pole_server.sql`：`server_setting` 只有 DDL。
 - `pkg/workloadcredential/server.go`：已有受控服务实例替换基础。
 - `pkg/common/otel/config.go`：OTel 运行参数需要专用重建与 drain。
 - `plugin/apiserver/httpserver/admin_access.go`：日志级别和 pprof 已存在局部运行时操作。
-- `console/pkg/observabilityquery/config.go`：Console 观测查询配置是低风险动态候选。
-- `console/pkg/router/agent_router.go`：Agent TTL 与 Workbench 当前在路由构造时固定。
+- `pkg/console/internal/observabilityquery/config.go`：Console 观测查询配置是低风险动态候选。
+- `pkg/console/internal/router/agent_router.go`：Agent TTL 与 Workbench 当前在路由构造时固定。
 - `pkg/systemconfig/registry.go`：定义注册、查询、稳定排序和服务端 Secret 脱敏。
 - `pkg/systemconfig/source.go`：静态 YAML、环境变量与编译默认值来源索引。
 - `bootstrap/config/system_settings.go`：Pole Server 首批 29 项显式配置定义。
-- `console/bootstrap/config.go`：Console AgentDefinition、LLM、MCP 与运行限制的类型化启动结构。
-- `console/bootstrap/system_settings.go`：Console 首批 34 项显式配置定义，其中 Agent 领域 13 项。
-- `console/pkg/handlers/system_config.go`：Console 鉴权后跨进程聚合两个 effective snapshot。
-- `console/pkg/systemsettings/manager.go`：Agent 草稿、发布前连接校验、Secret 解析、原子运行时与周期协调。
-- `console/pkg/observer/mysql/system_settings.go`：Console 系统配置版本和加密 Secret 持久化。
-- `console/web/src/pages/SystemConfiguration/index.tsx`：独立配置页面、来源概览、Agent 草稿审阅与发布。
+- `pkg/console/config/config.go`：Console AgentDefinition、LLM、MCP 与运行限制的类型化启动结构。
+- `pkg/console/internal/systemsettings/provider.go`：Console 首批 33 项显式配置定义，其中 Agent 领域 13 项。
+- `pkg/console/internal/handlers/system_config.go`：Console 鉴权后跨进程聚合两个 effective snapshot。
+- `pkg/console/internal/systemsettings/manager.go`：Agent 草稿、发布前连接校验、Secret 解析、原子运行时与周期协调。
+- `pkg/console/internal/observer/mysql/system_settings.go`：Console 系统配置版本和加密 Secret 持久化。
+- `web/console/src/pages/SystemConfiguration/index.tsx`：独立配置页面、来源概览、Agent 草稿审阅与发布。
 
 ## 相关页面
 

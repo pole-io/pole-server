@@ -2,7 +2,7 @@
 title: ADR：OTel 可观测性平台与 Kubernetes 部署方案
 tags: [adr, observability, otel, kubernetes]
 links: [architecture, common-infra, configuration, api-servers, adr-pole-rust-client-observability, adr-local-pebble-protobuf-value-cache]
-updated: 2026-07-24
+updated: 2026-07-29
 sources: 47
 ---
 
@@ -841,9 +841,9 @@ SDK 和 sidecar 都可以上报业务侧数据，但职责不能重叠到互相�
 - `plugin/observability/` 当前已有 history、discoverevent、statis 三类插件实现。
 - `apis/observability/` 当前已有 event、history、statis 三类接口定义。
 - `plugin/observability/statis/otel` 已实现 `statis.entries[].name=otel`，将 `CallMetric`、`DiscoveryMetric`、`ConfigMetrics` 和 `ClientDiscoverMetric` 映射为 `pole.*` OTel metrics。
-- `console/pkg/observabilityquery` 已实现 GreptimeDB provider；`/observability/v1/platform/overview` 返回系统监控页可消费的 provider 状态、摘要 stats、时间序列、组件行、资源 metrics 占位和 Go runtime metrics。
-- `console/pkg/observabilityquery` 已查询 `process_runtime_go_goroutines`、`process_runtime_go_mem_heap_alloc_bytes`、`process_runtime_go_mem_heap_inuse_bytes`、`process_runtime_go_mem_heap_sys_bytes`、`process_runtime_go_gc_count_total`、`process_runtime_go_gc_pause_ns_*`，并预留 `go_schedule_duration_seconds_*` 调度延迟查询。
-- `console/web/src/pages/Metrics/SystemMonitor` 已优先调用 `/observability/v1/platform/overview` 展示真实数据；接口明细表不再展示 CPU/MEM，CPU/MEM 独立进入组件资源看板，Go runtime 独立进入 `pole-control-plane` 服务端看板。
+- `pkg/console/internal/observabilityquery` 已实现 GreptimeDB provider；`/observability/v1/platform/overview` 返回系统监控页可消费的 provider 状态、摘要 stats、时间序列、组件行、资源 metrics 占位和 Go runtime metrics。
+- `pkg/console/internal/observabilityquery` 已查询 `process_runtime_go_goroutines`、`process_runtime_go_mem_heap_alloc_bytes`、`process_runtime_go_mem_heap_inuse_bytes`、`process_runtime_go_mem_heap_sys_bytes`、`process_runtime_go_gc_count_total`、`process_runtime_go_gc_pause_ns_*`，并预留 `go_schedule_duration_seconds_*` 调度延迟查询。
+- `web/console/src/pages/Metrics/SystemMonitor` 已优先调用 `/observability/v1/platform/overview` 展示真实数据；接口明细表不再展示 CPU/MEM，CPU/MEM 独立进入组件资源看板，Go runtime 独立进入 `pole-control-plane` 服务端看板。
 - `apis/pkg/types/metrics/types.go` 当前已有 CallMetric、DiscoveryMetric、ConfigMetrics 和 ClientDiscoverMetric，可映射为 `pole.*` 指标。
 - `apis/pkg/types/operation.go` 当前已有 RecordEntry，可映射为 `pole.audit.operation`。
 - `apis/pkg/types/service/instance.go` 当前已有 InstanceEvent 与 ServiceEvent，可映射为 discovery event。

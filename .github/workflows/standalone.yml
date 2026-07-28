@@ -21,25 +21,16 @@ on:
       server_version:
         description: "tag version for polaris"
         required: true
-      console_version:
-        description: "tag version for polaris-console"
-        required: true
-      limiter_version:
-        description: "tag version for polaris-limiter"
-        required: true
-
 jobs:
   release:
     name: Release polaris standalone
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        goos: [ linux, windows, darwin, kubernetes ]
+        goos: [ linux, windows, darwin ]
         goarch: [ amd64, arm64 ]
         exclude:
           - goos: windows
-            goarch: arm64
-          - goos: kubernetes
             goarch: arm64
 
     steps:
@@ -51,7 +42,14 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.21.5"
+          go-version: "1.25.x"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/console/package-lock.json
 
       - name: Build
         id: build
@@ -59,15 +57,9 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           SERVER_VERSION: ${{ github.event.inputs.server_version }}
-          CONSOLE_VERSION: ${{ github.event.inputs.console_version }}
-          LIMITER_VERSION: ${{ github.event.inputs.limiter_version }}
         run: |
           set -e
-          workdir=$(pwd)
-          cd ${workdir}
-          export WORKDIR=${workdir}
-          ls -lstrh
-          bash release/standalone/build_standalone.sh
+          make build VERSION="${SERVER_VERSION}" ARCH="${GOARCH}"
 
 
       - name: Get Release by Tag
@@ -84,4 +76,4 @@ jobs:
           SERVER_VERSION: ${{ github.event.inputs.server_version }}
         run: |
           sudo apt-get update && sudo apt-get install -y hub
-          hub release edit $(find . -type f -name "polaris-*.zip" -printf "-a %p ") -m "" "${SERVER_VERSION}"
+          hub release edit $(find . -type f -name "pole-server-release*.zip" -printf "-a %p ") -m "" "${SERVER_VERSION}"

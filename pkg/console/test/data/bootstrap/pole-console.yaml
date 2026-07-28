@@ -1,0 +1,40 @@
+logger:
+  ErrorOutputPaths:
+    - ./test/output/logs/runtime/pole-console-error.log
+  RotateOutputPath: ./test/output/logs/runtime/pole-console.log
+  RotationMaxSize: 500
+  RotationMaxAge: 30
+  RotationMaxBackups: 100
+  level: info
+webServer:
+  mode: "release"
+  listenIP: "0.0.0.0"
+  listenPort: 8080
+  jwt:
+    secretKey: "ainative@pole@1234567890"
+    expired: 86400 # 24小时
+  coreURL: "/core/v1"
+  namingURL: "/naming/v1"
+  authURL: "/auth/v1"
+  configURL: "/config/v1"
+  monitorURL: "/api/v1"
+  mainUser: "pole"
+# 存储配置
+store:
+  # 数据库存储插件
+  name: mysql
+  option:
+    master:
+      dbType: mysql
+      dbName: pole_observability
+      dbUser: ${MYSQL_USER} ##DB_USER##
+      dbPwd: ${MYSQL_PWD} ##DB_PWD##
+      dbAddr: ${MYSQL_HOST} ##DB_ADDR##
+      maxOpenConns: 300
+      maxIdleConns: 50
+      connMaxLifetime: 300 # 单位秒
+      txIsolationLevel: 2 #LevelReadCommitted
+poleServer:
+  address: "127.0.0.1:8090"
+monitorServer:
+  address: "127.0.0.1:9090"

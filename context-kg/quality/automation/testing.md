@@ -2,7 +2,7 @@
 title: 测试
 tags: [quality, automation, testing, mock]
 links: [storage, index, patterns, console-client-auth-e2e-testcases, console-ui-quality-gates]
-updated: 2026-07-25
+updated: 2026-07-29
 sources: 4
 ---
 
@@ -74,7 +74,7 @@ Console API、Client 查询和权限开关的接口端到端测试覆盖矩阵�
 
 这不表示 Console 发布可以跳过 UI 验收。前端另有三层质量证据：
 
-- `console/web/scripts/verify-*.mjs` 负责共享组件、关键样式和交互绑定的源码契约。
+- `web/console/scripts/verify-*.mjs` 负责共享组件、关键样式和交互绑定的源码契约。
 - ESLint、Vite production build 和 Console Go tests 负责构建与后端回归。
 - Kubernetes 实际产物和真实浏览器负责路由、布局、主题、交互与请求闭环。
 

@@ -32,12 +32,13 @@ __debug_bin*
 *.test
 
 # Frontend dependencies and build output
-/console/node_modules/
-/console/web/node_modules/
-/console/web/dist/
-/console/web/.cache/
-/console/web/.vite/
-/console/web/coverage/
+/web/console/node_modules/
+/web/console/dist/
+/web/console/.cache/
+/web/console/.vite/
+/web/console/coverage/
+/pkg/console/internal/assets/dist/*
+!/pkg/console/internal/assets/dist/placeholder.txt
 
 # Local environment files
 .env

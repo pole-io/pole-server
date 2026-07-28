@@ -38,6 +38,11 @@ help: ## Display this help.
 build: ## Build binary and tarball.
 	bash ./deploy/build.sh $(VERSION) $(ARCH)
 
+.PHONY: test-console-assets
+test-console-assets: ## Build and verify embedded Console assets.
+	./scripts/build-console-assets.sh test
+	go test -tags "nomsgpack consoleassets" ./pkg/console -run TestEmbeddedConsoleAssetsContainIndexAndReferencedFiles -count=1
+
 .PHONY: build-docker
 build-docker: ## Build pole-server docker images.
 	bash ./deploy/build_docker.sh $(IMAGE_TAG)

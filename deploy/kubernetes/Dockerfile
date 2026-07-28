@@ -5,7 +5,6 @@ RUN apk add --no-cache ca-certificates curl tzdata \
     && echo Asia/Shanghai >/etc/timezone
 
 COPY pole-server /app/pole-server
-COPY console/web/dist /app/console/web/dist
 COPY deploy/conf /app/conf
 COPY deploy/kubernetes/entrypoint.sh /app/entrypoint.sh
 

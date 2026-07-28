@@ -25,13 +25,13 @@ import (
 	"github.com/pole-io/pole-server/apis/access_control/auth"
 	"github.com/pole-io/pole-server/apis/apiserver"
 	storeapi "github.com/pole-io/pole-server/apis/store"
-	console_bootstrap "github.com/pole-io/pole-server/console/bootstrap"
-	"github.com/pole-io/pole-server/limiter"
 	"github.com/pole-io/pole-server/pkg/admin"
 	"github.com/pole-io/pole-server/pkg/cache"
 	"github.com/pole-io/pole-server/pkg/common/utils"
 	"github.com/pole-io/pole-server/pkg/config"
+	"github.com/pole-io/pole-server/pkg/console"
 	"github.com/pole-io/pole-server/pkg/goverrule"
+	"github.com/pole-io/pole-server/pkg/limiter"
 	"github.com/pole-io/pole-server/pkg/namespace"
 	"github.com/pole-io/pole-server/pkg/service"
 	"github.com/pole-io/pole-server/pkg/systemconfig"
@@ -58,11 +58,11 @@ type Config struct {
 
 // Bootstrap 启动引导配置
 type Bootstrap struct {
-	Logger         string                   `yaml:"logger"`
-	Mode           string                   `yaml:"mode"`
-	Console        console_bootstrap.Config `yaml:"console"`
-	StartInOrder   map[string]interface{}   `yaml:"startInOrder"`
-	PolarisService PolarisService           `yaml:"polaris_service"`
+	Logger         string                 `yaml:"logger"`
+	Mode           string                 `yaml:"mode"`
+	Console        console.Config         `yaml:"console"`
+	StartInOrder   map[string]interface{} `yaml:"startInOrder"`
+	PolarisService PolarisService         `yaml:"polaris_service"`
 }
 
 // PolarisService sergo-server的自注册配置

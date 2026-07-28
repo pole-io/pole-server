@@ -1226,6 +1226,15 @@ sources: 0
   - 本地开发保留 Vite dev server 与 HMR，正式制品不再依赖外部 `webPath`。
   - bootstrap 只依赖两个 Module 的根 Interface；共享 A2A/Agent 类型上提到稳定契约层。
 
+## [2026-07-29] implement | Console、Limiter 目录迁移与 go:embed
+
+- 更新页面：overview、adr-console-limiter-source-layout-and-embedded-web、adr-unified-process-mode-and-limiter-integration、ai-features、console-ui-quality-gates、testing、todo。
+- 变更摘要：
+  - Console 与 Limiter Go Module 已迁入 `pkg/console`、`pkg/limiter`，实现细节收敛到局部 `internal`。
+  - Console 前端源码已迁入 `web/console`，发布、测试和本地重建脚本统一生成嵌入资源。
+  - Console 首页、hash 资源和 SPA fallback 改为读取 `go:embed` 文件系统，移除运行时 `webPath`。
+  - Docker 镜像和发布包只携带 Go 二进制，不再复制独立 Console dist。
+
 ## 相关页面
 
 - [[index]]

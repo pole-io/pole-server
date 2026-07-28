@@ -2,7 +2,7 @@
 title: ADR：服务调用鉴权采用托管身份与子规则请求匹配
 tags: [adr, governance, auth, security, identity]
 links: [auth-system, governance-rules, service-discovery, patterns]
-updated: 2026-07-20
+updated: 2026-07-29
 sources: 20
 ---
 
@@ -237,8 +237,8 @@ service token 能证明“SDK 有权代表服务”，但若还要求把凭证�
 
 - `../specification/api/v1/security/traffic_security.proto`
 - `../specification/api/v1/service_manage/service.proto`
-- `console/web/src/pages/Governance/Security/trafficSecurityEditorUtils.ts`
-- `console/web/src/services/traffic_governance.ts`
+- `web/console/src/pages/Governance/Security/trafficSecurityEditorUtils.ts`
+- `web/console/src/services/traffic_governance.ts`
 - `pkg/goverrule/client_v1.go`
 - `pkg/service/service.go`
 - `../pole-client-rust/src/traffic/policy/default.rs`

@@ -24,7 +24,6 @@ bootstrap:
   #   webServer:
   #     listenIP: 0.0.0.0
   #     listenPort: 8080
-  #     webPath: console/web/dist/
   #   poleServer:
   #     address: 127.0.0.1:8090
   # Start the server in order
