@@ -511,7 +511,7 @@ const TemplateWorkspace: React.FC = () => {
                 />
               </div>
             </TabPanel>
-            <TabPanel value="values" label="环境 Value">
+            <TabPanel value="values" label="Namespace Value">
               <div className={styles.valuesPane}>
                 <section className={styles.valueToolbar}>
                   <label>

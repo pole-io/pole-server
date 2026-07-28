@@ -46,6 +46,7 @@ for (const [pattern, message] of [
 for (const [pattern, message] of [
   [/pole-mustache-v1/, '模板页面必须明确展示固定引擎版本。'],
   [/参数 Schema/, '模板页面必须提供参数 Schema 编辑能力。'],
+  [/label="Namespace Value"/, '模板 Value 页签必须使用 Namespace 领域术语。'],
   [/Namespace Value/, '模板页面必须按 Namespace 维护 Value。'],
   [/GrayRuleEditor/, 'Value 灰度发布必须复用现有灰度规则编辑器。'],
   [/renderedSha256|rendered_sha256/, '模板页面必须展示服务端参考哈希。'],

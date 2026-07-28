@@ -11029,3 +11029,30 @@ control-plane 构建产物滚动更新到本地 Kubernetes。
   入口资源均为 `assets/index-KxLGDVh2.js`；HTTPRoute Accepted/ResolvedRefs 均为 True。
 - Orca 的 Accessibility 已授权，但 Screen Recording 未授权且当前浏览器无可观测窗口，
   因此本轮没有声称完成像素级浏览器验收；页面能力由构建、静态资源一致性与真实 API 闭环覆盖。
+
+## 配置与服务统一资源层级浏览器复验（2026-07-28）
+
+- [x] 重新检查浏览器辅助功能与屏幕录制权限并登录本地控制台。
+- [x] 验证服务页以“逻辑服务 / 未关联环境服务”组织跨环境资源。
+- [x] 验证配置入口先展示配置分组，再进入 Namespace 下的配置文件与模板库。
+- [x] 验证新建配置文件可显式切换普通配置和模板配置，并固定不可变模板版本。
+- [x] 修正模板页“环境 Value”与领域术语“Namespace Value”的残留不一致。
+- [x] 运行 Console 专项检查、lint、构建，并重新发布本地 Kubernetes。
+- [x] 在更新后的真实页面完成复验，提交并推送修正。
+
+### Review
+
+- Orca 的 Accessibility 与 Screen Recording 均已恢复授权；真实 Chrome 登录、页面跳转、
+  Drawer 和页签切换均可操作，不再依赖静态代码推断页面结果。
+- 服务页明确展示“逻辑服务 / 未关联环境服务”，空态要求先创建逻辑服务再显式关联环境服务；
+  SDK 使用的 Namespace 与运行时服务名没有暴露逻辑服务 ID。
+- 配置中心一级入口为“配置分组”；进入分组后先按 Namespace/环境切换，再维护配置文件，
+  模板库是组内配置文件流程的辅助入口。
+- 新建配置文件 Drawer 可显式选择“普通配置 / 模板配置”；模板配置要求选择模板并显式固定
+  不可变发布版本，同时提供当前 Namespace Value 的模板库入口。
+- 浏览器复验发现并修正模板工作台页签的“环境 Value”残留文案，统一为
+  “Namespace Value”，并增加专项契约断言。
+- `test:config-template-console`、oxlint 和 release build 通过；lint 仅报告仓库既有 warning。
+  镜像 `pole-control-plane:local-20260728-logical-service-v3` 已滚动到 OrbStack，
+  Pod `pole-control-plane-5c4d566f4b-n9pfz` Ready、0 restart，Gateway 返回 HTTP 200；
+  真实页面已显示“Namespace Value”。
