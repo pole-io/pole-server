@@ -628,6 +628,17 @@ func (s *Server) isServiceExistedResource(ctx context.Context, service *svctypes
 	if total != 0 {
 		return api.NewServiceResponse(apimodel.Code_ServiceExistedAlias, out)
 	}
+
+	total, err = s.storage.CountAIBackendReferences(service.ID)
+	if err != nil {
+		log.Error(err.Error(), utils.RequestID(ctx))
+		return api.NewServiceResponse(storeapi.StoreCode2APICode(err), out)
+	}
+	if total != 0 {
+		response := api.NewServiceResponse(apimodel.Code_ExistedResource, out)
+		response.Info += ": service is referenced by MCP Server or A2A Agent"
+		return response
+	}
 	return nil
 }
 

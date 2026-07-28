@@ -1,8 +1,8 @@
 ---
 title: 业务规则手册
 tags: [business, rules]
-links: [terminology, domain-models, namespace, service-discovery, config-center, governance-rules, auth-system, adr-governance-rule-unified-storage, adr-logical-service-environment-binding, adr-system-namespace-kind]
-updated: 2026-07-28
+links: [terminology, domain-models, namespace, service-discovery, config-center, governance-rules, auth-system, adr-governance-rule-unified-storage, adr-logical-service-environment-binding, adr-system-namespace-kind, adr-ai-resource-environment-binding]
+updated: 2026-07-29
 sources: 3
 ---
 
@@ -15,6 +15,10 @@ sources: 3
 - 逻辑服务使用控制面稳定 ID 作为跨环境身份；环境服务继续以 `namespace + runtimeServiceName`
   标识，只有经过管理员显式关联才属于同一个逻辑服务。
 - 配置分组以名称、配置文件以“分组名 + 文件名”形成跨环境逻辑标识，各命名空间分别保存独立内容、版本和发布状态。
+- MCP 与 A2A Agent 使用控制面稳定逻辑 ID 作为跨环境身份；`namespace + runtimeName`
+  继续定位环境实例，只有管理员显式关联的实例才属于同一逻辑定义。
+- Pole Agent 每次 Turn 必须携带明确的 Namespace scope；跨环境只读操作显式发起，写入提案
+  必须收敛到单一 Namespace。
 - 服务、实例、配置、治理规则都采用软删除语义，外部查询默认只返回有效资源。
 - 写操作直接落库，读路径优先通过 cache 获取内存视图。
 - 发布类能力必须形成快照，避免后续草稿修改影响已发布版本。
@@ -58,3 +62,4 @@ sources: 3
 - [[adr-governance-rule-unified-storage]]
 - [[adr-logical-service-environment-binding]]
 - [[adr-system-namespace-kind]]
+- [[adr-ai-resource-environment-binding]]

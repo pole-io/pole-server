@@ -86,6 +86,7 @@ type stableStore struct {
 	// MCP Server stores
 	*mcpServerStore
 	*a2aAgentStore
+	*aiDefinitionStore
 
 	// 主数据库，可以进行读写
 	master *BaseDB
@@ -144,6 +145,9 @@ func (s *stableStore) Initialize(conf *store.Config) error {
 		return err
 	}
 	if err := ensureLogicalServiceSchema(s.master); err != nil {
+		return err
+	}
+	if err := ensureAIResourceDefinitionSchema(s.master); err != nil {
 		return err
 	}
 	if err := ensureGovernanceRuleSchema(s.master); err != nil {
@@ -319,6 +323,7 @@ func (s *stableStore) newStore() {
 	// Initialize AI module stores
 	s.mcpServerStore = newMCPServerStore(s.master, s.slave)
 	s.a2aAgentStore = newA2AAgentStore(s.master, s.slave)
+	s.aiDefinitionStore = newAIResourceDefinitionStore(s.master, s.slave)
 }
 
 func buildEtimeStr(enable bool) string {

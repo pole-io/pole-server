@@ -1,5 +1,16 @@
 import { apiRequest, getApiRequest, putApiRequest } from 'utils/request';
 import { BaseURL } from './types';
+import {
+  AIEnvironmentBinding,
+  AIResourceDefinition,
+  bindAIResourceDefinition,
+  createAIResourceDefinition,
+  describeAIEnvironmentBinding,
+  describeAIEnvironmentBindings,
+  describeAIResourceDefinitions,
+} from './ai_definition';
+
+const A2ADefinitionURL = '/ai/a2a/v1/definitions';
 
 export interface A2AAgentInterface {
   id?: string;
@@ -65,6 +76,9 @@ export interface A2AAgent {
   ctime?: string;
   mtime?: string;
 }
+
+export type A2AEnvironmentBinding = AIEnvironmentBinding<'a2a_agent'>;
+export type A2AResourceDefinition = AIResourceDefinition;
 
 export interface DescribeA2AAgentsRequest {
   offset: number;
@@ -162,4 +176,24 @@ export async function describeA2AAgentCard(id: string) {
   return getApiRequest<Record<string, any>>({
     action: `${BaseURL.A2A_AGENT}/${id}/card`,
   });
+}
+
+export async function describeA2AAgentDefinitionBinding(resourceId: string) {
+  return describeAIEnvironmentBinding<'a2a_agent'>(A2ADefinitionURL, resourceId);
+}
+
+export async function describeA2AAgentDefinitionEnvironments(definitionId: string) {
+  return describeAIEnvironmentBindings<'a2a_agent'>(A2ADefinitionURL, definitionId);
+}
+
+export async function describeA2AAgentDefinitions(name?: string) {
+  return describeAIResourceDefinitions(A2ADefinitionURL, name);
+}
+
+export async function createA2AAgentDefinition(name: string) {
+  return createAIResourceDefinition(A2ADefinitionURL, 'A2A Agent', name);
+}
+
+export async function bindA2AAgentDefinition(definitionId: string, resourceId: string) {
+  return bindAIResourceDefinition(A2ADefinitionURL, definitionId, resourceId);
 }

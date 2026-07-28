@@ -38,6 +38,7 @@ export interface AgentLocalSession {
   messages: AgentChatMessage[];
   draft: string;
   memory: AgentMemorySettings;
+  namespaceScope?: AgentNamespaceScope;
   resourceContext?: AgentResourceContext;
   proposal?: ConfigFileProposal;
   receipt?: DraftReceipt;
@@ -124,4 +125,4 @@ export async function saveActiveAgentSessionID(sessionID: string) {
   transaction.objectStore(metadataStoreName).put({ key: activeSessionKey, value: sessionID });
   await done;
 }
-import type { ConfigFileProposal, DraftReceipt } from 'services/agent';
+import type { AgentNamespaceScope, ConfigFileProposal, DraftReceipt } from 'services/agent';

@@ -98,14 +98,36 @@ func TestA2AAdapterMessageSendUsesPoleAgentRuntime(t *testing.T) {
 			MessageID: "message-1",
 			Role:      "user",
 			Parts:     []A2APart{{Kind: "text", Text: "列出命名空间"}},
+			Metadata: map[string]any{
+				"namespaceScope": map[string]any{
+					"mode": "single", "namespaces": []string{"default"},
+				},
+			},
 		}},
 	})
 	require.NoError(t, err)
 	require.Equal(t, "列出命名空间", runner.request.Message)
+	require.Equal(t, singleScope("default"), runner.request.NamespaceScope)
 	require.Equal(t, "2.0", response.JSONRPC)
 	require.Equal(t, "request-1", response.ID)
 	require.Equal(t, "agent", response.Result.Role)
 	require.Equal(t, "当前有 3 个命名空间", response.Result.Parts[0].Text)
+}
+
+func TestA2AAdapterRejectsMissingNamespaceScope(t *testing.T) {
+	adapter, err := NewA2AAdapter(A2AConfig{
+		Name: "Pole Agent", URL: "https://pole.example.com/ai/agent/a2a/v1", Version: "v1",
+	}, func() TurnRunner { return &a2aTurnRunnerStub{} })
+	require.NoError(t, err)
+
+	_, err = adapter.Send(context.Background(), agentworkbench.Actor{}, A2ARequest{
+		JSONRPC: "2.0", ID: 3, Method: "message/send",
+		Params: A2AMessageParams{Message: A2AMessage{
+			Kind: "message", Role: "user", Parts: []A2APart{{Kind: "text", Text: "查询配置"}},
+		}},
+	})
+	require.ErrorContains(t, err, "metadata.namespaceScope is required")
+	require.Equal(t, -32602, A2AErrorResponse(3, err).Error.Code)
 }
 
 func TestA2AAdapterRejectsUnsupportedMethodAndNonTextMessage(t *testing.T) {

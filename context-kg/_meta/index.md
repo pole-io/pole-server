@@ -81,6 +81,7 @@ sources: 0
 - [[adr-console-limiter-source-layout-and-embedded-web]] — Console/Limiter 源码归属与前端嵌入制品 | adr, architecture, console, limiter, frontend, embed, build
 - [[adr-logical-service-environment-binding]] — 控制面逻辑服务与环境服务显式关联 | adr, service, namespace, domain-model, console
 - [[adr-system-namespace-kind]] — 业务环境与 Pole 内部系统空间类型化 | adr, namespace, environment, system, console
+- [[adr-ai-resource-environment-binding]] — Agent/MCP 逻辑定义、环境实例与调用作用域 | adr, ai, agent, mcp, namespace, domain-model
 
 #### 可观测性（technical/adr/observability/）
 

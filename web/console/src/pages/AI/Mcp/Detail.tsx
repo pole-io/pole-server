@@ -4,9 +4,22 @@ import { EditIcon, InfoCircleIcon, RefreshIcon, ServerIcon, ToolsCircleIcon } fr
 import { useNavigate, useSearchParams } from 'components/Router';
 
 import AuthorizeInput from 'components/Authorize';
+import AIEnvironmentBinding from 'components/AIEnvironmentBinding';
+import EnvironmentResourceSwitcher from 'components/EnvironmentResourceSwitcher';
 import { useAppDispatch } from 'modules/store';
 import { editorMCPServer, resetMCPServer } from 'modules/ai/mcp';
-import { describeMCPServers, describeMCPServerTools, MCPServer, MCPServerTool } from 'services/mcp';
+import {
+  describeMCPServerDefinitionBinding,
+  describeMCPServerDefinitionEnvironments,
+  describeMCPServerDefinitions,
+  describeMCPServers,
+  describeMCPServerTools,
+  bindMCPServerDefinition,
+  createMCPServerDefinition,
+  MCPEnvironmentBinding,
+  MCPServer,
+  MCPServerTool,
+} from 'services/mcp';
 import { PolicySourceType } from 'services/auth_policy';
 import { Op } from 'services/types';
 import {
@@ -37,6 +50,7 @@ const MCPDetailPage: React.FC = () => {
   const [serverError, setServerError] = React.useState('');
   const [serverNotFound, setServerNotFound] = React.useState(false);
   const [toolsError, setToolsError] = React.useState('');
+  const [environmentBindings, setEnvironmentBindings] = React.useState<MCPEnvironmentBinding[]>([]);
   const [editorState, setEditorState] = React.useState<{ visible: boolean; mode: Op }>({ visible: false, mode: 'edit' });
   const [authorizeVisible, setAuthorizeVisible] = React.useState(false);
 
@@ -53,6 +67,17 @@ const MCPDetailPage: React.FC = () => {
       });
       const next = response.list.find((item) => (id ? item.id === id : item.name === name && item.namespace === namespace)) || null;
       setServer(next);
+      setEnvironmentBindings([]);
+      if (next?.id && next.namespace !== 'pole-system') {
+        try {
+          const binding = await describeMCPServerDefinitionBinding(next.id);
+          if (binding?.definition_id) {
+            setEnvironmentBindings(await describeMCPServerDefinitionEnvironments(binding.definition_id));
+          }
+        } catch {
+          // 旧记录允许暂时保持未关联状态。
+        }
+      }
       if (!next) {
         setServerNotFound(true);
       }
@@ -138,6 +163,35 @@ const MCPDetailPage: React.FC = () => {
 
       {!loading && server && (
         <div className={style.toolDrawer}>
+          {environmentBindings.length > 0 ? (
+            <EnvironmentResourceSwitcher
+              currentNamespace={server.namespace}
+              items={environmentBindings.map((binding) => ({
+                namespace: binding.namespace,
+                summary: binding.resource_name,
+              }))}
+              resourceLabel="MCP Server"
+              presentation="tabs"
+              onSelect={(targetNamespace) => {
+                const target = environmentBindings.find((binding) => binding.namespace === targetNamespace);
+                if (target) {
+                  navigate(`/ai/mcps/detail?id=${encodeURIComponent(target.resource_id)}&namespace=${encodeURIComponent(target.namespace)}&name=${encodeURIComponent(target.resource_name)}`);
+                }
+              }}
+            />
+          ) : server.namespace !== 'pole-system' && server.id ? (
+            <Space>
+              <Tag variant="light">未关联跨环境逻辑定义</Tag>
+              <AIEnvironmentBinding
+                resourceLabel="MCP Server"
+                suggestedName={server.name}
+                loadDefinitions={describeMCPServerDefinitions}
+                createDefinition={createMCPServerDefinition}
+                bindDefinition={(definitionId) => bindMCPServerDefinition(definitionId, server.id!)}
+                onBound={loadServer}
+              />
+            </Space>
+          ) : null}
           <section className={style.toolDrawerSummary}>
             <div className={style.toolDrawerIcon}>
               <ServerIcon />

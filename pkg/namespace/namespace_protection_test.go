@@ -82,6 +82,7 @@ func TestDeleteNamespaceRejectsOwnedGovernanceRules(t *testing.T) {
 	tx.EXPECT().Commit().Return(nil)
 	tx.EXPECT().LockNamespace("prod").Return(&types.Namespace{Name: "prod"}, nil)
 	storage.EXPECT().GetServices(map[string]string{"namespace": "prod"}, nil, nil, uint32(0), uint32(1)).Return(uint32(0), nil, nil)
+	storage.EXPECT().CountAIResourcesByNamespace("prod").Return(uint32(0), nil)
 	storage.EXPECT().CountConfigGroups("prod").Return(uint64(0), nil)
 	storage.EXPECT().CountGovernanceRules("prod").Return(uint64(2), nil)
 
@@ -89,6 +90,26 @@ func TestDeleteNamespaceRejectsOwnedGovernanceRules(t *testing.T) {
 
 	require.Equal(t, uint32(apimodel.Code_NamespaceExistedGovernanceRules), response.GetCode())
 	require.Contains(t, response.GetInfo(), "governance rules")
+}
+
+func TestDeleteNamespaceRejectsOwnedAIResources(t *testing.T) {
+	controller := gomock.NewController(t)
+	storage := storemock.NewMockStore(controller)
+	tx := storemock.NewMockTransaction(controller)
+	server := &Server{storage: storage}
+
+	storage.EXPECT().CreateTransaction().Return(tx, nil)
+	tx.EXPECT().Commit().Return(nil)
+	tx.EXPECT().LockNamespace("prod").Return(&types.Namespace{Name: "prod"}, nil)
+	storage.EXPECT().GetServices(
+		map[string]string{"namespace": "prod"}, nil, nil, uint32(0), uint32(1),
+	).Return(uint32(0), nil, nil)
+	storage.EXPECT().CountAIResourcesByNamespace("prod").Return(uint32(2), nil)
+
+	response := server.DeleteNamespace(context.Background(), &apimodel.Namespace{Name: "prod"})
+
+	require.Equal(t, uint32(apimodel.Code_ExistedResource), response.GetCode())
+	require.Contains(t, response.GetInfo(), "MCP Server or A2A Agent")
 }
 
 func TestCreateNamespaceRejectsSystemKindAndReservedName(t *testing.T) {

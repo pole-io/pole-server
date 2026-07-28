@@ -39,6 +39,7 @@ assert.match(en, /"menu\.agent":\s*"Agent"/, '缺少英文 Agent 一级菜单');
 
 assert.match(service, /\/ai\/agent\/v1/, 'Agent service 必须只调用工作台接口');
 assert.match(service, /\/turns/, 'Agent service 必须调用真实后端会话 turn 接口');
+assert.match(service, /namespaceScope:\s*AgentNamespaceScope/, '每个 Agent turn 必须携带强类型 Namespace scope');
 assert.match(service, /timeout:\s*70_000/, 'LLM turn 必须使用独立长超时');
 assert.match(service, /proposals\/config-file/, '必须存在配置文件提案接口');
 assert.match(service, /proposalVersion, previewHash, idempotencyKey/, '确认必须提交 proposal version、preview hash 与幂等键');
@@ -53,6 +54,13 @@ assert.match(page, /删除会话/, 'Agent 工作台必须支持删除本地会�
 assert.match(page, /记忆窗口/, 'Agent 工作台必须提供按会话记忆设置');
 assert.match(page, /maxTurns[\s\S]*4, 10, 20/, '会话记忆必须提供受控历史窗口');
 assert.match(page, /history[\s\S]*sendAgentTurn/, '会话记忆必须作为双角色历史发送给后端 Agent');
+assert.match(page, /namespaceScope:\s*activeSession\.namespaceScope/, '页面必须把当前会话环境作用域发送给后端');
+assert.match(page, /describeBusinessNamespaces/, 'Agent 环境只能来自 BUSINESS Namespace');
+assert.match(page, /!activeSession\.namespaceScope/, '未选择环境时必须禁止发送');
+assert.doesNotMatch(page, /当前范围：全部资源|所有命名空间 · 按权限查询/, 'Agent 不得保留隐式全部环境作用域');
+assert.match(page, /跨环境比较/, 'Agent 必须提供显式跨环境比较入口');
+assert.match(page, /至少需要选择两个业务环境/, '跨环境比较至少需要两个明确环境');
+assert.match(page, /仅允许只读比较/, '跨环境模式必须向用户说明只读边界');
 assert.doesNotMatch(page, /parseConfigIntent|directIntentSource|memoryIntentSource/, '前端不得继续本地解析资源意图');
 assert.match(sessionStore, /indexedDB\.open\(databaseName, databaseVersion\)/, '会话必须持久化在浏览器 IndexedDB');
 assert.match(sessionStore, /sessionStoreName = 'sessions'/, 'IndexedDB 必须有独立会话仓库');
@@ -60,6 +68,7 @@ assert.match(sessionStore, /metadataStoreName = 'metadata'/, 'IndexedDB 必须�
 assert.match(sessionStore, /messages: AgentChatMessage\[\]/, '会话记录必须包含可序列化消息历史');
 assert.match(sessionStore, /draft: string/, '每个会话必须独立保存未发送草稿');
 assert.match(sessionStore, /memory: AgentMemorySettings/, '每个会话必须独立保存记忆设置');
+assert.match(sessionStore, /namespaceScope\?: AgentNamespaceScope/, '每个会话必须持久化显式 Namespace scope');
 assert.doesNotMatch(`${page}\n${sessionStore}`, /localStorage/, 'Agent 会话不得退化为 localStorage 文本快照');
 assert.match(menu, /id="agent-session-sidebar-host"/, 'Agent 模式的产品侧栏必须提供会话管理宿主');
 assert.match(page, /createPortal\([\s\S]*sessionSidebar[\s\S]*sidebarHost/, '会话管理必须渲染到最左侧产品侧栏');

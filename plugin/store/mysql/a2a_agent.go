@@ -31,6 +31,34 @@ func newA2AID() string {
 	return strings.ReplaceAll(uuid.New().String(), "-", "")
 }
 
+func normalizeA2AAgentBackend(agent *aitypes.A2AAgent) {
+	if agent == nil {
+		return
+	}
+	switch agent.BackendType {
+	case "service":
+		agent.BackendAddress = ""
+	case "address":
+		agent.BackendServiceNamespace = ""
+		agent.BackendServiceName = ""
+	}
+}
+
+func validateA2AAgentBackend(agent *aitypes.A2AAgent) error {
+	switch agent.BackendType {
+	case "service":
+		if agent.BackendServiceNamespace == "" || agent.BackendServiceName == "" {
+			return store.NewStatusError(
+				store.EmptyParamsErr, "a2a agent backend service missing namespace or name")
+		}
+	case "address":
+		if agent.BackendAddress == "" {
+			return store.NewStatusError(store.EmptyParamsErr, "a2a agent backend address is empty")
+		}
+	}
+	return nil
+}
+
 type a2aAgentStore struct {
 	master *BaseDB
 	slave  *BaseDB
@@ -43,6 +71,10 @@ func newA2AAgentStore(master, slave *BaseDB) *a2aAgentStore {
 func (s *a2aAgentStore) CreateA2AAgent(agent *aitypes.A2AAgent) error {
 	if agent == nil || agent.Name == "" || agent.Namespace == "" {
 		return store.NewStatusError(store.EmptyParamsErr, "create a2a agent missing name or namespace")
+	}
+	normalizeA2AAgentBackend(agent)
+	if err := validateA2AAgentBackend(agent); err != nil {
+		return err
 	}
 	if agent.Id == "" {
 		agent.Id = newA2AID()
@@ -60,7 +92,12 @@ func (s *a2aAgentStore) createA2AAgent(agent *aitypes.A2AAgent) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if err := s.insertA2AAgent(tx, agent); err != nil {
+	backendServiceID, err := resolveAIBackendServiceID(tx, agent.Namespace, agent.BackendType,
+		agent.BackendServiceNamespace, agent.BackendServiceName)
+	if err != nil {
+		return err
+	}
+	if err := s.insertA2AAgent(tx, agent, backendServiceID); err != nil {
 		return err
 	}
 	if err := s.replaceA2AAgentInterfaces(tx, agent); err != nil {
@@ -76,6 +113,10 @@ func (s *a2aAgentStore) UpdateA2AAgent(agent *aitypes.A2AAgent) error {
 	if agent == nil || agent.Id == "" {
 		return store.NewStatusError(store.EmptyParamsErr, "update a2a agent missing id")
 	}
+	normalizeA2AAgentBackend(agent)
+	if err := validateA2AAgentBackend(agent); err != nil {
+		return err
+	}
 	err := RetryTransaction(labelUpdateA2AAgent, func() error {
 		return s.updateA2AAgent(agent)
 	})
@@ -89,11 +130,16 @@ func (s *a2aAgentStore) updateA2AAgent(agent *aitypes.A2AAgent) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	backendServiceID, err := resolveAIBackendServiceID(tx, agent.Namespace, agent.BackendType,
+		agent.BackendServiceNamespace, agent.BackendServiceName)
+	if err != nil {
+		return err
+	}
 	metadataJSON := marshalStringMap(agent.Metadata)
 	sqlText := `UPDATE a2a_agent SET name = ?, namespace = ?, visibility = ?, description = ?,
 		version = ?, protocol_version = ?, provider_organization = ?, provider_url = ?,
 		documentation_url = ?, icon_url = ?, business = ?, department = ?, backend_type = ?,
-		backend_service_namespace = ?, backend_service_name = ?, backend_address = ?,
+		backend_service_namespace = ?, backend_service_name = ?, backend_service_id = ?, backend_address = ?,
 		preferred_interface_url = ?, preferred_protocol_binding = ?, preferred_protocol_version = ?,
 		streaming = ?, push_notifications = ?, extended_agent_card = ?, raw_card_json = ?,
 		source_type = ?, source_url = ?, last_fetch_status = ?, last_fetch_time = ?, metadata = ?,
@@ -102,7 +148,8 @@ func (s *a2aAgentStore) updateA2AAgent(agent *aitypes.A2AAgent) error {
 		agent.Name, agent.Namespace, agent.Visibility, agent.Description, agent.Version, agent.ProtocolVersion,
 		agent.ProviderOrganization, agent.ProviderUrl, agent.DocumentationUrl, agent.IconUrl, agent.Business,
 		agent.Department, agent.BackendType, agent.BackendServiceNamespace, agent.BackendServiceName,
-		agent.BackendAddress, agent.PreferredInterfaceUrl, agent.PreferredProtocolBinding,
+		nullableAIBackendServiceID(backendServiceID), agent.BackendAddress,
+		agent.PreferredInterfaceUrl, agent.PreferredProtocolBinding,
 		agent.PreferredProtocolVersion, agent.Streaming, agent.PushNotifications, agent.ExtendedAgentCard,
 		agent.RawCardJson, agent.SourceType, agent.SourceUrl, agent.LastFetchStatus, agent.LastFetchTime,
 		metadataJSON, agent.Flag, agent.Id); err != nil {
@@ -122,7 +169,9 @@ func (s *a2aAgentStore) DeleteA2AAgent(id string) error {
 		return store.NewStatusError(store.EmptyParamsErr, "delete a2a agent missing id")
 	}
 	err := RetryTransaction(labelDeleteA2AAgent, func() error {
-		_, err := s.master.Exec(`UPDATE a2a_agent SET flag = 1, mtime = sysdate() WHERE id = ?`, id)
+		_, err := s.master.Exec(
+			`UPDATE a2a_agent SET flag = 1, definition_id = NULL, backend_service_id = NULL,
+				mtime = sysdate() WHERE id = ?`, id)
 		return err
 	})
 	return store.Error(err)
@@ -236,21 +285,26 @@ func (s *a2aAgentStore) QueryA2AAgents(query *aitypes.A2AAgentQuery) (uint32, []
 	return uint32(count), agents, nil
 }
 
-func (s *a2aAgentStore) insertA2AAgent(tx *BaseTx, agent *aitypes.A2AAgent) error {
+func (s *a2aAgentStore) insertA2AAgent(
+	tx *BaseTx, agent *aitypes.A2AAgent, backendServiceID string,
+) error {
 	metadataJSON := marshalStringMap(agent.Metadata)
 	sqlText := `INSERT INTO a2a_agent(id, name, namespace, visibility, description, version,
 		protocol_version, provider_organization, provider_url, documentation_url, icon_url,
 		business, department, backend_type, backend_service_namespace, backend_service_name,
-		backend_address, preferred_interface_url, preferred_protocol_binding, preferred_protocol_version,
+		backend_service_id, backend_address, preferred_interface_url,
+		preferred_protocol_binding, preferred_protocol_version,
 		streaming, push_notifications, extended_agent_card, raw_card_json, source_type, source_url,
 		last_fetch_status, last_fetch_time, metadata, flag, ctime, mtime)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())
-		ON DUPLICATE KEY UPDATE flag = VALUES(flag), mtime = sysdate()`
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate())
+		ON DUPLICATE KEY UPDATE flag = VALUES(flag),
+		backend_service_id = VALUES(backend_service_id), mtime = sysdate()`
 	_, err := tx.Exec(sqlText,
 		agent.Id, agent.Name, agent.Namespace, agent.Visibility, agent.Description, agent.Version,
 		agent.ProtocolVersion, agent.ProviderOrganization, agent.ProviderUrl, agent.DocumentationUrl,
 		agent.IconUrl, agent.Business, agent.Department, agent.BackendType, agent.BackendServiceNamespace,
-		agent.BackendServiceName, agent.BackendAddress, agent.PreferredInterfaceUrl,
+		agent.BackendServiceName, nullableAIBackendServiceID(backendServiceID),
+		agent.BackendAddress, agent.PreferredInterfaceUrl,
 		agent.PreferredProtocolBinding, agent.PreferredProtocolVersion, agent.Streaming,
 		agent.PushNotifications, agent.ExtendedAgentCard, agent.RawCardJson, agent.SourceType,
 		agent.SourceUrl, agent.LastFetchStatus, agent.LastFetchTime, metadataJSON, agent.Flag)
@@ -310,7 +364,8 @@ func (s *a2aAgentStore) queryA2AAgents(where string, args ...interface{}) (*sql.
 func (s *a2aAgentStore) queryA2AAgentsFrom(db *BaseDB, where string, args ...interface{}) (*sql.Rows, error) {
 	sqlText := `SELECT id, name, namespace, visibility, description, version, protocol_version,
 		provider_organization, provider_url, documentation_url, icon_url, business, department,
-		backend_type, backend_service_namespace, backend_service_name, backend_address,
+		backend_type, backend_service_namespace, backend_service_name,
+		IFNULL(backend_service_id, ''), backend_address,
 		preferred_interface_url, preferred_protocol_binding, preferred_protocol_version, streaming,
 		push_notifications, extended_agent_card, raw_card_json, source_type, source_url,
 		last_fetch_status, last_fetch_time, metadata, flag, unix_timestamp(ctime), unix_timestamp(mtime)
@@ -336,10 +391,12 @@ func (s *a2aAgentStore) scanA2AAgent(rows *sql.Rows) (*aitypes.A2AAgent, error) 
 	agent := &aitypes.A2AAgent{}
 	var ctimeSec, mtimeSec int64
 	var metadataJSON string
+	var backendServiceID string
 	err := rows.Scan(&agent.Id, &agent.Name, &agent.Namespace, &agent.Visibility, &agent.Description,
 		&agent.Version, &agent.ProtocolVersion, &agent.ProviderOrganization, &agent.ProviderUrl,
 		&agent.DocumentationUrl, &agent.IconUrl, &agent.Business, &agent.Department, &agent.BackendType,
-		&agent.BackendServiceNamespace, &agent.BackendServiceName, &agent.BackendAddress,
+		&agent.BackendServiceNamespace, &agent.BackendServiceName, &backendServiceID,
+		&agent.BackendAddress,
 		&agent.PreferredInterfaceUrl, &agent.PreferredProtocolBinding, &agent.PreferredProtocolVersion,
 		&agent.Streaming, &agent.PushNotifications, &agent.ExtendedAgentCard, &agent.RawCardJson,
 		&agent.SourceType, &agent.SourceUrl, &agent.LastFetchStatus, &agent.LastFetchTime,

@@ -216,7 +216,20 @@ func (s *Server) DeleteNamespace(ctx context.Context, req *apimodel.Namespace) *
 		return api.NewNamespaceResponse(apimodel.Code_NamespaceExistedServices, req)
 	}
 
-	// 判断属于该命名空间的服务是否都已经被删除
+	// MCP Server 和 A2A Agent 都是环境实例，删除 Namespace 前必须先移除这些实例。
+	aiResourceTotal, err := s.storage.CountAIResourcesByNamespace(namespace.Name)
+	if err != nil {
+		log.Error("get ai resource count with namespace err", utils.RequestID(ctx), zap.Error(err))
+		return api.NewNamespaceResponse(storeapi.StoreCode2APICode(err), req)
+	}
+	if aiResourceTotal != 0 {
+		log.Error("the removed namespace has remain ai resources", utils.RequestID(ctx))
+		response := api.NewNamespaceResponse(apimodel.Code_ExistedResource, req)
+		response.Info += ": namespace still contains MCP Server or A2A Agent"
+		return response
+	}
+
+	// 判断属于该命名空间的配置分组是否都已经被删除
 	total, err = s.getConfigGroupCountWithNamespace(namespace.Name)
 	if err != nil {
 		log.Error("get config group count with namespace err", utils.RequestID(ctx), zap.Error(err))

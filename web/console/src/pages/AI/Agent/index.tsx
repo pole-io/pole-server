@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'components/Router';
 
 import CodeDiffEditor from 'components/CodeDiffEditor';
-import { Button, Input, Switch, Tag, Textarea, Tooltip } from 'components/Fluent';
+import { Button, Input, Select, Switch, Tag, Textarea, Tooltip } from 'components/Fluent';
 import {
   AddIcon,
   ArrowRightIcon,
@@ -24,11 +24,13 @@ import {
 } from 'components/Fluent/icons';
 import HeaderIcon from 'layouts/components/Header/HeaderIcon';
 import {
+  AgentNamespaceScope,
   AgentRuntimeStatus,
   confirmAgentProposal,
   getAgentRuntime,
   sendAgentTurn,
 } from 'services/agent';
+import { describeBusinessNamespaces } from 'services/namespace';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import { toRequestErrorPayload } from 'utils/request';
 import {
@@ -58,6 +60,9 @@ const createSession = (resourceContext?: AgentResourceContext): AgentLocalSessio
     messages: [],
     draft: resourceContext ? createContextStarter(resourceContext.path) : '',
     memory: { enabled: true, maxTurns: 10 },
+    namespaceScope: resourceContext
+      ? { mode: 'single', namespaces: [resourceContext.namespace] }
+      : undefined,
     resourceContext,
   };
 };
@@ -124,6 +129,7 @@ export default function AgentWorkbenchPage() {
     tools: [],
     reason: '正在检查 Agent 运行时',
   });
+  const [namespaceOptions, setNamespaceOptions] = React.useState<Array<{ label: string; value: string }>>([]);
   const [busySessionID, setBusySessionID] = React.useState('');
   const [confirming, setConfirming] = React.useState(false);
   const [contextOpen, setContextOpen] = React.useState(true);
@@ -152,6 +158,22 @@ export default function AgentWorkbenchPage() {
 
   React.useEffect(() => {
     setSidebarHost(document.getElementById('agent-session-sidebar-host'));
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    describeBusinessNamespaces()
+      .then((items) => {
+        if (!cancelled) {
+          setNamespaceOptions(items.map((item) => ({ label: item.name, value: item.name })));
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          openErrNotification('环境加载失败', error instanceof Error ? error.message : '无法读取业务环境');
+        }
+      });
+    return () => { cancelled = true; };
   }, []);
 
   React.useEffect(() => {
@@ -330,8 +352,61 @@ export default function AgentWorkbenchPage() {
     }));
   };
 
+  const applyNamespaceScope = (namespaceScope?: AgentNamespaceScope) => {
+    if (!activeSession) return;
+    if (activeSession.messages.length || activeSession.resourceContext) {
+      const created = createSession();
+      created.namespaceScope = namespaceScope;
+      setSessions((current) => [created, ...current]);
+      setActiveSessionID(created.id);
+      persistSession(created);
+      void saveActiveAgentSessionID(created.id).catch(reportStorageError);
+      return;
+    }
+    updateActiveSession((session) => ({ ...session, namespaceScope, updatedAt: Date.now() }));
+  };
+
+  const selectNamespaces = (value: string | string[]) => {
+    if (!activeSession) return;
+    const crossEnvironment = activeSession.namespaceScope?.mode === 'cross_environment';
+    const namespaces = (Array.isArray(value) ? value : [value]).filter(Boolean);
+    applyNamespaceScope(namespaces.length ? {
+      mode: crossEnvironment ? 'cross_environment' : 'single',
+      namespaces: crossEnvironment ? namespaces : namespaces.slice(0, 1),
+    } : undefined);
+  };
+
+  const toggleCrossEnvironment = () => {
+    if (!activeSession || activeSession.resourceContext) return;
+    const current = activeSession.namespaceScope;
+    if (current?.mode === 'cross_environment') {
+      const namespace = current.namespaces[0];
+      applyNamespaceScope(namespace ? { mode: 'single', namespaces: [namespace] } : undefined);
+      return;
+    }
+    applyNamespaceScope({
+      mode: 'cross_environment',
+      namespaces: current?.namespaces.slice(0, 1) ?? [],
+    });
+  };
+
+  const scopeReady = Boolean(activeSession?.namespaceScope) && (
+    activeSession.namespaceScope?.mode === 'single'
+      ? activeSession.namespaceScope.namespaces.length === 1
+      : (activeSession.namespaceScope?.namespaces.length ?? 0) >= 2
+  );
+
   const submit = async (preset?: string) => {
     if (!activeSession) return;
+    if (!activeSession.namespaceScope || !scopeReady) {
+      openInfoNotification(
+        '请选择环境',
+        activeSession.namespaceScope?.mode === 'cross_environment'
+          ? '跨环境比较至少需要选择两个业务环境。'
+          : 'Agent 必须在明确的业务环境中运行。',
+      );
+      return;
+    }
     const value = (preset ?? activeSession.draft).trim();
     if (!value || busy || confirming) return;
     const targetSessionID = activeSession.id;
@@ -359,6 +434,7 @@ export default function AgentWorkbenchPage() {
         sessionId: targetSessionID,
         message: value,
         history,
+        namespaceScope: activeSession.namespaceScope,
         resourceContext: activeSession.resourceContext && {
           kind: activeSession.resourceContext.kind,
           namespace: activeSession.resourceContext.namespace,
@@ -662,9 +738,25 @@ export default function AgentWorkbenchPage() {
                   }}
                 />
                 <div className={style.composerToolbar}>
-                  <span className={style.composerScope}>{activeSession.resourceContext ? `当前范围：${activeSession.resourceContext.namespace}` : '当前范围：全部资源'}</span>
+                  <Select
+                    className={style.composerScopeSelect}
+                    aria-label={activeSession.namespaceScope?.mode === 'cross_environment' ? 'Agent 跨环境比较范围' : 'Agent 当前环境'}
+                    multiple={activeSession.namespaceScope?.mode === 'cross_environment'}
+                    value={activeSession.namespaceScope?.mode === 'cross_environment'
+                      ? activeSession.namespaceScope.namespaces
+                      : activeSession.namespaceScope?.namespaces[0] || ''}
+                    placeholder={activeSession.namespaceScope?.mode === 'cross_environment' ? '至少选择两个环境' : '选择环境'}
+                    options={namespaceOptions}
+                    disabled={Boolean(activeSession.resourceContext)}
+                    onChange={selectNamespaces}
+                  />
+                  {!activeSession.resourceContext && (
+                    <Button size="small" variant="text" onClick={toggleCrossEnvironment}>
+                      {activeSession.namespaceScope?.mode === 'cross_environment' ? '单环境' : '跨环境比较'}
+                    </Button>
+                  )}
                   <Tooltip content="发送">
-                    <Button className={style.composerSend} shape="square" theme="primary" icon={<SendIcon />} aria-label="发送消息" disabled={!runtime.ready || !activeSession.draft.trim() || busy || confirming} loading={busy} onClick={() => void submit()} />
+                    <Button className={style.composerSend} shape="square" theme="primary" icon={<SendIcon />} aria-label="发送消息" disabled={!runtime.ready || !scopeReady || !activeSession.draft.trim() || busy || confirming} loading={busy} onClick={() => void submit()} />
                   </Tooltip>
                 </div>
               </div>
@@ -677,7 +769,16 @@ export default function AgentWorkbenchPage() {
               <header><strong>当前上下文</strong><Button shape="square" variant="text" icon={<CloseIcon />} aria-label="收起上下文" onClick={() => setContextOpen(false)} /></header>
               <section className={style.contextGroup}>
                 <div className={style.contextLabel}>资源范围</div>
-                <div className={style.contextResource}><strong>{activeSession.resourceContext?.path || '全部资源'}</strong><span>{activeSession.resourceContext ? '配置文件 · 可生成草稿' : '所有命名空间 · 按权限查询'}</span></div>
+                <div className={style.contextResource}>
+                  <strong>{activeSession.resourceContext?.path || activeSession.namespaceScope?.namespaces.join('、') || '未选择环境'}</strong>
+                  <span>
+                    {activeSession.resourceContext
+                      ? '配置文件 · 可生成草稿'
+                      : activeSession.namespaceScope?.mode === 'cross_environment'
+                        ? '显式跨环境 · 仅允许只读比较'
+                        : '单一业务环境 · 按权限查询'}
+                  </span>
+                </div>
               </section>
               <section className={style.contextGroup}>
                 <div className={style.contextLabel}>连接状态</div>

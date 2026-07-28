@@ -146,20 +146,28 @@ func (m *mcpServerStore) createMCPServer(server *ai.MCPServer) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	backendServiceID, err := resolveAIBackendServiceID(tx, server.Namespace, server.BackendType,
+		server.BackendServiceNamespace, server.BackendServiceName)
+	if err != nil {
+		return err
+	}
 	// 插入 mcp_server 表
-	if err := m.insertMCPServerMain(tx, server); err != nil {
+	if err := m.insertMCPServerMain(tx, server, backendServiceID); err != nil {
 		return err
 	}
 
 	return tx.Commit()
 }
 
-func (m *mcpServerStore) insertMCPServerMain(tx *BaseTx, server *ai.MCPServer) error {
+func (m *mcpServerStore) insertMCPServerMain(
+	tx *BaseTx, server *ai.MCPServer, backendServiceID string,
+) error {
 	sql := `INSERT INTO mcp_server(id, name, namespace, ports, business, department, description,
 		revision, flag, reference, protocol, ctime, mtime, export_to,
-		backend_type, backend_service_namespace, backend_service_name, backend_address)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate(), ?, ?, ?, ?, ?)
-		ON DUPLICATE KEY UPDATE flag = VALUES(flag), mtime = sysdate()`
+		backend_type, backend_service_namespace, backend_service_name, backend_service_id, backend_address)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), sysdate(), ?, ?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE flag = VALUES(flag),
+		backend_service_id = VALUES(backend_service_id), mtime = sysdate()`
 
 	_, err := tx.Exec(sql,
 		server.Id,
@@ -177,6 +185,7 @@ func (m *mcpServerStore) insertMCPServerMain(tx *BaseTx, server *ai.MCPServer) e
 		server.BackendType,
 		server.BackendServiceNamespace,
 		server.BackendServiceName,
+		nullableAIBackendServiceID(backendServiceID),
 		server.BackendAddress,
 	)
 	if err != nil {
@@ -206,13 +215,24 @@ func (m *mcpServerStore) updateMCPServer(server *ai.MCPServer) error {
 	if server.Revision == "" {
 		server.Revision = newMCPID()
 	}
+	tx, err := m.master.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	backendServiceID, err := resolveAIBackendServiceID(tx, server.Namespace, server.BackendType,
+		server.BackendServiceNamespace, server.BackendServiceName)
+	if err != nil {
+		return err
+	}
 
 	sql := `UPDATE mcp_server SET name = ?, namespace = ?, ports = ?, business = ?,
 		department = ?, description = ?, revision = ?, reference = ?, protocol = ?,
 		mtime = sysdate(), export_to = ?, backend_type = ?, backend_service_namespace = ?,
-		backend_service_name = ?, backend_address = ?, flag = ? WHERE id = ?`
+		backend_service_name = ?, backend_service_id = ?, backend_address = ?, flag = ? WHERE id = ?`
 
-	_, err := m.master.Exec(sql,
+	_, err = tx.Exec(sql,
 		server.Name,
 		server.Namespace,
 		server.Ports,
@@ -226,6 +246,7 @@ func (m *mcpServerStore) updateMCPServer(server *ai.MCPServer) error {
 		server.BackendType,
 		server.BackendServiceNamespace,
 		server.BackendServiceName,
+		nullableAIBackendServiceID(backendServiceID),
 		server.BackendAddress,
 		server.Flag,
 		server.Id,
@@ -234,7 +255,7 @@ func (m *mcpServerStore) updateMCPServer(server *ai.MCPServer) error {
 		log.Errorf("[Store][database] update mcp server err: %s", err.Error())
 		return err
 	}
-	return nil
+	return tx.Commit()
 }
 
 // DeleteMCPServer 删除 MCP Server (逻辑删除)
@@ -250,7 +271,8 @@ func (m *mcpServerStore) DeleteMCPServer(id string) error {
 }
 
 func (m *mcpServerStore) deleteMCPServer(id string) error {
-	sql := `UPDATE mcp_server SET flag = 1, mtime = sysdate() WHERE id = ?`
+	sql := `UPDATE mcp_server SET flag = 1, definition_id = NULL, backend_service_id = NULL,
+		mtime = sysdate() WHERE id = ?`
 	_, err := m.master.Exec(sql, id)
 	if err != nil {
 		log.Errorf("[Store][database] logical delete mcp server err: %s", err.Error())

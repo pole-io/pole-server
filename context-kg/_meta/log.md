@@ -2,7 +2,7 @@
 title: 操作日志
 tags: [meta, log]
 links: [index, schema]
-updated: 2026-07-28
+updated: 2026-07-29
 sources: 0
 ---
 
@@ -1234,6 +1234,20 @@ sources: 0
   - Console 前端源码已迁入 `web/console`，发布、测试和本地重建脚本统一生成嵌入资源。
   - Console 首页、hash 资源和 SPA fallback 改为读取 `go:embed` 文件系统，移除运行时 `webPath`。
   - Docker 镜像和发布包只携带 Go 二进制，不再复制独立 Console dist。
+
+## [2026-07-29] ingest | Agent 与 MCP 跨环境逻辑身份
+
+- 新增页面：adr-ai-resource-environment-binding。
+- 更新页面：terminology、domain-models、business-rules、ai-features、index、todo。
+- 变更摘要：
+  - 将 MCP Server 与 A2A Agent Registry 记录定义为 Namespace 环境实例。
+  - 引入控制面稳定逻辑定义和显式环境绑定，同名只作为候选建议，不自动聚合。
+  - `pole-system` 自身投影不参与 BUSINESS 跨环境聚合。
+  - 后端服务使用稳定 ID 作为权威引用，默认只允许同 Namespace 绑定。
+  - Pole Agent 每次 Turn 使用强类型 Namespace scope；跨环境模式只读，写操作必须单环境。
+  - 落地 Definition/环境绑定 Store 与管理 API、稳定服务引用迁移、Namespace/Service 删除保护。
+  - Console 支持显式关联逻辑定义和详情环境切换；Pole Agent 支持单环境与显式跨环境只读范围。
+  - Agent scope 由当前 Actor 的 BUSINESS Namespace 目录在服务端复核，不信任客户端或 Prompt。
 
 ## 相关页面
 

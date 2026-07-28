@@ -1,7 +1,7 @@
 ---
 title: AI 原生功能：MCP Registry 与 A2A Agent Registry
 tags: [ai, mcp, a2a]
-links: [storage, cache-layer, api-servers, adr-a2a-agent-registry, adr-console-agent-resource-workbench, adr-pole-self-management-control-loop]
+links: [storage, cache-layer, api-servers, adr-a2a-agent-registry, adr-console-agent-resource-workbench, adr-pole-self-management-control-loop, adr-ai-resource-environment-binding]
 updated: 2026-07-29
 sources: 18
 ---
@@ -14,6 +14,12 @@ AI 原生功能使 Pole 的服务注册中心和治理能力对 AI 智能体（L
 
 - **MCP Registry** — 注册和发现 MCP（模型上下文协议）服务器
 - **A2A Agent Registry** — 注册和发现 A2A Agent Card，使 Agent 能按能力、skill 和协议端点发现其它 Agent
+
+MCP Server 与 A2A Agent Registry 记录是 Namespace 中的环境实例。跨环境身份由控制面稳定
+逻辑定义表达，不使用同名自动聚合；完整模型见 [[adr-ai-resource-environment-binding]]。
+逻辑定义与环境绑定通过 `/ai/mcp/v1/definitions` 和 `/ai/a2a/v1/definitions` 管理；详情页
+可显式关联旧环境实例，并在同一逻辑定义的可访问环境之间切换。逻辑定义首期直接读取 Store，
+环境实例继续使用原有 Registry Cache。
 
 存储层接口见 [[storage]]，缓存机制见 [[cache-layer]]，HTTP API 端点见 [[api-servers]]。
 
@@ -161,6 +167,12 @@ Console 已提供独立一级 `/agent` 工作模式。它不属于“AI 工具�
 
 Phase 1 最小真实运行时已在 Console 后端提供一等 `PoleAgent`：页面调用 `/ai/agent/v1/turns`；Pole Agent 内部加载版本化 System Prompt，通过 OpenAI-compatible LLM Gateway 运行最多 8 轮 model-tool loop，并以当前用户身份连接 Pole MCP、导入白名单工具。Pole MCP 已提供 namespace、MCP Registry 和配置文件只读工具；配置 update 只通过内部 proposal 工具进入不可绕过的 `ChangeApprovalKernel`，承担预览、哈希、幂等、并发检查和草稿执行。运行时探针同时检查模型配置与 MCP 连接，未就绪时页面 fail closed。当前仍未覆盖流式输出、服务端会话持久化、create、治理规则写入和更多资源域。
 
+Pole Agent 本体属于 `pole-system`，业务环境由每次 Turn 的强类型 Namespace scope 决定。
+普通写操作只能作用于一个业务环境；资源上下文和工具参数必须在服务端接受同一 scope 校验，
+不能只依赖 Prompt。服务端会以当前 Actor 调用 Namespace 目录，拒绝无权、缺失或 SYSTEM
+Namespace；A2A 调用也必须显式传递并接受同一 scope 校验。Console 提供单环境模式和显式
+跨环境只读比较模式，后者至少选择两个 BUSINESS Namespace。
+
 Agent 运行配置已从 Kubernetes 日常环境变量迁入 Pole 内部 System Settings：Admin 在 `/system-configuration?component=pole-console&domain=agent` 编辑 Gateway、模型、Prompt、MCP 白名单和 write-only API key；MySQL 保存不可变配置版本及信封加密 Secret，发布前重新探测模型与 MCP，成功后当前实例原子切换，其他实例通过周期 reconcile 收敛。静态 YAML 仅保留首次启动基线，K8s 只保留数据库连接与 Secret 根密钥。
 
 Pole 自身能力现已形成自动闭环：`pole-self-manager` 在启动和周期 reconcile 中把 Control Plane MCP 及真实工具快照登记为 `pole-system/pole-control-plane`，`all` 模式再从真实 Agent Card 投影并登记 Pole Agent A2A 能力。Console Agent 以 Registry 自然键解析 MCP 地址，不再把固定 endpoint 当作唯一事实来源。管理员保存 Agent Prompt/模型/工具策略后自动执行候选探测并应用；失败版本保留为 rejected 草稿，运行时继续使用 last-known-good。完整边界见 [[adr-pole-self-management-control-loop]]。
@@ -173,3 +185,4 @@ Pole 自身能力现已形成自动闭环：`pole-self-manager` 在启动和周�
 - [[adr-a2a-agent-registry]]
 - [[adr-console-agent-resource-workbench]]
 - [[adr-pole-self-management-control-loop]]
+- [[adr-ai-resource-environment-binding]]

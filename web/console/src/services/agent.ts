@@ -65,6 +65,11 @@ export interface AgentTurnResourceContext {
   name: string;
 }
 
+export interface AgentNamespaceScope {
+  mode: 'single' | 'cross_environment';
+  namespaces: string[];
+}
+
 export interface AgentRuntimeStatus {
   ready: boolean;
   mode: 'llm' | 'unavailable';
@@ -94,6 +99,7 @@ export interface SendAgentTurnRequest {
   sessionId: string;
   message: string;
   history: AgentTurnMessage[];
+  namespaceScope: AgentNamespaceScope;
   resourceContext?: AgentTurnResourceContext;
 }
 

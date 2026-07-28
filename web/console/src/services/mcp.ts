@@ -1,5 +1,16 @@
 import { apiRequest, getApiRequest, putApiRequest } from 'utils/request';
 import { BaseURL } from './types';
+import {
+  AIEnvironmentBinding,
+  AIResourceDefinition,
+  bindAIResourceDefinition,
+  createAIResourceDefinition,
+  describeAIEnvironmentBinding,
+  describeAIEnvironmentBindings,
+  describeAIResourceDefinitions,
+} from './ai_definition';
+
+const MCPDefinitionURL = '/ai/mcp/v1/definitions';
 
 export interface MCPServer {
   id?: string;
@@ -34,6 +45,9 @@ export interface MCPServerTool {
   ctime?: string;
   mtime?: string;
 }
+
+export type MCPEnvironmentBinding = AIEnvironmentBinding<'mcp_server'>;
+export type MCPResourceDefinition = AIResourceDefinition;
 
 export interface DescribeMCPServersRequest {
   offset: number;
@@ -124,4 +138,24 @@ export async function describeMCPServerTools(params: DescribeMCPServerToolsReque
     list,
     totalCount: res.amount ?? list.length,
   };
+}
+
+export async function describeMCPServerDefinitionBinding(resourceId: string) {
+  return describeAIEnvironmentBinding<'mcp_server'>(MCPDefinitionURL, resourceId);
+}
+
+export async function describeMCPServerDefinitionEnvironments(definitionId: string) {
+  return describeAIEnvironmentBindings<'mcp_server'>(MCPDefinitionURL, definitionId);
+}
+
+export async function describeMCPServerDefinitions(name?: string) {
+  return describeAIResourceDefinitions(MCPDefinitionURL, name);
+}
+
+export async function createMCPServerDefinition(name: string) {
+  return createAIResourceDefinition(MCPDefinitionURL, 'MCP Server', name);
+}
+
+export async function bindMCPServerDefinition(definitionId: string, resourceId: string) {
+  return bindAIResourceDefinition(MCPDefinitionURL, definitionId, resourceId);
 }

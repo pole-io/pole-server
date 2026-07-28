@@ -107,4 +107,12 @@ func (h *HTTPServer) addDefaultAccess(ws *restful.WebService) {
 	ws.Route(ws.POST("/agents/delete").To(h.DeleteA2AAgents))
 	ws.Route(ws.GET("/agent/skills").To(h.ListA2AAgentSkills))
 	ws.Route(ws.GET("/agents/{id}/card").To(h.GetA2AAgentCard))
+	ws.Route(ws.GET("/definitions").To(h.ListA2AAgentDefinitions))
+	ws.Route(ws.POST("/definitions").To(h.CreateA2AAgentDefinitions))
+	ws.Route(ws.PUT("/definitions").To(h.UpdateA2AAgentDefinitions))
+	ws.Route(ws.POST("/definitions/delete").To(h.DeleteA2AAgentDefinitions))
+	ws.Route(ws.GET("/definitions/environments").To(h.ListA2AAgentDefinitionEnvironments))
+	ws.Route(ws.GET("/definitions/environment-binding").To(h.GetA2AAgentDefinitionBinding))
+	ws.Route(ws.POST("/definitions/environment-bindings").To(h.BindA2AAgentDefinitionEnvironment))
+	ws.Route(ws.POST("/definitions/environment-bindings/delete").To(h.UnbindA2AAgentDefinitionEnvironment))
 }

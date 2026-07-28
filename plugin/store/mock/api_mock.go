@@ -585,6 +585,20 @@ func (mr *MockStoreMockRecorder) BatchSetInstanceIsolate(ids, isolate, revision 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchSetInstanceIsolate", reflect.TypeOf((*MockStore)(nil).BatchSetInstanceIsolate), ids, isolate, revision)
 }
 
+// BindAIResourceEnvironment mocks base method.
+func (m *MockStore) BindAIResourceEnvironment(binding *ai.EnvironmentBinding, revision string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BindAIResourceEnvironment", binding, revision)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BindAIResourceEnvironment indicates an expected call of BindAIResourceEnvironment.
+func (mr *MockStoreMockRecorder) BindAIResourceEnvironment(binding, revision interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BindAIResourceEnvironment", reflect.TypeOf((*MockStore)(nil).BindAIResourceEnvironment), binding, revision)
+}
+
 // BindServiceEnvironment mocks base method.
 func (m *MockStore) BindServiceEnvironment(binding *service.ServiceEnvironmentBinding, revision string) error {
 	m.ctrl.T.Helper()
@@ -683,6 +697,36 @@ func (mr *MockStoreMockRecorder) CleanPrincipalRoles(tx, p interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CleanPrincipalRoles", reflect.TypeOf((*MockStore)(nil).CleanPrincipalRoles), tx, p)
 }
 
+// CountAIBackendReferences mocks base method.
+func (m *MockStore) CountAIBackendReferences(serviceID string) (uint32, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountAIBackendReferences", serviceID)
+	ret0, _ := ret[0].(uint32)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountAIBackendReferences indicates an expected call of CountAIBackendReferences.
+func (mr *MockStoreMockRecorder) CountAIBackendReferences(serviceID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountAIBackendReferences", reflect.TypeOf((*MockStore)(nil).CountAIBackendReferences), serviceID)
+}
+
+// CountAIResourcesByNamespace mocks base method.
+func (m *MockStore) CountAIResourcesByNamespace(namespace string) (uint32, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountAIResourcesByNamespace", namespace)
+	ret0, _ := ret[0].(uint32)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountAIResourcesByNamespace indicates an expected call of CountAIResourcesByNamespace.
+func (mr *MockStoreMockRecorder) CountAIResourcesByNamespace(namespace interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountAIResourcesByNamespace", reflect.TypeOf((*MockStore)(nil).CountAIResourcesByNamespace), namespace)
+}
+
 // CountConfigFileEachGroup mocks base method.
 func (m *MockStore) CountConfigFileEachGroup() (map[string]map[string]int64, error) {
 	m.ctrl.T.Helper()
@@ -770,6 +814,20 @@ func (m *MockStore) CreateA2AAgent(agent *ai.A2AAgent) error {
 func (mr *MockStoreMockRecorder) CreateA2AAgent(agent interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateA2AAgent", reflect.TypeOf((*MockStore)(nil).CreateA2AAgent), agent)
+}
+
+// CreateAIResourceDefinition mocks base method.
+func (m *MockStore) CreateAIResourceDefinition(definition *ai.ResourceDefinition) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateAIResourceDefinition", definition)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateAIResourceDefinition indicates an expected call of CreateAIResourceDefinition.
+func (mr *MockStoreMockRecorder) CreateAIResourceDefinition(definition interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateAIResourceDefinition", reflect.TypeOf((*MockStore)(nil).CreateAIResourceDefinition), definition)
 }
 
 // CreateCircuitBreakerRule mocks base method.
@@ -1122,6 +1180,20 @@ func (m *MockStore) DeleteA2AAgent(id string) error {
 func (mr *MockStoreMockRecorder) DeleteA2AAgent(id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteA2AAgent", reflect.TypeOf((*MockStore)(nil).DeleteA2AAgent), id)
+}
+
+// DeleteAIResourceDefinition mocks base method.
+func (m *MockStore) DeleteAIResourceDefinition(kind ai.ResourceKind, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteAIResourceDefinition", kind, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteAIResourceDefinition indicates an expected call of DeleteAIResourceDefinition.
+func (mr *MockStoreMockRecorder) DeleteAIResourceDefinition(kind, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAIResourceDefinition", reflect.TypeOf((*MockStore)(nil).DeleteAIResourceDefinition), kind, id)
 }
 
 // DeleteCircuitBreakerReleases mocks base method.
@@ -1685,6 +1757,36 @@ func (m *MockStore) GetA2AAgentSkills(agentID string) ([]*ai.A2AAgentSkill, erro
 func (mr *MockStoreMockRecorder) GetA2AAgentSkills(agentID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetA2AAgentSkills", reflect.TypeOf((*MockStore)(nil).GetA2AAgentSkills), agentID)
+}
+
+// GetAIResourceDefinition mocks base method.
+func (m *MockStore) GetAIResourceDefinition(kind ai.ResourceKind, id string) (*ai.ResourceDefinition, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAIResourceDefinition", kind, id)
+	ret0, _ := ret[0].(*ai.ResourceDefinition)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAIResourceDefinition indicates an expected call of GetAIResourceDefinition.
+func (mr *MockStoreMockRecorder) GetAIResourceDefinition(kind, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAIResourceDefinition", reflect.TypeOf((*MockStore)(nil).GetAIResourceDefinition), kind, id)
+}
+
+// GetAIResourceEnvironmentBinding mocks base method.
+func (m *MockStore) GetAIResourceEnvironmentBinding(kind ai.ResourceKind, resourceID string) (*ai.EnvironmentBinding, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAIResourceEnvironmentBinding", kind, resourceID)
+	ret0, _ := ret[0].(*ai.EnvironmentBinding)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAIResourceEnvironmentBinding indicates an expected call of GetAIResourceEnvironmentBinding.
+func (mr *MockStoreMockRecorder) GetAIResourceEnvironmentBinding(kind, resourceID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAIResourceEnvironmentBinding", reflect.TypeOf((*MockStore)(nil).GetAIResourceEnvironmentBinding), kind, resourceID)
 }
 
 // GetActiveCircuitBreakerRule mocks base method.
@@ -3973,6 +4075,37 @@ func (mr *MockStoreMockRecorder) IsLeader(key interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsLeader", reflect.TypeOf((*MockStore)(nil).IsLeader), key)
 }
 
+// ListAIResourceDefinitions mocks base method.
+func (m *MockStore) ListAIResourceDefinitions(kind ai.ResourceKind, name string, offset, limit uint32) (uint32, []*ai.ResourceDefinition, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAIResourceDefinitions", kind, name, offset, limit)
+	ret0, _ := ret[0].(uint32)
+	ret1, _ := ret[1].([]*ai.ResourceDefinition)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ListAIResourceDefinitions indicates an expected call of ListAIResourceDefinitions.
+func (mr *MockStoreMockRecorder) ListAIResourceDefinitions(kind, name, offset, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAIResourceDefinitions", reflect.TypeOf((*MockStore)(nil).ListAIResourceDefinitions), kind, name, offset, limit)
+}
+
+// ListAIResourceEnvironmentBindings mocks base method.
+func (m *MockStore) ListAIResourceEnvironmentBindings(kind ai.ResourceKind, definitionID string) ([]*ai.EnvironmentBinding, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAIResourceEnvironmentBindings", kind, definitionID)
+	ret0, _ := ret[0].([]*ai.EnvironmentBinding)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAIResourceEnvironmentBindings indicates an expected call of ListAIResourceEnvironmentBindings.
+func (mr *MockStoreMockRecorder) ListAIResourceEnvironmentBindings(kind, definitionID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAIResourceEnvironmentBindings", reflect.TypeOf((*MockStore)(nil).ListAIResourceEnvironmentBindings), kind, definitionID)
+}
+
 // ListConfigTemplateBindings mocks base method.
 func (m *MockStore) ListConfigTemplateBindings(file *config.ConfigFileKey) ([]*config.ConfigTemplateBinding, error) {
 	m.ctrl.T.Helper()
@@ -4634,6 +4767,20 @@ func (mr *MockStoreMockRecorder) StartTx() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartTx", reflect.TypeOf((*MockStore)(nil).StartTx))
 }
 
+// UnbindAIResourceEnvironment mocks base method.
+func (m *MockStore) UnbindAIResourceEnvironment(kind ai.ResourceKind, definitionID, resourceID, revision string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UnbindAIResourceEnvironment", kind, definitionID, resourceID, revision)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UnbindAIResourceEnvironment indicates an expected call of UnbindAIResourceEnvironment.
+func (mr *MockStoreMockRecorder) UnbindAIResourceEnvironment(kind, definitionID, resourceID, revision interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnbindAIResourceEnvironment", reflect.TypeOf((*MockStore)(nil).UnbindAIResourceEnvironment), kind, definitionID, resourceID, revision)
+}
+
 // UnbindServiceEnvironment mocks base method.
 func (m *MockStore) UnbindServiceEnvironment(logicalServiceID, serviceID, revision string) error {
 	m.ctrl.T.Helper()
@@ -4660,6 +4807,20 @@ func (m *MockStore) UpdateA2AAgent(agent *ai.A2AAgent) error {
 func (mr *MockStoreMockRecorder) UpdateA2AAgent(agent interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateA2AAgent", reflect.TypeOf((*MockStore)(nil).UpdateA2AAgent), agent)
+}
+
+// UpdateAIResourceDefinition mocks base method.
+func (m *MockStore) UpdateAIResourceDefinition(definition *ai.ResourceDefinition, previousRevision string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateAIResourceDefinition", definition, previousRevision)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateAIResourceDefinition indicates an expected call of UpdateAIResourceDefinition.
+func (mr *MockStoreMockRecorder) UpdateAIResourceDefinition(definition, previousRevision interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateAIResourceDefinition", reflect.TypeOf((*MockStore)(nil).UpdateAIResourceDefinition), definition, previousRevision)
 }
 
 // UpdateCircuitBreakerRule mocks base method.

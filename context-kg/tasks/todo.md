@@ -11216,3 +11216,88 @@ dev/test/prod 业务环境；通过类型化协议、后端不变量和 Console 
 - 部署结果：构建 arm64 镜像 `pole-control-plane:local-20260728-system-namespace-ifabsent-v1`（`sha256:88948b4a6a0f6d598bc9b6cf2410abd577b8d9a66fc38cd2d9557e9c5847c170`）并滚动部署；新 Pod `1/1 Running`、0 restart，Console HTTP 返回 200。
 - 联调结果：controller Helm revision 5 使用 `pole-controller:local-20260728-namespace-fix` 与 `controllerInstance.namespace: pole-system`，StatefulSet `1/1 Ready`；Discover 返回唯一 `pole-system/pole.controller.orbstack` 实例，Pod IP `192.168.194.71`、healthy、TTL 5 秒。
 - 清理结果：确认旧 `Polaris` 实例 IP 已无对应 Pod 后，通过 client 反注册 API 精确删除两条遗留实例；最终 `Polaris/pole.controller.orbstack` 实例列表为空。
+## Agent / MCP 是否应纳入环境模型（2026-07-29）
+
+目标：结合现有 Namespace 运行环境语义、AI 资源领域模型和实际代码，判断 Agent、MCP 是否应像服务一样具有跨环境逻辑身份，并明确推荐边界。
+
+- [x] 回顾经验记录与知识库中的 Namespace、Agent、MCP 既有结论。
+- [x] 核对 Agent / MCP 当前 API、存储、Console 与运行时引用关系。
+- [x] 对比“全局目录资源”与“环境实例资源”两种建模方式及迁移影响。
+- [x] 形成推荐方案、身份键、引用约束和渐进落地顺序。
+- [x] 完成证据复核，并补充 Review。
+
+### Review
+
+- 结论：Agent 与 MCP 的可运行注册投影必须结合环境，但协议、逻辑能力定义和 Pole Agent
+  会话本身不能被粗暴复制为每个业务环境一份。推荐目标模型是“稳定逻辑定义 + Namespace
+  环境部署”，现有 `namespace/name` 保留为环境实例兼容键。
+- 当前 MCP Server 与 A2A Agent 已具有 `namespace`，数据库唯一键、缓存自然键、列表筛选和
+  Console 详情身份均按 `namespace/name` 工作；因此不应再新增重复的 `environment` 字段。
+  当前缺的是类似 Logical Service 的跨环境稳定 ID、显式关联、比较和提升能力。
+- `endpoint`、后端服务绑定、Secret 引用、版本化 Card/Tool 快照、健康和发布/登记状态属于
+  环境部署；逻辑名称、产品意图和能力定义属于跨环境定义。默认解析同 Namespace 后端，
+  跨环境调用必须显式开放、授权和审计。
+- Pole 自身 MCP 与 A2A 投影继续归属 `pole-system`（SYSTEM Namespace），不参与 BUSINESS
+  环境聚合。Console Pole Agent 保持控制面级主体，但每次对话和写入提案必须有明确的目标
+  Namespace scope；当前“全部资源”默认范围后续需要按最小权限继续收紧。
+- 代码现实还存在引用完整性缺口：MCP/A2A 的 `backend_service_namespace/name` 没有外键，
+  A2A 缺少完整组合校验，Namespace/Service 删除保护未覆盖 AI 资源；Pole Agent Profile
+  仍是 `pole-console/agent` 全局单例。正式实施环境逻辑身份前，应先明确同环境不变量并补齐
+  校验、删除保护和缓存 re-key。
+- 渐进路径：先固化现有 `namespace` 为环境实例语义；再为每条旧记录生成独立 Definition，
+  由管理员显式关联跨环境实例，禁止按同名自动合并；随后下沉运行态字段和 Revision，最后
+  将 Agent→MCP、Agent/MCP→Service 引用迁移到稳定 ID。
+
+## Agent / MCP 跨环境逻辑身份实现（2026-07-29）
+
+目标：在保留现有 `namespace/name` 环境实例兼容语义的前提下，为 MCP Server 与 A2A Agent
+建立稳定逻辑定义和显式环境绑定，补齐后端服务引用完整性，并让 Pole Agent 的每次操作具有
+明确、可校验的 Namespace 作用域。
+
+### 规格与不变量
+
+- [x] `namespace` 继续表示环境实例归属，不新增重复的 `environment` 字段。
+- [x] MCP/A2A 使用控制面稳定逻辑 ID 表达跨环境身份；同名仅作为关联建议，不自动合并。
+- [x] 每个逻辑定义在同一 BUSINESS Namespace 默认最多绑定一个环境实例。
+- [x] `pole-system` 中的自身 MCP/A2A 投影属于 SYSTEM Namespace，不参与业务跨环境聚合。
+- [x] 环境实例默认只绑定同 Namespace 的后端服务；跨环境绑定必须显式开放并通过授权。
+- [x] Namespace/Service 删除不得留下 MCP/A2A 悬空引用。
+- [x] Pole Agent 的读取、工具调用和变更提案必须携带明确 Namespace scope；跨环境操作显式发起。
+- [x] 旧 API、旧记录和 `namespace/name` 查询保持兼容，迁移不得按名称猜测逻辑归属。
+
+### 实施
+
+- [x] 审计迁移后源码路径、Specification 依赖边界和现有测试基线。
+- [x] 补齐逻辑定义、环境绑定、引用校验、删除保护和 Agent scope 的失败测试。
+- [x] 实现 MySQL schema migration、Store 和管理 API；环境实例沿用原 Registry Cache。
+- [x] 实现 MCP/A2A 详情级跨环境聚合、显式关联和环境切换 Console。
+- [x] 收紧 Pole Agent 默认“全部资源”作用域并保留显式跨环境只读入口。
+- [x] 更新 ADR、领域术语、业务规则、功能页、索引和知识库日志。
+- [x] 完成格式化、定向测试、全仓测试、前端检查、迁移兼容验证和代码审查。
+- [x] 提交本任务改动，不混入 Console/Limiter 目录迁移及配置工作区的既有修改。
+
+### Review
+
+- 已完成 MCP Server / A2A Agent 逻辑 Definition、显式环境绑定的 MySQL 深模块与对称
+  HTTP 管理 API；绑定只接受 BUSINESS Namespace，SYSTEM 投影保留为环境资源但不参与绑定。
+- 两类 AI 环境资源在 `backend_type=service` 时，Store 会在同一事务内锁定并解析同
+  Namespace、有效、非 alias 的 Service，将内部稳定 ID 写入 `backend_service_id`；
+  `address` 模式清空该引用，A2A/MCP 公共管理契约均不暴露内部稳定 ID。
+- Schema migration 会幂等回填旧的有效 name-based Service 绑定；Service 删除前计数同时按
+  稳定 ID 和 legacy namespace/name 兜底，避免迁移窗口漏掉旧引用。Namespace 资源计数同时
+  汇总有效 MCP Server 和 A2A Agent。
+- Console 在未关联旧实例上提供“选择已有定义 / 新建定义并关联”，关联后按可访问
+  Namespace 展示环境页签；SYSTEM 投影不出现业务关联入口。MCP/A2A 客户端复用共享
+  AI Definition 深模块。
+- Pole Agent 会话持久化强类型 scope；单环境自动注入工具 Namespace，跨环境至少选择两个
+  BUSINESS Namespace 且只读。服务端以当前 Actor 调用 Namespace 目录复核存在性、Kind 和
+  访问权，A2A 入口复用相同校验。
+- 双轴审查发现的任务状态、未使用 scope 参数、服务端 scope 授权和 Console 跨环境入口均已
+  修复；后端 MCP/A2A handler 保留对称薄适配，以维持两套独立权限契约，通用持久化与前端
+  请求逻辑已抽取。
+- `go test -tags nomsgpack ./... -count=1`、后端 Store/handler/删除保护/Agent 专项测试、
+  Console 两项契约脚本、`build:test`、lint、context-kg lint 与 `git diff --check` 均通过。
+  不带 `nomsgpack` 的 Console 全量测试仍受仓库共享依赖图中 `ugorji/go/codec` 双模块歧义
+  阻塞，与本模块改动无关。
+- Console/Limiter 迁移已由独立提交 `9c1105ba` 落地；本任务随后按迁移后路径形成独立提交，
+  未混入仍在工作树中的配置工作区与服务删除诊断改动。

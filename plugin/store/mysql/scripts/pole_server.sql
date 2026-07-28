@@ -844,6 +844,45 @@ CREATE TABLE
         UNIQUE KEY `name` (`name`)
     ) ENGINE = InnoDB;
 
+/* AI logical resource definitions */
+CREATE TABLE
+    `mcp_server_definition` (
+        `id` VARCHAR(32) NOT NULL COMMENT 'Control-plane logical definition ID',
+        `name` VARCHAR(128) COLLATE utf8_bin NOT NULL COMMENT 'MCP server logical name',
+        `description` VARCHAR(1024) DEFAULT NULL,
+        `owner` VARCHAR(1024) NOT NULL DEFAULT '',
+        `business` VARCHAR(64) DEFAULT NULL,
+        `department` VARCHAR(1024) DEFAULT NULL,
+        `revision` VARCHAR(32) NOT NULL,
+        `flag` TINYINT(4) NOT NULL DEFAULT 0,
+        `active_name` VARCHAR(128) COLLATE utf8_bin GENERATED ALWAYS AS
+            (CASE WHEN `flag` = 0 THEN `name` ELSE NULL END) STORED,
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uk_active_name` (`active_name`),
+        KEY `idx_mtime` (`mtime`)
+    ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_bin;
+
+CREATE TABLE
+    `a2a_agent_definition` (
+        `id` VARCHAR(32) NOT NULL COMMENT 'Control-plane logical definition ID',
+        `name` VARCHAR(128) COLLATE utf8_bin NOT NULL COMMENT 'A2A agent logical name',
+        `description` VARCHAR(1024) DEFAULT NULL,
+        `owner` VARCHAR(1024) NOT NULL DEFAULT '',
+        `business` VARCHAR(64) DEFAULT NULL,
+        `department` VARCHAR(1024) DEFAULT NULL,
+        `revision` VARCHAR(32) NOT NULL,
+        `flag` TINYINT(4) NOT NULL DEFAULT 0,
+        `active_name` VARCHAR(128) COLLATE utf8_bin GENERATED ALWAYS AS
+            (CASE WHEN `flag` = 0 THEN `name` ELSE NULL END) STORED,
+        `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uk_active_name` (`active_name`),
+        KEY `idx_mtime` (`mtime`)
+    ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_bin;
+
 /* MCP Server */
 CREATE TABLE
     `mcp_server` (
@@ -861,7 +900,9 @@ CREATE TABLE
         `backend_type` VARCHAR(32) DEFAULT NULL COMMENT 'mcp-server backend type, service or address',
         `backend_service_namespace` VARCHAR(64) DEFAULT NULL COMMENT 'backend pole service namespace when backend_type is service',
         `backend_service_name` VARCHAR(128) DEFAULT NULL COMMENT 'backend pole service name when backend_type is service',
+        `backend_service_id` VARCHAR(32) DEFAULT NULL COMMENT 'stable Pole backend service id',
         `backend_address` TEXT DEFAULT NULL COMMENT 'backend address when backend_type is address',
+        `definition_id` VARCHAR(32) DEFAULT NULL COMMENT 'control-plane logical definition id',
         `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
         `export_to` TEXT COMMENT 'service export to some namespace',
@@ -871,7 +912,10 @@ CREATE TABLE
         KEY `mtime` (`mtime`),
         KEY `reference` (`reference`),
         KEY `backend_type` (`backend_type`),
-        KEY `backend_service` (`backend_service_namespace`, `backend_service_name`)
+        KEY `backend_service` (`backend_service_namespace`, `backend_service_name`),
+        KEY `idx_mcp_server_backend_service_id` (`backend_service_id`),
+        KEY `idx_mcp_server_definition` (`definition_id`),
+        UNIQUE KEY `uk_mcp_server_definition_namespace` (`definition_id`, `namespace`)
 ) ENGINE = InnoDB;
 
 /* MCP TOOl */
@@ -912,6 +956,7 @@ CREATE TABLE
         `backend_type` VARCHAR(32) DEFAULT NULL COMMENT 'backend type, service or address',
         `backend_service_namespace` VARCHAR(64) DEFAULT NULL COMMENT 'backend service namespace',
         `backend_service_name` VARCHAR(128) DEFAULT NULL COMMENT 'backend service name',
+        `backend_service_id` VARCHAR(32) DEFAULT NULL COMMENT 'stable Pole backend service id',
         `backend_address` VARCHAR(512) DEFAULT NULL COMMENT 'custom backend address',
         `preferred_interface_url` VARCHAR(512) DEFAULT NULL COMMENT 'preferred a2a interface url',
         `preferred_protocol_binding` VARCHAR(32) DEFAULT NULL COMMENT 'JSONRPC, GRPC or HTTP+JSON',
@@ -925,6 +970,7 @@ CREATE TABLE
         `last_fetch_status` VARCHAR(128) DEFAULT NULL COMMENT 'last agent card fetch status',
         `last_fetch_time` VARCHAR(64) DEFAULT NULL COMMENT 'last agent card fetch time',
         `metadata` TEXT COMMENT 'custom metadata json',
+        `definition_id` VARCHAR(32) DEFAULT NULL COMMENT 'control-plane logical definition id',
         `flag` TINYINT(4) NOT NULL DEFAULT '0' COMMENT 'Logic delete flag, 0 means visible, 1 means logically deleted',
         `ctime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
         `mtime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last updated time',
@@ -933,7 +979,10 @@ CREATE TABLE
         KEY `namespace` (`namespace`),
         KEY `mtime` (`mtime`),
         KEY `backend_service` (`backend_service_namespace`, `backend_service_name`),
-        KEY `preferred_protocol_binding` (`preferred_protocol_binding`)
+        KEY `idx_a2a_agent_backend_service_id` (`backend_service_id`),
+        KEY `preferred_protocol_binding` (`preferred_protocol_binding`),
+        KEY `idx_a2a_agent_definition` (`definition_id`),
+        UNIQUE KEY `uk_a2a_agent_definition_namespace` (`definition_id`, `namespace`)
 ) ENGINE = InnoDB;
 
 CREATE TABLE

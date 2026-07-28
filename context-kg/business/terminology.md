@@ -1,8 +1,8 @@
 ---
 title: 领域术语表
 tags: [business, terminology]
-links: [domain-models, business-rules, auth-system, adr-console-agent-resource-workbench, adr-system-configuration-control-plane, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding, adr-system-namespace-kind]
-updated: 2026-07-28
+links: [domain-models, business-rules, auth-system, adr-console-agent-resource-workbench, adr-system-configuration-control-plane, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding, adr-system-namespace-kind, adr-ai-resource-environment-binding]
+updated: 2026-07-29
 sources: 0
 ---
 
@@ -29,9 +29,13 @@ sources: 0
 | 发布版本 | Release | 配置或治理规则发布时形成的快照版本 |
 | 灰度发布 | Gray Release | 面向部分客户端、标签或条件生效的发布方式 |
 | 泳道组 | Lane Group | 一组泳道路由规则的聚合根 |
-| MCP 服务 | MCP Server | AI 工具注册中心中的 MCP 服务定义，可关联 Pole 服务或自定义地址 |
+| MCP 逻辑定义 | MCP Definition | 由控制面稳定 ID 标识的跨环境 MCP 能力身份，不进入 MCP 协议或数据面寻址 |
+| MCP 环境实例 | MCP Deployment | 某个 Namespace 中可调用的 MCP Server 登记，承载 Endpoint、Tool 快照和后端绑定 |
+| Agent 逻辑定义 | Agent Definition | 由控制面稳定 ID 标识的跨环境 Agent 能力身份，不等同于某个环境的 Agent Card |
+| Agent 环境实例 | Agent Deployment | 某个 Namespace 中可调用的 A2A Agent 登记，承载 Endpoint、Card、技能和后端绑定 |
 | Pole Agent | Pole Agent | Console 提供的一等对话主体，内部使用模型和 MCP 工具操作 Pole，写操作必须等待人工确认 |
-| Agent 定义 | Agent Definition | Pole Agent 的版本化行为定义，包含 Prompt 版本、模型 profile、MCP 工具集和运行限制，不包含密钥明文 |
+| Pole Agent Profile | Pole Agent Profile | Pole Agent 的版本化行为配置，包含 Prompt、模型 profile、MCP 工具集和运行限制，不包含密钥明文 |
+| Agent 调用作用域 | Agent Namespace Scope | 单次 Pole Agent Turn 可读取或修改的显式 Namespace 集合；普通写操作只能作用于一个环境 |
 | 启动配置 | Bootstrap Configuration | 让 Console 能够启动并定位外部依赖的最小不可热更新配置，包括配置源、凭证引用和紧急开关 |
 | Console 系统设置 | Console System Settings | 面向管理员的类型化运行配置页面；底层使用 Pole 配置中心的草稿、发布、历史和回滚能力 |
 | 系统配置定义 | Setting Definition | 描述系统设置的类型、默认值、校验、敏感级别、归属组件、兼容版本和生效方式 |
@@ -52,3 +56,4 @@ sources: 0
 - [[adr-service-contract-reporting-and-visualization]]
 - [[adr-logical-service-environment-binding]]
 - [[adr-system-namespace-kind]]
+- [[adr-ai-resource-environment-binding]]

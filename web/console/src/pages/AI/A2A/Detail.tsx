@@ -4,9 +4,23 @@ import { RefreshIcon, ServerIcon } from 'components/Fluent/icons';
 import { useNavigate, useSearchParams } from 'components/Router';
 
 import AuthorizeInput from 'components/Authorize';
+import AIEnvironmentBinding from 'components/AIEnvironmentBinding';
+import EnvironmentResourceSwitcher from 'components/EnvironmentResourceSwitcher';
 import { useAppDispatch } from 'modules/store';
 import { editorA2AAgent } from 'modules/ai/a2a';
-import { A2AAgent, A2AAgentSkill, describeA2AAgentCard, describeA2AAgents, describeA2AAgentSkills } from 'services/a2a';
+import {
+  A2AAgent,
+  A2AAgentSkill,
+  A2AEnvironmentBinding,
+  describeA2AAgentCard,
+  describeA2AAgentDefinitionBinding,
+  describeA2AAgentDefinitionEnvironments,
+  describeA2AAgentDefinitions,
+  describeA2AAgents,
+  describeA2AAgentSkills,
+  bindA2AAgentDefinition,
+  createA2AAgentDefinition,
+} from 'services/a2a';
 import { PolicySourceType } from 'services/auth_policy';
 import {
   A2AEditor,
@@ -50,6 +64,7 @@ const A2ADetailPage: React.FC = () => {
   const [agentNotFound, setAgentNotFound] = React.useState(false);
   const [skillsError, setSkillsError] = React.useState('');
   const [cardError, setCardError] = React.useState('');
+  const [environmentBindings, setEnvironmentBindings] = React.useState<A2AEnvironmentBinding[]>([]);
   const [activeTab, setActiveTab] = React.useState<DetailTab>(normalizeTab(searchParams.get('tab')));
   const [cardViewMode, setCardViewMode] = React.useState<'visual' | 'raw'>('visual');
   const [authorizeVisible, setAuthorizeVisible] = React.useState(false);
@@ -67,8 +82,19 @@ const A2ADetailPage: React.FC = () => {
       });
       const next = response.list.find((item) => (id ? item.id === id : item.name === name && item.namespace === namespace)) || null;
       setAgent(next);
+      setEnvironmentBindings([]);
       if (next) {
         dispatch(editorA2AAgent(next));
+        if (next.id && next.namespace !== 'pole-system') {
+          try {
+            const binding = await describeA2AAgentDefinitionBinding(next.id);
+            if (binding?.definition_id) {
+              setEnvironmentBindings(await describeA2AAgentDefinitionEnvironments(binding.definition_id));
+            }
+          } catch {
+            // 旧记录允许暂时保持未关联状态。
+          }
+        }
       } else {
         setAgentNotFound(true);
       }
@@ -173,6 +199,35 @@ const A2ADetailPage: React.FC = () => {
 
       {!loading && agent && (
         <div className={style.agentDrawer}>
+          {environmentBindings.length > 0 ? (
+            <EnvironmentResourceSwitcher
+              currentNamespace={agent.namespace}
+              items={environmentBindings.map((binding) => ({
+                namespace: binding.namespace,
+                summary: binding.resource_name,
+              }))}
+              resourceLabel="A2A Agent"
+              presentation="tabs"
+              onSelect={(targetNamespace) => {
+                const target = environmentBindings.find((binding) => binding.namespace === targetNamespace);
+                if (target) {
+                  navigate(`/ai/a2a/detail?id=${encodeURIComponent(target.resource_id)}&namespace=${encodeURIComponent(target.namespace)}&name=${encodeURIComponent(target.resource_name)}`);
+                }
+              }}
+            />
+          ) : agent.namespace !== 'pole-system' && agent.id ? (
+            <Space>
+              <Tag variant="light">未关联跨环境逻辑定义</Tag>
+              <AIEnvironmentBinding
+                resourceLabel="A2A Agent"
+                suggestedName={agent.name}
+                loadDefinitions={describeA2AAgentDefinitions}
+                createDefinition={createA2AAgentDefinition}
+                bindDefinition={(definitionId) => bindA2AAgentDefinition(definitionId, agent.id!)}
+                onBound={loadAgent}
+              />
+            </Space>
+          ) : null}
           <section className={style.agentDrawerSummary}>
             <div className={style.agentDrawerIcon}>
               <ServerIcon />

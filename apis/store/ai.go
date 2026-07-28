@@ -29,6 +29,27 @@ import (
 type AIStore interface {
 	MCPServerStore
 	A2AAgentStore
+	AIResourceDefinitionStore
+}
+
+// AIResourceDefinitionStore 保存控制面逻辑定义，以及它们与现有 MCP Server
+// 或 A2A Agent 环境记录之间的显式关联。
+type AIResourceDefinitionStore interface {
+	CreateAIResourceDefinition(definition *aitypes.ResourceDefinition) error
+	UpdateAIResourceDefinition(definition *aitypes.ResourceDefinition, previousRevision string) error
+	DeleteAIResourceDefinition(kind aitypes.ResourceKind, id string) error
+	GetAIResourceDefinition(kind aitypes.ResourceKind, id string) (*aitypes.ResourceDefinition, error)
+	ListAIResourceDefinitions(kind aitypes.ResourceKind, name string, offset, limit uint32) (
+		uint32, []*aitypes.ResourceDefinition, error)
+	BindAIResourceEnvironment(binding *aitypes.EnvironmentBinding, revision string) error
+	UnbindAIResourceEnvironment(
+		kind aitypes.ResourceKind, definitionID, resourceID, revision string) error
+	ListAIResourceEnvironmentBindings(
+		kind aitypes.ResourceKind, definitionID string) ([]*aitypes.EnvironmentBinding, error)
+	GetAIResourceEnvironmentBinding(
+		kind aitypes.ResourceKind, resourceID string) (*aitypes.EnvironmentBinding, error)
+	CountAIResourcesByNamespace(namespace string) (uint32, error)
+	CountAIBackendReferences(serviceID string) (uint32, error)
 }
 
 // ===== MCP Server Store =====

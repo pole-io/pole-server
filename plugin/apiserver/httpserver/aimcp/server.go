@@ -241,6 +241,14 @@ func (h *HTTPServer) addDefaultAccess(ws *restful.WebService) {
 	ws.Route(ws.PUT("/servers").To(h.UpdateMCPServers))
 	ws.Route(ws.POST("/servers/delete").To(h.DeleteMCPServers))
 	ws.Route(ws.GET("/server/tools").To(h.ListMCPServerTools))
+	ws.Route(ws.GET("/definitions").To(h.ListMCPServerDefinitions))
+	ws.Route(ws.POST("/definitions").To(h.CreateMCPServerDefinitions))
+	ws.Route(ws.PUT("/definitions").To(h.UpdateMCPServerDefinitions))
+	ws.Route(ws.POST("/definitions/delete").To(h.DeleteMCPServerDefinitions))
+	ws.Route(ws.GET("/definitions/environments").To(h.ListMCPServerDefinitionEnvironments))
+	ws.Route(ws.GET("/definitions/environment-binding").To(h.GetMCPServerDefinitionBinding))
+	ws.Route(ws.POST("/definitions/environment-bindings").To(h.BindMCPServerDefinitionEnvironment))
+	ws.Route(ws.POST("/definitions/environment-bindings/delete").To(h.UnbindMCPServerDefinitionEnvironment))
 
 	// MCP sse handler
 	ws.Route(ws.GET(sseEp).To(func(req *restful.Request, rsp *restful.Response) {

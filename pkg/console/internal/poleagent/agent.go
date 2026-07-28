@@ -81,6 +81,7 @@ type ResourceContext struct {
 type TurnRequest struct {
 	Message         string                `json:"message"`
 	History         []ConversationMessage `json:"history,omitempty"`
+	NamespaceScope  NamespaceScope        `json:"namespaceScope"`
 	ResourceContext *ResourceContext      `json:"resourceContext,omitempty"`
 }
 
@@ -243,6 +244,10 @@ func (a *Agent) RunTurn(ctx context.Context, actor agentworkbench.Actor, req Tur
 	if err != nil {
 		return nil, err
 	}
+	if err := validateNamespaceScopeAccess(ctx, toolSession, remoteTools, req.NamespaceScope); err != nil {
+		return nil, err
+	}
+	remoteTools = namespaceScopedRemoteTools(remoteTools)
 	toolDefinitions, err := buildToolCatalog(remoteTools)
 	if err != nil {
 		return nil, err
@@ -303,14 +308,32 @@ func (a *Agent) RunTurn(ctx context.Context, actor agentworkbench.Actor, req Tur
 			if err != nil {
 				return nil, err
 			}
+			if err := enforceToolNamespace(req.NamespaceScope, arguments); err != nil {
+				return nil, runtimeError(CategoryToolRejected, 403007,
+					err.Error(), false, err)
+			}
+			scopedTraceArguments, err := json.Marshal(arguments)
+			if err != nil {
+				return nil, runtimeError(CategoryValidationFailed, 422004,
+					"encode scoped tool arguments", false, err)
+			}
 			trace := ToolTrace{
 				ID:        call.ID,
 				Name:      call.Name,
-				Arguments: append(json.RawMessage(nil), call.Arguments...),
+				Arguments: scopedTraceArguments,
 			}
 			var toolResult ToolResult
 			if call.Name == PrepareConfigFileUpdateTool {
-				proposal, err := a.prepareConfigFile(ctx, actor, call.Arguments)
+				if !req.NamespaceScope.IsSingle() {
+					return nil, runtimeError(CategoryToolRejected, 403008,
+						"change proposals require a single namespace scope", false, nil)
+				}
+				scopedArguments, marshalErr := json.Marshal(arguments)
+				if marshalErr != nil {
+					return nil, runtimeError(CategoryValidationFailed, 422005,
+						"encode scoped proposal arguments", false, marshalErr)
+				}
+				proposal, err := a.prepareConfigFile(ctx, actor, scopedArguments)
 				if err != nil {
 					trace.Status = ToolTraceFailed
 					trace.Summary = "配置文件临时视图生成失败"
@@ -393,6 +416,15 @@ func safeRuntimeProbeReason(err error, fallback string) string {
 }
 
 func (a *Agent) initialMessages(req TurnRequest) ([]Message, error) {
+	if err := req.NamespaceScope.Validate(); err != nil {
+		return nil, runtimeError(CategoryInvalidRequest, 400007,
+			"invalid namespace scope: "+err.Error(), false, ErrInvalidRequest)
+	}
+	if req.ResourceContext != nil &&
+		!req.NamespaceScope.Contains(req.ResourceContext.Namespace) {
+		return nil, runtimeError(CategoryInvalidRequest, 400008,
+			"resource context namespace is outside the turn scope", false, ErrInvalidRequest)
+	}
 	current := strings.TrimSpace(req.Message)
 	if current == "" || len(current) > a.options.MaxMessageBytes {
 		return nil, runtimeError(CategoryInvalidRequest, 400002,
@@ -407,6 +439,13 @@ func (a *Agent) initialMessages(req TurnRequest) ([]Message, error) {
 		history = history[len(history)-a.options.MaxHistoryMessages:]
 	}
 	messages := []Message{{Role: RoleSystem, Content: prompt}}
+	scope, err := json.Marshal(req.NamespaceScope)
+	if err != nil {
+		return nil, runtimeError(CategoryInvalidRequest, 400009,
+			"invalid namespace scope", false, err)
+	}
+	messages[0].Content += "\n\n<namespace_scope trust=\"server-validated\">\n" +
+		string(scope) + "\n</namespace_scope>"
 	totalBytes := len(current)
 	for _, item := range history {
 		if item.Role != RoleUser && item.Role != RoleAssistant {

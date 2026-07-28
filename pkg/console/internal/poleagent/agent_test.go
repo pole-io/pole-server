@@ -14,6 +14,22 @@ import (
 
 type modelFunc func(context.Context, ModelRequest) (ModelResponse, error)
 
+func singleScope(namespace string) NamespaceScope {
+	return NamespaceScope{Mode: NamespaceScopeSingle, Namespaces: []string{namespace}}
+}
+
+func namespaceTool(name string) ToolDefinition {
+	return ToolDefinition{
+		Name: name,
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"namespace": map[string]any{"type": "string"},
+			},
+		},
+	}
+}
+
 func (f modelFunc) Complete(ctx context.Context, req ModelRequest) (ModelResponse, error) {
 	return f(ctx, req)
 }
@@ -31,20 +47,45 @@ func (f *fakeToolPort) Open(context.Context, agentworkbench.Actor) (ToolSession,
 }
 
 type fakeToolSession struct {
-	tools     []ToolDefinition
-	listErr   error
-	result    ToolResult
-	callErr   error
-	callCount int
-	closed    bool
+	tools              []ToolDefinition
+	listErr            error
+	result             ToolResult
+	callErr            error
+	callCount          int
+	arguments          map[string]any
+	businessNamespaces []string
+	closed             bool
 }
 
 func (f *fakeToolSession) ListTools(context.Context) ([]ToolDefinition, error) {
-	return f.tools, f.listErr
+	tools := append([]ToolDefinition(nil), f.tools...)
+	if _, found := findTool(tools, namespaceDirectoryTool); !found {
+		tools = append(tools, ToolDefinition{
+			Name:        namespaceDirectoryTool,
+			InputSchema: map[string]any{"type": "object", "properties": map[string]any{}},
+		})
+	}
+	return tools, f.listErr
 }
 
-func (f *fakeToolSession) CallTool(context.Context, string, map[string]any) (ToolResult, error) {
+func (f *fakeToolSession) CallTool(_ context.Context, name string, arguments map[string]any) (ToolResult, error) {
+	if name == namespaceDirectoryTool {
+		namespaces := f.businessNamespaces
+		if len(namespaces) == 0 {
+			namespaces = []string{"default", "development", "production"}
+		}
+		data := make([]map[string]any, 0, len(namespaces))
+		for _, namespace := range namespaces {
+			data = append(data, map[string]any{
+				"name": namespace,
+				"kind": "NAMESPACE_KIND_BUSINESS",
+			})
+		}
+		encoded, _ := json.Marshal(map[string]any{"data": data})
+		return ToolResult{Content: string(encoded)}, nil
+	}
 	f.callCount++
+	f.arguments = arguments
 	return f.result, f.callErr
 }
 
@@ -103,17 +144,13 @@ func TestAgentRunsModelThenPreparesPreviewWithoutConfirmOrPublishTool(t *testing
 			RequestID: "model-request",
 		}, nil
 	})
-	session := &fakeToolSession{tools: []ToolDefinition{{
-		Name: "list_namespaces",
-		InputSchema: map[string]any{
-			"type": "object",
-		},
-	}}}
+	session := &fakeToolSession{tools: []ToolDefinition{namespaceTool("get_config_file")}}
 	kernel := &fakeApprovalKernel{}
 	agent := readyAgent(model, &fakeToolPort{session: session}, kernel)
 
 	result, err := agent.RunTurn(context.Background(), testActor(), TurnRequest{
-		Message: "把超时改成 5 秒",
+		Message:        "把超时改成 5 秒",
+		NamespaceScope: singleScope("default"),
 		History: []ConversationMessage{
 			{Role: RoleUser, Content: "我们处理 orders 配置"},
 			{Role: RoleAssistant, Content: "好的"},
@@ -135,20 +172,115 @@ func TestAgentRunsModelThenPreparesPreviewWithoutConfirmOrPublishTool(t *testing
 	require.True(t, session.closed)
 }
 
+func TestAgentRejectsMissingNamespaceScope(t *testing.T) {
+	agent := readyAgent(modelFunc(func(context.Context, ModelRequest) (ModelResponse, error) {
+		return ModelResponse{}, nil
+	}), &fakeToolPort{session: &fakeToolSession{}}, &fakeApprovalKernel{})
+
+	_, err := agent.RunTurn(context.Background(), testActor(), TurnRequest{Message: "查询配置"})
+	var runtimeErr *RuntimeError
+	require.ErrorAs(t, err, &runtimeErr)
+	require.Equal(t, CategoryInvalidRequest, runtimeErr.Category)
+	require.Equal(t, uint32(400007), runtimeErr.Code)
+}
+
+func TestAgentRejectsResourceOutsideNamespaceScope(t *testing.T) {
+	agent := readyAgent(modelFunc(func(context.Context, ModelRequest) (ModelResponse, error) {
+		return ModelResponse{}, nil
+	}), &fakeToolPort{session: &fakeToolSession{}}, &fakeApprovalKernel{})
+
+	_, err := agent.RunTurn(context.Background(), testActor(), TurnRequest{
+		Message:        "查询配置",
+		NamespaceScope: singleScope("development"),
+		ResourceContext: &ResourceContext{
+			Kind: "config.file", Namespace: "production", Group: "app", Name: "config.yaml",
+		},
+	})
+	var runtimeErr *RuntimeError
+	require.ErrorAs(t, err, &runtimeErr)
+	require.Equal(t, CategoryInvalidRequest, runtimeErr.Category)
+	require.Equal(t, uint32(400008), runtimeErr.Code)
+}
+
+func TestAgentRejectsInaccessibleNamespaceScope(t *testing.T) {
+	session := &fakeToolSession{businessNamespaces: []string{"development"}}
+	agent := readyAgent(modelFunc(func(context.Context, ModelRequest) (ModelResponse, error) {
+		t.Fatal("model must not receive an unauthorized namespace scope")
+		return ModelResponse{}, nil
+	}), &fakeToolPort{session: session}, &fakeApprovalKernel{})
+
+	_, err := agent.RunTurn(context.Background(), testActor(), TurnRequest{
+		Message:        "查询生产环境",
+		NamespaceScope: singleScope("production"),
+	})
+
+	var runtimeErr *RuntimeError
+	require.ErrorAs(t, err, &runtimeErr)
+	require.Equal(t, CategoryToolRejected, runtimeErr.Category)
+	require.Equal(t, uint32(403009), runtimeErr.Code)
+}
+
+func TestAgentRejectsSystemNamespaceScope(t *testing.T) {
+	session := &fakeToolSession{businessNamespaces: []string{"pole-system"}}
+	agent := readyAgent(modelFunc(func(context.Context, ModelRequest) (ModelResponse, error) {
+		t.Fatal("model must not receive a system namespace scope")
+		return ModelResponse{}, nil
+	}), &fakeToolPort{session: session}, &fakeApprovalKernel{})
+
+	_, err := agent.RunTurn(context.Background(), testActor(), TurnRequest{
+		Message:        "查询系统空间",
+		NamespaceScope: singleScope("pole-system"),
+	})
+
+	var runtimeErr *RuntimeError
+	require.ErrorAs(t, err, &runtimeErr)
+	require.Equal(t, uint32(403009), runtimeErr.Code)
+}
+
+func TestAgentRejectsProposalInCrossEnvironmentScope(t *testing.T) {
+	model := modelFunc(func(context.Context, ModelRequest) (ModelResponse, error) {
+		return ModelResponse{Message: Message{
+			Role: RoleAssistant,
+			ToolCalls: []ToolCall{{
+				ID:   "call-1",
+				Name: PrepareConfigFileUpdateTool,
+				Arguments: json.RawMessage(`{
+					"namespace":"development",
+					"group":"app",
+					"name":"config.yaml",
+					"desiredContent":"enabled: true"
+				}`),
+			}},
+		}}, nil
+	})
+	kernel := &fakeApprovalKernel{}
+	agent := readyAgent(model, &fakeToolPort{session: &fakeToolSession{}}, kernel)
+
+	_, err := agent.RunTurn(context.Background(), testActor(), TurnRequest{
+		Message: "比较后修改开发环境",
+		NamespaceScope: NamespaceScope{
+			Mode:       NamespaceScopeCrossEnvironment,
+			Namespaces: []string{"development", "production"},
+		},
+	})
+	var runtimeErr *RuntimeError
+	require.ErrorAs(t, err, &runtimeErr)
+	require.Equal(t, CategoryToolRejected, runtimeErr.Category)
+	require.Equal(t, uint32(403008), runtimeErr.Code)
+	require.Zero(t, kernel.calls)
+}
+
 func TestAgentRejectsWriteLikeRemoteMCPTool(t *testing.T) {
 	modelCalls := 0
 	model := modelFunc(func(context.Context, ModelRequest) (ModelResponse, error) {
 		modelCalls++
 		return ModelResponse{}, nil
 	})
-	session := &fakeToolSession{tools: []ToolDefinition{{
-		Name: "publish_config_release",
-		InputSchema: map[string]any{
-			"type": "object",
-		},
-	}}}
+	session := &fakeToolSession{tools: []ToolDefinition{namespaceTool("publish_config_release")}}
 	agent := readyAgent(model, &fakeToolPort{session: session}, &fakeApprovalKernel{})
-	_, err := agent.RunTurn(context.Background(), testActor(), TurnRequest{Message: "发布配置"})
+	_, err := agent.RunTurn(context.Background(), testActor(), TurnRequest{
+		Message: "发布配置", NamespaceScope: singleScope("default"),
+	})
 	var runtimeErr *RuntimeError
 	require.ErrorAs(t, err, &runtimeErr)
 	require.Equal(t, CategoryToolRejected, runtimeErr.Category)
@@ -163,18 +295,13 @@ func TestAgentBoundsToolLoop(t *testing.T) {
 			Role: RoleAssistant,
 			ToolCalls: []ToolCall{{
 				ID:        "call",
-				Name:      "list_namespaces",
+				Name:      "get_config_file",
 				Arguments: json.RawMessage(`{}`),
 			}},
 		}}, nil
 	})
 	session := &fakeToolSession{
-		tools: []ToolDefinition{{
-			Name: "list_namespaces",
-			InputSchema: map[string]any{
-				"type": "object",
-			},
-		}},
+		tools:  []ToolDefinition{namespaceTool("get_config_file")},
 		result: ToolResult{Content: `{"namespaces":[]}`},
 	}
 	agent := New(Options{
@@ -183,7 +310,9 @@ func TestAgentBoundsToolLoop(t *testing.T) {
 		Model:         "test-model",
 		MaxToolRounds: 2,
 	}, model, &fakeToolPort{session: session}, &fakeApprovalKernel{})
-	_, err := agent.RunTurn(context.Background(), testActor(), TurnRequest{Message: "一直查"})
+	_, err := agent.RunTurn(context.Background(), testActor(), TurnRequest{
+		Message: "一直查", NamespaceScope: singleScope("default"),
+	})
 	var runtimeErr *RuntimeError
 	require.ErrorAs(t, err, &runtimeErr)
 	require.Equal(t, CategoryToolLoopLimit, runtimeErr.Category)
@@ -200,7 +329,7 @@ func TestAgentMarksMCPBusinessErrorTraceFailed(t *testing.T) {
 				Role: RoleAssistant,
 				ToolCalls: []ToolCall{{
 					ID:        "call-1",
-					Name:      "list_namespaces",
+					Name:      "get_config_file",
 					Arguments: json.RawMessage(`{}`),
 				}},
 			}}, nil
@@ -208,20 +337,18 @@ func TestAgentMarksMCPBusinessErrorTraceFailed(t *testing.T) {
 		return ModelResponse{Message: Message{Role: RoleAssistant, Content: "查询失败，请检查权限。"}}, nil
 	})
 	session := &fakeToolSession{
-		tools: []ToolDefinition{{
-			Name: "list_namespaces",
-			InputSchema: map[string]any{
-				"type": "object",
-			},
-		}},
+		tools:  []ToolDefinition{namespaceTool("get_config_file")},
 		result: ToolResult{Content: "permission denied", IsError: true},
 	}
 	agent := readyAgent(model, &fakeToolPort{session: session}, &fakeApprovalKernel{})
-	result, err := agent.RunTurn(context.Background(), testActor(), TurnRequest{Message: "查命名空间"})
+	result, err := agent.RunTurn(context.Background(), testActor(), TurnRequest{
+		Message: "查命名空间", NamespaceScope: singleScope("default"),
+	})
 	require.NoError(t, err)
 	require.Len(t, result.Tools, 1)
 	require.Equal(t, ToolTraceFailed, result.Tools[0].Status)
 	require.True(t, result.Tools[0].IsError)
+	require.Equal(t, "default", session.arguments["namespace"])
 }
 
 func TestAgentRejectsUnknownProposalFields(t *testing.T) {
@@ -243,7 +370,9 @@ func TestAgentRejectsUnknownProposalFields(t *testing.T) {
 	})
 	kernel := &fakeApprovalKernel{}
 	agent := readyAgent(model, &fakeToolPort{session: &fakeToolSession{}}, kernel)
-	_, err := agent.RunTurn(context.Background(), testActor(), TurnRequest{Message: "修改并发布"})
+	_, err := agent.RunTurn(context.Background(), testActor(), TurnRequest{
+		Message: "修改并发布", NamespaceScope: singleScope("default"),
+	})
 	var runtimeErr *RuntimeError
 	require.ErrorAs(t, err, &runtimeErr)
 	require.Equal(t, CategoryValidationFailed, runtimeErr.Category)

@@ -1,8 +1,8 @@
 ---
 title: 核心业务实体
 tags: [business, domain-model]
-links: [terminology, business-rules, namespace, service-discovery, config-center, governance-rules, ai-features, auth-system, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding, adr-system-namespace-kind]
-updated: 2026-07-28
+links: [terminology, business-rules, namespace, service-discovery, config-center, governance-rules, ai-features, auth-system, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding, adr-system-namespace-kind, adr-ai-resource-environment-binding]
+updated: 2026-07-29
 sources: 3
 ---
 
@@ -21,7 +21,10 @@ sources: 3
 | Governance Rule | [[governance-rules]] | 针对服务调用的类型化期望策略，支持草稿、发布和回滚 |
 | Service Policy Bundle | [[adr-rpc-first-governance-scope]] | 面向某类服务数据面编译并原子应用的规则发布集合 |
 | Enforcement Point | [[adr-rpc-first-governance-scope]] | 执行规则并返回能力档案与应用回执的 SDK、Sidecar 或 Gateway |
-| MCP Server | [[ai-features]] | AI 原生能力中的 MCP 服务注册实体 |
+| MCP Definition | [[adr-ai-resource-environment-binding]] | 控制面跨环境 MCP 聚合根，由稳定 ID 标识 |
+| MCP Deployment | [[ai-features]] | Namespace 中的 MCP Server 环境实例 |
+| Agent Definition | [[adr-ai-resource-environment-binding]] | 控制面跨环境 Agent 聚合根，由稳定 ID 标识 |
+| Agent Deployment | [[ai-features]] | Namespace 中的 A2A Agent 环境实例 |
 | System Role | [[auth-system]] | 固定权限集合，只维护与 User、UserGroup 的成员关系 |
 
 实体之间的核心关系：
@@ -53,6 +56,14 @@ Logical Service
   -> Service Environment Binding
     -> Namespace + Runtime Service Name
 
+MCP Definition
+  -> MCP Environment Binding
+    -> Namespace + MCP Deployment
+
+Agent Definition
+  -> Agent Environment Binding
+    -> Namespace + Agent Deployment
+
 User -> System Role
 User -> UserGroup -> System Role
 System Role -> Immutable Policy
@@ -74,3 +85,4 @@ System Role -> Immutable Policy
 - [[adr-service-contract-reporting-and-visualization]]
 - [[adr-logical-service-environment-binding]]
 - [[adr-system-namespace-kind]]
+- [[adr-ai-resource-environment-binding]]

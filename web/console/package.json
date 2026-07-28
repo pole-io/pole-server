@@ -41,6 +41,7 @@
     "test:governance-rule-namespace": "node scripts/verify-governance-rule-namespace.mjs",
     "test:no-tdesign": "node scripts/verify-no-tdesign.mjs",
     "test:agent-workbench": "node scripts/verify-agent-workbench-contract.mjs",
+    "test:ai-environment-binding": "node scripts/verify-ai-environment-binding-contract.mjs",
     "test:system-configuration-admin-gate": "node scripts/verify-system-configuration-admin-gate.mjs",
     "test:system-role-directory": "node scripts/verify-system-role-directory.mjs",
     "test:system-configuration-error-state": "node scripts/verify-system-configuration-error-state.mjs",

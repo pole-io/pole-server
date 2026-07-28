@@ -166,11 +166,15 @@ func (a *A2AAdapter) Send(ctx context.Context, actor agentworkbench.Actor,
 	if message == "" {
 		return nil, &A2AProtocolError{Code: -32602, Message: "A2A message requires a non-empty text part"}
 	}
+	scope, err := namespaceScopeFromA2AMetadata(request.Params.Message.Metadata)
+	if err != nil {
+		return nil, &A2AProtocolError{Code: -32602, Message: err.Error()}
+	}
 	runner := a.runner()
 	if runner == nil {
 		return nil, errors.New("Pole Agent runtime is unavailable")
 	}
-	result, err := runner.RunTurn(ctx, actor, TurnRequest{Message: message})
+	result, err := runner.RunTurn(ctx, actor, TurnRequest{Message: message, NamespaceScope: scope})
 	if err != nil {
 		return nil, err
 	}
@@ -192,6 +196,25 @@ func (a *A2AAdapter) Send(ctx context.Context, actor agentworkbench.Actor,
 			},
 		},
 	}, nil
+}
+
+func namespaceScopeFromA2AMetadata(metadata map[string]any) (NamespaceScope, error) {
+	raw, ok := metadata["namespaceScope"]
+	if !ok {
+		return NamespaceScope{}, errors.New("A2A message metadata.namespaceScope is required")
+	}
+	encoded, err := json.Marshal(raw)
+	if err != nil {
+		return NamespaceScope{}, errors.New("A2A message namespaceScope is invalid")
+	}
+	var scope NamespaceScope
+	if err := json.Unmarshal(encoded, &scope); err != nil {
+		return NamespaceScope{}, errors.New("A2A message namespaceScope is invalid")
+	}
+	if err := scope.Validate(); err != nil {
+		return NamespaceScope{}, fmt.Errorf("A2A message namespaceScope is invalid: %w", err)
+	}
+	return scope, nil
 }
 
 func (r *A2ARequest) UnmarshalJSON(data []byte) error {
