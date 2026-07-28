@@ -107,6 +107,27 @@ func TestCreateNamespaceRejectsSystemKindAndReservedName(t *testing.T) {
 	}
 }
 
+func TestCreateNamespaceIfAbsentAcceptsExistingSystemNamespace(t *testing.T) {
+	controller := gomock.NewController(t)
+	cacheManager := cachemock.NewMockCacheManager(controller)
+	namespaceCache := cachemock.NewMockNamespaceCache(controller)
+	server := &Server{caches: cacheManager}
+
+	cacheManager.EXPECT().Namespace().Return(namespaceCache)
+	namespaceCache.EXPECT().GetNamespace(SystemNamespace).Return(&types.Namespace{
+		Name: SystemNamespace,
+		Kind: apimodel.NamespaceKind_NAMESPACE_KIND_SYSTEM,
+	})
+
+	name, response := server.CreateNamespaceIfAbsent(context.Background(), &apimodel.Namespace{
+		Name: SystemNamespace,
+	})
+
+	require.Equal(t, SystemNamespace, name)
+	require.NotNil(t, response)
+	require.Equal(t, uint32(apimodel.Code_ExecuteSuccess), response.GetCode())
+}
+
 func TestCreateNamespacePersistsBusinessKindByDefault(t *testing.T) {
 	controller := gomock.NewController(t)
 	storage := storemock.NewMockStore(controller)

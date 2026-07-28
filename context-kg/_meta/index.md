@@ -78,6 +78,7 @@ sources: 0
 - [[adr-pole-self-management-control-loop]] — Pole 自身 MCP/A2A 注册、Prompt 自动应用与系统身份协调 | adr, ai, mcp, a2a, agent, prompt, automation
 - [[adr-local-pebble-protobuf-value-cache]] — Pebble 本地 protobuf bytes 缓存 | adr, cache, pebble, protobuf, performance
 - [[adr-unified-process-mode-and-limiter-integration]] — 单一制品、多进程模式与 Limiter 独立部署边界 | adr, runtime, limiter, deploy, process
+- [[adr-console-limiter-source-layout-and-embedded-web]] — Console/Limiter 源码归属与前端嵌入制品 | adr, architecture, console, limiter, frontend, embed, build
 - [[adr-logical-service-environment-binding]] — 控制面逻辑服务与环境服务显式关联 | adr, service, namespace, domain-model, console
 - [[adr-system-namespace-kind]] — 业务环境与 Pole 内部系统空间类型化 | adr, namespace, environment, system, console
 

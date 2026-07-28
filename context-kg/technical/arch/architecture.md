@@ -1,8 +1,8 @@
 ---
 title: 架构 — 分层设计与插件系统
 tags: [architecture, design]
-links: [storage, cache-layer, auth-system, patterns, adr-pole-self-management-control-loop, adr-unified-process-mode-and-limiter-integration]
-updated: 2026-07-28
+links: [storage, cache-layer, auth-system, patterns, adr-pole-self-management-control-loop, adr-unified-process-mode-and-limiter-integration, adr-console-limiter-source-layout-and-embedded-web]
+updated: 2026-07-29
 sources: 5
 ---
 
@@ -127,6 +127,8 @@ pkg/namespace/interceptor/auth/ — 命名空间操作的认证链
 
 进程装配已经收敛为 Control Plane、Console 与 Limiter 三个显式运行 Module，由 mode Profile 和统一 Supervisor 管理 readiness、失败回滚与逆序优雅停机。兼容期 `all` 保持 Control Plane + Console，`full` 启动三个模块；设计与生产部署边界见 [[adr-unified-process-mode-and-limiter-integration]]。
 
+Console 与 Limiter 的目标源码归属进一步收敛为 `pkg/console`、`pkg/limiter`；Console 前端源码独立放在 `web/console`，但继续由统一 Go 制品流程构建并通过 `go:embed` 进入二进制。本地开发保留 Vite HMR。完整迁移边界见 [[adr-console-limiter-source-layout-and-embedded-web]]。
+
 ## Batch Controller
 
 `pkg/service/batch/` 提供高吞吐量批处理能力：
@@ -156,3 +158,4 @@ HTTP POST /naming/v1/instances
 - [[patterns]]
 - [[adr-pole-self-management-control-loop]]
 - [[adr-unified-process-mode-and-limiter-integration]]
+- [[adr-console-limiter-source-layout-and-embedded-web]]

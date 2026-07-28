@@ -1215,6 +1215,17 @@ sources: 0
   - 建立统一 Supervisor，提供同步 listener readiness、部分启动回滚、运行期 fail-fast 和逆序优雅停机。
   - 示例默认只开放内部 gRPC `8101`，HTTP 运维端口保持关闭；生产仍推荐同镜像、分 workload 部署。
 
+## [2026-07-29] ingest | Console、Limiter 源码归属与前端嵌入制品
+
+- 新增页面：adr-console-limiter-source-layout-and-embedded-web。
+- 更新页面：architecture、adr-unified-process-mode-and-limiter-integration、index、todo、lessons。
+- 变更摘要：
+  - Console Go 网关与 Limiter 统一归入 `pkg/console`、`pkg/limiter`，内部实现由局部 `internal` 保护。
+  - Console 前端源码迁入 `web/console`，不建立独立版本或发布生命周期。
+  - Release/Test 由统一构建流程生成前端产物并复制到 Go 包生成目录，通过 `go:embed` 进入单文件二进制。
+  - 本地开发保留 Vite dev server 与 HMR，正式制品不再依赖外部 `webPath`。
+  - bootstrap 只依赖两个 Module 的根 Interface；共享 A2A/Agent 类型上提到稳定契约层。
+
 ## 相关页面
 
 - [[index]]

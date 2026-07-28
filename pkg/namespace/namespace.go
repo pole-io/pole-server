@@ -64,16 +64,22 @@ func (s *Server) CreateNamespaces(ctx context.Context, req []*apimodel.Namespace
 
 // CreateNamespaceIfAbsent 创建命名空间，如果不存在
 func (s *Server) CreateNamespaceIfAbsent(ctx context.Context, req *apimodel.Namespace) (string, *apimodel.Response) {
-	if resp := checkCreateNamespace(req); resp != nil {
+	if resp := checkNamespaceRequest(req); resp != nil {
 		return "", resp
 	}
 	// 注释：字段访问改动 - GetName()直接返回string而非*wrapperspb.StringValue，去掉.GetValue()调用
 	name := req.GetName()
 	val, err := s.loadNamespace(name)
 	if err != nil {
-		return name, nil
+		return "", api.NewNamespaceResponse(storeapi.StoreCode2APICode(err), req)
 	}
-	if val == "" && !s.allowAutoCreate() {
+	if val != "" {
+		return name, api.NewNamespaceResponse(apimodel.Code_ExecuteSuccess, req)
+	}
+	if resp := checkCreateNamespace(req); resp != nil {
+		return "", resp
+	}
+	if !s.allowAutoCreate() {
 		ctxVal := ctx.Value(utils.ContextKeyAutoCreateNamespace{})
 		if ctxVal == nil || ctxVal.(bool) != true {
 			// 注释：错误码改动 - Code_NotFoundNamespace已被移除，使用通用的Code_NotFoundResource
@@ -429,13 +435,8 @@ func checkBatchNamespace(req []*apimodel.Namespace) *apimodel.BatchWriteResponse
 
 // 检查创建命名空间请求参数
 func checkCreateNamespace(req *apimodel.Namespace) *apimodel.Response {
-	if req == nil {
-		return api.NewNamespaceResponse(apimodel.Code_EmptyRequest, req)
-	}
-
-	if err := valid.CheckResourceName(req.GetName()); err != nil {
-		// 注释：错误码改动 - InvalidNamespaceName已被移除，使用通用的InvalidParameter错误码
-		return api.NewNamespaceResponse(apimodel.Code_InvalidParameter, req)
+	if response := checkNamespaceRequest(req); response != nil {
+		return response
 	}
 	if req.GetName() == SystemNamespace ||
 		req.GetKind() != apimodel.NamespaceKind_NAMESPACE_KIND_BUSINESS {
@@ -444,6 +445,18 @@ func checkCreateNamespace(req *apimodel.Namespace) *apimodel.Response {
 		return response
 	}
 
+	return nil
+}
+
+func checkNamespaceRequest(req *apimodel.Namespace) *apimodel.Response {
+	if req == nil {
+		return api.NewNamespaceResponse(apimodel.Code_EmptyRequest, req)
+	}
+
+	if err := valid.CheckResourceName(req.GetName()); err != nil {
+		// 注释：错误码改动 - InvalidNamespaceName已被移除，使用通用的InvalidParameter错误码
+		return api.NewNamespaceResponse(apimodel.Code_InvalidParameter, req)
+	}
 	return nil
 }
 

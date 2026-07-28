@@ -1,8 +1,8 @@
 ---
 title: 统一进程模式与 Pole Limiter 集成
 tags: [adr, runtime, limiter, deploy, process]
-links: [architecture, configuration]
-updated: 2026-07-28
+links: [architecture, configuration, adr-console-limiter-source-layout-and-embedded-web]
+updated: 2026-07-29
 sources: 14
 ---
 
@@ -165,6 +165,8 @@ Limiter 是维护 gRPC 双向长流和内存计数器的有状态数据面，不
 - Limiter gRPC/HTTP listener 同步绑定后才报告启动成功；默认示例只启用内部 gRPC `8101`；
 - Limiter statistics、core、registry 和 API Server 状态均绑定到实例生命周期，不再依赖迁移前的生命周期全局单例。
 
+以上为当前实现落点。后续源码归属将把 Console Go Module 与 Limiter 分别迁入 `pkg/console`、`pkg/limiter`，并将 Console 前端迁入 `web/console` 后通过 `go:embed` 纳入同一制品；详见 [[adr-console-limiter-source-layout-and-embedded-web]]。
+
 安全边界：
 
 - `8100` 当前包含无鉴权的 pprof/maintain 能力，目标配置应默认关闭，或只监听 loopback/管理网络；
@@ -197,3 +199,4 @@ Limiter 是维护 gRPC 双向长流和内存计数器的有状态数据面，不
 
 - [[architecture]]
 - [[configuration]]
+- [[adr-console-limiter-source-layout-and-embedded-web]]

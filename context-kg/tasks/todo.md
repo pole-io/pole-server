@@ -8,6 +8,44 @@ sources: 0
 
 # 任务计划与 Review
 
+## Console 与 Limiter 源码归属评估（2026-07-28）
+
+目标：判断 `console/`、`limiter/` 是否应收拢到 `pkg/`，区分部署模块、领域模块和 Go 包可见性，给出符合当前统一制品架构的目录建议。
+
+- [x] 记录用户对现有布局归属的纠正。
+- [x] 核对两个模块的调用者、依赖方向、独立入口和外部复用需求。
+- [x] 比较顶层、`pkg/`、`internal/` 三种 seam 放置方式。
+- [x] 通过递进提问确认目录调整真正要解决的问题。
+- [x] 形成推荐目录与迁移边界，并补充 Review。
+
+### Review
+
+- 确认目标布局为 `pkg/console`、`pkg/limiter` 与 `web/console`；独立运行和部署仍由 mode/Profile 表达，不再通过顶层源码目录表达。
+- Console 与 Limiter 的外部 Interface 均收敛到根包的 `Config + Start → Running`，bootstrap 不再穿透协议 Adapter、内部配置或 Pole Agent Implementation。
+- Console 前端没有独立发布生命周期。Release/Test 由统一 Go 制品流程执行 Node 构建、复制产物到 Go 包生成目录并用 `go:embed` 打入二进制；正式运行移除外部 `webPath`。
+- 本地开发保留 Vite dev server、HMR 和 API 代理，不要求每次前端修改后重新编译 Go。
+- 长期方案已归档到 `adr-console-limiter-source-layout-and-embedded-web`，并同步 architecture、统一进程 ADR、index 和 log；本轮只完成设计归档，未实施源码迁移。
+
+## 当前项目布局梳理（2026-07-28）
+
+目标：基于当前工作树、知识库和实际入口代码，整理仓库目录职责、核心依赖方向、启动模式与典型请求链，形成便于评审的项目地图。
+
+- [x] 回顾 lessons、知识库索引、工作树状态和 CodeGraph 可用性。
+- [x] 写明梳理范围、证据来源和验证步骤。
+- [x] 核对顶层目录及关键子目录职责。
+- [x] 核对启动入口、运行模式、模块生命周期与插件注册链。
+- [x] 核对 API、业务服务、缓存、存储和 Console 的依赖方向。
+- [x] 形成中文项目布局总结并补充 Review。
+
+### Review
+
+- 当前仓库是单 Go Module、单制品、多运行模块布局：`control-plane`、`limiter-server`、`console` 由 Profile 和 Supervisor 组合；`all` 仍是 Control Plane + Console，`full` 才启动三者。
+- 核心职责可按 `apis` 抽象契约、`pkg` 业务实现、`plugin` 外部适配、`bootstrap` 组合根理解；这是一张职责图，不是严格的 Go import 单向分层。
+- 运行时主链为 API Adapter → 带拦截器的业务门面 → 写 Store / 读 Cache；MySQL 是事实源，领域缓存通过增量轮询最终一致。Console 大部分 API 反向代理到 Control Plane，但观测查询、Agent 和系统设置包含本地能力。
+- 根 `plugin.go` 的 blank import 决定 Control Plane 制品实际装配；通用插件、API Server、Store、业务拦截器和 Cache 各自拥有注册表，不是一个统一 registry。
+- `context-kg/technical/arch/overview.md` 的目录树和启动流程已落后于当前统一模块编排；`deploy/conf/pole-apiserver.yaml` 的 `config-grpc` 当前无对应 Slot，启动时会告警并跳过，建议后续单独清理或补实现。
+- 本次只追加任务记录，未改动用户已有的 `pkg/namespace/namespace.go` 与测试文件。Supervisor 和 Limiter 定向测试通过；配置包测试被仓库现有 `ugorji/go/codec` 双模块歧义阻断。
+
 ## pole-limiter-server 统一进程模式实现（2026-07-28）
 
 目标：按 `adr-unified-process-mode-and-limiter-integration` 将 Limiter 迁入统一源码与制品，新增 `control-plane`、`limiter-server` 和兼容期 `full` 模式，建立可验证的生命周期、readiness、失败回滚和优雅停机。
@@ -11125,3 +11163,24 @@ dev/test/prod 业务环境；通过类型化协议、后端不变量和 Console 
   `pole-control-plane-7d547dbfd7-tjfkv` Ready、0 restart，Namespace 深链返回 HTTP 200。
 - 隔离 Chrome 在 1440×1000 视口验证：业务页签只有一张业务表且不出现 `pole-system`；
   系统页签只有一张系统表且不出现业务行，五个系统维护入口全部可见，新建业务环境入口隐藏。
+
+## System Namespace IfAbsent 回归修复与重部署（2026-07-28）
+
+目标：修复服务注册在已预置 `pole-system` 中自动确保 Namespace 时被错误拒绝的问题，并恢复
+`pole-system/pole.controller.orbstack` 的 controller 自注册。
+
+- [x] 为已存在 `pole-system` 的 `CreateNamespaceIfAbsent` 建立红灯回归测试。
+- [x] 调整校验顺序：已存在 Namespace 直接成功，仅在实际创建时执行系统空间保护校验。
+- [x] 运行 namespace/service 专项测试、后端全量测试、构建与差异检查。
+- [x] 构建 arm64 control-plane 镜像并滚动部署到 Orbstack。
+- [x] 重新部署 controller namespace 修复镜像。
+- [x] 验证两个工作负载健康、`pole-system` 新实例健康且旧注册没有错误残留。
+
+### Review
+
+- 红灯复现：`GOTOOLCHAIN=local go test ./pkg/namespace -run '^TestCreateNamespaceIfAbsentAcceptsExistingSystemNamespace$' -count=1 -v` 返回空 namespace，且缓存查询 mock 未被调用，证明系统 namespace 创建保护在存在性查询前错误短路。
+- 修复结果：`CreateNamespaceIfAbsent` 先校验基础请求并查询缓存/存储；已有 Namespace 直接返回成功，只有缺失时才执行创建约束。真正创建 `pole-system` 或伪造 SYSTEM kind 仍返回 InvalidParameter；存储查询错误不再被误当成 nil 响应成功。
+- 验证结果：回归与保护测试连续 3 次通过，service 创建/注册相关测试通过，`GOTOOLCHAIN=local go test -tags nomsgpack ./... -count=1` 全量通过。
+- 部署结果：构建 arm64 镜像 `pole-control-plane:local-20260728-system-namespace-ifabsent-v1`（`sha256:88948b4a6a0f6d598bc9b6cf2410abd577b8d9a66fc38cd2d9557e9c5847c170`）并滚动部署；新 Pod `1/1 Running`、0 restart，Console HTTP 返回 200。
+- 联调结果：controller Helm revision 5 使用 `pole-controller:local-20260728-namespace-fix` 与 `controllerInstance.namespace: pole-system`，StatefulSet `1/1 Ready`；Discover 返回唯一 `pole-system/pole.controller.orbstack` 实例，Pod IP `192.168.194.71`、healthy、TTL 5 秒。
+- 清理结果：确认旧 `Polaris` 实例 IP 已无对应 Pod 后，通过 client 反注册 API 精确删除两条遗留实例；最终 `Polaris/pole.controller.orbstack` 实例列表为空。
