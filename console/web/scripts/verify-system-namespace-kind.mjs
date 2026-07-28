@@ -31,6 +31,12 @@ assert.match(namespacePage, /Pole 系统空间（当前控制面）/,
   'Namespace 页面必须独立解释系统空间');
 assert.match(namespacePage, /systemNamespaces/,
   'Namespace 页面必须把系统空间与业务环境分区');
+assert.match(namespacePage, /<Tabs[\s\S]*value=\{activeWorkspace\}/,
+  '业务环境与系统空间必须在同一工作区通过受控页签切换');
+assert.match(namespacePage, /<TabPanel value="business"[\s\S]*<TabPanel value="system"/,
+  'Namespace 页面必须提供业务环境和系统空间两个互斥页签');
+assert.doesNotMatch(namespacePage, /systemNamespaceSection/,
+  '系统空间不得继续作为业务表格下方的纵向第二分区');
 assert.match(namespacePage, /新建业务环境/,
   '创建入口必须明确只创建业务环境');
 assert.match(namespacePage, /维护系统配置[\s\S]*查看 MCP[\s\S]*查看 Agent/,

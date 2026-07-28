@@ -11101,3 +11101,27 @@ dev/test/prod 业务环境；通过类型化协议、后端不变量和 Console 
   “Pole 系统空间（当前控制面）”两个分区；系统服务页只展示 `pole-system` 的
   `pole-limiter`、`pole.checker`，系统配置资源页固定在 `pole-system`，两页均明确不参与
   业务跨环境聚合，1440×1000 视口布局与空状态正常。
+
+## Namespace 双表改为页签（2026-07-28）
+
+目标：将 Namespace 页面纵向堆叠的业务环境表和系统空间表改为互斥页签，缩短页面并让统计、
+筛选、分页和维护操作拥有明确上下文。
+
+- [x] 默认显示“业务环境”页签，保留业务统计、搜索、分页与新建入口。
+- [x] “系统空间”页签显示系统口径统计、系统空间表格及专用维护入口。
+- [x] 刷新、编辑关闭后的数据更新覆盖业务和系统空间，切换页签不丢失业务查询状态。
+- [x] 更新 Console 专项契约，运行 lint、release/test build 与差异检查。
+- [x] 更新本地 Kubernetes，并在真实浏览器中复验两个页签。
+
+### Review
+
+- Namespace 页面复用现有 Fluent Tabs，默认显示 `业务环境 (21)`；系统空间切换为
+  `系统空间 (1)`。摘要指标、刷新、新建、搜索、分页、表格和系统维护入口均按当前页签归属，
+  不再纵向渲染第二张表。
+- `test:system-namespace-kind`、`test:namespace-workspace`、目标 oxlint、全量 lint、
+  test/release build 与 `git diff --check` 均通过；全量 lint 只有仓库既有 warning。
+- 原 Namespace 规格审查代理专项复核无遗留项。镜像
+  `pole-control-plane:local-20260728-namespace-tabs-v1` 已滚动到 OrbStack，Pod
+  `pole-control-plane-7d547dbfd7-tjfkv` Ready、0 restart，Namespace 深链返回 HTTP 200。
+- 隔离 Chrome 在 1440×1000 视口验证：业务页签只有一张业务表且不出现 `pole-system`；
+  系统页签只有一张系统表且不出现业务行，五个系统维护入口全部可见，新建业务环境入口隐藏。

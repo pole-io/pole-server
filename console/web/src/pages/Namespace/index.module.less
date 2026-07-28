@@ -13,10 +13,37 @@
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 14px;
   min-height: 0;
   min-width: 0;
   margin-top: 18px;
+}
+
+.namespaceTabs {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+
+  :global(.fui-TabList) {
+    flex: 0 0 auto;
+    border-bottom: 1px solid var(--app-border-subtle);
+  }
+
+  :global(.fluent-tab-content) {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-top: 14px;
+  }
+}
+
+.workspacePanel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  min-height: 0;
 }
 
 .header {
@@ -175,13 +202,6 @@
   }
 }
 
-.systemNamespaceSection {
-  display: flex;
-  flex: 0 0 auto;
-  flex-direction: column;
-  gap: 10px;
-}
-
 .systemNamespaceHeader {
   display: flex;
   align-items: flex-start;
@@ -211,11 +231,6 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
-}
-
-.systemNamespaceTableSurface {
-  max-height: 210px;
-  overflow: auto;
 }
 
 .namespaceCell {

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Table, Button, PrimaryTableProps, TableRowData, Tag, Tooltip } from 'components/Fluent';
+import { Table, Button, PrimaryTableProps, TableRowData, TabPanel, Tabs, Tag, Tooltip } from 'components/Fluent';
 import { AddIcon, RefreshIcon } from 'components/Fluent/icons';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
@@ -20,6 +20,7 @@ import { useNavigate } from 'components/Router';
 
 const DEFAULT_NAMESPACE = 'default';
 const SYSTEM_NAMESPACE = 'pole-system';
+type NamespaceWorkspace = 'business' | 'system';
 
 const protectedNamespaceReason = (namespace?: Pick<NamespaceView, 'name' | 'kind'>) => {
     if (namespace?.kind === 'SYSTEM' || namespace?.name === SYSTEM_NAMESPACE) return 'Pole 内部系统空间不可删除';
@@ -145,6 +146,7 @@ export default React.memo(() => {
     const namespaceState = useAppSelector(selectNamespace);
     const { datas, loading, page, limit, total } = namespaceState;
     const [query, setQuery] = useState('');
+    const [activeWorkspace, setActiveWorkspace] = useState<NamespaceWorkspace>('business');
     const [systemNamespaces, setSystemNamespaces] = useState<NamespaceView[]>([]);
     const [systemLoading, setSystemLoading] = useState(false);
 
@@ -234,6 +236,15 @@ export default React.memo(() => {
         return { serviceCount, configFileCount, instanceCount, healthCount, healthRate };
     }, [datas]);
 
+    const systemMetrics = useMemo(() => {
+        const serviceCount = systemNamespaces.reduce((sum, item) => sum + (item.total_service_count || 0), 0);
+        const configFileCount = systemNamespaces.reduce((sum, item) => sum + (item.total_config_file_count || 0), 0);
+        const instanceCount = systemNamespaces.reduce((sum, item) => sum + (item.total_instance_count || 0), 0);
+        const healthCount = systemNamespaces.reduce((sum, item) => sum + (item.total_health_instance_count || 0), 0);
+        const healthRate = instanceCount > 0 ? `${Math.round((healthCount / instanceCount) * 100)}%` : '-';
+        return { serviceCount, configFileCount, instanceCount, healthCount, healthRate };
+    }, [systemNamespaces]);
+
     const submitFilter = ({ keyword }: QuerySnapshot) => {
         refreshTable(1, limit, keyword);
     };
@@ -253,137 +264,175 @@ export default React.memo(() => {
                     <>
                     <Tooltip content="刷新列表">
                         <Button shape="square" variant="outline" onClick={() => {
-                            refreshTable(page, limit, query);
-                            refreshSystemNamespaces();
+                            if (activeWorkspace === 'business') {
+                                refreshTable(page, limit, query);
+                            } else {
+                                refreshSystemNamespaces();
+                            }
                         }}>
                             <RefreshIcon />
                         </Button>
                     </Tooltip>
-                    <Button theme="primary" icon={<AddIcon />} onClick={() => operateNamespace('create')}>新建业务环境</Button>
+                    {activeWorkspace === 'business' && (
+                        <Button theme="primary" icon={<AddIcon />} onClick={() => operateNamespace('create')}>新建业务环境</Button>
+                    )}
                     </>
                 )}
             />
 
             <section className={style.namespaceWorkspace}>
-                <section className={style.metricRail}>
-                    <div className={style.metricItem}>
-                        <span>业务环境</span>
-                        <strong>{total}</strong>
-                    </div>
-                    <div className={style.metricItem}>
-                        <span>当前页服务</span>
-                        <strong>{metrics.serviceCount}</strong>
-                    </div>
-                    <div className={style.metricItem}>
-                        <span>当前页配置文件</span>
-                        <strong>{metrics.configFileCount}</strong>
-                    </div>
-                    <div className={style.metricItem}>
-                        <span>健康实例</span>
-                        <strong>{metrics.healthCount}/{metrics.instanceCount}</strong>
-                    </div>
-                    <div className={style.metricItem}>
-                        <span>实例健康率</span>
-                        <strong>{metrics.healthRate}</strong>
-                    </div>
-                </section>
+                <Tabs
+                    className={style.namespaceTabs}
+                    value={activeWorkspace}
+                    onChange={(value: NamespaceWorkspace) => setActiveWorkspace(value)}
+                >
+                    <TabPanel value="business" label={`业务环境 (${total})`} className={style.workspacePanel}>
+                        <section className={style.metricRail}>
+                            <div className={style.metricItem}>
+                                <span>业务环境</span>
+                                <strong>{total}</strong>
+                            </div>
+                            <div className={style.metricItem}>
+                                <span>当前页服务</span>
+                                <strong>{metrics.serviceCount}</strong>
+                            </div>
+                            <div className={style.metricItem}>
+                                <span>当前页配置文件</span>
+                                <strong>{metrics.configFileCount}</strong>
+                            </div>
+                            <div className={style.metricItem}>
+                                <span>健康实例</span>
+                                <strong>{metrics.healthCount}/{metrics.instanceCount}</strong>
+                            </div>
+                            <div className={style.metricItem}>
+                                <span>实例健康率</span>
+                                <strong>{metrics.healthRate}</strong>
+                            </div>
+                        </section>
 
-                <ResourceToolbar
-                    title="业务环境"
-                    count={loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}
-                    filters={(
-                        <QueryComposer
-                            keyword={query}
-                            keywordPlaceholder="搜索命名空间名称"
-                            suggestions={datas.map((item) => String(item.name || '')).filter(Boolean)}
-                            onKeywordChange={setQuery}
-                            onSubmit={submitFilter}
-                            onReset={resetFilter}
+                        <ResourceToolbar
+                            title="业务环境"
+                            count={loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}
+                            filters={(
+                                <QueryComposer
+                                    keyword={query}
+                                    keywordPlaceholder="搜索命名空间名称"
+                                    suggestions={datas.map((item) => String(item.name || '')).filter(Boolean)}
+                                    onKeywordChange={setQuery}
+                                    onSubmit={submitFilter}
+                                    onReset={resetFilter}
+                                />
+                            )}
                         />
-                    )}
-                />
 
-            {editorState.visible && (
-                <NamespaceEditor
-                    key={editorState.mode + (editorState.data?.name || 'new') + (editorState.visible ? '1' : '0')}
-                    op={editorState.mode}
-                    visible={editorState.visible}
-                    closeDrawer={() => {
-                        // 清理编辑器状态
-                        dispatch(resetNamespace());
-                        setEditorState(s => ({ ...s, visible: false }))
-                        refreshTable(page, limit, query);
-                        refreshSystemNamespaces();
-                    }} />
-            )}
-            {editorState.authorizeVisible && (
-                <AuthorizeInput
-                    resource_type={PolicySourceType.Namespaces}
-                    resource_id={editorState.data?.name}
-                    resource_name={`${editorState.data?.name}`}
-                    visible={editorState.authorizeVisible}
-                    onClose={() => {
-                        setEditorState(s => ({ ...s, authorizeVisible: false }));
-                    }}
-                />
-            )}
-                <section className={`${style.tableSurface} ${style.namespaceTableSurface}`}>
-                <Table
-                    data={datas}
-                    columns={columns(operateNamespace)}
-                    loading={loading}
-                    rowKey="name"
-                    size={"large"}
-                    tableLayout="fixed"
-                    cellEmptyContent={'-'}
-                    pagination={{
-                        current: page,
-                        pageSize: limit,
-                        total: total,
-                        showJumper: true,
-                        onChange(pageInfo) {
-                            refreshTable(pageInfo.current, pageInfo.pageSize, query);
-                        },
-                    }}
-                />
-                </section>
+                        <section className={`${style.tableSurface} ${style.namespaceTableSurface}`}>
+                            <Table
+                                data={datas}
+                                columns={columns(operateNamespace)}
+                                loading={loading}
+                                rowKey="name"
+                                size="large"
+                                tableLayout="fixed"
+                                cellEmptyContent="-"
+                                pagination={{
+                                    current: page,
+                                    pageSize: limit,
+                                    total: total,
+                                    showJumper: true,
+                                    onChange(pageInfo) {
+                                        refreshTable(pageInfo.current, pageInfo.pageSize, query);
+                                    },
+                                }}
+                            />
+                        </section>
+                    </TabPanel>
 
-                <section className={style.systemNamespaceSection}>
-                    <div className={style.systemNamespaceHeader}>
-                        <div>
-                            <strong>Pole 系统空间（当前控制面）</strong>
-                            <span>承载 Pole 内部服务、MCP、Agent 与系统配置；继承当前部署阶段，不参与业务跨环境聚合。</span>
+                    <TabPanel value="system" label={`系统空间 (${systemNamespaces.length})`} className={style.workspacePanel}>
+                        <section className={style.metricRail}>
+                            <div className={style.metricItem}>
+                                <span>系统空间</span>
+                                <strong>{systemNamespaces.length}</strong>
+                            </div>
+                            <div className={style.metricItem}>
+                                <span>系统服务</span>
+                                <strong>{systemMetrics.serviceCount}</strong>
+                            </div>
+                            <div className={style.metricItem}>
+                                <span>配置文件</span>
+                                <strong>{systemMetrics.configFileCount}</strong>
+                            </div>
+                            <div className={style.metricItem}>
+                                <span>健康实例</span>
+                                <strong>{systemMetrics.healthCount}/{systemMetrics.instanceCount}</strong>
+                            </div>
+                            <div className={style.metricItem}>
+                                <span>实例健康率</span>
+                                <strong>{systemMetrics.healthRate}</strong>
+                            </div>
+                        </section>
+
+                        <div className={style.systemNamespaceHeader}>
+                            <div>
+                                <strong>Pole 系统空间（当前控制面）</strong>
+                                <span>承载 Pole 内部服务、MCP、Agent 与系统配置；继承当前部署阶段，不参与业务跨环境聚合。</span>
+                            </div>
+                            <div className={style.systemNamespaceActions}>
+                                <Button size="small" variant="outline" onClick={() => navigate('/discovery/service?scope=system&namespace=pole-system')}>
+                                    查看系统服务
+                                </Button>
+                                <Button size="small" variant="outline" onClick={() => navigate('/configuration/group?scope=system&namespace=pole-system')}>
+                                    查看配置资源
+                                </Button>
+                                <Button size="small" variant="outline" onClick={() => navigate('/system-configuration')}>
+                                    维护系统配置
+                                </Button>
+                                <Button size="small" variant="outline" onClick={() => navigate('/ai/mcps')}>
+                                    查看 MCP
+                                </Button>
+                                <Button size="small" variant="outline" onClick={() => navigate('/ai/a2a')}>
+                                    查看 Agent
+                                </Button>
+                            </div>
                         </div>
-                        <div className={style.systemNamespaceActions}>
-                            <Button size="small" variant="outline" onClick={() => navigate('/discovery/service?scope=system&namespace=pole-system')}>
-                                查看系统服务
-                            </Button>
-                            <Button size="small" variant="outline" onClick={() => navigate('/configuration/group?scope=system&namespace=pole-system')}>
-                                查看配置资源
-                            </Button>
-                            <Button size="small" variant="outline" onClick={() => navigate('/system-configuration')}>
-                                维护系统配置
-                            </Button>
-                            <Button size="small" variant="outline" onClick={() => navigate('/ai/mcps')}>
-                                查看 MCP
-                            </Button>
-                            <Button size="small" variant="outline" onClick={() => navigate('/ai/a2a')}>
-                                查看 Agent
-                            </Button>
-                        </div>
-                    </div>
-                    <section className={`${style.tableSurface} ${style.systemNamespaceTableSurface}`}>
-                        <Table
-                            data={systemNamespaces}
-                            columns={columns(operateNamespace)}
-                            loading={systemLoading}
-                            rowKey="name"
-                            size="large"
-                            tableLayout="fixed"
-                            cellEmptyContent="-"
-                        />
-                    </section>
-                </section>
+
+                        <section className={`${style.tableSurface} ${style.namespaceTableSurface}`}>
+                            <Table
+                                data={systemNamespaces}
+                                columns={columns(operateNamespace)}
+                                loading={systemLoading}
+                                rowKey="name"
+                                size="large"
+                                tableLayout="fixed"
+                                cellEmptyContent="-"
+                            />
+                        </section>
+                    </TabPanel>
+                </Tabs>
+
+                {editorState.visible && (
+                    <NamespaceEditor
+                        key={editorState.mode + (editorState.data?.name || 'new') + (editorState.visible ? '1' : '0')}
+                        op={editorState.mode}
+                        visible={editorState.visible}
+                        closeDrawer={() => {
+                            dispatch(resetNamespace());
+                            setEditorState(s => ({ ...s, visible: false }))
+                            refreshTable(page, limit, query);
+                            refreshSystemNamespaces();
+                        }}
+                    />
+                )}
+                {editorState.authorizeVisible && (
+                    <AuthorizeInput
+                        resource_type={PolicySourceType.Namespaces}
+                        resource_id={editorState.data?.name}
+                        resource_name={`${editorState.data?.name}`}
+                        visible={editorState.authorizeVisible}
+                        onClose={() => {
+                            setEditorState(s => ({ ...s, authorizeVisible: false }));
+                        }}
+                    />
+                )}
             </section>
         </>
     );
