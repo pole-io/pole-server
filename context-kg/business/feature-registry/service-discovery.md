@@ -2,7 +2,7 @@
 title: 服务发现（`pkg/service/`）
 tags: [business, feature, service, healthcheck]
 links: [namespace, architecture, storage, cache-layer, governance-rules, adr-instance-active-healthcheck, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding]
-updated: 2026-07-28
+updated: 2026-07-29
 sources: 7
 ---
 
@@ -51,6 +51,15 @@ type Server struct {
 - SDK 注册实例使用 `heartbeat` 插件追踪 `lastHeartbeatTime`。
 - Console 手工实例使用 `tcp` 或 `http` 插件由控制面主动探测，创建态不允许选择心跳。
 - 不健康的实例在服务发现中不可见；协议、调度和持久化边界见 [[adr-instance-active-healthcheck]]。
+
+## 删除语义
+
+- 逻辑服务与环境服务分别删除；任一操作都不得隐式删除另一类资源。
+- 环境服务删除接口的每个请求项可用稳定 `id`，或完整 `namespace + name` 定位；提供 `id`
+  时以 `id` 为权威键，并在服务端解析出实际 Namespace 与名称后执行鉴权、依赖检查、审计和软删除。
+- Console 在逻辑服务列表、未关联环境服务、环境服务详情和系统空间服务列表保留显式删除入口；
+  入口受 `deleteable` 权限控制，逻辑服务仍有环境绑定时必须先解除关联。
+- 环境服务存在实例、别名或 AI 后端引用时，服务端拒绝删除；前端确认框和按钮状态不能替代该约束。
 
 ## 空推送保护
 

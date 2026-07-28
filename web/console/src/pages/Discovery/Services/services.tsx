@@ -13,15 +13,17 @@ import { useNavigate } from 'components/Router'
 
 import { ResourceToolbar } from 'components/ResourceLayout'
 import ResourceNameLink from 'components/ResourceNameLink'
+import { ConfirmOperationButton, OperationButtonGroup } from 'components/OperationButton'
 import {
   bindServiceEnvironment,
   createLogicalService,
+  deleteLogicalService,
   describeAllLogicalServices,
   describeLogicalServices,
   describeUnboundServiceEnvironments,
   LogicalServiceView,
 } from 'services/logical_service'
-import { ServiceView } from 'services/service'
+import { deleteServices, ServiceView } from 'services/service'
 import { openErrNotification, openInfoNotification } from 'utils/notifition'
 import style from './index.module.less'
 
@@ -129,6 +131,26 @@ const ServicesTable = React.forwardRef<ServicesTableHandle>((_, ref) => {
     }
   }
 
+  const removeLogicalService = async (row: LogicalServiceView) => {
+    try {
+      await deleteLogicalService(row.id)
+      openInfoNotification('删除成功', `逻辑服务 ${row.name} 已删除，环境服务未受影响`)
+      await refresh()
+    } catch (error) {
+      openErrNotification('删除逻辑服务失败', error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const removeEnvironmentService = async (row: ServiceView) => {
+    try {
+      await deleteServices([{ id: row.id, namespace: row.namespace, name: row.name }])
+      openInfoNotification('删除成功', `环境服务 ${row.namespace}/${row.name} 已删除`)
+      await refresh()
+    } catch (error) {
+      openErrNotification('删除环境服务失败', error instanceof Error ? error.message : String(error))
+    }
+  }
+
   const logicalColumns = [
     {
       colKey: 'name',
@@ -165,9 +187,18 @@ const ServicesTable = React.forwardRef<ServicesTableHandle>((_, ref) => {
     {
       colKey: 'action',
       title: '操作',
-      width: 100,
+      width: 140,
       cell: ({ row }: any) => (
-        <Button variant="text" onClick={() => navigate(`detail?id=${encodeURIComponent(row.id)}`)}>查看 / 编辑</Button>
+        <OperationButtonGroup>
+          <Button variant="text" onClick={() => navigate(`detail?id=${encodeURIComponent(row.id)}`)}>查看 / 编辑</Button>
+          <ConfirmOperationButton
+            action="delete"
+            disabled={row.deleteable === false || Number(row.environment_count || 0) > 0}
+            disabledLabel={row.deleteable === false ? '无权限操作' : '请先解除环境关联'}
+            confirmContent={`确认删除逻辑服务 ${row.name} 吗？环境服务不会被删除。`}
+            onConfirm={() => void removeLogicalService(row)}
+          />
+        </OperationButtonGroup>
       ),
     },
   ]
@@ -194,12 +225,19 @@ const ServicesTable = React.forwardRef<ServicesTableHandle>((_, ref) => {
     {
       colKey: 'action',
       title: '操作',
-      width: 180,
+      width: 220,
       cell: ({ row }: any) => (
-        <>
+        <OperationButtonGroup>
           <Button variant="text" onClick={() => navigate(`instance?namespace=${encodeURIComponent(row.namespace)}&service=${encodeURIComponent(row.name)}`)}>进入环境</Button>
           <Button variant="text" onClick={() => setBindingTarget(row)}>关联</Button>
-        </>
+          <ConfirmOperationButton
+            action="delete"
+            disabled={row.deleteable === false}
+            disabledLabel="无权限操作"
+            confirmContent={`确认删除环境服务 ${row.namespace}/${row.name} 吗？`}
+            onConfirm={() => void removeEnvironmentService(row)}
+          />
+        </OperationButtonGroup>
       ),
     },
   ]

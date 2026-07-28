@@ -3,10 +3,11 @@ import { useNavigate } from 'components/Router';
 import { Button, Empty, Loading, MessagePlugin } from 'components/Fluent';
 import { CopyIcon, LinkIcon, ViewListIcon } from 'components/Fluent/icons';
 
+import { ConfirmOperationButton } from 'components/OperationButton';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { listOneService, selectService } from 'modules/discovery/service';
 import { describeServiceAlias } from 'services/alias';
-import { type ServiceView } from 'services/service';
+import { deleteServices, type ServiceView } from 'services/service';
 import {
     describeLogicalServiceEnvironments,
     resolveServiceEnvironmentBinding,
@@ -14,7 +15,7 @@ import {
 } from 'services/logical_service';
 import EnvironmentResourceSwitcher from 'components/EnvironmentResourceSwitcher';
 import { copyToClipboard } from 'utils/sys';
-import { openErrNotification } from 'utils/notifition';
+import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import ServiceForm from '../ServiceForm';
 import style from './index.module.less';
 
@@ -143,6 +144,22 @@ const ServiceDetail: React.FC<IServiceDetailProps> = ({
         MessagePlugin.success(`已切换到${label}`);
     };
 
+    const removeService = async () => {
+        try {
+            await deleteServices([{ id: service?.id, namespace, name: serviceName }]);
+            openInfoNotification('删除成功', `环境服务 ${namespace}/${serviceName} 已删除`);
+            if (resolvedLogicalId) {
+                navigate(`/discovery/service/detail?id=${encodeURIComponent(resolvedLogicalId)}`);
+            } else if (namespace === 'pole-system') {
+                navigate(`/discovery/service?scope=system&namespace=${encodeURIComponent(namespace)}`);
+            } else {
+                navigate('/discovery/service');
+            }
+        } catch (error) {
+            openErrNotification('删除环境服务失败', error instanceof Error ? error.message : String(error));
+        }
+    };
+
     if (loading && !service) {
         return (
             <div className={style.detailPanel}>
@@ -208,6 +225,17 @@ const ServiceDetail: React.FC<IServiceDetailProps> = ({
                     <Button variant="outline" icon={<LinkIcon />} onClick={() => switchTab('2', '服务别名')}>
                         管理别名
                     </Button>
+                    <ConfirmOperationButton
+                        action="delete"
+                        label="删除环境服务"
+                        shape="rectangle"
+                        variant="outline"
+                        theme="danger"
+                        disabled={service.deleteable === false}
+                        disabledLabel="无权限操作"
+                        confirmContent={`确认删除环境服务 ${namespace}/${serviceName} 吗？`}
+                        onConfirm={() => void removeService()}
+                    />
                 </div>
             </section>
 

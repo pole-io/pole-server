@@ -184,9 +184,9 @@ func EnrichCreateServicesApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder 
 
 func EnrichDeleteServicesApiDocs(r *restful.RouteBuilder) *restful.RouteBuilder {
 	return r.
-		Doc("删除服务").
+		Doc("删除服务；每项可使用 id，或使用 namespace + name 定位").
 		Metadata(restfulspec.KeyOpenAPITags, servicesApiTags).
-		Reads([]apiservice.Service{}, "delete services").
+		Reads([]apiservice.Service{}, "按 id 或 namespace 与 name 删除服务").
 		Returns(0, "", struct {
 			BatchWriteResponse
 			Responses []struct {

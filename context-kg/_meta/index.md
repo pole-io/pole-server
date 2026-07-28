@@ -28,7 +28,7 @@ sources: 0
 ### 功能档案（business/feature-registry/）
 
 - [[namespace]] — 运行环境、跨环境资源身份与系统环境保护 | business, feature, namespace
-- [[service-discovery]] — 服务发现、健康检查与四协议服务契约 | business, feature, service, healthcheck
+- [[service-discovery]] — 服务发现、逻辑/环境服务生命周期、双选择器删除、健康检查与四协议服务契约 | business, feature, service, healthcheck
 - [[config-center]] — 配置中心：版本化配置文件、灰度发布、Watch 长轮询机制 | business, feature, config
 - [[governance-rules]] — 治理规则：路由、限流、熔断、故障探测、泳道、无损规则 | business, feature, governance
 - [[admin]] — 管理后台：AdminOperateServer 接口与跨域运维操作 | business, feature, admin

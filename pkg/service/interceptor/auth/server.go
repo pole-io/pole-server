@@ -141,8 +141,18 @@ func (svr *Server) queryServiceResource(
 	svcSet := map[string]*svctypes.Service{}
 
 	for index := range req {
-		svcName := req[index].GetName()
-		svcNamespace := req[index].GetNamespace()
+		item := req[index]
+		if item == nil {
+			continue
+		}
+		if serviceID := item.GetId(); serviceID != "" {
+			if svc := svr.Cache().Service().GetServiceByID(serviceID); svc != nil {
+				svcSet[svc.ID] = svc
+			}
+			continue
+		}
+		svcName := item.GetName()
+		svcNamespace := item.GetNamespace()
 		names.Add(svcNamespace)
 		svc := svr.Cache().Service().GetServiceByName(svcName, svcNamespace)
 		if svc != nil {

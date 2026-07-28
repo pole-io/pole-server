@@ -4,8 +4,9 @@ import { useNavigate } from 'components/Router'
 
 import { ResourceToolbar } from 'components/ResourceLayout'
 import ResourceNameLink from 'components/ResourceNameLink'
-import { describeServices, ServiceView } from 'services/service'
-import { openErrNotification } from 'utils/notifition'
+import { ConfirmOperationButton, OperationButtonGroup } from 'components/OperationButton'
+import { deleteServices, describeServices, ServiceView } from 'services/service'
+import { openErrNotification, openInfoNotification } from 'utils/notifition'
 import style from './index.module.less'
 
 const pageSize = 10
@@ -40,6 +41,16 @@ export default function SystemNamespaceServices({ namespace }: { namespace: stri
     void refresh(1)
   }, [namespace])
 
+  const remove = async (row: ServiceView) => {
+    try {
+      await deleteServices([{ id: row.id, namespace: row.namespace, name: row.name }])
+      openInfoNotification('删除成功', `系统服务 ${row.namespace}/${row.name} 已删除`)
+      await refresh()
+    } catch (error) {
+      openErrNotification('删除系统服务失败', error instanceof Error ? error.message : String(error))
+    }
+  }
+
   const columns = [
     {
       colKey: 'name',
@@ -66,12 +77,22 @@ export default function SystemNamespaceServices({ namespace }: { namespace: stri
     {
       colKey: 'action',
       title: '操作',
-      width: 120,
+      width: 160,
       cell: ({ row }: any) => (
-        <Button variant="text" onClick={() => navigate(
-          `/discovery/service/instance?namespace=${encodeURIComponent(namespace)}`
-          + `&service=${encodeURIComponent(row.name)}`,
-        )}>查看实例</Button>
+        <OperationButtonGroup>
+          <Button variant="text" onClick={() => navigate(
+            `/discovery/service/instance?namespace=${encodeURIComponent(namespace)}`
+            + `&service=${encodeURIComponent(row.name)}`,
+          )}>查看实例</Button>
+          <ConfirmOperationButton
+            action="delete"
+            label="删除系统服务"
+            disabled={row.deleteable === false}
+            disabledLabel="无权限操作"
+            confirmContent={`确认删除系统服务 ${row.namespace}/${row.name} 吗？`}
+            onConfirm={() => void remove(row)}
+          />
+        </OperationButtonGroup>
       ),
     },
   ]

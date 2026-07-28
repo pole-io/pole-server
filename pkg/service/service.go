@@ -165,17 +165,33 @@ func (s *Server) DeleteServices(ctx context.Context, req []*apiservice.Service) 
 //	删除操作需要对服务进行加锁操作，
 //	防止有与服务关联的实例或者配置有新增的操作
 func (s *Server) DeleteService(ctx context.Context, req *apiservice.Service) *apimodel.Response {
-	namespaceName := req.GetNamespace()
-	serviceName := req.GetName()
+	if req == nil || (req.GetId() == "" && (req.GetNamespace() == "" || req.GetName() == "")) {
+		return api.NewServiceResponse(apimodel.Code_InvalidParameter, req)
+	}
 
-	// 检查是否存在
-	service, err := s.storage.GetService(serviceName, namespaceName)
+	var (
+		service *svctypes.Service
+		err     error
+	)
+	if req.GetId() != "" {
+		service, err = s.storage.GetServiceByID(req.GetId())
+	} else {
+		service, err = s.storage.GetService(req.GetName(), req.GetNamespace())
+	}
 	if err != nil {
 		log.Error(err.Error(), utils.RequestID(ctx))
 		return api.NewServiceResponse(storeapi.StoreCode2APICode(err), req)
 	}
 	if service == nil {
 		return api.NewServiceResponse(apimodel.Code_ExecuteSuccess, req)
+	}
+	namespaceName := service.Namespace
+	serviceName := service.Name
+	resolved := &apiservice.Service{
+		Id:        service.ID,
+		Name:      serviceName,
+		Namespace: namespaceName,
+		Metadata:  service.CopyMeta(),
 	}
 
 	// 判断service下的资源是否已经全部被删除
@@ -190,8 +206,8 @@ func (s *Server) DeleteService(ctx context.Context, req *apiservice.Service) *ap
 
 	msg := fmt.Sprintf("delete service: namespace=%v, name=%v", namespaceName, serviceName)
 	log.Info(msg, utils.RequestID(ctx))
-	s.RecordHistory(ctx, serviceRecordEntry(ctx, req, nil, types.ODelete))
-	return api.NewServiceResponse(apimodel.Code_ExecuteSuccess, req)
+	s.RecordHistory(ctx, serviceRecordEntry(ctx, resolved, nil, types.ODelete))
+	return api.NewServiceResponse(apimodel.Code_ExecuteSuccess, resolved)
 }
 
 // UpdateServices 批量修改服务

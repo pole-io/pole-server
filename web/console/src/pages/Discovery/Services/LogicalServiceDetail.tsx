@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'components/Router'
 
 import { ResourceHeader, ResourceToolbar } from 'components/ResourceLayout'
 import ResourceNameLink from 'components/ResourceNameLink'
+import { ConfirmOperationButton } from 'components/OperationButton'
 import {
   bindServiceEnvironment,
   deleteLogicalService,
@@ -150,7 +151,17 @@ export default function LogicalServiceDetail() {
         actions={(
           <>
             <Button variant="outline" onClick={() => navigate('/discovery/service')}>返回列表</Button>
-            <Button variant="outline" theme="danger" disabled={environments.length > 0} onClick={() => void remove()}>删除逻辑服务</Button>
+            <ConfirmOperationButton
+              action="delete"
+              label="删除逻辑服务"
+              shape="rectangle"
+              variant="outline"
+              theme="danger"
+              disabled={logicalService?.deleteable === false || environments.length > 0}
+              disabledLabel={logicalService?.deleteable === false ? '无权限操作' : '请先解除环境关联'}
+              confirmContent={`确认删除逻辑服务 ${logicalService?.name || ''} 吗？环境服务不会被删除。`}
+              onConfirm={() => void remove()}
+            />
             <Button theme="primary" onClick={() => void openBinding(bindingKeyword)}>关联环境服务</Button>
           </>
         )}

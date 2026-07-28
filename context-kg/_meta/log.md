@@ -1249,6 +1249,15 @@ sources: 0
   - Console 支持显式关联逻辑定义和详情环境切换；Pole Agent 支持单环境与显式跨环境只读范围。
   - Agent scope 由当前 Actor 的 BUSINESS Namespace 目录在服务端复核，不信任客户端或 Prompt。
 
+## [2026-07-29] fix | 服务删除入口与双选择器
+
+- 更新页面：service-discovery、business-rules、todo、lessons。
+- 变更摘要：
+  - 环境服务删除同时接受稳定 ID 或完整 `namespace + name`，ID 路径先解析真实资源坐标。
+  - 两条路径复用相同的鉴权、依赖检查、审计和软删除流程。
+  - Console 恢复逻辑服务、未关联环境服务、环境服务详情和系统空间服务删除入口。
+  - 逻辑服务删除与环境服务删除保持独立语义，并统一使用权限状态和确认操作。
+
 ## 相关页面
 
 - [[index]]
