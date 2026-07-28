@@ -46,6 +46,7 @@ import { TrafficMatchConditionRow } from 'pages/Governance/shared/TrafficMatchCo
 import SchemaEditor from './SchemaEditor';
 import ValueEditor, { textToValue } from './ValueEditor';
 import styles from './index.module.less';
+import GroupWorkspaceNav from '../Group/GroupWorkspaceNav';
 
 const { TabPanel } = Tabs;
 
@@ -79,6 +80,7 @@ const TemplateWorkspace: React.FC = () => {
   const [searchParams] = useSearchParams();
   const requestedTemplateId = searchParams.get('templateId') || '';
   const requestedNamespace = searchParams.get('namespace') || '';
+  const requestedGroup = searchParams.get('group') || '';
   const requestedTab = searchParams.get('tab') as WorkspaceTab | null;
   const returnTo = searchParams.get('returnTo') || '';
   const [templates, setTemplates] = React.useState<ConfigFileTemplate[]>([]);
@@ -397,13 +399,27 @@ const TemplateWorkspace: React.FC = () => {
 
   return (
     <div className={styles.page}>
+      {requestedGroup && (
+        <GroupWorkspaceNav
+          active="templates"
+          group={requestedGroup}
+          filesHref={
+            returnTo || `/configuration/group/files?namespace=${encodeURIComponent(namespace || requestedNamespace)}`
+              + `&group=${encodeURIComponent(requestedGroup)}`
+          }
+          templatesHref={window.location.pathname + window.location.search}
+          onBack={() => navigate('/configuration/group')}
+        />
+      )}
       <ResourceHeader
-        eyebrow="配置中心 / 配置模板"
-        title="配置模板"
-        description="全局维护模板与参数 Schema，各 Namespace 独立维护 Value；配置文件显式固定不可变模板版本。"
+        eyebrow={requestedGroup ? `配置分组 / ${requestedGroup} / 配置模板` : '配置中心 / 配置模板'}
+        title={requestedGroup ? '配置模板工作区' : '配置模板'}
+        description={requestedGroup
+          ? '先选择全局复用的模板，再按 Namespace 维护 Template Value；当前配置分组的文件可显式固定模板版本。'
+          : '全局维护模板与参数 Schema，各 Namespace 独立维护 Value；配置文件显式固定不可变模板版本。'}
         actions={(
           <Space>
-            {returnTo && <Button variant="outline" onClick={() => navigate(returnTo)}>返回配置分组</Button>}
+            {returnTo && !requestedGroup && <Button variant="outline" onClick={() => navigate(returnTo)}>返回配置分组</Button>}
             <Button variant="outline" icon={<RefreshIcon />} onClick={() => loadTemplates()}>刷新</Button>
             <Button
               theme="primary"

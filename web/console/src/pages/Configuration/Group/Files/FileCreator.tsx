@@ -16,7 +16,6 @@ import {
     describeConfigTemplateReleases,
     describeConfigTemplates,
 } from 'services/config_templates';
-import { useNavigate } from 'components/Router';
 
 interface IFileCreatorProps {
     op: Op;
@@ -52,7 +51,6 @@ const emptyMetaValues = (): ConfigFileMetaValues => ({
 
 const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visible, closeDrawer }) => {
     const dispatch = useAppDispatch();
-    const navigate = useNavigate();
     const [form] = Form.useForm();
 
     const fileState = useAppSelector(selectConfigFile);
@@ -62,6 +60,21 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
     const [metaValues, setMetaValues] = React.useState<ConfigFileMetaValues>(emptyMetaValues);
     const [templates, setTemplates] = React.useState<ConfigFileTemplate[]>([]);
     const [templateReleases, setTemplateReleases] = React.useState<ConfigTemplateRelease[]>([]);
+
+    const refreshTemplates = React.useCallback(() => {
+        describeConfigTemplates()
+            .then(({ templates: items }) => setTemplates(items))
+            .catch(() => setTemplates([]));
+    }, []);
+    const refreshTemplateReleases = React.useCallback((templateId: string) => {
+        if (!templateId) {
+            setTemplateReleases([]);
+            return;
+        }
+        describeConfigTemplateReleases(templateId)
+            .then(({ releases }) => setTemplateReleases(releases))
+            .catch(() => setTemplateReleases([]));
+    }, []);
 
     React.useEffect(() => {
         if (visible) {
@@ -80,21 +93,28 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                         openErrNotification('获取加密算法列表失败', res?.payload as string);
                     }
                 })
-            describeConfigTemplates()
-                .then(({ templates: items }) => setTemplates(items))
-                .catch(() => setTemplates([]));
+            refreshTemplates();
         }
-    }, [visible, namespace, group, form, dispatch]);
+    }, [visible, namespace, group, form, dispatch, refreshTemplates]);
 
     React.useEffect(() => {
-        if (!metaValues.templateId) {
-            setTemplateReleases([]);
-            return;
-        }
-        describeConfigTemplateReleases(metaValues.templateId)
-            .then(({ releases }) => setTemplateReleases(releases))
-            .catch(() => setTemplateReleases([]));
-    }, [metaValues.templateId]);
+        if (!visible) return;
+        const refreshWhenReturning = () => {
+            if (document.visibilityState !== 'visible') return;
+            refreshTemplates();
+            refreshTemplateReleases(metaValues.templateId);
+        };
+        window.addEventListener('focus', refreshWhenReturning);
+        document.addEventListener('visibilitychange', refreshWhenReturning);
+        return () => {
+            window.removeEventListener('focus', refreshWhenReturning);
+            document.removeEventListener('visibilitychange', refreshWhenReturning);
+        };
+    }, [metaValues.templateId, refreshTemplateReleases, refreshTemplates, visible]);
+
+    React.useEffect(() => {
+        refreshTemplateReleases(metaValues.templateId);
+    }, [metaValues.templateId, refreshTemplateReleases]);
 
     React.useEffect(() => {
         if (visible && activeStep === 1) {
@@ -246,9 +266,19 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                                 </FormItem>
                                 <Button
                                     variant="text"
-                                    onClick={() => navigate(`/configuration/templates?templateId=${encodeURIComponent(metaValues.templateId)}&namespace=${encodeURIComponent(namespace)}&tab=values&returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
+                                    onClick={() => {
+                                        collectMetaValues();
+                                        window.open(
+                                            `/configuration/group/templates?group=${encodeURIComponent(group)}`
+                                            + `&templateId=${encodeURIComponent(metaValues.templateId)}`
+                                            + `&namespace=${encodeURIComponent(namespace)}&tab=values`
+                                            + `&returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`,
+                                            '_blank',
+                                            'noopener,noreferrer',
+                                        );
+                                    }}
                                 >
-                                    管理模板库与当前 Namespace Value
+                                    在新标签页管理模板与当前 Namespace Value
                                 </Button>
                             </>
                         )}

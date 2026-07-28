@@ -25,6 +25,14 @@ const configuration: IRouter[] = [
           hidden: true,
         },
       },
+      {
+        path: 'group/templates',
+        Component: lazy(() => import('pages/Configuration/Template')),
+        isFullPage: false,
+        meta: {
+          hidden: true,
+        },
+      },
       // 这里的路由是为了在服务列表中点击实例跳转到实例详情页
       {
         path: 'group/files',

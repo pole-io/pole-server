@@ -11368,3 +11368,40 @@ dev/test/prod 业务环境；通过类型化协议、后端不变量和 Console 
 - `test:service-layout-density`、`test:logical-service-console`、全量 oxlint、`build:test`、
   `make test-console-assets`、context-kg lint 与 `git diff --check` 均通过；全量 lint 只保留仓库既有警告。
 - 双轴复审最终无阻断：审查发现的长资源名溢出风险已用受控宽度与省略号修复，并补入密度契约。
+
+## 配置分组文件 / 模板工作区解耦（2026-07-29）
+
+目标：修正配置文件浏览器内嵌“模板库”造成的资源层级混乱，在不改变“模板定义全局复用、
+Value 按 Namespace + Template 维护”领域模型的前提下，将入口提升到配置分组工作区。
+
+### 规格与验收
+
+- [x] 配置分组详情先提供“配置文件 / 配置模板”工作区切换，不在文件树标题栏内放模板入口。
+- [x] 配置文件路径保持“配置分组 → 环境 → 配置文件”，环境切换与文件树归属清晰。
+- [x] 配置模板路径保持“配置分组工作区 → 模板 → Namespace → Template Value”，先选择模板再选择环境。
+- [x] 新工作区路由使用 `/configuration/group/templates`，旧模板深链继续兼容。
+- [x] 从配置文件创建/编辑进入模板页时保留分组、环境、模板和返回路径上下文。
+- [x] 工作区切换具备明确选中态、键盘可访问名称和窄屏布局。
+- [x] 更新配置文件与模板专项契约测试，完成目标 lint、前端构建和差异检查。
+
+### Review
+
+- 新增配置分组级 `GroupWorkspaceNav`，在环境和资源浏览器之前分流“配置文件 / 配置模板”，
+  并直接标注“环境 → 文件”和“模板 → 环境 Value”两条不同操作路径。
+- 配置文件树标题栏只保留新建与刷新，删除原“模板库”局部入口；文件环境切换、文件树和
+  文件详情原功能不变。
+- 新增 `/configuration/group/templates` 隐藏深链，旧 `/configuration/templates` 继续兼容；
+  文件创建流程进入模板页时携带 group、namespace、templateId、tab 和 returnTo。
+- 配置分组工作区使用真实链接和 `aria-current` 表达跨路由导航；从未保存的文件创建抽屉
+  管理模板时在隔离新标签页打开，回到原页会刷新模板目录和当前 Template Release 列表，
+  不再卸载、清空创建表单或保留陈旧版本选项。
+- 模板页在 group 上下文展示相同工作区导航，但仍明确模板定义是全局复用资源，未修改现有
+  API、存储和 ADR 领域模型；Template Value 继续按 Namespace + Template 维护。
+- `test:config-file-detail-layout`、`test:config-template-console`、`test:dark-theme`、
+  configuration entry、config group detail design、目标 oxlint、`build:test` 与
+  `git diff --check` 均通过。
+- 本地开发服务配合隔离浏览器在 1440×1000 验证文件→模板→文件跳转：选中态正确，文件树
+  不再出现模板库，group/namespace/returnTo 与原文件路径保留；720×900 下页面
+  `scrollWidth = clientWidth = 720`，两个工作区入口等宽且无横向溢出。
+- 独立复审发现并推动修复了未保存创建状态、跨路由 ARIA 语义和 Template Release 返回刷新
+  三个问题；修复后复核无剩余阻断或重要问题。

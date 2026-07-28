@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Tooltip, Breadcrumb, Tree, Input, TreeInstanceFunctions, Popconfirm, Tag } from 'components/Fluent';
+import { Button, Tooltip, Tree, Input, TreeInstanceFunctions, Popconfirm, Tag } from 'components/Fluent';
 import { Delete1Icon, FileAddIcon, Icon, RefreshIcon } from 'components/Fluent/icons';
 import { useNavigate } from 'components/Router';
 import type { TreeProps, TreeNodeModel } from 'components/Fluent';
@@ -17,8 +17,8 @@ import { editorConfigFile, listAllConfigFiles, removeConfigFeils, selectConfigFi
 import { PolicySourceType } from 'services/auth_policy';
 import { describeConfigGroupEnvironments, type ConfigFileGroupView } from 'services/config_group';
 import EnvironmentResourceSwitcher from 'components/EnvironmentResourceSwitcher';
+import GroupWorkspaceNav from '../GroupWorkspaceNav';
 
-const { BreadcrumbItem } = Breadcrumb;
 const renderIcon: TreeProps['icon'] = (node) => {
     let name = 'file';
     if (node.getChildren(true)) {
@@ -280,15 +280,17 @@ export default React.memo(() => {
 
     const mainView = (
         <div className={style.groupDetail}>
-            <Breadcrumb maxItemWidth="200px" className={style.breadcrumb}>
-                <BreadcrumbItem>配置中心</BreadcrumbItem>
-                <BreadcrumbItem onClick={() => {
-                    navigate(-1);
-                }}>{namespace}</BreadcrumbItem>
-                <BreadcrumbItem>
-                    {group}
-                </BreadcrumbItem>
-            </Breadcrumb>
+            <GroupWorkspaceNav
+                active="files"
+                group={group || ''}
+                filesHref={window.location.pathname + window.location.search}
+                templatesHref={
+                    `/configuration/group/templates?group=${encodeURIComponent(group || '')}`
+                    + `&namespace=${encodeURIComponent(namespace || '')}`
+                    + `&returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`
+                }
+                onBack={() => navigate('/configuration/group')}
+            />
             {!selectedFileName && (
                 <EnvironmentResourceSwitcher
                     currentNamespace={namespace || ''}
@@ -312,13 +314,6 @@ export default React.memo(() => {
                         <div className={style.fileExplorerTitle}>
                             <span>配置文件</span>
                             <div className={style.fileExplorerActions}>
-                            <Button
-                                variant="text"
-                                size="small"
-                                onClick={() => navigate(`/configuration/templates?namespace=${encodeURIComponent(namespace || '')}&returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
-                            >
-                                模板库
-                            </Button>
                             <Tooltip content={activeGroup?.editable ? '新建配置文件' : '没有权限'}>
                                 <Button
                                     shape="square"
