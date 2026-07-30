@@ -132,22 +132,13 @@ export default React.memo(() => {
   return (
     <>
       <ResourceHeader
+        density="compact"
+        placement="app-header"
         eyebrow={systemNamespace ? '配置中心 / 系统空间' : '配置中心 / 配置分组'}
         title={systemNamespace ? `${systemNamespace} 配置资源` : '配置分组'}
         description={systemNamespace
           ? '显式维护当前控制面系统空间中的配置分组；这些配置不参与业务跨环境聚合。'
           : '先选择逻辑配置分组，再进入具体 Namespace 维护普通配置或模板配置。'}
-        actions={(
-          <>
-            <Tooltip content="刷新列表">
-              <Button shape="square" variant="outline" icon={<RefreshIcon />} onClick={() => void refresh()} />
-            </Tooltip>
-            {!systemNamespace && <Button theme="primary" icon={<AddIcon />} onClick={() => {
-              dispatch(resetConfigGroup())
-              setCreatorVisible(true)
-            }}>新建配置分组</Button>}
-          </>
-        )}
       />
       <div className={style.summaryBar}>
         <div className={style.summaryItem}><span>逻辑分组</span><strong>{summary.logical}</strong></div>
@@ -156,38 +147,58 @@ export default React.memo(() => {
         <div className={`${style.summaryItem} ${style.warningStat}`}><span>待发布环境</span><strong>{summary.pending}</strong></div>
       </div>
       <ResourceToolbar
+        density="compact"
         title="配置分组列表"
         count={loading ? '正在同步列表' : `共 ${filtered.length} 个逻辑分组`}
         filters={(
-          <QueryComposer
-            keyword={filters.keyword}
-            keywordPlaceholder="搜索配置分组名称"
-            suggestions={groups.map(group => group.name)}
-            fields={[
-              { key: 'namespace', label: 'Namespace', type: 'select', options: namespaceOptions },
-              {
-                key: 'publishStatus',
-                label: '发布状态',
-                type: 'select',
-                options: [
-                  { label: '待发布', value: 'pending' },
-                  { label: '无待发布', value: 'clean' },
-                ],
-              },
-            ]}
-            values={{ namespace: filters.namespace, publishStatus: filters.publishStatus }}
-            onKeywordChange={keyword => setFilters(currentFilters => ({ ...currentFilters, keyword }))}
-            onValuesChange={values => setFilters(currentFilters => ({
-              ...currentFilters,
-              namespace: String(values.namespace || ''),
-              publishStatus: String(values.publishStatus || ''),
-            }))}
-            onSubmit={submit}
-            onReset={() => {
-              setPage(1)
-              setFilters({ keyword: '', namespace: '', publishStatus: '' })
-            }}
-          />
+          <>
+            <QueryComposer
+              keyword={filters.keyword}
+              keywordPlaceholder="搜索配置分组名称"
+              suggestions={groups.map(group => group.name)}
+              fields={[
+                { key: 'namespace', label: 'Namespace', type: 'select', options: namespaceOptions },
+                {
+                  key: 'publishStatus',
+                  label: '发布状态',
+                  type: 'select',
+                  options: [
+                    { label: '待发布', value: 'pending' },
+                    { label: '无待发布', value: 'clean' },
+                  ],
+                },
+              ]}
+              values={{ namespace: filters.namespace, publishStatus: filters.publishStatus }}
+              onKeywordChange={keyword => setFilters(currentFilters => ({ ...currentFilters, keyword }))}
+              onValuesChange={values => setFilters(currentFilters => ({
+                ...currentFilters,
+                namespace: String(values.namespace || ''),
+                publishStatus: String(values.publishStatus || ''),
+              }))}
+              onSubmit={submit}
+              onReset={() => {
+                setPage(1)
+                setFilters({ keyword: '', namespace: '', publishStatus: '' })
+              }}
+              actions={(
+                <>
+                  <Tooltip content="刷新配置分组列表">
+                    <Button
+                      aria-label="刷新配置分组列表"
+                      shape="square"
+                      variant="outline"
+                      icon={<RefreshIcon />}
+                      onClick={() => void refresh()}
+                    />
+                  </Tooltip>
+                  {!systemNamespace && <Button theme="primary" icon={<AddIcon />} onClick={() => {
+                    dispatch(resetConfigGroup())
+                    setCreatorVisible(true)
+                  }}>新建配置分组</Button>}
+                </>
+              )}
+            />
+          </>
         )}
       />
       <div className={style.groupTableSurface}>

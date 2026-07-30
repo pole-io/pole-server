@@ -257,27 +257,11 @@ export default React.memo(() => {
     const table = (
         <>
             <ResourceHeader
+                density="compact"
+                placement="app-header"
                 eyebrow="Environment / Namespace"
                 title="环境与系统空间"
                 description="业务 Namespace 是相互隔离的运行环境；Pole 系统空间属于当前控制面，不参与业务资源的跨环境聚合。"
-                actions={(
-                    <>
-                    <Tooltip content="刷新列表">
-                        <Button shape="square" variant="outline" onClick={() => {
-                            if (activeWorkspace === 'business') {
-                                refreshTable(page, limit, query);
-                            } else {
-                                refreshSystemNamespaces();
-                            }
-                        }}>
-                            <RefreshIcon />
-                        </Button>
-                    </Tooltip>
-                    {activeWorkspace === 'business' && (
-                        <Button theme="primary" icon={<AddIcon />} onClick={() => operateNamespace('create')}>新建业务环境</Button>
-                    )}
-                    </>
-                )}
             />
 
             <section className={style.namespaceWorkspace}>
@@ -311,17 +295,36 @@ export default React.memo(() => {
                         </section>
 
                         <ResourceToolbar
+                            density="compact"
                             title="业务环境"
                             count={loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}
                             filters={(
-                                <QueryComposer
-                                    keyword={query}
-                                    keywordPlaceholder="搜索命名空间名称"
-                                    suggestions={datas.map((item) => String(item.name || '')).filter(Boolean)}
-                                    onKeywordChange={setQuery}
-                                    onSubmit={submitFilter}
-                                    onReset={resetFilter}
-                                />
+                                <>
+                                    <QueryComposer
+                                        keyword={query}
+                                        keywordPlaceholder="搜索命名空间名称"
+                                        suggestions={datas.map((item) => String(item.name || '')).filter(Boolean)}
+                                        onKeywordChange={setQuery}
+                                        onSubmit={submitFilter}
+                                        onReset={resetFilter}
+                                        actions={(
+                                            <>
+                                                <Tooltip content="刷新业务环境">
+                                                    <Button
+                                                        aria-label="刷新业务环境"
+                                                        shape="square"
+                                                        variant="outline"
+                                                        icon={<RefreshIcon />}
+                                                        onClick={() => refreshTable(page, limit, query)}
+                                                    />
+                                                </Tooltip>
+                                                <Button theme="primary" icon={<AddIcon />} onClick={() => operateNamespace('create')}>
+                                                    新建业务环境
+                                                </Button>
+                                            </>
+                                        )}
+                                    />
+                                </>
                             )}
                         />
 
@@ -394,6 +397,23 @@ export default React.memo(() => {
                                 </Button>
                             </div>
                         </div>
+
+                        <ResourceToolbar
+                            density="compact"
+                            title="系统空间清单"
+                            count={systemLoading ? '正在同步列表' : `共 ${systemNamespaces.length} 条`}
+                            filters={(
+                                <Tooltip content="刷新系统空间">
+                                    <Button
+                                        aria-label="刷新系统空间"
+                                        shape="square"
+                                        variant="outline"
+                                        icon={<RefreshIcon />}
+                                        onClick={refreshSystemNamespaces}
+                                    />
+                                </Tooltip>
+                            )}
+                        />
 
                         <section className={`${style.tableSurface} ${style.namespaceTableSurface}`}>
                             <Table

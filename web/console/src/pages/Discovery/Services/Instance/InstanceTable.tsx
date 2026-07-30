@@ -5,6 +5,7 @@ import { BrowserRouterProps } from 'components/Router';
 
 import Search from 'components/Search';
 import ErrorPage from 'components/ErrorPage';
+import { ResourceToolbar } from 'components/ResourceLayout';
 import Text from 'components/Text';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { describeInstances, HEALTH_STATUS_MAP, Instance, ISOLATE_STATUS_MAP } from 'services/instance';
@@ -213,14 +214,14 @@ export default React.memo((props: IInstanceListProps & BrowserRouterProps) => {
 
     const table = (
         <>
-            <section className={style.instanceToolbar}>
-                <div className={style.instanceToolbarMeta}>
-                    <strong>实例清单</strong>
-                    <span>{loading ? '正在同步列表' : `当前显示 ${datas.length} / ${total} 条`}</span>
-                    {selectedRowKeys.length > 0 && <span>已选 {selectedRowKeys.length} 项</span>}
-                </div>
-                <div className={style.instanceToolbarActions}>
-                    <Button theme="primary" icon={<AddIcon />} onClick={() => operateInstance('create')}>新建实例</Button>
+            <ResourceToolbar
+                density="compact"
+                title="实例清单"
+                count={loading
+                    ? '正在同步列表'
+                    : `当前显示 ${datas.length} / ${total} 条${selectedRowKeys.length ? `，已选 ${selectedRowKeys.length} 项` : ''}`}
+                filters={(
+                    <>
                     <Space>
                         <Search
                             placeholder="主机地址"
@@ -237,8 +238,10 @@ export default React.memo((props: IInstanceListProps & BrowserRouterProps) => {
                             />
                         </Tooltip>
                     </Space>
-                </div>
-            </section>
+                    <Button theme="primary" icon={<AddIcon />} onClick={() => operateInstance('create')}>新建实例</Button>
+                    </>
+                )}
+            />
             {editState.visible && (
                 <InstanceEditor
                     key={editState.mode + (editState.selectedRow?.host || 'new') + (editState.visible ? '1' : '0')}

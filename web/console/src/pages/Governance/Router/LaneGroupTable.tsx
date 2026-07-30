@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Popconfirm, Empty } from 'components/Fluent';
-import { DeleteIcon, RefreshIcon, CreditcardIcon } from 'components/Fluent/icons';
+import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Popconfirm, Empty } from 'components/Fluent';
+import { AddIcon, DeleteIcon, RefreshIcon, CreditcardIcon } from 'components/Fluent/icons';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
+import { ResourceToolbar } from 'components/ResourceLayout';
 import Text from 'components/Text';
 import { Op } from 'services/types';
 import { LaneGroupView } from 'services/lane';
@@ -189,29 +190,32 @@ const LaneGroupTable: React.FC<ILaneGroupTableProps> = ({ }) => {
 
     const table = (
         <>
-            <Row justify='space-between' className={style.toolBar}>
-                <Col>
-                    <Row gutter={8} align='middle'>
-                        <Col>
-                            <Button onClick={(v) => {
-                                handleOpRule({}, 'create')
-                            }}>新建</Button>
-                        </Col>
-                    </Row>
-                </Col>
-                <Col>
-                    <Space>
+            <ResourceToolbar
+                density="compact"
+                title="泳道组清单"
+                count={loading ? '正在同步列表' : `共 ${total} 条`}
+                filters={(
+                    <>
                         <Search
                             onChange={(value: string) => {
                                 refreshData(1, limit, value);
                             }}
                         />
                         <Tooltip content="刷新">
-                            <RefreshIcon onClick={() => refreshData(1, limit)} />
+                            <Button
+                                aria-label="刷新泳道组列表"
+                                shape="square"
+                                variant="outline"
+                                icon={<RefreshIcon />}
+                                onClick={() => refreshData(1, limit)}
+                            />
                         </Tooltip>
-                    </Space>
-                </Col>
-            </Row>
+                        <Button theme="primary" icon={<AddIcon />} onClick={() => {
+                            handleOpRule({}, 'create')
+                        }}>新建泳道组</Button>
+                    </>
+                )}
+            />
             <Table
                 data={datas}
                 columns={columns(handleOpRule, (row: TableRowData) => {

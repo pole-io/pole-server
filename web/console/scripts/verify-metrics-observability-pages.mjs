@@ -45,9 +45,9 @@ const checks = [
     file: 'src/pages/Metrics/SystemMonitor/index.tsx',
     expectations: [
       ['contains platform system mock rows', /SYSTEM_ROWS/],
-      ['renders system monitor title', /<h1>系统监控<\/h1>/],
+      ['renders system monitor title in shared app header', /<ResourceHeader[\s\S]*title="系统监控"[\s\S]*placement="app-header"|<ResourceHeader[\s\S]*placement="app-header"[\s\S]*title="系统监控"/],
       ['uses grafana-like dashboard wording', /Grafana-like 平台组件看板/],
-      ['renders grafana-like dashboard path', /Dashboards \/ Platform \/ Control Plane/],
+      ['renders monitor app header path', /eyebrow="监控指标 \/ 系统监控"/],
       ['renders dashboard time range pill', /Last 1 hour/],
       ['renders local timezone pill', /formatTimezoneOffset/],
       ['renders dashboard variables region', /aria-label="Dashboard variables"/],
@@ -77,16 +77,19 @@ const checks = [
       ['consumes platform runtime metrics field', /overview\.runtime/],
       ['renders interface detail table', /接口明细/],
       ['uses OTel resource labels copy', /OTel resource labels/],
+      ['paginates interface detail rows', /const INTERFACE_DETAIL_PAGE_SIZE = 10[\s\S]*title="接口明细"[\s\S]*pagination=\{\{[\s\S]*pageSize: INTERFACE_DETAIL_PAGE_SIZE[\s\S]*total: filteredRows\.length[\s\S]*showJumper: true/],
+      ['resets interface detail pagination with filters', /const interfacePaginationKey = \[category, api, componentKeyword, dataSource\]\.join\('\|'\)[\s\S]*<Table[\s\S]*key=\{interfacePaginationKey\}/],
     ],
     forbidden: [
       ['must not use fixed UTC-looking time labels', /const TIME_LABELS/],
+      ['must not disable interface detail pagination', /title="接口明细"[\s\S]*pagination=\{false\}/],
     ],
   },
   {
     file: 'src/pages/Metrics/ServiceMonitor/index.tsx',
     expectations: [
       ['contains service signal mock rows', /SERVICE_SIGNALS/],
-      ['renders service monitor title', /<h1>服务监控<\/h1>/],
+      ['renders service monitor title in shared app header', /<ResourceHeader[\s\S]*title="服务监控"[\s\S]*placement="app-header"|<ResourceHeader[\s\S]*placement="app-header"[\s\S]*title="服务监控"/],
       ['uses service level overview wording', /服务级整体概览/],
       ['uses the unified query composer', /<QueryComposer/],
       ['contains service main search', /keyword=\{service\}[\s\S]*keywordPlaceholder="搜索命名空间 \/ 服务"/],

@@ -15,6 +15,7 @@ import { useNavigate } from 'components/Router'
 
 import { ResourceToolbar } from 'components/ResourceLayout'
 import ResourceNameLink from 'components/ResourceNameLink'
+import QueryComposer from 'components/QueryComposer'
 import { ConfirmOperationButton, OperationButtonGroup } from 'components/OperationButton'
 import {
   bindServiceEnvironment,
@@ -47,9 +48,9 @@ const ServicesTable = () => {
   const [selectedLogicalId, setSelectedLogicalId] = useState('')
   const [draft, setDraft] = useState({ name: '', comment: '', business: '', department: '' })
 
-  const loadLogicalServices = useCallback(async (nextPage = page) => {
+  const loadLogicalServices = useCallback(async (nextPage = page, nextKeyword = keyword) => {
     const result = await describeLogicalServices({
-      name: keyword || undefined,
+      name: nextKeyword || undefined,
       offset: (nextPage - 1) * pageSize,
       limit: pageSize,
     })
@@ -57,9 +58,9 @@ const ServicesTable = () => {
     setLogicalTotal(result.totalCount)
   }, [keyword, page])
 
-  const loadUnboundServices = useCallback(async (nextPage = page) => {
+  const loadUnboundServices = useCallback(async (nextPage = page, nextKeyword = keyword) => {
     const result = await describeUnboundServiceEnvironments({
-      name: keyword || undefined,
+      name: nextKeyword || undefined,
       offset: (nextPage - 1) * pageSize,
       limit: pageSize,
     })
@@ -71,11 +72,11 @@ const ServicesTable = () => {
     setLogicalServiceOptions(await describeAllLogicalServices())
   }, [])
 
-  const refresh = useCallback(async (nextPage = page) => {
+  const refresh = useCallback(async (nextPage = page, nextKeyword = keyword) => {
     setLoading(true)
     try {
-      if (activeTab === 'logical') await loadLogicalServices(nextPage)
-      else await Promise.all([loadUnboundServices(nextPage), loadLogicalServiceOptions()])
+      if (activeTab === 'logical') await loadLogicalServices(nextPage, nextKeyword)
+      else await Promise.all([loadUnboundServices(nextPage, nextKeyword), loadLogicalServiceOptions()])
     } catch (error) {
       openErrNotification('获取服务失败', error instanceof Error ? error.message : String(error))
     } finally {
@@ -255,16 +256,33 @@ const ServicesTable = () => {
           count={loading ? '正在同步列表' : `共 ${currentTotal} 条`}
           filters={(
             <>
-              <Input value={keyword} placeholder={activeTab === 'logical' ? '搜索逻辑服务' : '搜索运行时服务'} onChange={setKeyword} />
-              <Button variant="outline" onClick={() => { setPage(1); void refresh(1) }}>查询</Button>
-              <Tooltip content="刷新服务列表">
-                <Button shape="square" variant="outline" onClick={() => void refresh()}>
-                  <RefreshIcon />
-                </Button>
-              </Tooltip>
-              {activeTab === 'logical' && (
-                <Button theme="primary" icon={<AddIcon />} onClick={() => setCreatorVisible(true)}>新建逻辑服务</Button>
-              )}
+              <QueryComposer
+                keyword={keyword}
+                keywordPlaceholder={activeTab === 'logical' ? '搜索逻辑服务' : '搜索运行时服务'}
+                suggestions={currentData.map((item) => String(item.name || '')).filter(Boolean)}
+                onKeywordChange={setKeyword}
+                onSubmit={({ keyword: nextKeyword }) => {
+                  setPage(1)
+                  void refresh(1, nextKeyword)
+                }}
+                onReset={() => {
+                  setKeyword('')
+                  setPage(1)
+                  void refresh(1, '')
+                }}
+                actions={(
+                  <>
+                    <Tooltip content="刷新服务列表">
+                      <Button shape="square" variant="outline" onClick={() => void refresh(page, keyword)}>
+                        <RefreshIcon />
+                      </Button>
+                    </Tooltip>
+                    {activeTab === 'logical' && (
+                      <Button theme="primary" icon={<AddIcon />} onClick={() => setCreatorVisible(true)}>新建逻辑服务</Button>
+                    )}
+                  </>
+                )}
+              />
             </>
           )}
         />

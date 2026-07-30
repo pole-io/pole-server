@@ -359,6 +359,8 @@ export default function SystemConfiguration() {
 
   const pageHeader = (
     <ResourceHeader
+      density="compact"
+      placement="app-header"
       eyebrow="SYSTEM CONFIGURATION"
       title="系统配置"
       description="逐字段管理 Pole Server 与 Console 系统配置；自举项保持锁定，可管理项支持草稿、审阅、发布与明确的生效状态。"

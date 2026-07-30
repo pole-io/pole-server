@@ -1138,19 +1138,11 @@ export default memo(() => {
   return (
     <div className={style.page}>
       <ResourceHeader
+        density="compact"
+        placement="app-header"
         eyebrow="AI Native / A2A Agent Registry"
         title="A2A Agent"
         description="维护可被其它 Agent 发现的 Agent Card、访问接口、技能能力和后端绑定。"
-        actions={(
-          <>
-          <Tooltip content="刷新列表">
-            <Button shape="square" variant="outline" onClick={() => refreshTable(page, limit)}>
-              <RefreshIcon />
-            </Button>
-          </Tooltip>
-          <Button theme="primary" icon={<AddIcon />} onClick={() => operateAgent('create')}>新建 A2A Agent</Button>
-          </>
-        )}
       />
 
       <section className={style.metricRail}>
@@ -1177,72 +1169,91 @@ export default memo(() => {
       </section>
 
       <ResourceToolbar
+        density="compact"
         title="Agent 列表"
         count={loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}
         filters={(
-          <QueryComposer
-            keyword={query.name}
-            keywordPlaceholder="搜索 Agent 名称"
-            suggestions={datas.map((item) => String(item.name || '')).filter(Boolean)}
-            fields={[
-              {
-                key: 'namespace',
-                label: '命名空间',
-                type: 'text',
-              },
-              {
-                key: 'protocol_binding',
-                label: '协议',
-                type: 'select',
-                options: protocolOptions,
-              },
-              {
-                key: 'skill_tag',
-                label: 'Skill Tag',
-                type: 'text',
-              },
-              {
-                key: 'backend_type',
-                label: '后端类型',
-                type: 'select',
-                options: backendOptions,
-              },
-              {
-                key: 'streaming',
-                label: 'Streaming',
-                type: 'boolean',
-                trueLabel: '支持',
-                falseLabel: '不支持',
-              },
-              {
-                key: 'push_notifications',
-                label: 'Push',
-                type: 'boolean',
-                trueLabel: '支持',
-                falseLabel: '不支持',
-              },
-            ]}
-            values={{
-              namespace: query.namespace,
-              protocol_binding: query.protocol_binding,
-              skill_tag: query.skill_tag,
-              backend_type: query.backend_type,
-              streaming: query.streaming,
-              push_notifications: query.push_notifications,
-            }}
-            onKeywordChange={(name) => setQuery((prev) => ({ ...prev, name }))}
-            onValuesChange={(values) => setQuery((prev) => ({
-              ...prev,
-              namespace: String(values.namespace || ''),
-              protocol_binding: String(values.protocol_binding || ''),
-              skill_tag: String(values.skill_tag || ''),
-              backend_type: String(values.backend_type || ''),
-              streaming: values.streaming ? String(values.streaming) : undefined,
-              push_notifications: values.push_notifications ? String(values.push_notifications) : undefined,
-            }))}
-            onSubmit={submitFilter}
-            onReset={resetFilter}
-          />
+          <>
+            <QueryComposer
+              keyword={query.name}
+              keywordPlaceholder="搜索 Agent 名称"
+              suggestions={datas.map((item) => String(item.name || '')).filter(Boolean)}
+              fields={[
+                {
+                  key: 'namespace',
+                  label: '命名空间',
+                  type: 'text',
+                },
+                {
+                  key: 'protocol_binding',
+                  label: '协议',
+                  type: 'select',
+                  options: protocolOptions,
+                },
+                {
+                  key: 'skill_tag',
+                  label: 'Skill Tag',
+                  type: 'text',
+                },
+                {
+                  key: 'backend_type',
+                  label: '后端类型',
+                  type: 'select',
+                  options: backendOptions,
+                },
+                {
+                  key: 'streaming',
+                  label: 'Streaming',
+                  type: 'boolean',
+                  trueLabel: '支持',
+                  falseLabel: '不支持',
+                },
+                {
+                  key: 'push_notifications',
+                  label: 'Push',
+                  type: 'boolean',
+                  trueLabel: '支持',
+                  falseLabel: '不支持',
+                },
+              ]}
+              values={{
+                namespace: query.namespace,
+                protocol_binding: query.protocol_binding,
+                skill_tag: query.skill_tag,
+                backend_type: query.backend_type,
+                streaming: query.streaming,
+                push_notifications: query.push_notifications,
+              }}
+              onKeywordChange={(name) => setQuery((prev) => ({ ...prev, name }))}
+              onValuesChange={(values) => setQuery((prev) => ({
+                ...prev,
+                namespace: String(values.namespace || ''),
+                protocol_binding: String(values.protocol_binding || ''),
+                skill_tag: String(values.skill_tag || ''),
+                backend_type: String(values.backend_type || ''),
+                streaming: values.streaming ? String(values.streaming) : undefined,
+                push_notifications: values.push_notifications ? String(values.push_notifications) : undefined,
+              }))}
+              onSubmit={submitFilter}
+              onReset={resetFilter}
+              actions={(
+                <>
+                  <Tooltip content="刷新 Agent 列表">
+                    <Button
+                      aria-label="刷新 Agent 列表"
+                      shape="square"
+                      variant="outline"
+                      icon={<RefreshIcon />}
+                      onClick={() => refreshTable(page, limit)}
+                    />
+                  </Tooltip>
+                  <Button theme="primary" icon={<AddIcon />} onClick={() => operateAgent('create')}>
+                    新建 A2A Agent
+                  </Button>
+                </>
+              )}
+            />
+          </>
         )}
       />
 

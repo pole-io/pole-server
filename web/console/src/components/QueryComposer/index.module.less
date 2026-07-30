@@ -7,6 +7,10 @@
   gap: 8px;
 }
 
+.composerWithActions {
+  max-width: none;
+}
+
 .primaryRow {
   display: flex;
   min-width: 0;
@@ -19,9 +23,14 @@
 .keywordWrap {
   position: relative;
   width: auto;
-  min-width: 220px;
+  min-width: 180px;
   max-width: 420px;
-  flex: 1 1 300px;
+  flex: 1 1 280px;
+}
+
+.primaryRow > :global(.fui-Button) {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .keyword {
@@ -136,7 +145,7 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
 }
 
@@ -151,7 +160,7 @@
   display: flex;
   min-width: 0;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 6px;
 }
 

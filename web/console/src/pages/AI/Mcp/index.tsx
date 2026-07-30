@@ -893,19 +893,11 @@ export default memo(() => {
   return (
     <div className={style.page}>
       <ResourceHeader
+        density="compact"
+        placement="app-header"
         eyebrow="AI Native / MCP Registry"
         title="MCP 服务"
         description="维护对外暴露的 MCP Server，并查看每个 server 同步出的工具能力。"
-        actions={(
-          <>
-          <Tooltip content="刷新列表">
-            <Button shape="square" variant="outline" onClick={() => refreshTable(page, limit)}>
-              <RefreshIcon />
-            </Button>
-          </Tooltip>
-          <Button theme="primary" icon={<AddIcon />} onClick={() => operateServer('create')}>新建 MCP Server</Button>
-          </>
-        )}
       />
 
       <section className={style.metricRail}>
@@ -932,39 +924,58 @@ export default memo(() => {
       </section>
 
       <ResourceToolbar
+        density="compact"
         title="服务列表"
         count={loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}
         filters={(
-          <QueryComposer
-            keyword={query.name}
-            keywordPlaceholder="搜索 MCP 服务名称"
-            suggestions={datas.map((item) => String(item.name || '')).filter(Boolean)}
-            fields={[
-              {
-                key: 'namespace',
-                label: '命名空间',
-                type: 'text',
-              },
-              {
-                key: 'protocol',
-                label: '协议',
-                type: 'select',
-                options: protocolOptions,
-              },
-            ]}
-            values={{
-              namespace: query.namespace,
-              protocol: query.protocol,
-            }}
-            onKeywordChange={(name) => setQuery((prev) => ({ ...prev, name }))}
-            onValuesChange={(values) => setQuery((prev) => ({
-              ...prev,
-              namespace: String(values.namespace || ''),
-              protocol: String(values.protocol || ''),
-            }))}
-            onSubmit={submitFilter}
-            onReset={resetFilter}
-          />
+          <>
+            <QueryComposer
+              keyword={query.name}
+              keywordPlaceholder="搜索 MCP 服务名称"
+              suggestions={datas.map((item) => String(item.name || '')).filter(Boolean)}
+              fields={[
+                {
+                  key: 'namespace',
+                  label: '命名空间',
+                  type: 'text',
+                },
+                {
+                  key: 'protocol',
+                  label: '协议',
+                  type: 'select',
+                  options: protocolOptions,
+                },
+              ]}
+              values={{
+                namespace: query.namespace,
+                protocol: query.protocol,
+              }}
+              onKeywordChange={(name) => setQuery((prev) => ({ ...prev, name }))}
+              onValuesChange={(values) => setQuery((prev) => ({
+                ...prev,
+                namespace: String(values.namespace || ''),
+                protocol: String(values.protocol || ''),
+              }))}
+              onSubmit={submitFilter}
+              onReset={resetFilter}
+              actions={(
+                <>
+                  <Tooltip content="刷新 MCP 服务列表">
+                    <Button
+                      aria-label="刷新 MCP 服务列表"
+                      shape="square"
+                      variant="outline"
+                      icon={<RefreshIcon />}
+                      onClick={() => refreshTable(page, limit)}
+                    />
+                  </Tooltip>
+                  <Button theme="primary" icon={<AddIcon />} onClick={() => operateServer('create')}>
+                    新建 MCP Server
+                  </Button>
+                </>
+              )}
+            />
+          </>
         )}
       />
 

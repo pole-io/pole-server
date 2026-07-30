@@ -33,8 +33,12 @@ assert.match(resourceLayoutStyle, /\.resourceHeaderIntegrated[\s\S]*border-botto
   '顶部导航中的资源信息不能保留内容区卡片边界')
 assert.match(resourceLayoutStyle, /\.resourceHeaderIntegrated[\s\S]*\.eyebrow[\s\S]*color: var\(--app-text-secondary\)[\s\S]*font-weight: 500/,
   '顶部导航路径必须使用弱化的中等字重')
-assert.match(resourceLayoutStyle, /\.resourceHeaderIntegrated[\s\S]*\.headerContent h2[\s\S]*overflow: hidden[\s\S]*max-width: clamp\([\s\S]*font-size: 17px[\s\S]*font-weight: 600[\s\S]*text-overflow: ellipsis/,
-  '顶部导航资源名必须保持克制的标题层级，并对长名称做受控截断')
+assert.match(resourceLayoutStyle, /\.resourceHeaderIntegrated[\s\S]*\.headerContent h1[\s\S]*overflow: hidden[\s\S]*max-width: clamp\([\s\S]*font-size: 14px[\s\S]*font-weight: 600[\s\S]*text-overflow: ellipsis/,
+  '顶部导航资源名必须使用统一字号和强调字重，并对长名称做受控截断')
+assert.match(resourceLayout, /!integrated && description && <p/,
+  '顶部导航不得渲染长说明，正文资源页仍须保留 description 能力')
+assert.match(resourceLayoutStyle, /\.resourceHeaderIntegrated[\s\S]*\.eyebrow[\s\S]*font-size: 14px[\s\S]*font-weight: 500[\s\S]*line-height: 20px/,
+  '顶部导航路径必须与资源名保持同字号，仅通过颜色和字重区分')
 assert.match(appHeader, /id="app-header-context"[\s\S]*className=\{Style\.headerContext\}/,
   '全局顶部导航必须提供资源页面上下文插槽')
 assert.match(appHeaderStyle, /\.headerContext[\s\S]*flex: 1 1 auto[\s\S]*min-width: 0/,

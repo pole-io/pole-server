@@ -662,36 +662,14 @@ const GovernanceWorkbench: React.FC<GovernanceWorkbenchProps> = ({ embedded = fa
                                 <Radio.Button value="callee">作为被调方</Radio.Button>
                             </RadioGroup>
                         </div>
-                        <Tooltip content="刷新列表">
-                            <Button aria-label="刷新列表" shape="square" variant="outline" icon={<RefreshIcon />} onClick={() => refreshData(search)} />
-                        </Tooltip>
-                        <Button theme="primary" icon={<AddIcon />} onClick={openCreateWizard}>新建规则</Button>
                     </div>
                 </div>
             ) : <ResourceHeader
+                density="compact"
+                placement="app-header"
                 eyebrow="治理管理 / 规则治理"
                 title="规则治理工作台"
                 description="命名空间用于标识规则归属环境；caller、callee 和目标服务属于独立的运行时作用范围。"
-                actions={(
-                    <>
-                        <Tooltip content="刷新列表">
-                            <Button
-                                aria-label="刷新列表"
-                                shape="square"
-                                variant="outline"
-                                icon={<RefreshIcon />}
-                                onClick={() => refreshData(search)}
-                            />
-                        </Tooltip>
-                        <Button
-                            theme="primary"
-                            icon={<AddIcon />}
-                            onClick={openCreateWizard}
-                        >
-                            新建规则
-                        </Button>
-                    </>
-                )}
             />}
             {!embedded && <div className={style.summary}>
                 <div className={style.summaryItem}>
@@ -716,63 +694,82 @@ const GovernanceWorkbench: React.FC<GovernanceWorkbenchProps> = ({ embedded = fa
                 </div>
             </div>}
             <ResourceToolbar
+                density="compact"
                 title={embedded ? '关联规则' : '规则清单'}
                 count={loading ? '正在同步列表' : `当前显示 ${filteredRules.length} / ${scopedRules.length} 条`}
                 className={style.panelToolbar}
                 filters={(
-                    <QueryComposer
-                        keyword={search}
-                        keywordPlaceholder="搜索规则名、服务或条件"
-                        suggestions={scopedRules.map((item) => item.name).filter(Boolean)}
-                        fields={[
-                            ...(!serviceContext ? [{
-                                key: 'namespace',
-                                label: '归属环境',
-                                type: 'select' as const,
-                                filterable: true,
-                                options: namespaceOptions,
-                            }] : []),
-                            {
-                                key: 'types',
-                                label: '规则类型',
-                                type: 'multiselect',
-                                filterable: true,
-                                options: typeOptions,
-                            },
-                            {
-                                key: 'status',
-                                label: '状态',
-                                type: 'select',
-                                options: statusOptions,
-                            },
-                        ]}
-                        values={{
-                            ...(!serviceContext ? { namespace: selectedNamespace } : {}),
-                            types: typeFilters,
-                            status: statusFilter,
-                        }}
-                        onKeywordChange={setSearch}
-                        onValuesChange={(values) => {
-                            if (!serviceContext) setSelectedNamespace(String(values.namespace || ''));
-                            setTypeFilters(Array.isArray(values.types) ? values.types.map(String) : []);
-                            setStatusFilter(String(values.status || ''));
-                        }}
-                        onSubmit={({ keyword, values }) => {
-                            const nextNamespace = serviceContext?.namespace || String(values.namespace || '');
-                            setPaginationVersion((version) => version + 1);
-                            refreshData(keyword, nextNamespace);
-                        }}
-                        onReset={() => {
-                            const nextNamespace = serviceContext?.namespace || 'default';
-                            setTypeFilters([]);
-                            setStatusFilter('');
-                            setSearch('');
-                            setSelectedNamespace(nextNamespace);
-                            setPaginationVersion((version) => version + 1);
-                            refreshData('', nextNamespace);
-                        }}
-                        loading={loading}
-                    />
+                    <>
+                        <QueryComposer
+                            keyword={search}
+                            keywordPlaceholder="搜索规则名、服务或条件"
+                            suggestions={scopedRules.map((item) => item.name).filter(Boolean)}
+                            fields={[
+                                ...(!serviceContext ? [{
+                                    key: 'namespace',
+                                    label: '归属环境',
+                                    type: 'select' as const,
+                                    filterable: true,
+                                    options: namespaceOptions,
+                                }] : []),
+                                {
+                                    key: 'types',
+                                    label: '规则类型',
+                                    type: 'multiselect',
+                                    filterable: true,
+                                    options: typeOptions,
+                                },
+                                {
+                                    key: 'status',
+                                    label: '状态',
+                                    type: 'select',
+                                    options: statusOptions,
+                                },
+                            ]}
+                            values={{
+                                ...(!serviceContext ? { namespace: selectedNamespace } : {}),
+                                types: typeFilters,
+                                status: statusFilter,
+                            }}
+                            onKeywordChange={setSearch}
+                            onValuesChange={(values) => {
+                                if (!serviceContext) setSelectedNamespace(String(values.namespace || ''));
+                                setTypeFilters(Array.isArray(values.types) ? values.types.map(String) : []);
+                                setStatusFilter(String(values.status || ''));
+                            }}
+                            onSubmit={({ keyword, values }) => {
+                                const nextNamespace = serviceContext?.namespace || String(values.namespace || '');
+                                setPaginationVersion((version) => version + 1);
+                                refreshData(keyword, nextNamespace);
+                            }}
+                            onReset={() => {
+                                const nextNamespace = serviceContext?.namespace || 'default';
+                                setTypeFilters([]);
+                                setStatusFilter('');
+                                setSearch('');
+                                setSelectedNamespace(nextNamespace);
+                                setPaginationVersion((version) => version + 1);
+                                refreshData('', nextNamespace);
+                            }}
+                            loading={loading}
+                            actions={(
+                                <>
+                                    <Tooltip content="刷新规则清单">
+                                        <Button
+                                            aria-label="刷新规则清单"
+                                            shape="square"
+                                            variant="outline"
+                                            icon={<RefreshIcon />}
+                                            onClick={() => refreshData(search)}
+                                        />
+                                    </Tooltip>
+                                    <Button theme="primary" icon={<AddIcon />} onClick={openCreateWizard}>
+                                        新建规则
+                                    </Button>
+                                </>
+                            )}
+                        />
+                    </>
                 )}
             />
             <div className={style.listPanel}>

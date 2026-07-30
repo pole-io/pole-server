@@ -214,7 +214,11 @@ export const QueryComposer: React.FC<QueryComposerProps> = ({
   };
 
   return (
-    <div className={`${style.composer} ${className || ''}`} data-query-composer>
+    <div
+      className={`${style.composer} ${actions ? style.composerWithActions : ''} ${className || ''}`}
+      data-query-actions={actions ? 'true' : undefined}
+      data-query-composer
+    >
       <div className={style.primaryRow}>
         <div className={style.keywordWrap}>
           <span className={style.searchIcon} aria-hidden><SearchIcon /></span>
@@ -348,7 +352,7 @@ export const QueryComposer: React.FC<QueryComposerProps> = ({
         )}
 
         {mode === 'explicit' && (
-          <Button theme="primary" icon={<SearchIcon />} loading={loading} onClick={submit}>
+          <Button variant="outline" loading={loading} onClick={submit}>
             查询
           </Button>
         )}

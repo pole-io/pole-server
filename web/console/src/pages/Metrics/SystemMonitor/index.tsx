@@ -1,7 +1,8 @@
 import React from 'react';
 import { Button, Empty, Table, TableColumnData, Tag } from 'components/Fluent';
-import { RefreshIcon, System2Icon } from 'components/Fluent/icons';
+import { RefreshIcon } from 'components/Fluent/icons';
 import QueryComposer from 'components/QueryComposer';
+import { ResourceHeader } from 'components/ResourceLayout';
 import {
   describePlatformOverview,
   PlatformComponentMetric,
@@ -69,6 +70,8 @@ const CATEGORY_OPTIONS = [
   { label: '控制器', value: 'controller' },
   { label: '存储', value: 'storage' },
 ];
+
+const INTERFACE_DETAIL_PAGE_SIZE = 10;
 
 const CATEGORY_LABEL: Record<SystemCategory, string> = {
   'control-plane': '控制面',
@@ -721,6 +724,7 @@ export default function SystemMonitor() {
   const avgErrorRate = average(filteredRows, 'errorRate').toFixed(2);
   const maxQps = maxValue(filteredRows, 'qps');
   const goroutineMetric = sourceRuntime.find((item) => item.name === 'process.runtime.go.goroutines');
+  const interfacePaginationKey = [category, api, componentKeyword, dataSource].join('|');
 
   const columns = React.useMemo<TableColumnData<SystemMetricRow>[]>(() => [
     {
@@ -788,16 +792,14 @@ export default function SystemMonitor() {
 
   return (
     <div className={style.page}>
-      <section className={style.dashboardHeader}>
-        <div className={style.headerTitle}>
-          <span className={style.headerIcon}><System2Icon /></span>
-          <div>
-            <span className={style.dashboardPath}>Dashboards / Platform / Control Plane</span>
-            <h1>系统监控</h1>
-            <p>Grafana-like 平台组件看板，按类别、接口和组件关键字聚合 OTel 指标。</p>
-          </div>
-        </div>
-        <div className={style.dashboardActions}>
+      <ResourceHeader
+        density="compact"
+        placement="app-header"
+        eyebrow="监控指标 / 系统监控"
+        title="系统监控"
+        description="Grafana-like 平台组件看板，按类别、接口和组件关键字聚合 OTel 指标。"
+        actions={(
+          <div className={style.dashboardActions}>
           <span className={style.dashboardPill}>Last 1 hour</span>
           <span className={style.dashboardPill}>Step 1m</span>
           <span className={style.dashboardPill}>{timezoneLabel}</span>
@@ -806,8 +808,9 @@ export default function SystemMonitor() {
             dataSource === 'mock' ? 'Mock 预览' : '实时数据'
           }</Tag>
           <Button icon={<RefreshIcon />} variant="outline" onClick={() => void loadRemoteData()}>刷新</Button>
-        </div>
-      </section>
+          </div>
+        )}
+      />
 
       <section className={style.variableBar} aria-label="Dashboard variables">
         <QueryComposer
@@ -863,13 +866,18 @@ export default function SystemMonitor() {
         </Panel>
         <Panel title="接口明细" subtitle="component / api / pod 等 OTel resource labels 级别指标" query="group by component, api, pod" className={style.panelFull}>
           <Table
+            key={interfacePaginationKey}
             data={filteredRows}
             columns={columns}
             rowKey="id"
             tableLayout="fixed"
             cellEmptyContent="-"
             empty={<Empty description="暂无系统监控数据" />}
-            pagination={false}
+            pagination={{
+              pageSize: INTERFACE_DETAIL_PAGE_SIZE,
+              total: filteredRows.length,
+              showJumper: true,
+            }}
           />
         </Panel>
       </div>

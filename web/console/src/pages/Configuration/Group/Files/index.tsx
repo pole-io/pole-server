@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Button, Tooltip, Tree, Input, TreeInstanceFunctions, Popconfirm, Tag } from 'components/Fluent';
-import { Delete1Icon, FileAddIcon, Icon, RefreshIcon } from 'components/Fluent/icons';
+import { AddIcon, Delete1Icon, Icon, RefreshIcon } from 'components/Fluent/icons';
 import { useNavigate } from 'components/Router';
 import type { TreeProps, TreeNodeModel } from 'components/Fluent';
 
 import AuthorizeInput from 'components/Authorize';
+import { ResourceToolbar } from 'components/ResourceLayout';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
@@ -308,40 +309,42 @@ export default React.memo(() => {
                     }}
                 />
             )}
-            <div className={style.workbench}>
-                <aside className={style.fileExplorer}>
-                    <div className={style.fileExplorerHeader}>
-                        <div className={style.fileExplorerTitle}>
-                            <span>配置文件</span>
-                            <div className={style.fileExplorerActions}>
-                            <Tooltip content={activeGroup?.editable ? '新建配置文件' : '没有权限'}>
-                                <Button
-                                    shape="square"
-                                    variant='text'
-                                    size='small'
-                                    icon={<FileAddIcon />}
-                                    onClick={() => handleOperateFile({} as TreeNodeModel, 'create')}
-                                    disabled={!activeGroup?.editable}
-                                />
-                            </Tooltip>
-                            <Tooltip content="刷新">
-                                <Button
-                                    shape="square"
-                                    variant='text'
-                                    size='small'
-                                    icon={<RefreshIcon />}
-                                    onClick={() => fetchData()}
-                                />
-                            </Tooltip>
-                            </div>
-                        </div>
+            <ResourceToolbar
+                density="compact"
+                title="配置文件清单"
+                count={`共 ${datas.length} 条`}
+                filters={(
+                    <>
                         <Input
                             className={style.treeSearch}
                             placeholder="搜索文件路径"
                             value={editState.nodeFilter}
                             onChange={value => setEditState(s => ({ ...s, nodeFilter: value }))}
                         />
-                    </div>
+                        <Tooltip content="刷新配置文件">
+                            <Button
+                                aria-label="刷新配置文件"
+                                shape="square"
+                                variant="outline"
+                                icon={<RefreshIcon />}
+                                onClick={() => fetchData()}
+                            />
+                        </Tooltip>
+                        <Tooltip content={activeGroup?.editable ? '新建配置文件' : '没有权限'}>
+                            <Button
+                                theme="primary"
+                                icon={<AddIcon />}
+                                onClick={() => handleOperateFile({} as TreeNodeModel, 'create')}
+                                disabled={!activeGroup?.editable}
+                            >
+                                新建配置文件
+                            </Button>
+                        </Tooltip>
+                    </>
+                )}
+            />
+            <div className={style.workbench}>
+                <aside className={style.fileExplorer}>
                     <div className={style.treeScroll}>
                     <Tree
                         ref={treeRef}

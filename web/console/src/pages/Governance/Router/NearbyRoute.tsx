@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Link, Popup, Table, Button, PageInfo, PrimaryTableProps, TableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Loading, Popconfirm } from 'components/Fluent';
-import { DeleteIcon, EditIcon, RefreshIcon, CreditcardIcon } from 'components/Fluent/icons';
+import { Link, Popup, Table, Button, PageInfo, PrimaryTableProps, TableProps, Tooltip, Space, TableRowData, Tabs, Loading, Popconfirm } from 'components/Fluent';
+import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, CreditcardIcon } from 'components/Fluent/icons';
 import { useNavigate, useLocation } from 'components/Router';
 
 import { openErrNotification } from 'utils/notifition';
+import { ResourceToolbar } from 'components/ResourceLayout';
 import { describeCustomRoute } from 'services/router';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import Text from 'components/Text';
 import { Op } from 'services/types';
-import style from './index.module.less';
 import Search from 'components/Search';
 
 
@@ -163,39 +163,38 @@ const NearbyRoute: React.FC<INearbyRouteProps> = ({ }) => {
 
     const table = (
         <>
-            <Row justify='space-between' className={style.toolBar}>
-                <Col>
-                    <Row gutter={8} align='middle'>
-                        <Col>
-                            <Button onClick={(v) => {
-                                handleOpRule({}, 'create')
-                            }}>新建</Button>
-                        </Col>
+            <ResourceToolbar
+                density="compact"
+                title="就近路由清单"
+                count={searchState.isLoading ? '正在同步列表' : `共 ${searchState.total} 条`}
+                filters={(
+                    <>
                         {selectedRowKeys.length > 0 && (
                             <>
-                                <Col>
-                                    <Button theme='danger'>批量删除</Button>
-                                </Col>
-                                <Col>
-                                    <div>已选 {selectedRowKeys?.length || 0} 项</div>
-                                </Col>
+                                <span>已选 {selectedRowKeys.length} 项</span>
+                                <Button theme='danger'>批量删除</Button>
                             </>
                         )}
-                    </Row>
-                </Col>
-                <Col>
-                    <Space>
                         <Search
                             onChange={(value: string) => {
                                 fetchData({ current: 1, pageSize: searchState.limit, previous: 0, }, value);
                             }}
                         />
                         <Tooltip content="刷新">
-                            <RefreshIcon onClick={() => fetchData({ current: 1, pageSize: searchState.limit, previous: 0 })} />
+                            <Button
+                                aria-label="刷新就近路由列表"
+                                shape="square"
+                                variant="outline"
+                                icon={<RefreshIcon />}
+                                onClick={() => fetchData({ current: 1, pageSize: searchState.limit, previous: 0 })}
+                            />
                         </Tooltip>
-                    </Space>
-                </Col>
-            </Row>
+                        <Button theme="primary" icon={<AddIcon />} onClick={() => {
+                            handleOpRule({}, 'create')
+                        }}>新建就近路由</Button>
+                    </>
+                )}
+            />
             <Table
                 data={searchState.services || []}
                 columns={columns(handleOpRule, (id: string) => {

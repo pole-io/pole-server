@@ -7,60 +7,12 @@
   scroll-margin-top: 56px;
 }
 
-.dashboardHeader,
 .variableBar,
 .panel {
   border: 1px solid var(--app-border);
   border-radius: 8px;
   background: var(--app-surface);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-}
-
-.dashboardHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 16px;
-}
-
-.headerTitle {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-
-  h1 {
-    margin: 0;
-    color: var(--app-text);
-    font-size: 21px;
-    font-weight: 650;
-    line-height: 28px;
-  }
-
-  p {
-    margin: 2px 0 0;
-    color: var(--app-muted);
-    font-size: 12px;
-    line-height: 18px;
-  }
-}
-
-.headerIcon {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  color: #0f6cbd;
-  background: var(--app-brand-subtle);
-
-  svg {
-    width: 20px;
-    height: 20px;
-  }
 }
 
 .sourceTagMock {
@@ -708,11 +660,6 @@
 @media (max-width: 720px) {
   .page {
     padding: 12px;
-  }
-
-  .dashboardHeader {
-    align-items: flex-start;
-    flex-direction: column;
   }
 
   .statGrid {

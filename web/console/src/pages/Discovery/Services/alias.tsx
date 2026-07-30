@@ -5,6 +5,7 @@ import { useNavigate } from 'components/Router';
 
 import Text from 'components/Text';
 import { ConfirmOperationButton, OperationButton } from 'components/OperationButton';
+import { ResourceToolbar } from 'components/ResourceLayout';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import style from './index.module.less';
@@ -216,23 +217,12 @@ const ServiceAliasTable = React.forwardRef<ServiceAliasTableHandle, IServiceAlia
     const table = (
         <>
             <section className={embedded ? style.aliasDetailSection : style.listSection}>
-                <section className={embedded ? style.aliasDetailToolbar : style.filterBar}>
-                    <div className={style.filterHint}>
-                        <strong>别名清单</strong>
-                        <span id={embedded ? 'listCount' : undefined}>
-                            {loading
-                                ? '正在同步列表'
-                                : embedded && namespace && serviceName
-                                    ? `当前显示 ${datas.length} 条`
-                                    : `当前显示 ${datas.length} 条`}
-                        </span>
-                    </div>
-                    <div className={embedded ? style.aliasDetailActions : style.filterActions}>
-                        {embedded && (
-                            <Button theme="primary" icon={<AddIcon />} onClick={() => operateService('create')}>
-                                新建别名
-                            </Button>
-                        )}
+                <ResourceToolbar
+                    density="compact"
+                    title="别名清单"
+                    count={loading ? '正在同步列表' : `当前显示 ${datas.length} 条`}
+                    filters={(
+                        <>
                         <Input
                             id={embedded ? 'keyword' : undefined}
                             className={style.filterInput}
@@ -245,8 +235,14 @@ const ServiceAliasTable = React.forwardRef<ServiceAliasTableHandle, IServiceAlia
                         />
                         <Button variant="outline" onClick={submitFilter}>查询</Button>
                         <Button variant="text" onClick={resetFilter}>重置</Button>
-                    </div>
-                </section>
+                        {embedded && (
+                            <Button theme="primary" icon={<AddIcon />} onClick={() => operateService('create')}>
+                                新建别名
+                            </Button>
+                        )}
+                        </>
+                    )}
+                />
                 {editorState.visible && (
                     <AliasEditor
                         key={editorState.mode + (editorState.data?.alias || 'new') + (editorState.visible ? '1' : '0')}

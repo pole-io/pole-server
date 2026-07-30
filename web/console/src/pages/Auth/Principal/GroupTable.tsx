@@ -18,7 +18,8 @@ import GroupEditor from './GroupEditor';
 import { editorUserGroup, removeUserGroups } from 'modules/user/groups';
 
 interface IUsersProps {
-
+    onTotalChange?: (total: number) => void;
+    onTotalsRefresh?: () => void;
 }
 
 const ServerError = () => <ErrorPage code={500} />;
@@ -83,7 +84,7 @@ const columns = (
 ]
 
 
-const GroupsTable: React.FC<IUsersProps> = ({ }) => {
+const GroupsTable: React.FC<IUsersProps> = ({ onTotalChange, onTotalsRefresh }) => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const [selectedRowKeys, setSelectedRowKeys] = useState<Array<string | number>>([]);
@@ -122,6 +123,7 @@ const GroupsTable: React.FC<IUsersProps> = ({ }) => {
             openInfoNotification('请求成功', `已删除 ${ids.length} 个用户组`);
             setSelectedRowKeys([]);
             await fetchData({ current: 1, pageSize: searchState.limit, previous: 0 }, searchState.query);
+            onTotalsRefresh?.();
             return;
         }
         setSearchState(s => ({ ...s, isLoading: false }));
@@ -173,6 +175,7 @@ const GroupsTable: React.FC<IUsersProps> = ({ }) => {
                 limit: pageSize, offset: (current - 1) * pageSize, ...(query && { name: query })
             });
             setSearchState(s => ({ ...s, groups: response.content, total: response.totalCount, isLoading: false }));
+            if (!query) onTotalChange?.(response.totalCount);
         } catch (error: Error | any) {
             setSearchState(s => ({ ...s, fetchError: true, isLoading: false }));
             openErrNotification("获取数据失败", error);
@@ -187,6 +190,7 @@ const GroupsTable: React.FC<IUsersProps> = ({ }) => {
     const refreshTables = () => {
         setSearchState(s => ({ ...s, fetchError: false, isLoading: true }));
         fetchData({ current: 1, pageSize: searchState.limit, previous: 0 }, searchState.query);
+        onTotalsRefresh?.();
     }
 
     const table = (

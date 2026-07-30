@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Popconfirm, Empty } from 'components/Fluent';
-import { DeleteIcon, RefreshIcon, CreditcardIcon } from 'components/Fluent/icons';
+import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Popconfirm, Empty } from 'components/Fluent';
+import { AddIcon, DeleteIcon, RefreshIcon, CreditcardIcon } from 'components/Fluent/icons';
 
 import { Op } from 'services/types';
+import { ResourceToolbar } from 'components/ResourceLayout';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { CustomRouteView, normalizeRoutingConfigForEditor } from 'services/router';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
@@ -187,29 +188,32 @@ const CustomRoute: React.FC<ICustomRouteProps> = ({ }) => {
 
     const table = (
         <>
-            <Row justify='space-between' className={style.toolBar}>
-                <Col>
-                    <Row gutter={8} align='middle'>
-                        <Col>
-                            <Button onClick={(v) => {
-                                handleOpRule({}, 'create')
-                            }}>新建</Button>
-                        </Col>
-                    </Row>
-                </Col>
-                <Col>
-                    <Space>
+            <ResourceToolbar
+                density="compact"
+                title="自定义路由清单"
+                count={loading ? '正在同步列表' : `共 ${total} 条`}
+                filters={(
+                    <>
                         <Search
                             onChange={(value: string) => {
                                 refreshTable(1, limit, value);
                             }}
                         />
                         <Tooltip content="刷新">
-                            <RefreshIcon onClick={() => refreshTable(1, limit)} />
+                            <Button
+                                aria-label="刷新自定义路由列表"
+                                shape="square"
+                                variant="outline"
+                                icon={<RefreshIcon />}
+                                onClick={() => refreshTable(1, limit)}
+                            />
                         </Tooltip>
-                    </Space>
-                </Col>
-            </Row>
+                        <Button theme="primary" icon={<AddIcon />} onClick={() => {
+                            handleOpRule({}, 'create')
+                        }}>新建自定义路由</Button>
+                    </>
+                )}
+            />
             {editorState.authorizeVisible && (
                 <AuthorizeInput
                     resource_type={PolicySourceType.RouteRules}

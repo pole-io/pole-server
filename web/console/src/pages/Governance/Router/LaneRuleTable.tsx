@@ -3,6 +3,7 @@ import { Button, Tooltip, Space, TableRowData, Popconfirm, Tag, Link } from 'com
 import { AddIcon, DeleteIcon, EditIcon } from 'components/Fluent/icons';
 
 import { useAppDispatch, useAppSelector } from 'modules/store';
+import { ResourceToolbar } from 'components/ResourceLayout';
 import Text from 'components/Text';
 import { Op } from 'services/types';
 import { LaneRuleView } from 'services/lane';
@@ -178,11 +179,16 @@ const LaneRuleTable: React.FC<ILaneRuleTableProps> = ({ groupId }) => {
 
     const table = (
         <>
-            <div className={style.toolBar}>
-                <Button icon={<AddIcon />} onClick={() => {
-                    handleOpRule({}, 'create')
-                }}>新建</Button>
-            </div>
+            <ResourceToolbar
+                density="compact"
+                title="泳道规则清单"
+                count={`共 ${rules.length} 条`}
+                filters={(
+                    <Button theme="primary" icon={<AddIcon />} onClick={() => {
+                        handleOpRule({}, 'create')
+                    }}>新建泳道规则</Button>
+                )}
+            />
             {editorState.visible && (
                 <LaneRuleEditor
                     op={editorState.mode}

@@ -1,9 +1,10 @@
 import React from 'react';
-import { Button, Col, Empty, Link, Popconfirm, Row, Space, Table, Tabs, Tag, Tooltip } from 'components/Fluent';
+import { Button, Empty, Link, Popconfirm, Space, Table, Tabs, Tag, Tooltip } from 'components/Fluent';
 import type { PrimaryTableProps, TableRowData } from 'components/Fluent';
-import { CreditcardIcon, DeleteIcon, RefreshIcon } from 'components/Fluent/icons';
+import { AddIcon, CreditcardIcon, DeleteIcon, RefreshIcon } from 'components/Fluent/icons';
 
 import AuthorizeInput from 'components/Authorize';
+import { ResourceToolbar } from 'components/ResourceLayout';
 import Search from 'components/Search';
 import SubscribeTable from 'components/SubscribeTable';
 import { PolicySourceType } from 'services/auth_policy';
@@ -231,16 +232,12 @@ const TrafficGovernanceTable: React.FC<TrafficGovernanceTableProps> = ({ kind })
 
     const table = (
         <>
-            <Row justify="space-between" className={style.toolBar}>
-                <Col>
-                    <Row gutter={8} align="middle">
-                        <Col>
-                            <Button theme="primary" onClick={() => operate({} as TrafficGovernanceRule, 'create')}>新建</Button>
-                        </Col>
-                    </Row>
-                </Col>
-                <Col>
-                    <Space>
+            <ResourceToolbar
+                density="compact"
+                title={`${TrafficGovernanceKindLabel[kind]}规则清单`}
+                count={loading ? '正在同步列表' : `共 ${total} 条`}
+                filters={(
+                    <>
                         <Search
                             onChange={(value: string) => {
                                 setQuery(value);
@@ -256,9 +253,16 @@ const TrafficGovernanceTable: React.FC<TrafficGovernanceTableProps> = ({ kind })
                                 onClick={() => refreshData(1, limit, query)}
                             />
                         </Tooltip>
-                    </Space>
-                </Col>
-            </Row>
+                        <Button
+                            theme="primary"
+                            icon={<AddIcon />}
+                            onClick={() => operate({} as TrafficGovernanceRule, 'create')}
+                        >
+                            新建{TrafficGovernanceKindLabel[kind]}规则
+                        </Button>
+                    </>
+                )}
+            />
             {editor.authorizeVisible && editor.data && (
                 <AuthorizeInput
                     resource_type={TrafficGovernanceAuthResource[kind] as PolicySourceType}

@@ -1,8 +1,9 @@
 import React from 'react';
 import dayjs from 'dayjs';
 import { Button, DateRangePicker, DateRangePickerProps, Drawer, Empty, Table, TableColumnData, Tag } from 'components/Fluent';
-import { FilterIcon, InfoCircleIcon, RefreshIcon, ToolsCircleIcon, UserIcon } from 'components/Fluent/icons';
+import { FilterIcon, InfoCircleIcon, RefreshIcon, UserIcon } from 'components/Fluent/icons';
 import QueryComposer from 'components/QueryComposer';
+import { ResourceHeader } from 'components/ResourceLayout';
 import { describeOperationLog, getOperationTypeInfo, getResourceTypeInfo, OperationLog, OperationType, ResourceType } from 'services/observer';
 import { describeObservabilityOperations } from 'services/observability';
 import ErrorPage from 'components/ErrorPage';
@@ -367,16 +368,14 @@ export default function ServerOperation() {
 
   return (
     <div className={style.page}>
-      <section className={style.headerPanel}>
-        <div className={style.headerMain}>
-          <span className={style.headerIcon}><ToolsCircleIcon /></span>
-          <div>
-            <h1>操作审计</h1>
-            <p>按操作者、资源类型和操作类型追踪审计数据，联动治理动作和变更影响。</p>
-          </div>
-        </div>
-        <DataSourceBadge source={dataSource} loading={isLoading} />
-      </section>
+      <ResourceHeader
+        density="compact"
+        placement="app-header"
+        eyebrow="监控指标 / 操作审计"
+        title="操作审计"
+        description="按操作者、资源类型和操作类型追踪审计数据，联动治理动作和变更影响。"
+        actions={<DataSourceBadge source={dataSource} loading={isLoading} />}
+      />
 
       <div className={style.summaryGrid}>
         <SummaryCard title="操作总数" value={summary.total} hint={dataSource === 'mock' ? '当前筛选下的预览操作' : '当前筛选下的真实操作'} />

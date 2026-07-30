@@ -18,6 +18,8 @@ import { editorPolicyRules, removePolicyRules, resetPolicyRules } from 'modules/
 
 interface IPolicyTableProps {
     type: 'default' | 'custom';
+    onTotalChange?: (total: number) => void;
+    onTotalsRefresh?: () => void;
 }
 
 const ServerError = () => <ErrorPage code={500} />;
@@ -208,6 +210,7 @@ const PolicyTable: React.FC<IPolicyTableProps> = (props) => {
             openInfoNotification('请求成功', `已删除 ${ids.length} 条鉴权策略`);
             setSelectedRowKeys([]);
             await fetchData({ current: 1, pageSize: searchState.limit, previous: 0 }, searchState.query);
+            props.onTotalsRefresh?.();
             return;
         }
         setSearchState(s => ({ ...s, isLoading: false }));
@@ -263,6 +266,7 @@ const PolicyTable: React.FC<IPolicyTableProps> = (props) => {
                 limit: pageSize, offset: (current - 1) * pageSize, ...params
             });
             setSearchState(s => ({ ...s, policies: response.content, total: response.totalCount, isLoading: false }));
+            if (!query) props.onTotalChange?.(response.totalCount);
         } catch (error: Error | any) {
             setSearchState(s => ({ ...s, fetchError: true, isLoading: false }));
             openErrNotification("获取数据失败", error);
@@ -321,6 +325,7 @@ const PolicyTable: React.FC<IPolicyTableProps> = (props) => {
                     dispatch(resetPolicyRules());
                     setEditorState(s => ({ ...s, visible: false }));
                     fetchData({ current: 1, pageSize: searchState.limit, previous: 0 }, searchState.query);
+                    props.onTotalsRefresh?.();
                 }} op={editorState.mode} />
             <Table
                 data={searchState.policies}

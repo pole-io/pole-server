@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button, Table, Space, Row, Col, Tooltip, PrimaryTableProps, TableRowData, Popconfirm, Tabs, Link, Empty } from 'components/Fluent';
-import { CreditcardIcon, DeleteIcon, RefreshIcon } from 'components/Fluent/icons';
+import { Button, Table, Space, Tooltip, PrimaryTableProps, TableRowData, Popconfirm, Tabs, Link, Empty } from 'components/Fluent';
+import { AddIcon, CreditcardIcon, DeleteIcon, RefreshIcon } from 'components/Fluent/icons';
 
 import LossLessEditor, { } from './LossLessEditor';
 import { useAppDispatch, useAppSelector } from 'modules/store';
@@ -8,6 +8,7 @@ import style from './index.module.less';
 import Search from 'components/Search';
 import { Op } from 'services/types';
 import AuthorizeInput from 'components/Authorize';
+import { ResourceToolbar } from 'components/ResourceLayout';
 import { PolicySourceType } from 'services/auth_policy';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import RuleTabs from '../RuleRelease/RuleTabs';
@@ -185,29 +186,32 @@ const LossLessTable: React.FC<ILossLessTableProps> = ({ }) => {
 
     const table = (
         <>
-            <Row justify='space-between' className={style.toolBar}>
-                <Col>
-                    <Row gutter={8} align='middle'>
-                        <Col>
-                            <Button onClick={(v) => {
-                                handleOpRule({}, 'create')
-                            }}>新建</Button>
-                        </Col>
-                    </Row>
-                </Col>
-                <Col>
-                    <Space>
+            <ResourceToolbar
+                density="compact"
+                title="无损规则清单"
+                count={loading ? '正在同步列表' : `共 ${total} 条`}
+                filters={(
+                    <>
                         <Search
                             onChange={(value: string) => {
                                 refreshData(1, limit, value);
                             }}
                         />
                         <Tooltip content="刷新">
-                            <RefreshIcon onClick={() => refreshData(1, limit)} />
+                            <Button
+                                aria-label="刷新无损规则列表"
+                                shape="square"
+                                variant="outline"
+                                icon={<RefreshIcon />}
+                                onClick={() => refreshData(1, limit)}
+                            />
                         </Tooltip>
-                    </Space>
-                </Col>
-            </Row>
+                        <Button theme="primary" icon={<AddIcon />} onClick={() => {
+                            handleOpRule({}, 'create')
+                        }}>新建无损规则</Button>
+                    </>
+                )}
+            />
             {editor.authorizeVisible && (
                 <AuthorizeInput
                     resource_type={PolicySourceType.LossLessRules}

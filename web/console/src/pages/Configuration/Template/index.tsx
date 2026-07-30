@@ -11,6 +11,7 @@ import {
   Tag,
   Tabs,
   Textarea,
+  Tooltip,
 } from 'components/Fluent';
 import { AddIcon, RefreshIcon, RocketIcon, SaveIcon } from 'components/Fluent/icons';
 import CodeEditor from 'components/CodeEditor';
@@ -412,33 +413,50 @@ const TemplateWorkspace: React.FC = () => {
         />
       )}
       <ResourceHeader
+        density="compact"
+        placement="app-header"
         eyebrow={requestedGroup ? `配置分组 / ${requestedGroup} / 配置模板` : '配置中心 / 配置模板'}
         title={requestedGroup ? '配置模板工作区' : '配置模板'}
         description={requestedGroup
           ? '先选择全局复用的模板，再按 Namespace 维护 Template Value；当前配置分组的文件可显式固定模板版本。'
           : '全局维护模板与参数 Schema，各 Namespace 独立维护 Value；配置文件显式固定不可变模板版本。'}
-        actions={(
-          <Space>
-            {returnTo && !requestedGroup && <Button variant="outline" onClick={() => navigate(returnTo)}>返回配置分组</Button>}
-            <Button variant="outline" icon={<RefreshIcon />} onClick={() => loadTemplates()}>刷新</Button>
-            <Button
-              theme="primary"
-              icon={<AddIcon />}
-              onClick={() => {
-                setSelectedId('');
-                setDraft(emptyTemplate());
-                setEditing(true);
-                setActiveTab('definition');
-              }}
-            >
-              新建模板
-            </Button>
-          </Space>
-        )}
       />
       <div className={styles.workspace}>
         <aside className={styles.catalog}>
-          <ResourceToolbar title="模板目录" count={templates.length} description="全局逻辑模板" />
+          <ResourceToolbar
+            density="compact"
+            title="模板目录"
+            count={templates.length}
+            description="全局逻辑模板"
+            filters={(
+              <>
+                {returnTo && !requestedGroup && (
+                  <Button variant="outline" onClick={() => navigate(returnTo)}>返回配置分组</Button>
+                )}
+                <Tooltip content="刷新配置模板">
+                  <Button
+                    aria-label="刷新配置模板"
+                    shape="square"
+                    variant="outline"
+                    icon={<RefreshIcon />}
+                    onClick={() => loadTemplates()}
+                  />
+                </Tooltip>
+                <Button
+                  theme="primary"
+                  icon={<AddIcon />}
+                  onClick={() => {
+                    setSelectedId('');
+                    setDraft(emptyTemplate());
+                    setEditing(true);
+                    setActiveTab('definition');
+                  }}
+                >
+                  新建配置模板
+                </Button>
+              </>
+            )}
+          />
           <Table
             data={templates}
             columns={templateColumns}

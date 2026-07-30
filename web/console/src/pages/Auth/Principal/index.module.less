@@ -234,8 +234,59 @@
   background: var(--app-surface);
 }
 
-.authWorkspace {
+.principalSummary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 8px;
+  background: var(--app-surface-subtle);
+}
+
+.principalSummaryItem {
+  min-width: 0;
+  min-height: 86px;
+  padding: 14px 18px;
+  border-right: 1px solid var(--app-border-subtle);
+
+  &:last-child {
+    border-right: 0;
+  }
+
+  span,
+  strong,
+  small {
+    display: block;
+  }
+
+  span,
+  small {
+    color: var(--app-text-secondary);
+  }
+
+  span {
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  strong {
+    margin-top: 2px;
+    color: var(--app-text);
+    font-size: 24px;
+    font-weight: 650;
+    line-height: 30px;
+  }
+
+  small {
+    margin-top: 2px;
+    font-size: 11px;
+    line-height: 16px;
+  }
+}
+
+.authWorkspace {
+  margin-top: 14px;
   overflow: hidden;
   border: 1px solid var(--app-border-subtle);
   border-radius: 10px;
@@ -372,6 +423,23 @@
     border-right: 0;
     border-left: 0;
     border-radius: 0;
+  }
+
+  .principalSummary {
+    grid-template-columns: 1fr;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .principalSummaryItem {
+    min-height: 72px;
+    border-right: 0;
+    border-bottom: 1px solid var(--app-border-subtle);
+
+    &:last-child {
+      border-bottom: 0;
+    }
   }
 
   .panelBody {

@@ -10,6 +10,7 @@
 .headerContent {
   min-width: 0;
 
+  h1,
   h2 {
     margin: 4px 0 6px;
     color: var(--app-text);
@@ -44,9 +45,25 @@
   white-space: nowrap;
 }
 
+.integratedActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-height: 32px;
+  margin-bottom: 12px;
+  white-space: nowrap;
+}
+
+.integratedFallback {
+  margin-bottom: 12px;
+}
+
 .resourceHeaderCompact {
   padding: 0 0 14px;
 
+  .headerContent h1,
   .headerContent h2 {
     margin: 2px 0 3px;
     font-size: 24px;
@@ -72,50 +89,41 @@
 
   .headerContent {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: baseline;
     gap: 6px 10px;
     flex: 1 1 auto;
     min-width: 0;
   }
 
-  .headerContent h2 {
+  .headerContent h1 {
     overflow: hidden;
     max-width: clamp(140px, 24vw, 360px);
     min-width: 0;
     margin: 0;
     color: var(--app-text);
-    font-size: 17px;
+    font-size: 14px;
     font-weight: 600;
-    line-height: 22px;
-    letter-spacing: -0.01em;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .headerContent p {
-    overflow: hidden;
-    max-width: none;
-    color: var(--app-text-tertiary);
-    font-size: 12px;
-    font-weight: 400;
-    line-height: 18px;
+    line-height: 20px;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .eyebrow {
+    overflow: hidden;
+    max-width: clamp(120px, 20vw, 260px);
     color: var(--app-text-secondary);
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
-    line-height: 18px;
+    line-height: 20px;
+    text-overflow: ellipsis;
     white-space: nowrap;
   }
 }
 
 .resourceToolbar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 14px;
@@ -127,7 +135,8 @@
 
 .toolbarIntro {
   flex: 0 0 auto;
-  min-width: 180px;
+  min-width: 160px;
+  padding-top: 5px;
 }
 
 .toolbarTitle {
@@ -159,10 +168,26 @@
 .toolbarFilters {
   display: flex;
   flex: 1 1 auto;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
   gap: 10px;
   min-width: 0;
+
+  > :global([data-query-composer]) {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  :global(.fui-Button) {
+    height: 32px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  :global(.fui-Button__content) {
+    white-space: nowrap;
+  }
 }
 
 @media (max-width: 980px) {
@@ -173,9 +198,18 @@
   }
 
   .headerActions,
+  .integratedActions,
   .toolbarFilters {
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+
+  .toolbarFilters {
+    width: 100%;
+
+    > :global([data-query-composer]) {
+      max-width: none;
+    }
   }
 
   .resourceHeaderIntegrated {
@@ -187,8 +221,10 @@
     display: flex;
     align-items: baseline;
   }
+}
 
-  .resourceHeaderIntegrated .headerContent p {
-    display: none;
+@media (max-width: 720px) {
+  .toolbarFilters > :global([data-query-composer]) {
+    flex-basis: 100%;
   }
 }

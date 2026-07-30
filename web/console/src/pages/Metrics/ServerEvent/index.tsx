@@ -1,8 +1,9 @@
 import React from 'react';
 import dayjs from 'dayjs';
 import { Button, DateRangePicker, DateRangePickerProps, Drawer, Empty, Table, TableColumnData, Tag } from 'components/Fluent';
-import { FilterIcon, InfoCircleIcon, RefreshIcon, ServerIcon } from 'components/Fluent/icons';
+import { FilterIcon, InfoCircleIcon, RefreshIcon } from 'components/Fluent/icons';
 import QueryComposer from 'components/QueryComposer';
+import { ResourceHeader } from 'components/ResourceLayout';
 import { describeEventLog, EventLog, EventType, getEventTypeInfo } from 'services/observer';
 import { describeObservabilityEvents } from 'services/observability';
 import ErrorPage from 'components/ErrorPage';
@@ -348,16 +349,14 @@ export default function ServerEvent() {
 
   return (
     <div className={style.page}>
-      <section className={style.headerPanel}>
-        <div className={style.headerMain}>
-          <span className={style.headerIcon}><ServerIcon /></span>
-          <div>
-            <h1>事件指标</h1>
-            <p>聚合服务实例、服务保护和控制面事件，快速定位事件影响范围与最近变化。</p>
-          </div>
-        </div>
-        <DataSourceBadge source={dataSource} loading={isLoading} />
-      </section>
+      <ResourceHeader
+        density="compact"
+        placement="app-header"
+        eyebrow="监控指标 / 事件指标"
+        title="事件指标"
+        description="聚合服务实例、服务保护和控制面事件，快速定位事件影响范围与最近变化。"
+        actions={<DataSourceBadge source={dataSource} loading={isLoading} />}
+      />
 
       <div className={style.summaryGrid}>
         <SummaryCard title="事件总数" value={summary.total} hint={dataSource === 'mock' ? '当前筛选下的预览事件' : '当前筛选下的真实事件'} />

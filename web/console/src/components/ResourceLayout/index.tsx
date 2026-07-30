@@ -31,7 +31,11 @@ export const ResourceHeader: React.FC<ResourceHeaderProps> = ({
   density = 'default',
   placement = 'content',
 }) => {
-  const [appHeaderTarget, setAppHeaderTarget] = React.useState<HTMLElement | null>(null);
+  const [appHeaderTarget, setAppHeaderTarget] = React.useState<HTMLElement | null>(() => (
+    placement === 'app-header' && typeof document !== 'undefined'
+      ? document.getElementById('app-header-context')
+      : null
+  ));
 
   React.useEffect(() => {
     if (placement !== 'app-header') {
@@ -41,21 +45,34 @@ export const ResourceHeader: React.FC<ResourceHeaderProps> = ({
     setAppHeaderTarget(document.getElementById('app-header-context'));
   }, [placement]);
 
+  const integrated = placement === 'app-header';
+  const Title = integrated ? 'h1' : 'h2';
   const header = (
     <section
-      className={`${style.resourceHeader} ${density === 'compact' ? style.resourceHeaderCompact : ''} ${placement === 'app-header' ? style.resourceHeaderIntegrated : ''} ${className || ''}`}
+      className={`${style.resourceHeader} ${density === 'compact' ? style.resourceHeaderCompact : ''} ${integrated ? style.resourceHeaderIntegrated : ''} ${className || ''}`}
     >
       <div className={style.headerContent}>
         {eyebrow && <div className={style.eyebrow}>{eyebrow}</div>}
-        <h2>{title}</h2>
-        {description && <p title={typeof description === 'string' ? description : undefined}>{description}</p>}
+        <Title>{title}</Title>
+        {!integrated && description && <p title={typeof description === 'string' ? description : undefined}>{description}</p>}
       </div>
-      {actions && <div className={style.headerActions}>{actions}</div>}
+      {!integrated && actions && <div className={style.headerActions}>{actions}</div>}
     </section>
   );
 
-  if (placement === 'app-header') {
-    return appHeaderTarget ? createPortal(header, appHeaderTarget) : null;
+  if (integrated) {
+    return (
+      <>
+        {appHeaderTarget
+          ? createPortal(header, appHeaderTarget)
+          : <div className={style.integratedFallback}>{header}</div>}
+        {actions && (
+          <div className={style.integratedActions}>
+            {actions}
+          </div>
+        )}
+      </>
+    );
   }
   return header;
 };

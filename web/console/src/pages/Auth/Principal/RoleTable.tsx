@@ -75,7 +75,12 @@ const columns = (
     },
 ];
 
-const RoleTable: React.FC = () => {
+interface RoleTableProps {
+    onTotalChange?: (total: number) => void;
+    onTotalsRefresh?: () => void;
+}
+
+const RoleTable: React.FC<RoleTableProps> = ({ onTotalChange, onTotalsRefresh }) => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const [selectedRowKeys, setSelectedRowKeys] = useState<Array<string | number>>([]);
@@ -109,6 +114,7 @@ const RoleTable: React.FC = () => {
                 ...(searchParam && { name: searchParam }),
             });
             setSearchState(s => ({ ...s, roles: response.content, total: response.totalCount, isLoading: false }));
+            if (!searchParam) onTotalChange?.(response.totalCount);
         } catch (error: Error | any) {
             setSearchState(s => ({ ...s, fetchError: true, isLoading: false }));
             openErrNotification('获取数据失败', error);
@@ -118,6 +124,7 @@ const RoleTable: React.FC = () => {
     const refreshTables = () => {
         setSelectedRowKeys([]);
         fetchData({ current: 1, pageSize: searchState.limit, previous: 0 }, searchState.query);
+        onTotalsRefresh?.();
     };
 
     const deleteRolesByIds = async (ids: string[]) => {

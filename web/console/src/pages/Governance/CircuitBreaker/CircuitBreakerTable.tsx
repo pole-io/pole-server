@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, Row, Col, TableRowData, Tabs, Popconfirm, Empty } from 'components/Fluent';
+import { Link, Table, Button, PrimaryTableProps, Tooltip, Space, TableRowData, Tabs, Popconfirm, Empty } from 'components/Fluent';
 import { AddIcon, DeleteIcon, RefreshIcon, CreditcardIcon } from 'components/Fluent/icons';
 import { useNavigate } from 'components/Router';
 
 import { Op } from 'services/types';
+import { ResourceToolbar } from 'components/ResourceLayout';
 import Text from 'components/Text';
 import { useAppDispatch, useAppSelector } from 'modules/store';
 import { openErrNotification, openInfoNotification } from 'utils/notifition';
@@ -202,29 +203,32 @@ const CircuitBreakerTable: React.FC<ICircuitBreakerTableProps> = ({ }) => {
 
     const table = (
         <>
-            <Row justify='space-between' className={style.toolBar}>
-                <Col>
-                    <Row gutter={8} align='middle'>
-                        <Col>
-                            <Button icon={<AddIcon />} onClick={(v) => {
-                                handleOpRule({}, 'create')
-                            }}>新建熔断规则</Button>
-                        </Col>
-                    </Row>
-                </Col>
-                <Col>
-                    <Space>
+            <ResourceToolbar
+                density="compact"
+                title="熔断规则清单"
+                count={loading ? '正在同步列表' : `共 ${total} 条`}
+                filters={(
+                    <>
                         <Search
                             onChange={(value: string) => {
                                 refreshData(1, limit, value);
                             }}
                         />
                         <Tooltip content="刷新">
-                            <RefreshIcon onClick={() => refreshData(1, limit)} />
+                            <Button
+                                aria-label="刷新熔断规则列表"
+                                shape="square"
+                                variant="outline"
+                                icon={<RefreshIcon />}
+                                onClick={() => refreshData(1, limit)}
+                            />
                         </Tooltip>
-                    </Space>
-                </Col>
-            </Row>
+                        <Button theme="primary" icon={<AddIcon />} onClick={() => {
+                            handleOpRule({}, 'create')
+                        }}>新建熔断规则</Button>
+                    </>
+                )}
+            />
             {editorState.authorizeVisible && (
                 <AuthorizeInput
                     resource_type={PolicySourceType.CircuitBreakerRules}

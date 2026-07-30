@@ -19,7 +19,8 @@ import { editorUser, listUsers, removeUsers, resetUser, selectUser } from 'modul
 import { Op } from 'services/types';
 
 interface IUsersProps {
-
+    onTotalChange?: (total: number) => void;
+    onTotalsRefresh?: () => void;
 }
 
 const ServerError = () => <ErrorPage code={500} />;
@@ -93,13 +94,17 @@ const columns = (
     },
 ]
 
-const UsersTable: React.FC<IUsersProps> = ({ }) => {
+const UsersTable: React.FC<IUsersProps> = ({ onTotalChange, onTotalsRefresh }) => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
 
     const userState = useAppSelector(selectUser);
     const { datas, total, page, limit, loading } = userState;
     const [query, setQuery] = useState('');
+
+    React.useEffect(() => {
+        if (!loading && !query) onTotalChange?.(total);
+    }, [loading, onTotalChange, query, total]);
 
     const openUserDetail = (row: TableRowData) => {
         navigate(`/auth/principals/userdetail?name=${encodeURIComponent(String(row.name || ''))}&id=${encodeURIComponent(String(row.id || ''))}`);
@@ -121,6 +126,7 @@ const UsersTable: React.FC<IUsersProps> = ({ }) => {
                     .then((res) => {
                         if (res.meta.requestStatus === 'fulfilled') {
                             openInfoNotification('请求成功', `用户 ${row?.name} 删除成功`);
+                            onTotalsRefresh?.();
                         } else {
                             openErrNotification('请求失败', `删除用户 ${row?.name} 失败, ${res.payload as string}`);
                         }
@@ -199,6 +205,7 @@ const UsersTable: React.FC<IUsersProps> = ({ }) => {
                         dispatch(resetUser());
                         setEditorState(s => ({ ...s, visible: false }));
                         refreshData(1, limit, query);
+                        onTotalsRefresh?.();
                     }}
                 />
             )}

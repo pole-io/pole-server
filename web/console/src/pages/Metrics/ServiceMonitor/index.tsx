@@ -1,7 +1,8 @@
 import React from 'react';
 import { Button, Empty, Table, TableColumnData, Tag } from 'components/Fluent';
-import { ArrowRightIcon, ServiceIcon } from 'components/Fluent/icons';
+import { ArrowRightIcon } from 'components/Fluent/icons';
 import QueryComposer from 'components/QueryComposer';
+import { ResourceHeader } from 'components/ResourceLayout';
 import { useNavigate } from 'components/Router';
 
 import {
@@ -227,16 +228,14 @@ export default function ServiceMonitor() {
 
   return (
     <div className={style.page} ref={pageRef}>
-      <section className={style.dashboardHeader}>
-        <div className={style.headerTitle}>
-          <span className={style.headerIcon}><ServiceIcon /></span>
-          <div>
-            <h1>服务监控</h1>
-            <p>服务级整体概览，点击服务进入接口、实例和治理事件下钻分析。</p>
-          </div>
-        </div>
-        <Tag className={style.sourceTagMock}>Mock 预览</Tag>
-      </section>
+      <ResourceHeader
+        density="compact"
+        placement="app-header"
+        eyebrow="监控指标 / 服务监控"
+        title="服务监控"
+        description="服务级整体概览，点击服务进入接口、实例和治理事件下钻分析。"
+        actions={<Tag className={style.sourceTagMock}>Mock 预览</Tag>}
+      />
 
       <div className={style.statGrid}>
         <StatPanel title="请求量" value={formatNumber(totalRequests)} hint="当前服务集合" />
