@@ -2,7 +2,7 @@
 title: 配置参考
 tags: [config, yaml, deploy]
 links: [overview, architecture, adr-system-configuration-control-plane, adr-console-agent-resource-workbench, adr-otel-observability-platform, adr-unified-process-mode-and-limiter-integration]
-updated: 2026-07-28
+updated: 2026-07-31
 sources: 8
 ---
 
@@ -244,6 +244,12 @@ deploy/
 ├── observability/           # 无 Kubernetes 时的独立观测 quickstart
 └── tools/                   # 部署脚本
 ```
+
+进程本地运行时数据统一写入 `./.pole_data/`。当前配置缓存位于
+`./.pole_data/cache/`，OTel event/audit 可靠队列位于
+`./.pole_data/observability/otel-events/`；该目录不属于部署静态资源，必须整体排除出
+Git。Kubernetes 将 `/app/.pole_data` 作为单一运行时数据挂载点，不再单独挂载
+`/app/data`。
 
 ## 本地 Kubernetes 依赖边界
 

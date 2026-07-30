@@ -2,7 +2,7 @@
 title: ADR：OTel 可观测性平台与 Kubernetes 部署方案
 tags: [adr, observability, otel, kubernetes]
 links: [architecture, common-infra, configuration, api-servers, adr-pole-rust-client-observability, adr-local-pebble-protobuf-value-cache]
-updated: 2026-07-29
+updated: 2026-07-31
 sources: 47
 ---
 
@@ -90,7 +90,8 @@ OTel Logs 在本方案中只承载结构化 event 和 audit，不等同于通用
 
 本地队列使用 Pebble：
 
-- 默认路径：`./data/observability/otel-events/otel-events.pebble`。
+- 默认路径：`./.pole_data/observability/otel-events/otel-events.pebble`。
+- `.pole_data` 是进程本地运行时数据的统一根目录，必须整体排除出 Git；观测队列不再单独写入顶层 `data/`。
 - history 与 discover_event 共享 Pebble DB，通过 `otel-queue/{bucket}/` key prefix 隔离。
 - 写入语义是 append；Collector 成功确认后再按 key 删除；导出失败保留等待下一轮重试。
 - 队列达到容量上限时按配置丢弃并记录 drop metrics，不能阻塞 history/discoverEvent chain。

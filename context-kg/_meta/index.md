@@ -2,7 +2,7 @@
 title: pole-control-plane 知识库
 tags: [meta, index]
 links: [schema, log]
-updated: 2026-07-29
+updated: 2026-07-31
 sources: 0
 ---
 
@@ -46,7 +46,7 @@ sources: 0
 
 ### 环境部署（technical/Environment/）
 
-- [[configuration]] — YAML 配置文件结构、插件配置与部署目录说明 | config, yaml, deploy
+- [[configuration]] — YAML、部署目录与 .pole_data 运行时数据约定 | config, yaml, deploy
 
 ### 模块说明（technical/modules/）
 
@@ -76,7 +76,7 @@ sources: 0
 - [[adr-console-agent-resource-workbench]] — Pole Agent 真实 LLM/MCP 运行时与资源确认待发布 | adr, ai, agent, console, governance, config
 - [[adr-system-configuration-control-plane]] — 63 项字段级配置策略、全领域草稿发布、desired/effective 状态与 Agent Secret 热更新 | adr, config, runtime, console, operations
 - [[adr-pole-self-management-control-loop]] — Pole 自身 MCP/A2A 注册、Prompt 自动应用与系统身份协调 | adr, ai, mcp, a2a, agent, prompt, automation
-- [[adr-local-pebble-protobuf-value-cache]] — Pebble 本地 protobuf bytes 缓存 | adr, cache, pebble, protobuf, performance
+- [[adr-local-pebble-protobuf-value-cache]] — Pebble 本地缓存与 .pole_data 布局 | adr, cache, pebble, protobuf, performance
 - [[adr-unified-process-mode-and-limiter-integration]] — 单一制品、多进程模式与 Limiter 独立部署边界 | adr, runtime, limiter, deploy, process
 - [[adr-console-limiter-source-layout-and-embedded-web]] — Console/Limiter 源码归属与前端嵌入制品 | adr, architecture, console, limiter, frontend, embed, build
 - [[adr-logical-service-environment-binding]] — 控制面逻辑服务与环境服务显式关联 | adr, service, namespace, domain-model, console
@@ -85,7 +85,7 @@ sources: 0
 
 #### 可观测性（technical/adr/observability/）
 
-- [[adr-otel-observability-platform]] — 共享 GreptimeDB 后端、OTel 接入闭环与 K8s 部署 | adr, observability, otel, kubernetes
+- [[adr-otel-observability-platform]] — OTel 接入、可靠队列与 K8s 部署 | adr, observability, otel, kubernetes
 - [[adr-pole-rust-client-observability]] — Rust SDK 观测上报与动态配置 | adr, observability, otel, rust-sdk
 
 ## 质量保障知识域（quality/）

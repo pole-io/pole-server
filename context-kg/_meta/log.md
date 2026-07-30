@@ -1268,6 +1268,15 @@ sources: 0
   - 将页面路径、资源名称和说明压缩进全局顶部导航，操作按钮保留在正文工具栏，并重新校准顶栏文字层级。
   - 增加服务页面密度契约、响应式检查和 Console 嵌入资源验证记录。
 
+## [2026-07-31] refactor | 统一观测运行时数据目录
+
+- 更新页面：configuration、adr-local-pebble-protobuf-value-cache、adr-otel-observability-platform、index、todo。
+- 变更摘要：
+  - 将 OTel event/audit 本地 Pebble 队列迁移到 `./.pole_data/observability/otel-events`。
+  - 明确 `.pole_data` 为配置缓存和观测可靠队列共用的进程本地运行时数据根。
+  - Kubernetes 收敛为 `/app/.pole_data` 单一数据挂载点，移除独立 `/app/data` 挂载。
+  - 删除误提交到顶层 `data/` 的 Pebble 运行时数据库制品。
+
 ## 相关页面
 
 - [[index]]

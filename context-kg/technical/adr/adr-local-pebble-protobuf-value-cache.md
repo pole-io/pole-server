@@ -2,7 +2,7 @@
 title: ADR：Pebble 本地 protobuf value cache
 tags: [adr, cache, pebble, protobuf, performance]
 links: [cache-layer, storage, service-discovery, config-center, governance-rules]
-updated: 2026-07-19
+updated: 2026-07-31
 sources: 0
 ---
 
@@ -53,7 +53,7 @@ localValueCache:
   enabled: false
   backend: memory
   pebble:
-    dataDir: ./data/cache/local-value.pebble
+    dataDir: ./.pole_data/cache/local-value.pebble
     maxSize: 4GiB
     minValueBytes: 4096
     warmup: true
@@ -70,7 +70,7 @@ telemetry:
     enabled: true
     backend: pebble
     pebble:
-      dataDir: ./data/observability/otel-events.pebble
+      dataDir: ./.pole_data/observability/otel-events/otel-events.pebble
       maxSize: 1GiB
       batchSize: 512
       flushInterval: 1s
@@ -123,7 +123,7 @@ type ValueCache interface {
 客户端 value cache 默认按进程只打开一个 DB，例如：
 
 ```text
-./data/cache/local-value.pebble
+./.pole_data/cache/local-value.pebble
 ```
 
 不同业务域通过 key prefix 隔离，不为每类资源单独打开 Pebble 实例。
@@ -131,10 +131,10 @@ type ValueCache interface {
 OTel event/audit 本地队列使用独立 Pebble DB，例如：
 
 ```text
-./data/observability/otel-events.pebble
+./.pole_data/observability/otel-events/otel-events.pebble
 ```
 
-原因是 event queue 是持续 append/delete 的写入负载，和客户端 value cache 的读多写少负载不同。默认物理隔离可以降低 compaction 对客户端读延迟的影响；生命周期、容量和指标仍由同一个本地存储管理器统一管理。
+原因是 event queue 是持续 append/delete 的写入负载，和客户端 value cache 的读多写少负载不同。默认物理隔离可以降低 compaction 对客户端读延迟的影响；生命周期、容量和指标仍由同一个本地存储管理器统一管理。两类 Pebble 数据统一位于 `.pole_data` 根目录下，不能作为源码或部署静态资源提交。
 
 ## Key 设计
 

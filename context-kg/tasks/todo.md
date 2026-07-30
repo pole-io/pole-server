@@ -20,7 +20,7 @@ sources: 0
 - [x] Release/Test 改用嵌入静态资源，正式运行移除外部 `webPath`；开发模式保留 Vite HMR/API 代理。
 - [x] 同步 Makefile、构建脚本、Docker/Kubernetes、E2E、CI、Dependabot 和知识库路径。
 - [x] 完成格式化、定向测试、前端检查、全仓测试、单二进制无外部静态目录验收和双轴代码审查。
-- [x] 提交全部实施改动。
+- [x] 提交全部实施改动；并行 Agent/MCP、配置模板和 Console 改动已按功能边界拆分。
 
 ### Review
 
@@ -37,6 +37,8 @@ sources: 0
 - 验证通过：Console/Limiter/bootstrap 定向测试、race、vet、`consoleassets` 完整性测试、
   缺产物失败测试、带嵌入资源的单二进制构建、全仓 `go test -tags nomsgpack ./...`、
   前端 lint/build、context-kg lint 和 `git diff --check`。
+- 全量历史前端静态脚本当前有 9 项失败；同一基线迁移前有 19 项失败，剩余项均不涉及目录、
+  Vite、embed 或构建链，本次未回退并行页面开发来消除这些既有契约偏差。
 - 双轴复审首轮发现的制品缺失未 fail-fast、A2A Seam 未上提、standalone CI 独立版本、
   历史日志修改、知识页日期和过期 lesson 均已修复；最终 Standards 与 Spec 两轴均通过。
 
@@ -754,7 +756,7 @@ Review：
 - 系统监控页所有图表已补齐基本坐标语义：主折线图有 Y 轴刻度和时间线，热力图有时间轴和接口/组件维度，runtime 小图有简化 Y 轴和时间线。
 - 系统监控页已按 Grafana Time series / Stat panel 职责重新校准：主趋势图承担完整坐标轴，runtime 单值指标使用 Stat + sparkline，减少小面板内的刻度和标签噪音。
 - 已新增 control-plane `statis/otel` entry，真实输出 API、Store、内部组件、缓存、服务发现、配置中心和客户端发现调用指标；默认部署配置启用 `local + otel + prometheus`，保持旧 logger/prometheus 兼容。
-- 已新增 control-plane `history/otel` 和 `discoverEvent/otel` entry，操作审计和服务事件都按 OTel logs 写入 Collector logs pipeline；新增 logs exporter 采用 bounded queue / 本地 Pebble spool + 后台批量发送，Collector 异常不阻塞业务链路，恢复后可继续补发未确认记录。默认两个 OTel entry 共享 `./data/observability/otel-events/otel-events.pebble`，分别使用 `history`、`discover_event` key prefix 隔离。
+- 已新增 control-plane `history/otel` 和 `discoverEvent/otel` entry，操作审计和服务事件都按 OTel logs 写入 Collector logs pipeline；新增 logs exporter 采用 bounded queue / 本地 Pebble spool + 后台批量发送，Collector 异常不阻塞业务链路，恢复后可继续补发未确认记录。默认两个 OTel entry 共享 `./.pole_data/observability/otel-events/otel-events.pebble`，分别使用 `history`、`discover_event` key prefix 隔离。
 - 已新增 console `/observability/v1/events` 和 `/observability/v1/operations`，从 GreptimeDB `pole_events` 查询 `pole.event.kind=service|audit` 的结构化日志，并保持 `/metrics/v1` MySQL 历史接口作为页面兜底。
 - 已重建 all-mode 并验证真实接口：`/observability/v1/events?namespace=default&service=checkout&event_type=InstanceOffline` 与 `/observability/v1/operations?resource_type=Routing&operation_type=Update&operator=admin` 均返回 GreptimeDB 样本，时间按本地时区正常显示。
 
@@ -11333,7 +11335,6 @@ dev/test/prod 业务环境；通过类型化协议、后端不变量和 Console 
   失败文件 `index.tsx` 本轮未修改，目标逻辑服务契约和完整前端构建均已通过。
 - 双轴审查的 Spec 轴无阻断、范围膨胀或错误实现；Standards 轴发现 OpenAPI 新增说明误用英文，
   已改为中文。三处环境删除调用存在轻微形态重复，但刷新与导航后置行为不同，保持局部实现更简单。
-
 ## Console 数据页面纵向密度优化（2026-07-29）
 
 目标：系统检查服务及同类数据页面的纵向布局，压缩非核心头部和筛选组件占用，让首屏展示更多表格内容，同时保持信息层级和可操作性。
@@ -11405,3 +11406,594 @@ Value 按 Namespace + Template 维护”领域模型的前提下，将入口提�
   `scrollWidth = clientWidth = 720`，两个工作区入口等宽且无横向溢出。
 - 独立复审发现并推动修复了未保存创建状态、跨路由 ARIA 语义和 Template Release 返回刷新
   三个问题；修复后复核无剩余阻断或重要问题。
+
+## 配置分组工作区本地 Kubernetes 发布（2026-07-29）
+
+目标：将“配置文件 / 配置模板”工作区解耦版本发布到本地 OrbStack，供真实体验；只滚动更新
+`pole-system/deployment/pole-control-plane`，不修改远端 EKS、Secret、Collector 或 GreptimeDB。
+
+- [x] 确认目标为 `orbstack` ARM64 与 `pole-system/pole-control-plane`。
+- [x] 记录回滚镜像 `pole-control-plane:local-20260728-system-namespace-ifabsent-v1`。
+- [x] 构建隔离 ARM64 镜像 `pole-control-plane:local-20260729-config-workspace-v2`。
+- [x] 更新 Deployment 并等待 rollout 完成。
+- [x] 核对新 Pod 的镜像、imageID、Ready、重启次数和运行日志。
+- [x] 验证 8080、8090、Gateway 深链、静态资源一致性与真实工作区交互。
+
+### Review
+
+- 标准全量镜像构建在前端成功后，被工作区另一组尚未完成的 AI Store 接口改动阻塞。
+  第一次静态覆写虽然隔离了后端，却仍使用了整个脏前端树的 dist；独立复核发现其中含有
+  未完成的 AI 跨环境 / Agent NamespaceScope 前端代码，因此立即停止交付并以 `v2`
+  覆盖该中间版本。
+- `v2` 在临时目录以当前已部署前端为基线：AI A2A、MCP、Agent 页面及其 service、
+  package/test 契约恢复为 `HEAD:console/web` 版本，排除新增 `AIEnvironmentBinding`；
+  仅保留当前已复审的 Configuration 源码和测试。隔离树没有写回共享工作区。
+- 隔离树通过 `test:config-file-detail-layout`、`test:config-template-console`、
+  原有 `test:agent-workbench` 和 release build；最终 dist 不含
+  `definitions/environment`、`AgentNamespaceScope` 或 `AIEnvironmentBinding`，
+  避免旧后端与半成品 AI 前端发生契约错配。
+- 新旧镜像内 `/app/pole-server` 的 SHA256 均为
+  `40a69ec111625b6cfedd060e633ce838e0849714c1ec998ad2ccd6a9499bdb17`；
+  最终镜像为 `linux/arm64`，imageID 为
+  `sha256:2fcb4311adc265271156f897f9008607425fe0de92447d8c65d38ecfd86e148b`。
+- 仅执行 `orbstack/pole-system/deployment/pole-control-plane` 的 image 更新；
+  最终 rollout 成功，新 Pod `pole-control-plane-6565df678f-mzfsf` Ready、0 次重启，
+  旧 ReplicaSet 已缩容到 0。
+- Pod 内 8080 根路径、8080 `/configuration/group/templates` 深链和 8090
+  `/admin/v1/server/functions` 均返回 200；Gateway `http://pole.localhost/` 与模板
+  工作区深链均返回 200，AI MCP、A2A、Agent 深链也均返回 200，启动日志无异常。
+- Gateway 返回的 `index.html`、主 JS 和主 CSS 与隔离 release dist SHA256 分别一致，
+  且主 bundle 实际引用 `GroupWorkspaceNav-CfR7-kZK.js` /
+  `GroupWorkspaceNav-Cx3pmk1-.css`，证明运行的是隔离后的本次配置工作区版本而非旧缓存。
+- 回滚命令只需将同一 Deployment 镜像恢复为
+  `pole-control-plane:local-20260728-system-namespace-ifabsent-v1`。
+
+## 服务删除入口缺失诊断（2026-07-29）
+
+目标：定位服务列表/详情中的删除按钮为何不可见，区分权限条件、资源状态、前端回归与部署版本差异。
+
+- [x] 建立可重复检查删除入口存在性的快速反馈脚本
+- [x] 对比迁移提交前后及当前未提交改动，定位首次行为变化
+- [x] 验证权限与资源状态条件，给出根因和影响范围
+- [x] 补充诊断 Review；如需修复，等待用户明确授权后实施
+
+### Review
+
+- 快速反馈命令直接检查服务列表是否包含删除入口或删除调用，当前稳定失败为
+  `FAIL: 服务列表未提供删除入口或删除调用`，与用户看到的现象一致。
+- 首次变化定位到 `b86e0072 feat: add logical service environment management`。该提交重写服务列表时，
+  删除了旧的 `ConfirmOperationButton`、`removeServices` 导入及删除分支；`9c1105ba` 仅迁移目录，
+  迁移前后的页面行为一致。
+- 当前逻辑服务只在详情页提供“删除逻辑服务”，且存在环境绑定时禁用；未关联环境服务和系统空间
+  服务列表都只提供进入、关联或查看操作，没有环境服务删除入口。
+- 后端 `/naming/v1/services/delete` 与 `/naming/v1/logical-services/delete` 均仍存在，因此不是
+  权限字段导致按钮隐藏，也不是后端删除能力被移除。
+- `verify-logical-service-console.mjs` 只覆盖列表分层、关联、解除关联和环境导航，没有断言两类资源
+  的删除入口；旧前端删除调用还只传 `id`，而后端环境服务删除按 `namespace + name` 定位，不能原样恢复。
+
+## 当前工作树本地 Kubernetes 重建发布（2026-07-29）
+
+目标：把当前完整工作树重新构建为本地 ARM64 镜像，并只更新 OrbStack 中
+`pole-system/deployment/pole-control-plane`，随后验证 rollout、日志和访问入口。
+
+- [x] 确认目标 context 为 `orbstack`，并核对现有工作负载与依赖健康。
+- [x] 记录当前部署镜像，保留可直接回滚的镜像标签。
+- [x] 构建 Console 静态资源、Linux ARM64 二进制和唯一标签镜像。
+- [x] 更新 `pole-control-plane` Deployment 并等待 rollout 完成。
+- [x] 验证 Pod Ready/重启次数、镜像 ID、关键日志、8080/8090 与 Gateway 入口。
+
+### Review
+
+- 标准构建脚本成功完成 Console release、Linux/ARM64 Go 二进制和 Docker 镜像构建；
+  npm 安装审计为 0 个漏洞。新镜像为
+  `pole-control-plane:local-20260729-024603-rebuild`，imageID 为
+  `sha256:cca65c088f91b5e6a39ad4be2c79359dc924d8ea8c1a4c510c859bb6da7c6650`。
+- 仅更新 `orbstack/pole-system/deployment/pole-control-plane`；rollout 成功，新 Pod
+  `pole-control-plane-cb6fcb7d7-8zsds` Ready、0 次重启，EndpointSlice Ready。
+- Pod 内 8080 根路径、配置模板深链和 8090 functions 接口均返回 200；Gateway
+  `http://pole.localhost/` 及配置模板深链返回 200，HTTPRoute 的 Accepted 与
+  ResolvedRefs 均为 True；启动日志未发现 panic、fatal、error、failed 或 crash。
+- OrbStack 当前为 Service 展示的 LoadBalancer 地址 `172.30.31.2` 无法从宿主机直连，
+  但 Pod 端口、EndpointSlice 和 Gateway 全部正常，因此不影响域名入口；直连调试可改用
+  `kubectl --context orbstack -n pole-system port-forward`。
+- 回滚时将同一 Deployment 镜像恢复为
+  `pole-control-plane:local-20260729-config-workspace-v2`。
+
+## Console 顶部资源标题字号统一（2026-07-29）
+
+目标：修复顶部应用 Header 中路径、资源标题和说明文字字号跳变，保持单行导航的统一阅读节奏。
+
+- [x] 对照截图定位顶部资源标题的组件、样式与调用页面。
+- [x] 确认字号跳变来自集成态硬编码的 `12px / 17px / 12px`。
+- [x] 统一集成态文字字号，仅用字重和颜色表达信息层级。
+- [x] 更新专项视觉契约并运行前端验证。
+- [x] 补充 Review，记录根因、影响范围和验证结果。
+
+### Review
+
+- 根因是 `ResourceHeader` 进入全局 Header 后，路径、标题、说明分别使用
+  `12px / 17px / 12px`，导致单行导航中的“服务”产生不必要的字号跳变。
+- 集成态三段文字现统一为 `14px / 20px`；路径、标题、说明分别保留
+  `500 / 600 / 400` 字重和次级、主级、三级文字颜色，信息层级不再依赖字号突变。
+- 修复作用于共享 `ResourceHeader` 的 `app-header` placement，覆盖逻辑服务首页、
+  逻辑服务详情和环境服务详情；正文内的资源页大标题不受影响。
+- `test:service-layout-density`、目标 `oxlint`、`build:test` 与 `git diff --check`
+  均通过，构建产物包含统一后的 `14px / 20px` 规则。
+- 隔离浏览器没有控制台登录态，因此未伪造真实业务页截图；本次以原截图复核、
+  专项契约和 release 等价构建完成验证。
+
+## 顶部字号修复本地 Kubernetes 发布（2026-07-29）
+
+目标：将顶部资源标题字号统一后的当前工作树构建为本地 ARM64 镜像，仅滚动更新
+`orbstack/pole-system/deployment/pole-control-plane`，并保留明确回滚点。
+
+- [x] 确认目标 context、Deployment、当前 Pod 健康状态和回滚镜像。
+- [x] 确认发布边界为当前工作树，不操作远端 EKS、Limiter、Collector 或数据服务。
+- [x] 构建 Console release、Linux ARM64 二进制和唯一标签镜像。
+- [x] 更新 Deployment 并等待 rollout 完成。
+- [x] 验证新 Pod、镜像 ID、重启次数、日志和关键访问入口。
+- [x] 核对 Gateway 静态资产已包含统一后的顶部字号规则。
+- [x] 补充 Review 与回滚命令。
+
+### Review
+
+- 使用标准 `deploy/kubernetes/build-image.sh` 完成 Console release、Linux ARM64 二进制
+  和镜像构建；npm 审计为 0 个漏洞。新镜像为
+  `pole-control-plane:local-20260729-234124-header-type-v1`，imageID 为
+  `sha256:28233defd518f79a6bec95aa88eb5b2e864bb2c091417ecfd78713f54e351156`。
+- 仅更新 `orbstack/pole-system/deployment/pole-control-plane`；rollout 成功，新 Pod
+  `pole-control-plane-7cfff9fc95-hkm9c` Ready、0 次重启，EndpointSlice 指向
+  `192.168.194.77`，旧 Pod 已完成清理。
+- Pod 内 8080 根路径、`/discovery/services` 深链和 8090 functions 接口均返回 200；
+  Gateway `http://pole.localhost/` 与同一深链也返回 200。
+- Gateway 与本地 release 的 `index.html` SHA256 同为
+  `4266ebbc236b22d36fef3b36ce074237befcd6181a7b028d3ad382092b0f6033`；
+  懒加载样式分片 `assets/index-DUaGMqnc.css` SHA256 同为
+  `7e9809ae2d544e5f764f9e2d4ab4f836d5065df71455b452a46b800cdae03f07`，
+  并包含顶部标题 `font-size:14px; font-weight:600; line-height:20px` 规则。
+- 新 Pod 启动日志正常，最近 10 分钟未发现 panic、fatal、crash、failed 或 error。
+- 回滚命令：
+  `kubectl --context orbstack -n pole-system set image deployment/pole-control-plane pole-control-plane=pole-control-plane:local-20260729-024603-rebuild`
+  然后执行
+  `kubectl --context orbstack -n pole-system rollout status deployment/pole-control-plane --timeout=180s`。
+
+## Console 一级板块顶部页头统一（2026-07-29）
+
+目标：将侧栏一级板块页面统一为服务页已经采用的顶部资源上下文样式，保持
+`14px / 20px` 单行文字节奏；标题信息进入全局 Header，刷新、新建、数据源等操作保留正文。
+
+- [x] 盘点 Namespace、AI、配置、治理、监控、认证和系统配置的页头实现。
+- [x] 定义迁移范围：一级工作区与监控看板迁移；登录、Agent 工作台和长流程编辑页排除。
+- [x] 扩展共享 `ResourceHeader`，支持集成态标题 portal 与正文操作区分离。
+- [x] 迁移现有一级 `ResourceHeader` 页面到 `app-header` placement。
+- [x] 将系统监控、服务监控、事件指标和操作审计的私有大页头收敛到共享页头。
+- [x] 补充全局页头迁移契约和代表页面回归。
+- [x] 完成专项测试、lint、构建、真实页面检查和 Review。
+- [x] 构建唯一标签镜像并滚动更新本地 OrbStack Deployment。
+- [x] 验证新 Pod、Gateway、静态资产和回滚点。
+
+### Review
+
+- Namespace、A2A、MCP、配置分组、配置模板、治理工作台、身份主体、访问策略、
+  系统配置、四个监控看板及三个服务工作区共 16 处 `ResourceHeader` 已统一使用
+  `density="compact"` 与 `placement="app-header"`。
+- 共享页头只把路径、资源名和说明 portal 到全局 Header；刷新、新建、数据源状态和看板
+  时间范围保留在正文操作区，不挤占语言、帮助、用户和设置区域。集成标题使用 `h1`，
+  普通正文页头继续使用 `h2`。
+- 顶部路径、资源名和说明统一为 `14px / 20px`，通过 `500 / 600 / 400` 字重与文字颜色
+  区分层级；长路径增加 `clamp(120px, 20vw, 260px)` 截断。全局 Header 被关闭或 portal
+  节点暂不可用时，标题会回退到正文，不再完全消失。
+- 系统监控、服务监控、事件指标和操作审计已删除正文私有大卡片页头及冗余图标样式；
+  登录、初始化管理员、Agent 工作台、治理长流程编辑页和复杂资源详情保持独立布局。
+- 新增 `test:app-header-context`，并更新服务密度和监控契约。该专项测试、
+  `test:service-layout-density`、`test:metrics-observability`、目标 oxlint、`build:test`
+  与 `git diff --check` 均通过。
+- 历史 `verify-resource-page-layout.mjs` 仍断言旧标题“命名空间管理”等已过期页面文案，
+  当前独立执行会失败；它未注册为 npm 测试脚本，本次以覆盖 16 个实际一级页的新契约替代，
+  未顺带重写其余旧查询区断言。
+- 使用标准构建链生成
+  `pole-control-plane:local-20260729-235828-unified-app-header-v1`，ARM64 imageID 为
+  `sha256:0c539aca822e76ea09741aaad0c2696e80bee8e23a242f1d9e8047052805b90c`；
+  npm 审计为 0 个漏洞。
+- 仅更新 `orbstack/pole-system/deployment/pole-control-plane`；新 Pod
+  `pole-control-plane-5678d586f-nmvc5` Ready、0 次重启，最近日志无 panic、fatal、
+  crash、failed 或 error。
+- Namespace、AI、配置、治理、认证、系统配置、四个监控页和服务页共 15 个 Gateway
+  深链均返回 200。Gateway 与本地 release 的 `index.html` SHA256 同为
+  `bd3d23d8bcac7edba996d94c334663229f893653b3126eedb8cfac903380faa0`；
+  共享样式分片 `assets/index-Cg18lXYK.css` SHA256 同为
+  `6bb759af8c636fcd8082fd7efb2a53408f219e8b4bf021c908b47a53712b8f46`，
+  并包含统一字号与路径截断规则。
+- 隔离浏览器没有控制台登录态，因此未伪造登录后截图；运行态通过 Pod、Gateway 深链、
+  release 哈希和实际部署样式分片完成验证。
+- 回滚命令：
+  `kubectl --context orbstack -n pole-system set image deployment/pole-control-plane pole-control-plane=pole-control-plane:local-20260729-234124-header-type-v1`
+  然后执行
+  `kubectl --context orbstack -n pole-system rollout status deployment/pole-control-plane --timeout=180s`。
+
+## Console 顶部说明信息精简（2026-07-30）
+
+目标：全局应用 Header 只保留路径与页面标题，移除常驻的长说明文本，降低导航噪声和空间占用。
+
+- [x] 根据实际部署截图确认需移除的是标题后的长说明，路径和页面标题继续保留。
+- [x] 在共享 `ResourceHeader` 集成态统一停止渲染 description。
+- [x] 将集成态布局从三列收敛为两列，并保留长路径、长标题截断。
+- [x] 更新全局页头契约，确认普通正文页头仍可展示 description。
+- [x] 完成测试、lint、构建并滚动更新本地 OrbStack。
+- [x] 验证新 Pod、Gateway、静态资产和回滚点。
+
+### Review
+
+- 共享 `ResourceHeader` 在 `placement="app-header"` 时只渲染路径与页面标题；
+  普通正文页头仍保留 description 能力，不影响未接入全局 Header 的资源页面。
+- 集成态布局由三列收敛为两列，路径与标题继续使用 `14px / 20px`，并保留
+  `clamp` 宽度约束和省略号截断；已删除窄屏下针对说明文本的无效旧规则。
+- `test:app-header-context`、`test:service-layout-density`、`test:metrics-observability`、
+  目标 oxlint、`build:test` 与 `git diff --check` 均通过。
+- 使用标准构建链生成
+  `pole-control-plane:local-20260730-001735-compact-app-header-v1`，ARM64 imageID 为
+  `sha256:550d9c8be12fa7e7c7f53b2bc9826c3aa21064025f4182141384de9ee001811d`。
+- 仅更新 `orbstack/pole-system/deployment/pole-control-plane`；新 Pod
+  `pole-control-plane-6dc98b5fcb-d76vt` Ready、0 次重启，最近日志无 panic、fatal、
+  crash、failed 或 error。
+- 15 个一级板块 Gateway 深链和 Pod 内 Console、Namespace、functions 接口均返回
+  200。Gateway 与本地 release 的 `index.html` SHA256 同为
+  `03b2175f7869370708dc4f32336ca4f129b7f13538d2e6f4a5f5f8b20578d841`；
+  共享样式分片 `assets/index-BW0Dqlkw.css` SHA256 同为
+  `e27f651f582a045f0bd171026ee63d5bd798f56f91cc2e868982e4f95a33f970`，
+  并包含两列紧凑页头规则且不再包含集成态说明选择器。
+- 回滚命令：
+  `kubectl --context orbstack -n pole-system set image deployment/pole-control-plane pole-control-plane=pole-control-plane:local-20260729-235828-unified-app-header-v1`
+  然后执行
+  `kubectl --context orbstack -n pole-system rollout status deployment/pole-control-plane --timeout=180s`。
+
+## Console 列表主新增按钮统一（2026-07-30）
+
+目标：列表级主新增入口统一采用截图中的设计语言：位于查询和刷新之后，使用主色按钮、
+加号图标与明确资源名称；编辑器内部局部新增继续保持次级操作样式。
+
+- [x] 盘点一级工作区、资源列表和治理子列表中的新建/新增入口。
+- [x] 区分列表级主 CTA 与编辑器内部局部添加操作。
+- [x] 统一治理规则列表的按钮样式、文案、顺序和刷新按钮。
+- [x] 调整实例、别名、配置模板和配置文件等遗留操作顺序。
+- [x] 增加列表主新增按钮静态契约并完成前端验证。
+- [x] 构建唯一镜像并滚动更新本地 OrbStack。
+- [x] 验证新 Pod、Gateway、静态资产和回滚点。
+
+### Review
+
+- 列表级主新增统一为 `primary + AddIcon + 明确资源名`，并放在查询、刷新及批量操作
+  之后；治理列表同时将裸 `RefreshIcon` 收敛为方形 outline 刷新按钮。
+- 限流、无损、自定义路由、泳道组、主动探测、熔断、就近路由、流量治理和泳道规则
+  已删除笼统“新建”，分别展示对应资源名称；列表工具栏统一右对齐。
+- 服务实例、服务别名、配置模板和配置文件的主新增已移动到操作组末尾；配置文件资源树
+  不再使用仅图标的 `FileAddIcon`，改为可见的“新建配置文件”主按钮。
+- Agent 工作台“新建会话”属于会话侧栏导航，不是资源 CRUD；编辑器内部“新增接口、
+  新增入口”等属于局部结构操作，继续保持 text/outline 次级样式，避免主次失焦。
+- 新增 `test:create-action-language`。该专项契约、`test:governance-direct-create`、
+  `test:config-template-console`、`test:service-layout-density`、`test:app-header-context`、
+  目标 oxlint、`build:test` 与 `git diff --check` 均通过；目标 oxlint 仅报告旧治理文件
+  已存在的未使用项警告，无错误。
+- 使用标准构建链生成
+  `pole-control-plane:local-20260730-004244-create-action-language-v1`，ARM64 imageID 为
+  `sha256:57b2ed697c4e7526f6705bd209d6ad2e329c5728f6e5e364e862f1c7f280fcfb`；
+  npm 审计为 0 个漏洞。
+- 仅更新 `orbstack/pole-system/deployment/pole-control-plane`；新 Pod
+  `pole-control-plane-777bb8d58f-znklk` Ready、0 次重启，最近日志无 panic、fatal、
+  crash、failed 或 error。
+- 15 个一级板块 Gateway 深链和 Pod 内 Console、服务深链、functions 接口均返回 200。
+  Gateway 与本地 release 的 `index.html` SHA256 同为
+  `d39bee9c485a64bec7f504ee6c580447c0503c2a9609163f427826d75418b87f`；
+  包含新建按钮文案的四个懒加载 JS 分片也逐一完成 SHA256 一致性核验。
+- 回滚命令：
+  `kubectl --context orbstack -n pole-system set image deployment/pole-control-plane pole-control-plane=pole-control-plane:local-20260730-001735-compact-app-header-v1`
+  然后执行
+  `kubectl --context orbstack -n pole-system rollout status deployment/pole-control-plane --timeout=180s`。
+
+## Console 主新增按钮位置二次收敛（2026-07-30）
+
+目标：纠正上一轮只统一横向顺序、未统一垂直层级的问题；以逻辑服务清单为唯一基准，
+将刷新和主新增放入紧邻表格的 `ResourceToolbar`，与清单标题、数量和查询条件同一行。
+
+- [x] 复核逻辑服务 `ResourceToolbar` 的位置与结构基准。
+- [x] 盘点仍使用 `ResourceHeader.actions` 或独立操作条的主新增入口。
+- [x] 迁移 Namespace、A2A、MCP、配置分组和配置模板的刷新与主新增。
+- [x] 迁移治理工作台独立态与嵌入态的刷新与主新增。
+- [x] 强化位置契约并完成前端回归、lint 和构建。
+- [x] 构建唯一镜像并滚动更新本地 OrbStack。
+- [x] 验证新 Pod、Gateway、静态资源和回滚点。
+
+### Review
+
+- 纠正上一轮只检查横向顺序的问题：主新增现在必须属于紧邻表格的
+  `ResourceToolbar.filters`，与清单标题、数量、查询和刷新处于同一垂直层级；
+  `ResourceHeader` 不再承载资源 CRUD 主操作。
+- Namespace、A2A、MCP、配置分组、配置模板和治理工作台的刷新与主新增均已从页头或
+  独立上下文条下移到对应清单工具栏；治理工作台嵌入态也使用同一位置，不再保留例外。
+- 实例、别名和配置文件的私有工具条已替换为共享 `ResourceToolbar`；配置文件搜索、
+  刷新和新建从窄资源树标题栏上移到工作区级“配置文件清单”工具栏。
+- 限流、无损、熔断、主动探测、自定义路由、泳道组、就近路由、流量治理和遗留泳道
+  规则列表均改用带标题与数量的紧凑 `ResourceToolbar`，列表容器补齐统一上内边距。
+- `test:create-action-language` 已从按钮样式断言升级为工具栏归属断言。该专项契约、
+  `test:governance-direct-create`、`test:config-template-console`、`test:namespace-workspace`、
+  `test:service-layout-density`、`test:app-header-context`、目标 oxlint、`build:test` 和
+  `git diff --check` 均通过；目标 oxlint 仅保留旧文件已有警告，无错误。
+- 使用标准构建链生成
+  `pole-control-plane:local-20260730-010636-create-action-toolbar-v2`，ARM64 imageID 为
+  `sha256:e0a8b14ab17607d2c30c037d2eafda19b9c709af30bd56d1754f34c0a7bc7694`；
+  npm 审计为 0 个漏洞。
+- 仅更新 `orbstack/pole-system/deployment/pole-control-plane`；新 Pod
+  `pole-control-plane-67c5c9c4dc-tmmdj` Ready、0 次重启，最近日志无 panic、fatal、
+  crash、failed 或 error。
+- 15 个一级板块 Gateway 深链和 Pod 内 Console、Namespace、functions 接口均返回
+  200。Gateway 与本地 release 的 `index.html` SHA256 同为
+  `21c21f837b111b041758a51ff1607af91a35fd804de30ea9a7ea547143887163`；
+  包含清单工具栏结构的 9 个懒加载 JS 分片也逐一完成 SHA256 一致性核验。
+- 回滚命令：
+  `kubectl --context orbstack -n pole-system set image deployment/pole-control-plane pole-control-plane=pole-control-plane:local-20260730-004244-create-action-language-v1`
+  然后执行
+  `kubectl --context orbstack -n pole-system rollout status deployment/pole-control-plane --timeout=180s`。
+
+## Console 清单工具栏样式优化（2026-07-31）
+
+目标：解决真实页面宽度下搜索区过宽、查询与新建形成双主色、新建按钮被压缩成两行和
+高度失衡的问题；保持清单标题、筛选、刷新与主新增的视觉节奏稳定。
+
+- [x] 根据部署截图定位 QueryComposer、共享 filters 和 Fluent Button 的收缩链。
+- [x] 明确查询为次级动作、主新增为唯一主色的层级规则。
+- [x] 限制 QueryComposer 在工具栏中的弹性宽度并保留可收缩空间。
+- [x] 固定工具栏按钮单行与高度，空间不足时按整颗按钮换行。
+- [x] 补充共享视觉契约并完成关联回归、lint 和构建。
+- [x] 构建唯一镜像并滚动更新本地 OrbStack。
+- [x] 使用真实页面或部署资源验证样式与回滚点。
+
+### Review
+
+- 查询按钮改为 outline 次级动作，主新增保持工具栏内唯一主色；服务清单同步迁移到
+  `QueryComposer`，不再保留一套手写查询栏形成视觉例外。
+- `QueryComposer` 在桌面工具栏中使用 `flex: 1 1 520px` 且最大宽度 760px，关键词输入
+  保持 180px 至 420px；工具栏按钮统一 32px 高、禁止收缩和文字换行。宽度低于
+  720px 时筛选器整行换行，而不是压缩“新建业务环境”等主操作。
+- 新增 `test:resource-toolbar-visual`，并通过 `test:create-action-language`、
+  `test:query-composer`、`test:namespace-workspace`、`test:logical-service-console`、
+  `test:service-layout-density`、目标 oxlint、`build:test` 与 `git diff --check`。
+- 使用标准构建链生成
+  `pole-control-plane:local-20260731-001439-resource-toolbar-style-v1`，ARM64 imageID 为
+  `sha256:536b625d0c501582909f664796fca1992a7e404b6f43dbaec3d27c606daad055`。
+- 仅更新 `orbstack/pole-system/deployment/pole-control-plane`；新 Pod
+  `pole-control-plane-5989896d67-pk7fs` Ready、0 次重启，最近日志无 panic、fatal、
+  crash、failed 或 error，旧 Pod 已退出。
+- 15 个一级板块 Gateway 深链和 Pod 内 Console、Namespace、functions 接口均返回
+  200。Gateway 与本地 release 的 `index.html` SHA256 同为
+  `3609044ee718bfa3a497121ac754c3a61423fe06eb2ffefed705f35352dbbf2e`；
+  入口 JS/CSS 及包含工具栏契约的 16 个异步资源均与本地构建逐项一致。
+- 浏览器访问部署后的 `/namespace` 正常到达登录页；未在没有明确授权的情况下代填
+  登录凭据。登录后页面视觉由共享布局契约约束，部署资源已确认包含本次样式。
+- 回滚命令：
+  `kubectl --context orbstack -n pole-system set image deployment/pole-control-plane pole-control-plane=pole-control-plane:local-20260730-010636-create-action-toolbar-v2`
+  然后执行
+  `kubectl --context orbstack -n pole-system rollout status deployment/pole-control-plane --timeout=180s`。
+
+## Console 多条件工具栏排版修复（2026-07-31）
+
+目标：修复高级筛选启用后标题下沉、查询区被固定宽度压缩、已选条件漂移到操作区下方，
+以及刷新和新建与复合查询形成两套 flex 布局的问题。
+
+- [x] 根据治理工作台截图复现多条件工具栏的双层 flex 根因。
+- [x] 明确“查询主行 + 条件摘要行”的统一结构和顶部对齐规则。
+- [x] 将六个资源清单的刷新与主新增迁入 `QueryComposer.actions`。
+- [x] 取消带操作区 QueryComposer 的容器宽度上限并保持输入框上限。
+- [x] 补充多条件视觉契约并完成关联回归、lint 和构建。
+- [x] 构建唯一镜像并滚动更新本地 OrbStack。
+- [x] 核验部署路由、资源、日志和回滚点。
+
+### Review
+
+- 根因不是单颗按钮尺寸，而是 `ResourceToolbar` 将标题相对包含条件摘要的整个筛选块
+  垂直居中，同时刷新和新建位于 QueryComposer 外部，形成两套相互挤压的 flex 布局。
+- 工具栏改为顶部对齐，标题增加 5px 光学补偿；输入框仍保持 180px 至 420px，但
+  QueryComposer 容器占满剩余空间，带操作区时不再受固定最大宽度限制。
+- 已选条件固定为查询主行下方的独立摘要行，从搜索框起点左对齐；刷新和主新增通过
+  `QueryComposer.actions` 进入查询主行。Namespace、逻辑服务、配置分组、治理工作台、
+  MCP 和 A2A 六个资源清单已统一迁移。
+- `test:resource-toolbar-visual` 新增标题顶部对齐、容器宽度、条件摘要和 actions 归属
+  契约；该测试、`test:query-composer`、`test:create-action-language`、
+  `test:namespace-workspace`、`test:logical-service-console`、
+  `test:service-layout-density`、目标 oxlint、`build:test` 与 `git diff --check` 均通过。
+  oxlint 仅保留三个目标文件已有未使用变量警告，无错误。
+- 使用标准构建链生成
+  `pole-control-plane:local-20260731-003706-query-toolbar-layout-v2`，ARM64 imageID 为
+  `sha256:8c899827581f960fedd8d0f23c9facf1d92fb2ea5dc1b287863b16972d60ca93`；
+  npm 审计为 0 个漏洞。
+- 仅更新 `orbstack/pole-system/deployment/pole-control-plane`；新 Pod
+  `pole-control-plane-75c4567896-rf22r` Ready、0 次重启，旧 Pod 已退出，最近日志无
+  panic、fatal、crash、failed 或 error。
+- 15 个一级板块 Gateway 深链和 Pod 内 Console、治理工作台、functions 接口均返回
+  200。Gateway 与本地 release 的 `index.html` SHA256 同为
+  `88544f4afa2cbad23d2df1971567f65a63bd06b318f5143cbbc94a6dcf6c06e9`；
+  包含本次布局规则和治理工作台文案的 8 个异步资源均与本地构建逐项一致。
+- 回滚命令：
+  `kubectl --context orbstack -n pole-system set image deployment/pole-control-plane pole-control-plane=pole-control-plane:local-20260731-001439-resource-toolbar-style-v1`
+  然后执行
+  `kubectl --context orbstack -n pole-system rollout status deployment/pole-control-plane --timeout=180s`。
+
+## 系统监控接口明细分页（2026-07-31）
+
+目标：为系统监控“接口明细”长列表启用标准分页，避免全部接口行一次性撑高看板。
+
+- [x] 定位接口明细表格与前端聚合数据流。
+- [x] 明确本地分页、每页 10 条和筛选后回到第一页的规则。
+- [x] 为接口明细启用页码、页容量切换、前后翻页和跳页。
+- [x] 补充分页契约并完成目标回归、lint 和构建。
+- [x] 构建唯一镜像并滚动更新本地 OrbStack。
+- [x] 核验部署路由、资源、日志和回滚点。
+
+### Review
+
+- “接口明细”从 `pagination={false}` 改为标准本地分页，默认每页 10 条；复用共享 Table
+  分页器提供每页 10/20/50/100 条、上一页、下一页、页码和跳页能力。
+- 分页总数使用筛选后的 `filteredRows.length`；表格 key 由类别、接口、组件关键字和
+  数据源共同生成，任一筛选条件变化都会重置分页状态并回到第一页。
+- `test:metrics-observability` 新增分页启用、总数、跳页、筛选重置和禁止恢复
+  `pagination={false}` 的契约；该测试、`test:query-composer`、目标 oxlint、
+  `build:test` 与 `git diff --check` 均通过。
+- 使用标准构建链生成
+  `pole-control-plane:local-20260731-004038-system-interface-pagination-v1`，ARM64 imageID
+  为 `sha256:1f73073811d32dbbd2e1437f5c6e964d54783df8423093cfdae0cea5ace9e90a`；
+  npm 审计为 0 个漏洞。
+- 仅更新 `orbstack/pole-system/deployment/pole-control-plane`；新 Pod
+  `pole-control-plane-66454dd87f-n5cvb` Ready、0 次重启，最近日志无 panic、fatal、
+  crash、failed 或 error。
+- Pod 内 Console、系统监控、functions 接口，以及 Gateway 的系统监控、服务监控、
+  事件指标和操作审计入口均返回 200。Gateway 与本地 release 的 `index.html`
+  SHA256 同为
+  `edb47e1d72678bfdbf1bd989f3c5f3f5259921c2705963832c5951f2ee3c895d`；
+  包含接口明细分页实现的异步 JS 与本地构建一致。
+- 回滚命令：
+  `kubectl --context orbstack -n pole-system set image deployment/pole-control-plane pole-control-plane=pole-control-plane:local-20260731-003706-query-toolbar-layout-v2`
+  然后执行
+  `kubectl --context orbstack -n pole-system rollout status deployment/pole-control-plane --timeout=180s`。
+
+## 身份主体顶部统计总览（2026-07-31）
+
+目标：在身份主体页面顶部展示总用户、用户组和角色数，并在列表发生变更后保持同步。
+
+- [x] 梳理用户、用户组和角色列表接口的总数字段。
+- [x] 明确独立总数请求与列表刷新回写策略。
+- [x] 实现三列统计总览、加载占位和窄屏单列布局。
+- [x] 接入三个列表的未筛选总数同步回写。
+- [x] 补充统计契约并完成目标回归、lint 和构建。
+- [x] 构建唯一镜像并滚动更新本地 OrbStack。
+- [x] 核验部署路由、资源、日志和回滚点。
+
+### Review
+
+- 身份主体页在 Tabs 工作区上方新增“总用户 / 用户组 / 角色数”三列统计总览，数字下方
+  分别补充“可登录身份 / 团队与职责集合 / 授权角色目录”语义提示；窄屏退化为单列。
+- 页面首次加载通过 `Promise.allSettled` 并行调用用户、用户组和角色列表接口，均使用
+  `limit=1` 只读取完整 `totalCount`，单类接口失败时保留占位或上次成功值，不阻塞主体。
+- 三个列表只用未筛选列表的总数直接回写顶部；新增、删除、编辑或刷新完成后重新加载
+  三类总数，因此带搜索条件操作资源时也不会让顶部数字停留在旧值。
+- 新增 `test:principal-summary`，并通过 `test:system-role-directory`、
+  `test:create-action-language`、`test:auth-drawer-actions`、`test:auth-mutations`、
+  目标 oxlint、`build:test` 与 `git diff --check`。oxlint 仅保留用户表已有的未使用
+  `ServerError` 警告，无错误。
+- 使用标准构建链生成
+  `pole-control-plane:local-20260731-004602-principal-summary-v1`，ARM64 imageID 为
+  `sha256:929700f63bd96fc49b9e92edbe8285e2fc8dd0c749325a0019b03c2604cdfb55`；
+  npm 审计为 0 个漏洞。
+- 仅更新 `orbstack/pole-system/deployment/pole-control-plane`；新 Pod
+  `pole-control-plane-9dcb89b6f-v9lz4` Ready、0 次重启，最近日志无 panic、fatal、
+  crash、failed 或 error。
+- Pod 内 Console、身份主体、functions 接口，以及 Gateway 的身份主体、权限策略和
+  Namespace 入口均返回 200。Gateway 与本地 release 的 `index.html` SHA256 同为
+  `c709b9a971da53928c006c5b5a7ab01fa72ed810d65b4984afae5ac598dc6ef4`；
+  包含统计总览逻辑与样式的 3 个异步资源均与本地构建一致。
+- 回滚命令：
+  `kubectl --context orbstack -n pole-system set image deployment/pole-control-plane pole-control-plane=pole-control-plane:local-20260731-004038-system-interface-pagination-v1`
+  然后执行
+  `kubectl --context orbstack -n pole-system rollout status deployment/pole-control-plane --timeout=180s`。
+
+## 访问策略顶部统计总览（2026-07-31）
+
+目标：在访问策略页面顶部展示自定义策略数和默认策略数，并在策略变更后保持同步。
+
+- [x] 确认 `default=false/true` 两类策略查询及完整总数字段。
+- [x] 明确独立总数请求、列表回写与变更后刷新策略。
+- [x] 实现两列统计总览、加载占位和窄屏单列布局。
+- [x] 接入自定义策略变更后的两类总数同步刷新。
+- [x] 补充统计契约并完成目标回归、lint 和构建。
+- [x] 构建唯一镜像并滚动更新本地 OrbStack。
+- [x] 核验部署路由、资源、日志和回滚点。
+
+### Review
+
+- 访问策略页在 Tabs 工作区上方新增“自定义策略数 / 默认策略数”两列统计总览，分别
+  补充“人工维护的授权规则 / 系统自动维护的基础权限”语义提示；窄屏退化为单列。
+- 页面首次加载通过 `Promise.allSettled` 并行调用 `default=false` 与 `default=true`
+  两类策略查询，均使用 `limit=1` 只读取完整 `totalCount`；单类接口失败不阻塞主体。
+- 两个策略列表只用未筛选列表的总数直接回写顶部；自定义策略新增、删除、编辑完成后
+  重新加载两类总数，因此带搜索条件操作策略时统计仍保持准确。
+- 新增 `test:policy-summary`，并通过 `test:principal-summary`、
+  `test:create-action-language`、`test:auth-drawer-actions`、`test:auth-mutations`、
+  目标 oxlint、`build:test` 与 `git diff --check`。
+- 使用标准构建链生成
+  `pole-control-plane:local-20260731-005225-policy-summary-v2`，ARM64 imageID 为
+  `sha256:bae0dd664dffbb023931ddd7fab4e3c9d7c73db7dc0a3ea1e7559f6f20a6c6ed`；
+  npm 审计为 0 个漏洞。
+- 仅更新 `orbstack/pole-system/deployment/pole-control-plane`；新 Pod
+  `pole-control-plane-65fc77d84b-vbctl` Ready、0 次重启，最近日志无 panic、fatal、
+  crash、failed 或 error。
+- Pod 内 Console、访问策略、functions 接口，以及 Gateway 的访问策略、身份主体和
+  Namespace 入口均返回 200。Gateway 与本地 release 的 `index.html` SHA256 同为
+  `cf31fb27ffea2a02de09f3166dc71b237e53759cdb00d676c2d49f476381cecb`；
+  包含统计总览逻辑和关联样式的异步资源均与本地构建一致。
+- 最终复查发现顶部总览初版复用了策略详情已有的 `.policySummary` 类名；发布前已改为
+  独立的 `.policyMetricRail` / `.policyMetricItem`，并补充详情页布局回归，避免两处
+  样式互相覆盖。最终交付镜像为上述 `v2`。
+- 回滚命令：
+  `kubectl --context orbstack -n pole-system set image deployment/pole-control-plane pole-control-plane=pole-control-plane:local-20260731-004602-principal-summary-v1`
+  然后执行
+  `kubectl --context orbstack -n pole-system rollout status deployment/pole-control-plane --timeout=180s`。
+
+## 配置模板组合 Revision Watch（2026-07-30）
+
+目标：当客户端可见的 Template Binding、Template Release 或 Namespace Value Release
+组合发生变化时，即使 ConfigFile Release 版本未变化，Watch 也能按客户端标签通知实际受影响的订阅者。
+
+- [x] 梳理配置 Discover、长轮询 Watch、模板快照与 Value 发布链路。
+- [x] 以组合 revision 和客户端可见性补充 Watch 回归测试。
+- [x] 通过 Value Release 数据库增量缓存发布跨实例模板快照变化事件。
+- [x] Watch 重新解析客户端可见快照，仅在组合 revision 变化时通知。
+- [x] 保持普通配置数字版本 Watch 与 Nacos/Apollo 兼容。
+- [x] 完成定向测试、全量测试、格式检查与 Review。
+
+### Review
+
+- 新增 `configTemplateValueRelease` 轻量事件缓存，每秒按数据库 `mtime` 增量读取
+  Namespace Value Release；正式版本切换产生的旧版本失活与新版本激活会按
+  `namespace + template_id` 去重后在每个 control-plane 实例本地发布失效事件，
+  不依赖写入节点内存通知。
+- Watch 对非数字 `Id` 解释为客户端上次收到的顶层快照 revision，并复用
+  `GetConfigFileWithCache` 的普通/灰度 ConfigFile Release 选择、固定 binding、
+  Template Release 与 Namespace Value Release 解析逻辑，不复制灰度规则。
+- Value 事件到达后按订阅客户端标签重新解析可见快照；只有组合 revision 实际变化且
+  当前快照仍绑定对应模板的客户端会收到通知。普通 ConfigFile Release 发布也会为
+  revision-aware Watch 重新解析，因此 binding 显式切换同样可通知。
+- 数字版本 Watch 保持原响应和比较方式；回归测试同时修复了旧实现订阅键使用 `+`、
+  版本比较键使用 `@` 导致普通 Watch 失配的问题。
+- 验证通过：配置、缓存和 MySQL 定向测试，`go test -tags nomsgpack -p 1 ./... -count=1`，
+  `go test -tags nomsgpack -race ./pkg/config ./pkg/cache/config -count=1`，
+  `gofmt -d` 与 `git diff --check`。
+- `import-format.sh` 仍会被仓库现有 `github.com/ugorji/go/codec` 双模块歧义干扰；
+  本次已清理该脚本产生的无关格式改动，目标 Go 文件经 `gofmt -d` 验证无差异。
+
+## 当前工作树整理提交并推送（2026-07-31）
+
+目标：移除无关格式噪声，将已验证的配置 Watch 与 Console 改动按功能边界提交到
+`develop`，同步任务记录并推送远端。
+
+- [x] 审查工作树并移除无关 Go 格式化改动。
+- [x] 确认本地与 `origin/develop` 基线一致。
+- [x] 提交配置模板组合 Revision Watch 后端链路。
+- [x] 提交 Console 资源页布局、统计与分页改进。
+- [x] 提交观测运行时数据目录收敛与误提交制品清理。
+- [x] 运行后端、前端与 Kubernetes 提交前关键验证。
+- [x] 提交任务记录并推送 `develop`。
+
+### Review
+
+- 配置模板组合 Revision Watch 以 `e3efc0b1` 独立提交，包含 Value Release 增量缓存、
+  客户端可见快照重新解析、组合 revision 通知和数字版本兼容回归。
+- Console 资源页统一以 `43598d20` 独立提交，覆盖共享工具栏、顶部 Header 上下文、
+  新建按钮设计语言、身份主体与访问策略统计，以及监控接口明细分页。
+- 运行时目录以 `f9fc0c3b` 独立提交，将 OTel 本地队列统一迁入 `.pole_data`，Kubernetes
+  收敛为 `/app/.pole_data` 单一挂载，并删除误提交的 Pebble 运行时数据库制品。
+- 后端通过 `go test -tags nomsgpack -p 1 ./pkg/config ./pkg/cache/config
+  ./plugin/store/mysql -count=1`；目标 Go 文件 `gofmt -d` 无差异。
+- 前端通过 `test:resource-toolbar-visual`、`test:query-composer`、
+  `test:metrics-observability`、`test:principal-summary`、`test:policy-summary` 和
+  `build:test`；全工作树通过 `git diff --check`。
+- Kubernetes entrypoint 通过 `bash -n`，部署清单通过
+  `kubectl apply --dry-run=client --validate=false`，新旧运行时路径检查一致。
+- 三个功能提交已从 `83ca0e66` 推送到 `origin/develop`，任务记录随后单独提交并推送。
