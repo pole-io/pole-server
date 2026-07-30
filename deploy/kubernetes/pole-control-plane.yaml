@@ -168,8 +168,10 @@ spec:
               readOnly: true
             - name: work
               mountPath: /work
-            - name: runtime-data
+            - name: runtime-local-db
               mountPath: /app/.pole_data
+            - name: runtime-local-db
+              mountPath: /app/data
             - name: runtime-logs
               mountPath: /app/logs
       volumes:
@@ -178,7 +180,7 @@ spec:
             name: pole-runtime-config
         - name: work
           emptyDir: {}
-        - name: runtime-data
+        - name: runtime-local-db
           emptyDir: {}
         - name: runtime-logs
           emptyDir: {}

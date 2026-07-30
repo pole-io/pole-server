@@ -248,8 +248,9 @@ deploy/
 进程本地运行时数据统一写入 `./.pole_data/`。当前配置缓存位于
 `./.pole_data/cache/`，OTel event/audit 可靠队列位于
 `./.pole_data/observability/otel-events/`；该目录不属于部署静态资源，必须整体排除出
-Git。Kubernetes 将 `/app/.pole_data` 作为单一运行时数据挂载点，不再单独挂载
-`/app/data`。
+Git。Kubernetes 以 `runtime-local-db` 作为唯一运行时数据卷，规范挂载点是
+`/app/.pole_data`；兼容期同时将同一卷挂载到 `/app/data`，确保旧镜像和仍覆盖旧路径的
+私有配置可以回滚，但两者不再拥有独立存储。
 
 ## 本地 Kubernetes 依赖边界
 

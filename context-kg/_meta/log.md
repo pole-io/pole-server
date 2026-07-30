@@ -1274,7 +1274,7 @@ sources: 0
 - 变更摘要：
   - 将 OTel event/audit 本地 Pebble 队列迁移到 `./.pole_data/observability/otel-events`。
   - 明确 `.pole_data` 为配置缓存和观测可靠队列共用的进程本地运行时数据根。
-  - Kubernetes 收敛为 `/app/.pole_data` 单一数据挂载点，移除独立 `/app/data` 挂载。
+  - Kubernetes 收敛为单一 `runtime-local-db` 数据卷，`/app/.pole_data` 为规范挂载点，`/app/data` 仅保留为同卷兼容别名。
   - 删除误提交到顶层 `data/` 的 Pebble 运行时数据库制品。
 
 ## 相关页面

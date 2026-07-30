@@ -11997,3 +11997,24 @@ Value 按 Namespace + Template 维护”领域模型的前提下，将入口提�
 - Kubernetes entrypoint 通过 `bash -n`，部署清单通过
   `kubectl apply --dry-run=client --validate=false`，新旧运行时路径检查一致。
 - 三个功能提交已从 `83ca0e66` 推送到 `origin/develop`，任务记录随后单独提交并推送。
+
+## 观测数据卷回滚兼容修正（2026-07-31）
+
+目标：在 `.pole_data` 成为规范运行时数据根后，保持旧镜像和旧路径私有配置可以通过
+Kubernetes 镜像回滚继续启动。
+
+- [x] 复核观测目录迁移提交及现有 Kubernetes volume 变更。
+- [x] 识别删除 `/app/data` 与重命名 `runtime-local-db` 的回滚兼容风险。
+- [x] 使用单一 `runtime-local-db` 卷同时挂载 `/app/.pole_data` 与兼容别名 `/app/data`。
+- [x] 完成 Kubernetes dry-run、路径契约、知识库 lint 与差异验证。
+
+### Review
+
+- 默认 `logSpoolDir` 已统一为 `./.pole_data/observability/otel-events`，仓库中不存在旧
+  `./data/observability` 运行时路径。
+- Kubernetes 继续使用原有 `runtime-local-db` volume 名称，并将同一卷挂载到规范路径
+  `/app/.pole_data` 与兼容路径 `/app/data`；旧镜像单独回滚和旧路径私有覆盖都不会因
+  只读根文件系统启动失败。
+- `kubectl --context orbstack apply --dry-run=client --validate=false` 通过；渲染结果确认
+  两个路径只引用一个 `runtime-local-db` volume。
+- 路径契约检查、context-kg lint 与目标文件 `git diff --check` 通过。
