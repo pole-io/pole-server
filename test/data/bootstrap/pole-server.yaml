@@ -224,7 +224,7 @@ plugin:
   #       option:
   #         endpoint: 127.0.0.1:4317
   #         logsEndpoint: http://127.0.0.1:4318/v1/logs
-  #         logSpoolDir: ./data/observability/otel-events
+  #         logSpoolDir: ./.pole_data/observability/otel-events
   #         logSpoolBucket: history
   #     - name: HistoryDB
   #       option:
@@ -236,7 +236,7 @@ plugin:
   #       option:
   #         endpoint: 127.0.0.1:4317
   #         logsEndpoint: http://127.0.0.1:4318/v1/logs
-  #         logSpoolDir: ./data/observability/otel-events
+  #         logSpoolDir: ./.pole_data/observability/otel-events
   #         logSpoolBucket: discover_event
   #     - name: EventDB
   #       option:

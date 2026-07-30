@@ -169,8 +169,6 @@ spec:
             - name: work
               mountPath: /work
             - name: runtime-data
-              mountPath: /app/data
-            - name: runtime-local-db
               mountPath: /app/.pole_data
             - name: runtime-logs
               mountPath: /app/logs
@@ -181,8 +179,6 @@ spec:
         - name: work
           emptyDir: {}
         - name: runtime-data
-          emptyDir: {}
-        - name: runtime-local-db
           emptyDir: {}
         - name: runtime-logs
           emptyDir: {}

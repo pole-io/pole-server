@@ -64,7 +64,7 @@ export OTEL_COLLECTOR_HTTP_ENDPOINT_YAML="$(yaml_quote "${OTEL_COLLECTOR_HTTP_EN
 export GREPTIMEDB_HTTP_ENDPOINT_YAML="$(yaml_quote "${GREPTIMEDB_HTTP_ENDPOINT}")"
 export POLE_CLUSTER_NAME_YAML="$(yaml_quote "${POLE_CLUSTER_NAME}")"
 
-mkdir -p "$(dirname "${dst}")" /app/logs/runtime /app/data/observability/otel-events
+mkdir -p "$(dirname "${dst}")" /app/logs/runtime /app/.pole_data/observability/otel-events
 
 sed \
   -e 's|dbUser: ##DB_USER##|dbUser: ${MYSQL_USER_YAML}|g' \

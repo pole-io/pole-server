@@ -306,7 +306,7 @@ plugin:
           logsEndpoint: http://127.0.0.1:4318/v1/logs
           timeout: 5s
           logQueueSize: 2048
-          logSpoolDir: ./data/observability/otel-events
+          logSpoolDir: ./.pole_data/observability/otel-events
           logSpoolBucket: history
           logSpoolMaxBytes: 67108864
           serviceName: pole-control-plane
@@ -322,7 +322,7 @@ plugin:
           logsEndpoint: http://127.0.0.1:4318/v1/logs
           timeout: 5s
           logQueueSize: 2048
-          logSpoolDir: ./data/observability/otel-events
+          logSpoolDir: ./.pole_data/observability/otel-events
           logSpoolBucket: discover_event
           logSpoolMaxBytes: 67108864
           serviceName: pole-control-plane

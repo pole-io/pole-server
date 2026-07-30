@@ -9,7 +9,7 @@ COPY deploy/conf /app/conf
 COPY deploy/kubernetes/entrypoint.sh /app/entrypoint.sh
 
 RUN chmod 0755 /app/pole-server /app/entrypoint.sh \
-    && mkdir -p /app/logs/runtime /app/data/observability/otel-events /work
+    && mkdir -p /app/logs/runtime /app/.pole_data/observability/otel-events /work
 
 WORKDIR /app
 
