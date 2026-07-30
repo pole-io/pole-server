@@ -138,6 +138,8 @@ type NamespaceTemplateValuesStore interface {
 	GetNamespaceTemplateValueRelease(id string) (*conftypes.NamespaceTemplateValueRelease, error)
 	ListNamespaceTemplateValueReleases(namespace string, templateID uint64) (
 		[]*conftypes.NamespaceTemplateValueRelease, error)
+	GetMoreNamespaceTemplateValueReleases(firstUpdate bool, modifyTime time.Time) (
+		[]*conftypes.NamespaceTemplateValueRelease, error)
 	SetNamespaceTemplateValueReleaseActive(id string, active bool) error
 }
 

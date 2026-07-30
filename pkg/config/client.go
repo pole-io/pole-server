@@ -136,6 +136,22 @@ func clientSupportsTemplateEngine(ctx context.Context, name, version string) boo
 	return false
 }
 
+func (s *Server) resolveWatchSnapshot(labels map[string]string,
+	file *apiconfig.ConfigFileRelease) *apiconfig.ConfigDiscoverResponse {
+	ctx := context.WithValue(context.Background(), types.ContextClientAddress, labels[types.ClientLabel_IP])
+	ctx = context.WithValue(ctx, types.ContextDiscoverFilter, &apiconfig.ConfigDiscoverFilter{
+		SupportedTemplateEngines: []*apiconfig.ConfigTemplateEngine{{
+			Name: configtemplate.EnginePoleMustache, Version: configtemplate.EngineVersionV1,
+		}},
+	})
+	return s.GetConfigFileWithCache(ctx, &apiconfig.ConfigFile{
+		Namespace: file.GetNamespace(),
+		Group:     file.GetGroup(),
+		Name:      file.GetName(),
+		Labels:    labels,
+	})
+}
+
 func configReleaseSnapshotRevision(release *conftypes.ConfigFileRelease) string {
 	if release == nil || release.SimpleConfigFileRelease == nil {
 		return ""

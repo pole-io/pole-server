@@ -4182,6 +4182,21 @@ func (mr *MockStoreMockRecorder) ListNamespaceTemplateValueReleases(namespace, t
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListNamespaceTemplateValueReleases", reflect.TypeOf((*MockStore)(nil).ListNamespaceTemplateValueReleases), namespace, templateID)
 }
 
+// GetMoreNamespaceTemplateValueReleases mocks base method.
+func (m *MockStore) GetMoreNamespaceTemplateValueReleases(firstUpdate bool, modifyTime time.Time) ([]*config.NamespaceTemplateValueRelease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMoreNamespaceTemplateValueReleases", firstUpdate, modifyTime)
+	ret0, _ := ret[0].([]*config.NamespaceTemplateValueRelease)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMoreNamespaceTemplateValueReleases indicates an expected call of GetMoreNamespaceTemplateValueReleases.
+func (mr *MockStoreMockRecorder) GetMoreNamespaceTemplateValueReleases(firstUpdate, modifyTime interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoreNamespaceTemplateValueReleases", reflect.TypeOf((*MockStore)(nil).GetMoreNamespaceTemplateValueReleases), firstUpdate, modifyTime)
+}
+
 // ListServiceEnvironmentBindings mocks base method.
 func (m *MockStore) ListServiceEnvironmentBindings(logicalServiceID string) ([]*service.ServiceEnvironmentBinding, error) {
 	m.ctrl.T.Helper()

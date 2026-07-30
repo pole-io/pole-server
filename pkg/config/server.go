@@ -161,7 +161,7 @@ func (s *Server) initialize(ctx context.Context, config Config, ss store.Store,
 	s.groupCache = cacheMgr.ConfigGroup()
 	s.grayCache = cacheMgr.Gray()
 
-	s.watchCenter, err = NewWatchCenter(cacheMgr)
+	s.watchCenter, err = NewWatchCenter(cacheMgr, s.resolveWatchSnapshot)
 	if err != nil {
 		return err
 	}

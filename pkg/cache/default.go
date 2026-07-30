@@ -49,6 +49,7 @@ func init() {
 	RegisterCache(cacheapi.TrafficMockRuleName, cacheapi.CacheTrafficMock)
 	RegisterCache(cacheapi.ConfigFileCacheName, cacheapi.CacheConfigFile)
 	RegisterCache(cacheapi.ConfigGroupCacheName, cacheapi.CacheConfigGroup)
+	RegisterCache(cacheapi.ConfigTemplateValueReleaseCacheName, cacheapi.CacheConfigTemplateValueRelease)
 	RegisterCache(cacheapi.UsersName, cacheapi.CacheUser)
 	RegisterCache(cacheapi.StrategyRuleName, cacheapi.CacheAuthStrategy)
 	RegisterCache(cacheapi.ClientName, cacheapi.CacheClient)
@@ -117,6 +118,8 @@ func newCacheManager(ctx context.Context, cacheOpt *Config, storage store.Store)
 	// 配置分组 & 配置发布缓存
 	mgr.RegisterCacher(cacheapi.CacheConfigFile, cacheconfig.NewConfigFileCache(storage, mgr))
 	mgr.RegisterCacher(cacheapi.CacheConfigGroup, cacheconfig.NewConfigGroupCache(storage, mgr))
+	mgr.RegisterCacher(cacheapi.CacheConfigTemplateValueRelease,
+		cacheconfig.NewConfigTemplateValueReleaseCache(storage, mgr))
 	// 用户/用户组 & 鉴权规则缓存
 	mgr.RegisterCacher(cacheapi.CacheUser, cacheauth.NewUserCache(storage, mgr))
 	mgr.RegisterCacher(cacheapi.CacheAuthStrategy, cacheauth.NewStrategyCache(storage, mgr))

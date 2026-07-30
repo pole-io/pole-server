@@ -33,6 +33,9 @@ var (
 		{
 			Name: "configGroup",
 		},
+		{
+			Name: "configTemplateValueRelease",
+		},
 	}
 )
 
@@ -46,6 +49,9 @@ var (
 		},
 		{
 			Name: "configGroup",
+		},
+		{
+			Name: "configTemplateValueRelease",
 		},
 	}
 )

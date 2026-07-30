@@ -12,12 +12,14 @@ package sqldb
 import (
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 
-	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 )
 
 func TestCreateActiveNormalNamespaceTemplateValueReleaseDeactivatesPreviousRelease(t *testing.T) {
@@ -87,6 +89,35 @@ func TestGetNamespaceTemplateValueReleaseRestoresBetaLabels(t *testing.T) {
 	require.Equal(t, conftypes.TemplateValueReleaseTypeGray, release.ReleaseType)
 	require.Equal(t, int32(100), release.Priority)
 	require.Equal(t, "gray-revision", release.Revision)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGetMoreNamespaceTemplateValueReleasesReturnsActiveAndDeactivatedRows(t *testing.T) {
+	rawDB, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer rawDB.Close()
+
+	db := &BaseDB{DB: rawDB}
+	repository := &namespaceTemplateValuesStore{master: db, slave: db}
+	query := namespaceTemplateValueReleaseSelect +
+		` WHERE mtime > FROM_UNIXTIME(?) ORDER BY mtime ASC`
+	rows := sqlmock.NewRows([]string{
+		"id", "values_id", "namespace", "template_id", "template_release_id",
+		"values_content", "release_type", "beta_labels", "priority", "active",
+		"version", "revision", "comment", "create_by", "modify_by", "ctime", "mtime",
+	}).
+		AddRow("normal-old", "values-1", "prod", 7, "template-release-1",
+			`{"region":"old"}`, "normal", "[]", 0, false, 1, "old", "", "", "", 100, 200).
+		AddRow("normal-new", "values-1", "prod", 7, "template-release-1",
+			`{"region":"new"}`, "normal", "[]", 0, true, 2, "new", "", "", "", 201, 201)
+	mock.ExpectQuery(regexp.QuoteMeta(query)).WithArgs(int64(150)).WillReturnRows(rows)
+
+	releases, err := repository.GetMoreNamespaceTemplateValueReleases(false, time.Unix(150, 0))
+
+	require.NoError(t, err)
+	require.Len(t, releases, 2)
+	require.False(t, releases[0].Active)
+	require.True(t, releases[1].Active)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

@@ -48,6 +48,11 @@ type PublishConfigFileEvent struct {
 	Message *conftypes.SimpleConfigFileRelease
 }
 
+type ConfigTemplateSnapshotChangedEvent struct {
+	Namespace  string
+	TemplateID uint64
+}
+
 // EventType common event type
 type EventType int
 

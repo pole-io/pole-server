@@ -52,6 +52,9 @@ type (
 
 	FileReleaseCallback func(clientId string, rsp *apiconfig.ConfigDiscoverResponse) bool
 
+	ConfigSnapshotResolver func(labels map[string]string,
+		file *apiconfig.ConfigFileRelease) *apiconfig.ConfigDiscoverResponse
+
 	WatchContextFactory func(clientId string, matcher BetaReleaseMatcher) WatchContext
 
 	WatchContext interface {
@@ -132,7 +135,7 @@ func (c *LongPollWatchContext) ShouldNotify(event *conftypes.SimpleConfigFileRel
 		return false
 	}
 
-	key := event.FileKey()
+	key := GenFileId(event.Namespace, event.Group, event.FileName)
 	watchFile, ok := c.watchConfigFiles[key]
 	if !ok {
 		return false
@@ -205,21 +208,23 @@ type watchCenter struct {
 	// fileId -> []clientId
 	watchers *container.SyncMap[string, *container.SyncSet[string]]
 	// fileCache
-	fileCache cacheapi.ConfigFileCache
-	cacheMgr  cacheapi.CacheManager
-	cancel    context.CancelFunc
+	fileCache        cacheapi.ConfigFileCache
+	cacheMgr         cacheapi.CacheManager
+	snapshotResolver ConfigSnapshotResolver
+	cancel           context.CancelFunc
 }
 
 // NewWatchCenter 创建一个客户端监听配置发布的处理中心
-func NewWatchCenter(cacheMgr cacheapi.CacheManager) (*watchCenter, error) {
+func NewWatchCenter(cacheMgr cacheapi.CacheManager, snapshotResolver ConfigSnapshotResolver) (*watchCenter, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	wc := &watchCenter{
-		clients:   container.NewSyncMap[string, WatchContext](),
-		watchers:  container.NewSyncMap[string, *container.SyncSet[string]](),
-		fileCache: cacheMgr.ConfigFile(),
-		cacheMgr:  cacheMgr,
-		cancel:    cancel,
+		clients:          container.NewSyncMap[string, WatchContext](),
+		watchers:         container.NewSyncMap[string, *container.SyncSet[string]](),
+		fileCache:        cacheMgr.ConfigFile(),
+		cacheMgr:         cacheMgr,
+		snapshotResolver: snapshotResolver,
+		cancel:           cancel,
 	}
 
 	var err error
@@ -238,12 +243,14 @@ func (wc *watchCenter) PreProcess(_ context.Context, e any) any {
 
 // OnEvent event process logic
 func (wc *watchCenter) OnEvent(ctx context.Context, arg any) error {
-	event, ok := arg.(*eventhub.PublishConfigFileEvent)
-	if !ok {
+	switch event := arg.(type) {
+	case *eventhub.PublishConfigFileEvent:
+		wc.notifyToWatchers(event.Message)
+	case *eventhub.ConfigTemplateSnapshotChangedEvent:
+		wc.notifyTemplateSnapshotChanged(event)
+	default:
 		log.Warn("[Config][Watcher] receive invalid event type")
-		return nil
 	}
-	wc.notifyToWatchers(event.Message)
 	return nil
 }
 
@@ -267,6 +274,14 @@ func (wc *watchCenter) CheckQuickResponseClient(watchCtx WatchContext) *apiconfi
 		namespace := configFile.GetNamespace()
 		group := configFile.GetGroup()
 		fileName := configFile.GetName()
+		if isSnapshotRevision(configFile.GetId()) {
+			response := wc.resolveSnapshot(watchCtx, configFile)
+			if response != nil && response.GetCode() == uint32(apimodel.Code_ExecuteSuccess) &&
+				response.GetRevision() != "" && response.GetRevision() != configFile.GetId() {
+				return response
+			}
+			continue
+		}
 		// 从缓存中获取灰度文件
 		if len(watchCtx.ClientLabels()) > 0 {
 			release := selectMatchedGrayRelease(wc.fileCache.GetActiveGrayReleases(namespace, group, fileName),
@@ -284,6 +299,29 @@ func (wc *watchCenter) CheckQuickResponseClient(watchCtx WatchContext) *apiconfi
 		}
 	}
 	return nil
+}
+
+func isSnapshotRevision(revision string) bool {
+	if revision == "" {
+		return false
+	}
+	_, err := strconv.ParseUint(revision, 10, 64)
+	return err != nil
+}
+
+func (wc *watchCenter) resolveSnapshot(watchCtx WatchContext,
+	file *apiconfig.ConfigFileRelease) *apiconfig.ConfigDiscoverResponse {
+	if wc.snapshotResolver == nil {
+		return nil
+	}
+	labels := make(map[string]string, len(watchCtx.ClientLabels())+len(file.GetLabels()))
+	for key, value := range watchCtx.ClientLabels() {
+		labels[key] = value
+	}
+	for key, value := range file.GetLabels() {
+		labels[key] = value
+	}
+	return wc.snapshotResolver(labels, file)
 }
 
 // GetWatchContext .
@@ -382,8 +420,25 @@ func (wc *watchCenter) notifyToWatchers(publishConfigFile *conftypes.SimpleConfi
 			return
 		}
 
-		if watchCtx.ShouldNotify(publishConfigFile) {
-			watchCtx.Reply(response)
+		clientResponse := response
+		shouldNotify := watchCtx.ShouldNotify(publishConfigFile)
+		if !shouldNotify {
+			for _, file := range watchCtx.ListWatchFiles() {
+				if GenFileId(file.GetNamespace(), file.GetGroup(), file.GetName()) != watchFileId ||
+					!isSnapshotRevision(file.GetId()) {
+					continue
+				}
+				resolved := wc.resolveSnapshot(watchCtx, file)
+				if resolved != nil && resolved.GetCode() == uint32(apimodel.Code_ExecuteSuccess) &&
+					resolved.GetRevision() != "" && resolved.GetRevision() != file.GetId() {
+					clientResponse = resolved
+					shouldNotify = true
+				}
+				break
+			}
+		}
+		if shouldNotify {
+			watchCtx.Reply(clientResponse)
 			notifyCnt++
 			// 只能用一次，通知完就要立马清理掉这个 WatchContext
 			if watchCtx.IsOnce() {
@@ -395,6 +450,35 @@ func (wc *watchCenter) notifyToWatchers(publishConfigFile *conftypes.SimpleConfi
 	log.Info("[Config][Watcher] received config file release event.", zap.String("file", watchFileId),
 		zap.Uint64("version", publishConfigFile.Version), zap.Int("clients", clientIds.Len()),
 		zap.Int("notify", notifyCnt))
+}
+
+func (wc *watchCenter) notifyTemplateSnapshotChanged(event *eventhub.ConfigTemplateSnapshotChangedEvent) {
+	if event == nil || event.Namespace == "" || event.TemplateID == 0 {
+		return
+	}
+	notified := 0
+	wc.clients.Range(func(_ string, watchCtx WatchContext) {
+		for _, file := range watchCtx.ListWatchFiles() {
+			if file.GetNamespace() != event.Namespace || !isSnapshotRevision(file.GetId()) {
+				continue
+			}
+			response := wc.resolveSnapshot(watchCtx, file)
+			if response == nil || response.GetCode() != uint32(apimodel.Code_ExecuteSuccess) ||
+				response.GetRevision() == "" || response.GetRevision() == file.GetId() ||
+				response.GetRenderSnapshot().GetTemplateBinding().GetTemplateId() != event.TemplateID {
+				continue
+			}
+			watchCtx.Reply(response)
+			notified++
+			if watchCtx.IsOnce() {
+				wc.RemoveAllWatcher(watchCtx.ClientID())
+			}
+			break
+		}
+	})
+	log.Info("[Config][Watcher] received template snapshot change event.",
+		zap.String("namespace", event.Namespace), zap.Uint64("template-id", event.TemplateID),
+		zap.Int("notify", notified))
 }
 
 func (wc *watchCenter) MatchBetaReleaseFile(clientLabels map[string]string, event *conftypes.SimpleConfigFileRelease) bool {

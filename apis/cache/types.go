@@ -67,6 +67,8 @@ const (
 	ConfigGroupCacheName = "configGroup"
 	// ConfigFileCacheName config file config name
 	ConfigFileCacheName = "configFile"
+	// ConfigTemplateValueReleaseCacheName config template Value release event cache name
+	ConfigTemplateValueReleaseCacheName = "configTemplateValueRelease"
 	// ClientName client cache name
 	ClientName = "client"
 	// UsersName user data config name
@@ -114,6 +116,7 @@ const (
 	// AI Native 缓存索引
 	CacheMCPServer
 	CacheA2AAgent
+	CacheConfigTemplateValueRelease
 
 	CacheLast
 )

@@ -15,9 +15,10 @@ import (
 	"errors"
 	"time"
 
+	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
+
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	"github.com/pole-io/pole-server/apis/store"
-	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 )
 
 type configTemplateReleaseStore struct {
@@ -192,6 +193,32 @@ func (s *namespaceTemplateValuesStore) ListNamespaceTemplateValueReleases(
 	rows, err := s.slave.Query(namespaceTemplateValueReleaseSelect+
 		` WHERE namespace = ? AND template_id = ?
 		ORDER BY priority ASC, version DESC, mtime DESC`, namespace, templateID)
+	if err != nil {
+		return nil, store.Error(err)
+	}
+	defer rows.Close()
+
+	var releases []*conftypes.NamespaceTemplateValueRelease
+	for rows.Next() {
+		release, scanErr := scanNamespaceTemplateValueRelease(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		releases = append(releases, release)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, store.Error(err)
+	}
+	return releases, nil
+}
+
+func (s *namespaceTemplateValuesStore) GetMoreNamespaceTemplateValueReleases(
+	firstUpdate bool, modifyTime time.Time) ([]*conftypes.NamespaceTemplateValueRelease, error) {
+	if firstUpdate {
+		modifyTime = time.Time{}
+	}
+	rows, err := s.slave.Query(namespaceTemplateValueReleaseSelect+
+		` WHERE mtime > FROM_UNIXTIME(?) ORDER BY mtime ASC`, timeToTimestamp(modifyTime))
 	if err != nil {
 		return nil, store.Error(err)
 	}
