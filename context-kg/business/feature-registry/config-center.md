@@ -1,7 +1,7 @@
 ---
 title: 配置中心（`pkg/config/`）
 tags: [business, feature, config]
-links: [namespace, architecture, storage, cache-layer, adr-config-template-client-rendering]
+links: [namespace, architecture, storage, cache-layer, adr-config-template-client-rendering, pole-product-capability-matrix-research]
 updated: 2026-07-28
 sources: 1
 ---
@@ -60,3 +60,4 @@ SDK 与组合 Watch 尚待接入，完整方案见 [[adr-config-template-client-
 - [[storage]]
 - [[cache-layer]]
 - [[adr-config-template-client-rendering]]
+- [[pole-product-capability-matrix-research]]

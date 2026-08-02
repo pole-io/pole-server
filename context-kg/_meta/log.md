@@ -1277,6 +1277,92 @@ sources: 0
   - Kubernetes 收敛为单一 `runtime-local-db` 数据卷，`/app/.pole_data` 为规范挂载点，`/app/data` 仅保留为同卷兼容别名。
   - 删除误提交到顶层 `data/` 的 Pebble 运行时数据库制品。
 
+## [2026-07-31] ingest | 官方内置插件与用户扩展 Registry
+
+- 新增页面：adr-plugin-extension-registry。
+- 更新页面：architecture、patterns、index、todo。
+- 变更摘要：
+  - 新增公共 Plugin Registry、Descriptor、Factory、Kind 与冻结/激活契约。
+  - 官方实现通过 `builtinplugins` 显式组合，用户插件由独立 Go Module 注册到同一 Registry。
+  - 通用插件、Store、API Server 与 Auth 统一从当前运行 Registry 解析实例。
+  - 保留旧注册函数、默认 Registry 与 API Server Slots 运行投影作为兼容层，官方集合不再依赖 init。
+  - 进程内用户插件采用自定义静态发行版；动态扩展后续使用版本化 RPC，不采用 Go plugin。
+
+## [2026-07-31] refine | 内置插件运行生命周期收口
+
+- 更新页面：adr-plugin-extension-registry、architecture、patterns、index、todo、lessons。
+- 变更摘要：
+  - Registry 统一跟踪已解析实例，Bootstrap 退出或启动失败时按逆序调用 Destroy。
+  - Auth 移除旧内部 slot map，Store 与 API Server 兼容投影不再参与注册冲突判断。
+  - RateLimit 与 Whitelist 从 Active Registry 解析、初始化并按运行 Registry 隔离。
+  - 外部示例工程不进入本轮范围，优先完成官方内置插件闭环。
+
+## [2026-08-01] research | Pole 与 Kmesh 产品差异
+
+- 新增页面：kmesh-product-research。
+- 更新页面：index、todo。
+- 变更摘要：
+  - 基于 Kmesh 官方网站、官方文档和官方 GitHub 仓库核验其数据平面定位。
+  - 区分节点 eBPF、Waypoint 高级 L7 与 Istiod 控制面的职责边界。
+  - 记录已证实的治理、观测、部署前提，以及不能从路线图直接推导的能力。
+  - 明确 Pole 与 Kmesh 分属控制面和数据面层次，组合接入仍需协议适配与 E2E 验证。
+
+## [2026-08-01] research | Website 产品对比分层
+
+- 新增页面：pole-product-comparison-research。
+- 更新页面：kmesh-product-research、index、todo、lessons。
+- 变更摘要：
+  - 核验 Nacos、Apollo、PolarisMesh、Kmesh 与 Istio 的官方当前定位和部署边界。
+  - 将比较关系分为兼容迁移、同层控制面竞争、完整 Mesh 生态和数据面组合。
+  - 明确 Website 应在首页提供关系摘要，在产品专题页提供完整矩阵，不扩张顶部主导航。
+  - 记录 xDS、mTLS、协议兼容和完全替代等容易误导的文案护栏。
+
+## [2026-08-01] deliver | Website 产品对比体验上线
+
+- 更新页面：todo。
+- 变更摘要：
+  - Website 新增 `/compare` 专题页，并在首页和产品页提供对比入口。
+  - 新增中英文对称的技术对比文档，明确兼容迁移、同层竞争、Mesh 分工与数据面组合边界。
+  - 补充路由、内容、事实边界和双语对称测试，通过桌面端与移动端浏览器验收。
+  - Website 提交 `bea8301` 已部署至 GitHub Pages；公开首页、对比页及中英文文档均返回 HTTP 200。
+
+## [2026-08-01] fix | Website 产品对比文档侧栏可见性
+
+- 更新页面：todo、lessons。
+- 变更摘要：
+  - 修复 Fumadocs 精选侧栏树遗漏产品对比页面的问题。
+  - 中文侧栏新增“产品对比”，英文侧栏新增“Product comparison”，并补充标题与 URL 回归断言。
+  - Website 提交 `68b30aa` 已通过 GitHub Pages workflow `30695915460` 部署。
+  - 本地和线上浏览器均确认中英文侧栏目录项可见且可达。
+
+## [2026-08-01] research | Pole 产品选型能力双矩阵
+
+- 新增页面：pole-product-capability-matrix-research。
+- 更新页面：pole-product-comparison-research、index、todo、lessons。
+- 变更摘要：
+  - 参考 PolarisMesh 官方注册中心与服务网格对比页，将选型信息拆成注册配置和服务治理 Mesh 两个领域矩阵。
+  - 为已实现、部分或协议兼容、未验证和非同层能力定义明确状态，避免单一勾选掩盖运行时边界。
+  - 记录 Pole xDS 当前可映射的治理子集，以及 Istio、ambient、Waypoint 和 Kmesh 尚未验证的互操作边界。
+  - 明确不采用缺少同版本、同拓扑和同负载方法的 TPS 与架构排名。
+
+## [2026-08-01] deliver | Website 产品选型能力双矩阵上线
+
+- 更新页面：todo。
+- 变更摘要：
+  - Website 产品对比升级为可展开的文档目录，新增中英文“注册与配置中心对比”和“服务治理与 Mesh 对比”。
+  - 矩阵逐项展示状态、运行时边界、迁移判断和官方资料，不以无统一测试条件的 TPS 数字作产品排名。
+  - 20 项测试、lint、185 页生产构建与桌面/移动端浏览器验收通过。
+  - Website 提交 `10ac139` 已由 GitHub Pages workflow `30696829943` 成功部署，线上中英文目录和页面已验证。
+
+## [2026-08-01] refine | 注册发现与配置中心竞品集合纠正
+
+- 更新页面：pole-product-capability-matrix-research、index、todo、lessons。
+- 变更摘要：
+  - 注册发现矩阵固定为 Pole、Nacos、PolarisMesh、Consul、Istio，配置中心矩阵固定为 Pole、Nacos、Apollo、Consul、PolarisMesh。
+  - 依据 HashiCorp 与 Istio 官方资料补充 Consul Catalog、健康检查、DNS/HTTP、基础 KV，以及 Istio 平台发现源、内部注册表和 ServiceEntry 边界。
+  - Website 总览与中英文矩阵同步增加 Consul，并明确 Pole 当前没有 Consul 协议直连、Consul KV 不等价于完整配置发布中心。
+  - Website 提交 `b6fa221` 已由 GitHub Pages workflow `30705935415` 成功部署，线上中英文表头已验证。
+
 ## 相关页面
 
 - [[index]]

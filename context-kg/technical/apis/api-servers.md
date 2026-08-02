@@ -1,7 +1,7 @@
 ---
 title: API 服务端 — 协议实现
 tags: [api, http, grpc, xds, nacos]
-links: [architecture, ai-features, auth-system, adr-service-contract-reporting-and-visualization]
+links: [architecture, ai-features, auth-system, adr-service-contract-reporting-and-visualization, pole-product-capability-matrix-research]
 updated: 2026-07-27
 sources: 4
 ---
@@ -165,3 +165,4 @@ Netflix Eureka 协议兼容。使用 Eureka 服务发现的 Spring Cloud 应用�
 - [[ai-features]]
 - [[auth-system]]
 - [[adr-service-contract-reporting-and-visualization]]
+- [[pole-product-capability-matrix-research]]

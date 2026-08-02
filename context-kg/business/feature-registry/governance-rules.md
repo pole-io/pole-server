@@ -1,7 +1,7 @@
 ---
 title: 治理规则（`pkg/goverrule/`）
 tags: [business, feature, governance, routing, ratelimit]
-links: [namespace, architecture, storage, cache-layer, service-discovery, adr-governance-rule-unified-storage, adr-governance-request-parameter-capture, adr-rpc-first-governance-scope, patterns]
+links: [namespace, architecture, storage, cache-layer, service-discovery, adr-governance-rule-unified-storage, adr-governance-request-parameter-capture, adr-rpc-first-governance-scope, patterns, pole-product-capability-matrix-research]
 updated: 2026-07-26
 sources: 10
 ---
@@ -89,3 +89,4 @@ type Server struct {
 - [[adr-governance-request-parameter-capture]]
 - [[adr-rpc-first-governance-scope]]
 - [[patterns]]
+- [[pole-product-capability-matrix-research]]

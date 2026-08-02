@@ -1,9 +1,9 @@
 ---
 title: 关键模式与约定
 tags: [patterns, conventions]
-links: [architecture, storage, cache-layer, auth-system, governance-rules, adr-governance-request-parameter-capture]
-updated: 2026-07-20
-sources: 8
+links: [architecture, storage, cache-layer, auth-system, governance-rules, adr-governance-request-parameter-capture, adr-plugin-extension-registry]
+updated: 2026-07-31
+sources: 10
 ---
 
 # 关键模式与约定
@@ -12,7 +12,8 @@ sources: 8
 
 ## 1. 插件注册模式
 
-每个可扩展组件都使用相同的模式：
+每个可扩展组件都通过实例化 Registry 注册 Factory。完整生命周期和兼容策略见
+[[adr-plugin-extension-registry]]。
 
 ```go
 // 第一步：在 apis/ 中定义接口
@@ -27,14 +28,21 @@ type SomePlugin interface {
 type myConcrete struct{}
 func (m *myConcrete) Name() string { return "myPlugin" }
 
-// 第三步：通过 init() 注册
-func init() {
-    apis.RegisterPlugin("myPlugin", &myConcrete{})
+// 第三步：显式注册 Factory
+func Register(registry *pluginapi.Registry) error {
+    return apis.RegisterPluginFactory(registry, descriptor, func() (apis.Plugin, error) {
+        return &myConcrete{}, nil
+    })
 }
 
-// 第四步：在根目录 plugin.go 中空导入
-import _ "github.com/pole-io/pole-server/plugin/mything"
+// 第四步：由官方组合包集中装配
+builtinplugins.Register(registry)
 ```
+
+Factory 在同一运行 Registry 中只执行一次；`Clone()` 创建新的运行实例集。注册发生在
+`Freeze()` 前，启动后禁止动态修改。Bootstrap 退出时，Registry 按实例解析顺序逆序调用
+已解析插件的 `Destroy()`；未被配置选择的插件不会实例化或销毁。旧 `RegisterPlugin`
+和 blank import 只用于兼容。
 
 ## 2. 单例业务服务模式
 
@@ -241,3 +249,4 @@ log.Infof("[Config] publish config file: namespace=%s group=%s name=%s", ns, gro
 - [[auth-system]]
 - [[governance-rules]]
 - [[adr-governance-request-parameter-capture]]
+- [[adr-plugin-extension-registry]]

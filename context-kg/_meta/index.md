@@ -25,6 +25,12 @@ sources: 0
 - [[domain-models]] — 服务治理 Bundle、执行点、核心实体及关系 | business, domain-model
 - [[business-rules]] — 跨域、访问控制、服务发现、配置和治理规则 | business, rules
 
+### 竞品情报（business/competitive-intel/）
+
+- [[kmesh-product-research]] — Kmesh 数据平面定位、架构、能力与边界 | business, competitive-intel, kmesh, service-mesh
+- [[pole-product-comparison-research]] — Pole 与五类云原生产品的分层比较 | business, competitive-intel, pole, nacos, apollo, polarismesh, kmesh, istio
+- [[pole-product-capability-matrix-research]] — 注册配置与服务治理 Mesh 双矩阵、状态图例和证据边界 | business, competitive-intel, pole, nacos, apollo, consul, polarismesh, istio, kmesh, service-mesh, config
+
 ### 功能档案（business/feature-registry/）
 
 - [[namespace]] — 运行环境、跨环境资源身份与系统环境保护 | business, feature, namespace
@@ -82,6 +88,7 @@ sources: 0
 - [[adr-logical-service-environment-binding]] — 控制面逻辑服务与环境服务显式关联 | adr, service, namespace, domain-model, console
 - [[adr-system-namespace-kind]] — 业务环境与 Pole 内部系统空间类型化 | adr, namespace, environment, system, console
 - [[adr-ai-resource-environment-binding]] — Agent/MCP 逻辑定义、环境实例与调用作用域 | adr, ai, agent, mcp, namespace, domain-model
+- [[adr-plugin-extension-registry]] — 官方插件装配、隔离与销毁契约 | adr, plugin, registry, extension, runtime
 
 #### 可观测性（technical/adr/observability/）
 

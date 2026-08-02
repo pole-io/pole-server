@@ -1,9 +1,9 @@
 ---
 title: 架构 — 分层设计与插件系统
 tags: [architecture, design]
-links: [storage, cache-layer, auth-system, patterns, adr-pole-self-management-control-loop, adr-unified-process-mode-and-limiter-integration, adr-console-limiter-source-layout-and-embedded-web]
-updated: 2026-07-29
-sources: 5
+links: [storage, cache-layer, auth-system, patterns, adr-pole-self-management-control-loop, adr-unified-process-mode-and-limiter-integration, adr-console-limiter-source-layout-and-embedded-web, adr-plugin-extension-registry]
+updated: 2026-07-31
+sources: 8
 ---
 
 # 架构 — 分层设计与插件系统
@@ -32,14 +32,15 @@ sources: 5
 
 ## 插件架构
 
-所有可扩展组件均使用**注册与初始化**模式：
+所有可扩展组件共享实例化 Registry。完整决策见
+[[adr-plugin-extension-registry]]。
 
 ```go
-// apis/plugin.go — 全局注册表
-var pluginSet = make(map[PluginType]map[string]Plugin)
-
-func RegisterPlugin(name string, plugin Plugin) { ... }
-func GetPlugin(t PluginType, name string) (Plugin, bool) { ... }
+registry, err := builtinplugins.NewRegistry()
+if err != nil {
+    return err
+}
+cmd.ExecuteWithPluginRegistry(registry)
 ```
 
 插件类型（`apis/plugin.go` 中的 `PluginType` 枚举）：
@@ -55,16 +56,20 @@ func GetPlugin(t PluginType, name string) (Plugin, bool) { ... }
 - `PluginTypeStore` — 存储后端
 - `PluginTypeHealthCheck` — 健康检查
 
-**插件注册方式：** 每个插件包都有一个 `init()` 函数，调用 `apis.RegisterPlugin(name, impl)` 完成注册。根目录的 `plugin.go` 通过空导入所有插件包来触发其 `init()` 函数：
+官方实现通过 `builtinplugins.Register` 显式注册 Descriptor 与 Factory。Bootstrap 克隆并
+冻结 Catalog；每个 `kind + name` 在当前运行 Registry 中只创建一个实例，退出时按解析
+顺序逆序销毁。限流、白名单、观测、CMDB、Crypto、健康检查、Store、Auth 和 API Server
+统一从 Active Registry 解析。
 
 ```go
-// plugin.go（根目录）
-import (
-  _ "github.com/pole-io/pole-server/plugin/store/mysql"
-  _ "github.com/pole-io/pole-server/plugin/apiserver/httpserver"
-  // ... 其他所有插件
-)
+func Register(registry *pluginapi.Registry) error {
+    return apiserver.RegisterFactory(registry, descriptor, factory)
+}
 ```
+
+旧注册函数仅作为用户实现的兼容入口；官方集合不再通过 `init()` 注册。
+`apiserver.Slots` 与 `store.StoreSlots` 仅是兼容投影，不参与重复注册判断；Registry
+是唯一注册真相。
 
 ## Store 接口分解
 
@@ -159,3 +164,4 @@ HTTP POST /naming/v1/instances
 - [[adr-pole-self-management-control-loop]]
 - [[adr-unified-process-mode-and-limiter-integration]]
 - [[adr-console-limiter-source-layout-and-embedded-web]]
+- [[adr-plugin-extension-registry]]

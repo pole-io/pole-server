@@ -12018,3 +12018,181 @@ Kubernetes 镜像回滚继续启动。
 - `kubectl --context orbstack apply --dry-run=client --validate=false` 通过；渲染结果确认
   两个路径只引用一个 `runtime-local-db` volume。
 - 路径契约检查、context-kg lint 与目标文件 `git diff --check` 通过。
+
+## 插件注册体系显式化（2026-07-31）
+
+目标：区分 Pole 官方内置插件与用户独立维护的扩展插件，以实例化 Registry 和显式
+Factory 装配替代新增插件继续依赖根 `package main` 空导入，同时兼容现有注册入口。
+
+- [x] 定义公共插件 Descriptor、Factory、Registry 与冻结语义。
+- [x] 将通用插件、Store、API Server、Auth 注册接入统一 Registry。
+- [x] 提供可复用的官方内置插件组合包。
+- [x] 让 Bootstrap 和 CLI 接受显式 Registry。
+- [x] 保留旧注册函数并验证现有启动配置兼容。
+- [x] 归档插件扩展 ADR，更新架构索引与操作日志。
+- [x] 完成定向、全量、race、格式与知识库验证。
+
+### Review
+
+- 新增 `pluginapi.Registry`，统一 `kind + name` 唯一性、Factory 单运行期实例化、
+  Clone、Merge、Freeze 和独占 Active Registry 语义。
+- 官方实现改为显式 `Register(registry)`，由 `builtinplugins` 集中装配；用户扩展可以
+  位于独立 Go Module，通过同一 Registry 注册，无需修改官方空导入清单。
+- Bootstrap 克隆并冻结传入 Catalog，合并默认 Registry 中的旧式注册；通用插件、
+  Store、API Server、Auth 与运行期聚合管理器均按 Active Registry 解析和隔离。
+- 兼容入口继续可用，但接收已构造实例的旧 API 不承诺跨 Bootstrap 实例隔离；新扩展
+  应使用 Factory。API Server 旧 `Slots` 仅作为加锁快照投影保留。
+- 已通过 `go test -tags nomsgpack -race ./pluginapi ./builtinplugins ./apis/... ./bootstrap/... -count=1`、
+  `go test -tags nomsgpack -p 1 ./... -count=1`、`go build -tags nomsgpack ./...`、
+  `gofmt`、`git diff --check` 与 context-kg lint。
+- 不带 `nomsgpack` 的构建仍受仓库既有 `github.com/ugorji/go` 与
+  `github.com/ugorji/go/codec` ambiguous import 冲突影响，本次未修改依赖图。
+
+## 内置插件体系收口（2026-07-31）
+
+目标：不引入外部示例工程，继续完成官方内置插件的统一注册真相、运行期投影和生命周期闭环。
+
+- [x] 移除 Auth 内部旧 slot map 的注册职责。
+- [x] 将 Store/API Server 兼容 slot 降级为兼容投影。
+- [x] 收口限流与白名单的未完成全局占位。
+- [x] 补充内置插件生命周期和兼容回归测试。
+- [x] 更新插件 ADR、架构约定、索引与操作日志。
+- [x] 完成 race、全量测试、构建和知识库验证。
+
+### Review
+
+- Registry 新增统一关闭语义，只销毁本运行期真正解析成功且实现 `Destroy()` 的插件，
+  并按解析顺序逆序释放；关闭后拒绝继续解析，销毁错误保留完整错误链。
+- Bootstrap 在退出、启动失败和配置失败路径统一关闭运行 Registry，并在关闭完成后恢复
+  此前 Active Registry，避免 Store、观测 Worker、健康检查器等内置实例泄漏。
+- Auth 不再维护内部注册 slot map；Store 与 API Server 的旧导出 map 仅保留兼容投影，
+  重复注册统一由 `kind + name` Registry 判断。
+- RateLimit 与 Whitelist 已从永久返回 `nil` 的占位实现改为按配置从 Active Registry
+  解析、单次初始化和按运行 Registry 隔离，未配置时继续返回 `nil`。
+- 本轮没有创建外部示例工程或 SDK，只完成官方内置插件体系闭环。
+- 已通过 `go test -tags nomsgpack -race ./pluginapi ./builtinplugins ./apis/... ./bootstrap/... -count=1`、
+  `go test -tags nomsgpack -p 1 ./... -count=1`、`go build -tags nomsgpack ./...`、
+  `gofmt`、`git diff --check` 与 context-kg lint。
+
+## Pole 与 Kmesh 产品差异调研（2026-08-01）
+
+目标：基于 Pole 当前仓库事实与 Kmesh 官方资料，澄清两个产品在控制面、数据面、
+治理能力和适用场景上的边界，避免仅按“服务治理”标签作同类产品比较。
+
+- [x] 整理 Pole 的产品定位、能力边界和实际实现证据。
+- [x] 核验 Kmesh 官方网站、官方文档与官方仓库的当前定位和能力。
+- [x] 对比架构、协议、能力、部署依赖和适用场景。
+- [x] 复核来源并记录 Review 结论。
+
+### Review
+
+- Pole 是覆盖服务发现、配置中心、治理规则、身份权限、Console 与 AI Registry 的服务治理
+  控制面；治理真正由 SDK、Envoy/Sidecar 或 Gateway 等执行点落实，不能把管理端可发布的
+  所有规则等同于任一数据面均已支持。
+- Kmesh 是基于 eBPF/可编程内核的 Service Mesh 数据平面，当前官方安装路径使用 Istiod
+  控制面；节点内核承担 L4 与简单 HTTP L7，高级 L7 由可选 Waypoint 执行。
+- 两者不是同层替代关系。Pole 解决治理对象、版本、权限、发布和多协议接入，Kmesh 解决
+  Kubernetes 服务流量热路径的透明执行、低延迟、低资源开销、mTLS 和内核观测。
+- Pole 与 Kmesh 存在组合可能，但不能仅凭双方都支持 xDS 宣称即插即用：Kmesh 当前围绕
+  Istio ambient/Istiod 资源模型，Pole 当前 xDS 面向 Envoy LDS/CDS/EDS/RDS/ADS，需先补
+  协议适配与 E2E 兼容验证。
+- Kmesh 一手资料、事实/推断边界和部署前提已记录于
+  `context-kg/business/competitive-intel/kmesh-product-research.md`；目标文件通过
+  `git diff --check`。
+
+## Website 产品对比信息架构（2026-08-01）
+
+目标：让产品官网明确说明 Pole 与 Nacos、Apollo、PolarisMesh、Kmesh、Istio 的竞争、
+兼容和组合关系，并保持控制面/数据面层级准确。
+
+- [x] 定位独立 Website 仓库、首页、产品页、导航与现有测试契约。
+- [x] 确认竞品内容不应进入 Console，也不应直接扩张顶部主导航。
+- [x] 以各项目一手资料核验五类产品的当前定位与比较边界。
+- [x] 给出首页摘要、产品对比页和文档长表的分层信息架构建议。
+- [x] 记录 Review 与后续实现范围。
+
+### Review
+
+- Website 独立仓库位于 `../website`；首页已强调多协议接入和统一控制面，产品页已有
+  `PROTOCOL ACCESS` / `RUNTIME CONSUMERS`，但尚未回答“为什么选择 Pole”。
+- 顶部导航只有“产品 / 组件 / 文档”，测试明确要求产品专题不占用主导航；对比应新增为
+  产品下的 `/compare` 专题，并从首页与 `/product` 导流。
+- 首页只放三组关系摘要：Nacos/Apollo 是兼容与渐进收敛，PolarisMesh 是同层控制面参照，
+  Istio/Kmesh 是 Mesh 生态与数据面关系；不在首页放完整优劣表。
+- `/compare` 承担五产品矩阵、选择建议、已验证状态和官方来源；详细兼容/迁移说明进入中英
+  对称文档页，避免营销页承载易漂移的版本细节。
+- 比较状态必须区分“当前兼容”“能力重叠”“可组合方向”“尚未直接集成”；Pole 当前不能
+  宣称已替代 Istiod、直接驱动 Kmesh，或完全复刻 Nacos/Apollo/PolarisMesh 全部生态。
+- 一手资料和安全文案已归档于
+  `context-kg/business/competitive-intel/pole-product-comparison-research.md`；本轮未修改 Website。
+
+## Website 产品对比实现与部署（2026-08-01）
+
+目标：在独立 Website 仓库交付可公开访问的产品对比体验，准确表达 Pole 与 Nacos、Apollo、
+PolarisMesh、Istio、Kmesh 的兼容、竞争和组合关系。
+
+- [x] 新增 `/compare` 产品专题页及独立响应式视觉结构。
+- [x] 在首页与产品页增加克制的对比入口，不扩张顶部主导航。
+- [x] 新增中英文对称的详细比较文档和导航入口。
+- [x] 补充内容、路由、事实边界与双语对称测试。
+- [x] 运行测试、lint、构建并完成桌面/移动端浏览器验收。
+- [x] 仅提交本轮 Website 文件并推送 `main`。
+- [x] 监控 GitHub Pages workflow，验证公开首页、对比页和文档返回 200。
+
+### Review
+
+- Website 提交：`bea8301 feat: add product comparison experience`，已推送 `main`。
+- 验证：20 项站点测试通过；lint 0 error（保留 4 个既有 warning）；Next.js 生产构建成功并生成 181 个静态页面。
+- 浏览器验收：1440px 桌面端与 390px 移动端均无横向溢出，首页、产品页、对比页控制台 0 error。
+- GitHub Pages workflow `30695426842` 构建与部署成功。
+- 公开地址 `/`、`/compare/`、`/docs/what-is/comparison/`、`/en/docs/what-is/comparison/` 均返回 HTTP 200。
+
+### 文档侧栏修复
+
+- [x] 追踪 Fumadocs 左侧导航的实际 source tree 与过滤链路，确认遗漏根因。
+- [x] 修复中英文产品对比目录项，并补充侧栏可发现性测试。
+- [x] 本地构建和浏览器展开侧栏验收。
+- [x] 提交、推送、监控 Pages 部署并在线确认目录可见。
+
+#### Review
+
+- 根因：Fumadocs 原始 page tree 会被 `getProductDocsTree` 重建为精选侧栏；此前只更新 `meta.json`，未把 comparison 加入该显式目录树。
+- 修复：中文增加“产品对比”，英文增加“Product comparison”，均放在概览分组的“功能特性 / Features”之后。
+- 回归：测试直接断言中英文侧栏标题与 URL；20 项测试、lint、生产构建均通过。
+- 浏览器：本地和线上均展开侧栏确认目录项可见、链接正确，控制台 0 error。
+- Website 提交：`68b30aa fix: expose product comparison in docs sidebar`；Pages workflow `30695915460` 部署成功。
+
+### 选型能力矩阵增强
+
+- [x] 分析 PolarisMesh 官方“服务网格对比”和“注册中心对比”的信息结构与维度。
+- [x] 核对 Pole 及五个参照产品的官方当前能力，形成可追溯研究记录。
+- [x] 将中文和英文产品对比文档重构为“定位关系 + 注册/配置中心矩阵 + 服务治理/Mesh 矩阵”。
+- [x] 补充矩阵结构、状态图例、产品覆盖与双语对称测试。
+- [x] 完成构建、桌面/移动端文档表格验收、部署和线上验证。
+
+#### Review
+
+- 将产品对比从单页定位说明升级为可展开的文档目录，保留 `/docs/what-is/comparison/` 总览，新增“注册与配置中心对比”和“服务治理与 Mesh 对比”两个中英文子页面。
+- 矩阵使用“已支持 / 部分或协议兼容 / 未验证 / 不适用”状态，分别覆盖 Pole、Nacos、Apollo、PolarisMesh 与 Pole、PolarisMesh、Istio、Kmesh；没有复用缺少同版本、同拓扑、同硬件和同负载条件的 TPS 排名。
+- Website 提交 `10ac139 docs: add product capability comparison matrices` 已推送 `main`；20 项测试、lint（0 error，4 个既有 warning）和 185 页生产构建通过。
+- 本地 1440px 与 390px 浏览器验证表格在容器内横向滚动、页面无整体溢出；线上中文与英文子页面、嵌套侧栏和矩阵正文均已验证，控制台无 error。
+- GitHub Pages workflow `30696829943` 构建和部署成功，五个中英文目标地址均返回 HTTP 200。
+
+### 注册发现与配置中心竞品集合纠正
+
+目标：按领域使用准确的产品集合，注册发现对比 Pole、Nacos、PolarisMesh、Consul、Istio，配置中心对比 Pole、Nacos、Apollo、Consul、PolarisMesh。
+
+- [x] 核验 Consul 与 Istio 在服务发现、配置数据和流量治理中的官方定位与能力边界。
+- [x] 修正中英文注册发现矩阵的产品列、说明与官方资料。
+- [x] 修正中英文配置中心矩阵的产品列、说明与官方资料。
+- [x] 更新回归测试与长期竞品研究记录。
+- [x] 完成测试、构建、浏览器验收、提交推送和线上部署验证。
+
+#### Review
+
+- 注册发现矩阵列已固定为 Pole、Nacos、PolarisMesh、Consul、Istio；配置中心矩阵列已固定为 Pole、Nacos、Apollo、Consul、PolarisMesh，中英文测试直接断言两个表头。
+- Consul 按官方边界写为原生 Catalog、健康检查、DNS/HTTP 服务发现与基础 KV；基础 KV 不等价于带版本、审批、灰度和回滚的完整配置中心，Pole 当前也没有 Consul 协议直连。
+- Istio 仅在注册发现矩阵描述其平台发现源和 Mesh 内部注册表，明确 `ServiceEntry` 不是普通业务 SDK 的独立注册中心；不进入配置中心矩阵。
+- Website 提交 `b6fa221 docs: correct registry and config comparison peers` 已推送 `main`；20 项测试、lint（0 error，4 个既有 warning）、185 页生产构建通过。
+- 390px 页面宽度与文档宽度均为 390px，两张宽表在各自容器内横向滚动；线上中英文表头、Consul 产品总览及四个目标 URL 已验证。
+- GitHub Pages workflow `30705935415` 构建与部署成功。

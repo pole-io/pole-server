@@ -1,7 +1,7 @@
 ---
 title: 服务发现（`pkg/service/`）
 tags: [business, feature, service, healthcheck]
-links: [namespace, architecture, storage, cache-layer, governance-rules, adr-instance-active-healthcheck, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding]
+links: [namespace, architecture, storage, cache-layer, governance-rules, adr-instance-active-healthcheck, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding, pole-product-capability-matrix-research]
 updated: 2026-07-29
 sources: 7
 ---
@@ -81,3 +81,4 @@ Dubbo 额外兼容 Metadata Center 的应用修订快照与 provider 运维定�
 - [[adr-instance-active-healthcheck]]
 - [[adr-service-contract-reporting-and-visualization]]
 - [[adr-logical-service-environment-binding]]
+- [[pole-product-capability-matrix-research]]
