@@ -57,3 +57,4 @@ __debug_bin*
 
 # Static analysis cache
 /.codecc/
+/.codegraph/
