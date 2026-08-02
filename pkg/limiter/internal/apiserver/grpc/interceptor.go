@@ -38,8 +38,7 @@ import (
 
 // 不需要走拦截器的同步方法
 var unaryMethodsNoInterceptor = map[string]bool{
-	// 该名称来自已发布协议，不能随产品品牌迁移而改变。
-	"/polaris.metric.v2.RateLimitGRPCV2/TimeAdjust": true,
+	"/polaris.metric.v2.RateLimitGRPC/TimeAdjust": true,
 }
 
 // grpc unary拦截器函数

@@ -573,6 +573,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                         {editable ? (
                             <RadioGroup theme="button" variant="primary-filled" value={trigger.resource} onChange={(value) => updateRule(ruleIdx, { resource: value as RateLimitResource })}>
                                 <Radio.Button value={RateLimitResource.QPS}>{RateLimitResourceMap[RateLimitResource.QPS]}</Radio.Button>
+                                <Radio.Button value={RateLimitResource.Token}>{RateLimitResourceMap[RateLimitResource.Token]}</Radio.Button>
                                 <Radio.Button value={RateLimitResource.Concurrency}>{RateLimitResourceMap[RateLimitResource.Concurrency]}</Radio.Button>
                             </RadioGroup>
                         ) : (
@@ -589,7 +590,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                     ) : (
                         <div className={styles.windowGrid}>
                             <div className={styles.gridHeader}>窗口</div>
-                            <div className={styles.gridHeader}>最大请求数</div>
+                            <div className={styles.gridHeader}>{trigger.resource === RateLimitResource.Token ? '最大 Token 数' : '最大请求数'}</div>
                             <div className={styles.gridHeader}>操作</div>
                             {(trigger.amounts || []).map((amount, index) => (
                                 <React.Fragment key={`${ruleIdx}-amount-${index}`}>
@@ -600,7 +601,7 @@ const RateLimitEditor: React.FC<IRateLimitEditorProps> = ({ limitType, op, refre
                                     </div>
                                     <div className={styles.gridCell}>
                                         {editable
-                                            ? <InputNumber theme="normal" min={1} suffix="次" value={amount.maxAmount} onChange={(value) => updateLimit(ruleIdx, index, { maxAmount: (value as number) ?? 1 })} />
+                                            ? <InputNumber theme="normal" min={1} suffix={trigger.resource === RateLimitResource.Token ? 'Token' : '次'} value={amount.maxAmount} onChange={(value) => updateLimit(ruleIdx, index, { maxAmount: (value as number) ?? 1 })} />
                                             : <span>{amount.maxAmount}</span>}
                                     </div>
                                     <div className={`${styles.gridCell} ${styles.actionCell}`}>

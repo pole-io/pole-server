@@ -187,16 +187,8 @@ func (c *client) SendAndUpdate(
 	c.mutex.RLock()
 	streamCtx = c.streamCtx
 	c.mutex.RUnlock()
-	if resp.Cmd == apiv2.RateLimitCmd_ACQUIRE {
-		if nil == clientSendTime || nil == streamCtx {
-			return false, nil
-		}
-		// 只有发送消息才需要处理倒序情况
-		updateSuccess := clientSendTime.UpdateLastSendTime(msgTimeMicro)
-		if !updateSuccess {
-			return false, nil
-		}
-		return true, streamCtx.Send(resp)
+	if streamCtx == nil {
+		return false, nil
 	}
 	return true, streamCtx.Send(resp)
 }

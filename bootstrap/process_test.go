@@ -61,7 +61,7 @@ limiter:
 		return dialErr == nil
 	}, 5*time.Second, 20*time.Millisecond)
 
-	response, err := apiv2.NewRateLimitGRPCV2Client(conn).TimeAdjust(
+	response, err := apiv2.NewRateLimitGRPCClient(conn).TimeAdjust(
 		context.Background(), &apiv2.TimeAdjustRequest{})
 	require.NoError(t, err)
 	require.NotZero(t, response.GetServerTimestamp())

@@ -19,6 +19,7 @@ package ratelimitv2
 
 import (
 	"context"
+	"sync"
 
 	"github.com/pole-io/pole-server/pkg/limiter/internal/config"
 	"github.com/pole-io/pole-server/pkg/limiter/internal/statistics"
@@ -26,10 +27,14 @@ import (
 
 // Server v2版本的主server逻辑
 type Server struct {
-	counterMng *CounterManagerV2
-	clientMng  *ClientManager
-	cfg        config.Config
-	statics    statistics.Statis
+	counterMng         *CounterManagerV2
+	clientMng          *ClientManager
+	cfg                config.Config
+	statics            statistics.Statis
+	leaseMutex         sync.Mutex
+	quotaLeases        map[string]*quotaLease
+	leaseByIdempotency map[string]string
+	reservedByCounter  map[uint32]uint64
 }
 
 // CounterMng 获取计数器管理类
@@ -50,18 +55,17 @@ func NewServer(ctx context.Context, cfg *config.Config, statics statistics.Stati
 	if err != nil {
 		return nil, err
 	}
-	pushManager, err := NewPushManager(int(newConfig.PushWorker), 1000)
-	if err != nil {
-		return nil, err
-	}
 	server := &Server{
-		cfg:     *newConfig,
-		statics: statics,
+		cfg:                *newConfig,
+		statics:            statics,
+		quotaLeases:        make(map[string]*quotaLease),
+		leaseByIdempotency: make(map[string]string),
+		reservedByCounter:  make(map[uint32]uint64),
 	}
-	pushManager.Run(ctx)
 	server.counterMng = NewCounterManagerV2(
-		newConfig.MaxCounter, newConfig.PurgeCounterInterval, pushManager, statics)
+		newConfig.MaxCounter, newConfig.PurgeCounterInterval, statics)
 	server.clientMng = NewClientManager(newConfig.MaxClient, statics)
 	server.counterMng.Start(ctx)
+	server.startLeaseCleanup(ctx)
 	return server, nil
 }

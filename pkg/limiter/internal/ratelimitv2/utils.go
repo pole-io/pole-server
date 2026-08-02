@@ -32,25 +32,6 @@ const (
 	MaxSlideCount = config.MaxSlideCount
 )
 
-// CheckRateLimitReportRequest 检查限流上报请求参数
-func CheckRateLimitReportRequest(req *apiv2.RateLimitReportRequest) *limiterapi.TimedRateLimitReportResponse {
-	if req.GetClientKey() == 0 {
-		return limiterapi.NewRateLimitReportResponse(limiterapi.InvalidClientKey)
-	}
-	if req.GetTimestamp() == 0 {
-		return limiterapi.NewRateLimitReportResponse(limiterapi.InvalidTimestamp)
-	}
-	if len(req.GetQuotaUses()) == 0 {
-		return limiterapi.NewRateLimitReportResponse(limiterapi.InvalidUsedLimit)
-	}
-	for _, quotaUsed := range req.GetQuotaUses() {
-		if quotaUsed.GetCounterKey() == 0 {
-			return limiterapi.NewRateLimitReportResponse(limiterapi.InvalidCounterKey)
-		}
-	}
-	return nil
-}
-
 // 通用检查限流请求的参数
 func checkInitRequest(
 	req *apiv2.RateLimitInitRequest, defaultSlideCount uint32) (*apiv2.RateLimitInitResponse, time.Duration) {

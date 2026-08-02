@@ -37,10 +37,11 @@ import (
 
 // CounterIdentifier 计数器标识
 type CounterIdentifier struct {
-	Service   string
-	Namespace string
-	Labels    string
-	Duration  time.Duration
+	Service    string
+	Namespace  string
+	Labels     string
+	Duration   time.Duration
+	Accounting apiv2.QuotaAccounting
 }
 
 // NewCounterIdentifier 创建限流计数器标识
@@ -48,10 +49,11 @@ func NewCounterIdentifier(initReq *apiv2.RateLimitInitRequest, ruleIdx int) *Cou
 	target := initReq.GetTarget()
 	durationTime := time.Duration(initReq.GetTotals()[ruleIdx].GetDuration()) * time.Second
 	return &CounterIdentifier{
-		Service:   target.GetService(),
-		Namespace: target.GetNamespace(),
-		Labels:    target.GetLabels(),
-		Duration:  durationTime,
+		Service:    target.GetService(),
+		Namespace:  target.GetNamespace(),
+		Labels:     target.GetLabels(),
+		Duration:   durationTime,
+		Accounting: initReq.GetTotals()[ruleIdx].GetAccounting(),
 	}
 }
 
@@ -71,14 +73,12 @@ type CounterManagerV2 struct {
 	counterIdx uint32
 	// 过期扫描周期
 	cleanupInterval time.Duration
-	// 推送管理器
-	pushManager PushManager
 	// statics 统计输出。
 	statics statistics.Statis
 }
 
 // NewCounterManagerV2 创建计数器管理类
-func NewCounterManagerV2(maxSize uint32, cleanupInterval time.Duration, pushManager PushManager,
+func NewCounterManagerV2(maxSize uint32, cleanupInterval time.Duration,
 	statics statistics.Statis) *CounterManagerV2 {
 	manager := &CounterManagerV2{
 		mutex:           &sync.Mutex{},
@@ -87,7 +87,6 @@ func NewCounterManagerV2(maxSize uint32, cleanupInterval time.Duration, pushMana
 		allocatedKeys:   make(map[uint32]bool),
 		counterMap:      &sync.Map{},
 		cleanupInterval: cleanupInterval,
-		pushManager:     pushManager,
 		statics:         statics,
 	}
 	return manager
@@ -209,7 +208,7 @@ func (cm *CounterManagerV2) AddCounter(initReq *apiv2.RateLimitInitRequest, rule
 		Duration:       duration,
 		ExpireDuration: expireDuration,
 		AmountMode:     quotaTotalRule.GetMode(),
-		PushManager:    cm.pushManager,
+		Accounting:     quotaTotalRule.GetAccounting(),
 		Statics:        cm.statics,
 	}
 	code, counter, exists := cm.allocateCounterKey(identifier, cInitReq)

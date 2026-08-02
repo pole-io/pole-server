@@ -23,6 +23,8 @@ import apiv2 "github.com/pole-io/specification/source/go/api/v1/traffic_manage/r
 type QuotaAllocator interface {
 	// Mode 返回分配器所属的模式
 	Mode() apiv2.Mode
-	// Allocate 分配配额
-	Allocate(client Client, quotaSum *apiv2.QuotaSum, clientTimeMs int64, serverTimeMicro int64) *apiv2.QuotaLeft
+	// Current 返回当前窗口已提交配额。
+	Current(timestampMs int64) uint32
+	// Commit 将消费量提交到当前窗口并返回窗口累计值。
+	Commit(timestampMs int64, amount uint32) uint32
 }

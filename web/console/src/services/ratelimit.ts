@@ -9,6 +9,7 @@ export interface Lists {
 export enum RateLimitResource {
     QPS = 'QPS',
     Concurrency = 'CONCURRENCY',
+    Token = 'TOKEN',
 }
 
 // RateLimitRule的资源类型
@@ -20,6 +21,10 @@ export const RateLimitResourceOptions = [
     {
         value: RateLimitResource.Concurrency,
         label: '并发数',
+    },
+    {
+        value: RateLimitResource.Token,
+        label: 'Token 数',
     },
 ]
 
@@ -416,7 +421,9 @@ function normalizeLimitType(type?: LimitType | number): LimitType {
 function normalizeResource(resource?: RateLimitResource | number | string): RateLimitResource {
     if (resource === 0) return RateLimitResource.QPS;
     if (resource === 1) return RateLimitResource.Concurrency;
+    if (resource === 3) return RateLimitResource.Token;
     if (resource === 'Concurrency') return RateLimitResource.Concurrency;
+    if (resource === 'Token') return RateLimitResource.Token;
     return (resource as RateLimitResource) || RateLimitResource.QPS;
 }
 

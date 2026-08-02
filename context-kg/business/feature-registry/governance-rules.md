@@ -1,8 +1,8 @@
 ---
 title: 治理规则（`pkg/goverrule/`）
 tags: [business, feature, governance, routing, ratelimit]
-links: [namespace, architecture, storage, cache-layer, service-discovery, adr-governance-rule-unified-storage, adr-governance-request-parameter-capture, adr-rpc-first-governance-scope, patterns, pole-product-capability-matrix-research]
-updated: 2026-07-26
+links: [namespace, architecture, storage, cache-layer, service-discovery, adr-governance-rule-unified-storage, adr-governance-request-parameter-capture, adr-quota-lease-streaming-rate-limit, adr-rpc-first-governance-scope, patterns, pole-product-capability-matrix-research]
+updated: 2026-08-02
 sources: 10
 ---
 
@@ -30,6 +30,7 @@ sources: 10
 
 治理规则底层存储与缓存更新的完整方案见 [[adr-governance-rule-unified-storage]]。
 请求参数值来源以及动态限流、动态路由的消费边界见 [[adr-governance-request-parameter-capture]]。
+请求前预留、流中累计消费、结束归还，以及 RPM、TPM、并发的统一限流生命周期见 [[adr-quota-lease-streaming-rate-limit]]。
 
 目标业务结论：
 
@@ -87,6 +88,7 @@ type Server struct {
 - [[service-discovery]]
 - [[adr-governance-rule-unified-storage]]
 - [[adr-governance-request-parameter-capture]]
+- [[adr-quota-lease-streaming-rate-limit]]
 - [[adr-rpc-first-governance-scope]]
 - [[patterns]]
 - [[pole-product-capability-matrix-research]]

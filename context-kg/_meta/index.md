@@ -2,7 +2,7 @@
 title: pole-control-plane 知识库
 tags: [meta, index]
 links: [schema, log]
-updated: 2026-07-31
+updated: 2026-08-02
 sources: 0
 ---
 
@@ -72,6 +72,7 @@ sources: 0
 - [[adr-service-contract-reporting-and-visualization]] — 四协议契约与 Dubbo 原生元数据适配 | adr, service-contract, openapi, grpc, dubbo, thrift
 - [[adr-rpc-first-governance-scope]] — RPC-first 治理范围与消息、存储、任务集成边界 | adr, governance, rpc, scope, integration
 - [[adr-governance-request-parameter-capture]] — 治理请求参数采集与动态限流、路由消费边界 | adr, governance, routing, ratelimit, sdk
+- [[adr-quota-lease-streaming-rate-limit]] — 请求前预留、流中累计消费与结算归还的统一配额租约 | adr, governance, ratelimit, limiter, sdk, streaming, llm
 - [[adr-managed-service-identity-authentication]] — 托管身份、短期凭证与 Header 兼容模式 | adr, governance, auth, identity
 - [[adr-a2a-agent-registry]] — A2A Agent Registry 功能设计与分期 | adr, ai, a2a, mcp, registry
 - [[adr-console-oidc-identity-source]] — Console OIDC 用户来源与目录同步 | adr, auth, console, oidc, identity
