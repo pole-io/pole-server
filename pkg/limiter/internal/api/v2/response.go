@@ -23,23 +23,6 @@ import (
 	"github.com/pole-io/pole-server/pkg/limiter/internal/utils"
 )
 
-// 带上精准时间戳的上报消息
-type TimedRateLimitReportResponse struct {
-	apiv2.RateLimitReportResponse
-	// 创建时间，精度为微秒
-	createTimeMicro int64
-}
-
-// 转换为真实的上报请求
-func (t *TimedRateLimitReportResponse) ToRateLimitReportResponse() *apiv2.RateLimitReportResponse {
-	return &t.RateLimitReportResponse
-}
-
-// 获取创建时间
-func (t *TimedRateLimitReportResponse) CreateTimeMicro() int64 {
-	return t.createTimeMicro
-}
-
 // 新建一个初始化回复结构体
 func NewRateLimitInitResponse(code Code, target *apiv2.LimitTarget) *apiv2.RateLimitInitResponse {
 	return &apiv2.RateLimitInitResponse{Code: uint32(code), Target: target, Timestamp: utils.CurrentMillisecond()}
@@ -48,15 +31,4 @@ func NewRateLimitInitResponse(code Code, target *apiv2.LimitTarget) *apiv2.RateL
 // 新建一个初始化回复结构体
 func NewRateLimitBatchInitResponse(code Code) *apiv2.RateLimitBatchInitResponse {
 	return &apiv2.RateLimitBatchInitResponse{Code: uint32(code), Timestamp: utils.CurrentMillisecond()}
-}
-
-// 新建一个上报回复结构体
-func NewRateLimitReportResponse(code Code) *TimedRateLimitReportResponse {
-	curTimeMicro := utils.CurrentMicrosecond()
-	return &TimedRateLimitReportResponse{
-		RateLimitReportResponse: apiv2.RateLimitReportResponse{
-			Code: uint32(code), Timestamp: curTimeMicro / 1e3,
-		},
-		createTimeMicro: curTimeMicro,
-	}
 }

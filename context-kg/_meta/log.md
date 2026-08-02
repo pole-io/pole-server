@@ -2,7 +2,7 @@
 title: 操作日志
 tags: [meta, log]
 links: [index, schema]
-updated: 2026-07-29
+updated: 2026-08-02
 sources: 0
 ---
 
@@ -1362,6 +1362,25 @@ sources: 0
   - 依据 HashiCorp 与 Istio 官方资料补充 Consul Catalog、健康检查、DNS/HTTP、基础 KV，以及 Istio 平台发现源、内部注册表和 ServiceEntry 边界。
   - Website 总览与中英文矩阵同步增加 Consul，并明确 Pole 当前没有 Consul 协议直连、Consul KV 不等价于完整配置发布中心。
   - Website 提交 `b6fa221` 已由 GitHub Pages workflow `30705935415` 成功部署，线上中英文表头已验证。
+
+## [2026-08-02] decide | 通用配额租约与流式限流
+
+- 新增页面：adr-quota-lease-streaming-rate-limit。
+- 更新页面：governance-rules、index、todo、lessons。
+- 变更摘要：
+  - 未正式发布阶段直接原地收敛协议，只保留无版本后缀的 `RateLimitGRPC`。
+  - 统一 reserve/update/settle 生命周期，以累计消费、sequence、幂等键和 TTL 管理租约。
+  - RPM、TPM 使用消耗型配额，并发使用占用型配额；不引入金额或计费语义。
+  - TPM 在调用前按输入与最大输出预留，流中只调整账本，结束归还未使用量，避免响应开始后再返回配额 429。
+
+## [2026-08-02] release | Quota Lease specification ALPHA.40
+
+- 更新页面：todo、lessons。
+- 变更摘要：
+  - specification PR #13 合入 develop，发布 annotated tag 与 prerelease `v0.1.0-ALPHA.40`。
+  - 合并提交 Go/Rust CI 与 Release-Rust workflow 成功，Rust crate 已发布。
+  - control-plane 删除 `go.work` 本地覆盖并升级 `go.mod`；Rust SDK 根 crate 与 e2e crate 同步升级 tag。
+  - 两个消费者均在无本地 replace/patch 条件下完成全量测试。
 
 ## 相关页面
 

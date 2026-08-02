@@ -29,7 +29,7 @@ func TestRunningCanStartStopAndStartAgain(t *testing.T) {
 		cancel()
 		require.NoError(t, err)
 
-		response, err := apiv2.NewRateLimitGRPCV2Client(conn).TimeAdjust(
+		response, err := apiv2.NewRateLimitGRPCClient(conn).TimeAdjust(
 			context.Background(), &apiv2.TimeAdjustRequest{})
 		require.NoError(t, err)
 		require.NotZero(t, response.GetServerTimestamp())
@@ -54,6 +54,94 @@ func TestStartReturnsListenerBindError(t *testing.T) {
 
 	require.ErrorContains(t, err, "listen limiter grpc")
 	require.ErrorContains(t, err, strconv.Itoa(port))
+}
+
+func TestRunningServesQuotaLeaseProtocol(t *testing.T) {
+	running, err := Start(context.Background(), testConfig())
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		require.NoError(t, running.Stop(ctx))
+	})
+
+	address := strings.TrimSuffix(running.Endpoints()[0], "/grpc")
+	dialContext, dialCancel := context.WithTimeout(context.Background(), 3*time.Second)
+	conn, err := grpc.DialContext(dialContext, address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock())
+	dialCancel()
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, conn.Close()) })
+
+	stream, err := apiv2.NewRateLimitGRPCClient(conn).Service(context.Background())
+	require.NoError(t, err)
+	require.NoError(t, stream.Send(&apiv2.RateLimitRequest{
+		Cmd: apiv2.RateLimitCmd_INIT,
+		RateLimitInitRequest: &apiv2.RateLimitInitRequest{
+			Target:   &apiv2.LimitTarget{Namespace: "test", Service: "llm"},
+			ClientId: "grpc-lease-client",
+			Totals: []*apiv2.QuotaTotal{{
+				Mode:       apiv2.QuotaMode_WHOLE,
+				Duration:   60,
+				MaxAmount:  10,
+				Accounting: apiv2.QuotaAccounting_CONSUMABLE,
+			}},
+			SlideCount: 1,
+			Mode:       apiv2.Mode_BATCH_OCCUPY,
+		},
+	}))
+	initialized, err := stream.Recv()
+	require.NoError(t, err)
+	require.Equal(t, uint32(200000), initialized.GetRateLimitInitResponse().GetCode())
+	counterKey := initialized.GetRateLimitInitResponse().GetCounters()[0].GetCounterKey()
+	clientKey := initialized.GetRateLimitInitResponse().GetClientKey()
+
+	require.NoError(t, stream.Send(&apiv2.RateLimitRequest{
+		Cmd: apiv2.RateLimitCmd_RESERVE,
+		QuotaReserveRequest: &apiv2.QuotaReserveRequest{
+			ClientKey:      clientKey,
+			IdempotencyKey: "grpc-reserve",
+			Reservations: []*apiv2.QuotaReservation{{
+				CounterKey: counterKey,
+				Amount:     10,
+			}},
+			TtlSeconds: 30,
+		},
+	}))
+	reserved, err := stream.Recv()
+	require.NoError(t, err)
+	require.Equal(t, uint32(200000), reserved.GetQuotaReserveResponse().GetCode())
+	leaseID := reserved.GetQuotaReserveResponse().GetLeaseId()
+
+	require.NoError(t, stream.Send(&apiv2.RateLimitRequest{
+		Cmd: apiv2.RateLimitCmd_UPDATE,
+		QuotaUpdateRequest: &apiv2.QuotaUpdateRequest{
+			ClientKey: clientKey,
+			LeaseId:   leaseID,
+			Sequence:  1,
+			Consumptions: []*apiv2.QuotaConsumption{{
+				CounterKey:    counterKey,
+				ConsumedTotal: 4,
+			}},
+		},
+	}))
+	updated, err := stream.Recv()
+	require.NoError(t, err)
+	require.Equal(t, uint32(4), updated.GetQuotaUpdateResponse().GetConsumptions()[0].GetConsumedTotal())
+
+	require.NoError(t, stream.Send(&apiv2.RateLimitRequest{
+		Cmd: apiv2.RateLimitCmd_SETTLE,
+		QuotaSettleRequest: &apiv2.QuotaSettleRequest{
+			ClientKey: clientKey,
+			LeaseId:   leaseID,
+			Sequence:  2,
+		},
+	}))
+	settled, err := stream.Recv()
+	require.NoError(t, err)
+	require.Equal(t, uint32(6), settled.GetQuotaSettleResponse().GetSettlements()[0].GetReturnedAmount())
+	require.NoError(t, stream.CloseSend())
 }
 
 func testConfig() Config {

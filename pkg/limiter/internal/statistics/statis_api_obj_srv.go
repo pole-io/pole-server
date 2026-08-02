@@ -203,20 +203,22 @@ type APIKey uint32
 const (
 	InitQuotaV1 APIKey = iota
 	AcquireQuotaV1
-	InitQuotaV2
-	AcquireQuotaV2
-	BatchInitQuotaV2
-	BatchAcquireQuotaV2
+	InitQuota
+	ReserveQuota
+	BatchInitQuota
+	UpdateQuota
+	SettleQuota
 )
 
 var (
 	apiKeyPresent = map[APIKey]string{
-		InitQuotaV2:         "v2.RateLimitGRPCV2/Service/Init",
-		AcquireQuotaV2:      "v2.RateLimitGRPCV2/Service/Acquire",
-		BatchInitQuotaV2:    "v2.RateLimitGRPCV2/Service/BatchInit",
-		BatchAcquireQuotaV2: "v2.RateLimitGRPCV2/Service/BatchAcquire",
-		InitQuotaV1:         "v1.RateLimitGRPC/InitializeQuota",
-		AcquireQuotaV1:      "v1.RateLimitGRPC/AcquireQuota",
+		InitQuota:      "RateLimitGRPC/Service/Init",
+		ReserveQuota:   "RateLimitGRPC/Service/Reserve",
+		BatchInitQuota: "RateLimitGRPC/Service/BatchInit",
+		UpdateQuota:    "RateLimitGRPC/Service/Update",
+		SettleQuota:    "RateLimitGRPC/Service/Settle",
+		InitQuotaV1:    "v1.RateLimitGRPC/InitializeQuota",
+		AcquireQuotaV1: "v1.RateLimitGRPC/AcquireQuota",
 	}
 )
 

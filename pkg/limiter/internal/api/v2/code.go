@@ -62,6 +62,20 @@ const (
 	InvalidClientKey = 400213
 	// 上报接口，计数器标识不合法
 	InvalidCounterKey = 400214
+	// 租约预留参数不合法
+	InvalidReservation = 400215
+	// 租约消费明细不合法
+	InvalidConsumption = 400216
+	// 累计消费量不合法
+	InvalidConsumedTotal = 400217
+	// 租约消息序号不合法
+	InvalidSequence = 400218
+	// 幂等键不合法
+	InvalidIdempotencyKey = 400219
+	// 相同幂等键对应了不同请求
+	IdempotencyConflict = 409001
+	// 配额不足
+	QuotaExceeded = 429001
 	// 超过最大的counter限制
 	ExceedMaxCounter = 401101
 	// 超过最大的client限制
@@ -72,33 +86,43 @@ const (
 	NotFoundLimiter = 404001
 	// 上报接口，找不到已注册的客户端
 	NotFoundClient = 404002
+	// 找不到租约
+	LeaseNotFound = 404003
+	// 租约已过期
+	LeaseExpired = 410001
+	// 租约已结算
+	LeaseSettled = 410002
 )
 
 // 返回接口名
 func GetAPIKey(resp *apiv2.RateLimitResponse) statistics.APIKey {
-	if resp.GetCmd() == apiv2.RateLimitCmd_INIT {
-		return statistics.InitQuotaV2
-	} else if resp.GetCmd() == apiv2.RateLimitCmd_ACQUIRE {
-		return statistics.AcquireQuotaV2
-	} else if resp.GetCmd() == apiv2.RateLimitCmd_BATCH_INIT {
-		return statistics.BatchInitQuotaV2
-	} else { // resp.GetCmd() == RateLimitCmd_BATCH_ACQUIRE
-		return statistics.BatchAcquireQuotaV2
+	switch resp.GetCmd() {
+	case apiv2.RateLimitCmd_INIT:
+		return statistics.InitQuota
+	case apiv2.RateLimitCmd_RESERVE:
+		return statistics.ReserveQuota
+	case apiv2.RateLimitCmd_BATCH_INIT:
+		return statistics.BatchInitQuota
+	case apiv2.RateLimitCmd_UPDATE:
+		return statistics.UpdateQuota
+	default:
+		return statistics.SettleQuota
 	}
 }
 
 // 返回错误码
 func GetErrorCode(resp *apiv2.RateLimitResponse) uint32 {
-	if resp.GetCmd() == apiv2.RateLimitCmd_INIT {
+	switch resp.GetCmd() {
+	case apiv2.RateLimitCmd_INIT:
 		return resp.GetRateLimitInitResponse().GetCode()
-	} else if resp.GetCmd() == apiv2.RateLimitCmd_ACQUIRE || resp.GetCmd() == apiv2.RateLimitCmd_BATCH_ACQUIRE {
-		return resp.GetRateLimitReportResponse().GetCode()
-	} else {
-		if resp.GetRateLimitBatchInitResponse() != nil {
-			return resp.GetRateLimitBatchInitResponse().GetCode()
-		} else {
-			return resp.GetRateLimitReportResponse().GetCode()
-		}
+	case apiv2.RateLimitCmd_RESERVE:
+		return resp.GetQuotaReserveResponse().GetCode()
+	case apiv2.RateLimitCmd_BATCH_INIT:
+		return resp.GetRateLimitBatchInitResponse().GetCode()
+	case apiv2.RateLimitCmd_UPDATE:
+		return resp.GetQuotaUpdateResponse().GetCode()
+	default:
+		return resp.GetQuotaSettleResponse().GetCode()
 	}
 }
 

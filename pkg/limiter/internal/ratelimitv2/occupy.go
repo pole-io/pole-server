@@ -18,31 +18,22 @@
 package ratelimitv2
 
 import (
-	"sync/atomic"
-
 	apiv2 "github.com/pole-io/specification/source/go/api/v1/traffic_manage/ratelimiter"
 
-	limiterapi "github.com/pole-io/pole-server/pkg/limiter/internal/api/v2"
 	"github.com/pole-io/pole-server/pkg/limiter/internal/utils"
 )
 
 // OccupyAllocator 抢占式分配器
 type OccupyAllocator struct {
-	pushManager   PushManager
 	slidingWindow *utils.SlidingWindow
-	// 配额已经用完
-	quotaUsedOff uint32
-	mode         apiv2.Mode
-	counter      CounterV2
+	mode          apiv2.Mode
 }
 
 // NewOccupyAllocator 创建抢占式分配器
-func NewOccupyAllocator(slideCount int, intervalMs int, pushManager PushManager, counter CounterV2) QuotaAllocator {
+func NewOccupyAllocator(slideCount int, intervalMs int) QuotaAllocator {
 	return &OccupyAllocator{
-		pushManager:   pushManager,
 		slidingWindow: utils.NewSlidingWindow(slideCount, intervalMs),
 		mode:          apiv2.Mode_BATCH_OCCUPY,
-		counter:       counter,
 	}
 }
 
@@ -51,50 +42,12 @@ func (o *OccupyAllocator) Mode() apiv2.Mode {
 	return o.mode
 }
 
-// Allocate 分配配额
-func (o *OccupyAllocator) Allocate(
-	client Client, quotaSum *apiv2.QuotaSum, timestampMs int64, startTimeMicro int64) *apiv2.QuotaLeft {
-	sumUsed := quotaSum.GetUsed()
-	sumLimit := quotaSum.GetLimited()
-	serverTimeMs := startTimeMicro / 1e3
-	totalUsed := o.slidingWindow.AddAndGetCurrent(timestampMs, serverTimeMs, sumUsed)
-	quotaLeft := int64(o.counter.MaxAmount()) - int64(totalUsed)
-	quotaLeftRet := &apiv2.QuotaLeft{
-		CounterKey:  quotaSum.GetCounterKey(),
-		Mode:        o.mode,
-		Left:        quotaLeft,
-		ClientCount: o.counter.ClientCount(),
-	}
-	// 无状态变更，不推送
-	if sumUsed == 0 && sumLimit == 0 {
-		quotaLeftRet.Left = quotaLeft
-		return quotaLeftRet
-	}
-	var push bool
-	if quotaLeft <= 0 && atomic.CompareAndSwapUint32(&o.quotaUsedOff, 0, 1) {
-		push = true
-	} else if quotaLeft > 0 {
-		atomic.CompareAndSwapUint32(&o.quotaUsedOff, 1, 0)
-	}
-	if push {
-		o.doPush(quotaLeftRet, client, startTimeMicro)
-	}
-	return quotaLeftRet
+// Current 返回当前窗口已提交配额。
+func (o *OccupyAllocator) Current(timestampMs int64) uint32 {
+	return o.slidingWindow.AddAndGetCurrent(timestampMs, timestampMs, 0)
 }
 
-// 启动推送
-func (o *OccupyAllocator) doPush(quotaLeft *apiv2.QuotaLeft, client Client, startTimeMicro int64) {
-	resp := limiterapi.NewRateLimitReportResponse(limiterapi.ExecuteSuccess)
-	resp.QuotaLefts = append(resp.QuotaLefts, quotaLeft)
-	pushValue := &PushValue{
-		Counter: o.counter,
-		Msg: &apiv2.RateLimitResponse{
-			Cmd:                     apiv2.RateLimitCmd_ACQUIRE,
-			RateLimitReportResponse: resp.ToRateLimitReportResponse(),
-		},
-		ExcludeClient:  client.ClientId(),
-		StartTimeMicro: startTimeMicro,
-		MsgTimeMicro:   resp.CreateTimeMicro(),
-	}
-	o.pushManager.Schedule(pushValue)
+// Commit 将消费量提交到当前窗口。
+func (o *OccupyAllocator) Commit(timestampMs int64, amount uint32) uint32 {
+	return o.slidingWindow.AddAndGetCurrent(timestampMs, timestampMs, amount)
 }

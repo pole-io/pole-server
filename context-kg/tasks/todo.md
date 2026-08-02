@@ -2,11 +2,38 @@
 title: 任务计划与 Review
 tags: [tasks, todo]
 links: [lessons, adr-otel-observability-platform, adr-pole-rust-client-observability]
-updated: 2026-07-29
+updated: 2026-08-02
 sources: 0
 ---
 
 # 任务计划与 Review
+
+## Quota Lease specification tag 发布与消费者升级（2026-08-02）
+
+目标：按正式跨仓依赖流程发布 `v0.1.0-ALPHA.40`，禁止以 `go.work` 或 Cargo 本地 patch
+替代版本集成；随后让 control-plane 与 Rust SDK 仅依赖可拉取 tag 并完成复验。
+
+- [x] specification 改动提交分支并通过 PR 检查。
+- [x] 合入 develop，创建并推送 annotated tag。
+- [x] 发布 prerelease GitHub Release，确认 Release-Rust 成功。
+- [x] control-plane 移除 specification 工作区覆盖并升级 `go.mod`。
+- [x] Rust SDK 升级 specification git tag 与 manifests。
+- [ ] 在无本地覆盖条件下完成三仓测试、提交、PR 与合入。
+
+### Review
+
+- specification PR [#13](https://github.com/lattice-hub/specification/pull/13) 已合入 develop
+  `afe2ffe`；Go/Rust PR 检查和合并提交 workflow `30739573399` 均成功。
+- annotated tag `v0.1.0-ALPHA.40` 已推送，prerelease
+  [v0.1.0-ALPHA.40](https://github.com/lattice-hub/specification/releases/tag/v0.1.0-ALPHA.40)
+  已发布；Release-Rust workflow `30739637428` 成功发布 Rust crate。
+- control-plane 删除 `go.work`，`go.mod`/`go.sum` 只引用可拉取的
+  `github.com/pole-io/specification v0.1.0-ALPHA.40`。
+- Rust SDK 根 crate 与 e2e crate 均只引用 `lattice-hub/specification` 的
+  `v0.1.0-ALPHA.40`；`cargo tree` 确认依赖图只有该 tag。实现提交为 `1951461`，PR 为
+  [pole-client-rust#1](https://github.com/lattice-hub/pole-client-rust/pull/1)。
+- 无本地 override 验证通过：control-plane `go test -tags nomsgpack -p 1 ./...`；Rust SDK
+  `cargo test --workspace --all-targets`；三仓 `git diff --check`。
 
 ## Console、Limiter 源码归属与前端嵌入实施（2026-07-29）
 
@@ -12196,3 +12223,43 @@ PolarisMesh、Istio、Kmesh 的兼容、竞争和组合关系。
 - Website 提交 `b6fa221 docs: correct registry and config comparison peers` 已推送 `main`；20 项测试、lint（0 error，4 个既有 warning）、185 页生产构建通过。
 - 390px 页面宽度与文档宽度均为 390px，两张宽表在各自容器内横向滚动；线上中英文表头、Consul 产品总览及四个目标 URL 已验证。
 - GitHub Pages workflow `30705935415` 构建与部署成功。
+## 通用配额租约与流式 TPM（2026-08-02）
+
+目标：在未正式发布、无需兼容旧 SDK 的前提下，原地重构限流运行协议，使用无版本后缀的
+`RateLimitGRPC` 和通用 Quota Lease 支持请求前预留、流中累计消费更新、结束结算并归还
+未使用配额，同时覆盖 RPM、TPM 与并发占用语义。
+
+- [x] 在 specification 定义无 V2 后缀的 RateLimitGRPC 与租约协议。
+- [x] 为限流规则增加 token 配额资源及统一计量语义。
+- [x] 重新生成并验证 specification 的 Go/Rust 产物。
+- [x] 在 Limiter 实现原子预留、幂等更新、结算和 TTL 回收。
+- [x] 将 Rust SDK 公共限流 seam 重构为 Quota Lease 生命周期。
+- [x] 补充协议、Limiter 与 Rust SDK 的状态机和流式 TPM 测试。
+- [x] 归档 Quota Lease ADR，并同步知识库索引与日志。
+- [x] 完成跨仓格式、定向测试、全量测试和代码审查。
+
+### 测试 Seam
+
+- specification：生成后的 `RateLimitGRPC` 名称、命令与消息字段契约。
+- Limiter：通过公开 Server 方法验证 reserve/update/settle/expire 的账本不变量与幂等性。
+- Rust SDK：通过 `RateLimitAPI`/`QuotaLease` 验证预留失败只发生在调用前，流中更新不再拒绝，
+  finish 归还未使用配额；RPM、TPM、并发分别映射到 consumable/occupancy 策略。
+
+### Review
+
+- specification 原地移除旧 acquire/report 协议，gRPC 服务统一为 `RateLimitGRPC`；新增
+  reserve/update/settle、按 counter 累计消费、consumable/occupancy 与 `TOKEN` 资源，Go/Rust
+  生成产物和公开契约测试通过。
+- 已集成在 control-plane 的 `pkg/limiter` 内新增权威租约账本。多 counter 预留原子提交，
+  sequence 与幂等键阻止重复扣减，TPM 更新把 reserved 转为窗口 committed，结算归还未用量，
+  并发槽位在 settle/TTL 时全量释放。
+- Rust SDK 公共 seam 收敛为 `reserve_quota -> QuotaLease`，支持单资源便利方法和 RPM、TPM、
+  concurrency 多资源同租约更新；分布式客户端切换到无 V2 的服务，并隐藏 lease id、sequence
+  与 counter 展开。
+- Console 可创建 `TOKEN` 限流规则；长期决策归档到 `adr-quota-lease-streaming-rate-limit`。
+- specification 已发布 `v0.1.0-ALPHA.40`；control-plane 删除 `go.work` 并由 `go.mod`/`go.sum`
+  直接引用该 tag，Rust 根 crate 与 e2e crate 的 `Cargo.toml` 同样固定到该 tag。
+- 验证通过：specification Go 全仓与 Rust 契约测试；Limiter 定向测试与 race；control-plane
+  `go test -tags nomsgpack -p 1 ./...`；Console lint（仅既有 warning）与 test build；Rust SDK
+  使用真实 `v0.1.0-ALPHA.40` 的全工作区测试（SDK 174 项）和 fmt；context-kg lint、三仓
+  `git diff --check`。Rust 全仓 clippy `-D warnings` 仍被 125 个既有 lint 问题阻塞。

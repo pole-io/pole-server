@@ -41,7 +41,7 @@ type InitRequest struct {
 	Duration       time.Duration
 	ExpireDuration time.Duration
 	AmountMode     apiv2.QuotaMode
-	PushManager    PushManager
+	Accounting     apiv2.QuotaAccounting
 	Statics        statistics.Statis
 }
 
@@ -53,11 +53,16 @@ type CounterV2 interface {
 	Identifier() *CounterIdentifier
 	// Reload 刷新配额值
 	Reload(InitRequest)
-	// AcquireQuota 原子增加
-	AcquireQuota(client Client, quotaSum *apiv2.QuotaSum,
-		nowMs int64, startMicro int64, collector *statistics.RateLimitStatCollectorV2) *apiv2.QuotaLeft
-	// SumQuota 获取当前quota总量
-	SumQuota(client Client, timestampMs int64) *apiv2.QuotaLeft
+	// SumQuota 获取当前已提交配额后的剩余量。
+	SumQuota(timestampMs int64) *apiv2.QuotaLeft
+	// CommitQuota 提交消费量。
+	CommitQuota(amount uint32, timestampMs int64) *apiv2.QuotaLeft
+	// Accounting 返回配额记账方式。
+	Accounting() apiv2.QuotaAccounting
+	// PinLease 标记存在活跃租约。
+	PinLease()
+	// UnpinLease 释放活跃租约标记。
+	UnpinLease()
 	// IsExpired 是否已过期
 	IsExpired() bool
 	// PushMessage 推送消息
@@ -192,8 +197,6 @@ func (cc *CounterClients) DelSender(sender Client, counter *counterV2, counterEx
 type counterV2 struct {
 	// 计数器的唯一标识
 	identifier *CounterIdentifier
-	// 用于上报解析的字段信息
-	subLabels *utils.SubLabels
 	// 计数器的整数标识
 	counterKey uint32
 	// 计数器的度量周期
@@ -208,8 +211,10 @@ type counterV2 struct {
 	maxAmount uint32
 	// 阈值模式，全局模式还是单机均摊模式
 	amountMode int32
-	// 配额已经用完
-	quotaUsedOff uint32
+	// 配额记账方式
+	accounting int32
+	// 活跃租约数量
+	activeLeases int64
 	// 配额分配器
 	allocator QuotaAllocator
 	// 计数器客户端集合
@@ -222,7 +227,6 @@ type counterV2 struct {
 func NewCounterV2(counterKey uint32, identifier *CounterIdentifier, initRequest InitRequest) CounterV2 {
 	counter := &counterV2{
 		identifier: identifier,
-		subLabels:  utils.ParseLabels(identifier.Labels),
 		counterKey: counterKey,
 		duration:   identifier.Duration,
 		statics:    initRequest.Statics,
@@ -239,8 +243,9 @@ func (c *counterV2) Init(initRequest InitRequest) {
 	c.duration = initRequest.Duration
 	c.expireDurationMilli = initRequest.ExpireDuration.Milliseconds()
 	c.amountMode = int32(initRequest.AmountMode)
+	c.accounting = int32(initRequest.Accounting)
 	c.counterClients.AddSender(initRequest.Sender, c)
-	c.allocator = NewOccupyAllocator(initRequest.SlideCount, int(c.duration.Milliseconds()), initRequest.PushManager, c)
+	c.allocator = NewOccupyAllocator(initRequest.SlideCount, int(c.duration.Milliseconds()))
 	// 上报
 	counterEvent := &CounterUpdateEvent{
 		TimeNumber: utils.TimestampMsToUtcIso8601(c.LastUpdateTime()),
@@ -280,6 +285,7 @@ func (c *counterV2) Reload(initRequest InitRequest) {
 	atomic.StoreUint32(&c.ruleMaxAmount, initRequest.MaxAmount)
 	atomic.StoreInt64(&c.expireDurationMilli, initRequest.ExpireDuration.Milliseconds())
 	atomic.StoreInt32(&c.amountMode, int32(initRequest.AmountMode))
+	atomic.StoreInt32(&c.accounting, int32(initRequest.Accounting))
 	c.duration = initRequest.Duration
 	lastMTimeMilli := utils.CurrentMillisecond()
 	atomic.StoreInt64(&c.lastMTimeMilli, lastMTimeMilli)
@@ -318,27 +324,47 @@ func (c *counterV2) UpdateClientSendTime(sender Client, sendTimeMicro int64) {
 
 // IsExpired 超时
 func (c *counterV2) IsExpired() bool {
+	if atomic.LoadInt64(&c.activeLeases) > 0 {
+		return false
+	}
 	timePassed := utils.CurrentMillisecond() - atomic.LoadInt64(&c.lastMTimeMilli)
 	return timePassed > atomic.LoadInt64(&c.expireDurationMilli)
 }
 
-// AcquireQuota 获取超时配额
-func (c *counterV2) AcquireQuota(client Client, quotaSum *apiv2.QuotaSum,
-	timestampMs int64, startTimeMicro int64, collector *statistics.RateLimitStatCollectorV2) *apiv2.QuotaLeft {
-	sumUsed := quotaSum.GetUsed()
-	sumLimit := quotaSum.GetLimited()
-	c.doQuotaStatReport(startTimeMicro, sumUsed, sumLimit, client, collector)
-	return c.allocator.Allocate(client, quotaSum, timestampMs, startTimeMicro)
+// SumQuota 汇总超时
+func (c *counterV2) SumQuota(timestampMs int64) *apiv2.QuotaLeft {
+	return c.quotaLeft(c.allocator.Current(timestampMs))
 }
 
-// SumQuota 汇总超时
-func (c *counterV2) SumQuota(client Client, timestampMs int64) *apiv2.QuotaLeft {
-	// 更新客户端时间戳
-	return c.allocator.Allocate(client, &apiv2.QuotaSum{
-		CounterKey: c.counterKey,
-		Used:       0,
-		Limited:    0,
-	}, timestampMs, timestampMs*1e3)
+// CommitQuota 提交消费量。
+func (c *counterV2) CommitQuota(amount uint32, timestampMs int64) *apiv2.QuotaLeft {
+	return c.quotaLeft(c.allocator.Commit(timestampMs, amount))
+}
+
+func (c *counterV2) quotaLeft(committed uint32) *apiv2.QuotaLeft {
+	return &apiv2.QuotaLeft{
+		CounterKey:  c.counterKey,
+		Left:        int64(c.MaxAmount()) - int64(committed),
+		Mode:        c.Mode(),
+		ClientCount: c.ClientCount(),
+	}
+}
+
+// Accounting 返回配额记账方式。
+func (c *counterV2) Accounting() apiv2.QuotaAccounting {
+	return apiv2.QuotaAccounting(atomic.LoadInt32(&c.accounting))
+}
+
+// PinLease 标记存在活跃租约。
+func (c *counterV2) PinLease() {
+	atomic.AddInt64(&c.activeLeases, 1)
+	c.Update()
+}
+
+// UnpinLease 释放活跃租约标记。
+func (c *counterV2) UnpinLease() {
+	atomic.AddInt64(&c.activeLeases, -1)
+	c.Update()
 }
 
 // CounterKey 获取标识
@@ -407,7 +433,7 @@ func (c *counterV2) PushMessage(pushValue *PushValue) {
 		}
 		// 执行上报
 		apiCallStatValue := statistics.PoolGetAPICallStatValueImpl()
-		apiCallStatValue.StatKey.APIKey = statistics.AcquireQuotaV2
+		apiCallStatValue.StatKey.APIKey = statistics.ReserveQuota
 		apiCallStatValue.StatKey.Code = limiterapi.GetErrorCode(pushValue.Msg)
 		apiCallStatValue.StatKey.MsgType = statistics.MsgPush
 		apiCallStatValue.StatKey.Duration = c.identifier.Duration
@@ -417,31 +443,6 @@ func (c *counterV2) PushMessage(pushValue *PushValue) {
 		statistics.PoolPutAPICallStatValueImpl(apiCallStatValue)
 		return true
 	})
-}
-
-// 加入上报队列
-func (c *counterV2) doQuotaStatReport(startTimeMicro int64,
-	passed uint32, limited uint32, client Client, collector *statistics.RateLimitStatCollectorV2) {
-	startTimeMilli := startTimeMicro / 1e3
-	if passed > 0 || limited > 0 {
-		curveStatValue := statistics.PoolGetRateLimitStatValueV2()
-		curveStatValue.StatKey.ClientIP = client.ClientIP()
-		curveStatValue.StatKey.CounterKey = c.counterKey
-		curveStatValue.Namespace = c.identifier.Namespace
-		curveStatValue.Service = c.identifier.Service
-		curveStatValue.Method = c.subLabels.Method
-		curveStatValue.AppId = c.subLabels.AppId
-		curveStatValue.Uin = c.subLabels.Uin
-		curveStatValue.Labels = c.subLabels.Labels
-		curveStatValue.Duration = c.identifier.Duration
-		curveStatValue.GetPrecisionData().InitValues(int64(passed), int64(limited), startTimeMilli)
-		curveStatValue.GetCurveData().InitValues(int64(passed), int64(limited), startTimeMilli)
-		curveStatValue.Total = int64(c.MaxAmount())
-		curveStatValue.LastUpdateTime = startTimeMilli
-		curveStatValue.ExpireDuration = c.expireDurationMilli
-		collector.AddStatValueV2(curveStatValue)
-		statistics.PoolPutRateLimitStatValueV2(curveStatValue)
-	}
 }
 
 // ClientCount 客户端数量

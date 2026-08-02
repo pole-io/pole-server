@@ -113,6 +113,7 @@ const knownMethods = new Set(RATE_LIMIT_HTTP_METHOD_OPTIONS.map((item) => item.v
 const resourceText: Record<string, string> = {
     QPS: '请求数',
     CONCURRENCY: '并发数',
+    TOKEN: 'Token 数',
 };
 
 const actionText: Record<string, string> = {

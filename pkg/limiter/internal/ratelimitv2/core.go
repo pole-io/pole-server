@@ -27,7 +27,6 @@ import (
 
 	"github.com/pole-io/pole-server/pkg/common/log"
 	limiterapi "github.com/pole-io/pole-server/pkg/limiter/internal/api/v2"
-	"github.com/pole-io/pole-server/pkg/limiter/internal/statistics"
 	"github.com/pole-io/pole-server/pkg/limiter/internal/utils"
 )
 
@@ -66,11 +65,13 @@ func (s *Server) InitializeClientBatch(request *apiv2.RateLimitBatchInitRequest,
 // InitializeQuota 限流KEY初始化
 func (s *Server) InitializeQuota(ctx context.Context, client Client,
 	request *apiv2.RateLimitInitRequest) (*apiv2.RateLimitInitResponse, CounterV2) {
-	log.Info(fmt.Sprintf("get v2 init request: %+v", request), utils.ZapRequestID(ctx))
+	log.Info(fmt.Sprintf("get init request: %+v", request), utils.ZapRequestID(ctx))
 	resp, maxDuration := CheckRateLimitInitRequest(request, s.cfg.SlideCount)
 	if nil != resp { // 请求不合法：缺失字段
 		return resp, nil
 	}
+	s.leaseMutex.Lock()
+	defer s.leaseMutex.Unlock()
 	var code = limiterapi.ExecuteSuccess
 	// 然后加入counter
 	counters := make([]*apiv2.QuotaCounter, 0, len(request.GetTotals()))
@@ -84,7 +85,7 @@ func (s *Server) InitializeQuota(ctx context.Context, client Client,
 			break
 		}
 		cCounter = counter
-		left := counter.SumQuota(client, nowMs)
+		left := counter.SumQuota(nowMs)
 		counters = append(counters, &apiv2.QuotaCounter{
 			Duration:    total.GetDuration(),
 			CounterKey:  s.boxCounterKey(left.GetCounterKey()),
@@ -106,13 +107,15 @@ func (s *Server) InitializeQuota(ctx context.Context, client Client,
 // BatchInitializeQuota 限流KEY初始化
 func (s *Server) BatchInitializeQuota(ctx context.Context, client Client,
 	request *apiv2.RateLimitBatchInitRequest) (*apiv2.RateLimitBatchInitResponse, CounterV2) {
-	log.Info(fmt.Sprintf("get v2 batch init request: %+v", request), utils.ZapRequestID(ctx))
+	log.Info(fmt.Sprintf("get batch init request: %+v", request), utils.ZapRequestID(ctx))
 	if len(request.GetRequest()) == 0 { // 请求不合法：缺失字段
 		return limiterapi.NewRateLimitBatchInitResponse(limiterapi.InvalidBatchInitReq), nil
 	}
 	if len(request.ClientId) == 0 { // 请求不合法：缺失字段
 		return limiterapi.NewRateLimitBatchInitResponse(limiterapi.InvalidClientId), nil
 	}
+	s.leaseMutex.Lock()
+	defer s.leaseMutex.Unlock()
 
 	var cCounter CounterV2
 	resp := limiterapi.NewRateLimitBatchInitResponse(limiterapi.ExecuteSuccess)
@@ -150,7 +153,7 @@ func (s *Server) BatchInitializeQuota(ctx context.Context, client Client,
 					break
 				}
 				cCounter = counter
-				left := counter.SumQuota(client, nowMs)
+				left := counter.SumQuota(nowMs)
 				counters = append(counters, &apiv2.QuotaCounter{
 					Duration:    total.GetDuration(),
 					CounterKey:  s.boxCounterKey(left.GetCounterKey()),
@@ -181,36 +184,4 @@ func (s *Server) unboxCounterKey(counterKey uint32) (limiterapi.Code, uint32) {
 		return limiterapi.InvalidCounterKey, 0
 	}
 	return limiterapi.ExecuteSuccess, realCounterKey
-}
-
-// AcquireQuota 获取限流配额
-func (s *Server) AcquireQuota(client Client, startTimeMicro int64, request *apiv2.RateLimitReportRequest,
-	collector *statistics.RateLimitStatCollectorV2) (*limiterapi.TimedRateLimitReportResponse, CounterV2) {
-	resp := CheckRateLimitReportRequest(request)
-	if nil != resp {
-		return resp, nil
-	}
-
-	var code = limiterapi.ExecuteSuccess
-	var counter CounterV2
-	var quotaLefts = make([]*apiv2.QuotaLeft, 0, len(request.GetQuotaUses()))
-	for idx, used := range request.GetQuotaUses() {
-		var counterKey uint32
-		code, counterKey = s.unboxCounterKey(used.GetCounterKey())
-		if code != limiterapi.ExecuteSuccess {
-			break
-		}
-		code, counter = s.counterMng.GetCounter(counterKey)
-		if code != limiterapi.ExecuteSuccess {
-			break
-		}
-		sum := request.QuotaUses[idx]
-		counter.Update()
-		quotaLeft := counter.AcquireQuota(client, sum, request.GetTimestamp(), startTimeMicro, collector)
-		quotaLeft.CounterKey = s.boxCounterKey(quotaLeft.CounterKey)
-		quotaLefts = append(quotaLefts, quotaLeft)
-	}
-	resp = limiterapi.NewRateLimitReportResponse(code)
-	resp.QuotaLefts = quotaLefts
-	return resp, counter
 }

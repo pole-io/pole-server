@@ -36,12 +36,12 @@ import (
 
 // Server grpc server
 type Server struct {
-	IP                 string
-	Port               uint32
-	server             *grpc.Server
-	rateLimitServiceV2 *RateLimitServiceV2
-	done               chan error
-	stopOnce           sync.Once
+	IP               string
+	Port             uint32
+	server           *grpc.Server
+	rateLimitService *RateLimitService
+	done             chan error
+	stopOnce         sync.Once
 }
 
 // GetProtocol 返回协议
@@ -72,7 +72,7 @@ func Start(option map[string]interface{}, core *ratelimitv2.Server, statics stat
 		return nil, fmt.Errorf("listen limiter grpc %s: %w", address, err)
 	}
 	g.Port = uint32(listener.Addr().(*net.TCPAddr).Port)
-	g.rateLimitServiceV2 = &RateLimitServiceV2{
+	g.rateLimitService = &RateLimitService{
 		coreServer: core,
 		statics:    statics,
 	}
@@ -81,7 +81,7 @@ func Start(option map[string]interface{}, core *ratelimitv2.Server, statics stat
 		grpc.UnaryInterceptor(g.unaryInterceptor),
 		grpc.StreamInterceptor(g.streamInterceptor),
 	)
-	apiv2.RegisterRateLimitGRPCV2Server(server, g.rateLimitServiceV2)
+	apiv2.RegisterRateLimitGRPCServer(server, g.rateLimitService)
 	g.server = server
 
 	serviceInfos := server.GetServiceInfo()

@@ -8,6 +8,20 @@ sources: 0
 
 # Lessons
 
+## 2026-08-02：control-plane 必须通过 specification tag 集成协议
+
+- control-plane 对 specification 的验收必须以 `go.mod` 中真实存在、可拉取的发布 tag 为准，不能把 `go.work` 的本地工作区覆盖当作已经更新依赖。
+- 跨仓协议变更应先完成 specification 提交与 tag，再升级 control-plane 和 Rust SDK 的 manifest，并在关闭本地 workspace 覆盖的条件下复验。
+
+## 2026-08-02：Limiter Server 已是 control-plane 内置运行模块
+
+- `pkg/limiter` 已经集成在 control-plane 仓库，并由 `bootstrap` 的 `limiter-server`/`full` profile 装配；讨论新限流协议时不要再表述为需要把独立 Limiter Server 集成进 control-plane。
+- 跨仓边界只有 specification 契约与 SDK 消费方；Limiter 的协议适配、账本、生命周期和测试都应直接落在 control-plane 内。
+
+- 限流协议与 SDK 尚未正式发布时，用户明确不需要旧 SDK 兼容，就不要保留 `V2` 服务名、
+  双协议适配或能力协商等发布后兼容成本。应直接在 specification 原地收敛为无版本后缀的
+  `RateLimitGRPC`，并让 Limiter 与 SDK 同步升级；版本演进只有在真实发布边界形成后再引入。
+
 - 多条件工具栏不能只控制按钮宽度和是否换行，还要把组件边界设计正确。`ResourceToolbar`
   的标题应与查询主行顶部对齐，不能相对包含条件摘要的整个筛选块垂直居中；刷新和主新增
   必须进入 `QueryComposer.actions`，与查询处于同一主行，已选条件则独占下一行并从
