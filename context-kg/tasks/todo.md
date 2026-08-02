@@ -18,7 +18,7 @@ sources: 0
 - [x] 发布 prerelease GitHub Release，确认 Release-Rust 成功。
 - [x] control-plane 移除 specification 工作区覆盖并升级 `go.mod`。
 - [x] Rust SDK 升级 specification git tag 与 manifests。
-- [ ] 在无本地覆盖条件下完成三仓测试、提交、PR 与合入。
+- [x] 在无本地覆盖条件下完成三仓测试、提交、PR 与合入。
 
 ### Review
 
