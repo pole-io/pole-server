@@ -18,13 +18,13 @@
 package statis
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 func TestGetStatis_EmptyConfigIsNoop(t *testing.T) {
@@ -38,6 +38,27 @@ func TestGetStatis_EmptyConfigIsNoop(t *testing.T) {
 }
 
 func resetStatisForTest() {
-	statisOnce = sync.Once{}
-	_statis = nil
+	statisRuntime.Reset()
+}
+
+func TestGetStatisIsScopedToActiveRegistry(t *testing.T) {
+	resetStatisForTest()
+	apis.SetPluginConfig(&apis.Config{})
+	defer resetStatisForTest()
+
+	firstRegistry := pluginapi.NewRegistry()
+	firstRegistry.Freeze()
+	restoreFirst, err := pluginapi.Activate(firstRegistry)
+	require.NoError(t, err)
+	first := GetStatis()
+	restoreFirst()
+
+	secondRegistry := pluginapi.NewRegistry()
+	secondRegistry.Freeze()
+	restoreSecond, err := pluginapi.Activate(secondRegistry)
+	require.NoError(t, err)
+	t.Cleanup(restoreSecond)
+	second := GetStatis()
+
+	require.NotSame(t, first, second)
 }

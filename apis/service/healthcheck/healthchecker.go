@@ -23,6 +23,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 type CheckerPeer struct {
@@ -124,14 +125,21 @@ type HealthChecker interface {
 
 // GetHealthChecker get the health checker by name
 func GetHealthChecker(name string, cfg *apis.ConfigEntry) HealthChecker {
-	item, exist := apis.GetPlugin(apis.PluginTypeHealthCheck, name)
-	if !exist {
+	if !pluginapi.ActiveRegistry().Contains(pluginapi.KindHealthCheck, name) {
 		return nil
+	}
+	item, err := apis.ResolvePlugin(apis.PluginTypeHealthCheck, name)
+	if err != nil {
+		panic(fmt.Errorf("resolve HealthChecker plugin %q: %w", name, err))
 	}
 
 	if err := item.Initialize(cfg); err != nil {
 		panic(fmt.Errorf("HealthChecker plugin init err: %s", err.Error()))
 	}
 
-	return item.(HealthChecker)
+	healthChecker, ok := item.(HealthChecker)
+	if !ok {
+		panic(fmt.Errorf("plugin target: %s not HealthChecker", name))
+	}
+	return healthChecker
 }

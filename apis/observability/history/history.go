@@ -19,17 +19,13 @@ package history
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
-var (
-	// historyOnce Plugin initialization atomic variable
-	historyOnce      sync.Once
-	compositeHistory *CompositeHistory
-)
+var historyRuntime pluginapi.RuntimeValue[History]
 
 // History 历史记录插件
 type History interface {
@@ -39,23 +35,22 @@ type History interface {
 
 // GetHistory Get the historical record plugin
 func GetHistory() History {
-	if compositeHistory != nil {
-		return compositeHistory
-	}
-
-	historyOnce.Do(func() {
+	history, err := historyRuntime.Load(func() (History, error) {
 		entries := apis.GetPluginConfig().History.Entries
-		compositeHistory = &CompositeHistory{
+		composite := &CompositeHistory{
 			chain:   make([]History, 0, len(entries)),
 			options: entries,
 		}
 
-		if err := compositeHistory.Initialize(nil); err != nil {
-			panic(fmt.Errorf("History plugin init err: %s", err.Error()))
+		if err := composite.Initialize(nil); err != nil {
+			return nil, err
 		}
+		return composite, nil
 	})
-
-	return compositeHistory
+	if err != nil {
+		panic(fmt.Errorf("History plugin init err: %s", err.Error()))
+	}
+	return history
 }
 
 type CompositeHistory struct {
@@ -70,9 +65,9 @@ func (c *CompositeHistory) Name() string {
 func (c *CompositeHistory) Initialize(config *apis.ConfigEntry) error {
 	for i := range c.options {
 		entry := c.options[i]
-		item, exist := apis.GetPlugin(apis.PluginTypeHistory, entry.Name)
-		if !exist {
-			panic(fmt.Errorf("plugin History not found target: %s", entry.Name))
+		item, err := apis.ResolvePlugin(apis.PluginTypeHistory, entry.Name)
+		if err != nil {
+			return fmt.Errorf("resolve History plugin %q: %w", entry.Name, err)
 		}
 
 		history, ok := item.(History)

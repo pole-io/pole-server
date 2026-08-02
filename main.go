@@ -20,9 +20,14 @@ package main
 import (
 	_ "go.uber.org/automaxprocs"
 
+	"github.com/pole-io/pole-server/builtinplugins"
 	"github.com/pole-io/pole-server/cmd"
 )
 
 func main() {
-	cmd.Execute()
+	registry, err := builtinplugins.NewRegistry()
+	if err != nil {
+		panic(err)
+	}
+	cmd.ExecuteWithPluginRegistry(registry)
 }

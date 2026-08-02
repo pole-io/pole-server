@@ -26,11 +26,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pole-io/pole-server/bootstrap"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 var (
 	configFilePath = ""
 	startMode      = ""
+	pluginRegistry *pluginapi.Registry
 
 	startCmd = &cobra.Command{
 		Use:   "start",
@@ -41,8 +43,9 @@ var (
 				context.Background(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
 			return bootstrap.Run(ctx, bootstrap.Options{
-				ConfigPath:   configFilePath,
-				ModeOverride: startMode,
+				ConfigPath:     configFilePath,
+				ModeOverride:   startMode,
+				PluginRegistry: pluginRegistry,
 			})
 		},
 	}

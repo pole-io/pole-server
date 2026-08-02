@@ -25,6 +25,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/pole-io/pole-server/apis/store"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 const (
@@ -38,10 +39,14 @@ const (
 	emptyEnableTime = "STR_TO_DATE('1980-01-01 00:00:01', '%Y-%m-%d %H:%i:%s')"
 )
 
-// init 自动引入包初始化函数
-func init() {
-	s := &stableStore{}
-	_ = store.RegisterStore(s)
+func Register(registry *pluginapi.Registry) error {
+	return store.RegisterStoreFactory(registry, pluginapi.Descriptor{
+		Kind:   pluginapi.KindStore,
+		Name:   STORENAME,
+		Origin: pluginapi.OriginBuiltin,
+	}, func() (store.Store, error) {
+		return &stableStore{}, nil
+	})
 }
 
 // stableStore 实现了Store接口

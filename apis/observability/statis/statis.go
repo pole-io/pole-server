@@ -19,16 +19,13 @@ package statis
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/pkg/types/metrics"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
-var (
-	statisOnce sync.Once
-	_statis    Statis
-)
+var statisRuntime pluginapi.RuntimeValue[Statis]
 
 // Statis Statistical plugin interface
 type Statis interface {
@@ -56,9 +53,9 @@ func (c *compositeStatis) Name() string {
 func (c *compositeStatis) Initialize(config *apis.ConfigEntry) error {
 	for i := range c.options {
 		entry := c.options[i]
-		item, exist := apis.GetPlugin(apis.PluginTypeStatis, entry.Name)
-		if !exist {
-			return fmt.Errorf("plugin Statis not found target: %s", entry.Name)
+		item, err := apis.ResolvePlugin(apis.PluginTypeStatis, entry.Name)
+		if err != nil {
+			return fmt.Errorf("resolve Statis plugin %q: %w", entry.Name, err)
 		}
 
 		statis, ok := item.(Statis)
@@ -117,11 +114,7 @@ func (c *compositeStatis) ReportDiscoverCall(metric metrics.ClientDiscoverMetric
 
 // GetStatis Get statistical plugin
 func GetStatis() Statis {
-	if _statis != nil {
-		return _statis
-	}
-
-	statisOnce.Do(func() {
+	statis, err := statisRuntime.Load(func() (Statis, error) {
 		var (
 			entries        []apis.ConfigEntry
 			defaultEntries = []apis.ConfigEntry{
@@ -149,14 +142,17 @@ func GetStatis() Statis {
 			}
 		}
 
-		_statis = &compositeStatis{
+		composite := &compositeStatis{
 			chain:   []Statis{},
 			options: entries,
 		}
-		if err := _statis.Initialize(nil); err != nil {
-			panic(fmt.Sprintf("Statis plugin init err: %s", err.Error()))
+		if err := composite.Initialize(nil); err != nil {
+			return nil, err
 		}
+		return composite, nil
 	})
-
-	return _statis
+	if err != nil {
+		panic(fmt.Sprintf("Statis plugin init err: %s", err.Error()))
+	}
+	return statis
 }

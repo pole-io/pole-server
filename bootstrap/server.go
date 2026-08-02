@@ -297,19 +297,30 @@ func StartConfigCenterComponents(ctx context.Context, cfg *boot_config.Config, s
 // StartServers 启动server
 func StartServers(ctx context.Context, apientries []apiserver.Config, errCh chan error) (
 	[]apiserver.Apiserver, error) {
-	// 启动API服务器
+	runtimeSlots := make(map[string]apiserver.Apiserver, len(apientries))
+	for _, protocol := range apientries {
+		if !apiserver.Registered(protocol.Name) {
+			continue
+		}
+		server, err := apiserver.Resolve(protocol.Name)
+		if err != nil {
+			return nil, fmt.Errorf("resolve api server plugin %s: %w", protocol.Name, err)
+		}
+		runtimeSlots[protocol.Name] = server
+	}
+	apiserver.ReplaceRuntimeSlots(runtimeSlots)
+
 	var servers []apiserver.Apiserver
 
-	// 等待所有ApiServer都监听完成
 	for _, protocol := range apientries {
-		slot, exist := apiserver.Slots[protocol.Name]
+		slot, exist := runtimeSlots[protocol.Name]
 		if !exist {
 			log.Warn("[ERROR] apiserver slot not exists", zap.String("name", protocol.Name))
 			continue
 		}
 		// 如果是 http server, 注入所有的 apiserver 实例
 		if protocol.Name == "api-http" {
-			ctx = context.WithValue(ctx, utils.ContextAPIServerSlot{}, apiserver.Slots)
+			ctx = context.WithValue(ctx, utils.ContextAPIServerSlot{}, runtimeSlots)
 		}
 
 		err := slot.Initialize(ctx, protocol.Option, protocol.API)
@@ -498,6 +509,7 @@ func polarisServiceRegister(polarisService *boot_config.PolarisService, apiServe
 	for _, server := range apiServers {
 		apiServerNames[server.Name] = true
 	}
+	runtimeSlots := apiserver.RuntimeSlots()
 	hbInterval := boot_config.DefaultHeartbeatInterval
 	if polarisService.HeartbeatInterval > 0 {
 		hbInterval = polarisService.HeartbeatInterval
@@ -516,7 +528,7 @@ func polarisServiceRegister(polarisService *boot_config.PolarisService, apiServe
 			if _, exist := apiServerNames[name]; !exist {
 				return fmt.Errorf("server(%s) not registered", name)
 			}
-			slot, exist := apiserver.Slots[name]
+			slot, exist := runtimeSlots[name]
 			if !exist {
 				return fmt.Errorf("server(%s) not supported", name)
 			}

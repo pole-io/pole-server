@@ -19,16 +19,13 @@ package event
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
-var (
-	discoverEventOnce sync.Once
-	_discoverChannel  DiscoverChannel
-)
+var discoverEventRuntime pluginapi.RuntimeValue[DiscoverChannel]
 
 type DiscoverEvent interface {
 	// 资源 ID
@@ -50,24 +47,23 @@ type DiscoverChannel interface {
 
 // GetDiscoverEvent Get service discovery event plug -in
 func GetDiscoverEvent() DiscoverChannel {
-	if _discoverChannel != nil {
-		return _discoverChannel
-	}
-
-	discoverEventOnce.Do(func() {
+	channel, err := discoverEventRuntime.Load(func() (DiscoverChannel, error) {
 		var (
 			entries []apis.ConfigEntry
 		)
 
 		entries = append(entries, apis.GetPluginConfig().DiscoverEvent.Entries...)
 
-		_discoverChannel = newCompositeDiscoverChannel(entries)
-		if err := _discoverChannel.Initialize(nil); err != nil {
-			panic(fmt.Errorf("DiscoverChannel plugin init err: %s", err.Error()))
+		composite := newCompositeDiscoverChannel(entries)
+		if err := composite.Initialize(nil); err != nil {
+			return nil, err
 		}
+		return composite, nil
 	})
-
-	return _discoverChannel
+	if err != nil {
+		panic(fmt.Errorf("DiscoverChannel plugin init err: %s", err.Error()))
+	}
+	return channel
 }
 
 // newCompositeDiscoverChannel creates Composite DiscoverChannel
@@ -91,14 +87,14 @@ func (c *compositeDiscoverChannel) Name() string {
 func (c *compositeDiscoverChannel) Initialize(config *apis.ConfigEntry) error {
 	for i := range c.options {
 		entry := c.options[i]
-		item, exist := apis.GetPlugin(apis.PluginTypeDiscoverEvent, entry.Name)
-		if !exist {
-			panic(fmt.Errorf("plugin DiscoverChannel not found target: %s", entry.Name))
+		item, err := apis.ResolvePlugin(apis.PluginTypeDiscoverEvent, entry.Name)
+		if err != nil {
+			return fmt.Errorf("resolve DiscoverChannel plugin %q: %w", entry.Name, err)
 		}
 
 		discoverChannel, ok := item.(DiscoverChannel)
 		if !ok {
-			panic(fmt.Errorf("plugin target: %s not DiscoverChannel", entry.Name))
+			return fmt.Errorf("plugin target: %s not DiscoverChannel", entry.Name)
 		}
 
 		if err := discoverChannel.Initialize(&entry); err != nil {

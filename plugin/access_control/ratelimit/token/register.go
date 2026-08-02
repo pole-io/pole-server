@@ -17,13 +17,21 @@
 
 package token
 
-import "github.com/pole-io/pole-server/apis"
+import (
+	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/pluginapi"
+)
 
 const (
 	PluginName = "token-bucket"
 )
 
-// init 插件入口注册函数
-func init() {
-	apis.RegisterPlugin(PluginName, &tokenBucket{})
+func Register(registry *pluginapi.Registry) error {
+	return apis.RegisterPluginFactory(registry, pluginapi.Descriptor{
+		Kind:   pluginapi.KindRateLimit,
+		Name:   PluginName,
+		Origin: pluginapi.OriginBuiltin,
+	}, func() (apis.Plugin, error) {
+		return &tokenBucket{}, nil
+	})
 }

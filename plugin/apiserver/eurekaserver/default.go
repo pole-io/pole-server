@@ -19,13 +19,15 @@ package eurekaserver
 
 import (
 	"github.com/pole-io/pole-server/apis/apiserver"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
-/**
- * @brief 自注册到API服务器插槽
- */
-func init() {
-	if err := apiserver.Register("service-eureka", &EurekaServer{}); err != nil {
-		panic(err)
-	}
+func Register(registry *pluginapi.Registry) error {
+	return apiserver.RegisterFactory(registry, pluginapi.Descriptor{
+		Kind:   pluginapi.KindAPIServer,
+		Name:   "service-eureka",
+		Origin: pluginapi.OriginBuiltin,
+	}, func() (apiserver.Apiserver, error) {
+		return &EurekaServer{}, nil
+	})
 }

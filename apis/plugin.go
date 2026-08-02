@@ -2,34 +2,71 @@ package apis
 
 import (
 	"fmt"
-	"sync"
+
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 var (
-	pluginSet = make(map[PluginType]map[string]Plugin)
-	config    = &Config{}
-	once      sync.Once
+	config = &Config{}
 )
 
 // RegisterPlugin 注册插件
 func RegisterPlugin(name string, plugin Plugin) {
-	if _, exist := pluginSet[plugin.Type()]; !exist {
-		pluginSet[plugin.Type()] = make(map[string]Plugin)
+	if plugin == nil {
+		panic("plugin is nil")
 	}
-	if _, exist := pluginSet[plugin.Type()][name]; exist {
-		panic(fmt.Sprintf("existed plugin: name=%v", name))
+	if name != plugin.Name() {
+		panic(fmt.Sprintf("plugin registration name mismatch: registered=%s actual=%s", name, plugin.Name()))
 	}
-	pluginSet[plugin.Type()][plugin.Name()] = plugin
+	err := RegisterPluginFactory(pluginapi.DefaultRegistry(), pluginapi.Descriptor{
+		Kind:   PluginKind(plugin.Type()),
+		Name:   name,
+		Origin: pluginapi.OriginLegacy,
+	}, func() (Plugin, error) {
+		return plugin, nil
+	})
+	if err != nil {
+		panic(err)
+	}
+}
+
+type PluginFactory func() (Plugin, error)
+
+func RegisterPluginFactory(registry *pluginapi.Registry, descriptor pluginapi.Descriptor,
+	factory PluginFactory) error {
+	if factory == nil {
+		return fmt.Errorf("plugin factory is nil: kind=%s name=%s", descriptor.Kind, descriptor.Name)
+	}
+	return registry.Register(descriptor, func() (any, error) {
+		plugin, err := factory()
+		if err != nil {
+			return nil, err
+		}
+		if plugin == nil {
+			return nil, fmt.Errorf("plugin factory returned nil: kind=%s name=%s", descriptor.Kind, descriptor.Name)
+		}
+		if descriptor.Kind != PluginKind(plugin.Type()) {
+			return nil, fmt.Errorf("plugin kind mismatch: registered=%s actual=%s",
+				descriptor.Kind, PluginKind(plugin.Type()))
+		}
+		if descriptor.Name != plugin.Name() {
+			return nil, fmt.Errorf("plugin name mismatch: registered=%s actual=%s",
+				descriptor.Name, plugin.Name())
+		}
+		return plugin, nil
+	})
 }
 
 func GetPlugin(t PluginType, name string) (Plugin, bool) {
-	if _, exist := pluginSet[t]; !exist {
+	plugin, err := ResolvePlugin(t, name)
+	if err != nil {
 		return nil, false
 	}
-	if plugin, exist := pluginSet[t][name]; exist {
-		return plugin, true
-	}
-	return nil, false
+	return plugin, true
+}
+
+func ResolvePlugin(pluginType PluginType, name string) (Plugin, error) {
+	return pluginapi.ResolveAs[Plugin](pluginapi.ActiveRegistry(), PluginKind(pluginType), name)
 }
 
 // SetPluginConfig 设置插件配置
@@ -56,6 +93,35 @@ type ConfigEntry struct {
 }
 
 type PluginType int32
+
+func PluginKind(pluginType PluginType) pluginapi.Kind {
+	switch pluginType {
+	case PluginTypeStatis:
+		return pluginapi.KindStatis
+	case PluginTypeHistory:
+		return pluginapi.KindHistory
+	case PluginTypeDiscoverEvent:
+		return pluginapi.KindDiscoverEvent
+	case PluginTypeRateLimit:
+		return pluginapi.KindRateLimit
+	case PluginTypeWhitelist:
+		return pluginapi.KindWhitelist
+	case PluginTypeResourceAuth:
+		return pluginapi.KindResourceAuth
+	case PluginTypeCMDB:
+		return pluginapi.KindCMDB
+	case PluginTypeApiServer:
+		return pluginapi.KindAPIServer
+	case PluginTypeCrypto:
+		return pluginapi.KindCrypto
+	case PluginTypeStore:
+		return pluginapi.KindStore
+	case PluginTypeHealthCheck:
+		return pluginapi.KindHealthCheck
+	default:
+		return pluginapi.Kind(fmt.Sprintf("plugin/%d", pluginType))
+	}
+}
 
 const (
 	_ PluginType = iota

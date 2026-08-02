@@ -26,6 +26,7 @@ import (
 
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	"github.com/pole-io/pole-server/apis/store"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 const (
@@ -87,37 +88,73 @@ type StrategyConfig struct {
 }
 
 var (
-	// userMgnSlots 保存用户管理manager slot
-	userMgrSlots = map[string]UserServer{}
-	// strategyMgnSlots 保存策略管理manager slot
-	strategyMgrSlots = map[string]StrategyServer{}
-	once             sync.Once
-	userMgr          UserServer
-	policyMgr        StrategyServer
-	finishInit       bool
+	initMu       sync.RWMutex
+	initBuildMu  sync.Mutex
+	initRegistry *pluginapi.Registry
+	userMgr      UserServer
+	policyMgr    StrategyServer
+	finishInit   bool
 )
 
 func InjectUserMgr(svr UserServer) {
+	initMu.Lock()
+	defer initMu.Unlock()
 	userMgr = svr
 }
 
 func InjectPolicyMgr(svr StrategyServer) {
+	initMu.Lock()
+	defer initMu.Unlock()
 	policyMgr = svr
 }
 
 // RegisterUserServer 注册一个新的 UserServer
 func RegisterUserServer(s UserServer) error {
-	name := s.Name()
-	if _, ok := userMgrSlots[name]; ok {
-		return fmt.Errorf("UserServer=[%s] exist", name)
+	if s == nil {
+		return errors.New("UserServer is nil")
 	}
+	name := s.Name()
+	return RegisterUserServerFactory(pluginapi.DefaultRegistry(), pluginapi.Descriptor{
+		Kind:   pluginapi.KindAuthUser,
+		Name:   name,
+		Origin: pluginapi.OriginLegacy,
+	}, func() (UserServer, error) {
+		return s, nil
+	})
+}
 
-	userMgrSlots[name] = s
-	return nil
+type UserServerFactory func() (UserServer, error)
+
+func RegisterUserServerFactory(registry *pluginapi.Registry, descriptor pluginapi.Descriptor,
+	factory UserServerFactory) error {
+	if factory == nil {
+		return fmt.Errorf("UserServer factory is nil: name=%s", descriptor.Name)
+	}
+	descriptor.Kind = pluginapi.KindAuthUser
+	return registry.Register(descriptor, func() (any, error) {
+		server, err := factory()
+		if err != nil {
+			return nil, err
+		}
+		if server == nil {
+			return nil, fmt.Errorf("UserServer factory returned nil: name=%s", descriptor.Name)
+		}
+		if descriptor.Name != server.Name() {
+			return nil, fmt.Errorf("UserServer name mismatch: registered=%s actual=%s",
+				descriptor.Name, server.Name())
+		}
+		return server, nil
+	})
+}
+
+func ResolveUserServer(name string) (UserServer, error) {
+	return pluginapi.ResolveAs[UserServer](pluginapi.ActiveRegistry(), pluginapi.KindAuthUser, name)
 }
 
 // GetUserServer 获取一个 UserServer
 func GetUserServer() (UserServer, error) {
+	initMu.RLock()
+	defer initMu.RUnlock()
 	if !finishInit {
 		return nil, errors.New("UserServer has not done Initialize")
 	}
@@ -126,18 +163,12 @@ func GetUserServer() (UserServer, error) {
 
 // GetUserServerContext 获取一个 UserServer
 func GetUserServerContext(ctx context.Context) (UserServer, error) {
-	if !finishInit {
-		return nil, errors.New("UserServer has not done Initialize")
+	userSvr, err := GetUserServer()
+	if err != nil {
+		return nil, err
 	}
-	userSvr := userMgr
 	userSvrVal := ctx.Value(ContextKeyUserSvr)
-	if userSvrVal == nil {
-		svr, err := GetUserServer()
-		if err != nil {
-			return nil, err
-		}
-		userSvr = svr
-	} else {
+	if userSvrVal != nil {
 		userSvr = userSvrVal.(UserServer)
 	}
 	return userSvr, nil
@@ -145,17 +176,51 @@ func GetUserServerContext(ctx context.Context) (UserServer, error) {
 
 // RegisterStrategyServer 注册一个新的 StrategyServer
 func RegisterStrategyServer(s StrategyServer) error {
-	name := s.Name()
-	if _, ok := strategyMgrSlots[name]; ok {
-		return fmt.Errorf("StrategyServer=[%s] exist", name)
+	if s == nil {
+		return errors.New("StrategyServer is nil")
 	}
+	name := s.Name()
+	return RegisterStrategyServerFactory(pluginapi.DefaultRegistry(), pluginapi.Descriptor{
+		Kind:   pluginapi.KindAuthStrategy,
+		Name:   name,
+		Origin: pluginapi.OriginLegacy,
+	}, func() (StrategyServer, error) {
+		return s, nil
+	})
+}
 
-	strategyMgrSlots[name] = s
-	return nil
+type StrategyServerFactory func() (StrategyServer, error)
+
+func RegisterStrategyServerFactory(registry *pluginapi.Registry, descriptor pluginapi.Descriptor,
+	factory StrategyServerFactory) error {
+	if factory == nil {
+		return fmt.Errorf("StrategyServer factory is nil: name=%s", descriptor.Name)
+	}
+	descriptor.Kind = pluginapi.KindAuthStrategy
+	return registry.Register(descriptor, func() (any, error) {
+		server, err := factory()
+		if err != nil {
+			return nil, err
+		}
+		if server == nil {
+			return nil, fmt.Errorf("StrategyServer factory returned nil: name=%s", descriptor.Name)
+		}
+		if descriptor.Name != server.Name() {
+			return nil, fmt.Errorf("StrategyServer name mismatch: registered=%s actual=%s",
+				descriptor.Name, server.Name())
+		}
+		return server, nil
+	})
+}
+
+func ResolveStrategyServer(name string) (StrategyServer, error) {
+	return pluginapi.ResolveAs[StrategyServer](pluginapi.ActiveRegistry(), pluginapi.KindAuthStrategy, name)
 }
 
 // GetStrategyServer 获取一个 StrategyServer
 func GetStrategyServer() (StrategyServer, error) {
+	initMu.RLock()
+	defer initMu.RUnlock()
 	if !finishInit {
 		return nil, errors.New("StrategyServer has not done Initialize")
 	}
@@ -164,18 +229,12 @@ func GetStrategyServer() (StrategyServer, error) {
 
 // GetStrategyServerContext 获取一个 UserServer
 func GetStrategyServerContext(ctx context.Context) (StrategyServer, error) {
-	if !finishInit {
-		return nil, errors.New("UserServer has not done Initialize")
+	policySvr, err := GetStrategyServer()
+	if err != nil {
+		return nil, err
 	}
-	policySvr := policyMgr
 	policySvrVal := ctx.Value(ContextKeyPolicySvr)
-	if policySvrVal == nil {
-		svr, err := GetStrategyServer()
-		if err != nil {
-			return nil, err
-		}
-		policySvr = svr
-	} else {
+	if policySvrVal != nil {
 		policySvr = policySvrVal.(StrategyServer)
 	}
 	return policySvr, nil
@@ -183,14 +242,32 @@ func GetStrategyServerContext(ctx context.Context) (StrategyServer, error) {
 
 // Initialize 初始化
 func Initialize(ctx context.Context, authOpt *Config, storage store.Store, cacheMgr cachetypes.CacheManager) error {
-	var err error
-	once.Do(func() {
-		userMgr, policyMgr, err = BuildAuthComponent(ctx, authOpt, storage, cacheMgr)
-	})
+	initBuildMu.Lock()
+	defer initBuildMu.Unlock()
 
+	activeRegistry := pluginapi.ActiveRegistry()
+	initMu.RLock()
+	if finishInit && initRegistry == activeRegistry {
+		initMu.RUnlock()
+		return nil
+	}
+	initMu.RUnlock()
+
+	initMu.Lock()
+	finishInit = false
+	initMu.Unlock()
+
+	nextUserManager, nextPolicyManager, err := BuildAuthComponent(ctx, authOpt, storage, cacheMgr)
 	if err != nil {
 		return err
 	}
+
+	initMu.Lock()
+	userMgr = nextUserManager
+	policyMgr = nextPolicyManager
+	initRegistry = activeRegistry
+	finishInit = true
+	initMu.Unlock()
 	return nil
 }
 
@@ -208,13 +285,13 @@ func BuildAuthComponent(_ context.Context, authOpt *Config, storage store.Store,
 		return nil, nil, errors.New("StrategyServer Name is empty")
 	}
 
-	userMgr, ok := userMgrSlots[userMgrName]
-	if !ok {
-		return nil, nil, fmt.Errorf("no such UserServer plugin. name(%s)", userMgrName)
+	userMgr, err := ResolveUserServer(userMgrName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("resolve UserServer plugin %q: %w", userMgrName, err)
 	}
-	policyMgr, ok := strategyMgrSlots[policyMgrName]
-	if !ok {
-		return nil, nil, fmt.Errorf("no such StrategyServer plugin. name(%s)", policyMgrName)
+	policyMgr, err := ResolveStrategyServer(policyMgrName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("resolve StrategyServer plugin %q: %w", policyMgrName, err)
 	}
 
 	if err := userMgr.Initialize(authOpt, storage, policyMgr, cacheMgr); err != nil {
@@ -225,6 +302,5 @@ func BuildAuthComponent(_ context.Context, authOpt *Config, storage store.Store,
 		log.Printf("StrategyServer do initialize err: %s", err.Error())
 		return nil, nil, err
 	}
-	finishInit = true
 	return userMgr, policyMgr, nil
 }

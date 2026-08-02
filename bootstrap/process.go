@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -25,16 +26,33 @@ import (
 	"github.com/pole-io/pole-server/pkg/selfmanager"
 	"github.com/pole-io/pole-server/pkg/systemconfig"
 	aimcpserver "github.com/pole-io/pole-server/plugin/apiserver/httpserver/aimcp"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 // Options 是统一进程入口的启动参数。
 type Options struct {
-	ConfigPath   string
-	ModeOverride string
+	ConfigPath     string
+	ModeOverride   string
+	PluginRegistry *pluginapi.Registry
 }
 
 // Run 加载配置、解析 Profile，并把选中的运行模块交给 Supervisor。
-func Run(ctx context.Context, options Options) error {
+func Run(ctx context.Context, options Options) (runErr error) {
+	runtimeRegistry, err := preparePluginRegistry(options.PluginRegistry)
+	if err != nil {
+		return fmt.Errorf("prepare plugin registry: %w", err)
+	}
+	restoreRegistry, err := pluginapi.Activate(runtimeRegistry)
+	if err != nil {
+		return fmt.Errorf("activate plugin registry: %w", err)
+	}
+	defer restoreRegistry()
+	defer func() {
+		if err := runtimeRegistry.Close(); err != nil {
+			runErr = errors.Join(runErr, fmt.Errorf("close plugin registry: %w", err))
+		}
+	}()
+
 	ConfigFilePath = options.ConfigPath
 	utils.ConfDir = parseConfDir(options.ConfigPath)
 	cfg, err := bootconfig.Load(options.ConfigPath)
@@ -106,6 +124,20 @@ func Run(ctx context.Context, options Options) error {
 		Modules:         modules,
 		ShutdownTimeout: 15 * time.Second,
 	}).Run(ctx)
+}
+
+func preparePluginRegistry(registry *pluginapi.Registry) (*pluginapi.Registry, error) {
+	if registry == nil {
+		registry = pluginapi.DefaultRegistry()
+	}
+	runtimeRegistry := registry.Clone()
+	if registry != pluginapi.DefaultRegistry() {
+		if err := runtimeRegistry.Merge(pluginapi.DefaultRegistry()); err != nil {
+			return nil, err
+		}
+	}
+	runtimeRegistry.Freeze()
+	return runtimeRegistry, nil
 }
 
 type controlPlaneModule struct {
@@ -421,8 +453,9 @@ func configuredListenHost(
 	server apiserver.Apiserver,
 	apiEntries []apiserver.Config,
 ) string {
+	runtimeSlots := apiserver.RuntimeSlots()
 	for _, entry := range apiEntries {
-		slot, exists := apiserver.Slots[entry.Name]
+		slot, exists := runtimeSlots[entry.Name]
 		if !exists || slot != server {
 			continue
 		}

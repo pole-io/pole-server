@@ -31,8 +31,8 @@ func TestGetStore() (storeapi.Store, error) {
 		return nil, errors.New("store name is empty")
 	}
 
-	s, ok := storeapi.StoreSlots[name]
-	if !ok {
+	s, err := storeapi.ResolveStore(name)
+	if err != nil {
 		return nil, fmt.Errorf("store `%s` not found", name)
 	}
 	_ = s.Destroy()

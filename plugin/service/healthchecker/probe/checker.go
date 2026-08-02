@@ -14,6 +14,7 @@ import (
 	"github.com/pole-io/pole-server/apis"
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/service/healthcheck"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 const (
@@ -26,9 +27,21 @@ var (
 	_ healthcheck.HealthChecker = (*Checker)(nil)
 )
 
-func init() {
-	apis.RegisterPlugin(TCPPluginName, newChecker(TCPPluginName, healthcheck.HealthCheckerDetectTCP))
-	apis.RegisterPlugin(HTTPPluginName, newChecker(HTTPPluginName, healthcheck.HealthCheckerDetectHTTP))
+func Register(registry *pluginapi.Registry) error {
+	if err := registerChecker(registry, TCPPluginName, healthcheck.HealthCheckerDetectTCP); err != nil {
+		return err
+	}
+	return registerChecker(registry, HTTPPluginName, healthcheck.HealthCheckerDetectHTTP)
+}
+
+func registerChecker(registry *pluginapi.Registry, name string, checkType healthcheck.HealthCheckType) error {
+	return apis.RegisterPluginFactory(registry, pluginapi.Descriptor{
+		Kind:   pluginapi.KindHealthCheck,
+		Name:   name,
+		Origin: pluginapi.OriginBuiltin,
+	}, func() (apis.Plugin, error) {
+		return newChecker(name, checkType), nil
+	})
 }
 
 // Checker executes a control-plane initiated TCP or HTTP probe.

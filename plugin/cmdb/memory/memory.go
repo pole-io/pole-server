@@ -28,6 +28,7 @@ import (
 	"github.com/pole-io/pole-server/apis"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
 	commonlog "github.com/pole-io/pole-server/pkg/common/log"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 const (
@@ -39,9 +40,14 @@ var (
 	log = commonlog.RegisterScope("cmdb", "", 0)
 )
 
-// init 自注册到插件列表
-func init() {
-	apis.RegisterPlugin(PluginName, &Memory{})
+func Register(registry *pluginapi.Registry) error {
+	return apis.RegisterPluginFactory(registry, pluginapi.Descriptor{
+		Kind:   pluginapi.KindCMDB,
+		Name:   PluginName,
+		Origin: pluginapi.OriginBuiltin,
+	}, func() (apis.Plugin, error) {
+		return &Memory{}, nil
+	})
 }
 
 // Memory 定义MemoryCMDB类

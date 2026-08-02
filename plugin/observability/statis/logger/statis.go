@@ -36,11 +36,6 @@ const (
 )
 
 // init 注册统计插件
-func init() {
-	s := &StatisWorker{}
-	apis.RegisterPlugin(s.Name(), s)
-}
-
 // StatisWorker 本地统计插件
 type StatisWorker struct {
 	*base.BaseWorker

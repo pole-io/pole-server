@@ -19,9 +19,15 @@ package discover
 
 import (
 	"github.com/pole-io/pole-server/apis/apiserver"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
-// init 自注册到API服务器插槽
-func init() {
-	_ = apiserver.Register("service-grpc", &GRPCServer{})
+func Register(registry *pluginapi.Registry) error {
+	return apiserver.RegisterFactory(registry, pluginapi.Descriptor{
+		Kind:   pluginapi.KindAPIServer,
+		Name:   "service-grpc",
+		Origin: pluginapi.OriginBuiltin,
+	}, func() (apiserver.Apiserver, error) {
+		return &GRPCServer{}, nil
+	})
 }

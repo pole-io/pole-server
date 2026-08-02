@@ -21,12 +21,19 @@ import (
 	"errors"
 
 	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 const PluginName = "whitelist"
 
-func init() {
-	apis.RegisterPlugin(PluginName, &ipWhitelist{})
+func Register(registry *pluginapi.Registry) error {
+	return apis.RegisterPluginFactory(registry, pluginapi.Descriptor{
+		Kind:   pluginapi.KindWhitelist,
+		Name:   PluginName,
+		Origin: pluginapi.OriginBuiltin,
+	}, func() (apis.Plugin, error) {
+		return &ipWhitelist{}, nil
+	})
 }
 
 type ipWhitelist struct {

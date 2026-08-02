@@ -20,8 +20,10 @@ package apiserver
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 const (
@@ -67,16 +69,79 @@ type EnrichApiserver interface {
 }
 
 var (
+	slotsMu sync.RWMutex
+
+	// Slots 已弃用，仅保留源代码兼容。运行时代码应使用 RuntimeSlots。
 	Slots = make(map[string]Apiserver)
 )
 
 // Register 注册API服务器
 func Register(name string, server Apiserver) error {
-	if _, exist := Slots[name]; exist {
-		return fmt.Errorf("apiserver name:%s exist", name)
+	if server == nil {
+		return fmt.Errorf("apiserver is nil: name=%s", name)
 	}
-
+	slotsMu.Lock()
+	defer slotsMu.Unlock()
+	if err := RegisterFactory(pluginapi.DefaultRegistry(), pluginapi.Descriptor{
+		Kind:   pluginapi.KindAPIServer,
+		Name:   name,
+		Origin: pluginapi.OriginLegacy,
+	}, func() (Apiserver, error) {
+		return server, nil
+	}); err != nil {
+		return err
+	}
 	Slots[name] = server
 
 	return nil
+}
+
+func ReplaceRuntimeSlots(slots map[string]Apiserver) {
+	next := cloneSlots(slots)
+	slotsMu.Lock()
+	Slots = next
+	slotsMu.Unlock()
+}
+
+func RuntimeSlots() map[string]Apiserver {
+	slotsMu.RLock()
+	snapshot := cloneSlots(Slots)
+	slotsMu.RUnlock()
+	return snapshot
+}
+
+func cloneSlots(slots map[string]Apiserver) map[string]Apiserver {
+	snapshot := make(map[string]Apiserver, len(slots))
+	for name, server := range slots {
+		snapshot[name] = server
+	}
+	return snapshot
+}
+
+type Factory func() (Apiserver, error)
+
+func RegisterFactory(registry *pluginapi.Registry, descriptor pluginapi.Descriptor,
+	factory Factory) error {
+	if factory == nil {
+		return fmt.Errorf("apiserver factory is nil: name=%s", descriptor.Name)
+	}
+	descriptor.Kind = pluginapi.KindAPIServer
+	return registry.Register(descriptor, func() (any, error) {
+		server, err := factory()
+		if err != nil {
+			return nil, err
+		}
+		if server == nil {
+			return nil, fmt.Errorf("apiserver factory returned nil: name=%s", descriptor.Name)
+		}
+		return server, nil
+	})
+}
+
+func Resolve(name string) (Apiserver, error) {
+	return pluginapi.ResolveAs[Apiserver](pluginapi.ActiveRegistry(), pluginapi.KindAPIServer, name)
+}
+
+func Registered(name string) bool {
+	return pluginapi.ActiveRegistry().Contains(pluginapi.KindAPIServer, name)
 }

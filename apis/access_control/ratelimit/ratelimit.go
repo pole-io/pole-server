@@ -18,9 +18,11 @@
 package ratelimit
 
 import (
-	"sync"
+	"fmt"
+	"strings"
 
 	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 // RatelimitType rate limit type
@@ -48,9 +50,7 @@ var RatelimitStr = map[RatelimitType]string{
 	InstanceRatelimit: "instance-limit",
 }
 
-var (
-	rateLimitOnce sync.Once
-)
+var rateLimitRuntime pluginapi.RuntimeValue[Ratelimit]
 
 // Ratelimit Ratelimit plugin interface
 type Ratelimit interface {
@@ -65,5 +65,30 @@ type Ratelimit interface {
 
 // GetRatelimit Get the Ratelimit plugin
 func GetRatelimit() Ratelimit {
-	return nil
+	rateLimit, err := ResolveRatelimit()
+	if err != nil {
+		panic(fmt.Errorf("ratelimit plugin init err: %w", err))
+	}
+	return rateLimit
+}
+
+func ResolveRatelimit() (Ratelimit, error) {
+	return rateLimitRuntime.Load(func() (Ratelimit, error) {
+		config := &apis.GetPluginConfig().RateLimit
+		if strings.TrimSpace(config.Name) == "" {
+			return nil, nil
+		}
+		plugin, err := apis.ResolvePlugin(apis.PluginTypeRateLimit, config.Name)
+		if err != nil {
+			return nil, err
+		}
+		rateLimit, ok := plugin.(Ratelimit)
+		if !ok {
+			return nil, fmt.Errorf("plugin target %q is not Ratelimit", config.Name)
+		}
+		if err := rateLimit.Initialize(config); err != nil {
+			return nil, err
+		}
+		return rateLimit, nil
+	})
 }

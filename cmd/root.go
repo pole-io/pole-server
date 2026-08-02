@@ -19,6 +19,8 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 var (
@@ -40,4 +42,9 @@ func init() {
 // Execute 执行命令行解析
 func Execute() {
 	_ = rootCmd.Execute()
+}
+
+func ExecuteWithPluginRegistry(registry *pluginapi.Registry) {
+	pluginRegistry = registry
+	Execute()
 }

@@ -28,11 +28,6 @@ const (
 	PluginName = "prometheus"
 )
 
-func init() {
-	s := &StatisWorker{}
-	apis.RegisterPlugin(s.Name(), s)
-}
-
 // PrometheusStatis is a struct for prometheus statistics
 type StatisWorker struct {
 	discoveryHandler *discoveryMetricHandle

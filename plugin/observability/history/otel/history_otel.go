@@ -20,11 +20,6 @@ const (
 
 var log = commonlog.RegisterScope("HistoryOtel", "", 0)
 
-func init() {
-	worker := &HistoryWorker{}
-	apis.RegisterPlugin(worker.Name(), worker)
-}
-
 type HistoryWorker struct {
 	exporter *commonotel.LogExporter
 }

@@ -19,15 +19,12 @@ package crypto
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
-var (
-	cryptoManagerOnce sync.Once
-	cryptoManager     *defaultCryptoManager
-)
+var cryptoRuntime pluginapi.RuntimeValue[CryptoManager]
 
 // Crypto Crypto interface
 type Crypto interface {
@@ -39,25 +36,25 @@ type Crypto interface {
 
 // GetCrypto get the crypto plugin
 func GetCryptoManager() CryptoManager {
-	if cryptoManager != nil {
-		return cryptoManager
-	}
-
-	cryptoManagerOnce.Do(func() {
+	manager, err := cryptoRuntime.Load(func() (CryptoManager, error) {
 		var (
 			entries []apis.ConfigEntry
 		)
 		entries = append(entries, apis.GetPluginConfig().Crypto.Entries...)
-		cryptoManager = &defaultCryptoManager{
+		manager := &defaultCryptoManager{
 			cryptos: make(map[string]Crypto),
 			options: entries,
 		}
 
-		if err := cryptoManager.Initialize(); err != nil {
-			panic(fmt.Errorf("Crypto plugin init err: %s", err.Error()))
+		if err := manager.Initialize(); err != nil {
+			return nil, err
 		}
+		return manager, nil
 	})
-	return cryptoManager
+	if err != nil {
+		panic(fmt.Errorf("Crypto plugin init err: %s", err.Error()))
+	}
+	return manager
 }
 
 // CryptoManager crypto algorithm manager
@@ -82,9 +79,9 @@ func (c *defaultCryptoManager) Name() string {
 func (c *defaultCryptoManager) Initialize() error {
 	for i := range c.options {
 		entry := c.options[i]
-		item, exist := apis.GetPlugin(apis.PluginTypeCrypto, entry.Name)
-		if !exist {
-			return fmt.Errorf("plugin Crypto not found target: %s", entry.Name)
+		item, err := apis.ResolvePlugin(apis.PluginTypeCrypto, entry.Name)
+		if err != nil {
+			return fmt.Errorf("resolve Crypto plugin %q: %w", entry.Name, err)
 		}
 		crypto, ok := item.(Crypto)
 		if !ok {

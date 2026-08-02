@@ -20,9 +20,15 @@ package nacosserver
 import (
 	"github.com/pole-io/pole-server/apis/apiserver"
 	_ "github.com/pole-io/pole-server/plugin/apiserver/nacosserver/v2"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
-// init 自注册到API服务器插槽
-func init() {
-	_ = apiserver.Register(ProtooclName, &NacosServer{})
+func Register(registry *pluginapi.Registry) error {
+	return apiserver.RegisterFactory(registry, pluginapi.Descriptor{
+		Kind:   pluginapi.KindAPIServer,
+		Name:   ProtooclName,
+		Origin: pluginapi.OriginBuiltin,
+	}, func() (apiserver.Apiserver, error) {
+		return &NacosServer{}, nil
+	})
 }

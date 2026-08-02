@@ -16,11 +16,6 @@ const PluginName = "otel"
 
 var log = commonlog.RegisterScope("DiscoverEventOtel", "", 0)
 
-func init() {
-	worker := &DiscoverEventWorker{}
-	apis.RegisterPlugin(worker.Name(), worker)
-}
-
 type DiscoverEventWorker struct {
 	exporter *commonotel.LogExporter
 }

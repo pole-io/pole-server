@@ -19,15 +19,14 @@ package cmdb
 
 import (
 	"fmt"
-	"sync"
+	"strings"
 
 	"github.com/pole-io/pole-server/apis"
 	svctypes "github.com/pole-io/pole-server/apis/pkg/types/service"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
-var (
-	once sync.Once
-)
+var cmdbRuntime pluginapi.RuntimeValue[CMDB]
 
 // CMDB CMDB插件接口
 type CMDB interface {
@@ -50,17 +49,26 @@ type CMDB interface {
 
 // GetCMDB 获取CMDB插件
 func GetCMDB() CMDB {
-	c := &apis.GetPluginConfig().CMDB
-
-	plugin, exist := apis.GetPlugin(apis.PluginTypeCMDB, c.Name)
-	if !exist {
-		return nil
-	}
-
-	once.Do(func() {
-		if err := plugin.Initialize(c); err != nil {
-			panic(fmt.Errorf("plugin init err: %s", err.Error()))
+	cmdb, err := cmdbRuntime.Load(func() (CMDB, error) {
+		config := &apis.GetPluginConfig().CMDB
+		if strings.TrimSpace(config.Name) == "" {
+			return nil, nil
 		}
+		plugin, err := apis.ResolvePlugin(apis.PluginTypeCMDB, config.Name)
+		if err != nil {
+			return nil, err
+		}
+		typed, ok := plugin.(CMDB)
+		if !ok {
+			return nil, fmt.Errorf("plugin target: %s not CMDB", config.Name)
+		}
+		if err := typed.Initialize(config); err != nil {
+			return nil, err
+		}
+		return typed, nil
 	})
-	return plugin.(CMDB)
+	if err != nil {
+		panic(fmt.Errorf("CMDB plugin init err: %w", err))
+	}
+	return cmdb
 }

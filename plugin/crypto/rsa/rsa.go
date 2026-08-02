@@ -25,6 +25,7 @@ import (
 	"encoding/base64"
 
 	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 const (
@@ -32,8 +33,14 @@ const (
 	PluginName = "RSA"
 )
 
-func init() {
-	apis.RegisterPlugin(PluginName, &RSACrypto{})
+func Register(registry *pluginapi.Registry) error {
+	return apis.RegisterPluginFactory(registry, pluginapi.Descriptor{
+		Kind:   pluginapi.KindCrypto,
+		Name:   PluginName,
+		Origin: pluginapi.OriginBuiltin,
+	}, func() (apis.Plugin, error) {
+		return &RSACrypto{}, nil
+	})
 }
 
 // AESCrypto AES crypto

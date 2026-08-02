@@ -53,8 +53,6 @@ import (
 	"github.com/pole-io/pole-server/pkg/service/batch"
 	"github.com/pole-io/pole-server/pkg/service/healthcheck"
 	"github.com/pole-io/pole-server/plugin/access_control/auth"
-	_ "github.com/pole-io/pole-server/plugin/access_control/auth/policy"
-	_ "github.com/pole-io/pole-server/plugin/access_control/auth/user"
 	storeplugin "github.com/pole-io/pole-server/plugin/store"
 	sqldb "github.com/pole-io/pole-server/plugin/store/mysql"
 	testdata "github.com/pole-io/pole-server/test/data"
@@ -63,8 +61,6 @@ import (
 	_ "github.com/pole-io/pole-server/pkg/goverrule/interceptor"
 	_ "github.com/pole-io/pole-server/pkg/namespace/interceptor"
 	_ "github.com/pole-io/pole-server/pkg/service/interceptor"
-	_ "github.com/pole-io/pole-server/plugin/service/healthchecker/heartbeat"
-	_ "github.com/pole-io/pole-server/plugin/service/healthchecker/probe"
 )
 
 func init() {

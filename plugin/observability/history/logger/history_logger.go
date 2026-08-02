@@ -33,10 +33,6 @@ const (
 var log = commonLog.RegisterScope(PluginName, "", 0)
 
 // init 初始化注册函数
-func init() {
-	apis.RegisterPlugin(PluginName, &HistoryLogger{})
-}
-
 // HistoryLogger 历史记录logger
 type HistoryLogger struct {
 }

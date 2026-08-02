@@ -75,11 +75,6 @@ var (
 	ErrorPeerNotInitialize = errors.New("p2p checker uninitialize")
 )
 
-func init() {
-	d := &HeartBeatHealthChecker{}
-	apis.RegisterPlugin(d.Name(), d)
-}
-
 // HeartBeatHealthChecker 对等节点心跳健康检查
 // 1. HeartBeatHealthChecker 获取当前 pole.checker 服务下的所有节点
 // 2. peer 之间建立 gRPC 长连接

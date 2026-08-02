@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 // Config Store的通用配置
@@ -30,23 +32,64 @@ type Config struct {
 }
 
 var (
-	// StoreSlots store slots
+	// StoreSlots 已弃用，仅保留旧注册入口的实例投影。
 	StoreSlots = make(map[string]Store)
+	slotsMu    sync.Mutex
 
-	once    = &sync.Once{}
-	config  = &Config{}
-	initErr error
+	initMu              sync.Mutex
+	config              = &Config{}
+	initializedRegistry *pluginapi.Registry
+	initializedName     string
+	initErr             error
 )
 
 // RegisterStore 注册一个新的Store
 func RegisterStore(s Store) error {
-	name := s.Name()
-	if _, ok := StoreSlots[name]; ok {
-		return errors.New("store name already existed")
+	if s == nil {
+		return errors.New("store is nil")
 	}
-
+	name := s.Name()
+	if err := RegisterStoreFactory(pluginapi.DefaultRegistry(), pluginapi.Descriptor{
+		Kind:   pluginapi.KindStore,
+		Name:   name,
+		Origin: pluginapi.OriginLegacy,
+	}, func() (Store, error) {
+		return s, nil
+	}); err != nil {
+		return err
+	}
+	slotsMu.Lock()
 	StoreSlots[name] = s
+	slotsMu.Unlock()
 	return nil
+}
+
+type Factory func() (Store, error)
+
+func RegisterStoreFactory(registry *pluginapi.Registry, descriptor pluginapi.Descriptor,
+	factory Factory) error {
+	if factory == nil {
+		return fmt.Errorf("store factory is nil: name=%s", descriptor.Name)
+	}
+	descriptor.Kind = pluginapi.KindStore
+	return registry.Register(descriptor, func() (any, error) {
+		store, err := factory()
+		if err != nil {
+			return nil, err
+		}
+		if store == nil {
+			return nil, fmt.Errorf("store factory returned nil: name=%s", descriptor.Name)
+		}
+		if descriptor.Name != store.Name() {
+			return nil, fmt.Errorf("store name mismatch: registered=%s actual=%s",
+				descriptor.Name, store.Name())
+		}
+		return store, nil
+	})
+}
+
+func ResolveStore(name string) (Store, error) {
+	return pluginapi.ResolveAs[Store](pluginapi.ActiveRegistry(), pluginapi.KindStore, name)
 }
 
 // GetStore 获取Store
@@ -56,12 +99,12 @@ func GetStore() (Store, error) {
 		return nil, errors.New("store name is empty")
 	}
 
-	store, ok := StoreSlots[name]
-	if !ok {
-		return nil, fmt.Errorf("store `%s` not found", name)
+	store, err := ResolveStore(name)
+	if err != nil {
+		return nil, fmt.Errorf("resolve store %q: %w", name, err)
 	}
 
-	if err := initialize(store); err != nil {
+	if err := initialize(name, store); err != nil {
 		return nil, err
 	}
 	return store, nil
@@ -77,12 +120,19 @@ func GetStoreConfig() *Config {
 }
 
 // initialize  包裹了初始化函数，在GetStore的时候会在自动调用，全局初始化一次
-func initialize(s Store) error {
-	once.Do(func() {
-		fmt.Printf("[Store][Info] current use store plugin : %s\n", s.Name())
-		if err := s.Initialize(config); err != nil {
-			initErr = fmt.Errorf("initialize store %q: %w", s.Name(), err)
-		}
-	})
+func initialize(name string, store Store) error {
+	initMu.Lock()
+	defer initMu.Unlock()
+	activeRegistry := pluginapi.ActiveRegistry()
+	if initializedRegistry == activeRegistry && initializedName == name {
+		return initErr
+	}
+	initializedRegistry = activeRegistry
+	initializedName = name
+	initErr = nil
+	fmt.Printf("[Store][Info] current use store plugin : %s\n", store.Name())
+	if err := store.Initialize(config); err != nil {
+		initErr = fmt.Errorf("initialize store %q: %w", store.Name(), err)
+	}
 	return initErr
 }

@@ -26,6 +26,7 @@ import (
 	"errors"
 
 	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 const (
@@ -33,8 +34,14 @@ const (
 	PluginName = "AES"
 )
 
-func init() {
-	apis.RegisterPlugin(PluginName, &AESCrypto{})
+func Register(registry *pluginapi.Registry) error {
+	return apis.RegisterPluginFactory(registry, pluginapi.Descriptor{
+		Kind:   pluginapi.KindCrypto,
+		Name:   PluginName,
+		Origin: pluginapi.OriginBuiltin,
+	}, func() (apis.Plugin, error) {
+		return &AESCrypto{}, nil
+	})
 }
 
 // AESCrypto AES crypto

@@ -25,6 +25,7 @@ import (
 	cachetypes "github.com/pole-io/pole-server/apis/cache"
 	policy_auth "github.com/pole-io/pole-server/plugin/access_control/auth/policy/interceptor/auth"
 	"github.com/pole-io/pole-server/plugin/access_control/auth/policy/interceptor/paramcheck"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 type ServerProxyFactory func(svr *Server, pre authapi.StrategyServer) (authapi.StrategyServer, error)
@@ -43,12 +44,15 @@ func RegisterServerProxy(name string, factor ServerProxyFactory) {
 	serverProxyFactories[name] = factor
 }
 
-func init() {
-	_, nextSvr, err := BuildServer()
-	if err != nil {
-		panic(err)
-	}
-	_ = authapi.RegisterStrategyServer(nextSvr)
+func Register(registry *pluginapi.Registry) error {
+	return authapi.RegisterStrategyServerFactory(registry, pluginapi.Descriptor{
+		Kind:   pluginapi.KindAuthStrategy,
+		Name:   authapi.DefaultPolicyPluginName,
+		Origin: pluginapi.OriginBuiltin,
+	}, func() (authapi.StrategyServer, error) {
+		_, nextServer, err := BuildServer()
+		return nextServer, err
+	})
 }
 
 func loadInterceptors() {

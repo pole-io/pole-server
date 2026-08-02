@@ -39,11 +39,6 @@ const (
 
 var log = commonlog.RegisterScope(PluginName, "", 0)
 
-func init() {
-	d := &discoverEventLocal{}
-	apis.RegisterPlugin(d.Name(), d)
-}
-
 type eventBufferHolder struct {
 	writeCursor int
 	readCursor  int

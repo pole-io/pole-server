@@ -18,14 +18,14 @@
 package whitelist
 
 import (
-	"sync"
+	"fmt"
+	"strings"
 
 	"github.com/pole-io/pole-server/apis"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
-var (
-	whitelistOnce sync.Once
-)
+var whitelistRuntime pluginapi.RuntimeValue[Whitelist]
 
 // Whitelist White list interface
 type Whitelist interface {
@@ -36,5 +36,30 @@ type Whitelist interface {
 
 // GetWhitelist Get the whitelist plugin
 func GetWhitelist() Whitelist {
-	return nil
+	whitelist, err := ResolveWhitelist()
+	if err != nil {
+		panic(fmt.Errorf("whitelist plugin init err: %w", err))
+	}
+	return whitelist
+}
+
+func ResolveWhitelist() (Whitelist, error) {
+	return whitelistRuntime.Load(func() (Whitelist, error) {
+		config := &apis.GetPluginConfig().Whitelist
+		if strings.TrimSpace(config.Name) == "" {
+			return nil, nil
+		}
+		plugin, err := apis.ResolvePlugin(apis.PluginTypeWhitelist, config.Name)
+		if err != nil {
+			return nil, err
+		}
+		whitelist, ok := plugin.(Whitelist)
+		if !ok {
+			return nil, fmt.Errorf("plugin target %q is not Whitelist", config.Name)
+		}
+		if err := whitelist.Initialize(config); err != nil {
+			return nil, err
+		}
+		return whitelist, nil
+	})
 }

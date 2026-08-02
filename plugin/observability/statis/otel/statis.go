@@ -34,11 +34,6 @@ const (
 	attrTrafficDirection = "pole.traffic.direction"
 )
 
-func init() {
-	s := &StatisWorker{}
-	apis.RegisterPlugin(s.Name(), s)
-}
-
 type StatisWorker struct {
 	shutdown commonotel.OtelShutdown
 

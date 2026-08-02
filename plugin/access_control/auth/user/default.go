@@ -24,6 +24,7 @@ import (
 	authapi "github.com/pole-io/pole-server/apis/access_control/auth"
 	user_auth "github.com/pole-io/pole-server/plugin/access_control/auth/user/interceptor/auth"
 	"github.com/pole-io/pole-server/plugin/access_control/auth/user/interceptor/paramcheck"
+	"github.com/pole-io/pole-server/pluginapi"
 )
 
 type ServerProxyFactory func(svr *Server, pre authapi.UserServer) (authapi.UserServer, error)
@@ -42,12 +43,15 @@ func RegisterServerProxy(name string, factor ServerProxyFactory) {
 	serverProxyFactories[name] = factor
 }
 
-func init() {
-	_, nextSvr, err := BuildServer()
-	if err != nil {
-		panic(err)
-	}
-	_ = authapi.RegisterUserServer(nextSvr)
+func Register(registry *pluginapi.Registry) error {
+	return authapi.RegisterUserServerFactory(registry, pluginapi.Descriptor{
+		Kind:   pluginapi.KindAuthUser,
+		Name:   authapi.DefaultUserMgnPluginName,
+		Origin: pluginapi.OriginBuiltin,
+	}, func() (authapi.UserServer, error) {
+		_, nextServer, err := BuildServer()
+		return nextServer, err
+	})
 }
 
 func loadInterceptors() {
