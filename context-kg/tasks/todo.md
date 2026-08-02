@@ -27,8 +27,9 @@ sources: 0
 - annotated tag `v0.1.0-ALPHA.40` 已推送，prerelease
   [v0.1.0-ALPHA.40](https://github.com/lattice-hub/specification/releases/tag/v0.1.0-ALPHA.40)
   已发布；Release-Rust workflow `30739637428` 成功发布 Rust crate。
-- control-plane 删除 `go.work`，`go.mod`/`go.sum` 只引用可拉取的
-  `github.com/pole-io/specification v0.1.0-ALPHA.40`。
+- control-plane 已移除本地未跟踪的 `go.work`，`go.mod`/`go.sum` 只引用可拉取的
+  `github.com/pole-io/specification v0.1.0-ALPHA.40`；实现提交为 `8c80d951`，PR 为
+  [pole-control-plane#25](https://github.com/lattice-hub/pole-control-plane/pull/25)。
 - Rust SDK 根 crate 与 e2e crate 均只引用 `lattice-hub/specification` 的
   `v0.1.0-ALPHA.40`；`cargo tree` 确认依赖图只有该 tag。实现提交为 `1951461`，PR 为
   [pole-client-rust#1](https://github.com/lattice-hub/pole-client-rust/pull/1)。
