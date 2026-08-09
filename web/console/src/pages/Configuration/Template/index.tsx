@@ -28,17 +28,18 @@ import {
   ConfigTemplateValue,
   createConfigTemplate,
   describeConfigTemplateLabels,
+  describeNamespaceConfigTemplateDraft,
   describeConfigTemplateReleases,
   describeConfigTemplates,
   describeNamespaceTemplateValueReleases,
   describeNamespaceTemplateValues,
   NamespaceTemplateValueRelease,
   previewConfigTemplate,
-  publishConfigTemplateRelease,
-  publishNamespaceTemplateValueRelease,
+  publishEnvironmentConfigRelease,
   RenderPreview,
   saveNamespaceTemplateValues,
   saveConfigTemplateLabels,
+  saveNamespaceConfigTemplateDraft,
   TemplateEngine,
   TemplateValueReleaseType,
   updateConfigTemplate,
@@ -48,7 +49,7 @@ import { TrafficMatchConditionRow } from 'pages/Governance/shared/TrafficMatchCo
 import SchemaEditor, { emptySchemaParameter } from './SchemaEditor';
 import ValueEditor, { textToValue, validateTemplateValues } from './ValueEditor';
 import RenderPreviewPanel from './RenderPreviewPanel';
-import VersionManager from './VersionManager';
+import VersionManager, { ENVIRONMENT_DRAFT_ROW_ID } from './VersionManager';
 import styles from './index.module.less';
 import GroupWorkspaceNav from '../Group/GroupWorkspaceNav';
 
@@ -110,7 +111,6 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
   const [loading, setLoading] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<WorkspaceTab>('content');
   const [releases, setReleases] = React.useState<ConfigTemplateRelease[]>([]);
-  const [templateReleaseId, setTemplateReleaseId] = React.useState('');
   const [namespaces, setNamespaces] = React.useState<string[]>([]);
   const [namespace, setNamespace] = React.useState('');
   const [valuesId, setValuesId] = React.useState('');
@@ -124,11 +124,15 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
   const [grayRows, setGrayRows] = React.useState<TrafficMatchConditionRow[]>([defaultGrayRuleRow()]);
   const [valueDraftPreview, setValueDraftPreview] = React.useState<RenderPreview>();
   const [versionPreview, setVersionPreview] = React.useState<RenderPreview>();
-  const [previewTemplateReleaseId, setPreviewTemplateReleaseId] = React.useState('');
-  const [previewValueReleaseId, setPreviewValueReleaseId] = React.useState('');
-  const [templatePublishOpen, setTemplatePublishOpen] = React.useState(false);
-  const [templateReleaseComment, setTemplateReleaseComment] = React.useState('');
-  const [templatePublishing, setTemplatePublishing] = React.useState(false);
+  const [versionComparison, setVersionComparison] = React.useState<{
+    before: RenderPreview;
+    after: RenderPreview;
+    beforeLabel: string;
+    afterLabel: string;
+  }>();
+  const [previewEnvironmentReleaseIds, setPreviewEnvironmentReleaseIds] = React.useState<string[]>([
+    ENVIRONMENT_DRAFT_ROW_ID,
+  ]);
   const [valuePublishOpen, setValuePublishOpen] = React.useState(false);
   const [valuePublishing, setValuePublishing] = React.useState(false);
 
@@ -142,10 +146,6 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
   );
   const hasValueErrors = Object.keys(valueValidationErrors).length > 0;
   const templateDefinitionTab = activeTab === 'content' || activeTab === 'schema' || activeTab === 'basic';
-  const nextTemplateVersion = React.useMemo(
-    () => Math.max(0, ...releases.map((release) => Number(release.version) || 0)) + 1,
-    [releases]
-  );
 
   const ensureValidValues = () => {
     const invalidEntry = Object.entries(valueValidationErrors)[0];
@@ -208,11 +208,10 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
         .catch((error) => openErrNotification('加载模板标签失败', toRequestErrorPayload(error)));
     }
     setEditing(false);
-    setTemplatePublishOpen(false);
     setValuePublishOpen(false);
-    setTemplateReleaseComment('');
     setValueDraftPreview(undefined);
     setVersionPreview(undefined);
+    setVersionComparison(undefined);
     const requestedTabMap: Record<string, WorkspaceTab> = {
       definition: 'basic',
       content: 'content',
@@ -227,31 +226,45 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
   }, [requestedTab, selected]);
 
   React.useEffect(() => {
+    if (!selected?.id || !namespace) return;
+    describeNamespaceConfigTemplateDraft(namespace, selected.id)
+      .then((environmentDraft) => {
+        if (!environmentDraft) return;
+        setDraft((current) => {
+          if (String(current.id) !== String(selected.id)) return current;
+          return {
+            ...current,
+            content: environmentDraft.content,
+            format: environmentDraft.format,
+            engine: environmentDraft.engine,
+            parameterSchema: environmentDraft.parameterSchema,
+            revision: environmentDraft.revision,
+            draftVersion: environmentDraft.draftVersion,
+            initializedFrom: environmentDraft.initializedFrom,
+          };
+        });
+      })
+      .catch((error) => openErrNotification('加载环境模板草稿失败', toRequestErrorPayload(error)));
+  }, [namespace, selected]);
+
+  React.useEffect(() => {
     if (!draft.id) {
       setReleases([]);
-      setTemplateReleaseId('');
-      setPreviewTemplateReleaseId('');
       setValueDraftPreview(undefined);
       return;
     }
     describeConfigTemplateReleases(draft.id)
       .then((result) => {
         setReleases(result.releases);
-        setTemplateReleaseId((current) =>
-          result.releases.some((item) => item.id === current) ? current : result.releases[0]?.id || ''
-        );
-        setPreviewTemplateReleaseId((current) =>
-          result.releases.some((item) => item.id === current) ? current : ''
-        );
       })
-      .catch((error) => openErrNotification('加载模板发布版本失败', toRequestErrorPayload(error)));
+      .catch((error) => openErrNotification('加载模板快照失败', toRequestErrorPayload(error)));
   }, [draft.id]);
 
   React.useEffect(() => {
     if (!draft.id || !namespace) {
       setValues(initialValues(draft));
       setValueReleases([]);
-      setPreviewValueReleaseId('');
+      setPreviewEnvironmentReleaseIds([ENVIRONMENT_DRAFT_ROW_ID]);
       setValueDraftPreview(undefined);
       return;
     }
@@ -265,12 +278,29 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
         setValues(saved?.values && Object.keys(saved.values).length ? saved.values : initialValues(draft));
         setValueReleases(history.releases);
         setValueDraftPreview(undefined);
-        setPreviewValueReleaseId((current) =>
-          history.releases.some((item) => item.id === current) ? current : ''
-        );
+        setPreviewEnvironmentReleaseIds((current) => {
+          const retained = current.filter(
+            (id) => id === ENVIRONMENT_DRAFT_ROW_ID || history.releases.some((item) => item.id === id)
+          );
+          return retained.length ? retained.slice(-2) : [ENVIRONMENT_DRAFT_ROW_ID];
+        });
       })
       .catch((error) => openErrNotification('加载 Namespace Value 失败', toRequestErrorPayload(error)));
   }, [draft.id, namespace]);
+
+  React.useEffect(() => {
+    if (previewEnvironmentReleaseIds.includes(ENVIRONMENT_DRAFT_ROW_ID)) {
+      setVersionPreview(undefined);
+      setVersionComparison(undefined);
+    }
+  }, [
+    draft.content,
+    draft.engine,
+    draft.format,
+    draft.parameterSchema,
+    previewEnvironmentReleaseIds,
+    values,
+  ]);
 
   const validateDraft = () => {
     if (!draft.name.trim()) return '模板名称不能为空';
@@ -300,61 +330,24 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
     }
     try {
       if (draft.id) {
+        if (!namespace) throw new Error('请先选择环境空间');
+        await saveNamespaceConfigTemplateDraft(namespace, draft);
         await updateConfigTemplate(draft);
         await saveConfigTemplateLabels(draft.id, draft.labels || {});
       } else {
         await createConfigTemplate(draft);
         const result = await describeConfigTemplates();
         const created = result.templates.find((item) => item.name === draft.name);
-        if (created) await saveConfigTemplateLabels(created.id, draft.labels || {});
+        if (created) {
+          await saveConfigTemplateLabels(created.id, draft.labels || {});
+          if (namespace) await saveNamespaceConfigTemplateDraft(namespace, { ...draft, id: created.id });
+        }
       }
-      openInfoNotification('保存成功', '模板草稿已保存');
+      openInfoNotification('保存成功', `${namespace || '当前'} 环境的模板草稿已保存`);
       setEditing(false);
       await loadTemplates(draft.name);
     } catch (error) {
       openErrNotification('保存模板失败', toRequestErrorPayload(error));
-    }
-  };
-
-  const openTemplatePublishDialog = () => {
-    if (!draft.id) {
-      openErrNotification('无法发布模板', '请先保存模板草稿');
-      return;
-    }
-    if (editing) {
-      openErrNotification('无法发布模板', '请先保存当前模板草稿');
-      return;
-    }
-    const message = validateDraft();
-    if (message) {
-      openErrNotification('无法发布模板', message);
-      return;
-    }
-    setTemplateReleaseComment('');
-    setTemplatePublishOpen(true);
-  };
-
-  const publishTemplate = async () => {
-    if (!draft.id) return;
-    setTemplatePublishing(true);
-    try {
-      await publishConfigTemplateRelease({
-        ...draft,
-        comment: templateReleaseComment.trim() || draft.comment,
-      });
-      const result = await describeConfigTemplateReleases(draft.id);
-      setReleases(result.releases);
-      setTemplateReleaseId(result.releases[0]?.id || '');
-      setPreviewTemplateReleaseId('');
-      setValueDraftPreview(undefined);
-      setVersionPreview(undefined);
-      setTemplatePublishOpen(false);
-      setTemplateReleaseComment('');
-      openInfoNotification('发布成功', '已创建不可变 Template Release');
-    } catch (error) {
-      openErrNotification('发布模板失败', toRequestErrorPayload(error));
-    } finally {
-      setTemplatePublishing(false);
     }
   };
 
@@ -365,32 +358,71 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
   };
 
   const runVersionPreview = async () => {
-    const selectedTemplateRelease = releases.find((release) => release.id === previewTemplateReleaseId);
-    const selectedValueRelease = valueReleases.find((release) => release.id === previewValueReleaseId);
-    if (!selectedTemplateRelease || !selectedValueRelease) {
-      openErrNotification('无法预览版本组合', '请选择模板版本和环境 Value 版本');
+    const selections = previewEnvironmentReleaseIds.slice(0, 2).map((id) => {
+      if (id === ENVIRONMENT_DRAFT_ROW_ID) {
+        return { id, label: '当前草稿组合', template: draft, selectedValues: values };
+      }
+      const release = valueReleases.find((item) => item.id === id);
+      const template = release ? releases.find((item) => item.id === release.templateReleaseId) : undefined;
+      return {
+        id,
+        label: release ? `环境版本 v${release.version}` : id,
+        template,
+        selectedValues: release?.values,
+      };
+    });
+    if (!selections.length || selections.some((item) => !item.template || !item.selectedValues)) {
+      openErrNotification('无法预览环境版本', '所选组合版本或其模板快照已不存在，请重新选择');
       return;
     }
+    if (previewEnvironmentReleaseIds.includes(ENVIRONMENT_DRAFT_ROW_ID)) {
+      const message = validateDraft();
+      if (message) {
+        openErrNotification('无法预览草稿组合', message);
+        return;
+      }
+    }
+    for (const selection of selections) {
+      const combinationErrors = validateTemplateValues(selection.template!.parameterSchema, selection.selectedValues!);
+      const invalidEntry = Object.entries(combinationErrors)[0];
+      if (invalidEntry) {
+        openErrNotification('无法预览环境版本', `${selection.label} · ${invalidEntry[0]}：${invalidEntry[1]}`);
+        return;
+      }
+    }
     try {
-      const result = await previewConfigTemplate(selectedTemplateRelease, selectedValueRelease.values);
-      setVersionPreview(result);
-      if (result.valid) openInfoNotification('预览成功', '所选模板版本与 Value 版本渲染校验通过');
+      const results = await Promise.all(
+        selections.map((item) => previewConfigTemplate(item.template!, item.selectedValues!))
+      );
+      if (results.length === 2) {
+        setVersionPreview(undefined);
+        setVersionComparison({
+          before: results[0],
+          after: results[1],
+          beforeLabel: selections[0].label,
+          afterLabel: selections[1].label,
+        });
+      } else {
+        setVersionComparison(undefined);
+        setVersionPreview(results[0]);
+      }
+      if (results.every((result) => result.valid)) {
+        openInfoNotification(
+          '预览成功',
+          results.length === 2 ? '两个环境配置版本已完成格式化对比' : `${selections[0].label}渲染校验通过`
+        );
+      }
     } catch (error) {
-      openErrNotification('版本组合预览失败', toRequestErrorPayload(error));
+      openErrNotification('环境版本预览失败', toRequestErrorPayload(error));
     }
   };
 
   const runValuePreview = async () => {
     if (!ensureValidValues()) return;
-    const selectedTemplateRelease = releases.find((release) => release.id === templateReleaseId);
-    if (!selectedTemplateRelease) {
-      openErrNotification('无法预览 Value', '请先选择固定模板版本');
-      return;
-    }
     try {
-      const result = await previewConfigTemplate(selectedTemplateRelease, values);
+      const result = await previewConfigTemplate(draft, values);
       setValueDraftPreview(result);
-      if (result.valid) openInfoNotification('预览成功', '当前未保存 Value 的渲染与格式校验通过');
+      if (result.valid) openInfoNotification('预览成功', '当前模板草稿与 Value 草稿渲染校验通过');
     } catch (error) {
       openErrNotification('Value 预览失败', toRequestErrorPayload(error));
     }
@@ -418,8 +450,8 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
 
   const openValuePublishDialog = () => {
     if (!ensureValidValues()) return;
-    if (!draft.id || !namespace || !templateReleaseId) {
-      openErrNotification('无法发布 Value', '请先选择已发布的模板版本');
+    if (!draft.id || !namespace || editing) {
+      openErrNotification('无法发布环境配置', editing ? '请先保存当前模板草稿' : '请先选择环境并保存模板草稿');
       return;
     }
     setValueReleaseType('TEMPLATE_VALUE_RELEASE_NORMAL');
@@ -430,20 +462,20 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
 
   const publishValues = async () => {
     if (!ensureValidValues()) return;
-    if (!draft.id || !namespace || !templateReleaseId) return;
+    if (!draft.id || !namespace || editing) return;
     const betaLabels = valueReleaseType === 'TEMPLATE_VALUE_RELEASE_GRAY' ? grayRowsToBetaLabels(grayRows) : [];
     if (valueReleaseType === 'TEMPLATE_VALUE_RELEASE_GRAY' && betaLabels.length === 0) {
-      openErrNotification('无法发布灰度 Value', '至少需要一条有效灰度规则');
+      openErrNotification('无法发布灰度环境版本', '至少需要一条有效灰度规则');
       return;
     }
     setValuePublishing(true);
     try {
-      await publishNamespaceTemplateValueRelease({
+      await publishEnvironmentConfigRelease({
         id: '',
         valuesId,
         namespace,
         templateId: draft.id,
-        templateReleaseId,
+        templateReleaseId: '',
         values,
         releaseType: valueReleaseType,
         betaLabels,
@@ -451,15 +483,20 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
         active: true,
         comment: valueComment,
       });
-      const history = await describeNamespaceTemplateValueReleases(namespace, draft.id);
-      setValueReleases(history.releases);
-      setPreviewValueReleaseId('');
+      const [templateHistory, environmentHistory] = await Promise.all([
+        describeConfigTemplateReleases(draft.id),
+        describeNamespaceTemplateValueReleases(namespace, draft.id),
+      ]);
+      setReleases(templateHistory.releases);
+      setValueReleases(environmentHistory.releases);
+      setPreviewEnvironmentReleaseIds([ENVIRONMENT_DRAFT_ROW_ID]);
       setVersionPreview(undefined);
+      setVersionComparison(undefined);
       setValuePublishOpen(false);
       setValueComment('');
-      openInfoNotification('发布成功', `${namespace} 的 Value Release 已生效`);
+      openInfoNotification('发布成功', `${namespace} 的环境配置版本已生效`);
     } catch (error) {
-      openErrNotification('发布 Namespace Value 失败', toRequestErrorPayload(error));
+      openErrNotification('发布环境配置失败', toRequestErrorPayload(error));
     } finally {
       setValuePublishing(false);
     }
@@ -475,12 +512,11 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
         </Button>
       ),
     },
-    { colKey: 'format', title: '格式', width: 92 },
     {
-      colKey: 'parameters',
-      title: '参数',
-      width: 72,
-      cell: ({ row }) => row.parameterSchema?.length || 0,
+      colKey: 'scope',
+      title: '定义范围',
+      width: 96,
+      cell: () => <Tag size="small" variant="light">按环境</Tag>,
     },
   ];
 
@@ -500,8 +536,8 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
           title={requestedGroup ? '配置模板工作区' : '配置模板'}
           description={
             requestedGroup
-              ? '先选择全局复用的模板，再按 Namespace 维护 Template Value；当前配置分组的文件可显式固定模板版本。'
-              : '全局维护模板与参数 Schema，各 Namespace 独立维护 Value；配置文件显式固定不可变模板版本。'
+              ? '先选择全局复用的模板，再按环境维护并发布模板与 Value 的原子组合版本。'
+              : '模板名称、说明与标签全局复用；内容、参数 Schema 和 Value 按环境独立维护并组合发布。'
           }
         />
       )}
@@ -561,17 +597,37 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
                 <h3>{draft.name || '新建配置模板'}</h3>
                 <Space size={6}>
                   <Tag variant="light" theme="primary">{draft.format || 'text'}</Tag>
-                  <Tag variant="light">全局模板</Tag>
+                  <Tag variant="light">逻辑模板</Tag>
                   <Tag variant="light">pole-mustache-v1</Tag>
-                  <Tag variant="light" theme={releases.length ? 'success' : 'default'}>
-                    {releases.length ? `${releases.length} 个发布版本` : '未发布'}
+                  <Tag variant="light" theme={valueReleases.length ? 'success' : 'default'}>
+                    {valueReleases.length ? `${valueReleases.length} 个环境版本` : '未发布'}
                   </Tag>
                 </Space>
               </div>
               <div className={styles.resourcePath} aria-label="配置模板资源路径">
-                <span>{requestedGroup || '全局模板'}</span>
+                <span>{requestedGroup || '逻辑模板'}</span>
                 <i>/</i>
                 <strong>{draft.name || '新建配置模板'}</strong>
+              </div>
+              <div className={styles.environmentContext}>
+                <span>当前环境定义</span>
+                <Select
+                  value={namespace}
+                  options={namespaces.map((value) => ({ label: value, value }))}
+                  onChange={(value: string) => {
+                    setNamespace(value);
+                    setPreviewEnvironmentReleaseIds([ENVIRONMENT_DRAFT_ROW_ID]);
+                    setValueDraftPreview(undefined);
+                    setVersionPreview(undefined);
+                    setVersionComparison(undefined);
+                  }}
+                  placeholder="选择环境空间"
+                />
+                {draft.initializedFrom && (
+                  <Tag size="small" variant="light">
+                    {draft.initializedFrom.startsWith('environment-release:') ? '由当前环境版本初始化' : '由旧模板初始化'}
+                  </Tag>
+                )}
               </div>
             </div>
             {templateDefinitionTab && (
@@ -586,14 +642,6 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
                     <Button icon={<SaveIcon />} theme="primary" onClick={saveDraft}>保存模板草稿</Button>
                   </>
                 )}
-                <Button
-                  icon={<RocketIcon />}
-                  theme="primary"
-                  disabled={!draft.id || editing}
-                  onClick={openTemplatePublishDialog}
-                >
-                  发布模板版本
-                </Button>
               </div>
             )}
           </header>
@@ -651,38 +699,10 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
             <TabPanel value="values" label="环境 Value">
               <div className={styles.valuesPane}>
                 <section className={styles.valueToolbar}>
-                  <label>
-                    <span>环境空间</span>
-                    <Select
-                      value={namespace}
-                      options={namespaces.map((value) => ({
-                        label: value,
-                        value,
-                      }))}
-                      onChange={(value: string) => {
-                        setNamespace(value);
-                        setPreviewValueReleaseId('');
-                        setValueDraftPreview(undefined);
-                        setVersionPreview(undefined);
-                      }}
-                      placeholder="选择环境空间"
-                    />
-                  </label>
-                  <label>
-                    <span>固定模板版本</span>
-                    <Select
-                      value={templateReleaseId}
-                      options={releases.map((release) => ({
-                        label: `v${release.version} · ${release.id}`,
-                        value: release.id,
-                      }))}
-                      onChange={(value: string) => {
-                        setTemplateReleaseId(value);
-                        setValueDraftPreview(undefined);
-                      }}
-                      placeholder="先发布模板版本"
-                    />
-                  </label>
+                  <div className={styles.valueEnvironmentSummary}>
+                    <span>环境配置</span>
+                    <strong>{namespace || '未选择环境'}</strong>
+                  </div>
                   <div className={styles.valueActions}>
                     <Button
                       variant="outline"
@@ -694,7 +714,7 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
                     <Button
                       variant="outline"
                       onClick={runValuePreview}
-                      disabled={!templateReleaseId || hasValueErrors}
+                      disabled={!namespace || !draft.id || hasValueErrors}
                     >
                       预览渲染
                     </Button>
@@ -702,9 +722,9 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
                       theme="primary"
                       icon={<RocketIcon />}
                       onClick={openValuePublishDialog}
-                      disabled={!namespace || !draft.id || !templateReleaseId || hasValueErrors}
+                      disabled={!namespace || !draft.id || editing || hasValueErrors}
                     >
-                      发布 Value 版本
+                      发布环境配置
                     </Button>
                   </div>
                 </section>
@@ -727,21 +747,23 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
                 )}
               </div>
             </TabPanel>
-            <TabPanel value="versions" label={`版本管理 · ${releases.length + valueReleases.length}`}>
+            <TabPanel value="versions" label={`版本管理 · ${valueReleases.length}`}>
               <VersionManager
                 namespace={namespace}
-                releases={releases}
-                valueReleases={valueReleases}
-                templateReleaseId={previewTemplateReleaseId}
-                valueReleaseId={previewValueReleaseId}
+                templateDraft={draft}
+                valueDraft={values}
+                templateSnapshots={releases}
+                releases={valueReleases}
+                releaseIds={previewEnvironmentReleaseIds}
                 preview={versionPreview}
-                onTemplateReleaseChange={(value) => {
-                  setPreviewTemplateReleaseId(value);
+                comparison={versionComparison}
+                onReleaseChange={(value) => {
+                  setPreviewEnvironmentReleaseIds((current) => {
+                    if (current.includes(value)) return current.length === 1 ? current : current.filter((id) => id !== value);
+                    return current.length >= 2 ? [current[1], value] : [...current, value];
+                  });
                   setVersionPreview(undefined);
-                }}
-                onValueReleaseChange={(value) => {
-                  setPreviewValueReleaseId(value);
-                  setVersionPreview(undefined);
+                  setVersionComparison(undefined);
                 }}
                 onPreview={runVersionPreview}
               />
@@ -838,52 +860,8 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
             </TabPanel>
           </Tabs>
           <Dialog
-            visible={templatePublishOpen}
-            header="发布模板版本"
-            width={640}
-            onClose={() => {
-              if (!templatePublishing) setTemplatePublishOpen(false);
-            }}
-            footer={(
-              <>
-                <Button variant="outline" disabled={templatePublishing} onClick={() => setTemplatePublishOpen(false)}>
-                  取消
-                </Button>
-                <Button theme="primary" icon={<RocketIcon />} loading={templatePublishing} onClick={publishTemplate}>
-                  发布 v{nextTemplateVersion}
-                </Button>
-              </>
-            )}
-          >
-            <div className={styles.publishDialog}>
-              <div className={styles.publishObjectSummary}>
-                <div>
-                  <span>发布对象</span>
-                  <strong>模板版本 v{nextTemplateVersion}</strong>
-                </div>
-                <p>发布后生成不可变模板版本；环境 Value 仍需在对应环境中独立发布。</p>
-              </div>
-              <div className={styles.publishSummaryGrid}>
-                <div><span>模板名称</span><strong>{draft.name || '-'}</strong></div>
-                <div><span>目标格式</span><strong>{(draft.format || 'text').toUpperCase()}</strong></div>
-                <div><span>Schema 参数</span><strong>{draft.parameterSchema.length}</strong></div>
-                <div><span>模板引擎</span><strong>pole-mustache-v1</strong></div>
-              </div>
-              <label className={styles.publishField}>
-                <span>本次发布说明 <small>可选</small></span>
-                <Textarea
-                  value={templateReleaseComment}
-                  rows={3}
-                  autosize={{ minRows: 3, maxRows: 6 }}
-                  placeholder="说明本次模板内容、Schema 或元信息变更"
-                  onChange={setTemplateReleaseComment}
-                />
-              </label>
-            </div>
-          </Dialog>
-          <Dialog
             visible={valuePublishOpen}
-            header="发布环境 Value 版本"
+            header="发布环境配置版本"
             width={920}
             onClose={() => {
               if (!valuePublishing) setValuePublishOpen(false);
@@ -894,7 +872,7 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
                   取消
                 </Button>
                 <Button theme="primary" icon={<RocketIcon />} loading={valuePublishing} onClick={publishValues}>
-                  发布 Value 版本
+                  发布环境配置版本
                 </Button>
               </>
             )}
@@ -903,21 +881,14 @@ const TemplateWorkspace: React.FC<TemplateWorkspaceProps> = ({
               <div className={styles.publishObjectSummary}>
                 <div>
                   <span>发布对象</span>
-                  <strong>{namespace || '-'} 环境 Value</strong>
+                  <strong>{namespace || '-'} 环境配置</strong>
                 </div>
-                <p>只发布当前环境的 Value 快照，不会修改模板内容、Schema 或其他环境的 Value。</p>
+                <p>模板草稿与当前环境 Value 草稿将原子绑定为一个不可变版本，不影响其他环境。</p>
               </div>
               <div className={styles.publishSummaryGrid}>
                 <div><span>环境空间</span><strong>{namespace || '-'}</strong></div>
-                <div>
-                  <span>固定模板版本</span>
-                  <strong>
-                    {releases.find((release) => release.id === templateReleaseId)?.version
-                      ? `v${releases.find((release) => release.id === templateReleaseId)?.version}`
-                      : '-'}
-                  </strong>
-                </div>
-                <div><span>Value 参数</span><strong>{draft.parameterSchema.length}</strong></div>
+                <div><span>模板草稿</span><strong>{draft.name || '-'}</strong></div>
+                <div><span>Value 草稿</span><strong>{draft.parameterSchema.length} 个参数</strong></div>
                 <div><span>发布范围</span><strong>{valueReleaseType === 'TEMPLATE_VALUE_RELEASE_GRAY' ? '灰度' : '全量'}</strong></div>
               </div>
               <div className={styles.publishTypeField}>

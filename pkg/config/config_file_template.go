@@ -185,9 +185,11 @@ func (s *Server) UpdateConfigFileTemplate(
 		return api.NewConfigResponse(apimodel.Code_NotFoundResource)
 	}
 
-	labels := saveData.Labels
-	saveData = conftypes.ToConfigFileTemplateStore(req)
-	saveData.Labels = labels
+	// Once template definitions are environment-scoped, this legacy endpoint
+	// only updates global identity metadata. Definition fields are saved through
+	// /templates/environment-draft and must never leak across environments.
+	saveData.Comment = req.GetComment()
+	saveData.ModifyBy = utils.ParseOwnerID(ctx)
 	if _, err := s.storage.SaveConfigFileTemplate(saveData); err != nil {
 		log.Error("[Config][Service] update config file template error.", utils.RequestID(ctx), zap.Error(err))
 		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))

@@ -27,7 +27,13 @@ type configTemplateReleaseStore struct {
 }
 
 func (s *configTemplateReleaseStore) CreateConfigTemplateRelease(release *conftypes.ConfigTemplateRelease) error {
-	_, err := s.master.Exec(`INSERT INTO config_template_release (
+	return createConfigTemplateRelease(s.master, release)
+}
+
+func createConfigTemplateRelease(execer interface {
+	Exec(query string, args ...any) (sql.Result, error)
+}, release *conftypes.ConfigTemplateRelease) error {
+	_, err := execer.Exec(`INSERT INTO config_template_release (
 		id, template_id, name, content, format, parameter_schema, engine, engine_version,
 		version, content_sha256, comment, create_by, ctime
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate())`,
@@ -142,16 +148,46 @@ func scanNamespaceTemplateValues(row rowScanner) (*conftypes.NamespaceTemplateVa
 
 func (s *namespaceTemplateValuesStore) CreateNamespaceTemplateValueRelease(
 	release *conftypes.NamespaceTemplateValueRelease) error {
-	labels, err := json.Marshal(release.BetaLabels)
-	if err != nil {
-		return err
-	}
-
 	tx, err := s.master.Begin()
 	if err != nil {
 		return store.Error(err)
 	}
 	defer func() { _ = tx.Rollback() }()
+
+	if err := createNamespaceTemplateValueRelease(tx, release); err != nil {
+		return err
+	}
+	return store.Error(tx.Commit())
+}
+
+// CreateConfigTemplateEnvironmentRelease creates the two immutable component snapshots in one transaction.
+// A nil template means an identical template snapshot already exists and is being reused.
+func (s *stableStore) CreateConfigTemplateEnvironmentRelease(template *conftypes.ConfigTemplateRelease,
+	release *conftypes.NamespaceTemplateValueRelease) error {
+	tx, err := s.configTemplateReleaseStore.master.Begin()
+	if err != nil {
+		return store.Error(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if template != nil {
+		if err := createConfigTemplateRelease(tx, template); err != nil {
+			return err
+		}
+	}
+	if err := createNamespaceTemplateValueRelease(tx, release); err != nil {
+		return err
+	}
+	return store.Error(tx.Commit())
+}
+
+func createNamespaceTemplateValueRelease(tx interface {
+	Exec(query string, args ...any) (sql.Result, error)
+}, release *conftypes.NamespaceTemplateValueRelease) error {
+	labels, err := json.Marshal(release.BetaLabels)
+	if err != nil {
+		return err
+	}
 
 	if release.Active && release.ReleaseType == conftypes.TemplateValueReleaseTypeNormal {
 		if _, err := tx.Exec(`UPDATE namespace_template_value_release
@@ -172,7 +208,7 @@ func (s *namespaceTemplateValuesStore) CreateNamespaceTemplateValueRelease(
 		release.CreateBy, release.ModifyBy); err != nil {
 		return store.Error(err)
 	}
-	return store.Error(tx.Commit())
+	return nil
 }
 
 func (s *namespaceTemplateValuesStore) GetNamespaceTemplateValueRelease(

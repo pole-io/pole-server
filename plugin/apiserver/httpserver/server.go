@@ -96,19 +96,20 @@ type HTTPServer struct {
 	enablePprof   *atomic.Bool
 	enableSwagger bool
 
-	server            *http.Server
-	maintainServer    admin.AdminOperateServer
-	namespaceServer   namespace.NamespaceOperateServer
-	namingServer      service.DiscoverServer
-	ruleServer        goverrule.GoverRuleServer
-	configServer      config.ConfigCenterServer
-	healthCheckServer *healthcheck.Server
-	rateLimit         ratelimit.Ratelimit
-	statis            statis.Statis
-	whitelist         whitelist.Whitelist
-	systemSettings    systemconfig.EffectiveProvider
-	systemConfigUser  credentialChecker
-	systemConfigAuth  consolePermissionChecker
+	server                     *http.Server
+	maintainServer             admin.AdminOperateServer
+	namespaceServer            namespace.NamespaceOperateServer
+	environmentPromotionServer *namespace.Server
+	namingServer               service.DiscoverServer
+	ruleServer                 goverrule.GoverRuleServer
+	configServer               config.ConfigCenterServer
+	healthCheckServer          *healthcheck.Server
+	rateLimit                  ratelimit.Ratelimit
+	statis                     statis.Statis
+	whitelist                  whitelist.Whitelist
+	systemSettings             systemconfig.EffectiveProvider
+	systemConfigUser           credentialChecker
+	systemConfigAuth           consolePermissionChecker
 
 	discoverSvr *discovery.HTTPServer
 	configSvr   *confighttp.HTTPServer
@@ -228,6 +229,12 @@ func (h *HTTPServer) Run(errCh chan error) {
 
 	// 引入命名空间模块
 	h.namespaceServer, err = namespace.GetServer()
+	if err != nil {
+		log.Errorf("%v", err)
+		errCh <- err
+		return
+	}
+	h.environmentPromotionServer, err = namespace.GetOriginServer()
 	if err != nil {
 		log.Errorf("%v", err)
 		errCh <- err

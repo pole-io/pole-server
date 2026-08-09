@@ -1512,6 +1512,78 @@ sources: 0
   - 模板版本和环境 Value 版本分别通过确认弹窗审阅对象、范围、说明及灰度参数。
   - 模板 Release 支持独立发布说明，旧请求未提供时兼容回退模板说明。
 
+## [2026-08-09] refine | 配置模板草稿组合预览
+
+- 更新页面：config-center、adr-config-template-client-rendering、index、todo、lessons。
+- 变更摘要：
+  - 版本管理的模板与 Value 历史表各增加一个明确的当前草稿选择行，并默认选择草稿。
+  - 唯一渲染动作支持草稿与 Release 的四种组合，不再要求双方先发布。
+- 草稿组合预览只读取页面状态；草稿变化后清除旧结果，不保存数据或创建 Release。
+
+## [2026-08-10] refactor | 模板与 Value 收敛为原子环境版本
+
+- 更新页面：terminology、domain-models、config-center、adr-config-template-client-rendering、index、todo、lessons。
+- 变更摘要：
+  - 环境配置版本成为唯一可生效发布对象，原子绑定 Template Snapshot 与 Value Snapshot。
+  - 模板快照仅作为内部不可变证据，内容未变化时跨环境版本复用；旧独立发布接口只保留兼容。
+  - 配置文件绑定逻辑模板，运行时按环境和灰度标签选择完整组合版本；Console 使用单一发布入口和单表历史。
+
+## [2026-08-10] design | 全局环境晋升拓扑
+
+- 更新页面：terminology、domain-models、namespace、index、todo、lessons。
+- 变更摘要：
+  - 环境晋升收敛为 Namespace 域的全局用户可配置 DAG，不属于配置中心私有能力。
+  - 晋升边只授权资源流转方向，目标环境仍需候选变更、校验和发布。
+
+## [2026-08-10] design | lane 资源变更集回归 base
+
+- 更新页面：terminology、domain-models、namespace、todo。
+- 变更摘要：
+  - lane 回归以带分叉基线的可选资源变更集为单位，不用整环境快照覆盖 base。
+  - 每项资源三方比较并进入 base 候选，冲突解决和 base 发布完成后才能继续晋升。
+
+## [2026-08-10] design | 晋升边门禁策略
+
+- 更新页面：terminology、domain-models、namespace、todo。
+- 变更摘要：每条晋升边同时携带关系类型、正式来源版本、审批、验证、资源域和冲突策略；晋升只生成目标候选。
+
+## [2026-08-10] design | 晋升拓扑版本化
+
+- 更新页面：terminology、domain-models、namespace、todo。
+- 变更摘要：晋升拓扑使用草稿与不可变 Revision；晋升单固定创建时策略，新 Revision 不篡改已有流程，紧急停止通过显式撤销。
+
+## [2026-08-10] design | 可晋升资源与适配器边界
+
+- 更新页面：terminology、domain-models、namespace、todo。
+- 变更摘要：全局晋升仅包含已发布、可版本化期望状态；运行时事实与环境专属值排除，各资源域通过 Promotion Adapter 接入。
+
+## [2026-08-10] design | 晋升资源身份对齐与目标新增
+
+- 更新页面：terminology、domain-models、namespace、todo。
+- 变更摘要：Adapter 按稳定逻辑 ID 预检 CREATE/UPDATE/CONFLICT/UNSUPPORTED；目标不存在时可创建新增候选，同名异 ID 必须阻断。
+
+## [2026-08-10] design | 跨资源晋升 Bundle 原子边界
+
+- 更新页面：terminology、domain-models、namespace、todo。
+- 变更摘要：晋升候选必须全量预检；发布形成不可拆分 Bundle 并原子写入控制面期望状态，执行点回执实现可观测最终收敛。
+
+## [2026-08-10] design | 全局环境晋升完整 ADR
+
+- 新增页面：adr-environment-promotion-topology。
+- 更新页面：terminology、domain-models、namespace、config-center、adr-config-template-client-rendering、index、todo。
+- 变更摘要：
+  - 一次性收敛全局 baseline DAG、lane/base 分叉绑定、变更集与 Bundle 状态机。
+  - 定义 Adapter、三方合并、目标专属值、审批/门禁、并发、灰度、回退、存储/API 和 Console 契约。
+  - 配置模板拆分为全局逻辑身份和 Namespace 隔离草稿，补充旧全局草稿迁移与分期实施边界。
+
+## [2026-08-10] implementation | 环境晋升拓扑与模板环境草稿纵向切片
+
+- 更新页面：adr-environment-promotion-topology、todo。
+- 变更摘要：
+  - 落地全局拓扑草稿、DAG/lane binding 校验、不可变 Revision、MySQL/API 与 Console 编辑页。
+  - 配置模板内容、格式、Schema 和引擎改为 Namespace 草稿，组合发布读取环境定义；全局只保留逻辑身份信息。
+  - 完成旧环境发布快照兼容初始化、全量测试、OrbStack 部署与真实浏览器验收；Adapter、Bundle 和晋升工作台仍待实现。
+
 ## 相关页面
 
 - [[index]]

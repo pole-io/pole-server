@@ -62,6 +62,48 @@ func TestCreateActiveNormalNamespaceTemplateValueReleaseDeactivatesPreviousRelea
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestCreateConfigTemplateEnvironmentReleaseUsesOneTransaction(t *testing.T) {
+	rawDB, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer rawDB.Close()
+
+	db := &BaseDB{DB: rawDB}
+	repository := &stableStore{
+		configTemplateReleaseStore:   &configTemplateReleaseStore{master: db, slave: db},
+		namespaceTemplateValuesStore: &namespaceTemplateValuesStore{master: db, slave: db},
+	}
+	template := &conftypes.ConfigTemplateRelease{
+		ID: "template-snapshot-2", TemplateID: 7, Name: "application", Content: "plain",
+		Format: "text", Engine: "pole-mustache", EngineVersion: "v1", Version: 2,
+		ContentSHA256: "sha", CreateBy: "tester",
+	}
+	release := &conftypes.NamespaceTemplateValueRelease{
+		ID: "environment-release-2", ValuesID: "prod@7", Namespace: "prod", TemplateID: 7,
+		TemplateReleaseID: template.ID, Values: `{}`, ReleaseType: conftypes.TemplateValueReleaseTypeNormal,
+		BetaLabels: []*apimodel.ClientLabel{}, Active: true, Version: 2, Revision: "revision-2",
+		CreateBy: "tester", ModifyBy: "tester",
+	}
+
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO config_template_release").
+		WithArgs(template.ID, uint64(7), template.Name, template.Content, template.Format,
+			template.ParameterSchema, template.Engine, template.EngineVersion, template.Version,
+			template.ContentSHA256, template.Comment, template.CreateBy).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("UPDATE namespace_template_value_release").
+		WithArgs("prod", uint64(7), conftypes.TemplateValueReleaseTypeNormal).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("INSERT INTO namespace_template_value_release").
+		WithArgs(release.ID, release.ValuesID, release.Namespace, release.TemplateID,
+			release.TemplateReleaseID, release.Values, release.ReleaseType, "[]", int32(0), true,
+			uint64(2), release.Revision, "", "tester", "tester").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	require.NoError(t, repository.CreateConfigTemplateEnvironmentRelease(template, release))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestGetNamespaceTemplateValueReleaseRestoresBetaLabels(t *testing.T) {
 	rawDB, mock, err := sqlmock.New()
 	require.NoError(t, err)

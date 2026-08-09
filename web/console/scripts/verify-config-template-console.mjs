@@ -51,7 +51,7 @@ for (const [pattern, message] of [
   [/CONFIG_TEMPLATE\}\/preview/, '必须接入服务端预览接口。'],
   [/CONFIG_TEMPLATE\}\/releases/, '必须接入模板发布与版本查询接口。'],
   [/CONFIG_TEMPLATE\}\/values/, '必须接入 Namespace Value 草稿接口。'],
-  [/CONFIG_TEMPLATE\}\/values\/releases/, '必须接入 Namespace Value 发布接口。'],
+  [/CONFIG_TEMPLATE\}\/environment-releases/, '必须接入环境配置组合发布接口。'],
   [/CONFIG_TEMPLATE\}\/bindings/, '必须接入 ConfigFile 模板绑定接口。'],
   [/CONFIG_TEMPLATE\}\/labels/, '必须接入模板标签读写接口。'],
   [/res\.labels\s*\?\?\s*res\.value\?\.labels/, '模板标签查询必须兼容 protobuf Struct 的 data.value 包装。'],
@@ -66,7 +66,7 @@ for (const [pattern, message] of [
 
 for (const [pattern, message] of [
   [/内容来源[\s\S]*直接文本[\s\S]*配置模板/, '新建配置必须首先明确选择直接文本或配置模板。'],
-  [/describeConfigTemplateReleases/, '模板配置创建必须加载不可变 Template Release。'],
+  [/describeNamespaceTemplateValueReleases/, '模板配置创建必须加载当前环境的组合版本。'],
   [/templateBinding/, '模板配置创建必须通过单次 ConfigFile 创建请求携带 binding。'],
   [/在新标签页管理模板与当前 Namespace Value/, '创建流程必须在保留未保存表单的前提下提供模板库入口。'],
   [/configuration\/group\/templates\?group=/, '创建流程必须保留配置分组上下文进入模板工作区。'],
@@ -76,9 +76,10 @@ for (const [pattern, message] of [
   ],
   [/visibilitychange[\s\S]*refreshTemplates/, '返回创建页时必须刷新模板目录。'],
   [
-    /refreshWhenReturning[\s\S]*refreshTemplateReleases\(metaValues\.templateId\)/,
-    '返回创建页时必须同步刷新当前模板的发布版本。',
+    /refreshWhenReturning[\s\S]*refreshEnvironmentReleases\(metaValues\.templateId\)/,
+    '返回创建页时必须同步刷新当前模板的环境配置版本。',
   ],
+  [/当前环境配置版本[\s\S]*模板与 Value 已绑定/, '创建模板配置时不得再让用户手工拼装模板与 Value 版本。'],
 ]) {
   assertMatch(fileCreator, pattern, message);
 }
@@ -147,24 +148,12 @@ for (const [pattern, message] of [
   [/value="basic"[\s\S]*模板名称[\s\S]*目标格式[\s\S]*模板说明[\s\S]*模板标签/, '模板元信息必须完整归入基本信息页签。'],
   [/setEditing\(true\)[\s\S]*setActiveTab\('basic'\)[\s\S]*新建配置模板/, '新建模板必须直接进入基本信息页签。'],
   [
-    /templateDefinitionTab[\s\S]*activeTab === 'content'[\s\S]*activeTab === 'schema'[\s\S]*activeTab === 'basic'/,
-    '模板编辑与发布操作只能属于内容、Schema 和基本信息页签。',
+    /header="发布环境配置版本"[\s\S]*模板草稿[\s\S]*Value 草稿[\s\S]*全量发布[\s\S]*灰度发布[\s\S]*GrayRuleEditor[\s\S]*发布说明/,
+    '环境发布必须在同一确认弹窗审阅模板与 Value，并配置发布类型、说明和灰度规则。',
   ],
   [
-    /templateDefinitionTab &&[\s\S]*编辑模板[\s\S]*保存模板草稿[\s\S]*发布模板版本/,
-    '顶部模板操作必须随模板定义页签显示，并使用明确的对象名称。',
-  ],
-  [
-    /header="发布模板版本"[\s\S]*模板名称[\s\S]*目标格式[\s\S]*Schema 参数[\s\S]*本次发布说明/,
-    '发布模板必须先经过包含版本摘要和发布说明的确认弹窗。',
-  ],
-  [
-    /header="发布环境 Value 版本"[\s\S]*全量发布[\s\S]*灰度发布[\s\S]*GrayRuleEditor[\s\S]*发布说明/,
-    '发布 Value 必须在独立确认弹窗中配置发布类型、说明和灰度规则。',
-  ],
-  [
-    /valueActions[\s\S]*保存 Value 草稿[\s\S]*预览渲染[\s\S]*发布 Value 版本/,
-    '环境 Value 编辑区只保留该对象的草稿、预览和发布入口。',
+    /valueActions[\s\S]*保存 Value 草稿[\s\S]*预览渲染[\s\S]*发布环境配置/,
+    '环境 Value 编辑区必须提供唯一的组合发布入口。',
   ],
   [/value="schema"[\s\S]*label=\{`参数 Schema/, '参数 Schema 必须作为独立任务页签，不能堆叠在模板正文下方。'],
   [/Namespace Value/, '模板页面必须按 Namespace 维护 Value。'],
@@ -172,8 +161,8 @@ for (const [pattern, message] of [
   [/模板标签[\s\S]*TagInput/, '模板定义必须提供独立的标签管理入口。'],
   [/模板说明[\s\S]*<Input/, '单值模板说明必须与名称、目标格式使用一致高度的输入控件。'],
   [
-    /previewConfigTemplate\(selectedTemplateRelease, selectedValueRelease\.values\)/,
-    '版本预览必须使用用户选中的模板 Release 与 Value Release。',
+    /previewEnvironmentReleaseIds[\s\S]*valueReleases\.find[\s\S]*templateReleaseId[\s\S]*previewConfigTemplate/,
+    '版本预览必须以真实环境组合版本或当前草稿组合为来源。',
   ],
   [
     /startSchemaEditing[\s\S]*setActiveTab\('schema'\)[\s\S]*setEditing\(true\)/,
@@ -203,33 +192,42 @@ for (const [source, pattern, message] of [
   [valueEditor, /status=\{error \? 'error' : 'default'\}[\s\S]*aria-invalid=\{Boolean\(error\)\}[\s\S]*role="alert"/, '非法 Value 必须提供输入错误状态和行内提示。'],
   [
     versionManager,
-    /versionActions[\s\S]*disabled=\{!templateReleaseId \|\| !valueReleaseId\}[\s\S]*渲染预览/,
-    '版本管理只保留由两侧版本选择共同控制的渲染预览按钮。',
+    /versionActions[\s\S]*disabled=\{!namespace\}[\s\S]*渲染预览/,
+    '版本管理只保留一个预览按钮，当前环境存在时草稿组合无需先发布即可预览。',
   ],
-  [versionManager, /onRowClick[\s\S]*onTemplateReleaseChange[\s\S]*onRowClick[\s\S]*onValueReleaseChange/, '两类版本必须支持直接点击历史行选择。'],
+  [versionManager, /ENVIRONMENT_DRAFT_ROW_ID[\s\S]*当前草稿组合/, '环境版本表必须提供明确的当前草稿组合行。'],
+  [versionManager, /selectionId[\s\S]*onReleaseChange[\s\S]*onRowClick/, '草稿与历史环境版本必须共用整行选择模型。'],
+  [versionManager, /CodeDiffEditor[\s\S]*comparison\.before[\s\S]*comparison\.after/, '选中两个环境版本后必须提供格式化内容对比。'],
   [versionManager, /versionSelectMarkActive/, '选中的历史行必须具有明确的单选标记。'],
   [versionManager, /data-version-selected/, '选中的历史行必须暴露整行高亮状态。'],
   [
     versionManager,
-    /模板版本[\s\S]*不可变的模板内容[\s\S]*Value 版本[\s\S]*环境空间：/,
-    '版本管理必须分别展示模板 Release 与当前环境的 Value Release 历史。',
+    /环境配置版本[\s\S]*模板快照与 Value 快照原子绑定[\s\S]*环境空间：/,
+    '版本管理必须使用一张表展示当前环境真实存在的组合版本。',
   ],
   [renderPreviewPanel, /renderedSha256[\s\S]*diagnostics/, '统一预览面板必须展示渲染哈希和 diagnostics。'],
 ]) {
   assertMatch(source, pattern, message);
 }
 
-assertMatch(templatePage, /validateTemplateValues\(draft\.parameterSchema, values\)[\s\S]*disabled=\{!namespace \|\| !draft\.id \|\| hasValueErrors\}[\s\S]*disabled=\{!namespace \|\| !draft\.id \|\| !templateReleaseId \|\| hasValueErrors\}/, 'Value 校验失败时必须同时阻止保存草稿和发布。');
+assertMatch(templatePage, /validateTemplateValues\(draft\.parameterSchema, values\)[\s\S]*disabled=\{!namespace \|\| !draft\.id \|\| hasValueErrors\}[\s\S]*disabled=\{!namespace \|\| !draft\.id \|\| editing \|\| hasValueErrors\}/, '模板或 Value 草稿未就绪时必须阻止组合发布。');
 assertMatch(
   templatePage,
-  /runValuePreview[\s\S]*releases\.find\(\(release\) => release\.id === templateReleaseId\)[\s\S]*previewConfigTemplate\(selectedTemplateRelease, values\)[\s\S]*disabled=\{!templateReleaseId \|\| hasValueErrors\}[\s\S]*预览渲染/,
-  '环境 Value 必须支持使用固定模板版本和当前未保存 Value 就地预览。'
+  /runValuePreview[\s\S]*previewConfigTemplate\(draft, values\)[\s\S]*disabled=\{!namespace \|\| !draft\.id \|\| hasValueErrors\}[\s\S]*预览渲染/,
+  '环境 Value 必须使用当前模板草稿与当前未保存 Value 就地预览。'
 );
 assertMatch(
   templatePage,
   /valueDraftPreview[\s\S]*versionPreview/,
   '环境 Value 草稿预览与历史版本组合预览必须使用独立状态。'
 );
+assertMatch(
+  templatePage,
+  /previewEnvironmentReleaseIds\.includes\(ENVIRONMENT_DRAFT_ROW_ID\)[\s\S]*setVersionPreview\(undefined\)[\s\S]*draft\.content[\s\S]*draft\.parameterSchema[\s\S]*values/,
+  '选择当前草稿组合时，任一草稿变化必须立即清除旧预览。'
+);
+
+assertNotMatch(templatePage, /发布模板版本|发布 Value 版本|固定模板版本/, 'Console 不得继续暴露两个独立发布动作或要求手工固定模板版本。');
 
 assertNotMatch(schemaEditor, /key=\{`\$\{item\.name\}-\$\{index\}`\}/, 'Schema 参数名不能参与行 key，否则无法连续输入。');
 
@@ -257,8 +255,8 @@ for (const [pattern, message] of [
   ],
   [/\.basicPane\s*\{[\s\S]*overflow:\s*auto[\s\S]*padding:/, '基本信息页签必须提供独立可滚动内容区。'],
   [
-    /\.versionHistoryGrid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2/,
-    '宽屏版本管理必须并列区分模板版本与 Value 版本。',
+    /\.versionHistoryGrid\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/,
+    '版本管理必须使用单列环境组合版本表。',
   ],
   [
     /@media \(max-width: 1500px\)[\s\S]*\.versionHistoryGrid,[\s\S]*\.versionPreview[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/,

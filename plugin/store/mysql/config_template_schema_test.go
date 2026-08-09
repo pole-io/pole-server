@@ -19,7 +19,7 @@ import (
 
 func TestConfigTemplateTables(t *testing.T) {
 	tables := configTemplateTables()
-	require.Len(t, tables, 4)
+	require.Len(t, tables, 5)
 
 	seen := make(map[string]bool, len(tables))
 	for _, table := range tables {
@@ -30,6 +30,7 @@ func TestConfigTemplateTables(t *testing.T) {
 	require.True(t, seen["namespace_template_values"])
 	require.True(t, seen["namespace_template_value_release"])
 	require.True(t, seen["config_file_template_binding_release"])
+	require.True(t, seen["namespace_config_template_draft"])
 }
 
 func TestEnsureConfigTemplateSchemaCreatesMissingTables(t *testing.T) {

@@ -46,6 +46,8 @@ export interface ConfigFileTemplate {
   revision?: string;
   ctime?: string;
   mtime?: string;
+	 draftVersion?: number;
+	 initializedFrom?: string;
 }
 
 export async function describeConfigTemplateLabels(templateId: string | number) {
@@ -160,10 +162,34 @@ const toApiValue = (value: ConfigTemplateValue): ApiTemplateValue => {
 
 const normalizeSchema = (schema: ApiTemplateParameterSchema): ConfigTemplateParameterSchema => ({
   ...schema,
+  description: schema.description ?? (schema as any).comment ?? '',
   defaultValue:
     schema.default_value || schema.defaultValue
       ? normalizeValue(schema.default_value ?? schema.defaultValue)
       : undefined,
+});
+
+const persistedSchemaType: Record<TemplateParameterType, number> = {
+  TEMPLATE_PARAMETER_STRING: 1,
+  TEMPLATE_PARAMETER_BOOLEAN: 2,
+  TEMPLATE_PARAMETER_INTEGER: 3,
+  TEMPLATE_PARAMETER_DECIMAL: 4,
+};
+
+const toPersistedValue = (value: ConfigTemplateValue) => {
+  if ('stringValue' in value) return { type: 'string', value: value.stringValue };
+  if ('booleanValue' in value) return { type: 'boolean', value: String(value.booleanValue) };
+  if ('integerValue' in value) return { type: 'integer', value: String(value.integerValue) };
+  return { type: 'decimal', value: value.decimalValue };
+};
+
+const toPersistedSchema = (schema: ConfigTemplateParameterSchema) => ({
+  name: schema.name,
+  type: persistedSchemaType[schema.type],
+  required: schema.required,
+  sensitive: Boolean(schema.sensitive),
+  comment: schema.description || '',
+  default: schema.defaultValue ? toPersistedValue(schema.defaultValue) : undefined,
 });
 
 const toApiSchema = (schema: ConfigTemplateParameterSchema) => ({
@@ -191,6 +217,61 @@ const toApiTemplate = (template: ConfigFileTemplate) => ({
   parameter_schema: template.parameterSchema.map(toApiSchema),
   revision: template.revision || '',
 });
+
+export async function describeNamespaceConfigTemplateDraft(
+  namespace: string,
+  templateId: string | number,
+): Promise<ConfigFileTemplate | undefined> {
+  const response = await getApiRequest<any>({
+    action: `${BaseURL.CONFIG_TEMPLATE}/environment-draft`,
+    data: { namespace, template_id: templateId },
+  });
+  const raw = response?.value ?? response;
+  if (!raw?.template_id && !raw?.templateId) return undefined;
+  let schema: ApiTemplateParameterSchema[] = [];
+  try {
+    schema = JSON.parse(raw.parameter_schema ?? raw.parameterSchema ?? '[]');
+  } catch {
+    schema = [];
+  }
+  return normalizeTemplate({
+    id: raw.template_id ?? raw.templateId,
+    name: raw.name || '',
+    comment: raw.comment || '',
+    content: raw.content || '',
+    format: raw.format || 'text',
+    engine: {
+      name: raw.engine || TemplateEngine.name,
+      version: raw.engine_version ?? raw.engineVersion ?? TemplateEngine.version,
+    },
+    parameter_schema: schema,
+    revision: raw.revision || '',
+    draftVersion: Number(raw.draft_version ?? raw.draftVersion ?? 0),
+    initializedFrom: raw.initialized_from ?? raw.initializedFrom ?? '',
+  } as ApiTemplate);
+}
+
+export async function saveNamespaceConfigTemplateDraft(
+  namespace: string,
+  template: ConfigFileTemplate,
+) {
+  const response = await putApiRequest<any>({
+    action: `${BaseURL.CONFIG_TEMPLATE}/environment-draft`,
+    data: {
+      namespace,
+      templateID: Number(template.id),
+      content: template.content,
+      format: template.format || 'text',
+      parameterSchema: JSON.stringify(template.parameterSchema.map(toPersistedSchema)),
+      engine: template.engine?.name || TemplateEngine.name,
+      engineVersion: template.engine?.version || TemplateEngine.version,
+      revision: template.revision || '',
+      draftVersion: template.draftVersion || 0,
+      initializedFrom: template.initializedFrom || '',
+    },
+  });
+  return response?.value ?? response;
+}
 
 const normalizeBinding = (binding: any): ConfigTemplateBinding => ({
   templateId: binding.template_id ?? binding.templateId,
@@ -305,22 +386,21 @@ export async function saveNamespaceTemplateValues(values: NamespaceTemplateValue
 
 export async function describeNamespaceTemplateValueReleases(namespace: string, templateId: string | number) {
   const res = await getApiRequest<{ data?: any[]; amount?: number }>({
-    action: `${BaseURL.CONFIG_TEMPLATE}/values/releases`,
+    action: `${BaseURL.CONFIG_TEMPLATE}/environment-releases`,
     data: { namespace, template_id: templateId },
   });
   const releases = (res.data ?? []).map(normalizeValueRelease);
   return { releases, amount: res.amount ?? releases.length };
 }
 
-export async function publishNamespaceTemplateValueRelease(release: NamespaceTemplateValueRelease) {
+export async function publishEnvironmentConfigRelease(release: NamespaceTemplateValueRelease) {
   return apiRequest({
-    action: `${BaseURL.CONFIG_TEMPLATE}/values/releases`,
+    action: `${BaseURL.CONFIG_TEMPLATE}/environment-releases`,
     data: {
       id: '',
       values_id: release.valuesId || '',
       namespace: release.namespace,
       template_id: release.templateId,
-      template_release_id: release.templateReleaseId,
       values: Object.fromEntries(Object.entries(release.values).map(([key, value]) => [key, toApiValue(value)])),
       release_type: release.releaseType,
       beta_labels: release.betaLabels || [],

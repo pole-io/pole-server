@@ -52,6 +52,7 @@ func Register(registry *pluginapi.Registry) error {
 // stableStore 实现了Store接口
 type stableStore struct {
 	*namespaceStore
+	*environmentPromotionStore
 
 	// 服务治理中心 stores
 	*serviceStore
@@ -74,6 +75,7 @@ type stableStore struct {
 	*configFileReleaseStore
 	*configFileReleaseHistoryStore
 	*configFileTemplateStore
+	*namespaceConfigTemplateDraftStore
 	*configTemplateReleaseStore
 	*namespaceTemplateValuesStore
 	*configTemplateBindingStore
@@ -159,6 +161,9 @@ func (s *stableStore) Initialize(conf *store.Config) error {
 		return err
 	}
 	if err := ensureConfigTemplateSchema(s.master); err != nil {
+		return err
+	}
+	if err := ensureEnvironmentPromotionSchema(s.master); err != nil {
 		return err
 	}
 
@@ -289,6 +294,7 @@ func (s *stableStore) StartReadTx() (store.Tx, error) {
 // newStore 初始化子类
 func (s *stableStore) newStore() {
 	s.namespaceStore = &namespaceStore{master: s.master, slave: s.slave}
+	s.environmentPromotionStore = &environmentPromotionStore{master: s.master}
 
 	s.serviceStore = &serviceStore{master: s.master, slave: s.slave}
 	s.logicalServiceStore = &logicalServiceStore{master: s.master, slave: s.slave}
@@ -310,6 +316,7 @@ func (s *stableStore) newStore() {
 	s.configFileReleaseStore = &configFileReleaseStore{master: s.master, slave: s.slave}
 	s.configFileReleaseHistoryStore = &configFileReleaseHistoryStore{master: s.master, slave: s.slave}
 	s.configFileTemplateStore = &configFileTemplateStore{master: s.master, slave: s.slave}
+	s.namespaceConfigTemplateDraftStore = &namespaceConfigTemplateDraftStore{master: s.master, slave: s.slave}
 	s.configTemplateReleaseStore = &configTemplateReleaseStore{master: s.master, slave: s.slave}
 	s.namespaceTemplateValuesStore = &namespaceTemplateValuesStore{master: s.master, slave: s.slave}
 	s.configTemplateBindingStore = &configTemplateBindingStore{master: s.master, slave: s.slave}

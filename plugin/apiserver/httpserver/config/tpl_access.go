@@ -10,6 +10,7 @@ import (
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/plugin/apiserver/httpserver/docs"
 	httpcommon "github.com/pole-io/pole-server/plugin/apiserver/httpserver/utils"
@@ -27,10 +28,32 @@ func (h *HTTPServer) addTemplateRuleAccess(ws *restful.WebService) {
 	ws.Route(ws.GET("/templates/releases").To(h.ListConfigTemplateReleases))
 	ws.Route(ws.PUT("/templates/values").To(h.SaveNamespaceTemplateValues))
 	ws.Route(ws.GET("/templates/values").To(h.GetNamespaceTemplateValues))
+	ws.Route(ws.PUT("/templates/environment-draft").To(h.SaveNamespaceConfigTemplateDraft))
+	ws.Route(ws.GET("/templates/environment-draft").To(h.GetNamespaceConfigTemplateDraft))
 	ws.Route(ws.POST("/templates/values/releases").To(h.PublishNamespaceTemplateValueRelease))
 	ws.Route(ws.GET("/templates/values/releases").To(h.ListNamespaceTemplateValueReleases))
+	ws.Route(ws.POST("/templates/environment-releases").To(h.PublishNamespaceTemplateValueRelease))
+	ws.Route(ws.GET("/templates/environment-releases").To(h.ListNamespaceTemplateValueReleases))
 	ws.Route(ws.POST("/templates/bindings").To(h.BindConfigFileTemplate))
 	ws.Route(ws.GET("/templates/bindings").To(h.ListConfigTemplateBindings))
+}
+
+func (h *HTTPServer) SaveNamespaceConfigTemplateDraft(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{Request: req, Response: rsp}
+	message := &conftypes.NamespaceConfigTemplateDraft{}
+	ctx := handler.ParseHeaderContext()
+	if err := req.ReadEntity(message); err != nil {
+		handler.WriteHeaderAndProto(api.NewConfigResponse(apimodel.Code_ParseException))
+		return
+	}
+	handler.WriteHeaderAndProto(h.configServer.SaveNamespaceConfigTemplateDraft(ctx, message))
+}
+
+func (h *HTTPServer) GetNamespaceConfigTemplateDraft(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{Request: req, Response: rsp}
+	templateID, _ := strconv.ParseUint(req.QueryParameter("template_id"), 10, 64)
+	handler.WriteHeaderAndProto(h.configServer.GetNamespaceConfigTemplateDraft(
+		handler.ParseHeaderContext(), req.QueryParameter("namespace"), templateID))
 }
 
 func (h *HTTPServer) GetConfigTemplateLabels(req *restful.Request, rsp *restful.Response) {

@@ -12,6 +12,11 @@ const namespace: IRouter[] = [
     },
     Component: lazy(() => import('pages/Namespace'))
   },
+  {
+    path: '/namespace/promotion-topology',
+    Component: lazy(() => import('pages/Namespace/PromotionTopology')),
+    meta: { title: '环境晋升拓扑', hidden: true },
+  },
 ];
 
 export default namespace;

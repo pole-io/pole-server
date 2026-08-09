@@ -309,6 +309,9 @@ export default React.memo(() => {
                                         onReset={resetFilter}
                                         actions={(
                                             <>
+                                                <Button variant="outline" onClick={() => navigate('/namespace/promotion-topology')}>
+                                                    晋升拓扑
+                                                </Button>
                                                 <Tooltip content="刷新业务环境">
                                                     <Button
                                                         aria-label="刷新业务环境"

@@ -24,6 +24,7 @@ import (
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 )
 
 type (
@@ -129,6 +130,9 @@ type ConfigFileTemplateOperate interface {
 	GetConfigTemplateLabels(ctx context.Context, templateID uint64) *apimodel.Response
 	SaveConfigTemplateLabels(ctx context.Context, templateID uint64, labels map[string]string) *apimodel.Response
 	SaveNamespaceTemplateValues(ctx context.Context, req *apiconfig.NamespaceTemplateValues) *apimodel.Response
+	GetNamespaceConfigTemplateDraft(ctx context.Context, namespace string, templateID uint64) *apimodel.Response
+	SaveNamespaceConfigTemplateDraft(
+		ctx context.Context, draft *conftypes.NamespaceConfigTemplateDraft) *apimodel.Response
 	PublishNamespaceTemplateValueRelease(
 		ctx context.Context, req *apiconfig.NamespaceTemplateValueRelease) *apimodel.Response
 	BindConfigFileTemplate(ctx context.Context, file *apiconfig.ConfigFile) *apimodel.Response

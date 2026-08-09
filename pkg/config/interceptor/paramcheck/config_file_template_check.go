@@ -23,6 +23,7 @@ import (
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
 
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 	"github.com/pole-io/pole-server/pkg/common/utils/valid"
 	configtemplate "github.com/pole-io/pole-server/pkg/config/template"
@@ -82,6 +83,23 @@ func (s *Server) SaveNamespaceTemplateValues(
 		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
 	}
 	return s.nextServer.SaveNamespaceTemplateValues(ctx, req)
+}
+
+func (s *Server) GetNamespaceConfigTemplateDraft(
+	ctx context.Context, namespace string, templateID uint64) *apimodel.Response {
+	if templateID == 0 || valid.CheckResourceName(namespace) != nil {
+		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
+	}
+	return s.nextServer.GetNamespaceConfigTemplateDraft(ctx, namespace, templateID)
+}
+
+func (s *Server) SaveNamespaceConfigTemplateDraft(ctx context.Context,
+	draft *conftypes.NamespaceConfigTemplateDraft) *apimodel.Response {
+	if draft == nil || draft.TemplateID == 0 || valid.CheckResourceName(draft.Namespace) != nil ||
+		CheckContentLength(draft.Content, int(s.cfg.ContentMaxLength)) != nil || draft.Content == "" {
+		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
+	}
+	return s.nextServer.SaveNamespaceConfigTemplateDraft(ctx, draft)
 }
 
 func (s *Server) PublishNamespaceTemplateValueRelease(

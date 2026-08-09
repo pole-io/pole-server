@@ -66,6 +66,7 @@ func (h *HTTPServer) GetCoreV1ConsoleAccessServer(include []string) *restful.Web
 
 func (h *HTTPServer) addCoreDefaultReadAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichGetNamespacesApiDocsOld(ws.GET("/namespaces").To(h.GetNamespaces)))
+	h.addEnvironmentPromotionAccess(ws)
 }
 
 func (h *HTTPServer) addCoreDefaultAccess(ws *restful.WebService) {
@@ -73,6 +74,7 @@ func (h *HTTPServer) addCoreDefaultAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichDeleteNamespacesApiDocsOld(ws.POST("/namespaces/delete").To(h.DeleteNamespaces)))
 	ws.Route(docs.EnrichUpdateNamespacesApiDocsOld(ws.PUT("/namespaces").To(h.UpdateNamespaces)))
 	ws.Route(docs.EnrichGetNamespacesApiDocsOld(ws.GET("/namespaces").To(h.GetNamespaces)))
+	h.addEnvironmentPromotionAccess(ws)
 
 	//
 	ws.Route(ws.GET("/clients").To(h.GetReportClients))

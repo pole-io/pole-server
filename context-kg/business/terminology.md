@@ -1,8 +1,8 @@
 ---
 title: 领域术语表
 tags: [business, terminology]
-links: [domain-models, business-rules, auth-system, adr-console-agent-resource-workbench, adr-system-configuration-control-plane, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding, adr-system-namespace-kind, adr-ai-resource-environment-binding]
-updated: 2026-07-29
+links: [domain-models, business-rules, auth-system, adr-console-agent-resource-workbench, adr-system-configuration-control-plane, adr-rpc-first-governance-scope, adr-service-contract-reporting-and-visualization, adr-logical-service-environment-binding, adr-system-namespace-kind, adr-ai-resource-environment-binding, adr-config-template-client-rendering, adr-environment-promotion-topology]
+updated: 2026-08-10
 sources: 0
 ---
 
@@ -13,6 +13,15 @@ sources: 0
 | 命名空间 | Namespace | Pole 的顶层运行边界，先按 Kind 区分业务环境与内部系统空间 |
 | 业务环境 | Business Namespace | `kind=BUSINESS` 的 Namespace；参与服务、配置与治理资源的跨环境聚合 |
 | Pole 系统空间 | System Namespace | `kind=SYSTEM` 的内部管理面空间；继承当前 Pole 部署阶段，不属于业务发布环境 |
+| 环境晋升拓扑 | Environment Promotion Topology | 用户在全局环境空间中定义的 BUSINESS Namespace 有向无环图；边表示允许的晋升路径，适用于所有可晋升资源域 |
+| 环境晋升边 | Environment Promotion Edge | 连接两个 baseline BUSINESS Namespace 的有向关系；同时定义正式来源版本、审批、验证、资源域与冲突门禁 |
+| lane 基线绑定 | Lane Base Binding | lane Namespace 到唯一 baseline Namespace 的分叉归属关系；不是晋升 DAG 边，回归时按资源分叉版本三方合并 |
+| 环境晋升拓扑版本 | Environment Topology Revision | 全局晋升 DAG 及全部边策略的不可变发布快照；晋升变更集创建时固定引用，不被后续拓扑修改篡改 |
+| 环境晋升变更集 | Environment Promotion Change Set | 引用来源环境已发布资源版本及其分叉基线的可审计变更集；在目标环境生成候选变更而不直接生效 |
+| 环境晋升 Bundle | Environment Promotion Bundle | 通过全部预检、审批和验证后不可拆分发布的跨资源目标版本集；保证控制面期望状态原子，通过回执跟踪运行时最终收敛 |
+| 晋升适配器 | Promotion Adapter | 资源域接入全局晋升流程的契约；负责导出正式版本、差异与三方合并、生成目标候选和执行资源域校验 |
+| 晋升资源预检 | Promotion Resource Preflight | Adapter 按稳定逻辑资源 ID 对齐来源与目标后给出的 CREATE、UPDATE、CONFLICT 或 UNSUPPORTED 结果；决定资源能否进入目标候选 |
+| 泳道回归 | Lane Merge to Base | 将 lane 选中资源相对分叉基线的变更三方合并到 base 候选变更；冲突解决并发布 base 后才可继续向下游晋升 |
 | 逻辑服务 | Logical Service | 由控制面稳定 ID 标识的跨环境业务服务；聚合多个显式关联的环境服务，SDK 不感知该 ID |
 | 环境服务 | Service Environment | 由 `namespace + runtimeServiceName` 标识的运行时服务记录，独立承载实例、契约和运行状态 |
 | 实例 | Instance | 服务的运行节点，包含 host、port、协议、健康状态、隔离状态和元数据 |
@@ -20,6 +29,10 @@ sources: 0
 | Dubbo 元数据快照 | Dubbo Metadata Snapshot | Dubbo 按 application 与 metadata revision 聚合的接口配置和方法定义 |
 | Dubbo 服务映射 | Dubbo Service Mapping | Dubbo interface 到 provider application 的一对多关系，用于应用级服务发现 |
 | 配置文件 | Config File | 配置中心管理的版本化配置内容 |
+| 配置模板身份 | Config Template Identity | 跨环境稳定的模板 ID、名称、说明和标签；不承载可执行草稿 |
+| 环境模板草稿 | Namespace Config Template Draft | `namespace + template_id` 下独立维护的模板内容、格式、参数 Schema 和引擎草稿；不能独立生效 |
+| 模板快照 | Template Snapshot | 环境发布时生成或复用的内部不可变模板证据，不是独立发布对象 |
+| 环境配置版本 | Environment Config Release | 当前环境内 Template Snapshot 与 Value Snapshot 原子绑定的唯一可生效模板配置版本 |
 | 服务调用 | Service Invocation | 一次具有调用方、被调方、接口、请求属性和结果状态的 HTTP/RPC 交互 |
 | 服务治理能力 | Service Governance Capability | 作用于服务调用的路由、限流、鉴权、镜像、Mock、熔断等能力 |
 | 治理规则 | Governance Rule | 声明对哪些服务调用、在何种条件下施加一个服务治理效果的期望策略聚合根 |
@@ -57,3 +70,5 @@ sources: 0
 - [[adr-logical-service-environment-binding]]
 - [[adr-system-namespace-kind]]
 - [[adr-ai-resource-environment-binding]]
+- [[adr-config-template-client-rendering]]
+- [[adr-environment-promotion-topology]]

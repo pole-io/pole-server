@@ -109,7 +109,7 @@ func (s *Server) SaveNamespaceTemplateValues(
 	if err != nil {
 		return commonapi.NewConfigResponse(apimodel.Code_BadRequest)
 	}
-	schema, err := s.templateParameterSchema(req.GetTemplateId())
+	schema, err := s.templateParameterSchema(req.GetNamespace(), req.GetTemplateId())
 	if err != nil {
 		return commonapi.NewConfigResponse(apimodel.Code_NotFoundResource)
 	}
@@ -134,16 +134,15 @@ func (s *Server) SaveNamespaceTemplateValues(
 
 func (s *Server) PublishNamespaceTemplateValueRelease(
 	ctx context.Context, req *apiconfig.NamespaceTemplateValueRelease) *apimodel.Response {
-	if req == nil || req.GetNamespace() == "" || req.GetTemplateId() == 0 ||
-		req.GetTemplateReleaseId() == "" {
+	if req == nil || req.GetNamespace() == "" || req.GetTemplateId() == 0 {
 		return commonapi.NewConfigResponse(apimodel.Code_BadRequest)
 	}
-	templateRelease, err := s.storage.GetConfigTemplateRelease(req.GetTemplateReleaseId())
-	if err != nil {
-		return commonapi.NewConfigResponse(storeapi.StoreCode2APICode(err))
-	}
-	if templateRelease == nil || templateRelease.TemplateID != req.GetTemplateId() {
-		return commonapi.NewConfigResponse(apimodel.Code_NotFoundResource)
+
+	// New callers publish the current template draft and current environment Value as one aggregate.
+	// A supplied template_release_id remains supported for old clients and historical replay.
+	templateRelease, templateToCreate, response := s.resolveEnvironmentTemplateRelease(req)
+	if response != nil {
+		return response
 	}
 	specTemplate, err := configTemplateReleaseToSpec(templateRelease)
 	if err != nil {
@@ -174,6 +173,7 @@ func (s *Server) PublishNamespaceTemplateValueRelease(
 	if req.GetId() == "" {
 		req.Id = uuid.NewString()
 	}
+	req.TemplateReleaseId = templateRelease.ID
 	if req.GetValuesId() == "" {
 		req.ValuesId = req.GetNamespace() + "@" + strconv.FormatUint(req.GetTemplateId(), 10)
 	}
@@ -202,10 +202,86 @@ func (s *Server) PublishNamespaceTemplateValueRelease(
 		Comment:           req.GetComment(),
 		CreateBy:          req.GetCreateBy(),
 	}
-	if err := s.storage.CreateNamespaceTemplateValueRelease(data); err != nil {
+	if err := s.storage.CreateConfigTemplateEnvironmentRelease(templateToCreate, data); err != nil {
 		return commonapi.NewConfigResponse(storeapi.StoreCode2APICode(err))
 	}
 	return commonapi.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, req)
+}
+
+func (s *Server) resolveEnvironmentTemplateRelease(req *apiconfig.NamespaceTemplateValueRelease) (
+	*conftypes.ConfigTemplateRelease, *conftypes.ConfigTemplateRelease, *apimodel.Response) {
+	if req.GetTemplateReleaseId() != "" {
+		release, err := s.storage.GetConfigTemplateRelease(req.GetTemplateReleaseId())
+		if err != nil {
+			return nil, nil, commonapi.NewConfigResponse(storeapi.StoreCode2APICode(err))
+		}
+		if release == nil || release.TemplateID != req.GetTemplateId() {
+			return nil, nil, commonapi.NewConfigResponse(apimodel.Code_NotFoundResource)
+		}
+		return release, nil, nil
+	}
+
+	draft, err := s.getOrInitializeNamespaceConfigTemplateDraft(req.GetNamespace(), req.GetTemplateId())
+	if err != nil {
+		return nil, nil, commonapi.NewConfigResponse(storeapi.StoreCode2APICode(err))
+	}
+	if draft == nil {
+		return nil, nil, commonapi.NewConfigResponse(apimodel.Code_NotFoundResource)
+	}
+	draftSpec := &apiconfig.ConfigFileTemplate{
+		Id: draft.TemplateID, Name: draft.Name, Comment: draft.Comment,
+		Content: draft.Content, Format: draft.Format,
+		Engine: &apiconfig.ConfigTemplateEngine{Name: draft.Engine, Version: draft.EngineVersion},
+	}
+	draftSpec.ParameterSchema, err = conftypes.DecodeTemplateParameterSchema(draft.ParameterSchema)
+	if err != nil {
+		return nil, nil, commonapi.NewConfigResponse(apimodel.Code_BadRequest)
+	}
+	if !supportedTemplateEngine(draftSpec.GetEngine()) {
+		return nil, nil, commonapi.NewConfigResponse(apimodel.Code_BadRequest)
+	}
+	if draftSpec.GetFormat() == "" {
+		draftSpec.Format = "text"
+	}
+	parameterSchema, err := conftypes.EncodeTemplateParameterSchema(draftSpec.GetParameterSchema())
+	if err != nil {
+		return nil, nil, commonapi.NewConfigResponse(apimodel.Code_BadRequest)
+	}
+	releases, err := s.storage.ListConfigTemplateReleases(req.GetTemplateId())
+	if err != nil {
+		return nil, nil, commonapi.NewConfigResponse(storeapi.StoreCode2APICode(err))
+	}
+	for _, release := range releases {
+		if sameTemplateSnapshot(release, draftSpec, parameterSchema) {
+			return release, nil, nil
+		}
+	}
+
+	sum := sha256.Sum256([]byte(draftSpec.GetContent()))
+	release := &conftypes.ConfigTemplateRelease{
+		ID:              uuid.NewString(),
+		TemplateID:      req.GetTemplateId(),
+		Name:            draftSpec.GetName(),
+		Content:         draftSpec.GetContent(),
+		Format:          draftSpec.GetFormat(),
+		ParameterSchema: parameterSchema,
+		Engine:          draftSpec.GetEngine().GetName(),
+		EngineVersion:   draftSpec.GetEngine().GetVersion(),
+		Version:         nextTemplateVersion(releases),
+		ContentSHA256:   hex.EncodeToString(sum[:]),
+		Comment:         draftSpec.GetComment(),
+		CreateBy:        req.GetCreateBy(),
+	}
+	return release, release, nil
+}
+
+func sameTemplateSnapshot(release *conftypes.ConfigTemplateRelease,
+	draft *apiconfig.ConfigFileTemplate, parameterSchema string) bool {
+	return release != nil && release.TemplateID == draft.GetId() &&
+		release.Name == draft.GetName() && release.Content == draft.GetContent() &&
+		release.Format == draft.GetFormat() && release.ParameterSchema == parameterSchema &&
+		release.Engine == draft.GetEngine().GetName() &&
+		release.EngineVersion == draft.GetEngine().GetVersion()
 }
 
 func (s *Server) BindConfigFileTemplate(
@@ -362,18 +438,17 @@ func (s *Server) resolveTemplateSnapshot(ctx context.Context, file *conftypes.Co
 		TemplateID:        bindingSpec.GetTemplateId(),
 		TemplateReleaseID: bindingSpec.GetTemplateReleaseId(),
 	}
-	var err error
-	templateRelease, err := s.storage.GetConfigTemplateRelease(binding.TemplateReleaseID)
-	if err != nil || templateRelease == nil {
-		return nil, firstError(err, fmt.Errorf("template release %q not found", binding.TemplateReleaseID))
-	}
 	releases, err := s.storage.ListNamespaceTemplateValueReleases(file.Namespace, binding.TemplateID)
 	if err != nil {
 		return nil, err
 	}
-	valueRelease := selectTemplateValueRelease(releases, binding.TemplateReleaseID, labels)
+	valueRelease := selectTemplateValueRelease(releases, labels)
 	if valueRelease == nil {
-		return nil, fmt.Errorf("active Namespace template Value release not found")
+		return nil, fmt.Errorf("active environment config release not found")
+	}
+	templateRelease, err := s.storage.GetConfigTemplateRelease(valueRelease.TemplateReleaseID)
+	if err != nil || templateRelease == nil {
+		return nil, firstError(err, fmt.Errorf("template snapshot %q not found", valueRelease.TemplateReleaseID))
 	}
 	specTemplate, err := configTemplateReleaseToSpec(templateRelease)
 	if err != nil {
@@ -403,7 +478,7 @@ func (s *Server) resolveTemplateSnapshot(ctx context.Context, file *conftypes.Co
 	return &apiconfig.RenderSnapshot{
 		TemplateBinding: &apiconfig.ConfigTemplateBinding{
 			TemplateId:        binding.TemplateID,
-			TemplateReleaseId: binding.TemplateReleaseID,
+			TemplateReleaseId: templateRelease.ID,
 			BindingReleaseId:  binding.BindingReleaseID,
 		},
 		TemplateRelease: specTemplate,
@@ -415,10 +490,10 @@ func (s *Server) resolveTemplateSnapshot(ctx context.Context, file *conftypes.Co
 }
 
 func selectTemplateValueRelease(releases []*conftypes.NamespaceTemplateValueRelease,
-	templateReleaseID string, labels map[string]string) *conftypes.NamespaceTemplateValueRelease {
+	labels map[string]string) *conftypes.NamespaceTemplateValueRelease {
 	var normal *conftypes.NamespaceTemplateValueRelease
 	for _, release := range releases {
-		if release == nil || !release.Active || release.TemplateReleaseID != templateReleaseID {
+		if release == nil || !release.Active {
 			continue
 		}
 		if release.ReleaseType == conftypes.TemplateValueReleaseTypeGray {

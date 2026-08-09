@@ -105,8 +105,9 @@ func (s *Server) decodeTemplateValuesFromStorage(payload string) (map[string]*ap
 	return conftypes.DecodeTemplateValues(string(plain))
 }
 
-func (s *Server) templateParameterSchema(templateID uint64) ([]*apiconfig.ConfigTemplateParameterSchema, error) {
-	item, err := s.findConfigTemplateByID(templateID)
+func (s *Server) templateParameterSchema(namespace string,
+	templateID uint64) ([]*apiconfig.ConfigTemplateParameterSchema, error) {
+	item, err := s.getOrInitializeNamespaceConfigTemplateDraft(namespace, templateID)
 	if err != nil {
 		return nil, err
 	}

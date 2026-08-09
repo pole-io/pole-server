@@ -12700,3 +12700,99 @@ Value 加密存储语义，而不只是前端密码框遮罩。
   最近十分钟日志未发现 panic、fatal 或 error。
 - 真实浏览器确认模板发布摘要、Value 灰度规则弹窗和版本管理只读状态；未执行模板或 Value 发布写操作。
   验收截图：`output/playwright/config-template-value-publish-dialog.png`。
+
+## 配置模板草稿组合渲染预览（2026-08-09）
+
+目标：版本管理不再要求模板和 Value 必须先发布；模板草稿与当前环境 Value 草稿作为明确可选来源，
+可与历史 Release 组合执行只读渲染预览。
+
+- [x] 建立模板草稿、Value 草稿选择项与单一预览动作的前端回归契约。
+- [x] 实现草稿与 Release 的四种组合来源解析和校验。
+- [x] 更新配置模板 ADR、功能知识、纠正经验与操作日志。
+- [x] 运行专项测试、构建并部署 OrbStack 进行真实浏览器验收。
+
+### Review
+
+- 模板版本与 Value 版本列表都增加显式的“当前草稿”首行，并在未选择 Release 时默认选中；用户仍可直接
+  点击历史版本行，在草稿/草稿、草稿/Release、Release/草稿、Release/Release 四种来源间组合。
+- 版本管理继续只保留一个“渲染预览”动作。预览按当前选择解析模板与 Value，使用已有原始内容预览接口，
+  不保存草稿、不创建 Release，也不改变环境发布状态；草稿变化时会清理已经失效的预览结果。
+- 回归契约按本次纠正先红后绿；配置模板、配置文件详情、Fluent 输入专项、目标 `oxlint`、`build:test`、
+  release 构建、context-kg lint 与范围化 `git diff --check` 均通过。
+- 已部署到 OrbStack Pod `pole-control-plane-779ddc47df-dqswt`，Ready、零重启，镜像 ID
+  `sha256:21429ae119a4cbe9ec0c4c915ada045f17edbb8e8eddf0e1b00a3d42996168fe`，入口返回 HTTP 200，
+  最近十分钟日志未发现 panic、fatal 或 error。
+- 真实浏览器确认模板草稿与当前 Value 草稿默认选中，不选择任何 Release 即可渲染出 YAML；网络记录仅新增
+  `POST /config/v1/templates/preview`，未执行保存或发布写操作。验收截图：
+  `output/playwright/config-template-draft-combination-preview.png`。
+
+## 配置模板原子组合发布设计（2026-08-09）
+
+目标：将用户可见的发布对象从相互独立的模板发布、环境 Value 发布，收敛为环境范围内可直接运行的
+Template + Value 组合版本，同时保留组件快照的不可变性、复用能力和审计边界。
+
+- [x] 核对现有 TemplateRelease、ValueRelease、RenderSnapshot 与 Watch 的绑定关系和事务边界。
+- [x] 明确组合发布的环境作用域、模板定义复用规则和历史版本语义。
+- [x] 形成领域模型、状态迁移、兼容策略与 API/存储调整方案，并等待用户确认。
+- [x] 实施原子组合发布、迁移兼容、测试、部署和真实浏览器验收。
+
+### Review
+
+- 当前代码中 `ValueRelease` 已强制保存 `template_release_id`，运行时 `RenderSnapshot` 和组合 revision 也按
+  TemplateRelease + ValueRelease 解析；但 Console 和服务端仍暴露两个可分别成功或失败的发布 API，尚无
+  覆盖两类快照创建与生效切换的统一事务。
+- 已确认发布按当前环境独立进行；模板快照不能单独生效，相同定义跨环境版本复用；全量与灰度都绑定完整
+  Template + Value 快照；回滚创建新环境版本并保留来源；版本管理使用一张组合版本表。
+- 服务端新增环境组合发布事务：必要时创建模板快照，始终创建新的环境 Value 快照并切换生效状态；
+  完全相同的模板定义直接复用已有快照。旧接口保留兼容，新 Console 统一使用
+  `/config/v1/templates/environment-releases`。
+- 运行时绑定改为识别逻辑模板，具体模板快照由当前环境版本决定；历史配置文件中已保存的
+  `template_release_id` 继续可读，不再阻止环境组合切换模板快照。
+- Console 已删除独立的“发布模板”和“发布 Value”动作，改为“发布环境配置”；版本管理仅保留一张环境
+  组合版本表。当前草稿组合默认选中，选一个版本渲染预览，选两个版本使用同一按钮进行格式化对比。
+- `go test ./pkg/config ./plugin/store/mysql ./plugin/apiserver/httpserver/config -count=1`、配置模板/配置文件/
+  Fluent 输入前端专项、目标 `oxlint`、`build:test`、release 构建、context-kg lint 与限定范围
+  `git diff --check` 通过。全量 `go test -tags nomsgpack -p 1 ./...` 仅在与本任务无关的观测性工作区变更中失败：
+  `TestNewRouter_ServesObservabilityV1FromConsoleModule` 预期 `0`、实际 `0.0003`；本次目标包均通过。
+- 已部署到 OrbStack Pod `pole-control-plane-78cc54f59d-mlv6z`，Ready、零重启，镜像
+  `sha256:653d3e7c54f4b2ce1b3dfe6d06acb7f94b79dbc30965e3891d1a8f6b7f93ad9d`，入口 HTTP 200，新 Pod 最近日志无
+  panic、fatal 或 error。
+- 真实浏览器确认发布确认层以“模板草稿 + 当前环境 Value 草稿”为唯一对象；草稿组合可直接渲染，草稿与
+  历史环境版本可格式化对比；请求记录中新环境版本查询和预览均返回 200，未执行发布写操作。验收截图：
+  `output/playwright/config-template-atomic-environment-release.png`。
+
+## 配置模板环境化与晋升设计（2026-08-10）
+
+目标：消除全局模板草稿对 dev、pre、pro 的隐式共享，让模板定义、Value 与可生效组合版本都完整受环境边界约束，
+并引入基于已验证不可变版本的环境晋升。
+
+- [x] 核对当前全局模板草稿的 API、存储和发布读取路径。
+- [x] 确认晋升对象、lane 回归 base 语义、目标环境草稿处理与灰度状态边界。
+- [x] 更新环境化领域模型、ADR、存储/API 兼容方案和前端交互规格。
+- [x] 实现拓扑草稿、DAG/lane binding 校验、不可变 Revision 与 Console API。
+- [x] 实现 Namespace 范围的模板定义草稿、迁移初始化与环境组合发布读取。
+- [ ] 实现配置资源 Promotion Adapter、变更集预检与最小 Bundle 状态流转。
+- [x] 实现晋升拓扑与基础工作台 Console 视图。
+- [x] 完成第一阶段专项测试、构建、OrbStack 部署与真实浏览器验收。
+
+### Review
+
+- CodeGraph 已确认 `ConfigFileTemplateStore` 仅按全局 name/ID 保存一份可编辑模板，没有 Namespace 维度；
+  `PublishNamespaceTemplateValueRelease` 发布时会读取这份全局当前草稿生成目标环境快照。因此当前实现只隔离 Value 草稿与已发布
+  组合版本，并未隔离模板定义草稿。
+- 现有 Namespace 模型只包含 name、comment、metadata 和 BUSINESS/SYSTEM kind，没有父子环境、阶段、晋升边或拓扑定义；
+  环境晋升拓扑需要作为独立显式关系建模，不应塞入自由形式 metadata 并靠客户端解析。
+- 已确认晋升拓扑是全局环境空间能力，不只服务配置中心；用户可定义任意无环的 dev/lane/tst/pre/pro 路径。配置、治理、服务与 AI 资源只能沿全局允许边创建目标环境候选变更。
+- 已确认 lane 回归 base 使用带分叉基线的资源变更集，支持逐项选择和全选；每项资源执行三方比较，只生成 base 候选变更，不使用 lane 全量快照覆盖 base。
+- baseline 晋升边已收敛为方向与门禁的组合定义：包含正式来源版本要求、审批、验证、允许资源域和冲突阻断；目标端始终生成候选而不自动生效。lane 回归改为独立 Lane Base Binding 与三方合并操作，避免在 DAG 中形成循环。
+- 拓扑自身采用草稿与不可变 Revision；晋升变更集固定创建时的 Revision 和边策略。后续拓扑修改只限制新请求，进行中流程显示历史版本标识，需要终止时显式撤销。
+- 晋升只处理已发布、可版本化的期望状态；运行时事实、环境专属值、草稿和灰度命中结果被排除。资源域必须实现 Promotion Adapter 后才能进入全局变更集。
+- Adapter 使用稳定逻辑资源 ID 对齐目标，预检分类为 CREATE/UPDATE/CONFLICT/UNSUPPORTED。目标缺失时可在权限通过后创建明确的新增候选；同名异 ID 或不支持必须阻断，不模糊匹配或静默覆盖。
+- 晋升变更集预检必须全量通过；审批后形成不可拆分的 Environment Promotion Bundle。发布以单一控制面事务写入原子期望状态和 Outbox，运行时通过回执收敛；部分失败显示 DEGRADED，回退新建 Bundle。
+- 后续决策已一次性收敛到 [[adr-environment-promotion-topology]]：lane/base 使用拓扑外显式绑定，baseline 之间才组成 DAG；完整定义 Bundle 状态机、目标 Value 补齐、审批/门禁、并发与基线漂移、灰度、回退、存储/API、Console、模板迁移和三阶段实施边界。
+- 第一阶段纵向切片已实现：全局拓扑草稿使用乐观锁 revision，发布生成不可变 Revision；服务端拒绝环、自环、重复 lane binding、lane 混入 baseline DAG、系统 Namespace 与不存在的环境。
+- 配置模板新增 `namespace_config_template_draft`，内容、格式、Schema 和引擎按 Namespace 隔离；名称、说明和标签继续作为全局逻辑身份。组合发布改读环境草稿，旧全局更新接口只允许修改身份说明，不再覆盖定义字段。
+- 环境模板草稿的修改人统一取当前认证主体，不再沿用旧接口中把请求时间字段误写为操作人的历史行为。
+- 迁移读取优先采用当前环境 active 正式组合版本，其次当前环境最新版本，最后才回退旧全局草稿；真实浏览器将 `spec-governance` 的旧发布快照无损初始化并保存为 draft version 1。
+- Console 模板详情头部常驻“当前环境定义”选择器，目录不再展示可能过期的全局格式/参数数，而标记“按环境”；Value Tab 删除重复环境下拉。拓扑页可编辑基线边与 lane/base 绑定并实时校验。
+- `go test -tags nomsgpack -p 1 ./...`、前端 `build:test`、release 构建、context-kg lint 与限定范围 `git diff --check` 通过。OrbStack 镜像为 `sha256:9995c3aecb8afc4bd280e35607dc58a4d51c0733fb73e69ff9f75b7157c3e07a`，Pod Ready 且无新错误日志；浏览器验收截图为 `output/playwright/environment-promotion-topology.png` 与 `output/playwright/config-template-environment-draft.png`。

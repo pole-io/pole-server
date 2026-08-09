@@ -1,16 +1,16 @@
 ---
-title: ADR：配置模板与 Namespace Value 客户端渲染
+title: ADR：配置模板与环境组合版本客户端渲染
 tags: [adr, config, template, namespace, sdk, gray-release]
-links: [config-center, namespace, cache-layer, api-servers, adr-config-template-labels-sensitive-values]
-updated: 2026-08-09
-sources: 15
+links: [config-center, namespace, cache-layer, api-servers, adr-config-template-labels-sensitive-values, adr-environment-promotion-topology]
+updated: 2026-08-10
+sources: 20
 ---
 
-# ADR：配置模板与 Namespace Value 客户端渲染
+# ADR：配置模板与环境组合版本客户端渲染
 
 ## 状态
 
-Accepted，后端、specification 参考实现和 Console 管理入口已完成，SDK 与组合 Watch 待接入。
+Accepted。Template + Value 原子环境版本已实现；模板草稿环境化、晋升适配器、SDK 与组合 Watch 待接入。
 
 ## 背景
 
@@ -26,14 +26,22 @@ Accepted，后端、specification 参考实现和 Console 管理入口已完成�
 
 ## 决策
 
-### 1. 模板与 Value 分别版本化发布
+### 1. 环境配置版本是唯一可生效发布对象
 
-配置模板是可跨 Namespace 复用的全局逻辑资源，模板发布产生不可变的 `TemplateRelease`。模板包含：
+配置模板跨环境共享稳定逻辑身份（ID、名称、说明和标签），但可执行的内容、格式、参数 Schema 和引擎草稿必须按 Namespace 隔离。模板定义本身不作为用户可见的独立发布对象；每次发布以“当前环境模板草稿 + 当前环境 Value 草稿”为输入，生成一个
+不可变的 `EnvironmentConfigRelease`：
 
-- 模板内容和配置格式。
-- 参数 Schema，包括参数名、类型、是否必填、默认值和敏感标记。
-- 模板引擎及语法版本。
-- 创建、修改和发布审计信息。
+```text
+EnvironmentConfigRelease(namespace, template_id, version)
+  ├── TemplateSnapshot
+  ├── ValueSnapshot
+  ├── normal | gray + audience rules
+  └── active state + audit metadata
+```
+
+`TemplateSnapshot` 是内部不可变组成和审计证据。发布时当前 Namespace 模板定义未变化就复用已有快照，内容、格式、Schema
+或引擎变化时才在同一事务中创建新快照。每次环境发布都会新增环境版本；全量和灰度都绑定完整的模板与
+Value 快照，不能只灰度 Value。
 
 Value 按 `Namespace + Template` 建立独立聚合：
 
@@ -41,27 +49,32 @@ Value 按 `Namespace + Template` 建立独立聚合：
 NamespaceTemplateValues(namespace, template_id)
 ```
 
-每个聚合分别维护草稿、正式 Value Release、多个灰度 Value Release、发布历史和回滚记录。不同模板之间不共享无边界的 Namespace 全局变量池；后续如需复用公共值，应通过显式、受控的 Value Set 引用另行设计。
+每个聚合维护 Value 草稿、一个生效全量环境版本、多个生效灰度环境版本、发布历史和回滚来源。不同模板
+之间不共享无边界的环境全局变量池；后续如需复用公共值，应通过显式、受控的 Value Set 引用另行设计。
 
-### 2. 配置文件显式固定模板版本
+### 2. 配置文件绑定逻辑模板，环境版本决定实际快照
 
-配置文件可以保持现有纯文本模式，也可以选择模板模式。模板模式的配置文件绑定一个明确的 `template_release_id`。
+配置文件可以保持现有纯文本模式，也可以选择模板模式。模板模式只要求绑定全局逻辑 `template_id`；运行时
+根据配置文件所属环境选择该模板当前命中的完整环境版本，再从版本中读取绑定的 TemplateSnapshot 与
+ValueSnapshot。
 
-模板发布新版本不会自动影响已有配置文件。使用方必须在配置文件中显式选择新模板版本，完成 Schema 兼容检查和多 Namespace 渲染预览，再发布新的绑定版本。
+旧 `template_release_id` 字段继续保留为创建时快照与兼容审计信息，但不再覆盖当前环境版本的生效选择。
+因此模板更新只能通过目标环境的一次组合发布生效，不需要逐个配置文件重新固定模板快照，也不会自动影响
+其它环境。
 
 因此：
 
-- 模板新版本不会批量改变所有绑定文件。
-- 配置文件发布记录可以准确回答“当时使用了哪个模板版本”。
-- 回滚配置文件绑定即可恢复旧模板版本。
+- 同一环境内绑定该逻辑模板的配置文件看到一致的环境组合版本。
+- 环境版本可以准确回答“当时使用了哪个模板快照和 Value 快照”。
+- 回滚通过创建一条引用历史快照的新环境版本完成，不重新激活或改写旧记录。
 
 ### 3. 服务端匹配灰度，客户端只负责渲染
 
 客户端继续提交 Namespace、配置分组、文件名和客户端标签。服务端负责：
 
-1. 查找配置文件当前生效的模板绑定。
-2. 读取绑定固定的 `TemplateRelease`。
-3. 按现有客户端标签、灰度优先级和正式回退规则，选择唯一命中的 `ValueRelease`。
+1. 查找配置文件当前生效的逻辑模板绑定。
+2. 按环境、客户端标签、灰度优先级和全量回退规则，选择唯一命中的 `EnvironmentConfigRelease`。
+3. 读取该环境版本绑定的 TemplateSnapshot 与 ValueSnapshot。
 4. 返回一个完整、可校验的渲染快照。
 
 SDK 不接收全部灰度规则，不实现灰度优先级或冲突处理。灰度匹配保持在控制面，避免 Go、Java、Rust 和其它语言 SDK 出现不一致的规则解释。
@@ -147,7 +160,7 @@ Console 以两个稳定层次表达配置模板，不能用流程步骤条与页
 配置分组只保留一个配置清单，不再以同级 Tab 把“配置文件”和“配置模板”拆成两个资源目录。纯文本与
 模板是 `ConfigFile` 的两种内容来源：创建配置时先选择“直接文本”或“配置模板”，模板类型再显式选择
 Template 与不可变 Template Release；创建完成后两类文件统一出现在同一棵文件树中，并以类型标识区分。
-全局模板定义也必须作为同级叶子节点直接出现在这棵清单中，并用尾部“全局模板”标签区分；不能再增加模板
+当前 Namespace 的逻辑模板也必须作为同级叶子节点直接出现在这棵清单中，并用尾部“环境模板”标签区分；不能再增加模板
 目录层级。点击后保持当前配置分组路由与左侧清单不变，只将右侧画布切换为原模板的内容、Schema、环境
 Value 和版本管理任务；完整模板路由仅保留为历史深链兼容入口。合并的是发现入口与页面工作区，不是存储
 模型：模板不能被复制到当前分组，Namespace/分组文件也不能被提升为全局资产。存量文件继续按
@@ -159,27 +172,26 @@ Value 和版本管理任务；完整模板路由仅保留为历史深链兼容�
 任务；完整元信息不再固定占用每个任务的纵向空间。新建模板默认进入基本信息，确保名称和格式等必填项
 仍是明确的首要入口。视觉一致性不改变领域职责和数据模型。
 
-版本管理分别展示不可变模板版本与当前环境空间的 Value 版本，两张历史表同时承担版本选择和反馈入口，
-不再额外复制版本下拉框或组合摘要。用户直接在两张表中各选一行，选中状态由单选标记和行底色表达；
-两侧均选中后，Console 通过唯一的“渲染预览”动作调用 `RenderPreview`，展示格式化
-结果、`rendered_sha256` 和 diagnostics。两个版本可以不属于原始发布时的同一组合，以便在切换模板版本前
-检查旧 Value 的 Schema 兼容性；预览结果仍只是参考校验，不能替代运行时 `RenderSnapshot`。
+版本管理使用一张“环境配置版本”表展示当前草稿组合与真实发布历史。每个历史行同时显示环境版本、模板
+快照、Value 快照、全量/灰度类型、生效状态和发布说明；不能再用左右两张表暗示已发布组件可以任意拼装。
+草稿组合作为首行明确展示并默认选中。Console 通过唯一的“渲染预览”动作调用 `RenderPreview`，预览当前
+模板草稿 + 当前环境 Value 草稿，或某个历史环境版本原本绑定的两个快照，展示格式化结果、
+`rendered_sha256` 和 diagnostics。预览只读取页面状态，不保存草稿、不创建版本，也不能替代运行时
+`RenderSnapshot`。
 
 环境 Value 表单必须根据参数 Schema 即时校验必填项和标量类型。INTEGER、DECIMAL 的前端规则与服务端
 canonical 文本规则保持一致；字段错误以内联方式反馈，并同时阻止保存草稿与发布。前端校验用于缩短反馈
 路径，服务端仍是最终契约权威，不能因为 Console 已校验而移除 API 校验。
 
-环境 Value 编辑页还必须支持发布前就地预览：使用当前选择的固定 `TemplateRelease` 与页面内尚未保存的
-Value 调用服务端参考预览，展示格式化结果、哈希和 diagnostics。Value 或固定模板版本变化后立即废弃旧
-预览，避免把过期结果误认为当前输入。该入口解决当前编辑任务；版本管理中的预览仍只负责两个历史版本的
-显式组合检查，两者共享结果组件但不共享状态。
+环境 Value 编辑页还必须支持发布前就地预览：使用当前模板草稿与页面内尚未保存的 Value 调用服务端参考
+预览，展示格式化结果、哈希和 diagnostics。模板或 Value 变化后立即废弃旧预览，避免把过期结果误认为
+当前输入。该入口解决当前编辑任务；版本管理负责当前草稿组合与历史环境版本检查，两者共享结果组件但不
+共享状态。
 
-模板发布与环境 Value 发布必须按对象分区。摘要头中的模板操作只在模板内容、Schema 和基本信息页签显示；
-环境 Value 页只提供 Value 草稿保存、当前草稿预览和 Value 版本发布，版本管理只提供历史选择与组合预览。
-两个发布入口都先进入对象明确的确认弹窗：模板弹窗审阅名称、格式、Schema 参数数、目标版本和本次发布
-说明；Value 弹窗审阅环境、固定模板版本、参数数，并配置全量/灰度、灰度规则和发布说明。发布表单不在
-编辑页永久展开。模板 Release 的 `comment` 优先保存请求中的本次发布说明；旧请求未提供时回退模板草稿
-说明。内容、格式、引擎和 Schema 仍必须由服务端从持久化草稿生成快照，不能信任客户端提交的副本。
+模板定义页只提供模板草稿编辑和保存，不能再独立发布。环境 Value 页提供 Value 草稿保存、当前组合预览和
+唯一的“发布环境配置”入口。确认弹窗同时审阅环境、模板草稿、Value 参数数、全量/灰度类型、灰度规则和
+发布说明。服务端必须从当前 Namespace 持久化模板草稿生成或复用 TemplateSnapshot，并与请求中的当前 Value 在同一事务中
+创建 EnvironmentConfigRelease；不能信任客户端提交的模板内容、格式或 Schema 副本。
 
 ### 6. Watch 面向组合 Revision
 
@@ -232,16 +244,21 @@ Profile 规则：
 ## 领域模型
 
 ```text
-ConfigTemplate
-  └── TemplateRelease (immutable)
-          ↑ pinned by explicit switch
+ConfigTemplateIdentity (global)
+  └── NamespaceConfigTemplateDraft[]
+        └── TemplateSnapshot[] (immutable, content-reused)
 ConfigFileTemplateBinding
-          ↓
+  └── template_id (logical binding)
 NamespaceTemplateValues (namespace + template)
-  ├── Normal ValueRelease (at most one active)
-  └── Gray ValueRelease[] (matched by server)
+  └── ValueDraft
 
-TemplateRelease + matched ValueRelease
+EnvironmentConfigRelease (immutable)
+  ├── TemplateSnapshot
+  ├── ValueSnapshot
+  ├── Normal (at most one active)
+  └── Gray[] (matched by server)
+
+matched EnvironmentConfigRelease
   └── RenderSnapshot
           └── SDK local rendered config
 ```
@@ -250,11 +267,12 @@ TemplateRelease + matched ValueRelease
 
 | 资源 | 关键身份 | 说明 |
 |---|---|---|
-| `config_template` | `template_id`、全局逻辑名称 | 模板草稿与 Schema |
-| `config_template_release` | `template_release_id` | 不可变模板发布快照 |
+| `config_template` | `template_id`、全局逻辑名称 | 只保存模板身份、说明和标签 |
+| `namespace_config_template_draft` | `namespace + template_id` | Namespace 隔离的内容、格式、Schema 和引擎草稿 |
+| `config_template_release` | `template_release_id` | 内部不可变模板快照，内容一致时跨环境版本复用 |
 | `namespace_template_values` | `namespace + template_id` | Namespace 下的 Value 草稿聚合 |
-| `namespace_template_value_release` | `value_release_id` | 正式或灰度 Value 快照 |
-| `config_file_template_binding_release` | 配置文件身份 + binding release | 固定模板版本的显式切换记录 |
+| `namespace_template_value_release` | `value_release_id` | 环境组合版本；绑定模板快照、Value 快照和发布状态 |
+| `config_file_template_binding_release` | 配置文件身份 + binding release | 逻辑模板绑定；旧快照字段用于兼容审计 |
 
 具体 DDL 和 specification 字段在实现阶段确定，但身份和不可变性不得退化。
 
@@ -285,18 +303,28 @@ type ConfigTemplatePreviewer interface {
 - 参数 Schema 中标记为敏感的 Value 必须复用或扩展配置中心加密存储能力。
 - 日志、Watch 事件、错误详情和审计摘要不得记录敏感明文。
 - SDK 本地缓存敏感渲染结果时应支持进程内缓存和可选加密落盘策略。
-- 每次绑定、模板和 Value 发布都记录操作者、原因、源 revision 和目标 release。
+- 每次绑定和环境组合发布都记录操作者、原因、源 revision 和目标 release；回滚新增记录并保存
+  `source_release_id`，不重新激活旧记录。
 - 管理端预览必须按目标 Namespace 和选定 Value Release 执行，且遵守对应资源权限。
 
 ## 兼容策略
 
 - 现有纯文本配置文件保持原发布、灰度、Watch 和客户端读取行为。
 - 模板模式按配置文件显式启用，不对存量文件自动转换。
-- 现有静态 `ConfigFileTemplate` 可在迁移时转为模板逻辑资源和首个草稿，但不能自动绑定配置文件。
+- 现有静态 `ConfigFileTemplate` 在迁移时保留为全局逻辑身份和迁移证据；Namespace 草稿优先从该环境当前 active/last TemplateSnapshot 初始化，只在没有环境快照时使用旧全局草稿。详细迁移规则见 [[adr-environment-promotion-topology]]。
+- 旧 `TemplateRelease` 与 `ValueRelease` 数据无需重建：已有 Value Release 已持有 `template_release_id`，可直接
+  投影为历史 EnvironmentConfigRelease；旧模板发布接口保留兼容但 Console 不再暴露。
+- 存量配置文件绑定继续读取原 `template_release_id` 作为审计信息；运行时改为按 `template_id + namespace`
+  选择当前环境组合版本。
 - 不支持模板渲染的新 SDK 请求模板配置时应收到明确的不兼容错误；服务端不能偷偷降级为未渲染模板文本。
 - 新能力需要先在 specification 声明快照、引擎版本、组合 revision 和能力协商字段，再更新各语言 SDK。
 
 ## 被否决的方案
+
+### 模板与 Value 分两次独立发布
+
+运行时只消费两者组合后的完整快照，独立发布会暴露无法运行的中间状态，并要求用户手工维护先后顺序。
+模板快照与 Value 快照可以独立存储和审计，但只能通过一次环境组合发布原子创建或复用并切换生效状态。
 
 ### 发布时渲染并固化唯一内容
 
@@ -326,6 +354,10 @@ Go 特有的 pipeline、函数和控制语义无法保证被其它语言 SDK 等
 
 一次模板发布可能跨 Namespace 批量改变客户端配置，破坏显式发布、审计和回滚边界。
 
+### 全局共享一份可编辑模板草稿
+
+dev/lane 中未发布的开发会改变 pre/pro 的预览和下一次发布基线。全局只能共享逻辑身份，可执行草稿必须按 Namespace 隔离并沿晋升拓扑流转。
+
 ## 分期实施
 
 1. [x] 在 specification 定义模板、参数 Schema、Value、绑定、`RenderSnapshot` 和 `RenderPreview` 契约。
@@ -345,6 +377,7 @@ Go 特有的 pipeline、函数和控制语义无法保证被其它语言 SDK 等
 ## 验收标准
 
 - 同一模板可被多个 Namespace 使用，各自维护独立 Value 和发布历史。
+- 同一逻辑模板在多个 Namespace 中维护独立定义草稿，dev/lane 编辑不改变 pre/pro 的草稿、预览或发布基线。
 - 同一 Namespace 下不同模板的 Value 不会互相污染。
 - 服务端根据客户端标签只返回唯一命中的 Value Release。
 - SDK 不包含灰度规则匹配实现。
@@ -353,7 +386,7 @@ Go 特有的 pipeline、函数和控制语义无法保证被其它语言 SDK 等
 - SDK 本地渲染哈希必须与服务端参考哈希一致。
 - 模板或 Value 变化通过一个组合 revision 原子生效。
 - 新快照渲染失败时客户端继续使用上一份成功结果。
-- 模板升级必须由配置文件显式切换，不会自动影响已有绑定。
+- 模板升级必须通过目标 Namespace 的原子环境组合发布；只影响该环境中绑定同一逻辑模板的配置文件，不跨环境自动生效。
 - 纯文本配置文件和旧客户端保持原有行为。
 
 ## 规范依据
@@ -369,3 +402,4 @@ Go 特有的 pipeline、函数和控制语义无法保证被其它语言 SDK 等
 - [[cache-layer]]
 - [[api-servers]]
 - [[adr-config-template-labels-sensitive-values]]
+- [[adr-environment-promotion-topology]]

@@ -12,8 +12,8 @@ import { Label, Op } from 'services/types';
 import { ConfigType } from 'services/config_files';
 import {
     ConfigFileTemplate,
-    ConfigTemplateRelease,
-    describeConfigTemplateReleases,
+    NamespaceTemplateValueRelease,
+    describeNamespaceTemplateValueReleases,
     describeConfigTemplates,
 } from 'services/config_templates';
 
@@ -59,22 +59,29 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
     const [activeStep, setActiveStep] = React.useState<number>(1);
     const [metaValues, setMetaValues] = React.useState<ConfigFileMetaValues>(emptyMetaValues);
     const [templates, setTemplates] = React.useState<ConfigFileTemplate[]>([]);
-    const [templateReleases, setTemplateReleases] = React.useState<ConfigTemplateRelease[]>([]);
+    const [environmentReleases, setEnvironmentReleases] = React.useState<NamespaceTemplateValueRelease[]>([]);
 
     const refreshTemplates = React.useCallback(() => {
         describeConfigTemplates()
             .then(({ templates: items }) => setTemplates(items))
             .catch(() => setTemplates([]));
     }, []);
-    const refreshTemplateReleases = React.useCallback((templateId: string) => {
+    const refreshEnvironmentReleases = React.useCallback((templateId: string) => {
         if (!templateId) {
-            setTemplateReleases([]);
+            setEnvironmentReleases([]);
             return;
         }
-        describeConfigTemplateReleases(templateId)
-            .then(({ releases }) => setTemplateReleases(releases))
-            .catch(() => setTemplateReleases([]));
-    }, []);
+        describeNamespaceTemplateValueReleases(namespace, templateId)
+            .then(({ releases }) => {
+                setEnvironmentReleases(releases);
+                const active = releases.find(item => item.active && item.releaseType === 'TEMPLATE_VALUE_RELEASE_NORMAL');
+                setMetaValues(current => current.templateId === templateId ? {
+                    ...current,
+                    templateReleaseId: active?.templateReleaseId || '',
+                } : current);
+            })
+            .catch(() => setEnvironmentReleases([]));
+    }, [namespace]);
 
     React.useEffect(() => {
         if (visible) {
@@ -102,7 +109,7 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
         const refreshWhenReturning = () => {
             if (document.visibilityState !== 'visible') return;
             refreshTemplates();
-            refreshTemplateReleases(metaValues.templateId);
+            refreshEnvironmentReleases(metaValues.templateId);
         };
         window.addEventListener('focus', refreshWhenReturning);
         document.addEventListener('visibilitychange', refreshWhenReturning);
@@ -110,11 +117,11 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
             window.removeEventListener('focus', refreshWhenReturning);
             document.removeEventListener('visibilitychange', refreshWhenReturning);
         };
-    }, [metaValues.templateId, refreshTemplateReleases, refreshTemplates, visible]);
+    }, [metaValues.templateId, refreshEnvironmentReleases, refreshTemplates, visible]);
 
     React.useEffect(() => {
-        refreshTemplateReleases(metaValues.templateId);
-    }, [metaValues.templateId, refreshTemplateReleases]);
+        refreshEnvironmentReleases(metaValues.templateId);
+    }, [metaValues.templateId, refreshEnvironmentReleases]);
 
     React.useEffect(() => {
         if (visible && activeStep === 1) {
@@ -159,7 +166,7 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
             return;
         }
         if (metaValues.configType === 'CONFIG_TEMPLATE' && (!metaValues.templateId || !metaValues.templateReleaseId)) {
-            openErrNotification('无法创建', '模板配置必须显式选择模板及其不可变发布版本');
+            openErrNotification('无法创建', '所选模板必须先在当前环境发布一个配置版本');
             changeStep(1);
             return;
         }
@@ -225,7 +232,7 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                             </RadioGroup>
                             <div>
                                 {metaValues.configType === 'CONFIG_TEMPLATE'
-                                    ? '固定一个已发布模板版本，由当前环境 Value 提供参数。'
+                                    ? '绑定逻辑模板，并使用当前环境生效的模板与 Value 组合版本。'
                                     : '直接编辑并发布 YAML、JSON、TOML 或文本内容。'}
                             </div>
                         </FormItem>
@@ -255,19 +262,12 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                                         }))}
                                     />
                                 </FormItem>
-                                <FormItem label="固定模板版本">
-                                    <Select
-                                        value={metaValues.templateReleaseId}
-                                        placeholder="显式选择不可变发布版本"
-                                        options={templateReleases.map(item => ({
-                                            label: `v${item.version} · ${item.id}`,
-                                            value: item.id,
-                                        }))}
-                                        onChange={(templateReleaseId: string) => setMetaValues(current => ({
-                                            ...current,
-                                            templateReleaseId,
-                                        }))}
-                                    />
+                                <FormItem label="当前环境配置版本">
+                                    <div>
+                                        {environmentReleases.find(item => item.active && item.releaseType === 'TEMPLATE_VALUE_RELEASE_NORMAL')
+                                            ? `v${environmentReleases.find(item => item.active && item.releaseType === 'TEMPLATE_VALUE_RELEASE_NORMAL')?.version} · 模板与 Value 已绑定`
+                                            : '当前环境尚无生效的全量配置版本'}
+                                    </div>
                                 </FormItem>
                                 <Button
                                     variant="text"
@@ -324,8 +324,8 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                 )}
                 {activeStep === 2 && metaValues.configType === 'CONFIG_TEMPLATE' && (
                     <div style={{ marginTop: 20 }}>
-                        模板正文来自已固定的 Template Release。创建后请在模板库维护
-                        <strong> {namespace}</strong> 的 Value；SDK 将自行完成渲染。
+                        配置文件将绑定逻辑模板，并使用 <strong>{namespace}</strong> 当前命中的完整环境配置版本；
+                        SDK 将根据其中绑定的模板快照与 Value 快照完成渲染。
                     </div>
                 )}
             </Form>

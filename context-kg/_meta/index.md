@@ -2,7 +2,7 @@
 title: pole-control-plane 知识库
 tags: [meta, index]
 links: [schema, log]
-updated: 2026-08-09
+updated: 2026-08-10
 sources: 0
 ---
 
@@ -21,8 +21,8 @@ sources: 0
 
 ## 业务知识域（business/）
 
-- [[terminology]] — RPC 服务治理、核心资源、系统角色与运行配置术语 | business, terminology
-- [[domain-models]] — 服务治理 Bundle、执行点、核心实体及关系 | business, domain-model
+- [[terminology]] — 环境组合版本、服务治理与运行配置术语 | business, terminology
+- [[domain-models]] — 环境配置版本、治理 Bundle 与核心关系 | business, domain-model
 - [[business-rules]] — 跨域、访问控制、服务发现、配置和治理规则 | business, rules
 
 ### 竞品情报（business/competitive-intel/）
@@ -33,7 +33,7 @@ sources: 0
 
 ### 功能档案（business/feature-registry/）
 
-- [[namespace]] — 运行环境、跨环境资源身份与系统环境保护 | business, feature, namespace
+- [[namespace]] — 运行环境、全局晋升 DAG 与系统环境保护 | business, feature, namespace
 - [[service-discovery]] — 服务发现、逻辑/环境服务生命周期、双选择器删除、健康检查与四协议服务契约 | business, feature, service, healthcheck
 - [[config-center]] — 配置中心：版本化配置文件、灰度发布、Watch 长轮询机制 | business, feature, config
 - [[governance-rules]] — 治理规则：路由、限流、熔断、故障探测、泳道、无损规则 | business, feature, governance
@@ -77,7 +77,7 @@ sources: 0
 - [[adr-a2a-agent-registry]] — A2A Agent Registry 功能设计与分期 | adr, ai, a2a, mcp, registry
 - [[adr-console-oidc-identity-source]] — Console OIDC 用户来源与目录同步 | adr, auth, console, oidc, identity
 - [[adr-config-gray-release-spec-contract]] — 配置中心多灰度发布与 specification 契约适配 | adr, config, api, gray-release
-- [[adr-config-template-client-rendering]] — 模板任务、发布分区与 Value 版本化渲染 | adr, config, template, namespace, sdk, gray-release
+- [[adr-config-template-client-rendering]] — 模板与 Value 原子环境版本及客户端渲染 | adr, config, template, namespace, sdk, gray-release
 - [[adr-config-template-labels-sensitive-values]] — 模板目录标签与逐参数 Value 加密存储 | adr, config, template, labels, encryption, security
 - [[adr-instance-active-healthcheck]] — Console 实例 TCP/HTTP 主动健康检查 | adr, service, healthcheck, tcp, http
 - [[adr-console-fluent-ui-design-system]] — Console Fluent UI v9 设计系统与复合查询交互规范 | adr, console, frontend, fluent-ui, design-system
@@ -89,6 +89,7 @@ sources: 0
 - [[adr-console-limiter-source-layout-and-embedded-web]] — Console/Limiter 源码归属与前端嵌入制品 | adr, architecture, console, limiter, frontend, embed, build
 - [[adr-logical-service-environment-binding]] — 控制面逻辑服务与环境服务显式关联 | adr, service, namespace, domain-model, console
 - [[adr-system-namespace-kind]] — 业务环境与 Pole 内部系统空间类型化 | adr, namespace, environment, system, console
+- [[adr-environment-promotion-topology]] — 全局晋升 DAG、lane 回归与跨资源 Bundle | adr, namespace, environment, promotion, lane, release, console
 - [[adr-ai-resource-environment-binding]] — Agent/MCP 逻辑定义、环境实例与调用作用域 | adr, ai, agent, mcp, namespace, domain-model
 - [[adr-plugin-extension-registry]] — 官方插件装配、隔离与销毁契约 | adr, plugin, registry, extension, runtime
 

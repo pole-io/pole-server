@@ -1,90 +1,139 @@
 import React from 'react';
 import { Button, PrimaryTableProps, Table, Tag } from 'components/Fluent';
-import { ConfigTemplateRelease, NamespaceTemplateValueRelease, RenderPreview } from 'services/config_templates';
+import {
+  ConfigFileTemplate,
+  ConfigTemplateRelease,
+  ConfigTemplateValue,
+  NamespaceTemplateValueRelease,
+  RenderPreview,
+} from 'services/config_templates';
 import RenderPreviewPanel from './RenderPreviewPanel';
+import CodeDiffEditor from 'components/CodeDiffEditor';
 import styles from './index.module.less';
 
 interface VersionManagerProps {
   namespace: string;
-  releases: ConfigTemplateRelease[];
-  valueReleases: NamespaceTemplateValueRelease[];
-  templateReleaseId: string;
-  valueReleaseId: string;
+  templateDraft: ConfigFileTemplate;
+  valueDraft: Record<string, ConfigTemplateValue>;
+  templateSnapshots: ConfigTemplateRelease[];
+  releases: NamespaceTemplateValueRelease[];
+  releaseIds: string[];
   preview?: RenderPreview;
-  onTemplateReleaseChange: (value: string) => void;
-  onValueReleaseChange: (value: string) => void;
+  comparison?: {
+    before: RenderPreview;
+    after: RenderPreview;
+    beforeLabel: string;
+    afterLabel: string;
+  };
+  onReleaseChange: (value: string) => void;
   onPreview: () => void;
 }
 
+export const ENVIRONMENT_DRAFT_ROW_ID = '__environment_draft__';
+
+type EnvironmentVersionRow = NamespaceTemplateValueRelease & {
+  selectionId: string;
+  draftRow?: boolean;
+};
+
 const VersionManager: React.FC<VersionManagerProps> = ({
   namespace,
+  templateDraft,
+  valueDraft,
+  templateSnapshots,
   releases,
-  valueReleases,
-  templateReleaseId,
-  valueReleaseId,
+  releaseIds,
   preview,
-  onTemplateReleaseChange,
-  onValueReleaseChange,
+  comparison,
+  onReleaseChange,
   onPreview,
 }) => {
-  const templateVersionById = React.useMemo(
-    () => new Map(releases.map((release) => [release.id, release.version])),
-    [releases]
+  const rows = React.useMemo<EnvironmentVersionRow[]>(
+    () => [
+      {
+        id: ENVIRONMENT_DRAFT_ROW_ID,
+        valuesId: '',
+        namespace,
+        templateId: templateDraft.id,
+        templateReleaseId: '',
+        values: valueDraft,
+        releaseType: 'TEMPLATE_VALUE_RELEASE_NORMAL',
+        version: '草稿',
+        active: false,
+        selectionId: ENVIRONMENT_DRAFT_ROW_ID,
+        draftRow: true,
+      },
+      ...releases.map((release) => ({ ...release, selectionId: release.id })),
+    ],
+    [namespace, releases, templateDraft.id, valueDraft]
+  );
+  const templateSnapshotById = React.useMemo(
+    () => new Map(templateSnapshots.map((release) => [release.id, release])),
+    [templateSnapshots]
   );
 
-  const selectionColumn = (selectedId: string): PrimaryTableProps['columns'][number] => ({
-    colKey: 'selection',
-    title: '选择',
-    width: 54,
-    ellipsis: false,
-    cell: ({ row }) => {
-      const selected = row.id === selectedId;
-      return (
-        <span
-          aria-label={selected ? '已选择' : '未选择'}
-          className={selected ? styles.versionSelectMarkActive : styles.versionSelectMark}
-          data-version-selected={selected ? 'true' : undefined}
-        />
-      );
-    },
-  });
-
-  const templateColumns: PrimaryTableProps['columns'] = [
-    selectionColumn(templateReleaseId),
-    { colKey: 'version', title: '版本', width: 76, cell: ({ row }) => `v${row.version}` },
-    { colKey: 'format', title: '格式', width: 78, cell: ({ row }) => String(row.format).toUpperCase() },
-    { colKey: 'contentSha256', title: '内容 SHA-256', cell: ({ row }) => row.contentSha256 || '-' },
-    { colKey: 'id', title: 'Release ID' },
-  ];
-
-  const valueColumns: PrimaryTableProps['columns'] = [
-    selectionColumn(valueReleaseId),
-    { colKey: 'version', title: '版本', width: 76, cell: ({ row }) => `v${row.version}` },
+  const columns: PrimaryTableProps['columns'] = [
     {
-      colKey: 'releaseType',
-      title: '类型',
-      width: 86,
-      cell: ({ row }) => (row.releaseType === 'TEMPLATE_VALUE_RELEASE_GRAY' ? '灰度' : '全量'),
+      colKey: 'selection',
+      title: '选择',
+      width: 54,
+      ellipsis: false,
+      cell: ({ row }) => {
+        const selected = releaseIds.includes(row.selectionId);
+        return (
+          <span
+            aria-label={selected ? '已选择' : '未选择'}
+            className={selected ? styles.versionSelectMarkActive : styles.versionSelectMark}
+            data-version-selected={selected ? 'true' : undefined}
+          />
+        );
+      },
+    },
+    {
+      colKey: 'version',
+      title: '环境版本',
+      width: 96,
+      cell: ({ row }) => (row.draftRow ? <Tag theme="primary">当前草稿组合</Tag> : `v${row.version}`),
     },
     {
       colKey: 'templateReleaseId',
-      title: '模板版本',
-      width: 100,
-      cell: ({ row }) => `v${templateVersionById.get(row.templateReleaseId) || '-'}`,
+      title: '模板快照',
+      cell: ({ row }) => {
+        if (row.draftRow) return '当前模板草稿';
+        const snapshot = templateSnapshotById.get(row.templateReleaseId);
+        return snapshot ? `v${snapshot.version} · ${snapshot.id}` : row.templateReleaseId || '-';
+      },
+    },
+    {
+      colKey: 'id',
+      title: 'Value 快照',
+      cell: ({ row }) => (row.draftRow ? '当前 Value 草稿' : row.id),
+    },
+    {
+      colKey: 'releaseType',
+      title: '发布类型',
+      width: 92,
+      cell: ({ row }) =>
+        row.draftRow ? '草稿' : row.releaseType === 'TEMPLATE_VALUE_RELEASE_GRAY' ? '灰度' : '全量',
     },
     {
       colKey: 'active',
       title: '状态',
       width: 82,
-      cell: ({ row }) => <Tag theme={row.active ? 'success' : 'default'}>{row.active ? '生效' : '停止'}</Tag>,
+      cell: ({ row }) =>
+        row.draftRow ? (
+          <Tag theme="primary">待发布</Tag>
+        ) : (
+          <Tag theme={row.active ? 'success' : 'default'}>{row.active ? '生效' : '停止'}</Tag>
+        ),
     },
-    { colKey: 'id', title: 'Value Release ID' },
+    { colKey: 'comment', title: '发布说明', cell: ({ row }) => (row.draftRow ? '-' : row.comment || '-') },
   ];
 
   return (
     <div className={styles.versionPane}>
       <div className={styles.versionActions}>
-        <Button theme="primary" disabled={!templateReleaseId || !valueReleaseId} onClick={onPreview}>
+        <Button theme="primary" disabled={!namespace} onClick={onPreview}>
           渲染预览
         </Button>
       </div>
@@ -93,40 +142,46 @@ const VersionManager: React.FC<VersionManagerProps> = ({
         <section className={styles.versionHistory}>
           <div className={styles.versionHistoryHeading}>
             <div>
-              <strong>模板版本</strong>
-              <span>不可变的模板内容、格式和参数 Schema 快照</span>
+              <strong>环境配置版本</strong>
+              <span>模板快照与 Value 快照原子绑定 · 环境空间：{namespace || '-'}</span>
             </div>
-            <Tag>{releases.length}</Tag>
+            <Tag>草稿 + {releases.length}</Tag>
           </div>
           <Table
-            aria-label="模板版本，点击一行进行选择"
-            data={releases}
-            columns={templateColumns}
+            aria-label="环境配置版本，点击一行进行选择"
+            data={rows}
+            columns={columns}
             rowKey="id"
             pagination={false}
-            onRowClick={({ row }) => onTemplateReleaseChange(row.id)}
-          />
-        </section>
-        <section className={styles.versionHistory}>
-          <div className={styles.versionHistoryHeading}>
-            <div>
-              <strong>Value 版本</strong>
-              <span>{namespace ? `环境空间：${namespace}` : '请选择环境空间'}</span>
-            </div>
-            <Tag>{valueReleases.length}</Tag>
-          </div>
-          <Table
-            aria-label="环境 Value 版本，点击一行进行选择"
-            data={valueReleases}
-            columns={valueColumns}
-            rowKey="id"
-            pagination={false}
-            onRowClick={({ row }) => onValueReleaseChange(row.id)}
+            onRowClick={({ row }) => onReleaseChange(row.selectionId)}
           />
         </section>
       </div>
 
-      <RenderPreviewPanel preview={preview} emptyMessage="选择模板版本和 Value 版本后查看最终配置。" />
+      {comparison ? (
+        <section className={styles.versionComparison}>
+          <div className={styles.versionHistoryHeading}>
+            <div>
+              <strong>格式化版本对比</strong>
+              <span>{comparison.beforeLabel} → {comparison.afterLabel}</span>
+            </div>
+            <Tag>{comparison.before.diagnostics.length + comparison.after.diagnostics.length} 项 diagnostics</Tag>
+          </div>
+          <CodeDiffEditor
+            namespace={namespace}
+            group="config-template"
+            filename={String(templateDraft.name || templateDraft.id)}
+            readonly
+            allowFullScreen
+            height="100%"
+            language={comparison.after.format || comparison.before.format}
+            curValue={comparison.before.renderedContent}
+            nextValue={comparison.after.renderedContent}
+          />
+        </section>
+      ) : (
+        <RenderPreviewPanel preview={preview} emptyMessage="默认预览当前模板草稿与当前环境 Value 草稿，也可选择历史环境版本。" />
+      )}
     </div>
   );
 };

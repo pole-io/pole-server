@@ -125,17 +125,21 @@ type ConfigFileTemplateStore interface {
 	GetConfigFileTemplateByID(id uint64) (*conftypes.ConfigFileTemplate, error)
 }
 
-// ConfigTemplateReleaseStore stores immutable config template releases.
+// ConfigTemplateReleaseStore stores internal immutable config template snapshots.
 type ConfigTemplateReleaseStore interface {
 	CreateConfigTemplateRelease(release *conftypes.ConfigTemplateRelease) error
 	GetConfigTemplateRelease(id string) (*conftypes.ConfigTemplateRelease, error)
 	ListConfigTemplateReleases(templateID uint64) ([]*conftypes.ConfigTemplateRelease, error)
 }
 
-// NamespaceTemplateValuesStore stores Namespace-scoped Value drafts and releases.
+// NamespaceTemplateValuesStore stores Namespace-scoped Value drafts and atomic environment releases.
 type NamespaceTemplateValuesStore interface {
 	SaveNamespaceTemplateValues(values *conftypes.NamespaceTemplateValues) error
 	GetNamespaceTemplateValues(namespace string, templateID uint64) (*conftypes.NamespaceTemplateValues, error)
+	// CreateConfigTemplateEnvironmentRelease atomically persists an optional new template snapshot
+	// and the immutable environment release that binds it to a Value snapshot.
+	CreateConfigTemplateEnvironmentRelease(template *conftypes.ConfigTemplateRelease,
+		release *conftypes.NamespaceTemplateValueRelease) error
 	CreateNamespaceTemplateValueRelease(release *conftypes.NamespaceTemplateValueRelease) error
 	GetNamespaceTemplateValueRelease(id string) (*conftypes.NamespaceTemplateValueRelease, error)
 	ListNamespaceTemplateValueReleases(namespace string, templateID uint64) (

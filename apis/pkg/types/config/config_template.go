@@ -23,7 +23,7 @@ const (
 	TemplateValueReleaseTypeGray   TemplateValueReleaseType = "gray"
 )
 
-// ConfigTemplateRelease is an immutable published snapshot of a ConfigFileTemplate.
+// ConfigTemplateRelease is an internal immutable template snapshot reused by environment releases.
 type ConfigTemplateRelease struct {
 	ID              string
 	TemplateID      uint64
@@ -53,7 +53,29 @@ type NamespaceTemplateValues struct {
 	ModifyBy   string
 }
 
-// NamespaceTemplateValueRelease is an immutable published Value snapshot.
+// NamespaceConfigTemplateDraft is the mutable template definition scoped by
+// Namespace and logical template identity. Labels and name remain global.
+type NamespaceConfigTemplateDraft struct {
+	Namespace       string
+	TemplateID      uint64
+	Name            string
+	Comment         string
+	Content         string
+	Format          string
+	ParameterSchema string
+	Engine          string
+	EngineVersion   string
+	Revision        string
+	DraftVersion    uint64
+	InitializedFrom string
+	CreateTime      time.Time
+	CreateBy        string
+	ModifyTime      time.Time
+	ModifyBy        string
+}
+
+// NamespaceTemplateValueRelease is the compatibility representation of an immutable environment config release.
+// It atomically binds TemplateReleaseID to the encrypted Value snapshot and rollout state.
 type NamespaceTemplateValueRelease struct {
 	ID                string
 	ValuesID          string

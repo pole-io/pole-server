@@ -184,6 +184,26 @@
   }
 }
 
+.environmentContext {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 320px) auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.environmentContext > span,
+.valueEnvironmentSummary > span {
+  color: var(--td-text-color-secondary, #6b7280);
+  font-size: 12px;
+}
+
+.valueEnvironmentSummary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
 .contentPane,
 .schemaPane,
 .valuesPane,
@@ -360,6 +380,21 @@
   background: var(--app-bg-surface);
 }
 
+.versionComparison {
+  display: flex;
+  min-height: 500px;
+  flex-direction: column;
+  margin-top: 16px;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 6px;
+  overflow: hidden;
+
+  > :last-child {
+    min-height: 420px;
+    flex: 1 1 auto;
+  }
+}
+
 .valuePreview {
   min-height: 360px;
   overflow: hidden;
@@ -502,7 +537,7 @@
 .valueToolbar {
   display: grid;
   align-items: end;
-  grid-template-columns: minmax(180px, 0.65fr) minmax(260px, 1fr) auto;
+  grid-template-columns: minmax(180px, 0.65fr) auto;
   gap: 14px;
 
   label {
@@ -691,7 +726,7 @@
 
 .versionHistoryGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 

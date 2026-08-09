@@ -943,6 +943,20 @@ func (mr *MockStoreMockRecorder) CreateConfigTemplateRelease(release interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateConfigTemplateRelease", reflect.TypeOf((*MockStore)(nil).CreateConfigTemplateRelease), release)
 }
 
+// CreateConfigTemplateEnvironmentRelease mocks base method.
+func (m *MockStore) CreateConfigTemplateEnvironmentRelease(template *config.ConfigTemplateRelease, release *config.NamespaceTemplateValueRelease) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateConfigTemplateEnvironmentRelease", template, release)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateConfigTemplateEnvironmentRelease indicates an expected call of CreateConfigTemplateEnvironmentRelease.
+func (mr *MockStoreMockRecorder) CreateConfigTemplateEnvironmentRelease(template, release interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateConfigTemplateEnvironmentRelease", reflect.TypeOf((*MockStore)(nil).CreateConfigTemplateEnvironmentRelease), template, release)
+}
+
 // CreateFaultDetectRule mocks base method.
 func (m *MockStore) CreateFaultDetectRule(conf *rules.FaultDetectRule) error {
 	m.ctrl.T.Helper()

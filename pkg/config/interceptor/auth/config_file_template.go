@@ -25,6 +25,7 @@ import (
 
 	"github.com/pole-io/pole-server/apis/pkg/types"
 	"github.com/pole-io/pole-server/apis/pkg/types/auth"
+	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
 	api "github.com/pole-io/pole-server/pkg/common/api/v1"
 )
 
@@ -81,6 +82,26 @@ func (s *Server) SaveNamespaceTemplateValues(
 	}
 	ctx = context.WithValue(authCtx.GetRequestContext(), types.ContextAuthContextKey, authCtx)
 	return s.nextServer.SaveNamespaceTemplateValues(ctx, req)
+}
+
+func (s *Server) GetNamespaceConfigTemplateDraft(
+	ctx context.Context, namespace string, templateID uint64) *apimodel.Response {
+	authCtx := s.collectConfigFileTemplateAuthContext(ctx, nil, auth.Read, auth.DescribeConfigFileTemplate)
+	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewConfigResponseWithInfo(auth.ConvertToErrCode(err), err.Error())
+	}
+	ctx = context.WithValue(authCtx.GetRequestContext(), types.ContextAuthContextKey, authCtx)
+	return s.nextServer.GetNamespaceConfigTemplateDraft(ctx, namespace, templateID)
+}
+
+func (s *Server) SaveNamespaceConfigTemplateDraft(ctx context.Context,
+	draft *conftypes.NamespaceConfigTemplateDraft) *apimodel.Response {
+	authCtx := s.collectConfigFileTemplateAuthContext(ctx, nil, auth.Modify, auth.CreateConfigFileTemplate)
+	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewConfigResponseWithInfo(auth.ConvertToErrCode(err), err.Error())
+	}
+	ctx = context.WithValue(authCtx.GetRequestContext(), types.ContextAuthContextKey, authCtx)
+	return s.nextServer.SaveNamespaceConfigTemplateDraft(ctx, draft)
 }
 
 func (s *Server) PublishNamespaceTemplateValueRelease(
