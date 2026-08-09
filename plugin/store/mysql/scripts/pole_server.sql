@@ -437,6 +437,7 @@ CREATE TABLE
         `engine_version` VARCHAR(32) COLLATE utf8_bin NOT NULL DEFAULT 'v1' COMMENT '模板引擎版本',
         `parameter_schema` LONGTEXT COLLATE utf8_bin COMMENT '参数 Schema JSON',
         `revision` VARCHAR(128) COLLATE utf8_bin NOT NULL DEFAULT '' COMMENT '草稿 revision',
+		`labels` TEXT COLLATE utf8_bin COMMENT '模板标签 JSON',
         `comment` VARCHAR(512) COLLATE utf8_bin DEFAULT NULL COMMENT '模板描述信息',
         `create_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '创建人',
         `modify_by` VARCHAR(32) COLLATE utf8_bin DEFAULT NULL COMMENT '最后更新人',

@@ -14,13 +14,13 @@ const switcherStyles = read('src/components/EnvironmentResourceSwitcher/index.mo
 const codeEditor = read('src/components/CodeEditor/index.tsx');
 
 const checks = [
-  ['配置分组先分流文件与模板工作区', filePage.includes('<GroupWorkspaceNav') && filePage.includes('active="files"')],
-  ['文件浏览器不再内嵌模板库入口', !filePage.includes('模板库')],
-  ['工作区切换说明各自导航顺序', groupWorkspaceNav.includes('环境 → 文件') && groupWorkspaceNav.includes('模板 → 环境 Value')],
-  ['工作区切换使用跨路由导航语义', groupWorkspaceNav.includes('<nav') && groupWorkspaceNav.includes('aria-current=') && !groupWorkspaceNav.includes('role="tab"')],
-  ['工作区切换具备窄屏布局', groupWorkspaceStyles.includes('@media (max-width: 760px)')],
-  ['配置文件详情使用环境 Tab', fileView.includes('presentation="tabs"')],
-  ['选择文件后隐藏重复的分组环境 Tab', filePage.includes('!selectedFileName') && filePage.includes('resourceLabel="配置分组"') && filePage.includes('presentation="tabs"')],
+  ['配置分组使用统一清单工作区', filePage.includes('<GroupWorkspaceNav') && filePage.includes('配置清单')],
+  ['配置文件与全局模板在同一资源树', filePage.includes('renderTree(datas, templates)') && filePage.includes("resourceKind: 'template'")],
+  ['模板节点在右侧画布就地展示', filePage.includes('<TemplateWorkspace') && filePage.includes('embedded')],
+  ['分组导航只表达当前位置', groupWorkspaceNav.includes('<Breadcrumb') && !groupWorkspaceNav.includes('配置分组工作区') && !groupWorkspaceNav.includes('role="tab"')],
+  ['配置清单顶部环境 Tab 始终存在', filePage.includes('resourceLabel="配置分组"') && filePage.includes('presentation="tabs"') && !filePage.includes('{!editState.activeNode && (')],
+  ['文件详情不再重复渲染环境 Tab', !fileView.includes('EnvironmentResourceSwitcher')],
+  ['分组导航只保留面包屑', groupWorkspaceNav.includes('<Breadcrumb') && !groupWorkspaceNav.includes('workspaceBar') && !groupWorkspaceStyles.includes('.workspaceBar')],
   ['资源工作台只保留一层详情 Tab', fileView.includes('label="文件内容"') && fileView.includes('label="基本信息"') && fileView.includes('label="发布记录"') && fileView.includes('label="订阅查询"')],
   ['外层页面不再维护配置编辑 Tab', !filePage.includes('label="配置编辑"') && !filePage.includes('activeTab')],
   ['文件身份与操作归入统一摘要头', fileView.includes('fileSummary') && fileView.includes('fileActions')],

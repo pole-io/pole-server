@@ -19,8 +19,10 @@ package config
 
 import (
 	"context"
+	"fmt"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -116,6 +118,46 @@ func (s *Server) CreateConfigFileTemplate(
 	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
 }
 
+func (s *Server) GetConfigTemplateLabels(_ context.Context, templateID uint64) *apimodel.Response {
+	template, err := s.findConfigTemplateByID(templateID)
+	if err != nil {
+		return api.NewConfigResponseWithInfo(apimodel.Code_NotFoundResource, err.Error())
+	}
+	labels := make(map[string]any, len(template.Labels))
+	for key, value := range template.Labels {
+		labels[key] = value
+	}
+	data, err := structpb.NewStruct(map[string]any{"template_id": float64(templateID), "labels": labels})
+	if err != nil {
+		return api.NewConfigResponse(apimodel.Code_ExecuteException)
+	}
+	return api.NewAnyDataResponse(apimodel.Code_ExecuteSuccess, data)
+}
+
+func (s *Server) SaveConfigTemplateLabels(_ context.Context, templateID uint64,
+	labels map[string]string) *apimodel.Response {
+	template, err := s.findConfigTemplateByID(templateID)
+	if err != nil {
+		return api.NewConfigResponseWithInfo(apimodel.Code_NotFoundResource, err.Error())
+	}
+	template.Labels = labels
+	if _, err := s.storage.SaveConfigFileTemplate(template); err != nil {
+		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))
+	}
+	return api.NewConfigResponse(apimodel.Code_ExecuteSuccess)
+}
+
+func (s *Server) findConfigTemplateByID(templateID uint64) (*conftypes.ConfigFileTemplate, error) {
+	template, err := s.storage.GetConfigFileTemplateByID(templateID)
+	if err != nil {
+		return nil, err
+	}
+	if template == nil {
+		return nil, fmt.Errorf("config template %d not found", templateID)
+	}
+	return template, nil
+}
+
 // UpdateConfigFileTemplates create config file template
 func (s *Server) UpdateConfigFileTemplates(
 	ctx context.Context, reqs []*apiconfig.ConfigFileTemplate) *apimodel.Response {
@@ -143,7 +185,9 @@ func (s *Server) UpdateConfigFileTemplate(
 		return api.NewConfigResponse(apimodel.Code_NotFoundResource)
 	}
 
+	labels := saveData.Labels
 	saveData = conftypes.ToConfigFileTemplateStore(req)
+	saveData.Labels = labels
 	if _, err := s.storage.SaveConfigFileTemplate(saveData); err != nil {
 		log.Error("[Config][Service] update config file template error.", utils.RequestID(ctx), zap.Error(err))
 		return api.NewConfigResponse(storeapi.StoreCode2APICode(err))

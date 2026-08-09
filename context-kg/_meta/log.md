@@ -2,7 +2,7 @@
 title: 操作日志
 tags: [meta, log]
 links: [index, schema]
-updated: 2026-08-02
+updated: 2026-08-09
 sources: 0
 ---
 
@@ -1381,6 +1381,136 @@ sources: 0
   - 合并提交 Go/Rust CI 与 Release-Rust workflow 成功，Rust crate 已发布。
   - control-plane 删除 `go.work` 本地覆盖并升级 `go.mod`；Rust SDK 根 crate 与 e2e crate 同步升级 tag。
   - 两个消费者均在无本地 replace/patch 条件下完成全量测试。
+
+## [2026-08-08] implement | 配置模板标签与敏感 Value 加密
+
+- 更新页面：adr-config-template-labels-sensitive-values、adr-config-template-client-rendering、index、todo、lessons。
+- 变更摘要：
+  - 模板标签作为独立目录元数据持久化和授权读写，不进入渲染快照。
+  - Schema 敏感参数改为真实逐值 AES 加密落库，草稿和发布读取时受控解密。
+  - 模板说明回归单行输入，与名称和格式控件保持一致高度。
+
+## [2026-08-08] refine | 配置模板 Schema 与 Value 入口显性化
+
+- 更新页面：todo、lessons。
+- 变更摘要：
+  - 模板工作区新增可点击的三步任务引导，明确模板、Schema 与环境 Value 的先后关系。
+  - Schema 查看态、空态及 Value 前置空态提供就地动作，并自动切换到所需页签和编辑状态。
+  - 补充 Console 防回退契约、响应式样式，并完成 OrbStack 与真实浏览器验收。
+
+## [2026-08-08] refactor | 配置模板工作区信息架构与双版本预览
+
+- 更新页面：adr-config-template-client-rendering、index、todo、lessons。
+- 变更摘要：
+  - 去除流程条与页签的重复导航，将模板元信息提取为固定上层。
+  - 一级任务收敛为模板内容、参数 Schema、环境 Value 和版本管理。
+  - 版本管理分别展示 Template Release 与环境 Value Release，并支持选择两者进行格式化渲染预览。
+  - 中等宽度自动切换单列布局，完成契约、构建、OrbStack 和真实浏览器验收。
+
+## [2026-08-09] refine | 配置模板版本历史行直接选择
+
+- 更新页面：adr-config-template-client-rendering、index、todo、lessons。
+- 变更摘要：
+  - 移除与版本历史表重复的模板版本和 Value 版本下拉框。
+  - 两张历史表改为整行单选，顶部只汇总已选组合并触发渲染预览。
+  - 未选齐两个版本时禁用预览，避免默认组合掩盖用户的显式选择。
+
+## [2026-08-09] refine | 配置模板版本预览动作收敛
+
+- 更新页面：adr-config-template-client-rendering、todo、lessons。
+- 变更摘要：
+  - 删除版本表上方重复的组合标题、状态标签和已选版本摘要。
+  - 选择与反馈完全由两张历史表承担，操作区只保留“渲染预览”按钮。
+  - 两侧未选齐时按钮保持禁用，渲染结果与 diagnostics 继续在结果区展示。
+
+## [2026-08-09] fix | 配置模板 Schema 连续输入失焦复发
+
+- 新增页面：console-editable-row-focus-loss。
+- 更新页面：console-ui-quality-gates、index、todo、lessons。
+- 变更摘要：
+  - 真实浏览器复现参数名逐字符输入只保留首字符，确认可编辑参数名参与 React key 导致整行重挂载。
+  - Schema 参数行改用编辑期间稳定 key，并纳入连续输入专项门禁和配置模板契约。
+  - 将第二次同类回归归因于门禁组件白名单覆盖不足，新增动态编辑器必须同步注册静态与浏览器验收。
+
+## [2026-08-09] fix | 配置模板环境 Value 前端类型校验
+
+- 更新页面：adr-config-template-client-rendering、console-ui-quality-gates、index、todo、lessons。
+- 变更摘要：
+  - 环境 Value 根据 Schema 即时校验必填项、规范整数和规范小数，并提供可访问内联反馈。
+  - 保存草稿和发布复用同一校验结果，字段无效时同时禁用动作并保留函数级拦截。
+  - 前端镜像服务端 canonical 标量规则，服务端继续作为最终契约权威。
+
+## [2026-08-09] refine | 配置模板环境 Value 就地渲染预览
+
+- 更新页面：adr-config-template-client-rendering、console-ui-quality-gates、index、todo、lessons。
+- 变更摘要：
+  - 环境 Value 编辑页使用固定模板版本与当前未保存 Value 直接执行服务端参考预览。
+  - 草稿预览和历史版本组合预览复用结果面板，但隔离状态与入口语义。
+  - Value 或固定模板版本变化后清除旧草稿预览，避免展示过期结果。
+
+## [2026-08-09] refactor | 配置文件清单统一文本与模板类型
+
+- 更新页面：config-center、adr-config-template-client-rendering、index、todo、lessons。
+- 变更摘要：
+  - 配置分组移除“配置文件 / 配置模板”同级切换，只保留统一配置文件清单。
+  - 创建配置时先选择直接文本或配置模板，模板类型继续固定不可变 Template Release。
+  - 文件树为存量和新建文件展示文本或模板来源标识；模板资产管理改为任务内入口。
+
+## [2026-08-09] fix | 统一配置清单恢复历史模板可见性
+
+- 更新页面：config-center、adr-config-template-client-rendering、index、todo、lessons。
+- 变更摘要：
+  - 确认历史模板、模板 Release 和环境 Value Release 数据仍在，缺陷来自前端统一清单只查询配置文件。
+  - 统一清单新增展开的全局模板目录，直接读取并展示原模板数据，点击进入原模板工作区。
+  - 保持 ConfigFile 的 Namespace/分组归属与 ConfigFileTemplate 的全局归属，不复制、不迁移、不重建数据。
+
+## [2026-08-09] refine | 配置模板节点扁平化
+
+- 更新页面：config-center、adr-config-template-client-rendering、todo、lessons。
+- 变更摘要：
+  - 删除统一配置清单中的“配置模板”虚拟目录，模板与配置文件改为同级叶子节点。
+  - 继续使用尾部“文本 / 模板 / 全局模板”标签区分资源类型与作用域。
+  - 模板节点与普通文件保持同级，不改变数据归属和版本历史。
+
+## [2026-08-09] refine | 配置模板详情改为右侧就地展示
+
+- 更新页面：config-center、adr-config-template-client-rendering、todo、lessons。
+- 变更摘要：
+  - 点击统一清单中的全局模板时保持当前配置分组路由、左侧清单和选中状态。
+  - 右侧画布嵌入原模板内容、Schema、环境 Value 和版本管理，隐藏重复的模板目录与页头。
+  - 独立模板工作区路由只保留为已有深链兼容入口。
+
+## [2026-08-09] refine | 模板详情对齐配置文件视觉骨架
+
+- 更新页面：config-center、adr-config-template-client-rendering、todo、lessons。
+- 变更摘要：
+  - 模板嵌入态与配置文件详情统一摘要头、资源路径、操作区、页签节奏和扁平内容画布。
+  - 模板信息查看态改为两列字段网格，移除禁用输入框式只读展示。
+  - 保留模板固定信息层与内容、Schema、环境 Value、版本管理任务，不改变领域边界。
+
+## [2026-08-09] fix | 配置清单环境上下文常驻
+
+- 更新页面：config-center、todo、lessons。
+- 变更摘要：
+  - 环境切换器从资源未选中条件中移出，文件与模板选择态继续固定显示。
+  - 删除文件详情内部重复环境切换器，统一由清单顶部承载跨环境导航。
+  - 删除重复“配置分组工作区”卡片，顶部仅保留配置中心与分组面包屑。
+
+## [2026-08-09] refine | 模板基本信息归入独立页签
+
+- 更新页面：config-center、adr-config-template-client-rendering、index、todo、lessons。
+- 变更摘要：
+  - 模板名称、目标格式、说明与标签从页签上方固定信息层移入最后的“基本信息”页签。
+  - 模板一级任务统一为内容、Schema、环境 Value、版本管理和基本信息。
+  - 新建模板默认进入基本信息页签，保留必填元信息的明确入口。
+
+## [2026-08-09] refine | 模板与 Value 发布对象分区
+
+- 更新页面：config-center、adr-config-template-client-rendering、index、todo、lessons。
+- 变更摘要：
+  - 模板定义页签只显示模板编辑与模板版本发布，Value 与版本管理页移除全局模板操作。
+  - 模板版本和环境 Value 版本分别通过确认弹窗审阅对象、范围、说明及灰度参数。
+  - 模板 Release 支持独立发布说明，旧请求未提供时兼容回退模板说明。
 
 ## 相关页面
 

@@ -308,6 +308,7 @@ type ConfigFileTemplate struct {
 	EngineVersion   string
 	ParameterSchema string
 	Revision        string
+	Labels          map[string]string
 	CreateTime      time.Time
 	CreateBy        string
 	ModifyTime      time.Time

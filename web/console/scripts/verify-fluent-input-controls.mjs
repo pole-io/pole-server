@@ -9,6 +9,18 @@ const fluent = read('src/components/Fluent/index.tsx');
 const labelInput = read('src/components/LabelInput/index.tsx');
 const trafficSecurityEditor = read('src/pages/Governance/Security/TrafficGovernanceEditor.tsx');
 const laneGroupEditor = read('src/pages/Governance/Router/LaneGroupEdtor.tsx');
+const schemaEditor = read('src/pages/Configuration/Template/SchemaEditor.tsx');
+
+assert.doesNotMatch(
+  schemaEditor,
+  /key=\{`\$\{item\.name\}-\$\{index\}`\}/,
+  'SchemaEditor 行 key 不能包含正在编辑的参数名，否则连续输入首字符后会重挂载并丢焦点',
+);
+assert.match(
+  schemaEditor,
+  /key=\{`schema-row-\$\{index\}`\}/,
+  'SchemaEditor 参数行必须使用编辑期间稳定的 key，保证参数名和说明可以连续输入',
+);
 
 assert.doesNotMatch(
   labelInput,

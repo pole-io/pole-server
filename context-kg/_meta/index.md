@@ -2,7 +2,7 @@
 title: pole-control-plane 知识库
 tags: [meta, index]
 links: [schema, log]
-updated: 2026-08-02
+updated: 2026-08-09
 sources: 0
 ---
 
@@ -77,7 +77,8 @@ sources: 0
 - [[adr-a2a-agent-registry]] — A2A Agent Registry 功能设计与分期 | adr, ai, a2a, mcp, registry
 - [[adr-console-oidc-identity-source]] — Console OIDC 用户来源与目录同步 | adr, auth, console, oidc, identity
 - [[adr-config-gray-release-spec-contract]] — 配置中心多灰度发布与 specification 契约适配 | adr, config, api, gray-release
-- [[adr-config-template-client-rendering]] — 模板与 Namespace Value 版本化、服务端灰度匹配和 SDK 本地渲染 | adr, config, template, namespace, sdk, gray-release
+- [[adr-config-template-client-rendering]] — 模板任务、发布分区与 Value 版本化渲染 | adr, config, template, namespace, sdk, gray-release
+- [[adr-config-template-labels-sensitive-values]] — 模板目录标签与逐参数 Value 加密存储 | adr, config, template, labels, encryption, security
 - [[adr-instance-active-healthcheck]] — Console 实例 TCP/HTTP 主动健康检查 | adr, service, healthcheck, tcp, http
 - [[adr-console-fluent-ui-design-system]] — Console Fluent UI v9 设计系统与复合查询交互规范 | adr, console, frontend, fluent-ui, design-system
 - [[adr-console-agent-resource-workbench]] — Pole Agent 真实 LLM/MCP 运行时与资源确认待发布 | adr, ai, agent, console, governance, config
@@ -102,6 +103,10 @@ sources: 0
 
 - [[testing]] — 测试目录结构、Mock Store/Auth、集成测试套件与测试规范 | quality, automation, testing, mock
 - [[console-ui-quality-gates]] — Console 共享组件与发布验收矩阵 | quality, automation, console, frontend, ux
+
+### 缺陷档案（quality/defects/）
+
+- [[console-editable-row-focus-loss]] — 动态编辑行不稳定 key 导致输入失焦的复发与门禁 | quality, defect, console, frontend, react, input
 
 ### 测试用例集（quality/testcases/）
 

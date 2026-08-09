@@ -8,9 +8,7 @@ import { openErrNotification, openInfoNotification } from 'utils/notifition';
 import CodeEditor from 'components/CodeEditor';
 import { listConfigFileCryptoAlgos, listOneConfigFile, selectConfigFile, updateConfigFiles } from 'modules/configuration/file';
 import {
-    describeConfigFileEnvironments,
     FileStatusMap,
-    type ConfigFileView,
     type ConfigType,
 } from 'services/config_files';
 import {
@@ -28,7 +26,6 @@ import SubscribeTable from './SubscribeTable';
 import { Label, Op } from 'services/types';
 import { resolveFileFormat } from 'utils/path';
 import style from './index.module.less';
-import EnvironmentResourceSwitcher from 'components/EnvironmentResourceSwitcher';
 
 const { FormItem } = Form;
 const { TabPanel } = Tabs;
@@ -55,7 +52,6 @@ const FileView: React.FC<IFileViewProps> = (props) => {
         publishView: boolean;
     }>({ model: 'view', publishView: false });
     const [activeTab, setActiveTab] = React.useState<ResourceTab>('content');
-    const [environmentFiles, setEnvironmentFiles] = React.useState<ConfigFileView[]>([]);
     const [templates, setTemplates] = React.useState<ConfigFileTemplate[]>([]);
     const [templateReleases, setTemplateReleases] = React.useState<ConfigTemplateRelease[]>([]);
     const [configType, setConfigType] = React.useState<ConfigType>('CONFIG_FILE');
@@ -88,21 +84,6 @@ const FileView: React.FC<IFileViewProps> = (props) => {
         setActiveTab('content');
         setEditorState({ model: 'view', publishView: false });
     }, [editFile?.group, editFile?.name, editFile?.namespace]);
-
-    React.useEffect(() => {
-        let active = true;
-        const currentGroup = editFile?.group || '';
-        const currentName = editFile?.name || '';
-        if (!currentGroup || !currentName) return () => { active = false; };
-        describeConfigFileEnvironments(currentGroup, currentName)
-            .then((items) => {
-                if (active) setEnvironmentFiles(items);
-            })
-            .catch(() => {
-                if (active) setEnvironmentFiles([]);
-            });
-        return () => { active = false; };
-    }, [editFile?.group, editFile?.name]);
 
     React.useEffect(() => {
         if (!viewFile) return;
@@ -220,31 +201,14 @@ const FileView: React.FC<IFileViewProps> = (props) => {
     };
 
     const renderHeader = (
-        <>
-            <EnvironmentResourceSwitcher
-                currentNamespace={currentNamespace}
-                resourceLabel="配置文件"
-                presentation="tabs"
-                items={environmentFiles.map((item) => ({
-                    namespace: item.namespace,
-                    summary: FileStatusMap?.[item.status as keyof typeof FileStatusMap]?.text || '未发布',
-                }))}
-                onSelect={(nextNamespace) => {
-                    const params = new URLSearchParams(window.location.search);
-                    params.set('namespace', nextNamespace);
-                    params.set('group', currentGroup);
-                    params.set('file', currentFileName);
-                    navigate(`${window.location.pathname}?${params.toString()}`);
-                }}
-            />
-            <header className={style.fileSummary}>
+        <header className={style.fileSummary}>
                 <div className={style.fileIdentity}>
                     <div className={style.fileTitleRow}>
                         <div className={`${style.currentFileName} ${style.mono}`}>{currentFileName}</div>
                         <Space size={6}>
                             <Tag variant="light" theme="primary">{currentFormat}</Tag>
                             <Tag variant="light" theme={viewFile?.configType === 'CONFIG_TEMPLATE' ? 'warning' : 'default'}>
-                                {viewFile?.configType === 'CONFIG_TEMPLATE' ? '模板渲染' : '普通文本'}
+                                {viewFile?.configType === 'CONFIG_TEMPLATE' ? '配置模板' : '直接文本'}
                             </Tag>
                             <Tag theme={viewFile?.encrypted ? 'warning' : 'default'} variant="light">
                                 {viewFile?.encrypted ? '已加密' : '未加密'}
@@ -289,8 +253,7 @@ const FileView: React.FC<IFileViewProps> = (props) => {
                         </Button>
                     )}
                 </div>
-            </header>
-        </>
+        </header>
     );
 
     const renderContent = (
@@ -352,8 +315,8 @@ const FileView: React.FC<IFileViewProps> = (props) => {
                                 }
                             }}
                         >
-                            <Radio value="CONFIG_FILE">普通文本</Radio>
-                            <Radio value="CONFIG_TEMPLATE">模板渲染</Radio>
+                            <Radio value="CONFIG_FILE">直接文本</Radio>
+                            <Radio value="CONFIG_TEMPLATE">配置模板</Radio>
                         </RadioGroup>
                         <small>类型只会在保存草稿后显式切换；模板配置由 SDK 在客户端渲染。</small>
                     </div>
@@ -414,7 +377,7 @@ const FileView: React.FC<IFileViewProps> = (props) => {
                 <div className={style.basicInfoGrid}>
                     <div className={style.basicField}>
                         <span>配置类型</span>
-                        <strong>{viewFile?.configType === 'CONFIG_TEMPLATE' ? '模板渲染' : '普通文本'}</strong>
+                        <strong>{viewFile?.configType === 'CONFIG_TEMPLATE' ? '配置模板' : '直接文本'}</strong>
                     </div>
                     {viewFile?.configType === 'CONFIG_TEMPLATE' && (
                         <>

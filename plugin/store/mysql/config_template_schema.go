@@ -36,6 +36,8 @@ func configTemplateDraftColumns() []configTemplateColumn {
 		{name: "revision", ddl: `ALTER TABLE config_file_template
 			ADD COLUMN revision varchar(128) COLLATE utf8_bin NOT NULL DEFAULT ''
 			COMMENT 'draft revision'`},
+		{name: "labels", ddl: `ALTER TABLE config_file_template
+			ADD COLUMN labels text COLLATE utf8_bin COMMENT 'template labels json'`},
 	}
 }
 

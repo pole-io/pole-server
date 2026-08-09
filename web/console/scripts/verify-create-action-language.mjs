@@ -63,7 +63,7 @@ assert.match(templateList, /刷新配置模板[\s\S]*shape="square"[\s\S]*varian
 assert.match(templateList, /theme="primary"[\s\S]*icon=\{<AddIcon \/>}[\s\S]*新建配置模板/, '配置模板主新增必须使用明确资源名。');
 
 const configFiles = read('src/pages/Configuration/Group/Files/index.tsx');
-assert.match(configFiles, /<ResourceToolbar[\s\S]*title="配置文件清单"[\s\S]*filters=\{\([\s\S]*icon=\{<RefreshIcon \/>}[\s\S]*theme="primary"[\s\S]*icon=\{<AddIcon \/>}[\s\S]*新建配置文件/, '配置文件主新增必须属于配置文件清单 ResourceToolbar，并位于刷新之后。');
+assert.match(configFiles, /<ResourceToolbar[\s\S]*title="配置清单"[\s\S]*filters=\{\([\s\S]*icon=\{<RefreshIcon \/>}[\s\S]*theme="primary"[\s\S]*icon=\{<AddIcon \/>}[\s\S]*新建配置/, '配置主新增必须属于统一配置清单 ResourceToolbar，并位于刷新之后。');
 assert.doesNotMatch(configFiles, /FileAddIcon/, '配置文件主新增不能继续使用仅表达文件类型的图标按钮。');
 
 const topLevelToolbarPages = [

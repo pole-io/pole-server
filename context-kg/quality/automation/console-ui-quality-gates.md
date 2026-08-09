@@ -2,8 +2,8 @@
 title: Console UI 质量门禁与发布验收
 tags: [quality, automation, console, frontend, ux]
 links: [testing, adr-console-fluent-ui-design-system, configuration]
-updated: 2026-07-29
-sources: 6
+updated: 2026-08-09
+sources: 8
 ---
 
 # Console UI 质量门禁与发布验收
@@ -41,6 +41,13 @@ sources: 6
 
 - 受控 Input/Textarea 的外部值从字符串恢复为 `undefined` 时，DOM value 必须同步清空；重置验收要输入实际内容、点击重置并读取 DOM，而不是只看 FormStore。
 - 可重复编辑行的 React key 不能包含正在编辑的字段值，否则每次输入都会重挂载并丢失焦点。
+- 新增动态编辑器时必须同步加入 `verify-fluent-input-controls.mjs`；仅有通用文字规则不足以阻止新组件
+  漏检。连续输入验收必须使用逐字符键盘输入，并同时断言完整值和焦点保持，不能用原子 `fill` 替代。
+- Schema 驱动的表单必须把类型约束落实为即时字段校验，错误态提供可访问说明，并在保存和发布入口统一
+  阻断；类型文字、占位符或服务端返回错误不能替代前端反馈。前后端共享语义时，前端规则必须镜像服务端
+  canonical 契约，并以服务端为最终权威。
+- 发布型编辑器的预览必须覆盖当前未保存输入，而不能只允许选择历史发布版本；预览依赖输入变化后应清空
+  旧结果。当前草稿预览和历史版本组合预览可以复用展示组件，但必须隔离状态和入口语义。
 - Drawer/Dialog 的自定义宽度必须受视口约束；底部 action 始终可达，空 footer 不占位。
 - 用列头表达语义的重复字段行不能在窄屏直接隐藏列头。应保留局部滚动和固定首尾列，或改为带显式字段标签的响应式卡片。
 - 加载多个授权对象时必须有界分页并收敛所有请求；单项失败可以展示部分结果，但不能永久 Loading。
@@ -76,6 +83,9 @@ sources: 6
 - `web/console/scripts/verify-fluent-table-layout.mjs`
 - `web/console/scripts/verify-console-ux-closure.mjs`
 - `web/console/scripts/verify-fluent-input-controls.mjs`
+- `web/console/src/pages/Configuration/Template/SchemaEditor.tsx`
+- `web/console/src/pages/Configuration/Template/ValueEditor.tsx`
+- `web/console/src/pages/Configuration/Template/RenderPreviewPanel.tsx`
 - `deploy/kubernetes/pole-control-plane.yaml`
 
 ## 相关页面

@@ -54,6 +54,25 @@ func (s *Server) PublishConfigTemplateRelease(
 	return s.nextServer.PublishConfigTemplateRelease(ctx, req)
 }
 
+func (s *Server) GetConfigTemplateLabels(ctx context.Context, templateID uint64) *apimodel.Response {
+	authCtx := s.collectConfigFileTemplateAuthContext(ctx, nil, auth.Read, auth.DescribeConfigFileTemplate)
+	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewConfigResponseWithInfo(auth.ConvertToErrCode(err), err.Error())
+	}
+	ctx = context.WithValue(authCtx.GetRequestContext(), types.ContextAuthContextKey, authCtx)
+	return s.nextServer.GetConfigTemplateLabels(ctx, templateID)
+}
+
+func (s *Server) SaveConfigTemplateLabels(ctx context.Context, templateID uint64,
+	labels map[string]string) *apimodel.Response {
+	authCtx := s.collectConfigFileTemplateAuthContext(ctx, nil, auth.Modify, auth.CreateConfigFileTemplate)
+	if _, err := s.policySvr.GetAuthChecker().CheckConsolePermission(authCtx); err != nil {
+		return api.NewConfigResponseWithInfo(auth.ConvertToErrCode(err), err.Error())
+	}
+	ctx = context.WithValue(authCtx.GetRequestContext(), types.ContextAuthContextKey, authCtx)
+	return s.nextServer.SaveConfigTemplateLabels(ctx, templateID, labels)
+}
+
 func (s *Server) SaveNamespaceTemplateValues(
 	ctx context.Context, req *apiconfig.NamespaceTemplateValues) *apimodel.Response {
 	authCtx := s.collectConfigFileTemplateAuthContext(ctx, nil, auth.Modify, auth.CreateConfigFileTemplate)

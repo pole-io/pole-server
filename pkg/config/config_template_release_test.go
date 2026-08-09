@@ -94,7 +94,7 @@ func TestPublishConfigTemplateReleaseUsesPersistedDraftSnapshot(t *testing.T) {
 	storage.EXPECT().CreateConfigTemplateRelease(gomock.Any()).DoAndReturn(
 		func(release *conftypes.ConfigTemplateRelease) error {
 			require.Equal(t, "region={{{region}}}", release.Content)
-			require.Equal(t, "saved", release.Comment)
+			require.Equal(t, "release-note", release.Comment)
 			require.Equal(t, uint64(1), release.Version)
 			return nil
 		})
@@ -103,7 +103,31 @@ func TestPublishConfigTemplateReleaseUsesPersistedDraftSnapshot(t *testing.T) {
 		TemplateId: 7,
 		Name:       "application",
 		Content:    "untrusted request content",
+		Comment:    "release-note",
 		Engine:     &apiconfig.ConfigTemplateEngine{Name: "go-template", Version: "v1"},
+	})
+
+	require.Equal(t, uint32(apimodel.Code_ExecuteSuccess), response.GetCode())
+}
+
+func TestPublishConfigTemplateReleaseFallsBackToDraftComment(t *testing.T) {
+	controller := gomock.NewController(t)
+	storage := storemock.NewMockStore(controller)
+	server := &Server{storage: storage}
+	storage.EXPECT().GetConfigFileTemplate("application").Return(&conftypes.ConfigFileTemplate{
+		Id: 7, Name: "application", Content: "plain text", Comment: "saved template description",
+		Format: "text", Engine: "pole-mustache", EngineVersion: "v1",
+	}, nil)
+	storage.EXPECT().ListConfigTemplateReleases(uint64(7)).Return(nil, nil)
+	storage.EXPECT().CreateConfigTemplateRelease(gomock.Any()).DoAndReturn(
+		func(release *conftypes.ConfigTemplateRelease) error {
+			require.Equal(t, "saved template description", release.Comment)
+			return nil
+		})
+
+	response := server.PublishConfigTemplateRelease(context.Background(), &apiconfig.ConfigTemplateRelease{
+		TemplateId: 7,
+		Name:       "application",
 	})
 
 	require.Equal(t, uint32(apimodel.Code_ExecuteSuccess), response.GetCode())

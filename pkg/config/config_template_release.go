@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strconv"
+	"strings"
 
 	regexp "github.com/dlclark/regexp2"
 	"github.com/google/uuid"
@@ -35,27 +36,20 @@ func (s *Server) PublishConfigTemplateRelease(
 		return commonapi.NewConfigResponse(apimodel.Code_NotFoundResource)
 	}
 	draftSpec := conftypes.ToConfigFileTemplateAPI(draft)
+	releaseComment := strings.TrimSpace(req.GetComment())
+	if releaseComment == "" {
+		releaseComment = draftSpec.GetComment()
+	}
 	req.Content = draftSpec.GetContent()
 	req.Format = draftSpec.GetFormat()
 	req.Engine = draftSpec.GetEngine()
 	req.ParameterSchema = draftSpec.GetParameterSchema()
-	req.Comment = draftSpec.GetComment()
+	req.Comment = releaseComment
 	if !supportedTemplateEngine(req.GetEngine()) {
 		return commonapi.NewConfigResponse(apimodel.Code_BadRequest)
 	}
 	if req.GetFormat() == "" {
 		req.Format = "text"
-	}
-	for _, parameter := range req.GetParameterSchema() {
-		if parameter.GetSensitive() {
-			diagnostic := &apiconfig.RenderPreview{Diagnostics: []*apiconfig.RenderDiagnostic{{
-				Severity:  apiconfig.RenderDiagnostic_DIAGNOSTIC_ERROR,
-				Code:      "SENSITIVE_VALUE_ENCRYPTION_UNAVAILABLE",
-				Message:   "sensitive template parameters require an encrypted Value transport contract",
-				Parameter: parameter.GetName(),
-			}}}
-			return commonapi.NewAnyDataResponse(apimodel.Code_BadRequest, diagnostic)
-		}
 	}
 	validation := s.PreviewConfigTemplate(ctx, &apiconfig.RenderPreviewRequest{
 		Input: &apiconfig.ConfigTemplateRenderInput{
@@ -111,11 +105,19 @@ func (s *Server) SaveNamespaceTemplateValues(
 	if req.GetId() == "" {
 		req.Id = uuid.NewString()
 	}
-	valuesPayload, err := conftypes.EncodeTemplateValues(req.GetValues())
+	plainValuesPayload, err := conftypes.EncodeTemplateValues(req.GetValues())
 	if err != nil {
 		return commonapi.NewConfigResponse(apimodel.Code_BadRequest)
 	}
-	req.Revision = stableRevision(valuesPayload)
+	schema, err := s.templateParameterSchema(req.GetTemplateId())
+	if err != nil {
+		return commonapi.NewConfigResponse(apimodel.Code_NotFoundResource)
+	}
+	valuesPayload, err := s.encodeTemplateValuesForStorage(req.GetValues(), schema)
+	if err != nil {
+		return commonapi.NewConfigResponseWithInfo(apimodel.Code_EncryptConfigFileException, err.Error())
+	}
+	req.Revision = stableRevision(plainValuesPayload)
 	data := &conftypes.NamespaceTemplateValues{
 		ID:         req.GetId(),
 		Namespace:  req.GetNamespace(),
@@ -175,11 +177,15 @@ func (s *Server) PublishNamespaceTemplateValueRelease(
 	if req.GetValuesId() == "" {
 		req.ValuesId = req.GetNamespace() + "@" + strconv.FormatUint(req.GetTemplateId(), 10)
 	}
-	valuesPayload, err := conftypes.EncodeTemplateValues(req.GetValues())
+	plainValuesPayload, err := conftypes.EncodeTemplateValues(req.GetValues())
 	if err != nil {
 		return commonapi.NewConfigResponse(apimodel.Code_BadRequest)
 	}
-	req.Revision = stableRevision(req.GetId(), req.GetTemplateReleaseId(), valuesPayload)
+	valuesPayload, err := s.encodeTemplateValuesForStorage(req.GetValues(), specTemplate.GetParameterSchema())
+	if err != nil {
+		return commonapi.NewConfigResponseWithInfo(apimodel.Code_EncryptConfigFileException, err.Error())
+	}
+	req.Revision = stableRevision(req.GetId(), req.GetTemplateReleaseId(), plainValuesPayload)
 	data := &conftypes.NamespaceTemplateValueRelease{
 		ID:                req.GetId(),
 		ValuesID:          req.GetValuesId(),
@@ -295,7 +301,7 @@ func (s *Server) GetNamespaceTemplateValues(
 	if values == nil {
 		return commonapi.NewConfigResponse(apimodel.Code_NotFoundResource)
 	}
-	item, err := namespaceTemplateValuesToSpec(values)
+	item, err := s.namespaceTemplateValuesToSpec(values)
 	if err != nil {
 		return commonapi.NewConfigResponse(apimodel.Code_ExecuteException)
 	}
@@ -310,7 +316,7 @@ func (s *Server) ListNamespaceTemplateValueReleases(
 	}
 	out := commonapi.NewConfigBatchQueryResponse(apimodel.Code_ExecuteSuccess)
 	for _, release := range releases {
-		item, err := namespaceTemplateValueReleaseToSpec(release)
+		item, err := s.namespaceTemplateValueReleaseToSpec(release)
 		if err != nil {
 			return commonapi.NewConfigBatchQueryResponse(apimodel.Code_ExecuteException)
 		}
@@ -373,7 +379,7 @@ func (s *Server) resolveTemplateSnapshot(ctx context.Context, file *conftypes.Co
 	if err != nil {
 		return nil, err
 	}
-	specValue, err := namespaceTemplateValueReleaseToSpec(valueRelease)
+	specValue, err := s.namespaceTemplateValueReleaseToSpec(valueRelease)
 	if err != nil {
 		return nil, err
 	}
@@ -460,9 +466,9 @@ func configTemplateReleaseToSpec(in *conftypes.ConfigTemplateRelease) (*apiconfi
 	return out, nil
 }
 
-func namespaceTemplateValuesToSpec(
+func (s *Server) namespaceTemplateValuesToSpec(
 	in *conftypes.NamespaceTemplateValues) (*apiconfig.NamespaceTemplateValues, error) {
-	values, err := conftypes.DecodeTemplateValues(in.Values)
+	values, err := s.decodeTemplateValuesFromStorage(in.Values)
 	if err != nil {
 		return nil, err
 	}
@@ -478,10 +484,10 @@ func namespaceTemplateValuesToSpec(
 	}, nil
 }
 
-func namespaceTemplateValueReleaseToSpec(
+func (s *Server) namespaceTemplateValueReleaseToSpec(
 	in *conftypes.NamespaceTemplateValueRelease) (*apiconfig.NamespaceTemplateValueRelease, error) {
 	out := &apiconfig.NamespaceTemplateValueRelease{}
-	values, err := conftypes.DecodeTemplateValues(in.Values)
+	values, err := s.decodeTemplateValuesFromStorage(in.Values)
 	if err != nil {
 		return nil, err
 	}

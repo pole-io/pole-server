@@ -207,19 +207,7 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                         <FormItem label="配置组" name="group">
                             <Input disabled={true} />
                         </FormItem>
-                        <FormItem>
-                            {({ getFieldValue }) => {
-                                return (
-                                    <FormItem label="文件名称" name="name">
-                                        <Input suffix={`文件格式: ${resolveFileFormat(getFieldValue('name') as string)}`} />
-                                    </FormItem>
-                                )
-                            }}
-                        </FormItem>
-                        <FormItem label="文件描述" name="comment">
-                            <Input />
-                        </FormItem>
-                        <FormItem label="配置类型" name="configType">
+                        <FormItem label="内容来源" name="configType">
                             <RadioGroup
                                 value={metaValues.configType}
                                 onChange={(configType: ConfigType) => {
@@ -232,9 +220,26 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                                     }));
                                 }}
                             >
-                                <Radio value="CONFIG_FILE">普通配置</Radio>
-                                <Radio value="CONFIG_TEMPLATE">模板配置</Radio>
+                                <Radio value="CONFIG_FILE">直接文本</Radio>
+                                <Radio value="CONFIG_TEMPLATE">配置模板</Radio>
                             </RadioGroup>
+                            <div>
+                                {metaValues.configType === 'CONFIG_TEMPLATE'
+                                    ? '固定一个已发布模板版本，由当前环境 Value 提供参数。'
+                                    : '直接编辑并发布 YAML、JSON、TOML 或文本内容。'}
+                            </div>
+                        </FormItem>
+                        <FormItem>
+                            {({ getFieldValue }) => {
+                                return (
+                                    <FormItem label="文件名称" name="name">
+                                        <Input suffix={`文件格式: ${resolveFileFormat(getFieldValue('name') as string)}`} />
+                                    </FormItem>
+                                )
+                            }}
+                        </FormItem>
+                        <FormItem label="文件描述" name="comment">
+                            <Input />
                         </FormItem>
                         {metaValues.configType === 'CONFIG_TEMPLATE' && (
                             <>
@@ -375,9 +380,13 @@ const FileCreator: React.FC<IFileCreatorProps> = ({ op, namespace, group, visibl
                     <Steps layout="vertical" current={activeStep} onChange={(value: number) => {
                         changeStep(value as number);
                     }}>
-                        <StepItem value={1} title="元信息">
+                        <StepItem value={1} title="基本信息">
                         </StepItem>
-                        <StepItem value={2} title="文件内容" style={{ width: '80' }}>
+                        <StepItem
+                            value={2}
+                            title={metaValues.configType === 'CONFIG_TEMPLATE' ? '模板确认' : '文本内容'}
+                            style={{ width: '80' }}
+                        >
                         </StepItem>
                     </Steps>
                 </Col>

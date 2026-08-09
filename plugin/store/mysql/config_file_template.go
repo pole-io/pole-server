@@ -19,6 +19,7 @@ package sqldb
 
 import (
 	"database/sql"
+	"encoding/json"
 	"time"
 
 	conftypes "github.com/pole-io/pole-server/apis/pkg/types/config"
@@ -33,18 +34,22 @@ type configFileTemplateStore struct {
 // SaveConfigFileTemplate create config file template
 func (cf *configFileTemplateStore) SaveConfigFileTemplate(
 	template *conftypes.ConfigFileTemplate) (*conftypes.ConfigFileTemplate, error) {
+	labels, err := json.Marshal(template.Labels)
+	if err != nil {
+		return nil, store.Error(err)
+	}
 	createSql := `
 	INSERT INTO config_file_template (name, content, comment, format, engine, engine_version,
-		parameter_schema, revision, ctime, create_by, mtime, modify_by)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, sysdate(), ?, sysdate(), ?)
+		parameter_schema, revision, labels, ctime, create_by, mtime, modify_by)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate(), ?, sysdate(), ?)
 	ON DUPLICATE KEY UPDATE content = VALUES(content), comment = VALUES(comment),
 		format = VALUES(format), engine = VALUES(engine), engine_version = VALUES(engine_version),
-		parameter_schema = VALUES(parameter_schema), revision = VALUES(revision),
+		parameter_schema = VALUES(parameter_schema), revision = VALUES(revision), labels = VALUES(labels),
 		modify_by = VALUES(modify_by), mtime = sysdate()
 	`
-	_, err := cf.master.Exec(createSql, template.Name, template.Content, template.Comment, template.Format,
+	_, err = cf.master.Exec(createSql, template.Name, template.Content, template.Comment, template.Format,
 		template.Engine, template.EngineVersion, template.ParameterSchema, template.Revision,
-		template.CreateBy, template.ModifyBy)
+		string(labels), template.CreateBy, template.ModifyBy)
 	if err != nil {
 		return nil, store.Error(err)
 	}
@@ -68,6 +73,22 @@ func (cf *configFileTemplateStore) GetConfigFileTemplate(name string) (*conftype
 		return templates[0], nil
 	}
 	return nil, nil
+}
+
+func (cf *configFileTemplateStore) GetConfigFileTemplateByID(id uint64) (*conftypes.ConfigFileTemplate, error) {
+	querySQL := cf.baseSelectConfigFileTemplateSql() + " WHERE id = ?"
+	rows, err := cf.master.Query(querySQL, id)
+	if err != nil {
+		return nil, store.Error(err)
+	}
+	templates, err := cf.transferRows(rows)
+	if err != nil {
+		return nil, err
+	}
+	if len(templates) == 0 {
+		return nil, nil
+	}
+	return templates[0], nil
 }
 
 // QueryAllConfigFileTemplates query all config file templates
@@ -97,6 +118,7 @@ SELECT id, name, content
 	, IFNULL(engine_version, 'v1')
 	, IFNULL(parameter_schema, '')
 	, IFNULL(revision, '')
+	, IFNULL(labels, '{}')
 FROM config_file_template 
 	`
 }
@@ -113,14 +135,18 @@ func (cf *configFileTemplateStore) transferRows(rows *sql.Rows) ([]*conftypes.Co
 	for rows.Next() {
 		template := &conftypes.ConfigFileTemplate{}
 		var ctime, mtime int64
+		var labels string
 		err := rows.Scan(&template.Id, &template.Name, &template.Content, &template.Comment, &template.Format,
 			&ctime, &template.CreateBy, &mtime, &template.ModifyBy, &template.Engine,
-			&template.EngineVersion, &template.ParameterSchema, &template.Revision)
+			&template.EngineVersion, &template.ParameterSchema, &template.Revision, &labels)
 		if err != nil {
 			return nil, err
 		}
 		template.CreateTime = time.Unix(ctime, 0)
 		template.ModifyTime = time.Unix(mtime, 0)
+		if err := json.Unmarshal([]byte(labels), &template.Labels); err != nil {
+			return nil, err
+		}
 
 		templates = append(templates, template)
 	}

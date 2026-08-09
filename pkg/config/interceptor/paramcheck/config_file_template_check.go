@@ -56,6 +56,26 @@ func (s *Server) PublishConfigTemplateRelease(
 	return s.nextServer.PublishConfigTemplateRelease(ctx, req)
 }
 
+func (s *Server) GetConfigTemplateLabels(ctx context.Context, templateID uint64) *apimodel.Response {
+	if templateID == 0 {
+		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
+	}
+	return s.nextServer.GetConfigTemplateLabels(ctx, templateID)
+}
+
+func (s *Server) SaveConfigTemplateLabels(ctx context.Context, templateID uint64,
+	labels map[string]string) *apimodel.Response {
+	if templateID == 0 || len(labels) > 64 {
+		return api.NewConfigResponse(apimodel.Code_InvalidParameter)
+	}
+	for key, value := range labels {
+		if key == "" || len(key) > 128 || len(value) > 256 {
+			return api.NewConfigResponse(apimodel.Code_InvalidParameter)
+		}
+	}
+	return s.nextServer.SaveConfigTemplateLabels(ctx, templateID, labels)
+}
+
 func (s *Server) SaveNamespaceTemplateValues(
 	ctx context.Context, req *apiconfig.NamespaceTemplateValues) *apimodel.Response {
 	if req == nil || req.GetNamespace() == "" || len(req.GetValues()) > 1024 {

@@ -121,6 +121,8 @@ type ConfigFileTemplateStore interface {
 	SaveConfigFileTemplate(template *conftypes.ConfigFileTemplate) (*conftypes.ConfigFileTemplate, error)
 	// GetConfigFileTemplate get config file template by name
 	GetConfigFileTemplate(name string) (*conftypes.ConfigFileTemplate, error)
+	// GetConfigFileTemplateByID get config file template by stable ID.
+	GetConfigFileTemplateByID(id uint64) (*conftypes.ConfigFileTemplate, error)
 }
 
 // ConfigTemplateReleaseStore stores immutable config template releases.

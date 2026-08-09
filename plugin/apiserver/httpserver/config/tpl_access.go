@@ -5,6 +5,7 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	apiconfig "github.com/pole-io/specification/source/go/api/v1/config_manage"
 	apimodel "github.com/pole-io/specification/source/go/api/v1/model"
@@ -19,6 +20,8 @@ func (h *HTTPServer) addTemplateRuleAccess(ws *restful.WebService) {
 	ws.Route(docs.EnrichCreateConfigFileTemplateApiDocs(ws.POST("/templates").To(h.CreateConfigFileTemplates)))
 	ws.Route(docs.EnrichUpdateConfigFileTemplateApiDocs(ws.PUT("/templates").To(h.UpdateConfigFileTemplate)))
 	ws.Route(docs.EnrichGetAllConfigFileTemplatesApiDocs(ws.GET("/templates").To(h.GetAllConfigFileTemplates)))
+	ws.Route(ws.GET("/templates/labels").To(h.GetConfigTemplateLabels))
+	ws.Route(ws.PUT("/templates/labels").To(h.SaveConfigTemplateLabels))
 	ws.Route(ws.POST("/templates/preview").To(h.PreviewConfigTemplate))
 	ws.Route(ws.POST("/templates/releases").To(h.PublishConfigTemplateRelease))
 	ws.Route(ws.GET("/templates/releases").To(h.ListConfigTemplateReleases))
@@ -28,6 +31,30 @@ func (h *HTTPServer) addTemplateRuleAccess(ws *restful.WebService) {
 	ws.Route(ws.GET("/templates/values/releases").To(h.ListNamespaceTemplateValueReleases))
 	ws.Route(ws.POST("/templates/bindings").To(h.BindConfigFileTemplate))
 	ws.Route(ws.GET("/templates/bindings").To(h.ListConfigTemplateBindings))
+}
+
+func (h *HTTPServer) GetConfigTemplateLabels(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{Request: req, Response: rsp}
+	templateID, _ := strconv.ParseUint(req.QueryParameter("template_id"), 10, 64)
+	handler.WriteHeaderAndProto(h.configServer.GetConfigTemplateLabels(handler.ParseHeaderContext(), templateID))
+}
+
+func (h *HTTPServer) SaveConfigTemplateLabels(req *restful.Request, rsp *restful.Response) {
+	handler := &httpcommon.Handler{Request: req, Response: rsp}
+	message := &structpb.Struct{}
+	ctx, err := handler.Parse(message)
+	if err != nil {
+		handler.WriteHeaderAndProto(api.NewConfigResponse(apimodel.Code_ParseException))
+		return
+	}
+	templateID := uint64(message.GetFields()["template_id"].GetNumberValue())
+	labels := map[string]string{}
+	if labelsValue := message.GetFields()["labels"]; labelsValue != nil && labelsValue.GetStructValue() != nil {
+		for key, value := range labelsValue.GetStructValue().GetFields() {
+			labels[key] = value.GetStringValue()
+		}
+	}
+	handler.WriteHeaderAndProto(h.configServer.SaveConfigTemplateLabels(ctx, templateID, labels))
 }
 
 func (h *HTTPServer) PreviewConfigTemplate(req *restful.Request, rsp *restful.Response) {

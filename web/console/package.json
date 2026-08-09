@@ -29,6 +29,7 @@
     "test:resource-toolbar-visual": "node scripts/verify-resource-toolbar-visual.mjs",
     "test:config-file-detail-layout": "node scripts/verify-config-file-detail-layout.mjs",
     "test:config-template-console": "node scripts/verify-config-template-console.mjs",
+    "test:fluent-input-controls": "node scripts/verify-fluent-input-controls.mjs",
     "test:auth-detail-layout": "node scripts/verify-auth-standalone-detail-layout.mjs",
     "test:auth-drawer-actions": "node scripts/verify-auth-drawer-actions.mjs",
     "test:auth-mutations": "node scripts/verify-auth-mutation-response-contract.mjs",

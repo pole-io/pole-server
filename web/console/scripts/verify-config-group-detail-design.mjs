@@ -40,7 +40,9 @@ for (const tab of ['文件内容', '基本信息', '发布记录', '订阅查询
 assert.doesNotMatch(fileView, /文件上下文/, '当前文件标题区不能展示抽象标题“文件上下文”。');
 assert.match(fileView, /当前配置内容[\s\S]*编辑配置内容|编辑配置内容[\s\S]*当前配置内容/, '配置编辑页签必须清楚区分只读内容与编辑内容。');
 assert.match(fileView, /fileSummary/, '配置编辑页签必须使用当前文件摘要区展示文件名、路径语境和状态 tag。');
-assert.match(fileView, /EnvironmentResourceSwitcher[\s\S]*resourcePath/, '当前文件标题区必须通过环境切换器与资源路径共同表达命名空间和配置分组语境。');
+assert.match(filesPage, /EnvironmentResourceSwitcher[\s\S]*resourceLabel="配置分组"/, '配置清单顶部必须常驻环境切换器。');
+assert.match(fileView, /resourcePath/, '当前文件标题区必须通过资源路径表达配置分组语境。');
+assert.doesNotMatch(fileView, /EnvironmentResourceSwitcher/, '文件详情不得重复渲染环境切换器。');
 for (const label of ['修改时间', '创建时间', '加密算法', '文件标签']) {
   assert.match(fileView, new RegExp(label), `当前文件字段网格必须保留：${label}`);
 }

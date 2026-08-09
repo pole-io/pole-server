@@ -33,11 +33,12 @@ export default React.memo(() => {
   const systemNamespace = searchParams.get('scope') === 'system'
     ? searchParams.get('namespace') || 'pole-system'
     : ''
+  const businessNamespace = systemNamespace ? '' : searchParams.get('namespace') || ''
   const [groups, setGroups] = React.useState<ConfigGroupSummary[]>([])
   const [loading, setLoading] = React.useState(false)
   const [page, setPage] = React.useState(1)
   const [creatorVisible, setCreatorVisible] = React.useState(false)
-  const [filters, setFilters] = React.useState({ keyword: '', namespace: '', publishStatus: '' })
+  const [filters, setFilters] = React.useState({ keyword: '', namespace: businessNamespace, publishStatus: '' })
 
   const refresh = React.useCallback(async () => {
     setLoading(true)
@@ -134,10 +135,12 @@ export default React.memo(() => {
       <ResourceHeader
         density="compact"
         placement="app-header"
-        eyebrow={systemNamespace ? '配置中心 / 系统空间' : '配置中心 / 配置分组'}
-        title={systemNamespace ? `${systemNamespace} 配置资源` : '配置分组'}
+        eyebrow={systemNamespace ? '配置中心 / 系统空间' : businessNamespace ? '配置中心 / 业务环境' : '配置中心 / 配置分组'}
+        title={systemNamespace ? `${systemNamespace} 配置资源` : businessNamespace ? `${businessNamespace} 配置分组` : '配置分组'}
         description={systemNamespace
           ? '显式维护当前控制面系统空间中的配置分组；这些配置不参与业务跨环境聚合。'
+          : businessNamespace
+          ? '当前列表严格限定在所选业务环境；进入分组后维护普通配置、模板配置与发布记录。'
           : '先选择逻辑配置分组，再进入具体 Namespace 维护普通配置或模板配置。'}
       />
       <div className={style.summaryBar}>

@@ -126,6 +126,8 @@ type ConfigFileTemplateOperate interface {
 	// PreviewConfigTemplate performs the server reference render for validation only.
 	PreviewConfigTemplate(ctx context.Context, req *apiconfig.RenderPreviewRequest) *apiconfig.RenderPreview
 	PublishConfigTemplateRelease(ctx context.Context, req *apiconfig.ConfigTemplateRelease) *apimodel.Response
+	GetConfigTemplateLabels(ctx context.Context, templateID uint64) *apimodel.Response
+	SaveConfigTemplateLabels(ctx context.Context, templateID uint64, labels map[string]string) *apimodel.Response
 	SaveNamespaceTemplateValues(ctx context.Context, req *apiconfig.NamespaceTemplateValues) *apimodel.Response
 	PublishNamespaceTemplateValueRelease(
 		ctx context.Context, req *apiconfig.NamespaceTemplateValueRelease) *apimodel.Response

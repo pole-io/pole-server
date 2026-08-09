@@ -1,9 +1,9 @@
 ---
 title: ADR：配置模板与 Namespace Value 客户端渲染
 tags: [adr, config, template, namespace, sdk, gray-release]
-links: [config-center, namespace, cache-layer, api-servers]
-updated: 2026-07-28
-sources: 10
+links: [config-center, namespace, cache-layer, api-servers, adr-config-template-labels-sensitive-values]
+updated: 2026-08-09
+sources: 15
 ---
 
 # ADR：配置模板与 Namespace Value 客户端渲染
@@ -135,6 +135,51 @@ template_release_id
 + value_release_id
 + engine_version
 ```
+
+#### Console 工作区信息架构
+
+Console 以两个稳定层次表达配置模板，不能用流程步骤条与页签重复切换同一组内容：
+
+1. 摘要头只保留模板身份、状态、资源路径和主操作，不持续展开完整元信息。
+2. 模板内容、参数 Schema、环境 Value、版本管理和基本信息使用同一套一级页签；名称、目标格式、说明和
+   标签统一归入最后的基本信息页签，`TemplateRelease`、`ValueRelease` 和组合预览归入版本管理。
+
+配置分组只保留一个配置清单，不再以同级 Tab 把“配置文件”和“配置模板”拆成两个资源目录。纯文本与
+模板是 `ConfigFile` 的两种内容来源：创建配置时先选择“直接文本”或“配置模板”，模板类型再显式选择
+Template 与不可变 Template Release；创建完成后两类文件统一出现在同一棵文件树中，并以类型标识区分。
+全局模板定义也必须作为同级叶子节点直接出现在这棵清单中，并用尾部“全局模板”标签区分；不能再增加模板
+目录层级。点击后保持当前配置分组路由与左侧清单不变，只将右侧画布切换为原模板的内容、Schema、环境
+Value 和版本管理任务；完整模板路由仅保留为历史深链兼容入口。合并的是发现入口与页面工作区，不是存储
+模型：模板不能被复制到当前分组，Namespace/分组文件也不能被提升为全局资产。存量文件继续按
+`config_type` 归入统一清单，存量模板直接读取原 `config_file_template` 数据，不做自动迁移或重建。
+
+模板嵌入态与配置文件详情使用同一套右侧资源详情视觉骨架：摘要头统一承载名称、轻量状态标签、结构化资源
+路径和主操作；查看态模板信息使用两列字段网格，不以禁用表单控件模拟只读信息；一级页签与正文编辑器使用
+相同间距、扁平内容画布和底部状态栏。模板使用内容、Schema、环境 Value、版本管理、基本信息五个一级
+任务；完整元信息不再固定占用每个任务的纵向空间。新建模板默认进入基本信息，确保名称和格式等必填项
+仍是明确的首要入口。视觉一致性不改变领域职责和数据模型。
+
+版本管理分别展示不可变模板版本与当前环境空间的 Value 版本，两张历史表同时承担版本选择和反馈入口，
+不再额外复制版本下拉框或组合摘要。用户直接在两张表中各选一行，选中状态由单选标记和行底色表达；
+两侧均选中后，Console 通过唯一的“渲染预览”动作调用 `RenderPreview`，展示格式化
+结果、`rendered_sha256` 和 diagnostics。两个版本可以不属于原始发布时的同一组合，以便在切换模板版本前
+检查旧 Value 的 Schema 兼容性；预览结果仍只是参考校验，不能替代运行时 `RenderSnapshot`。
+
+环境 Value 表单必须根据参数 Schema 即时校验必填项和标量类型。INTEGER、DECIMAL 的前端规则与服务端
+canonical 文本规则保持一致；字段错误以内联方式反馈，并同时阻止保存草稿与发布。前端校验用于缩短反馈
+路径，服务端仍是最终契约权威，不能因为 Console 已校验而移除 API 校验。
+
+环境 Value 编辑页还必须支持发布前就地预览：使用当前选择的固定 `TemplateRelease` 与页面内尚未保存的
+Value 调用服务端参考预览，展示格式化结果、哈希和 diagnostics。Value 或固定模板版本变化后立即废弃旧
+预览，避免把过期结果误认为当前输入。该入口解决当前编辑任务；版本管理中的预览仍只负责两个历史版本的
+显式组合检查，两者共享结果组件但不共享状态。
+
+模板发布与环境 Value 发布必须按对象分区。摘要头中的模板操作只在模板内容、Schema 和基本信息页签显示；
+环境 Value 页只提供 Value 草稿保存、当前草稿预览和 Value 版本发布，版本管理只提供历史选择与组合预览。
+两个发布入口都先进入对象明确的确认弹窗：模板弹窗审阅名称、格式、Schema 参数数、目标版本和本次发布
+说明；Value 弹窗审阅环境、固定模板版本、参数数，并配置全量/灰度、灰度规则和发布说明。发布表单不在
+编辑页永久展开。模板 Release 的 `comment` 优先保存请求中的本次发布说明；旧请求未提供时回退模板草稿
+说明。内容、格式、引擎和 Schema 仍必须由服务端从持久化草稿生成快照，不能信任客户端提交的副本。
 
 ### 6. Watch 面向组合 Revision
 
@@ -323,3 +368,4 @@ Go 特有的 pipeline、函数和控制语义无法保证被其它语言 SDK 等
 - [[namespace]]
 - [[cache-layer]]
 - [[api-servers]]
+- [[adr-config-template-labels-sensitive-values]]

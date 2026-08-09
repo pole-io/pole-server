@@ -42,9 +42,28 @@ export interface ConfigFileTemplate {
   format: string;
   engine: typeof TemplateEngine;
   parameterSchema: ConfigTemplateParameterSchema[];
+  labels?: Record<string, string>;
   revision?: string;
   ctime?: string;
   mtime?: string;
+}
+
+export async function describeConfigTemplateLabels(templateId: string | number) {
+  const res = await getApiRequest<{
+    labels?: Record<string, string>;
+    value?: { labels?: Record<string, string> };
+  }>({
+    action: `${BaseURL.CONFIG_TEMPLATE}/labels`,
+    data: { template_id: templateId },
+  });
+  return res.labels ?? res.value?.labels ?? {};
+}
+
+export async function saveConfigTemplateLabels(templateId: string | number, labels: Record<string, string>) {
+  return putApiRequest({
+    action: `${BaseURL.CONFIG_TEMPLATE}/labels`,
+    data: { template_id: Number(templateId), labels },
+  });
 }
 
 export interface ConfigTemplateRelease extends ConfigFileTemplate {
@@ -64,9 +83,7 @@ export interface NamespaceTemplateValues {
   modifyBy?: string;
 }
 
-export type TemplateValueReleaseType =
-  | 'TEMPLATE_VALUE_RELEASE_NORMAL'
-  | 'TEMPLATE_VALUE_RELEASE_GRAY';
+export type TemplateValueReleaseType = 'TEMPLATE_VALUE_RELEASE_NORMAL' | 'TEMPLATE_VALUE_RELEASE_GRAY';
 
 export interface NamespaceTemplateValueRelease extends NamespaceTemplateValues {
   id: string;
@@ -143,9 +160,10 @@ const toApiValue = (value: ConfigTemplateValue): ApiTemplateValue => {
 
 const normalizeSchema = (schema: ApiTemplateParameterSchema): ConfigTemplateParameterSchema => ({
   ...schema,
-  defaultValue: schema.default_value || schema.defaultValue
-    ? normalizeValue(schema.default_value ?? schema.defaultValue)
-    : undefined,
+  defaultValue:
+    schema.default_value || schema.defaultValue
+      ? normalizeValue(schema.default_value ?? schema.defaultValue)
+      : undefined,
 });
 
 const toApiSchema = (schema: ConfigTemplateParameterSchema) => ({
@@ -194,7 +212,7 @@ const normalizeValues = (values: any): NamespaceTemplateValues => ({
   namespace: values.namespace,
   templateId: values.template_id ?? values.templateId,
   values: Object.fromEntries(
-    Object.entries(values.values || {}).map(([key, value]) => [key, normalizeValue(value as ApiTemplateValue)]),
+    Object.entries(values.values || {}).map(([key, value]) => [key, normalizeValue(value as ApiTemplateValue)])
   ),
   revision: values.revision,
   modifyBy: values.modify_by ?? values.modifyBy,
@@ -223,11 +241,17 @@ export async function describeConfigTemplates() {
 }
 
 export async function createConfigTemplate(template: ConfigFileTemplate) {
-  return apiRequest({ action: BaseURL.CONFIG_TEMPLATE, data: [toApiTemplate(template)] });
+  return apiRequest({
+    action: BaseURL.CONFIG_TEMPLATE,
+    data: [toApiTemplate(template)],
+  });
 }
 
 export async function updateConfigTemplate(template: ConfigFileTemplate) {
-  return putApiRequest({ action: BaseURL.CONFIG_TEMPLATE, data: [toApiTemplate(template)] });
+  return putApiRequest({
+    action: BaseURL.CONFIG_TEMPLATE,
+    data: [toApiTemplate(template)],
+  });
 }
 
 export async function describeConfigTemplateReleases(templateId: string | number) {
@@ -273,18 +297,13 @@ export async function saveNamespaceTemplateValues(values: NamespaceTemplateValue
       id: values.id || '',
       namespace: values.namespace,
       template_id: values.templateId,
-      values: Object.fromEntries(
-        Object.entries(values.values).map(([key, value]) => [key, toApiValue(value)]),
-      ),
+      values: Object.fromEntries(Object.entries(values.values).map(([key, value]) => [key, toApiValue(value)])),
       revision: values.revision || '',
     },
   });
 }
 
-export async function describeNamespaceTemplateValueReleases(
-  namespace: string,
-  templateId: string | number,
-) {
+export async function describeNamespaceTemplateValueReleases(namespace: string, templateId: string | number) {
   const res = await getApiRequest<{ data?: any[]; amount?: number }>({
     action: `${BaseURL.CONFIG_TEMPLATE}/values/releases`,
     data: { namespace, template_id: templateId },
@@ -302,9 +321,7 @@ export async function publishNamespaceTemplateValueRelease(release: NamespaceTem
       namespace: release.namespace,
       template_id: release.templateId,
       template_release_id: release.templateReleaseId,
-      values: Object.fromEntries(
-        Object.entries(release.values).map(([key, value]) => [key, toApiValue(value)]),
-      ),
+      values: Object.fromEntries(Object.entries(release.values).map(([key, value]) => [key, toApiValue(value)])),
       release_type: release.releaseType,
       beta_labels: release.betaLabels || [],
       priority: release.priority || 0,
@@ -317,7 +334,7 @@ export async function publishNamespaceTemplateValueRelease(release: NamespaceTem
 
 export async function previewConfigTemplate(
   template: ConfigFileTemplate,
-  values: Record<string, ConfigTemplateValue>,
+  values: Record<string, ConfigTemplateValue>
 ): Promise<RenderPreview> {
   const res = await apiRequest<any>({
     action: `${BaseURL.CONFIG_TEMPLATE}/preview`,
@@ -327,9 +344,7 @@ export async function previewConfigTemplate(
         format: template.format,
         engine: template.engine || TemplateEngine,
         parameter_schema: template.parameterSchema.map(toApiSchema),
-        values: Object.fromEntries(
-          Object.entries(values).map(([key, value]) => [key, toApiValue(value)]),
-        ),
+        values: Object.fromEntries(Object.entries(values).map(([key, value]) => [key, toApiValue(value)])),
       },
     },
   });
@@ -357,7 +372,7 @@ export async function bindConfigFileTemplate(file: ConfigFile, binding: ConfigTe
       content: file.content || '',
       comment: file.comment || '',
       format: file.format || 'text',
-      labels: Object.fromEntries((file.tags || []).map(item => [item.key, item.value])),
+      labels: Object.fromEntries((file.tags || []).map((item) => [item.key, item.value])),
       encrypted: Boolean(file.encrypted),
       encrypt_algo: file.encryptAlgo || '',
       config_type: 'CONFIG_TEMPLATE',

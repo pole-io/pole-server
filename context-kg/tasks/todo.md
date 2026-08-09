@@ -12264,3 +12264,439 @@ PolarisMesh、Istio、Kmesh 的兼容、竞争和组合关系。
   `go test -tags nomsgpack -p 1 ./...`；Console lint（仅既有 warning）与 test build；Rust SDK
   使用真实 `v0.1.0-ALPHA.40` 的全工作区测试（SDK 174 项）和 fmt；context-kg lint、三仓
   `git diff --check`。Rust 全仓 clippy `-D warnings` 仍被 125 个既有 lint 问题阻塞。
+## 配置模板工作区布局复查（2026-08-05）
+
+目标：修正模板目录提前收高、分组工作区与模板目录贴合，以及参数 Schema 位于模板正文下方导致
+核心编辑任务需要长距离滚动的问题。
+
+- [x] 对照真实页面截图、既有配置分组层级和模板领域模型完成布局诊断。
+- [x] 让模板目录与右侧工作区共同占满剩余视区，并形成各自独立滚动区。
+- [x] 在配置分组工作区导航与模板工作区之间恢复明确间距。
+- [x] 将参数 Schema 从模板正文下方迁移到独立任务页签。
+- [x] 让模板内容编辑卡片自动填满剩余高度，并与左侧目录底部对齐。
+- [x] 修复目标格式 Fluent Select 撑破网格并覆盖模板说明的问题。
+- [x] 更新配置模板 Console 契约并完成 lint、构建和真实浏览器验收。
+
+### Review
+
+- 模板页补齐 `page → workspace → catalog/detail → table/tab content` 高度链；`1600×1000` 实测
+  工作区高 `781px`、左侧目录表格高 `696px`，空态也占满目录剩余空间并在内部滚动。
+- 配置分组工作区与模板工作区之间保留 `14px` 间距；模板目录移除每行恒定的引擎列，只保留名称、
+  格式和参数数，消除窄目录的横向滚动。
+- “模板定义”收敛为“模板内容”，参数 Schema 迁移到相邻独立页签并显示参数数量；模板内容、
+  Namespace Value、版本和预览的原有功能与 API 保持不变。
+- 模板内容页签补齐内部 `100%` 高度链，编辑卡片由固定 `360px` 改为保留最小高度后弹性伸展，
+  底部 padding 与左侧目录统一为 `14px`。
+- `1600×1000` 真实页面中，左侧目录表格与模板内容卡片的 `bottom` 均为 `945px`，差值为 `0`；
+  模板编辑卡片实际高度为 `500px`。验收截图为
+  `output/playwright/config-template-editor-bottom-aligned.png`。
+- 对齐修正已部署到 OrbStack Pod `pole-control-plane-7697cfdfc5-v89qb`，Pod Ready、零重启，镜像为
+  `sha256:43f95e438d60dd36b90b25ae52289422fd79628f6233a1d4e0b50818a79419d2`。
+- 元数据网格将模板名称、目标格式、模板说明的最小列宽调整为 `220 / 220 / 320px`，并在局部作用域
+  内覆盖 Fluent Combobox 根节点的默认 `min-width: 250px`；不会影响其它页面的 Select。
+- `test:config-template-console`、目标 oxlint、`build:test`、context-kg lint 和差异检查通过；
+  最新修正已部署到 OrbStack Pod `pole-control-plane-86d75c6788-nhlqn`，镜像为
+  `sha256:308eed9bb03a8fd75373016cd34e018e0fe14e4ce0716330400bece5487011ca`，产品入口返回 HTTP 200。
+- Playwright 在 `1600×1000` 实测目标格式与模板说明由修复前重叠 `84px` 变为 `0`，字段间距为
+  `16px`；`1000×900` 下模板说明自动进入下一行，无重叠且 `scrollWidth = clientWidth = 1000`。
+  浏览器无 error；验收截图为 `output/playwright/config-template-metadata-no-overlap.png`。
+
+## 配置模板元数据与敏感参数加密（2026-08-08）
+
+目标：统一模板基础信息控件高度，补齐模板标签管理，并让 Schema 中逐参数的敏感标记对应真实的
+Value 加密存储语义，而不只是前端密码框遮罩。
+
+- [x] 统一模板名称、目标格式、模板说明的单行高度与响应式布局。
+- [x] 增加模板标签的持久化、读写接口和编辑展示。
+- [x] 对敏感参数的 Value 草稿及不可变发布执行加密落库、读取解密。
+- [x] 补充存储、服务与 Console 契约测试。
+- [x] 完成构建、OrbStack 部署和真实页面/数据验证。
+
+### Review
+
+- 模板说明改为单行 Input；Playwright 实测名称、目标格式、模板说明均为 `30px` 高且 `top=280px`。
+- 模板标签独立保存到 `config_file_template.labels`，通过受模板读/改权限保护的 labels API 管理；运行态
+  验证 `purpose=encryption-check / team=codex-smoke` 可写入、刷新后可见。
+- Schema 中 `sensitive` 明确展示为“加密存储”；敏感 Value 使用 AES 逐值加密后写入草稿与发布记录，
+  非敏感值保持原格式，授权读取、参考预览与运行时快照再解密。
+- 真实冒烟数据确认数据库不包含测试明文、`encrypted=true`，授权 API 返回正确解密值；临时模板、
+  Template Release 和 Namespace Value 已按精确 ID 清理，不可恢复。
+- `go test` 定向包、配置模板 Console 契约、oxlint、`build:test`、context-kg lint、`git diff --check`
+  均通过。全仓 `go test -tags nomsgpack -p 1 ./...` 仅有脏工作区既有失败：观测路由测试期望 `0`，
+  实际为 `0.0003`，与本次改动无关。
+- 已部署到 OrbStack Pod `pole-control-plane-765dcc6c47-bwxm8`，Ready、零重启，镜像
+  `sha256:2714b644f7212c73067462aa65a23850de712bfd66fa211c276f85f238b49da7`，产品入口 HTTP 200。
+- 验收截图：`output/playwright/config-template-metadata-labels.png`、
+  `output/playwright/config-template-labels-sensitive-schema.png`。
+
+## 配置模板 Schema / Value 入口显性化（2026-08-08）
+
+目标：用户无需先理解“编辑草稿”状态即可发现并完成参数 Schema 与环境 Value 的创建流程。
+
+- [x] 在模板工作区展示可点击的三步任务引导。
+- [x] Schema 查看态和空态提供直接编辑、新增参数动作。
+- [x] Value 无参数空态提供返回 Schema 并创建参数的动作。
+- [x] 补充 Console 契约、构建和真实浏览器验收。
+- [x] 部署 OrbStack 并记录运行态结果。
+
+### Review
+
+- 模板标题下新增“定义模板 → 声明参数 → 配置环境 Value”三步任务条，步骤可直接切换任务页；
+  窄宽度隐藏辅助状态、移动端改为单列，避免标题被挤压截断。
+- Schema 空态新增“添加第一个参数”，查看态已有参数时新增“编辑参数”；动作会自行进入 Schema 页签和
+  编辑态，空 Schema 同时创建首行，不再要求用户先发现全局“编辑草稿”。
+- 环境 Value 缺少 Schema 时新增“添加 Schema 参数”，点击后直接返回 Schema 并生成首行；浏览器分别
+  从 Schema 空态和 Value 空态验证成功，未保存或写入测试数据。
+- `test:config-template-console`、目标 oxlint、`build:test` 与 release 构建通过；真实页面仅记录到既有的
+  “当前环境尚无 Value 草稿”查询 404，没有新增 JavaScript 运行错误。
+- 已部署到 OrbStack Pod `pole-control-plane-78cddfb964-gc69j`，Ready、零重启，镜像
+  `sha256:6d71a22b0eb1f204887be3d0b6b8739a7e05fc8f7b285f692971b42d750a1e3d`，产品入口 HTTP 200。
+- 验收截图：`output/playwright/config-template-schema-entry-visible.png`。
+
+## 配置模板工作区信息架构与双版本预览（2026-08-08）
+
+目标：去掉流程条与页签的重复导航，以模板元信息为稳定上层，把编辑任务与版本任务按领域重新分组。
+
+- [x] 将名称、格式、说明、标签提取为固定的模板元信息层。
+- [x] 一级任务区收敛为模板内容、参数 Schema、环境 Value、版本管理。
+- [x] 版本管理内区分模板版本和 Value 版本，并保留各自历史目录。
+- [x] 支持选择一个模板版本和一个 Value 版本进行服务端格式化渲染预览。
+- [x] 补充契约、构建、浏览器与 OrbStack 运行态验收。
+
+### 设计约束
+
+- 不再同时使用流程步骤条和页签表达相同的内容切换。
+- 草稿参考预览不再作为一级任务；版本组合预览归属版本管理。
+- Value 版本始终带当前环境空间上下文，切换环境时版本目录与选择器同步重置。
+- 双版本预览允许检查模板版本与 Value 版本的兼容性，服务端 diagnostics 作为最终校验结果。
+
+### Review
+
+- 已删除“定义模板 / 声明参数 / 配置环境 Value”流程条和独立参考预览页签，一级导航仅保留模板内容、
+  参数 Schema、环境 Value、版本管理，不再重复表达同一层切换。
+- 名称、目标格式、说明和标签提取到固定模板信息层；编辑草稿时四项统一可编辑，切换任一任务区仍保持
+  可见，模板内容页只承担编辑器本身。
+- 环境 Value 页只保留环境选择、模板版本固定、Value 草稿与发布；Value Release 历史已移入版本管理。
+- 新增版本管理组件：宽屏并列模板版本与 Value 版本历史，中等宽度自动单列；选择一个 Template Release
+  和当前环境的 Value Release 后调用服务端预览，展示格式化结果、SHA-256 和 diagnostics。
+- 版本选择随模板发布、Value 发布和环境切换同步更新；切换环境会清空旧 Value 版本和预览，避免跨环境
+  状态残留。保留 `tab=definition/releases/preview` 等旧深链并映射到新任务区。
+- `test:config-template-console`、目标 oxlint、`build:test`、release 构建、context-kg lint 和
+  `git diff --check` 通过。真实浏览器在 1920px 与 1200px 验证元信息、四页签、版本空态和响应式布局；
+  当前真实模板没有 Release，因此未修改用户数据来制造版本组合。
+- 已部署到 OrbStack Pod `pole-control-plane-df4c88c94-qw6n2`，Ready、零重启，镜像
+  `sha256:482206f0a4dc259a362fbecb6dd40413ddbf2a2a2452a5028099eaf62290591d`，产品入口 HTTP 200。
+- 验收截图：`output/playwright/config-template-version-management.png`、
+  `output/playwright/config-template-version-management-wide.png`。
+
+## 配置模板版本历史行直接选择（2026-08-09）
+
+目标：取消重复的版本下拉框，由模板版本和 Value 版本历史表直接承担组合选择。
+
+- [x] 模板版本与 Value 版本支持整行点击及键盘选择，并明确展示单选状态。
+- [x] 顶部只汇总当前版本组合，两边选齐后才能渲染预览。
+- [x] 补充 Console 契约、构建与真实浏览器验收。
+- [x] 部署 OrbStack 并记录运行态结果。
+
+### Review
+
+- 已移除版本管理中的两个下拉框；模板版本与 Value 版本历史表支持整行点击以及 Enter / Space 键选择，
+  首列单选标记和选中行底色共同反馈状态。
+- 顶部只汇总已选的模板版本、格式、环境 Value 版本和环境空间；任一侧未选择时“渲染预览”保持禁用，
+  页面加载和新发布后不再隐式替用户选中默认组合。
+- `test:config-template-console`、目标 oxlint、`build:test`、release 构建、context-kg lint 和
+  `git diff --check` 均通过。
+- 已部署到 OrbStack Pod `pole-control-plane-6d54d9b989-b9qn8`，Ready、零重启，镜像
+  `sha256:d06a3d978636fbb1bcb7d3782ad596b3a1168f927e833282783f749ae10c3020`，产品入口 HTTP 200。
+- 真实模板当前没有 Template Release 和 Value Release，因此未写入测试数据；浏览器验证了无下拉框、
+  两张直选历史表、组合摘要及禁用态。唯一 Console 错误仍为既有 Value 草稿查询 404。
+- 验收截图：`output/playwright/config-template-version-row-selection.png`。
+
+## 配置模板版本预览动作收敛（2026-08-09）
+
+目标：选中反馈只在版本历史表中表达，移除重复的组合摘要，只保留渲染动作。
+
+- [x] 删除版本组合标题、状态标签和已选版本摘要。
+- [x] 保留唯一“渲染预览”按钮，并由两侧表格选择状态控制可用性。
+- [x] 更新契约、知识库并完成构建和真实页面验收。
+
+### Review
+
+- 版本管理页顶部已移除组合卡片，直接以右对齐的“渲染预览”按钮进入两张版本历史表；按钮在任一侧
+  未选中时保持禁用。
+- 模板版本与 Value 版本的单选标记、整行高亮和键盘选择保持不变；渲染状态、结果哈希与 diagnostics
+  继续由下方结果区表达，不再在顶部重复反馈。
+- `test:config-template-console`、目标 oxlint、`build:test`、release 构建、context-kg lint 和
+  `git diff --check` 均通过。
+- 已部署到 OrbStack Pod `pole-control-plane-644d7ccd9b-gr79k`，Ready、零重启，镜像
+  `sha256:b55e339588c4dca538fc6338346cbbdf751fce768226de15f5f7e152fe2dd0cd`，产品入口 HTTP 200。
+- 浏览器确认页面只保留一个“渲染预览”按钮并直接展示版本表；真实数据仍无 Release，未写入测试数据。
+- 验收截图：`output/playwright/config-template-version-preview-action-only.png`。
+
+## 配置模板 Schema 连续输入失焦复发修复（2026-08-09）
+
+目标：修复参数名只能输入首字符的问题，并把第二次同类回归转化为跨组件质量门禁。
+
+- [x] 用真实浏览器逐字符输入稳定复现焦点丢失。
+- [x] 定位 Schema 参数行不稳定 React key 根因并完成红绿回归测试。
+- [x] 将 SchemaEditor 纳入连续输入专项门禁。
+- [x] 新增质量缺陷档案并强化通用验收规则。
+- [x] 完成构建、OrbStack 部署和真实浏览器连续输入验证。
+
+### Review
+
+- 修复前逐字符输入 `database.port` 最终仅保留 `d`，参数行引用随首字符更新发生变化，证明整行被重挂载。
+- 根因为参数行 key 使用 `${item.name}-${index}`；现已改为编辑期间稳定的 `schema-row-${index}`。
+- `test:fluent-input-controls` 已先在旧实现上失败，再在修复后通过；配置模板专项契约同步通过。
+- `test:fluent-input-controls`、`test:config-template-console`、目标 oxlint、`build:test`、release 构建、
+  context-kg lint 和 `git diff --check` 均通过。
+- 已部署到 OrbStack Pod `pole-control-plane-fd5cfdcb7-s9gvh`，Ready、零重启，镜像
+  `sha256:56cbbaaa7ecc85d59d763f74577a30615f248640e295f9a0d9d43c8aa83cbaf2`，产品入口 HTTP 200。
+- 真实浏览器使用 `keyboard.type('database.port')` 逐字符复验，DOM value 为完整 `database.port`，且
+  `document.activeElement` 仍是原输入框；测试未保存草稿或修改服务端数据。
+- 验收截图：`output/playwright/config-template-schema-continuous-input-fixed.png`。
+
+## 配置模板环境 Value 前端类型校验（2026-08-09）
+
+目标：Schema 类型不仅用于生成输入框，还要即时校验环境 Value，并在无效时阻止保存与发布。
+
+- [x] 用真实浏览器复现 INTEGER 接受 `12as` 且提交按钮仍可用。
+- [x] 镜像服务端规范整数、小数与必填校验规则，提供字段内联反馈。
+- [x] 在保存草稿和发布入口统一阻断无效 Value。
+- [x] 补充 Console 契约、质量知识与经验规则。
+- [x] 完成构建、OrbStack 部署和真实浏览器无效/有效输入验证。
+
+### Review
+
+- `user.age=12as` 会立即显示规范整数错误，输入框带 `aria-invalid`，保存草稿与发布按钮均禁用。
+- 改为合法 `-12` 并补齐必填 `user.name` 后，两个字段错误消失，保存与发布动作恢复可用；全程未提交
+  测试数据，最后刷新页面丢弃本地输入。
+- INTEGER、DECIMAL 与必填校验复用同一结果；保存、发布函数仍有主动拦截，避免绕过按钮禁用。
+- `test:config-template-console` 已先红后绿；`test:fluent-input-controls`、目标 oxlint、`build:test`、
+  release 构建、context-kg lint 和 `git diff --check` 均通过。
+- 已部署到 OrbStack Pod `pole-control-plane-66f5f98949-vzftv`，Ready、零重启，镜像
+  `sha256:b27bb155e6e6832bf322a6f6ea94e58ce664219c843da0722735626ebcaeac84`，产品入口 HTTP 200。
+- 验收截图：`output/playwright/config-template-value-inline-validation.png`。
+
+## 配置模板环境 Value 就地渲染预览（2026-08-09）
+
+目标：在环境 Value 编辑页直接预览当前固定模板版本与尚未保存 Value 的最终渲染结果。
+
+- [x] 确认现有版本组合预览与服务端 preview API 的复用边界。
+- [x] 在保存草稿旁增加就地预览动作，并受模板版本和 Value 校验状态约束。
+- [x] 复用统一渲染结果与 diagnostics 面板，隔离草稿预览和历史版本预览状态。
+- [x] 补充 Console 契约、知识规则和构建验证。
+- [x] 部署 OrbStack 并用真实浏览器验证当前未保存 Value 的预览。
+
+### Review
+
+- 环境 Value 工具栏新增“预览渲染”，以固定 Template Release 和当前页面 Value 调用服务端参考预览；
+  未选择模板版本或字段校验失败时按钮禁用。
+- 抽取统一 `RenderPreviewPanel`，环境草稿预览与版本管理预览共享格式化结果、SHA-256 和 diagnostics 展示，
+  但使用独立状态；Value、环境或固定版本变化后会清空旧草稿预览。
+- `test:config-template-console` 已先红后绿；`test:fluent-input-controls`、目标 oxlint、`build:test`、release
+  构建、context-kg lint 和 `git diff --check` 均通过。
+- 已部署到 OrbStack Pod `pole-control-plane-84d77d9f9d-9z7hd`，Ready、零重启，镜像
+  `sha256:6277d5d4a128ba2ca4fbe5156e2e28d3cae14cdf0fc5af114aa57dcfb2a248d6`，产品入口 HTTP 200。
+- 真实浏览器在 `spec-governance` 环境输入未保存的 `user.name=liaochuntao`、`user.age=11`，预览返回
+  `name: liaochuntao`、YAML SHA-256 和 0 项 diagnostics；未保存或发布，刷新后已丢弃本地输入。
+- 环境尚无 Value 草稿时查询接口返回 404，前端按合法空态处理；浏览器 Console 会记录该 404，属于既有行为。
+- 验收截图：`output/playwright/config-template-value-draft-preview.png`。
+
+## 配置文件清单统一文本与模板类型（2026-08-09）
+
+目标：配置分组内不再用 Tab 区分配置文件与配置模板；所有配置文件统一进入一个清单，创建时选择内容来源。
+
+- [x] 确认普通文本、模板绑定创建与统一文件查询的现有能力。
+- [x] 移除分组工作区“配置文件 / 配置模板”双入口。
+- [x] 创建配置时明确选择“直接文本 / 配置模板”，并保留模板版本与 Value 管理入口。
+- [x] 在统一文件树中展示内容来源类型，兼容存量文本文件。
+- [x] 更新契约、知识库、构建和 OrbStack 浏览器验收。
+
+### Review
+
+- 配置分组工作区只保留统一“配置文件清单”，文本和模板绑定文件不再通过平级 Tab 分流；模板目录仍作为
+  创建模板与维护 Namespace Value 的独立管理任务，从创建抽屉进入。
+- 创建第一步新增“内容来源”，可直接选择“直接文本 / 配置模板”；模板模式要求选择模板与不可变发布版本，
+  第二步标题同步切换为“模板确认”。
+- 文件树为每个文件显示“文本 / 模板”来源标签，存量未声明类型的文件继续按直接文本展示。
+- `test:config-template-console` 已先红后绿；`test:fluent-input-controls`、目标 oxlint、`build:test`、release
+  构建、context-kg lint 和 `git diff --check` 均通过。
+- 已部署到 OrbStack Pod `pole-control-plane-68bd6ccd87-w8dlk`，Ready、零重启，镜像
+  `sha256:832c685441655cd380be7bdd75406c709280973c9947829f86118f3b28c7b68f`，产品入口 HTTP 200。
+- 真实浏览器验证统一清单显示存量“文本”文件，创建抽屉可切换到“配置模板”并显示模板与固定版本选择；
+  全程未创建或修改数据。验收截图：`output/playwright/config-files-unified-content-source.png`。
+
+## 统一清单后历史配置模板不可见缺陷（2026-08-09）
+
+目标：确认历史模板数据是否仍在，恢复统一入口调整后模板目录的可发现性，禁止通过重建数据规避问题。
+
+- [x] 核对模板、发布版本和 Namespace Value 的数据库记录。
+- [x] 用真实 API/浏览器复现不可见，并追踪入口参数、权限与过滤链路。
+- [x] 实施最小修复并补充回归检查和经验规则。
+- [x] 构建、部署 OrbStack，确认历史模板重新可见且原数据未被改写。
+
+### Review
+
+- MySQL 确认 `application-config-tpl` 模板定义、模板 Release v1 和 `spec-governance` 的 active Value Release v1
+  均仍存在；数据未删除，根因是统一清单只查询并渲染 `ConfigFile`，模板资产被隐藏在独立深链页面。
+- 统一配置清单新增展开的“配置模板”虚拟目录，直接读取原 `config_file_template` 数据并标注“全局模板”；
+  点击模板带 `templateId` 进入原工作区，返回地址保持当前 Namespace/分组。
+- 左侧资源栏由 280px 调整为 340px，历史模板名称和作用域标签可完整扫描；不改变模板全局归属，也不复制、
+  迁移或重建数据。
+- 配置模板契约已按真实缺陷先红后绿；目标 oxlint、`build:test`、release 构建、Fluent 输入门禁、
+  context-kg lint 和 `git diff --check` 通过。
+- 真实浏览器确认清单显示“共 3 条 · 文件 2 · 模板 1”及 `application-config-tpl / 全局模板`；点击后
+  可见 2 个 Schema 参数、模板 v1、`spec-governance` Value v1 且状态生效，全程未执行写操作。
+- 已部署到 OrbStack Pod `pole-control-plane-84cfddcb9d-nf9zh`，Ready、零重启，镜像
+  `sha256:fe7286157de1529ca5d93abc64aa6251963a76d0afe3bad13127bfdcedb8b125`，产品入口 HTTP 200。
+- 验收截图：`output/playwright/config-catalog-history-template-restored.png`。
+
+## 统一配置清单移除模板目录层级（2026-08-09）
+
+目标：配置文件与全局模板在左侧清单同级展示，仅通过尾部类型标签区分，不再增加模板虚拟目录。
+
+- [x] 调整回归契约，禁止模板目录层级重新出现。
+- [x] 扁平合并配置文件与模板节点，保持模板原工作区跳转。
+- [x] 更新 ADR、功能档案、经验规则与操作日志。
+- [x] 构建、部署 OrbStack，并用真实浏览器验证同级列表。
+
+### Review
+
+- 删除“配置模板 · N”虚拟目录，`application-config-tpl` 与根级配置文件直接同级展示，尾部保留“全局模板”
+  标签；文件路径自身的真实文件夹层级不受影响。
+- 模板节点仍携带原 `templateId`，点击后进入既有模板内容、Schema、环境 Value 和版本管理工作区；没有改变
+  API、数据归属或历史数据。
+- 配置模板专项契约按本次纠正先红后绿，并新增禁止 `template-directory`、`__config_templates__` 和模板计数
+  目录文案的反回归断言。
+- `build:test`、release 构建、目标 oxlint、Fluent 输入门禁、context-kg lint 和 `git diff --check` 通过。
+- 已部署到 OrbStack Pod `pole-control-plane-7f9d5c9b4b-mw7pq`，Ready、零重启，镜像
+  `sha256:e2d90067892ee38bcea3b189a30d2430ed6d9885421321a8f3cf18ee25838728`，产品入口 HTTP 200。
+- 真实浏览器确认清单仍为文件 2、模板 1，模板与 `aaaa` 同级且无额外目录；全程未写数据。验收截图：
+  `output/playwright/config-catalog-flat-template-node.png`。
+
+## 配置模板在统一清单中就地展示（2026-08-09）
+
+目标：点击左侧全局模板后不离开当前配置分组页面，仅将右侧画布切换为该模板的详情与维护任务。
+
+- [x] 先补充“保持当前路由、右侧嵌入详情”的前端回归契约。
+- [x] 将模板工作区改造为可嵌入模式，并接入统一配置清单右侧画布。
+- [x] 更新 ADR、功能档案、经验规则与操作日志。
+- [x] 运行前端测试和构建，部署 OrbStack 并用真实浏览器验收。
+
+### Review
+
+- 模板工作区增加 `embedded` 外壳模式；嵌入时隐藏重复的分组导航、页面头和模板目录，只复用原有模板
+  信息、内容、Schema、环境 Value 与版本管理逻辑。
+- 点击全局模板不再进入 `/configuration/group/templates`，而是在当前 `/configuration/group/files` 路由写入
+  `templateId` 选中态并切换右侧画布；点击普通文件会清除该参数，刷新页面仍可恢复模板详情。
+- 配置模板专项契约按本次纠正先红后绿；Fluent 输入门禁、目标 oxlint、`build:test`、release 构建、
+  context-kg lint 和范围化 `git diff --check` 均通过。
+- 已部署到 OrbStack Pod `pole-control-plane-77697b7c9f-bjccc`，Ready、零重启，镜像
+  `sha256:87a0f30ae9e4823bd45de7e0e198b6904cd2be1da094980bc19cbe4901e28165`，产品入口 HTTP 200，
+  最近日志无 panic、fatal 或 error。
+- 真实浏览器确认模板节点保持选中、左侧清单不消失、右侧展示 2 个 Schema 参数及 2 条版本记录；刷新后
+  仍停留同一配置清单路由并恢复详情，全程未执行写操作。验收截图：
+  `output/playwright/config-template-inline-detail.png`。
+
+## 配置模板右侧详情对齐配置文件设计（2026-08-09）
+
+目标：保留模板特有任务结构，同时让统一清单右侧的模板详情与配置文件详情使用一致的摘要头、信息展示、
+页签节奏和内容画布。
+
+- [x] 对照 `FileView` 建立模板详情视觉骨架回归契约。
+- [x] 统一模板摘要头、查看态信息字段、操作区、页签与编辑器画布样式。
+- [x] 更新配置中心知识与用户纠正经验。
+- [x] 运行前端测试和构建，部署 OrbStack 并进行真实浏览器视觉验收。
+
+### Review
+
+- 模板摘要头改用与 `FileView` 相同的名称、轻量标签、结构化资源路径和右侧操作栅格；查看态显示编辑与
+  发布，编辑态切换为撤销与保存草稿。
+- 模板信息查看态改为两列字段网格，说明与标签使用普通文本和 Tag 展示；只有编辑态渲染 Input、Select 和
+  TagInput，不再用禁用表单控件模拟只读信息。
+- 模板内容移除独立圆角卡片，使用与配置文件正文一致的扁平工具栏、编辑器正文和 UTF-8 状态栏；摘要头和
+  信息网格按右侧容器宽度响应式换行，避免左侧清单存在时挤压标签和操作。
+- 配置模板、配置文件详情、配置分组详情和 Fluent 输入专项契约通过；目标 oxlint、`build:test`、release
+  构建、context-kg lint 与范围化 `git diff --check` 均通过。
+- 已部署到 OrbStack Pod `pole-control-plane-6cbb8d7dd9-hbl69`，Ready、零重启，镜像
+  `sha256:5165ba6908710f4ba5152722360494ba349665cea986e22f47cd06c038af53ac`，产品入口 HTTP 200，
+  最近日志无 panic、fatal 或 error。
+- 真实浏览器确认查看态字段、窄容器摘要换行、编辑态控件及撤销恢复均正常；未保存或发布任何数据。验收
+  截图：`output/playwright/config-template-file-detail-aligned.png`。
+
+## 配置清单环境选择器常驻与精简分组导航（2026-08-09）
+
+目标：选择配置文件或模板后继续保留顶部环境切换；移除重复的“配置分组工作区”卡片，只保留路径面包屑。
+
+- [x] 建立环境选择器常驻、详情不重复渲染和分组卡片移除的回归用例。
+- [x] 修复顶层条件渲染，移除文件详情重复环境切换器和分组工作区卡片。
+- [x] 更新配置中心知识、经验规则与操作日志。
+- [x] 运行测试构建、部署 OrbStack 并用真实浏览器验证文件与模板选择态。
+
+### Review
+
+- 配置分组环境切换器固定在统一配置清单顶层，不再受文件或模板选中态控制；切换环境时保留当前资源查询
+  参数，资源选择只更新右侧详情画布。
+- 文件详情删除了内部重复的环境切换器；分组导航删除“配置分组工作区”展示卡片，仅保留
+  `配置中心 / 配置分组 / 分组名` 面包屑。
+- 环境栏常驻专项用例按本次缺陷先红后绿；配置模板、配置分组、跨环境资源、Fluent 输入专项契约、目标
+  oxlint、`build:test`、release 构建、context-kg lint 与范围化 `git diff --check` 均通过。
+- 已部署到 OrbStack Pod `pole-control-plane-7777547c86-h7kxd`，Ready、零重启，镜像
+  `sha256:11f4944b72ab59ace33345e1fe335ee9f331290dc1d770536c8a64fa89954aa3`，产品入口 HTTP 200，
+  最近日志无 panic、fatal 或 error。
+- 真实浏览器确认点击 `aaaa` 后 URL 进入文件详情，顶部仍保留 `spec-governance` 环境栏，页面仅有一处
+  环境切换且不再显示分组工作区卡片；全程未执行写操作。验收截图：
+  `output/playwright/config-environment-selector-persistent.png`。
+
+## 配置模板基本信息独立页签（2026-08-09）
+
+目标：将模板名称、格式、说明和标签从所有任务上方的固定信息层移入版本管理之后的“基本信息”页签，
+使模板详情与配置文件详情的信息架构保持一致。
+
+- [x] 先建立“基本信息位于版本管理之后、元信息不再固定展示”的前端回归契约。
+- [x] 调整模板页签、元信息查看与编辑布局，并让新建模板默认进入基本信息。
+- [x] 更新配置中心功能知识、用户纠正经验与操作日志。
+- [x] 运行前端专项测试、lint、构建并部署 OrbStack 进行真实浏览器验收。
+
+### Review
+
+- 模板详情移除页签上方长期展开的元信息层，一级页签统一为模板内容、参数 Schema、环境 Value、版本管理、
+  基本信息；基本信息固定排在版本管理之后。
+- 名称、目标格式、说明和标签的查看态与编辑态完整迁入基本信息页签；摘要头继续保留名称、格式、作用域、
+  引擎和发布状态。新建模板默认进入基本信息，避免必填元信息失去首要入口。
+- 配置模板契约按本次纠正先红后绿；配置文件详情、Fluent 输入专项、目标 oxlint、`build:test`、release
+  构建、context-kg lint 与范围化 `git diff --check` 均通过。
+- 已部署到 OrbStack Pod `pole-control-plane-ff7f95984-278gj`，Ready、零重启，镜像
+  `sha256:a1dbafc2caf8d77c82abe2593a8610b46c330a2c934ef54e440049880b460908`，产品入口 HTTP 200，
+  最近日志无 panic、fatal 或 error。
+- 真实浏览器确认模板页签顺序正确、顶部空间已回收，基本信息展示名称、YAML 格式、说明和空标签状态；
+  全程未执行写操作。验收截图：`output/playwright/config-template-basic-info-tab.png`。
+## 配置模板与环境 Value 发布交互分区（2026-08-09）
+
+目标：按发布对象拆分模板定义与环境 Value 的编辑、保存和发布入口；两个发布动作都通过明确的确认层，
+版本管理保持只读，避免在环境 Value 页误发布模板。
+
+- [x] 建立页签上下文操作、双发布确认层和版本管理只读的前后端回归契约。
+- [x] 实现模板定义上下文操作与模板版本发布确认弹窗。
+- [x] 精简环境 Value 编辑页，将发布类型、说明和灰度规则移入发布弹窗。
+- [x] 让模板 Release 独立保存本次发布说明，并保持旧请求回退模板说明。
+- [x] 更新配置中心 ADR、功能知识、纠正经验、索引与操作日志。
+- [x] 运行前后端测试、构建、部署 OrbStack 并用真实浏览器验收。
+
+### Review
+
+- 模板定义操作只出现在模板内容、参数 Schema 和基本信息页签；环境 Value 只保留 Value 草稿、渲染预览和
+  Value 版本发布，版本管理保持只读，仅提供版本选择与渲染预览。
+- 模板版本与环境 Value 版本分别使用确认弹窗。弹窗先声明发布对象与不可变边界，再收集本次发布说明；
+  Value 的全量/灰度类型及灰度规则不再常驻编辑页。
+- 模板 Release 可独立记录本次发布说明；未提供说明的旧请求仍回退模板说明，模板内容、格式、引擎与
+  Schema 快照继续以服务端已保存草稿为准。
+- `npm run test:config-template-console`、`npm run test:config-file-detail-layout`、
+  `npm run test:fluent-input-controls`、目标 `oxlint`、`npm run build:test`、`npm run build`、
+  `go test ./pkg/config -count=1`、知识库校验和限定范围 `git diff --check` 均通过。
+- 已部署到 OrbStack Pod `pole-control-plane-7f9bbb69f9-5hq2k`，Ready、零重启，镜像 ID
+  `sha256:6fc55ef796e2205151e267a93940ae52df490a9bbaa37bac283064846e0d1b66`，入口返回 HTTP 200，
+  最近十分钟日志未发现 panic、fatal 或 error。
+- 真实浏览器确认模板发布摘要、Value 灰度规则弹窗和版本管理只读状态；未执行模板或 Value 发布写操作。
+  验收截图：`output/playwright/config-template-value-publish-dialog.png`。

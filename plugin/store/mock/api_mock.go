@@ -2121,6 +2121,21 @@ func (mr *MockStoreMockRecorder) GetConfigFileTemplate(name interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConfigFileTemplate", reflect.TypeOf((*MockStore)(nil).GetConfigFileTemplate), name)
 }
 
+// GetConfigFileTemplateByID mocks base method.
+func (m *MockStore) GetConfigFileTemplateByID(id uint64) (*config.ConfigFileTemplate, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetConfigFileTemplateByID", id)
+	ret0, _ := ret[0].(*config.ConfigFileTemplate)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetConfigFileTemplateByID indicates an expected call of GetConfigFileTemplateByID.
+func (mr *MockStoreMockRecorder) GetConfigFileTemplateByID(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConfigFileTemplateByID", reflect.TypeOf((*MockStore)(nil).GetConfigFileTemplateByID), id)
+}
+
 // GetConfigFileTx mocks base method.
 func (m *MockStore) GetConfigFileTx(tx store.Tx, namespace, group, name string) (*config.ConfigFile, error) {
 	m.ctrl.T.Helper()

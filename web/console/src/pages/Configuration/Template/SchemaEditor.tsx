@@ -1,10 +1,7 @@
 import React from 'react';
 import { Button, Input, Select, Switch } from 'components/Fluent';
 import { AddIcon, DeleteIcon } from 'components/Fluent/icons';
-import {
-  ConfigTemplateParameterSchema,
-  TemplateParameterType,
-} from 'services/config_templates';
+import { ConfigTemplateParameterSchema, TemplateParameterType } from 'services/config_templates';
 import styles from './index.module.less';
 
 const typeOptions: Array<{ label: string; value: TemplateParameterType }> = [
@@ -26,11 +23,13 @@ interface SchemaEditorProps {
   value: ConfigTemplateParameterSchema[];
   editable: boolean;
   onChange: (value: ConfigTemplateParameterSchema[]) => void;
+  onStartEdit: () => void;
+  onAddFirst: () => void;
 }
 
-const SchemaEditor: React.FC<SchemaEditorProps> = ({ value, editable, onChange }) => {
+const SchemaEditor: React.FC<SchemaEditorProps> = ({ value, editable, onChange, onStartEdit, onAddFirst }) => {
   const update = (index: number, patch: Partial<ConfigTemplateParameterSchema>) => {
-    onChange(value.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+    onChange(value.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
   };
 
   return (
@@ -40,7 +39,7 @@ const SchemaEditor: React.FC<SchemaEditorProps> = ({ value, editable, onChange }
           <strong>参数 Schema</strong>
           <span>参数名使用 dotted name；发布后由各 Namespace 分别维护类型化 Value。</span>
         </div>
-        {editable && (
+        {editable ? (
           <Button
             variant="outline"
             size="small"
@@ -49,29 +48,37 @@ const SchemaEditor: React.FC<SchemaEditorProps> = ({ value, editable, onChange }
           >
             添加参数
           </Button>
-        )}
+        ) : value.length > 0 ? (
+          <Button variant="outline" size="small" onClick={onStartEdit}>
+            编辑参数
+          </Button>
+        ) : null}
       </div>
       <div className={styles.schemaTable} role="table" aria-label="模板参数 Schema">
         <div className={styles.schemaHeader} role="row">
           <span>参数名</span>
           <span>类型</span>
           <span>必填</span>
-          <span>敏感</span>
+          <span>加密存储</span>
           <span>说明</span>
           <span>操作</span>
         </div>
         {value.map((item, index) => (
-          <div className={styles.schemaRow} role="row" key={`${item.name}-${index}`}>
-            {editable
-              ? <Input value={item.name} placeholder="database.host" onChange={(name) => update(index, { name })} />
-              : <code>{item.name}</code>}
-            {editable
-              ? <Select
+          <div className={styles.schemaRow} role="row" key={`schema-row-${index}`}>
+            {editable ? (
+              <Input value={item.name} placeholder="database.host" onChange={(name) => update(index, { name })} />
+            ) : (
+              <code>{item.name}</code>
+            )}
+            {editable ? (
+              <Select
                 value={item.type}
                 options={typeOptions}
                 onChange={(type: TemplateParameterType) => update(index, { type })}
               />
-              : <span>{typeOptions.find(option => option.value === item.type)?.label || item.type}</span>}
+            ) : (
+              <span>{typeOptions.find((option) => option.value === item.type)?.label || item.type}</span>
+            )}
             <Switch
               checked={item.required}
               disabled={!editable}
@@ -81,12 +88,18 @@ const SchemaEditor: React.FC<SchemaEditorProps> = ({ value, editable, onChange }
             <Switch
               checked={item.sensitive}
               disabled={!editable}
-              aria-label={`${item.name || `参数 ${index + 1}`}敏感`}
+              aria-label={`${item.name || `参数 ${index + 1}`}加密存储`}
               onChange={(sensitive: boolean) => update(index, { sensitive })}
             />
-            {editable
-              ? <Input value={item.description || ''} placeholder="参数用途" onChange={(description) => update(index, { description })} />
-              : <span>{item.description || '-'}</span>}
+            {editable ? (
+              <Input
+                value={item.description || ''}
+                placeholder="参数用途"
+                onChange={(description) => update(index, { description })}
+              />
+            ) : (
+              <span>{item.description || '-'}</span>
+            )}
             {editable ? (
               <Button
                 variant="text"
@@ -95,11 +108,19 @@ const SchemaEditor: React.FC<SchemaEditorProps> = ({ value, editable, onChange }
                 aria-label={`删除参数 ${item.name || index + 1}`}
                 onClick={() => onChange(value.filter((_, itemIndex) => itemIndex !== index))}
               />
-            ) : <span />}
+            ) : (
+              <span />
+            )}
           </div>
         ))}
         {value.length === 0 && (
-          <div className={styles.emptyState}>尚未声明参数。无参数模板仍可发布，但不能接收额外 Value。</div>
+          <div className={styles.actionEmptyState}>
+            <strong>还没有参数 Schema</strong>
+            <span>先声明模板中的变量，之后才能为每个环境填写 Value。</span>
+            <Button theme="primary" icon={<AddIcon />} onClick={onAddFirst}>
+              添加第一个参数
+            </Button>
+          </div>
         )}
       </div>
     </section>

@@ -17,8 +17,10 @@ import { Op } from 'services/types';
 import { editorConfigFile, listAllConfigFiles, removeConfigFeils, selectConfigFile } from 'modules/configuration/file';
 import { PolicySourceType } from 'services/auth_policy';
 import { describeConfigGroupEnvironments, type ConfigFileGroupView } from 'services/config_group';
+import { describeConfigTemplates, type ConfigFileTemplate } from 'services/config_templates';
 import EnvironmentResourceSwitcher from 'components/EnvironmentResourceSwitcher';
 import GroupWorkspaceNav from '../GroupWorkspaceNav';
+import TemplateWorkspace from '../../Template';
 
 const renderIcon: TreeProps['icon'] = (node) => {
     let name = 'file';
@@ -49,14 +51,28 @@ const renderNodeLabel = (file?: ConfigFileView, label?: string) => {
     return (
         <span className={style.treeNodeLabel}>
             <span className={style.treeNodeName}>{label}</span>
-            <Tag size="small" variant="light" theme={statusTheme(file.status)} className={style.treeNodeStatus}>
-                {statusText(file.status)}
-            </Tag>
+            <span className={style.treeNodeMeta}>
+                <Tag size="small" variant="light" theme={file.configType === 'CONFIG_TEMPLATE' ? 'primary' : 'default'}>
+                    {file.configType === 'CONFIG_TEMPLATE' ? '模板' : '文本'}
+                </Tag>
+                <Tag size="small" variant="light" theme={statusTheme(file.status)} className={style.treeNodeStatus}>
+                    {statusText(file.status)}
+                </Tag>
+            </span>
         </span>
     );
 };
 
-const renderTree = (files: ConfigFileView[]) => {
+const renderTemplateNodeLabel = (template: ConfigFileTemplate) => (
+    <span className={style.treeNodeLabel}>
+        <span className={style.treeNodeName}>{template.name}</span>
+        <span className={style.treeNodeMeta}>
+            <Tag size="small" variant="light" theme="primary">全局模板</Tag>
+        </span>
+    </span>
+);
+
+const renderTree = (files: ConfigFileView[], templates: ConfigFileTemplate[]) => {
     const root: any = [];
 
     files.forEach(file => {
@@ -81,6 +97,18 @@ const renderTree = (files: ConfigFileView[]) => {
             }
         });
     });
+
+    templates.forEach((template) => {
+        root.push({
+            label: renderTemplateNodeLabel(template),
+            rawLabel: template.name,
+            value: `template:${template.id}`,
+            disabled: false,
+            children: false,
+            resourceKind: 'template',
+            templateId: String(template.id),
+        });
+    });
     return root;
 }
 
@@ -91,6 +119,7 @@ export default React.memo(() => {
     const namespace = urlParams.get('namespace');
     const group = urlParams.get('group');
     const requestedFile = urlParams.get('file');
+    const requestedTemplateId = urlParams.get('templateId');
 
     const treeRef = React.useRef<TreeInstanceFunctions>(null);
 
@@ -119,7 +148,13 @@ export default React.memo(() => {
     });
     const [authorizeVisible, setAuthorizeVisible] = useState(false);
     const [environmentGroups, setEnvironmentGroups] = useState<ConfigFileGroupView[]>([]);
-    const selectedFileName = editState.activeNode?.value as string | undefined;
+    const [templates, setTemplates] = useState<ConfigFileTemplate[]>([]);
+    const selectedTemplateId = editState.activeNode?.data.resourceKind === 'template'
+        ? String(editState.activeNode.data.templateId || '')
+        : '';
+    const selectedFileName = editState.activeNode?.data.resourceKind === 'template'
+        ? undefined
+        : editState.activeNode?.value as string | undefined;
 
     // 模拟远程请求
     const fetchData = () => {
@@ -132,7 +167,13 @@ export default React.memo(() => {
             if (res.meta.requestStatus === 'rejected') {
                 openErrNotification('获取配置文件列表失败', res?.payload as string);
             }
-        })
+        });
+        describeConfigTemplates()
+            .then((result) => setTemplates(result.templates))
+            .catch((error) => {
+                setTemplates([]);
+                openErrNotification('获取配置模板列表失败', error instanceof Error ? error.message : String(error));
+            });
     }
 
     React.useEffect(() => {
@@ -171,6 +212,25 @@ export default React.memo(() => {
             mode: 'edit',
         }));
     }, [activeGroup?.deleteable, activeGroup?.editable, datas, dispatch, editState.visible, group, namespace, requestedFile]);
+
+    React.useEffect(() => {
+        if (!requestedTemplateId || editState.visible) return;
+        const requested = templates.find((item) => String(item.id) === requestedTemplateId);
+        if (!requested) return;
+        setEditState((prev) => ({
+            ...prev,
+            activeNode: {
+                value: `template:${requested.id}`,
+                data: {
+                    value: `template:${requested.id}`,
+                    resourceKind: 'template',
+                    templateId: String(requested.id),
+                },
+            } as TreeNodeModel,
+            visible: true,
+            mode: 'view',
+        }));
+    }, [editState.visible, requestedTemplateId, templates]);
 
     React.useEffect(() => {
         if (!namespace || !group) {
@@ -217,7 +277,7 @@ export default React.memo(() => {
     const renderOperations = (node: TreeNodeModel) => (
         <>
             {/* 只有是激活状态的 node 才可以展示删除操作 */}
-            {editState.activeNode && editState.activeNode.data.value === node.value && (
+            {node.data.resourceKind !== 'template' && editState.activeNode && editState.activeNode.data.value === node.value && (
                 <Tooltip content={editState.deleteable ? '删除' : '无权限操作'}>
                     <Popconfirm
                         content="确认删除配置文件吗？删除后当前文件的配置内容和发布记录将不可继续使用。"
@@ -282,37 +342,28 @@ export default React.memo(() => {
     const mainView = (
         <div className={style.groupDetail}>
             <GroupWorkspaceNav
-                active="files"
                 group={group || ''}
-                filesHref={window.location.pathname + window.location.search}
-                templatesHref={
-                    `/configuration/group/templates?group=${encodeURIComponent(group || '')}`
-                    + `&namespace=${encodeURIComponent(namespace || '')}`
-                    + `&returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`
-                }
                 onBack={() => navigate('/configuration/group')}
             />
-            {!selectedFileName && (
-                <EnvironmentResourceSwitcher
-                    currentNamespace={namespace || ''}
-                    resourceLabel="配置分组"
-                    presentation="tabs"
-                    items={environmentGroups.map((item) => ({
-                        namespace: item.namespace,
-                        summary: `${item.fileCount || 0} 个配置文件`,
-                    }))}
-                    onSelect={(nextNamespace) => {
-                        const params = new URLSearchParams(window.location.search);
-                        params.set('namespace', nextNamespace);
-                        params.set('group', group || '');
-                        navigate(`${window.location.pathname}?${params.toString()}`);
-                    }}
-                />
-            )}
+            <EnvironmentResourceSwitcher
+                currentNamespace={namespace || ''}
+                resourceLabel="配置分组"
+                presentation="tabs"
+                items={environmentGroups.map((item) => ({
+                    namespace: item.namespace,
+                    summary: `${item.fileCount || 0} 个配置文件`,
+                }))}
+                onSelect={(nextNamespace) => {
+                    const params = new URLSearchParams(window.location.search);
+                    params.set('namespace', nextNamespace);
+                    params.set('group', group || '');
+                    navigate(`${window.location.pathname}?${params.toString()}`);
+                }}
+            />
             <ResourceToolbar
                 density="compact"
-                title="配置文件清单"
-                count={`共 ${datas.length} 条`}
+                title="配置清单"
+                count={`共 ${datas.length + templates.length} 条 · 文件 ${datas.length} · 模板 ${templates.length}`}
                 filters={(
                     <>
                         <Input
@@ -330,14 +381,14 @@ export default React.memo(() => {
                                 onClick={() => fetchData()}
                             />
                         </Tooltip>
-                        <Tooltip content={activeGroup?.editable ? '新建配置文件' : '没有权限'}>
+                        <Tooltip content={activeGroup?.editable ? '新建配置' : '没有权限'}>
                             <Button
                                 theme="primary"
                                 icon={<AddIcon />}
                                 onClick={() => handleOperateFile({} as TreeNodeModel, 'create')}
                                 disabled={!activeGroup?.editable}
                             >
-                                新建配置文件
+                                新建配置
                             </Button>
                         </Tooltip>
                     </>
@@ -353,13 +404,26 @@ export default React.memo(() => {
                         checkStrictly={true}
                         valueMode='onlyLeaf'
                         allowFoldNodeOnFilter={true}
-                        data={renderTree(datas)}
+                        data={renderTree(datas, templates)}
                         hover
                         expandAll={true}
                         icon={renderIcon}
                         scroll={{ type: 'virtual' }}
                         filter={treeSearch}
                         onActive={(node, ctx) => {
+                            if (ctx.node.data.resourceKind === 'template') {
+                                setEditState(s => ({
+                                    ...s,
+                                    activeNode: { ...ctx.node },
+                                    visible: true,
+                                    mode: 'view',
+                                }));
+                                const params = new URLSearchParams(window.location.search);
+                                params.delete('file');
+                                params.set('templateId', String(ctx.node.data.templateId || ''));
+                                navigate(`${window.location.pathname}?${params.toString()}`, { replace: true });
+                                return;
+                            }
                             setEditState(s => ({ ...s, activeNode: { ...ctx.node }, visible: true, mode: 'edit' }));
                             dispatch(editorConfigFile({
                                 namespace: namespace ? namespace : '',
@@ -367,6 +431,7 @@ export default React.memo(() => {
                                 name: ctx.node.value as string,
                             }));
                             const params = new URLSearchParams(window.location.search);
+                            params.delete('templateId');
                             params.set('file', ctx.node.value as string);
                             navigate(`${window.location.pathname}?${params.toString()}`, { replace: true });
                         }}
@@ -375,7 +440,16 @@ export default React.memo(() => {
                     </div>
                 </aside>
                 <main className={style.canvas}>
-                    {(editState.visible && editState.mode === 'edit') && (
+                    {selectedTemplateId && (
+                        <TemplateWorkspace
+                            key={selectedTemplateId}
+                            embedded
+                            templateId={selectedTemplateId}
+                            namespace={namespace || ''}
+                            group={group || ''}
+                        />
+                    )}
+                    {!selectedTemplateId && editState.visible && editState.mode === 'edit' && (
                         <FileView
                             editable={activeGroup?.editable}
                             deleteable={activeGroup?.deleteable}
@@ -383,8 +457,8 @@ export default React.memo(() => {
                             onAuthorize={() => setAuthorizeVisible(true)}
                         />
                     )}
-                    {(!editState.visible || editState.mode !== 'edit') && (
-                        <div className={style.emptyCanvas}>选择左侧配置文件后查看配置正文、发布记录和订阅查询</div>
+                    {!selectedTemplateId && (!editState.visible || editState.mode !== 'edit') && (
+                        <div className={style.emptyCanvas}>选择左侧配置文件或模板后查看详情</div>
                     )}
                 </main>
             </div>
